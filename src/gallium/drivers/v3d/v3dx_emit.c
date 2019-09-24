@@ -655,6 +655,9 @@ v3dX(emit_state)(struct pipe_context *pctx)
         if (v3d->dirty & VC5_DIRTY_FRAGTEX)
                 emit_textures(v3d, &v3d->tex[PIPE_SHADER_FRAGMENT]);
 
+        if (v3d->dirty & VC5_DIRTY_GEOMTEX)
+                emit_textures(v3d, &v3d->tex[PIPE_SHADER_GEOMETRY]);
+
         if (v3d->dirty & VC5_DIRTY_VERTTEX)
                 emit_textures(v3d, &v3d->tex[PIPE_SHADER_VERTEX]);
 #endif

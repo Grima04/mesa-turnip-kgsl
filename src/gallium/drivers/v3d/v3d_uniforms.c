@@ -440,7 +440,7 @@ v3d_set_shader_uniform_dirty_flags(struct v3d_compiled_shader *shader)
                          * compiling for, but it's not passed in.
                          */
                         dirty |= VC5_DIRTY_FRAGTEX | VC5_DIRTY_VERTTEX |
-                           VC5_DIRTY_COMPTEX;
+                                 VC5_DIRTY_GEOMTEX | VC5_DIRTY_COMPTEX;
                         break;
 
                 case QUNIFORM_SSBO_OFFSET:
@@ -468,7 +468,7 @@ v3d_set_shader_uniform_dirty_flags(struct v3d_compiled_shader *shader)
                 default:
                         assert(quniform_contents_is_texture_p0(shader->prog_data.base->uniforms.contents[i]));
                         dirty |= VC5_DIRTY_FRAGTEX | VC5_DIRTY_VERTTEX |
-                           VC5_DIRTY_COMPTEX;
+                                 VC5_DIRTY_GEOMTEX | VC5_DIRTY_COMPTEX;
                         break;
                 }
         }

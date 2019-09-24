@@ -328,6 +328,104 @@ v3d_emit_wait_for_tf_if_needed(struct v3d_context *v3d, struct v3d_job *job)
         }
 }
 
+#if V3D_VERSION >= 41
+static void
+v3d_emit_gs_state_record(struct v3d_job *job,
+                         struct v3d_compiled_shader *gs_bin,
+                         struct v3d_cl_reloc gs_bin_uniforms,
+                         struct v3d_compiled_shader *gs,
+                         struct v3d_cl_reloc gs_render_uniforms)
+{
+        cl_emit(&job->indirect, GEOMETRY_SHADER_STATE_RECORD, shader) {
+                shader.geometry_bin_mode_shader_code_address =
+                        cl_address(v3d_resource(gs_bin->resource)->bo,
+                                   gs_bin->offset);
+                shader.geometry_bin_mode_shader_4_way_threadable =
+                        gs_bin->prog_data.gs->base.threads == 4;
+                shader.geometry_bin_mode_shader_start_in_final_thread_section =
+                        gs_bin->prog_data.gs->base.single_seg;
+                shader.geometry_bin_mode_shader_propagate_nans = true;
+                shader.geometry_bin_mode_shader_uniforms_address =
+                        gs_bin_uniforms;
+
+                shader.geometry_render_mode_shader_code_address =
+                        cl_address(v3d_resource(gs->resource)->bo, gs->offset);
+                shader.geometry_render_mode_shader_4_way_threadable =
+                        gs->prog_data.gs->base.threads == 4;
+                shader.geometry_render_mode_shader_start_in_final_thread_section =
+                        gs->prog_data.gs->base.single_seg;
+                shader.geometry_render_mode_shader_propagate_nans = true;
+                shader.geometry_render_mode_shader_uniforms_address =
+                        gs_render_uniforms;
+        }
+}
+
+static uint8_t
+v3d_gs_output_primitive(uint32_t prim_type)
+{
+    switch (prim_type) {
+    case GL_POINTS:
+        return GEOMETRY_SHADER_POINTS;
+    case GL_LINE_STRIP:
+        return GEOMETRY_SHADER_LINE_STRIP;
+    case GL_TRIANGLE_STRIP:
+        return GEOMETRY_SHADER_TRI_STRIP;
+    default:
+        unreachable("Unsupported primitive type");
+    }
+}
+
+static void
+v3d_emit_tes_gs_common_params(struct v3d_job *job,
+                              uint8_t gs_out_prim_type)
+{
+        /* This, and v3d_emit_tes_gs_shader_params below, fill in default
+         * values for tessellation fields even though we don't support
+         * tessellation yet because our packing functions (and the simulator)
+         * complain if we don't.
+         */
+        cl_emit(&job->indirect, TESSELLATION_GEOMETRY_COMMON_PARAMS, shader) {
+                shader.tessellation_type = TESSELLATION_TYPE_TRIANGLE;
+                shader.tessellation_point_mode = false;
+                shader.tessellation_edge_spacing = TESSELLATION_EDGE_SPACING_EVEN;
+                shader.tessellation_clockwise = true;
+                shader.tessellation_invocations = 1;
+
+                shader.geometry_shader_output_format =
+                        v3d_gs_output_primitive(gs_out_prim_type);
+                shader.geometry_shader_instances = 1; /* FIXME */
+        }
+}
+
+static void
+v3d_emit_tes_gs_shader_params(struct v3d_job *job,
+                              struct v3d_gs_prog_data *gs)
+{
+        cl_emit(&job->indirect, TESSELLATION_GEOMETRY_SHADER_PARAMS, shader) {
+                shader.tcs_batch_flush_mode = V3D_TCS_FLUSH_MODE_FULLY_PACKED;
+                shader.per_patch_data_column_depth = 1;
+                shader.tcs_output_segment_size_in_sectors = 1;
+                shader.tcs_output_segment_pack_mode = V3D_PACK_MODE_16_WAY;
+                shader.tes_output_segment_size_in_sectors = 1;
+                shader.tes_output_segment_pack_mode = V3D_PACK_MODE_16_WAY;
+                shader.gs_output_segment_size_in_sectors =
+                        gs->vpm_output_size;
+                shader.gs_output_segment_pack_mode = V3D_PACK_MODE_16_WAY; /* FIXME*/
+                shader.tbg_max_patches_per_tcs_batch = 1;
+                shader.tbg_max_extra_vertex_segs_for_patches_after_first = 0;
+                shader.tbg_min_tcs_output_segments_required_in_play = 1;
+                shader.tbg_min_per_patch_data_segments_required_in_play = 1;
+                shader.tpg_max_patches_per_tes_batch = 1;
+                shader.tpg_max_vertex_segments_per_tes_batch = 0;
+                shader.tpg_max_tcs_output_segments_per_tes_batch = 1;
+                shader.tpg_min_tes_output_segments_required_in_play = 1;
+                shader.gbg_max_tes_output_vertex_segments_per_gs_batch = 0;
+                shader.gbg_min_gs_output_segments_required_in_play = 1;
+        }
+}
+
+#endif
+
 static void
 v3d_emit_gl_shader_state(struct v3d_context *v3d,
                          const struct pipe_draw_info *info)
@@ -342,6 +440,18 @@ v3d_emit_gl_shader_state(struct v3d_context *v3d,
         struct v3d_cl_reloc fs_uniforms =
                 v3d_write_uniforms(v3d, job, v3d->prog.fs,
                                    PIPE_SHADER_FRAGMENT);
+
+        struct v3d_cl_reloc gs_uniforms = { NULL, 0 };
+        struct v3d_cl_reloc gs_bin_uniforms = { NULL, 0 };
+        if (v3d->prog.gs) {
+                gs_uniforms = v3d_write_uniforms(v3d, job, v3d->prog.gs,
+                                                 PIPE_SHADER_GEOMETRY);
+        }
+        if (v3d->prog.gs_bin) {
+                gs_bin_uniforms = v3d_write_uniforms(v3d, job, v3d->prog.gs_bin,
+                                                     PIPE_SHADER_GEOMETRY);
+        }
+
         struct v3d_cl_reloc vs_uniforms =
                 v3d_write_uniforms(v3d, job, v3d->prog.vs,
                                    PIPE_SHADER_VERTEX);
@@ -352,13 +462,33 @@ v3d_emit_gl_shader_state(struct v3d_context *v3d,
         /* Update the cache dirty flag based on the shader progs data */
         job->tmu_dirty_rcl |= v3d->prog.cs->prog_data.vs->base.tmu_dirty_rcl;
         job->tmu_dirty_rcl |= v3d->prog.vs->prog_data.vs->base.tmu_dirty_rcl;
+        if (v3d->prog.gs_bin) {
+                job->tmu_dirty_rcl |=
+                        v3d->prog.gs_bin->prog_data.gs->base.tmu_dirty_rcl;
+        }
+        if (v3d->prog.gs) {
+                job->tmu_dirty_rcl |=
+                        v3d->prog.gs->prog_data.gs->base.tmu_dirty_rcl;
+        }
         job->tmu_dirty_rcl |= v3d->prog.fs->prog_data.fs->base.tmu_dirty_rcl;
 
         /* See GFXH-930 workaround below */
         uint32_t num_elements_to_emit = MAX2(vtx->num_elements, 1);
+
+        uint32_t shader_state_record_length =
+                cl_packet_length(GL_SHADER_STATE_RECORD);
+#if V3D_VERSION >= 41
+        if (v3d->prog.gs) {
+                shader_state_record_length +=
+                        cl_packet_length(GEOMETRY_SHADER_STATE_RECORD) +
+                        cl_packet_length(TESSELLATION_GEOMETRY_COMMON_PARAMS) +
+                        2 * cl_packet_length(TESSELLATION_GEOMETRY_SHADER_PARAMS);
+        }
+#endif
+
         uint32_t shader_rec_offset =
-                v3d_cl_ensure_space(&job->indirect,
-                                    cl_packet_length(GL_SHADER_STATE_RECORD) +
+                    v3d_cl_ensure_space(&job->indirect,
+                                    shader_state_record_length +
                                     num_elements_to_emit *
                                     cl_packet_length(GL_SHADER_STATE_ATTRIBUTE_RECORD),
                                     32);
@@ -367,6 +497,21 @@ v3d_emit_gl_shader_state(struct v3d_context *v3d,
          * compile time, so that we mostly just have to OR the VS and FS
          * records together at draw time.
          */
+#if V3D_VERSION >= 41
+        if (v3d->prog.gs) {
+            v3d_emit_gs_state_record(v3d->job,
+                                     v3d->prog.gs_bin, gs_bin_uniforms,
+                                     v3d->prog.gs, gs_uniforms);
+
+            struct v3d_gs_prog_data *gs = v3d->prog.gs->prog_data.gs;
+            struct v3d_gs_prog_data *gs_bin = v3d->prog.gs_bin->prog_data.gs;
+
+            v3d_emit_tes_gs_common_params(v3d->job, gs->out_prim_type);
+            v3d_emit_tes_gs_shader_params(v3d->job, gs_bin);
+            v3d_emit_tes_gs_shader_params(v3d->job, gs);
+        }
+#endif
+
         cl_emit(&job->indirect, GL_SHADER_STATE_RECORD, shader) {
                 shader.enable_clipping = true;
                 /* VC5_DIRTY_PRIM_MODE | VC5_DIRTY_RASTERIZER */
@@ -389,6 +534,12 @@ v3d_emit_gl_shader_state(struct v3d_context *v3d,
 
                 shader.fragment_shader_uses_real_pixel_centre_w_in_addition_to_centroid_w2 =
                         v3d->prog.fs->prog_data.fs->uses_center_w;
+
+#if V3D_VERSION >= 41
+                shader.any_shader_reads_hardware_written_primitive_id =
+                        v3d->prog.gs ? v3d->prog.gs->prog_data.gs->uses_pid :
+                                       false;
+#endif
 
 #if V3D_VERSION >= 40
                shader.do_scoreboard_wait_on_first_thread_switch =
@@ -550,13 +701,34 @@ v3d_emit_gl_shader_state(struct v3d_context *v3d,
                         v3d->prog.vs->prog_data.vs->vcm_cache_size;
         }
 
+#if V3D_VERSION >= 41
+        if (v3d->prog.gs) {
+                cl_emit(&job->bcl, GL_SHADER_STATE_INCLUDING_GS, state) {
+                        state.address = cl_address(job->indirect.bo,
+                                                   shader_rec_offset);
+                        state.number_of_attribute_arrays = num_elements_to_emit;
+                }
+        } else {
+                cl_emit(&job->bcl, GL_SHADER_STATE, state) {
+                        state.address = cl_address(job->indirect.bo,
+                                                   shader_rec_offset);
+                        state.number_of_attribute_arrays = num_elements_to_emit;
+                }
+        }
+#else
+        assert(!v3d->prog.gs);
         cl_emit(&job->bcl, GL_SHADER_STATE, state) {
                 state.address = cl_address(job->indirect.bo, shader_rec_offset);
                 state.number_of_attribute_arrays = num_elements_to_emit;
         }
+#endif
 
         v3d_bo_unreference(&cs_uniforms.bo);
         v3d_bo_unreference(&vs_uniforms.bo);
+        if (gs_uniforms.bo)
+                v3d_bo_unreference(&gs_uniforms.bo);
+        if (gs_bin_uniforms.bo)
+                v3d_bo_unreference(&gs_bin_uniforms.bo);
         v3d_bo_unreference(&fs_uniforms.bo);
 }
 
@@ -752,9 +924,15 @@ v3d_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info)
                           VC5_DIRTY_RASTERIZER |
                           VC5_DIRTY_COMPILED_CS |
                           VC5_DIRTY_COMPILED_VS |
+                          VC5_DIRTY_COMPILED_GS_BIN |
+                          VC5_DIRTY_COMPILED_GS |
                           VC5_DIRTY_COMPILED_FS |
                           v3d->prog.cs->uniform_dirty_bits |
                           v3d->prog.vs->uniform_dirty_bits |
+                          (v3d->prog.gs_bin ?
+                                    v3d->prog.gs_bin->uniform_dirty_bits : 0) |
+                          (v3d->prog.gs ?
+                                    v3d->prog.gs->uniform_dirty_bits : 0) |
                           v3d->prog.fs->uniform_dirty_bits)) {
                 v3d_emit_gl_shader_state(v3d, info);
         }
