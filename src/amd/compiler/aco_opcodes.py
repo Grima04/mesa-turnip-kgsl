@@ -954,7 +954,7 @@ VOP3 = {
    (0x12c, 0x12c, 0x1f0, 0x1f0,    -1, "v_cvt_pkaccum_u8_f32", True, False),
    (   -1,    -1,    -1, 0x1f1, 0x373, "v_mad_u32_u16", False, False),
    (   -1,    -1,    -1, 0x1f2, 0x375, "v_mad_i32_i16", False, False),
-   (   -1,    -1,    -1, 0x1f2, 0x345, "v_xad_u32", False, False),
+   (   -1,    -1,    -1, 0x1f3, 0x345, "v_xad_u32", False, False),
    (   -1,    -1,    -1, 0x1f4, 0x351, "v_min3_f16", True, True),
    (   -1,    -1,    -1, 0x1f5, 0x352, "v_min3_i16", False, False),
    (   -1,    -1,    -1, 0x1f6, 0x353, "v_min3_u16", False, False),
