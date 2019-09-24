@@ -95,6 +95,21 @@ void aco_compile_shader(unsigned shader_count,
    //aco_print_program(program.get(), stderr);
    aco::schedule_program(program.get(), live_vars);
 
+   std::string llvm_ir;
+   if (options->record_llvm_ir) {
+      char *data = NULL;
+      size_t size = 0;
+      FILE *f = open_memstream(&data, &size);
+      if (f) {
+         aco_print_program(program.get(), f);
+         fputc(0, f);
+         fclose(f);
+      }
+
+      llvm_ir = std::string(data, data + size);
+      free(data);
+   }
+
    /* Register Allocation */
    aco::register_allocation(program.get(), live_vars.live_out);
    if (options->dump_shader) {
@@ -127,7 +142,7 @@ void aco_compile_shader(unsigned shader_count,
 
    bool get_disasm = options->dump_shader || options->record_llvm_ir;
 
-   size_t size = 0;
+   size_t size = llvm_ir.size();
 
    std::string disasm;
    if (get_disasm) {
@@ -152,11 +167,13 @@ void aco_compile_shader(unsigned shader_count,
 
    legacy_binary->config = config;
    legacy_binary->disasm_size = 0;
-   legacy_binary->llvm_ir_size = 0;
+   legacy_binary->llvm_ir_size = llvm_ir.size();
+
+   llvm_ir.copy((char*) legacy_binary->data + legacy_binary->code_size, llvm_ir.size());
 
    if (get_disasm) {
-      disasm.copy((char*) legacy_binary->data + legacy_binary->code_size, disasm.size());
-      legacy_binary->disasm_size = disasm.size() - 1;
+      disasm.copy((char*) legacy_binary->data + legacy_binary->code_size + llvm_ir.size(), disasm.size());
+      legacy_binary->disasm_size = disasm.size();
    }
 
    *binary = (radv_shader_binary*) legacy_binary;
