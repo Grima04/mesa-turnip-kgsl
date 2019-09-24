@@ -360,6 +360,7 @@ struct radv_shader_variant {
 	struct radv_shader_info info;
 
 	/* debug only */
+	bool aco_used;
 	uint32_t *spirv;
 	uint32_t spirv_size;
 	char *nir_string;

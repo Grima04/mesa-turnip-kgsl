@@ -5244,8 +5244,13 @@ VkResult radv_GetPipelineExecutableInternalRepresentationsKHR(
 	/* LLVM IR */
 	if (p < end) {
 		p->isText = true;
-		desc_copy(p->name, "LLVM IR");
-		desc_copy(p->description, "The LLVM IR after some optimizations");
+		if (shader->aco_used) {
+			desc_copy(p->name, "ACO IR");
+			desc_copy(p->description, "The ACO IR after some optimizations");
+		} else {
+			desc_copy(p->name, "LLVM IR");
+			desc_copy(p->description, "The LLVM IR after some optimizations");
+		}
 		if (radv_copy_representation(p->pData, &p->dataSize, shader->llvm_ir_string) != VK_SUCCESS)
 			result = VK_INCOMPLETE;
 	}
