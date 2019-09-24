@@ -470,9 +470,14 @@ bool ac_query_gpu_info(int fd, void *dev_p,
 	}
 	if (info->chip_class >= GFX10) {
 		info->tcc_cache_line_size = 128;
-		/* This is a hack, but it's all we can do without a kernel upgrade. */
-		info->tcc_harvested =
-			(info->vram_size / info->num_tcc_blocks) != 512*1024*1024;
+
+		if (info->drm_minor >= 35) {
+			info->tcc_harvested = device_info.tcc_disabled_mask != 0;
+		} else {
+			/* This is a hack, but it's all we can do without a kernel upgrade. */
+			info->tcc_harvested =
+				(info->vram_size / info->num_tcc_blocks) != 512*1024*1024;
+		}
 	} else {
 		info->tcc_cache_line_size = 64;
 	}
