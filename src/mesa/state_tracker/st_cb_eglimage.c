@@ -271,8 +271,11 @@ st_bind_egl_image(struct gl_context *ctx,
    }
    assert(texFormat != MESA_FORMAT_NONE);
 
-   _mesa_init_teximage_fields(ctx, texImage,
-                              stimg->texture->width0, stimg->texture->height0,
+   /* Minify texture size based on level set on the EGLImage. */
+   uint32_t width = u_minify(stimg->texture->width0, stimg->level);
+   uint32_t height = u_minify(stimg->texture->height0, stimg->level);
+
+   _mesa_init_teximage_fields(ctx, texImage, width, height,
                               1, 0, internalFormat, texFormat);
 
    pipe_resource_reference(&stObj->pt, stimg->texture);
