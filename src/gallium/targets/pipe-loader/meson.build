@@ -20,7 +20,7 @@
 
 pipe_loader_link_args = [ld_args_gc_sections]
 pipe_loader_link_deps = []
-pipe_loader_link_with = [libgallium, libnir]
+pipe_loader_link_with = [libgallium]
 pipe_loader_comp_args = []
 pipe_loader_incs = [
   inc_include, inc_src, inc_util, inc_gallium, inc_gallium_drivers,
@@ -69,7 +69,7 @@ foreach x : pipe_loaders
       link_depends : pipe_loader_link_deps,
       include_directories : pipe_loader_incs,
       link_with : [pipe_loader_link_with, x[3]],
-      dependencies : [idep_mesautil, dep_thread, x[2]],
+      dependencies : [idep_mesautil, idep_nir, dep_thread, x[2]],
       name_prefix : '',
       install : true,
       install_dir : pipe_loader_install_dir,
