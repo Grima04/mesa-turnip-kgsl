@@ -470,6 +470,9 @@ bool ac_query_gpu_info(int fd, void *dev_p,
 	}
 	if (info->chip_class >= GFX10) {
 		info->tcc_cache_line_size = 128;
+		/* This is a hack, but it's all we can do without a kernel upgrade. */
+		info->tcc_harvested =
+			(info->vram_size / info->num_tcc_blocks) != 512*1024*1024;
 	} else {
 		info->tcc_cache_line_size = 64;
 	}
@@ -694,6 +697,7 @@ void ac_print_gpu_info(struct radeon_info *info)
 	printf("    num_sdma_rings = %i\n", info->num_sdma_rings);
 	printf("    clock_crystal_freq = %i\n", info->clock_crystal_freq);
 	printf("    tcc_cache_line_size = %u\n", info->tcc_cache_line_size);
+	printf("    tcc_harvested = %u\n", info->tcc_harvested);
 
 	printf("    use_display_dcc_unaligned = %u\n", info->use_display_dcc_unaligned);
 	printf("    use_display_dcc_with_retile_blit = %u\n", info->use_display_dcc_with_retile_blit);

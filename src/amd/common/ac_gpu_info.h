@@ -58,6 +58,7 @@ struct radeon_info {
 	uint32_t                    num_sdma_rings;
 	uint32_t                    clock_crystal_freq;
 	uint32_t                    tcc_cache_line_size;
+	bool			    tcc_harvested;
 	bool                        has_clear_state;
 	bool                        has_distributed_tess;
 	bool                        has_dcc_constant_encode;
