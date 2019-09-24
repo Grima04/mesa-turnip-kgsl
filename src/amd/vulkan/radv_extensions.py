@@ -50,7 +50,7 @@ class Extension:
 # the those extension strings, then tests dEQP-VK.api.info.instance.extensions
 # and dEQP-VK.api.info.device fail due to the duplicated strings.
 EXTENSIONS = [
-    Extension('VK_ANDROID_external_memory_android_hardware_buffer', 3, False),
+    Extension('VK_ANDROID_external_memory_android_hardware_buffer', 3, 'RADV_SUPPORT_ANDROID_HARDWARE_BUFFER  && device->rad_info.has_syncobj_wait_for_submit'),
     Extension('VK_ANDROID_native_buffer',                 5, 'ANDROID && device->rad_info.has_syncobj_wait_for_submit'),
     Extension('VK_KHR_16bit_storage',                     1, '!device->use_aco'),
     Extension('VK_KHR_bind_memory2',                      1, True),
