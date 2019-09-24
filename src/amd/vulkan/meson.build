@@ -67,6 +67,7 @@ libradv_files = files(
   'winsys/amdgpu/radv_amdgpu_winsys.c',
   'winsys/amdgpu/radv_amdgpu_winsys.h',
   'winsys/amdgpu/radv_amdgpu_winsys_public.h',
+  'radv_android.c',
   'radv_cmd_buffer.c',
   'radv_cs.h',
   'radv_debug.c',
@@ -143,7 +144,6 @@ if with_platform_android
   radv_flags += [
     '-DVK_USE_PLATFORM_ANDROID_KHR'
   ]
-  libradv_files += files('radv_android.c')
 endif
 
 libvulkan_radeon = shared_library(

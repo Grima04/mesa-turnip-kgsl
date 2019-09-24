@@ -1104,6 +1104,7 @@ void radv_GetPhysicalDeviceFormatProperties2(
 
 static VkResult radv_get_image_format_properties(struct radv_physical_device *physical_device,
 						 const VkPhysicalDeviceImageFormatInfo2 *info,
+						 VkFormat format,
 						 VkImageFormatProperties *pImageFormatProperties)
 
 {
@@ -1113,10 +1114,10 @@ static VkResult radv_get_image_format_properties(struct radv_physical_device *ph
 	uint32_t maxMipLevels;
 	uint32_t maxArraySize;
 	VkSampleCountFlags sampleCounts = VK_SAMPLE_COUNT_1_BIT;
-	const struct vk_format_description *desc = vk_format_description(info->format);
+	const struct vk_format_description *desc = vk_format_description(format);
 	enum chip_class chip_class = physical_device->rad_info.chip_class;
 
-	radv_physical_device_get_format_properties(physical_device, info->format,
+	radv_physical_device_get_format_properties(physical_device, format,
 						   &format_props);
 	if (info->tiling == VK_IMAGE_TILING_LINEAR) {
 		format_feature_flags = format_props.linearTilingFeatures;
@@ -1129,7 +1130,7 @@ static VkResult radv_get_image_format_properties(struct radv_physical_device *ph
 	if (format_feature_flags == 0)
 		goto unsupported;
 
-	if (info->type != VK_IMAGE_TYPE_2D && vk_format_is_depth_or_stencil(info->format))
+	if (info->type != VK_IMAGE_TYPE_2D && vk_format_is_depth_or_stencil(format))
 		goto unsupported;
 
 	switch (info->type) {
@@ -1179,9 +1180,9 @@ static VkResult radv_get_image_format_properties(struct radv_physical_device *ph
 	}
 
 	if (info->tiling == VK_IMAGE_TILING_LINEAR &&
-	    (info->format == VK_FORMAT_R32G32B32_SFLOAT ||
-	     info->format == VK_FORMAT_R32G32B32_SINT ||
-	     info->format == VK_FORMAT_R32G32B32_UINT)) {
+	    (format == VK_FORMAT_R32G32B32_SFLOAT ||
+	     format == VK_FORMAT_R32G32B32_SINT ||
+	     format == VK_FORMAT_R32G32B32_UINT)) {
 		/* R32G32B32 is a weird format and the driver currently only
 		 * supports the barely minimum.
 		 * TODO: Implement more if we really need to.
@@ -1196,8 +1197,8 @@ static VkResult radv_get_image_format_properties(struct radv_physical_device *ph
 	/* We can't create 3d compressed 128bpp images that can be rendered to on GFX9 */
 	if (physical_device->rad_info.chip_class >= GFX9 &&
 	    info->type == VK_IMAGE_TYPE_3D &&
-	    vk_format_get_blocksizebits(info->format) == 128 &&
-	    vk_format_is_compressed(info->format) &&
+	    vk_format_get_blocksizebits(format) == 128 &&
+	    vk_format_is_compressed(format) &&
 	    (info->flags & VK_IMAGE_CREATE_BLOCK_TEXEL_VIEW_COMPATIBLE_BIT) &&
 	    ((info->flags & VK_IMAGE_CREATE_EXTENDED_USAGE_BIT) ||
 	     (info->usage & VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT))) {
@@ -1293,7 +1294,7 @@ VkResult radv_GetPhysicalDeviceImageFormatProperties(
 		.flags = createFlags,
 	};
 
-	return radv_get_image_format_properties(physical_device, &info,
+	return radv_get_image_format_properties(physical_device, &info, format,
 						pImageFormatProperties);
 }
 
@@ -1348,8 +1349,9 @@ VkResult radv_GetPhysicalDeviceImageFormatProperties2(
 	struct VkAndroidHardwareBufferUsageANDROID *android_usage = NULL;
 	VkSamplerYcbcrConversionImageFormatProperties *ycbcr_props = NULL;
 	VkResult result;
+	VkFormat format = radv_select_android_external_format(base_info->pNext, base_info->format);
 
-	result = radv_get_image_format_properties(physical_device, base_info,
+	result = radv_get_image_format_properties(physical_device, base_info, format,
 						&base_props->imageFormatProperties);
 	if (result != VK_SUCCESS)
 		return result;
@@ -1416,7 +1418,7 @@ VkResult radv_GetPhysicalDeviceImageFormatProperties2(
 	}
 
 	if (ycbcr_props) {
-		ycbcr_props->combinedImageSamplerDescriptorCount = vk_format_get_plane_count(base_info->format);
+		ycbcr_props->combinedImageSamplerDescriptorCount = vk_format_get_plane_count(format);
 	}
 
 	return VK_SUCCESS;

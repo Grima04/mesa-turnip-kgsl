@@ -36,15 +36,16 @@
 
 static unsigned
 radv_choose_tiling(struct radv_device *device,
-		   const VkImageCreateInfo *pCreateInfo)
+		   const VkImageCreateInfo *pCreateInfo,
+		   VkFormat format)
 {
 	if (pCreateInfo->tiling == VK_IMAGE_TILING_LINEAR) {
 		assert(pCreateInfo->samples <= 1);
 		return RADEON_SURF_MODE_LINEAR_ALIGNED;
 	}
 
-	if (!vk_format_is_compressed(pCreateInfo->format) &&
-	    !vk_format_is_depth_or_stencil(pCreateInfo->format)
+	if (!vk_format_is_compressed(format) &&
+	    !vk_format_is_depth_or_stencil(format)
 	    && device->physical_device->rad_info.chip_class <= GFX8) {
 		/* this causes hangs in some VK CTS tests on GFX9. */
 		/* Textures with a very small height are recommended to be linear. */
@@ -64,7 +65,8 @@ radv_choose_tiling(struct radv_device *device,
 
 static bool
 radv_use_tc_compat_htile_for_image(struct radv_device *device,
-				   const VkImageCreateInfo *pCreateInfo)
+				   const VkImageCreateInfo *pCreateInfo,
+				   VkFormat format)
 {
 	/* TC-compat HTILE is only available for GFX8+. */
 	if (device->physical_device->rad_info.chip_class < GFX8)
@@ -84,8 +86,8 @@ radv_use_tc_compat_htile_for_image(struct radv_device *device,
 	 * tests - disable for now. On GFX10 D32_SFLOAT is affected as well.
 	 */
 	if (pCreateInfo->samples >= 2 &&
-	    (pCreateInfo->format == VK_FORMAT_D32_SFLOAT_S8_UINT ||
-	     (pCreateInfo->format == VK_FORMAT_D32_SFLOAT &&
+	    (format == VK_FORMAT_D32_SFLOAT_S8_UINT ||
+	     (format == VK_FORMAT_D32_SFLOAT &&
 	      device->physical_device->rad_info.chip_class == GFX10)))
 		return false;
 
@@ -93,9 +95,9 @@ radv_use_tc_compat_htile_for_image(struct radv_device *device,
 	 * supports 32-bit. Though, it's possible to enable TC-compat for
 	 * 16-bit depth surfaces if no Z planes are compressed.
 	 */
-	if (pCreateInfo->format != VK_FORMAT_D32_SFLOAT_S8_UINT &&
-	    pCreateInfo->format != VK_FORMAT_D32_SFLOAT &&
-	    pCreateInfo->format != VK_FORMAT_D16_UNORM)
+	if (format != VK_FORMAT_D32_SFLOAT_S8_UINT &&
+	    format != VK_FORMAT_D32_SFLOAT &&
+	    format != VK_FORMAT_D16_UNORM)
 		return false;
 
 	if (pCreateInfo->flags & VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT) {
@@ -113,7 +115,7 @@ radv_use_tc_compat_htile_for_image(struct radv_device *device,
 				if (format_list->pViewFormats[i] == VK_FORMAT_UNDEFINED)
 					continue;
 
-				if (pCreateInfo->format != format_list->pViewFormats[i])
+				if (format != format_list->pViewFormats[i])
 					return false;
 			}
 		} else {
@@ -143,7 +145,8 @@ radv_surface_has_scanout(struct radv_device *device, const struct radv_image_cre
 static bool
 radv_use_dcc_for_image(struct radv_device *device,
 		       const struct radv_image *image,
-		       const VkImageCreateInfo *pCreateInfo)
+		       const VkImageCreateInfo *pCreateInfo,
+		       VkFormat format)
 {
 	bool dcc_compatible_formats;
 	bool blendable;
@@ -166,8 +169,8 @@ radv_use_dcc_for_image(struct radv_device *device,
 	if (pCreateInfo->tiling == VK_IMAGE_TILING_LINEAR)
 		return false;
 
-	if (vk_format_is_subsampled(pCreateInfo->format) ||
-	    vk_format_get_plane_count(pCreateInfo->format) > 1)
+	if (vk_format_is_subsampled(format) ||
+	    vk_format_get_plane_count(format) > 1)
 		return false;
 
 	/* TODO: Enable DCC for mipmaps on GFX9+. */
@@ -189,7 +192,7 @@ radv_use_dcc_for_image(struct radv_device *device,
 
 	/* Determine if the formats are DCC compatible. */
 	dcc_compatible_formats =
-		radv_is_colorbuffer_format_supported(pCreateInfo->format,
+		radv_is_colorbuffer_format_supported(format,
 						     &blendable);
 
 	if (pCreateInfo->flags & VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT) {
@@ -206,7 +209,7 @@ radv_use_dcc_for_image(struct radv_device *device,
 				if (format_list->pViewFormats[i] == VK_FORMAT_UNDEFINED)
 					continue;
 
-				if (!radv_dcc_formats_compatible(pCreateInfo->format,
+				if (!radv_dcc_formats_compatible(format,
 				                                 format_list->pViewFormats[i]))
 					dcc_compatible_formats = false;
 			}
@@ -389,10 +392,11 @@ radv_init_surface(struct radv_device *device,
 		  const struct radv_image *image,
 		  struct radeon_surf *surface,
 		  unsigned plane_id,
-		  const VkImageCreateInfo *pCreateInfo)
+		  const VkImageCreateInfo *pCreateInfo,
+		  VkFormat image_format)
 {
-	unsigned array_mode = radv_choose_tiling(device, pCreateInfo);
-	VkFormat format = vk_format_get_plane_format(pCreateInfo->format, plane_id);
+	unsigned array_mode = radv_choose_tiling(device, pCreateInfo, image_format);
+	VkFormat format = vk_format_get_plane_format(image_format, plane_id);
 	const struct vk_format_description *desc = vk_format_description(format);
 	bool is_depth, is_stencil;
 
@@ -432,7 +436,7 @@ radv_init_surface(struct radv_device *device,
 
 	if (is_depth) {
 		surface->flags |= RADEON_SURF_ZBUFFER;
-		if (radv_use_tc_compat_htile_for_image(device, pCreateInfo))
+		if (radv_use_tc_compat_htile_for_image(device, pCreateInfo, image_format))
 			surface->flags |= RADEON_SURF_TC_COMPATIBLE_HTILE;
 	}
 
@@ -441,13 +445,13 @@ radv_init_surface(struct radv_device *device,
 
 	if (device->physical_device->rad_info.chip_class >= GFX9 &&
 	    pCreateInfo->imageType == VK_IMAGE_TYPE_3D &&
-	    vk_format_get_blocksizebits(pCreateInfo->format) == 128 &&
-	    vk_format_is_compressed(pCreateInfo->format))
+	    vk_format_get_blocksizebits(image_format) == 128 &&
+	    vk_format_is_compressed(image_format))
 		surface->flags |= RADEON_SURF_NO_RENDER_TARGET;
 
 	surface->flags |= RADEON_SURF_OPTIMIZE_FOR_SPACE;
 
-	if (!radv_use_dcc_for_image(device, image, pCreateInfo))
+	if (!radv_use_dcc_for_image(device, image, pCreateInfo, image_format))
 		surface->flags |= RADEON_SURF_DISABLE_DCC;
 
 	return 0;
@@ -1439,9 +1443,11 @@ radv_image_create(VkDevice _device,
 	RADV_FROM_HANDLE(radv_device, device, _device);
 	const VkImageCreateInfo *pCreateInfo = create_info->vk_info;
 	struct radv_image *image = NULL;
+	VkFormat format = radv_select_android_external_format(pCreateInfo->pNext,
+	                                                      pCreateInfo->format);
 	assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO);
 
-	const unsigned plane_count = vk_format_get_plane_count(pCreateInfo->format);
+	const unsigned plane_count = vk_format_get_plane_count(format);
 	const size_t image_struct_size = sizeof(*image) + sizeof(struct radv_image_plane) * plane_count;
 
 	radv_assert(pCreateInfo->mipLevels > 0);
@@ -1464,9 +1470,9 @@ radv_image_create(VkDevice _device,
 	image->info.storage_samples = pCreateInfo->samples;
 	image->info.array_size = pCreateInfo->arrayLayers;
 	image->info.levels = pCreateInfo->mipLevels;
-	image->info.num_channels = vk_format_get_nr_components(pCreateInfo->format);
+	image->info.num_channels = vk_format_get_nr_components(format);
 
-	image->vk_format = pCreateInfo->format;
+	image->vk_format = format;
 	image->tiling = pCreateInfo->tiling;
 	image->usage = pCreateInfo->usage;
 	image->flags = pCreateInfo->flags;
@@ -1484,12 +1490,12 @@ radv_image_create(VkDevice _device,
 
 	image->shareable = vk_find_struct_const(pCreateInfo->pNext,
 	                                        EXTERNAL_MEMORY_IMAGE_CREATE_INFO) != NULL;
-	if (!vk_format_is_depth_or_stencil(pCreateInfo->format) && !image->shareable) {
+	if (!vk_format_is_depth_or_stencil(format) && !image->shareable) {
 		image->info.surf_index = &device->image_mrt_offset_counter;
 	}
 
 	for (unsigned plane = 0; plane < image->plane_count; ++plane) {
-		radv_init_surface(device, image, &image->planes[plane].surface, plane, pCreateInfo);
+		radv_init_surface(device, image, &image->planes[plane].surface, plane, pCreateInfo, format);
 	}
 
 	ASSERTED VkResult result = radv_image_create_layout(device, *create_info, image);
@@ -1632,7 +1638,13 @@ radv_image_view_init(struct radv_image_view *iview,
 	iview->plane_id = radv_plane_from_aspect(pCreateInfo->subresourceRange.aspectMask);
 	iview->aspect_mask = pCreateInfo->subresourceRange.aspectMask;
 	iview->multiple_planes = vk_format_get_plane_count(image->vk_format) > 1 && iview->aspect_mask == VK_IMAGE_ASPECT_COLOR_BIT;
+
 	iview->vk_format = pCreateInfo->format;
+
+	/* If the image has an Android external format, pCreateInfo->format will be
+	 * VK_FORMAT_UNDEFINED. */
+	if (iview->vk_format == VK_FORMAT_UNDEFINED)
+		iview->vk_format = image->vk_format;
 
 	if (iview->aspect_mask == VK_IMAGE_ASPECT_STENCIL_BIT) {
 		iview->vk_format = vk_format_stencil_only(iview->vk_format);

@@ -21,6 +21,7 @@
  * IN THE SOFTWARE.
  */
 
+#ifdef ANDROID
 #include <hardware/gralloc.h>
 #include <hardware/hardware.h>
 #include <hardware/hwvulkan.h>
@@ -28,9 +29,12 @@
 #include <vulkan/vk_android_native_buffer.h>
 #include <vulkan/vk_icd.h>
 #include <libsync.h>
+#endif
 
 #include "radv_private.h"
 #include "vk_util.h"
+
+#ifdef ANDROID
 
 static int radv_hal_open(const struct hw_module_t* mod, const char* id, struct hw_device_t** dev);
 static int radv_hal_close(struct hw_device_t *dev);
@@ -374,6 +378,7 @@ radv_QueueSignalReleaseImageANDROID(
 	}
 	return VK_SUCCESS;
 }
+#endif
 
 #if RADV_SUPPORT_ANDROID_HARDWARE_BUFFER
 
@@ -579,3 +584,18 @@ radv_GetMemoryAndroidHardwareBufferANDROID(
 }
 
 #endif
+
+VkFormat
+radv_select_android_external_format(const void *next, VkFormat default_format)
+{
+#if RADV_SUPPORT_ANDROID_HARDWARE_BUFFER
+	const VkExternalFormatANDROID *android_format =
+		vk_find_struct_const(next, EXTERNAL_FORMAT_ANDROID);
+
+	if (android_format && android_format->externalFormat) {
+		return (VkFormat)android_format->externalFormat;
+	}
+#endif
+
+	return default_format;
+}

@@ -1928,6 +1928,9 @@ uint64_t
 radv_ahb_usage_from_vk_usage(const VkImageCreateFlags vk_create,
                              const VkImageUsageFlags vk_usage);
 
+VkFormat
+radv_select_android_external_format(const void *next, VkFormat default_format);
+
 
 struct radv_image_view_extra_create_info {
 	bool disable_compression;
