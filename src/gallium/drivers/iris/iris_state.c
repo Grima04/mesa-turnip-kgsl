@@ -900,6 +900,8 @@ struct iris_vertex_buffer_state {
 
    /** The resource to source vertex data from. */
    struct pipe_resource *resource;
+
+   int offset;
 };
 
 struct iris_depth_buffer_state {
@@ -2927,6 +2929,8 @@ iris_set_vertex_buffers(struct pipe_context *ctx,
 
       pipe_resource_reference(&state->resource, buffer->buffer.resource);
       struct iris_resource *res = (void *) state->resource;
+
+      state->offset = (int) buffer->buffer_offset;
 
       if (res) {
          ice->state.bound_vertex_buffers |= 1ull << (start_slot + i);
@@ -6001,8 +6005,8 @@ iris_rebind_buffer(struct iris_context *ice,
          STATIC_ASSERT(GENX(VERTEX_BUFFER_STATE_BufferStartingAddress_bits) == 64);
          uint64_t *addr = (uint64_t *) &state->state[1];
 
-         if (*addr == old_address) {
-            *addr = res->bo->gtt_offset;
+         if (*addr == old_address + state->offset) {
+            *addr = res->bo->gtt_offset + state->offset;
             ice->state.dirty |= IRIS_DIRTY_VERTEX_BUFFERS;
          }
       }
