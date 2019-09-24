@@ -79,7 +79,7 @@ libiris = static_library(
   'iris',
   [files_libiris, gen_xml_pack, iris_driinfo_h],
   include_directories : [
-    inc_src, inc_include, inc_gallium, inc_gallium_aux, inc_intel, inc_nir,
+    inc_src, inc_include, inc_gallium, inc_gallium_aux, inc_intel,
     inc_gallium_drivers,
     # these should not be necessary, but main/macros.h...
     inc_mesa, inc_mapi
