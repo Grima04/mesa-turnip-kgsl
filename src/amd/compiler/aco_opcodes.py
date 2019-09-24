@@ -27,6 +27,7 @@
 # Class that represents all the information we have about the opcode
 # NOTE: this must be kept in sync with aco_op_info
 
+import sys
 from enum import Enum
 
 class Format(Enum):
@@ -1550,3 +1551,27 @@ SCRATCH = {
 }
 for (gfx8, gfx10, name) in SCRATCH:
     opcode(name, gfx8, gfx10, Format.SCRATCH)
+
+# check for duplicate opcode numbers
+for ver in ['gfx9', 'gfx10']:
+    op_to_name = {}
+    for op in opcodes.values():
+        if op.format in [Format.PSEUDO, Format.PSEUDO_BRANCH, Format.PSEUDO_BARRIER, Format.PSEUDO_REDUCTION]:
+            continue
+
+        num = getattr(op, 'opcode_' + ver)
+        if num == -1:
+            continue
+
+        key = (op.format, num)
+
+        if key in op_to_name:
+            # exceptions
+            names = set([op_to_name[key], op.name])
+            if ver in ['gfx8', 'gfx9'] and names == set(['v_mul_lo_i32', 'v_mul_lo_u32']):
+                continue
+
+            print('%s and %s share the same opcode number (%s)' % (op_to_name[key], op.name, ver))
+            sys.exit(1)
+        else:
+            op_to_name[key] = op.name
