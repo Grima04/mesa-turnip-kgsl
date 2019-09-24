@@ -440,7 +440,7 @@ tu6_emit_mrt(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
       const struct tu_image_view *iview = fb->attachments[a].attachment;
       const struct tu_image_level *slice =
          &iview->image->levels[iview->base_mip];
-      const enum a6xx_tile_mode tile_mode = TILE6_LINEAR;
+      const enum a6xx_tile_mode tile_mode = iview->image->tile_mode;
       uint32_t stride = 0;
       uint32_t offset = 0;
 
@@ -606,7 +606,6 @@ tu6_emit_blit_info(struct tu_cmd_buffer *cmd,
    const uint32_t offset = slice->offset + slice->size * iview->base_layer;
    const uint32_t stride =
       slice->pitch * vk_format_get_blocksize(iview->vk_format);
-   const enum a6xx_tile_mode tile_mode = TILE6_LINEAR;
    const enum a3xx_msaa_samples samples = tu6_msaa_samples(1);
 
    tu_cs_emit_pkt4(cs, REG_A6XX_RB_BLIT_INFO, 1);
@@ -618,7 +617,7 @@ tu6_emit_blit_info(struct tu_cmd_buffer *cmd,
    assert(format && format->rb >= 0);
 
    tu_cs_emit_pkt4(cs, REG_A6XX_RB_BLIT_DST_INFO, 5);
-   tu_cs_emit(cs, A6XX_RB_BLIT_DST_INFO_TILE_MODE(tile_mode) |
+   tu_cs_emit(cs, A6XX_RB_BLIT_DST_INFO_TILE_MODE(iview->image->tile_mode) |
                      A6XX_RB_BLIT_DST_INFO_SAMPLES(samples) |
                      A6XX_RB_BLIT_DST_INFO_COLOR_FORMAT(format->rb) |
                      A6XX_RB_BLIT_DST_INFO_COLOR_SWAP(format->swap));
@@ -638,7 +637,6 @@ tu6_emit_blit_clear(struct tu_cmd_buffer *cmd,
                     uint32_t gmem_offset,
                     const VkClearValue *clear_value)
 {
-   const enum a6xx_tile_mode tile_mode = TILE6_LINEAR;
    const enum a3xx_msaa_samples samples = tu6_msaa_samples(1);
 
    const struct tu_native_format *format =
@@ -648,7 +646,7 @@ tu6_emit_blit_clear(struct tu_cmd_buffer *cmd,
    const enum a3xx_color_swap swap = WZYX;
 
    tu_cs_emit_pkt4(cs, REG_A6XX_RB_BLIT_DST_INFO, 1);
-   tu_cs_emit(cs, A6XX_RB_BLIT_DST_INFO_TILE_MODE(tile_mode) |
+   tu_cs_emit(cs, A6XX_RB_BLIT_DST_INFO_TILE_MODE(iview->image->tile_mode) |
                      A6XX_RB_BLIT_DST_INFO_SAMPLES(samples) |
                      A6XX_RB_BLIT_DST_INFO_COLOR_FORMAT(format->rb) |
                      A6XX_RB_BLIT_DST_INFO_COLOR_SWAP(swap));
