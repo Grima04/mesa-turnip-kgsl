@@ -1092,7 +1092,6 @@ shader_variant_compile(struct radv_device *device,
 {
 	enum radeon_family chip_family = device->physical_device->rad_info.family;
 	struct radv_shader_binary *binary = NULL;
-	bool init_llvm;
 
 	options->family = chip_family;
 	options->chip_class = device->physical_device->rad_info.chip_class;
@@ -1116,11 +1115,7 @@ shader_variant_compile(struct radv_device *device,
 	else
 		options->wave_size = device->physical_device->ge_wave_size;
 
-	init_llvm = !use_aco || options->dump_shader;
-#ifndef NDEBUG
-	init_llvm |= options->record_llvm_ir;
-#endif
-	if (init_llvm)
+	if (!use_aco || options->dump_shader || options->record_llvm_ir)
 		ac_init_llvm_once();
 
 	if (use_aco) {

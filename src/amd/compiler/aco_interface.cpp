@@ -125,10 +125,7 @@ void aco_compile_shader(unsigned shader_count,
    std::vector<uint32_t> code;
    unsigned exec_size = aco::emit_program(program.get(), code);
 
-   bool get_disasm = options->dump_shader;
-#ifndef NDEBUG
-   get_disasm |= options->record_llvm_ir;
-#endif
+   bool get_disasm = options->dump_shader || options->record_llvm_ir;
 
    size_t size = 0;
 
