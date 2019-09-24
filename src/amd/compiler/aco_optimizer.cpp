@@ -412,6 +412,13 @@ bool can_use_VOP3(aco_ptr<Instruction>& instr)
           instr->opcode != aco_opcode::v_madak_f16;
 }
 
+bool can_apply_sgprs(aco_ptr<Instruction>& instr)
+{
+   return instr->opcode != aco_opcode::v_readfirstlane_b32 &&
+          instr->opcode != aco_opcode::v_readlane_b32 &&
+          instr->opcode != aco_opcode::v_writelane_b32;
+}
+
 void to_VOP3(opt_ctx& ctx, aco_ptr<Instruction>& instr)
 {
    if (instr->isVOP3())
@@ -452,6 +459,8 @@ bool can_accept_constant(aco_ptr<Instruction>& instr, unsigned operand)
    case aco_opcode::p_wqm:
    case aco_opcode::p_extract_vector:
    case aco_opcode::p_split_vector:
+   case aco_opcode::v_readlane_b32:
+   case aco_opcode::v_readfirstlane_b32:
       return operand != 0;
    default:
       if ((instr->format == Format::MUBUF ||
@@ -1970,7 +1979,8 @@ void combine_instruction(opt_ctx &ctx, aco_ptr<Instruction>& instr)
       return;
 
    if (instr->isVALU()) {
-      apply_sgprs(ctx, instr);
+      if (can_apply_sgprs(instr))
+         apply_sgprs(ctx, instr);
       if (apply_omod_clamp(ctx, instr))
          return;
    }
