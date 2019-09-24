@@ -19,7 +19,6 @@
 # SOFTWARE.
 
 inc_compiler = include_directories('.')
-inc_nir = include_directories('nir')
 inc_glsl = include_directories('glsl')
 inc_spirv = include_directories('spirv')
 
