@@ -88,8 +88,8 @@ typedef struct midgard_instruction {
         unsigned src[3];
         unsigned dest;
 
-        /* Swizzle for the conditional for a csel */
-        unsigned csel_swizzle;
+        /* Swizzle for the conditional for a csel/branch */
+        unsigned cond_swizzle;
 
         /* Special fields for an ALU instruction */
         midgard_reg_info registers;

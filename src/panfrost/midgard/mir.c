@@ -42,8 +42,8 @@ unsigned
 mir_get_swizzle(midgard_instruction *ins, unsigned idx)
 {
         if (ins->type == TAG_ALU_4) {
-                if (idx == 2)
-                        return ins->csel_swizzle;
+                if (idx == 2 || ins->compact_branch)
+                        return ins->cond_swizzle;
 
                 unsigned b = (idx == 0) ? ins->alu.src1 : ins->alu.src2;
 
@@ -105,6 +105,11 @@ void
 mir_set_swizzle(midgard_instruction *ins, unsigned idx, unsigned new)
 {
         if (ins->type == TAG_ALU_4) {
+                if (idx == 2 || ins->compact_branch) {
+                        ins->cond_swizzle = new;
+                        return;
+                }
+
                 unsigned b = (idx == 0) ? ins->alu.src1 : ins->alu.src2;
 
                 midgard_vector_alu_src s =

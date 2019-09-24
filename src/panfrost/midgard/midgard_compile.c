@@ -1095,7 +1095,7 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
         };
 
         if (nr_inputs == 3) {
-                ins.csel_swizzle = SWIZZLE_FROM_ARRAY(nirmods[2]->swizzle);
+                ins.cond_swizzle = SWIZZLE_FROM_ARRAY(nirmods[2]->swizzle);
                 assert(!nirmods[2]->abs);
                 assert(!nirmods[2]->negate);
         }
