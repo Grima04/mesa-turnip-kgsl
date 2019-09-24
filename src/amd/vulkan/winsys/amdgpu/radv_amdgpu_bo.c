@@ -533,9 +533,7 @@ error:
 
 static struct radeon_winsys_bo *
 radv_amdgpu_winsys_bo_from_fd(struct radeon_winsys *_ws,
-			      int fd, unsigned priority,
-			      unsigned *stride,
-			      unsigned *offset)
+			      int fd, unsigned priority)
 {
 	struct radv_amdgpu_winsys *ws = radv_amdgpu_winsys(_ws);
 	struct radv_amdgpu_winsys_bo *bo;

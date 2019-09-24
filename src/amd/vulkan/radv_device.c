@@ -3484,7 +3484,7 @@ static VkResult radv_alloc_memory(struct radv_device *device,
 		       import_info->handleType ==
 		       VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT);
 		mem->bo = device->ws->buffer_from_fd(device->ws, import_info->fd,
-						     priority, NULL, NULL);
+						     priority);
 		if (!mem->bo) {
 			result = VK_ERROR_INVALID_EXTERNAL_HANDLE;
 			goto fail;
