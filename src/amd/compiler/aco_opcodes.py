@@ -1006,7 +1006,7 @@ VOP3 = {
    (   -1,    -1,    -1,    -1, 0x378, "v_permlanex16_b32", False, False),
    (   -1,    -1,    -1,    -1, 0x30f, "v_add_co_u32_e64", False, False),
    (   -1,    -1,    -1,    -1, 0x310, "v_sub_co_u32_e64", False, False),
-   (   -1,    -1,    -1,    -1, 0x311, "v_subrev_co_u32_e64", False, False),
+   (   -1,    -1,    -1,    -1, 0x319, "v_subrev_co_u32_e64", False, False),
 # TODO: many 16bit instructions moved from VOP2 to VOP3 on GFX10
 }
 for (gfx6, gfx7, gfx8, gfx9, gfx10, name, in_mod, out_mod) in VOP3:
