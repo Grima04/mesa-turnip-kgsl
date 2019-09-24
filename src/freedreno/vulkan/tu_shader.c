@@ -222,13 +222,14 @@ tu_shader_compile_options_init(
 static uint32_t *
 tu_compile_shader_variant(struct ir3_shader *shader,
                           const struct ir3_shader_key *key,
-                          bool binning_pass,
+                          struct ir3_shader_variant *nonbinning,
                           struct ir3_shader_variant *variant)
 {
    variant->shader = shader;
    variant->type = shader->type;
    variant->key = *key;
-   variant->binning_pass = binning_pass;
+   variant->binning_pass = !!nonbinning;
+   variant->nonbinning = nonbinning;
 
    int ret = ir3_compile_shader_nir(shader->compiler, variant);
    if (ret)
@@ -259,7 +260,7 @@ tu_shader_compile(struct tu_device *dev,
    }
 
    shader->binary = tu_compile_shader_variant(
-      &shader->ir3_shader, &options->key, false, &shader->variants[0]);
+      &shader->ir3_shader, &options->key, NULL, &shader->variants[0]);
    if (!shader->binary)
       return VK_ERROR_OUT_OF_HOST_MEMORY;
 
@@ -267,7 +268,8 @@ tu_shader_compile(struct tu_device *dev,
    if (options->include_binning_pass &&
        shader->ir3_shader.type == MESA_SHADER_VERTEX) {
       shader->binning_binary = tu_compile_shader_variant(
-         &shader->ir3_shader, &options->key, true, &shader->variants[1]);
+         &shader->ir3_shader, &options->key, &shader->variants[0],
+         &shader->variants[1]);
       if (!shader->binning_binary)
          return VK_ERROR_OUT_OF_HOST_MEMORY;
 
