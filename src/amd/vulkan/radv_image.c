@@ -244,6 +244,25 @@ radv_use_tc_compat_cmask_for_image(struct radv_device *device,
 	return true;
 }
 
+static uint32_t si_get_bo_metadata_word1(const struct radv_device *device)
+{
+	return (ATI_VENDOR_ID << 16) | device->physical_device->rad_info.pci_id;
+}
+
+static bool
+radv_is_valid_opaque_metadata(const struct radv_device *device,
+                              const struct radeon_bo_metadata *md)
+{
+	if (md->metadata[0] != 1 ||
+	    md->metadata[1] != si_get_bo_metadata_word1(device))
+		return false;
+
+	if (md->size_metadata < 40)
+		return false;
+
+	return true;
+}
+
 static void
 radv_patch_surface_from_metadata(struct radv_device *device,
                                  struct radeon_surf *surface,
@@ -276,11 +295,79 @@ radv_patch_surface_from_metadata(struct radv_device *device,
 	}
 }
 
-static void
+static VkResult
+radv_patch_image_dimensions(struct radv_device *device,
+                            struct radv_image *image,
+                            const struct radv_image_create_info *create_info,
+                            struct ac_surf_info *image_info)
+{
+	unsigned width = image->info.width;
+	unsigned height = image->info.height;
+
+	/*
+	 * minigbm sometimes allocates bigger images which is going to result in
+	 * weird strides and other properties. Lets be lenient where possible and
+	 * fail it on GFX10 (as we cannot cope there).
+	 *
+	 * Example hack: https://chromium-review.googlesource.com/c/chromiumos/platform/minigbm/+/1457777/
+	 */
+	if (create_info->bo_metadata &&
+	    radv_is_valid_opaque_metadata(device, create_info->bo_metadata)) {
+		const struct radeon_bo_metadata *md = create_info->bo_metadata;
+
+		if (device->physical_device->rad_info.chip_class >= GFX10) {
+			width = G_00A004_WIDTH_LO(md->metadata[3]) +
+			        (G_00A008_WIDTH_HI(md->metadata[4]) << 2) + 1;
+			height = S_00A008_HEIGHT(md->metadata[4]) + 1;
+		} else {
+			width = G_008F18_WIDTH(md->metadata[4]) + 1;
+			height = G_008F18_HEIGHT(md->metadata[4]) + 1;
+		}
+	}
+
+	if (image->info.width == width && image->info.height == height)
+		return VK_SUCCESS;
+
+	if (width < image->info.width || height < image->info.height) {
+		fprintf(stderr,
+		        "The imported image has smaller dimensions than the internal\n"
+		        "dimensions. Using it is going to fail badly, so we reject\n"
+		        "this import.\n"
+		        "(internal dimensions: %d x %d, external dimensions: %d x %d)\n",
+		        image->info.width, image->info.height, width, height);
+		return VK_ERROR_INVALID_EXTERNAL_HANDLE;
+	} else if (device->physical_device->rad_info.chip_class >= GFX10) {
+		fprintf(stderr,
+		        "Tried to import an image with inconsistent width on GFX10.\n"
+		        "As GFX10 has no separate stride fields we cannot cope with\n"
+		        "an inconsistency in width and will fail this import.\n"
+		        "(internal dimensions: %d x %d, external dimensions: %d x %d)\n",
+		        image->info.width, image->info.height, width, height);
+		return VK_ERROR_INVALID_EXTERNAL_HANDLE;
+	} else {
+		fprintf(stderr,
+		        "Tried to import an image with inconsistent width on pre-GFX10.\n"
+		        "As GFX10 has no separate stride fields we cannot cope with\n"
+		        "an inconsistency and would fail on GFX10.\n"
+		        "(internal dimensions: %d x %d, external dimensions: %d x %d)\n",
+		        image->info.width, image->info.height, width, height);
+	}
+	image_info->width = width;
+	image_info->height = height;
+
+	return VK_SUCCESS;
+}
+
+static VkResult
 radv_patch_image_from_extra_info(struct radv_device *device,
                                  struct radv_image *image,
-                                 const struct radv_image_create_info *create_info)
+                                 const struct radv_image_create_info *create_info,
+                                 struct ac_surf_info *image_info)
 {
+	VkResult result = radv_patch_image_dimensions(device, image, create_info, image_info);
+	if (result != VK_SUCCESS)
+		return result;
+
 	for (unsigned plane = 0; plane < image->plane_count; ++plane) {
 		if (create_info->bo_metadata) {
 			radv_patch_surface_from_metadata(device, &image->planes[plane].surface,
@@ -294,6 +381,7 @@ radv_patch_image_from_extra_info(struct radv_device *device,
 			image->info.surf_index = NULL;
 		}
 	}
+	return VK_SUCCESS;
 }
 
 static int
@@ -363,11 +451,6 @@ radv_init_surface(struct radv_device *device,
 		surface->flags |= RADEON_SURF_DISABLE_DCC;
 
 	return 0;
-}
-
-static uint32_t si_get_bo_metadata_word1(struct radv_device *device)
-{
-	return (ATI_VENDOR_ID << 16) | device->physical_device->rad_info.pci_id;
 }
 
 static inline unsigned
@@ -1263,7 +1346,7 @@ static void radv_image_disable_htile(struct radv_image *image)
 		image->planes[i].surface.htile_size = 0;
 }
 
-static void
+static VkResult
 radv_image_create_layout(struct radv_device *device,
                          const struct radv_image_create_info *create_info,
                          struct radv_image *image)
@@ -1271,12 +1354,15 @@ radv_image_create_layout(struct radv_device *device,
 	/* Check that we did not initialize things earlier */
 	assert(!image->planes[0].surface.surf_size);
 
-	radv_patch_image_from_extra_info(device, image, create_info);
+	struct ac_surf_info image_info = image->info;
+	VkResult result = radv_patch_image_from_extra_info(device, image, create_info, &image_info);
+	if (result != VK_SUCCESS)
+		return result;
 
 	image->size = 0;
 	image->alignment = 1;
 	for (unsigned plane = 0; plane < image->plane_count; ++plane) {
-		struct ac_surf_info info = image->info;
+		struct ac_surf_info info = image_info;
 
 		if (plane) {
 			const struct vk_format_description *desc = vk_format_description(image->vk_format);
@@ -1337,6 +1423,7 @@ radv_image_create_layout(struct radv_device *device,
 	}
 
 	assert(image->planes[0].surface.surf_size);
+	return VK_SUCCESS;
 }
 
 VkResult
@@ -1401,7 +1488,8 @@ radv_image_create(VkDevice _device,
 		radv_init_surface(device, image, &image->planes[plane].surface, plane, pCreateInfo);
 	}
 
-	radv_image_create_layout(device, create_info, image);
+	ASSERTED VkResult result = radv_image_create_layout(device, create_info, image);
+	assert(result == VK_SUCCESS);
 
 	if (image->flags & VK_IMAGE_CREATE_SPARSE_BINDING_BIT) {
 		image->alignment = MAX2(image->alignment, 4096);
