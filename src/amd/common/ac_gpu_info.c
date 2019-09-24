@@ -93,6 +93,14 @@ static bool has_syncobj(int fd)
 	return value ? true : false;
 }
 
+static uint64_t fix_vram_size(uint64_t size)
+{
+	/* The VRAM size is underreported, so we need to fix it, because
+	 * it's used to compute the number of memory modules for harvesting.
+	 */
+	return align64(size, 256*1024*1024);
+}
+
 bool ac_query_gpu_info(int fd, void *dev_p,
 		       struct radeon_info *info,
 		       struct amdgpu_gpu_info *amdinfo)
@@ -266,7 +274,7 @@ bool ac_query_gpu_info(int fd, void *dev_p,
 
 		/* Note: usable_heap_size values can be random and can't be relied on. */
 		info->gart_size = meminfo.gtt.total_heap_size;
-		info->vram_size = meminfo.vram.total_heap_size;
+		info->vram_size = fix_vram_size(meminfo.vram.total_heap_size);
 		info->vram_vis_size = meminfo.cpu_accessible_vram.total_heap_size;
 	} else {
 		/* This is a deprecated interface, which reports usable sizes
@@ -297,7 +305,7 @@ bool ac_query_gpu_info(int fd, void *dev_p,
 		}
 
 		info->gart_size = gtt.heap_size;
-		info->vram_size = vram.heap_size;
+		info->vram_size = fix_vram_size(vram.heap_size);
 		info->vram_vis_size = vram_vis.heap_size;
 	}
 
