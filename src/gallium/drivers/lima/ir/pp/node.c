@@ -635,9 +635,16 @@ ppir_node_clone_tex(ppir_block *block, ppir_node *node)
    list_addtail(&new_tnode->node.list, &block->node_list);
 
    if (tex_coords) {
-      new_tex_coords = ppir_node_clone(block, tex_coords);
-      if (!new_tex_coords)
-         return NULL;
+      switch (tex_coords->op) {
+      case ppir_op_load_varying:
+      case ppir_op_load_coords:
+         new_tex_coords = ppir_node_clone(block, tex_coords);
+         assert(new_tex_coords);
+         break;
+      default:
+         new_tex_coords = tex_coords;
+         break;
+      }
    }
 
    ppir_dest *dest = ppir_node_get_dest(node);
