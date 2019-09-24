@@ -647,6 +647,23 @@ radv_import_ahb_memory(struct radv_device *device,
 	if (!mem->bo)
 		return VK_ERROR_OUT_OF_HOST_MEMORY;
 
+	if (mem->image) {
+		struct radeon_bo_metadata metadata;
+		device->ws->buffer_get_metadata(mem->bo, &metadata);
+
+		struct radv_image_create_info create_info = {
+			.no_metadata_planes = true,
+			.bo_metadata = &metadata
+		};
+
+		VkResult result = radv_image_create_layout(device, create_info, mem->image);
+		if (result != VK_SUCCESS) {
+			device->ws->buffer_destroy(mem->bo);
+			mem->bo = NULL;
+			return result;
+		}
+	}
+
 	/* "If the vkAllocateMemory command succeeds, the implementation must
 	 * acquire a reference to the imported hardware buffer, which it must
 	 * release when the device memory object is freed. If the command fails,

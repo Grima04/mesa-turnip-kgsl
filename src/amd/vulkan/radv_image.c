@@ -1350,7 +1350,7 @@ static void radv_image_disable_htile(struct radv_image *image)
 		image->planes[i].surface.htile_size = 0;
 }
 
-static VkResult
+VkResult
 radv_image_create_layout(struct radv_device *device,
                          struct radv_image_create_info create_info,
                          struct radv_image *image)
@@ -1488,14 +1488,26 @@ radv_image_create(VkDevice _device,
 				image->queue_family_mask |= 1u << pCreateInfo->pQueueFamilyIndices[i];
 	}
 
-	image->shareable = vk_find_struct_const(pCreateInfo->pNext,
-	                                        EXTERNAL_MEMORY_IMAGE_CREATE_INFO) != NULL;
+	const VkExternalMemoryImageCreateInfo *external_info =
+		vk_find_struct_const(pCreateInfo->pNext,
+		                     EXTERNAL_MEMORY_IMAGE_CREATE_INFO) ;
+
+	image->shareable = external_info;
 	if (!vk_format_is_depth_or_stencil(format) && !image->shareable) {
 		image->info.surf_index = &device->image_mrt_offset_counter;
 	}
 
 	for (unsigned plane = 0; plane < image->plane_count; ++plane) {
 		radv_init_surface(device, image, &image->planes[plane].surface, plane, pCreateInfo, format);
+	}
+
+	bool delay_layout = external_info &&
+		(external_info->handleTypes & VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID);
+
+	if (delay_layout) {
+		*pImage = radv_image_to_handle(image);
+		assert (!(image->flags & VK_IMAGE_CREATE_SPARSE_BINDING_BIT));
+		return VK_SUCCESS;
 	}
 
 	ASSERTED VkResult result = radv_image_create_layout(device, *create_info, image);
