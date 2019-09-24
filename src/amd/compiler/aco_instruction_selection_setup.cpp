@@ -1307,9 +1307,6 @@ setup_isel_context(Program* program,
          nir_lower_pack(nir);
 
       /* lower ALU operations */
-      nir_opt_idiv_const(nir, 32);
-      nir_lower_idiv(nir); // TODO: use the LLVM path once !1239 is merged
-
       // TODO: implement logic64 in aco, it's more effective for sgprs
       nir_lower_int64(nir, (nir_lower_int64_options) (nir_lower_imul64 |
                                                       nir_lower_imul_high64 |
@@ -1319,6 +1316,9 @@ setup_isel_context(Program* program,
                                                       nir_lower_minmax64 |
                                                       nir_lower_iabs64 |
                                                       nir_lower_ineg64));
+
+      nir_opt_idiv_const(nir, 32);
+      nir_lower_idiv(nir); // TODO: use the LLVM path once !1239 is merged
 
       /* optimize the lowered ALU operations */
       nir_copy_prop(nir);
