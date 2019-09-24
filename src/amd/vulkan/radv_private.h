@@ -84,6 +84,19 @@ typedef uint32_t xcb_window_t;
 #include "wsi_common.h"
 #include "wsi_common_display.h"
 
+/* Helper to determine if we should compile
+ * any of the Android AHB support.
+ *
+ * To actually enable the ext we also need
+ * the necessary kernel support.
+ */
+#if defined(ANDROID) && ANDROID_API_LEVEL >= 26
+#define RADV_SUPPORT_ANDROID_HARDWARE_BUFFER 1
+#else
+#define RADV_SUPPORT_ANDROID_HARDWARE_BUFFER 0
+#endif
+
+
 struct gfx10_format {
     unsigned img_format:9;
 
