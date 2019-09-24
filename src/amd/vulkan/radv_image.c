@@ -1348,14 +1348,18 @@ static void radv_image_disable_htile(struct radv_image *image)
 
 static VkResult
 radv_image_create_layout(struct radv_device *device,
-                         const struct radv_image_create_info *create_info,
+                         struct radv_image_create_info create_info,
                          struct radv_image *image)
 {
 	/* Check that we did not initialize things earlier */
 	assert(!image->planes[0].surface.surf_size);
 
+	/* Clear the pCreateInfo pointer so we catch issues in the delayed case when we test in the
+	 * common internal case. */
+	create_info.vk_info = NULL;
+
 	struct ac_surf_info image_info = image->info;
-	VkResult result = radv_patch_image_from_extra_info(device, image, create_info, &image_info);
+	VkResult result = radv_patch_image_from_extra_info(device, image, &create_info, &image_info);
 	if (result != VK_SUCCESS)
 		return result;
 
@@ -1382,7 +1386,7 @@ radv_image_create_layout(struct radv_device *device,
 		image->planes[plane].format = vk_format_get_plane_format(image->vk_format, plane);
 	}
 
-	if (!create_info->no_metadata_planes) {
+	if (!create_info.no_metadata_planes) {
 		/* Try to enable DCC first. */
 		if (radv_image_can_enable_dcc(device, image)) {
 			radv_image_alloc_dcc(image);
@@ -1488,7 +1492,7 @@ radv_image_create(VkDevice _device,
 		radv_init_surface(device, image, &image->planes[plane].surface, plane, pCreateInfo);
 	}
 
-	ASSERTED VkResult result = radv_image_create_layout(device, create_info, image);
+	ASSERTED VkResult result = radv_image_create_layout(device, *create_info, image);
 	assert(result == VK_SUCCESS);
 
 	if (image->flags & VK_IMAGE_CREATE_SPARSE_BINDING_BIT) {
