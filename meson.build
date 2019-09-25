@@ -1447,12 +1447,8 @@ else
 endif
 
 dep_glvnd = null_dep
-glvnd_has_headers_and_pc_files = false
 if with_glvnd
   dep_glvnd = dependency('libglvnd', version : '>= 1.2.0')
-  # GLVND before 1.2 was missing its pkg-config and header files, forcing every
-  # vendor to provide them and the distro maintainers to resolve the conflict.
-  glvnd_has_headers_and_pc_files = dep_glvnd.version().version_compare('>= 1.2.0')
   pre_args += '-DUSE_LIBGLVND=1'
 endif
 
