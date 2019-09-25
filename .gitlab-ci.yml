@@ -338,6 +338,10 @@ meson-vulkan:
       -D gallium-xa=false
       -D gallium-nine=false
       -D gallium-opencl=disabled
+      -D b_sanitize=undefined
+      -D c_args=-fno-sanitize-recover=all
+      -D cpp_args=-fno-sanitize-recover=all
+    UBSAN_OPTIONS: "print_stacktrace=1"
     VULKAN_DRIVERS: intel,amd,freedreno
     LLVM_VERSION: "8"
     EXTRA_OPTION: >
