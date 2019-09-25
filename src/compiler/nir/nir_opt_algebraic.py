@@ -491,14 +491,14 @@ optimizations.extend([
    (('~fmax', ('fabs', a), 0.0), ('fabs', a)),
    (('~fmin', ('fmax', a, 0.0), 1.0), ('fsat', a), '!options->lower_fsat'),
    (('~fmax', ('fmin', a, 1.0), 0.0), ('fsat', a), '!options->lower_fsat'),
-   (('~fmin', ('fmax', a, -1.0),  0.0), ('fneg', ('fsat', ('fneg', a))), '!options->lower_negate && !options->lower_fsat'),
-   (('~fmax', ('fmin', a,  0.0), -1.0), ('fneg', ('fsat', ('fneg', a))), '!options->lower_negate && !options->lower_fsat'),
+   (('~fmin', ('fmax', a, -1.0),  0.0), ('fneg', ('fsat', ('fneg', a))), '!options->lower_fsat'),
+   (('~fmax', ('fmin', a,  0.0), -1.0), ('fneg', ('fsat', ('fneg', a))), '!options->lower_fsat'),
    (('fsat', ('fsign', a)), ('b2f', ('flt', 0.0, a))),
    (('fsat', ('b2f', a)), ('b2f', a)),
    (('fsat', a), ('fmin', ('fmax', a, 0.0), 1.0), 'options->lower_fsat'),
    (('fsat', ('fsat', a)), ('fsat', a)),
-   (('fsat', ('fneg(is_used_once)', ('fadd(is_used_once)', a, b))), ('fsat', ('fadd', ('fneg', a), ('fneg', b))), '!options->lower_negate && !options->lower_fsat'),
-   (('fsat', ('fneg(is_used_once)', ('fmul(is_used_once)', a, b))), ('fsat', ('fmul', ('fneg', a), b)), '!options->lower_negate && !options->lower_fsat'),
+   (('fsat', ('fneg(is_used_once)', ('fadd(is_used_once)', a, b))), ('fsat', ('fadd', ('fneg', a), ('fneg', b))), '!options->lower_fsat'),
+   (('fsat', ('fneg(is_used_once)', ('fmul(is_used_once)', a, b))), ('fsat', ('fmul', ('fneg', a), b)), '!options->lower_fsat'),
    (('fsat', ('fabs(is_used_once)', ('fmul(is_used_once)', a, b))), ('fsat', ('fmul', ('fabs', a), ('fabs', b))), '!options->lower_fsat'),
    (('fmin', ('fmax', ('fmin', ('fmax', a, b), c), b), c), ('fmin', ('fmax', a, b), c)),
    (('imin', ('imax', ('imin', ('imax', a, b), c), b), c), ('imin', ('imax', a, b), c)),
@@ -940,14 +940,13 @@ optimizations.extend([
    (('~fsub', ('fadd', a, b), b), a),
    (('ussub_4x8', a, 0), a),
    (('ussub_4x8', a, ~0), 0),
-   (('fsub', a, b), ('fadd', a, ('fneg', b)), 'options->lower_sub'),
-   (('isub', a, b), ('iadd', a, ('ineg', b)), 'options->lower_sub'),
-   (('fneg', a), ('fsub', 0.0, a), 'options->lower_negate'),
-   (('ineg', a), ('isub', 0, a), 'options->lower_negate'),
    (('~fadd', a, ('fsub', 0.0, b)), ('fsub', a, b)),
    (('iadd', a, ('isub', 0, b)), ('isub', a, b)),
    (('fabs', ('fsub', 0.0, a)), ('fabs', a)),
    (('iabs', ('isub', 0, a)), ('iabs', a)),
+   # Lower all Subtractions first - they can get recombined later
+   (('fsub', a, b), ('fadd', a, ('fneg', b))),
+   (('isub', a, b), ('iadd', a, ('ineg', b))),
 
    # Propagate negation up multiplication chains
    (('fmul(is_used_by_non_fsat)', ('fneg', a), b), ('fneg', ('fmul', a, b))),
@@ -1444,6 +1443,12 @@ late_optimizations = [
    # nir_lower_to_source_mods will collapse this, but its existence during the
    # optimization loop can prevent other optimizations.
    (('fneg', ('fneg', a)), a),
+
+   # Subtractions get lowered during optimization, so we need to recombine them
+   (('fadd', 'a', ('fneg', 'b')), ('fsub', 'a', 'b'), '!options->lower_sub'),
+   (('iadd', 'a', ('ineg', 'b')), ('isub', 'a', 'b'), '!options->lower_sub'),
+   (('fneg', a), ('fsub', 0.0, a), 'options->lower_negate'),
+   (('ineg', a), ('isub', 0, a), 'options->lower_negate'),
 
    # These are duplicated from the main optimizations table.  The late
    # patterns that rearrange expressions like x - .5 < 0 to x < .5 can create
