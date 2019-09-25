@@ -1055,6 +1055,10 @@ struct iris_genx_state {
 
    uint32_t so_buffers[4 * GENX(3DSTATE_SO_BUFFER_length)];
 
+#if GEN_GEN == 8
+   bool pma_fix_enabled;
+#endif
+
 #if GEN_GEN == 9
    /* Is object level preemption enabled? */
    bool object_preemption;
@@ -1242,6 +1246,9 @@ iris_bind_blend_state(struct pipe_context *ctx, void *state)
    ice->state.dirty |= IRIS_DIRTY_BLEND_STATE;
    ice->state.dirty |= IRIS_DIRTY_RENDER_RESOLVES_AND_FLUSHES;
    ice->state.dirty |= ice->state.dirty_for_nos[IRIS_NOS_BLEND];
+
+   if (GEN_GEN == 8)
+      ice->state.dirty |= IRIS_DIRTY_PMA_FIX;
 }
 
 /**
@@ -1276,6 +1283,9 @@ struct iris_depth_stencil_alpha_state {
    /** Outbound to resolve and cache set tracking. */
    bool depth_writes_enabled;
    bool stencil_writes_enabled;
+
+   /** Outbound to Gen8-9 PMA stall equations */
+   bool depth_test_enabled;
 };
 
 /**
@@ -1295,6 +1305,7 @@ iris_create_zsa_state(struct pipe_context *ctx,
 
    cso->alpha = state->alpha;
    cso->depth_writes_enabled = state->depth.writemask;
+   cso->depth_test_enabled = state->depth.enabled;
    cso->stencil_writes_enabled =
       state->stencil[0].writemask != 0 ||
       (two_sided_stencil && state->stencil[1].writemask != 0);
@@ -1364,6 +1375,181 @@ iris_bind_zsa_state(struct pipe_context *ctx, void *state)
    ice->state.dirty |= IRIS_DIRTY_CC_VIEWPORT;
    ice->state.dirty |= IRIS_DIRTY_WM_DEPTH_STENCIL;
    ice->state.dirty |= ice->state.dirty_for_nos[IRIS_NOS_DEPTH_STENCIL_ALPHA];
+
+   if (GEN_GEN == 8)
+      ice->state.dirty |= IRIS_DIRTY_PMA_FIX;
+}
+
+#if GEN_GEN == 8
+static bool
+want_pma_fix(struct iris_context *ice)
+{
+   UNUSED struct iris_screen *screen = (void *) ice->ctx.screen;
+   UNUSED const struct gen_device_info *devinfo = &screen->devinfo;
+   const struct brw_wm_prog_data *wm_prog_data = (void *)
+      ice->shaders.prog[MESA_SHADER_FRAGMENT]->prog_data;
+   const struct pipe_framebuffer_state *cso_fb = &ice->state.framebuffer;
+   const struct iris_depth_stencil_alpha_state *cso_zsa = ice->state.cso_zsa;
+   const struct iris_blend_state *cso_blend = ice->state.cso_blend;
+
+   /* In very specific combinations of state, we can instruct Gen8-9 hardware
+    * to avoid stalling at the pixel mask array.  The state equations are
+    * documented in these places:
+    *
+    * - Gen8 Depth PMA Fix:   CACHE_MODE_1::NP_PMA_FIX_ENABLE
+    * - Gen9 Stencil PMA Fix: CACHE_MODE_0::STC PMA Optimization Enable
+    *
+    * Both equations share some common elements:
+    *
+    *    no_hiz_op =
+    *       !(3DSTATE_WM_HZ_OP::DepthBufferClear ||
+    *         3DSTATE_WM_HZ_OP::DepthBufferResolve ||
+    *         3DSTATE_WM_HZ_OP::Hierarchical Depth Buffer Resolve Enable ||
+    *         3DSTATE_WM_HZ_OP::StencilBufferClear) &&
+    *
+    *    killpixels =
+    *       3DSTATE_WM::ForceKillPix != ForceOff &&
+    *       (3DSTATE_PS_EXTRA::PixelShaderKillsPixels ||
+    *        3DSTATE_PS_EXTRA::oMask Present to RenderTarget ||
+    *        3DSTATE_PS_BLEND::AlphaToCoverageEnable ||
+    *        3DSTATE_PS_BLEND::AlphaTestEnable ||
+    *        3DSTATE_WM_CHROMAKEY::ChromaKeyKillEnable)
+    *
+    *    (Technically the stencil PMA treats ForceKillPix differently,
+    *     but I think this is a documentation oversight, and we don't
+    *     ever use it in this way, so it doesn't matter).
+    *
+    *    common_pma_fix =
+    *       3DSTATE_WM::ForceThreadDispatch != 1 &&
+    *       3DSTATE_RASTER::ForceSampleCount == NUMRASTSAMPLES_0 &&
+    *       3DSTATE_DEPTH_BUFFER::SURFACE_TYPE != NULL &&
+    *       3DSTATE_DEPTH_BUFFER::HIZ Enable &&
+    *       3DSTATE_WM::EDSC_Mode != EDSC_PREPS &&
+    *       3DSTATE_PS_EXTRA::PixelShaderValid &&
+    *       no_hiz_op
+    *
+    * These are always true:
+    *
+    *    3DSTATE_RASTER::ForceSampleCount == NUMRASTSAMPLES_0
+    *    3DSTATE_PS_EXTRA::PixelShaderValid
+    *
+    * Also, we never use the normal drawing path for HiZ ops; these are true:
+    *
+    *    !(3DSTATE_WM_HZ_OP::DepthBufferClear ||
+    *      3DSTATE_WM_HZ_OP::DepthBufferResolve ||
+    *      3DSTATE_WM_HZ_OP::Hierarchical Depth Buffer Resolve Enable ||
+    *      3DSTATE_WM_HZ_OP::StencilBufferClear)
+    *
+    * This happens sometimes:
+    *
+    *    3DSTATE_WM::ForceThreadDispatch != 1
+    *
+    * However, we choose to ignore it as it either agrees with the signal
+    * (dispatch was already enabled, so nothing out of the ordinary), or
+    * there are no framebuffer attachments (so no depth or HiZ anyway,
+    * meaning the PMA signal will already be disabled).
+    */
+
+   if (!cso_fb->zsbuf)
+      return false;
+
+   struct iris_resource *zres, *sres;
+   iris_get_depth_stencil_resources(cso_fb->zsbuf->texture, &zres, &sres);
+
+   /* 3DSTATE_DEPTH_BUFFER::SURFACE_TYPE != NULL &&
+    * 3DSTATE_DEPTH_BUFFER::HIZ Enable &&
+    */
+   if (!zres || !iris_resource_level_has_hiz(zres, cso_fb->zsbuf->u.tex.level))
+      return false;
+
+   /* 3DSTATE_WM::EDSC_Mode != EDSC_PREPS */
+   if (wm_prog_data->early_fragment_tests)
+      return false;
+
+   /* 3DSTATE_WM::ForceKillPix != ForceOff &&
+    * (3DSTATE_PS_EXTRA::PixelShaderKillsPixels ||
+    *  3DSTATE_PS_EXTRA::oMask Present to RenderTarget ||
+    *  3DSTATE_PS_BLEND::AlphaToCoverageEnable ||
+    *  3DSTATE_PS_BLEND::AlphaTestEnable ||
+    *  3DSTATE_WM_CHROMAKEY::ChromaKeyKillEnable)
+    */
+   bool killpixels = wm_prog_data->uses_kill || wm_prog_data->uses_omask ||
+                     cso_blend->alpha_to_coverage || cso_zsa->alpha.enabled;
+
+   /* The Gen8 depth PMA equation becomes:
+    *
+    *    depth_writes =
+    *       3DSTATE_WM_DEPTH_STENCIL::DepthWriteEnable &&
+    *       3DSTATE_DEPTH_BUFFER::DEPTH_WRITE_ENABLE
+    *
+    *    stencil_writes =
+    *       3DSTATE_WM_DEPTH_STENCIL::Stencil Buffer Write Enable &&
+    *       3DSTATE_DEPTH_BUFFER::STENCIL_WRITE_ENABLE &&
+    *       3DSTATE_STENCIL_BUFFER::STENCIL_BUFFER_ENABLE
+    *
+    *    Z_PMA_OPT =
+    *       common_pma_fix &&
+    *       3DSTATE_WM_DEPTH_STENCIL::DepthTestEnable &&
+    *       ((killpixels && (depth_writes || stencil_writes)) ||
+    *        3DSTATE_PS_EXTRA::PixelShaderComputedDepthMode != PSCDEPTH_OFF)
+    *
+    */
+   if (!cso_zsa->depth_test_enabled)
+      return false;
+
+   return wm_prog_data->computed_depth_mode != PSCDEPTH_OFF ||
+          (killpixels && (cso_zsa->depth_writes_enabled ||
+                          (sres && cso_zsa->stencil_writes_enabled)));
+}
+#endif
+
+void
+genX(update_pma_fix)(struct iris_context *ice,
+                     struct iris_batch *batch,
+                     bool enable)
+{
+#if GEN_GEN == 8
+   struct iris_genx_state *genx = ice->state.genx;
+
+   if (genx->pma_fix_enabled == enable)
+      return;
+
+   genx->pma_fix_enabled = enable;
+
+   /* According to the Broadwell PIPE_CONTROL documentation, software should
+    * emit a PIPE_CONTROL with the CS Stall and Depth Cache Flush bits set
+    * prior to the LRI.  If stencil buffer writes are enabled, then a Render        * Cache Flush is also necessary.
+    *
+    * The Gen9 docs say to use a depth stall rather than a command streamer
+    * stall.  However, the hardware seems to violently disagree.  A full
+    * command streamer stall seems to be needed in both cases.
+    */
+   iris_emit_pipe_control_flush(batch, "PMA fix change (1/2)",
+                                PIPE_CONTROL_CS_STALL |
+                                PIPE_CONTROL_DEPTH_CACHE_FLUSH |
+                                PIPE_CONTROL_RENDER_TARGET_FLUSH);
+
+   uint32_t reg_val;
+   iris_pack_state(GENX(CACHE_MODE_1), &reg_val, reg) {
+      reg.NPPMAFixEnable = enable;
+      reg.NPEarlyZFailsDisable = enable;
+      reg.NPPMAFixEnableMask = true;
+      reg.NPEarlyZFailsDisableMask = true;
+   }
+   iris_emit_lri(batch, CACHE_MODE_1, reg_val);
+
+   /* After the LRI, a PIPE_CONTROL with both the Depth Stall and Depth Cache
+    * Flush bits is often necessary.  We do it regardless because it's easier.
+    * The render cache flush is also necessary if stencil writes are enabled.
+    *
+    * Again, the Gen9 docs give a different set of flushes but the Broadwell
+    * flushes seem to work just as well.
+    */
+   iris_emit_pipe_control_flush(batch, "PMA fix change (1/2)",
+                                PIPE_CONTROL_DEPTH_STALL |
+                                PIPE_CONTROL_DEPTH_CACHE_FLUSH |
+                                PIPE_CONTROL_RENDER_TARGET_FLUSH);
+#endif
 }
 
 /**
@@ -2815,6 +3001,9 @@ iris_set_framebuffer_state(struct pipe_context *ctx,
    ice->state.dirty |= IRIS_DIRTY_RENDER_RESOLVES_AND_FLUSHES;
 
    ice->state.dirty |= ice->state.dirty_for_nos[IRIS_NOS_FRAMEBUFFER];
+
+   if (GEN_GEN == 8)
+      ice->state.dirty |= IRIS_DIRTY_PMA_FIX;
 
 #if GEN_GEN == 11
    // XXX: we may want to flag IRIS_DIRTY_MULTISAMPLE (or SAMPLE_MASK?)
@@ -5642,10 +5831,15 @@ iris_upload_dirty_render_state(struct iris_context *ice,
       }
    }
 
+#if GEN_GEN == 8
+   if (dirty & IRIS_DIRTY_PMA_FIX) {
+      bool enable = want_pma_fix(ice);
+      genX(update_pma_fix)(ice, batch, enable);
+   }
+#endif
+
    if (ice->state.current_hash_scale != 1)
       genX(emit_hashing_mode)(ice, batch, UINT_MAX, UINT_MAX, 1);
-
-   /* TODO: Gen8 PMA fix */
 }
 
 static void

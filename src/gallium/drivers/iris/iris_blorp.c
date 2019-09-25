@@ -307,6 +307,10 @@ iris_blorp_exec(struct blorp_batch *blorp_batch,
 
    iris_require_command_space(batch, 1400);
 
+#if GEN_GEN == 8
+   genX(update_pma_fix)(ice, batch, false);
+#endif
+
    const unsigned scale = params->fast_clear_op ? UINT_MAX : 1;
    if (ice->state.current_hash_scale != scale) {
       genX(emit_hashing_mode)(ice, batch, params->x1 - params->x0,
