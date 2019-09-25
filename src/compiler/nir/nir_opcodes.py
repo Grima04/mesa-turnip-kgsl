@@ -1061,3 +1061,6 @@ dst.x = ((((src0.x & 0xffff0000) >> 16) * (src1.x & 0x0000ffff)) << 16) + src2.x
 triop("imad24_ir3", tint32, _2src_commutative,
       "(((int32_t)src0 << 8) >> 8) * (((int32_t)src1 << 8) >> 8) + src2")
 
+# 24b multiply into 32b result (with sign extension)
+binop("imul24", tint32, _2src_commutative + associative,
+      "(((int32_t)src0 << 8) >> 8) * (((int32_t)src1 << 8) >> 8)")
