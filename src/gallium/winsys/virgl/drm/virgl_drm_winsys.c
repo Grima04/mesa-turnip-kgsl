@@ -313,10 +313,15 @@ virgl_drm_winsys_resource_create_handle(struct virgl_winsys *qws,
    struct virgl_hw_res *res = NULL;
    uint32_t handle = whandle->handle;
 
-   if (whandle->offset != 0) {
+   if (whandle->offset != 0 && whandle->type == WINSYS_HANDLE_TYPE_SHARED) {
       _debug_printf("attempt to import unsupported winsys offset %u\n",
                     whandle->offset);
       return NULL;
+   } else if (whandle->type == WINSYS_HANDLE_TYPE_FD) {
+      *plane = whandle->plane;
+      *stride = whandle->stride;
+      *plane_offset = whandle->offset;
+      *modifier = whandle->modifier;
    }
 
    mtx_lock(&qdws->bo_handles_mutex);
