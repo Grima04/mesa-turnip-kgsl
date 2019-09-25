@@ -373,7 +373,6 @@ radv_physical_device_init(struct radv_physical_device *device,
 				    (device->use_aco || device->instance->perftest_flags & RADV_PERFTEST_SHADER_BALLOT);
 
 	device->use_ngg_streamout = false;
-	device->use_aco = device->instance->perftest_flags & RADV_PERFTEST_ACO;
 
 	/* Determine the number of threads per wave for all stages. */
 	device->cs_wave_size = 64;
