@@ -1314,8 +1314,7 @@ setup_isel_context(Program* program,
                                                       nir_lower_divmod64 |
                                                       nir_lower_logic64 |
                                                       nir_lower_minmax64 |
-                                                      nir_lower_iabs64 |
-                                                      nir_lower_ineg64));
+                                                      nir_lower_iabs64));
 
       nir_opt_idiv_const(nir, 32);
       nir_lower_idiv(nir); // TODO: use the LLVM path once !1239 is merged

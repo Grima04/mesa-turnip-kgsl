@@ -689,6 +689,22 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
          bld.vsub32(Definition(dst), Operand(0u), Operand(src));
       } else if (dst.regClass() == s1) {
          bld.sop2(aco_opcode::s_mul_i32, Definition(dst), Operand((uint32_t) -1), src);
+      } else if (dst.size() == 2) {
+         Temp src0 = bld.tmp(dst.type(), 1);
+         Temp src1 = bld.tmp(dst.type(), 1);
+         bld.pseudo(aco_opcode::p_split_vector, Definition(src0), Definition(src1), src);
+
+         if (dst.regClass() == s2) {
+            Temp carry = bld.tmp(s1);
+            Temp dst0 = bld.sop2(aco_opcode::s_sub_u32, bld.def(s1), bld.scc(Definition(carry)), Operand(0u), src0);
+            Temp dst1 = bld.sop2(aco_opcode::s_subb_u32, bld.def(s1), bld.def(s1, scc), Operand(0u), src1, carry);
+            bld.pseudo(aco_opcode::p_create_vector, Definition(dst), dst0, dst1);
+         } else {
+            Temp lower = bld.tmp(v1);
+            Temp borrow = bld.vsub32(Definition(lower), Operand(0u), src0, true).def(1).getTemp();
+            Temp upper = bld.vsub32(bld.def(v1), Operand(0u), src1, false, borrow);
+            bld.pseudo(aco_opcode::p_create_vector, Definition(dst), lower, upper);
+         }
       } else {
          fprintf(stderr, "Unimplemented NIR instr bit size: ");
          nir_print_instr(&instr->instr, stderr);
