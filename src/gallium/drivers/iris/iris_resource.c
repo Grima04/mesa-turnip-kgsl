@@ -781,7 +781,7 @@ iris_resource_create_with_modifiers(struct pipe_screen *pscreen,
    } else {
       if (modifiers_count > 0) {
          fprintf(stderr, "Unsupported modifier, resource creation failed.\n");
-         return NULL;
+         goto fail;
       }
 
       /* Use linear for staging buffers */
