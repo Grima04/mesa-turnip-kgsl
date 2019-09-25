@@ -87,14 +87,26 @@ loop_contains_block(nir_loop *loop, nir_block *block)
 
 /* Given the LCA of all uses and the definition, find a block on the path
  * between them in the dominance tree that is outside of as many loops as
- * possible.
+ * possible. If "sink_out_of_loops" is false, then we disallow sinking the
+ * definition outside of the loop it's defined in (if any).
  */
 
 static nir_block *
-adjust_block_for_loops(nir_block *use_block, nir_block *def_block)
+adjust_block_for_loops(nir_block *use_block, nir_block *def_block,
+                       bool sink_out_of_loops)
 {
+   nir_loop *def_loop = NULL;
+   if (!sink_out_of_loops)
+      def_loop = get_innermost_loop(&def_block->cf_node);
+
    for (nir_block *cur_block = use_block; cur_block != def_block->imm_dom;
         cur_block = cur_block->imm_dom) {
+      if (!sink_out_of_loops && def_loop &&
+          !loop_contains_block(def_loop, use_block)) {
+         use_block = cur_block;
+         continue;
+      }
+
       nir_cf_node *next = nir_cf_node_next(&cur_block->cf_node);
       if (next && next->type == nir_cf_node_loop) {
          nir_loop *following_loop = nir_cf_node_as_loop(next);
@@ -115,7 +127,7 @@ adjust_block_for_loops(nir_block *use_block, nir_block *def_block)
  * the uses
  */
 static nir_block *
-get_preferred_block(nir_ssa_def *def, bool sink_into_loops)
+get_preferred_block(nir_ssa_def *def, bool sink_into_loops, bool sink_out_of_loops)
 {
    nir_block *lca = NULL;
 
@@ -158,8 +170,14 @@ get_preferred_block(nir_ssa_def *def, bool sink_into_loops)
     * in as we can go is probably worth it for register pressure.
     */
    if (!sink_into_loops) {
-      lca = adjust_block_for_loops(lca, def->parent_instr->block);
+      lca = adjust_block_for_loops(lca, def->parent_instr->block,
+                                   sink_out_of_loops);
       assert(nir_block_dominates(def->parent_instr->block, lca));
+   } else {
+      /* sink_into_loops = true and sink_out_of_loops = false isn't
+       * implemented yet because it's not used.
+       */
+      assert(sink_out_of_loops);
    }
 
 
@@ -204,8 +222,17 @@ nir_opt_sink(nir_shader *shader, nir_move_options options)
                continue;
 
             nir_ssa_def *def = nir_instr_ssa_def(instr);
+
+            bool sink_into_loops = instr->type != nir_instr_type_intrinsic;
+            /* Don't sink load_ubo out of loops because that can make its
+             * resource divergent and break code like that which is generated
+             * by nir_lower_non_uniform_access.
+             */
+            bool sink_out_of_loops =
+               instr->type != nir_instr_type_intrinsic ||
+               nir_instr_as_intrinsic(instr)->intrinsic != nir_intrinsic_load_ubo;
             nir_block *use_block =
-                  get_preferred_block(def, instr->type != nir_instr_type_intrinsic);
+                  get_preferred_block(def, sink_into_loops, sink_out_of_loops);
 
             if (!use_block || use_block == instr->block)
                continue;
