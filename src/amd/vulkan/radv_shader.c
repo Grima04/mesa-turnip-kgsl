@@ -92,7 +92,6 @@ static const struct nir_shader_compiler_options nir_options_aco = {
 	.lower_fdiv = true,
 	.lower_bitfield_insert_to_bitfield_select = true,
 	.lower_bitfield_extract = true,
-	.lower_sub = true, /* TODO: set this to false once !1236 is merged */
 	.lower_pack_snorm_2x16 = true,
 	.lower_pack_snorm_4x8 = true,
 	.lower_pack_unorm_2x16 = true,
