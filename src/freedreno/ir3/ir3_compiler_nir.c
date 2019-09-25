@@ -2457,7 +2457,7 @@ emit_stream_out(struct ir3_context *ctx)
 		base = create_uniform(ctx->block, regid(const_state->offsets.tfbo, i));
 
 		/* 24-bit should be enough: */
-		off = ir3_MUL_U(ctx->block, vtxcnt, 0,
+		off = ir3_MUL_U24(ctx->block, vtxcnt, 0,
 				create_immed(ctx->block, stride * 4), 0);
 
 		bases[i] = ir3_ADD_S(ctx->block, off, 0, base, 0);

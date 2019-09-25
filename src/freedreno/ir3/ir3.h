@@ -860,8 +860,8 @@ static inline bool ir3_cat2_int(opc_t opc)
 	case OPC_MAX_S:
 	case OPC_CMPV_U:
 	case OPC_CMPV_S:
-	case OPC_MUL_U:
-	case OPC_MUL_S:
+	case OPC_MUL_U24:
+	case OPC_MUL_S24:
 	case OPC_MULL_U:
 	case OPC_CLZ_S:
 	case OPC_ABSNEG_S:
@@ -953,8 +953,8 @@ static inline unsigned ir3_cat2_absneg(opc_t opc)
 	case OPC_MAX_S:
 	case OPC_CMPV_U:
 	case OPC_CMPV_S:
-	case OPC_MUL_U:
-	case OPC_MUL_S:
+	case OPC_MUL_U24:
+	case OPC_MUL_S24:
 	case OPC_MULL_U:
 	case OPC_CLZ_S:
 		return 0;
@@ -1335,8 +1335,8 @@ INSTR1(NOT_B)
 INSTR2(XOR_B)
 INSTR2(CMPV_U)
 INSTR2(CMPV_S)
-INSTR2(MUL_U)
-INSTR2(MUL_S)
+INSTR2(MUL_U24)
+INSTR2(MUL_S24)
 INSTR2(MULL_U)
 INSTR1(BFREV_B)
 INSTR1(CLZ_S)
