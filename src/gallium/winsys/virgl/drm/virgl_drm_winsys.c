@@ -190,7 +190,6 @@ virgl_drm_winsys_resource_create(struct virgl_winsys *qws,
    res->res_handle = createcmd.res_handle;
    res->bo_handle = createcmd.bo_handle;
    res->size = size;
-   res->stride = stride;
    pipe_reference_init(&res->reference, 1);
    p_atomic_set(&res->external, false);
    p_atomic_set(&res->num_cs_references, 0);
@@ -374,7 +373,6 @@ virgl_drm_winsys_resource_create_handle(struct virgl_winsys *qws,
    res->res_handle = info_arg.res_handle;
 
    res->size = info_arg.size;
-   res->stride = info_arg.stride;
    pipe_reference_init(&res->reference, 1);
    p_atomic_set(&res->external, true);
    res->num_cs_references = 0;

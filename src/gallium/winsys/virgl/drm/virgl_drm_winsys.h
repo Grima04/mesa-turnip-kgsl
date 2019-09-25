@@ -41,7 +41,6 @@ struct virgl_hw_res {
    int num_cs_references;
    uint32_t size;
    void *ptr;
-   uint32_t stride;
 
    struct virgl_resource_cache_entry cache_entry;
    uint32_t bind;
