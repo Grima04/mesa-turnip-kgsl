@@ -507,6 +507,8 @@ static struct pipe_resource *virgl_resource_from_handle(struct pipe_screen *scre
                                                         struct winsys_handle *whandle,
                                                         unsigned usage)
 {
+   uint32_t winsys_stride, plane_offset, plane;
+   uint64_t modifier;
    struct virgl_screen *vs = virgl_screen(screen);
    if (templ->target == PIPE_BUFFER)
       return NULL;
@@ -517,7 +519,12 @@ static struct pipe_resource *virgl_resource_from_handle(struct pipe_screen *scre
    pipe_reference_init(&res->u.b.reference, 1);
    virgl_resource_layout(&res->u.b, &res->metadata);
 
-   res->hw_res = vs->vws->resource_create_from_handle(vs->vws, whandle);
+   plane = winsys_stride = plane_offset = modifier = 0;
+   res->hw_res = vs->vws->resource_create_from_handle(vs->vws, whandle,
+                                                      &plane,
+                                                      &winsys_stride,
+                                                      &plane_offset,
+                                                      &modifier);
    if (!res->hw_res) {
       FREE(res);
       return NULL;
