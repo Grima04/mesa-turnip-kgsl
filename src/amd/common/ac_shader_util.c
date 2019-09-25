@@ -205,3 +205,56 @@ ac_get_image_dim(enum chip_class chip_class, enum glsl_sampler_dim sdim,
 	return dim;
 }
 
+unsigned
+ac_get_fs_input_vgpr_cnt(const struct ac_shader_config *config,
+			 signed char *face_vgpr_index_ptr,
+			 signed char *ancillary_vgpr_index_ptr)
+{
+	unsigned num_input_vgprs = 0;
+	signed char face_vgpr_index = -1;
+	signed char ancillary_vgpr_index = -1;
+
+	if (G_0286CC_PERSP_SAMPLE_ENA(config->spi_ps_input_addr))
+		num_input_vgprs += 2;
+	if (G_0286CC_PERSP_CENTER_ENA(config->spi_ps_input_addr))
+		num_input_vgprs += 2;
+	if (G_0286CC_PERSP_CENTROID_ENA(config->spi_ps_input_addr))
+		num_input_vgprs += 2;
+	if (G_0286CC_PERSP_PULL_MODEL_ENA(config->spi_ps_input_addr))
+		num_input_vgprs += 3;
+	if (G_0286CC_LINEAR_SAMPLE_ENA(config->spi_ps_input_addr))
+		num_input_vgprs += 2;
+	if (G_0286CC_LINEAR_CENTER_ENA(config->spi_ps_input_addr))
+		num_input_vgprs += 2;
+	if (G_0286CC_LINEAR_CENTROID_ENA(config->spi_ps_input_addr))
+		num_input_vgprs += 2;
+	if (G_0286CC_LINE_STIPPLE_TEX_ENA(config->spi_ps_input_addr))
+		num_input_vgprs += 1;
+	if (G_0286CC_POS_X_FLOAT_ENA(config->spi_ps_input_addr))
+		num_input_vgprs += 1;
+	if (G_0286CC_POS_Y_FLOAT_ENA(config->spi_ps_input_addr))
+		num_input_vgprs += 1;
+	if (G_0286CC_POS_Z_FLOAT_ENA(config->spi_ps_input_addr))
+		num_input_vgprs += 1;
+	if (G_0286CC_POS_W_FLOAT_ENA(config->spi_ps_input_addr))
+		num_input_vgprs += 1;
+	if (G_0286CC_FRONT_FACE_ENA(config->spi_ps_input_addr)) {
+		face_vgpr_index = num_input_vgprs;
+		num_input_vgprs += 1;
+	}
+	if (G_0286CC_ANCILLARY_ENA(config->spi_ps_input_addr)) {
+		ancillary_vgpr_index = num_input_vgprs;
+		num_input_vgprs += 1;
+	}
+	if (G_0286CC_SAMPLE_COVERAGE_ENA(config->spi_ps_input_addr))
+		num_input_vgprs += 1;
+	if (G_0286CC_POS_FIXED_PT_ENA(config->spi_ps_input_addr))
+		num_input_vgprs += 1;
+
+	if (face_vgpr_index_ptr)
+		*face_vgpr_index_ptr = face_vgpr_index;
+	if (ancillary_vgpr_index_ptr)
+		*ancillary_vgpr_index_ptr = ancillary_vgpr_index;
+
+	return num_input_vgprs;
+}

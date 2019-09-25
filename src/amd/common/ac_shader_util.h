@@ -28,6 +28,7 @@
 #include <stdint.h>
 
 #include "amd_family.h"
+#include "ac_binary.h"
 #include "compiler/nir/nir.h"
 
 enum ac_image_dim {
@@ -62,5 +63,10 @@ ac_get_sampler_dim(enum chip_class chip_class, enum glsl_sampler_dim dim,
 enum ac_image_dim
 ac_get_image_dim(enum chip_class chip_class, enum glsl_sampler_dim sdim,
 		 bool is_array);
+
+unsigned
+ac_get_fs_input_vgpr_cnt(const struct ac_shader_config *config,
+			 signed char *face_vgpr_index,
+			 signed char *ancillary_vgpr_index);
 
 #endif

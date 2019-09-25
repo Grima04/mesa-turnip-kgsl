@@ -663,39 +663,7 @@ static void radv_postprocess_config(const struct radv_physical_device *pdevice,
 	unsigned num_input_vgprs = info->num_input_vgprs;
 
 	if (stage == MESA_SHADER_FRAGMENT) {
-		num_input_vgprs = 0;
-		if (G_0286CC_PERSP_SAMPLE_ENA(config_in->spi_ps_input_addr))
-			num_input_vgprs += 2;
-		if (G_0286CC_PERSP_CENTER_ENA(config_in->spi_ps_input_addr))
-			num_input_vgprs += 2;
-		if (G_0286CC_PERSP_CENTROID_ENA(config_in->spi_ps_input_addr))
-			num_input_vgprs += 2;
-		if (G_0286CC_PERSP_PULL_MODEL_ENA(config_in->spi_ps_input_addr))
-			num_input_vgprs += 3;
-		if (G_0286CC_LINEAR_SAMPLE_ENA(config_in->spi_ps_input_addr))
-			num_input_vgprs += 2;
-		if (G_0286CC_LINEAR_CENTER_ENA(config_in->spi_ps_input_addr))
-			num_input_vgprs += 2;
-		if (G_0286CC_LINEAR_CENTROID_ENA(config_in->spi_ps_input_addr))
-			num_input_vgprs += 2;
-		if (G_0286CC_LINE_STIPPLE_TEX_ENA(config_in->spi_ps_input_addr))
-			num_input_vgprs += 1;
-		if (G_0286CC_POS_X_FLOAT_ENA(config_in->spi_ps_input_addr))
-			num_input_vgprs += 1;
-		if (G_0286CC_POS_Y_FLOAT_ENA(config_in->spi_ps_input_addr))
-			num_input_vgprs += 1;
-		if (G_0286CC_POS_Z_FLOAT_ENA(config_in->spi_ps_input_addr))
-			num_input_vgprs += 1;
-		if (G_0286CC_POS_W_FLOAT_ENA(config_in->spi_ps_input_addr))
-			num_input_vgprs += 1;
-		if (G_0286CC_FRONT_FACE_ENA(config_in->spi_ps_input_addr))
-			num_input_vgprs += 1;
-		if (G_0286CC_ANCILLARY_ENA(config_in->spi_ps_input_addr))
-			num_input_vgprs += 1;
-		if (G_0286CC_SAMPLE_COVERAGE_ENA(config_in->spi_ps_input_addr))
-			num_input_vgprs += 1;
-		if (G_0286CC_POS_FIXED_PT_ENA(config_in->spi_ps_input_addr))
-			num_input_vgprs += 1;
+		num_input_vgprs = ac_get_fs_input_vgpr_cnt(config_in, NULL, NULL);
 	}
 
 	unsigned num_vgprs = MAX2(config_in->num_vgprs, num_input_vgprs);
