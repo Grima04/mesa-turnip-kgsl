@@ -58,7 +58,13 @@ apt-get install -y --no-remove \
       libx11-xcb-dev \
       libelf-dev \
       libunwind-dev \
-      libglvnd-dev \
+      autoconf \
+      automake \
+      autotools-dev \
+      libtool \
+      libxext-dev \
+      libx11-dev \
+      x11proto-gl-dev \
       libgtk-3-dev \
       libpng-dev \
       libgbm-dev \
@@ -197,6 +203,17 @@ tar -xvf $WAYLAND_PROTOCOLS_VERSION.tar.xz && rm $WAYLAND_PROTOCOLS_VERSION.tar.
 cd $WAYLAND_PROTOCOLS_VERSION; ./configure; make install; cd ..
 rm -rf $WAYLAND_PROTOCOLS_VERSION
 
+
+# The version of libglvnd-dev in debian is too old
+# Check this page to see when this local compilation can be dropped in favour of the package:
+# https://packages.debian.org/libglvnd-dev
+GLVND_VERSION=1.2.0
+wget https://gitlab.freedesktop.org/glvnd/libglvnd/-/archive/v$GLVND_VERSION/libglvnd-v$GLVND_VERSION.tar.gz
+tar -xvf libglvnd-v$GLVND_VERSION.tar.gz && rm libglvnd-v$GLVND_VERSION.tar.gz
+pushd libglvnd-v$GLVND_VERSION; ./autogen.sh; ./configure; make install; popd
+rm -rf libglvnd-v$GLVND_VERSION
+
+
 pushd /usr/local
 git clone https://gitlab.freedesktop.org/mesa/shader-db.git --depth 1
 rm -rf shader-db/.git
@@ -279,6 +296,11 @@ apt-get purge -y \
       unzip \
       cmake \
       git \
+      autoconf \
+      automake \
+      autotools-dev \
+      libtool \
+      x11proto-gl-dev \
       libgles2-mesa-dev \
       libgbm-dev
 
