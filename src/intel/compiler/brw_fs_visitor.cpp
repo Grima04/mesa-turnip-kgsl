@@ -900,7 +900,10 @@ fs_visitor::fs_visitor(const struct brw_compiler *compiler, void *log_data,
 void
 fs_visitor::init()
 {
-   this->key_tex = &key->tex;
+   if (key)
+      this->key_tex = &key->tex;
+   else
+      this->key_tex = NULL;
 
    this->max_dispatch_width = 32;
    this->prog_data = this->stage_prog_data;
