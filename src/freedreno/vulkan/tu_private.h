@@ -103,6 +103,8 @@ typedef uint32_t xcb_window_t;
  */
 #define TU_BUFFER_OPS_CS_THRESHOLD 4096
 
+#define A6XX_TEX_SAMP_DWORDS 4
+
 enum tu_mem_heap
 {
    TU_MEM_HEAP_VRAM,
@@ -210,6 +212,8 @@ tu_clear_mask(uint32_t *inout_mask, uint32_t clear_mask)
       STATIC_ASSERT(sizeof(*src) == sizeof(*dest));                          \
       memcpy((dest), (src), (count) * sizeof(*(src)));                       \
    })
+
+#define COND(bool, val) ((bool) ? (val) : 0)
 
 /* Whenever we generate an error, pass it through this function. Useful for
  * debugging, where we can break on it. Only call at error site, not when
@@ -1274,6 +1278,9 @@ struct tu_image_view
 
 struct tu_sampler
 {
+   uint32_t state[A6XX_TEX_SAMP_DWORDS];
+
+   bool needs_border;
 };
 
 struct tu_image_create_info
