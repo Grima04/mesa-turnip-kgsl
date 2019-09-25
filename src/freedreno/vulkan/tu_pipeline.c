@@ -478,7 +478,7 @@ tu6_emit_vs_system_values(struct tu_cs *cs,
                           const struct ir3_shader_variant *vs)
 {
    const uint32_t vertexid_regid =
-      ir3_find_sysval_regid(vs, SYSTEM_VALUE_VERTEX_ID_ZERO_BASE);
+      ir3_find_sysval_regid(vs, SYSTEM_VALUE_VERTEX_ID);
    const uint32_t instanceid_regid =
       ir3_find_sysval_regid(vs, SYSTEM_VALUE_INSTANCE_ID);
 
