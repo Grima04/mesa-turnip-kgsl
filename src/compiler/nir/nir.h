@@ -212,7 +212,7 @@ nir_const_value_as_int(nir_const_value value, unsigned bit_size)
    }
 }
 
-static inline int64_t
+static inline uint64_t
 nir_const_value_as_uint(nir_const_value value, unsigned bit_size)
 {
    switch (bit_size) {

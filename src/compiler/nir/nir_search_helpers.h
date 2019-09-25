@@ -42,7 +42,8 @@ is_pos_power_of_two(UNUSED struct hash_table *ht, nir_alu_instr *instr,
       return false;
 
    for (unsigned i = 0; i < num_components; i++) {
-      switch (nir_op_infos[instr->op].input_types[src]) {
+      nir_alu_type type = nir_op_infos[instr->op].input_types[src];
+      switch (nir_alu_type_get_base_type(type)) {
       case nir_type_int: {
          int64_t val = nir_src_comp_as_int(instr->src[src].src, swizzle[i]);
          if (val <= 0 || !util_is_power_of_two_or_zero64(val))
@@ -73,7 +74,8 @@ is_neg_power_of_two(UNUSED struct hash_table *ht, nir_alu_instr *instr,
       return false;
 
    for (unsigned i = 0; i < num_components; i++) {
-      switch (nir_op_infos[instr->op].input_types[src]) {
+      nir_alu_type type = nir_op_infos[instr->op].input_types[src];
+      switch (nir_alu_type_get_base_type(type)) {
       case nir_type_int: {
          int64_t val = nir_src_comp_as_int(instr->src[src].src, swizzle[i]);
          if (val >= 0 || !util_is_power_of_two_or_zero64(-val))
@@ -153,7 +155,8 @@ is_not_const_zero(UNUSED struct hash_table *ht, nir_alu_instr *instr,
       return true;
 
    for (unsigned i = 0; i < num_components; i++) {
-      switch (nir_op_infos[instr->op].input_types[src]) {
+      nir_alu_type type = nir_op_infos[instr->op].input_types[src];
+      switch (nir_alu_type_get_base_type(type)) {
       case nir_type_float:
          if (nir_src_comp_as_float(instr->src[src].src, swizzle[i]) == 0.0)
             return false;
