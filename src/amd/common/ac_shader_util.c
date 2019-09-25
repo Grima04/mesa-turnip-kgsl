@@ -108,3 +108,100 @@ ac_vgt_gs_mode(unsigned gs_max_vert_out, enum chip_class chip_class)
 	       S_028A40_ONCHIP(chip_class >= GFX9 ? 1 : 0);
 }
 
+/// Translate a (dfmt, nfmt) pair into a chip-appropriate combined format
+/// value for LLVM8+ tbuffer intrinsics.
+unsigned
+ac_get_tbuffer_format(enum chip_class chip_class,
+		      unsigned dfmt, unsigned nfmt)
+{
+	if (chip_class >= GFX10) {
+		unsigned format;
+		switch (dfmt) {
+		default: unreachable("bad dfmt");
+		case V_008F0C_BUF_DATA_FORMAT_INVALID: format = V_008F0C_IMG_FORMAT_INVALID; break;
+		case V_008F0C_BUF_DATA_FORMAT_8: format = V_008F0C_IMG_FORMAT_8_UINT; break;
+		case V_008F0C_BUF_DATA_FORMAT_8_8: format = V_008F0C_IMG_FORMAT_8_8_UINT; break;
+		case V_008F0C_BUF_DATA_FORMAT_8_8_8_8: format = V_008F0C_IMG_FORMAT_8_8_8_8_UINT; break;
+		case V_008F0C_BUF_DATA_FORMAT_16: format = V_008F0C_IMG_FORMAT_16_UINT; break;
+		case V_008F0C_BUF_DATA_FORMAT_16_16: format = V_008F0C_IMG_FORMAT_16_16_UINT; break;
+		case V_008F0C_BUF_DATA_FORMAT_16_16_16_16: format = V_008F0C_IMG_FORMAT_16_16_16_16_UINT; break;
+		case V_008F0C_BUF_DATA_FORMAT_32: format = V_008F0C_IMG_FORMAT_32_UINT; break;
+		case V_008F0C_BUF_DATA_FORMAT_32_32: format = V_008F0C_IMG_FORMAT_32_32_UINT; break;
+		case V_008F0C_BUF_DATA_FORMAT_32_32_32: format = V_008F0C_IMG_FORMAT_32_32_32_UINT; break;
+		case V_008F0C_BUF_DATA_FORMAT_32_32_32_32: format = V_008F0C_IMG_FORMAT_32_32_32_32_UINT; break;
+		case V_008F0C_BUF_DATA_FORMAT_2_10_10_10: format = V_008F0C_IMG_FORMAT_2_10_10_10_UINT; break;
+		}
+
+		// Use the regularity properties of the combined format enum.
+		//
+		// Note: float is incompatible with 8-bit data formats,
+		//       [us]{norm,scaled} are incomparible with 32-bit data formats.
+		//       [us]scaled are not writable.
+		switch (nfmt) {
+		case V_008F0C_BUF_NUM_FORMAT_UNORM: format -= 4; break;
+		case V_008F0C_BUF_NUM_FORMAT_SNORM: format -= 3; break;
+		case V_008F0C_BUF_NUM_FORMAT_USCALED: format -= 2; break;
+		case V_008F0C_BUF_NUM_FORMAT_SSCALED: format -= 1; break;
+		default: unreachable("bad nfmt");
+		case V_008F0C_BUF_NUM_FORMAT_UINT: break;
+		case V_008F0C_BUF_NUM_FORMAT_SINT: format += 1; break;
+		case V_008F0C_BUF_NUM_FORMAT_FLOAT: format += 2; break;
+		}
+
+		return format;
+	} else {
+		return dfmt | (nfmt << 4);
+	}
+}
+
+enum ac_image_dim
+ac_get_sampler_dim(enum chip_class chip_class, enum glsl_sampler_dim dim,
+		   bool is_array)
+{
+	switch (dim) {
+	case GLSL_SAMPLER_DIM_1D:
+		if (chip_class == GFX9)
+			return is_array ? ac_image_2darray : ac_image_2d;
+		return is_array ? ac_image_1darray : ac_image_1d;
+	case GLSL_SAMPLER_DIM_2D:
+	case GLSL_SAMPLER_DIM_RECT:
+	case GLSL_SAMPLER_DIM_EXTERNAL:
+		return is_array ? ac_image_2darray : ac_image_2d;
+	case GLSL_SAMPLER_DIM_3D:
+		return ac_image_3d;
+	case GLSL_SAMPLER_DIM_CUBE:
+		return ac_image_cube;
+	case GLSL_SAMPLER_DIM_MS:
+		return is_array ? ac_image_2darraymsaa : ac_image_2dmsaa;
+	case GLSL_SAMPLER_DIM_SUBPASS:
+		return ac_image_2darray;
+	case GLSL_SAMPLER_DIM_SUBPASS_MS:
+		return ac_image_2darraymsaa;
+	default:
+		unreachable("bad sampler dim");
+	}
+}
+
+enum ac_image_dim
+ac_get_image_dim(enum chip_class chip_class, enum glsl_sampler_dim sdim,
+		 bool is_array)
+{
+	enum ac_image_dim dim = ac_get_sampler_dim(chip_class, sdim, is_array);
+
+	/* Match the resource type set in the descriptor. */
+	if (dim == ac_image_cube ||
+	    (chip_class <= GFX8 && dim == ac_image_3d))
+		dim = ac_image_2darray;
+	else if (sdim == GLSL_SAMPLER_DIM_2D && !is_array && chip_class == GFX9) {
+		/* When a single layer of a 3D texture is bound, the shader
+		 * will refer to a 2D target, but the descriptor has a 3D type.
+		 * Since the HW ignores BASE_ARRAY in this case, we need to
+		 * send 3 coordinates. This doesn't hurt when the underlying
+		 * texture is non-3D.
+		 */
+		dim = ac_image_3d;
+	}
+
+	return dim;
+}
+

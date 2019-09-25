@@ -28,6 +28,18 @@
 #include <stdint.h>
 
 #include "amd_family.h"
+#include "compiler/nir/nir.h"
+
+enum ac_image_dim {
+	ac_image_1d,
+	ac_image_2d,
+	ac_image_3d,
+	ac_image_cube, // includes cube arrays
+	ac_image_1darray,
+	ac_image_2darray,
+	ac_image_2dmsaa,
+	ac_image_2darraymsaa,
+};
 
 unsigned
 ac_get_spi_shader_z_format(bool writes_z, bool writes_stencil,
@@ -38,5 +50,17 @@ ac_get_cb_shader_mask(unsigned spi_shader_col_format);
 
 uint32_t
 ac_vgt_gs_mode(unsigned gs_max_vert_out, enum chip_class chip_class);
+
+unsigned
+ac_get_tbuffer_format(enum chip_class chip_class,
+		      unsigned dfmt, unsigned nfmt);
+
+enum ac_image_dim
+ac_get_sampler_dim(enum chip_class chip_class, enum glsl_sampler_dim dim,
+		   bool is_array);
+
+enum ac_image_dim
+ac_get_image_dim(enum chip_class chip_class, enum glsl_sampler_dim sdim,
+		 bool is_array);
 
 #endif

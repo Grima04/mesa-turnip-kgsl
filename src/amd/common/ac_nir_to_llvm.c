@@ -83,57 +83,6 @@ build_store_values_extended(struct ac_llvm_context *ac,
 	}
 }
 
-static enum ac_image_dim
-get_ac_sampler_dim(const struct ac_llvm_context *ctx, enum glsl_sampler_dim dim,
-		   bool is_array)
-{
-	switch (dim) {
-	case GLSL_SAMPLER_DIM_1D:
-		if (ctx->chip_class == GFX9)
-			return is_array ? ac_image_2darray : ac_image_2d;
-		return is_array ? ac_image_1darray : ac_image_1d;
-	case GLSL_SAMPLER_DIM_2D:
-	case GLSL_SAMPLER_DIM_RECT:
-	case GLSL_SAMPLER_DIM_EXTERNAL:
-		return is_array ? ac_image_2darray : ac_image_2d;
-	case GLSL_SAMPLER_DIM_3D:
-		return ac_image_3d;
-	case GLSL_SAMPLER_DIM_CUBE:
-		return ac_image_cube;
-	case GLSL_SAMPLER_DIM_MS:
-		return is_array ? ac_image_2darraymsaa : ac_image_2dmsaa;
-	case GLSL_SAMPLER_DIM_SUBPASS:
-		return ac_image_2darray;
-	case GLSL_SAMPLER_DIM_SUBPASS_MS:
-		return ac_image_2darraymsaa;
-	default:
-		unreachable("bad sampler dim");
-	}
-}
-
-static enum ac_image_dim
-get_ac_image_dim(const struct ac_llvm_context *ctx, enum glsl_sampler_dim sdim,
-		 bool is_array)
-{
-	enum ac_image_dim dim = get_ac_sampler_dim(ctx, sdim, is_array);
-
-	/* Match the resource type set in the descriptor. */
-	if (dim == ac_image_cube ||
-	    (ctx->chip_class <= GFX8 && dim == ac_image_3d))
-		dim = ac_image_2darray;
-	else if (sdim == GLSL_SAMPLER_DIM_2D && !is_array && ctx->chip_class == GFX9) {
-		/* When a single layer of a 3D texture is bound, the shader
-		 * will refer to a 2D target, but the descriptor has a 3D type.
-		 * Since the HW ignores BASE_ARRAY in this case, we need to
-		 * send 3 coordinates. This doesn't hurt when the underlying
-		 * texture is non-3D.
-		 */
-		dim = ac_image_3d;
-	}
-
-	return dim;
-}
-
 static LLVMTypeRef get_def_type(struct ac_nir_context *ctx,
                                 const nir_ssa_def *def)
 {
@@ -1282,7 +1231,7 @@ static LLVMValueRef lower_gather4_integer(struct ac_llvm_context *ctx,
 		}
 
 		/* Query the texture size. */
-		resinfo.dim = get_ac_sampler_dim(ctx, instr->sampler_dim, instr->is_array);
+		resinfo.dim = ac_get_sampler_dim(ctx->chip_class, instr->sampler_dim, instr->is_array);
 		resinfo.opcode = ac_image_get_resinfo;
 		resinfo.dmask = 0xf;
 		resinfo.lod = ctx->i32_0;
@@ -2612,7 +2561,7 @@ static LLVMValueRef visit_image_load(struct ac_nir_context *ctx,
 		args.opcode = ac_image_load;
 		args.resource = get_image_descriptor(ctx, instr, AC_DESC_IMAGE, false);
 		get_image_coords(ctx, instr, &args, dim, is_array);
-		args.dim = get_ac_image_dim(&ctx->ac, dim, is_array);
+		args.dim = ac_get_image_dim(ctx->ac.chip_class, dim, is_array);
 		args.dmask = 15;
 		args.attributes = AC_FUNC_ATTR_READONLY;
 
@@ -2669,7 +2618,7 @@ static void visit_image_store(struct ac_nir_context *ctx,
 		args.data[0] = ac_to_float(&ctx->ac, get_src(ctx, instr->src[3]));
 		args.resource = get_image_descriptor(ctx, instr, AC_DESC_IMAGE, true);
 		get_image_coords(ctx, instr, &args, dim, is_array);
-		args.dim = get_ac_image_dim(&ctx->ac, dim, is_array);
+		args.dim = ac_get_image_dim(ctx->ac.chip_class, dim, is_array);
 		args.dmask = 15;
 
 		ac_build_image_opcode(&ctx->ac, &args);
@@ -2822,7 +2771,7 @@ static LLVMValueRef visit_image_atomic(struct ac_nir_context *ctx,
 			args.data[1] = params[1];
 		args.resource = get_image_descriptor(ctx, instr, AC_DESC_IMAGE, true);
 		get_image_coords(ctx, instr, &args, dim, is_array);
-		args.dim = get_ac_image_dim(&ctx->ac, dim, is_array);
+		args.dim = ac_get_image_dim(ctx->ac.chip_class, dim, is_array);
 
 		return ac_build_image_opcode(&ctx->ac, &args);
 	}
@@ -2844,7 +2793,7 @@ static LLVMValueRef visit_image_samples(struct ac_nir_context *ctx,
 	}
 
 	struct ac_image_args args = { 0 };
-	args.dim = get_ac_sampler_dim(&ctx->ac, dim, is_array);
+	args.dim = ac_get_sampler_dim(ctx->ac.chip_class, dim, is_array);
 	args.dmask = 0xf;
 	args.resource = get_image_descriptor(ctx, instr, AC_DESC_IMAGE, false);
 	args.opcode = ac_image_get_resinfo;
@@ -2876,7 +2825,7 @@ static LLVMValueRef visit_image_size(struct ac_nir_context *ctx,
 
 	struct ac_image_args args = { 0 };
 
-	args.dim = get_ac_image_dim(&ctx->ac, dim, is_array);
+	args.dim = ac_get_image_dim(ctx->ac.chip_class, dim, is_array);
 	args.dmask = 0xf;
 	args.resource = get_image_descriptor(ctx, instr, AC_DESC_IMAGE, false);
 	args.opcode = ac_image_get_resinfo;
@@ -4267,7 +4216,7 @@ static void visit_tex(struct ac_nir_context *ctx, nir_tex_instr *instr)
 	}
 
 	if (instr->sampler_dim != GLSL_SAMPLER_DIM_BUF) {
-		args.dim = get_ac_sampler_dim(&ctx->ac, instr->sampler_dim, instr->is_array);
+		args.dim = ac_get_sampler_dim(ctx->ac.chip_class, instr->sampler_dim, instr->is_array);
 		args.unorm = instr->sampler_dim == GLSL_SAMPLER_DIM_RECT;
 	}
 	result = build_tex_intrinsic(ctx, instr, &args);

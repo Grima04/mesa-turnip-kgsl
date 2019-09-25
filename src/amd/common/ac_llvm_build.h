@@ -29,6 +29,7 @@
 #include <llvm-c/Core.h>
 #include "compiler/nir/nir.h"
 #include "amd_family.h"
+#include "ac_shader_util.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -519,17 +520,6 @@ enum ac_atomic_op {
 	ac_atomic_xor,
 	ac_atomic_inc_wrap,
 	ac_atomic_dec_wrap,
-};
-
-enum ac_image_dim {
-	ac_image_1d,
-	ac_image_2d,
-	ac_image_3d,
-	ac_image_cube, // includes cube arrays
-	ac_image_1darray,
-	ac_image_2darray,
-	ac_image_2dmsaa,
-	ac_image_2darraymsaa,
 };
 
 /* These cache policy bits match the definitions used by the LLVM intrinsics. */

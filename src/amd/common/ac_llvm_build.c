@@ -1383,52 +1383,6 @@ LLVMValueRef ac_build_buffer_load_format(struct ac_llvm_context *ctx,
 					   true, true);
 }
 
-/// Translate a (dfmt, nfmt) pair into a chip-appropriate combined format
-/// value for LLVM8+ tbuffer intrinsics.
-static unsigned
-ac_get_tbuffer_format(struct ac_llvm_context *ctx,
-		      unsigned dfmt, unsigned nfmt)
-{
-	if (ctx->chip_class >= GFX10) {
-		unsigned format;
-		switch (dfmt) {
-		default: unreachable("bad dfmt");
-		case V_008F0C_BUF_DATA_FORMAT_INVALID: format = V_008F0C_IMG_FORMAT_INVALID; break;
-		case V_008F0C_BUF_DATA_FORMAT_8: format = V_008F0C_IMG_FORMAT_8_UINT; break;
-		case V_008F0C_BUF_DATA_FORMAT_8_8: format = V_008F0C_IMG_FORMAT_8_8_UINT; break;
-		case V_008F0C_BUF_DATA_FORMAT_8_8_8_8: format = V_008F0C_IMG_FORMAT_8_8_8_8_UINT; break;
-		case V_008F0C_BUF_DATA_FORMAT_16: format = V_008F0C_IMG_FORMAT_16_UINT; break;
-		case V_008F0C_BUF_DATA_FORMAT_16_16: format = V_008F0C_IMG_FORMAT_16_16_UINT; break;
-		case V_008F0C_BUF_DATA_FORMAT_16_16_16_16: format = V_008F0C_IMG_FORMAT_16_16_16_16_UINT; break;
-		case V_008F0C_BUF_DATA_FORMAT_32: format = V_008F0C_IMG_FORMAT_32_UINT; break;
-		case V_008F0C_BUF_DATA_FORMAT_32_32: format = V_008F0C_IMG_FORMAT_32_32_UINT; break;
-		case V_008F0C_BUF_DATA_FORMAT_32_32_32: format = V_008F0C_IMG_FORMAT_32_32_32_UINT; break;
-		case V_008F0C_BUF_DATA_FORMAT_32_32_32_32: format = V_008F0C_IMG_FORMAT_32_32_32_32_UINT; break;
-		case V_008F0C_BUF_DATA_FORMAT_2_10_10_10: format = V_008F0C_IMG_FORMAT_2_10_10_10_UINT; break;
-		}
-
-		// Use the regularity properties of the combined format enum.
-		//
-		// Note: float is incompatible with 8-bit data formats,
-		//       [us]{norm,scaled} are incomparible with 32-bit data formats.
-		//       [us]scaled are not writable.
-		switch (nfmt) {
-		case V_008F0C_BUF_NUM_FORMAT_UNORM: format -= 4; break;
-		case V_008F0C_BUF_NUM_FORMAT_SNORM: format -= 3; break;
-		case V_008F0C_BUF_NUM_FORMAT_USCALED: format -= 2; break;
-		case V_008F0C_BUF_NUM_FORMAT_SSCALED: format -= 1; break;
-		default: unreachable("bad nfmt");
-		case V_008F0C_BUF_NUM_FORMAT_UINT: break;
-		case V_008F0C_BUF_NUM_FORMAT_SINT: format += 1; break;
-		case V_008F0C_BUF_NUM_FORMAT_FLOAT: format += 2; break;
-		}
-
-		return format;
-	} else {
-		return dfmt | (nfmt << 4);
-	}
-}
-
 static LLVMValueRef
 ac_build_tbuffer_load(struct ac_llvm_context *ctx,
 			    LLVMValueRef rsrc,
@@ -1452,7 +1406,7 @@ ac_build_tbuffer_load(struct ac_llvm_context *ctx,
 		args[idx++] = vindex ? vindex : ctx->i32_0;
 	args[idx++] = voffset ? voffset : ctx->i32_0;
 	args[idx++] = soffset ? soffset : ctx->i32_0;
-	args[idx++] = LLVMConstInt(ctx->i32, ac_get_tbuffer_format(ctx, dfmt, nfmt), 0);
+	args[idx++] = LLVMConstInt(ctx->i32, ac_get_tbuffer_format(ctx->chip_class, dfmt, nfmt), 0);
 	args[idx++] = LLVMConstInt(ctx->i32, get_load_cache_policy(ctx, cache_policy), 0);
 	unsigned func = !ac_has_vec3_support(ctx->chip_class, true) && num_channels == 3 ? 4 : num_channels;
 	const char *indexing_kind = structurized ? "struct" : "raw";
@@ -1896,7 +1850,7 @@ ac_build_tbuffer_store(struct ac_llvm_context *ctx,
 		args[idx++] = vindex ? vindex : ctx->i32_0;
 	args[idx++] = voffset ? voffset : ctx->i32_0;
 	args[idx++] = soffset ? soffset : ctx->i32_0;
-	args[idx++] = LLVMConstInt(ctx->i32, ac_get_tbuffer_format(ctx, dfmt, nfmt), 0);
+	args[idx++] = LLVMConstInt(ctx->i32, ac_get_tbuffer_format(ctx->chip_class, dfmt, nfmt), 0);
 	args[idx++] = LLVMConstInt(ctx->i32, cache_policy, 0);
 	unsigned func = !ac_has_vec3_support(ctx->chip_class, true) && num_channels == 3 ? 4 : num_channels;
 	const char *indexing_kind = structurized ? "struct" : "raw";
