@@ -48,7 +48,7 @@ strunc(int64_t x, unsigned num_bits)
    if (num_bits == 64)
       return x;
 
-   return (x << (64 - num_bits)) >> (64 - num_bits);
+   return (int64_t)((uint64_t)x << (64 - num_bits)) >> (64 - num_bits);
 }
 
 static inline bool
