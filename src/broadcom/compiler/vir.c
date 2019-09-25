@@ -939,6 +939,22 @@ uint64_t *v3d_compile(const struct v3d_compiler *compiler,
         NIR_PASS_V(c->s, nir_lower_idiv);
 
         v3d_optimize_nir(c->s);
+
+        /* Do late algebraic optimization to turn add(a, neg(b)) back into
+         * subs, then the mandatory cleanup after algebraic.  Note that it may
+         * produce fnegs, and if so then we need to keep running to squash
+         * fneg(fneg(a)).
+         */
+        bool more_late_algebraic = true;
+        while (more_late_algebraic) {
+                more_late_algebraic = false;
+                NIR_PASS(more_late_algebraic, c->s, nir_opt_algebraic_late);
+                NIR_PASS_V(c->s, nir_opt_constant_folding);
+                NIR_PASS_V(c->s, nir_copy_prop);
+                NIR_PASS_V(c->s, nir_opt_dce);
+                NIR_PASS_V(c->s, nir_opt_cse);
+        }
+
         NIR_PASS_V(c->s, nir_lower_bool_to_int32);
         NIR_PASS_V(c->s, nir_convert_from_ssa, true);
 
