@@ -888,6 +888,39 @@ tu6_emit_shader_object(struct tu_cs *cs,
 }
 
 static void
+tu6_emit_immediates(struct tu_cs *cs, const struct ir3_shader_variant *v,
+                    uint32_t opcode, enum a6xx_state_block block)
+{
+   const struct ir3_const_state *const_state = &v->shader->const_state;
+   uint32_t base = const_state->offsets.immediate;
+   int size = const_state->immediates_count;
+
+   /* truncate size to avoid writing constants that shader
+    * does not use:
+    */
+   size = MIN2(size + base, v->constlen) - base;
+
+   if (size <= 0)
+      return;
+
+   tu_cs_emit_pkt7(cs, opcode, 3 + size * 4);
+   tu_cs_emit(cs, CP_LOAD_STATE6_0_DST_OFF(base) |
+                  CP_LOAD_STATE6_0_STATE_TYPE(ST6_CONSTANTS) |
+                  CP_LOAD_STATE6_0_STATE_SRC(SS6_DIRECT) |
+                  CP_LOAD_STATE6_0_STATE_BLOCK(SB6_FS_SHADER) |
+                  CP_LOAD_STATE6_0_NUM_UNIT(size));
+   tu_cs_emit(cs, CP_LOAD_STATE6_1_EXT_SRC_ADDR(0));
+   tu_cs_emit(cs, CP_LOAD_STATE6_2_EXT_SRC_ADDR_HI(0));
+
+   for (unsigned i = 0; i < size; i++) {
+      tu_cs_emit(cs, const_state->immediates[i].val[0]);
+      tu_cs_emit(cs, const_state->immediates[i].val[1]);
+      tu_cs_emit(cs, const_state->immediates[i].val[2]);
+      tu_cs_emit(cs, const_state->immediates[i].val[3]);
+   }
+}
+
+static void
 tu6_emit_program(struct tu_cs *cs,
                  const struct tu_pipeline_builder *builder,
                  const struct tu_bo *binary_bo,
@@ -939,6 +972,10 @@ tu6_emit_program(struct tu_cs *cs,
 
    tu6_emit_shader_object(cs, MESA_SHADER_FRAGMENT, fs, binary_bo,
                           builder->shader_offsets[MESA_SHADER_FRAGMENT]);
+
+   tu6_emit_immediates(cs, vs, CP_LOAD_STATE6_GEOM, SB6_VS_SHADER);
+   if (!binning_pass)
+      tu6_emit_immediates(cs, fs, CP_LOAD_STATE6_FRAG, SB6_FS_SHADER);
 }
 
 static void
