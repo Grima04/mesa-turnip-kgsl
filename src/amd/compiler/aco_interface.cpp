@@ -96,7 +96,7 @@ void aco_compile_shader(unsigned shader_count,
    aco::schedule_program(program.get(), live_vars);
 
    std::string llvm_ir;
-   if (options->record_llvm_ir) {
+   if (options->record_ir) {
       char *data = NULL;
       size_t size = 0;
       FILE *f = open_memstream(&data, &size);
@@ -140,7 +140,7 @@ void aco_compile_shader(unsigned shader_count,
    std::vector<uint32_t> code;
    unsigned exec_size = aco::emit_program(program.get(), code);
 
-   bool get_disasm = options->dump_shader || options->record_llvm_ir;
+   bool get_disasm = options->dump_shader || options->record_ir;
 
    size_t size = llvm_ir.size();
 
@@ -167,7 +167,7 @@ void aco_compile_shader(unsigned shader_count,
 
    legacy_binary->config = config;
    legacy_binary->disasm_size = 0;
-   legacy_binary->llvm_ir_size = llvm_ir.size();
+   legacy_binary->ir_size = llvm_ir.size();
 
    llvm_ir.copy((char*) legacy_binary->data + legacy_binary->code_size, llvm_ir.size());
 

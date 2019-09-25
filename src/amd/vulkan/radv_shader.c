@@ -1032,7 +1032,7 @@ radv_shader_variant_create(struct radv_device *device,
 				return NULL;
 			}
 
-			variant->llvm_ir_string = bin->llvm_ir_size ? strdup((const char*)(bin->data + bin->elf_size)) : NULL;
+			variant->ir_string = bin->llvm_ir_size ? strdup((const char*)(bin->data + bin->elf_size)) : NULL;
 			variant->disasm_string = malloc(disasm_size + 1);
 			memcpy(variant->disasm_string, disasm_data, disasm_size);
 			variant->disasm_string[disasm_size] = 0;
@@ -1048,8 +1048,8 @@ radv_shader_variant_create(struct radv_device *device,
 		for (unsigned i = 0; i < DEBUGGER_NUM_MARKERS; i++)
 			ptr32[i] = DEBUGGER_END_OF_CODE_MARKER;
 
-		variant->llvm_ir_string = bin->llvm_ir_size ? strdup((const char*)(bin->data + bin->code_size)) : NULL;
-		variant->disasm_string = bin->disasm_size ? strdup((const char*)(bin->data + bin->code_size + bin->llvm_ir_size)) : NULL;
+		variant->ir_string = bin->ir_size ? strdup((const char*)(bin->data + bin->code_size)) : NULL;
+		variant->disasm_string = bin->disasm_size ? strdup((const char*)(bin->data + bin->code_size + bin->ir_size)) : NULL;
 	}
 	return variant;
 }
@@ -1098,7 +1098,7 @@ shader_variant_compile(struct radv_device *device,
 	options->dump_shader = radv_can_dump_shader(device, module, gs_copy_shader);
 	options->dump_preoptir = options->dump_shader &&
 				 device->instance->debug_flags & RADV_DEBUG_PREOPTIR;
-	options->record_llvm_ir = keep_shader_info;
+	options->record_ir = keep_shader_info;
 	options->check_ir = device->instance->debug_flags & RADV_DEBUG_CHECKIR;
 	options->tess_offchip_block_dw_size = device->tess_offchip_block_dw_size;
 	options->address32_hi = device->physical_device->rad_info.address32_hi;
@@ -1115,7 +1115,7 @@ shader_variant_compile(struct radv_device *device,
 	else
 		options->wave_size = device->physical_device->ge_wave_size;
 
-	if (!use_aco || options->dump_shader || options->record_llvm_ir)
+	if (!use_aco || options->dump_shader || options->record_ir)
 		ac_init_llvm_once();
 
 	if (use_aco) {
@@ -1238,7 +1238,7 @@ radv_shader_variant_destroy(struct radv_device *device,
 
 	free(variant->nir_string);
 	free(variant->disasm_string);
-	free(variant->llvm_ir_string);
+	free(variant->ir_string);
 	free(variant);
 }
 
@@ -1459,7 +1459,7 @@ radv_GetShaderInfoAMD(VkDevice _device,
 		buf = _mesa_string_buffer_create(NULL, 1024);
 
 		_mesa_string_buffer_printf(buf, "%s:\n", radv_get_shader_name(&variant->info, stage));
-		_mesa_string_buffer_printf(buf, "%s\n\n", variant->llvm_ir_string);
+		_mesa_string_buffer_printf(buf, "%s\n\n", variant->ir_string);
 		_mesa_string_buffer_printf(buf, "%s\n\n", variant->disasm_string);
 		generate_shader_stats(device, variant, stage, buf);
 

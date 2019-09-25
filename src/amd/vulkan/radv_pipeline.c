@@ -5241,7 +5241,7 @@ VkResult radv_GetPipelineExecutableInternalRepresentationsKHR(
 	}
 	++p;
 
-	/* LLVM IR */
+	/* backend IR */
 	if (p < end) {
 		p->isText = true;
 		if (shader->aco_used) {
@@ -5251,7 +5251,7 @@ VkResult radv_GetPipelineExecutableInternalRepresentationsKHR(
 			desc_copy(p->name, "LLVM IR");
 			desc_copy(p->description, "The LLVM IR after some optimizations");
 		}
-		if (radv_copy_representation(p->pData, &p->dataSize, shader->llvm_ir_string) != VK_SUCCESS)
+		if (radv_copy_representation(p->pData, &p->dataSize, shader->ir_string) != VK_SUCCESS)
 			result = VK_INCOMPLETE;
 	}
 	++p;

@@ -4986,7 +4986,7 @@ static void ac_compile_llvm_module(struct ac_llvm_compiler *ac_llvm,
 		fprintf(stderr, "\n");
 	}
 
-	if (options->record_llvm_ir) {
+	if (options->record_ir) {
 		char *llvm_ir = LLVMPrintModuleToString(llvm_module);
 		llvm_ir_string = strdup(llvm_ir);
 		LLVMDisposeMessage(llvm_ir);
