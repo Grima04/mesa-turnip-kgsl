@@ -980,7 +980,7 @@ general_restrictions_on_region_parameters(const struct gen_device_info *devinfo,
          unsigned offset = rowbase;
 
          for (int x = 0; x < width; x++) {
-            access_mask |= mask << offset;
+            access_mask |= mask << (offset % 64);
             offset += hstride * element_size;
          }
 
@@ -1250,7 +1250,7 @@ align1_access_mask(uint64_t access_mask[static 32],
       unsigned offset = rowbase;
 
       for (int x = 0; x < width; x++) {
-         access_mask[element++] = mask << offset;
+         access_mask[element++] = mask << (offset % 64);
          offset += hstride * element_size;
       }
 
