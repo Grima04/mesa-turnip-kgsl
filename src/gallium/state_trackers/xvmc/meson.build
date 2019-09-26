@@ -26,10 +26,15 @@ libxvmc_st = static_library(
   dependencies : [dep_xvmc, dep_x11_xcb, dep_xcb, dep_xcb_dri2, dep_xcb_dri3],
 )
 
-# These tests will not work without a working xvmc configuration. 
+# These tests will not work without a working xvmc configuration.
 if with_tools.contains('xvmc')
-  dep_xvmcw = cc.find_library('XvMCW')
+  # pkg-config was added in 1.0.12, so allow fallback
+  dep_xvmcw = dependency('xvmc-wrapper', required : false)
+  if not dep_xvmcw.found()
+    dep_xvmcw = cc.find_library('XvMCW')
+  endif
   dep_real_xvmc = dependency('xvmc')
+
   foreach x : ['context', 'surface', 'subpicture', 'blocks', 'rendering']
     _name = 'xvmc_@0@'.format(x)
     executable(
