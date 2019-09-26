@@ -586,6 +586,8 @@ struct tu_descriptor_set
    uint64_t va;
    uint32_t *mapped_ptr;
    struct tu_descriptor_range *dynamic_descriptors;
+
+   struct tu_bo *descriptors[0];
 };
 
 struct tu_push_descriptor_set
@@ -603,7 +605,7 @@ struct tu_descriptor_pool_entry
 
 struct tu_descriptor_pool
 {
-   uint8_t *mapped_ptr;
+   struct tu_bo bo;
    uint64_t current_offset;
    uint64_t size;
 
@@ -1229,7 +1231,7 @@ struct tu_image
    VkDeviceMemory owned_memory;
 
    /* Set when bound */
-   const struct tu_bo *bo;
+   struct tu_bo *bo;
    VkDeviceSize bo_offset;
 };
 
