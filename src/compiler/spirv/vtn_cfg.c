@@ -315,7 +315,6 @@ vtn_cfg_handle_prepass_instruction(struct vtn_builder *b, SpvOp opcode,
             vtn_push_value(b, w[2], vtn_value_type_sampled_image);
 
          val->sampled_image = ralloc(b, struct vtn_sampled_image);
-         val->sampled_image->type = type;
 
          struct vtn_type *sampler_type = rzalloc(b, struct vtn_type);
          sampler_type->base_type = vtn_base_type_sampler;

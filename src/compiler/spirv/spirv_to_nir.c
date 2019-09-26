@@ -2246,8 +2246,6 @@ vtn_handle_texture(struct vtn_builder *b, SpvOp opcode,
       struct vtn_value *val =
          vtn_push_value(b, w[2], vtn_value_type_sampled_image);
       val->sampled_image = ralloc(b, struct vtn_sampled_image);
-      val->sampled_image->type =
-         vtn_value(b, w[1], vtn_value_type_type)->type;
       val->sampled_image->image =
          vtn_value(b, w[3], vtn_value_type_pointer)->pointer;
       val->sampled_image->sampler =
@@ -2272,12 +2270,11 @@ vtn_handle_texture(struct vtn_builder *b, SpvOp opcode,
       sampled = *sampled_val->sampled_image;
    } else {
       vtn_assert(sampled_val->value_type == vtn_value_type_pointer);
-      sampled.type = sampled_val->pointer->type;
       sampled.image = NULL;
       sampled.sampler = sampled_val->pointer;
    }
 
-   const struct glsl_type *image_type = sampled.type->type;
+   const struct glsl_type *image_type = sampled_val->type->type;
    const enum glsl_sampler_dim sampler_dim = glsl_get_sampler_dim(image_type);
    const bool is_array = glsl_sampler_type_is_array(image_type);
    nir_alu_type dest_type = nir_type_invalid;
@@ -2300,7 +2297,7 @@ vtn_handle_texture(struct vtn_builder *b, SpvOp opcode,
       break;
 
    case SpvOpImageFetch:
-      if (glsl_get_sampler_dim(image_type) == GLSL_SAMPLER_DIM_MS) {
+      if (sampler_dim == GLSL_SAMPLER_DIM_MS) {
          texop = nir_texop_txf_ms;
       } else {
          texop = nir_texop_txf;
