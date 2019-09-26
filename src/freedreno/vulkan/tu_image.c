@@ -172,7 +172,10 @@ tu_image_create(VkDevice _device,
       vk_find_struct_const(pCreateInfo->pNext,
                            EXTERNAL_MEMORY_IMAGE_CREATE_INFO) != NULL;
 
-   image->tile_mode = pCreateInfo->tiling == VK_IMAGE_TILING_OPTIMAL ? 3 : 0;
+   image->tile_mode = TILE6_LINEAR;
+   if (pCreateInfo->tiling == VK_IMAGE_TILING_OPTIMAL && !create_info->scanout)
+      image->tile_mode = TILE6_3;
+
    setup_slices(image, pCreateInfo);
 
    image->size = image->layer_size * pCreateInfo->arrayLayers;
@@ -339,10 +342,14 @@ tu_CreateImage(VkDevice device,
                                    pAllocator, pImage);
 #endif
 
+   const struct wsi_image_create_info *wsi_info =
+      vk_find_struct_const(pCreateInfo->pNext, WSI_IMAGE_CREATE_INFO_MESA);
+   bool scanout = wsi_info && wsi_info->scanout;
+
    return tu_image_create(device,
                           &(struct tu_image_create_info) {
                              .vk_info = pCreateInfo,
-                             .scanout = false,
+                             .scanout = scanout,
                           },
                           pAllocator, pImage);
 }
