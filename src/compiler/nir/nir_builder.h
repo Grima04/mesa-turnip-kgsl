@@ -646,7 +646,7 @@ nir_iadd_imm(nir_builder *build, nir_ssa_def *x, uint64_t y)
 }
 
 static inline nir_ssa_def *
-nir_imul_imm(nir_builder *build, nir_ssa_def *x, uint64_t y)
+_nir_mul_imm(nir_builder *build, nir_ssa_def *x, uint64_t y, bool amul)
 {
    assert(x->bit_size <= 64);
    if (x->bit_size < 64)
@@ -658,9 +658,23 @@ nir_imul_imm(nir_builder *build, nir_ssa_def *x, uint64_t y)
       return x;
    } else if (util_is_power_of_two_or_zero64(y)) {
       return nir_ishl(build, x, nir_imm_int(build, ffsll(y) - 1));
+   } else if (amul) {
+      return nir_amul(build, x, nir_imm_intN_t(build, y, x->bit_size));
    } else {
       return nir_imul(build, x, nir_imm_intN_t(build, y, x->bit_size));
    }
+}
+
+static inline nir_ssa_def *
+nir_imul_imm(nir_builder *build, nir_ssa_def *x, uint64_t y)
+{
+   return _nir_mul_imm(build, x, y, false);
+}
+
+static inline nir_ssa_def *
+nir_amul_imm(nir_builder *build, nir_ssa_def *x, uint64_t y)
+{
+   return _nir_mul_imm(build, x, y, true);
 }
 
 static inline nir_ssa_def *

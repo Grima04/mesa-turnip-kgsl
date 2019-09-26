@@ -1047,6 +1047,18 @@ dst.z = src2.x;
 dst.w = src3.x;
 """)
 
+# An integer multiply instruction for address calculation.  This is
+# similar to imul, except that the results are undefined in case of
+# overflow.  Overflow is defined according to the size of the variable
+# being dereferenced.
+#
+# This relaxed definition, compared to imul, allows an optimization
+# pass to propagate bounds (ie, from an load/store intrinsic) to the
+# sources, such that lower precision integer multiplies can be used.
+# This is useful on hw that has 24b or perhaps 16b integer multiply
+# instructions.
+binop("amul", tint, _2src_commutative + associative, "src0 * src1")
+
 # ir3-specific instruction that maps directly to mul-add shift high mix,
 # (IMADSH_MIX16 i.e. ah * bl << 16 + c). It is used for lowering integer
 # multiplication (imul) on Freedreno backend..

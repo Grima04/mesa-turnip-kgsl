@@ -297,7 +297,7 @@ nir_build_deref_offset(nir_builder *b, nir_deref_instr *deref,
       if ((*p)->deref_type == nir_deref_type_array) {
          nir_ssa_def *index = nir_ssa_for_src(b, (*p)->arr.index, 1);
          int stride = type_get_array_stride((*p)->type, size_align);
-         offset = nir_iadd(b, offset, nir_imul_imm(b, index, stride));
+         offset = nir_iadd(b, offset, nir_amul_imm(b, index, stride));
       } else if ((*p)->deref_type == nir_deref_type_struct) {
          /* p starts at path[1], so this is safe */
          nir_deref_instr *parent = *(p - 1);

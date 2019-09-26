@@ -1112,6 +1112,11 @@ optimizations.extend([
 
    (('isign', a), ('imin', ('imax', a, -1), 1), 'options->lower_isign'),
    (('fsign', a), ('fsub', ('b2f', ('flt', 0.0, a)), ('b2f', ('flt', a, 0.0))), 'options->lower_fsign'),
+
+   # Address/offset calculations:
+   # for now, unconditionally convert amul to imul, this will
+   # change in the following patch
+   (('amul', a, b), ('imul', a, b)),
 ])
 
 # bit_size dependent lowerings
