@@ -239,8 +239,13 @@ void emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction*
    case Format::DS: {
       DS_instruction* ds = static_cast<DS_instruction*>(instr);
       uint32_t encoding = (0b110110 << 26);
-      encoding |= opcode << 17;
-      encoding |= (ds->gds ? 1 : 0) << 16;
+      if (ctx.chip_class == GFX8 || ctx.chip_class == GFX9) {
+         encoding |= opcode << 17;
+         encoding |= (ds->gds ? 1 : 0) << 16;
+      } else {
+         encoding |= opcode << 18;
+         encoding |= (ds->gds ? 1 : 0) << 17;
+      }
       encoding |= ((0xFF & ds->offset1) << 8);
       encoding |= (0xFFFF & ds->offset0);
       out.push_back(encoding);
