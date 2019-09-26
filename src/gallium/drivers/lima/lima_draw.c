@@ -1086,7 +1086,6 @@ lima_pack_render_state(struct lima_context *ctx, const struct pipe_draw_info *in
    if (ctx->const_buffer[PIPE_SHADER_FRAGMENT].buffer) {
       render->uniforms_address =
          lima_ctx_buff_va(ctx, lima_ctx_buff_pp_uniform_array, LIMA_CTX_BUFF_SUBMIT_PP);
-      render->uniforms_address |= ((ctx->buffer_state[lima_ctx_buff_pp_uniform].size) / 4 - 1);
       render->aux0 |= 0x80;
       render->aux1 |= 0x10000;
    }
