@@ -924,6 +924,7 @@ enum block_kind {
    block_kind_invert = 1 << 11,
    block_kind_uses_discard_if = 1 << 12,
    block_kind_needs_lowering = 1 << 13,
+   block_kind_uses_demote = 1 << 14,
 };
 
 

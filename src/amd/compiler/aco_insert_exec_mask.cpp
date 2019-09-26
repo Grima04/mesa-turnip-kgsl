@@ -72,7 +72,7 @@ struct loop_info {
    uint8_t needs;
    bool has_divergent_break;
    bool has_divergent_continue;
-   bool has_discard;
+   bool has_discard; /* has a discard or demote */
    loop_info(Block* b, uint16_t num, uint8_t needs, bool breaks, bool cont, bool discard) :
              loop_header(b), num_exec_masks(num), needs(needs), has_divergent_break(breaks),
              has_divergent_continue(cont), has_discard(discard) {}
@@ -279,7 +279,8 @@ void calculate_wqm_needs(exec_ctx& exec_ctx)
 
       ever_again_needs |= exec_ctx.info[i].block_needs & ~Exact_Branch;
       if (block.kind & block_kind_discard ||
-          block.kind & block_kind_uses_discard_if)
+          block.kind & block_kind_uses_discard_if ||
+          block.kind & block_kind_uses_demote)
          ever_again_needs |= Exact;
 
       /* don't propagate WQM preservation further than the next top_level block */
@@ -629,6 +630,7 @@ void process_instructions(exec_ctx& ctx, Block* block,
                    (ctx.info[block->index].block_needs & state) !=
                    (ctx.info[block->index].block_needs & (WQM | Exact))) ||
                   block->kind & block_kind_uses_discard_if ||
+                  block->kind & block_kind_uses_demote ||
                   block->kind & block_kind_needs_lowering;
    if (!process) {
       std::vector<aco_ptr<Instruction>>::iterator it = std::next(block->instructions.begin(), idx);
@@ -811,7 +813,8 @@ void add_branch_code(exec_ctx& ctx, Block* block)
          needs |= ctx.info[i].block_needs;
 
          if (loop_block.kind & block_kind_uses_discard_if ||
-             loop_block.kind & block_kind_discard)
+             loop_block.kind & block_kind_discard ||
+             loop_block.kind & block_kind_uses_demote)
             has_discard = true;
          if (loop_block.loop_nest_depth != loop_nest_depth)
             continue;
