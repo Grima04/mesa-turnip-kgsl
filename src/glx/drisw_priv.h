@@ -62,7 +62,6 @@ struct drisw_drawable
    __GLXDRIdrawable base;
 
    GC gc;
-   GC swapgc;
 
    __DRIdrawable *driDrawable;
    XVisualInfo *visinfo;

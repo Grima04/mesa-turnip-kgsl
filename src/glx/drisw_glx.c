@@ -32,23 +32,14 @@
 #include <assert.h>
 
 static Bool
-XCreateGCs(struct drisw_drawable * pdp,
-           Display * dpy, XID drawable, int visualid)
+driswCreateGCs(struct drisw_drawable * pdp,
+               Display * dpy, XID drawable, int visualid)
 {
-   XGCValues gcvalues;
    long visMask;
    XVisualInfo visTemp;
    int num_visuals;
 
-   /* create GC's */
    pdp->gc = XCreateGC(dpy, drawable, 0, NULL);
-   pdp->swapgc = XCreateGC(dpy, drawable, 0, NULL);
-
-   gcvalues.function = GXcopy;
-   gcvalues.graphics_exposures = False;
-   XChangeGC(dpy, pdp->gc, GCFunction, &gcvalues);
-   XChangeGC(dpy, pdp->swapgc, GCFunction, &gcvalues);
-   XChangeGC(dpy, pdp->swapgc, GCGraphicsExposures, &gcvalues);
 
    /* visual */
    visTemp.visualid = visualid;
@@ -152,7 +143,6 @@ XDestroyDrawable(struct drisw_drawable * pdp, Display * dpy, XID drawable)
    free(pdp->visinfo);
 
    XFreeGC(dpy, pdp->gc);
-   XFreeGC(dpy, pdp->swapgc);
 }
 
 /**
@@ -212,22 +202,11 @@ swrastXPutImage(__DRIdrawable * draw, int op,
    Display *dpy = pdraw->psc->dpy;
    Drawable drawable;
    XImage *ximage;
-   GC gc;
+   GC gc = pdp->gc;
 
    if (!pdp->ximage || shmid != pdp->shminfo.shmid) {
       if (!XCreateDrawable(pdp, shmid, dpy))
          return;
-   }
-
-   switch (op) {
-   case __DRI_SWRAST_IMAGE_OP_DRAW:
-      gc = pdp->gc;
-      break;
-   case __DRI_SWRAST_IMAGE_OP_SWAP:
-      gc = pdp->swapgc;
-      break;
-   default:
-      return;
    }
 
    drawable = pdraw->xDrawable;
@@ -699,7 +678,7 @@ driswCreateDrawable(struct glx_screen *base, XID xDrawable,
    pdp->base.drawable = drawable;
    pdp->base.psc = &psc->base;
 
-   ret = XCreateGCs(pdp, psc->base.dpy, xDrawable, modes->visualID);
+   ret = driswCreateGCs(pdp, psc->base.dpy, xDrawable, modes->visualID);
    if (!ret) {
       free(pdp);
       return NULL;
