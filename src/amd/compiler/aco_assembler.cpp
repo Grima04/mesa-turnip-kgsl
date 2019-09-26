@@ -216,7 +216,15 @@ void emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction*
    }
    case Format::VINTRP: {
       Interp_instruction* interp = static_cast<Interp_instruction*>(instr);
-      uint32_t encoding = (0b110101 << 26);
+      uint32_t encoding = 0;
+
+      if (ctx.chip_class == GFX8 || ctx.chip_class == GFX9) {
+         encoding = (0b110101 << 26); /* Vega ISA doc says 110010 but it's wrong */
+      } else {
+         encoding = (0b110010 << 26);
+      }
+
+      assert(encoding);
       encoding |= (0xFF & instr->definitions[0].physReg().reg) << 18;
       encoding |= opcode << 16;
       encoding |= interp->attribute << 10;
