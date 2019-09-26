@@ -334,10 +334,18 @@ void emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction*
       encoding |= opcode << 18;
       encoding |= mimg->lwe ? 1 << 17 : 0;
       encoding |= mimg->tfe ? 1 << 16 : 0;
-      encoding |= mimg->r128 ? 1 << 15 : 0;
-      encoding |= mimg->da ? 1 << 14 : 0;
       encoding |= mimg->glc ? 1 << 13 : 0;
       encoding |= mimg->unrm ? 1 << 12 : 0;
+      if (ctx.chip_class <= GFX9) {
+         assert(!mimg->dlc); /* Device-level coherent is not supported on GFX9 and lower */
+         assert(!mimg->r128);
+         encoding |= mimg->a16 ? 1 << 15 : 0;
+         encoding |= mimg->da ? 1 << 14 : 0;
+      } else {
+         encoding |= mimg->r128 ? 1 << 15 : 0; /* GFX10: A16 moved to 2nd word, R128 replaces it in 1st word */
+         encoding |= mimg->dim << 3; /* GFX10: dimensionality instead of declare array */
+         encoding |= mimg->dlc ? 1 << 7 : 0;
+      }
       encoding |= (0xF & mimg->dmask) << 8;
       out.push_back(encoding);
       encoding = (0xFF & instr->operands[0].physReg().reg); /* VADDR */
@@ -349,7 +357,13 @@ void emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction*
       encoding |= (0x1F & (instr->operands[1].physReg() >> 2)) << 16; /* T# (resource) */
       if (instr->operands.size() > 2)
          encoding |= (0x1F & (instr->operands[2].physReg() >> 2)) << 21; /* sampler */
-      // TODO VEGA: D16
+
+      assert(!mimg->d16 || ctx.chip_class >= GFX9);
+      encoding |= mimg->d16 ? 1 << 15 : 0;
+      if (ctx.chip_class >= GFX10) {
+         encoding |= mimg->a16 ? 1 << 14 : 0; /* GFX10: A16 still exists, but is in a different place */
+      }
+
       out.push_back(encoding);
       break;
    }
