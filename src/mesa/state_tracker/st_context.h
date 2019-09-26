@@ -337,12 +337,12 @@ struct st_context
 
    struct {
       struct st_zombie_sampler_view_node list;
-      mtx_t mutex;
+      simple_mtx_t mutex;
    } zombie_sampler_views;
 
    struct {
       struct st_zombie_shader_node list;
-      mtx_t mutex;
+      simple_mtx_t mutex;
    } zombie_shaders;
 
 };

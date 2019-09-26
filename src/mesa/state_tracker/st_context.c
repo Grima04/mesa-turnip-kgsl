@@ -302,9 +302,9 @@ st_save_zombie_sampler_view(struct st_context *st,
    /* We need a mutex since this function may be called from one thread
     * while free_zombie_resource_views() is called from another.
     */
-   mtx_lock(&st->zombie_sampler_views.mutex);
+   simple_mtx_lock(&st->zombie_sampler_views.mutex);
    LIST_ADDTAIL(&entry->node, &st->zombie_sampler_views.list.node);
-   mtx_unlock(&st->zombie_sampler_views.mutex);
+   simple_mtx_unlock(&st->zombie_sampler_views.mutex);
 }
 
 
@@ -335,9 +335,9 @@ st_save_zombie_shader(struct st_context *st,
    /* We need a mutex since this function may be called from one thread
     * while free_zombie_shaders() is called from another.
     */
-   mtx_lock(&st->zombie_shaders.mutex);
+   simple_mtx_lock(&st->zombie_shaders.mutex);
    LIST_ADDTAIL(&entry->node, &st->zombie_shaders.list.node);
-   mtx_unlock(&st->zombie_shaders.mutex);
+   simple_mtx_unlock(&st->zombie_shaders.mutex);
 }
 
 
@@ -353,7 +353,7 @@ free_zombie_sampler_views(struct st_context *st)
       return;
    }
 
-   mtx_lock(&st->zombie_sampler_views.mutex);
+   simple_mtx_lock(&st->zombie_sampler_views.mutex);
 
    LIST_FOR_EACH_ENTRY_SAFE(entry, next,
                             &st->zombie_sampler_views.list.node, node) {
@@ -367,7 +367,7 @@ free_zombie_sampler_views(struct st_context *st)
 
    assert(LIST_IS_EMPTY(&st->zombie_sampler_views.list.node));
 
-   mtx_unlock(&st->zombie_sampler_views.mutex);
+   simple_mtx_unlock(&st->zombie_sampler_views.mutex);
 }
 
 
@@ -383,7 +383,7 @@ free_zombie_shaders(struct st_context *st)
       return;
    }
 
-   mtx_lock(&st->zombie_shaders.mutex);
+   simple_mtx_lock(&st->zombie_shaders.mutex);
 
    LIST_FOR_EACH_ENTRY_SAFE(entry, next,
                             &st->zombie_shaders.list.node, node) {
@@ -416,7 +416,7 @@ free_zombie_shaders(struct st_context *st)
 
    assert(LIST_IS_EMPTY(&st->zombie_shaders.list.node));
 
-   mtx_unlock(&st->zombie_shaders.mutex);
+   simple_mtx_unlock(&st->zombie_shaders.mutex);
 }
 
 
@@ -762,9 +762,9 @@ st_create_context_priv(struct gl_context *ctx, struct pipe_context *pipe,
    LIST_INITHEAD(&st->winsys_buffers);
 
    LIST_INITHEAD(&st->zombie_sampler_views.list.node);
-   mtx_init(&st->zombie_sampler_views.mutex, mtx_plain);
+   simple_mtx_init(&st->zombie_sampler_views.mutex, mtx_plain);
    LIST_INITHEAD(&st->zombie_shaders.list.node);
-   mtx_init(&st->zombie_shaders.mutex, mtx_plain);
+   simple_mtx_init(&st->zombie_shaders.mutex, mtx_plain);
 
    return st;
 }
@@ -1005,8 +1005,8 @@ st_destroy_context(struct st_context *st)
 
    st_context_free_zombie_objects(st);
 
-   mtx_destroy(&st->zombie_sampler_views.mutex);
-   mtx_destroy(&st->zombie_shaders.mutex);
+   simple_mtx_destroy(&st->zombie_sampler_views.mutex);
+   simple_mtx_destroy(&st->zombie_shaders.mutex);
 
    st_reference_fragprog(st, &st->fp, NULL);
    st_reference_prog(st, &st->gp, NULL);
