@@ -522,6 +522,13 @@ get_back_bo(struct dri2_egl_surface *dri2_surf)
    modifiers = u_vector_tail(&dri2_dpy->wl_modifiers[visual_idx]);
    num_modifiers = u_vector_length(&dri2_dpy->wl_modifiers[visual_idx]);
 
+   if (num_modifiers == 1 && modifiers[0] == DRM_FORMAT_MOD_INVALID) {
+      /* For the purposes of this function, an INVALID modifier on its own
+       * means the modifiers aren't supported.
+       */
+      num_modifiers = 0;
+   }
+
    /* Substitute dri image format if server does not support original format */
    if (!BITSET_TEST(dri2_dpy->formats, visual_idx))
       linear_dri_image_format = dri2_wl_visuals[visual_idx].alt_dri_image_format;
@@ -917,7 +924,23 @@ create_wl_buffer(struct dri2_egl_display *dri2_dpy,
       }
    }
 
-   if (dri2_dpy->wl_dmabuf && modifier != DRM_FORMAT_MOD_INVALID) {
+   bool supported_modifier = false;
+   if (modifier != DRM_FORMAT_MOD_INVALID) {
+      supported_modifier = true;
+   } else {
+      int visual_idx = dri2_wl_visual_idx_from_fourcc(fourcc);
+      assert(visual_idx != -1);
+
+      uint64_t *mod;
+      u_vector_foreach(mod, &dri2_dpy->wl_modifiers[visual_idx]) {
+         if (*mod == DRM_FORMAT_MOD_INVALID) {
+            supported_modifier = true;
+            break;
+         }
+      }
+   }
+
+   if (dri2_dpy->wl_dmabuf && supported_modifier) {
       struct zwp_linux_buffer_params_v1 *params;
       int i;
 
@@ -1288,10 +1311,6 @@ dmabuf_handle_modifier(void *data, struct zwp_linux_dmabuf_v1 *dmabuf,
    uint64_t *mod;
 
    if (visual_idx == -1)
-      return;
-
-   if (modifier_hi == (DRM_FORMAT_MOD_INVALID >> 32) &&
-       modifier_lo == (DRM_FORMAT_MOD_INVALID & 0xffffffff))
       return;
 
    BITSET_SET(dri2_dpy->formats, visual_idx);
