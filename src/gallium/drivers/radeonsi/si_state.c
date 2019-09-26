@@ -3791,12 +3791,26 @@ static void gfx10_make_texture_descriptor(
       S_00A00C_BASE_LEVEL(res->nr_samples > 1 ? 0 : first_level) |
       S_00A00C_LAST_LEVEL(res->nr_samples > 1 ? util_logbase2(res->nr_samples) : last_level) |
       S_00A00C_BC_SWIZZLE(gfx9_border_color_swizzle(desc->swizzle)) | S_00A00C_TYPE(type);
-   /* Depth is the the last accessible layer on gfx9+. The hw doesn't need
-    * to know the total number of layers.
-    */
-   state[4] =
-      S_00A010_DEPTH((type == V_008F1C_SQ_RSRC_IMG_3D && sampler) ? depth - 1 : last_layer) |
-      S_00A010_BASE_ARRAY(first_layer);
+
+   if (res->target == PIPE_TEXTURE_1D ||
+       res->target == PIPE_TEXTURE_2D) {
+      /* 1D, 2D, and 2D_MSAA can set a custom pitch for shader resources
+       * starting with gfx10.3 (ignored if pitch <= width). Other texture
+       * targets can't. CB and DB can't set a custom pitch for any target.
+       */
+      if (screen->info.chip_class >= GFX10_3)
+         state[4] = S_00A010_DEPTH(tex->surface.u.gfx9.surf_pitch - 1);
+      else
+         state[4] = 0;
+   } else {
+      /* Depth is the last accessible layer on gfx9+. The hw doesn't need
+       * to know the total number of layers.
+       */
+      state[4] = S_00A010_DEPTH((type == V_008F1C_SQ_RSRC_IMG_3D && sampler) ?
+                                   depth - 1 : last_layer) |
+                 S_00A010_BASE_ARRAY(first_layer);
+   }
+
    state[5] = S_00A014_ARRAY_PITCH(!!(type == V_008F1C_SQ_RSRC_IMG_3D && !sampler)) |
               S_00A014_MAX_MIP(res->nr_samples > 1 ? util_logbase2(res->nr_samples)
                                                    : tex->buffer.b.b.last_level) |
