@@ -1117,6 +1117,22 @@ optimizations.extend([
    # for now, unconditionally convert amul to imul, this will
    # change in the following patch
    (('amul', a, b), ('imul', a, b)),
+
+   (('imad24_ir3', a, b, 0), ('imul24', a, b)),
+   (('imad24_ir3', a, 0, c), (c)),
+   (('imad24_ir3', a, 1, c), ('iadd', a, c)),
+
+   # if first two srcs are const, crack apart the imad so constant folding
+   # can clean up the imul:
+   # TODO ffma should probably get a similar rule:
+   (('imad24_ir3', '#a', '#b', c), ('iadd', ('imul', a, b), c)),
+
+   # These will turn 24b address/offset calc back into 32b shifts, but
+   # it should be safe to get back some of the bits of precision that we
+   # already decided were no necessary:
+   (('imul24', a, '#b@32(is_pos_power_of_two)'), ('ishl', a, ('find_lsb', b)), '!options->lower_bitops'),
+   (('imul24', a, '#b@32(is_neg_power_of_two)'), ('ineg', ('ishl', a, ('find_lsb', ('iabs', b)))), '!options->lower_bitops'),
+   (('imul24', a, 0), (0)),
 ])
 
 # bit_size dependent lowerings
