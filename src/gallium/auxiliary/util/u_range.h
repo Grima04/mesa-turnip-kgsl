@@ -37,13 +37,14 @@
 #include "os/os_thread.h"
 
 #include "util/u_math.h"
+#include "util/simple_mtx.h"
 
 struct util_range {
    unsigned start; /* inclusive */
    unsigned end; /* exclusive */
 
    /* for the range to be consistent with multiple contexts: */
-   mtx_t write_mutex;
+   simple_mtx_t write_mutex;
 };
 
 
@@ -59,10 +60,10 @@ static inline void
 util_range_add(struct util_range *range, unsigned start, unsigned end)
 {
    if (start < range->start || end > range->end) {
-      mtx_lock(&range->write_mutex);
+      simple_mtx_lock(&range->write_mutex);
       range->start = MIN2(start, range->start);
       range->end = MAX2(end, range->end);
-      mtx_unlock(&range->write_mutex);
+      simple_mtx_unlock(&range->write_mutex);
    }
 }
 
@@ -79,14 +80,14 @@ util_ranges_intersect(const struct util_range *range,
 static inline void
 util_range_init(struct util_range *range)
 {
-   (void) mtx_init(&range->write_mutex, mtx_plain);
+   (void) simple_mtx_init(&range->write_mutex, mtx_plain);
    util_range_set_empty(range);
 }
 
 static inline void
 util_range_destroy(struct util_range *range)
 {
-   mtx_destroy(&range->write_mutex);
+   simple_mtx_destroy(&range->write_mutex);
 }
 
 #endif
