@@ -1010,11 +1010,12 @@ zink_draw_vbo(struct pipe_context *pctx,
          int index = shader->bindings[j].index;
          if (shader->bindings[j].type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER) {
             assert(ctx->ubos[i][index].buffer_size > 0);
+            assert(ctx->ubos[i][index].buffer_size <= screen->props.limits.maxUniformBufferRange);
             assert(ctx->ubos[i][index].buffer);
             struct zink_resource *res = zink_resource(ctx->ubos[i][index].buffer);
             buffer_infos[num_buffer_info].buffer = res->buffer;
             buffer_infos[num_buffer_info].offset = ctx->ubos[i][index].buffer_offset;
-            buffer_infos[num_buffer_info].range  = VK_WHOLE_SIZE;
+            buffer_infos[num_buffer_info].range  = ctx->ubos[i][index].buffer_size;
             wds[num_wds].pBufferInfo = buffer_infos + num_buffer_info;
             ++num_buffer_info;
          } else {
