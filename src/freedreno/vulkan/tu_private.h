@@ -818,6 +818,7 @@ enum tu_cmd_dirty_bits
 {
    TU_CMD_DIRTY_PIPELINE = 1 << 0,
    TU_CMD_DIRTY_VERTEX_BUFFERS = 1 << 1,
+   TU_CMD_DIRTY_DESCRIPTOR_SETS = 1 << 2,
 
    TU_CMD_DIRTY_DYNAMIC_LINE_WIDTH = 1 << 16,
    TU_CMD_DIRTY_DYNAMIC_STENCIL_COMPARE_MASK = 1 << 17,
@@ -935,6 +936,7 @@ struct tu_cmd_buffer
    struct tu_bo_list bo_list;
    struct tu_cs cs;
    struct tu_cs draw_cs;
+   struct tu_cs draw_state;
    struct tu_cs tile_cs;
 
    uint16_t marker_reg;
@@ -956,6 +958,14 @@ bool
 tu_get_memory_fd(struct tu_device *device,
                  struct tu_device_memory *memory,
                  int *pFD);
+
+static inline struct tu_descriptor_state *
+tu_get_descriptors_state(struct tu_cmd_buffer *cmd_buffer,
+                         VkPipelineBindPoint bind_point)
+{
+   assert(bind_point == VK_PIPELINE_BIND_POINT_GRAPHICS);
+   return &cmd_buffer->descriptors[bind_point];
+}
 
 /*
  * Takes x,y,z as exact numbers of invocations, instead of blocks.
