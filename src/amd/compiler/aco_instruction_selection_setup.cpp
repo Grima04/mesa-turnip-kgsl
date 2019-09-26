@@ -1324,13 +1324,24 @@ setup_isel_context(Program* program,
       nir_copy_prop(nir);
       nir_opt_constant_folding(nir);
       nir_opt_algebraic(nir);
-      nir_opt_algebraic_late(nir);
-      nir_opt_constant_folding(nir);
+
+      /* Do late algebraic optimization to turn add(a, neg(b)) back into
+      * subs, then the mandatory cleanup after algebraic.  Note that it may
+      * produce fnegs, and if so then we need to keep running to squash
+      * fneg(fneg(a)).
+      */
+      bool more_late_algebraic = true;
+      while (more_late_algebraic) {
+         more_late_algebraic = false;
+         NIR_PASS(more_late_algebraic, nir, nir_opt_algebraic_late);
+         NIR_PASS_V(nir, nir_opt_constant_folding);
+         NIR_PASS_V(nir, nir_copy_prop);
+         NIR_PASS_V(nir, nir_opt_dce);
+         NIR_PASS_V(nir, nir_opt_cse);
+      }
 
       /* cleanup passes */
       nir_lower_load_const_to_scalar(nir);
-      nir_opt_cse(nir);
-      nir_opt_dce(nir);
       nir_opt_shrink_load(nir);
       nir_move_options move_opts = (nir_move_options)(
          nir_move_const_undef | nir_move_load_ubo | nir_move_load_input | nir_move_comparisons);
