@@ -69,11 +69,37 @@ situations.
 The `image_atomic_{swap,cmpswap,add,sub}` opcodes in the GCN3 ISA reference
 guide are incorrect. The Vega ISA reference guide has the correct ones.
 
+## VINTRP encoding
+
+VEGA ISA doc says the encoding should be `110010` but `110101` works.
+
+## VOP1 instructions encoded as VOP3
+
+RDNA ISA doc says that `0x140` should be added to the opcode, but that doesn't
+work. What works is adding `0x180`, which LLVM also does.
+
+## FLAT, Scratch, Global instructions
+
+The NV bit was removed in RDNA, but some parts of the doc still mention it.
+
 ## Legacy instructions
 
 Some instructions have a `_LEGACY` variant which implements "DX9 rules", in which
 the zero "wins" in multiplications, ie. `0.0*x` is always `0.0`. The VEGA ISA
 mentions `V_MAC_LEGACY_F32` but this instruction is not really there on VEGA.
+
+## RDNA L0, L1 cache and DLC, GLC bits
+
+The old L1 cache was renamed to L0, and a new L1 cache was added to RDNA. The
+L1 cache is 1 cache per shader array. Some instruction encodings have DLC and
+GLC bits that interact with the cache.
+
+* DLC ("device level coherent") bit: controls the L1 cache
+* GLC ("globally coherent") bit: controls the L0 cache
+
+The recommendation from AMD devs is to always set these two bits at the same time,
+as it doesn't make too much sense to set them independently, aside from some
+circumstances (eg. we needn't set DLC when only one shader array is used).
 
 # Hardware Bugs
 

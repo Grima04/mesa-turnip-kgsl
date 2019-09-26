@@ -16,6 +16,8 @@ struct asm_context {
    asm_context(Program* program) : program(program), chip_class(program->chip_class) {
       if (chip_class <= GFX9)
          opcode = &instr_info.opcode_gfx9[0];
+      else if (chip_class == GFX10)
+         opcode = &instr_info.opcode_gfx10[0];
    }
 };
 

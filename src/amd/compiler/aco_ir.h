@@ -221,6 +221,7 @@ struct PhysReg {
 /* helper expressions for special registers */
 static constexpr PhysReg m0{124};
 static constexpr PhysReg vcc{106};
+static constexpr PhysReg sgpr_null{125}; /* GFX10+ */
 static constexpr PhysReg exec{126};
 static constexpr PhysReg exec_lo{126};
 static constexpr PhysReg exec_hi{127};
@@ -765,6 +766,7 @@ struct MTBUF_instruction : public Instruction {
  */
 struct MIMG_instruction : public Instruction {
    unsigned dmask; /* Data VGPR enable mask */
+   unsigned dim; /* NAVI: dimensionality */
    bool unrm; /* Force address to be un-normalized */
    bool dlc; /* NAVI: device level coherent */
    bool glc; /* globally coherent */
@@ -789,8 +791,9 @@ struct MIMG_instruction : public Instruction {
  */
 struct FLAT_instruction : public Instruction {
    uint16_t offset; /* Vega only */
-   bool slc;
-   bool glc;
+   bool slc; /* system level coherent */
+   bool glc; /* globally coherent */
+   bool dlc; /* NAVI: device level coherent */
    bool lds;
    bool nv;
 };
