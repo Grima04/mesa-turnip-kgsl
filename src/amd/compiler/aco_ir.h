@@ -737,13 +737,8 @@ struct MUBUF_instruction : public Instruction {
  *
  */
 struct MTBUF_instruction : public Instruction {
-   union {
-      struct {
-         uint8_t dfmt : 4; /* Data Format of data in memory buffer */
-         uint8_t nfmt : 3; /* Numeric format of data in memory */
-      };
-      uint8_t img_format; /* Buffer or image format as used by GFX10 */
-   };
+   uint8_t dfmt : 4; /* Data Format of data in memory buffer */
+   uint8_t nfmt : 3; /* Numeric format of data in memory */
    unsigned offset; /* Unsigned byte offset - 12 bit */
    bool offen; /* Supply an offset from VGPR (VADDR) */
    bool idxen; /* Supply an index from VGPR (VADDR) */

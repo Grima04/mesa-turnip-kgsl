@@ -2,6 +2,7 @@
 
 #include "aco_ir.h"
 #include "common/sid.h"
+#include "ac_shader_util.h"
 
 namespace aco {
 
@@ -291,16 +292,26 @@ void emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction*
    }
    case Format::MTBUF: {
       MTBUF_instruction* mtbuf = static_cast<MTBUF_instruction*>(instr);
+
+      uint32_t img_format = ac_get_tbuffer_format(ctx.chip_class, mtbuf->dfmt, mtbuf->nfmt);
       uint32_t encoding = (0b111010 << 26);
-      encoding |= opcode << 15;
+      assert(!mtbuf->dlc || ctx.chip_class >= GFX10);
+      encoding |= (mtbuf->dlc ? 1 : 0) << 15; /* DLC bit replaces one bit of the OPCODE on GFX10 */
       encoding |= (mtbuf->glc ? 1 : 0) << 14;
       encoding |= (mtbuf->idxen ? 1 : 0) << 13;
       encoding |= (mtbuf->offen ? 1 : 0) << 12;
       encoding |= 0x0FFF & mtbuf->offset;
-      encoding |= (0xF & mtbuf->dfmt) << 19;
-      encoding |= (0x7 & mtbuf->nfmt) << 23;
+      encoding |= (img_format << 19); /* Handles both the GFX10 FORMAT and the old NFMT+DFMT */
+
+      if (ctx.chip_class <= GFX9) {
+         encoding |= opcode << 15;
+      } else {
+         encoding |= (opcode & 0x07) << 16; /* 3 LSBs of 4-bit OPCODE */
+      }
+
       out.push_back(encoding);
       encoding = 0;
+
       encoding |= instr->operands[2].physReg().reg << 24;
       encoding |= (mtbuf->tfe ? 1 : 0) << 23;
       encoding |= (mtbuf->slc ? 1 : 0) << 22;
@@ -308,6 +319,11 @@ void emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction*
       unsigned reg = instr->operands.size() > 3 ? instr->operands[3].physReg().reg : instr->definitions[0].physReg().reg;
       encoding |= (0xFF & reg) << 8;
       encoding |= (0xFF & instr->operands[0].physReg().reg);
+
+      if (ctx.chip_class >= GFX10) {
+         encoding |= (((opcode & 0x08) >> 4) << 21); /* MSB of 4-bit OPCODE */
+      }
+
       out.push_back(encoding);
       break;
    }
