@@ -2541,9 +2541,16 @@ vtn_handle_variables(struct vtn_builder *b, SpvOp opcode,
 
       vtn_assert_types_equal(b, opcode, res_type, src_val->type->deref);
 
-      if (glsl_type_is_image(res_type->type) ||
-          glsl_type_is_sampler(res_type->type)) {
+      if (res_type->base_type == vtn_base_type_image ||
+          res_type->base_type == vtn_base_type_sampler) {
          vtn_push_value_pointer(b, w[2], src);
+         return;
+      } else if (res_type->base_type == vtn_base_type_sampled_image) {
+         struct vtn_value *val =
+            vtn_push_value(b, w[2], vtn_value_type_sampled_image);
+         val->sampled_image = ralloc(b, struct vtn_sampled_image);
+         val->sampled_image->image = val->sampled_image->sampler =
+            vtn_decorate_pointer(b, val, src);
          return;
       }
 
