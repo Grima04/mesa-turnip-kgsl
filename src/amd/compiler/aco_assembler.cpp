@@ -415,7 +415,13 @@ void emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction*
    }
    case Format::EXP: {
       Export_instruction* exp = static_cast<Export_instruction*>(instr);
-      uint32_t encoding = (0b110001 << 26);
+      uint32_t encoding;
+      if (ctx.chip_class <= GFX9) {
+         encoding = (0b110001 << 26);
+      } else if (ctx.chip_class >= GFX10) {
+         encoding = (0b111110 << 26);
+      }
+
       encoding |= exp->valid_mask ? 0b1 << 12 : 0;
       encoding |= exp->done ? 0b1 << 11 : 0;
       encoding |= exp->compressed ? 0b1 << 10 : 0;
