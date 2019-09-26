@@ -289,7 +289,7 @@ lima_pack_reload_plbu_cmd(struct lima_context *ctx)
    lima_tex_desc *td = cpu + lima_reload_tex_desc_offset;
    memset(td, 0, lima_min_tex_desc_size);
    lima_texture_desc_set_res(ctx, td, fb->base.cbufs[0]->texture, 0, 0);
-   td->unknown_1_1 = 0x80;
+   td->unnorm_coords = 1;
    td->texture_2d = 1;
    td->min_img_filter_nearest = 1;
    td->mag_img_filter_nearest = 1;

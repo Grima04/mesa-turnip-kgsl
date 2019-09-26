@@ -127,6 +127,9 @@ lima_update_tex_desc(struct lima_context *ctx, struct lima_sampler_state *sample
    /* 2D texture */
    desc->texture_2d = 1;
 
+   if (!sampler->base.normalized_coords)
+      desc->unnorm_coords = 1;
+
    first_level = texture->base.u.tex.first_level;
    last_level = texture->base.u.tex.last_level;
    if (last_level - first_level >= LIMA_MAX_MIP_LEVELS)

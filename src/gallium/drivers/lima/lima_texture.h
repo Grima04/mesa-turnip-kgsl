@@ -37,9 +37,11 @@ typedef struct __attribute__((__packed__)) {
    uint32_t unknown_0_2: 1;
 
    /* Word 1-3 */
-   uint32_t unknown_1_1: 10;
+   uint32_t unknown_1_1: 7;
+   uint32_t unnorm_coords: 1;
+   uint32_t unknown_1_2: 2;
    uint32_t texture_2d: 1;
-   uint32_t unknown_1_2: 13;
+   uint32_t unknown_1_3: 13;
    uint32_t miplevels: 4;
    uint32_t min_mipfilter_1: 9; /* 0x0 for linear, 0x1ff for nearest */
    uint32_t unknown_2_1: 3;
