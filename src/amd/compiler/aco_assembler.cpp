@@ -264,14 +264,22 @@ void emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction*
       MUBUF_instruction* mubuf = static_cast<MUBUF_instruction*>(instr);
       uint32_t encoding = (0b111000 << 26);
       encoding |= opcode << 18;
-      encoding |= (mubuf->slc ? 1 : 0) << 17;
       encoding |= (mubuf->lds ? 1 : 0) << 16;
       encoding |= (mubuf->glc ? 1 : 0) << 14;
       encoding |= (mubuf->idxen ? 1 : 0) << 13;
       encoding |= (mubuf->offen ? 1 : 0) << 12;
+      if (ctx.chip_class <= GFX9) {
+         assert(!mubuf->dlc); /* Device-level coherent is not supported on GFX9 and lower */
+         encoding |= (mubuf->slc ? 1 : 0) << 17;
+      } else if (ctx.chip_class >= GFX10) {
+         encoding |= (mubuf->dlc ? 1 : 0) << 15;
+      }
       encoding |= 0x0FFF & mubuf->offset;
       out.push_back(encoding);
       encoding = 0;
+      if (ctx.chip_class >= GFX10) {
+         encoding |= (mubuf->slc ? 1 : 0) << 22;
+      }
       encoding |= instr->operands[2].physReg() << 24;
       encoding |= (mubuf->tfe ? 1 : 0) << 23;
       encoding |= (instr->operands[1].physReg() >> 2) << 16;
