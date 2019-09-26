@@ -442,17 +442,29 @@ void emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction*
       if ((uint16_t) instr->format & (uint16_t) Format::VOP3A) {
          VOP3A_instruction* vop3 = static_cast<VOP3A_instruction*>(instr);
 
-         if ((uint16_t) instr->format & (uint16_t) Format::VOP2)
+         if ((uint16_t) instr->format & (uint16_t) Format::VOP2) {
             opcode = opcode + 0x100;
-         else if ((uint16_t) instr->format & (uint16_t) Format::VOP1)
-            opcode = opcode + 0x140;
-         else if ((uint16_t) instr->format & (uint16_t) Format::VOPC)
+         } else if ((uint16_t) instr->format & (uint16_t) Format::VOP1) {
+            if (ctx.chip_class <= GFX9) {
+               opcode = opcode + 0x140;
+            } else {
+               /* RDNA ISA doc says this is 0x140, but that doesn't work  */
+               opcode = opcode + 0x180;
+            }
+         } else if ((uint16_t) instr->format & (uint16_t) Format::VOPC) {
             opcode = opcode + 0x0;
-         else if ((uint16_t) instr->format & (uint16_t) Format::VINTRP)
+         } else if ((uint16_t) instr->format & (uint16_t) Format::VINTRP) {
             opcode = opcode + 0x270;
+         }
 
          // TODO: op_sel
-         uint32_t encoding = (0b110100 << 26);
+         uint32_t encoding;
+         if (ctx.chip_class <= GFX9) {
+            encoding = (0b110100 << 26);
+         } else if (ctx.chip_class == GFX10) {
+            encoding = (0b110101 << 26);
+         }
+
          encoding |= opcode << 16;
          encoding |= (vop3->clamp ? 1 : 0) << 15;
          for (unsigned i = 0; i < 3; i++)
