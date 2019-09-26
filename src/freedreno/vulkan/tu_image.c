@@ -181,6 +181,54 @@ tu_image_create(VkDevice _device,
    return VK_SUCCESS;
 }
 
+static enum a6xx_tex_fetchsize
+translate_fetchsize(uint32_t cpp)
+{
+   switch (cpp) {
+   case 1: return TFETCH6_1_BYTE;
+   case 2: return TFETCH6_2_BYTE;
+   case 4: return TFETCH6_4_BYTE;
+   case 8: return TFETCH6_8_BYTE;
+   case 16: return TFETCH6_16_BYTE;
+   default:
+      unreachable("bad block size");
+   }
+}
+
+static enum a6xx_tex_swiz
+translate_swiz(VkComponentSwizzle swiz, enum a6xx_tex_swiz ident)
+{
+   switch (swiz) {
+   default:
+   case VK_COMPONENT_SWIZZLE_IDENTITY: return ident;
+   case VK_COMPONENT_SWIZZLE_R:    return A6XX_TEX_X;
+   case VK_COMPONENT_SWIZZLE_G:    return A6XX_TEX_Y;
+   case VK_COMPONENT_SWIZZLE_B:    return A6XX_TEX_Z;
+   case VK_COMPONENT_SWIZZLE_A:    return A6XX_TEX_W;
+   case VK_COMPONENT_SWIZZLE_ZERO: return A6XX_TEX_ZERO;
+   case VK_COMPONENT_SWIZZLE_ONE:  return A6XX_TEX_ONE;
+   }
+}
+
+static enum a6xx_tex_type
+translate_tex_type(VkImageViewType type)
+{
+   switch (type) {
+   default:
+   case VK_IMAGE_VIEW_TYPE_1D:
+   case VK_IMAGE_VIEW_TYPE_1D_ARRAY:
+      return A6XX_TEX_1D;
+   case VK_IMAGE_VIEW_TYPE_2D:
+   case VK_IMAGE_VIEW_TYPE_2D_ARRAY:
+      return A6XX_TEX_2D;
+   case VK_IMAGE_VIEW_TYPE_3D:
+      return A6XX_TEX_3D;
+   case VK_IMAGE_VIEW_TYPE_CUBE:
+   case VK_IMAGE_VIEW_TYPE_CUBE_ARRAY:
+      return A6XX_TEX_CUBE;
+   }
+}
+
 void
 tu_image_view_init(struct tu_image_view *iview,
                    struct tu_device *device,
@@ -221,6 +269,45 @@ tu_image_view_init(struct tu_image_view *iview,
    iview->layer_count = tu_get_layerCount(image, range);
    iview->base_mip = range->baseMipLevel;
    iview->level_count = tu_get_levelCount(image, range);
+
+   memset(iview->descriptor, 0, sizeof(iview->descriptor));
+
+   const struct tu_native_format *fmt = tu6_get_native_format(iview->vk_format);
+   assert(fmt && fmt->tex >= 0);
+
+   struct tu_image_level *slice0 = &image->levels[iview->base_mip];
+   uint32_t cpp = vk_format_get_blocksize(iview->vk_format);
+   uint32_t block_width = vk_format_get_blockwidth(iview->vk_format);
+   const VkComponentMapping *comps = &pCreateInfo->components;
+
+   iview->descriptor[0] =
+      A6XX_TEX_CONST_0_TILE_MODE(image->tile_mode) |
+      COND(vk_format_is_srgb(iview->vk_format), A6XX_TEX_CONST_0_SRGB) |
+      A6XX_TEX_CONST_0_FMT(fmt->tex) |
+      A6XX_TEX_CONST_0_SAMPLES(0) |
+      A6XX_TEX_CONST_0_SWAP(fmt->swap) |
+      A6XX_TEX_CONST_0_SWIZ_X(translate_swiz(comps->r, A6XX_TEX_X)) |
+      A6XX_TEX_CONST_0_SWIZ_Y(translate_swiz(comps->g, A6XX_TEX_Y)) |
+      A6XX_TEX_CONST_0_SWIZ_Z(translate_swiz(comps->b, A6XX_TEX_Z)) |
+      A6XX_TEX_CONST_0_SWIZ_W(translate_swiz(comps->a, A6XX_TEX_W)) |
+      A6XX_TEX_CONST_0_MIPLVLS(iview->level_count - 1);
+   iview->descriptor[1] =
+      A6XX_TEX_CONST_1_WIDTH(u_minify(image->extent.width, iview->base_mip)) |
+      A6XX_TEX_CONST_1_HEIGHT(u_minify(image->extent.height, iview->base_mip));
+   iview->descriptor[2] =
+      A6XX_TEX_CONST_2_FETCHSIZE(translate_fetchsize(cpp)) |
+      A6XX_TEX_CONST_2_PITCH(slice0->pitch / block_width * cpp) |
+      A6XX_TEX_CONST_2_TYPE(translate_tex_type(pCreateInfo->viewType));
+   if (pCreateInfo->viewType != VK_IMAGE_VIEW_TYPE_3D) {
+      iview->descriptor[3] = A6XX_TEX_CONST_3_ARRAY_PITCH(image->layer_size);
+   } else {
+      iview->descriptor[3] =
+         A6XX_TEX_CONST_3_MIN_LAYERSZ(image->levels[image->level_count - 1].size) |
+         A6XX_TEX_CONST_3_ARRAY_PITCH(slice0->size);
+   }
+   uint64_t base_addr = image->bo->iova + iview->base_layer * image->layer_size + slice0->offset;
+   iview->descriptor[4] = base_addr;
+   iview->descriptor[5] = base_addr >> 32 | A6XX_TEX_CONST_5_DEPTH(iview->layer_count);
 }
 
 unsigned

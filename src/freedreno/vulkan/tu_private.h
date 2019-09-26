@@ -103,6 +103,7 @@ typedef uint32_t xcb_window_t;
  */
 #define TU_BUFFER_OPS_CS_THRESHOLD 4096
 
+#define A6XX_TEX_CONST_DWORDS 16
 #define A6XX_TEX_SAMP_DWORDS 4
 
 enum tu_mem_heap
@@ -1268,12 +1269,12 @@ struct tu_image_view
    uint32_t level_count;
    VkExtent3D extent; /**< Extent of VkImageViewCreateInfo::baseMipLevel. */
 
-   uint32_t descriptor[16];
+   uint32_t descriptor[A6XX_TEX_CONST_DWORDS];
 
    /* Descriptor for use as a storage image as opposed to a sampled image.
     * This has a few differences for cube maps (e.g. type).
     */
-   uint32_t storage_descriptor[16];
+   uint32_t storage_descriptor[A6XX_TEX_CONST_DWORDS];
 };
 
 struct tu_sampler
