@@ -2473,7 +2473,7 @@ static void si_init_shader_selector_async(void *job, int thread_index)
 	compiler = &sscreen->compiler[thread_index];
 
 	if (sel->nir)
-		si_lower_nir(sel);
+		si_lower_nir(sel->screen, sel->nir);
 
 	/* Compile the main shader part for use with a prolog and/or epilog.
 	 * If this fails, the driver will try to compile a monolithic shader

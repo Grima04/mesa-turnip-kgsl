@@ -128,7 +128,7 @@ static void si_create_compute_state_async(void *job, int thread_index)
 
 		si_nir_opts(sel->nir);
 		si_nir_scan_shader(sel->nir, &sel->info);
-		si_lower_nir(sel);
+		si_lower_nir(sel->screen, sel->nir);
 	}
 
 	/* Store the declared LDS size into tgsi_shader_info for the shader
