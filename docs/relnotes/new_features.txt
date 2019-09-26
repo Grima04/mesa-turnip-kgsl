@@ -1,0 +1,5 @@
+GL_ARB_gl_spirv on i965, iris.
+GL_ARB_spirv_extensions on i965, iris.
+GL_EXT_demote_to_helper_invocation on iris, i965.
+OpenGL 4.6 on i965, iris.
+VK_KHR_shader_float_controls on Intel.
