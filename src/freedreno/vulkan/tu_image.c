@@ -121,7 +121,7 @@ setup_slices(struct tu_image *image, const VkImageCreateInfo *pCreateInfo)
       depth = u_minify(depth, 1);
    }
 
-   image->layer_size = layer_size;
+   image->layer_size = align(layer_size, 4096);
 }
 
 VkResult
