@@ -1546,6 +1546,22 @@ tu_pipeline_builder_parse_shader_stages(struct tu_pipeline_builder *builder,
    tu6_emit_program(&prog_cs, builder, &pipeline->program.binary_bo, true);
    pipeline->program.binning_state_ib =
       tu_cs_end_sub_stream(&pipeline->cs, &prog_cs);
+
+   for (unsigned i = 0; i < MESA_SHADER_STAGES; i++) {
+      if (!builder->shaders[i])
+         continue;
+
+      struct tu_program_descriptor_linkage *link = &pipeline->program.link[i];
+      struct ir3_shader *shader = builder->shaders[i]->variants[0].shader;
+
+      link->ubo_state = shader->ubo_state;
+      link->constlen = builder->shaders[i]->variants[0].constlen;
+      link->offset_ubo = shader->const_state.offsets.ubo;
+      link->num_ubo = shader->const_state.num_ubos;
+      link->texture_map = builder->shaders[i]->texture_map;
+      link->sampler_map = builder->shaders[i]->sampler_map;
+      link->ubo_map = builder->shaders[i]->ubo_map;
+   }
 }
 
 static void

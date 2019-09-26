@@ -1072,6 +1072,20 @@ tu_shader_compile(struct tu_device *dev,
                   const struct tu_shader_compile_options *options,
                   const VkAllocationCallbacks *alloc);
 
+struct tu_program_descriptor_linkage
+{
+   struct ir3_ubo_analysis_state ubo_state;
+
+   uint32_t constlen;
+
+   uint32_t offset_ubo; /* ubo pointers const offset */
+   uint32_t num_ubo; /* number of ubo pointers */
+
+   struct tu_descriptor_map texture_map;
+   struct tu_descriptor_map sampler_map;
+   struct tu_descriptor_map ubo_map;
+};
+
 struct tu_pipeline
 {
    struct tu_cs cs;
@@ -1088,6 +1102,8 @@ struct tu_pipeline
       struct tu_bo binary_bo;
       struct tu_cs_entry state_ib;
       struct tu_cs_entry binning_state_ib;
+
+      struct tu_program_descriptor_linkage link[MESA_SHADER_STAGES];
    } program;
 
    struct
