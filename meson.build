@@ -516,10 +516,12 @@ elif not (with_gallium_r600 or with_gallium_nouveau)
   endif
 endif
 dep_xvmc = null_dep
+dep_xv = null_dep
 with_gallium_xvmc = false
 if _xvmc != 'false'
   dep_xvmc = dependency('xvmc', version : '>= 1.0.6', required : _xvmc == 'true')
-  with_gallium_xvmc = dep_xvmc.found()
+  dep_xv = dependency('xv', required : _xvmc == 'true')
+  with_gallium_xvmc = dep_xvmc.found() and dep_xv.found()
 endif
 
 xvmc_drivers_path = get_option('xvmc-libs-path')
