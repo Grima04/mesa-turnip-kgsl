@@ -500,10 +500,6 @@ dri2_convert_glx_attribs(unsigned num_attribs, const uint32_t *attribs,
             return false;
          }
          break;
-      case GLX_SCREEN:
-         /* Implies GLX_EXT_no_config_context */
-         *render_type = GLX_DONT_CARE;
-         break;
       default:
 	 /* If an unknown attribute is received, fail.
 	  */
