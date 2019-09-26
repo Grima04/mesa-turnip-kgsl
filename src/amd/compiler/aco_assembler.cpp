@@ -373,26 +373,41 @@ void emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction*
       FLAT_instruction *flat = static_cast<FLAT_instruction*>(instr);
       uint32_t encoding = (0b110111 << 26);
       encoding |= opcode << 18;
-      encoding |= flat->offset & 0x1fff;
+      if (ctx.chip_class <= GFX9) {
+         assert(flat->offset <= 0x1fff);
+         encoding |= flat->offset & 0x1fff;
+      } else {
+         assert(flat->offset <= 0x0fff);
+         encoding |= flat->offset & 0x0fff;
+      }
       if (instr->format == Format::SCRATCH)
          encoding |= 1 << 14;
       else if (instr->format == Format::GLOBAL)
          encoding |= 2 << 14;
       encoding |= flat->lds ? 1 << 13 : 0;
-      encoding |= flat->glc ? 1 << 13 : 0;
-      encoding |= flat->slc ? 1 << 13 : 0;
+      encoding |= flat->glc ? 1 << 16 : 0;
+      encoding |= flat->slc ? 1 << 17 : 0;
+      if (ctx.chip_class >= GFX10) {
+         assert(!flat->nv);
+         encoding |= flat->dlc ? 1 << 12 : 0;
+      } else {
+         assert(!flat->dlc);
+      }
       out.push_back(encoding);
-      encoding = (0xFF & instr->operands[0].physReg().reg);
+      encoding = (0xFF & instr->operands[0].physReg());
       if (!instr->definitions.empty())
-         encoding |= (0xFF & instr->definitions[0].physReg().reg) << 24;
+         encoding |= (0xFF & instr->definitions[0].physReg()) << 24;
       else
-         encoding |= (0xFF & instr->operands[2].physReg().reg) << 8;
+         encoding |= (0xFF & instr->operands[2].physReg()) << 8;
       if (!instr->operands[1].isUndefined()) {
-         assert(instr->operands[1].physReg() != 0x7f);
+         assert(ctx.chip_class >= GFX10 || instr->operands[1].physReg() != 0x7F);
          assert(instr->format != Format::FLAT);
          encoding |= instr->operands[1].physReg() << 16;
       } else if (instr->format != Format::FLAT) {
-         encoding |= 0x7F << 16;
+         if (ctx.chip_class <= GFX9)
+            encoding |= 0x7F << 16;
+         else
+            encoding |= sgpr_null << 16;
       }
       encoding |= flat->nv ? 1 << 23 : 0;
       out.push_back(encoding);

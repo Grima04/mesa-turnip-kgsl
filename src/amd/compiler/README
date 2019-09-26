@@ -82,6 +82,10 @@ work. What works is adding `0x180`, which LLVM also does.
 
 The NV bit was removed in RDNA, but some parts of the doc still mention it.
 
+RDNA ISA doc 13.8.1 says that SADDR should be set to 0x7f when ADDR is used, but
+9.3.1 says it should be set to NULL. We assume 9.3.1 is correct and set it to
+SGPR_NULL.
+
 ## Legacy instructions
 
 Some instructions have a `_LEGACY` variant which implements "DX9 rules", in which
