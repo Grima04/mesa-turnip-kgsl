@@ -513,7 +513,7 @@ struct si_screen {
 	/* Auxiliary context. Mainly used to initialize resources.
 	 * It must be locked prior to using and flushed before unlocking. */
 	struct pipe_context		*aux_context;
-	mtx_t				aux_context_lock;
+	simple_mtx_t			aux_context_lock;
 
 	/* This must be in the screen, because UE4 uses one context for
 	 * compilation and another one for rendering.
@@ -526,7 +526,7 @@ struct si_screen {
 	unsigned			num_shader_cache_hits;
 
 	/* GPU load thread. */
-	mtx_t				gpu_load_mutex;
+	simple_mtx_t			gpu_load_mutex;
 	thrd_t				gpu_load_thread;
 	union si_mmio_counters	mmio_counters;
 	volatile unsigned		gpu_load_stop_thread; /* bool */
@@ -562,7 +562,7 @@ struct si_screen {
 		unsigned L2_to_cp;
 	} barrier_flags;
 
-	mtx_t			shader_parts_mutex;
+	simple_mtx_t			shader_parts_mutex;
 	struct si_shader_part		*vs_prologs;
 	struct si_shader_part		*tcs_epilogs;
 	struct si_shader_part		*gs_prologs;
@@ -581,7 +581,7 @@ struct si_screen {
 	 * - GS and CS aren't cached, but it's certainly possible to cache
 	 *   those as well.
 	 */
-	mtx_t			shader_cache_mutex;
+	simple_mtx_t			shader_cache_mutex;
 	struct hash_table		*shader_cache;
 
 	/* Shader compiler queue for multithreaded compilation. */

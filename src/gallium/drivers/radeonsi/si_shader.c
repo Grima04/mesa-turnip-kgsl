@@ -7247,12 +7247,12 @@ si_get_shader_part(struct si_screen *sscreen,
 {
 	struct si_shader_part *result;
 
-	mtx_lock(&sscreen->shader_parts_mutex);
+	simple_mtx_lock(&sscreen->shader_parts_mutex);
 
 	/* Find existing. */
 	for (result = *list; result; result = result->next) {
 		if (memcmp(&result->key, key, sizeof(*key)) == 0) {
-			mtx_unlock(&sscreen->shader_parts_mutex);
+			simple_mtx_unlock(&sscreen->shader_parts_mutex);
 			return result;
 		}
 	}
@@ -7313,7 +7313,7 @@ si_get_shader_part(struct si_screen *sscreen,
 
 out:
 	si_llvm_dispose(&ctx);
-	mtx_unlock(&sscreen->shader_parts_mutex);
+	simple_mtx_unlock(&sscreen->shader_parts_mutex);
 	return result;
 }
 

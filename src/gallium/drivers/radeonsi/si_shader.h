@@ -136,6 +136,7 @@
 #include "tgsi/tgsi_scan.h"
 #include "util/u_inlines.h"
 #include "util/u_queue.h"
+#include "util/simple_mtx.h"
 
 #include "ac_binary.h"
 #include "ac_llvm_build.h"
@@ -310,7 +311,7 @@ struct si_shader_selector {
 	struct util_queue_fence ready;
 	struct si_compiler_ctx_state compiler_ctx_state;
 
-	mtx_t		mutex;
+	simple_mtx_t		mutex;
 	struct si_shader	*first_variant; /* immutable after the first variant */
 	struct si_shader	*last_variant; /* mutable */
 

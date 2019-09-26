@@ -733,7 +733,7 @@ static void si_destroy_screen(struct pipe_screen* pscreen)
 	if (!sscreen->ws->unref(sscreen->ws))
 		return;
 
-	mtx_destroy(&sscreen->aux_context_lock);
+	simple_mtx_destroy(&sscreen->aux_context_lock);
 
 	struct u_log_context *aux_log = ((struct si_context *)sscreen->aux_context)->log;
 	if (aux_log) {
@@ -766,13 +766,13 @@ static void si_destroy_screen(struct pipe_screen* pscreen)
 			FREE(part);
 		}
 	}
-	mtx_destroy(&sscreen->shader_parts_mutex);
+	simple_mtx_destroy(&sscreen->shader_parts_mutex);
 	si_destroy_shader_cache(sscreen);
 
 	si_destroy_perfcounters(sscreen);
 	si_gpu_load_kill_thread(sscreen);
 
-	mtx_destroy(&sscreen->gpu_load_mutex);
+	simple_mtx_destroy(&sscreen->gpu_load_mutex);
 
 	slab_destroy_parent(&sscreen->pool_transfers);
 
@@ -990,8 +990,8 @@ radeonsi_screen_create_impl(struct radeon_winsys *ws,
 		       1 << util_logbase2(sscreen->force_aniso));
 	}
 
-	(void) mtx_init(&sscreen->aux_context_lock, mtx_plain);
-	(void) mtx_init(&sscreen->gpu_load_mutex, mtx_plain);
+	(void) simple_mtx_init(&sscreen->aux_context_lock, mtx_plain);
+	(void) simple_mtx_init(&sscreen->gpu_load_mutex, mtx_plain);
 
 	si_init_gs_info(sscreen);
 	if (!si_init_shader_cache(sscreen)) {
@@ -1163,7 +1163,7 @@ radeonsi_screen_create_impl(struct radeon_winsys *ws,
 	sscreen->dcc_msaa_allowed =
 		!(sscreen->debug_flags & DBG(NO_DCC_MSAA));
 
-	(void) mtx_init(&sscreen->shader_parts_mutex, mtx_plain);
+	(void) simple_mtx_init(&sscreen->shader_parts_mutex, mtx_plain);
 	sscreen->use_monolithic_shaders =
 		(sscreen->debug_flags & DBG(MONOLITHIC_SHADERS)) != 0;
 

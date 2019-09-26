@@ -150,11 +150,11 @@ static void si_create_compute_state_async(void *job, int thread_index)
 	void *ir_binary = si_get_ir_binary(sel, false, false);
 
 	/* Try to load the shader from the shader cache. */
-	mtx_lock(&sscreen->shader_cache_mutex);
+	simple_mtx_lock(&sscreen->shader_cache_mutex);
 
 	if (ir_binary &&
 	    si_shader_cache_load_shader(sscreen, ir_binary, shader)) {
-		mtx_unlock(&sscreen->shader_cache_mutex);
+		simple_mtx_unlock(&sscreen->shader_cache_mutex);
 
 		si_shader_dump_stats_for_shader_db(sscreen, shader, debug);
 		si_shader_dump(sscreen, shader, debug, stderr, true);
@@ -162,7 +162,7 @@ static void si_create_compute_state_async(void *job, int thread_index)
 		if (!si_shader_binary_upload(sscreen, shader, 0))
 			program->shader.compilation_failed = true;
 	} else {
-		mtx_unlock(&sscreen->shader_cache_mutex);
+		simple_mtx_unlock(&sscreen->shader_cache_mutex);
 
 		if (!si_shader_create(sscreen, compiler, &program->shader, debug)) {
 			program->shader.compilation_failed = true;
@@ -202,10 +202,10 @@ static void si_create_compute_state_async(void *job, int thread_index)
 			S_00B84C_LDS_SIZE(shader->config.lds_size);
 
 		if (ir_binary) {
-			mtx_lock(&sscreen->shader_cache_mutex);
+			simple_mtx_lock(&sscreen->shader_cache_mutex);
 			if (!si_shader_cache_insert_shader(sscreen, ir_binary, shader, true))
 				FREE(ir_binary);
-			mtx_unlock(&sscreen->shader_cache_mutex);
+			simple_mtx_unlock(&sscreen->shader_cache_mutex);
 		}
 	}
 

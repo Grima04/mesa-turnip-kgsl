@@ -412,7 +412,7 @@ void si_eliminate_fast_color_clear(struct si_context *sctx,
 	struct pipe_context *ctx = &sctx->b;
 
 	if (ctx == sscreen->aux_context)
-		mtx_lock(&sscreen->aux_context_lock);
+		simple_mtx_lock(&sscreen->aux_context_lock);
 
 	unsigned n = sctx->num_decompress_calls;
 	ctx->flush_resource(ctx, &tex->buffer.b.b);
@@ -422,7 +422,7 @@ void si_eliminate_fast_color_clear(struct si_context *sctx,
 		ctx->flush(ctx, NULL, 0);
 
 	if (ctx == sscreen->aux_context)
-		mtx_unlock(&sscreen->aux_context_lock);
+		simple_mtx_unlock(&sscreen->aux_context_lock);
 }
 
 void si_texture_discard_cmask(struct si_screen *sscreen,
@@ -515,14 +515,14 @@ bool si_texture_disable_dcc(struct si_context *sctx,
 		return false;
 
 	if (&sctx->b == sscreen->aux_context)
-		mtx_lock(&sscreen->aux_context_lock);
+		simple_mtx_lock(&sscreen->aux_context_lock);
 
 	/* Decompress DCC. */
 	si_decompress_dcc(sctx, tex);
 	sctx->b.flush(&sctx->b, NULL, 0);
 
 	if (&sctx->b == sscreen->aux_context)
-		mtx_unlock(&sscreen->aux_context_lock);
+		simple_mtx_unlock(&sscreen->aux_context_lock);
 
 	return si_texture_discard_dcc(sscreen, tex);
 }
@@ -1486,12 +1486,12 @@ si_texture_create_object(struct pipe_screen *screen,
 			u_box_1d(0, buf->b.b.width0, &box);
 
 			assert(tex->surface.dcc_retile_map_offset <= UINT_MAX);
-			mtx_lock(&sscreen->aux_context_lock);
+			simple_mtx_lock(&sscreen->aux_context_lock);
 			sctx->dma_copy(&sctx->b, &tex->buffer.b.b, 0,
 				       tex->surface.dcc_retile_map_offset, 0, 0,
 				       &buf->b.b, 0, &box);
 			sscreen->aux_context->flush(sscreen->aux_context, NULL, 0);
-			mtx_unlock(&sscreen->aux_context_lock);
+			simple_mtx_unlock(&sscreen->aux_context_lock);
 
 			si_resource_reference(&buf, NULL);
 		}

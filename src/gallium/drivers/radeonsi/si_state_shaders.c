@@ -327,7 +327,7 @@ static void si_destroy_shader_cache_entry(struct hash_entry *entry)
 
 bool si_init_shader_cache(struct si_screen *sscreen)
 {
-	(void) mtx_init(&sscreen->shader_cache_mutex, mtx_plain);
+	(void) simple_mtx_init(&sscreen->shader_cache_mutex, mtx_plain);
 	sscreen->shader_cache =
 		_mesa_hash_table_create(NULL,
 					si_shader_cache_key_hash,
@@ -341,7 +341,7 @@ void si_destroy_shader_cache(struct si_screen *sscreen)
 	if (sscreen->shader_cache)
 		_mesa_hash_table_destroy(sscreen->shader_cache,
 					 si_destroy_shader_cache_entry);
-	mtx_destroy(&sscreen->shader_cache_mutex);
+	simple_mtx_destroy(&sscreen->shader_cache_mutex);
 }
 
 /* SHADER STATES */
@@ -2221,14 +2221,14 @@ current_not_ready:
 	if (thread_index < 0)
 		util_queue_fence_wait(&sel->ready);
 
-	mtx_lock(&sel->mutex);
+	simple_mtx_lock(&sel->mutex);
 
 	/* Find the shader variant. */
 	for (iter = sel->first_variant; iter; iter = iter->next_variant) {
 		/* Don't check the "current" shader. We checked it above. */
 		if (current != iter &&
 		    memcmp(&iter->key, key, sizeof(*key)) == 0) {
-			mtx_unlock(&sel->mutex);
+			simple_mtx_unlock(&sel->mutex);
 
 			if (unlikely(!util_queue_fence_is_signalled(&iter->ready))) {
 				/* If it's an optimized shader and its compilation has
@@ -2257,7 +2257,7 @@ current_not_ready:
 	/* Build a new shader. */
 	shader = CALLOC_STRUCT(si_shader);
 	if (!shader) {
-		mtx_unlock(&sel->mutex);
+		simple_mtx_unlock(&sel->mutex);
 		return -ENOMEM;
 	}
 
@@ -2314,11 +2314,11 @@ current_not_ready:
 				assert(0);
 			}
 
-			mtx_lock(&previous_stage_sel->mutex);
+			simple_mtx_lock(&previous_stage_sel->mutex);
 			ok = si_check_missing_main_part(sscreen,
 							previous_stage_sel,
 							compiler_state, &shader1_key);
-			mtx_unlock(&previous_stage_sel->mutex);
+			simple_mtx_unlock(&previous_stage_sel->mutex);
 		}
 
 		if (ok) {
@@ -2328,7 +2328,7 @@ current_not_ready:
 
 		if (!ok) {
 			FREE(shader);
-			mtx_unlock(&sel->mutex);
+			simple_mtx_unlock(&sel->mutex);
 			return -ENOMEM; /* skip the draw call */
 		}
 	}
@@ -2373,7 +2373,7 @@ current_not_ready:
 
 		/* Use the default (unoptimized) shader for now. */
 		memset(&key->opt, 0, sizeof(key->opt));
-		mtx_unlock(&sel->mutex);
+		simple_mtx_unlock(&sel->mutex);
 
 		if (sscreen->options.sync_compile)
 			util_queue_fence_wait(&shader->ready);
@@ -2394,7 +2394,7 @@ current_not_ready:
 		sel->last_variant = shader;
 	}
 
-	mtx_unlock(&sel->mutex);
+	simple_mtx_unlock(&sel->mutex);
 
 	assert(!shader->is_optimized);
 	si_build_shader_variant(shader, thread_index, false);
@@ -2511,14 +2511,14 @@ static void si_init_shader_selector_async(void *job, int thread_index)
 		}
 
 		/* Try to load the shader from the shader cache. */
-		mtx_lock(&sscreen->shader_cache_mutex);
+		simple_mtx_lock(&sscreen->shader_cache_mutex);
 
 		if (ir_binary &&
 		    si_shader_cache_load_shader(sscreen, ir_binary, shader)) {
-			mtx_unlock(&sscreen->shader_cache_mutex);
+			simple_mtx_unlock(&sscreen->shader_cache_mutex);
 			si_shader_dump_stats_for_shader_db(sscreen, shader, debug);
 		} else {
-			mtx_unlock(&sscreen->shader_cache_mutex);
+			simple_mtx_unlock(&sscreen->shader_cache_mutex);
 
 			/* Compile the shader if it hasn't been loaded from the cache. */
 			if (si_compile_tgsi_shader(sscreen, compiler, shader,
@@ -2530,10 +2530,10 @@ static void si_init_shader_selector_async(void *job, int thread_index)
 			}
 
 			if (ir_binary) {
-				mtx_lock(&sscreen->shader_cache_mutex);
+				simple_mtx_lock(&sscreen->shader_cache_mutex);
 				if (!si_shader_cache_insert_shader(sscreen, ir_binary, shader, true))
 					FREE(ir_binary);
-				mtx_unlock(&sscreen->shader_cache_mutex);
+				simple_mtx_unlock(&sscreen->shader_cache_mutex);
 			}
 		}
 
@@ -2933,7 +2933,7 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
 	if (sel->info.properties[TGSI_PROPERTY_FS_POST_DEPTH_COVERAGE])
 		sel->db_shader_control |= S_02880C_PRE_SHADER_DEPTH_COVERAGE_ENABLE(1);
 
-	(void) mtx_init(&sel->mutex, mtx_plain);
+	(void) simple_mtx_init(&sel->mutex, mtx_plain);
 
 	si_schedule_initial_compile(sctx, sel->info.processor, &sel->ready,
 				    &sel->compiler_ctx_state, sel,
@@ -3281,7 +3281,7 @@ void si_destroy_shader_selector(struct si_context *sctx,
 		si_delete_shader(sctx, sel->gs_copy_shader);
 
 	util_queue_fence_destroy(&sel->ready);
-	mtx_destroy(&sel->mutex);
+	simple_mtx_destroy(&sel->mutex);
 	free(sel->tokens);
 	ralloc_free(sel->nir);
 	free(sel);
@@ -3564,18 +3564,18 @@ static bool si_update_gs_ring_buffers(struct si_context *sctx)
 
 static void si_shader_lock(struct si_shader *shader)
 {
-	mtx_lock(&shader->selector->mutex);
+	simple_mtx_lock(&shader->selector->mutex);
 	if (shader->previous_stage_sel) {
 		assert(shader->previous_stage_sel != shader->selector);
-		mtx_lock(&shader->previous_stage_sel->mutex);
+		simple_mtx_lock(&shader->previous_stage_sel->mutex);
 	}
 }
 
 static void si_shader_unlock(struct si_shader *shader)
 {
 	if (shader->previous_stage_sel)
-		mtx_unlock(&shader->previous_stage_sel->mutex);
-	mtx_unlock(&shader->selector->mutex);
+		simple_mtx_unlock(&shader->previous_stage_sel->mutex);
+	simple_mtx_unlock(&shader->selector->mutex);
 }
 
 /**
