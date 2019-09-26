@@ -313,7 +313,11 @@ void transition_to_Exact(exec_ctx& ctx, Builder bld, unsigned idx)
 {
    if (ctx.info[idx].exec.back().second & mask_type_exact)
       return;
-   if (ctx.info[idx].exec.back().second & mask_type_global) {
+   /* We can't remove the loop exec mask, because that can cause exec.size() to
+    * be less than num_exec_masks. The loop exec mask also needs to be kept
+    * around for various uses. */
+   if ((ctx.info[idx].exec.back().second & mask_type_global) &&
+       !(ctx.info[idx].exec.back().second & mask_type_loop)) {
       ctx.info[idx].exec.pop_back();
       assert(ctx.info[idx].exec.back().second & mask_type_exact);
       ctx.info[idx].exec.back().first = bld.pseudo(aco_opcode::p_parallelcopy, bld.def(s2, exec),
