@@ -122,23 +122,70 @@ void emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction*
    }
    case Format::SMEM: {
       SMEM_instruction* smem = static_cast<SMEM_instruction*>(instr);
-      uint32_t encoding = (0b110000 << 26);
-      encoding |= opcode << 18;
-      if (instr->operands.size() >= 2)
-         encoding |= instr->operands[1].isConstant() ? 1 << 17 : 0;
       bool soe = instr->operands.size() >= (!instr->definitions.empty() ? 3 : 4);
-      assert(!soe || ctx.chip_class >= GFX9);
-      encoding |= soe ? 1 << 14 : 0;
+      bool is_load = !instr->definitions.empty();
+
+      uint32_t encoding = 0;
+
+      if (ctx.chip_class <= GFX9) {
+         encoding = (0b110000 << 26);
+         assert(!smem->dlc); /* Device-level coherent is not supported on GFX9 and lower */
+         encoding |= smem->nv ? 1 << 15 : 0;
+      } else {
+         encoding = (0b111101 << 26);
+         assert(!smem->nv); /* Non-volatile is not supported on GFX10 */
+         encoding |= smem->dlc ? 1 << 14 : 0;
+      }
+
+      encoding |= opcode << 18;
       encoding |= smem->glc ? 1 << 16 : 0;
-      if (!instr->definitions.empty() || instr->operands.size() >= 3)
-         encoding |= (!instr->definitions.empty() ? instr->definitions[0].physReg() : instr->operands[2].physReg().reg) << 6;
-      if (instr->operands.size() >= 1)
-         encoding |= instr->operands[0].physReg() >> 1;
+
+      if (ctx.chip_class <= GFX9) {
+         if (instr->operands.size() >= 2)
+            encoding |= instr->operands[1].isConstant() ? 1 << 17 : 0; /* IMM - immediate enable */
+      }
+      if (ctx.chip_class == GFX9) {
+         encoding |= soe ? 1 << 14 : 0;
+      }
+
+      if (is_load || instr->operands.size() >= 3) { /* SDATA */
+         encoding |= (is_load ? instr->definitions[0].physReg().reg : instr->operands[2].physReg().reg) << 6;
+      }
+      if (instr->operands.size() >= 1) { /* SBASE */
+         encoding |= instr->operands[0].physReg().reg >> 1;
+      }
+
       out.push_back(encoding);
       encoding = 0;
-      if (instr->operands.size() >= 2)
-         encoding |= instr->operands[1].isConstant() ? instr->operands[1].constantValue() : instr->operands[1].physReg().reg;
-      encoding |= soe ? instr->operands.back().physReg() << 25 : 0;
+
+      int32_t offset = 0;
+      uint32_t soffset = ctx.chip_class >= GFX10
+                         ? sgpr_null /* On GFX10 this is disabled by specifying SGPR_NULL */
+                         : 0;        /* On GFX9, it is disabled by the SOE bit (and it's not present on GFX8 and below) */
+      if (instr->operands.size() >= 2) {
+         const Operand &op_off1 = instr->operands[1];
+         if (ctx.chip_class <= GFX9) {
+            offset = op_off1.isConstant() ? op_off1.constantValue() : op_off1.physReg();
+         } else {
+            /* GFX10 only supports constants in OFFSET, so put the operand in SOFFSET if it's an SGPR */
+            if (op_off1.isConstant()) {
+               offset = op_off1.constantValue();
+            } else {
+               soffset = op_off1.physReg();
+               assert(!soe); /* There is no place to put the other SGPR offset, if any */
+            }
+         }
+
+         if (soe) {
+            const Operand &op_off2 = instr->operands.back();
+            assert(ctx.chip_class >= GFX9); /* GFX8 and below don't support specifying a constant and an SGPR at the same time */
+            assert(!op_off2.isConstant());
+            soffset = op_off2.physReg();
+         }
+      }
+      encoding |= offset;
+      encoding |= soffset << 25;
+
       out.push_back(encoding);
       return;
    }
