@@ -1023,9 +1023,20 @@ struct tu_shader_compile_options
    bool include_binning_pass;
 };
 
+struct tu_descriptor_map
+{
+   unsigned num;
+   int set[32];
+   int binding[32];
+};
+
 struct tu_shader
 {
    struct ir3_shader ir3_shader;
+
+   struct tu_descriptor_map texture_map;
+   struct tu_descriptor_map sampler_map;
+   struct tu_descriptor_map ubo_map;
 
    /* This may be true for vertex shaders.  When true, variants[1] is the
     * binning variant and binning_binary is non-NULL.

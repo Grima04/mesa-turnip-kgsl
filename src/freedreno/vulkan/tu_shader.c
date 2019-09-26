@@ -107,6 +107,139 @@ tu_sort_variables_by_location(struct exec_list *variables)
    exec_list_move_nodes_to(&sorted, variables);
 }
 
+static unsigned
+map_add(struct tu_descriptor_map *map, int set, int binding)
+{
+   unsigned index;
+   for (index = 0; index < map->num; index++) {
+      if (set == map->set[index] && binding == map->binding[index])
+         break;
+   }
+
+   assert(index < ARRAY_SIZE(map->set));
+
+   map->set[index] = set;
+   map->binding[index] = binding;
+   map->num = MAX2(map->num, index + 1);
+   return index;
+}
+
+static void
+lower_tex_src_to_offset(nir_tex_instr *instr, unsigned src_idx,
+                        struct tu_shader *shader, bool is_sampler)
+{
+   nir_deref_instr *deref =
+      nir_instr_as_deref(instr->src[src_idx].src.ssa->parent_instr);
+
+   if (deref->deref_type != nir_deref_type_var) {
+      tu_finishme("sampler array");
+      return;
+   }
+
+   if (is_sampler) {
+      instr->sampler_index = map_add(&shader->sampler_map,
+                                     deref->var->data.descriptor_set,
+                                     deref->var->data.binding);
+   } else {
+      instr->texture_index = map_add(&shader->texture_map,
+                                     deref->var->data.descriptor_set,
+                                     deref->var->data.binding);
+      instr->texture_array_size = 1;
+   }
+
+   nir_tex_instr_remove_src(instr, src_idx);
+}
+
+static bool
+lower_sampler(nir_tex_instr *instr, struct tu_shader *shader)
+{
+   int texture_idx =
+      nir_tex_instr_src_index(instr, nir_tex_src_texture_deref);
+
+   if (texture_idx >= 0)
+      lower_tex_src_to_offset(instr, texture_idx, shader, false);
+
+   int sampler_idx =
+      nir_tex_instr_src_index(instr, nir_tex_src_sampler_deref);
+
+   if (sampler_idx >= 0)
+      lower_tex_src_to_offset(instr, sampler_idx, shader, true);
+
+   if (texture_idx < 0 && sampler_idx < 0)
+      return false;
+
+   return true;
+}
+
+static bool
+lower_intrinsic(nir_builder *b, nir_intrinsic_instr *instr,
+                struct tu_shader *shader)
+{
+   if (instr->intrinsic != nir_intrinsic_vulkan_resource_index)
+      return false;
+
+   nir_const_value *const_val = nir_src_as_const_value(instr->src[0]);
+   if (!const_val || const_val->u32 != 0) {
+      tu_finishme("non-zero vulkan_resource_index array index");
+      return false;
+   }
+
+   if (nir_intrinsic_desc_type(instr) != VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER) {
+      tu_finishme("non-ubo vulkan_resource_index");
+      return false;
+   }
+
+   unsigned index = map_add(&shader->ubo_map,
+                            nir_intrinsic_desc_set(instr),
+                            nir_intrinsic_binding(instr));
+
+   b->cursor = nir_before_instr(&instr->instr);
+   /* skip index 0 because ir3 treats it differently */
+   nir_ssa_def_rewrite_uses(&instr->dest.ssa,
+                            nir_src_for_ssa(nir_imm_int(b, index + 1)));
+   nir_instr_remove(&instr->instr);
+
+   return true;
+}
+
+static bool
+lower_impl(nir_function_impl *impl, struct tu_shader *shader)
+{
+   nir_builder b;
+   nir_builder_init(&b, impl);
+   bool progress = false;
+
+   nir_foreach_block(block, impl) {
+      nir_foreach_instr_safe(instr, block) {
+         switch (instr->type) {
+         case nir_instr_type_tex:
+            progress |= lower_sampler(nir_instr_as_tex(instr), shader);
+            break;
+         case nir_instr_type_intrinsic:
+            progress |= lower_intrinsic(&b, nir_instr_as_intrinsic(instr), shader);
+            break;
+         default:
+            break;
+         }
+      }
+   }
+
+   return progress;
+}
+
+static bool
+tu_lower_io(nir_shader *shader, struct tu_shader *tu_shader)
+{
+   bool progress = false;
+
+   nir_foreach_function(function, shader) {
+      if (function->impl)
+         progress |= lower_impl(function->impl, tu_shader);
+   }
+
+   return progress;
+}
+
 struct tu_shader *
 tu_shader_create(struct tu_device *dev,
                  gl_shader_stage stage,
@@ -171,6 +304,9 @@ tu_shader_create(struct tu_device *dev,
 
    NIR_PASS_V(nir, nir_lower_system_values);
    NIR_PASS_V(nir, nir_lower_frexp);
+
+   NIR_PASS_V(nir, tu_lower_io, shader);
+
    NIR_PASS_V(nir, nir_lower_io, nir_var_all, ir3_glsl_type_size, 0);
 
    nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));
