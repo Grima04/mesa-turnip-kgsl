@@ -302,6 +302,8 @@ tu_shader_create(struct tu_device *dev,
    nir_assign_var_locations(&nir->uniforms, &nir->num_uniforms,
                             ir3_glsl_type_size);
 
+   NIR_PASS_V(nir, nir_opt_copy_prop_vars);
+
    NIR_PASS_V(nir, nir_lower_system_values);
    NIR_PASS_V(nir, nir_lower_frexp);
 
