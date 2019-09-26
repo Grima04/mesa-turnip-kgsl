@@ -2983,6 +2983,7 @@ void load_buffer(isel_context *ctx, unsigned num_components, Temp dst, Temp rsrc
    Builder bld(ctx->program, ctx->block);
 
    unsigned num_bytes = dst.size() * 4;
+   bool dlc = glc && ctx->options->chip_class >= GFX10;
 
    aco_opcode op;
    if (dst.type() == RegType::vgpr || (glc && ctx->options->chip_class < GFX8)) {
@@ -3005,6 +3006,7 @@ void load_buffer(isel_context *ctx, unsigned num_components, Temp dst, Temp rsrc
          mubuf->operands[2] = soffset;
          mubuf->offen = (offset.type() == RegType::vgpr);
          mubuf->glc = glc;
+         mubuf->dlc = dlc;
          mubuf->barrier = barrier_buffer;
          bld.insert(std::move(mubuf));
          emit_split_vector(ctx, lower, 2);
@@ -3034,6 +3036,7 @@ void load_buffer(isel_context *ctx, unsigned num_components, Temp dst, Temp rsrc
       mubuf->operands[2] = soffset;
       mubuf->offen = (offset.type() == RegType::vgpr);
       mubuf->glc = glc;
+      mubuf->dlc = dlc;
       mubuf->barrier = barrier_buffer;
       mubuf->offset = const_offset;
       aco_ptr<Instruction> instr = std::move(mubuf);
@@ -3087,6 +3090,7 @@ void load_buffer(isel_context *ctx, unsigned num_components, Temp dst, Temp rsrc
       assert(load->operands[1].getTemp().type() == RegType::sgpr);
       load->definitions[0] = Definition(dst);
       load->glc = glc;
+      load->dlc = dlc;
       load->barrier = barrier_buffer;
       assert(ctx->options->chip_class >= GFX8 || !glc);
 
@@ -3623,6 +3627,7 @@ static Temp adjust_sample_index_using_fmask(isel_context *ctx, bool da, Temp coo
    load->operands[1] = Operand(fmask_desc_ptr);
    load->definitions[0] = Definition(fmask);
    load->glc = false;
+   load->dlc = false;
    load->dmask = 0x1;
    load->unrm = true;
    load->da = da;
@@ -3832,6 +3837,7 @@ void visit_image_store(isel_context *ctx, nir_intrinsic_instr *instr)
       store->operands[3] = Operand(data);
       store->idxen = true;
       store->glc = glc;
+      store->dlc = false;
       store->disable_wqm = true;
       store->barrier = barrier_image;
       ctx->program->needs_exact = true;
@@ -3849,6 +3855,7 @@ void visit_image_store(isel_context *ctx, nir_intrinsic_instr *instr)
    store->operands[2] = Operand(s4);
    store->operands[3] = Operand(data);
    store->glc = glc;
+   store->dlc = false;
    store->dmask = (1 << data.size()) - 1;
    store->unrm = true;
    store->da = should_declare_array(ctx, dim, glsl_sampler_type_is_array(type));
@@ -3945,6 +3952,7 @@ void visit_image_atomic(isel_context *ctx, nir_intrinsic_instr *instr)
       mubuf->offset = 0;
       mubuf->idxen = true;
       mubuf->glc = return_previous;
+      mubuf->dlc = false; /* Not needed for atomics */
       mubuf->disable_wqm = true;
       mubuf->barrier = barrier_image;
       ctx->program->needs_exact = true;
@@ -3962,6 +3970,7 @@ void visit_image_atomic(isel_context *ctx, nir_intrinsic_instr *instr)
    if (return_previous)
       mimg->definitions[0] = Definition(dst);
    mimg->glc = return_previous;
+   mimg->dlc = false; /* Not needed for atomics */
    mimg->dmask = (1 << data.size()) - 1;
    mimg->unrm = true;
    mimg->da = should_declare_array(ctx, dim, glsl_sampler_type_is_array(type));
@@ -4178,6 +4187,7 @@ void visit_store_ssbo(isel_context *ctx, nir_intrinsic_instr *instr)
             store->operands[1].setFixed(m0);
          store->operands[2] = Operand(write_data);
          store->glc = nir_intrinsic_access(instr) & (ACCESS_VOLATILE | ACCESS_COHERENT | ACCESS_NON_READABLE);
+         store->dlc = false;
          store->disable_wqm = true;
          store->barrier = barrier_buffer;
          ctx->block->instructions.emplace_back(std::move(store));
@@ -4195,6 +4205,7 @@ void visit_store_ssbo(isel_context *ctx, nir_intrinsic_instr *instr)
          store->offset = start * elem_size_bytes;
          store->offen = (offset.type() == RegType::vgpr);
          store->glc = nir_intrinsic_access(instr) & (ACCESS_VOLATILE | ACCESS_COHERENT | ACCESS_NON_READABLE);
+         store->dlc = false;
          store->disable_wqm = true;
          store->barrier = barrier_buffer;
          ctx->program->needs_exact = true;
@@ -4290,6 +4301,7 @@ void visit_atomic_ssbo(isel_context *ctx, nir_intrinsic_instr *instr)
    mubuf->offset = 0;
    mubuf->offen = (offset.type() == RegType::vgpr);
    mubuf->glc = return_previous;
+   mubuf->dlc = false; /* Not needed for atomics */
    mubuf->disable_wqm = true;
    mubuf->barrier = barrier_buffer;
    ctx->program->needs_exact = true;
@@ -4314,6 +4326,7 @@ void visit_load_global(isel_context *ctx, nir_intrinsic_instr *instr)
    Temp addr = get_ssa_temp(ctx, instr->src[0].ssa);
 
    bool glc = nir_intrinsic_access(instr) & (ACCESS_VOLATILE | ACCESS_COHERENT);
+   bool dlc = glc && ctx->options->chip_class >= GFX10;
    aco_opcode op;
    if (dst.type() == RegType::vgpr || (glc && ctx->options->chip_class < GFX8)) {
       bool global = ctx->options->chip_class >= GFX9;
@@ -4338,6 +4351,7 @@ void visit_load_global(isel_context *ctx, nir_intrinsic_instr *instr)
       flat->operands[0] = Operand(addr);
       flat->operands[1] = Operand(s1);
       flat->glc = glc;
+      flat->dlc = dlc;
 
       if (dst.type() == RegType::sgpr) {
          Temp vec = bld.tmp(RegType::vgpr, dst.size());
@@ -4369,6 +4383,7 @@ void visit_load_global(isel_context *ctx, nir_intrinsic_instr *instr)
       load->operands[1] = Operand(0u);
       load->definitions[0] = Definition(dst);
       load->glc = glc;
+      load->dlc = dlc;
       load->barrier = barrier_buffer;
       assert(ctx->options->chip_class >= GFX8 || !glc);
 
@@ -4455,6 +4470,7 @@ void visit_store_global(isel_context *ctx, nir_intrinsic_instr *instr)
       flat->operands[1] = Operand(s1);
       flat->operands[2] = Operand(data);
       flat->glc = glc;
+      flat->dlc = false;
       flat->offset = offset;
       ctx->block->instructions.emplace_back(std::move(flat));
    }
@@ -7436,6 +7452,7 @@ static void emit_stream_output(isel_context *ctx,
    }
    store->offen = true;
    store->glc = true;
+   store->dlc = false;
    store->slc = true;
    store->can_reorder = true;
    ctx->block->instructions.emplace_back(std::move(store));

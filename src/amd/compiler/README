@@ -105,6 +105,10 @@ The recommendation from AMD devs is to always set these two bits at the same tim
 as it doesn't make too much sense to set them independently, aside from some
 circumstances (eg. we needn't set DLC when only one shader array is used).
 
+Stores and atomics always bypass the L1 cache, so they don't support the DLC bit,
+and it shouldn't be set in these cases. Setting the DLC for these cases can result
+in graphical glitches.
+
 # Hardware Bugs
 
 ## SMEM corrupts VCCZ on SI/CI
