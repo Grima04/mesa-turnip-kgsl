@@ -31,27 +31,6 @@
 #include <X11/extensions/shmproto.h>
 #include <assert.h>
 
-static Bool
-driswCreateGCs(struct drisw_drawable * pdp,
-               Display * dpy, XID drawable, int visualid)
-{
-   long visMask;
-   XVisualInfo visTemp;
-   int num_visuals;
-
-   pdp->gc = XCreateGC(dpy, drawable, 0, NULL);
-
-   /* visual */
-   visTemp.visualid = visualid;
-   visMask = VisualIDMask;
-   pdp->visinfo = XGetVisualInfo(dpy, visMask, &visTemp, &num_visuals);
-
-   if (!pdp->visinfo || num_visuals == 0)
-      return False;
-
-   return True;
-}
-
 static int xshm_error = 0;
 static int xshm_opcode = -1;
 
@@ -82,8 +61,8 @@ XCreateDrawable(struct drisw_drawable * pdp, int shmid, Display * dpy)
    if (!xshm_error && shmid >= 0) {
       pdp->shminfo.shmid = shmid;
       pdp->ximage = XShmCreateImage(dpy,
-                                    pdp->visinfo->visual,
-                                    pdp->visinfo->depth,
+                                    NULL,
+                                    pdp->config->rgbBits,
                                     ZPixmap,              /* format */
                                     NULL,                 /* data */
                                     &pdp->shminfo,        /* shminfo */
@@ -112,8 +91,8 @@ XCreateDrawable(struct drisw_drawable * pdp, int shmid, Display * dpy)
    if (pdp->ximage == NULL) {
       pdp->shminfo.shmid = -1;
       pdp->ximage = XCreateImage(dpy,
-                                 pdp->visinfo->visual,
-                                 pdp->visinfo->depth,
+                                 NULL,
+                                 pdp->config->rgbBits,
                                  ZPixmap, 0,             /* format, offset */
                                  NULL,                   /* data */
                                  0, 0,                   /* width, height */
@@ -139,8 +118,6 @@ XDestroyDrawable(struct drisw_drawable * pdp, Display * dpy, XID drawable)
 
    if (pdp->shminfo.shmid > 0)
       XShmDetach(dpy, &pdp->shminfo);
-
-   free(pdp->visinfo);
 
    XFreeGC(dpy, pdp->gc);
 }
@@ -667,7 +644,6 @@ driswCreateDrawable(struct glx_screen *base, XID xDrawable,
    struct drisw_drawable *pdp;
    __GLXDRIconfigPrivate *config = (__GLXDRIconfigPrivate *) modes;
    struct drisw_screen *psc = (struct drisw_screen *) base;
-   Bool ret;
    const __DRIswrastExtension *swrast = psc->swrast;
 
    pdp = calloc(1, sizeof(*pdp));
@@ -677,12 +653,8 @@ driswCreateDrawable(struct glx_screen *base, XID xDrawable,
    pdp->base.xDrawable = xDrawable;
    pdp->base.drawable = drawable;
    pdp->base.psc = &psc->base;
-
-   ret = driswCreateGCs(pdp, psc->base.dpy, xDrawable, modes->visualID);
-   if (!ret) {
-      free(pdp);
-      return NULL;
-   }
+   pdp->config = modes;
+   pdp->gc = XCreateGC(psc->base.dpy, xDrawable, 0, NULL);
 
    /* Create a new drawable */
    pdp->driDrawable =
