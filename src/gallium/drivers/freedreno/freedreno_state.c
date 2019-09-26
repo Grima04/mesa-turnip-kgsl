@@ -472,7 +472,7 @@ fd_create_stream_output_target(struct pipe_context *pctx,
 	target->buffer_size = buffer_size;
 
 	assert(rsc->base.target == PIPE_BUFFER);
-	util_range_add(&rsc->valid_buffer_range,
+	util_range_add(&rsc->base, &rsc->valid_buffer_range,
 		buffer_offset, buffer_offset + buffer_size);
 
 	return target;

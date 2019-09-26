@@ -446,7 +446,7 @@ virgl_resource_transfer_map(struct pipe_context *ctx,
       }
 
       if (usage & PIPE_TRANSFER_WRITE)
-          util_range_add(&vres->valid_buffer_range, box->x, box->x + box->width);
+          util_range_add(&vres->u.b, &vres->valid_buffer_range, box->x, box->x + box->width);
    }
 
    *transfer = &trans->base;
@@ -608,7 +608,7 @@ static void virgl_buffer_subdata(struct pipe_context *pipe,
        likely(!(virgl_debug & VIRGL_DEBUG_XFER)) &&
        virgl_transfer_queue_extend_buffer(&vctx->queue,
                                           vbuf->hw_res, offset, size, data)) {
-      util_range_add(&vbuf->valid_buffer_range, offset, offset + size);
+      util_range_add(&vbuf->u.b, &vbuf->valid_buffer_range, offset, offset + size);
       return;
    }
 

@@ -920,7 +920,7 @@ iris_resource_from_user_memory(struct pipe_screen *pscreen,
       return NULL;
    }
 
-   util_range_add(&res->valid_buffer_range, 0, templ->width0);
+   util_range_add(&res->base, &res->valid_buffer_range, 0, templ->width0);
 
    return &res->base;
 }
@@ -1789,7 +1789,7 @@ iris_transfer_map(struct pipe_context *ctx,
                             box->x + box->width);
 
    if (usage & PIPE_TRANSFER_WRITE)
-      util_range_add(&res->valid_buffer_range, box->x, box->x + box->width);
+      util_range_add(&res->base, &res->valid_buffer_range, box->x, box->x + box->width);
 
    /* Avoid using GPU copies for persistent/coherent buffers, as the idea
     * there is to access them simultaneously on the CPU & GPU.  This also
@@ -1874,7 +1874,7 @@ iris_transfer_flush_region(struct pipe_context *ctx,
       if (map->dest_had_defined_contents)
          history_flush |= iris_flush_bits_for_history(res);
 
-      util_range_add(&res->valid_buffer_range, box->x, box->x + box->width);
+      util_range_add(&res->base, &res->valid_buffer_range, box->x, box->x + box->width);
    }
 
    if (history_flush & ~PIPE_CONTROL_CS_STALL) {

@@ -692,7 +692,7 @@ si_mark_image_range_valid(const struct pipe_image_view *view)
 	if (res->b.b.target != PIPE_BUFFER)
 		return;
 
-	util_range_add(&res->valid_buffer_range,
+	util_range_add(&res->b.b, &res->valid_buffer_range,
 		       view->u.buf.offset,
 		       view->u.buf.offset + view->u.buf.size);
 }
@@ -1395,7 +1395,7 @@ static void si_set_shader_buffer(struct si_context *sctx,
 	buffers->enabled_mask |= 1u << slot;
 	sctx->descriptors_dirty |= 1u << descriptors_idx;
 
-	util_range_add(&buf->valid_buffer_range, sbuffer->buffer_offset,
+	util_range_add(&buf->b.b, &buf->valid_buffer_range, sbuffer->buffer_offset,
 		       sbuffer->buffer_offset + sbuffer->buffer_size);
 }
 

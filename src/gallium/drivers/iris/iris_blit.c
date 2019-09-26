@@ -453,7 +453,7 @@ iris_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
       tex_cache_flush_hack(batch, src_fmt.fmt, src_res->surf.format);
 
    if (dst_res->base.target == PIPE_BUFFER)
-      util_range_add(&dst_res->valid_buffer_range, dst_x0, dst_x1);
+      util_range_add(&dst_res->base, &dst_res->valid_buffer_range, dst_x0, dst_x1);
 
    struct blorp_batch blorp_batch;
    blorp_batch_init(&ice->blorp, &blorp_batch, batch, blorp_flags);
@@ -577,7 +577,7 @@ iris_copy_region(struct blorp_context *blorp,
       tex_cache_flush_hack(batch, ISL_FORMAT_UNSUPPORTED, src_res->surf.format);
 
    if (dst->target == PIPE_BUFFER)
-      util_range_add(&dst_res->valid_buffer_range, dstx, dstx + src_box->width);
+      util_range_add(&dst_res->base, &dst_res->valid_buffer_range, dstx, dstx + src_box->width);
 
    if (dst->target == PIPE_BUFFER && src->target == PIPE_BUFFER) {
       struct blorp_address src_addr = {

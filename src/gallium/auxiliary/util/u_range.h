@@ -35,7 +35,7 @@
 #define U_RANGE_H
 
 #include "os/os_thread.h"
-
+#include "pipe/p_state.h"
 #include "util/u_math.h"
 #include "util/simple_mtx.h"
 
@@ -57,13 +57,19 @@ util_range_set_empty(struct util_range *range)
 
 /* This is like a union of two sets. */
 static inline void
-util_range_add(struct util_range *range, unsigned start, unsigned end)
+util_range_add(struct pipe_resource *resource, struct util_range *range,
+               unsigned start, unsigned end)
 {
    if (start < range->start || end > range->end) {
-      simple_mtx_lock(&range->write_mutex);
-      range->start = MIN2(start, range->start);
-      range->end = MAX2(end, range->end);
-      simple_mtx_unlock(&range->write_mutex);
+      if (resource->flags & PIPE_RESOURCE_FLAG_SINGLE_THREAD_USE) {
+         range->start = MIN2(start, range->start);
+         range->end = MAX2(end, range->end);
+      } else {
+         simple_mtx_lock(&range->write_mutex);
+         range->start = MIN2(start, range->start);
+         range->end = MAX2(end, range->end);
+         simple_mtx_unlock(&range->write_mutex);
+      }
    }
 }
 

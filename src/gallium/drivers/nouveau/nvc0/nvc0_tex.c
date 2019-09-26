@@ -948,7 +948,7 @@ nvc0_mark_image_range_valid(const struct pipe_image_view *view)
 
    assert(view->resource->target == PIPE_BUFFER);
 
-   util_range_add(&res->valid_buffer_range,
+   util_range_add(&res->base, &res->valid_buffer_range,
                   view->u.buf.offset,
                   view->u.buf.offset + view->u.buf.size);
 }
@@ -1472,7 +1472,7 @@ gm107_make_image_handle_resident(struct pipe_context *pipe, uint64_t handle,
       res->flags = (access & 3) << 8;
       if (res->buf->base.target == PIPE_BUFFER &&
           access & PIPE_IMAGE_ACCESS_WRITE)
-         util_range_add(&res->buf->valid_buffer_range,
+         util_range_add(&res->buf->base, &res->buf->valid_buffer_range,
                         tic->pipe.u.buf.offset,
                         tic->pipe.u.buf.offset + tic->pipe.u.buf.size);
       list_add(&res->list, &nvc0->img_head);
