@@ -4027,6 +4027,7 @@ bool nir_opt_comparison_pre_impl(nir_function_impl *impl);
 
 bool nir_opt_comparison_pre(nir_shader *shader);
 
+bool nir_opt_access(nir_shader *shader);
 bool nir_opt_algebraic(nir_shader *shader);
 bool nir_opt_algebraic_before_ffma(nir_shader *shader);
 bool nir_opt_algebraic_late(nir_shader *shader);

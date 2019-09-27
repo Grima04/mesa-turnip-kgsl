@@ -301,7 +301,7 @@ st_nir_opts(nir_shader *nir, bool scalar)
          lower_flrp = 0;
       }
 
-      NIR_PASS(progress, nir, gl_nir_opt_access);
+      NIR_PASS(progress, nir, nir_opt_access);
 
       NIR_PASS(progress, nir, nir_opt_undef);
       NIR_PASS(progress, nir, nir_opt_conditional_discard);

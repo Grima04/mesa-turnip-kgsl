@@ -35,7 +35,6 @@ LIBGLSL_FILES = \
 	glsl/gl_nir_link_xfb.c \
 	glsl/gl_nir_linker.c \
 	glsl/gl_nir_linker.h \
-	glsl/gl_nir_opt_access.c \
 	glsl/gl_nir.h \
 	glsl/glsl_parser_extras.cpp \
 	glsl/glsl_parser_extras.h \
@@ -288,6 +287,7 @@ NIR_FILES = \
 	nir/nir_metadata.c \
 	nir/nir_move_vec_src_uses_to_dest.c \
 	nir/nir_normalize_cubemap_coords.c \
+	nir/nir_opt_access.c \
 	nir/nir_opt_combine_stores.c \
 	nir/nir_opt_comparison_pre.c \
 	nir/nir_opt_conditional_discard.c \

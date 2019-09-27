@@ -21,8 +21,7 @@
  * IN THE SOFTWARE.
  */
 
-#include "nir/nir.h"
-#include "gl_nir.h"
+#include "nir.h"
 
 /* This pass optimizes GL access qualifiers. So far it does two things:
  *
@@ -291,7 +290,7 @@ opt_access_impl(struct access_state *state,
 }
 
 bool
-gl_nir_opt_access(nir_shader *shader)
+nir_opt_access(nir_shader *shader)
 {
    struct access_state state = {
       .vars_written = _mesa_pointer_set_create(NULL),
@@ -334,4 +333,3 @@ gl_nir_opt_access(nir_shader *shader)
    _mesa_set_destroy(state.vars_written, NULL);
    return progress;
 }
-
