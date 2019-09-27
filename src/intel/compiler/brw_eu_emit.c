@@ -3555,12 +3555,14 @@ brw_float_controls_mode(struct brw_codegen *p,
     *   thread control field to ‘switch’ for an instruction that uses
     *   control register as an explicit operand."
     */
-   brw_inst_set_thread_control(p->devinfo, inst, BRW_THREAD_SWITCH);
+   if (p->devinfo->gen < 12)
+      brw_inst_set_thread_control(p->devinfo, inst, BRW_THREAD_SWITCH);
 
    if (mode) {
       brw_inst *inst_or = brw_OR(p, brw_cr0_reg(0), brw_cr0_reg(0),
                                  brw_imm_ud(mode));
       brw_inst_set_exec_size(p->devinfo, inst_or, BRW_EXECUTE_1);
-      brw_inst_set_thread_control(p->devinfo, inst_or, BRW_THREAD_SWITCH);
+      if (p->devinfo->gen < 12)
+         brw_inst_set_thread_control(p->devinfo, inst_or, BRW_THREAD_SWITCH);
    }
 }
