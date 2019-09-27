@@ -263,6 +263,20 @@ ir3_optimize_nir(struct ir3_shader *shader, nir_shader *s,
 	if (ubo_progress || idiv_progress)
 		ir3_optimize_loop(s);
 
+	/* Do late algebraic optimization to turn add(a, neg(b)) back into
+	* subs, then the mandatory cleanup after algebraic.  Note that it may
+	* produce fnegs, and if so then we need to keep running to squash
+	* fneg(fneg(a)).
+	*/
+	bool more_late_algebraic = true;
+	while (more_late_algebraic) {
+		more_late_algebraic = OPT(s, nir_opt_algebraic_late);
+		OPT_V(s, nir_opt_constant_folding);
+		OPT_V(s, nir_copy_prop);
+		OPT_V(s, nir_opt_dce);
+		OPT_V(s, nir_opt_cse);
+	}
+
 	OPT_V(s, nir_remove_dead_variables, nir_var_function_temp);
 
 	OPT_V(s, nir_opt_sink, nir_move_const_undef);
