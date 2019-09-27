@@ -1626,6 +1626,9 @@ intel_miptree_alloc_aux(struct brw_context *brw,
       aux_surf_ok =
          isl_surf_get_ccs_surf(&brw->isl_dev, &mt->surf, &aux_surf, 0);
       break;
+
+   default:
+      unreachable("Invalid aux usage");
    }
 
    /* We should have a valid aux_surf. */
