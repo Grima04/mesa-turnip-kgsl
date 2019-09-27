@@ -1,4 +1,4 @@
-# Copyright © 2017 Intel Corporation
+# Copyright © 2019 Valve Corporation
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -18,12 +18,33 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-inc_amd = include_directories('.')
+amd_common_llvm_files = files(
+  'ac_llvm_build.c',
+  'ac_llvm_build.h',
+  'ac_llvm_cull.c',
+  'ac_llvm_cull.h',
+  'ac_llvm_helper.cpp',
+  'ac_llvm_util.c',
+  'ac_llvm_util.h',
+  'ac_nir_to_llvm.c',
+  'ac_nir_to_llvm.h',
+  'ac_shader_abi.h',
+)
 
-subdir('addrlib')
-subdir('common')
-subdir('llvm')
-if with_amd_vk
-  subdir('compiler')
-  subdir('vulkan')
-endif
+libamd_common_llvm = static_library(
+  'amd_common_llvm',
+  [amd_common_llvm_files],
+  include_directories : [
+    inc_common, inc_compiler, inc_mesa, inc_mapi, inc_amd, inc_amd_common
+  ],
+  link_with: [
+    libamd_common
+  ],
+  dependencies : [
+    dep_llvm, dep_thread, dep_elf, dep_libdrm_amdgpu, dep_valgrind,
+    idep_nir_headers, idep_amdgfxregs_h,
+  ],
+  c_args : [c_vis_args],
+  cpp_args : [cpp_vis_args],
+)
+

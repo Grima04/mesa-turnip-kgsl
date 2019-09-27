@@ -36,33 +36,30 @@ ADDRLIB_FILES = \
 	addrlib/src/r800/siaddrlib.cpp \
 	addrlib/src/r800/siaddrlib.h
 
-AMD_COMPILER_FILES = \
+AMD_COMMON_FILES = \
 	common/ac_binary.c \
 	common/ac_binary.h \
 	common/ac_exp_param.h \
-	common/ac_llvm_build.c \
-	common/ac_llvm_build.h \
-	common/ac_llvm_cull.c \
-	common/ac_llvm_cull.h \
-	common/ac_llvm_helper.cpp \
-	common/ac_llvm_util.c \
-	common/ac_llvm_util.h \
-	common/ac_rtld.c \
-	common/ac_rtld.h \
-	common/ac_shader_abi.h \
-	common/ac_shader_util.c \
-	common/ac_shader_util.h
-
-
-AMD_NIR_FILES = \
-	common/ac_nir_to_llvm.c \
-	common/ac_nir_to_llvm.h
-
-AMD_COMMON_FILES = \
 	common/ac_gpu_info.c \
 	common/ac_gpu_info.h \
 	common/ac_surface.c \
-	common/ac_surface.h
+	common/ac_surface.h \
+	common/ac_rtld.c \
+	common/ac_rtld.h \
+	common/ac_shader_util.c \
+	common/ac_shader_util.h
+
+AMD_COMMON_LLVM_FILES = \
+	llvm/ac_llvm_build.c \
+	llvm/ac_llvm_build.h \
+	llvm/ac_llvm_cull.c \
+	llvm/ac_llvm_cull.h \
+	llvm/ac_llvm_helper.cpp \
+	llvm/ac_llvm_util.c \
+	llvm/ac_llvm_util.h \
+	llvm/ac_shader_abi.h \
+	llvm/ac_nir_to_llvm.c \
+	llvm/ac_nir_to_llvm.h
 
 AMD_DEBUG_FILES = \
 	common/ac_debug.c \
