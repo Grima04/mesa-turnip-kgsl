@@ -189,7 +189,7 @@ quadword_size(int tag)
 
 /* Swizzle support */
 
-#define SWIZZLE(A, B, C, D) ((D << 6) | (C << 4) | (B << 2) | (A << 0))
+#define SWIZZLE(A, B, C, D) (((D) << 6) | ((C) << 4) | ((B) << 2) | ((A) << 0))
 #define SWIZZLE_FROM_ARRAY(r) SWIZZLE(r[0], r[1], r[2], r[3])
 #define COMPONENT_X 0x0
 #define COMPONENT_Y 0x1
