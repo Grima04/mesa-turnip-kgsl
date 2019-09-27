@@ -221,6 +221,7 @@ cfg_t::cfg_t(exec_list *instructions)
 	 next = new_block();
          assert(cur_if != NULL);
          cur_if->add_successor(mem_ctx, next, bblock_link_logical);
+         cur_else->add_successor(mem_ctx, next, bblock_link_physical);
 
 	 set_next_block(&cur, next, ip);
 	 break;
