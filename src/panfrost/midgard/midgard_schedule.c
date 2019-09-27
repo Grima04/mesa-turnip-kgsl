@@ -983,6 +983,7 @@ schedule_program(compiler_context *ctx)
         /* Must be lowered right before RA */
         mir_squeeze_index(ctx);
         mir_lower_special_reads(ctx);
+        mir_squeeze_index(ctx);
 
         /* Lowering can introduce some dead moves */
 
