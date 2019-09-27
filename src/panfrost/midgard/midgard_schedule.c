@@ -818,6 +818,9 @@ struct midgard_predicate {
         /* True if we want to pop off the chosen instruction */
         bool destructive;
 
+        /* For ALU, choose only this unit */
+        unsigned unit;
+
         /* State for bundle constants. constants is the actual constants
          * for the bundle. constant_count is the number of bytes (up to
          * 16) currently in use for constants. When picking in destructive
@@ -955,6 +958,27 @@ mir_choose_bundle(
                 return chosen->type;
         else
                 return ~0;
+}
+
+/* We want to choose an ALU instruction filling a given unit */
+static void
+mir_choose_alu(midgard_instruction **slot,
+                midgard_instruction **instructions,
+                BITSET_WORD *worklist, unsigned len,
+                struct midgard_predicate *predicate,
+                unsigned unit)
+{
+        /* Did we already schedule to this slot? */
+        if ((*slot) != NULL)
+                return;
+
+        /* Try to schedule something, if not */
+        predicate->unit = unit;
+        *slot = mir_choose_instruction(instructions, worklist, len, predicate);
+
+        /* Store unit upon scheduling */
+        if (*slot && !((*slot)->compact_branch))
+                (*slot)->unit = unit;
 }
 
 /* When we are scheduling a branch/csel, we need the consumed condition in the
