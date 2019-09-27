@@ -451,9 +451,6 @@ Converter::getOperation(nir_op op)
       return OP_SIN;
    case nir_op_fsqrt:
       return OP_SQRT;
-   case nir_op_fsub:
-   case nir_op_isub:
-      return OP_SUB;
    case nir_op_ftrunc:
       return OP_TRUNC;
    case nir_op_ixor:
@@ -2817,8 +2814,6 @@ Converter::visit(nir_alu_instr *insn)
    case nir_op_ushr:
    case nir_op_fsin:
    case nir_op_fsqrt:
-   case nir_op_fsub:
-   case nir_op_isub:
    case nir_op_ftrunc:
    case nir_op_ishl:
    case nir_op_ixor: {
