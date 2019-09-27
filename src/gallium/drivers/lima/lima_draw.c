@@ -741,13 +741,13 @@ lima_pack_vs_cmd(struct lima_context *ctx, const struct pipe_draw_info *info)
 
    int num_varryings = ctx->vs->num_varying;
    int num_attributes = ctx->vertex_elements->num_elements;
-   VS_CMD_VARYING_ATTRIBUTE_COUNT(num_varryings, num_attributes);
+   VS_CMD_VARYING_ATTRIBUTE_COUNT(num_varryings, MAX2(1, num_attributes));
 
    VS_CMD_UNKNOWN1();
 
    VS_CMD_ATTRIBUTES_ADDRESS(
       lima_ctx_buff_va(ctx, lima_ctx_buff_gp_attribute_info, LIMA_CTX_BUFF_SUBMIT_GP),
-      num_attributes);
+      MAX2(1, num_attributes));
 
    VS_CMD_VARYINGS_ADDRESS(
       lima_ctx_buff_va(ctx, lima_ctx_buff_gp_varying_info, LIMA_CTX_BUFF_SUBMIT_GP),
@@ -1140,7 +1140,7 @@ lima_update_gp_attribute_info(struct lima_context *ctx, const struct pipe_draw_i
 
    uint32_t *attribute =
       lima_ctx_buff_alloc(ctx, lima_ctx_buff_gp_attribute_info,
-                          ve->num_elements * 8, true);
+                          MAX2(1, ve->num_elements) * 8, true);
 
    int n = 0;
    for (int i = 0; i < ve->num_elements; i++) {
