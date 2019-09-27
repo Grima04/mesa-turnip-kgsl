@@ -41,6 +41,7 @@
 #include "st_context.h"
 #include "st_glsl_types.h"
 #include "st_program.h"
+#include "st_shader_cache.h"
 
 #include "compiler/nir/nir.h"
 #include "compiler/glsl_types.h"
@@ -802,6 +803,18 @@ st_link_nir(struct gl_context *ctx,
 
       struct gl_program *prog = shader->Program;
       st_glsl_to_nir_post_opts(st, prog, shader_program);
+
+      /* Initialize st_vertex_program members. */
+      if (i == MESA_SHADER_VERTEX)
+         st_prepare_vertex_program(st_vertex_program(prog));
+
+      /* Get pipe_stream_output_info. */
+      if (i == MESA_SHADER_VERTEX ||
+          i == MESA_SHADER_TESS_EVAL ||
+          i == MESA_SHADER_GEOMETRY)
+         st_translate_stream_output_info(prog);
+
+      st_store_ir_in_disk_cache(st, prog, true);
 
       if (!ctx->Driver.ProgramStringNotify(ctx,
                                            _mesa_shader_stage_to_program(i),

@@ -160,7 +160,8 @@ st_program_string_notify( struct gl_context *ctx,
       }
 
       st_release_fp_variants(st, stfp);
-      if (!st_translate_fragment_program(st, stfp))
+      if (!stfp->shader_program && /* not GLSL->NIR */
+          !st_translate_fragment_program(st, stfp))
          return false;
 
       if (st->fp == stfp)
@@ -169,7 +170,8 @@ st_program_string_notify( struct gl_context *ctx,
       struct st_vertex_program *stvp = (struct st_vertex_program *) prog;
 
       st_release_vp_variants(st, stvp);
-      if (!st_translate_vertex_program(st, stvp))
+      if (!stvp->shader_program && /* not GLSL->NIR */
+          !st_translate_vertex_program(st, stvp))
          return false;
 
       if (st->vp == stvp)
@@ -178,7 +180,8 @@ st_program_string_notify( struct gl_context *ctx,
       struct st_common_program *stcp = st_common_program(prog);
 
       st_release_basic_variants(st, stcp);
-      if (!st_translate_common_program(st, stcp))
+      if (!stcp->shader_program && /* not GLSL->NIR */
+          !st_translate_common_program(st, stcp))
          return false;
 
       if ((prog->info.stage == MESA_SHADER_TESS_CTRL && st->tcp == stcp) ||

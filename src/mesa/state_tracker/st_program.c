@@ -525,7 +525,7 @@ st_translate_vertex_program(struct st_context *st,
    output_semantic_index[num_outputs] = 0;
 
    /* ARB_vp: */
-   if (!stvp->glsl_to_tgsi && !stvp->shader_program) {
+   if (!stvp->glsl_to_tgsi) {
       _mesa_remove_output_reads(&stvp->Base, PROGRAM_OUTPUT);
 
       /* This determines which states will be updated when the assembly
@@ -539,12 +539,6 @@ st_translate_vertex_program(struct st_context *st,
          stvp->affected_states |= ST_NEW_VS_CONSTANTS;
 
       /* No samplers are allowed in ARB_vp. */
-   }
-
-   if (stvp->shader_program) {
-      st_translate_stream_output_info(&stvp->Base);
-      st_store_ir_in_disk_cache(st, &stvp->Base, true);
-      return true;
    }
 
    ureg = ureg_create_with_screen(PIPE_SHADER_VERTEX, st->pipe->screen);
@@ -766,12 +760,6 @@ bool
 st_translate_fragment_program(struct st_context *st,
                               struct st_fragment_program *stfp)
 {
-   /* We have already compiled to NIR so just return */
-   if (stfp->shader_program) {
-      st_store_ir_in_disk_cache(st, &stfp->Base, true);
-      return true;
-   }
-
    ubyte outputMapping[2 * FRAG_RESULT_MAX];
    ubyte inputMapping[VARYING_SLOT_MAX];
    ubyte inputSlotToAttr[VARYING_SLOT_MAX];
@@ -793,7 +781,7 @@ st_translate_fragment_program(struct st_context *st,
    memset(inputSlotToAttr, ~0, sizeof(inputSlotToAttr));
 
    /* Non-GLSL programs: */
-   if (!stfp->glsl_to_tgsi && !stfp->shader_program) {
+   if (!stfp->glsl_to_tgsi) {
       _mesa_remove_output_reads(&stfp->Base, PROGRAM_OUTPUT);
       if (st->ctx->Const.GLSLFragCoordIsSysVal)
          _mesa_program_fragment_position_to_sysval(&stfp->Base);
@@ -1446,16 +1434,6 @@ bool
 st_translate_common_program(struct st_context *st,
                             struct st_common_program *stcp)
 {
-   /* We have already compiled to NIR so just return */
-   if (stcp->shader_program) {
-      /* No variants */
-      if (stcp->Base.info.stage == MESA_SHADER_TESS_EVAL ||
-          stcp->Base.info.stage == MESA_SHADER_GEOMETRY)
-         st_translate_stream_output_info(&stcp->Base);
-      st_store_ir_in_disk_cache(st, &stcp->Base, true);
-      return true;
-   }
-
    struct gl_program *prog = &stcp->Base;
    enum pipe_shader_type stage =
       pipe_shader_type_from_mesa(stcp->Base.info.stage);
