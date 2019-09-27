@@ -2626,7 +2626,7 @@ ttn_optimize_nir(nir_shader *nir)
  * so we have to do it here too.
  */
 static void
-ttn_finalize_nir(struct ttn_compile *c)
+ttn_finalize_nir(struct ttn_compile *c, struct pipe_screen *screen)
 {
    struct nir_shader *nir = c->build.shader;
 
@@ -2644,8 +2644,13 @@ ttn_finalize_nir(struct ttn_compile *c)
    if (!c->cap_samplers_as_deref)
       NIR_PASS_V(nir, nir_lower_samplers);
 
-   ttn_optimize_nir(nir);
-   nir_shader_gather_info(nir, c->build.impl);
+   if (screen->finalize_nir) {
+      screen->finalize_nir(screen, nir, true);
+   } else {
+      ttn_optimize_nir(nir);
+      nir_shader_gather_info(nir, c->build.impl);
+   }
+
    nir_validate_shader(nir, "TTN: after all optimizations");
 }
 
@@ -2658,7 +2663,7 @@ tgsi_to_nir(const void *tgsi_tokens,
 
    c = ttn_compile_init(tgsi_tokens, NULL, screen);
    s = c->build.shader;
-   ttn_finalize_nir(c);
+   ttn_finalize_nir(c, screen);
    ralloc_free(c);
 
    return s;
