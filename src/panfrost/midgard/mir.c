@@ -64,7 +64,24 @@ mir_get_swizzle(midgard_instruction *ins, unsigned idx)
                         uint8_t raw =
                                 (idx == 2) ? ins->load_store.arg_2 : ins->load_store.arg_1;
 
-                        return component_to_swizzle(midgard_ldst_select(raw).component);
+                        /* TODO: Integrate component count with properties */
+                        unsigned components = 1;
+                        switch (ins->load_store.op) {
+                        case midgard_op_ld_int4:
+                                components = (idx == 0) ? 2 : 1;
+                                break;
+                        case midgard_op_st_int4:
+                                components = (idx == 1) ? 2 : 1;
+                                break;
+                        case midgard_op_ld_cubemap_coords:
+                                components = 3;
+                                break;
+                        default:
+                                components = 1;
+                                break;
+                        }
+
+                        return component_to_swizzle(midgard_ldst_select(raw).component, components);
                 }
                 default:
                         unreachable("Unknown load/store source");
@@ -362,26 +379,6 @@ mir_source_count(midgard_instruction *ins)
         }
 }
 
-static unsigned
-mir_component_count_implicit(midgard_instruction *ins, unsigned i)
-{
-        if (ins->type == TAG_LOAD_STORE_4) {
-                switch (ins->load_store.op) {
-                        /* Address implicitly 64-bit */
-                case midgard_op_ld_int4:
-                        return (i == 0) ? 1 : 0;
-
-                case midgard_op_st_int4:
-                        return (i == 1) ? 1 : 0;
-
-                default:
-                        return 0;
-                }
-        }
-
-        return 0;
-}
-
 unsigned
 mir_mask_of_read_components(midgard_instruction *ins, unsigned node)
 {
@@ -394,21 +391,13 @@ mir_mask_of_read_components(midgard_instruction *ins, unsigned node)
                 if (ins->compact_branch && ins->writeout && (i == 0))
                         return 0xF;
 
+                /* ALU ops act componentwise so we need to pay attention to
+                 * their mask. Texture/ldst does not so we don't clamp source
+                 * readmasks based on the writemask */
+                unsigned qmask = (ins->type == TAG_ALU_4) ? ins->mask : 0xF;
+
                 unsigned swizzle = mir_get_swizzle(ins, i);
-                unsigned m = mir_mask_of_read_components_single(swizzle, ins->mask);
-
-                /* Sometimes multi-arg ops are passed implicitly */
-                unsigned implicit = mir_component_count_implicit(ins, i);
-                assert(implicit < 2);
-
-                /* Extend the mask */
-                if (implicit == 1) {
-                        /* Ensure it's a single bit currently */
-                        assert((m >> __builtin_ctz(m)) == 0x1);
-
-                        /* Set the next bit to extend one*/
-                        m |= (m << 1);
-                }
+                unsigned m = mir_mask_of_read_components_single(swizzle, qmask);
 
                 /* Handle dot products and things */
                 if (ins->type == TAG_ALU_4 && !ins->compact_branch) {
