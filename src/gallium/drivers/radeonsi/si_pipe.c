@@ -977,6 +977,7 @@ radeonsi_screen_create_impl(struct radeon_winsys *ws,
 		si_set_max_shader_compiler_threads;
 	sscreen->b.is_parallel_shader_compilation_finished =
 		si_is_parallel_shader_compilation_finished;
+	sscreen->b.finalize_nir = si_finalize_nir;
 
 	si_init_screen_get_functions(sscreen);
 	si_init_screen_buffer_functions(sscreen);

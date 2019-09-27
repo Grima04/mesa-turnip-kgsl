@@ -801,7 +801,7 @@ void si_nir_scan_shader(const struct nir_shader *nir,
 	}
 }
 
-void
+static void
 si_nir_opts(struct nir_shader *nir)
 {
 	bool progress;
@@ -913,7 +913,7 @@ si_nir_lower_color(nir_shader *nir)
         }
 }
 
-void si_nir_lower_ps_inputs(struct nir_shader *nir)
+static void si_nir_lower_ps_inputs(struct nir_shader *nir)
 {
 	if (nir->info.stage != MESA_SHADER_FRAGMENT)
 		return;
@@ -938,11 +938,7 @@ void si_nir_lower_ps_inputs(struct nir_shader *nir)
 		   nir_var_shader_in);
 }
 
-/**
- * Perform "lowering" operations on the NIR that are run once when the shader
- * selector is created.
- */
-void si_lower_nir(struct si_screen *sscreen, struct nir_shader *nir)
+void si_nir_adjust_driver_locations(struct nir_shader *nir)
 {
 	/* Adjust the driver location of inputs and outputs. The state tracker
 	 * interprets them as slots, while the ac/nir backend interprets them
@@ -963,7 +959,14 @@ void si_lower_nir(struct si_screen *sscreen, struct nir_shader *nir)
 				variable->data.driver_location += 1;
 		}
 	}
+}
 
+/**
+ * Perform "lowering" operations on the NIR that are run once when the shader
+ * selector is created.
+ */
+static void si_lower_nir(struct si_screen *sscreen, struct nir_shader *nir)
+{
 	/* Perform lowerings (and optimizations) of code.
 	 *
 	 * Performance considerations aside, we must:
@@ -990,20 +993,36 @@ void si_lower_nir(struct si_screen *sscreen, struct nir_shader *nir)
 	/* Lower load constants to scalar and then clean up the mess */
 	NIR_PASS_V(nir, nir_lower_load_const_to_scalar);
 	NIR_PASS_V(nir, nir_lower_var_copies);
+	NIR_PASS_V(nir, nir_lower_pack);
+	NIR_PASS_V(nir, nir_opt_access);
 	si_nir_opts(nir);
 
 	/* Lower large variables that are always constant with load_constant
 	 * intrinsics, which get turned into PC-relative loads from a data
 	 * section next to the shader.
+	 *
+	 * st/mesa calls finalize_nir twice, but we can't call this pass twice.
 	 */
-	NIR_PASS_V(nir, nir_opt_large_constants,
-		   glsl_get_natural_size_align_bytes, 16);
+	if (!nir->constant_data) {
+		NIR_PASS_V(nir, nir_opt_large_constants,
+			   glsl_get_natural_size_align_bytes, 16);
+	}
 
 	ac_lower_indirect_derefs(nir, sscreen->info.chip_class);
 
 	si_nir_opts(nir);
 
 	NIR_PASS_V(nir, nir_lower_bool_to_int32);
+}
+
+void si_finalize_nir(struct pipe_screen *screen, void *nirptr, bool optimize)
+{
+	struct si_screen *sscreen = (struct si_screen *)screen;
+	struct nir_shader *nir = (struct nir_shader *)nirptr;
+
+	nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));
+	si_nir_lower_ps_inputs(nir);
+	si_lower_nir(sscreen, nir);
 }
 
 static void declare_nir_input_vs(struct si_shader_context *ctx,

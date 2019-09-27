@@ -126,9 +126,7 @@ static void si_create_compute_state_async(void *job, int thread_index)
 	} else {
 		assert(program->ir_type == PIPE_SHADER_IR_NIR);
 
-		si_nir_opts(sel->nir);
 		si_nir_scan_shader(sel->nir, &sel->info);
-		si_lower_nir(sel->screen, sel->nir);
 	}
 
 	/* Store the declared LDS size into tgsi_shader_info for the shader
