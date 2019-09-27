@@ -87,6 +87,9 @@ _libaco = static_library(
   include_directories : [
    inc_common, inc_compiler, inc_mesa, inc_mapi, inc_amd, inc_amd_common, inc_amd_common_llvm,
   ],
+  link_with : [
+    libamd_common
+  ],
   dependencies : [
     dep_llvm, dep_thread, dep_elf, dep_libdrm_amdgpu, dep_valgrind,
     idep_nir_headers, idep_amdgfxregs_h,
