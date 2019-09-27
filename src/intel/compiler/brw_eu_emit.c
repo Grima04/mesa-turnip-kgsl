@@ -55,6 +55,7 @@ gen6_resolve_implied_move(struct brw_codegen *p,
       return;
 
    if (src->file != BRW_ARCHITECTURE_REGISTER_FILE || src->nr != BRW_ARF_NULL) {
+      assert(devinfo->gen < 12);
       brw_push_insn_state(p);
       brw_set_default_exec_size(p, BRW_EXECUTE_8);
       brw_set_default_mask_control(p, BRW_MASK_DISABLE);
@@ -1225,6 +1226,7 @@ brw_F32TO16(struct brw_codegen *p, struct brw_reg dst, struct brw_reg src)
    if (needs_zero_fill) {
       if (devinfo->gen < 12)
          brw_inst_set_no_dd_clear(devinfo, inst, true);
+      brw_set_default_swsb(p, tgl_swsb_null());
       inst = brw_MOV(p, suboffset(dst, 1), brw_imm_w(0));
       if (devinfo->gen < 12)
          brw_inst_set_no_dd_check(devinfo, inst, true);
@@ -2057,6 +2059,7 @@ void brw_oword_block_write_scratch(struct brw_codegen *p,
       (devinfo->gen >= 7 ? GEN7_SFID_DATAPORT_DATA_CACHE :
        devinfo->gen >= 6 ? GEN6_SFID_DATAPORT_RENDER_CACHE :
        BRW_SFID_DATAPORT_WRITE);
+   const struct tgl_swsb swsb = brw_get_default_swsb(p);
    uint32_t msg_type;
 
    if (devinfo->gen >= 6)
@@ -2076,11 +2079,13 @@ void brw_oword_block_write_scratch(struct brw_codegen *p,
       brw_set_default_exec_size(p, BRW_EXECUTE_8);
       brw_set_default_mask_control(p, BRW_MASK_DISABLE);
       brw_set_default_compression_control(p, BRW_COMPRESSION_NONE);
+      brw_set_default_swsb(p, tgl_swsb_src_dep(swsb));
 
       brw_MOV(p, mrf, retype(brw_vec8_grf(0, 0), BRW_REGISTER_TYPE_UD));
 
       /* set message header global offset field (reg 0, element 2) */
       brw_set_default_exec_size(p, BRW_EXECUTE_1);
+      brw_set_default_swsb(p, tgl_swsb_null());
       brw_MOV(p,
 	      retype(brw_vec1_reg(BRW_MESSAGE_REGISTER_FILE,
 				  mrf.nr,
@@ -2088,6 +2093,7 @@ void brw_oword_block_write_scratch(struct brw_codegen *p,
 	      brw_imm_ud(offset));
 
       brw_pop_insn_state(p);
+      brw_set_default_swsb(p, tgl_swsb_dst_dep(swsb, 1));
    }
 
    {
@@ -2162,6 +2168,7 @@ brw_oword_block_read_scratch(struct brw_codegen *p,
 			     unsigned offset)
 {
    const struct gen_device_info *devinfo = p->devinfo;
+   const struct tgl_swsb swsb = brw_get_default_swsb(p);
 
    if (devinfo->gen >= 6)
       offset /= 16;
@@ -2188,6 +2195,7 @@ brw_oword_block_read_scratch(struct brw_codegen *p,
 
    {
       brw_push_insn_state(p);
+      brw_set_default_swsb(p, tgl_swsb_src_dep(swsb));
       brw_set_default_exec_size(p, BRW_EXECUTE_8);
       brw_set_default_compression_control(p, BRW_COMPRESSION_NONE);
       brw_set_default_mask_control(p, BRW_MASK_DISABLE);
@@ -2196,9 +2204,11 @@ brw_oword_block_read_scratch(struct brw_codegen *p,
 
       /* set message header global offset field (reg 0, element 2) */
       brw_set_default_exec_size(p, BRW_EXECUTE_1);
+      brw_set_default_swsb(p, tgl_swsb_null());
       brw_MOV(p, get_element_ud(mrf, 2), brw_imm_ud(offset));
 
       brw_pop_insn_state(p);
+      brw_set_default_swsb(p, tgl_swsb_dst_dep(swsb, 1));
    }
 
    {
@@ -2275,6 +2285,7 @@ void brw_oword_block_read(struct brw_codegen *p,
       (devinfo->gen >= 6 ? GEN6_SFID_DATAPORT_CONSTANT_CACHE :
        BRW_SFID_DATAPORT_READ);
    const unsigned exec_size = 1 << brw_get_default_exec_size(p);
+   const struct tgl_swsb swsb = brw_get_default_swsb(p);
 
    /* On newer hardware, offset is in units of owords. */
    if (devinfo->gen >= 6)
@@ -2289,16 +2300,20 @@ void brw_oword_block_read(struct brw_codegen *p,
 
    brw_push_insn_state(p);
    brw_set_default_exec_size(p, BRW_EXECUTE_8);
+   brw_set_default_swsb(p, tgl_swsb_src_dep(swsb));
    brw_MOV(p, mrf, retype(brw_vec8_grf(0, 0), BRW_REGISTER_TYPE_UD));
 
    /* set message header global offset field (reg 0, element 2) */
    brw_set_default_exec_size(p, BRW_EXECUTE_1);
+   brw_set_default_swsb(p, tgl_swsb_null());
    brw_MOV(p,
 	   retype(brw_vec1_reg(BRW_MESSAGE_REGISTER_FILE,
 			       mrf.nr,
 			       2), BRW_REGISTER_TYPE_UD),
 	   brw_imm_ud(offset));
    brw_pop_insn_state(p);
+
+   brw_set_default_swsb(p, tgl_swsb_dst_dep(swsb, 1));
 
    brw_inst *insn = next_insn(p, BRW_OPCODE_SEND);
 
@@ -2505,12 +2520,15 @@ void brw_adjust_sampler_state_pointer(struct brw_codegen *p,
 
       struct brw_reg temp = get_element_ud(header, 3);
 
+      brw_push_insn_state(p);
       brw_AND(p, temp, get_element_ud(sampler_index, 0), brw_imm_ud(0x0f0));
+      brw_set_default_swsb(p, tgl_swsb_regdist(1));
       brw_SHL(p, temp, temp, brw_imm_ud(4));
       brw_ADD(p,
               get_element_ud(header, 3),
               get_element_ud(brw_vec8_grf(0, 0), 3),
               temp);
+      brw_pop_insn_state(p);
    }
 }
 
@@ -2587,6 +2605,7 @@ brw_send_indirect_message(struct brw_codegen *p,
       brw_set_src0(p, send, retype(payload, BRW_REGISTER_TYPE_UD));
       brw_set_desc(p, send, desc.ud | desc_imm);
    } else {
+      const struct tgl_swsb swsb = brw_get_default_swsb(p);
       struct brw_reg addr = retype(brw_address_reg(0), BRW_REGISTER_TYPE_UD);
 
       brw_push_insn_state(p);
@@ -2594,6 +2613,7 @@ brw_send_indirect_message(struct brw_codegen *p,
       brw_set_default_mask_control(p, BRW_MASK_DISABLE);
       brw_set_default_exec_size(p, BRW_EXECUTE_1);
       brw_set_default_predicate_control(p, BRW_PREDICATE_NONE);
+      brw_set_default_swsb(p, tgl_swsb_src_dep(swsb));
 
       /* Load the indirect descriptor to an address register using OR so the
        * caller can specify additional descriptor bits with the desc_imm
@@ -2603,6 +2623,7 @@ brw_send_indirect_message(struct brw_codegen *p,
 
       brw_pop_insn_state(p);
 
+      brw_set_default_swsb(p, tgl_swsb_dst_dep(swsb, 1));
       send = next_insn(p, BRW_OPCODE_SEND);
       brw_set_src0(p, send, retype(payload, BRW_REGISTER_TYPE_UD));
 
@@ -2639,6 +2660,7 @@ brw_send_indirect_split_message(struct brw_codegen *p,
    if (desc.file == BRW_IMMEDIATE_VALUE) {
       desc.ud |= desc_imm;
    } else {
+      const struct tgl_swsb swsb = brw_get_default_swsb(p);
       struct brw_reg addr = retype(brw_address_reg(0), BRW_REGISTER_TYPE_UD);
 
       brw_push_insn_state(p);
@@ -2646,6 +2668,7 @@ brw_send_indirect_split_message(struct brw_codegen *p,
       brw_set_default_mask_control(p, BRW_MASK_DISABLE);
       brw_set_default_exec_size(p, BRW_EXECUTE_1);
       brw_set_default_predicate_control(p, BRW_PREDICATE_NONE);
+      brw_set_default_swsb(p, tgl_swsb_src_dep(swsb));
 
       /* Load the indirect descriptor to an address register using OR so the
        * caller can specify additional descriptor bits with the desc_imm
@@ -2655,12 +2678,15 @@ brw_send_indirect_split_message(struct brw_codegen *p,
 
       brw_pop_insn_state(p);
       desc = addr;
+
+      brw_set_default_swsb(p, tgl_swsb_dst_dep(swsb, 1));
    }
 
    if (ex_desc.file == BRW_IMMEDIATE_VALUE &&
        (ex_desc.ud & INTEL_MASK(15, 12)) == 0) {
       ex_desc.ud |= ex_desc_imm;
    } else {
+      const struct tgl_swsb swsb = brw_get_default_swsb(p);
       struct brw_reg addr = retype(brw_address_reg(2), BRW_REGISTER_TYPE_UD);
 
       brw_push_insn_state(p);
@@ -2668,6 +2694,7 @@ brw_send_indirect_split_message(struct brw_codegen *p,
       brw_set_default_mask_control(p, BRW_MASK_DISABLE);
       brw_set_default_exec_size(p, BRW_EXECUTE_1);
       brw_set_default_predicate_control(p, BRW_PREDICATE_NONE);
+      brw_set_default_swsb(p, tgl_swsb_src_dep(swsb));
 
       /* Load the indirect extended descriptor to an address register using OR
        * so the caller can specify additional descriptor bits with the
@@ -2692,6 +2719,8 @@ brw_send_indirect_split_message(struct brw_codegen *p,
 
       brw_pop_insn_state(p);
       ex_desc = addr;
+
+      brw_set_default_swsb(p, tgl_swsb_dst_dep(swsb, 1));
    }
 
    send = next_insn(p, devinfo->gen >= 12 ? BRW_OPCODE_SEND : BRW_OPCODE_SENDS);
@@ -2733,6 +2762,7 @@ brw_send_indirect_surface_message(struct brw_codegen *p,
                                   unsigned desc_imm)
 {
    if (surface.file != BRW_IMMEDIATE_VALUE) {
+      const struct tgl_swsb swsb = brw_get_default_swsb(p);
       struct brw_reg addr = retype(brw_address_reg(0), BRW_REGISTER_TYPE_UD);
 
       brw_push_insn_state(p);
@@ -2740,6 +2770,7 @@ brw_send_indirect_surface_message(struct brw_codegen *p,
       brw_set_default_mask_control(p, BRW_MASK_DISABLE);
       brw_set_default_exec_size(p, BRW_EXECUTE_1);
       brw_set_default_predicate_control(p, BRW_PREDICATE_NONE);
+      brw_set_default_swsb(p, tgl_swsb_src_dep(swsb));
 
       /* Mask out invalid bits from the surface index to avoid hangs e.g. when
        * some surface array is accessed out of bounds.
@@ -2752,6 +2783,7 @@ brw_send_indirect_surface_message(struct brw_codegen *p,
       brw_pop_insn_state(p);
 
       surface = addr;
+      brw_set_default_swsb(p, tgl_swsb_dst_dep(swsb, 1));
    }
 
    brw_send_indirect_message(p, sfid, dst, payload, surface, desc_imm, false);
@@ -3166,8 +3198,12 @@ brw_memory_fence(struct brw_codegen *p,
       brw_MOV(p, dst, offset(dst, 1));
    }
 
-   if (stall)
+   if (stall) {
+      brw_set_default_swsb(p, tgl_swsb_sbid(TGL_SBID_DST,
+                                            brw_get_default_swsb(p).sbid));
+
       brw_MOV(p, retype(brw_null_reg(), BRW_REGISTER_TYPE_UW), dst);
+   }
 
    brw_pop_insn_state(p);
 }
@@ -3248,6 +3284,7 @@ brw_find_live_channel(struct brw_codegen *p, struct brw_reg dst,
              * hardware.
              */
             brw_SHR(p, vec1(dst), mask, brw_imm_ud(qtr_control * 8));
+            brw_set_default_swsb(p, tgl_swsb_regdist(1));
             brw_AND(p, vec1(dst), exec_mask, vec1(dst));
             exec_mask = vec1(dst);
          }
@@ -3391,11 +3428,14 @@ brw_broadcast(struct brw_codegen *p,
           * register is above this limit.
           */
          if (offset >= limit) {
+            brw_set_default_swsb(p, tgl_swsb_regdist(1));
             brw_ADD(p, addr, addr, brw_imm_ud(offset - offset % limit));
             offset = offset % limit;
          }
 
          brw_pop_insn_state(p);
+
+         brw_set_default_swsb(p, tgl_swsb_regdist(1));
 
          /* Use indirect addressing to fetch the specified component. */
          if (type_sz(src.type) > 4 &&
@@ -3415,6 +3455,7 @@ brw_broadcast(struct brw_codegen *p,
             brw_MOV(p, subscript(dst, BRW_REGISTER_TYPE_D, 0),
                        retype(brw_vec1_indirect(addr.subnr, offset),
                               BRW_REGISTER_TYPE_D));
+            brw_set_default_swsb(p, tgl_swsb_null());
             brw_MOV(p, subscript(dst, BRW_REGISTER_TYPE_D, 1),
                        retype(brw_vec1_indirect(addr.subnr, offset + 4),
                               BRW_REGISTER_TYPE_D));
@@ -3548,17 +3589,20 @@ void
 brw_float_controls_mode(struct brw_codegen *p,
                         unsigned mode, unsigned mask)
 {
-   brw_inst *inst = brw_AND(p, brw_cr0_reg(0), brw_cr0_reg(0),
-                            brw_imm_ud(~mask));
-   brw_inst_set_exec_size(p->devinfo, inst, BRW_EXECUTE_1);
-
    /* From the Skylake PRM, Volume 7, page 760:
     *  "Implementation Restriction on Register Access: When the control
     *   register is used as an explicit source and/or destination, hardware
     *   does not ensure execution pipeline coherency. Software must set the
     *   thread control field to ‘switch’ for an instruction that uses
     *   control register as an explicit operand."
+    *
+    * On Gen12+ this is implemented in terms of SWSB annotations instead.
     */
+   brw_set_default_swsb(p, tgl_swsb_regdist(1));
+
+   brw_inst *inst = brw_AND(p, brw_cr0_reg(0), brw_cr0_reg(0),
+                            brw_imm_ud(~mask));
+   brw_inst_set_exec_size(p->devinfo, inst, BRW_EXECUTE_1);
    if (p->devinfo->gen < 12)
       brw_inst_set_thread_control(p->devinfo, inst, BRW_THREAD_SWITCH);
 
@@ -3569,4 +3613,7 @@ brw_float_controls_mode(struct brw_codegen *p,
       if (p->devinfo->gen < 12)
          brw_inst_set_thread_control(p->devinfo, inst_or, BRW_THREAD_SWITCH);
    }
+
+   if (p->devinfo->gen >= 12)
+      brw_SYNC(p, TGL_SYNC_NOP);
 }
