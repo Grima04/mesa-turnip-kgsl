@@ -1244,7 +1244,7 @@ dri2CreateScreen(int screen, struct glx_display * priv)
 
    psc->fd = loader_open_device(deviceName);
    if (psc->fd < 0) {
-      ErrorMessageF("failed to open drm device: %s\n", strerror(errno));
+      ErrorMessageF("failed to open %s: %s\n", deviceName, strerror(errno));
       goto handle_error;
    }
 
