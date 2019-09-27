@@ -29,6 +29,7 @@
 #include "registers/a6xx.xml.h"
 
 #include "util/format_r11g11b10f.h"
+#include "util/format_rgb9e5.h"
 #include "util/format_srgb.h"
 #include "util/u_half.h"
 #include "vk_format.h"
@@ -567,6 +568,18 @@ void
 tu_pack_clear_value(const VkClearValue *val, VkFormat format, uint32_t buf[4])
 {
    const struct vk_format_description *desc = vk_format_description(format);
+
+   switch (format) {
+   case VK_FORMAT_B10G11R11_UFLOAT_PACK32:
+      buf[0] = float3_to_r11g11b10f(val->color.float32);
+      return;
+   case VK_FORMAT_E5B9G9R9_UFLOAT_PACK32:
+      buf[0] = float3_to_rgb9e5(val->color.float32);
+      return;
+   default:
+      break;
+   }
+
    assert(desc && desc->layout == VK_FORMAT_LAYOUT_PLAIN);
 
    /* S8_UINT is special and has no depth */
