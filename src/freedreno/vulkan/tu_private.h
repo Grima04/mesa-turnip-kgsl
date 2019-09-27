@@ -1223,7 +1223,7 @@ struct tu_native_format
 const struct tu_native_format *
 tu6_get_native_format(VkFormat format);
 
-int
+void
 tu_pack_clear_value(const VkClearValue *val,
                     VkFormat format,
                     uint32_t buf[4]);

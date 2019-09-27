@@ -563,7 +563,7 @@ tu_get_clear_component_value(const VkClearValue *val, int comp, bool color)
  *
  * Return the number of uint32_t's used.
  */
-int
+void
 tu_pack_clear_value(const VkClearValue *val, VkFormat format, uint32_t buf[4])
 {
    const struct vk_format_description *desc = vk_format_description(format);
@@ -600,8 +600,6 @@ tu_pack_clear_value(const VkClearValue *val, VkFormat format, uint32_t buf[4])
       buf[buf_offset] |= tu_pack_clear_component_value(v, ch) << bit_shift;
       bit_shift += ch->size;
    }
-
-   return buf_offset + 1;
 }
 
 static void
