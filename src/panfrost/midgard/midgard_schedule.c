@@ -827,6 +827,9 @@ struct midgard_predicate {
         uint8_t *constants;
         unsigned constant_count;
         bool blend_constant;
+
+        /* Exclude this destination (if not ~0) */
+        unsigned exclude;
 };
 
 /* For an instruction that can fit, adjust it to fit and update the constants
@@ -893,6 +896,9 @@ mir_choose_instruction(
                 if (tag != ~0 && instructions[i]->type != tag)
                         continue;
 
+                if (predicate->exclude != ~0 && instructions[i]->dest == predicate->exclude)
+                        continue;
+
                 /* Simulate in-order scheduling */
                 if ((signed) i < best_index)
                         continue;
@@ -930,7 +936,8 @@ mir_choose_bundle(
 
         struct midgard_predicate predicate = {
                 .tag = ~0,
-                .destructive = false
+                .destructive = false,
+                .exclude = ~0
         };
 
         midgard_instruction *chosen = mir_choose_instruction(instructions, worklist, count, &predicate);
@@ -950,7 +957,8 @@ mir_schedule_texture(
 {
         struct midgard_predicate predicate = {
                 .tag = TAG_TEXTURE_4,
-                .destructive = true
+                .destructive = true,
+                .exclude = ~0
         };
 
         midgard_instruction *ins =
@@ -974,7 +982,8 @@ mir_schedule_ldst(
 {
         struct midgard_predicate predicate = {
                 .tag = TAG_LOAD_STORE_4,
-                .destructive = true
+                .destructive = true,
+                .exclude = ~0
         };
 
         midgard_instruction *ins =
@@ -1003,7 +1012,8 @@ mir_schedule_alu(
 
         struct midgard_predicate predicate = {
                 .tag = TAG_ALU_4,
-                .destructive = true
+                .destructive = true,
+                .exclude = ~0
         };
 
         midgard_instruction *ins =
