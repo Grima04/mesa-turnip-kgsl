@@ -50,6 +50,15 @@ link(void *mem_ctx, bblock_t *block, enum bblock_link_kind kind)
    return &l->link;
 }
 
+void
+push_stack(exec_list *list, void *mem_ctx, bblock_t *block)
+{
+   /* The kind of the link is immaterial, but we need to provide one since
+    * this is (ab)using the edge data structure in order to implement a stack.
+    */
+   list->push_tail(link(mem_ctx, block, bblock_link_logical));
+}
+
 bblock_t::bblock_t(cfg_t *cfg) :
    cfg(cfg), idom(NULL), start_ip(0), end_ip(0), num(0), cycle_count(0)
 {
@@ -188,8 +197,8 @@ cfg_t::cfg_t(exec_list *instructions)
 	 /* Push our information onto a stack so we can recover from
 	  * nested ifs.
 	  */
-         if_stack.push_tail(link(mem_ctx, cur_if, bblock_link_logical));
-         else_stack.push_tail(link(mem_ctx, cur_else, bblock_link_logical));
+         push_stack(&if_stack, mem_ctx, cur_if);
+         push_stack(&else_stack, mem_ctx, cur_else);
 
 	 cur_if = cur;
 	 cur_else = NULL;
@@ -249,8 +258,8 @@ cfg_t::cfg_t(exec_list *instructions)
 	 /* Push our information onto a stack so we can recover from
 	  * nested loops.
 	  */
-         do_stack.push_tail(link(mem_ctx, cur_do, bblock_link_logical));
-         while_stack.push_tail(link(mem_ctx, cur_while, bblock_link_logical));
+         push_stack(&do_stack, mem_ctx, cur_do);
+         push_stack(&while_stack, mem_ctx, cur_while);
 
 	 /* Set up the block just after the while.  Don't know when exactly
 	  * it will start, yet.
