@@ -388,7 +388,6 @@ emit_alu(struct ir3_context *ctx, nir_alu_instr *alu)
 	case nir_op_f2b32:
 		dst[0] = ir3_CMPS_F(b, src[0], 0, create_immed(b, fui(0.0)), 0);
 		dst[0]->cat2.condition = IR3_COND_NE;
-		dst[0] = ir3_n2b(b, dst[0]);
 		break;
 	case nir_op_b2f16:
 		dst[0] = ir3_COV(b, ir3_b2n(b, src[0]), TYPE_U32, TYPE_F16);
@@ -404,7 +403,6 @@ emit_alu(struct ir3_context *ctx, nir_alu_instr *alu)
 	case nir_op_i2b32:
 		dst[0] = ir3_CMPS_S(b, src[0], 0, create_immed(b, 0), 0);
 		dst[0]->cat2.condition = IR3_COND_NE;
-		dst[0] = ir3_n2b(b, dst[0]);
 		break;
 
 	case nir_op_fneg:
@@ -466,22 +464,18 @@ emit_alu(struct ir3_context *ctx, nir_alu_instr *alu)
 	case nir_op_flt32:
 		dst[0] = ir3_CMPS_F(b, src[0], 0, src[1], 0);
 		dst[0]->cat2.condition = IR3_COND_LT;
-		dst[0] = ir3_n2b(b, dst[0]);
 		break;
 	case nir_op_fge32:
 		dst[0] = ir3_CMPS_F(b, src[0], 0, src[1], 0);
 		dst[0]->cat2.condition = IR3_COND_GE;
-		dst[0] = ir3_n2b(b, dst[0]);
 		break;
 	case nir_op_feq32:
 		dst[0] = ir3_CMPS_F(b, src[0], 0, src[1], 0);
 		dst[0]->cat2.condition = IR3_COND_EQ;
-		dst[0] = ir3_n2b(b, dst[0]);
 		break;
 	case nir_op_fne32:
 		dst[0] = ir3_CMPS_F(b, src[0], 0, src[1], 0);
 		dst[0]->cat2.condition = IR3_COND_NE;
-		dst[0] = ir3_n2b(b, dst[0]);
 		break;
 	case nir_op_fceil:
 		dst[0] = ir3_CEIL_F(b, src[0], 0);
@@ -581,32 +575,26 @@ emit_alu(struct ir3_context *ctx, nir_alu_instr *alu)
 	case nir_op_ilt32:
 		dst[0] = ir3_CMPS_S(b, src[0], 0, src[1], 0);
 		dst[0]->cat2.condition = IR3_COND_LT;
-		dst[0] = ir3_n2b(b, dst[0]);
 		break;
 	case nir_op_ige32:
 		dst[0] = ir3_CMPS_S(b, src[0], 0, src[1], 0);
 		dst[0]->cat2.condition = IR3_COND_GE;
-		dst[0] = ir3_n2b(b, dst[0]);
 		break;
 	case nir_op_ieq32:
 		dst[0] = ir3_CMPS_S(b, src[0], 0, src[1], 0);
 		dst[0]->cat2.condition = IR3_COND_EQ;
-		dst[0] = ir3_n2b(b, dst[0]);
 		break;
 	case nir_op_ine32:
 		dst[0] = ir3_CMPS_S(b, src[0], 0, src[1], 0);
 		dst[0]->cat2.condition = IR3_COND_NE;
-		dst[0] = ir3_n2b(b, dst[0]);
 		break;
 	case nir_op_ult32:
 		dst[0] = ir3_CMPS_U(b, src[0], 0, src[1], 0);
 		dst[0]->cat2.condition = IR3_COND_LT;
-		dst[0] = ir3_n2b(b, dst[0]);
 		break;
 	case nir_op_uge32:
 		dst[0] = ir3_CMPS_U(b, src[0], 0, src[1], 0);
 		dst[0]->cat2.condition = IR3_COND_GE;
-		dst[0] = ir3_n2b(b, dst[0]);
 		break;
 
 	case nir_op_b32csel: {
@@ -673,6 +661,11 @@ emit_alu(struct ir3_context *ctx, nir_alu_instr *alu)
 		ir3_context_error(ctx, "Unhandled ALU op: %s\n",
 				nir_op_infos[alu->op].name);
 		break;
+	}
+
+	if (nir_alu_type_get_base_type(info->output_type) == nir_type_bool) {
+		assert(dst_sz == 1);
+		dst[0] = ir3_n2b(b, dst[0]);
 	}
 
 	ir3_put_dst(ctx, &alu->dest.dest);
