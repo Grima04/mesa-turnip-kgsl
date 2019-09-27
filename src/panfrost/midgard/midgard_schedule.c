@@ -885,6 +885,9 @@ mir_choose_instruction(
 {
         /* Parse the predicate */
         unsigned tag = predicate->tag;
+        bool alu = tag == TAG_ALU_4;
+        unsigned unit = predicate->unit;
+        bool branch = alu && (unit == ALU_ENAB_BR_COMPACT);
 
         /* Iterate to find the best instruction satisfying the predicate */
         unsigned i;
@@ -897,6 +900,12 @@ mir_choose_instruction(
                         continue;
 
                 if (predicate->exclude != ~0 && instructions[i]->dest == predicate->exclude)
+                        continue;
+
+                if (alu && !branch && !(alu_opcode_props[instructions[i]->alu.op].props & unit))
+                        continue;
+
+                if (branch && !instructions[i]->compact_branch)
                         continue;
 
                 /* Simulate in-order scheduling */
