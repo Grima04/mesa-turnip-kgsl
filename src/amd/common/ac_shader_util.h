@@ -31,6 +31,10 @@
 #include "ac_binary.h"
 #include "compiler/nir/nir.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 enum ac_image_dim {
 	ac_image_1d,
 	ac_image_2d,
@@ -68,5 +72,9 @@ unsigned
 ac_get_fs_input_vgpr_cnt(const struct ac_shader_config *config,
 			 signed char *face_vgpr_index,
 			 signed char *ancillary_vgpr_index);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
