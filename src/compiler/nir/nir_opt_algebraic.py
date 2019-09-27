@@ -1114,9 +1114,9 @@ optimizations.extend([
    (('fsign', a), ('fsub', ('b2f', ('flt', 0.0, a)), ('b2f', ('flt', a, 0.0))), 'options->lower_fsign'),
 
    # Address/offset calculations:
-   # for now, unconditionally convert amul to imul, this will
-   # change in the following patch
-   (('amul', a, b), ('imul', a, b)),
+   # Drivers supporting imul24 should use the nir_lower_amul() pass, this
+   # rule converts everyone else to imul:
+   (('amul', a, b), ('imul', a, b), '!options->has_imul24'),
 
    (('imad24_ir3', a, b, 0), ('imul24', a, b)),
    (('imad24_ir3', a, 0, c), (c)),

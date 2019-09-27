@@ -2758,6 +2758,14 @@ typedef struct nir_shader_compiler_options {
    bool lower_rotate;
 
    /**
+    * Backend supports imul24, and would like to use it (when possible)
+    * for address/offset calculation.  If true, driver should call
+    * nir_lower_amul().  (If not set, amul will automatically be lowered
+    * to imul.)
+    */
+   bool has_imul24;
+
+   /**
     * Is this the Intel vec4 backend?
     *
     * Used to inhibit algebraic optimizations that are known to be harmful on
@@ -3540,6 +3548,8 @@ void nir_compact_varyings(nir_shader *producer, nir_shader *consumer,
 void nir_link_xfb_varyings(nir_shader *producer, nir_shader *consumer);
 bool nir_link_opt_varyings(nir_shader *producer, nir_shader *consumer);
 
+bool nir_lower_amul(nir_shader *shader,
+                    int (*type_size)(const struct glsl_type *, bool));
 
 void nir_assign_io_var_locations(struct exec_list *var_list,
                                  unsigned *size,

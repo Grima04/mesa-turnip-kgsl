@@ -317,6 +317,8 @@ ir3_shader_from_nir(struct ir3_compiler *compiler, nir_shader *nir)
 
 	NIR_PASS_V(nir, nir_lower_io_arrays_to_elements_no_indirects, false);
 
+	NIR_PASS_V(nir, nir_lower_amul, ir3_glsl_type_size);
+
 	/* do first pass optimization, ignoring the key: */
 	ir3_optimize_nir(shader, nir, NULL);
 
