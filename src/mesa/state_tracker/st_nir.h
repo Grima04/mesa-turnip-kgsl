@@ -43,7 +43,7 @@ void st_nir_lower_wpos_ytransform(struct nir_shader *nir,
 
 void st_finalize_nir(struct st_context *st, struct gl_program *prog,
                      struct gl_shader_program *shader_program,
-                     struct nir_shader *nir);
+                     struct nir_shader *nir, bool finalize_by_driver);
 
 void st_nir_opts(struct nir_shader *nir);
 

@@ -153,6 +153,17 @@ struct st_context
    boolean lower_two_sided_color;
    boolean lower_ucp;
 
+   /* There are consequences for drivers wanting to call st_finalize_nir
+    * twice, once before shader caching and once after lowering for shader
+    * variants. If shader variants use lowering passes that are not ready
+    * for that, things can blow up.
+    *
+    * If this is true, st_finalize_nir and pipe_screen::finalize_nir will be
+    * called before the result is stored in the shader cache. If lowering for
+    * shader variants is invoked, the functions will be called again.
+    */
+   boolean allow_st_finalize_nir_twice;
+
    /**
     * If a shader can be created when we get its source.
     * This means it has only 1 variant, not counting glBitmap and

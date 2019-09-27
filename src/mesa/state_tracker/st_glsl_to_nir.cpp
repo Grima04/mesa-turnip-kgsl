@@ -498,6 +498,9 @@ st_glsl_to_nir_post_opts(struct st_context *st, struct gl_program *prog,
 
    st_finalize_nir_before_variants(nir);
 
+   if (st->allow_st_finalize_nir_twice)
+      st_finalize_nir(st, prog, shader_program, nir, true);
+
    if (st->ctx->_Shader->Flags & GLSL_DUMP) {
       _mesa_log("\n");
       _mesa_log("NIR IR for linked %s program %d:\n",
@@ -903,7 +906,8 @@ st_nir_lower_samplers(struct pipe_screen *screen, nir_shader *nir,
  */
 void
 st_finalize_nir(struct st_context *st, struct gl_program *prog,
-                struct gl_shader_program *shader_program, nir_shader *nir)
+                struct gl_shader_program *shader_program,
+                nir_shader *nir, bool finalize_by_driver)
 {
    struct pipe_screen *screen = st->pipe->screen;
 
@@ -927,6 +931,9 @@ st_finalize_nir(struct st_context *st, struct gl_program *prog,
    }
 
    st_nir_lower_samplers(screen, nir, shader_program, prog);
+
+   if (finalize_by_driver && screen->finalize_nir)
+      screen->finalize_nir(screen, nir, false);
 }
 
 } /* extern "C" */

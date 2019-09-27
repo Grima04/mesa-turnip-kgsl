@@ -52,8 +52,6 @@ st_nir_finish_builtin_shader(struct st_context *st,
       NIR_PASS_V(nir, nir_lower_io_to_scalar_early, mask);
    }
 
-   st_nir_opts(nir);
-
    nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));
 
    st_nir_assign_vs_in_locations(nir);
@@ -69,6 +67,11 @@ st_nir_finish_builtin_shader(struct st_context *st,
       NIR_PASS_V(nir, nir_lower_io, nir_var_uniform, st_glsl_uniforms_type_size,
                  (nir_lower_io_options)0);
    }
+
+   if (screen->finalize_nir)
+      screen->finalize_nir(screen, nir, true);
+   else
+      st_nir_opts(nir);
 
    struct pipe_shader_state state = {
       .type = PIPE_SHADER_IR_NIR,

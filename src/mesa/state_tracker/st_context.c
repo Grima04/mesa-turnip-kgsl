@@ -687,6 +687,7 @@ st_create_context_priv(struct gl_context *ctx, struct pipe_context *pipe,
       !screen->get_param(screen, PIPE_CAP_TWO_SIDED_COLOR);
    st->lower_ucp =
       !screen->get_param(screen, PIPE_CAP_CLIP_PLANES);
+   st->allow_st_finalize_nir_twice = screen->finalize_nir != NULL;
 
    st->has_hw_atomics =
       screen->get_shader_param(screen, PIPE_SHADER_FRAGMENT,
