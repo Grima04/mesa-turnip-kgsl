@@ -806,17 +806,17 @@ st_link_nir(struct gl_context *ctx,
       if (shader == NULL)
          continue;
 
-      st_glsl_to_nir_post_opts(st, shader->Program, shader_program);
+      struct gl_program *prog = shader->Program;
+      st_glsl_to_nir_post_opts(st, prog, shader_program);
 
-      assert(shader->Program);
       if (!ctx->Driver.ProgramStringNotify(ctx,
                                            _mesa_shader_stage_to_program(i),
-                                           shader->Program)) {
+                                           prog)) {
          _mesa_reference_program(ctx, &shader->Program, NULL);
          return false;
       }
 
-      nir_sweep(shader->Program->nir);
+      nir_sweep(prog->nir);
 
       /* The GLSL IR won't be needed anymore. */
       ralloc_free(shader->ir);
