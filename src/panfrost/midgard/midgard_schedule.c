@@ -370,26 +370,123 @@ mir_adjust_constants(midgard_instruction *ins,
         if (!ins->has_constants)
                 return true;
 
-        /* TODO: Deduplicate; permit multiple constants within a bundle */
+        if (ins->alu.reg_mode == midgard_reg_mode_16) {
+                /* TODO: 16-bit constant combining */
+                if (pred->constant_count)
+                        return false;
 
-        if (destructive && !pred->constant_count) {
-                if (ins->alu.reg_mode == midgard_reg_mode_16) {
-                      /* TODO: Fix packing XXX */
-                        uint16_t *bundles = (uint16_t *) pred->constants;
-                        uint32_t *constants = (uint32_t *) ins->constants;
+                uint16_t *bundles = (uint16_t *) pred->constants;
+                uint32_t *constants = (uint32_t *) ins->constants;
 
-                        /* Copy them wholesale */
-                        for (unsigned i = 0; i < 4; ++i)
-                                bundles[i] = constants[i];
-                } else {
-                        memcpy(pred->constants, ins->constants, 16);
-                }
+                /* Copy them wholesale */
+                for (unsigned i = 0; i < 4; ++i)
+                        bundles[i] = constants[i];
 
                 pred->constant_count = 16;
-                return true;
+        } else {
+                /* Pack 32-bit constants */
+                uint32_t *bundles = (uint32_t *) pred->constants;
+                uint32_t *constants = (uint32_t *) ins->constants;
+                unsigned r_constant = SSA_FIXED_REGISTER(REGISTER_CONSTANT);
+                unsigned mask = mir_mask_of_read_components(ins, r_constant);
+
+                /* First, check if it fits */
+                unsigned count = DIV_ROUND_UP(pred->constant_count, sizeof(uint32_t));
+                unsigned existing_count = count;
+
+                for (unsigned i = 0; i < 4; ++i) {
+                        if (!(mask & (1 << i)))
+                                continue;
+
+                        bool ok = false;
+
+                        /* Look for existing constant */
+                        for (unsigned j = 0; j < existing_count; ++j) {
+                                if (bundles[j] == constants[i]) {
+                                        ok = true;
+                                        break;
+                                }
+                        }
+
+                        if (ok)
+                                continue;
+
+                        /* If the constant is new, check ourselves */
+                        for (unsigned j = 0; j < i; ++j) {
+                                if (constants[j] == constants[i]) {
+                                        ok = true;
+                                        break;
+                                }
+                        }
+
+                        if (ok)
+                                continue;
+
+                        /* Otherwise, this is a new constant */
+                        count++;
+                }
+
+                /* Check if we have space */
+                if (count > 4)
+                        return false;
+
+                /* If non-destructive, we're done */
+                if (!destructive)
+                        return true;
+
+                /* If destructive, let's copy in the new constants and adjust
+                 * swizzles to pack it in. */
+
+                uint32_t indices[4] = { 0 };
+
+                /* Reset count */
+                count = existing_count;
+
+                for (unsigned i = 0; i < 4; ++i) {
+                        if (!(mask & (1 << i)))
+                                continue;
+
+                        uint32_t cons = constants[i];
+                        bool constant_found = false;
+
+                        /* Search for the constant */
+                        for (unsigned j = 0; j < count; ++j) {
+                                if (bundles[j] != cons)
+                                        continue;
+
+                                /* We found it, reuse */
+                                indices[i] = j;
+                                constant_found = true;
+                                break;
+                        }
+
+                        if (constant_found)
+                                continue;
+
+                        /* We didn't find it, so allocate it */
+                        unsigned idx = count++;
+
+                        /* We have space, copy it in! */
+                        bundles[idx] = cons;
+                        indices[i] = idx;
+                }
+
+                pred->constant_count = count * sizeof(uint32_t);
+
+                /* Cool, we have it in. So use indices as a
+                 * swizzle */
+
+                unsigned swizzle = SWIZZLE_FROM_ARRAY(indices);
+
+                if (ins->src[0] == r_constant)
+                        ins->alu.src1 = vector_alu_apply_swizzle(ins->alu.src1, swizzle);
+
+                if (ins->src[1] == r_constant)
+                        ins->alu.src2 = vector_alu_apply_swizzle(ins->alu.src2, swizzle);
+
         }
 
-        return !pred->constant_count;
+        return true;
 }
 
 static midgard_instruction *
