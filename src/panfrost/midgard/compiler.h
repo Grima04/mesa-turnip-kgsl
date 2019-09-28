@@ -198,9 +198,10 @@ typedef struct midgard_bundle {
         /* Tag for the overall bundle */
         int tag;
 
-        /* Instructions contained by the bundle */
+        /* Instructions contained by the bundle. instruction_count <= 6 (vmul,
+         * sadd, vadd, smul, vlut, branch) */
         int instruction_count;
-        midgard_instruction *instructions[5];
+        midgard_instruction *instructions[6];
 
         /* Bundle-wide ALU configuration */
         int padding;
