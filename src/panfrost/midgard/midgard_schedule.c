@@ -188,10 +188,6 @@ is_single_component_mask(unsigned mask)
 static bool
 mir_is_scalar(midgard_instruction *ains)
 {
-        /* Does the op support scalar units? */
-        if (!(alu_opcode_props[ains->alu.op].props & UNITS_SCALAR))
-                return false;
-
         /* Do we try to use it as a vector op? */
         if (!is_single_component_mask(ains->mask))
                 return false;
