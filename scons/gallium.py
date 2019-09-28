@@ -132,7 +132,7 @@ def check_cc(env, cc, expr, cpp_opt = '-E'):
     sys.stdout.write('Checking for %s ... ' % cc)
 
     source = tempfile.NamedTemporaryFile(suffix='.c', delete=False)
-    source.write('#if !(%s)\n#error\n#endif\n' % expr)
+    source.write(('#if !(%s)\n#error\n#endif\n' % expr).encode())
     source.close()
 
     # sys.stderr.write('%r %s %s\n' % (env['CC'], cpp_opt, source.name));
