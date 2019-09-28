@@ -768,13 +768,16 @@ fs_generator::generate_cs_terminate(fs_inst *inst, struct brw_reg payload)
    brw_inst_set_header_present(devinfo, insn, false);
 
    brw_inst_set_ts_opcode(devinfo, insn, 0); /* Dereference resource */
-   brw_inst_set_ts_request_type(devinfo, insn, 0); /* Root thread */
 
-   /* Note that even though the thread has a URB resource associated with it,
-    * we set the "do not dereference URB" bit, because the URB resource is
-    * managed by the fixed-function unit, so it will free it automatically.
-    */
-   brw_inst_set_ts_resource_select(devinfo, insn, 1); /* Do not dereference URB */
+   if (devinfo->gen < 11) {
+      brw_inst_set_ts_request_type(devinfo, insn, 0); /* Root thread */
+
+      /* Note that even though the thread has a URB resource associated with it,
+       * we set the "do not dereference URB" bit, because the URB resource is
+       * managed by the fixed-function unit, so it will free it automatically.
+       */
+      brw_inst_set_ts_resource_select(devinfo, insn, 1); /* Do not dereference URB */
+   }
 
    brw_inst_set_mask_control(devinfo, insn, BRW_MASK_DISABLE);
 }
