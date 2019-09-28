@@ -393,6 +393,7 @@ mir_choose_instruction(
         bool alu = tag == TAG_ALU_4;
         unsigned unit = predicate->unit;
         bool branch = alu && (unit == ALU_ENAB_BR_COMPACT);
+        bool scalar = (unit != ~0) && (unit & UNITS_SCALAR);
 
         /* Iterate to find the best instruction satisfying the predicate */
         unsigned i;
@@ -425,6 +426,9 @@ mir_choose_instruction(
                         continue;
 
                 if (branch && !instructions[i]->compact_branch)
+                        continue;
+
+                if (alu && scalar && !mir_is_scalar(instructions[i]))
                         continue;
 
                 if (alu && !mir_adjust_constants(instructions[i], predicate, false))
