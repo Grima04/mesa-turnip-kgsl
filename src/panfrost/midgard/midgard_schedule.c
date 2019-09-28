@@ -753,6 +753,8 @@ mir_schedule_alu(
                         unreachable("Bad condition");
         }
 
+        mir_choose_alu(&smul, instructions, worklist, len, &predicate, UNIT_SMUL);
+
         if (!writeout)
                 mir_choose_alu(&vlut, instructions, worklist, len, &predicate, UNIT_VLUT);
 
@@ -776,6 +778,9 @@ mir_schedule_alu(
                 else
                         unreachable("Bad condition");
         }
+
+        /* Stage 2, let's schedule sadd before vmul for writeout */
+        mir_choose_alu(&sadd, instructions, worklist, len, &predicate, UNIT_SADD);
 
         /* Check if writeout reads its own register */
         bool bad_writeout = false;
