@@ -335,6 +335,10 @@ struct midgard_predicate {
 
         /* Exclude this destination (if not ~0) */
         unsigned exclude;
+
+        /* Don't schedule instructions consuming conditionals (since we already
+         * scheduled one). Excludes conditional branches and csel */
+        bool no_cond;
 };
 
 /* For an instruction that can fit, adjust it to fit and update the constants
@@ -394,12 +398,14 @@ mir_choose_instruction(
         unsigned unit = predicate->unit;
         bool branch = alu && (unit == ALU_ENAB_BR_COMPACT);
         bool scalar = (unit != ~0) && (unit & UNITS_SCALAR);
+        bool no_cond = predicate->no_cond;
 
         /* Iterate to find the best instruction satisfying the predicate */
         unsigned i;
         BITSET_WORD tmp;
 
         signed best_index = -1;
+        bool best_conditional = false;
 
         /* Enforce a simple metric limiting distance to keep down register
          * pressure. TOOD: replace with liveness tracking for much better
@@ -434,11 +440,18 @@ mir_choose_instruction(
                 if (alu && !mir_adjust_constants(instructions[i], predicate, false))
                         continue;
 
+                bool conditional = alu && !branch && OP_IS_CSEL(instructions[i]->alu.op);
+                conditional |= (branch && !instructions[i]->prepacked_branch && instructions[i]->branch.conditional);
+
+                if (conditional && no_cond)
+                        continue;
+
                 /* Simulate in-order scheduling */
                 if ((signed) i < best_index)
                         continue;
 
                 best_index = i;
+                best_conditional = conditional;
         }
 
 
@@ -455,6 +468,9 @@ mir_choose_instruction(
 
                 if (alu)
                         mir_adjust_constants(instructions[best_index], predicate, true);
+
+                /* Once we schedule a conditional, we can't again */
+                predicate->no_cond |= best_conditional;
         }
 
         return instructions[best_index];
