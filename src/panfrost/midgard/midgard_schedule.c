@@ -898,7 +898,21 @@ mir_choose_instruction(
 
         signed best_index = -1;
 
+        /* Enforce a simple metric limiting distance to keep down register
+         * pressure. TOOD: replace with liveness tracking for much better
+         * results */
+
+        unsigned max_active = 0;
+        unsigned max_distance = 6;
+
         BITSET_FOREACH_SET(i, tmp, worklist, count) {
+                max_active = MAX2(max_active, i);
+        }
+
+        BITSET_FOREACH_SET(i, tmp, worklist, count) {
+                if ((max_active - i) >= max_distance)
+                        continue;
+
                 if (tag != ~0 && instructions[i]->type != tag)
                         continue;
 
