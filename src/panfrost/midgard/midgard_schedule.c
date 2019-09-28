@@ -339,6 +339,12 @@ struct midgard_predicate {
         /* Don't schedule instructions consuming conditionals (since we already
          * scheduled one). Excludes conditional branches and csel */
         bool no_cond;
+
+        /* Require a minimal mask and (if nonzero) given destination. Used for
+         * writeout optimizations */
+
+        unsigned mask;
+        unsigned dest;
 };
 
 /* For an instruction that can fit, adjust it to fit and update the constants
@@ -400,6 +406,10 @@ mir_choose_instruction(
         bool scalar = (unit != ~0) && (unit & UNITS_SCALAR);
         bool no_cond = predicate->no_cond;
 
+        unsigned mask = predicate->mask;
+        unsigned dest = predicate->dest;
+        bool needs_dest = mask & 0xF;
+
         /* Iterate to find the best instruction satisfying the predicate */
         unsigned i;
         BITSET_WORD tmp;
@@ -438,6 +448,12 @@ mir_choose_instruction(
                         continue;
 
                 if (alu && !mir_adjust_constants(instructions[i], predicate, false))
+                        continue;
+
+                if (needs_dest && instructions[i]->dest != dest)
+                        continue;
+
+                if (mask && ((~instructions[i]->mask) & mask))
                         continue;
 
                 bool conditional = alu && !branch && OP_IS_CSEL(instructions[i]->alu.op);
@@ -817,7 +833,30 @@ mir_schedule_alu(
                         bad_writeout |= mir_has_arg(stages[i], branch->src[0]);
                 }
 
-                /* Add a move if necessary */
+                /* It's possible we'll be able to schedule something into vmul
+                 * to fill r0. Let's peak into the future, trying to schedule
+                 * vmul specially that way. */
+
+                if (!bad_writeout && writeout_mask != 0xF) {
+                        predicate.unit = UNIT_VMUL;
+                        predicate.dest = src;
+                        predicate.mask = writeout_mask ^ 0xF;
+
+                        struct midgard_instruction *peaked =
+                                mir_choose_instruction(instructions, worklist, len, &predicate);
+
+                        if (peaked) {
+                                vmul = peaked;
+                                vmul->unit = UNIT_VMUL;
+                                writeout_mask |= predicate.mask;
+                                assert(writeout_mask == 0xF);
+                        }
+
+                        /* Cleanup */
+                        predicate.dest = predicate.mask = 0;
+                }
+
+                /* Finally, add a move if necessary */
                 if (bad_writeout || writeout_mask != 0xF) {
                         unsigned temp = (branch->src[0] == ~0) ? SSA_FIXED_REGISTER(0) : make_compiler_temp(ctx);
                         midgard_instruction mov = v_mov(src, blank_alu_src, temp);
