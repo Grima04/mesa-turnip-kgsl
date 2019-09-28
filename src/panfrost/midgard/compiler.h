@@ -654,6 +654,7 @@ void midgard_lower_invert(compiler_context *ctx, midgard_block *block);
 bool midgard_opt_not_propagate(compiler_context *ctx, midgard_block *block);
 bool midgard_opt_fuse_src_invert(compiler_context *ctx, midgard_block *block);
 bool midgard_opt_fuse_dest_invert(compiler_context *ctx, midgard_block *block);
+bool midgard_opt_csel_invert(compiler_context *ctx, midgard_block *block);
 bool midgard_opt_promote_fmov(compiler_context *ctx, midgard_block *block);
 
 #endif

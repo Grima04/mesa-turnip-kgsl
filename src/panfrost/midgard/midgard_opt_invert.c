@@ -275,3 +275,28 @@ midgard_opt_fuse_src_invert(compiler_context *ctx, midgard_block *block)
 
         return progress;
 }
+
+/* Optimizes a .not away when used as the source of a conditional select:
+ *
+ * csel(a, b, c)  = { b if a, c if !a }
+ * csel(!a, b, c) = { b if !a, c if !(!a) } = { c if a, b if !a } = csel(a, c, b)
+ * csel(!a, b, c) = csel(a, c, b)
+ */
+
+bool
+midgard_opt_csel_invert(compiler_context *ctx, midgard_block *block)
+{
+        bool progress = false;
+
+        mir_foreach_instr_in_block_safe(block, ins) {
+                if (ins->type != TAG_ALU_4) continue;
+                if (!OP_IS_CSEL(ins->alu.op)) continue;
+                if (!mir_single_use(ctx, ins->src[2])) continue;
+                if (!mir_strip_inverted(ctx, ins->src[2])) continue;
+
+                mir_flip(ins);
+                progress |= true;
+        }
+
+        return progress;
+}
