@@ -527,3 +527,20 @@ mir_insert_instruction_after_scheduled(
         memcpy(bundles + after + 1, &new, sizeof(new));
         list_addtail(&new.instructions[0]->link, &after_bundle_1->instructions[0]->link);
 }
+
+/* Flip the first-two arguments of a (binary) op. Currently ALU
+ * only, no known uses for ldst/tex */
+
+void
+mir_flip(midgard_instruction *ins)
+{
+        unsigned temp = ins->src[0];
+        ins->src[0] = ins->src[1];
+        ins->src[1] = temp;
+
+        assert(ins->type == TAG_ALU_4);
+
+        temp = ins->alu.src1;
+        ins->alu.src1 = ins->alu.src2;
+        ins->alu.src2 = temp;
+}

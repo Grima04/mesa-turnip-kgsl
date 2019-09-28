@@ -256,16 +256,9 @@ midgard_opt_fuse_src_invert(compiler_context *ctx, midgard_block *block)
                 if (both) {
                         ins->alu.op = mir_demorgan_op(ins->alu.op);
                 } else if (right || (left && !ins->has_inline_constant)) {
-                        if (left) {
-                                /* Commute */
-                                unsigned temp = ins->src[0];
-                                ins->src[0] = ins->src[1];
-                                ins->src[1] = temp;
-
-                                temp = ins->alu.src1;
-                                ins->alu.src1 = ins->alu.src2;
-                                ins->alu.src2 = temp;
-                        }
+                        /* Commute arguments */
+                        if (left)
+                                mir_flip(ins);
 
                         ins->alu.op = mir_notright_op(ins->alu.op);
                 } else if (left && ins->has_inline_constant) {
