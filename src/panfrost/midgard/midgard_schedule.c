@@ -654,6 +654,7 @@ static unsigned
 mir_comparison_mobile(
                 compiler_context *ctx,
                 midgard_instruction **instructions,
+                struct midgard_predicate *predicate,
                 unsigned count,
                 unsigned cond)
 {
@@ -676,9 +677,9 @@ mir_comparison_mobile(
                 if (GET_CHANNEL_COUNT(alu_opcode_props[instructions[i]->alu.op].props))
                         return ~0;
 
-                /* TODO: moving conditionals with constants */
+                /* Ensure it will fit with constants */
 
-                if (instructions[i]->has_constants)
+                if (!mir_adjust_constants(instructions[i], predicate, false))
                         return ~0;
 
                 /* Ensure it is written only once */
@@ -688,6 +689,10 @@ mir_comparison_mobile(
                 else
                         ret = i;
         }
+
+        /* Inject constants now that we are sure we want to */
+        if (ret != ~0)
+                mir_adjust_constants(instructions[ret], predicate, true);
 
         return ret;
 }
@@ -700,6 +705,7 @@ static midgard_instruction *
 mir_schedule_comparison(
                 compiler_context *ctx,
                 midgard_instruction **instructions,
+                struct midgard_predicate *predicate,
                 BITSET_WORD *worklist, unsigned count,
                 unsigned cond, bool vector, unsigned swizzle,
                 midgard_instruction *user)
@@ -707,7 +713,7 @@ mir_schedule_comparison(
         /* TODO: swizzle when scheduling */
         unsigned comp_i =
                 (!vector && (swizzle == 0)) ?
-                mir_comparison_mobile(ctx, instructions, count, cond) : ~0;
+                mir_comparison_mobile(ctx, instructions, predicate, count, cond) : ~0;
 
         /* If we can, schedule the condition immediately */
         if ((comp_i != ~0) && BITSET_TEST(worklist, comp_i)) {
@@ -747,7 +753,7 @@ mir_schedule_condition(compiler_context *ctx,
         /* Grab the conditional instruction */
 
         midgard_instruction *cond = mir_schedule_comparison(
-                        ctx, instructions, worklist, count, last->src[condition_index],
+                        ctx, instructions, predicate, worklist, count, last->src[condition_index],
                         vector, last->cond_swizzle, last);
 
         /* We have exclusive reign over this (possibly move) conditional
