@@ -108,7 +108,7 @@ def generate(env):
             env.AppendUnique(CXXFLAGS = ['-posix'])
 
         # LIBS should match the output of `llvm-config --libs engine mcjit bitwriter x86asmprinter irreader` for LLVM<=7.0
-        # and `llvm-config --libs engine irreader` for LLVM>=8.0
+        # and `llvm-config --libs engine coroutines` for LLVM>=8.0
         # LLVMAggressiveInstCombine library part of engine component can be safely omitted as it's not used.
         if llvm_version >= distutils.version.LooseVersion('9.0'):
             env.Prepend(LIBS = [
@@ -129,6 +129,31 @@ def generate(env):
                 'LLVMDemangle', 'LLVMGlobalISel', 'LLVMDebugInfoMSF',
                 'LLVMBinaryFormat',
                 'LLVMRemarks', 'LLVMBitstreamReader', 'LLVMDebugInfoDWARF',
+                # Add these libraries to enable ompute shaders support.
+                'LLVMLinker', 'LLVMVectorize', 'LLVMInstrumentation',
+                'LLVMipo', 'LLVMCoroutines',
+            ])
+        elif llvm_version >= distutils.version.LooseVersion('8.0'):
+            env.Prepend(LIBS = [
+                'LLVMX86Disassembler', 'LLVMX86AsmParser',
+                'LLVMX86CodeGen', 'LLVMSelectionDAG', 'LLVMAsmPrinter',
+                'LLVMDebugInfoCodeView', 'LLVMCodeGen',
+                'LLVMScalarOpts', 'LLVMInstCombine',
+                'LLVMTransformUtils',
+                'LLVMBitWriter', 'LLVMX86Desc',
+                'LLVMMCDisassembler', 'LLVMX86Info',
+                'LLVMX86AsmPrinter', 'LLVMX86Utils',
+                'LLVMMCJIT', 'LLVMExecutionEngine', 'LLVMTarget',
+                'LLVMAnalysis', 'LLVMProfileData',
+                'LLVMRuntimeDyld', 'LLVMObject', 'LLVMMCParser',
+                'LLVMBitReader', 'LLVMMC', 'LLVMCore',
+                'LLVMSupport',
+                'LLVMIRReader', 'LLVMAsmParser',
+                'LLVMDemangle', 'LLVMGlobalISel', 'LLVMDebugInfoMSF',
+                'LLVMBinaryFormat',
+                # Add these libraries to enable ompute shaders support.
+                'LLVMLinker', 'LLVMVectorize', 'LLVMInstrumentation',
+                'LLVMipo', 'LLVMCoroutines',
             ])
         elif llvm_version >= distutils.version.LooseVersion('5.0'):
             env.Prepend(LIBS = [
