@@ -150,7 +150,7 @@ static inline struct etna_inst_src
 etna_immediate_float(float x)
 {
 	uint32_t bits = fui(x);
-	assert((bits && 0xfff) == 0); /* 12 lsb cut off */
+	assert((bits & 0xfff) == 0); /* 12 lsb cut off */
 	return etna_immediate_src(0, bits >> 12);
 }
 
