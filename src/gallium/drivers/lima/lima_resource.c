@@ -116,6 +116,7 @@ setup_miptree(struct lima_resource *res,
       res->levels[level].width = aligned_width;
       res->levels[level].stride = stride;
       res->levels[level].offset = size;
+      res->levels[level].layer_stride = util_format_get_stride(pres->format, align(width, 16)) * align(height, 16);
 
       /* The start address of each level <= 10 must be 64-aligned
        * in order to be able to pass the addresses
@@ -595,20 +596,25 @@ lima_transfer_map(struct pipe_context *pctx,
 
       trans->staging = malloc(ptrans->stride * ptrans->box.height * ptrans->box.depth);
 
-      if (usage & PIPE_TRANSFER_READ)
-         panfrost_load_tiled_image(trans->staging, bo->map + res->levels[level].offset,
-                              &ptrans->box,
-                              ptrans->stride,
-                              res->levels[level].stride,
-                              util_format_get_blocksize(pres->format));
+      if (usage & PIPE_TRANSFER_READ) {
+         unsigned i;
+         for (i = 0; i < ptrans->box.depth; i++)
+            panfrost_load_tiled_image(
+               trans->staging + i * ptrans->stride * ptrans->box.height,
+               bo->map + res->levels[level].offset + (i + box->z) * res->levels[level].layer_stride,
+               &ptrans->box,
+               ptrans->stride,
+               res->levels[level].stride,
+               util_format_get_blocksize(pres->format));
+      }
 
       return trans->staging;
    } else {
       ptrans->stride = res->levels[level].stride;
-      ptrans->layer_stride = ptrans->stride * box->height;
+      ptrans->layer_stride = res->levels[level].layer_stride;
 
       return bo->map + res->levels[level].offset +
-         box->z * ptrans->layer_stride +
+         box->z * res->levels[level].layer_stride +
          box->y / util_format_get_blockheight(pres->format) * ptrans->stride +
          box->x / util_format_get_blockwidth(pres->format) *
          util_format_get_blocksize(pres->format);
@@ -635,12 +641,17 @@ lima_transfer_unmap(struct pipe_context *pctx,
 
    if (trans->staging) {
       pres = &res->base;
-      if (ptrans->usage & PIPE_TRANSFER_WRITE)
-         panfrost_store_tiled_image(bo->map + res->levels[ptrans->level].offset, trans->staging,
-                              &ptrans->box,
-                              res->levels[ptrans->level].stride,
-                              ptrans->stride,
-                              util_format_get_blocksize(pres->format));
+      if (ptrans->usage & PIPE_TRANSFER_WRITE) {
+         unsigned i;
+         for (i = 0; i < ptrans->box.depth; i++)
+            panfrost_store_tiled_image(
+               bo->map + res->levels[ptrans->level].offset + (i + ptrans->box.z) * res->levels[ptrans->level].layer_stride,
+               trans->staging + i * ptrans->stride * ptrans->box.height,
+               &ptrans->box,
+               res->levels[ptrans->level].stride,
+               ptrans->stride,
+               util_format_get_blocksize(pres->format));
+      }
       free(trans->staging);
    }
 
