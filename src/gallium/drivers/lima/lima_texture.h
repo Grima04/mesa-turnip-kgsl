@@ -32,8 +32,8 @@ typedef struct __attribute__((__packed__)) {
    uint32_t format : 6;
    uint32_t flag1: 1;
    uint32_t swap_r_b: 1;
-   uint32_t unknown_0_1: 10;
-   uint32_t stride: 13;
+   uint32_t unknown_0_1: 8;
+   uint32_t stride: 15;
    uint32_t unknown_0_2: 1;
 
    /* Word 1-3 */
