@@ -240,38 +240,17 @@ static VkResult
 wait_for_available(struct anv_device *device,
                    struct anv_query_pool *pool, uint32_t query)
 {
-   while (true) {
+   uint64_t abs_timeout = anv_get_absolute_timeout(5 * NSEC_PER_SEC);
+
+   while (anv_gettime_ns() < abs_timeout) {
       if (query_is_available(pool, query))
          return VK_SUCCESS;
-
-      int ret = anv_gem_busy(device, pool->bo->gem_handle);
-      if (ret == 1) {
-         /* The BO is still busy, keep waiting. */
-         continue;
-      } else if (ret == -1) {
-         /* We don't know the real error. */
-         return anv_device_set_lost(device, "gem wait failed: %m");
-      } else {
-         assert(ret == 0);
-         /* The BO is no longer busy. */
-         if (query_is_available(pool, query)) {
-            return VK_SUCCESS;
-         } else {
-            VkResult status = anv_device_query_status(device);
-            if (status != VK_SUCCESS)
-               return status;
-
-            /* If we haven't seen availability yet, then we never will.  This
-             * can only happen if we have a client error where they call
-             * GetQueryPoolResults on a query that they haven't submitted to
-             * the GPU yet.  The spec allows us to do anything in this case,
-             * but returning VK_SUCCESS doesn't seem right and we shouldn't
-             * just keep spinning.
-             */
-            return VK_NOT_READY;
-         }
-      }
+      VkResult status = anv_device_query_status(device);
+      if (status != VK_SUCCESS)
+         return status;
    }
+
+   return anv_device_set_lost(device, "query timeout");
 }
 
 VkResult genX(GetQueryPoolResults)(

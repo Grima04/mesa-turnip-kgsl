@@ -300,6 +300,20 @@ vk_to_isl_color(VkClearColorValue color)
    };
 }
 
+static inline void *anv_unpack_ptr(uintptr_t ptr, int bits, int *flags)
+{
+   uintptr_t mask = (1ull << bits) - 1;
+   *flags = ptr & mask;
+   return (void *) (ptr & ~mask);
+}
+
+static inline uintptr_t anv_pack_ptr(void *ptr, int bits, int flags)
+{
+   uintptr_t value = (uintptr_t) ptr;
+   uintptr_t mask = (1ull << bits) - 1;
+   return value | (mask & flags);
+}
+
 #define for_each_bit(b, dword)                          \
    for (uint32_t __dword = (dword);                     \
         (b) = __builtin_ffs(__dword) - 1, __dword;      \
@@ -1050,6 +1064,42 @@ uint32_t anv_physical_device_api_version(struct anv_physical_device *dev);
 bool anv_physical_device_extension_supported(struct anv_physical_device *dev,
                                              const char *name);
 
+struct anv_queue_submit {
+   struct anv_cmd_buffer *                   cmd_buffer;
+
+   uint32_t                                  fence_count;
+   uint32_t                                  fence_array_length;
+   struct drm_i915_gem_exec_fence *          fences;
+
+   uint32_t                                  temporary_semaphore_count;
+   uint32_t                                  temporary_semaphore_array_length;
+   struct anv_semaphore_impl *               temporary_semaphores;
+
+   /* Semaphores to be signaled with a SYNC_FD. */
+   struct anv_semaphore **                   sync_fd_semaphores;
+   uint32_t                                  sync_fd_semaphore_count;
+   uint32_t                                  sync_fd_semaphore_array_length;
+
+   int                                       in_fence;
+   bool                                      need_out_fence;
+   int                                       out_fence;
+
+   uint32_t                                  fence_bo_count;
+   uint32_t                                  fence_bo_array_length;
+   /* An array of struct anv_bo pointers with lower bit used as a flag to
+    * signal we will wait on that BO (see anv_(un)pack_ptr).
+    */
+   uintptr_t *                               fence_bos;
+
+   const VkAllocationCallbacks *             alloc;
+   VkSystemAllocationScope                   alloc_scope;
+
+   struct anv_bo *                           simple_bo;
+   uint32_t                                  simple_bo_size;
+
+   struct list_head                          link;
+};
+
 struct anv_queue {
     VK_LOADER_DATA                              _loader_data;
 
@@ -1318,9 +1368,7 @@ VkResult anv_device_wait(struct anv_device *device, struct anv_bo *bo,
 VkResult anv_queue_init(struct anv_device *device, struct anv_queue *queue);
 void anv_queue_finish(struct anv_queue *queue);
 
-VkResult anv_queue_execbuf(struct anv_queue *queue,
-                           struct drm_i915_gem_execbuffer2 *execbuf,
-                           struct anv_bo **execbuf_bos);
+VkResult anv_queue_execbuf(struct anv_queue *queue, struct anv_queue_submit *submit);
 VkResult anv_queue_submit_simple_batch(struct anv_queue *queue,
                                        struct anv_batch *batch);
 
