@@ -22,6 +22,10 @@ inc_include = include_directories('.')
 inc_d3d9 = include_directories('D3D9')
 inc_haikugl = include_directories('HaikuGL')
 
+if with_gles1 or with_gles2 or with_opengl or with_egl
+  install_headers('KHR/khrplatform.h', subdir : 'KHR')
+endif
+
 if with_gles1
   install_headers(
     'GLES/egl.h', 'GLES/gl.h', 'GLES/glext.h', 'GLES/glplatform.h',
@@ -41,10 +45,6 @@ if with_gles2
   )
 endif
 
-if with_gles1 or with_gles2 or with_opengl or with_egl
-  install_headers('KHR/khrplatform.h', subdir : 'KHR')
-endif
-
 if with_opengl
   install_headers(
     'GL/gl.h', 'GL/glext.h', 'GL/glcorearb.h',
@@ -56,16 +56,16 @@ if with_glx != 'disabled'
   install_headers('GL/glx.h', 'GL/glxext.h', subdir : 'GL')
 endif
 
-if with_osmesa != 'none'
-  install_headers('GL/osmesa.h', subdir : 'GL')
-endif
-
 if with_egl
   install_headers(
     'EGL/eglext.h', 'EGL/egl.h', 'EGL/eglextchromium.h', 'EGL/eglmesaext.h',
     'EGL/eglplatform.h',
     subdir : 'EGL',
   )
+endif
+
+if with_osmesa != 'none'
+  install_headers('GL/osmesa.h', subdir : 'GL')
 endif
 
 if with_dri
