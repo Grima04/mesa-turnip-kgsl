@@ -138,6 +138,7 @@ static void do_winsys_deinit(struct amdgpu_winsys *ws)
    }
    pb_cache_deinit(&ws->bo_cache);
    util_hash_table_destroy(ws->bo_export_table);
+   simple_mtx_destroy(&ws->sws_list_lock);
    simple_mtx_destroy(&ws->global_bo_list_lock);
    simple_mtx_destroy(&ws->bo_export_table_lock);
 
@@ -171,8 +172,21 @@ static void amdgpu_winsys_destroy(struct radeon_winsys *rws)
 
    simple_mtx_unlock(&dev_tab_mutex);
 
-   if (destroy)
+   if (destroy) {
       do_winsys_deinit(ws);
+   } else {
+      struct amdgpu_screen_winsys **sws_iter;
+
+      /* Remove this amdgpu_screen_winsys from amdgpu_winsys' list */
+      simple_mtx_lock(&ws->sws_list_lock);
+      for (sws_iter = &ws->sws_list; *sws_iter; sws_iter = &(*sws_iter)->next) {
+         if (*sws_iter == sws) {
+            *sws_iter = sws->next;
+            break;
+         }
+      }
+      simple_mtx_unlock(&ws->sws_list_lock);
+   }
 
    close(sws->fd);
    FREE(rws);
@@ -385,6 +399,7 @@ amdgpu_winsys_create(int fd, const struct pipe_screen_config *config,
       list_inithead(&aws->global_bo_list);
       aws->bo_export_table = util_hash_table_create(hash_pointer, compare_pointers);
 
+      (void) simple_mtx_init(&aws->sws_list_lock, mtx_plain);
       (void) simple_mtx_init(&aws->global_bo_list_lock, mtx_plain);
       (void) simple_mtx_init(&aws->bo_fence_lock, mtx_plain);
       (void) simple_mtx_init(&aws->bo_export_table_lock, mtx_plain);
@@ -434,6 +449,11 @@ amdgpu_winsys_create(int fd, const struct pipe_screen_config *config,
       simple_mtx_unlock(&dev_tab_mutex);
       return NULL;
    }
+
+   simple_mtx_lock(&aws->sws_list_lock);
+   ws->next = aws->sws_list;
+   aws->sws_list = ws;
+   simple_mtx_unlock(&aws->sws_list_lock);
 
    /* We must unlock the mutex once the winsys is fully initialized, so that
     * other threads attempting to create the winsys from the same fd will

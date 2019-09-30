@@ -87,6 +87,12 @@ struct amdgpu_winsys {
    struct list_head global_bo_list;
    unsigned num_buffers;
 
+   /* Single-linked list of all structs amdgpu_screen_winsys referencing this
+    * struct amdgpu_winsys
+    */
+   simple_mtx_t sws_list_lock;
+   struct amdgpu_screen_winsys *sws_list;
+
    /* For returning the same amdgpu_winsys_bo instance for exported
     * and re-imported buffers. */
    struct util_hash_table *bo_export_table;
@@ -97,6 +103,7 @@ struct amdgpu_screen_winsys {
    struct radeon_winsys base;
    struct amdgpu_winsys *aws;
    int fd;
+   struct amdgpu_screen_winsys *next;
 };
 
 static inline struct amdgpu_screen_winsys *
