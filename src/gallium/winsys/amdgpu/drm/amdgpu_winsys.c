@@ -188,6 +188,7 @@ static void amdgpu_winsys_destroy(struct radeon_winsys *rws)
       simple_mtx_unlock(&ws->sws_list_lock);
    }
 
+   _mesa_hash_table_destroy(sws->kms_handles, NULL);
    close(sws->fd);
    FREE(rws);
 }
@@ -308,6 +309,18 @@ static void amdgpu_pin_threads_to_L3_cache(struct radeon_winsys *rws,
                          util_cpu_caps.cores_per_L3);
 }
 
+static uint32_t kms_handle_hash(const void *key)
+{
+   const struct amdgpu_winsys_bo *bo = key;
+
+   return bo->u.real.kms_handle;
+}
+
+static bool kms_handle_equals(const void *a, const void *b)
+{
+   return a == b;
+}
+
 PUBLIC struct radeon_winsys *
 amdgpu_winsys_create(int fd, const struct pipe_screen_config *config,
 		     radeon_screen_create_t screen_create)
@@ -322,6 +335,11 @@ amdgpu_winsys_create(int fd, const struct pipe_screen_config *config,
       return NULL;
 
    ws->fd = fcntl(fd, F_DUPFD_CLOEXEC, 0);
+
+   ws->kms_handles = _mesa_hash_table_create(NULL, kms_handle_hash,
+                                             kms_handle_equals);
+   if (!ws->kms_handles)
+      goto fail;
 
    /* Look up the winsys from the dev table. */
    simple_mtx_lock(&dev_tab_mutex);
@@ -465,6 +483,8 @@ amdgpu_winsys_create(int fd, const struct pipe_screen_config *config,
 fail_alloc:
    FREE(aws);
 fail:
+   if (ws->kms_handles)
+      _mesa_hash_table_destroy(ws->kms_handles, NULL);
    close(ws->fd);
    FREE(ws);
    simple_mtx_unlock(&dev_tab_mutex);

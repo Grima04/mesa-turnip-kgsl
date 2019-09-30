@@ -104,6 +104,11 @@ struct amdgpu_screen_winsys {
    struct amdgpu_winsys *aws;
    int fd;
    struct amdgpu_screen_winsys *next;
+
+   /* Maps a BO to its KMS handle valid for this DRM file descriptor
+    * Protected by amdgpu_winsys::sws_list_lock
+    */
+   struct hash_table *kms_handles;
 };
 
 static inline struct amdgpu_screen_winsys *

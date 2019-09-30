@@ -27,6 +27,7 @@
 
 #include "amdgpu_cs.h"
 
+#include "util/hash_table.h"
 #include "util/os_time.h"
 #include "util/u_hash_table.h"
 #include "state_tracker/drm_driver.h"
@@ -164,6 +165,7 @@ static void amdgpu_bo_remove_fences(struct amdgpu_winsys_bo *bo)
 void amdgpu_bo_destroy(struct pb_buffer *_buf)
 {
    struct amdgpu_winsys_bo *bo = amdgpu_winsys_bo(_buf);
+   struct amdgpu_screen_winsys *sws_iter;
    struct amdgpu_winsys *ws = bo->ws;
 
    assert(bo->bo && "must not be called for slab entries");
@@ -180,6 +182,11 @@ void amdgpu_bo_destroy(struct pb_buffer *_buf)
       ws->num_buffers--;
       simple_mtx_unlock(&ws->global_bo_list_lock);
    }
+
+   simple_mtx_lock(&ws->sws_list_lock);
+   for (sws_iter = ws->sws_list; sws_iter; sws_iter = sws_iter->next)
+      _mesa_hash_table_remove_key(sws_iter->kms_handles, bo);
+   simple_mtx_unlock(&ws->sws_list_lock);
 
    simple_mtx_lock(&ws->bo_export_table_lock);
    util_hash_table_remove(ws->bo_export_table, bo->bo);
@@ -1530,6 +1537,7 @@ static bool amdgpu_bo_get_handle(struct radeon_winsys *rws,
    struct amdgpu_winsys_bo *bo = amdgpu_winsys_bo(buffer);
    struct amdgpu_winsys *ws = bo->ws;
    enum amdgpu_bo_handle_type type;
+   struct hash_entry *entry;
    int r;
 
    /* Don't allow exports of slab entries and sparse buffers. */
@@ -1543,6 +1551,14 @@ static bool amdgpu_bo_get_handle(struct radeon_winsys *rws,
       type = amdgpu_bo_handle_type_gem_flink_name;
       break;
    case WINSYS_HANDLE_TYPE_KMS:
+      simple_mtx_lock(&ws->sws_list_lock);
+      entry = _mesa_hash_table_search(sws->kms_handles, bo);
+      simple_mtx_unlock(&ws->sws_list_lock);
+      if (entry) {
+         whandle->handle = (uintptr_t)entry->data;
+         return true;
+      }
+      /* Fall through */
    case WINSYS_HANDLE_TYPE_FD:
       type = amdgpu_bo_handle_type_dma_buf_fd;
       break;
@@ -1562,6 +1578,12 @@ static bool amdgpu_bo_get_handle(struct radeon_winsys *rws,
 
       if (r)
          return false;
+
+      simple_mtx_lock(&ws->sws_list_lock);
+      _mesa_hash_table_insert_pre_hashed(sws->kms_handles,
+                                         bo->u.real.kms_handle, bo,
+                                         (void*)(uintptr_t)whandle->handle);
+      simple_mtx_unlock(&ws->sws_list_lock);
    }
 
    simple_mtx_lock(&ws->bo_export_table_lock);
