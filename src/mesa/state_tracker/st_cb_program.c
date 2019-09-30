@@ -165,18 +165,7 @@ st_program_string_notify( struct gl_context *ctx,
 
       if (st->fp == stfp)
 	 st->dirty |= stfp->affected_states;
-   }
-   else if (target == GL_GEOMETRY_PROGRAM_NV) {
-      struct st_common_program *stgp = st_common_program(prog);
-
-      st_release_basic_variants(st, stgp);
-      if (!st_translate_common_program(st, stgp))
-         return false;
-
-      if (st->gp == stgp)
-	 st->dirty |= stgp->affected_states;
-   }
-   else if (target == GL_VERTEX_PROGRAM_ARB) {
+   } else if (target == GL_VERTEX_PROGRAM_ARB) {
       struct st_vertex_program *stvp = (struct st_vertex_program *) prog;
 
       st_release_vp_variants(st, stvp);
@@ -185,39 +174,18 @@ st_program_string_notify( struct gl_context *ctx,
 
       if (st->vp == stvp)
 	 st->dirty |= ST_NEW_VERTEX_PROGRAM(st, stvp);
-   }
-   else if (target == GL_TESS_CONTROL_PROGRAM_NV) {
-      struct st_common_program *sttcp =
-         st_common_program(prog);
-
-      st_release_basic_variants(st, sttcp);
-      if (!st_translate_common_program(st, sttcp))
-         return false;
-
-      if (st->tcp == sttcp)
-         st->dirty |= sttcp->affected_states;
-   }
-   else if (target == GL_TESS_EVALUATION_PROGRAM_NV) {
-      struct st_common_program *sttep =
-         st_common_program(prog);
-
-      st_release_basic_variants(st, sttep);
-      if (!st_translate_common_program(st, sttep))
-         return false;
-
-      if (st->tep == sttep)
-         st->dirty |= sttep->affected_states;
-   }
-   else if (target == GL_COMPUTE_PROGRAM_NV) {
-      struct st_common_program *stcp =
-         (struct st_common_program *) prog;
+   } else {
+      struct st_common_program *stcp = st_common_program(prog);
 
       st_release_basic_variants(st, stcp);
       if (!st_translate_common_program(st, stcp))
          return false;
 
-      if (st->cp == stcp)
-         st->dirty |= stcp->affected_states;
+      if ((prog->info.stage == MESA_SHADER_TESS_CTRL && st->tcp == stcp) ||
+          (prog->info.stage == MESA_SHADER_TESS_EVAL && st->tep == stcp) ||
+          (prog->info.stage == MESA_SHADER_GEOMETRY && st->gp == stcp) ||
+          (prog->info.stage == MESA_SHADER_COMPUTE && st->cp == stcp))
+	 st->dirty |= stcp->affected_states;
    }
 
    if (ST_DEBUG & DEBUG_PRECOMPILE ||
