@@ -227,66 +227,33 @@ st_deserialise_ir_program(struct gl_context *ctx,
 
       break;
    }
-   case MESA_SHADER_TESS_CTRL: {
-      struct st_common_program *sttcp = st_common_program(prog);
+   case MESA_SHADER_TESS_CTRL:
+   case MESA_SHADER_TESS_EVAL:
+   case MESA_SHADER_GEOMETRY:
+   case MESA_SHADER_COMPUTE: {
+      struct st_common_program *stcp = st_common_program(prog);
 
-      st_release_basic_variants(st, sttcp);
+      st_release_basic_variants(st, stcp);
 
-      if (nir) {
-         sttcp->tgsi.type = PIPE_SHADER_IR_NIR;
-         sttcp->shader_program = shProg;
-         sttcp->tgsi.ir.nir = nir_deserialize(NULL, options, &blob_reader);
-         prog->nir = sttcp->tgsi.ir.nir;
-      } else {
-         read_tgsi_from_cache(&blob_reader, &sttcp->tgsi.tokens,
-                              &sttcp->num_tgsi_tokens);
-      }
-
-      if (st->tcp == sttcp)
-         st->dirty |= sttcp->affected_states;
-
-      break;
-   }
-   case MESA_SHADER_TESS_EVAL: {
-      struct st_common_program *sttep = st_common_program(prog);
-
-      st_release_basic_variants(st, sttep);
-      read_stream_out_from_cache(&blob_reader, &sttep->tgsi);
+      if (prog->info.stage == MESA_SHADER_TESS_EVAL ||
+          prog->info.stage == MESA_SHADER_GEOMETRY)
+         read_stream_out_from_cache(&blob_reader, &stcp->tgsi);
 
       if (nir) {
-         sttep->tgsi.type = PIPE_SHADER_IR_NIR;
-         sttep->shader_program = shProg;
-         sttep->tgsi.ir.nir = nir_deserialize(NULL, options, &blob_reader);
-         prog->nir = sttep->tgsi.ir.nir;
+         stcp->tgsi.type = PIPE_SHADER_IR_NIR;
+         stcp->tgsi.ir.nir = nir_deserialize(NULL, options, &blob_reader);
+         stcp->shader_program = shProg;
+         prog->nir = stcp->tgsi.ir.nir;
       } else {
-         read_tgsi_from_cache(&blob_reader, &sttep->tgsi.tokens,
-                              &sttep->num_tgsi_tokens);
+         read_tgsi_from_cache(&blob_reader, &stcp->tgsi.tokens,
+                              &stcp->num_tgsi_tokens);
       }
 
-      if (st->tep == sttep)
-         st->dirty |= sttep->affected_states;
-
-      break;
-   }
-   case MESA_SHADER_GEOMETRY: {
-      struct st_common_program *stgp = st_common_program(prog);
-
-      st_release_basic_variants(st, stgp);
-      read_stream_out_from_cache(&blob_reader, &stgp->tgsi);
-
-      if (nir) {
-         stgp->tgsi.type = PIPE_SHADER_IR_NIR;
-         stgp->shader_program = shProg;
-         stgp->tgsi.ir.nir = nir_deserialize(NULL, options, &blob_reader);
-         prog->nir = stgp->tgsi.ir.nir;
-      } else {
-         read_tgsi_from_cache(&blob_reader, &stgp->tgsi.tokens,
-                              &stgp->num_tgsi_tokens);
-      }
-
-      if (st->gp == stgp)
-         st->dirty |= stgp->affected_states;
-
+      if ((prog->info.stage == MESA_SHADER_TESS_CTRL && st->tcp == stcp) ||
+          (prog->info.stage == MESA_SHADER_TESS_EVAL && st->tep == stcp) ||
+          (prog->info.stage == MESA_SHADER_GEOMETRY && st->gp == stcp) ||
+          (prog->info.stage == MESA_SHADER_COMPUTE && st->cp == stcp))
+         st->dirty |= stcp->affected_states;
       break;
    }
    case MESA_SHADER_FRAGMENT: {
@@ -306,26 +273,6 @@ st_deserialise_ir_program(struct gl_context *ctx,
 
       if (st->fp == stfp)
          st->dirty |= stfp->affected_states;
-
-      break;
-   }
-   case MESA_SHADER_COMPUTE: {
-      struct st_common_program *stcp = (struct st_common_program *) prog;
-
-      st_release_basic_variants(st, stcp);
-
-      if (nir) {
-         stcp->tgsi.type = PIPE_SHADER_IR_NIR;
-         stcp->tgsi.ir.nir = nir_deserialize(NULL, options, &blob_reader);
-         stcp->shader_program = shProg;
-         prog->nir = (nir_shader *) stcp->tgsi.ir.nir;
-      } else {
-         read_tgsi_from_cache(&blob_reader, &stcp->tgsi.tokens,
-                              &stcp->num_tgsi_tokens);
-      }
-
-      if (st->cp == stcp)
-         st->dirty |= stcp->affected_states;
 
       break;
    }
