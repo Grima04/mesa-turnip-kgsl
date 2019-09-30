@@ -170,7 +170,7 @@ st_program_string_notify( struct gl_context *ctx,
       struct st_common_program *stgp = st_common_program(prog);
 
       st_release_basic_variants(st, stgp);
-      if (!st_translate_geometry_program(st, stgp))
+      if (!st_translate_common_program(st, stgp))
          return false;
 
       if (st->gp == stgp)
@@ -191,7 +191,7 @@ st_program_string_notify( struct gl_context *ctx,
          st_common_program(prog);
 
       st_release_basic_variants(st, sttcp);
-      if (!st_translate_tessctrl_program(st, sttcp))
+      if (!st_translate_common_program(st, sttcp))
          return false;
 
       if (st->tcp == sttcp)
@@ -202,7 +202,7 @@ st_program_string_notify( struct gl_context *ctx,
          st_common_program(prog);
 
       st_release_basic_variants(st, sttep);
-      if (!st_translate_tesseval_program(st, sttep))
+      if (!st_translate_common_program(st, sttep))
          return false;
 
       if (st->tep == sttep)
@@ -213,7 +213,7 @@ st_program_string_notify( struct gl_context *ctx,
          (struct st_common_program *) prog;
 
       st_release_basic_variants(st, stcp);
-      if (!st_translate_compute_program(st, stcp))
+      if (!st_translate_common_program(st, stcp))
          return false;
 
       if (st->cp == stcp)

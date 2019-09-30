@@ -432,20 +432,8 @@ st_translate_fragment_program(struct st_context *st,
                               struct st_fragment_program *stfp);
 
 extern bool
-st_translate_geometry_program(struct st_context *st,
-                              struct st_common_program *stgp);
-
-extern bool
-st_translate_tessctrl_program(struct st_context *st,
-                              struct st_common_program *sttcp);
-
-extern bool
-st_translate_tesseval_program(struct st_context *st,
-                              struct st_common_program *sttep);
-
-extern bool
-st_translate_compute_program(struct st_context *st,
-                             struct st_common_program *stcp);
+st_translate_common_program(struct st_context *st,
+                            struct st_common_program *stcp);
 
 extern void
 st_print_current_vertex_program(void);

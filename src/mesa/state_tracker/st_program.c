@@ -1395,19 +1395,114 @@ st_get_fp_variant(struct st_context *st,
    return fpv;
 }
 
+/**
+ * Update stream-output info for GS/TCS/TES.  Normally this is done in
+ * st_translate_program_common() but that is not called for glsl_to_nir
+ * case.
+ */
+static void
+st_translate_program_stream_output(struct gl_program *prog,
+                                   struct pipe_stream_output_info *stream_output)
+{
+   if (!prog->sh.LinkedTransformFeedback)
+      return;
+
+   ubyte outputMapping[VARYING_SLOT_TESS_MAX];
+   GLuint attr;
+   uint num_outputs = 0;
+
+   memset(outputMapping, 0, sizeof(outputMapping));
+
+   /*
+    * Determine number of outputs, the (default) output register
+    * mapping and the semantic information for each output.
+    */
+   for (attr = 0; attr < VARYING_SLOT_MAX; attr++) {
+      if (prog->info.outputs_written & BITFIELD64_BIT(attr)) {
+         GLuint slot = num_outputs++;
+
+         outputMapping[attr] = slot;
+      }
+   }
+
+   st_translate_stream_output_info(prog->sh.LinkedTransformFeedback,
+                                   outputMapping,
+                                   stream_output);
+}
 
 /**
  * Translate a program. This is common code for geometry and tessellation
  * shaders.
  */
-static void
-st_translate_program_common(struct st_context *st,
-                            struct gl_program *prog,
-                            struct glsl_to_tgsi_visitor *glsl_to_tgsi,
-                            struct ureg_program *ureg,
-                            unsigned tgsi_processor,
-                            struct pipe_shader_state *out_state)
+bool
+st_translate_common_program(struct st_context *st,
+                            struct st_common_program *stcp)
 {
+   /* We have already compiled to NIR so just return */
+   if (stcp->shader_program) {
+      /* No variants */
+      st_finalize_nir(st, &stcp->Base, stcp->shader_program,
+                      stcp->tgsi.ir.nir);
+      if (stcp->Base.info.stage == MESA_SHADER_TESS_EVAL ||
+          stcp->Base.info.stage == MESA_SHADER_GEOMETRY) {
+         st_translate_program_stream_output(&stcp->Base,
+                                            &stcp->tgsi.stream_output);
+      }
+      st_store_ir_in_disk_cache(st, &stcp->Base, true);
+      return true;
+   }
+
+   struct gl_program *prog = &stcp->Base;
+   enum pipe_shader_type stage =
+      pipe_shader_type_from_mesa(stcp->Base.info.stage);
+   struct ureg_program *ureg = ureg_create_with_screen(stage, st->pipe->screen);
+
+   if (ureg == NULL)
+      return false;
+
+   switch (stage) {
+   case PIPE_SHADER_TESS_CTRL:
+      ureg_property(ureg, TGSI_PROPERTY_TCS_VERTICES_OUT,
+                    stcp->Base.info.tess.tcs_vertices_out);
+      break;
+
+   case PIPE_SHADER_TESS_EVAL:
+      if (stcp->Base.info.tess.primitive_mode == GL_ISOLINES)
+         ureg_property(ureg, TGSI_PROPERTY_TES_PRIM_MODE, GL_LINES);
+      else
+         ureg_property(ureg, TGSI_PROPERTY_TES_PRIM_MODE,
+                       stcp->Base.info.tess.primitive_mode);
+
+      STATIC_ASSERT((TESS_SPACING_EQUAL + 1) % 3 == PIPE_TESS_SPACING_EQUAL);
+      STATIC_ASSERT((TESS_SPACING_FRACTIONAL_ODD + 1) % 3 ==
+                    PIPE_TESS_SPACING_FRACTIONAL_ODD);
+      STATIC_ASSERT((TESS_SPACING_FRACTIONAL_EVEN + 1) % 3 ==
+                    PIPE_TESS_SPACING_FRACTIONAL_EVEN);
+
+      ureg_property(ureg, TGSI_PROPERTY_TES_SPACING,
+                    (stcp->Base.info.tess.spacing + 1) % 3);
+
+      ureg_property(ureg, TGSI_PROPERTY_TES_VERTEX_ORDER_CW,
+                    !stcp->Base.info.tess.ccw);
+      ureg_property(ureg, TGSI_PROPERTY_TES_POINT_MODE,
+                    stcp->Base.info.tess.point_mode);
+      break;
+
+   case PIPE_SHADER_GEOMETRY:
+      ureg_property(ureg, TGSI_PROPERTY_GS_INPUT_PRIM,
+                    stcp->Base.info.gs.input_primitive);
+      ureg_property(ureg, TGSI_PROPERTY_GS_OUTPUT_PRIM,
+                    stcp->Base.info.gs.output_primitive);
+      ureg_property(ureg, TGSI_PROPERTY_GS_MAX_OUTPUT_VERTICES,
+                    stcp->Base.info.gs.vertices_out);
+      ureg_property(ureg, TGSI_PROPERTY_GS_INVOCATIONS,
+                    stcp->Base.info.gs.invocations);
+      break;
+
+   default:
+      break;
+   }
+
    ubyte inputSlotToAttr[VARYING_SLOT_TESS_MAX];
    ubyte inputMapping[VARYING_SLOT_TESS_MAX];
    ubyte outputMapping[VARYING_SLOT_TESS_MAX];
@@ -1426,7 +1521,7 @@ st_translate_program_common(struct st_context *st,
    memset(inputSlotToAttr, 0, sizeof(inputSlotToAttr));
    memset(inputMapping, 0, sizeof(inputMapping));
    memset(outputMapping, 0, sizeof(outputMapping));
-   memset(out_state, 0, sizeof(*out_state));
+   memset(&stcp->tgsi, 0, sizeof(stcp->tgsi));
 
    if (prog->info.clip_distance_array_size)
       ureg_property(ureg, TGSI_PROPERTY_NUM_CLIPDIST_ENABLED,
@@ -1504,9 +1599,9 @@ st_translate_program_common(struct st_context *st,
    }
 
    st_translate_program(st->ctx,
-                        tgsi_processor,
+                        stage,
                         ureg,
-                        glsl_to_tgsi,
+                        stcp->glsl_to_tgsi,
                         prog,
                         /* inputs */
                         num_inputs,
@@ -1521,14 +1616,13 @@ st_translate_program_common(struct st_context *st,
                         output_semantic_name,
                         output_semantic_index);
 
-   struct st_common_program *stcp = (struct st_common_program *) prog;
-   out_state->tokens = ureg_get_tokens(ureg, &stcp->num_tgsi_tokens);
+   stcp->tgsi.tokens = ureg_get_tokens(ureg, &stcp->num_tgsi_tokens);
 
    ureg_destroy(ureg);
 
    st_translate_stream_output_info(prog->sh.LinkedTransformFeedback,
                                    outputMapping,
-                                   &out_state->stream_output);
+                                   &stcp->tgsi.stream_output);
 
    st_store_ir_in_disk_cache(st, prog, false);
 
@@ -1538,83 +1632,12 @@ st_translate_program_common(struct st_context *st,
    }
 
    if (ST_DEBUG & DEBUG_TGSI) {
-      tgsi_dump(out_state->tokens, 0);
+      tgsi_dump(stcp->tgsi.tokens, 0);
       debug_printf("\n");
    }
-}
 
-/**
- * Update stream-output info for GS/TCS/TES.  Normally this is done in
- * st_translate_program_common() but that is not called for glsl_to_nir
- * case.
- */
-static void
-st_translate_program_stream_output(struct gl_program *prog,
-                                   struct pipe_stream_output_info *stream_output)
-{
-   if (!prog->sh.LinkedTransformFeedback)
-      return;
-
-   ubyte outputMapping[VARYING_SLOT_TESS_MAX];
-   GLuint attr;
-   uint num_outputs = 0;
-
-   memset(outputMapping, 0, sizeof(outputMapping));
-
-   /*
-    * Determine number of outputs, the (default) output register
-    * mapping and the semantic information for each output.
-    */
-   for (attr = 0; attr < VARYING_SLOT_MAX; attr++) {
-      if (prog->info.outputs_written & BITFIELD64_BIT(attr)) {
-         GLuint slot = num_outputs++;
-
-         outputMapping[attr] = slot;
-      }
-   }
-
-   st_translate_stream_output_info(prog->sh.LinkedTransformFeedback,
-                                   outputMapping,
-                                   stream_output);
-}
-
-/**
- * Translate a geometry program to create a new variant.
- */
-bool
-st_translate_geometry_program(struct st_context *st,
-                              struct st_common_program *stgp)
-{
-   struct ureg_program *ureg;
-
-   /* We have already compiled to NIR so just return */
-   if (stgp->shader_program) {
-      /* No variants */
-      st_finalize_nir(st, &stgp->Base, stgp->shader_program,
-                      stgp->tgsi.ir.nir);
-      st_translate_program_stream_output(&stgp->Base, &stgp->tgsi.stream_output);
-      st_store_ir_in_disk_cache(st, &stgp->Base, true);
-      return true;
-   }
-
-   ureg = ureg_create_with_screen(PIPE_SHADER_GEOMETRY, st->pipe->screen);
-   if (ureg == NULL)
-      return false;
-
-   ureg_property(ureg, TGSI_PROPERTY_GS_INPUT_PRIM,
-                 stgp->Base.info.gs.input_primitive);
-   ureg_property(ureg, TGSI_PROPERTY_GS_OUTPUT_PRIM,
-                 stgp->Base.info.gs.output_primitive);
-   ureg_property(ureg, TGSI_PROPERTY_GS_MAX_OUTPUT_VERTICES,
-                 stgp->Base.info.gs.vertices_out);
-   ureg_property(ureg, TGSI_PROPERTY_GS_INVOCATIONS,
-                 stgp->Base.info.gs.invocations);
-
-   st_translate_program_common(st, &stgp->Base, stgp->glsl_to_tgsi, ureg,
-                               PIPE_SHADER_GEOMETRY, &stgp->tgsi);
-
-   free_glsl_to_tgsi_visitor(stgp->glsl_to_tgsi);
-   stgp->glsl_to_tgsi = NULL;
+   free_glsl_to_tgsi_visitor(stcp->glsl_to_tgsi);
+   stcp->glsl_to_tgsi = NULL;
    return true;
 }
 
@@ -1699,122 +1722,6 @@ st_get_basic_variant(struct st_context *st,
    }
 
    return v;
-}
-
-
-/**
- * Translate a tessellation control program to create a new variant.
- */
-bool
-st_translate_tessctrl_program(struct st_context *st,
-                              struct st_common_program *sttcp)
-{
-   struct ureg_program *ureg;
-
-   /* We have already compiled to NIR so just return */
-   if (sttcp->shader_program) {
-      /* No variants */
-      st_finalize_nir(st, &sttcp->Base, sttcp->shader_program,
-                      sttcp->tgsi.ir.nir);
-      st_store_ir_in_disk_cache(st, &sttcp->Base, true);
-      return true;
-   }
-
-   ureg = ureg_create_with_screen(PIPE_SHADER_TESS_CTRL, st->pipe->screen);
-   if (ureg == NULL)
-      return false;
-
-   ureg_property(ureg, TGSI_PROPERTY_TCS_VERTICES_OUT,
-                 sttcp->Base.info.tess.tcs_vertices_out);
-
-   st_translate_program_common(st, &sttcp->Base, sttcp->glsl_to_tgsi, ureg,
-                               PIPE_SHADER_TESS_CTRL, &sttcp->tgsi);
-
-   free_glsl_to_tgsi_visitor(sttcp->glsl_to_tgsi);
-   sttcp->glsl_to_tgsi = NULL;
-   return true;
-}
-
-
-/**
- * Translate a tessellation evaluation program to create a new variant.
- */
-bool
-st_translate_tesseval_program(struct st_context *st,
-                              struct st_common_program *sttep)
-{
-   struct ureg_program *ureg;
-
-   /* We have already compiled to NIR so just return */
-   if (sttep->shader_program) {
-      /* No variants */
-      st_finalize_nir(st, &sttep->Base, sttep->shader_program,
-                      sttep->tgsi.ir.nir);
-      st_translate_program_stream_output(&sttep->Base, &sttep->tgsi.stream_output);
-      st_store_ir_in_disk_cache(st, &sttep->Base, true);
-      return true;
-   }
-
-   ureg = ureg_create_with_screen(PIPE_SHADER_TESS_EVAL, st->pipe->screen);
-   if (ureg == NULL)
-      return false;
-
-   if (sttep->Base.info.tess.primitive_mode == GL_ISOLINES)
-      ureg_property(ureg, TGSI_PROPERTY_TES_PRIM_MODE, GL_LINES);
-   else
-      ureg_property(ureg, TGSI_PROPERTY_TES_PRIM_MODE,
-                    sttep->Base.info.tess.primitive_mode);
-
-   STATIC_ASSERT((TESS_SPACING_EQUAL + 1) % 3 == PIPE_TESS_SPACING_EQUAL);
-   STATIC_ASSERT((TESS_SPACING_FRACTIONAL_ODD + 1) % 3 ==
-                 PIPE_TESS_SPACING_FRACTIONAL_ODD);
-   STATIC_ASSERT((TESS_SPACING_FRACTIONAL_EVEN + 1) % 3 ==
-                 PIPE_TESS_SPACING_FRACTIONAL_EVEN);
-
-   ureg_property(ureg, TGSI_PROPERTY_TES_SPACING,
-                 (sttep->Base.info.tess.spacing + 1) % 3);
-
-   ureg_property(ureg, TGSI_PROPERTY_TES_VERTEX_ORDER_CW,
-                 !sttep->Base.info.tess.ccw);
-   ureg_property(ureg, TGSI_PROPERTY_TES_POINT_MODE,
-                 sttep->Base.info.tess.point_mode);
-
-   st_translate_program_common(st, &sttep->Base, sttep->glsl_to_tgsi,
-                               ureg, PIPE_SHADER_TESS_EVAL, &sttep->tgsi);
-
-   free_glsl_to_tgsi_visitor(sttep->glsl_to_tgsi);
-   sttep->glsl_to_tgsi = NULL;
-   return true;
-}
-
-
-/**
- * Translate a compute program to create a new variant.
- */
-bool
-st_translate_compute_program(struct st_context *st,
-                             struct st_common_program *stcp)
-{
-   struct ureg_program *ureg;
-
-   if (stcp->shader_program) {
-      /* no compute variants: */
-      st_finalize_nir(st, &stcp->Base, stcp->shader_program,
-                      (struct nir_shader *) stcp->tgsi.ir.nir);
-      st_store_ir_in_disk_cache(st, &stcp->Base, true);
-      return true;
-   }
-
-   ureg = ureg_create_with_screen(PIPE_SHADER_COMPUTE, st->pipe->screen);
-   if (ureg == NULL)
-      return false;
-
-   st_translate_program_common(st, &stcp->Base, stcp->glsl_to_tgsi, ureg,
-                               PIPE_SHADER_COMPUTE, &stcp->tgsi);
-
-   free_glsl_to_tgsi_visitor(stcp->glsl_to_tgsi);
-   stcp->glsl_to_tgsi = NULL;
-   return true;
 }
 
 
