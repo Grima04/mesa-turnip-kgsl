@@ -163,8 +163,16 @@ st_program_string_notify( struct gl_context *ctx,
    struct st_context *st = st_context(ctx);
    gl_shader_stage stage = _mesa_program_enum_to_shader_stage(target);
 
-   if (target == GL_FRAGMENT_PROGRAM_ARB) {
+   if (target == GL_FRAGMENT_PROGRAM_ARB ||
+       target == GL_FRAGMENT_SHADER_ATI) {
       struct st_fragment_program *stfp = (struct st_fragment_program *) prog;
+
+      if (target == GL_FRAGMENT_SHADER_ATI) {
+         assert(stfp->ati_fs);
+         assert(stfp->ati_fs->Program == prog);
+
+         st_init_atifs_prog(ctx, prog);
+      }
 
       st_release_fp_variants(st, stfp);
       if (!st_translate_fragment_program(st, stfp))
@@ -228,22 +236,6 @@ st_program_string_notify( struct gl_context *ctx,
 
       if (st->cp == stcp)
          st->dirty |= stcp->affected_states;
-   }
-   else if (target == GL_FRAGMENT_SHADER_ATI) {
-      assert(prog);
-
-      struct st_fragment_program *stfp = (struct st_fragment_program *) prog;
-      assert(stfp->ati_fs);
-      assert(stfp->ati_fs->Program == prog);
-
-      st_init_atifs_prog(ctx, prog);
-
-      st_release_fp_variants(st, stfp);
-      if (!st_translate_fragment_program(st, stfp))
-         return false;
-
-      if (st->fp == stfp)
-         st->dirty |= stfp->affected_states;
    }
 
    if (ST_DEBUG & DEBUG_PRECOMPILE ||
