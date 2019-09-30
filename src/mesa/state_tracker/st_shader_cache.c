@@ -237,9 +237,7 @@ st_deserialise_ir_program(struct gl_context *ctx,
    case MESA_SHADER_TESS_CTRL: {
       struct st_common_program *sttcp = st_common_program(prog);
 
-      st_release_basic_variants(st, sttcp->Base.Target,
-                                &sttcp->variants, &sttcp->tgsi);
-
+      st_release_basic_variants(st, sttcp);
       read_stream_out_from_cache(&blob_reader, &sttcp->tgsi);
 
       if (nir) {
@@ -260,9 +258,7 @@ st_deserialise_ir_program(struct gl_context *ctx,
    case MESA_SHADER_TESS_EVAL: {
       struct st_common_program *sttep = st_common_program(prog);
 
-      st_release_basic_variants(st, sttep->Base.Target,
-                                &sttep->variants, &sttep->tgsi);
-
+      st_release_basic_variants(st, sttep);
       read_stream_out_from_cache(&blob_reader, &sttep->tgsi);
 
       if (nir) {
@@ -283,9 +279,7 @@ st_deserialise_ir_program(struct gl_context *ctx,
    case MESA_SHADER_GEOMETRY: {
       struct st_common_program *stgp = st_common_program(prog);
 
-      st_release_basic_variants(st, stgp->Base.Target, &stgp->variants,
-                                &stgp->tgsi);
-
+      st_release_basic_variants(st, stgp);
       read_stream_out_from_cache(&blob_reader, &stgp->tgsi);
 
       if (nir) {

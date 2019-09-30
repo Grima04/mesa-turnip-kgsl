@@ -450,9 +450,7 @@ st_release_cp_variants(struct st_context *st,
                         struct st_compute_program *stcp);
 
 extern void
-st_release_basic_variants(struct st_context *st, GLenum target,
-                          struct st_basic_variant **variants,
-                          struct pipe_shader_state *tgsi);
+st_release_basic_variants(struct st_context *st, struct st_common_program *p);
 
 extern void
 st_destroy_program_variants(struct st_context *st);

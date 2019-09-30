@@ -112,8 +112,7 @@ st_delete_program(struct gl_context *ctx, struct gl_program *prog)
       {
          struct st_common_program *p = st_common_program(prog);
 
-         st_release_basic_variants(st, p->Base.Target, &p->variants,
-                                   &p->tgsi);
+         st_release_basic_variants(st, p);
          
          if (p->glsl_to_tgsi)
             free_glsl_to_tgsi_visitor(p->glsl_to_tgsi);
@@ -184,8 +183,7 @@ st_program_string_notify( struct gl_context *ctx,
    else if (target == GL_GEOMETRY_PROGRAM_NV) {
       struct st_common_program *stgp = st_common_program(prog);
 
-      st_release_basic_variants(st, stgp->Base.Target, &stgp->variants,
-                                &stgp->tgsi);
+      st_release_basic_variants(st, stgp);
       if (!st_translate_geometry_program(st, stgp))
          return false;
 
@@ -206,8 +204,7 @@ st_program_string_notify( struct gl_context *ctx,
       struct st_common_program *sttcp =
          st_common_program(prog);
 
-      st_release_basic_variants(st, sttcp->Base.Target, &sttcp->variants,
-                                &sttcp->tgsi);
+      st_release_basic_variants(st, sttcp);
       if (!st_translate_tessctrl_program(st, sttcp))
          return false;
 
@@ -218,8 +215,7 @@ st_program_string_notify( struct gl_context *ctx,
       struct st_common_program *sttep =
          st_common_program(prog);
 
-      st_release_basic_variants(st, sttep->Base.Target, &sttep->variants,
-                                &sttep->tgsi);
+      st_release_basic_variants(st, sttep);
       if (!st_translate_tesseval_program(st, sttep))
          return false;
 

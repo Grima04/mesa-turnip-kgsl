@@ -370,21 +370,18 @@ delete_basic_variant(struct st_context *st, struct st_basic_variant *v,
  * Free all basic program variants.
  */
 void
-st_release_basic_variants(struct st_context *st, GLenum target,
-                          struct st_basic_variant **variants,
-                          struct pipe_shader_state *tgsi)
+st_release_basic_variants(struct st_context *st, struct st_common_program *p)
 {
    struct st_basic_variant *v;
 
-   for (v = *variants; v; ) {
+   for (v = p->variants; v; ) {
       struct st_basic_variant *next = v->next;
-      delete_basic_variant(st, v, target);
+      delete_basic_variant(st, v, p->Base.Target);
       v = next;
    }
 
-   *variants = NULL;
-
-   delete_ir(tgsi);
+   p->variants = NULL;
+   delete_ir(&p->tgsi);
 }
 
 
