@@ -632,7 +632,10 @@ union anv_free_list {
       /* A simple count that is incremented every time the head changes. */
       uint32_t count;
    };
-   uint64_t u64;
+   /* Make sure it's aligned to 64 bits. This will make atomic operations
+    * faster on 32 bit platforms.
+    */
+   uint64_t u64 __attribute__ ((aligned (8)));
 };
 
 #define ANV_FREE_LIST_EMPTY ((union anv_free_list) { { UINT32_MAX, 0 } })
@@ -643,7 +646,10 @@ struct anv_block_state {
          uint32_t next;
          uint32_t end;
       };
-      uint64_t u64;
+      /* Make sure it's aligned to 64 bits. This will make atomic operations
+       * faster on 32 bit platforms.
+       */
+      uint64_t u64 __attribute__ ((aligned (8)));
    };
 };
 
