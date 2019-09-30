@@ -74,6 +74,13 @@ if with_egl
     'EGL/egl.h',
     'EGL/eglext.h',
     'EGL/eglplatform.h',
+    subdir : 'EGL',
+  )
+endif
+
+# Non-upstream headers
+if with_egl
+  install_headers(
     'EGL/eglmesaext.h',
     'EGL/eglextchromium.h',
     subdir : 'EGL',
