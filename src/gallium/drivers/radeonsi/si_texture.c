@@ -760,11 +760,13 @@ static void si_set_tex_bo_metadata(struct si_screen *sscreen,
 
 static bool si_read_tex_bo_metadata(struct si_screen *sscreen,
 				    struct si_texture *tex,
+				    uint64_t offset,
 				    struct radeon_bo_metadata *md)
 {
 	uint32_t *desc = &md->metadata[2];
 
-	if (md->size_metadata < 10 * 4 || /* at least 2(header) + 8(desc) dwords */
+	if (offset || /* Non-zero planes ignore metadata. */
+	    md->size_metadata < 10 * 4 || /* at least 2(header) + 8(desc) dwords */
 	    md->metadata[0] == 0 || /* invalid version number */
 	    md->metadata[1] != si_get_bo_metadata_word1(sscreen)) /* invalid PCI ID */ {
 		/* Disable DCC because it might not be enabled. */
@@ -1743,6 +1745,10 @@ static struct pipe_resource *si_texture_from_winsys_buffer(struct si_screen *ssc
 	bool is_scanout;
 	int r;
 
+	/* Ignore metadata for non-zero planes. */
+	if (offset != 0)
+		dedicated = false;
+
 	if (dedicated) {
 		sscreen->ws->buffer_get_metadata(buf, &metadata);
 		si_get_display_metadata(sscreen, &surface, &metadata,
@@ -1789,7 +1795,7 @@ static struct pipe_resource *si_texture_from_winsys_buffer(struct si_screen *ssc
 	tex->buffer.external_usage = usage;
 	tex->num_planes = 1;
 
-	if (!si_read_tex_bo_metadata(sscreen, tex, &metadata)) {
+	if (!si_read_tex_bo_metadata(sscreen, tex, offset, &metadata)) {
 		si_texture_reference(&tex, NULL);
 		return NULL;
 	}
