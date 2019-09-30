@@ -22,60 +22,62 @@ inc_include = include_directories('.')
 inc_d3d9 = include_directories('D3D9')
 inc_haikugl = include_directories('HaikuGL')
 
-if with_gles1 or with_gles2 or with_opengl or with_egl
-  install_headers('KHR/khrplatform.h', subdir : 'KHR')
-endif
+if not glvnd_has_headers_and_pc_files
+  if with_gles1 or with_gles2 or with_opengl or with_egl
+    install_headers('KHR/khrplatform.h', subdir : 'KHR')
+  endif
 
-if with_gles1
-  install_headers(
-    'GLES/egl.h',
-    'GLES/gl.h',
-    'GLES/glext.h',
-    'GLES/glplatform.h',
-    subdir : 'GLES',
-  )
-endif
+  if with_gles1
+    install_headers(
+      'GLES/egl.h',
+      'GLES/gl.h',
+      'GLES/glext.h',
+      'GLES/glplatform.h',
+      subdir : 'GLES',
+    )
+  endif
 
-if with_gles2
-  install_headers(
-    'GLES2/gl2.h',
-    'GLES2/gl2ext.h',
-    'GLES2/gl2platform.h',
-    subdir : 'GLES2',
-  )
-  install_headers(
-    'GLES3/gl3.h',
-    'GLES3/gl31.h',
-    'GLES3/gl32.h',
-    'GLES3/gl3ext.h',
-    'GLES3/gl3platform.h',
-    subdir : 'GLES3',
-  )
-endif
+  if with_gles2
+    install_headers(
+      'GLES2/gl2.h',
+      'GLES2/gl2ext.h',
+      'GLES2/gl2platform.h',
+      subdir : 'GLES2',
+    )
+    install_headers(
+      'GLES3/gl3.h',
+      'GLES3/gl31.h',
+      'GLES3/gl32.h',
+      'GLES3/gl3ext.h',
+      'GLES3/gl3platform.h',
+      subdir : 'GLES3',
+    )
+  endif
 
-if with_opengl
-  install_headers(
-    'GL/gl.h',
-    'GL/glcorearb.h',
-    'GL/glext.h',
-    subdir : 'GL',
-  )
-endif
+  if with_opengl
+    install_headers(
+      'GL/gl.h',
+      'GL/glcorearb.h',
+      'GL/glext.h',
+      subdir : 'GL',
+    )
+  endif
 
-if with_glx != 'disabled'
-  install_headers(
-    'GL/glx.h',
-    'GL/glxext.h',
-    subdir : 'GL')
-endif
+  if with_glx != 'disabled'
+    install_headers(
+      'GL/glx.h',
+      'GL/glxext.h',
+      subdir : 'GL')
+  endif
 
-if with_egl
-  install_headers(
-    'EGL/egl.h',
-    'EGL/eglext.h',
-    'EGL/eglplatform.h',
-    subdir : 'EGL',
-  )
+  if with_egl
+    install_headers(
+      'EGL/egl.h',
+      'EGL/eglext.h',
+      'EGL/eglplatform.h',
+      subdir : 'EGL',
+    )
+  endif
 endif
 
 # Non-upstream headers
