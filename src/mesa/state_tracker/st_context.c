@@ -147,8 +147,8 @@ st_get_active_states(struct gl_context *ctx)
       st_common_program(ctx->GeometryProgram._Current);
    struct st_fragment_program *fp =
       st_fragment_program(ctx->FragmentProgram._Current);
-   struct st_compute_program *cp =
-      st_compute_program(ctx->ComputeProgram._Current);
+   struct st_common_program *cp =
+      st_common_program(ctx->ComputeProgram._Current);
    uint64_t active_shader_states = 0;
 
    if (vp)

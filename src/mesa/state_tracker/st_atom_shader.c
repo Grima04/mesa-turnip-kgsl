@@ -301,7 +301,7 @@ st_update_tep(struct st_context *st)
 void
 st_update_cp( struct st_context *st )
 {
-   struct st_compute_program *stcp;
+   struct st_common_program *stcp;
 
    if (!st->ctx->ComputeProgram._Current) {
       cso_set_compute_shader_handle(st->cso_context, NULL);
@@ -309,7 +309,7 @@ st_update_cp( struct st_context *st )
       return;
    }
 
-   stcp = st_compute_program(st->ctx->ComputeProgram._Current);
+   stcp = st_common_program(st->ctx->ComputeProgram._Current);
    assert(stcp->Base.Target == GL_COMPUTE_PROGRAM_NV);
 
    void *shader;
@@ -318,6 +318,7 @@ st_update_cp( struct st_context *st )
       shader = stcp->variants->driver_shader;
    } else {
       shader = st_get_cp_variant(st, &stcp->tgsi,
+                                 stcp->Base.info.cs.shared_size,
                                  &stcp->variants)->driver_shader;
    }
 

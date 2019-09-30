@@ -104,7 +104,8 @@ st_serialise_ir_program(struct gl_context *ctx, struct gl_program *prog,
    }
    case MESA_SHADER_TESS_CTRL:
    case MESA_SHADER_TESS_EVAL:
-   case MESA_SHADER_GEOMETRY: {
+   case MESA_SHADER_GEOMETRY:
+   case MESA_SHADER_COMPUTE: {
       struct st_common_program *stcp = (struct st_common_program *) prog;
 
       if (prog->info.stage == MESA_SHADER_TESS_EVAL ||
@@ -126,16 +127,6 @@ st_serialise_ir_program(struct gl_context *ctx, struct gl_program *prog,
       else
          write_tgsi_to_cache(&blob, stfp->tgsi.tokens, prog,
                              stfp->num_tgsi_tokens);
-      break;
-   }
-   case MESA_SHADER_COMPUTE: {
-      struct st_compute_program *stcp = (struct st_compute_program *) prog;
-
-      if (nir)
-         write_nir_to_cache(&blob, prog);
-      else
-         write_tgsi_to_cache(&blob, stcp->tgsi.prog, prog,
-                             stcp->num_tgsi_tokens);
       break;
    }
    default:
@@ -319,24 +310,19 @@ st_deserialise_ir_program(struct gl_context *ctx,
       break;
    }
    case MESA_SHADER_COMPUTE: {
-      struct st_compute_program *stcp = (struct st_compute_program *) prog;
+      struct st_common_program *stcp = (struct st_common_program *) prog;
 
-      st_release_cp_variants(st, stcp);
+      st_release_basic_variants(st, stcp);
 
       if (nir) {
-         stcp->tgsi.ir_type = PIPE_SHADER_IR_NIR;
+         stcp->tgsi.type = PIPE_SHADER_IR_NIR;
+         stcp->tgsi.ir.nir = nir_deserialize(NULL, options, &blob_reader);
          stcp->shader_program = shProg;
-         stcp->tgsi.prog = nir_deserialize(NULL, options, &blob_reader);
-         prog->nir = (nir_shader *) stcp->tgsi.prog;
+         prog->nir = (nir_shader *) stcp->tgsi.ir.nir;
       } else {
-         read_tgsi_from_cache(&blob_reader,
-                              (const struct tgsi_token**) &stcp->tgsi.prog,
+         read_tgsi_from_cache(&blob_reader, &stcp->tgsi.tokens,
                               &stcp->num_tgsi_tokens);
       }
-
-      stcp->tgsi.req_local_mem = stcp->Base.info.cs.shared_size;
-      stcp->tgsi.req_private_mem = 0;
-      stcp->tgsi.req_input_mem = 0;
 
       if (st->cp == stcp)
          st->dirty |= stcp->affected_states;

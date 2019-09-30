@@ -188,7 +188,7 @@ st_set_prog_affected_state_flags(struct gl_program *prog)
       break;
 
    case MESA_SHADER_COMPUTE:
-      states = &((struct st_compute_program*)prog)->affected_states;
+      states = &((struct st_common_program*)prog)->affected_states;
 
       *states = ST_NEW_CS_STATE;
 
@@ -210,8 +210,10 @@ st_set_prog_affected_state_flags(struct gl_program *prog)
 static void
 delete_ir(struct pipe_shader_state *ir)
 {
-   if (ir->tokens)
+   if (ir->tokens) {
       ureg_free_tokens(ir->tokens);
+      ir->tokens = NULL;
+   }
 
    /* Note: Any setup of ->ir.nir that has had pipe->create_*_state called on
     * it has resulted in the driver taking ownership of the NIR.  Those
@@ -384,43 +386,6 @@ st_release_basic_variants(struct st_context *st, struct st_common_program *p)
    delete_ir(&p->tgsi);
 }
 
-
-/**
- * Free all variants of a compute program.
- */
-void
-st_release_cp_variants(struct st_context *st, struct st_compute_program *stcp)
-{
-   struct st_basic_variant **variants = &stcp->variants;
-   struct st_basic_variant *v;
-
-   for (v = *variants; v; ) {
-      struct st_basic_variant *next = v->next;
-      delete_basic_variant(st, v, stcp->Base.Target);
-      v = next;
-   }
-
-   *variants = NULL;
-
-   if (stcp->tgsi.prog) {
-      switch (stcp->tgsi.ir_type) {
-      case PIPE_SHADER_IR_TGSI:
-         ureg_free_tokens(stcp->tgsi.prog);
-         stcp->tgsi.prog = NULL;
-         break;
-      case PIPE_SHADER_IR_NIR:
-         /* pipe driver took ownership of prog */
-         break;
-      case PIPE_SHADER_IR_NATIVE:
-         /* ??? */
-         stcp->tgsi.prog = NULL;
-         break;
-      case PIPE_SHADER_IR_NIR_SERIALIZED:
-         unreachable("serialized nirs aren't passed through st/mesa");
-         break;
-      }
-   }
-}
 
 /**
  * Translate ARB (asm) program to NIR
@@ -1556,14 +1521,9 @@ st_translate_program_common(struct st_context *st,
                         output_semantic_name,
                         output_semantic_index);
 
-   if (tgsi_processor == PIPE_SHADER_COMPUTE) {
-      struct st_compute_program *stcp = (struct st_compute_program *) prog;
-      out_state->tokens = ureg_get_tokens(ureg, &stcp->num_tgsi_tokens);
-      stcp->tgsi.prog = out_state->tokens;
-   } else {
-      struct st_common_program *stcp = (struct st_common_program *) prog;
-      out_state->tokens = ureg_get_tokens(ureg, &stcp->num_tgsi_tokens);
-   }
+   struct st_common_program *stcp = (struct st_common_program *) prog;
+   out_state->tokens = ureg_get_tokens(ureg, &stcp->num_tgsi_tokens);
+
    ureg_destroy(ureg);
 
    st_translate_stream_output_info(prog->sh.LinkedTransformFeedback,
@@ -1833,17 +1793,14 @@ st_translate_tesseval_program(struct st_context *st,
  */
 bool
 st_translate_compute_program(struct st_context *st,
-                             struct st_compute_program *stcp)
+                             struct st_common_program *stcp)
 {
    struct ureg_program *ureg;
-   struct pipe_shader_state prog;
-
-   stcp->tgsi.req_local_mem = stcp->Base.info.cs.shared_size;
 
    if (stcp->shader_program) {
       /* no compute variants: */
       st_finalize_nir(st, &stcp->Base, stcp->shader_program,
-                      (struct nir_shader *) stcp->tgsi.prog);
+                      (struct nir_shader *) stcp->tgsi.ir.nir);
       st_store_ir_in_disk_cache(st, &stcp->Base, true);
       return true;
    }
@@ -1853,11 +1810,7 @@ st_translate_compute_program(struct st_context *st,
       return false;
 
    st_translate_program_common(st, &stcp->Base, stcp->glsl_to_tgsi, ureg,
-                               PIPE_SHADER_COMPUTE, &prog);
-
-   stcp->tgsi.ir_type = PIPE_SHADER_IR_TGSI;
-   stcp->tgsi.req_private_mem = 0;
-   stcp->tgsi.req_input_mem = 0;
+                               PIPE_SHADER_COMPUTE, &stcp->tgsi);
 
    free_glsl_to_tgsi_visitor(stcp->glsl_to_tgsi);
    stcp->glsl_to_tgsi = NULL;
@@ -1870,7 +1823,8 @@ st_translate_compute_program(struct st_context *st,
  */
 struct st_basic_variant *
 st_get_cp_variant(struct st_context *st,
-                  struct pipe_compute_state *tgsi,
+                  struct pipe_shader_state *tgsi,
+                  unsigned shared_size,
                   struct st_basic_variant **variants)
 {
    struct pipe_context *pipe = st->pipe;
@@ -1894,9 +1848,16 @@ st_get_cp_variant(struct st_context *st,
       v = CALLOC_STRUCT(st_basic_variant);
       if (v) {
          /* fill in new variant */
-         struct pipe_compute_state cs = *tgsi;
-         if (tgsi->ir_type == PIPE_SHADER_IR_NIR)
-            cs.prog = nir_shader_clone(NULL, tgsi->prog);
+         struct pipe_compute_state cs = {0};
+
+         cs.ir_type = tgsi->type;
+         cs.req_local_mem = shared_size;
+
+         if (tgsi->type == PIPE_SHADER_IR_NIR)
+            cs.prog = nir_shader_clone(NULL, tgsi->ir.nir);
+         else
+            cs.prog = tgsi->tokens;
+
          v->driver_shader = pipe->create_compute_state(pipe, &cs);
          v->key = key;
 
@@ -1968,13 +1929,9 @@ destroy_program_variants(struct st_context *st, struct gl_program *target)
    case GL_COMPUTE_PROGRAM_NV:
       {
          struct st_common_program *p = st_common_program(target);
-         struct st_compute_program *cp = (struct st_compute_program*)target;
-         struct st_basic_variant **variants =
-            target->Target == GL_COMPUTE_PROGRAM_NV ? &cp->variants :
-                                                      &p->variants;
-         struct st_basic_variant *v, **prevPtr = variants;
+         struct st_basic_variant *v, **prevPtr = &p->variants;
 
-         for (v = *variants; v; ) {
+         for (v = p->variants; v; ) {
             struct st_basic_variant *next = v->next;
             if (v->key.st == st) {
                /* unlink from list */
@@ -2155,8 +2112,8 @@ st_precompile_shader_variant(struct st_context *st,
    }
 
    case GL_COMPUTE_PROGRAM_NV: {
-      struct st_compute_program *p = (struct st_compute_program *)prog;
-      st_get_cp_variant(st, &p->tgsi, &p->variants);
+      struct st_common_program *p = (struct st_common_program *)prog;
+      st_get_cp_variant(st, &p->tgsi, prog->info.cs.shared_size, &p->variants);
       break;
    }
 

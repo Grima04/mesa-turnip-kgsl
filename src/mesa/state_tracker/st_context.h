@@ -233,7 +233,7 @@ struct st_context
    struct st_common_program *gp;  /**< Currently bound geometry program */
    struct st_common_program *tcp; /**< Currently bound tess control program */
    struct st_common_program *tep; /**< Currently bound tess eval program */
-   struct st_compute_program *cp;   /**< Currently bound compute program */
+   struct st_common_program *cp;   /**< Currently bound compute program */
 
    struct st_vp_variant *vp_variant;
 

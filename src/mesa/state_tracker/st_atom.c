@@ -219,14 +219,14 @@ void st_validate_state( struct st_context *st, enum st_pipeline pipeline )
       break;
 
    case ST_PIPELINE_COMPUTE: {
-      struct st_compute_program *old_cp = st->cp;
+      struct st_common_program *old_cp = st->cp;
       struct gl_program *new_cp = ctx->ComputeProgram._Current;
 
       if (new_cp != &old_cp->Base) {
          if (old_cp)
             st->dirty |= old_cp->affected_states;
          assert(new_cp);
-         st->dirty |= st_compute_program(new_cp)->affected_states;
+         st->dirty |= st_common_program(new_cp)->affected_states;
       }
 
       st->compute_shader_may_be_dirty = false;

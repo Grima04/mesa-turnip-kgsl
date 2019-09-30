@@ -71,14 +71,10 @@ st_new_program(struct gl_context *ctx, GLenum target, GLuint id,
    }
    case GL_TESS_CONTROL_PROGRAM_NV:
    case GL_TESS_EVALUATION_PROGRAM_NV:
-   case GL_GEOMETRY_PROGRAM_NV: {
+   case GL_GEOMETRY_PROGRAM_NV:
+   case GL_COMPUTE_PROGRAM_NV: {
       struct st_common_program *prog = rzalloc(NULL,
                                                struct st_common_program);
-      return _mesa_init_gl_program(&prog->Base, target, id, is_arb_asm);
-   }
-   case GL_COMPUTE_PROGRAM_NV: {
-      struct st_compute_program *prog = rzalloc(NULL,
-                                                struct st_compute_program);
       return _mesa_init_gl_program(&prog->Base, target, id, is_arb_asm);
    }
    default:
@@ -109,6 +105,7 @@ st_delete_program(struct gl_context *ctx, struct gl_program *prog)
    case GL_TESS_CONTROL_PROGRAM_NV:
    case GL_TESS_EVALUATION_PROGRAM_NV:
    case GL_GEOMETRY_PROGRAM_NV:
+   case GL_COMPUTE_PROGRAM_NV:
       {
          struct st_common_program *p = st_common_program(prog);
 
@@ -127,17 +124,6 @@ st_delete_program(struct gl_context *ctx, struct gl_program *prog)
          
          if (stfp->glsl_to_tgsi)
             free_glsl_to_tgsi_visitor(stfp->glsl_to_tgsi);
-      }
-      break;
-   case GL_COMPUTE_PROGRAM_NV:
-      {
-         struct st_compute_program *stcp =
-            (struct st_compute_program *) prog;
-
-         st_release_cp_variants(st, stcp);
-
-         if (stcp->glsl_to_tgsi)
-            free_glsl_to_tgsi_visitor(stcp->glsl_to_tgsi);
       }
       break;
    default:
@@ -223,10 +209,10 @@ st_program_string_notify( struct gl_context *ctx,
          st->dirty |= sttep->affected_states;
    }
    else if (target == GL_COMPUTE_PROGRAM_NV) {
-      struct st_compute_program *stcp =
-         (struct st_compute_program *) prog;
+      struct st_common_program *stcp =
+         (struct st_common_program *) prog;
 
-      st_release_cp_variants(st, stcp);
+      st_release_basic_variants(st, stcp);
       if (!st_translate_compute_program(st, stcp))
          return false;
 
@@ -292,12 +278,9 @@ st_get_shader_program_completion_status(struct gl_context *ctx,
       case MESA_SHADER_TESS_CTRL:
       case MESA_SHADER_TESS_EVAL:
       case MESA_SHADER_GEOMETRY:
+      case MESA_SHADER_COMPUTE:
          if (st_common_program(linked->Program)->variants)
             sh = st_common_program(linked->Program)->variants->driver_shader;
-         break;
-      case MESA_SHADER_COMPUTE:
-         if (st_compute_program(linked->Program)->variants)
-            sh = st_compute_program(linked->Program)->variants->driver_shader;
          break;
       }
 
