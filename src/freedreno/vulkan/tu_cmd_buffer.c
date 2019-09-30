@@ -647,7 +647,7 @@ tu6_emit_blit_clear(struct tu_cmd_buffer *cmd,
    const enum a3xx_color_swap swap = WZYX;
 
    tu_cs_emit_pkt4(cs, REG_A6XX_RB_BLIT_DST_INFO, 1);
-   tu_cs_emit(cs, A6XX_RB_BLIT_DST_INFO_TILE_MODE(iview->image->tile_mode) |
+   tu_cs_emit(cs, A6XX_RB_BLIT_DST_INFO_TILE_MODE(TILE6_LINEAR) |
                      A6XX_RB_BLIT_DST_INFO_SAMPLES(samples) |
                      A6XX_RB_BLIT_DST_INFO_COLOR_FORMAT(format->rb) |
                      A6XX_RB_BLIT_DST_INFO_COLOR_SWAP(swap));
