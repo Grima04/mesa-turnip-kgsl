@@ -107,7 +107,9 @@ st_serialise_ir_program(struct gl_context *ctx, struct gl_program *prog,
    case MESA_SHADER_GEOMETRY: {
       struct st_common_program *stcp = (struct st_common_program *) prog;
 
-      write_stream_out_to_cache(&blob, &stcp->tgsi);
+      if (prog->info.stage == MESA_SHADER_TESS_EVAL ||
+          prog->info.stage == MESA_SHADER_GEOMETRY)
+         write_stream_out_to_cache(&blob, &stcp->tgsi);
 
       if (nir)
          write_nir_to_cache(&blob, prog);
@@ -238,7 +240,6 @@ st_deserialise_ir_program(struct gl_context *ctx,
       struct st_common_program *sttcp = st_common_program(prog);
 
       st_release_basic_variants(st, sttcp);
-      read_stream_out_from_cache(&blob_reader, &sttcp->tgsi);
 
       if (nir) {
          sttcp->tgsi.type = PIPE_SHADER_IR_NIR;
