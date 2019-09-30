@@ -23,7 +23,6 @@
   <li><a href="#prereq-dri">For DRI and hardware acceleration</a>
   </ul>
 <li><a href="#meson">Building with meson</a>
-<li><a href="#autoconf">Building with autoconf (Linux/Unix/X11)</a>
 <li><a href="#scons">Building with SCons (Windows/Linux)</a>
 <li><a href="#android">Building with AOSP (Android)</a>
 <li><a href="#libs">Library Information</a>
@@ -39,7 +38,6 @@
 
 <ul>
 <li><a href="https://mesonbuild.com">meson</a> is required when building on *nix platforms.
-<li>Autoconf was removed in 19.1.0, use meson instead
 <li><a href="http://www.scons.org/">SCons</a> is required for building on
 Windows and optional for Linux (it's an alternative to meson.)
 </li>
@@ -128,15 +126,9 @@ Please read the <a href="meson.html">detailed meson instructions</a>
 for more information
 </p>
 
-<h2 id="autoconf">3. Building with autoconf (Linux/Unix/X11)</h2>
-
-<p>
-  Autoconf support was removed in Mesa 19.1.0. Please use meson instead.
-</p>
 
 
-
-<h2 id="scons">4. Building with SCons (Windows/Linux)</h2>
+<h2 id="scons">3. Building with SCons (Windows/Linux)</h2>
 
 <p>
 To build Mesa with SCons on Linux or Windows do
@@ -172,7 +164,7 @@ Additional information is available in <a href="README.WIN32">README.WIN32</a>.
 
 
 
-<h2 id="android">5. Building with AOSP (Android)</h2>
+<h2 id="android">4. Building with AOSP (Android)</h2>
 
 <p>
 Currently one can build Mesa for Android as part of the AOSP project, yet
@@ -191,7 +183,7 @@ Android-x86 and/or other resources.
 </p>
 
 
-<h2 id="libs">6. Library Information</h2>
+<h2 id="libs">5. Library Information</h2>
 
 <p>
 When compilation has finished, look in the top-level <code>lib/</code>
@@ -228,7 +220,7 @@ versions of libGL and device drivers.
 </p>
 
 
-<h2 id="pkg-config">7. Building OpenGL programs with pkg-config</h2>
+<h2 id="pkg-config">6. Building OpenGL programs with pkg-config</h2>
 
 <p>
 Running <code>ninja install</code> will install package configuration files
