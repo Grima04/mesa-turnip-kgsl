@@ -3406,8 +3406,7 @@ static VkResult radv_alloc_sem_counts(struct radv_instance *instance,
 				      struct radv_winsys_sem_counts *counts,
 				      int num_sems,
 				      const VkSemaphore *sems,
-				      VkFence _fence,
-				      bool reset_temp)
+				      VkFence _fence)
 {
 	int syncobj_idx = 0, sem_idx = 0;
 
@@ -3504,10 +3503,10 @@ radv_alloc_sem_info(struct radv_instance *instance,
 	VkResult ret;
 	memset(sem_info, 0, sizeof(*sem_info));
 
-	ret = radv_alloc_sem_counts(instance, &sem_info->wait, num_wait_sems, wait_sems, VK_NULL_HANDLE, true);
+	ret = radv_alloc_sem_counts(instance, &sem_info->wait, num_wait_sems, wait_sems, VK_NULL_HANDLE);
 	if (ret)
 		return ret;
-	ret = radv_alloc_sem_counts(instance, &sem_info->signal, num_signal_sems, signal_sems, fence, false);
+	ret = radv_alloc_sem_counts(instance, &sem_info->signal, num_signal_sems, signal_sems, fence);
 	if (ret)
 		radv_free_sem_info(sem_info);
 
