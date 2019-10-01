@@ -35,7 +35,7 @@ typedef struct {
    const nir_lower_drawpixels_options *options;
    nir_shader   *shader;
    nir_builder   b;
-   nir_variable *texcoord, *scale, *bias, *tex, *pixelmap;
+   nir_variable *texcoord, *texcoord_const, *scale, *bias, *tex, *pixelmap;
 } lower_drawpixels_state;
 
 static nir_ssa_def *
@@ -104,11 +104,12 @@ get_bias(lower_drawpixels_state *state)
 static nir_ssa_def *
 get_texcoord_const(lower_drawpixels_state *state)
 {
-   if (state->bias == NULL) {
-      state->bias = create_uniform(state->shader, "gl_MultiTexCoord0",
+   if (state->texcoord_const == NULL) {
+      state->texcoord_const = create_uniform(state->shader,
+                                   "gl_MultiTexCoord0",
                                    state->options->texcoord_state_tokens);
    }
-   return nir_load_var(&state->b, state->bias);
+   return nir_load_var(&state->b, state->texcoord_const);
 }
 
 static void
