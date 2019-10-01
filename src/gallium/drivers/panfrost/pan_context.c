@@ -842,12 +842,15 @@ panfrost_patch_shader_state(
         unsigned ubo_count = panfrost_ubo_count(ctx, stage);
         ss->tripipe->midgard1.uniform_buffer_count = ubo_count;
 
+        struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
+
+        /* Add the shader BO to the batch. */
+        panfrost_batch_add_bo(batch, ss->bo);
+
         /* We can't reuse over frames; that's not safe. The descriptor must be
          * transient uploaded */
 
         if (should_upload) {
-                struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
-
                 return panfrost_upload_transient(batch, ss->tripipe,
                                                  sizeof(struct mali_shader_meta));
         }
@@ -935,8 +938,6 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                 struct panfrost_shader_state *variant = &ctx->shader[PIPE_SHADER_FRAGMENT]->variants[ctx->shader[PIPE_SHADER_FRAGMENT]->active_variant];
 
                 panfrost_patch_shader_state(ctx, variant, PIPE_SHADER_FRAGMENT, false);
-
-                panfrost_batch_add_bo(batch, variant->bo);
 
 #define COPY(name) ctx->fragment_shader_core.name = variant->tripipe->name
 
@@ -1120,8 +1121,6 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                 struct panfrost_constant_buffer *buf = &ctx->constant_buffer[i];
 
                 struct panfrost_shader_state *ss = &all->variants[all->active_variant];
-
-                panfrost_batch_add_bo(batch, ss->bo);
 
                 /* Uniforms are implicitly UBO #0 */
                 bool has_uniforms = buf->enabled_mask & (1 << 0);
