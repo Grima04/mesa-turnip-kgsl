@@ -483,23 +483,6 @@ struct pipe_screen {
    bool (*is_parallel_shader_compilation_finished)(struct pipe_screen *screen,
                                                    void *shader,
                                                    unsigned shader_type);
-
-   /**
-    * Set the damage region (called when KHR_partial_update() is invoked).
-    * This function is passed an array of rectangles encoding the damage area.
-    * rects are using the bottom-left origin convention.
-    * nrects = 0 means 'reset the damage region'. What 'reset' implies is HW
-    * specific. For tile-based renderers, the damage extent is typically set
-    * to cover the whole resource with no damage rect (or a 0-size damage
-    * rect). This way, the existing resource content is reloaded into the
-    * local tile buffer for every tile thus making partial tile update
-    * possible. For HW operating in immediate mode, this reset operation is
-    * likely to be a NOOP.
-    */
-   void (*set_damage_region)(struct pipe_screen *screen,
-                             struct pipe_resource *resource,
-                             unsigned int nrects,
-                             const struct pipe_box *rects);
 };
 
 
