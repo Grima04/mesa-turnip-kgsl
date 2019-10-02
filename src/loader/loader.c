@@ -56,6 +56,8 @@
 #endif
 #endif
 
+#include "util/macros.h"
+
 #define __IS_LOADER
 #include "pci_id_driver_map.h"
 
@@ -465,7 +467,7 @@ loader_get_driver_for_fd(int fd)
       return driver;
    }
 
-   for (i = 0; driver_map[i].driver; i++) {
+   for (i = 0; i < ARRAY_SIZE(driver_map); i++) {
       if (vendor_id != driver_map[i].vendor_id)
          continue;
 

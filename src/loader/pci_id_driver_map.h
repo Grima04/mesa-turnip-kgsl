@@ -4,10 +4,6 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-#ifndef ARRAY_SIZE
-#define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
-#endif
-
 #ifndef __IS_LOADER
 #  error "Only include from loader.c"
 #endif
@@ -106,7 +102,6 @@ static const struct {
    { 0x10de, "nouveau", NULL, -1, },
    { 0x1af4, "virtio_gpu", virtio_gpu_chip_ids, ARRAY_SIZE(virtio_gpu_chip_ids) },
    { 0x15ad, "vmwgfx", vmwgfx_chip_ids, ARRAY_SIZE(vmwgfx_chip_ids) },
-   { 0x0000, NULL, NULL, 0 },
 };
 
 #endif /* _PCI_ID_DRIVER_MAP_H_ */
