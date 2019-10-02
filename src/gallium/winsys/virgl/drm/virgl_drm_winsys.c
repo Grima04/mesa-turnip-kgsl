@@ -265,6 +265,7 @@ virgl_drm_winsys_resource_create(struct virgl_winsys *qws,
    res->res_handle = createcmd.res_handle;
    res->bo_handle = createcmd.bo_handle;
    res->size = size;
+   res->target = target;
    pipe_reference_init(&res->reference, 1);
    p_atomic_set(&res->external, false);
    p_atomic_set(&res->num_cs_references, 0);
@@ -278,6 +279,27 @@ virgl_drm_winsys_resource_create(struct virgl_winsys *qws,
    virgl_resource_cache_entry_init(&res->cache_entry, size, bind, format, 0);
 
    return res;
+}
+
+/*
+ * Previously, with DRM_IOCTL_VIRTGPU_RESOURCE_CREATE, all host resources had
+ * a guest memory shadow resource with size = stride * bpp.  Virglrenderer
+ * would guess the stride implicitly when performing transfer operations, if
+ * the stride wasn't specified.  Interestingly, vtest would specify the stride.
+ *
+ * Guessing the stride breaks down with YUV images, which may be imported into
+ * Mesa as 3R8 images. It also doesn't work if an external allocator
+ * (i.e, minigbm) decides to use a stride not equal to stride * bpp. With blob
+ * resources, the size = stride * bpp restriction no longer holds, so use
+ * explicit strides passed into Mesa.
+ */
+static inline bool use_explicit_stride(struct virgl_hw_res *res, uint32_t level,
+				       uint32_t depth)
+{
+   return (params[param_resource_blob].value &&
+           res->blob_mem == VIRTGPU_BLOB_MEM_HOST3D_GUEST &&
+           res->target == PIPE_TEXTURE_2D &&
+           level == 0 && depth == 1);
 }
 
 static int
@@ -302,8 +324,10 @@ virgl_bo_transfer_put(struct virgl_winsys *vws,
    tohostcmd.box.d = box->depth;
    tohostcmd.offset = buf_offset;
    tohostcmd.level = level;
-  // tohostcmd.stride = stride;
-  // tohostcmd.layer_stride = stride;
+
+   if (use_explicit_stride(res, level, box->depth))
+      tohostcmd.stride = stride;
+
    return drmIoctl(vdws->fd, DRM_IOCTL_VIRTGPU_TRANSFER_TO_HOST, &tohostcmd);
 }
 
@@ -323,14 +347,16 @@ virgl_bo_transfer_get(struct virgl_winsys *vws,
    fromhostcmd.bo_handle = res->bo_handle;
    fromhostcmd.level = level;
    fromhostcmd.offset = buf_offset;
-  // fromhostcmd.stride = stride;
-  // fromhostcmd.layer_stride = layer_stride;
    fromhostcmd.box.x = box->x;
    fromhostcmd.box.y = box->y;
    fromhostcmd.box.z = box->z;
    fromhostcmd.box.w = box->width;
    fromhostcmd.box.h = box->height;
    fromhostcmd.box.d = box->depth;
+
+   if (use_explicit_stride(res, level, box->depth))
+      fromhostcmd.stride = stride;
+
    return drmIoctl(vdws->fd, DRM_IOCTL_VIRTGPU_TRANSFER_FROM_HOST, &fromhostcmd);
 }
 

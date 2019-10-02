@@ -36,6 +36,7 @@ struct hash_table;
 
 struct virgl_hw_res {
    struct pipe_reference reference;
+   enum pipe_texture_target target;
    uint32_t res_handle;
    uint32_t bo_handle;
    int num_cs_references;
