@@ -36,7 +36,8 @@ gen_batch_decode_ctx_init(struct gen_batch_decode_ctx *ctx,
                           struct gen_batch_decode_bo (*get_bo)(void *,
                                                                bool,
                                                                uint64_t),
-                          unsigned (*get_state_size)(void *, uint32_t),
+                          unsigned (*get_state_size)(void *, uint64_t,
+                                                     uint64_t),
                           void *user_data)
 {
    memset(ctx, 0, sizeof(*ctx));
@@ -110,14 +111,15 @@ ctx_get_bo(struct gen_batch_decode_ctx *ctx, bool ppgtt, uint64_t addr)
 
 static int
 update_count(struct gen_batch_decode_ctx *ctx,
-             uint32_t offset_from_dsba,
+             uint64_t address,
+             uint64_t base_address,
              unsigned element_dwords,
              unsigned guess)
 {
    unsigned size = 0;
 
    if (ctx->get_state_size)
-      size = ctx->get_state_size(ctx->user_data, offset_from_dsba);
+      size = ctx->get_state_size(ctx->user_data, address, base_address);
 
    if (size > 0)
       return size / (sizeof(uint32_t) * element_dwords);
@@ -249,8 +251,10 @@ dump_binding_table(struct gen_batch_decode_ctx *ctx, uint32_t offset, int count)
       return;
    }
 
-   if (count < 0)
-      count = update_count(ctx, offset, 1, 8);
+   if (count < 0) {
+      count = update_count(ctx, ctx->surface_base + offset,
+                           ctx->surface_base, 1, 8);
+   }
 
    if (offset % 32 != 0 || offset >= UINT16_MAX) {
       fprintf(ctx->fp, "  invalid binding table pointer\n");
@@ -289,11 +293,13 @@ static void
 dump_samplers(struct gen_batch_decode_ctx *ctx, uint32_t offset, int count)
 {
    struct gen_group *strct = gen_spec_find_struct(ctx->spec, "SAMPLER_STATE");
-
-   if (count < 0)
-      count = update_count(ctx, offset, strct->dw_length, 4);
-
    uint64_t state_addr = ctx->dynamic_base + offset;
+
+   if (count < 0) {
+      count = update_count(ctx, state_addr, ctx->dynamic_base,
+                           strct->dw_length, 4);
+   }
+
    struct gen_batch_decode_bo bo = ctx_get_bo(ctx, true, state_addr);
    const void *state_map = bo.map;
 
@@ -765,7 +771,8 @@ decode_dynamic_state_pointers(struct gen_batch_decode_ctx *ctx,
       state = gen_spec_find_struct(ctx->spec, struct_type);
    }
 
-   count = update_count(ctx, state_offset, state->dw_length, count);
+   count = update_count(ctx, ctx->dynamic_base + state_offset,
+                        ctx->dynamic_base, state->dw_length, count);
 
    for (int i = 0; i < count; i++) {
       fprintf(ctx->fp, "%s %d\n", struct_type, i);

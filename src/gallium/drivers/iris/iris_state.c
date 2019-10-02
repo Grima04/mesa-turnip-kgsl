@@ -346,9 +346,10 @@ stream_state(struct iris_batch *batch,
    struct iris_bo *bo = iris_resource_bo(*out_res);
    iris_use_pinned_bo(batch, bo, false);
 
-   *out_offset += iris_bo_offset_from_base_address(bo);
+   iris_record_state_size(batch->state_sizes,
+                          bo->gtt_offset + *out_offset, size);
 
-   iris_record_state_size(batch->state_sizes, *out_offset, size);
+   *out_offset += iris_bo_offset_from_base_address(bo);
 
    return ptr;
 }
@@ -1988,10 +1989,12 @@ iris_upload_sampler_states(struct iris_context *ice, gl_shader_stage stage)
       return;
 
    struct pipe_resource *res = shs->sampler_table.res;
-   shs->sampler_table.offset +=
-      iris_bo_offset_from_base_address(iris_resource_bo(res));
+   struct iris_bo *bo = iris_resource_bo(res);
 
-   iris_record_state_size(ice->state.sizes, shs->sampler_table.offset, size);
+   iris_record_state_size(ice->state.sizes,
+                          bo->gtt_offset + shs->sampler_table.offset, size);
+
+   shs->sampler_table.offset += iris_bo_offset_from_base_address(bo);
 
    /* Make sure all land in the same BO */
    iris_border_color_pool_reserve(ice, IRIS_MAX_TEXTURE_SAMPLERS);
