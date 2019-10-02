@@ -479,8 +479,14 @@ etna_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
                          1 << PIPE_PRIM_LINES |
                          1 << PIPE_PRIM_LINE_STRIP |
                          1 << PIPE_PRIM_TRIANGLES |
-                         1 << PIPE_PRIM_TRIANGLE_STRIP |
                          1 << PIPE_PRIM_TRIANGLE_FAN;
+
+   /* TODO: The bug relates only to indexed draws, but here we signal
+    * that there is no support for triangle strips at all. This should
+    * be refined.
+    */
+   if (VIV_FEATURE(ctx->screen, chipMinorFeatures2, BUG_FIXES8))
+      ctx->prim_hwsupport |= 1 << PIPE_PRIM_TRIANGLE_STRIP;
 
    if (VIV_FEATURE(ctx->screen, chipMinorFeatures2, LINE_LOOP))
       ctx->prim_hwsupport |= 1 << PIPE_PRIM_LINE_LOOP;
