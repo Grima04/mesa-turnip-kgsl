@@ -776,12 +776,9 @@ iris_alloc_push_constants(struct iris_batch *batch)
  * way, but we never actually change.
  */
 static void
-iris_init_render_context(struct iris_screen *screen,
-                         struct iris_batch *batch,
-                         struct iris_vtable *vtbl,
-                         struct pipe_debug_callback *dbg)
+iris_init_render_context(struct iris_batch *batch)
 {
-   UNUSED const struct gen_device_info *devinfo = &screen->devinfo;
+   UNUSED const struct gen_device_info *devinfo = &batch->screen->devinfo;
    uint32_t reg_val;
 
    emit_pipeline_select(batch, _3D);
@@ -888,12 +885,9 @@ iris_init_render_context(struct iris_screen *screen,
 }
 
 static void
-iris_init_compute_context(struct iris_screen *screen,
-                          struct iris_batch *batch,
-                          struct iris_vtable *vtbl,
-                          struct pipe_debug_callback *dbg)
+iris_init_compute_context(struct iris_batch *batch)
 {
-   UNUSED const struct gen_device_info *devinfo = &screen->devinfo;
+   UNUSED const struct gen_device_info *devinfo = &batch->screen->devinfo;
 
    emit_pipeline_select(batch, GPGPU);
 

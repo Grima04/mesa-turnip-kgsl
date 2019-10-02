@@ -79,20 +79,17 @@ iris_lost_context_state(struct iris_batch *batch)
     * batch is one of our context's, so hackily claw our way back.
     */
    struct iris_context *ice = NULL;
-   struct iris_screen *screen;
 
    if (batch->name == IRIS_BATCH_RENDER) {
       ice = container_of(batch, ice, batches[IRIS_BATCH_RENDER]);
       assert(&ice->batches[IRIS_BATCH_RENDER] == batch);
-      screen = (void *) ice->ctx.screen;
 
-      ice->vtbl.init_render_context(screen, batch, &ice->vtbl, &ice->dbg);
+      ice->vtbl.init_render_context(batch);
    } else if (batch->name == IRIS_BATCH_COMPUTE) {
       ice = container_of(batch, ice, batches[IRIS_BATCH_COMPUTE]);
       assert(&ice->batches[IRIS_BATCH_COMPUTE] == batch);
-      screen = (void *) ice->ctx.screen;
 
-      ice->vtbl.init_compute_context(screen, batch, &ice->vtbl, &ice->dbg);
+      ice->vtbl.init_compute_context(batch);
    } else {
       unreachable("unhandled batch reset");
    }
@@ -312,10 +309,8 @@ iris_create_context(struct pipe_screen *pscreen, void *priv, unsigned flags)
                       I915_EXEC_RENDER, priority);
    }
 
-   ice->vtbl.init_render_context(screen, &ice->batches[IRIS_BATCH_RENDER],
-                                 &ice->vtbl, &ice->dbg);
-   ice->vtbl.init_compute_context(screen, &ice->batches[IRIS_BATCH_COMPUTE],
-                                  &ice->vtbl, &ice->dbg);
+   ice->vtbl.init_render_context(&ice->batches[IRIS_BATCH_RENDER]);
+   ice->vtbl.init_compute_context(&ice->batches[IRIS_BATCH_COMPUTE]);
 
    return ctx;
 }
