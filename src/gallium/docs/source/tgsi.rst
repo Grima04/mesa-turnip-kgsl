@@ -681,6 +681,27 @@ This instruction replicates its result.
   Unconditional discard.  Allowed in fragment shaders only.
 
 
+.. opcode:: DEMOTE - Demote Invocation to a Helper
+
+  This demotes the current invocation to a helper, but continues
+  execution (while KILL may or may not terminate the
+  invocation). After this runs, all the usual helper invocation rules
+  apply about discarding buffer and render target writes. This is
+  useful for having accurate derivatives in the other invocations
+  which have not been demoted.
+
+  Allowed in fragment shaders only.
+
+
+.. opcode:: READ_HELPER - Reads Invocation Helper Status
+
+  This is identical to ``TGSI_SEMANTIC_HELPER_INVOCATION``, except
+  this will read the current value, which might change as a result of
+  a ``DEMOTE`` instruction.
+
+  Allowed in fragment shaders only.
+
+
 .. opcode:: TXB - Texture Lookup With Bias
 
   for cube map array textures and shadow cube maps, the bias value

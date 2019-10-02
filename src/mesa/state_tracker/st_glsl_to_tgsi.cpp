@@ -4107,6 +4107,10 @@ glsl_to_tgsi_visitor::visit(ir_call *ir)
       visit_generic_intrinsic(ir, TGSI_OPCODE_READ_INVOC);
       return;
 
+   case ir_intrinsic_helper_invocation:
+      visit_generic_intrinsic(ir, TGSI_OPCODE_READ_HELPER);
+      return;
+
    case ir_intrinsic_invalid:
    case ir_intrinsic_generic_load:
    case ir_intrinsic_generic_store:
@@ -4120,7 +4124,6 @@ glsl_to_tgsi_visitor::visit(ir_call *ir)
    case ir_intrinsic_generic_atomic_comp_swap:
    case ir_intrinsic_begin_invocation_interlock:
    case ir_intrinsic_end_invocation_interlock:
-   case ir_intrinsic_helper_invocation:
       unreachable("Invalid intrinsic");
    }
 }
@@ -4631,7 +4634,7 @@ glsl_to_tgsi_visitor::visit(ir_discard *ir)
 void
 glsl_to_tgsi_visitor::visit(ir_demote *ir)
 {
-   assert(!"demote statement unsupported");
+   emit_asm(ir, TGSI_OPCODE_DEMOTE);
 }
 
 void
