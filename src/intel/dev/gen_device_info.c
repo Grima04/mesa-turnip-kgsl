@@ -1320,6 +1320,9 @@ query_topology(struct gen_device_info *devinfo, int fd)
    if (gen_ioctl(fd, DRM_IOCTL_I915_QUERY, &query))
       return false;
 
+   if (item.length < 0)
+      return false;
+
    struct drm_i915_query_topology_info *topo_info =
       (struct drm_i915_query_topology_info *) calloc(1, item.length);
    item.data_ptr = (uintptr_t) topo_info;
