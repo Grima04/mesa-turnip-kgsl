@@ -1,6 +1,7 @@
 #ifndef _PCI_ID_DRIVER_MAP_H_
 #define _PCI_ID_DRIVER_MAP_H_
 
+#include <stdbool.h>
 #include <stddef.h>
 
 #ifndef ARRAY_SIZE
@@ -83,14 +84,14 @@ static const int vmwgfx_chip_ids[] = {
 #undef CHIPSET
 };
 
-int is_nouveau_vieux(int fd);
+bool is_nouveau_vieux(int fd);
 
 static const struct {
    int vendor_id;
    const char *driver;
    const int *chip_ids;
    int num_chips_ids;
-   int (*predicate)(int fd);
+   bool (*predicate)(int fd);
 } driver_map[] = {
    { 0x8086, "i915", i915_chip_ids, ARRAY_SIZE(i915_chip_ids) },
    { 0x8086, "iris", iris_chip_ids_1, ARRAY_SIZE(iris_chip_ids_1) },
