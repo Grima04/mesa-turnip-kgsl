@@ -3445,7 +3445,7 @@ radv_pipeline_generate_depth_stencil_state(struct radeon_cmdbuf *ctx_cs,
 			      S_02800C_FORCE_HIS_ENABLE1(V_02800C_FORCE_DISABLE);
 
 	if (!pCreateInfo->pRasterizationState->depthClampEnable &&
-	    ps->info.info.ps.writes_z) {
+	    ps->info.ps.writes_z) {
 		/* From VK_EXT_depth_range_unrestricted spec:
 		 *
 		 * "The behavior described in Primitive Clipping still applies.
