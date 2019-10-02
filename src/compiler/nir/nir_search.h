@@ -29,6 +29,7 @@
 #define _NIR_SEARCH_
 
 #include "nir.h"
+#include "nir_worklist.h"
 #include "util/u_dynarray.h"
 
 #define NIR_SEARCH_MAX_VARIABLES 16
@@ -202,7 +203,8 @@ nir_replace_instr(struct nir_builder *b, nir_alu_instr *instr,
                   struct util_dynarray *states,
                   const struct per_op_table *pass_op_table,
                   const nir_search_expression *search,
-                  const nir_search_value *replace);
+                  const nir_search_value *replace,
+                  nir_instr_worklist *algebraic_worklist);
 bool
 nir_algebraic_impl(nir_function_impl *impl,
                    const bool *condition_flags,
