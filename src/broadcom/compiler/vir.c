@@ -825,7 +825,7 @@ v3d_nir_lower_vs_late(struct v3d_compile *c)
 
         if (c->key->ucp_enables) {
                 NIR_PASS_V(c->s, nir_lower_clip_vs, c->key->ucp_enables,
-                           false, false);
+                           false, false, NULL);
                 NIR_PASS_V(c->s, nir_lower_io_to_scalar,
                            nir_var_shader_out);
         }

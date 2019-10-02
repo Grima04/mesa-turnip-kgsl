@@ -3908,9 +3908,11 @@ bool nir_lower_input_attachments(nir_shader *shader, bool use_fragcoord_sysval);
 
 bool nir_lower_clip_vs(nir_shader *shader, unsigned ucp_enables,
                        bool use_vars,
-                       bool use_clipdist_array);
+                       bool use_clipdist_array,
+                       const gl_state_index16 clipplane_state_tokens[][STATE_LENGTH]);
 bool nir_lower_clip_gs(nir_shader *shader, unsigned ucp_enables,
-                       bool use_clipdist_array);
+                       bool use_clipdist_array,
+                       const gl_state_index16 clipplane_state_tokens[][STATE_LENGTH]);
 bool nir_lower_clip_fs(nir_shader *shader, unsigned ucp_enables,
                        bool use_clipdist_array);
 bool nir_lower_clip_cull_distance_arrays(nir_shader *nir);
