@@ -407,7 +407,7 @@ brw_nir_lower_legacy_clipping(nir_shader *nir, int nr_userclip_plane_consts,
 
    nir_function_impl *impl = nir_shader_get_entrypoint(nir);
 
-   nir_lower_clip_vs(nir, (1 << nr_userclip_plane_consts) - 1, true);
+   nir_lower_clip_vs(nir, (1 << nr_userclip_plane_consts) - 1, true, false);
    nir_lower_io_to_temporaries(nir, impl, true, false);
    nir_lower_global_vars_to_local(nir);
    nir_lower_vars_to_ssa(nir);

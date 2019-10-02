@@ -938,7 +938,8 @@ iris_compile_vs(struct iris_context *ice,
 
    if (key->nr_userclip_plane_consts) {
       nir_function_impl *impl = nir_shader_get_entrypoint(nir);
-      nir_lower_clip_vs(nir, (1 << key->nr_userclip_plane_consts) - 1, true);
+      nir_lower_clip_vs(nir, (1 << key->nr_userclip_plane_consts) - 1, true,
+                        false);
       nir_lower_io_to_temporaries(nir, impl, true, false);
       nir_lower_global_vars_to_local(nir);
       nir_lower_vars_to_ssa(nir);
@@ -1281,7 +1282,8 @@ iris_compile_tes(struct iris_context *ice,
 
    if (key->nr_userclip_plane_consts) {
       nir_function_impl *impl = nir_shader_get_entrypoint(nir);
-      nir_lower_clip_vs(nir, (1 << key->nr_userclip_plane_consts) - 1, true);
+      nir_lower_clip_vs(nir, (1 << key->nr_userclip_plane_consts) - 1, true,
+                        false);
       nir_lower_io_to_temporaries(nir, impl, true, false);
       nir_lower_global_vars_to_local(nir);
       nir_lower_vars_to_ssa(nir);
@@ -1401,7 +1403,7 @@ iris_compile_gs(struct iris_context *ice,
 
    if (key->nr_userclip_plane_consts) {
       nir_function_impl *impl = nir_shader_get_entrypoint(nir);
-      nir_lower_clip_gs(nir, (1 << key->nr_userclip_plane_consts) - 1);
+      nir_lower_clip_gs(nir, (1 << key->nr_userclip_plane_consts) - 1, false);
       nir_lower_io_to_temporaries(nir, impl, true, false);
       nir_lower_global_vars_to_local(nir);
       nir_lower_vars_to_ssa(nir);

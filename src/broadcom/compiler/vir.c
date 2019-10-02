@@ -825,7 +825,7 @@ v3d_nir_lower_vs_late(struct v3d_compile *c)
 
         if (c->key->ucp_enables) {
                 NIR_PASS_V(c->s, nir_lower_clip_vs, c->key->ucp_enables,
-                           false);
+                           false, false);
                 NIR_PASS_V(c->s, nir_lower_io_to_scalar,
                            nir_var_shader_out);
         }
@@ -850,7 +850,8 @@ v3d_nir_lower_fs_late(struct v3d_compile *c)
         }
 
         if (c->key->ucp_enables)
-                NIR_PASS_V(c->s, nir_lower_clip_fs, c->key->ucp_enables);
+                NIR_PASS_V(c->s, nir_lower_clip_fs, c->key->ucp_enables,
+                           false);
 
         /* Note: FS input scalarizing must happen after
          * nir_lower_two_sided_color, which only handles a vec4 at a time.
