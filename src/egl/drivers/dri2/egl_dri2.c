@@ -633,10 +633,9 @@ dri2_load_driver_common(_EGLDisplay *disp,
    if (!extensions)
       return EGL_FALSE;
 
-   if (!dri2_bind_extensions(dri2_dpy, driver_extensions, extensions, false)) {
-      dlclose(dri2_dpy->driver);
+   if (!dri2_bind_extensions(dri2_dpy, driver_extensions, extensions, false))
       return EGL_FALSE;
-   }
+
    dri2_dpy->driver_extensions = extensions;
 
    dri2_bind_extensions(dri2_dpy, optional_driver_extensions, extensions, true);
