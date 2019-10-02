@@ -65,6 +65,7 @@ struct bo {
    uint32_t size;
    uint64_t offset;
    void *map;
+   bool mapped;
 };
 
 static struct bo *bos;
@@ -285,12 +286,14 @@ dump_execbuffer2(int fd, struct drm_i915_gem_execbuffer2 *execbuffer2)
       else
          data = bo->map;
 
-      if (bo == batch_bo) {
-         aub_write_trace_block(&aub_file, AUB_TRACE_TYPE_BATCH,
-                               GET_PTR(data), bo->size, bo->offset);
-      } else {
-         aub_write_trace_block(&aub_file, AUB_TRACE_TYPE_NOTYPE,
-                               GET_PTR(data), bo->size, bo->offset);
+      if (bo->mapped) {
+         if (bo == batch_bo) {
+            aub_write_trace_block(&aub_file, AUB_TRACE_TYPE_BATCH,
+                                  GET_PTR(data), bo->size, bo->offset);
+         } else {
+            aub_write_trace_block(&aub_file, AUB_TRACE_TYPE_NOTYPE,
+                                  GET_PTR(data), bo->size, bo->offset);
+         }
       }
 
       if (data != bo->map)
@@ -331,6 +334,7 @@ add_new_bo(unsigned fd, int handle, uint64_t size, void *map)
 
    bo->size = size;
    bo->map = map;
+   bo->mapped = false;
 }
 
 static void
@@ -342,6 +346,7 @@ remove_bo(int fd, int handle)
       munmap(bo->map, bo->size);
    bo->size = 0;
    bo->map = NULL;
+   bo->mapped = false;
 }
 
 __attribute__ ((visibility ("default"))) int
@@ -633,6 +638,16 @@ ioctl(int fd, unsigned long request, ...)
 
          }
 
+         return ret;
+      }
+
+      case DRM_IOCTL_I915_GEM_MMAP: {
+         ret = libc_ioctl(fd, request, argp);
+         if (ret == 0) {
+            struct drm_i915_gem_mmap *mmap = argp;
+            struct bo *bo = get_bo(fd, mmap->handle);
+            bo->mapped = true;
+         }
          return ret;
       }
 
