@@ -90,19 +90,3 @@ mir_is_live_after(compiler_context *ctx, midgard_block *block, midgard_instructi
 
         return succ;
 }
-
-/* Just a quick check -- is it written more than once? (I.e. are we definitely
- * not SSA?) */
-
-bool
-mir_has_multiple_writes(compiler_context *ctx, int dest)
-{
-        unsigned write_count = 0;
-
-        mir_foreach_instr_global(ctx, ins) {
-                if (ins->dest == dest)
-                        write_count++;
-        }
-
-        return write_count > 1;
-}
