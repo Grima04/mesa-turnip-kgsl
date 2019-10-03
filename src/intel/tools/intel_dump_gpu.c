@@ -48,9 +48,11 @@
 
 static int close_init_helper(int fd);
 static int ioctl_init_helper(int fd, unsigned long request, ...);
+static int munmap_init_helper(void *addr, size_t length);
 
 static int (*libc_close)(int fd) = close_init_helper;
 static int (*libc_ioctl)(int fd, unsigned long request, ...) = ioctl_init_helper;
+static int (*libc_munmap)(void *addr, size_t length) = munmap_init_helper;
 
 static int drm_fd = -1;
 static char *output_filename = NULL;
@@ -65,7 +67,12 @@ struct bo {
    uint32_t size;
    uint64_t offset;
    void *map;
-   bool mapped;
+   /* Tracks userspace mmapping of the buffer */
+   bool user_mapped : 1;
+   /* Using the i915-gem mmapping ioctl & execbuffer ioctl, track whether a
+    * buffer has been updated.
+    */
+   bool dirty : 1;
 };
 
 static struct bo *bos;
@@ -286,7 +293,7 @@ dump_execbuffer2(int fd, struct drm_i915_gem_execbuffer2 *execbuffer2)
       else
          data = bo->map;
 
-      if (bo->mapped) {
+      if (bo->dirty) {
          if (bo == batch_bo) {
             aub_write_trace_block(&aub_file, AUB_TRACE_TYPE_BATCH,
                                   GET_PTR(data), bo->size, bo->offset);
@@ -294,6 +301,9 @@ dump_execbuffer2(int fd, struct drm_i915_gem_execbuffer2 *execbuffer2)
             aub_write_trace_block(&aub_file, AUB_TRACE_TYPE_NOTYPE,
                                   GET_PTR(data), bo->size, bo->offset);
          }
+
+         if (!bo->user_mapped)
+            bo->dirty = false;
       }
 
       if (data != bo->map)
@@ -334,7 +344,7 @@ add_new_bo(unsigned fd, int handle, uint64_t size, void *map)
 
    bo->size = size;
    bo->map = map;
-   bo->mapped = false;
+   bo->user_mapped = false;
 }
 
 static void
@@ -346,7 +356,7 @@ remove_bo(int fd, int handle)
       munmap(bo->map, bo->size);
    bo->size = 0;
    bo->map = NULL;
-   bo->mapped = false;
+   bo->user_mapped = false;
 }
 
 __attribute__ ((visibility ("default"))) int
@@ -646,7 +656,8 @@ ioctl(int fd, unsigned long request, ...)
          if (ret == 0) {
             struct drm_i915_gem_mmap *mmap = argp;
             struct bo *bo = get_bo(fd, mmap->handle);
-            bo->mapped = true;
+            bo->user_mapped = true;
+            bo->dirty = true;
          }
          return ret;
       }
@@ -664,6 +675,7 @@ init(void)
 {
    libc_close = dlsym(RTLD_NEXT, "close");
    libc_ioctl = dlsym(RTLD_NEXT, "ioctl");
+   libc_munmap = dlsym(RTLD_NEXT, "munmap");
    fail_if(libc_close == NULL || libc_ioctl == NULL,
            "failed to get libc ioctl or close\n");
 }
@@ -687,6 +699,20 @@ ioctl_init_helper(int fd, unsigned long request, ...)
 
    init();
    return libc_ioctl(fd, request, argp);
+}
+
+static int
+munmap_init_helper(void *addr, size_t length)
+{
+   init();
+   for (uint32_t i = 0; i < MAX_FD_COUNT * MAX_BO_COUNT; i++) {
+      struct bo *bo = &bos[i];
+      if (bo->map == addr) {
+         bo->user_mapped = false;
+         break;
+      }
+   }
+   return libc_munmap(addr, length);
 }
 
 static void __attribute__ ((destructor))
