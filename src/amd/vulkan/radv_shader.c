@@ -61,6 +61,7 @@ static const struct nir_shader_compiler_options nir_options_llvm = {
 	.lower_device_index_to_zero = true,
 	.lower_fsat = true,
 	.lower_fdiv = true,
+	.lower_fmod = true,
 	.lower_bitfield_insert_to_bitfield_select = true,
 	.lower_bitfield_extract = true,
 	.lower_sub = true,
