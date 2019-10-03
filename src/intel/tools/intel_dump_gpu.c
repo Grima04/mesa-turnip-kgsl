@@ -59,6 +59,7 @@ static char *output_filename = NULL;
 static FILE *output_file = NULL;
 static int verbose = 0;
 static bool device_override = false;
+static bool capture_only = false;
 
 #define MAX_FD_COUNT 64
 #define MAX_BO_COUNT 64 * 1024
@@ -293,7 +294,9 @@ dump_execbuffer2(int fd, struct drm_i915_gem_execbuffer2 *execbuffer2)
       else
          data = bo->map;
 
-      if (bo->dirty) {
+      bool write = !capture_only || (obj->flags & EXEC_OBJECT_CAPTURE);
+
+      if (write && bo->dirty) {
          if (bo == batch_bo) {
             aub_write_trace_block(&aub_file, AUB_TRACE_TYPE_BATCH,
                                   GET_PTR(data), bo->size, bo->offset);
@@ -420,6 +423,8 @@ maybe_init(int fd)
          fail_if(output_file == NULL,
                  "failed to open file '%s'\n",
                  output_filename);
+      } else if (!strcmp(key, "capture_only")) {
+         capture_only = atoi(value);
       } else {
          fprintf(stderr, "unknown option '%s'\n", key);
       }
