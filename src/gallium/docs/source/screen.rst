@@ -560,6 +560,8 @@ The integer capabilities:
 * ``PIPE_CAP_TGSI_TG4_COMPONENT_IN_SWIZZLE``: True if driver wants the TG4 component encoded in sampler swizzle rather than as a separate source.
 * ``PIPE_CAP_FLATSHADE``: Driver supports pipe_rasterizer_state::flatshade.
 * ``PIPE_CAP_ALPHA_TEST``: Driver supports alpha-testing.
+* ``PIPE_CAP_POINT_SIZE_FIXED``: Driver supports point-sizes that are fixed,
+  as opposed to writing gl_PointSize for every point.
 
 .. _pipe_capf:
 

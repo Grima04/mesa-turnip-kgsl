@@ -647,6 +647,9 @@ st_create_vp_variant(struct st_context *st,
 {
    struct st_vp_variant *vpv = CALLOC_STRUCT(st_vp_variant);
    struct pipe_context *pipe = st->pipe;
+
+   static const gl_state_index16 point_size_state[STATE_LENGTH] =
+      { STATE_INTERNAL, STATE_POINT_SIZE_CLAMPED, 0 };
    struct gl_program_parameter_list *params = stvp->Base.Parameters;
 
    vpv->key = *key;
@@ -669,6 +672,12 @@ st_create_vp_variant(struct st_context *st,
       if (key->passthrough_edgeflags) {
          NIR_PASS_V(vpv->tgsi.ir.nir, nir_lower_passthrough_edgeflags);
          vpv->num_inputs++;
+      }
+
+      if (key->lower_point_size) {
+         _mesa_add_state_reference(params, point_size_state);
+         NIR_PASS_V(vpv->tgsi.ir.nir, nir_lower_point_size_mov,
+                    point_size_state);
       }
 
       st_finalize_nir(st, &stvp->Base, stvp->shader_program,

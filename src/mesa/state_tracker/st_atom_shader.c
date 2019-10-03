@@ -52,6 +52,7 @@
 #include "st_atom.h"
 #include "st_program.h"
 #include "st_texture.h"
+#include "st_util.h"
 
 
 static unsigned
@@ -215,6 +216,10 @@ st_update_vp( struct st_context *st )
       if (key.lower_depth_clamp)
          key.clip_negative_one_to_one =
                st->ctx->Transform.ClipDepthMode == GL_NEGATIVE_ONE_TO_ONE;
+
+      /* _NEW_POINT */
+      key.lower_point_size = st->lower_point_size &&
+                             !st_point_size_per_vertex(st->ctx);
 
       st->vp_variant = st_get_vp_variant(st, stvp, &key);
    }

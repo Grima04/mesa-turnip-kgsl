@@ -396,6 +396,7 @@ u_pipe_screen_get_param_defaults(struct pipe_screen *pscreen,
 
    case PIPE_CAP_FLATSHADE:
    case PIPE_CAP_ALPHA_TEST:
+   case PIPE_CAP_POINT_SIZE_FIXED:
       return 1;
 
    default:

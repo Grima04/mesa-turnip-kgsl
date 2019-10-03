@@ -677,6 +677,8 @@ st_create_context_priv(struct gl_context *ctx, struct pipe_context *pipe,
       !screen->get_param(screen, PIPE_CAP_FLATSHADE);
    st->lower_alpha_test =
       !screen->get_param(screen, PIPE_CAP_ALPHA_TEST);
+   st->lower_point_size =
+      !screen->get_param(screen, PIPE_CAP_POINT_SIZE_FIXED);
 
    st->has_hw_atomics =
       screen->get_shader_param(screen, PIPE_SHADER_FRAGMENT,
@@ -740,7 +742,8 @@ st_create_context_priv(struct gl_context *ctx, struct pipe_context *pipe,
    st->shader_has_one_variant[MESA_SHADER_VERTEX] =
          st->has_shareable_shaders &&
          !st->clamp_frag_depth_in_shader &&
-         !st->clamp_vert_color_in_shader;
+         !st->clamp_vert_color_in_shader &&
+         !st->lower_point_size;
 
    st->shader_has_one_variant[MESA_SHADER_FRAGMENT] =
          st->has_shareable_shaders &&
