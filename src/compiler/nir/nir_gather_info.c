@@ -382,6 +382,7 @@ nir_shader_gather_info(nir_shader *shader, nir_function_impl *entrypoint)
    if (shader->info.stage == MESA_SHADER_FRAGMENT) {
       shader->info.fs.uses_sample_qualifier = false;
       shader->info.fs.uses_discard = false;
+      shader->info.fs.needs_helper_invocations = false;
    }
 
    void *dead_ctx = ralloc_context(NULL);
