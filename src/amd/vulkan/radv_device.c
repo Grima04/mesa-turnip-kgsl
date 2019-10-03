@@ -3516,172 +3516,211 @@ radv_alloc_sem_info(struct radv_instance *instance,
 	return ret;
 }
 
-/* Signals fence as soon as all the work currently put on queue is done. */
-static VkResult radv_signal_fence(struct radv_queue *queue,
-                              struct radv_fence *fence)
+static VkResult
+radv_get_preambles(struct radv_queue *queue,
+                   const VkCommandBuffer *cmd_buffers,
+                   uint32_t cmd_buffer_count,
+                   struct radeon_cmdbuf **initial_full_flush_preamble_cs,
+                   struct radeon_cmdbuf **initial_preamble_cs,
+                   struct radeon_cmdbuf **continue_preamble_cs)
 {
-	int ret;
-	VkResult result;
-	struct radv_winsys_sem_info sem_info;
+	uint32_t scratch_size = 0;
+	uint32_t compute_scratch_size = 0;
+	uint32_t esgs_ring_size = 0, gsvs_ring_size = 0;
+	bool tess_rings_needed = false;
+	bool gds_needed = false;
+	bool sample_positions_needed = false;
 
-	result = radv_alloc_sem_info(queue->device->instance, &sem_info, 0, NULL, 0, NULL,
-	                             radv_fence_to_handle(fence));
+	for (uint32_t j = 0; j < cmd_buffer_count; j++) {
+		RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer,
+				 cmd_buffers[j]);
+
+		scratch_size = MAX2(scratch_size, cmd_buffer->scratch_size_needed);
+		compute_scratch_size = MAX2(compute_scratch_size,
+		                            cmd_buffer->compute_scratch_size_needed);
+		esgs_ring_size = MAX2(esgs_ring_size, cmd_buffer->esgs_ring_size_needed);
+		gsvs_ring_size = MAX2(gsvs_ring_size, cmd_buffer->gsvs_ring_size_needed);
+		tess_rings_needed |= cmd_buffer->tess_rings_needed;
+		gds_needed |= cmd_buffer->gds_needed;
+		sample_positions_needed |= cmd_buffer->sample_positions_needed;
+	}
+
+	return radv_get_preamble_cs(queue, scratch_size, compute_scratch_size,
+	                              esgs_ring_size, gsvs_ring_size, tess_rings_needed,
+	                              gds_needed, sample_positions_needed,
+	                              initial_full_flush_preamble_cs,
+	                              initial_preamble_cs, continue_preamble_cs);
+}
+
+
+struct radv_queue_submission {
+	const VkCommandBuffer *cmd_buffers;
+	uint32_t cmd_buffer_count;
+	bool flush_caches;
+	VkPipelineStageFlags wait_dst_stage_mask;
+	const VkSemaphore *wait_semaphores;
+	uint32_t wait_semaphore_count;
+	const VkSemaphore *signal_semaphores;
+	uint32_t signal_semaphore_count;
+	VkFence fence;
+};
+
+static VkResult
+radv_queue_submit(struct radv_queue *queue,
+                  const struct radv_queue_submission *submission)
+{
+	RADV_FROM_HANDLE(radv_fence, fence, submission->fence);
+	struct radeon_cmdbuf **cs_array;
+	struct radeon_winsys_ctx *ctx = queue->hw_ctx;
+	uint32_t max_cs_submission = queue->device->trace_bo ? 1 : RADV_MAX_IBS_PER_SUBMIT;
+	struct radeon_winsys_fence *base_fence = fence ? fence->fence : NULL;
+	bool do_flush = submission->flush_caches || submission->wait_dst_stage_mask;
+	bool can_patch = true;
+	uint32_t advance;
+	struct radv_winsys_sem_info sem_info;
+	VkResult result;
+	int ret;
+	struct radeon_cmdbuf *initial_preamble_cs = NULL;
+	struct radeon_cmdbuf *initial_flush_preamble_cs = NULL;
+	struct radeon_cmdbuf *continue_preamble_cs = NULL;
+
+	result = radv_get_preambles(queue, submission->cmd_buffers,
+	                            submission->cmd_buffer_count,
+	                            &initial_preamble_cs,
+	                            &initial_flush_preamble_cs,
+	                            &continue_preamble_cs);
 	if (result != VK_SUCCESS)
 		return result;
 
-	ret = queue->device->ws->cs_submit(queue->hw_ctx, queue->queue_idx,
-	                                   &queue->device->empty_cs[queue->queue_family_index],
-	                                   1, NULL, NULL, &sem_info, NULL,
-	                                   false, fence->fence);
+	result = radv_alloc_sem_info(queue->device->instance,
+				     &sem_info,
+				     submission->wait_semaphore_count,
+				     submission->wait_semaphores,
+				     submission->signal_semaphore_count,
+				     submission->signal_semaphores,
+				     submission->fence);
+	if (result != VK_SUCCESS)
+		return result;
+
+	if (!submission->cmd_buffer_count) {
+		ret = queue->device->ws->cs_submit(ctx, queue->queue_idx,
+						   &queue->device->empty_cs[queue->queue_family_index],
+						   1, NULL, NULL,
+						   &sem_info, NULL,
+						   false, base_fence);
+		if (ret) {
+			radv_loge("failed to submit CS\n");
+			abort();
+		}
+		radv_free_sem_info(&sem_info);
+		return VK_SUCCESS;
+	}
+
+	cs_array = malloc(sizeof(struct radeon_cmdbuf *) *
+				        (submission->cmd_buffer_count));
+
+	for (uint32_t j = 0; j < submission->cmd_buffer_count; j++) {
+		RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, submission->cmd_buffers[j]);
+		assert(cmd_buffer->level == VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+
+		cs_array[j] = cmd_buffer->cs;
+		if ((cmd_buffer->usage_flags & VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT))
+			can_patch = false;
+
+		cmd_buffer->status = RADV_CMD_BUFFER_STATUS_PENDING;
+	}
+
+	for (uint32_t j = 0; j < submission->cmd_buffer_count; j += advance) {
+		struct radeon_cmdbuf *initial_preamble = (do_flush && !j) ? initial_flush_preamble_cs : initial_preamble_cs;
+		const struct radv_winsys_bo_list *bo_list = NULL;
+
+		advance = MIN2(max_cs_submission,
+			       submission->cmd_buffer_count - j);
+
+		if (queue->device->trace_bo)
+			*queue->device->trace_id_ptr = 0;
+
+		sem_info.cs_emit_wait = j == 0;
+		sem_info.cs_emit_signal = j + advance == submission->cmd_buffer_count;
+
+		if (unlikely(queue->device->use_global_bo_list)) {
+			pthread_mutex_lock(&queue->device->bo_list.mutex);
+			bo_list = &queue->device->bo_list.list;
+		}
+
+		ret = queue->device->ws->cs_submit(ctx, queue->queue_idx, cs_array + j,
+						advance, initial_preamble, continue_preamble_cs,
+						&sem_info, bo_list,
+						can_patch, base_fence);
+
+		if (unlikely(queue->device->use_global_bo_list))
+			pthread_mutex_unlock(&queue->device->bo_list.mutex);
+
+		if (ret) {
+			radv_loge("failed to submit CS\n");
+			abort();
+		}
+		if (queue->device->trace_bo) {
+			radv_check_gpu_hangs(queue, cs_array[j]);
+		}
+	}
+
+	radv_free_temp_syncobjs(queue->device,
+				submission->wait_semaphore_count,
+				submission->wait_semaphores);
 	radv_free_sem_info(&sem_info);
-
-	if (ret)
-		return vk_error(queue->device->instance, VK_ERROR_DEVICE_LOST);
-
+	free(cs_array);
 	return VK_SUCCESS;
+}
+
+/* Signals fence as soon as all the work currently put on queue is done. */
+static VkResult radv_signal_fence(struct radv_queue *queue,
+                              VkFence fence)
+{
+	return radv_queue_submit(queue, &(struct radv_queue_submission) {
+			.fence = fence
+		});
 }
 
 VkResult radv_QueueSubmit(
 	VkQueue                                     _queue,
 	uint32_t                                    submitCount,
 	const VkSubmitInfo*                         pSubmits,
-	VkFence                                     _fence)
+	VkFence                                     fence)
 {
 	RADV_FROM_HANDLE(radv_queue, queue, _queue);
-	RADV_FROM_HANDLE(radv_fence, fence, _fence);
-	struct radeon_winsys_fence *base_fence = fence ? fence->fence : NULL;
-	struct radeon_winsys_ctx *ctx = queue->hw_ctx;
-	int ret;
-	uint32_t max_cs_submission = queue->device->trace_bo ? 1 : RADV_MAX_IBS_PER_SUBMIT;
-	uint32_t scratch_size = 0;
-	uint32_t compute_scratch_size = 0;
-	uint32_t esgs_ring_size = 0, gsvs_ring_size = 0;
-	struct radeon_cmdbuf *initial_preamble_cs = NULL, *initial_flush_preamble_cs = NULL, *continue_preamble_cs = NULL;
 	VkResult result;
 	bool fence_emitted = false;
-	bool tess_rings_needed = false;
-	bool gds_needed = false;
-	bool sample_positions_needed = false;
 
-	/* Do this first so failing to allocate scratch buffers can't result in
-	 * partially executed submissions. */
 	for (uint32_t i = 0; i < submitCount; i++) {
-		for (uint32_t j = 0; j < pSubmits[i].commandBufferCount; j++) {
-			RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer,
-					 pSubmits[i].pCommandBuffers[j]);
+		if (!pSubmits[i].commandBufferCount &&
+		    !pSubmits[i].waitSemaphoreCount &&
+		    !pSubmits[i].signalSemaphoreCount)
+			continue;
 
-			scratch_size = MAX2(scratch_size, cmd_buffer->scratch_size_needed);
-			compute_scratch_size = MAX2(compute_scratch_size,
-			                            cmd_buffer->compute_scratch_size_needed);
-			esgs_ring_size = MAX2(esgs_ring_size, cmd_buffer->esgs_ring_size_needed);
-			gsvs_ring_size = MAX2(gsvs_ring_size, cmd_buffer->gsvs_ring_size_needed);
-			tess_rings_needed |= cmd_buffer->tess_rings_needed;
-			gds_needed |= cmd_buffer->gds_needed;
-			sample_positions_needed |= cmd_buffer->sample_positions_needed;
+		VkPipelineStageFlags wait_dst_stage_mask = 0;
+		for (unsigned j = 0; j < pSubmits[i].waitSemaphoreCount; ++j) {
+			wait_dst_stage_mask |= pSubmits[i].pWaitDstStageMask[j];
 		}
-	}
 
-	result = radv_get_preamble_cs(queue, scratch_size, compute_scratch_size,
-	                              esgs_ring_size, gsvs_ring_size, tess_rings_needed,
-				      gds_needed, sample_positions_needed,
-				      &initial_flush_preamble_cs,
-				      &initial_preamble_cs, &continue_preamble_cs);
-	if (result != VK_SUCCESS)
-		return result;
-
-	for (uint32_t i = 0; i < submitCount; i++) {
-		struct radeon_cmdbuf **cs_array;
-		bool do_flush = !i || pSubmits[i].pWaitDstStageMask;
-		bool can_patch = true;
-		uint32_t advance;
-		struct radv_winsys_sem_info sem_info;
-
-		result = radv_alloc_sem_info(queue->device->instance,
-					     &sem_info,
-					     pSubmits[i].waitSemaphoreCount,
-					     pSubmits[i].pWaitSemaphores,
-					     pSubmits[i].signalSemaphoreCount,
-					     pSubmits[i].pSignalSemaphores,
-					     _fence);
+		result = radv_queue_submit(queue, &(struct radv_queue_submission) {
+				.cmd_buffers = pSubmits[i].pCommandBuffers,
+				.cmd_buffer_count = pSubmits[i].commandBufferCount,
+				.wait_dst_stage_mask = wait_dst_stage_mask,
+				.flush_caches = !fence_emitted,
+				.wait_semaphores = pSubmits[i].pWaitSemaphores,
+				.wait_semaphore_count = pSubmits[i].waitSemaphoreCount,
+				.signal_semaphores = pSubmits[i].pSignalSemaphores,
+				.signal_semaphore_count = pSubmits[i].signalSemaphoreCount,
+				.fence = fence
+			});
 		if (result != VK_SUCCESS)
 			return result;
 
-		if (!pSubmits[i].commandBufferCount) {
-			if (pSubmits[i].waitSemaphoreCount || pSubmits[i].signalSemaphoreCount) {
-				ret = queue->device->ws->cs_submit(ctx, queue->queue_idx,
-								   &queue->device->empty_cs[queue->queue_family_index],
-								   1, NULL, NULL,
-								   &sem_info, NULL,
-								   false, base_fence);
-				if (ret) {
-					radv_loge("failed to submit CS %d\n", i);
-					abort();
-				}
-				fence_emitted = true;
-			}
-			radv_free_sem_info(&sem_info);
-			continue;
-		}
-
-		cs_array = malloc(sizeof(struct radeon_cmdbuf *) *
-					        (pSubmits[i].commandBufferCount));
-
-		for (uint32_t j = 0; j < pSubmits[i].commandBufferCount; j++) {
-			RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer,
-					 pSubmits[i].pCommandBuffers[j]);
-			assert(cmd_buffer->level == VK_COMMAND_BUFFER_LEVEL_PRIMARY);
-
-			cs_array[j] = cmd_buffer->cs;
-			if ((cmd_buffer->usage_flags & VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT))
-				can_patch = false;
-
-			cmd_buffer->status = RADV_CMD_BUFFER_STATUS_PENDING;
-		}
-
-		for (uint32_t j = 0; j < pSubmits[i].commandBufferCount; j += advance) {
-			struct radeon_cmdbuf *initial_preamble = (do_flush && !j) ? initial_flush_preamble_cs : initial_preamble_cs;
-			const struct radv_winsys_bo_list *bo_list = NULL;
-
-			advance = MIN2(max_cs_submission,
-				       pSubmits[i].commandBufferCount - j);
-
-			if (queue->device->trace_bo)
-				*queue->device->trace_id_ptr = 0;
-
-			sem_info.cs_emit_wait = j == 0;
-			sem_info.cs_emit_signal = j + advance == pSubmits[i].commandBufferCount;
-
-			if (unlikely(queue->device->use_global_bo_list)) {
-				pthread_mutex_lock(&queue->device->bo_list.mutex);
-				bo_list = &queue->device->bo_list.list;
-			}
-
-			ret = queue->device->ws->cs_submit(ctx, queue->queue_idx, cs_array + j,
-							advance, initial_preamble, continue_preamble_cs,
-							&sem_info, bo_list,
-							can_patch, base_fence);
-
-			if (unlikely(queue->device->use_global_bo_list))
-				pthread_mutex_unlock(&queue->device->bo_list.mutex);
-
-			if (ret) {
-				radv_loge("failed to submit CS %d\n", i);
-				abort();
-			}
-			fence_emitted = true;
-			if (queue->device->trace_bo) {
-				radv_check_gpu_hangs(queue, cs_array[j]);
-			}
-		}
-
-		radv_free_temp_syncobjs(queue->device,
-					pSubmits[i].waitSemaphoreCount,
-					pSubmits[i].pWaitSemaphores);
-		radv_free_sem_info(&sem_info);
-		free(cs_array);
+		fence_emitted = true;
 	}
 
-	if (fence) {
+	if (fence != VK_NULL_HANDLE) {
 		if (!fence_emitted) {
 			result = radv_signal_fence(queue, fence);
 			if (result != VK_SUCCESS)
@@ -4308,17 +4347,13 @@ radv_sparse_image_opaque_bind_memory(struct radv_device *device,
 	VkQueue                                     _queue,
 	uint32_t                                    bindInfoCount,
 	const VkBindSparseInfo*                     pBindInfo,
-	VkFence                                     _fence)
+	VkFence                                     fence)
 {
-	RADV_FROM_HANDLE(radv_fence, fence, _fence);
 	RADV_FROM_HANDLE(radv_queue, queue, _queue);
-	struct radeon_winsys_fence *base_fence = fence ? fence->fence : NULL;
 	bool fence_emitted = false;
 	VkResult result;
-	int ret;
 
 	for (uint32_t i = 0; i < bindInfoCount; ++i) {
-		struct radv_winsys_sem_info sem_info;
 		for (uint32_t j = 0; j < pBindInfo[i].bufferBindCount; ++j) {
 			radv_sparse_buffer_bind_memory(queue->device,
 			                               pBindInfo[i].pBufferBinds + j);
@@ -4329,36 +4364,25 @@ radv_sparse_image_opaque_bind_memory(struct radv_device *device,
 			                                     pBindInfo[i].pImageOpaqueBinds + j);
 		}
 
-		VkResult result;
-		result = radv_alloc_sem_info(queue->device->instance,
-					     &sem_info,
-					     pBindInfo[i].waitSemaphoreCount,
-					     pBindInfo[i].pWaitSemaphores,
-					     pBindInfo[i].signalSemaphoreCount,
-					     pBindInfo[i].pSignalSemaphores,
-					     _fence);
+		if (!pBindInfo[i].waitSemaphoreCount &&
+		    !pBindInfo[i].signalSemaphoreCount)
+			continue;
+
+		VkResult result = radv_queue_submit(queue, &(struct radv_queue_submission) {
+				.wait_semaphores = pBindInfo[i].pWaitSemaphores,
+				.wait_semaphore_count = pBindInfo[i].waitSemaphoreCount,
+				.signal_semaphores = pBindInfo[i].pSignalSemaphores,
+				.signal_semaphore_count = pBindInfo[i].signalSemaphoreCount,
+				.fence = fence
+			});
+
 		if (result != VK_SUCCESS)
 			return result;
 
-		if (pBindInfo[i].waitSemaphoreCount || pBindInfo[i].signalSemaphoreCount) {
-			ret = queue->device->ws->cs_submit(queue->hw_ctx, queue->queue_idx,
-							  &queue->device->empty_cs[queue->queue_family_index],
-							  1, NULL, NULL,
-							  &sem_info, NULL,
-							  false, base_fence);
-			if (ret) {
-				radv_loge("failed to submit CS %d\n", i);
-				abort();
-			}
-
-			fence_emitted = true;
-		}
-
-		radv_free_sem_info(&sem_info);
-
+		fence_emitted = true;
 	}
 
-	if (fence) {
+	if (fence != VK_NULL_HANDLE) {
 		if (!fence_emitted) {
 			result = radv_signal_fence(queue, fence);
 			if (result != VK_SUCCESS)
