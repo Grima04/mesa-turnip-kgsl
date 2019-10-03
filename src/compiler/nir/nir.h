@@ -3911,6 +3911,9 @@ bool nir_lower_clip_gs(nir_shader *shader, unsigned ucp_enables);
 bool nir_lower_clip_fs(nir_shader *shader, unsigned ucp_enables);
 bool nir_lower_clip_cull_distance_arrays(nir_shader *nir);
 
+void nir_lower_point_size_mov(nir_shader *shader,
+                              const gl_state_index16 *pointsize_state_tokens);
+
 bool nir_lower_frexp(nir_shader *nir);
 
 void nir_lower_two_sided_color(nir_shader *shader);
