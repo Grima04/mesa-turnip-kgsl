@@ -599,7 +599,7 @@ __dri2CopySubBuffer(__GLXDRIdrawable *pdraw, int x, int y,
    flags = __DRI2_FLUSH_DRAWABLE;
    if (flush)
       flags |= __DRI2_FLUSH_CONTEXT;
-   dri2Flush(psc, ctx, priv, flags, __DRI2_THROTTLE_SWAPBUFFER);
+   dri2Flush(psc, ctx, priv, flags, __DRI2_THROTTLE_COPYSUBBUFFER);
 
    region = XFixesCreateRegion(psc->base.dpy, &xrect, 1);
    DRI2CopyRegion(psc->base.dpy, pdraw->xDrawable, region,

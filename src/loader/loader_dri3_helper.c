@@ -763,7 +763,7 @@ loader_dri3_copy_sub_buffer(struct loader_dri3_drawable *draw,
 
    if (flush)
       flags |= __DRI2_FLUSH_CONTEXT;
-   loader_dri3_flush(draw, flags, __DRI2_THROTTLE_SWAPBUFFER);
+   loader_dri3_flush(draw, flags, __DRI2_THROTTLE_COPYSUBBUFFER);
 
    back = dri3_find_back_alloc(draw);
    if (!back)
