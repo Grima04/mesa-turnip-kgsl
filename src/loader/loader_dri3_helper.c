@@ -817,7 +817,7 @@ loader_dri3_copy_drawable(struct loader_dri3_drawable *draw,
                           xcb_drawable_t dest,
                           xcb_drawable_t src)
 {
-   loader_dri3_flush(draw, __DRI2_FLUSH_DRAWABLE, 0);
+   loader_dri3_flush(draw, __DRI2_FLUSH_DRAWABLE, __DRI2_THROTTLE_COPYSUBBUFFER);
 
    dri3_fence_reset(draw->conn, dri3_fake_front_buffer(draw));
    dri3_copy_area(draw->conn,
