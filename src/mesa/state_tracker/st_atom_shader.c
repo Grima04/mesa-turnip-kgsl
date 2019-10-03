@@ -122,6 +122,11 @@ st_update_fp( struct st_context *st )
       key.lower_flatshade = st->lower_flatshade &&
                             st->ctx->Light.ShadeModel == GL_FLAT;
 
+      /* _NEW_COLOR */
+      key.lower_alpha_func = COMPARE_FUNC_NEVER;
+      if (st->lower_alpha_test && _mesa_is_alpha_test_enabled(st->ctx))
+         key.lower_alpha_func = st->ctx->Color.AlphaFunc;
+
       /* _NEW_FRAG_CLAMP */
       key.clamp_color = st->clamp_frag_color_in_shader &&
                         st->ctx->Color._ClampFragmentColor;

@@ -395,6 +395,7 @@ u_pipe_screen_get_param_defaults(struct pipe_screen *pscreen,
       return 1;
 
    case PIPE_CAP_FLATSHADE:
+   case PIPE_CAP_ALPHA_TEST:
       return 1;
 
    default:

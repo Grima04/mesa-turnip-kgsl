@@ -148,6 +148,7 @@ struct st_context
    boolean can_bind_const_buffer_as_vertex;
    boolean has_signed_vertex_buffer_offset;
    boolean lower_flatshade;
+   boolean lower_alpha_test;
 
    /**
     * If a shader can be created when we get its source.

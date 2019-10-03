@@ -500,7 +500,12 @@ st_init_driver_flags(struct st_context *st)
    f->NewFramebufferSRGB = ST_NEW_FB_STATE;
    f->NewScissorRect = ST_NEW_SCISSOR;
    f->NewScissorTest = ST_NEW_SCISSOR | ST_NEW_RASTERIZER;
-   f->NewAlphaTest = ST_NEW_DSA;
+
+   if (st->lower_alpha_test)
+      f->NewAlphaTest = ST_NEW_FS_STATE;
+   else
+      f->NewAlphaTest = ST_NEW_DSA;
+
    f->NewBlend = ST_NEW_BLEND;
    f->NewBlendColor = ST_NEW_BLEND_COLOR;
    f->NewColorMask = ST_NEW_BLEND;
@@ -670,6 +675,8 @@ st_create_context_priv(struct gl_context *ctx, struct pipe_context *pipe,
       screen->get_param(screen, PIPE_CAP_SIGNED_VERTEX_BUFFER_OFFSET);
    st->lower_flatshade =
       !screen->get_param(screen, PIPE_CAP_FLATSHADE);
+   st->lower_alpha_test =
+      !screen->get_param(screen, PIPE_CAP_ALPHA_TEST);
 
    st->has_hw_atomics =
       screen->get_shader_param(screen, PIPE_SHADER_FRAGMENT,
@@ -738,6 +745,7 @@ st_create_context_priv(struct gl_context *ctx, struct pipe_context *pipe,
    st->shader_has_one_variant[MESA_SHADER_FRAGMENT] =
          st->has_shareable_shaders &&
          !st->lower_flatshade &&
+         !st->lower_alpha_test &&
          !st->clamp_frag_color_in_shader &&
          !st->clamp_frag_depth_in_shader &&
          !st->force_persample_in_shader;

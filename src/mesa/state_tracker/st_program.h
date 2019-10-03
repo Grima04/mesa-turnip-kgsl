@@ -132,6 +132,7 @@ struct st_fp_variant_key
    struct st_external_sampler_key external;
 
    GLuint lower_flatshade:1;
+   enum compare_func lower_alpha_func:3;
 };
 
 

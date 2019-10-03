@@ -1150,6 +1150,8 @@ st_create_fp_variant(struct st_context *st,
       { STATE_INTERNAL, STATE_PT_SCALE };
    static const gl_state_index16 bias_state[STATE_LENGTH] =
       { STATE_INTERNAL, STATE_PT_BIAS };
+   static const gl_state_index16 alpha_ref_state[STATE_LENGTH] =
+      { STATE_INTERNAL, STATE_ALPHA_REF };
 
    if (!variant)
       return NULL;
@@ -1163,6 +1165,12 @@ st_create_fp_variant(struct st_context *st,
 
       if (key->lower_flatshade)
          NIR_PASS_V(tgsi.ir.nir, nir_lower_flatshade);
+
+      if (key->lower_alpha_func != COMPARE_FUNC_NEVER) {
+         _mesa_add_state_reference(params, alpha_ref_state);
+         NIR_PASS_V(tgsi.ir.nir, nir_lower_alpha_test, key->lower_alpha_func,
+                    false, alpha_ref_state);
+      }
 
       if (key->persample_shading) {
           nir_shader *shader = tgsi.ir.nir;
