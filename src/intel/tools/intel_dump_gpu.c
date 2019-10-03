@@ -58,7 +58,7 @@ static int drm_fd = -1;
 static char *output_filename = NULL;
 static FILE *output_file = NULL;
 static int verbose = 0;
-static bool device_override;
+static bool device_override = false;
 
 #define MAX_FD_COUNT 64
 #define MAX_BO_COUNT 64 * 1024
