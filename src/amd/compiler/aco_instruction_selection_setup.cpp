@@ -1331,9 +1331,14 @@ setup_isel_context(Program* program,
       nir_lower_idiv(nir, nir_lower_idiv_precise);
 
       /* optimize the lowered ALU operations */
-      nir_copy_prop(nir);
-      nir_opt_constant_folding(nir);
-      nir_opt_algebraic(nir);
+      bool more_algebraic = true;
+      while (more_algebraic) {
+         more_algebraic = false;
+         NIR_PASS_V(nir, nir_copy_prop);
+         NIR_PASS_V(nir, nir_opt_dce);
+         NIR_PASS_V(nir, nir_opt_constant_folding);
+         NIR_PASS(more_algebraic, nir, nir_opt_algebraic);
+      }
 
       /* Do late algebraic optimization to turn add(a, neg(b)) back into
       * subs, then the mandatory cleanup after algebraic.  Note that it may
