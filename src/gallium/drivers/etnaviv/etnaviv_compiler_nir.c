@@ -63,12 +63,6 @@ struct etna_compile {
    bool error;
 };
 
-#define compile_error(ctx, args...) ({ \
-   printf(args); \
-   ctx->error = true; \
-   assert(0); \
-})
-
 /* io related lowering
  * run after lower_int_to_float because it adds i2f/f2i ops
  */

@@ -62,6 +62,12 @@ struct state {
    unsigned num_nodes;
 };
 
+#define compile_error(ctx, args...) ({ \
+   printf(args); \
+   ctx->error = true; \
+   assert(0); \
+})
+
 static inline hw_src
 src_swizzle(hw_src src, unsigned swizzle)
 {
@@ -388,7 +394,8 @@ get_src(struct state *state, nir_src *src)
       case nir_intrinsic_load_frag_coord:
          return SRC_REG(0, INST_SWIZ_IDENTITY);
       default:
-         assert(0);
+         compile_error(state->c, "Unhandled NIR intrinsic type: %s\n",
+                       nir_intrinsic_infos[intr->intrinsic].name);
          break;
       }
    } break;
@@ -401,7 +408,7 @@ get_src(struct state *state, nir_src *src)
       return src_swizzle(const_src(state, &value, 1), SWIZZLE(X,X,X,X));
    }
    default:
-      assert(0);
+      compile_error(state->c, "Unhandled NIR instruction type: %d\n", instr->type);
       break;
    }
 
@@ -1070,7 +1077,8 @@ emit_tex(struct state *state, nir_tex_instr * tex)
          compare = &tex->src[i].src;
          break;
       default:
-         assert(0);
+         compile_error(state->c, "Unhandled NIR tex src type: %d\n",
+                       tex->src[i].src_type);
          break;
       }
    }
@@ -1107,7 +1115,8 @@ emit_intrinsic(struct state *state, nir_intrinsic_instr * intr)
    case nir_intrinsic_load_instance_id:
       break;
    default:
-      assert(0);
+      compile_error(state->c, "Unhandled NIR intrinsic type: %s\n",
+                    nir_intrinsic_infos[intr->intrinsic].name);
    }
 }
 
@@ -1131,7 +1140,7 @@ emit_instr(struct state *state, nir_instr * instr)
    case nir_instr_type_deref:
       break;
    default:
-      assert(0);
+      compile_error(state->c, "Unhandled NIR instruction type: %d\n", instr->type);
       break;
    }
 }
@@ -1184,7 +1193,7 @@ emit_cf_list(struct state *state, struct exec_list *list)
          emit_cf_list(state, &nir_cf_node_as_loop(node)->body);
          break;
       default:
-         assert(0);
+         compile_error(state->c, "Unknown NIR node type\n");
          break;
       }
    }
