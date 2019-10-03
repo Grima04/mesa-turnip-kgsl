@@ -126,6 +126,9 @@ struct st_fp_variant_key
    /** for ARB_depth_clamp */
    GLuint lower_depth_clamp:1;
 
+   /** for OpenGL 1.0 on modern hardware */
+   GLuint lower_two_sided_color:1;
+
    /** needed for ATI_fragment_shader */
    char texture_targets[MAX_NUM_FRAGMENT_REGISTERS_ATI];
 

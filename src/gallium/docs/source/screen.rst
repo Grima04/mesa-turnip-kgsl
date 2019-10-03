@@ -562,6 +562,7 @@ The integer capabilities:
 * ``PIPE_CAP_ALPHA_TEST``: Driver supports alpha-testing.
 * ``PIPE_CAP_POINT_SIZE_FIXED``: Driver supports point-sizes that are fixed,
   as opposed to writing gl_PointSize for every point.
+* ``PIPE_CAP_TWO_SIDED_COLOR``: Driver supports two-sided coloring.
 
 .. _pipe_capf:
 

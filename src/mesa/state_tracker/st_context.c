@@ -228,7 +228,7 @@ st_invalidate_state(struct gl_context *ctx)
       st->dirty |= ST_NEW_RASTERIZER;
 
    if ((new_state & _NEW_LIGHT) &&
-       st->lower_flatshade)
+       (st->lower_flatshade || st->lower_two_sided_color))
       st->dirty |= ST_NEW_FS_STATE;
 
    if (new_state & _NEW_PROJECTION &&
@@ -679,6 +679,8 @@ st_create_context_priv(struct gl_context *ctx, struct pipe_context *pipe,
       !screen->get_param(screen, PIPE_CAP_ALPHA_TEST);
    st->lower_point_size =
       !screen->get_param(screen, PIPE_CAP_POINT_SIZE_FIXED);
+   st->lower_two_sided_color =
+      !screen->get_param(screen, PIPE_CAP_TWO_SIDED_COLOR);
 
    st->has_hw_atomics =
       screen->get_shader_param(screen, PIPE_SHADER_FRAGMENT,
@@ -751,7 +753,8 @@ st_create_context_priv(struct gl_context *ctx, struct pipe_context *pipe,
          !st->lower_alpha_test &&
          !st->clamp_frag_color_in_shader &&
          !st->clamp_frag_depth_in_shader &&
-         !st->force_persample_in_shader;
+         !st->force_persample_in_shader &&
+         !st->lower_two_sided_color;
 
    st->shader_has_one_variant[MESA_SHADER_TESS_CTRL] = st->has_shareable_shaders;
    st->shader_has_one_variant[MESA_SHADER_TESS_EVAL] =

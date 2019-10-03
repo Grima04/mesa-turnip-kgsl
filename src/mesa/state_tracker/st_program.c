@@ -1181,6 +1181,9 @@ st_create_fp_variant(struct st_context *st,
                     false, alpha_ref_state);
       }
 
+      if (key->lower_two_sided_color)
+         NIR_PASS_V(tgsi.ir.nir, nir_lower_two_sided_color);
+
       if (key->persample_shading) {
           nir_shader *shader = tgsi.ir.nir;
           nir_foreach_variable(var, &shader->inputs)

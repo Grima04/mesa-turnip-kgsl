@@ -38,6 +38,7 @@
 #include "main/imports.h"
 #include "main/mtypes.h"
 #include "main/framebuffer.h"
+#include "main/state.h"
 #include "main/texobj.h"
 #include "main/texstate.h"
 #include "program/program.h"
@@ -127,6 +128,10 @@ st_update_fp( struct st_context *st )
       key.lower_alpha_func = COMPARE_FUNC_NEVER;
       if (st->lower_alpha_test && _mesa_is_alpha_test_enabled(st->ctx))
          key.lower_alpha_func = st->ctx->Color.AlphaFunc;
+
+      /* _NEW_LIGHT | _NEW_PROGRAM */
+      key.lower_two_sided_color = st->lower_two_sided_color &&
+         _mesa_vertex_program_two_side_enabled(st->ctx);
 
       /* _NEW_FRAG_CLAMP */
       key.clamp_color = st->clamp_frag_color_in_shader &&
