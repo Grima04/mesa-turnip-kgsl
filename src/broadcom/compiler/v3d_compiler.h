@@ -718,6 +718,9 @@ struct v3d_gs_prog_data {
 
         /* Output primitive type */
         uint8_t out_prim_type;
+
+        /* Number of GS invocations */
+        uint8_t num_invocations;
 };
 
 struct v3d_fs_prog_data {
@@ -1037,6 +1040,7 @@ VIR_A_ALU2(LDVPMG_IN)
 VIR_A_ALU2(LDVPMG_OUT)
 VIR_A_ALU0(TMUWT)
 
+VIR_A_ALU0(IID)
 VIR_A_ALU0(FXCD)
 VIR_A_ALU0(XCD)
 VIR_A_ALU0(FYCD)

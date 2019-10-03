@@ -681,6 +681,7 @@ v3d_gs_set_prog_data(struct v3d_compile *c,
         prog_data->vpm_output_size = align(c->vpm_output_size, 8) / 8;
 
         prog_data->out_prim_type = c->s->info.gs.output_primitive;
+        prog_data->num_invocations = c->s->info.gs.invocations;
 }
 
 static void

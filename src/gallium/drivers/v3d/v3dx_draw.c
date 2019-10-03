@@ -377,7 +377,8 @@ v3d_gs_output_primitive(uint32_t prim_type)
 
 static void
 v3d_emit_tes_gs_common_params(struct v3d_job *job,
-                              uint8_t gs_out_prim_type)
+                              uint8_t gs_out_prim_type,
+                              uint8_t gs_num_invocations)
 {
         /* This, and v3d_emit_tes_gs_shader_params below, fill in default
          * values for tessellation fields even though we don't support
@@ -393,7 +394,7 @@ v3d_emit_tes_gs_common_params(struct v3d_job *job,
 
                 shader.geometry_shader_output_format =
                         v3d_gs_output_primitive(gs_out_prim_type);
-                shader.geometry_shader_instances = 1; /* FIXME */
+                shader.geometry_shader_instances = gs_num_invocations & 0x1F;
         }
 }
 
@@ -506,7 +507,9 @@ v3d_emit_gl_shader_state(struct v3d_context *v3d,
             struct v3d_gs_prog_data *gs = v3d->prog.gs->prog_data.gs;
             struct v3d_gs_prog_data *gs_bin = v3d->prog.gs_bin->prog_data.gs;
 
-            v3d_emit_tes_gs_common_params(v3d->job, gs->out_prim_type);
+            v3d_emit_tes_gs_common_params(v3d->job,
+                                          gs->out_prim_type,
+                                          gs->num_invocations);
             v3d_emit_tes_gs_shader_params(v3d->job, gs_bin);
             v3d_emit_tes_gs_shader_params(v3d->job, gs);
         }
