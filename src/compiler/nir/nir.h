@@ -3683,7 +3683,8 @@ bool nir_lower_constant_initializers(nir_shader *shader,
 bool nir_move_vec_src_uses_to_dest(nir_shader *shader);
 bool nir_lower_vec_to_movs(nir_shader *shader);
 void nir_lower_alpha_test(nir_shader *shader, enum compare_func func,
-                          bool alpha_to_one);
+                          bool alpha_to_one,
+                          const gl_state_index16 *alpha_ref_state_tokens);
 bool nir_lower_alu(nir_shader *shader);
 
 bool nir_lower_flrp(nir_shader *shader, unsigned lowering_mask,

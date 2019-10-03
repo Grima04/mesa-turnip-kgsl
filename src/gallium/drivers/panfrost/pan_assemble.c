@@ -63,7 +63,8 @@ panfrost_shader_compile(
                 /* Inject the alpha test now if we need to */
 
                 if (state->alpha_state.enabled) {
-                        NIR_PASS_V(s, nir_lower_alpha_test, state->alpha_state.func, false);
+                        NIR_PASS_V(s, nir_lower_alpha_test,
+                                   state->alpha_state.func, false, NULL);
                 }
         }
 

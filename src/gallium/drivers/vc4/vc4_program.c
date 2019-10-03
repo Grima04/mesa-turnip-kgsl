@@ -2258,7 +2258,8 @@ vc4_shader_ntq(struct vc4_context *vc4, enum qstage stage,
                         NIR_PASS_V(c->s, nir_lower_alpha_test,
                                    c->fs_key->alpha_test_func,
                                    c->fs_key->sample_alpha_to_one &&
-                                   c->fs_key->msaa);
+                                   c->fs_key->msaa,
+                                   NULL);
                 }
                 NIR_PASS_V(c->s, vc4_nir_lower_blend, c);
         }

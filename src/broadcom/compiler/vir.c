@@ -846,7 +846,7 @@ v3d_nir_lower_fs_late(struct v3d_compile *c)
         if (c->fs_key->alpha_test) {
                 NIR_PASS_V(c->s, nir_lower_alpha_test,
                            c->fs_key->alpha_test_func,
-                           false);
+                           false, NULL);
         }
 
         if (c->key->ucp_enables)
