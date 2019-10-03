@@ -26,6 +26,7 @@
 #include "midgard_ops.h"
 #include "util/register_allocate.h"
 #include "util/u_math.h"
+#include "util/u_memory.h"
 
 /* For work registers, we can subdivide in various ways. So we create
  * classes for the various sizes and conflict accordingly, keeping in
@@ -553,12 +554,7 @@ mir_compute_interference(
          * end of each block and walk the block backwards. */
 
         mir_foreach_block(ctx, blk) {
-                uint8_t *live = calloc(ctx->temp_count, 1);
-
-                mir_foreach_successor(blk, succ) {
-                        for (unsigned i = 0; i < ctx->temp_count; ++i)
-                                live[i] |= succ->live_in[i];
-                }
+                uint8_t *live = mem_dup(blk->live_out, ctx->temp_count * sizeof(uint8_t));
 
                 mir_foreach_instr_in_block_rev(blk, ins) {
                         /* Mark all registers live after the instruction as
