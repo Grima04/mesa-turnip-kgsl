@@ -62,6 +62,8 @@ typedef struct {
 static void
 print_annotation(print_state *state, void *obj)
 {
+   FILE *fp = state->fp;
+
    if (!state->annotations)
       return;
 
@@ -72,7 +74,7 @@ print_annotation(print_state *state, void *obj)
    const char *note = entry->data;
    _mesa_hash_table_remove(state->annotations, entry);
 
-   fprintf(stderr, "%s\n\n", note);
+   fprintf(fp, "%s\n\n", note);
 }
 
 static void
@@ -465,7 +467,7 @@ print_var_decl(nir_variable *var, print_state *state)
    const char *const reorder = (access & ACCESS_CAN_REORDER) ? "reorderable " : "";
    fprintf(fp, "%s%s%s%s%s%s", coher, volat, restr, ronly, wonly, reorder);
 
-#define FORMAT_CASE(x) case x: fprintf(stderr, #x " "); break
+#define FORMAT_CASE(x) case x: fprintf(fp, #x " "); break
    switch (var->data.image.format) {
    FORMAT_CASE(GL_RGBA32F);
    FORMAT_CASE(GL_RGBA32UI);
