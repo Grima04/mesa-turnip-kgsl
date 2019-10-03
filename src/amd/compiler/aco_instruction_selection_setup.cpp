@@ -30,6 +30,7 @@
 #include "vulkan/radv_descriptor_set.h"
 #include "sid.h"
 #include "ac_exp_param.h"
+#include "ac_shader_util.h"
 
 #include "util/u_math.h"
 
@@ -1052,6 +1053,12 @@ void add_startpgm(struct isel_context *ctx)
    ctx->program->info->num_input_sgprs = args.num_sgprs_used;
    ctx->program->info->num_user_sgprs = user_sgpr_info.num_sgpr;
    ctx->program->info->num_input_vgprs = args.num_vgprs_used;
+
+   if (ctx->stage == fragment_fs) {
+      /* Verify that we have a correct assumption about input VGPR count */
+      ASSERTED unsigned input_vgpr_cnt = ac_get_fs_input_vgpr_cnt(ctx->program->config, nullptr, nullptr);
+      assert(input_vgpr_cnt == ctx->program->info->num_input_vgprs);
+   }
 
    aco_ptr<Pseudo_instruction> startpgm{create_instruction<Pseudo_instruction>(aco_opcode::p_startpgm, Format::PSEUDO, 0, args.count + 1)};
    for (unsigned i = 0; i < args.count; i++) {
