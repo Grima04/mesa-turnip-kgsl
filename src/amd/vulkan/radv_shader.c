@@ -91,6 +91,7 @@ static const struct nir_shader_compiler_options nir_options_aco = {
 	.lower_flrp64 = true,
 	.lower_device_index_to_zero = true,
 	.lower_fdiv = true,
+	.lower_fmod = true,
 	.lower_bitfield_insert_to_bitfield_select = true,
 	.lower_bitfield_extract = true,
 	.lower_pack_snorm_2x16 = true,

@@ -1225,35 +1225,6 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
       }
       break;
    }
-   case nir_op_fmod:
-   case nir_op_frem: {
-      if (dst.size() == 1) {
-         Temp rcp = bld.vop1(aco_opcode::v_rcp_f32, bld.def(v1), get_alu_src(ctx, instr->src[1]));
-         Temp mul = bld.vop2(aco_opcode::v_mul_f32, bld.def(v1), get_alu_src(ctx, instr->src[0]), rcp);
-
-         aco_opcode op = instr->op == nir_op_fmod ? aco_opcode::v_floor_f32 : aco_opcode::v_trunc_f32;
-         Temp floor = bld.vop1(op, bld.def(v1), mul);
-
-         mul = bld.vop2(aco_opcode::v_mul_f32, bld.def(v1), get_alu_src(ctx, instr->src[1]), floor);
-         bld.vop2(aco_opcode::v_sub_f32, Definition(dst), get_alu_src(ctx, instr->src[0]), mul);
-      } else if (dst.size() == 2) {
-         Temp rcp = bld.vop1(aco_opcode::v_rcp_f64, bld.def(v2), get_alu_src(ctx, instr->src[1]));
-         Temp mul = bld.vop3(aco_opcode::v_mul_f64, bld.def(v2), get_alu_src(ctx, instr->src[0]), rcp);
-
-         aco_opcode op = instr->op == nir_op_fmod ? aco_opcode::v_floor_f64 : aco_opcode::v_trunc_f64;
-         Temp floor = bld.vop1(op, bld.def(v1), mul);
-
-         mul = bld.vop3(aco_opcode::v_mul_f64, bld.def(v2), get_alu_src(ctx, instr->src[1]), floor);
-         Instruction* add = bld.vop3(aco_opcode::v_add_f64, Definition(dst), get_alu_src(ctx, instr->src[0]), mul);
-         VOP3A_instruction* sub = static_cast<VOP3A_instruction*>(add);
-         sub->neg[1] = true;
-      } else {
-         fprintf(stderr, "Unimplemented NIR instr bit size: ");
-         nir_print_instr(&instr->instr, stderr);
-         fprintf(stderr, "\n");
-      }
-      break;
-   }
    case nir_op_fmax: {
       if (dst.size() == 1) {
          emit_vop2_instruction(ctx, instr, aco_opcode::v_max_f32, dst, true);
