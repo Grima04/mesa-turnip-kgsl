@@ -31,6 +31,7 @@ files_lima = files(
   'ir/gp/reduce_scheduler.c',
   'ir/gp/regalloc.c',
   'ir/gp/disasm.c',
+  'ir/gp/optimize.c',
 
   'ir/pp/ppir.h',
   'ir/pp/nir.c',
