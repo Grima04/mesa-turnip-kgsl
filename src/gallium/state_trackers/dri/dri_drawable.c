@@ -511,13 +511,15 @@ dri_flush(__DRIcontext *cPriv,
       struct pipe_context *pipe = st->pipe;
 
       if (drawable->stvis.samples > 1 &&
-          reason == __DRI2_THROTTLE_SWAPBUFFER) {
+          (reason == __DRI2_THROTTLE_SWAPBUFFER ||
+           reason == __DRI2_THROTTLE_COPYSUBBUFFER)) {
          /* Resolve the MSAA back buffer. */
          dri_pipe_blit(st->pipe,
                        drawable->textures[ST_ATTACHMENT_BACK_LEFT],
                        drawable->msaa_textures[ST_ATTACHMENT_BACK_LEFT]);
 
-         if (drawable->msaa_textures[ST_ATTACHMENT_FRONT_LEFT] &&
+         if (reason == __DRI2_THROTTLE_SWAPBUFFER &&
+             drawable->msaa_textures[ST_ATTACHMENT_FRONT_LEFT] &&
              drawable->msaa_textures[ST_ATTACHMENT_BACK_LEFT]) {
             swap_msaa_buffers = true;
          }
