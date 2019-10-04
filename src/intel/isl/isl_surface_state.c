@@ -796,7 +796,7 @@ isl_genX(null_fill_state)(void *state, struct isl_extent3d size)
        */
       .SurfaceFormat = ISL_FORMAT_R32_UINT,
 #if GEN_GEN >= 7
-      .SurfaceArray = size.depth > 0,
+      .SurfaceArray = size.depth > 1,
 #endif
 #if GEN_GEN >= 8
       .TileMode = YMAJOR,
