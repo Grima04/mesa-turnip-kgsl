@@ -557,7 +557,7 @@ mir_compute_temp_count(compiler_context *ctx)
 
         mir_foreach_instr_global(ctx, ins) {
                 if (ins->dest < SSA_FIXED_MINIMUM)
-                        max_dest = MAX2(max_dest, ins->dest);
+                        max_dest = MAX2(max_dest, ins->dest + 1);
         }
 
         ctx->temp_count = max_dest;

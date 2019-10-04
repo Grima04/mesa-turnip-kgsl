@@ -117,6 +117,8 @@ mir_compute_liveness(compiler_context *ctx)
         if (ctx->metadata & MIDGARD_METADATA_LIVENESS)
                 return;
 
+        mir_compute_temp_count(ctx);
+
         /* List of midgard_block */
         struct set *work_list = _mesa_set_create(ctx,
                         _mesa_hash_pointer,
