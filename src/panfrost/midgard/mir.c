@@ -544,3 +544,21 @@ mir_flip(midgard_instruction *ins)
         ins->alu.src1 = ins->alu.src2;
         ins->alu.src2 = temp;
 }
+
+/* Before squashing, calculate ctx->temp_count just by observing the MIR */
+
+void
+mir_compute_temp_count(compiler_context *ctx)
+{
+        if (ctx->temp_count)
+                return;
+
+        unsigned max_dest = 0;
+
+        mir_foreach_instr_global(ctx, ins) {
+                if (ins->dest < SSA_FIXED_MINIMUM)
+                        max_dest = MAX2(max_dest, ins->dest);
+        }
+
+        ctx->temp_count = max_dest;
+}
