@@ -3378,53 +3378,15 @@ enum aco_descriptor_type {
    ACO_DESC_PLANE_2,
 };
 
-enum aco_image_dim {
-   aco_image_1d,
-   aco_image_2d,
-   aco_image_3d,
-   aco_image_cube, // includes cube arrays
-   aco_image_1darray,
-   aco_image_2darray,
-   aco_image_2dmsaa,
-   aco_image_2darraymsaa,
-};
-
-static enum aco_image_dim
-get_sampler_dim(isel_context *ctx, enum glsl_sampler_dim dim, bool is_array)
-{
-   switch (dim) {
-   case GLSL_SAMPLER_DIM_1D:
-      if (ctx->options->chip_class >= GFX9)
-         return is_array ? aco_image_2darray : aco_image_2d;
-      return is_array ? aco_image_1darray : aco_image_1d;
-   case GLSL_SAMPLER_DIM_2D:
-   case GLSL_SAMPLER_DIM_RECT:
-   case GLSL_SAMPLER_DIM_EXTERNAL:
-      return is_array ? aco_image_2darray : aco_image_2d;
-   case GLSL_SAMPLER_DIM_3D:
-      return aco_image_3d;
-   case GLSL_SAMPLER_DIM_CUBE:
-      return aco_image_cube;
-   case GLSL_SAMPLER_DIM_MS:
-      return is_array ? aco_image_2darraymsaa : aco_image_2dmsaa;
-   case GLSL_SAMPLER_DIM_SUBPASS:
-      return aco_image_2darray;
-   case GLSL_SAMPLER_DIM_SUBPASS_MS:
-      return aco_image_2darraymsaa;
-   default:
-      unreachable("bad sampler dim");
-   }
-}
-
 static bool
 should_declare_array(isel_context *ctx, enum glsl_sampler_dim sampler_dim, bool is_array) {
    if (sampler_dim == GLSL_SAMPLER_DIM_BUF)
       return false;
-   aco_image_dim dim = get_sampler_dim(ctx, sampler_dim, is_array);
-   return dim == aco_image_cube ||
-          dim == aco_image_1darray ||
-          dim == aco_image_2darray ||
-          dim == aco_image_2darraymsaa;
+   ac_image_dim dim = ac_get_sampler_dim(ctx->options->chip_class, sampler_dim, is_array);
+   return dim == ac_image_cube ||
+          dim == ac_image_1darray ||
+          dim == ac_image_2darray ||
+          dim == ac_image_2darraymsaa;
 }
 
 Temp get_sampler_desc(isel_context *ctx, nir_deref_instr *deref_instr,
@@ -3776,7 +3738,6 @@ void visit_image_load(isel_context *ctx, nir_intrinsic_instr *instr)
 
    Temp coords = get_image_coords(ctx, instr, type);
    Temp resource = get_sampler_desc(ctx, nir_instr_as_deref(instr->src[0].ssa->parent_instr), ACO_DESC_IMAGE, nullptr, true, true);
-   //aco_image_dim img_dim = get_image_dim(ctx, glsl_get_sampler_dim(type), glsl_sampler_type_is_array(type));
 
    unsigned dmask = nir_ssa_def_components_read(&instr->dest.ssa);
    unsigned num_components = util_bitcount(dmask);
