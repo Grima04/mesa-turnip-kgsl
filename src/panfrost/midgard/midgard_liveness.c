@@ -21,11 +21,6 @@
  * SOFTWARE.
  */
 
-/* mir_is_live_after performs liveness analysis on the MIR, used primarily
- * as part of register allocation. TODO: Algorithmic improvements for
- * compiler performance (this is the worst algorithm possible -- see
- * backlog with Connor on IRC) */
-
 #include "compiler.h"
 #include "util/u_memory.h"
 
@@ -47,6 +42,14 @@ liveness_kill(uint8_t *live, unsigned node, unsigned max, unsigned mask)
                 return;
 
         live[node] &= ~mask;
+}
+
+static bool
+liveness_get(uint8_t *live, unsigned node, unsigned max) {
+        if (node >= max)
+                return false;
+
+        return live[node];
 }
 
 /* Updates live_in for a single instruction */
@@ -183,52 +186,15 @@ mir_invalidate_liveness(compiler_context *ctx)
         }
 }
 
-/* Determine if a variable is live in the successors of a block */
-static bool
-is_live_after_successors(compiler_context *ctx, midgard_block *bl, int src)
-{
-        for (unsigned i = 0; i < bl->nr_successors; ++i) {
-                midgard_block *succ = bl->successors[i];
-
-                /* If we already visited, the value we're seeking
-                 * isn't down this path (or we would have short
-                 * circuited */
-
-                if (succ->visited) continue;
-
-                /* Otherwise (it's visited *now*), check the block */
-
-                succ->visited = true;
-
-                /* Within this block, check if it's overwritten first */
-                unsigned overwritten_mask = 0;
-
-                mir_foreach_instr_in_block(succ, ins) {
-                        /* Did we read any components that we haven't overwritten yet? */
-                        if (mir_mask_of_read_components(ins, src) & ~overwritten_mask)
-                                return true;
-
-                        /* If written-before-use, we're gone */
-
-                        if (ins->dest == src)
-                                overwritten_mask |= ins->mask;
-                }
-
-                /* ...and also, check *its* successors */
-                if (is_live_after_successors(ctx, succ, src))
-                        return true;
-
-        }
-
-        /* Welp. We're really not live. */
-
-        return false;
-}
-
 bool
 mir_is_live_after(compiler_context *ctx, midgard_block *block, midgard_instruction *start, int src)
 {
-        assert(ctx->metadata & MIDGARD_METADATA_LIVENESS);
+        mir_compute_liveness(ctx);
+
+        /* Check whether we're live in the successors */
+
+        if (liveness_get(block->live_out, src, ctx->temp_count))
+                return true;
 
         /* Check the rest of the block for liveness */
 
@@ -237,13 +203,5 @@ mir_is_live_after(compiler_context *ctx, midgard_block *block, midgard_instructi
                         return true;
         }
 
-        /* Check the rest of the blocks for liveness recursively */
-
-        bool succ = is_live_after_successors(ctx, block, src);
-
-        mir_foreach_block(ctx, block) {
-                block->visited = false;
-        }
-
-        return succ;
+        return false;
 }
