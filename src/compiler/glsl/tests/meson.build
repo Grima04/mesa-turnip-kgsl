@@ -110,4 +110,12 @@ if with_tools.contains('glsl')
            ],
     suite : ['compiler', 'glsl'],
   )
+  test(
+    'glsl lower-precision test',
+    prog_python,
+    args : [join_paths(meson.current_source_dir(), 'lower_precision_test.py'),
+            glsl_compiler
+           ],
+    suite : ['compiler', 'glsl'],
+  )
 endif
