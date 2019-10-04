@@ -1250,6 +1250,8 @@ struct tu_image
    VkExtent3D extent;
    uint32_t level_count;
    uint32_t layer_count;
+   VkSampleCountFlagBits samples;
+
 
    VkDeviceSize size;
    uint32_t alignment;
@@ -1258,6 +1260,7 @@ struct tu_image
    VkDeviceSize layer_size;
    struct tu_image_level levels[15];
    unsigned tile_mode;
+   unsigned cpp;
 
    unsigned queue_family_mask;
    bool exclusive;

@@ -39,86 +39,97 @@ image_level_linear(struct tu_image *image, int level)
    return w < 16;
 }
 
-/* indexed by cpp: */
-static const struct
-{
+/* indexed by cpp, including msaa 2x and 4x: */
+static const struct {
    unsigned pitchalign;
    unsigned heightalign;
 } tile_alignment[] = {
-   [1] = { 128, 32 }, [2] = { 128, 16 }, [3] = { 128, 16 }, [4] = { 64, 16 },
-   [8] = { 64, 16 },  [12] = { 64, 16 }, [16] = { 64, 16 },
+   [1]  = { 128, 32 },
+   [2]  = { 128, 16 },
+   [3]  = {  64, 32 },
+   [4]  = {  64, 16 },
+   [6]  = {  64, 16 },
+   [8]  = {  64, 16 },
+   [12] = {  64, 16 },
+   [16] = {  64, 16 },
+   [24] = {  64, 16 },
+   [32] = {  64, 16 },
+   [48] = {  64, 16 },
+   [64] = {  64, 16 },
+
+   /* special case for r8g8: */
+   [0]  = { 64, 32 },
 };
 
 static void
 setup_slices(struct tu_image *image, const VkImageCreateInfo *pCreateInfo)
 {
-   enum vk_format_layout layout =
-      vk_format_description(pCreateInfo->format)->layout;
+   VkFormat format = pCreateInfo->format;
+   enum vk_format_layout layout = vk_format_description(format)->layout;
    uint32_t layer_size = 0;
-   uint32_t width = pCreateInfo->extent.width;
-   uint32_t height = pCreateInfo->extent.height;
-   uint32_t depth = pCreateInfo->extent.depth;
-   bool layer_first = pCreateInfo->imageType != VK_IMAGE_TYPE_3D;
-   uint32_t alignment = pCreateInfo->imageType == VK_IMAGE_TYPE_3D ? 4096 : 1;
-   uint32_t cpp = vk_format_get_blocksize(pCreateInfo->format);
+   int ta = image->cpp;
 
-   uint32_t heightalign = tile_alignment[cpp].heightalign;
+   /* The r8g8 format seems to not play by the normal tiling rules: */
+   if (image->cpp == 2 && vk_format_get_nr_components(format) == 2)
+      ta = 0;
 
    for (unsigned level = 0; level < pCreateInfo->mipLevels; level++) {
       struct tu_image_level *slice = &image->levels[level];
-      bool linear_level = image_level_linear(image, level);
+      uint32_t width = u_minify(pCreateInfo->extent.width, level);
+      uint32_t height = u_minify(pCreateInfo->extent.height, level);
+      uint32_t depth = u_minify(pCreateInfo->extent.depth, level);
       uint32_t aligned_height = height;
       uint32_t blocks;
       uint32_t pitchalign;
 
-      if (image->tile_mode && !linear_level) {
-         pitchalign = tile_alignment[cpp].pitchalign;
-         aligned_height = align(aligned_height, heightalign);
+      if (image->tile_mode && !image_level_linear(image, level)) {
+         /* tiled levels of 3D textures are rounded up to PoT dimensions: */
+         if (pCreateInfo->imageType == VK_IMAGE_TYPE_3D) {
+            width = util_next_power_of_two(width);
+            height = aligned_height = util_next_power_of_two(height);
+         }
+         pitchalign = tile_alignment[ta].pitchalign;
+         aligned_height = align(aligned_height, tile_alignment[ta].heightalign);
       } else {
          pitchalign = 64;
-
-         /* The blits used for mem<->gmem work at a granularity of
-          * 32x32, which can cause faults due to over-fetch on the
-          * last level.  The simple solution is to over-allocate a
-          * bit the last level to ensure any over-fetch is harmless.
-          * The pitch is already sufficiently aligned, but height
-          * may not be:
-          */
-         if ((level + 1 == pCreateInfo->mipLevels))
-            aligned_height = align(aligned_height, 32);
       }
 
+      /* The blits used for mem<->gmem work at a granularity of
+       * 32x32, which can cause faults due to over-fetch on the
+       * last level.  The simple solution is to over-allocate a
+       * bit the last level to ensure any over-fetch is harmless.
+       * The pitch is already sufficiently aligned, but height
+       * may not be:
+       */
+      if (level + 1 == pCreateInfo->mipLevels)
+         aligned_height = align(aligned_height, 32);
+
       if (layout == VK_FORMAT_LAYOUT_ASTC)
-         slice->pitch = util_align_npot(
-            width,
-            pitchalign * vk_format_get_blockwidth(pCreateInfo->format));
+         slice->pitch =
+            util_align_npot(width, pitchalign * vk_format_get_blockwidth(format));
       else
          slice->pitch = align(width, pitchalign);
 
       slice->offset = layer_size;
-      blocks = vk_format_get_block_count(pCreateInfo->format, slice->pitch,
-                                         aligned_height);
+      blocks = vk_format_get_block_count(format, slice->pitch, aligned_height);
 
       /* 1d array and 2d array textures must all have the same layer size
-       * for each miplevel on a3xx. 3d textures can have different layer
+       * for each miplevel on a6xx. 3d textures can have different layer
        * sizes for high levels, but the hw auto-sizer is buggy (or at least
        * different than what this code does), so as soon as the layer size
        * range gets into range, we stop reducing it.
        */
-      if (pCreateInfo->imageType == VK_IMAGE_TYPE_3D &&
-          (level == 1 ||
-           (level > 1 && image->levels[level - 1].size > 0xf000)))
-         slice->size = align(blocks * cpp, alignment);
-      else if (level == 0 || layer_first || alignment == 1)
-         slice->size = align(blocks * cpp, alignment);
-      else
-         slice->size = image->levels[level - 1].size;
+      if (pCreateInfo->imageType == VK_IMAGE_TYPE_3D) {
+         if (level < 1 || image->levels[level - 1].size > 0xf000) {
+            slice->size = align(blocks * image->cpp, 4096);
+         } else {
+            slice->size = image->levels[level - 1].size;
+         }
+      } else {
+         slice->size = blocks * image->cpp;
+      }
 
       layer_size += slice->size * depth;
-
-      width = u_minify(width, 1);
-      height = u_minify(height, 1);
-      depth = u_minify(depth, 1);
    }
 
    image->layer_size = align(layer_size, 4096);
@@ -156,6 +167,8 @@ tu_image_create(VkDevice _device,
    image->extent = pCreateInfo->extent;
    image->level_count = pCreateInfo->mipLevels;
    image->layer_count = pCreateInfo->arrayLayers;
+   image->samples = pCreateInfo->samples;
+   image->cpp = vk_format_get_blocksize(image->vk_format) * image->samples;
 
    image->exclusive = pCreateInfo->sharingMode == VK_SHARING_MODE_EXCLUSIVE;
    if (pCreateInfo->sharingMode == VK_SHARING_MODE_CONCURRENT) {

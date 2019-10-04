@@ -454,7 +454,7 @@ tu6_emit_mrt(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
       assert(format && format->rb >= 0);
 
       offset = slice->offset + slice->size * iview->base_layer;
-      stride = slice->pitch * vk_format_get_blocksize(iview->vk_format);
+      stride = slice->pitch * iview->image->cpp;
 
       tu_cs_emit_pkt4(cs, REG_A6XX_RB_MRT_BUF_INFO(i), 6);
       tu_cs_emit(cs, A6XX_RB_MRT_BUF_INFO_COLOR_FORMAT(format->rb) |
@@ -604,8 +604,7 @@ tu6_emit_blit_info(struct tu_cmd_buffer *cmd,
    const struct tu_image_level *slice =
       &iview->image->levels[iview->base_mip];
    const uint32_t offset = slice->offset + slice->size * iview->base_layer;
-   const uint32_t stride =
-      slice->pitch * vk_format_get_blocksize(iview->vk_format);
+   const uint32_t stride = slice->pitch * iview->image->cpp;
    const enum a3xx_msaa_samples samples = tu6_msaa_samples(1);
 
    tu_cs_emit_pkt4(cs, REG_A6XX_RB_BLIT_INFO, 1);
