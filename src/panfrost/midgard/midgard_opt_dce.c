@@ -31,6 +31,8 @@ midgard_opt_dead_code_eliminate(compiler_context *ctx, midgard_block *block)
 {
         bool progress = false;
 
+        mir_invalidate_liveness(ctx);
+
         mir_foreach_instr_in_block_safe(block, ins) {
                 if (ins->type != TAG_ALU_4) continue;
                 if (ins->compact_branch) continue;

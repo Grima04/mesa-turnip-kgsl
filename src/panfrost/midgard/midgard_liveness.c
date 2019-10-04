@@ -226,6 +226,8 @@ is_live_after_successors(compiler_context *ctx, midgard_block *bl, int src)
 bool
 mir_is_live_after(compiler_context *ctx, midgard_block *block, midgard_instruction *start, int src)
 {
+        assert(ctx->metadata & MIDGARD_METADATA_LIVENESS);
+
         /* Check the rest of the block for liveness */
 
         mir_foreach_instr_in_block_from(block, ins, mir_next_op(start)) {
