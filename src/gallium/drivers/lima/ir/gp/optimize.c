@@ -55,6 +55,11 @@
  * block_2:
  * block_3:
  * ...
+ *
+ * - Optimize away nots of comparisons as produced by lowering ifs to
+ *   branches, and nots of nots produced by the above optimization.
+ *
+ * - DCE
  */
 
 static void
@@ -108,10 +113,72 @@ optimize_branches(gpir_compiler *comp)
    }
 }
 
+static void
+optimize_not(gpir_compiler *comp)
+{
+   list_for_each_entry(gpir_block, block, &comp->block_list, list) {
+      list_for_each_entry_rev(gpir_node, node, &block->node_list, list) {
+         if (node->op != gpir_op_not)
+            continue;
+
+         gpir_alu_node *alu = gpir_node_to_alu(node);
+
+         gpir_node *replace = NULL;
+         if (alu->children[0]->op == gpir_op_not) {
+            /* (not (not a)) -> a */
+            gpir_alu_node *child = gpir_node_to_alu(alu->children[0]);
+            replace = child->children[0];
+         } else if (alu->children[0]->op == gpir_op_ge ||
+                    alu->children[0]->op == gpir_op_lt) {
+            /* (not (ge a, b)) -> (lt a, b) and
+             * (not (lt a, b)) -> (ge a, b)
+             */
+            gpir_alu_node *child = gpir_node_to_alu(alu->children[0]);
+            gpir_op op = alu->children[0]->op == gpir_op_ge ?
+               gpir_op_lt : gpir_op_ge;
+            gpir_alu_node *new = gpir_node_create(block, op);
+            new->children[0] = child->children[0];
+            new->children[1] = child->children[1];
+            new->num_child = 2;
+            gpir_node_add_dep(&new->node, new->children[0], GPIR_DEP_INPUT);
+            gpir_node_add_dep(&new->node, new->children[1], GPIR_DEP_INPUT);
+            list_addtail(&new->node.list, &alu->children[0]->list);
+            replace = &new->node;
+         }
+
+         if (replace) {
+            gpir_node_replace_succ(replace, node);
+         }
+      }
+   }
+}
+
+/* Does what it says. In addition to removing unused nodes from the not
+ * optimization above, we need this to remove unused load_const nodes which
+ * were created from store_output intrinsics in NIR, since we ignore the
+ * offset.
+ */
+
+static void
+dead_code_eliminate(gpir_compiler *comp)
+{
+   list_for_each_entry(gpir_block, block, &comp->block_list, list) {
+      list_for_each_entry_safe_rev(gpir_node, node, &block->node_list, list) {
+         if (node->type != gpir_node_type_store &&
+             node->type != gpir_node_type_branch &&
+             list_is_empty(&node->succ_list)) {
+            gpir_node_delete(node);
+         }
+      }
+   }
+}
+
 bool
 gpir_optimize(gpir_compiler *comp)
 {
    optimize_branches(comp);
+   optimize_not(comp);
+   dead_code_eliminate(comp);
 
    gpir_debug("after optimization\n");
    gpir_node_print_prog_seq(comp);
