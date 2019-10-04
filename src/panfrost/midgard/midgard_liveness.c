@@ -113,6 +113,10 @@ liveness_block_update(compiler_context *ctx, midgard_block *blk)
 void
 mir_compute_liveness(compiler_context *ctx)
 {
+        /* If we already have fresh liveness, nothing to do */
+        if (ctx->metadata & MIDGARD_METADATA_LIVENESS)
+                return;
+
         /* List of midgard_block */
         struct set *work_list = _mesa_set_create(ctx,
                         _mesa_hash_pointer,
@@ -148,6 +152,33 @@ mir_compute_liveness(compiler_context *ctx)
                                 _mesa_set_add(work_list, pred);
                 }
         } while((cur = _mesa_set_next_entry(work_list, NULL)) != NULL);
+
+        /* Liveness is now valid */
+        ctx->metadata |= MIDGARD_METADATA_LIVENESS;
+}
+
+/* Once liveness data is no longer valid, call this */
+
+void
+mir_invalidate_liveness(compiler_context *ctx)
+{
+        /* If we didn't already compute liveness, there's nothing to do */
+        if (!(ctx->metadata & MIDGARD_METADATA_LIVENESS))
+                return;
+
+        /* It's now invalid regardless */
+        ctx->metadata &= ~MIDGARD_METADATA_LIVENESS;
+
+        mir_foreach_block(ctx, block) {
+                if (block->live_in)
+                        free(block->live_in);
+
+                if (block->live_out)
+                        free(block->live_out);
+
+                block->live_in = NULL;
+                block->live_out = NULL;
+        }
 }
 
 /* Determine if a variable is live in the successors of a block */

@@ -288,7 +288,13 @@ typedef struct compiler_context {
         unsigned sysvals[MAX_SYSVAL_COUNT];
         unsigned sysval_count;
         struct hash_table_u64 *sysval_to_id;
+
+        /* Bitmask of valid metadata */
+        unsigned metadata;
 } compiler_context;
+
+/* Per-block live_in/live_out */
+#define MIDGARD_METADATA_LIVENESS (1 << 0)
 
 /* Helpers for manipulating the above structures (forming the driver IR) */
 
@@ -606,6 +612,7 @@ struct ra_graph* allocate_registers(compiler_context *ctx, bool *spilled);
 void install_registers(compiler_context *ctx, struct ra_graph *g);
 void mir_liveness_ins_update(uint8_t *live, midgard_instruction *ins, unsigned max);
 void mir_compute_liveness(compiler_context *ctx);
+void mir_invalidate_liveness(compiler_context *ctx);
 bool mir_is_live_after(compiler_context *ctx, midgard_block *block, midgard_instruction *start, int src);
 
 void mir_create_pipeline_registers(compiler_context *ctx);

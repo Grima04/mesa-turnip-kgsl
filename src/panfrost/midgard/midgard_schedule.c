@@ -1393,6 +1393,7 @@ schedule_program(compiler_context *ctx)
                         mir_spill_register(ctx, g, &spill_count);
 
                 mir_squeeze_index(ctx);
+                mir_invalidate_liveness(ctx);
 
                 g = NULL;
                 g = allocate_registers(ctx, &spilled);

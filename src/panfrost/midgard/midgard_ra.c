@@ -574,11 +574,6 @@ mir_compute_interference(
 
                 free(live);
         }
-
-        mir_foreach_block(ctx, blk) {
-                free(blk->live_in);
-                free(blk->live_out);
-        }
 }
 
 /* This routine performs the actual register allocation. It should be succeeded
