@@ -804,6 +804,19 @@ isl_genX(null_fill_state)(void *state, struct isl_extent3d size)
       .TiledSurface = true,
       .TileWalk = TILEWALK_YMAJOR,
 #endif
+#if GEN_GEN == 7
+      /* According to PRMs: "Volume 4 Part 1: Subsystem and Cores – Shared
+       * Functions"
+       *
+       * RENDER_SURFACE_STATE::Surface Vertical Alignment
+       *
+       *    "This field must be set to VALIGN_4 for all tiled Y Render Target
+       *     surfaces."
+       *
+       * Affect IVB, HSW.
+       */
+      .SurfaceVerticalAlignment = VALIGN_4,
+#endif
       .Width = size.width - 1,
       .Height = size.height - 1,
       .Depth = size.depth - 1,
