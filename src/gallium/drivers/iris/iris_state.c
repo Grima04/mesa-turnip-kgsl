@@ -488,6 +488,128 @@ _iris_emit_lrr(struct iris_batch *batch, uint32_t dst, uint32_t src)
 }
 
 static void
+iris_load_register_reg32(struct iris_batch *batch, uint32_t dst,
+                         uint32_t src)
+{
+   _iris_emit_lrr(batch, dst, src);
+}
+
+static void
+iris_load_register_reg64(struct iris_batch *batch, uint32_t dst,
+                         uint32_t src)
+{
+   _iris_emit_lrr(batch, dst, src);
+   _iris_emit_lrr(batch, dst + 4, src + 4);
+}
+
+static void
+iris_load_register_imm32(struct iris_batch *batch, uint32_t reg,
+                         uint32_t val)
+{
+   _iris_emit_lri(batch, reg, val);
+}
+
+static void
+iris_load_register_imm64(struct iris_batch *batch, uint32_t reg,
+                         uint64_t val)
+{
+   _iris_emit_lri(batch, reg + 0, val & 0xffffffff);
+   _iris_emit_lri(batch, reg + 4, val >> 32);
+}
+
+/**
+ * Emit MI_LOAD_REGISTER_MEM to load a 32-bit MMIO register from a buffer.
+ */
+static void
+iris_load_register_mem32(struct iris_batch *batch, uint32_t reg,
+                         struct iris_bo *bo, uint32_t offset)
+{
+   iris_emit_cmd(batch, GENX(MI_LOAD_REGISTER_MEM), lrm) {
+      lrm.RegisterAddress = reg;
+      lrm.MemoryAddress = ro_bo(bo, offset);
+   }
+}
+
+/**
+ * Load a 64-bit value from a buffer into a MMIO register via
+ * two MI_LOAD_REGISTER_MEM commands.
+ */
+static void
+iris_load_register_mem64(struct iris_batch *batch, uint32_t reg,
+                         struct iris_bo *bo, uint32_t offset)
+{
+   iris_load_register_mem32(batch, reg + 0, bo, offset + 0);
+   iris_load_register_mem32(batch, reg + 4, bo, offset + 4);
+}
+
+static void
+iris_store_register_mem32(struct iris_batch *batch, uint32_t reg,
+                          struct iris_bo *bo, uint32_t offset,
+                          bool predicated)
+{
+   iris_emit_cmd(batch, GENX(MI_STORE_REGISTER_MEM), srm) {
+      srm.RegisterAddress = reg;
+      srm.MemoryAddress = rw_bo(bo, offset);
+      srm.PredicateEnable = predicated;
+   }
+}
+
+static void
+iris_store_register_mem64(struct iris_batch *batch, uint32_t reg,
+                          struct iris_bo *bo, uint32_t offset,
+                          bool predicated)
+{
+   iris_store_register_mem32(batch, reg + 0, bo, offset + 0, predicated);
+   iris_store_register_mem32(batch, reg + 4, bo, offset + 4, predicated);
+}
+
+static void
+iris_store_data_imm32(struct iris_batch *batch,
+                      struct iris_bo *bo, uint32_t offset,
+                      uint32_t imm)
+{
+   iris_emit_cmd(batch, GENX(MI_STORE_DATA_IMM), sdi) {
+      sdi.Address = rw_bo(bo, offset);
+      sdi.ImmediateData = imm;
+   }
+}
+
+static void
+iris_store_data_imm64(struct iris_batch *batch,
+                      struct iris_bo *bo, uint32_t offset,
+                      uint64_t imm)
+{
+   /* Can't use iris_emit_cmd because MI_STORE_DATA_IMM has a length of
+    * 2 in genxml but it's actually variable length and we need 5 DWords.
+    */
+   void *map = iris_get_command_space(batch, 4 * 5);
+   _iris_pack_command(batch, GENX(MI_STORE_DATA_IMM), map, sdi) {
+      sdi.DWordLength = 5 - 2;
+      sdi.Address = rw_bo(bo, offset);
+      sdi.ImmediateData = imm;
+   }
+}
+
+static void
+iris_copy_mem_mem(struct iris_batch *batch,
+                  struct iris_bo *dst_bo, uint32_t dst_offset,
+                  struct iris_bo *src_bo, uint32_t src_offset,
+                  unsigned bytes)
+{
+   /* MI_COPY_MEM_MEM operates on DWords. */
+   assert(bytes % 4 == 0);
+   assert(dst_offset % 4 == 0);
+   assert(src_offset % 4 == 0);
+
+   for (unsigned i = 0; i < bytes; i += 4) {
+      iris_emit_cmd(batch, GENX(MI_COPY_MEM_MEM), cp) {
+         cp.DestinationMemoryAddress = rw_bo(dst_bo, dst_offset + i);
+         cp.SourceMemoryAddress = ro_bo(src_bo, src_offset + i);
+      }
+   }
+}
+
+static void
 emit_pipeline_select(struct iris_batch *batch, uint32_t pipeline)
 {
 #if GEN_GEN >= 8 && GEN_GEN < 10
@@ -6102,130 +6224,6 @@ iris_rebind_buffer(struct iris_context *ice,
                iris_set_shader_images(ctx, p_stage, i, 1, &iv->base);
             }
          }
-      }
-   }
-}
-
-/* ------------------------------------------------------------------- */
-
-static void
-iris_load_register_reg32(struct iris_batch *batch, uint32_t dst,
-                         uint32_t src)
-{
-   _iris_emit_lrr(batch, dst, src);
-}
-
-static void
-iris_load_register_reg64(struct iris_batch *batch, uint32_t dst,
-                         uint32_t src)
-{
-   _iris_emit_lrr(batch, dst, src);
-   _iris_emit_lrr(batch, dst + 4, src + 4);
-}
-
-static void
-iris_load_register_imm32(struct iris_batch *batch, uint32_t reg,
-                         uint32_t val)
-{
-   _iris_emit_lri(batch, reg, val);
-}
-
-static void
-iris_load_register_imm64(struct iris_batch *batch, uint32_t reg,
-                         uint64_t val)
-{
-   _iris_emit_lri(batch, reg + 0, val & 0xffffffff);
-   _iris_emit_lri(batch, reg + 4, val >> 32);
-}
-
-/**
- * Emit MI_LOAD_REGISTER_MEM to load a 32-bit MMIO register from a buffer.
- */
-static void
-iris_load_register_mem32(struct iris_batch *batch, uint32_t reg,
-                         struct iris_bo *bo, uint32_t offset)
-{
-   iris_emit_cmd(batch, GENX(MI_LOAD_REGISTER_MEM), lrm) {
-      lrm.RegisterAddress = reg;
-      lrm.MemoryAddress = ro_bo(bo, offset);
-   }
-}
-
-/**
- * Load a 64-bit value from a buffer into a MMIO register via
- * two MI_LOAD_REGISTER_MEM commands.
- */
-static void
-iris_load_register_mem64(struct iris_batch *batch, uint32_t reg,
-                         struct iris_bo *bo, uint32_t offset)
-{
-   iris_load_register_mem32(batch, reg + 0, bo, offset + 0);
-   iris_load_register_mem32(batch, reg + 4, bo, offset + 4);
-}
-
-static void
-iris_store_register_mem32(struct iris_batch *batch, uint32_t reg,
-                          struct iris_bo *bo, uint32_t offset,
-                          bool predicated)
-{
-   iris_emit_cmd(batch, GENX(MI_STORE_REGISTER_MEM), srm) {
-      srm.RegisterAddress = reg;
-      srm.MemoryAddress = rw_bo(bo, offset);
-      srm.PredicateEnable = predicated;
-   }
-}
-
-static void
-iris_store_register_mem64(struct iris_batch *batch, uint32_t reg,
-                          struct iris_bo *bo, uint32_t offset,
-                          bool predicated)
-{
-   iris_store_register_mem32(batch, reg + 0, bo, offset + 0, predicated);
-   iris_store_register_mem32(batch, reg + 4, bo, offset + 4, predicated);
-}
-
-static void
-iris_store_data_imm32(struct iris_batch *batch,
-                      struct iris_bo *bo, uint32_t offset,
-                      uint32_t imm)
-{
-   iris_emit_cmd(batch, GENX(MI_STORE_DATA_IMM), sdi) {
-      sdi.Address = rw_bo(bo, offset);
-      sdi.ImmediateData = imm;
-   }
-}
-
-static void
-iris_store_data_imm64(struct iris_batch *batch,
-                      struct iris_bo *bo, uint32_t offset,
-                      uint64_t imm)
-{
-   /* Can't use iris_emit_cmd because MI_STORE_DATA_IMM has a length of
-    * 2 in genxml but it's actually variable length and we need 5 DWords.
-    */
-   void *map = iris_get_command_space(batch, 4 * 5);
-   _iris_pack_command(batch, GENX(MI_STORE_DATA_IMM), map, sdi) {
-      sdi.DWordLength = 5 - 2;
-      sdi.Address = rw_bo(bo, offset);
-      sdi.ImmediateData = imm;
-   }
-}
-
-static void
-iris_copy_mem_mem(struct iris_batch *batch,
-                  struct iris_bo *dst_bo, uint32_t dst_offset,
-                  struct iris_bo *src_bo, uint32_t src_offset,
-                  unsigned bytes)
-{
-   /* MI_COPY_MEM_MEM operates on DWords. */
-   assert(bytes % 4 == 0);
-   assert(dst_offset % 4 == 0);
-   assert(src_offset % 4 == 0);
-
-   for (unsigned i = 0; i < bytes; i += 4) {
-      iris_emit_cmd(batch, GENX(MI_COPY_MEM_MEM), cp) {
-         cp.DestinationMemoryAddress = rw_bo(dst_bo, dst_offset + i);
-         cp.SourceMemoryAddress = ro_bo(src_bo, src_offset + i);
       }
    }
 }
