@@ -1104,7 +1104,7 @@ update_from_topology(struct gen_device_info *devinfo,
 
       for (int b = 0; b < devinfo->subslice_slice_stride; b++) {
          devinfo->num_subslices[s] +=
-            __builtin_popcount(devinfo->subslice_masks[b]);
+            __builtin_popcount(devinfo->subslice_masks[s * devinfo->subslice_slice_stride + b]);
       }
       n_subslices += devinfo->num_subslices[s];
    }
