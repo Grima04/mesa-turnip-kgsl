@@ -185,9 +185,18 @@ tu_image_create(VkDevice _device,
       vk_find_struct_const(pCreateInfo->pNext,
                            EXTERNAL_MEMORY_IMAGE_CREATE_INFO) != NULL;
 
-   image->tile_mode = TILE6_LINEAR;
-   if (pCreateInfo->tiling == VK_IMAGE_TILING_OPTIMAL && !create_info->scanout)
-      image->tile_mode = TILE6_3;
+   image->tile_mode = TILE6_3;
+
+   if (pCreateInfo->tiling == VK_IMAGE_TILING_LINEAR ||
+       /* compressed textures can't use tiling? */
+       vk_format_is_compressed(image->vk_format) ||
+       /* scanout needs to be linear (what about tiling modifiers?) */
+       create_info->scanout ||
+       /* image_to_image copy doesn't deal with tiling+swap */
+       tu6_get_native_format(image->vk_format)->swap ||
+       /* r8g8 formats are tiled different and could break image_to_image copy */
+       (image->cpp == 2 && vk_format_get_nr_components(image->vk_format) == 2))
+      image->tile_mode = TILE6_LINEAR;
 
    setup_slices(image, pCreateInfo);
 
