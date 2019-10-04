@@ -109,7 +109,8 @@ def generate(env):
 
         # LIBS should match the output of `llvm-config --libs engine mcjit bitwriter x86asmprinter irreader` for LLVM<=7.0
         # and `llvm-config --libs engine coroutines` for LLVM>=8.0
-        # LLVMAggressiveInstCombine library part of engine component can be safely omitted as it's not used.
+        # LLVMAggressiveInstCombine library part of engine component since LLVM 6 is only needed by Mesa3D for LLVM>=8.
+        # While not directly needed by Mesa3D, this library is needed by LLVMipo which is part of coroutines component.
         if llvm_version >= distutils.version.LooseVersion('9.0'):
             env.Prepend(LIBS = [
                 'LLVMX86Disassembler', 'LLVMX86AsmParser',
@@ -130,8 +131,8 @@ def generate(env):
                 'LLVMBinaryFormat',
                 'LLVMRemarks', 'LLVMBitstreamReader', 'LLVMDebugInfoDWARF',
                 # Add these libraries to enable ompute shaders support.
-                'LLVMLinker', 'LLVMVectorize', 'LLVMInstrumentation',
-                'LLVMipo', 'LLVMCoroutines',
+                'LLVMAggressiveInstCombine','LLVMLinker', 'LLVMVectorize',
+                'LLVMInstrumentation', 'LLVMipo', 'LLVMCoroutines',
             ])
         elif llvm_version >= distutils.version.LooseVersion('8.0'):
             env.Prepend(LIBS = [
@@ -152,8 +153,8 @@ def generate(env):
                 'LLVMDemangle', 'LLVMGlobalISel', 'LLVMDebugInfoMSF',
                 'LLVMBinaryFormat',
                 # Add these libraries to enable ompute shaders support.
-                'LLVMLinker', 'LLVMVectorize', 'LLVMInstrumentation',
-                'LLVMipo', 'LLVMCoroutines',
+                'LLVMAggressiveInstCombine', 'LLVMLinker', 'LLVMVectorize',
+                'LLVMInstrumentation', 'LLVMipo', 'LLVMCoroutines',
             ])
         elif llvm_version >= distutils.version.LooseVersion('5.0'):
             env.Prepend(LIBS = [
