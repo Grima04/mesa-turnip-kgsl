@@ -30,6 +30,7 @@ xsi:schemaLocation="http://nouveau.freedesktop.org/ rules-ng.xsd">
 	<value value="0x32" name="RB6_R8G8B8A8_SNORM"/>
 	<value value="0x33" name="RB6_R8G8B8A8_UINT"/>
 	<value value="0x34" name="RB6_R8G8B8A8_SINT"/>
+	<value value="0x36" name="RB6_R10G10B10A2_FLOAT16"/>  <!-- float16 for 2d blit? -->
 	<value value="0x37" name="RB6_R10G10B10A2_UNORM"/>  <!-- GL_RGB10_A2 -->
 	<value value="0x3a" name="RB6_R10G10B10A2_UINT"/>   <!-- GL_RGB10_A2UI -->
 	<value value="0x42" name="RB6_R11G11B10_FLOAT"/>    <!-- GL_R11F_G11F_B10F -->
@@ -944,7 +945,7 @@ blending?  The one exception is that 16b unorm and 32b float use the
 same value... maybe 16b unorm is uncommon enough that it was just easier
 to upconvert to 32b float internally?
 
- 8b unorm:  10
+ 8b unorm:  10 (sometimes 0, is the high bit part of something else?)
 16b unorm:   4
 
 32b int:     7
@@ -961,6 +962,7 @@ to upconvert to 32b float internally?
 	<value value="0x5"  name="R2D_INT8"/>
 	<value value="0x4"  name="R2D_FLOAT32"/>
 	<value value="0x3"  name="R2D_FLOAT16"/>
+	<value value="0x1"  name="R2D_UNORM8_SRGB"/>
 </enum>
 
 <domain name="A6XX" width="32">
@@ -1954,19 +1956,19 @@ to upconvert to 32b float internally?
 	  <value value="0x1" name="ROTATE_90"/>
 	  <value value="0x2" name="ROTATE_180"/>
 	  <value value="0x3" name="ROTATE_270"/>
+	  <value value="0x4" name="ROTATE_HFLIP"/>
+	  <value value="0x5" name="ROTATE_VFLIP"/>
 	</enum>
 
 	<bitset name="a6xx_2d_blit_cntl" inline="yes">
-		<bitfield name="ROTATE" low="0" high="1" type="a6xx_rotation"/>
-		<bitfield name="HORIZONTAL_FLIP" low="2" high="2" type="boolean"/>
-		<bitfield name="SOLID_COLOR" low="4" high="4" type="boolean"/>
+		<bitfield name="ROTATE" low="0" high="2" type="a6xx_rotation"/>
+		<bitfield name="SOLID_COLOR" low="7" high="7" type="boolean"/>
 		<bitfield name="COLOR_FORMAT" low="8" high="15" type="a6xx_color_fmt"/>
 		<bitfield name="SCISSOR" pos="16" type="boolean"/>
-		<!-- double check these:
-		<bitfield name="FLAGS" pos="18" type="boolean"/>
-		<bitfield name="TILE_MODE" low="20" high="21" type="a6xx_tile_mode"/>
-		<bitfield name="COLOR_SWAP" low="22" high="23" type="a3xx_color_swap"/>
-		-->
+		<!-- required when blitting D24S8/D24X8 -->
+		<bitfield name="D24S8" pos="19" type="boolean"/>
+		<!-- some sort of channel mask, disabled channels are set to zero ? -->
+		<bitfield name="MASK" low="20" high="23"/>
 		<bitfield name="IFMT" low="24" high="28" type="a6xx_2d_ifmt"/>
 	</bitset>
 
@@ -2325,13 +2327,20 @@ to upconvert to 32b float internally?
 	<reg32 offset="0x8c00" name="RB_2D_BLIT_CNTL" type="a6xx_2d_blit_cntl"/>
 	<reg32 offset="0x8c01" name="RB_UNKNOWN_8C01"/>
 
-	<reg32 offset="0x8c17" name="RB_2D_DST_INFO">
+	<bitset name="a6xx_2d_surf_info" inline="yes">
 		<bitfield name="COLOR_FORMAT" low="0" high="7" type="a6xx_color_fmt"/>
 		<bitfield name="TILE_MODE" low="8" high="9" type="a6xx_tile_mode"/>
 		<bitfield name="COLOR_SWAP" low="10" high="11" type="a3xx_color_swap"/>
 		<!-- b12 seems to be set when UBWC "FLAGS" buffer enabled -->
 		<bitfield name="FLAGS" pos="12" type="boolean"/>
-	</reg32>
+		<bitfield name="SRGB" pos="13" type="boolean"/>
+		<!-- the rest is only for src -->
+		<bitfield name="SAMPLES" low="14" high="15" type="a3xx_msaa_samples"/>
+		<bitfield name="FILTER" pos="16" type="boolean"/>
+		<bitfield name="SAMPLES_AVERAGE" pos="18" type="boolean"/>
+	</bitset>
+
+	<reg32 offset="0x8c17" name="RB_2D_DST_INFO" type="a6xx_2d_surf_info"/>
 	<reg32 offset="0x8c18" name="RB_2D_DST_LO"/>
 	<reg32 offset="0x8c19" name="RB_2D_DST_HI"/>
 	<reg32 offset="0x8c1a" name="RB_2D_DST_SIZE">
@@ -2663,6 +2672,8 @@ to upconvert to 32b float internally?
 		<bitfield name="BRANCHSTACK" low="14" high="19" type="uint"/>
 		<bitfield name="THREADSIZE" pos="20" type="a3xx_threadsize"/>
 		<bitfield name="VARYING" pos="22" type="boolean"/>
+		<!-- set when dFdxFine/dFdyFine is used -->
+		<bitfield name="DIFF_FINE" pos="23" type="boolean"/>
 		<bitfield name="PIXLODENABLE" pos="26" type="boolean"/>
 		<bitfield name="MERGEDREGS" pos="31" type="boolean"/>
 	</bitset>
@@ -2856,14 +2867,19 @@ to upconvert to 32b float internally?
 	<reg32 offset="0xab20" name="SP_IBO_COUNT" type="uint"/>
 
 	<!--
-	I believe this describes the src format, but haven't seen traces with
-	src_format != dst_format
+	not really src, COLOR_FORMAT/SRGB seem to be related to ifmt which is for dst
 	 -->
 	<reg32 offset="0xacc0" name="SP_2D_SRC_FORMAT">
 		<bitfield name="NORM" pos="0" type="boolean"/>
 		<bitfield name="SINT" pos="1" type="boolean"/>
 		<bitfield name="UINT" pos="2" type="boolean"/>
+		<!-- looks like HW only cares about the base type of this format,
+		     which matches the ifmt? -->
 		<bitfield name="COLOR_FORMAT" low="3" high="10" type="a6xx_color_fmt"/>
+		<!-- set when ifmt is R2D_UNORM8_SRGB -->
+		<bitfield name="SRGB" pos="11" type="boolean"/>
+		<!-- some sort of channel mask, not sure what it is for -->
+		<bitfield name="MASK" low="12" high="15"/>
 	</reg32>
 
 	<!-- always 0x0 -->
@@ -2902,15 +2918,7 @@ to upconvert to 32b float internally?
 	badly named or the functionality moved in a6xx.  But downstream kernel
 	calls this "a6xx_sp_ps_tp_2d_cluster"
 	 -->
-	<reg32 offset="0xb4c0" name="SP_PS_2D_SRC_INFO">
-		<bitfield name="COLOR_FORMAT" low="0" high="7" type="a6xx_color_fmt"/>
-		<bitfield name="TILE_MODE" low="8" high="9" type="a6xx_tile_mode"/>
-		<bitfield name="COLOR_SWAP" low="10" high="11" type="a3xx_color_swap"/>
-		<!-- b12 seems to be set when UBWC "FLAGS" buffer enabled -->
-		<bitfield name="FLAGS" pos="12" type="boolean"/>
-		<bitfield name="SAMPLES" low="14" high="15" type="a3xx_msaa_samples"/>
-		<bitfield name="FILTER" pos="16" type="boolean"/>
-	</reg32>
+	<reg32 offset="0xb4c0" name="SP_PS_2D_SRC_INFO" type="a6xx_2d_surf_info"/>
 	<reg32 offset="0xb4c1" name="SP_PS_2D_SRC_SIZE">
 		<bitfield name="WIDTH" low="0" high="14" type="uint"/>
 		<bitfield name="HEIGHT" low="15" high="29" type="uint"/>
