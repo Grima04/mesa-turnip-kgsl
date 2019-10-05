@@ -84,6 +84,8 @@ files_mesa_util = files(
   'slab.h',
   'softfloat.c',
   'softfloat.h',
+  'sparse_array.c',
+  'sparse_array.h',
   'string_buffer.c',
   'string_buffer.h',
   'strndup.h',
@@ -279,4 +281,5 @@ if with_tests
   endif
   subdir('tests/vma')
   subdir('tests/set')
+  subdir('tests/sparse_array')
 endif
