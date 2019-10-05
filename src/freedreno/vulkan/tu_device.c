@@ -1890,7 +1890,7 @@ tu_DestroyFramebuffer(VkDevice _device,
 }
 
 static enum a6xx_tex_clamp
-tu_tex_wrap(VkSamplerAddressMode address_mode, bool *needs_border)
+tu6_tex_wrap(VkSamplerAddressMode address_mode, bool *needs_border)
 {
    switch (address_mode) {
    case VK_SAMPLER_ADDRESS_MODE_REPEAT:
@@ -1912,17 +1912,17 @@ tu_tex_wrap(VkSamplerAddressMode address_mode, bool *needs_border)
 }
 
 static enum a6xx_tex_filter
-tex_filter(VkFilter filter, unsigned aniso)
+tu6_tex_filter(VkFilter filter, unsigned aniso)
 {
    switch (filter) {
    case VK_FILTER_NEAREST:
       return A6XX_TEX_NEAREST;
    case VK_FILTER_LINEAR:
-      return aniso > 1 ? A6XX_TEX_ANISO : A6XX_TEX_LINEAR;
+      return aniso ? A6XX_TEX_ANISO : A6XX_TEX_LINEAR;
    case VK_FILTER_CUBIC_IMG:
    default:
-      fprintf(stderr, "illegal texture filter");
-      return 0;
+      unreachable("illegal texture filter");
+      break;
    }
 }
 
@@ -1938,19 +1938,19 @@ tu_init_sampler(struct tu_device *device,
 
    sampler->state[0] =
       COND(miplinear, A6XX_TEX_SAMP_0_MIPFILTER_LINEAR_NEAR) |
-      A6XX_TEX_SAMP_0_XY_MAG(tex_filter(pCreateInfo->magFilter, aniso)) |
-      A6XX_TEX_SAMP_0_XY_MIN(tex_filter(pCreateInfo->minFilter, aniso)) |
+      A6XX_TEX_SAMP_0_XY_MAG(tu6_tex_filter(pCreateInfo->magFilter, aniso)) |
+      A6XX_TEX_SAMP_0_XY_MIN(tu6_tex_filter(pCreateInfo->minFilter, aniso)) |
       A6XX_TEX_SAMP_0_ANISO(aniso) |
-      A6XX_TEX_SAMP_0_WRAP_S(tu_tex_wrap(pCreateInfo->addressModeU, &needs_border)) |
-      A6XX_TEX_SAMP_0_WRAP_T(tu_tex_wrap(pCreateInfo->addressModeV, &needs_border)) |
-      A6XX_TEX_SAMP_0_WRAP_R(tu_tex_wrap(pCreateInfo->addressModeW, &needs_border)) |
+      A6XX_TEX_SAMP_0_WRAP_S(tu6_tex_wrap(pCreateInfo->addressModeU, &needs_border)) |
+      A6XX_TEX_SAMP_0_WRAP_T(tu6_tex_wrap(pCreateInfo->addressModeV, &needs_border)) |
+      A6XX_TEX_SAMP_0_WRAP_R(tu6_tex_wrap(pCreateInfo->addressModeW, &needs_border)) |
       A6XX_TEX_SAMP_0_LOD_BIAS(pCreateInfo->mipLodBias);
    sampler->state[1] =
       /* COND(!cso->seamless_cube_map, A6XX_TEX_SAMP_1_CUBEMAPSEAMLESSFILTOFF) | */
       COND(pCreateInfo->unnormalizedCoordinates, A6XX_TEX_SAMP_1_UNNORM_COORDS) |
       A6XX_TEX_SAMP_1_MIN_LOD(pCreateInfo->minLod) |
       A6XX_TEX_SAMP_1_MAX_LOD(pCreateInfo->maxLod) |
-      0; /* A6XX_TEX_SAMP_1_COMPARE_FUNC(cso->compare_func); */
+      COND(pCreateInfo->compareEnable, A6XX_TEX_SAMP_1_COMPARE_FUNC(pCreateInfo->compareOp));
    sampler->state[2] = 0;
    sampler->state[3] = 0;
 
