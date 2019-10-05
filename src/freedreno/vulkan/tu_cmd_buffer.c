@@ -2373,6 +2373,31 @@ tu6_emit_textures(struct tu_device *device, struct tu_cs *draw_state,
 }
 
 static void
+tu6_emit_border_color(struct tu_cmd_buffer *cmd,
+                      struct tu_cs *cs)
+{
+   const struct tu_pipeline *pipeline = cmd->state.pipeline;
+
+#define A6XX_BORDER_COLOR_DWORDS (128/4)
+   uint32_t size = A6XX_BORDER_COLOR_DWORDS *
+      (pipeline->program.link[MESA_SHADER_VERTEX].sampler_map.num +
+       pipeline->program.link[MESA_SHADER_FRAGMENT].sampler_map.num) +
+      A6XX_BORDER_COLOR_DWORDS - 1; /* room for alignment */
+
+   struct tu_cs border_cs;
+   tu_cs_begin_sub_stream(cmd->device, &cmd->draw_state, size, &border_cs);
+
+   /* TODO: actually fill with border color */
+   for (unsigned i = 0; i < size; i++)
+      tu_cs_emit(&border_cs, 0);
+
+   struct tu_cs_entry entry = tu_cs_end_sub_stream(&cmd->draw_state, &border_cs);
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_SP_TP_BORDER_COLOR_BASE_ADDR_LO, 2);
+	tu_cs_emit_qw(cs, align(entry.bo->iova + entry.offset, 128));
+}
+
+static void
 tu6_bind_draw_states(struct tu_cmd_buffer *cmd,
                      struct tu_cs *cs,
                      const struct tu_draw_info *draw)
@@ -2381,7 +2406,6 @@ tu6_bind_draw_states(struct tu_cmd_buffer *cmd,
    const struct tu_dynamic_state *dynamic = &cmd->state.dynamic;
    struct tu_draw_state_group draw_state_groups[TU_DRAW_STATE_COUNT];
    uint32_t draw_state_group_count = 0;
-   bool needs_border = false;
 
    struct tu_descriptor_state *descriptors_state =
       &cmd->descriptors[VK_PIPELINE_BIND_POINT_GRAPHICS];
@@ -2502,6 +2526,8 @@ tu6_bind_draw_states(struct tu_cmd_buffer *cmd,
 
    if (cmd->state.dirty &
          (TU_CMD_DIRTY_PIPELINE | TU_CMD_DIRTY_DESCRIPTOR_SETS)) {
+      bool needs_border = false;
+
       draw_state_groups[draw_state_group_count++] =
          (struct tu_draw_state_group) {
             .id = TU_DRAW_STATE_VS_CONST,
@@ -2532,6 +2558,9 @@ tu6_bind_draw_states(struct tu_cmd_buffer *cmd,
                                     descriptors_state, MESA_SHADER_FRAGMENT,
                                     &needs_border)
          };
+
+      if (needs_border)
+         tu6_emit_border_color(cmd, cs);
    }
 
    tu_cs_emit_pkt7(cs, CP_SET_DRAW_STATE, 3 * draw_state_group_count);
