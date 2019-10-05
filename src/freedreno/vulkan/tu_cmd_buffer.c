@@ -314,8 +314,8 @@ tu_tiling_config_get_tile(const struct tu_tiling_config *tiling,
          : tile->begin.y + tiling->tile0.extent.height;
 }
 
-static enum a3xx_msaa_samples
-tu6_msaa_samples(uint32_t samples)
+enum a3xx_msaa_samples
+tu_msaa_samples(uint32_t samples)
 {
    switch (samples) {
    case 1:

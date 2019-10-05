@@ -1299,6 +1299,8 @@ tu_get_levelCount(const struct tu_image *image,
 
 enum a6xx_tile_mode
 tu6_get_image_tile_mode(struct tu_image *image, int level);
+enum a3xx_msaa_samples
+tu_msaa_samples(uint32_t samples);
 
 struct tu_image_view
 {

@@ -30,13 +30,7 @@
 #include "vk_format.h"
 
 #include "tu_cs.h"
-
-/*
- * TODO:
- *   - 3D textures
- *   - compressed image formats (need to divide offset/extent)
- *   - Fix d24_unorm_s8_uint support & aspects
- */
+#include "tu_blit.h"
 
 static uint32_t
 blit_control(enum a6xx_color_fmt fmt)
@@ -45,29 +39,6 @@ blit_control(enum a6xx_color_fmt fmt)
    blit_cntl |= A6XX_RB_2D_BLIT_CNTL_COLOR_FORMAT(fmt);
    blit_cntl |= A6XX_RB_2D_BLIT_CNTL_IFMT(tu6_rb_fmt_to_ifmt(fmt));
    return blit_cntl;
-}
-
-static uint32_t tu6_sp_2d_src_format(VkFormat format)
-{
-   const struct vk_format_description *desc = vk_format_description(format);
-   uint32_t reg = 0xf000 | A6XX_SP_2D_SRC_FORMAT_COLOR_FORMAT(tu6_get_native_format(format)->rb);
-
-   int channel = vk_format_get_first_non_void_channel(format);
-   if (channel < 0) {
-      /* TODO special format. */
-      return reg;
-   }
-   if (desc->channel[channel].normalized) {
-      if (desc->channel[channel].type == VK_FORMAT_TYPE_SIGNED)
-         reg |= A6XX_SP_2D_SRC_FORMAT_SINT;
-      reg |= A6XX_SP_2D_SRC_FORMAT_NORM;
-   } else if (desc->channel[channel].pure_integer) {
-      if (desc->channel[channel].type == VK_FORMAT_TYPE_SIGNED)
-         reg |= A6XX_SP_2D_SRC_FORMAT_SINT;
-      else
-         reg |= A6XX_SP_2D_SRC_FORMAT_UINT;
-   }
-   return reg;
 }
 
 static void
@@ -88,32 +59,6 @@ tu_dma_prepare(struct tu_cmd_buffer *cmdbuf)
 
    tu_cs_emit_pkt4(&cmdbuf->cs, REG_A6XX_RB_CCU_CNTL, 1);
    tu_cs_emit(&cmdbuf->cs, 0x10000000);
-}
-
-/* Always use UINT formats to avoid precision issues.
- *
- * Example failure it avoids:
- *   - dEQP-VK.api.copy_and_blit.core.image_to_image.all_formats.color.r16_unorm.r16_unorm.general_general
- */
-static VkFormat
-tu_canonical_copy_format(VkFormat format)
-{
-   switch (vk_format_get_blocksizebits(format)) {
-   case 8:
-      return VK_FORMAT_R8_UINT;
-   case 16:
-      return VK_FORMAT_R16_UINT;
-   case 32:
-      return VK_FORMAT_R32_UINT;
-   case 64:
-      return VK_FORMAT_R32G32_UINT;
-   case 96:
-      return VK_FORMAT_R32G32B32_UINT;
-   case 128:
-      return VK_FORMAT_R32G32B32A32_UINT;
-   default:
-      unreachable("unhandled format size");
-   }
 }
 
 static void
@@ -249,548 +194,80 @@ tu_copy_buffer(struct tu_cmd_buffer *cmdbuf,
    tu6_emit_event_write(cmdbuf, &cmdbuf->cs, CACHE_FLUSH_TS, true);
 }
 
-static void
-tu_copy_buffer_to_image_step(struct tu_cmd_buffer *cmdbuf,
-                             struct tu_buffer *src_buffer,
-                             struct tu_image *dst_image,
-                             const VkBufferImageCopy *copy_info,
-                             VkFormat format,
-                             uint32_t layer,
-                             uint64_t src_va)
+static struct tu_blit_surf
+tu_blit_buffer(struct tu_buffer *buffer,
+               VkFormat format,
+               const VkBufferImageCopy *info)
 {
-   const enum a6xx_color_fmt rb_fmt = tu6_get_native_format(format)->rb;
+   if (info->imageSubresource.aspectMask == VK_IMAGE_ASPECT_STENCIL_BIT)
+      format = VK_FORMAT_R8_UINT;
 
-   uint64_t dst_va = dst_image->bo->iova + dst_image->bo_offset + dst_image->layer_size * layer + dst_image->levels[copy_info->imageSubresource.mipLevel].offset;
-   unsigned dst_pitch = dst_image->levels[copy_info->imageSubresource.mipLevel].pitch *
+   unsigned pitch = (info->bufferRowLength ?: info->imageExtent.width) *
                         vk_format_get_blocksize(format);
 
-   unsigned src_pitch;
-   unsigned src_offset = 0;
-   if (copy_info->imageExtent.height == 1) {
-      /* Can't find this in the spec, but not having it is sort of insane? */
-      assert(src_va % vk_format_get_blocksize(format) == 0);
-
-      src_offset = (src_va & 63) / vk_format_get_blocksize(format);
-      src_va &= ~63;
-
-      src_pitch = align((src_offset + copy_info->imageExtent.width) * vk_format_get_blocksize(format), 64);
-   } else {
-      unsigned src_pixel_stride = copy_info->bufferRowLength
-                                  ? copy_info->bufferRowLength
-                                  : copy_info->imageExtent.width;
-      src_pitch = src_pixel_stride * vk_format_get_blocksize(format);
-      assert(!(src_pitch & 63));
-      assert(!(src_va & 63));
-   }
-
-   tu_cs_reserve_space(cmdbuf->device, &cmdbuf->cs, 48);
-
-   /*
-    * Emit source:
-    */
-   tu_cs_emit_pkt4(&cmdbuf->cs, REG_A6XX_SP_PS_2D_SRC_INFO, 13);
-   tu_cs_emit(&cmdbuf->cs, A6XX_SP_PS_2D_SRC_INFO_COLOR_FORMAT(rb_fmt) |
-                              A6XX_SP_PS_2D_SRC_INFO_TILE_MODE(TILE6_LINEAR) |
-                              A6XX_SP_PS_2D_SRC_INFO_COLOR_SWAP(WZYX) |
-                              0x500000);
-   tu_cs_emit(&cmdbuf->cs,
-              A6XX_SP_PS_2D_SRC_SIZE_WIDTH(src_offset + copy_info->imageExtent.width) |
-                 A6XX_SP_PS_2D_SRC_SIZE_HEIGHT(
-                    copy_info->imageExtent.height)); /* SP_PS_2D_SRC_SIZE */
-   tu_cs_emit_qw(&cmdbuf->cs, src_va);
-   tu_cs_emit(&cmdbuf->cs, A6XX_SP_PS_2D_SRC_PITCH_PITCH(src_pitch));
-
-   tu_cs_emit(&cmdbuf->cs, 0x00000000);
-   tu_cs_emit(&cmdbuf->cs, 0x00000000);
-   tu_cs_emit(&cmdbuf->cs, 0x00000000);
-   tu_cs_emit(&cmdbuf->cs, 0x00000000);
-   tu_cs_emit(&cmdbuf->cs, 0x00000000);
-
-   tu_cs_emit(&cmdbuf->cs, 0x00000000);
-   tu_cs_emit(&cmdbuf->cs, 0x00000000);
-   tu_cs_emit(&cmdbuf->cs, 0x00000000);
-
-   /*
-    * Emit destination:
-    */
-   tu_cs_emit_pkt4(&cmdbuf->cs, REG_A6XX_RB_2D_DST_INFO, 9);
-   tu_cs_emit(&cmdbuf->cs,
-              A6XX_RB_2D_DST_INFO_COLOR_FORMAT(rb_fmt) |
-                 A6XX_RB_2D_DST_INFO_TILE_MODE(dst_image->tile_mode) |
-                 A6XX_RB_2D_DST_INFO_COLOR_SWAP(WZYX));
-   tu_cs_emit_qw(&cmdbuf->cs, dst_va);
-   tu_cs_emit(&cmdbuf->cs, A6XX_RB_2D_DST_SIZE_PITCH(dst_pitch));
-   tu_cs_emit(&cmdbuf->cs, 0x00000000);
-   tu_cs_emit(&cmdbuf->cs, 0x00000000);
-   tu_cs_emit(&cmdbuf->cs, 0x00000000);
-   tu_cs_emit(&cmdbuf->cs, 0x00000000);
-   tu_cs_emit(&cmdbuf->cs, 0x00000000);
-
-   tu_cs_emit_pkt4(&cmdbuf->cs, REG_A6XX_GRAS_2D_SRC_TL_X, 4);
-   tu_cs_emit(&cmdbuf->cs, A6XX_GRAS_2D_SRC_TL_X_X(src_offset));
-   tu_cs_emit(&cmdbuf->cs,
-              A6XX_GRAS_2D_SRC_BR_X_X(src_offset + copy_info->imageExtent.width - 1));
-   tu_cs_emit(&cmdbuf->cs, A6XX_GRAS_2D_SRC_TL_Y_Y(0));
-   tu_cs_emit(&cmdbuf->cs,
-              A6XX_GRAS_2D_SRC_BR_Y_Y(copy_info->imageExtent.height - 1));
-
-   tu_cs_emit_pkt4(&cmdbuf->cs, REG_A6XX_GRAS_2D_DST_TL, 2);
-   tu_cs_emit(&cmdbuf->cs,
-              A6XX_GRAS_2D_DST_TL_X(copy_info->imageOffset.x) |
-                 A6XX_GRAS_2D_DST_TL_Y(copy_info->imageOffset.y));
-   tu_cs_emit(&cmdbuf->cs,
-              A6XX_GRAS_2D_DST_BR_X(copy_info->imageOffset.x +
-                                    copy_info->imageExtent.width - 1) |
-                 A6XX_GRAS_2D_DST_BR_Y(copy_info->imageOffset.y +
-                                       copy_info->imageExtent.height - 1));
-
-   tu_cs_emit_pkt7(&cmdbuf->cs, CP_EVENT_WRITE, 1);
-   tu_cs_emit(&cmdbuf->cs, 0x3f);
-   tu_cs_emit_wfi(&cmdbuf->cs);
-
-   tu_cs_emit_pkt4(&cmdbuf->cs, REG_A6XX_RB_UNKNOWN_8C01, 1);
-   tu_cs_emit(&cmdbuf->cs, 0);
-
-   tu_cs_emit_pkt4(&cmdbuf->cs, REG_A6XX_SP_2D_SRC_FORMAT, 1);
-   tu_cs_emit(&cmdbuf->cs, tu6_sp_2d_src_format(format));
-
-   tu_cs_emit_pkt4(&cmdbuf->cs, REG_A6XX_RB_UNKNOWN_8E04, 1);
-   tu_cs_emit(&cmdbuf->cs, 0x01000000);
-
-   tu_cs_emit_pkt7(&cmdbuf->cs, CP_BLIT, 1);
-   tu_cs_emit(&cmdbuf->cs, CP_BLIT_0_OP(BLIT_OP_SCALE));
-
-   tu_cs_emit_wfi(&cmdbuf->cs);
-
-   tu_cs_emit_pkt4(&cmdbuf->cs, REG_A6XX_RB_UNKNOWN_8E04, 1);
-   tu_cs_emit(&cmdbuf->cs, 0);
+   return (struct tu_blit_surf) {
+      .fmt = format,
+      .tile_mode = TILE6_LINEAR,
+      .va = buffer->bo->iova + buffer->bo_offset + info->bufferOffset,
+      .pitch = pitch,
+      .layer_size = (info->bufferImageHeight ?: info->imageExtent.height) * pitch / vk_format_get_blockwidth(format) / vk_format_get_blockheight(format),
+      .width = info->imageExtent.width,
+      .height = info->imageExtent.height,
+      .samples = 1,
+   };
 }
 
 static void
 tu_copy_buffer_to_image(struct tu_cmd_buffer *cmdbuf,
                         struct tu_buffer *src_buffer,
                         struct tu_image *dst_image,
-                        const VkBufferImageCopy *copy_info)
+                        const VkBufferImageCopy *info)
 {
-   tu_bo_list_add(&cmdbuf->bo_list, src_buffer->bo, MSM_SUBMIT_BO_READ);
-   tu_bo_list_add(&cmdbuf->bo_list, dst_image->bo, MSM_SUBMIT_BO_WRITE);
-
-   /* general setup */
-   tu_dma_prepare(cmdbuf);
-
-   tu_cs_reserve_space(cmdbuf->device, &cmdbuf->cs, 6);
-
-   /* buffer copy setup */
-   tu_cs_emit_pkt7(&cmdbuf->cs, CP_SET_MARKER, 1);
-   tu_cs_emit(&cmdbuf->cs, A6XX_CP_SET_MARKER_0_MODE(RM6_BLIT2DSCALE));
-
-   VkFormat format = tu_canonical_copy_format(dst_image->vk_format);
-   const enum a6xx_color_fmt rb_fmt = tu6_get_native_format(format)->rb;
-
-   const uint32_t blit_cntl = blit_control(rb_fmt) | 0x20000000;
-
-   tu_cs_emit_pkt4(&cmdbuf->cs, REG_A6XX_RB_2D_BLIT_CNTL, 1);
-   tu_cs_emit(&cmdbuf->cs, blit_cntl);
-
-   tu_cs_emit_pkt4(&cmdbuf->cs, REG_A6XX_GRAS_2D_BLIT_CNTL, 1);
-   tu_cs_emit(&cmdbuf->cs, blit_cntl);
-
-   unsigned src_pixel_stride = copy_info->bufferRowLength
-                                  ? copy_info->bufferRowLength
-                                  : copy_info->imageExtent.width;
-   unsigned cpp = vk_format_get_blocksize(format);
-   unsigned src_pitch = src_pixel_stride * cpp;
-
-   for (unsigned layer_offset = 0; layer_offset < copy_info->imageSubresource.layerCount; ++layer_offset) {
-      unsigned layer = copy_info->imageSubresource.baseArrayLayer + layer_offset;
-      uint64_t src_va = src_buffer->bo->iova + src_buffer->bo_offset + copy_info->bufferOffset + layer_offset * copy_info->bufferImageHeight * src_pitch;
-       
-      if ((src_pitch & 63) || (src_va & 63)) {
-         /* Do a per line copy */
-         VkBufferImageCopy line_copy_info = *copy_info;
-         line_copy_info.imageExtent.height = 1;
-         for (unsigned r = 0; r < copy_info->imageExtent.height; ++r) {
-            /*
-             * if src_va is not aligned the line copy will need to adjust. Give it
-             * room to do so.
-             */
-            unsigned max_width = 16384 - (src_va & 0x3f) ? 64 : 0;
-            line_copy_info.imageOffset.x = copy_info->imageOffset.x;
-            line_copy_info.imageExtent.width = copy_info->imageExtent.width;
-            
-            for (unsigned c = 0; c < copy_info->imageExtent.width; c += max_width) {
-               tu_copy_buffer_to_image_step(cmdbuf, src_buffer, dst_image, &line_copy_info, format, layer, src_va + c * cpp);
-
-               line_copy_info.imageOffset.x += max_width;
-               line_copy_info.imageExtent.width -= max_width;
-            }
-   
-            line_copy_info.imageOffset.y++;
-            src_va += src_pitch;
-         }
-      } else {
-         tu_copy_buffer_to_image_step(cmdbuf, src_buffer, dst_image, copy_info, format, layer, src_va);
-      }
+   if (info->imageSubresource.aspectMask == VK_IMAGE_ASPECT_STENCIL_BIT &&
+       vk_format_get_blocksize(dst_image->vk_format) == 4) {
+      tu_finishme("aspect mask\n");
+      return;
    }
 
-   tu_cs_reserve_space(cmdbuf->device, &cmdbuf->cs, 15);
-
-   tu6_emit_event_write(cmdbuf, &cmdbuf->cs, 0x1d, true);
-   tu6_emit_event_write(cmdbuf, &cmdbuf->cs, FACENESS_FLUSH, true);
-   tu6_emit_event_write(cmdbuf, &cmdbuf->cs, CACHE_FLUSH_TS, true);
-}
-
-static void
-tu_copy_image_to_buffer_step(struct tu_cmd_buffer *cmdbuf,
-                             struct tu_image *src_image,
-                             struct tu_buffer *dst_buffer,
-                             const VkBufferImageCopy *copy_info,
-                             VkFormat format,
-                             uint32_t layer,
-                             uint64_t dst_va)
-{
-   const enum a6xx_color_fmt rb_fmt = tu6_get_native_format(format)->rb;
-
-   uint64_t src_va = src_image->bo->iova + src_image->bo_offset + src_image->layer_size * layer + src_image->levels[copy_info->imageSubresource.mipLevel].offset;
-   unsigned src_pitch = src_image->levels[copy_info->imageSubresource.mipLevel].pitch *
-                        vk_format_get_blocksize(format);
-
-   unsigned dst_pitch;
-   unsigned dst_offset = 0;
-   if (copy_info->imageExtent.height == 1) {
-      /* Can't find this in the spec, but not having it is sort of insane? */
-      assert(dst_va % vk_format_get_blocksize(format) == 0);
-
-      dst_offset = (dst_va & 63) / vk_format_get_blocksize(format);
-      dst_va &= ~63;
-
-      dst_pitch = align((dst_offset + copy_info->imageExtent.width) * vk_format_get_blocksize(format), 64);
-   } else {
-      unsigned dst_pixel_stride = copy_info->bufferRowLength
-                                  ? copy_info->bufferRowLength
-                                  : copy_info->imageExtent.width;
-      dst_pitch = dst_pixel_stride * vk_format_get_blocksize(format);
-      assert(!(dst_pitch & 63));
-      assert(!(dst_va & 63));
-   }
-   
-
-   tu_cs_reserve_space(cmdbuf->device, &cmdbuf->cs, 48);
-
-   /*
-    * Emit source:
-    */
-   tu_cs_emit_pkt4(&cmdbuf->cs, REG_A6XX_SP_PS_2D_SRC_INFO, 13);
-   tu_cs_emit(&cmdbuf->cs,
-              A6XX_SP_PS_2D_SRC_INFO_COLOR_FORMAT(rb_fmt) |
-                 A6XX_SP_PS_2D_SRC_INFO_TILE_MODE(src_image->tile_mode) |
-                 A6XX_SP_PS_2D_SRC_INFO_COLOR_SWAP(WZYX) | 0x500000);
-   tu_cs_emit(&cmdbuf->cs,
-              A6XX_SP_PS_2D_SRC_SIZE_WIDTH(src_image->extent.width) |
-                 A6XX_SP_PS_2D_SRC_SIZE_HEIGHT(
-                    src_image->extent.height)); /* SP_PS_2D_SRC_SIZE */
-   tu_cs_emit_qw(&cmdbuf->cs, src_va);
-   tu_cs_emit(&cmdbuf->cs, A6XX_SP_PS_2D_SRC_PITCH_PITCH(src_pitch));
-
-   tu_cs_emit(&cmdbuf->cs, 0x00000000);
-   tu_cs_emit(&cmdbuf->cs, 0x00000000);
-   tu_cs_emit(&cmdbuf->cs, 0x00000000);
-   tu_cs_emit(&cmdbuf->cs, 0x00000000);
-   tu_cs_emit(&cmdbuf->cs, 0x00000000);
-
-   tu_cs_emit(&cmdbuf->cs, 0x00000000);
-   tu_cs_emit(&cmdbuf->cs, 0x00000000);
-   tu_cs_emit(&cmdbuf->cs, 0x00000000);
-
-   /*
-    * Emit destination:
-    */
-   tu_cs_emit_pkt4(&cmdbuf->cs, REG_A6XX_RB_2D_DST_INFO, 9);
-   tu_cs_emit(&cmdbuf->cs, A6XX_RB_2D_DST_INFO_COLOR_FORMAT(rb_fmt) |
-                              A6XX_RB_2D_DST_INFO_TILE_MODE(TILE6_LINEAR) |
-                              A6XX_RB_2D_DST_INFO_COLOR_SWAP(WZYX));
-   tu_cs_emit_qw(&cmdbuf->cs, dst_va);
-   tu_cs_emit(&cmdbuf->cs, A6XX_RB_2D_DST_SIZE_PITCH(dst_pitch));
-   tu_cs_emit(&cmdbuf->cs, 0x00000000);
-   tu_cs_emit(&cmdbuf->cs, 0x00000000);
-   tu_cs_emit(&cmdbuf->cs, 0x00000000);
-   tu_cs_emit(&cmdbuf->cs, 0x00000000);
-   tu_cs_emit(&cmdbuf->cs, 0x00000000);
-
-   tu_cs_emit_pkt4(&cmdbuf->cs, REG_A6XX_GRAS_2D_SRC_TL_X, 4);
-   tu_cs_emit(&cmdbuf->cs, A6XX_GRAS_2D_SRC_TL_X_X(copy_info->imageOffset.x));
-   tu_cs_emit(&cmdbuf->cs,
-              A6XX_GRAS_2D_SRC_BR_X_X(copy_info->imageOffset.x +
-                                      copy_info->imageExtent.width - 1));
-   tu_cs_emit(&cmdbuf->cs, A6XX_GRAS_2D_SRC_TL_Y_Y(copy_info->imageOffset.y));
-   tu_cs_emit(&cmdbuf->cs,
-              A6XX_GRAS_2D_SRC_BR_Y_Y(copy_info->imageOffset.y +
-                                      copy_info->imageExtent.height - 1));
-
-   tu_cs_emit_pkt4(&cmdbuf->cs, REG_A6XX_GRAS_2D_DST_TL, 2);
-   tu_cs_emit(&cmdbuf->cs,
-              A6XX_GRAS_2D_DST_TL_X(dst_offset) | A6XX_GRAS_2D_DST_TL_Y(0));
-   tu_cs_emit(&cmdbuf->cs,
-              A6XX_GRAS_2D_DST_BR_X(dst_offset + copy_info->imageExtent.width - 1) |
-                 A6XX_GRAS_2D_DST_BR_Y(copy_info->imageExtent.height - 1));
-
-   tu_cs_emit_pkt7(&cmdbuf->cs, CP_EVENT_WRITE, 1);
-   tu_cs_emit(&cmdbuf->cs, 0x3f);
-   tu_cs_emit_wfi(&cmdbuf->cs);
-
-   tu_cs_emit_pkt4(&cmdbuf->cs, REG_A6XX_RB_UNKNOWN_8C01, 1);
-   tu_cs_emit(&cmdbuf->cs, 0);
-
-   tu_cs_emit_pkt4(&cmdbuf->cs, REG_A6XX_SP_2D_SRC_FORMAT, 1);
-   tu_cs_emit(&cmdbuf->cs, tu6_sp_2d_src_format(format));
-
-   tu_cs_emit_pkt4(&cmdbuf->cs, REG_A6XX_RB_UNKNOWN_8E04, 1);
-   tu_cs_emit(&cmdbuf->cs, 0x01000000);
-
-   tu_cs_emit_pkt7(&cmdbuf->cs, CP_BLIT, 1);
-   tu_cs_emit(&cmdbuf->cs, CP_BLIT_0_OP(BLIT_OP_SCALE));
-
-   tu_cs_emit_wfi(&cmdbuf->cs);
-
-   tu_cs_emit_pkt4(&cmdbuf->cs, REG_A6XX_RB_UNKNOWN_8E04, 1);
-   tu_cs_emit(&cmdbuf->cs, 0);
+   tu_blit(cmdbuf, &(struct tu_blit) {
+      .dst = tu_blit_surf_ext(dst_image, info->imageSubresource, info->imageOffset, info->imageExtent),
+      .src = tu_blit_buffer(src_buffer, dst_image->vk_format, info),
+      .layers = MAX2(info->imageExtent.depth, info->imageSubresource.layerCount),
+   }, true);
 }
 
 static void
 tu_copy_image_to_buffer(struct tu_cmd_buffer *cmdbuf,
                         struct tu_image *src_image,
                         struct tu_buffer *dst_buffer,
-                        const VkBufferImageCopy *copy_info)
+                        const VkBufferImageCopy *info)
 {
-   tu_bo_list_add(&cmdbuf->bo_list, src_image->bo, MSM_SUBMIT_BO_READ);
-   tu_bo_list_add(&cmdbuf->bo_list, dst_buffer->bo, MSM_SUBMIT_BO_WRITE);
-
-   /* general setup */
-   tu_dma_prepare(cmdbuf);
-
-   tu_cs_reserve_space(cmdbuf->device, &cmdbuf->cs, 6);
-
-   /* buffer copy setup */
-   tu_cs_emit_pkt7(&cmdbuf->cs, CP_SET_MARKER, 1);
-   tu_cs_emit(&cmdbuf->cs, A6XX_CP_SET_MARKER_0_MODE(RM6_BLIT2DSCALE));
-
-   VkFormat format = tu_canonical_copy_format(src_image->vk_format);
-   const enum a6xx_color_fmt rb_fmt = tu6_get_native_format(format)->rb;
-
-   unsigned dst_pixel_stride = copy_info->bufferRowLength
-                                  ? copy_info->bufferRowLength
-                                  : copy_info->imageExtent.width;
-   unsigned cpp = vk_format_get_blocksize(format);
-   unsigned dst_pitch = dst_pixel_stride * cpp;
-
-
-   const uint32_t blit_cntl = blit_control(rb_fmt) | 0x20000000;
-
-   tu_cs_emit_pkt4(&cmdbuf->cs, REG_A6XX_RB_2D_BLIT_CNTL, 1);
-   tu_cs_emit(&cmdbuf->cs, blit_cntl);
-
-   tu_cs_emit_pkt4(&cmdbuf->cs, REG_A6XX_GRAS_2D_BLIT_CNTL, 1);
-   tu_cs_emit(&cmdbuf->cs, blit_cntl);
-
-   for (unsigned layer_offset = 0; layer_offset < copy_info->imageSubresource.layerCount; ++layer_offset) {
-       unsigned layer = copy_info->imageSubresource.baseArrayLayer + layer_offset;
-       uint64_t dst_va = dst_buffer->bo->iova + dst_buffer->bo_offset + copy_info->bufferOffset + layer_offset * copy_info->bufferImageHeight * dst_pitch;
-
-       if ((dst_pitch & 63) || (dst_va & 63)) {
-         /* Do a per line copy */
-         VkBufferImageCopy line_copy_info = *copy_info;
-         line_copy_info.imageExtent.height = 1;
-         for (unsigned r = 0; r < copy_info->imageExtent.height; ++r) {
-            /*
-             * if dst_va is not aligned the line copy will need to adjust. Give it
-             * room to do so.
-             */
-            unsigned max_width = 16384 - (dst_va & 0x3f) ? 64 : 0;
-            line_copy_info.imageOffset.x = copy_info->imageOffset.x;
-            line_copy_info.imageExtent.width = copy_info->imageExtent.width;
-
-            for (unsigned c = 0; c < copy_info->imageExtent.width; c += max_width) {
-               tu_copy_image_to_buffer_step(cmdbuf, src_image, dst_buffer, &line_copy_info, format, layer, dst_va + c * cpp);
-
-               line_copy_info.imageOffset.x += max_width;
-               line_copy_info.imageExtent.width -= max_width;
-            }
-
-            line_copy_info.imageOffset.y++;
-            dst_va += dst_pitch;
-         }
-      } else {
-         tu_copy_image_to_buffer_step(cmdbuf, src_image, dst_buffer, copy_info, format, layer, dst_va);
-      }
-   }
-
-   tu_cs_reserve_space(cmdbuf->device, &cmdbuf->cs, 15);
-
-   tu6_emit_event_write(cmdbuf, &cmdbuf->cs, 0x1d, true);
-   tu6_emit_event_write(cmdbuf, &cmdbuf->cs, FACENESS_FLUSH, true);
-   tu6_emit_event_write(cmdbuf, &cmdbuf->cs, CACHE_FLUSH_TS, true);
-}
-
-static void
-tu_copy_image_to_image_step(struct tu_cmd_buffer *cmdbuf,
-                            struct tu_image *src_image,
-                            struct tu_image *dst_image,
-                            const VkImageCopy *copy_info,
-                            VkFormat format,
-                            uint32_t layer_offset)
-{
-   const enum a6xx_color_fmt rb_fmt = tu6_get_native_format(format)->rb;
-
-   unsigned src_layer =
-      copy_info->srcSubresource.baseArrayLayer + layer_offset;
-   uint64_t src_va =
-      src_image->bo->iova + src_image->bo_offset +
-      src_image->layer_size * src_layer +
-      src_image->levels[copy_info->srcSubresource.mipLevel].offset;
-   unsigned src_pitch =
-      src_image->levels[copy_info->srcSubresource.mipLevel].pitch *
-      vk_format_get_blocksize(format);
-
-   unsigned dst_layer =
-      copy_info->dstSubresource.baseArrayLayer + layer_offset;
-   uint64_t dst_va =
-      dst_image->bo->iova + dst_image->bo_offset +
-      dst_image->layer_size * dst_layer +
-      dst_image->levels[copy_info->dstSubresource.mipLevel].offset;
-   unsigned dst_pitch =
-      src_image->levels[copy_info->dstSubresource.mipLevel].pitch *
-      vk_format_get_blocksize(format);
-
-   tu_cs_reserve_space(cmdbuf->device, &cmdbuf->cs, 48);
-
-   /*
-    * Emit source:
-    */
-   tu_cs_emit_pkt4(&cmdbuf->cs, REG_A6XX_SP_PS_2D_SRC_INFO, 13);
-   tu_cs_emit(&cmdbuf->cs,
-              A6XX_SP_PS_2D_SRC_INFO_COLOR_FORMAT(rb_fmt) |
-                 A6XX_SP_PS_2D_SRC_INFO_TILE_MODE(src_image->tile_mode) |
-                 A6XX_SP_PS_2D_SRC_INFO_COLOR_SWAP(WZYX) | 0x500000);
-   tu_cs_emit(&cmdbuf->cs,
-              A6XX_SP_PS_2D_SRC_SIZE_WIDTH(src_image->extent.width) |
-                 A6XX_SP_PS_2D_SRC_SIZE_HEIGHT(
-                    src_image->extent.height)); /* SP_PS_2D_SRC_SIZE */
-   tu_cs_emit_qw(&cmdbuf->cs, src_va);
-   tu_cs_emit(&cmdbuf->cs, A6XX_SP_PS_2D_SRC_PITCH_PITCH(src_pitch));
-
-   tu_cs_emit(&cmdbuf->cs, 0x00000000);
-   tu_cs_emit(&cmdbuf->cs, 0x00000000);
-   tu_cs_emit(&cmdbuf->cs, 0x00000000);
-   tu_cs_emit(&cmdbuf->cs, 0x00000000);
-   tu_cs_emit(&cmdbuf->cs, 0x00000000);
-
-   tu_cs_emit(&cmdbuf->cs, 0x00000000);
-   tu_cs_emit(&cmdbuf->cs, 0x00000000);
-   tu_cs_emit(&cmdbuf->cs, 0x00000000);
-
-   /*
-    * Emit destination:
-    */
-   tu_cs_emit_pkt4(&cmdbuf->cs, REG_A6XX_RB_2D_DST_INFO, 9);
-   tu_cs_emit(&cmdbuf->cs,
-              A6XX_RB_2D_DST_INFO_COLOR_FORMAT(rb_fmt) |
-                 A6XX_RB_2D_DST_INFO_TILE_MODE(dst_image->tile_mode) |
-                 A6XX_RB_2D_DST_INFO_COLOR_SWAP(WZYX));
-   tu_cs_emit_qw(&cmdbuf->cs, dst_va);
-   tu_cs_emit(&cmdbuf->cs, A6XX_RB_2D_DST_SIZE_PITCH(dst_pitch));
-   tu_cs_emit(&cmdbuf->cs, 0x00000000);
-   tu_cs_emit(&cmdbuf->cs, 0x00000000);
-   tu_cs_emit(&cmdbuf->cs, 0x00000000);
-   tu_cs_emit(&cmdbuf->cs, 0x00000000);
-   tu_cs_emit(&cmdbuf->cs, 0x00000000);
-
-   tu_cs_emit_pkt4(&cmdbuf->cs, REG_A6XX_GRAS_2D_SRC_TL_X, 4);
-   tu_cs_emit(&cmdbuf->cs, A6XX_GRAS_2D_SRC_TL_X_X(copy_info->srcOffset.x));
-   tu_cs_emit(&cmdbuf->cs,
-              A6XX_GRAS_2D_SRC_BR_X_X(copy_info->srcOffset.x +
-                                      copy_info->extent.width - 1));
-   tu_cs_emit(&cmdbuf->cs, A6XX_GRAS_2D_SRC_TL_Y_Y(copy_info->srcOffset.y));
-   tu_cs_emit(&cmdbuf->cs,
-              A6XX_GRAS_2D_SRC_BR_Y_Y(copy_info->srcOffset.y +
-                                      copy_info->extent.height - 1));
-
-   tu_cs_emit_pkt4(&cmdbuf->cs, REG_A6XX_GRAS_2D_DST_TL, 2);
-   tu_cs_emit(&cmdbuf->cs, A6XX_GRAS_2D_DST_TL_X(copy_info->dstOffset.x) |
-                              A6XX_GRAS_2D_DST_TL_Y(copy_info->dstOffset.y));
-   tu_cs_emit(&cmdbuf->cs,
-              A6XX_GRAS_2D_DST_BR_X(copy_info->dstOffset.x +
-                                    copy_info->extent.width - 1) |
-                 A6XX_GRAS_2D_DST_BR_Y(copy_info->dstOffset.y +
-                                       copy_info->extent.height - 1));
-
-   tu_cs_emit_pkt7(&cmdbuf->cs, CP_EVENT_WRITE, 1);
-   tu_cs_emit(&cmdbuf->cs, 0x3f);
-   tu_cs_emit_wfi(&cmdbuf->cs);
-
-   tu_cs_emit_pkt4(&cmdbuf->cs, REG_A6XX_RB_UNKNOWN_8C01, 1);
-   tu_cs_emit(&cmdbuf->cs, 0);
-
-   tu_cs_emit_pkt4(&cmdbuf->cs, REG_A6XX_SP_2D_SRC_FORMAT, 1);
-   tu_cs_emit(&cmdbuf->cs, tu6_sp_2d_src_format(format));
-
-   tu_cs_emit_pkt4(&cmdbuf->cs, REG_A6XX_RB_UNKNOWN_8E04, 1);
-   tu_cs_emit(&cmdbuf->cs, 0x01000000);
-
-   tu_cs_emit_pkt7(&cmdbuf->cs, CP_BLIT, 1);
-   tu_cs_emit(&cmdbuf->cs, CP_BLIT_0_OP(BLIT_OP_SCALE));
-
-   tu_cs_emit_wfi(&cmdbuf->cs);
-
-   tu_cs_emit_pkt4(&cmdbuf->cs, REG_A6XX_RB_UNKNOWN_8E04, 1);
-   tu_cs_emit(&cmdbuf->cs, 0);
+   tu_blit(cmdbuf, &(struct tu_blit) {
+      .dst = tu_blit_buffer(dst_buffer, src_image->vk_format, info),
+      .src = tu_blit_surf_ext(src_image, info->imageSubresource, info->imageOffset, info->imageExtent),
+      .layers = MAX2(info->imageExtent.depth, info->imageSubresource.layerCount),
+   }, true);
 }
 
 static void
 tu_copy_image_to_image(struct tu_cmd_buffer *cmdbuf,
                        struct tu_image *src_image,
                        struct tu_image *dst_image,
-                       const VkImageCopy *copy_info)
+                       const VkImageCopy *info)
 {
-   /* TODO:
-    *  - Handle 3D images.
-    *  - In some cases where src and dst format are different this may
-    *    have tiling implications. Not sure if things happen correctly
-    *    in that case.
-    */
-
-   tu_bo_list_add(&cmdbuf->bo_list, src_image->bo, MSM_SUBMIT_BO_READ);
-   tu_bo_list_add(&cmdbuf->bo_list, dst_image->bo, MSM_SUBMIT_BO_WRITE);
-
-   /* general setup */
-   tu_dma_prepare(cmdbuf);
-
-   tu_cs_reserve_space(cmdbuf->device, &cmdbuf->cs, 6);
-
-   /* buffer copy setup */
-   tu_cs_emit_pkt7(&cmdbuf->cs, CP_SET_MARKER, 1);
-   tu_cs_emit(&cmdbuf->cs, A6XX_CP_SET_MARKER_0_MODE(RM6_BLIT2DSCALE));
-
-   VkFormat format = tu_canonical_copy_format(src_image->vk_format);
-   const enum a6xx_color_fmt rb_fmt = tu6_get_native_format(format)->rb;
-   const uint32_t blit_cntl = blit_control(rb_fmt) | 0x20000000;
-
-   tu_cs_emit_pkt4(&cmdbuf->cs, REG_A6XX_RB_2D_BLIT_CNTL, 1);
-   tu_cs_emit(&cmdbuf->cs, blit_cntl);
-
-   tu_cs_emit_pkt4(&cmdbuf->cs, REG_A6XX_GRAS_2D_BLIT_CNTL, 1);
-   tu_cs_emit(&cmdbuf->cs, blit_cntl);
-
-   for (unsigned layer_offset = 0;
-        layer_offset < copy_info->srcSubresource.layerCount; ++layer_offset) {
-      tu_copy_image_to_image_step(cmdbuf, src_image, dst_image, copy_info,
-                                  format, layer_offset);
+   if ((info->dstSubresource.aspectMask == VK_IMAGE_ASPECT_STENCIL_BIT &&
+        vk_format_get_blocksize(dst_image->vk_format) == 4) ||
+       (info->srcSubresource.aspectMask == VK_IMAGE_ASPECT_STENCIL_BIT &&
+        vk_format_get_blocksize(src_image->vk_format) == 4)) {
+      tu_finishme("aspect mask\n");
+      return;
    }
 
-   tu_cs_reserve_space(cmdbuf->device, &cmdbuf->cs, 15);
-
-   tu6_emit_event_write(cmdbuf, &cmdbuf->cs, 0x1d, true);
-   tu6_emit_event_write(cmdbuf, &cmdbuf->cs, FACENESS_FLUSH, true);
-   tu6_emit_event_write(cmdbuf, &cmdbuf->cs, CACHE_FLUSH_TS, true);
+   tu_blit(cmdbuf, &(struct tu_blit) {
+      .dst = tu_blit_surf_ext(dst_image, info->dstSubresource, info->dstOffset, info->extent),
+      .src = tu_blit_surf_ext(src_image, info->srcSubresource, info->srcOffset, info->extent),
+      .layers = info->extent.depth,
+   }, true);
 }
 
 void
@@ -821,14 +298,15 @@ tu_CmdCopyBufferToImage(VkCommandBuffer commandBuffer,
                         uint32_t regionCount,
                         const VkBufferImageCopy *pRegions)
 {
-   TU_FROM_HANDLE(tu_cmd_buffer, cmd_buffer, commandBuffer);
-   TU_FROM_HANDLE(tu_image, dest_image, destImage);
+   TU_FROM_HANDLE(tu_cmd_buffer, cmdbuf, commandBuffer);
+   TU_FROM_HANDLE(tu_image, dst_image, destImage);
    TU_FROM_HANDLE(tu_buffer, src_buffer, srcBuffer);
 
-   for (unsigned i = 0; i < regionCount; ++i) {
-      tu_copy_buffer_to_image(cmd_buffer, src_buffer, dest_image,
-                              pRegions + i);
-   }
+   tu_bo_list_add(&cmdbuf->bo_list, src_buffer->bo, MSM_SUBMIT_BO_READ);
+   tu_bo_list_add(&cmdbuf->bo_list, dst_image->bo, MSM_SUBMIT_BO_WRITE);
+
+   for (unsigned i = 0; i < regionCount; ++i)
+      tu_copy_buffer_to_image(cmdbuf, src_buffer, dst_image, pRegions + i);
 }
 
 void
@@ -839,14 +317,15 @@ tu_CmdCopyImageToBuffer(VkCommandBuffer commandBuffer,
                         uint32_t regionCount,
                         const VkBufferImageCopy *pRegions)
 {
-   TU_FROM_HANDLE(tu_cmd_buffer, cmd_buffer, commandBuffer);
+   TU_FROM_HANDLE(tu_cmd_buffer, cmdbuf, commandBuffer);
    TU_FROM_HANDLE(tu_image, src_image, srcImage);
    TU_FROM_HANDLE(tu_buffer, dst_buffer, destBuffer);
 
-   for (unsigned i = 0; i < regionCount; ++i) {
-      tu_copy_image_to_buffer(cmd_buffer, src_image, dst_buffer,
-                              pRegions + i);
-   }
+   tu_bo_list_add(&cmdbuf->bo_list, src_image->bo, MSM_SUBMIT_BO_READ);
+   tu_bo_list_add(&cmdbuf->bo_list, dst_buffer->bo, MSM_SUBMIT_BO_WRITE);
+
+   for (unsigned i = 0; i < regionCount; ++i)
+      tu_copy_image_to_buffer(cmdbuf, src_image, dst_buffer, pRegions + i);
 }
 
 void
@@ -858,11 +337,13 @@ tu_CmdCopyImage(VkCommandBuffer commandBuffer,
                 uint32_t regionCount,
                 const VkImageCopy *pRegions)
 {
-   TU_FROM_HANDLE(tu_cmd_buffer, cmd_buffer, commandBuffer);
+   TU_FROM_HANDLE(tu_cmd_buffer, cmdbuf, commandBuffer);
    TU_FROM_HANDLE(tu_image, src_image, srcImage);
-   TU_FROM_HANDLE(tu_image, dest_image, destImage);
+   TU_FROM_HANDLE(tu_image, dst_image, destImage);
 
-   for (uint32_t i = 0; i < regionCount; ++i) {
-      tu_copy_image_to_image(cmd_buffer, src_image, dest_image, pRegions + i);
-   }
+   tu_bo_list_add(&cmdbuf->bo_list, src_image->bo, MSM_SUBMIT_BO_READ);
+   tu_bo_list_add(&cmdbuf->bo_list, dst_image->bo, MSM_SUBMIT_BO_WRITE);
+
+   for (uint32_t i = 0; i < regionCount; ++i)
+      tu_copy_image_to_image(cmdbuf, src_image, dst_image, pRegions + i);
 }
