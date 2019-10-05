@@ -13,9 +13,8 @@ $ make headers_install INSTALL_HDR_PATH=/path/to/install
 
 The last update was done at the following kernel commit :
 
-commit a5f2fafece141ef3509e686cea576366d55cabb6
-Merge: 71f4e45a4ed3 860433ed2a55
-Author: Dave Airlie <airlied@redhat.com>
-Date:   Wed Feb 20 12:16:30 2019 +1000
+commit 54ecb8f7028c5eb3d740bb82b0f1d90f2df63c5c
+Author: Linus Torvalds <torvalds@linux-foundation.org>
+Date:   Mon Sep 30 10:35:40 2019 -0700
 
-    Merge https://gitlab.freedesktop.org/drm/msm into drm-next
+    Linux 5.4-rc1
