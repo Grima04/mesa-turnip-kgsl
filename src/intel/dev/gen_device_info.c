@@ -1226,6 +1226,7 @@ gen_get_device_info_from_pci_id(int pci_id,
 #define CHIPSET(id, family, name) \
       case id: *devinfo = gen_device_info_##family; break;
 #include "pci_ids/i965_pci_ids.h"
+#include "pci_ids/iris_pci_ids.h"
    default:
       fprintf(stderr, "Driver does not support the 0x%x PCI ID.\n", pci_id);
       return false;
@@ -1276,6 +1277,7 @@ gen_get_device_name(int devid)
 #undef CHIPSET
 #define CHIPSET(id, family, name) case id: return name;
 #include "pci_ids/i965_pci_ids.h"
+#include "pci_ids/iris_pci_ids.h"
    default:
       return NULL;
    }
