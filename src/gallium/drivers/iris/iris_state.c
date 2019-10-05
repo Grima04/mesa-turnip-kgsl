@@ -748,6 +748,27 @@ iris_upload_slice_hashing_state(struct iris_batch *batch)
 }
 #endif
 
+static void
+iris_alloc_push_constants(struct iris_batch *batch)
+{
+   /* For now, we set a static partitioning of the push constant area,
+    * assuming that all stages could be in use.
+    *
+    * TODO: Try lazily allocating the HS/DS/GS sections as needed, and
+    *       see if that improves performance by offering more space to
+    *       the VS/FS when those aren't in use.  Also, try dynamically
+    *       enabling/disabling it like i965 does.  This would be more
+    *       stalls and may not actually help; we don't know yet.
+    */
+   for (int i = 0; i <= MESA_SHADER_FRAGMENT; i++) {
+      iris_emit_cmd(batch, GENX(3DSTATE_PUSH_CONSTANT_ALLOC_VS), alloc) {
+         alloc._3DCommandSubOpcode = 18 + i;
+         alloc.ConstantBufferOffset = 6 * i;
+         alloc.ConstantBufferSize = i == MESA_SHADER_FRAGMENT ? 8 : 6;
+      }
+   }
+}
+
 /**
  * Upload the initial GPU state for a render context.
  *
@@ -858,15 +879,7 @@ iris_init_render_context(struct iris_screen *screen,
    /* TODO: may need to set an offset for origin-UL framebuffers */
    iris_emit_cmd(batch, GENX(3DSTATE_POLY_STIPPLE_OFFSET), foo);
 
-   /* Set a static partitioning of the push constant area. */
-   /* TODO: this may be a bad idea...could starve the push ringbuffers... */
-   for (int i = 0; i <= MESA_SHADER_FRAGMENT; i++) {
-      iris_emit_cmd(batch, GENX(3DSTATE_PUSH_CONSTANT_ALLOC_VS), alloc) {
-         alloc._3DCommandSubOpcode = 18 + i;
-         alloc.ConstantBufferOffset = 6 * i;
-         alloc.ConstantBufferSize = i == MESA_SHADER_FRAGMENT ? 8 : 6;
-      }
-   }
+   iris_alloc_push_constants(batch);
 
 #if GEN_GEN == 10
    /* Gen11+ is enabled for us by the kernel. */
