@@ -86,7 +86,7 @@ TU_FORMAT_TABLE(tu6_format_table0) = {
    TU6_xTC(R4G4B4A4_UNORM_PACK16,      4_4_4_4_UNORM,     R4G4B4A4_UNORM,     XYZW), /* 2 */
    TU6_xTC(B4G4R4A4_UNORM_PACK16,      4_4_4_4_UNORM,     R4G4B4A4_UNORM,     ZYXW), /* 3 */
    TU6_xTC(R5G6B5_UNORM_PACK16,        5_6_5_UNORM,       R5G6B5_UNORM,       WXYZ), /* 4 */
-   TU6_xTC(B5G6R5_UNORM_PACK16,        5_6_5_UNORM,       R5G6B5_UNORM,       WXYZ), /* 5 */
+   TU6_xTC(B5G6R5_UNORM_PACK16,        5_6_5_UNORM,       R5G6B5_UNORM,       WZYX), /* 5 */
    TU6_xxx(R5G5B5A1_UNORM_PACK16,      1_5_5_5_UNORM,     A1R5G5B5_UNORM,     XYZW), /* 6 */
    TU6_xxx(B5G5R5A1_UNORM_PACK16,      1_5_5_5_UNORM,     A1R5G5B5_UNORM,     XYZW), /* 7 */
    TU6_xTC(A1R5G5B5_UNORM_PACK16,      5_5_5_1_UNORM,     R5G5B5A1_UNORM,     WXYZ), /* 8 */
@@ -178,8 +178,8 @@ TU_FORMAT_TABLE(tu6_format_table0) = {
    /* 32-bit RG */
    TU6_VTC(R16G16_UNORM,               16_16_UNORM,       R16G16_UNORM,       WZYX), /* 77 */
    TU6_VTC(R16G16_SNORM,               16_16_SNORM,       R16G16_SNORM,       WZYX), /* 78 */
-   TU6_VTx(R16G16_USCALED,             16_16_UINT,        R16G16_UINT,        WZYX), /* 79 */
-   TU6_VTx(R16G16_SSCALED,             16_16_SINT,        R16G16_SINT,        WZYX), /* 80 */
+   TU6_Vxx(R16G16_USCALED,             16_16_UINT,        R16G16_UINT,        WZYX), /* 79 */
+   TU6_Vxx(R16G16_SSCALED,             16_16_SINT,        R16G16_SINT,        WZYX), /* 80 */
    TU6_VTC(R16G16_UINT,                16_16_UINT,        R16G16_UINT,        WZYX), /* 81 */
    TU6_VTC(R16G16_SINT,                16_16_SINT,        R16G16_SINT,        WZYX), /* 82 */
    TU6_VTC(R16G16_SFLOAT,              16_16_FLOAT,       R16G16_FLOAT,       WZYX), /* 83 */
@@ -196,8 +196,8 @@ TU_FORMAT_TABLE(tu6_format_table0) = {
    /* 64-bit RGBA */
    TU6_VTC(R16G16B16A16_UNORM,         16_16_16_16_UNORM, R16G16B16A16_UNORM, WZYX), /* 91 */
    TU6_VTC(R16G16B16A16_SNORM,         16_16_16_16_SNORM, R16G16B16A16_SNORM, WZYX), /* 92 */
-   TU6_VTx(R16G16B16A16_USCALED,       16_16_16_16_UINT,  R16G16B16A16_UINT,  WZYX), /* 93 */
-   TU6_VTx(R16G16B16A16_SSCALED,       16_16_16_16_SINT,  R16G16B16A16_SINT,  WZYX), /* 94 */
+   TU6_Vxx(R16G16B16A16_USCALED,       16_16_16_16_UINT,  R16G16B16A16_UINT,  WZYX), /* 93 */
+   TU6_Vxx(R16G16B16A16_SSCALED,       16_16_16_16_SINT,  R16G16B16A16_SINT,  WZYX), /* 94 */
    TU6_VTC(R16G16B16A16_UINT,          16_16_16_16_UINT,  R16G16B16A16_UINT,  WZYX), /* 95 */
    TU6_VTC(R16G16B16A16_SINT,          16_16_16_16_SINT,  R16G16B16A16_SINT,  WZYX), /* 96 */
    TU6_VTC(R16G16B16A16_SFLOAT,        16_16_16_16_FLOAT, R16G16B16A16_FLOAT, WZYX), /* 97 */
@@ -213,9 +213,9 @@ TU_FORMAT_TABLE(tu6_format_table0) = {
    TU6_VTC(R32G32_SFLOAT,              32_32_FLOAT,       R32G32_FLOAT,       WZYX), /* 103 */
 
    /* 96-bit RGB */
-   TU6_VTx(R32G32B32_UINT,             32_32_32_UINT,     R32G32B32_UINT,     WZYX), /* 104 */
-   TU6_VTx(R32G32B32_SINT,             32_32_32_SINT,     R32G32B32_SINT,     WZYX), /* 105 */
-   TU6_VTx(R32G32B32_SFLOAT,           32_32_32_FLOAT,    R32G32B32_FLOAT,    WZYX), /* 106 */
+   TU6_Vxx(R32G32B32_UINT,             32_32_32_UINT,     R32G32B32_UINT,     WZYX), /* 104 */
+   TU6_Vxx(R32G32B32_SINT,             32_32_32_SINT,     R32G32B32_SINT,     WZYX), /* 105 */
+   TU6_Vxx(R32G32B32_SFLOAT,           32_32_32_FLOAT,    R32G32B32_FLOAT,    WZYX), /* 106 */
 
    /* 128-bit RGBA */
    TU6_VTC(R32G32B32A32_UINT,          32_32_32_32_UINT,  R32G32B32A32_UINT,  WZYX), /* 107 */
@@ -250,10 +250,10 @@ TU_FORMAT_TABLE(tu6_format_table0) = {
    TU6_xTC(D16_UNORM,                  16_UNORM,          R16_UNORM,          WZYX), /* 124 */
    TU6_xTC(X8_D24_UNORM_PACK32,        X8Z24_UNORM,       X8Z24_UNORM,        WZYX), /* 125 */
    TU6_xTC(D32_SFLOAT,                 32_FLOAT,          R32_FLOAT,          WZYX), /* 126 */
-   TU6_xTC(S8_UINT,                    8_UINT,            R8_UNORM,           WZYX), /* 127 */
+   TU6_xTC(S8_UINT,                    8_UINT,            R8_UINT,            WZYX), /* 127 */
    TU6_xxx(D16_UNORM_S8_UINT,          X8Z16_UNORM,       X8Z16_UNORM,        WZYX), /* 128 */
    TU6_xTC(D24_UNORM_S8_UINT,          X8Z24_UNORM,       X8Z24_UNORM,        WZYX), /* 129 */
-   TU6_xTC(D32_SFLOAT_S8_UINT,         32_FLOAT,          R32_FLOAT,          WZYX), /* 130 */
+   TU6_xxx(D32_SFLOAT_S8_UINT,         x,                 x,                  WZYX), /* 130 */
 
    /* compressed */
    TU6_xTx(BC1_RGB_UNORM_BLOCK,        DXT1,              DXT1,               WZYX), /* 131 */
@@ -580,7 +580,8 @@ tu_pack_clear_value(const VkClearValue *val, VkFormat format, uint32_t buf[4])
       const struct vk_format_channel_description *ch =
          tu_get_format_channel_description(desc, comp);
       if (!ch) {
-         assert(format == VK_FORMAT_S8_UINT && comp == 0);
+         assert((format == VK_FORMAT_S8_UINT && comp == 0) ||
+                (format == VK_FORMAT_X8_D24_UNORM_PACK32 && comp == 1));
          continue;
       }
 
@@ -620,14 +621,6 @@ tu_physical_device_get_format_properties(
    buffer |= VK_FORMAT_FEATURE_TRANSFER_SRC_BIT | VK_FORMAT_FEATURE_TRANSFER_DST_BIT;
    if (native_fmt->vtx >= 0) {
       buffer |= VK_FORMAT_FEATURE_VERTEX_BUFFER_BIT;
-   }
-
-   /*
-    * The non-power-of-two formats cannot be copied, so to make sure nothing
-    * broken is allowed don't allow these formats at all.
-    */
-   if (!util_is_power_of_two_or_zero(vk_format_get_blocksizebits(format))) {
-      goto end;
    }
 
    if (native_fmt->tex >= 0 || native_fmt->rb >= 0) {
