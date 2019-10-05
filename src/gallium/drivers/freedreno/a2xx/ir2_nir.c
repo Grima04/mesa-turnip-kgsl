@@ -504,12 +504,6 @@ load_input(struct ir2_context *ctx, nir_dest *dst, unsigned idx)
 	assert(slot >= 0);
 
 	switch (slot) {
-	case VARYING_SLOT_PNTC:
-		/* need to extract with abs */
-		instr = instr_create_alu_dest(ctx, nir_op_mov, dst);
-		instr->src[0] = ir2_src(ctx->f->inputs_count, IR2_SWIZZLE_ZW, IR2_SRC_INPUT);
-		instr->src[0].abs = true;
-		break;
 	case VARYING_SLOT_POS:
 		/* need to extract xy with abs and add tile offset on a20x
 		 * zw from fragcoord input (w inverted in fragment shader)
@@ -638,6 +632,13 @@ emit_intrinsic(struct ir2_context *ctx, nir_intrinsic_instr *intr)
 		instr->src[0] = ir2_src(tmp->idx, 0, IR2_SRC_SSA);
 		instr->src[1] = ir2_zero(ctx);
 		break;
+	case nir_intrinsic_load_point_coord:
+		/* param.zw (note: abs might be needed like fragcoord in param.xy?) */
+		ctx->so->need_param = true;
+
+		instr = instr_create_alu_dest(ctx, nir_op_mov, &intr->dest);
+		instr->src[0] = ir2_src(ctx->f->inputs_count, IR2_SWIZZLE_ZW, IR2_SRC_INPUT);
+		break;
 	default:
 		compile_error(ctx, "unimplemented intr %d\n", intr->intrinsic);
 		break;
@@ -758,11 +759,6 @@ setup_input(struct ir2_context *ctx, nir_variable * in)
 
 	if (ctx->so->type != MESA_SHADER_FRAGMENT)
 		compile_error(ctx, "unknown shader type: %d\n", ctx->so->type);
-
-	if (slot == VARYING_SLOT_PNTC) {
-		so->need_param = true;
-		return;
-	}
 
 	n = ctx->f->inputs_count++;
 
