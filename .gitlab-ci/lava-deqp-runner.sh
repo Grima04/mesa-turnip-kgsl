@@ -34,7 +34,7 @@ done < /deqp/deqp-$GPU_VERSION-skips.txt
                 --test-names-file=/tmp/case-list.txt \
                 --results-file=/tmp/results.txt \
                 --no-passed-results \
-                --regression-file=/deqp/deqp-panfrost-$GPU_VERSION-fails.txt \
+                --regression-file=/deqp/deqp-$GPU_VERSION-fails.txt \
                 --no-rerun-tests \
                 --print-regression \
                 --no-print-fail \
