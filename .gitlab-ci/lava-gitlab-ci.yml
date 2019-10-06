@@ -113,6 +113,7 @@ lava-container:arm64:
     # Pack rootfs
     - cp .gitlab-ci/lava-deqp-runner.sh /artifacts/rootfs/deqp/.
     - cp .gitlab-ci/deqp-*-fails.txt /artifacts/rootfs/deqp/.
+    - cp .gitlab-ci/deqp-*-skips.txt /artifacts/rootfs/deqp/.
     - du -sh /artifacts/rootfs/deqp/*
     - find /artifacts/rootfs/ -type f -printf "%s\t%p\n" | sort -n
     - pushd /artifacts/rootfs/ ; find -H  |  cpio -H newc -v -o | gzip -c - > $CI_PROJECT_DIR/results/panfrost-rootfs-${DEBIAN_ARCH}.cpio.gz; popd
