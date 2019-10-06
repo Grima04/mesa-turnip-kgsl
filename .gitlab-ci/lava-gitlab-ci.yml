@@ -160,7 +160,6 @@ lava-build:arm64:
 
 .lava-test:
   stage: test
-  image: $CI_REGISTRY_IMAGE/debian/$LAVA_DEBIAN_VERSION:arm64-$LAVA_IMAGE_TAG  # Any of the images will be fine
   extends:
     - .ci-run-policy
   variables:
@@ -179,6 +178,7 @@ lava-build:arm64:
       - results/
 
 panfrost-t760-test:armhf:
+  image: $CI_REGISTRY_IMAGE/debian/$LAVA_DEBIAN_VERSION:armhf-$LAVA_IMAGE_TAG
   extends: .lava-test
   needs: ["lava-build:armhf"]
   dependencies:
@@ -187,6 +187,7 @@ panfrost-t760-test:armhf:
     - lava-rk3288-veyron-jaq
 
 panfrost-t860-test:arm64:
+  image: $CI_REGISTRY_IMAGE/debian/$LAVA_DEBIAN_VERSION:arm64-$LAVA_IMAGE_TAG
   extends: .lava-test
   needs: ["lava-build:arm64"]
   dependencies:
