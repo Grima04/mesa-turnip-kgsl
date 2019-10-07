@@ -148,7 +148,7 @@ functions = {
     # OpenGL 4.3 / GL_ARB_framebuffer_no_attachments.  Mesa can expose the
     # extension with OpenGL 3.0.
     "FramebufferParameteri": exec_info(compatibility=30, core=31, es2=31),
-    "GetFramebufferParameteri": exec_info(compatibility=30, core=31, es2=31),
+    "GetFramebufferParameteriv": exec_info(compatibility=30, core=31, es2=31),
 
     # OpenGL 4.5 / GL_ARB_direct_state_access.   Mesa can expose the extension
     # with core profile.
