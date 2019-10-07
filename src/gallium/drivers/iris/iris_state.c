@@ -5751,15 +5751,14 @@ iris_upload_render_state(struct iris_context *ice,
             uint32_t mi_predicate;
 
             /* Upload the id of the current primitive to MI_PREDICATE_SRC1. */
-            ice->vtbl.load_register_imm64(batch, MI_PREDICATE_SRC1,
-                                          draw->drawid);
+            iris_load_register_imm64(batch, MI_PREDICATE_SRC1, draw->drawid);
             /* Upload the current draw count from the draw parameters buffer
              * to MI_PREDICATE_SRC0.
              */
-            ice->vtbl.load_register_mem32(batch, MI_PREDICATE_SRC0,
-                                          draw_count_bo, draw_count_offset);
+            iris_load_register_mem32(batch, MI_PREDICATE_SRC0,
+                                     draw_count_bo, draw_count_offset);
             /* Zero the top 32-bits of MI_PREDICATE_SRC0 */
-            ice->vtbl.load_register_imm32(batch, MI_PREDICATE_SRC0 + 4, 0);
+            iris_load_register_imm32(batch, MI_PREDICATE_SRC0 + 4, 0);
 
             if (draw->drawid == 0) {
                mi_predicate = MI_PREDICATE | MI_PREDICATE_LOADOP_LOADINV |
