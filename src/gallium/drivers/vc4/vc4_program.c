@@ -1806,11 +1806,6 @@ ntq_emit_intrinsic(struct vc4_compile *c, nir_intrinsic_instr *instr)
                                            0));
                 break;
 
-        case nir_intrinsic_load_alpha_ref_float:
-                ntq_store_dest(c, &instr->dest, 0,
-                               qir_uniform(c, QUNIFORM_ALPHA_REF, 0));
-                break;
-
         case nir_intrinsic_load_sample_mask_in:
                 ntq_store_dest(c, &instr->dest, 0,
                                qir_uniform(c, QUNIFORM_SAMPLE_MASK, 0));
@@ -2253,16 +2248,8 @@ vc4_shader_ntq(struct vc4_context *vc4, enum qstage stage,
 
         c->s = nir_shader_clone(c, key->shader_state->base.ir.nir);
 
-        if (stage == QSTAGE_FRAG) {
-                if (c->fs_key->alpha_test_func != COMPARE_FUNC_ALWAYS) {
-                        NIR_PASS_V(c->s, nir_lower_alpha_test,
-                                   c->fs_key->alpha_test_func,
-                                   c->fs_key->sample_alpha_to_one &&
-                                   c->fs_key->msaa,
-                                   NULL);
-                }
+        if (stage == QSTAGE_FRAG)
                 NIR_PASS_V(c->s, vc4_nir_lower_blend, c);
-        }
 
         struct nir_lower_tex_options tex_options = {
                 /* We would need to implement txs, but we don't want the
