@@ -259,6 +259,9 @@ v3d_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
         case PIPE_CAP_UMA:
                 return 1;
 
+        case PIPE_CAP_ALPHA_TEST:
+                return 0;
+
         /* Geometry shaders */
         case PIPE_CAP_MAX_GEOMETRY_TOTAL_OUTPUT_COMPONENTS:
                 /* Minimum required by GLES 3.2 */
