@@ -5539,29 +5539,6 @@ iris_upload_render_state(struct iris_context *ice,
 {
    bool use_predicate = ice->state.predicate == IRIS_PREDICATE_STATE_USE_BIT;
 
-   UNUSED const struct gen_device_info *devinfo = &batch->screen->devinfo;
-
-   /* The Skylake PRM's Workarounds section (#878) says:
-    *
-    *   "Push constant buffer corruption possible. WA: Insert 2 zero-length
-    *    PushConst_PS before every intended PushConst_PS update, issue a
-    *    NULLPRIM after each of the zero len PC update to make sure CS commits
-    *    them."
-    *
-    * This workaround is attempting to solve a pixel shader push constant
-    * synchronization issue.
-    *
-    * An unpublished WA suggests re-emitting 3DSTATE_PUSH_CONSTANT_ALLOC_PS
-    * for every 500 or so 3DSTATE_CONSTANT_PS packets.  Since our counting
-    * methods may not be reliable due to context-switching and pre-emption,
-    * we instead choose to approximate this behavior by re-emitting the
-    * packet on the first regular draw of the batch.
-    */
-   if (GEN_GEN == 9 && !batch->contains_draw &&
-       (devinfo->is_skylake || gen_device_info_is_9lp(devinfo))) {
-      iris_alloc_push_constants(batch);
-   }
-
    /* Always pin the binder.  If we're emitting new binding table pointers,
     * we need it.  If not, we're probably inheriting old tables via the
     * context, and need it anyway.  Since true zero-bindings cases are
