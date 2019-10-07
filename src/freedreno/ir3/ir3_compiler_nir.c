@@ -1979,20 +1979,21 @@ emit_tex(struct ir3_context *ctx, nir_tex_instr *tex)
 }
 
 static void
-emit_tex_query_levels(struct ir3_context *ctx, nir_tex_instr *tex)
+emit_tex_info(struct ir3_context *ctx, nir_tex_instr *tex, unsigned idx)
 {
 	struct ir3_block *b = ctx->block;
 	struct ir3_instruction **dst, *sam;
 
 	dst = ir3_get_dst(ctx, &tex->dest, 1);
 
-	sam = ir3_SAM(b, OPC_GETINFO, TYPE_U32, 0b0100, 0,
+	sam = ir3_SAM(b, OPC_GETINFO, TYPE_U32, 1 << idx, 0,
 			get_tex_samp_tex_src(ctx, tex), NULL, NULL);
 
 	/* even though there is only one component, since it ends
-	 * up in .z rather than .x, we need a split_dest()
+	 * up in .y/.z/.w rather than .x, we need a split_dest()
 	 */
-	ir3_split_dest(b, dst, sam, 0, 3);
+	if (idx)
+		ir3_split_dest(b, dst, sam, 0, idx + 1);
 
 	/* The # of levels comes from getinfo.z. We need to add 1 to it, since
 	 * the value in TEX_CONST_0 is zero-based.
@@ -2093,7 +2094,10 @@ emit_instr(struct ir3_context *ctx, nir_instr *instr)
 			emit_tex_txs(ctx, tex);
 			break;
 		case nir_texop_query_levels:
-			emit_tex_query_levels(ctx, tex);
+			emit_tex_info(ctx, tex, 2);
+			break;
+		case nir_texop_texture_samples:
+			emit_tex_info(ctx, tex, 3);
 			break;
 		default:
 			emit_tex(ctx, tex);
