@@ -323,7 +323,40 @@ tu_shader_create(struct tu_device *dev,
       nir_print_shader(nir, stderr);
    }
 
-   /* TODO what needs to happen? */
+   /* multi step inlining procedure */
+   NIR_PASS_V(nir, nir_lower_constant_initializers, nir_var_function_temp);
+   NIR_PASS_V(nir, nir_lower_returns);
+   NIR_PASS_V(nir, nir_inline_functions);
+   NIR_PASS_V(nir, nir_opt_deref);
+   foreach_list_typed_safe(nir_function, func, node, &nir->functions) {
+      if (!func->is_entrypoint)
+         exec_node_remove(&func->node);
+   }
+   assert(exec_list_length(&nir->functions) == 1);
+   NIR_PASS_V(nir, nir_lower_constant_initializers, ~nir_var_function_temp);
+
+   /* Split member structs.  We do this before lower_io_to_temporaries so that
+    * it doesn't lower system values to temporaries by accident.
+    */
+   NIR_PASS_V(nir, nir_split_var_copies);
+   NIR_PASS_V(nir, nir_split_per_member_structs);
+
+   NIR_PASS_V(nir, nir_remove_dead_variables,
+              nir_var_shader_in | nir_var_shader_out | nir_var_system_value | nir_var_mem_shared);
+
+   NIR_PASS_V(nir, nir_propagate_invariant);
+
+   NIR_PASS_V(nir, nir_lower_io_to_temporaries, nir_shader_get_entrypoint(nir), true, true);
+
+   NIR_PASS_V(nir, nir_lower_global_vars_to_local);
+   NIR_PASS_V(nir, nir_split_var_copies);
+   NIR_PASS_V(nir, nir_lower_var_copies);
+
+   NIR_PASS_V(nir, nir_opt_copy_prop_vars);
+   NIR_PASS_V(nir, nir_opt_combine_stores, nir_var_all);
+
+   /* ir3 doesn't support indirect input/output */
+   NIR_PASS_V(nir, nir_lower_indirect_derefs, nir_var_shader_in | nir_var_shader_out);
 
    switch (stage) {
    case MESA_SHADER_VERTEX:
@@ -352,14 +385,24 @@ tu_shader_create(struct tu_device *dev,
    nir_assign_var_locations(&nir->uniforms, &nir->num_uniforms,
                             ir3_glsl_type_size);
 
-   NIR_PASS_V(nir, nir_opt_copy_prop_vars);
-
    NIR_PASS_V(nir, nir_lower_system_values);
    NIR_PASS_V(nir, nir_lower_frexp);
 
    NIR_PASS_V(nir, tu_lower_io, shader);
 
    NIR_PASS_V(nir, nir_lower_io, nir_var_all, ir3_glsl_type_size, 0);
+
+   if (stage == MESA_SHADER_FRAGMENT) {
+      /* NOTE: lower load_barycentric_at_sample first, since it
+       * produces load_barycentric_at_offset:
+       */
+      NIR_PASS_V(nir, ir3_nir_lower_load_barycentric_at_sample);
+      NIR_PASS_V(nir, ir3_nir_lower_load_barycentric_at_offset);
+
+      NIR_PASS_V(nir, ir3_nir_move_varying_inputs);
+   }
+
+   NIR_PASS_V(nir, nir_lower_io_arrays_to_elements_no_indirects, false);
 
    nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));
 
@@ -401,8 +444,10 @@ tu_shader_compile_options_init(
    *options = (struct tu_shader_compile_options) {
       /* TODO ir3_key */
 
-      .optimize = !(pipeline_info->flags &
-                    VK_PIPELINE_CREATE_DISABLE_OPTIMIZATION_BIT),
+      /* TODO: VK_PIPELINE_CREATE_DISABLE_OPTIMIZATION_BIT
+       * some optimizations need to happen otherwise shader might not compile
+       */
+      .optimize = true,
       .include_binning_pass = true,
    };
 }
