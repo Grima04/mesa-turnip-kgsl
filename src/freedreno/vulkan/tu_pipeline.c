@@ -1570,12 +1570,13 @@ tu_pipeline_builder_parse_shader_stages(struct tu_pipeline_builder *builder,
       struct ir3_shader *shader = builder->shaders[i]->variants[0].shader;
 
       link->ubo_state = shader->ubo_state;
+      link->const_state = shader->const_state;
       link->constlen = builder->shaders[i]->variants[0].constlen;
-      link->offset_ubo = shader->const_state.offsets.ubo;
-      link->num_ubo = shader->const_state.num_ubos;
       link->texture_map = builder->shaders[i]->texture_map;
       link->sampler_map = builder->shaders[i]->sampler_map;
       link->ubo_map = builder->shaders[i]->ubo_map;
+      link->ssbo_map = builder->shaders[i]->ssbo_map;
+      link->image_mapping =  builder->shaders[i]->variants[0].image_mapping;
    }
 }
 

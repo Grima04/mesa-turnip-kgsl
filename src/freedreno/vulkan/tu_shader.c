@@ -249,24 +249,31 @@ lower_intrinsic(nir_builder *b, nir_intrinsic_instr *instr,
       return false;
 
    nir_const_value *const_val = nir_src_as_const_value(instr->src[0]);
-   if (!const_val || const_val->u32 != 0) {
+   if (!const_val || const_val->u32 != 0)
       tu_finishme("non-zero vulkan_resource_index array index");
-      return false;
+
+
+   unsigned set = nir_intrinsic_desc_set(instr);
+   unsigned binding = nir_intrinsic_binding(instr);
+   unsigned index = 0;
+
+   switch (nir_intrinsic_desc_type(instr)) {
+   case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+   case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+      /* skip index 0 which is used for push constants */
+      index = map_add(&shader->ubo_map, set, binding) + 1;
+      break;
+   case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+   case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+      index = map_add(&shader->ssbo_map, set, binding);
+      break;
+   default:
+      tu_finishme("unsupported desc_type for vulkan_resource_index");
+      break;
    }
 
-   if (nir_intrinsic_desc_type(instr) != VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER) {
-      tu_finishme("non-ubo vulkan_resource_index");
-      return false;
-   }
-
-   unsigned index = map_add(&shader->ubo_map,
-                            nir_intrinsic_desc_set(instr),
-                            nir_intrinsic_binding(instr));
-
-   b->cursor = nir_before_instr(&instr->instr);
-   /* skip index 0 because ir3 treats it differently */
    nir_ssa_def_rewrite_uses(&instr->dest.ssa,
-                            nir_src_for_ssa(nir_imm_int(b, index + 1)));
+                            nir_src_for_ssa(nir_imm_int(b, index)));
    nir_instr_remove(&instr->instr);
 
    return true;

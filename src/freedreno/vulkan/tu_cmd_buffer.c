@@ -1749,6 +1749,8 @@ tu_CmdBindDescriptorSets(VkCommandBuffer commandBuffer,
                          const uint32_t *pDynamicOffsets)
 {
    TU_FROM_HANDLE(tu_cmd_buffer, cmd_buffer, commandBuffer);
+   TU_FROM_HANDLE(tu_pipeline_layout, layout, _layout);
+   unsigned dyn_idx = 0;
 
    struct tu_descriptor_state *descriptors_state =
       tu_get_descriptors_state(cmd_buffer, pipelineBindPoint);
@@ -1759,6 +1761,14 @@ tu_CmdBindDescriptorSets(VkCommandBuffer commandBuffer,
 
       descriptors_state->sets[idx] = set;
       descriptors_state->valid |= (1u << idx);
+
+      for(unsigned j = 0; j < set->layout->dynamic_offset_count; ++j, ++dyn_idx) {
+         unsigned idx = j + layout->set[i + firstSet].dynamic_offset_start;
+         assert(dyn_idx < dynamicOffsetCount);
+
+         descriptors_state->dynamic_buffers[idx] =
+         set->dynamic_descriptors[j].va + pDynamicOffsets[dyn_idx];
+      }
    }
 
    cmd_buffer->state.dirty |= TU_CMD_DIRTY_DESCRIPTOR_SETS;
@@ -2206,17 +2216,79 @@ struct tu_draw_state_group
    struct tu_cs_entry ib;
 };
 
-static uint32_t*
-map_get(struct tu_descriptor_state *descriptors_state,
-        const struct tu_descriptor_map *map, unsigned i)
+static struct tu_sampler*
+sampler_ptr(struct tu_descriptor_state *descriptors_state,
+            const struct tu_descriptor_map *map, unsigned i)
 {
    assert(descriptors_state->valid & (1 << map->set[i]));
 
    struct tu_descriptor_set *set = descriptors_state->sets[map->set[i]];
-
    assert(map->binding[i] < set->layout->binding_count);
 
-   return &set->mapped_ptr[set->layout->binding[map->binding[i]].offset / 4];
+   const struct tu_descriptor_set_binding_layout *layout =
+      &set->layout->binding[map->binding[i]];
+
+   switch (layout->type) {
+   case VK_DESCRIPTOR_TYPE_SAMPLER:
+      return (struct tu_sampler*) &set->mapped_ptr[layout->offset / 4];
+   case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
+      return (struct tu_sampler*) &set->mapped_ptr[layout->offset / 4 + A6XX_TEX_CONST_DWORDS];
+   default:
+      unreachable("unimplemented descriptor type");
+      break;
+   }
+}
+
+static uint32_t*
+texture_ptr(struct tu_descriptor_state *descriptors_state,
+            const struct tu_descriptor_map *map, unsigned i)
+{
+   assert(descriptors_state->valid & (1 << map->set[i]));
+
+   struct tu_descriptor_set *set = descriptors_state->sets[map->set[i]];
+   assert(map->binding[i] < set->layout->binding_count);
+
+   const struct tu_descriptor_set_binding_layout *layout =
+      &set->layout->binding[map->binding[i]];
+
+   switch (layout->type) {
+   case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+   case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
+      return &set->mapped_ptr[layout->offset / 4];
+   case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+   case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+      return &set->mapped_ptr[layout->offset / 4];
+   default:
+      unreachable("unimplemented descriptor type");
+      break;
+   }
+}
+
+static uint64_t
+buffer_ptr(struct tu_descriptor_state *descriptors_state,
+           const struct tu_descriptor_map *map,
+           unsigned i)
+{
+   assert(descriptors_state->valid & (1 << map->set[i]));
+
+   struct tu_descriptor_set *set = descriptors_state->sets[map->set[i]];
+   assert(map->binding[i] < set->layout->binding_count);
+
+   const struct tu_descriptor_set_binding_layout *layout =
+      &set->layout->binding[map->binding[i]];
+
+   switch (layout->type) {
+   case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+   case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+      return descriptors_state->dynamic_buffers[layout->dynamic_offset_offset];
+   case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+   case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+      return (uint64_t) set->mapped_ptr[layout->offset / 4 + 1] << 32 |
+                        set->mapped_ptr[layout->offset / 4];
+   default:
+      unreachable("unimplemented descriptor type");
+      break;
+   }
 }
 
 static inline uint32_t
@@ -2266,8 +2338,6 @@ tu6_emit_user_consts(struct tu_cs *cs, const struct tu_pipeline *pipeline,
 
    for (uint32_t i = 0; i < ARRAY_SIZE(state->range); i++) {
       if (state->range[i].start < state->range[i].end) {
-         uint32_t *ptr = map_get(descriptors_state, &link->ubo_map, i - 1);
-
          uint32_t size = state->range[i].end - state->range[i].start;
          uint32_t offset = state->range[i].start;
 
@@ -2299,13 +2369,15 @@ tu6_emit_user_consts(struct tu_cs *cs, const struct tu_pipeline *pipeline,
             continue;
          }
 
+         uint64_t va = buffer_ptr(descriptors_state, &link->ubo_map, i - 1);
+
          tu_cs_emit_pkt7(cs, tu6_stage2opcode(type), 3);
          tu_cs_emit(cs, CP_LOAD_STATE6_0_DST_OFF(state->range[i].offset / 16) |
                CP_LOAD_STATE6_0_STATE_TYPE(ST6_CONSTANTS) |
                CP_LOAD_STATE6_0_STATE_SRC(SS6_INDIRECT) |
                CP_LOAD_STATE6_0_STATE_BLOCK(tu6_stage2shadersb(type)) |
                CP_LOAD_STATE6_0_NUM_UNIT(size / 16));
-         tu_cs_emit_qw(cs, ((uint64_t) ptr[1] << 32 | ptr[0]) + offset);
+         tu_cs_emit_qw(cs, va + offset);
       }
    }
 }
@@ -2318,14 +2390,15 @@ tu6_emit_ubos(struct tu_cs *cs, const struct tu_pipeline *pipeline,
    const struct tu_program_descriptor_linkage *link =
       &pipeline->program.link[type];
 
-   uint32_t anum = align(link->ubo_map.num, 2);
+   uint32_t num = MIN2(link->ubo_map.num, link->const_state.num_ubos);
+   uint32_t anum = align(num, 2);
    uint32_t i;
 
-   if (!link->ubo_map.num)
+   if (!num)
       return;
 
    tu_cs_emit_pkt7(cs, tu6_stage2opcode(type), 3 + (2 * anum));
-   tu_cs_emit(cs, CP_LOAD_STATE6_0_DST_OFF(link->offset_ubo) |
+   tu_cs_emit(cs, CP_LOAD_STATE6_0_DST_OFF(link->const_state.offsets.ubo) |
          CP_LOAD_STATE6_0_STATE_TYPE(ST6_CONSTANTS) |
          CP_LOAD_STATE6_0_STATE_SRC(SS6_DIRECT) |
          CP_LOAD_STATE6_0_STATE_BLOCK(tu6_stage2shadersb(type)) |
@@ -2333,11 +2406,8 @@ tu6_emit_ubos(struct tu_cs *cs, const struct tu_pipeline *pipeline,
    tu_cs_emit(cs, CP_LOAD_STATE6_1_EXT_SRC_ADDR(0));
    tu_cs_emit(cs, CP_LOAD_STATE6_2_EXT_SRC_ADDR_HI(0));
 
-   for (i = 0; i < link->ubo_map.num; i++) {
-      uint32_t *ptr = map_get(descriptors_state, &link->ubo_map, i);
-      tu_cs_emit(cs, ptr[0]);
-      tu_cs_emit(cs, ptr[1]);
-   }
+   for (i = 0; i < num; i++)
+      tu_cs_emit_qw(cs, buffer_ptr(descriptors_state, &link->ubo_map, i));
 
    for (; i < anum; i++) {
       tu_cs_emit(cs, 0xffffffff);
@@ -2407,15 +2477,14 @@ tu6_emit_textures(struct tu_device *device, struct tu_cs *draw_state,
    tu_cs_begin_sub_stream(device, draw_state, size, &cs);
 
    for (unsigned i = 0; i < link->texture_map.num; i++) {
-      uint32_t *ptr = map_get(descriptors_state, &link->texture_map, i);
+      uint32_t *ptr = texture_ptr(descriptors_state, &link->texture_map, i);
 
       for (unsigned j = 0; j < A6XX_TEX_CONST_DWORDS; j++)
          tu_cs_emit(&cs, ptr[j]);
    }
 
    for (unsigned i = 0; i < link->sampler_map.num; i++) {
-      uint32_t *ptr = map_get(descriptors_state, &link->sampler_map, i);
-      struct tu_sampler *sampler = (void*) &ptr[A6XX_TEX_CONST_DWORDS];
+      struct tu_sampler *sampler = sampler_ptr(descriptors_state, &link->sampler_map, i);
 
       for (unsigned j = 0; j < A6XX_TEX_SAMP_DWORDS; j++)
          tu_cs_emit(&cs, sampler->state[j]);

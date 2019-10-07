@@ -65,12 +65,24 @@ static uint32_t
 descriptor_size(enum VkDescriptorType type)
 {
    switch (type) {
+   case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+   case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+      return 0;
    case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
-      /* UBO pointer */
+   case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+   case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+   case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+      /* 64bit pointer */
       return 8;
+   case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+   case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+   case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
+      return A6XX_TEX_CONST_DWORDS*4;
    case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
       /* texture const + tu_sampler struct (includes border color) */
       return A6XX_TEX_CONST_DWORDS*4 + sizeof(struct tu_sampler);
+   case VK_DESCRIPTOR_TYPE_SAMPLER:
+      return sizeof(struct tu_sampler);
    default:
       unreachable("unknown descriptor type\n");
       return 0;
@@ -95,12 +107,19 @@ tu_CreateDescriptorSetLayout(
          DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO_EXT);
 
    uint32_t max_binding = 0;
-   for (uint32_t j = 0; j < pCreateInfo->bindingCount; j++)
+   uint32_t immutable_sampler_count = 0;
+   for (uint32_t j = 0; j < pCreateInfo->bindingCount; j++) {
       max_binding = MAX2(max_binding, pCreateInfo->pBindings[j].binding);
+      if ((pCreateInfo->pBindings[j].descriptorType == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER ||
+           pCreateInfo->pBindings[j].descriptorType == VK_DESCRIPTOR_TYPE_SAMPLER) &&
+           pCreateInfo->pBindings[j].pImmutableSamplers) {
+         immutable_sampler_count += pCreateInfo->pBindings[j].descriptorCount;
+      }
+   }
 
-   uint32_t size =
-      sizeof(struct tu_descriptor_set_layout) +
+   uint32_t samplers_offset = sizeof(struct tu_descriptor_set_layout) +
       (max_binding + 1) * sizeof(set_layout->binding[0]);
+   uint32_t size = samplers_offset + immutable_sampler_count * sizeof(struct tu_sampler);
 
    set_layout = vk_alloc2(&device->alloc, pAllocator, size, 8,
                           VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
@@ -110,8 +129,7 @@ tu_CreateDescriptorSetLayout(
    set_layout->flags = pCreateInfo->flags;
 
    /* We just allocate all the samplers at the end of the struct */
-   uint32_t *samplers = (uint32_t *) &set_layout->binding[max_binding + 1];
-   (void) samplers; /* TODO: Use me */
+   struct tu_sampler *samplers = (void*) &set_layout->binding[max_binding + 1];
 
    VkDescriptorSetLayoutBinding *bindings = create_sorted_bindings(
       pCreateInfo->pBindings, pCreateInfo->bindingCount);
@@ -135,8 +153,18 @@ tu_CreateDescriptorSetLayout(
    for (uint32_t j = 0; j < pCreateInfo->bindingCount; j++) {
       const VkDescriptorSetLayoutBinding *binding = bindings + j;
       uint32_t b = binding->binding;
-      uint32_t alignment = 8;
+      uint32_t alignment = 4;
       unsigned binding_buffer_count = 1;
+
+      switch (binding->descriptorType) {
+      case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+      case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+         assert(!(pCreateInfo->flags & VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR));
+         set_layout->binding[b].dynamic_offset_count = 1;
+         break;
+      default:
+         break;
+      }
 
       set_layout->size = align(set_layout->size, alignment);
       set_layout->binding[b].type = binding->descriptorType;
@@ -154,6 +182,19 @@ tu_CreateDescriptorSetLayout(
          assert(binding->binding == max_binding);
 
          set_layout->has_variable_descriptors = true;
+      }
+
+      if ((binding->descriptorType == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER ||
+           binding->descriptorType == VK_DESCRIPTOR_TYPE_SAMPLER) &&
+          binding->pImmutableSamplers) {
+         set_layout->binding[b].immutable_samplers_offset = samplers_offset;
+         set_layout->has_immutable_samplers = true;
+
+         for (uint32_t i = 0; i < binding->descriptorCount; i++)
+            samplers[i] = *tu_sampler_from_handle(binding->pImmutableSamplers[i]);
+
+         samplers += binding->descriptorCount;
+         samplers_offset += sizeof(struct tu_sampler) * binding->descriptorCount;
       }
 
       set_layout->size +=
@@ -472,6 +513,14 @@ tu_CreateDescriptorPool(VkDevice _device,
       if (pCreateInfo->pPoolSizes[i].type != VK_DESCRIPTOR_TYPE_SAMPLER)
          bo_count += pCreateInfo->pPoolSizes[i].descriptorCount;
 
+      switch(pCreateInfo->pPoolSizes[i].type) {
+      case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+      case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+         range_count += pCreateInfo->pPoolSizes[i].descriptorCount;
+      default:
+         break;
+      }
+
       bo_size += descriptor_size(pCreateInfo->pPoolSizes[i].type) *
                            pCreateInfo->pPoolSizes[i].descriptorCount;
    }
@@ -623,6 +672,17 @@ tu_FreeDescriptorSets(VkDevice _device,
    return VK_SUCCESS;
 }
 
+static void write_texel_buffer_descriptor(struct tu_device *device,
+                                          struct tu_cmd_buffer *cmd_buffer,
+                                          unsigned *dst,
+                                          struct tu_bo **buffer_list,
+                                          const VkBufferView _buffer_view)
+{
+   TU_FROM_HANDLE(tu_buffer_view, buffer_view, _buffer_view);
+
+   tu_finishme("texel buffer descriptor");
+}
+
 static void write_buffer_descriptor(struct tu_device *device,
                                     struct tu_cmd_buffer *cmd_buffer,
                                     unsigned *dst,
@@ -642,10 +702,29 @@ static void write_buffer_descriptor(struct tu_device *device,
       *buffer_list = buffer->bo;
 }
 
+static void write_dynamic_buffer_descriptor(struct tu_device *device,
+                                            struct tu_descriptor_range *range,
+                                            struct tu_bo **buffer_list,
+                                            const VkDescriptorBufferInfo *buffer_info)
+{
+   TU_FROM_HANDLE(tu_buffer, buffer, buffer_info->buffer);
+   uint64_t va = buffer->bo->iova;
+   unsigned size = buffer_info->range;
+
+   if (buffer_info->range == VK_WHOLE_SIZE)
+      size = buffer->size - buffer_info->offset;
+
+   va += buffer_info->offset + buffer->bo_offset;
+   range->va = va;
+   range->size = size;
+
+   *buffer_list = buffer->bo;
+}
+
 static void
 write_image_descriptor(struct tu_device *device,
              struct tu_cmd_buffer *cmd_buffer,
-             unsigned size, unsigned *dst,
+             unsigned *dst,
              struct tu_bo **buffer_list,
              VkDescriptorType descriptor_type,
              const VkDescriptorImageInfo *image_info)
@@ -679,12 +758,22 @@ write_combined_image_sampler_descriptor(struct tu_device *device,
 {
    TU_FROM_HANDLE(tu_sampler, sampler, image_info->sampler);
 
-   write_image_descriptor(device, cmd_buffer, sampler_offset, dst, buffer_list,
+   write_image_descriptor(device, cmd_buffer, dst, buffer_list,
                           descriptor_type, image_info);
    /* copy over sampler state */
    if (has_sampler) {
       memcpy(dst + sampler_offset / sizeof(*dst), sampler, sizeof(*sampler));
    }
+}
+
+static void
+write_sampler_descriptor(struct tu_device *device,
+                         unsigned *dst,
+                         const VkDescriptorImageInfo *image_info)
+{
+   TU_FROM_HANDLE(tu_sampler, sampler, image_info->sampler);
+
+   memcpy(dst, sampler, sizeof(*sampler));
 }
 
 void
@@ -706,6 +795,8 @@ tu_update_descriptor_sets(struct tu_device *device,
       uint32_t *ptr = set->mapped_ptr;
       struct tu_bo **buffer_list = set->descriptors;
 
+      const struct tu_sampler *samplers = tu_immutable_samplers(set->layout, binding_layout);
+
       ptr += binding_layout->offset / 4;
 
       ptr += binding_layout->size * writeset->dstArrayElement / 4;
@@ -713,9 +804,32 @@ tu_update_descriptor_sets(struct tu_device *device,
       buffer_list += writeset->dstArrayElement;
       for (j = 0; j < writeset->descriptorCount; ++j) {
          switch(writeset->descriptorType) {
+         case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+         case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC: {
+            unsigned idx = writeset->dstArrayElement + j;
+            idx += binding_layout->dynamic_offset_offset;
+            assert(!(set->layout->flags & VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR));
+            write_dynamic_buffer_descriptor(device, set->dynamic_descriptors + idx,
+                        buffer_list, writeset->pBufferInfo + j);
+            break;
+         }
+
          case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+         case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
             write_buffer_descriptor(device, cmd_buffer, ptr, buffer_list,
                      writeset->pBufferInfo + j);
+            break;
+         case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+         case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+            write_texel_buffer_descriptor(device, cmd_buffer, ptr, buffer_list,
+                     writeset->pTexelBufferView[j]);
+            break;
+         case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+         case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+         case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
+            write_image_descriptor(device, cmd_buffer, ptr, buffer_list,
+                                   writeset->descriptorType,
+                                   writeset->pImageInfo + j);
             break;
          case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
             write_combined_image_sampler_descriptor(device, cmd_buffer,
@@ -724,6 +838,14 @@ tu_update_descriptor_sets(struct tu_device *device,
                                                     writeset->descriptorType,
                                                     writeset->pImageInfo + j,
                                                     !binding_layout->immutable_samplers_offset);
+            if (binding_layout->immutable_samplers_offset) {
+               const unsigned idx = writeset->dstArrayElement + j;
+               memcpy((char*)ptr + A6XX_TEX_CONST_DWORDS*4, &samplers[idx],
+                      sizeof(struct tu_sampler));
+            }
+            break;
+         case VK_DESCRIPTOR_TYPE_SAMPLER:
+            write_sampler_descriptor(device, ptr, writeset->pImageInfo + j);
             break;
          default:
             unreachable("unimplemented descriptor type");

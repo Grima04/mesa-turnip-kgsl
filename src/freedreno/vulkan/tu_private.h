@@ -779,7 +779,7 @@ struct tu_descriptor_state
    uint32_t valid;
    struct tu_push_descriptor_set push_set;
    bool push_dirty;
-   uint32_t dynamic_buffers[4 * MAX_DYNAMIC_BUFFERS];
+   uint64_t dynamic_buffers[MAX_DYNAMIC_BUFFERS];
 };
 
 struct tu_tile
@@ -962,7 +962,6 @@ static inline struct tu_descriptor_state *
 tu_get_descriptors_state(struct tu_cmd_buffer *cmd_buffer,
                          VkPipelineBindPoint bind_point)
 {
-   assert(bind_point == VK_PIPELINE_BIND_POINT_GRAPHICS);
    return &cmd_buffer->descriptors[bind_point];
 }
 
@@ -1034,9 +1033,10 @@ struct tu_shader_compile_options
 
 struct tu_descriptor_map
 {
+   /* TODO: avoid fixed size array/justify the size */
    unsigned num;
-   int set[32];
-   int binding[32];
+   int set[64];
+   int binding[64];
 };
 
 struct tu_shader
@@ -1046,6 +1046,7 @@ struct tu_shader
    struct tu_descriptor_map texture_map;
    struct tu_descriptor_map sampler_map;
    struct tu_descriptor_map ubo_map;
+   struct tu_descriptor_map ssbo_map;
 
    /* This may be true for vertex shaders.  When true, variants[1] is the
     * binning variant and binning_binary is non-NULL.
@@ -1084,15 +1085,15 @@ tu_shader_compile(struct tu_device *dev,
 struct tu_program_descriptor_linkage
 {
    struct ir3_ubo_analysis_state ubo_state;
+   struct ir3_const_state const_state;
 
    uint32_t constlen;
-
-   uint32_t offset_ubo; /* ubo pointers const offset */
-   uint32_t num_ubo; /* number of ubo pointers */
 
    struct tu_descriptor_map texture_map;
    struct tu_descriptor_map sampler_map;
    struct tu_descriptor_map ubo_map;
+   struct tu_descriptor_map ssbo_map;
+   struct ir3_ibo_mapping image_mapping;
 };
 
 struct tu_pipeline
