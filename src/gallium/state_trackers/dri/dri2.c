@@ -1873,6 +1873,36 @@ static const __DRI2interopExtension dri2InteropExtension = {
 };
 
 /**
+ * \brief the DRI2bufferDamageExtension set_damage_region method
+ */
+static void
+dri2_set_damage_region(__DRIdrawable *dPriv, unsigned int nrects, int *rects)
+{
+   struct dri_drawable *drawable = dri_drawable(dPriv);
+   struct pipe_resource *resource = drawable->textures[ST_ATTACHMENT_BACK_LEFT];
+   struct pipe_screen *screen = resource->screen;
+   struct pipe_box *boxes = NULL;
+
+   if (nrects) {
+      boxes = CALLOC(nrects, sizeof(*boxes));
+      assert(boxes);
+
+      for (unsigned int i = 0; i < nrects; i++) {
+         int *rect = &rects[i * 4];
+
+         u_box_2d(rect[0], rect[1], rect[2], rect[3], &boxes[i]);
+      }
+   }
+
+   screen->set_damage_region(screen, resource, nrects, boxes);
+   FREE(boxes);
+}
+
+static __DRI2bufferDamageExtension dri2BufferDamageExtension = {
+   .base = { __DRI2_BUFFER_DAMAGE, 1 },
+};
+
+/**
  * \brief the DRI2ConfigQueryExtension configQueryb method
  */
 static int
@@ -1973,6 +2003,7 @@ static const __DRIextension *dri_screen_extensions[] = {
    &dri2GalliumConfigQueryExtension.base,
    &dri2ThrottleExtension.base,
    &dri2FenceExtension.base,
+   &dri2BufferDamageExtension.base,
    &dri2InteropExtension.base,
    &dri2NoErrorExtension.base,
    &driBlobExtension.base,
@@ -1988,6 +2019,7 @@ static const __DRIextension *dri_robust_screen_extensions[] = {
    &dri2ThrottleExtension.base,
    &dri2FenceExtension.base,
    &dri2InteropExtension.base,
+   &dri2BufferDamageExtension.base,
    &dri2Robustness.base,
    &dri2NoErrorExtension.base,
    &driBlobExtension.base,
@@ -2049,6 +2081,9 @@ dri2_init_screen(__DRIscreen * sPriv)
          }
       }
    }
+
+   if (pscreen->set_damage_region)
+      dri2BufferDamageExtension.set_damage_region = dri2_set_damage_region;
 
    if (pscreen->get_param(pscreen, PIPE_CAP_DEVICE_RESET_STATUS_QUERY)) {
       sPriv->extensions = dri_robust_screen_extensions;
