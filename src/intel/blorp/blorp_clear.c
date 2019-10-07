@@ -754,14 +754,16 @@ blorp_clear_depth_stencil(struct blorp_batch *batch,
 }
 
 bool
-blorp_can_hiz_clear_depth(uint8_t gen, enum isl_format format,
-                          uint32_t num_samples,
+blorp_can_hiz_clear_depth(const struct gen_device_info *devinfo,
+                          const struct isl_surf *surf,
+                          enum isl_aux_usage aux_usage,
+                          uint32_t level, uint32_t layer,
                           uint32_t x0, uint32_t y0, uint32_t x1, uint32_t y1)
 {
    /* This function currently doesn't support any gen prior to gen8 */
-   assert(gen >= 8);
+   assert(devinfo->gen >= 8);
 
-   if (gen == 8 && format == ISL_FORMAT_R16_UNORM) {
+   if (devinfo->gen == 8 && surf->format == ISL_FORMAT_R16_UNORM) {
       /* Apply the D16 alignment restrictions. On BDW, HiZ has an 8x4 sample
        * block with the following property: as the number of samples increases,
        * the number of pixels representable by this block decreases by a factor
@@ -780,7 +782,7 @@ blorp_can_hiz_clear_depth(uint8_t gen, enum isl_format format,
        * Table: Pixel Dimensions in a HiZ Sample Block Pre-SKL
        */
       const struct isl_extent2d sa_block_dim =
-         isl_get_interleaved_msaa_px_size_sa(num_samples);
+         isl_get_interleaved_msaa_px_size_sa(surf->samples);
       const uint8_t align_px_w = 8 / sa_block_dim.w;
       const uint8_t align_px_h = 4 / sa_block_dim.h;
 
@@ -801,7 +803,8 @@ blorp_can_hiz_clear_depth(uint8_t gen, enum isl_format format,
           x1 % align_px_w || y1 % align_px_h)
          return false;
    }
-   return true;
+
+   return isl_aux_usage_has_hiz(aux_usage);
 }
 
 void

@@ -419,12 +419,11 @@ depth_stencil_attachment_compute_aux_usage(struct anv_device *device,
       anv_layout_to_aux_usage(&device->info, iview->image,
                               VK_IMAGE_ASPECT_DEPTH_BIT,
                               pass_att->first_subpass_layout);
-   if (first_subpass_aux_usage != ISL_AUX_USAGE_HIZ)
-      return;
-
-   if (!blorp_can_hiz_clear_depth(GEN_GEN,
-                                  iview->planes[0].isl.format,
-                                  iview->image->samples,
+   if (!blorp_can_hiz_clear_depth(&device->info,
+                                  &iview->image->planes[0].surface.isl,
+                                  first_subpass_aux_usage,
+                                  iview->planes[0].isl.base_level,
+                                  iview->planes[0].isl.base_array_layer,
                                   render_area.offset.x,
                                   render_area.offset.y,
                                   render_area.offset.x +
