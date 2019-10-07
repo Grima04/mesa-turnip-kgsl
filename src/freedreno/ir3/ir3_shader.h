@@ -440,7 +440,7 @@ struct ir3_shader_variant {
 		uint8_t slot;
 		uint8_t regid;
 		bool    half : 1;
-	} outputs[16 + 2];  /* +POSITION +PSIZE */
+	} outputs[32 + 2];  /* +POSITION +PSIZE */
 	bool writes_pos, writes_smask, writes_psize;
 
 	/* attributes (VS) / varyings (FS):
@@ -465,7 +465,7 @@ struct ir3_shader_variant {
 		bool    use_ldlv   : 1;   /* internal to ir3_compiler_nir */
 		bool    half       : 1;
 		enum glsl_interp_mode interpolate;
-	} inputs[16 + 2];  /* +POSITION +FACE */
+	} inputs[32 + 2];  /* +POSITION +FACE */
 
 	/* sum of input components (scalar).  For frag shaders, it only counts
 	 * the varying inputs:
