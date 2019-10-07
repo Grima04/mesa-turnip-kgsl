@@ -407,6 +407,9 @@ can_fast_clear_depth(struct iris_context *ice,
                      float depth)
 {
    struct pipe_resource *p_res = (void *) res;
+   struct pipe_context *ctx = (void *) ice;
+   struct iris_screen *screen = (void *) ctx->screen;
+   const struct gen_device_info *devinfo = &screen->devinfo;
 
    if (INTEL_DEBUG & DEBUG_NO_FAST_CLEAR)
       return false;
@@ -421,7 +424,10 @@ can_fast_clear_depth(struct iris_context *ice,
    if (!(res->aux.has_hiz & (1 << level)))
       return false;
 
-   return true;
+   return blorp_can_hiz_clear_depth(devinfo, &res->surf, res->aux.usage,
+                                    level, box->z, box->x, box->y,
+                                    box->x + box->width,
+                                    box->y + box->height);
 }
 
 static void
