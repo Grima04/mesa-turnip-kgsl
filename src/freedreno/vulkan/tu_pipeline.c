@@ -365,7 +365,7 @@ tu6_emit_vs_config(struct tu_cs *cs, const struct ir3_shader_variant *vs)
       A6XX_SP_VS_CTRL_REG0_FULLREGFOOTPRINT(vs->info.max_reg + 1) |
       A6XX_SP_VS_CTRL_REG0_MERGEDREGS |
       A6XX_SP_VS_CTRL_REG0_BRANCHSTACK(vs->branchstack);
-   if (vs->num_samp)
+   if (vs->need_pixlod)
       sp_vs_ctrl |= A6XX_SP_VS_CTRL_REG0_PIXLODENABLE;
 
    uint32_t sp_vs_config = A6XX_SP_VS_CONFIG_NTEX(vs->num_samp) |
@@ -381,7 +381,8 @@ tu6_emit_vs_config(struct tu_cs *cs, const struct ir3_shader_variant *vs)
    tu_cs_emit(cs, vs->instrlen);
 
    tu_cs_emit_pkt4(cs, REG_A6XX_HLSQ_VS_CNTL, 1);
-   tu_cs_emit(cs, A6XX_HLSQ_VS_CNTL_CONSTLEN(align(vs->constlen, 4)) | 0x100);
+   tu_cs_emit(cs, A6XX_HLSQ_VS_CNTL_CONSTLEN(align(vs->constlen, 4)) |
+                  A6XX_HLSQ_VS_CNTL_ENABLED);
 }
 
 static void
@@ -445,7 +446,7 @@ tu6_emit_fs_config(struct tu_cs *cs, const struct ir3_shader_variant *fs)
       A6XX_SP_FS_CTRL_REG0_BRANCHSTACK(fs->branchstack);
    if (fs->total_in > 0 || fs->frag_coord)
       sp_fs_ctrl |= A6XX_SP_FS_CTRL_REG0_VARYING;
-   if (fs->num_samp > 0)
+   if (fs->need_pixlod)
       sp_fs_ctrl |= A6XX_SP_FS_CTRL_REG0_PIXLODENABLE;
 
    uint32_t sp_fs_config = A6XX_SP_FS_CONFIG_NTEX(fs->num_samp) |
@@ -454,7 +455,7 @@ tu6_emit_fs_config(struct tu_cs *cs, const struct ir3_shader_variant *fs)
       sp_fs_config |= A6XX_SP_FS_CONFIG_ENABLED;
 
    tu_cs_emit_pkt4(cs, REG_A6XX_SP_UNKNOWN_A99E, 1);
-   tu_cs_emit(cs, 0x7fc0);
+   tu_cs_emit(cs, 0);
 
    tu_cs_emit_pkt4(cs, REG_A6XX_SP_UNKNOWN_A9A8, 1);
    tu_cs_emit(cs, 0);
@@ -470,7 +471,8 @@ tu6_emit_fs_config(struct tu_cs *cs, const struct ir3_shader_variant *fs)
    tu_cs_emit(cs, fs->instrlen);
 
    tu_cs_emit_pkt4(cs, REG_A6XX_HLSQ_FS_CNTL, 1);
-   tu_cs_emit(cs, A6XX_HLSQ_FS_CNTL_CONSTLEN(align(fs->constlen, 4)) | 0x100);
+   tu_cs_emit(cs, A6XX_HLSQ_FS_CNTL_CONSTLEN(align(fs->constlen, 4)) |
+                  A6XX_HLSQ_FS_CNTL_ENABLED);
 }
 
 static void
@@ -676,47 +678,46 @@ tu6_emit_vpc_varying_modes(struct tu_cs *cs,
    tu_cs_emit_array(cs, ps_repl_modes, 8);
 }
 
-static void
-tu6_emit_fs_system_values(struct tu_cs *cs,
-                          const struct ir3_shader_variant *fs)
-{
-   const uint32_t frontfacing_regid =
-      ir3_find_sysval_regid(fs, SYSTEM_VALUE_FRONT_FACE);
-   const uint32_t sampleid_regid =
-      ir3_find_sysval_regid(fs, SYSTEM_VALUE_SAMPLE_ID);
-   const uint32_t samplemaskin_regid =
-      ir3_find_sysval_regid(fs, SYSTEM_VALUE_SAMPLE_MASK_IN);
-   const uint32_t fragcoord_xy_regid =
-      ir3_find_sysval_regid(fs, SYSTEM_VALUE_FRAG_COORD);
-   const uint32_t fragcoord_zw_regid = (fragcoord_xy_regid != regid(63, 0))
-                                          ? (fragcoord_xy_regid + 2)
-                                          : fragcoord_xy_regid;
-   const uint32_t varyingcoord_regid =
-      ir3_find_sysval_regid(fs, SYSTEM_VALUE_BARYCENTRIC_PIXEL);
-
-   tu_cs_emit_pkt4(cs, REG_A6XX_HLSQ_CONTROL_1_REG, 5);
-   tu_cs_emit(cs, 0x7);
-   tu_cs_emit(cs, A6XX_HLSQ_CONTROL_2_REG_FACEREGID(frontfacing_regid) |
-                     A6XX_HLSQ_CONTROL_2_REG_SAMPLEID(sampleid_regid) |
-                     A6XX_HLSQ_CONTROL_2_REG_SAMPLEMASK(samplemaskin_regid) |
-                     A6XX_HLSQ_CONTROL_2_REG_SIZE(regid(63, 0)));
-   tu_cs_emit(cs,
-                 A6XX_HLSQ_CONTROL_3_REG_BARY_IJ_PIXEL(varyingcoord_regid) |
-                 A6XX_HLSQ_CONTROL_3_REG_BARY_IJ_CENTROID(regid(63, 0)) |
-                 0xfc00fc00);
-   tu_cs_emit(cs,
-              A6XX_HLSQ_CONTROL_4_REG_XYCOORDREGID(fragcoord_xy_regid) |
-                 A6XX_HLSQ_CONTROL_4_REG_ZWCOORDREGID(fragcoord_zw_regid) |
-                 A6XX_HLSQ_CONTROL_4_REG_BARY_IJ_PIXEL_PERSAMP(regid(63, 0)) |
-                 0x0000fc00);
-   tu_cs_emit(cs, 0xfc);
-}
+#define VALIDREG(r)      ((r) != regid(63,0))
+#define CONDREG(r, val)  COND(VALIDREG(r), (val))
 
 static void
 tu6_emit_fs_inputs(struct tu_cs *cs, const struct ir3_shader_variant *fs)
 {
+   uint32_t face_regid, coord_regid, zwcoord_regid, samp_id_regid;
+   uint32_t ij_pix_regid, ij_samp_regid, ij_cent_regid, ij_size_regid;
+   uint32_t smask_in_regid;
+
+   bool sample_shading = fs->per_samp; /* TODO | key->sample_shading; */
+   bool enable_varyings = fs->total_in > 0;
+
+   samp_id_regid   = ir3_find_sysval_regid(fs, SYSTEM_VALUE_SAMPLE_ID);
+   smask_in_regid  = ir3_find_sysval_regid(fs, SYSTEM_VALUE_SAMPLE_MASK_IN);
+   face_regid      = ir3_find_sysval_regid(fs, SYSTEM_VALUE_FRONT_FACE);
+   coord_regid     = ir3_find_sysval_regid(fs, SYSTEM_VALUE_FRAG_COORD);
+   zwcoord_regid   = VALIDREG(coord_regid) ? coord_regid + 2 : regid(63, 0);
+   ij_pix_regid    = ir3_find_sysval_regid(fs, SYSTEM_VALUE_BARYCENTRIC_PIXEL);
+   ij_samp_regid   = ir3_find_sysval_regid(fs, SYSTEM_VALUE_BARYCENTRIC_SAMPLE);
+   ij_cent_regid   = ir3_find_sysval_regid(fs, SYSTEM_VALUE_BARYCENTRIC_CENTROID);
+   ij_size_regid   = ir3_find_sysval_regid(fs, SYSTEM_VALUE_BARYCENTRIC_SIZE);
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_HLSQ_CONTROL_1_REG, 5);
+   tu_cs_emit(cs, 0x7);
+   tu_cs_emit(cs, A6XX_HLSQ_CONTROL_2_REG_FACEREGID(face_regid) |
+                  A6XX_HLSQ_CONTROL_2_REG_SAMPLEID(samp_id_regid) |
+                  A6XX_HLSQ_CONTROL_2_REG_SAMPLEMASK(smask_in_regid) |
+                  A6XX_HLSQ_CONTROL_2_REG_SIZE(ij_size_regid));
+   tu_cs_emit(cs, A6XX_HLSQ_CONTROL_3_REG_BARY_IJ_PIXEL(ij_pix_regid) |
+                  A6XX_HLSQ_CONTROL_3_REG_BARY_IJ_CENTROID(ij_cent_regid) |
+                  0xfc00fc00);
+   tu_cs_emit(cs, A6XX_HLSQ_CONTROL_4_REG_XYCOORDREGID(coord_regid) |
+                  A6XX_HLSQ_CONTROL_4_REG_ZWCOORDREGID(zwcoord_regid) |
+                  A6XX_HLSQ_CONTROL_4_REG_BARY_IJ_PIXEL_PERSAMP(ij_samp_regid) |
+                  0x0000fc00);
+   tu_cs_emit(cs, 0xfc);
+
    tu_cs_emit_pkt4(cs, REG_A6XX_HLSQ_UNKNOWN_B980, 1);
-   tu_cs_emit(cs, fs->total_in > 0 ? 3 : 1);
+   tu_cs_emit(cs, enable_varyings ? 3 : 1);
 
    tu_cs_emit_pkt4(cs, REG_A6XX_SP_UNKNOWN_A982, 1);
    tu_cs_emit(cs, 0); /* XXX */
@@ -724,33 +725,41 @@ tu6_emit_fs_inputs(struct tu_cs *cs, const struct ir3_shader_variant *fs)
    tu_cs_emit_pkt4(cs, REG_A6XX_HLSQ_UPDATE_CNTL, 1);
    tu_cs_emit(cs, 0xff); /* XXX */
 
-   uint32_t gras_cntl = 0;
-   if (fs->total_in > 0)
-      gras_cntl |= A6XX_GRAS_CNTL_VARYING;
-   if (fs->frag_coord) {
-      gras_cntl |= A6XX_GRAS_CNTL_SIZE | A6XX_GRAS_CNTL_XCOORD |
-                   A6XX_GRAS_CNTL_YCOORD | A6XX_GRAS_CNTL_ZCOORD |
-                   A6XX_GRAS_CNTL_WCOORD;
-   }
-
    tu_cs_emit_pkt4(cs, REG_A6XX_GRAS_CNTL, 1);
-   tu_cs_emit(cs, gras_cntl);
-
-   uint32_t rb_render_control = 0;
-   if (fs->total_in > 0) {
-      rb_render_control =
-         A6XX_RB_RENDER_CONTROL0_VARYING | A6XX_RB_RENDER_CONTROL0_UNK10;
-   }
-   if (fs->frag_coord) {
-      rb_render_control |=
-         A6XX_RB_RENDER_CONTROL0_SIZE | A6XX_RB_RENDER_CONTROL0_XCOORD |
-         A6XX_RB_RENDER_CONTROL0_YCOORD | A6XX_RB_RENDER_CONTROL0_ZCOORD |
-         A6XX_RB_RENDER_CONTROL0_WCOORD;
-   }
+   tu_cs_emit(cs,
+         CONDREG(ij_pix_regid, A6XX_GRAS_CNTL_VARYING) |
+         CONDREG(ij_cent_regid, A6XX_GRAS_CNTL_CENTROID) |
+         CONDREG(ij_samp_regid, A6XX_GRAS_CNTL_PERSAMP_VARYING) |
+         COND(VALIDREG(ij_size_regid) && !sample_shading, A6XX_GRAS_CNTL_SIZE) |
+         COND(VALIDREG(ij_size_regid) &&  sample_shading, A6XX_GRAS_CNTL_SIZE_PERSAMP) |
+         COND(fs->frag_coord,
+               A6XX_GRAS_CNTL_SIZE |
+               A6XX_GRAS_CNTL_XCOORD |
+               A6XX_GRAS_CNTL_YCOORD |
+               A6XX_GRAS_CNTL_ZCOORD |
+               A6XX_GRAS_CNTL_WCOORD) |
+         COND(fs->frag_face, A6XX_GRAS_CNTL_SIZE));
 
    tu_cs_emit_pkt4(cs, REG_A6XX_RB_RENDER_CONTROL0, 2);
-   tu_cs_emit(cs, rb_render_control);
-   tu_cs_emit(cs, (fs->frag_face ? A6XX_RB_RENDER_CONTROL1_FACENESS : 0));
+   tu_cs_emit(cs,
+         CONDREG(ij_pix_regid, A6XX_RB_RENDER_CONTROL0_VARYING) |
+         CONDREG(ij_cent_regid, A6XX_RB_RENDER_CONTROL0_CENTROID) |
+         CONDREG(ij_samp_regid, A6XX_RB_RENDER_CONTROL0_PERSAMP_VARYING) |
+         COND(enable_varyings, A6XX_RB_RENDER_CONTROL0_UNK10) |
+         COND(VALIDREG(ij_size_regid) && !sample_shading, A6XX_RB_RENDER_CONTROL0_SIZE) |
+         COND(VALIDREG(ij_size_regid) &&  sample_shading, A6XX_RB_RENDER_CONTROL0_SIZE_PERSAMP) |
+         COND(fs->frag_coord,
+               A6XX_RB_RENDER_CONTROL0_SIZE |
+               A6XX_RB_RENDER_CONTROL0_XCOORD |
+               A6XX_RB_RENDER_CONTROL0_YCOORD |
+               A6XX_RB_RENDER_CONTROL0_ZCOORD |
+               A6XX_RB_RENDER_CONTROL0_WCOORD) |
+         COND(fs->frag_face, A6XX_RB_RENDER_CONTROL0_SIZE));
+   tu_cs_emit(cs,
+         CONDREG(smask_in_regid, A6XX_RB_RENDER_CONTROL1_SAMPLEMASK) |
+         CONDREG(samp_id_regid, A6XX_RB_RENDER_CONTROL1_SAMPLEID) |
+         CONDREG(ij_size_regid, A6XX_RB_RENDER_CONTROL1_SIZE) |
+         COND(fs->frag_face, A6XX_RB_RENDER_CONTROL1_FACENESS));
 }
 
 static void
@@ -758,8 +767,11 @@ tu6_emit_fs_outputs(struct tu_cs *cs,
                     const struct ir3_shader_variant *fs,
                     uint32_t mrt_count)
 {
-   const uint32_t fragdepth_regid =
-      ir3_find_output_regid(fs, FRAG_RESULT_DEPTH);
+   uint32_t smask_regid, posz_regid;
+
+   posz_regid      = ir3_find_output_regid(fs, FRAG_RESULT_DEPTH);
+   smask_regid     = ir3_find_output_regid(fs, FRAG_RESULT_SAMPLE_MASK);
+
    uint32_t fragdata_regid[8];
    if (fs->color0_mrt) {
       fragdata_regid[0] = ir3_find_output_regid(fs, FRAG_RESULT_COLOR);
@@ -771,8 +783,9 @@ tu6_emit_fs_outputs(struct tu_cs *cs,
    }
 
    tu_cs_emit_pkt4(cs, REG_A6XX_SP_FS_OUTPUT_CNTL0, 2);
-   tu_cs_emit(
-      cs, A6XX_SP_FS_OUTPUT_CNTL0_DEPTH_REGID(fragdepth_regid) | 0xfcfc0000);
+   tu_cs_emit(cs, A6XX_SP_FS_OUTPUT_CNTL0_DEPTH_REGID(posz_regid) |
+                  A6XX_SP_FS_OUTPUT_CNTL0_SAMPMASK_REGID(smask_regid) |
+                  0xfc000000);
    tu_cs_emit(cs, A6XX_SP_FS_OUTPUT_CNTL1_MRT(mrt_count));
 
    tu_cs_emit_pkt4(cs, REG_A6XX_SP_FS_OUTPUT_REG(0), 8);
@@ -963,7 +976,6 @@ tu6_emit_program(struct tu_cs *cs,
    tu6_emit_vs_system_values(cs, vs);
    tu6_emit_vpc(cs, vs, fs, binning_pass);
    tu6_emit_vpc_varying_modes(cs, fs, binning_pass);
-   tu6_emit_fs_system_values(cs, fs);
    tu6_emit_fs_inputs(cs, fs);
    tu6_emit_fs_outputs(cs, fs, builder->color_attachment_count);
 
