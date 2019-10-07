@@ -486,15 +486,6 @@ loader_get_driver_for_fd(int fd)
          }
    }
 
-   driver = loader_get_kernel_driver_name(fd);
-   bool is_amdgpu = driver && strcmp(driver, "amdgpu") == 0;
-   free(driver);
-
-   if (is_amdgpu)
-      driver = strdup("radeonsi");
-   else
-      driver = NULL;
-
 out:
    log_(driver ? _LOADER_DEBUG : _LOADER_WARNING,
          "pci id for fd %d: %04x:%04x, driver %s\n",
