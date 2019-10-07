@@ -1063,6 +1063,13 @@ void radv_GetPhysicalDeviceFeatures2(
 			features->pipelineExecutableInfo = true;
 			break;
 		}
+		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_CLOCK_FEATURES_KHR: {
+			VkPhysicalDeviceShaderClockFeaturesKHR *features =
+				(VkPhysicalDeviceShaderClockFeaturesKHR *)ext;
+			features->shaderSubgroupClock = true;
+			features->shaderDeviceClock = false;
+			break;
+		}
 		default:
 			break;
 		}
