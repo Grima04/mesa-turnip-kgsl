@@ -2209,16 +2209,13 @@ tu6_emit_user_consts(struct tu_cs *cs, const struct tu_pipeline *pipeline,
          debug_assert((size % 16) == 0);
          debug_assert((offset % 16) == 0);
 
-         uint64_t addr = (uint64_t) ptr[1] << 32 | ptr[0];
-         addr += state->range[i].offset;
-
          tu_cs_emit_pkt7(cs, tu6_stage2opcode(type), 3);
          tu_cs_emit(cs, CP_LOAD_STATE6_0_DST_OFF(state->range[i].offset / 16) |
                CP_LOAD_STATE6_0_STATE_TYPE(ST6_CONSTANTS) |
                CP_LOAD_STATE6_0_STATE_SRC(SS6_INDIRECT) |
                CP_LOAD_STATE6_0_STATE_BLOCK(tu6_stage2shadersb(type)) |
                CP_LOAD_STATE6_0_NUM_UNIT(size / 16));
-         tu_cs_emit_qw(cs, addr);
+         tu_cs_emit_qw(cs, ((uint64_t) ptr[1] << 32 | ptr[0]) + offset);
       }
    }
 }

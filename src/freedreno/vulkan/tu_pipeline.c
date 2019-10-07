@@ -904,6 +904,10 @@ static void
 tu6_emit_immediates(struct tu_cs *cs, const struct ir3_shader_variant *v,
                     uint32_t opcode, enum a6xx_state_block block)
 {
+   /* dummy variant */
+   if (!v->shader)
+      return;
+
    const struct ir3_const_state *const_state = &v->shader->const_state;
    uint32_t base = const_state->offsets.immediate;
    int size = const_state->immediates_count;
@@ -920,7 +924,7 @@ tu6_emit_immediates(struct tu_cs *cs, const struct ir3_shader_variant *v,
    tu_cs_emit(cs, CP_LOAD_STATE6_0_DST_OFF(base) |
                   CP_LOAD_STATE6_0_STATE_TYPE(ST6_CONSTANTS) |
                   CP_LOAD_STATE6_0_STATE_SRC(SS6_DIRECT) |
-                  CP_LOAD_STATE6_0_STATE_BLOCK(SB6_FS_SHADER) |
+                  CP_LOAD_STATE6_0_STATE_BLOCK(block) |
                   CP_LOAD_STATE6_0_NUM_UNIT(size));
    tu_cs_emit(cs, CP_LOAD_STATE6_1_EXT_SRC_ADDR(0));
    tu_cs_emit(cs, CP_LOAD_STATE6_2_EXT_SRC_ADDR_HI(0));
