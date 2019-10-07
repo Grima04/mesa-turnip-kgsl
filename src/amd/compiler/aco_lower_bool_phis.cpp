@@ -136,11 +136,12 @@ void insert_before_logical_end(Block *block, aco_ptr<Instruction> instr)
       block->instructions.insert(std::prev(it.base()), std::move(instr));
 }
 
-aco_ptr<Instruction> lower_divergent_bool_phi(Program *program, Block *block, aco_ptr<Instruction>& phi)
+void lower_divergent_bool_phi(Program *program, Block *block, aco_ptr<Instruction>& phi)
 {
    Builder bld(program);
 
    ssa_state state;
+   state.latest[block->index] = phi->definitions[0].tempId();
    for (unsigned i = 0; i < phi->operands.size(); i++) {
       Block *pred = &program->blocks[block->logical_preds[i]];
 
@@ -177,7 +178,20 @@ aco_ptr<Instruction> lower_divergent_bool_phi(Program *program, Block *block, ac
       }
    }
 
-   return bld.sop1(aco_opcode::s_mov_b64, phi->definitions[0], get_ssa(program, block->index, &state)).get_ptr();
+   unsigned num_preds = block->linear_preds.size();
+   if (phi->operands.size() != num_preds) {
+      Pseudo_instruction* new_phi{create_instruction<Pseudo_instruction>(aco_opcode::p_linear_phi, Format::PSEUDO, num_preds, 1)};
+      new_phi->definitions[0] = phi->definitions[0];
+      phi.reset(new_phi);
+   } else {
+      phi->opcode = aco_opcode::p_linear_phi;
+   }
+   assert(phi->operands.size() == num_preds);
+
+   for (unsigned i = 0; i < num_preds; i++)
+      phi->operands[i] = get_ssa(program, block->linear_preds[i], &state);
+
+   return;
 }
 
 void lower_linear_bool_phi(Program *program, Block *block, aco_ptr<Instruction>& phi)
@@ -213,7 +227,8 @@ void lower_bool_phis(Program* program)
          if (phi->opcode != aco_opcode::p_phi && phi->opcode != aco_opcode::p_linear_phi)
             break;
          if (phi->opcode == aco_opcode::p_phi && phi->definitions[0].regClass() == s2) {
-            non_phi.emplace_back(std::move(lower_divergent_bool_phi(program, &block, phi)));
+            lower_divergent_bool_phi(program, &block, phi);
+            block.instructions.emplace_back(std::move(phi));
          } else if (phi->opcode == aco_opcode::p_linear_phi && phi->definitions[0].regClass() == s1) {
             /* if it's a valid non-boolean phi, this should be a no-op */
             lower_linear_bool_phi(program, &block, phi);
