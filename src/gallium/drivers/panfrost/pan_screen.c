@@ -244,6 +244,9 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
         case PIPE_CAP_MAX_VARYINGS:
                 return 16;
 
+        case PIPE_CAP_ALPHA_TEST:
+                return 0;
+
         default:
                 return u_pipe_screen_get_param_defaults(screen, param);
         }
