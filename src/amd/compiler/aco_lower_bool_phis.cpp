@@ -216,35 +216,17 @@ void lower_linear_bool_phi(Program *program, Block *block, aco_ptr<Instruction>&
 void lower_bool_phis(Program* program)
 {
    for (Block& block : program->blocks) {
-      std::vector<aco_ptr<Instruction>> instructions;
-      std::vector<aco_ptr<Instruction>> non_phi;
-      instructions.swap(block.instructions);
-      block.instructions.reserve(instructions.size());
-      unsigned i = 0;
-      for (; i < instructions.size(); i++)
-      {
-         aco_ptr<Instruction>& phi = instructions[i];
-         if (phi->opcode != aco_opcode::p_phi && phi->opcode != aco_opcode::p_linear_phi)
-            break;
-         if (phi->opcode == aco_opcode::p_phi && phi->definitions[0].regClass() == s2) {
-            lower_divergent_bool_phi(program, &block, phi);
-            block.instructions.emplace_back(std::move(phi));
-         } else if (phi->opcode == aco_opcode::p_linear_phi && phi->definitions[0].regClass() == s1) {
+      for (aco_ptr<Instruction>& phi : block.instructions) {
+         if (phi->opcode == aco_opcode::p_phi) {
+            if (phi->definitions[0].regClass() == s2)
+               lower_divergent_bool_phi(program, &block, phi);
+         } else if (phi->opcode == aco_opcode::p_linear_phi) {
             /* if it's a valid non-boolean phi, this should be a no-op */
-            lower_linear_bool_phi(program, &block, phi);
-            block.instructions.emplace_back(std::move(phi));
+            if (phi->definitions[0].regClass() == s1)
+               lower_linear_bool_phi(program, &block, phi);
          } else {
-            block.instructions.emplace_back(std::move(phi));
+            break;
          }
-      }
-      for (auto&& instr : non_phi) {
-         assert(instr->opcode != aco_opcode::p_phi && instr->opcode != aco_opcode::p_linear_phi);
-         block.instructions.emplace_back(std::move(instr));
-      }
-      for (; i < instructions.size(); i++) {
-         aco_ptr<Instruction> instr = std::move(instructions[i]);
-         assert(instr->opcode != aco_opcode::p_phi && instr->opcode != aco_opcode::p_linear_phi);
-         block.instructions.emplace_back(std::move(instr));
       }
    }
 }
