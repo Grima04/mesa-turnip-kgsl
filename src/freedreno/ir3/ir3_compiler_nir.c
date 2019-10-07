@@ -455,10 +455,12 @@ emit_alu(struct ir3_context *ctx, nir_alu_instr *alu)
 		dst[0] = ir3_MAD_F32(b, src[0], 0, src[1], 0, src[2], 0);
 		break;
 	case nir_op_fddx:
+	case nir_op_fddx_coarse:
 		dst[0] = ir3_DSX(b, src[0], 0);
 		dst[0]->cat5.type = TYPE_F32;
 		break;
 	case nir_op_fddy:
+	case nir_op_fddy_coarse:
 		dst[0] = ir3_DSY(b, src[0], 0);
 		dst[0]->cat5.type = TYPE_F32;
 		break;
