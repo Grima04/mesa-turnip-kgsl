@@ -63,6 +63,7 @@
    devinfo
    codingstyle
    submittingpatches
+   ci
    releasing
    release-calendar
    sourcedocs
