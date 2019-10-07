@@ -451,7 +451,6 @@ struct ir3_shader_variant {
 		uint8_t slot;
 		uint8_t regid;
 		uint8_t compmask;
-		uint8_t ncomp;
 		/* location of input (ie. offset passed to bary.f, etc).  This
 		 * matches the SP_VS_VPC_DST_REG.OUTLOCn value (a3xx and a4xx
 		 * have the OUTLOCn value offset by 8, presumably to account

@@ -441,7 +441,7 @@ fd3_emit_vertex_bufs(struct fd_ringbuffer *ring, struct fd3_emit *emit)
 					COND(isint, A3XX_VFD_DECODE_INSTR_INT) |
 					COND(switchnext, A3XX_VFD_DECODE_INSTR_SWITCHNEXT));
 
-			total_in += vp->inputs[i].ncomp;
+			total_in += util_bitcount(vp->inputs[i].compmask);
 			j++;
 		}
 	}

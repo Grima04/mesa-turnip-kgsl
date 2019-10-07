@@ -2396,7 +2396,6 @@ setup_input(struct ir3_context *ctx, nir_variable *in)
 	so->inputs[n].compmask = (1 << (ncomp + frac)) - 1;
 	so->inputs_count = MAX2(so->inputs_count, n + 1);
 	so->inputs[n].interpolate = in->data.interpolation;
-	so->inputs[n].ncomp = ncomp;
 
 	if (ctx->so->type == MESA_SHADER_FRAGMENT) {
 
@@ -2513,7 +2512,6 @@ pack_inlocs(struct ir3_context *ctx)
 	for (unsigned i = 0; i < so->inputs_count; i++) {
 		unsigned compmask = 0, maxcomp = 0;
 
-		so->inputs[i].ncomp = 0;
 		so->inputs[i].inloc = inloc;
 		so->inputs[i].bary = false;
 
@@ -2523,7 +2521,6 @@ pack_inlocs(struct ir3_context *ctx)
 
 			compmask |= (1 << j);
 			actual_in++;
-			so->inputs[i].ncomp++;
 			maxcomp = j + 1;
 
 			/* at this point, since used_components[i] mask is only
