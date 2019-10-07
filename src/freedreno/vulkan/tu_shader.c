@@ -126,45 +126,94 @@ map_add(struct tu_descriptor_map *map, int set, int binding)
 }
 
 static void
-lower_tex_src_to_offset(nir_tex_instr *instr, unsigned src_idx,
-                        struct tu_shader *shader, bool is_sampler)
+lower_tex_src_to_offset(nir_builder *b, nir_tex_instr *instr, unsigned src_idx,
+                        struct tu_shader *shader)
 {
-   nir_deref_instr *deref =
-      nir_instr_as_deref(instr->src[src_idx].src.ssa->parent_instr);
+   nir_ssa_def *index = NULL;
+   unsigned base_index = 0;
+   unsigned array_elements = 1;
+   nir_tex_src *src = &instr->src[src_idx];
+   bool is_sampler = src->src_type == nir_tex_src_sampler_deref;
 
-   if (deref->deref_type != nir_deref_type_var) {
-      tu_finishme("sampler array");
-      return;
+   /* We compute first the offsets */
+   nir_deref_instr *deref = nir_instr_as_deref(src->src.ssa->parent_instr);
+   while (deref->deref_type != nir_deref_type_var) {
+      assert(deref->parent.is_ssa);
+      nir_deref_instr *parent =
+         nir_instr_as_deref(deref->parent.ssa->parent_instr);
+
+      assert(deref->deref_type == nir_deref_type_array);
+
+      if (nir_src_is_const(deref->arr.index) && index == NULL) {
+         /* We're still building a direct index */
+         base_index += nir_src_as_uint(deref->arr.index) * array_elements;
+      } else {
+         if (index == NULL) {
+            /* We used to be direct but not anymore */
+            index = nir_imm_int(b, base_index);
+            base_index = 0;
+         }
+
+         index = nir_iadd(b, index,
+                          nir_imul(b, nir_imm_int(b, array_elements),
+                                   nir_ssa_for_src(b, deref->arr.index, 1)));
+      }
+
+      array_elements *= glsl_get_length(parent->type);
+
+      deref = parent;
    }
+
+   if (index)
+      index = nir_umin(b, index, nir_imm_int(b, array_elements - 1));
+
+   /* We have the offsets, we apply them, rewriting the source or removing
+    * instr if needed
+    */
+   if (index) {
+      nir_instr_rewrite_src(&instr->instr, &src->src,
+                            nir_src_for_ssa(index));
+
+      src->src_type = is_sampler ?
+         nir_tex_src_sampler_offset :
+         nir_tex_src_texture_offset;
+
+      instr->texture_array_size = array_elements;
+   } else {
+      nir_tex_instr_remove_src(instr, src_idx);
+   }
+
+   if (array_elements > 1)
+      tu_finishme("texture/sampler array");
 
    if (is_sampler) {
       instr->sampler_index = map_add(&shader->sampler_map,
                                      deref->var->data.descriptor_set,
                                      deref->var->data.binding);
+      instr->sampler_index += base_index;
    } else {
       instr->texture_index = map_add(&shader->texture_map,
                                      deref->var->data.descriptor_set,
                                      deref->var->data.binding);
-      instr->texture_array_size = 1;
+      instr->texture_index += base_index;
+      instr->texture_array_size = array_elements;
    }
-
-   nir_tex_instr_remove_src(instr, src_idx);
 }
 
 static bool
-lower_sampler(nir_tex_instr *instr, struct tu_shader *shader)
+lower_sampler(nir_builder *b, nir_tex_instr *instr, struct tu_shader *shader)
 {
    int texture_idx =
       nir_tex_instr_src_index(instr, nir_tex_src_texture_deref);
 
    if (texture_idx >= 0)
-      lower_tex_src_to_offset(instr, texture_idx, shader, false);
+      lower_tex_src_to_offset(b, instr, texture_idx, shader);
 
    int sampler_idx =
       nir_tex_instr_src_index(instr, nir_tex_src_sampler_deref);
 
    if (sampler_idx >= 0)
-      lower_tex_src_to_offset(instr, sampler_idx, shader, true);
+      lower_tex_src_to_offset(b, instr, sampler_idx, shader);
 
    if (texture_idx < 0 && sampler_idx < 0)
       return false;
@@ -214,7 +263,7 @@ lower_impl(nir_function_impl *impl, struct tu_shader *shader)
       nir_foreach_instr_safe(instr, block) {
          switch (instr->type) {
          case nir_instr_type_tex:
-            progress |= lower_sampler(nir_instr_as_tex(instr), shader);
+            progress |= lower_sampler(&b, nir_instr_as_tex(instr), shader);
             break;
          case nir_instr_type_intrinsic:
             progress |= lower_intrinsic(&b, nir_instr_as_intrinsic(instr), shader);
