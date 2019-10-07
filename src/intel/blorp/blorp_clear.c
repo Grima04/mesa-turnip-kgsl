@@ -802,6 +802,53 @@ blorp_can_hiz_clear_depth(const struct gen_device_info *devinfo,
       if (x0 % align_px_w || y0 % align_px_h ||
           x1 % align_px_w || y1 % align_px_h)
          return false;
+   } else if (isl_surf_supports_hiz_ccs_wt(devinfo, surf, aux_usage)) {
+      /* We have to set the WM_HZ_OP::FullSurfaceDepthandStencilClear bit
+       * whenever we clear an uninitialized HIZ buffer (as some drivers
+       * currently do). However, this bit seems liable to clear 16x8 pixels in
+       * the ZCS on Gen12 - greater than the slice alignments for depth
+       * buffers.
+       */
+      assert(surf->image_alignment_el.w % 16 != 0 ||
+             surf->image_alignment_el.h % 8 != 0);
+
+      /* This is the hypothesis behind some corruption that was seen with the
+       * amd_vertex_shader_layer-layered-depth-texture-render piglit test.
+       *
+       * From the Compressed Depth Buffers section of the Bspec, under the
+       * Gen12 texture performant and ZCS columns:
+       *
+       *    Update with clear at either 16x8 or 8x4 granularity, based on
+       *    fs_clr or otherwise.
+       *
+       * There are a number of ways to avoid full surface CCS clears that
+       * overlap other slices, but for now we choose to disable fast-clears
+       * when an initializing clear could hit another miplevel.
+       *
+       * NOTE: Because the CCS compresses the depth buffer and not a version
+       * of it that has been rearranged with different alignments (like Gen8+
+       * HIZ), we have to make sure that the x0 and y0 are at least 16x8
+       * aligned in the context of the entire surface.
+       */
+      uint32_t slice_x0, slice_y0;
+      isl_surf_get_image_offset_el(surf, level,
+                                   surf->dim == ISL_SURF_DIM_3D ? 0 : layer,
+                                   surf->dim == ISL_SURF_DIM_3D ? layer: 0,
+                                   &slice_x0, &slice_y0);
+      const bool max_x1_y1 =
+         x1 == minify(surf->logical_level0_px.width, level) && 
+         y1 == minify(surf->logical_level0_px.height, level);
+      const uint32_t haligned_x1 = ALIGN(x1, surf->image_alignment_el.w);
+      const uint32_t valigned_y1 = ALIGN(y1, surf->image_alignment_el.h);
+      const bool unaligned = (slice_x0 + x0) % 16 || (slice_y0 + y0) % 8 ||
+                             max_x1_y1 ? haligned_x1 % 16 || valigned_y1 % 8 :
+                             x1 % 16 || y1 % 8;
+      const bool alignment_used = surf->levels > 1 ||
+                                  surf->logical_level0_px.depth > 1 ||
+                                  surf->logical_level0_px.array_len > 1;
+
+      if (unaligned && alignment_used)
+         return false;
    }
 
    return isl_aux_usage_has_hiz(aux_usage);
