@@ -1918,7 +1918,7 @@ emit_tex(struct ir3_context *ctx, nir_tex_instr *tex)
 	}
 
 	if (opc == OPC_GETLOD)
-		type = TYPE_U32;
+		type = TYPE_S32;
 
 	struct ir3_instruction *samp_tex;
 
@@ -1970,7 +1970,7 @@ emit_tex(struct ir3_context *ctx, nir_tex_instr *tex)
 
 		compile_assert(ctx, tex->dest_type == nir_type_float);
 		for (i = 0; i < 2; i++) {
-			dst[i] = ir3_MUL_F(b, ir3_COV(b, dst[i], TYPE_U32, TYPE_F32), 0,
+			dst[i] = ir3_MUL_F(b, ir3_COV(b, dst[i], TYPE_S32, TYPE_F32), 0,
 							   factor, 0);
 		}
 	}
