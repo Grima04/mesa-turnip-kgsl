@@ -180,7 +180,9 @@ lava-build:arm64:
 panfrost-t760-test:armhf:
   image: $CI_REGISTRY_IMAGE/debian/$LAVA_DEBIAN_VERSION:armhf-$LAVA_IMAGE_TAG
   extends: .lava-test
-  needs: ["lava-build:armhf"]
+  needs:
+    - lava-container:armhf
+    - lava-build:armhf
   dependencies:
     - lava-build:armhf
   tags:
@@ -189,7 +191,9 @@ panfrost-t760-test:armhf:
 panfrost-t860-test:arm64:
   image: $CI_REGISTRY_IMAGE/debian/$LAVA_DEBIAN_VERSION:arm64-$LAVA_IMAGE_TAG
   extends: .lava-test
-  needs: ["lava-build:arm64"]
+  needs:
+    - lava-container:arm64
+    - lava-build:arm64
   dependencies:
     - lava-build:arm64
   tags:
