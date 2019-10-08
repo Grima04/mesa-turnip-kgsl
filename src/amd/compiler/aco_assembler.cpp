@@ -20,6 +20,8 @@ struct asm_context {
       else if (chip_class == GFX10)
          opcode = &instr_info.opcode_gfx10[0];
    }
+
+   int subvector_begin_pos = -1;
 };
 
 void emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction* instr)
@@ -80,6 +82,22 @@ void emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction*
       break;
    }
    case Format::SOPK: {
+      SOPK_instruction *sopk = static_cast<SOPK_instruction*>(instr);
+
+      if (instr->opcode == aco_opcode::s_subvector_loop_begin) {
+         assert(ctx.chip_class >= GFX10);
+         assert(ctx.subvector_begin_pos == -1);
+         ctx.subvector_begin_pos = out.size();
+      } else if (instr->opcode == aco_opcode::s_subvector_loop_end) {
+         assert(ctx.chip_class >= GFX10);
+         assert(ctx.subvector_begin_pos != -1);
+         /* Adjust s_subvector_loop_begin instruction to the address after the end  */
+         out[ctx.subvector_begin_pos] |= (out.size() - ctx.subvector_begin_pos);
+         /* Adjust s_subvector_loop_end instruction to the address after the beginning  */
+         sopk->imm = (uint16_t)(ctx.subvector_begin_pos - (int)out.size());
+         ctx.subvector_begin_pos = -1;
+      }
+
       uint32_t encoding = (0b1011 << 28);
       encoding |= opcode << 23;
       encoding |=
@@ -87,7 +105,7 @@ void emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction*
          instr->definitions[0].physReg() << 16 :
          !instr->operands.empty() && !(instr->operands[0].physReg() == scc) ?
          instr->operands[0].physReg() << 16 : 0;
-      encoding |= static_cast<SOPK_instruction*>(instr)->imm;
+      encoding |= sopk->imm;
       out.push_back(encoding);
       break;
    }

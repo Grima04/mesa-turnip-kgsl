@@ -109,6 +109,13 @@ Stores and atomics always bypass the L1 cache, so they don't support the DLC bit
 and it shouldn't be set in these cases. Setting the DLC for these cases can result
 in graphical glitches.
 
+## RDNA subvector mode
+
+The documentation of S_SUBVECTOR_LOOP_BEGIN and S_SUBVECTOR_LOOP_END is not clear
+on what sort of addressing should be used, but it says that it
+"is equivalent to an S_CBRANCH with extra math", so the subvector loop handling
+in ACO is done according to the S_CBRANCH doc.
+
 # Hardware Bugs
 
 ## SMEM corrupts VCCZ on SI/CI
