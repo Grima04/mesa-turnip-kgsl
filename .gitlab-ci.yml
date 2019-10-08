@@ -14,8 +14,8 @@
 # repository's registry will be used there as well.
 variables:
   UPSTREAM_REPO: mesa/mesa
-  DEBIAN_TAG: "2019-10-16"
-  DEBIAN_ARM64_TAG: "arm64v8-2019-08-09"
+  DEBIAN_TAG: "2019-10-22"
+  DEBIAN_ARM64_TAG: "arm64v8-2019-10-22"
   STRETCH_TAG: "2019-09-18"
   DEBIAN_VERSION: buster-slim
   STRETCH_VERSION: stretch-slim
@@ -67,39 +67,38 @@ stages:
     # no need to pull the whole repo to build the container image
     GIT_STRATEGY: none
 
-debian-10:
+debian-10:amd64:
   extends:
     - .debian@container-ifnot-exists
     - .container
   variables:
     DEBIAN_EXEC: 'bash .gitlab-ci/debian-install.sh'
 
-.use-debian-10:
+.use-debian-10:amd64:
   image: $DEBIAN_IMAGE
   needs:
-    - debian-10
+    - debian-10:amd64
 
-debian-9:
-  extends: debian-10
+debian-9:amd64:
+  extends: debian-10:amd64
   variables:
     DEBIAN_TAG: $STRETCH_TAG
     DEBIAN_VERSION: $STRETCH_VERSION
     DEBIAN_IMAGE: $STRETCH_IMAGE
     DEBIAN_EXEC: 'bash .gitlab-ci/debian-stretch-install.sh'
 
-.use-debian-9:
+.use-debian-9:amd64:
   image: $STRETCH_IMAGE
   needs:
-    - debian-9
+    - debian-9:amd64
 
-# Builds a Docker image with the native environment and VK-GL-CTS for testing.
-test-container:arm64:
+debian-10:arm64:
   extends:
     - .debian@container-ifnot-exists@arm64v8
     - .container
   variables:
     DEBIAN_TAG: "$DEBIAN_ARM64_TAG"
-    DEBIAN_EXEC: 'bash .gitlab-ci/debian-test-install.sh'
+    DEBIAN_EXEC: 'bash .gitlab-ci/debian-arm64-install.sh'
 
 
 # BUILD
@@ -141,14 +140,14 @@ test-container:arm64:
 .meson-build:
   extends:
     - .build
-    - .use-debian-10
+    - .use-debian-10:amd64
   script:
     - .gitlab-ci/meson-build.sh
 
 .scons-build:
   extends:
     - .build
-    - .use-debian-10
+    - .use-debian-10:amd64
   variables:
     SCONSFLAGS: "-j4"
   script:
@@ -187,7 +186,6 @@ meson-main:
 .meson-cross:
   extends:
     - .meson-build
-    - .ci-deqp-artifacts
   variables:
     UNWIND: "false"
     DRI_LOADERS: >
@@ -206,22 +204,29 @@ meson-main:
       -D gallium-nine=false
       -D llvm=false
 
-meson-armhf:
+.meson-arm:
   extends: .meson-cross
+  image: $DEBIAN_ARM64_IMAGE
   variables:
-    CROSS: armhf
     VULKAN_DRIVERS: freedreno
     GALLIUM_DRIVERS: "etnaviv,freedreno,kmsro,lima,nouveau,panfrost,tegra,v3d,vc4"
-    # Disable the tests since we're cross compiling.
     EXTRA_OPTION: >
-      -D build-tests=false
       -D I-love-half-baked-turnips=true
-      -D vulkan-overlay-layer=true
+  needs:
+    - debian-10:arm64
+  tags:
+    - aarch64
+
+meson-armhf:
+  extends: .meson-arm
+  variables:
+    CROSS: armhf
 
 meson-arm64:
-  extends: meson-armhf
+  extends:
+    - .meson-arm
+    - .ci-deqp-artifacts
   variables:
-    CROSS: arm64
     BUILDTYPE: "debugoptimized"
 
 # NOTE: Building SWR is 2x (yes two) times slower than all the other
@@ -300,7 +305,7 @@ meson-clover:
 meson-clover-old-llvm:
   extends:
     - meson-clover
-    - .use-debian-9
+    - .use-debian-9:amd64
   variables:
     UNWIND: "false"
     DRI_LOADERS: >
@@ -378,7 +383,7 @@ scons:
 scons-old-llvm:
   extends:
     - scons
-    - .use-debian-9
+    - .use-debian-9:amd64
   script:
     - LLVM_VERSION=3.9 .gitlab-ci/scons-build.sh
     - LLVM_VERSION=4.0 .gitlab-ci/scons-build.sh
@@ -393,7 +398,7 @@ scons-old-llvm:
 .deqp-test:
   extends:
     - .test
-    - .use-debian-10
+    - .use-debian-10:amd64
   variables:
     DEQP_SKIPS: deqp-default-skips.txt
   script:
@@ -410,7 +415,7 @@ scons-old-llvm:
     - meson-main
   needs:
     - meson-main
-    - debian-10
+    - debian-10:amd64
 
 test-llvmpipe-gles2:
   parallel: 4
@@ -457,7 +462,7 @@ arm64_a630_gles2:
     - meson-arm64
   needs:
     - meson-arm64
-    - test-container:arm64
+    - debian-10:arm64
 
 arm64_a630_gles31:
   extends: arm64_a630_gles2
