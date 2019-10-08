@@ -415,7 +415,6 @@ zink_set_scissor_states(struct pipe_context *pctx,
       ctx->scissor_states[start_slot + i] = states[i];
       ctx->scissors[start_slot + i] = scissor;
    }
-   ctx->num_scissors = start_slot + num_scissors;
 }
 
 static void
@@ -788,33 +787,14 @@ zink_clear(struct pipe_context *pctx,
       ++num_attachments;
    }
 
-   unsigned num_layers = util_framebuffer_get_num_layers(fb);
-   VkClearRect rects[PIPE_MAX_VIEWPORTS];
-   uint32_t num_rects;
-   if (ctx->num_scissors) {
-      for (unsigned i = 0 ; i < ctx->num_scissors; ++i) {
-         rects[i].rect = ctx->scissors[i];
-         rects[i].rect.extent.width = MIN2(rects[i].rect.extent.width,
-                                           fb->width);
-         rects[i].rect.extent.height = MIN2(rects[i].rect.extent.height,
-                                            fb->height);
-         rects[i].baseArrayLayer = 0;
-         rects[i].layerCount = num_layers;
-      }
-      num_rects = ctx->num_scissors;
-   } else {
-      rects[0].rect.offset.x = 0;
-      rects[0].rect.offset.y = 0;
-      rects[0].rect.extent.width = fb->width;
-      rects[0].rect.extent.height = fb->height;
-      rects[0].baseArrayLayer = 0;
-      rects[0].layerCount = num_layers;
-      num_rects = 1;
-   }
-
-   vkCmdClearAttachments(batch->cmdbuf,
-                         num_attachments, attachments,
-                         num_rects, rects);
+   VkClearRect cr;
+   cr.rect.offset.x = 0;
+   cr.rect.offset.y = 0;
+   cr.rect.extent.width = fb->width;
+   cr.rect.extent.height = fb->height;
+   cr.baseArrayLayer = 0;
+   cr.layerCount = util_framebuffer_get_num_layers(fb);
+   vkCmdClearAttachments(batch->cmdbuf, num_attachments, attachments, 1, &cr);
 }
 
 VkShaderStageFlagBits
@@ -1088,9 +1068,8 @@ zink_draw_vbo(struct pipe_context *pctx,
    }
 
    vkCmdSetViewport(batch->cmdbuf, 0, ctx->num_viewports, ctx->viewports);
-
-   if (ctx->num_scissors)
-      vkCmdSetScissor(batch->cmdbuf, 0, ctx->num_scissors, ctx->scissors);
+   if (ctx->rast_state->base.scissor)
+      vkCmdSetScissor(batch->cmdbuf, 0, ctx->num_viewports, ctx->scissors);
    else if (ctx->fb_state.width && ctx->fb_state.height) {
       VkRect2D fb_scissor = {};
       fb_scissor.extent.width = ctx->fb_state.width;
