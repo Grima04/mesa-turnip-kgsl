@@ -558,6 +558,9 @@ emit_alu(struct ir3_context *ctx, nir_alu_instr *alu)
 	case nir_op_imad24_ir3:
 		dst[0] = ir3_MAD_S24(b, src[0], 0, src[1], 0, src[2], 0);
 		break;
+	case nir_op_imul24:
+		dst[0] = ir3_MUL_S24(b, src[0], 0, src[1], 0);
+		break;
 	case nir_op_ineg:
 		dst[0] = ir3_ABSNEG_S(b, src[0], IR3_REG_SNEG);
 		break;
