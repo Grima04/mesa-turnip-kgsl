@@ -6,6 +6,7 @@ set -o xtrace
 ############### Install packages for building
 apt-get -y install ca-certificates
 sed -i -e 's/http:\/\/deb/https:\/\/deb/g' /etc/apt/sources.list
+echo 'deb https://deb.debian.org/debian buster-backports main' >/etc/apt/sources.list.d/backports.list
 dpkg --add-architecture armhf
 apt-get update
 apt-get -y install \
@@ -30,6 +31,8 @@ apt-get -y install \
 	libgles2-mesa-dev \
 	libpng-dev \
 	libssl-dev \
+	llvm-7-dev:armhf \
+	llvm-8-dev \
 	meson \
 	ninja-build \
 	pkg-config \

@@ -202,14 +202,13 @@ meson-main:
       -D gallium-va=false
       -D gallium-xa=false
       -D gallium-nine=false
-      -D llvm=false
 
 .meson-arm:
   extends: .meson-cross
   image: $DEBIAN_ARM64_IMAGE
   variables:
     VULKAN_DRIVERS: freedreno
-    GALLIUM_DRIVERS: "etnaviv,freedreno,kmsro,lima,nouveau,panfrost,tegra,v3d,vc4"
+    GALLIUM_DRIVERS: "etnaviv,freedreno,kmsro,lima,nouveau,panfrost,swrast,tegra,v3d,vc4"
     EXTRA_OPTION: >
       -D I-love-half-baked-turnips=true
   needs:
@@ -221,6 +220,7 @@ meson-armhf:
   extends: .meson-arm
   variables:
     CROSS: armhf
+    LLVM_VERSION: "7"
 
 meson-arm64:
   extends:
