@@ -742,3 +742,27 @@ radv_create_ahb_memory(struct radv_device *device,
 	return VK_ERROR_EXTENSION_NOT_PRESENT;
 #endif
 }
+
+bool radv_android_gralloc_supports_format(VkFormat format, VkImageUsageFlagBits usage) {
+#if RADV_SUPPORT_ANDROID_HARDWARE_BUFFER
+	/* Ideally we check Gralloc for what it supports and then merge that with the radv
+	   format support, but there is no easy gralloc query besides just creating an image.
+	   That seems a bit on the expensive side, so just hardcode for now. */
+	/* TODO: Add multi-plane formats after confirming everything works between radeonsi
+	   and radv. */
+	switch(format) {
+	case VK_FORMAT_R8G8B8A8_UNORM:
+	case VK_FORMAT_R5G6B5_UNORM_PACK16:
+		return true;
+	case VK_FORMAT_R8_UNORM:
+	case VK_FORMAT_R8G8_UNORM:
+		return !(usage & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
+	default:
+		return false;
+	}
+#else
+	(void)format;
+	(void)usage;
+	return false;
+#endif
+}

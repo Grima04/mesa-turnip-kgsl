@@ -1947,6 +1947,7 @@ radv_create_ahb_memory(struct radv_device *device,
 VkFormat
 radv_select_android_external_format(const void *next, VkFormat default_format);
 
+bool radv_android_gralloc_supports_format(VkFormat format, VkImageUsageFlagBits usage);
 
 struct radv_image_view_extra_create_info {
 	bool disable_compression;

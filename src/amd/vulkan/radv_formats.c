@@ -1299,9 +1299,11 @@ VkResult radv_GetPhysicalDeviceImageFormatProperties(
 }
 
 static void
-get_external_image_format_properties(const VkPhysicalDeviceImageFormatInfo2 *pImageFormatInfo,
+get_external_image_format_properties(struct radv_physical_device *physical_device,
+				     const VkPhysicalDeviceImageFormatInfo2 *pImageFormatInfo,
 				     VkExternalMemoryHandleTypeFlagBits handleType,
-				     VkExternalMemoryProperties *external_properties)
+				     VkExternalMemoryProperties *external_properties,
+				     VkImageFormatProperties *format_properties)
 {
 	VkExternalMemoryFeatureFlagBits flags = 0;
 	VkExternalMemoryHandleTypeFlags export_flags = 0;
@@ -1322,6 +1324,24 @@ get_external_image_format_properties(const VkPhysicalDeviceImageFormatInfo2 *pIm
 		default:
 			break;
 		}
+		break;
+	case VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID:
+		if (!physical_device->supported_extensions.ANDROID_external_memory_android_hardware_buffer)
+			break;
+
+		if (!radv_android_gralloc_supports_format(pImageFormatInfo->format,
+		                                          pImageFormatInfo->usage))
+			break;
+
+		if (pImageFormatInfo->type != VK_IMAGE_TYPE_2D)
+			break;
+
+		format_properties->maxMipLevels = MIN2(1, format_properties->maxMipLevels);
+		format_properties->maxArrayLayers = MIN2(1, format_properties->maxArrayLayers);
+		format_properties->sampleCounts &= VK_SAMPLE_COUNT_1_BIT;
+
+		flags = VK_EXTERNAL_MEMORY_FEATURE_DEDICATED_ONLY_BIT|VK_EXTERNAL_MEMORY_FEATURE_EXPORTABLE_BIT|VK_EXTERNAL_MEMORY_FEATURE_IMPORTABLE_BIT;
+		compat_flags = VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID;
 		break;
 	case VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_ALLOCATION_BIT_EXT:
 		flags = VK_EXTERNAL_MEMORY_FEATURE_IMPORTABLE_BIT;
@@ -1400,8 +1420,9 @@ VkResult radv_GetPhysicalDeviceImageFormatProperties2(
 	 *    present and VkExternalImageFormatProperties will be ignored.
 	 */
 	if (external_info && external_info->handleType != 0) {
-		get_external_image_format_properties(base_info, external_info->handleType,
-		                                     &external_props->externalMemoryProperties);
+		get_external_image_format_properties(physical_device, base_info, external_info->handleType,
+		                                     &external_props->externalMemoryProperties,
+		                                     &base_props->imageFormatProperties);
 		if (!external_props->externalMemoryProperties.externalMemoryFeatures) {
 			/* From the Vulkan 1.0.97 spec:
 			 *
