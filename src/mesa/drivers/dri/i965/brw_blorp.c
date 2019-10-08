@@ -1211,6 +1211,9 @@ do_single_blorp_clear(struct brw_context *brw, struct gl_framebuffer *fb,
 
    bool can_fast_clear = !partial_clear;
 
+   if (INTEL_DEBUG & DEBUG_NO_FAST_CLEAR)
+      can_fast_clear = false;
+
    bool color_write_disable[4] = { false, false, false, false };
    if (set_write_disables(irb, GET_COLORMASK(ctx->Color.ColorMask, buf),
                           color_write_disable))
