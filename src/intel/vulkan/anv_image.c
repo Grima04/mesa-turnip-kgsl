@@ -1181,6 +1181,9 @@ anv_layout_to_fast_clear_type(const struct gen_device_info * const devinfo,
                               const VkImageAspectFlagBits aspect,
                               const VkImageLayout layout)
 {
+   if (INTEL_DEBUG & DEBUG_NO_FAST_CLEAR)
+      return ANV_FAST_CLEAR_NONE;
+
    /* The aspect must be exactly one of the image aspects. */
    assert(util_bitcount(aspect) == 1 && (aspect & image->aspects));
 
