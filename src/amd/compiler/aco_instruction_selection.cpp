@@ -27,6 +27,7 @@
 #include <array>
 #include <map>
 
+#include "ac_shader_util.h"
 #include "aco_ir.h"
 #include "aco_builder.h"
 #include "aco_interface.h"
@@ -3583,6 +3584,9 @@ static Temp adjust_sample_index_using_fmask(isel_context *ctx, bool da, Temp coo
 {
    Builder bld(ctx->program, ctx->block);
    Temp fmask = bld.tmp(v1);
+   unsigned dim = ctx->options->chip_class >= GFX10
+                  ? ac_get_sampler_dim(ctx->options->chip_class, GLSL_SAMPLER_DIM_2D, da)
+                  : 0;
 
    aco_ptr<MIMG_instruction> load{create_instruction<MIMG_instruction>(aco_opcode::image_load, Format::MIMG, 2, 1)};
    load->operands[0] = Operand(coords);
@@ -3593,6 +3597,7 @@ static Temp adjust_sample_index_using_fmask(isel_context *ctx, bool da, Temp coo
    load->dmask = 0x1;
    load->unrm = true;
    load->da = da;
+   load->dim = dim;
    load->can_reorder = true; /* fmask images shouldn't be modified */
    ctx->block->instructions.emplace_back(std::move(load));
 
@@ -3693,6 +3698,7 @@ void visit_image_load(isel_context *ctx, nir_intrinsic_instr *instr)
    const nir_variable *var = nir_deref_instr_get_variable(nir_instr_as_deref(instr->src[0].ssa->parent_instr));
    const struct glsl_type *type = glsl_without_array(var->type);
    const enum glsl_sampler_dim dim = glsl_get_sampler_dim(type);
+   bool is_array = glsl_sampler_type_is_array(type);
    Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
 
    if (dim == GLSL_SAMPLER_DIM_BUF) {
@@ -3752,6 +3758,7 @@ void visit_image_load(isel_context *ctx, nir_intrinsic_instr *instr)
    load->operands[1] = Operand(resource);
    load->definitions[0] = Definition(tmp);
    load->glc = var->data.image.access & (ACCESS_VOLATILE | ACCESS_COHERENT) ? 1 : 0;
+   load->dim = ac_get_image_dim(ctx->options->chip_class, dim, is_array);
    load->dmask = dmask;
    load->unrm = true;
    load->da = should_declare_array(ctx, dim, glsl_sampler_type_is_array(type));
@@ -3767,6 +3774,7 @@ void visit_image_store(isel_context *ctx, nir_intrinsic_instr *instr)
    const nir_variable *var = nir_deref_instr_get_variable(nir_instr_as_deref(instr->src[0].ssa->parent_instr));
    const struct glsl_type *type = glsl_without_array(var->type);
    const enum glsl_sampler_dim dim = glsl_get_sampler_dim(type);
+   bool is_array = glsl_sampler_type_is_array(type);
    Temp data = as_vgpr(ctx, get_ssa_temp(ctx, instr->src[3].ssa));
 
    bool glc = ctx->options->chip_class == GFX6 || var->data.image.access & (ACCESS_VOLATILE | ACCESS_COHERENT | ACCESS_NON_READABLE) ? 1 : 0;
@@ -3817,6 +3825,7 @@ void visit_image_store(isel_context *ctx, nir_intrinsic_instr *instr)
    store->operands[3] = Operand(data);
    store->glc = glc;
    store->dlc = false;
+   store->dim = ac_get_image_dim(ctx->options->chip_class, dim, is_array);
    store->dmask = (1 << data.size()) - 1;
    store->unrm = true;
    store->da = should_declare_array(ctx, dim, glsl_sampler_type_is_array(type));
@@ -3843,6 +3852,7 @@ void visit_image_atomic(isel_context *ctx, nir_intrinsic_instr *instr)
    const nir_variable *var = nir_deref_instr_get_variable(nir_instr_as_deref(instr->src[0].ssa->parent_instr));
    const struct glsl_type *type = glsl_without_array(var->type);
    const enum glsl_sampler_dim dim = glsl_get_sampler_dim(type);
+   bool is_array = glsl_sampler_type_is_array(type);
    Builder bld(ctx->program, ctx->block);
 
    Temp data = as_vgpr(ctx, get_ssa_temp(ctx, instr->src[3].ssa));
@@ -3932,6 +3942,7 @@ void visit_image_atomic(isel_context *ctx, nir_intrinsic_instr *instr)
       mimg->definitions[0] = Definition(dst);
    mimg->glc = return_previous;
    mimg->dlc = false; /* Not needed for atomics */
+   mimg->dim = ac_get_image_dim(ctx->options->chip_class, dim, is_array);
    mimg->dmask = (1 << data.size()) - 1;
    mimg->unrm = true;
    mimg->da = should_declare_array(ctx, dim, glsl_sampler_type_is_array(type));
@@ -3979,6 +3990,8 @@ void visit_image_size(isel_context *ctx, nir_intrinsic_instr *instr)
 {
    const nir_variable *var = nir_deref_instr_get_variable(nir_instr_as_deref(instr->src[0].ssa->parent_instr));
    const struct glsl_type *type = glsl_without_array(var->type);
+   const enum glsl_sampler_dim dim = glsl_get_sampler_dim(type);
+   bool is_array = glsl_sampler_type_is_array(type);
    Builder bld(ctx->program, ctx->block);
 
    if (glsl_get_sampler_dim(type) == GLSL_SAMPLER_DIM_BUF) {
@@ -3998,6 +4011,7 @@ void visit_image_size(isel_context *ctx, nir_intrinsic_instr *instr)
    mimg->operands[0] = Operand(lod);
    mimg->operands[1] = Operand(resource);
    unsigned& dmask = mimg->dmask;
+   mimg->dim = ac_get_image_dim(ctx->options->chip_class, dim, is_array);
    mimg->dmask = (1 << instr->dest.ssa.num_components) - 1;
    mimg->da = glsl_sampler_type_is_array(type);
    mimg->can_reorder = true;
@@ -6263,6 +6277,9 @@ void visit_tex(isel_context *ctx, nir_tex_instr *instr)
 
    /* Build tex instruction */
    unsigned dmask = nir_ssa_def_components_read(&instr->dest.ssa);
+   unsigned dim = ctx->options->chip_class >= GFX10 && instr->sampler_dim != GLSL_SAMPLER_DIM_BUF
+                  ? ac_get_sampler_dim(ctx->options->chip_class, instr->sampler_dim, instr->is_array)
+                  : 0;
    Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
    Temp tmp_dst = dst;
 
@@ -6308,6 +6325,7 @@ void visit_tex(isel_context *ctx, nir_tex_instr *instr)
       }
       tex->da = da;
       tex->definitions[0] = Definition(tmp_dst);
+      tex->dim = dim;
       tex->can_reorder = true;
       ctx->block->instructions.emplace_back(std::move(tex));
 
@@ -6335,6 +6353,7 @@ void visit_tex(isel_context *ctx, nir_tex_instr *instr)
       tex.reset(create_instruction<MIMG_instruction>(aco_opcode::image_get_resinfo, Format::MIMG, 2, 1));
       tex->operands[0] = bld.vop1(aco_opcode::v_mov_b32, bld.def(v1), Operand(0u));
       tex->operands[1] = Operand(resource);
+      tex->dim = dim;
       tex->dmask = 0x3;
       tex->da = da;
       Temp size = bld.tmp(v2);
@@ -6503,6 +6522,7 @@ void visit_tex(isel_context *ctx, nir_tex_instr *instr)
       tex.reset(create_instruction<MIMG_instruction>(op, Format::MIMG, 2, 1));
       tex->operands[0] = Operand(arg);
       tex->operands[1] = Operand(resource);
+      tex->dim = dim;
       tex->dmask = dmask;
       tex->unrm = true;
       tex->da = da;
@@ -6590,6 +6610,7 @@ void visit_tex(isel_context *ctx, nir_tex_instr *instr)
    tex->operands[0] = arg;
    tex->operands[1] = Operand(resource);
    tex->operands[2] = Operand(sampler);
+   tex->dim = dim;
    tex->dmask = dmask;
    tex->da = da;
    tex->definitions[0] = Definition(tmp_dst);
