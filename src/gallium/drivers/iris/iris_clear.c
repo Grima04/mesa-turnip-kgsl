@@ -75,6 +75,9 @@ can_fast_clear_color(struct iris_context *ice,
 {
    struct iris_resource *res = (void *) p_res;
 
+   if (INTEL_DEBUG & DEBUG_NO_FAST_CLEAR)
+      return false;
+
    if (res->aux.usage == ISL_AUX_USAGE_NONE)
       return false;
 
@@ -404,6 +407,9 @@ can_fast_clear_depth(struct iris_context *ice,
                      float depth)
 {
    struct pipe_resource *p_res = (void *) res;
+
+   if (INTEL_DEBUG & DEBUG_NO_FAST_CLEAR)
+      return false;
 
    /* Check for partial clears */
    if (box->x > 0 || box->y > 0 ||
