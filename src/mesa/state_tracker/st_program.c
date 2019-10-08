@@ -432,11 +432,6 @@ static nir_shader *
 st_translate_prog_to_nir(struct st_context *st, struct gl_program *prog,
                          gl_shader_stage stage)
 {
-   enum pipe_shader_type p_stage = pipe_shader_type_from_mesa(stage);
-   const bool is_scalar =
-      st->pipe->screen->get_shader_param(st->pipe->screen, p_stage,
-                                         PIPE_SHADER_CAP_SCALAR_ISA);
-
    const struct gl_shader_compiler_options *options =
       &st->ctx->Const.ShaderCompilerOptions[stage];
 
@@ -450,7 +445,7 @@ st_translate_prog_to_nir(struct st_context *st, struct gl_program *prog,
 
    /* Optimise NIR */
    NIR_PASS_V(nir, nir_opt_constant_folding);
-   st_nir_opts(nir, is_scalar);
+   st_nir_opts(nir);
    nir_validate_shader(nir, "after st/ptn NIR opts");
 
    return nir;

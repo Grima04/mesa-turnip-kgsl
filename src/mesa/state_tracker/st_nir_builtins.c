@@ -33,9 +33,6 @@ st_nir_finish_builtin_shader(struct st_context *st,
 {
    struct pipe_context *pipe = st->pipe;
    struct pipe_screen *screen = pipe->screen;
-   enum pipe_shader_type p_stage = pipe_shader_type_from_mesa(nir->info.stage);
-   bool is_scalar =
-      screen->get_shader_param(screen, p_stage, PIPE_SHADER_CAP_SCALAR_ISA);
 
    nir->info.name = ralloc_strdup(nir, name);
    nir->info.separate_shader = true;
@@ -47,7 +44,7 @@ st_nir_finish_builtin_shader(struct st_context *st,
    NIR_PASS_V(nir, nir_lower_var_copies);
    NIR_PASS_V(nir, nir_lower_system_values);
 
-   if (is_scalar) {
+   if (nir->options->lower_to_scalar) {
       nir_variable_mode mask =
          (nir->info.stage > MESA_SHADER_VERTEX ? nir_var_shader_in : 0) |
          (nir->info.stage < MESA_SHADER_FRAGMENT ? nir_var_shader_out : 0);
@@ -55,7 +52,7 @@ st_nir_finish_builtin_shader(struct st_context *st,
       NIR_PASS_V(nir, nir_lower_io_to_scalar_early, mask);
    }
 
-   st_nir_opts(nir, is_scalar);
+   st_nir_opts(nir);
 
    nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));
 
