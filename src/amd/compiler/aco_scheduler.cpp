@@ -220,6 +220,8 @@ void schedule_SMEM(sched_ctx& ctx, Block* block,
          break;
       if (candidate->opcode == aco_opcode::p_logical_start)
          break;
+      if (candidate->opcode == aco_opcode::p_exit_early_if)
+         break;
       if (!can_move_instr(candidate, current, moving_interaction))
          break;
       register_pressure.update(register_demand[candidate_idx]);
@@ -445,6 +447,8 @@ void schedule_VMEM(sched_ctx& ctx, Block* block,
          break;
       if (candidate->opcode == aco_opcode::p_logical_start)
          break;
+      if (candidate->opcode == aco_opcode::p_exit_early_if)
+         break;
       if (!can_move_instr(candidate, current, moving_interaction))
          break;
 
@@ -664,6 +668,8 @@ void schedule_position_export(sched_ctx& ctx, Block* block,
 
       /* break when encountering logical_start or barriers */
       if (candidate->opcode == aco_opcode::p_logical_start)
+         break;
+      if (candidate->opcode == aco_opcode::p_exit_early_if)
          break;
       if (candidate->isVMEM() || candidate->format == Format::SMEM)
          break;

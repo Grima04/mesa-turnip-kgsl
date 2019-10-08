@@ -236,6 +236,7 @@ opcode("p_discard_if")
 opcode("p_load_helper")
 opcode("p_demote_to_helper")
 opcode("p_is_helper")
+opcode("p_exit_early_if")
 
 opcode("p_fs_buffer_store_smem", format=Format.SMEM)
 

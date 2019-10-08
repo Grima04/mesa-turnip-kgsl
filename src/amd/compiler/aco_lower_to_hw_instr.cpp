@@ -606,15 +606,15 @@ void lower_to_hw_instr(Program* program)
                handle_operands(copy_operations, &ctx, program->chip_class, pi);
                break;
             }
-            case aco_opcode::p_discard_if:
+            case aco_opcode::p_exit_early_if:
             {
-               bool early_exit = false;
-               if (block->instructions[j + 1]->opcode != aco_opcode::p_logical_end ||
-                   block->instructions[j + 2]->opcode != aco_opcode::s_endpgm) {
-                  early_exit = true;
+               /* don't bother with an early exit at the end of the program */
+               if (block->instructions[j + 1]->opcode == aco_opcode::p_logical_end &&
+                   block->instructions[j + 2]->opcode == aco_opcode::s_endpgm) {
+                  break;
                }
 
-               if (early_exit && !discard_block) {
+               if (!discard_block) {
                   discard_block = program->create_and_insert_block();
                   block = &program->blocks[i];
 
@@ -628,26 +628,13 @@ void lower_to_hw_instr(Program* program)
                   bld.reset(&ctx.instructions);
                }
 
-               // TODO: optimize uniform conditions
-               Definition branch_cond = instr->definitions.back();
-               Operand discard_cond = instr->operands.back();
-               aco_ptr<Instruction> sop2;
-               /* backwards, to finally branch on the global exec mask */
-               for (int i = instr->operands.size() - 2; i >= 0; i--) {
-                  bld.sop2(aco_opcode::s_andn2_b64,
-                           instr->definitions[i], /* new mask */
-                           branch_cond, /* scc */
-                           instr->operands[i], /* old mask */
-                           discard_cond);
-               }
+               //TODO: exec can be zero here with block_kind_discard
 
-               if (early_exit) {
-                  bld.sopp(aco_opcode::s_cbranch_scc0, bld.scc(branch_cond.getTemp()), discard_block->index);
+               assert(instr->operands[0].physReg() == scc);
+               bld.sopp(aco_opcode::s_cbranch_scc0, instr->operands[0], discard_block->index);
 
-                  discard_block->linear_preds.push_back(block->index);
-                  block->linear_succs.push_back(discard_block->index);
-               }
-
+               discard_block->linear_preds.push_back(block->index);
+               block->linear_succs.push_back(discard_block->index);
                break;
             }
             case aco_opcode::p_spill:

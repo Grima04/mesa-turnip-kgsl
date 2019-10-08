@@ -3266,6 +3266,7 @@ void visit_discard_if(isel_context *ctx, nir_intrinsic_instr *instr)
 
    ctx->program->needs_exact = true;
 
+   // TODO: optimize uniform conditions
    Builder bld(ctx->program, ctx->block);
    Temp src = as_divergent_bool(ctx, get_ssa_temp(ctx, instr->src[0].ssa), false);
    src = bld.sop2(aco_opcode::s_and_b64, bld.def(s2), bld.def(s1, scc), src, Operand(exec, s2));
