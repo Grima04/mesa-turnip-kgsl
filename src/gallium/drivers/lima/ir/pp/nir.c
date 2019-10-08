@@ -106,13 +106,6 @@ static void ppir_node_add_src(ppir_compiler *comp, ppir_node *node,
       case ppir_op_const:
          child = ppir_node_clone(node->block, child);
          break;
-      case ppir_op_load_texture:
-         /* Clone texture loads for each block */
-         if (child->block != node->block) {
-            child = ppir_node_clone(node->block, child);
-            comp->var_nodes[ns->ssa->index] = child;
-         }
-         break;
       case ppir_op_load_varying:
          if ((node->op != ppir_op_load_texture)) {
             /* Clone varying loads for each block */

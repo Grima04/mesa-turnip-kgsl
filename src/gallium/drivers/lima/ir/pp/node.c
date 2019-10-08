@@ -623,70 +623,6 @@ static ppir_node *ppir_node_clone_const(ppir_block *block, ppir_node *node)
 }
 
 static ppir_node *
-ppir_node_clone_tex(ppir_block *block, ppir_node *node)
-{
-   ppir_load_texture_node *tex_node = ppir_node_to_load_texture(node);
-   ppir_node *tex_coords = tex_node->src_coords.node;
-
-   ppir_node *new_tex_coords = NULL;
-
-   ppir_load_texture_node *new_tnode = ppir_node_create(block, ppir_op_load_texture, -1, 0);
-   if (!new_tnode)
-      return NULL;
-
-   list_addtail(&new_tnode->node.list, &block->node_list);
-
-   if (tex_coords) {
-      switch (tex_coords->op) {
-      case ppir_op_load_varying:
-      case ppir_op_load_coords:
-         new_tex_coords = ppir_node_clone(block, tex_coords);
-         assert(new_tex_coords);
-         break;
-      default:
-         new_tex_coords = tex_coords;
-         break;
-      }
-   }
-
-   ppir_dest *dest = ppir_node_get_dest(node);
-   new_tnode->dest = *dest;
-
-   new_tnode->sampler_dim = tex_node->sampler_dim;
-
-   for (int i = 0; i < 4; i++)
-      new_tnode->src_coords.swizzle[i] = tex_node->src_coords.swizzle[i];
-
-   for (int i = 0; i < ppir_node_get_src_num(node); i++) {
-      ppir_src *src = ppir_node_get_src(node, i);
-      ppir_src *new_src = ppir_node_get_src(&new_tnode->node, i);
-      switch (src->type) {
-      case ppir_target_ssa: {
-         ppir_node_target_assign(new_src, new_tex_coords);
-         ppir_node_add_dep(&new_tnode->node, new_tex_coords, ppir_dep_src);
-         break;
-      }
-      case ppir_target_register: {
-         new_src->type = src->type;
-         new_src->reg = src->reg;
-         new_src->node = NULL;
-         break;
-      }
-      case ppir_target_pipeline: {
-         new_src->type = src->type;
-         new_src->pipeline = src->pipeline;
-         break;
-      }
-      default:
-         /* pipeline is not expected here */
-         assert(0);
-      }
-   }
-
-   return &new_tnode->node;
-}
-
-static ppir_node *
 ppir_node_clone_load(ppir_block *block, ppir_node *node)
 {
    ppir_load_node *load_node = ppir_node_to_load(node);
@@ -730,8 +666,6 @@ ppir_node *ppir_node_clone(ppir_block *block, ppir_node *node)
    switch (node->op) {
    case ppir_op_const:
       return ppir_node_clone_const(block, node);
-   case ppir_op_load_texture:
-      return ppir_node_clone_tex(block, node);
    case ppir_op_load_uniform:
    case ppir_op_load_varying:
    case ppir_op_load_temp:
