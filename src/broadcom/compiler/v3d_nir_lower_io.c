@@ -378,7 +378,7 @@ v3d_nir_setup_vpm_layout_vs(struct v3d_compile *c,
 
         state->varyings_vpm_offset = vpm_offset;
 
-        c->vpm_output_size = vpm_offset + c->vs_key->num_used_outputs;
+        c->vpm_output_size = MAX2(1, vpm_offset + c->vs_key->num_used_outputs);
 }
 
 static void
