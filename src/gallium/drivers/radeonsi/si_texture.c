@@ -316,6 +316,8 @@ static int si_init_surface(struct si_screen *sscreen, struct radeon_surf *surfac
          surface->u.gfx9.surf.swizzle_mode = ADDR_SW_64KB_R_X;
    }
 
+   surface->modifier = DRM_FORMAT_MOD_INVALID;
+
    r = sscreen->ws->surface_init(sscreen->ws, ptex, flags, bpe, array_mode, surface);
    if (r) {
       return r;

@@ -25,6 +25,8 @@
  * IN THE SOFTWARE.
  */
 
+#include <libdrm/drm_fourcc.h>
+
 #include "radv_debug.h"
 #include "radv_private.h"
 #include "vk_format.h"
@@ -451,7 +453,6 @@ radv_get_surface_flags(struct radv_device *device,
 
 	is_depth = vk_format_has_depth(desc);
 	is_stencil = vk_format_has_stencil(desc);
-
 
 	flags = RADEON_SURF_SET(array_mode, MODE);
 
@@ -1317,9 +1318,11 @@ radv_image_reset_layout(struct radv_image *image)
 		VkFormat format = vk_format_get_plane_format(image->vk_format, i);
 
 		uint32_t flags = image->planes[i].surface.flags;
+		uint64_t modifier = image->planes[i].surface.modifier;
 		memset(image->planes + i, 0, sizeof(image->planes[i]));
 
 		image->planes[i].surface.flags = flags;
+		image->planes[i].surface.modifier = modifier;
 		image->planes[i].surface.blk_w = vk_format_get_blockwidth(format);
 		image->planes[i].surface.blk_h = vk_format_get_blockheight(format);
 		image->planes[i].surface.bpe = vk_format_get_blocksize(vk_format_depth_only(format));
@@ -1474,6 +1477,7 @@ radv_image_create(VkDevice _device,
 	for (unsigned plane = 0; plane < image->plane_count; ++plane) {
 		image->planes[plane].surface.flags =
 			radv_get_surface_flags(device, image, plane, pCreateInfo, format);
+		image->planes[plane].surface.modifier = DRM_FORMAT_MOD_INVALID;
 	}
 
 	bool delay_layout = external_info &&

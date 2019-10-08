@@ -27,6 +27,7 @@
 #define AC_SURFACE_H
 
 #include "amd_family.h"
+#include "util/format/u_format.h"
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -207,6 +208,12 @@ struct radeon_surf {
    unsigned micro_tile_mode : 3;
    uint32_t flags;
 
+    /*
+     * DRM format modifier. Set to DRM_FORMAT_MOD_INVALID to have addrlib
+     * select tiling parameters instead.
+     */
+    uint64_t modifier;
+
    /* These are return values. Some of them can be set by the caller, but
     * they will be treated as hints (e.g. bankw, bankh) and might be
     * changed by the calculator.
@@ -312,6 +319,32 @@ void ac_surface_get_umd_metadata(const struct radeon_info *info, struct radeon_s
 
 void ac_surface_override_offset_stride(const struct radeon_info *info, struct radeon_surf *surf,
                                        unsigned num_mipmap_levels, uint64_t offset, unsigned pitch);
+
+
+struct ac_modifier_options {
+	bool dcc; /* Whether to allow DCC. */
+	bool dcc_retile; /* Whether to allow use of a DCC retile map. */
+};
+
+bool ac_is_modifier_supported(const struct radeon_info *info,
+                              const struct ac_modifier_options *options,
+                              enum pipe_format format,
+                              uint64_t modifier);
+bool ac_get_supported_modifiers(const struct radeon_info *info,
+                                const struct ac_modifier_options *options,
+                                enum pipe_format format,
+                                unsigned *mod_count,
+                                uint64_t *mods);
+bool ac_modifier_has_dcc(uint64_t modifier);
+bool ac_modifier_has_dcc_retile(uint64_t modifier);
+
+unsigned ac_surface_get_nplanes(const struct radeon_surf *surf);
+uint64_t ac_surface_get_plane_offset(enum chip_class chip_class,
+                                     const struct radeon_surf *surf,
+                                     unsigned plane, unsigned layer);
+uint64_t ac_surface_get_plane_stride(enum chip_class chip_class,
+                                     const struct radeon_surf *surf,
+                                     unsigned plane);
 
 #ifdef __cplusplus
 }
