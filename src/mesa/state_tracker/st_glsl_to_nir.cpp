@@ -387,7 +387,6 @@ st_nir_preprocess(struct st_context *st, struct gl_program *prog,
 
    /* before buffers and vars_to_ssa */
    NIR_PASS_V(nir, gl_nir_lower_bindless_images);
-   st_nir_opts(nir);
 
    /* TODO: Change GLSL to not lower shared memory. */
    if (prog->nir->info.stage == MESA_SHADER_COMPUTE &&
@@ -403,6 +402,9 @@ st_nir_preprocess(struct st_context *st, struct gl_program *prog,
    NIR_PASS_V(nir, nir_opt_constant_folding);
 
    if (lower_64bit) {
+      /* Clean up the IR before 64-bit lowering. */
+      st_nir_opts(nir);
+
       bool lowered_64bit_ops = false;
       if (options->lower_doubles_options) {
          NIR_PASS(lowered_64bit_ops, nir, nir_lower_doubles,
@@ -653,12 +655,15 @@ st_link_nir(struct gl_context *ctx,
 {
    struct st_context *st = st_context(ctx);
    struct pipe_screen *screen = st->pipe->screen;
+   unsigned num_linked_shaders = 0;
 
    unsigned last_stage = 0;
    for (unsigned i = 0; i < MESA_SHADER_STAGES; i++) {
       struct gl_linked_shader *shader = shader_program->_LinkedShaders[i];
       if (shader == NULL)
          continue;
+
+      num_linked_shaders++;
 
       const nir_shader_compiler_options *options =
          st->ctx->Const.ShaderCompilerOptions[shader->Stage].NirOptions;
@@ -756,6 +761,12 @@ st_link_nir(struct gl_context *ctx,
          continue;
 
       nir_shader *nir = shader->Program->nir;
+
+      /* Linked shaders are optimized in st_nir_link_shaders. Separate shaders
+       * and shaders with a fixed-func VS or FS are optimized here.
+       */
+      if (num_linked_shaders == 1)
+         st_nir_opts(nir);
 
       NIR_PASS_V(nir, st_nir_lower_wpos_ytransform, shader->Program,
                  st->pipe->screen);
