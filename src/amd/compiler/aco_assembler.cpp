@@ -4,6 +4,7 @@
 #include "aco_ir.h"
 #include "common/sid.h"
 #include "ac_shader_util.h"
+#include "util/u_math.h"
 
 namespace aco {
 
@@ -668,16 +669,26 @@ unsigned emit_program(Program* program,
    }
 
    fix_branches(ctx, code);
+
+   unsigned exec_size = code.size() * sizeof(uint32_t);
+
+   if (program->chip_class >= GFX10) {
+      /* Pad output with s_code_end so instruction prefetching doesn't cause
+       * page faults */
+      unsigned final_size = align(code.size() + 3 * 16, 16);
+      while (code.size() < final_size)
+         code.push_back(0xbf9f0000u);
+   }
+
    fix_constaddrs(ctx, code);
 
-   unsigned constant_data_offset = code.size() * sizeof(uint32_t);
    while (program->constant_data.size() % 4u)
       program->constant_data.push_back(0);
    /* Copy constant data */
    code.insert(code.end(), (uint32_t*)program->constant_data.data(),
                (uint32_t*)(program->constant_data.data() + program->constant_data.size()));
 
-   return constant_data_offset;
+   return exec_size;
 }
 
 }
