@@ -531,11 +531,11 @@ mir_insert_instruction_after_scheduled(
 
         midgard_bundle *bundles = (midgard_bundle *) block->bundles.data;
         memmove(bundles + after + 2, bundles + after + 1, (count - after - 1) * sizeof(midgard_bundle));
-        midgard_bundle *after_bundle_1 = bundles + after + 2;
+        midgard_bundle *after_bundle = bundles + after;
 
         midgard_bundle new = mir_bundle_for_op(ctx, ins);
         memcpy(bundles + after + 1, &new, sizeof(new));
-        list_addtail(&new.instructions[0]->link, &after_bundle_1->instructions[0]->link);
+        list_addtail(&new.instructions[0]->link, &after_bundle->instructions[after_bundle->instruction_count - 1]->link);
 }
 
 /* Flip the first-two arguments of a (binary) op. Currently ALU
