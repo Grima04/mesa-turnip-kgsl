@@ -2191,6 +2191,7 @@ static const nir_shader_compiler_options nir_options = {
         .lower_ldexp = true,
         .lower_negate = true,
         .lower_rotate = true,
+        .lower_to_scalar = true,
         .max_unroll_iterations = 32,
 };
 

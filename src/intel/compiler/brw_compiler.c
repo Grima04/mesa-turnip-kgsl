@@ -50,6 +50,7 @@
    .lower_base_vertex = true
 
 #define COMMON_SCALAR_OPTIONS                                                 \
+   .lower_to_scalar = true,                                                   \
    .lower_pack_half_2x16 = true,                                              \
    .lower_pack_snorm_2x16 = true,                                             \
    .lower_pack_snorm_4x8 = true,                                              \

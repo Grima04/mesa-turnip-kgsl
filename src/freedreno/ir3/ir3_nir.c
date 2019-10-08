@@ -56,6 +56,7 @@ static const nir_shader_compiler_options options = {
 		.lower_bitfield_extract_to_shifts = true,
 		.use_interpolated_input_intrinsics = true,
 		.lower_rotate = true,
+		.lower_to_scalar = true,
 };
 
 /* we don't want to lower vertex_id to _zero_based on newer gpus: */
@@ -82,6 +83,7 @@ static const nir_shader_compiler_options options_a6xx = {
 		.use_interpolated_input_intrinsics = true,
 		.lower_rotate = true,
 		.vectorize_io = true,
+		.lower_to_scalar = true,
 };
 
 const nir_shader_compiler_options *

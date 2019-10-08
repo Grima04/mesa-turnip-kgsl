@@ -2736,6 +2736,7 @@ typedef struct nir_shader_compiler_options {
     * for IO purposes and would prefer loads/stores be vectorized.
     */
    bool vectorize_io;
+   bool lower_to_scalar;
 
    /**
     * Should nir_lower_io() create load_interpolated_input intrinsics?

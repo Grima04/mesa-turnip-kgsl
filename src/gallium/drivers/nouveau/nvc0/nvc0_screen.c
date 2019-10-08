@@ -976,6 +976,7 @@ static const nir_shader_compiler_options nir_options = {
    .max_unroll_iterations = 32,
    .lower_int64_options = nir_lower_divmod64, // TODO
    .lower_doubles_options = nir_lower_dmod, // TODO
+   .lower_to_scalar = true,
 };
 
 static const void *
