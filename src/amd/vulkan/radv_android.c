@@ -642,8 +642,9 @@ radv_import_ahb_memory(struct radv_device *device,
 	if (dma_buf < 0)
 		return VK_ERROR_INVALID_EXTERNAL_HANDLE;
 
+	uint64_t alloc_size = 0;
 	mem->bo = device->ws->buffer_from_fd(device->ws, dma_buf,
-	                                     priority);
+	                                     priority, &alloc_size);
 	if (!mem->bo)
 		return VK_ERROR_OUT_OF_HOST_MEMORY;
 
@@ -661,6 +662,18 @@ radv_import_ahb_memory(struct radv_device *device,
 			device->ws->buffer_destroy(mem->bo);
 			mem->bo = NULL;
 			return result;
+		}
+
+		if (alloc_size < mem->image->size) {
+			device->ws->buffer_destroy(mem->bo);
+			mem->bo = NULL;
+			return VK_ERROR_INVALID_EXTERNAL_HANDLE;
+		}
+	} else if (mem->buffer) {
+		if (alloc_size < mem->buffer->size) {
+			device->ws->buffer_destroy(mem->bo);
+			mem->bo = NULL;
+			return VK_ERROR_INVALID_EXTERNAL_HANDLE;
 		}
 	}
 

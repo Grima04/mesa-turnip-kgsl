@@ -533,7 +533,8 @@ error:
 
 static struct radeon_winsys_bo *
 radv_amdgpu_winsys_bo_from_fd(struct radeon_winsys *_ws,
-			      int fd, unsigned priority)
+			      int fd, unsigned priority,
+			      uint64_t *alloc_size)
 {
 	struct radv_amdgpu_winsys *ws = radv_amdgpu_winsys(_ws);
 	struct radv_amdgpu_winsys_bo *bo;
@@ -555,6 +556,10 @@ radv_amdgpu_winsys_bo_from_fd(struct radeon_winsys *_ws,
 	r = amdgpu_bo_query_info(result.buf_handle, &info);
 	if (r)
 		goto error_query;
+
+	if (alloc_size) {
+		*alloc_size = info.alloc_size;
+	}
 
 	r = amdgpu_va_range_alloc(ws->dev, amdgpu_gpu_va_range_general,
 				  result.alloc_size, 1 << 20, 0, &va, &va_handle,
