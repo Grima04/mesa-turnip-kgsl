@@ -362,12 +362,16 @@ type_to_dim(enum glsl_sampler_dim gdim, bool *is_ms)
       return SpvDim1D;
    case GLSL_SAMPLER_DIM_2D:
       return SpvDim2D;
-   case GLSL_SAMPLER_DIM_RECT:
-      return SpvDimRect;
-   case GLSL_SAMPLER_DIM_CUBE:
-      return SpvDimCube;
    case GLSL_SAMPLER_DIM_3D:
       return SpvDim3D;
+   case GLSL_SAMPLER_DIM_CUBE:
+      return SpvDimCube;
+   case GLSL_SAMPLER_DIM_RECT:
+      return SpvDimRect;
+   case GLSL_SAMPLER_DIM_BUF:
+      return SpvDimBuffer;
+   case GLSL_SAMPLER_DIM_EXTERNAL:
+      return SpvDim2D; /* seems dodgy... */
    case GLSL_SAMPLER_DIM_MS:
       *is_ms = true;
       return SpvDim2D;
