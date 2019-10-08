@@ -6045,11 +6045,11 @@ iris_destroy_state(struct iris_context *ice)
    pipe_resource_reference(&ice->draw.draw_params.res, NULL);
    pipe_resource_reference(&ice->draw.derived_draw_params.res, NULL);
 
-   uint64_t bound_vbs = ice->state.bound_vertex_buffers;
-   while (bound_vbs) {
-      const int i = u_bit_scan64(&bound_vbs);
+   /* Loop over all VBOs, including ones for draw parameters */
+   for (unsigned i = 0; i < ARRAY_SIZE(genx->vertex_buffers); i++) {
       pipe_resource_reference(&genx->vertex_buffers[i].resource, NULL);
    }
+
    free(ice->state.genx);
 
    for (int i = 0; i < 4; i++) {
