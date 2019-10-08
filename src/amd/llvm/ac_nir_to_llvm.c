@@ -2633,7 +2633,7 @@ static LLVMValueRef visit_image_atomic(struct ac_nir_context *ctx,
 		    instr->intrinsic == nir_intrinsic_bindless_image_atomic_umin ||
 		    instr->intrinsic == nir_intrinsic_bindless_image_atomic_imax ||
 		    instr->intrinsic == nir_intrinsic_bindless_image_atomic_umax) {
-			const GLenum format = nir_intrinsic_format(instr);
+			ASSERTED const GLenum format = nir_intrinsic_format(instr);
 			assert(format == GL_R32UI || format == GL_R32I);
 		}
 		dim = nir_intrinsic_image_dim(instr);
