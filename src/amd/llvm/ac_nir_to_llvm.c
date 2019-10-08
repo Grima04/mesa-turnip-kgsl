@@ -548,6 +548,17 @@ static void visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
 	case nir_op_umod:
 		result = LLVMBuildURem(ctx->ac.builder, src[0], src[1], "");
 		break;
+	case nir_op_fmod:
+		/* lower_fmod only lower 16-bit and 32-bit fmod */
+		assert(instr->dest.dest.ssa.bit_size == 64);
+		src[0] = ac_to_float(&ctx->ac, src[0]);
+		src[1] = ac_to_float(&ctx->ac, src[1]);
+		result = ac_build_fdiv(&ctx->ac, src[0], src[1]);
+		result = emit_intrin_1f_param(&ctx->ac, "llvm.floor",
+		                              ac_to_float_type(&ctx->ac, def_type), result);
+		result = LLVMBuildFMul(ctx->ac.builder, src[1] , result, "");
+		result = LLVMBuildFSub(ctx->ac.builder, src[0], result, "");
+		break;
 	case nir_op_irem:
 		result = LLVMBuildSRem(ctx->ac.builder, src[0], src[1], "");
 		break;
