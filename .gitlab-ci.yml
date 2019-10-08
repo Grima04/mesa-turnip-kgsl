@@ -194,8 +194,6 @@ meson-main:
       -D gallium-xa=false
       -D gallium-nine=false
       -D llvm=false
-  script:
-    - .gitlab-ci/meson-build.sh
 
 meson-armhf:
   extends: .meson-cross
