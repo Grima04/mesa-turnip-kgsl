@@ -88,6 +88,7 @@ legalize_block(struct ir3_legalize_ctx *ctx, struct ir3_block *block)
 	struct ir3_legalize_state prev_state = bd->state;
 	struct ir3_legalize_state *state = &bd->state;
 	bool last_input_needs_ss = false;
+	bool has_tex_prefetch = false;
 
 	/* our input state is the OR of all predecessor blocks' state: */
 	set_foreach(block->predecessors, entry) {
@@ -243,6 +244,8 @@ legalize_block(struct ir3_legalize_ctx *ctx, struct ir3_block *block)
 		if (is_tex(n) || (n->opc == OPC_META_TEX_PREFETCH)) {
 			regmask_set(&state->needs_sy, n->regs[0]);
 			ctx->need_pixlod = true;
+			if (n->opc == OPC_META_TEX_PREFETCH)
+				has_tex_prefetch = true;
 		} else if (n->opc == OPC_RESINFO) {
 			regmask_set(&state->needs_ss, n->regs[0]);
 			ir3_NOP(block)->flags |= IR3_INSTR_SS;
@@ -319,6 +322,22 @@ legalize_block(struct ir3_legalize_ctx *ctx, struct ir3_block *block)
 		last_input->regs[0]->flags |= IR3_REG_EI;
 		if (last_input_needs_ss)
 			last_input->flags |= IR3_INSTR_SS;
+	} else if (has_tex_prefetch) {
+		/* texture prefetch, but *no* inputs.. we need to insert a
+		 * dummy bary.f at the top of the shader to unblock varying
+		 * storage:
+		 */
+		struct ir3_instruction *baryf;
+
+		/* (ss)bary.f (ei)r63.x, 0, r0.x */
+		baryf = ir3_instr_create(block, OPC_BARY_F);
+		ir3_reg_create(baryf, regid(63, 0), 0)->flags |= IR3_REG_EI;
+		ir3_reg_create(baryf, 0, IR3_REG_IMMED)->iim_val = 0;
+		ir3_reg_create(baryf, regid(0, 0), 0);
+
+		/* insert the dummy bary.f at head: */
+		list_delinit(&baryf->node);
+		list_add(&baryf->node, &block->instr_list);
 	}
 
 	if (last_rel)
