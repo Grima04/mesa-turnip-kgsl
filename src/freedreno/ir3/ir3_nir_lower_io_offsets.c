@@ -84,9 +84,8 @@ get_ir3_intrinsic_for_ssbo_intrinsic(unsigned intrinsic,
 }
 
 static nir_ssa_def *
-check_and_propagate_bit_shift32(nir_builder *b, nir_ssa_def *offset,
-								nir_alu_instr *alu_instr, int32_t direction,
-								int32_t shift)
+check_and_propagate_bit_shift32(nir_builder *b, nir_alu_instr *alu_instr,
+								int32_t direction, int32_t shift)
 {
 	debug_assert(alu_instr->src[1].src.is_ssa);
 	nir_ssa_def *shift_ssa = alu_instr->src[1].src.ssa;
@@ -137,17 +136,17 @@ ir3_nir_try_propagate_bit_shift(nir_builder *b, nir_ssa_def *offset, int32_t shi
 
 	switch (alu->op) {
 	case nir_op_ishl:
-		shift_ssa = check_and_propagate_bit_shift32(b, offset, alu, 1, shift);
+		shift_ssa = check_and_propagate_bit_shift32(b, alu, 1, shift);
 		if (shift_ssa)
 			new_offset = nir_ishl(b, alu->src[0].src.ssa, shift_ssa);
 		break;
 	case nir_op_ishr:
-		shift_ssa = check_and_propagate_bit_shift32(b, offset, alu, -1, shift);
+		shift_ssa = check_and_propagate_bit_shift32(b, alu, -1, shift);
 		if (shift_ssa)
 			new_offset = nir_ishr(b, alu->src[0].src.ssa, shift_ssa);
 		break;
 	case nir_op_ushr:
-		shift_ssa = check_and_propagate_bit_shift32(b, offset, alu, -1, shift);
+		shift_ssa = check_and_propagate_bit_shift32(b, alu, -1, shift);
 		if (shift_ssa)
 			new_offset = nir_ushr(b, alu->src[0].src.ssa, shift_ssa);
 		break;
