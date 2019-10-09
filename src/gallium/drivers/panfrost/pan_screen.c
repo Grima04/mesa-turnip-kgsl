@@ -548,6 +548,7 @@ panfrost_destroy_screen(struct pipe_screen *pscreen)
         struct panfrost_screen *screen = pan_screen(pscreen);
         panfrost_bo_cache_evict_all(screen);
         pthread_mutex_destroy(&screen->bo_cache_lock);
+        pthread_mutex_destroy(&screen->active_bos_lock);
         drmFreeVersion(screen->kernel_version);
         ralloc_free(screen);
 }
@@ -681,6 +682,22 @@ panfrost_query_gpu_version(struct panfrost_screen *screen)
         return get_param.value;
 }
 
+static uint32_t
+panfrost_active_bos_hash(const void *key)
+{
+        const struct panfrost_bo *bo = key;
+
+        return _mesa_hash_data(&bo->gem_handle, sizeof(bo->gem_handle));
+}
+
+static bool
+panfrost_active_bos_cmp(const void *keya, const void *keyb)
+{
+        const struct panfrost_bo *a = keya, *b = keyb;
+
+        return a->gem_handle == b->gem_handle;
+}
+
 struct pipe_screen *
 panfrost_create_screen(int fd, struct renderonly *ro)
 {
@@ -732,6 +749,10 @@ panfrost_create_screen(int fd, struct renderonly *ro)
                              screen->gpu_id);
                 return NULL;
         }
+
+        pthread_mutex_init(&screen->active_bos_lock, NULL);
+        screen->active_bos = _mesa_set_create(screen, panfrost_active_bos_hash,
+                                              panfrost_active_bos_cmp);
 
         pthread_mutex_init(&screen->bo_cache_lock, NULL);
         for (unsigned i = 0; i < ARRAY_SIZE(screen->bo_cache); ++i)

@@ -35,6 +35,7 @@
 #include "renderonly/renderonly.h"
 #include "util/u_dynarray.h"
 #include "util/bitset.h"
+#include "util/set.h"
 
 #include <panfrost-misc.h>
 #include "pan_allocate.h"
@@ -84,6 +85,9 @@ struct panfrost_screen {
         drmVersionPtr kernel_version;
 
         struct renderonly *ro;
+
+        pthread_mutex_t active_bos_lock;
+        struct set *active_bos;
 
         pthread_mutex_t bo_cache_lock;
 

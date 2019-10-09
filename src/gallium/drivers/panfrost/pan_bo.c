@@ -371,6 +371,11 @@ panfrost_bo_create(struct panfrost_screen *screen, size_t size,
         }
 
         pipe_reference_init(&bo->reference, 1);
+
+        pthread_mutex_lock(&screen->active_bos_lock);
+        _mesa_set_add(bo->screen->active_bos, bo);
+        pthread_mutex_unlock(&screen->active_bos_lock);
+
         return bo;
 }
 
@@ -390,43 +395,79 @@ panfrost_bo_unreference(struct panfrost_bo *bo)
         if (!pipe_reference(&bo->reference, NULL))
                 return;
 
-        /* When the reference count goes to zero, we need to cleanup */
-        panfrost_bo_munmap(bo);
+        struct panfrost_screen *screen = bo->screen;
 
-        /* Rather than freeing the BO now, we'll cache the BO for later
-         * allocations if we're allowed to.
+        pthread_mutex_lock(&screen->active_bos_lock);
+        /* Someone might have imported this BO while we were waiting for the
+         * lock, let's make sure it's still not referenced before freeing it.
          */
-        if (panfrost_bo_cache_put(bo))
-                return;
+        if (!pipe_is_referenced(&bo->reference)) {
+                _mesa_set_remove_key(bo->screen->active_bos, bo);
 
-        panfrost_bo_free(bo);
+                /* When the reference count goes to zero, we need to cleanup */
+                panfrost_bo_munmap(bo);
+
+                /* Rather than freeing the BO now, we'll cache the BO for later
+                 * allocations if we're allowed to.
+                 */
+                if (!panfrost_bo_cache_put(bo))
+                        panfrost_bo_free(bo);
+        }
+        pthread_mutex_unlock(&screen->active_bos_lock);
 }
 
 struct panfrost_bo *
 panfrost_bo_import(struct panfrost_screen *screen, int fd)
 {
-        struct panfrost_bo *bo = rzalloc(screen, struct panfrost_bo);
+        struct panfrost_bo *bo, *newbo = rzalloc(screen, struct panfrost_bo);
         struct drm_panfrost_get_bo_offset get_bo_offset = {0,};
+        struct set_entry *entry;
         ASSERTED int ret;
         unsigned gem_handle;
+
+        newbo->screen = screen;
 
         ret = drmPrimeFDToHandle(screen->fd, fd, &gem_handle);
         assert(!ret);
 
-        get_bo_offset.handle = gem_handle;
-        ret = drmIoctl(screen->fd, DRM_IOCTL_PANFROST_GET_BO_OFFSET, &get_bo_offset);
-        assert(!ret);
+        newbo->gem_handle = gem_handle;
 
-        bo->screen = screen;
-        bo->gem_handle = gem_handle;
-        bo->gpu = (mali_ptr) get_bo_offset.offset;
-        bo->size = lseek(fd, 0, SEEK_END);
-        bo->flags |= PAN_BO_DONT_REUSE | PAN_BO_IMPORTED;
-        assert(bo->size > 0);
-        pipe_reference_init(&bo->reference, 1);
+        pthread_mutex_lock(&screen->active_bos_lock);
+        entry = _mesa_set_search_or_add(screen->active_bos, newbo);
+        assert(entry);
+        bo = (struct panfrost_bo *)entry->key;
+        if (newbo == bo) {
+                get_bo_offset.handle = gem_handle;
+                ret = drmIoctl(screen->fd, DRM_IOCTL_PANFROST_GET_BO_OFFSET, &get_bo_offset);
+                assert(!ret);
 
-        // TODO map and unmap on demand?
-        panfrost_bo_mmap(bo);
+                newbo->gpu = (mali_ptr) get_bo_offset.offset;
+                newbo->size = lseek(fd, 0, SEEK_END);
+                newbo->flags |= PAN_BO_DONT_REUSE | PAN_BO_IMPORTED;
+                assert(newbo->size > 0);
+                pipe_reference_init(&newbo->reference, 1);
+                // TODO map and unmap on demand?
+                panfrost_bo_mmap(newbo);
+        } else {
+                ralloc_free(newbo);
+                /* !pipe_is_referenced(&bo->reference) can happen if the BO
+                 * was being released but panfrost_bo_import() acquired the
+                 * lock before panfrost_bo_unreference(). In that case, refcnt
+                 * is 0 and we can't use panfrost_bo_reference() directly, we
+                 * have to re-initialize it with pipe_reference_init().
+                 * Note that panfrost_bo_unreference() checks
+                 * pipe_is_referenced() value just after acquiring the lock to
+                 * make sure the object is not freed if panfrost_bo_import()
+                 * acquired it in the meantime.
+                 */
+                if (!pipe_is_referenced(&bo->reference))
+                        pipe_reference_init(&newbo->reference, 1);
+                else
+                        panfrost_bo_reference(bo);
+                assert(bo->cpu);
+        }
+        pthread_mutex_unlock(&screen->active_bos_lock);
+
         return bo;
 }
 
