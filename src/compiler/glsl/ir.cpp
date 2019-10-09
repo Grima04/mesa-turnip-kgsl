@@ -293,6 +293,7 @@ ir_expression::ir_expression(int op, ir_rvalue *op0)
       break;
 
    case ir_unop_f2f16:
+   case ir_unop_f2fmp:
    case ir_unop_b2f16:
       this->type = glsl_type::get_instance(GLSL_TYPE_FLOAT16,
 					   op0->type->vector_elements, 1);

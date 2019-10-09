@@ -459,6 +459,7 @@ ir_expression_operation = [
    # still have to handle them here so that we can constant propagate through
    # them, but they are no-ops.
    operation("f2f16", 1, source_types=(float_type,), dest_type=float_type, c_expression="{src0}"),
+   operation("f2fmp", 1, source_types=(float_type,), dest_type=float_type, c_expression="{src0}"),
    operation("f162f", 1, source_types=(float_type,), dest_type=float_type, c_expression="{src0}"),
    # Double-to-integer conversion.
    operation("d2i", 1, source_types=(double_type,), dest_type=int_type, c_expression="{src0}"),

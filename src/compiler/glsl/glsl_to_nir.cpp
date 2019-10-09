@@ -2079,6 +2079,11 @@ nir_visitor::visit(ir_expression *ir)
       break;
    }
 
+   case ir_unop_f2fmp: {
+      result = nir_build_alu(&b, nir_op_f2fmp, srcs[0], NULL, NULL, NULL);
+      break;
+   }
+
    case ir_unop_bitcast_i2f:
    case ir_unop_bitcast_f2i:
    case ir_unop_bitcast_u2f:
