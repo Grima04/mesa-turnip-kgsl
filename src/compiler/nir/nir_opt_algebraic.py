@@ -1737,6 +1737,11 @@ late_optimizations = [
     ('ffma', a, b, ('ffma', c, d, ('ffma', e, 'f', 'g'))), '(info->stage != MESA_SHADER_VERTEX && info->stage != MESA_SHADER_GEOMETRY) && !options->intel_vec4'),
    (('~fadd', ('ffma(is_used_once)', a, b, ('fmul', 'c(is_not_const_and_not_fsign)', 'd(is_not_const_and_not_fsign)') ), 'e(is_not_const)'),
     ('ffma', a, b, ('ffma', c, d, e)), '(info->stage != MESA_SHADER_VERTEX && info->stage != MESA_SHADER_GEOMETRY) && !options->intel_vec4'),
+
+   # Convert f2fmp instructions to concrete f2f16 instructions. At this point
+   # any conversions that could have been removed will have been removed in
+   # nir_opt_algebraic so any remaining ones are required.
+   (('f2fmp', a), ('f2f16', a)),
 ]
 
 for op in ['fadd']:

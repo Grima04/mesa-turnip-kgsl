@@ -100,6 +100,7 @@ tbool16 = "bool16"
 tbool32 = "bool32"
 tuint = "uint"
 tuint16 = "uint16"
+tfloat16 = "float16"
 tfloat32 = "float32"
 tint32 = "int32"
 tuint32 = "uint32"
@@ -265,6 +266,11 @@ for src_t in [tint, tuint, tfloat, tbool]:
                                                        dst_bit_size),
                                    dst_t + str(dst_bit_size), src_t, conv_expr)
 
+# Special opcode that is the same as f2f16 except that it is safe to remove it
+# if the result is immediately converted back to float32 again. This is
+# generated as part of the precision lowering pass. mp stands for medium
+# precision.
+unop_numeric_convert("f2fmp", tfloat16, tfloat, opcodes["f2f16"].const_expr)
 
 # Unary floating-point rounding operations.
 
