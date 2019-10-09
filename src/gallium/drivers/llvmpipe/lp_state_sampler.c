@@ -386,7 +386,8 @@ prepare_shader_images(
          if (!img)
             continue;
 
-         unsigned width0 = img->width0;
+         unsigned width = u_minify(img->width0, view->u.tex.level);
+         unsigned height = u_minify(img->height0, view->u.tex.level);
          unsigned num_layers = img->depth0;
 
          if (!lp_img->dt) {
@@ -419,7 +420,7 @@ prepare_shader_images(
                img_stride = 0;
 
                /* everything specified in number of elements here. */
-               width0 = view->u.buf.size / view_blocksize;
+               width = view->u.buf.size / view_blocksize;
                addr = (uint8_t *)addr + view->u.buf.offset;
                assert(view->u.buf.offset + view->u.buf.size <= res->width0);
             }
@@ -440,7 +441,7 @@ prepare_shader_images(
          draw_set_mapped_image(lp->draw,
                                shader_type,
                                i,
-                               width0, img->height0, num_layers,
+                               width, height, num_layers,
                                addr,
                                row_stride, img_stride);
       }
