@@ -1006,6 +1006,30 @@ v3d_update_job_ez(struct v3d_context *v3d, struct v3d_job *job)
                 job->first_ez_state = job->ez_state;
 }
 
+static uint32_t
+v3d_hw_prim_type(enum pipe_prim_type prim_type)
+{
+        switch (prim_type) {
+        case PIPE_PRIM_POINTS:
+        case PIPE_PRIM_LINES:
+        case PIPE_PRIM_LINE_LOOP:
+        case PIPE_PRIM_LINE_STRIP:
+        case PIPE_PRIM_TRIANGLES:
+        case PIPE_PRIM_TRIANGLE_STRIP:
+        case PIPE_PRIM_TRIANGLE_FAN:
+                return prim_type;
+
+        case PIPE_PRIM_LINES_ADJACENCY:
+        case PIPE_PRIM_LINE_STRIP_ADJACENCY:
+        case PIPE_PRIM_TRIANGLES_ADJACENCY:
+        case PIPE_PRIM_TRIANGLE_STRIP_ADJACENCY:
+                return 8 + (prim_type - PIPE_PRIM_LINES_ADJACENCY);
+
+        default:
+                unreachable("Unsupported primitive type");
+        }
+}
+
 static void
 v3d_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info)
 {
@@ -1036,7 +1060,7 @@ v3d_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info)
                 }
         }
 
-        if (info->mode >= PIPE_PRIM_QUADS) {
+        if (info->mode >= PIPE_PRIM_QUADS && info->mode <= PIPE_PRIM_POLYGON) {
                 util_primconvert_save_rasterizer_state(v3d->primconvert, &v3d->rasterizer->base);
                 util_primconvert_draw_vbo(v3d->primconvert, info);
                 perf_debug("Fallback conversion for %d %s vertices\n",
@@ -1173,9 +1197,7 @@ v3d_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info)
 
         v3d_update_primitives_generated_counter(v3d, info);
 
-        /* Note that the primitive type fields match with OpenGL/gallium
-         * definitions, up to but not including QUADS.
-         */
+        uint32_t hw_prim_type = v3d_hw_prim_type(info->mode);
         if (info->index_size) {
                 uint32_t index_size = info->index_size;
                 uint32_t offset = info->start * index_size;
@@ -1205,7 +1227,7 @@ v3d_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info)
                                 prim.address_of_indices_list =
                                         cl_address(rsc->bo, offset);
 #endif /* V3D_VERSION < 40 */
-                                prim.mode = info->mode | prim_tf_enable;
+                                prim.mode = hw_prim_type | prim_tf_enable;
                                 prim.enable_primitive_restarts = info->primitive_restart;
 
                                 prim.number_of_draw_indirect_indexed_records = info->indirect->draw_count;
@@ -1224,7 +1246,7 @@ v3d_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info)
                                 prim.address_of_indices_list =
                                         cl_address(rsc->bo, offset);
 #endif /* V3D_VERSION < 40 */
-                                prim.mode = info->mode | prim_tf_enable;
+                                prim.mode = hw_prim_type | prim_tf_enable;
                                 prim.enable_primitive_restarts = info->primitive_restart;
 
                                 prim.number_of_instances = info->instance_count;
@@ -1241,7 +1263,7 @@ v3d_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info)
                                 prim.address_of_indices_list =
                                         cl_address(rsc->bo, offset);
 #endif /* V3D_VERSION < 40 */
-                                prim.mode = info->mode | prim_tf_enable;
+                                prim.mode = hw_prim_type | prim_tf_enable;
                                 prim.enable_primitive_restarts = info->primitive_restart;
                         }
                 }
@@ -1251,7 +1273,7 @@ v3d_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info)
         } else {
                 if (info->indirect) {
                         cl_emit(&job->bcl, INDIRECT_VERTEX_ARRAY_INSTANCED_PRIMS, prim) {
-                                prim.mode = info->mode | prim_tf_enable;
+                                prim.mode = hw_prim_type | prim_tf_enable;
                                 prim.number_of_draw_indirect_array_records = info->indirect->draw_count;
 
                                 prim.stride_in_multiples_of_4_bytes = info->indirect->stride >> 2;
@@ -1265,7 +1287,7 @@ v3d_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info)
                                 v3d_stream_output_target_get_vertex_count(so) :
                                 info->count;
                         cl_emit(&job->bcl, VERTEX_ARRAY_INSTANCED_PRIMS, prim) {
-                                prim.mode = info->mode | prim_tf_enable;
+                                prim.mode = hw_prim_type | prim_tf_enable;
                                 prim.index_of_first_vertex = info->start;
                                 prim.number_of_instances = info->instance_count;
                                 prim.instance_length = vert_count;
@@ -1277,7 +1299,7 @@ v3d_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info)
                                 v3d_stream_output_target_get_vertex_count(so) :
                                 info->count;
                         cl_emit(&job->bcl, VERTEX_ARRAY_PRIMS, prim) {
-                                prim.mode = info->mode | prim_tf_enable;
+                                prim.mode = hw_prim_type | prim_tf_enable;
                                 prim.length = vert_count;
                                 prim.index_of_first_vertex = info->start;
                         }
