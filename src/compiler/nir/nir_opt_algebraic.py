@@ -255,6 +255,22 @@ for s in [8, 16, 32, 64]:
         (ishr, a, ('imin', ('iadd', ('iand', b, mask), ('iand', c, mask)), s - 1))),
    ])
 
+# Optimize a pattern of address calculation created by DXVK where the offset is
+# divided by 4 and then multipled by 4. This can be turned into an iand and the
+# additions before can be reassociated to CSE the iand instruction.
+for log2 in range(1, 7): # powers of two from 2 to 64
+   v = 1 << log2
+   mask = 0xffffffff & ~(v - 1)
+   b_is_multiple = '#b(is_unsigned_multiple_of_{})'.format(v)
+
+   optimizations.extend([
+       # 'a >> #b << #b' -> 'a & ~((1 << #b) - 1)'
+       (('ishl@32', ('ushr@32', a, log2), log2), ('iand', a, mask)),
+
+       # Reassociate for improved CSE
+       (('iand@32', ('iadd@32', a, b_is_multiple), mask), ('iadd', ('iand', a, mask), b)),
+   ])
+
 optimizations.extend([
    # This is common for address calculations.  Reassociating may enable the
    # 'a<<c' to be CSE'd.  It also helps architectures that have an ISHLADD
