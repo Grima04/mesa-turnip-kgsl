@@ -1230,7 +1230,7 @@ try_update_scene_state( struct lp_setup_context *setup )
          }
 
          num_constants =
-            setup->constants[i].stored_size / (sizeof(float) * 4);
+            DIV_ROUND_UP(setup->constants[i].stored_size, (sizeof(float) * 4));
          setup->fs.current.jit_context.num_constants[i] = num_constants;
          setup->dirty |= LP_SETUP_NEW_FS;
       }
