@@ -57,7 +57,7 @@ TEMPLATE = Template(textwrap.dedent("""\
     <h1>Mesa ${next_version} Release Notes / ${today}</h1>
 
     <p>
-    %if bugfix:
+    %if not bugfix:
         Mesa ${next_version} is a new development release. People who are concerned
         with stability and reliability should stick with a previous release or
         wait for Mesa ${version[:-1]}1.
