@@ -341,6 +341,7 @@ u_pipe_screen_get_param_defaults(struct pipe_screen *pscreen,
    case PIPE_CAP_ATOMIC_FLOAT_MINMAX:
    case PIPE_CAP_SHADER_SAMPLES_IDENTICAL:
    case PIPE_CAP_TGSI_ATOMINC_WRAP:
+   case PIPE_CAP_TGSI_TG4_COMPONENT_IN_SWIZZLE:
       return 0;
 
    case PIPE_CAP_MAX_GS_INVOCATIONS:
