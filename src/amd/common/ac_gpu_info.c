@@ -321,24 +321,24 @@ bool ac_query_gpu_info(int fd, void *dev_p,
 #define identify_chip(chipname) identify_chip2(chipname, chipname)
 
 	switch (amdinfo->family_id) {
-	case AMDGPU_FAMILY_SI:
+	case FAMILY_SI:
 		identify_chip(TAHITI);
 		identify_chip(PITCAIRN);
 		identify_chip2(CAPEVERDE, VERDE);
 		identify_chip(OLAND);
 		identify_chip(HAINAN);
 		break;
-	case AMDGPU_FAMILY_CI:
+	case FAMILY_CI:
 		identify_chip(BONAIRE);
 		identify_chip(HAWAII);
 		break;
-	case AMDGPU_FAMILY_KV:
+	case FAMILY_KV:
 		identify_chip2(SPECTRE, KAVERI);
 		identify_chip2(SPOOKY, KAVERI);
 		identify_chip2(KALINDI, KABINI);
 		identify_chip2(GODAVARI, KABINI);
 		break;
-	case AMDGPU_FAMILY_VI:
+	case FAMILY_VI:
 		identify_chip(ICELAND);
 		identify_chip(TONGA);
 		identify_chip(FIJI);
@@ -347,22 +347,22 @@ bool ac_query_gpu_info(int fd, void *dev_p,
 		identify_chip(POLARIS12);
 		identify_chip(VEGAM);
 		break;
-	case AMDGPU_FAMILY_CZ:
+	case FAMILY_CZ:
 		identify_chip(CARRIZO);
 		identify_chip(STONEY);
 		break;
-	case AMDGPU_FAMILY_AI:
+	case FAMILY_AI:
 		identify_chip(VEGA10);
 		identify_chip(VEGA12);
 		identify_chip(VEGA20);
 		identify_chip(ARCTURUS);
 		break;
-	case AMDGPU_FAMILY_RV:
+	case FAMILY_RV:
 		identify_chip(RAVEN);
 		identify_chip(RAVEN2);
 		identify_chip(RENOIR);
 		break;
-	case AMDGPU_FAMILY_NV:
+	case FAMILY_NV:
 		identify_chip(NAVI10);
 		identify_chip(NAVI12);
 		identify_chip(NAVI14);
