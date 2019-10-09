@@ -69,7 +69,8 @@ def update_index(is_point: bool, version: str, previous_version: str) -> None:
     header.text = f"{month} {date.day}, {date.year}"
 
     body = etree.Element('p')
-    a = etree.SubElement(body, 'a', attrib={'href': f'relnotes/{previous_version}'})
+    a = etree.SubElement(
+        body, 'a', attrib={'href': f'relnotes/{previous_version}.html'})
     a.text = f"Mesa {previous_version}"
     if is_point:
         a.tail = " is released. This is a bug fix release."
@@ -91,7 +92,7 @@ def update_release_notes(previous_version: str) -> None:
         tree = html.parse(f)
 
     li = etree.Element('li')
-    a = etree.SubElement(li, 'a', href=f'relnotes/{previous_version}')
+    a = etree.SubElement(li, 'a', href=f'relnotes/{previous_version}.html')
     a.text = f'{previous_version} release notes'
 
     ul = tree.xpath('.//ul')[0]
