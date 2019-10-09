@@ -66,7 +66,7 @@ def update_index(is_point: bool, version: str, previous_version: str) -> None:
     date = datetime.date.today()
     month = calendar.month_name[date.month]
     header = etree.Element('h2')
-    header.text=f"{month} {date.day}, {date.year}"
+    header.text = f"{month} {date.day}, {date.year}"
 
     body = etree.Element('p')
     a = etree.SubElement(body, 'a', attrib={'href': f'relnotes/{previous_version}'})
