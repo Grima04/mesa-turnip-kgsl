@@ -2237,6 +2237,10 @@ emit_tex( struct lp_build_tgsi_soa_context *bld,
       lod_property = lp_build_lod_property(&bld->bld_base, inst, 0);
    }
 
+   if (sampler_op == LP_SAMPLER_OP_GATHER) {
+      uint32_t comp_val = inst->Src[sampler_reg].Register.SwizzleX;
+      sample_key |= (comp_val << LP_SAMPLER_GATHER_COMP_SHIFT);
+   }
    if (modifier == LP_BLD_TEX_MODIFIER_PROJECTED) {
       oow = lp_build_emit_fetch(&bld->bld_base, inst, 0, 3);
       oow = lp_build_rcp(&bld->bld_base.base, oow);
