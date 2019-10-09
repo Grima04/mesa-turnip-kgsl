@@ -7,30 +7,30 @@ set -o xtrace
 apt-get update
 apt-get -y install ca-certificates
 apt-get -y install --no-install-recommends \
+	bc \
+	bison \
+	bzip2 \
+	cmake \
+	curl \
+	flex \
 	g++ \
+	gettext \
 	git \
+	libelf1 \
+	libexpat1 \
+	libgbm-dev \
+	libgles2-mesa-dev \
+	libpng-dev \
+	libssl-dev \
+	ninja-build \
 	pkg-config \
+	procps \
 	python \
 	python3-pip \
 	python3-setuptools \
-	bison \
-	flex \
-	gettext \
-	cmake \
-	ninja-build \
-	bc \
-	bzip2 \
-	libssl-dev \
-	curl \
 	unzip \
 	wget \
-	procps \
-	libexpat1 \
-	libelf1 \
-	zlib1g-dev \
-	libpng-dev \
-	libgbm-dev \
-	libgles2-mesa-dev
+	zlib1g-dev
 
 export             LIBDRM_VERSION=libdrm-2.4.99
 
@@ -95,10 +95,10 @@ rm -rf /VK-GL-CTS
 ############### Uninstall the build software
 
 apt-get purge -y \
-        cmake \
-        git \
-        gcc \
-        g++ \
         bison \
+        cmake \
         flex \
+        g++ \
+        gcc \
+        git \
         ninja-build
