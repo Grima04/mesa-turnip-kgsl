@@ -224,6 +224,8 @@ def get_features() -> typing.Generator[str, None, None]:
         with p.open('rt') as f:
             for line in f:
                 yield line
+    else:
+        yield "None"
 
 
 async def main() -> None:
