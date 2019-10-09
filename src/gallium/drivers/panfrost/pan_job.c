@@ -1109,7 +1109,7 @@ pan_pack_color(uint32_t *packed, const union pipe_color_union *color, enum pipe_
                         pan_pack_color_32(packed, s | (s << 16));
                 } else if (size == 2)
                         pan_pack_color_32(packed, out.ui[0] | (out.ui[0] << 16));
-                else if (size == 4)
+                else if (size == 3 || size == 4)
                         pan_pack_color_32(packed, out.ui[0]);
                 else if (size == 8)
                         pan_pack_color_64(packed, out.ui[0], out.ui[1]);
