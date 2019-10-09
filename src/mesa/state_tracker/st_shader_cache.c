@@ -67,7 +67,7 @@ write_tgsi_to_cache(struct blob *blob, const struct tgsi_token *tokens,
 static void
 write_nir_to_cache(struct blob *blob, struct gl_program *prog)
 {
-   nir_serialize(blob, prog->nir);
+   nir_serialize(blob, prog->nir, false);
    copy_blob_to_driver_cache_blob(blob, prog);
 }
 

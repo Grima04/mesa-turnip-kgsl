@@ -59,7 +59,7 @@ void *si_get_ir_binary(struct si_shader_selector *sel, bool ngg, bool es)
 		assert(sel->nir);
 
 		blob_init(&blob);
-		nir_serialize(&blob, sel->nir);
+		nir_serialize(&blob, sel->nir, true);
 		ir_binary = blob.data;
 		ir_size = blob.size;
 	}

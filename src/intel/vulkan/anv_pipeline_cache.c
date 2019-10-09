@@ -779,7 +779,7 @@ anv_device_upload_nir(struct anv_device *device,
       struct blob blob;
       blob_init(&blob);
 
-      nir_serialize(&blob, nir);
+      nir_serialize(&blob, nir, false);
       if (blob.out_of_memory) {
          blob_finish(&blob);
          return;
