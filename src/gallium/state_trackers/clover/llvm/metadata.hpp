@@ -39,23 +39,6 @@
 namespace clover {
    namespace llvm {
       namespace detail {
-         inline iterator_range< ::llvm::NamedMDNode::const_op_iterator>
-         get_kernel_nodes(const ::llvm::Module &mod) {
-            if (const ::llvm::NamedMDNode *n =
-                   mod.getNamedMetadata("opencl.kernels"))
-               return range(n->op_begin(), n->op_end());
-            else
-               return {};
-         }
-
-         inline std::function<bool (const ::llvm::MDNode *n)>
-         is_kernel_node_for(const ::llvm::Function &f) {
-            return [&](const ::llvm::MDNode *n) {
-               using ::llvm::mdconst::dyn_extract;
-               return &f == dyn_extract< ::llvm::Function>(n->getOperand(0));
-            };
-         }
-
          inline bool
          is_kernel(const ::llvm::Function &f) {
             return f.getMetadata("kernel_arg_type");
