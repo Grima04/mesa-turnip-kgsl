@@ -85,44 +85,6 @@ radv_get_device_uuid(struct radeon_info *info, void *uuid)
 	ac_compute_device_uuid(info, uuid, VK_UUID_SIZE);
 }
 
-static void
-radv_get_device_name(enum radeon_family family, char *name, size_t name_len, bool aco)
-{
-	const char *chip_string;
-
-	switch (family) {
-	case CHIP_TAHITI: chip_string = "TAHITI"; break;
-	case CHIP_PITCAIRN: chip_string = "PITCAIRN"; break;
-	case CHIP_VERDE: chip_string = "CAPE VERDE"; break;
-	case CHIP_OLAND: chip_string = "OLAND"; break;
-	case CHIP_HAINAN: chip_string = "HAINAN"; break;
-	case CHIP_BONAIRE: chip_string = "BONAIRE"; break;
-	case CHIP_KAVERI: chip_string = "KAVERI"; break;
-	case CHIP_KABINI: chip_string = "KABINI"; break;
-	case CHIP_HAWAII: chip_string = "HAWAII"; break;
-	case CHIP_TONGA: chip_string = "TONGA"; break;
-	case CHIP_ICELAND: chip_string = "ICELAND"; break;
-	case CHIP_CARRIZO: chip_string = "CARRIZO"; break;
-	case CHIP_FIJI: chip_string = "FIJI"; break;
-	case CHIP_POLARIS10: chip_string = "POLARIS10"; break;
-	case CHIP_POLARIS11: chip_string = "POLARIS11"; break;
-	case CHIP_POLARIS12: chip_string = "POLARIS12"; break;
-	case CHIP_STONEY: chip_string = "STONEY"; break;
-	case CHIP_VEGAM: chip_string = "VEGA M"; break;
-	case CHIP_VEGA10: chip_string = "VEGA10"; break;
-	case CHIP_VEGA12: chip_string = "VEGA12"; break;
-	case CHIP_VEGA20: chip_string = "VEGA20"; break;
-	case CHIP_RAVEN: chip_string = "RAVEN"; break;
-	case CHIP_RAVEN2: chip_string = "RAVEN2"; break;
-	case CHIP_NAVI10: chip_string = "NAVI10"; break;
-	case CHIP_NAVI12: chip_string = "NAVI12"; break;
-	case CHIP_NAVI14: chip_string = "NAVI14"; break;
-	default: chip_string = "unknown"; break;
-	}
-
-	snprintf(name, name_len, "AMD RADV%s %s (LLVM " MESA_LLVM_VERSION_STRING ")", aco ? "/ACO" : "", chip_string);
-}
-
 static uint64_t
 radv_get_visible_vram_size(struct radv_physical_device *device)
 {
@@ -334,7 +296,9 @@ radv_physical_device_init(struct radv_physical_device *device,
 		device->use_aco = false;
 	}
 
-	radv_get_device_name(device->rad_info.family, device->name, sizeof(device->name), device->use_aco);
+	snprintf(device->name, sizeof(device->name),
+		 "AMD RADV%s %s (LLVM " MESA_LLVM_VERSION_STRING ")", device->use_aco ? "/ACO" : "",
+		 device->rad_info.name);
 
 	if (radv_device_get_cache_uuid(device->rad_info.family, device->cache_uuid)) {
 		device->ws->destroy(device->ws);
