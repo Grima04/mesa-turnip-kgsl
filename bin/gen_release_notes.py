@@ -149,7 +149,7 @@ async def gather_bugs(version: str) -> typing.List[str]:
             # This means we have a bug in the form "Closes: https://..."
             issues.append(os.path.basename(urllib.parse.urlparse(bug).path))
         else:
-            issues.append(bug)
+            issues.append(bug.lstrip('#'))
 
     loop = asyncio.get_event_loop()
     async with aiohttp.ClientSession(loop=loop) as session:
