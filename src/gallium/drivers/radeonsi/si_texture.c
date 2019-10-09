@@ -1039,7 +1039,7 @@ static bool si_texture_get_handle(struct pipe_screen* screen,
 		}
 
 		/* Set metadata. */
-		if (!res->b.is_shared || update_metadata)
+		if ((!res->b.is_shared || update_metadata) && whandle->offset == 0)
 			si_set_tex_bo_metadata(sscreen, tex);
 
 		if (sscreen->info.chip_class >= GFX9) {
@@ -1801,7 +1801,7 @@ static struct pipe_resource *si_texture_from_winsys_buffer(struct si_screen *ssc
 	}
 
 	/* Displayable DCC requires an explicit flush. */
-	if (dedicated &&
+	if (dedicated && offset == 0 &&
 	    !(usage & PIPE_HANDLE_USAGE_EXPLICIT_FLUSH) &&
 	    si_has_displayable_dcc(tex)) {
 		/* TODO: do we need to decompress DCC? */
