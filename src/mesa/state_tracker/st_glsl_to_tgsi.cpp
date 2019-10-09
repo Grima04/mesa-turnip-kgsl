@@ -246,6 +246,7 @@ public:
    bool has_tex_txf_lz;
    bool precise;
    bool need_uarl;
+   bool tg4_component_in_swizzle;
 
    variable_storage *find_variable_storage(ir_variable *var);
 
@@ -4565,7 +4566,20 @@ glsl_to_tgsi_visitor::visit(ir_texture *ir)
       if (is_cube_array && ir->shadow_comparator) {
          inst = emit_asm(ir, opcode, result_dst, coord, cube_sc);
       } else {
-         inst = emit_asm(ir, opcode, result_dst, coord, component);
+         if (this->tg4_component_in_swizzle) {
+            inst = emit_asm(ir, opcode, result_dst, coord);
+            int idx = 0;
+            foreach_in_list(immediate_storage, entry, &this->immediates) {
+               if (component.index == idx) {
+                  gl_constant_value value = entry->values[component.swizzle];
+                  inst->gather_component = value.i;
+                  break;
+               }
+               idx++;
+            }
+         } else {
+            inst = emit_asm(ir, opcode, result_dst, coord, component);
+         }
       }
    } else
       inst = emit_asm(ir, opcode, result_dst, coord);
@@ -4717,6 +4731,7 @@ glsl_to_tgsi_visitor::glsl_to_tgsi_visitor()
    prog = NULL;
    precise = 0;
    need_uarl = false;
+   tg4_component_in_swizzle = false;
    shader_program = NULL;
    shader = NULL;
    options = NULL;
@@ -5774,6 +5789,7 @@ struct st_translate {
 
    enum pipe_shader_type procType;  /**< PIPE_SHADER_VERTEX/FRAGMENT */
    bool need_uarl;
+   bool tg4_component_in_swizzle;
 };
 
 /** Map Mesa's SYSTEM_VALUE_x to TGSI_SEMANTIC_x */
@@ -6231,6 +6247,8 @@ compile_tgsi_instruction(struct st_translate *t,
    case TGSI_OPCODE_SAMP2HND:
       if (inst->resource.file == PROGRAM_SAMPLER) {
          src[num_src] = t->samplers[inst->resource.index];
+         if (t->tg4_component_in_swizzle && inst->op == TGSI_OPCODE_TG4)
+            src[num_src].SwizzleX = inst->gather_component;
       } else {
          /* Bindless samplers. */
          src[num_src] = translate_src(t, &inst->resource);
@@ -6695,6 +6713,7 @@ st_translate_program(
 
    t->procType = procType;
    t->need_uarl = !screen->get_param(screen, PIPE_CAP_TGSI_ANY_REG_AS_ADDRESS);
+   t->tg4_component_in_swizzle = screen->get_param(screen, PIPE_CAP_TGSI_TG4_COMPONENT_IN_SWIZZLE);
    t->inputMapping = inputMapping;
    t->outputMapping = outputMapping;
    t->ureg = ureg;
@@ -7148,6 +7167,7 @@ get_mesa_program_tgsi(struct gl_context *ctx,
                                           PIPE_CAP_TGSI_TEX_TXF_LZ);
    v->need_uarl = !pscreen->get_param(pscreen, PIPE_CAP_TGSI_ANY_REG_AS_ADDRESS);
 
+   v->tg4_component_in_swizzle = pscreen->get_param(pscreen, PIPE_CAP_TGSI_TG4_COMPONENT_IN_SWIZZLE);
    v->variables = _mesa_hash_table_create(v->mem_ctx, _mesa_hash_pointer,
                                           _mesa_key_pointer_equal);
    skip_merge_registers =
