@@ -2934,7 +2934,28 @@ to upconvert to 32b float internally?
 		</reg32>
 	</array>
 
-	<reg32 offset="0xa99e" name="SP_UNKNOWN_A99E"/>
+	<reg32 offset="0xa99e" name="SP_FS_PREFETCH_CNTL">
+		<!-- unknown bits 0x7fc0 always set -->
+		<bitfield name="COUNT" low="0" high="2" type="uint"/>
+		<!-- b3 set if no other use of varyings in the shader itself.. maybe alternative to dummy bary.f? -->
+		<bitfield name="UNK3" pos="3" type="boolean"/>
+		<bitfield name="UNK4" low="4" high="11" type="a3xx_regid"/>
+	</reg32>
+	<array offset="0xa99f" name="SP_FS_PREFETCH" stride="1" length="4">
+		<reg32 offset="0" name="CMD">
+			<bitfield name="SRC" low="0" high="6" type="uint"/>
+			<bitfield name="SAMP_ID" low="7" high="10" type="uint"/>
+			<bitfield name="TEX_ID" low="11" high="15" type="uint"/>
+			<bitfield name="DST" low="16" high="21" type="a3xx_regid"/>
+			<bitfield name="WRMASK" low="22" high="25" type="hex"/>
+			<bitfield name="HALF" pos="26" type="boolean"/>
+			<!--
+			CMD seems always 0x4??  3d, textureProj, textureLod seem to
+			skip pre-fetch.. TODO test texelFetch
+			 -->
+			<bitfield name="CMD" low="27" high="31"/>
+		</reg32>
+	</array>
 
 	<reg32 offset="0xa9a7" name="SP_FS_TEX_COUNT" type="uint"/>
 
