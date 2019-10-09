@@ -1030,6 +1030,33 @@ v3d_hw_prim_type(enum pipe_prim_type prim_type)
         }
 }
 
+static bool
+v3d_check_compiled_shaders(struct v3d_context *v3d)
+{
+        static bool warned[5] = { 0 };
+
+        uint32_t failed_stage = MESA_SHADER_NONE;
+        if (!v3d->prog.vs->resource || !v3d->prog.cs->resource) {
+                failed_stage = MESA_SHADER_VERTEX;
+        } else if ((v3d->prog.gs_bin && !v3d->prog.gs_bin->resource) ||
+                   (v3d->prog.gs && !v3d->prog.gs->resource)) {
+                failed_stage = MESA_SHADER_GEOMETRY;
+        } else if (v3d->prog.fs && !v3d->prog.fs->resource) {
+                failed_stage = MESA_SHADER_FRAGMENT;
+        }
+
+        if (likely(failed_stage == MESA_SHADER_NONE))
+                return true;
+
+        if (!warned[failed_stage]) {
+                fprintf(stderr,
+                        "%s shader failed to compile. Expect corruption.\n",
+                        _mesa_shader_stage_to_string(failed_stage));
+                warned[failed_stage] = true;
+        }
+        return false;
+}
+
 static void
 v3d_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info)
 {
@@ -1137,6 +1164,8 @@ v3d_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info)
 
         v3d_start_draw(v3d);
         v3d_update_compiled_shaders(v3d, info->mode);
+        if (!v3d_check_compiled_shaders(v3d))
+                return;
         v3d_update_job_ez(v3d, job);
 
         /* If this job was writing to transform feedback buffers before this
