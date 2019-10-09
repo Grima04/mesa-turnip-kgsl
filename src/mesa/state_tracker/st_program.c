@@ -1298,7 +1298,7 @@ st_create_fp_variant(struct st_context *st,
                                     variant->bitmap_sampler,
                                     st->needs_texcoord_semantic,
                                     st->bitmap.tex_format ==
-                                    PIPE_FORMAT_L8_UNORM);
+                                    PIPE_FORMAT_R8_UNORM);
 
       if (tokens) {
          if (tgsi.tokens != stfp->tgsi.tokens)
