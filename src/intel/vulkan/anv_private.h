@@ -2820,6 +2820,7 @@ struct anv_pipeline_executable {
 
    struct brw_compile_stats stats;
 
+   char *nir;
    char *disasm;
 };
 

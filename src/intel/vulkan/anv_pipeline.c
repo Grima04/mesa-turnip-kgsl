@@ -1073,6 +1073,26 @@ anv_pipeline_add_executable(struct anv_pipeline *pipeline,
                             struct brw_compile_stats *stats,
                             uint32_t code_offset)
 {
+   char *nir = NULL;
+   if (stage->nir &&
+       (pipeline->flags &
+        VK_PIPELINE_CREATE_CAPTURE_INTERNAL_REPRESENTATIONS_BIT_KHR)) {
+      char *stream_data = NULL;
+      size_t stream_size = 0;
+      FILE *stream = open_memstream(&stream_data, &stream_size);
+
+      nir_print_shader(stage->nir, stream);
+
+      fclose(stream);
+
+      /* Copy it to a ralloc'd thing */
+      nir = ralloc_size(pipeline->mem_ctx, stream_size + 1);
+      memcpy(nir, stream_data, stream_size);
+      nir[stream_size] = 0;
+
+      free(stream_data);
+   }
+
    char *disasm = NULL;
    if (stage->code &&
        (pipeline->flags &
@@ -1102,6 +1122,7 @@ anv_pipeline_add_executable(struct anv_pipeline *pipeline,
       (struct anv_pipeline_executable) {
          .stage = stage->stage,
          .stats = *stats,
+         .nir = nir,
          .disasm = disasm,
       };
 }
@@ -2165,6 +2186,17 @@ VkResult anv_GetPipelineExecutableInternalRepresentationsKHR(
    assert(pExecutableInfo->executableIndex < pipeline->num_executables);
    const struct anv_pipeline_executable *exe =
       &pipeline->executables[pExecutableInfo->executableIndex];
+
+   if (exe->nir) {
+      vk_outarray_append(&out, ir) {
+         WRITE_STR(ir->name, "Final NIR");
+         WRITE_STR(ir->description,
+                   "Final NIR before going into the back-end compiler");
+
+         if (!write_ir_text(ir, exe->nir))
+            incomplete_text = true;
+      }
+   }
 
    if (exe->disasm) {
       vk_outarray_append(&out, ir) {
