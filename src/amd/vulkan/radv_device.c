@@ -1169,7 +1169,7 @@ void radv_GetPhysicalDeviceProperties(
 		.viewportBoundsRange                      = { INT16_MIN, INT16_MAX },
 		.viewportSubPixelBits                     = 8,
 		.minMemoryMapAlignment                    = 4096, /* A page */
-		.minTexelBufferOffsetAlignment            = 1,
+		.minTexelBufferOffsetAlignment            = 4,
 		.minUniformBufferOffsetAlignment          = 4,
 		.minStorageBufferOffsetAlignment          = 4,
 		.minTexelOffset                           = -32,
