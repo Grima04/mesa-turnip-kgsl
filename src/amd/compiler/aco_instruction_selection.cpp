@@ -3647,7 +3647,7 @@ static Temp get_image_coords(isel_context *ctx, const nir_intrinsic_instr *instr
    ASSERTED bool add_frag_pos = (dim == GLSL_SAMPLER_DIM_SUBPASS || dim == GLSL_SAMPLER_DIM_SUBPASS_MS);
    assert(!add_frag_pos && "Input attachments should be lowered.");
    bool is_ms = (dim == GLSL_SAMPLER_DIM_MS || dim == GLSL_SAMPLER_DIM_SUBPASS_MS);
-   bool gfx9_1d = ctx->options->chip_class >= GFX9 && dim == GLSL_SAMPLER_DIM_1D;
+   bool gfx9_1d = ctx->options->chip_class == GFX9 && dim == GLSL_SAMPLER_DIM_1D;
    int count = image_type_to_components_count(dim, is_array);
    std::vector<Operand> coords(count);
 
@@ -4041,7 +4041,7 @@ void visit_image_size(isel_context *ctx, nir_intrinsic_instr *instr)
                  emit_extract_vector(ctx, tmp, 1, v1),
                  by_6);
 
-   } else if (ctx->options->chip_class >= GFX9 &&
+   } else if (ctx->options->chip_class == GFX9 &&
               glsl_get_sampler_dim(type) == GLSL_SAMPLER_DIM_1D &&
               glsl_sampler_type_is_array(type)) {
       assert(instr->dest.ssa.num_components == 2);
@@ -6205,7 +6205,7 @@ void visit_tex(isel_context *ctx, nir_tex_instr *instr)
 
    /* pack derivatives */
    if (has_ddx || has_ddy) {
-      if (instr->sampler_dim == GLSL_SAMPLER_DIM_1D && ctx->options->chip_class >= GFX9) {
+      if (instr->sampler_dim == GLSL_SAMPLER_DIM_1D && ctx->options->chip_class == GFX9) {
          derivs = bld.pseudo(aco_opcode::p_create_vector, bld.def(v4),
                              ddx, Operand(0u), ddy, Operand(0u));
       } else {
@@ -6229,7 +6229,7 @@ void visit_tex(isel_context *ctx, nir_tex_instr *instr)
        instr->op != nir_texop_txf && instr->op != nir_texop_txf_ms)
       coords = apply_round_slice(ctx, coords, 2);
 
-   if (ctx->options->chip_class >= GFX9 &&
+   if (ctx->options->chip_class == GFX9 &&
        instr->sampler_dim == GLSL_SAMPLER_DIM_1D &&
        instr->op != nir_texop_lod && instr->coord_components) {
       assert(coords.size() > 0 && coords.size() < 3);
@@ -6319,7 +6319,7 @@ void visit_tex(isel_context *ctx, nir_tex_instr *instr)
       tex.reset(create_instruction<MIMG_instruction>(aco_opcode::image_get_resinfo, Format::MIMG, 2, 1));
       tex->operands[0] = Operand(as_vgpr(ctx,lod));
       tex->operands[1] = Operand(resource);
-      if (ctx->options->chip_class >= GFX9 &&
+      if (ctx->options->chip_class == GFX9 &&
           instr->op == nir_texop_txs &&
           instr->sampler_dim == GLSL_SAMPLER_DIM_1D &&
           instr->is_array) {
