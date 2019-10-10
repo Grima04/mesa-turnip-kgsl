@@ -212,6 +212,9 @@ lima_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    ctx->base.stream_uploader = ctx->uploader;
    ctx->base.const_uploader = ctx->uploader;
 
+   ctx->damage_rect.minx = ctx->damage_rect.miny = 0xffff;
+   ctx->damage_rect.maxx = ctx->damage_rect.maxy = 0;
+
    util_dynarray_init(&ctx->vs_cmd_array, ctx);
    util_dynarray_init(&ctx->plbu_cmd_array, ctx);
 

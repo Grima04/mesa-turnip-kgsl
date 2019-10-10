@@ -475,11 +475,19 @@ lima_generate_pp_stream(struct lima_context *ctx, int off_x, int off_y,
     * close enough which should result close workload
     */
    int max = MAX2(tiled_w, tiled_h);
-   int dim = util_logbase2_ceil(max);
-   int count = 1 << (dim + dim);
    int index = 0;
    uint32_t *stream[4];
    int si[4] = {0};
+   int dim = 0;
+   int count = 0;
+
+   /* Don't update count if we get zero rect. We'll just generate
+    * PP stream with just terminators in it.
+    */
+   if ((tiled_w * tiled_h) != 0) {
+      dim = util_logbase2_ceil(max);
+      count = 1 << (dim + dim);
+   }
 
    for (i = 0; i < num_pp; i++)
       stream[i] = ps->bo->map + ps->bo_offset + ps->offset[i];
@@ -522,10 +530,31 @@ static void
 lima_update_damage_pp_stream(struct lima_context *ctx)
 {
    struct lima_damage_region *ds = lima_ctx_get_damage(ctx);
-   struct pipe_scissor_state *bound = &ds->bound;
+   struct lima_context_framebuffer *fb = &ctx->framebuffer;
+   struct pipe_scissor_state bound;
 
-   int tiled_w = bound->maxx - bound->minx;
-   int tiled_h = bound->maxy - bound->miny;
+   if (ds && ds->region) {
+      struct pipe_scissor_state *dbound = &ds->bound;
+      bound.minx = MAX2(dbound->minx, ctx->damage_rect.minx >> 4);
+      bound.miny = MAX2(dbound->miny, ctx->damage_rect.miny >> 4);
+      bound.maxx = MIN2(dbound->maxx, (ctx->damage_rect.maxx + 0xf) >> 4);
+      bound.maxy = MIN2(dbound->maxy, (ctx->damage_rect.maxy + 0xf) >> 4);
+   } else {
+      bound.minx = ctx->damage_rect.minx >> 4;
+      bound.miny = ctx->damage_rect.miny >> 4;
+      bound.maxx = (ctx->damage_rect.maxx + 0xf) >> 4;
+      bound.maxy = (ctx->damage_rect.maxy + 0xf) >> 4;
+   }
+
+   /* Clamp to FB size */
+   bound.minx = MIN2(bound.minx, fb->tiled_w);
+   bound.miny = MIN2(bound.miny, fb->tiled_h);
+   bound.maxx = MIN2(bound.maxx, fb->tiled_w);
+   bound.maxy = MIN2(bound.maxy, fb->tiled_h);
+
+   int tiled_w = bound.maxx - bound.minx;
+   int tiled_h = bound.maxy - bound.miny;
+
    struct lima_screen *screen = lima_screen(ctx->base.screen);
    int size = lima_get_pp_stream_size(
       screen->num_pp, tiled_w, tiled_h, ctx->pp_stream.offset);
@@ -539,7 +568,7 @@ lima_update_damage_pp_stream(struct lima_context *ctx)
    ctx->pp_stream.bo = res->bo;
    ctx->pp_stream.bo_offset = offset;
 
-   lima_generate_pp_stream(ctx, bound->minx, bound->miny, tiled_w, tiled_h);
+   lima_generate_pp_stream(ctx, bound.minx, bound.miny, tiled_w, tiled_h);
 
    lima_submit_add_bo(ctx->pp_submit, res->bo, LIMA_SUBMIT_BO_READ);
    pipe_resource_reference(&pres, NULL);
@@ -581,11 +610,20 @@ lima_update_full_pp_stream(struct lima_context *ctx)
    lima_submit_add_bo(ctx->pp_submit, s->bo, LIMA_SUBMIT_BO_READ);
 }
 
+static bool
+lima_damage_fullscreen(struct lima_context *ctx)
+{
+   return ctx->damage_rect.minx == 0 &&
+          ctx->damage_rect.miny == 0 &&
+          ctx->damage_rect.maxx == ctx->framebuffer.base.width &&
+          ctx->damage_rect.maxy == ctx->framebuffer.base.height;
+}
+
 static void
 lima_update_pp_stream(struct lima_context *ctx)
 {
    struct lima_damage_region *damage = lima_ctx_get_damage(ctx);
-   if (damage && damage->region)
+   if ((damage && damage->region) || !lima_damage_fullscreen(ctx))
       lima_update_damage_pp_stream(ctx);
    else if (ctx->plb_pp_stream)
       lima_update_full_pp_stream(ctx);
@@ -620,6 +658,15 @@ lima_update_submit_bo(struct lima_context *ctx)
    lima_submit_add_bo(ctx->pp_submit, ctx->plb[ctx->plb_index], LIMA_SUBMIT_BO_READ);
    lima_submit_add_bo(ctx->pp_submit, ctx->gp_tile_heap[ctx->plb_index], LIMA_SUBMIT_BO_READ);
    lima_submit_add_bo(ctx->pp_submit, screen->pp_buffer, LIMA_SUBMIT_BO_READ);
+}
+
+static void
+lima_damage_rect_union(struct lima_context *ctx, unsigned minx, unsigned maxx, unsigned miny, unsigned maxy)
+{
+   ctx->damage_rect.minx = MIN2(ctx->damage_rect.minx, minx);
+   ctx->damage_rect.miny = MIN2(ctx->damage_rect.miny, miny);
+   ctx->damage_rect.maxx = MAX2(ctx->damage_rect.maxx, maxx);
+   ctx->damage_rect.maxy = MAX2(ctx->damage_rect.maxy, maxy);
 }
 
 static void
@@ -664,6 +711,9 @@ lima_clear(struct pipe_context *pctx, unsigned buffers,
    lima_pack_head_plbu_cmd(ctx);
 
    ctx->dirty |= LIMA_CONTEXT_DIRTY_CLEAR;
+
+   lima_damage_rect_union(ctx, 0, ctx->framebuffer.base.width,
+                               0, ctx->framebuffer.base.height);
 }
 
 enum lima_attrib_type {
@@ -819,8 +869,11 @@ lima_pack_plbu_cmd(struct lima_context *ctx, const struct pipe_draw_info *info)
    if (ctx->rasterizer->base.scissor) {
       struct pipe_scissor_state *scissor = &ctx->scissor;
       PLBU_CMD_SCISSORS(scissor->minx, scissor->maxx, scissor->miny, scissor->maxy);
+      lima_damage_rect_union(ctx, scissor->minx, scissor->maxx,
+                                  scissor->miny, scissor->maxy);
    } else {
       PLBU_CMD_SCISSORS(0, fb->base.width, 0, fb->base.height);
+      lima_damage_rect_union(ctx, 0, fb->base.width, 0, fb->base.height);
    }
 
    PLBU_CMD_UNKNOWN1();
@@ -1717,6 +1770,9 @@ _lima_flush(struct lima_context *ctx, bool end_of_frame)
    }
 
    ctx->pp_max_stack_size = 0;
+
+   ctx->damage_rect.minx = ctx->damage_rect.miny = 0xffff;
+   ctx->damage_rect.maxx = ctx->damage_rect.maxy = 0;
 
    lima_dump_file_next();
 }
