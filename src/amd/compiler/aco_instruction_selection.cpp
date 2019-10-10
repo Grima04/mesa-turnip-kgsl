@@ -3271,7 +3271,8 @@ void visit_load_resource(isel_context *ctx, nir_intrinsic_instr *instr)
    bld.copy(Definition(get_ssa_temp(ctx, &instr->dest.ssa)), index);
 }
 
-void load_buffer(isel_context *ctx, unsigned num_components, Temp dst, Temp rsrc, Temp offset, bool glc=false)
+void load_buffer(isel_context *ctx, unsigned num_components, Temp dst,
+                 Temp rsrc, Temp offset, bool glc=false, bool readonly=true)
 {
    Builder bld(ctx->program, ctx->block);
 
@@ -3300,7 +3301,8 @@ void load_buffer(isel_context *ctx, unsigned num_components, Temp dst, Temp rsrc
          mubuf->offen = (offset.type() == RegType::vgpr);
          mubuf->glc = glc;
          mubuf->dlc = dlc;
-         mubuf->barrier = barrier_buffer;
+         mubuf->barrier = readonly ? barrier_none : barrier_buffer;
+         mubuf->can_reorder = readonly;
          bld.insert(std::move(mubuf));
          emit_split_vector(ctx, lower, 2);
          num_bytes -= 16;
@@ -3330,7 +3332,8 @@ void load_buffer(isel_context *ctx, unsigned num_components, Temp dst, Temp rsrc
       mubuf->offen = (offset.type() == RegType::vgpr);
       mubuf->glc = glc;
       mubuf->dlc = dlc;
-      mubuf->barrier = barrier_buffer;
+      mubuf->barrier = readonly ? barrier_none : barrier_buffer;
+      mubuf->can_reorder = readonly;
       mubuf->offset = const_offset;
       aco_ptr<Instruction> instr = std::move(mubuf);
 
@@ -3384,7 +3387,8 @@ void load_buffer(isel_context *ctx, unsigned num_components, Temp dst, Temp rsrc
       load->definitions[0] = Definition(dst);
       load->glc = glc;
       load->dlc = dlc;
-      load->barrier = barrier_buffer;
+      load->barrier = readonly ? barrier_none : barrier_buffer;
+      load->can_reorder = false; // FIXME: currently, it doesn't seem beneficial due to how our scheduler works
       assert(ctx->options->chip_class >= GFX8 || !glc);
 
       /* trim vector */
@@ -4358,7 +4362,7 @@ void visit_load_ssbo(isel_context *ctx, nir_intrinsic_instr *instr)
    rsrc = bld.smem(aco_opcode::s_load_dwordx4, bld.def(s4), rsrc, Operand(0u));
 
    bool glc = nir_intrinsic_access(instr) & (ACCESS_VOLATILE | ACCESS_COHERENT);
-   load_buffer(ctx, num_components, dst, rsrc, get_ssa_temp(ctx, instr->src[1].ssa), glc);
+   load_buffer(ctx, num_components, dst, rsrc, get_ssa_temp(ctx, instr->src[1].ssa), glc, false);
 }
 
 void visit_store_ssbo(isel_context *ctx, nir_intrinsic_instr *instr)
