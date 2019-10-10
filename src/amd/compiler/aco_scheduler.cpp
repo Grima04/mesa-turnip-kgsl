@@ -110,6 +110,10 @@ bool can_move_instr(aco_ptr<Instruction>& instr, Instruction* current, int movin
    if (instr->format == Format::EXP)
       return false;
 
+   /* don't move s_memtime/s_memrealtime */
+   if (instr->opcode == aco_opcode::s_memtime || instr->opcode == aco_opcode::s_memrealtime)
+      return false;
+
    /* handle barriers */
 
    /* TODO: instead of stopping, maybe try to move the barriers and any
@@ -190,6 +194,10 @@ void schedule_SMEM(sched_ctx& ctx, Block* block,
    int max_moves = SMEM_MAX_MOVES;
    int16_t k = 0;
    bool can_reorder_cur = can_reorder(current, false);
+
+   /* don't move s_memtime/s_memrealtime */
+   if (current->opcode == aco_opcode::s_memtime || current->opcode == aco_opcode::s_memrealtime)
+      return;
 
    /* create the initial set of values which current depends on */
    std::fill(ctx.depends_on.begin(), ctx.depends_on.end(), false);
