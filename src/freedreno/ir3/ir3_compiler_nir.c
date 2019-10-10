@@ -752,9 +752,9 @@ emit_intrinsic_load_ubo(struct ir3_context *ctx, nir_intrinsic_instr *intr,
 
 	for (int i = 0; i < intr->num_components; i++) {
 		struct ir3_instruction *load =
-				ir3_LDG(b, addr, 0, create_immed(b, 1), 0);
+			ir3_LDG(b, addr, 0, create_immed(b, 1), 0, /* num components */
+					create_immed(b, off + i * 4), 0);
 		load->cat6.type = TYPE_U32;
-		load->cat6.src_offset = off + i * 4;     /* byte offset */
 		dst[i] = load;
 	}
 }
@@ -787,8 +787,10 @@ emit_intrinsic_load_shared(struct ir3_context *ctx, nir_intrinsic_instr *intr,
 	offset = ir3_get_src(ctx, &intr->src[0])[0];
 	base   = nir_intrinsic_base(intr);
 
-	ldl = ir3_LDL(b, offset, 0, create_immed(b, intr->num_components), 0);
-	ldl->cat6.src_offset = base;
+	ldl = ir3_LDL(b, offset, 0,
+			create_immed(b, intr->num_components), 0,
+			create_immed(b, base), 0);
+
 	ldl->cat6.type = utype_dst(intr->dest);
 	ldl->regs[0]->wrmask = MASK(intr->num_components);
 

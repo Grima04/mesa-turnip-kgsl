@@ -1407,8 +1407,8 @@ ir3_SAM(struct ir3_block *block, opc_t opc, type_t type,
 
 /* cat6 instructions: */
 INSTR2(LDLV)
-INSTR2(LDG)
-INSTR2(LDL)
+INSTR3(LDG)
+INSTR3(LDL)
 INSTR3(STG)
 INSTR3(STL)
 INSTR1(RESINFO)

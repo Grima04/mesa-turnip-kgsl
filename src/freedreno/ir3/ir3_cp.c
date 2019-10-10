@@ -210,7 +210,7 @@ static bool valid_flags(struct ir3_instruction *instr, unsigned n,
 			if (is_store(instr) && (n == 1))
 				return false;
 
-			if ((instr->opc == OPC_LDL) && (n != 1))
+			if ((instr->opc == OPC_LDL) && (n == 0))
 				return false;
 
 			if ((instr->opc == OPC_STL) && (n != 2))
