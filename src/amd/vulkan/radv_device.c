@@ -1034,6 +1034,12 @@ void radv_GetPhysicalDeviceFeatures2(
 			features->shaderDeviceClock = false;
 			break;
 		}
+		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXEL_BUFFER_ALIGNMENT_FEATURES_EXT: {
+			VkPhysicalDeviceTexelBufferAlignmentFeaturesEXT *features =
+				(VkPhysicalDeviceTexelBufferAlignmentFeaturesEXT *)ext;
+			features->texelBufferAlignment = true;
+			break;
+		}
 		default:
 			break;
 		}
@@ -1467,6 +1473,15 @@ void radv_GetPhysicalDeviceProperties2(
 
 			properties->independentResolveNone = VK_TRUE;
 			properties->independentResolve = VK_TRUE;
+			break;
+		}
+		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXEL_BUFFER_ALIGNMENT_PROPERTIES_EXT: {
+			VkPhysicalDeviceTexelBufferAlignmentPropertiesEXT *properties =
+				(VkPhysicalDeviceTexelBufferAlignmentPropertiesEXT *)ext;
+			properties->storageTexelBufferOffsetAlignmentBytes = 4;
+			properties->storageTexelBufferOffsetSingleTexelAlignment = true;
+			properties->uniformTexelBufferOffsetAlignmentBytes = 4;
+			properties->uniformTexelBufferOffsetSingleTexelAlignment = true;
 			break;
 		}
 		default:
