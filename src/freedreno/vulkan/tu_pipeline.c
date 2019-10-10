@@ -1141,7 +1141,7 @@ tu6_emit_gras_unknowns(struct tu_cs *cs)
    tu_cs_emit(cs, 0x80);
    tu_cs_emit_pkt4(cs, REG_A6XX_GRAS_UNKNOWN_8001, 1);
    tu_cs_emit(cs, 0x0);
-   tu_cs_emit_pkt4(cs, REG_A6XX_GRAS_UNKNOWN_8004, 1);
+   tu_cs_emit_pkt4(cs, REG_A6XX_GRAS_LAYER_CNTL, 1);
    tu_cs_emit(cs, 0x0);
 }
 

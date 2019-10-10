@@ -643,6 +643,7 @@ opcode: CP_LOAD_STATE4 (30) (4 dwords)
 	<bitfield name="VIS_CULL" low="8" high="9" type="pc_di_vis_cull_mode"/>
 	<bitfield name="INDEX_SIZE" low="10" high="11" type="a4xx_index_size"/>
 	<bitfield name="PATCH_TYPE" low="12" high="13" type="a6xx_patch_type"/>
+	<bitfield name="GS_ENABLE" pos="16" type="boolean"/>
 	<bitfield name="TESS_ENABLE" pos="17" type="boolean"/>
 </bitset>
 
