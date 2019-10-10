@@ -336,6 +336,9 @@ void schedule_SMEM(sched_ctx& ctx, Block* block,
       /* check if candidate depends on current */
       bool is_dependency = std::any_of(candidate->operands.begin(), candidate->operands.end(),
                                        [&ctx](const Operand& op) { return op.isTemp() && ctx.depends_on[op.tempId()];});
+      /* no need to steal from following VMEM instructions */
+      if (is_dependency && candidate->isVMEM())
+         break;
       if (moving_spill && is_spill_reload(candidate))
          is_dependency = true;
       if ((moving_interaction & barrier_shared) && candidate->format == Format::DS)
