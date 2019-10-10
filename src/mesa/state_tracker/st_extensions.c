@@ -1174,7 +1174,7 @@ void st_init_extensions(struct pipe_screen *screen,
     * invocations of a geometry shader. There is no separate cap for that, so
     * we check the GLSLVersion.
     */
-   if (GLSLVersion >= 400 &&
+   if ((GLSLVersion >= 400 || ESSLVersion >= 320) &&
        screen->get_shader_param(screen, PIPE_SHADER_GEOMETRY,
                                 PIPE_SHADER_CAP_MAX_INSTRUCTIONS) > 0) {
       extensions->OES_geometry_shader = GL_TRUE;
