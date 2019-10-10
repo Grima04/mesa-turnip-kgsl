@@ -68,6 +68,12 @@ debian-10:
     GIT_STRATEGY: none # no need to pull the whole tree for rebuilding the image
     DEBIAN_EXEC: 'bash .gitlab-ci/debian-install.sh'
 
+.use-debian-10:
+  extends: .ci-run-policy
+  image: $DEBIAN_IMAGE
+  needs:
+    - debian-10
+
 debian-9:
   extends: debian-10
   variables:
@@ -95,10 +101,7 @@ test-container:arm64:
 # BUILD
 
 .build:
-  extends: .ci-run-policy
-  image: $DEBIAN_IMAGE
-  needs:
-    - debian-10
+  extends: .use-debian-10
   stage: build
   cache:
     key: ${CI_JOB_NAME}
@@ -374,9 +377,8 @@ scons-old-llvm:
     - LLVM_VERSION=5.0 .gitlab-ci/scons-build.sh
 
 .deqp-test:
-  extends: .ci-run-policy
+  extends: .use-debian-10
   stage: test
-  image: $DEBIAN_IMAGE
   variables:
     GIT_STRATEGY: none # testing doesn't build anything from source
     DEQP_SKIPS: deqp-default-skips.txt
