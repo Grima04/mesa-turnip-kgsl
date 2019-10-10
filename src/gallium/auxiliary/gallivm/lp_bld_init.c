@@ -46,6 +46,9 @@
 #endif
 #include <llvm-c/BitWriter.h>
 #if GALLIVM_HAVE_CORO
+#if LLVM_VERSION_MAJOR <= 8 && defined(PIPE_ARCH_AARCH64)
+#include <llvm-c/Transforms/IPO.h>
+#endif
 #include <llvm-c/Transforms/Coroutines.h>
 #endif
 
@@ -134,6 +137,9 @@ create_pass_manager(struct gallivm_state *gallivm)
    }
 
 #if GALLIVM_HAVE_CORO
+#if LLVM_VERSION_MAJOR <= 8 && defined(PIPE_ARCH_AARCH64)
+   LLVMAddFunctionAttrsPass(gallivm->cgpassmgr);
+#endif
    LLVMAddCoroEarlyPass(gallivm->cgpassmgr);
    LLVMAddCoroSplitPass(gallivm->cgpassmgr);
    LLVMAddCoroElidePass(gallivm->cgpassmgr);
