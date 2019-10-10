@@ -1198,9 +1198,7 @@ glXMakeContextCurrent( Display *dpy, GLXDrawable draw,
 
       if (draw) {
          /* Find the XMesaBuffer which corresponds to 'draw' */
-         if (ctx == current) {
-            drawBuffer = XMesaFindBuffer( dpy, draw );
-         }
+         drawBuffer = XMesaFindBuffer( dpy, draw );
          if (!drawBuffer) {
             /* drawable must be a new window! */
             drawBuffer = XMesaCreateWindowBuffer( xmctx->xm_visual, draw );
@@ -1213,9 +1211,7 @@ glXMakeContextCurrent( Display *dpy, GLXDrawable draw,
 
       if (read) {
          /* Find the XMesaBuffer which corresponds to 'read' */
-         if (ctx == current) {
-            readBuffer = XMesaFindBuffer( dpy, read );
-         }
+         readBuffer = XMesaFindBuffer( dpy, read );
          if (!readBuffer) {
             /* drawable must be a new window! */
             readBuffer = XMesaCreateWindowBuffer( xmctx->xm_visual, read );
