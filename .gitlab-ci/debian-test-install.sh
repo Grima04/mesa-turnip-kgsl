@@ -4,9 +4,10 @@ set -e
 set -o xtrace
 
 ############### Install packages for building
-apt-get update
 apt-get -y install ca-certificates
-apt-get -y install --no-install-recommends \
+sed -i -e 's/http:\/\/deb/https:\/\/deb/g' /etc/apt/sources.list
+apt-get update
+apt-get -y install \
 	bc \
 	bison \
 	bzip2 \
@@ -102,3 +103,5 @@ apt-get purge -y \
         gcc \
         git \
         ninja-build
+
+apt-get autoremove -y --purge
