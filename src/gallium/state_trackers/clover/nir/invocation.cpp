@@ -143,7 +143,7 @@ module clover::nir::spirv_to_nir(const module &mod, const device &dev,
 
       struct blob blob;
       blob_init(&blob);
-      nir_serialize(&blob, nir);
+      nir_serialize(&blob, nir, false);
 
       const pipe_binary_program_header header { uint32_t(blob.size) };
       module::section text { section_id, module::section::text_executable, header.num_bytes, {} };
