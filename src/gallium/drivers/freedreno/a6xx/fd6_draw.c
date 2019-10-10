@@ -157,6 +157,9 @@ fd6_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
 		.sprite_coord_mode = ctx->rasterizer->sprite_coord_mode,
 	};
 
+	if (emit.key.gs)
+		emit.key.key.has_gs = true;
+
 	fixup_shader_state(ctx, &emit.key.key);
 
 	if (!(ctx->dirty & FD_DIRTY_PROG)) {
@@ -209,13 +212,12 @@ fd6_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
 	 */
 	emit_marker6(ring, 7);
 
-	/* leave vis mode blank for now, it will be patched up when
-	 * we know if we are binning or not
-	 */
 	uint32_t draw0 =
 		CP_DRAW_INDX_OFFSET_0_PRIM_TYPE(primtype) |
-		CP_DRAW_INDX_OFFSET_0_VIS_CULL(USE_VISIBILITY) |
-		0x2000;
+		CP_DRAW_INDX_OFFSET_0_VIS_CULL(USE_VISIBILITY);
+
+	if (emit.key.gs)
+		draw0 |= CP_DRAW_INDX_OFFSET_0_GS_ENABLE;
 
 	if (info->index_size) {
 		draw0 |=

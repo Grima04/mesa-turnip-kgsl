@@ -213,6 +213,8 @@ struct ir3_shader_key {
 			 */
 			unsigned rasterflat : 1;
 			unsigned fclamp_color : 1;
+
+			unsigned has_gs : 1;
 		};
 		uint32_t global;
 	};
@@ -310,9 +312,11 @@ ir3_normalize_key(struct ir3_shader_key *key, gl_shader_stage type)
 			key->vsaturate_r = 0;
 			key->vastc_srgb = 0;
 			key->vsamples = 0;
+			key->has_gs = false; /* FS doesn't care */
 		}
 		break;
 	case MESA_SHADER_VERTEX:
+	case MESA_SHADER_GEOMETRY:
 		key->color_two_side = false;
 		key->half_precision = false;
 		key->rasterflat = false;
