@@ -52,9 +52,6 @@
  *  - tdr0 thread dependency register
  */
 
-#include <tuple>
-#include <vector>
-
 #include "brw_fs.h"
 #include "brw_cfg.h"
 
@@ -104,18 +101,29 @@ namespace {
    typedef int ordered_address;
 
    /**
+    * Return the number of instructions in the program.
+    */
+   unsigned
+   num_instructions(const backend_shader *shader)
+   {
+      return shader->cfg->blocks[shader->cfg->num_blocks - 1]->end_ip + 1;
+   }
+
+   /**
     * Calculate the local ordered_address instruction counter at every
     * instruction of the shader for subsequent constant-time look-up.
     */
-   std::vector<ordered_address>
+   ordered_address *
    ordered_inst_addresses(const fs_visitor *shader)
    {
-      std::vector<ordered_address> jps;
+      ordered_address *jps = new ordered_address[num_instructions(shader)];
       ordered_address jp = 0;
+      unsigned ip = 0;
 
       foreach_block_and_inst(block, fs_inst, inst, shader->cfg) {
-         jps.push_back(jp);
+         jps[ip] = jp;
          jp += ordered_unit(inst);
+         ip++;
       }
 
       return jps;
@@ -174,6 +182,17 @@ namespace {
     * only if i == j for every pair of unsigned integers i and j.
     */
    struct equivalence_relation {
+      equivalence_relation(unsigned n) : is(new unsigned[n]), n(n)
+      {
+         for (unsigned i = 0; i < n; i++)
+            is[i] = i;
+      }
+
+      ~equivalence_relation()
+      {
+         delete[] is;
+      }
+
       /**
        * Return equivalence class index of the specified element.  Effectively
        * this is the numeric value of an arbitrary representative from the
@@ -185,7 +204,7 @@ namespace {
       unsigned
       lookup(unsigned i) const
       {
-         if (i < is.size() && is[i] != i)
+         if (i < n && is[i] != i)
             return lookup(is[i]);
          else
             return i;
@@ -195,12 +214,13 @@ namespace {
        * Create an array with the results of the lookup() method for
        * constant-time evaluation.
        */
-      std::vector<unsigned>
-      flatten() const {
-         std::vector<unsigned> ids;
+      unsigned *
+      flatten() const
+      {
+         unsigned *ids = new unsigned[n];
 
-         for (const auto i : is)
-            ids.push_back(lookup(i));
+         for (unsigned i = 0; i < n; i++)
+            ids[i] = lookup(i);
 
          return ids;
       }
@@ -223,6 +243,11 @@ namespace {
       }
 
    private:
+      equivalence_relation(const equivalence_relation &);
+
+      equivalence_relation &
+      operator=(const equivalence_relation &);
+
       /**
        * Assign the representative of \p from to be equivalent to \p to.
        *
@@ -233,17 +258,17 @@ namespace {
       assign(unsigned from, unsigned to)
       {
          if (from != to) {
-            if (from < is.size() && is[from] != from)
-               assign(is[from], to);
+            assert(from < n);
 
-            for (unsigned i = is.size(); i <= from; i++)
-               is.push_back(i);
+            if (is[from] != from)
+               assign(is[from], to);
 
             is[from] = to;
          }
       }
 
-      std::vector<unsigned> is;
+      unsigned *is;
+      unsigned n;
    };
 
    /**
@@ -559,32 +584,74 @@ namespace {
     * Dependency list handling.
     * @{
     */
+   struct dependency_list {
+      dependency_list() : deps(NULL), n(0) {}
+
+      ~dependency_list()
+      {
+         free(deps);
+      }
+
+      void
+      push_back(const dependency &dep)
+      {
+         deps = (dependency *)realloc(deps, (n + 1) * sizeof(*deps));
+         deps[n++] = dep;
+      }
+
+      unsigned
+      size() const
+      {
+         return n;
+      }
+
+      const dependency &
+      operator[](unsigned i) const
+      {
+         assert(i < n);
+         return deps[i];
+      }
+
+      dependency &
+      operator[](unsigned i)
+      {
+         assert(i < n);
+         return deps[i];
+      }
+
+   private:
+      dependency_list(const dependency_list &);
+      dependency_list &
+      operator=(const dependency_list &);
+
+      dependency *deps;
+      unsigned n;
+   };
 
    /**
     * Add dependency \p dep to the list of dependencies of an instruction
     * \p deps.
     */
    void
-   add_dependency(const std::vector<unsigned> &ids,
-                  std::vector<dependency> &deps, dependency dep)
+   add_dependency(const unsigned *ids, dependency_list &deps, dependency dep)
    {
       if (is_valid(dep)) {
          /* Translate the unordered dependency token first in order to keep
           * the list minimally redundant.
           */
-         if (dep.unordered && dep.id < ids.size())
+         if (dep.unordered)
             dep.id = ids[dep.id];
 
          /* Try to combine the specified dependency with any existing ones. */
-         for (auto &dep1 : deps) {
-            if (dep.ordered && dep1.ordered) {
-               dep1.jp = MAX2(dep1.jp, dep.jp);
-               dep1.ordered |= dep.ordered;
+         for (unsigned i = 0; i < deps.size(); i++) {
+            if (dep.ordered && deps[i].ordered) {
+               deps[i].jp = MAX2(deps[i].jp, dep.jp);
+               deps[i].ordered |= dep.ordered;
                dep.ordered = TGL_REGDIST_NULL;
             }
 
-            if (dep.unordered && dep1.unordered && dep1.id == dep.id) {
-               dep1.unordered |= dep.unordered;
+            if (dep.unordered && deps[i].unordered && deps[i].id == dep.id) {
+               deps[i].unordered |= dep.unordered;
                dep.unordered = TGL_SBID_NULL;
             }
          }
@@ -601,16 +668,16 @@ namespace {
     * \p jp.
     */
    tgl_swsb
-   ordered_dependency_swsb(const std::vector<dependency> &deps,
+   ordered_dependency_swsb(const dependency_list &deps,
                            const ordered_address &jp)
    {
       unsigned min_dist = ~0u;
 
-      for (const auto &dep : deps) {
-         if (dep.ordered) {
-            const unsigned dist = jp - dep.jp;
+      for (unsigned i = 0; i < deps.size(); i++) {
+         if (deps[i].ordered) {
+            const unsigned dist = jp - deps[i].jp;
             const unsigned max_dist = 10;
-            assert(jp > dep.jp);
+            assert(jp > deps[i].jp);
             if (dist <= max_dist)
                min_dist = MIN3(min_dist, dist, 7);
          }
@@ -624,7 +691,7 @@ namespace {
     * ordered_address \p jp has any non-trivial ordered dependencies.
     */
    bool
-   find_ordered_dependency(const std::vector<dependency> &deps,
+   find_ordered_dependency(const dependency_list &deps,
                            const ordered_address &jp)
    {
       return ordered_dependency_swsb(deps, jp).regdist;
@@ -636,13 +703,13 @@ namespace {
     * no such dependency is present.
     */
    tgl_sbid_mode
-   find_unordered_dependency(const std::vector<dependency> &deps,
+   find_unordered_dependency(const dependency_list &deps,
                              tgl_sbid_mode unordered)
    {
       if (unordered) {
-         for (const auto &dep : deps) {
-            if (unordered & dep.unordered)
-               return dep.unordered;
+         for (unsigned i = 0; i < deps.size(); i++) {
+            if (unordered & deps[i].unordered)
+               return deps[i].unordered;
          }
       }
 
@@ -657,7 +724,7 @@ namespace {
     */
    tgl_sbid_mode
    baked_unordered_dependency_mode(const fs_inst *inst,
-                                   const std::vector<dependency> &deps,
+                                   const dependency_list &deps,
                                    const ordered_address &jp)
    {
       const bool has_ordered = find_ordered_dependency(deps, jp);
@@ -687,8 +754,7 @@ namespace {
     * instruction \p inst.
     */
    void
-   update_inst_scoreboard(const fs_visitor *shader,
-                          const std::vector<ordered_address> &jps,
+   update_inst_scoreboard(const fs_visitor *shader, const ordered_address *jps,
                           const fs_inst *inst, unsigned ip, scoreboard &sb)
    {
       /* Track any source registers that may be fetched asynchronously by this
@@ -730,11 +796,11 @@ namespace {
     * unconditionally resolved) dependencies at the end of each block of the
     * program.
     */
-   std::vector<scoreboard>
+   scoreboard *
    gather_block_scoreboards(const fs_visitor *shader,
-                            const std::vector<ordered_address> &jps)
+                            const ordered_address *jps)
    {
-      std::vector<scoreboard> sbs(shader->cfg->num_blocks);
+      scoreboard *sbs = new scoreboard[shader->cfg->num_blocks];
       unsigned ip = 0;
 
       foreach_block_and_inst(block, fs_inst, inst, shader->cfg)
@@ -750,15 +816,14 @@ namespace {
     * Calculates the set of dependencies potentially pending at the beginning
     * of each block, and returns it as an array of scoreboard objects.
     */
-   std::pair<std::vector<scoreboard>, std::vector<unsigned>>
+   scoreboard *
    propagate_block_scoreboards(const fs_visitor *shader,
-                               const std::vector<ordered_address> &jps)
+                               const ordered_address *jps,
+                               equivalence_relation &eq)
    {
-      const std::vector<scoreboard> delta_sbs =
-         gather_block_scoreboards(shader, jps);
-      std::vector<scoreboard> in_sbs(shader->cfg->num_blocks);
-      std::vector<scoreboard> out_sbs(shader->cfg->num_blocks);
-      equivalence_relation eq;
+      const scoreboard *delta_sbs = gather_block_scoreboards(shader, jps);
+      scoreboard *in_sbs = new scoreboard[shader->cfg->num_blocks];
+      scoreboard *out_sbs = new scoreboard[shader->cfg->num_blocks];
 
       for (bool progress = true; progress;) {
          progress = false;
@@ -784,62 +849,65 @@ namespace {
          }
       }
 
-      return { std::move(in_sbs), eq.flatten() };
+      delete[] delta_sbs;
+      delete[] out_sbs;
+
+      return in_sbs;
    }
 
    /**
     * Return the list of potential dependencies of each instruction in the
     * shader based on the result of global dependency analysis.
     */
-   std::vector<std::vector<dependency>>
+   dependency_list *
    gather_inst_dependencies(const fs_visitor *shader,
-                            const std::vector<ordered_address> &jps)
+                            const ordered_address *jps)
    {
-      std::vector<scoreboard> sbs;
-      std::vector<unsigned> ids;
-      std::vector<std::vector<dependency>> deps;
+      equivalence_relation eq(num_instructions(shader));
+      scoreboard *sbs = propagate_block_scoreboards(shader, jps, eq);
+      const unsigned *ids = eq.flatten();
+      dependency_list *deps = new dependency_list[num_instructions(shader)];
       unsigned ip = 0;
-
-      std::tie(sbs, ids) = propagate_block_scoreboards(shader, jps);
 
       foreach_block_and_inst(block, fs_inst, inst, shader->cfg) {
          scoreboard &sb = sbs[block->num];
-         std::vector<dependency> inst_deps;
 
          for (unsigned i = 0; i < inst->sources; i++) {
             for (unsigned j = 0; j < regs_read(inst, i); j++)
-               add_dependency(ids, inst_deps, dependency_for_read(
+               add_dependency(ids, deps[ip], dependency_for_read(
                   sb.get(byte_offset(inst->src[i], REG_SIZE * j))));
          }
 
          if (is_send(inst) && inst->base_mrf != -1) {
             for (unsigned j = 0; j < inst->mlen; j++)
-               add_dependency(ids, inst_deps, dependency_for_read(
+               add_dependency(ids, deps[ip], dependency_for_read(
                   sb.get(brw_uvec_mrf(8, inst->base_mrf + j, 0))));
          }
 
          if (is_unordered(inst))
-            add_dependency(ids, inst_deps, dependency(TGL_SBID_SET, ip));
+            add_dependency(ids, deps[ip], dependency(TGL_SBID_SET, ip));
 
          if (!inst->no_dd_check) {
             if (inst->dst.file != BAD_FILE && !inst->dst.is_null()) {
                for (unsigned j = 0; j < regs_written(inst); j++) {
-                  add_dependency(ids, inst_deps, dependency_for_write(inst,
+                  add_dependency(ids, deps[ip], dependency_for_write(inst,
                      sb.get(byte_offset(inst->dst, REG_SIZE * j))));
                }
             }
 
             if (is_send(inst) && inst->base_mrf != -1) {
                for (int j = 0; j < shader->implied_mrf_writes(inst); j++)
-                  add_dependency(ids, inst_deps, dependency_for_write(inst,
+                  add_dependency(ids, deps[ip], dependency_for_write(inst,
                      sb.get(brw_uvec_mrf(8, inst->base_mrf + j, 0))));
             }
          }
 
-         deps.push_back(inst_deps);
          update_inst_scoreboard(shader, jps, inst, ip, sb);
          ip++;
       }
+
+      delete[] sbs;
+      delete[] ids;
 
       return deps;
    }
@@ -850,29 +918,38 @@ namespace {
     * Allocate SBID tokens to track the execution of every out-of-order
     * instruction of the shader.
     */
-   std::vector<std::vector<dependency>>
+   dependency_list *
    allocate_inst_dependencies(const fs_visitor *shader,
-                              const std::vector<std::vector<dependency>> &deps0)
+                              const dependency_list *deps0)
    {
       /* XXX - Use bin-packing algorithm to assign hardware SBIDs optimally in
        *       shaders with a large number of SEND messages.
        */
-      std::vector<std::vector<dependency>> deps1;
-      std::vector<unsigned> ids(deps0.size(), ~0u);
+
+      /* Allocate an unordered dependency ID to hardware SBID translation
+       * table with as many entries as instructions there are in the shader,
+       * which is the maximum number of unordered IDs we can find in the
+       * program.
+       */
+      unsigned *ids = new unsigned[num_instructions(shader)];
+      for (unsigned ip = 0; ip < num_instructions(shader); ip++)
+         ids[ip] = ~0u;
+
+      dependency_list *deps1 = new dependency_list[num_instructions(shader)];
       unsigned next_id = 0;
 
-      for (const auto &inst_deps0 : deps0) {
-         std::vector<dependency> inst_deps1;
+      for (unsigned ip = 0; ip < num_instructions(shader); ip++) {
+         for (unsigned i = 0; i < deps0[ip].size(); i++) {
+            const dependency &dep = deps0[ip][i];
 
-         for (const auto &dep : inst_deps0) {
             if (dep.unordered && ids[dep.id] == ~0u)
                ids[dep.id] = (next_id++) & 0xf;
 
-            add_dependency(ids, inst_deps1, dep);
+            add_dependency(ids, deps1[ip], dep);
          }
-
-         deps1.push_back(inst_deps1);
       }
+
+      delete[] ids;
 
       return deps1;
    }
@@ -884,8 +961,8 @@ namespace {
     */
    void
    emit_inst_dependencies(fs_visitor *shader,
-                          const std::vector<ordered_address> &jps,
-                          const std::vector<std::vector<dependency>> &deps)
+                          const ordered_address *jps,
+                          const dependency_list *deps)
    {
       unsigned ip = 0;
 
@@ -894,7 +971,9 @@ namespace {
          const tgl_sbid_mode unordered_mode =
             baked_unordered_dependency_mode(inst, deps[ip], jps[ip]);
 
-         for (const auto &dep : deps[ip]) {
+         for (unsigned i = 0; i < deps[ip].size(); i++) {
+            const dependency &dep = deps[ip][i];
+
             if (dep.unordered) {
                if (unordered_mode == dep.unordered && !swsb.mode) {
                   /* Bake unordered dependency into the instruction's SWSB if
@@ -929,10 +1008,13 @@ bool
 fs_visitor::lower_scoreboard()
 {
    if (devinfo->gen >= 12) {
-      const std::vector<ordered_address> jps = ordered_inst_addresses(this);
-      emit_inst_dependencies(this, jps,
-         allocate_inst_dependencies(this,
-            gather_inst_dependencies(this, jps)));
+      const ordered_address *jps = ordered_inst_addresses(this);
+      const dependency_list *deps0 = gather_inst_dependencies(this, jps);
+      const dependency_list *deps1 = allocate_inst_dependencies(this, deps0);
+      emit_inst_dependencies(this, jps, deps1);
+      delete[] deps1;
+      delete[] deps0;
+      delete[] jps;
    }
 
    return true;
