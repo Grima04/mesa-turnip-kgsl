@@ -793,7 +793,7 @@ static int emit_cat6(struct ir3_instruction *instr, void *ptr,
 
 		return 0;
 	} else if (instr->cat6.src_offset || (instr->opc == OPC_LDG) ||
-			(instr->opc == OPC_LDL)) {
+			(instr->opc == OPC_LDL) || (instr->opc == OPC_LDLW)) {
 		struct ir3_register *src3 = instr->regs[3];
 		instr_cat6a_t *cat6a = ptr;
 
@@ -823,7 +823,7 @@ static int emit_cat6(struct ir3_instruction *instr, void *ptr,
 	}
 
 	if (instr->cat6.dst_offset || (instr->opc == OPC_STG) ||
-			(instr->opc == OPC_STL)) {
+			(instr->opc == OPC_STL) || (instr->opc == OPC_STLW)) {
 		instr_cat6c_t *cat6c = ptr;
 		cat6->dst_off = true;
 		cat6c->dst = reg(dst, info, instr->repeat, IR3_REG_R | IR3_REG_HALF);

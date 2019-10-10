@@ -248,7 +248,7 @@ legalize_block(struct ir3_legalize_ctx *ctx, struct ir3_block *block)
 			/* seems like ldlv needs (ss) bit instead??  which is odd but
 			 * makes a bunch of flat-varying tests start working on a4xx.
 			 */
-			if ((n->opc == OPC_LDLV) || (n->opc == OPC_LDL))
+			if ((n->opc == OPC_LDLV) || (n->opc == OPC_LDL) || (n->opc == OPC_LDLW))
 				regmask_set(&state->needs_ss, n->regs[0]);
 			else
 				regmask_set(&state->needs_sy, n->regs[0]);
