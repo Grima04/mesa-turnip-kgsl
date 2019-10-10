@@ -4794,20 +4794,36 @@ void visit_shared_atomic(isel_context *ctx, nir_intrinsic_instr *instr)
    ctx->block->instructions.emplace_back(std::move(ds));
 }
 
+Temp get_scratch_resource(isel_context *ctx)
+{
+   Builder bld(ctx->program, ctx->block);
+   Temp scratch_addr = ctx->private_segment_buffer;
+   if (ctx->stage != compute_cs)
+      scratch_addr = bld.smem(aco_opcode::s_load_dwordx2, bld.def(s2), ctx->private_segment_buffer, Operand(0u));
+
+   uint32_t rsrc_conf = S_008F0C_ADD_TID_ENABLE(1) |
+                        S_008F0C_INDEX_STRIDE(ctx->options->wave_size == 64 ? 3 : 2);;
+
+   if (ctx->program->chip_class >= GFX10) {
+      rsrc_conf |= S_008F0C_FORMAT(V_008F0C_IMG_FORMAT_32_FLOAT) |
+                   S_008F0C_OOB_SELECT(3) |
+                   S_008F0C_RESOURCE_LEVEL(1);
+   } else if (ctx->program->chip_class <= GFX7) { /* dfmt modifies stride on GFX8/GFX9 when ADD_TID_EN=1 */
+      rsrc_conf |= S_008F0C_NUM_FORMAT(V_008F0C_BUF_NUM_FORMAT_FLOAT) |
+                   S_008F0C_DATA_FORMAT(V_008F0C_BUF_DATA_FORMAT_32);
+   }
+
+   /* older generations need element size = 16 bytes. element size removed in GFX9 */
+   if (ctx->program->chip_class <= GFX8)
+      rsrc_conf |= S_008F0C_ELEMENT_SIZE(3);
+
+   return bld.pseudo(aco_opcode::p_create_vector, bld.def(s4), scratch_addr, Operand(-1u), Operand(rsrc_conf));
+}
+
 void visit_load_scratch(isel_context *ctx, nir_intrinsic_instr *instr) {
    assert(instr->dest.ssa.bit_size == 32 || instr->dest.ssa.bit_size == 64);
    Builder bld(ctx->program, ctx->block);
-   Temp scratch_addr = ctx->private_segment_buffer;
-   if (ctx->stage != MESA_SHADER_COMPUTE)
-      scratch_addr = bld.smem(aco_opcode::s_load_dwordx2, bld.def(s2), ctx->private_segment_buffer, Operand(0u));
-   uint32_t rsrc_conf;
-   /* older generations need element size = 16 bytes */
-   if (ctx->program->chip_class >= GFX9)
-      rsrc_conf = 0x00E00000u;
-   else
-      rsrc_conf = 0x00F80000u;
-   /* buffer res = addr + num_records = -1, index_stride = 64, add_tid_enable = true */
-   Temp rsrc = bld.pseudo(aco_opcode::p_create_vector, bld.def(s4), scratch_addr, Operand(-1u), Operand(rsrc_conf));
+   Temp rsrc = get_scratch_resource(ctx);
    Temp offset = as_vgpr(ctx, get_ssa_temp(ctx, instr->src[0].ssa));
    Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
 
@@ -4866,17 +4882,7 @@ void visit_load_scratch(isel_context *ctx, nir_intrinsic_instr *instr) {
 void visit_store_scratch(isel_context *ctx, nir_intrinsic_instr *instr) {
    assert(instr->src[0].ssa->bit_size == 32 || instr->src[0].ssa->bit_size == 64);
    Builder bld(ctx->program, ctx->block);
-   Temp scratch_addr = ctx->private_segment_buffer;
-   if (ctx->stage != MESA_SHADER_COMPUTE)
-      scratch_addr = bld.smem(aco_opcode::s_load_dwordx2, bld.def(s2), ctx->private_segment_buffer, Operand(0u));
-   uint32_t rsrc_conf;
-   /* older generations need element size = 16 bytes */
-   if (ctx->program->chip_class >= GFX9)
-      rsrc_conf = 0x00E00000u;
-   else
-      rsrc_conf = 0x00F80000u;
-   /* buffer res = addr + num_records = -1, index_stride = 64, add_tid_enable = true */
-   Temp rsrc = bld.pseudo(aco_opcode::p_create_vector, bld.def(s4), scratch_addr, Operand(-1u), Operand(rsrc_conf));
+   Temp rsrc = get_scratch_resource(ctx);
    Temp data = as_vgpr(ctx, get_ssa_temp(ctx, instr->src[0].ssa));
    Temp offset = as_vgpr(ctx, get_ssa_temp(ctx, instr->src[1].ssa));
 
