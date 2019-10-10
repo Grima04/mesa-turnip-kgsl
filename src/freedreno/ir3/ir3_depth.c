@@ -171,7 +171,7 @@ remove_unused_by_block(struct ir3_block *block)
 {
 	bool progress = false;
 	list_for_each_entry_safe (struct ir3_instruction, instr, &block->instr_list, node) {
-		if (instr->opc == OPC_END)
+		if (instr->opc == OPC_END || instr->opc == OPC_CHSH || instr->opc == OPC_CHMASK)
 			continue;
 		if (instr->flags & IR3_INSTR_UNUSED) {
 			if (instr->opc == OPC_META_FO) {

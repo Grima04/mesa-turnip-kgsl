@@ -1293,6 +1293,8 @@ INSTR0(BR)
 INSTR0(JUMP)
 INSTR1(KILL)
 INSTR0(END)
+INSTR0(CHSH)
+INSTR0(CHMASK)
 
 /* cat2 instructions, most 2 src but some 1 src: */
 INSTR2(ADD_F)
