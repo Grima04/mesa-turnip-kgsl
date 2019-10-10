@@ -2996,7 +2996,35 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 		ir3_print(ir);
 	}
 
-	ret = ir3_ra(so);
+	/* Pre-assign VS inputs on a6xx+ binning pass shader, to align
+	 * with draw pass VS, so binning and draw pass can both use the
+	 * same VBO state.
+	 *
+	 * Note that VS inputs are expected to be full precision.
+	 */
+	bool pre_assign_inputs = (ir->compiler->gpu_id >= 600) &&
+			(ir->type == MESA_SHADER_VERTEX) &&
+			so->binning_pass;
+
+	if (pre_assign_inputs) {
+		for (unsigned i = 0; i < ir->ninputs; i++) {
+			struct ir3_instruction *instr = ir->inputs[i];
+
+			if (!instr)
+				continue;
+
+			unsigned n = i / 4;
+			unsigned c = i % 4;
+			unsigned regid = so->nonbinning->inputs[n].regid + c;
+
+			instr->regs[0]->num = regid;
+		}
+
+		ret = ir3_ra(so, ir->inputs, ir->ninputs);
+	} else {
+		ret = ir3_ra(so, NULL, 0);
+	}
+
 	if (ret) {
 		DBG("RA failed!");
 		goto out;
