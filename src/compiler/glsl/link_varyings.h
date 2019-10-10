@@ -77,10 +77,16 @@ struct tfeedback_candidate
    const glsl_type *type;
 
    /**
-    * Offset within the toplevel variable where this varying occurs (counted
-    * in multiples of the size of a float).
+    * Offset within the toplevel variable where this varying occurs.
+    * Counted in floats.
     */
-   unsigned offset;
+   unsigned struct_offset_floats;
+
+   /**
+    * Offset within the xfb with respect to alignment requirements.
+    * Counted in floats.
+    */
+   unsigned xfb_offset_floats;
 };
 
 
