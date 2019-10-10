@@ -460,7 +460,7 @@ inside_damage_region(int x, int y, struct lima_damage_region *ds)
 }
 
 static void
-lima_update_pp_stream(struct lima_context *ctx, int off_x, int off_y,
+lima_generate_pp_stream(struct lima_context *ctx, int off_x, int off_y,
                       int tiled_w, int tiled_h)
 {
    struct lima_pp_stream_state *ps = &ctx->pp_stream;
@@ -539,7 +539,7 @@ lima_update_damage_pp_stream(struct lima_context *ctx)
    ctx->pp_stream.bo = res->bo;
    ctx->pp_stream.bo_offset = offset;
 
-   lima_update_pp_stream(ctx, bound->minx, bound->miny, tiled_w, tiled_h);
+   lima_generate_pp_stream(ctx, bound->minx, bound->miny, tiled_w, tiled_h);
 
    lima_submit_add_bo(ctx->pp_submit, res->bo, LIMA_SUBMIT_BO_READ);
    pipe_resource_reference(&pres, NULL);
@@ -575,10 +575,22 @@ lima_update_full_pp_stream(struct lima_context *ctx)
       ctx->pp_stream.bo_offset = 0;
       memcpy(ctx->pp_stream.offset, s->offset, sizeof(s->offset));
 
-      lima_update_pp_stream(ctx, 0, 0, fb->tiled_w, fb->tiled_h);
+      lima_generate_pp_stream(ctx, 0, 0, fb->tiled_w, fb->tiled_h);
    }
 
    lima_submit_add_bo(ctx->pp_submit, s->bo, LIMA_SUBMIT_BO_READ);
+}
+
+static void
+lima_update_pp_stream(struct lima_context *ctx)
+{
+   struct lima_damage_region *damage = lima_ctx_get_damage(ctx);
+   if (damage && damage->region)
+      lima_update_damage_pp_stream(ctx);
+   else if (ctx->plb_pp_stream)
+      lima_update_full_pp_stream(ctx);
+   else
+      ctx->pp_stream.bo = NULL;
 }
 
 static void
@@ -596,14 +608,6 @@ lima_update_submit_bo(struct lima_context *ctx)
       ctx->plb_gp_stream->map + ctx->plb_index * ctx->plb_gp_size,
       ctx->plb_gp_size, false, "gp plb stream at va %x\n",
       ctx->plb_gp_stream->va + ctx->plb_index * ctx->plb_gp_size);
-
-   struct lima_damage_region *damage = lima_ctx_get_damage(ctx);
-   if (damage && damage->region)
-      lima_update_damage_pp_stream(ctx);
-   else if (ctx->plb_pp_stream)
-      lima_update_full_pp_stream(ctx);
-   else
-      ctx->pp_stream.bo = NULL;
 
    if (ctx->framebuffer.base.nr_cbufs) {
       struct lima_resource *res = lima_resource(ctx->framebuffer.base.cbufs[0]->texture);
@@ -1643,6 +1647,8 @@ _lima_flush(struct lima_context *ctx, bool end_of_frame)
       pp_stack_va = lima_ctx_buff_va(ctx, lima_ctx_buff_pp_stack,
                                      LIMA_CTX_BUFF_SUBMIT_PP);
    }
+
+   lima_update_pp_stream(ctx);
 
    struct lima_pp_stream_state *ps = &ctx->pp_stream;
    if (screen->gpu_type == DRM_LIMA_PARAM_GPU_ID_MALI400) {
