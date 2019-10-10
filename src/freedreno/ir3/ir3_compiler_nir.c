@@ -843,6 +843,75 @@ emit_intrinsic_store_shared(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 	}
 }
 
+/* src[] = { offset }. const_index[] = { base } */
+static void
+emit_intrinsic_load_shared_ir3(struct ir3_context *ctx, nir_intrinsic_instr *intr,
+		struct ir3_instruction **dst)
+{
+	struct ir3_block *b = ctx->block;
+	struct ir3_instruction *load, *offset;
+	unsigned base;
+
+	offset = ir3_get_src(ctx, &intr->src[0])[0];
+	base   = nir_intrinsic_base(intr);
+
+	load = ir3_LDLW(b, offset, 0,
+			create_immed(b, intr->num_components), 0,
+			create_immed(b, base), 0);
+
+	load->cat6.type = utype_dst(intr->dest);
+	load->regs[0]->wrmask = MASK(intr->num_components);
+
+	load->barrier_class = IR3_BARRIER_SHARED_R;
+	load->barrier_conflict = IR3_BARRIER_SHARED_W;
+
+	ir3_split_dest(b, dst, load, 0, intr->num_components);
+}
+
+/* src[] = { value, offset }. const_index[] = { base, write_mask } */
+static void
+emit_intrinsic_store_shared_ir3(struct ir3_context *ctx, nir_intrinsic_instr *intr)
+{
+	struct ir3_block *b = ctx->block;
+	struct ir3_instruction *store, *offset;
+	struct ir3_instruction * const *value;
+	unsigned base, wrmask;
+
+	value  = ir3_get_src(ctx, &intr->src[0]);
+	offset = ir3_get_src(ctx, &intr->src[1])[0];
+
+	base   = nir_intrinsic_base(intr);
+	wrmask = nir_intrinsic_write_mask(intr);
+
+	/* Combine groups of consecutive enabled channels in one write
+	 * message. We use ffs to find the first enabled channel and then ffs on
+	 * the bit-inverse, down-shifted writemask to determine the length of
+	 * the block of enabled bits.
+	 *
+	 * (trick stolen from i965's fs_visitor::nir_emit_cs_intrinsic())
+	 */
+	while (wrmask) {
+		unsigned first_component = ffs(wrmask) - 1;
+		unsigned length = ffs(~(wrmask >> first_component)) - 1;
+
+		store = ir3_STLW(b, offset, 0,
+			ir3_create_collect(ctx, &value[first_component], length), 0,
+			create_immed(b, length), 0);
+
+		store->cat6.dst_offset = first_component + base;
+		store->cat6.type = utype_src(intr->src[0]);
+		store->barrier_class = IR3_BARRIER_SHARED_W;
+		store->barrier_conflict = IR3_BARRIER_SHARED_R | IR3_BARRIER_SHARED_W;
+
+		array_insert(b, b->keeps, store);
+
+		/* Clear the bits in the writemask that we just wrote, then try
+		 * again to see if more channels are left.
+		 */
+		wrmask &= (15 << (first_component + length));
+	}
+}
+
 /*
  * CS shared variable atomic intrinsics
  *
@@ -1582,6 +1651,12 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 
 		break;
 	}
+	case nir_intrinsic_load_shared_ir3:
+		emit_intrinsic_load_shared_ir3(ctx, intr, dst);
+		break;
+	case nir_intrinsic_store_shared_ir3:
+		emit_intrinsic_store_shared_ir3(ctx, intr);
+		break;
 	default:
 		ir3_context_error(ctx, "Unhandled intrinsic type: %s\n",
 				nir_intrinsic_infos[intr->intrinsic].name);
