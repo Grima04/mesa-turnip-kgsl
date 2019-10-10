@@ -1717,7 +1717,6 @@ private:
        * Packing order for this varying, computed by compute_packing_order().
        */
       packing_order_enum packing_order;
-      unsigned num_components;
 
       /**
        * The output variable in the producer stage.
@@ -1894,9 +1893,6 @@ varying_matches::record(ir_variable *producer_var, ir_variable *consumer_var)
     */
    const ir_variable *const var = (consumer_var != NULL)
       ? consumer_var : producer_var;
-   const gl_shader_stage stage = (consumer_var != NULL)
-      ? consumer_stage : producer_stage;
-   const glsl_type *type = get_varying_type(var, stage);
 
    if (producer_var && consumer_var &&
        consumer_var->data.must_be_shader_input) {
@@ -1907,15 +1903,6 @@ varying_matches::record(ir_variable *producer_var, ir_variable *consumer_var)
       = this->compute_packing_class(var);
    this->matches[this->num_matches].packing_order
       = this->compute_packing_order(var);
-   if ((this->disable_varying_packing && !is_varying_packing_safe(type, var)) ||
-       (this->disable_xfb_packing && var->data.is_xfb) ||
-       var->data.must_be_shader_input) {
-      unsigned slots = type->count_attribute_slots(false);
-      this->matches[this->num_matches].num_components = slots * 4;
-   } else {
-      this->matches[this->num_matches].num_components
-         = type->component_slots();
-   }
 
    this->matches[this->num_matches].producer_var = producer_var;
    this->matches[this->num_matches].consumer_var = consumer_var;
@@ -2037,9 +2024,19 @@ varying_matches::assign_locations(struct gl_shader_program *prog,
        * inputs, we use the number of slots * 4, as they have different
        * counting rules.
        */
-      unsigned num_components = is_vertex_input ?
-         type->count_attribute_slots(is_vertex_input) * 4 :
-         this->matches[i].num_components;
+      unsigned num_components = 0;
+      if (is_vertex_input) {
+         num_components = type->count_attribute_slots(is_vertex_input) * 4;
+      } else {
+         if ((this->disable_varying_packing &&
+              !is_varying_packing_safe(type, var)) ||
+              (this->disable_xfb_packing && var->data.is_xfb) ||
+             var->data.must_be_shader_input) {
+            num_components = type->count_attribute_slots(false) * 4;
+         } else {
+            num_components = type->component_slots_aligned(*location);
+         }
+      }
 
       /* The last slot for this variable, inclusive. */
       unsigned slot_end = *location + num_components - 1;
