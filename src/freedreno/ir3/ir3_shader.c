@@ -396,6 +396,16 @@ ir3_shader_disasm(struct ir3_shader_variant *so, uint32_t *bin, FILE *out)
 				(regid >> 2), "xyzw"[regid & 0x3], i);
 	}
 
+	/* print pre-dispatch texture fetches: */
+	for (i = 0; i < so->num_sampler_prefetch; i++) {
+		const struct ir3_sampler_prefetch *fetch = &so->sampler_prefetch[i];
+		fprintf(out, "@tex(%sr%d.%c)\tsrc=%u, samp=%u, tex=%u, wrmask=%x, cmd=%u\n",
+				fetch->half_precision ? "h" : "",
+				fetch->dst >> 2, "xyzw"[fetch->dst & 0x3],
+				fetch->src, fetch->samp_id, fetch->tex_id,
+				fetch->wrmask, fetch->cmd);
+	}
+
 	for (i = 0; i < ir->noutputs; i++) {
 		if (!ir->outputs[i]) {
 			fprintf(out, "; out%d unused\n", i);
