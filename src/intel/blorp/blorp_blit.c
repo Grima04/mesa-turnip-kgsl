@@ -593,7 +593,7 @@ blorp_nir_combine_samples(nir_builder *b, struct brw_blorp_blit_vars *v,
       nir_local_variable_create(b->impl, glsl_vec4_type(), "color");
 
    nir_ssa_def *mcs = NULL;
-   if (tex_aux_usage == ISL_AUX_USAGE_MCS)
+   if (isl_aux_usage_has_mcs(tex_aux_usage))
       mcs = blorp_blit_txf_ms_mcs(b, v, pos);
 
    nir_op combine_op;
@@ -667,7 +667,7 @@ blorp_nir_combine_samples(nir_builder *b, struct brw_blorp_blit_vars *v,
                                         nir_imm_int(b, i));
       texture_data[stack_depth++] = blorp_nir_txf_ms(b, v, ms_pos, mcs, dst_type);
 
-      if (i == 0 && tex_aux_usage == ISL_AUX_USAGE_MCS) {
+      if (i == 0 && isl_aux_usage_has_mcs(tex_aux_usage)) {
          /* The Ivy Bridge PRM, Vol4 Part1 p27 (Multisample Control Surface)
           * suggests an optimization:
           *
@@ -783,7 +783,7 @@ blorp_nir_manual_blend_bilinear(nir_builder *b, nir_ssa_def *pos,
        * here inside the loop after computing the pixel coordinates.
        */
       nir_ssa_def *mcs = NULL;
-      if (key->tex_aux_usage == ISL_AUX_USAGE_MCS)
+      if (isl_aux_usage_has_mcs(key->tex_aux_usage))
          mcs = blorp_blit_txf_ms_mcs(b, v, sample_coords_int);
 
       /* Compute sample index and map the sample index to a sample number.
@@ -1343,7 +1343,7 @@ brw_blorp_build_nir_shader(struct blorp_context *blorp, void *mem_ctx,
          color = blorp_nir_txf(&b, &v, src_pos, key->texture_data_type);
       } else {
          nir_ssa_def *mcs = NULL;
-         if (key->tex_aux_usage == ISL_AUX_USAGE_MCS)
+         if (isl_aux_usage_has_mcs(key->tex_aux_usage))
             mcs = blorp_blit_txf_ms_mcs(&b, &v, src_pos);
 
          color = blorp_nir_txf_ms(&b, &v, src_pos, mcs, key->texture_data_type);
@@ -1490,7 +1490,7 @@ brw_blorp_get_blit_kernel(struct blorp_batch *batch,
    struct brw_wm_prog_key wm_key;
    brw_blorp_init_wm_prog_key(&wm_key);
    wm_key.base.tex.compressed_multisample_layout_mask =
-      prog_key->tex_aux_usage == ISL_AUX_USAGE_MCS;
+      isl_aux_usage_has_mcs(prog_key->tex_aux_usage);
    wm_key.base.tex.msaa_16 = prog_key->tex_samples == 16;
    wm_key.multisample_fbo = prog_key->rt_samples > 1;
 
@@ -2600,9 +2600,11 @@ blorp_copy(struct blorp_batch *batch,
 
    assert(params.src.aux_usage == ISL_AUX_USAGE_NONE ||
           params.src.aux_usage == ISL_AUX_USAGE_MCS ||
+          params.src.aux_usage == ISL_AUX_USAGE_MCS_CCS ||
           params.src.aux_usage == ISL_AUX_USAGE_CCS_E);
    assert(params.dst.aux_usage == ISL_AUX_USAGE_NONE ||
           params.dst.aux_usage == ISL_AUX_USAGE_MCS ||
+          params.dst.aux_usage == ISL_AUX_USAGE_MCS_CCS ||
           params.dst.aux_usage == ISL_AUX_USAGE_CCS_E);
 
    if (params.dst.aux_usage == ISL_AUX_USAGE_CCS_E) {
