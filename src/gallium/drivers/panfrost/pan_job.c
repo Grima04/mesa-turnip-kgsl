@@ -984,6 +984,30 @@ panfrost_flush_all_batches(struct panfrost_context *ctx, bool wait)
         util_dynarray_fini(&syncobjs);
 }
 
+bool
+panfrost_pending_batches_access_bo(struct panfrost_context *ctx,
+                                   const struct panfrost_bo *bo)
+{
+        struct panfrost_bo_access *access;
+        struct hash_entry *hentry;
+
+        hentry = _mesa_hash_table_search(ctx->accessed_bos, bo);
+        access = hentry ? hentry->data : NULL;
+        if (!access)
+                return false;
+
+        if (access->writer && access->writer->batch)
+                return true;
+
+        util_dynarray_foreach(&access->readers, struct panfrost_batch_fence *,
+                              reader) {
+                if (*reader && (*reader)->batch)
+                        return true;
+        }
+
+        return false;
+}
+
 void
 panfrost_flush_batches_accessing_bo(struct panfrost_context *ctx,
                                     struct panfrost_bo *bo,

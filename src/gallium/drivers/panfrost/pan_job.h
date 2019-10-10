@@ -188,6 +188,10 @@ panfrost_batch_create_bo(struct panfrost_batch *batch, size_t size,
 void
 panfrost_flush_all_batches(struct panfrost_context *ctx, bool wait);
 
+bool
+panfrost_pending_batches_access_bo(struct panfrost_context *ctx,
+                                   const struct panfrost_bo *bo);
+
 void
 panfrost_flush_batches_accessing_bo(struct panfrost_context *ctx,
                                     struct panfrost_bo *bo, uint32_t flags);
