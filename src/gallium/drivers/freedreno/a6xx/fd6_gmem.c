@@ -56,6 +56,9 @@ emit_mrt(struct fd_ringbuffer *ring, struct pipe_framebuffer_state *pfb,
 	unsigned srgb_cntl = 0;
 	unsigned i;
 
+	bool layered = false;
+	unsigned type = 0;
+
 	for (i = 0; i < pfb->nr_cbufs; i++) {
 		enum a6xx_color_fmt format = 0;
 		enum a3xx_color_swap swap = WZYX;
@@ -102,7 +105,20 @@ emit_mrt(struct fd_ringbuffer *ring, struct pipe_framebuffer_state *pfb,
 		else
 			tile_mode = rsc->tile_mode;
 
-		debug_assert(psurf->u.tex.first_layer == psurf->u.tex.last_layer);
+		if (psurf->u.tex.first_layer < psurf->u.tex.last_layer) {
+			layered = true;
+			if (psurf->texture->target == PIPE_TEXTURE_2D_ARRAY && psurf->texture->nr_samples > 0)
+				type = MULTISAMPLE_ARRAY;
+			else if (psurf->texture->target == PIPE_TEXTURE_2D_ARRAY)
+				type = ARRAY;
+			else if (psurf->texture->target == PIPE_TEXTURE_CUBE)
+				type = CUBEMAP;
+			else if (psurf->texture->target == PIPE_TEXTURE_3D)
+				type = ARRAY;
+
+			stride /= pfb->samples;
+		}
+
 		debug_assert((offset + slice->size0) <= fd_bo_size(rsc->bo));
 
 		OUT_PKT4(ring, REG_A6XX_RB_MRT_BUF_INFO(i), 6);
@@ -156,6 +172,10 @@ emit_mrt(struct fd_ringbuffer *ring, struct pipe_framebuffer_state *pfb,
 			A6XX_SP_FS_RENDER_COMPONENTS_RT5(mrt_comp[5]) |
 			A6XX_SP_FS_RENDER_COMPONENTS_RT6(mrt_comp[6]) |
 			A6XX_SP_FS_RENDER_COMPONENTS_RT7(mrt_comp[7]));
+
+	OUT_PKT4(ring, REG_A6XX_GRAS_LAYER_CNTL, 1);
+	OUT_RING(ring, COND(layered, A6XX_GRAS_LAYER_CNTL_LAYERED |
+					A6XX_GRAS_LAYER_CNTL_TYPE(type)));
 }
 
 static void
@@ -949,6 +969,8 @@ emit_blit(struct fd_batch *batch,
 	enum pipe_format pfmt = psurf->format;
 	uint32_t offset, ubwc_offset;
 	bool ubwc_enabled;
+
+	debug_assert(psurf->u.tex.first_layer == psurf->u.tex.last_layer);
 
 	/* separate stencil case: */
 	if (stencil) {
