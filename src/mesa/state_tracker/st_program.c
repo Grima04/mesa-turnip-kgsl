@@ -413,6 +413,43 @@ st_translate_prog_to_nir(struct st_context *st, struct gl_program *prog,
    return nir;
 }
 
+void
+st_prepare_vertex_program(struct st_vertex_program *stvp)
+{
+   stvp->num_inputs = 0;
+   memset(stvp->input_to_index, ~0, sizeof(stvp->input_to_index));
+   memset(stvp->result_to_output, ~0, sizeof(stvp->result_to_output));
+
+   /* Determine number of inputs, the mappings between VERT_ATTRIB_x
+    * and TGSI generic input indexes, plus input attrib semantic info.
+    */
+   for (unsigned attr = 0; attr < VERT_ATTRIB_MAX; attr++) {
+      if ((stvp->Base.info.inputs_read & BITFIELD64_BIT(attr)) != 0) {
+         stvp->input_to_index[attr] = stvp->num_inputs;
+         stvp->index_to_input[stvp->num_inputs] = attr;
+         stvp->num_inputs++;
+
+         if ((stvp->Base.DualSlotInputs & BITFIELD64_BIT(attr)) != 0) {
+            /* add placeholder for second part of a double attribute */
+            stvp->index_to_input[stvp->num_inputs] = ST_DOUBLE_ATTRIB_PLACEHOLDER;
+            stvp->num_inputs++;
+         }
+      }
+   }
+   /* pre-setup potentially unused edgeflag input */
+   stvp->input_to_index[VERT_ATTRIB_EDGEFLAG] = stvp->num_inputs;
+   stvp->index_to_input[stvp->num_inputs] = VERT_ATTRIB_EDGEFLAG;
+
+   /* Compute mapping of vertex program outputs to slots. */
+   unsigned num_outputs = 0;
+   for (unsigned attr = 0; attr < VARYING_SLOT_MAX; attr++) {
+      if (stvp->Base.info.outputs_written & BITFIELD64_BIT(attr))
+         stvp->result_to_output[attr] = num_outputs++;
+   }
+   /* pre-setup potentially unused edgeflag output */
+   stvp->result_to_output[VARYING_SLOT_EDGE] = num_outputs;
+}
+
 /**
  * Translate a vertex program.
  */
@@ -427,43 +464,15 @@ st_translate_vertex_program(struct st_context *st,
    ubyte output_semantic_name[VARYING_SLOT_MAX] = {0};
    ubyte output_semantic_index[VARYING_SLOT_MAX] = {0};
 
-   stvp->num_inputs = 0;
-   memset(stvp->input_to_index, ~0, sizeof(stvp->input_to_index));
-
    if (stvp->Base.arb.IsPositionInvariant)
       _mesa_insert_mvp_code(st->ctx, &stvp->Base);
 
-   /*
-    * Determine number of inputs, the mappings between VERT_ATTRIB_x
-    * and TGSI generic input indexes, plus input attrib semantic info.
-    */
-   for (attr = 0; attr < VERT_ATTRIB_MAX; attr++) {
-      if ((stvp->Base.info.inputs_read & BITFIELD64_BIT(attr)) != 0) {
-         stvp->input_to_index[attr] = stvp->num_inputs;
-         stvp->index_to_input[stvp->num_inputs] = attr;
-         stvp->num_inputs++;
-         if ((stvp->Base.DualSlotInputs & BITFIELD64_BIT(attr)) != 0) {
-            /* add placeholder for second part of a double attribute */
-            stvp->index_to_input[stvp->num_inputs] = ST_DOUBLE_ATTRIB_PLACEHOLDER;
-            stvp->num_inputs++;
-         }
-      }
-   }
-   /* bit of a hack, presetup potentially unused edgeflag input */
-   stvp->input_to_index[VERT_ATTRIB_EDGEFLAG] = stvp->num_inputs;
-   stvp->index_to_input[stvp->num_inputs] = VERT_ATTRIB_EDGEFLAG;
+   st_prepare_vertex_program(stvp);
 
-   /* Compute mapping of vertex program outputs to slots.
-    */
+   /* Get semantic names and indices. */
    for (attr = 0; attr < VARYING_SLOT_MAX; attr++) {
-      if ((stvp->Base.info.outputs_written & BITFIELD64_BIT(attr)) == 0) {
-         stvp->result_to_output[attr] = ~0;
-      }
-      else {
+      if (stvp->Base.info.outputs_written & BITFIELD64_BIT(attr)) {
          unsigned slot = num_outputs++;
-
-         stvp->result_to_output[attr] = slot;
-
          unsigned semantic_name, semantic_index;
          tgsi_get_gl_varying_semantic(attr, st->needs_texcoord_semantic,
                                       &semantic_name, &semantic_index);
@@ -471,8 +480,7 @@ st_translate_vertex_program(struct st_context *st,
          output_semantic_index[slot] = semantic_index;
       }
    }
-   /* similar hack to above, presetup potentially unused edgeflag output */
-   stvp->result_to_output[VARYING_SLOT_EDGE] = num_outputs;
+   /* pre-setup potentially unused edgeflag output */
    output_semantic_name[num_outputs] = TGSI_SEMANTIC_EDGEFLAG;
    output_semantic_index[num_outputs] = 0;
 

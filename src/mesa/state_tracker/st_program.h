@@ -416,6 +416,9 @@ st_release_basic_variants(struct st_context *st, struct st_common_program *p);
 extern void
 st_destroy_program_variants(struct st_context *st);
 
+extern void
+st_prepare_vertex_program(struct st_vertex_program *stvp);
+
 extern bool
 st_translate_vertex_program(struct st_context *st,
                             struct st_vertex_program *stvp);
