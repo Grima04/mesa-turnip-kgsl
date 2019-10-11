@@ -445,5 +445,19 @@ ir3_setup_const_state(struct ir3_shader *shader, nir_shader *nir)
 		constoff += align(IR3_MAX_SO_BUFFERS * ptrsz, 4) / 4;
 	}
 
+	switch (shader->type) {
+	case MESA_SHADER_VERTEX:
+		const_state->offsets.primitive_param = constoff;
+		constoff += 1;
+		break;
+	case MESA_SHADER_GEOMETRY:
+		const_state->offsets.primitive_param = constoff;
+		const_state->offsets.primitive_map = constoff + 1;
+		constoff += 1 + DIV_ROUND_UP(nir->num_inputs, 4);
+		break;
+	default:
+		break;
+	}
+
 	const_state->offsets.immediate = constoff;
 }

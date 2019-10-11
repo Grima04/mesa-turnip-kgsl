@@ -63,6 +63,9 @@ void ir3_emit_image_dims(struct fd_screen *screen, const struct ir3_shader_varia
 		struct fd_ringbuffer *ring, struct fd_shaderimg_stateobj *si);
 void ir3_emit_immediates(struct fd_screen *screen, const struct ir3_shader_variant *v,
 		struct fd_ringbuffer *ring);
+void ir3_emit_link_map(struct fd_screen *screen,
+		const struct ir3_shader_variant *producer,
+		const struct ir3_shader_variant *v, struct fd_ringbuffer *ring);
 
 static inline bool
 ir3_needs_vs_driver_params(const struct ir3_shader_variant *v)

@@ -537,6 +537,11 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_screen *screen,
 			 A6XX_VPC_PACK_PSIZELOC(psize_loc) |
 			 A6XX_VPC_PACK_STRIDE_IN_VPC(l.max_loc));
 
+	if (gs) {
+		ir3_emit_immediates(screen, gs, ring);
+		ir3_emit_link_map(screen, vs, gs, ring);
+	}
+
 	if (!binning_pass) {
 		/* figure out VARYING_INTERP / VARYING_PS_REPL register values: */
 		for (j = -1; (j = ir3_next_varying(fs, j)) < (int)fs->inputs_count; ) {
@@ -587,10 +592,6 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_screen *screen,
 	if (hs) {
 		ir3_emit_immediates(screen, hs, ring);
 		ir3_emit_immediates(screen, ds, ring);
-	}
-
-	if (gs) {
-		ir3_emit_immediates(screen, gs, ring);
 	}
 
 	if (!binning_pass)

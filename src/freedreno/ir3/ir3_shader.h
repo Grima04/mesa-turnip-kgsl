@@ -122,6 +122,8 @@ struct ir3_const_state {
 		unsigned image_dims;
 		unsigned driver_param;
 		unsigned tfbo;
+		unsigned primitive_param;
+		unsigned primitive_map;
 		unsigned immediate;
 	} offsets;
 

@@ -1320,6 +1320,9 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 		dst = NULL;
 	}
 
+	const unsigned primitive_param = ctx->so->shader->const_state.offsets.primitive_param * 4;
+	const unsigned primitive_map = ctx->so->shader->const_state.offsets.primitive_map * 4;
+
 	switch (intr->intrinsic) {
 	case nir_intrinsic_load_uniform:
 		idx = nir_intrinsic_base(intr);
@@ -1344,6 +1347,18 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 					ctx->so->shader->ubo_state.size / 16);
 		}
 		break;
+
+	case nir_intrinsic_load_vs_primitive_stride_ir3:
+		dst[0] = create_uniform(b, primitive_param + 0);
+		break;
+	case nir_intrinsic_load_vs_vertex_stride_ir3:
+		dst[0] = create_uniform(b, primitive_param + 1);
+		break;
+	case nir_intrinsic_load_primitive_location_ir3:
+		idx = nir_intrinsic_driver_location(intr);
+		dst[0] = create_uniform(b, primitive_map + idx);
+		break;
+
 	case nir_intrinsic_load_ubo:
 		emit_intrinsic_load_ubo(ctx, intr, dst);
 		break;

@@ -790,6 +790,28 @@ fd6_emit_streamout(struct fd_ringbuffer *ring, struct fd6_emit *emit, struct ir3
 	}
 }
 
+static void
+fd6_emit_tess_const(struct fd6_emit *emit)
+{
+	struct fd_context *ctx = emit->ctx;
+	const unsigned vs_regid = emit->vs->shader->const_state.offsets.primitive_param;
+	const unsigned gs_regid = emit->gs->shader->const_state.offsets.primitive_param;
+	uint32_t num_vertices = emit->gs->shader->nir->info.gs.vertices_in;
+
+	uint32_t params[4] = {
+		emit->vs->shader->output_size * num_vertices * 4,	/* vs primitive stride */
+		emit->vs->shader->output_size * 4,					/* vs vertex stride */
+		0, 0,
+	};
+
+	struct fd_ringbuffer *constobj = fd_submit_new_ringbuffer(
+		ctx->batch->submit, 0x1000, FD_RINGBUFFER_STREAMING);
+
+	fd6_emit_const(constobj, emit->vs->type, vs_regid * 4, 0, ARRAY_SIZE(params), params, NULL);
+	fd6_emit_const(constobj, emit->gs->type, gs_regid * 4, 0, ARRAY_SIZE(params), params, NULL);
+
+	fd6_emit_take_group(emit, constobj, FD6_GROUP_PRIMITIVE_PARAMS, 0x7);
+}
 
 static void
 fd6_emit_consts(struct fd6_emit *emit, const struct ir3_shader_variant *v,
@@ -967,6 +989,9 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 	fd6_emit_consts(emit, ds, PIPE_SHADER_TESS_EVAL, FD6_GROUP_DS_CONST, 0x7);
 	fd6_emit_consts(emit, gs, PIPE_SHADER_GEOMETRY, FD6_GROUP_GS_CONST, 0x7);
 	fd6_emit_consts(emit, fs, PIPE_SHADER_FRAGMENT, FD6_GROUP_FS_CONST, 0x6);
+
+	if (emit->key.key.has_gs)
+		fd6_emit_tess_const(emit);
 
 	/* if driver-params are needed, emit each time: */
 	if (ir3_needs_vs_driver_params(vs)) {
