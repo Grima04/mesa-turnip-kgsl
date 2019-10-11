@@ -2484,7 +2484,24 @@ emit_function(struct ir3_context *ctx, nir_function_impl *impl)
 		emit_stream_out(ctx);
 	}
 
-	ir3_END(ctx->block);
+	/* Vertex shaders in a tessellation or geometry pipeline treat END as a
+	 * NOP and has an epilogue that writes the VS outputs to local storage, to
+	 * be read by the HS.  Then it resets execution mask (chmask) and chains
+	 * to the next shader (chsh).
+	 */
+	if (ctx->so->type == MESA_SHADER_VERTEX && ctx->so->key.has_gs) {
+		struct ir3_instruction *chmask =
+			ir3_CHMASK(ctx->block);
+		chmask->barrier_class = IR3_BARRIER_EVERYTHING;
+		chmask->barrier_conflict = IR3_BARRIER_EVERYTHING;
+
+		struct ir3_instruction *chsh =
+			ir3_CHSH(ctx->block);
+		chsh->barrier_class = IR3_BARRIER_EVERYTHING;
+		chsh->barrier_conflict = IR3_BARRIER_EVERYTHING;
+	} else {
+		ir3_END(ctx->block);
+	}
 }
 
 static void
