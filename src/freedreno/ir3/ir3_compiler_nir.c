@@ -3211,6 +3211,28 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 		ctx->primitive_id->regs[0]->num = 1;
 		struct ir3_instruction *precolor[] = { ctx->gs_header, ctx->primitive_id };
 		ret = ir3_ra(so, precolor, ARRAY_SIZE(precolor));
+	} else if (so->num_sampler_prefetch) {
+		assert(so->type == MESA_SHADER_FRAGMENT);
+		struct ir3_instruction *precolor[2];
+		int idx = 0;
+
+		for (unsigned i = 0; i < ir->ninputs; i++) {
+			struct ir3_instruction *instr = ctx->ir->inputs[i];
+
+			if (!instr)
+				continue;
+
+			if (instr->input.sysval != SYSTEM_VALUE_BARYCENTRIC_PIXEL)
+				continue;
+
+			assert(idx < ARRAY_SIZE(precolor));
+
+			precolor[idx] = instr;
+			instr->regs[0]->num = idx;
+
+			idx++;
+		}
+		ret = ir3_ra(so, precolor, idx);
 	} else {
 		ret = ir3_ra(so, NULL, 0);
 	}
