@@ -1062,13 +1062,13 @@ void ir3_print(struct ir3 *ir);
 void ir3_print_instr(struct ir3_instruction *instr);
 
 /* depth calculation: */
+struct ir3_shader_variant;
 int ir3_delayslots(struct ir3_instruction *assigner,
 		struct ir3_instruction *consumer, unsigned n);
 void ir3_insert_by_depth(struct ir3_instruction *instr, struct list_head *list);
-void ir3_depth(struct ir3 *ir);
+void ir3_depth(struct ir3 *ir, struct ir3_shader_variant *so);
 
 /* copy-propagate: */
-struct ir3_shader_variant;
 void ir3_cp(struct ir3 *ir, struct ir3_shader_variant *so);
 
 /* group neighbors and insert mov's to resolve conflicts: */
