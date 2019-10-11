@@ -34,6 +34,7 @@
 #include "program.h"
 #include "compiler/nir/nir_control_flow.h"
 #include "compiler/nir/nir_builder.h"
+#include "compiler/nir/nir_builtin_builder.h"
 #include "compiler/nir/nir_deref.h"
 #include "main/errors.h"
 #include "main/imports.h"
@@ -2187,6 +2188,10 @@ nir_visitor::visit(ir_expression *ir)
       return;
    }
 
+   case ir_unop_atan:
+      result = nir_atan(&b, srcs[0]);
+      break;
+
    case ir_binop_add:
       result = type_is_float(out_type) ? nir_fadd(&b, srcs[0], srcs[1])
                                        : nir_iadd(&b, srcs[0], srcs[1]);
@@ -2349,6 +2354,10 @@ nir_visitor::visit(ir_expression *ir)
       }
       break;
    }
+
+   case ir_binop_atan2:
+      result = nir_atan2(&b, srcs[0], srcs[1]);
+      break;
 
    case ir_binop_ldexp: result = nir_ldexp(&b, srcs[0], srcs[1]); break;
    case ir_triop_fma:

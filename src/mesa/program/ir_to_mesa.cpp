@@ -1412,6 +1412,8 @@ ir_to_mesa_visitor::visit(ir_expression *ir)
    case ir_unop_unpack_sampler_2x32:
    case ir_unop_pack_image_2x32:
    case ir_unop_unpack_image_2x32:
+   case ir_unop_atan:
+   case ir_binop_atan2:
       assert(!"not supported");
       break;
 
