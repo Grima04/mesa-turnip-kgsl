@@ -3255,6 +3255,19 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 		ir3_print(ir);
 	}
 
+	/* Set (ss)(sy) on first TCS and GEOMETRY instructions, since we don't
+	 * know what we might have to wait on when coming in from VS chsh.
+	 */
+	if (so->type == MESA_SHADER_TESS_CTRL ||
+		so->type == MESA_SHADER_GEOMETRY ) {
+		list_for_each_entry (struct ir3_block, block, &ir->block_list, node) {
+			list_for_each_entry (struct ir3_instruction, instr, &block->instr_list, node) {
+				instr->flags |= IR3_INSTR_SS | IR3_INSTR_SY;
+				break;
+			}
+		}
+	}
+
 	so->branchstack = ctx->max_stack;
 
 	/* Note that actual_in counts inputs that are not bary.f'd for FS: */
