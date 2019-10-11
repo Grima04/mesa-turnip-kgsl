@@ -27,6 +27,10 @@
 #include "util/u_math.h"
 #include "nir/nir_builder.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /*
  * Functions are sorted alphabetically with removed type and "fast" prefix.
  * Definitions for functions in the C file come first.
@@ -211,5 +215,9 @@ nir_select(nir_builder *b, nir_ssa_def *x, nir_ssa_def *y, nir_ssa_def *s)
    }
    return nir_bcsel(b, nir_ieq(b, s, nir_imm_intN_t(b, 0, s->bit_size)), x, y);
 }
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* NIR_BUILTIN_BUILDER_H */
