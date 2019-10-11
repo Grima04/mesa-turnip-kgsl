@@ -33,6 +33,7 @@
 
 #include "common/gen_gem.h"
 #include "gen_perf.h"
+#include "gen_perf_regs.h"
 #include "perf/gen_perf_mdapi.h"
 #include "perf/gen_perf_metrics.h"
 

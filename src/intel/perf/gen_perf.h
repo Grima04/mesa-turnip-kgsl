@@ -43,18 +43,6 @@ struct gen_device_info;
 struct gen_perf_config;
 struct gen_perf_query_info;
 
-#define GEN7_RPSTAT1                       0xA01C
-#define  GEN7_RPSTAT1_CURR_GT_FREQ_SHIFT   7
-#define  GEN7_RPSTAT1_CURR_GT_FREQ_MASK    INTEL_MASK(13, 7)
-#define  GEN7_RPSTAT1_PREV_GT_FREQ_SHIFT   0
-#define  GEN7_RPSTAT1_PREV_GT_FREQ_MASK    INTEL_MASK(6, 0)
-
-#define GEN9_RPSTAT0                       0xA01C
-#define  GEN9_RPSTAT0_CURR_GT_FREQ_SHIFT   23
-#define  GEN9_RPSTAT0_CURR_GT_FREQ_MASK    INTEL_MASK(31, 23)
-#define  GEN9_RPSTAT0_PREV_GT_FREQ_SHIFT   0
-#define  GEN9_RPSTAT0_PREV_GT_FREQ_MASK    INTEL_MASK(8, 0)
-
 enum gen_perf_counter_type {
    GEN_PERF_COUNTER_TYPE_EVENT,
    GEN_PERF_COUNTER_TYPE_DURATION_NORM,
@@ -86,19 +74,6 @@ struct gen_pipeline_stat {
  *   1 timestamp, 1 clock, 36 A counters, 8 B counters and 8 C counters
  */
 #define MAX_OA_REPORT_COUNTERS 62
-
-#define IA_VERTICES_COUNT          0x2310
-#define IA_PRIMITIVES_COUNT        0x2318
-#define VS_INVOCATION_COUNT        0x2320
-#define HS_INVOCATION_COUNT        0x2300
-#define DS_INVOCATION_COUNT        0x2308
-#define GS_INVOCATION_COUNT        0x2328
-#define GS_PRIMITIVES_COUNT        0x2330
-#define CL_INVOCATION_COUNT        0x2338
-#define CL_PRIMITIVES_COUNT        0x2340
-#define PS_INVOCATION_COUNT        0x2348
-#define CS_INVOCATION_COUNT        0x2290
-#define PS_DEPTH_COUNT             0x2350
 
 /*
  * When currently allocate only one page for pipeline statistics queries. Here
