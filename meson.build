@@ -1265,7 +1265,11 @@ if dep_thread.found() and host_machine.system() != 'windows'
     pre_args += '-DPTHREAD_SETAFFINITY_IN_NP_HEADER'
   endif
 endif
-dep_expat = dependency('expat', fallback : ['expat', 'expat_dep'])
+if host_machine.system() != 'windows'
+  dep_expat = dependency('expat', fallback : ['expat', 'expat_dep'])
+else
+  dep_expat = null_dep
+endif
 # this only exists on linux so either this is linux and it will be found, or
 # it's not linux and wont
 dep_m = cc.find_library('m', required : false)
