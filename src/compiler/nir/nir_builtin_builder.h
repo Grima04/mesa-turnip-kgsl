@@ -41,6 +41,8 @@ nir_ssa_def* nir_rotate(nir_builder *b, nir_ssa_def *x, nir_ssa_def *y);
 nir_ssa_def* nir_smoothstep(nir_builder *b, nir_ssa_def *edge0,
                             nir_ssa_def *edge1, nir_ssa_def *x);
 nir_ssa_def* nir_upsample(nir_builder *b, nir_ssa_def *hi, nir_ssa_def *lo);
+nir_ssa_def* nir_atan(nir_builder *b, nir_ssa_def *y_over_x);
+nir_ssa_def* nir_atan2(nir_builder *b, nir_ssa_def *y, nir_ssa_def *x);
 
 static inline nir_ssa_def *
 nir_nan_check2(nir_builder *b, nir_ssa_def *x, nir_ssa_def *y, nir_ssa_def *res)
