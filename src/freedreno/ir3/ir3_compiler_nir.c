@@ -3172,6 +3172,15 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 		}
 
 		ret = ir3_ra(so, ir->inputs, ir->ninputs);
+	} else if (ctx->gs_header) {
+		/* We need to have these values in the same registers between VS and GS
+		 * since the VS chains to GS and doesn't get the sysvals redelivered.
+		 */
+
+		ctx->gs_header->regs[0]->num = 0;
+		ctx->primitive_id->regs[0]->num = 1;
+		struct ir3_instruction *precolor[] = { ctx->gs_header, ctx->primitive_id };
+		ret = ir3_ra(so, precolor, ARRAY_SIZE(precolor));
 	} else {
 		ret = ir3_ra(so, NULL, 0);
 	}
