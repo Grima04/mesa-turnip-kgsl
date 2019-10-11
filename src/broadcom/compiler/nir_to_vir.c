@@ -2021,7 +2021,22 @@ emit_store_output_gs(struct v3d_compile *c, nir_intrinsic_instr *instr)
         struct qreg offset =
                 vir_ADD(c, vir_uniform_ui(c, base_offset), src_offset);
 
+        /* Usually, for VS or FS, we only emit outputs once at program end so
+         * our VPM writes are never in non-uniform control flow, but this
+         * is not true for GS, where we are emitting multiple vertices.
+         */
+        if (vir_in_nonuniform_control_flow(c)) {
+                vir_set_pf(vir_MOV_dest(c, vir_nop_reg(), c->execute),
+                           V3D_QPU_PF_PUSHZ);
+        }
+
         vir_VPM_WRITE_indirect(c, ntq_get_src(c, instr->src[0], 0), offset);
+
+        if (vir_in_nonuniform_control_flow(c)) {
+                struct qinst *last_inst =
+                        (struct qinst *)c->cur_block->instructions.prev;
+                vir_set_cond(last_inst, V3D_QPU_COND_IFA);
+        }
 }
 
 static void
