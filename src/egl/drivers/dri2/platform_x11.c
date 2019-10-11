@@ -831,9 +831,17 @@ dri2_x11_add_configs_for_visuals(struct dri2_egl_display *dri2_dpy,
             dri2_conf = dri2_add_config(disp, config, config_count + 1,
                                         surface_type, config_attrs,
                                         rgba_shifts, rgba_sizes);
-            if (dri2_conf)
+            if (dri2_conf) {
                if (dri2_conf->base.ConfigID == config_count + 1)
                   config_count++;
+
+               /* Put RGBA visuals in the second ConfigSelectGroup so that they
+                * have lower priority. Applications probably don't want the
+                * compositor to alpha-blend their windows.
+                */
+               if (d.data->depth != 24 && d.data->depth != 30)
+                  ++dri2_conf->base.ConfigSelectGroup;
+            }
          }
       }
 
