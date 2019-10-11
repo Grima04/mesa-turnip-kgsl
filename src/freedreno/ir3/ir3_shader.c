@@ -107,6 +107,20 @@ fixup_regfootprint(struct ir3_shader_variant *v, uint32_t gpu_id)
 			v->info.max_reg = MAX2(v->info.max_reg, regid >> 2);
 		}
 	}
+
+	for (i = 0; i < v->num_sampler_prefetch; i++) {
+		unsigned n = util_last_bit(v->sampler_prefetch[i].wrmask) - 1;
+		int32_t regid = v->sampler_prefetch[i].dst + n;
+		if (v->sampler_prefetch[i].half_precision) {
+			if (gpu_id < 500) {
+				v->info.max_half_reg = MAX2(v->info.max_half_reg, regid >> 2);
+			} else {
+				v->info.max_reg = MAX2(v->info.max_reg, regid >> 3);
+			}
+		} else {
+			v->info.max_reg = MAX2(v->info.max_reg, regid);
+		}
+	}
 }
 
 /* wrapper for ir3_assemble() which does some info fixup based on
