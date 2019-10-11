@@ -343,6 +343,15 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_screen *screen,
 	posz_regid      = ir3_find_output_regid(fs, FRAG_RESULT_DEPTH);
 	smask_regid     = ir3_find_output_regid(fs, FRAG_RESULT_SAMPLE_MASK);
 
+	/* If we have pre-dispatch texture fetches, then ij_pix should not
+	 * be DCE'd, even if not actually used in the shader itself:
+	 */
+	if (fs->num_sampler_prefetch > 0) {
+		assert(VALIDREG(ij_pix_regid));
+		/* also, it seems like ij_pix is *required* to be r0.x */
+		assert(ij_pix_regid == regid(0, 0));
+	}
+
 	/* we can't write gl_SampleMask for !msaa..  if b0 is zero then we
 	 * end up masking the single sample!!
 	 */
@@ -356,11 +365,20 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_screen *screen,
 	OUT_PKT4(ring, REG_A6XX_SP_HS_UNKNOWN_A833, 1);
 	OUT_RING(ring, 0x0);
 
-	/* I believe this is related to pre-dispatch texture fetch.. we probably
-	 * should't turn it on by accident:
-	 */
-	OUT_PKT4(ring, REG_A6XX_SP_FS_PREFETCH_CNTL, 1);
-	OUT_RING(ring, 0x0);
+	OUT_PKT4(ring, REG_A6XX_SP_FS_PREFETCH_CNTL, 1 + fs->num_sampler_prefetch);
+	OUT_RING(ring, A6XX_SP_FS_PREFETCH_CNTL_COUNT(fs->num_sampler_prefetch) |
+			A6XX_SP_FS_PREFETCH_CNTL_UNK4(regid(63, 0)) |
+			0x7000);    // XXX
+	for (int i = 0; i < fs->num_sampler_prefetch; i++) {
+		const struct ir3_sampler_prefetch *prefetch = &fs->sampler_prefetch[i];
+		OUT_RING(ring, A6XX_SP_FS_PREFETCH_CMD_SRC(prefetch->src) |
+				A6XX_SP_FS_PREFETCH_CMD_SAMP_ID(prefetch->samp_id) |
+				A6XX_SP_FS_PREFETCH_CMD_TEX_ID(prefetch->tex_id) |
+				A6XX_SP_FS_PREFETCH_CMD_DST(prefetch->dst) |
+				A6XX_SP_FS_PREFETCH_CMD_WRMASK(prefetch->wrmask) |
+				COND(prefetch->half_precision, A6XX_SP_FS_PREFETCH_CMD_HALF) |
+				A6XX_SP_FS_PREFETCH_CMD_CMD(prefetch->cmd));
+	}
 
 	OUT_PKT4(ring, REG_A6XX_SP_UNKNOWN_A9A8, 1);
 	OUT_RING(ring, 0);
