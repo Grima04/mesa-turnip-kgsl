@@ -354,6 +354,14 @@ fd_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
 			return 1;
 		return 0;
 
+	/* Geometry shaders.. */
+	case PIPE_CAP_MAX_GEOMETRY_OUTPUT_VERTICES:
+		return 512;
+	case PIPE_CAP_MAX_GEOMETRY_TOTAL_OUTPUT_COMPONENTS:
+		return 2048;
+	case PIPE_CAP_MAX_GS_INVOCATIONS:
+		return 32;
+
 	/* Stream output. */
 	case PIPE_CAP_MAX_STREAM_OUTPUT_BUFFERS:
 		if (is_ir3(screen))
@@ -460,12 +468,13 @@ fd_screen_get_shader_param(struct pipe_screen *pscreen,
 	case PIPE_SHADER_FRAGMENT:
 	case PIPE_SHADER_VERTEX:
 		break;
+	case PIPE_SHADER_GEOMETRY:
+		if (is_a6xx(screen))
+			break;
+		return 0;
 	case PIPE_SHADER_COMPUTE:
 		if (has_compute(screen))
 			break;
-		return 0;
-	case PIPE_SHADER_GEOMETRY:
-		/* maye we could emulate.. */
 		return 0;
 	default:
 		DBG("unknown shader type %d", shader);

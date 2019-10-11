@@ -916,6 +916,9 @@ fd6_prog_init(struct pipe_context *pctx)
 	pctx->create_gs_state = fd6_shader_state_create;
 	pctx->delete_gs_state = fd6_shader_state_delete;
 
+	pctx->create_gs_state = fd6_shader_state_create;
+	pctx->delete_gs_state = fd6_shader_state_delete;
+
 	pctx->create_fs_state = fd6_shader_state_create;
 	pctx->delete_fs_state = fd6_shader_state_delete;
 
