@@ -345,7 +345,7 @@ meson-i386:
       -D llvm=false
       -D osmesa=classic
 
-meson-mingw32-x86_64:
+.meson-mingw32-x86_64:
   extends: .meson-build
   variables:
     UNWIND: "false"
