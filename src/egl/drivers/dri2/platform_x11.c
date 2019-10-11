@@ -816,28 +816,25 @@ dri2_x11_add_configs_for_visuals(struct dri2_egl_display *dri2_dpy,
                if (dri2_conf->base.ConfigID == config_count + 1)
                   config_count++;
 
-            /* Allow a 24-bit RGB visual to match a 32-bit RGBA EGLConfig.
-             * Ditto for 30-bit RGB visuals to match a 32-bit RGBA EGLConfig.
+            /* Allows RGB visuals to match a 32-bit RGBA EGLConfig.
              * Otherwise it will only match a 32-bit RGBA visual.  On a
              * composited window manager on X11, this will make all of the
              * EGLConfigs with destination alpha get blended by the
              * compositor.  This is probably not what the application
              * wants... especially on drivers that only have 32-bit RGBA
              * EGLConfigs! */
-            if (d.data->depth == 24 || d.data->depth == 30) {
-               unsigned int rgba_mask = ~(visuals[i].red_mask |
-                                          visuals[i].green_mask |
-                                          visuals[i].blue_mask);
-               rgba_shifts[3] = ffs(rgba_mask) - 1;
-               rgba_sizes[3] = util_bitcount(rgba_mask);
-               dri2_conf = dri2_add_config(disp, config, config_count + 1,
-                                           surface_type, config_attrs,
-                                           rgba_shifts, rgba_sizes);
-               if (dri2_conf)
-                  if (dri2_conf->base.ConfigID == config_count + 1)
-                     config_count++;
-            }
-	 }
+            unsigned int rgba_mask = ~(visuals[i].red_mask |
+                                       visuals[i].green_mask |
+                                       visuals[i].blue_mask);
+            rgba_shifts[3] = ffs(rgba_mask) - 1;
+            rgba_sizes[3] = util_bitcount(rgba_mask);
+            dri2_conf = dri2_add_config(disp, config, config_count + 1,
+                                        surface_type, config_attrs,
+                                        rgba_shifts, rgba_sizes);
+            if (dri2_conf)
+               if (dri2_conf->base.ConfigID == config_count + 1)
+                  config_count++;
+         }
       }
 
       xcb_depth_next(&d);

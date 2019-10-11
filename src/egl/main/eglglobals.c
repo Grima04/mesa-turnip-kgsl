@@ -70,7 +70,8 @@ struct _egl_global _eglGlobal =
    " EGL_EXT_device_query"
    " EGL_EXT_platform_base"
    " EGL_KHR_client_get_all_proc_addresses"
-   " EGL_KHR_debug",
+   " EGL_KHR_debug"
+   " EGL_MESA_config_select_group",
 
    .PlatformExtensionString =
 #ifdef HAVE_WAYLAND_PLATFORM
