@@ -87,6 +87,7 @@ fd_blitter_pipe_begin(struct fd_context *ctx, bool render_cond, bool discard,
 	util_blitter_save_vertex_buffer_slot(ctx->blitter, ctx->vtx.vertexbuf.vb);
 	util_blitter_save_vertex_elements(ctx->blitter, ctx->vtx.vtx);
 	util_blitter_save_vertex_shader(ctx->blitter, ctx->prog.vs);
+	util_blitter_save_geometry_shader(ctx->blitter, ctx->prog.gs);
 	util_blitter_save_so_targets(ctx->blitter, ctx->streamout.num_targets,
 			ctx->streamout.targets);
 	util_blitter_save_rasterizer(ctx->blitter, ctx->rasterizer);
