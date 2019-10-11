@@ -67,6 +67,17 @@ fd6_program_state(struct ir3_program_state *state)
 	return (struct fd6_program_state *)state;
 }
 
+static inline const struct ir3_shader_variant *
+fd6_last_shader(const struct fd6_program_state *state)
+{
+	if (state->gs)
+		return state->gs;
+	else if (state->ds)
+		return state->ds;
+	else
+		return state->vs;
+}
+
 void fd6_emit_shader(struct fd_ringbuffer *ring, const struct ir3_shader_variant *so);
 
 void fd6_program_emit(struct fd_ringbuffer *ring, struct fd6_emit *emit);

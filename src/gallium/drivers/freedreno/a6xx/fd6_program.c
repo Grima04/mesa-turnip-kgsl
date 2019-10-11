@@ -276,10 +276,11 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_screen *screen,
 	uint32_t pos_regid, psize_regid, color_regid[8], posz_regid;
 	uint32_t face_regid, coord_regid, zwcoord_regid, samp_id_regid;
 	uint32_t smask_in_regid, smask_regid;
-	uint32_t vertex_regid, instance_regid;
+	uint32_t vertex_regid, instance_regid, layer_regid, primitive_regid;
 	uint32_t ij_pix_regid, ij_samp_regid, ij_cent_regid, ij_size_regid;
+	uint32_t gs_header_regid;
 	enum a3xx_threadsize fssz;
-	uint8_t psize_loc = ~0, pos_loc = ~0;
+	uint8_t psize_loc = ~0, pos_loc = ~0, layer_loc = ~0;
 	int i, j;
 
 	static const struct ir3_shader_variant dummy_fs = {0};
@@ -289,6 +290,11 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_screen *screen,
 	const struct ir3_shader_variant *gs = state->gs;
 	const struct ir3_shader_variant *fs = binning_pass ? &dummy_fs : state->fs;
 
+	if (binning_pass && state->ds)
+		ds = state->bs;
+	else if (binning_pass)
+		vs = state->bs;
+
 	bool sample_shading = fs->per_samp | key->sample_shading;
 
 	fssz = FOUR_QUADS;
@@ -297,6 +303,18 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_screen *screen,
 	psize_regid = ir3_find_output_regid(vs, VARYING_SLOT_PSIZ);
 	vertex_regid = ir3_find_sysval_regid(vs, SYSTEM_VALUE_VERTEX_ID);
 	instance_regid = ir3_find_sysval_regid(vs, SYSTEM_VALUE_INSTANCE_ID);
+
+	if (gs) {
+		gs_header_regid = ir3_find_sysval_regid(vs, SYSTEM_VALUE_GS_HEADER_IR3);
+		primitive_regid = ir3_find_sysval_regid(gs, SYSTEM_VALUE_PRIMITIVE_ID);
+		pos_regid = ir3_find_output_regid(gs, VARYING_SLOT_POS);
+		psize_regid = ir3_find_output_regid(gs, VARYING_SLOT_PSIZ);
+		layer_regid = ir3_find_output_regid(gs, VARYING_SLOT_LAYER);
+	} else {
+		gs_header_regid = regid(63, 0);
+		primitive_regid = regid(63, 0);
+		layer_regid = regid(63, 0);
+	}
 
 	if (fs->color0_mrt) {
 		color_regid[0] = color_regid[1] = color_regid[2] = color_regid[3] =
@@ -335,14 +353,8 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_screen *screen,
 	 * emitted if frag-prog is dirty vs if vert-prog is dirty..
 	 */
 
-	OUT_PKT4(ring, REG_A6XX_SP_HS_UNKNOWN_A831, 1);
-	OUT_RING(ring, 0);
-
 	OUT_PKT4(ring, REG_A6XX_SP_HS_UNKNOWN_A833, 1);
 	OUT_RING(ring, 0x0);
-
-	OUT_PKT4(ring, REG_A6XX_SP_GS_UNKNOWN_A871, 1);
-	OUT_RING(ring, 0);
 
 	/* I believe this is related to pre-dispatch texture fetch.. we probably
 	 * should't turn it on by accident:
@@ -369,10 +381,14 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_screen *screen,
 			COND(vs->need_pixlod, A6XX_SP_VS_CTRL_REG0_PIXLODENABLE));
 
 	struct ir3_shader_linkage l = {0};
-	ir3_link_shaders(&l, vs, fs);
+	if (gs)
+		ir3_link_shaders(&l, gs, fs);
+	else
+		ir3_link_shaders(&l, vs, fs);
 
-	if (vs->shader->stream_output.num_outputs > 0)
-		link_stream_out(&l, vs);
+	const struct ir3_shader_variant *so_shader = fd6_last_shader(state);
+	if (so_shader->shader->stream_output.num_outputs > 0)
+		link_stream_out(&l, so_shader);
 
 	BITSET_DECLARE(varbs, 128) = {0};
 	uint32_t *varmask = (uint32_t *)varbs;
@@ -387,7 +403,11 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_screen *screen,
 	OUT_RING(ring, ~varmask[2]);  /* VPC_VAR[2].DISABLE */
 	OUT_RING(ring, ~varmask[3]);  /* VPC_VAR[3].DISABLE */
 
-	/* a6xx appends pos/psize to end of the linkage map: */
+	if (VALIDREG(layer_regid)) {
+		layer_loc = l.max_loc;
+		ir3_link_add(&l, layer_regid, 0x1, l.max_loc);
+	}
+
 	if (VALIDREG(pos_regid)) {
 		pos_loc = l.max_loc;
 		ir3_link_add(&l, pos_regid, 0xf, l.max_loc);
@@ -398,12 +418,16 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_screen *screen,
 		ir3_link_add(&l, psize_regid, 0x1, l.max_loc);
 	}
 
-	if (vs->shader->stream_output.num_outputs > 0) {
-		setup_stream_out(state, vs, &l);
+	if (so_shader->shader->stream_output.num_outputs > 0) {
+		setup_stream_out(state, so_shader, &l);
 	}
 
 	debug_assert(l.cnt < 32);
-	OUT_PKT4(ring, REG_A6XX_SP_VS_OUT_REG(0), DIV_ROUND_UP(l.cnt, 2));
+	if (gs)
+		OUT_PKT4(ring, REG_A6XX_SP_GS_OUT_REG(0), DIV_ROUND_UP(l.cnt, 2));
+	else
+		OUT_PKT4(ring, REG_A6XX_SP_VS_OUT_REG(0), DIV_ROUND_UP(l.cnt, 2));
+
 	for (j = 0; j < l.cnt; ) {
 		uint32_t reg = 0;
 
@@ -418,7 +442,11 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_screen *screen,
 		OUT_RING(ring, reg);
 	}
 
-	OUT_PKT4(ring, REG_A6XX_SP_VS_VPC_DST_REG(0), DIV_ROUND_UP(l.cnt, 4));
+	if (gs)
+		OUT_PKT4(ring, REG_A6XX_SP_GS_VPC_DST_REG(0), DIV_ROUND_UP(l.cnt, 4));
+	else
+		OUT_PKT4(ring, REG_A6XX_SP_VS_VPC_DST_REG(0), DIV_ROUND_UP(l.cnt, 4));
+
 	for (j = 0; j < l.cnt; ) {
 		uint32_t reg = 0;
 
@@ -432,6 +460,9 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_screen *screen,
 
 	fd6_emit_shader(ring, vs);
 
+	OUT_PKT4(ring, REG_A6XX_SP_HS_UNKNOWN_A831, 1);
+	OUT_RING(ring, 0);
+
 	OUT_PKT4(ring, REG_A6XX_SP_PRIMITIVE_CNTL, 1);
 	OUT_RING(ring, A6XX_SP_PRIMITIVE_CNTL_VSOUT(l.cnt));
 
@@ -444,7 +475,7 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_screen *screen,
 
 	OUT_PKT4(ring, REG_A6XX_PC_PRIMITIVE_CNTL_1, 1);
 	OUT_RING(ring, A6XX_PC_PRIMITIVE_CNTL_1_STRIDE_IN_VPC(l.max_loc) |
-			 CONDREG(psize_regid, A6XX_PC_PRIMITIVE_CNTL_1_PSIZE));
+			CONDREG(psize_regid, A6XX_PC_PRIMITIVE_CNTL_1_PSIZE));
 
 	OUT_PKT4(ring, REG_A6XX_HLSQ_CONTROL_1_REG, 5);
 	OUT_RING(ring, 0x7);                /* XXX */
@@ -538,8 +569,86 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_screen *screen,
 			 A6XX_VPC_PACK_STRIDE_IN_VPC(l.max_loc));
 
 	if (gs) {
+		OUT_PKT4(ring, REG_A6XX_SP_GS_CTRL_REG0, 1);
+		OUT_RING(ring, A6XX_SP_GS_CTRL_REG0_THREADSIZE(TWO_QUADS) |
+			A6XX_SP_GS_CTRL_REG0_FULLREGFOOTPRINT(gs->info.max_reg + 1) |
+			A6XX_SP_GS_CTRL_REG0_BRANCHSTACK(gs->branchstack) |
+			COND(gs->need_pixlod, A6XX_SP_GS_CTRL_REG0_PIXLODENABLE));
+
+		fd6_emit_shader(ring, gs);
 		ir3_emit_immediates(screen, gs, ring);
 		ir3_emit_link_map(screen, vs, gs, ring);
+
+		OUT_PKT4(ring, REG_A6XX_VPC_PACK_GS, 1);
+		OUT_RING(ring, A6XX_VPC_PACK_GS_POSITIONLOC(pos_loc) |
+				 A6XX_VPC_PACK_GS_PSIZELOC(psize_loc) |
+				 A6XX_VPC_PACK_GS_STRIDE_IN_VPC(l.max_loc));
+
+		OUT_PKT4(ring, REG_A6XX_VPC_UNKNOWN_9105, 1);
+		OUT_RING(ring, A6XX_VPC_UNKNOWN_9105_LAYERLOC(layer_loc) | 0xff00);
+
+		OUT_PKT4(ring, REG_A6XX_GRAS_UNKNOWN_809C, 1);
+		OUT_RING(ring, CONDREG(layer_regid, A6XX_GRAS_UNKNOWN_809C_GS_WRITES_LAYER));
+
+		uint32_t flags_regid = ir3_find_output_regid(gs, VARYING_SLOT_GS_VERTEX_FLAGS_IR3);
+
+		OUT_PKT4(ring, REG_A6XX_SP_PRIMITIVE_CNTL_GS, 1);
+		OUT_RING(ring, A6XX_SP_PRIMITIVE_CNTL_GS_GSOUT(l.cnt) |
+				A6XX_SP_PRIMITIVE_CNTL_GS_FLAGS_REGID(flags_regid));
+
+		OUT_PKT4(ring, REG_A6XX_PC_PRIMITIVE_CNTL_2, 1);
+		OUT_RING(ring, A6XX_PC_PRIMITIVE_CNTL_2_STRIDE_IN_VPC(l.max_loc) |
+				CONDREG(psize_regid, A6XX_PC_PRIMITIVE_CNTL_2_PSIZE) |
+				CONDREG(layer_regid, A6XX_PC_PRIMITIVE_CNTL_2_LAYER) |
+				CONDREG(primitive_regid, A6XX_PC_PRIMITIVE_CNTL_2_PRIMITIVE_ID));
+
+		uint32_t output;
+		switch (gs->shader->nir->info.gs.output_primitive) {
+		case GL_POINTS:
+			output = TESS_POINTS;
+			break;
+		case GL_LINE_STRIP:
+			output = TESS_LINES;
+			break;
+		case GL_TRIANGLE_STRIP:
+			output = TESS_CW_TRIS;
+			break;
+		default:
+			unreachable("");
+		}
+		OUT_PKT4(ring, REG_A6XX_PC_PRIMITIVE_CNTL_5, 1);
+		OUT_RING(ring,
+				A6XX_PC_PRIMITIVE_CNTL_5_GS_VERTICES_OUT(gs->shader->nir->info.gs.vertices_out - 1) |
+				A6XX_PC_PRIMITIVE_CNTL_5_GS_OUTPUT(output) |
+				A6XX_PC_PRIMITIVE_CNTL_5_GS_INVOCATIONS(gs->shader->nir->info.gs.invocations - 1));
+
+		OUT_PKT4(ring, REG_A6XX_GRAS_UNKNOWN_8003, 1);
+		OUT_RING(ring, 0);
+
+		OUT_PKT4(ring, REG_A6XX_VPC_UNKNOWN_9100, 1);
+		OUT_RING(ring, 0xff);
+
+		OUT_PKT4(ring, REG_A6XX_VPC_UNKNOWN_9101, 1);
+		OUT_RING(ring, 0xffff00);
+
+		OUT_PKT4(ring, REG_A6XX_VPC_UNKNOWN_9102, 1);
+		OUT_RING(ring, 0xffff00);
+
+		OUT_PKT4(ring, REG_A6XX_VPC_UNKNOWN_9107, 1);
+		OUT_RING(ring, 0);
+
+		/* Size of per-primitive alloction in ldlw memory in vec4s. */
+		uint32_t vec4_size =
+			gs->shader->nir->info.gs.vertices_in *
+			DIV_ROUND_UP(vs->shader->output_size, 4);
+		OUT_PKT4(ring, REG_A6XX_PC_PRIMITIVE_CNTL_6, 1);
+		OUT_RING(ring, A6XX_PC_PRIMITIVE_CNTL_6_STRIDE_IN_VPC(vec4_size));
+
+		OUT_PKT4(ring, REG_A6XX_PC_UNKNOWN_9B07, 1);
+		OUT_RING(ring, 0);
+
+		OUT_PKT4(ring, REG_A6XX_SP_GS_UNKNOWN_A871, 1);
+		OUT_RING(ring, 3);
 	}
 
 	if (!binning_pass) {
@@ -572,11 +681,17 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_screen *screen,
 	OUT_PKT4(ring, REG_A6XX_VFD_CONTROL_1, 6);
 	OUT_RING(ring, A6XX_VFD_CONTROL_1_REGID4VTX(vertex_regid) |
 			A6XX_VFD_CONTROL_1_REGID4INST(instance_regid) |
-			0xfcfc0000);
-	OUT_RING(ring, 0x0000fcfc);   /* VFD_CONTROL_2 */
-	OUT_RING(ring, 0xfcfcfcfc);   /* VFD_CONTROL_3 */
+			A6XX_VFD_CONTROL_1_REGID4PRIMID(primitive_regid) |
+			0xfc000000);
+	OUT_RING(ring, A6XX_VFD_CONTROL_2_REGID_HSPATCHID(regid(63,0)) |
+			A6XX_VFD_CONTROL_2_REGID_INVOCATIONID(regid(63,0)));
+	OUT_RING(ring, A6XX_VFD_CONTROL_3_REGID_DSPATCHID(regid(63,0)) |
+			A6XX_VFD_CONTROL_3_REGID_TESSX(regid(63,0)) |
+			A6XX_VFD_CONTROL_3_REGID_TESSY(regid(63,0)) |
+			0xfc);
 	OUT_RING(ring, 0x000000fc);   /* VFD_CONTROL_4 */
-	OUT_RING(ring, 0x0000fcfc);   /* VFD_CONTROL_5 */
+	OUT_RING(ring, A6XX_VFD_CONTROL_5_REGID_GSHEADER(gs_header_regid) |
+			0xfc00);   /* VFD_CONTROL_5 */
 	OUT_RING(ring, 0x00000000);   /* VFD_CONTROL_6 */
 
 	bool fragz = fs->no_earlyz | fs->writes_pos;

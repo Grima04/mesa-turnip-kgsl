@@ -1003,7 +1003,7 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 		fd6_emit_take_group(emit, NULL, FD6_GROUP_VS_DRIVER_PARAMS, 0x7);
 	}
 
-	struct ir3_stream_output_info *info = &vs->shader->stream_output;
+	struct ir3_stream_output_info *info = &fd6_last_shader(prog)->shader->stream_output;
 	if (info->num_outputs)
 		fd6_emit_streamout(ring, emit, info);
 
@@ -1259,9 +1259,6 @@ fd6_emit_restore(struct fd_batch *batch, struct fd_ringbuffer *ring)
 	WRITE(REG_A6XX_RB_UNKNOWN_881E, 0);
 	WRITE(REG_A6XX_RB_UNKNOWN_88F0, 0);
 
-	WRITE(REG_A6XX_VPC_UNKNOWN_9101, 0xffff00);
-	WRITE(REG_A6XX_VPC_UNKNOWN_9107, 0);
-
 	WRITE(REG_A6XX_VPC_UNKNOWN_9236,
 		  A6XX_VPC_UNKNOWN_9236_POINT_COORD_INVERT(0));
 	WRITE(REG_A6XX_VPC_UNKNOWN_9300, 0);
@@ -1272,7 +1269,6 @@ fd6_emit_restore(struct fd_batch *batch, struct fd_ringbuffer *ring)
 	WRITE(REG_A6XX_PC_UNKNOWN_9806, 0);
 	WRITE(REG_A6XX_PC_UNKNOWN_9980, 0);
 
-	WRITE(REG_A6XX_PC_PRIMITIVE_CNTL_6, 0);
 	WRITE(REG_A6XX_PC_UNKNOWN_9B07, 0);
 
 	WRITE(REG_A6XX_SP_UNKNOWN_A81B, 0);
