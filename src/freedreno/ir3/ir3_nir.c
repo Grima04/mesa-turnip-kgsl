@@ -101,7 +101,8 @@ ir3_key_lowers_nir(const struct ir3_shader_key *key)
 	return key->fsaturate_s | key->fsaturate_t | key->fsaturate_r |
 			key->vsaturate_s | key->vsaturate_t | key->vsaturate_r |
 			key->ucp_enables | key->color_two_side |
-			key->fclamp_color | key->vclamp_color;
+			key->fclamp_color | key->vclamp_color |
+			key->has_gs;
 }
 
 #define OPT(nir, pass, ...) ({                             \
@@ -185,6 +186,19 @@ ir3_optimize_nir(struct ir3_shader *shader, nir_shader *s,
 			.lower_rect = 0,
 			.lower_tg4_offsets = true,
 	};
+
+	if (key && key->has_gs) {
+		switch (shader->type) {
+		case MESA_SHADER_VERTEX:
+			NIR_PASS_V(s, ir3_nir_lower_vs_to_explicit_io, shader);
+			break;
+		case MESA_SHADER_GEOMETRY:
+			NIR_PASS_V(s, ir3_nir_lower_gs, shader);
+			break;
+		default:
+			break;
+		}
+	}
 
 	if (key) {
 		switch (shader->type) {

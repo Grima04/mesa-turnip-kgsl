@@ -1524,6 +1524,9 @@ typedef enum {
    NIR_INTRINSIC_SRC_ACCESS,
    NIR_INTRINSIC_DST_ACCESS,
 
+   /* Driver location for nir_load_patch_location_ir3 */
+   NIR_INTRINSIC_DRIVER_LOCATION,
+
    NIR_INTRINSIC_NUM_INDEX_FLAGS,
 
 } nir_intrinsic_index_flag;
@@ -1632,6 +1635,7 @@ INTRINSIC_IDX_ACCESSORS(align_offset, ALIGN_OFFSET, unsigned)
 INTRINSIC_IDX_ACCESSORS(desc_type, DESC_TYPE, unsigned)
 INTRINSIC_IDX_ACCESSORS(type, TYPE, nir_alu_type)
 INTRINSIC_IDX_ACCESSORS(swizzle_mask, SWIZZLE_MASK, unsigned)
+INTRINSIC_IDX_ACCESSORS(driver_location, DRIVER_LOCATION, unsigned)
 
 static inline void
 nir_intrinsic_set_align(nir_intrinsic_instr *intrin,

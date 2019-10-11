@@ -800,6 +800,7 @@ print_intrinsic_instr(nir_intrinsic_instr *instr, print_state *state)
       [NIR_INTRINSIC_DESC_TYPE] = "desc_type",
       [NIR_INTRINSIC_TYPE] = "type",
       [NIR_INTRINSIC_SWIZZLE_MASK] = "swizzle_mask",
+      [NIR_INTRINSIC_DRIVER_LOCATION] = "driver_location",
    };
    for (unsigned idx = 1; idx < NIR_INTRINSIC_NUM_INDEX_FLAGS; idx++) {
       if (!info->index_map[idx])

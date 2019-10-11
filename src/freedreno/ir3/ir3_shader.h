@@ -554,6 +554,11 @@ struct ir3_shader {
 
 	struct ir3_shader_variant *variants;
 	mtx_t variants_lock;
+
+	uint32_t output_size; /* Size in dwords of all outputs for VS, size of entire patch for HS. */
+
+	/* Map from driver_location to byte offset in per-primitive storage */
+	unsigned output_loc[32];
 };
 
 void * ir3_shader_assemble(struct ir3_shader_variant *v, uint32_t gpu_id);
@@ -692,6 +697,10 @@ ir3_find_output_regid(const struct ir3_shader_variant *so, unsigned slot)
 		}
 	return regid(63, 0);
 }
+
+#define VARYING_SLOT_GS_HEADER_IR3			(VARYING_SLOT_MAX + 0)
+#define VARYING_SLOT_GS_VERTEX_FLAGS_IR3	(VARYING_SLOT_MAX + 1)
+
 
 static inline uint32_t
 ir3_find_sysval_regid(const struct ir3_shader_variant *so, unsigned slot)

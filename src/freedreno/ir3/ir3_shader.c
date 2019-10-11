@@ -350,7 +350,14 @@ output_name(struct ir3_shader_variant *so, int i)
 	if (so->type == MESA_SHADER_FRAGMENT) {
 		return gl_frag_result_name(so->outputs[i].slot);
 	} else {
-		return gl_varying_slot_name(so->outputs[i].slot);
+		switch (so->outputs[i].slot) {
+		case VARYING_SLOT_GS_HEADER_IR3:
+			return "GS_HEADER";
+		case VARYING_SLOT_GS_VERTEX_FLAGS_IR3:
+			return "GS_VERTEX_FLAGS";
+		default:
+			return gl_varying_slot_name(so->outputs[i].slot);
+		}
 	}
 }
 
