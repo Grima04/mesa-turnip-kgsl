@@ -1149,6 +1149,9 @@ struct ir3_shader_variant;
 void ir3_insert_by_depth(struct ir3_instruction *instr, struct list_head *list);
 void ir3_depth(struct ir3 *ir, struct ir3_shader_variant *so);
 
+/* fp16 conversion folding */
+void ir3_cf(struct ir3 *ir);
+
 /* copy-propagate: */
 void ir3_cp(struct ir3 *ir, struct ir3_shader_variant *so);
 

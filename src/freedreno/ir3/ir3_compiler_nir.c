@@ -3345,6 +3345,10 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 	if (so->binning_pass && (ctx->compiler->gpu_id < 600))
 		fixup_binning_pass(ctx);
 
+	ir3_debug_print(ir, "BEFORE CF");
+
+	ir3_cf(ir);
+
 	ir3_debug_print(ir, "BEFORE CP");
 
 	ir3_cp(ir, so);
