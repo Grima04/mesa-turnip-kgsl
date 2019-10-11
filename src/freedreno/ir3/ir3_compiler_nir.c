@@ -68,7 +68,6 @@ create_input_compmask(struct ir3_context *ctx, unsigned n, unsigned compmask)
 	struct ir3_instruction *in;
 
 	in = ir3_instr_create(ctx->in_block, OPC_META_INPUT);
-	in->inout.block = ctx->in_block;
 	ir3_reg_create(in, n, 0);
 
 	in->regs[0]->wrmask = compmask;

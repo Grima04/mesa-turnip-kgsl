@@ -267,9 +267,6 @@ struct ir3_instruction {
 		struct {
 			int off;              /* component/offset */
 		} fo;
-		struct {
-			struct ir3_block *block;
-		} inout;
 	};
 
 	/* transient values used during various algorithms: */
