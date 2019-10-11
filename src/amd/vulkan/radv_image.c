@@ -715,7 +715,7 @@ static unsigned gfx9_border_color_swizzle(const enum vk_swizzle swizzle[4])
 	return bc_swizzle;
 }
 
-static bool vi_alpha_is_on_msb(struct radv_device *device, VkFormat format)
+bool vi_alpha_is_on_msb(struct radv_device *device, VkFormat format)
 {
 	const struct vk_format_description *desc = vk_format_description(format);
 
