@@ -89,6 +89,16 @@ apt-get install -y --no-remove \
     wine32 \
     wine64
 
+# Debian's pkg-config wrapers for mingw are broken, and there's no sign that
+# they're going to be fixed, so we'll just have to fix it ourselves
+# https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=930492
+cat >/usr/local/bin/x86_64-w64-mingw32-pkg-config <<EOF
+#!/bin/sh
+
+PKG_CONFIG_LIBDIR=/usr/x86_64-w64-mingw32/lib/pkgconfig pkg-config \$@
+EOF
+chmod +x /usr/local/bin/x86_64-w64-mingw32-pkg-config
+
 # for the vulkan overlay layer
 wget https://github.com/KhronosGroup/glslang/releases/download/master-tot/glslang-master-linux-Release.zip
 unzip glslang-master-linux-Release.zip bin/glslangValidator

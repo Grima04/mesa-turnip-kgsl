@@ -3,7 +3,7 @@ c = ['ccache', 'x86_64-w64-mingw32-gcc']
 cpp = ['ccache', 'x86_64-w64-mingw32-g++']
 ar = 'x86_64-w64-mingw32-ar'
 strip = 'x86_64-w64-mingw32-strip'
-pkgconfig = 'x86_64-w64-mingw32-pkg-config'
+pkgconfig = '/usr/local/bin/x86_64-w64-mingw32-pkg-config'
 windres = 'x86_64-w64-mingw32-windres'
 exe_wrapper = ['wine64']
 
