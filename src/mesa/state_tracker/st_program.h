@@ -419,6 +419,9 @@ st_destroy_program_variants(struct st_context *st);
 extern void
 st_prepare_vertex_program(struct st_vertex_program *stvp);
 
+extern void
+st_translate_stream_output_info(struct gl_program *prog);
+
 extern bool
 st_translate_vertex_program(struct st_context *st,
                             struct st_vertex_program *stvp);

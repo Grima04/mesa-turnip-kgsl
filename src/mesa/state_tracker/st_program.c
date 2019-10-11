@@ -450,6 +450,46 @@ st_prepare_vertex_program(struct st_vertex_program *stvp)
    stvp->result_to_output[VARYING_SLOT_EDGE] = num_outputs;
 }
 
+void
+st_translate_stream_output_info(struct gl_program *prog)
+{
+   struct gl_transform_feedback_info *info = prog->sh.LinkedTransformFeedback;
+   if (!info)
+      return;
+
+   /* Determine the (default) output register mapping for each output. */
+   unsigned num_outputs = 0;
+   ubyte output_mapping[VARYING_SLOT_TESS_MAX];
+   memset(output_mapping, 0, sizeof(output_mapping));
+
+   for (unsigned attr = 0; attr < VARYING_SLOT_MAX; attr++) {
+      if (prog->info.outputs_written & BITFIELD64_BIT(attr))
+         output_mapping[attr] = num_outputs++;
+   }
+
+   /* Translate stream output info. */
+   struct pipe_stream_output_info *so_info = NULL;
+   if (prog->info.stage == MESA_SHADER_VERTEX)
+      so_info = &((struct st_vertex_program*)prog)->tgsi.stream_output;
+   else
+      so_info = &((struct st_common_program*)prog)->tgsi.stream_output;
+
+   for (unsigned i = 0; i < info->NumOutputs; i++) {
+      so_info->output[i].register_index =
+         output_mapping[info->Outputs[i].OutputRegister];
+      so_info->output[i].start_component = info->Outputs[i].ComponentOffset;
+      so_info->output[i].num_components = info->Outputs[i].NumComponents;
+      so_info->output[i].output_buffer = info->Outputs[i].OutputBuffer;
+      so_info->output[i].dst_offset = info->Outputs[i].DstOffset;
+      so_info->output[i].stream = info->Outputs[i].StreamId;
+   }
+
+   for (unsigned i = 0; i < PIPE_MAX_SO_BUFFERS; i++) {
+      so_info->stride[i] = info->Buffers[i].Stride;
+   }
+   so_info->num_outputs = info->NumOutputs;
+}
+
 /**
  * Translate a vertex program.
  */
@@ -502,10 +542,7 @@ st_translate_vertex_program(struct st_context *st,
    }
 
    if (stvp->shader_program) {
-      st_translate_stream_output_info(stvp->Base.sh.LinkedTransformFeedback,
-                                      stvp->result_to_output,
-                                      &stvp->tgsi.stream_output);
-
+      st_translate_stream_output_info(&stvp->Base);
       st_store_ir_in_disk_cache(st, &stvp->Base, true);
       return true;
    }
@@ -546,9 +583,7 @@ st_translate_vertex_program(struct st_context *st,
                                    output_semantic_name,
                                    output_semantic_index);
 
-      st_translate_stream_output_info(stvp->Base.sh.LinkedTransformFeedback,
-                                      stvp->result_to_output,
-                                      &stvp->tgsi.stream_output);
+      st_translate_stream_output_info(&stvp->Base);
 
       free_glsl_to_tgsi_visitor(stvp->glsl_to_tgsi);
    } else
@@ -1404,41 +1439,6 @@ st_get_fp_variant(struct st_context *st,
 }
 
 /**
- * Update stream-output info for GS/TCS/TES.  Normally this is done in
- * st_translate_program_common() but that is not called for glsl_to_nir
- * case.
- */
-static void
-st_translate_program_stream_output(struct gl_program *prog,
-                                   struct pipe_stream_output_info *stream_output)
-{
-   if (!prog->sh.LinkedTransformFeedback)
-      return;
-
-   ubyte outputMapping[VARYING_SLOT_TESS_MAX];
-   GLuint attr;
-   uint num_outputs = 0;
-
-   memset(outputMapping, 0, sizeof(outputMapping));
-
-   /*
-    * Determine number of outputs, the (default) output register
-    * mapping and the semantic information for each output.
-    */
-   for (attr = 0; attr < VARYING_SLOT_MAX; attr++) {
-      if (prog->info.outputs_written & BITFIELD64_BIT(attr)) {
-         GLuint slot = num_outputs++;
-
-         outputMapping[attr] = slot;
-      }
-   }
-
-   st_translate_stream_output_info(prog->sh.LinkedTransformFeedback,
-                                   outputMapping,
-                                   stream_output);
-}
-
-/**
  * Translate a program. This is common code for geometry and tessellation
  * shaders.
  */
@@ -1452,10 +1452,8 @@ st_translate_common_program(struct st_context *st,
       st_finalize_nir(st, &stcp->Base, stcp->shader_program,
                       stcp->tgsi.ir.nir);
       if (stcp->Base.info.stage == MESA_SHADER_TESS_EVAL ||
-          stcp->Base.info.stage == MESA_SHADER_GEOMETRY) {
-         st_translate_program_stream_output(&stcp->Base,
-                                            &stcp->tgsi.stream_output);
-      }
+          stcp->Base.info.stage == MESA_SHADER_GEOMETRY)
+         st_translate_stream_output_info(&stcp->Base);
       st_store_ir_in_disk_cache(st, &stcp->Base, true);
       return true;
    }
@@ -1628,9 +1626,7 @@ st_translate_common_program(struct st_context *st,
 
    ureg_destroy(ureg);
 
-   st_translate_stream_output_info(prog->sh.LinkedTransformFeedback,
-                                   outputMapping,
-                                   &stcp->tgsi.stream_output);
+   st_translate_stream_output_info(prog);
 
    st_store_ir_in_disk_cache(st, prog, false);
 
