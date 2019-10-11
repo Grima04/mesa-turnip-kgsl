@@ -118,7 +118,10 @@ legalize_block(struct ir3_legalize_ctx *ctx, struct ir3_block *block)
 
 		n->flags &= ~(IR3_INSTR_SS | IR3_INSTR_SY);
 
-		if (is_meta(n))
+		/* _meta::tex_prefetch instructions removed later in
+		 * collect_tex_prefetches()
+		 */
+		if (is_meta(n) && (n->opc != OPC_META_TEX_PREFETCH))
 			continue;
 
 		if (is_input(n)) {
@@ -237,7 +240,7 @@ legalize_block(struct ir3_legalize_ctx *ctx, struct ir3_block *block)
 		if (is_sfu(n))
 			regmask_set(&state->needs_ss, n->regs[0]);
 
-		if (is_tex(n)) {
+		if (is_tex(n) || (n->opc == OPC_META_TEX_PREFETCH)) {
 			regmask_set(&state->needs_sy, n->regs[0]);
 			ctx->need_pixlod = true;
 		} else if (n->opc == OPC_RESINFO) {

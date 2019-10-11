@@ -268,6 +268,10 @@ struct ir3_instruction {
 			int off;              /* component/offset */
 		} fo;
 		struct {
+			unsigned samp, tex;
+			unsigned input_offset;
+		} prefetch;
+		struct {
 			/* for sysvals, identifies the sysval type.  Mostly so we can
 			 * identify the special cases where a sysval should not be DCE'd
 			 * (currently, just pre-fs texture fetch)
@@ -1464,6 +1468,9 @@ INSTR4F(G, ATOMIC_XOR)
 /* cat7 instructions: */
 INSTR0(BAR)
 INSTR0(FENCE)
+
+/* meta instructions: */
+INSTR0(META_TEX_PREFETCH);
 
 /* ************************************************************************* */
 /* split this out or find some helper to use.. like main/bitset.h.. */

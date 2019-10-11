@@ -2635,6 +2635,16 @@ pack_inlocs(struct ir3_context *ctx)
 				compile_assert(ctx, i < so->inputs_count);
 
 				used_components[i] |= 1 << j;
+			} else if (instr->opc == OPC_META_TEX_PREFETCH) {
+				for (int n = 0; n < 2; n++) {
+					unsigned inloc = instr->prefetch.input_offset + n;
+					unsigned i = inloc / 4;
+					unsigned j = inloc % 4;
+
+					compile_assert(ctx, i < so->inputs_count);
+
+					used_components[i] |= 1 << j;
+				}
 			}
 		}
 	}

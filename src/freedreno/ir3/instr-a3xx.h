@@ -212,6 +212,11 @@ typedef enum {
 	OPC_META_FO         = _OPC(-1, 2),
 	OPC_META_FI         = _OPC(-1, 3),
 
+	/* placeholder for texture fetches that run before FS invocation
+	 * starts:
+	 */
+	OPC_META_TEX_PREFETCH = _OPC(-1, 4),
+
 } opc_t;
 
 #define opc_cat(opc) ((int)((opc) >> NOPC_BITS))
