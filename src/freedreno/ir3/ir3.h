@@ -267,6 +267,13 @@ struct ir3_instruction {
 		struct {
 			int off;              /* component/offset */
 		} fo;
+		struct {
+			/* for sysvals, identifies the sysval type.  Mostly so we can
+			 * identify the special cases where a sysval should not be DCE'd
+			 * (currently, just pre-fs texture fetch)
+			 */
+			gl_system_value sysval;
+		} input;
 	};
 
 	/* transient values used during various algorithms: */

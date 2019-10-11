@@ -68,6 +68,7 @@ create_input_compmask(struct ir3_context *ctx, unsigned n, unsigned compmask)
 	struct ir3_instruction *in;
 
 	in = ir3_instr_create(ctx->in_block, OPC_META_INPUT);
+	in->input.sysval = ~0;
 	ir3_reg_create(in, n, 0);
 
 	in->regs[0]->wrmask = compmask;
@@ -1196,6 +1197,9 @@ static void add_sysval_input_compmask(struct ir3_context *ctx,
 	struct ir3_shader_variant *so = ctx->so;
 	unsigned r = regid(so->inputs_count, 0);
 	unsigned n = so->inputs_count++;
+
+	assert(instr->opc == OPC_META_INPUT);
+	instr->input.sysval = slot;
 
 	so->inputs[n].sysval = true;
 	so->inputs[n].slot = slot;
