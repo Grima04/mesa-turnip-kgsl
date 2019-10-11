@@ -425,10 +425,6 @@ dri2_add_config(_EGLDisplay *disp, const __DRIconfig *dri_config, int id,
          base.BindToTextureRGBA = bind_to_texture_rgba;
    }
 
-   if (double_buffer) {
-      surface_type &= ~EGL_PIXMAP_BIT;
-   }
-
    /* No support for pbuffer + MSAA for now.
     *
     * XXX TODO: pbuffer + MSAA does not work and causes crashes.
@@ -437,9 +433,6 @@ dri2_add_config(_EGLDisplay *disp, const __DRIconfig *dri_config, int id,
    if (base.Samples) {
       surface_type &= ~EGL_PBUFFER_BIT;
    }
-
-   if (!surface_type)
-      return NULL;
 
    base.RenderableType = disp->ClientAPIs;
    base.Conformant = disp->ClientAPIs;
@@ -488,6 +481,56 @@ dri2_add_config(_EGLDisplay *disp, const __DRIconfig *dri_config, int id,
    conf->base.SurfaceType |= surface_type;
 
    return conf;
+}
+
+/*
+ * We finalize the set of `SurfaceType`s supported by a config, and only
+ * reinsert it if it actually supports something.
+ */
+void
+dri2_finalize_config_surface_types(_EGLDisplay *disp)
+{
+   _EGLArray *configs = _eglWipeConfigs(disp);
+
+   for (int i = 0; i < configs->Size; ++i)
+   {
+      // Since `base` is the first member of `dri2_egl_config`, `base`'s ptr
+      // should equal `dri2_egl_config`'s. This is why this cast is safe.
+      struct dri2_egl_config *conf
+         = (struct dri2_egl_config *) configs->Elements[i];
+
+      const bool double_buffer = conf->dri_config[true][false]
+         || conf->dri_config[true][true];
+
+      const bool single_buffer = conf->dri_config[false][false]
+         || conf->dri_config[false][true];
+
+      /* No support for pixmaps without single buffered dri configs.
+       *
+       * When users pass a config to `eglCreateWindowSurface` it requests
+       * double buffering, but if the config doesn't have the appropriate
+       * `__DRIconfig`, `eglCreateWindowSurface` fails with a `EGL_BAD_MATCH`.
+       *
+       * Given that such behaviour is completely unacceptable, we drop the
+       * `EGL_WINDOW_BIT` if we don't have at least one `__DRIconfig`
+       * supporting double buffering.
+       */
+      if (!single_buffer) {
+         conf->base.SurfaceType &= ~EGL_PIXMAP_BIT;
+      }
+
+      if (!double_buffer) {
+         conf->base.SurfaceType &= ~EGL_WINDOW_BIT;
+      }
+
+      // Dont reinsert configs without some supported surface type.
+      if (!conf->base.SurfaceType) {
+         free(conf);
+         continue;
+      }
+
+      _eglLinkConfig(&conf->base);
+   }
 }
 
 __DRIimage *

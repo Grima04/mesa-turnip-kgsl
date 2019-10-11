@@ -848,6 +848,8 @@ dri2_x11_add_configs_for_visuals(struct dri2_egl_display *dri2_dpy,
       xcb_depth_next(&d);
    }
 
+   dri2_finalize_config_surface_types(disp);
+
    if (!config_count) {
       _eglLog(_EGL_WARNING, "DRI2: failed to create any config");
       return EGL_FALSE;

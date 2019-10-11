@@ -179,6 +179,9 @@ _eglGetConfigKey(const _EGLConfig *conf, EGLint key)
 extern void
 _eglInitConfig(_EGLConfig *config, _EGLDisplay *disp, EGLint id);
 
+extern _EGLArray *
+_eglWipeConfigs(_EGLDisplay *disp);
+
 
 extern EGLConfig
 _eglLinkConfig(_EGLConfig *conf);

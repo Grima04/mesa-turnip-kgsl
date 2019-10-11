@@ -71,6 +71,16 @@ _eglInitConfig(_EGLConfig *conf, _EGLDisplay *disp, EGLint id)
    conf->ComponentType = EGL_COLOR_COMPONENT_TYPE_FIXED_EXT;
 }
 
+/*
+ * Wipe the configs list and return the old list
+ */
+_EGLArray *
+_eglWipeConfigs(_EGLDisplay *disp)
+{
+   _EGLArray *configs = disp->Configs;
+   disp->Configs = NULL;
+   return configs;
+}
 
 /**
  * Link a config to its display and return the handle of the link.
