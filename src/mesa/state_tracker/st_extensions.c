@@ -335,6 +335,8 @@ void st_init_limits(struct pipe_screen *screen,
       if (sh == MESA_SHADER_VERTEX) {
          if (screen->get_param(screen, PIPE_CAP_VIEWPORT_TRANSFORM_LOWERED))
             options->LowerBuiltinVariablesXfb |= VARYING_BIT_POS;
+         if (screen->get_param(screen, PIPE_CAP_PSIZ_CLAMPED))
+            options->LowerBuiltinVariablesXfb |= VARYING_BIT_PSIZ;
       }
    }
 
