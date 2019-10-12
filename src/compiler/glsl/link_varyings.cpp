@@ -2794,15 +2794,26 @@ assign_varying_locations(struct gl_context *ctx,
          return false;
       }
 
-      /* A new output varying is needed, and the matched candidate should be
-       * replaced, if varying packing is disabled for xfb and the current
-       * declaration is not aligned within the top level varying
-       * (e.g. vec3_arr[1]).
+      /* There are two situations where a new output varying is needed:
+       *
+       *  - If varying packing is disabled for xfb and the current declaration
+       *    is not aligned within the top level varying (e.g. vec3_arr[1]).
+       *
+       *  - If a builtin variable needs to be copied to a new variable
+       *    before its content is modified by another lowering pass (e.g.
+       *    \c gl_Position is transformed by \c nir_lower_viewport_transform).
        */
       const unsigned dmul =
          matched_candidate->type->without_array()->is_64bit() ? 2 : 1;
-      if (disable_xfb_packing &&
-          !tfeedback_decls[i].is_aligned(dmul, matched_candidate->offset)) {
+      const bool lowered =
+         (disable_xfb_packing &&
+          !tfeedback_decls[i].is_aligned(dmul, matched_candidate->offset)) ||
+         (matched_candidate->toplevel_var->data.explicit_location &&
+          matched_candidate->toplevel_var->data.location < VARYING_SLOT_VAR0 &&
+          (ctx->Const.ShaderCompilerOptions[producer->Stage].LowerBuiltinVariablesXfb &
+              BITFIELD_BIT(matched_candidate->toplevel_var->data.location)));
+
+      if (lowered) {
          ir_variable *new_var;
          tfeedback_candidate *new_candidate = NULL;
 
