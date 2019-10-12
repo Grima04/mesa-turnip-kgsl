@@ -417,6 +417,9 @@ u_pipe_screen_get_param_defaults(struct pipe_screen *pscreen,
    case PIPE_CAP_PACKED_STREAM_OUTPUT:
       return 1;
 
+   case PIPE_CAP_VIEWPORT_TRANSFORM_LOWERED:
+      return 0;
+
    default:
       unreachable("bad PIPE_CAP_*");
    }
