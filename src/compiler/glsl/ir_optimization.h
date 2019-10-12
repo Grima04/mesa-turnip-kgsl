@@ -143,6 +143,9 @@ bool lower_quadop_vector(exec_list *instructions, bool dont_lower_swz);
 bool lower_const_arrays_to_uniforms(exec_list *instructions, unsigned stage, unsigned max_uniform_components);
 bool lower_clip_cull_distance(struct gl_shader_program *prog,
                               gl_linked_shader *shader);
+ir_variable * lower_xfb_varying(void *mem_ctx,
+                                gl_linked_shader *shader,
+                                const char *old_var_name);
 void lower_output_reads(unsigned stage, exec_list *instructions);
 bool lower_packing_builtins(exec_list *instructions, int op_mask);
 void lower_shared_reference(struct gl_context *ctx,

@@ -1373,6 +1373,21 @@ tfeedback_decl::find_candidate(gl_shader_program *prog,
    return this->matched_candidate;
 }
 
+/**
+ * Force a candidate over the previously matched one. It happens when a new
+ * varying needs to be created to match the xfb declaration, for example,
+ * to fullfil an alignment criteria.
+ */
+void
+tfeedback_decl::set_lowered_candidate(const tfeedback_candidate *candidate)
+{
+   this->matched_candidate = candidate;
+
+   /* The subscript part is no longer relevant */
+   this->is_subscripted = false;
+   this->array_subscript = 0;
+}
+
 
 /**
  * Parse all the transform feedback declarations that were passed to
@@ -2778,6 +2793,41 @@ assign_varying_locations(struct gl_context *ctx,
          ralloc_free(hash_table_ctx);
          return false;
       }
+
+      /* A new output varying is needed, and the matched candidate should be
+       * replaced, if varying packing is disabled for xfb and the current
+       * declaration is not aligned within the top level varying
+       * (e.g. vec3_arr[1]).
+       */
+      const unsigned dmul =
+         matched_candidate->type->without_array()->is_64bit() ? 2 : 1;
+      if (disable_xfb_packing &&
+          !tfeedback_decls[i].is_aligned(dmul, matched_candidate->offset)) {
+         ir_variable *new_var;
+         tfeedback_candidate *new_candidate = NULL;
+
+         new_var = lower_xfb_varying(mem_ctx, producer, tfeedback_decls[i].name());
+         if (new_var == NULL) {
+            ralloc_free(hash_table_ctx);
+            return false;
+         }
+
+         /* Create new candidate and replace matched_candidate */
+         new_candidate = rzalloc(mem_ctx, tfeedback_candidate);
+         new_candidate->toplevel_var = new_var;
+         new_candidate->toplevel_var->data.is_unmatched_generic_inout = 1;
+         new_candidate->type = new_var->type;
+         new_candidate->offset = 0;
+         _mesa_hash_table_insert(tfeedback_candidates,
+                                 ralloc_strdup(mem_ctx, new_var->name),
+                                 new_candidate);
+
+         tfeedback_decls[i].set_lowered_candidate(new_candidate);
+         matched_candidate = new_candidate;
+      }
+
+      /* Mark as xfb varying */
+      matched_candidate->toplevel_var->data.is_xfb = 1;
 
       /* Mark xfb varyings as always active */
       matched_candidate->toplevel_var->data.always_active_io = 1;

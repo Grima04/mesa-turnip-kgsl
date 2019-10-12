@@ -125,6 +125,7 @@ LIBGLSL_FILES = \
 	glsl/lower_output_reads.cpp \
 	glsl/lower_shared_reference.cpp \
 	glsl/lower_ubo_reference.cpp \
+	glsl/lower_xfb_varying.cpp \
 	glsl/opt_algebraic.cpp \
 	glsl/opt_array_splitting.cpp \
 	glsl/opt_conditional_discard.cpp \

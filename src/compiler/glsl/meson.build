@@ -175,6 +175,7 @@ files_libglsl = files(
   'lower_output_reads.cpp',
   'lower_shared_reference.cpp',
   'lower_ubo_reference.cpp',
+  'lower_xfb_varying.cpp',
   'opt_algebraic.cpp',
   'opt_array_splitting.cpp',
   'opt_conditional_discard.cpp',
