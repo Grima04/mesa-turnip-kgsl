@@ -1420,6 +1420,9 @@ void st_init_extensions(struct pipe_screen *screen,
          consts->DisableVaryingPacking = GL_TRUE;
    }
 
+   if (!screen->get_param(screen, PIPE_CAP_PACKED_STREAM_OUTPUT))
+      consts->DisableTransformFeedbackPacking = GL_TRUE;
+
    unsigned max_fb_fetch_rts = screen->get_param(screen, PIPE_CAP_FBFETCH);
    bool coherent_fb_fetch =
       screen->get_param(screen, PIPE_CAP_FBFETCH_COHERENT);

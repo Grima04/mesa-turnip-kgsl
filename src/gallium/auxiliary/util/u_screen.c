@@ -414,6 +414,9 @@ u_pipe_screen_get_param_defaults(struct pipe_screen *pscreen,
       /* Enables INTEL_blackhole_render */
       return 0;
 
+   case PIPE_CAP_PACKED_STREAM_OUTPUT:
+      return 1;
+
    default:
       unreachable("bad PIPE_CAP_*");
    }

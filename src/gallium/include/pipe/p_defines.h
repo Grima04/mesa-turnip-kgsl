@@ -915,6 +915,7 @@ enum pipe_cap
    /* Turn draw, dispatch, blit into NOOP */
    PIPE_CAP_FRONTEND_NOOP,
    PIPE_CAP_NIR_IMAGES_AS_DEREF,
+   PIPE_CAP_PACKED_STREAM_OUTPUT,
 };
 
 /**
