@@ -163,13 +163,17 @@ static bool ppir_lower_texture(ppir_block *block, ppir_node *node)
       load = ppir_node_to_load(src_coords);
    else {
       /* Create load_coords node */
-      load = ppir_node_create(block, ppir_op_load_coords, -1, 0);
+      load = ppir_node_create(block, ppir_op_load_coords_reg, -1, 0);
       if (!load)
          return false;
       list_addtail(&load->node.list, &node->list);
 
       load->src = load_tex->src_coords;
       load->num_src = 1;
+      if (load_tex->sampler_dim == GLSL_SAMPLER_DIM_CUBE)
+         load->num_components = 3;
+      else
+         load->num_components = 2;
 
       ppir_debug("%s create load_coords node %d for %d\n",
                  __FUNCTION__, load->node.index, node->index);

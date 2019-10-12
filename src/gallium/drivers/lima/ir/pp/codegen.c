@@ -53,7 +53,7 @@ static void ppir_codegen_encode_varying(ppir_node *node, void *code)
    int index = ppir_target_get_dest_reg_index(dest);
    int num_components = load->num_components;
 
-   if (num_components) {
+   if (node->op != ppir_op_load_coords_reg) {
       assert(node->op == ppir_op_load_varying ||
              node->op == ppir_op_load_coords ||
              node->op == ppir_op_load_fragcoord ||
@@ -94,9 +94,7 @@ static void ppir_codegen_encode_varying(ppir_node *node, void *code)
             break;
       }
    }
-   else {
-      assert(node->op == ppir_op_load_coords);
-
+   else {  /* node->op == ppir_op_load_coords_reg */
       f->reg.dest = index >> 2;
       f->reg.mask = dest->write_mask << (index & 0x3);
 

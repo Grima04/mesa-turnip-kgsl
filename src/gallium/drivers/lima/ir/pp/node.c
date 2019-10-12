@@ -260,6 +260,13 @@ const ppir_op_info ppir_op_infos[] = {
          PPIR_INSTR_SLOT_VARYING, PPIR_INSTR_SLOT_END
       },
    },
+   [ppir_op_load_coords_reg] = {
+      .name = "ld_coords_reg",
+      .type = ppir_node_type_load,
+      .slots = (int []) {
+         PPIR_INSTR_SLOT_VARYING, PPIR_INSTR_SLOT_END
+      },
+   },
    [ppir_op_load_fragcoord] = {
       .name = "ld_fragcoord",
       .type = ppir_node_type_load,
@@ -670,6 +677,7 @@ ppir_node *ppir_node_clone(ppir_block *block, ppir_node *node)
    case ppir_op_load_varying:
    case ppir_op_load_temp:
    case ppir_op_load_coords:
+   case ppir_op_load_coords_reg:
       return ppir_node_clone_load(block, node);
    default:
       return NULL;
