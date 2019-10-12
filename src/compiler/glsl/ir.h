@@ -767,6 +767,13 @@ public:
       unsigned is_unmatched_generic_inout:1;
 
       /**
+       * Is this varying used by transform feedback?
+       *
+       * This is used by the linker to decide if it's safe to pack the varying.
+       */
+      unsigned is_xfb:1;
+
+      /**
        * Is this varying used only by transform feedback?
        *
        * This is used by the linker to decide if its safe to pack the varying.
