@@ -1647,7 +1647,6 @@ st_translate_common_program(struct st_context *st,
  */
 struct st_basic_variant *
 st_get_basic_variant(struct st_context *st,
-                     unsigned pipe_shader,
                      struct st_common_program *prog,
                      const struct st_basic_variant_key *key)
 {
@@ -1697,16 +1696,29 @@ st_get_basic_variant(struct st_context *st,
 	    tgsi = prog->tgsi;
          }
          /* fill in new variant */
-         switch (pipe_shader) {
-         case PIPE_SHADER_TESS_CTRL:
+         switch (prog->Base.info.stage) {
+         case MESA_SHADER_TESS_CTRL:
             v->driver_shader = pipe->create_tcs_state(pipe, &tgsi);
             break;
-         case PIPE_SHADER_TESS_EVAL:
+         case MESA_SHADER_TESS_EVAL:
             v->driver_shader = pipe->create_tes_state(pipe, &tgsi);
             break;
-         case PIPE_SHADER_GEOMETRY:
+         case MESA_SHADER_GEOMETRY:
             v->driver_shader = pipe->create_gs_state(pipe, &tgsi);
             break;
+         case MESA_SHADER_COMPUTE: {
+            struct pipe_compute_state cs = {0};
+            cs.ir_type = tgsi.type;
+            cs.req_local_mem = prog->Base.info.cs.shared_size;
+
+            if (tgsi.type == PIPE_SHADER_IR_NIR)
+               cs.prog = tgsi.ir.nir;
+            else
+               cs.prog = tgsi.tokens;
+
+            v->driver_shader = pipe->create_compute_state(pipe, &cs);
+            break;
+         }
          default:
             assert(!"unhandled shader type");
             free(v);
@@ -1718,59 +1730,6 @@ st_get_basic_variant(struct st_context *st,
          /* insert into list */
          v->next = prog->variants;
          prog->variants = v;
-      }
-   }
-
-   return v;
-}
-
-
-/**
- * Get/create compute program variant.
- */
-struct st_basic_variant *
-st_get_cp_variant(struct st_context *st,
-                  struct pipe_shader_state *tgsi,
-                  unsigned shared_size,
-                  struct st_basic_variant **variants)
-{
-   struct pipe_context *pipe = st->pipe;
-   struct st_basic_variant *v;
-   struct st_basic_variant_key key;
-
-   /* use memset, not an initializer to be sure all memory is zeroed */
-   memset(&key, 0, sizeof(key));
-
-   key.st = st->has_shareable_shaders ? NULL : st;
-
-   /* Search for existing variant */
-   for (v = *variants; v; v = v->next) {
-      if (memcmp(&v->key, &key, sizeof(key)) == 0) {
-         break;
-      }
-   }
-
-   if (!v) {
-      /* create new */
-      v = CALLOC_STRUCT(st_basic_variant);
-      if (v) {
-         /* fill in new variant */
-         struct pipe_compute_state cs = {0};
-
-         cs.ir_type = tgsi->type;
-         cs.req_local_mem = shared_size;
-
-         if (tgsi->type == PIPE_SHADER_IR_NIR)
-            cs.prog = nir_shader_clone(NULL, tgsi->ir.nir);
-         else
-            cs.prog = tgsi->tokens;
-
-         v->driver_shader = pipe->create_compute_state(pipe, &cs);
-         v->key = key;
-
-         /* insert into list */
-         v->next = *variants;
-         *variants = v;
       }
    }
 
@@ -1974,39 +1933,6 @@ st_precompile_shader_variant(struct st_context *st,
       break;
    }
 
-   case GL_TESS_CONTROL_PROGRAM_NV: {
-      struct st_common_program *p = st_common_program(prog);
-      struct st_basic_variant_key key;
-
-      memset(&key, 0, sizeof(key));
-
-      key.st = st->has_shareable_shaders ? NULL : st;
-      st_get_basic_variant(st, PIPE_SHADER_TESS_CTRL, p, &key);
-      break;
-   }
-
-   case GL_TESS_EVALUATION_PROGRAM_NV: {
-      struct st_common_program *p = st_common_program(prog);
-      struct st_basic_variant_key key;
-
-      memset(&key, 0, sizeof(key));
-
-      key.st = st->has_shareable_shaders ? NULL : st;
-      st_get_basic_variant(st, PIPE_SHADER_TESS_EVAL, p, &key);
-      break;
-   }
-
-   case GL_GEOMETRY_PROGRAM_NV: {
-      struct st_common_program *p = st_common_program(prog);
-      struct st_basic_variant_key key;
-
-      memset(&key, 0, sizeof(key));
-
-      key.st = st->has_shareable_shaders ? NULL : st;
-      st_get_basic_variant(st, PIPE_SHADER_GEOMETRY, p, &key);
-      break;
-   }
-
    case GL_FRAGMENT_PROGRAM_ARB: {
       struct st_fragment_program *p = (struct st_fragment_program *)prog;
       struct st_fp_variant_key key;
@@ -2018,9 +1944,17 @@ st_precompile_shader_variant(struct st_context *st,
       break;
    }
 
+   case GL_TESS_CONTROL_PROGRAM_NV:
+   case GL_TESS_EVALUATION_PROGRAM_NV:
+   case GL_GEOMETRY_PROGRAM_NV:
    case GL_COMPUTE_PROGRAM_NV: {
-      struct st_common_program *p = (struct st_common_program *)prog;
-      st_get_cp_variant(st, &p->tgsi, prog->info.cs.shared_size, &p->variants);
+      struct st_common_program *p = st_common_program(prog);
+      struct st_basic_variant_key key;
+
+      memset(&key, 0, sizeof(key));
+
+      key.st = st->has_shareable_shaders ? NULL : st;
+      st_get_basic_variant(st, p, &key);
       break;
    }
 

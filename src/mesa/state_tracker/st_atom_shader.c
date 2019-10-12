@@ -264,7 +264,7 @@ st_update_common_program(struct st_context *st, struct gl_program *prog,
 
    }
 
-   return st_get_basic_variant(st, pipe_shader, stp, &key)->driver_shader;
+   return st_get_basic_variant(st, stp, &key)->driver_shader;
 }
 
 
@@ -299,30 +299,10 @@ st_update_tep(struct st_context *st)
 
 
 void
-st_update_cp( struct st_context *st )
+st_update_cp(struct st_context *st)
 {
-   struct st_common_program *stcp;
-
-   if (!st->ctx->ComputeProgram._Current) {
-      cso_set_compute_shader_handle(st->cso_context, NULL);
-      st_reference_compprog(st, &st->cp, NULL);
-      return;
-   }
-
-   stcp = st_common_program(st->ctx->ComputeProgram._Current);
-   assert(stcp->Base.Target == GL_COMPUTE_PROGRAM_NV);
-
-   void *shader;
-
-   if (st->shader_has_one_variant[MESA_SHADER_COMPUTE] && stcp->variants) {
-      shader = stcp->variants->driver_shader;
-   } else {
-      shader = st_get_cp_variant(st, &stcp->tgsi,
-                                 stcp->Base.info.cs.shared_size,
-                                 &stcp->variants)->driver_shader;
-   }
-
-   st_reference_compprog(st, &st->cp, stcp);
-
+   void *shader = st_update_common_program(st,
+                                           st->ctx->ComputeProgram._Current,
+                                           PIPE_SHADER_COMPUTE, &st->cp);
    cso_set_compute_shader_handle(st->cso_context, shader);
 }

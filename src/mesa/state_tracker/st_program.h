@@ -398,14 +398,7 @@ st_get_fp_variant(struct st_context *st,
                   const struct st_fp_variant_key *key);
 
 extern struct st_basic_variant *
-st_get_cp_variant(struct st_context *st,
-                  struct pipe_shader_state *tgsi,
-                  unsigned shared_size,
-                  struct st_basic_variant **variants);
-
-extern struct st_basic_variant *
 st_get_basic_variant(struct st_context *st,
-                     unsigned pipe_shader,
                      struct st_common_program *p,
                      const struct st_basic_variant_key *key);
 
