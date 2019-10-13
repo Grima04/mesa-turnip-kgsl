@@ -26,7 +26,6 @@
 #if defined(HAVE_GETRANDOM)
 #include <sys/random.h>
 #endif
-#include <sys/file.h>
 #include <unistd.h>
 #include <fcntl.h>
 #else
