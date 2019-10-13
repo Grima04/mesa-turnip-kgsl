@@ -1206,14 +1206,26 @@ static void mir_spill_register(
 
         /* We can't spill any bundles that contain unspills. This could be
          * optimized to allow use of r27 to spill twice per bundle, but if
-         * you're at the point of optimizing spilling, it's too late. */
+         * you're at the point of optimizing spilling, it's too late.
+         *
+         * We also can't double-spill. */
 
         mir_foreach_block(ctx, block) {
                 mir_foreach_bundle_in_block(block, bun) {
                         bool no_spill = false;
 
-                        for (unsigned i = 0; i < bun->instruction_count; ++i)
+                        for (unsigned i = 0; i < bun->instruction_count; ++i) {
                                 no_spill |= bun->instructions[i]->no_spill;
+
+                                if (bun->instructions[i]->no_spill) {
+                                        mir_foreach_src(bun->instructions[i], s) {
+                                                unsigned src = bun->instructions[i]->src[s];
+
+                                                if (src < ctx->temp_count)
+                                                        ra_set_node_spill_cost(g, src, -1.0);
+                                        }
+                                }
+                        }
 
                         if (!no_spill)
                                 continue;
