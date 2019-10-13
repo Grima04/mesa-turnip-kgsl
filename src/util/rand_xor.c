@@ -22,7 +22,9 @@
  *
  */
 
-#if defined(__linux__)
+#include "detect_os.h"
+
+#if !DETECT_OS_WINDOWS
 #if defined(HAVE_GETRANDOM)
 #include <sys/random.h>
 #endif
@@ -63,7 +65,7 @@ s_rand_xorshift128plus(uint64_t seed[2], bool randomised_seed)
       return;
    }
 
-#if defined(__linux__)
+#if !DETECT_OS_WINDOWS
    size_t seed_size = sizeof(uint64_t) * 2;
 
 #if defined(HAVE_GETRANDOM)
