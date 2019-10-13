@@ -41,7 +41,7 @@
  * to the public domain.
  */
 uint64_t
-rand_xorshift128plus(uint64_t *seed)
+rand_xorshift128plus(uint64_t seed[2])
 {
    uint64_t *s = seed;
 
@@ -55,7 +55,7 @@ rand_xorshift128plus(uint64_t *seed)
 }
 
 void
-s_rand_xorshift128plus(uint64_t *seed, bool randomised_seed)
+s_rand_xorshift128plus(uint64_t seed[2], bool randomised_seed)
 {
    if (!randomised_seed)
       goto fixed_seed;
