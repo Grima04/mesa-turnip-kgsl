@@ -68,6 +68,8 @@ struct bo {
    uint32_t size;
    uint64_t offset;
    void *map;
+   /* Whether the buffer has been positionned in the GTT already. */
+   bool gtt_mapped : 1;
    /* Tracks userspace mmapping of the buffer */
    bool user_mapped : 1;
    /* Using the i915-gem mmapping ioctl & execbuffer ioctl, track whether a
@@ -278,8 +280,10 @@ dump_execbuffer2(int fd, struct drm_i915_gem_execbuffer2 *execbuffer2)
          bo->map = gem_mmap(fd, obj->handle, 0, bo->size);
       fail_if(bo->map == MAP_FAILED, "bo mmap failed\n");
 
-      if (aub_use_execlists(&aub_file))
+      if (aub_use_execlists(&aub_file) && !bo->gtt_mapped) {
          aub_map_ppgtt(&aub_file, bo->offset, bo->size);
+         bo->gtt_mapped = true;
+      }
    }
 
    batch_index = (execbuffer2->flags & I915_EXEC_BATCH_FIRST) ? 0 :
@@ -348,6 +352,7 @@ add_new_bo(unsigned fd, int handle, uint64_t size, void *map)
    bo->size = size;
    bo->map = map;
    bo->user_mapped = false;
+   bo->gtt_mapped = false;
 }
 
 static void
@@ -357,9 +362,7 @@ remove_bo(int fd, int handle)
 
    if (bo->map && !IS_USERPTR(bo->map))
       munmap(bo->map, bo->size);
-   bo->size = 0;
-   bo->map = NULL;
-   bo->user_mapped = false;
+   memset(bo, 0, sizeof(*bo));
 }
 
 __attribute__ ((visibility ("default"))) int
