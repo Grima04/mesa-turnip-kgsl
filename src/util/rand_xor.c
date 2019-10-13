@@ -28,9 +28,9 @@
 #endif
 #include <unistd.h>
 #include <fcntl.h>
-#else
-#include <time.h>
 #endif
+
+#include <time.h>
 
 #include "rand_xor.h"
 
@@ -56,8 +56,12 @@ rand_xorshift128plus(uint64_t seed[2])
 void
 s_rand_xorshift128plus(uint64_t seed[2], bool randomised_seed)
 {
-   if (!randomised_seed)
-      goto fixed_seed;
+   if (!randomised_seed) {
+      /* Use a fixed seed */
+      seed[0] = 0x3bffb83978e24f88;
+      seed[1] = 0x9238d5d56c71cd35;
+      return;
+   }
 
 #if defined(__linux__)
    size_t seed_size = sizeof(uint64_t) * 2;
@@ -69,27 +73,15 @@ s_rand_xorshift128plus(uint64_t seed[2], bool randomised_seed)
 #endif
 
    int fd = open("/dev/urandom", O_RDONLY);
-   if (fd < 0)
-      goto fixed_seed;
-
-   if (read(fd, seed, seed_size) != seed_size) {
+   if (fd >= 0) {
+      if (read(fd, seed, seed_size) == seed_size) {
+         close(fd);
+         return;
+      }
       close(fd);
-      goto fixed_seed;
    }
-
-   close(fd);
-   return;
-
-#else
-   seed[0] = 0x3bffb83978e24f88;
-   seed[1] = time(NULL);
-
-   return;
 #endif
 
-fixed_seed:
-
-   /* Fallback to a fixed seed */
    seed[0] = 0x3bffb83978e24f88;
-   seed[1] = 0x9238d5d56c71cd35;
+   seed[1] = time(NULL);
 }
