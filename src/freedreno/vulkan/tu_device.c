@@ -1732,9 +1732,23 @@ tu_CreateEvent(VkDevice _device,
    if (!event)
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
+   VkResult result = tu_bo_init_new(device, &event->bo, 0x1000);
+   if (result != VK_SUCCESS)
+      goto fail_alloc;
+
+   result = tu_bo_map(device, &event->bo);
+   if (result != VK_SUCCESS)
+      goto fail_map;
+
    *pEvent = tu_event_to_handle(event);
 
    return VK_SUCCESS;
+
+fail_map:
+   tu_bo_finish(device, &event->bo);
+fail_alloc:
+   vk_free2(&device->alloc, pAllocator, event);
+   return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 }
 
 void
@@ -1755,7 +1769,7 @@ tu_GetEventStatus(VkDevice _device, VkEvent _event)
 {
    TU_FROM_HANDLE(tu_event, event, _event);
 
-   if (*event->map == 1)
+   if (*(uint64_t*) event->bo.map == 1)
       return VK_EVENT_SET;
    return VK_EVENT_RESET;
 }
@@ -1764,7 +1778,7 @@ VkResult
 tu_SetEvent(VkDevice _device, VkEvent _event)
 {
    TU_FROM_HANDLE(tu_event, event, _event);
-   *event->map = 1;
+   *(uint64_t*) event->bo.map = 1;
 
    return VK_SUCCESS;
 }
@@ -1773,7 +1787,7 @@ VkResult
 tu_ResetEvent(VkDevice _device, VkEvent _event)
 {
    TU_FROM_HANDLE(tu_event, event, _event);
-   *event->map = 0;
+   *(uint64_t*) event->bo.map = 0;
 
    return VK_SUCCESS;
 }

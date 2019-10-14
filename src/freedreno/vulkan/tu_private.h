@@ -981,7 +981,7 @@ tu_unaligned_dispatch(struct tu_cmd_buffer *cmd_buffer,
 
 struct tu_event
 {
-   uint64_t *map;
+   struct tu_bo bo;
 };
 
 struct tu_shader_module;
