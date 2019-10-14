@@ -1488,6 +1488,44 @@ void radv_GetPhysicalDeviceProperties2(
 			properties->uniformTexelBufferOffsetSingleTexelAlignment = true;
 			break;
 		}
+		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FLOAT_CONTROLS_PROPERTIES_KHR : {
+			VkPhysicalDeviceFloatControlsPropertiesKHR *properties =
+				(VkPhysicalDeviceFloatControlsPropertiesKHR *)ext;
+
+			/* On AMD hardware, denormals and rounding modes for
+			 * fp16/fp64 are controlled by the same config
+			 * register.
+			 */
+			properties->denormBehaviorIndependence = VK_SHADER_FLOAT_CONTROLS_INDEPENDENCE_32_BIT_ONLY_KHR;
+			properties->roundingModeIndependence = VK_SHADER_FLOAT_CONTROLS_INDEPENDENCE_32_BIT_ONLY_KHR;
+
+			/* Do not allow both preserving and flushing denorms
+			 * because different shaders in the same pipeline can
+			 * have different settings and this won't work for
+			 * merged shaders. To make it work, this requires LLVM
+			 * support for changing the register. The same logic
+			 * applies for the rounding modes because they are
+			 * configured with the same config register.
+			 */
+			properties->shaderDenormFlushToZeroFloat32 = true;
+			properties->shaderDenormPreserveFloat32 = false;
+			properties->shaderRoundingModeRTEFloat32 = true;
+			properties->shaderRoundingModeRTZFloat32 = false;
+			properties->shaderSignedZeroInfNanPreserveFloat32 = true;
+
+			properties->shaderDenormFlushToZeroFloat16 = false;
+			properties->shaderDenormPreserveFloat16 = true;
+			properties->shaderRoundingModeRTEFloat16 = true;
+			properties->shaderRoundingModeRTZFloat16 = false;
+			properties->shaderSignedZeroInfNanPreserveFloat16 = true;
+
+			properties->shaderDenormFlushToZeroFloat64 = false;
+			properties->shaderDenormPreserveFloat64 = true;
+			properties->shaderRoundingModeRTEFloat64 = true;
+			properties->shaderRoundingModeRTZFloat64 = false;
+			properties->shaderSignedZeroInfNanPreserveFloat64 = true;
+			break;
+		}
 		default:
 			break;
 		}

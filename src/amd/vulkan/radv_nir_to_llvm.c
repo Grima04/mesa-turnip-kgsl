@@ -4769,9 +4769,13 @@ LLVMModuleRef ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm,
 	ctx.options = options;
 	ctx.shader_info = shader_info;
 
-	enum ac_float_mode float_mode =
-		options->unsafe_math ? AC_FLOAT_MODE_UNSAFE_FP_MATH :
-				       AC_FLOAT_MODE_DEFAULT;
+	enum ac_float_mode float_mode = AC_FLOAT_MODE_DEFAULT;
+
+	if (shader_info->float_controls_mode & FLOAT_CONTROLS_DENORM_FLUSH_TO_ZERO_FP32) {
+		float_mode = AC_FLOAT_MODE_DENORM_FLUSH_TO_ZERO;
+	} else if (options->unsafe_math) {
+		float_mode = AC_FLOAT_MODE_UNSAFE_FP_MATH;
+	}
 
 	ac_llvm_context_init(&ctx.ac, ac_llvm, options->chip_class,
 			     options->family, float_mode, options->wave_size, 64);

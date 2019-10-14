@@ -89,6 +89,7 @@ EXTENSIONS = [
     Extension('VK_KHR_shader_atomic_int64',               1, 'LLVM_VERSION_MAJOR >= 9'),
     Extension('VK_KHR_shader_clock',                      1, True),
     Extension('VK_KHR_shader_draw_parameters',            1, True),
+    Extension('VK_KHR_shader_float_controls',             1, 'device->rad_info.chip_class >= GFX8 && !device->use_aco'),
     Extension('VK_KHR_shader_float16_int8',               1, '!device->use_aco'),
     Extension('VK_KHR_storage_buffer_storage_class',      1, True),
     Extension('VK_KHR_surface',                          25, 'RADV_HAS_SURFACE'),

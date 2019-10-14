@@ -314,6 +314,8 @@ struct radv_shader_info {
 
 	struct gfx9_gs_info gs_ring_info;
 	struct gfx10_ngg_info ngg_info;
+
+	unsigned float_controls_mode;
 };
 
 enum radv_shader_binary_type {
