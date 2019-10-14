@@ -222,11 +222,13 @@ opcode("p_cbranch", format=Format.PSEUDO_BRANCH)
 opcode("p_cbranch_z", format=Format.PSEUDO_BRANCH)
 opcode("p_cbranch_nz", format=Format.PSEUDO_BRANCH)
 
-opcode("p_memory_barrier_all", format=Format.PSEUDO_BARRIER)
+opcode("p_memory_barrier_common", format=Format.PSEUDO_BARRIER) # atomic, buffer, image and shared
 opcode("p_memory_barrier_atomic", format=Format.PSEUDO_BARRIER)
 opcode("p_memory_barrier_buffer", format=Format.PSEUDO_BARRIER)
 opcode("p_memory_barrier_image", format=Format.PSEUDO_BARRIER)
 opcode("p_memory_barrier_shared", format=Format.PSEUDO_BARRIER)
+opcode("p_memory_barrier_gs_data", format=Format.PSEUDO_BARRIER)
+opcode("p_memory_barrier_gs_sendmsg", format=Format.PSEUDO_BARRIER)
 
 opcode("p_spill")
 opcode("p_reload")

@@ -108,7 +108,12 @@ enum barrier_interaction : uint8_t {
    barrier_image = 0x2,
    barrier_atomic = 0x4,
    barrier_shared = 0x8,
-   barrier_count = 4,
+   /* used for geometry shaders to ensure vertex data writes are before the
+    * GS_DONE s_sendmsg. */
+   barrier_gs_data = 0x10,
+   /* used for geometry shaders to ensure s_sendmsg instructions are in-order. */
+   barrier_gs_sendmsg = 0x20,
+   barrier_count = 6,
 };
 
 enum fp_round {
@@ -975,25 +980,7 @@ static inline bool is_phi(aco_ptr<Instruction>& instr)
    return is_phi(instr.get());
 }
 
-constexpr barrier_interaction get_barrier_interaction(Instruction* instr)
-{
-   switch (instr->format) {
-   case Format::SMEM:
-      return static_cast<SMEM_instruction*>(instr)->barrier;
-   case Format::MUBUF:
-      return static_cast<MUBUF_instruction*>(instr)->barrier;
-   case Format::MIMG:
-      return static_cast<MIMG_instruction*>(instr)->barrier;
-   case Format::FLAT:
-   case Format::GLOBAL:
-   case Format::SCRATCH:
-      return static_cast<FLAT_instruction*>(instr)->barrier;
-   case Format::DS:
-      return barrier_shared;
-   default:
-      return barrier_none;
-   }
-}
+barrier_interaction get_barrier_interaction(Instruction* instr);
 
 bool is_dead(const std::vector<uint16_t>& uses, Instruction *instr);
 

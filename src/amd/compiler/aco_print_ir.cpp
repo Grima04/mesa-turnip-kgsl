@@ -159,6 +159,10 @@ static void print_barrier_reorder(bool can_reorder, barrier_interaction barrier,
       fprintf(output, " atomic");
    if (barrier & barrier_shared)
       fprintf(output, " shared");
+   if (barrier & barrier_gs_data)
+      fprintf(output, " gs_data");
+   if (barrier & barrier_gs_sendmsg)
+      fprintf(output, " gs_sendmsg");
 }
 
 static void print_instr_format_specific(struct Instruction *instr, FILE *output)

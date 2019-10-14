@@ -24,6 +24,7 @@
 
 #include "aco_ir.h"
 #include "aco_builder.h"
+#include "util/u_math.h"
 
 namespace aco {
 
@@ -354,6 +355,12 @@ unsigned add_coupling_code(exec_ctx& ctx, Block* block,
       assert(startpgm->opcode == aco_opcode::p_startpgm);
       Temp exec_mask = startpgm->definitions.back().getTemp();
       bld.insert(std::move(startpgm));
+
+      /* exec seems to need to be manually initialized with combined shaders */
+      if (util_bitcount(ctx.program->stage & sw_mask) > 1) {
+         bld.sop1(Builder::s_mov, bld.exec(Definition(exec_mask)), bld.lm == s2 ? Operand(UINT64_MAX) : Operand(UINT32_MAX));
+         instructions[0]->definitions.pop_back();
+      }
 
       if (ctx.handle_wqm) {
          ctx.info[0].exec.emplace_back(exec_mask, mask_type_global | mask_type_exact | mask_type_initial);
