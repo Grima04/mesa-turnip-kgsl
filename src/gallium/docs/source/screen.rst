@@ -526,8 +526,7 @@ The integer capabilities:
   A driver might rely on the input mapping that was defined with the original
   GLSL code.
 * ``PIPE_CAP_IMAGE_LOAD_FORMATTED``: True if a format for image loads does not need to be specified in the shader IR
-* ``PIPE_CAP_MAX_FRAMES_IN_FLIGHT``: Maximum number of frames that state
-  trackers should allow to be in flight before throttling pipe_context
+* ``PIPE_CAP_THROTTLE``: Whether or not state trackers should throttle pipe_context
   execution. 0 = throttling is disabled.
 * ``PIPE_CAP_DMABUF``: Whether Linux DMABUF handles are supported by
   resource_from_handle and resource_get_handle.

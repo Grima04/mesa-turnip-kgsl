@@ -371,7 +371,7 @@ u_pipe_screen_get_param_defaults(struct pipe_screen *pscreen,
    case PIPE_CAP_COMPUTE_SHADER_DERIVATIVES:
       return 0;
 
-   case PIPE_CAP_MAX_FRAMES_IN_FLIGHT:
+   case PIPE_CAP_THROTTLE:
       return 1;
 
    case PIPE_CAP_TEXTURE_SHADOW_LOD:

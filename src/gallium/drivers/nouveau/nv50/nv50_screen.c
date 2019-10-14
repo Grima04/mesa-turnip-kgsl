@@ -356,7 +356,7 @@ nv50_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    /* caps where we want the default value */
    case PIPE_CAP_DMABUF:
    case PIPE_CAP_ESSL_FEATURE_LEVEL:
-   case PIPE_CAP_MAX_FRAMES_IN_FLIGHT:
+   case PIPE_CAP_THROTTLE:
       return u_pipe_screen_get_param_defaults(pscreen, param);
    }
 }
