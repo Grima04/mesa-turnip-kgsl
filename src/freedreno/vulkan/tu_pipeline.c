@@ -1924,8 +1924,8 @@ tu_CreateComputePipelines(VkDevice _device,
                                      pAllocator, &pPipelines[i]);
       if (r != VK_SUCCESS) {
          result = r;
-         pPipelines[i] = VK_NULL_HANDLE;
       }
+      pPipelines[i] = VK_NULL_HANDLE;
    }
 
    return result;
