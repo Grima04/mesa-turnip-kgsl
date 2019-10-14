@@ -191,7 +191,9 @@ struct InstrPred {
             /* this is fine since they are only used for vertex input fetches */
             MTBUF_instruction* aM = static_cast<MTBUF_instruction *>(a);
             MTBUF_instruction* bM = static_cast<MTBUF_instruction *>(b);
-            return aM->dfmt == bM->dfmt &&
+            return aM->can_reorder == bM->can_reorder &&
+                   aM->barrier == bM->barrier &&
+                   aM->dfmt == bM->dfmt &&
                    aM->nfmt == bM->nfmt &&
                    aM->offset == bM->offset &&
                    aM->offen == bM->offen &&
@@ -221,6 +223,7 @@ struct InstrPred {
             MIMG_instruction* aM = static_cast<MIMG_instruction*>(a);
             MIMG_instruction* bM = static_cast<MIMG_instruction*>(b);
             return aM->can_reorder && bM->can_reorder &&
+                   aM->barrier == bM->barrier &&
                    aM->dmask == bM->dmask &&
                    aM->unrm == bM->unrm &&
                    aM->glc == bM->glc &&
