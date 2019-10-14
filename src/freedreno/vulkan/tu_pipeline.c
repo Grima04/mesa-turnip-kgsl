@@ -989,9 +989,7 @@ tu6_emit_vertex_input(struct tu_cs *cs,
 {
    uint32_t vfd_decode_idx = 0;
 
-   /* why do we go beyond inputs_count? */
-   assert(vs->inputs_count + 1 <= MAX_VERTEX_ATTRIBS);
-   for (uint32_t i = 0; i <= vs->inputs_count; i++) {
+   for (uint32_t i = 0; i < vs->inputs_count; i++) {
       if (vs->inputs[i].sysval || !vs->inputs[i].compmask)
          continue;
 
@@ -1032,6 +1030,7 @@ tu6_emit_vertex_input(struct tu_cs *cs,
       offsets[vfd_decode_idx] = vi_attr->offset;
 
       vfd_decode_idx++;
+      assert(vfd_decode_idx <= MAX_VERTEX_ATTRIBS);
    }
 
    tu_cs_emit_pkt4(cs, REG_A6XX_VFD_CONTROL_0, 1);
