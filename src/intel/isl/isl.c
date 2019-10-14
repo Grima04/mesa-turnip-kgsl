@@ -1398,16 +1398,27 @@ isl_calc_row_pitch_alignment(const struct isl_device *dev,
     */
    const struct isl_format_layout *fmtl = isl_format_get_layout(surf_info->format);
    const uint32_t bs = fmtl->bpb / 8;
+   uint32_t alignment;
 
    if (surf_info->usage & ISL_SURF_USAGE_RENDER_TARGET_BIT) {
       if (isl_format_is_yuv(surf_info->format)) {
-         return 2 * bs;
+         alignment = 2 * bs;
       } else  {
-         return bs;
+         alignment = bs;
       }
+   } else {
+      alignment = 1;
    }
 
-   return 1;
+   /* From the Broadwell PRM >> Volume 2c: Command Reference: Registers >>
+    * PRI_STRIDE Stride (p1254):
+    *
+    *    "When using linear memory, this must be at least 64 byte aligned."
+    */
+   if (surf_info->usage & ISL_SURF_USAGE_DISPLAY_BIT)
+      alignment = isl_align(alignment, 64);
+
+   return alignment;
 }
 
 static uint32_t
