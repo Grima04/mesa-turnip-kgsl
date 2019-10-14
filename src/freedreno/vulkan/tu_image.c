@@ -335,7 +335,7 @@ tu_image_view_init(struct tu_image_view *iview,
       A6XX_TEX_CONST_0_TILE_MODE(tile_mode) |
       COND(vk_format_is_srgb(iview->vk_format), A6XX_TEX_CONST_0_SRGB) |
       A6XX_TEX_CONST_0_FMT(fmt->tex) |
-      A6XX_TEX_CONST_0_SAMPLES(0) |
+      A6XX_TEX_CONST_0_SAMPLES(tu_msaa_samples(image->samples)) |
       A6XX_TEX_CONST_0_SWAP(image->tile_mode ? WZYX : fmt->swap) |
       tu6_texswiz(&pCreateInfo->components, vk_format_description(iview->vk_format)->swizzle) |
       A6XX_TEX_CONST_0_MIPLVLS(iview->level_count - 1);

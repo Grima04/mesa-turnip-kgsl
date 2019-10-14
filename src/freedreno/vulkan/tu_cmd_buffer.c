@@ -34,6 +34,7 @@
 #include "vk_format.h"
 
 #include "tu_cs.h"
+#include "tu_blit.h"
 
 void
 tu_bo_list_init(struct tu_bo_list *list)
@@ -515,28 +516,22 @@ tu6_emit_msaa(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 {
    const struct tu_subpass *subpass = cmd->state.subpass;
    const enum a3xx_msaa_samples samples =
-      tu6_msaa_samples(subpass->max_sample_count);
+      tu_msaa_samples(subpass->max_sample_count);
 
    tu_cs_emit_pkt4(cs, REG_A6XX_SP_TP_RAS_MSAA_CNTL, 2);
    tu_cs_emit(cs, A6XX_SP_TP_RAS_MSAA_CNTL_SAMPLES(samples));
-   tu_cs_emit(
-      cs, A6XX_SP_TP_DEST_MSAA_CNTL_SAMPLES(samples) |
-             ((samples == MSAA_ONE) ? A6XX_SP_TP_DEST_MSAA_CNTL_MSAA_DISABLE
-                                    : 0));
+   tu_cs_emit(cs, A6XX_SP_TP_DEST_MSAA_CNTL_SAMPLES(samples) |
+              COND(samples == MSAA_ONE, A6XX_SP_TP_DEST_MSAA_CNTL_MSAA_DISABLE));
 
    tu_cs_emit_pkt4(cs, REG_A6XX_GRAS_RAS_MSAA_CNTL, 2);
    tu_cs_emit(cs, A6XX_GRAS_RAS_MSAA_CNTL_SAMPLES(samples));
-   tu_cs_emit(
-      cs,
-      A6XX_GRAS_DEST_MSAA_CNTL_SAMPLES(samples) |
-         ((samples == MSAA_ONE) ? A6XX_GRAS_DEST_MSAA_CNTL_MSAA_DISABLE : 0));
+   tu_cs_emit(cs, A6XX_GRAS_DEST_MSAA_CNTL_SAMPLES(samples) |
+              COND(samples == MSAA_ONE, A6XX_GRAS_DEST_MSAA_CNTL_MSAA_DISABLE));
 
    tu_cs_emit_pkt4(cs, REG_A6XX_RB_RAS_MSAA_CNTL, 2);
    tu_cs_emit(cs, A6XX_RB_RAS_MSAA_CNTL_SAMPLES(samples));
-   tu_cs_emit(
-      cs,
-      A6XX_RB_DEST_MSAA_CNTL_SAMPLES(samples) |
-         ((samples == MSAA_ONE) ? A6XX_RB_DEST_MSAA_CNTL_MSAA_DISABLE : 0));
+   tu_cs_emit(cs, A6XX_RB_DEST_MSAA_CNTL_SAMPLES(samples) |
+              COND(samples == MSAA_ONE, A6XX_RB_DEST_MSAA_CNTL_MSAA_DISABLE));
 
    tu_cs_emit_pkt4(cs, REG_A6XX_RB_MSAA_CNTL, 1);
    tu_cs_emit(cs, A6XX_RB_MSAA_CNTL_SAMPLES(samples));
@@ -606,7 +601,6 @@ tu6_emit_blit_info(struct tu_cmd_buffer *cmd,
       &iview->image->levels[iview->base_mip];
    const uint32_t offset = slice->offset + slice->size * iview->base_layer;
    const uint32_t stride = slice->pitch * iview->image->cpp;
-   const enum a3xx_msaa_samples samples = tu6_msaa_samples(1);
 
    tu_cs_emit_pkt4(cs, REG_A6XX_RB_BLIT_INFO, 1);
    tu_cs_emit(cs, blit_info);
@@ -619,7 +613,7 @@ tu6_emit_blit_info(struct tu_cmd_buffer *cmd,
       tu6_get_image_tile_mode(iview->image, iview->base_mip);
    tu_cs_emit_pkt4(cs, REG_A6XX_RB_BLIT_DST_INFO, 5);
    tu_cs_emit(cs, A6XX_RB_BLIT_DST_INFO_TILE_MODE(tile_mode) |
-                     A6XX_RB_BLIT_DST_INFO_SAMPLES(samples) |
+                     A6XX_RB_BLIT_DST_INFO_SAMPLES(tu_msaa_samples(iview->image->samples)) |
                      A6XX_RB_BLIT_DST_INFO_COLOR_FORMAT(format->rb) |
                      A6XX_RB_BLIT_DST_INFO_COLOR_SWAP(format->swap));
    tu_cs_emit_qw(cs,
@@ -638,8 +632,6 @@ tu6_emit_blit_clear(struct tu_cmd_buffer *cmd,
                     uint32_t gmem_offset,
                     const VkClearValue *clear_value)
 {
-   const enum a3xx_msaa_samples samples = tu6_msaa_samples(1);
-
    const struct tu_native_format *format =
       tu6_get_native_format(iview->vk_format);
    assert(format && format->rb >= 0);
@@ -648,7 +640,7 @@ tu6_emit_blit_clear(struct tu_cmd_buffer *cmd,
 
    tu_cs_emit_pkt4(cs, REG_A6XX_RB_BLIT_DST_INFO, 1);
    tu_cs_emit(cs, A6XX_RB_BLIT_DST_INFO_TILE_MODE(TILE6_LINEAR) |
-                     A6XX_RB_BLIT_DST_INFO_SAMPLES(samples) |
+                     A6XX_RB_BLIT_DST_INFO_SAMPLES(tu_msaa_samples(iview->image->samples)) |
                      A6XX_RB_BLIT_DST_INFO_COLOR_FORMAT(format->rb) |
                      A6XX_RB_BLIT_DST_INFO_COLOR_SWAP(swap));
 
@@ -1074,6 +1066,9 @@ tu6_render_tile(struct tu_cmd_buffer *cmd,
 static void
 tu6_render_end(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 {
+   const struct tu_subpass *subpass = cmd->state.subpass;
+   const struct tu_framebuffer *fb = cmd->state.framebuffer;
+
    VkResult result = tu_cs_reserve_space(cmd->device, cs, 16);
    if (result != VK_SUCCESS) {
       cmd->record_result = result;
@@ -1086,6 +1081,31 @@ tu6_render_end(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
    tu6_emit_lrz_flush(cmd, cs);
 
    tu6_emit_event_write(cmd, cs, CACHE_FLUSH_TS, true);
+
+   if (subpass->has_resolve) {
+      for (uint32_t i = 0; i < subpass->color_count; ++i) {
+         struct tu_subpass_attachment src_att = subpass->color_attachments[i];
+         struct tu_subpass_attachment dst_att = subpass->resolve_attachments[i];
+
+         if (dst_att.attachment == VK_ATTACHMENT_UNUSED)
+            continue;
+
+         struct tu_image *src_img = fb->attachments[src_att.attachment].attachment->image;
+         struct tu_image *dst_img = fb->attachments[dst_att.attachment].attachment->image;
+
+         assert(src_img->extent.width == dst_img->extent.width);
+         assert(src_img->extent.height == dst_img->extent.height);
+
+         tu_bo_list_add(&cmd->bo_list, src_img->bo, MSM_SUBMIT_BO_READ);
+         tu_bo_list_add(&cmd->bo_list, dst_img->bo, MSM_SUBMIT_BO_WRITE);
+
+         tu_blit(cmd, &(struct tu_blit) {
+            .dst = tu_blit_surf_whole(dst_img),
+            .src = tu_blit_surf_whole(src_img),
+            .layers = 1,
+         }, false);
+      }
+   }
 
    tu_cs_sanity_check(cs);
 }
