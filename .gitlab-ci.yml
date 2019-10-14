@@ -384,11 +384,17 @@ scons-old-llvm:
     - LLVM_VERSION=4.0 .gitlab-ci/scons-build.sh
     - LLVM_VERSION=5.0 .gitlab-ci/scons-build.sh
 
-.deqp-test:
-  extends: .use-debian-10
+.test:
+  extends: .ci-run-policy
   stage: test
   variables:
     GIT_STRATEGY: none # testing doesn't build anything from source
+
+.deqp-test:
+  extends:
+    - .test
+    - .use-debian-10
+  variables:
     DEQP_SKIPS: deqp-default-skips.txt
   script:
     # Note: Build dir (and thus install) may be dirty due to GIT_STRATEGY

@@ -147,11 +147,8 @@ lava-build:arm64:
     KERNEL_IMAGE_NAME: "Image"
 
 .lava-test:
-  stage: test
   extends:
-    - .ci-run-policy
-  variables:
-    GIT_STRATEGY: none # no need to pull the whole tree for submitting the job
+    - .test
   script:
     - lava_job_id=`lavacli jobs submit $CI_PROJECT_DIR/results/lava-deqp-$DEVICE_TYPE.yml`
     - echo $lava_job_id
