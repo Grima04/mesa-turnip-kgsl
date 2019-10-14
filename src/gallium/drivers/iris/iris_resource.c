@@ -1078,9 +1078,13 @@ iris_resource_get_param(struct pipe_screen *screen,
    bool mod_with_aux =
       res->mod_info && res->mod_info->aux_usage != ISL_AUX_USAGE_NONE;
    bool wants_aux = mod_with_aux && plane > 0;
-   struct iris_bo *bo = wants_aux ? res->aux.bo : res->bo;
    bool result;
    unsigned handle;
+
+   if (iris_resource_unfinished_aux_import(res))
+      iris_resource_finish_aux_import(screen, res);
+
+   struct iris_bo *bo = wants_aux ? res->aux.bo : res->bo;
 
    iris_resource_disable_aux_on_first_query(resource, handle_usage);
 
