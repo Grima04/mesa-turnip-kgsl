@@ -2057,8 +2057,8 @@ dri2_init_screen(__DRIscreen * sPriv)
    if (!pscreen)
        goto release_pipe;
 
-   screen->default_throttle_frames =
-      pscreen->get_param(pscreen, PIPE_CAP_MAX_FRAMES_IN_FLIGHT);
+   screen->throttle =
+      pscreen->get_param(pscreen, PIPE_CAP_MAX_FRAMES_IN_FLIGHT) > 0;
 
    if (pscreen->resource_create_with_modifiers)
       dri2ImageExtension.createImageWithModifiers =
