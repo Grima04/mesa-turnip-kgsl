@@ -4369,6 +4369,31 @@ ac_build_frexp_mant(struct ac_llvm_context *ctx, LLVMValueRef src0,
 				  AC_FUNC_ATTR_READNONE);
 }
 
+LLVMValueRef
+ac_build_canonicalize(struct ac_llvm_context *ctx, LLVMValueRef src0,
+		      unsigned bitsize)
+{
+	LLVMTypeRef type;
+	char *intr;
+
+	if (bitsize == 16) {
+		intr = "llvm.canonicalize.f16";
+		type = ctx->f16;
+	} else if (bitsize == 32) {
+		intr = "llvm.canonicalize.f32";
+		type = ctx->f32;
+	} else if (bitsize == 64) {
+		intr = "llvm.canonicalize.f64";
+		type = ctx->f64;
+	}
+
+	LLVMValueRef params[] = {
+		src0,
+	};
+	return ac_build_intrinsic(ctx, intr, type, params, 1,
+				  AC_FUNC_ATTR_READNONE);
+}
+
 /*
  * this takes an I,J coordinate pair,
  * and works out the X and Y derivatives.

@@ -740,9 +740,8 @@ static void visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
 		if (ctx->ac.chip_class < GFX9 &&
 		    instr->dest.dest.ssa.bit_size == 32) {
 			/* Only pre-GFX9 chips do not flush denorms. */
-			result = emit_intrin_1f_param(&ctx->ac, "llvm.canonicalize",
-						      ac_to_float_type(&ctx->ac, def_type),
-						      result);
+			result = ac_build_canonicalize(&ctx->ac, result,
+						       instr->dest.dest.ssa.bit_size);
 		}
 		break;
 	case nir_op_fmin:
@@ -751,9 +750,8 @@ static void visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
 		if (ctx->ac.chip_class < GFX9 &&
 		    instr->dest.dest.ssa.bit_size == 32) {
 			/* Only pre-GFX9 chips do not flush denorms. */
-			result = emit_intrin_1f_param(&ctx->ac, "llvm.canonicalize",
-						      ac_to_float_type(&ctx->ac, def_type),
-						      result);
+			result = ac_build_canonicalize(&ctx->ac, result,
+						       instr->dest.dest.ssa.bit_size);
 		}
 		break;
 	case nir_op_ffma:
