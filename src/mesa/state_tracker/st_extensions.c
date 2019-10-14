@@ -163,7 +163,10 @@ void st_init_limits(struct pipe_screen *screen,
       struct gl_program_constants *pc;
       const nir_shader_compiler_options *nir_options = NULL;
 
-      if (screen->get_compiler_options) {
+      bool prefer_nir = PIPE_SHADER_IR_NIR ==
+         screen->get_shader_param(screen, sh, PIPE_SHADER_CAP_PREFERRED_IR);
+
+      if (screen->get_compiler_options && prefer_nir) {
          nir_options = (const nir_shader_compiler_options *)
             screen->get_compiler_options(screen, PIPE_SHADER_IR_NIR, sh);
       }
@@ -323,9 +326,6 @@ void st_init_limits(struct pipe_screen *screen,
 
       if (!screen->get_param(screen, PIPE_CAP_NIR_COMPACT_ARRAYS))
          options->LowerCombinedClipCullDistance = true;
-
-      bool prefer_nir = PIPE_SHADER_IR_NIR ==
-         screen->get_shader_param(screen, sh, PIPE_SHADER_CAP_PREFERRED_IR);
 
       /* NIR can do the lowering on our behalf and we'll get better results
        * because it can actually optimize SSBO access.
