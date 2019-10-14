@@ -2017,6 +2017,7 @@ vtn_handle_texture(struct vtn_builder *b, SpvOp opcode,
    const struct glsl_type *image_type = sampled.type->type;
    const enum glsl_sampler_dim sampler_dim = glsl_get_sampler_dim(image_type);
    const bool is_array = glsl_sampler_type_is_array(image_type);
+   nir_alu_type dest_type = nir_type_invalid;
 
    /* Figure out the base texture operation */
    nir_texop texop;
@@ -2051,18 +2052,22 @@ vtn_handle_texture(struct vtn_builder *b, SpvOp opcode,
    case SpvOpImageQuerySizeLod:
    case SpvOpImageQuerySize:
       texop = nir_texop_txs;
+      dest_type = nir_type_int;
       break;
 
    case SpvOpImageQueryLod:
       texop = nir_texop_lod;
+      dest_type = nir_type_float;
       break;
 
    case SpvOpImageQueryLevels:
       texop = nir_texop_query_levels;
+      dest_type = nir_type_int;
       break;
 
    case SpvOpImageQuerySamples:
       texop = nir_texop_texture_samples;
+      dest_type = nir_type_int;
       break;
 
    default:
@@ -2269,14 +2274,19 @@ vtn_handle_texture(struct vtn_builder *b, SpvOp opcode,
    if (sampled.sampler && (sampled.sampler->access & ACCESS_NON_UNIFORM))
       instr->sampler_non_uniform = true;
 
-   switch (glsl_get_sampler_result_type(image_type)) {
-   case GLSL_TYPE_FLOAT:   instr->dest_type = nir_type_float;     break;
-   case GLSL_TYPE_INT:     instr->dest_type = nir_type_int;       break;
-   case GLSL_TYPE_UINT:    instr->dest_type = nir_type_uint;  break;
-   case GLSL_TYPE_BOOL:    instr->dest_type = nir_type_bool;      break;
-   default:
-      vtn_fail("Invalid base type for sampler result");
+   /* for non-query ops, get dest_type from sampler type */
+   if (dest_type == nir_type_invalid) {
+      switch (glsl_get_sampler_result_type(image_type)) {
+      case GLSL_TYPE_FLOAT:   dest_type = nir_type_float;   break;
+      case GLSL_TYPE_INT:     dest_type = nir_type_int;     break;
+      case GLSL_TYPE_UINT:    dest_type = nir_type_uint;    break;
+      case GLSL_TYPE_BOOL:    dest_type = nir_type_bool;    break;
+      default:
+         vtn_fail("Invalid base type for sampler result");
+      }
    }
+
+   instr->dest_type = dest_type;
 
    nir_ssa_dest_init(&instr->instr, &instr->dest,
                      nir_tex_instr_dest_size(instr), 32, NULL);
