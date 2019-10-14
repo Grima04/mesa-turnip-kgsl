@@ -221,6 +221,7 @@ struct wait_ctx {
    uint8_t vs_cnt = 0;
    bool pending_flat_lgkm = false;
    bool pending_flat_vm = false;
+   bool pending_s_buffer_store = false; /* GFX10 workaround */
 
    wait_imm barrier_imm[barrier_count];
 
@@ -244,6 +245,7 @@ struct wait_ctx {
       vs_cnt = std::max(vs_cnt, other->vs_cnt);
       pending_flat_lgkm |= other->pending_flat_lgkm;
       pending_flat_vm |= other->pending_flat_vm;
+      pending_s_buffer_store |= other->pending_s_buffer_store;
 
       for (std::pair<PhysReg,wait_entry> entry : other->gpr_map)
       {
@@ -329,6 +331,19 @@ wait_imm kill(Instruction* instr, wait_ctx& ctx)
        */
       if (ctx.lgkm_cnt && instr->opcode == aco_opcode::s_dcache_wb)
          imm.lgkm = 0;
+
+      /* GFX10: A store followed by a load at the same address causes a problem because
+       * the load doesn't load the correct values unless we wait for the store first.
+       * This is NOT mitigated by an s_nop.
+       *
+       * TODO: Refine this when we have proper alias analysis.
+       */
+      SMEM_instruction *smem = static_cast<SMEM_instruction *>(instr);
+      if (ctx.pending_s_buffer_store &&
+          !smem->definitions.empty() &&
+          !smem->can_reorder && smem->barrier == barrier_buffer) {
+         imm.lgkm = 0;
+      }
    }
 
    if (instr->format == Format::PSEUDO_BARRIER) {
@@ -407,8 +422,10 @@ wait_imm kill(Instruction* instr, wait_ctx& ctx)
 
    if (imm.vm == 0)
       ctx.pending_flat_vm = false;
-   if (imm.lgkm == 0)
+   if (imm.lgkm == 0) {
       ctx.pending_flat_lgkm = false;
+      ctx.pending_s_buffer_store = false;
+   }
 
    return imm;
 }
@@ -576,10 +593,16 @@ void gen(Instruction* instr, wait_ctx& ctx)
       break;
    }
    case Format::SMEM: {
+      SMEM_instruction *smem = static_cast<SMEM_instruction*>(instr);
       update_counters(ctx, event_smem, static_cast<SMEM_instruction*>(instr)->barrier);
 
       if (!instr->definitions.empty())
          insert_wait_entry(ctx, instr->definitions[0], event_smem);
+      else if (ctx.chip_class >= GFX10 &&
+               !smem->can_reorder &&
+               smem->barrier == barrier_buffer)
+         ctx.pending_s_buffer_store = true;
+
       break;
    }
    case Format::DS: {
