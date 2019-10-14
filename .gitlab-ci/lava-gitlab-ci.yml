@@ -22,10 +22,8 @@ include:
 .lava-container:
   extends:
     - .debian@container-ifnot-exists
-    - .ci-run-policy
-  stage: containers
+    - .container
   variables:
-    GIT_STRATEGY: none # no need to pull the whole tree for rebuilding the image
     DEBIAN_TAG: '${DEBIAN_ARCH}-${LAVA_IMAGE_TAG}'
     DEBIAN_EXEC: 'DEBIAN_ARCH=${DEBIAN_ARCH}
                   GCC_ARCH=${GCC_ARCH}

@@ -32,7 +32,7 @@ include:
   - local: '/.gitlab-ci/lava-gitlab-ci.yml'
 
 stages:
-  - containers
+  - container
   - build
   - test
 
@@ -59,13 +59,19 @@ stages:
 
 # Build the normal CI native and cross-build docker images.
 
+.container:
+  stage: container
+  extends:
+    - .ci-run-policy
+  variables:
+    # no need to pull the whole repo to build the container image
+    GIT_STRATEGY: none
+
 debian-10:
   extends:
     - .debian@container-ifnot-exists
-    - .ci-run-policy
-  stage: containers
+    - .container
   variables:
-    GIT_STRATEGY: none # no need to pull the whole tree for rebuilding the image
     DEBIAN_EXEC: 'bash .gitlab-ci/debian-install.sh'
 
 .use-debian-10:
@@ -91,12 +97,11 @@ debian-9:
 test-container:arm64:
   extends:
     - .debian@container-ifnot-exists@arm64v8
-    - .ci-run-policy
-  stage: containers
+    - .container
   variables:
     DEBIAN_TAG: "$DEBIAN_ARM64_TAG"
-    GIT_STRATEGY: none # no need to pull the whole tree for rebuilding the image
     DEBIAN_EXEC: 'bash .gitlab-ci/debian-test-install.sh'
+
 
 # BUILD
 
