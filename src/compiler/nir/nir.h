@@ -4217,6 +4217,7 @@ typedef enum {
     nir_move_load_ubo    = (1 << 1),
     nir_move_load_input  = (1 << 2),
     nir_move_comparisons = (1 << 3),
+    nir_move_copies      = (1 << 4),
 } nir_move_options;
 
 bool nir_can_move_instr(nir_instr *instr, nir_move_options options);

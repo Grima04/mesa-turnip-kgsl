@@ -59,6 +59,11 @@ nir_can_move_instr(nir_instr *instr, nir_move_options options)
       return true;
    }
 
+   if ((options & nir_move_copies) && instr->type == nir_instr_type_alu &&
+       nir_instr_as_alu(instr)->op == nir_op_mov) {
+      return true;
+   }
+
    if ((options & nir_move_comparisons) && instr->type == nir_instr_type_alu &&
        nir_alu_instr_is_comparison(nir_instr_as_alu(instr))) {
       return true;
