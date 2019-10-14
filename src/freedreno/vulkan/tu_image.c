@@ -39,6 +39,15 @@ image_level_linear(struct tu_image *image, int level)
    return w < 16;
 }
 
+enum a6xx_tile_mode
+tu6_get_image_tile_mode(struct tu_image *image, int level)
+{
+   if (image_level_linear(image, level))
+      return TILE6_LINEAR;
+   else
+      return image->tile_mode;
+}
+
 /* indexed by cpp, including msaa 2x and 4x: */
 static const struct {
    unsigned pitchalign;

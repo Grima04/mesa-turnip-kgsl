@@ -440,7 +440,8 @@ tu6_emit_mrt(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
       const struct tu_image_view *iview = fb->attachments[a].attachment;
       const struct tu_image_level *slice =
          &iview->image->levels[iview->base_mip];
-      const enum a6xx_tile_mode tile_mode = iview->image->tile_mode;
+      const enum a6xx_tile_mode tile_mode =
+         tu6_get_image_tile_mode(iview->image, iview->base_mip);
       uint32_t stride = 0;
       uint32_t offset = 0;
 
@@ -610,13 +611,14 @@ tu6_emit_blit_info(struct tu_cmd_buffer *cmd,
    tu_cs_emit_pkt4(cs, REG_A6XX_RB_BLIT_INFO, 1);
    tu_cs_emit(cs, blit_info);
 
-   /* tile mode? */
    const struct tu_native_format *format =
       tu6_get_native_format(iview->vk_format);
    assert(format && format->rb >= 0);
 
+   enum a6xx_tile_mode tile_mode =
+      tu6_get_image_tile_mode(iview->image, iview->base_mip);
    tu_cs_emit_pkt4(cs, REG_A6XX_RB_BLIT_DST_INFO, 5);
-   tu_cs_emit(cs, A6XX_RB_BLIT_DST_INFO_TILE_MODE(iview->image->tile_mode) |
+   tu_cs_emit(cs, A6XX_RB_BLIT_DST_INFO_TILE_MODE(tile_mode) |
                      A6XX_RB_BLIT_DST_INFO_SAMPLES(samples) |
                      A6XX_RB_BLIT_DST_INFO_COLOR_FORMAT(format->rb) |
                      A6XX_RB_BLIT_DST_INFO_COLOR_SWAP(format->swap));

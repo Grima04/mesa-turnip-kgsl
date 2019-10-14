@@ -1297,6 +1297,9 @@ tu_get_levelCount(const struct tu_image *image,
              : range->levelCount;
 }
 
+enum a6xx_tile_mode
+tu6_get_image_tile_mode(struct tu_image *image, int level);
+
 struct tu_image_view
 {
    struct tu_image *image; /**< VkImageViewCreateInfo::image */
