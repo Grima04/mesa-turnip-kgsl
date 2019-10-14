@@ -39,6 +39,7 @@ fi
 
 rm -rf _build
 meson _build --native-file=native.file \
+      --wrap-mode=nofallback \
       ${CROSS+--cross "$CROSS_FILE"} \
       -D prefix=`pwd`/install \
       -D libdir=lib \
