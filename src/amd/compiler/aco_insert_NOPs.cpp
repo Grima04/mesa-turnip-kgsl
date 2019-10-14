@@ -378,6 +378,14 @@ int handle_instruction_gfx8_9(NOP_ctx_gfx8_9& ctx, aco_ptr<Instruction>& instr,
             }
          }
       }
+   } else if (instr->format == Format::SOPP) {
+      if (instr->opcode == aco_opcode::s_sendmsg && new_idx > 0) {
+         aco_ptr<Instruction>& pred = new_instructions.back();
+         if (pred->isSALU() &&
+             !pred->definitions.empty() &&
+             pred->definitions[0].physReg() == m0)
+            return 1;
+      }
    }
 
    return 0;

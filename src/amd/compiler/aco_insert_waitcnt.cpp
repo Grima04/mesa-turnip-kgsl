@@ -65,6 +65,7 @@ enum wait_event : uint16_t {
    event_exp_mrt_null = 1 << 8,
    event_gds_gpr_lock = 1 << 9,
    event_vmem_gpr_lock = 1 << 10,
+   event_sendmsg = 1 << 11,
 };
 
 enum counter_type : uint8_t {
@@ -75,7 +76,7 @@ enum counter_type : uint8_t {
 };
 
 static const uint16_t exp_events = event_exp_pos | event_exp_param | event_exp_mrt_null | event_gds_gpr_lock | event_vmem_gpr_lock;
-static const uint16_t lgkm_events = event_smem | event_lds | event_gds | event_flat;
+static const uint16_t lgkm_events = event_smem | event_lds | event_gds | event_flat | event_sendmsg;
 static const uint16_t vm_events = event_vmem | event_flat;
 static const uint16_t vs_events = event_vmem_store;
 
@@ -85,6 +86,7 @@ uint8_t get_counters_for_event(wait_event ev)
    case event_smem:
    case event_lds:
    case event_gds:
+   case event_sendmsg:
       return counter_lgkm;
    case event_vmem:
       return counter_vm;
@@ -204,7 +206,7 @@ struct wait_entry {
 
       if (counter == counter_lgkm) {
          imm.lgkm = wait_imm::unset_counter;
-         events &= ~(event_smem | event_lds | event_gds);
+         events &= ~(event_smem | event_lds | event_gds | event_sendmsg);
       }
 
       if (counter == counter_vm) {
@@ -684,6 +686,11 @@ void gen(Instruction* instr, wait_ctx& ctx)
          insert_wait_entry(ctx, instr->operands[3], event_vmem_gpr_lock);
       }
       break;
+   }
+   case Format::SOPP: {
+      if (instr->opcode == aco_opcode::s_sendmsg ||
+          instr->opcode == aco_opcode::s_sendmsghalt)
+         update_counters(ctx, event_sendmsg, get_barrier_interaction(instr));
    }
    default:
       break;
