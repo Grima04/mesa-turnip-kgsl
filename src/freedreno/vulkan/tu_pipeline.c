@@ -1851,8 +1851,8 @@ tu_pipeline_builder_init_graphics(
       builder->use_depth_stencil_attachment =
          subpass->depth_stencil_attachment.attachment != VK_ATTACHMENT_UNUSED;
 
-      assert(subpass->color_count ==
-             create_info->pColorBlendState->attachmentCount);
+      assert(subpass->color_count == 0 ||
+             subpass->color_count == create_info->pColorBlendState->attachmentCount);
       builder->color_attachment_count = subpass->color_count;
       for (uint32_t i = 0; i < subpass->color_count; i++) {
          const uint32_t a = subpass->color_attachments[i].attachment;
