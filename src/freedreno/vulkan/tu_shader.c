@@ -225,6 +225,26 @@ static bool
 lower_intrinsic(nir_builder *b, nir_intrinsic_instr *instr,
                 struct tu_shader *shader)
 {
+   if (instr->intrinsic == nir_intrinsic_load_push_constant) {
+      /* note: ir3 wants load_ubo, not load_uniform */
+      assert(nir_intrinsic_base(instr) == 0);
+
+      nir_intrinsic_instr *load =
+         nir_intrinsic_instr_create(b->shader, nir_intrinsic_load_ubo);
+      load->num_components = instr->num_components;
+      load->src[0] = nir_src_for_ssa(nir_imm_int(b, 0));
+      load->src[1] = instr->src[0];
+      nir_ssa_dest_init(&load->instr, &load->dest,
+                        load->num_components, instr->dest.ssa.bit_size,
+                        instr->dest.ssa.name);
+      nir_builder_instr_insert(b, &load->instr);
+      nir_ssa_def_rewrite_uses(&instr->dest.ssa, nir_src_for_ssa(&load->dest.ssa));
+
+      nir_instr_remove(&instr->instr);
+
+      return true;
+   }
+
    if (instr->intrinsic != nir_intrinsic_vulkan_resource_index)
       return false;
 
@@ -261,6 +281,7 @@ lower_impl(nir_function_impl *impl, struct tu_shader *shader)
 
    nir_foreach_block(block, impl) {
       nir_foreach_instr_safe(instr, block) {
+         b.cursor = nir_before_instr(instr);
          switch (instr->type) {
          case nir_instr_type_tex:
             progress |= lower_sampler(&b, nir_instr_as_tex(instr), shader);
@@ -401,6 +422,9 @@ tu_shader_create(struct tu_device *dev,
    NIR_PASS_V(nir, nir_lower_io_arrays_to_elements_no_indirects, false);
 
    nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));
+
+   /* num_uniforms only used by ir3 for size of ubo 0 (push constants) */
+   nir->num_uniforms = MAX_PUSH_CONSTANTS_SIZE / 16;
 
    shader->ir3_shader.compiler = dev->compiler;
    shader->ir3_shader.type = stage;

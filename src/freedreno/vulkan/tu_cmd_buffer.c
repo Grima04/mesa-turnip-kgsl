@@ -1772,6 +1772,8 @@ tu_CmdPushConstants(VkCommandBuffer commandBuffer,
                     uint32_t size,
                     const void *pValues)
 {
+   TU_FROM_HANDLE(tu_cmd_buffer, cmd_buffer, commandBuffer);
+   memcpy((void*) cmd_buffer->push_constants + offset, pValues, size);
 }
 
 VkResult
@@ -2255,7 +2257,8 @@ tu6_stage2shadersb(gl_shader_stage type)
 static void
 tu6_emit_user_consts(struct tu_cs *cs, const struct tu_pipeline *pipeline,
                      struct tu_descriptor_state *descriptors_state,
-                     gl_shader_stage type)
+                     gl_shader_stage type,
+                     uint32_t *push_constants)
 {
    const struct tu_program_descriptor_linkage *link =
       &pipeline->program.link[type];
@@ -2263,7 +2266,6 @@ tu6_emit_user_consts(struct tu_cs *cs, const struct tu_pipeline *pipeline,
 
    for (uint32_t i = 0; i < ARRAY_SIZE(state->range); i++) {
       if (state->range[i].start < state->range[i].end) {
-         assert(i && i - 1 < link->ubo_map.num);
          uint32_t *ptr = map_get(descriptors_state, &link->ubo_map, i - 1);
 
          uint32_t size = state->range[i].end - state->range[i].start;
@@ -2281,6 +2283,21 @@ tu6_emit_user_consts(struct tu_cs *cs, const struct tu_pipeline *pipeline,
          debug_assert((state->range[i].offset % 16) == 0);
          debug_assert((size % 16) == 0);
          debug_assert((offset % 16) == 0);
+
+         if (i == 0) {
+            /* push constants */
+            tu_cs_emit_pkt7(cs, tu6_stage2opcode(type), 3 + (size / 4));
+            tu_cs_emit(cs, CP_LOAD_STATE6_0_DST_OFF(state->range[i].offset / 16) |
+                  CP_LOAD_STATE6_0_STATE_TYPE(ST6_CONSTANTS) |
+                  CP_LOAD_STATE6_0_STATE_SRC(SS6_DIRECT) |
+                  CP_LOAD_STATE6_0_STATE_BLOCK(tu6_stage2shadersb(type)) |
+                  CP_LOAD_STATE6_0_NUM_UNIT(size / 16));
+            tu_cs_emit(cs, 0);
+            tu_cs_emit(cs, 0);
+            for (unsigned i = 0; i < size / 4; i++)
+               tu_cs_emit(cs, push_constants[i + offset / 4]);
+            continue;
+         }
 
          tu_cs_emit_pkt7(cs, tu6_stage2opcode(type), 3);
          tu_cs_emit(cs, CP_LOAD_STATE6_0_DST_OFF(state->range[i].offset / 16) |
@@ -2329,18 +2346,18 @@ tu6_emit_ubos(struct tu_cs *cs, const struct tu_pipeline *pipeline,
 }
 
 static struct tu_cs_entry
-tu6_emit_consts(struct tu_device *device, struct tu_cs *draw_state,
+tu6_emit_consts(struct tu_cmd_buffer *cmd,
                 const struct tu_pipeline *pipeline,
                 struct tu_descriptor_state *descriptors_state,
                 gl_shader_stage type)
 {
    struct tu_cs cs;
-   tu_cs_begin_sub_stream(device, draw_state, 512, &cs); /* TODO: maximum size? */
+   tu_cs_begin_sub_stream(cmd->device, &cmd->draw_state, 512, &cs); /* TODO: maximum size? */
 
-   tu6_emit_user_consts(&cs, pipeline, descriptors_state, type);
+   tu6_emit_user_consts(&cs, pipeline, descriptors_state, type, cmd->push_constants);
    tu6_emit_ubos(&cs, pipeline, descriptors_state, type);
 
-   return tu_cs_end_sub_stream(draw_state, &cs);
+   return tu_cs_end_sub_stream(&cmd->draw_state, &cs);
 }
 
 static struct tu_cs_entry
@@ -2603,15 +2620,13 @@ tu6_bind_draw_states(struct tu_cmd_buffer *cmd,
          (struct tu_draw_state_group) {
             .id = TU_DRAW_STATE_VS_CONST,
             .enable_mask = 0x7,
-            .ib = tu6_emit_consts(cmd->device, &cmd->draw_state, pipeline,
-                                  descriptors_state, MESA_SHADER_VERTEX)
+            .ib = tu6_emit_consts(cmd, pipeline, descriptors_state, MESA_SHADER_VERTEX)
          };
       draw_state_groups[draw_state_group_count++] =
          (struct tu_draw_state_group) {
             .id = TU_DRAW_STATE_FS_CONST,
             .enable_mask = 0x6,
-            .ib = tu6_emit_consts(cmd->device, &cmd->draw_state, pipeline,
-                                  descriptors_state, MESA_SHADER_FRAGMENT)
+            .ib = tu6_emit_consts(cmd, pipeline, descriptors_state, MESA_SHADER_FRAGMENT)
          };
       draw_state_groups[draw_state_group_count++] =
          (struct tu_draw_state_group) {

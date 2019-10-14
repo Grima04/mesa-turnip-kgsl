@@ -922,7 +922,7 @@ struct tu_cmd_buffer
    struct tu_vertex_binding vertex_bindings[MAX_VBS];
    uint32_t queue_family_index;
 
-   uint8_t push_constants[MAX_PUSH_CONSTANTS_SIZE];
+   uint32_t push_constants[MAX_PUSH_CONSTANTS_SIZE / 4];
    VkShaderStageFlags push_constant_stages;
    struct tu_descriptor_set meta_push_descriptors;
 
