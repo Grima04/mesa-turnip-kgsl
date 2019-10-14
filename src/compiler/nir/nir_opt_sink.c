@@ -50,7 +50,8 @@ nir_can_move_instr(nir_instr *instr, nir_move_options options)
 
       if ((options & nir_move_load_input) &&
           (intrin->intrinsic == nir_intrinsic_load_interpolated_input ||
-           intrin->intrinsic == nir_intrinsic_load_input))
+           intrin->intrinsic == nir_intrinsic_load_input ||
+           intrin->intrinsic == nir_intrinsic_load_per_vertex_input))
          return true;
    }
 
