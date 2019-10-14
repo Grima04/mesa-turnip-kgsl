@@ -38,6 +38,7 @@ cache:
 - '%LOCALAPPDATA%\pip\Cache -> appveyor.yml'
 - win_flex_bison-2.5.15.zip
 - llvm-5.0.1-msvc2017-mtd.7z
+- subprojects\packagecache -> subprojects\*.wrap
 
 os: Visual Studio 2017
 
