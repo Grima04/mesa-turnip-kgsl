@@ -516,6 +516,13 @@ static void visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
 	case nir_op_fneg:
 	        src[0] = ac_to_float(&ctx->ac, src[0]);
 		result = LLVMBuildFNeg(ctx->ac.builder, src[0], "");
+		if (ctx->ac.float_mode == AC_FLOAT_MODE_DENORM_FLUSH_TO_ZERO) {
+			/* fneg will be optimized by backend compiler with sign
+			 * bit removed via XOR. This is probably a LLVM bug.
+			 */
+			result = ac_build_canonicalize(&ctx->ac, result,
+						       instr->dest.dest.ssa.bit_size);
+		}
 		break;
 	case nir_op_ineg:
 		result = LLVMBuildNeg(ctx->ac.builder, src[0], "");
@@ -646,6 +653,13 @@ static void visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
 	case nir_op_fabs:
 		result = emit_intrin_1f_param(&ctx->ac, "llvm.fabs",
 		                              ac_to_float_type(&ctx->ac, def_type), src[0]);
+		if (ctx->ac.float_mode == AC_FLOAT_MODE_DENORM_FLUSH_TO_ZERO) {
+			/* fabs will be optimized by backend compiler with sign
+			 * bit removed via AND.
+			 */
+			result = ac_build_canonicalize(&ctx->ac, result,
+						       instr->dest.dest.ssa.bit_size);
+		}
 		break;
 	case nir_op_iabs:
 		result = emit_iabs(&ctx->ac, src[0]);
