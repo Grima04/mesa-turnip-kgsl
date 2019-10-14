@@ -299,6 +299,7 @@ struct ac_addrlib *ac_addrlib_create(const struct radeon_info *info,
                                      const struct amdgpu_gpu_info *amdinfo,
                                      uint64_t *max_alignment);
 void ac_addrlib_destroy(struct ac_addrlib *addrlib);
+void *ac_addrlib_get_handle(struct ac_addrlib *addrlib);
 
 int ac_compute_surface(struct ac_addrlib *addrlib, const struct radeon_info *info,
                        const struct ac_surf_config *config, enum radeon_surf_mode mode,

@@ -678,6 +678,11 @@ void ac_addrlib_destroy(struct ac_addrlib *addrlib)
    free(addrlib);
 }
 
+void *ac_addrlib_get_handle(struct ac_addrlib *addrlib)
+{
+   return addrlib->handle;
+}
+
 static int surf_config_sanity(const struct ac_surf_config *config, unsigned flags)
 {
    /* FMASK is allocated together with the color surface and can't be
