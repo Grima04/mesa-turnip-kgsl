@@ -58,16 +58,9 @@ lava-container:arm64:
     KERNEL_IMAGE_NAME: "Image"
 
 .lava-build:
-  stage: build
   image: $CI_REGISTRY_IMAGE/debian/$LAVA_DEBIAN_VERSION:$DEBIAN_ARCH-$LAVA_IMAGE_TAG
   extends:
-    - .ci-run-policy
-  cache:
-    key: ${CI_JOB_NAME}
-    paths:
-      - ccache
-  variables:
-    CCACHE_COMPILERCHECK: "content"
+    - .build
   # Use ccache transparently, and print stats before/after
   before_script:
     - mkdir -p results mesa-build
