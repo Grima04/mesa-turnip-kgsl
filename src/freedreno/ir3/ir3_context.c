@@ -104,17 +104,10 @@ ir3_context_init(struct ir3_compiler *compiler,
 
 	NIR_PASS_V(ctx->s, nir_convert_from_ssa, true);
 
-	if (ir3_shader_debug & IR3_DBG_DISASM) {
-		DBG("dump nir%dv%d: type=%d, k={cts=%u,hp=%u}",
-			so->shader->id, so->id, so->type,
-			so->key.color_two_side, so->key.half_precision);
-		nir_print_shader(ctx->s, stdout);
-	}
-
 	if (shader_debug_enabled(so->type)) {
-		fprintf(stderr, "NIR (final form) for %s shader:\n",
-			_mesa_shader_stage_to_string(so->type));
-		nir_print_shader(ctx->s, stderr);
+		fprintf(stdout, "NIR (final form) for %s shader %s:\n",
+			ir3_shader_stage(so), so->shader->nir->info.name);
+		nir_print_shader(ctx->s, stdout);
 	}
 
 	ir3_ibo_mapping_init(&so->image_mapping, ctx->s->info.num_textures);

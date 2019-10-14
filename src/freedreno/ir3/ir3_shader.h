@@ -559,13 +559,28 @@ struct ir3_shader_variant {
 	struct ir3_sampler_prefetch sampler_prefetch[IR3_MAX_SAMPLER_PREFETCH];
 };
 
+static inline const char *
+ir3_shader_stage(struct ir3_shader_variant *v)
+{
+	switch (v->type) {
+	case MESA_SHADER_VERTEX:     return v->binning_pass ? "BVERT" : "VERT";
+	case MESA_SHADER_TESS_CTRL:  return "TCS";
+	case MESA_SHADER_TESS_EVAL:  return "TES";
+	case MESA_SHADER_GEOMETRY:   return "GEOM";
+	case MESA_SHADER_FRAGMENT:   return "FRAG";
+	case MESA_SHADER_COMPUTE:    return "CL";
+	default:
+		unreachable("invalid type");
+		return NULL;
+	}
+}
+
 struct ir3_ubo_range {
 	uint32_t offset; /* start offset of this block in const register file */
 	uint32_t start, end; /* range of block that's actually used */
 };
 
-struct ir3_ubo_analysis_state
-{
+struct ir3_ubo_analysis_state {
 	struct ir3_ubo_range range[IR3_MAX_CONSTANT_BUFFERS];
 	uint32_t size;
 	uint32_t lower_count;
@@ -610,22 +625,6 @@ uint64_t ir3_shader_outputs(const struct ir3_shader *so);
 
 int
 ir3_glsl_type_size(const struct glsl_type *type, bool bindless);
-
-static inline const char *
-ir3_shader_stage(struct ir3_shader *shader)
-{
-	switch (shader->type) {
-	case MESA_SHADER_VERTEX:     return "VERT";
-	case MESA_SHADER_TESS_CTRL:  return "TCS";
-	case MESA_SHADER_TESS_EVAL:  return "TES";
-	case MESA_SHADER_GEOMETRY:   return "GEOM";
-	case MESA_SHADER_FRAGMENT:   return "FRAG";
-	case MESA_SHADER_COMPUTE:    return "CL";
-	default:
-		unreachable("invalid type");
-		return NULL;
-	}
-}
 
 /*
  * Helper/util:

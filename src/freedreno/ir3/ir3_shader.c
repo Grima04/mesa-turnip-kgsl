@@ -165,24 +165,16 @@ assemble_variant(struct ir3_shader_variant *v)
 	v->bo = fd_bo_new(compiler->dev, sz,
 			DRM_FREEDRENO_GEM_CACHE_WCOMBINE |
 			DRM_FREEDRENO_GEM_TYPE_KMEM,
-			"%s:%s", ir3_shader_stage(v->shader), info->name);
+			"%s:%s", ir3_shader_stage(v), info->name);
 
 	memcpy(fd_bo_map(v->bo), bin, sz);
 
-	if (ir3_shader_debug & IR3_DBG_DISASM) {
-		struct ir3_shader_key key = v->key;
-		printf("disassemble: type=%d, k={bp=%u,cts=%u,hp=%u}\n", v->type,
-			v->binning_pass, key.color_two_side, key.half_precision);
-		ir3_shader_disasm(v, bin, stdout);
-	}
-
 	if (shader_debug_enabled(v->shader->type)) {
-		fprintf(stderr, "Native code for unnamed %s shader %s:\n",
-			_mesa_shader_stage_to_string(v->shader->type),
-			v->shader->nir->info.name);
+		fprintf(stdout, "Native code for unnamed %s shader %s:\n",
+			ir3_shader_stage(v), v->shader->nir->info.name);
 		if (v->shader->type == MESA_SHADER_FRAGMENT)
-			fprintf(stderr, "SIMD0\n");
-		ir3_shader_disasm(v, bin, stderr);
+			fprintf(stdout, "SIMD0\n");
+		ir3_shader_disasm(v, bin, stdout);
 	}
 
 	free(bin);
@@ -382,7 +374,7 @@ ir3_shader_disasm(struct ir3_shader_variant *so, uint32_t *bin, FILE *out)
 {
 	struct ir3 *ir = so->ir;
 	struct ir3_register *reg;
-	const char *type = ir3_shader_stage(so->shader);
+	const char *type = ir3_shader_stage(so);
 	uint8_t regid;
 	unsigned i;
 
