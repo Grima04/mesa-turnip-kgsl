@@ -120,6 +120,8 @@ struct ac_llvm_context {
 	unsigned wave_size;
 	unsigned ballot_mask_bits;
 
+	unsigned float_mode;
+
 	LLVMValueRef lds;
 };
 

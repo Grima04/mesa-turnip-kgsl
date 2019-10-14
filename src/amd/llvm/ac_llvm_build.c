@@ -73,6 +73,7 @@ ac_llvm_context_init(struct ac_llvm_context *ctx,
 	ctx->family = family;
 	ctx->wave_size = wave_size;
 	ctx->ballot_mask_bits = ballot_mask_bits;
+	ctx->float_mode = float_mode;
 	ctx->module = ac_create_module(wave_size == 32 ? compiler->tm_wave32
 						       : compiler->tm,
 				       ctx->context);

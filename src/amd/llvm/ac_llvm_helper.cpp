@@ -82,6 +82,7 @@ LLVMBuilderRef ac_create_builder(LLVMContextRef ctx,
 
 	switch (float_mode) {
 	case AC_FLOAT_MODE_DEFAULT:
+	case AC_FLOAT_MODE_DENORM_FLUSH_TO_ZERO:
 		break;
 	case AC_FLOAT_MODE_NO_SIGNED_ZEROS_FP_MATH:
 		flags.setNoSignedZeros();
