@@ -765,7 +765,8 @@ void label_instruction(opt_ctx &ctx, aco_ptr<Instruction>& instr)
       if (!ctx.info[instr->operands[0].tempId()].is_vec())
          break;
       Instruction* vec = ctx.info[instr->operands[0].tempId()].instr;
-      if (vec->definitions[0].getTemp().size() == vec->operands.size()) { /* TODO: what about 64bit or other combinations? */
+      if (vec->definitions[0].getTemp().size() == vec->operands.size() && /* TODO: what about 64bit or other combinations? */
+          vec->operands[0].size() == instr->definitions[0].size()) {
 
          /* convert this extract into a mov instruction */
          Operand vec_op = vec->operands[instr->operands[1].constantValue()];
