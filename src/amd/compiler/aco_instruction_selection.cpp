@@ -2709,12 +2709,43 @@ void load_lds(isel_context *ctx, unsigned elem_size_bytes, Temp dst,
    ctx->allocated_vec.emplace(dst.id(), result);
 }
 
-void ds_write_helper(isel_context *ctx, Operand m, Temp address, Temp data, unsigned offset0, unsigned offset1, unsigned align)
+Temp extract_subvector(isel_context *ctx, Temp data, unsigned start, unsigned size, RegType type)
+{
+   if (start == 0 && size == data.size())
+      return type == RegType::vgpr ? as_vgpr(ctx, data) : data;
+
+   unsigned size_hint = 1;
+   auto it = ctx->allocated_vec.find(data.id());
+   if (it != ctx->allocated_vec.end())
+      size_hint = it->second[0].size();
+   if (size % size_hint || start % size_hint)
+      size_hint = 1;
+
+   start /= size_hint;
+   size /= size_hint;
+
+   Temp elems[size];
+   for (unsigned i = 0; i < size; i++)
+      elems[i] = emit_extract_vector(ctx, data, start + i, RegClass(type, size_hint));
+
+   if (size == 1)
+      return type == RegType::vgpr ? as_vgpr(ctx, elems[0]) : elems[0];
+
+   aco_ptr<Pseudo_instruction> vec{create_instruction<Pseudo_instruction>(aco_opcode::p_create_vector, Format::PSEUDO, size, 1)};
+   for (unsigned i = 0; i < size; i++)
+      vec->operands[i] = Operand(elems[i]);
+   Temp res = {ctx->program->allocateId(), RegClass(type, size * size_hint)};
+   vec->definitions[0] = Definition(res);
+   ctx->block->instructions.emplace_back(std::move(vec));
+   return res;
+}
+
+void ds_write_helper(isel_context *ctx, Operand m, Temp address, Temp data, unsigned data_start, unsigned total_size, unsigned offset0, unsigned offset1, unsigned align)
 {
    Builder bld(ctx->program, ctx->block);
    unsigned bytes_written = 0;
-   while (bytes_written < data.size() * 4) {
-      unsigned todo = data.size() * 4 - bytes_written;
+   while (bytes_written < total_size * 4) {
+      unsigned todo = total_size * 4 - bytes_written;
       bool aligned8 = bytes_written % 8 == 0 && align % 8 == 0;
       bool aligned16 = bytes_written % 16 == 0 && align % 16 == 0;
 
@@ -2747,11 +2778,11 @@ void ds_write_helper(isel_context *ctx, Operand m, Temp address, Temp data, unsi
       assert(offset <= max_offset); /* offset1 shouldn't be large enough for this to happen */
 
       if (write2) {
-         Temp val0 = emit_extract_vector(ctx, data, bytes_written >> 2, v1);
-         Temp val1 = emit_extract_vector(ctx, data, (bytes_written >> 2) + 1, v1);
+         Temp val0 = emit_extract_vector(ctx, data, data_start + (bytes_written >> 2), v1);
+         Temp val1 = emit_extract_vector(ctx, data, data_start + (bytes_written >> 2) + 1, v1);
          bld.ds(op, address_offset, val0, val1, m, offset >> 2, (offset >> 2) + 1);
       } else {
-         Temp val = emit_extract_vector(ctx, data, bytes_written >> 2, RegClass(RegType::vgpr, size));
+         Temp val = extract_subvector(ctx, data, data_start + (bytes_written >> 2), size, RegType::vgpr);
          bld.ds(op, address_offset, val, m, offset);
       }
 
@@ -2796,8 +2827,9 @@ void store_lds(isel_context *ctx, unsigned elem_size_bytes, Temp data, uint32_t 
       if (count[i] == 0)
          continue;
 
-      Temp write_data = emit_extract_vector(ctx, data, start[i], RegClass(RegType::vgpr, count[i] * elem_size_bytes / 4));
-      ds_write_helper(ctx, m, address, write_data, base_offset, start[i] * elem_size_bytes, align);
+      unsigned elem_size_words = elem_size_bytes / 4;
+      ds_write_helper(ctx, m, address, data, start[i] * elem_size_words, count[i] * elem_size_words,
+                      base_offset, start[i] * elem_size_bytes, align);
    }
    return;
 }
