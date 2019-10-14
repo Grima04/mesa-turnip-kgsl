@@ -394,6 +394,22 @@ tu6_rb_fmt_to_ifmt(enum a6xx_color_fmt fmt)
    }
 }
 
+enum a6xx_depth_format
+tu6_pipe2depth(VkFormat format)
+{
+   switch (format) {
+   case VK_FORMAT_D16_UNORM:
+      return DEPTH6_16;
+   case VK_FORMAT_X8_D24_UNORM_PACK32:
+   case VK_FORMAT_D24_UNORM_S8_UINT:
+      return DEPTH6_24_8;
+   case VK_FORMAT_D32_SFLOAT:
+      return DEPTH6_32;
+   default:
+      return ~0;
+   }
+}
+
 static uint32_t
 tu_pack_mask(int bits)
 {
@@ -647,6 +663,11 @@ tu_physical_device_get_format_properties(
    if (native_fmt->rb >= 0) {
       linear |= VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT | VK_FORMAT_FEATURE_BLIT_SRC_BIT | VK_FORMAT_FEATURE_BLIT_DST_BIT;
       tiled |= VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT | VK_FORMAT_FEATURE_BLIT_SRC_BIT | VK_FORMAT_FEATURE_BLIT_DST_BIT;
+   }
+
+   if (tu6_pipe2depth(format) != (enum a6xx_depth_format)~0) {
+      linear |= VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
+      tiled |= VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
    }
 
 end:

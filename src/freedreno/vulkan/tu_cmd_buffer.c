@@ -391,7 +391,9 @@ tu6_emit_wfi(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 static void
 tu6_emit_zs(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 {
+   const struct tu_framebuffer *fb = cmd->state.framebuffer;
    const struct tu_subpass *subpass = cmd->state.subpass;
+   const struct tu_tiling_config *tiling = &cmd->state.tiling_config;
 
    const uint32_t a = subpass->depth_stencil_attachment.attachment;
    if (a == VK_ATTACHMENT_UNUSED) {
@@ -419,6 +421,40 @@ tu6_emit_zs(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 
       return;
    }
+
+   uint32_t gmem_index = 0;
+   for (uint32_t i = 0; i < subpass->color_count; ++i) {
+      uint32_t a = subpass->color_attachments[i].attachment;
+      if (a != VK_ATTACHMENT_UNUSED)
+         gmem_index++;
+   }
+
+   const struct tu_image_view *iview = fb->attachments[a].attachment;
+   const struct tu_image_level *slice = &iview->image->levels[iview->base_mip];
+   enum a6xx_depth_format fmt = tu6_pipe2depth(iview->vk_format);
+
+   uint32_t offset = slice->offset + slice->size * iview->base_layer;
+   uint32_t stride = slice->pitch * iview->image->cpp;
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_RB_DEPTH_BUFFER_INFO, 6);
+   tu_cs_emit(cs, A6XX_RB_DEPTH_BUFFER_INFO_DEPTH_FORMAT(fmt));
+   tu_cs_emit(cs, A6XX_RB_DEPTH_BUFFER_PITCH(stride));
+   tu_cs_emit(cs, A6XX_RB_DEPTH_BUFFER_ARRAY_PITCH(slice->size));
+   tu_cs_emit_qw(cs, iview->image->bo->iova + iview->image->bo_offset + offset);
+   tu_cs_emit(cs, tiling->gmem_offsets[gmem_index]);
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_GRAS_SU_DEPTH_BUFFER_INFO, 1);
+   tu_cs_emit(cs, A6XX_GRAS_SU_DEPTH_BUFFER_INFO_DEPTH_FORMAT(fmt));
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_GRAS_LRZ_BUFFER_BASE_LO, 5);
+   tu_cs_emit(cs, 0x00000000); /* RB_DEPTH_FLAG_BUFFER_BASE_LO */
+   tu_cs_emit(cs, 0x00000000); /* RB_DEPTH_FLAG_BUFFER_BASE_HI */
+   tu_cs_emit(cs, 0x00000000); /* GRAS_LRZ_BUFFER_PITCH */
+   tu_cs_emit(cs, 0x00000000); /* GRAS_LRZ_FAST_CLEAR_BUFFER_BASE_LO */
+   tu_cs_emit(cs, 0x00000000); /* GRAS_LRZ_FAST_CLEAR_BUFFER_BASE_HI */
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_RB_STENCIL_INFO, 1);
+   tu_cs_emit(cs, 0x00000000); /* RB_STENCIL_INFO */
 
    /* enable zs? */
 }
@@ -749,38 +785,47 @@ tu6_emit_tile_select(struct tu_cmd_buffer *cmd,
 }
 
 static void
-tu6_emit_tile_load(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
+tu6_emit_tile_load_attachment(struct tu_cmd_buffer *cmd,
+                              struct tu_cs *cs,
+                              uint32_t a,
+                              uint32_t gmem_index)
 {
    const struct tu_framebuffer *fb = cmd->state.framebuffer;
-   const struct tu_subpass *subpass = cmd->state.subpass;
    const struct tu_tiling_config *tiling = &cmd->state.tiling_config;
    const struct tu_attachment_state *attachments = cmd->state.attachments;
+
+   const struct tu_image_view *iview = fb->attachments[a].attachment;
+   const struct tu_attachment_state *att = attachments + a;
+   if (att->pending_clear_aspects) {
+      tu6_emit_blit_clear(cmd, cs, iview,
+                          tiling->gmem_offsets[gmem_index],
+                          &att->clear_value);
+   } else {
+      tu6_emit_blit_info(cmd, cs, iview,
+                         tiling->gmem_offsets[gmem_index],
+                         A6XX_RB_BLIT_INFO_UNK0 | A6XX_RB_BLIT_INFO_GMEM);
+   }
+
+   tu6_emit_blit(cmd, cs);
+}
+
+static void
+tu6_emit_tile_load(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
+{
+   const struct tu_subpass *subpass = cmd->state.subpass;
 
    tu6_emit_blit_scissor(cmd, cs);
 
    uint32_t gmem_index = 0;
    for (uint32_t i = 0; i < subpass->color_count; ++i) {
       const uint32_t a = subpass->color_attachments[i].attachment;
-      if (a == VK_ATTACHMENT_UNUSED)
-         continue;
-
-      const struct tu_image_view *iview = fb->attachments[a].attachment;
-      const struct tu_attachment_state *att = attachments + a;
-      if (att->pending_clear_aspects) {
-         assert(att->pending_clear_aspects == VK_IMAGE_ASPECT_COLOR_BIT);
-         tu6_emit_blit_clear(cmd, cs, iview,
-                             tiling->gmem_offsets[gmem_index++],
-                             &att->clear_value);
-      } else {
-         tu6_emit_blit_info(cmd, cs, iview,
-                            tiling->gmem_offsets[gmem_index++],
-                            A6XX_RB_BLIT_INFO_UNK0 | A6XX_RB_BLIT_INFO_GMEM);
-      }
-
-      tu6_emit_blit(cmd, cs);
+      if (a != VK_ATTACHMENT_UNUSED)
+         tu6_emit_tile_load_attachment(cmd, cs, a, gmem_index++);
    }
 
-   /* load/clear zs? */
+   const uint32_t a = subpass->depth_stencil_attachment.attachment;
+   if (a != VK_ATTACHMENT_UNUSED)
+      tu6_emit_tile_load_attachment(cmd, cs, a, gmem_index);
 }
 
 static void
@@ -818,6 +863,14 @@ tu6_emit_tile_store(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 
       const struct tu_image_view *iview = fb->attachments[a].attachment;
       tu6_emit_blit_info(cmd, cs, iview, tiling->gmem_offsets[gmem_index++],
+                         0);
+      tu6_emit_blit(cmd, cs);
+   }
+
+   const uint32_t a = cmd->state.subpass->depth_stencil_attachment.attachment;
+   if (a != VK_ATTACHMENT_UNUSED) {
+      const struct tu_image_view *iview = fb->attachments[a].attachment;
+      tu6_emit_blit_info(cmd, cs, iview, tiling->gmem_offsets[gmem_index],
                          0);
       tu6_emit_blit(cmd, cs);
    }

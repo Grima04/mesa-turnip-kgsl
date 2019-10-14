@@ -1228,6 +1228,7 @@ tu_pack_clear_value(const VkClearValue *val,
                     VkFormat format,
                     uint32_t buf[4]);
 enum a6xx_2d_ifmt tu6_rb_fmt_to_ifmt(enum a6xx_color_fmt fmt);
+enum a6xx_depth_format tu6_pipe2depth(VkFormat format);
 
 struct tu_image_level
 {
