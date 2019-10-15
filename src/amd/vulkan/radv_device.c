@@ -1558,17 +1558,17 @@ void radv_GetPhysicalDeviceProperties2(
 			properties->pciFunction = pdevice->bus_info.func;
 			break;
 		}
-		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES_KHR: {
-			VkPhysicalDeviceDriverPropertiesKHR *driver_props =
-				(VkPhysicalDeviceDriverPropertiesKHR *) ext;
+		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES: {
+			VkPhysicalDeviceDriverProperties *driver_props =
+				(VkPhysicalDeviceDriverProperties *) ext;
 
-			driver_props->driverID = VK_DRIVER_ID_MESA_RADV_KHR;
-			snprintf(driver_props->driverName, VK_MAX_DRIVER_NAME_SIZE_KHR, "radv");
-			snprintf(driver_props->driverInfo, VK_MAX_DRIVER_INFO_SIZE_KHR,
+			driver_props->driverID = VK_DRIVER_ID_MESA_RADV;
+			snprintf(driver_props->driverName, VK_MAX_DRIVER_NAME_SIZE, "radv");
+			snprintf(driver_props->driverInfo, VK_MAX_DRIVER_INFO_SIZE,
 				"Mesa " PACKAGE_VERSION MESA_GIT_SHA1
 				" (LLVM " MESA_LLVM_VERSION_STRING ")");
 
-			driver_props->conformanceVersion = (VkConformanceVersionKHR) {
+			driver_props->conformanceVersion = (VkConformanceVersion) {
 				.major = 1,
 				.minor = 1,
 				.subminor = 2,
