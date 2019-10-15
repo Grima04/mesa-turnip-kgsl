@@ -2638,14 +2638,23 @@ void load_lds(isel_context *ctx, unsigned elem_size_bytes, Temp dst,
       bool aligned16 = bytes_read % 16 == 0 && align % 16 == 0;
 
       aco_opcode op = aco_opcode::last_opcode;
+      bool read2 = false;
       if (todo >= 16 && aligned16) {
          op = aco_opcode::ds_read_b128;
+         todo = 16;
+      } else if (todo >= 16 && aligned8) {
+         op = aco_opcode::ds_read2_b64;
+         read2 = true;
          todo = 16;
       } else if (todo >= 12 && aligned16) {
          op = aco_opcode::ds_read_b96;
          todo = 12;
+      } else if (todo >= 8 && aligned8) {
+         op = aco_opcode::ds_read_b64;
+         todo = 8;
       } else if (todo >= 8) {
-         op = aligned8 ? aco_opcode::ds_read_b64 : aco_opcode::ds_read2_b32;
+         op = aco_opcode::ds_read2_b32;
+         read2 = true;
          todo = 8;
       } else if (todo >= 4) {
          op = aco_opcode::ds_read_b32;
@@ -2656,7 +2665,7 @@ void load_lds(isel_context *ctx, unsigned elem_size_bytes, Temp dst,
       assert(todo % elem_size_bytes == 0);
       unsigned num_elements = todo / elem_size_bytes;
       unsigned offset = base_offset + bytes_read;
-      unsigned max_offset = op == aco_opcode::ds_read2_b32 ? 1019 : 65535;
+      unsigned max_offset = read2 ? 1019 : 65535;
 
       Temp address_offset = address;
       if (offset > max_offset) {
@@ -2671,7 +2680,7 @@ void load_lds(isel_context *ctx, unsigned elem_size_bytes, Temp dst,
       else
          res = bld.tmp(RegClass(RegType::vgpr, todo / 4));
 
-      if (op == aco_opcode::ds_read2_b32)
+      if (read2)
          res = bld.ds(op, Definition(res), address_offset, m, offset >> 2, (offset >> 2) + 1);
       else
          res = bld.ds(op, Definition(res), address_offset, m, offset);
@@ -2750,15 +2759,24 @@ void ds_write_helper(isel_context *ctx, Operand m, Temp address, Temp data, unsi
       bool aligned16 = bytes_written % 16 == 0 && align % 16 == 0;
 
       aco_opcode op = aco_opcode::last_opcode;
+      bool write2 = false;
       unsigned size = 0;
       if (todo >= 16 && aligned16) {
          op = aco_opcode::ds_write_b128;
          size = 4;
+      } else if (todo >= 16 && aligned8) {
+         op = aco_opcode::ds_write2_b64;
+         write2 = true;
+         size = 4;
       } else if (todo >= 12 && aligned16) {
          op = aco_opcode::ds_write_b96;
          size = 3;
+      } else if (todo >= 8 && aligned8) {
+         op = aco_opcode::ds_write_b64;
+         size = 2;
       } else if (todo >= 8) {
-         op = aligned8 ? aco_opcode::ds_write_b64 : aco_opcode::ds_write2_b32;
+         op = aco_opcode::ds_write2_b32;
+         write2 = true;
          size = 2;
       } else if (todo >= 4) {
          op = aco_opcode::ds_write_b32;
@@ -2767,7 +2785,6 @@ void ds_write_helper(isel_context *ctx, Operand m, Temp address, Temp data, unsi
          assert(false);
       }
 
-      bool write2 = op == aco_opcode::ds_write2_b32;
       unsigned offset = offset0 + offset1 + bytes_written;
       unsigned max_offset = write2 ? 1020 : 65535;
       Temp address_offset = address;
@@ -2778,8 +2795,8 @@ void ds_write_helper(isel_context *ctx, Operand m, Temp address, Temp data, unsi
       assert(offset <= max_offset); /* offset1 shouldn't be large enough for this to happen */
 
       if (write2) {
-         Temp val0 = emit_extract_vector(ctx, data, data_start + (bytes_written >> 2), v1);
-         Temp val1 = emit_extract_vector(ctx, data, data_start + (bytes_written >> 2) + 1, v1);
+         Temp val0 = extract_subvector(ctx, data, data_start + (bytes_written >> 2), size / 2, RegType::vgpr);
+         Temp val1 = extract_subvector(ctx, data, data_start + (bytes_written >> 2) + 1, size / 2, RegType::vgpr);
          bld.ds(op, address_offset, val0, val1, m, offset >> 2, (offset >> 2) + 1);
       } else {
          Temp val = extract_subvector(ctx, data, data_start + (bytes_written >> 2), size, RegType::vgpr);
