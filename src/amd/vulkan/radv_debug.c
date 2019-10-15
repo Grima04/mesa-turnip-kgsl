@@ -145,37 +145,6 @@ radv_dump_debug_registers(struct radv_device *device, FILE *f)
 	fprintf(f, "\n");
 }
 
-static const char *
-radv_get_descriptor_name(enum VkDescriptorType type)
-{
-	switch (type) {
-	case VK_DESCRIPTOR_TYPE_SAMPLER:
-		return "SAMPLER";
-	case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
-		return "COMBINED_IMAGE_SAMPLER";
-	case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
-		return "SAMPLED_IMAGE";
-	case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
-		return "STORAGE_IMAGE";
-	case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
-		return "UNIFORM_TEXEL_BUFFER";
-	case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
-		return "STORAGE_TEXEL_BUFFER";
-	case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
-		return "UNIFORM_BUFFER";
-	case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
-		return "STORAGE_BUFFER";
-	case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
-		return "UNIFORM_BUFFER_DYNAMIC";
-	case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
-		return "STORAGE_BUFFER_DYNAMIC";
-	case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
-		return "INPUT_ATTACHMENT";
-	default:
-		return "UNKNOWN";
-	}
-}
-
 static void
 radv_dump_buffer_descriptor(enum chip_class chip_class, const uint32_t *desc,
 			    FILE *f)
@@ -234,51 +203,9 @@ radv_dump_descriptor_set(enum chip_class chip_class,
 		return;
 	layout = set->layout;
 
-	fprintf(f, "** descriptor set (%d) **\n", id);
-	fprintf(f, "va: 0x%"PRIx64"\n", set->va);
-	fprintf(f, "size: %d\n", set->size);
-	fprintf(f, "mapped_ptr:\n");
-
-	for (i = 0; i < set->size / 4; i++) {
-		fprintf(f, "\t[0x%x] = 0x%08x\n", i, set->mapped_ptr[i]);
-	}
-	fprintf(f, "\n");
-
-	fprintf(f, "\t*** layout ***\n");
-	fprintf(f, "\tbinding_count: %d\n", layout->binding_count);
-	fprintf(f, "\tsize: %d\n", layout->size);
-	fprintf(f, "\tshader_stages: %x\n", layout->shader_stages);
-	fprintf(f, "\tdynamic_shader_stages: %x\n",
-		layout->dynamic_shader_stages);
-	fprintf(f, "\tbuffer_count: %d\n", layout->buffer_count);
-	fprintf(f, "\tdynamic_offset_count: %d\n",
-		layout->dynamic_offset_count);
-	fprintf(f, "\n");
-
 	for (i = 0; i < set->layout->binding_count; i++) {
 		uint32_t *desc =
 			set->mapped_ptr + layout->binding[i].offset / 4;
-
-		fprintf(f, "\t\t**** binding layout (%d) ****\n", i);
-		fprintf(f, "\t\ttype: %s\n",
-			radv_get_descriptor_name(layout->binding[i].type));
-		fprintf(f, "\t\tarray_size: %d\n",
-			layout->binding[i].array_size);
-		fprintf(f, "\t\toffset: %d\n",
-			layout->binding[i].offset);
-		fprintf(f, "\t\tbuffer_offset: %d\n",
-			layout->binding[i].buffer_offset);
-		fprintf(f, "\t\tdynamic_offset_offset: %d\n",
-			layout->binding[i].dynamic_offset_offset);
-		fprintf(f, "\t\tdynamic_offset_count: %d\n",
-			layout->binding[i].dynamic_offset_count);
-		fprintf(f, "\t\tsize: %d\n",
-			layout->binding[i].size);
-		fprintf(f, "\t\timmutable_samplers_offset: %d\n",
-			layout->binding[i].immutable_samplers_offset);
-		fprintf(f, "\t\timmutable_samplers_equal: %d\n",
-			layout->binding[i].immutable_samplers_equal);
-		fprintf(f, "\n");
 
 		switch (layout->binding[i].type) {
 		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
@@ -319,7 +246,7 @@ radv_dump_descriptors(struct radv_pipeline *pipeline, FILE *f)
 	uint64_t *ptr = (uint64_t *)device->trace_id_ptr;
 	int i;
 
-	fprintf(f, "List of descriptors:\n");
+	fprintf(f, "Descriptors:\n");
 	for (i = 0; i < MAX_SETS; i++) {
 		struct radv_descriptor_set *set =
 			(struct radv_descriptor_set *)ptr[i + 3];
