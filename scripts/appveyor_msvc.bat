@@ -2,7 +2,6 @@ goto %1
 
 :install
 rem Check pip
-call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvars64.bat"
 if "%buildsystem%" == "scons" (
     python --version
     python -m pip --version
@@ -37,6 +36,9 @@ if not exist "%LLVM_ARCHIVE%" appveyor DownloadFile "https://people.freedesktop.
 if "%buildsystem%" == "scons" (
     mkdir llvm\bin
     set LLVM=%CD%\llvm
+) else (
+    move llvm subprojects\
+    copy .appveyor\llvm-wrap.meson subprojects\llvm\meson.build
 )
 goto :eof
 
@@ -44,10 +46,11 @@ goto :eof
 if "%buildsystem%" == "scons" (
     call scons -j%NUMBER_OF_PROCESSORS% MSVC_VERSION=14.1 llvm=1
 ) else (
+    call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\Common7\Tools\VsDevCmd.bat" -arch=x86
     rem We use default-library as static to affect any wraps (such as expat and zlib)
     rem it would be better if we could set subprojects buildtype independently,
     rem but I haven't written that patch yet :)
-    call meson builddir --backend=vs2017 --default-library=static -Dbuild-tests=true -Db_vscrt=mtd --buildtype=release -Dllvm=false
+    call meson builddir --backend=vs2017 --default-library=static -Dbuild-tests=true -Db_vscrt=mtd --buildtype=release -Dllvm=true -Dgallium-drivers=swrast
     pushd builddir
     call msbuild mesa.sln /m
     popd
