@@ -338,9 +338,9 @@ VkResult radv_CreateRenderPass(
 static unsigned
 radv_num_subpass_attachments2(const VkSubpassDescription2 *desc)
 {
-	const VkSubpassDescriptionDepthStencilResolveKHR *ds_resolve =
+	const VkSubpassDescriptionDepthStencilResolve *ds_resolve =
 		vk_find_struct_const(desc->pNext,
-				     SUBPASS_DESCRIPTION_DEPTH_STENCIL_RESOLVE_KHR);
+				     SUBPASS_DESCRIPTION_DEPTH_STENCIL_RESOLVE);
 
 	return desc->inputAttachmentCount +
 	       desc->colorAttachmentCount +
@@ -487,9 +487,9 @@ VkResult radv_CreateRenderPass2(
 			};
 		}
 
-		const VkSubpassDescriptionDepthStencilResolveKHR *ds_resolve =
+		const VkSubpassDescriptionDepthStencilResolve *ds_resolve =
 			vk_find_struct_const(desc->pNext,
-					     SUBPASS_DESCRIPTION_DEPTH_STENCIL_RESOLVE_KHR);
+					     SUBPASS_DESCRIPTION_DEPTH_STENCIL_RESOLVE);
 
 		if (ds_resolve && ds_resolve->pDepthStencilResolveAttachment) {
 			subpass->ds_resolve_attachment = p++;

@@ -1615,9 +1615,9 @@ void radv_GetPhysicalDeviceProperties2(
 			properties->variableSampleLocations = false;
 			break;
 		}
-		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_STENCIL_RESOLVE_PROPERTIES_KHR: {
-			VkPhysicalDeviceDepthStencilResolvePropertiesKHR *properties =
-				(VkPhysicalDeviceDepthStencilResolvePropertiesKHR *)ext;
+		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_STENCIL_RESOLVE_PROPERTIES: {
+			VkPhysicalDeviceDepthStencilResolveProperties *properties =
+				(VkPhysicalDeviceDepthStencilResolveProperties *)ext;
 
 			/* We support all of the depth resolve modes */
 			properties->supportedDepthResolveModes =
