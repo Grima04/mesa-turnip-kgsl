@@ -4828,7 +4828,7 @@ void radv_CmdDrawIndexedIndirect(
 	radv_draw(cmd_buffer, &info);
 }
 
-void radv_CmdDrawIndirectCountKHR(
+void radv_CmdDrawIndirectCount(
 	VkCommandBuffer                             commandBuffer,
 	VkBuffer                                    _buffer,
 	VkDeviceSize                                offset,
@@ -4852,7 +4852,7 @@ void radv_CmdDrawIndirectCountKHR(
 	radv_draw(cmd_buffer, &info);
 }
 
-void radv_CmdDrawIndexedIndirectCountKHR(
+void radv_CmdDrawIndexedIndirectCount(
 	VkCommandBuffer                             commandBuffer,
 	VkBuffer                                    _buffer,
 	VkDeviceSize                                offset,
