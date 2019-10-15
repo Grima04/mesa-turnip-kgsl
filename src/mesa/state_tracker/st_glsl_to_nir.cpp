@@ -336,8 +336,6 @@ st_nir_preprocess(struct st_context *st, struct gl_program *prog,
    const nir_shader_compiler_options *options =
       st->ctx->Const.ShaderCompilerOptions[prog->info.stage].NirOptions;
    assert(options);
-   bool lower_64bit =
-      options->lower_int64_options || options->lower_doubles_options;
    nir_shader *nir = prog->nir;
 
    /* Set the next shader stage hint for VS and TES. */
@@ -400,24 +398,6 @@ st_nir_preprocess(struct st_context *st, struct gl_program *prog,
    NIR_PASS_V(nir, gl_nir_lower_buffers, shader_program);
    /* Do a round of constant folding to clean up address calculations */
    NIR_PASS_V(nir, nir_opt_constant_folding);
-
-   if (lower_64bit) {
-      /* Clean up the IR before 64-bit lowering. */
-      st_nir_opts(nir);
-
-      bool lowered_64bit_ops = false;
-      if (options->lower_doubles_options) {
-         NIR_PASS(lowered_64bit_ops, nir, nir_lower_doubles,
-                  st->ctx->SoftFP64, options->lower_doubles_options);
-      }
-      if (options->lower_int64_options) {
-         NIR_PASS(lowered_64bit_ops, nir, nir_lower_int64,
-                  options->lower_int64_options);
-      }
-
-      if (lowered_64bit_ops)
-         st_nir_opts(nir);
-   }
 }
 
 /* Second third of converting glsl_to_nir. This creates uniforms, gathers
@@ -485,6 +465,23 @@ st_glsl_to_nir_post_opts(struct st_context *st, struct gl_program *prog,
 
    NIR_PASS_V(nir, gl_nir_lower_atomics, shader_program, true);
    NIR_PASS_V(nir, nir_opt_intrinsics);
+
+   /* Lower 64-bit ops. */
+   if (nir->options->lower_int64_options ||
+       nir->options->lower_doubles_options) {
+      bool lowered_64bit_ops = false;
+      if (nir->options->lower_doubles_options) {
+         NIR_PASS(lowered_64bit_ops, nir, nir_lower_doubles,
+                  st->ctx->SoftFP64, nir->options->lower_doubles_options);
+      }
+      if (nir->options->lower_int64_options) {
+         NIR_PASS(lowered_64bit_ops, nir, nir_lower_int64,
+                  nir->options->lower_int64_options);
+      }
+
+      if (lowered_64bit_ops)
+         st_nir_opts(nir);
+   }
 
    nir_variable_mode mask = nir_var_function_temp;
    nir_remove_dead_variables(nir, mask);
