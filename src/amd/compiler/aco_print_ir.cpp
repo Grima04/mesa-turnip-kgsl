@@ -181,6 +181,8 @@ static void print_definition(const Definition *definition, FILE *output)
    print_reg_class(definition->regClass(), output);
    if (definition->isPrecise())
       fprintf(output, "(precise)");
+   if (definition->isNUW())
+      fprintf(output, "(nuw)");
    fprintf(output, "%%%d", definition->tempId());
 
    if (definition->isFixed())

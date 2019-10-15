@@ -614,6 +614,8 @@ void emit_sop2_instruction(isel_context *ctx, nir_alu_instr *instr, aco_opcode o
    sop2->operands[0] = Operand(get_alu_src(ctx, instr->src[0]));
    sop2->operands[1] = Operand(get_alu_src(ctx, instr->src[1]));
    sop2->definitions[0] = Definition(dst);
+   if (instr->no_unsigned_wrap)
+      sop2->definitions[0].setNUW(true);
    if (writes_scc)
       sop2->definitions[1] = Definition(ctx->program->allocateId(), scc, s1);
    ctx->block->instructions.emplace_back(std::move(sop2));
@@ -5287,7 +5289,7 @@ void visit_load_push_constant(isel_context *ctx, nir_intrinsic_instr *instr)
 
    Temp index = bld.as_uniform(get_ssa_temp(ctx, instr->src[0].ssa));
    if (offset != 0) // TODO check if index != 0 as well
-      index = bld.sop2(aco_opcode::s_add_i32, bld.def(s1), bld.def(s1, scc), Operand(offset), index);
+      index = bld.nuw().sop2(aco_opcode::s_add_i32, bld.def(s1), bld.def(s1, scc), Operand(offset), index);
    Temp ptr = convert_pointer_to_64_bit(ctx, get_arg(ctx, ctx->args->ac.push_constants));
    Temp vec = dst;
    bool trim = false;
@@ -5373,7 +5375,7 @@ void visit_load_constant(isel_context *ctx, nir_intrinsic_instr *instr)
 
    Temp offset = get_ssa_temp(ctx, instr->src[0].ssa);
    if (base && offset.type() == RegType::sgpr)
-      offset = bld.sop2(aco_opcode::s_add_u32, bld.def(s1), bld.def(s1, scc), offset, Operand(base));
+      offset = bld.nuw().sop2(aco_opcode::s_add_u32, bld.def(s1), bld.def(s1, scc), offset, Operand(base));
    else if (base && offset.type() == RegType::vgpr)
       offset = bld.vadd32(bld.def(v1), Operand(base), offset);
 
@@ -6255,8 +6257,8 @@ void visit_store_ssbo(isel_context *ctx, nir_intrinsic_instr *instr)
          aco_ptr<SMEM_instruction> store{create_instruction<SMEM_instruction>(op, Format::SMEM, 3, 0)};
          store->operands[0] = Operand(rsrc);
          if (offsets[i]) {
-            Temp off = bld.sop2(aco_opcode::s_add_i32, bld.def(s1), bld.def(s1, scc),
-                                offset, Operand(offsets[i]));
+            Temp off = bld.nuw().sop2(aco_opcode::s_add_i32, bld.def(s1), bld.def(s1, scc),
+                                      offset, Operand(offsets[i]));
             store->operands[1] = Operand(off);
          } else {
             store->operands[1] = Operand(offset);
@@ -7273,6 +7275,7 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
       Temp addr = get_ssa_temp(ctx, instr->src[0].ssa);
       nir_const_value* const_addr = nir_src_as_const_value(instr->src[0]);
       Temp private_segment_buffer = ctx->program->private_segment_buffer;
+      //TODO: bounds checking?
       if (addr.type() == RegType::sgpr) {
          Operand offset;
          if (const_addr) {

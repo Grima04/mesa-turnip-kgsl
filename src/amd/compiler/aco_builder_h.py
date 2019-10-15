@@ -176,6 +176,7 @@ public:
    std::vector<aco_ptr<Instruction>> *instructions;
    std::vector<aco_ptr<Instruction>>::iterator it;
    bool is_precise = false;
+   bool is_nuw = false;
 
    Builder(Program *pgm) : program(pgm), use_iterator(false), start(false), lm(pgm->lane_mask), instructions(NULL) {}
    Builder(Program *pgm, Block *block) : program(pgm), use_iterator(false), start(false), lm(pgm ? pgm->lane_mask : s2), instructions(&block->instructions) {}
@@ -186,6 +187,12 @@ public:
       res.is_precise = true;
       return res;
    };
+
+   Builder nuw() const {
+      Builder res = *this;
+      res.is_nuw = true;
+      return res;
+   }
 
    void moveEnd(Block *block) {
       instructions = &block->instructions;
@@ -572,6 +579,7 @@ formats = [(f if len(f) == 5 else f + ('',)) for f in formats]
         % for i in range(num_definitions):
             instr->definitions[${i}] = def${i};
             instr->definitions[${i}].setPrecise(is_precise);
+            instr->definitions[${i}].setNUW(is_nuw);
         % endfor
         % for i in range(num_operands):
             instr->operands[${i}] = op${i}.op;

@@ -717,9 +717,6 @@ bool check_vop3_operands(opt_ctx& ctx, unsigned num_operands, Operand *operands)
 
 bool parse_base_offset(opt_ctx &ctx, Instruction* instr, unsigned op_index, Temp *base, uint32_t *offset, bool prevent_overflow)
 {
-   if (prevent_overflow)
-      return false; //TODO
-
    Operand op = instr->operands[op_index];
 
    if (!op.isTemp())
@@ -740,6 +737,8 @@ bool parse_base_offset(opt_ctx &ctx, Instruction* instr, unsigned op_index, Temp
    default:
       return false;
    }
+   if (prevent_overflow && !add_instr->definitions[0].isNUW())
+      return false;
 
    if (add_instr->usesModifiers())
       return false;
