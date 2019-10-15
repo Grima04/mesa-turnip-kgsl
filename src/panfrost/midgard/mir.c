@@ -396,6 +396,10 @@ mir_mask_of_read_components(midgard_instruction *ins, unsigned node)
                 if (ins->compact_branch && ins->writeout && (i == 0))
                         return 0xF;
 
+                /* Conditional branches read one component (TODO: multi branch??) */
+                if (ins->compact_branch && !ins->prepacked_branch && ins->branch.conditional && (i == 0))
+                        return 0x1;
+
                 /* ALU ops act componentwise so we need to pay attention to
                  * their mask. Texture/ldst does not so we don't clamp source
                  * readmasks based on the writemask */
