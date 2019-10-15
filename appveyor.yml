@@ -58,13 +58,13 @@ environment:
     path: C:\Python37-x64;C:\Python37-x64\Scripts;%path%
 
 install:
-- cmd: scripts\appveyor_msvc.bat install
+- cmd: .appveyor\appveyor_msvc.bat install
 
 build_script:
-- cmd: scripts\appveyor_msvc.bat build_script
+- cmd: .appveyor\appveyor_msvc.bat build_script
 
 test_script:
-- cmd: scripts\appveyor_msvc.bat test_script
+- cmd: .appveyor\appveyor_msvc.bat test_script
 
 # It's possible to setup notification here, as described in
 # http://www.appveyor.com/docs/notifications#appveyor-yml-configuration , but
