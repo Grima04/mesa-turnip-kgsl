@@ -40,6 +40,7 @@ files_libiris = files(
   'iris_perf.h',
   'iris_perf.c',
   'iris_monitor.c',
+  'iris_performance_query.c',
   'iris_pipe.h',
   'iris_pipe_control.c',
   'iris_program.c',
