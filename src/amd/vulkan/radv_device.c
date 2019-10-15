@@ -2049,12 +2049,9 @@ VkResult radv_CreateDevice(
 		device->empty_cs[family] = device->ws->cs_create(device->ws, family);
 		switch (family) {
 		case RADV_QUEUE_GENERAL:
-		      /* Since amdgpu version 3.6.0, CONTEXT_CONTROL is emitted by the kernel */
-			if (device->physical_device->rad_info.drm_minor < 6) {
-				radeon_emit(device->empty_cs[family], PKT3(PKT3_CONTEXT_CONTROL, 1, 0));
-				radeon_emit(device->empty_cs[family], CONTEXT_CONTROL_LOAD_ENABLE(1));
-				radeon_emit(device->empty_cs[family], CONTEXT_CONTROL_SHADOW_ENABLE(1));
-			}
+			radeon_emit(device->empty_cs[family], PKT3(PKT3_CONTEXT_CONTROL, 1, 0));
+			radeon_emit(device->empty_cs[family], CONTEXT_CONTROL_LOAD_ENABLE(1));
+			radeon_emit(device->empty_cs[family], CONTEXT_CONTROL_SHADOW_ENABLE(1));
 			break;
 		case RADV_QUEUE_COMPUTE:
 			radeon_emit(device->empty_cs[family], PKT3(PKT3_NOP, 0, 0));
