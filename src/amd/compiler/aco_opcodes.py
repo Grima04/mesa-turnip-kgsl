@@ -88,6 +88,7 @@ class Format(Enum):
       elif self == Format.MUBUF:
          return [('unsigned', 'offset', None),
                  ('bool', 'offen', None),
+                 ('bool', 'swizzled', 'false'),
                  ('bool', 'idxen', 'false'),
                  ('bool', 'addr64', 'false'),
                  ('bool', 'disable_wqm', 'false'),

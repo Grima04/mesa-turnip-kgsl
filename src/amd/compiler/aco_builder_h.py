@@ -552,8 +552,9 @@ formats = [("pseudo", [Format.PSEUDO], 'Pseudo_instruction', list(itertools.prod
            ("vopc_e64", [Format.VOPC, Format.VOP3A], 'VOP3A_instruction', itertools.product([1, 2], [2])),
            ("flat", [Format.FLAT], 'FLAT_instruction', [(0, 3), (1, 2)]),
            ("global", [Format.GLOBAL], 'FLAT_instruction', [(0, 3), (1, 2)])]
+formats = [(f if len(f) == 5 else f + ('',)) for f in formats]
 %>\\
-% for name, formats, struct, shapes in formats:
+% for name, formats, struct, shapes, extra_field_setup in formats:
     % for num_definitions, num_operands in shapes:
         <%
         args = ['aco_opcode opcode']
@@ -581,6 +582,7 @@ formats = [("pseudo", [Format.PSEUDO], 'Pseudo_instruction', list(itertools.prod
             % endfor
             ${f.get_builder_initialization(num_operands)}
         % endfor
+       ${extra_field_setup}
       return insert(instr);
    }
 

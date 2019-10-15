@@ -715,8 +715,11 @@ bool check_vop3_operands(opt_ctx& ctx, unsigned num_operands, Operand *operands)
    return true;
 }
 
-bool parse_base_offset(opt_ctx &ctx, Instruction* instr, unsigned op_index, Temp *base, uint32_t *offset)
+bool parse_base_offset(opt_ctx &ctx, Instruction* instr, unsigned op_index, Temp *base, uint32_t *offset, bool prevent_overflow)
 {
+   if (prevent_overflow)
+      return false; //TODO
+
    Operand op = instr->operands[op_index];
 
    if (!op.isTemp())
@@ -754,7 +757,7 @@ bool parse_base_offset(opt_ctx &ctx, Instruction* instr, unsigned op_index, Temp
          continue;
 
       uint32_t offset2 = 0;
-      if (parse_base_offset(ctx, add_instr, !i, base, &offset2)) {
+      if (parse_base_offset(ctx, add_instr, !i, base, &offset2, prevent_overflow)) {
          *offset += offset2;
       } else {
          *base = add_instr->operands[!i].getTemp();
@@ -927,6 +930,15 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
          while (info.is_temp())
             info = ctx.info[info.temp.id()];
 
+         /* According to AMDGPUDAGToDAGISel::SelectMUBUFScratchOffen(), vaddr
+          * overflow for scratch accesses works only on GFX9+ and saddr overflow
+          * never works. Since swizzling is the only thing that separates
+          * scratch accesses and other accesses and swizzling changing how
+          * addressing works significantly, this probably applies to swizzled
+          * MUBUF accesses. */
+         bool vaddr_prevent_overflow = mubuf->swizzled && ctx.program->chip_class < GFX9;
+         bool saddr_prevent_overflow = mubuf->swizzled;
+
          if (mubuf->offen && i == 1 && info.is_constant_or_literal(32) && mubuf->offset + info.val < 4096) {
             assert(!mubuf->idxen);
             instr->operands[1] = Operand(v1);
@@ -937,12 +949,14 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
             instr->operands[2] = Operand((uint32_t) 0);
             mubuf->offset += info.val;
             continue;
-         } else if (mubuf->offen && i == 1 && parse_base_offset(ctx, instr.get(), i, &base, &offset) && base.regClass() == v1 && mubuf->offset + offset < 4096) {
+         } else if (mubuf->offen && i == 1 && parse_base_offset(ctx, instr.get(), i, &base, &offset, vaddr_prevent_overflow) &&
+                    base.regClass() == v1 && mubuf->offset + offset < 4096) {
             assert(!mubuf->idxen);
             instr->operands[1].setTemp(base);
             mubuf->offset += offset;
             continue;
-         } else if (i == 2 && parse_base_offset(ctx, instr.get(), i, &base, &offset) && base.regClass() == s1 && mubuf->offset + offset < 4096) {
+         } else if (i == 2 && parse_base_offset(ctx, instr.get(), i, &base, &offset, saddr_prevent_overflow) &&
+                    base.regClass() == s1 && mubuf->offset + offset < 4096) {
             instr->operands[i].setTemp(base);
             mubuf->offset += offset;
             continue;
@@ -957,7 +971,7 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
          uint32_t offset;
          bool has_usable_ds_offset = ctx.program->chip_class >= GFX7;
          if (has_usable_ds_offset &&
-             i == 0 && parse_base_offset(ctx, instr.get(), i, &base, &offset) &&
+             i == 0 && parse_base_offset(ctx, instr.get(), i, &base, &offset, false) &&
              base.regClass() == instr->operands[i].regClass() &&
              instr->opcode != aco_opcode::ds_swizzle_b32) {
             if (instr->opcode == aco_opcode::ds_write2_b32 || instr->opcode == aco_opcode::ds_read2_b32 ||
@@ -993,7 +1007,7 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
               (ctx.program->chip_class >= GFX8 && info.val <= 0xFFFFF))) {
             instr->operands[i] = Operand(info.val);
             continue;
-         } else if (i == 1 && parse_base_offset(ctx, instr.get(), i, &base, &offset) && base.regClass() == s1 && offset <= 0xFFFFF && ctx.program->chip_class >= GFX9) {
+         } else if (i == 1 && parse_base_offset(ctx, instr.get(), i, &base, &offset, true) && base.regClass() == s1 && offset <= 0xFFFFF && ctx.program->chip_class >= GFX9) {
             bool soe = smem->operands.size() >= (!smem->definitions.empty() ? 3 : 4);
             if (soe &&
                 (!ctx.info[smem->operands.back().tempId()].is_constant_or_literal(32) ||

@@ -3539,6 +3539,7 @@ Temp mubuf_load_callback(Builder& bld, const LoadEmitInfo *info,
    mubuf->barrier = info->barrier;
    mubuf->can_reorder = info->can_reorder;
    mubuf->offset = const_offset;
+   mubuf->swizzled = info->swizzle_component_size != 0;
    RegClass rc = RegClass::get(RegType::vgpr, align(bytes_size, 4));
    Temp val = dst_hint.id() && rc == dst_hint.regClass() ? dst_hint : bld.tmp(rc);
    mubuf->definitions[0] = Definition(val);
@@ -3990,7 +3991,8 @@ inline unsigned resolve_excess_vmem_const_offset(Builder &bld, Temp &voffset, un
 }
 
 void emit_single_mubuf_store(isel_context *ctx, Temp descriptor, Temp voffset, Temp soffset, Temp vdata,
-                             unsigned const_offset = 0u, bool allow_reorder = true, bool slc = false)
+                             unsigned const_offset = 0u, bool allow_reorder = true, bool slc = false,
+                             bool swizzled = false)
 {
    assert(vdata.id());
    assert(vdata.size() != 3 || ctx->program->chip_class != GFX6);
@@ -4003,8 +4005,9 @@ void emit_single_mubuf_store(isel_context *ctx, Temp descriptor, Temp voffset, T
    Operand voffset_op = voffset.id() ? Operand(as_vgpr(ctx, voffset)) : Operand(v1);
    Operand soffset_op = soffset.id() ? Operand(soffset) : Operand(0u);
    Builder::Result r = bld.mubuf(op, Operand(descriptor), voffset_op, soffset_op, Operand(vdata), const_offset,
-                                 /* offen */ !voffset_op.isUndefined(), /* idxen*/ false, /* addr64 */ false,
-                                 /* disable_wqm */ false, /* glc */ true, /* dlc*/ false, /* slc */ slc);
+                                 /* offen */ !voffset_op.isUndefined(), /* swizzled */ swizzled,
+                                 /* idxen*/ false, /* addr64 */ false, /* disable_wqm */ false, /* glc */ true,
+                                 /* dlc*/ false, /* slc */ slc);
 
    static_cast<MUBUF_instruction *>(r.instr)->can_reorder = allow_reorder;
 }
@@ -4026,7 +4029,7 @@ void store_vmem_mubuf(isel_context *ctx, Temp src, Temp descriptor, Temp voffset
 
    for (unsigned i = 0; i < write_count; i++) {
       unsigned const_offset = offsets[i] + base_const_offset;
-      emit_single_mubuf_store(ctx, descriptor, voffset, soffset, write_datas[i], const_offset, reorder, slc);
+      emit_single_mubuf_store(ctx, descriptor, voffset, soffset, write_datas[i], const_offset, reorder, slc, !allow_combining);
    }
 }
 
@@ -4838,7 +4841,7 @@ void visit_load_input(isel_context *ctx, nir_intrinsic_instr *instr)
          if (use_mubuf) {
             Instruction *mubuf = bld.mubuf(opcode,
                                            Definition(fetch_dst), list, fetch_index, soffset,
-                                           fetch_offset, false, true).instr;
+                                           fetch_offset, false, false, true).instr;
             static_cast<MUBUF_instruction*>(mubuf)->can_reorder = true;
          } else {
             Instruction *mtbuf = bld.mtbuf(opcode,
@@ -6889,7 +6892,7 @@ void visit_store_scratch(isel_context *ctx, nir_intrinsic_instr *instr) {
 
    for (unsigned i = 0; i < write_count; i++) {
       aco_opcode op = get_buffer_store_op(false, write_datas[i].bytes());
-      bld.mubuf(op, rsrc, offset, ctx->program->scratch_offset, write_datas[i], offsets[i], true);
+      bld.mubuf(op, rsrc, offset, ctx->program->scratch_offset, write_datas[i], offsets[i], true, true);
    }
 }
 
@@ -10341,8 +10344,8 @@ static void write_tcs_tess_factors(isel_context *ctx)
       Temp control_word = bld.copy(bld.def(v1), Operand(0x80000000u));
       bld.mubuf(aco_opcode::buffer_store_dword,
                 /* SRSRC */ hs_ring_tess_factor, /* VADDR */ Operand(v1), /* SOFFSET */ tf_base, /* VDATA */ control_word,
-                /* immediate OFFSET */ 0, /* OFFEN */ false, /* idxen*/ false, /* addr64 */ false,
-                /* disable_wqm */ false, /* glc */ true);
+                /* immediate OFFSET */ 0, /* OFFEN */ false, /* swizzled */ false, /* idxen*/ false,
+                /* addr64 */ false, /* disable_wqm */ false, /* glc */ true);
       tf_const_offset += 4;
 
       begin_divergent_if_else(ctx, &ic_rel_patch_id_is_zero);

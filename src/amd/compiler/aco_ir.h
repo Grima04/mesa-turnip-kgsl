@@ -1078,7 +1078,8 @@ struct MUBUF_instruction : public Instruction {
    bool lds : 1; /* Return read-data to LDS instead of VGPRs */
    bool disable_wqm : 1; /* Require an exec mask without helper invocations */
    bool can_reorder : 1;
-   uint8_t padding : 2;
+   bool swizzled:1;
+   uint8_t padding : 1;
    barrier_interaction barrier;
 };
 static_assert(sizeof(MUBUF_instruction) == sizeof(Instruction) + 4, "Unexpected padding");
