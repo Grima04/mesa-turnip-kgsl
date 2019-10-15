@@ -1858,8 +1858,9 @@ isl_surf_get_ccs_surf(const struct isl_device *dev,
    if (surf->usage & ISL_SURF_USAGE_DISABLE_AUX_BIT)
       return false;
 
-   /* Callers don't yet support this configuration. */
-   if (isl_surf_usage_is_stencil(surf->usage))
+   /* Allow CCS for single-sampled stencil buffers Gen12+. */
+   if (isl_surf_usage_is_stencil(surf->usage) &&
+       (ISL_DEV_GEN(dev) < 12 || surf->samples > 1))
       return false;
 
    /* [TGL+] CCS can only be added to a non-D16-formatted depth buffer if it
