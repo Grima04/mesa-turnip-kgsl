@@ -57,7 +57,6 @@ struct isel_context {
    nir_shader *shader;
    uint32_t constant_data_offset;
    Block *block;
-   bool *divergent_vals;
    std::unique_ptr<Temp[]> allocated;
    std::unordered_map<unsigned, std::array<Temp,NIR_MAX_VEC_COMPONENTS>> allocated_vec;
    Stage stage; /* Stage */
@@ -152,7 +151,7 @@ unsigned get_interp_input(nir_intrinsic_op intrin, enum glsl_interp_mode interp)
  * block instead. This is so that we can use any SGPR live-out of the side
  * without the branch without creating a linear phi in the invert or merge block. */
 bool
-sanitize_if(nir_function_impl *impl, bool *divergent, nir_if *nif)
+sanitize_if(nir_function_impl *impl, nir_if *nif)
 {
    //TODO: skip this if the condition is uniform and there are no divergent breaks/continues?
 
@@ -197,7 +196,7 @@ sanitize_if(nir_function_impl *impl, bool *divergent, nir_if *nif)
 }
 
 bool
-sanitize_cf_list(nir_function_impl *impl, bool *divergent, struct exec_list *cf_list)
+sanitize_cf_list(nir_function_impl *impl, struct exec_list *cf_list)
 {
    bool progress = false;
    foreach_list_typed(nir_cf_node, cf_node, node, cf_list) {
@@ -206,14 +205,14 @@ sanitize_cf_list(nir_function_impl *impl, bool *divergent, struct exec_list *cf_
          break;
       case nir_cf_node_if: {
          nir_if *nif = nir_cf_node_as_if(cf_node);
-         progress |= sanitize_cf_list(impl, divergent, &nif->then_list);
-         progress |= sanitize_cf_list(impl, divergent, &nif->else_list);
-         progress |= sanitize_if(impl, divergent, nif);
+         progress |= sanitize_cf_list(impl, &nif->then_list);
+         progress |= sanitize_cf_list(impl, &nif->else_list);
+         progress |= sanitize_if(impl, nif);
          break;
       }
       case nir_cf_node_loop: {
          nir_loop *loop = nir_cf_node_as_loop(cf_node);
-         progress |= sanitize_cf_list(impl, divergent, &loop->body);
+         progress |= sanitize_cf_list(impl, &loop->body);
          break;
       }
       case nir_cf_node_function:
@@ -238,11 +237,11 @@ void init_context(isel_context *ctx, nir_shader *shader)
    unsigned lane_mask_size = ctx->program->lane_mask.size();
 
    ctx->shader = shader;
-   ctx->divergent_vals = nir_divergence_analysis(shader, nir_divergence_view_index_uniform);
+   nir_divergence_analysis(shader, nir_divergence_view_index_uniform);
 
    /* sanitize control flow */
    nir_metadata_require(impl, nir_metadata_dominance);
-   sanitize_cf_list(impl, ctx->divergent_vals, &impl->body);
+   sanitize_cf_list(impl, &impl->body);
    nir_metadata_preserve(impl, (nir_metadata)~nir_metadata_block_index);
 
    /* we'll need this for isel */
@@ -332,10 +331,10 @@ void init_context(isel_context *ctx, nir_shader *shader)
                   case nir_op_b2f16:
                   case nir_op_b2f32:
                   case nir_op_mov:
-                     type = ctx->divergent_vals[alu_instr->dest.dest.ssa.index] ? RegType::vgpr : RegType::sgpr;
+                     type = nir_dest_is_divergent(alu_instr->dest.dest) ? RegType::vgpr : RegType::sgpr;
                      break;
                   case nir_op_bcsel:
-                     type = ctx->divergent_vals[alu_instr->dest.dest.ssa.index] ? RegType::vgpr : RegType::sgpr;
+                     type = nir_dest_is_divergent(alu_instr->dest.dest) ? RegType::vgpr : RegType::sgpr;
                      /* fallthrough */
                   default:
                      for (unsigned i = 0; i < nir_op_infos[alu_instr->op].num_inputs; i++) {
@@ -465,7 +464,7 @@ void init_context(isel_context *ctx, nir_shader *shader)
                   case nir_intrinsic_load_global:
                   case nir_intrinsic_vulkan_resource_index:
                   case nir_intrinsic_load_shared:
-                     type = ctx->divergent_vals[intrinsic->dest.ssa.index] ? RegType::vgpr : RegType::sgpr;
+                     type = nir_dest_is_divergent(intrinsic->dest) ? RegType::vgpr : RegType::sgpr;
                      break;
                   case nir_intrinsic_load_view_index:
                      type = ctx->stage == fragment_fs ? RegType::vgpr : RegType::sgpr;
@@ -524,9 +523,10 @@ void init_context(isel_context *ctx, nir_shader *shader)
 
                if (tex->dest.ssa.bit_size == 64)
                   size *= 2;
-               if (tex->op == nir_texop_texture_samples)
-                  assert(!ctx->divergent_vals[tex->dest.ssa.index]);
-               if (ctx->divergent_vals[tex->dest.ssa.index])
+               if (tex->op == nir_texop_texture_samples) {
+                  assert(!tex->dest.ssa.divergent);
+               }
+               if (nir_dest_is_divergent(tex->dest))
                   allocated[tex->dest.ssa.index] = Temp(0, RegClass(RegType::vgpr, size));
                else
                   allocated[tex->dest.ssa.index] = Temp(0, RegClass(RegType::sgpr, size));
@@ -558,7 +558,7 @@ void init_context(isel_context *ctx, nir_shader *shader)
                   break;
                }
 
-               if (ctx->divergent_vals[phi->dest.ssa.index]) {
+               if (nir_dest_is_divergent(phi->dest)) {
                   type = RegType::vgpr;
                } else {
                   type = RegType::sgpr;

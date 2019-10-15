@@ -740,6 +740,12 @@ typedef struct nir_ssa_def {
 
    /* The bit-size of each channel; must be one of 8, 16, 32, or 64 */
    uint8_t bit_size;
+
+   /**
+    * True if this SSA value may have different values in different SIMD
+    * invocations of the shader.  This is set by nir_divergence_analysis.
+    */
+   bool divergent;
 } nir_ssa_def;
 
 struct nir_src;
@@ -880,6 +886,13 @@ nir_src_is_const(nir_src src)
           src.ssa->parent_instr->type == nir_instr_type_load_const;
 }
 
+static inline bool
+nir_src_is_divergent(nir_src src)
+{
+   assert(src.is_ssa);
+   return src.ssa->divergent;
+}
+
 static inline unsigned
 nir_dest_bit_size(nir_dest dest)
 {
@@ -890,6 +903,13 @@ static inline unsigned
 nir_dest_num_components(nir_dest dest)
 {
    return dest.is_ssa ? dest.ssa.num_components : dest.reg.reg->num_components;
+}
+
+static inline bool
+nir_dest_is_divergent(nir_dest dest)
+{
+   assert(dest.is_ssa);
+   return dest.ssa.divergent;
 }
 
 /* Are all components the same, ie. .xxxx */
@@ -4321,7 +4341,7 @@ bool nir_repair_ssa(nir_shader *shader);
 
 void nir_convert_loop_to_lcssa(nir_loop *loop);
 bool nir_convert_to_lcssa(nir_shader *shader, bool skip_invariants, bool skip_bool_invariants);
-bool* nir_divergence_analysis(nir_shader *shader, nir_divergence_options options);
+void nir_divergence_analysis(nir_shader *shader, nir_divergence_options options);
 
 /* If phi_webs_only is true, only convert SSA values involved in phi nodes to
  * registers.  If false, convert all values (even those not involved in a phi

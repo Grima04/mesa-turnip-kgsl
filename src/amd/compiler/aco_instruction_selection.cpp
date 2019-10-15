@@ -711,9 +711,8 @@ void emit_comparison(isel_context *ctx, nir_alu_instr *instr, Temp dst,
 {
    aco_opcode s_op = instr->src[0].src.ssa->bit_size == 64 ? s64_op : instr->src[0].src.ssa->bit_size == 32 ? s32_op : aco_opcode::num_opcodes;
    aco_opcode v_op = instr->src[0].src.ssa->bit_size == 64 ? v64_op : instr->src[0].src.ssa->bit_size == 32 ? v32_op : v16_op;
-   bool divergent_vals = ctx->divergent_vals[instr->dest.dest.ssa.index];
    bool use_valu = s_op == aco_opcode::num_opcodes ||
-                   divergent_vals ||
+                   nir_dest_is_divergent(instr->dest.dest) ||
                    ctx->allocated[instr->src[0].src.ssa->index].type() == RegType::vgpr ||
                    ctx->allocated[instr->src[1].src.ssa->index].type() == RegType::vgpr;
    aco_opcode op = use_valu ? v_op : s_op;
@@ -779,7 +778,7 @@ void emit_bcsel(isel_context *ctx, nir_alu_instr *instr, Temp dst)
       assert(els.regClass() == bld.lm);
    }
 
-   if (!ctx->divergent_vals[instr->src[0].src.ssa->index]) { /* uniform condition and values in sgpr */
+   if (!nir_src_is_divergent(instr->src[0].src)) { /* uniform condition and values in sgpr */
       if (dst.regClass() == s1 || dst.regClass() == s2) {
          assert((then.regClass() == s1 || then.regClass() == s2) && els.regClass() == then.regClass());
          assert(dst.size() == then.size());
@@ -5010,7 +5009,7 @@ void visit_load_resource(isel_context *ctx, nir_intrinsic_instr *instr)
 {
    Builder bld(ctx->program, ctx->block);
    Temp index = get_ssa_temp(ctx, instr->src[0].ssa);
-   if (!ctx->divergent_vals[instr->dest.ssa.index])
+   if (!nir_dest_is_divergent(instr->dest))
       index = bld.as_uniform(index);
    unsigned desc_set = nir_intrinsic_desc_set(instr);
    unsigned binding = nir_intrinsic_binding(instr);
@@ -6086,7 +6085,7 @@ void visit_store_ssbo(isel_context *ctx, nir_intrinsic_instr *instr)
    Temp rsrc = convert_pointer_to_64_bit(ctx, get_ssa_temp(ctx, instr->src[1].ssa));
    rsrc = bld.smem(aco_opcode::s_load_dwordx4, bld.def(s4), rsrc, Operand(0u));
 
-   bool smem = !ctx->divergent_vals[instr->src[2].ssa->index] &&
+   bool smem = !nir_src_is_divergent(instr->src[2]) &&
                ctx->options->chip_class >= GFX8 &&
                elem_size_bytes >= 4;
    if (smem)
@@ -7477,11 +7476,11 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
    case nir_intrinsic_shuffle:
    case nir_intrinsic_read_invocation: {
       Temp src = get_ssa_temp(ctx, instr->src[0].ssa);
-      if (!ctx->divergent_vals[instr->src[0].ssa->index]) {
+      if (!nir_src_is_divergent(instr->src[0])) {
          emit_uniform_subgroup(ctx, instr, src);
       } else {
          Temp tid = get_ssa_temp(ctx, instr->src[1].ssa);
-         if (instr->intrinsic == nir_intrinsic_read_invocation || !ctx->divergent_vals[instr->src[1].ssa->index])
+         if (instr->intrinsic == nir_intrinsic_read_invocation || !nir_src_is_divergent(instr->src[1]))
             tid = bld.as_uniform(tid);
          Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
          if (src.regClass() == v1) {
@@ -7587,7 +7586,7 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
          nir_intrinsic_cluster_size(instr) : 0;
       cluster_size = util_next_power_of_two(MIN2(cluster_size ? cluster_size : ctx->program->wave_size, ctx->program->wave_size));
 
-      if (!ctx->divergent_vals[instr->src[0].ssa->index] && (op == nir_op_ior || op == nir_op_iand)) {
+      if (!nir_src_is_divergent(instr->src[0]) && (op == nir_op_ior || op == nir_op_iand)) {
          emit_uniform_subgroup(ctx, instr, src);
       } else if (instr->dest.ssa.bit_size == 1) {
          if (op == nir_op_imul || op == nir_op_umin || op == nir_op_imin)
@@ -7670,7 +7669,7 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
    }
    case nir_intrinsic_quad_broadcast: {
       Temp src = get_ssa_temp(ctx, instr->src[0].ssa);
-      if (!ctx->divergent_vals[instr->dest.ssa.index]) {
+      if (!nir_dest_is_divergent(instr->dest)) {
          emit_uniform_subgroup(ctx, instr, src);
       } else {
          Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
@@ -7717,7 +7716,7 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
    case nir_intrinsic_quad_swap_diagonal:
    case nir_intrinsic_quad_swizzle_amd: {
       Temp src = get_ssa_temp(ctx, instr->src[0].ssa);
-      if (!ctx->divergent_vals[instr->dest.ssa.index]) {
+      if (!nir_dest_is_divergent(instr->dest)) {
          emit_uniform_subgroup(ctx, instr, src);
          break;
       }
@@ -7779,7 +7778,7 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
    }
    case nir_intrinsic_masked_swizzle_amd: {
       Temp src = get_ssa_temp(ctx, instr->src[0].ssa);
-      if (!ctx->divergent_vals[instr->dest.ssa.index]) {
+      if (!nir_dest_is_divergent(instr->dest)) {
          emit_uniform_subgroup(ctx, instr, src);
          break;
       }
@@ -8774,7 +8773,7 @@ void visit_phi(isel_context *ctx, nir_phi_instr *instr)
    Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
    assert(instr->dest.ssa.bit_size != 1 || dst.regClass() == ctx->program->lane_mask);
 
-   bool logical = !dst.is_linear() || ctx->divergent_vals[instr->dest.ssa.index];
+   bool logical = !dst.is_linear() || nir_dest_is_divergent(instr->dest);
    logical |= ctx->block->kind & block_kind_merge;
    aco_opcode opcode = logical ? aco_opcode::p_phi : aco_opcode::p_linear_phi;
 
@@ -9468,7 +9467,7 @@ static bool visit_if(isel_context *ctx, nir_if *if_stmt)
    aco_ptr<Pseudo_branch_instruction> branch;
    if_context ic;
 
-   if (!ctx->divergent_vals[if_stmt->condition.ssa->index]) { /* uniform condition */
+   if (!nir_src_is_divergent(if_stmt->condition)) { /* uniform condition */
       /**
        * Uniform conditionals are represented in the following way*) :
        *
@@ -10682,8 +10681,6 @@ void select_program(Program *program,
 
       if (ngg_no_gs && !ngg_early_prim_export(&ctx))
          ngg_emit_nogs_output(&ctx);
-
-      ralloc_free(ctx.divergent_vals);
 
       if (i == 0 && ctx.stage == vertex_tess_control_hs && ctx.tcs_in_out_eq) {
          /* Outputs of the previous stage are inputs to the next stage */
