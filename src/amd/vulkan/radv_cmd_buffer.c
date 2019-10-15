@@ -4319,10 +4319,10 @@ void radv_CmdBeginRenderPass(
 	radv_cmd_buffer_begin_subpass(cmd_buffer, 0);
 }
 
-void radv_CmdBeginRenderPass2KHR(
+void radv_CmdBeginRenderPass2(
     VkCommandBuffer                             commandBuffer,
     const VkRenderPassBeginInfo*                pRenderPassBeginInfo,
-    const VkSubpassBeginInfoKHR*                pSubpassBeginInfo)
+    const VkSubpassBeginInfo*                   pSubpassBeginInfo)
 {
 	radv_CmdBeginRenderPass(commandBuffer, pRenderPassBeginInfo,
 				pSubpassBeginInfo->contents);
@@ -4339,10 +4339,10 @@ void radv_CmdNextSubpass(
 	radv_cmd_buffer_begin_subpass(cmd_buffer, prev_subpass + 1);
 }
 
-void radv_CmdNextSubpass2KHR(
+void radv_CmdNextSubpass2(
     VkCommandBuffer                             commandBuffer,
-    const VkSubpassBeginInfoKHR*                pSubpassBeginInfo,
-    const VkSubpassEndInfoKHR*                  pSubpassEndInfo)
+    const VkSubpassBeginInfo*                   pSubpassBeginInfo,
+    const VkSubpassEndInfo*                     pSubpassEndInfo)
 {
 	radv_CmdNextSubpass(commandBuffer, pSubpassBeginInfo->contents);
 }
@@ -5181,9 +5181,9 @@ void radv_CmdEndRenderPass(
 	cmd_buffer->state.subpass_sample_locs = NULL;
 }
 
-void radv_CmdEndRenderPass2KHR(
+void radv_CmdEndRenderPass2(
     VkCommandBuffer                             commandBuffer,
-    const VkSubpassEndInfoKHR*                  pSubpassEndInfo)
+    const VkSubpassEndInfo*                     pSubpassEndInfo)
 {
 	radv_CmdEndRenderPass(commandBuffer);
 }

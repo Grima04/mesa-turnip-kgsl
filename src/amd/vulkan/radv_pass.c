@@ -30,7 +30,7 @@
 
 static void
 radv_render_pass_add_subpass_dep(struct radv_render_pass *pass,
-				 const VkSubpassDependency2KHR *dep)
+				 const VkSubpassDependency2 *dep)
 {
 	uint32_t src = dep->srcSubpass;
 	uint32_t dst = dep->dstSubpass;
@@ -315,8 +315,8 @@ VkResult radv_CreateRenderPass(
 	}
 
 	for (unsigned i = 0; i < pCreateInfo->dependencyCount; ++i) {
-		/* Convert to a Dependency2KHR */
-		struct VkSubpassDependency2KHR dep2 = {
+		/* Convert to a Dependency2 */
+		struct VkSubpassDependency2 dep2 = {
 			.srcSubpass       = pCreateInfo->pDependencies[i].srcSubpass,
 			.dstSubpass       = pCreateInfo->pDependencies[i].dstSubpass,
 			.srcStageMask     = pCreateInfo->pDependencies[i].srcStageMask,
@@ -336,7 +336,7 @@ VkResult radv_CreateRenderPass(
 }
 
 static unsigned
-radv_num_subpass_attachments2(const VkSubpassDescription2KHR *desc)
+radv_num_subpass_attachments2(const VkSubpassDescription2 *desc)
 {
 	const VkSubpassDescriptionDepthStencilResolveKHR *ds_resolve =
 		vk_find_struct_const(desc->pNext,
@@ -349,9 +349,9 @@ radv_num_subpass_attachments2(const VkSubpassDescription2KHR *desc)
 	       (ds_resolve && ds_resolve->pDepthStencilResolveAttachment);
 }
 
-VkResult radv_CreateRenderPass2KHR(
+VkResult radv_CreateRenderPass2(
     VkDevice                                    _device,
-    const VkRenderPassCreateInfo2KHR*           pCreateInfo,
+    const VkRenderPassCreateInfo2*              pCreateInfo,
     const VkAllocationCallbacks*                pAllocator,
     VkRenderPass*                               pRenderPass)
 {
@@ -360,7 +360,7 @@ VkResult radv_CreateRenderPass2KHR(
 	size_t size;
 	size_t attachments_offset;
 
-	assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO_2_KHR);
+	assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO_2);
 
 	size = sizeof(*pass);
 	size += pCreateInfo->subpassCount * sizeof(pass->subpasses[0]);
@@ -419,7 +419,7 @@ VkResult radv_CreateRenderPass2KHR(
 
 	p = pass->subpass_attachments;
 	for (uint32_t i = 0; i < pCreateInfo->subpassCount; i++) {
-		const VkSubpassDescription2KHR *desc = &pCreateInfo->pSubpasses[i];
+		const VkSubpassDescription2 *desc = &pCreateInfo->pSubpasses[i];
 		struct radv_subpass *subpass = &pass->subpasses[i];
 
 		subpass->input_count = desc->inputAttachmentCount;
