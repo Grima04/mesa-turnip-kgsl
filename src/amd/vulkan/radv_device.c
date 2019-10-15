@@ -1084,9 +1084,9 @@ void radv_GetPhysicalDeviceFeatures2(
 			features->hostQueryReset = true;
 			break;
 		}
-		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_8BIT_STORAGE_FEATURES_KHR: {
-			VkPhysicalDevice8BitStorageFeaturesKHR *features =
-			    (VkPhysicalDevice8BitStorageFeaturesKHR*)ext;
+		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_8BIT_STORAGE_FEATURES: {
+			VkPhysicalDevice8BitStorageFeatures *features =
+			    (VkPhysicalDevice8BitStorageFeatures *)ext;
 			bool enabled = pdevice->rad_info.chip_class >= GFX8 && !pdevice->use_aco;
 			features->storageBuffer8BitAccess = enabled;
 			features->uniformAndStorageBuffer8BitAccess = enabled;
