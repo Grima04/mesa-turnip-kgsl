@@ -619,10 +619,12 @@ radv_check_gpu_hangs(struct radv_queue *queue, struct radeon_cmdbuf *cs)
 
 	switch (ring) {
 	case RING_GFX:
+		fprintf(stderr, "RING_GFX:\n");
 		radv_dump_graphics_state(graphics_pipeline, compute_pipeline,
 					 stderr);
 		break;
 	case RING_COMPUTE:
+		fprintf(stderr, "RING_COMPUTE:\n");
 		radv_dump_compute_state(compute_pipeline, stderr);
 		break;
 	default:
