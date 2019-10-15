@@ -625,7 +625,8 @@ v3d_ioctl(int fd, unsigned long request, void *arg)
 static inline bool
 v3d_transform_feedback_enabled(struct v3d_context *v3d)
 {
-        return v3d->prog.bind_vs->num_tf_specs != 0 &&
+        return (v3d->prog.bind_vs->num_tf_specs != 0 ||
+                (v3d->prog.bind_gs && v3d->prog.bind_gs->num_tf_specs != 0)) &&
                v3d->active_queries;
 }
 
