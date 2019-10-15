@@ -62,9 +62,9 @@ midgard_opt_copy_prop(compiler_context *ctx, midgard_block *block)
                 mir_foreach_instr_global(ctx, q) {
                         bool is_tex = q->type == TAG_TEXTURE_4;
                         bool is_ldst = q->type == TAG_LOAD_STORE_4;
-                        bool is_writeout = q->compact_branch && q->writeout;
+                        bool is_branch = q->compact_branch;
 
-                        if (!(is_tex || is_ldst || is_writeout)) continue;
+                        if (!(is_tex || is_ldst || is_branch)) continue;
 
                         /* For textures, we get one real swizzle. For stores,
                          * we also get one. For loads, we get none. */
