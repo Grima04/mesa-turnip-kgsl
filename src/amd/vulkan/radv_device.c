@@ -1437,9 +1437,9 @@ void radv_GetPhysicalDeviceProperties2(
 			properties->maxMemoryAllocationSize = RADV_MAX_MEMORY_ALLOCATION_SIZE;
 			break;
 		}
-		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLER_FILTER_MINMAX_PROPERTIES_EXT: {
-			VkPhysicalDeviceSamplerFilterMinmaxPropertiesEXT *properties =
-				(VkPhysicalDeviceSamplerFilterMinmaxPropertiesEXT *)ext;
+		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLER_FILTER_MINMAX_PROPERTIES: {
+			VkPhysicalDeviceSamplerFilterMinmaxProperties *properties =
+				(VkPhysicalDeviceSamplerFilterMinmaxProperties *)ext;
 			/* GFX6-8 only support single channel min/max filter. */
 			properties->filterMinmaxImageComponentMapping = pdevice->rad_info.chip_class >= GFX9;
 			properties->filterMinmaxSingleComponentFormats = true;
@@ -6661,7 +6661,7 @@ radv_tex_aniso_filter(unsigned filter)
 }
 
 static unsigned
-radv_tex_filter_mode(VkSamplerReductionModeEXT mode)
+radv_tex_filter_mode(VkSamplerReductionMode mode)
 {
 	switch (mode) {
 	case VK_SAMPLER_REDUCTION_MODE_WEIGHTED_AVERAGE_EXT:
@@ -6702,9 +6702,9 @@ radv_init_sampler(struct radv_device *device,
 	unsigned filter_mode = V_008F30_SQ_IMG_FILTER_MODE_BLEND;
 	unsigned depth_compare_func = V_008F30_SQ_TEX_DEPTH_COMPARE_NEVER;
 
-	const struct VkSamplerReductionModeCreateInfoEXT *sampler_reduction =
+	const struct VkSamplerReductionModeCreateInfo *sampler_reduction =
 		vk_find_struct_const(pCreateInfo->pNext,
-				     SAMPLER_REDUCTION_MODE_CREATE_INFO_EXT);
+				     SAMPLER_REDUCTION_MODE_CREATE_INFO);
 	if (sampler_reduction)
 		filter_mode = radv_tex_filter_mode(sampler_reduction->reductionMode);
 
