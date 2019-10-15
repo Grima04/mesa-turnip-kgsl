@@ -3152,11 +3152,11 @@ radv_cmd_state_setup_attachments(struct radv_cmd_buffer *cmd_buffer,
 				 const VkRenderPassBeginInfo *info)
 {
 	struct radv_cmd_state *state = &cmd_buffer->state;
-	const struct VkRenderPassAttachmentBeginInfoKHR *attachment_info = NULL;
+	const struct VkRenderPassAttachmentBeginInfo *attachment_info = NULL;
 
 	if (info) {
 		attachment_info = vk_find_struct_const(info->pNext,
-		                                       RENDER_PASS_ATTACHMENT_BEGIN_INFO_KHR);
+		                                       RENDER_PASS_ATTACHMENT_BEGIN_INFO);
 	}
 
 

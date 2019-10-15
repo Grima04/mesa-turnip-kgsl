@@ -1146,9 +1146,9 @@ void radv_GetPhysicalDeviceFeatures2(
 			features->indexTypeUint8 = pdevice->rad_info.chip_class >= GFX8;
 			break;
 		}
-		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGELESS_FRAMEBUFFER_FEATURES_KHR: {
-			VkPhysicalDeviceImagelessFramebufferFeaturesKHR *features =
-				(VkPhysicalDeviceImagelessFramebufferFeaturesKHR *)ext;
+		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGELESS_FRAMEBUFFER_FEATURES: {
+			VkPhysicalDeviceImagelessFramebufferFeatures *features =
+				(VkPhysicalDeviceImagelessFramebufferFeatures *)ext;
 			features->imagelessFramebuffer = true;
 			break;
 		}
@@ -6498,9 +6498,9 @@ VkResult radv_CreateFramebuffer(
 {
 	RADV_FROM_HANDLE(radv_device, device, _device);
 	struct radv_framebuffer *framebuffer;
-	const VkFramebufferAttachmentsCreateInfoKHR *imageless_create_info =
+	const VkFramebufferAttachmentsCreateInfo *imageless_create_info =
 		vk_find_struct_const(pCreateInfo->pNext,
-			FRAMEBUFFER_ATTACHMENTS_CREATE_INFO_KHR);
+			FRAMEBUFFER_ATTACHMENTS_CREATE_INFO);
 
 	assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO);
 
@@ -6518,7 +6518,7 @@ VkResult radv_CreateFramebuffer(
 	framebuffer->layers = pCreateInfo->layers;
 	if (imageless_create_info) {
 		for (unsigned i = 0; i < imageless_create_info->attachmentImageInfoCount; ++i) {
-			const VkFramebufferAttachmentImageInfoKHR *attachment =
+			const VkFramebufferAttachmentImageInfo *attachment =
 				imageless_create_info->pAttachmentImageInfos + i;
 			framebuffer->width = MIN2(framebuffer->width, attachment->width);
 			framebuffer->height = MIN2(framebuffer->height, attachment->height);
