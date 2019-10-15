@@ -101,10 +101,10 @@ radv_use_tc_compat_htile_for_image(struct radv_device *device,
 		return false;
 
 	if (pCreateInfo->flags & VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT) {
-		const struct VkImageFormatListCreateInfoKHR *format_list =
-			(const struct  VkImageFormatListCreateInfoKHR *)
+		const struct VkImageFormatListCreateInfo *format_list =
+			(const struct  VkImageFormatListCreateInfo *)
 				vk_find_struct_const(pCreateInfo->pNext,
-						     IMAGE_FORMAT_LIST_CREATE_INFO_KHR);
+						     IMAGE_FORMAT_LIST_CREATE_INFO);
 
 		/* We have to ignore the existence of the list if viewFormatCount = 0 */
 		if (format_list && format_list->viewFormatCount) {
@@ -193,10 +193,10 @@ radv_use_dcc_for_image(struct radv_device *device,
 						     &blendable);
 
 	if (pCreateInfo->flags & VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT) {
-		const struct VkImageFormatListCreateInfoKHR *format_list =
-			(const struct  VkImageFormatListCreateInfoKHR *)
+		const struct VkImageFormatListCreateInfo *format_list =
+			(const struct  VkImageFormatListCreateInfo *)
 				vk_find_struct_const(pCreateInfo->pNext,
-						     IMAGE_FORMAT_LIST_CREATE_INFO_KHR);
+						     IMAGE_FORMAT_LIST_CREATE_INFO);
 
 		/* We have to ignore the existence of the list if viewFormatCount = 0 */
 		if (format_list && format_list->viewFormatCount) {
