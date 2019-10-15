@@ -87,18 +87,13 @@ midgard_promote_uniforms(compiler_context *ctx, unsigned promoted_count)
                 bool needs_move = ins->dest & IS_REG;
                 needs_move |= mir_special_index(ctx, ins->dest);
 
-                /* Ensure this is a contiguous X-bound mask. It should be since
-                 * we haven't done RA and per-component masked UBO reads don't
-                 * make much sense. */
-
-                assert(((ins->mask + 1) & ins->mask) == 0);
-
                 /* Check the component count from the mask so we can setup a
                  * swizzle appropriately when promoting. The idea is to ensure
                  * the component count is preserved so RA can be smarter if we
                  * need to spill */
 
-                unsigned nr_components = util_bitcount(ins->mask);
+                unsigned mask = ins->mask;
+                unsigned nr_components = sizeof(mask)*8 - __builtin_clz(mask);
 
                 if (needs_move) {
                         midgard_instruction mov = v_mov(promoted, blank_alu_src, ins->dest);
