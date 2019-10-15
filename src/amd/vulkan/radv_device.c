@@ -1100,9 +1100,9 @@ void radv_GetPhysicalDeviceFeatures2(
 			features->shaderInt8 = !pdevice->use_aco;
 			break;
 		}
-		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_INT64_FEATURES_KHR: {
-			VkPhysicalDeviceShaderAtomicInt64FeaturesKHR *features =
-				(VkPhysicalDeviceShaderAtomicInt64FeaturesKHR *)ext;
+		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_INT64_FEATURES: {
+			VkPhysicalDeviceShaderAtomicInt64Features *features =
+				(VkPhysicalDeviceShaderAtomicInt64Features *)ext;
 			features->shaderBufferInt64Atomics = LLVM_VERSION_MAJOR >= 9;
 			features->shaderSharedInt64Atomics = LLVM_VERSION_MAJOR >= 9;
 			break;
