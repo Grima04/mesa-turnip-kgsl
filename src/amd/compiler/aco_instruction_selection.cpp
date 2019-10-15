@@ -2524,7 +2524,13 @@ void visit_store_fs_output(isel_context *ctx, nir_intrinsic_instr *instr)
       break;
 
    case V_028714_SPI_SHADER_32_AR:
-      enabled_channels = 0x9;
+      if (ctx->options->chip_class >= GFX10) {
+         /* Special case: on GFX10, the outputs are different for 32_AR */
+         enabled_channels = 0x3;
+         values[1] = values[3];
+      } else {
+         enabled_channels = 0x9;
+      }
       break;
 
    case V_028714_SPI_SHADER_FP16_ABGR:
