@@ -553,8 +553,6 @@ v3d_emit_gl_shader_state(struct v3d_context *v3d,
         v3d_bo_unreference(&cs_uniforms.bo);
         v3d_bo_unreference(&vs_uniforms.bo);
         v3d_bo_unreference(&fs_uniforms.bo);
-
-        job->shader_rec_count++;
 }
 
 /**

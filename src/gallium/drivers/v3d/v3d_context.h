@@ -309,7 +309,6 @@ struct v3d_job {
         struct v3d_cl indirect;
         struct v3d_bo *tile_alloc;
         struct v3d_bo *tile_state;
-        uint32_t shader_rec_count;
 
         struct drm_v3d_submit_cl submit;
 
