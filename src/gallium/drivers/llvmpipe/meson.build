@@ -109,7 +109,7 @@ libllvmpipe = static_library(
 driver_swrast = declare_dependency(
   compile_args : '-DGALLIUM_LLVMPIPE',
   link_with : libllvmpipe,
-  dependencies : driver_swrast,
+  dependencies : [driver_swrast, dep_llvm],
 )
 
 if with_tests and with_gallium_softpipe and with_llvm
