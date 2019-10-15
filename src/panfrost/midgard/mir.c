@@ -76,6 +76,12 @@ mir_get_swizzle(midgard_instruction *ins, unsigned idx)
                         case midgard_op_ld_cubemap_coords:
                                 components = 3;
                                 break;
+                        case midgard_op_ldst_perspective_division_z:
+                                components = 3;
+                                break;
+                        case midgard_op_ldst_perspective_division_w:
+                                components = 4;
+                                break;
                         default:
                                 components = 1;
                                 break;
