@@ -604,6 +604,8 @@ radv_check_gpu_hangs(struct radv_queue *queue, struct radeon_cmdbuf *cs)
 	graphics_pipeline = radv_get_saved_graphics_pipeline(device);
 	compute_pipeline = radv_get_saved_compute_pipeline(device);
 
+	radv_dump_trace(queue->device, cs);
+
 	fprintf(stderr, "GPU hang report:\n\n");
 	radv_dump_device_name(device, stderr);
 
@@ -632,7 +634,6 @@ radv_check_gpu_hangs(struct radv_queue *queue, struct radeon_cmdbuf *cs)
 		break;
 	}
 
-	radv_dump_trace(queue->device, cs);
 	abort();
 }
 
