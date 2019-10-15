@@ -147,6 +147,7 @@ files_libglsl = files(
   'lower_blend_equation_advanced.cpp',
   'lower_buffer_access.cpp',
   'lower_buffer_access.h',
+  'lower_builtins.cpp',
   'lower_const_arrays_to_uniforms.cpp',
   'lower_cs_derived.cpp',
   'lower_discard.cpp',
