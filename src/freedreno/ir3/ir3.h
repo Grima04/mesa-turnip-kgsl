@@ -646,13 +646,19 @@ static inline bool is_same_type_mov(struct ir3_instruction *instr)
 	case OPC_MOV:
 		if (instr->cat1.src_type != instr->cat1.dst_type)
 			return false;
+		/* If the type of dest reg and src reg are different,
+		 * it shouldn't be considered as same type mov
+		 */
+		if (!is_same_type_reg(instr->regs[0], instr->regs[1]))
+			return false;
 		break;
 	case OPC_ABSNEG_F:
 	case OPC_ABSNEG_S:
 		if (instr->flags & IR3_INSTR_SAT)
 			return false;
 		/* If the type of dest reg and src reg are different,
-		 * it shouldn't be considered as same type mov */
+		 * it shouldn't be considered as same type mov
+		 */
 		if (!is_same_type_reg(instr->regs[0], instr->regs[1]))
 			return false;
 		break;
