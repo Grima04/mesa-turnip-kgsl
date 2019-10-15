@@ -193,9 +193,10 @@ radv_dump_combined_image_sampler_descriptor(enum chip_class chip_class,
 }
 
 static void
-radv_dump_descriptor_set(enum chip_class chip_class,
+radv_dump_descriptor_set(struct radv_device *device,
 			 struct radv_descriptor_set *set, unsigned id, FILE *f)
 {
+	enum chip_class chip_class = device->physical_device->rad_info.chip_class;
 	const struct radv_descriptor_set_layout *layout;
 	int i;
 
@@ -239,10 +240,8 @@ radv_dump_descriptor_set(enum chip_class chip_class,
 }
 
 static void
-radv_dump_descriptors(struct radv_pipeline *pipeline, FILE *f)
+radv_dump_descriptors(struct radv_device *device, FILE *f)
 {
-	struct radv_device *device = pipeline->device;
-	enum chip_class chip_class = device->physical_device->rad_info.chip_class;
 	uint64_t *ptr = (uint64_t *)device->trace_id_ptr;
 	int i;
 
@@ -251,7 +250,7 @@ radv_dump_descriptors(struct radv_pipeline *pipeline, FILE *f)
 		struct radv_descriptor_set *set =
 			(struct radv_descriptor_set *)ptr[i + 3];
 
-		radv_dump_descriptor_set(chip_class, set, i, f);
+		radv_dump_descriptor_set(device, set, i, f);
 	}
 }
 
@@ -458,11 +457,11 @@ radv_dump_pipeline_state(struct radv_pipeline *pipeline,
 {
 	radv_dump_shaders(pipeline, active_stages, f);
 	radv_dump_annotated_shaders(pipeline, active_stages, f);
-	radv_dump_descriptors(pipeline, f);
 }
 
 static void
-radv_dump_graphics_state(struct radv_pipeline *graphics_pipeline,
+radv_dump_graphics_state(struct radv_device *device,
+			 struct radv_pipeline *graphics_pipeline,
 			 struct radv_pipeline *compute_pipeline, FILE *f)
 {
 	VkShaderStageFlagBits active_stages;
@@ -476,10 +475,13 @@ radv_dump_graphics_state(struct radv_pipeline *graphics_pipeline,
 		active_stages = VK_SHADER_STAGE_COMPUTE_BIT;
 		radv_dump_pipeline_state(compute_pipeline, active_stages, f);
 	}
+
+	radv_dump_descriptors(device, f);
 }
 
 static void
-radv_dump_compute_state(struct radv_pipeline *compute_pipeline, FILE *f)
+radv_dump_compute_state(struct radv_device *device,
+			struct radv_pipeline *compute_pipeline, FILE *f)
 {
 	VkShaderStageFlagBits active_stages = VK_SHADER_STAGE_COMPUTE_BIT;
 
@@ -487,6 +489,7 @@ radv_dump_compute_state(struct radv_pipeline *compute_pipeline, FILE *f)
 		return;
 
 	radv_dump_pipeline_state(compute_pipeline, active_stages, f);
+	radv_dump_descriptors(device, f);
 }
 
 static struct radv_pipeline *
@@ -622,12 +625,14 @@ radv_check_gpu_hangs(struct radv_queue *queue, struct radeon_cmdbuf *cs)
 	switch (ring) {
 	case RING_GFX:
 		fprintf(stderr, "RING_GFX:\n");
-		radv_dump_graphics_state(graphics_pipeline, compute_pipeline,
+		radv_dump_graphics_state(queue->device,
+					 graphics_pipeline, compute_pipeline,
 					 stderr);
 		break;
 	case RING_COMPUTE:
 		fprintf(stderr, "RING_COMPUTE:\n");
-		radv_dump_compute_state(compute_pipeline, stderr);
+		radv_dump_compute_state(queue->device,
+					compute_pipeline, stderr);
 		break;
 	default:
 		assert(0);
