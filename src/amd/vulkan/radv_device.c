@@ -1044,9 +1044,9 @@ void radv_GetPhysicalDeviceFeatures2(
 			features->geometryStreams = !pdevice->use_ngg_streamout;
 			break;
 		}
-		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCALAR_BLOCK_LAYOUT_FEATURES_EXT: {
-			VkPhysicalDeviceScalarBlockLayoutFeaturesEXT *features =
-				(VkPhysicalDeviceScalarBlockLayoutFeaturesEXT *)ext;
+		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCALAR_BLOCK_LAYOUT_FEATURES: {
+			VkPhysicalDeviceScalarBlockLayoutFeatures *features =
+				(VkPhysicalDeviceScalarBlockLayoutFeatures *)ext;
 			features->scalarBlockLayout = pdevice->rad_info.chip_class >= GFX7;
 			break;
 		}
