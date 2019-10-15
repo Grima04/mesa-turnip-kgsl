@@ -718,6 +718,12 @@ typedef struct nir_register {
    /* The bit-size of each channel; must be one of 8, 16, 32, or 64 */
    uint8_t bit_size;
 
+   /**
+    * True if this register may have different values in different SIMD
+    * invocations of the shader.
+    */
+   bool divergent;
+
    /** generic register index. */
    unsigned index;
 
@@ -967,8 +973,7 @@ nir_src_is_const(nir_src src)
 static inline bool
 nir_src_is_divergent(nir_src src)
 {
-   assert(src.is_ssa);
-   return src.ssa->divergent;
+   return src.is_ssa ? src.ssa->divergent : src.reg.reg->divergent;
 }
 
 static inline unsigned
@@ -986,8 +991,7 @@ nir_dest_num_components(nir_dest dest)
 static inline bool
 nir_dest_is_divergent(nir_dest dest)
 {
-   assert(dest.is_ssa);
-   return dest.ssa.divergent;
+   return dest.is_ssa ? dest.ssa.divergent : dest.reg.reg->divergent;
 }
 
 /* Are all components the same, ie. .xxxx */
