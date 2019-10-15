@@ -541,9 +541,10 @@ RegisterDemand init_live_in_vars(spill_ctx& ctx, Block* block, unsigned block_id
       bool spill = true;
 
       for (unsigned i = 0; i < phi->operands.size(); i++) {
-         if (!phi->operands[i].isTemp())
-            spill = false;
-         else if (ctx.spills_exit[preds[i]].find(phi->operands[i].getTemp()) == ctx.spills_exit[preds[i]].end())
+         if (phi->operands[i].isUndefined())
+            continue;
+         assert(phi->operands[i].isTemp());
+         if (ctx.spills_exit[preds[i]].find(phi->operands[i].getTemp()) == ctx.spills_exit[preds[i]].end())
             spill = false;
          else
             partial_spills.insert(phi->definitions[0].getTemp());
@@ -720,43 +721,23 @@ void add_coupling_code(spill_ctx& ctx, Block* block, unsigned block_idx)
       uint32_t def_spill_id = ctx.spills_entry[block_idx][phi->definitions[0].getTemp()];
 
       for (unsigned i = 0; i < phi->operands.size(); i++) {
+         if (phi->operands[i].isUndefined())
+            continue;
+
          unsigned pred_idx = preds[i];
-
-         /* we have to spill constants to the same memory address */
-         if (phi->operands[i].isConstant()) {
-            uint32_t spill_id = ctx.allocate_spill_id(phi->definitions[0].regClass());
-            for (std::pair<Temp, uint32_t> pair : ctx.spills_exit[pred_idx]) {
-               ctx.interferences[def_spill_id].second.emplace(pair.second);
-               ctx.interferences[pair.second].second.emplace(def_spill_id);
-            }
-            ctx.affinities.emplace_back(std::pair<uint32_t, uint32_t>{def_spill_id, spill_id});
-
-            aco_ptr<Pseudo_instruction> spill{create_instruction<Pseudo_instruction>(aco_opcode::p_spill, Format::PSEUDO, 2, 0)};
-            spill->operands[0] = phi->operands[i];
-            spill->operands[1] = Operand(spill_id);
-            Block& pred = ctx.program->blocks[pred_idx];
-            unsigned idx = pred.instructions.size();
-            do {
-               assert(idx != 0);
-               idx--;
-            } while (phi->opcode == aco_opcode::p_phi && pred.instructions[idx]->opcode != aco_opcode::p_logical_end);
-            std::vector<aco_ptr<Instruction>>::iterator it = std::next(pred.instructions.begin(), idx);
-            pred.instructions.insert(it, std::move(spill));
-            continue;
-         }
-         if (!phi->operands[i].isTemp())
-            continue;
+         assert(phi->operands[i].isTemp() && phi->operands[i].isKill());
+         Temp var = phi->operands[i].getTemp();
 
          /* build interferences between the phi def and all spilled variables at the predecessor blocks */
          for (std::pair<Temp, uint32_t> pair : ctx.spills_exit[pred_idx]) {
-            if (phi->operands[i].getTemp() == pair.first)
+            if (var == pair.first)
                continue;
             ctx.interferences[def_spill_id].second.emplace(pair.second);
             ctx.interferences[pair.second].second.emplace(def_spill_id);
          }
 
-         /* variable is already spilled at predecessor */
-         std::map<Temp, uint32_t>::iterator spilled = ctx.spills_exit[pred_idx].find(phi->operands[i].getTemp());
+         /* check if variable is already spilled at predecessor */
+         std::map<Temp, uint32_t>::iterator spilled = ctx.spills_exit[pred_idx].find(var);
          if (spilled != ctx.spills_exit[pred_idx].end()) {
             if (spilled->second != def_spill_id)
                ctx.affinities.emplace_back(std::pair<uint32_t, uint32_t>{def_spill_id, spilled->second});
@@ -764,7 +745,6 @@ void add_coupling_code(spill_ctx& ctx, Block* block, unsigned block_idx)
          }
 
          /* rename if necessary */
-         Temp var = phi->operands[i].getTemp();
          std::map<Temp, Temp>::iterator rename_it = ctx.renames[pred_idx].find(var);
          if (rename_it != ctx.renames[pred_idx].end()) {
             var = rename_it->second;
@@ -813,7 +793,7 @@ void add_coupling_code(spill_ctx& ctx, Block* block, unsigned block_idx)
             continue;
          }
 
-         /* variable is dead at predecessor, it must be from a phi: this works because of CSSA form */ // FIXME: lower_to_cssa()
+         /* variable is dead at predecessor, it must be from a phi: this works because of CSSA form */
          if (ctx.next_use_distances_end[pred_idx].find(pair.first) == ctx.next_use_distances_end[pred_idx].end())
             continue;
 
@@ -1566,6 +1546,9 @@ void spill(Program* program, live& live_vars, const struct radv_nir_compiler_opt
    /* no spilling when wave count is already high */
    if (program->num_waves >= 6)
       return;
+
+   /* lower to CSSA before spilling to ensure correctness w.r.t. phis */
+   lower_to_cssa(program, live_vars, options);
 
    /* else, we check if we can improve things a bit */
 
