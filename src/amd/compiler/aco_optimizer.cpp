@@ -703,6 +703,8 @@ void label_instruction(opt_ctx &ctx, aco_ptr<Instruction>& instr)
                new_instr->operands.back() = Operand(base);
                if (!smem->definitions.empty())
                   new_instr->definitions[0] = smem->definitions[0];
+               new_instr->can_reorder = smem->can_reorder;
+               new_instr->barrier = smem->barrier;
                instr.reset(new_instr);
                smem = static_cast<SMEM_instruction *>(instr.get());
             }
