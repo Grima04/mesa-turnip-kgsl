@@ -1078,9 +1078,9 @@ void radv_GetPhysicalDeviceFeatures2(
 			features->depthClipEnable = true;
 			break;
 		}
-		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES_EXT: {
-			VkPhysicalDeviceHostQueryResetFeaturesEXT *features =
-				(VkPhysicalDeviceHostQueryResetFeaturesEXT *)ext;
+		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES: {
+			VkPhysicalDeviceHostQueryResetFeatures *features =
+				(VkPhysicalDeviceHostQueryResetFeatures *)ext;
 			features->hostQueryReset = true;
 			break;
 		}
