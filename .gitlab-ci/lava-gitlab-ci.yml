@@ -10,6 +10,7 @@
     - >
       artifacts/generate_lava.py \
         --template artifacts/lava-deqp.yml.jinja2 \
+        --pipeline-info "$CI_PIPELINE_URL on $CI_COMMIT_REF_NAME ${CI_NODE_INDEX}/${CI_NODE_TOTAL}" \
         --base-artifacts-url $CI_PROJECT_URL/-/jobs/$BUILD_JOB_ID/artifacts/raw/artifacts \
         --device-type ${DEVICE_TYPE} \
         --env-vars "${ENV_VARS}" \

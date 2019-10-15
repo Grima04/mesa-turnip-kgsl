@@ -6,6 +6,7 @@ import os
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--template")
+parser.add_argument("--pipeline-info")
 parser.add_argument("--base-artifacts-url")
 parser.add_argument("--device-type")
 parser.add_argument("--kernel-image-name")
@@ -24,6 +25,7 @@ env = Environment(loader = FileSystemLoader(os.path.dirname(args.template)), tri
 template = env.get_template(os.path.basename(args.template))
 
 values = {}
+values['pipeline_info'] = args.pipeline_info
 values['base_artifacts_url'] = args.base_artifacts_url
 values['device_type'] = args.device_type
 values['kernel_image_name'] = args.kernel_image_name
