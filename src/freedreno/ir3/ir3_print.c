@@ -116,6 +116,8 @@ static void print_reg_name(struct ir3_register *reg)
 		}
 		printf("]");
 	} else if (reg->flags & IR3_REG_SSA) {
+		if (reg->flags & IR3_REG_HIGH)
+			printf("H");
 		printf("_[");
 		print_instr_name(reg->instr);
 		printf("]");
