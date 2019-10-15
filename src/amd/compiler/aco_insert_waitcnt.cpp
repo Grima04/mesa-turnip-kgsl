@@ -680,7 +680,7 @@ void handle_block(Program *program, Block& block, wait_ctx& ctx)
    /* check if this block is at the end of a loop */
    for (unsigned succ_idx : block.linear_succs) {
       /* eliminate any remaining counters */
-      if (succ_idx <= block.index && (ctx.vm_cnt || ctx.exp_cnt || ctx.lgkm_cnt || ctx.vs_cnt) && !ctx.gpr_map.empty()) {
+      if (succ_idx <= block.index && (ctx.vm_cnt || ctx.exp_cnt || ctx.lgkm_cnt || ctx.vs_cnt)) {
          // TODO: we could do better if we only wait if the regs between the block and other predecessors differ
 
          aco_ptr<Instruction> branch = std::move(new_instructions.back());
