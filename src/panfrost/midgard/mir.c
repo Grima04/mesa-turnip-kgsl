@@ -411,19 +411,19 @@ mir_mask_of_read_components(midgard_instruction *ins, unsigned node)
                  * readmasks based on the writemask */
                 unsigned qmask = (ins->type == TAG_ALU_4) ? ins->mask : 0xF;
 
-                unsigned swizzle = mir_get_swizzle(ins, i);
-                unsigned m = mir_mask_of_read_components_single(swizzle, qmask);
-
                 /* Handle dot products and things */
                 if (ins->type == TAG_ALU_4 && !ins->compact_branch) {
                         unsigned channel_override =
                                 GET_CHANNEL_COUNT(alu_opcode_props[ins->alu.op].props);
 
                         if (channel_override)
-                                m = mask_of(channel_override);
+                                qmask = mask_of(channel_override);
                 }
 
-                mask |= m;
+                unsigned swizzle = mir_get_swizzle(ins, i);
+                unsigned m = mir_mask_of_read_components_single(swizzle, qmask);
+
+               mask |= m;
         }
 
         return mask;
