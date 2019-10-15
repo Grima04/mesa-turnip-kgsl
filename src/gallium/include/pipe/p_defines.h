@@ -1246,6 +1246,29 @@ enum pipe_debug_type
    PIPE_DEBUG_TYPE_CONFORMANCE,
 };
 
+/**
+ * counter type and counter data type enums used by INTEL_performance_query
+ * APIs in gallium drivers.
+ */
+enum pipe_perf_counter_type
+{
+   PIPE_PERF_COUNTER_TYPE_EVENT,
+   PIPE_PERF_COUNTER_TYPE_DURATION_NORM,
+   PIPE_PERF_COUNTER_TYPE_DURATION_RAW,
+   PIPE_PERF_COUNTER_TYPE_THROUGHPUT,
+   PIPE_PERF_COUNTER_TYPE_RAW,
+   PIPE_PERF_COUNTER_TYPE_TIMESTAMP,
+};
+
+enum pipe_perf_counter_data_type
+{
+   PIPE_PERF_COUNTER_DATA_TYPE_BOOL32,
+   PIPE_PERF_COUNTER_DATA_TYPE_UINT32,
+   PIPE_PERF_COUNTER_DATA_TYPE_UINT64,
+   PIPE_PERF_COUNTER_DATA_TYPE_FLOAT,
+   PIPE_PERF_COUNTER_DATA_TYPE_DOUBLE,
+};
+
 #define PIPE_UUID_SIZE 16
 
 #ifdef __cplusplus

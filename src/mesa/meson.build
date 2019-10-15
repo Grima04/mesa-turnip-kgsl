@@ -527,6 +527,8 @@ files_libmesa_gallium = files(
   'state_tracker/st_cb_msaa.h',
   'state_tracker/st_cb_perfmon.c',
   'state_tracker/st_cb_perfmon.h',
+  'state_tracker/st_cb_perfquery.c',
+  'state_tracker/st_cb_perfquery.h',
   'state_tracker/st_cb_program.c',
   'state_tracker/st_cb_program.h',
   'state_tracker/st_cb_queryobj.c',
