@@ -101,6 +101,9 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
         case PIPE_CAP_MAX_RENDER_TARGETS:
                 return is_deqp ? 4 : 1;
 
+        /* Throttling frames breaks pipelining */
+        case PIPE_CAP_THROTTLE:
+                return 0;
 
         case PIPE_CAP_OCCLUSION_QUERY:
                 return 1;
