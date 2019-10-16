@@ -47,6 +47,9 @@
 
 #include <llvm/Config/llvm-config.h>
 
+static struct pipe_context *si_create_context(struct pipe_screen *screen,
+                                              unsigned flags);
+
 static const struct debug_named_value debug_options[] = {
 	/* Shader logging options: */
 	{ "vs", DBG(VS), "Print vertex shaders" },
@@ -312,11 +315,30 @@ static void si_destroy_context(struct pipe_context *context)
 static enum pipe_reset_status si_get_reset_status(struct pipe_context *ctx)
 {
 	struct si_context *sctx = (struct si_context *)ctx;
+	struct si_screen *sscreen = sctx->screen;
 	enum pipe_reset_status status = sctx->ws->ctx_query_reset_status(sctx->ctx);
 
-	if (status != PIPE_NO_RESET && sctx->device_reset_callback.reset) {
-		sctx->device_reset_callback.reset(sctx->device_reset_callback.data,
-						  status);
+	if (status != PIPE_NO_RESET) {
+		/* Call the state tracker to set a no-op API dispatch. */
+		if (sctx->device_reset_callback.reset) {
+			sctx->device_reset_callback.reset(sctx->device_reset_callback.data,
+							  status);
+		}
+
+		/* Re-create the auxiliary context, because it won't submit
+		 * any new IBs due to a GPU reset.
+		 */
+		simple_mtx_lock(&sscreen->aux_context_lock);
+
+		struct u_log_context *aux_log = ((struct si_context *)sscreen->aux_context)->log;
+		sscreen->aux_context->set_log_context(sscreen->aux_context, NULL);
+		sscreen->aux_context->destroy(sscreen->aux_context);
+
+		sscreen->aux_context = si_create_context(&sscreen->b,
+			(sscreen->options.aux_debug ? PIPE_CONTEXT_DEBUG : 0) |
+			(sscreen->info.has_graphics ? 0 : PIPE_CONTEXT_COMPUTE_ONLY));
+		sscreen->aux_context->set_log_context(sscreen->aux_context, aux_log);
+		simple_mtx_unlock(&sscreen->aux_context_lock);
 	}
 	return status;
 }
