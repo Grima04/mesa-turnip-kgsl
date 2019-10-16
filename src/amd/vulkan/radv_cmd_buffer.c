@@ -2963,7 +2963,7 @@ static void radv_handle_subpass_image_transition(struct radv_cmd_buffer *cmd_buf
 	struct radv_image_view *view = cmd_buffer->state.attachments[idx].iview;
 	struct radv_sample_locations_state *sample_locs;
 	VkImageSubresourceRange range;
-	range.aspectMask = 0;
+	range.aspectMask = view->aspect_mask;
 	range.baseMipLevel = view->base_mip;
 	range.levelCount = 1;
 	range.baseArrayLayer = view->base_layer;
