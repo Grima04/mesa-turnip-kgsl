@@ -162,24 +162,6 @@ struct st_fp_variant
 };
 
 
-/**
- * Derived from Mesa gl_program:
- */
-struct st_fragment_program
-{
-   struct gl_program Base;
-   struct pipe_shader_state state;
-   struct glsl_to_tgsi_visitor* glsl_to_tgsi;
-   struct ati_fragment_shader *ati_fs;
-   uint64_t affected_states; /**< ST_NEW_* flags to mark dirty when binding */
-
-   /* used when bypassing glsl_to_tgsi: */
-   struct gl_shader_program *shader_program;
-
-   struct st_fp_variant *variants;
-};
-
-
 /** Shader key shared by other shaders */
 struct st_common_variant_key
 {
@@ -285,20 +267,17 @@ struct st_common_program
    struct gl_program Base;
    struct pipe_shader_state state;
    struct glsl_to_tgsi_visitor* glsl_to_tgsi;
+   struct ati_fragment_shader *ati_fs;
    uint64_t affected_states; /**< ST_NEW_* flags to mark dirty when binding */
 
   /* used when bypassing glsl_to_tgsi: */
    struct gl_shader_program *shader_program;
 
-   struct st_common_variant *variants;
+   union {
+      struct st_common_variant *variants;
+      struct st_fp_variant *fp_variants;
+   };
 };
-
-
-static inline struct st_fragment_program *
-st_fragment_program( struct gl_program *fp )
-{
-   return (struct st_fragment_program *)fp;
-}
 
 
 static inline struct st_vertex_program *
@@ -317,16 +296,6 @@ static inline void
 st_reference_vertprog(struct st_context *st,
                       struct st_vertex_program **ptr,
                       struct st_vertex_program *prog)
-{
-   _mesa_reference_program(st->ctx,
-                           (struct gl_program **) ptr,
-                           (struct gl_program *) prog);
-}
-
-static inline void
-st_reference_fragprog(struct st_context *st,
-                      struct st_fragment_program **ptr,
-                      struct st_fragment_program *prog)
 {
    _mesa_reference_program(st->ctx,
                            (struct gl_program **) ptr,
@@ -364,7 +333,7 @@ st_get_vp_variant(struct st_context *st,
 
 extern struct st_fp_variant *
 st_get_fp_variant(struct st_context *st,
-                  struct st_fragment_program *stfp,
+                  struct st_common_program *stfp,
                   const struct st_fp_variant_key *key);
 
 extern struct st_common_variant *
@@ -378,7 +347,7 @@ st_release_vp_variants( struct st_context *st,
 
 extern void
 st_release_fp_variants( struct st_context *st,
-                        struct st_fragment_program *stfp );
+                        struct st_common_program *stfp );
 
 extern void
 st_release_common_variants(struct st_context *st, struct st_common_program *p);
@@ -398,7 +367,7 @@ st_translate_vertex_program(struct st_context *st,
 
 extern bool
 st_translate_fragment_program(struct st_context *st,
-                              struct st_fragment_program *stfp);
+                              struct st_common_program *stfp);
 
 extern bool
 st_translate_common_program(struct st_context *st,

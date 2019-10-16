@@ -64,14 +64,10 @@ st_new_program(struct gl_context *ctx, GLenum target, GLuint id,
                                                struct st_vertex_program);
       return _mesa_init_gl_program(&prog->Base, target, id, is_arb_asm);
    }
-   case GL_FRAGMENT_PROGRAM_ARB: {
-      struct st_fragment_program *prog = rzalloc(NULL,
-                                                 struct st_fragment_program);
-      return _mesa_init_gl_program(&prog->Base, target, id, is_arb_asm);
-   }
    case GL_TESS_CONTROL_PROGRAM_NV:
    case GL_TESS_EVALUATION_PROGRAM_NV:
    case GL_GEOMETRY_PROGRAM_NV:
+   case GL_FRAGMENT_PROGRAM_ARB:
    case GL_COMPUTE_PROGRAM_NV: {
       struct st_common_program *prog = rzalloc(NULL,
                                                struct st_common_program);
@@ -105,25 +101,18 @@ st_delete_program(struct gl_context *ctx, struct gl_program *prog)
    case GL_TESS_CONTROL_PROGRAM_NV:
    case GL_TESS_EVALUATION_PROGRAM_NV:
    case GL_GEOMETRY_PROGRAM_NV:
+   case GL_FRAGMENT_PROGRAM_ARB:
    case GL_COMPUTE_PROGRAM_NV:
       {
          struct st_common_program *p = st_common_program(prog);
 
-         st_release_common_variants(st, p);
+         if (prog->Target == GL_FRAGMENT_PROGRAM_ARB)
+            st_release_fp_variants(st, p);
+         else
+            st_release_common_variants(st, p);
          
          if (p->glsl_to_tgsi)
             free_glsl_to_tgsi_visitor(p->glsl_to_tgsi);
-      }
-      break;
-   case GL_FRAGMENT_PROGRAM_ARB:
-      {
-         struct st_fragment_program *stfp =
-            (struct st_fragment_program *) prog;
-
-         st_release_fp_variants(st, stfp);
-         
-         if (stfp->glsl_to_tgsi)
-            free_glsl_to_tgsi_visitor(stfp->glsl_to_tgsi);
       }
       break;
    default:
@@ -150,7 +139,7 @@ st_program_string_notify( struct gl_context *ctx,
 
    if (target == GL_FRAGMENT_PROGRAM_ARB ||
        target == GL_FRAGMENT_SHADER_ATI) {
-      struct st_fragment_program *stfp = (struct st_fragment_program *) prog;
+      struct st_common_program *stfp = (struct st_common_program *) prog;
 
       if (target == GL_FRAGMENT_SHADER_ATI) {
          assert(stfp->ati_fs);
@@ -207,7 +196,7 @@ st_new_ati_fs(struct gl_context *ctx, struct ati_fragment_shader *curProg)
 {
    struct gl_program *prog = ctx->Driver.NewProgram(ctx, GL_FRAGMENT_PROGRAM_ARB,
          curProg->Id, true);
-   struct st_fragment_program *stfp = (struct st_fragment_program *)prog;
+   struct st_common_program *stfp = (struct st_common_program *)prog;
    stfp->ati_fs = curProg;
    return prog;
 }
@@ -243,8 +232,8 @@ st_get_shader_program_completion_status(struct gl_context *ctx,
             sh = st_vertex_program(linked->Program)->variants->driver_shader;
          break;
       case MESA_SHADER_FRAGMENT:
-         if (st_fragment_program(linked->Program)->variants)
-            sh = st_fragment_program(linked->Program)->variants->driver_shader;
+         if (st_common_program(linked->Program)->fp_variants)
+            sh = st_common_program(linked->Program)->fp_variants->driver_shader;
          break;
       case MESA_SHADER_TESS_CTRL:
       case MESA_SHADER_TESS_EVAL:

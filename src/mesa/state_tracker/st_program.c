@@ -170,7 +170,7 @@ st_set_prog_affected_state_flags(struct gl_program *prog)
       break;
 
    case MESA_SHADER_FRAGMENT:
-      states = &((struct st_fragment_program*)prog)->affected_states;
+      states = &((struct st_common_program*)prog)->affected_states;
 
       /* gl_FragCoord and glDrawPixels always use constants. */
       *states = ST_NEW_FS_STATE |
@@ -297,17 +297,17 @@ delete_fp_variant(struct st_context *st, struct st_fp_variant *fpv)
  * Free all variants of a fragment program.
  */
 void
-st_release_fp_variants(struct st_context *st, struct st_fragment_program *stfp)
+st_release_fp_variants(struct st_context *st, struct st_common_program *stfp)
 {
    struct st_fp_variant *fpv;
 
-   for (fpv = stfp->variants; fpv; ) {
+   for (fpv = stfp->fp_variants; fpv; ) {
       struct st_fp_variant *next = fpv->next;
       delete_fp_variant(st, fpv);
       fpv = next;
    }
 
-   stfp->variants = NULL;
+   stfp->fp_variants = NULL;
 
    delete_ir(&stfp->state);
 }
@@ -798,7 +798,7 @@ st_get_vp_variant(struct st_context *st,
  */
 bool
 st_translate_fragment_program(struct st_context *st,
-                              struct st_fragment_program *stfp)
+                              struct st_common_program *stfp)
 {
    /* Non-GLSL programs: */
    if (!stfp->glsl_to_tgsi) {
@@ -1171,7 +1171,7 @@ st_translate_fragment_program(struct st_context *st,
 
 static struct st_fp_variant *
 st_create_fp_variant(struct st_context *st,
-                     struct st_fragment_program *stfp,
+                     struct st_common_program *stfp,
                      const struct st_fp_variant_key *key)
 {
    struct pipe_context *pipe = st->pipe;
@@ -1437,13 +1437,13 @@ st_create_fp_variant(struct st_context *st,
  */
 struct st_fp_variant *
 st_get_fp_variant(struct st_context *st,
-                  struct st_fragment_program *stfp,
+                  struct st_common_program *stfp,
                   const struct st_fp_variant_key *key)
 {
    struct st_fp_variant *fpv;
 
    /* Search for existing variant */
-   for (fpv = stfp->variants; fpv; fpv = fpv->next) {
+   for (fpv = stfp->fp_variants; fpv; fpv = fpv->next) {
       if (memcmp(&fpv->key, key, sizeof(*key)) == 0) {
          break;
       }
@@ -1460,17 +1460,17 @@ st_get_fp_variant(struct st_context *st,
              * st_update_fp can take a fast path when
              * shader_has_one_variant is set.
              */
-            if (!stfp->variants) {
-               stfp->variants = fpv;
+            if (!stfp->fp_variants) {
+               stfp->fp_variants = fpv;
             } else {
                /* insert into list after the first one */
-               fpv->next = stfp->variants->next;
-               stfp->variants->next = fpv;
+               fpv->next = stfp->fp_variants->next;
+               stfp->fp_variants->next = fpv;
             }
          } else {
             /* insert into list */
-            fpv->next = stfp->variants;
-            stfp->variants = fpv;
+            fpv->next = stfp->fp_variants;
+            stfp->fp_variants = fpv;
          }
       }
    }
@@ -1804,11 +1804,11 @@ destroy_program_variants(struct st_context *st, struct gl_program *target)
       break;
    case GL_FRAGMENT_PROGRAM_ARB:
       {
-         struct st_fragment_program *stfp =
-            (struct st_fragment_program *) target;
-         struct st_fp_variant *fpv, **prevPtr = &stfp->variants;
+         struct st_common_program *stfp =
+            (struct st_common_program *) target;
+         struct st_fp_variant *fpv, **prevPtr = &stfp->fp_variants;
 
-         for (fpv = stfp->variants; fpv; ) {
+         for (fpv = stfp->fp_variants; fpv; ) {
             struct st_fp_variant *next = fpv->next;
             if (fpv->key.st == st) {
                /* unlink from list */
@@ -1968,7 +1968,7 @@ st_precompile_shader_variant(struct st_context *st,
    }
 
    case GL_FRAGMENT_PROGRAM_ARB: {
-      struct st_fragment_program *p = (struct st_fragment_program *)prog;
+      struct st_common_program *p = (struct st_common_program *)prog;
       struct st_fp_variant_key key;
 
       memset(&key, 0, sizeof(key));

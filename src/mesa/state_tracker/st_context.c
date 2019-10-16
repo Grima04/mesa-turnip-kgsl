@@ -145,8 +145,8 @@ st_get_active_states(struct gl_context *ctx)
       st_common_program(ctx->TessEvalProgram._Current);
    struct st_common_program *gp =
       st_common_program(ctx->GeometryProgram._Current);
-   struct st_fragment_program *fp =
-      st_fragment_program(ctx->FragmentProgram._Current);
+   struct st_common_program *fp =
+      st_common_program(ctx->FragmentProgram._Current);
    struct st_common_program *cp =
       st_common_program(ctx->ComputeProgram._Current);
    uint64_t active_shader_states = 0;
@@ -1041,7 +1041,7 @@ st_destroy_context(struct st_context *st)
    simple_mtx_destroy(&st->zombie_sampler_views.mutex);
    simple_mtx_destroy(&st->zombie_shaders.mutex);
 
-   st_reference_fragprog(st, &st->fp, NULL);
+   st_reference_prog(st, &st->fp, NULL);
    st_reference_prog(st, &st->gp, NULL);
    st_reference_vertprog(st, &st->vp, NULL);
    st_reference_prog(st, &st->tcp, NULL);

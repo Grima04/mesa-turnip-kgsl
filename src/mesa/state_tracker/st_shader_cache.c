@@ -107,6 +107,7 @@ st_serialise_ir_program(struct gl_context *ctx, struct gl_program *prog,
    case MESA_SHADER_TESS_CTRL:
    case MESA_SHADER_TESS_EVAL:
    case MESA_SHADER_GEOMETRY:
+   case MESA_SHADER_FRAGMENT:
    case MESA_SHADER_COMPUTE: {
       struct st_common_program *stcp = (struct st_common_program *) prog;
 
@@ -118,15 +119,6 @@ st_serialise_ir_program(struct gl_context *ctx, struct gl_program *prog,
          write_nir_to_cache(&blob, prog);
       else
          write_tgsi_to_cache(&blob, stcp->state.tokens, prog);
-      break;
-   }
-   case MESA_SHADER_FRAGMENT: {
-      struct st_fragment_program *stfp = (struct st_fragment_program *) prog;
-
-      if (nir)
-         write_nir_to_cache(&blob, prog);
-      else
-         write_tgsi_to_cache(&blob, stfp->state.tokens, prog);
       break;
    }
    default:
@@ -228,10 +220,14 @@ st_deserialise_ir_program(struct gl_context *ctx,
    case MESA_SHADER_TESS_CTRL:
    case MESA_SHADER_TESS_EVAL:
    case MESA_SHADER_GEOMETRY:
+   case MESA_SHADER_FRAGMENT:
    case MESA_SHADER_COMPUTE: {
       struct st_common_program *stcp = st_common_program(prog);
 
-      st_release_common_variants(st, stcp);
+      if (prog->info.stage == MESA_SHADER_FRAGMENT)
+         st_release_fp_variants(st, stcp);
+      else
+         st_release_common_variants(st, stcp);
 
       if (prog->info.stage == MESA_SHADER_TESS_EVAL ||
           prog->info.stage == MESA_SHADER_GEOMETRY)
@@ -249,27 +245,9 @@ st_deserialise_ir_program(struct gl_context *ctx,
       if ((prog->info.stage == MESA_SHADER_TESS_CTRL && st->tcp == stcp) ||
           (prog->info.stage == MESA_SHADER_TESS_EVAL && st->tep == stcp) ||
           (prog->info.stage == MESA_SHADER_GEOMETRY && st->gp == stcp) ||
+          (prog->info.stage == MESA_SHADER_FRAGMENT && st->fp == stcp) ||
           (prog->info.stage == MESA_SHADER_COMPUTE && st->cp == stcp))
          st->dirty |= stcp->affected_states;
-      break;
-   }
-   case MESA_SHADER_FRAGMENT: {
-      struct st_fragment_program *stfp = (struct st_fragment_program *) prog;
-
-      st_release_fp_variants(st, stfp);
-
-      if (nir) {
-         stfp->state.type = PIPE_SHADER_IR_NIR;
-         stfp->shader_program = shProg;
-         stfp->state.ir.nir = nir_deserialize(NULL, options, &blob_reader);
-         prog->nir = stfp->state.ir.nir;
-      } else {
-         read_tgsi_from_cache(&blob_reader, &stfp->state.tokens);
-      }
-
-      if (st->fp == stfp)
-         st->dirty |= stfp->affected_states;
-
       break;
    }
    default:

@@ -7309,7 +7309,6 @@ get_mesa_program_tgsi(struct gl_context *ctx,
    }
 
    struct st_vertex_program *stvp;
-   struct st_fragment_program *stfp;
    struct st_common_program *stp;
 
    switch (shader->Stage) {
@@ -7318,9 +7317,6 @@ get_mesa_program_tgsi(struct gl_context *ctx,
       stvp->glsl_to_tgsi = v;
       break;
    case MESA_SHADER_FRAGMENT:
-      stfp = (struct st_fragment_program *)prog;
-      stfp->glsl_to_tgsi = v;
-      break;
    case MESA_SHADER_TESS_CTRL:
    case MESA_SHADER_TESS_EVAL:
    case MESA_SHADER_GEOMETRY:

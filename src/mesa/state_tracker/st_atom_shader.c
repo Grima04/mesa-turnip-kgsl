@@ -98,10 +98,10 @@ get_texture_target(struct gl_context *ctx, const unsigned unit)
 void
 st_update_fp( struct st_context *st )
 {
-   struct st_fragment_program *stfp;
+   struct st_common_program *stfp;
 
    assert(st->ctx->FragmentProgram._Current);
-   stfp = st_fragment_program(st->ctx->FragmentProgram._Current);
+   stfp = st_common_program(st->ctx->FragmentProgram._Current);
    assert(stfp->Base.Target == GL_FRAGMENT_PROGRAM_ARB);
 
    void *shader;
@@ -109,10 +109,10 @@ st_update_fp( struct st_context *st )
    if (st->shader_has_one_variant[MESA_SHADER_FRAGMENT] &&
        !stfp->ati_fs && /* ATI_fragment_shader always has multiple variants */
        !stfp->Base.ExternalSamplersUsed && /* external samplers need variants */
-       stfp->variants &&
-       !stfp->variants->key.drawpixels &&
-       !stfp->variants->key.bitmap) {
-      shader = stfp->variants->driver_shader;
+       stfp->fp_variants &&
+       !stfp->fp_variants->key.drawpixels &&
+       !stfp->fp_variants->key.bitmap) {
+      shader = stfp->fp_variants->driver_shader;
    } else {
       struct st_fp_variant_key key;
 
@@ -163,7 +163,7 @@ st_update_fp( struct st_context *st )
       shader = st_get_fp_variant(st, stfp, &key)->driver_shader;
    }
 
-   st_reference_fragprog(st, &st->fp, stfp);
+   st_reference_prog(st, &st->fp, stfp);
 
    cso_set_fragment_shader_handle(st->cso_context, shader);
 }
