@@ -823,7 +823,7 @@ install_registers_instr(
                 ins->texture.in_reg_upper = 0;
                 ins->texture.in_reg_select = coord.reg - 28;
                 ins->texture.in_reg_swizzle =
-                        compose_swizzle(ins->texture.in_reg_swizzle, 0xF, coord, dest);
+                        pan_compose_swizzle(ins->texture.in_reg_swizzle, coord.swizzle);
 
                 /* Next, install the destination */
                 ins->texture.out_full = 1;
