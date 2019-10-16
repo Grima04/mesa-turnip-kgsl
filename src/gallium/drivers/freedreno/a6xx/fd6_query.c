@@ -256,6 +256,8 @@ struct PACKED fd6_primitives_sample {
 	struct {
 		uint64_t generated, emitted;
 	} start[4], stop[4], result;
+
+	uint64_t prim_start[16], prim_stop[16], prim_emitted;
 };
 
 
@@ -268,6 +270,17 @@ static void
 primitive_counts_resume(struct fd_acc_query *aq, struct fd_batch *batch)
 {
 	struct fd_ringbuffer *ring = batch->draw;
+	const unsigned count = 1;
+
+	fd_wfi(batch, ring);
+
+	OUT_PKT7(ring, CP_REG_TO_MEM, 3);
+	OUT_RING(ring, CP_REG_TO_MEM_0_64B |
+			CP_REG_TO_MEM_0_CNT(count - 1) |
+			CP_REG_TO_MEM_0_REG(REG_A6XX_RBBM_PRIMCTR_8_LO));
+	primitives_relocw(ring, aq, prim_start);
+
+	fd6_event_write(batch, ring, START_PRIMITIVE_CTRS, false);
 
 	OUT_PKT4(ring, REG_A6XX_VPC_SO_STREAM_COUNTS_LO, 2);
 	primitives_relocw(ring, aq, start[0]);
@@ -279,6 +292,25 @@ static void
 primitive_counts_pause(struct fd_acc_query *aq, struct fd_batch *batch)
 {
 	struct fd_ringbuffer *ring = batch->draw;
+	const unsigned count = 1;
+
+	fd_wfi(batch, ring);
+
+	/* snapshot the end values: */
+	OUT_PKT7(ring, CP_REG_TO_MEM, 3);
+	OUT_RING(ring, CP_REG_TO_MEM_0_64B |
+			CP_REG_TO_MEM_0_CNT(count - 1) |
+			CP_REG_TO_MEM_0_REG(REG_A6XX_RBBM_PRIMCTR_8_LO));
+	primitives_relocw(ring, aq, prim_stop);
+
+	/* result += stop - start: */
+	OUT_PKT7(ring, CP_MEM_TO_MEM, 9);
+	OUT_RING(ring, CP_MEM_TO_MEM_0_DOUBLE |
+			CP_MEM_TO_MEM_0_NEG_C | 0x40000000);
+	primitives_relocw(ring, aq, result.generated);
+	primitives_reloc(ring, aq, prim_emitted);
+	primitives_reloc(ring, aq, prim_stop);
+	primitives_reloc(ring, aq, prim_start);
 
 	OUT_PKT4(ring, REG_A6XX_VPC_SO_STREAM_COUNTS_LO, 2);
 	primitives_relocw(ring, aq, stop[0]);
@@ -304,6 +336,8 @@ primitive_counts_pause(struct fd_acc_query *aq, struct fd_batch *batch)
 	primitives_reloc(ring, aq, result.generated);
 	primitives_reloc(ring, aq, stop[aq->base.index].generated);
 	primitives_reloc(ring, aq, start[aq->base.index].generated);
+
+	fd6_event_write(batch, ring, STOP_PRIMITIVE_CTRS, false);
 }
 
 static void
