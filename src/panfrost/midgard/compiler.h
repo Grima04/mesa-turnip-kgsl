@@ -187,11 +187,9 @@ typedef struct midgard_block {
 
         /* In liveness analysis, these are live masks (per-component) for
          * indices for the block. Scalar compilers have the luxury of using
-         * simple bit fields, but for us, liveness is a vector idea. We use
-         * 8-bit to allow finegrained tracking up to vec8. If you're
-         * implementing vec16 on Panfrost... I'm sorry. */
-        uint8_t *live_in;
-        uint8_t *live_out;
+         * simple bit fields, but for us, liveness is a vector idea. */
+        uint16_t *live_in;
+        uint16_t *live_out;
 } midgard_block;
 
 typedef struct midgard_bundle {
@@ -610,7 +608,7 @@ struct ra_graph;
 void mir_lower_special_reads(compiler_context *ctx);
 struct ra_graph* allocate_registers(compiler_context *ctx, bool *spilled);
 void install_registers(compiler_context *ctx, struct ra_graph *g);
-void mir_liveness_ins_update(uint8_t *live, midgard_instruction *ins, unsigned max);
+void mir_liveness_ins_update(uint16_t *live, midgard_instruction *ins, unsigned max);
 void mir_compute_liveness(compiler_context *ctx);
 void mir_invalidate_liveness(compiler_context *ctx);
 bool mir_is_live_after(compiler_context *ctx, midgard_block *block, midgard_instruction *start, int src);

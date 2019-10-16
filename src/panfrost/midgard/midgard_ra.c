@@ -554,7 +554,7 @@ mir_compute_interference(
          * end of each block and walk the block backwards. */
 
         mir_foreach_block(ctx, blk) {
-                uint8_t *live = mem_dup(blk->live_out, ctx->temp_count * sizeof(uint8_t));
+                uint16_t *live = mem_dup(blk->live_out, ctx->temp_count * sizeof(uint16_t));
 
                 mir_foreach_instr_in_block_rev(blk, ins) {
                         /* Mark all registers live after the instruction as

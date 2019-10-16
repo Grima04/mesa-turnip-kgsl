@@ -24,10 +24,11 @@
 #include "compiler.h"
 #include "util/u_memory.h"
 
-/* Routines for liveness analysis */
+/* Routines for liveness analysis. Liveness is tracked per byte per node. Per
+ * byte granularity is necessary for proper handling of int8 */
 
 static void
-liveness_gen(uint8_t *live, unsigned node, unsigned max, unsigned mask)
+liveness_gen(uint16_t *live, unsigned node, unsigned max, uint16_t mask)
 {
         if (node >= max)
                 return;
@@ -36,7 +37,7 @@ liveness_gen(uint8_t *live, unsigned node, unsigned max, unsigned mask)
 }
 
 static void
-liveness_kill(uint8_t *live, unsigned node, unsigned max, unsigned mask)
+liveness_kill(uint16_t *live, unsigned node, unsigned max, uint16_t mask)
 {
         if (node >= max)
                 return;
@@ -45,7 +46,7 @@ liveness_kill(uint8_t *live, unsigned node, unsigned max, unsigned mask)
 }
 
 static bool
-liveness_get(uint8_t *live, unsigned node, unsigned max) {
+liveness_get(uint16_t *live, unsigned node, uint16_t max) {
         if (node >= max)
                 return false;
 
@@ -55,7 +56,7 @@ liveness_get(uint8_t *live, unsigned node, unsigned max) {
 /* Updates live_in for a single instruction */
 
 void
-mir_liveness_ins_update(uint8_t *live, midgard_instruction *ins, unsigned max)
+mir_liveness_ins_update(uint16_t *live, midgard_instruction *ins, unsigned max)
 {
         /* live_in[s] = GEN[s] + (live_out[s] - KILL[s]) */
 
@@ -91,7 +92,7 @@ liveness_block_update(compiler_context *ctx, midgard_block *blk)
 
         liveness_block_live_out(ctx, blk);
 
-        uint8_t *live = mem_dup(blk->live_out, ctx->temp_count);
+        uint16_t *live = mem_dup(blk->live_out, ctx->temp_count * sizeof(uint16_t));
 
         mir_foreach_instr_in_block_rev(blk, ins)
                 mir_liveness_ins_update(live, ins, ctx->temp_count);
@@ -130,8 +131,8 @@ mir_compute_liveness(compiler_context *ctx)
         /* Allocate */
 
         mir_foreach_block(ctx, block) {
-                block->live_in = calloc(ctx->temp_count, 1);
-                block->live_out = calloc(ctx->temp_count, 1);
+                block->live_in = calloc(ctx->temp_count, sizeof(uint16_t));
+                block->live_out = calloc(ctx->temp_count, sizeof(uint16_t));
         }
 
         /* Initialize the work list with the exit block */
