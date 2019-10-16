@@ -139,7 +139,7 @@ st_feedback_draw_vbo(struct gl_context *ctx,
    /* must get these after state validation! */
    vp = st->vp;
    vp_variant = st->vp_variant;
-   vs = &vp_variant->tgsi;
+   vs = &vp_variant->state;
 
    if (!vp_variant->draw_shader) {
       vp_variant->draw_shader = draw_create_vertex_shader(draw, vs);

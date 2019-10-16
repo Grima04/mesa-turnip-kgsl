@@ -244,7 +244,7 @@ delete_vp_variant(struct st_context *st, struct st_vp_variant *vpv)
    if (vpv->draw_shader)
       draw_delete_vertex_shader( st->draw, vpv->draw_shader );
 
-   delete_ir(&vpv->tgsi);
+   delete_ir(&vpv->state);
 
    free( vpv );
 }
@@ -268,7 +268,7 @@ st_release_vp_variants( struct st_context *st,
 
    stvp->variants = NULL;
 
-   delete_ir(&stvp->tgsi);
+   delete_ir(&stvp->state);
 }
 
 
@@ -309,7 +309,7 @@ st_release_fp_variants(struct st_context *st, struct st_fragment_program *stfp)
 
    stfp->variants = NULL;
 
-   delete_ir(&stfp->tgsi);
+   delete_ir(&stfp->state);
 }
 
 
@@ -383,7 +383,7 @@ st_release_basic_variants(struct st_context *st, struct st_common_program *p)
    }
 
    p->variants = NULL;
-   delete_ir(&p->tgsi);
+   delete_ir(&p->state);
 }
 
 
@@ -470,9 +470,9 @@ st_translate_stream_output_info(struct gl_program *prog)
    /* Translate stream output info. */
    struct pipe_stream_output_info *so_info = NULL;
    if (prog->info.stage == MESA_SHADER_VERTEX)
-      so_info = &((struct st_vertex_program*)prog)->tgsi.stream_output;
+      so_info = &((struct st_vertex_program*)prog)->state.stream_output;
    else
-      so_info = &((struct st_common_program*)prog)->tgsi.stream_output;
+      so_info = &((struct st_common_program*)prog)->state.stream_output;
 
    for (unsigned i = 0; i < info->NumOutputs; i++) {
       so_info->output[i].register_index =
@@ -604,7 +604,7 @@ st_translate_vertex_program(struct st_context *st,
       return false;
    }
 
-   stvp->tgsi.tokens = ureg_get_tokens(ureg, &stvp->num_tgsi_tokens);
+   stvp->state.tokens = ureg_get_tokens(ureg, &stvp->num_tgsi_tokens);
    ureg_destroy(ureg);
 
    if (stvp->glsl_to_tgsi) {
@@ -626,15 +626,15 @@ st_translate_vertex_program(struct st_context *st,
       nir_shader *nir =
          st_translate_prog_to_nir(st, &stvp->Base, MESA_SHADER_VERTEX);
 
-      if (stvp->tgsi.ir.nir)
-         ralloc_free(stvp->tgsi.ir.nir);
-      stvp->tgsi.type = PIPE_SHADER_IR_NIR;
-      stvp->tgsi.ir.nir = nir;
+      if (stvp->state.ir.nir)
+         ralloc_free(stvp->state.ir.nir);
+      stvp->state.type = PIPE_SHADER_IR_NIR;
+      stvp->state.ir.nir = nir;
       stvp->Base.nir = nir;
       return true;
    }
 
-   return stvp->tgsi.tokens != NULL;
+   return stvp->state.tokens != NULL;
 }
 
 static const gl_state_index16 depth_range_state[STATE_LENGTH] =
@@ -653,7 +653,7 @@ st_create_vp_variant(struct st_context *st,
    struct gl_program_parameter_list *params = stvp->Base.Parameters;
 
    vpv->key = *key;
-   vpv->tgsi.stream_output = stvp->tgsi.stream_output;
+   vpv->state.stream_output = stvp->state.stream_output;
    vpv->num_inputs = stvp->num_inputs;
 
    /* When generating a NIR program, we usually don't have TGSI tokens.
@@ -661,22 +661,22 @@ st_create_vp_variant(struct st_context *st,
     * programs which we may need to use with the draw module for legacy
     * feedback/select emulation.  If they exist, copy them.
     */
-   if (stvp->tgsi.tokens)
-      vpv->tgsi.tokens = tgsi_dup_tokens(stvp->tgsi.tokens);
+   if (stvp->state.tokens)
+      vpv->state.tokens = tgsi_dup_tokens(stvp->state.tokens);
 
-   if (stvp->tgsi.type == PIPE_SHADER_IR_NIR) {
-      vpv->tgsi.type = PIPE_SHADER_IR_NIR;
-      vpv->tgsi.ir.nir = nir_shader_clone(NULL, stvp->tgsi.ir.nir);
+   if (stvp->state.type == PIPE_SHADER_IR_NIR) {
+      vpv->state.type = PIPE_SHADER_IR_NIR;
+      vpv->state.ir.nir = nir_shader_clone(NULL, stvp->state.ir.nir);
       if (key->clamp_color)
-         NIR_PASS_V(vpv->tgsi.ir.nir, nir_lower_clamp_color_outputs);
+         NIR_PASS_V(vpv->state.ir.nir, nir_lower_clamp_color_outputs);
       if (key->passthrough_edgeflags) {
-         NIR_PASS_V(vpv->tgsi.ir.nir, nir_lower_passthrough_edgeflags);
+         NIR_PASS_V(vpv->state.ir.nir, nir_lower_passthrough_edgeflags);
          vpv->num_inputs++;
       }
 
       if (key->lower_point_size) {
          _mesa_add_state_reference(params, point_size_state);
-         NIR_PASS_V(vpv->tgsi.ir.nir, nir_lower_point_size_mov,
+         NIR_PASS_V(vpv->state.ir.nir, nir_lower_point_size_mov,
                     point_size_state);
       }
 
@@ -699,18 +699,18 @@ st_create_vp_variant(struct st_context *st,
             _mesa_add_state_reference(params, clipplane_state[i]);
          }
 
-         NIR_PASS_V(vpv->tgsi.ir.nir, nir_lower_clip_vs, key->lower_ucp,
+         NIR_PASS_V(vpv->state.ir.nir, nir_lower_clip_vs, key->lower_ucp,
                     true, can_compact, clipplane_state);
-         NIR_PASS_V(vpv->tgsi.ir.nir, nir_lower_io_to_temporaries,
-                    nir_shader_get_entrypoint(vpv->tgsi.ir.nir), true, false);
+         NIR_PASS_V(vpv->state.ir.nir, nir_lower_io_to_temporaries,
+                    nir_shader_get_entrypoint(vpv->state.ir.nir), true, false);
       }
 
       st_finalize_nir(st, &stvp->Base, stvp->shader_program,
-                      vpv->tgsi.ir.nir);
+                      vpv->state.ir.nir);
 
-      vpv->driver_shader = pipe->create_vs_state(pipe, &vpv->tgsi);
+      vpv->driver_shader = pipe->create_vs_state(pipe, &vpv->state);
       /* driver takes ownership of IR: */
-      vpv->tgsi.ir.nir = NULL;
+      vpv->state.ir.nir = NULL;
       return vpv;
    }
 
@@ -721,11 +721,11 @@ st_create_vp_variant(struct st_context *st,
          (key->clamp_color ? TGSI_EMU_CLAMP_COLOR_OUTPUTS : 0) |
          (key->passthrough_edgeflags ? TGSI_EMU_PASSTHROUGH_EDGEFLAG : 0);
 
-      tokens = tgsi_emulate(vpv->tgsi.tokens, flags);
+      tokens = tgsi_emulate(vpv->state.tokens, flags);
 
       if (tokens) {
-         tgsi_free_tokens(vpv->tgsi.tokens);
-         vpv->tgsi.tokens = tokens;
+         tgsi_free_tokens(vpv->state.tokens);
+         vpv->state.tokens = tokens;
 
          if (key->passthrough_edgeflags)
             vpv->num_inputs++;
@@ -738,19 +738,19 @@ st_create_vp_variant(struct st_context *st,
             _mesa_add_state_reference(params, depth_range_state);
 
       const struct tgsi_token *tokens;
-      tokens = st_tgsi_lower_depth_clamp(vpv->tgsi.tokens, depth_range_const,
+      tokens = st_tgsi_lower_depth_clamp(vpv->state.tokens, depth_range_const,
                                          key->clip_negative_one_to_one);
-      if (tokens != vpv->tgsi.tokens)
-         tgsi_free_tokens(vpv->tgsi.tokens);
-      vpv->tgsi.tokens = tokens;
+      if (tokens != vpv->state.tokens)
+         tgsi_free_tokens(vpv->state.tokens);
+      vpv->state.tokens = tokens;
    }
 
    if (ST_DEBUG & DEBUG_TGSI) {
-      tgsi_dump(vpv->tgsi.tokens, 0);
+      tgsi_dump(vpv->state.tokens, 0);
       debug_printf("\n");
    }
 
-   vpv->driver_shader = pipe->create_vs_state(pipe, &vpv->tgsi);
+   vpv->driver_shader = pipe->create_vs_state(pipe, &vpv->state);
    return vpv;
 }
 
@@ -834,10 +834,10 @@ st_translate_fragment_program(struct st_context *st,
          nir_shader *nir =
             st_translate_prog_to_nir(st, &stfp->Base, MESA_SHADER_FRAGMENT);
 
-         if (stfp->tgsi.ir.nir)
-            ralloc_free(stfp->tgsi.ir.nir);
-         stfp->tgsi.type = PIPE_SHADER_IR_NIR;
-         stfp->tgsi.ir.nir = nir;
+         if (stfp->state.ir.nir)
+            ralloc_free(stfp->state.ir.nir);
+         stfp->state.type = PIPE_SHADER_IR_NIR;
+         stfp->state.ir.nir = nir;
          stfp->Base.nir = nir;
          return true;
       }
@@ -1158,7 +1158,7 @@ st_translate_fragment_program(struct st_context *st,
                                 fs_output_semantic_name,
                                 fs_output_semantic_index);
 
-   stfp->tgsi.tokens = ureg_get_tokens(ureg, &stfp->num_tgsi_tokens);
+   stfp->state.tokens = ureg_get_tokens(ureg, &stfp->num_tgsi_tokens);
    ureg_destroy(ureg);
 
    if (stfp->glsl_to_tgsi) {
@@ -1166,7 +1166,7 @@ st_translate_fragment_program(struct st_context *st,
       st_store_ir_in_disk_cache(st, &stfp->Base, false);
    }
 
-   return stfp->tgsi.tokens != NULL;
+   return stfp->state.tokens != NULL;
 }
 
 static struct st_fp_variant *
@@ -1190,9 +1190,9 @@ st_create_fp_variant(struct st_context *st,
    if (!variant)
       return NULL;
 
-   if (stfp->tgsi.type == PIPE_SHADER_IR_NIR) {
+   if (stfp->state.type == PIPE_SHADER_IR_NIR) {
       tgsi.type = PIPE_SHADER_IR_NIR;
-      tgsi.ir.nir = nir_shader_clone(NULL, stfp->tgsi.ir.nir);
+      tgsi.ir.nir = nir_shader_clone(NULL, stfp->state.ir.nir);
 
       if (key->clamp_color)
          NIR_PASS_V(tgsi.ir.nir, nir_lower_clamp_color_outputs);
@@ -1296,7 +1296,7 @@ st_create_fp_variant(struct st_context *st,
       return variant;
    }
 
-   tgsi.tokens = stfp->tgsi.tokens;
+   tgsi.tokens = stfp->state.tokens;
 
    assert(!(key->bitmap && key->drawpixels));
 
@@ -1320,7 +1320,7 @@ st_create_fp_variant(struct st_context *st,
       tokens = tgsi_emulate(tgsi.tokens, flags);
 
       if (tokens) {
-         if (tgsi.tokens != stfp->tgsi.tokens)
+         if (tgsi.tokens != stfp->state.tokens)
             tgsi_free_tokens(tgsi.tokens);
          tgsi.tokens = tokens;
       } else
@@ -1341,7 +1341,7 @@ st_create_fp_variant(struct st_context *st,
                                     PIPE_FORMAT_R8_UNORM);
 
       if (tokens) {
-         if (tgsi.tokens != stfp->tgsi.tokens)
+         if (tgsi.tokens != stfp->state.tokens)
             tgsi_free_tokens(tgsi.tokens);
          tgsi.tokens = tokens;
       } else
@@ -1379,7 +1379,7 @@ st_create_fp_variant(struct st_context *st,
                                      texcoord_const, st->internal_target);
 
       if (tokens) {
-         if (tgsi.tokens != stfp->tgsi.tokens)
+         if (tgsi.tokens != stfp->state.tokens)
             tgsi_free_tokens(tgsi.tokens);
          tgsi.tokens = tokens;
       } else
@@ -1400,7 +1400,7 @@ st_create_fp_variant(struct st_context *st,
                                     key->external.lower_yx_xuxv,
                                  key->external.lower_iyuv);
       if (tokens) {
-         if (tgsi.tokens != stfp->tgsi.tokens)
+         if (tgsi.tokens != stfp->state.tokens)
             tgsi_free_tokens(tgsi.tokens);
          tgsi.tokens = tokens;
       } else {
@@ -1413,7 +1413,7 @@ st_create_fp_variant(struct st_context *st,
 
       const struct tgsi_token *tokens;
       tokens = st_tgsi_lower_depth_clamp_fs(tgsi.tokens, depth_range_const);
-      if (tgsi.tokens != stfp->tgsi.tokens)
+      if (tgsi.tokens != stfp->state.tokens)
          tgsi_free_tokens(tgsi.tokens);
       tgsi.tokens = tokens;
    }
@@ -1427,7 +1427,7 @@ st_create_fp_variant(struct st_context *st,
    variant->driver_shader = pipe->create_fs_state(pipe, &tgsi);
    variant->key = *key;
 
-   if (tgsi.tokens != stfp->tgsi.tokens)
+   if (tgsi.tokens != stfp->state.tokens)
       tgsi_free_tokens(tgsi.tokens);
    return variant;
 }
@@ -1555,7 +1555,7 @@ st_translate_common_program(struct st_context *st,
    memset(inputSlotToAttr, 0, sizeof(inputSlotToAttr));
    memset(inputMapping, 0, sizeof(inputMapping));
    memset(outputMapping, 0, sizeof(outputMapping));
-   memset(&stcp->tgsi, 0, sizeof(stcp->tgsi));
+   memset(&stcp->state, 0, sizeof(stcp->state));
 
    if (prog->info.clip_distance_array_size)
       ureg_property(ureg, TGSI_PROPERTY_NUM_CLIPDIST_ENABLED,
@@ -1650,7 +1650,7 @@ st_translate_common_program(struct st_context *st,
                         output_semantic_name,
                         output_semantic_index);
 
-   stcp->tgsi.tokens = ureg_get_tokens(ureg, &stcp->num_tgsi_tokens);
+   stcp->state.tokens = ureg_get_tokens(ureg, &stcp->num_tgsi_tokens);
 
    ureg_destroy(ureg);
 
@@ -1664,7 +1664,7 @@ st_translate_common_program(struct st_context *st,
    }
 
    if (ST_DEBUG & DEBUG_TGSI) {
-      tgsi_dump(stcp->tgsi.tokens, 0);
+      tgsi_dump(stcp->state.tokens, 0);
       debug_printf("\n");
    }
 
@@ -1698,14 +1698,14 @@ st_get_basic_variant(struct st_context *st,
       v = CALLOC_STRUCT(st_basic_variant);
       if (v) {
 
-	 if (prog->tgsi.type == PIPE_SHADER_IR_NIR) {
+	 if (prog->state.type == PIPE_SHADER_IR_NIR) {
 	    tgsi.type = PIPE_SHADER_IR_NIR;
-	    tgsi.ir.nir = nir_shader_clone(NULL, prog->tgsi.ir.nir);
+	    tgsi.ir.nir = nir_shader_clone(NULL, prog->state.ir.nir);
 
             if (key->clamp_color)
                NIR_PASS_V(tgsi.ir.nir, nir_lower_clamp_color_outputs);
 
-            tgsi.stream_output = prog->tgsi.stream_output;
+            tgsi.stream_output = prog->state.stream_output;
 
             st_finalize_nir(st, &prog->Base, prog->shader_program,
                             tgsi.ir.nir);
@@ -1718,17 +1718,17 @@ st_get_basic_variant(struct st_context *st,
 
                const struct tgsi_token *tokens;
                tokens =
-                     st_tgsi_lower_depth_clamp(prog->tgsi.tokens,
+                     st_tgsi_lower_depth_clamp(prog->state.tokens,
                                                depth_range_const,
                                                key->clip_negative_one_to_one);
 
-               if (tokens != prog->tgsi.tokens)
-                  tgsi_free_tokens(prog->tgsi.tokens);
+               if (tokens != prog->state.tokens)
+                  tgsi_free_tokens(prog->state.tokens);
 
-               prog->tgsi.tokens = tokens;
+               prog->state.tokens = tokens;
                prog->num_tgsi_tokens = tgsi_num_tokens(tokens);
             }
-	    tgsi = prog->tgsi;
+	    tgsi = prog->state;
          }
          /* fill in new variant */
          switch (prog->Base.info.stage) {
@@ -1943,7 +1943,7 @@ st_print_current_vertex_program(void)
 
       for (stv = stvp->variants; stv; stv = stv->next) {
          debug_printf("variant %p\n", stv);
-         tgsi_dump(stv->tgsi.tokens, 0);
+         tgsi_dump(stv->state.tokens, 0);
       }
    }
 }

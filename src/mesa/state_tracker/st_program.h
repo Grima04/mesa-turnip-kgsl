@@ -168,7 +168,7 @@ struct st_fp_variant
 struct st_fragment_program
 {
    struct gl_program Base;
-   struct pipe_shader_state tgsi;
+   struct pipe_shader_state state;
    struct glsl_to_tgsi_visitor* glsl_to_tgsi;
    struct ati_fragment_shader *ati_fs;
    uint64_t affected_states; /**< ST_NEW_* flags to mark dirty when binding */
@@ -217,10 +217,10 @@ struct st_vp_variant
    struct st_vp_variant_key key;
 
    /**
-    * TGSI tokens (to later generate a 'draw' module shader for
-    * selection/feedback/rasterpos)
+    * The shader variant saved for the draw module to later emulate
+    * selection/feedback/rasterpos.
     */
-   struct pipe_shader_state tgsi;
+   struct pipe_shader_state state;
 
    /** Driver's compiled shader */
    void *driver_shader;
@@ -245,7 +245,7 @@ struct st_vp_variant
 struct st_vertex_program
 {
    struct gl_program Base;  /**< The Mesa vertex program */
-   struct pipe_shader_state tgsi;
+   struct pipe_shader_state state;
    struct glsl_to_tgsi_visitor* glsl_to_tgsi;
    uint64_t affected_states; /**< ST_NEW_* flags to mark dirty when binding */
 
@@ -309,7 +309,7 @@ struct st_basic_variant
 struct st_common_program
 {
    struct gl_program Base;
-   struct pipe_shader_state tgsi;
+   struct pipe_shader_state state;
    struct glsl_to_tgsi_visitor* glsl_to_tgsi;
    uint64_t affected_states; /**< ST_NEW_* flags to mark dirty when binding */
 

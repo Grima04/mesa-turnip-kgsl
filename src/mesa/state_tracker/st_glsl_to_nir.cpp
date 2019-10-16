@@ -509,8 +509,8 @@ set_st_program(struct gl_program *prog,
    case MESA_SHADER_VERTEX:
       stvp = (struct st_vertex_program *)prog;
       stvp->shader_program = shader_program;
-      stvp->tgsi.type = PIPE_SHADER_IR_NIR;
-      stvp->tgsi.ir.nir = nir;
+      stvp->state.type = PIPE_SHADER_IR_NIR;
+      stvp->state.ir.nir = nir;
       break;
    case MESA_SHADER_GEOMETRY:
    case MESA_SHADER_TESS_CTRL:
@@ -518,14 +518,14 @@ set_st_program(struct gl_program *prog,
    case MESA_SHADER_COMPUTE:
       stp = (struct st_common_program *)prog;
       stp->shader_program = shader_program;
-      stp->tgsi.type = PIPE_SHADER_IR_NIR;
-      stp->tgsi.ir.nir = nir;
+      stp->state.type = PIPE_SHADER_IR_NIR;
+      stp->state.ir.nir = nir;
       break;
    case MESA_SHADER_FRAGMENT:
       stfp = (struct st_fragment_program *)prog;
       stfp->shader_program = shader_program;
-      stfp->tgsi.type = PIPE_SHADER_IR_NIR;
-      stfp->tgsi.ir.nir = nir;
+      stfp->state.type = PIPE_SHADER_IR_NIR;
+      stfp->state.ir.nir = nir;
       break;
    default:
       unreachable("unknown shader stage");

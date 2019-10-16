@@ -93,12 +93,12 @@ st_serialise_ir_program(struct gl_context *ctx, struct gl_program *prog,
       blob_write_bytes(&blob, stvp->result_to_output,
                        sizeof(stvp->result_to_output));
 
-      write_stream_out_to_cache(&blob, &stvp->tgsi);
+      write_stream_out_to_cache(&blob, &stvp->state);
 
       if (nir)
          write_nir_to_cache(&blob, prog);
       else
-         write_tgsi_to_cache(&blob, stvp->tgsi.tokens, prog,
+         write_tgsi_to_cache(&blob, stvp->state.tokens, prog,
                              stvp->num_tgsi_tokens);
       break;
    }
@@ -110,12 +110,12 @@ st_serialise_ir_program(struct gl_context *ctx, struct gl_program *prog,
 
       if (prog->info.stage == MESA_SHADER_TESS_EVAL ||
           prog->info.stage == MESA_SHADER_GEOMETRY)
-         write_stream_out_to_cache(&blob, &stcp->tgsi);
+         write_stream_out_to_cache(&blob, &stcp->state);
 
       if (nir)
          write_nir_to_cache(&blob, prog);
       else
-         write_tgsi_to_cache(&blob, stcp->tgsi.tokens, prog,
+         write_tgsi_to_cache(&blob, stcp->state.tokens, prog,
                              stcp->num_tgsi_tokens);
       break;
    }
@@ -125,7 +125,7 @@ st_serialise_ir_program(struct gl_context *ctx, struct gl_program *prog,
       if (nir)
          write_nir_to_cache(&blob, prog);
       else
-         write_tgsi_to_cache(&blob, stfp->tgsi.tokens, prog,
+         write_tgsi_to_cache(&blob, stfp->state.tokens, prog,
                              stfp->num_tgsi_tokens);
       break;
    }
@@ -210,15 +210,15 @@ st_deserialise_ir_program(struct gl_context *ctx,
       blob_copy_bytes(&blob_reader, (uint8_t *) stvp->result_to_output,
                       sizeof(stvp->result_to_output));
 
-      read_stream_out_from_cache(&blob_reader, &stvp->tgsi);
+      read_stream_out_from_cache(&blob_reader, &stvp->state);
 
       if (nir) {
-         stvp->tgsi.type = PIPE_SHADER_IR_NIR;
+         stvp->state.type = PIPE_SHADER_IR_NIR;
          stvp->shader_program = shProg;
-         stvp->tgsi.ir.nir = nir_deserialize(NULL, options, &blob_reader);
-         prog->nir = stvp->tgsi.ir.nir;
+         stvp->state.ir.nir = nir_deserialize(NULL, options, &blob_reader);
+         prog->nir = stvp->state.ir.nir;
       } else {
-         read_tgsi_from_cache(&blob_reader, &stvp->tgsi.tokens,
+         read_tgsi_from_cache(&blob_reader, &stvp->state.tokens,
                               &stvp->num_tgsi_tokens);
       }
 
@@ -237,15 +237,15 @@ st_deserialise_ir_program(struct gl_context *ctx,
 
       if (prog->info.stage == MESA_SHADER_TESS_EVAL ||
           prog->info.stage == MESA_SHADER_GEOMETRY)
-         read_stream_out_from_cache(&blob_reader, &stcp->tgsi);
+         read_stream_out_from_cache(&blob_reader, &stcp->state);
 
       if (nir) {
-         stcp->tgsi.type = PIPE_SHADER_IR_NIR;
-         stcp->tgsi.ir.nir = nir_deserialize(NULL, options, &blob_reader);
+         stcp->state.type = PIPE_SHADER_IR_NIR;
+         stcp->state.ir.nir = nir_deserialize(NULL, options, &blob_reader);
          stcp->shader_program = shProg;
-         prog->nir = stcp->tgsi.ir.nir;
+         prog->nir = stcp->state.ir.nir;
       } else {
-         read_tgsi_from_cache(&blob_reader, &stcp->tgsi.tokens,
+         read_tgsi_from_cache(&blob_reader, &stcp->state.tokens,
                               &stcp->num_tgsi_tokens);
       }
 
@@ -262,12 +262,12 @@ st_deserialise_ir_program(struct gl_context *ctx,
       st_release_fp_variants(st, stfp);
 
       if (nir) {
-         stfp->tgsi.type = PIPE_SHADER_IR_NIR;
+         stfp->state.type = PIPE_SHADER_IR_NIR;
          stfp->shader_program = shProg;
-         stfp->tgsi.ir.nir = nir_deserialize(NULL, options, &blob_reader);
-         prog->nir = stfp->tgsi.ir.nir;
+         stfp->state.ir.nir = nir_deserialize(NULL, options, &blob_reader);
+         prog->nir = stfp->state.ir.nir;
       } else {
-         read_tgsi_from_cache(&blob_reader, &stfp->tgsi.tokens,
+         read_tgsi_from_cache(&blob_reader, &stfp->state.tokens,
                               &stfp->num_tgsi_tokens);
       }
 
