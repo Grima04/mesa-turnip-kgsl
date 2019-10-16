@@ -352,6 +352,179 @@ mir_is_written_before(compiler_context *ctx, midgard_instruction *ins, unsigned 
         return false;
 }
 
+/* Grabs the type size. */
+
+midgard_reg_mode
+mir_typesize(midgard_instruction *ins)
+{
+        if (ins->compact_branch)
+                return midgard_reg_mode_32;
+
+        /* TODO: Type sizes for texture */
+        if (ins->type == TAG_TEXTURE_4)
+                return midgard_reg_mode_32;
+
+        if (ins->type == TAG_LOAD_STORE_4)
+                return GET_LDST_SIZE(load_store_opcode_props[ins->load_store.op].props);
+
+        if (ins->type == TAG_ALU_4) {
+                midgard_reg_mode mode = ins->alu.reg_mode;
+
+                /* If we have an override, step down by half */
+                if (ins->alu.dest_override != midgard_dest_override_none) {
+                        assert(mode > midgard_reg_mode_8);
+                        mode--;
+                }
+
+                return mode;
+        }
+
+        unreachable("Invalid instruction type");
+}
+
+/* Grabs the size of a source */
+
+static midgard_reg_mode
+mir_srcsize(midgard_instruction *ins, unsigned i)
+{
+        /* TODO: 16-bit textures/ldst */
+        if (ins->type == TAG_TEXTURE_4 || ins->type == TAG_LOAD_STORE_4)
+                return midgard_reg_mode_32;
+
+        /* TODO: 16-bit branches */
+        if (ins->compact_branch)
+                return midgard_reg_mode_32;
+
+        if (i >= 2) {
+                /* TODO: 16-bit conditions, ffma */
+                assert(i == 2);
+                return midgard_reg_mode_32;
+        }
+
+        /* Default to type of the instruction */
+
+        midgard_reg_mode mode = ins->alu.reg_mode;
+
+        /* If we have a half modifier, step down by half */
+
+        if ((mir_get_alu_src(ins, i)).half) {
+                assert(mode > midgard_reg_mode_8);
+                mode--;
+        }
+
+        return mode;
+}
+
+/* Converts per-component mask to a byte mask */
+
+static uint16_t
+mir_to_bytemask(midgard_reg_mode mode, unsigned mask)
+{
+        switch (mode) {
+        case midgard_reg_mode_8:
+                return mask;
+
+        case midgard_reg_mode_16: {
+                unsigned space =
+                        ((mask & 0x1) << (0 - 0)) |
+                        ((mask & 0x2) << (2 - 1)) |
+                        ((mask & 0x4) << (4 - 2)) |
+                        ((mask & 0x8) << (6 - 3)) |
+                        ((mask & 0x10) << (8 - 4)) |
+                        ((mask & 0x20) << (10 - 5)) |
+                        ((mask & 0x40) << (12 - 6)) |
+                        ((mask & 0x80) << (14 - 7));
+
+                return space | (space << 1);
+        }
+
+        case midgard_reg_mode_32: {
+                unsigned space =
+                        ((mask & 0x1) << (0 - 0)) |
+                        ((mask & 0x2) << (4 - 1)) |
+                        ((mask & 0x4) << (8 - 2)) |
+                        ((mask & 0x8) << (12 - 3));
+
+                return space | (space << 1) | (space << 2) | (space << 3);
+        }
+
+        case midgard_reg_mode_64: {
+                unsigned A = (mask & 0x1) ? 0xFF : 0x00;
+                unsigned B = (mask & 0x2) ? 0xFF : 0x00;
+                return A | (B << 8);
+        }
+
+        default:
+                unreachable("Invalid register mode");
+        }
+}
+
+/* ...and the inverse */
+
+static unsigned
+mir_bytes_for_mode(midgard_reg_mode mode)
+{
+        switch (mode) {
+        case midgard_reg_mode_8:
+                return 1;
+        case midgard_reg_mode_16:
+                return 2;
+        case midgard_reg_mode_32:
+                return 4;
+        case midgard_reg_mode_64:
+                return 8;
+        default:
+                unreachable("Invalid register mode");
+        }
+}
+
+uint16_t
+mir_from_bytemask(uint16_t bytemask, midgard_reg_mode mode)
+{
+        unsigned value = 0;
+        unsigned count = mir_bytes_for_mode(mode);
+
+        for (unsigned c = 0, d = 0; c < 16; c += count, ++d) {
+                bool a = (bytemask & (1 << c)) != 0;
+
+                for (unsigned q = c; q < count; ++q)
+                        assert(((bytemask & (1 << q)) != 0) == a);
+
+                value |= (a << d);
+        }
+
+        return value;
+}
+
+/* Rounds down a bytemask to fit a given component count. Iterate each
+ * component, and check if all bytes in the component are masked on */
+
+uint16_t
+mir_round_bytemask_down(uint16_t mask, midgard_reg_mode mode)
+{
+        unsigned bytes = mir_bytes_for_mode(mode);
+        unsigned maxmask = mask_of(bytes);
+        unsigned channels = 16 / bytes;
+
+        for (unsigned c = 0; c < channels; ++c) {
+                /* Get bytes in component */
+                unsigned submask = (mask >> c * channels) & maxmask;
+
+                if (submask != maxmask)
+                        mask &= ~(maxmask << (c * channels));
+        }
+
+        return mask;
+}
+
+/* Grabs the per-byte mask of an instruction (as opposed to per-component) */
+
+uint16_t
+mir_bytemask(midgard_instruction *ins)
+{
+        return mir_to_bytemask(mir_typesize(ins), ins->mask);
+}
+
 /* Creates a mask of the components of a node read by an instruction, by
  * analyzing the swizzle with respect to the instruction's mask. E.g.:
  *

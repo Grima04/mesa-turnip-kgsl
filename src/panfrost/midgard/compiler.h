@@ -514,6 +514,10 @@ unsigned mir_use_count(compiler_context *ctx, unsigned value);
 bool mir_is_written_before(compiler_context *ctx, midgard_instruction *ins, unsigned node);
 unsigned mir_mask_of_read_components(midgard_instruction *ins, unsigned node);
 unsigned mir_ubo_shift(midgard_load_store_op op);
+midgard_reg_mode mir_typesize(midgard_instruction *ins);
+uint16_t mir_from_bytemask(uint16_t bytemask, midgard_reg_mode mode);
+uint16_t mir_bytemask(midgard_instruction *ins);
+uint16_t mir_round_bytemask_down(uint16_t mask, midgard_reg_mode mode);
 
 /* MIR printing */
 
