@@ -1449,8 +1449,6 @@ st_translate_common_program(struct st_context *st,
    /* We have already compiled to NIR so just return */
    if (stcp->shader_program) {
       /* No variants */
-      st_finalize_nir(st, &stcp->Base, stcp->shader_program,
-                      stcp->tgsi.ir.nir);
       if (stcp->Base.info.stage == MESA_SHADER_TESS_EVAL ||
           stcp->Base.info.stage == MESA_SHADER_GEOMETRY)
          st_translate_stream_output_info(&stcp->Base);
@@ -1678,6 +1676,9 @@ st_get_basic_variant(struct st_context *st,
                NIR_PASS_V(tgsi.ir.nir, nir_lower_clamp_color_outputs);
 
             tgsi.stream_output = prog->tgsi.stream_output;
+
+            st_finalize_nir(st, &prog->Base, prog->shader_program,
+                            tgsi.ir.nir);
 	 } else {
             if (key->lower_depth_clamp) {
                struct gl_program_parameter_list *params = prog->Base.Parameters;
