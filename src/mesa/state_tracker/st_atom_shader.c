@@ -257,7 +257,7 @@ st_update_common_program(struct st_context *st, struct gl_program *prog,
    if (st->shader_has_one_variant[prog->info.stage] && stp->variants)
       return stp->variants->driver_shader;
 
-   struct st_basic_variant_key key;
+   struct st_common_variant_key key;
 
    /* use memset, not an initializer to be sure all memory is zeroed */
    memset(&key, 0, sizeof(key));
@@ -286,7 +286,7 @@ st_update_common_program(struct st_context *st, struct gl_program *prog,
 
    }
 
-   return st_get_basic_variant(st, stp, &key)->driver_shader;
+   return st_get_common_variant(st, stp, &key)->driver_shader;
 }
 
 

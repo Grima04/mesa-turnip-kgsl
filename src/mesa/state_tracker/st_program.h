@@ -274,8 +274,8 @@ struct st_vertex_program
 
 
 
-/** Key shared by all shaders except VP, FP */
-struct st_basic_variant_key
+/** Shader key shared by other shaders */
+struct st_common_variant_key
 {
    struct st_context *st;          /**< variants are per-context */
 
@@ -292,14 +292,14 @@ struct st_basic_variant_key
 /**
  * Geometry program variant.
  */
-struct st_basic_variant
+struct st_common_variant
 {
    /* Parameters which generated this variant. */
-   struct st_basic_variant_key key;
+   struct st_common_variant_key key;
 
    void *driver_shader;
 
-   struct st_basic_variant *next;
+   struct st_common_variant *next;
 };
 
 
@@ -316,7 +316,7 @@ struct st_common_program
   /* used when bypassing glsl_to_tgsi: */
    struct gl_shader_program *shader_program;
 
-   struct st_basic_variant *variants;
+   struct st_common_variant *variants;
 
    /** SHA1 hash of linked tgsi shader program, used for on-disk cache */
    unsigned char sha1[20];
@@ -409,10 +409,10 @@ st_get_fp_variant(struct st_context *st,
                   struct st_fragment_program *stfp,
                   const struct st_fp_variant_key *key);
 
-extern struct st_basic_variant *
-st_get_basic_variant(struct st_context *st,
-                     struct st_common_program *p,
-                     const struct st_basic_variant_key *key);
+extern struct st_common_variant *
+st_get_common_variant(struct st_context *st,
+                      struct st_common_program *p,
+                      const struct st_common_variant_key *key);
 
 extern void
 st_release_vp_variants( struct st_context *st,
@@ -423,7 +423,7 @@ st_release_fp_variants( struct st_context *st,
                         struct st_fragment_program *stfp );
 
 extern void
-st_release_basic_variants(struct st_context *st, struct st_common_program *p);
+st_release_common_variants(struct st_context *st, struct st_common_program *p);
 
 extern void
 st_destroy_program_variants(struct st_context *st);

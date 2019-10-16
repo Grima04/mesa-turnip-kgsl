@@ -233,7 +233,7 @@ st_deserialise_ir_program(struct gl_context *ctx,
    case MESA_SHADER_COMPUTE: {
       struct st_common_program *stcp = st_common_program(prog);
 
-      st_release_basic_variants(st, stcp);
+      st_release_common_variants(st, stcp);
 
       if (prog->info.stage == MESA_SHADER_TESS_EVAL ||
           prog->info.stage == MESA_SHADER_GEOMETRY)

@@ -109,7 +109,7 @@ st_delete_program(struct gl_context *ctx, struct gl_program *prog)
       {
          struct st_common_program *p = st_common_program(prog);
 
-         st_release_basic_variants(st, p);
+         st_release_common_variants(st, p);
          
          if (p->glsl_to_tgsi)
             free_glsl_to_tgsi_visitor(p->glsl_to_tgsi);
@@ -179,7 +179,7 @@ st_program_string_notify( struct gl_context *ctx,
    } else {
       struct st_common_program *stcp = st_common_program(prog);
 
-      st_release_basic_variants(st, stcp);
+      st_release_common_variants(st, stcp);
       if (!stcp->shader_program && /* not GLSL->NIR */
           !st_translate_common_program(st, stcp))
          return false;

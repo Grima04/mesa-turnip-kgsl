@@ -318,7 +318,7 @@ st_release_fp_variants(struct st_context *st, struct st_fragment_program *stfp)
  * the variant from the linked list.
  */
 static void
-delete_basic_variant(struct st_context *st, struct st_basic_variant *v,
+delete_basic_variant(struct st_context *st, struct st_common_variant *v,
                      GLenum target)
 {
    if (v->driver_shader) {
@@ -372,12 +372,12 @@ delete_basic_variant(struct st_context *st, struct st_basic_variant *v,
  * Free all basic program variants.
  */
 void
-st_release_basic_variants(struct st_context *st, struct st_common_program *p)
+st_release_common_variants(struct st_context *st, struct st_common_program *p)
 {
-   struct st_basic_variant *v;
+   struct st_common_variant *v;
 
    for (v = p->variants; v; ) {
-      struct st_basic_variant *next = v->next;
+      struct st_common_variant *next = v->next;
       delete_basic_variant(st, v, p->Base.Target);
       v = next;
    }
@@ -1677,13 +1677,13 @@ st_translate_common_program(struct st_context *st,
 /**
  * Get/create a basic program variant.
  */
-struct st_basic_variant *
-st_get_basic_variant(struct st_context *st,
-                     struct st_common_program *prog,
-                     const struct st_basic_variant_key *key)
+struct st_common_variant *
+st_get_common_variant(struct st_context *st,
+                      struct st_common_program *prog,
+                      const struct st_common_variant_key *key)
 {
    struct pipe_context *pipe = st->pipe;
-   struct st_basic_variant *v;
+   struct st_common_variant *v;
    struct pipe_shader_state tgsi = {0};
 
    /* Search for existing variant */
@@ -1695,7 +1695,7 @@ st_get_basic_variant(struct st_context *st,
 
    if (!v) {
       /* create new */
-      v = CALLOC_STRUCT(st_basic_variant);
+      v = CALLOC_STRUCT(st_common_variant);
       if (v) {
 
 	 if (prog->state.type == PIPE_SHADER_IR_NIR) {
@@ -1830,10 +1830,10 @@ destroy_program_variants(struct st_context *st, struct gl_program *target)
    case GL_COMPUTE_PROGRAM_NV:
       {
          struct st_common_program *p = st_common_program(target);
-         struct st_basic_variant *v, **prevPtr = &p->variants;
+         struct st_common_variant *v, **prevPtr = &p->variants;
 
          for (v = p->variants; v; ) {
-            struct st_basic_variant *next = v->next;
+            struct st_common_variant *next = v->next;
             if (v->key.st == st) {
                /* unlink from list */
                *prevPtr = next;
@@ -1984,12 +1984,12 @@ st_precompile_shader_variant(struct st_context *st,
    case GL_GEOMETRY_PROGRAM_NV:
    case GL_COMPUTE_PROGRAM_NV: {
       struct st_common_program *p = st_common_program(prog);
-      struct st_basic_variant_key key;
+      struct st_common_variant_key key;
 
       memset(&key, 0, sizeof(key));
 
       key.st = st->has_shareable_shaders ? NULL : st;
-      st_get_basic_variant(st, p, &key);
+      st_get_common_variant(st, p, &key);
       break;
    }
 
