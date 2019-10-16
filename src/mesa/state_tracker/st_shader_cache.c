@@ -31,6 +31,7 @@
 #include "compiler/nir/nir_serialize.h"
 #include "pipe/p_shader_tokens.h"
 #include "program/ir_to_mesa.h"
+#include "tgsi/tgsi_parse.h"
 #include "util/u_memory.h"
 
 void
@@ -57,8 +58,10 @@ copy_blob_to_driver_cache_blob(struct blob *blob, struct gl_program *prog)
 
 static void
 write_tgsi_to_cache(struct blob *blob, const struct tgsi_token *tokens,
-                    struct gl_program *prog, unsigned num_tokens)
+                    struct gl_program *prog)
 {
+   unsigned num_tokens = tgsi_num_tokens(tokens);
+
    blob_write_uint32(blob, num_tokens);
    blob_write_bytes(blob, tokens, num_tokens * sizeof(struct tgsi_token));
    copy_blob_to_driver_cache_blob(blob, prog);
@@ -98,8 +101,7 @@ st_serialise_ir_program(struct gl_context *ctx, struct gl_program *prog,
       if (nir)
          write_nir_to_cache(&blob, prog);
       else
-         write_tgsi_to_cache(&blob, stvp->state.tokens, prog,
-                             stvp->num_tgsi_tokens);
+         write_tgsi_to_cache(&blob, stvp->state.tokens, prog);
       break;
    }
    case MESA_SHADER_TESS_CTRL:
@@ -115,8 +117,7 @@ st_serialise_ir_program(struct gl_context *ctx, struct gl_program *prog,
       if (nir)
          write_nir_to_cache(&blob, prog);
       else
-         write_tgsi_to_cache(&blob, stcp->state.tokens, prog,
-                             stcp->num_tgsi_tokens);
+         write_tgsi_to_cache(&blob, stcp->state.tokens, prog);
       break;
    }
    case MESA_SHADER_FRAGMENT: {
@@ -125,8 +126,7 @@ st_serialise_ir_program(struct gl_context *ctx, struct gl_program *prog,
       if (nir)
          write_nir_to_cache(&blob, prog);
       else
-         write_tgsi_to_cache(&blob, stfp->state.tokens, prog,
-                             stfp->num_tgsi_tokens);
+         write_tgsi_to_cache(&blob, stfp->state.tokens, prog);
       break;
    }
    default:
@@ -171,11 +171,10 @@ read_stream_out_from_cache(struct blob_reader *blob_reader,
 
 static void
 read_tgsi_from_cache(struct blob_reader *blob_reader,
-                     const struct tgsi_token **tokens,
-                     unsigned *num_tokens)
+                     const struct tgsi_token **tokens)
 {
-   *num_tokens  = blob_read_uint32(blob_reader);
-   unsigned tokens_size = *num_tokens * sizeof(struct tgsi_token);
+   unsigned num_tokens  = blob_read_uint32(blob_reader);
+   unsigned tokens_size = num_tokens * sizeof(struct tgsi_token);
    *tokens = (const struct tgsi_token*) MALLOC(tokens_size);
    blob_copy_bytes(blob_reader, (uint8_t *) *tokens, tokens_size);
 }
@@ -218,8 +217,7 @@ st_deserialise_ir_program(struct gl_context *ctx,
          stvp->state.ir.nir = nir_deserialize(NULL, options, &blob_reader);
          prog->nir = stvp->state.ir.nir;
       } else {
-         read_tgsi_from_cache(&blob_reader, &stvp->state.tokens,
-                              &stvp->num_tgsi_tokens);
+         read_tgsi_from_cache(&blob_reader, &stvp->state.tokens);
       }
 
       if (st->vp == stvp)
@@ -245,8 +243,7 @@ st_deserialise_ir_program(struct gl_context *ctx,
          stcp->shader_program = shProg;
          prog->nir = stcp->state.ir.nir;
       } else {
-         read_tgsi_from_cache(&blob_reader, &stcp->state.tokens,
-                              &stcp->num_tgsi_tokens);
+         read_tgsi_from_cache(&blob_reader, &stcp->state.tokens);
       }
 
       if ((prog->info.stage == MESA_SHADER_TESS_CTRL && st->tcp == stcp) ||
@@ -267,8 +264,7 @@ st_deserialise_ir_program(struct gl_context *ctx,
          stfp->state.ir.nir = nir_deserialize(NULL, options, &blob_reader);
          prog->nir = stfp->state.ir.nir;
       } else {
-         read_tgsi_from_cache(&blob_reader, &stfp->state.tokens,
-                              &stfp->num_tgsi_tokens);
+         read_tgsi_from_cache(&blob_reader, &stfp->state.tokens);
       }
 
       if (st->fp == stfp)

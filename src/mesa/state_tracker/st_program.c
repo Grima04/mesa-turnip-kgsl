@@ -604,7 +604,7 @@ st_translate_vertex_program(struct st_context *st,
       return false;
    }
 
-   stvp->state.tokens = ureg_get_tokens(ureg, &stvp->num_tgsi_tokens);
+   stvp->state.tokens = ureg_get_tokens(ureg, NULL);
    ureg_destroy(ureg);
 
    if (stvp->glsl_to_tgsi) {
@@ -1158,7 +1158,7 @@ st_translate_fragment_program(struct st_context *st,
                                 fs_output_semantic_name,
                                 fs_output_semantic_index);
 
-   stfp->state.tokens = ureg_get_tokens(ureg, &stfp->num_tgsi_tokens);
+   stfp->state.tokens = ureg_get_tokens(ureg, NULL);
    ureg_destroy(ureg);
 
    if (stfp->glsl_to_tgsi) {
@@ -1650,7 +1650,7 @@ st_translate_common_program(struct st_context *st,
                         output_semantic_name,
                         output_semantic_index);
 
-   stcp->state.tokens = ureg_get_tokens(ureg, &stcp->num_tgsi_tokens);
+   stcp->state.tokens = ureg_get_tokens(ureg, NULL);
 
    ureg_destroy(ureg);
 
@@ -1726,7 +1726,6 @@ st_get_common_variant(struct st_context *st,
                   tgsi_free_tokens(prog->state.tokens);
 
                prog->state.tokens = tokens;
-               prog->num_tgsi_tokens = tgsi_num_tokens(tokens);
             }
 	    tgsi = prog->state;
          }
