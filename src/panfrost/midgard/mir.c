@@ -533,19 +533,19 @@ mir_bytemask(midgard_instruction *ins)
  * will return a mask of Z/Y for r2
  */
 
-static unsigned
-mir_mask_of_read_components_single(unsigned swizzle, unsigned outmask)
+static uint16_t
+mir_bytemask_of_read_components_single(unsigned swizzle, unsigned inmask, midgard_reg_mode mode)
 {
-        unsigned mask = 0;
+        unsigned cmask = 0;
 
         for (unsigned c = 0; c < 4; ++c) {
-                if (!(outmask & (1 << c))) continue;
+                if (!(inmask & (1 << c))) continue;
 
                 unsigned comp = (swizzle >> (2*c)) & 3;
-                mask |= (1 << comp);
+                cmask |= (1 << comp);
         }
 
-        return mask;
+        return mir_to_bytemask(mode, cmask);
 }
 
 static unsigned
@@ -565,40 +565,39 @@ mir_source_count(midgard_instruction *ins)
         }
 }
 
-unsigned
-mir_mask_of_read_components(midgard_instruction *ins, unsigned node)
+uint16_t
+mir_bytemask_of_read_components(midgard_instruction *ins, unsigned node)
 {
-        unsigned mask = 0;
+        uint16_t mask = 0;
 
         for (unsigned i = 0; i < mir_source_count(ins); ++i) {
                 if (ins->src[i] != node) continue;
 
                 /* Branch writeout uses all components */
                 if (ins->compact_branch && ins->writeout && (i == 0))
-                        return 0xF;
+                        return 0xFFFF;
 
-                /* Conditional branches read one component (TODO: multi branch??) */
+                /* Conditional branches read one 32-bit component = 4 bytes (TODO: multi branch??) */
                 if (ins->compact_branch && !ins->prepacked_branch && ins->branch.conditional && (i == 0))
-                        return 0x1;
+                        return 0xF;
 
                 /* ALU ops act componentwise so we need to pay attention to
                  * their mask. Texture/ldst does not so we don't clamp source
                  * readmasks based on the writemask */
-                unsigned qmask = (ins->type == TAG_ALU_4) ? ins->mask : 0xF;
+                unsigned qmask = (ins->type == TAG_ALU_4) ? ins->mask : ~0;
 
                 /* Handle dot products and things */
                 if (ins->type == TAG_ALU_4 && !ins->compact_branch) {
-                        unsigned channel_override =
-                                GET_CHANNEL_COUNT(alu_opcode_props[ins->alu.op].props);
+                        unsigned props = alu_opcode_props[ins->alu.op].props;
+
+                        unsigned channel_override = GET_CHANNEL_COUNT(props);
 
                         if (channel_override)
                                 qmask = mask_of(channel_override);
                 }
 
                 unsigned swizzle = mir_get_swizzle(ins, i);
-                unsigned m = mir_mask_of_read_components_single(swizzle, qmask);
-
-               mask |= m;
+                mask |= mir_bytemask_of_read_components_single(swizzle, qmask, mir_srcsize(ins, i));
         }
 
         return mask;

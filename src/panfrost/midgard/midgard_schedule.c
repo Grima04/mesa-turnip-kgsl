@@ -125,7 +125,7 @@ mir_create_dependency_graph(midgard_instruction **instructions, unsigned count, 
                         unsigned src = instructions[i]->src[s];
 
                         if (src < node_count) {
-                                unsigned readmask = mir_mask_of_read_components(instructions[i], src);
+                                unsigned readmask = mir_from_bytemask(mir_bytemask_of_read_components(instructions[i], src), midgard_reg_mode_32);
                                 add_dependency(last_write, src, readmask, instructions, i);
                         }
                 }
@@ -140,7 +140,7 @@ mir_create_dependency_graph(midgard_instruction **instructions, unsigned count, 
                         unsigned src = instructions[i]->src[s];
 
                         if (src < node_count) {
-                                unsigned readmask = mir_mask_of_read_components(instructions[i], src);
+                                unsigned readmask = mir_from_bytemask(mir_bytemask_of_read_components(instructions[i], src), midgard_reg_mode_32);
                                 mark_access(last_read, src, readmask, i);
                         }
                 }
@@ -388,7 +388,7 @@ mir_adjust_constants(midgard_instruction *ins,
                 uint32_t *bundles = (uint32_t *) pred->constants;
                 uint32_t *constants = (uint32_t *) ins->constants;
                 unsigned r_constant = SSA_FIXED_REGISTER(REGISTER_CONSTANT);
-                unsigned mask = mir_mask_of_read_components(ins, r_constant);
+                unsigned mask = mir_from_bytemask(mir_bytemask_of_read_components(ins, r_constant), midgard_reg_mode_32);
 
                 /* First, check if it fits */
                 unsigned count = DIV_ROUND_UP(pred->constant_count, sizeof(uint32_t));
@@ -1290,11 +1290,11 @@ static void mir_spill_register(
                 }
         }
 
-        /* For special reads, figure out how many components we need */
-        unsigned read_mask = 0;
+        /* For special reads, figure out how many bytes we need */
+        unsigned read_bytemask = 0;
 
         mir_foreach_instr_global_safe(ctx, ins) {
-                read_mask |= mir_mask_of_read_components(ins, spill_node);
+                read_bytemask |= mir_bytemask_of_read_components(ins, spill_node);
         }
 
         /* Insert a load from TLS before the first consecutive
@@ -1349,7 +1349,7 @@ static void mir_spill_register(
                                 /* Mask the load based on the component count
                                  * actually needed to prvent RA loops */
 
-                                st.mask = read_mask;
+                                st.mask = mir_from_bytemask(read_bytemask, midgard_reg_mode_32);
 
                                 mir_insert_instruction_before_scheduled(ctx, block, before, st);
                                // consecutive_skip = true;
