@@ -509,21 +509,6 @@ st_translate_vertex_program(struct st_context *st,
 
    st_prepare_vertex_program(stvp);
 
-   /* Get semantic names and indices. */
-   for (attr = 0; attr < VARYING_SLOT_MAX; attr++) {
-      if (stvp->Base.info.outputs_written & BITFIELD64_BIT(attr)) {
-         unsigned slot = num_outputs++;
-         unsigned semantic_name, semantic_index;
-         tgsi_get_gl_varying_semantic(attr, st->needs_texcoord_semantic,
-                                      &semantic_name, &semantic_index);
-         output_semantic_name[slot] = semantic_name;
-         output_semantic_index[slot] = semantic_index;
-      }
-   }
-   /* pre-setup potentially unused edgeflag output */
-   output_semantic_name[num_outputs] = TGSI_SEMANTIC_EDGEFLAG;
-   output_semantic_index[num_outputs] = 0;
-
    /* ARB_vp: */
    if (!stvp->glsl_to_tgsi) {
       _mesa_remove_output_reads(&stvp->Base, PROGRAM_OUTPUT);
@@ -540,6 +525,21 @@ st_translate_vertex_program(struct st_context *st,
 
       /* No samplers are allowed in ARB_vp. */
    }
+
+   /* Get semantic names and indices. */
+   for (attr = 0; attr < VARYING_SLOT_MAX; attr++) {
+      if (stvp->Base.info.outputs_written & BITFIELD64_BIT(attr)) {
+         unsigned slot = num_outputs++;
+         unsigned semantic_name, semantic_index;
+         tgsi_get_gl_varying_semantic(attr, st->needs_texcoord_semantic,
+                                      &semantic_name, &semantic_index);
+         output_semantic_name[slot] = semantic_name;
+         output_semantic_index[slot] = semantic_index;
+      }
+   }
+   /* pre-setup potentially unused edgeflag output */
+   output_semantic_name[num_outputs] = TGSI_SEMANTIC_EDGEFLAG;
+   output_semantic_index[num_outputs] = 0;
 
    ureg = ureg_create_with_screen(PIPE_SHADER_VERTEX, st->pipe->screen);
    if (ureg == NULL)
@@ -612,11 +612,17 @@ st_translate_vertex_program(struct st_context *st,
       st_store_ir_in_disk_cache(st, &stvp->Base, false);
    }
 
-   bool use_nir = PIPE_SHADER_IR_NIR ==
-      st->pipe->screen->get_shader_param(st->pipe->screen, PIPE_SHADER_VERTEX,
-                                         PIPE_SHADER_CAP_PREFERRED_IR);
+   /* Translate to NIR.
+    *
+    * This must be done after the translation to TGSI is done, because
+    * we'll pass the NIR shader to the driver and the TGSI version to
+    * the draw module for the select/feedback/rasterpos code.
+    */
+   if (st->pipe->screen->get_shader_param(st->pipe->screen,
+                                          PIPE_SHADER_VERTEX,
+                                          PIPE_SHADER_CAP_PREFERRED_IR)) {
+      assert(!stvp->glsl_to_tgsi);
 
-   if (use_nir) {
       nir_shader *nir =
          st_translate_prog_to_nir(st, &stvp->Base, MESA_SHADER_VERTEX);
 
