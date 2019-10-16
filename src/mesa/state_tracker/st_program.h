@@ -260,9 +260,6 @@ struct st_vertex_program
    /** List of translated variants of this vertex program.
     */
    struct st_vp_variant *variants;
-
-   /** SHA1 hash of linked tgsi shader program, used for on-disk cache */
-   unsigned char sha1[20];
 };
 
 
@@ -294,9 +291,6 @@ struct st_common_program
    struct gl_shader_program *shader_program;
 
    struct st_common_variant *variants;
-
-   /** SHA1 hash of linked tgsi shader program, used for on-disk cache */
-   unsigned char sha1[20];
 };
 
 
