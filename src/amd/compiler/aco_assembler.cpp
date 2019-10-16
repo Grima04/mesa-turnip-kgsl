@@ -624,7 +624,8 @@ static void fix_branches_gfx10(asm_context& ctx, std::vector<uint32_t>& out)
       if (gfx10_3f_bug) {
          /* Insert an s_nop after the branch */
          constexpr uint32_t s_nop_0 = 0xbf800000u;
-         auto out_pos = std::next(out.begin(), buggy_branch_it->first + 1);
+         int s_nop_pos = buggy_branch_it->first + 1;
+         auto out_pos = std::next(out.begin(), s_nop_pos);
          out.insert(out_pos, s_nop_0);
 
          /* Update the offset of each affected block */
@@ -636,6 +637,16 @@ static void fix_branches_gfx10(asm_context& ctx, std::vector<uint32_t>& out)
          /* Update the branches following the current one */
          for (auto branch_it = std::next(buggy_branch_it); branch_it != ctx.branches.end(); ++branch_it)
             branch_it->first++;
+
+         /* Find first constant address after the inserted instruction */
+         auto caddr_it = std::find_if(ctx.constaddrs.begin(), ctx.constaddrs.end(), [s_nop_pos](const int &caddr_pos) -> bool {
+            return caddr_pos >= s_nop_pos;
+         });
+
+         /* Update the locations of constant addresses */
+         for (; caddr_it != ctx.constaddrs.end(); ++caddr_it)
+            (*caddr_it)++;
+
       }
    } while (gfx10_3f_bug);
 }
