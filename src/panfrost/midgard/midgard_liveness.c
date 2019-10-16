@@ -60,14 +60,13 @@ mir_liveness_ins_update(uint16_t *live, midgard_instruction *ins, unsigned max)
 {
         /* live_in[s] = GEN[s] + (live_out[s] - KILL[s]) */
 
-        liveness_kill(live, ins->dest, max, ins->mask);
+        liveness_kill(live, ins->dest, max, mir_bytemask(ins));
 
         mir_foreach_src(ins, src) {
                 unsigned node = ins->src[src];
                 unsigned bytemask = mir_bytemask_of_read_components(ins, node);
-                unsigned mask = mir_from_bytemask(bytemask, midgard_reg_mode_32);
 
-                liveness_gen(live, node, max, mask);
+                liveness_gen(live, node, max, bytemask);
         }
 }
 
