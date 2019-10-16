@@ -302,7 +302,7 @@ translate_vertex_format_normalize(enum pipe_format fmt)
    /* assumes that normalization of channel 0 holds for all channels;
     * this holds for all vertex formats that we support */
    return desc->channel[0].normalized
-             ? VIVS_FE_VERTEX_ELEMENT_CONFIG_NORMALIZE_ON
+             ? VIVS_FE_VERTEX_ELEMENT_CONFIG_NORMALIZE_SIGN_EXTEND
              : VIVS_FE_VERTEX_ELEMENT_CONFIG_NORMALIZE_OFF;
 }
 
