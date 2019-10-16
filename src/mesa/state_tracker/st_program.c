@@ -760,26 +760,6 @@ bool
 st_translate_fragment_program(struct st_context *st,
                               struct st_fragment_program *stfp)
 {
-   ubyte outputMapping[2 * FRAG_RESULT_MAX];
-   ubyte inputMapping[VARYING_SLOT_MAX];
-   ubyte inputSlotToAttr[VARYING_SLOT_MAX];
-   ubyte interpMode[PIPE_MAX_SHADER_INPUTS];  /* XXX size? */
-   GLuint attr;
-   GLbitfield64 inputsRead;
-   struct ureg_program *ureg;
-
-   GLboolean write_all = GL_FALSE;
-
-   ubyte input_semantic_name[PIPE_MAX_SHADER_INPUTS];
-   ubyte input_semantic_index[PIPE_MAX_SHADER_INPUTS];
-   uint fs_num_inputs = 0;
-
-   ubyte fs_output_semantic_name[PIPE_MAX_SHADER_OUTPUTS];
-   ubyte fs_output_semantic_index[PIPE_MAX_SHADER_OUTPUTS];
-   uint fs_num_outputs = 0;
-
-   memset(inputSlotToAttr, ~0, sizeof(inputSlotToAttr));
-
    /* Non-GLSL programs: */
    if (!stfp->glsl_to_tgsi) {
       _mesa_remove_output_reads(&stfp->Base, PROGRAM_OUTPUT);
@@ -805,25 +785,43 @@ st_translate_fragment_program(struct st_context *st,
             stfp->affected_states |= ST_NEW_FS_SAMPLER_VIEWS |
                                      ST_NEW_FS_SAMPLERS;
       }
+
+      /* Translate to NIR. */
+      if (!stfp->ati_fs &&
+          st->pipe->screen->get_shader_param(st->pipe->screen,
+                                             PIPE_SHADER_FRAGMENT,
+                                             PIPE_SHADER_CAP_PREFERRED_IR)) {
+         nir_shader *nir =
+            st_translate_prog_to_nir(st, &stfp->Base, MESA_SHADER_FRAGMENT);
+
+         if (stfp->tgsi.ir.nir)
+            ralloc_free(stfp->tgsi.ir.nir);
+         stfp->tgsi.type = PIPE_SHADER_IR_NIR;
+         stfp->tgsi.ir.nir = nir;
+         stfp->Base.nir = nir;
+         return true;
+      }
    }
 
+   ubyte outputMapping[2 * FRAG_RESULT_MAX];
+   ubyte inputMapping[VARYING_SLOT_MAX];
+   ubyte inputSlotToAttr[VARYING_SLOT_MAX];
+   ubyte interpMode[PIPE_MAX_SHADER_INPUTS];  /* XXX size? */
+   GLuint attr;
+   GLbitfield64 inputsRead;
+   struct ureg_program *ureg;
 
-   bool use_nir = PIPE_SHADER_IR_NIR ==
-      st->pipe->screen->get_shader_param(st->pipe->screen,
-                                         PIPE_SHADER_FRAGMENT,
-                                         PIPE_SHADER_CAP_PREFERRED_IR);
+   GLboolean write_all = GL_FALSE;
 
-   if (use_nir && !stfp->ati_fs) {
-      nir_shader *nir =
-         st_translate_prog_to_nir(st, &stfp->Base, MESA_SHADER_FRAGMENT);
+   ubyte input_semantic_name[PIPE_MAX_SHADER_INPUTS];
+   ubyte input_semantic_index[PIPE_MAX_SHADER_INPUTS];
+   uint fs_num_inputs = 0;
 
-      if (stfp->tgsi.ir.nir)
-         ralloc_free(stfp->tgsi.ir.nir);
-      stfp->tgsi.type = PIPE_SHADER_IR_NIR;
-      stfp->tgsi.ir.nir = nir;
-      stfp->Base.nir = nir;
-      return true;
-   }
+   ubyte fs_output_semantic_name[PIPE_MAX_SHADER_OUTPUTS];
+   ubyte fs_output_semantic_index[PIPE_MAX_SHADER_OUTPUTS];
+   uint fs_num_outputs = 0;
+
+   memset(inputSlotToAttr, ~0, sizeof(inputSlotToAttr));
 
    /*
     * Convert Mesa program inputs to TGSI input register semantics.
