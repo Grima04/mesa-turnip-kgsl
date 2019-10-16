@@ -287,7 +287,7 @@ brw_hw_type_to_reg_type(const struct gen_device_info *devinfo,
          }
       }
    }
-   unreachable("not reached");
+   return (enum brw_reg_type)-1;
 }
 
 /**
@@ -337,7 +337,7 @@ brw_a16_hw_3src_type_to_reg_type(const struct gen_device_info *devinfo,
          return i;
       }
    }
-   unreachable("not reached");
+   return (enum brw_reg_type)-1;
 }
 
 /**
@@ -357,7 +357,7 @@ brw_a1_hw_3src_type_to_reg_type(const struct gen_device_info *devinfo,
          return i;
       }
    }
-   unreachable("not reached");
+   return (enum brw_reg_type)-1;
 }
 
 /**
