@@ -312,8 +312,13 @@ static void si_destroy_context(struct pipe_context *context)
 static enum pipe_reset_status si_get_reset_status(struct pipe_context *ctx)
 {
 	struct si_context *sctx = (struct si_context *)ctx;
+	enum pipe_reset_status status = sctx->ws->ctx_query_reset_status(sctx->ctx);
 
-	return sctx->ws->ctx_query_reset_status(sctx->ctx);
+	if (status != PIPE_NO_RESET && sctx->device_reset_callback.reset) {
+		sctx->device_reset_callback.reset(sctx->device_reset_callback.data,
+						  status);
+	}
+	return status;
 }
 
 static void si_set_device_reset_callback(struct pipe_context *ctx,
@@ -326,21 +331,6 @@ static void si_set_device_reset_callback(struct pipe_context *ctx,
 	else
 		memset(&sctx->device_reset_callback, 0,
 		       sizeof(sctx->device_reset_callback));
-}
-
-bool si_check_device_reset(struct si_context *sctx)
-{
-	enum pipe_reset_status status;
-
-	if (!sctx->device_reset_callback.reset)
-		return false;
-
-	status = sctx->ws->ctx_query_reset_status(sctx->ctx);
-	if (status == PIPE_NO_RESET)
-		return false;
-
-	sctx->device_reset_callback.reset(sctx->device_reset_callback.data, status);
-	return true;
 }
 
 /* Apitrace profiling:

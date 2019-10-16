@@ -1430,9 +1430,6 @@ void si_initialize_prim_discard_tunables(struct si_context *sctx);
 void si_init_perfcounters(struct si_screen *screen);
 void si_destroy_perfcounters(struct si_screen *screen);
 
-/* si_pipe.c */
-bool si_check_device_reset(struct si_context *sctx);
-
 /* si_query.c */
 void si_init_screen_query_functions(struct si_screen *sscreen);
 void si_init_query_functions(struct si_context *sctx);

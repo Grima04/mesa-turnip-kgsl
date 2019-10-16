@@ -97,7 +97,7 @@ void si_flush_gfx_cs(struct si_context *ctx, unsigned flags,
 	    (!wait_flags || !ctx->gfx_last_ib_is_busy))
 		return;
 
-	if (si_check_device_reset(ctx))
+	if (ctx->b.get_device_reset_status(&ctx->b) != PIPE_NO_RESET)
 		return;
 
 	if (ctx->screen->debug_flags & DBG(CHECK_VM))
