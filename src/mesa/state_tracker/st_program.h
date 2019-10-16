@@ -180,9 +180,8 @@ struct st_fragment_program
 };
 
 
-
-/** Vertex program variant key */
-struct st_vp_variant_key
+/** Shader key shared by other shaders */
+struct st_common_variant_key
 {
    struct st_context *st;          /**< variants are per-context */
    bool passthrough_edgeflags;
@@ -211,7 +210,7 @@ struct st_vp_variant
    /* Parameters which generated this translated version of a vertex
     * shader:
     */
-   struct st_vp_variant_key key;
+   struct st_common_variant_key key;
 
    /**
     * The shader variant saved for the draw module to later emulate
@@ -264,22 +263,6 @@ struct st_vertex_program
 
    /** SHA1 hash of linked tgsi shader program, used for on-disk cache */
    unsigned char sha1[20];
-};
-
-
-
-/** Shader key shared by other shaders */
-struct st_common_variant_key
-{
-   struct st_context *st;          /**< variants are per-context */
-
-   /** For compat profile */
-   bool clamp_color;
-
-   /** both for ARB_depth_clamp */
-   bool lower_depth_clamp;
-   bool clip_negative_one_to_one;
-
 };
 
 
@@ -392,7 +375,7 @@ st_set_prog_affected_state_flags(struct gl_program *prog);
 extern struct st_vp_variant *
 st_get_vp_variant(struct st_context *st,
                   struct st_vertex_program *stvp,
-                  const struct st_vp_variant_key *key);
+                  const struct st_common_variant_key *key);
 
 
 extern struct st_fp_variant *

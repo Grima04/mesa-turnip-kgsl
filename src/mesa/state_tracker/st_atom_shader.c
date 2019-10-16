@@ -190,7 +190,7 @@ st_update_vp( struct st_context *st )
        stvp->variants->key.passthrough_edgeflags == st->vertdata_edgeflags) {
       st->vp_variant = stvp->variants;
    } else {
-      struct st_vp_variant_key key;
+      struct st_common_variant_key key;
 
       memset(&key, 0, sizeof(key));
 

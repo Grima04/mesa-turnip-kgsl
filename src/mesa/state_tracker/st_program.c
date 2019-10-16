@@ -643,7 +643,7 @@ static const gl_state_index16 depth_range_state[STATE_LENGTH] =
 static struct st_vp_variant *
 st_create_vp_variant(struct st_context *st,
                      struct st_vertex_program *stvp,
-                     const struct st_vp_variant_key *key)
+                     const struct st_common_variant_key *key)
 {
    struct st_vp_variant *vpv = CALLOC_STRUCT(st_vp_variant);
    struct pipe_context *pipe = st->pipe;
@@ -761,7 +761,7 @@ st_create_vp_variant(struct st_context *st,
 struct st_vp_variant *
 st_get_vp_variant(struct st_context *st,
                   struct st_vertex_program *stvp,
-                  const struct st_vp_variant_key *key)
+                  const struct st_common_variant_key *key)
 {
    struct st_vp_variant *vpv;
 
@@ -1958,7 +1958,7 @@ st_precompile_shader_variant(struct st_context *st,
    switch (prog->Target) {
    case GL_VERTEX_PROGRAM_ARB: {
       struct st_vertex_program *p = (struct st_vertex_program *)prog;
-      struct st_vp_variant_key key;
+      struct st_common_variant_key key;
 
       memset(&key, 0, sizeof(key));
 
