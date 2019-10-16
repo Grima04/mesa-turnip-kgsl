@@ -401,7 +401,7 @@ update_dest(unsigned reg)
         }
 }
 
-static unsigned
+static void
 print_dest(unsigned reg, midgard_reg_mode mode, midgard_dest_override override)
 {
         /* Depending on the mode and override, we determine the type of
@@ -415,8 +415,6 @@ print_dest(unsigned reg, midgard_reg_mode mode, midgard_dest_override override)
 
         update_dest(reg);
         print_reg(reg, bits);
-
-        return bits;
 }
 
 static void
@@ -424,20 +422,11 @@ print_mask_vec16(uint8_t mask, midgard_dest_override override)
 {
         printf(".");
 
-        if (override == midgard_dest_override_none) {
-                for (unsigned i = 0; i < 8; i++) {
-                        if (mask & (1 << i))
-                                printf("%c%c",
-                                       components[i*2 + 0],
-                                       components[i*2 + 1]);
-                }
-        } else {
-                bool upper = (override == midgard_dest_override_upper);
-
-                for (unsigned i = 0; i < 8; i++) {
-                        if (mask & (1 << i))
-                                printf("%c", components[i + (upper ? 8 : 0)]);
-                }
+        for (unsigned i = 0; i < 8; i++) {
+                if (mask & (1 << i))
+                        printf("%c%c",
+                               components[i*2 + 0],
+                               components[i*2 + 1]);
         }
 }
 
@@ -456,24 +445,18 @@ print_mask(uint8_t mask, unsigned bits, midgard_dest_override override)
                 return;
         }
 
-        if (bits < 16) {
-                /* Shouldn't happen but with junk / out-of-spec shaders it
-                 * would cause an infinite loop */
-
-                printf("/* XXX: bits = %u */", bits);
-                return;
-        }
-
         /* Skip 'complete' masks */
 
-        if (bits >= 32 && mask == 0xFF) return;
+        if (override == midgard_dest_override_none) {
+                if (bits >= 32 && mask == 0xFF) return;
 
-        if (bits == 16) {
-                if (mask == 0x0F)
-                        return;
-                else if (mask == 0xF0) {
-                        printf("'");
-                        return;
+                if (bits == 16) {
+                        if (mask == 0x0F)
+                                return;
+                        else if (mask == 0xF0) {
+                                printf("'");
+                                return;
+                        }
                 }
         }
 
@@ -482,6 +465,17 @@ print_mask(uint8_t mask, unsigned bits, midgard_dest_override override)
         unsigned skip = (bits / 16);
         bool uppercase = bits > 32;
         bool tripped = false;
+
+        /* To apply an upper destination override, we "shift" the alphabet.
+         * E.g. with an upper override on 32-bit, instead of xyzw, print efgh.
+         * For upper 16-bit, instead of xyzwefgh, print ijklmnop */
+
+        const char *alphabet = components;
+
+        if (override == midgard_dest_override_upper) {
+                unsigned components = 128 / bits;
+                alphabet += components;
+        }
 
         for (unsigned i = 0; i < 8; i += skip) {
                 bool a = (mask & (1 << i)) != 0;
@@ -492,7 +486,7 @@ print_mask(uint8_t mask, unsigned bits, midgard_dest_override override)
                 }
 
                 if (a) {
-                        char c = components[i / skip];
+                        char c = alphabet[i / skip];
 
                         if (uppercase)
                                 c = toupper(c);
@@ -554,20 +548,7 @@ print_vector_field(const char *name, uint16_t *words, uint16_t reg_word,
         uint8_t mask = alu_field->mask;
 
         /* First, print the destination */
-        unsigned dest_size =
-                print_dest(reg_info->out_reg, mode, alu_field->dest_override);
-
-        /* Apply the destination override to the mask */
-
-        if (mode == midgard_reg_mode_32 || mode == midgard_reg_mode_64) {
-                if (override == midgard_dest_override_lower)
-                        mask &= 0x0F;
-                else if (override == midgard_dest_override_upper)
-                        mask &= 0xF0;
-        } else if (mode == midgard_reg_mode_16
-                   && override == midgard_dest_override_lower) {
-                /* stub */
-        }
+        print_dest(reg_info->out_reg, mode, alu_field->dest_override);
 
         if (override != midgard_dest_override_none) {
                 bool modeable = (mode != midgard_reg_mode_8);
@@ -577,7 +558,7 @@ print_vector_field(const char *name, uint16_t *words, uint16_t reg_word,
                         printf("/* do%u */ ", override);
         }
 
-        print_mask(mask, dest_size, override);
+        print_mask(mask, bits_for_mode(mode), override);
 
         printf(", ");
 
