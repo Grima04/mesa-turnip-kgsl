@@ -321,7 +321,8 @@ Temp as_uniform_bool(isel_context *ctx, Temp val)
    } else {
       assert(val.regClass() == s2);
       Builder bld(ctx->program, ctx->block);
-      return bld.sopc(aco_opcode::s_cmp_lg_u64, bld.def(s1, scc), Operand(0u), Operand(val));
+      /* if we're currently in WQM mode, ensure that the source is also computed in WQM */
+      return bld.sopc(aco_opcode::s_cmp_lg_u64, bld.def(s1, scc), Operand(0u), emit_wqm(ctx, val));
    }
 }
 
