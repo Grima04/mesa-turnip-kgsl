@@ -525,17 +525,21 @@ mir_insert_instruction_after_scheduled(
         midgard_instruction *tag,
         midgard_instruction ins)
 {
-        unsigned after = mir_bundle_idx_for_ins(tag, block);
+        /* We need to grow the bundles array to add our new bundle */
         size_t count = util_dynarray_num_elements(&block->bundles, midgard_bundle);
         UNUSED void *unused = util_dynarray_grow(&block->bundles, midgard_bundle, 1);
 
+        /* Find the bundle that we want to insert after */
+        unsigned after = mir_bundle_idx_for_ins(tag, block);
+
+        /* All the bundles after that one, we move ahead by one */
         midgard_bundle *bundles = (midgard_bundle *) block->bundles.data;
         memmove(bundles + after + 2, bundles + after + 1, (count - after - 1) * sizeof(midgard_bundle));
         midgard_bundle *after_bundle = bundles + after;
 
         midgard_bundle new = mir_bundle_for_op(ctx, ins);
         memcpy(bundles + after + 1, &new, sizeof(new));
-        list_addtail(&new.instructions[0]->link, &after_bundle->instructions[after_bundle->instruction_count - 1]->link);
+        list_add(&new.instructions[0]->link, &after_bundle->instructions[after_bundle->instruction_count - 1]->link);
 }
 
 /* Flip the first-two arguments of a (binary) op. Currently ALU
