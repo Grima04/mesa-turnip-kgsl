@@ -55,7 +55,7 @@ struct spill_ctx {
    std::vector<std::map<Temp, std::pair<uint32_t, uint32_t>>> next_use_distances_start;
    std::vector<std::map<Temp, std::pair<uint32_t, uint32_t>>> next_use_distances_end;
    std::vector<std::pair<RegClass, std::set<uint32_t>>> interferences;
-   std::vector<std::pair<uint32_t, uint32_t>> affinities;
+   std::vector<std::vector<uint32_t>> affinities;
    std::vector<bool> is_reloaded;
    std::map<Temp, remat_info> remat;
    std::map<Instruction *, bool> remat_used;
@@ -66,6 +66,34 @@ struct spill_ctx {
         register_demand(register_demand), renames(program->blocks.size()),
         spills_entry(program->blocks.size()), spills_exit(program->blocks.size()),
         processed(program->blocks.size(), false) {}
+
+   void add_affinity(uint32_t first, uint32_t second)
+   {
+      unsigned found_first = affinities.size();
+      unsigned found_second = affinities.size();
+      for (unsigned i = 0; i < affinities.size(); i++) {
+         std::vector<uint32_t>& vec = affinities[i];
+         for (uint32_t entry : vec) {
+            if (entry == first)
+               found_first = i;
+            else if (entry == second)
+               found_second = i;
+         }
+      }
+      if (found_first == affinities.size() && found_second == affinities.size()) {
+         affinities.emplace_back(std::vector<uint32_t>({first, second}));
+      } else if (found_first < affinities.size() && found_second == affinities.size()) {
+         affinities[found_first].push_back(second);
+      } else if (found_second < affinities.size() && found_first == affinities.size()) {
+         affinities[found_second].push_back(first);
+      } else if (found_first != found_second) {
+         /* merge second into first */
+         affinities[found_first].insert(affinities[found_first].end(), affinities[found_second].begin(), affinities[found_second].end());
+         affinities.erase(std::next(affinities.begin(), found_second));
+      } else {
+         assert(found_first == found_second);
+      }
+   }
 
    uint32_t allocate_spill_id(RegClass rc)
    {
@@ -740,7 +768,7 @@ void add_coupling_code(spill_ctx& ctx, Block* block, unsigned block_idx)
          std::map<Temp, uint32_t>::iterator spilled = ctx.spills_exit[pred_idx].find(var);
          if (spilled != ctx.spills_exit[pred_idx].end()) {
             if (spilled->second != def_spill_id)
-               ctx.affinities.emplace_back(std::pair<uint32_t, uint32_t>{def_spill_id, spilled->second});
+               ctx.add_affinity(def_spill_id, spilled->second);
             continue;
          }
 
@@ -752,7 +780,7 @@ void add_coupling_code(spill_ctx& ctx, Block* block, unsigned block_idx)
          }
 
          uint32_t spill_id = ctx.allocate_spill_id(phi->definitions[0].regClass());
-         ctx.affinities.emplace_back(std::pair<uint32_t, uint32_t>{def_spill_id, spill_id});
+         ctx.add_affinity(def_spill_id, spill_id);
          aco_ptr<Pseudo_instruction> spill{create_instruction<Pseudo_instruction>(aco_opcode::p_spill, Format::PSEUDO, 2, 0)};
          spill->operands[0] = Operand(var);
          spill->operands[1] = Operand(spill_id);
@@ -789,7 +817,7 @@ void add_coupling_code(spill_ctx& ctx, Block* block, unsigned block_idx)
          std::map<Temp, uint32_t>::iterator spilled = ctx.spills_exit[pred_idx].find(pair.first);
          if (spilled != ctx.spills_exit[pred_idx].end()) {
             if (spilled->second != pair.second)
-               ctx.affinities.emplace_back(std::pair<uint32_t, uint32_t>{pair.second, spilled->second});
+               ctx.add_affinity(pair.second, spilled->second);
             continue;
          }
 
@@ -1227,17 +1255,22 @@ void assign_spill_slots(spill_ctx& ctx, unsigned spills_to_vgpr) {
    std::vector<bool> is_assigned(ctx.interferences.size());
 
    /* first, handle affinities: just merge all interferences into both spill ids */
-   for (std::pair<uint32_t, uint32_t> pair : ctx.affinities) {
-      assert(pair.first != pair.second);
-      for (uint32_t id : ctx.interferences[pair.first].second)
-         ctx.interferences[id].second.insert(pair.second);
-      for (uint32_t id : ctx.interferences[pair.second].second)
-         ctx.interferences[id].second.insert(pair.first);
-      ctx.interferences[pair.first].second.insert(ctx.interferences[pair.second].second.begin(), ctx.interferences[pair.second].second.end());
-      ctx.interferences[pair.second].second.insert(ctx.interferences[pair.first].second.begin(), ctx.interferences[pair.first].second.end());
+   for (std::vector<uint32_t>& vec : ctx.affinities) {
+      for (unsigned i = 0; i < vec.size(); i++) {
+         for (unsigned j = i + 1; j < vec.size(); j++) {
+            assert(vec[i] != vec[j]);
+            for (uint32_t id : ctx.interferences[vec[i]].second)
+               ctx.interferences[id].second.insert(vec[j]);
+            for (uint32_t id : ctx.interferences[vec[j]].second)
+               ctx.interferences[id].second.insert(vec[i]);
+            ctx.interferences[vec[i]].second.insert(ctx.interferences[vec[j]].second.begin(), ctx.interferences[vec[j]].second.end());
+            ctx.interferences[vec[j]].second.insert(ctx.interferences[vec[i]].second.begin(), ctx.interferences[vec[i]].second.end());
 
-      bool reloaded = ctx.is_reloaded[pair.first] || ctx.is_reloaded[pair.second];
-      ctx.is_reloaded[pair.first] = ctx.is_reloaded[pair.second] = reloaded;
+            bool reloaded = ctx.is_reloaded[vec[i]] || ctx.is_reloaded[vec[j]];
+            ctx.is_reloaded[vec[i]] = reloaded;
+            ctx.is_reloaded[vec[j]] = reloaded;
+         }
+      }
    }
    for (ASSERTED uint32_t i = 0; i < ctx.interferences.size(); i++)
       for (ASSERTED uint32_t id : ctx.interferences[i].second)
@@ -1277,6 +1310,23 @@ void assign_spill_slots(spill_ctx& ctx, unsigned spills_to_vgpr) {
          is_assigned[id] = true;
          for (unsigned i = slot_idx; i < slot_idx + ctx.interferences[id].first.size(); i++)
             spill_slot_interferences[i].insert(ctx.interferences[id].second.begin(), ctx.interferences[id].second.end());
+
+         /* add all affinities: there are no additional interferences */
+         for (std::vector<uint32_t>& vec : ctx.affinities) {
+            bool found_affinity = false;
+            for (uint32_t entry : vec) {
+               if (entry == id) {
+                  found_affinity = true;
+                  break;
+               }
+            }
+            if (!found_affinity)
+               continue;
+            for (uint32_t entry : vec) {
+               sgpr_slot[entry] = slot_idx;
+               is_assigned[entry] = true;
+            }
+         }
       }
       slot_idx++;
    }
@@ -1321,16 +1371,20 @@ void assign_spill_slots(spill_ctx& ctx, unsigned spills_to_vgpr) {
    for (unsigned id = 0; id < is_assigned.size(); id++)
       assert(is_assigned[id] || !ctx.is_reloaded[id]);
 
-   for (std::pair<uint32_t, uint32_t> pair : ctx.affinities) {
-      assert(is_assigned[pair.first] == is_assigned[pair.second]);
-      if (!is_assigned[pair.first])
-         continue;
-      assert(ctx.is_reloaded[pair.first] == ctx.is_reloaded[pair.second]);
-      assert(ctx.interferences[pair.first].first.type() == ctx.interferences[pair.second].first.type());
-      if (ctx.interferences[pair.first].first.type() == RegType::sgpr)
-         assert(sgpr_slot[pair.first] == sgpr_slot[pair.second]);
-      else
-         assert(vgpr_slot[pair.first] == vgpr_slot[pair.second]);
+   for (std::vector<uint32_t>& vec : ctx.affinities) {
+      for (unsigned i = 0; i < vec.size(); i++) {
+         for (unsigned j = i + 1; j < vec.size(); j++) {
+            assert(is_assigned[vec[i]] == is_assigned[vec[j]]);
+            if (!is_assigned[vec[i]])
+               continue;
+            assert(ctx.is_reloaded[vec[i]] == ctx.is_reloaded[vec[j]]);
+            assert(ctx.interferences[vec[i]].first.type() == ctx.interferences[vec[j]].first.type());
+            if (ctx.interferences[vec[i]].first.type() == RegType::sgpr)
+               assert(sgpr_slot[vec[i]] == sgpr_slot[vec[j]]);
+            else
+               assert(vgpr_slot[vec[i]] == vgpr_slot[vec[j]]);
+         }
+      }
    }
 
    /* hope, we didn't mess up */
