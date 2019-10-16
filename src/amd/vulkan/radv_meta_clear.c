@@ -1461,6 +1461,8 @@ static void vi_get_fast_clear_parameters(struct radv_device *device,
 	int extra_channel;
 	bool main_value = false;
 	bool extra_value = false;
+	bool has_color = false;
+	bool has_alpha = false;
 	int i;
 	*can_avoid_fast_clear_elim = false;
 
@@ -1478,9 +1480,6 @@ static void vi_get_fast_clear_parameters(struct radv_device *device,
 			extra_channel = 0;
 	} else
 		return;
-
-	bool image_alpha_is_on_msb = vi_alpha_is_on_msb(device, image_format);
-	bool view_alpha_is_on_msb = vi_alpha_is_on_msb(device, view_format);
 
 	for (i = 0; i < 4; i++) {
 		int index = desc->swizzle[i] - VK_SWIZZLE_X;
@@ -1510,22 +1509,20 @@ static void vi_get_fast_clear_parameters(struct radv_device *device,
 				return;
 		}
 
-		if (index == extra_channel)
+		if (index == extra_channel) {
 			extra_value = values[i];
-		else
+			has_alpha = true;
+		} else {
 			main_value = values[i];
+			has_color = true;
+		}
 	}
 
 	/* If alpha isn't present, make it the same as color, and vice versa. */
-	if (!extra_value)
+	if (!has_alpha)
 		extra_value = main_value;
-	else if (!main_value)
+	else if (!has_color)
 		main_value = extra_value;
-
-	if (main_value != extra_value) {
-		assert(image_alpha_is_on_msb == view_alpha_is_on_msb);
-		return; /* require ELIMINATE_FAST_CLEAR */
-	}
 
 	for (int i = 0; i < 4; ++i)
 		if (values[i] != main_value &&
