@@ -140,3 +140,36 @@ by an `s_buffer_store` with the same address. Inserting an `s_nop` between them
 does not mitigate the issue, so an `s_waitcnt lgkmcnt(0)` must be inserted.
 This is not mentioned by LLVM among the other GFX10 bugs, but LLVM doesn't use
 SMEM stores, so it's not surprising that they didn't notice it.
+
+### VMEMtoScalarWriteHazard
+
+Triggered by:
+VMEM/FLAT/GLOBAL/SCRATCH/DS instruction reads an SGPR (or EXEC, or M0).
+Then, a SALU/SMEM instruction writes the same SGPR.
+
+Mitigated by:
+A VALU instruction or an `s_waitcnt vmcnt(0)` between the two instructions.
+
+### Offset3fBug
+
+Any branch that is located at offset 0x3f will be buggy. Just insert some NOPs to make sure no branch
+is located at this offset.
+
+### InstFwdPrefetchBug
+
+According to LLVM, the `s_inst_prefetch` instruction can cause a hang.
+There are no further details.
+
+### LdsMisalignedBug
+
+When there is a misaligned multi-dword FLAT load/store instruction in WGP mode,
+it needs to be split into multiple single-dword FLAT instructions.
+
+ACO doesn't use FLAT load/store on GFX10, so is unaffected.
+
+### FlatSegmentOffsetBug
+
+The 12-bit immediate OFFSET field of FLAT instructions must always be 0.
+GLOBAL and SCRATCH are unaffected.
+
+ACO doesn't use FLAT load/store on GFX10, so is unaffected.

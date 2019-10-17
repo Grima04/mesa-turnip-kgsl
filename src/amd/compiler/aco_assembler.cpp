@@ -399,8 +399,10 @@ void emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction*
          assert(flat->offset <= 0x1fff);
          encoding |= flat->offset & 0x1fff;
       } else {
-         assert(flat->offset <= 0x0fff);
-         encoding |= flat->offset & 0x0fff;
+         /* GFX10 has a 12-bit immediate OFFSET field,
+          * but it has a hw bug: it ignores the offset, called FlatSegmentOffsetBug
+          */
+         assert(flat->offset == 0);
       }
       if (instr->format == Format::SCRATCH)
          encoding |= 1 << 14;
