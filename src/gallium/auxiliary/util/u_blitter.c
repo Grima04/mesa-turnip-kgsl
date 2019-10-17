@@ -793,8 +793,6 @@ static void blitter_set_rectangle(struct blitter_context_priv *ctx,
                                   int x1, int y1, int x2, int y2,
                                   float depth)
 {
-   int i;
-
    /* set vertex positions */
    ctx->vertices[0][0][0] = (float)x1 / ctx->dst_width * 2.0f - 1.0f; /*v0.x*/
    ctx->vertices[0][0][1] = (float)y1 / ctx->dst_height * 2.0f - 1.0f; /*v0.y*/
