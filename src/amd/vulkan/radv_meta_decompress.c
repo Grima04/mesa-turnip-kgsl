@@ -33,6 +33,12 @@ enum radv_depth_op {
 	DEPTH_RESUMMARIZE,
 };
 
+enum radv_depth_decompress {
+	DECOMPRESS_DEPTH_STENCIL,
+	DECOMPRESS_DEPTH,
+	DECOMPRESS_STENCIL,
+};
+
 static VkResult
 create_pass(struct radv_device *device,
 	    uint32_t samples,
@@ -104,6 +110,7 @@ create_pipeline(struct radv_device *device,
 		VkRenderPass pass,
 		VkPipelineLayout layout,
 		enum radv_depth_op op,
+		enum radv_depth_decompress decompress,
 		VkPipeline *pipeline)
 {
 	VkResult result;
@@ -214,8 +221,10 @@ create_pipeline(struct radv_device *device,
 
 	struct radv_graphics_pipeline_create_info extra = {
 		.use_rectlist = true,
-		.db_flush_depth_inplace = true,
-		.db_flush_stencil_inplace = true,
+		.db_flush_depth_inplace = decompress == DECOMPRESS_DEPTH_STENCIL ||
+					  decompress == DECOMPRESS_DEPTH,
+		.db_flush_stencil_inplace = decompress == DECOMPRESS_DEPTH_STENCIL ||
+					    decompress == DECOMPRESS_STENCIL,
 		.db_resummarize = op == DEPTH_RESUMMARIZE,
 	};
 
@@ -245,9 +254,12 @@ radv_device_finish_meta_depth_decomp_state(struct radv_device *device)
 		radv_DestroyPipelineLayout(radv_device_to_handle(device),
 					   state->depth_decomp[i].p_layout,
 					   &state->alloc);
-		radv_DestroyPipeline(radv_device_to_handle(device),
-				     state->depth_decomp[i].decompress_pipeline,
-				     &state->alloc);
+
+		for (uint32_t j = 0; j < NUM_DEPTH_DECOMPRESS_PIPELINES; j++) {
+			radv_DestroyPipeline(radv_device_to_handle(device),
+					     state->depth_decomp[i].decompress_pipeline[j],
+					     &state->alloc);
+		}
 		radv_DestroyPipeline(radv_device_to_handle(device),
 				     state->depth_decomp[i].resummarize_pipeline,
 				     &state->alloc);
@@ -284,18 +296,22 @@ radv_device_init_meta_depth_decomp_state(struct radv_device *device, bool on_dem
 		if (on_demand)
 			continue;
 
-		res = create_pipeline(device, vs_module_h, samples,
-				      state->depth_decomp[i].pass,
-				      state->depth_decomp[i].p_layout,
-				      DEPTH_DECOMPRESS,
-				      &state->depth_decomp[i].decompress_pipeline);
-		if (res != VK_SUCCESS)
-			goto fail;
+		for (uint32_t j = 0; j < NUM_DEPTH_DECOMPRESS_PIPELINES; j++) {
+			res = create_pipeline(device, vs_module_h, samples,
+					      state->depth_decomp[i].pass,
+					      state->depth_decomp[i].p_layout,
+					      DEPTH_DECOMPRESS,
+					      j,
+					      &state->depth_decomp[i].decompress_pipeline[j]);
+			if (res != VK_SUCCESS)
+				goto fail;
+		}
 
 		res = create_pipeline(device, vs_module_h, samples,
 				      state->depth_decomp[i].pass,
 				      state->depth_decomp[i].p_layout,
 				      DEPTH_RESUMMARIZE,
+				      0, /* unused */
 				      &state->depth_decomp[i].resummarize_pipeline);
 		if (res != VK_SUCCESS)
 			goto fail;
@@ -321,23 +337,27 @@ radv_get_depth_pipeline(struct radv_cmd_buffer *cmd_buffer,
 	uint32_t samples_log2 = ffs(samples) - 1;
 	VkPipeline *pipeline;
 
-	if (!state->depth_decomp[samples_log2].decompress_pipeline) {
+	if (!state->depth_decomp[samples_log2].decompress_pipeline[DECOMPRESS_DEPTH_STENCIL]) {
 		VkResult ret;
 
-		ret = create_pipeline(cmd_buffer->device, VK_NULL_HANDLE, samples,
-				      state->depth_decomp[samples_log2].pass,
-				      state->depth_decomp[samples_log2].p_layout,
-				      DEPTH_DECOMPRESS,
-				      &state->depth_decomp[samples_log2].decompress_pipeline);
-		if (ret != VK_SUCCESS) {
-			cmd_buffer->record_result = ret;
-			return NULL;
+		for (uint32_t i = 0; i < NUM_DEPTH_DECOMPRESS_PIPELINES; i++) {
+			ret = create_pipeline(cmd_buffer->device, VK_NULL_HANDLE, samples,
+					      state->depth_decomp[samples_log2].pass,
+					      state->depth_decomp[samples_log2].p_layout,
+					      DEPTH_DECOMPRESS,
+					      i,
+					      &state->depth_decomp[samples_log2].decompress_pipeline[i]);
+			if (ret != VK_SUCCESS) {
+				cmd_buffer->record_result = ret;
+				return NULL;
+			}
 		}
 
 		ret = create_pipeline(cmd_buffer->device, VK_NULL_HANDLE, samples,
 				      state->depth_decomp[samples_log2].pass,
 				      state->depth_decomp[samples_log2].p_layout,
 				      DEPTH_RESUMMARIZE,
+				      0, /* unused */
 				      &state->depth_decomp[samples_log2].resummarize_pipeline);
 		if (ret != VK_SUCCESS) {
 			cmd_buffer->record_result = ret;
@@ -347,7 +367,7 @@ radv_get_depth_pipeline(struct radv_cmd_buffer *cmd_buffer,
 
 	switch (op) {
 	case DEPTH_DECOMPRESS:
-		pipeline = &state->depth_decomp[samples_log2].decompress_pipeline;
+		pipeline = &state->depth_decomp[samples_log2].decompress_pipeline[DECOMPRESS_DEPTH_STENCIL];
 		break;
 	case DEPTH_RESUMMARIZE:
 		pipeline = &state->depth_decomp[samples_log2].resummarize_pipeline;

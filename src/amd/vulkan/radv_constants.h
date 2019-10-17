@@ -53,6 +53,7 @@
 #define MAX_INLINE_UNIFORM_BLOCK_COUNT 64
 
 #define NUM_DEPTH_CLEAR_PIPELINES 3
+#define NUM_DEPTH_DECOMPRESS_PIPELINES 3
 
 /*
  * This is the point we switch from using CP to compute shader
