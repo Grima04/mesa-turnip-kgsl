@@ -1225,6 +1225,17 @@
     <field name="Component 0 Control" start="60" end="62" type="3D_Vertex_Component_Control"/>
   </struct>
 
+  <struct name="3DSTATE_SO_BUFFER_INDEX_BODY" length="7">
+    <field name="Stream Output Buffer Offset Address Enable" start="20" end="20" type="bool"/>
+    <field name="Stream Offset Write Enable" start="21" end="21" type="bool"/>
+    <field name="MOCS" start="22" end="28" type="uint"/>
+    <field name="SO Buffer Enable" start="31" end="31" type="bool"/>
+    <field name="Surface Base Address" start="34" end="79" type="address"/>
+    <field name="Surface Size" start="96" end="125" type="uint"/>
+    <field name="Stream Output Buffer Offset Address" start="130" end="175" type="address"/>
+    <field name="Stream Offset" start="192" end="223" type="uint"/>
+  </struct>
+
   <instruction name="3DPRIMITIVE" bias="2" length="7" engine="render">
     <field name="DWord Length" start="0" end="7" type="uint" default="5"/>
     <field name="Predicate Enable" start="8" end="8" type="bool"/>
@@ -2537,6 +2548,42 @@
     <field name="Surface Size" start="128" end="157" type="uint"/>
     <field name="Stream Output Buffer Offset Address" start="162" end="207" type="address"/>
     <field name="Stream Offset" start="224" end="255" type="uint"/>
+  </instruction>
+
+  <instruction name="3DSTATE_SO_BUFFER_INDEX_0" bias="2" length="8" engine="render">
+    <field name="DWord Length" start="0" end="7" type="uint" default="6"/>
+    <field name="3D Command Sub Opcode" start="16" end="23" type="uint" default="96"/>
+    <field name="3D Command Opcode" start="24" end="26" type="uint" default="0"/>
+    <field name="Command SubType" start="27" end="28" type="uint" default="3"/>
+    <field name="Command Type" start="29" end="31" type="uint" default="3"/>
+    <field name="SO Buffer Index State Body" start="32" end="255" type="3DSTATE_SO_BUFFER_INDEX_BODY"/>
+  </instruction>
+
+  <instruction name="3DSTATE_SO_BUFFER_INDEX_1" bias="2" length="8" engine="render">
+    <field name="DWord Length" start="0" end="7" type="uint" default="6"/>
+    <field name="3D Command Sub Opcode" start="16" end="23" type="uint" default="97"/>
+    <field name="3D Command Opcode" start="24" end="26" type="uint" default="0"/>
+    <field name="Command SubType" start="27" end="28" type="uint" default="3"/>
+    <field name="Command Type" start="29" end="31" type="uint" default="3"/>
+    <field name="SO Buffer Index State Body" start="32" end="255" type="3DSTATE_SO_BUFFER_INDEX_BODY"/>
+  </instruction>
+
+  <instruction name="3DSTATE_SO_BUFFER_INDEX_2" bias="2" length="8" engine="render">
+    <field name="DWord Length" start="0" end="7" type="uint" default="6"/>
+    <field name="3D Command Sub Opcode" start="16" end="23" type="uint" default="98"/>
+    <field name="3D Command Opcode" start="24" end="26" type="uint" default="0"/>
+    <field name="Command SubType" start="27" end="28" type="uint" default="3"/>
+    <field name="Command Type" start="29" end="31" type="uint" default="3"/>
+    <field name="SO Buffer Index State Body" start="32" end="255" type="3DSTATE_SO_BUFFER_INDEX_BODY"/>
+  </instruction>
+
+  <instruction name="3DSTATE_SO_BUFFER_INDEX_3" bias="2" length="8" engine="render">
+    <field name="DWord Length" start="0" end="7" type="uint" default="6"/>
+    <field name="3D Command Sub Opcode" start="16" end="23" type="uint" default="99"/>
+    <field name="3D Command Opcode" start="24" end="26" type="uint" default="0"/>
+    <field name="Command SubType" start="27" end="28" type="uint" default="3"/>
+    <field name="Command Type" start="29" end="31" type="uint" default="3"/>
+    <field name="SO Buffer Index State Body" start="32" end="255" type="3DSTATE_SO_BUFFER_INDEX_BODY"/>
   </instruction>
 
   <instruction name="3DSTATE_SO_DECL_LIST" bias="2" engine="render">
