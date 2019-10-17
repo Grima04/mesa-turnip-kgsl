@@ -1020,7 +1020,7 @@ radv_can_fast_clear_depth(struct radv_cmd_buffer *cmd_buffer,
 	if (!view_mask && clear_rect->layerCount != iview->image->info.array_size)
 		return false;
 
-	if (cmd_buffer->device->physical_device->rad_info.chip_class != GFX9 &&
+	if (cmd_buffer->device->physical_device->rad_info.chip_class < GFX9 &&
 	    (!(aspects & VK_IMAGE_ASPECT_DEPTH_BIT) ||
 	    ((vk_format_aspects(iview->image->vk_format) & VK_IMAGE_ASPECT_STENCIL_BIT) &&
 	     !(aspects & VK_IMAGE_ASPECT_STENCIL_BIT))))
@@ -1063,8 +1063,7 @@ radv_fast_clear_depth(struct radv_cmd_buffer *cmd_buffer,
 					      iview->image->planes[0].surface.htile_size, clear_word);
 	} else {
 		/* Only clear depth or stencil bytes in the HTILE buffer. */
-		/* TODO: Implement that path for GFX10. */
-		assert(cmd_buffer->device->physical_device->rad_info.chip_class == GFX9);
+		assert(cmd_buffer->device->physical_device->rad_info.chip_class >= GFX9);
 		flush_bits = clear_htile_mask(cmd_buffer, iview->image->bo,
 					      iview->image->offset + iview->image->htile_offset,
 					      iview->image->planes[0].surface.htile_size, clear_word,
