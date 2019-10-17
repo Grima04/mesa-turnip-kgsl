@@ -1046,7 +1046,7 @@ st_destroy_context(struct st_context *st)
    st_reference_vertprog(st, &st->vp, NULL);
    st_reference_prog(st, &st->tcp, NULL);
    st_reference_prog(st, &st->tep, NULL);
-   st_reference_compprog(st, &st->cp, NULL);
+   st_reference_prog(st, &st->cp, NULL);
 
    /* release framebuffer in the winsys buffers list */
    LIST_FOR_EACH_ENTRY_SAFE_REV(stfb, next, &st->winsys_buffers, head) {

@@ -343,16 +343,6 @@ st_reference_prog(struct st_context *st,
                            (struct gl_program *) prog);
 }
 
-static inline void
-st_reference_compprog(struct st_context *st,
-                      struct st_common_program **ptr,
-                      struct st_common_program *prog)
-{
-   _mesa_reference_program(st->ctx,
-                           (struct gl_program **) ptr,
-                           (struct gl_program *) prog);
-}
-
 /**
  * This defines mapping from Mesa VARYING_SLOTs to TGSI GENERIC slots.
  */
