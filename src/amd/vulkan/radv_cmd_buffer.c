@@ -2313,14 +2313,15 @@ radv_flush_constants(struct radv_cmd_buffer *cmd_buffer,
 		return;
 
 	radv_foreach_stage(stage, stages) {
-		if (!pipeline->shaders[stage])
+		shader = radv_get_shader(pipeline, stage);
+		if (!shader)
 			continue;
 
-		need_push_constants |= pipeline->shaders[stage]->info.loads_push_constants;
-		need_push_constants |= pipeline->shaders[stage]->info.loads_dynamic_offsets;
+		need_push_constants |= shader->info.loads_push_constants;
+		need_push_constants |= shader->info.loads_dynamic_offsets;
 
-		uint8_t base = pipeline->shaders[stage]->info.base_inline_push_consts;
-		uint8_t count = pipeline->shaders[stage]->info.num_inline_push_consts;
+		uint8_t base = shader->info.base_inline_push_consts;
+		uint8_t count = shader->info.num_inline_push_consts;
 
 		radv_emit_inline_push_consts(cmd_buffer, pipeline, stage,
 					     AC_UD_INLINE_PUSH_CONSTANTS,
