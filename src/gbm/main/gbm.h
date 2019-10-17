@@ -285,14 +285,16 @@ struct gbm_import_fd_data {
    uint32_t format;
 };
 
+#define GBM_MAX_PLANES 4
+
 struct gbm_import_fd_modifier_data {
    uint32_t width;
    uint32_t height;
    uint32_t format;
    uint32_t num_fds;
-   int fds[4];
-   int strides[4];
-   int offsets[4];
+   int fds[GBM_MAX_PLANES];
+   int strides[GBM_MAX_PLANES];
+   int offsets[GBM_MAX_PLANES];
    uint64_t modifier;
 };
 
