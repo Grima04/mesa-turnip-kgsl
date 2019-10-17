@@ -1483,34 +1483,6 @@ void create_vop3_for_op3(opt_ctx& ctx, aco_opcode opcode, aco_ptr<Instruction>& 
    instr.reset(new_instr);
 }
 
-bool combine_minmax3(opt_ctx& ctx, aco_ptr<Instruction>& instr, aco_opcode new_op)
-{
-   uint32_t omod_clamp = ctx.info[instr->definitions[0].tempId()].label &
-                         (label_omod_success | label_clamp_success);
-
-   for (unsigned swap = 0; swap < 2; swap++) {
-      Operand operands[3];
-      bool neg[3], abs[3], opsel[3], clamp, inbetween_neg, inbetween_abs;
-      unsigned omod;
-      if (match_op3_for_vop3(ctx, instr->opcode, instr->opcode, instr.get(), swap,
-                             "012", operands, neg, abs, opsel,
-                             &clamp, &omod, &inbetween_neg, &inbetween_abs, NULL)) {
-         ctx.uses[instr->operands[swap].tempId()]--;
-         neg[1] ^= inbetween_neg;
-         neg[2] ^= inbetween_neg;
-         abs[1] |= inbetween_abs;
-         abs[2] |= inbetween_abs;
-         create_vop3_for_op3(ctx, new_op, instr, operands, neg, abs, opsel, clamp, omod);
-         if (omod_clamp & label_omod_success)
-            ctx.info[instr->definitions[0].tempId()].set_omod_success(instr.get());
-         if (omod_clamp & label_clamp_success)
-            ctx.info[instr->definitions[0].tempId()].set_clamp_success(instr.get());
-         return true;
-      }
-   }
-   return false;
-}
-
 bool combine_three_valu_op(opt_ctx& ctx, aco_ptr<Instruction>& instr, aco_opcode op2, aco_opcode new_op, const char *shuffle, uint8_t ops)
 {
    uint32_t omod_clamp = ctx.info[instr->definitions[0].tempId()].label &
@@ -2202,7 +2174,7 @@ void combine_instruction(opt_ctx &ctx, aco_ptr<Instruction>& instr)
       bool some_gfx9_only;
       if (get_minmax_info(instr->opcode, &min, &max, &min3, &max3, &med3, &some_gfx9_only) &&
           (!some_gfx9_only || ctx.program->chip_class >= GFX9)) {
-         if (combine_minmax3(ctx, instr, instr->opcode == min ? min3 : max3)) ;
+         if (combine_three_valu_op(ctx, instr, instr->opcode, instr->opcode == min ? min3 : max3, "012", 1 | 2));
          else combine_clamp(ctx, instr, min, max, med3);
       }
    }
