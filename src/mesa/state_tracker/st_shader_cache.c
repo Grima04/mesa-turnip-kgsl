@@ -42,10 +42,10 @@ st_get_program_binary_driver_sha1(struct gl_context *ctx, uint8_t *sha1)
 
 static void
 write_stream_out_to_cache(struct blob *blob,
-                          struct pipe_shader_state *tgsi)
+                          struct pipe_shader_state *state)
 {
-   blob_write_bytes(blob, &tgsi->stream_output,
-                    sizeof(tgsi->stream_output));
+   blob_write_bytes(blob, &state->stream_output,
+                    sizeof(state->stream_output));
 }
 
 static void
@@ -129,7 +129,7 @@ st_serialise_ir_program(struct gl_context *ctx, struct gl_program *prog,
 }
 
 /**
- * Store tgsi and any other required state in on-disk shader cache.
+ * Store TGSI or NIR and any other required state in on-disk shader cache.
  */
 void
 st_store_ir_in_disk_cache(struct st_context *st, struct gl_program *prog,
@@ -155,10 +155,10 @@ st_store_ir_in_disk_cache(struct st_context *st, struct gl_program *prog,
 
 static void
 read_stream_out_from_cache(struct blob_reader *blob_reader,
-                           struct pipe_shader_state *tgsi)
+                           struct pipe_shader_state *state)
 {
-   blob_copy_bytes(blob_reader, (uint8_t *) &tgsi->stream_output,
-                    sizeof(tgsi->stream_output));
+   blob_copy_bytes(blob_reader, (uint8_t *) &state->stream_output,
+                    sizeof(state->stream_output));
 }
 
 static void
@@ -285,7 +285,7 @@ st_load_ir_from_disk_cache(struct gl_context *ctx,
       return false;
 
    /* If we didn't load the GLSL metadata from cache then we could not have
-    * loaded the tgsi either.
+    * loaded TGSI or NIR either.
     */
    if (prog->data->LinkStatus != LINKING_SKIPPED)
       return false;

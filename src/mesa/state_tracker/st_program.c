@@ -1176,7 +1176,7 @@ st_create_fp_variant(struct st_context *st,
 {
    struct pipe_context *pipe = st->pipe;
    struct st_fp_variant *variant = CALLOC_STRUCT(st_fp_variant);
-   struct pipe_shader_state tgsi = {0};
+   struct pipe_shader_state state = {0};
    struct gl_program_parameter_list *params = stfp->Base.Parameters;
    static const gl_state_index16 texcoord_state[STATE_LENGTH] =
       { STATE_INTERNAL, STATE_CURRENT_ATTRIB, VERT_ATTRIB_TEX0 };
@@ -1191,26 +1191,26 @@ st_create_fp_variant(struct st_context *st,
       return NULL;
 
    if (stfp->state.type == PIPE_SHADER_IR_NIR) {
-      tgsi.type = PIPE_SHADER_IR_NIR;
-      tgsi.ir.nir = nir_shader_clone(NULL, stfp->state.ir.nir);
+      state.type = PIPE_SHADER_IR_NIR;
+      state.ir.nir = nir_shader_clone(NULL, stfp->state.ir.nir);
 
       if (key->clamp_color)
-         NIR_PASS_V(tgsi.ir.nir, nir_lower_clamp_color_outputs);
+         NIR_PASS_V(state.ir.nir, nir_lower_clamp_color_outputs);
 
       if (key->lower_flatshade)
-         NIR_PASS_V(tgsi.ir.nir, nir_lower_flatshade);
+         NIR_PASS_V(state.ir.nir, nir_lower_flatshade);
 
       if (key->lower_alpha_func != COMPARE_FUNC_NEVER) {
          _mesa_add_state_reference(params, alpha_ref_state);
-         NIR_PASS_V(tgsi.ir.nir, nir_lower_alpha_test, key->lower_alpha_func,
+         NIR_PASS_V(state.ir.nir, nir_lower_alpha_test, key->lower_alpha_func,
                     false, alpha_ref_state);
       }
 
       if (key->lower_two_sided_color)
-         NIR_PASS_V(tgsi.ir.nir, nir_lower_two_sided_color);
+         NIR_PASS_V(state.ir.nir, nir_lower_two_sided_color);
 
       if (key->persample_shading) {
-          nir_shader *shader = tgsi.ir.nir;
+          nir_shader *shader = state.ir.nir;
           nir_foreach_variable(var, &shader->inputs)
              var->data.sample = true;
       }
@@ -1225,7 +1225,7 @@ st_create_fp_variant(struct st_context *st,
          options.sampler = variant->bitmap_sampler;
          options.swizzle_xxxx = st->bitmap.tex_format == PIPE_FORMAT_R8_UNORM;
 
-         NIR_PASS_V(tgsi.ir.nir, nir_lower_bitmap, &options);
+         NIR_PASS_V(state.ir.nir, nir_lower_bitmap, &options);
       }
 
       /* glDrawPixels (color only) */
@@ -1258,7 +1258,7 @@ st_create_fp_variant(struct st_context *st,
          memcpy(options.texcoord_state_tokens, texcoord_state,
                 sizeof(options.texcoord_state_tokens));
 
-         NIR_PASS_V(tgsi.ir.nir, nir_lower_drawpixels, &options);
+         NIR_PASS_V(state.ir.nir, nir_lower_drawpixels, &options);
       }
 
       if (unlikely(key->external.lower_nv12 || key->external.lower_iyuv ||
@@ -1271,15 +1271,15 @@ st_create_fp_variant(struct st_context *st,
          options.lower_yx_xuxv_external = key->external.lower_yx_xuxv;
          options.lower_ayuv_external = key->external.lower_ayuv;
          options.lower_xyuv_external = key->external.lower_xyuv;
-         NIR_PASS_V(tgsi.ir.nir, nir_lower_tex, &options);
+         NIR_PASS_V(state.ir.nir, nir_lower_tex, &options);
       }
 
-      st_finalize_nir(st, &stfp->Base, stfp->shader_program, tgsi.ir.nir);
+      st_finalize_nir(st, &stfp->Base, stfp->shader_program, state.ir.nir);
 
       if (unlikely(key->external.lower_nv12 || key->external.lower_iyuv ||
                    key->external.lower_xy_uxvx || key->external.lower_yx_xuxv)) {
          /* This pass needs to happen *after* nir_lower_sampler */
-         NIR_PASS_V(tgsi.ir.nir, st_nir_lower_tex_src_plane,
+         NIR_PASS_V(state.ir.nir, st_nir_lower_tex_src_plane,
                     ~stfp->Base.SamplersUsed,
                     key->external.lower_nv12 || key->external.lower_xy_uxvx ||
                        key->external.lower_yx_xuxv,
@@ -1287,25 +1287,25 @@ st_create_fp_variant(struct st_context *st,
       }
 
       /* Some of the lowering above may have introduced new varyings */
-      nir_shader_gather_info(tgsi.ir.nir,
-                             nir_shader_get_entrypoint(tgsi.ir.nir));
+      nir_shader_gather_info(state.ir.nir,
+                             nir_shader_get_entrypoint(state.ir.nir));
 
-      variant->driver_shader = pipe->create_fs_state(pipe, &tgsi);
+      variant->driver_shader = pipe->create_fs_state(pipe, &state);
       variant->key = *key;
 
       return variant;
    }
 
-   tgsi.tokens = stfp->state.tokens;
+   state.tokens = stfp->state.tokens;
 
    assert(!(key->bitmap && key->drawpixels));
 
    /* Fix texture targets and add fog for ATI_fs */
    if (stfp->ati_fs) {
-      const struct tgsi_token *tokens = st_fixup_atifs(tgsi.tokens, key);
+      const struct tgsi_token *tokens = st_fixup_atifs(state.tokens, key);
 
       if (tokens)
-         tgsi.tokens = tokens;
+         state.tokens = tokens;
       else
          fprintf(stderr, "mesa: cannot post-process ATI_fs\n");
    }
@@ -1317,12 +1317,12 @@ st_create_fp_variant(struct st_context *st,
          (key->clamp_color ? TGSI_EMU_CLAMP_COLOR_OUTPUTS : 0) |
          (key->persample_shading ? TGSI_EMU_FORCE_PERSAMPLE_INTERP : 0);
 
-      tokens = tgsi_emulate(tgsi.tokens, flags);
+      tokens = tgsi_emulate(state.tokens, flags);
 
       if (tokens) {
-         if (tgsi.tokens != stfp->state.tokens)
-            tgsi_free_tokens(tgsi.tokens);
-         tgsi.tokens = tokens;
+         if (state.tokens != stfp->state.tokens)
+            tgsi_free_tokens(state.tokens);
+         state.tokens = tokens;
       } else
          fprintf(stderr, "mesa: cannot emulate deprecated features\n");
    }
@@ -1333,7 +1333,7 @@ st_create_fp_variant(struct st_context *st,
 
       variant->bitmap_sampler = ffs(~stfp->Base.SamplersUsed) - 1;
 
-      tokens = st_get_bitmap_shader(tgsi.tokens,
+      tokens = st_get_bitmap_shader(state.tokens,
                                     st->internal_target,
                                     variant->bitmap_sampler,
                                     st->needs_texcoord_semantic,
@@ -1341,9 +1341,9 @@ st_create_fp_variant(struct st_context *st,
                                     PIPE_FORMAT_R8_UNORM);
 
       if (tokens) {
-         if (tgsi.tokens != stfp->state.tokens)
-            tgsi_free_tokens(tgsi.tokens);
-         tgsi.tokens = tokens;
+         if (state.tokens != stfp->state.tokens)
+            tgsi_free_tokens(state.tokens);
+         state.tokens = tokens;
       } else
          fprintf(stderr, "mesa: cannot create a shader for glBitmap\n");
    }
@@ -1370,7 +1370,7 @@ st_create_fp_variant(struct st_context *st,
 
       texcoord_const = _mesa_add_state_reference(params, texcoord_state);
 
-      tokens = st_get_drawpix_shader(tgsi.tokens,
+      tokens = st_get_drawpix_shader(state.tokens,
                                      st->needs_texcoord_semantic,
                                      key->scaleAndBias, scale_const,
                                      bias_const, key->pixelMaps,
@@ -1379,9 +1379,9 @@ st_create_fp_variant(struct st_context *st,
                                      texcoord_const, st->internal_target);
 
       if (tokens) {
-         if (tgsi.tokens != stfp->state.tokens)
-            tgsi_free_tokens(tgsi.tokens);
-         tgsi.tokens = tokens;
+         if (state.tokens != stfp->state.tokens)
+            tgsi_free_tokens(state.tokens);
+         state.tokens = tokens;
       } else
          fprintf(stderr, "mesa: cannot create a shader for glDrawPixels\n");
    }
@@ -1393,16 +1393,16 @@ st_create_fp_variant(struct st_context *st,
       /* samplers inserted would conflict, but this should be unpossible: */
       assert(!(key->bitmap || key->drawpixels));
 
-      tokens = st_tgsi_lower_yuv(tgsi.tokens,
+      tokens = st_tgsi_lower_yuv(state.tokens,
                                  ~stfp->Base.SamplersUsed,
                                  key->external.lower_nv12 ||
                                     key->external.lower_xy_uxvx ||
                                     key->external.lower_yx_xuxv,
                                  key->external.lower_iyuv);
       if (tokens) {
-         if (tgsi.tokens != stfp->state.tokens)
-            tgsi_free_tokens(tgsi.tokens);
-         tgsi.tokens = tokens;
+         if (state.tokens != stfp->state.tokens)
+            tgsi_free_tokens(state.tokens);
+         state.tokens = tokens;
       } else {
          fprintf(stderr, "mesa: cannot create a shader for samplerExternalOES\n");
       }
@@ -1412,23 +1412,23 @@ st_create_fp_variant(struct st_context *st,
       unsigned depth_range_const = _mesa_add_state_reference(params, depth_range_state);
 
       const struct tgsi_token *tokens;
-      tokens = st_tgsi_lower_depth_clamp_fs(tgsi.tokens, depth_range_const);
-      if (tgsi.tokens != stfp->state.tokens)
-         tgsi_free_tokens(tgsi.tokens);
-      tgsi.tokens = tokens;
+      tokens = st_tgsi_lower_depth_clamp_fs(state.tokens, depth_range_const);
+      if (state.tokens != stfp->state.tokens)
+         tgsi_free_tokens(state.tokens);
+      state.tokens = tokens;
    }
 
    if (ST_DEBUG & DEBUG_TGSI) {
-      tgsi_dump(tgsi.tokens, 0);
+      tgsi_dump(state.tokens, 0);
       debug_printf("\n");
    }
 
    /* fill in variant */
-   variant->driver_shader = pipe->create_fs_state(pipe, &tgsi);
+   variant->driver_shader = pipe->create_fs_state(pipe, &state);
    variant->key = *key;
 
-   if (tgsi.tokens != stfp->state.tokens)
-      tgsi_free_tokens(tgsi.tokens);
+   if (state.tokens != stfp->state.tokens)
+      tgsi_free_tokens(state.tokens);
    return variant;
 }
 
@@ -1684,7 +1684,7 @@ st_get_common_variant(struct st_context *st,
 {
    struct pipe_context *pipe = st->pipe;
    struct st_common_variant *v;
-   struct pipe_shader_state tgsi = {0};
+   struct pipe_shader_state state = {0};
 
    /* Search for existing variant */
    for (v = prog->variants; v; v = v->next) {
@@ -1699,16 +1699,16 @@ st_get_common_variant(struct st_context *st,
       if (v) {
 
 	 if (prog->state.type == PIPE_SHADER_IR_NIR) {
-	    tgsi.type = PIPE_SHADER_IR_NIR;
-	    tgsi.ir.nir = nir_shader_clone(NULL, prog->state.ir.nir);
+	    state.type = PIPE_SHADER_IR_NIR;
+	    state.ir.nir = nir_shader_clone(NULL, prog->state.ir.nir);
 
             if (key->clamp_color)
-               NIR_PASS_V(tgsi.ir.nir, nir_lower_clamp_color_outputs);
+               NIR_PASS_V(state.ir.nir, nir_lower_clamp_color_outputs);
 
-            tgsi.stream_output = prog->state.stream_output;
+            state.stream_output = prog->state.stream_output;
 
             st_finalize_nir(st, &prog->Base, prog->shader_program,
-                            tgsi.ir.nir);
+                            state.ir.nir);
 	 } else {
             if (key->lower_depth_clamp) {
                struct gl_program_parameter_list *params = prog->Base.Parameters;
@@ -1727,28 +1727,28 @@ st_get_common_variant(struct st_context *st,
 
                prog->state.tokens = tokens;
             }
-	    tgsi = prog->state;
+	    state = prog->state;
          }
          /* fill in new variant */
          switch (prog->Base.info.stage) {
          case MESA_SHADER_TESS_CTRL:
-            v->driver_shader = pipe->create_tcs_state(pipe, &tgsi);
+            v->driver_shader = pipe->create_tcs_state(pipe, &state);
             break;
          case MESA_SHADER_TESS_EVAL:
-            v->driver_shader = pipe->create_tes_state(pipe, &tgsi);
+            v->driver_shader = pipe->create_tes_state(pipe, &state);
             break;
          case MESA_SHADER_GEOMETRY:
-            v->driver_shader = pipe->create_gs_state(pipe, &tgsi);
+            v->driver_shader = pipe->create_gs_state(pipe, &state);
             break;
          case MESA_SHADER_COMPUTE: {
             struct pipe_compute_state cs = {0};
-            cs.ir_type = tgsi.type;
+            cs.ir_type = state.type;
             cs.req_local_mem = prog->Base.info.cs.shared_size;
 
-            if (tgsi.type == PIPE_SHADER_IR_NIR)
-               cs.prog = tgsi.ir.nir;
+            if (state.type == PIPE_SHADER_IR_NIR)
+               cs.prog = state.ir.nir;
             else
-               cs.prog = tgsi.tokens;
+               cs.prog = state.tokens;
 
             v->driver_shader = pipe->create_compute_state(pipe, &cs);
             break;
