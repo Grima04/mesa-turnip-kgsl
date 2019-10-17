@@ -55,18 +55,18 @@
  *
  */
 
-/* We create the dependency graph with per-component granularity */
+/* We create the dependency graph with per-byte granularity */
 
-#define COMPONENT_COUNT 8
+#define BYTE_COUNT 16
 
 static void
-add_dependency(struct util_dynarray *table, unsigned index, unsigned mask, midgard_instruction **instructions, unsigned child)
+add_dependency(struct util_dynarray *table, unsigned index, uint16_t mask, midgard_instruction **instructions, unsigned child)
 {
-        for (unsigned i = 0; i < COMPONENT_COUNT; ++i) {
+        for (unsigned i = 0; i < BYTE_COUNT; ++i) {
                 if (!(mask & (1 << i)))
                         continue;
 
-                struct util_dynarray *parents = &table[(COMPONENT_COUNT * index) + i];
+                struct util_dynarray *parents = &table[(BYTE_COUNT * index) + i];
 
                 util_dynarray_foreach(parents, unsigned, parent) {
                         BITSET_WORD *dependents = instructions[*parent]->dependents;
@@ -82,20 +82,20 @@ add_dependency(struct util_dynarray *table, unsigned index, unsigned mask, midga
 }
 
 static void
-mark_access(struct util_dynarray *table, unsigned index, unsigned mask, unsigned parent)
+mark_access(struct util_dynarray *table, unsigned index, uint16_t mask, unsigned parent)
 {
-        for (unsigned i = 0; i < COMPONENT_COUNT; ++i) {
+        for (unsigned i = 0; i < BYTE_COUNT; ++i) {
                 if (!(mask & (1 << i)))
                         continue;
 
-                util_dynarray_append(&table[(COMPONENT_COUNT * index) + i], unsigned, parent);
+                util_dynarray_append(&table[(BYTE_COUNT * index) + i], unsigned, parent);
         }
 }
 
 static void
 mir_create_dependency_graph(midgard_instruction **instructions, unsigned count, unsigned node_count)
 {
-        size_t sz = node_count * COMPONENT_COUNT;
+        size_t sz = node_count * BYTE_COUNT;
 
         struct util_dynarray *last_read = calloc(sizeof(struct util_dynarray), sz);
         struct util_dynarray *last_write = calloc(sizeof(struct util_dynarray), sz);
@@ -119,13 +119,13 @@ mir_create_dependency_graph(midgard_instruction **instructions, unsigned count, 
                         continue;
 
                 unsigned dest = instructions[i]->dest;
-                unsigned mask = instructions[i]->mask;
+                unsigned mask = mir_bytemask(instructions[i]);
 
                 mir_foreach_src((*instructions), s) {
                         unsigned src = instructions[i]->src[s];
 
                         if (src < node_count) {
-                                unsigned readmask = mir_from_bytemask(mir_bytemask_of_read_components(instructions[i], src), midgard_reg_mode_32);
+                                unsigned readmask = mir_bytemask_of_read_components(instructions[i], src);
                                 add_dependency(last_write, src, readmask, instructions, i);
                         }
                 }
@@ -140,7 +140,7 @@ mir_create_dependency_graph(midgard_instruction **instructions, unsigned count, 
                         unsigned src = instructions[i]->src[s];
 
                         if (src < node_count) {
-                                unsigned readmask = mir_from_bytemask(mir_bytemask_of_read_components(instructions[i], src), midgard_reg_mode_32);
+                                unsigned readmask = mir_bytemask_of_read_components(instructions[i], src);
                                 mark_access(last_read, src, readmask, i);
                         }
                 }
