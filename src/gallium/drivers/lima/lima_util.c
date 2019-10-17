@@ -51,18 +51,22 @@ bool lima_get_absolute_timeout(uint64_t *timeout)
 
 void lima_dump_blob(FILE *fp, void *data, int size, bool is_float)
 {
+   fprintf(fp, "{\n");
    for (int i = 0; i * 4 < size; i++) {
-      if (i % 4 == 0) {
-         if (i) fprintf(fp, "\n");
-         fprintf(fp, "%04x:", i * 4);
-      }
+      if (i % 4 == 0)
+         fprintf(fp, "\t");
 
       if (is_float)
-         fprintf(fp, " %f", ((float *)data)[i]);
+         fprintf(fp, "%f, ", ((float *)data)[i]);
       else
-         fprintf(fp, " 0x%08x", ((uint32_t *)data)[i]);
+         fprintf(fp, "0x%08x, ", ((uint32_t *)data)[i]);
+
+      if ((i % 4 == 3) || (i == size / 4 - 1)) {
+         fprintf(fp, "/* 0x%08x */", (i - 3) * 4);
+         if (i) fprintf(fp, "\n");
+      }
    }
-   fprintf(fp, "\n");
+   fprintf(fp, "}\n");
 }
 
 void
