@@ -84,6 +84,7 @@ panfrost_resource_from_handle(struct pipe_screen *pscreen,
 
         rsc->bo = panfrost_bo_import(screen, whandle->handle);
         rsc->slices[0].stride = whandle->stride;
+        rsc->slices[0].offset = whandle->offset;
         rsc->slices[0].initialized = true;
         panfrost_resource_reset_damage(rsc);
 
@@ -117,6 +118,7 @@ panfrost_resource_get_handle(struct pipe_screen *pscreen,
 
                 handle->handle = rsrc->bo->gem_handle;
                 handle->stride = rsrc->slices[0].stride;
+                handle->offset = rsrc->slices[0].offset;
                 return TRUE;
         } else if (handle->type == WINSYS_HANDLE_TYPE_FD) {
                 if (scanout) {
@@ -141,6 +143,7 @@ panfrost_resource_get_handle(struct pipe_screen *pscreen,
 
                         handle->handle = fd;
                         handle->stride = rsrc->slices[0].stride;
+                        handle->offset = rsrc->slices[0].offset;
                         return true;
                 }
         }
