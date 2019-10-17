@@ -117,7 +117,8 @@ void si_sdma_clear_buffer(struct si_context *sctx, struct pipe_resource *dst,
 		radeon_emit(cs, offset);
 		radeon_emit(cs, offset >> 32);
 		radeon_emit(cs, clear_value);
-		radeon_emit(cs, sctx->chip_class >= GFX9 ? csize - 1 : csize);
+		/* dw count */
+		radeon_emit(cs, (sctx->chip_class >= GFX9 ? csize - 1 : csize) & 0xfffffffc);
 		offset += csize;
 		size -= csize;
 	}

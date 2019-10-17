@@ -1680,9 +1680,6 @@ static int amdgpu_cs_flush(struct radeon_cmdbuf *rcs,
       if (ws->info.chip_class <= GFX6) {
          while (rcs->current.cdw & 7)
             radeon_emit(rcs, 0xf0000000); /* NOP packet */
-      } else {
-         while (rcs->current.cdw & 7)
-            radeon_emit(rcs, 0x00000000); /* NOP packet */
       }
       break;
    case RING_GFX:
