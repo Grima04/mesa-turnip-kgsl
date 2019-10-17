@@ -425,7 +425,7 @@ lima_get_pp_stream_size(int num_pp, int tiled_w, int tiled_h, uint32_t *off)
     *    extra size should be added to the preceeding stream
     * 2. alignment: each stream address should be 0x20 aligned
     */
-   int delta = tiled_w * tiled_h / num_pp * 16 + 8;
+   int delta = tiled_w * tiled_h / num_pp * 16 + 16;
    int remain = tiled_w * tiled_h % num_pp;
    int offset = 0;
 
@@ -519,6 +519,8 @@ lima_generate_pp_stream(struct lima_context *ctx, int off_x, int off_y,
    for (i = 0; i < num_pp; i++) {
       stream[i][si[i]++] = 0;
       stream[i][si[i]++] = 0xBC000000;
+      stream[i][si[i]++] = 0;
+      stream[i][si[i]++] = 0;
 
       lima_dump_command_stream_print(
          stream[i], si[i] * 4, false, "pp plb stream %d at va %x\n",
