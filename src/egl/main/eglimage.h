@@ -50,6 +50,9 @@ struct _egl_image_attrib_int
 
 struct _egl_image_attribs
 {
+   /* EGL_EXT_image_flush_external */
+   EGLBoolean ImageFlushExternal;
+
    /* EGL_KHR_image_base */
    EGLBoolean ImagePreserved;
 
