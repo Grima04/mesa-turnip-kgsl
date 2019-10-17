@@ -38,6 +38,13 @@ void mir_rewrite_index_dst_single(midgard_instruction *ins, unsigned old, unsign
                 ins->dest = new;
 }
 
+static midgard_vector_alu_src
+mir_get_alu_src(midgard_instruction *ins, unsigned idx)
+{
+        unsigned b = (idx == 0) ? ins->alu.src1 : ins->alu.src2;
+        return vector_alu_from_unsigned(b);
+}
+
 unsigned
 mir_get_swizzle(midgard_instruction *ins, unsigned idx)
 {
@@ -45,12 +52,7 @@ mir_get_swizzle(midgard_instruction *ins, unsigned idx)
                 if (idx == 2 || ins->compact_branch)
                         return ins->cond_swizzle;
 
-                unsigned b = (idx == 0) ? ins->alu.src1 : ins->alu.src2;
-
-                midgard_vector_alu_src s =
-                        vector_alu_from_unsigned(b);
-
-                return s.swizzle;
+                return (mir_get_alu_src(ins, idx)).swizzle;
         } else if (ins->type == TAG_LOAD_STORE_4) {
                 /* Main swizzle of a load is on the destination */
                 if (!OP_IS_STORE(ins->load_store.op))
