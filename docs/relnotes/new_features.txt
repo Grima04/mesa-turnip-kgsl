@@ -9,3 +9,4 @@ VK_KHR_spirv_1_4 on Intel.
 VK_EXT_shader_subgroup_ballot on Intel.
 VK_EXT_shader_subgroup_vote on Intel.
 VK_EXT_texel_buffer_alignment on RADV.
+Meson support for windows using MSVC and MinGW
