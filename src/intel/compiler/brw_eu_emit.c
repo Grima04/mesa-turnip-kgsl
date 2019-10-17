@@ -890,7 +890,7 @@ brw_alu3(struct brw_codegen *p, unsigned opcode, struct brw_reg dest,
                                             dest.file == BRW_MESSAGE_REGISTER_FILE);
       }
       brw_inst_set_3src_dst_reg_nr(devinfo, inst, dest.nr);
-      brw_inst_set_3src_a16_dst_subreg_nr(devinfo, inst, dest.subnr / 16);
+      brw_inst_set_3src_a16_dst_subreg_nr(devinfo, inst, dest.subnr / 4);
       brw_inst_set_3src_a16_dst_writemask(devinfo, inst, dest.writemask);
 
       assert(src0.file == BRW_GENERAL_REGISTER_FILE);
