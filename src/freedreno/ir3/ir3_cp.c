@@ -431,7 +431,7 @@ try_swap_mad_two_srcs(struct ir3_instruction *instr, unsigned new_flags)
  * src (which needs to also fixup the address src reference by the
  * instruction).
  */
-static void
+static bool
 reg_cp(struct ir3_cp_ctx *ctx, struct ir3_instruction *instr,
 		struct ir3_register *reg, unsigned n)
 {
@@ -457,8 +457,9 @@ reg_cp(struct ir3_cp_ctx *ctx, struct ir3_instruction *instr,
 
 			unuse(src);
 			reg->instr->use_count++;
-		}
 
+			return true;
+		}
 	} else if (is_same_type_mov(src) &&
 			/* cannot collapse const/immed/etc into meta instrs: */
 			!is_meta(instr)) {
@@ -477,7 +478,7 @@ reg_cp(struct ir3_cp_ctx *ctx, struct ir3_instruction *instr,
 				debug_assert(new_flags & IR3_REG_IMMED);
 
 				instr->regs[n + 1] = lower_immed(ctx, src_reg, new_flags, f_opcode);
-				return;
+				return true;
 			}
 
 			/* special case for "normal" mad instructions, we can
@@ -488,10 +489,9 @@ reg_cp(struct ir3_cp_ctx *ctx, struct ir3_instruction *instr,
 			 * src[0] is !CONST and src[1] is CONST:
 			 */
 			if ((n == 1) && try_swap_mad_two_srcs(instr, new_flags)) {
-				/* we swapped, so now we are dealing with 1st src: */
-				n = 0;
+				return true;
 			} else {
-				return;
+				return false;
 			}
 		}
 
@@ -509,7 +509,7 @@ reg_cp(struct ir3_cp_ctx *ctx, struct ir3_instruction *instr,
 			 */
 			if ((src_reg->flags & IR3_REG_RELATIV) &&
 					conflicts(instr->address, reg->instr->address))
-				return;
+				return false;
 
 			/* This seems to be a hw bug, or something where the timings
 			 * just somehow don't work out.  This restriction may only
@@ -518,7 +518,7 @@ reg_cp(struct ir3_cp_ctx *ctx, struct ir3_instruction *instr,
 			if ((opc_cat(instr->opc) == 3) && (n == 2) &&
 					(src_reg->flags & IR3_REG_RELATIV) &&
 					(src_reg->array.offset == 0))
-				return;
+				return false;
 
 			src_reg = ir3_reg_clone(instr->block->shader, src_reg);
 			src_reg->flags = new_flags;
@@ -527,7 +527,7 @@ reg_cp(struct ir3_cp_ctx *ctx, struct ir3_instruction *instr,
 			if (src_reg->flags & IR3_REG_RELATIV)
 				ir3_instr_set_address(instr, reg->instr->address);
 
-			return;
+			return true;
 		}
 
 		if ((src_reg->flags & IR3_REG_RELATIV) &&
@@ -537,7 +537,7 @@ reg_cp(struct ir3_cp_ctx *ctx, struct ir3_instruction *instr,
 			instr->regs[n+1] = src_reg;
 			ir3_instr_set_address(instr, reg->instr->address);
 
-			return;
+			return true;
 		}
 
 		/* NOTE: seems we can only do immed integers, so don't
@@ -574,16 +574,21 @@ reg_cp(struct ir3_cp_ctx *ctx, struct ir3_instruction *instr,
 				src_reg->flags = new_flags;
 				src_reg->iim_val = iim_val;
 				instr->regs[n+1] = src_reg;
+
+				return true;
 			} else if (valid_flags(instr, n, (new_flags & ~IR3_REG_IMMED) | IR3_REG_CONST)) {
 				bool f_opcode = (ir3_cat2_float(instr->opc) ||
 						ir3_cat3_float(instr->opc)) ? true : false;
 
 				/* See if lowering an immediate to const would help. */
 				instr->regs[n+1] = lower_immed(ctx, src_reg, new_flags, f_opcode);
+
+				return true;
 			}
-			return;
 		}
 	}
+
+	return false;
 }
 
 /* Handle special case of eliminating output mov, and similar cases where
@@ -621,26 +626,30 @@ instr_cp(struct ir3_cp_ctx *ctx, struct ir3_instruction *instr)
 		return;
 
 	/* walk down the graph from each src: */
-	foreach_src_n(reg, n, instr) {
-		struct ir3_instruction *src = ssa(reg);
+	bool progress;
+	do {
+		progress = false;
+		foreach_src_n(reg, n, instr) {
+			struct ir3_instruction *src = ssa(reg);
 
-		if (!src)
-			continue;
+			if (!src)
+				continue;
 
-		instr_cp(ctx, src);
+			instr_cp(ctx, src);
 
-		/* TODO non-indirect access we could figure out which register
-		 * we actually want and allow cp..
-		 */
-		if (reg->flags & IR3_REG_ARRAY)
-			continue;
+			/* TODO non-indirect access we could figure out which register
+			 * we actually want and allow cp..
+			 */
+			if (reg->flags & IR3_REG_ARRAY)
+				continue;
 
-		/* Don't CP absneg into meta instructions, that won't end well: */
-		if (is_meta(instr) && (src->opc != OPC_MOV))
-			continue;
+			/* Don't CP absneg into meta instructions, that won't end well: */
+			if (is_meta(instr) && (src->opc != OPC_MOV))
+				continue;
 
-		reg_cp(ctx, instr, reg, n);
-	}
+			progress |= reg_cp(ctx, instr, reg, n);
+		}
+	} while (progress);
 
 	if (instr->regs[0]->flags & IR3_REG_ARRAY) {
 		struct ir3_instruction *src = ssa(instr->regs[0]);
