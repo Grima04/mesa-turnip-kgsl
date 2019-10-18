@@ -1289,16 +1289,20 @@ radv_get_max_waves(struct radv_device *device,
 			       DIV_ROUND_UP(max_workgroup_size, wave_size);
 	}
 
-	if (conf->num_sgprs)
+	if (conf->num_sgprs) {
+		unsigned sgprs = align(conf->num_sgprs, chip_class >= GFX8 ? 16 : 8);
 		max_simd_waves =
 			MIN2(max_simd_waves,
 			     device->physical_device->rad_info.num_physical_sgprs_per_simd /
-			     conf->num_sgprs);
+			     sgprs);
+	}
 
-	if (conf->num_vgprs)
+	if (conf->num_vgprs) {
+		unsigned vgprs = align(conf->num_vgprs, wave_size == 32 ? 8 : 4);
 		max_simd_waves =
 			MIN2(max_simd_waves,
-			     RADV_NUM_PHYSICAL_VGPRS / conf->num_vgprs);
+			     RADV_NUM_PHYSICAL_VGPRS / vgprs);
+	}
 
 	/* LDS is 64KB per CU (4 SIMDs), divided into 16KB blocks per SIMD
 	 * that PS can use.
