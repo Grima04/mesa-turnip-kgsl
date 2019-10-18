@@ -702,6 +702,18 @@ st_create_context_priv(struct gl_context *ctx, struct pipe_context *pipe,
    st_init_extensions(pipe->screen, &ctx->Const,
                       &ctx->Extensions, &st->options, ctx->API);
 
+   /* FIXME: add support for geometry and tessellation shaders for
+    * lower_point_size
+    */
+   assert(!ctx->Extensions.OES_geometry_shader || !st->lower_point_size);
+   assert(!ctx->Extensions.ARB_tessellation_shader || !st->lower_point_size);
+
+   /* FIXME: add support for geometry and tessellation shaders for
+    * lower_ucp
+    */
+   assert(!ctx->Extensions.OES_geometry_shader || !st->lower_ucp);
+   assert(!ctx->Extensions.ARB_tessellation_shader || !st->lower_ucp);
+
    if (st_have_perfmon(st)) {
       ctx->Extensions.AMD_performance_monitor = GL_TRUE;
    }
