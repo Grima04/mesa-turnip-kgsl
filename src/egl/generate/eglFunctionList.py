@@ -213,5 +213,7 @@ EGL_FUNCTIONS = (
     _eglFunc("eglGetDisplayDriverName",              "display"),
     _eglFunc("eglGetDisplayDriverConfig",            "display"),
 
+    _eglFunc("eglImageFlushExternalEXT",             "display"),
+    _eglFunc("eglImageInvalidateExternalEXT",        "display"),
 )
 

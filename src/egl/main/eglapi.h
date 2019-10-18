@@ -189,6 +189,11 @@ struct _egl_api
    void (*SetBlobCacheFuncsANDROID) (_EGLDriver *drv, _EGLDisplay *disp,
                                      EGLSetBlobFuncANDROID set,
                                      EGLGetBlobFuncANDROID get);
+
+   void (*ImageFlushExternal)(_EGLDisplay *disp, _EGLContext *ctx,
+                              _EGLImage *image);
+   void (*ImageInvalidateExternal)(_EGLDisplay *disp, _EGLContext *ctx,
+                                   _EGLImage *image);
 };
 
 #ifdef __cplusplus
