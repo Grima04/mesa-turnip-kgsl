@@ -514,6 +514,10 @@ static const void *noop_get_compiler_options(struct pipe_screen *pscreen,
    return screen->get_compiler_options(screen, ir, shader);
 }
 
+static void noop_finalize_nir(struct pipe_screen *pscreen, void *nir, bool optimize)
+{
+}
+
 struct pipe_screen *noop_screen_create(struct pipe_screen *oscreen)
 {
    struct noop_pipe_screen *noop_screen;
@@ -553,6 +557,7 @@ struct pipe_screen *noop_screen_create(struct pipe_screen *oscreen)
    screen->query_memory_info = noop_query_memory_info;
    screen->get_disk_shader_cache = noop_get_disk_shader_cache;
    screen->get_compiler_options = noop_get_compiler_options;
+   screen->finalize_nir = noop_finalize_nir;
 
    return screen;
 }
