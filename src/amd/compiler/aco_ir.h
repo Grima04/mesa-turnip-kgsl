@@ -1063,6 +1063,7 @@ public:
    std::vector<Block> blocks;
    RegisterDemand max_reg_demand = RegisterDemand();
    uint16_t num_waves = 0;
+   uint16_t max_waves = 0; /* maximum number of waves, regardless of register usage */
    ac_shader_config* config;
    struct radv_shader_info *info;
    enum chip_class chip_class;
@@ -1074,6 +1075,9 @@ public:
    bool wb_smem_l1_on_end = false;
 
    std::vector<uint8_t> constant_data;
+
+   uint16_t lds_alloc_granule;
+   uint32_t lds_limit; /* in bytes */
 
    uint16_t physical_sgprs;
    uint16_t sgpr_alloc_granule; /* minus one. must be power of two */

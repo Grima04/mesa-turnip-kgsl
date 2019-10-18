@@ -234,7 +234,14 @@ uint16_t get_addr_sgpr_from_waves(Program *program, uint16_t max_waves)
 
 void update_vgpr_sgpr_demand(Program* program, const RegisterDemand new_demand)
 {
-   // TODO: also take shared mem into account
+   /* TODO: max_waves_per_simd, simd_per_cu and the number of physical vgprs for Navi */
+   unsigned max_waves_per_simd = 10;
+   unsigned simd_per_cu = 4;
+
+   bool wgp = program->chip_class >= GFX10; /* assume WGP is used on Navi */
+   unsigned simd_per_cu_wgp = wgp ? simd_per_cu * 2 : simd_per_cu;
+   unsigned lds_limit = wgp ? program->lds_limit * 2 : program->lds_limit;
+
    const int16_t vgpr_alloc = std::max<int16_t>(4, (new_demand.vgpr + 3) & ~3);
    /* this won't compile, register pressure reduction necessary */
    if (new_demand.vgpr > 256 || new_demand.sgpr > program->sgpr_limit) {
@@ -243,8 +250,31 @@ void update_vgpr_sgpr_demand(Program* program, const RegisterDemand new_demand)
    } else {
       program->num_waves = program->physical_sgprs / get_sgpr_alloc(program, new_demand.sgpr);
       program->num_waves = std::min<uint16_t>(program->num_waves, 256 / vgpr_alloc);
-      program->num_waves = std::min<uint16_t>(program->num_waves, 10);
+      program->max_waves = max_waves_per_simd;
 
+      /* adjust max_waves for workgroup and LDS limits */
+      unsigned workgroup_size = program->wave_size;
+      if (program->stage == compute_cs) {
+         unsigned* bsize = program->info->cs.block_size;
+         workgroup_size = bsize[0] * bsize[1] * bsize[2];
+      }
+      unsigned waves_per_workgroup = align(workgroup_size, program->wave_size) / program->wave_size;
+
+      unsigned workgroups_per_cu_wgp = max_waves_per_simd * simd_per_cu_wgp / waves_per_workgroup;
+      if (program->config->lds_size) {
+         unsigned lds = program->config->lds_size * program->lds_alloc_granule;
+         workgroups_per_cu_wgp = std::min(workgroups_per_cu_wgp, lds_limit / lds);
+      }
+      if (waves_per_workgroup > 1 && program->chip_class < GFX10)
+         workgroups_per_cu_wgp = std::min(workgroups_per_cu_wgp, 16u); /* TODO: is this a SI-only limit? what about Navi? */
+
+      /* in cases like waves_per_workgroup=3 or lds=65536 and
+       * waves_per_workgroup=1, we want the maximum possible number of waves per
+       * SIMD and not the minimum. so DIV_ROUND_UP is used */
+      program->max_waves = std::min<uint16_t>(program->max_waves, DIV_ROUND_UP(workgroups_per_cu_wgp * waves_per_workgroup, simd_per_cu_wgp));
+
+      /* incorporate max_waves and calculate max_reg_demand */
+      program->num_waves = std::min<uint16_t>(program->num_waves, program->max_waves);
       program->max_reg_demand.vgpr = int16_t((256 / program->num_waves) & ~3);
       program->max_reg_demand.sgpr = get_addr_sgpr_from_waves(program, program->num_waves);
    }

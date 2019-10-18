@@ -1580,7 +1580,7 @@ void spill(Program* program, live& live_vars, const struct radv_nir_compiler_opt
    int spills_to_vgpr = (max_reg_demand.sgpr - program->sgpr_limit + 63) / 64;
 
    /* test if it possible to increase occupancy with little spilling */
-   for (unsigned num_waves_next = 2; num_waves_next <= 8; num_waves_next++) {
+   for (unsigned num_waves_next = 2; num_waves_next <= program->max_waves; num_waves_next++) {
       RegisterDemand target_pressure_next = {int16_t((256 / num_waves_next) & ~3),
                                              int16_t(get_addr_sgpr_from_waves(program, num_waves_next))};
 

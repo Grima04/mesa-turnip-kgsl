@@ -1192,10 +1192,8 @@ setup_variables(isel_context *ctx, nir_shader *nir)
       break;
    }
    case MESA_SHADER_COMPUTE: {
-      unsigned lds_allocation_size_unit = 4 * 64;
-      if (ctx->program->chip_class >= GFX7)
-         lds_allocation_size_unit = 4 * 128;
-      ctx->program->config->lds_size = (nir->info.cs.shared_size + lds_allocation_size_unit - 1) / lds_allocation_size_unit;
+      ctx->program->config->lds_size = (nir->info.cs.shared_size + ctx->program->lds_alloc_granule - 1) /
+                                       ctx->program->lds_alloc_granule;
       break;
    }
    case MESA_SHADER_VERTEX: {
@@ -1254,6 +1252,9 @@ setup_isel_context(Program* program,
    program->chip_class = options->chip_class;
    program->family = options->family;
    program->wave_size = options->wave_size;
+
+   program->lds_alloc_granule = options->chip_class >= GFX7 ? 512 : 256;
+   program->lds_limit = options->chip_class >= GFX7 ? 65536 : 32768;
 
    if (options->chip_class >= GFX10) {
       program->physical_sgprs = 2560; /* doesn't matter as long as it's at least 128 * 20 */
