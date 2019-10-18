@@ -96,6 +96,12 @@ ir3_context_init(struct ir3_compiler *compiler,
 		NIR_PASS_V(ctx->s, nir_opt_constant_folding);
 	}
 
+	/* Enable the texture pre-fetch feature only a4xx onwards.  But
+	 * only enable it on generations that have been tested:
+	 */
+	if ((so->type == MESA_SHADER_FRAGMENT) && (compiler->gpu_id >= 600))
+		NIR_PASS_V(ctx->s, ir3_nir_lower_tex_prefetch);
+
 	NIR_PASS_V(ctx->s, nir_convert_from_ssa, true);
 
 	if (ir3_shader_debug & IR3_DBG_DISASM) {
