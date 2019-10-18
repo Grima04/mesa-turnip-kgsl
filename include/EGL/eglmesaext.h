@@ -86,11 +86,6 @@ typedef EGLBoolean (EGLAPIENTRYP PFNEGLSWAPBUFFERSREGIONNOK) (EGLDisplay dpy, EG
 #define EGL_DRM_BUFFER_FORMAT_RGB565_MESA       0x3292
 #endif /* EGL_MESA_drm_image_formats */
 
-#ifndef EGL_MESA_config_select_group
-#define EGL_MESA_config_select_group 1
-#define EGL_CONFIG_SELECT_GROUP_MESA		0x31DC
-#endif
-
 #ifdef __cplusplus
 }
 #endif
