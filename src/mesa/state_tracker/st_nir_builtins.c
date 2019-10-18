@@ -56,6 +56,7 @@ st_nir_finish_builtin_shader(struct st_context *st,
 
    nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));
 
+   st_nir_assign_vs_in_locations(nir);
    st_nir_assign_varying_locations(st, nir);
 
    st_nir_lower_samplers(screen, nir, NULL, NULL);

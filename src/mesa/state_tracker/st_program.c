@@ -400,6 +400,8 @@ st_finalize_nir_before_variants(struct nir_shader *nir)
    } else if (nir->info.stage == MESA_SHADER_FRAGMENT) {
       NIR_PASS_V(nir, nir_lower_io_arrays_to_elements_no_indirects, true);
    }
+
+   st_nir_assign_vs_in_locations(nir);
 }
 
 /**

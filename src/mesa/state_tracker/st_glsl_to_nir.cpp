@@ -83,9 +83,12 @@ st_nir_fixup_varying_slots(struct st_context *st, struct exec_list *var_list)
  * (This isn't the case with, for ex, FS inputs, which only need to agree
  * on varying-slot w/ the VS outputs)
  */
-static void
-st_nir_assign_vs_in_locations(nir_shader *nir)
+void
+st_nir_assign_vs_in_locations(struct nir_shader *nir)
 {
+   if (nir->info.stage != MESA_SHADER_VERTEX)
+      return;
+
    bool removed_inputs = false;
 
    nir->num_inputs = util_bitcount64(nir->info.inputs_read);
@@ -93,10 +96,7 @@ st_nir_assign_vs_in_locations(nir_shader *nir)
       /* NIR already assigns dual-slot inputs to two locations so all we have
        * to do is compact everything down.
        */
-      if (var->data.location == VERT_ATTRIB_EDGEFLAG) {
-         /* bit of a hack, mirroring st_translate_vertex_program */
-         var->data.driver_location = nir->num_inputs++;
-      } else if (nir->info.inputs_read & BITFIELD64_BIT(var->data.location)) {
+      if (nir->info.inputs_read & BITFIELD64_BIT(var->data.location)) {
          var->data.driver_location =
             util_bitcount64(nir->info.inputs_read &
                               BITFIELD64_MASK(var->data.location));
@@ -851,9 +851,6 @@ void
 st_nir_assign_varying_locations(struct st_context *st, nir_shader *nir)
 {
    if (nir->info.stage == MESA_SHADER_VERTEX) {
-      /* Needs special handling so drvloc matches the vbo state: */
-      st_nir_assign_vs_in_locations(nir);
-
       nir_assign_io_var_locations(&nir->outputs,
                                   &nir->num_outputs,
                                   nir->info.stage);
