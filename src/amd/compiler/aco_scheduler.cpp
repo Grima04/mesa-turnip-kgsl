@@ -34,6 +34,8 @@
 #define POS_EXP_WINDOW_SIZE 512
 #define SMEM_MAX_MOVES (64 - ctx.num_waves * 4)
 #define VMEM_MAX_MOVES (128 - ctx.num_waves * 8)
+/* creating clauses decreases def-use distances, so make it less aggressive the lower num_waves is */
+#define VMEM_CLAUSE_MAX_GRAB_DIST ((ctx.num_waves - 1) * 8)
 #define POS_EXP_MAX_MOVES 512
 
 namespace aco {
@@ -41,6 +43,11 @@ namespace aco {
 struct sched_ctx {
    std::vector<bool> depends_on;
    std::vector<bool> RAR_dependencies;
+   /* For downwards VMEM scheduling, same as RAR_dependencies but excludes the
+    * instructions in the clause, since new instructions in the clause are not
+    * moved past any other instructions in the clause. */
+   std::vector<bool> new_RAR_dependencies;
+
    RegisterDemand max_registers;
    int16_t num_waves;
    int16_t last_SMEM_stall;
@@ -431,12 +438,14 @@ void schedule_VMEM(sched_ctx& ctx, Block* block,
    assert(idx != 0);
    int window_size = VMEM_WINDOW_SIZE;
    int max_moves = VMEM_MAX_MOVES;
+   int clause_max_grab_dist = VMEM_CLAUSE_MAX_GRAB_DIST;
    int16_t k = 0;
    bool can_reorder_cur = can_reorder(current, false);
 
    /* create the initial set of values which current depends on */
    std::fill(ctx.depends_on.begin(), ctx.depends_on.end(), false);
    std::fill(ctx.RAR_dependencies.begin(), ctx.RAR_dependencies.end(), false);
+   std::fill(ctx.new_RAR_dependencies.begin(), ctx.new_RAR_dependencies.end(), false);
    for (const Operand& op : current->operands) {
       if (op.isTemp()) {
          ctx.depends_on[op.tempId()] = true;
@@ -446,10 +455,12 @@ void schedule_VMEM(sched_ctx& ctx, Block* block,
    }
 
    /* maintain how many registers remain free when moving instructions */
-   RegisterDemand register_pressure = register_demand[idx];
+   RegisterDemand register_pressure_indep = register_demand[idx];
+   RegisterDemand register_pressure_clause = register_demand[idx];
 
    /* first, check if we have instructions before current to move down */
-   int insert_idx = idx + 1;
+   int indep_insert_idx = idx + 1;
+   int clause_insert_idx = idx;
    int moving_interaction = barrier_none;
    bool moving_spill = false;
 
@@ -471,10 +482,19 @@ void schedule_VMEM(sched_ctx& ctx, Block* block,
       bool can_stall_prev_smem = idx <= ctx.last_SMEM_dep_idx && candidate_idx < ctx.last_SMEM_dep_idx;
       if (can_stall_prev_smem && ctx.last_SMEM_stall >= 0)
          break;
-      register_pressure.update(register_demand[candidate_idx]);
+      register_pressure_indep.update(register_demand[candidate_idx]);
+
+      bool part_of_clause = false;
+      if (candidate->isVMEM()) {
+         bool same_resource = candidate->operands[1].tempId() == current->operands[1].tempId();
+         int grab_dist = clause_insert_idx - candidate_idx;
+         /* We can't easily tell how much this will decrease the def-to-use
+          * distances, so just use how far it will be moved as a heuristic. */
+         part_of_clause = same_resource && grab_dist < clause_max_grab_dist;
+      }
 
       /* if current depends on candidate, add additional dependencies and continue */
-      bool can_move_down = !candidate->isVMEM();
+      bool can_move_down = !candidate->isVMEM() || part_of_clause;
       bool writes_exec = false;
       for (const Definition& def : candidate->definitions) {
          if (def.isTemp() && ctx.depends_on[def.tempId()])
@@ -495,17 +515,31 @@ void schedule_VMEM(sched_ctx& ctx, Block* block,
          for (const Operand& op : candidate->operands) {
             if (op.isTemp()) {
                ctx.depends_on[op.tempId()] = true;
+               if (op.isFirstKill()) {
+                  ctx.RAR_dependencies[op.tempId()] = true;
+                  ctx.new_RAR_dependencies[op.tempId()] = true;
+               }
+            }
+         }
+         register_pressure_clause.update(register_demand[candidate_idx]);
+         continue;
+      }
+
+      if (part_of_clause) {
+         for (const Operand& op : candidate->operands) {
+            if (op.isTemp()) {
+               ctx.depends_on[op.tempId()] = true;
                if (op.isFirstKill())
                   ctx.RAR_dependencies[op.tempId()] = true;
             }
          }
-         continue;
       }
 
       bool register_pressure_unknown = false;
+      std::vector<bool>& RAR_deps = part_of_clause ? ctx.new_RAR_dependencies : ctx.RAR_dependencies;
       /* check if one of candidate's operands is killed by depending instruction */
       for (const Operand& op : candidate->operands) {
-         if (op.isTemp() && ctx.RAR_dependencies[op.tempId()]) {
+         if (op.isTemp() && RAR_deps[op.tempId()]) {
             // FIXME: account for difference in register pressure
             register_pressure_unknown = true;
          }
@@ -514,12 +548,18 @@ void schedule_VMEM(sched_ctx& ctx, Block* block,
          for (const Operand& op : candidate->operands) {
             if (op.isTemp()) {
                ctx.depends_on[op.tempId()] = true;
-               if (op.isFirstKill())
+               if (op.isFirstKill()) {
                   ctx.RAR_dependencies[op.tempId()] = true;
+                  ctx.new_RAR_dependencies[op.tempId()] = true;
+               }
             }
          }
+         register_pressure_clause.update(register_demand[candidate_idx]);
          continue;
       }
+
+      int insert_idx = part_of_clause ? clause_insert_idx : indep_insert_idx;
+      RegisterDemand register_pressure = part_of_clause ? register_pressure_clause : register_pressure_indep;
 
       /* check if register pressure is low enough: the diff is negative if register pressure is increased */
       const RegisterDemand candidate_diff = getLiveChanges(candidate);
@@ -541,8 +581,12 @@ void schedule_VMEM(sched_ctx& ctx, Block* block,
          register_demand[i] -= candidate_diff;
       }
       register_demand[insert_idx - 1] = new_demand;
-      register_pressure -=  candidate_diff;
-      insert_idx--;
+      register_pressure_clause -= candidate_diff;
+      clause_insert_idx--;
+      if (!part_of_clause) {
+         register_pressure_indep -= candidate_diff;
+         indep_insert_idx--;
+      }
       k++;
       if (candidate_idx < ctx.last_SMEM_dep_idx)
          ctx.last_SMEM_stall++;
@@ -557,7 +601,8 @@ void schedule_VMEM(sched_ctx& ctx, Block* block,
    }
 
    /* find the first instruction depending on current or find another VMEM */
-   insert_idx = idx;
+   RegisterDemand register_pressure;
+   int insert_idx = idx;
    moving_interaction = barrier_none;
    moving_spill = false;
 
@@ -827,6 +872,7 @@ void schedule_program(Program *program, live& live_vars)
    sched_ctx ctx;
    ctx.depends_on.resize(program->peekAllocationId());
    ctx.RAR_dependencies.resize(program->peekAllocationId());
+   ctx.new_RAR_dependencies.resize(program->peekAllocationId());
    /* Allowing the scheduler to reduce the number of waves to as low as 5
     * improves performance of Thrones of Britannia significantly and doesn't
     * seem to hurt anything else. */
