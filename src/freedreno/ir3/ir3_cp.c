@@ -44,8 +44,16 @@ struct ir3_cp_ctx {
 	struct ir3_shader_variant *so;
 };
 
-/* is it a type preserving mov, with ok flags? */
-static bool is_eligible_mov(struct ir3_instruction *instr, bool allow_flags)
+/* is it a type preserving mov, with ok flags?
+ *
+ * @instr: the mov to consider removing
+ * @dst_instr: the instruction consuming the mov (instr)
+ *
+ * TODO maybe drop allow_flags since this is only false when dst is
+ * NULL (ie. outputs)
+ */
+static bool is_eligible_mov(struct ir3_instruction *instr,
+		struct ir3_instruction *dst_instr, bool allow_flags)
 {
 	if (is_same_type_mov(instr)) {
 		struct ir3_register *dst = instr->regs[0];
@@ -70,9 +78,21 @@ static bool is_eligible_mov(struct ir3_instruction *instr, bool allow_flags)
 					IR3_REG_SABS | IR3_REG_SNEG | IR3_REG_BNOT))
 				return false;
 
-		/* TODO: remove this hack: */
-		if (src_instr->opc == OPC_META_FO)
-			return false;
+		/* If src is coming from fanout/split (ie. one component of a
+		 * texture fetch, etc) and we have constraints on swizzle of
+		 * destination, then skip it.
+		 *
+		 * We could possibly do a bit better, and copy-propagation if
+		 * we can CP all components that are being fanned out.
+		 */
+		if (src_instr->opc == OPC_META_FO) {
+			if (!dst_instr)
+				return false;
+			if (dst_instr->opc == OPC_META_FI)
+				return false;
+			if (dst_instr->cp.left || dst_instr->cp.right)
+				return false;
+		}
 
 		return true;
 	}
@@ -427,7 +447,7 @@ reg_cp(struct ir3_cp_ctx *ctx, struct ir3_instruction *instr,
 {
 	struct ir3_instruction *src = ssa(reg);
 
-	if (is_eligible_mov(src, true)) {
+	if (is_eligible_mov(src, instr, true)) {
 		/* simple case, no immed/const/relativ, only mov's w/ ssa src: */
 		struct ir3_register *src_reg = src->regs[1];
 		unsigned new_flags = reg->flags;
@@ -584,7 +604,7 @@ reg_cp(struct ir3_cp_ctx *ctx, struct ir3_instruction *instr,
 static struct ir3_instruction *
 eliminate_output_mov(struct ir3_instruction *instr)
 {
-	if (is_eligible_mov(instr, false)) {
+	if (is_eligible_mov(instr, NULL, false)) {
 		struct ir3_register *reg = instr->regs[1];
 		if (!(reg->flags & IR3_REG_ARRAY)) {
 			struct ir3_instruction *src_instr = ssa(reg);
