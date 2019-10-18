@@ -175,10 +175,6 @@ static bool valid_flags(struct ir3_instruction *instr, unsigned n,
 				if ((flags & IR3_REG_IMMED) && (reg->flags & IR3_REG_IMMED))
 					return false;
 			}
-			/* cannot be const + ABS|NEG: */
-			if (flags & (IR3_REG_FABS | IR3_REG_FNEG |
-					IR3_REG_SABS | IR3_REG_SNEG | IR3_REG_BNOT))
-				return false;
 		}
 		break;
 	case 3:
@@ -194,12 +190,6 @@ static bool valid_flags(struct ir3_instruction *instr, unsigned n,
 				return false;
 		}
 
-		if (flags & IR3_REG_CONST) {
-			/* cannot be const + ABS|NEG: */
-			if (flags & (IR3_REG_FABS | IR3_REG_FNEG |
-					IR3_REG_SABS | IR3_REG_SNEG | IR3_REG_BNOT))
-				return false;
-		}
 		break;
 	case 4:
 		/* seems like blob compiler avoids const as src.. */
