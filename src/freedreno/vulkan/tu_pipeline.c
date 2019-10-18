@@ -454,9 +454,6 @@ tu6_emit_fs_config(struct tu_cs *cs, const struct ir3_shader_variant *fs)
    if (fs->instrlen)
       sp_fs_config |= A6XX_SP_FS_CONFIG_ENABLED;
 
-   tu_cs_emit_pkt4(cs, REG_A6XX_SP_FS_PREFETCH_CNTL, 1);
-   tu_cs_emit(cs, 0);
-
    tu_cs_emit_pkt4(cs, REG_A6XX_SP_UNKNOWN_A9A8, 1);
    tu_cs_emit(cs, 0);
 
@@ -700,6 +697,27 @@ tu6_emit_fs_inputs(struct tu_cs *cs, const struct ir3_shader_variant *fs)
    ij_samp_regid   = ir3_find_sysval_regid(fs, SYSTEM_VALUE_BARYCENTRIC_SAMPLE);
    ij_cent_regid   = ir3_find_sysval_regid(fs, SYSTEM_VALUE_BARYCENTRIC_CENTROID);
    ij_size_regid   = ir3_find_sysval_regid(fs, SYSTEM_VALUE_BARYCENTRIC_SIZE);
+
+   if (fs->num_sampler_prefetch > 0) {
+      assert(VALIDREG(ij_pix_regid));
+      /* also, it seems like ij_pix is *required* to be r0.x */
+      assert(ij_pix_regid == regid(0, 0));
+   }
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_SP_FS_PREFETCH_CNTL, 1 + fs->num_sampler_prefetch);
+   tu_cs_emit(cs, A6XX_SP_FS_PREFETCH_CNTL_COUNT(fs->num_sampler_prefetch) |
+         A6XX_SP_FS_PREFETCH_CNTL_UNK4(regid(63, 0)) |
+         0x7000);    // XXX);
+   for (int i = 0; i < fs->num_sampler_prefetch; i++) {
+      const struct ir3_sampler_prefetch *prefetch = &fs->sampler_prefetch[i];
+      tu_cs_emit(cs, A6XX_SP_FS_PREFETCH_CMD_SRC(prefetch->src) |
+                     A6XX_SP_FS_PREFETCH_CMD_SAMP_ID(prefetch->samp_id) |
+                     A6XX_SP_FS_PREFETCH_CMD_TEX_ID(prefetch->tex_id) |
+                     A6XX_SP_FS_PREFETCH_CMD_DST(prefetch->dst) |
+                     A6XX_SP_FS_PREFETCH_CMD_WRMASK(prefetch->wrmask) |
+                     COND(prefetch->half_precision, A6XX_SP_FS_PREFETCH_CMD_HALF) |
+                     A6XX_SP_FS_PREFETCH_CMD_CMD(prefetch->cmd));
+   }
 
    tu_cs_emit_pkt4(cs, REG_A6XX_HLSQ_CONTROL_1_REG, 5);
    tu_cs_emit(cs, 0x7);
