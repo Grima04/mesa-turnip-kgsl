@@ -262,6 +262,26 @@ struct mir_op_props {
         unsigned props;
 };
 
+/* For load/store */
+
+struct mir_ldst_op_props {
+        const char *name;
+        unsigned props;
+};
+
+/* Lower 2-bits are a midgard_reg_mode */
+#define GET_LDST_SIZE(c) (c & 3)
+
+/* Store (so the primary register is a source, not a destination */
+#define LDST_STORE (1 << 2)
+
+/* Mask has special meaning and should not be manipulated directly */
+#define LDST_SPECIAL_MASK (1 << 3)
+
+/* Non-store operation has side effects and should not be eliminated even if
+ * its mask is 0 */
+#define LDST_SIDE_FX (1 << 4)
+
 /* This file is common, so don't define the tables themselves. #include
  * midgard_op.h if you need that, or edit midgard_ops.c directly */
 

@@ -90,8 +90,8 @@ print_alu_opcode(midgard_alu_op op)
 static void
 print_ld_st_opcode(midgard_load_store_op op)
 {
-        if (load_store_opcode_names[op])
-                printf("%s", load_store_opcode_names[op]);
+        if (load_store_opcode_props[op].name)
+                printf("%s", load_store_opcode_props[op].name);
         else
                 printf("ldst_op_%02X", op);
 }
