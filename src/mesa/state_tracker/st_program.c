@@ -387,6 +387,20 @@ st_release_common_variants(struct st_context *st, struct st_common_program *p)
    delete_ir(&p->state);
 }
 
+void
+st_finalize_nir_before_variants(struct nir_shader *nir)
+{
+   NIR_PASS_V(nir, nir_split_var_copies);
+   NIR_PASS_V(nir, nir_lower_var_copies);
+   if (nir->options->lower_all_io_to_temps ||
+       nir->options->lower_all_io_to_elements ||
+       nir->info.stage == MESA_SHADER_VERTEX ||
+       nir->info.stage == MESA_SHADER_GEOMETRY) {
+      NIR_PASS_V(nir, nir_lower_io_arrays_to_elements_no_indirects, false);
+   } else if (nir->info.stage == MESA_SHADER_FRAGMENT) {
+      NIR_PASS_V(nir, nir_lower_io_arrays_to_elements_no_indirects, true);
+   }
+}
 
 /**
  * Translate ARB (asm) program to NIR
@@ -409,6 +423,7 @@ st_translate_prog_to_nir(struct st_context *st, struct gl_program *prog,
    /* Optimise NIR */
    NIR_PASS_V(nir, nir_opt_constant_folding);
    st_nir_opts(nir);
+   st_finalize_nir_before_variants(nir);
    nir_validate_shader(nir, "after st/ptn NIR opts");
 
    return nir;

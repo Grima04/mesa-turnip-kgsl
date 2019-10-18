@@ -486,6 +486,11 @@ st_glsl_to_nir_post_opts(struct st_context *st, struct gl_program *prog,
    nir_variable_mode mask = nir_var_function_temp;
    nir_remove_dead_variables(nir, mask);
 
+   NIR_PASS_V(nir, nir_lower_atomics_to_ssbo,
+              st->ctx->Const.Program[nir->info.stage].MaxAtomicBuffers);
+
+   st_finalize_nir_before_variants(nir);
+
    if (st->ctx->_Shader->Flags & GLSL_DUMP) {
       _mesa_log("\n");
       _mesa_log("NIR IR for linked %s program %d:\n",
@@ -899,25 +904,11 @@ st_finalize_nir(struct st_context *st, struct gl_program *prog,
                 struct gl_shader_program *shader_program, nir_shader *nir)
 {
    struct pipe_screen *screen = st->pipe->screen;
-   const nir_shader_compiler_options *options =
-      st->ctx->Const.ShaderCompilerOptions[prog->info.stage].NirOptions;
 
    NIR_PASS_V(nir, nir_split_var_copies);
    NIR_PASS_V(nir, nir_lower_var_copies);
-   if (options->lower_all_io_to_temps ||
-       options->lower_all_io_to_elements ||
-       nir->info.stage == MESA_SHADER_VERTEX ||
-       nir->info.stage == MESA_SHADER_GEOMETRY) {
-      NIR_PASS_V(nir, nir_lower_io_arrays_to_elements_no_indirects, false);
-   } else if (nir->info.stage == MESA_SHADER_FRAGMENT) {
-      NIR_PASS_V(nir, nir_lower_io_arrays_to_elements_no_indirects, true);
-   }
 
    st_nir_assign_varying_locations(st, nir);
-
-   NIR_PASS_V(nir, nir_lower_atomics_to_ssbo,
-         st->ctx->Const.Program[nir->info.stage].MaxAtomicBuffers);
-
    st_nir_assign_uniform_locations(st->ctx, prog,
                                    &nir->uniforms);
 
