@@ -548,29 +548,15 @@ mir_bytemask_of_read_components_single(unsigned swizzle, unsigned inmask, midgar
         return mir_to_bytemask(mode, cmask);
 }
 
-static unsigned
-mir_source_count(midgard_instruction *ins)
-{
-        if (ins->type == TAG_ALU_4) {
-                /* ALU is always binary, except csel */
-                return OP_IS_CSEL(ins->alu.op) ? 3 : 2;
-        } else if (ins->type == TAG_LOAD_STORE_4) {
-                bool load = !OP_IS_STORE(ins->load_store.op);
-                return (load ? 2 : 3);
-        } else if (ins->type == TAG_TEXTURE_4) {
-                /* Coords, bias.. TODO: Offsets? */
-                return 2;
-        } else {
-                unreachable("Invalid instruction type");
-        }
-}
-
 uint16_t
 mir_bytemask_of_read_components(midgard_instruction *ins, unsigned node)
 {
         uint16_t mask = 0;
 
-        for (unsigned i = 0; i < mir_source_count(ins); ++i) {
+        if (node == ~0)
+                return 0;
+
+        mir_foreach_src(ins, i) {
                 if (ins->src[i] != node) continue;
 
                 /* Branch writeout uses all components */
