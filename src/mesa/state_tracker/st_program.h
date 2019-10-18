@@ -198,7 +198,7 @@ struct st_vp_variant
     * The shader variant saved for the draw module to later emulate
     * selection/feedback/rasterpos.
     */
-   struct pipe_shader_state state;
+   const struct tgsi_token *tokens;
 
    /** Driver's compiled shader */
    void *driver_shader;

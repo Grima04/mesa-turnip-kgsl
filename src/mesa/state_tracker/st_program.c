@@ -244,7 +244,8 @@ delete_vp_variant(struct st_context *st, struct st_vp_variant *vpv)
    if (vpv->draw_shader)
       draw_delete_vertex_shader( st->draw, vpv->draw_shader );
 
-   delete_ir(&vpv->state);
+   if (vpv->tokens)
+      ureg_free_tokens(vpv->tokens);
 
    free( vpv );
 }
@@ -647,36 +648,30 @@ st_create_vp_variant(struct st_context *st,
 {
    struct st_vp_variant *vpv = CALLOC_STRUCT(st_vp_variant);
    struct pipe_context *pipe = st->pipe;
+   struct pipe_shader_state state = {0};
 
    static const gl_state_index16 point_size_state[STATE_LENGTH] =
       { STATE_INTERNAL, STATE_POINT_SIZE_CLAMPED, 0 };
    struct gl_program_parameter_list *params = stvp->Base.Parameters;
 
    vpv->key = *key;
-   vpv->state.stream_output = stvp->state.stream_output;
    vpv->num_inputs = stvp->num_inputs;
 
-   /* When generating a NIR program, we usually don't have TGSI tokens.
-    * However, we do create them for ARB_vertex_program / fixed-function VS
-    * programs which we may need to use with the draw module for legacy
-    * feedback/select emulation.  If they exist, copy them.
-    */
-   if (stvp->state.tokens)
-      vpv->state.tokens = tgsi_dup_tokens(stvp->state.tokens);
+   state.stream_output = stvp->state.stream_output;
 
    if (stvp->state.type == PIPE_SHADER_IR_NIR) {
-      vpv->state.type = PIPE_SHADER_IR_NIR;
-      vpv->state.ir.nir = nir_shader_clone(NULL, stvp->state.ir.nir);
+      state.type = PIPE_SHADER_IR_NIR;
+      state.ir.nir = nir_shader_clone(NULL, stvp->state.ir.nir);
       if (key->clamp_color)
-         NIR_PASS_V(vpv->state.ir.nir, nir_lower_clamp_color_outputs);
+         NIR_PASS_V(state.ir.nir, nir_lower_clamp_color_outputs);
       if (key->passthrough_edgeflags) {
-         NIR_PASS_V(vpv->state.ir.nir, nir_lower_passthrough_edgeflags);
+         NIR_PASS_V(state.ir.nir, nir_lower_passthrough_edgeflags);
          vpv->num_inputs++;
       }
 
       if (key->lower_point_size) {
          _mesa_add_state_reference(params, point_size_state);
-         NIR_PASS_V(vpv->state.ir.nir, nir_lower_point_size_mov,
+         NIR_PASS_V(state.ir.nir, nir_lower_point_size_mov,
                     point_size_state);
       }
 
@@ -699,20 +694,33 @@ st_create_vp_variant(struct st_context *st,
             _mesa_add_state_reference(params, clipplane_state[i]);
          }
 
-         NIR_PASS_V(vpv->state.ir.nir, nir_lower_clip_vs, key->lower_ucp,
+         NIR_PASS_V(state.ir.nir, nir_lower_clip_vs, key->lower_ucp,
                     true, can_compact, clipplane_state);
-         NIR_PASS_V(vpv->state.ir.nir, nir_lower_io_to_temporaries,
-                    nir_shader_get_entrypoint(vpv->state.ir.nir), true, false);
+         NIR_PASS_V(state.ir.nir, nir_lower_io_to_temporaries,
+                    nir_shader_get_entrypoint(state.ir.nir), true, false);
       }
 
       st_finalize_nir(st, &stvp->Base, stvp->shader_program,
-                      vpv->state.ir.nir);
+                      state.ir.nir);
 
-      vpv->driver_shader = pipe->create_vs_state(pipe, &vpv->state);
-      /* driver takes ownership of IR: */
-      vpv->state.ir.nir = NULL;
+      vpv->driver_shader = pipe->create_vs_state(pipe, &state);
+
+      /* When generating a NIR program, we usually don't have TGSI tokens.
+       * However, we do create them for ARB_vertex_program / fixed-function VS
+       * programs which we may need to use with the draw module for legacy
+       * feedback/select emulation.  If they exist, copy them.
+       *
+       * TODO: Lowering for shader variants is not applied to TGSI when
+       * generating a NIR shader.
+       */
+      if (stvp->state.tokens)
+         vpv->tokens = tgsi_dup_tokens(stvp->state.tokens);
+
       return vpv;
    }
+
+   state.type = PIPE_SHADER_IR_TGSI;
+   state.tokens = tgsi_dup_tokens(stvp->state.tokens);
 
    /* Emulate features. */
    if (key->clamp_color || key->passthrough_edgeflags) {
@@ -721,11 +729,11 @@ st_create_vp_variant(struct st_context *st,
          (key->clamp_color ? TGSI_EMU_CLAMP_COLOR_OUTPUTS : 0) |
          (key->passthrough_edgeflags ? TGSI_EMU_PASSTHROUGH_EDGEFLAG : 0);
 
-      tokens = tgsi_emulate(vpv->state.tokens, flags);
+      tokens = tgsi_emulate(state.tokens, flags);
 
       if (tokens) {
-         tgsi_free_tokens(vpv->state.tokens);
-         vpv->state.tokens = tokens;
+         tgsi_free_tokens(state.tokens);
+         state.tokens = tokens;
 
          if (key->passthrough_edgeflags)
             vpv->num_inputs++;
@@ -738,19 +746,21 @@ st_create_vp_variant(struct st_context *st,
             _mesa_add_state_reference(params, depth_range_state);
 
       const struct tgsi_token *tokens;
-      tokens = st_tgsi_lower_depth_clamp(vpv->state.tokens, depth_range_const,
+      tokens = st_tgsi_lower_depth_clamp(state.tokens, depth_range_const,
                                          key->clip_negative_one_to_one);
-      if (tokens != vpv->state.tokens)
-         tgsi_free_tokens(vpv->state.tokens);
-      vpv->state.tokens = tokens;
+      if (tokens != state.tokens)
+         tgsi_free_tokens(state.tokens);
+      state.tokens = tokens;
    }
 
    if (ST_DEBUG & DEBUG_TGSI) {
-      tgsi_dump(vpv->state.tokens, 0);
+      tgsi_dump(state.tokens, 0);
       debug_printf("\n");
    }
 
-   vpv->driver_shader = pipe->create_vs_state(pipe, &vpv->state);
+   vpv->driver_shader = pipe->create_vs_state(pipe, &state);
+   /* Save this for selection/feedback/rasterpos. */
+   vpv->tokens = state.tokens;
    return vpv;
 }
 
@@ -1942,7 +1952,7 @@ st_print_current_vertex_program(void)
 
       for (stv = stvp->variants; stv; stv = stv->next) {
          debug_printf("variant %p\n", stv);
-         tgsi_dump(stv->state.tokens, 0);
+         tgsi_dump(stv->tokens, 0);
       }
    }
 }
