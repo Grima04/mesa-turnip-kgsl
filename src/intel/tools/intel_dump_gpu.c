@@ -448,6 +448,25 @@ ioctl(int fd, unsigned long request, ...)
       maybe_init(fd);
 
       switch (request) {
+      case DRM_IOCTL_SYNCOBJ_WAIT:
+      case DRM_IOCTL_I915_GEM_WAIT: {
+         if (device_override)
+            return 0;
+         return libc_ioctl(fd, request, argp);
+      }
+
+      case DRM_IOCTL_I915_GET_RESET_STATS: {
+         if (device_override) {
+            struct drm_i915_reset_stats *stats = argp;
+
+            stats->reset_count = 0;
+            stats->batch_active = 0;
+            stats->batch_pending = 0;
+            return 0;
+         }
+         return libc_ioctl(fd, request, argp);
+      }
+
       case DRM_IOCTL_I915_GETPARAM: {
          struct drm_i915_getparam *getparam = argp;
          return get_pci_id(fd, getparam->value);
