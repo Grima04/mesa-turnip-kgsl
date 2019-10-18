@@ -720,6 +720,10 @@ st_create_vp_variant(struct st_context *st,
       st_finalize_nir(st, &stvp->Base, stvp->shader_program,
                       state.ir.nir);
 
+      /* Some of the lowering above may have introduced new varyings */
+      nir_shader_gather_info(state.ir.nir,
+                             nir_shader_get_entrypoint(state.ir.nir));
+
       vpv->driver_shader = pipe->create_vs_state(pipe, &state);
 
       /* When generating a NIR program, we usually don't have TGSI tokens.
