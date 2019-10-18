@@ -55,6 +55,7 @@ script:
       meson _build -Dbuild-tests=true;
       ninja -C _build || travis_terminate 1;
       ninja -C _build test || travis_terminate 1;
+      ninja -C _build install || travis_terminate 1;
     fi
   - if test "x$BUILD" = xscons; then
       scons || travis_terminate 1;
