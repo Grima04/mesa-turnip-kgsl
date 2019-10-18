@@ -151,6 +151,9 @@ typedef struct shader_info {
    /* The size of the gl_CullDistance[] array, if declared. */
    unsigned cull_distance_array_size;
 
+   /* Whether the first UBO is the default uniform buffer, i.e. uniforms. */
+   bool first_ubo_is_default_ubo;
+
    /* Whether or not separate shader objects were used */
    bool separate_shader;
 
