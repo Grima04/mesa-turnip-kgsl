@@ -658,8 +658,6 @@ drm_add_configs_for_visuals(_EGLDriver *drv, _EGLDisplay *disp)
       }
    }
 
-   dri2_finalize_config_surface_types(disp);
-
    for (unsigned i = 0; i < ARRAY_SIZE(format_count); i++) {
       if (!format_count[i]) {
          struct gbm_format_name_desc desc;

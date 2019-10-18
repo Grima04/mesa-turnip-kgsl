@@ -1225,8 +1225,6 @@ droid_add_configs_for_visuals(_EGLDriver *drv, _EGLDisplay *disp)
          has_rgba = true;
    }
 
-   dri2_finalize_config_surface_types(disp);
-
    for (int i = 0; i < ARRAY_SIZE(format_count); i++) {
       if (!format_count[i]) {
          _eglLog(_EGL_DEBUG, "No DRI config supports native format 0x%x",
