@@ -813,8 +813,7 @@ struct __DRIuseInvalidateExtensionRec {
 #define __DRI_ATTRIB_GREEN_SHIFT		51
 #define __DRI_ATTRIB_BLUE_SHIFT			52
 #define __DRI_ATTRIB_ALPHA_SHIFT		53
-#define __DRI_ATTRIB_CONFIG_SELECT_GROUP	54
-#define __DRI_ATTRIB_MAX			55
+#define __DRI_ATTRIB_MAX			54
 
 /* __DRI_ATTRIB_RENDER_TYPE */
 #define __DRI_ATTRIB_RGBA_BIT			0x01	

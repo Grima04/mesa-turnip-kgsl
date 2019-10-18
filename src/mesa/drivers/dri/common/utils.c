@@ -379,7 +379,6 @@ driCreateConfigs(mesa_format format,
 		    modes->yInverted = GL_TRUE;
 		    modes->sRGBCapable = is_srgb;
 		    modes->mutableRenderBuffer = mutable_render_buffer;
-		    modes->configSelectGroup = 0;
 		}
 	    }
 	}
@@ -469,7 +468,6 @@ static const struct { unsigned int attrib, offset; } attribMap[] = {
     __ATTRIB(__DRI_ATTRIB_YINVERTED,			yInverted),
     __ATTRIB(__DRI_ATTRIB_FRAMEBUFFER_SRGB_CAPABLE,	sRGBCapable),
     __ATTRIB(__DRI_ATTRIB_MUTABLE_RENDER_BUFFER,	mutableRenderBuffer),
-    __ATTRIB(__DRI_ATTRIB_CONFIG_SELECT_GROUP, configSelectGroup),
 
     /* The struct field doesn't matter here, these are handled by the
      * switch in driGetConfigAttribIndex.  We need them in the array

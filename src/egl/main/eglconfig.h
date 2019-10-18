@@ -89,7 +89,6 @@ struct _egl_config
    EGLint FramebufferTargetAndroid;
    EGLint RecordableAndroid;
    EGLint ComponentType;
-   EGLint ConfigSelectGroup;
 };
 
 
@@ -140,7 +139,6 @@ _eglOffsetOfConfig(EGLint attr)
    ATTRIB_MAP(EGL_FRAMEBUFFER_TARGET_ANDROID, FramebufferTargetAndroid);
    ATTRIB_MAP(EGL_RECORDABLE_ANDROID,        RecordableAndroid);
    ATTRIB_MAP(EGL_COLOR_COMPONENT_TYPE_EXT,  ComponentType);
-   ATTRIB_MAP(EGL_CONFIG_SELECT_GROUP_MESA,  ConfigSelectGroup);
 #undef ATTRIB_MAP
    default:
       return -1;

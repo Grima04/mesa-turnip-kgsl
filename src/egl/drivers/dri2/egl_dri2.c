@@ -187,7 +187,6 @@ static const EGLint dri2_to_egl_attribute_map[__DRI_ATTRIB_MAX] = {
    [__DRI_ATTRIB_MAX_SWAP_INTERVAL]     = EGL_MAX_SWAP_INTERVAL,
    [__DRI_ATTRIB_MIN_SWAP_INTERVAL]     = EGL_MIN_SWAP_INTERVAL,
    [__DRI_ATTRIB_YINVERTED]             = EGL_Y_INVERTED_NOK,
-   [__DRI_ATTRIB_CONFIG_SELECT_GROUP]   = EGL_CONFIG_SELECT_GROUP_MESA,
 };
 
 const __DRIconfig *
@@ -203,9 +202,6 @@ dri2_get_dri_config(struct dri2_egl_config *conf, EGLint surface_type,
 static EGLBoolean
 dri2_match_config(const _EGLConfig *conf, const _EGLConfig *criteria)
 {
-   if (conf->NativeVisualID != criteria->NativeVisualID)
-      return EGL_FALSE;
-
    if (_eglCompareConfigs(conf, criteria, NULL, EGL_FALSE) != 0)
       return EGL_FALSE;
 

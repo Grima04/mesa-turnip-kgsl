@@ -211,9 +211,6 @@ struct gl_config
 
    /* EGL_KHR_mutable_render_buffer */
    GLuint mutableRenderBuffer; /* bool */
-
-   /* EGL_MESA_config_select_group */
-   GLint configSelectGroup;
 };
 
 
