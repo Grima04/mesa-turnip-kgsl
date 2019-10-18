@@ -188,6 +188,16 @@ const char *load_store_opcode_names[256] = {
         [midgard_op_atomic_umax] = "atomic_umax",
         [midgard_op_atomic_xchg] = "atomic_xchg",
 
+        [midgard_op_atomic_add64] = "atomic_add64",
+        [midgard_op_atomic_and64] = "atomic_and64",
+        [midgard_op_atomic_or64] = "atomic_or64",
+        [midgard_op_atomic_xor64] = "atomic_xor64",
+        [midgard_op_atomic_imin64] = "atomic_imin64",
+        [midgard_op_atomic_umin64] = "atomic_umin64",
+        [midgard_op_atomic_imax64] = "atomic_imax64",
+        [midgard_op_atomic_umax64] = "atomic_umax64",
+        [midgard_op_atomic_xchg64] = "atomic_xchg64",
+
         [midgard_op_ld_char] = "ld_char",
         [midgard_op_ld_char2] = "ld_char2",
         [midgard_op_ld_short] = "ld_short",
