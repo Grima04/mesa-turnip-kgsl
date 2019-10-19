@@ -208,6 +208,11 @@ pipe_loader_drm_probe_fd_nodup(struct pipe_loader_device **dev, int fd)
    plib = &ddev->lib;
 #endif
    ddev->dd = get_driver_descriptor(ddev->base.driver_name, plib);
+
+   /* kmsro supports lots of drivers, try as a fallback */
+   if (!ddev->dd)
+      ddev->dd = get_driver_descriptor("kmsro", plib);
+
    if (!ddev->dd)
       goto fail;
 
