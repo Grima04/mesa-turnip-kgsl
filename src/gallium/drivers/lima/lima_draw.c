@@ -1438,8 +1438,7 @@ lima_pack_pp_frame_reg(struct lima_context *ctx, uint32_t *frame_reg,
 
    /* These are "stack size" and "stack offset" shifted,
     * here they are assumed to be always the same. */
-   uint32_t fs_stack_size = ctx->fs ? ctx->fs->stack_size : 0;
-   frame->fragment_stack_size = fs_stack_size << 16 | fs_stack_size;
+   frame->fragment_stack_size = ctx->pp_max_stack_size << 16 | ctx->pp_max_stack_size;
 
    /* related with MSAA and different value when r4p0/r7p0 */
    frame->supersampled_height = fb->base.height * 2 - 1;
