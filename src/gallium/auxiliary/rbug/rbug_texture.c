@@ -34,6 +34,8 @@
  * Functions ending with _reply are replies to requests.
  */
 
+#include "c99_alloca.h"
+
 #include "rbug_internal.h"
 #include "rbug_texture.h"
 
