@@ -169,27 +169,6 @@ iris_delete_shader_variants(struct iris_context *ice,
 }
 
 
-/**
- * Look for an existing entry in the cache that has identical assembly code.
- *
- * This is useful for programs generating shaders at runtime, where multiple
- * distinct shaders (from an API perspective) may compile to the same assembly
- * in our backend.  This saves space in the program cache buffer.
- */
-static const struct iris_compiled_shader *
-find_existing_assembly(struct hash_table *cache,
-                       const void *assembly,
-                       unsigned assembly_size)
-{
-   hash_table_foreach(cache, entry) {
-      const struct iris_compiled_shader *existing = entry->data;
-      if (existing->prog_data->program_size == assembly_size &&
-          memcmp(existing->map, assembly, assembly_size) == 0)
-         return existing;
-   }
-   return NULL;
-}
-
 struct iris_compiled_shader *
 iris_upload_shader(struct iris_context *ice,
                    enum iris_program_cache_id cache_id,
@@ -209,44 +188,30 @@ iris_upload_shader(struct iris_context *ice,
    struct iris_compiled_shader *shader =
       rzalloc_size(cache, sizeof(struct iris_compiled_shader) +
                    screen->vtbl.derived_program_state_size(cache_id));
-   const struct iris_compiled_shader *existing =
-      find_existing_assembly(cache, assembly, prog_data->program_size);
 
-   /* If we can find a matching prog in the cache already, then reuse the
-    * existing stuff without creating new copy into the underlying buffer
-    * object.  This is notably useful for programs generating shaders at
-    * runtime, where multiple shaders may compile to the same thing in our
-    * backend.
-    */
-   if (existing) {
-      pipe_resource_reference(&shader->assembly.res, existing->assembly.res);
-      shader->assembly.offset = existing->assembly.offset;
-      shader->map = existing->map;
-   } else {
-      shader->assembly.res = NULL;
-      u_upload_alloc(ice->shaders.uploader, 0, prog_data->program_size, 64,
-                     &shader->assembly.offset, &shader->assembly.res,
-                     &shader->map);
-      memcpy(shader->map, assembly, prog_data->program_size);
+   shader->assembly.res = NULL;
+   u_upload_alloc(ice->shaders.uploader, 0, prog_data->program_size, 64,
+                  &shader->assembly.offset, &shader->assembly.res,
+                  &shader->map);
+   memcpy(shader->map, assembly, prog_data->program_size);
 
-      struct iris_resource *res = (void *) shader->assembly.res;
-      uint64_t shader_data_addr = res->bo->gtt_offset +
-                                  shader->assembly.offset +
-                                  prog_data->const_data_offset;
+   struct iris_resource *res = (void *) shader->assembly.res;
+   uint64_t shader_data_addr = res->bo->gtt_offset +
+                               shader->assembly.offset +
+                               prog_data->const_data_offset;
 
-      struct brw_shader_reloc_value reloc_values[] = {
-         {
-            .id = IRIS_SHADER_RELOC_CONST_DATA_ADDR_LOW,
-            .value = shader_data_addr,
-         },
-         {
-            .id = IRIS_SHADER_RELOC_CONST_DATA_ADDR_HIGH,
-            .value = shader_data_addr >> 32,
-         },
-      };
-      brw_write_shader_relocs(&screen->devinfo, shader->map, prog_data,
-                              reloc_values, ARRAY_SIZE(reloc_values));
-   }
+   struct brw_shader_reloc_value reloc_values[] = {
+      {
+         .id = IRIS_SHADER_RELOC_CONST_DATA_ADDR_LOW,
+         .value = shader_data_addr,
+      },
+      {
+         .id = IRIS_SHADER_RELOC_CONST_DATA_ADDR_HIGH,
+         .value = shader_data_addr >> 32,
+      },
+   };
+   brw_write_shader_relocs(&screen->devinfo, shader->map, prog_data,
+                           reloc_values, ARRAY_SIZE(reloc_values));
 
    list_inithead(&shader->link);
 
