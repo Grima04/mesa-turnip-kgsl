@@ -37,19 +37,6 @@
 		op == midgard_op_st_vary_32i \
 	)
 
-#define OP_IS_STORE_R26(op) (\
-                OP_IS_STORE_VARY(op) || \
-                op == midgard_op_st_char || \
-                op == midgard_op_st_char2 || \
-                op == midgard_op_st_char4 || \
-                op == midgard_op_st_short4 || \
-                op == midgard_op_st_int4 \
-        )
-
-#define OP_IS_STORE(op) (\
-                OP_IS_STORE_R26(op) \
-	)
-
 #define OP_IS_PROJECTION(op) ( \
                 op == midgard_op_ldst_perspective_division_z || \
                 op == midgard_op_ldst_perspective_division_w \
