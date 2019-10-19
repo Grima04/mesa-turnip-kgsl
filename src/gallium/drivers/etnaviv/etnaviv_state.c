@@ -597,7 +597,11 @@ etna_vertex_elements_state_create(struct pipe_context *pctx,
             COND(nonconsecutive, VIVS_NFE_GENERIC_ATTRIB_CONFIG1_NONCONSECUTIVE) |
             VIVS_NFE_GENERIC_ATTRIB_CONFIG1_END(end_offset - start_offset);
       }
-      cs->NFE_GENERIC_ATTRIB_SCALE[idx] = 0x3f800000; /* 1 for integer, 1.0 for float */
+
+      if (util_format_is_pure_integer(elements[idx].src_format))
+         cs->NFE_GENERIC_ATTRIB_SCALE[idx] = 1;
+      else
+         cs->NFE_GENERIC_ATTRIB_SCALE[idx] = fui(1.0f);
    }
 
    return cs;
