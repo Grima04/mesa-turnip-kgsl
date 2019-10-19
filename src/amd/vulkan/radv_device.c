@@ -3516,6 +3516,46 @@ radv_alloc_sem_info(struct radv_instance *instance,
 	return ret;
 }
 
+static void
+radv_sparse_buffer_bind_memory(struct radv_device *device,
+                               const VkSparseBufferMemoryBindInfo *bind)
+{
+	RADV_FROM_HANDLE(radv_buffer, buffer, bind->buffer);
+
+	for (uint32_t i = 0; i < bind->bindCount; ++i) {
+		struct radv_device_memory *mem = NULL;
+
+		if (bind->pBinds[i].memory != VK_NULL_HANDLE)
+			mem = radv_device_memory_from_handle(bind->pBinds[i].memory);
+
+		device->ws->buffer_virtual_bind(buffer->bo,
+		                                bind->pBinds[i].resourceOffset,
+		                                bind->pBinds[i].size,
+		                                mem ? mem->bo : NULL,
+		                                bind->pBinds[i].memoryOffset);
+	}
+}
+
+static void
+radv_sparse_image_opaque_bind_memory(struct radv_device *device,
+                                     const VkSparseImageOpaqueMemoryBindInfo *bind)
+{
+	RADV_FROM_HANDLE(radv_image, image, bind->image);
+
+	for (uint32_t i = 0; i < bind->bindCount; ++i) {
+		struct radv_device_memory *mem = NULL;
+
+		if (bind->pBinds[i].memory != VK_NULL_HANDLE)
+			mem = radv_device_memory_from_handle(bind->pBinds[i].memory);
+
+		device->ws->buffer_virtual_bind(image->bo,
+		                                bind->pBinds[i].resourceOffset,
+		                                bind->pBinds[i].size,
+		                                mem ? mem->bo : NULL,
+		                                bind->pBinds[i].memoryOffset);
+	}
+}
+
 static VkResult
 radv_get_preambles(struct radv_queue *queue,
                    const VkCommandBuffer *cmd_buffers,
@@ -3556,6 +3596,13 @@ radv_get_preambles(struct radv_queue *queue,
 struct radv_queue_submission {
 	const VkCommandBuffer *cmd_buffers;
 	uint32_t cmd_buffer_count;
+
+	/* Sparse bindings that happen on a queue. */
+	const VkSparseBufferMemoryBindInfo *buffer_binds;
+	uint32_t buffer_bind_count;
+	const VkSparseImageOpaqueMemoryBindInfo *image_opaque_binds;
+	uint32_t image_opaque_bind_count;
+
 	bool flush_caches;
 	VkPipelineStageFlags wait_dst_stage_mask;
 	const VkSemaphore *wait_semaphores;
@@ -3601,6 +3648,16 @@ radv_queue_submit(struct radv_queue *queue,
 				     submission->fence);
 	if (result != VK_SUCCESS)
 		return result;
+
+	for (uint32_t i = 0; i < submission->buffer_bind_count; ++i) {
+		radv_sparse_buffer_bind_memory(queue->device,
+		                               submission->buffer_binds + i);
+	}
+
+	for (uint32_t i = 0; i < submission->image_opaque_bind_count; ++i) {
+		radv_sparse_image_opaque_bind_memory(queue->device,
+		                                     submission->image_opaque_binds + i);
+	}
 
 	if (!submission->cmd_buffer_count) {
 		ret = queue->device->ws->cs_submit(ctx, queue->queue_idx,
@@ -4302,45 +4359,13 @@ VkResult radv_BindImageMemory(
 	return radv_BindImageMemory2(device, 1, &info);
 }
 
-
-static void
-radv_sparse_buffer_bind_memory(struct radv_device *device,
-                               const VkSparseBufferMemoryBindInfo *bind)
+static bool radv_sparse_bind_has_effects(const VkBindSparseInfo *info)
 {
-	RADV_FROM_HANDLE(radv_buffer, buffer, bind->buffer);
-
-	for (uint32_t i = 0; i < bind->bindCount; ++i) {
-		struct radv_device_memory *mem = NULL;
-
-		if (bind->pBinds[i].memory != VK_NULL_HANDLE)
-			mem = radv_device_memory_from_handle(bind->pBinds[i].memory);
-
-		device->ws->buffer_virtual_bind(buffer->bo,
-		                                bind->pBinds[i].resourceOffset,
-		                                bind->pBinds[i].size,
-		                                mem ? mem->bo : NULL,
-		                                bind->pBinds[i].memoryOffset);
-	}
-}
-
-static void
-radv_sparse_image_opaque_bind_memory(struct radv_device *device,
-                                     const VkSparseImageOpaqueMemoryBindInfo *bind)
-{
-	RADV_FROM_HANDLE(radv_image, image, bind->image);
-
-	for (uint32_t i = 0; i < bind->bindCount; ++i) {
-		struct radv_device_memory *mem = NULL;
-
-		if (bind->pBinds[i].memory != VK_NULL_HANDLE)
-			mem = radv_device_memory_from_handle(bind->pBinds[i].memory);
-
-		device->ws->buffer_virtual_bind(image->bo,
-		                                bind->pBinds[i].resourceOffset,
-		                                bind->pBinds[i].size,
-		                                mem ? mem->bo : NULL,
-		                                bind->pBinds[i].memoryOffset);
-	}
+	return info->bufferBindCount ||
+	       info->imageOpaqueBindCount ||
+	       info->imageBindCount ||
+	       info->waitSemaphoreCount ||
+	       info->signalSemaphoreCount;
 }
 
  VkResult radv_QueueBindSparse(
@@ -4350,44 +4375,40 @@ radv_sparse_image_opaque_bind_memory(struct radv_device *device,
 	VkFence                                     fence)
 {
 	RADV_FROM_HANDLE(radv_queue, queue, _queue);
-	bool fence_emitted = false;
 	VkResult result;
+	uint32_t fence_idx = 0;
+
+	if (fence != VK_NULL_HANDLE) {
+		for (uint32_t i = 0; i < bindInfoCount; ++i)
+			if (radv_sparse_bind_has_effects(pBindInfo + i))
+				fence_idx = i;
+	} else
+		fence_idx = UINT32_MAX;
 
 	for (uint32_t i = 0; i < bindInfoCount; ++i) {
-		for (uint32_t j = 0; j < pBindInfo[i].bufferBindCount; ++j) {
-			radv_sparse_buffer_bind_memory(queue->device,
-			                               pBindInfo[i].pBufferBinds + j);
-		}
-
-		for (uint32_t j = 0; j < pBindInfo[i].imageOpaqueBindCount; ++j) {
-			radv_sparse_image_opaque_bind_memory(queue->device,
-			                                     pBindInfo[i].pImageOpaqueBinds + j);
-		}
-
-		if (!pBindInfo[i].waitSemaphoreCount &&
-		    !pBindInfo[i].signalSemaphoreCount)
+		if (i != fence_idx && !radv_sparse_bind_has_effects(pBindInfo + i))
 			continue;
 
 		VkResult result = radv_queue_submit(queue, &(struct radv_queue_submission) {
+				.buffer_binds = pBindInfo[i].pBufferBinds,
+				.buffer_bind_count = pBindInfo[i].bufferBindCount,
+				.image_opaque_binds = pBindInfo[i].pImageOpaqueBinds,
+				.image_opaque_bind_count = pBindInfo[i].imageOpaqueBindCount,
 				.wait_semaphores = pBindInfo[i].pWaitSemaphores,
 				.wait_semaphore_count = pBindInfo[i].waitSemaphoreCount,
 				.signal_semaphores = pBindInfo[i].pSignalSemaphores,
 				.signal_semaphore_count = pBindInfo[i].signalSemaphoreCount,
-				.fence = fence
+				.fence = i == fence_idx ? fence : VK_NULL_HANDLE,
 			});
 
 		if (result != VK_SUCCESS)
 			return result;
-
-		fence_emitted = true;
 	}
 
-	if (fence != VK_NULL_HANDLE) {
-		if (!fence_emitted) {
-			result = radv_signal_fence(queue, fence);
-			if (result != VK_SUCCESS)
-				return result;
-		}
+	if (fence != VK_NULL_HANDLE && !bindInfoCount) {
+		result = radv_signal_fence(queue, fence);
+		if (result != VK_SUCCESS)
+			return result;
 	}
 
 	return VK_SUCCESS;
