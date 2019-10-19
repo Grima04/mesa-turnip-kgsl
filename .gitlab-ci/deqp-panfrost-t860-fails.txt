@@ -713,6 +713,7 @@ dEQP-GLES2.functional.fragment_ops.random.72 Fail
 dEQP-GLES2.functional.fragment_ops.random.75 Fail
 dEQP-GLES2.functional.fragment_ops.random.81 Fail
 dEQP-GLES2.functional.fragment_ops.random.87 Fail
+dEQP-GLES2.functional.fragment_ops.random.94 Fail
 dEQP-GLES2.functional.fragment_ops.random.96 Fail
 dEQP-GLES2.functional.polygon_offset.default_render_with_units Fail
 dEQP-GLES2.functional.polygon_offset.fixed16_factor_1_slope Fail
