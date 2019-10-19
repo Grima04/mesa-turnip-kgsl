@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2019 Collabora, Ltd.
+ * Copyright (C) 2019 Red Hat Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -27,6 +28,7 @@
 
 #include "pan_context.h"
 #include "util/u_memory.h"
+#include "nir_serialize.h"
 
 /* Compute CSOs are tracked like graphics shader CSOs, but are
  * considerably simpler. We do not implement multiple
@@ -51,11 +53,18 @@ panfrost_create_compute_state(
 
         v->tripipe = malloc(sizeof(struct mali_shader_meta));
 
+        if (cso->ir_type == PIPE_SHADER_IR_NIR_SERIALIZED) {
+                struct blob_reader reader;
+                const struct pipe_binary_program_header *hdr = cso->prog;
+
+                blob_reader_init(&reader, hdr->blob, hdr->num_bytes);
+                so->cbase.prog = nir_deserialize(NULL, &midgard_nir_options, &reader);
+                so->cbase.ir_type = PIPE_SHADER_IR_NIR;
+        }
+
         panfrost_shader_compile(ctx, v->tripipe,
-                        cso->ir_type, cso->prog,
+                        so->cbase.ir_type, so->cbase.prog,
                         MESA_SHADER_COMPUTE, v, NULL);
-
-
 
         return so;
 }
