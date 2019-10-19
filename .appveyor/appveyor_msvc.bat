@@ -50,7 +50,7 @@ if "%buildsystem%" == "scons" (
     rem We use default-library as static to affect any wraps (such as expat and zlib)
     rem it would be better if we could set subprojects buildtype independently,
     rem but I haven't written that patch yet :)
-    call meson builddir --backend=vs2017 --default-library=static -Dbuild-tests=true -Db_vscrt=mtd --buildtype=release -Dllvm=true -Dgallium-drivers=swrast
+    call meson builddir --backend=vs2017 --default-library=static -Dbuild-tests=true -Db_vscrt=mtd --buildtype=release -Dllvm=true -Dgallium-drivers=swrast -Dosmesa=gallium
     pushd builddir
     call msbuild mesa.sln /m
     popd
