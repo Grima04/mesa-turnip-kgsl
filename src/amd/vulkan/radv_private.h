@@ -2163,11 +2163,24 @@ struct radv_query_pool {
 	uint32_t pipeline_stats_mask;
 };
 
+
+typedef enum {
+	RADV_SEMAPHORE_NONE,
+	RADV_SEMAPHORE_WINSYS,
+	RADV_SEMAPHORE_SYNCOBJ,
+} radv_semaphore_kind;
+
+struct radv_semaphore_part {
+	radv_semaphore_kind kind;
+	union {
+		uint32_t syncobj;
+		struct radeon_winsys_sem *ws_sem;
+	};
+};
+
 struct radv_semaphore {
-	/* use a winsys sem for non-exportable */
-	struct radeon_winsys_sem *sem;
-	uint32_t syncobj;
-	uint32_t temp_syncobj;
+	struct radv_semaphore_part permanent;
+	struct radv_semaphore_part temporary;
 };
 
 void radv_set_descriptor_set(struct radv_cmd_buffer *cmd_buffer,

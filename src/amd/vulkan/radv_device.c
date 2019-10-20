@@ -63,6 +63,10 @@
 #include "compiler/glsl_types.h"
 #include "util/xmlpool.h"
 
+static
+void radv_destroy_semaphore_part(struct radv_device *device,
+                                 struct radv_semaphore_part *part);
+
 static int
 radv_device_get_cache_uuid(enum radeon_family family, void *uuid)
 {
@@ -3414,7 +3418,11 @@ static VkResult radv_alloc_sem_counts(struct radv_instance *instance,
 	for (uint32_t i = 0; i < num_sems; i++) {
 		RADV_FROM_HANDLE(radv_semaphore, sem, sems[i]);
 
-		if (sem->temp_syncobj || sem->syncobj)
+		if (sem->temporary.kind != RADV_SEMAPHORE_NONE) {
+			assert(sem->temporary.kind == RADV_SEMAPHORE_SYNCOBJ);
+
+			counts->syncobj_count++;
+		} else if(sem->permanent.kind == RADV_SEMAPHORE_SYNCOBJ)
 			counts->syncobj_count++;
 		else
 			counts->sem_count++;
@@ -3442,15 +3450,18 @@ static VkResult radv_alloc_sem_counts(struct radv_instance *instance,
 
 	for (uint32_t i = 0; i < num_sems; i++) {
 		RADV_FROM_HANDLE(radv_semaphore, sem, sems[i]);
+		struct radv_semaphore_part *part = sem->temporary.kind != RADV_SEMAPHORE_NONE ? &sem->temporary : &sem->permanent;
 
-		if (sem->temp_syncobj) {
-			counts->syncobj[syncobj_idx++] = sem->temp_syncobj;
-		}
-		else if (sem->syncobj)
-			counts->syncobj[syncobj_idx++] = sem->syncobj;
-		else {
-			assert(sem->sem);
-			counts->sem[sem_idx++] = sem->sem;
+		switch(part->kind) {
+		case RADV_SEMAPHORE_NONE:
+			unreachable("Empty semaphore");
+			break;
+		case RADV_SEMAPHORE_SYNCOBJ:
+			counts->syncobj[syncobj_idx++] = part->syncobj;
+			break;
+		case RADV_SEMAPHORE_WINSYS:
+			counts->sem[sem_idx++] = part->ws_sem;
+			break;
 		}
 	}
 
@@ -3482,9 +3493,8 @@ static void radv_free_temp_syncobjs(struct radv_device *device,
 	for (uint32_t i = 0; i < num_sems; i++) {
 		RADV_FROM_HANDLE(radv_semaphore, sem, sems[i]);
 
-		if (sem->temp_syncobj) {
-			device->ws->destroy_syncobj(device->ws, sem->temp_syncobj);
-			sem->temp_syncobj = 0;
+		if (sem->temporary.kind != RADV_SEMAPHORE_NONE) {
+			radv_destroy_semaphore_part(device, &sem->temporary);
 		}
 	}
 }
@@ -4696,6 +4706,23 @@ VkResult radv_GetFenceStatus(VkDevice _device, VkFence _fence)
 
 // Queue semaphore functions
 
+static
+void radv_destroy_semaphore_part(struct radv_device *device,
+                                 struct radv_semaphore_part *part)
+{
+	switch(part->kind) {
+	case RADV_SEMAPHORE_NONE:
+		break;
+	case RADV_SEMAPHORE_WINSYS:
+		device->ws->destroy_sem(part->ws_sem);
+		break;
+	case RADV_SEMAPHORE_SYNCOBJ:
+		device->ws->destroy_syncobj(device->ws, part->syncobj);
+		break;
+	}
+	part->kind = RADV_SEMAPHORE_NONE;
+}
+
 VkResult radv_CreateSemaphore(
 	VkDevice                                    _device,
 	const VkSemaphoreCreateInfo*                pCreateInfo,
@@ -4714,23 +4741,25 @@ VkResult radv_CreateSemaphore(
 	if (!sem)
 		return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-	sem->temp_syncobj = 0;
+	sem->temporary.kind = RADV_SEMAPHORE_NONE;
+	sem->permanent.kind = RADV_SEMAPHORE_NONE;
+
 	/* create a syncobject if we are going to export this semaphore */
 	if (device->always_use_syncobj || handleTypes) {
 		assert (device->physical_device->rad_info.has_syncobj);
-		int ret = device->ws->create_syncobj(device->ws, &sem->syncobj);
+		int ret = device->ws->create_syncobj(device->ws, &sem->permanent.syncobj);
 		if (ret) {
 			vk_free2(&device->alloc, pAllocator, sem);
 			return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 		}
-		sem->sem = NULL;
+		sem->permanent.kind = RADV_SEMAPHORE_SYNCOBJ;
 	} else {
-		sem->sem = device->ws->create_sem(device->ws);
-		if (!sem->sem) {
+		sem->permanent.ws_sem = device->ws->create_sem(device->ws);
+		if (!sem->permanent.ws_sem) {
 			vk_free2(&device->alloc, pAllocator, sem);
 			return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 		}
-		sem->syncobj = 0;
+		sem->permanent.kind = RADV_SEMAPHORE_WINSYS;
 	}
 
 	*pSemaphore = radv_semaphore_to_handle(sem);
@@ -4747,10 +4776,8 @@ void radv_DestroySemaphore(
 	if (!_semaphore)
 		return;
 
-	if (sem->syncobj)
-		device->ws->destroy_syncobj(device->ws, sem->syncobj);
-	else
-		device->ws->destroy_sem(sem->sem);
+	radv_destroy_semaphore_part(device, &sem->temporary);
+	radv_destroy_semaphore_part(device, &sem->permanent);
 	vk_free2(&device->alloc, pAllocator, sem);
 }
 
@@ -5848,22 +5875,34 @@ VkResult radv_ImportSemaphoreFdKHR(VkDevice _device,
 {
 	RADV_FROM_HANDLE(radv_device, device, _device);
 	RADV_FROM_HANDLE(radv_semaphore, sem, pImportSemaphoreFdInfo->semaphore);
-	uint32_t *syncobj_dst = NULL;
+	VkResult result;
+	struct radv_semaphore_part *dst = NULL;
 
 	if (pImportSemaphoreFdInfo->flags & VK_SEMAPHORE_IMPORT_TEMPORARY_BIT) {
-		syncobj_dst = &sem->temp_syncobj;
+		dst = &sem->temporary;
 	} else {
-		syncobj_dst = &sem->syncobj;
+		dst = &sem->permanent;
 	}
+
+	uint32_t syncobj = dst->kind == RADV_SEMAPHORE_SYNCOBJ ? dst->syncobj : 0;
 
 	switch(pImportSemaphoreFdInfo->handleType) {
 		case VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_FD_BIT:
-			return radv_import_opaque_fd(device, pImportSemaphoreFdInfo->fd, syncobj_dst);
+			result = radv_import_opaque_fd(device, pImportSemaphoreFdInfo->fd, &syncobj);
+			break;
 		case VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT:
-			return radv_import_sync_fd(device, pImportSemaphoreFdInfo->fd, syncobj_dst);
+			result = radv_import_sync_fd(device, pImportSemaphoreFdInfo->fd, &syncobj);
+			break;
 		default:
 			unreachable("Unhandled semaphore handle type");
 	}
+
+	if (result == VK_SUCCESS) {
+		dst->syncobj = syncobj;
+		dst->kind = RADV_SEMAPHORE_SYNCOBJ;
+	}
+
+	return result;
 }
 
 VkResult radv_GetSemaphoreFdKHR(VkDevice _device,
@@ -5875,10 +5914,13 @@ VkResult radv_GetSemaphoreFdKHR(VkDevice _device,
 	int ret;
 	uint32_t syncobj_handle;
 
-	if (sem->temp_syncobj)
-		syncobj_handle = sem->temp_syncobj;
-	else
-		syncobj_handle = sem->syncobj;
+	if (sem->temporary.kind != RADV_SEMAPHORE_NONE) {
+		assert(sem->temporary.kind == RADV_SEMAPHORE_SYNCOBJ);
+		syncobj_handle = sem->temporary.syncobj;
+	} else {
+		assert(sem->permanent.kind == RADV_SEMAPHORE_SYNCOBJ);
+		syncobj_handle = sem->permanent.syncobj;
+	}
 
 	switch(pGetFdInfo->handleType) {
 	case VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_FD_BIT:
@@ -5887,9 +5929,8 @@ VkResult radv_GetSemaphoreFdKHR(VkDevice _device,
 	case VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT:
 		ret = device->ws->export_syncobj_to_sync_file(device->ws, syncobj_handle, pFd);
 		if (!ret) {
-			if (sem->temp_syncobj) {
-				close (sem->temp_syncobj);
-				sem->temp_syncobj = 0;
+			if (sem->temporary.kind != RADV_SEMAPHORE_NONE) {
+				radv_destroy_semaphore_part(device, &sem->temporary);
 			} else {
 				device->ws->reset_syncobj(device->ws, syncobj_handle);
 			}
