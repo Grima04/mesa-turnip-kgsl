@@ -136,6 +136,7 @@ etna_set_framebuffer_state(struct pipe_context *pctx,
    /* Set up TS as well. Warning: this state is used by both the RS and PE */
    uint32_t ts_mem_config = 0;
    uint32_t pe_mem_config = 0;
+   uint32_t pe_logic_op = 0;
 
    if (fb->nr_cbufs > 0) { /* at least one color buffer? */
       struct etna_surface *cbuf = etna_surface(fb->cbufs[0]);
@@ -209,6 +210,9 @@ etna_set_framebuffer_state(struct pipe_context *pctx,
       }
 
       nr_samples_color = cbuf->base.texture->nr_samples;
+
+      if (util_format_is_srgb(cbuf->base.format))
+         pe_logic_op |= VIVS_PE_LOGIC_OP_SRGB;
    } else {
       /* Clearing VIVS_PE_COLOR_FORMAT_COMPONENTS__MASK and
        * VIVS_PE_COLOR_FORMAT_OVERWRITE prevents us from overwriting the
@@ -353,8 +357,10 @@ etna_set_framebuffer_state(struct pipe_context *pctx,
    /* Single buffer setup. There is only one switch for this, not a separate
     * one per color buffer / depth buffer. To keep the logic simple always use
     * single buffer when this feature is available.
+    * note: the blob will use 2 in some situations, figure out why?
     */
-   cs->PE_LOGIC_OP = VIVS_PE_LOGIC_OP_SINGLE_BUFFER(ctx->specs.single_buffer ? 3 : 0);
+   pe_logic_op |= VIVS_PE_LOGIC_OP_SINGLE_BUFFER(ctx->specs.single_buffer ? 3 : 0);
+   cs->PE_LOGIC_OP = pe_logic_op;
 
    /* keep copy of original structure */
    util_copy_framebuffer_state(&ctx->framebuffer_s, fb);

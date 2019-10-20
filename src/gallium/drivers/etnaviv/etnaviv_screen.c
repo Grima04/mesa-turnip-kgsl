@@ -413,6 +413,28 @@ gpu_supports_texture_format(struct etna_screen *screen, uint32_t fmt,
 }
 
 static bool
+gpu_supports_render_format(struct etna_screen *screen, enum pipe_format format,
+                           unsigned sample_count)
+{
+   if (translate_pe_format(format) == ETNA_NO_MATCH)
+      return false;
+
+   /* Validate MSAA; number of samples must be allowed, and render target
+    * must have MSAA'able format. */
+   if (sample_count > 1) {
+      if (!translate_samples_to_xyscale(sample_count, NULL, NULL))
+         return false;
+      if (translate_ts_format(format) == ETNA_NO_MATCH)
+         return false;
+   }
+
+   if (util_format_is_srgb(format))
+      return VIV_FEATURE(screen, chipMinorFeatures5, HALTI3);
+
+   return true;
+}
+
+static bool
 etna_screen_is_format_supported(struct pipe_screen *pscreen,
                                 enum pipe_format format,
                                 enum pipe_texture_target target,
@@ -430,19 +452,8 @@ etna_screen_is_format_supported(struct pipe_screen *pscreen,
       return false;
 
    if (usage & PIPE_BIND_RENDER_TARGET) {
-      /* if render target, must be RS-supported format */
-      if (translate_pe_format(format) != ETNA_NO_MATCH) {
-         /* Validate MSAA; number of samples must be allowed, and render target
-          * must have MSAA'able format. */
-         if (sample_count > 1) {
-            if (translate_samples_to_xyscale(sample_count, NULL, NULL) &&
-                translate_ts_format(format) != ETNA_NO_MATCH) {
-               allowed |= PIPE_BIND_RENDER_TARGET;
-            }
-         } else {
-            allowed |= PIPE_BIND_RENDER_TARGET;
-         }
-      }
+      if (gpu_supports_render_format(screen, format, sample_count))
+         allowed |= PIPE_BIND_RENDER_TARGET;
    }
 
    if (usage & PIPE_BIND_DEPTH_STENCIL) {
