@@ -355,7 +355,8 @@ etna_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info)
       pipe_resource_reference(&indexbuf, NULL);
 }
 
-static void etna_reset_gpu_state(struct etna_context *ctx)
+static void
+etna_reset_gpu_state(struct etna_context *ctx)
 {
    struct etna_cmd_stream *stream = ctx->stream;
 
