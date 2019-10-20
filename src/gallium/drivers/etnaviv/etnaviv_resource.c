@@ -612,7 +612,6 @@ etna_resource_get_status(struct etna_context *ctx, struct etna_resource *rsc)
 
    set_foreach(rsc->pending_ctx, entry) {
       struct etna_context *extctx = (struct etna_context *)entry->key;
-      struct pipe_context *pctx = &extctx->base;
 
       set_foreach(extctx->used_resources_read, entry2) {
          struct etna_resource *rsc2 = (struct etna_resource *)entry2->key;
@@ -638,7 +637,6 @@ void
 etna_resource_used(struct etna_context *ctx, struct pipe_resource *prsc,
                    enum etna_resource_status status)
 {
-   struct etna_screen *screen = ctx->screen;
    struct pipe_resource *referenced = NULL;
    struct etna_resource *rsc;
 
@@ -648,8 +646,6 @@ etna_resource_used(struct etna_context *ctx, struct pipe_resource *prsc,
    mtx_lock(&ctx->lock);
 
    rsc = etna_resource(prsc);
-
-   enum etna_resource_status newstatus = 0;
 
    set_foreach(rsc->pending_ctx, entry) {
       struct etna_context *extctx = (struct etna_context *)entry->key;

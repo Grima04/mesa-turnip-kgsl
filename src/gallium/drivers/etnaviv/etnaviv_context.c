@@ -61,7 +61,6 @@ static void
 etna_context_destroy(struct pipe_context *pctx)
 {
    struct etna_context *ctx = etna_context(pctx);
-   struct etna_screen *screen = ctx->screen;
 
    mtx_lock(&ctx->lock);
    if (ctx->used_resources_read) {
@@ -434,7 +433,6 @@ etna_flush(struct pipe_context *pctx, struct pipe_fence_handle **fence,
            enum pipe_flush_flags flags)
 {
    struct etna_context *ctx = etna_context(pctx);
-   struct etna_screen *screen = ctx->screen;
    int out_fence_fd = -1;
 
    mtx_lock(&ctx->lock);

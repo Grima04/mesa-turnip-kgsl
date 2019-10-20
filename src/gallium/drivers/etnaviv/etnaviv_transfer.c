@@ -346,7 +346,6 @@ etna_transfer_map(struct pipe_context *pctx, struct pipe_resource *prsc,
     * transfers without a temporary resource.
     */
    if (trans->rsc || !(usage & PIPE_TRANSFER_UNSYNCHRONIZED)) {
-      struct etna_screen *screen = ctx->screen;
       uint32_t prep_flags = 0;
 
       /*
