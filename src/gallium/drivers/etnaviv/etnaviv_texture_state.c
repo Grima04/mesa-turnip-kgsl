@@ -188,7 +188,7 @@ etna_create_sampler_view_state(struct pipe_context *pctx, struct pipe_resource *
       VIVS_TE_SAMPLER_LOG_SIZE_HEIGHT(etna_log2_fixp55(base_height)) |
       COND(util_format_is_srgb(so->format) && !astc, VIVS_TE_SAMPLER_LOG_SIZE_SRGB) |
       COND(astc, VIVS_TE_SAMPLER_LOG_SIZE_ASTC) |
-      COND(!util_format_is_float(so->format) && so->target != PIPE_TEXTURE_3D, VIVS_TE_SAMPLER_LOG_SIZE_INT_FILTER);
+      COND(texture_use_int_filter(so, false), VIVS_TE_SAMPLER_LOG_SIZE_INT_FILTER);
    sv->TE_SAMPLER_3D_CONFIG =
       VIVS_TE_SAMPLER_3D_CONFIG_DEPTH(base_depth) |
       VIVS_TE_SAMPLER_3D_CONFIG_LOG_DEPTH(etna_log2_fixp55(base_depth));

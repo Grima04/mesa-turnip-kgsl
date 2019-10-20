@@ -272,6 +272,40 @@ translate_texture_format(enum pipe_format fmt)
 }
 
 bool
+texture_use_int_filter(const struct pipe_sampler_view *so, bool tex_desc)
+{
+   switch (so->target) {
+   case PIPE_TEXTURE_1D_ARRAY:
+   case PIPE_TEXTURE_2D_ARRAY:
+      if (tex_desc)
+         break;
+   case PIPE_TEXTURE_3D:
+      return false;
+   default:
+      break;
+   }
+
+   /* only unorm formats can use int filter */
+   if (!util_format_is_unorm(so->format))
+      return false;
+
+   if (util_format_is_srgb(so->format))
+      return false;
+
+   switch (so->format) {
+   /* apparently D16 can't use int filter but D24 can */
+   case PIPE_FORMAT_Z16_UNORM:
+   case PIPE_FORMAT_R10G10B10A2_UNORM:
+   case PIPE_FORMAT_R10G10B10X2_UNORM:
+   case PIPE_FORMAT_ETC2_R11_UNORM:
+   case PIPE_FORMAT_ETC2_RG11_UNORM:
+      return false;
+   default:
+      return true;
+   }
+}
+
+bool
 texture_format_needs_swiz(enum pipe_format fmt)
 {
    static const unsigned char def[4] = SWIZ(X, Y, Z, W);

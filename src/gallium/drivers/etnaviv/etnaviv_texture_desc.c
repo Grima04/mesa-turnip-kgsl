@@ -127,7 +127,7 @@ etna_create_sampler_view_desc(struct pipe_context *pctx, struct pipe_resource *p
    if (util_format_is_srgb(so->format))
       sv->SAMP_CTRL1 |= VIVS_NTE_DESCRIPTOR_SAMP_CTRL1_SRGB;
 
-   if (!util_format_is_float(so->format) && so->target != PIPE_TEXTURE_3D)
+   if (texture_use_int_filter(so, true))
       sv->SAMP_CTRL0 |= VIVS_NTE_DESCRIPTOR_SAMP_CTRL0_INT_FILTER;
 
    /* Create texture descriptor */

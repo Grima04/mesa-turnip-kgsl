@@ -28,6 +28,7 @@
 #define ETNAVIV_FORMAT_H_
 
 #include "util/format/u_format.h"
+#include "pipe/p_state.h"
 #include <stdint.h>
 
 #define ETNA_NO_MATCH (~0)
@@ -36,6 +37,9 @@
 
 uint32_t
 translate_texture_format(enum pipe_format fmt);
+
+bool
+texture_use_int_filter(const struct pipe_sampler_view *so, bool tex_desc);
 
 bool
 texture_format_needs_swiz(enum pipe_format fmt);
