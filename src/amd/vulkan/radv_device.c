@@ -2381,9 +2381,7 @@ VkResult radv_CreateDevice(
 	device->dfsm_allowed = device->pbb_allowed &&
 	                       (device->instance->perftest_flags & RADV_PERFTEST_DFSM);
 
-#ifdef ANDROID
 	device->always_use_syncobj = device->physical_device->rad_info.has_syncobj_wait_for_submit;
-#endif
 
 	/* The maximum number of scratch waves. Scratch space isn't divided
 	 * evenly between CUs. The number is only a function of the number of CUs.
