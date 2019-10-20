@@ -3739,6 +3739,13 @@ static VkResult radv_signal_fence(struct radv_queue *queue,
 		});
 }
 
+static bool radv_submit_has_effects(const VkSubmitInfo *info)
+{
+	return info->commandBufferCount ||
+	       info->waitSemaphoreCount ||
+	       info->signalSemaphoreCount;
+}
+
 VkResult radv_QueueSubmit(
 	VkQueue                                     _queue,
 	uint32_t                                    submitCount,
@@ -3747,12 +3754,18 @@ VkResult radv_QueueSubmit(
 {
 	RADV_FROM_HANDLE(radv_queue, queue, _queue);
 	VkResult result;
-	bool fence_emitted = false;
+	uint32_t fence_idx = 0;
+	bool flushed_caches = false;
+
+	if (fence != VK_NULL_HANDLE) {
+		for (uint32_t i = 0; i < submitCount; ++i)
+			if (radv_submit_has_effects(pSubmits + i))
+				fence_idx = i;
+	} else
+		fence_idx = UINT32_MAX;
 
 	for (uint32_t i = 0; i < submitCount; i++) {
-		if (!pSubmits[i].commandBufferCount &&
-		    !pSubmits[i].waitSemaphoreCount &&
-		    !pSubmits[i].signalSemaphoreCount)
+		if (!radv_submit_has_effects(pSubmits + i) && fence_idx != i)
 			continue;
 
 		VkPipelineStageFlags wait_dst_stage_mask = 0;
@@ -3764,25 +3777,23 @@ VkResult radv_QueueSubmit(
 				.cmd_buffers = pSubmits[i].pCommandBuffers,
 				.cmd_buffer_count = pSubmits[i].commandBufferCount,
 				.wait_dst_stage_mask = wait_dst_stage_mask,
-				.flush_caches = !fence_emitted,
+				.flush_caches = !flushed_caches,
 				.wait_semaphores = pSubmits[i].pWaitSemaphores,
 				.wait_semaphore_count = pSubmits[i].waitSemaphoreCount,
 				.signal_semaphores = pSubmits[i].pSignalSemaphores,
 				.signal_semaphore_count = pSubmits[i].signalSemaphoreCount,
-				.fence = fence
+				.fence = i == fence_idx ? fence : VK_NULL_HANDLE
 			});
 		if (result != VK_SUCCESS)
 			return result;
 
-		fence_emitted = true;
+		flushed_caches  = true;
 	}
 
-	if (fence != VK_NULL_HANDLE) {
-		if (!fence_emitted) {
-			result = radv_signal_fence(queue, fence);
-			if (result != VK_SUCCESS)
-				return result;
-		}
+	if (fence != VK_NULL_HANDLE && !submitCount) {
+		result = radv_signal_fence(queue, fence);
+		if (result != VK_SUCCESS)
+			return result;
 	}
 
 	return VK_SUCCESS;
