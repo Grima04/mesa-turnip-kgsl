@@ -81,6 +81,13 @@ if common.host_platform != 'windows':
               "please use meson instead. If you really need to use scons you "
               "can add `force_scons=1` to the scons command line.", file=sys.stderr)
         sys.exit(1)
+else:
+    print("WARNING: Scons support is in the process of being deprecated on "
+          "on windows platforms (including mingw). If you haven't already "
+          "please try using meson for windows builds. Be sure to report any "
+          "issues you run into", file=sys.stderr)
+
+
 #######################################################################
 # Environment setup
 
