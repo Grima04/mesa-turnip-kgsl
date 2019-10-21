@@ -3226,6 +3226,7 @@ radv_gfx10_compute_bin_size(struct radv_pipeline *pipeline, const VkGraphicsPipe
 			color_bytes_per_pixel += vk_format_get_blocksize(format);
 
 			if (total_samples > 1) {
+				assert(samples_log <= 3);
 				const unsigned fmask_array[] = {0, 1, 1, 4};
 				fmask_bytes_per_pixel += fmask_array[samples_log];
 			}
