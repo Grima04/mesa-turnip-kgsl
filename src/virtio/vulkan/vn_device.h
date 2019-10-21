@@ -16,6 +16,7 @@
 #include "vn_cs.h"
 #include "vn_renderer.h"
 #include "vn_ring.h"
+#include "vn_wsi.h"
 
 struct vn_instance {
    struct vn_instance_base base;
@@ -88,6 +89,8 @@ struct vn_physical_device {
    VkExternalFenceHandleTypeFlags external_fence_handles;
    VkExternalSemaphoreHandleTypeFlags external_binary_semaphore_handles;
    VkExternalSemaphoreHandleTypeFlags external_timeline_semaphore_handles;
+
+   struct wsi_device wsi_device;
 };
 VK_DEFINE_HANDLE_CASTS(vn_physical_device,
                        base.base.base,

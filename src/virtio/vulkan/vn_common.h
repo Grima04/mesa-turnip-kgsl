@@ -86,6 +86,7 @@ enum vn_debug {
    VN_DEBUG_INIT = 1ull << 0,
    VN_DEBUG_RESULT = 1ull << 1,
    VN_DEBUG_VTEST = 1ull << 2,
+   VN_DEBUG_WSI = 1ull << 3,
 };
 
 typedef uint64_t vn_object_id;

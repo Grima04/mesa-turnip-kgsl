@@ -26,6 +26,7 @@ static const struct debug_control vn_debug_options[] = {
    { "init", VN_DEBUG_INIT },
    { "result", VN_DEBUG_RESULT },
    { "vtest", VN_DEBUG_VTEST },
+   { "wsi", VN_DEBUG_WSI },
    { NULL, 0 },
 };
 
