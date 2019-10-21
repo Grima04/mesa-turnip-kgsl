@@ -475,7 +475,7 @@ struct radv_meta_state {
 		VkPipeline depth_only_pipeline[NUM_DEPTH_CLEAR_PIPELINES];
 		VkPipeline stencil_only_pipeline[NUM_DEPTH_CLEAR_PIPELINES];
 		VkPipeline depthstencil_pipeline[NUM_DEPTH_CLEAR_PIPELINES];
-	} clear[1 + MAX_SAMPLES_LOG2];
+	} clear[MAX_SAMPLES_LOG2];
 
 	VkPipelineLayout                          clear_color_p_layout;
 	VkPipelineLayout                          clear_depth_p_layout;
@@ -518,7 +518,7 @@ struct radv_meta_state {
 		VkPipeline depth_only_pipeline[5];
 
 		VkPipeline stencil_only_pipeline[5];
-	} blit2d[1 + MAX_SAMPLES_LOG2];
+	} blit2d[MAX_SAMPLES_LOG2];
 
 	VkRenderPass blit2d_render_passes[NUM_META_FS_KEYS][RADV_META_DST_LAYOUT_COUNT];
 	VkRenderPass blit2d_depth_only_rp[RADV_BLIT_DS_LAYOUT_COUNT];
@@ -623,7 +623,7 @@ struct radv_meta_state {
 		VkPipeline                                decompress_pipeline;
 		VkPipeline                                resummarize_pipeline;
 		VkRenderPass                              pass;
-	} depth_decomp[1 + MAX_SAMPLES_LOG2];
+	} depth_decomp[MAX_SAMPLES_LOG2];
 
 	struct {
 		VkPipelineLayout                          p_layout;

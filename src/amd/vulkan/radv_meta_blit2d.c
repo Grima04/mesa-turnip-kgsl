@@ -698,7 +698,7 @@ radv_device_finish_meta_blit2d_state(struct radv_device *device)
 				       state->blit2d_stencil_only_rp[j], &state->alloc);
 	}
 
-	for (unsigned log2_samples = 0; log2_samples < 1 + MAX_SAMPLES_LOG2; ++log2_samples) {
+	for (unsigned log2_samples = 0; log2_samples < MAX_SAMPLES_LOG2; ++log2_samples) {
 		for (unsigned src = 0; src < BLIT2D_NUM_SRC_TYPES; src++) {
 			radv_DestroyPipelineLayout(radv_device_to_handle(device),
 						   state->blit2d[log2_samples].p_layouts[src],
@@ -1310,7 +1310,7 @@ radv_device_init_meta_blit2d_state(struct radv_device *device, bool on_demand)
 	VkResult result;
 	bool create_3d = device->physical_device->rad_info.chip_class == GFX9;
 
-	for (unsigned log2_samples = 0; log2_samples < 1 + MAX_SAMPLES_LOG2; log2_samples++) {
+	for (unsigned log2_samples = 0; log2_samples < MAX_SAMPLES_LOG2; log2_samples++) {
 		for (unsigned src = 0; src < BLIT2D_NUM_SRC_TYPES; src++) {
 			if (src == BLIT2D_SRC_TYPE_IMAGE_3D && !create_3d)
 				continue;
