@@ -2386,7 +2386,6 @@ radv_flush_vertex_descriptors(struct radv_cmd_buffer *cmd_buffer,
 	    (cmd_buffer->state.dirty & RADV_CMD_DIRTY_VERTEX_BUFFER)) &&
 	    cmd_buffer->state.pipeline->num_vertex_bindings &&
 	    radv_get_shader(cmd_buffer->state.pipeline, MESA_SHADER_VERTEX)->info.vs.has_vertex_buffers) {
-		struct radv_vertex_elements_info *velems = &cmd_buffer->state.pipeline->vertex_elements;
 		unsigned vb_offset;
 		void *vb_ptr;
 		uint32_t i = 0;
@@ -2403,6 +2402,7 @@ radv_flush_vertex_descriptors(struct radv_cmd_buffer *cmd_buffer,
 			uint32_t offset;
 			struct radv_buffer *buffer = cmd_buffer->vertex_bindings[i].buffer;
 			uint32_t stride = cmd_buffer->state.pipeline->binding_stride[i];
+			unsigned num_records;
 
 			if (!buffer)
 				continue;
@@ -2411,12 +2411,14 @@ radv_flush_vertex_descriptors(struct radv_cmd_buffer *cmd_buffer,
 
 			offset = cmd_buffer->vertex_bindings[i].offset;
 			va += offset + buffer->offset;
+
+			num_records = buffer->size - offset;
+			if (cmd_buffer->device->physical_device->rad_info.chip_class != GFX8 && stride)
+				num_records /= stride;
+
 			desc[0] = va;
 			desc[1] = S_008F04_BASE_ADDRESS_HI(va >> 32) | S_008F04_STRIDE(stride);
-			if (cmd_buffer->device->physical_device->rad_info.chip_class <= GFX7 && stride)
-				desc[2] = (buffer->size - offset - velems->format_size[i]) / stride + 1;
-			else
-				desc[2] = buffer->size - offset;
+			desc[2] = num_records;
 			desc[3] = S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) |
 				  S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
 				  S_008F0C_DST_SEL_Z(V_008F0C_SQ_SEL_Z) |
