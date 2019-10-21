@@ -1553,9 +1553,19 @@ radv_update_bound_fast_clear_ds(struct radv_cmd_buffer *cmd_buffer,
 	if (cmd_buffer->state.attachments[att_idx].iview->image != image)
 		return;
 
-	radeon_set_context_reg_seq(cs, R_028028_DB_STENCIL_CLEAR, 2);
-	radeon_emit(cs, ds_clear_value.stencil);
-	radeon_emit(cs, fui(ds_clear_value.depth));
+	if (aspects == (VK_IMAGE_ASPECT_DEPTH_BIT |
+			VK_IMAGE_ASPECT_STENCIL_BIT)) {
+		radeon_set_context_reg_seq(cs, R_028028_DB_STENCIL_CLEAR, 2);
+		radeon_emit(cs, ds_clear_value.stencil);
+		radeon_emit(cs, fui(ds_clear_value.depth));
+	} else if (aspects == VK_IMAGE_ASPECT_DEPTH_BIT) {
+		radeon_set_context_reg_seq(cs, R_02802C_DB_DEPTH_CLEAR, 1);
+		radeon_emit(cs, fui(ds_clear_value.depth));
+	} else {
+		assert(aspects == VK_IMAGE_ASPECT_STENCIL_BIT);
+		radeon_set_context_reg_seq(cs, R_028028_DB_STENCIL_CLEAR, 1);
+		radeon_emit(cs, ds_clear_value.stencil);
+	}
 
 	/* Update the ZRANGE_PRECISION value for the TC-compat bug. This is
 	 * only needed when clearing Z to 0.0.
