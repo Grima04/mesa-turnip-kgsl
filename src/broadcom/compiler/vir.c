@@ -844,6 +844,12 @@ v3d_nir_lower_fs_late(struct v3d_compile *c)
         if (c->fs_key->clamp_color)
                 NIR_PASS_V(c->s, nir_lower_clamp_color_outputs);
 
+        if (c->fs_key->alpha_test) {
+                NIR_PASS_V(c->s, nir_lower_alpha_test,
+                           c->fs_key->alpha_test_func,
+                           false, NULL);
+        }
+
         if (c->key->ucp_enables)
                 NIR_PASS_V(c->s, nir_lower_clip_fs, c->key->ucp_enables,
                            false);

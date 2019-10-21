@@ -2030,6 +2030,11 @@ ntq_emit_intrinsic(struct v3d_compile *c, nir_intrinsic_instr *instr)
                                vir_uniform(c, QUNIFORM_VIEWPORT_Z_OFFSET, 0));
                 break;
 
+        case nir_intrinsic_load_alpha_ref_float:
+                ntq_store_dest(c, &instr->dest, 0,
+                               vir_uniform(c, QUNIFORM_ALPHA_REF, 0));
+                break;
+
         case nir_intrinsic_load_sample_mask_in:
                 ntq_store_dest(c, &instr->dest, 0, vir_MSF(c));
                 break;
