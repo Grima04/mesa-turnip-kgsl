@@ -1001,6 +1001,9 @@ radv_emit_rbplus_state(struct radv_cmd_buffer *cmd_buffer)
 	unsigned sx_blend_opt_epsilon = 0;
 	unsigned sx_blend_opt_control = 0;
 
+	if (!cmd_buffer->state.attachments || !subpass)
+		return;
+
 	for (unsigned i = 0; i < subpass->color_count; ++i) {
 		if (subpass->color_attachments[i].attachment == VK_ATTACHMENT_UNUSED) {
 			sx_blend_opt_control |= S_02875C_MRT0_COLOR_OPT_DISABLE(1) << (i * 4);
