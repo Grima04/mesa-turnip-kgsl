@@ -243,6 +243,7 @@ ac_to_integer_type(struct ac_llvm_context *ctx, LLVMTypeRef t)
 		switch (LLVMGetPointerAddressSpace(t)) {
 		case AC_ADDR_SPACE_GLOBAL:
 			return ctx->i64;
+		case AC_ADDR_SPACE_CONST_32BIT:
 		case AC_ADDR_SPACE_LDS:
 			return ctx->i32;
 		default:
