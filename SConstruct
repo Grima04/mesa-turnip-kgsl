@@ -20,6 +20,7 @@
 # to get the full list of options. See scons manpage for more info.
 #
 
+from __future__ import print_function
 import os
 import os.path
 import sys
