@@ -118,7 +118,7 @@ fixup_regfootprint(struct ir3_shader_variant *v, uint32_t gpu_id)
 				v->info.max_reg = MAX2(v->info.max_reg, regid >> 3);
 			}
 		} else {
-			v->info.max_reg = MAX2(v->info.max_reg, regid);
+			v->info.max_reg = MAX2(v->info.max_reg, regid >> 2);
 		}
 	}
 }
