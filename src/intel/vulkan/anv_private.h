@@ -3203,6 +3203,13 @@ struct anv_image {
       struct anv_address address;
 
       /**
+       * Address of the main surface used to fill the aux map table. This is
+       * used at destruction of the image since the Vulkan spec does not
+       * guarantee that the address.bo field we still be valid at destruction.
+       */
+      uint64_t aux_map_surface_address;
+
+      /**
        * When destroying the image, also free the bo.
        * */
       bool bo_is_owned;
@@ -3322,6 +3329,15 @@ anv_can_sample_with_hiz(const struct gen_device_info * const devinfo,
       return false;
 
    return image->samples == 1;
+}
+
+static inline bool
+anv_image_plane_uses_aux_map(const struct anv_device *device,
+                             const struct anv_image *image,
+                             uint32_t plane)
+{
+   return device->info.has_aux_map &&
+      isl_aux_usage_has_ccs(image->planes[plane].aux_usage);
 }
 
 void
