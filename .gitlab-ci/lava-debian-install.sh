@@ -155,7 +155,7 @@ apt-get -y remove \*llvm\*
 
 
 ############### Cross-build kernel
-KERNEL_URL="https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/snapshot/linux-5.3-rc8.tar.gz"
+KERNEL_URL="https://gitlab.freedesktop.org/tomeu/linux/-/archive/panfrost-veyron-fix/linux-panfrost-veyron-fix.tar.gz"
 export ARCH=${KERNEL_ARCH}
 export CROSS_COMPILE="${GCC_ARCH}-"
 

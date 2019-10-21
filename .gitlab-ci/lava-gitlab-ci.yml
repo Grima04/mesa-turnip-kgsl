@@ -1,6 +1,6 @@
 variables:
     LAVA_DEBIAN_VERSION: testing-slim
-    LAVA_IMAGE_TAG: "lava-2019-10-10-1"
+    LAVA_IMAGE_TAG: "lava-2019-10-23-1"
 
 include:
   - project: 'wayland/ci-templates'
