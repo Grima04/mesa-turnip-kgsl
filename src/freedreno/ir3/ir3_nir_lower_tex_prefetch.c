@@ -45,22 +45,25 @@ coord_offset(nir_ssa_def *ssa)
 		if (alu->op != nir_op_vec2)
 			return -1;
 
-		for (int i = 0; i < 2; i++) {
+		if (!alu->src[0].src.is_ssa)
+			return -1;
+
+		int base_offset = coord_offset(alu->src[0].src.ssa) +
+				alu->src[0].swizzle[0];
+
+		/* NOTE it might be possible to support more than 2D? */
+		for (int i = 1; i < 2; i++) {
 			if (!alu->src[i].src.is_ssa)
 				return -1;
 
-			if (alu->src[i].swizzle[0] != (alu->src[0].swizzle[0] + i))
-				return -1;
+			int nth_offset = coord_offset(alu->src[i].src.ssa) +
+					alu->src[i].swizzle[0];
 
-			if (alu->src[i].src.ssa != alu->src[0].src.ssa)
+			if (nth_offset != (base_offset + i))
 				return -1;
 		}
 
-		int off = coord_offset(alu->src[0].src.ssa);
-		if (off < 0)
-			return -1;
-
-		return off + alu->src[0].swizzle[0];
+		return base_offset;
 	}
 
 	if (parent_instr->type != nir_instr_type_intrinsic)
