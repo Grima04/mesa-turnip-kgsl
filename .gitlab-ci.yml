@@ -136,19 +136,29 @@ debian-10:arm64:
 # Just Linux
 .build-linux:
   extends: .build-common
+  tags:
+    - mesa-autoscale
   cache:
     key: ${CI_JOB_NAME}
     paths:
       - ccache
   variables:
     CCACHE_COMPILERCHECK: "content"
+    NINJA_FLAGS: "-j8" # autoscale is provisioned at 4 CPUs/job.
+    # kubernetes (the mesa-autoscale runner) always has a clean working
+    # dir, so we can't reuse the git clone, but that also means we don't
+    # need to download any extra history (normally extra history is
+    # needed so that a future fetch can find a shared parent).
+    GIT_DEPTH: 1
+    # Autoscale runners have 300GB of disk (since iops/throughput
+    # scales with disk size!), but we want to leave lots of space for
+    # container caching.
+    CCACHE_SIZE: 20G
   # Use ccache transparently, and print stats before/after
   before_script:
     - export PATH="/usr/lib/ccache:$PATH"
     - export CCACHE_BASEDIR="$PWD"
-    - export CCACHE_DIR="$PWD/ccache"
-    - ccache --max-size=1500M
-    - ccache --zero-stats || true
+    - ccache --max-size="$CCACHE_SIZE" || true
     - ccache --show-stats || true
   after_script:
     # In case the install dir is being saved as artifacts, tar it up
@@ -157,7 +167,6 @@ debian-10:arm64:
     - if [ -d install ]; then
         tar -cf artifacts/install.tar install;
       fi
-    - export CCACHE_DIR="$PWD/ccache"
     - ccache --show-stats
 
 .build-windows:
@@ -181,7 +190,7 @@ debian-10:arm64:
     - .build-linux
     - .use-debian-10:amd64
   variables:
-    SCONSFLAGS: "-j4"
+    SCONSFLAGS: "-j8"
   script:
     - .gitlab-ci/scons-build.sh
 
@@ -243,6 +252,9 @@ meson-main:
     GALLIUM_DRIVERS: "etnaviv,freedreno,kmsro,lima,nouveau,panfrost,swrast,tegra,v3d,vc4"
     EXTRA_OPTION: >
       -D I-love-half-baked-turnips=true
+    NINJA_FLAGS: "-j4"
+    CCACHE_DIR: "$PWD/ccache"
+    CCACHE_SIZE: "1500M"
   needs:
     - debian-10:arm64
   tags:

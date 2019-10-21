@@ -86,7 +86,7 @@ lava-container:arm64:
         -D gallium-xa=false
         -D gallium-nine=false
         -D llvm=false
-    - ninja -C mesa-build -j4
+    - ninja -C mesa-build -j8
     - ninja -C mesa-build install
     - find /artifacts/rootfs/mesa/lib -name \*.so -exec ${GCC_ARCH}-strip {} \;
 
