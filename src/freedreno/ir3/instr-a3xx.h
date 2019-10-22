@@ -284,6 +284,8 @@ typedef union PACKED {
 	uint32_t dummy12   : 12;
 	uint32_t dummy13   : 13;
 	uint32_t dummy8    : 8;
+	int32_t  idummy13  : 13;
+	int32_t  idummy8   : 8;
 } reg_t;
 
 /* special registers: */

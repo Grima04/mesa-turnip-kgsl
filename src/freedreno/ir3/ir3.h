@@ -1471,6 +1471,8 @@ INSTR4F(G, ATOMIC_OR)
 INSTR4F(G, ATOMIC_XOR)
 #endif
 
+INSTR4F(G, STG)
+
 /* cat7 instructions: */
 INSTR0(BAR)
 INSTR0(FENCE)
