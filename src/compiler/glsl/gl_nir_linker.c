@@ -22,6 +22,7 @@
  */
 
 #include "nir.h"
+#include "gl_nir.h"
 #include "gl_nir_linker.h"
 #include "linker_util.h"
 #include "main/mtypes.h"
@@ -32,6 +33,250 @@
  *
  * Also note that this is tailored for ARB_gl_spirv needs and particularities
  */
+
+/**
+ * Built-in / reserved GL variables names start with "gl_"
+ */
+static inline bool
+is_gl_identifier(const char *s)
+{
+   return s && s[0] == 'g' && s[1] == 'l' && s[2] == '_';
+}
+
+static bool
+inout_has_same_location(const nir_variable *var, unsigned stage)
+{
+   if (!var->data.patch &&
+       ((var->data.mode == nir_var_shader_out &&
+         stage == MESA_SHADER_TESS_CTRL) ||
+        (var->data.mode == nir_var_shader_in &&
+         (stage == MESA_SHADER_TESS_CTRL || stage == MESA_SHADER_TESS_EVAL ||
+          stage == MESA_SHADER_GEOMETRY))))
+      return true;
+   else
+      return false;
+}
+
+/**
+ * Create gl_shader_variable from nir_variable.
+ */
+static struct gl_shader_variable *
+create_shader_variable(struct gl_shader_program *shProg,
+                       const nir_variable *in,
+                       const char *name, const struct glsl_type *type,
+                       const struct glsl_type *interface_type,
+                       bool use_implicit_location, int location,
+                       const struct glsl_type *outermost_struct_type)
+{
+   /* Allocate zero-initialized memory to ensure that bitfield padding
+    * is zero.
+    */
+   struct gl_shader_variable *out = rzalloc(shProg,
+                                            struct gl_shader_variable);
+   if (!out)
+      return NULL;
+
+   /* Since gl_VertexID may be lowered to gl_VertexIDMESA, but applications
+    * expect to see gl_VertexID in the program resource list.  Pretend.
+    */
+   if (in->data.mode == nir_var_system_value &&
+       in->data.location == SYSTEM_VALUE_VERTEX_ID_ZERO_BASE) {
+      out->name = ralloc_strdup(shProg, "gl_VertexID");
+   } else if ((in->data.mode == nir_var_shader_out &&
+               in->data.location == VARYING_SLOT_TESS_LEVEL_OUTER) ||
+              (in->data.mode == nir_var_system_value &&
+               in->data.location == SYSTEM_VALUE_TESS_LEVEL_OUTER)) {
+      out->name = ralloc_strdup(shProg, "gl_TessLevelOuter");
+      type = glsl_array_type(glsl_float_type(), 4, 0);
+   } else if ((in->data.mode == nir_var_shader_out &&
+               in->data.location == VARYING_SLOT_TESS_LEVEL_INNER) ||
+              (in->data.mode == nir_var_system_value &&
+               in->data.location == SYSTEM_VALUE_TESS_LEVEL_INNER)) {
+      out->name = ralloc_strdup(shProg, "gl_TessLevelInner");
+      type = glsl_array_type(glsl_float_type(), 2, 0);
+   } else {
+      out->name = ralloc_strdup(shProg, name);
+   }
+
+   if (!out->name)
+      return NULL;
+
+   /* The ARB_program_interface_query spec says:
+    *
+    *     "Not all active variables are assigned valid locations; the
+    *     following variables will have an effective location of -1:
+    *
+    *      * uniforms declared as atomic counters;
+    *
+    *      * members of a uniform block;
+    *
+    *      * built-in inputs, outputs, and uniforms (starting with "gl_"); and
+    *
+    *      * inputs or outputs not declared with a "location" layout
+    *        qualifier, except for vertex shader inputs and fragment shader
+    *        outputs."
+    */
+   if (glsl_get_base_type(in->type) == GLSL_TYPE_ATOMIC_UINT ||
+       is_gl_identifier(in->name) ||
+       !(in->data.explicit_location || use_implicit_location)) {
+      out->location = -1;
+   } else {
+      out->location = location;
+   }
+
+   out->type = type;
+   out->outermost_struct_type = outermost_struct_type;
+   out->interface_type = interface_type;
+   out->component = in->data.location_frac;
+   out->index = in->data.index;
+   out->patch = in->data.patch;
+   out->mode = in->data.mode;
+   out->interpolation = in->data.interpolation;
+   out->precision = in->data.precision;
+   out->explicit_location = in->data.explicit_location;
+
+   return out;
+}
+
+static bool
+add_shader_variable(const struct gl_context *ctx,
+                    struct gl_shader_program *shProg,
+                    struct set *resource_set,
+                    unsigned stage_mask,
+                    GLenum programInterface, nir_variable *var,
+                    const char *name, const struct glsl_type *type,
+                    bool use_implicit_location, int location,
+                    bool inouts_share_location,
+                    const struct glsl_type *outermost_struct_type)
+{
+   const struct glsl_type *interface_type = var->interface_type;
+
+   if (outermost_struct_type == NULL) {
+      if (var->data.from_named_ifc_block) {
+         const char *interface_name = glsl_get_type_name(interface_type);
+
+         if (glsl_type_is_array(interface_type)) {
+            /* Issue #16 of the ARB_program_interface_query spec says:
+             *
+             * "* If a variable is a member of an interface block without an
+             *    instance name, it is enumerated using just the variable name.
+             *
+             *  * If a variable is a member of an interface block with an
+             *    instance name, it is enumerated as "BlockName.Member", where
+             *    "BlockName" is the name of the interface block (not the
+             *    instance name) and "Member" is the name of the variable."
+             *
+             * In particular, it indicates that it should be "BlockName",
+             * not "BlockName[array length]".  The conformance suite and
+             * dEQP both require this behavior.
+             *
+             * Here, we unwrap the extra array level added by named interface
+             * block array lowering so we have the correct variable type.  We
+             * also unwrap the interface type when constructing the name.
+             *
+             * We leave interface_type the same so that ES 3.x SSO pipeline
+             * validation can enforce the rules requiring array length to
+             * match on interface blocks.
+             */
+            type = glsl_get_array_element(type);
+
+            interface_name =
+               glsl_get_type_name(glsl_get_array_element(interface_type));
+         }
+
+         name = ralloc_asprintf(shProg, "%s.%s", interface_name, name);
+      }
+   }
+
+   switch (glsl_get_base_type(type)) {
+   case GLSL_TYPE_STRUCT: {
+      /* The ARB_program_interface_query spec says:
+       *
+       *     "For an active variable declared as a structure, a separate entry
+       *     will be generated for each active structure member.  The name of
+       *     each entry is formed by concatenating the name of the structure,
+       *     the "."  character, and the name of the structure member.  If a
+       *     structure member to enumerate is itself a structure or array,
+       *     these enumeration rules are applied recursively."
+       */
+      if (outermost_struct_type == NULL)
+         outermost_struct_type = type;
+
+      unsigned field_location = location;
+      for (unsigned i = 0; i < glsl_get_length(type); i++) {
+         const struct glsl_type *field_type = glsl_get_struct_field(type, i);
+         const struct glsl_struct_field *field =
+            glsl_get_struct_field_data(type, i);
+
+         char *field_name = ralloc_asprintf(shProg, "%s.%s", name, field->name);
+         if (!add_shader_variable(ctx, shProg, resource_set,
+                                  stage_mask, programInterface,
+                                  var, field_name, field_type,
+                                  use_implicit_location, field_location,
+                                  false, outermost_struct_type))
+            return false;
+
+         field_location += glsl_count_attribute_slots(field_type, false);
+      }
+      return true;
+   }
+
+   case GLSL_TYPE_ARRAY: {
+      /* The ARB_program_interface_query spec says:
+       *
+       *     "For an active variable declared as an array of basic types, a
+       *      single entry will be generated, with its name string formed by
+       *      concatenating the name of the array and the string "[0]"."
+       *
+       *     "For an active variable declared as an array of an aggregate data
+       *      type (structures or arrays), a separate entry will be generated
+       *      for each active array element, unless noted immediately below.
+       *      The name of each entry is formed by concatenating the name of
+       *      the array, the "[" character, an integer identifying the element
+       *      number, and the "]" character.  These enumeration rules are
+       *      applied recursively, treating each enumerated array element as a
+       *      separate active variable."
+       */
+      const struct glsl_type *array_type = glsl_get_array_element(type);
+      if (glsl_get_base_type(array_type) == GLSL_TYPE_STRUCT ||
+          glsl_get_base_type(array_type) == GLSL_TYPE_ARRAY) {
+         unsigned elem_location = location;
+         unsigned stride = inouts_share_location ? 0 :
+                           glsl_count_attribute_slots(array_type, false);
+         for (unsigned i = 0; i < glsl_get_length(type); i++) {
+            char *elem = ralloc_asprintf(shProg, "%s[%d]", name, i);
+            if (!add_shader_variable(ctx, shProg, resource_set,
+                                     stage_mask, programInterface,
+                                     var, elem, array_type,
+                                     use_implicit_location, elem_location,
+                                     false, outermost_struct_type))
+               return false;
+            elem_location += stride;
+         }
+         return true;
+      }
+      /* fallthrough */
+   }
+
+   default: {
+      /* The ARB_program_interface_query spec says:
+       *
+       *     "For an active variable declared as a single instance of a basic
+       *     type, a single entry will be generated, using the variable name
+       *     from the shader source."
+       */
+      struct gl_shader_variable *sha_v =
+         create_shader_variable(shProg, var, name, type, interface_type,
+                                use_implicit_location, location,
+                                outermost_struct_type);
+      if (!sha_v)
+         return false;
+
+      return link_util_add_program_resource(shProg, resource_set,
+                                            programInterface, sha_v, stage_mask);
+   }
+   }
+}
 
 static bool
 add_vars_from_list(const struct gl_context *ctx,
@@ -65,22 +310,48 @@ add_vars_from_list(const struct gl_context *ctx,
       if (var->data.patch)
          loc_bias = VARYING_SLOT_PATCH0;
 
-      struct gl_shader_variable *sh_var =
-         rzalloc(prog, struct gl_shader_variable);
+      if (prog->data->spirv) {
+         struct gl_shader_variable *sh_var =
+            rzalloc(prog, struct gl_shader_variable);
 
-      /* In the ARB_gl_spirv spec, names are considered optional debug info, so
-       * the linker needs to work without them. Returning them is optional.
-       * For simplicity, we ignore names.
-       */
-      sh_var->name = NULL;
-      sh_var->type = var->type;
-      sh_var->location = var->data.location - loc_bias;
-      sh_var->index = var->data.index;
+         /* In the ARB_gl_spirv spec, names are considered optional debug info, so
+          * the linker needs to work without them. Returning them is optional.
+          * For simplicity, we ignore names.
+          */
+         sh_var->name = NULL;
+         sh_var->type = var->type;
+         sh_var->location = var->data.location - loc_bias;
+         sh_var->index = var->data.index;
 
-      if (!link_util_add_program_resource(prog, resource_set,
-                                          programInterface,
-                                          sh_var, 1 << stage)) {
-         return false;
+         if (!link_util_add_program_resource(prog, resource_set,
+                                             programInterface,
+                                             sh_var, 1 << stage)) {
+           return false;
+         }
+      } else {
+         /* Skip packed varyings, packed varyings are handled separately
+          * by add_packed_varyings in the GLSL IR
+          * build_program_resource_list() call.
+          * TODO: handle packed varyings here instead. We likely want a NIR
+          * based packing pass first.
+          */
+         if (strncmp(var->name, "packed:", 7) == 0)
+            continue;
+
+         const bool vs_input_or_fs_output =
+            (stage == MESA_SHADER_VERTEX &&
+             var->data.mode == nir_var_shader_in) ||
+            (stage == MESA_SHADER_FRAGMENT &&
+             var->data.mode == nir_var_shader_out);
+
+         if (!add_shader_variable(ctx, prog, resource_set,
+                                  1 << stage, programInterface,
+                                  var, var->name, var->type,
+                                  vs_input_or_fs_output,
+                                  var->data.location - loc_bias,
+                                  inout_has_same_location(var, stage),
+                                  NULL))
+            return false;
       }
    }
 
