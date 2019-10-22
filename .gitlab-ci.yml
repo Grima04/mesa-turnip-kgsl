@@ -408,7 +408,9 @@ scons-old-llvm:
       - results/
   dependencies:
     - meson-main
-  needs: [meson-main]
+  needs:
+    - meson-main
+    - debian-10
 
 test-llvmpipe-gles2:
   parallel: 4
