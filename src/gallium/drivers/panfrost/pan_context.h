@@ -80,16 +80,14 @@ struct panfrost_query {
         unsigned type;
         unsigned index;
 
-        union {
-                /* For computed queries. 64-bit to prevent overflow */
-                struct {
-                        uint64_t start;
-                        uint64_t end;
-                };
-
-                /* Memory for the GPU to writeback the value of the query */
-                struct panfrost_transfer transfer;
+        /* For computed queries. 64-bit to prevent overflow */
+        struct {
+                uint64_t start;
+                uint64_t end;
         };
+
+        /* Memory for the GPU to writeback the value of the query */
+        struct panfrost_bo *bo;
 };
 
 struct panfrost_fence {

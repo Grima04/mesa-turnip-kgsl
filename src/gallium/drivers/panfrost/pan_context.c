@@ -931,7 +931,7 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
 
         if (ctx->occlusion_query) {
                 ctx->payloads[PIPE_SHADER_FRAGMENT].gl_enables |= MALI_OCCLUSION_QUERY | MALI_OCCLUSION_PRECISE;
-                ctx->payloads[PIPE_SHADER_FRAGMENT].postfix.occlusion_counter = ctx->occlusion_query->transfer.gpu;
+                ctx->payloads[PIPE_SHADER_FRAGMENT].postfix.occlusion_counter = ctx->occlusion_query->bo->gpu;
         }
 
         panfrost_patch_shader_state_compute(ctx, PIPE_SHADER_VERTEX, true);
@@ -2451,6 +2451,13 @@ panfrost_create_query(struct pipe_context *pipe,
 static void
 panfrost_destroy_query(struct pipe_context *pipe, struct pipe_query *q)
 {
+        struct panfrost_query *query = (struct panfrost_query *) q;
+
+        if (query->bo) {
+                panfrost_bo_unreference(query->bo);
+                query->bo = NULL;
+        }
+
         ralloc_free(q);
 }
 
@@ -2459,14 +2466,20 @@ panfrost_begin_query(struct pipe_context *pipe, struct pipe_query *q)
 {
         struct panfrost_context *ctx = pan_context(pipe);
         struct panfrost_query *query = (struct panfrost_query *) q;
-        struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
 
         switch (query->type) {
         case PIPE_QUERY_OCCLUSION_COUNTER:
         case PIPE_QUERY_OCCLUSION_PREDICATE:
         case PIPE_QUERY_OCCLUSION_PREDICATE_CONSERVATIVE:
-                /* Allocate a word for the query results to be stored */
-                query->transfer = panfrost_allocate_transient(batch, sizeof(unsigned));
+                /* Allocate a bo for the query results to be stored */
+                if (!query->bo) {
+                        query->bo = panfrost_bo_create(
+                                        pan_screen(ctx->base.screen),
+                                        sizeof(unsigned), 0);
+                }
+
+                unsigned *result = (unsigned *)query->bo->cpu;
+                *result = 0; /* Default to 0 if nothing at all drawn. */
                 ctx->occlusion_query = query;
                 break;
 
@@ -2529,7 +2542,7 @@ panfrost_get_query_result(struct pipe_context *pipe,
                 panfrost_flush_all_batches(ctx, true);
 
                 /* Read back the query results */
-                unsigned *result = (unsigned *) query->transfer.cpu;
+                unsigned *result = (unsigned *) query->bo->cpu;
                 unsigned passed = *result;
 
                 if (query->type == PIPE_QUERY_OCCLUSION_COUNTER) {
