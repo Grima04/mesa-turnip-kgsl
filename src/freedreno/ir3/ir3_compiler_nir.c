@@ -51,9 +51,8 @@ create_indirect_load(struct ir3_context *ctx, unsigned arrsz, int n,
 	mov = ir3_instr_create(block, OPC_MOV);
 	mov->cat1.src_type = TYPE_U32;
 	mov->cat1.dst_type = TYPE_U32;
-	ir3_reg_create(mov, 0, 0);
-	src = ir3_reg_create(mov, 0, IR3_REG_SSA | IR3_REG_RELATIV);
-	src->instr = collect;
+	__ssa_dst(mov);
+	src = __ssa_src(mov, collect, IR3_REG_RELATIV);
 	src->size  = arrsz;
 	src->array.offset = n;
 
@@ -69,9 +68,7 @@ create_input_compmask(struct ir3_context *ctx, unsigned n, unsigned compmask)
 
 	in = ir3_instr_create(ctx->in_block, OPC_META_INPUT);
 	in->input.sysval = ~0;
-	ir3_reg_create(in, n, 0);
-
-	in->regs[0]->wrmask = compmask;
+	__ssa_dst(in)->wrmask = compmask;
 
 	return in;
 }
@@ -1762,6 +1759,7 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 
 		/* condition always goes in predicate register: */
 		cond->regs[0]->num = regid(REG_P0, 0);
+		cond->regs[0]->flags &= ~IR3_REG_SSA;
 
 		kill = ir3_KILL(b, cond, 0);
 		array_insert(ctx->ir, ctx->ir->predicates, kill);
@@ -2191,7 +2189,7 @@ emit_tex(struct ir3_context *ctx, nir_tex_instr *tex)
 		compile_assert(ctx, tex->src[idx].src.is_ssa);
 
 		sam = ir3_META_TEX_PREFETCH(b);
-		ir3_reg_create(sam, 0, 0)->wrmask = MASK(ncomp);   /* dst */
+		__ssa_dst(sam)->wrmask = MASK(ncomp);   /* dst */
 		sam->prefetch.input_offset =
 				ir3_nir_coord_offset(tex->src[idx].src.ssa);
 		sam->prefetch.tex  = tex->texture_index;
@@ -2550,6 +2548,7 @@ emit_stream_out(struct ir3_context *ctx)
 	/* setup 'if (vtxcnt < maxvtxcnt)' condition: */
 	cond = ir3_CMPS_S(ctx->block, vtxcnt, 0, maxvtxcnt, 0);
 	cond->regs[0]->num = regid(REG_P0, 0);
+	cond->regs[0]->flags &= ~IR3_REG_SSA;
 	cond->cat2.condition = IR3_COND_LT;
 
 	/* condition goes on previous block to the conditional,
