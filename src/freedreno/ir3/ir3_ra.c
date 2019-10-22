@@ -670,26 +670,35 @@ ra_destroy(struct ir3_ra_ctx *ctx)
 }
 
 static void
+__def(struct ir3_ra_ctx *ctx, struct ir3_ra_block_data *bd, unsigned name,
+		struct ir3_instruction *instr)
+{
+	debug_assert(name < ctx->alloc_count);
+	/* defined on first write: */
+	if (!ctx->def[name])
+		ctx->def[name] = instr->ip;
+	ctx->use[name] = instr->ip;
+	BITSET_SET(bd->def, name);
+}
+
+static void
+__use(struct ir3_ra_ctx *ctx, struct ir3_ra_block_data *bd, unsigned name,
+		struct ir3_instruction *instr)
+{
+	debug_assert(name < ctx->alloc_count);
+	ctx->use[name] = MAX2(ctx->use[name], instr->ip);
+	if (!BITSET_TEST(bd->def, name))
+		BITSET_SET(bd->use, name);
+}
+
+static void
 ra_block_compute_live_ranges(struct ir3_ra_ctx *ctx, struct ir3_block *block)
 {
 	struct ir3_ra_block_data *bd;
 	unsigned bitset_words = BITSET_WORDS(ctx->alloc_count);
 
-#define def(name, instr) \
-		do { \
-			/* defined on first write: */ \
-			if (!ctx->def[name]) \
-				ctx->def[name] = instr->ip; \
-			ctx->use[name] = instr->ip; \
-			BITSET_SET(bd->def, name); \
-		} while(0);
-
-#define use(name, instr) \
-		do { \
-			ctx->use[name] = MAX2(ctx->use[name], instr->ip); \
-			if (!BITSET_TEST(bd->def, name)) \
-				BITSET_SET(bd->use, name); \
-		} while(0);
+#define def(name, instr) __def(ctx, bd, name, instr)
+#define use(name, instr) __use(ctx, bd, name, instr)
 
 	bd = rzalloc(ctx->g, struct ir3_ra_block_data);
 
