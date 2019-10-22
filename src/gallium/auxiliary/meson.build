@@ -246,7 +246,6 @@ files_libgallium = files(
   'util/u_debug_image.h',
   'util/u_debug_refcnt.c',
   'util/u_debug_refcnt.h',
-  'util/u_debug_stack.c',
   'util/u_debug_stack.h',
   'util/u_debug_symbol.c',
   'util/u_debug_symbol.h',
@@ -338,6 +337,16 @@ files_libgallium = files(
   'nir/nir_draw_helpers.c',
   'nir/nir_draw_helpers.h',
 )
+
+if with_platform_android
+  files_libgallium += files(
+    'util/u_debug_stack_android.cpp',
+  )
+else
+  files_libgallium += files(
+    'util/u_debug_stack.c',
+  )
+endif
 
 if dep_libdrm.found()
   files_libgallium += files(
