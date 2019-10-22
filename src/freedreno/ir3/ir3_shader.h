@@ -738,6 +738,7 @@ ir3_find_output_regid(const struct ir3_shader_variant *so, unsigned slot)
 
 #define VARYING_SLOT_GS_HEADER_IR3			(VARYING_SLOT_MAX + 0)
 #define VARYING_SLOT_GS_VERTEX_FLAGS_IR3	(VARYING_SLOT_MAX + 1)
+#define VARYING_SLOT_TCS_HEADER_IR3			(VARYING_SLOT_MAX + 2)
 
 
 static inline uint32_t

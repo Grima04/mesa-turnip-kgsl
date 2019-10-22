@@ -792,6 +792,12 @@ system_value("vs_vertex_stride_ir3", 1)
 system_value("gs_header_ir3", 1)
 system_value("primitive_location_ir3", 1, indices=[DRIVER_LOCATION])
 
+# System values for freedreno tessellation shaders.
+system_value("hs_patch_stride_ir3", 1)
+system_value("tess_factor_base_ir3", 2)
+system_value("tess_param_base_ir3", 2)
+system_value("tcs_header_ir3", 1)
+
 # IR3-specific load/store intrinsics. These access a buffer used to pass data
 # between geometry stages - perhaps it's explicit access to the vertex cache.
 

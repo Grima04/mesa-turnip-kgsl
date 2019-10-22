@@ -1363,6 +1363,21 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 	case nir_intrinsic_load_vs_vertex_stride_ir3:
 		dst[0] = create_uniform(b, primitive_param + 1);
 		break;
+	case nir_intrinsic_load_hs_patch_stride_ir3:
+		dst[0] = create_uniform(b, primitive_param + 2);
+		break;
+	case nir_intrinsic_load_patch_vertices_in:
+		dst[0] = create_uniform(b, primitive_param + 3);
+		break;
+	case nir_intrinsic_load_tess_param_base_ir3:
+		dst[0] = create_uniform(b, primitive_param + 4);
+		dst[1] = create_uniform(b, primitive_param + 5);
+		break;
+	case nir_intrinsic_load_tess_factor_base_ir3:
+		dst[0] = create_uniform(b, primitive_param + 6);
+		dst[1] = create_uniform(b, primitive_param + 7);
+		break;
+
 	case nir_intrinsic_load_primitive_location_ir3:
 		idx = nir_intrinsic_driver_location(intr);
 		dst[0] = create_uniform(b, primitive_map + idx);
@@ -1370,6 +1385,9 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 
 	case nir_intrinsic_load_gs_header_ir3:
 		dst[0] = ctx->gs_header;
+		break;
+	case nir_intrinsic_load_tcs_header_ir3:
+		dst[0] = ctx->tcs_header;
 		break;
 
 	case nir_intrinsic_load_primitive_id:
