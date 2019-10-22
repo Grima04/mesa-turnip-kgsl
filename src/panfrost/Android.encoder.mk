@@ -1,6 +1,4 @@
-# Mesa 3-D graphics library
-#
-# Copyright (C)
+# Copyright © 2019 Collabora Ltd.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a
 # copy of this software and associated documentation files (the "Software"),
@@ -20,29 +18,25 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-# Android.mk for libpanfrost_shared.a
-
-# ---------------------------------------
-# Build libpanfrost_shared
-# ---------------------------------------
-
 include $(CLEAR_VARS)
 
+LOCAL_MODULE := libpanfrost_encoder
+
 LOCAL_SRC_FILES := \
-	$(shared_FILES)
+	$(encoder_FILES)
 
 LOCAL_C_INCLUDES := \
 	$(MESA_TOP)/src/gallium/auxiliary/ \
-	$(MESA_TOP)/src/gallium/include/
+	$(MESA_TOP)/src/gallium/include/ \
+	$(MESA_TOP)/src/panfrost/encoder/ \
+	$(MESA_TOP)/src/panfrost/include/
 
 LOCAL_STATIC_LIBRARIES := \
-
-LOCAL_MODULE := libpanfrost_shared
 
 LOCAL_GENERATED_SOURCES := \
 
 LOCAL_EXPORT_C_INCLUDE_DIRS := \
-	$(MESA_TOP)/src/panfrost/shared/ \
+	$(MESA_TOP)/src/panfrost/encoder/ \
 
 include $(MESA_COMMON_MK)
 include $(BUILD_STATIC_LIBRARY)

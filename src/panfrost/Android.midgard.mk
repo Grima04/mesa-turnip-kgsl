@@ -1,6 +1,4 @@
-# Mesa 3-D graphics library
-#
-# Copyright (C)
+# Copyright © 2019 Collabora Ltd.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a
 # copy of this software and associated documentation files (the "Software"),
@@ -20,29 +18,44 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-# Android.mk for libpanfrost_shared.a
-
-# ---------------------------------------
-# Build libpanfrost_shared
-# ---------------------------------------
-
 include $(CLEAR_VARS)
 
+LOCAL_MODULE := libpanfrost_midgard
+LOCAL_MODULE_CLASS := STATIC_LIBRARIES
+intermediates := $(call local-generated-sources-dir)
+
 LOCAL_SRC_FILES := \
-	$(shared_FILES)
-
-LOCAL_C_INCLUDES := \
-	$(MESA_TOP)/src/gallium/auxiliary/ \
-	$(MESA_TOP)/src/gallium/include/
-
-LOCAL_STATIC_LIBRARIES := \
-
-LOCAL_MODULE := libpanfrost_shared
+	$(midgard_FILES)
 
 LOCAL_GENERATED_SOURCES := \
+	$(MESA_GEN_GLSL_H) \
+	$(intermediates)/midgard_nir_algebraic.c
+
+LOCAL_C_INCLUDES := \
+	$(MESA_TOP)/include \
+	$(MESA_TOP)/src/compiler/nir/ \
+	$(MESA_TOP)/src/gallium/auxiliary/ \
+	$(MESA_TOP)/src/gallium/include/ \
+	$(MESA_TOP)/src/mapi/ \
+	$(MESA_TOP)/src/mesa/ \
+	$(MESA_TOP)/src/panfrost/include/ \
+	$(MESA_TOP)/src/panfrost/midgard/
+
+LOCAL_STATIC_LIBRARIES := \
+	libmesa_glsl \
+	libmesa_nir \
+	libmesa_st_mesa
+
+midgard_nir_algebraic_gen := $(LOCAL_PATH)/midgard/midgard_nir_algebraic.py
+midgard_nir_algebraic_deps := \
+	$(MESA_TOP)/src/compiler/nir/
+
+$(intermediates)/midgard_nir_algebraic.c: $(midgard_nir_algebraic_deps)
+	@mkdir -p $(dir $@)
+	$(hide) $(MESA_PYTHON2) $(midgard_nir_algebraic_gen) -p $< > $@
 
 LOCAL_EXPORT_C_INCLUDE_DIRS := \
-	$(MESA_TOP)/src/panfrost/shared/ \
+	$(MESA_TOP)/src/panfrost/midgard/ \
 
 include $(MESA_COMMON_MK)
 include $(BUILD_STATIC_LIBRARY)
