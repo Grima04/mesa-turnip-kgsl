@@ -515,6 +515,60 @@ mir_lower_special_reads(compiler_context *ctx)
         free(texw);
 }
 
+/* We register allocate after scheduling, so we need to ensure instructions
+ * executing in parallel within a segment of a bundle don't clobber each
+ * other's registers. This is mostly a non-issue thanks to scheduling, but
+ * there are edge cases. In particular, after a register is written in a
+ * segment, it interferes with anything reading. */
+
+static void
+mir_compute_segment_interference(
+                compiler_context *ctx,
+                struct ra_graph *l,
+                midgard_bundle *bun,
+                unsigned pivot,
+                unsigned i)
+{
+        for (unsigned j = pivot; j < i; ++j) {
+                mir_foreach_src(bun->instructions[j], s) {
+                        if (bun->instructions[j]->src[s] >= ctx->temp_count)
+                                continue;
+
+                        for (unsigned q = pivot; q < j; ++q) {
+                                if (bun->instructions[q]->dest >= ctx->temp_count)
+                                        continue;
+
+                                ra_add_node_interference(l, bun->instructions[q]->dest, bun->instructions[j]->src[s]);
+                        }
+                }
+        }
+}
+
+static void
+mir_compute_bundle_interference(
+                compiler_context *ctx,
+                struct ra_graph *l,
+                midgard_bundle *bun)
+{
+        if (!IS_ALU(bun->tag))
+                return;
+
+        bool old = bun->instructions[0]->unit >= UNIT_VADD;
+        unsigned pivot = 0;
+
+        for (unsigned i = 1; i < bun->instruction_count; ++i) {
+                bool new = bun->instructions[i]->unit >= UNIT_VADD;
+
+                if (old != new) {
+                        mir_compute_segment_interference(ctx, l, bun, 0, i);
+                        pivot = i;
+                        break;
+                }
+        }
+
+        mir_compute_segment_interference(ctx, l, bun, pivot, bun->instruction_count);
+}
+
 static void
 mir_compute_interference(
                 compiler_context *ctx,
@@ -545,6 +599,9 @@ mir_compute_interference(
                         /* Update live_in */
                         mir_liveness_ins_update(live, ins, ctx->temp_count);
                 }
+
+                mir_foreach_bundle_in_block(blk, bun)
+                        mir_compute_bundle_interference(ctx, g, bun);
 
                 free(live);
         }
