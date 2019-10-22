@@ -842,10 +842,15 @@ zink_internal_create_screen(struct sw_winsys *winsys, int fd)
          for (uint32_t  i = 0; i < num_extensions; ++i) {
             if (!strcmp(extensions[i].extensionName,
                 VK_KHR_MAINTENANCE1_EXTENSION_NAME))
-               screen->have_VK_KHR_maintenance1 = true;
+               screen->have_KHR_maintenance1 = true;
          }
          FREE(extensions);
       }
+   }
+
+   if (!screen->have_KHR_maintenance1) {
+      debug_printf("ZINK: VK_KHR_maintenance1 required!\n");
+      goto fail;
    }
 
    VkDeviceQueueCreateInfo qci = {};

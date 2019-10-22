@@ -48,7 +48,7 @@ struct zink_screen {
    VkPhysicalDeviceProperties props;
    VkPhysicalDeviceFeatures feats;
    VkPhysicalDeviceMemoryProperties mem_props;
-   bool have_VK_KHR_maintenance1;
+   bool have_KHR_maintenance1;
 
    uint32_t gfx_queue;
    VkDevice dev;
