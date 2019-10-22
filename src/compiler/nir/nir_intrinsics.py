@@ -800,6 +800,17 @@ store("shared_ir3", 2, [BASE, WRMASK, ALIGN_MUL, ALIGN_OFFSET])
 # src[] = { offset }.
 load("shared_ir3", 1, [BASE, ALIGN_MUL, ALIGN_OFFSET], [CAN_ELIMINATE])
 
+# IR3-specific load/store global intrinsics. They take a 64-bit base address
+# and a 32-bit offset.  The hardware will add the base and the offset, which
+# saves us from doing 64-bit math on the base address.
+
+# src[] = { value, address(vec2 of hi+lo uint32_t), offset }.
+# const_index[] = { write_mask, align_mul, align_offset }
+intrinsic("store_global_ir3", [0, 2, 1], indices=[WRMASK, ACCESS, ALIGN_MUL, ALIGN_OFFSET])
+# src[] = { address(vec2 of hi+lo uint32_t), offset }.
+# const_index[] = { access, align_mul, align_offset }
+intrinsic("load_global_ir3", [2, 1], dest_comp=0, indices=[ACCESS, ALIGN_MUL, ALIGN_OFFSET], flags=[CAN_ELIMINATE])
+
 # Intrinsics used by the Midgard/Bifrost blend pipeline. These are defined
 # within a blend shader to read/write the raw value from the tile buffer,
 # without applying any format conversion in the process. If the shader needs

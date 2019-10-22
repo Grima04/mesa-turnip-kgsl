@@ -1376,6 +1376,55 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 		dst[0] = ctx->primitive_id;
 		break;
 
+	case nir_intrinsic_store_global_ir3: {
+		struct ir3_instruction *value, *addr, *offset;
+
+		addr = ir3_create_collect(ctx, (struct ir3_instruction*[]){
+				ir3_get_src(ctx, &intr->src[1])[0],
+				ir3_get_src(ctx, &intr->src[1])[1]
+		}, 2);
+
+		offset = ir3_get_src(ctx, &intr->src[2])[0];
+
+		value = ir3_create_collect(ctx, ir3_get_src(ctx, &intr->src[0]),
+								   intr->num_components);
+
+		struct ir3_instruction *stg =
+			ir3_STG_G(ctx->block, addr, 0, value, 0,
+					  create_immed(ctx->block, intr->num_components), 0, offset, 0);
+		stg->cat6.type = TYPE_U32;
+		stg->cat6.iim_val = 1;
+
+		array_insert(b, b->keeps, stg);
+
+		stg->barrier_class = IR3_BARRIER_BUFFER_W;
+		stg->barrier_conflict = IR3_BARRIER_BUFFER_R | IR3_BARRIER_BUFFER_W;
+		break;
+	}
+
+	case nir_intrinsic_load_global_ir3: {
+		struct ir3_instruction *addr, *offset;
+
+		addr = ir3_create_collect(ctx, (struct ir3_instruction*[]){
+				ir3_get_src(ctx, &intr->src[0])[0],
+				ir3_get_src(ctx, &intr->src[0])[1]
+		}, 2);
+
+		offset = ir3_get_src(ctx, &intr->src[1])[0];
+
+		struct ir3_instruction *load =
+			ir3_LDG(b, addr, 0, create_immed(ctx->block, intr->num_components),
+					0, offset, 0);
+		load->cat6.type = TYPE_U32;
+		load->regs[0]->wrmask = MASK(intr->num_components);
+
+		load->barrier_class = IR3_BARRIER_BUFFER_R;
+		load->barrier_conflict = IR3_BARRIER_BUFFER_W;
+
+		ir3_split_dest(b, dst, load, 0, intr->num_components);
+		break;
+	}
+
 	case nir_intrinsic_load_ubo:
 		emit_intrinsic_load_ubo(ctx, intr, dst);
 		break;
