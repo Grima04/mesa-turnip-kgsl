@@ -139,8 +139,10 @@ lava-build:arm64:
 
 .lava-test:
   extends:
-    - .test
     - .lava-ci-run-policy
+  stage: test
+  variables:
+    GIT_STRATEGY: none # testing doesn't build anything from source
   script:
     - lava_job_id=`lavacli jobs submit $CI_PROJECT_DIR/results/lava-deqp-$DEVICE_TYPE.yml`
     - echo $lava_job_id

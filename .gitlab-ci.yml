@@ -445,23 +445,17 @@ scons-old-llvm:
     - LLVM_VERSION=5.0 .gitlab-ci/scons-build.sh
 
 .test:
-  extends: .ci-run-policy
+  extends:
+    - .ci-run-policy
+    - .use-debian-10:amd64
   stage: test
   variables:
     GIT_STRATEGY: none # testing doesn't build anything from source
-
-.deqp-test:
-  extends:
-    - .test
-    - .use-debian-10:amd64
-  variables:
-    DEQP_SKIPS: deqp-default-skips.txt
-  script:
+  before_script:
     # Note: Build dir (and thus install) may be dirty due to GIT_STRATEGY
     - rm -rf install
     - tar -xf artifacts/install.tar
     - LD_LIBRARY_PATH=install/lib ldd install/lib/{*,dri/swrast_dri}.so
-    - ./artifacts/deqp-runner.sh
   artifacts:
     when: on_failure
     name: "$CI_JOB_NAME-$CI_COMMIT_REF_NAME"
@@ -472,6 +466,50 @@ scons-old-llvm:
   needs:
     - meson-main
     - debian-10:amd64
+
+.piglit-test:
+  extends: .test
+  artifacts:
+    reports:
+      junit: results/results.xml
+  variables:
+    LIBGL_ALWAYS_SOFTWARE: 1
+    PIGLIT_NO_WINDOW: 1
+  script:
+    - artifacts/piglit/run.sh
+
+piglit-quick_gl:
+  extends: .piglit-test
+  variables:
+    LP_NUM_THREADS: 0
+    PIGLIT_OPTIONS: >
+      -x arb_gpu_shader5
+      -x glx-multithread-clearbuffer
+      -x glx-multithread-shader-compile
+      -x max-texture-size
+      -x maxsize
+    PIGLIT_PROFILES: quick_gl
+
+piglit-glslparser+quick_shader:
+  extends: .piglit-test
+  variables:
+    LP_NUM_THREADS: 1
+    PIGLIT_OPTIONS: >
+      -x spec@arb_arrays_of_arrays@execution@ubo
+      -x spec@arb_gpu_shader_int64@execution$$
+      -x spec@arb_separate_shader_objects@execution
+      -x spec@arb_separate_shader_objects@linker
+      -x spec@arb_shader_storage_buffer_object@execution
+      -x spec@glsl-1.50@execution@built-in-functions
+    PIGLIT_PROFILES: "glslparser quick_shader"
+    PIGLIT_RESULTS: "glslparser+quick_shader"
+
+.deqp-test:
+  extends: .test
+  variables:
+    DEQP_SKIPS: deqp-default-skips.txt
+  script:
+    - ./artifacts/deqp-runner.sh
 
 test-llvmpipe-gles2:
   parallel: 4

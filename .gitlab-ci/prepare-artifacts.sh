@@ -21,7 +21,9 @@ find install -name \*.so -exec $STRIP {} \;
 # Test runs don't pull down the git tree, so put the dEQP helper
 # script and associated bits there.
 mkdir -p artifacts/
+cp VERSION artifacts/
 cp -Rp .gitlab-ci/deqp* artifacts/
+cp -Rp .gitlab-ci/piglit artifacts/
 # cp -Rp src/freedreno/ci/expected* artifacts/
 
 # Tar up the install dir so that symlinks and hardlinks aren't each

@@ -58,6 +58,7 @@ apt-get install -y --no-remove \
       libtool \
       libunwind-dev \
       libvulkan-dev \
+      libwaffle-dev \
       libx11-dev \
       libx11-xcb-dev \
       libxdamage-dev \
@@ -72,8 +73,13 @@ apt-get install -y --no-remove \
       pkg-config \
       python-mako \
       python3-mako \
+      python3-numpy \
+      python3-six \
       scons \
+      waffle-utils \
       x11proto-gl-dev \
+      xauth \
+      xvfb \
       xz-utils \
       zlib1g-dev
 
@@ -240,6 +246,15 @@ for arch in $CROSS_ARCHITECTURES; do
   fi
 done
 
+############### Build piglit
+
+git clone https://gitlab.freedesktop.org/mesa/piglit.git --single-branch --no-checkout /piglit
+cd /piglit
+git checkout 7a92b02210dabbba31ae5fd71272ea742346a9c8
+patch -p1 <$OLDPWD/.gitlab-ci/piglit/disable-vs_in.diff
+cmake -G Ninja -DCMAKE_BUILD_TYPE=Release
+ninja -j4
+rm -rf .git .ninja* *.ninja **/CMake* **/cmake* ninja.* **/*.[chao] target_api
 
 ############### Build dEQP
 
@@ -257,6 +272,7 @@ apt-get purge -y \
       libgbm-dev \
       libgles2-mesa-dev \
       libtool \
+      libwaffle-dev \
       unzip \
       wget \
       x11proto-gl-dev
