@@ -85,7 +85,7 @@ build_local_offset(nir_builder *b, struct state *state,
 {
 	nir_ssa_def *primitive_stride = nir_load_vs_primitive_stride_ir3(b);
 	nir_ssa_def *primitive_offset =
-		nir_imul(b, build_local_primitive_id(b, state), primitive_stride);
+		nir_imul24(b, build_local_primitive_id(b, state), primitive_stride);
 	nir_ssa_def *attr_offset;
 	nir_ssa_def *vertex_stride;
 
@@ -99,7 +99,7 @@ build_local_offset(nir_builder *b, struct state *state,
 		unreachable("bad shader stage");
 	}
 
-	nir_ssa_def *vertex_offset = nir_imul(b, vertex, vertex_stride);
+	nir_ssa_def *vertex_offset = nir_imul24(b, vertex, vertex_stride);
 
 	return nir_iadd(b, nir_iadd(b, primitive_offset, vertex_offset),
 			nir_iadd(b, attr_offset, offset));
