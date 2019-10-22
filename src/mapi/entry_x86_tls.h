@@ -56,9 +56,13 @@ __asm__(".balign 16\n"
    ".balign 16\n"                \
    func ":"
 
-#define STUB_ASM_CODE(slot)      \
-   "call x86_current_tls\n\t"    \
-   "movl %gs:(%eax), %eax\n\t"   \
+#define STUB_ASM_CODE(slot)                                 \
+   "call 1f\n"                                              \
+   "1:\n\t"                                                 \
+   "popl %eax\n\t"                                          \
+   "addl $_GLOBAL_OFFSET_TABLE_+[.-1b], %eax\n\t"           \
+   "movl " ENTRY_CURRENT_TABLE "@GOTNTPOFF(%eax), %eax\n\t" \
+   "movl %gs:(%eax), %eax\n\t"                              \
    "jmp *(4 * " slot ")(%eax)"
 
 #define MAPI_TMP_STUB_ASM_GCC
