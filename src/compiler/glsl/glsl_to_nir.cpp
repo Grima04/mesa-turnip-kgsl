@@ -410,6 +410,15 @@ wrap_type_in_array(const glsl_type *elem_type, const glsl_type *array_type)
    return glsl_type::get_array_instance(elem_type, array_type->length);
 }
 
+static unsigned
+get_nir_how_declared(unsigned how_declared)
+{
+   if (how_declared == ir_var_hidden)
+      return nir_var_hidden;
+
+   return nir_var_declared_normally;
+}
+
 void
 nir_visitor::visit(ir_variable *ir)
 {
@@ -435,6 +444,7 @@ nir_visitor::visit(ir_variable *ir)
    var->data.centroid = ir->data.centroid;
    var->data.sample = ir->data.sample;
    var->data.patch = ir->data.patch;
+   var->data.how_declared = get_nir_how_declared(ir->data.how_declared);
    var->data.invariant = ir->data.invariant;
    var->data.location = ir->data.location;
    var->data.stream = ir->data.stream;
