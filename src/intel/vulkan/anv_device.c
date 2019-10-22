@@ -2486,7 +2486,7 @@ VkResult anv_CreateDevice(
    if (physical_device->use_softpin) {
       if (pthread_mutex_init(&device->vma_mutex, NULL) != 0) {
          result = vk_error(VK_ERROR_INITIALIZATION_FAILED);
-         goto fail_fd;
+         goto fail_context_id;
       }
 
       /* keep the page with address zero out of the allocator */
@@ -2682,13 +2682,13 @@ VkResult anv_CreateDevice(
    pthread_cond_destroy(&device->queue_submit);
  fail_mutex:
    pthread_mutex_destroy(&device->mutex);
- fail_context_id:
-   anv_gem_destroy_context(device, device->context_id);
  fail_vmas:
    if (physical_device->use_softpin) {
       util_vma_heap_finish(&device->vma_hi);
       util_vma_heap_finish(&device->vma_lo);
    }
+ fail_context_id:
+   anv_gem_destroy_context(device, device->context_id);
  fail_fd:
    close(device->fd);
  fail_device:
