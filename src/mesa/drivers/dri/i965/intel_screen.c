@@ -710,8 +710,7 @@ intel_create_image_common(__DRIscreen *dri_screen,
    bool ok;
 
    /* Callers of this may specify a modifier, or a dri usage, but not both. The
-    * newer modifier interface deprecates the older usage flags newer modifier
-    * interface deprecates the older usage flags.
+    * newer modifier interface deprecates the older usage flags.
     */
    assert(!(use && count));
 
