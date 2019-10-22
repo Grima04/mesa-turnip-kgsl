@@ -86,6 +86,8 @@ st_nir_fixup_varying_slots(struct st_context *st, struct exec_list *var_list)
 static void
 st_nir_assign_vs_in_locations(nir_shader *nir)
 {
+   bool removed_inputs = false;
+
    nir->num_inputs = util_bitcount64(nir->info.inputs_read);
    nir_foreach_variable_safe(var, &nir->inputs) {
       /* NIR already assigns dual-slot inputs to two locations so all we have
@@ -107,8 +109,13 @@ st_nir_assign_vs_in_locations(nir_shader *nir)
          exec_node_remove(&var->node);
          var->data.mode = nir_var_shader_temp;
          exec_list_push_tail(&nir->globals, &var->node);
+         removed_inputs = true;
       }
    }
+
+   /* Re-lower global vars, to deal with any dead VS inputs. */
+   if (removed_inputs)
+      NIR_PASS_V(nir, nir_lower_global_vars_to_local);
 }
 
 static int
@@ -846,8 +853,6 @@ st_nir_assign_varying_locations(struct st_context *st, nir_shader *nir)
    if (nir->info.stage == MESA_SHADER_VERTEX) {
       /* Needs special handling so drvloc matches the vbo state: */
       st_nir_assign_vs_in_locations(nir);
-      /* Re-lower global vars, to deal with any dead VS inputs. */
-      NIR_PASS_V(nir, nir_lower_global_vars_to_local);
 
       nir_assign_io_var_locations(&nir->outputs,
                                   &nir->num_outputs,
