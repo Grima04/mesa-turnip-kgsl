@@ -15,7 +15,7 @@
 variables:
   UPSTREAM_REPO: mesa/mesa
   DEBIAN_TAG: "2019-10-22"
-  DEBIAN_ARM64_TAG: "arm64v8-2019-10-22"
+  DEBIAN_ARM64_TAG: "arm64v8-2019-10-23"
   STRETCH_TAG: "2019-09-18"
   DEBIAN_VERSION: buster-slim
   STRETCH_VERSION: stretch-slim
@@ -189,7 +189,7 @@ meson-main:
       -D gallium-xa=true
       -D gallium-nine=true
       -D gallium-opencl=disabled
-    GALLIUM_DRIVERS: "iris,nouveau,kmsro,r300,r600,freedreno,swrast,svga,v3d,vc4,virgl,etnaviv,panfrost,lima"
+    GALLIUM_DRIVERS: "iris,nouveau,kmsro,r300,r600,freedreno,swrast,svga,v3d,vc4,virgl,etnaviv,panfrost,lima,zink"
     LLVM_VERSION: "7"
     EXTRA_OPTION: >
       -D osmesa=gallium

@@ -63,6 +63,7 @@ apt-get install -y --no-remove \
       libpng-dev \
       libgbm-dev \
       libgles2-mesa-dev \
+      libvulkan-dev \
       python-mako \
       python3-mako \
       bison \
