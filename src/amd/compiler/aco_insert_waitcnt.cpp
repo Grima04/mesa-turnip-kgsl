@@ -552,8 +552,8 @@ void update_counters_for_flat_load(wait_ctx& ctx, barrier_interaction barrier=ba
 
    if (ctx.lgkm_cnt <= ctx.max_lgkm_cnt)
       ctx.lgkm_cnt++;
-   if (ctx.lgkm_cnt <= ctx.max_vm_cnt)
-   ctx.vm_cnt++;
+   if (ctx.vm_cnt <= ctx.max_vm_cnt)
+      ctx.vm_cnt++;
 
    update_barrier_imm(ctx, counter_vm | counter_lgkm, barrier);
 
