@@ -269,7 +269,7 @@ cmake -G Ninja \
       -DDEQP_TARGET=surfaceless               \
       -DCMAKE_BUILD_TYPE=Release              \
       /VK-GL-CTS
-ninja
+ninja -j4
 
 # Copy out the mustpass lists we want from a bunch of other junk.
 mkdir /deqp/mustpass
