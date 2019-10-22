@@ -290,7 +290,7 @@ struct ir3_instruction {
 		 * it could make sense to duplicate the instruction at various
 		 * points where the result is needed to reduce register footprint.
 		 */
-		unsigned depth;
+		int depth;
 		/* When we get to the RA stage, we no longer need depth, but
 		 * we do need instruction's position/name:
 		 */
