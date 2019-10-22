@@ -3479,8 +3479,6 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 		goto out;
 	}
 
-	ir3_debug_print(ir, "AFTER RA");
-
 	ir3_postsched(ctx);
 	ir3_debug_print(ir, "AFTER POSTSCHED");
 
