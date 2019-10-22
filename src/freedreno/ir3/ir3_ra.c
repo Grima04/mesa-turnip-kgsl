@@ -1089,8 +1089,12 @@ ra_block_alloc(struct ir3_ra_ctx *ctx, struct ir3_block *block)
 	}
 }
 
-static int
-ra_alloc(struct ir3_ra_ctx *ctx, struct ir3_instruction **precolor, unsigned nprecolor)
+/* handle pre-colored registers.  This includes "arrays" (which could be of
+ * length 1, used for phi webs lowered to registers in nir), as well as
+ * special shader input values that need to be pinned to certain registers.
+ */
+static void
+ra_precolor(struct ir3_ra_ctx *ctx, struct ir3_instruction **precolor, unsigned nprecolor)
 {
 	unsigned num_precolor = 0;
 	for (unsigned i = 0; i < nprecolor; i++) {
@@ -1195,7 +1199,11 @@ retry:
 			ra_set_node_reg(ctx->g, name, reg);
 		}
 	}
+}
 
+static int
+ra_alloc(struct ir3_ra_ctx *ctx)
+{
 	if (!ra_allocate(ctx->g))
 		return -1;
 
@@ -1217,7 +1225,8 @@ int ir3_ra(struct ir3_shader_variant *v, struct ir3_instruction **precolor, unsi
 
 	ra_init(&ctx);
 	ra_add_interference(&ctx);
-	ret = ra_alloc(&ctx, precolor, nprecolor);
+	ra_precolor(&ctx, precolor, nprecolor);
+	ret = ra_alloc(&ctx);
 	ra_destroy(&ctx);
 
 	return ret;
