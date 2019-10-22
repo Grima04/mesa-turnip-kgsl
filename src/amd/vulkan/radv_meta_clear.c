@@ -344,6 +344,16 @@ radv_device_finish_meta_clear_state(struct radv_device *device)
 			radv_DestroyPipeline(radv_device_to_handle(device),
 					     state->clear[i].depthstencil_pipeline[j],
 					     &state->alloc);
+
+			radv_DestroyPipeline(radv_device_to_handle(device),
+					     state->clear[i].depth_only_unrestricted_pipeline[j],
+					     &state->alloc);
+			radv_DestroyPipeline(radv_device_to_handle(device),
+					     state->clear[i].stencil_only_unrestricted_pipeline[j],
+					     &state->alloc);
+			radv_DestroyPipeline(radv_device_to_handle(device),
+					     state->clear[i].depthstencil_unrestricted_pipeline[j],
+					     &state->alloc);
 		}
 		radv_DestroyRenderPass(radv_device_to_handle(device),
 				      state->clear[i].depthstencil_rp,
@@ -354,6 +364,9 @@ radv_device_finish_meta_clear_state(struct radv_device *device)
 				   &state->alloc);
 	radv_DestroyPipelineLayout(radv_device_to_handle(device),
 				   state->clear_depth_p_layout,
+				   &state->alloc);
+	radv_DestroyPipelineLayout(radv_device_to_handle(device),
+				   state->clear_depth_unrestricted_p_layout,
 				   &state->alloc);
 
 	finish_meta_clear_htile_mask_state(device);
@@ -470,7 +483,9 @@ emit_color_clear(struct radv_cmd_buffer *cmd_buffer,
 
 
 static void
-build_depthstencil_shader(struct nir_shader **out_vs, struct nir_shader **out_fs)
+build_depthstencil_shader(struct nir_shader **out_vs,
+			  struct nir_shader **out_fs,
+			  bool unrestricted)
 {
 	nir_builder vs_b, fs_b;
 
@@ -486,21 +501,36 @@ build_depthstencil_shader(struct nir_shader **out_vs, struct nir_shader **out_fs
 				    "gl_Position");
 	vs_out_pos->data.location = VARYING_SLOT_POS;
 
-	nir_intrinsic_instr *in_color_load = nir_intrinsic_instr_create(fs_b.shader, nir_intrinsic_load_push_constant);
-	nir_intrinsic_set_base(in_color_load, 0);
-	nir_intrinsic_set_range(in_color_load, 4);
-	in_color_load->src[0] = nir_src_for_ssa(nir_imm_int(&fs_b, 0));
-	in_color_load->num_components = 1;
-	nir_ssa_dest_init(&in_color_load->instr, &in_color_load->dest, 1, 32, "depth value");
-	nir_builder_instr_insert(&fs_b, &in_color_load->instr);
+	nir_ssa_def *z;
+	if (unrestricted) {
+		nir_intrinsic_instr *in_color_load = nir_intrinsic_instr_create(fs_b.shader, nir_intrinsic_load_push_constant);
+		nir_intrinsic_set_base(in_color_load, 0);
+		nir_intrinsic_set_range(in_color_load, 4);
+		in_color_load->src[0] = nir_src_for_ssa(nir_imm_int(&fs_b, 0));
+		in_color_load->num_components = 1;
+		nir_ssa_dest_init(&in_color_load->instr, &in_color_load->dest, 1, 32, "depth value");
+		nir_builder_instr_insert(&fs_b, &in_color_load->instr);
 
-	nir_variable *fs_out_depth =
-		nir_variable_create(fs_b.shader, nir_var_shader_out,
-				    glsl_int_type(), "f_depth");
-	fs_out_depth->data.location = FRAG_RESULT_DEPTH;
-	nir_store_var(&fs_b, fs_out_depth, &in_color_load->dest.ssa, 0x1);
+		nir_variable *fs_out_depth =
+			nir_variable_create(fs_b.shader, nir_var_shader_out,
+					    glsl_int_type(), "f_depth");
+		fs_out_depth->data.location = FRAG_RESULT_DEPTH;
+		nir_store_var(&fs_b, fs_out_depth, &in_color_load->dest.ssa, 0x1);
 
-	nir_ssa_def *outvec = radv_meta_gen_rect_vertices(&vs_b);
+		z = nir_imm_float(&vs_b, 0.0);
+	} else {
+		nir_intrinsic_instr *in_color_load = nir_intrinsic_instr_create(vs_b.shader, nir_intrinsic_load_push_constant);
+		nir_intrinsic_set_base(in_color_load, 0);
+		nir_intrinsic_set_range(in_color_load, 4);
+		in_color_load->src[0] = nir_src_for_ssa(nir_imm_int(&vs_b, 0));
+		in_color_load->num_components = 1;
+		nir_ssa_dest_init(&in_color_load->instr, &in_color_load->dest, 1, 32, "depth value");
+		nir_builder_instr_insert(&vs_b, &in_color_load->instr);
+
+		z = &in_color_load->dest.ssa;
+	}
+
+	nir_ssa_def *outvec = radv_meta_gen_rect_vertices_comp2(&vs_b, z);
 	nir_store_var(&vs_b, vs_out_pos, outvec, 0xf);
 
 	const struct glsl_type *layer_type = glsl_int_type();
@@ -567,6 +597,7 @@ create_depthstencil_pipeline(struct radv_device *device,
                              VkImageAspectFlags aspects,
 			     uint32_t samples,
 			     int index,
+			     bool unrestricted,
 			     VkPipeline *pipeline,
 			     VkRenderPass render_pass)
 {
@@ -579,7 +610,7 @@ create_depthstencil_pipeline(struct radv_device *device,
 		return VK_SUCCESS;
 	}
 
-	build_depthstencil_shader(&vs_nir, &fs_nir);
+	build_depthstencil_shader(&vs_nir, &fs_nir, unrestricted);
 
 	const VkPipelineVertexInputStateCreateInfo vi_state = {
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
@@ -677,6 +708,7 @@ pick_depthstencil_pipeline(struct radv_cmd_buffer *cmd_buffer,
 {
 	bool fast = depth_view_can_fast_clear(cmd_buffer, iview, aspects, layout,
 	                                      in_render_loop, clear_rect, clear_value);
+	bool unrestricted = cmd_buffer->device->enabled_extensions.EXT_depth_range_unrestricted;
 	int index = DEPTH_CLEAR_SLOW;
 	VkPipeline *pipeline;
 
@@ -688,13 +720,19 @@ pick_depthstencil_pipeline(struct radv_cmd_buffer *cmd_buffer,
 
 	switch (aspects) {
 	case VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT:
-		pipeline = &meta_state->clear[samples_log2].depthstencil_pipeline[index];
+		pipeline = unrestricted ?
+			   &meta_state->clear[samples_log2].depthstencil_unrestricted_pipeline[index] :
+			   &meta_state->clear[samples_log2].depthstencil_pipeline[index];
 		break;
 	case VK_IMAGE_ASPECT_DEPTH_BIT:
-		pipeline = &meta_state->clear[samples_log2].depth_only_pipeline[index];
+		pipeline = unrestricted ?
+			   &meta_state->clear[samples_log2].depth_only_unrestricted_pipeline[index] :
+			   &meta_state->clear[samples_log2].depth_only_pipeline[index];
 		break;
 	case VK_IMAGE_ASPECT_STENCIL_BIT:
-		pipeline = &meta_state->clear[samples_log2].stencil_only_pipeline[index];
+		pipeline = unrestricted ?
+			   &meta_state->clear[samples_log2].stencil_only_unrestricted_pipeline[index] :
+			   &meta_state->clear[samples_log2].stencil_only_pipeline[index];
 		break;
 	default:
 		unreachable("expected depth or stencil aspect");
@@ -710,7 +748,7 @@ pick_depthstencil_pipeline(struct radv_cmd_buffer *cmd_buffer,
 	}
 
 	if (*pipeline == VK_NULL_HANDLE) {
-		VkResult ret = create_depthstencil_pipeline(cmd_buffer->device, aspects, 1u << samples_log2, index,
+		VkResult ret = create_depthstencil_pipeline(cmd_buffer->device, aspects, 1u << samples_log2, index, unrestricted,
 		                                            pipeline, cmd_buffer->device->meta_state.clear[samples_log2].depthstencil_rp);
 		if (ret != VK_SUCCESS) {
 			cmd_buffer->record_result = ret;
@@ -755,10 +793,17 @@ emit_depthstencil_clear(struct radv_cmd_buffer *cmd_buffer,
 	if (!(aspects & VK_IMAGE_ASPECT_DEPTH_BIT))
 		clear_value.depth = 1.0f;
 
-	radv_CmdPushConstants(radv_cmd_buffer_to_handle(cmd_buffer),
-			      device->meta_state.clear_depth_p_layout,
-			      VK_SHADER_STAGE_FRAGMENT_BIT, 0, 4,
-			      &clear_value.depth);
+	if (cmd_buffer->device->enabled_extensions.EXT_depth_range_unrestricted) {
+		radv_CmdPushConstants(radv_cmd_buffer_to_handle(cmd_buffer),
+				      device->meta_state.clear_depth_unrestricted_p_layout,
+				      VK_SHADER_STAGE_FRAGMENT_BIT, 0, 4,
+				      &clear_value.depth);
+	} else {
+		radv_CmdPushConstants(radv_cmd_buffer_to_handle(cmd_buffer),
+				      device->meta_state.clear_depth_p_layout,
+				      VK_SHADER_STAGE_VERTEX_BIT, 0, 4,
+				      &clear_value.depth);
+	}
 
 	uint32_t prev_reference = cmd_buffer->state.dynamic.stencil_reference.front;
 	if (aspects & VK_IMAGE_ASPECT_STENCIL_BIT) {
@@ -1244,13 +1289,27 @@ radv_device_init_meta_clear_state(struct radv_device *device, bool on_demand)
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
 		.setLayoutCount = 0,
 		.pushConstantRangeCount = 1,
-		.pPushConstantRanges = &(VkPushConstantRange){VK_SHADER_STAGE_FRAGMENT_BIT, 0, 4},
+		.pPushConstantRanges = &(VkPushConstantRange){VK_SHADER_STAGE_VERTEX_BIT, 0, 4},
 	};
 
 	res = radv_CreatePipelineLayout(radv_device_to_handle(device),
 					&pl_depth_create_info,
 					&device->meta_state.alloc,
 					&device->meta_state.clear_depth_p_layout);
+	if (res != VK_SUCCESS)
+		goto fail;
+
+	VkPipelineLayoutCreateInfo pl_depth_unrestricted_create_info = {
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+		.setLayoutCount = 0,
+		.pushConstantRangeCount = 1,
+		.pPushConstantRanges = &(VkPushConstantRange){VK_SHADER_STAGE_FRAGMENT_BIT, 0, 4},
+	};
+
+	res = radv_CreatePipelineLayout(radv_device_to_handle(device),
+					&pl_depth_unrestricted_create_info,
+					&device->meta_state.alloc,
+					&device->meta_state.clear_depth_unrestricted_p_layout);
 	if (res != VK_SUCCESS)
 		goto fail;
 
@@ -1291,6 +1350,7 @@ radv_device_init_meta_clear_state(struct radv_device *device, bool on_demand)
 							   VK_IMAGE_ASPECT_DEPTH_BIT,
 							   samples,
 							   j,
+							   false,
 							   &state->clear[i].depth_only_pipeline[j],
 							   state->clear[i].depthstencil_rp);
 			if (res != VK_SUCCESS)
@@ -1300,6 +1360,7 @@ radv_device_init_meta_clear_state(struct radv_device *device, bool on_demand)
 							   VK_IMAGE_ASPECT_STENCIL_BIT,
 							   samples,
 							   j,
+							   false,
 							   &state->clear[i].stencil_only_pipeline[j],
 							   state->clear[i].depthstencil_rp);
 			if (res != VK_SUCCESS)
@@ -1310,7 +1371,39 @@ radv_device_init_meta_clear_state(struct radv_device *device, bool on_demand)
 							   VK_IMAGE_ASPECT_STENCIL_BIT,
 							   samples,
 							   j,
+							   false,
 							   &state->clear[i].depthstencil_pipeline[j],
+							   state->clear[i].depthstencil_rp);
+			if (res != VK_SUCCESS)
+				goto fail;
+
+			res = create_depthstencil_pipeline(device,
+							   VK_IMAGE_ASPECT_DEPTH_BIT,
+							   samples,
+							   j,
+							   true,
+							   &state->clear[i].depth_only_unrestricted_pipeline[j],
+							   state->clear[i].depthstencil_rp);
+			if (res != VK_SUCCESS)
+				goto fail;
+
+			res = create_depthstencil_pipeline(device,
+							   VK_IMAGE_ASPECT_STENCIL_BIT,
+							   samples,
+							   j,
+							   true,
+							   &state->clear[i].stencil_only_unrestricted_pipeline[j],
+							   state->clear[i].depthstencil_rp);
+			if (res != VK_SUCCESS)
+				goto fail;
+
+			res = create_depthstencil_pipeline(device,
+							   VK_IMAGE_ASPECT_DEPTH_BIT |
+							   VK_IMAGE_ASPECT_STENCIL_BIT,
+							   samples,
+							   j,
+							   true,
+							   &state->clear[i].depthstencil_unrestricted_pipeline[j],
 							   state->clear[i].depthstencil_rp);
 			if (res != VK_SUCCESS)
 				goto fail;
