@@ -204,6 +204,15 @@ struct gen_perf_config;
  */
 #define ANV_PREDICATE_RESULT_REG 0x2678 /* MI_ALU_REG15 */
 
+/* For gen12 we set the streamout buffers using 4 separate commands
+ * (3DSTATE_SO_BUFFER_INDEX_*) instead of 3DSTATE_SO_BUFFER. However the layout
+ * of the 3DSTATE_SO_BUFFER_INDEX_* commands is identical to that of
+ * 3DSTATE_SO_BUFFER apart from the SOBufferIndex field, so for now we use the
+ * 3DSTATE_SO_BUFFER command, but change the 3DCommandSubOpcode.
+ * SO_BUFFER_INDEX_0_CMD is actually the 3DCommandSubOpcode for
+ * 3DSTATE_SO_BUFFER_INDEX_0.
+ */
+#define SO_BUFFER_INDEX_0_CMD 0x60
 #define anv_printflike(a, b) __attribute__((__format__(__printf__, a, b)))
 
 static inline uint32_t

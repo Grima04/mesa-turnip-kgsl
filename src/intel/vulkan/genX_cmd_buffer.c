@@ -2757,7 +2757,12 @@ genX(cmd_buffer_flush_state)(struct anv_cmd_buffer *cmd_buffer)
       for (unsigned idx = 0; idx < MAX_XFB_BUFFERS; idx++) {
          struct anv_xfb_binding *xfb = &cmd_buffer->state.xfb_bindings[idx];
          anv_batch_emit(&cmd_buffer->batch, GENX(3DSTATE_SO_BUFFER), sob) {
+#if GEN_GEN < 12
             sob.SOBufferIndex = idx;
+#else
+            sob._3DCommandOpcode = 0;
+            sob._3DCommandSubOpcode = SO_BUFFER_INDEX_0_CMD + idx;
+#endif
 
             if (cmd_buffer->state.xfb_enabled && xfb->buffer && xfb->size != 0) {
                sob.SOBufferEnable = true;
