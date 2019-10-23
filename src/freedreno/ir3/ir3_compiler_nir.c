@@ -2883,6 +2883,7 @@ setup_output(struct ir3_context *ctx, nir_variable *out)
 					gl_frag_result_name(slot));
 		}
 	} else if (ctx->so->type == MESA_SHADER_VERTEX ||
+			ctx->so->type == MESA_SHADER_TESS_EVAL ||
 			ctx->so->type == MESA_SHADER_GEOMETRY) {
 		switch (slot) {
 		case VARYING_SLOT_POS:
@@ -2914,6 +2915,9 @@ setup_output(struct ir3_context *ctx, nir_variable *out)
 					_mesa_shader_stage_to_string(ctx->so->type),
 					gl_varying_slot_name(slot));
 		}
+	} else if (ctx->so->type == MESA_SHADER_TESS_CTRL) {
+		/* output lowered to buffer writes. */
+		return;
 	} else {
 		ir3_context_error(ctx, "unknown shader type: %d\n", ctx->so->type);
 	}
@@ -2958,6 +2962,8 @@ max_drvloc(struct exec_list *vars)
 
 static const unsigned max_sysvals[] = {
 	[MESA_SHADER_VERTEX]  = 16,
+	[MESA_SHADER_TESS_CTRL] = 16,
+	[MESA_SHADER_TESS_EVAL] = 16,
 	[MESA_SHADER_GEOMETRY] = 16,
 	[MESA_SHADER_FRAGMENT] = 24,  // TODO
 	[MESA_SHADER_COMPUTE] = 16, // TODO how many do we actually need?
@@ -2976,7 +2982,8 @@ emit_instructions(struct ir3_context *ctx)
 	/* we need to leave room for sysvals:
 	 */
 	ninputs += max_sysvals[ctx->so->type];
-	if (ctx->so->type == MESA_SHADER_VERTEX)
+	if (ctx->so->type == MESA_SHADER_VERTEX ||
+			ctx->so->type == MESA_SHADER_TESS_EVAL)
 		noutputs += 8; /* gs or tess header + primitive_id */
 
 	ctx->ir = ir3_create(ctx->compiler, ctx->so->type, ninputs, noutputs);
@@ -2988,12 +2995,38 @@ emit_instructions(struct ir3_context *ctx)
 
 	ninputs -= max_sysvals[ctx->so->type];
 
-	if (ctx->so->key.has_gs) {
-		if (ctx->so->type == MESA_SHADER_VERTEX ||
-			ctx->so->type == MESA_SHADER_GEOMETRY) {
+	/* Tesselation shaders always need primitive ID for indexing the
+	 * BO. Geometry shaders don't always need it but when they do it has be
+	 * delivered and unclobbered in the VS. To make things easy, we always
+	 * make room for it in VS/DS.
+	 */
+	bool has_tess = ctx->so->key.tessellation != IR3_TESS_NONE;
+	bool has_gs = ctx->so->key.has_gs;
+	switch (ctx->so->type) {
+	case MESA_SHADER_VERTEX:
+		if (has_tess) {
+			ctx->tcs_header = create_input(ctx, 0);
+			ctx->primitive_id = create_input(ctx, 0);
+		} else if (has_gs) {
 			ctx->gs_header = create_input(ctx, 0);
 			ctx->primitive_id = create_input(ctx, 0);
 		}
+		break;
+	case MESA_SHADER_TESS_CTRL:
+		ctx->tcs_header = create_input(ctx, 0);
+		ctx->primitive_id = create_input(ctx, 0);
+		break;
+	case MESA_SHADER_TESS_EVAL:
+		if (has_gs)
+			ctx->gs_header = create_input(ctx, 0);
+		ctx->primitive_id = create_input(ctx, 0);
+		break;
+	case MESA_SHADER_GEOMETRY:
+		ctx->gs_header = create_input(ctx, 0);
+		ctx->primitive_id = create_input(ctx, 0);
+		break;
+	default:
+		break;
 	}
 
 	/* for fragment shader, the vcoord input register is used as the
@@ -3032,15 +3065,19 @@ emit_instructions(struct ir3_context *ctx)
 		add_sysval_input(ctx, SYSTEM_VALUE_PRIMITIVE_ID, ctx->primitive_id);
 	if (ctx->gs_header)
 		add_sysval_input(ctx, SYSTEM_VALUE_GS_HEADER_IR3, ctx->gs_header);
+	if (ctx->tcs_header)
+		add_sysval_input(ctx, SYSTEM_VALUE_TCS_HEADER_IR3, ctx->tcs_header);
 
 	/* Setup outputs: */
 	nir_foreach_variable(var, &ctx->s->outputs) {
 		setup_output(ctx, var);
 	}
 
-	/* Set up the gs header as an output for the vertex shader so it won't
-	 * clobber it for the tess ctrl shader. */
-	if (ctx->so->type == MESA_SHADER_VERTEX) {
+	/* Set up the shared system values as outputs for the vertex and tess eval
+	 * shaders so they don't clobber them for the next shader in the pipeline.
+	 */
+	if (ctx->so->type == MESA_SHADER_VERTEX ||
+			(has_gs && ctx->so->type == MESA_SHADER_TESS_EVAL)) {
 		struct ir3_shader_variant *so = ctx->so;
 		if (ctx->primitive_id) {
 			unsigned n = so->outputs_count++;
@@ -3060,6 +3097,14 @@ emit_instructions(struct ir3_context *ctx)
 			compile_assert(ctx, n * 4 < ctx->ir->noutputs);
 		}
 
+		if (ctx->tcs_header) {
+			unsigned n = so->outputs_count++;
+			so->outputs[n].slot = VARYING_SLOT_TCS_HEADER_IR3;
+			so->outputs[n].regid = regid(n, 0);
+			ctx->ir->outputs[n * 4] = ctx->tcs_header;
+
+			compile_assert(ctx, n * 4 < ctx->ir->noutputs);
+		}
 	}
 
 	/* Find # of samplers: */
