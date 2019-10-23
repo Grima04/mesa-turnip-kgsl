@@ -458,6 +458,14 @@ fd_gmem_render_tiles(struct fd_batch *batch)
 			sysmem = true;
 	}
 
+	/* Tessellation doesn't seem to support tiled rendering so fall back to
+	 * bypass.
+	 */
+	if (batch->tessellation) {
+		debug_assert(ctx->emit_sysmem_prep);
+		sysmem = true;
+	}
+
 	fd_reset_wfi(batch);
 
 	ctx->stats.batch_total++;
