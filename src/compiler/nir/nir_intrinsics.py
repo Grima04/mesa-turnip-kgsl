@@ -798,6 +798,14 @@ system_value("tess_factor_base_ir3", 2)
 system_value("tess_param_base_ir3", 2)
 system_value("tcs_header_ir3", 1)
 
+# IR3-specific intrinsics for tessellation control shaders.  cond_end_ir3 end
+# the shader when src0 is false and is used to narrow down the TCS shader to
+# just thread 0 before writing out tessellation levels.
+intrinsic("cond_end_ir3", src_comp=[1])
+# end_patch_ir3 is used just before thread 0 exist the TCS and presumably
+# signals the TE that the patch is complete and can be tessellated.
+intrinsic("end_patch_ir3")
+
 # IR3-specific load/store intrinsics. These access a buffer used to pass data
 # between geometry stages - perhaps it's explicit access to the vertex cache.
 

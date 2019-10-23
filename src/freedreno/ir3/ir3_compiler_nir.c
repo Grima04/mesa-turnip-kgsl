@@ -1406,6 +1406,15 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 		dst[2] = create_immed(b, 0);
 		break;
 
+	case nir_intrinsic_end_patch_ir3:
+		assert(ctx->so->type == MESA_SHADER_TESS_CTRL);
+		struct ir3_instruction *end = ir3_ENDPATCH(b);
+		array_insert(b, b->keeps, end);
+
+		end->barrier_class = IR3_BARRIER_EVERYTHING;
+		end->barrier_conflict = IR3_BARRIER_EVERYTHING;
+		break;
+
 	case nir_intrinsic_store_global_ir3: {
 		struct ir3_instruction *value, *addr, *offset;
 
@@ -1762,6 +1771,30 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 
 		break;
 	}
+
+	case nir_intrinsic_cond_end_ir3: {
+		struct ir3_instruction *cond, *kill;
+
+		src = ir3_get_src(ctx, &intr->src[0]);
+		cond = ir3_b2n(b, src[0]);
+
+		/* NOTE: only cmps.*.* can write p0.x: */
+		cond = ir3_CMPS_S(b, cond, 0, create_immed(b, 0), 0);
+		cond->cat2.condition = IR3_COND_NE;
+
+		/* condition always goes in predicate register: */
+		cond->regs[0]->num = regid(REG_P0, 0);
+
+		kill = ir3_CONDEND(b, cond, 0);
+
+		kill->barrier_class = IR3_BARRIER_EVERYTHING;
+		kill->barrier_conflict = IR3_BARRIER_EVERYTHING;
+
+		array_insert(ctx->ir, ctx->ir->predicates, kill);
+		array_insert(b, b->keeps, kill);
+		break;
+	}
+
 	case nir_intrinsic_load_shared_ir3:
 		emit_intrinsic_load_shared_ir3(ctx, intr, dst);
 		break;
