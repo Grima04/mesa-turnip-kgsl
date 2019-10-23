@@ -3332,8 +3332,8 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 	 * need to make sure not to remove any inputs that are used by
 	 * the nonbinning VS.
 	 */
-	if (ctx->compiler->gpu_id >= 600 && so->binning_pass) {
-		debug_assert(so->type == MESA_SHADER_VERTEX);
+	if (ctx->compiler->gpu_id >= 600 && so->binning_pass &&
+			so->type == MESA_SHADER_VERTEX) {
 		for (int i = 0; i < ir->ninputs; i++) {
 			struct ir3_instruction *in = ir->inputs[i];
 
