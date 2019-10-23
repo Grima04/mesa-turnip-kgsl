@@ -103,13 +103,10 @@ debian-10:arm64:
 
 # BUILD
 
-.build:
+# Shared between windows and Linux
+.build-common:
   extends: .ci-run-policy
   stage: build
-  cache:
-    key: ${CI_JOB_NAME}
-    paths:
-      - ccache
   artifacts:
     when: always
     paths:
@@ -117,6 +114,14 @@ debian-10:arm64:
       # scons:
       - build/*/config.log
       - shader-db
+
+# Just Linux
+.build-linux:
+  extends: .build-common
+  cache:
+    key: ${CI_JOB_NAME}
+    paths:
+      - ccache
   variables:
     CCACHE_COMPILERCHECK: "content"
   # Use ccache transparently, and print stats before/after
@@ -139,14 +144,14 @@ debian-10:arm64:
 
 .meson-build:
   extends:
-    - .build
+    - .build-linux
     - .use-debian-10:amd64
   script:
     - .gitlab-ci/meson-build.sh
 
 .scons-build:
   extends:
-    - .build
+    - .build-linux
     - .use-debian-10:amd64
   variables:
     SCONSFLAGS: "-j4"

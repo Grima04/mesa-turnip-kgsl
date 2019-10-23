@@ -60,7 +60,7 @@ lava-container:arm64:
 .lava-build:
   image: $CI_REGISTRY_IMAGE/debian/$LAVA_DEBIAN_VERSION:$DEBIAN_ARCH-$LAVA_IMAGE_TAG
   extends:
-    - .build
+    - .build-linux
   # Use ccache transparently, and print stats before/after
   before_script:
     - mkdir -p results mesa-build
