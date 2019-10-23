@@ -614,7 +614,7 @@ static inline bool is_flow(struct ir3_instruction *instr)
 
 static inline bool is_kill(struct ir3_instruction *instr)
 {
-	return instr->opc == OPC_KILL;
+	return instr->opc == OPC_KILL || instr->opc == OPC_CONDEND;
 }
 
 static inline bool is_nop(struct ir3_instruction *instr)
@@ -1309,6 +1309,8 @@ INSTR1(KILL)
 INSTR0(END)
 INSTR0(CHSH)
 INSTR0(CHMASK)
+INSTR1(CONDEND)
+INSTR0(ENDPATCH)
 
 /* cat2 instructions, most 2 src but some 1 src: */
 INSTR2(ADD_F)

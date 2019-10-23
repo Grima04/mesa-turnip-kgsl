@@ -51,6 +51,9 @@ typedef enum {
 	OPC_CHSH            = _OPC(0, 10),
 	OPC_FLOW_REV        = _OPC(0, 11),
 
+	OPC_CONDEND         = _OPC(0, 13),
+	OPC_ENDPATCH        = _OPC(0, 15),
+
 	/* category 1: */
 	OPC_MOV             = _OPC(1, 0),
 
