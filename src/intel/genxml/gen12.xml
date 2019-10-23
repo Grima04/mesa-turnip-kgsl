@@ -1563,6 +1563,19 @@
     <field name="Constant Body" start="32" end="351" type="3DSTATE_CONSTANT_BODY"/>
   </instruction>
 
+  <instruction name="3DSTATE_DEPTH_BOUNDS" bias="1" length="4">
+    <field name="Length" start="0" end="7" type="uint" default="2"/>
+    <field name="Depth Bounds Test Value Modify Disable" start="14" end="14" type="bool"/>
+    <field name="Depth Bounds Test Enable Modify Disable" start="15" end="15" type="bool"/>
+    <field name="3DSTATE Command Sub Opcode" start="16" end="23" type="uint" default="113"/>
+    <field name="3D Command Opcode" start="24" end="26" type="uint" default="0"/>
+    <field name="Command SubType" start="27" end="28" type="uint" default="3"/>
+    <field name="Command Type" start="29" end="31" type="uint" default="3"/>
+    <field name="Depth Bounds Test Enable" start="32" end="32" type="uint"/>
+    <field name="Depth Bounds Test Min Value" start="64" end="95" type="float"/>
+    <field name="Depth Bounds Test Max Value" start="96" end="127" type="float"/>
+  </instruction>
+
   <instruction name="3DSTATE_DEPTH_BUFFER" bias="2" length="8" engine="render">
     <field name="DWord Length" start="0" end="7" type="uint" default="6"/>
     <field name="3D Command Sub Opcode" start="16" end="23" type="uint" default="5"/>
