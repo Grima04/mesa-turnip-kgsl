@@ -189,10 +189,18 @@ ir3_optimize_nir(struct ir3_shader *shader, nir_shader *s,
 			.lower_tg4_offsets = true,
 	};
 
-	if (key && key->has_gs) {
+	if (key && (key->has_gs || key->tessellation)) {
 		switch (shader->type) {
 		case MESA_SHADER_VERTEX:
-			NIR_PASS_V(s, ir3_nir_lower_vs_to_explicit_io, shader);
+			NIR_PASS_V(s, ir3_nir_lower_to_explicit_io, shader, key->tessellation);
+			break;
+		case MESA_SHADER_TESS_CTRL:
+			NIR_PASS_V(s, ir3_nir_lower_tess_ctrl, shader, key->tessellation);
+			break;
+		case MESA_SHADER_TESS_EVAL:
+			NIR_PASS_V(s, ir3_nir_lower_tess_eval, key->tessellation);
+			if (key->has_gs)
+				NIR_PASS_V(s, ir3_nir_lower_to_explicit_io, shader, key->tessellation);
 			break;
 		case MESA_SHADER_GEOMETRY:
 			NIR_PASS_V(s, ir3_nir_lower_gs, shader);
