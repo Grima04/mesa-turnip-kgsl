@@ -879,7 +879,12 @@ int virgl_encode_sampler_view(struct virgl_context *ctx,
       virgl_encoder_write_dword(ctx->cbuf, state->u.buf.offset / elem_size);
       virgl_encoder_write_dword(ctx->cbuf, (state->u.buf.offset + state->u.buf.size) / elem_size - 1);
    } else {
-      virgl_encoder_write_dword(ctx->cbuf, state->u.tex.first_layer | state->u.tex.last_layer << 16);
+      if (res->metadata.plane) {
+         debug_assert(state->u.tex.first_layer == 0 && state->u.tex.last_layer == 0);
+         virgl_encoder_write_dword(ctx->cbuf, res->metadata.plane);
+      } else {
+         virgl_encoder_write_dword(ctx->cbuf, state->u.tex.first_layer | state->u.tex.last_layer << 16);
+      }
       virgl_encoder_write_dword(ctx->cbuf, state->u.tex.first_level | state->u.tex.last_level << 8);
    }
    tmp = VIRGL_OBJ_SAMPLER_VIEW_SWIZZLE_R(state->swizzle_r) |
