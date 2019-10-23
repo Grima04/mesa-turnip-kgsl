@@ -3091,6 +3091,7 @@
     <field name="Command Type" start="29" end="31" type="uint" default="3"/>
     <field name="Number of Multisamples" start="45" end="47" type="uint"/>
     <field name="Stencil Clear Value" start="48" end="55" type="uint"/>
+    <field name="Stencil Buffer Resolve Enable" start="56" end="56" type="bool"/>
     <field name="Full Surface Depth and Stencil Clear" start="57" end="57" type="bool"/>
     <field name="Pixel Position Offset Enable" start="58" end="58" type="bool"/>
     <field name="Hierarchical Depth Buffer Resolve Enable" start="59" end="59" type="bool"/>
