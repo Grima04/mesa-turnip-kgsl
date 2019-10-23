@@ -161,12 +161,6 @@ debian-10-test:arm64:
     - ccache --zero-stats || true
     - ccache --show-stats || true
   after_script:
-    # In case the install dir is being saved as artifacts, tar it up
-    # so that symlinks and hardlinks aren't each packed separately in
-    # the zip file.
-    - if [ -d install ]; then
-        tar -cf artifacts/install.tar install;
-      fi
     - export CCACHE_DIR="$PWD/ccache"
     - ccache --show-stats
 
@@ -222,8 +216,11 @@ meson-main:
     EXTRA_OPTION: >
       -D osmesa=gallium
       -D tools=all
-    MESON_SHADERDB: "true"
     BUILDTYPE: "debugoptimized"
+  script:
+    - .gitlab-ci/meson-build.sh
+    - .gitlab-ci/run-shader-db.sh
+    - .gitlab-ci/prepare-artifacts.sh
 
 .meson-cross:
   extends:
@@ -270,6 +267,9 @@ meson-arm64:
     - .ci-deqp-artifacts
   variables:
     BUILDTYPE: "debugoptimized"
+  script:
+    - .gitlab-ci/meson-build.sh
+    - .gitlab-ci/prepare-artifacts.sh
 
 # NOTE: Building SWR is 2x (yes two) times slower than all the other
 # gallium drivers combined.
