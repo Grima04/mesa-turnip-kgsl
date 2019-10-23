@@ -3435,9 +3435,19 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 		}
 
 		ret = ir3_ra(so, ir->inputs, ir->ninputs);
+	} else if (ctx->tcs_header) {
+		/* We need to have these values in the same registers between VS and TCS
+		 * since the VS chains to TCS and doesn't get the sysvals redelivered.
+		 */
+
+		ctx->tcs_header->regs[0]->num = 0;
+		ctx->primitive_id->regs[0]->num = 1;
+		struct ir3_instruction *precolor[] = { ctx->tcs_header, ctx->primitive_id };
+		ret = ir3_ra(so, precolor, ARRAY_SIZE(precolor));
 	} else if (ctx->gs_header) {
-		/* We need to have these values in the same registers between VS and GS
-		 * since the VS chains to GS and doesn't get the sysvals redelivered.
+		/* We need to have these values in the same registers between producer
+		 * (VS or DS) and GS since the producer chains to GS and doesn't get
+		 * the sysvals redelivered.
 		 */
 
 		ctx->gs_header->regs[0]->num = 0;
