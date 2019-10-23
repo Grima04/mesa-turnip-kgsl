@@ -40,7 +40,6 @@ struct NOP_ctx {
    int VALU_wrsgpr = -10;
 
    /* GFX10 */
-   int last_VMEM_since_scalar_write = -1;
    bool has_VOPC = false;
    bool has_nonVALU_exec_read = false;
    bool has_VMEM = false;
@@ -48,6 +47,7 @@ struct NOP_ctx {
    bool has_DS = false;
    bool has_branch_after_DS = false;
    std::bitset<128> sgprs_read_by_SMEM;
+   std::bitset<128> sgprs_read_by_VMEM;
 
    NOP_ctx(Program* program) : chip_class(program->chip_class) {
       vcc_physical = program->config->num_sgprs - 2;
@@ -342,21 +342,31 @@ std::pair<int, int> handle_instruction_gfx10(NOP_ctx& ctx, aco_ptr<Instruction>&
    if (instr->format == Format::SMEM)
       sNOPs = std::max(sNOPs, handle_SMEM_clause(instr, new_idx, new_instructions));
 
-   /* handle EXEC/M0/SGPR write following a VMEM instruction without a VALU or "waitcnt vmcnt(0)" in-between */
-   if (instr->isSALU() || instr->format == Format::SMEM) {
-      if (!instr->definitions.empty() && ctx.last_VMEM_since_scalar_write != -1) {
-         ctx.last_VMEM_since_scalar_write = -1;
-         vNOPs = 1;
+   /* VMEMtoScalarWriteHazard
+    * Handle EXEC/M0/SGPR write following a VMEM instruction without a VALU or "waitcnt vmcnt(0)" in-between.
+    */
+   if (instr->isVMEM() || instr->format == Format::FLAT || instr->format == Format::GLOBAL ||
+       instr->format == Format::SCRATCH || instr->format == Format::DS) {
+      /* Remember all SGPRs that are read by the VMEM instruction */
+      mark_read_regs(instr, ctx.sgprs_read_by_VMEM);
+   } else if (instr->isSALU() || instr->format == Format::SMEM) {
+      /* Check if SALU writes an SGPR that was previously read by the VALU */
+      if (check_written_regs(instr, ctx.sgprs_read_by_VMEM)) {
+         ctx.sgprs_read_by_VMEM.reset();
+
+         /* Insert v_nop to mitigate the problem */
+         aco_ptr<VOP1_instruction> nop{create_instruction<VOP1_instruction>(aco_opcode::v_nop, Format::VOP1, 0, 0)};
+         new_instructions.emplace_back(std::move(nop));
       }
-   } else if (instr->isVMEM() || instr->isFlatOrGlobal()) {
-      ctx.last_VMEM_since_scalar_write = new_idx;
    } else if (instr->opcode == aco_opcode::s_waitcnt) {
+      /* Hazard is mitigated by "s_waitcnt vmcnt(0)" */
       uint16_t imm = static_cast<SOPP_instruction*>(instr.get())->imm;
       unsigned vmcnt = (imm & 0xF) | ((imm & (0x3 << 14)) >> 10);
       if (vmcnt == 0)
-         ctx.last_VMEM_since_scalar_write = -1;
+         ctx.sgprs_read_by_VMEM.reset();
    } else if (instr->isVALU()) {
-      ctx.last_VMEM_since_scalar_write = -1;
+      /* Hazard is mitigated by any VALU instruction */
+      ctx.sgprs_read_by_VMEM.reset();
    }
 
    /* VcmpxPermlaneHazard
