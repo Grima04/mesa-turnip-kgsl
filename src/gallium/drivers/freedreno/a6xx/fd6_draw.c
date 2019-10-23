@@ -211,6 +211,53 @@ fd6_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
 	struct fd_ringbuffer *ring = ctx->batch->draw;
 	enum pc_di_primtype primtype = ctx->primtypes[info->mode];
 
+	uint32_t tess_draw0 = 0;
+	if (info->mode == PIPE_PRIM_PATCHES) {
+		shader_info *ds_info = &emit.ds->shader->nir->info;
+		uint32_t factor_stride;
+		uint32_t patch_type;
+
+		switch (ds_info->tess.primitive_mode) {
+		case GL_ISOLINES:
+			patch_type = TESS_ISOLINES;
+			factor_stride = 12;
+			break;
+		case GL_TRIANGLES:
+			patch_type = TESS_TRIANGLES;
+			factor_stride = 20;
+			break;
+		case GL_QUADS:
+			patch_type = TESS_QUADS;
+			factor_stride = 28;
+			break;
+		default:
+			unreachable("bad tessmode");
+		}
+
+		primtype = DI_PT_PATCHES0 + info->vertices_per_patch;
+		tess_draw0 |= CP_DRAW_INDX_OFFSET_0_PATCH_TYPE(patch_type) |
+			CP_DRAW_INDX_OFFSET_0_TESS_ENABLE;
+
+		ctx->batch->tessellation = true;
+		ctx->batch->tessparam_size = MAX2(ctx->batch->tessparam_size,
+				emit.hs->shader->output_size * 4 * info->count);
+		ctx->batch->tessfactor_size = MAX2(ctx->batch->tessfactor_size,
+				factor_stride * info->count);
+
+		if (!ctx->batch->tess_addrs_constobj) {
+			/* Reserve space for the bo address - we'll write them later in
+			 * setup_tess_buffers().  We need 2 bo address, but indirect
+			 * constant upload needs at least 4 vec4s.
+			 */
+			unsigned size = 4 * 16;
+
+			ctx->batch->tess_addrs_constobj = fd_submit_new_ringbuffer(
+				ctx->batch->submit, size, FD_RINGBUFFER_STREAMING);
+
+			ctx->batch->tess_addrs_constobj->cur += size;
+		}
+	}
+
 	fd6_emit_state(ring, &emit);
 
 	OUT_PKT4(ring, REG_A6XX_VFD_INDEX_OFFSET, 2);
@@ -230,11 +277,10 @@ fd6_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
 	emit_marker6(ring, 7);
 
 	uint32_t draw0 =
+		CP_DRAW_INDX_OFFSET_0_VIS_CULL(USE_VISIBILITY) |
 		CP_DRAW_INDX_OFFSET_0_PRIM_TYPE(primtype) |
-		CP_DRAW_INDX_OFFSET_0_VIS_CULL(USE_VISIBILITY);
-
-	if (emit.key.gs)
-		draw0 |= CP_DRAW_INDX_OFFSET_0_GS_ENABLE;
+		tess_draw0 |
+		COND(emit.key.gs, CP_DRAW_INDX_OFFSET_0_GS_ENABLE);
 
 	if (info->index_size) {
 		draw0 |=

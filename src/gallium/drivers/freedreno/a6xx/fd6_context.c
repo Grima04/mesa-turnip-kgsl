@@ -77,6 +77,7 @@ static const uint8_t primtypes[] = {
 		[PIPE_PRIM_LINE_STRIP_ADJACENCY]        = DI_PT_LINESTRIP_ADJ,
 		[PIPE_PRIM_TRIANGLES_ADJACENCY]         = DI_PT_TRI_ADJ,
 		[PIPE_PRIM_TRIANGLE_STRIP_ADJACENCY]    = DI_PT_TRISTRIP_ADJ,
+		[PIPE_PRIM_PATCHES]                     = DI_PT_PATCHES0,
 		[PIPE_PRIM_MAX]                         = DI_PT_RECTLIST,  /* internal clear blits */
 };
 
