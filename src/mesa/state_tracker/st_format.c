@@ -637,8 +637,10 @@ st_mesa_format_to_pipe_format(const struct st_context *st,
       return PIPE_FORMAT_ATC_RGBA_INTERPOLATED;
 
    default:
-      debug_printf("%s(mesa_format=%s) -> NONE\n",
-                   __func__, _mesa_get_format_name(mesaFormat));
+      if (0) {
+         debug_printf("%s(mesa_format=%s) -> NONE\n",
+                      __func__, _mesa_get_format_name(mesaFormat));
+      }
       return PIPE_FORMAT_NONE;
    }
 }
