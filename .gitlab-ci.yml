@@ -29,7 +29,7 @@ include:
     file: '/templates/debian.yml'
 
 include:
-  - local: '/.gitlab-ci/lava-gitlab-ci.yml'
+  - local: '.gitlab-ci/lava-gitlab-ci.yml'
 
 stages:
   - container
@@ -141,6 +141,15 @@ debian-10:arm64:
       fi
     - export CCACHE_DIR="$PWD/ccache"
     - ccache --show-stats
+
+.build-windows:
+  extends: .build-common
+  tags:
+    - mesa-windows
+  cache:
+    key: ${CI_JOB_NAME}
+    paths:
+      - subprojects/packagecache
 
 .meson-build:
   extends:
@@ -268,6 +277,15 @@ meson-clang:
     VULKAN_DRIVERS: intel,amd,freedreno
     CC: "ccache clang-8"
     CXX: "ccache clang++-8"
+
+meson-windows:
+  extends:
+    - .build-windows
+  before_script:
+    - $ENV:ARCH = "x86"
+    - $ENV:VERSION = "2019\Community"
+  script:
+    - cmd /C .gitlab-ci\meson-build.bat
 
 scons-swr:
   extends: .scons-build
