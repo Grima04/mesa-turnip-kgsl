@@ -104,7 +104,7 @@ ir3_key_lowers_nir(const struct ir3_shader_key *key)
 			key->vsaturate_s | key->vsaturate_t | key->vsaturate_r |
 			key->ucp_enables | key->color_two_side |
 			key->fclamp_color | key->vclamp_color |
-			key->has_gs;
+			key->tessellation | key->has_gs;
 }
 
 #define OPT(nir, pass, ...) ({                             \

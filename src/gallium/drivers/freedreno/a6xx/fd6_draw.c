@@ -157,6 +157,23 @@ fd6_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
 		.sprite_coord_mode = ctx->rasterizer->sprite_coord_mode,
 	};
 
+	if (info->mode == PIPE_PRIM_PATCHES) {
+		shader_info *ds_info = &emit.key.ds->nir->info;
+		switch (ds_info->tess.primitive_mode) {
+		case GL_ISOLINES:
+			emit.key.key.tessellation = IR3_TESS_ISOLINES;
+			break;
+		case GL_TRIANGLES:
+			emit.key.key.tessellation = IR3_TESS_TRIANGLES;
+			break;
+		case GL_QUADS:
+			emit.key.key.tessellation = IR3_TESS_QUADS;
+			break;
+		default:
+			unreachable("bad tessmode");
+		}
+	}
+
 	if (emit.key.gs)
 		emit.key.key.has_gs = true;
 
