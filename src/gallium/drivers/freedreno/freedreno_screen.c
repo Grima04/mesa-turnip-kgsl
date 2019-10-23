@@ -346,6 +346,13 @@ fd_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
 	case PIPE_CAP_MAX_VARYINGS:
 		return 16;
 
+	case PIPE_CAP_MAX_SHADER_PATCH_VARYINGS:
+		/* We don't really have a limit on this, it all goes into the main
+		 * memory buffer. Needs to be at least 120 / 4 (minimum requirement
+		 * for GL_MAX_TESS_PATCH_COMPONENTS).
+		 */
+		return 128;
+
 	case PIPE_CAP_SHAREABLE_SHADERS:
 	case PIPE_CAP_GLSL_OPTIMIZE_CONSERVATIVELY:
 	/* manage the variants for these ourself, to avoid breaking precompile: */
@@ -471,6 +478,8 @@ fd_screen_get_shader_param(struct pipe_screen *pscreen,
 	case PIPE_SHADER_FRAGMENT:
 	case PIPE_SHADER_VERTEX:
 		break;
+	case PIPE_SHADER_TESS_CTRL:
+	case PIPE_SHADER_TESS_EVAL:
 	case PIPE_SHADER_GEOMETRY:
 		if (is_a6xx(screen))
 			break;
@@ -514,8 +523,11 @@ fd_screen_get_shader_param(struct pipe_screen *pscreen,
 		 * everything is just normal registers.  This is just temporary
 		 * hack until load_input/store_output handle arrays in a similar
 		 * way as load_var/store_var..
+		 *
+		 * For tessellation stages, inputs are loaded using ldlw or ldg, both
+		 * of which support indirection.
 		 */
-		return 0;
+		return shader == PIPE_SHADER_TESS_CTRL || shader == PIPE_SHADER_TESS_EVAL;
 	case PIPE_SHADER_CAP_INDIRECT_TEMP_ADDR:
 	case PIPE_SHADER_CAP_INDIRECT_CONST_ADDR:
 		/* a2xx compiler doesn't handle indirect: */
