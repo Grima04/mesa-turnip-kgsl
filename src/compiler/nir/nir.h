@@ -498,6 +498,9 @@ typedef struct nir_variable {
       } image;
    } data;
 
+   /* Number of nir_variable_data members */
+   unsigned num_members;
+
    /**
     * Built-in state that backs this uniform
     *
@@ -539,7 +542,6 @@ typedef struct nir_variable {
     * inputs each with their own layout specifier.  This is only allowed on
     * variables with a struct or array of array of struct type.
     */
-   unsigned num_members;
    struct nir_variable_data *members;
 } nir_variable;
 
