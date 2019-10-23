@@ -38,6 +38,9 @@ CURRENT_GL_VERSION = '4.6'
 CURRENT_VK_VERSION = '1.1'
 
 TEMPLATE = Template(textwrap.dedent("""\
+    <%!
+        import html
+    %>
     <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
     <html lang="en">
     <head>
@@ -89,7 +92,7 @@ TEMPLATE = Template(textwrap.dedent("""\
 
     <ul>
     %for f in features:
-        <li>${f}</li>
+        <li>${html.escape(f)}</li>
     %endfor
     </ul>
 
@@ -97,7 +100,7 @@ TEMPLATE = Template(textwrap.dedent("""\
 
     <ul>
     %for b in bugs:
-        <li>${b}</li>
+        <li>${html.escape(b)}</li>
     %endfor
     </ul>
 
@@ -106,9 +109,9 @@ TEMPLATE = Template(textwrap.dedent("""\
     <ul>
     %for c, author in changes:
       %if author:
-        <p>${c}</p>
+        <p>${html.escape(c)}</p>
       %else:
-        <li>${c}</li>
+        <li>${html.escape(c)}</li>
       %endif
     %endfor
     </ul>
