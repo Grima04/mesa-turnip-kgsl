@@ -388,6 +388,8 @@ writes_gpr(struct ir3_instruction *instr)
 {
 	if (is_store(instr))
 		return false;
+	if (instr->regs_count == 0)
+		return false;
 	/* is dest a normal temp register: */
 	struct ir3_register *reg = instr->regs[0];
 	if (reg->flags & (IR3_REG_CONST | IR3_REG_IMMED))
@@ -586,9 +588,6 @@ ra_block_name_instructions(struct ir3_ra_ctx *ctx, struct ir3_block *block)
 
 		ctx->instr_cnt++;
 
-		if (instr->regs_count == 0)
-			continue;
-
 		if (!writes_gpr(instr))
 			continue;
 
@@ -705,9 +704,6 @@ ra_block_compute_live_ranges(struct ir3_ra_ctx *ctx, struct ir3_block *block)
 	list_for_each_entry (struct ir3_instruction, instr, &block->instr_list, node) {
 		struct ir3_instruction *src;
 		struct ir3_register *reg;
-
-		if (instr->regs_count == 0)
-			continue;
 
 		/* There are a couple special cases to deal with here:
 		 *
@@ -1068,9 +1064,6 @@ ra_block_alloc(struct ir3_ra_ctx *ctx, struct ir3_block *block)
 {
 	list_for_each_entry (struct ir3_instruction, instr, &block->instr_list, node) {
 		struct ir3_register *reg;
-
-		if (instr->regs_count == 0)
-			continue;
 
 		if (writes_gpr(instr)) {
 			reg_assign(ctx, instr->regs[0], instr);
