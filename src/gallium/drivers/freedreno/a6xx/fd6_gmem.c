@@ -650,6 +650,8 @@ emit_binning_pass(struct fd_batch *batch)
 	uint32_t x2 = gmem->minx + gmem->width - 1;
 	uint32_t y2 = gmem->miny + gmem->height - 1;
 
+	debug_assert(!batch->tessellation);
+
 	set_scissor(ring, x1, y1, x2, y2);
 
 	emit_marker6(ring, 7);
@@ -1499,6 +1501,27 @@ emit_sysmem_clears(struct fd_batch *batch, struct fd_ringbuffer *ring)
 }
 
 static void
+setup_tess_buffers(struct fd_batch *batch, struct fd_ringbuffer *ring)
+{
+	struct fd_context *ctx = batch->ctx;
+
+	batch->tessfactor_bo = fd_bo_new(ctx->screen->dev,
+			batch->tessfactor_size,
+			DRM_FREEDRENO_GEM_TYPE_KMEM, "tessfactor");
+
+	batch->tessparam_bo = fd_bo_new(ctx->screen->dev,
+			batch->tessparam_size,
+			DRM_FREEDRENO_GEM_TYPE_KMEM, "tessparam");
+
+	OUT_PKT4(ring, REG_A6XX_PC_TESSFACTOR_ADDR_LO, 2);
+	OUT_RELOCW(ring, batch->tessfactor_bo, 0, 0, 0);
+
+	batch->tess_addrs_constobj->cur = batch->tess_addrs_constobj->start;
+	OUT_RELOCW(batch->tess_addrs_constobj, batch->tessparam_bo, 0, 0, 0);
+	OUT_RELOCW(batch->tess_addrs_constobj, batch->tessfactor_bo, 0, 0, 0);
+}
+
+static void
 fd6_emit_sysmem_prep(struct fd_batch *batch)
 {
 	struct pipe_framebuffer_state *pfb = &batch->framebuffer;
@@ -1520,6 +1543,9 @@ fd6_emit_sysmem_prep(struct fd_batch *batch)
 	OUT_PKT7(ring, CP_SET_MARKER, 1);
 	OUT_RING(ring, A6XX_CP_SET_MARKER_0_MODE(RM6_BYPASS) | 0x10); /* | 0x10 ? */
 	emit_marker6(ring, 7);
+
+	if (batch->tessellation)
+		setup_tess_buffers(batch, ring);
 
 	OUT_PKT7(ring, CP_SKIP_IB2_ENABLE_GLOBAL, 1);
 	OUT_RING(ring, 0x0);
