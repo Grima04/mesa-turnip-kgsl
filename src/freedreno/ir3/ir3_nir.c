@@ -460,6 +460,13 @@ ir3_setup_const_state(struct ir3_shader *shader, nir_shader *nir)
 		const_state->offsets.primitive_param = constoff;
 		constoff += 1;
 		break;
+	case MESA_SHADER_TESS_CTRL:
+	case MESA_SHADER_TESS_EVAL:
+		constoff = align(constoff - 1, 4) + 3;
+		const_state->offsets.primitive_param = constoff;
+		const_state->offsets.primitive_map = constoff + 5;
+		constoff += 5 + DIV_ROUND_UP(nir->num_inputs, 4);
+		break;
 	case MESA_SHADER_GEOMETRY:
 		const_state->offsets.primitive_param = constoff;
 		const_state->offsets.primitive_map = constoff + 1;
