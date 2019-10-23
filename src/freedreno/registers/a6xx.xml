@@ -1856,6 +1856,7 @@ to upconvert to 32b float internally?
 
 	<reg32 offset="0x8000" name="GRAS_UNKNOWN_8000"/>
 	<reg32 offset="0x8001" name="GRAS_UNKNOWN_8001"/>
+	<reg32 offset="0x8002" name="GRAS_UNKNOWN_8002"/>
 	<reg32 offset="0x8003" name="GRAS_UNKNOWN_8003"/>
 
 	<enum name="a6xx_layer_type">
@@ -1935,6 +1936,8 @@ to upconvert to 32b float internally?
 	<reg32 offset="0x809c" name="GRAS_UNKNOWN_809C">
 		<bitfield name="GS_WRITES_LAYER" pos="0" type="boolean"/>
 	</reg32>
+
+	<reg32 offset="0x809d" name="GRAS_UNKNOWN_809D"/>
 
 	<reg32 offset="0x80a0" name="GRAS_UNKNOWN_80A0"/>
 
@@ -2421,6 +2424,7 @@ to upconvert to 32b float internally?
 	<!-- always 0x00ffff00 ? */ -->
 	<reg32 offset="0x9101" name="VPC_UNKNOWN_9101"/>
 	<reg32 offset="0x9102" name="VPC_UNKNOWN_9102"/>
+	<reg32 offset="0x9103" name="VPC_UNKNOWN_9103"/>
 
 	<reg32 offset="0x9104" name="VPC_GS_SIV_CNTL"/>
 
@@ -2428,6 +2432,7 @@ to upconvert to 32b float internally?
 		<bitfield name="LAYERLOC" low="0" high="7" type="uint"/>
 	</reg32>
 
+	<reg32 offset="0x9106" name="VPC_UNKNOWN_9106"/>
 	<reg32 offset="0x9107" name="VPC_UNKNOWN_9107"/>
 	<reg32 offset="0x9108" name="VPC_UNKNOWN_9108"/>
 

@@ -245,6 +245,22 @@ fd6_stage2shadersb(gl_shader_stage type)
 	}
 }
 
+static inline enum a6xx_tess_spacing
+fd6_gl2spacing(enum gl_tess_spacing spacing)
+{
+	switch (spacing) {
+	case TESS_SPACING_EQUAL:
+		return TESS_EQUAL;
+	case TESS_SPACING_FRACTIONAL_ODD:
+		return TESS_FRACTIONAL_ODD;
+	case TESS_SPACING_FRACTIONAL_EVEN:
+		return TESS_FRACTIONAL_EVEN;
+	case TESS_SPACING_UNSPECIFIED:
+	default:
+		unreachable("spacing must be specified");
+	}
+}
+
 bool fd6_emit_textures(struct fd_pipe *pipe, struct fd_ringbuffer *ring,
 		enum pipe_shader_type type, struct fd_texture_stateobj *tex,
 		unsigned bcolor_offset,
