@@ -26,6 +26,7 @@
 #include "gl_nir_linker.h"
 #include "linker_util.h"
 #include "main/mtypes.h"
+#include "main/shaderobj.h"
 #include "ir_uniform.h" /* for gl_uniform_storage */
 
 /* This file included general link methods, using NIR, instead of IR as
@@ -475,9 +476,22 @@ nir_build_program_resource_list(struct gl_context *ctx,
    for (unsigned i = 0; i < prog->data->NumUniformStorage; i++) {
       struct gl_uniform_storage *uniform = &prog->data->UniformStorage[i];
 
-      /* Do not add uniforms internally used by Mesa. */
-      if (uniform->hidden)
+      if (uniform->hidden) {
+         for (int j = MESA_SHADER_VERTEX; j < MESA_SHADER_STAGES; j++) {
+            if (!uniform->opaque[j].active ||
+                glsl_get_base_type(uniform->type) != GLSL_TYPE_SUBROUTINE)
+               continue;
+
+            GLenum type =
+               _mesa_shader_stage_to_subroutine_uniform((gl_shader_stage)j);
+            /* add shader subroutines */
+            if (!link_util_add_program_resource(prog, resource_set,
+                                                type, uniform, 0))
+               return;
+         }
+
          continue;
+      }
 
       if (!link_util_should_add_buffer_variable(prog, uniform,
                                                 top_level_array_base_offset,
@@ -531,6 +545,21 @@ nir_build_program_resource_list(struct gl_context *ctx,
       if (!link_util_add_program_resource(prog, resource_set, GL_ATOMIC_COUNTER_BUFFER,
                                           &prog->data->AtomicBuffers[i], 0))
          return;
+   }
+
+   unsigned mask = prog->data->linked_stages;
+   while (mask) {
+      const int i = u_bit_scan(&mask);
+      struct gl_program *p = prog->_LinkedShaders[i]->Program;
+
+      GLuint type = _mesa_shader_stage_to_subroutine((gl_shader_stage)i);
+      for (unsigned j = 0; j < p->sh.NumSubroutineFunctions; j++) {
+         if (!link_util_add_program_resource(prog, resource_set,
+                                             type,
+                                             &p->sh.SubroutineFunctions[j],
+                                             0))
+            return;
+      }
    }
 
    _mesa_set_destroy(resource_set, NULL);
