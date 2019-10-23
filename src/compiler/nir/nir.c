@@ -295,6 +295,7 @@ nir_function_impl_create_bare(nir_shader *shader)
    impl->reg_alloc = 0;
    impl->ssa_alloc = 0;
    impl->valid_metadata = nir_metadata_none;
+   impl->structured = true;
 
    /* create start & end blocks */
    nir_block *start_block = nir_block_create(shader);
@@ -1600,6 +1601,8 @@ nir_block_cf_tree_next(nir_block *block)
       return NULL;
    }
 
+   assert(nir_cf_node_get_function(&block->cf_node)->structured);
+
    nir_cf_node *cf_next = nir_cf_node_next(&block->cf_node);
    if (cf_next)
       return nir_cf_node_cf_tree_first(cf_next);
@@ -1635,6 +1638,8 @@ nir_block_cf_tree_prev(nir_block *block)
       /* do this for consistency with nir_block_cf_tree_next() */
       return NULL;
    }
+
+   assert(nir_cf_node_get_function(&block->cf_node)->structured);
 
    nir_cf_node *cf_prev = nir_cf_node_prev(&block->cf_node);
    if (cf_prev)

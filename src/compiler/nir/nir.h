@@ -2775,6 +2775,12 @@ typedef struct {
    /* total number of basic blocks, only valid when block_index_dirty = false */
    unsigned num_blocks;
 
+   /** True if this nir_function_impl uses structured control-flow
+    *
+    * Structured nir_function_impls have different validation rules.
+    */
+   bool structured;
+
    nir_metadata valid_metadata;
 } nir_function_impl;
 

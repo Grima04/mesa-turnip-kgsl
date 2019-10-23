@@ -780,6 +780,7 @@ validate_jump_instr(nir_jump_instr *instr, validate_state *state)
       break;
 
    case nir_jump_break:
+      validate_assert(state, state->impl->structured);
       validate_assert(state, state->loop != NULL);
       if (state->loop) {
          nir_block *after =
@@ -790,6 +791,7 @@ validate_jump_instr(nir_jump_instr *instr, validate_state *state)
       break;
 
    case nir_jump_continue:
+      validate_assert(state, state->impl->structured);
       validate_assert(state, state->loop != NULL);
       if (state->loop) {
          nir_block *first = nir_loop_first_block(state->loop);
@@ -926,7 +928,9 @@ validate_block(nir_block *block, validate_state *state)
              pred->successors[1] == block);
    }
 
-   if (!nir_block_ends_in_jump(block)) {
+   if (!state->impl->structured) {
+      validate_assert(state, nir_block_ends_in_jump(block));
+   } else if (!nir_block_ends_in_jump(block)) {
       nir_cf_node *next = nir_cf_node_next(&block->cf_node);
       if (next == NULL) {
          switch (state->parent_node->type) {
@@ -962,12 +966,14 @@ validate_block(nir_block *block, validate_state *state)
                    nir_if_first_then_block(if_stmt));
             validate_assert(state, block->successors[1] ==
                    nir_if_first_else_block(if_stmt));
-         } else {
-            validate_assert(state, next->type == nir_cf_node_loop);
+         } else if (next->type == nir_cf_node_loop) {
             nir_loop *loop = nir_cf_node_as_loop(next);
             validate_assert(state, block->successors[0] ==
                    nir_loop_first_block(loop));
             validate_assert(state, block->successors[1] == NULL);
+         } else {
+            validate_assert(state,
+               !"Structured NIR cannot have consecutive blocks");
          }
       }
    }
@@ -976,6 +982,8 @@ validate_block(nir_block *block, validate_state *state)
 static void
 validate_if(nir_if *if_stmt, validate_state *state)
 {
+   validate_assert(state, state->impl->structured);
+
    state->if_stmt = if_stmt;
 
    validate_assert(state, !exec_node_is_head_sentinel(if_stmt->cf_node.node.prev));
@@ -1011,6 +1019,8 @@ validate_if(nir_if *if_stmt, validate_state *state)
 static void
 validate_loop(nir_loop *loop, validate_state *state)
 {
+   validate_assert(state, state->impl->structured);
+
    validate_assert(state, !exec_node_is_head_sentinel(loop->cf_node.node.prev));
    nir_cf_node *prev_node = nir_cf_node_prev(&loop->cf_node);
    validate_assert(state, prev_node->type == nir_cf_node_block);
