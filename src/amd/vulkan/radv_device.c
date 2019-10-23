@@ -3407,7 +3407,7 @@ fail:
 static VkResult radv_alloc_sem_counts(struct radv_instance *instance,
 				      struct radv_winsys_sem_counts *counts,
 				      int num_sems,
-				      const VkSemaphore *sems,
+				      struct radv_semaphore_part **sems,
 				      VkFence _fence)
 {
 	int syncobj_idx = 0, sem_idx = 0;
@@ -3416,13 +3416,7 @@ static VkResult radv_alloc_sem_counts(struct radv_instance *instance,
 		return VK_SUCCESS;
 
 	for (uint32_t i = 0; i < num_sems; i++) {
-		RADV_FROM_HANDLE(radv_semaphore, sem, sems[i]);
-
-		if (sem->temporary.kind != RADV_SEMAPHORE_NONE) {
-			assert(sem->temporary.kind == RADV_SEMAPHORE_SYNCOBJ);
-
-			counts->syncobj_count++;
-		} else if(sem->permanent.kind == RADV_SEMAPHORE_SYNCOBJ)
+		if(sems[i]->kind == RADV_SEMAPHORE_SYNCOBJ)
 			counts->syncobj_count++;
 		else
 			counts->sem_count++;
@@ -3449,18 +3443,15 @@ static VkResult radv_alloc_sem_counts(struct radv_instance *instance,
 	}
 
 	for (uint32_t i = 0; i < num_sems; i++) {
-		RADV_FROM_HANDLE(radv_semaphore, sem, sems[i]);
-		struct radv_semaphore_part *part = sem->temporary.kind != RADV_SEMAPHORE_NONE ? &sem->temporary : &sem->permanent;
-
-		switch(part->kind) {
+		switch(sems[i]->kind) {
 		case RADV_SEMAPHORE_NONE:
 			unreachable("Empty semaphore");
 			break;
 		case RADV_SEMAPHORE_SYNCOBJ:
-			counts->syncobj[syncobj_idx++] = part->syncobj;
+			counts->syncobj[syncobj_idx++] = sems[i]->syncobj;
 			break;
 		case RADV_SEMAPHORE_WINSYS:
-			counts->sem[sem_idx++] = part->ws_sem;
+			counts->sem[sem_idx++] = sems[i]->ws_sem;
 			break;
 		}
 	}
@@ -3488,14 +3479,10 @@ radv_free_sem_info(struct radv_winsys_sem_info *sem_info)
 
 static void radv_free_temp_syncobjs(struct radv_device *device,
 				    int num_sems,
-				    const VkSemaphore *sems)
+				    struct radv_semaphore_part *sems)
 {
 	for (uint32_t i = 0; i < num_sems; i++) {
-		RADV_FROM_HANDLE(radv_semaphore, sem, sems[i]);
-
-		if (sem->temporary.kind != RADV_SEMAPHORE_NONE) {
-			radv_destroy_semaphore_part(device, &sem->temporary);
-		}
+		radv_destroy_semaphore_part(device, sems + i);
 	}
 }
 
@@ -3503,9 +3490,9 @@ static VkResult
 radv_alloc_sem_info(struct radv_instance *instance,
 		    struct radv_winsys_sem_info *sem_info,
 		    int num_wait_sems,
-		    const VkSemaphore *wait_sems,
+		    struct radv_semaphore_part **wait_sems,
 		    int num_signal_sems,
-		    const VkSemaphore *signal_sems,
+		    struct radv_semaphore_part **signal_sems,
 		    VkFence fence)
 {
 	VkResult ret;
@@ -3600,6 +3587,28 @@ radv_get_preambles(struct radv_queue *queue,
 	                              initial_preamble_cs, continue_preamble_cs);
 }
 
+struct radv_deferred_queue_submission {
+	struct radv_queue *queue;
+	VkCommandBuffer *cmd_buffers;
+	uint32_t cmd_buffer_count;
+
+	/* Sparse bindings that happen on a queue. */
+	VkSparseBufferMemoryBindInfo *buffer_binds;
+	uint32_t buffer_bind_count;
+	VkSparseImageOpaqueMemoryBindInfo *image_opaque_binds;
+	uint32_t image_opaque_bind_count;
+
+	bool flush_caches;
+	VkShaderStageFlags wait_dst_stage_mask;
+	struct radv_semaphore_part **wait_semaphores;
+	uint32_t wait_semaphore_count;
+	struct radv_semaphore_part **signal_semaphores;
+	uint32_t signal_semaphore_count;
+	VkFence fence;
+
+	struct radv_semaphore_part *temporary_semaphore_parts;
+	uint32_t temporary_semaphore_part_count;
+};
 
 struct radv_queue_submission {
 	const VkCommandBuffer *cmd_buffers;
@@ -3621,10 +3630,91 @@ struct radv_queue_submission {
 };
 
 static VkResult
-radv_queue_submit(struct radv_queue *queue,
-                  const struct radv_queue_submission *submission)
+radv_create_deferred_submission(struct radv_queue *queue,
+                                const struct radv_queue_submission *submission,
+                                struct radv_deferred_queue_submission **out)
+{
+	struct radv_deferred_queue_submission *deferred = NULL;
+	size_t size = sizeof(struct radv_deferred_queue_submission);
+
+	uint32_t temporary_count = 0;
+	for (uint32_t i = 0; i < submission->wait_semaphore_count; ++i) {
+		RADV_FROM_HANDLE(radv_semaphore, semaphore, submission->wait_semaphores[i]);
+		if (semaphore->temporary.kind != RADV_SEMAPHORE_NONE)
+			++temporary_count;
+	}
+
+	size += submission->cmd_buffer_count * sizeof(VkCommandBuffer);
+	size += submission->buffer_bind_count * sizeof(VkSparseBufferMemoryBindInfo);
+	size += submission->image_opaque_bind_count * sizeof(VkSparseImageOpaqueMemoryBindInfo);
+	size += submission->wait_semaphore_count * sizeof(struct radv_semaphore_part *);
+	size += submission->signal_semaphore_count * sizeof(struct radv_semaphore_part *);
+
+	deferred = calloc(1, size);
+	if (!deferred)
+		return VK_ERROR_OUT_OF_HOST_MEMORY;
+
+	deferred->queue = queue;
+
+	deferred->cmd_buffers = (void*)(deferred + 1);
+	deferred->cmd_buffer_count = submission->cmd_buffer_count;
+	memcpy(deferred->cmd_buffers, submission->cmd_buffers,
+	       submission->cmd_buffer_count * sizeof(*deferred->cmd_buffers));
+
+	deferred->buffer_binds = (void*)(deferred->cmd_buffers + submission->cmd_buffer_count);
+	deferred->buffer_bind_count = submission->buffer_bind_count;
+	memcpy(deferred->buffer_binds, submission->buffer_binds,
+	       submission->buffer_bind_count * sizeof(*deferred->buffer_binds));
+
+	deferred->image_opaque_binds = (void*)(deferred->buffer_binds + submission->buffer_bind_count);
+	deferred->image_opaque_bind_count = submission->image_opaque_bind_count;
+	memcpy(deferred->image_opaque_binds, submission->image_opaque_binds,
+	       submission->image_opaque_bind_count * sizeof(*deferred->image_opaque_binds));
+
+	deferred->flush_caches = submission->flush_caches;
+	deferred->wait_dst_stage_mask = submission->wait_dst_stage_mask;
+
+	deferred->wait_semaphores = (void*)(deferred->image_opaque_binds + deferred->image_opaque_bind_count);
+	deferred->wait_semaphore_count = submission->wait_semaphore_count;
+
+	deferred->signal_semaphores = (void*)(deferred->wait_semaphores + deferred->wait_semaphore_count);
+	deferred->signal_semaphore_count = submission->signal_semaphore_count;
+
+	deferred->fence = submission->fence;
+
+	deferred->temporary_semaphore_parts = (void*)(deferred->signal_semaphores + deferred->signal_semaphore_count);
+	deferred->temporary_semaphore_part_count = temporary_count;
+
+	uint32_t temporary_idx = 0;
+	for (uint32_t i = 0; i < submission->wait_semaphore_count; ++i) {
+		RADV_FROM_HANDLE(radv_semaphore, semaphore, submission->wait_semaphores[i]);
+		if (semaphore->temporary.kind != RADV_SEMAPHORE_NONE) {
+			deferred->wait_semaphores[i] = &deferred->temporary_semaphore_parts[temporary_idx];
+			deferred->temporary_semaphore_parts[temporary_idx] = semaphore->temporary;
+			semaphore->temporary.kind = RADV_SEMAPHORE_NONE;
+			++temporary_idx;
+		} else
+			deferred->wait_semaphores[i] = &semaphore->permanent;
+	}
+
+	for (uint32_t i = 0; i < submission->signal_semaphore_count; ++i) {
+		RADV_FROM_HANDLE(radv_semaphore, semaphore, submission->signal_semaphores[i]);
+		if (semaphore->temporary.kind != RADV_SEMAPHORE_NONE) {
+			deferred->signal_semaphores[i] = &semaphore->temporary;
+		} else {
+			deferred->signal_semaphores[i] = &semaphore->permanent;
+		}
+	}
+
+	*out = deferred;
+	return VK_SUCCESS;
+}
+
+static VkResult
+radv_queue_submit_deferred(struct radv_deferred_queue_submission *submission)
 {
 	RADV_FROM_HANDLE(radv_fence, fence, submission->fence);
+	struct radv_queue *queue = submission->queue;
 	struct radeon_cmdbuf **cs_array;
 	struct radeon_winsys_ctx *ctx = queue->hw_ctx;
 	uint32_t max_cs_submission = queue->device->trace_bo ? 1 : RADV_MAX_IBS_PER_SUBMIT;
@@ -3645,7 +3735,7 @@ radv_queue_submit(struct radv_queue *queue,
 	                            &initial_flush_preamble_cs,
 	                            &continue_preamble_cs);
 	if (result != VK_SUCCESS)
-		return result;
+		goto fail;
 
 	result = radv_alloc_sem_info(queue->device->instance,
 				     &sem_info,
@@ -3655,7 +3745,7 @@ radv_queue_submit(struct radv_queue *queue,
 				     submission->signal_semaphores,
 				     submission->fence);
 	if (result != VK_SUCCESS)
-		return result;
+		goto fail;
 
 	for (uint32_t i = 0; i < submission->buffer_bind_count; ++i) {
 		radv_sparse_buffer_bind_memory(queue->device,
@@ -3678,6 +3768,10 @@ radv_queue_submit(struct radv_queue *queue,
 			abort();
 		}
 		radv_free_sem_info(&sem_info);
+		radv_free_temp_syncobjs(queue->device,
+		                        submission->temporary_semaphore_part_count,
+		                        submission->temporary_semaphore_parts);
+		free(submission);
 		return VK_SUCCESS;
 	}
 
@@ -3731,11 +3825,31 @@ radv_queue_submit(struct radv_queue *queue,
 	}
 
 	radv_free_temp_syncobjs(queue->device,
-				submission->wait_semaphore_count,
-				submission->wait_semaphores);
+				submission->temporary_semaphore_part_count,
+				submission->temporary_semaphore_parts);
 	radv_free_sem_info(&sem_info);
 	free(cs_array);
+	free(submission);
 	return VK_SUCCESS;
+
+fail:
+	radv_free_temp_syncobjs(queue->device,
+				submission->temporary_semaphore_part_count,
+				submission->temporary_semaphore_parts);
+	free(submission);
+	return VK_ERROR_DEVICE_LOST;
+}
+
+static VkResult radv_queue_submit(struct radv_queue *queue,
+                                  const struct radv_queue_submission *submission)
+{
+	struct radv_deferred_queue_submission *deferred = NULL;
+
+	VkResult result = radv_create_deferred_submission(queue, submission, &deferred);
+	if (result != VK_SUCCESS)
+		return result;
+
+	return radv_queue_submit_deferred(deferred);
 }
 
 /* Signals fence as soon as all the work currently put on queue is done. */
