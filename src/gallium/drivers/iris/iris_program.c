@@ -186,6 +186,28 @@ iris_lower_storage_image_derefs(nir_shader *nir)
 // XXX: need unify_interfaces() at link time...
 
 /**
+ * Undo nir_lower_passthrough_edgeflags but keep the inputs_read flag.
+ */
+static bool
+iris_fix_edge_flags(nir_shader *nir)
+{
+   if (nir->info.stage != MESA_SHADER_VERTEX)
+      return false;
+
+   nir_foreach_variable(var, &nir->outputs) {
+      if (var->data.location == VARYING_SLOT_EDGE) {
+         var->data.mode = nir_var_shader_temp;
+         nir->info.outputs_written &= ~VARYING_BIT_EDGE;
+         nir->info.inputs_read &= ~VERT_BIT_EDGEFLAG;
+         nir_fixup_deref_modes(nir);
+         return true;
+      }
+   }
+
+   return false;
+}
+
+/**
  * Fix an uncompiled shader's stream output info.
  *
  * Core Gallium stores output->register_index as a "slot" number, where
@@ -1042,22 +1064,17 @@ iris_update_compiled_vs(struct iris_context *ice)
       const bool needs_sgvs_element = uses_draw_params ||
                                       vs_prog_data->uses_instanceid ||
                                       vs_prog_data->uses_vertexid;
-      bool needs_edge_flag = false;
-      nir_foreach_variable(var, &ish->nir->inputs) {
-         if (var->data.location == VERT_ATTRIB_EDGEFLAG)
-            needs_edge_flag = true;
-      }
 
       if (ice->state.vs_uses_draw_params != uses_draw_params ||
           ice->state.vs_uses_derived_draw_params != uses_derived_draw_params ||
-          ice->state.vs_needs_edge_flag != needs_edge_flag) {
+          ice->state.vs_needs_edge_flag != ish->needs_edge_flag) {
          ice->state.dirty |= IRIS_DIRTY_VERTEX_BUFFERS |
                              IRIS_DIRTY_VERTEX_ELEMENTS;
       }
       ice->state.vs_uses_draw_params = uses_draw_params;
       ice->state.vs_uses_derived_draw_params = uses_derived_draw_params;
       ice->state.vs_needs_sgvs_element = needs_sgvs_element;
-      ice->state.vs_needs_edge_flag = needs_edge_flag;
+      ice->state.vs_needs_edge_flag = ish->needs_edge_flag;
    }
 }
 
@@ -1991,6 +2008,8 @@ iris_create_uncompiled_shader(struct pipe_context *ctx,
       calloc(1, sizeof(struct iris_uncompiled_shader));
    if (!ish)
       return NULL;
+
+   ish->needs_edge_flag = iris_fix_edge_flags(nir);
 
    brw_preprocess_nir(screen->compiler, nir, NULL);
 
