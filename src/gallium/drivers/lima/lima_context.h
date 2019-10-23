@@ -121,7 +121,6 @@ struct lima_context_constant_buffer {
 };
 
 enum lima_ctx_buff {
-   lima_ctx_buff_sh_varying,
    lima_ctx_buff_sh_gl_pos,
    lima_ctx_buff_sh_gl_point_size,
    lima_ctx_buff_gp_varying_info,
@@ -227,6 +226,7 @@ struct lima_context {
    struct lima_bo *gp_tile_heap[LIMA_CTX_PLB_MAX_NUM];
    #define gp_tile_heap_size         0x100000
    struct lima_bo *plb_gp_stream;
+   struct lima_bo *sh_varying;
 
    struct hash_table *plb_pp_stream;
    uint32_t plb_index;

@@ -1118,8 +1118,8 @@ lima_pack_render_state(struct lima_context *ctx, const struct pipe_draw_info *in
 
    if (ctx->vs->num_varyings) {
       render->varying_types = 0x00000000;
-      render->varyings_address =
-         lima_ctx_buff_va(ctx, lima_ctx_buff_sh_varying, LIMA_CTX_BUFF_SUBMIT_PP);
+      render->varyings_address = ctx->sh_varying->va;
+      lima_submit_add_bo(ctx->pp_submit, ctx->sh_varying, LIMA_SUBMIT_BO_READ);
       for (int i = 0, index = 0; i < ctx->vs->num_outputs; i++) {
          int val;
 
@@ -1257,6 +1257,7 @@ lima_update_pp_uniform(struct lima_context *ctx)
 static void
 lima_update_varying(struct lima_context *ctx, const struct pipe_draw_info *info)
 {
+   struct lima_screen *screen = lima_screen(ctx->base.screen);
    struct lima_vs_shader_state *vs = ctx->vs;
 
    uint32_t *varying =
@@ -1290,9 +1291,14 @@ lima_update_varying(struct lima_context *ctx, const struct pipe_draw_info *info)
 
    vs->varying_stride = align(offset, 16);
 
-   if (vs->num_varyings)
-      lima_ctx_buff_alloc(ctx, lima_ctx_buff_sh_varying,
-                          vs->varying_stride * info->count, false);
+   if (vs->num_varyings) {
+      /* sh_varying can be too large for the suballocators, so create a
+       * separate bo for it. The bo cache should prevent a performance hit. */
+      ctx->sh_varying = lima_bo_create(screen,
+                                       vs->varying_stride * info->count, 0);
+      assert(ctx->sh_varying);
+      lima_submit_add_bo(ctx->gp_submit, ctx->sh_varying, LIMA_SUBMIT_BO_WRITE);
+   }
 
    for (int i = 0; i < vs->num_outputs; i++) {
       struct lima_varying_info *v = vs->varying + i;
@@ -1313,9 +1319,7 @@ lima_update_varying(struct lima_context *ctx, const struct pipe_draw_info *info)
          varying[n++] = 0x2021;
       } else {
          /* Varying */
-         varying[n++] =
-            lima_ctx_buff_va(ctx, lima_ctx_buff_sh_varying, LIMA_CTX_BUFF_SUBMIT_GP) +
-            v->offset;
+         varying[n++] = ctx->sh_varying->va + v->offset;
          varying[n++] = (vs->varying_stride << 11) | (v->components - 1) |
             (v->component_size == 2 ? 0x0C : 0);
       }
@@ -1395,6 +1399,11 @@ lima_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info)
 
    lima_pack_render_state(ctx, info);
    lima_pack_plbu_cmd(ctx, info);
+
+   if (ctx->sh_varying) {
+      lima_bo_unreference(ctx->sh_varying); /* held by submit */
+      ctx->sh_varying = NULL;
+   }
 
    ctx->dirty = 0;
 }
