@@ -95,14 +95,15 @@ brw_set_dest(struct brw_codegen *p, brw_inst *inst, struct brw_reg dest)
    else if (dest.file == BRW_GENERAL_REGISTER_FILE)
       assert(dest.nr < 128);
 
-   /* The hardware has a restriction where if the destination is Byte,
-    * the instruction needs to have a stride of 2 (except for packed byte
-    * MOV). This seems to be required even if the destination is the NULL
-    * register.
+   /* The hardware has a restriction where a destination of size Byte with
+    * a stride of 1 is only allowed for a packed byte MOV. For any other
+    * instruction, the stride must be at least 2, even when the destination
+    * is the NULL register.
     */
    if (dest.file == BRW_ARCHITECTURE_REGISTER_FILE &&
        dest.nr == BRW_ARF_NULL &&
-       type_sz(dest.type) == 1) {
+       type_sz(dest.type) == 1 &&
+       dest.hstride == BRW_HORIZONTAL_STRIDE_1) {
       dest.hstride = BRW_HORIZONTAL_STRIDE_2;
    }
 
