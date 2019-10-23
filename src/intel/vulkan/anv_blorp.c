@@ -1699,7 +1699,8 @@ anv_image_mcs_op(struct anv_cmd_buffer *cmd_buffer,
 
    struct blorp_batch batch;
    blorp_batch_init(&cmd_buffer->device->blorp, &batch, cmd_buffer,
-                    predicate ? BLORP_BATCH_PREDICATE_ENABLE : 0);
+                    BLORP_BATCH_PREDICATE_ENABLE * predicate +
+                    BLORP_BATCH_NO_UPDATE_CLEAR_COLOR * !clear_value);
 
    struct blorp_surf surf;
    get_blorp_surf_for_anv_image(cmd_buffer->device, image, aspect,
@@ -1708,17 +1709,10 @@ anv_image_mcs_op(struct anv_cmd_buffer *cmd_buffer,
 
    /* Blorp will store the clear color for us if we provide the clear color
     * address and we are doing a fast clear. So we save the clear value into
-    * the blorp surface. However, in some situations we want to do a fast clear
-    * without changing the clear value stored in the state buffer. For those
-    * cases, we set the clear color address pointer to NULL, so blorp will not
-    * try to store a garbage color.
+    * the blorp surface.
     */
-   if (mcs_op == ISL_AUX_OP_FAST_CLEAR) {
-      if (clear_value)
-         surf.clear_color = *clear_value;
-      else
-         surf.clear_color_addr.buffer = NULL;
-   }
+   if (clear_value)
+      surf.clear_color = *clear_value;
 
    /* From the Sky Lake PRM Vol. 7, "Render Target Fast Clear":
     *
@@ -1785,7 +1779,8 @@ anv_image_ccs_op(struct anv_cmd_buffer *cmd_buffer,
 
    struct blorp_batch batch;
    blorp_batch_init(&cmd_buffer->device->blorp, &batch, cmd_buffer,
-                    predicate ? BLORP_BATCH_PREDICATE_ENABLE : 0);
+                    BLORP_BATCH_PREDICATE_ENABLE * predicate +
+                    BLORP_BATCH_NO_UPDATE_CLEAR_COLOR * !clear_value);
 
    struct blorp_surf surf;
    get_blorp_surf_for_anv_image(cmd_buffer->device, image, aspect,
@@ -1795,17 +1790,10 @@ anv_image_ccs_op(struct anv_cmd_buffer *cmd_buffer,
 
    /* Blorp will store the clear color for us if we provide the clear color
     * address and we are doing a fast clear. So we save the clear value into
-    * the blorp surface. However, in some situations we want to do a fast clear
-    * without changing the clear value stored in the state buffer. For those
-    * cases, we set the clear color address pointer to NULL, so blorp will not
-    * try to store a garbage color.
+    * the blorp surface.
     */
-   if (ccs_op == ISL_AUX_OP_FAST_CLEAR) {
-      if (clear_value)
-         surf.clear_color = *clear_value;
-      else
-         surf.clear_color_addr.buffer = NULL;
-   }
+   if (clear_value)
+      surf.clear_color = *clear_value;
 
    /* From the Sky Lake PRM Vol. 7, "Render Target Fast Clear":
     *
