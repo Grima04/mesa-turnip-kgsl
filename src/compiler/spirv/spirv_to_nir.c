@@ -2438,6 +2438,12 @@ vtn_handle_texture(struct vtn_builder *b, SpvOp opcode,
          (*p++) = vtn_tex_src(b, w[idx++], nir_tex_src_ddy);
       }
 
+      vtn_fail_if(util_bitcount(operands & (SpvImageOperandsConstOffsetsMask |
+                                            SpvImageOperandsOffsetMask |
+                                            SpvImageOperandsConstOffsetMask)) > 1,
+                  "At most one of the ConstOffset, Offset, and ConstOffsets "
+                  "image operands can be used on a given instruction.");
+
       if (operands & SpvImageOperandsOffsetMask ||
           operands & SpvImageOperandsConstOffsetMask)
          (*p++) = vtn_tex_src(b, w[idx++], nir_tex_src_offset);
