@@ -1091,9 +1091,11 @@ emit_intrinsic_image_size(struct ir3_context *ctx, nir_intrinsic_instr *intr,
 	struct ir3_instruction *samp_tex = get_image_samp_tex_src(ctx, intr);
 	struct ir3_instruction *sam, *lod;
 	unsigned flags, ncoords = ir3_get_image_coords(var, &flags);
+	type_t dst_type = nir_dest_bit_size(intr->dest) < 32 ?
+			TYPE_U16 : TYPE_U32;
 
 	lod = create_immed(b, 0);
-	sam = ir3_SAM(b, OPC_GETSIZE, TYPE_U32, 0b1111, flags,
+	sam = ir3_SAM(b, OPC_GETSIZE, dst_type, 0b1111, flags,
 			samp_tex, lod, NULL);
 
 	/* Array size actually ends up in .w rather than .z. This doesn't
@@ -1851,6 +1853,30 @@ emit_undef(struct ir3_context *ctx, nir_ssa_undef_instr *undef)
  * texture fetch/sample instructions:
  */
 
+static type_t
+get_tex_dest_type(nir_tex_instr *tex)
+{
+	type_t type;
+
+	switch (nir_alu_type_get_base_type(tex->dest_type)) {
+	case nir_type_invalid:
+	case nir_type_float:
+		type = nir_dest_bit_size(tex->dest) < 32 ? TYPE_F16 : TYPE_F32;
+		break;
+	case nir_type_int:
+		type = nir_dest_bit_size(tex->dest) < 32 ? TYPE_S16 : TYPE_S32;
+		break;
+	case nir_type_uint:
+	case nir_type_bool:
+		type = nir_dest_bit_size(tex->dest) < 32 ? TYPE_U16 : TYPE_U32;
+		break;
+	default:
+		unreachable("bad dest_type");
+	}
+
+	return type;
+}
+
 static void
 tex_info(nir_tex_instr *tex, unsigned *flagsp, unsigned *coordsp)
 {
@@ -2147,21 +2173,7 @@ emit_tex(struct ir3_context *ctx, nir_tex_instr *tex)
 			src1[nsrc1++] = lod;
 	}
 
-	switch (tex->dest_type) {
-	case nir_type_invalid:
-	case nir_type_float:
-		type = TYPE_F32;
-		break;
-	case nir_type_int:
-		type = TYPE_S32;
-		break;
-	case nir_type_uint:
-	case nir_type_bool:
-		type = TYPE_U32;
-		break;
-	default:
-		unreachable("bad dest_type");
-	}
+	type = get_tex_dest_type(tex);
 
 	if (opc == OPC_GETLOD)
 		type = TYPE_S32;
@@ -2244,10 +2256,11 @@ emit_tex_info(struct ir3_context *ctx, nir_tex_instr *tex, unsigned idx)
 {
 	struct ir3_block *b = ctx->block;
 	struct ir3_instruction **dst, *sam;
+	type_t dst_type = get_tex_dest_type(tex);
 
 	dst = ir3_get_dst(ctx, &tex->dest, 1);
 
-	sam = ir3_SAM(b, OPC_GETINFO, TYPE_U32, 1 << idx, 0,
+	sam = ir3_SAM(b, OPC_GETINFO, dst_type, 1 << idx, 0,
 			get_tex_samp_tex_src(ctx, tex), NULL, NULL);
 
 	/* even though there is only one component, since it ends
@@ -2272,6 +2285,7 @@ emit_tex_txs(struct ir3_context *ctx, nir_tex_instr *tex)
 	struct ir3_instruction **dst, *sam;
 	struct ir3_instruction *lod;
 	unsigned flags, coords;
+	type_t dst_type = get_tex_dest_type(tex);
 
 	tex_info(tex, &flags, &coords);
 
@@ -2288,7 +2302,7 @@ emit_tex_txs(struct ir3_context *ctx, nir_tex_instr *tex)
 
 	lod = ir3_get_src(ctx, &tex->src[0].src)[0];
 
-	sam = ir3_SAM(b, OPC_GETSIZE, TYPE_U32, 0b1111, flags,
+	sam = ir3_SAM(b, OPC_GETSIZE, dst_type, 0b1111, flags,
 			get_tex_samp_tex_src(ctx, tex), lod, NULL);
 
 	ir3_split_dest(b, dst, sam, 0, 4);
