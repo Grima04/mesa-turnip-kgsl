@@ -135,6 +135,7 @@ enum {
 #define IRIS_DIRTY_COMPUTE_RESOLVES_AND_FLUSHES (1ull << 56)
 #define IRIS_DIRTY_VF_STATISTICS            (1ull << 57)
 #define IRIS_DIRTY_PMA_FIX                  (1ull << 58)
+#define IRIS_DIRTY_DEPTH_BOUNDS             (1ull << 59)
 
 #define IRIS_ALL_DIRTY_FOR_COMPUTE (IRIS_DIRTY_CS | \
                                     IRIS_DIRTY_SAMPLER_STATES_CS | \

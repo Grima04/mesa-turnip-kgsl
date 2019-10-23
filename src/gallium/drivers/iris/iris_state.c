@@ -1278,6 +1278,10 @@ struct iris_depth_stencil_alpha_state {
    /** Partial 3DSTATE_WM_DEPTH_STENCIL. */
    uint32_t wmds[GENX(3DSTATE_WM_DEPTH_STENCIL_length)];
 
+#if GEN_GEN >= 12
+   uint32_t depth_bounds[GENX(3DSTATE_DEPTH_BOUNDS_length)];
+#endif
+
    /** Outbound to BLEND_STATE, 3DSTATE_PS_BLEND, COLOR_CALC_STATE. */
    struct pipe_alpha_state alpha;
 
@@ -1340,6 +1344,16 @@ iris_create_zsa_state(struct pipe_context *ctx,
       /* wmds.[Backface]StencilReferenceValue are merged later */
    }
 
+#if GEN_GEN >= 12
+   iris_pack_command(GENX(3DSTATE_DEPTH_BOUNDS), cso->depth_bounds, depth_bounds) {
+      depth_bounds.DepthBoundsTestValueModifyDisable = false;
+      depth_bounds.DepthBoundsTestEnableModifyDisable = false;
+      depth_bounds.DepthBoundsTestEnable = state->depth.bounds_test;
+      depth_bounds.DepthBoundsTestMinValue = state->depth.bounds_min;
+      depth_bounds.DepthBoundsTestMaxValue = state->depth.bounds_max;
+   }
+#endif
+
    return cso;
 }
 
@@ -1370,6 +1384,11 @@ iris_bind_zsa_state(struct pipe_context *ctx, void *state)
 
       ice->state.depth_writes_enabled = new_cso->depth_writes_enabled;
       ice->state.stencil_writes_enabled = new_cso->stencil_writes_enabled;
+
+#if GEN_GEN >= 12
+      if (cso_changed(depth_bounds))
+         ice->state.dirty |= IRIS_DIRTY_DEPTH_BOUNDS;
+#endif
    }
 
    ice->state.cso_zsa = new_cso;
@@ -5555,6 +5574,10 @@ iris_upload_dirty_render_state(struct iris_context *ice,
       iris_emit_merge(batch, cso->wmds, stencil_refs, ARRAY_SIZE(cso->wmds));
 #else
       iris_batch_emit(batch, cso->wmds, sizeof(cso->wmds));
+#endif
+
+#if GEN_GEN >= 12
+      iris_batch_emit(batch, cso->depth_bounds, sizeof(cso->depth_bounds));
 #endif
    }
 
