@@ -1394,6 +1394,18 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 		dst[0] = ctx->primitive_id;
 		break;
 
+	case nir_intrinsic_load_tess_coord:
+		if (!ctx->tess_coord) {
+			ctx->tess_coord = create_input_compmask(ctx, 0, 0x3);
+			add_sysval_input_compmask(ctx, SYSTEM_VALUE_TESS_COORD,
+									  0x3, ctx->tess_coord);
+		}
+		ir3_split_dest(b, dst, ctx->tess_coord, 0, 2);
+
+		/* Unused, but ir3_put_dst() below wants to free something */
+		dst[2] = create_immed(b, 0);
+		break;
+
 	case nir_intrinsic_store_global_ir3: {
 		struct ir3_instruction *value, *addr, *offset;
 
