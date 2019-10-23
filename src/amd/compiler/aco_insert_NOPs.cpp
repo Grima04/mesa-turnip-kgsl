@@ -39,6 +39,7 @@ struct NOP_ctx {
 
    /* GFX10 */
    int last_VMEM_since_scalar_write = -1;
+   bool has_VOPC = false;
 
    NOP_ctx(Program* program) : chip_class(program->chip_class) {
       vcc_physical = program->config->num_sgprs - 2;
@@ -281,6 +282,25 @@ std::pair<int, int> handle_instruction_gfx10(NOP_ctx& ctx, aco_ptr<Instruction>&
          ctx.last_VMEM_since_scalar_write = -1;
    } else if (instr->isVALU()) {
       ctx.last_VMEM_since_scalar_write = -1;
+   }
+
+   /* VcmpxPermlaneHazard
+    * Handle any permlane following a VOPC instruction, insert v_mov between them.
+    */
+   if (instr->format == Format::VOPC) {
+      ctx.has_VOPC = true;
+   } else if (ctx.has_VOPC &&
+              (instr->opcode == aco_opcode::v_permlane16_b32 ||
+               instr->opcode == aco_opcode::v_permlanex16_b32)) {
+      ctx.has_VOPC = false;
+
+      /* v_nop would be discarded by SQ, so use v_mov with the first operand of the permlane */
+      aco_ptr<VOP1_instruction> v_mov{create_instruction<VOP1_instruction>(aco_opcode::v_mov_b32, Format::VOP1, 1, 1)};
+      v_mov->definitions[0] = Definition(instr->operands[0].physReg(), v1);
+      v_mov->operands[0] = Operand(instr->operands[0].physReg(), v1);
+      new_instructions.emplace_back(std::move(v_mov));
+   } else if (instr->isVALU() && instr->opcode != aco_opcode::v_nop) {
+      ctx.has_VOPC = false;
    }
 
    return std::make_pair(sNOPs, vNOPs);

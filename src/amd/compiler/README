@@ -173,3 +173,11 @@ The 12-bit immediate OFFSET field of FLAT instructions must always be 0.
 GLOBAL and SCRATCH are unaffected.
 
 ACO doesn't use FLAT load/store on GFX10, so is unaffected.
+
+### VcmpxPermlaneHazard
+
+Triggered by:
+Any permlane instruction that follows any VOPC instruction.
+Confirmed by AMD devs that despite the name, this doesn't only affect v_cmpx.
+
+Mitigated by: any VALU instruction except `v_nop`.
