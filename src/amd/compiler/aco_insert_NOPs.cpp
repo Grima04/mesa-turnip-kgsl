@@ -22,6 +22,8 @@
  *
  */
 
+#include <algorithm>
+
 #include "aco_ir.h"
 
 namespace aco {
@@ -40,6 +42,7 @@ struct NOP_ctx {
    /* GFX10 */
    int last_VMEM_since_scalar_write = -1;
    bool has_VOPC = false;
+   bool has_nonVALU_exec_read = false;
 
    NOP_ctx(Program* program) : chip_class(program->chip_class) {
       vcc_physical = program->config->num_sgprs - 2;
@@ -55,6 +58,27 @@ bool VALU_writes_sgpr(aco_ptr<Instruction>& instr)
    if (instr->opcode == aco_opcode::v_readfirstlane_b32 || instr->opcode == aco_opcode::v_readlane_b32)
       return true;
    return false;
+}
+
+bool instr_reads_exec(const aco_ptr<Instruction>& instr)
+{
+   return std::any_of(instr->operands.begin(), instr->operands.end(), [](const Operand &op) -> bool {
+      return op.physReg() == exec_lo || op.physReg() == exec_hi;
+   });
+}
+
+bool instr_writes_exec(const aco_ptr<Instruction>& instr)
+{
+   return std::any_of(instr->definitions.begin(), instr->definitions.end(), [](const Definition &def) -> bool {
+      return def.physReg() == exec_lo || def.physReg() == exec_hi;
+   });
+}
+
+bool instr_writes_sgpr(const aco_ptr<Instruction>& instr)
+{
+   return std::any_of(instr->definitions.begin(), instr->definitions.end(), [](const Definition &def) -> bool {
+      return def.getTemp().type() == RegType::sgpr;
+   });
 }
 
 bool regs_intersect(PhysReg a_reg, unsigned a_size, PhysReg b_reg, unsigned b_size)
@@ -301,6 +325,31 @@ std::pair<int, int> handle_instruction_gfx10(NOP_ctx& ctx, aco_ptr<Instruction>&
       new_instructions.emplace_back(std::move(v_mov));
    } else if (instr->isVALU() && instr->opcode != aco_opcode::v_nop) {
       ctx.has_VOPC = false;
+   }
+
+   /* VcmpxExecWARHazard
+    * Handle any VALU instruction writing the exec mask after it was read by a non-VALU instruction.
+    */
+   if (!instr->isVALU() && instr_reads_exec(instr)) {
+      ctx.has_nonVALU_exec_read = true;
+   } else if (instr->isVALU()) {
+      if (instr_writes_exec(instr)) {
+         ctx.has_nonVALU_exec_read = false;
+
+         /* Insert s_waitcnt_depctr instruction with magic imm to mitigate the problem */
+         aco_ptr<SOPP_instruction> depctr{create_instruction<SOPP_instruction>(aco_opcode::s_waitcnt_depctr, Format::SOPP, 0, 1)};
+         depctr->imm = 0xfffe;
+         depctr->definitions[0] = Definition(sgpr_null, s1);
+         new_instructions.emplace_back(std::move(depctr));
+      } else if (instr_writes_sgpr(instr)) {
+         /* Any VALU instruction that writes an SGPR mitigates the problem */
+         ctx.has_nonVALU_exec_read = false;
+      }
+   } else if (instr->opcode == aco_opcode::s_waitcnt_depctr) {
+      /* s_waitcnt_depctr can mitigate the problem if it has a magic imm */
+      const SOPP_instruction *sopp = static_cast<const SOPP_instruction *>(instr.get());
+      if ((sopp->imm & 0xfffe) == 0xfffe)
+         ctx.has_nonVALU_exec_read = false;
    }
 
    return std::make_pair(sNOPs, vNOPs);

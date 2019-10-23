@@ -181,3 +181,13 @@ Any permlane instruction that follows any VOPC instruction.
 Confirmed by AMD devs that despite the name, this doesn't only affect v_cmpx.
 
 Mitigated by: any VALU instruction except `v_nop`.
+
+### VcmpxExecWARHazard
+
+Triggered by:
+Any non-VALU instruction reads the EXEC mask. Then, any VALU instruction writes the EXEC mask.
+
+Mitigated by:
+A VALU instruction that writes an SGPR (or has a valid SDST operand), or `s_waitcnt_depctr 0xfffe`.
+Note: `s_waitcnt_depctr` is an internal instruction, so there is no further information
+about what it does or what its operand means.
