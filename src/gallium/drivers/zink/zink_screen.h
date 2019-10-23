@@ -50,6 +50,7 @@ struct zink_screen {
    VkPhysicalDeviceMemoryProperties mem_props;
 
    bool have_KHR_maintenance1;
+   bool have_KHR_external_memory_fd;
 
    bool have_X8_D24_UNORM_PACK32;
    bool have_D24_UNORM_S8_UINT;

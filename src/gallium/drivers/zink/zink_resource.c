@@ -355,8 +355,11 @@ zink_screen_resource_init(struct pipe_screen *pscreen)
 {
    pscreen->resource_create = zink_resource_create;
    pscreen->resource_destroy = zink_resource_destroy;
-   pscreen->resource_get_handle = zink_resource_get_handle;
-   pscreen->resource_from_handle = zink_resource_from_handle;
+
+   if (zink_screen(pscreen)->have_KHR_external_memory_fd) {
+      pscreen->resource_get_handle = zink_resource_get_handle;
+      pscreen->resource_from_handle = zink_resource_from_handle;
+   }
 }
 
 static bool

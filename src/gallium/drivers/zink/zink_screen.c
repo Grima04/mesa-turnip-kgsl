@@ -299,6 +299,9 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_TWO_SIDED_COLOR:
       return 0;
 
+   case PIPE_CAP_DMABUF:
+      return screen->have_KHR_external_memory_fd;
+
    default:
       return u_pipe_screen_get_param_defaults(pscreen, param);
    }
@@ -869,8 +872,11 @@ zink_internal_create_screen(struct sw_winsys *winsys, int fd)
 
          for (uint32_t  i = 0; i < num_extensions; ++i) {
             if (!strcmp(extensions[i].extensionName,
-                VK_KHR_MAINTENANCE1_EXTENSION_NAME))
+                        VK_KHR_MAINTENANCE1_EXTENSION_NAME))
                screen->have_KHR_maintenance1 = true;
+            if (!strcmp(extensions[i].extensionName,
+                        VK_KHR_EXTERNAL_MEMORY_FD_EXTENSION_NAME))
+               screen->have_KHR_external_memory_fd = true;
          }
          FREE(extensions);
       }
@@ -893,13 +899,24 @@ zink_internal_create_screen(struct sw_winsys *winsys, int fd)
    dci.queueCreateInfoCount = 1;
    dci.pQueueCreateInfos = &qci;
    dci.pEnabledFeatures = &screen->feats;
-   const char *extensions[] = {
+   const char *extensions[3] = {
       VK_KHR_MAINTENANCE1_EXTENSION_NAME,
-      VK_KHR_EXTERNAL_MEMORY_EXTENSION_NAME,
-      VK_KHR_EXTERNAL_MEMORY_FD_EXTENSION_NAME,
    };
+   num_extensions = 1;
+
+   if (fd >= 0 && !screen->have_KHR_external_memory_fd) {
+      debug_printf("ZINK: KHR_external_memory_fd required!\n");
+      goto fail;
+   }
+
+   if (screen->have_KHR_external_memory_fd) {
+      extensions[num_extensions++] = VK_KHR_EXTERNAL_MEMORY_EXTENSION_NAME;
+      extensions[num_extensions++] = VK_KHR_EXTERNAL_MEMORY_FD_EXTENSION_NAME;
+   }
+   assert(num_extensions <= ARRAY_SIZE(extensions));
+
    dci.ppEnabledExtensionNames = extensions;
-   dci.enabledExtensionCount = ARRAY_SIZE(extensions);
+   dci.enabledExtensionCount = num_extensions;
    if (vkCreateDevice(screen->pdev, &dci, NULL, &screen->dev) != VK_SUCCESS)
       goto fail;
 
