@@ -330,6 +330,19 @@ typedef struct nir_variable {
       unsigned patch:1;
       unsigned invariant:1;
 
+     /**
+       * Precision qualifier.
+       *
+       * In desktop GLSL we do not care about precision qualifiers at all, in
+       * fact, the spec says that precision qualifiers are ignored.
+       *
+       * To make things easy, we make it so that this field is always
+       * GLSL_PRECISION_NONE on desktop shaders. This way all the variables
+       * have the same precision value and the checks we add in the compiler
+       * for this field will never break a desktop shader compile.
+       */
+      unsigned precision:2;
+
       /**
        * Can this variable be coalesced with another?
        *
@@ -393,6 +406,15 @@ typedef struct nir_variable {
       unsigned explicit_binding:1;
 
       /**
+       * Was the location explicitly set in the shader?
+       *
+       * If the location is explicitly set in the shader, it \b cannot be changed
+       * by the linker or by the API (e.g., calls to \c glBindAttribLocation have
+       * no effect).
+       */
+      unsigned explicit_location:1;
+
+      /**
        * Was a transfer feedback buffer set in the shader?
        */
       unsigned explicit_xfb_buffer:1;
@@ -406,6 +428,12 @@ typedef struct nir_variable {
        * Was an explicit offset set in the shader?
        */
       unsigned explicit_offset:1;
+
+      /**
+       * Non-zero if this variable was created by lowering a named interface
+       * block.
+       */
+      unsigned from_named_ifc_block:1;
 
       /**
        * How the variable was declared.  See nir_var_declaration_type.
