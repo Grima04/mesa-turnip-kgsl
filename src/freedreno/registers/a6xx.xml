@@ -967,7 +967,7 @@ to upconvert to 32b float internally?
 </enum>
 
 <domain name="A6XX" width="32">
-	<bitset name="A6XX_RBBM_INT_0_MASK">
+	<bitset name="A6XX_RBBM_INT_0_MASK" inline="yes">
 		<bitfield name="RBBM_GPU_IDLE" pos="0"/>
 		<bitfield name="CP_AHB_ERROR" pos="1"/>
 		<bitfield name="RBBM_ATB_ASYNCFIFO_OVERFLOW" pos="6"/>
