@@ -3545,8 +3545,14 @@ iris_set_stream_output_targets(struct pipe_context *ctx,
       unsigned offset = offsets[i];
 
       if (!tgt) {
-         iris_pack_command(GENX(3DSTATE_SO_BUFFER), so_buffers, sob)
+         iris_pack_command(GENX(3DSTATE_SO_BUFFER), so_buffers, sob) {
+#if GEN_GEN < 12
             sob.SOBufferIndex = i;
+#else
+            sob._3DCommandOpcode = 0;
+            sob._3DCommandSubOpcode = SO_BUFFER_INDEX_0_CMD + i;
+#endif
+         }
          continue;
       }
 
@@ -3567,6 +3573,12 @@ iris_set_stream_output_targets(struct pipe_context *ctx,
          offset = 0;
 
       iris_pack_command(GENX(3DSTATE_SO_BUFFER), so_buffers, sob) {
+#if GEN_GEN < 12
+         sob.SOBufferIndex = i;
+#else
+         sob._3DCommandOpcode = 0;
+         sob._3DCommandSubOpcode = SO_BUFFER_INDEX_0_CMD + i;
+#endif
          sob.SurfaceBaseAddress =
             rw_bo(NULL, res->bo->gtt_offset + tgt->base.buffer_offset);
          sob.SOBufferEnable = true;
@@ -3575,8 +3587,6 @@ iris_set_stream_output_targets(struct pipe_context *ctx,
          sob.MOCS = mocs(res->bo);
 
          sob.SurfaceSize = MAX2(tgt->base.buffer_size / 4, 1) - 1;
-
-         sob.SOBufferIndex = i;
          sob.StreamOffset = offset;
          sob.StreamOutputBufferOffsetAddress =
             rw_bo(NULL, iris_resource_bo(tgt->offset.res)->gtt_offset +
