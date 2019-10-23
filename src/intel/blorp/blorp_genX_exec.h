@@ -1600,6 +1600,7 @@ blorp_emit_depth_stencil_config(struct blorp_batch *batch,
    if (params->stencil.enabled) {
       info.stencil_surf = &params->stencil.surf;
 
+      info.stencil_aux_usage = params->stencil.aux_usage;
       struct blorp_address stencil_address = params->stencil.addr;
 #if GEN_GEN == 6
       /* Sandy bridge hardware does not technically support mipmapped stencil.

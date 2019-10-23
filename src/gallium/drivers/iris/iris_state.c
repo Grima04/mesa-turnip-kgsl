@@ -2993,6 +2993,7 @@ iris_set_framebuffer_state(struct pipe_context *ctx,
 
       if (stencil_res) {
          view.usage |= ISL_SURF_USAGE_STENCIL_BIT;
+         info.stencil_aux_usage = stencil_res->aux.usage;
          info.stencil_surf = &stencil_res->surf;
          info.stencil_address = stencil_res->bo->gtt_offset + stencil_res->offset;
          if (!zres) {

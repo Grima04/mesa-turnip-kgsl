@@ -1445,6 +1445,11 @@ struct isl_depth_stencil_hiz_emit_info {
     * The depth clear value
     */
    float depth_clear_value;
+
+   /**
+    * Track stencil aux usage for Gen >= 12
+    */
+   enum isl_aux_usage stencil_aux_usage;
 };
 
 extern const struct isl_format_layout isl_format_layouts[];
