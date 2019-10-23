@@ -2181,6 +2181,42 @@ vtn_tex_src(struct vtn_builder *b, unsigned index, nir_tex_src_type type)
    return src;
 }
 
+static uint32_t
+image_operand_arg(struct vtn_builder *b, const uint32_t *w, uint32_t count,
+                  uint32_t mask_idx, SpvImageOperandsMask op)
+{
+   static const SpvImageOperandsMask ops_with_arg =
+      SpvImageOperandsBiasMask |
+      SpvImageOperandsLodMask |
+      SpvImageOperandsGradMask |
+      SpvImageOperandsConstOffsetMask |
+      SpvImageOperandsOffsetMask |
+      SpvImageOperandsConstOffsetsMask |
+      SpvImageOperandsSampleMask |
+      SpvImageOperandsMinLodMask |
+      SpvImageOperandsMakeTexelAvailableMask |
+      SpvImageOperandsMakeTexelVisibleMask;
+
+   assert(util_bitcount(op) == 1);
+   assert(w[mask_idx] & op);
+   assert(op & ops_with_arg);
+
+   uint32_t idx = util_bitcount(w[mask_idx] & (op - 1) & ops_with_arg) + 1;
+
+   /* Adjust indices for operands with two arguments. */
+   static const SpvImageOperandsMask ops_with_two_args =
+      SpvImageOperandsGradMask;
+   idx += util_bitcount(w[mask_idx] & (op - 1) & ops_with_two_args);
+
+   idx += mask_idx;
+
+   vtn_fail_if(idx + (op & ops_with_two_args ? 1 : 0) >= count,
+               "Image op claims to have %s but does not enough "
+               "following operands", spirv_imageoperands_to_string(op));
+
+   return idx;
+}
+
 static void
 vtn_handle_texture(struct vtn_builder *b, SpvOp opcode,
                    const uint32_t *w, unsigned count)
@@ -2417,25 +2453,31 @@ vtn_handle_texture(struct vtn_builder *b, SpvOp opcode,
    /* Now we need to handle some number of optional arguments */
    struct vtn_value *gather_offsets = NULL;
    if (idx < count) {
-      uint32_t operands = w[idx++];
+      uint32_t operands = w[idx];
 
       if (operands & SpvImageOperandsBiasMask) {
          vtn_assert(texop == nir_texop_tex);
          texop = nir_texop_txb;
-         (*p++) = vtn_tex_src(b, w[idx++], nir_tex_src_bias);
+         uint32_t arg = image_operand_arg(b, w, count, idx,
+                                          SpvImageOperandsBiasMask);
+         (*p++) = vtn_tex_src(b, w[arg], nir_tex_src_bias);
       }
 
       if (operands & SpvImageOperandsLodMask) {
          vtn_assert(texop == nir_texop_txl || texop == nir_texop_txf ||
                     texop == nir_texop_txs);
-         (*p++) = vtn_tex_src(b, w[idx++], nir_tex_src_lod);
+         uint32_t arg = image_operand_arg(b, w, count, idx,
+                                          SpvImageOperandsLodMask);
+         (*p++) = vtn_tex_src(b, w[arg], nir_tex_src_lod);
       }
 
       if (operands & SpvImageOperandsGradMask) {
          vtn_assert(texop == nir_texop_txl);
          texop = nir_texop_txd;
-         (*p++) = vtn_tex_src(b, w[idx++], nir_tex_src_ddx);
-         (*p++) = vtn_tex_src(b, w[idx++], nir_tex_src_ddy);
+         uint32_t arg = image_operand_arg(b, w, count, idx,
+                                          SpvImageOperandsGradMask);
+         (*p++) = vtn_tex_src(b, w[arg], nir_tex_src_ddx);
+         (*p++) = vtn_tex_src(b, w[arg + 1], nir_tex_src_ddy);
       }
 
       vtn_fail_if(util_bitcount(operands & (SpvImageOperandsConstOffsetsMask |
@@ -2444,30 +2486,42 @@ vtn_handle_texture(struct vtn_builder *b, SpvOp opcode,
                   "At most one of the ConstOffset, Offset, and ConstOffsets "
                   "image operands can be used on a given instruction.");
 
-      if (operands & SpvImageOperandsOffsetMask ||
-          operands & SpvImageOperandsConstOffsetMask)
-         (*p++) = vtn_tex_src(b, w[idx++], nir_tex_src_offset);
+      if (operands & SpvImageOperandsOffsetMask) {
+         uint32_t arg = image_operand_arg(b, w, count, idx,
+                                          SpvImageOperandsOffsetMask);
+         (*p++) = vtn_tex_src(b, w[arg], nir_tex_src_offset);
+      }
+
+      if (operands & SpvImageOperandsConstOffsetMask) {
+         uint32_t arg = image_operand_arg(b, w, count, idx,
+                                          SpvImageOperandsConstOffsetMask);
+         (*p++) = vtn_tex_src(b, w[arg], nir_tex_src_offset);
+      }
 
       if (operands & SpvImageOperandsConstOffsetsMask) {
          vtn_assert(texop == nir_texop_tg4);
-         gather_offsets = vtn_value(b, w[idx++], vtn_value_type_constant);
+         uint32_t arg = image_operand_arg(b, w, count, idx,
+                                          SpvImageOperandsConstOffsetsMask);
+         gather_offsets = vtn_value(b, w[arg], vtn_value_type_constant);
       }
 
       if (operands & SpvImageOperandsSampleMask) {
          vtn_assert(texop == nir_texop_txf_ms);
+         uint32_t arg = image_operand_arg(b, w, count, idx,
+                                          SpvImageOperandsSampleMask);
          texop = nir_texop_txf_ms;
-         (*p++) = vtn_tex_src(b, w[idx++], nir_tex_src_ms_index);
+         (*p++) = vtn_tex_src(b, w[arg], nir_tex_src_ms_index);
       }
 
       if (operands & SpvImageOperandsMinLodMask) {
          vtn_assert(texop == nir_texop_tex ||
                     texop == nir_texop_txb ||
                     texop == nir_texop_txd);
-         (*p++) = vtn_tex_src(b, w[idx++], nir_tex_src_min_lod);
+         uint32_t arg = image_operand_arg(b, w, count, idx,
+                                          SpvImageOperandsMinLodMask);
+         (*p++) = vtn_tex_src(b, w[arg], nir_tex_src_min_lod);
       }
    }
-   /* We should have now consumed exactly all of the arguments */
-   vtn_assert(idx == count);
 
    nir_tex_instr *instr = nir_tex_instr_create(b->shader, p - srcs);
    instr->op = texop;
@@ -2672,10 +2726,10 @@ vtn_handle_image(struct vtn_builder *b, SpvOp opcode,
       const SpvImageOperandsMask operands =
          count > 5 ? w[5] : SpvImageOperandsMaskNone;
 
-      int idx = 6;
       if (operands & SpvImageOperandsSampleMask) {
-         image.sample = vtn_ssa_value(b, w[idx])->def;
-         idx++;
+         uint32_t arg = image_operand_arg(b, w, count, 5,
+                                          SpvImageOperandsSampleMask);
+         image.sample = vtn_ssa_value(b, w[arg])->def;
       } else {
          image.sample = nir_ssa_undef(&b->nb, 1, 32);
       }
@@ -2683,9 +2737,10 @@ vtn_handle_image(struct vtn_builder *b, SpvOp opcode,
       if (operands & SpvImageOperandsMakeTexelVisibleMask) {
          vtn_fail_if((operands & SpvImageOperandsNonPrivateTexelMask) == 0,
                      "MakeTexelVisible requires NonPrivateTexel to also be set.");
+         uint32_t arg = image_operand_arg(b, w, count, 5,
+                                          SpvImageOperandsMakeTexelVisibleMask);
          semantics = SpvMemorySemanticsMakeVisibleMask;
-         scope = vtn_constant_uint(b, w[idx]);
-         idx++;
+         scope = vtn_constant_uint(b, w[arg]);
       }
 
       /* TODO: Volatile. */
@@ -2702,10 +2757,10 @@ vtn_handle_image(struct vtn_builder *b, SpvOp opcode,
       const SpvImageOperandsMask operands =
          count > 4 ? w[4] : SpvImageOperandsMaskNone;
 
-      int idx = 5;
       if (operands & SpvImageOperandsSampleMask) {
-         image.sample = vtn_ssa_value(b, w[idx])->def;
-         idx++;
+         uint32_t arg = image_operand_arg(b, w, count, 4,
+                                          SpvImageOperandsSampleMask);
+         image.sample = vtn_ssa_value(b, w[arg])->def;
       } else {
          image.sample = nir_ssa_undef(&b->nb, 1, 32);
       }
@@ -2713,8 +2768,10 @@ vtn_handle_image(struct vtn_builder *b, SpvOp opcode,
       if (operands & SpvImageOperandsMakeTexelAvailableMask) {
          vtn_fail_if((operands & SpvImageOperandsNonPrivateTexelMask) == 0,
                      "MakeTexelAvailable requires NonPrivateTexel to also be set.");
+         uint32_t arg = image_operand_arg(b, w, count, 4,
+                                          SpvImageOperandsMakeTexelAvailableMask);
          semantics = SpvMemorySemanticsMakeAvailableMask;
-         scope = vtn_constant_uint(b, w[idx]);
+         scope = vtn_constant_uint(b, w[arg]);
       }
 
       /* TODO: Volatile. */
