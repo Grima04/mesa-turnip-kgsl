@@ -2598,7 +2598,9 @@ emit_function(struct ir3_context *ctx, nir_function_impl *impl)
 	 * be read by the HS.  Then it resets execution mask (chmask) and chains
 	 * to the next shader (chsh).
 	 */
-	if (ctx->so->type == MESA_SHADER_VERTEX && ctx->so->key.has_gs) {
+	if ((ctx->so->type == MESA_SHADER_VERTEX &&
+				(ctx->so->key.has_gs || ctx->so->key.tessellation)) ||
+			(ctx->so->type == MESA_SHADER_TESS_EVAL && ctx->so->key.has_gs)) {
 		struct ir3_instruction *chmask =
 			ir3_CHMASK(ctx->block);
 		chmask->barrier_class = IR3_BARRIER_EVERYTHING;
