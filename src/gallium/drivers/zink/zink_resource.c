@@ -133,7 +133,7 @@ resource_create(struct pipe_screen *pscreen,
       vkGetBufferMemoryRequirements(screen->dev, res->buffer, &reqs);
       flags |= VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
    } else {
-      res->format = zink_get_format(templ->format);
+      res->format = zink_get_format(screen, templ->format);
 
       VkImageCreateInfo ici = {};
       ici.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;

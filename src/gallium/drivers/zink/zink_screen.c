@@ -569,10 +569,33 @@ static const VkFormat formats[PIPE_FORMAT_COUNT] = {
    [PIPE_FORMAT_BPTC_RGB_UFLOAT] = VK_FORMAT_BC6H_UFLOAT_BLOCK,
 };
 
-VkFormat
-zink_get_format(enum pipe_format format)
+static bool
+is_depth_format_supported(struct zink_screen *screen, VkFormat format)
 {
-   return formats[format];
+   VkFormatProperties props;
+   vkGetPhysicalDeviceFormatProperties(screen->pdev, format, &props);
+   return (props.linearTilingFeatures | props.optimalTilingFeatures) &
+          VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
+}
+
+VkFormat
+zink_get_format(struct zink_screen *screen, enum pipe_format format)
+{
+   VkFormat ret = formats[format];
+
+   if (ret == VK_FORMAT_X8_D24_UNORM_PACK32 &&
+       !screen->have_X8_D24_UNORM_PACK32) {
+      assert(is_depth_format_supported(screen, VK_FORMAT_D32_SFLOAT));
+      return VK_FORMAT_D32_SFLOAT;
+   }
+
+   if (ret == VK_FORMAT_D24_UNORM_S8_UINT &&
+       !screen->have_D24_UNORM_S8_UINT) {
+      assert(is_depth_format_supported(screen, VK_FORMAT_D32_SFLOAT_S8_UINT));
+      return VK_FORMAT_D32_SFLOAT_S8_UINT;
+   }
+
+   return ret;
 }
 
 static VkSampleCountFlagBits
@@ -605,7 +628,7 @@ zink_is_format_supported(struct pipe_screen *pscreen,
       return screen->props.limits.framebufferNoAttachmentsSampleCounts &
              vk_sample_count_flags(sample_count);
 
-   VkFormat vkformat = formats[format];
+   VkFormat vkformat = zink_get_format(screen, format);
    if (vkformat == VK_FORMAT_UNDEFINED)
       return FALSE;
 
@@ -829,6 +852,11 @@ zink_internal_create_screen(struct sw_winsys *winsys, int fd)
    vkGetPhysicalDeviceProperties(screen->pdev, &screen->props);
    vkGetPhysicalDeviceFeatures(screen->pdev, &screen->feats);
    vkGetPhysicalDeviceMemoryProperties(screen->pdev, &screen->mem_props);
+
+   screen->have_X8_D24_UNORM_PACK32 = is_depth_format_supported(screen,
+                                         VK_FORMAT_X8_D24_UNORM_PACK32);
+   screen->have_D24_UNORM_S8_UINT = is_depth_format_supported(screen,
+                                         VK_FORMAT_D24_UNORM_S8_UINT);
 
    uint32_t num_extensions = 0;
    if (vkEnumerateDeviceExtensionProperties(screen->pdev, NULL,

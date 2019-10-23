@@ -35,6 +35,7 @@ zink_create_vertex_elements_state(struct pipe_context *pctx,
                                   unsigned num_elements,
                                   const struct pipe_vertex_element *elements)
 {
+   struct zink_screen *screen = zink_screen(pctx->screen);
    unsigned int i;
    struct zink_vertex_elements_state *ves = CALLOC_STRUCT(zink_vertex_elements_state);
    if (!ves)
@@ -62,7 +63,8 @@ zink_create_vertex_elements_state(struct pipe_context *pctx,
 
       ves->hw_state.attribs[i].binding = binding;
       ves->hw_state.attribs[i].location = i; // TODO: unsure
-      ves->hw_state.attribs[i].format = zink_get_format(elem->src_format);
+      ves->hw_state.attribs[i].format = zink_get_format(screen,
+                                                        elem->src_format);
       assert(ves->hw_state.attribs[i].format != VK_FORMAT_UNDEFINED);
       ves->hw_state.attribs[i].offset = elem->src_offset;
    }

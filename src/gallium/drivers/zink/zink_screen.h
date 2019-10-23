@@ -48,7 +48,11 @@ struct zink_screen {
    VkPhysicalDeviceProperties props;
    VkPhysicalDeviceFeatures feats;
    VkPhysicalDeviceMemoryProperties mem_props;
+
    bool have_KHR_maintenance1;
+
+   bool have_X8_D24_UNORM_PACK32;
+   bool have_D24_UNORM_S8_UINT;
 
    uint32_t gfx_queue;
    VkDevice dev;
@@ -63,6 +67,6 @@ zink_screen(struct pipe_screen *pipe)
 }
 
 VkFormat
-zink_get_format(enum pipe_format format);
+zink_get_format(struct zink_screen *screen, enum pipe_format format);
 
 #endif

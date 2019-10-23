@@ -93,7 +93,7 @@ zink_create_surface(struct pipe_context *pctx,
       unreachable("unsupported target");
    }
 
-   ivci.format = zink_get_format(templ->format);
+   ivci.format = zink_get_format(screen, templ->format);
 
    // TODO: format swizzles
    ivci.components.r = VK_COMPONENT_SWIZZLE_R;

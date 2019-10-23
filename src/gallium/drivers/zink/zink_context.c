@@ -257,7 +257,7 @@ zink_create_sampler_view(struct pipe_context *pctx, struct pipe_resource *pres,
    ivci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
    ivci.image = res->image;
    ivci.viewType = image_view_type(state->target);
-   ivci.format = zink_get_format(state->format);
+   ivci.format = zink_get_format(screen, state->format);
    ivci.components.r = component_mapping(state->swizzle_r);
    ivci.components.g = component_mapping(state->swizzle_g);
    ivci.components.b = component_mapping(state->swizzle_b);
