@@ -1354,8 +1354,8 @@ optimizations += [(bitfield_reverse('x@32'), ('bitfield_reverse', 'x'), '!option
 # and, if a is a NaN then the second comparison will fail anyway.
 for op in ['flt', 'fge', 'feq']:
    optimizations += [
-      (('iand', ('feq', a, a), (op, a, b)), (op, a, b)),
-      (('iand', ('feq', a, a), (op, b, a)), (op, b, a)),
+      (('iand', ('feq', a, a), (op, a, b)), ('!' + op, a, b)),
+      (('iand', ('feq', a, a), (op, b, a)), ('!' + op, b, a)),
    ]
 
 # Add optimizations to handle the case where the result of a ternary is
