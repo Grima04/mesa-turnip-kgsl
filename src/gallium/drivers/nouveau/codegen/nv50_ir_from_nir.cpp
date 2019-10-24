@@ -582,40 +582,47 @@ Converter::getSubOp(nir_intrinsic_op op)
 {
    switch (op) {
    case nir_intrinsic_bindless_image_atomic_add:
+   case nir_intrinsic_global_atomic_add:
    case nir_intrinsic_image_atomic_add:
    case nir_intrinsic_image_deref_atomic_add:
    case nir_intrinsic_shared_atomic_add:
    case nir_intrinsic_ssbo_atomic_add:
       return  NV50_IR_SUBOP_ATOM_ADD;
    case nir_intrinsic_bindless_image_atomic_and:
+   case nir_intrinsic_global_atomic_and:
    case nir_intrinsic_image_atomic_and:
    case nir_intrinsic_image_deref_atomic_and:
    case nir_intrinsic_shared_atomic_and:
    case nir_intrinsic_ssbo_atomic_and:
       return  NV50_IR_SUBOP_ATOM_AND;
    case nir_intrinsic_bindless_image_atomic_comp_swap:
+   case nir_intrinsic_global_atomic_comp_swap:
    case nir_intrinsic_image_atomic_comp_swap:
    case nir_intrinsic_image_deref_atomic_comp_swap:
    case nir_intrinsic_shared_atomic_comp_swap:
    case nir_intrinsic_ssbo_atomic_comp_swap:
       return  NV50_IR_SUBOP_ATOM_CAS;
    case nir_intrinsic_bindless_image_atomic_exchange:
+   case nir_intrinsic_global_atomic_exchange:
    case nir_intrinsic_image_atomic_exchange:
    case nir_intrinsic_image_deref_atomic_exchange:
    case nir_intrinsic_shared_atomic_exchange:
    case nir_intrinsic_ssbo_atomic_exchange:
       return  NV50_IR_SUBOP_ATOM_EXCH;
    case nir_intrinsic_bindless_image_atomic_or:
+   case nir_intrinsic_global_atomic_or:
    case nir_intrinsic_image_atomic_or:
    case nir_intrinsic_image_deref_atomic_or:
    case nir_intrinsic_shared_atomic_or:
    case nir_intrinsic_ssbo_atomic_or:
       return  NV50_IR_SUBOP_ATOM_OR;
    case nir_intrinsic_bindless_image_atomic_imax:
-   case nir_intrinsic_image_atomic_imax:
-   case nir_intrinsic_image_deref_atomic_imax:
    case nir_intrinsic_bindless_image_atomic_umax:
+   case nir_intrinsic_global_atomic_imax:
+   case nir_intrinsic_global_atomic_umax:
+   case nir_intrinsic_image_atomic_imax:
    case nir_intrinsic_image_atomic_umax:
+   case nir_intrinsic_image_deref_atomic_imax:
    case nir_intrinsic_image_deref_atomic_umax:
    case nir_intrinsic_shared_atomic_imax:
    case nir_intrinsic_shared_atomic_umax:
@@ -623,10 +630,12 @@ Converter::getSubOp(nir_intrinsic_op op)
    case nir_intrinsic_ssbo_atomic_umax:
       return  NV50_IR_SUBOP_ATOM_MAX;
    case nir_intrinsic_bindless_image_atomic_imin:
-   case nir_intrinsic_image_atomic_imin:
-   case nir_intrinsic_image_deref_atomic_imin:
    case nir_intrinsic_bindless_image_atomic_umin:
+   case nir_intrinsic_global_atomic_imin:
+   case nir_intrinsic_global_atomic_umin:
+   case nir_intrinsic_image_atomic_imin:
    case nir_intrinsic_image_atomic_umin:
+   case nir_intrinsic_image_deref_atomic_imin:
    case nir_intrinsic_image_deref_atomic_umin:
    case nir_intrinsic_shared_atomic_imin:
    case nir_intrinsic_shared_atomic_umin:
@@ -634,6 +643,7 @@ Converter::getSubOp(nir_intrinsic_op op)
    case nir_intrinsic_ssbo_atomic_umin:
       return  NV50_IR_SUBOP_ATOM_MIN;
    case nir_intrinsic_bindless_image_atomic_xor:
+   case nir_intrinsic_global_atomic_xor:
    case nir_intrinsic_image_atomic_xor:
    case nir_intrinsic_image_deref_atomic_xor:
    case nir_intrinsic_shared_atomic_xor:
@@ -2374,6 +2384,30 @@ Converter::visit(nir_intrinsic_instr *insn)
          atom->setSrc(2, getSrc(&insn->src[3], 0));
       atom->setIndirect(0, 0, indirectOffset);
       atom->setIndirect(0, 1, indirectBuffer);
+      atom->subOp = getSubOp(op);
+
+      info->io.globalAccess |= 0x2;
+      break;
+   }
+   case nir_intrinsic_global_atomic_add:
+   case nir_intrinsic_global_atomic_and:
+   case nir_intrinsic_global_atomic_comp_swap:
+   case nir_intrinsic_global_atomic_exchange:
+   case nir_intrinsic_global_atomic_or:
+   case nir_intrinsic_global_atomic_imax:
+   case nir_intrinsic_global_atomic_imin:
+   case nir_intrinsic_global_atomic_umax:
+   case nir_intrinsic_global_atomic_umin:
+   case nir_intrinsic_global_atomic_xor: {
+      const DataType dType = getDType(insn);
+      LValues &newDefs = convert(&insn->dest);
+      Value *address;
+      uint32_t offset = getIndirect(&insn->src[0], 0, address);
+
+      Symbol *sym = mkSymbol(FILE_MEMORY_GLOBAL, 0, dType, offset);
+      Instruction *atom =
+         mkOp2(OP_ATOM, dType, newDefs[0], sym, getSrc(&insn->src[1], 0));
+      atom->setIndirect(0, 0, address);
       atom->subOp = getSubOp(op);
 
       info->io.globalAccess |= 0x2;
