@@ -202,11 +202,8 @@ VkResult anv_QueueSetPerformanceConfigurationINTEL(
    } else {
       int ret = gen_ioctl(device->perf_fd, I915_PERF_IOCTL_CONFIG,
                           (void *)(uintptr_t) _configuration);
-      if (ret < 0) {
-         return anv_device_set_lost(device,
-                                    "i915-perf config failed: %s",
-                                    strerror(ret));
-      }
+      if (ret < 0)
+         return anv_device_set_lost(device, "i915-perf config failed: %m");
    }
 
    return VK_SUCCESS;
