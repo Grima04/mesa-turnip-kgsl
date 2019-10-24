@@ -79,6 +79,7 @@ struct isel_context {
    std::unique_ptr<Temp[]> allocated;
    std::unordered_map<unsigned, std::array<Temp,4>> allocated_vec;
    Stage stage; /* Stage */
+   bool has_gfx10_wave64_bpermute = false;
    struct {
       bool has_branch;
       uint16_t loop_nest_depth = 0;
@@ -1255,6 +1256,7 @@ setup_isel_context(Program* program,
 
    program->lds_alloc_granule = options->chip_class >= GFX7 ? 512 : 256;
    program->lds_limit = options->chip_class >= GFX7 ? 65536 : 32768;
+   program->vgpr_limit = 256;
 
    if (options->chip_class >= GFX10) {
       program->physical_sgprs = 2560; /* doesn't matter as long as it's at least 128 * 20 */

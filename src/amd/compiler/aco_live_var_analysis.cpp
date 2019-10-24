@@ -244,7 +244,7 @@ void update_vgpr_sgpr_demand(Program* program, const RegisterDemand new_demand)
 
    const int16_t vgpr_alloc = std::max<int16_t>(4, (new_demand.vgpr + 3) & ~3);
    /* this won't compile, register pressure reduction necessary */
-   if (new_demand.vgpr > 256 || new_demand.sgpr > program->sgpr_limit) {
+   if (new_demand.vgpr > program->vgpr_limit || new_demand.sgpr > program->sgpr_limit) {
       program->num_waves = 0;
       program->max_reg_demand = new_demand;
    } else {

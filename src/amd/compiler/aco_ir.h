@@ -1080,6 +1080,8 @@ public:
    uint16_t lds_alloc_granule;
    uint32_t lds_limit; /* in bytes */
 
+   uint16_t vgpr_limit;
+
    uint16_t physical_sgprs;
    uint16_t sgpr_alloc_granule; /* minus one. must be power of two */
    uint16_t sgpr_limit;

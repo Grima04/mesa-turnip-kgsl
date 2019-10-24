@@ -823,9 +823,6 @@ void lower_to_hw_instr(Program* program)
                assert(instr->operands[2].regClass() == v1); /* Indices x4 */
                assert(instr->operands[3].regClass() == v1); /* Input data */
 
-               /* Shared VGPRs are allocated in groups of 8 */
-               program->config->num_shared_vgprs = 8;
-
                PhysReg shared_vgpr_reg_lo = PhysReg(align(program->config->num_vgprs, 4) + 256);
                PhysReg shared_vgpr_reg_hi = PhysReg(shared_vgpr_reg_lo + 1);
                Operand compare = instr->operands[0];

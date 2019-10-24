@@ -668,7 +668,8 @@ PhysReg get_reg(ra_ctx& ctx,
 
    /* try using more registers */
    uint16_t max_addressible_sgpr = ctx.program->sgpr_limit;
-   if (rc.type() == RegType::vgpr && ctx.program->max_reg_demand.vgpr < 256) {
+   uint16_t max_addressible_vgpr = ctx.program->vgpr_limit;
+   if (rc.type() == RegType::vgpr && ctx.program->max_reg_demand.vgpr < max_addressible_vgpr) {
       update_vgpr_sgpr_demand(ctx.program, RegisterDemand(ctx.program->max_reg_demand.vgpr + 1, ctx.program->max_reg_demand.sgpr));
       return get_reg(ctx, reg_file, rc, parallelcopies, instr);
    } else if (rc.type() == RegType::sgpr && ctx.program->max_reg_demand.sgpr < max_addressible_sgpr) {
