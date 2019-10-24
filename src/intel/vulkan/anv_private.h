@@ -410,7 +410,8 @@ VkResult __vk_errorv(struct anv_instance *instance, const void *object,
 
 VkResult __vk_errorf(struct anv_instance *instance, const void *object,
                      VkDebugReportObjectTypeEXT type, VkResult error,
-                     const char *file, int line, const char *format, ...);
+                     const char *file, int line, const char *format, ...)
+   anv_printflike(7, 8);
 
 #ifdef DEBUG
 #define vk_error(error) __vk_errorf(NULL, NULL,\
@@ -1216,7 +1217,8 @@ void anv_device_finish_blorp(struct anv_device *device);
 
 VkResult _anv_device_set_lost(struct anv_device *device,
                               const char *file, int line,
-                              const char *msg, ...);
+                              const char *msg, ...)
+   anv_printflike(4, 5);
 #define anv_device_set_lost(dev, ...) \
    _anv_device_set_lost(dev, __FILE__, __LINE__, __VA_ARGS__)
 
