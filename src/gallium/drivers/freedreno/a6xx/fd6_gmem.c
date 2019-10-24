@@ -642,6 +642,7 @@ emit_binning_pass(struct fd_batch *batch)
 {
 	struct fd_ringbuffer *ring = batch->gmem;
 	struct fd_gmem_stateobj *gmem = &batch->ctx->gmem;
+	struct fd6_context *fd6_ctx = fd6_context(batch->ctx);
 
 	uint32_t x1 = gmem->minx;
 	uint32_t y1 = gmem->miny;
@@ -669,10 +670,10 @@ emit_binning_pass(struct fd_batch *batch)
 	update_vsc_pipe(batch);
 
 	OUT_PKT4(ring, REG_A6XX_PC_UNKNOWN_9805, 1);
-	OUT_RING(ring, 0x1);
+	OUT_RING(ring, fd6_ctx->magic.PC_UNKNOWN_9805);
 
 	OUT_PKT4(ring, REG_A6XX_SP_UNKNOWN_A0F8, 1);
-	OUT_RING(ring, 0x1);
+	OUT_RING(ring, fd6_ctx->magic.SP_UNKNOWN_A0F8);
 
 	OUT_PKT7(ring, CP_EVENT_WRITE, 1);
 	OUT_RING(ring, UNK_2C);
@@ -717,7 +718,7 @@ emit_binning_pass(struct fd_batch *batch)
 	OUT_WFI5(ring);
 
 	OUT_PKT4(ring, REG_A6XX_RB_CCU_CNTL, 1);
-	OUT_RING(ring, 0x7c400004);        /* RB_CCU_CNTL */
+	OUT_RING(ring, fd6_ctx->magic.RB_CCU_CNTL_gmem);
 }
 
 static void
@@ -771,10 +772,9 @@ fd6_emit_tile_init(struct fd_batch *batch)
 	OUT_PKT7(ring, CP_SKIP_IB2_ENABLE_GLOBAL, 1);
 	OUT_RING(ring, 0x0);
 
-	/* 0x10000000 for BYPASS.. 0x7c13c080 for GMEM: */
 	fd_wfi(batch, ring);
 	OUT_PKT4(ring, REG_A6XX_RB_CCU_CNTL, 1);
-	OUT_RING(ring, 0x7c400004);   /* RB_CCU_CNTL */
+	OUT_RING(ring, fd6_context(ctx)->magic.RB_CCU_CNTL_gmem);
 
 	emit_zs(ring, pfb->zsbuf, &ctx->gmem);
 	emit_mrt(ring, pfb, &ctx->gmem);
@@ -808,10 +808,10 @@ fd6_emit_tile_init(struct fd_batch *batch)
 		OUT_RING(ring, 0x0);
 
 		OUT_PKT4(ring, REG_A6XX_PC_UNKNOWN_9805, 1);
-		OUT_RING(ring, 0x1);
+		OUT_RING(ring, fd6_context(ctx)->magic.PC_UNKNOWN_9805);
 
 		OUT_PKT4(ring, REG_A6XX_SP_UNKNOWN_A0F8, 1);
-		OUT_RING(ring, 0x1);
+		OUT_RING(ring, fd6_context(ctx)->magic.SP_UNKNOWN_A0F8);
 
 		OUT_PKT7(ring, CP_SKIP_IB2_ENABLE_GLOBAL, 1);
 		OUT_RING(ring, 0x1);
@@ -1463,10 +1463,9 @@ fd6_emit_sysmem_prep(struct fd_batch *batch)
 	fd6_event_write(batch, ring, PC_CCU_INVALIDATE_COLOR, false);
 	fd6_cache_inv(batch, ring);
 
-	/* 0x10000000 for BYPASS.. 0x7c13c080 for GMEM: */
 	fd_wfi(batch, ring);
 	OUT_PKT4(ring, REG_A6XX_RB_CCU_CNTL, 1);
-	OUT_RING(ring, 0x10000000);   /* RB_CCU_CNTL */
+	OUT_RING(ring, fd6_context(batch->ctx)->magic.RB_CCU_CNTL_bypass);
 
 	/* enable stream-out, with sysmem there is only one pass: */
 	OUT_PKT4(ring, REG_A6XX_VPC_SO_OVERRIDE, 1);

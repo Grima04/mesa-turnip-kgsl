@@ -90,6 +90,18 @@ fd6_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
 	if (!fd6_ctx)
 		return NULL;
 
+
+	switch (screen->gpu_id) {
+	case 630:
+		fd6_ctx->magic.RB_UNKNOWN_8E04_blit = 0x01000000;
+		// NOTE: newer blob using 0x3c400004, need to revisit:
+		fd6_ctx->magic.RB_CCU_CNTL_gmem     = 0x7c400004;
+		fd6_ctx->magic.RB_CCU_CNTL_bypass   = 0x10000000;
+		fd6_ctx->magic.PC_UNKNOWN_9805 = 0x1;
+		fd6_ctx->magic.SP_UNKNOWN_A0F8 = 0x1;
+		break;
+	}
+
 	pctx = &fd6_ctx->base.base;
 	pctx->screen = pscreen;
 

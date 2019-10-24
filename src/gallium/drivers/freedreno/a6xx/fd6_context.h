@@ -91,6 +91,18 @@ struct fd6_context {
 
 	uint16_t tex_seqno;
 	struct hash_table *tex_cache;
+
+	/* collection of magic register values which differ between
+	 * various different a6xx
+	 */
+	struct {
+		uint32_t RB_UNKNOWN_8E04_blit;    /* value for CP_BLIT's */
+		uint32_t RB_CCU_CNTL_bypass;      /* for sysmem rendering */
+		uint32_t RB_CCU_CNTL_gmem;        /* for GMEM rendering */
+		uint32_t PC_UNKNOWN_9805;
+		uint32_t SP_UNKNOWN_A0F8;
+
+	} magic;
 };
 
 static inline struct fd6_context *

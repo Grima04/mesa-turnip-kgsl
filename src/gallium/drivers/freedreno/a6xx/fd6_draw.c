@@ -256,6 +256,7 @@ static void
 fd6_clear_lrz(struct fd_batch *batch, struct fd_resource *zsbuf, double depth)
 {
 	struct fd_ringbuffer *ring;
+	struct fd6_context *fd6_ctx = fd6_context(batch->ctx);
 
 	// TODO mid-frame clears (ie. app doing crazy stuff)??  Maybe worth
 	// splitting both clear and lrz clear out into their own rb's.  And
@@ -277,7 +278,7 @@ fd6_clear_lrz(struct fd_batch *batch, struct fd_resource *zsbuf, double depth)
 	OUT_WFI5(ring);
 
 	OUT_PKT4(ring, REG_A6XX_RB_CCU_CNTL, 1);
-	OUT_RING(ring, 0x10000000);
+	OUT_RING(ring, fd6_ctx->magic.RB_CCU_CNTL_bypass);
 
 	OUT_PKT4(ring, REG_A6XX_HLSQ_UPDATE_CNTL, 1);
 	OUT_RING(ring, 0x7ffff);
@@ -354,7 +355,7 @@ fd6_clear_lrz(struct fd_batch *batch, struct fd_resource *zsbuf, double depth)
 	OUT_WFI5(ring);
 
 	OUT_PKT4(ring, REG_A6XX_RB_UNKNOWN_8E04, 1);
-	OUT_RING(ring, 0x1000000);
+	OUT_RING(ring, fd6_ctx->magic.RB_UNKNOWN_8E04_blit);
 
 	OUT_PKT7(ring, CP_BLIT, 1);
 	OUT_RING(ring, CP_BLIT_0_OP(BLIT_OP_SCALE));
@@ -362,7 +363,7 @@ fd6_clear_lrz(struct fd_batch *batch, struct fd_resource *zsbuf, double depth)
 	OUT_WFI5(ring);
 
 	OUT_PKT4(ring, REG_A6XX_RB_UNKNOWN_8E04, 1);
-	OUT_RING(ring, 0x0);
+	OUT_RING(ring, 0x0);               /* RB_UNKNOWN_8E04 */
 
 	fd6_event_write(batch, ring, UNK_1D, true);
 	fd6_event_write(batch, ring, FACENESS_FLUSH, true);
