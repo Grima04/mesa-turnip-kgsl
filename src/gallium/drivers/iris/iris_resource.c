@@ -349,6 +349,8 @@ iris_get_num_logical_layers(const struct iris_resource *res, unsigned level)
 static enum isl_aux_state **
 create_aux_state_map(struct iris_resource *res, enum isl_aux_state initial)
 {
+   assert(res->aux.state == NULL);
+
    uint32_t total_slices = 0;
    for (uint32_t level = 0; level < res->surf.levels; level++)
       total_slices += iris_get_num_logical_layers(res, level);
@@ -553,16 +555,14 @@ iris_resource_configure_aux(struct iris_screen *screen,
       break;
    }
 
-   if (!res->aux.state) {
-      /* Create the aux_state for the auxiliary buffer. */
-      res->aux.state = create_aux_state_map(res, initial_state);
-      if (!res->aux.state)
-         return false;
-   }
+   /* Create the aux_state for the auxiliary buffer. */
+   res->aux.state = create_aux_state_map(res, initial_state);
+   if (!res->aux.state)
+      return false;
 
    /* Increase the aux offset if the main and aux surfaces will share a BO. */
-   assert(!res->mod_info || res->mod_info->aux.usage == res->aux.usage);
-   res->aux.offset = res->mod_info ?
+   res->aux.offset =
+      !res->mod_info || res->mod_info->aux_usage == res->aux.usage ?
       ALIGN(res->surf.size_B, res->aux.surf.alignment_B) : 0;
    uint64_t size = res->aux.surf.size_B;
 
@@ -861,19 +861,11 @@ iris_resource_create_with_modifiers(struct pipe_screen *pscreen,
       goto fail;
    }
 
-   const bool aux_enabled = res->aux.surf.size_B > 0;
-   const bool separate_aux = aux_enabled && !res->mod_info;
-   uint64_t bo_size;
-
-   if (aux_enabled && !separate_aux) {
-      /* Allocate aux data with main surface. This is required for modifiers
-       * with aux data (ccs).
-       */
-      bo_size = res->aux.offset + aux_size;
-   } else {
-      bo_size = res->surf.size_B;
-   }
-
+   /* Modifiers require the aux data to be in the same buffer as the main
+    * surface, but we combine them even when a modifiers is not being used.
+    */
+   const uint64_t bo_size =
+      MAX2(res->surf.size_B, res->aux.offset + aux_size);
    uint32_t alignment = MAX2(4096, res->surf.alignment_B);
    res->bo = iris_bo_alloc_tiled(screen->bufmgr, name, bo_size, alignment,
                                  memzone,
@@ -883,19 +875,14 @@ iris_resource_create_with_modifiers(struct pipe_screen *pscreen,
    if (!res->bo)
       goto fail;
 
-   if (aux_enabled) {
-      if (separate_aux) {
-         if (!iris_resource_alloc_separate_aux(screen, res))
-            goto fail;
-      } else {
-         res->aux.bo = res->bo;
-         iris_bo_reference(res->aux.bo);
-         unsigned clear_color_state_size =
-            iris_get_aux_clear_color_state_size(screen);
-         if (!iris_resource_init_aux_buf(res, flags, clear_color_state_size))
-            goto fail;
-         map_aux_addresses(screen, res);
-      }
+   if (aux_size > 0) {
+      res->aux.bo = res->bo;
+      iris_bo_reference(res->aux.bo);
+      unsigned clear_color_state_size =
+         iris_get_aux_clear_color_state_size(screen);
+      if (!iris_resource_init_aux_buf(res, flags, clear_color_state_size))
+         goto fail;
+      map_aux_addresses(screen, res);
    }
 
    return &res->base;
