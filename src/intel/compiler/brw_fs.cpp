@@ -7220,24 +7220,6 @@ fs_visitor::setup_fs_payload_gen6()
    assert(dispatch_width % payload_width == 0);
    assert(devinfo->gen >= 6);
 
-   prog_data->uses_src_depth = prog_data->uses_src_w =
-      (nir->info.system_values_read & (1ull << SYSTEM_VALUE_FRAG_COORD)) != 0;
-
-   prog_data->uses_sample_mask =
-      (nir->info.system_values_read & SYSTEM_BIT_SAMPLE_MASK_IN) != 0;
-
-   /* From the Ivy Bridge PRM documentation for 3DSTATE_PS:
-    *
-    *    "MSDISPMODE_PERSAMPLE is required in order to select
-    *    POSOFFSET_SAMPLE"
-    *
-    * So we can only really get sample positions if we are doing real
-    * per-sample dispatch.  If we need gl_SamplePosition and we don't have
-    * persample dispatch, we hard-code it to 0.5.
-    */
-   prog_data->uses_pos_offset = prog_data->persample_dispatch &&
-      (nir->info.system_values_read & SYSTEM_BIT_SAMPLE_POS);
-
    /* R0: PS thread payload header. */
    payload.num_regs++;
 
@@ -8515,6 +8497,9 @@ brw_nir_populate_wm_prog_data(const nir_shader *shader,
                               const struct brw_wm_prog_key *key,
                               struct brw_wm_prog_data *prog_data)
 {
+   prog_data->uses_src_depth = prog_data->uses_src_w =
+      shader->info.system_values_read & BITFIELD64_BIT(SYSTEM_VALUE_FRAG_COORD);
+
    /* key->alpha_test_func means simulating alpha testing via discards,
     * so the shader definitely kills pixels.
     */
@@ -8533,6 +8518,23 @@ brw_nir_populate_wm_prog_data(const nir_shader *shader,
                                             SYSTEM_BIT_SAMPLE_POS)) ||
        shader->info.fs.uses_sample_qualifier ||
        shader->info.outputs_read);
+
+   if (devinfo->gen >= 6) {
+      prog_data->uses_sample_mask =
+         shader->info.system_values_read & SYSTEM_BIT_SAMPLE_MASK_IN;
+
+      /* From the Ivy Bridge PRM documentation for 3DSTATE_PS:
+       *
+       *    "MSDISPMODE_PERSAMPLE is required in order to select
+       *    POSOFFSET_SAMPLE"
+       *
+       * So we can only really get sample positions if we are doing real
+       * per-sample dispatch.  If we need gl_SamplePosition and we don't have
+       * persample dispatch, we hard-code it to 0.5.
+       */
+      prog_data->uses_pos_offset = prog_data->persample_dispatch &&
+         (shader->info.system_values_read & SYSTEM_BIT_SAMPLE_POS);
+   }
 
    prog_data->has_render_target_reads = shader->info.outputs_read != 0ull;
 
