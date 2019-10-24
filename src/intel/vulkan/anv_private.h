@@ -3293,6 +3293,12 @@ struct anv_format {
    bool can_ycbcr;
 };
 
+/**
+ * Return the aspect's _format_ plane, not its _memory_ plane (using the
+ * vocabulary of VK_EXT_image_drm_format_modifier). As a consequence, \a
+ * aspect_mask may contain VK_IMAGE_ASPECT_PLANE_*, but must not contain
+ * VK_IMAGE_ASPECT_MEMORY_PLANE_* .
+ */
 static inline uint32_t
 anv_image_aspect_to_plane(VkImageAspectFlags image_aspects,
                           VkImageAspectFlags aspect_mask)
