@@ -25,32 +25,57 @@
 #include <algorithm>
 
 #include "aco_ir.h"
+#include <stack>
 
 namespace aco {
 namespace {
 
-struct NOP_ctx {
+struct NOP_ctx_gfx8_9 {
    enum chip_class chip_class;
    unsigned vcc_physical;
 
-   /* pre-GFX10 */
    /* just initialize these with something less than max NOPs */
    int VALU_wrexec = -10;
    int VALU_wrvcc = -10;
    int VALU_wrsgpr = -10;
 
-   /* GFX10 */
+   NOP_ctx_gfx8_9(Program* program) : chip_class(program->chip_class) {
+      vcc_physical = program->config->num_sgprs - 2;
+   }
+};
+
+struct NOP_ctx_gfx10 {
    bool has_VOPC = false;
    bool has_nonVALU_exec_read = false;
    bool has_VMEM = false;
    bool has_branch_after_VMEM = false;
    bool has_DS = false;
    bool has_branch_after_DS = false;
-   std::bitset<128> sgprs_read_by_SMEM;
    std::bitset<128> sgprs_read_by_VMEM;
+   std::bitset<128> sgprs_read_by_SMEM;
 
-   NOP_ctx(Program* program) : chip_class(program->chip_class) {
-      vcc_physical = program->config->num_sgprs - 2;
+   void join(const NOP_ctx_gfx10 &other) {
+      has_VOPC |= other.has_VOPC;
+      has_nonVALU_exec_read |= other.has_nonVALU_exec_read;
+      has_VMEM |= other.has_VMEM;
+      has_branch_after_VMEM |= other.has_branch_after_VMEM;
+      has_DS |= other.has_DS;
+      has_branch_after_DS |= other.has_branch_after_DS;
+      sgprs_read_by_VMEM |= other.sgprs_read_by_VMEM;
+      sgprs_read_by_SMEM |= other.sgprs_read_by_SMEM;
+   }
+
+   bool operator==(const NOP_ctx_gfx10 &other)
+   {
+      return
+         has_VOPC == other.has_VOPC &&
+         has_nonVALU_exec_read == other.has_nonVALU_exec_read &&
+         has_VMEM == other.has_VMEM &&
+         has_branch_after_VMEM == other.has_branch_after_VMEM &&
+         has_DS == other.has_DS &&
+         has_branch_after_DS == other.has_branch_after_DS &&
+         sgprs_read_by_VMEM == other.sgprs_read_by_VMEM &&
+         sgprs_read_by_SMEM == other.sgprs_read_by_SMEM;
    }
 };
 
@@ -178,9 +203,9 @@ unsigned handle_SMEM_clause(aco_ptr<Instruction>& instr, int new_idx,
    return 0;
 }
 
-int handle_instruction(NOP_ctx& ctx, aco_ptr<Instruction>& instr,
-                       std::vector<aco_ptr<Instruction>>& old_instructions,
-                       std::vector<aco_ptr<Instruction>>& new_instructions)
+int handle_instruction_gfx8_9(NOP_ctx_gfx8_9& ctx, aco_ptr<Instruction>& instr,
+                              std::vector<aco_ptr<Instruction>>& old_instructions,
+                              std::vector<aco_ptr<Instruction>>& new_instructions)
 {
    int new_idx = new_instructions.size();
 
@@ -330,18 +355,47 @@ int handle_instruction(NOP_ctx& ctx, aco_ptr<Instruction>& instr,
    return 0;
 }
 
-std::pair<int, int> handle_instruction_gfx10(NOP_ctx& ctx, aco_ptr<Instruction>& instr,
-                                             std::vector<aco_ptr<Instruction>>& old_instructions,
-                                             std::vector<aco_ptr<Instruction>>& new_instructions)
+void handle_block_gfx8_9(NOP_ctx_gfx8_9& ctx, Block& block)
 {
-   int new_idx = new_instructions.size();
-   unsigned vNOPs = 0;
-   unsigned sNOPs = 0;
+   std::vector<aco_ptr<Instruction>> instructions;
+   instructions.reserve(block.instructions.size());
+   for (unsigned i = 0; i < block.instructions.size(); i++) {
+      aco_ptr<Instruction>& instr = block.instructions[i];
+      unsigned NOPs = handle_instruction_gfx8_9(ctx, instr, block.instructions, instructions);
+      if (NOPs) {
+         // TODO: try to move the instruction down
+         /* create NOP */
+         aco_ptr<SOPP_instruction> nop{create_instruction<SOPP_instruction>(aco_opcode::s_nop, Format::SOPP, 0, 0)};
+         nop->imm = NOPs - 1;
+         nop->block = -1;
+         instructions.emplace_back(std::move(nop));
+      }
 
-   /* break off from prevous SMEM group ("clause" seems to mean something different in RDNA) if needed */
-   if (instr->format == Format::SMEM)
-      sNOPs = std::max(sNOPs, handle_SMEM_clause(instr, new_idx, new_instructions));
+      instructions.emplace_back(std::move(instr));
+   }
 
+   ctx.VALU_wrvcc -= instructions.size();
+   ctx.VALU_wrexec -= instructions.size();
+   ctx.VALU_wrsgpr -= instructions.size();
+   block.instructions = std::move(instructions);
+}
+
+void insert_NOPs_gfx8_9(Program* program)
+{
+   NOP_ctx_gfx8_9 ctx(program);
+
+   for (Block& block : program->blocks) {
+      if (block.instructions.empty())
+         continue;
+
+      handle_block_gfx8_9(ctx, block);
+   }
+}
+
+void handle_instruction_gfx10(NOP_ctx_gfx10 &ctx, aco_ptr<Instruction>& instr,
+                              std::vector<aco_ptr<Instruction>>& old_instructions,
+                              std::vector<aco_ptr<Instruction>>& new_instructions)
+{
    /* VMEMtoScalarWriteHazard
     * Handle EXEC/M0/SGPR write following a VMEM instruction without a VALU or "waitcnt vmcnt(0)" in-between.
     */
@@ -479,80 +533,69 @@ std::pair<int, int> handle_instruction_gfx10(NOP_ctx& ctx, aco_ptr<Instruction>&
       wait->imm = 0;
       new_instructions.emplace_back(std::move(wait));
    }
-
-   return std::make_pair(sNOPs, vNOPs);
 }
 
-
-void handle_block(NOP_ctx& ctx, Block& block)
+void handle_block_gfx10(NOP_ctx_gfx10& ctx, Block& block)
 {
+   if (block.instructions.empty())
+      return;
+
    std::vector<aco_ptr<Instruction>> instructions;
    instructions.reserve(block.instructions.size());
-   for (unsigned i = 0; i < block.instructions.size(); i++) {
-      aco_ptr<Instruction>& instr = block.instructions[i];
-      unsigned NOPs = handle_instruction(ctx, instr, block.instructions, instructions);
-      if (NOPs) {
-         // TODO: try to move the instruction down
-         /* create NOP */
-         aco_ptr<SOPP_instruction> nop{create_instruction<SOPP_instruction>(aco_opcode::s_nop, Format::SOPP, 0, 0)};
-         nop->imm = NOPs - 1;
-         nop->block = -1;
-         instructions.emplace_back(std::move(nop));
-      }
 
-      instructions.emplace_back(std::move(instr));
-   }
-
-   ctx.VALU_wrvcc -= instructions.size();
-   ctx.VALU_wrexec -= instructions.size();
-   ctx.VALU_wrsgpr -= instructions.size();
-   block.instructions = std::move(instructions);
-}
-
-void handle_block_gfx10(NOP_ctx& ctx, Block& block)
-{
-   std::vector<aco_ptr<Instruction>> instructions;
-   instructions.reserve(block.instructions.size());
-   for (unsigned i = 0; i < block.instructions.size(); i++) {
-      aco_ptr<Instruction>& instr = block.instructions[i];
-      std::pair<int, int> NOPs = handle_instruction_gfx10(ctx, instr, block.instructions, instructions);
-      for (int i = 0; i < NOPs.second; i++) {
-         // TODO: try to move the instruction down
-         /* create NOP */
-         aco_ptr<VOP1_instruction> nop{create_instruction<VOP1_instruction>(aco_opcode::v_nop, Format::VOP1, 0, 0)};
-         instructions.emplace_back(std::move(nop));
-      }
-      if (NOPs.first) {
-         // TODO: try to move the instruction down
-         /* create NOP */
-         aco_ptr<SOPP_instruction> nop{create_instruction<SOPP_instruction>(aco_opcode::s_nop, Format::SOPP, 0, 0)};
-         nop->imm = NOPs.first - 1;
-         nop->block = -1;
-         instructions.emplace_back(std::move(nop));
-      }
-
+   for (aco_ptr<Instruction>& instr : block.instructions) {
+      handle_instruction_gfx10(ctx, instr, block.instructions, instructions);
       instructions.emplace_back(std::move(instr));
    }
 
    block.instructions = std::move(instructions);
+}
+
+void mitigate_hazards_gfx10(Program *program)
+{
+   NOP_ctx_gfx10 all_ctx[program->blocks.size()];
+   std::stack<unsigned> loop_header_indices;
+
+   for (unsigned i = 0; i < program->blocks.size(); i++) {
+      Block& block = program->blocks[i];
+      NOP_ctx_gfx10 &ctx = all_ctx[i];
+
+      if (block.kind == block_kind_loop_header) {
+         loop_header_indices.push(i);
+      } else if (block.kind == block_kind_loop_exit) {
+         /* Go through the whole loop again */
+         for (unsigned idx = loop_header_indices.top(); idx < i; idx++) {
+            NOP_ctx_gfx10 loop_block_ctx;
+            for (unsigned b : block.linear_preds)
+               loop_block_ctx.join(all_ctx[b]);
+
+            handle_block_gfx10(loop_block_ctx, program->blocks[idx]);
+
+            /* We only need to continue if the loop header context changed */
+            if (idx == loop_header_indices.top() && loop_block_ctx == all_ctx[idx])
+               break;
+
+            all_ctx[idx] = loop_block_ctx;
+         }
+
+         loop_header_indices.pop();
+      }
+
+      for (unsigned b : block.linear_preds)
+         ctx.join(all_ctx[b]);
+
+      handle_block_gfx10(ctx, block);
+   }
 }
 
 } /* end namespace */
 
-
 void insert_NOPs(Program* program)
 {
-   NOP_ctx ctx(program);
-
-   for (Block& block : program->blocks) {
-      if (block.instructions.empty())
-         continue;
-
-      if (ctx.chip_class >= GFX10)
-         handle_block_gfx10(ctx, block);
-      else
-         handle_block(ctx, block);
-   }
+   if (program->chip_class >= GFX10)
+      mitigate_hazards_gfx10(program);
+   else
+      insert_NOPs_gfx8_9(program);
 }
 
 }
