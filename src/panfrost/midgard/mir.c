@@ -384,7 +384,7 @@ mir_typesize(midgard_instruction *ins)
 
 /* Grabs the size of a source */
 
-static midgard_reg_mode
+midgard_reg_mode
 mir_srcsize(midgard_instruction *ins, unsigned i)
 {
         /* TODO: 16-bit textures/ldst */
@@ -461,7 +461,7 @@ mir_to_bytemask(midgard_reg_mode mode, unsigned mask)
 
 /* ...and the inverse */
 
-static unsigned
+unsigned
 mir_bytes_for_mode(midgard_reg_mode mode)
 {
         switch (mode) {
