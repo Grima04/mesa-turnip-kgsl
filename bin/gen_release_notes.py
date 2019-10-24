@@ -25,6 +25,7 @@ import asyncio
 import datetime
 import os
 import pathlib
+import sys
 import textwrap
 import typing
 import urllib.parse
@@ -221,9 +222,11 @@ def calculate_previous_version(version: str, is_point: bool) -> str:
     return '.'.join(base)
 
 
-def get_features() -> typing.Generator[str, None, None]:
+def get_features(is_point_release: bool) -> typing.Generator[str, None, None]:
     p = pathlib.Path(__file__).parent.parent / 'docs' / 'relnotes' / 'new_features.txt'
     if p.exists():
+        if is_point_release:
+            print("WARNING: new features being introduced in a point release", file=sys.stderr)
         with p.open('rt') as f:
             for line in f:
                 yield line
@@ -253,7 +256,7 @@ async def main() -> None:
                 bugfix=is_point_release,
                 bugs=bugs,
                 changes=walk_shortlog(shortlog),
-                features=get_features(),
+                features=get_features(is_point_release),
                 gl_version=CURRENT_GL_VERSION,
                 next_version=next_version,
                 today=datetime.date.today(),
