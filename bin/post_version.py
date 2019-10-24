@@ -101,6 +101,39 @@ def update_release_notes(previous_version: str) -> None:
     tree.write(p.as_posix(), method='html')
 
 
+def update_calendar(previous_version: str) -> None:
+    p = pathlib.Path(__file__).parent.parent / 'docs' / 'release-calendar.html'
+    with p.open('rt') as f:
+        tree = html.parse(f)
+
+    base_version = previous_version[:-2]
+
+    old = None
+    new = None
+
+    for tr in tree.xpath('.//tr'):
+        if old is not None:
+            new = tr
+            break
+
+        for td in tr.xpath('./td'):
+            if td.text == base_version:
+                old = tr
+                break
+
+    assert old is not None
+    assert new is not None
+    old.getparent().remove(old)
+
+    # rowspan is 1 based in html, but 0 based in lxml
+    rowspan = int(td.get("rowspan")) - 1
+    if rowspan:
+        td.set("rowspan", str(rowspan))
+        new.insert(0, td)
+
+    tree.write(p.as_posix(), method='html')
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument('version', help="The released version.")
@@ -111,6 +144,7 @@ def main() -> None:
 
     update_index(is_point, args.version, previous_version)
     update_release_notes(previous_version)
+    update_calendar(previous_version)
 
 
 if __name__ == "__main__":
