@@ -44,7 +44,6 @@ static void si_diagnostic_handler(LLVMDiagnosticInfoRef di, void *context)
 {
 	struct si_llvm_diagnostics *diag = (struct si_llvm_diagnostics *)context;
 	LLVMDiagnosticSeverity severity = LLVMGetDiagInfoSeverity(di);
-	char *description = LLVMGetDiagInfoDescription(di);
 	const char *severity_str = NULL;
 
 	switch (severity) {
@@ -55,14 +54,12 @@ static void si_diagnostic_handler(LLVMDiagnosticInfoRef di, void *context)
 		severity_str = "warning";
 		break;
 	case LLVMDSRemark:
-		severity_str = "remark";
-		break;
 	case LLVMDSNote:
-		severity_str = "note";
-		break;
 	default:
-		severity_str = "unknown";
+		return;
 	}
+
+	char *description = LLVMGetDiagInfoDescription(di);
 
 	pipe_debug_message(diag->debug, SHADER_INFO,
 			   "LLVM diagnostic (%s): %s", severity_str, description);
