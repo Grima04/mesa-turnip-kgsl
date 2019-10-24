@@ -1592,54 +1592,27 @@ void spill(Program* program, live& live_vars, const struct radv_nir_compiler_opt
    program->config->spilled_vgprs = 0;
    program->config->spilled_sgprs = 0;
 
-   /* no spilling when wave count is already high */
-   if (program->num_waves >= 6)
+   /* no spilling when register pressure is low enough */
+   if (program->num_waves > 0)
       return;
 
    /* lower to CSSA before spilling to ensure correctness w.r.t. phis */
    lower_to_cssa(program, live_vars, options);
 
-   /* else, we check if we can improve things a bit */
-
    /* calculate target register demand */
-   RegisterDemand max_reg_demand;
-   for (Block& block : program->blocks) {
-      max_reg_demand.update(block.register_demand);
-   }
+   RegisterDemand register_target = program->max_reg_demand;
+   if (register_target.sgpr > program->sgpr_limit)
+      register_target.vgpr += (register_target.sgpr - program->sgpr_limit + 63 + 32) / 64;
+   register_target.sgpr = program->sgpr_limit;
 
-   RegisterDemand target_pressure = {256, int16_t(program->sgpr_limit)};
-   unsigned num_waves = 1;
-   int spills_to_vgpr = (max_reg_demand.sgpr - program->sgpr_limit + 63) / 64;
+   if (register_target.vgpr > program->vgpr_limit)
+      register_target.sgpr = program->sgpr_limit - 5;
+   register_target.vgpr = program->vgpr_limit - (register_target.vgpr - program->max_reg_demand.vgpr);
 
-   /* test if it possible to increase occupancy with little spilling */
-   for (unsigned num_waves_next = 2; num_waves_next <= program->max_waves; num_waves_next++) {
-      RegisterDemand target_pressure_next = {int16_t((256 / num_waves_next) & ~3),
-                                             int16_t(get_addr_sgpr_from_waves(program, num_waves_next))};
-
-      /* Currently no vgpr spilling supported.
-       * Spill as many sgprs as necessary to not hinder occupancy */
-      if (max_reg_demand.vgpr > target_pressure_next.vgpr)
-         break;
-      /* check that we have enough free vgprs to spill sgprs to */
-      if (max_reg_demand.sgpr > target_pressure_next.sgpr) {
-         /* add some buffer in case graph coloring is not perfect ... */
-         const int spills_to_vgpr_next = (max_reg_demand.sgpr - target_pressure_next.sgpr + 63 + 32) / 64;
-         if (spills_to_vgpr_next + max_reg_demand.vgpr > target_pressure_next.vgpr)
-            break;
-         spills_to_vgpr = spills_to_vgpr_next;
-      }
-
-      target_pressure = target_pressure_next;
-      num_waves = num_waves_next;
-   }
-
-   assert(max_reg_demand.vgpr <= target_pressure.vgpr && "VGPR spilling not yet supported.");
-   /* nothing to do */
-   if (num_waves == program->num_waves)
-      return;
+   int spills_to_vgpr = (program->max_reg_demand.sgpr - register_target.sgpr + 63 + 32) / 64;
 
    /* initialize ctx */
-   spill_ctx ctx(target_pressure, program, live_vars.register_demand);
+   spill_ctx ctx(register_target, program, live_vars.register_demand);
    compute_global_next_uses(ctx, live_vars.live_out);
    get_rematerialize_info(ctx);
 
@@ -1653,7 +1626,7 @@ void spill(Program* program, live& live_vars, const struct radv_nir_compiler_opt
    /* update live variable information */
    live_vars = live_var_analysis(program, options);
 
-   assert(program->num_waves >= num_waves);
+   assert(program->num_waves >= 0);
 }
 
 }
