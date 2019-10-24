@@ -3203,7 +3203,7 @@ collect_tex_prefetches(struct ir3_context *ctx, struct ir3 *ir)
 					MAX2(ctx->so->total_in, instr->prefetch.input_offset + 2);
 
 				/* Disable half precision until supported. */
-				fetch->half_precision = 0x0;
+				fetch->half_precision = !!(instr->regs[0]->flags & IR3_REG_HALF);
 
 				/* Remove the prefetch placeholder instruction: */
 				list_delinit(&instr->node);
