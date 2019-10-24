@@ -3282,36 +3282,6 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 	if (so->binning_pass && (ctx->compiler->gpu_id < 600))
 		fixup_binning_pass(ctx);
 
-	/* if we want half-precision outputs, mark the output registers
-	 * as half:
-	 */
-	if (so->key.half_precision) {
-		for (i = 0; i < ir->noutputs; i++) {
-			struct ir3_instruction *out = ir->outputs[i];
-
-			if (!out)
-				continue;
-
-			/* if frag shader writes z, that needs to be full precision: */
-			if (so->outputs[i/4].slot == FRAG_RESULT_DEPTH)
-				continue;
-
-			out->regs[0]->flags |= IR3_REG_HALF;
-			/* output could be a fanout (ie. texture fetch output)
-			 * in which case we need to propagate the half-reg flag
-			 * up to the definer so that RA sees it:
-			 */
-			if (out->opc == OPC_META_FO) {
-				out = out->regs[1]->instr;
-				out->regs[0]->flags |= IR3_REG_HALF;
-			}
-
-			if (out->opc == OPC_MOV) {
-				out->cat1.dst_type = half_type(out->cat1.dst_type);
-			}
-		}
-	}
-
 	if (ir3_shader_debug & IR3_DBG_OPTMSGS) {
 		printf("BEFORE CP:\n");
 		ir3_print(ir);
