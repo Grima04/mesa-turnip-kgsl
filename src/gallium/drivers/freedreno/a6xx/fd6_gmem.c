@@ -1463,16 +1463,6 @@ fd6_emit_sysmem_prep(struct fd_batch *batch)
 	fd6_event_write(batch, ring, PC_CCU_INVALIDATE_COLOR, false);
 	fd6_cache_inv(batch, ring);
 
-#if 0
-	OUT_PKT4(ring, REG_A6XX_PC_POWER_CNTL, 1);
-	OUT_RING(ring, 0x00000003);   /* PC_POWER_CNTL */
-#endif
-
-#if 0
-	OUT_PKT4(ring, REG_A6XX_VFD_POWER_CNTL, 1);
-	OUT_RING(ring, 0x00000003);   /* VFD_POWER_CNTL */
-#endif
-
 	/* 0x10000000 for BYPASS.. 0x7c13c080 for GMEM: */
 	fd_wfi(batch, ring);
 	OUT_PKT4(ring, REG_A6XX_RB_CCU_CNTL, 1);
