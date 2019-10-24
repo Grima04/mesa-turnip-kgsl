@@ -233,9 +233,9 @@ compute_depth_and_remove_unused(struct ir3 *ir, struct ir3_shader_variant *so)
 		}
 	}
 
-	for (i = 0; i < ir->noutputs; i++)
-		if (ir->outputs[i])
-			ir3_instr_depth(ir->outputs[i], 0, false);
+	struct ir3_instruction *out;
+	foreach_output(out, ir)
+		ir3_instr_depth(out, 0, false);
 
 	list_for_each_entry (struct ir3_block, block, &ir->block_list, node) {
 		for (i = 0; i < block->keeps_count; i++)
@@ -261,11 +261,10 @@ compute_depth_and_remove_unused(struct ir3 *ir, struct ir3_shader_variant *so)
 	}
 
 	/* cleanup unused inputs: */
-	for (i = 0; i < ir->ninputs; i++) {
-		struct ir3_instruction *in = ir->inputs[i];
-		if (in && (in->flags & IR3_INSTR_UNUSED))
-			ir->inputs[i] = NULL;
-	}
+	struct ir3_instruction *in;
+	foreach_input_n(in, n, ir)
+		if (in->flags & IR3_INSTR_UNUSED)
+			ir->inputs[n] = NULL;
 
 	return progress;
 }

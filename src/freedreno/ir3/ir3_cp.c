@@ -759,11 +759,10 @@ ir3_cp(struct ir3 *ir, struct ir3_shader_variant *so)
 
 	ir3_clear_mark(ir);
 
-	for (unsigned i = 0; i < ir->noutputs; i++) {
-		if (ir->outputs[i]) {
-			instr_cp(&ctx, ir->outputs[i]);
-			ir->outputs[i] = eliminate_output_mov(ir->outputs[i]);
-		}
+	struct ir3_instruction *out;
+	foreach_output_n(out, n, ir) {
+		instr_cp(&ctx, out);
+		ir->outputs[n] = eliminate_output_mov(out);
 	}
 
 	list_for_each_entry (struct ir3_block, block, &ir->block_list, node) {

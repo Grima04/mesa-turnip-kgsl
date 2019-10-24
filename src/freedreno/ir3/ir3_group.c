@@ -247,12 +247,9 @@ find_neighbors(struct ir3 *ir)
 	for (i = 0; i < ir->noutputs; i += 4)
 		group_n(&arr_ops_out, &ir->outputs[i], 4);
 
-	for (i = 0; i < ir->noutputs; i++) {
-		if (ir->outputs[i]) {
-			struct ir3_instruction *instr = ir->outputs[i];
-			instr_find_neighbors(instr);
-		}
-	}
+	struct ir3_instruction *out;
+	foreach_output(out, ir)
+		instr_find_neighbors(out);
 
 	list_for_each_entry (struct ir3_block, block, &ir->block_list, node) {
 		for (i = 0; i < block->keeps_count; i++) {

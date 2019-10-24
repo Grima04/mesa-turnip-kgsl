@@ -380,12 +380,9 @@ ir3_shader_disasm(struct ir3_shader_variant *so, uint32_t *bin, FILE *out)
 	uint8_t regid;
 	unsigned i;
 
-	for (i = 0; i < ir->ninputs; i++) {
-		if (!ir->inputs[i]) {
-			fprintf(out, "; in%d unused\n", i);
-			continue;
-		}
-		reg = ir->inputs[i]->regs[0];
+	struct ir3_instruction *instr;
+	foreach_input_n(instr, i, ir) {
+		reg = instr->regs[0];
 		regid = reg->num;
 		fprintf(out, "@in(%sr%d.%c)\tin%d\n",
 				(reg->flags & IR3_REG_HALF) ? "h" : "",
@@ -402,12 +399,8 @@ ir3_shader_disasm(struct ir3_shader_variant *so, uint32_t *bin, FILE *out)
 				fetch->wrmask, fetch->cmd);
 	}
 
-	for (i = 0; i < ir->noutputs; i++) {
-		if (!ir->outputs[i]) {
-			fprintf(out, "; out%d unused\n", i);
-			continue;
-		}
-		reg = ir->outputs[i]->regs[0];
+	foreach_output_n(instr, i, ir) {
+		reg = instr->regs[0];
 		regid = reg->num;
 		fprintf(out, "@out(%sr%d.%c)\tout%d\n",
 				(reg->flags & IR3_REG_HALF) ? "h" : "",

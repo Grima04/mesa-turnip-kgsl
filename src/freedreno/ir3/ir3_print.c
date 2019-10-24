@@ -321,10 +321,9 @@ ir3_print(struct ir3 *ir)
 	list_for_each_entry (struct ir3_block, block, &ir->block_list, node)
 		print_block(block, 0);
 
-	for (unsigned i = 0; i < ir->noutputs; i++) {
-		if (!ir->outputs[i])
-			continue;
+	struct ir3_instruction *out;
+	foreach_output_n(out, i, ir) {
 		printf("out%d: ", i);
-		print_instr(ir->outputs[i], 0);
+		print_instr(out, 0);
 	}
 }

@@ -1063,6 +1063,19 @@ static inline bool __is_false_dep(struct ir3_instruction *instr, unsigned n)
 #define foreach_ssa_src(__srcinst, __instr) \
 	foreach_ssa_src_n(__srcinst, __i, __instr)
 
+/* iterators for shader inputs: */
+#define foreach_input_n(__ininstr, __cnt, __ir) \
+	for (unsigned __cnt = 0; __cnt < (__ir)->ninputs; __cnt++) \
+		if ((__ininstr = (__ir)->inputs[__cnt]))
+#define foreach_input(__ininstr, __ir) \
+	foreach_input_n(__ininstr, __i, __ir)
+
+/* iterators for shader outputs: */
+#define foreach_output_n(__outinstr, __cnt, __ir) \
+	for (unsigned __cnt = 0; __cnt < (__ir)->noutputs; __cnt++) \
+		if ((__outinstr = (__ir)->outputs[__cnt]))
+#define foreach_output(__outinstr, __ir) \
+	foreach_output_n(__outinstr, __i, __ir)
 
 /* dump: */
 void ir3_print(struct ir3 *ir);

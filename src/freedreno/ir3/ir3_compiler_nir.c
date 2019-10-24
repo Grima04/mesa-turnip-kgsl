@@ -3425,15 +3425,10 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 		ret = ir3_ra(so, precolor, ARRAY_SIZE(precolor));
 	} else if (so->num_sampler_prefetch) {
 		assert(so->type == MESA_SHADER_FRAGMENT);
-		struct ir3_instruction *precolor[2];
+		struct ir3_instruction *instr, *precolor[2];
 		int idx = 0;
 
-		for (unsigned i = 0; i < ir->ninputs; i++) {
-			struct ir3_instruction *instr = ctx->ir->inputs[i];
-
-			if (!instr)
-				continue;
-
+		foreach_input(instr, ir) {
 			if (instr->input.sysval != SYSTEM_VALUE_BARYCENTRIC_PIXEL)
 				continue;
 

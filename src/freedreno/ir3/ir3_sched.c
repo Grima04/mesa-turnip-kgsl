@@ -170,14 +170,9 @@ update_use_count(struct ir3 *ir)
 
 	/* Shader outputs are also used:
 	 */
-	for (unsigned i = 0; i <  ir->noutputs; i++) {
-		struct ir3_instruction  *out = ir->outputs[i];
-
-		if (!out)
-			continue;
-
+	struct ir3_instruction *out;
+	foreach_output(out, ir)
 		use_instr(out);
-	}
 }
 
 #define NULL_INSTR ((void *)~0)
