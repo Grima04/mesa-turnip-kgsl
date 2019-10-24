@@ -356,10 +356,10 @@ static LLVMValueRef emit_f2f16(struct ac_llvm_context *ctx,
 		 */
 		LLVMValueRef temp, cond2;
 		temp = emit_intrin_1f_param(ctx, "llvm.fabs", ctx->f32, result);
-		cond = LLVMBuildFCmp(ctx->builder, LLVMRealUGT,
+		cond = LLVMBuildFCmp(ctx->builder, LLVMRealOGT,
 				     LLVMBuildBitCast(ctx->builder, LLVMConstInt(ctx->i32, 0x38800000, false), ctx->f32, ""),
 				     temp, "");
-		cond2 = LLVMBuildFCmp(ctx->builder, LLVMRealUNE,
+		cond2 = LLVMBuildFCmp(ctx->builder, LLVMRealONE,
 				      temp, ctx->f32_0, "");
 		cond = LLVMBuildAnd(ctx->builder, cond, cond2, "");
 		result = LLVMBuildSelect(ctx->builder, cond, ctx->f32_0, result, "");
