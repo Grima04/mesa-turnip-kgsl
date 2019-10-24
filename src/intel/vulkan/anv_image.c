@@ -308,6 +308,7 @@ add_aux_state_tracking_buffer(struct anv_image *image,
 static VkResult
 make_surface(struct anv_device *device,
              struct anv_image *image,
+             const VkImageFormatListCreateInfoKHR *fmt_list,
              uint32_t stride,
              isl_tiling_flags_t tiling_flags,
              isl_surf_usage_flags_t isl_extra_usage_flags,
@@ -489,7 +490,11 @@ make_surface(struct anv_device *device,
              * compression on at all times for these formats.
              */
             if (!(image->usage & VK_IMAGE_USAGE_STORAGE_BIT) &&
-                image->ccs_e_compatible) {
+                anv_formats_ccs_e_compatible(&device->info,
+                                             image->create_flags,
+                                             image->vk_format,
+                                             image->tiling,
+                                             fmt_list)) {
                image->planes[plane].aux_usage = ISL_AUX_USAGE_CCS_E;
             } else if (device->info.gen >= 12) {
                anv_perf_warn(device, image,
@@ -661,14 +666,11 @@ anv_image_create(VkDevice _device,
       vk_find_struct_const(pCreateInfo->pNext,
                            IMAGE_FORMAT_LIST_CREATE_INFO_KHR);
 
-   image->ccs_e_compatible =
-      anv_formats_ccs_e_compatible(&device->info, image->create_flags,
-                                   image->vk_format, image->tiling, fmt_list);
-
    uint32_t b;
    for_each_bit(b, image->aspects) {
-      r = make_surface(device, image, create_info->stride, isl_tiling_flags,
-                       create_info->isl_extra_usage_flags, (1 << b));
+      r = make_surface(device, image, fmt_list, create_info->stride,
+                       isl_tiling_flags, create_info->isl_extra_usage_flags,
+                       (1 << b));
       if (r != VK_SUCCESS)
          goto fail;
    }
@@ -902,14 +904,13 @@ resolve_ahw_image(struct anv_device *device,
    image->format = anv_get_format(vk_format);
    image->aspects = vk_format_aspects(image->vk_format);
    image->n_planes = image->format->n_planes;
-   image->ccs_e_compatible = false;
 
    uint32_t stride = desc.stride *
                      (isl_format_get_layout(isl_fmt)->bpb / 8);
 
    uint32_t b;
    for_each_bit(b, image->aspects) {
-      VkResult r = make_surface(device, image, stride, isl_tiling_flags,
+      VkResult r = make_surface(device, image, NULL, stride, isl_tiling_flags,
                                 ISL_SURF_USAGE_DISABLE_AUX_BIT, (1 << b));
       assert(r == VK_SUCCESS);
    }
