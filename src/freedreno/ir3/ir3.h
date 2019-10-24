@@ -774,10 +774,6 @@ static inline bool is_bool(struct ir3_instruction *instr)
 
 static inline bool is_meta(struct ir3_instruction *instr)
 {
-	/* TODO how should we count PHI (and maybe fan-in/out) which
-	 * might actually contribute some instructions to the final
-	 * result?
-	 */
 	return (opc_cat(instr->opc) == -1);
 }
 
