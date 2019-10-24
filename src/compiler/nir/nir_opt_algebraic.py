@@ -69,6 +69,9 @@ e = 'e'
 # expression this indicates that the constructed value should have that
 # bit-size.
 #
+# If the opcode in a replacement expression is prefixed by a '!' character,
+# this indicated that the new expression will be marked exact.
+#
 # A special condition "many-comm-expr" can be used with expressions to note
 # that the expression and its subexpressions have more commutative expressions
 # than nir_replace_instr can handle.  If this special condition is needed with
