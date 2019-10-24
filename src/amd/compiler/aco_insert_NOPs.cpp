@@ -43,11 +43,37 @@ struct NOP_ctx {
    int last_VMEM_since_scalar_write = -1;
    bool has_VOPC = false;
    bool has_nonVALU_exec_read = false;
+   std::bitset<128> sgprs_read_by_SMEM;
 
    NOP_ctx(Program* program) : chip_class(program->chip_class) {
       vcc_physical = program->config->num_sgprs - 2;
    }
 };
+
+template <std::size_t N>
+bool check_written_regs(const aco_ptr<Instruction> &instr, const std::bitset<N> &check_regs)
+{
+   return std::any_of(instr->definitions.begin(), instr->definitions.end(), [&check_regs](const Definition &def) -> bool {
+      bool writes_any = false;
+      for (unsigned i = 0; i < def.size(); i++) {
+         unsigned def_reg = def.physReg() + i;
+         writes_any |= def_reg < check_regs.size() && check_regs[def_reg];
+      }
+      return writes_any;
+   });
+}
+
+template <std::size_t N>
+void mark_read_regs(const aco_ptr<Instruction> &instr, std::bitset<N> &reg_reads)
+{
+   for (const Operand &op : instr->operands) {
+      for (unsigned i = 0; i < op.size(); i++) {
+         unsigned reg = op.physReg() + i;
+         if (reg < reg_reads.size())
+            reg_reads.set(reg);
+      }
+   }
+}
 
 bool VALU_writes_sgpr(aco_ptr<Instruction>& instr)
 {
@@ -350,6 +376,41 @@ std::pair<int, int> handle_instruction_gfx10(NOP_ctx& ctx, aco_ptr<Instruction>&
       const SOPP_instruction *sopp = static_cast<const SOPP_instruction *>(instr.get());
       if ((sopp->imm & 0xfffe) == 0xfffe)
          ctx.has_nonVALU_exec_read = false;
+   }
+
+   /* SMEMtoVectorWriteHazard
+    * Handle any VALU instruction writing an SGPR after an SMEM reads it.
+    */
+   if (instr->format == Format::SMEM) {
+      /* Remember all SGPRs that are read by the SMEM instruction */
+      mark_read_regs(instr, ctx.sgprs_read_by_SMEM);
+   } else if (VALU_writes_sgpr(instr)) {
+      /* Check if VALU writes an SGPR that was previously read by SMEM */
+      if (check_written_regs(instr, ctx.sgprs_read_by_SMEM)) {
+         ctx.sgprs_read_by_SMEM.reset();
+
+         /* Insert s_mov to mitigate the problem */
+         aco_ptr<SOP1_instruction> s_mov{create_instruction<SOP1_instruction>(aco_opcode::s_mov_b32, Format::SOP1, 1, 1)};
+         s_mov->definitions[0] = Definition(sgpr_null, s1);
+         s_mov->operands[0] = Operand(0u);
+         new_instructions.emplace_back(std::move(s_mov));
+      }
+   } else if (instr->isSALU()) {
+      if (instr->format != Format::SOPP) {
+         /* SALU can mitigate the hazard */
+         ctx.sgprs_read_by_SMEM.reset();
+      } else {
+         /* Reducing lgkmcnt count to 0 always mitigates the hazard. */
+         const SOPP_instruction *sopp = static_cast<const SOPP_instruction *>(instr.get());
+         if (sopp->opcode == aco_opcode::s_waitcnt_lgkmcnt) {
+            if (sopp->imm == 0 && sopp->definitions[0].physReg() == sgpr_null)
+               ctx.sgprs_read_by_SMEM.reset();
+         } else if (sopp->opcode == aco_opcode::s_waitcnt) {
+            unsigned lgkm = (sopp->imm >> 8) & 0x3f;
+            if (lgkm == 0)
+               ctx.sgprs_read_by_SMEM.reset();
+         }
+      }
    }
 
    return std::make_pair(sNOPs, vNOPs);
