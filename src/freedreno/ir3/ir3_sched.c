@@ -79,7 +79,7 @@ unuse_each_src(struct ir3_sched_ctx *ctx, struct ir3_instruction *instr)
 			continue;
 		if (instr->block != src->block)
 			continue;
-		if ((src->opc == OPC_META_FI) || (src->opc == OPC_META_FO)) {
+		if ((src->opc == OPC_META_COLLECT) || (src->opc == OPC_META_SPLIT)) {
 			unuse_each_src(ctx, src);
 		} else {
 			debug_assert(src->use_count > 0);
@@ -133,7 +133,7 @@ use_each_src(struct ir3_instruction *instr)
 static void
 use_instr(struct ir3_instruction *instr)
 {
-	if ((instr->opc == OPC_META_FI) || (instr->opc == OPC_META_FO)) {
+	if ((instr->opc == OPC_META_COLLECT) || (instr->opc == OPC_META_SPLIT)) {
 		use_each_src(instr);
 	} else {
 		instr->use_count++;
@@ -143,7 +143,7 @@ use_instr(struct ir3_instruction *instr)
 static void
 update_live_values(struct ir3_sched_ctx *ctx, struct ir3_instruction *instr)
 {
-	if ((instr->opc == OPC_META_FI) || (instr->opc == OPC_META_FO))
+	if ((instr->opc == OPC_META_COLLECT) || (instr->opc == OPC_META_SPLIT))
 		return;
 
 	ctx->live_values += dest_regs(instr);
@@ -161,7 +161,7 @@ update_use_count(struct ir3 *ir)
 
 	list_for_each_entry (struct ir3_block, block, &ir->block_list, node) {
 		list_for_each_entry (struct ir3_instruction, instr, &block->instr_list, node) {
-			if ((instr->opc == OPC_META_FI) || (instr->opc == OPC_META_FO))
+			if ((instr->opc == OPC_META_COLLECT) || (instr->opc == OPC_META_SPLIT))
 				continue;
 
 			use_each_src(instr);
@@ -542,15 +542,15 @@ live_effect(struct ir3_instruction *instr)
 		if (instr->block != src->block)
 			continue;
 
-		/* for fanout/split, just pass things along to the real src: */
-		if (src->opc == OPC_META_FO)
+		/* for split, just pass things along to the real src: */
+		if (src->opc == OPC_META_SPLIT)
 			src = ssa(src->regs[1]);
 
-		/* for fanin/collect, if this is the last use of *each* src,
+		/* for collect, if this is the last use of *each* src,
 		 * then it will decrease the live values, since RA treats
 		 * them as a whole:
 		 */
-		if (src->opc == OPC_META_FI) {
+		if (src->opc == OPC_META_COLLECT) {
 			struct ir3_instruction *src2;
 			bool last_use = true;
 

@@ -175,7 +175,7 @@ remove_unused_by_block(struct ir3_block *block)
 		if (instr->opc == OPC_END || instr->opc == OPC_CHSH || instr->opc == OPC_CHMASK)
 			continue;
 		if (instr->flags & IR3_INSTR_UNUSED) {
-			if (instr->opc == OPC_META_FO) {
+			if (instr->opc == OPC_META_SPLIT) {
 				struct ir3_instruction *src = ssa(instr->regs[1]);
 				/* leave inputs alone.. we can't optimize out components of
 				 * an input, since the hw is still going to be writing all
@@ -184,7 +184,7 @@ remove_unused_by_block(struct ir3_block *block)
 				 */
 				if ((src->opc != OPC_META_INPUT) &&
 						(src->regs[0]->wrmask > 1)) {
-					src->regs[0]->wrmask &= ~(1 << instr->fo.off);
+					src->regs[0]->wrmask &= ~(1 << instr->split.off);
 
 					/* prune no-longer needed right-neighbors.  We could
 					 * probably do the same for left-neighbors (ie. tex

@@ -421,10 +421,10 @@ get_definer(struct ir3_ra_ctx *ctx, struct ir3_instruction *instr,
 		return id->defn;
 	}
 
-	if (instr->opc == OPC_META_FI) {
+	if (instr->opc == OPC_META_COLLECT) {
 		/* What about the case where collect is subset of array, we
 		 * need to find the distance between where actual array starts
-		 * and fanin..  that probably doesn't happen currently.
+		 * and collect..  that probably doesn't happen currently.
 		 */
 		struct ir3_register *src;
 		int dsz, doff;
@@ -454,7 +454,7 @@ get_definer(struct ir3_ra_ctx *ctx, struct ir3_instruction *instr,
 
 		/* by definition, the entire sequence forms one linked list
 		 * of single scalar register nodes (even if some of them may
-		 * be fanouts from a texture sample (for example) instr.  We
+		 * be splits from a texture sample (for example) instr.  We
 		 * just need to walk the list finding the first element of
 		 * the group defined (lowest ip)
 		 */
@@ -480,7 +480,7 @@ get_definer(struct ir3_ra_ctx *ctx, struct ir3_instruction *instr,
 	} else {
 		/* second case is looking directly at the instruction which
 		 * produces multiple values (eg, texture sample), rather
-		 * than the fanout nodes that point back to that instruction.
+		 * than the split nodes that point back to that instruction.
 		 * This isn't quite right, because it may be part of a larger
 		 * group, such as:
 		 *
@@ -500,7 +500,7 @@ get_definer(struct ir3_ra_ctx *ctx, struct ir3_instruction *instr,
 		d = instr;
 	}
 
-	if (d->opc == OPC_META_FO) {
+	if (d->opc == OPC_META_SPLIT) {
 		struct ir3_instruction *dd;
 		int dsz, doff;
 
@@ -511,13 +511,13 @@ get_definer(struct ir3_ra_ctx *ctx, struct ir3_instruction *instr,
 
 		*sz = MAX2(*sz, dsz);
 
-		if (instr->opc == OPC_META_FO)
-			*off = MAX2(*off, instr->fo.off);
+		if (instr->opc == OPC_META_SPLIT)
+			*off = MAX2(*off, instr->split.off);
 
 		d = dd;
 	}
 
-	debug_assert(d->opc != OPC_META_FO);
+	debug_assert(d->opc != OPC_META_SPLIT);
 
 	id->defn = d;
 	id->sz = *sz;
@@ -707,16 +707,16 @@ ra_block_compute_live_ranges(struct ir3_ra_ctx *ctx, struct ir3_block *block)
 
 		/* There are a couple special cases to deal with here:
 		 *
-		 * fanout: used to split values from a higher class to a lower
+		 * split: used to split values from a higher class to a lower
 		 *     class, for example split the results of a texture fetch
 		 *     into individual scalar values;  We skip over these from
 		 *     a 'def' perspective, and for a 'use' we walk the chain
 		 *     up to the defining instruction.
 		 *
-		 * fanin: used to collect values from lower class and assemble
+		 * collect: used to collect values from lower class and assemble
 		 *     them together into a higher class, for example arguments
 		 *     to texture sample instructions;  We consider these to be
-		 *     defined at the earliest fanin source.
+		 *     defined at the earliest collect source.
 		 *
 		 * Most of this is handled in the get_definer() helper.
 		 *

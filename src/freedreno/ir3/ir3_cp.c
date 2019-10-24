@@ -85,10 +85,10 @@ static bool is_eligible_mov(struct ir3_instruction *instr,
 		 * We could possibly do a bit better, and copy-propagation if
 		 * we can CP all components that are being fanned out.
 		 */
-		if (src_instr->opc == OPC_META_FO) {
+		if (src_instr->opc == OPC_META_SPLIT) {
 			if (!dst_instr)
 				return false;
-			if (dst_instr->opc == OPC_META_FI)
+			if (dst_instr->opc == OPC_META_COLLECT)
 				return false;
 			if (dst_instr->cp.left || dst_instr->cp.right)
 				return false;
@@ -706,12 +706,12 @@ instr_cp(struct ir3_cp_ctx *ctx, struct ir3_instruction *instr)
 	 */
 	if (is_tex(instr) && (instr->flags & IR3_INSTR_S2EN) &&
 			!(ir3_shader_debug & IR3_DBG_FORCES2EN)) {
-		/* The first src will be a fan-in (collect), if both of it's
+		/* The first src will be a collect, if both of it's
 		 * two sources are mov from imm, then we can
 		 */
 		struct ir3_instruction *samp_tex = ssa(instr->regs[1]);
 
-		debug_assert(samp_tex->opc == OPC_META_FI);
+		debug_assert(samp_tex->opc == OPC_META_COLLECT);
 
 		struct ir3_instruction *samp = ssa(samp_tex->regs[1]);
 		struct ir3_instruction *tex  = ssa(samp_tex->regs[2]);

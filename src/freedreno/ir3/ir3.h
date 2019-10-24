@@ -267,7 +267,7 @@ struct ir3_instruction {
 		 */
 		struct {
 			int off;              /* component/offset */
-		} fo;
+		} split;
 		struct {
 			unsigned samp, tex;
 			unsigned input_offset;
@@ -313,7 +313,7 @@ struct ir3_instruction {
 	int sun;            /* Sethi–Ullman number, used by sched */
 	int use_count;      /* currently just updated/used by cp */
 
-	/* Used during CP and RA stages.  For fanin and shader inputs/
+	/* Used during CP and RA stages.  For collect and shader inputs/
 	 * outputs where we need a sequence of consecutive registers,
 	 * keep track of each src instructions left (ie 'n-1') and right
 	 * (ie 'n+1') neighbor.  The front-end must insert enough mov's
@@ -333,7 +333,7 @@ struct ir3_instruction {
 	 * it should be overkill..  the problem is if, potentially after
 	 * already eliminating some mov's, if you have a single mov that
 	 * needs to be grouped with it's neighbors in two different
-	 * places (ex. shader output and a fanin).
+	 * places (ex. shader output and a collect).
 	 */
 	struct {
 		struct ir3_instruction *left, *right;

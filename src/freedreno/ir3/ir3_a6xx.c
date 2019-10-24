@@ -346,7 +346,7 @@ get_atomic_dest_mov(struct ir3_instruction *atomic)
 
 	/* extract back out the 'dummy' which serves as stand-in for dest: */
 	struct ir3_instruction *src = ssa(atomic->regs[3]);
-	debug_assert(src->opc == OPC_META_FI);
+	debug_assert(src->opc == OPC_META_COLLECT);
 	struct ir3_instruction *dummy = ssa(src->regs[1]);
 
 	struct ir3_instruction *mov = ir3_MOV(atomic->block, dummy, TYPE_U32);

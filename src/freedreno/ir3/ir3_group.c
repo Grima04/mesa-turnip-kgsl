@@ -185,7 +185,7 @@ instr_find_neighbors(struct ir3_instruction *instr)
 	if (ir3_instr_check_mark(instr))
 		return;
 
-	if (instr->opc == OPC_META_FI)
+	if (instr->opc == OPC_META_COLLECT)
 		group_n(&instr_ops, instr, instr->regs_count - 1);
 
 	foreach_ssa_src(src, instr)
