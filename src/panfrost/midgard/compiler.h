@@ -518,6 +518,7 @@ midgard_reg_mode mir_typesize(midgard_instruction *ins);
 uint16_t mir_from_bytemask(uint16_t bytemask, midgard_reg_mode mode);
 uint16_t mir_bytemask(midgard_instruction *ins);
 uint16_t mir_round_bytemask_down(uint16_t mask, midgard_reg_mode mode);
+void mir_set_bytemask(midgard_instruction *ins, uint16_t bytemask);
 
 /* MIR printing */
 

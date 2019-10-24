@@ -525,6 +525,12 @@ mir_bytemask(midgard_instruction *ins)
         return mir_to_bytemask(mir_typesize(ins), ins->mask);
 }
 
+void
+mir_set_bytemask(midgard_instruction *ins, uint16_t bytemask)
+{
+        ins->mask = mir_from_bytemask(bytemask, mir_typesize(ins));
+}
+
 /* Creates a mask of the components of a node read by an instruction, by
  * analyzing the swizzle with respect to the instruction's mask. E.g.:
  *
