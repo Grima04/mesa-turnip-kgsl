@@ -83,7 +83,7 @@ def update_index(is_point: bool, version: str, previous_version: str) -> None:
     root.insert(index, body)
     root.insert(index, header)
 
-    tree.write(p.as_posix(), method='html')
+    tree.write(p.as_posix(), method='html', pretty_print=True)
 
 
 def update_release_notes(previous_version: str) -> None:
@@ -98,7 +98,7 @@ def update_release_notes(previous_version: str) -> None:
     ul = tree.xpath('.//ul')[0]
     ul.insert(0, li)
 
-    tree.write(p.as_posix(), method='html')
+    tree.write(p.as_posix(), method='html', pretty_print=True)
 
 
 def update_calendar(previous_version: str) -> None:
@@ -131,7 +131,7 @@ def update_calendar(previous_version: str) -> None:
         td.set("rowspan", str(rowspan))
         new.insert(0, td)
 
-    tree.write(p.as_posix(), method='html')
+    tree.write(p.as_posix(), method='html', pretty_print=True)
 
 
 def main() -> None:
