@@ -1021,6 +1021,7 @@ emit_ds_state(struct anv_pipeline *pipeline,
    pipeline->stencil_test_enable = info.stencilTestEnable;
    pipeline->writes_depth = info.depthWriteEnable;
    pipeline->depth_test_enable = info.depthTestEnable;
+   pipeline->depth_bounds_test_enable = info.depthBoundsTestEnable;
 
    /* VkBool32 depthBoundsTestEnable; // optional (depth_bounds_test) */
 

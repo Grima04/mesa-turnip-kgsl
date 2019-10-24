@@ -2886,6 +2886,7 @@ struct anv_pipeline {
    bool                                         depth_clip_enable;
    bool                                         sample_shading_enable;
    bool                                         kill_pixel;
+   bool                                         depth_bounds_test_enable;
 
    struct {
       uint32_t                                  sf[7];
