@@ -43,6 +43,10 @@ struct NOP_ctx {
    int last_VMEM_since_scalar_write = -1;
    bool has_VOPC = false;
    bool has_nonVALU_exec_read = false;
+   bool has_VMEM = false;
+   bool has_branch_after_VMEM = false;
+   bool has_DS = false;
+   bool has_branch_after_DS = false;
    std::bitset<128> sgprs_read_by_SMEM;
 
    NOP_ctx(Program* program) : chip_class(program->chip_class) {
@@ -105,6 +109,27 @@ bool instr_writes_sgpr(const aco_ptr<Instruction>& instr)
    return std::any_of(instr->definitions.begin(), instr->definitions.end(), [](const Definition &def) -> bool {
       return def.getTemp().type() == RegType::sgpr;
    });
+}
+
+inline bool instr_is_branch(const aco_ptr<Instruction>& instr)
+{
+   return instr->opcode == aco_opcode::s_branch ||
+          instr->opcode == aco_opcode::s_cbranch_scc0 ||
+          instr->opcode == aco_opcode::s_cbranch_scc1 ||
+          instr->opcode == aco_opcode::s_cbranch_vccz ||
+          instr->opcode == aco_opcode::s_cbranch_vccnz ||
+          instr->opcode == aco_opcode::s_cbranch_execz ||
+          instr->opcode == aco_opcode::s_cbranch_execnz ||
+          instr->opcode == aco_opcode::s_cbranch_cdbgsys ||
+          instr->opcode == aco_opcode::s_cbranch_cdbguser ||
+          instr->opcode == aco_opcode::s_cbranch_cdbgsys_or_user ||
+          instr->opcode == aco_opcode::s_cbranch_cdbgsys_and_user ||
+          instr->opcode == aco_opcode::s_subvector_loop_begin ||
+          instr->opcode == aco_opcode::s_subvector_loop_end ||
+          instr->opcode == aco_opcode::s_setpc_b64 ||
+          instr->opcode == aco_opcode::s_swappc_b64 ||
+          instr->opcode == aco_opcode::s_getpc_b64 ||
+          instr->opcode == aco_opcode::s_call_b64;
 }
 
 bool regs_intersect(PhysReg a_reg, unsigned a_size, PhysReg b_reg, unsigned b_size)
@@ -411,6 +436,38 @@ std::pair<int, int> handle_instruction_gfx10(NOP_ctx& ctx, aco_ptr<Instruction>&
                ctx.sgprs_read_by_SMEM.reset();
          }
       }
+   }
+
+   /* LdsBranchVmemWARHazard
+    * Handle VMEM/GLOBAL/SCRATCH->branch->DS and DS->branch->VMEM/GLOBAL/SCRATCH patterns.
+    */
+   if (instr->isVMEM() || instr->format == Format::GLOBAL || instr->format == Format::SCRATCH) {
+      ctx.has_VMEM = true;
+      ctx.has_branch_after_VMEM = false;
+      /* Mitigation for DS is needed only if there was already a branch after */
+      ctx.has_DS = ctx.has_branch_after_DS;
+   } else if (instr->format == Format::DS) {
+      ctx.has_DS = true;
+      ctx.has_branch_after_DS = false;
+      /* Mitigation for VMEM is needed only if there was already a branch after */
+      ctx.has_VMEM = ctx.has_branch_after_VMEM;
+   } else if (instr_is_branch(instr)) {
+      ctx.has_branch_after_VMEM = ctx.has_VMEM;
+      ctx.has_branch_after_DS = ctx.has_DS;
+   } else if (instr->opcode == aco_opcode::s_waitcnt_vscnt) {
+      /* Only s_waitcnt_vscnt can mitigate the hazard */
+      const SOPK_instruction *sopk = static_cast<const SOPK_instruction *>(instr.get());
+      if (sopk->definitions[0].physReg() == sgpr_null && sopk->imm == 0)
+         ctx.has_VMEM = ctx.has_branch_after_VMEM = ctx.has_DS = ctx.has_branch_after_DS = false;
+   }
+   if ((ctx.has_VMEM && ctx.has_branch_after_DS) || (ctx.has_DS && ctx.has_branch_after_VMEM)) {
+      ctx.has_VMEM = ctx.has_branch_after_VMEM = ctx.has_DS = ctx.has_branch_after_DS = false;
+
+      /* Insert s_waitcnt_vscnt to mitigate the problem */
+      aco_ptr<SOPK_instruction> wait{create_instruction<SOPK_instruction>(aco_opcode::s_waitcnt_vscnt, Format::SOPK, 0, 1)};
+      wait->definitions[0] = Definition(sgpr_null, s1);
+      wait->imm = 0;
+      new_instructions.emplace_back(std::move(wait));
    }
 
    return std::make_pair(sNOPs, vNOPs);

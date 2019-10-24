@@ -200,3 +200,12 @@ Mitigated by:
 A VALU instruction that writes an SGPR (or has a valid SDST operand), or `s_waitcnt_depctr 0xfffe`.
 Note: `s_waitcnt_depctr` is an internal instruction, so there is no further information
 about what it does or what its operand means.
+
+### LdsBranchVmemWARHazard
+
+Triggered by:
+VMEM/GLOBAL/SCRATCH instruction, then a branch, then a DS instruction,
+or vice versa: DS instruction, then a branch, then a VMEM/GLOBAL/SCRATCH instruction.
+
+Mitigated by:
+Only `s_waitcnt_vscnt null, 0`. Needed even if the first instruction is a load.
