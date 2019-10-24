@@ -1520,10 +1520,10 @@ void radv_GetPhysicalDeviceProperties2(
 			properties->shaderSignedZeroInfNanPreserveFloat16 = pdevice->rad_info.chip_class >= GFX8;
 
 			properties->shaderDenormFlushToZeroFloat64 = false;
-			properties->shaderDenormPreserveFloat64 = true;
-			properties->shaderRoundingModeRTEFloat64 = true;
+			properties->shaderDenormPreserveFloat64 = pdevice->rad_info.chip_class >= GFX8;
+			properties->shaderRoundingModeRTEFloat64 = pdevice->rad_info.chip_class >= GFX8;
 			properties->shaderRoundingModeRTZFloat64 = false;
-			properties->shaderSignedZeroInfNanPreserveFloat64 = true;
+			properties->shaderSignedZeroInfNanPreserveFloat64 = pdevice->rad_info.chip_class >= GFX8;
 			break;
 		}
 		default:
