@@ -904,6 +904,7 @@ fd_screen_create(struct fd_device *dev, struct renderonly *ro)
 	case 540:
 		fd5_screen_init(pscreen);
 		break;
+	case 618:
 	case 630:
 		fd6_screen_init(pscreen);
 		break;

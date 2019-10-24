@@ -801,6 +801,9 @@ fd6_emit_tile_init(struct fd_batch *batch)
 		 * the reset of these cmds:
 		 */
 
+// NOTE a618 not setting .USE_VIZ .. from a quick check on a630, it
+// does not appear that this bit changes much (ie. it isn't actually
+// .USE_VIZ like previous gens)
 		set_bin_size(ring, gmem->bin_w, gmem->bin_h,
 				A6XX_RB_BIN_CONTROL_USE_VIZ | 0x6000000);
 
