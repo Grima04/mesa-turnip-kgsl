@@ -1496,7 +1496,7 @@ radv_pipeline_init_dynamic_state(struct radv_pipeline *pipeline,
 }
 
 static void
-gfx9_get_gs_info(const VkGraphicsPipelineCreateInfo *pCreateInfo,
+gfx9_get_gs_info(const struct radv_pipeline_key *key,
                  const struct radv_pipeline *pipeline,
 		 nir_shader **nir,
 		 struct radv_shader_info *infos,
@@ -1513,7 +1513,7 @@ gfx9_get_gs_info(const VkGraphicsPipelineCreateInfo *pCreateInfo,
 
 	unsigned gs_num_invocations = MAX2(gs_info->gs.invocations, 1);
 	bool uses_adjacency;
-	switch(pCreateInfo->pInputAssemblyState->topology) {
+	switch(key->topology) {
 	case VK_PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY:
 	case VK_PRIMITIVE_TOPOLOGY_LINE_STRIP_WITH_ADJACENCY:
 	case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY:
@@ -1649,7 +1649,7 @@ radv_get_num_input_vertices(nir_shader **nir)
 }
 
 static void
-gfx10_get_ngg_info(const VkGraphicsPipelineCreateInfo *pCreateInfo,
+gfx10_get_ngg_info(const struct radv_pipeline_key *key,
 		   struct radv_pipeline *pipeline,
 		   nir_shader **nir,
 		   struct radv_shader_info *infos,
@@ -1664,7 +1664,7 @@ gfx10_get_ngg_info(const VkGraphicsPipelineCreateInfo *pCreateInfo,
 		gs_type == MESA_SHADER_GEOMETRY ? max_verts_per_prim : 1;
 	unsigned gs_num_invocations = nir[MESA_SHADER_GEOMETRY] ? MAX2(gs_info->gs.invocations, 1) : 1;
 	bool uses_adjacency;
-	switch(pCreateInfo->pInputAssemblyState->topology) {
+	switch(key->topology) {
 	case VK_PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY:
 	case VK_PRIMITIVE_TOPOLOGY_LINE_STRIP_WITH_ADJACENCY:
 	case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY:
@@ -2570,7 +2570,6 @@ void radv_create_shaders(struct radv_pipeline *pipeline,
                          const struct radv_pipeline_key *key,
                          const VkPipelineShaderStageCreateInfo **pStages,
                          const VkPipelineCreateFlags flags,
-                         const VkGraphicsPipelineCreateInfo *pCreateInfo,
                          VkPipelineCreationFeedbackEXT *pipeline_feedback,
                          VkPipelineCreationFeedbackEXT **stage_feedbacks)
 {
@@ -2698,12 +2697,12 @@ void radv_create_shaders(struct radv_pipeline *pipeline,
 		else
 			ngg_info = &infos[MESA_SHADER_VERTEX].ngg_info;
 
-		gfx10_get_ngg_info(pCreateInfo, pipeline, nir, infos, ngg_info);
+		gfx10_get_ngg_info(key, pipeline, nir, infos, ngg_info);
 	} else if (nir[MESA_SHADER_GEOMETRY]) {
 		struct gfx9_gs_info *gs_info =
 			&infos[MESA_SHADER_GEOMETRY].gs_ring_info;
 
-		gfx9_get_gs_info(pCreateInfo, pipeline, nir, infos, gs_info);
+		gfx9_get_gs_info(key, pipeline, nir, infos, gs_info);
 	}
 
 	if (nir[MESA_SHADER_FRAGMENT]) {
@@ -4659,7 +4658,7 @@ radv_pipeline_init(struct radv_pipeline *pipeline,
 	}
 
 	struct radv_pipeline_key key = radv_generate_graphics_pipeline_key(pipeline, pCreateInfo, &blend, has_view_index);
-	radv_create_shaders(pipeline, device, cache, &key, pStages, pCreateInfo->flags, pCreateInfo, pipeline_feedback, stage_feedbacks);
+	radv_create_shaders(pipeline, device, cache, &key, pStages, pCreateInfo->flags, pipeline_feedback, stage_feedbacks);
 
 	pipeline->graphics.spi_baryc_cntl = S_0286E0_FRONT_FACE_ALL_BITS(1);
 	radv_pipeline_init_multisample_state(pipeline, &blend, pCreateInfo);
@@ -4917,7 +4916,7 @@ static VkResult radv_compute_pipeline_create(
 		stage_feedbacks[MESA_SHADER_COMPUTE] = &creation_feedback->pPipelineStageCreationFeedbacks[0];
 
 	pStages[MESA_SHADER_COMPUTE] = &pCreateInfo->stage;
-	radv_create_shaders(pipeline, device, cache, &(struct radv_pipeline_key) {0}, pStages, pCreateInfo->flags, NULL, pipeline_feedback, stage_feedbacks);
+	radv_create_shaders(pipeline, device, cache, &(struct radv_pipeline_key) {0}, pStages, pCreateInfo->flags, pipeline_feedback, stage_feedbacks);
 
 	pipeline->user_data_0[MESA_SHADER_COMPUTE] = radv_pipeline_stage_to_user_data_0(pipeline, MESA_SHADER_COMPUTE, device->physical_device->rad_info.chip_class);
 	pipeline->need_indirect_descriptor_sets |= pipeline->shaders[MESA_SHADER_COMPUTE]->info.need_indirect_descriptor_sets;
