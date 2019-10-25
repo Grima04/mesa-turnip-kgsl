@@ -207,7 +207,7 @@ add_surface_reloc(struct anv_cmd_buffer *cmd_buffer,
    VkResult result =
       anv_reloc_list_add(&cmd_buffer->surface_relocs, &cmd_buffer->pool->alloc,
                          state.offset + isl_dev->ss.addr_offset,
-                         addr.bo, addr.offset);
+                         addr.bo, addr.offset, NULL);
    if (result != VK_SUCCESS)
       anv_batch_set_error(&cmd_buffer->batch, result);
 }
@@ -226,7 +226,9 @@ add_surface_state_relocs(struct anv_cmd_buffer *cmd_buffer,
          anv_reloc_list_add(&cmd_buffer->surface_relocs,
                             &cmd_buffer->pool->alloc,
                             state.state.offset + isl_dev->ss.aux_addr_offset,
-                            state.aux_address.bo, state.aux_address.offset);
+                            state.aux_address.bo,
+                            state.aux_address.offset,
+                            NULL);
       if (result != VK_SUCCESS)
          anv_batch_set_error(&cmd_buffer->batch, result);
    }
@@ -237,7 +239,9 @@ add_surface_state_relocs(struct anv_cmd_buffer *cmd_buffer,
                             &cmd_buffer->pool->alloc,
                             state.state.offset +
                             isl_dev->ss.clear_color_state_offset,
-                            state.clear_address.bo, state.clear_address.offset);
+                            state.clear_address.bo,
+                            state.clear_address.offset,
+                            NULL);
       if (result != VK_SUCCESS)
          anv_batch_set_error(&cmd_buffer->batch, result);
    }
