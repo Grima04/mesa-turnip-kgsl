@@ -287,7 +287,6 @@ void
 iris_resource_disable_aux(struct iris_resource *res)
 {
    iris_bo_unreference(res->aux.bo);
-   iris_bo_unreference(res->aux.extra_aux.bo);
    iris_bo_unreference(res->aux.clear_color_bo);
    free(res->aux.state);
 
@@ -298,7 +297,6 @@ iris_resource_disable_aux(struct iris_resource *res)
    res->aux.surf.size_B = 0;
    res->aux.bo = NULL;
    res->aux.extra_aux.surf.size_B = 0;
-   res->aux.extra_aux.bo = NULL;
    res->aux.clear_color_bo = NULL;
    res->aux.state = NULL;
 }
@@ -396,14 +394,11 @@ map_aux_addresses(struct iris_screen *screen, struct iris_resource *res)
    if (devinfo->gen >= 12 && isl_aux_usage_has_ccs(res->aux.usage)) {
       void *aux_map_ctx = iris_bufmgr_get_aux_map_context(screen->bufmgr);
       assert(aux_map_ctx);
-      const bool has_extra_ccs = res->aux.extra_aux.surf.size_B > 0;
-      struct iris_bo *aux_bo = has_extra_ccs ?
-         res->aux.extra_aux.bo : res->aux.bo;
-      const unsigned aux_offset = has_extra_ccs ?
+      const unsigned aux_offset = res->aux.extra_aux.surf.size_B > 0 ?
          res->aux.extra_aux.offset : res->aux.offset;
       gen_aux_map_add_image(aux_map_ctx, &res->surf, res->bo->gtt_offset,
-                            aux_bo->gtt_offset + aux_offset);
-      res->bo->aux_map_address = aux_bo->gtt_offset;
+                            res->aux.bo->gtt_offset + aux_offset);
+      res->bo->aux_map_address = res->aux.bo->gtt_offset;
    }
 }
 
@@ -638,11 +633,6 @@ iris_resource_init_aux_buf(struct iris_resource *res, uint32_t alloc_flags,
              clear_color_state_size);
 
       iris_bo_unmap(res->aux.bo);
-   }
-
-   if (res->aux.extra_aux.surf.size_B > 0) {
-      res->aux.extra_aux.bo = res->aux.bo;
-      iris_bo_reference(res->aux.extra_aux.bo);
    }
 
    if (clear_color_state_size > 0) {

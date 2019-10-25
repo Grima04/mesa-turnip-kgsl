@@ -109,9 +109,6 @@ struct iris_resource {
       struct {
          struct isl_surf surf;
 
-         /** The buffer object containing the auxiliary data. */
-         struct iris_bo *bo;
-
          /** Offset into 'bo' where the auxiliary surface starts. */
          uint32_t offset;
       } extra_aux;
