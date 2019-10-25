@@ -699,7 +699,34 @@ void GLAPIENTRY
 _mesa_VertexArrayVertexOffsetEXT(GLuint vaobj, GLuint buffer, GLint size,
                                  GLenum type, GLsizei stride, GLintptr offset)
 {
+   GET_CURRENT_CONTEXT(ctx);
 
+   GLenum format = GL_RGBA;
+   GLbitfield legalTypes = (ctx->API == API_OPENGLES)
+      ? (BYTE_BIT | SHORT_BIT | FLOAT_BIT | FIXED_ES_BIT)
+      : (SHORT_BIT | INT_BIT | FLOAT_BIT |
+         DOUBLE_BIT | HALF_BIT |
+         UNSIGNED_INT_2_10_10_10_REV_BIT |
+         INT_2_10_10_10_REV_BIT);
+
+   struct gl_vertex_array_object* vao;
+   struct gl_buffer_object* vbo;
+
+   if (!_lookup_vao_and_vbo_dsa(ctx, vaobj, buffer, offset,
+                                &vao, &vbo,
+                                "glVertexArrayVertexOffsetEXT"))
+      return;
+
+   if (!validate_array_and_format(ctx, "glVertexArrayVertexOffsetEXT",
+                                  vao, vbo,
+                                  VERT_ATTRIB_POS, legalTypes, 2, 4, size,
+                                  type, stride, GL_FALSE, GL_FALSE, GL_FALSE,
+                                  format, (void*) offset))
+      return;
+
+   update_array(ctx, vao, vbo,
+                VERT_ATTRIB_POS, format, 4, size, type, stride,
+                GL_FALSE, GL_FALSE, GL_FALSE, (void*) offset);
 }
 
 
@@ -744,7 +771,34 @@ void GLAPIENTRY
 _mesa_VertexArrayNormalOffsetEXT(GLuint vaobj, GLuint buffer, GLenum type,
                                  GLsizei stride, GLintptr offset)
 {
+   GET_CURRENT_CONTEXT(ctx);
 
+   GLenum format = GL_RGBA;
+   const GLbitfield legalTypes = (ctx->API == API_OPENGLES)
+      ? (BYTE_BIT | SHORT_BIT | FLOAT_BIT | FIXED_ES_BIT)
+      : (BYTE_BIT | SHORT_BIT | INT_BIT |
+         HALF_BIT | FLOAT_BIT | DOUBLE_BIT |
+         UNSIGNED_INT_2_10_10_10_REV_BIT |
+         INT_2_10_10_10_REV_BIT);
+
+   struct gl_vertex_array_object* vao;
+   struct gl_buffer_object* vbo;
+
+   if (!_lookup_vao_and_vbo_dsa(ctx, vaobj, buffer, offset,
+                                &vao, &vbo,
+                                "glNormalPointer"))
+      return;
+
+   if (!validate_array_and_format(ctx, "glNormalPointer",
+                                  vao, vbo,
+                                  VERT_ATTRIB_NORMAL, legalTypes, 3, 3, 3,
+                                  type, stride, GL_TRUE, GL_FALSE,
+                                  GL_FALSE, format, (void*) offset))
+      return;
+
+   update_array(ctx, vao, vbo,
+                VERT_ATTRIB_NORMAL, format, 3, 3, type, stride, GL_TRUE,
+                GL_FALSE, GL_FALSE, (void*) offset);
 }
 
 
@@ -794,7 +848,37 @@ void GLAPIENTRY
 _mesa_VertexArrayColorOffsetEXT(GLuint vaobj, GLuint buffer, GLint size,
                                 GLenum type, GLsizei stride, GLintptr offset)
 {
+   GET_CURRENT_CONTEXT(ctx);
+   const GLint sizeMin = (ctx->API == API_OPENGLES) ? 4 : 3;
 
+   GLenum format = get_array_format(ctx, BGRA_OR_4, &size);
+   const GLbitfield legalTypes = (ctx->API == API_OPENGLES)
+      ? (UNSIGNED_BYTE_BIT | HALF_BIT | FLOAT_BIT | FIXED_ES_BIT)
+      : (BYTE_BIT | UNSIGNED_BYTE_BIT |
+         SHORT_BIT | UNSIGNED_SHORT_BIT |
+         INT_BIT | UNSIGNED_INT_BIT |
+         HALF_BIT | FLOAT_BIT | DOUBLE_BIT |
+         UNSIGNED_INT_2_10_10_10_REV_BIT |
+         INT_2_10_10_10_REV_BIT);
+
+   struct gl_vertex_array_object* vao;
+   struct gl_buffer_object* vbo;
+
+   if (!_lookup_vao_and_vbo_dsa(ctx, vaobj, buffer, offset,
+                                &vao, &vbo,
+                                "glVertexArrayColorOffsetEXT"))
+      return;
+
+   if (!validate_array_and_format(ctx, "glVertexArrayColorOffsetEXT",
+                                  vao, vbo,
+                                  VERT_ATTRIB_COLOR0, legalTypes, sizeMin,
+                                  BGRA_OR_4, size, type, stride, GL_TRUE,
+                                  GL_FALSE, GL_FALSE, format, (void*) offset))
+      return;
+
+   update_array(ctx, vao, vbo,
+                VERT_ATTRIB_COLOR0, format, BGRA_OR_4, size,
+                type, stride, GL_TRUE, GL_FALSE, GL_FALSE, (void*) offset);
 }
 
 
@@ -834,7 +918,29 @@ void GLAPIENTRY
 _mesa_VertexArrayFogCoordOffsetEXT(GLuint vaobj, GLuint buffer, GLenum type,
                                    GLsizei stride, GLintptr offset)
 {
+   GET_CURRENT_CONTEXT(ctx);
 
+   GLenum format = GL_RGBA;
+   const GLbitfield legalTypes = (HALF_BIT | FLOAT_BIT | DOUBLE_BIT);
+
+   struct gl_vertex_array_object* vao;
+   struct gl_buffer_object* vbo;
+
+   if (!_lookup_vao_and_vbo_dsa(ctx, vaobj, buffer, offset,
+                                &vao, &vbo,
+                                "glVertexArrayFogCoordOffsetEXT"))
+      return;
+
+   if (!validate_array_and_format(ctx, "glVertexArrayFogCoordOffsetEXT",
+                                  vao, vbo,
+                                  VERT_ATTRIB_FOG, legalTypes, 1, 1, 1,
+                                  type, stride, GL_FALSE, GL_FALSE,
+                                  GL_FALSE, format, (void*) offset))
+      return;
+
+   update_array(ctx, vao, vbo,
+                VERT_ATTRIB_FOG, format, 1, 1, type, stride, GL_FALSE,
+                GL_FALSE, GL_FALSE, (void*) offset);
 }
 
 
@@ -875,7 +981,30 @@ void GLAPIENTRY
 _mesa_VertexArrayIndexOffsetEXT(GLuint vaobj, GLuint buffer, GLenum type,
                                 GLsizei stride, GLintptr offset)
 {
+   GET_CURRENT_CONTEXT(ctx);
 
+   GLenum format = GL_RGBA;
+   const GLbitfield legalTypes = (UNSIGNED_BYTE_BIT | SHORT_BIT | INT_BIT |
+                                     FLOAT_BIT | DOUBLE_BIT);
+
+   struct gl_vertex_array_object* vao;
+   struct gl_buffer_object* vbo;
+
+   if (!_lookup_vao_and_vbo_dsa(ctx, vaobj, buffer, offset,
+                                &vao, &vbo,
+                                "glVertexArrayIndexOffsetEXT"))
+      return;
+
+   if (!validate_array_and_format(ctx, "glVertexArrayIndexOffsetEXT",
+                                  vao, vbo,
+                                  VERT_ATTRIB_COLOR_INDEX,
+                                  legalTypes, 1, 1, 1, type, stride,
+                                  GL_FALSE, GL_FALSE, GL_FALSE, format, (void*) offset))
+      return;
+
+   update_array(ctx, vao, vbo,
+                VERT_ATTRIB_COLOR_INDEX, format, 1, 1, type, stride,
+                GL_FALSE, GL_FALSE, GL_FALSE, (void*) offset);
 }
 
 
@@ -923,7 +1052,34 @@ void GLAPIENTRY
 _mesa_VertexArraySecondaryColorOffsetEXT(GLuint vaobj, GLuint buffer, GLint size,
                                          GLenum type, GLsizei stride, GLintptr offset)
 {
+   GET_CURRENT_CONTEXT(ctx);
 
+   GLenum format = get_array_format(ctx, BGRA_OR_4, &size);
+   const GLbitfield legalTypes = (BYTE_BIT | UNSIGNED_BYTE_BIT |
+                                  SHORT_BIT | UNSIGNED_SHORT_BIT |
+                                  INT_BIT | UNSIGNED_INT_BIT |
+                                  HALF_BIT | FLOAT_BIT | DOUBLE_BIT |
+                                  UNSIGNED_INT_2_10_10_10_REV_BIT |
+                                  INT_2_10_10_10_REV_BIT);
+
+   struct gl_vertex_array_object* vao;
+   struct gl_buffer_object* vbo;
+
+   if (!_lookup_vao_and_vbo_dsa(ctx, vaobj, buffer, offset,
+                                &vao, &vbo,
+                                "glVertexArraySecondaryColorOffsetEXT"))
+      return;
+
+   if (!validate_array_and_format(ctx, "glVertexArraySecondaryColorOffsetEXT",
+                                  vao, vbo,
+                                  VERT_ATTRIB_COLOR1, legalTypes, 3,
+                                  BGRA_OR_4, size, type, stride,
+                                  GL_TRUE, GL_FALSE, GL_FALSE, format, (void*) offset))
+      return;
+
+   update_array(ctx, vao, vbo,
+                VERT_ATTRIB_COLOR1, format, BGRA_OR_4, size, type,
+                stride, GL_TRUE, GL_FALSE, GL_FALSE, (void*) offset);
 }
 
 
@@ -973,7 +1129,36 @@ void GLAPIENTRY
 _mesa_VertexArrayTexCoordOffsetEXT(GLuint vaobj, GLuint buffer, GLint size,
                                    GLenum type, GLsizei stride, GLintptr offset)
 {
+   GET_CURRENT_CONTEXT(ctx);
+   const GLint sizeMin = (ctx->API == API_OPENGLES) ? 2 : 1;
+   const GLuint unit = ctx->Array.ActiveTexture;
 
+   GLenum format = GL_RGBA;
+   const GLbitfield legalTypes = (ctx->API == API_OPENGLES)
+      ? (BYTE_BIT | SHORT_BIT | FLOAT_BIT | FIXED_ES_BIT)
+      : (SHORT_BIT | INT_BIT |
+         HALF_BIT | FLOAT_BIT | DOUBLE_BIT |
+         UNSIGNED_INT_2_10_10_10_REV_BIT |
+         INT_2_10_10_10_REV_BIT);
+
+   struct gl_vertex_array_object* vao;
+   struct gl_buffer_object* vbo;
+
+   if (!_lookup_vao_and_vbo_dsa(ctx, vaobj, buffer, offset,
+                                &vao, &vbo,
+                                "glVertexArrayTexCoordOffsetEXT"))
+      return;
+
+   if (!validate_array_and_format(ctx, "glVertexArrayTexCoordOffsetEXT",
+                                  vao, vbo,
+                                  VERT_ATTRIB_TEX(unit), legalTypes,
+                                  sizeMin, 4, size, type, stride,
+                                  GL_FALSE, GL_FALSE, GL_FALSE, format, (void*) offset))
+      return;
+
+   update_array(ctx, vao, vbo,
+                VERT_ATTRIB_TEX(unit), format, 4, size, type,
+                stride, GL_FALSE, GL_FALSE, GL_FALSE, (void*) offset);
 }
 
 
@@ -982,7 +1167,42 @@ _mesa_VertexArrayMultiTexCoordOffsetEXT(GLuint vaobj, GLuint buffer, GLenum texu
                                         GLint size, GLenum type, GLsizei stride,
                                         GLintptr offset)
 {
+   GET_CURRENT_CONTEXT(ctx);
+   const GLint sizeMin = (ctx->API == API_OPENGLES) ? 2 : 1;
+   const GLuint unit = texunit - GL_TEXTURE0;
 
+   GLenum format = GL_RGBA;
+   const GLbitfield legalTypes = (ctx->API == API_OPENGLES)
+      ? (BYTE_BIT | SHORT_BIT | FLOAT_BIT | FIXED_ES_BIT)
+      : (SHORT_BIT | INT_BIT |
+         HALF_BIT | FLOAT_BIT | DOUBLE_BIT |
+         UNSIGNED_INT_2_10_10_10_REV_BIT |
+         INT_2_10_10_10_REV_BIT);
+
+   struct gl_vertex_array_object* vao;
+   struct gl_buffer_object* vbo;
+
+   if (!_lookup_vao_and_vbo_dsa(ctx, vaobj, buffer, offset,
+                                &vao, &vbo,
+                                "glVertexArrayMultiTexCoordOffsetEXT"))
+      return;
+
+   if (unit >= ctx->Const.MaxCombinedTextureImageUnits) {
+      _mesa_error(ctx, GL_INVALID_OPERATION, "glVertexArrayMultiTexCoordOffsetEXT(texunit=%d)",
+         texunit);
+      return;
+   }
+
+   if (!validate_array_and_format(ctx, "glVertexArrayMultiTexCoordOffsetEXT",
+                                  vao, vbo,
+                                  VERT_ATTRIB_TEX(unit), legalTypes,
+                                  sizeMin, 4, size, type, stride,
+                                  GL_FALSE, GL_FALSE, GL_FALSE, format, (void*) offset))
+      return;
+
+   update_array(ctx, vao, vbo,
+                VERT_ATTRIB_TEX(unit), format, 4, size, type,
+                stride, GL_FALSE, GL_FALSE, GL_FALSE, (void*) offset);
 }
 
 
@@ -1026,7 +1246,31 @@ void GLAPIENTRY
 _mesa_VertexArrayEdgeFlagOffsetEXT(GLuint vaobj, GLuint buffer, GLsizei stride,
                                    GLintptr offset)
 {
+   /* this is the same type that glEdgeFlag uses */
+   const GLboolean integer = GL_FALSE;
+   GET_CURRENT_CONTEXT(ctx);
 
+   GLenum format = GL_RGBA;
+   const GLbitfield legalTypes = UNSIGNED_BYTE_BIT;
+
+   struct gl_vertex_array_object* vao;
+   struct gl_buffer_object* vbo;
+
+   if (!_lookup_vao_and_vbo_dsa(ctx, vaobj, buffer, offset,
+                                &vao, &vbo,
+                                "glVertexArrayEdgeFlagOffsetEXT"))
+      return;
+
+   if (!validate_array_and_format(ctx, "glVertexArrayEdgeFlagOffsetEXT",
+                                  vao, vbo,
+                                  VERT_ATTRIB_EDGEFLAG, legalTypes,
+                                  1, 1, 1, GL_UNSIGNED_BYTE, stride,
+                                  GL_FALSE, integer, GL_FALSE, format, (void*) offset))
+      return;
+
+   update_array(ctx, vao, vbo,
+                VERT_ATTRIB_EDGEFLAG, format, 1, 1, GL_UNSIGNED_BYTE,
+                stride, GL_FALSE, integer, GL_FALSE, (void*) offset);
 }
 
 
@@ -1128,7 +1372,40 @@ _mesa_VertexArrayVertexAttribOffsetEXT(GLuint vaobj, GLuint buffer, GLuint index
                                        GLenum type, GLboolean normalized,
                                        GLsizei stride, GLintptr offset)
 {
+   GET_CURRENT_CONTEXT(ctx);
+   GLenum format = get_array_format(ctx, BGRA_OR_4, &size);
+   struct gl_vertex_array_object* vao;
+   struct gl_buffer_object* vbo;
 
+   if (!_lookup_vao_and_vbo_dsa(ctx, vaobj, buffer, offset,
+                                &vao, &vbo,
+                                "glVertexArrayVertexAttribOffsetEXT"))
+      return;
+
+   if (index >= ctx->Const.Program[MESA_SHADER_VERTEX].MaxAttribs) {
+      _mesa_error(ctx, GL_INVALID_VALUE, "glVertexArrayVertexAttribOffsetEXT(idx)");
+      return;
+   }
+
+   const GLbitfield legalTypes = (BYTE_BIT | UNSIGNED_BYTE_BIT |
+                                  SHORT_BIT | UNSIGNED_SHORT_BIT |
+                                  INT_BIT | UNSIGNED_INT_BIT |
+                                  HALF_BIT | FLOAT_BIT | DOUBLE_BIT |
+                                  FIXED_ES_BIT | FIXED_GL_BIT |
+                                  UNSIGNED_INT_2_10_10_10_REV_BIT |
+                                  INT_2_10_10_10_REV_BIT |
+                                  UNSIGNED_INT_10F_11F_11F_REV_BIT);
+
+   if (!validate_array_and_format(ctx, "glVertexArrayVertexAttribOffsetEXT",
+                                  vao, vbo,
+                                  VERT_ATTRIB_GENERIC(index), legalTypes,
+                                  1, BGRA_OR_4, size, type, stride,
+                                  normalized, GL_FALSE, GL_FALSE, format, (void*) offset))
+      return;
+
+   update_array(ctx, vao, vbo,
+                VERT_ATTRIB_GENERIC(index), format, BGRA_OR_4,
+                size, type, stride, normalized, GL_FALSE, GL_FALSE, (void*) offset);
 }
 
 
@@ -1199,7 +1476,38 @@ void GLAPIENTRY
 _mesa_VertexArrayVertexAttribIOffsetEXT(GLuint vaobj, GLuint buffer, GLuint index, GLint size,
                                         GLenum type, GLsizei stride, GLintptr offset)
 {
+   const GLboolean normalized = GL_FALSE;
+   const GLboolean integer = GL_TRUE;
+   GET_CURRENT_CONTEXT(ctx);
+   GLenum format = GL_RGBA;
 
+   struct gl_vertex_array_object* vao;
+   struct gl_buffer_object* vbo;
+
+   if (!_lookup_vao_and_vbo_dsa(ctx, vaobj, buffer, offset,
+                                &vao, &vbo,
+                                "glVertexArrayVertexAttribIOffsetEXT"))
+      return;
+
+   if (index >= ctx->Const.Program[MESA_SHADER_VERTEX].MaxAttribs) {
+      _mesa_error(ctx, GL_INVALID_VALUE, "glVertexArrayVertexAttribIOffsetEXT(index)");
+      return;
+   }
+
+   const GLbitfield legalTypes = (BYTE_BIT | UNSIGNED_BYTE_BIT |
+                                  SHORT_BIT | UNSIGNED_SHORT_BIT |
+                                  INT_BIT | UNSIGNED_INT_BIT);
+
+   if (!validate_array_and_format(ctx, "glVertexArrayVertexAttribIOffsetEXT",
+                                  vao, vbo,
+                                  VERT_ATTRIB_GENERIC(index), legalTypes,
+                                  1, 4, size, type, stride,
+                                  normalized, integer, GL_FALSE, format, (void*) offset))
+      return;
+
+   update_array(ctx, vao, vbo,
+                VERT_ATTRIB_GENERIC(index), format, 4,  size, type,
+                stride, normalized, integer, GL_FALSE, (void*) offset);
 }
 
 
