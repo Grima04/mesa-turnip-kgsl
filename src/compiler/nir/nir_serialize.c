@@ -142,9 +142,8 @@ write_variable(write_ctx *ctx, const nir_variable *var)
    blob_write_bytes(ctx->blob, (uint8_t *) &var->data, sizeof(var->data));
    blob_write_uint32(ctx->blob, var->num_state_slots);
    for (unsigned i = 0; i < var->num_state_slots; i++) {
-      for (unsigned j = 0; j < STATE_LENGTH; j++)
-         blob_write_uint32(ctx->blob, var->state_slots[i].tokens[j]);
-      blob_write_uint32(ctx->blob, var->state_slots[i].swizzle);
+      blob_write_bytes(ctx->blob, &var->state_slots[i],
+                       sizeof(var->state_slots[i]));
    }
    blob_write_uint32(ctx->blob, !!(var->constant_initializer));
    if (var->constant_initializer)
@@ -179,9 +178,8 @@ read_variable(read_ctx *ctx)
       var->state_slots = ralloc_array(var, nir_state_slot,
                                       var->num_state_slots);
       for (unsigned i = 0; i < var->num_state_slots; i++) {
-         for (unsigned j = 0; j < STATE_LENGTH; j++)
-            var->state_slots[i].tokens[j] = blob_read_uint32(ctx->blob);
-         var->state_slots[i].swizzle = blob_read_uint32(ctx->blob);
+         blob_copy_bytes(ctx->blob, &var->state_slots[i],
+                         sizeof(var->state_slots[i]));
       }
    }
    bool has_const_initializer = blob_read_uint32(ctx->blob);

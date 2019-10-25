@@ -94,7 +94,7 @@ struct nir_builder;
  */
 typedef struct {
    gl_state_index16 tokens[STATE_LENGTH];
-   int swizzle;
+   uint16_t swizzle;
 } nir_state_slot;
 
 typedef enum {
