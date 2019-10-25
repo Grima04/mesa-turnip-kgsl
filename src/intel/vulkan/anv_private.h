@@ -53,6 +53,7 @@
 #include "util/hash_table.h"
 #include "util/list.h"
 #include "util/set.h"
+#include "util/sparse_array.h"
 #include "util/u_atomic.h"
 #include "util/u_vector.h"
 #include "util/u_math.h"
@@ -891,7 +892,7 @@ struct anv_bo *anv_scratch_pool_alloc(struct anv_device *device,
 
 /** Implements a BO cache that ensures a 1-1 mapping of GEM BOs to anv_bos */
 struct anv_bo_cache {
-   struct hash_table *bo_map;
+   struct util_sparse_array bo_map;
    pthread_mutex_t mutex;
 };
 

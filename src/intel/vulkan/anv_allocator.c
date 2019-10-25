@@ -29,7 +29,6 @@
 
 #include "anv_private.h"
 
-#include "util/hash_table.h"
 #include "util/simple_mtx.h"
 #include "util/anon_file.h"
 
@@ -1611,12 +1610,10 @@ anv_scratch_pool_alloc(struct anv_device *device, struct anv_scratch_pool *pool,
 VkResult
 anv_bo_cache_init(struct anv_bo_cache *cache)
 {
-   cache->bo_map = _mesa_pointer_hash_table_create(NULL);
-   if (!cache->bo_map)
-      return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
+   util_sparse_array_init(&cache->bo_map, sizeof(struct anv_bo), 1024);
 
    if (pthread_mutex_init(&cache->mutex, NULL)) {
-      _mesa_hash_table_destroy(cache->bo_map, NULL);
+      util_sparse_array_finish(&cache->bo_map);
       return vk_errorf(NULL, NULL, VK_ERROR_OUT_OF_HOST_MEMORY,
                        "pthread_mutex_init failed: %m");
    }
@@ -1627,35 +1624,14 @@ anv_bo_cache_init(struct anv_bo_cache *cache)
 void
 anv_bo_cache_finish(struct anv_bo_cache *cache)
 {
-   _mesa_hash_table_destroy(cache->bo_map, NULL);
+   util_sparse_array_finish(&cache->bo_map);
    pthread_mutex_destroy(&cache->mutex);
 }
 
 static struct anv_bo *
-anv_bo_cache_lookup_locked(struct anv_bo_cache *cache, uint32_t gem_handle)
-{
-   struct hash_entry *entry =
-      _mesa_hash_table_search(cache->bo_map,
-                              (const void *)(uintptr_t)gem_handle);
-   if (!entry)
-      return NULL;
-
-   struct anv_bo *bo = (struct anv_bo *)entry->data;
-   assert(bo->gem_handle == gem_handle);
-
-   return bo;
-}
-
-UNUSED static struct anv_bo *
 anv_bo_cache_lookup(struct anv_bo_cache *cache, uint32_t gem_handle)
 {
-   pthread_mutex_lock(&cache->mutex);
-
-   struct anv_bo *bo = anv_bo_cache_lookup_locked(cache, gem_handle);
-
-   pthread_mutex_unlock(&cache->mutex);
-
-   return bo;
+   return util_sparse_array_get(&cache->bo_map, gem_handle);
 }
 
 #define ANV_BO_CACHE_SUPPORTED_FLAGS \
@@ -1673,39 +1649,30 @@ anv_bo_cache_alloc(struct anv_device *device,
 {
    assert(bo_flags == (bo_flags & ANV_BO_CACHE_SUPPORTED_FLAGS));
 
-   struct anv_bo *bo =
-      vk_alloc(&device->alloc, sizeof(struct anv_bo), 8,
-               VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
-   if (!bo)
-      return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
-
    /* The kernel is going to give us whole pages anyway */
    size = align_u64(size, 4096);
 
-   VkResult result = anv_bo_init_new(bo, device, size);
-   if (result != VK_SUCCESS) {
-      vk_free(&device->alloc, bo);
+   struct anv_bo new_bo;
+   VkResult result = anv_bo_init_new(&new_bo, device, size);
+   if (result != VK_SUCCESS)
       return result;
-   }
 
-   bo->flags = bo_flags;
+   new_bo.flags = bo_flags;
 
-   if (!anv_vma_alloc(device, bo)) {
-      anv_gem_close(device, bo->gem_handle);
-      vk_free(&device->alloc, bo);
+   if (!anv_vma_alloc(device, &new_bo)) {
+      anv_gem_close(device, new_bo.gem_handle);
       return vk_errorf(device->instance, NULL,
                        VK_ERROR_OUT_OF_DEVICE_MEMORY,
                        "failed to allocate virtual address for BO");
    }
 
-   assert(bo->gem_handle);
+   assert(new_bo.gem_handle);
 
-   pthread_mutex_lock(&cache->mutex);
-
-   _mesa_hash_table_insert(cache->bo_map,
-                           (void *)(uintptr_t)bo->gem_handle, bo);
-
-   pthread_mutex_unlock(&cache->mutex);
+   /* If we just got this gem_handle from anv_bo_init_new then we know no one
+    * else is touching this BO at the moment so we don't need to lock here.
+    */
+   struct anv_bo *bo = anv_bo_cache_lookup(cache, new_bo.gem_handle);
+   *bo = new_bo;
 
    *bo_out = bo;
 
@@ -1727,12 +1694,13 @@ anv_bo_cache_import_host_ptr(struct anv_device *device,
 
    pthread_mutex_lock(&cache->mutex);
 
-   struct anv_bo *bo = anv_bo_cache_lookup_locked(cache, gem_handle);
-   if (bo) {
+   struct anv_bo *bo = anv_bo_cache_lookup(cache, gem_handle);
+   if (bo->refcount > 0) {
       /* VK_EXT_external_memory_host doesn't require handling importing the
        * same pointer twice at the same time, but we don't get in the way.  If
        * kernel gives us the same gem_handle, only succeed if the flags match.
        */
+      assert(bo->gem_handle == gem_handle);
       if (bo_flags != bo->flags) {
          pthread_mutex_unlock(&cache->mutex);
          return vk_errorf(device->instance, NULL,
@@ -1741,27 +1709,19 @@ anv_bo_cache_import_host_ptr(struct anv_device *device,
       }
       __sync_fetch_and_add(&bo->refcount, 1);
    } else {
-      bo = vk_alloc(&device->alloc, sizeof(struct anv_bo), 8,
-                    VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
-      if (!bo) {
-         anv_gem_close(device, gem_handle);
-         pthread_mutex_unlock(&cache->mutex);
-         return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
-      }
+      struct anv_bo new_bo;
+      anv_bo_init(&new_bo, gem_handle, size);
+      new_bo.flags = bo_flags;
 
-      anv_bo_init(bo, gem_handle, size);
-      bo->flags = bo_flags;
-
-      if (!anv_vma_alloc(device, bo)) {
-         anv_gem_close(device, bo->gem_handle);
+      if (!anv_vma_alloc(device, &new_bo)) {
+         anv_gem_close(device, new_bo.gem_handle);
          pthread_mutex_unlock(&cache->mutex);
-         vk_free(&device->alloc, bo);
          return vk_errorf(device->instance, NULL,
                           VK_ERROR_OUT_OF_DEVICE_MEMORY,
                           "failed to allocate virtual address for BO");
       }
 
-      _mesa_hash_table_insert(cache->bo_map, (void *)(uintptr_t)gem_handle, bo);
+      *bo = new_bo;
    }
 
    pthread_mutex_unlock(&cache->mutex);
@@ -1787,8 +1747,8 @@ anv_bo_cache_import(struct anv_device *device,
       return vk_error(VK_ERROR_INVALID_EXTERNAL_HANDLE);
    }
 
-   struct anv_bo *bo = anv_bo_cache_lookup_locked(cache, gem_handle);
-   if (bo) {
+   struct anv_bo *bo = anv_bo_cache_lookup(cache, gem_handle);
+   if (bo->refcount > 0) {
       /* We have to be careful how we combine flags so that it makes sense.
        * Really, though, if we get to this case and it actually matters, the
        * client has imported a BO twice in different ways and they get what
@@ -1840,27 +1800,19 @@ anv_bo_cache_import(struct anv_device *device,
          return vk_error(VK_ERROR_INVALID_EXTERNAL_HANDLE);
       }
 
-      bo = vk_alloc(&device->alloc, sizeof(struct anv_bo), 8,
-                    VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
-      if (!bo) {
-         anv_gem_close(device, gem_handle);
-         pthread_mutex_unlock(&cache->mutex);
-         return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
-      }
+      struct anv_bo new_bo;
+      anv_bo_init(&new_bo, gem_handle, size);
+      new_bo.flags = bo_flags;
 
-      anv_bo_init(bo, gem_handle, size);
-      bo->flags = bo_flags;
-
-      if (!anv_vma_alloc(device, bo)) {
-         anv_gem_close(device, bo->gem_handle);
+      if (!anv_vma_alloc(device, &new_bo)) {
+         anv_gem_close(device, new_bo.gem_handle);
          pthread_mutex_unlock(&cache->mutex);
-         vk_free(&device->alloc, bo);
          return vk_errorf(device->instance, NULL,
                           VK_ERROR_OUT_OF_DEVICE_MEMORY,
                           "failed to allocate virtual address for BO");
       }
 
-      _mesa_hash_table_insert(cache->bo_map, (void *)(uintptr_t)gem_handle, bo);
+      *bo = new_bo;
    }
 
    pthread_mutex_unlock(&cache->mutex);
@@ -1935,12 +1887,7 @@ anv_bo_cache_release(struct anv_device *device,
       pthread_mutex_unlock(&cache->mutex);
       return;
    }
-
-   struct hash_entry *entry =
-      _mesa_hash_table_search(cache->bo_map,
-                              (const void *)(uintptr_t)bo->gem_handle);
-   assert(entry);
-   _mesa_hash_table_remove(cache->bo_map, entry);
+   assert(bo->refcount == 0);
 
    if (bo->map)
       anv_gem_munmap(bo->map, bo->size);
@@ -1955,6 +1902,4 @@ anv_bo_cache_release(struct anv_device *device,
     * again between mutex unlock and closing the GEM handle.
     */
    pthread_mutex_unlock(&cache->mutex);
-
-   vk_free(&device->alloc, bo);
 }
