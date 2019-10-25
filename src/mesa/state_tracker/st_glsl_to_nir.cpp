@@ -309,8 +309,6 @@ st_nir_opts(nir_shader *nir)
          lower_flrp = 0;
       }
 
-      NIR_PASS(progress, nir, nir_opt_access);
-
       NIR_PASS(progress, nir, nir_opt_undef);
       NIR_PASS(progress, nir, nir_opt_conditional_discard);
       if (nir->options->max_unroll_iterations) {
