@@ -1597,6 +1597,17 @@ offsets = {
     "GenerateMultiTexMipmapEXT": 1561,
     "NamedRenderbufferStorageMultisampleEXT": 1562,
     "NamedCopyBufferSubDataEXT": 1563,
+    "VertexArrayVertexOffsetEXT": 1564,
+    "VertexArrayColorOffsetEXT": 1565,
+    "VertexArrayEdgeFlagOffsetEXT": 1566,
+    "VertexArrayIndexOffsetEXT": 1567,
+    "VertexArrayNormalOffsetEXT": 1568,
+    "VertexArrayTexCoordOffsetEXT": 1569,
+    "VertexArrayMultiTexCoordOffsetEXT": 1570,
+    "VertexArrayFogCoordOffsetEXT": 1571,
+    "VertexArraySecondaryColorOffsetEXT": 1572,
+    "VertexArrayVertexAttribOffsetEXT": 1573,
+    "VertexArrayVertexAttribIOffsetEXT": 1574,
 }
 
 functions = [

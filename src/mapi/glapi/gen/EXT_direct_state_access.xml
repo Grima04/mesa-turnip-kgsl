@@ -1052,6 +1052,104 @@
       <param name="size" type="GLsizeiptr" />
    </function>
 
+   <function name="VertexArrayVertexOffsetEXT">
+      <param name="vaobj" type="GLuint" />
+      <param name="buffer" type="GLuint" />
+      <param name="size" type="GLint" />
+      <param name="type" type="GLenum" />
+      <param name="stride" type="GLsizei" />
+      <param name="offset" type="GLintptr" />
+   </function>
+
+   <function name="VertexArrayColorOffsetEXT">
+      <param name="vaobj" type="GLuint" />
+      <param name="buffer" type="GLuint" />
+      <param name="size" type="GLint" />
+      <param name="type" type="GLenum" />
+      <param name="stride" type="GLsizei" />
+      <param name="offset" type="GLintptr" />
+   </function>
+
+   <function name="VertexArrayEdgeFlagOffsetEXT">
+      <param name="vaobj" type="GLuint" />
+      <param name="buffer" type="GLuint" />
+      <param name="stride" type="GLsizei" />
+      <param name="offset" type="GLintptr" />
+   </function>
+
+   <function name="VertexArrayIndexOffsetEXT">
+      <param name="vaobj" type="GLuint" />
+      <param name="buffer" type="GLuint" />
+      <param name="type" type="GLenum" />
+      <param name="stride" type="GLsizei" />
+      <param name="offset" type="GLintptr" />
+   </function>
+
+   <function name="VertexArrayNormalOffsetEXT">
+      <param name="vaobj" type="GLuint" />
+      <param name="buffer" type="GLuint" />
+      <param name="type" type="GLenum" />
+      <param name="stride" type="GLsizei" />
+      <param name="offset" type="GLintptr" />
+   </function>
+
+   <function name="VertexArrayTexCoordOffsetEXT">
+      <param name="vaobj" type="GLuint" />
+      <param name="buffer" type="GLuint" />
+      <param name="size" type="GLint" />
+      <param name="type" type="GLenum" />
+      <param name="stride" type="GLsizei" />
+      <param name="offset" type="GLintptr" />
+   </function>
+
+   <function name="VertexArrayMultiTexCoordOffsetEXT">
+      <param name="vaobj" type="GLuint" />
+      <param name="buffer" type="GLuint" />
+      <param name="texunit" type="GLenum" />
+      <param name="size" type="GLint" />
+      <param name="type" type="GLenum" />
+      <param name="stride" type="GLsizei" />
+      <param name="offset" type="GLintptr" />
+   </function>
+
+   <function name="VertexArrayFogCoordOffsetEXT">
+      <param name="vaobj" type="GLuint" />
+      <param name="buffer" type="GLuint" />
+      <param name="type" type="GLenum" />
+      <param name="stride" type="GLsizei" />
+      <param name="offset" type="GLintptr" />
+   </function>
+
+   <function name="VertexArraySecondaryColorOffsetEXT">
+      <param name="vaobj" type="GLuint" />
+      <param name="buffer" type="GLuint" />
+      <param name="size" type="GLint" />
+      <param name="type" type="GLenum" />
+      <param name="stride" type="GLsizei" />
+      <param name="offset" type="GLintptr" />
+   </function>
+
+   <function name="VertexArrayVertexAttribOffsetEXT">
+      <param name="vaobj" type="GLuint" />
+      <param name="buffer" type="GLuint" />
+      <param name="index" type="GLuint" />
+      <param name="size" type="GLint" />
+      <param name="type" type="GLenum" />
+      <param name="normalized" type="GLboolean" />
+      <param name="stride" type="GLsizei" />
+      <param name="offset" type="GLintptr" />
+   </function>
+
+   <function name="VertexArrayVertexAttribIOffsetEXT">
+      <param name="vaobj" type="GLuint" />
+      <param name="buffer" type="GLuint" />
+      <param name="index" type="GLuint" />
+      <param name="size" type="GLint" />
+      <param name="type" type="GLenum" />
+      <param name="stride" type="GLsizei" />
+      <param name="offset" type="GLintptr" />
+   </function>
+
    <!-- ARB_vertex_program -->
    <function name="NamedProgramStringEXT">
       <param name="program" type="GLuint" />

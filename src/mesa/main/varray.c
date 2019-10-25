@@ -664,6 +664,14 @@ _mesa_VertexPointer(GLint size, GLenum type, GLsizei stride, const GLvoid *ptr)
 
 
 void GLAPIENTRY
+_mesa_VertexArrayVertexOffsetEXT(GLuint vaobj, GLuint buffer, GLint size,
+                                 GLenum type, GLsizei stride, GLintptr offset)
+{
+
+}
+
+
+void GLAPIENTRY
 _mesa_NormalPointer_no_error(GLenum type, GLsizei stride, const GLvoid *ptr )
 {
    GET_CURRENT_CONTEXT(ctx);
@@ -697,6 +705,14 @@ _mesa_NormalPointer(GLenum type, GLsizei stride, const GLvoid *ptr )
    update_array(ctx, ctx->Array.VAO, ctx->Array.ArrayBufferObj,
                 VERT_ATTRIB_NORMAL, format, 3, 3, type, stride, GL_TRUE,
                 GL_FALSE, GL_FALSE, ptr);
+}
+
+
+void GLAPIENTRY
+_mesa_VertexArrayNormalOffsetEXT(GLuint vaobj, GLuint buffer, GLenum type,
+                                 GLsizei stride, GLintptr offset)
+{
+
 }
 
 
@@ -743,6 +759,14 @@ _mesa_ColorPointer(GLint size, GLenum type, GLsizei stride, const GLvoid *ptr)
 
 
 void GLAPIENTRY
+_mesa_VertexArrayColorOffsetEXT(GLuint vaobj, GLuint buffer, GLint size,
+                                GLenum type, GLsizei stride, GLintptr offset)
+{
+
+}
+
+
+void GLAPIENTRY
 _mesa_FogCoordPointer_no_error(GLenum type, GLsizei stride, const GLvoid *ptr)
 {
    GET_CURRENT_CONTEXT(ctx);
@@ -771,6 +795,14 @@ _mesa_FogCoordPointer(GLenum type, GLsizei stride, const GLvoid *ptr)
    update_array(ctx, ctx->Array.VAO, ctx->Array.ArrayBufferObj,
                 VERT_ATTRIB_FOG, format, 1, 1, type, stride, GL_FALSE,
                 GL_FALSE, GL_FALSE, ptr);
+}
+
+
+void GLAPIENTRY
+_mesa_VertexArrayFogCoordOffsetEXT(GLuint vaobj, GLuint buffer, GLenum type,
+                                   GLsizei stride, GLintptr offset)
+{
+
 }
 
 
@@ -804,6 +836,14 @@ _mesa_IndexPointer(GLenum type, GLsizei stride, const GLvoid *ptr)
    update_array(ctx, ctx->Array.VAO, ctx->Array.ArrayBufferObj,
                 VERT_ATTRIB_COLOR_INDEX, format, 1, 1, type, stride,
                 GL_FALSE, GL_FALSE, GL_FALSE, ptr);
+}
+
+
+void GLAPIENTRY
+_mesa_VertexArrayIndexOffsetEXT(GLuint vaobj, GLuint buffer, GLenum type,
+                                GLsizei stride, GLintptr offset)
+{
+
 }
 
 
@@ -844,6 +884,14 @@ _mesa_SecondaryColorPointer(GLint size, GLenum type,
    update_array(ctx, ctx->Array.VAO, ctx->Array.ArrayBufferObj,
                 VERT_ATTRIB_COLOR1, format, BGRA_OR_4, size, type,
                 stride, GL_TRUE, GL_FALSE, GL_FALSE, ptr);
+}
+
+
+void GLAPIENTRY
+_mesa_VertexArraySecondaryColorOffsetEXT(GLuint vaobj, GLuint buffer, GLint size,
+                                         GLenum type, GLsizei stride, GLintptr offset)
+{
+
 }
 
 
@@ -890,6 +938,23 @@ _mesa_TexCoordPointer(GLint size, GLenum type, GLsizei stride,
 
 
 void GLAPIENTRY
+_mesa_VertexArrayTexCoordOffsetEXT(GLuint vaobj, GLuint buffer, GLint size,
+                                   GLenum type, GLsizei stride, GLintptr offset)
+{
+
+}
+
+
+void GLAPIENTRY
+_mesa_VertexArrayMultiTexCoordOffsetEXT(GLuint vaobj, GLuint buffer, GLenum texunit,
+                                        GLint size, GLenum type, GLsizei stride,
+                                        GLintptr offset)
+{
+
+}
+
+
+void GLAPIENTRY
 _mesa_EdgeFlagPointer_no_error(GLsizei stride, const GLvoid *ptr)
 {
    /* this is the same type that glEdgeFlag uses */
@@ -922,6 +987,14 @@ _mesa_EdgeFlagPointer(GLsizei stride, const GLvoid *ptr)
    update_array(ctx, ctx->Array.VAO, ctx->Array.ArrayBufferObj,
                 VERT_ATTRIB_EDGEFLAG, format, 1, 1, GL_UNSIGNED_BYTE,
                 stride, GL_FALSE, integer, GL_FALSE, ptr);
+}
+
+
+void GLAPIENTRY
+_mesa_VertexArrayEdgeFlagOffsetEXT(GLuint vaobj, GLuint buffer, GLsizei stride,
+                                   GLintptr offset)
+{
+
 }
 
 
@@ -1019,6 +1092,15 @@ _mesa_VertexAttribPointer(GLuint index, GLint size, GLenum type,
 
 
 void GLAPIENTRY
+_mesa_VertexArrayVertexAttribOffsetEXT(GLuint vaobj, GLuint buffer, GLuint index, GLint size,
+                                       GLenum type, GLboolean normalized,
+                                       GLsizei stride, GLintptr offset)
+{
+
+}
+
+
+void GLAPIENTRY
 _mesa_VertexAttribIPointer_no_error(GLuint index, GLint size, GLenum type,
                                     GLsizei stride, const GLvoid *ptr)
 {
@@ -1078,6 +1160,14 @@ _mesa_VertexAttribLPointer_no_error(GLuint index, GLint size, GLenum type,
    update_array(ctx, ctx->Array.VAO, ctx->Array.ArrayBufferObj,
                 VERT_ATTRIB_GENERIC(index), GL_RGBA, 4, size, type,
                 stride, GL_FALSE, GL_FALSE, GL_TRUE, ptr);
+}
+
+
+void GLAPIENTRY
+_mesa_VertexArrayVertexAttribIOffsetEXT(GLuint vaobj, GLuint buffer, GLuint index, GLint size,
+                                        GLenum type, GLsizei stride, GLintptr offset)
+{
+
 }
 
 
