@@ -416,20 +416,25 @@ VkResult
 anv_block_pool_init(struct anv_block_pool *pool,
                     struct anv_device *device,
                     uint64_t start_address,
-                    uint32_t initial_size,
-                    uint64_t bo_flags)
+                    uint32_t initial_size)
 {
    VkResult result;
 
    pool->device = device;
-   pool->bo_flags = bo_flags;
+   pool->use_softpin = device->instance->physicalDevice.use_softpin;
    pool->nbos = 0;
    pool->size = 0;
    pool->center_bo_offset = 0;
    pool->start_address = gen_canonical_address(start_address);
    pool->map = NULL;
 
-   if (!(pool->bo_flags & EXEC_OBJECT_PINNED)) {
+   if (pool->use_softpin) {
+      /* This pointer will always point to the first BO in the list */
+      anv_bo_init(&pool->bos[0], 0, 0);
+      pool->bo = &pool->bos[0];
+
+      pool->fd = -1;
+   } else {
       /* Just make it 2GB up-front.  The Linux kernel won't actually back it
        * with pages until we either map and fault on one of them or we use
        * userptr and send a chunk of it off to the GPU.
@@ -441,12 +446,6 @@ anv_block_pool_init(struct anv_block_pool *pool,
       anv_bo_init(&pool->wrapper_bo, 0, 0);
       pool->wrapper_bo.is_wrapper = true;
       pool->bo = &pool->wrapper_bo;
-   } else {
-      /* This pointer will always point to the first BO in the list */
-      anv_bo_init(&pool->bos[0], 0, 0);
-      pool->bo = &pool->bos[0];
-
-      pool->fd = -1;
    }
 
    if (!u_vector_init(&pool->mmap_cleanups,
@@ -475,7 +474,7 @@ anv_block_pool_init(struct anv_block_pool *pool,
  fail_mmap_cleanups:
    u_vector_finish(&pool->mmap_cleanups);
  fail_fd:
-   if (!(pool->bo_flags & EXEC_OBJECT_PINNED))
+   if (pool->fd >= 0)
       close(pool->fd);
 
    return result;
@@ -495,7 +494,7 @@ anv_block_pool_finish(struct anv_block_pool *pool)
       munmap(cleanup->map, cleanup->size);
    u_vector_finish(&pool->mmap_cleanups);
 
-   if (!(pool->bo_flags & EXEC_OBJECT_PINNED))
+   if (pool->fd >= 0)
       close(pool->fd);
 }
 
@@ -503,19 +502,55 @@ static VkResult
 anv_block_pool_expand_range(struct anv_block_pool *pool,
                             uint32_t center_bo_offset, uint32_t size)
 {
-   const bool use_softpin = !!(pool->bo_flags & EXEC_OBJECT_PINNED);
-
    /* Assert that we only ever grow the pool */
    assert(center_bo_offset >= pool->back_state.end);
    assert(size - center_bo_offset >= pool->state.end);
 
    /* Assert that we don't go outside the bounds of the memfd */
    assert(center_bo_offset <= BLOCK_POOL_MEMFD_CENTER);
-   assert(use_softpin ||
+   assert(pool->use_softpin ||
           size - center_bo_offset <=
           BLOCK_POOL_MEMFD_SIZE - BLOCK_POOL_MEMFD_CENTER);
 
-   if (use_softpin) {
+   /* For state pool BOs we have to be a bit careful about where we place them
+    * in the GTT.  There are two documented workarounds for state base address
+    * placement : Wa32bitGeneralStateOffset and Wa32bitInstructionBaseOffset
+    * which state that those two base addresses do not support 48-bit
+    * addresses and need to be placed in the bottom 32-bit range.
+    * Unfortunately, this is not quite accurate.
+    *
+    * The real problem is that we always set the size of our state pools in
+    * STATE_BASE_ADDRESS to 0xfffff (the maximum) even though the BO is most
+    * likely significantly smaller.  We do this because we do not no at the
+    * time we emit STATE_BASE_ADDRESS whether or not we will need to expand
+    * the pool during command buffer building so we don't actually have a
+    * valid final size.  If the address + size, as seen by STATE_BASE_ADDRESS
+    * overflows 48 bits, the GPU appears to treat all accesses to the buffer
+    * as being out of bounds and returns zero.  For dynamic state, this
+    * usually just leads to rendering corruptions, but shaders that are all
+    * zero hang the GPU immediately.
+    *
+    * The easiest solution to do is exactly what the bogus workarounds say to
+    * do: restrict these buffers to 32-bit addresses.  We could also pin the
+    * BO to some particular location of our choosing, but that's significantly
+    * more work than just not setting a flag.  So, we explicitly DO NOT set
+    * the EXEC_OBJECT_SUPPORTS_48B_ADDRESS flag and the kernel does all of the
+    * hard work for us.  When using softpin, we're in control and the fixed
+    * addresses we choose are fine for base addresses.
+    */
+   uint64_t bo_flags = 0;
+   if (pool->use_softpin) {
+      bo_flags |= EXEC_OBJECT_SUPPORTS_48B_ADDRESS |
+                  EXEC_OBJECT_PINNED;
+   }
+
+   if (pool->device->instance->physicalDevice.has_exec_async)
+      bo_flags |= EXEC_OBJECT_ASYNC;
+
+   if (pool->device->instance->physicalDevice.has_exec_capture)
+      bo_flags |= EXEC_OBJECT_CAPTURE;
+
+   if (pool->use_softpin) {
       uint32_t newbo_size = size - pool->size;
       uint32_t gem_handle = anv_gem_create(pool->device, newbo_size);
       void *map = anv_gem_mmap(pool->device, gem_handle, 0, newbo_size, 0);
@@ -542,7 +577,7 @@ anv_block_pool_expand_range(struct anv_block_pool *pool,
       struct anv_bo *bo = &pool->bos[pool->nbos++];
       anv_bo_init(bo, gem_handle, newbo_size);
       bo->offset = pool->start_address + pool->size;
-      bo->flags = pool->bo_flags;
+      bo->flags = bo_flags;
       bo->map = map;
    } else {
       /* Just leak the old map until we destroy the pool.  We can't munmap it
@@ -581,7 +616,7 @@ anv_block_pool_expand_range(struct anv_block_pool *pool,
 
       struct anv_bo *bo = &pool->bos[pool->nbos++];
       anv_bo_init(bo, gem_handle, size);
-      bo->flags = pool->bo_flags;
+      bo->flags = bo_flags;
       pool->wrapper_bo.map = bo;
    }
 
@@ -600,7 +635,7 @@ anv_block_pool_expand_range(struct anv_block_pool *pool,
 void*
 anv_block_pool_map(struct anv_block_pool *pool, int32_t offset)
 {
-   if (pool->bo_flags & EXEC_OBJECT_PINNED) {
+   if (pool->use_softpin) {
       struct anv_bo *bo = NULL;
       int32_t bo_offset = 0;
       anv_block_pool_foreach_bo(iter_bo, pool) {
@@ -766,7 +801,7 @@ anv_block_pool_alloc_new(struct anv_block_pool *pool,
       if (state.next + block_size <= state.end) {
          return state.next;
       } else if (state.next <= state.end) {
-         if (pool->bo_flags & EXEC_OBJECT_PINNED && state.next < state.end) {
+         if (pool->use_softpin && state.next < state.end) {
             /* We need to grow the block pool, but still have some leftover
              * space that can't be used by that particular allocation. So we
              * add that as a "padding", and return it.
@@ -843,13 +878,11 @@ VkResult
 anv_state_pool_init(struct anv_state_pool *pool,
                     struct anv_device *device,
                     uint64_t start_address,
-                    uint32_t block_size,
-                    uint64_t bo_flags)
+                    uint32_t block_size)
 {
    VkResult result = anv_block_pool_init(&pool->block_pool, device,
                                          start_address,
-                                         block_size * 16,
-                                         bo_flags);
+                                         block_size * 16);
    if (result != VK_SUCCESS)
       return result;
 

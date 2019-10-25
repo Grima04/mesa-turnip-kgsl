@@ -2618,60 +2618,24 @@ VkResult anv_CreateDevice(
    if (result != VK_SUCCESS)
       goto fail_batch_bo_pool;
 
-   /* For state pool BOs we have to be a bit careful about where we place them
-    * in the GTT.  There are two documented workarounds for state base address
-    * placement : Wa32bitGeneralStateOffset and Wa32bitInstructionBaseOffset
-    * which state that those two base addresses do not support 48-bit
-    * addresses and need to be placed in the bottom 32-bit range.
-    * Unfortunately, this is not quite accurate.
-    *
-    * The real problem is that we always set the size of our state pools in
-    * STATE_BASE_ADDRESS to 0xfffff (the maximum) even though the BO is most
-    * likely significantly smaller.  We do this because we do not no at the
-    * time we emit STATE_BASE_ADDRESS whether or not we will need to expand
-    * the pool during command buffer building so we don't actually have a
-    * valid final size.  If the address + size, as seen by STATE_BASE_ADDRESS
-    * overflows 48 bits, the GPU appears to treat all accesses to the buffer
-    * as being out of bounds and returns zero.  For dynamic state, this
-    * usually just leads to rendering corruptions, but shaders that are all
-    * zero hang the GPU immediately.
-    *
-    * The easiest solution to do is exactly what the bogus workarounds say to
-    * do: restrict these buffers to 32-bit addresses.  We could also pin the
-    * BO to some particular location of our choosing, but that's significantly
-    * more work than just not setting a flag.  So, we explicitly DO NOT set
-    * the EXEC_OBJECT_SUPPORTS_48B_ADDRESS flag and the kernel does all of the
-    * hard work for us.
-    */
-   if (!physical_device->use_softpin)
-      bo_flags &= ~EXEC_OBJECT_SUPPORTS_48B_ADDRESS;
-
    result = anv_state_pool_init(&device->dynamic_state_pool, device,
-                                DYNAMIC_STATE_POOL_MIN_ADDRESS,
-                                16384,
-                                bo_flags);
+                                DYNAMIC_STATE_POOL_MIN_ADDRESS, 16384);
    if (result != VK_SUCCESS)
       goto fail_bo_cache;
 
    result = anv_state_pool_init(&device->instruction_state_pool, device,
-                                INSTRUCTION_STATE_POOL_MIN_ADDRESS,
-                                16384,
-                                bo_flags);
+                                INSTRUCTION_STATE_POOL_MIN_ADDRESS, 16384);
    if (result != VK_SUCCESS)
       goto fail_dynamic_state_pool;
 
    result = anv_state_pool_init(&device->surface_state_pool, device,
-                                SURFACE_STATE_POOL_MIN_ADDRESS,
-                                4096,
-                                bo_flags);
+                                SURFACE_STATE_POOL_MIN_ADDRESS, 4096);
    if (result != VK_SUCCESS)
       goto fail_instruction_state_pool;
 
    if (physical_device->use_softpin) {
       result = anv_state_pool_init(&device->binding_table_pool, device,
-                                   BINDING_TABLE_POOL_MIN_ADDRESS,
-                                   4096,
-                                   bo_flags);
+                                   BINDING_TABLE_POOL_MIN_ADDRESS, 4096);
       if (result != VK_SUCCESS)
          goto fail_surface_state_pool;
    }

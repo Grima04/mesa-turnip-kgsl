@@ -33,7 +33,7 @@ int main(int argc, char **argv)
    };
    struct anv_state_pool state_pool;
 
-   anv_state_pool_init(&state_pool, &device, 4096, 4096, EXEC_OBJECT_PINNED);
+   anv_state_pool_init(&state_pool, &device, 4096, 4096);
 
    /* Get the size of the underlying block_pool */
    struct anv_block_pool *bp = &state_pool.block_pool;

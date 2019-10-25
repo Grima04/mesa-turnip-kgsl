@@ -707,8 +707,7 @@ struct anv_block_state {
 
 struct anv_block_pool {
    struct anv_device *device;
-
-   uint64_t bo_flags;
+   bool use_softpin;
 
    /* Wrapper BO for use in relocation lists.  This BO is simply a wrapper
     * around the actual BO so that we grow the pool after the wrapper BO has
@@ -846,8 +845,7 @@ struct anv_state_stream {
 VkResult anv_block_pool_init(struct anv_block_pool *pool,
                              struct anv_device *device,
                              uint64_t start_address,
-                             uint32_t initial_size,
-                             uint64_t bo_flags);
+                             uint32_t initial_size);
 void anv_block_pool_finish(struct anv_block_pool *pool);
 int32_t anv_block_pool_alloc(struct anv_block_pool *pool,
                              uint32_t block_size, uint32_t *padding);
@@ -858,8 +856,7 @@ void* anv_block_pool_map(struct anv_block_pool *pool, int32_t offset);
 VkResult anv_state_pool_init(struct anv_state_pool *pool,
                              struct anv_device *device,
                              uint64_t start_address,
-                             uint32_t block_size,
-                             uint64_t bo_flags);
+                             uint32_t block_size);
 void anv_state_pool_finish(struct anv_state_pool *pool);
 struct anv_state anv_state_pool_alloc(struct anv_state_pool *pool,
                                       uint32_t state_size, uint32_t alignment);
