@@ -1586,12 +1586,12 @@ apply_var_decoration(struct vtn_builder *b,
 
    case SpvDecorationXfbBuffer:
       var_data->explicit_xfb_buffer = true;
-      var_data->xfb_buffer = dec->operands[0];
+      var_data->xfb.buffer = dec->operands[0];
       var_data->always_active_io = true;
       break;
    case SpvDecorationXfbStride:
       var_data->explicit_xfb_stride = true;
-      var_data->xfb_stride = dec->operands[0];
+      var_data->xfb.stride = dec->operands[0];
       break;
    case SpvDecorationOffset:
       var_data->explicit_offset = true;

@@ -478,25 +478,29 @@ typedef struct nir_variable {
        */
       unsigned offset;
 
-      /**
-       * Transform feedback buffer.
-       */
-      unsigned xfb_buffer;
+      union {
+         /**
+          * ARB_shader_image_load_store qualifiers.
+          */
+         struct {
+            enum gl_access_qualifier access;
 
-      /**
-       * Transform feedback stride.
-       */
-      unsigned xfb_stride;
+            /** Image internal format if specified explicitly, otherwise GL_NONE. */
+            GLenum format;
+         } image;
 
-      /**
-       * ARB_shader_image_load_store qualifiers.
-       */
-      struct {
-         enum gl_access_qualifier access;
+         struct {
+            /**
+             * Transform feedback buffer.
+             */
+            uint16_t buffer:2;
 
-         /** Image internal format if specified explicitly, otherwise GL_NONE. */
-         GLenum format;
-      } image;
+            /**
+             * Transform feedback stride.
+             */
+            uint16_t stride;
+         } xfb;
+      };
    } data;
 
    /* Number of nir_variable_data members */
