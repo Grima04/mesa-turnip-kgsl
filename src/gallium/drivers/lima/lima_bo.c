@@ -289,12 +289,12 @@ struct lima_bo *lima_bo_create(struct lima_screen *screen,
 {
    struct lima_bo *bo;
 
+   size = align(size, LIMA_PAGE_SIZE);
+
    /* Try to get bo from cache first */
    bo = lima_bo_cache_get(screen, size, flags);
    if (bo)
       return bo;
-
-   size = align(size, LIMA_PAGE_SIZE);
 
    struct drm_lima_gem_create req = {
       .size = size,
