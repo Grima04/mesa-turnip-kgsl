@@ -134,27 +134,49 @@ read_constant(read_ctx *ctx, nir_variable *nvar)
    return c;
 }
 
+union packed_var {
+   uint32_t u32;
+   struct {
+      unsigned has_name:1;
+      unsigned has_constant_initializer:1;
+      unsigned has_interface_type:1;
+      unsigned num_state_slots:13;
+      unsigned num_members:16;
+   } u;
+};
+
 static void
 write_variable(write_ctx *ctx, const nir_variable *var)
 {
    write_add_object(ctx, var);
    encode_type_to_blob(ctx->blob, var->type);
-   blob_write_uint32(ctx->blob, !!(var->name));
+
+   assert(var->num_state_slots < (1 << 13));
+   assert(var->num_members < (1 << 16));
+
+   STATIC_ASSERT(sizeof(union packed_var) == 4);
+   union packed_var flags;
+   flags.u32 = 0;
+
+   flags.u.has_name = !!(var->name);
+   flags.u.has_constant_initializer = !!(var->constant_initializer);
+   flags.u.has_interface_type = !!(var->interface_type);
+   flags.u.num_state_slots = var->num_state_slots;
+   flags.u.num_members = var->num_members;
+
+   blob_write_uint32(ctx->blob, flags.u32);
+
    if (var->name)
       blob_write_string(ctx->blob, var->name);
    blob_write_bytes(ctx->blob, (uint8_t *) &var->data, sizeof(var->data));
-   blob_write_uint32(ctx->blob, var->num_state_slots);
    for (unsigned i = 0; i < var->num_state_slots; i++) {
       blob_write_bytes(ctx->blob, &var->state_slots[i],
                        sizeof(var->state_slots[i]));
    }
-   blob_write_uint32(ctx->blob, !!(var->constant_initializer));
    if (var->constant_initializer)
       write_constant(ctx, var->constant_initializer);
-   blob_write_uint32(ctx->blob, !!(var->interface_type));
    if (var->interface_type)
       encode_type_to_blob(ctx->blob, var->interface_type);
-   blob_write_uint32(ctx->blob, var->num_members);
    if (var->num_members > 0) {
       blob_write_bytes(ctx->blob, (uint8_t *) var->members,
                        var->num_members * sizeof(*var->members));
@@ -168,15 +190,18 @@ read_variable(read_ctx *ctx)
    read_add_object(ctx, var);
 
    var->type = decode_type_from_blob(ctx->blob);
-   bool has_name = blob_read_uint32(ctx->blob);
-   if (has_name) {
+
+   union packed_var flags;
+   flags.u32 = blob_read_uint32(ctx->blob);
+
+   if (flags.u.has_name) {
       const char *name = blob_read_string(ctx->blob);
       var->name = ralloc_strdup(var, name);
    } else {
       var->name = NULL;
    }
    blob_copy_bytes(ctx->blob, (uint8_t *) &var->data, sizeof(var->data));
-   var->num_state_slots = blob_read_uint32(ctx->blob);
+   var->num_state_slots = flags.u.num_state_slots;
    if (var->num_state_slots != 0) {
       var->state_slots = ralloc_array(var, nir_state_slot,
                                       var->num_state_slots);
@@ -185,17 +210,15 @@ read_variable(read_ctx *ctx)
                          sizeof(var->state_slots[i]));
       }
    }
-   bool has_const_initializer = blob_read_uint32(ctx->blob);
-   if (has_const_initializer)
+   if (flags.u.has_constant_initializer)
       var->constant_initializer = read_constant(ctx, var);
    else
       var->constant_initializer = NULL;
-   bool has_interface_type = blob_read_uint32(ctx->blob);
-   if (has_interface_type)
+   if (flags.u.has_interface_type)
       var->interface_type = decode_type_from_blob(ctx->blob);
    else
       var->interface_type = NULL;
-   var->num_members = blob_read_uint32(ctx->blob);
+   var->num_members = flags.u.num_members;
    if (var->num_members > 0) {
       var->members = ralloc_array(var, struct nir_variable_data,
                                   var->num_members);
