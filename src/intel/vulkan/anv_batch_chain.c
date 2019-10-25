@@ -176,7 +176,7 @@ anv_reloc_list_add(struct anv_reloc_list *list,
    index = list->num_relocs++;
    list->reloc_bos[index] = target_bo;
    entry = &list->relocs[index];
-   entry->target_handle = target_bo->gem_handle;
+   entry->target_handle = -1; /* See also anv_cmd_buffer_process_relocs() */
    entry->delta = delta;
    entry->offset = offset;
    entry->presumed_offset = target_bo_offset;
