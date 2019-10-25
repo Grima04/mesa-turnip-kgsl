@@ -1215,10 +1215,14 @@ static void add_sysval_input_compmask(struct ir3_context *ctx,
 	ctx->ir->inputs[r] = instr;
 }
 
-static void add_sysval_input(struct ir3_context *ctx, gl_system_value slot,
-		struct ir3_instruction *instr)
+static struct ir3_instruction *
+create_sysval_input(struct ir3_context *ctx, gl_system_value slot,
+		unsigned compmask)
 {
-	add_sysval_input_compmask(ctx, slot, 0x1, instr);
+	assert(compmask);
+	struct ir3_instruction *sysval = create_input_compmask(ctx, 0, compmask);
+	add_sysval_input_compmask(ctx, slot, compmask, sysval);
+	return sysval;
 }
 
 static struct ir3_instruction *
@@ -1228,14 +1232,10 @@ get_barycentric_centroid(struct ir3_context *ctx)
 		struct ir3_instruction *xy[2];
 		struct ir3_instruction *ij;
 
-		ij = create_input_compmask(ctx, 0, 0x3);
+		ij = create_sysval_input(ctx, SYSTEM_VALUE_BARYCENTRIC_CENTROID, 0x3);
 		ir3_split_dest(ctx->block, xy, ij, 0, 2);
 
 		ctx->ij_centroid = ir3_create_collect(ctx, xy, 2);
-
-		add_sysval_input_compmask(ctx,
-				SYSTEM_VALUE_BARYCENTRIC_CENTROID,
-				0x3, ij);
 	}
 
 	return ctx->ij_centroid;
@@ -1248,14 +1248,10 @@ get_barycentric_sample(struct ir3_context *ctx)
 		struct ir3_instruction *xy[2];
 		struct ir3_instruction *ij;
 
-		ij = create_input_compmask(ctx, 0, 0x3);
+		ij = create_sysval_input(ctx, SYSTEM_VALUE_BARYCENTRIC_SAMPLE, 0x3);
 		ir3_split_dest(ctx->block, xy, ij, 0, 2);
 
 		ctx->ij_sample = ir3_create_collect(ctx, xy, 2);
-
-		add_sysval_input_compmask(ctx,
-				SYSTEM_VALUE_BARYCENTRIC_SAMPLE,
-				0x3, ij);
 	}
 
 	return ctx->ij_sample;
@@ -1278,7 +1274,7 @@ get_frag_coord(struct ir3_context *ctx)
 		struct ir3_instruction *xyzw[4];
 		struct ir3_instruction *hw_frag_coord;
 
-		hw_frag_coord = create_input_compmask(ctx, 0, 0xf);
+		hw_frag_coord = create_sysval_input(ctx, SYSTEM_VALUE_FRAG_COORD, 0xf);
 		ir3_split_dest(ctx->block, xyzw, hw_frag_coord, 0, 4);
 
 		/* for frag_coord.xy, we get unsigned values.. we need
@@ -1299,11 +1295,6 @@ get_frag_coord(struct ir3_context *ctx)
 		}
 
 		ctx->frag_coord = ir3_create_collect(ctx, xyzw, 4);
-
-		add_sysval_input_compmask(ctx,
-				SYSTEM_VALUE_FRAG_COORD,
-				0xf, hw_frag_coord);
-
 		ctx->so->frag_coord = true;
 	}
 
@@ -1393,9 +1384,8 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 
 	case nir_intrinsic_load_tess_coord:
 		if (!ctx->tess_coord) {
-			ctx->tess_coord = create_input_compmask(ctx, 0, 0x3);
-			add_sysval_input_compmask(ctx, SYSTEM_VALUE_TESS_COORD,
-									  0x3, ctx->tess_coord);
+			ctx->tess_coord =
+				create_sysval_input(ctx, SYSTEM_VALUE_TESS_COORD, 0x3);
 		}
 		ir3_split_dest(b, dst, ctx->tess_coord, 0, 2);
 
@@ -1482,10 +1472,8 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 	}
 	case nir_intrinsic_load_size_ir3:
 		if (!ctx->ij_size) {
-			ctx->ij_size = create_input(ctx, 0);
-
-			add_sysval_input(ctx, SYSTEM_VALUE_BARYCENTRIC_SIZE,
-					ctx->ij_size);
+			ctx->ij_size =
+				create_sysval_input(ctx, SYSTEM_VALUE_BARYCENTRIC_SIZE, 0x1);
 		}
 		dst[0] = ctx->ij_size;
 		break;
@@ -1659,16 +1647,13 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 		if (!ctx->vertex_id) {
 			gl_system_value sv = (intr->intrinsic == nir_intrinsic_load_vertex_id) ?
 				SYSTEM_VALUE_VERTEX_ID : SYSTEM_VALUE_VERTEX_ID_ZERO_BASE;
-			ctx->vertex_id = create_input(ctx, 0);
-			add_sysval_input(ctx, sv, ctx->vertex_id);
+			ctx->vertex_id = create_sysval_input(ctx, sv, 0x1);
 		}
 		dst[0] = ctx->vertex_id;
 		break;
 	case nir_intrinsic_load_instance_id:
 		if (!ctx->instance_id) {
-			ctx->instance_id = create_input(ctx, 0);
-			add_sysval_input(ctx, SYSTEM_VALUE_INSTANCE_ID,
-					ctx->instance_id);
+			ctx->instance_id = create_sysval_input(ctx, SYSTEM_VALUE_INSTANCE_ID, 0x1);
 		}
 		dst[0] = ctx->instance_id;
 		break;
@@ -1677,18 +1662,14 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 		/* fall-thru */
 	case nir_intrinsic_load_sample_id_no_per_sample:
 		if (!ctx->samp_id) {
-			ctx->samp_id = create_input(ctx, 0);
+			ctx->samp_id = create_sysval_input(ctx, SYSTEM_VALUE_SAMPLE_ID, 0x1);
 			ctx->samp_id->regs[0]->flags |= IR3_REG_HALF;
-			add_sysval_input(ctx, SYSTEM_VALUE_SAMPLE_ID,
-					ctx->samp_id);
 		}
 		dst[0] = ir3_COV(b, ctx->samp_id, TYPE_U16, TYPE_U32);
 		break;
 	case nir_intrinsic_load_sample_mask_in:
 		if (!ctx->samp_mask_in) {
-			ctx->samp_mask_in = create_input(ctx, 0);
-			add_sysval_input(ctx, SYSTEM_VALUE_SAMPLE_MASK_IN,
-					ctx->samp_mask_in);
+			ctx->samp_mask_in = create_sysval_input(ctx, SYSTEM_VALUE_SAMPLE_MASK_IN, 0x1);
 		}
 		dst[0] = ctx->samp_mask_in;
 		break;
@@ -1702,8 +1683,7 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 	case nir_intrinsic_load_front_face:
 		if (!ctx->frag_face) {
 			ctx->so->frag_face = true;
-			ctx->frag_face = create_input(ctx, 0);
-			add_sysval_input(ctx, SYSTEM_VALUE_FRONT_FACE, ctx->frag_face);
+			ctx->frag_face = create_sysval_input(ctx, SYSTEM_VALUE_FRONT_FACE, 0x1);
 			ctx->frag_face->regs[0]->flags |= IR3_REG_HALF;
 		}
 		/* for fragface, we get -1 for back and 0 for front. However this is
@@ -1714,17 +1694,15 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 		break;
 	case nir_intrinsic_load_local_invocation_id:
 		if (!ctx->local_invocation_id) {
-			ctx->local_invocation_id = create_input_compmask(ctx, 0, 0x7);
-			add_sysval_input_compmask(ctx, SYSTEM_VALUE_LOCAL_INVOCATION_ID,
-					0x7, ctx->local_invocation_id);
+			ctx->local_invocation_id =
+				create_sysval_input(ctx, SYSTEM_VALUE_LOCAL_INVOCATION_ID, 0x7);
 		}
 		ir3_split_dest(b, dst, ctx->local_invocation_id, 0, 3);
 		break;
 	case nir_intrinsic_load_work_group_id:
 		if (!ctx->work_group_id) {
-			ctx->work_group_id = create_input_compmask(ctx, 0, 0x7);
-			add_sysval_input_compmask(ctx, SYSTEM_VALUE_WORK_GROUP_ID,
-					0x7, ctx->work_group_id);
+			ctx->work_group_id =
+				create_sysval_input(ctx, SYSTEM_VALUE_WORK_GROUP_ID, 0x7);
 			ctx->work_group_id->regs[0]->flags |= IR3_REG_HIGH;
 		}
 		ir3_split_dest(b, dst, ctx->work_group_id, 0, 3);
@@ -2519,9 +2497,7 @@ emit_stream_out(struct ir3_context *ctx)
 	 * so that it is seen as live over the entire duration
 	 * of the shader:
 	 */
-	vtxcnt = create_input(ctx, 0);
-	add_sysval_input(ctx, SYSTEM_VALUE_VERTEX_CNT, vtxcnt);
-
+	vtxcnt = create_sysval_input(ctx, SYSTEM_VALUE_VERTEX_CNT, 0x1);
 	maxvtxcnt = create_driver_param(ctx, IR3_DP_VTXCNT_MAX);
 
 	/* at this point, we are at the original 'end' block,
@@ -2991,42 +2967,6 @@ emit_instructions(struct ir3_context *ctx)
 	ctx->in_block = ctx->block;
 	list_addtail(&ctx->block->node, &ctx->ir->block_list);
 
-	ninputs -= max_sysvals[ctx->so->type];
-
-	/* Tesselation shaders always need primitive ID for indexing the
-	 * BO. Geometry shaders don't always need it but when they do it has be
-	 * delivered and unclobbered in the VS. To make things easy, we always
-	 * make room for it in VS/DS.
-	 */
-	bool has_tess = ctx->so->key.tessellation != IR3_TESS_NONE;
-	bool has_gs = ctx->so->key.has_gs;
-	switch (ctx->so->type) {
-	case MESA_SHADER_VERTEX:
-		if (has_tess) {
-			ctx->tcs_header = create_input(ctx, 0);
-			ctx->primitive_id = create_input(ctx, 0);
-		} else if (has_gs) {
-			ctx->gs_header = create_input(ctx, 0);
-			ctx->primitive_id = create_input(ctx, 0);
-		}
-		break;
-	case MESA_SHADER_TESS_CTRL:
-		ctx->tcs_header = create_input(ctx, 0);
-		ctx->primitive_id = create_input(ctx, 0);
-		break;
-	case MESA_SHADER_TESS_EVAL:
-		if (has_gs)
-			ctx->gs_header = create_input(ctx, 0);
-		ctx->primitive_id = create_input(ctx, 0);
-		break;
-	case MESA_SHADER_GEOMETRY:
-		ctx->gs_header = create_input(ctx, 0);
-		ctx->primitive_id = create_input(ctx, 0);
-		break;
-	default:
-		break;
-	}
-
 	/* for fragment shader, the vcoord input register is used as the
 	 * base for bary.f varying fetch instrs:
 	 *
@@ -3059,12 +2999,40 @@ emit_instructions(struct ir3_context *ctx)
 				0x3, vcoord);
 	}
 
-	if (ctx->primitive_id)
-		add_sysval_input(ctx, SYSTEM_VALUE_PRIMITIVE_ID, ctx->primitive_id);
-	if (ctx->gs_header)
-		add_sysval_input(ctx, SYSTEM_VALUE_GS_HEADER_IR3, ctx->gs_header);
-	if (ctx->tcs_header)
-		add_sysval_input(ctx, SYSTEM_VALUE_TCS_HEADER_IR3, ctx->tcs_header);
+
+	/* Tesselation shaders always need primitive ID for indexing the
+	 * BO. Geometry shaders don't always need it but when they do it has be
+	 * delivered and unclobbered in the VS. To make things easy, we always
+	 * make room for it in VS/DS.
+	 */
+	bool has_tess = ctx->so->key.tessellation != IR3_TESS_NONE;
+	bool has_gs = ctx->so->key.has_gs;
+	switch (ctx->so->type) {
+	case MESA_SHADER_VERTEX:
+		if (has_tess) {
+			ctx->tcs_header = create_sysval_input(ctx, SYSTEM_VALUE_TCS_HEADER_IR3, 0x1);
+			ctx->primitive_id = create_sysval_input(ctx, SYSTEM_VALUE_PRIMITIVE_ID, 0x1);
+		} else if (has_gs) {
+			ctx->gs_header = create_sysval_input(ctx, SYSTEM_VALUE_GS_HEADER_IR3, 0x1);
+			ctx->primitive_id = create_sysval_input(ctx, SYSTEM_VALUE_PRIMITIVE_ID, 0x1);
+		}
+		break;
+	case MESA_SHADER_TESS_CTRL:
+		ctx->tcs_header = create_sysval_input(ctx, SYSTEM_VALUE_TCS_HEADER_IR3, 0x1);
+		ctx->primitive_id = create_sysval_input(ctx, SYSTEM_VALUE_PRIMITIVE_ID, 0x1);
+		break;
+	case MESA_SHADER_TESS_EVAL:
+		if (has_gs)
+			ctx->gs_header = create_sysval_input(ctx, SYSTEM_VALUE_GS_HEADER_IR3, 0x1);
+		ctx->primitive_id = create_sysval_input(ctx, SYSTEM_VALUE_PRIMITIVE_ID, 0x1);
+		break;
+	case MESA_SHADER_GEOMETRY:
+		ctx->gs_header = create_sysval_input(ctx, SYSTEM_VALUE_GS_HEADER_IR3, 0x1);
+		ctx->primitive_id = create_sysval_input(ctx, SYSTEM_VALUE_PRIMITIVE_ID, 0x1);
+		break;
+	default:
+		break;
+	}
 
 	/* Setup outputs: */
 	nir_foreach_variable(var, &ctx->s->outputs) {
