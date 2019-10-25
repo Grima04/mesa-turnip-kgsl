@@ -154,11 +154,12 @@ anv_reloc_list_add(struct anv_reloc_list *list,
    struct drm_i915_gem_relocation_entry *entry;
    int index;
 
-   uint64_t target_bo_offset = READ_ONCE(target_bo->offset);
+   struct anv_bo *unwrapped_target_bo = anv_bo_unwrap(target_bo);
+   uint64_t target_bo_offset = READ_ONCE(unwrapped_target_bo->offset);
    if (address_u64_out)
       *address_u64_out = target_bo_offset + delta;
 
-   if (target_bo->flags & EXEC_OBJECT_PINNED) {
+   if (unwrapped_target_bo->flags & EXEC_OBJECT_PINNED) {
       if (list->deps == NULL) {
          list->deps = _mesa_pointer_set_create(NULL);
          if (unlikely(list->deps == NULL))
@@ -1063,6 +1064,8 @@ anv_execbuf_add_bo(struct anv_execbuf *exec,
 {
    struct drm_i915_gem_exec_object2 *obj = NULL;
 
+   bo = anv_bo_unwrap(bo);
+
    if (bo->index < exec->bo_count && exec->bos[bo->index] == bo)
       obj = &exec->objects[bo->index];
 
@@ -1219,7 +1222,7 @@ anv_cmd_buffer_process_relocs(struct anv_cmd_buffer *cmd_buffer,
                               struct anv_reloc_list *list)
 {
    for (size_t i = 0; i < list->num_relocs; i++)
-      list->relocs[i].target_handle = list->reloc_bos[i]->index;
+      list->relocs[i].target_handle = anv_bo_unwrap(list->reloc_bos[i])->index;
 }
 
 static void
@@ -1246,6 +1249,7 @@ adjust_relocations_to_state_pool(struct anv_state_pool *pool,
                                  struct anv_reloc_list *relocs,
                                  uint32_t last_pool_center_bo_offset)
 {
+   assert(!from_bo->is_wrapper);
    assert(last_pool_center_bo_offset <= pool->block_pool.center_bo_offset);
    uint32_t delta = pool->block_pool.center_bo_offset - last_pool_center_bo_offset;
 
@@ -1284,8 +1288,10 @@ anv_reloc_list_apply(struct anv_device *device,
                      struct anv_bo *bo,
                      bool always_relocate)
 {
+   bo = anv_bo_unwrap(bo);
+
    for (size_t i = 0; i < list->num_relocs; i++) {
-      struct anv_bo *target_bo = list->reloc_bos[i];
+      struct anv_bo *target_bo = anv_bo_unwrap(list->reloc_bos[i]);
       if (list->relocs[i].presumed_offset == target_bo->offset &&
           !always_relocate)
          continue;
@@ -1354,6 +1360,7 @@ relocate_cmd_buffer(struct anv_cmd_buffer *cmd_buffer,
     * Invalid offsets are indicated by anv_bo::offset == (uint64_t)-1.
     */
    for (uint32_t i = 0; i < exec->bo_count; i++) {
+      assert(!exec->bos[i]->is_wrapper);
       if (exec->bos[i]->offset == (uint64_t)-1)
          return false;
    }
@@ -1363,8 +1370,10 @@ relocate_cmd_buffer(struct anv_cmd_buffer *cmd_buffer,
     * what address is actually written in the surface state object at any
     * given time.  The only option is to always relocate them.
     */
+   struct anv_bo *surface_state_bo =
+      anv_bo_unwrap(cmd_buffer->device->surface_state_pool.block_pool.bo);
    anv_reloc_list_apply(cmd_buffer->device, &cmd_buffer->surface_relocs,
-                        cmd_buffer->device->surface_state_pool.block_pool.bo,
+                        surface_state_bo,
                         true /* always relocate surface states */);
 
    /* Since we own all of the batch buffers, we know what values are stored

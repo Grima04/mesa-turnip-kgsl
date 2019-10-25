@@ -432,11 +432,6 @@ anv_block_pool_init(struct anv_block_pool *pool,
    pool->start_address = gen_canonical_address(start_address);
    pool->map = NULL;
 
-   /* This pointer will always point to the first BO in the list */
-   pool->bo = &pool->bos[0];
-
-   anv_bo_init(pool->bo, 0, 0);
-
    if (!(pool->bo_flags & EXEC_OBJECT_PINNED)) {
       /* Just make it 2GB up-front.  The Linux kernel won't actually back it
        * with pages until we either map and fault on one of them or we use
@@ -445,7 +440,15 @@ anv_block_pool_init(struct anv_block_pool *pool,
       pool->fd = os_create_anonymous_file(BLOCK_POOL_MEMFD_SIZE, "block pool");
       if (pool->fd == -1)
          return vk_error(VK_ERROR_INITIALIZATION_FAILED);
+
+      anv_bo_init(&pool->wrapper_bo, 0, 0);
+      pool->wrapper_bo.is_wrapper = true;
+      pool->bo = &pool->wrapper_bo;
    } else {
+      /* This pointer will always point to the first BO in the list */
+      anv_bo_init(&pool->bos[0], 0, 0);
+      pool->bo = &pool->bos[0];
+
       pool->fd = -1;
    }
 
@@ -620,9 +623,11 @@ anv_block_pool_expand_range(struct anv_block_pool *pool,
        * it. Simply "allocate" it from our array if we didn't do it before.
        * The offset doesn't matter since we are not pinning the BO anyway.
        */
-      if (pool->nbos == 0)
+      if (pool->nbos == 0) {
+         pool->wrapper_bo.map = &pool->bos[0];
          pool->nbos++;
-      bo = pool->bo;
+      }
+      bo = pool->wrapper_bo.map;
       bo_size = size;
       bo_offset = 0;
    }
@@ -775,8 +780,6 @@ anv_block_pool_grow(struct anv_block_pool *pool, struct anv_block_state *state)
    assert(center_bo_offset % PAGE_SIZE == 0);
 
    result = anv_block_pool_expand_range(pool, center_bo_offset, size);
-
-   pool->bo->flags = pool->bo_flags;
 
 done:
    pthread_mutex_unlock(&pool->device->mutex);

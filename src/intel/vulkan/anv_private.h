@@ -615,6 +615,11 @@ struct anv_bo {
    uint64_t offset;
 
    uint64_t size;
+
+   /* Map for internally mapped BOs.
+    *
+    * If ANV_BO_WRAPPER is set in flags, map points to the wrapped BO.
+    */
    void *map;
 
    /** Flags to pass to the kernel through drm_i915_exec_object2::flags */
@@ -622,6 +627,15 @@ struct anv_bo {
 
    /** True if this BO may be shared with other processes */
    bool is_external:1;
+
+   /** True if this BO is a wrapper
+    *
+    * When set to true, none of the fields in this BO are meaningful except
+    * for anv_bo::is_wrapper and anv_bo::map which points to the actual BO.
+    * See also anv_bo_unwrap().  Wrapper BOs are not allowed when use_softpin
+    * is set in the physical device.
+    */
+   bool is_wrapper:1;
 };
 
 static inline void
@@ -635,6 +649,15 @@ anv_bo_init(struct anv_bo *bo, uint32_t gem_handle, uint64_t size)
    bo->map = NULL;
    bo->flags = 0;
    bo->is_external = false;
+   bo->is_wrapper = false;
+}
+
+static inline struct anv_bo *
+anv_bo_unwrap(struct anv_bo *bo)
+{
+   while (bo->is_wrapper)
+      bo = bo->map;
+   return bo;
 }
 
 /* Represents a lock-free linked list of "free" things.  This is used by
@@ -678,6 +701,13 @@ struct anv_block_pool {
    struct anv_device *device;
 
    uint64_t bo_flags;
+
+   /* Wrapper BO for use in relocation lists.  This BO is simply a wrapper
+    * around the actual BO so that we grow the pool after the wrapper BO has
+    * been put in a relocation list.  This is only used in the non-softpin
+    * case.
+    */
+   struct anv_bo wrapper_bo;
 
    struct anv_bo bos[ANV_MAX_BLOCK_POOL_BOS];
    struct anv_bo *bo;
