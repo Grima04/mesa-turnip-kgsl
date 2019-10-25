@@ -568,7 +568,8 @@ enum uniform_remap_type
 {
    remap_type_inactive_explicit_location,
    remap_type_null_ptr,
-   remap_type_uniform_offset
+   remap_type_uniform_offset,
+   remap_type_uniform_offsets_equal,
 };
 
 static void
@@ -581,15 +582,32 @@ write_uniform_remap_table(struct blob *metadata,
 
    for (unsigned i = 0; i < num_entries; i++) {
       gl_uniform_storage *entry = remap_table[i];
+      uint32_t offset = entry - uniform_storage;
 
       if (entry == INACTIVE_UNIFORM_EXPLICIT_LOCATION) {
          blob_write_uint32(metadata, remap_type_inactive_explicit_location);
       } else if (entry == NULL) {
          blob_write_uint32(metadata, remap_type_null_ptr);
+      } else if (i+1 < num_entries && entry == remap_table[i+1]) {
+         blob_write_uint32(metadata, remap_type_uniform_offsets_equal);
+
+         /* If many offsets are equal, write only one offset and the number
+          * of consecutive entries being equal.
+          */
+         unsigned count = 1;
+         for (unsigned j = i + 1; j < num_entries; j++) {
+            if (entry != remap_table[j])
+               break;
+
+            count++;
+         }
+
+         blob_write_uint32(metadata, offset);
+         blob_write_uint32(metadata, count);
+         i += count - 1;
       } else {
          blob_write_uint32(metadata, remap_type_uniform_offset);
 
-         uint32_t offset = entry - uniform_storage;
          blob_write_uint32(metadata, offset);
       }
    }
@@ -634,6 +652,14 @@ read_uniform_remap_table(struct blob_reader *metadata,
          remap_table[i] = INACTIVE_UNIFORM_EXPLICIT_LOCATION;
       } else if (type == remap_type_null_ptr) {
          remap_table[i] = NULL;
+      } else if (type == remap_type_uniform_offsets_equal) {
+         uint32_t uni_offset = blob_read_uint32(metadata);
+         uint32_t count = blob_read_uint32(metadata);
+         struct gl_uniform_storage *entry = uniform_storage + uni_offset;
+
+         for (unsigned j = 0; j < count; j++)
+            remap_table[i+j] = entry;
+         i += count - 1;
       } else {
          uint32_t uni_offset = blob_read_uint32(metadata);
          remap_table[i] = uniform_storage + uni_offset;
