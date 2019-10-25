@@ -2,6 +2,7 @@ GL_ARB_gl_spirv on i965, iris.
 GL_ARB_spirv_extensions on i965, iris.
 GL_EXT_demote_to_helper_invocation on iris, i965.
 OpenGL 4.6 on i965, iris.
+EGL_EXT_image_flush_external
 VK_ANDROID_external_memory_android_hardware_buffer on RADV.
 VK_KHR_shader_clock on Intel, RADV.
 VK_KHR_shader_float_controls on Intel, RADV.
