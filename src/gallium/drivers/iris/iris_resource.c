@@ -560,13 +560,18 @@ iris_resource_configure_aux(struct iris_screen *screen,
          return false;
    }
 
+   /* Increase the aux offset if the main and aux surfaces will share a BO. */
+   assert(!res->mod_info || res->mod_info->aux.usage == res->aux.usage);
+   res->aux.offset = res->mod_info ?
+      ALIGN(res->surf.size_B, res->aux.surf.alignment_B) : 0;
    uint64_t size = res->aux.surf.size_B;
 
    /* Allocate space in the buffer for storing the CCS. */
    if (res->aux.extra_aux.surf.size_B > 0) {
-      res->aux.extra_aux.offset =
+      const uint64_t padded_aux_size =
          ALIGN(size, res->aux.extra_aux.surf.alignment_B);
-      size = res->aux.extra_aux.offset + res->aux.extra_aux.surf.size_B;
+      res->aux.extra_aux.offset = res->aux.offset + padded_aux_size;
+      size = padded_aux_size + res->aux.extra_aux.surf.size_B;
    }
 
    /* Allocate space in the buffer for storing the clear color. On modern
@@ -575,7 +580,7 @@ iris_resource_configure_aux(struct iris_screen *screen,
     * On gen <= 9, we are going to store the clear color on the buffer
     * anyways, and copy it back to the surface state during state emission.
     */
-   res->aux.clear_color_offset = size;
+   res->aux.clear_color_offset = res->aux.offset + size;
    size += iris_get_aux_clear_color_state_size(screen);
    *aux_size_B = size;
 
@@ -858,17 +863,14 @@ iris_resource_create_with_modifiers(struct pipe_screen *pscreen,
 
    const bool aux_enabled = res->aux.surf.size_B > 0;
    const bool separate_aux = aux_enabled && !res->mod_info;
-   uint64_t aux_offset;
    uint64_t bo_size;
 
    if (aux_enabled && !separate_aux) {
       /* Allocate aux data with main surface. This is required for modifiers
        * with aux data (ccs).
        */
-      aux_offset = ALIGN(res->surf.size_B, res->aux.surf.alignment_B);
-      bo_size = aux_offset + aux_size;
+      bo_size = res->aux.offset + aux_size;
    } else {
-      aux_offset = 0;
       bo_size = res->surf.size_B;
    }
 
@@ -888,11 +890,8 @@ iris_resource_create_with_modifiers(struct pipe_screen *pscreen,
       } else {
          res->aux.bo = res->bo;
          iris_bo_reference(res->aux.bo);
-         res->aux.offset += aux_offset;
          unsigned clear_color_state_size =
             iris_get_aux_clear_color_state_size(screen);
-         if (clear_color_state_size > 0)
-            res->aux.clear_color_offset += aux_offset;
          if (!iris_resource_init_aux_buf(res, flags, clear_color_state_size))
             goto fail;
          map_aux_addresses(screen, res);
