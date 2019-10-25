@@ -602,7 +602,7 @@ void genX(ResetQueryPoolEXT)(
    ANV_FROM_HANDLE(anv_query_pool, pool, queryPool);
 
    for (uint32_t i = 0; i < queryCount; i++) {
-      uint64_t *slot = pool->bo.map + (firstQuery + i) * pool->stride;
+      uint64_t *slot = query_slot(pool, firstQuery + i);
       *slot = 0;
    }
 }
