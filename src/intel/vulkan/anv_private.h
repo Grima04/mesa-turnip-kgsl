@@ -1889,7 +1889,7 @@ struct anv_descriptor_pool {
    uint32_t next;
    uint32_t free_list;
 
-   struct anv_bo bo;
+   struct anv_bo *bo;
    struct util_vma_heap bo_heap;
 
    struct anv_state_stream surface_state_stream;

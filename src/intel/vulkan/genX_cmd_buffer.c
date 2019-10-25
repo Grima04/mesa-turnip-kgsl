@@ -2103,7 +2103,7 @@ anv_descriptor_set_address(struct anv_cmd_buffer *cmd_buffer,
    if (set->pool) {
       /* This is a normal descriptor set */
       return (struct anv_address) {
-         .bo = &set->pool->bo,
+         .bo = set->pool->bo,
          .offset = set->desc_mem.offset,
       };
    } else {
