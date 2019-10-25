@@ -428,6 +428,9 @@ want_ccs_e_for_format(const struct gen_device_info *devinfo,
  * Configure aux for the resource, but don't allocate it. For images which
  * might be shared with modifiers, we must allocate the image and aux data in
  * a single bo.
+ *
+ * Returns false on unexpected error (e.g. allocation failed, or invalid
+ * configuration result).
  */
 static bool
 iris_resource_configure_aux(struct iris_screen *screen,
@@ -594,6 +597,8 @@ iris_resource_configure_aux(struct iris_screen *screen,
 
 /**
  * Initialize the aux buffer contents.
+ *
+ * Returns false on unexpected error (e.g. mapping a BO failed).
  */
 static bool
 iris_resource_init_aux_buf(struct iris_resource *res, uint32_t alloc_flags,
@@ -602,10 +607,8 @@ iris_resource_init_aux_buf(struct iris_resource *res, uint32_t alloc_flags,
    if (!(alloc_flags & BO_ALLOC_ZEROED)) {
       void *map = iris_bo_map(NULL, res->aux.bo, MAP_WRITE | MAP_RAW);
 
-      if (!map) {
-         iris_resource_disable_aux(res);
+      if (!map)
          return false;
-      }
 
       if (iris_resource_get_aux_state(res, 0, 0) != ISL_AUX_STATE_AUX_INVALID) {
          uint8_t memset_value = isl_aux_usage_has_mcs(res->aux.usage) ? 0xFF : 0;
@@ -645,6 +648,9 @@ iris_resource_init_aux_buf(struct iris_resource *res, uint32_t alloc_flags,
 
 /**
  * Allocate the initial aux surface for a resource based on aux.usage
+ *
+ * Returns false on unexpected error (e.g. allocation failed, or invalid
+ * configuration result).
  */
 static bool
 iris_resource_alloc_separate_aux(struct iris_screen *screen,
@@ -845,10 +851,12 @@ iris_resource_create_with_modifiers(struct pipe_screen *pscreen,
 
    uint32_t aux_preferred_alloc_flags;
    uint64_t aux_size = 0;
-   bool aux_enabled =
-      iris_resource_configure_aux(screen, res, false, &aux_size,
-                                  &aux_preferred_alloc_flags);
-   aux_enabled = aux_enabled && res->aux.surf.size_B > 0;
+   if (!iris_resource_configure_aux(screen, res, false, &aux_size,
+                                    &aux_preferred_alloc_flags)) {
+      goto fail;
+   }
+
+   const bool aux_enabled = res->aux.surf.size_B > 0;
    const bool separate_aux = aux_enabled && !res->mod_info;
    uint64_t aux_offset;
    uint64_t bo_size;
@@ -876,7 +884,7 @@ iris_resource_create_with_modifiers(struct pipe_screen *pscreen,
    if (aux_enabled) {
       if (separate_aux) {
          if (!iris_resource_alloc_separate_aux(screen, res))
-            aux_enabled = false;
+            goto fail;
       } else {
          res->aux.bo = res->bo;
          iris_bo_reference(res->aux.bo);
@@ -886,16 +894,9 @@ iris_resource_create_with_modifiers(struct pipe_screen *pscreen,
          if (clear_color_state_size > 0)
             res->aux.clear_color_offset += aux_offset;
          if (!iris_resource_init_aux_buf(res, flags, clear_color_state_size))
-            aux_enabled = false;
+            goto fail;
          map_aux_addresses(screen, res);
       }
-   }
-
-   if (!aux_enabled) {
-      if (res->mod_info && res->mod_info->aux_usage != ISL_AUX_USAGE_NONE)
-         goto fail;
-      else
-         iris_resource_disable_aux(res);
    }
 
    return &res->base;
