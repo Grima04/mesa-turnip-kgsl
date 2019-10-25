@@ -804,8 +804,7 @@ anv_DestroyImage(VkDevice _device, VkImage _image,
       }
       if (image->planes[p].bo_is_owned) {
          assert(image->planes[p].address.bo != NULL);
-         anv_bo_cache_release(device, &device->bo_cache,
-                              image->planes[p].address.bo);
+         anv_device_release_bo(device, image->planes[p].address.bo);
       }
    }
 

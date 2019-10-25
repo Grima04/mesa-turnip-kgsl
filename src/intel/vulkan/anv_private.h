@@ -636,6 +636,12 @@ struct anv_bo {
     * is set in the physical device.
     */
    bool is_wrapper:1;
+
+   /** See also ANV_BO_ALLOC_FIXED_ADDRESS */
+   bool has_fixed_address:1;
+
+   /** True if this BO wraps a host pointer */
+   bool from_host_ptr:1;
 };
 
 static inline void
@@ -650,6 +656,8 @@ anv_bo_init(struct anv_bo *bo, uint32_t gem_handle, uint64_t size)
    bo->flags = 0;
    bo->is_external = false;
    bo->is_wrapper = false;
+   bo->has_fixed_address = false;
+   bo->from_host_ptr = false;
 }
 
 static inline struct anv_bo *
@@ -928,25 +936,6 @@ struct anv_bo_cache {
 
 VkResult anv_bo_cache_init(struct anv_bo_cache *cache);
 void anv_bo_cache_finish(struct anv_bo_cache *cache);
-VkResult anv_bo_cache_alloc(struct anv_device *device,
-                            struct anv_bo_cache *cache,
-                            uint64_t size, uint64_t bo_flags,
-                            bool is_external,
-                            struct anv_bo **bo);
-VkResult anv_bo_cache_import_host_ptr(struct anv_device *device,
-                                      struct anv_bo_cache *cache,
-                                      void *host_ptr, uint32_t size,
-                                      uint64_t bo_flags, struct anv_bo **bo_out);
-VkResult anv_bo_cache_import(struct anv_device *device,
-                             struct anv_bo_cache *cache,
-                             int fd, uint64_t bo_flags,
-                             struct anv_bo **bo);
-VkResult anv_bo_cache_export(struct anv_device *device,
-                             struct anv_bo_cache *cache,
-                             struct anv_bo *bo_in, int *fd_out);
-void anv_bo_cache_release(struct anv_device *device,
-                          struct anv_bo_cache *cache,
-                          struct anv_bo *bo);
 
 struct anv_memory_type {
    /* Standard bits passed on to the client */
@@ -1276,6 +1265,64 @@ VkResult anv_device_execbuf(struct anv_device *device,
                             struct drm_i915_gem_execbuffer2 *execbuf,
                             struct anv_bo **execbuf_bos);
 VkResult anv_device_query_status(struct anv_device *device);
+
+
+enum anv_bo_alloc_flags {
+   /** Specifies that the BO must have a 32-bit address
+    *
+    * This is the opposite of EXEC_OBJECT_SUPPORTS_48B_ADDRESS.
+    */
+   ANV_BO_ALLOC_32BIT_ADDRESS =  (1 << 0),
+
+   /** Specifies that the BO may be shared externally */
+   ANV_BO_ALLOC_EXTERNAL =       (1 << 1),
+
+   /** Specifies that the BO should be mapped */
+   ANV_BO_ALLOC_MAPPED =         (1 << 2),
+
+   /** Specifies that the BO should be snooped so we get coherency */
+   ANV_BO_ALLOC_SNOOPED =        (1 << 3),
+
+   /** Specifies that the BO should be captured in error states */
+   ANV_BO_ALLOC_CAPTURE =        (1 << 4),
+
+   /** Specifies that the BO will have an address assigned by the caller */
+   ANV_BO_ALLOC_FIXED_ADDRESS = (1 << 5),
+
+   /** Enables implicit synchronization on the BO
+    *
+    * This is the opposite of EXEC_OBJECT_ASYNC.
+    */
+   ANV_BO_ALLOC_IMPLICIT_SYNC =  (1 << 6),
+
+   /** Enables implicit synchronization on the BO
+    *
+    * This is equivalent to EXEC_OBJECT_WRITE.
+    */
+   ANV_BO_ALLOC_IMPLICIT_WRITE = (1 << 7),
+};
+
+VkResult anv_device_alloc_bo(struct anv_device *device, uint64_t size,
+                             enum anv_bo_alloc_flags alloc_flags,
+                             struct anv_bo **bo);
+VkResult anv_device_import_bo_from_host_ptr(struct anv_device *device,
+                                            void *host_ptr, uint32_t size,
+                                            enum anv_bo_alloc_flags alloc_flags,
+                                            struct anv_bo **bo_out);
+VkResult anv_device_import_bo(struct anv_device *device, int fd,
+                              enum anv_bo_alloc_flags alloc_flags,
+                              struct anv_bo **bo);
+VkResult anv_device_export_bo(struct anv_device *device,
+                              struct anv_bo *bo, int *fd_out);
+void anv_device_release_bo(struct anv_device *device,
+                           struct anv_bo *bo);
+
+static inline struct anv_bo *
+anv_device_lookup_bo(struct anv_device *device, uint32_t gem_handle)
+{
+   return util_sparse_array_get(&device->bo_cache.bo_map, gem_handle);
+}
+
 VkResult anv_device_bo_busy(struct anv_device *device, struct anv_bo *bo);
 VkResult anv_device_wait(struct anv_device *device, struct anv_bo *bo,
                          int64_t timeout);

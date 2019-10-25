@@ -951,10 +951,10 @@ VkResult anv_CreateSemaphore(
          }
       } else {
          semaphore->permanent.type = ANV_SEMAPHORE_TYPE_BO;
-         VkResult result = anv_bo_cache_alloc(device, &device->bo_cache,
-                                              4096, 0 /* flags */,
-                                              true /* is_external */,
-                                              &semaphore->permanent.bo);
+         VkResult result = anv_device_alloc_bo(device, 4096,
+                                               ANV_BO_ALLOC_EXTERNAL |
+                                               ANV_BO_ALLOC_IMPLICIT_SYNC,
+                                               &semaphore->permanent.bo);
          if (result != VK_SUCCESS) {
             vk_free2(&device->alloc, pAllocator, semaphore);
             return result;
@@ -998,7 +998,7 @@ anv_semaphore_impl_cleanup(struct anv_device *device,
       break;
 
    case ANV_SEMAPHORE_TYPE_BO:
-      anv_bo_cache_release(device, &device->bo_cache, impl->bo);
+      anv_device_release_bo(device, impl->bo);
       break;
 
    case ANV_SEMAPHORE_TYPE_SYNC_FILE:
@@ -1106,14 +1106,15 @@ VkResult anv_ImportSemaphoreFdKHR(
       } else {
          new_impl.type = ANV_SEMAPHORE_TYPE_BO;
 
-         VkResult result = anv_bo_cache_import(device, &device->bo_cache,
-                                               fd, 0 /* flags */,
-                                               &new_impl.bo);
+         VkResult result = anv_device_import_bo(device, fd,
+                                                ANV_BO_ALLOC_EXTERNAL |
+                                                ANV_BO_ALLOC_IMPLICIT_SYNC,
+                                                &new_impl.bo);
          if (result != VK_SUCCESS)
             return result;
 
          if (new_impl.bo->size < 4096) {
-            anv_bo_cache_release(device, &device->bo_cache, new_impl.bo);
+            anv_device_release_bo(device, new_impl.bo);
             return vk_error(VK_ERROR_INVALID_EXTERNAL_HANDLE);
          }
 
@@ -1195,7 +1196,7 @@ VkResult anv_GetSemaphoreFdKHR(
 
    switch (impl->type) {
    case ANV_SEMAPHORE_TYPE_BO:
-      result = anv_bo_cache_export(device, &device->bo_cache, impl->bo, pFd);
+      result = anv_device_export_bo(device, impl->bo, pFd);
       if (result != VK_SUCCESS)
          return result;
       break;

@@ -72,14 +72,9 @@ VkResult anv_CreateDmaBufImageINTEL(
 
    image = anv_image_from_handle(image_h);
 
-   uint64_t bo_flags = 0;
-   if (device->instance->physicalDevice.supports_48bit_addresses)
-      bo_flags |= EXEC_OBJECT_SUPPORTS_48B_ADDRESS;
-   if (device->instance->physicalDevice.use_softpin)
-      bo_flags |= EXEC_OBJECT_PINNED;
-
-   result = anv_bo_cache_import(device, &device->bo_cache,
-                                pCreateInfo->fd, bo_flags, &mem->bo);
+   result = anv_device_import_bo(device, pCreateInfo->fd,
+                                 ANV_BO_ALLOC_IMPLICIT_SYNC,
+                                 &mem->bo);
    if (result != VK_SUCCESS)
       goto fail_import;
 
@@ -91,7 +86,7 @@ VkResult anv_CreateDmaBufImageINTEL(
                          "dma-buf too small for image in "
                          "vkCreateDmaBufImageINTEL: %"PRIu64"B < %"PRIu64"B",
                          mem->bo->size, aligned_image_size);
-      anv_bo_cache_release(device, &device->bo_cache, mem->bo);
+      anv_device_release_bo(device, mem->bo);
       goto fail_import;
    }
 

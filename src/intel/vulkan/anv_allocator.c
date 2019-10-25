@@ -1567,25 +1567,49 @@ anv_bo_cache_finish(struct anv_bo_cache *cache)
    pthread_mutex_destroy(&cache->mutex);
 }
 
-static struct anv_bo *
-anv_bo_cache_lookup(struct anv_bo_cache *cache, uint32_t gem_handle)
-{
-   return util_sparse_array_get(&cache->bo_map, gem_handle);
-}
-
 #define ANV_BO_CACHE_SUPPORTED_FLAGS \
    (EXEC_OBJECT_WRITE | \
     EXEC_OBJECT_ASYNC | \
     EXEC_OBJECT_SUPPORTS_48B_ADDRESS | \
-    EXEC_OBJECT_PINNED)
+    EXEC_OBJECT_PINNED | \
+    EXEC_OBJECT_CAPTURE)
+
+static uint32_t
+anv_bo_alloc_flags_to_bo_flags(struct anv_device *device,
+                               enum anv_bo_alloc_flags alloc_flags)
+{
+   struct anv_physical_device *pdevice = &device->instance->physicalDevice;
+
+   uint64_t bo_flags = 0;
+   if (!(alloc_flags & ANV_BO_ALLOC_32BIT_ADDRESS) &&
+       pdevice->supports_48bit_addresses)
+      bo_flags |= EXEC_OBJECT_SUPPORTS_48B_ADDRESS;
+
+   if ((alloc_flags & ANV_BO_ALLOC_CAPTURE) && pdevice->has_exec_capture)
+      bo_flags |= EXEC_OBJECT_CAPTURE;
+
+   if (alloc_flags & ANV_BO_ALLOC_IMPLICIT_WRITE) {
+      assert(alloc_flags & ANV_BO_ALLOC_IMPLICIT_SYNC);
+      bo_flags |= EXEC_OBJECT_WRITE;
+   }
+
+   if (!(alloc_flags & ANV_BO_ALLOC_IMPLICIT_SYNC) && pdevice->has_exec_async)
+      bo_flags |= EXEC_OBJECT_ASYNC;
+
+   if (pdevice->use_softpin)
+      bo_flags |= EXEC_OBJECT_PINNED;
+
+   return bo_flags;
+}
 
 VkResult
-anv_bo_cache_alloc(struct anv_device *device,
-                   struct anv_bo_cache *cache,
-                   uint64_t size, uint64_t bo_flags,
-                   bool is_external,
-                   struct anv_bo **bo_out)
+anv_device_alloc_bo(struct anv_device *device,
+                    uint64_t size,
+                    enum anv_bo_alloc_flags alloc_flags,
+                    struct anv_bo **bo_out)
 {
+   const uint32_t bo_flags =
+      anv_bo_alloc_flags_to_bo_flags(device, alloc_flags);
    assert(bo_flags == (bo_flags & ANV_BO_CACHE_SUPPORTED_FLAGS));
 
    /* The kernel is going to give us whole pages anyway */
@@ -1597,13 +1621,47 @@ anv_bo_cache_alloc(struct anv_device *device,
       return result;
 
    new_bo.flags = bo_flags;
-   new_bo.is_external = is_external;
+   new_bo.is_external = (alloc_flags & ANV_BO_ALLOC_EXTERNAL);
 
-   if (!anv_vma_alloc(device, &new_bo)) {
-      anv_gem_close(device, new_bo.gem_handle);
-      return vk_errorf(device->instance, NULL,
-                       VK_ERROR_OUT_OF_DEVICE_MEMORY,
-                       "failed to allocate virtual address for BO");
+   if (alloc_flags & ANV_BO_ALLOC_MAPPED) {
+      new_bo.map = anv_gem_mmap(device, new_bo.gem_handle, 0, size, 0);
+      if (new_bo.map == MAP_FAILED) {
+         anv_gem_close(device, new_bo.gem_handle);
+         return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
+      }
+   }
+
+   if (alloc_flags & ANV_BO_ALLOC_SNOOPED) {
+      assert(alloc_flags & ANV_BO_ALLOC_MAPPED);
+      /* We don't want to change these defaults if it's going to be shared
+       * with another process.
+       */
+      assert(!(alloc_flags & ANV_BO_ALLOC_EXTERNAL));
+
+      /* Regular objects are created I915_CACHING_CACHED on LLC platforms and
+       * I915_CACHING_NONE on non-LLC platforms.  For many internal state
+       * objects, we'd rather take the snooping overhead than risk forgetting
+       * a CLFLUSH somewhere.  Userptr objects are always created as
+       * I915_CACHING_CACHED, which on non-LLC means snooped so there's no
+       * need to do this there.
+       */
+      if (!device->info.has_llc) {
+         anv_gem_set_caching(device, new_bo.gem_handle,
+                             I915_CACHING_CACHED);
+      }
+   }
+
+   if (alloc_flags & ANV_BO_ALLOC_FIXED_ADDRESS) {
+      new_bo.has_fixed_address = true;
+   } else {
+      if (!anv_vma_alloc(device, &new_bo)) {
+         if (new_bo.map)
+            anv_gem_munmap(new_bo.map, size);
+         anv_gem_close(device, new_bo.gem_handle);
+         return vk_errorf(device->instance, NULL,
+                          VK_ERROR_OUT_OF_DEVICE_MEMORY,
+                          "failed to allocate virtual address for BO");
+      }
    }
 
    assert(new_bo.gem_handle);
@@ -1611,7 +1669,7 @@ anv_bo_cache_alloc(struct anv_device *device,
    /* If we just got this gem_handle from anv_bo_init_new then we know no one
     * else is touching this BO at the moment so we don't need to lock here.
     */
-   struct anv_bo *bo = anv_bo_cache_lookup(cache, new_bo.gem_handle);
+   struct anv_bo *bo = anv_device_lookup_bo(device, new_bo.gem_handle);
    *bo = new_bo;
 
    *bo_out = bo;
@@ -1620,11 +1678,18 @@ anv_bo_cache_alloc(struct anv_device *device,
 }
 
 VkResult
-anv_bo_cache_import_host_ptr(struct anv_device *device,
-                             struct anv_bo_cache *cache,
-                             void *host_ptr, uint32_t size,
-                             uint64_t bo_flags, struct anv_bo **bo_out)
+anv_device_import_bo_from_host_ptr(struct anv_device *device,
+                                   void *host_ptr, uint32_t size,
+                                   enum anv_bo_alloc_flags alloc_flags,
+                                   struct anv_bo **bo_out)
 {
+   assert(!(alloc_flags & (ANV_BO_ALLOC_MAPPED |
+                           ANV_BO_ALLOC_SNOOPED |
+                           ANV_BO_ALLOC_FIXED_ADDRESS)));
+
+   struct anv_bo_cache *cache = &device->bo_cache;
+   const uint32_t bo_flags =
+      anv_bo_alloc_flags_to_bo_flags(device, alloc_flags);
    assert(bo_flags == (bo_flags & ANV_BO_CACHE_SUPPORTED_FLAGS));
 
    uint32_t gem_handle = anv_gem_userptr(device, host_ptr, size);
@@ -1633,7 +1698,7 @@ anv_bo_cache_import_host_ptr(struct anv_device *device,
 
    pthread_mutex_lock(&cache->mutex);
 
-   struct anv_bo *bo = anv_bo_cache_lookup(cache, gem_handle);
+   struct anv_bo *bo = anv_device_lookup_bo(device, gem_handle);
    if (bo->refcount > 0) {
       /* VK_EXT_external_memory_host doesn't require handling importing the
        * same pointer twice at the same time, but we don't get in the way.  If
@@ -1650,8 +1715,10 @@ anv_bo_cache_import_host_ptr(struct anv_device *device,
    } else {
       struct anv_bo new_bo;
       anv_bo_init(&new_bo, gem_handle, size);
+      new_bo.map = host_ptr;
       new_bo.flags = bo_flags;
       new_bo.is_external = true;
+      new_bo.from_host_ptr = true;
 
       if (!anv_vma_alloc(device, &new_bo)) {
          anv_gem_close(device, new_bo.gem_handle);
@@ -1671,11 +1738,18 @@ anv_bo_cache_import_host_ptr(struct anv_device *device,
 }
 
 VkResult
-anv_bo_cache_import(struct anv_device *device,
-                    struct anv_bo_cache *cache,
-                    int fd, uint64_t bo_flags,
-                    struct anv_bo **bo_out)
+anv_device_import_bo(struct anv_device *device,
+                     int fd,
+                     enum anv_bo_alloc_flags alloc_flags,
+                     struct anv_bo **bo_out)
 {
+   assert(!(alloc_flags & (ANV_BO_ALLOC_MAPPED |
+                           ANV_BO_ALLOC_SNOOPED |
+                           ANV_BO_ALLOC_FIXED_ADDRESS)));
+
+   struct anv_bo_cache *cache = &device->bo_cache;
+   const uint32_t bo_flags =
+      anv_bo_alloc_flags_to_bo_flags(device, alloc_flags);
    assert(bo_flags == (bo_flags & ANV_BO_CACHE_SUPPORTED_FLAGS));
 
    pthread_mutex_lock(&cache->mutex);
@@ -1686,7 +1760,7 @@ anv_bo_cache_import(struct anv_device *device,
       return vk_error(VK_ERROR_INVALID_EXTERNAL_HANDLE);
    }
 
-   struct anv_bo *bo = anv_bo_cache_lookup(cache, gem_handle);
+   struct anv_bo *bo = anv_device_lookup_bo(device, gem_handle);
    if (bo->refcount > 0) {
       /* We have to be careful how we combine flags so that it makes sense.
        * Really, though, if we get to this case and it actually matters, the
@@ -1698,6 +1772,7 @@ anv_bo_cache_import(struct anv_device *device,
       new_flags |= (bo->flags & bo_flags) & EXEC_OBJECT_ASYNC;
       new_flags |= (bo->flags & bo_flags) & EXEC_OBJECT_SUPPORTS_48B_ADDRESS;
       new_flags |= (bo->flags | bo_flags) & EXEC_OBJECT_PINNED;
+      new_flags |= (bo->flags | bo_flags) & EXEC_OBJECT_CAPTURE;
 
       /* It's theoretically possible for a BO to get imported such that it's
        * both pinned and not pinned.  The only way this can happen is if it
@@ -1762,11 +1837,10 @@ anv_bo_cache_import(struct anv_device *device,
 }
 
 VkResult
-anv_bo_cache_export(struct anv_device *device,
-                    struct anv_bo_cache *cache,
-                    struct anv_bo *bo, int *fd_out)
+anv_device_export_bo(struct anv_device *device,
+                     struct anv_bo *bo, int *fd_out)
 {
-   assert(anv_bo_cache_lookup(cache, bo->gem_handle) == bo);
+   assert(anv_device_lookup_bo(device, bo->gem_handle) == bo);
 
    /* This BO must have been flagged external in order for us to be able
     * to export it.  This is done based on external options passed into
@@ -1802,11 +1876,11 @@ atomic_dec_not_one(uint32_t *counter)
 }
 
 void
-anv_bo_cache_release(struct anv_device *device,
-                     struct anv_bo_cache *cache,
-                     struct anv_bo *bo)
+anv_device_release_bo(struct anv_device *device,
+                      struct anv_bo *bo)
 {
-   assert(anv_bo_cache_lookup(cache, bo->gem_handle) == bo);
+   struct anv_bo_cache *cache = &device->bo_cache;
+   assert(anv_device_lookup_bo(device, bo->gem_handle) == bo);
 
    /* Try to decrement the counter but don't go below one.  If this succeeds
     * then the refcount has been decremented and we are not the last
@@ -1829,10 +1903,11 @@ anv_bo_cache_release(struct anv_device *device,
    }
    assert(bo->refcount == 0);
 
-   if (bo->map)
+   if (bo->map && !bo->from_host_ptr)
       anv_gem_munmap(bo->map, bo->size);
 
-   anv_vma_free(device, bo);
+   if (!bo->has_fixed_address)
+      anv_vma_free(device, bo);
 
    anv_gem_close(device, bo->gem_handle);
 

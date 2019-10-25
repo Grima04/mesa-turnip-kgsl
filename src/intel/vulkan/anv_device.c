@@ -3129,11 +3129,11 @@ VkResult anv_AllocateMemory(
    mem->ahw = NULL;
    mem->host_ptr = NULL;
 
-   uint64_t bo_flags = 0;
+   enum anv_bo_alloc_flags alloc_flags = 0;
 
    assert(mem->type->heapIndex < pdevice->memory.heap_count);
-   if (pdevice->memory.heaps[mem->type->heapIndex].supports_48bit_addresses)
-      bo_flags |= EXEC_OBJECT_SUPPORTS_48B_ADDRESS;
+   if (!pdevice->memory.heaps[mem->type->heapIndex].supports_48bit_addresses)
+      alloc_flags |= ANV_BO_ALLOC_32BIT_ADDRESS;
 
    const struct wsi_memory_allocate_info *wsi_info =
       vk_find_struct_const(pAllocateInfo->pNext, WSI_MEMORY_ALLOCATE_INFO_MESA);
@@ -3142,13 +3142,9 @@ VkResult anv_AllocateMemory(
        * will know we're writing to them and synchronize uses on other rings
        * (eg if the display server uses the blitter ring).
        */
-      bo_flags |= EXEC_OBJECT_WRITE;
-   } else if (pdevice->has_exec_async) {
-      bo_flags |= EXEC_OBJECT_ASYNC;
+      alloc_flags |= ANV_BO_ALLOC_IMPLICIT_SYNC |
+                     ANV_BO_ALLOC_IMPLICIT_WRITE;
    }
-
-   if (pdevice->use_softpin)
-      bo_flags |= EXEC_OBJECT_PINNED;
 
    const VkExportMemoryAllocateInfo *export_info =
       vk_find_struct_const(pAllocateInfo->pNext, EXPORT_MEMORY_ALLOCATE_INFO);
@@ -3200,8 +3196,8 @@ VkResult anv_AllocateMemory(
              fd_info->handleType ==
                VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT);
 
-      result = anv_bo_cache_import(device, &device->bo_cache, fd_info->fd,
-                                   bo_flags, &mem->bo);
+      result = anv_device_import_bo(device, fd_info->fd, alloc_flags,
+                                    &mem->bo);
       if (result != VK_SUCCESS)
          goto fail;
 
@@ -3223,7 +3219,7 @@ VkResult anv_AllocateMemory(
                             "VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT: "
                             "%"PRIu64"B > %"PRIu64"B",
                             aligned_alloc_size, mem->bo->size);
-         anv_bo_cache_release(device, &device->bo_cache, mem->bo);
+         anv_device_release_bo(device, mem->bo);
          goto fail;
       }
 
@@ -3253,9 +3249,11 @@ VkResult anv_AllocateMemory(
       assert(host_ptr_info->handleType ==
              VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_ALLOCATION_BIT_EXT);
 
-      result = anv_bo_cache_import_host_ptr(
-         device, &device->bo_cache, host_ptr_info->pHostPointer,
-         pAllocateInfo->allocationSize, bo_flags, &mem->bo);
+      result = anv_device_import_bo_from_host_ptr(device,
+                                                  host_ptr_info->pHostPointer,
+                                                  pAllocateInfo->allocationSize,
+                                                  alloc_flags,
+                                                  &mem->bo);
 
       if (result != VK_SUCCESS)
          goto fail;
@@ -3266,11 +3264,11 @@ VkResult anv_AllocateMemory(
 
    /* Regular allocate (not importing memory). */
 
-   bool is_external = export_info && export_info->handleTypes;
-   result = anv_bo_cache_alloc(device, &device->bo_cache,
-                               pAllocateInfo->allocationSize,
-                               bo_flags, is_external,
-                               &mem->bo);
+   if (export_info && export_info->handleTypes)
+      alloc_flags |= ANV_BO_ALLOC_EXTERNAL;
+
+   result = anv_device_alloc_bo(device, pAllocateInfo->allocationSize,
+                                alloc_flags, &mem->bo);
    if (result != VK_SUCCESS)
       goto fail;
 
@@ -3289,7 +3287,7 @@ VkResult anv_AllocateMemory(
                                       image->planes[0].surface.isl.row_pitch_B,
                                       i915_tiling);
          if (ret) {
-            anv_bo_cache_release(device, &device->bo_cache, mem->bo);
+            anv_device_release_bo(device, mem->bo);
             return vk_errorf(device->instance, NULL,
                              VK_ERROR_OUT_OF_DEVICE_MEMORY,
                              "failed to set BO tiling: %m");
@@ -3328,7 +3326,7 @@ VkResult anv_GetMemoryFdKHR(
    assert(pGetFdInfo->handleType == VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT ||
           pGetFdInfo->handleType == VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT);
 
-   return anv_bo_cache_export(dev, &dev->bo_cache, mem->bo, pFd);
+   return anv_device_export_bo(dev, mem->bo, pFd);
 }
 
 VkResult anv_GetMemoryFdPropertiesKHR(
@@ -3407,7 +3405,7 @@ void anv_FreeMemory(
    p_atomic_add(&pdevice->memory.heaps[mem->type->heapIndex].used,
                 -mem->bo->size);
 
-   anv_bo_cache_release(device, &device->bo_cache, mem->bo);
+   anv_device_release_bo(device, mem->bo);
 
 #if defined(ANDROID) && ANDROID_API_LEVEL >= 26
    if (mem->ahw)
