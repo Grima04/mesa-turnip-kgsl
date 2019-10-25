@@ -256,8 +256,7 @@ lima_bo_cache_get(struct lima_screen *screen, uint32_t size, uint32_t flags)
    }
 
    list_for_each_entry_safe(struct lima_bo, entry, bucket, size_list) {
-      if (entry->size >= size &&
-          entry->flags == flags) {
+      if (entry->size >= size) {
          /* Check if BO is idle. If it's not it's better to allocate new one */
          if (!lima_bo_wait(entry, LIMA_GEM_WAIT_WRITE, 0)) {
             if (lima_debug & LIMA_DEBUG_BO_CACHE) {
@@ -269,6 +268,7 @@ lima_bo_cache_get(struct lima_screen *screen, uint32_t size, uint32_t flags)
 
          lima_bo_cache_remove(entry);
          p_atomic_set(&entry->refcnt, 1);
+         entry->flags = flags;
          bo = entry;
          if (lima_debug & LIMA_DEBUG_BO_CACHE) {
             fprintf(stderr, "%s: got BO: %p (size=%d), requested size %d\n",
