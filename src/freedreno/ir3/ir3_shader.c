@@ -384,9 +384,13 @@ ir3_shader_disasm(struct ir3_shader_variant *so, uint32_t *bin, FILE *out)
 	foreach_input_n(instr, i, ir) {
 		reg = instr->regs[0];
 		regid = reg->num;
-		fprintf(out, "@in(%sr%d.%c)\tin%d\n",
+		fprintf(out, "@in(%sr%d.%c)\tin%d",
 				(reg->flags & IR3_REG_HALF) ? "h" : "",
 				(regid >> 2), "xyzw"[regid & 0x3], i);
+
+		if (reg->wrmask > 0x1)
+			fprintf(out, " (wrmask=0x%x)", reg->wrmask);
+		fprintf(out, "\n");
 	}
 
 	/* print pre-dispatch texture fetches: */
@@ -402,9 +406,12 @@ ir3_shader_disasm(struct ir3_shader_variant *so, uint32_t *bin, FILE *out)
 	foreach_output_n(instr, i, ir) {
 		reg = instr->regs[0];
 		regid = reg->num;
-		fprintf(out, "@out(%sr%d.%c)\tout%d\n",
+		fprintf(out, "@out(%sr%d.%c)\tout%d",
 				(reg->flags & IR3_REG_HALF) ? "h" : "",
 				(regid >> 2), "xyzw"[regid & 0x3], i);
+		if (reg->wrmask > 0x1)
+			fprintf(out, " (wrmask=0x%x)", reg->wrmask);
+		fprintf(out, "\n");
 	}
 
 	struct ir3_const_state *const_state = &so->shader->const_state;
