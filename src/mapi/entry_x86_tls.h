@@ -80,6 +80,9 @@ x86_current_tls();
 extern char x86_entry_start[] HIDDEN;
 extern char x86_entry_end[] HIDDEN;
 
+static inline mapi_func
+entry_generate_or_patch(int, char *, size_t);
+
 void
 entry_patch_public(void)
 {
@@ -110,19 +113,21 @@ entry_patch(mapi_func entry, int slot)
    *((unsigned long *) (code + 8)) = slot * sizeof(mapi_func);
 }
 
-mapi_func
-entry_generate(int slot)
+static inline mapi_func
+entry_generate_or_patch(int slot, char *code, size_t size)
 {
    const char code_templ[16] = {
       0x65, 0xa1, 0x00, 0x00, 0x00, 0x00, /* movl %gs:0x0, %eax */
       0xff, 0xa0, 0x34, 0x12, 0x00, 0x00, /* jmp *0x1234(%eax) */
       0x90, 0x90, 0x90, 0x90              /* nop's */
    };
-   char *code;
    mapi_func entry;
 
-   code = u_execmem_alloc(sizeof(code_templ));
-   if (!code)
+   if (code == NULL) {
+      size = sizeof(code_templ);
+      code = u_execmem_alloc(size);
+   }
+   if (!code || size < sizeof(code_templ))
       return NULL;
 
    memcpy(code, code_templ, sizeof(code_templ));
@@ -132,6 +137,12 @@ entry_generate(int slot)
    entry_patch(entry, slot);
 
    return entry;
+}
+
+mapi_func
+entry_generate(int slot)
+{
+   return entry_generate_or_patch(slot, NULL, 0);
 }
 
 #endif /* MAPI_MODE_BRIDGE */
