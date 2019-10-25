@@ -470,7 +470,7 @@ typedef struct nir_variable {
        *
        * For array types, this represents the binding point for the first element.
        */
-      int binding;
+      unsigned binding;
 
       /**
        * Location an atomic counter or transform feedback is stored at.
