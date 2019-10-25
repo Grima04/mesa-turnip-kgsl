@@ -269,10 +269,18 @@ struct ir3_instruction {
 			int off;              /* component/offset */
 		} split;
 		struct {
+			/* for output collects, this maps back to the entry in the
+			 * ir3_shader_variant::outputs table.
+			 */
+			int outidx;
+		} collect;
+		struct {
 			unsigned samp, tex;
 			unsigned input_offset;
 		} prefetch;
 		struct {
+			/* maps back to entry in ir3_shader_variant::inputs table: */
+			int inidx;
 			/* for sysvals, identifies the sysval type.  Mostly so we can
 			 * identify the special cases where a sysval should not be DCE'd
 			 * (currently, just pre-fs texture fetch)
@@ -425,9 +433,8 @@ struct ir3 {
 	struct ir3_compiler *compiler;
 	gl_shader_stage type;
 
-	unsigned ninputs, noutputs;
-	struct ir3_instruction **inputs;
-	struct ir3_instruction **outputs;
+	DECLARE_ARRAY(struct ir3_instruction *, inputs);
+	DECLARE_ARRAY(struct ir3_instruction *, outputs);
 
 	/* Track bary.f (and ldlv) instructions.. this is needed in
 	 * scheduling to ensure that all varying fetches happen before
@@ -537,8 +544,7 @@ block_id(struct ir3_block *block)
 #endif
 }
 
-struct ir3 * ir3_create(struct ir3_compiler *compiler,
-		gl_shader_stage type, unsigned nin, unsigned nout);
+struct ir3 * ir3_create(struct ir3_compiler *compiler, gl_shader_stage type);
 void ir3_destroy(struct ir3 *shader);
 void * ir3_assemble(struct ir3 *shader,
 		struct ir3_info *info, uint32_t gpu_id);
@@ -1065,14 +1071,14 @@ static inline bool __is_false_dep(struct ir3_instruction *instr, unsigned n)
 
 /* iterators for shader inputs: */
 #define foreach_input_n(__ininstr, __cnt, __ir) \
-	for (unsigned __cnt = 0; __cnt < (__ir)->ninputs; __cnt++) \
+	for (unsigned __cnt = 0; __cnt < (__ir)->inputs_count; __cnt++) \
 		if ((__ininstr = (__ir)->inputs[__cnt]))
 #define foreach_input(__ininstr, __ir) \
 	foreach_input_n(__ininstr, __i, __ir)
 
 /* iterators for shader outputs: */
 #define foreach_output_n(__outinstr, __cnt, __ir) \
-	for (unsigned __cnt = 0; __cnt < (__ir)->noutputs; __cnt++) \
+	for (unsigned __cnt = 0; __cnt < (__ir)->outputs_count; __cnt++) \
 		if ((__outinstr = (__ir)->outputs[__cnt]))
 #define foreach_output(__outinstr, __ir) \
 	foreach_output_n(__outinstr, __i, __ir)

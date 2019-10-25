@@ -45,18 +45,12 @@ void * ir3_alloc(struct ir3 *shader, int sz)
 	return rzalloc_size(shader, sz); /* TODO: don't use rzalloc */
 }
 
-struct ir3 * ir3_create(struct ir3_compiler *compiler,
-		gl_shader_stage type, unsigned nin, unsigned nout)
+struct ir3 * ir3_create(struct ir3_compiler *compiler, gl_shader_stage type)
 {
 	struct ir3 *shader = rzalloc(NULL, struct ir3);
 
 	shader->compiler = compiler;
 	shader->type = type;
-	shader->ninputs = nin;
-	shader->inputs = ir3_alloc(shader, sizeof(shader->inputs[0]) * nin);
-
-	shader->noutputs = nout;
-	shader->outputs = ir3_alloc(shader, sizeof(shader->outputs[0]) * nout);
 
 	list_inithead(&shader->block_list);
 	list_inithead(&shader->array_list);
