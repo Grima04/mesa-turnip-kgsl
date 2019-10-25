@@ -1265,7 +1265,7 @@ _mesa_EnableVertexArrayAttrib(GLuint vaobj, GLuint index)
     *    [compatibility profile: zero or] the name of an existing vertex
     *    array object."
     */
-   vao = _mesa_lookup_vao_err(ctx, vaobj, "glEnableVertexArrayAttrib");
+   vao = _mesa_lookup_vao_err(ctx, vaobj, false, "glEnableVertexArrayAttrib");
    if (!vao)
       return;
 
@@ -1341,7 +1341,7 @@ _mesa_DisableVertexArrayAttrib(GLuint vaobj, GLuint index)
     *    [compatibility profile: zero or] the name of an existing vertex
     *    array object."
     */
-   vao = _mesa_lookup_vao_err(ctx, vaobj, "glDisableVertexArrayAttrib");
+   vao = _mesa_lookup_vao_err(ctx, vaobj, false, "glDisableVertexArrayAttrib");
    if (!vao)
       return;
 
@@ -1648,7 +1648,7 @@ _mesa_GetVertexArrayIndexediv(GLuint vaobj, GLuint index,
     *     [compatibility profile: zero or] the name of an existing
     *     vertex array object."
     */
-   vao = _mesa_lookup_vao_err(ctx, vaobj, "glGetVertexArrayIndexediv");
+   vao = _mesa_lookup_vao_err(ctx, vaobj, false, "glGetVertexArrayIndexediv");
    if (!vao)
       return;
 
@@ -1711,7 +1711,7 @@ _mesa_GetVertexArrayIndexed64iv(GLuint vaobj, GLuint index,
     *     [compatibility profile: zero or] the name of an existing
     *     vertex array object."
     */
-   vao = _mesa_lookup_vao_err(ctx, vaobj, "glGetVertexArrayIndexed64iv");
+   vao = _mesa_lookup_vao_err(ctx, vaobj, false, "glGetVertexArrayIndexed64iv");
    if (!vao)
       return;
 
@@ -2310,7 +2310,7 @@ _mesa_VertexArrayVertexBuffer(GLuint vaobj, GLuint bindingIndex, GLuint buffer,
     *    if <vaobj> is not [compatibility profile: zero or] the name of an
     *    existing vertex array object."
     */
-   vao = _mesa_lookup_vao_err(ctx, vaobj, "glVertexArrayVertexBuffer");
+   vao = _mesa_lookup_vao_err(ctx, vaobj, false, "glVertexArrayVertexBuffer");
    if (!vao)
       return;
 
@@ -2516,7 +2516,7 @@ _mesa_VertexArrayVertexBuffers(GLuint vaobj, GLuint first, GLsizei count,
     *    if <vaobj> is not [compatibility profile: zero or] the name of an
     *    existing vertex array object."
     */
-   vao = _mesa_lookup_vao_err(ctx, vaobj, "glVertexArrayVertexBuffers");
+   vao = _mesa_lookup_vao_err(ctx, vaobj, false, "glVertexArrayVertexBuffers");
    if (!vao)
       return;
 
@@ -2644,7 +2644,7 @@ vertex_array_attrib_format(GLuint vaobj, GLuint attribIndex, GLint size,
        *   VertexArrayAttrib*Format if <vaobj> is not [compatibility profile:
        *   zero or] the name of an existing vertex array object."
        */
-      vao = _mesa_lookup_vao_err(ctx, vaobj, func);
+      vao = _mesa_lookup_vao_err(ctx, false, vaobj, func);
       if (!vao)
          return;
 
@@ -2808,7 +2808,7 @@ _mesa_VertexArrayAttribBinding(GLuint vaobj, GLuint attribIndex, GLuint bindingI
     *    if <vaobj> is not [compatibility profile: zero or] the name of an
     *    existing vertex array object."
     */
-   vao = _mesa_lookup_vao_err(ctx, vaobj, "glVertexArrayAttribBinding");
+   vao = _mesa_lookup_vao_err(ctx, vaobj, false, "glVertexArrayAttribBinding");
    if (!vao)
       return;
 
@@ -2903,7 +2903,7 @@ _mesa_VertexArrayBindingDivisor(GLuint vaobj, GLuint bindingIndex,
     *    if <vaobj> is not [compatibility profile: zero or] the name of an
     *    existing vertex array object."
     */
-   vao = _mesa_lookup_vao_err(ctx, vaobj, "glVertexArrayBindingDivisor");
+   vao = _mesa_lookup_vao_err(ctx, vaobj, false, "glVertexArrayBindingDivisor");
    if (!vao)
        return;
 
