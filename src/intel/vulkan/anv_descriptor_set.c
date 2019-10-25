@@ -663,6 +663,7 @@ VkResult anv_CreateDescriptorPool(
     VkDescriptorPool*                           pDescriptorPool)
 {
    ANV_FROM_HANDLE(anv_device, device, _device);
+   const struct anv_physical_device *pdevice = &device->instance->physicalDevice;
    struct anv_descriptor_pool *pool;
 
    const VkDescriptorPoolInlineUniformBlockCreateInfoEXT *inline_info =
@@ -749,10 +750,16 @@ VkResult anv_CreateDescriptorPool(
          return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
       }
 
-      if (device->instance->physicalDevice.use_softpin) {
+      if (pdevice->supports_48bit_addresses)
+         pool->bo.flags |= EXEC_OBJECT_SUPPORTS_48B_ADDRESS;
+
+      if (pdevice->use_softpin) {
          pool->bo.flags |= EXEC_OBJECT_PINNED;
          anv_vma_alloc(device, &pool->bo);
       }
+
+      if (pdevice->has_exec_async)
+         pool->bo.flags |= EXEC_OBJECT_ASYNC;
 
       util_vma_heap_init(&pool->bo_heap, POOL_HEAP_OFFSET, descriptor_bo_size);
    } else {
