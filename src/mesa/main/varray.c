@@ -484,6 +484,8 @@ validate_array_format(struct gl_context *ctx, const char *func,
  * Do error checking for glVertex/Color/TexCoord/...Pointer functions.
  *
  * \param func  name of calling function used for error reporting
+ * \param vao the vao to update
+ * \param obj the bound buffer object
  * \param attrib  the attribute array index to update
  * \param legalTypes  bitmask of *_BIT above indicating legal datatypes
  * \param sizeMin  min allowable size value
@@ -498,14 +500,14 @@ validate_array_format(struct gl_context *ctx, const char *func,
  */
 static void
 validate_array(struct gl_context *ctx, const char *func,
+               struct gl_vertex_array_object *vao,
+               struct gl_buffer_object *obj,
                GLuint attrib, GLbitfield legalTypesMask,
                GLint sizeMin, GLint sizeMax,
                GLint size, GLenum type, GLsizei stride,
                GLboolean normalized, GLboolean integer, GLboolean doubles,
                const GLvoid *ptr)
 {
-   struct gl_vertex_array_object *vao = ctx->Array.VAO;
-
    /* Page 407 (page 423 of the PDF) of the OpenGL 3.0 spec says:
     *
     *     "Client vertex arrays - all vertex array attribute pointers must
@@ -547,7 +549,7 @@ validate_array(struct gl_context *ctx, const char *func,
     *       2.9.6), and the pointer argument is not NULL."
     */
    if (ptr != NULL && vao != ctx->Array.DefaultVAO &&
-       !_mesa_is_bufferobj(ctx->Array.ArrayBufferObj)) {
+       !_mesa_is_bufferobj(obj)) {
       _mesa_error(ctx, GL_INVALID_OPERATION, "%s(non-VBO array)", func);
       return;
    }
@@ -556,15 +558,16 @@ validate_array(struct gl_context *ctx, const char *func,
 
 static bool
 validate_array_and_format(struct gl_context *ctx, const char *func,
+                          struct gl_vertex_array_object *vao,
+                          struct gl_buffer_object *obj,
                           GLuint attrib, GLbitfield legalTypes,
                           GLint sizeMin, GLint sizeMax,
                           GLint size, GLenum type, GLsizei stride,
                           GLboolean normalized, GLboolean integer,
-                          GLboolean doubles, GLenum format, const GLvoid *ptr,
-                          struct gl_vertex_array_object *vao)
+                          GLboolean doubles, GLenum format, const GLvoid *ptr)
 {
-   validate_array(ctx, func, attrib, legalTypes, sizeMin, sizeMax, size,
-                  type, stride, normalized, integer, doubles, ptr);
+   validate_array(ctx, func, vao, obj, attrib, legalTypes, sizeMin, sizeMax,
+                  size, type, stride, normalized, integer, doubles, ptr);
 
    return validate_array_format(ctx, func, vao, attrib, legalTypes, sizeMin,
                                 sizeMax, size, type, normalized, integer,
@@ -575,6 +578,8 @@ validate_array_and_format(struct gl_context *ctx, const char *func,
 /**
  * Update state for glVertex/Color/TexCoord/...Pointer functions.
  *
+ * \param vao the vao to update
+ * \param obj the bound buffer object
  * \param attrib  the attribute array index to update
  * \param format  Either GL_RGBA or GL_BGRA.
  * \param sizeMax  max allowable size value (may also be BGRA_OR_4)
@@ -588,14 +593,14 @@ validate_array_and_format(struct gl_context *ctx, const char *func,
  */
 static void
 update_array(struct gl_context *ctx,
+             struct gl_vertex_array_object *vao,
+             struct gl_buffer_object *obj,
              GLuint attrib, GLenum format,
              GLint sizeMax,
              GLint size, GLenum type, GLsizei stride,
              GLboolean normalized, GLboolean integer, GLboolean doubles,
              const GLvoid *ptr)
 {
-   struct gl_vertex_array_object *vao = ctx->Array.VAO;
-
    _mesa_update_array_format(ctx, vao, attrib, size, type, format,
                              normalized, integer, doubles, 0);
 
@@ -616,7 +621,7 @@ update_array(struct gl_context *ctx,
    GLsizei effectiveStride = stride != 0 ?
       stride : array->Format._ElementSize;
    _mesa_bind_vertex_buffer(ctx, vao, attrib,
-                            ctx->Array.ArrayBufferObj, (GLintptr) ptr,
+                            obj, (GLintptr) ptr,
                             effectiveStride);
 }
 
@@ -626,7 +631,8 @@ _mesa_VertexPointer_no_error(GLint size, GLenum type, GLsizei stride,
 {
    GET_CURRENT_CONTEXT(ctx);
 
-   update_array(ctx, VERT_ATTRIB_POS, GL_RGBA, 4, size, type, stride,
+   update_array(ctx, ctx->Array.VAO, ctx->Array.ArrayBufferObj,
+                VERT_ATTRIB_POS, GL_RGBA, 4, size, type, stride,
                 GL_FALSE, GL_FALSE, GL_FALSE, ptr);
 }
 
@@ -644,13 +650,15 @@ _mesa_VertexPointer(GLint size, GLenum type, GLsizei stride, const GLvoid *ptr)
          UNSIGNED_INT_2_10_10_10_REV_BIT |
          INT_2_10_10_10_REV_BIT);
 
-   if (!validate_array_and_format(ctx, "glVertexPointer", VERT_ATTRIB_POS,
-                                  legalTypes, 2, 4, size, type, stride,
-                                  GL_FALSE, GL_FALSE, GL_FALSE, format,
-                                  ptr, ctx->Array.VAO))
+   if (!validate_array_and_format(ctx, "glVertexPointer",
+                                  ctx->Array.VAO, ctx->Array.ArrayBufferObj,
+                                  VERT_ATTRIB_POS, legalTypes, 2, 4, size,
+                                  type, stride, GL_FALSE, GL_FALSE, GL_FALSE,
+                                  format, ptr))
       return;
 
-   update_array(ctx, VERT_ATTRIB_POS, format, 4, size, type, stride,
+   update_array(ctx, ctx->Array.VAO, ctx->Array.ArrayBufferObj,
+                VERT_ATTRIB_POS, format, 4, size, type, stride,
                 GL_FALSE, GL_FALSE, GL_FALSE, ptr);
 }
 
@@ -660,7 +668,8 @@ _mesa_NormalPointer_no_error(GLenum type, GLsizei stride, const GLvoid *ptr )
 {
    GET_CURRENT_CONTEXT(ctx);
 
-   update_array(ctx, VERT_ATTRIB_NORMAL, GL_RGBA, 3, 3, type, stride, GL_TRUE,
+   update_array(ctx, ctx->Array.VAO, ctx->Array.ArrayBufferObj,
+                VERT_ATTRIB_NORMAL, GL_RGBA, 3, 3, type, stride, GL_TRUE,
                 GL_FALSE, GL_FALSE, ptr);
 }
 
@@ -679,12 +688,14 @@ _mesa_NormalPointer(GLenum type, GLsizei stride, const GLvoid *ptr )
          INT_2_10_10_10_REV_BIT);
 
    if (!validate_array_and_format(ctx, "glNormalPointer",
+                                  ctx->Array.VAO, ctx->Array.ArrayBufferObj,
                                   VERT_ATTRIB_NORMAL, legalTypes, 3, 3, 3,
                                   type, stride, GL_TRUE, GL_FALSE,
-                                  GL_FALSE, format, ptr, ctx->Array.VAO))
+                                  GL_FALSE, format, ptr))
       return;
 
-   update_array(ctx, VERT_ATTRIB_NORMAL, format, 3, 3, type, stride, GL_TRUE,
+   update_array(ctx, ctx->Array.VAO, ctx->Array.ArrayBufferObj,
+                VERT_ATTRIB_NORMAL, format, 3, 3, type, stride, GL_TRUE,
                 GL_FALSE, GL_FALSE, ptr);
 }
 
@@ -696,7 +707,8 @@ _mesa_ColorPointer_no_error(GLint size, GLenum type, GLsizei stride,
    GET_CURRENT_CONTEXT(ctx);
 
    GLenum format = get_array_format(ctx, BGRA_OR_4, &size);
-   update_array(ctx, VERT_ATTRIB_COLOR0, format, BGRA_OR_4, size,
+   update_array(ctx, ctx->Array.VAO, ctx->Array.ArrayBufferObj,
+                VERT_ATTRIB_COLOR0, format, BGRA_OR_4, size,
                 type, stride, GL_TRUE, GL_FALSE, GL_FALSE, ptr);
 }
 
@@ -718,13 +730,14 @@ _mesa_ColorPointer(GLint size, GLenum type, GLsizei stride, const GLvoid *ptr)
          INT_2_10_10_10_REV_BIT);
 
    if (!validate_array_and_format(ctx, "glColorPointer",
+                                  ctx->Array.VAO, ctx->Array.ArrayBufferObj,
                                   VERT_ATTRIB_COLOR0, legalTypes, sizeMin,
                                   BGRA_OR_4, size, type, stride, GL_TRUE,
-                                  GL_FALSE, GL_FALSE, format, ptr,
-                                  ctx->Array.VAO))
+                                  GL_FALSE, GL_FALSE, format, ptr))
       return;
 
-   update_array(ctx, VERT_ATTRIB_COLOR0, format, BGRA_OR_4, size,
+   update_array(ctx, ctx->Array.VAO, ctx->Array.ArrayBufferObj,
+                VERT_ATTRIB_COLOR0, format, BGRA_OR_4, size,
                 type, stride, GL_TRUE, GL_FALSE, GL_FALSE, ptr);
 }
 
@@ -734,7 +747,8 @@ _mesa_FogCoordPointer_no_error(GLenum type, GLsizei stride, const GLvoid *ptr)
 {
    GET_CURRENT_CONTEXT(ctx);
 
-   update_array(ctx, VERT_ATTRIB_FOG, GL_RGBA, 1, 1, type, stride, GL_FALSE,
+   update_array(ctx, ctx->Array.VAO, ctx->Array.ArrayBufferObj,
+                VERT_ATTRIB_FOG, GL_RGBA, 1, 1, type, stride, GL_FALSE,
                 GL_FALSE, GL_FALSE, ptr);
 }
 
@@ -748,12 +762,14 @@ _mesa_FogCoordPointer(GLenum type, GLsizei stride, const GLvoid *ptr)
    const GLbitfield legalTypes = (HALF_BIT | FLOAT_BIT | DOUBLE_BIT);
 
    if (!validate_array_and_format(ctx, "glFogCoordPointer",
+                                  ctx->Array.VAO, ctx->Array.ArrayBufferObj,
                                   VERT_ATTRIB_FOG, legalTypes, 1, 1, 1,
                                   type, stride, GL_FALSE, GL_FALSE,
-                                  GL_FALSE, format, ptr, ctx->Array.VAO))
+                                  GL_FALSE, format, ptr))
       return;
 
-   update_array(ctx, VERT_ATTRIB_FOG, format, 1, 1, type, stride, GL_FALSE,
+   update_array(ctx, ctx->Array.VAO, ctx->Array.ArrayBufferObj,
+                VERT_ATTRIB_FOG, format, 1, 1, type, stride, GL_FALSE,
                 GL_FALSE, GL_FALSE, ptr);
 }
 
@@ -763,7 +779,8 @@ _mesa_IndexPointer_no_error(GLenum type, GLsizei stride, const GLvoid *ptr)
 {
    GET_CURRENT_CONTEXT(ctx);
 
-   update_array(ctx, VERT_ATTRIB_COLOR_INDEX, GL_RGBA, 1, 1, type, stride,
+   update_array(ctx, ctx->Array.VAO, ctx->Array.ArrayBufferObj,
+                VERT_ATTRIB_COLOR_INDEX, GL_RGBA, 1, 1, type, stride,
                 GL_FALSE, GL_FALSE, GL_FALSE, ptr);
 }
 
@@ -778,13 +795,14 @@ _mesa_IndexPointer(GLenum type, GLsizei stride, const GLvoid *ptr)
                                      FLOAT_BIT | DOUBLE_BIT);
 
    if (!validate_array_and_format(ctx, "glIndexPointer",
+                                  ctx->Array.VAO, ctx->Array.ArrayBufferObj,
                                   VERT_ATTRIB_COLOR_INDEX,
                                   legalTypes, 1, 1, 1, type, stride,
-                                  GL_FALSE, GL_FALSE, GL_FALSE, format,
-                                  ptr, ctx->Array.VAO))
+                                  GL_FALSE, GL_FALSE, GL_FALSE, format, ptr))
       return;
 
-   update_array(ctx, VERT_ATTRIB_COLOR_INDEX, format, 1, 1, type, stride,
+   update_array(ctx, ctx->Array.VAO, ctx->Array.ArrayBufferObj,
+                VERT_ATTRIB_COLOR_INDEX, format, 1, 1, type, stride,
                 GL_FALSE, GL_FALSE, GL_FALSE, ptr);
 }
 
@@ -796,7 +814,8 @@ _mesa_SecondaryColorPointer_no_error(GLint size, GLenum type,
    GET_CURRENT_CONTEXT(ctx);
 
    GLenum format = get_array_format(ctx, BGRA_OR_4, &size);
-   update_array(ctx, VERT_ATTRIB_COLOR1, format, BGRA_OR_4, size, type,
+   update_array(ctx, ctx->Array.VAO, ctx->Array.ArrayBufferObj,
+                VERT_ATTRIB_COLOR1, format, BGRA_OR_4, size, type,
                 stride, GL_TRUE, GL_FALSE, GL_FALSE, ptr);
 }
 
@@ -816,13 +835,14 @@ _mesa_SecondaryColorPointer(GLint size, GLenum type,
                                   INT_2_10_10_10_REV_BIT);
 
    if (!validate_array_and_format(ctx, "glSecondaryColorPointer",
+                                  ctx->Array.VAO, ctx->Array.ArrayBufferObj,
                                   VERT_ATTRIB_COLOR1, legalTypes, 3,
                                   BGRA_OR_4, size, type, stride,
-                                  GL_TRUE, GL_FALSE, GL_FALSE, format, ptr,
-                                  ctx->Array.VAO))
+                                  GL_TRUE, GL_FALSE, GL_FALSE, format, ptr))
       return;
 
-   update_array(ctx, VERT_ATTRIB_COLOR1, format, BGRA_OR_4, size, type,
+   update_array(ctx, ctx->Array.VAO, ctx->Array.ArrayBufferObj,
+                VERT_ATTRIB_COLOR1, format, BGRA_OR_4, size, type,
                 stride, GL_TRUE, GL_FALSE, GL_FALSE, ptr);
 }
 
@@ -834,7 +854,8 @@ _mesa_TexCoordPointer_no_error(GLint size, GLenum type, GLsizei stride,
    GET_CURRENT_CONTEXT(ctx);
    const GLuint unit = ctx->Array.ActiveTexture;
 
-   update_array(ctx, VERT_ATTRIB_TEX(unit), GL_RGBA, 4, size, type,
+   update_array(ctx, ctx->Array.VAO, ctx->Array.ArrayBufferObj,
+                VERT_ATTRIB_TEX(unit), GL_RGBA, 4, size, type,
                 stride, GL_FALSE, GL_FALSE, GL_FALSE, ptr);
 }
 
@@ -856,13 +877,14 @@ _mesa_TexCoordPointer(GLint size, GLenum type, GLsizei stride,
          INT_2_10_10_10_REV_BIT);
 
    if (!validate_array_and_format(ctx, "glTexCoordPointer",
+                                  ctx->Array.VAO, ctx->Array.ArrayBufferObj,
                                   VERT_ATTRIB_TEX(unit), legalTypes,
                                   sizeMin, 4, size, type, stride,
-                                  GL_FALSE, GL_FALSE, GL_FALSE, format, ptr,
-                                  ctx->Array.VAO))
+                                  GL_FALSE, GL_FALSE, GL_FALSE, format, ptr))
       return;
 
-   update_array(ctx, VERT_ATTRIB_TEX(unit), format, 4, size, type,
+   update_array(ctx, ctx->Array.VAO, ctx->Array.ArrayBufferObj,
+                VERT_ATTRIB_TEX(unit), format, 4, size, type,
                 stride, GL_FALSE, GL_FALSE, GL_FALSE, ptr);
 }
 
@@ -874,7 +896,8 @@ _mesa_EdgeFlagPointer_no_error(GLsizei stride, const GLvoid *ptr)
    const GLboolean integer = GL_FALSE;
    GET_CURRENT_CONTEXT(ctx);
 
-   update_array(ctx, VERT_ATTRIB_EDGEFLAG, GL_RGBA, 1, 1, GL_UNSIGNED_BYTE,
+   update_array(ctx, ctx->Array.VAO, ctx->Array.ArrayBufferObj,
+                VERT_ATTRIB_EDGEFLAG, GL_RGBA, 1, 1, GL_UNSIGNED_BYTE,
                 stride, GL_FALSE, integer, GL_FALSE, ptr);
 }
 
@@ -890,13 +913,14 @@ _mesa_EdgeFlagPointer(GLsizei stride, const GLvoid *ptr)
    const GLbitfield legalTypes = UNSIGNED_BYTE_BIT;
 
    if (!validate_array_and_format(ctx, "glEdgeFlagPointer",
+                                  ctx->Array.VAO, ctx->Array.ArrayBufferObj,
                                   VERT_ATTRIB_EDGEFLAG, legalTypes,
                                   1, 1, 1, GL_UNSIGNED_BYTE, stride,
-                                  GL_FALSE, integer, GL_FALSE, format, ptr,
-                                  ctx->Array.VAO))
+                                  GL_FALSE, integer, GL_FALSE, format, ptr))
       return;
 
-   update_array(ctx, VERT_ATTRIB_EDGEFLAG, format, 1, 1, GL_UNSIGNED_BYTE,
+   update_array(ctx, ctx->Array.VAO, ctx->Array.ArrayBufferObj,
+                VERT_ATTRIB_EDGEFLAG, format, 1, 1, GL_UNSIGNED_BYTE,
                 stride, GL_FALSE, integer, GL_FALSE, ptr);
 }
 
@@ -907,7 +931,8 @@ _mesa_PointSizePointerOES_no_error(GLenum type, GLsizei stride,
 {
    GET_CURRENT_CONTEXT(ctx);
 
-   update_array(ctx, VERT_ATTRIB_POINT_SIZE, GL_RGBA, 1, 1, type, stride,
+   update_array(ctx, ctx->Array.VAO, ctx->Array.ArrayBufferObj,
+                VERT_ATTRIB_POINT_SIZE, GL_RGBA, 1, 1, type, stride,
                 GL_FALSE, GL_FALSE, GL_FALSE, ptr);
 }
 
@@ -927,12 +952,14 @@ _mesa_PointSizePointerOES(GLenum type, GLsizei stride, const GLvoid *ptr)
    const GLbitfield legalTypes = (FLOAT_BIT | FIXED_ES_BIT);
 
    if (!validate_array_and_format(ctx, "glPointSizePointer",
+                                  ctx->Array.VAO, ctx->Array.ArrayBufferObj,
                                   VERT_ATTRIB_POINT_SIZE, legalTypes,
                                   1, 1, 1, type, stride, GL_FALSE, GL_FALSE,
-                                  GL_FALSE, format, ptr, ctx->Array.VAO))
+                                  GL_FALSE, format, ptr))
       return;
 
-   update_array(ctx, VERT_ATTRIB_POINT_SIZE, format, 1, 1, type, stride,
+   update_array(ctx, ctx->Array.VAO, ctx->Array.ArrayBufferObj,
+                VERT_ATTRIB_POINT_SIZE, format, 1, 1, type, stride,
                 GL_FALSE, GL_FALSE, GL_FALSE, ptr);
 }
 
@@ -945,7 +972,8 @@ _mesa_VertexAttribPointer_no_error(GLuint index, GLint size, GLenum type,
    GET_CURRENT_CONTEXT(ctx);
 
    GLenum format = get_array_format(ctx, BGRA_OR_4, &size);
-   update_array(ctx, VERT_ATTRIB_GENERIC(index), format, BGRA_OR_4,
+   update_array(ctx, ctx->Array.VAO, ctx->Array.ArrayBufferObj,
+                VERT_ATTRIB_GENERIC(index), format, BGRA_OR_4,
                 size, type, stride, normalized, GL_FALSE, GL_FALSE, ptr);
 }
 
@@ -978,13 +1006,14 @@ _mesa_VertexAttribPointer(GLuint index, GLint size, GLenum type,
                                   UNSIGNED_INT_10F_11F_11F_REV_BIT);
 
    if (!validate_array_and_format(ctx, "glVertexAttribPointer",
+                                  ctx->Array.VAO, ctx->Array.ArrayBufferObj,
                                   VERT_ATTRIB_GENERIC(index), legalTypes,
                                   1, BGRA_OR_4, size, type, stride,
-                                  normalized, GL_FALSE, GL_FALSE, format,
-                                  ptr, ctx->Array.VAO))
+                                  normalized, GL_FALSE, GL_FALSE, format, ptr))
       return;
 
-   update_array(ctx, VERT_ATTRIB_GENERIC(index), format, BGRA_OR_4,
+   update_array(ctx, ctx->Array.VAO, ctx->Array.ArrayBufferObj,
+                VERT_ATTRIB_GENERIC(index), format, BGRA_OR_4,
                 size, type, stride, normalized, GL_FALSE, GL_FALSE, ptr);
 }
 
@@ -997,7 +1026,8 @@ _mesa_VertexAttribIPointer_no_error(GLuint index, GLint size, GLenum type,
    const GLboolean integer = GL_TRUE;
    GET_CURRENT_CONTEXT(ctx);
 
-   update_array(ctx, VERT_ATTRIB_GENERIC(index), GL_RGBA, 4,  size, type,
+   update_array(ctx, ctx->Array.VAO, ctx->Array.ArrayBufferObj,
+                VERT_ATTRIB_GENERIC(index), GL_RGBA, 4,  size, type,
                 stride, normalized, integer, GL_FALSE, ptr);
 }
 
@@ -1027,13 +1057,14 @@ _mesa_VertexAttribIPointer(GLuint index, GLint size, GLenum type,
                                   INT_BIT | UNSIGNED_INT_BIT);
 
    if (!validate_array_and_format(ctx, "glVertexAttribIPointer",
+                                  ctx->Array.VAO, ctx->Array.ArrayBufferObj,
                                   VERT_ATTRIB_GENERIC(index), legalTypes,
                                   1, 4, size, type, stride,
-                                  normalized, integer, GL_FALSE, format,
-                                  ptr, ctx->Array.VAO))
+                                  normalized, integer, GL_FALSE, format, ptr))
       return;
 
-   update_array(ctx, VERT_ATTRIB_GENERIC(index), format, 4,  size, type,
+   update_array(ctx, ctx->Array.VAO, ctx->Array.ArrayBufferObj,
+                VERT_ATTRIB_GENERIC(index), format, 4,  size, type,
                 stride, normalized, integer, GL_FALSE, ptr);
 }
 
@@ -1044,7 +1075,8 @@ _mesa_VertexAttribLPointer_no_error(GLuint index, GLint size, GLenum type,
 {
    GET_CURRENT_CONTEXT(ctx);
 
-   update_array(ctx, VERT_ATTRIB_GENERIC(index), GL_RGBA, 4, size, type,
+   update_array(ctx, ctx->Array.VAO, ctx->Array.ArrayBufferObj,
+                VERT_ATTRIB_GENERIC(index), GL_RGBA, 4, size, type,
                 stride, GL_FALSE, GL_FALSE, GL_TRUE, ptr);
 }
 
@@ -1064,13 +1096,14 @@ _mesa_VertexAttribLPointer(GLuint index, GLint size, GLenum type,
    const GLbitfield legalTypes = DOUBLE_BIT;
 
    if (!validate_array_and_format(ctx, "glVertexAttribLPointer",
+                                  ctx->Array.VAO, ctx->Array.ArrayBufferObj,
                                   VERT_ATTRIB_GENERIC(index), legalTypes,
                                   1, 4, size, type, stride,
-                                  GL_FALSE, GL_FALSE, GL_TRUE, format,
-                                  ptr, ctx->Array.VAO))
+                                  GL_FALSE, GL_FALSE, GL_TRUE, format, ptr))
       return;
 
-   update_array(ctx, VERT_ATTRIB_GENERIC(index), format, 4, size, type,
+   update_array(ctx, ctx->Array.VAO, ctx->Array.ArrayBufferObj,
+                VERT_ATTRIB_GENERIC(index), format, 4, size, type,
                 stride, GL_FALSE, GL_FALSE, GL_TRUE, ptr);
 }
 
@@ -1688,13 +1721,14 @@ _mesa_MultiTexCoordPointerEXT(GLenum texunit, GLint size, GLenum type,
                                   INT_2_10_10_10_REV_BIT);
 
    if (!validate_array_and_format(ctx, "glMultiTexCoordPointerEXT",
+                                  ctx->Array.VAO, ctx->Array.ArrayBufferObj,
                                   VERT_ATTRIB_TEX(unit), legalTypes,
                                   sizeMin, 4, size, type, stride,
-                                  GL_FALSE, GL_FALSE, GL_FALSE, format, ptr,
-                                  ctx->Array.VAO))
+                                  GL_FALSE, GL_FALSE, GL_FALSE, format, ptr))
       return;
 
-   update_array(ctx, VERT_ATTRIB_TEX(unit), format, 4, size, type,
+   update_array(ctx, ctx->Array.VAO, ctx->Array.ArrayBufferObj,
+                VERT_ATTRIB_TEX(unit), format, 4, size, type,
                 stride, GL_FALSE, GL_FALSE, GL_FALSE, ptr);
 }
 
