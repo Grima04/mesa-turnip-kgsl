@@ -625,6 +625,38 @@ update_array(struct gl_context *ctx,
                             effectiveStride);
 }
 
+
+/* Helper function for all EXT_direct_state_access glVertexArray* functions */
+static bool
+_lookup_vao_and_vbo_dsa(struct gl_context *ctx,
+                        GLuint vaobj, GLuint buffer,
+                        GLintptr offset,
+                        struct gl_vertex_array_object** vao,
+                        struct gl_buffer_object** vbo,
+                        const char* caller)
+{
+   *vao = _mesa_lookup_vao_err(ctx, vaobj, true, caller);
+   if (!(*vao))
+      return false;
+
+   if (buffer != 0) {
+      *vbo = _mesa_lookup_bufferobj(ctx, buffer);
+      if (!_mesa_handle_bind_buffer_gen(ctx, buffer, vbo, caller))
+         return false;
+
+      if (offset < 0) {
+         _mesa_error(ctx, GL_INVALID_VALUE,
+                     "%s(negative offset with non-0 buffer)", caller);
+         return false;
+      }
+   } else {
+      *vbo = ctx->Shared->NullBufferObj;
+   }
+
+   return true;
+}
+
+
 void GLAPIENTRY
 _mesa_VertexPointer_no_error(GLint size, GLenum type, GLsizei stride,
                              const GLvoid *ptr)
