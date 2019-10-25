@@ -3835,7 +3835,7 @@ struct anv_query_pool {
    uint32_t                                     stride;
    /** Number of slots in this query pool */
    uint32_t                                     slots;
-   struct anv_bo                                bo;
+   struct anv_bo *                              bo;
 };
 
 int anv_get_instance_entrypoint_index(const char *name);

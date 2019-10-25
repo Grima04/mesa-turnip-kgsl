@@ -116,31 +116,23 @@ VkResult genX(CreateQueryPool)(
    pool->stride = uint64s_per_slot * sizeof(uint64_t);
    pool->slots = pCreateInfo->queryCount;
 
-   uint64_t size = pool->slots * pool->stride;
-   result = anv_bo_init_new(&pool->bo, device, size);
-   if (result != VK_SUCCESS)
-      goto fail;
-
+   uint32_t bo_flags = 0;
    if (pdevice->supports_48bit_addresses)
-      pool->bo.flags |= EXEC_OBJECT_SUPPORTS_48B_ADDRESS;
+      bo_flags |= EXEC_OBJECT_SUPPORTS_48B_ADDRESS;
 
    if (pdevice->use_softpin)
-      pool->bo.flags |= EXEC_OBJECT_PINNED;
+      bo_flags |= EXEC_OBJECT_PINNED;
 
    if (pdevice->has_exec_async)
-      pool->bo.flags |= EXEC_OBJECT_ASYNC;
+      bo_flags |= EXEC_OBJECT_ASYNC;
 
-   anv_vma_alloc(device, &pool->bo);
-
-   /* For query pools, we set the caching mode to I915_CACHING_CACHED.  On LLC
-    * platforms, this does nothing.  On non-LLC platforms, this means snooping
-    * which comes at a slight cost.  However, the buffers aren't big, won't be
-    * written frequently, and trying to handle the flushing manually without
-    * doing too much flushing is extremely painful.
-    */
-   anv_gem_set_caching(device, pool->bo.gem_handle, I915_CACHING_CACHED);
-
-   pool->bo.map = anv_gem_mmap(device, pool->bo.gem_handle, 0, size, 0);
+   uint64_t size = pool->slots * pool->stride;
+   result = anv_device_alloc_bo(device, size,
+                                ANV_BO_ALLOC_MAPPED |
+                                ANV_BO_ALLOC_SNOOPED,
+                                &pool->bo);
+   if (result != VK_SUCCESS)
+      goto fail;
 
    *pQueryPool = anv_query_pool_to_handle(pool);
 
@@ -163,9 +155,7 @@ void genX(DestroyQueryPool)(
    if (!pool)
       return;
 
-   anv_gem_munmap(pool->bo.map, pool->bo.size);
-   anv_vma_free(device, &pool->bo);
-   anv_gem_close(device, pool->bo.gem_handle);
+   anv_device_release_bo(device, pool->bo);
    vk_free2(&device->alloc, pAllocator, pool);
 }
 
@@ -173,7 +163,7 @@ static struct anv_address
 anv_query_address(struct anv_query_pool *pool, uint32_t query)
 {
    return (struct anv_address) {
-      .bo = &pool->bo,
+      .bo = pool->bo,
       .offset = query * pool->stride,
    };
 }
@@ -245,7 +235,7 @@ cpu_write_query_result(void *dst_slot, VkQueryResultFlags flags,
 static void *
 query_slot(struct anv_query_pool *pool, uint32_t query)
 {
-   return pool->bo.map + query * pool->stride;
+   return pool->bo->map + query * pool->stride;
 }
 
 static bool
@@ -266,7 +256,7 @@ wait_for_available(struct anv_device *device,
       if (query_is_available(pool, query))
          return VK_SUCCESS;
 
-      int ret = anv_gem_busy(device, pool->bo.gem_handle);
+      int ret = anv_gem_busy(device, pool->bo->gem_handle);
       if (ret == 1) {
          /* The BO is still busy, keep waiting. */
          continue;
