@@ -40,9 +40,27 @@ stages:
 # When to automatically run the CI
 .ci-run-policy:
   only:
-    - branches@mesa/mesa
-    - merge_requests
-    - /^ci([-/].*)?$/
+    refs:
+      - branches@mesa/mesa
+      - merge_requests
+      - /^ci([-/].*)?$/
+    changes:
+      - VERSION
+      - bin/**/*
+      # GitLab CI
+      - .gitlab-ci.yml
+      - .gitlab-ci/**/*
+      # Meson
+      - meson*
+      - build-support/**/*
+      - subprojects/**/*
+      # SCons
+      - SConstruct
+      - scons/**/*
+      - common.py
+      # Source code
+      - include/**/*
+      - src/**/*
   retry:
     max: 2
     when:
