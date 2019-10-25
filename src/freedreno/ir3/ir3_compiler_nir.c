@@ -3282,10 +3282,7 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 	if (so->binning_pass && (ctx->compiler->gpu_id < 600))
 		fixup_binning_pass(ctx);
 
-	if (ir3_shader_debug & IR3_DBG_OPTMSGS) {
-		printf("BEFORE CP:\n");
-		ir3_print(ir);
-	}
+	ir3_debug_print(ir, "BEFORE CP");
 
 	ir3_cp(ir, so);
 
@@ -3337,10 +3334,7 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 		}
 	}
 
-	if (ir3_shader_debug & IR3_DBG_OPTMSGS) {
-		printf("BEFORE GROUPING:\n");
-		ir3_print(ir);
-	}
+	ir3_debug_print(ir, "BEFORE GROUPING");
 
 	ir3_sched_add_deps(ir);
 
@@ -3349,17 +3343,11 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 	 */
 	ir3_group(ir);
 
-	if (ir3_shader_debug & IR3_DBG_OPTMSGS) {
-		printf("AFTER GROUPING:\n");
-		ir3_print(ir);
-	}
+	ir3_debug_print(ir, "AFTER GROUPING");
 
 	ir3_depth(ir, so);
 
-	if (ir3_shader_debug & IR3_DBG_OPTMSGS) {
-		printf("AFTER DEPTH:\n");
-		ir3_print(ir);
-	}
+	ir3_debug_print(ir, "AFTER DEPTH");
 
 	/* do Sethi–Ullman numbering before scheduling: */
 	ir3_sun(ir);
@@ -3374,10 +3362,7 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 		ir3_a6xx_fixup_atomic_dests(ir, so);
 	}
 
-	if (ir3_shader_debug & IR3_DBG_OPTMSGS) {
-		printf("AFTER SCHED:\n");
-		ir3_print(ir);
-	}
+	ir3_debug_print(ir, "AFTER SCHED");
 
 	/* Pre-assign VS inputs on a6xx+ binning pass shader, to align
 	 * with draw pass VS, so binning and draw pass can both use the
@@ -3449,10 +3434,7 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 		goto out;
 	}
 
-	if (ir3_shader_debug & IR3_DBG_OPTMSGS) {
-		printf("AFTER RA:\n");
-		ir3_print(ir);
-	}
+	ir3_debug_print(ir, "AFTER RA");
 
 	if (so->type == MESA_SHADER_FRAGMENT)
 		pack_inlocs(ctx);
@@ -3509,10 +3491,7 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 	 */
 	ir3_legalize(ir, &so->has_ssbo, &so->need_pixlod, &max_bary);
 
-	if (ir3_shader_debug & IR3_DBG_OPTMSGS) {
-		printf("AFTER LEGALIZE:\n");
-		ir3_print(ir);
-	}
+	ir3_debug_print(ir, "AFTER LEGALIZE");
 
 	/* Set (ss)(sy) on first TCS and GEOMETRY instructions, since we don't
 	 * know what we might have to wait on when coming in from VS chsh.
