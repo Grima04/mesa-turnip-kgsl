@@ -194,14 +194,14 @@ panfrost-t860-test:arm64:
   tags:
     - lava-rk3399-gru-kevin
 
-.lima-test:armhf:
+lima-test:armhf:
   extends: .lava-test:armhf
   variables:
     DEVICE_TYPE: sun8i-h3-libretech-all-h3-cc
   tags:
     - lava-sun8i-h3-libretech-all-h3-cc
 
-.lima-test:arm64:
+lima-test:arm64:
   extends: .lava-test:arm64
   variables:
     DEVICE_TYPE: meson-gxl-s905x-libretech-cc
