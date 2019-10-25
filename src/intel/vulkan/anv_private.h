@@ -603,6 +603,8 @@ anv_multialloc_alloc2(struct anv_multialloc *ma,
 struct anv_bo {
    uint32_t gem_handle;
 
+   uint32_t refcount;
+
    /* Index into the current validation list.  This is used by the
     * validation list building alrogithm to track which buffers are already
     * in the validation list so that we can ensure uniqueness.
@@ -626,6 +628,7 @@ static inline void
 anv_bo_init(struct anv_bo *bo, uint32_t gem_handle, uint64_t size)
 {
    bo->gem_handle = gem_handle;
+   bo->refcount = 1;
    bo->index = 0;
    bo->offset = -1;
    bo->size = size;
