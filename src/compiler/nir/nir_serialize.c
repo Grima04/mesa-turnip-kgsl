@@ -24,6 +24,7 @@
 #include "nir_serialize.h"
 #include "nir_control_flow.h"
 #include "util/u_dynarray.h"
+#include "util/u_math.h"
 
 #define NIR_SERIALIZE_FUNC_HAS_IMPL ((void *)(intptr_t)1)
 #define MAX_OBJECT_IDS (1 << 30)
@@ -113,6 +114,52 @@ static void *
 read_object(read_ctx *ctx)
 {
    return read_lookup_object(ctx, blob_read_uint32(ctx->blob));
+}
+
+static uint32_t
+encode_bit_size_3bits(uint8_t bit_size)
+{
+   /* Encode values of 0, 1, 2, 4, 8, 16, 32, 64 in 3 bits. */
+   assert(bit_size <= 64 && util_is_power_of_two_or_zero(bit_size));
+   if (bit_size)
+      return util_logbase2(bit_size) + 1;
+   return 0;
+}
+
+static uint8_t
+decode_bit_size_3bits(uint8_t bit_size)
+{
+   if (bit_size)
+      return 1 << (bit_size - 1);
+   return 0;
+}
+
+static uint8_t
+encode_num_components_in_3bits(uint8_t num_components)
+{
+   if (num_components <= 4)
+      return num_components;
+   if (num_components == 8)
+      return 5;
+   if (num_components == 16)
+      return 6;
+
+   unreachable("invalid number in num_components");
+   return 0;
+}
+
+static uint8_t
+decode_num_components_in_3bits(uint8_t value)
+{
+   if (value <= 4)
+      return value;
+   if (value == 5)
+      return 8;
+   if (value == 6)
+      return 16;
+
+   unreachable("invalid num_components encoding");
+   return 0;
 }
 
 static void
@@ -367,21 +414,108 @@ read_src(read_ctx *ctx, nir_src *src, void *mem_ctx)
    }
 }
 
+union packed_dest {
+   uint8_t u8;
+   struct {
+      uint8_t is_ssa:1;
+      uint8_t has_name:1;
+      uint8_t num_components:3;
+      uint8_t bit_size:3;
+   } ssa;
+   struct {
+      uint8_t is_ssa:1;
+      uint8_t is_indirect:1;
+      uint8_t _pad:6;
+   } reg;
+};
+
+union packed_instr {
+   uint32_t u32;
+   struct {
+      unsigned instr_type:4; /* always present */
+      unsigned _pad:20;
+      unsigned dest:8;       /* always last */
+   } any;
+   struct {
+      unsigned instr_type:4;
+      unsigned exact:1;
+      unsigned no_signed_wrap:1;
+      unsigned no_unsigned_wrap:1;
+      unsigned saturate:1;
+      unsigned writemask:4;
+      unsigned op:9;
+      unsigned _pad:3;
+      unsigned dest:8;
+   } alu;
+   struct {
+      unsigned instr_type:4;
+      unsigned deref_type:3;
+      unsigned mode:10;
+      unsigned _pad:7;
+      unsigned dest:8;
+   } deref;
+   struct {
+      unsigned instr_type:4;
+      unsigned intrinsic:9;
+      unsigned num_components:3;
+      unsigned _pad:8;
+      unsigned dest:8;
+   } intrinsic;
+   struct {
+      unsigned instr_type:4;
+      unsigned last_component:4;
+      unsigned bit_size:3;
+      unsigned _pad:21;
+   } load_const;
+   struct {
+      unsigned instr_type:4;
+      unsigned last_component:4;
+      unsigned bit_size:3;
+      unsigned _pad:21;
+   } undef;
+   struct {
+      unsigned instr_type:4;
+      unsigned num_srcs:4;
+      unsigned op:4;
+      unsigned texture_array_size:12;
+      unsigned dest:8;
+   } tex;
+   struct {
+      unsigned instr_type:4;
+      unsigned num_srcs:20;
+      unsigned dest:8;
+   } phi;
+   struct {
+      unsigned instr_type:4;
+      unsigned type:2;
+      unsigned _pad:26;
+   } jump;
+};
+
+/* Write "lo24" as low 24 bits in the first uint32. */
 static void
-write_dest(write_ctx *ctx, const nir_dest *dst)
+write_dest(write_ctx *ctx, const nir_dest *dst, union packed_instr header)
 {
-   uint32_t val = dst->is_ssa;
+   STATIC_ASSERT(sizeof(union packed_dest) == 1);
+   union packed_dest dest;
+   dest.u8 = 0;
+
+   dest.ssa.is_ssa = dst->is_ssa;
    if (dst->is_ssa) {
-      val |= (!ctx->strip && dst->ssa.name) << 1;
-      val |= dst->ssa.num_components << 2;
-      val |= dst->ssa.bit_size << 5;
+      dest.ssa.has_name = !ctx->strip && dst->ssa.name;
+      dest.ssa.num_components =
+         encode_num_components_in_3bits(dst->ssa.num_components);
+      dest.ssa.bit_size = encode_bit_size_3bits(dst->ssa.bit_size);
    } else {
-      val |= !!(dst->reg.indirect) << 1;
+      dest.reg.is_indirect = !!(dst->reg.indirect);
    }
-   blob_write_uint32(ctx->blob, val);
+
+   header.any.dest = dest.u8;
+   blob_write_uint32(ctx->blob, header.u32);
+
    if (dst->is_ssa) {
       write_add_object(ctx, &dst->ssa);
-      if (!ctx->strip && dst->ssa.name)
+      if (dest.ssa.has_name)
          blob_write_string(ctx->blob, dst->ssa.name);
    } else {
       blob_write_uint32(ctx->blob, write_lookup_object(ctx, dst->reg.reg));
@@ -392,22 +526,23 @@ write_dest(write_ctx *ctx, const nir_dest *dst)
 }
 
 static void
-read_dest(read_ctx *ctx, nir_dest *dst, nir_instr *instr)
+read_dest(read_ctx *ctx, nir_dest *dst, nir_instr *instr,
+          union packed_instr header)
 {
-   uint32_t val = blob_read_uint32(ctx->blob);
-   bool is_ssa = val & 0x1;
-   if (is_ssa) {
-      bool has_name = val & 0x2;
-      unsigned num_components = (val >> 2) & 0x7;
-      unsigned bit_size = val >> 5;
-      char *name = has_name ? blob_read_string(ctx->blob) : NULL;
+   union packed_dest dest;
+   dest.u8 = header.any.dest;
+
+   if (dest.ssa.is_ssa) {
+      unsigned bit_size = decode_bit_size_3bits(dest.ssa.bit_size);
+      unsigned num_components =
+         decode_num_components_in_3bits(dest.ssa.num_components);
+      char *name = dest.ssa.has_name ? blob_read_string(ctx->blob) : NULL;
       nir_ssa_dest_init(instr, dst, num_components, bit_size, name);
       read_add_object(ctx, &dst->ssa);
    } else {
-      bool is_indirect = val & 0x2;
       dst->reg.reg = read_object(ctx);
       dst->reg.base_offset = blob_read_uint32(ctx->blob);
-      if (is_indirect) {
+      if (dest.reg.is_indirect) {
          dst->reg.indirect = ralloc(instr, nir_src);
          read_src(ctx, dst->reg.indirect, instr);
       }
@@ -417,19 +552,24 @@ read_dest(read_ctx *ctx, nir_dest *dst, nir_instr *instr)
 static void
 write_alu(write_ctx *ctx, const nir_alu_instr *alu)
 {
-   blob_write_uint32(ctx->blob, alu->op);
-   uint32_t flags = alu->exact;
-   flags |= alu->no_signed_wrap << 1;
-   flags |= alu->no_unsigned_wrap << 2;
-   flags |= alu->dest.saturate << 3;
-   flags |= alu->dest.write_mask << 4;
-   blob_write_uint32(ctx->blob, flags);
+   /* 9 bits for nir_op */
+   STATIC_ASSERT(nir_num_opcodes <= 512);
+   union packed_instr header;
+   header.u32 = 0;
 
-   write_dest(ctx, &alu->dest.dest);
+   header.alu.instr_type = alu->instr.type;
+   header.alu.exact = alu->exact;
+   header.alu.no_signed_wrap = alu->no_signed_wrap;
+   header.alu.no_unsigned_wrap = alu->no_unsigned_wrap;
+   header.alu.saturate = alu->dest.saturate;
+   header.alu.writemask = alu->dest.write_mask;
+   header.alu.op = alu->op;
+
+   write_dest(ctx, &alu->dest.dest, header);
 
    for (unsigned i = 0; i < nir_op_infos[alu->op].num_inputs; i++) {
       write_src(ctx, &alu->src[i].src);
-      flags = alu->src[i].negate;
+      uint32_t flags = alu->src[i].negate;
       flags |= alu->src[i].abs << 1;
       for (unsigned j = 0; j < 4; j++)
          flags |= alu->src[i].swizzle[j] << (2 + 2 * j);
@@ -438,23 +578,21 @@ write_alu(write_ctx *ctx, const nir_alu_instr *alu)
 }
 
 static nir_alu_instr *
-read_alu(read_ctx *ctx)
+read_alu(read_ctx *ctx, union packed_instr header)
 {
-   nir_op op = blob_read_uint32(ctx->blob);
-   nir_alu_instr *alu = nir_alu_instr_create(ctx->nir, op);
+   nir_alu_instr *alu = nir_alu_instr_create(ctx->nir, header.alu.op);
 
-   uint32_t flags = blob_read_uint32(ctx->blob);
-   alu->exact = flags & 1;
-   alu->no_signed_wrap = flags & 2;
-   alu->no_unsigned_wrap = flags & 4;
-   alu->dest.saturate = flags & 8;
-   alu->dest.write_mask = flags >> 4;
+   alu->exact = header.alu.exact;
+   alu->no_signed_wrap = header.alu.no_signed_wrap;
+   alu->no_unsigned_wrap = header.alu.no_unsigned_wrap;
+   alu->dest.saturate = header.alu.saturate;
+   alu->dest.write_mask = header.alu.writemask;
 
-   read_dest(ctx, &alu->dest.dest, &alu->instr);
+   read_dest(ctx, &alu->dest.dest, &alu->instr, header);
 
-   for (unsigned i = 0; i < nir_op_infos[op].num_inputs; i++) {
+   for (unsigned i = 0; i < nir_op_infos[header.alu.op].num_inputs; i++) {
       read_src(ctx, &alu->src[i].src, &alu->instr);
-      flags = blob_read_uint32(ctx->blob);
+      uint32_t flags = blob_read_uint32(ctx->blob);
       alu->src[i].negate = flags & 1;
       alu->src[i].abs = flags & 2;
       for (unsigned j = 0; j < 4; j++)
@@ -467,12 +605,18 @@ read_alu(read_ctx *ctx)
 static void
 write_deref(write_ctx *ctx, const nir_deref_instr *deref)
 {
-   blob_write_uint32(ctx->blob, deref->deref_type);
+   assert(deref->deref_type < 8);
+   assert(deref->mode < (1 << 10));
 
-   blob_write_uint32(ctx->blob, deref->mode);
+   union packed_instr header;
+   header.u32 = 0;
+
+   header.deref.instr_type = deref->instr.type;
+   header.deref.deref_type = deref->deref_type;
+   header.deref.mode = deref->mode;
+
+   write_dest(ctx, &deref->dest, header);
    encode_type_to_blob(ctx->blob, deref->type);
-
-   write_dest(ctx, &deref->dest);
 
    if (deref->deref_type == nir_deref_type_var) {
       write_object(ctx, deref->var);
@@ -505,15 +649,15 @@ write_deref(write_ctx *ctx, const nir_deref_instr *deref)
 }
 
 static nir_deref_instr *
-read_deref(read_ctx *ctx)
+read_deref(read_ctx *ctx, union packed_instr header)
 {
-   nir_deref_type deref_type = blob_read_uint32(ctx->blob);
+   nir_deref_type deref_type = header.deref.deref_type;
    nir_deref_instr *deref = nir_deref_instr_create(ctx->nir, deref_type);
 
-   deref->mode = blob_read_uint32(ctx->blob);
-   deref->type = decode_type_from_blob(ctx->blob);
+   read_dest(ctx, &deref->dest, &deref->instr, header);
 
-   read_dest(ctx, &deref->dest, &deref->instr);
+   deref->mode = header.deref.mode;
+   deref->type = decode_type_from_blob(ctx->blob);
 
    if (deref_type == nir_deref_type_var) {
       deref->var = read_object(ctx);
@@ -550,15 +694,24 @@ read_deref(read_ctx *ctx)
 static void
 write_intrinsic(write_ctx *ctx, const nir_intrinsic_instr *intrin)
 {
-   blob_write_uint32(ctx->blob, intrin->intrinsic);
-
+   /* 9 bits for nir_intrinsic_op */
+   STATIC_ASSERT(nir_num_intrinsics <= 512);
    unsigned num_srcs = nir_intrinsic_infos[intrin->intrinsic].num_srcs;
    unsigned num_indices = nir_intrinsic_infos[intrin->intrinsic].num_indices;
+   assert(intrin->intrinsic < 512);
 
-   blob_write_uint32(ctx->blob, intrin->num_components);
+   union packed_instr header;
+   header.u32 = 0;
+
+   header.intrinsic.instr_type = intrin->instr.type;
+   header.intrinsic.intrinsic = intrin->intrinsic;
+   header.intrinsic.num_components =
+      encode_num_components_in_3bits(intrin->num_components);
 
    if (nir_intrinsic_infos[intrin->intrinsic].has_dest)
-      write_dest(ctx, &intrin->dest);
+      write_dest(ctx, &intrin->dest, header);
+   else
+      blob_write_uint32(ctx->blob, header.u32);
 
    for (unsigned i = 0; i < num_srcs; i++)
       write_src(ctx, &intrin->src[i]);
@@ -568,19 +721,19 @@ write_intrinsic(write_ctx *ctx, const nir_intrinsic_instr *intrin)
 }
 
 static nir_intrinsic_instr *
-read_intrinsic(read_ctx *ctx)
+read_intrinsic(read_ctx *ctx, union packed_instr header)
 {
-   nir_intrinsic_op op = blob_read_uint32(ctx->blob);
-
+   nir_intrinsic_op op = header.intrinsic.intrinsic;
    nir_intrinsic_instr *intrin = nir_intrinsic_instr_create(ctx->nir, op);
 
    unsigned num_srcs = nir_intrinsic_infos[op].num_srcs;
    unsigned num_indices = nir_intrinsic_infos[op].num_indices;
 
-   intrin->num_components = blob_read_uint32(ctx->blob);
+   intrin->num_components =
+      decode_num_components_in_3bits(header.intrinsic.num_components);
 
    if (nir_intrinsic_infos[op].has_dest)
-      read_dest(ctx, &intrin->dest, &intrin->instr);
+      read_dest(ctx, &intrin->dest, &intrin->instr, header);
 
    for (unsigned i = 0; i < num_srcs; i++)
       read_src(ctx, &intrin->src[i], &intrin->instr);
@@ -594,20 +747,25 @@ read_intrinsic(read_ctx *ctx)
 static void
 write_load_const(write_ctx *ctx, const nir_load_const_instr *lc)
 {
-   uint32_t val = lc->def.num_components;
-   val |= lc->def.bit_size << 3;
-   blob_write_uint32(ctx->blob, val);
+   assert(lc->def.num_components >= 1 && lc->def.num_components <= 16);
+   union packed_instr header;
+   header.u32 = 0;
+
+   header.load_const.instr_type = lc->instr.type;
+   header.load_const.last_component = lc->def.num_components - 1;
+   header.load_const.bit_size = encode_bit_size_3bits(lc->def.bit_size);
+
+   blob_write_uint32(ctx->blob, header.u32);
    blob_write_bytes(ctx->blob, lc->value, sizeof(*lc->value) * lc->def.num_components);
    write_add_object(ctx, &lc->def);
 }
 
 static nir_load_const_instr *
-read_load_const(read_ctx *ctx)
+read_load_const(read_ctx *ctx, union packed_instr header)
 {
-   uint32_t val = blob_read_uint32(ctx->blob);
-
    nir_load_const_instr *lc =
-      nir_load_const_instr_create(ctx->nir, val & 0x7, val >> 3);
+      nir_load_const_instr_create(ctx->nir, header.load_const.last_component + 1,
+                                  decode_bit_size_3bits(header.load_const.bit_size));
 
    blob_copy_bytes(ctx->blob, lc->value, sizeof(*lc->value) * lc->def.num_components);
    read_add_object(ctx, &lc->def);
@@ -617,19 +775,25 @@ read_load_const(read_ctx *ctx)
 static void
 write_ssa_undef(write_ctx *ctx, const nir_ssa_undef_instr *undef)
 {
-   uint32_t val = undef->def.num_components;
-   val |= undef->def.bit_size << 3;
-   blob_write_uint32(ctx->blob, val);
+   assert(undef->def.num_components >= 1 && undef->def.num_components <= 16);
+
+   union packed_instr header;
+   header.u32 = 0;
+
+   header.undef.instr_type = undef->instr.type;
+   header.undef.last_component = undef->def.num_components - 1;
+   header.undef.bit_size = encode_bit_size_3bits(undef->def.bit_size);
+
+   blob_write_uint32(ctx->blob, header.u32);
    write_add_object(ctx, &undef->def);
 }
 
 static nir_ssa_undef_instr *
-read_ssa_undef(read_ctx *ctx)
+read_ssa_undef(read_ctx *ctx, union packed_instr header)
 {
-   uint32_t val = blob_read_uint32(ctx->blob);
-
    nir_ssa_undef_instr *undef =
-      nir_ssa_undef_instr_create(ctx->nir, val & 0x7, val >> 3);
+      nir_ssa_undef_instr_create(ctx->nir, header.undef.last_component + 1,
+                                 decode_bit_size_3bits(header.undef.bit_size));
 
    read_add_object(ctx, &undef->def);
    return undef;
@@ -652,12 +816,24 @@ union packed_tex_data {
 static void
 write_tex(write_ctx *ctx, const nir_tex_instr *tex)
 {
-   blob_write_uint32(ctx->blob, tex->num_srcs);
-   blob_write_uint32(ctx->blob, tex->op);
+   assert(tex->num_srcs < 16);
+   assert(tex->op < 16);
+   assert(tex->texture_array_size < 1024);
+
+   union packed_instr header;
+   header.u32 = 0;
+
+   header.tex.instr_type = tex->instr.type;
+   header.tex.num_srcs = tex->num_srcs;
+   header.tex.op = tex->op;
+   header.tex.texture_array_size = tex->texture_array_size;
+
+   write_dest(ctx, &tex->dest, header);
+
    blob_write_uint32(ctx->blob, tex->texture_index);
-   blob_write_uint32(ctx->blob, tex->texture_array_size);
    blob_write_uint32(ctx->blob, tex->sampler_index);
-   blob_write_bytes(ctx->blob, tex->tg4_offsets, sizeof(tex->tg4_offsets));
+   if (tex->op == nir_texop_tg4)
+      blob_write_bytes(ctx->blob, tex->tg4_offsets, sizeof(tex->tg4_offsets));
 
    STATIC_ASSERT(sizeof(union packed_tex_data) == sizeof(uint32_t));
    union packed_tex_data packed = {
@@ -671,7 +847,6 @@ write_tex(write_ctx *ctx, const nir_tex_instr *tex)
    };
    blob_write_uint32(ctx->blob, packed.u32);
 
-   write_dest(ctx, &tex->dest);
    for (unsigned i = 0; i < tex->num_srcs; i++) {
       blob_write_uint32(ctx->blob, tex->src[i].src_type);
       write_src(ctx, &tex->src[i].src);
@@ -679,16 +854,18 @@ write_tex(write_ctx *ctx, const nir_tex_instr *tex)
 }
 
 static nir_tex_instr *
-read_tex(read_ctx *ctx)
+read_tex(read_ctx *ctx, union packed_instr header)
 {
-   unsigned num_srcs = blob_read_uint32(ctx->blob);
-   nir_tex_instr *tex = nir_tex_instr_create(ctx->nir, num_srcs);
+   nir_tex_instr *tex = nir_tex_instr_create(ctx->nir, header.tex.num_srcs);
 
-   tex->op = blob_read_uint32(ctx->blob);
+   read_dest(ctx, &tex->dest, &tex->instr, header);
+
+   tex->op = header.tex.op;
    tex->texture_index = blob_read_uint32(ctx->blob);
-   tex->texture_array_size = blob_read_uint32(ctx->blob);
+   tex->texture_array_size = header.tex.texture_array_size;
    tex->sampler_index = blob_read_uint32(ctx->blob);
-   blob_copy_bytes(ctx->blob, tex->tg4_offsets, sizeof(tex->tg4_offsets));
+   if (tex->op == nir_texop_tg4)
+      blob_copy_bytes(ctx->blob, tex->tg4_offsets, sizeof(tex->tg4_offsets));
 
    union packed_tex_data packed;
    packed.u32 = blob_read_uint32(ctx->blob);
@@ -700,7 +877,6 @@ read_tex(read_ctx *ctx)
    tex->is_new_style_shadow = packed.u.is_new_style_shadow;
    tex->component = packed.u.component;
 
-   read_dest(ctx, &tex->dest, &tex->instr);
    for (unsigned i = 0; i < tex->num_srcs; i++) {
       tex->src[i].src_type = blob_read_uint32(ctx->blob);
       read_src(ctx, &tex->src[i].src, &tex->instr);
@@ -712,14 +888,18 @@ read_tex(read_ctx *ctx)
 static void
 write_phi(write_ctx *ctx, const nir_phi_instr *phi)
 {
+   union packed_instr header;
+   header.u32 = 0;
+
+   header.phi.instr_type = phi->instr.type;
+   header.phi.num_srcs = exec_list_length(&phi->srcs);
+
    /* Phi nodes are special, since they may reference SSA definitions and
     * basic blocks that don't exist yet. We leave two empty uint32_t's here,
     * and then store enough information so that a later fixup pass can fill
     * them in correctly.
     */
-   write_dest(ctx, &phi->dest);
-
-   blob_write_uint32(ctx->blob, exec_list_length(&phi->srcs));
+   write_dest(ctx, &phi->dest, header);
 
    nir_foreach_phi_src(src, phi) {
       assert(src->src.is_ssa);
@@ -748,13 +928,11 @@ write_fixup_phis(write_ctx *ctx)
 }
 
 static nir_phi_instr *
-read_phi(read_ctx *ctx, nir_block *blk)
+read_phi(read_ctx *ctx, nir_block *blk, union packed_instr header)
 {
    nir_phi_instr *phi = nir_phi_instr_create(ctx->nir);
 
-   read_dest(ctx, &phi->dest, &phi->instr);
-
-   unsigned num_srcs = blob_read_uint32(ctx->blob);
+   read_dest(ctx, &phi->dest, &phi->instr, header);
 
    /* For similar reasons as before, we just store the index directly into the
     * pointer, and let a later pass resolve the phi sources.
@@ -766,7 +944,7 @@ read_phi(read_ctx *ctx, nir_block *blk)
     */
    nir_instr_insert_after_block(blk, &phi->instr);
 
-   for (unsigned i = 0; i < num_srcs; i++) {
+   for (unsigned i = 0; i < header.phi.num_srcs; i++) {
       nir_phi_src *src = ralloc(phi, nir_phi_src);
 
       src->src.is_ssa = true;
@@ -808,14 +986,21 @@ read_fixup_phis(read_ctx *ctx)
 static void
 write_jump(write_ctx *ctx, const nir_jump_instr *jmp)
 {
-   blob_write_uint32(ctx->blob, jmp->type);
+   assert(jmp->type < 4);
+
+   union packed_instr header;
+   header.u32 = 0;
+
+   header.jump.instr_type = jmp->instr.type;
+   header.jump.type = jmp->type;
+
+   blob_write_uint32(ctx->blob, header.u32);
 }
 
 static nir_jump_instr *
-read_jump(read_ctx *ctx)
+read_jump(read_ctx *ctx, union packed_instr header)
 {
-   nir_jump_type type = blob_read_uint32(ctx->blob);
-   nir_jump_instr *jmp = nir_jump_instr_create(ctx->nir, type);
+   nir_jump_instr *jmp = nir_jump_instr_create(ctx->nir, header.jump.type);
    return jmp;
 }
 
@@ -843,7 +1028,9 @@ read_call(read_ctx *ctx)
 static void
 write_instr(write_ctx *ctx, const nir_instr *instr)
 {
-   blob_write_uint32(ctx->blob, instr->type);
+   /* We have only 4 bits for the instruction type. */
+   assert(instr->type < 16);
+
    switch (instr->type) {
    case nir_instr_type_alu:
       write_alu(ctx, nir_instr_as_alu(instr));
@@ -870,6 +1057,7 @@ write_instr(write_ctx *ctx, const nir_instr *instr)
       write_jump(ctx, nir_instr_as_jump(instr));
       break;
    case nir_instr_type_call:
+      blob_write_uint32(ctx->blob, instr->type);
       write_call(ctx, nir_instr_as_call(instr));
       break;
    case nir_instr_type_parallel_copy:
@@ -882,26 +1070,29 @@ write_instr(write_ctx *ctx, const nir_instr *instr)
 static void
 read_instr(read_ctx *ctx, nir_block *block)
 {
-   nir_instr_type type = blob_read_uint32(ctx->blob);
+   STATIC_ASSERT(sizeof(union packed_instr) == 4);
+   union packed_instr header;
+   header.u32 = blob_read_uint32(ctx->blob);
    nir_instr *instr;
-   switch (type) {
+
+   switch (header.any.instr_type) {
    case nir_instr_type_alu:
-      instr = &read_alu(ctx)->instr;
+      instr = &read_alu(ctx, header)->instr;
       break;
    case nir_instr_type_deref:
-      instr = &read_deref(ctx)->instr;
+      instr = &read_deref(ctx, header)->instr;
       break;
    case nir_instr_type_intrinsic:
-      instr = &read_intrinsic(ctx)->instr;
+      instr = &read_intrinsic(ctx, header)->instr;
       break;
    case nir_instr_type_load_const:
-      instr = &read_load_const(ctx)->instr;
+      instr = &read_load_const(ctx, header)->instr;
       break;
    case nir_instr_type_ssa_undef:
-      instr = &read_ssa_undef(ctx)->instr;
+      instr = &read_ssa_undef(ctx, header)->instr;
       break;
    case nir_instr_type_tex:
-      instr = &read_tex(ctx)->instr;
+      instr = &read_tex(ctx, header)->instr;
       break;
    case nir_instr_type_phi:
       /* Phi instructions are a bit of a special case when reading because we
@@ -909,10 +1100,10 @@ read_instr(read_ctx *ctx, nir_block *block)
        * for us.  Instead, we need to wait until all the blocks/instructions
        * are read so that we can set their sources up.
        */
-      read_phi(ctx, block);
+      read_phi(ctx, block, header);
       return;
    case nir_instr_type_jump:
-      instr = &read_jump(ctx)->instr;
+      instr = &read_jump(ctx, header)->instr;
       break;
    case nir_instr_type_call:
       instr = &read_call(ctx)->instr;
