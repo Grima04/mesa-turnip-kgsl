@@ -184,6 +184,37 @@ _mesa_EnableClientState( GLenum cap )
 
 
 void GLAPIENTRY
+_mesa_EnableVertexArrayEXT( GLuint vaobj, GLenum cap )
+{
+   GET_CURRENT_CONTEXT(ctx);
+   struct gl_vertex_array_object* vao = _mesa_lookup_vao_err(ctx, vaobj,
+                                                             true,
+                                                             "glEnableVertexArrayEXT");
+   if (!vao)
+      return;
+
+   /* The EXT_direct_state_access spec says:
+    *    "Additionally EnableVertexArrayEXT and DisableVertexArrayEXT accept
+    *    the tokens TEXTURE0 through TEXTUREn where n is less than the
+    *    implementation-dependent limit of MAX_TEXTURE_COORDS.  For these
+    *    GL_TEXTUREi tokens, EnableVertexArrayEXT and DisableVertexArrayEXT
+    *    act identically to EnableVertexArrayEXT(vaobj, TEXTURE_COORD_ARRAY)
+    *    or DisableVertexArrayEXT(vaobj, TEXTURE_COORD_ARRAY) respectively
+    *    as if the active client texture is set to texture coordinate set i
+    *    based on the token TEXTUREi indicated by array."
+    */
+   if (GL_TEXTURE0 <= cap && cap < GL_TEXTURE0 + ctx->Const.MaxTextureCoordUnits) {
+      GLuint saved_active = ctx->Array.ActiveTexture;
+      _mesa_ClientActiveTexture(cap);
+      client_state(ctx, vao, GL_TEXTURE_COORD_ARRAY, GL_TRUE);
+      _mesa_ClientActiveTexture(GL_TEXTURE0 + saved_active);
+   } else {
+      client_state(ctx, vao, cap, GL_TRUE);
+   }
+}
+
+
+void GLAPIENTRY
 _mesa_EnableClientStateiEXT( GLenum cap, GLuint index )
 {
    GET_CURRENT_CONTEXT(ctx);
@@ -203,6 +234,36 @@ _mesa_DisableClientState( GLenum cap )
 {
    GET_CURRENT_CONTEXT(ctx);
    client_state( ctx, ctx->Array.VAO, cap, GL_FALSE );
+}
+
+void GLAPIENTRY
+_mesa_DisableVertexArrayEXT( GLuint vaobj, GLenum cap )
+{
+   GET_CURRENT_CONTEXT(ctx);
+   struct gl_vertex_array_object* vao = _mesa_lookup_vao_err(ctx, vaobj,
+                                                             true,
+                                                             "glDisableVertexArrayEXT");
+   if (!vao)
+      return;
+
+   /* The EXT_direct_state_access spec says:
+    *    "Additionally EnableVertexArrayEXT and DisableVertexArrayEXT accept
+    *    the tokens TEXTURE0 through TEXTUREn where n is less than the
+    *    implementation-dependent limit of MAX_TEXTURE_COORDS.  For these
+    *    GL_TEXTUREi tokens, EnableVertexArrayEXT and DisableVertexArrayEXT
+    *    act identically to EnableVertexArrayEXT(vaobj, TEXTURE_COORD_ARRAY)
+    *    or DisableVertexArrayEXT(vaobj, TEXTURE_COORD_ARRAY) respectively
+    *    as if the active client texture is set to texture coordinate set i
+    *    based on the token TEXTUREi indicated by array."
+    */
+   if (GL_TEXTURE0 <= cap && cap < GL_TEXTURE0 + ctx->Const.MaxTextureCoordUnits) {
+      GLuint saved_active = ctx->Array.ActiveTexture;
+      _mesa_ClientActiveTexture(cap);
+      client_state(ctx, vao, GL_TEXTURE_COORD_ARRAY, GL_FALSE);
+      _mesa_ClientActiveTexture(GL_TEXTURE0 + saved_active);
+   } else {
+      client_state(ctx, vao, cap, GL_FALSE);
+   }
 }
 
 void GLAPIENTRY

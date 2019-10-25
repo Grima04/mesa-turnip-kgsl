@@ -1150,6 +1150,16 @@
       <param name="offset" type="GLintptr" />
    </function>
 
+   <function name="EnableVertexArrayEXT">
+      <param name="vaobj" type="GLuint" />
+      <param name="array" type="GLenum" />
+   </function>
+
+   <function name="DisableVertexArrayEXT">
+      <param name="vaobj" type="GLuint" />
+      <param name="array" type="GLenum" />
+   </function>
+
    <!-- ARB_vertex_program -->
    <function name="NamedProgramStringEXT">
       <param name="program" type="GLuint" />

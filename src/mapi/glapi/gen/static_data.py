@@ -1608,6 +1608,8 @@ offsets = {
     "VertexArraySecondaryColorOffsetEXT": 1572,
     "VertexArrayVertexAttribOffsetEXT": 1573,
     "VertexArrayVertexAttribIOffsetEXT": 1574,
+    "EnableVertexArrayEXT": 1575,
+    "DisableVertexArrayEXT": 1576,
 }
 
 functions = [
