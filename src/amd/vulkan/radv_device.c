@@ -1087,6 +1087,12 @@ void radv_GetPhysicalDeviceFeatures2(
 			features->texelBufferAlignment = true;
 			break;
 		}
+		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES_KHR: {
+			VkPhysicalDeviceTimelineSemaphoreFeaturesKHR *features =
+				(VkPhysicalDeviceTimelineSemaphoreFeaturesKHR *) ext;
+			features->timelineSemaphore = true;
+			break;
+		}
 		default:
 			break;
 		}
@@ -1567,6 +1573,12 @@ void radv_GetPhysicalDeviceProperties2(
 			properties->shaderRoundingModeRTEFloat64 = pdevice->rad_info.chip_class >= GFX8;
 			properties->shaderRoundingModeRTZFloat64 = false;
 			properties->shaderSignedZeroInfNanPreserveFloat64 = pdevice->rad_info.chip_class >= GFX8;
+			break;
+		}
+		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_PROPERTIES_KHR: {
+			VkPhysicalDeviceTimelineSemaphorePropertiesKHR *props =
+				(VkPhysicalDeviceTimelineSemaphorePropertiesKHR *) ext;
+			props->maxTimelineSemaphoreValueDifference = UINT64_MAX;
 			break;
 		}
 		default:
