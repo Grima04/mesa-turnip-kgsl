@@ -411,7 +411,7 @@ fd4_program_emit(struct fd_ringbuffer *ring, struct fd4_emit *emit,
 		OUT_RING(ring, A4XX_SP_FS_MRT_REG_REGID(color_regid[i]) |
 				A4XX_SP_FS_MRT_REG_MRTFORMAT(format) |
 				COND(srgb, A4XX_SP_FS_MRT_REG_COLOR_SRGB) |
-				COND(emit->key.half_precision,
+				COND(color_regid[i] & HALF_REG_ID,
 					A4XX_SP_FS_MRT_REG_HALF_PRECISION));
 	}
 
