@@ -4,6 +4,12 @@ from jinja2 import Environment, FileSystemLoader
 import argparse
 
 device_types = {
+    "sun50i-h6-pine-h64": {
+        "gpu_version": "panfrost-t720",
+        "boot_method": "u-boot",
+        "lava_device_type": "sun50i-h6-pine-h64",
+        "kernel_image_type": "type: image",
+    },
     "rk3288-veyron-jaq": {
         "gpu_version": "panfrost-t760",
         "boot_method": "depthcharge",
