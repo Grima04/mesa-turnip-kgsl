@@ -636,31 +636,6 @@ anv_block_pool_expand_range(struct anv_block_pool *pool,
    return VK_SUCCESS;
 }
 
-static struct anv_bo *
-anv_block_pool_get_bo(struct anv_block_pool *pool, int32_t *offset)
-{
-   struct anv_bo *bo_found = NULL;
-   int32_t cur_offset = 0;
-
-   assert(offset);
-
-   if (!(pool->bo_flags & EXEC_OBJECT_PINNED))
-      return pool->bo;
-
-   anv_block_pool_foreach_bo(bo, pool) {
-      if (*offset < cur_offset + bo->size) {
-         bo_found = bo;
-         break;
-      }
-      cur_offset += bo->size;
-   }
-
-   assert(bo_found != NULL);
-   *offset -= cur_offset;
-
-   return bo_found;
-}
-
 /** Returns current memory map of the block pool.
  *
  * The returned pointer points to the map for the memory at the specified
@@ -671,8 +646,19 @@ void*
 anv_block_pool_map(struct anv_block_pool *pool, int32_t offset)
 {
    if (pool->bo_flags & EXEC_OBJECT_PINNED) {
-      struct anv_bo *bo = anv_block_pool_get_bo(pool, &offset);
-      return bo->map + offset;
+      struct anv_bo *bo = NULL;
+      int32_t bo_offset = 0;
+      anv_block_pool_foreach_bo(iter_bo, pool) {
+         if (offset < bo_offset + iter_bo->size) {
+            bo = iter_bo;
+            break;
+         }
+         bo_offset += iter_bo->size;
+      }
+      assert(bo != NULL);
+      assert(offset >= bo_offset);
+
+      return bo->map + (offset - bo_offset);
    } else {
       return pool->map + offset;
    }
