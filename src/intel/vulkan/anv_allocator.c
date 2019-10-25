@@ -109,10 +109,7 @@
 struct anv_mmap_cleanup {
    void *map;
    size_t size;
-   uint32_t gem_handle;
 };
-
-#define ANV_MMAP_CLEANUP_INIT ((struct anv_mmap_cleanup){0})
 
 static inline uint32_t
 ilog2_round_up(uint32_t value)
@@ -487,20 +484,17 @@ anv_block_pool_init(struct anv_block_pool *pool,
 void
 anv_block_pool_finish(struct anv_block_pool *pool)
 {
-   struct anv_mmap_cleanup *cleanup;
-   const bool use_softpin = !!(pool->bo_flags & EXEC_OBJECT_PINNED);
-
-   u_vector_foreach(cleanup, &pool->mmap_cleanups) {
-      if (use_softpin)
-         anv_gem_munmap(cleanup->map, cleanup->size);
-      else
-         munmap(cleanup->map, cleanup->size);
-
-      if (cleanup->gem_handle)
-         anv_gem_close(pool->device, cleanup->gem_handle);
+   anv_block_pool_foreach_bo(bo, pool) {
+      if (bo->map)
+         anv_gem_munmap(bo->map, bo->size);
+      anv_gem_close(pool->device, bo->gem_handle);
    }
 
+   struct anv_mmap_cleanup *cleanup;
+   u_vector_foreach(cleanup, &pool->mmap_cleanups)
+      munmap(cleanup->map, cleanup->size);
    u_vector_finish(&pool->mmap_cleanups);
+
    if (!(pool->bo_flags & EXEC_OBJECT_PINNED))
       close(pool->fd);
 }
@@ -509,9 +503,6 @@ static VkResult
 anv_block_pool_expand_range(struct anv_block_pool *pool,
                             uint32_t center_bo_offset, uint32_t size)
 {
-   void *map;
-   uint32_t gem_handle;
-   struct anv_mmap_cleanup *cleanup;
    const bool use_softpin = !!(pool->bo_flags & EXEC_OBJECT_PINNED);
 
    /* Assert that we only ever grow the pool */
@@ -524,22 +515,35 @@ anv_block_pool_expand_range(struct anv_block_pool *pool,
           size - center_bo_offset <=
           BLOCK_POOL_MEMFD_SIZE - BLOCK_POOL_MEMFD_CENTER);
 
-   cleanup = u_vector_add(&pool->mmap_cleanups);
-   if (!cleanup)
-      return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
-
-   *cleanup = ANV_MMAP_CLEANUP_INIT;
-
-   uint32_t newbo_size = size - pool->size;
    if (use_softpin) {
-      gem_handle = anv_gem_create(pool->device, newbo_size);
-      map = anv_gem_mmap(pool->device, gem_handle, 0, newbo_size, 0);
+      uint32_t newbo_size = size - pool->size;
+      uint32_t gem_handle = anv_gem_create(pool->device, newbo_size);
+      void *map = anv_gem_mmap(pool->device, gem_handle, 0, newbo_size, 0);
       if (map == MAP_FAILED) {
          anv_gem_close(pool->device, gem_handle);
          return vk_errorf(pool->device->instance, pool->device,
                           VK_ERROR_MEMORY_MAP_FAILED, "gem mmap failed: %m");
       }
+
+      /* Regular objects are created I915_CACHING_CACHED on LLC platforms and
+       * I915_CACHING_NONE on non-LLC platforms. However, userptr objects are
+       * always created as I915_CACHING_CACHED, which on non-LLC means
+       * snooped.
+       *
+       * On platforms that support softpin, we are not going to use userptr
+       * anymore, but we still want to rely on the snooped states. So make
+       * sure everything is set to I915_CACHING_CACHED.
+       */
+      if (!pool->device->info.has_llc)
+         anv_gem_set_caching(pool->device, gem_handle, I915_CACHING_CACHED);
+
       assert(center_bo_offset == 0);
+
+      struct anv_bo *bo = &pool->bos[pool->nbos++];
+      anv_bo_init(bo, gem_handle, newbo_size);
+      bo->offset = pool->start_address + pool->size;
+      bo->flags = pool->bo_flags;
+      bo->map = map;
    } else {
       /* Just leak the old map until we destroy the pool.  We can't munmap it
        * without races or imposing locking on the block allocate fast path. On
@@ -547,97 +551,41 @@ anv_block_pool_expand_range(struct anv_block_pool *pool,
        * current map.  MAP_POPULATE seems like the right thing to do, but we
        * should try to get some numbers.
        */
-      map = mmap(NULL, size, PROT_READ | PROT_WRITE,
-                 MAP_SHARED | MAP_POPULATE, pool->fd,
-                 BLOCK_POOL_MEMFD_CENTER - center_bo_offset);
+      void *map = mmap(NULL, size, PROT_READ | PROT_WRITE,
+                       MAP_SHARED | MAP_POPULATE, pool->fd,
+                       BLOCK_POOL_MEMFD_CENTER - center_bo_offset);
       if (map == MAP_FAILED)
          return vk_errorf(pool->device->instance, pool->device,
                           VK_ERROR_MEMORY_MAP_FAILED, "mmap failed: %m");
 
-      /* Now that we mapped the new memory, we can write the new
-       * center_bo_offset back into pool and update pool->map. */
-      pool->center_bo_offset = center_bo_offset;
-      pool->map = map + center_bo_offset;
-      gem_handle = anv_gem_userptr(pool->device, map, size);
+      uint32_t gem_handle = anv_gem_userptr(pool->device, map, size);
       if (gem_handle == 0) {
          munmap(map, size);
          return vk_errorf(pool->device->instance, pool->device,
                           VK_ERROR_TOO_MANY_OBJECTS, "userptr failed: %m");
       }
+
+      struct anv_mmap_cleanup *cleanup = u_vector_add(&pool->mmap_cleanups);
+      if (!cleanup) {
+         munmap(map, size);
+         anv_gem_close(pool->device, gem_handle);
+         return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
+      }
+      cleanup->map = map;
+      cleanup->size = size;
+
+      /* Now that we mapped the new memory, we can write the new
+       * center_bo_offset back into pool and update pool->map. */
+      pool->center_bo_offset = center_bo_offset;
+      pool->map = map + center_bo_offset;
+
+      struct anv_bo *bo = &pool->bos[pool->nbos++];
+      anv_bo_init(bo, gem_handle, size);
+      bo->flags = pool->bo_flags;
+      pool->wrapper_bo.map = bo;
    }
-
-   cleanup->map = map;
-   cleanup->size = use_softpin ? newbo_size : size;
-   cleanup->gem_handle = gem_handle;
-
-   /* Regular objects are created I915_CACHING_CACHED on LLC platforms and
-    * I915_CACHING_NONE on non-LLC platforms. However, userptr objects are
-    * always created as I915_CACHING_CACHED, which on non-LLC means
-    * snooped.
-    *
-    * On platforms that support softpin, we are not going to use userptr
-    * anymore, but we still want to rely on the snooped states. So make sure
-    * everything is set to I915_CACHING_CACHED.
-    */
-   if (!pool->device->info.has_llc)
-      anv_gem_set_caching(pool->device, gem_handle, I915_CACHING_CACHED);
-
-   /* For block pool BOs we have to be a bit careful about where we place them
-    * in the GTT.  There are two documented workarounds for state base address
-    * placement : Wa32bitGeneralStateOffset and Wa32bitInstructionBaseOffset
-    * which state that those two base addresses do not support 48-bit
-    * addresses and need to be placed in the bottom 32-bit range.
-    * Unfortunately, this is not quite accurate.
-    *
-    * The real problem is that we always set the size of our state pools in
-    * STATE_BASE_ADDRESS to 0xfffff (the maximum) even though the BO is most
-    * likely significantly smaller.  We do this because we do not no at the
-    * time we emit STATE_BASE_ADDRESS whether or not we will need to expand
-    * the pool during command buffer building so we don't actually have a
-    * valid final size.  If the address + size, as seen by STATE_BASE_ADDRESS
-    * overflows 48 bits, the GPU appears to treat all accesses to the buffer
-    * as being out of bounds and returns zero.  For dynamic state, this
-    * usually just leads to rendering corruptions, but shaders that are all
-    * zero hang the GPU immediately.
-    *
-    * The easiest solution to do is exactly what the bogus workarounds say to
-    * do: restrict these buffers to 32-bit addresses.  We could also pin the
-    * BO to some particular location of our choosing, but that's significantly
-    * more work than just not setting a flag.  So, we explicitly DO NOT set
-    * the EXEC_OBJECT_SUPPORTS_48B_ADDRESS flag and the kernel does all of the
-    * hard work for us.
-    */
-   struct anv_bo *bo;
-   uint32_t bo_size;
-   uint64_t bo_offset;
 
    assert(pool->nbos < ANV_MAX_BLOCK_POOL_BOS);
-
-   if (use_softpin) {
-      /* With softpin, we add a new BO to the pool, and set its offset to right
-       * where the previous BO ends (the end of the pool).
-       */
-      bo = &pool->bos[pool->nbos++];
-      bo_size = newbo_size;
-      bo_offset = pool->start_address + pool->size;
-   } else {
-      /* Without softpin, we just need one BO, and we already have a pointer to
-       * it. Simply "allocate" it from our array if we didn't do it before.
-       * The offset doesn't matter since we are not pinning the BO anyway.
-       */
-      if (pool->nbos == 0) {
-         pool->wrapper_bo.map = &pool->bos[0];
-         pool->nbos++;
-      }
-      bo = pool->wrapper_bo.map;
-      bo_size = size;
-      bo_offset = 0;
-   }
-
-   anv_bo_init(bo, gem_handle, bo_size);
-   bo->offset = bo_offset;
-   bo->flags = pool->bo_flags;
-   bo->map = map;
    pool->size = size;
 
    return VK_SUCCESS;
