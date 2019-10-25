@@ -1160,6 +1160,16 @@
       <param name="array" type="GLenum" />
    </function>
 
+   <function name="EnableVertexArrayAttribEXT">
+      <param name="vaobj" type="GLuint" />
+      <param name="index" type="GLuint" />
+   </function>
+
+   <function name="DisableVertexArrayAttribEXT">
+      <param name="vaobj" type="GLuint" />
+      <param name="index" type="GLuint" />
+   </function>
+
    <!-- ARB_vertex_program -->
    <function name="NamedProgramStringEXT">
       <param name="program" type="GLuint" />

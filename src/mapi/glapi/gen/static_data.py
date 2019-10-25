@@ -1610,6 +1610,8 @@ offsets = {
     "VertexArrayVertexAttribIOffsetEXT": 1574,
     "EnableVertexArrayEXT": 1575,
     "DisableVertexArrayEXT": 1576,
+    "EnableVertexArrayAttribEXT": 1577,
+    "DisableVertexArrayAttribEXT": 1578,
 }
 
 functions = [
