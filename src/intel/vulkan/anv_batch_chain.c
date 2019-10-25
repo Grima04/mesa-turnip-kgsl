@@ -1394,7 +1394,6 @@ setup_execbuf_for_cmd_buffer(struct anv_execbuf *execbuf,
    adjust_relocations_from_state_pool(ss_pool, &cmd_buffer->surface_relocs,
                                       cmd_buffer->last_ss_pool_center);
    VkResult result;
-   struct anv_bo *bo;
    if (cmd_buffer->device->instance->physicalDevice.use_softpin) {
       anv_block_pool_foreach_bo(bo, &ss_pool->block_pool) {
          result = anv_execbuf_add_bo(execbuf, bo, NULL, 0,

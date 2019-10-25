@@ -639,7 +639,7 @@ anv_block_pool_expand_range(struct anv_block_pool *pool,
 static struct anv_bo *
 anv_block_pool_get_bo(struct anv_block_pool *pool, int32_t *offset)
 {
-   struct anv_bo *bo, *bo_found = NULL;
+   struct anv_bo *bo_found = NULL;
    int32_t cur_offset = 0;
 
    assert(offset);

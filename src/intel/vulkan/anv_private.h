@@ -670,7 +670,7 @@ struct anv_block_state {
 };
 
 #define anv_block_pool_foreach_bo(bo, pool)  \
-   for (bo = (pool)->bos; bo != &(pool)->bos[(pool)->nbos]; bo++)
+   for (struct anv_bo *bo = (pool)->bos; bo != &(pool)->bos[(pool)->nbos]; bo++)
 
 #define ANV_MAX_BLOCK_POOL_BOS 20
 
