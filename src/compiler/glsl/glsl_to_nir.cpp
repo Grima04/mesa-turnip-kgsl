@@ -445,6 +445,8 @@ nir_visitor::visit(ir_variable *ir)
    var->data.invariant = ir->data.invariant;
    var->data.location = ir->data.location;
    var->data.stream = ir->data.stream;
+   if (ir->data.stream & (1u << 31))
+      var->data.stream |= NIR_STREAM_PACKED;
    var->data.compact = false;
 
    switch(ir->data.mode) {

@@ -60,6 +60,7 @@ extern "C" {
 #define NIR_TRUE (~0u)
 #define NIR_MAX_VEC_COMPONENTS 4
 #define NIR_MAX_MATRIX_COLUMNS 4
+#define NIR_STREAM_PACKED (1 << 8)
 typedef uint8_t nir_component_mask_t;
 
 /** Defines a cast function
@@ -450,10 +451,10 @@ typedef struct nir_variable {
       /**
        * Vertex stream output identifier.
        *
-       * For packed outputs, bit 31 is set and bits [2*i+1,2*i] indicate the
-       * stream of the i-th component.
+       * For packed outputs, NIR_STREAM_PACKED is set and bits [2*i+1,2*i]
+       * indicate the stream of the i-th component.
        */
-      unsigned stream;
+      unsigned stream:9;
 
       /**
        * output index for dual source blending.

@@ -466,8 +466,8 @@ static void scan_output_slot(const nir_variable *var,
 	ubyte usagemask = ((1 << num_components) - 1) << component;
 
 	unsigned gs_out_streams;
-	if (var->data.stream & (1u << 31)) {
-		gs_out_streams = var->data.stream & ~(1u << 31);
+	if (var->data.stream & NIR_STREAM_PACKED) {
+		gs_out_streams = var->data.stream & ~NIR_STREAM_PACKED;
 	} else {
 		assert(var->data.stream < 4);
 		gs_out_streams = 0;
