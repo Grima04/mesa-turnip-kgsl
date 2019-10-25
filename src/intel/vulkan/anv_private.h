@@ -701,7 +701,9 @@ struct anv_block_state {
 };
 
 #define anv_block_pool_foreach_bo(bo, pool)  \
-   for (struct anv_bo *bo = (pool)->bos; bo != &(pool)->bos[(pool)->nbos]; bo++)
+   for (struct anv_bo **_pp_bo = (pool)->bos, *bo; \
+        _pp_bo != &(pool)->bos[(pool)->nbos] && (bo = *_pp_bo, true); \
+        _pp_bo++)
 
 #define ANV_MAX_BLOCK_POOL_BOS 20
 
@@ -716,7 +718,7 @@ struct anv_block_pool {
     */
    struct anv_bo wrapper_bo;
 
-   struct anv_bo bos[ANV_MAX_BLOCK_POOL_BOS];
+   struct anv_bo *bos[ANV_MAX_BLOCK_POOL_BOS];
    struct anv_bo *bo;
    uint32_t nbos;
 

@@ -429,10 +429,7 @@ anv_block_pool_init(struct anv_block_pool *pool,
    pool->map = NULL;
 
    if (pool->use_softpin) {
-      /* This pointer will always point to the first BO in the list */
-      anv_bo_init(&pool->bos[0], 0, 0);
-      pool->bo = &pool->bos[0];
-
+      pool->bo = NULL;
       pool->fd = -1;
    } else {
       /* Just make it 2GB up-front.  The Linux kernel won't actually back it
@@ -538,47 +535,33 @@ anv_block_pool_expand_range(struct anv_block_pool *pool,
     * hard work for us.  When using softpin, we're in control and the fixed
     * addresses we choose are fine for base addresses.
     */
+   enum anv_bo_alloc_flags bo_alloc_flags = 0;
+   if (!pool->use_softpin)
+      bo_alloc_flags |= ANV_BO_ALLOC_32BIT_ADDRESS;
+
    uint64_t bo_flags = 0;
-   if (pool->use_softpin) {
-      bo_flags |= EXEC_OBJECT_SUPPORTS_48B_ADDRESS |
-                  EXEC_OBJECT_PINNED;
-   }
-
-   if (pool->device->instance->physicalDevice.has_exec_async)
-      bo_flags |= EXEC_OBJECT_ASYNC;
-
    if (pool->device->instance->physicalDevice.has_exec_capture)
       bo_flags |= EXEC_OBJECT_CAPTURE;
 
    if (pool->use_softpin) {
-      uint32_t newbo_size = size - pool->size;
-      uint32_t gem_handle = anv_gem_create(pool->device, newbo_size);
-      void *map = anv_gem_mmap(pool->device, gem_handle, 0, newbo_size, 0);
-      if (map == MAP_FAILED) {
-         anv_gem_close(pool->device, gem_handle);
-         return vk_errorf(pool->device->instance, pool->device,
-                          VK_ERROR_MEMORY_MAP_FAILED, "gem mmap failed: %m");
-      }
-
-      /* Regular objects are created I915_CACHING_CACHED on LLC platforms and
-       * I915_CACHING_NONE on non-LLC platforms. However, userptr objects are
-       * always created as I915_CACHING_CACHED, which on non-LLC means
-       * snooped.
-       *
-       * On platforms that support softpin, we are not going to use userptr
-       * anymore, but we still want to rely on the snooped states. So make
-       * sure everything is set to I915_CACHING_CACHED.
-       */
-      if (!pool->device->info.has_llc)
-         anv_gem_set_caching(pool->device, gem_handle, I915_CACHING_CACHED);
+      uint32_t new_bo_size = size - pool->size;
+      struct anv_bo *new_bo;
+      VkResult result = anv_device_alloc_bo(pool->device, new_bo_size,
+                                            bo_alloc_flags |
+                                            ANV_BO_ALLOC_FIXED_ADDRESS |
+                                            ANV_BO_ALLOC_MAPPED |
+                                            ANV_BO_ALLOC_SNOOPED,
+                                            &new_bo);
+      if (result != VK_SUCCESS)
+         return result;
 
       assert(center_bo_offset == 0);
 
-      struct anv_bo *bo = &pool->bos[pool->nbos++];
-      anv_bo_init(bo, gem_handle, newbo_size);
-      bo->offset = pool->start_address + pool->size;
-      bo->flags = bo_flags;
-      bo->map = map;
+      new_bo->offset = pool->start_address + pool->size;
+      pool->bos[pool->nbos++] = new_bo;
+
+      /* This pointer will always point to the first BO in the list */
+      pool->bo = pool->bos[0];
    } else {
       /* Just leak the old map until we destroy the pool.  We can't munmap it
        * without races or imposing locking on the block allocate fast path. On
@@ -593,17 +576,20 @@ anv_block_pool_expand_range(struct anv_block_pool *pool,
          return vk_errorf(pool->device->instance, pool->device,
                           VK_ERROR_MEMORY_MAP_FAILED, "mmap failed: %m");
 
-      uint32_t gem_handle = anv_gem_userptr(pool->device, map, size);
-      if (gem_handle == 0) {
+      struct anv_bo *new_bo;
+      VkResult result = anv_device_import_bo_from_host_ptr(pool->device,
+                                                           map, size,
+                                                           bo_alloc_flags,
+                                                           &new_bo);
+      if (result != VK_SUCCESS) {
          munmap(map, size);
-         return vk_errorf(pool->device->instance, pool->device,
-                          VK_ERROR_TOO_MANY_OBJECTS, "userptr failed: %m");
+         return result;
       }
 
       struct anv_mmap_cleanup *cleanup = u_vector_add(&pool->mmap_cleanups);
       if (!cleanup) {
          munmap(map, size);
-         anv_gem_close(pool->device, gem_handle);
+         anv_device_release_bo(pool->device, new_bo);
          return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
       }
       cleanup->map = map;
@@ -614,10 +600,8 @@ anv_block_pool_expand_range(struct anv_block_pool *pool,
       pool->center_bo_offset = center_bo_offset;
       pool->map = map + center_bo_offset;
 
-      struct anv_bo *bo = &pool->bos[pool->nbos++];
-      anv_bo_init(bo, gem_handle, size);
-      bo->flags = bo_flags;
-      pool->wrapper_bo.map = bo;
+      pool->bos[pool->nbos++] = new_bo;
+      pool->wrapper_bo.map = new_bo;
    }
 
    assert(pool->nbos < ANV_MAX_BLOCK_POOL_BOS);
