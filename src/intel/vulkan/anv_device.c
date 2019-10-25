@@ -2334,14 +2334,13 @@ get_bo_from_pool(struct gen_batch_decode_bo *ret,
                  struct anv_block_pool *pool,
                  uint64_t address)
 {
-   for (uint32_t i = 0; i < pool->nbos; i++) {
-      uint64_t bo_address = pool->bos[i].offset & (~0ull >> 16);
-      uint32_t bo_size = pool->bos[i].size;
-      if (address >= bo_address && address < (bo_address + bo_size)) {
+   anv_block_pool_foreach_bo(bo, pool) {
+      uint64_t bo_address = gen_48b_address(bo->offset);
+      if (address >= bo_address && address < (bo_address + bo->size)) {
          *ret = (struct gen_batch_decode_bo) {
             .addr = bo_address,
-            .size = bo_size,
-            .map = pool->bos[i].map,
+            .size = bo->size,
+            .map = bo->map,
          };
          return true;
       }
