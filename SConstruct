@@ -71,9 +71,8 @@ Help(opts.GenerateHelpText(env))
 #######################################################################
 # Print a deprecation warning for using scons on non-windows
 
-if common.host_platform != 'windows':
-    force = ARGUMENTS['force_scons']
-    if force.lower() not in {'false', 'off', 'none', '0', 'n'}:
+if common.host_platform != 'windows' and env['platform'] != 'windows':
+    if env['force_scons']:
         print("WARNING: Scons is deprecated for non-windows platforms (including cygwin) "
               "please use meson instead.", file=sys.stderr)
     else:
