@@ -492,6 +492,21 @@ ioctl(int fd, unsigned long request, ...)
          return ret;
       }
 
+      case DRM_IOCTL_I915_GEM_CONTEXT_CREATE_EXT: {
+         uint32_t *ctx_id = NULL;
+         struct drm_i915_gem_context_create_ext *create = argp;
+         ret = 0;
+         if (!device_override) {
+            ret = libc_ioctl(fd, request, argp);
+            ctx_id = &create->ctx_id;
+         }
+
+         if (ret == 0)
+            create->ctx_id = dump_create_context(fd, ctx_id);
+
+         return ret;
+      }
+
       case DRM_IOCTL_I915_GEM_CREATE: {
          struct drm_i915_gem_create *create = argp;
 
