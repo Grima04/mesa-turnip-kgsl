@@ -28,6 +28,7 @@
 #include <pipe/p_defines.h>
 
 #include "lima_util.h"
+#include "lima_parser.h"
 
 FILE *lima_dump_command_stream = NULL;
 
@@ -67,6 +68,20 @@ void lima_dump_blob(FILE *fp, void *data, int size, bool is_float)
       }
    }
    fprintf(fp, "}\n");
+}
+
+void
+lima_dump_vs_command_stream_print(void *data, int size, uint32_t start)
+{
+   if (lima_dump_command_stream)
+      lima_parse_vs(lima_dump_command_stream, (uint32_t *)data, size, start);
+}
+
+void
+lima_dump_plbu_command_stream_print(void *data, int size, uint32_t start)
+{
+   if (lima_dump_command_stream)
+      lima_parse_plbu(lima_dump_command_stream, (uint32_t *)data, size, start);
 }
 
 void

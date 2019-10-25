@@ -21,19 +21,10 @@
  *
  */
 
-#ifndef H_LIMA_UTIL
-#define H_LIMA_UTIL
+#ifndef H_LIMA_PARSER
+#define H_LIMA_PARSER
 
-#include <stdint.h>
-#include <stdbool.h>
-
-#define LIMA_PAGE_SIZE 4096
-
-bool lima_get_absolute_timeout(uint64_t *timeout);
-void lima_dump_blob(FILE *fp, void *data, int size, bool is_float);
-void lima_dump_vs_command_stream_print(void *data, int size, uint32_t start);
-void lima_dump_plbu_command_stream_print(void *data, int size, uint32_t start);
-void lima_dump_command_stream_print(void *data, int size, bool is_float,
-                                    const char *fmt, ...);
+void lima_parse_vs(FILE *fp, uint32_t *data, int size, uint32_t start);
+void lima_parse_plbu(FILE *fp, uint32_t *data, int size, uint32_t start);
 
 #endif

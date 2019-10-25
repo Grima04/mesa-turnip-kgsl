@@ -1525,6 +1525,7 @@ _lima_flush(struct lima_context *ctx, bool end_of_frame)
 
       lima_dump_command_stream_print(
          vs_cmd, vs_cmd_size, false, "flush vs cmd at va %x\n", vs_cmd_va);
+      lima_dump_vs_command_stream_print(vs_cmd, vs_cmd_size, vs_cmd_va);
    }
 
    void *plbu_cmd =
@@ -1536,6 +1537,7 @@ _lima_flush(struct lima_context *ctx, bool end_of_frame)
 
    lima_dump_command_stream_print(
       plbu_cmd, plbu_cmd_size, false, "flush plbu cmd at va %x\n", plbu_cmd_va);
+   lima_dump_plbu_command_stream_print(plbu_cmd, plbu_cmd_size, plbu_cmd_va);
 
    struct lima_screen *screen = lima_screen(ctx->base.screen);
    struct drm_lima_gp_frame gp_frame;
