@@ -1195,9 +1195,20 @@ static void mir_spill_register(
          * spill node. All nodes are equal in spill cost, but we can't spill
          * nodes written to from an unspill */
 
-        for (unsigned i = 0; i < ctx->temp_count; ++i) {
-                lcra_set_node_spill_cost(l, i, 1);
+        unsigned *cost = calloc(ctx->temp_count, sizeof(cost[0]));
+
+        mir_foreach_instr_global(ctx, ins) {
+                if (ins->dest < ctx->temp_count)
+                        cost[ins->dest]++;
+
+                mir_foreach_src(ins, s) {
+                        if (ins->src[s] < ctx->temp_count)
+                                cost[ins->src[s]]++;
+                }
         }
+
+        for (unsigned i = 0; i < ctx->temp_count; ++i)
+                lcra_set_node_spill_cost(l, i, cost[i]);
 
         /* We can't spill any bundles that contain unspills. This could be
          * optimized to allow use of r27 to spill twice per bundle, but if
