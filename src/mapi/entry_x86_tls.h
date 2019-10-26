@@ -33,6 +33,8 @@
 #define HIDDEN
 #endif
 
+#define X86_ENTRY_SIZE 16
+
 __asm__(".text");
 
 __asm__("x86_current_tls:\n\t"
@@ -87,23 +89,18 @@ void
 entry_patch_public(void)
 {
 #ifndef GLX_X86_READONLY_TEXT
-   char patch[8] = {
-      0x65, 0xa1, 0x00, 0x00, 0x00, 0x00, /* movl %gs:0x0, %eax */
-      0x90, 0x90                          /* nop's */
-   };
    char *entry;
-
-   *((unsigned long *) (patch + 2)) = x86_current_tls();
-
-   for (entry = x86_entry_start; entry < x86_entry_end; entry += 16)
-      memcpy(entry, patch, sizeof(patch));
+   int slot = 0;
+   for (entry = x86_entry_start; entry < x86_entry_end;
+        entry += X86_ENTRY_SIZE, ++slot)
+      entry_generate_or_patch(slot, entry, X86_ENTRY_SIZE);
 #endif
 }
 
 mapi_func
 entry_get_public(int slot)
 {
-   return (mapi_func) (x86_entry_start + slot * 16);
+   return (mapi_func) (x86_entry_start + slot * X86_ENTRY_SIZE);
 }
 
 void
