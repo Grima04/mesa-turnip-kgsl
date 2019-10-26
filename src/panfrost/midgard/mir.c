@@ -54,10 +54,6 @@ mir_get_swizzle(midgard_instruction *ins, unsigned idx)
 
                 return (mir_get_alu_src(ins, idx)).swizzle;
         } else if (ins->type == TAG_LOAD_STORE_4) {
-                /* Main swizzle of a load is on the destination */
-                if (!OP_IS_STORE(ins->load_store.op))
-                        idx++;
-
                 switch (idx) {
                 case 0:
                         return ins->load_store.swizzle;
@@ -131,10 +127,6 @@ mir_set_swizzle(midgard_instruction *ins, unsigned idx, unsigned new)
                 else
                         ins->alu.src2 = pack;
         } else if (ins->type == TAG_LOAD_STORE_4) {
-                /* Main swizzle of a load is on the destination */
-                if (!OP_IS_STORE(ins->load_store.op))
-                        idx++;
-
                 switch (idx) {
                 case 0:
                         ins->load_store.swizzle = new;

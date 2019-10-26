@@ -744,21 +744,18 @@ install_registers_instr(
 
                 /* We also follow up by actual arguments */
 
-                unsigned src2_idx = encodes_src ? 1 : 0;
-                unsigned src3_idx = encodes_src ? 2 : 1;
-
-                unsigned src2 = ins->src[src2_idx];
-                unsigned src3 = ins->src[src3_idx];
+                unsigned src2 = ins->src[1];
+                unsigned src3 = ins->src[2];
 
                 if (src2 != ~0) {
-                        struct phys_reg src = index_to_reg(ctx, g, src2, mir_srcsize(ins, src2_idx));
+                        struct phys_reg src = index_to_reg(ctx, g, src2, mir_srcsize(ins, 1));
                         unsigned component = src.offset / src.size;
                         assert(component * src.size == src.offset);
                         ins->load_store.arg_1 |= midgard_ldst_reg(src.reg, component);
                 }
 
                 if (src3 != ~0) {
-                        struct phys_reg src = index_to_reg(ctx, g, src3, mir_srcsize(ins, src3_idx));
+                        struct phys_reg src = index_to_reg(ctx, g, src3, mir_srcsize(ins, 2));
                         unsigned component = src.offset / src.size;
                         assert(component * src.size == src.offset);
                         ins->load_store.arg_2 |= midgard_ldst_reg(src.reg, component);

@@ -1125,7 +1125,7 @@ emit_ubo_read(
         ins.mask = mir_mask_for_intr(instr, true);
 
         if (indirect_offset) {
-                ins.src[1] = nir_src_index(ctx, indirect_offset);
+                ins.src[2] = nir_src_index(ctx, indirect_offset);
                 ins.load_store.arg_2 = 0x80;
         } else {
                 ins.load_store.arg_2 = 0x1E;
@@ -1163,16 +1163,9 @@ emit_ssbo_access(
         unsigned addr = make_compiler_temp(ctx);
         emit_sysval_read(ctx, instr, addr, 2);
 
-        /* The source array is a bit of a leaky abstraction for SSBOs.
-         * Nevertheless, for loads:
+        /* The source array:
          *
-         *  src[0] = arg_1
-         *  src[1] = arg_2
-         *  src[2] = unused
-         *
-         * Whereas for stores:
-         *
-         *  src[0] = value
+         *  src[0] = store ? value : unused
          *  src[1] = arg_1
          *  src[2] = arg_2
          *
@@ -1180,7 +1173,7 @@ emit_ssbo_access(
          * arg_2 = the offset.
          */
 
-        ins.src[is_read ? 0 : 1] = addr;
+        ins.src[1] = addr;
 
         /* TODO: What is this? It looks superficially like a shift << 5, but
          * arg_1 doesn't take a shift Should it be E0 or A0? We also need the
@@ -1188,7 +1181,7 @@ emit_ssbo_access(
 
         if (indirect_offset) {
                 ins.load_store.arg_1 |= 0xE0;
-                ins.src[is_read ? 1 : 2] = nir_src_index(ctx, indirect_offset);
+                ins.src[2] = nir_src_index(ctx, indirect_offset);
         } else {
                 ins.load_store.arg_2 = 0x7E;
         }
@@ -1229,7 +1222,7 @@ emit_varying_read(
         ins.load_store.varying_parameters = u;
 
         if (indirect_offset)
-                ins.src[1] = nir_src_index(ctx, indirect_offset);
+                ins.src[2] = nir_src_index(ctx, indirect_offset);
         else
                 ins.load_store.arg_2 = 0x1E;
 
@@ -1715,7 +1708,7 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
 
                                 unsigned temp = make_compiler_temp(ctx);
                                 midgard_instruction ld = m_ld_cubemap_coords(temp, 0);
-                                ld.src[0] = index;
+                                ld.src[1] = index;
                                 ld.mask = 0x3; /* xy */
                                 ld.load_store.arg_1 = 0x20;
                                 ld.load_store.swizzle = alu_src.swizzle;
