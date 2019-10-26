@@ -437,7 +437,7 @@ mir_adjust_constants(midgard_instruction *ins,
                 /* If destructive, let's copy in the new constants and adjust
                  * swizzles to pack it in. */
 
-                uint32_t indices[4] = { 0 };
+                unsigned indices[16] = { 0 };
 
                 /* Reset count */
                 count = existing_count;
@@ -473,17 +473,12 @@ mir_adjust_constants(midgard_instruction *ins,
 
                 pred->constant_count = count * sizeof(uint32_t);
 
-                /* Cool, we have it in. So use indices as a
-                 * swizzle */
+                /* Use indices as a swizzle */
 
-                unsigned swizzle = SWIZZLE_FROM_ARRAY(indices);
-
-                if (ins->src[0] == r_constant)
-                        ins->alu.src1 = vector_alu_apply_swizzle(ins->alu.src1, swizzle);
-
-                if (ins->src[1] == r_constant)
-                        ins->alu.src2 = vector_alu_apply_swizzle(ins->alu.src2, swizzle);
-
+                mir_foreach_src(ins, s) {
+                        if (ins->src[s] == r_constant)
+                                mir_compose_swizzle(ins->swizzle[s], indices, ins->swizzle[s]);
+                }
         }
 
         return true;
@@ -707,12 +702,12 @@ mir_schedule_comparison(
                 midgard_instruction **instructions,
                 struct midgard_predicate *predicate,
                 BITSET_WORD *worklist, unsigned count,
-                unsigned cond, bool vector, unsigned swizzle,
+                unsigned cond, bool vector, unsigned *swizzle,
                 midgard_instruction *user)
 {
         /* TODO: swizzle when scheduling */
         unsigned comp_i =
-                (!vector && (swizzle == 0)) ?
+                (!vector && (swizzle[0] == 0)) ?
                 mir_comparison_mobile(ctx, instructions, predicate, count, cond) : ~0;
 
         /* If we can, schedule the condition immediately */
@@ -723,12 +718,10 @@ mir_schedule_comparison(
         }
 
         /* Otherwise, we insert a move */
-        midgard_vector_alu_src csel = {
-                .swizzle = swizzle
-        };
 
-        midgard_instruction mov = v_mov(cond, csel, cond);
+        midgard_instruction mov = v_mov(cond, blank_alu_src, cond);
         mov.mask = vector ? 0xF : 0x1;
+        memcpy(mov.swizzle[1], swizzle, sizeof(mov.swizzle[1]));
 
         return mir_insert_instruction_before(ctx, user, mov);
 }
@@ -754,7 +747,7 @@ mir_schedule_condition(compiler_context *ctx,
 
         midgard_instruction *cond = mir_schedule_comparison(
                         ctx, instructions, predicate, worklist, count, last->src[condition_index],
-                        vector, last->cond_swizzle, last);
+                        vector, last->swizzle[2], last);
 
         /* We have exclusive reign over this (possibly move) conditional
          * instruction. We can rewrite into a pipeline conditional register */
@@ -769,7 +762,8 @@ mir_schedule_condition(compiler_context *ctx,
                         if (cond->src[s] == ~0)
                                 continue;
 
-                        mir_set_swizzle(cond, s, (mir_get_swizzle(cond, s) << (2*3)) & 0xFF);
+                        for (unsigned q = 0; q < 4; ++q)
+                                cond->swizzle[s][q + COMPONENT_W] = cond->swizzle[s][q];
                 }
         }
 
@@ -1156,9 +1150,9 @@ v_load_store_scratch(
                 .mask = mask,
                 .dest = ~0,
                 .src = { ~0, ~0, ~0 },
+                .swizzle = SWIZZLE_IDENTITY_4,
                 .load_store = {
                         .op = is_store ? midgard_op_st_int4 : midgard_op_ld_int4,
-                        .swizzle = SWIZZLE_XYZW,
 
                         /* For register spilling - to thread local storage */
                         .arg_1 = 0xEA,
@@ -1331,7 +1325,7 @@ static void mir_spill_register(
 
                                 midgard_instruction *before = ins;
 
-                                /* For a csel, go back one more not to break up the bundle */
+                                /* TODO: Remove me I'm a fossil */
                                 if (ins->type == TAG_ALU_4 && OP_IS_CSEL(ins->alu.op))
                                         before = mir_prev_op(before);
 
@@ -1347,7 +1341,7 @@ static void mir_spill_register(
                                 }
 
                                 /* Mask the load based on the component count
-                                 * actually needed to prvent RA loops */
+                                 * actually needed to prevent RA loops */
 
                                 st.mask = mir_from_bytemask(read_bytemask, midgard_reg_mode_32);
 

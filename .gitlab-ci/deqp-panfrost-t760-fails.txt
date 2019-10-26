@@ -686,6 +686,7 @@ dEQP-GLES2.functional.fragment_ops.interaction.basic_shader.44 Fail
 dEQP-GLES2.functional.fragment_ops.interaction.basic_shader.47 Fail
 dEQP-GLES2.functional.fragment_ops.interaction.basic_shader.48 Fail
 dEQP-GLES2.functional.fragment_ops.interaction.basic_shader.57 Fail
+dEQP-GLES2.functional.fragment_ops.interaction.basic_shader.6  Fail
 dEQP-GLES2.functional.fragment_ops.interaction.basic_shader.60 Fail
 dEQP-GLES2.functional.fragment_ops.interaction.basic_shader.61 Fail
 dEQP-GLES2.functional.fragment_ops.interaction.basic_shader.64 Fail

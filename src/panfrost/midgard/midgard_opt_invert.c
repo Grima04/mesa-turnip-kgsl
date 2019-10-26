@@ -41,6 +41,7 @@ midgard_lower_invert(compiler_context *ctx, midgard_block *block)
                         .type = TAG_ALU_4,
                         .mask = ins->mask,
                         .src = { temp, ~0, ~0 },
+                        .swizzle = SWIZZLE_IDENTITY,
                         .dest = ins->dest,
                         .has_inline_constant = true,
                         .alu = {
@@ -50,7 +51,7 @@ midgard_lower_invert(compiler_context *ctx, midgard_block *block)
                                 .dest_override = midgard_dest_override_none,
                                 .outmod = midgard_outmod_int_wrap,
                                 .src1 = vector_alu_srco_unsigned(blank_alu_src),
-                                .src2 = vector_alu_srco_unsigned(zero_alu_src)
+                                .src2 = vector_alu_srco_unsigned(blank_alu_src)
                         },
                 };
 

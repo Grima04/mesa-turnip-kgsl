@@ -85,10 +85,7 @@ midgard_opt_copy_prop(compiler_context *ctx, midgard_block *block)
                         continue;
 
                 /* We're clear -- rewrite, composing the swizzle */
-                midgard_vector_alu_src src2 =
-                        vector_alu_from_unsigned(ins->alu.src2);
-
-                mir_rewrite_index_src_swizzle(ctx, to, from, src2.swizzle);
+                mir_rewrite_index_src_swizzle(ctx, to, from, ins->swizzle[1]);
                 mir_remove_instruction(ins);
                 progress |= true;
         }

@@ -73,12 +73,12 @@ struct phys_reg {
 };
 
 /* Shift each component up by reg_offset and shift all components horizontally
- * by dst_offset. TODO: Generalize to !32-bit */
+ * by dst_offset. TODO: vec8+ */
 
-static unsigned
-offset_swizzle(unsigned swizzle, unsigned reg_offset, unsigned srcsize, unsigned dst_offset, unsigned dstsize)
+static void
+offset_swizzle(unsigned *swizzle, unsigned reg_offset, unsigned srcsize, unsigned dst_offset, unsigned dstsize)
 {
-        unsigned out = 0;
+        unsigned out[MIR_VEC_COMPONENTS];
 
         signed reg_comp = reg_offset / srcsize;
         signed dst_comp = dst_offset / dstsize;
@@ -86,13 +86,12 @@ offset_swizzle(unsigned swizzle, unsigned reg_offset, unsigned srcsize, unsigned
         assert(reg_comp * srcsize == reg_offset);
         assert(dst_comp * dstsize == dst_offset);
 
-        for (signed c = 0; c < 4; ++c) {
+        for (signed c = 0; c < MIR_VEC_COMPONENTS; ++c) {
                 signed comp = MAX2(c - dst_comp, 0);
-                signed s = (swizzle >> (2*comp)) & 0x3;
-                out |= (MIN2(s + reg_comp, 3) << (2*c));
+                out[c] = MIN2(swizzle[comp] + reg_comp, 4 - 1);
         }
 
-        return out;
+        memcpy(swizzle, out, sizeof(out));
 }
 
 /* Helper to return the default phys_reg for a given register */
@@ -688,10 +687,7 @@ install_registers_instr(
                         GET_CHANNEL_COUNT(alu_opcode_props[ins->alu.op].props) ? 0 :
                         dest.offset;
 
-                midgard_vector_alu_src mod1 =
-                        vector_alu_from_unsigned(ins->alu.src1);
-                mod1.swizzle = offset_swizzle(mod1.swizzle, src1.offset, src1.size, dest_offset, dest.size);
-                ins->alu.src1 = vector_alu_srco_unsigned(mod1);
+                offset_swizzle(ins->swizzle[0], src1.offset, src1.size, dest_offset, dest.size);
 
                 ins->registers.src1_reg = src1.reg;
 
@@ -711,7 +707,7 @@ install_registers_instr(
                 } else {
                         midgard_vector_alu_src mod2 =
                                 vector_alu_from_unsigned(ins->alu.src2);
-                        mod2.swizzle = offset_swizzle(mod2.swizzle, src2.offset, src2.size, dest_offset, dest.size);
+                        offset_swizzle(ins->swizzle[1], src2.offset, src2.size, dest_offset, dest.size);
                         ins->alu.src2 = vector_alu_srco_unsigned(mod2);
 
                         ins->registers.src2_reg = src2.reg;
@@ -733,12 +729,12 @@ install_registers_instr(
                         assert(src.reg == 26 || src.reg == 27);
 
                         ins->load_store.reg = src.reg - 26;
-                        ins->load_store.swizzle = offset_swizzle(ins->load_store.swizzle, src.offset, src.size, 0, 4);
+                        offset_swizzle(ins->swizzle[0], src.offset, src.size, 0, 4);
                } else {
                         struct phys_reg dst = index_to_reg(ctx, g, ins->dest, mir_typesize(ins));
 
                         ins->load_store.reg = dst.reg;
-                        ins->load_store.swizzle = offset_swizzle(ins->load_store.swizzle, 0, 4, dst.offset, dst.size);
+                        offset_swizzle(ins->swizzle[0], 0, 4, dst.offset, dst.size);
                         mir_set_bytemask(ins, mir_bytemask(ins) << dst.offset);
                 }
 
@@ -767,8 +763,8 @@ install_registers_instr(
         case TAG_TEXTURE_4: {
                 /* Grab RA results */
                 struct phys_reg dest = index_to_reg(ctx, g, ins->dest, mir_typesize(ins));
-                struct phys_reg coord = index_to_reg(ctx, g, ins->src[0], mir_srcsize(ins, 0));
-                struct phys_reg lod = index_to_reg(ctx, g, ins->src[1], mir_srcsize(ins, 1));
+                struct phys_reg coord = index_to_reg(ctx, g, ins->src[1], mir_srcsize(ins, 1));
+                struct phys_reg lod = index_to_reg(ctx, g, ins->src[2], mir_srcsize(ins, 2));
 
                 assert(dest.reg == 28 || dest.reg == 29);
                 assert(coord.reg == 28 || coord.reg == 29);
@@ -777,19 +773,17 @@ install_registers_instr(
                 ins->texture.in_reg_full = 1;
                 ins->texture.in_reg_upper = 0;
                 ins->texture.in_reg_select = coord.reg - 28;
-                ins->texture.in_reg_swizzle =
-                        offset_swizzle(ins->texture.in_reg_swizzle, coord.offset, coord.size, 0, 4);
+                offset_swizzle(ins->swizzle[1], coord.offset, coord.size, 0, 4);
 
                 /* Next, install the destination */
                 ins->texture.out_full = 1;
                 ins->texture.out_upper = 0;
                 ins->texture.out_reg_select = dest.reg - 28;
-                ins->texture.swizzle =
-                        offset_swizzle(ins->texture.swizzle, 0, 4, dest.offset, coord.size);
+                offset_swizzle(ins->swizzle[0], 0, 4, dest.offset, dest.size);
                 mir_set_bytemask(ins, mir_bytemask(ins) << dest.offset);
 
                 /* If there is a register LOD/bias, use it */
-                if (ins->src[1] != ~0) {
+                if (ins->src[2] != ~0) {
                         assert(!(lod.offset & 3));
                         midgard_tex_register_select sel = {
                                 .select = lod.reg,
