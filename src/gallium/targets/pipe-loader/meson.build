@@ -47,6 +47,15 @@ endif
 
 pipe_loader_install_dir = join_paths(get_option('libdir'), 'gallium-pipe')
 
+_kmsro_targets = [
+   driver_kmsro, driver_v3d, driver_vc4, driver_freedreno, driver_etnaviv,
+   driver_panfrost, driver_lima,
+]
+
+if with_gallium_v3d
+   _kmsro_targets += [idep_xmlconfig, dep_expat]
+endif
+
 pipe_loaders = [
   [with_gallium_i915, 'i915', driver_i915, []],
   [with_gallium_nouveau, 'nouveau', driver_nouveau, []],
@@ -54,7 +63,7 @@ pipe_loaders = [
   [with_gallium_r600, 'r600', driver_r600, []],
   [with_gallium_radeonsi, 'radeonsi', [driver_radeonsi, idep_xmlconfig], []],
   [with_gallium_freedreno, 'msm', driver_freedreno, []],
-  [with_gallium_panfrost, 'kmsro', [driver_kmsro, driver_panfrost], []],
+  [with_gallium_kmsro, 'kmsro', _kmsro_targets, []],
   [with_gallium_svga, 'vmwgfx', driver_svga, []],
   [with_gallium_softpipe, 'swrast', [driver_swrast, driver_swr], [libwsw, libws_null]],
 ]
