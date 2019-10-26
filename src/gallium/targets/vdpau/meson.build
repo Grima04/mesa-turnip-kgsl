@@ -38,7 +38,7 @@ endif
 
 libvdpau_gallium = shared_library(
   'vdpau_gallium',
-  ['target.c', xmlpool_options_h],
+  'target.c',
   c_args : c_vis_args,
   cpp_args : cpp_vis_args,
   link_args : [vdpau_link_args, ld_args_gc_sections],
@@ -51,7 +51,7 @@ libvdpau_gallium = shared_library(
     libpipe_loader_static, libws_null, libwsw, libswdri, libswkmsdri,
   ],
   dependencies : [
-    idep_mesautil,
+    idep_mesautil, idep_xmlconfig_headers,
     driver_r300, driver_r600, driver_radeonsi, driver_nouveau,
   ],
   link_depends : vdpau_link_depends,
