@@ -127,8 +127,7 @@ static const struct debug_named_value debug_options[] = {
 	DEBUG_NAMED_VALUE_END /* must be last */
 };
 
-static void si_init_compiler(struct si_screen *sscreen,
-			     struct ac_llvm_compiler *compiler)
+void si_init_compiler(struct si_screen *sscreen, struct ac_llvm_compiler *compiler)
 {
 	/* Only create the less-optimizing version of the compiler on APUs
 	 * predating Ryzen (Raven). */
@@ -938,7 +937,7 @@ radeonsi_screen_create_impl(struct radeon_winsys *ws,
 			    const struct pipe_screen_config *config)
 {
 	struct si_screen *sscreen = CALLOC_STRUCT(si_screen);
-	unsigned hw_threads, num_comp_hi_threads, num_comp_lo_threads, i;
+	unsigned hw_threads, num_comp_hi_threads, num_comp_lo_threads;
 
 	if (!sscreen) {
 		return NULL;
@@ -1223,11 +1222,6 @@ radeonsi_screen_create_impl(struct radeon_winsys *ws,
 			sscreen->eqaa_force_color_samples = f;
 		}
 	}
-
-	for (i = 0; i < num_comp_hi_threads; i++)
-		si_init_compiler(sscreen, &sscreen->compiler[i]);
-	for (i = 0; i < num_comp_lo_threads; i++)
-		si_init_compiler(sscreen, &sscreen->compiler_lowp[i]);
 
 	sscreen->ge_wave_size = 64;
 	sscreen->ps_wave_size = 64;

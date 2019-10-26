@@ -1426,6 +1426,9 @@ void si_dispatch_prim_discard_cs_and_draw(struct si_context *sctx,
 					  unsigned input_indexbuf_max_elements);
 void si_initialize_prim_discard_tunables(struct si_context *sctx);
 
+/* si_pipe.c */
+void si_init_compiler(struct si_screen *sscreen, struct ac_llvm_compiler *compiler);
+
 /* si_perfcounters.c */
 void si_init_perfcounters(struct si_screen *screen);
 void si_destroy_perfcounters(struct si_screen *screen);

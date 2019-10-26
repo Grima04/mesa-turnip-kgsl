@@ -2105,6 +2105,9 @@ static void si_build_shader_variant(struct si_shader *shader,
 		compiler = shader->compiler_ctx_state.compiler;
 	}
 
+	if (!compiler->passes)
+		si_init_compiler(sscreen, compiler);
+
 	if (unlikely(!si_shader_create(sscreen, compiler, shader, debug))) {
 		PRINT_ERR("Failed to build shader variant (type=%u)\n",
 			  sel->type);
@@ -2471,6 +2474,9 @@ static void si_init_shader_selector_async(void *job, int thread_index)
 	assert(thread_index >= 0);
 	assert(thread_index < ARRAY_SIZE(sscreen->compiler));
 	compiler = &sscreen->compiler[thread_index];
+
+	if (!compiler->passes)
+		si_init_compiler(sscreen, compiler);
 
 	/* Compile the main shader part for use with a prolog and/or epilog.
 	 * If this fails, the driver will try to compile a monolithic shader

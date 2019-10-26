@@ -121,6 +121,9 @@ static void si_create_compute_state_async(void *job, int thread_index)
 	assert(thread_index < ARRAY_SIZE(sscreen->compiler));
 	compiler = &sscreen->compiler[thread_index];
 
+	if (!compiler->passes)
+		si_init_compiler(sscreen, compiler);
+
 	if (program->ir_type == PIPE_SHADER_IR_TGSI) {
 		tgsi_scan_shader(sel->tokens, &sel->info);
 	} else {
