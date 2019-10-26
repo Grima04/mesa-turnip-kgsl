@@ -30,13 +30,6 @@
                 op == midgard_op_ld_vary_32 \
         )
 
-#define OP_IS_STORE_VARY(op) (\
-		op == midgard_op_st_vary_16 || \
-		op == midgard_op_st_vary_32 || \
-                op == midgard_op_st_vary_32u || \
-		op == midgard_op_st_vary_32i \
-	)
-
 #define OP_IS_PROJECTION(op) ( \
                 op == midgard_op_ldst_perspective_division_z || \
                 op == midgard_op_ldst_perspective_division_w \
