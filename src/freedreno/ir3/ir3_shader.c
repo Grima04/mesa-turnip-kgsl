@@ -407,9 +407,6 @@ ir3_shader_disasm(struct ir3_shader_variant *so, uint32_t *bin, FILE *out)
 			fprintf(out, "; out%d unused\n", i);
 			continue;
 		}
-		/* kill shows up as a virtual output.. skip it! */
-		if (is_kill(ir->outputs[i]))
-			continue;
 		reg = ir->outputs[i]->regs[0];
 		regid = reg->num;
 		fprintf(out, "@out(%sr%d.%c)\tout%d\n",
