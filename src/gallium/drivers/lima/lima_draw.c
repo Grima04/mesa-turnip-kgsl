@@ -1074,7 +1074,9 @@ lima_pack_render_state(struct lima_context *ctx, const struct pipe_draw_info *in
 
    /* more investigation */
    render->aux0 = 0x00000300 | (ctx->vs->varying_stride >> 3);
-   render->aux1 = 0x00003000;
+   render->aux1 = 0x00001000;
+   if (ctx->blend->base.dither)
+      render->aux1 |= 0x00002000;
 
    if (ctx->tex_stateobj.num_samplers) {
       render->textures_address =

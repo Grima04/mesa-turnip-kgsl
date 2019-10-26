@@ -628,16 +628,6 @@ dEQP-GLES2.functional.depth_range.compare.half_to_zero Fail
 dEQP-GLES2.functional.depth_range.compare.one_to_half Fail
 dEQP-GLES2.functional.depth_range.compare.0_8_to_third Fail
 dEQP-GLES2.functional.depth_range.compare.half_to_half Fail
-dEQP-GLES2.functional.dither.disabled.gradient_white Fail
-dEQP-GLES2.functional.dither.disabled.gradient_red Fail
-dEQP-GLES2.functional.dither.disabled.gradient_green Fail
-dEQP-GLES2.functional.dither.disabled.gradient_blue Fail
-dEQP-GLES2.functional.dither.disabled.gradient_alpha Fail
-dEQP-GLES2.functional.dither.disabled.unicolored_quad_white Fail
-dEQP-GLES2.functional.dither.disabled.unicolored_quad_red Fail
-dEQP-GLES2.functional.dither.disabled.unicolored_quad_green Fail
-dEQP-GLES2.functional.dither.disabled.unicolored_quad_blue Fail
-dEQP-GLES2.functional.dither.disabled.unicolored_quad_alpha Fail
 dEQP-GLES2.functional.draw.draw_arrays.first.first_0 Fail
 dEQP-GLES2.functional.draw.draw_arrays.first.first_1 Fail
 dEQP-GLES2.functional.draw.draw_arrays.first.first_17 Fail
