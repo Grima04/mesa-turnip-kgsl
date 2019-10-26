@@ -947,10 +947,12 @@ VkResult anv_CreateSemaphore(
 
    assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO);
 
-   semaphore = vk_alloc2(&device->alloc, pAllocator, sizeof(*semaphore), 8,
-                         VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   semaphore = vk_alloc(&device->alloc, sizeof(*semaphore), 8,
+                        VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
    if (semaphore == NULL)
       return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
+
+   p_atomic_set(&semaphore->refcount, 1);
 
    const VkExportSemaphoreCreateInfo *export =
       vk_find_struct_const(pCreateInfo->pNext, EXPORT_SEMAPHORE_CREATE_INFO);
@@ -1049,6 +1051,25 @@ anv_semaphore_reset_temporary(struct anv_device *device,
    anv_semaphore_impl_cleanup(device, &semaphore->temporary);
 }
 
+static struct anv_semaphore *
+anv_semaphore_ref(struct anv_semaphore *semaphore)
+{
+   assert(semaphore->refcount);
+   p_atomic_inc(&semaphore->refcount);
+   return semaphore;
+}
+
+static void
+anv_semaphore_unref(struct anv_device *device, struct anv_semaphore *semaphore)
+{
+   if (!p_atomic_dec_zero(&semaphore->refcount))
+      return;
+
+   anv_semaphore_impl_cleanup(device, &semaphore->temporary);
+   anv_semaphore_impl_cleanup(device, &semaphore->permanent);
+   vk_free(&device->alloc, semaphore);
+}
+
 void anv_DestroySemaphore(
     VkDevice                                    _device,
     VkSemaphore                                 _semaphore,
@@ -1060,10 +1081,7 @@ void anv_DestroySemaphore(
    if (semaphore == NULL)
       return;
 
-   anv_semaphore_impl_cleanup(device, &semaphore->temporary);
-   anv_semaphore_impl_cleanup(device, &semaphore->permanent);
-
-   vk_free2(&device->alloc, pAllocator, semaphore);
+   anv_semaphore_unref(device, semaphore);
 }
 
 void anv_GetPhysicalDeviceExternalSemaphoreProperties(
