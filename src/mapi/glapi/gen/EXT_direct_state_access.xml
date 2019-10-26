@@ -1170,6 +1170,32 @@
       <param name="index" type="GLuint" />
    </function>
 
+   <function name="GetVertexArrayIntegervEXT">
+      <param name="vaobj" type="GLuint" />
+      <param name="pname" type="GLenum" />
+      <param name="param" type="GLint*" />
+   </function>
+
+   <function name="GetVertexArrayPointervEXT">
+      <param name="vaobj" type="GLuint" />
+      <param name="pname" type="GLenum" />
+      <param name="param" type="GLvoid**" />
+   </function>
+
+   <function name="GetVertexArrayIntegeri_vEXT">
+      <param name="vaobj" type="GLuint" />
+      <param name="index" type="GLuint" />
+      <param name="pname" type="GLenum" />
+      <param name="param" type="GLint*" />
+   </function>
+
+   <function name="GetVertexArrayPointeri_vEXT">
+      <param name="vaobj" type="GLuint" />
+      <param name="index" type="GLuint" />
+      <param name="pname" type="GLenum" />
+      <param name="param" type="GLvoid**" />
+   </function>
+
    <!-- ARB_vertex_program -->
    <function name="NamedProgramStringEXT">
       <param name="program" type="GLuint" />

@@ -494,5 +494,16 @@ extern void GLAPIENTRY
 _mesa_VertexArrayVertexAttribIOffsetEXT(GLuint vaobj, GLuint buffer, GLuint index, GLint size,
                                         GLenum type, GLsizei stride, GLintptr offset);
 
+extern void GLAPIENTRY
+_mesa_GetVertexArrayIntegervEXT(GLuint vaobj, GLenum pname, GLint *param);
+
+extern void GLAPIENTRY
+_mesa_GetVertexArrayPointervEXT(GLuint vaobj, GLenum pname, GLvoid** param);
+
+extern void GLAPIENTRY
+_mesa_GetVertexArrayIntegeri_vEXT(GLuint vaobj, GLuint index, GLenum pname, GLint *param);
+
+extern void GLAPIENTRY
+_mesa_GetVertexArrayPointeri_vEXT(GLuint vaobj, GLuint index, GLenum pname, GLvoid** param);
 
 #endif

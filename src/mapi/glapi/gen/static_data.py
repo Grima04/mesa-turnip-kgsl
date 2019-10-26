@@ -1612,6 +1612,10 @@ offsets = {
     "DisableVertexArrayEXT": 1576,
     "EnableVertexArrayAttribEXT": 1577,
     "DisableVertexArrayAttribEXT": 1578,
+    "GetVertexArrayIntegervEXT": 1579,
+    "GetVertexArrayPointervEXT": 1580,
+    "GetVertexArrayIntegeri_vEXT": 1581,
+    "GetVertexArrayPointeri_vEXT": 1582
 }
 
 functions = [

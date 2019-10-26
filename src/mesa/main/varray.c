@@ -40,6 +40,7 @@
 #include "mtypes.h"
 #include "varray.h"
 #include "arrayobj.h"
+#include "get.h"
 #include "main/dispatch.h"
 
 
@@ -3379,4 +3380,267 @@ _mesa_free_varray_data(struct gl_context *ctx)
 {
    _mesa_HashDeleteAll(ctx->Array.Objects, delete_arrayobj_cb, ctx);
    _mesa_DeleteHashTable(ctx->Array.Objects);
+}
+
+void GLAPIENTRY
+_mesa_GetVertexArrayIntegervEXT(GLuint vaobj, GLenum pname, GLint *param)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   struct gl_vertex_array_object* vao;
+   void* ptr;
+
+   vao = _mesa_lookup_vao_err(ctx, vaobj, true,
+                              "glGetVertexArrayIntegervEXT");
+   if (!vao)
+      return;
+
+   /* The EXT_direct_state_access spec says:
+    *
+    *    "For GetVertexArrayIntegervEXT, pname must be one of the "Get value" tokens
+    *    in tables 6.6, 6.7, 6.8, and 6.9 that use GetIntegerv, IsEnabled, or
+    *    GetPointerv for their "Get command" (so excluding the VERTEX_ATTRIB_*
+    *    tokens)."
+    */
+   switch (pname) {
+      /* Tokens using GetIntegerv */
+      case GL_CLIENT_ACTIVE_TEXTURE:
+         *param = GL_TEXTURE0_ARB + ctx->Array.ActiveTexture;
+         break;
+      case GL_VERTEX_ARRAY_SIZE:
+         *param = vao->VertexAttrib[VERT_ATTRIB_POS].Format.Size;
+         break;
+      case GL_VERTEX_ARRAY_TYPE:
+         *param = vao->VertexAttrib[VERT_ATTRIB_POS].Format.Type;
+         break;
+      case GL_VERTEX_ARRAY_STRIDE:
+         *param = vao->VertexAttrib[VERT_ATTRIB_POS].Stride;
+         break;
+      case GL_VERTEX_ARRAY_BUFFER_BINDING:
+         *param = vao->BufferBinding[VERT_ATTRIB_POS].BufferObj->Name;
+         break;
+      case GL_COLOR_ARRAY_SIZE:
+         *param = vao->VertexAttrib[VERT_ATTRIB_COLOR0].Format.Size;
+         break;
+      case GL_COLOR_ARRAY_TYPE:
+         *param = vao->VertexAttrib[VERT_ATTRIB_COLOR0].Format.Type;
+         break;
+      case GL_COLOR_ARRAY_STRIDE:
+         *param = vao->VertexAttrib[VERT_ATTRIB_COLOR0].Stride;
+         break;
+      case GL_COLOR_ARRAY_BUFFER_BINDING:
+         *param = vao->BufferBinding[VERT_ATTRIB_COLOR0].BufferObj->Name;
+         break;
+      case GL_EDGE_FLAG_ARRAY_STRIDE:
+         *param = vao->VertexAttrib[VERT_ATTRIB_EDGEFLAG].Stride;
+         break;
+      case GL_EDGE_FLAG_ARRAY_BUFFER_BINDING:
+         *param = vao->BufferBinding[VERT_ATTRIB_EDGEFLAG].BufferObj->Name;
+         break;
+      case GL_INDEX_ARRAY_TYPE:
+         *param = vao->VertexAttrib[VERT_ATTRIB_COLOR_INDEX].Format.Type;
+         break;
+      case GL_INDEX_ARRAY_STRIDE:
+         *param = vao->VertexAttrib[VERT_ATTRIB_COLOR_INDEX].Stride;
+         break;
+      case GL_INDEX_ARRAY_BUFFER_BINDING:
+         *param = vao->BufferBinding[VERT_ATTRIB_COLOR_INDEX].BufferObj->Name;
+         break;
+      case GL_NORMAL_ARRAY_TYPE:
+         *param = vao->VertexAttrib[VERT_ATTRIB_NORMAL].Format.Type;
+         break;
+      case GL_NORMAL_ARRAY_STRIDE:
+         *param = vao->VertexAttrib[VERT_ATTRIB_NORMAL].Stride;
+         break;
+      case GL_NORMAL_ARRAY_BUFFER_BINDING:
+         *param = vao->BufferBinding[VERT_ATTRIB_NORMAL].BufferObj->Name;
+         break;
+      case GL_TEXTURE_COORD_ARRAY_SIZE:
+         *param = vao->VertexAttrib[VERT_ATTRIB_TEX(ctx->Array.ActiveTexture)].Format.Size;
+         break;
+      case GL_TEXTURE_COORD_ARRAY_TYPE:
+         *param = vao->VertexAttrib[VERT_ATTRIB_TEX(ctx->Array.ActiveTexture)].Format.Type;
+         break;
+      case GL_TEXTURE_COORD_ARRAY_STRIDE:
+         *param = vao->VertexAttrib[VERT_ATTRIB_TEX(ctx->Array.ActiveTexture)].Stride;
+         break;
+      case GL_TEXTURE_COORD_ARRAY_BUFFER_BINDING:
+         *param = vao->BufferBinding[VERT_ATTRIB_TEX(ctx->Array.ActiveTexture)].BufferObj->Name;
+         break;
+      case GL_FOG_COORD_ARRAY_TYPE:
+         *param = vao->VertexAttrib[VERT_ATTRIB_FOG].Format.Type;
+         break;
+      case GL_FOG_COORD_ARRAY_STRIDE:
+         *param = vao->VertexAttrib[VERT_ATTRIB_FOG].Stride;
+         break;
+      case GL_FOG_COORD_ARRAY_BUFFER_BINDING:
+         *param = vao->BufferBinding[VERT_ATTRIB_FOG].BufferObj->Name;
+         break;
+      case GL_SECONDARY_COLOR_ARRAY_SIZE:
+         *param = vao->VertexAttrib[VERT_ATTRIB_COLOR1].Format.Size;
+         break;
+      case GL_SECONDARY_COLOR_ARRAY_TYPE:
+         *param = vao->VertexAttrib[VERT_ATTRIB_COLOR1].Format.Type;
+         break;
+      case GL_SECONDARY_COLOR_ARRAY_STRIDE:
+         *param = vao->VertexAttrib[VERT_ATTRIB_COLOR1].Stride;
+         break;
+      case GL_SECONDARY_COLOR_ARRAY_BUFFER_BINDING:
+         *param = vao->BufferBinding[VERT_ATTRIB_COLOR1].BufferObj->Name;
+         break;
+
+      /* Tokens using IsEnabled */
+      case GL_VERTEX_ARRAY:
+         *param = !!(vao->Enabled & VERT_BIT_POS);
+         break;
+      case GL_COLOR_ARRAY:
+         *param = !!(vao->Enabled & VERT_BIT_COLOR0);
+         break;
+      case GL_EDGE_FLAG_ARRAY:
+         *param = !!(vao->Enabled & VERT_BIT_EDGEFLAG);
+         break;
+      case GL_INDEX_ARRAY:
+         *param = !!(vao->Enabled & VERT_BIT_COLOR_INDEX);
+         break;
+      case GL_NORMAL_ARRAY:
+         *param = !!(vao->Enabled & VERT_BIT_NORMAL);
+         break;
+      case GL_TEXTURE_COORD_ARRAY:
+         *param = !!(vao->Enabled & VERT_BIT_TEX(ctx->Array.ActiveTexture));
+         break;
+      case GL_FOG_COORD_ARRAY:
+         *param = !!(vao->Enabled & VERT_BIT_FOG);
+         break;
+      case GL_SECONDARY_COLOR_ARRAY:
+         *param = !!(vao->Enabled & VERT_BIT_COLOR1);
+         break;
+
+      /* Tokens using GetPointerv */
+      case GL_VERTEX_ARRAY_POINTER:
+      case GL_COLOR_ARRAY_POINTER:
+      case GL_EDGE_FLAG_ARRAY_POINTER:
+      case GL_INDEX_ARRAY_POINTER:
+      case GL_NORMAL_ARRAY_POINTER:
+      case GL_TEXTURE_COORD_ARRAY_POINTER:
+      case GL_FOG_COORD_ARRAY_POINTER:
+      case GL_SECONDARY_COLOR_ARRAY_POINTER:
+         _get_vao_pointerv(pname, vao, &ptr, "glGetVertexArrayIntegervEXT");
+         *param = (int) ((uint64_t) ptr & 0xFFFFFFFF);
+         break;
+
+      default:
+         _mesa_error(ctx, GL_INVALID_ENUM, "glGetVertexArrayIntegervEXT(pname)");
+   }
+}
+
+void GLAPIENTRY
+_mesa_GetVertexArrayPointervEXT(GLuint vaobj, GLenum pname, GLvoid** param)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   struct gl_vertex_array_object* vao;
+
+   vao = _mesa_lookup_vao_err(ctx, vaobj, true,
+                              "glGetVertexArrayPointervEXT");
+   if (!vao)
+      return;
+
+   /* The EXT_direct_state_access spec says:
+    *
+    *     "For GetVertexArrayPointervEXT, pname must be a *_ARRAY_POINTER token from
+    *     tables 6.6, 6.7, and 6.8 excluding VERTEX_ATTRIB_ARRAY_POINT."
+    */
+   switch (pname) {
+      case GL_VERTEX_ARRAY_POINTER:
+      case GL_COLOR_ARRAY_POINTER:
+      case GL_EDGE_FLAG_ARRAY_POINTER:
+      case GL_INDEX_ARRAY_POINTER:
+      case GL_NORMAL_ARRAY_POINTER:
+      case GL_TEXTURE_COORD_ARRAY_POINTER:
+      case GL_FOG_COORD_ARRAY_POINTER:
+      case GL_SECONDARY_COLOR_ARRAY_POINTER:
+         break;
+
+      default:
+         _mesa_error(ctx, GL_INVALID_ENUM, "glGetVertexArrayPointervEXT(pname)");
+         return;
+   }
+
+   /* pname has been validated, we can now use the helper function */
+   _get_vao_pointerv(pname, vao, param, "glGetVertexArrayPointervEXT");
+}
+
+void GLAPIENTRY
+_mesa_GetVertexArrayIntegeri_vEXT(GLuint vaobj, GLuint index, GLenum pname, GLint *param)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   struct gl_vertex_array_object* vao;
+
+   vao = _mesa_lookup_vao_err(ctx, vaobj, true,
+                              "glGetVertexArrayIntegeri_vEXT");
+   if (!vao)
+      return;
+
+
+   /* The EXT_direct_state_access spec says:
+    *
+    *    "For GetVertexArrayIntegeri_vEXT, pname must be one of the
+    *    "Get value" tokens in tables 6.8 and 6.9 that use GetVertexAttribiv
+    *    or GetVertexAttribPointerv (so allowing only the VERTEX_ATTRIB_*
+    *    tokens) or a token of the form TEXTURE_COORD_ARRAY (the enable) or
+    *    TEXTURE_COORD_ARRAY_*; index identifies the vertex attribute
+    *    array to query or texture coordinate set index respectively."
+    */
+
+   switch (pname) {
+      case GL_TEXTURE_COORD_ARRAY:
+         *param = !!(vao->Enabled & VERT_BIT_TEX(index));
+         break;
+      case GL_TEXTURE_COORD_ARRAY_SIZE:
+         *param = vao->VertexAttrib[VERT_ATTRIB_TEX(index)].Format.Size;
+         break;
+      case GL_TEXTURE_COORD_ARRAY_TYPE:
+         *param = vao->VertexAttrib[VERT_ATTRIB_TEX(index)].Format.Type;
+         break;
+      case GL_TEXTURE_COORD_ARRAY_STRIDE:
+         *param = vao->VertexAttrib[VERT_ATTRIB_TEX(index)].Stride;
+         break;
+      case GL_TEXTURE_COORD_ARRAY_BUFFER_BINDING:
+         *param = vao->BufferBinding[VERT_ATTRIB_TEX(index)].BufferObj->Name;
+         break;
+      default:
+         *param = get_vertex_array_attrib(ctx, vao, index, pname, "glGetVertexArrayIntegeri_vEXT");
+   }
+}
+
+void GLAPIENTRY
+_mesa_GetVertexArrayPointeri_vEXT(GLuint vaobj, GLuint index, GLenum pname, GLvoid** param)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   struct gl_vertex_array_object* vao;
+
+   vao = _mesa_lookup_vao_err(ctx, vaobj, true,
+                              "glGetVertexArrayPointeri_vEXT");
+   if (!vao)
+      return;
+
+   if (index >= ctx->Const.Program[MESA_SHADER_VERTEX].MaxAttribs) {
+      _mesa_error(ctx, GL_INVALID_VALUE, "glGetVertexArrayPointeri_vEXT(index)");
+      return;
+   }
+
+   /* The EXT_direct_state_access spec says:
+    *
+    *     "For GetVertexArrayPointeri_vEXT, pname must be VERTEX_ATTRIB_ARRAY_POINTER
+    *     or TEXTURE_COORD_ARRAY_POINTER with the index parameter indicating the vertex
+    *     attribute or texture coordindate set index."
+    */
+   switch(pname) {
+      case GL_VERTEX_ATTRIB_ARRAY_POINTER:
+         *param = (GLvoid *) vao->VertexAttrib[VERT_ATTRIB_GENERIC(index)].Ptr;
+         break;
+      case GL_TEXTURE_COORD_ARRAY_POINTER:
+         *param = (GLvoid *) vao->VertexAttrib[VERT_ATTRIB_TEX(index)].Ptr;
+         break;
+      default:
+         _mesa_error(ctx, GL_INVALID_ENUM, "glGetVertexArrayPointeri_vEXT(pname)");
+   }
 }
