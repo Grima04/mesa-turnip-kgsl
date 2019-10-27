@@ -262,7 +262,7 @@ static void radv_amdgpu_winsys_bo_destroy(struct radeon_winsys_bo *_bo)
 	} else {
 		if (bo->ws->debug_all_bos) {
 			pthread_mutex_lock(&bo->ws->global_bo_list_lock);
-			LIST_DEL(&bo->global_list_item);
+			list_del(&bo->global_list_item);
 			bo->ws->num_buffers--;
 			pthread_mutex_unlock(&bo->ws->global_bo_list_lock);
 		}

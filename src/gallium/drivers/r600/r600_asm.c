@@ -928,7 +928,7 @@ static int merge_inst_groups(struct r600_bytecode *bc, struct r600_bytecode_alu 
 	for (i = 0; i < max_slots; ++i) {
 		slots[i] = result[i];
 		if (result[i]) {
-			LIST_DEL(&result[i]->list);
+			list_del(&result[i]->list);
 			result[i]->last = 0;
 			list_addtail(&result[i]->list, &bc->cf_last->alu);
 		}

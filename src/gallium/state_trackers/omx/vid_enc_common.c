@@ -138,7 +138,7 @@ void vid_enc_BufferEncoded_common(vid_enc_PrivateType * priv, OMX_BUFFERHEADERTY
 #endif
 
    task = LIST_ENTRY(struct encode_task, inp->tasks.next, list);
-   LIST_DEL(&task->list);
+   list_del(&task->list);
    list_addtail(&task->list, &priv->used_tasks);
 
    if (!task->bitstream)
@@ -184,7 +184,7 @@ struct encode_task *enc_NeedTask_common(vid_enc_PrivateType * priv, OMX_VIDEO_PO
 
    if (!LIST_IS_EMPTY(&priv->free_tasks)) {
       task = LIST_ENTRY(struct encode_task, priv->free_tasks.next, list);
-      LIST_DEL(&task->list);
+      list_del(&task->list);
       return task;
    }
 

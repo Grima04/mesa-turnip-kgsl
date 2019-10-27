@@ -640,7 +640,7 @@ st_framebuffers_purge(struct st_context *st)
        * deleted.
        */
       if (!st_framebuffer_iface_lookup(smapi, stfbi)) {
-         LIST_DEL(&stfb->head);
+         list_del(&stfb->head);
          st_framebuffer_reference(&stfb, NULL);
       }
    }

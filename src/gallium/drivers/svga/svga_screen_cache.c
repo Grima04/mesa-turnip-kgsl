@@ -133,10 +133,10 @@ svga_screen_cache_lookup(struct svga_screen *svgascreen,
          entry->handle = NULL;
 
          /* Remove from hash table */
-         LIST_DEL(&entry->bucket_head);
+         list_del(&entry->bucket_head);
 
          /* remove from LRU list */
-         LIST_DEL(&entry->head);
+         list_del(&entry->head);
 
          /* Add the cache entry (but not the surface!) to the empty list */
          list_add(&entry->head, &cache->empty);
@@ -192,8 +192,8 @@ svga_screen_cache_shrink(struct svga_screen *svgascreen,
          assert(entry->handle);
          sws->surface_reference(sws, &entry->handle, NULL);
 
-         LIST_DEL(&entry->bucket_head);
-         LIST_DEL(&entry->head);
+         list_del(&entry->bucket_head);
+         list_del(&entry->head);
          list_add(&entry->head, &cache->empty);
 
          if (cache->total_size <= target_size) {
@@ -264,7 +264,7 @@ svga_screen_cache_add(struct svga_screen *svgascreen,
                          cache->empty.next, head);
 
       /* Remove from LRU list */
-      LIST_DEL(&entry->head);
+      list_del(&entry->head);
    }
    else if (!LIST_IS_EMPTY(&cache->unused)) {
       /* free the last used buffer and reuse its entry */
@@ -278,10 +278,10 @@ svga_screen_cache_add(struct svga_screen *svgascreen,
       sws->surface_reference(sws, &entry->handle, NULL);
 
       /* Remove from hash table */
-      LIST_DEL(&entry->bucket_head);
+      list_del(&entry->bucket_head);
 
       /* Remove from LRU list */
-      LIST_DEL(&entry->head);
+      list_del(&entry->head);
    }
 
    if (entry) {
@@ -338,7 +338,7 @@ svga_screen_cache_flush(struct svga_screen *svgascreen,
 
       if (sws->surface_is_flushed(sws, entry->handle)) {
          /* remove entry from the invalidated list */
-         LIST_DEL(&entry->head);
+         list_del(&entry->head);
 
          sws->fence_reference(sws, &entry->fence, fence);
 
@@ -364,7 +364,7 @@ svga_screen_cache_flush(struct svga_screen *svgascreen,
 
       if (sws->surface_is_flushed(sws, entry->handle)) {
          /* remove entry from the validated list */
-         LIST_DEL(&entry->head);
+         list_del(&entry->head);
 
          /* It is now safe to invalidate the surface content.
           * It will be done using the current context.

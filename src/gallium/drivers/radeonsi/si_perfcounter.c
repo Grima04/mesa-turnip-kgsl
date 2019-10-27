@@ -855,7 +855,7 @@ static bool si_pc_query_end(struct si_context *ctx, struct si_query *squery)
 
 	si_pc_query_suspend(ctx, squery);
 
-	LIST_DEL(&squery->active_list);
+	list_del(&squery->active_list);
 	ctx->num_cs_dw_queries_suspend -= squery->num_cs_dw_suspend;
 
 	return query->buffer.buf != NULL;

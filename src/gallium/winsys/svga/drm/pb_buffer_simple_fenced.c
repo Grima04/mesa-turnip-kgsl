@@ -214,7 +214,7 @@ fenced_buffer_destroy_locked(struct fenced_manager *fenced_mgr,
    assert(!fenced_buf->fence);
    assert(fenced_buf->head.prev);
    assert(fenced_buf->head.next);
-   LIST_DEL(&fenced_buf->head);
+   list_del(&fenced_buf->head);
    assert(fenced_mgr->num_unfenced);
    --fenced_mgr->num_unfenced;
 
@@ -239,7 +239,7 @@ fenced_buffer_add_locked(struct fenced_manager *fenced_mgr,
 
    p_atomic_inc(&fenced_buf->base.reference.count);
 
-   LIST_DEL(&fenced_buf->head);
+   list_del(&fenced_buf->head);
    assert(fenced_mgr->num_unfenced);
    --fenced_mgr->num_unfenced;
    list_addtail(&fenced_buf->head, &fenced_mgr->fenced);
@@ -268,7 +268,7 @@ fenced_buffer_remove_locked(struct fenced_manager *fenced_mgr,
    assert(fenced_buf->head.prev);
    assert(fenced_buf->head.next);
 
-   LIST_DEL(&fenced_buf->head);
+   list_del(&fenced_buf->head);
    assert(fenced_mgr->num_fenced);
    --fenced_mgr->num_fenced;
 

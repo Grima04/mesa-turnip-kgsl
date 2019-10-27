@@ -668,7 +668,7 @@ static struct pipe_video_buffer *vid_dec_h265_Flush(vid_dec_PrivateType *priv,
       *timestamp = result->timestamp;
 
    --priv->codec_data.h265.dpb_num;
-   LIST_DEL(&result->list);
+   list_del(&result->list);
    FREE(result);
 
    return buf;

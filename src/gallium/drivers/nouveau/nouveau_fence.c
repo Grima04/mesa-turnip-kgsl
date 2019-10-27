@@ -50,7 +50,7 @@ nouveau_fence_trigger_work(struct nouveau_fence *fence)
 
    LIST_FOR_EACH_ENTRY_SAFE(work, tmp, &fence->work, list) {
       work->func(work->data);
-      LIST_DEL(&work->list);
+      list_del(&work->list);
       FREE(work);
    }
 }

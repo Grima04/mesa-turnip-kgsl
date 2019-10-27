@@ -42,7 +42,7 @@ destroy_buffer_locked(struct pb_cache_entry *entry)
 
    assert(!pipe_is_referenced(&buf->reference));
    if (entry->head.next) {
-      LIST_DEL(&entry->head);
+      list_del(&entry->head);
       assert(mgr->num_buffers);
       --mgr->num_buffers;
       mgr->cache_size -= buf->size;
@@ -208,7 +208,7 @@ pb_cache_reclaim_buffer(struct pb_cache *mgr, pb_size size,
       struct pb_buffer *buf = entry->buffer;
 
       mgr->cache_size -= buf->size;
-      LIST_DEL(&entry->head);
+      list_del(&entry->head);
       --mgr->num_buffers;
       mtx_unlock(&mgr->mutex);
       /* Increase refcount */

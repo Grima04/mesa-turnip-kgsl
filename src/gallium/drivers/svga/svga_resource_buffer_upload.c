@@ -410,7 +410,7 @@ svga_buffer_validate_host_surface(struct svga_context *svga,
          svga_screen_surface_destroy(svga_screen(sbuf->b.b.screen),
                                      &bufsurf->key, &bufsurf->handle);
 
-         LIST_DEL(&bufsurf->list);
+         list_del(&bufsurf->list);
          FREE(bufsurf);
       }
    } else {
@@ -728,7 +728,7 @@ svga_buffer_upload_flush(struct svga_context *svga, struct svga_buffer *sbuf)
    sbuf->map.num_ranges = 0;
 
    assert(sbuf->head.prev && sbuf->head.next);
-   LIST_DEL(&sbuf->head);  /* remove from svga->dirty_buffers list */
+   list_del(&sbuf->head);  /* remove from svga->dirty_buffers list */
 #ifdef DEBUG
    sbuf->head.next = sbuf->head.prev = NULL;
 #endif

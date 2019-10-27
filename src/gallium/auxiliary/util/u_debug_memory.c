@@ -200,7 +200,7 @@ debug_free(const char *file, unsigned line, const char *function,
    memset(ptr, DEBUG_FREED_BYTE, hdr->size);
 #else
    mtx_lock(&list_mutex);
-   LIST_DEL(&hdr->head);
+   list_del(&hdr->head);
    mtx_unlock(&list_mutex);
    hdr->magic = 0;
    ftr->magic = 0;

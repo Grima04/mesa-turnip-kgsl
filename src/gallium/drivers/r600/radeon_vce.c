@@ -131,12 +131,12 @@ static void sort_cpb(struct rvce_encoder *enc)
 	}
 
 	if (l1) {
-		LIST_DEL(&l1->list);
+		list_del(&l1->list);
 		list_add(&l1->list, &enc->cpb_slots);
 	}
 
 	if (l0) {
-		LIST_DEL(&l0->list);
+		list_del(&l0->list);
 		list_add(&l0->list, &enc->cpb_slots);
 	}
 }
@@ -341,7 +341,7 @@ static void rvce_end_frame(struct pipe_video_codec *encoder,
 	slot->frame_num = enc->pic.frame_num;
 	slot->pic_order_cnt = enc->pic.pic_order_cnt;
 	if (!enc->pic.not_referenced) {
-		LIST_DEL(&slot->list);
+		list_del(&slot->list);
 		list_add(&slot->list, &enc->cpb_slots);
 	}
 }

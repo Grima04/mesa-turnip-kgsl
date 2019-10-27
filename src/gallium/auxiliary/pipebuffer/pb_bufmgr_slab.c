@@ -204,7 +204,7 @@ pb_slab_buffer_destroy(struct pb_buffer *_buf)
    
    buf->mapCount = 0;
 
-   LIST_DEL(list);
+   list_del(list);
    list_addtail(list, &slab->freeBuffers);
    slab->numFree++;
 

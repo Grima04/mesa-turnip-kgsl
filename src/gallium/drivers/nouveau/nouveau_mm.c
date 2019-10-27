@@ -189,7 +189,7 @@ nouveau_mm_allocate(struct nouveau_mman *cache,
       }
       slab = LIST_ENTRY(struct mm_slab, bucket->free.next, head);
 
-      LIST_DEL(&slab->head);
+      list_del(&slab->head);
       list_add(&slab->head, &bucket->used);
    }
 
@@ -202,7 +202,7 @@ nouveau_mm_allocate(struct nouveau_mman *cache,
    nouveau_bo_ref(slab->bo, bo);
 
    if (slab->free == 0) {
-      LIST_DEL(&slab->head);
+      list_del(&slab->head);
       list_add(&slab->head, &bucket->full);
    }
 
@@ -222,11 +222,11 @@ nouveau_mm_free(struct nouveau_mm_allocation *alloc)
    mm_slab_free(slab, alloc->offset >> slab->order);
 
    if (slab->free == slab->count) {
-      LIST_DEL(&slab->head);
+      list_del(&slab->head);
       list_addtail(&slab->head, &bucket->free);
    } else
    if (slab->free == 1) {
-      LIST_DEL(&slab->head);
+      list_del(&slab->head);
       list_addtail(&slab->head, &bucket->used);
    }
 
@@ -269,7 +269,7 @@ nouveau_mm_free_slabs(struct list_head *head)
    struct mm_slab *slab, *next;
 
    LIST_FOR_EACH_ENTRY_SAFE(slab, next, head, head) {
-      LIST_DEL(&slab->head);
+      list_del(&slab->head);
       nouveau_bo_ref(NULL, &slab->bo);
       FREE(slab);
    }

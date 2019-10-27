@@ -45,7 +45,7 @@ static void
 virgl_resource_cache_entry_release(struct virgl_resource_cache *cache,
                                    struct virgl_resource_cache_entry *entry)
 {
-      LIST_DEL(&entry->head);
+      list_del(&entry->head);
       cache->entry_release_func(entry, cache->user_data);
 }
 
@@ -135,7 +135,7 @@ virgl_resource_cache_remove_compatible(struct virgl_resource_cache *cache,
    }
 
    if (compat_entry)
-      LIST_DEL(&compat_entry->head);
+      list_del(&compat_entry->head);
 
    return compat_entry;
 }

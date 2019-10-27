@@ -696,7 +696,7 @@ hud_stop_queries(struct hud_context *hud, struct pipe_context *pipe)
              */
             if (gr->current_value <
                 LIST_ENTRY(struct hud_graph, next, head)->current_value) {
-               LIST_DEL(&gr->head);
+               list_del(&gr->head);
                list_add(&gr->head, &next->head);
             }
          }
@@ -1752,10 +1752,10 @@ hud_unset_record_context(struct hud_context *hud)
 
    LIST_FOR_EACH_ENTRY_SAFE(pane, pane_tmp, &hud->pane_list, head) {
       LIST_FOR_EACH_ENTRY_SAFE(graph, graph_tmp, &pane->graph_list, head) {
-         LIST_DEL(&graph->head);
+         list_del(&graph->head);
          hud_graph_destroy(graph, pipe);
       }
-      LIST_DEL(&pane->head);
+      list_del(&pane->head);
       FREE(pane);
    }
 

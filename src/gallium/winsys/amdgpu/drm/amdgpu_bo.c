@@ -176,7 +176,7 @@ void amdgpu_bo_destroy(struct pb_buffer *_buf)
 
    if (ws->debug_all_bos) {
       simple_mtx_lock(&ws->global_bo_list_lock);
-      LIST_DEL(&bo->u.real.global_list_item);
+      list_del(&bo->u.real.global_list_item);
       ws->num_buffers--;
       simple_mtx_unlock(&ws->global_bo_list_lock);
    }

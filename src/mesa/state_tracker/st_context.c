@@ -361,7 +361,7 @@ free_zombie_sampler_views(struct st_context *st)
 
    LIST_FOR_EACH_ENTRY_SAFE(entry, next,
                             &st->zombie_sampler_views.list.node, node) {
-      LIST_DEL(&entry->node);  // remove this entry from the list
+      list_del(&entry->node);  // remove this entry from the list
 
       assert(entry->view->context == st->pipe);
       pipe_sampler_view_reference(&entry->view, NULL);
@@ -391,7 +391,7 @@ free_zombie_shaders(struct st_context *st)
 
    LIST_FOR_EACH_ENTRY_SAFE(entry, next,
                             &st->zombie_shaders.list.node, node) {
-      LIST_DEL(&entry->node);  // remove this entry from the list
+      list_del(&entry->node);  // remove this entry from the list
 
       switch (entry->type) {
       case PIPE_SHADER_VERTEX:

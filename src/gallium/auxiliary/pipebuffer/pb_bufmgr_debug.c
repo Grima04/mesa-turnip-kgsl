@@ -236,7 +236,7 @@ pb_debug_buffer_destroy(struct pb_buffer *_buf)
    pb_debug_buffer_check(buf);
 
    mtx_lock(&mgr->mutex);
-   LIST_DEL(&buf->head);
+   list_del(&buf->head);
    mtx_unlock(&mgr->mutex);
 
    mtx_destroy(&buf->mutex);

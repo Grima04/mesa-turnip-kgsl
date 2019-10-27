@@ -272,7 +272,7 @@ static void enc_ClearBframes(vid_enc_PrivateType * priv, struct input_buf_privat
       return;
 
    task = LIST_ENTRY(struct encode_task, priv->b_frames.prev, list);
-   LIST_DEL(&task->list);
+   list_del(&task->list);
 
    /* promote last from to P frame */
    priv->ref_idx_l0 = priv->ref_idx_l1;
@@ -366,7 +366,7 @@ static OMX_ERRORTYPE encode_frame(vid_enc_PrivateType * priv, OMX_BUFFERHEADERTY
       if (stacked_num == priv->stacked_frames_num) {
          struct encode_task *t;
          t = LIST_ENTRY(struct encode_task, priv->stacked_tasks.next, list);
-         LIST_DEL(&t->list);
+         list_del(&t->list);
          list_addtail(&t->list, &inp->tasks);
       }
       priv->ref_idx_l1 = priv->frame_num++;

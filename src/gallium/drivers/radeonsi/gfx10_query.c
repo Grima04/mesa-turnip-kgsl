@@ -106,7 +106,7 @@ static void gfx10_release_query_buffers(struct si_context *sctx,
 		if (qbuf->list.prev == &sctx->shader_query_buffers)
 			continue; /* keep the oldest buffer for recycling */
 
-		LIST_DEL(&qbuf->list);
+		list_del(&qbuf->list);
 		si_resource_reference(&qbuf->buf, NULL);
 		FREE(qbuf);
 	}
@@ -131,7 +131,7 @@ static bool gfx10_alloc_query_buffer(struct si_context *sctx)
 		    !si_rings_is_buffer_referenced(sctx, qbuf->buf->buf, RADEON_USAGE_READWRITE) &&
 		    sctx->ws->buffer_wait(qbuf->buf->buf, 0, RADEON_USAGE_READWRITE)) {
 			/* Can immediately re-use the oldest buffer */
-			LIST_DEL(&qbuf->list);
+			list_del(&qbuf->list);
 		} else {
 			qbuf = NULL;
 		}
@@ -514,7 +514,7 @@ void gfx10_destroy_query(struct si_context *sctx)
 		struct gfx10_sh_query_buffer *qbuf =
 			list_first_entry(&sctx->shader_query_buffers,
 					 struct gfx10_sh_query_buffer, list);
-		LIST_DEL(&qbuf->list);
+		list_del(&qbuf->list);
 
 		assert(!qbuf->refcount);
 		si_resource_reference(&qbuf->buf, NULL);

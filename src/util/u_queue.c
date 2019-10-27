@@ -89,7 +89,7 @@ remove_from_atexit_list(struct util_queue *queue)
    mtx_lock(&exit_mutex);
    LIST_FOR_EACH_ENTRY_SAFE(iter, tmp, &queue_list, head) {
       if (iter == queue) {
-         LIST_DEL(&iter->head);
+         list_del(&iter->head);
          break;
       }
    }

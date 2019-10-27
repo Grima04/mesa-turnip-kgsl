@@ -55,7 +55,7 @@ pb_slab_reclaim(struct pb_slabs *slabs, struct pb_slab_entry *entry)
 {
    struct pb_slab *slab = entry->slab;
 
-   LIST_DEL(&entry->head); /* remove from reclaim list */
+   list_del(&entry->head); /* remove from reclaim list */
    list_add(&entry->head, &slab->free);
    slab->num_free++;
 
@@ -66,7 +66,7 @@ pb_slab_reclaim(struct pb_slabs *slabs, struct pb_slab_entry *entry)
    }
 
    if (slab->num_free >= slab->num_entries) {
-      LIST_DEL(&slab->head);
+      list_del(&slab->head);
       slabs->slab_free(slabs->priv, slab);
    }
 }
@@ -124,7 +124,7 @@ pb_slab_alloc(struct pb_slabs *slabs, unsigned size, unsigned heap)
       if (!LIST_IS_EMPTY(&slab->free))
          break;
 
-      LIST_DEL(&slab->head);
+      list_del(&slab->head);
    }
 
    if (LIST_IS_EMPTY(&group->slabs)) {
@@ -145,7 +145,7 @@ pb_slab_alloc(struct pb_slabs *slabs, unsigned size, unsigned heap)
    }
 
    entry = LIST_ENTRY(struct pb_slab_entry, slab->free.next, head);
-   LIST_DEL(&entry->head);
+   list_del(&entry->head);
    slab->num_free--;
 
    mtx_unlock(&slabs->mutex);
