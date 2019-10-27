@@ -113,7 +113,7 @@ static inline void
 util_dirty_surface_set_clean(struct util_dirty_surfaces *dss, struct util_dirty_surface *ds)
 {
    if(!LIST_IS_EMPTY(&ds->dirty_list))
-      LIST_DELINIT(&ds->dirty_list);
+      list_delinit(&ds->dirty_list);
 }
 
 #endif

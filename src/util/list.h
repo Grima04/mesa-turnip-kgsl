@@ -159,7 +159,6 @@ static inline void list_validate(const struct list_head *list)
 }
 
 #define LIST_DEL(__item) list_del(__item)
-#define LIST_DELINIT(__item) list_delinit(__item)
 
 #define LIST_ENTRY(__type, __item, __field)   \
     ((__type *)(((char *)(__item)) - offsetof(__type, __field)))

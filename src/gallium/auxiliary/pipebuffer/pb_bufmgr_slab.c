@@ -214,7 +214,7 @@ pb_slab_buffer_destroy(struct pb_buffer *_buf)
    /* If the slab becomes totally empty, free it */
    if (slab->numFree == slab->numBuffers) {
       list = &slab->head;
-      LIST_DELINIT(list);
+      list_delinit(list);
       pb_reference(&slab->bo, NULL);
       FREE(slab->buffers);
       FREE(slab);
@@ -412,10 +412,10 @@ pb_slab_manager_create_buffer(struct pb_manager *_mgr,
    
    /* If totally full remove from the partial slab list */
    if (--slab->numFree == 0)
-      LIST_DELINIT(list);
+      list_delinit(list);
 
    list = slab->freeBuffers.next;
-   LIST_DELINIT(list);
+   list_delinit(list);
 
    mtx_unlock(&mgr->mutex);
    buf = LIST_ENTRY(struct pb_slab_buffer, list, head);

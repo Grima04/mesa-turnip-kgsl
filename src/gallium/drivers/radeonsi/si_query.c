@@ -1171,7 +1171,7 @@ bool si_query_hw_end(struct si_context *sctx,
 	si_query_hw_emit_stop(sctx, query);
 
 	if (!(query->flags & SI_QUERY_HW_FLAG_NO_START)) {
-		LIST_DELINIT(&query->b.active_list);
+		list_delinit(&query->b.active_list);
 		sctx->num_cs_dw_queries_suspend -= query->b.num_cs_dw_suspend;
 	}
 

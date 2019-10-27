@@ -1070,7 +1070,7 @@ bool r600_query_hw_end(struct r600_common_context *rctx,
 	r600_query_hw_emit_stop(rctx, query);
 
 	if (!(query->flags & R600_QUERY_HW_FLAG_NO_START))
-		LIST_DELINIT(&query->list);
+		list_delinit(&query->list);
 
 	if (!query->buffer.buf)
 		return false;
