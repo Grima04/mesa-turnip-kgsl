@@ -393,7 +393,7 @@ tc_call_end_query(struct pipe_context *pipe, union tc_payload *payload)
    struct threaded_query *tq = threaded_query(p->query);
 
    if (!tq->head_unflushed.next)
-      LIST_ADD(&tq->head_unflushed, &p->tc->unflushed_queries);
+      list_add(&tq->head_unflushed, &p->tc->unflushed_queries);
 
    pipe->end_query(pipe, p->query);
 }

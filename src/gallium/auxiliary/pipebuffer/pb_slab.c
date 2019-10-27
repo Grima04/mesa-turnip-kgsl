@@ -56,7 +56,7 @@ pb_slab_reclaim(struct pb_slabs *slabs, struct pb_slab_entry *entry)
    struct pb_slab *slab = entry->slab;
 
    LIST_DEL(&entry->head); /* remove from reclaim list */
-   LIST_ADD(&entry->head, &slab->free);
+   list_add(&entry->head, &slab->free);
    slab->num_free++;
 
    /* Add slab to the group's list if it isn't already linked. */
@@ -141,7 +141,7 @@ pb_slab_alloc(struct pb_slabs *slabs, unsigned size, unsigned heap)
          return NULL;
       mtx_lock(&slabs->mutex);
 
-      LIST_ADD(&slab->head, &group->slabs);
+      list_add(&slab->head, &group->slabs);
    }
 
    entry = LIST_ENTRY(struct pb_slab_entry, slab->free.next, head);

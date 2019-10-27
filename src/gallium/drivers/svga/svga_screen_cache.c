@@ -139,7 +139,7 @@ svga_screen_cache_lookup(struct svga_screen *svgascreen,
          LIST_DEL(&entry->head);
 
          /* Add the cache entry (but not the surface!) to the empty list */
-         LIST_ADD(&entry->head, &cache->empty);
+         list_add(&entry->head, &cache->empty);
 
          /* update the cache size */
          surf_size = surface_size(&entry->key);
@@ -194,7 +194,7 @@ svga_screen_cache_shrink(struct svga_screen *svgascreen,
 
          LIST_DEL(&entry->bucket_head);
          LIST_DEL(&entry->head);
-         LIST_ADD(&entry->head, &cache->empty);
+         list_add(&entry->head, &cache->empty);
 
          if (cache->total_size <= target_size) {
             /* all done */
@@ -294,9 +294,9 @@ svga_screen_cache_add(struct svga_screen *svgascreen,
 
       /* If we don't have gb objects, we don't need to invalidate. */
       if (sws->have_gb_objects)
-         LIST_ADD(&entry->head, &cache->validated);
+         list_add(&entry->head, &cache->validated);
       else
-         LIST_ADD(&entry->head, &cache->invalidated);
+         list_add(&entry->head, &cache->invalidated);
 
       cache->total_size += surf_size;
    }
@@ -343,11 +343,11 @@ svga_screen_cache_flush(struct svga_screen *svgascreen,
          sws->fence_reference(sws, &entry->fence, fence);
 
          /* Add entry to the unused list */
-         LIST_ADD(&entry->head, &cache->unused);
+         list_add(&entry->head, &cache->unused);
 
          /* Add entry to the hash table bucket */
          bucket = svga_screen_cache_bucket(&entry->key);
-         LIST_ADD(&entry->bucket_head, &cache->bucket[bucket]);
+         list_add(&entry->bucket_head, &cache->bucket[bucket]);
       }
 
       curr = next;
@@ -386,7 +386,7 @@ svga_screen_cache_flush(struct svga_screen *svgascreen,
          }
 
          /* add the entry to the invalidated list */
-         LIST_ADD(&entry->head, &cache->invalidated);
+         list_add(&entry->head, &cache->invalidated);
       }
 
       curr = next;

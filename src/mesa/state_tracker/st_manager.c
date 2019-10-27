@@ -1036,7 +1036,7 @@ st_framebuffer_reuse_or_create(struct st_context *st,
          }
 
          /* add to the context's winsys buffers list */
-         LIST_ADD(&cur->head, &st->winsys_buffers);
+         list_add(&cur->head, &st->winsys_buffers);
 
          st_framebuffer_reference(&stfb, cur);
       }

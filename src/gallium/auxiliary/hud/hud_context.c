@@ -697,7 +697,7 @@ hud_stop_queries(struct hud_context *hud, struct pipe_context *pipe)
             if (gr->current_value <
                 LIST_ENTRY(struct hud_graph, next, head)->current_value) {
                LIST_DEL(&gr->head);
-               LIST_ADD(&gr->head, &next->head);
+               list_add(&gr->head, &next->head);
             }
          }
       }

@@ -148,7 +148,7 @@ mm_slab_new(struct nouveau_mman *cache, int chunk_order)
    slab->order = chunk_order;
    slab->count = slab->free = size >> chunk_order;
 
-   LIST_ADD(&slab->head, &mm_bucket_by_order(cache, chunk_order)->free);
+   list_add(&slab->head, &mm_bucket_by_order(cache, chunk_order)->free);
 
    cache->allocated += size;
 
@@ -190,7 +190,7 @@ nouveau_mm_allocate(struct nouveau_mman *cache,
       slab = LIST_ENTRY(struct mm_slab, bucket->free.next, head);
 
       LIST_DEL(&slab->head);
-      LIST_ADD(&slab->head, &bucket->used);
+      list_add(&slab->head, &bucket->used);
    }
 
    *offset = mm_slab_alloc(slab) << slab->order;
@@ -203,7 +203,7 @@ nouveau_mm_allocate(struct nouveau_mman *cache,
 
    if (slab->free == 0) {
       LIST_DEL(&slab->head);
-      LIST_ADD(&slab->head, &bucket->full);
+      list_add(&slab->head, &bucket->full);
    }
 
    alloc->next = NULL;

@@ -265,7 +265,7 @@ nouveau_fence_work(struct nouveau_fence *fence,
       return false;
    work->func = func;
    work->data = data;
-   LIST_ADD(&work->list, &fence->work);
+   list_add(&work->list, &fence->work);
    p_atomic_inc(&fence->work_count);
    if (fence->work_count > 64)
       nouveau_fence_kick(fence);
