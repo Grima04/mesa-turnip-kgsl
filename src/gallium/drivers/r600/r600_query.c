@@ -1047,7 +1047,7 @@ bool r600_query_hw_begin(struct r600_common_context *rctx,
 	if (!query->buffer.buf)
 		return false;
 
-	LIST_ADDTAIL(&query->list, &rctx->active_queries);
+	list_addtail(&query->list, &rctx->active_queries);
 	return true;
 }
 

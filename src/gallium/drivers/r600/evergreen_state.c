@@ -698,7 +698,7 @@ texture_buffer_sampler_view(struct r600_context *rctx,
 	view->tex_resource = &tmp->resource;
 
 	if (tmp->resource.gpu_address)
-		LIST_ADDTAIL(&view->list, &rctx->texture_buffers);
+		list_addtail(&view->list, &rctx->texture_buffers);
 	return &view->base;
 }
 

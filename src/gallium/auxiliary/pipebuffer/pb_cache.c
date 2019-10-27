@@ -104,7 +104,7 @@ pb_cache_add_buffer(struct pb_cache_entry *entry)
 
    entry->start = os_time_get();
    entry->end = entry->start + mgr->usecs;
-   LIST_ADDTAIL(&entry->head, cache);
+   list_addtail(&entry->head, cache);
    ++mgr->num_buffers;
    mgr->cache_size += buf->size;
    mtx_unlock(&mgr->mutex);

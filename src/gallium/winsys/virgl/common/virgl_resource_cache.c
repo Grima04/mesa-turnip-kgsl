@@ -91,7 +91,7 @@ virgl_resource_cache_add(struct virgl_resource_cache *cache,
 
    entry->timeout_start = now;
    entry->timeout_end = entry->timeout_start + cache->timeout_usecs;
-   LIST_ADDTAIL(&entry->head, &cache->resources);
+   list_addtail(&entry->head, &cache->resources);
 }
 
 struct virgl_resource_cache_entry *

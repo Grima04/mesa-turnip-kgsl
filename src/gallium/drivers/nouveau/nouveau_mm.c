@@ -223,11 +223,11 @@ nouveau_mm_free(struct nouveau_mm_allocation *alloc)
 
    if (slab->free == slab->count) {
       LIST_DEL(&slab->head);
-      LIST_ADDTAIL(&slab->head, &bucket->free);
+      list_addtail(&slab->head, &bucket->free);
    } else
    if (slab->free == 1) {
       LIST_DEL(&slab->head);
-      LIST_ADDTAIL(&slab->head, &bucket->used);
+      list_addtail(&slab->head, &bucket->used);
    }
 
    FREE(alloc);

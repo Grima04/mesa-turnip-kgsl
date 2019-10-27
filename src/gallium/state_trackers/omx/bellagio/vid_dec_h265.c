@@ -736,7 +736,7 @@ static void vid_dec_h265_EndFrame(vid_dec_PrivateType *priv)
    entry->timestamp = priv->timestamp;
    entry->poc = get_poc(priv);
 
-   LIST_ADDTAIL(&entry->list, &priv->codec_data.h265.dpb_list);
+   list_addtail(&entry->list, &priv->codec_data.h265.dpb_list);
    ++priv->codec_data.h265.dpb_num;
    priv->target = NULL;
 

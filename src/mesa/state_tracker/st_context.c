@@ -307,7 +307,7 @@ st_save_zombie_sampler_view(struct st_context *st,
     * while free_zombie_resource_views() is called from another.
     */
    simple_mtx_lock(&st->zombie_sampler_views.mutex);
-   LIST_ADDTAIL(&entry->node, &st->zombie_sampler_views.list.node);
+   list_addtail(&entry->node, &st->zombie_sampler_views.list.node);
    simple_mtx_unlock(&st->zombie_sampler_views.mutex);
 }
 
@@ -340,7 +340,7 @@ st_save_zombie_shader(struct st_context *st,
     * while free_zombie_shaders() is called from another.
     */
    simple_mtx_lock(&st->zombie_shaders.mutex);
-   LIST_ADDTAIL(&entry->node, &st->zombie_shaders.list.node);
+   list_addtail(&entry->node, &st->zombie_shaders.list.node);
    simple_mtx_unlock(&st->zombie_shaders.mutex);
 }
 

@@ -170,7 +170,7 @@ static bool gfx10_alloc_query_buffer(struct si_context *sctx)
 		results[32 * i + 16] = 0;
 	}
 
-	LIST_ADDTAIL(&qbuf->list, &sctx->shader_query_buffers);
+	list_addtail(&qbuf->list, &sctx->shader_query_buffers);
 	qbuf->head = 0;
 	qbuf->refcount = sctx->num_active_shader_queries;
 

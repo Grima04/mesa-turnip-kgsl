@@ -815,7 +815,7 @@ struct pb_slab *radeon_bo_slab_alloc(void *priv, unsigned heap,
         bo->u.slab.entry.group_index = group_index;
         bo->u.slab.real = slab->buffer;
 
-        LIST_ADDTAIL(&bo->u.slab.entry.head, &slab->base.free);
+        list_addtail(&bo->u.slab.entry.head, &slab->base.free);
     }
 
     return &slab->base;

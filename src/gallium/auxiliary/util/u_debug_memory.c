@@ -155,7 +155,7 @@ debug_malloc(const char *file, unsigned line, const char *function,
    ftr->magic = DEBUG_MEMORY_MAGIC;
 
    mtx_lock(&list_mutex);
-   LIST_ADDTAIL(&hdr->head, &list);
+   list_addtail(&hdr->head, &list);
    mtx_unlock(&list_mutex);
 
    return data_from_header(hdr);

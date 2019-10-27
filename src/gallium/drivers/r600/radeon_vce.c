@@ -104,7 +104,7 @@ static void reset_cpb(struct rvce_encoder *enc)
 		slot->picture_type = PIPE_H264_ENC_PICTURE_TYPE_SKIP;
 		slot->frame_num = 0;
 		slot->pic_order_cnt = 0;
-		LIST_ADDTAIL(&slot->list, &enc->cpb_slots);
+		list_addtail(&slot->list, &enc->cpb_slots);
 	}
 }
 

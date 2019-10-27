@@ -62,7 +62,7 @@ pb_slab_reclaim(struct pb_slabs *slabs, struct pb_slab_entry *entry)
    /* Add slab to the group's list if it isn't already linked. */
    if (!slab->head.next) {
       struct pb_slab_group *group = &slabs->groups[entry->group_index];
-      LIST_ADDTAIL(&slab->head, &group->slabs);
+      list_addtail(&slab->head, &group->slabs);
    }
 
    if (slab->num_free >= slab->num_entries) {
@@ -163,7 +163,7 @@ void
 pb_slab_free(struct pb_slabs* slabs, struct pb_slab_entry *entry)
 {
    mtx_lock(&slabs->mutex);
-   LIST_ADDTAIL(&entry->head, &slabs->reclaim);
+   list_addtail(&entry->head, &slabs->reclaim);
    mtx_unlock(&slabs->mutex);
 }
 

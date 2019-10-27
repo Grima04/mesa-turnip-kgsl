@@ -80,7 +80,7 @@ nv30_query_object_new(struct nv30_screen *screen)
       nv30_query_object_del(screen, &oq);
    }
 
-   LIST_ADDTAIL(&qo->list, &screen->queries);
+   list_addtail(&qo->list, &screen->queries);
 
    ntfy = nv30_ntfy(screen, qo);
    ntfy[0] = 0x00000000;

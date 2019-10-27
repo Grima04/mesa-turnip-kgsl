@@ -139,7 +139,7 @@ void vid_enc_BufferEncoded_common(vid_enc_PrivateType * priv, OMX_BUFFERHEADERTY
 
    task = LIST_ENTRY(struct encode_task, inp->tasks.next, list);
    LIST_DEL(&task->list);
-   LIST_ADDTAIL(&task->list, &priv->used_tasks);
+   list_addtail(&task->list, &priv->used_tasks);
 
    if (!task->bitstream)
       return;

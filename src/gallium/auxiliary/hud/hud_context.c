@@ -946,7 +946,7 @@ hud_pane_add_graph(struct hud_pane *pane, struct hud_graph *gr)
    gr->color[1] = colors[color][1];
    gr->color[2] = colors[color][2];
    gr->pane = pane;
-   LIST_ADDTAIL(&gr->head, &pane->graph_list);
+   list_addtail(&gr->head, &pane->graph_list);
    pane->num_graphs++;
    pane->next_color++;
 }
@@ -1458,7 +1458,7 @@ hud_parse_env_var(struct hud_context *hud, struct pipe_screen *screen,
          height = 100;
 
          if (pane && pane->num_graphs) {
-            LIST_ADDTAIL(&pane->head, &hud->pane_list);
+            list_addtail(&pane->head, &hud->pane_list);
             pane = NULL;
          }
          break;
@@ -1471,7 +1471,7 @@ hud_parse_env_var(struct hud_context *hud, struct pipe_screen *screen,
          height = 100;
 
          if (pane && pane->num_graphs) {
-            LIST_ADDTAIL(&pane->head, &hud->pane_list);
+            list_addtail(&pane->head, &hud->pane_list);
             pane = NULL;
          }
 
@@ -1494,7 +1494,7 @@ hud_parse_env_var(struct hud_context *hud, struct pipe_screen *screen,
 
    if (pane) {
       if (pane->num_graphs) {
-         LIST_ADDTAIL(&pane->head, &hud->pane_list);
+         list_addtail(&pane->head, &hud->pane_list);
       }
       else {
          FREE(pane);

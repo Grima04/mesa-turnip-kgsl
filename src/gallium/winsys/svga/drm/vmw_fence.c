@@ -218,7 +218,7 @@ vmw_fence_create(struct pb_fence_ops *fence_ops, uint32_t handle,
       list_inithead(&fence->ops_list);
    } else {
       p_atomic_set(&fence->signalled, 0);
-      LIST_ADDTAIL(&fence->ops_list, &ops->not_signaled);
+      list_addtail(&fence->ops_list, &ops->not_signaled);
    }
 
    mtx_unlock(&ops->mutex);

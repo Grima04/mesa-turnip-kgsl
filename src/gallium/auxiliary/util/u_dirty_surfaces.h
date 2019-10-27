@@ -106,7 +106,7 @@ static inline void
 util_dirty_surface_set_dirty(struct util_dirty_surfaces *dss, struct util_dirty_surface *ds)
 {
    if(LIST_IS_EMPTY(&ds->dirty_list))
-      LIST_ADDTAIL(&ds->dirty_list, &dss->dirty_list);
+      list_addtail(&ds->dirty_list, &dss->dirty_list);
 }
 
 static inline void

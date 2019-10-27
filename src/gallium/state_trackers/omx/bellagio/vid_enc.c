@@ -829,7 +829,7 @@ static void enc_ClearBframes(omx_base_PortType *port, struct input_buf_private *
    /* promote last from to P frame */
    priv->ref_idx_l0 = priv->ref_idx_l1;
    enc_HandleTask(port, task, PIPE_H264_ENC_PICTURE_TYPE_P);
-   LIST_ADDTAIL(&task->list, &inp->tasks);
+   list_addtail(&task->list, &inp->tasks);
    priv->ref_idx_l1 = priv->frame_num++;
 
    /* handle B frames */
@@ -900,12 +900,12 @@ static OMX_ERRORTYPE vid_enc_EncodeFrame(omx_base_PortType *port, OMX_BUFFERHEAD
 
    if (picture_type == PIPE_H264_ENC_PICTURE_TYPE_B) {
       /* put frame at the tail of the queue */
-      LIST_ADDTAIL(&task->list, &priv->b_frames);
+      list_addtail(&task->list, &priv->b_frames);
    } else {
       /* handle I or P frame */
       priv->ref_idx_l0 = priv->ref_idx_l1;
       enc_HandleTask(port, task, picture_type);
-      LIST_ADDTAIL(&task->list, &priv->stacked_tasks);
+      list_addtail(&task->list, &priv->stacked_tasks);
       LIST_FOR_EACH_ENTRY(task, &priv->stacked_tasks, list) {
          ++stacked_num;
       }
@@ -913,7 +913,7 @@ static OMX_ERRORTYPE vid_enc_EncodeFrame(omx_base_PortType *port, OMX_BUFFERHEAD
          struct encode_task *t;
          t = LIST_ENTRY(struct encode_task, priv->stacked_tasks.next, list);
          LIST_DEL(&t->list);
-         LIST_ADDTAIL(&t->list, &inp->tasks);
+         list_addtail(&t->list, &inp->tasks);
       }
       priv->ref_idx_l1 = priv->frame_num++;
 

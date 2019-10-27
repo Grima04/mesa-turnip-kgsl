@@ -205,11 +205,11 @@ pb_slab_buffer_destroy(struct pb_buffer *_buf)
    buf->mapCount = 0;
 
    LIST_DEL(list);
-   LIST_ADDTAIL(list, &slab->freeBuffers);
+   list_addtail(list, &slab->freeBuffers);
    slab->numFree++;
 
    if (slab->head.next == &slab->head)
-      LIST_ADDTAIL(&slab->head, &mgr->slabs);
+      list_addtail(&slab->head, &mgr->slabs);
 
    /* If the slab becomes totally empty, free it */
    if (slab->numFree == slab->numBuffers) {
@@ -350,13 +350,13 @@ pb_slab_create(struct pb_slab_manager *mgr)
       buf->start = i* mgr->bufSize;
       buf->mapCount = 0;
       cnd_init(&buf->event);
-      LIST_ADDTAIL(&buf->head, &slab->freeBuffers);
+      list_addtail(&buf->head, &slab->freeBuffers);
       slab->numFree++;
       buf++;
    }
 
    /* Add this slab to the list of partial slabs */
-   LIST_ADDTAIL(&slab->head, &mgr->slabs);
+   list_addtail(&slab->head, &mgr->slabs);
 
    return PIPE_OK;
 

@@ -1147,7 +1147,7 @@ bool si_query_hw_begin(struct si_context *sctx,
 	if (!query->buffer.buf)
 		return false;
 
-	LIST_ADDTAIL(&query->b.active_list, &sctx->active_queries);
+	list_addtail(&query->b.active_list, &sctx->active_queries);
 	sctx->num_cs_dw_queries_suspend += query->b.num_cs_dw_suspend;
 	return true;
 }

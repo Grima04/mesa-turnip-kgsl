@@ -421,7 +421,7 @@ pb_debug_manager_create_buffer(struct pb_manager *_mgr,
    (void) mtx_init(&buf->mutex, mtx_plain);
    
    mtx_lock(&mgr->mutex);
-   LIST_ADDTAIL(&buf->head, &mgr->list);
+   list_addtail(&buf->head, &mgr->list);
    mtx_unlock(&mgr->mutex);
 
    return &buf->base;

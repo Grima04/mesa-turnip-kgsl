@@ -414,7 +414,7 @@ static void amdgpu_add_buffer_to_global_list(struct amdgpu_winsys_bo *bo)
 
    if (ws->debug_all_bos) {
       simple_mtx_lock(&ws->global_bo_list_lock);
-      LIST_ADDTAIL(&bo->u.real.global_list_item, &ws->global_bo_list);
+      list_addtail(&bo->u.real.global_list_item, &ws->global_bo_list);
       ws->num_buffers++;
       simple_mtx_unlock(&ws->global_bo_list_lock);
    }
@@ -692,7 +692,7 @@ struct pb_slab *amdgpu_bo_slab_alloc(void *priv, unsigned heap,
          assert(bo->u.slab.real->bo);
       }
 
-      LIST_ADDTAIL(&bo->u.slab.entry.head, &slab->base.free);
+      list_addtail(&bo->u.slab.entry.head, &slab->base.free);
    }
 
    return &slab->base;

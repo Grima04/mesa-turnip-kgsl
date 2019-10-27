@@ -1065,7 +1065,7 @@ svga_buffer_handle(struct svga_context *svga, struct pipe_resource *buf,
             if (ret == PIPE_OK) {
                sbuf->dma.pending = TRUE;
                assert(!sbuf->head.prev && !sbuf->head.next);
-               LIST_ADDTAIL(&sbuf->head, &svga->dirty_buffers);
+               list_addtail(&sbuf->head, &svga->dirty_buffers);
             }
          }
          else if (ret == PIPE_ERROR_OUT_OF_MEMORY) {

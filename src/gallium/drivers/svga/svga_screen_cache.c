@@ -446,7 +446,7 @@ svga_screen_cache_init(struct svga_screen *svgascreen)
 
    list_inithead(&cache->empty);
    for (i = 0; i < SVGA_HOST_SURFACE_CACHE_SIZE; ++i)
-      LIST_ADDTAIL(&cache->entries[i].head, &cache->empty);
+      list_addtail(&cache->entries[i].head, &cache->empty);
 
    return PIPE_OK;
 }

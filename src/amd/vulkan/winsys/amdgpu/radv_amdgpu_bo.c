@@ -291,7 +291,7 @@ static void radv_amdgpu_add_buffer_to_global_list(struct radv_amdgpu_winsys_bo *
 
 	if (bo->ws->debug_all_bos) {
 		pthread_mutex_lock(&ws->global_bo_list_lock);
-		LIST_ADDTAIL(&bo->global_list_item, &ws->global_bo_list);
+		list_addtail(&bo->global_list_item, &ws->global_bo_list);
 		ws->num_buffers++;
 		pthread_mutex_unlock(&ws->global_bo_list_lock);
 	}
