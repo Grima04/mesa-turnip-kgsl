@@ -155,7 +155,7 @@ static struct pipe_context *r600_create_context(struct pipe_screen *screen,
 		goto fail;
 
 	rctx->screen = rscreen;
-	LIST_INITHEAD(&rctx->texture_buffers);
+	list_inithead(&rctx->texture_buffers);
 
 	r600_init_blit_functions(rctx);
 

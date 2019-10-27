@@ -368,7 +368,7 @@ static struct queue_data *new_queue_data(VkQueue queue,
    data->flags = family_props->queueFlags;
    data->timestamp_mask = (1ull << family_props->timestampValidBits) - 1;
    data->family_index = family_index;
-   LIST_INITHEAD(&data->running_command_buffer);
+   list_inithead(&data->running_command_buffer);
    map_object(HKEY(data->queue), data);
 
    /* Fence synchronizing access to queries on that queue. */

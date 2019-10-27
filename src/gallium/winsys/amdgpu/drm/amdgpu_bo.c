@@ -664,7 +664,7 @@ struct pb_slab *amdgpu_bo_slab_alloc(void *priv, unsigned heap,
    if (!slab->entries)
       goto fail_buffer;
 
-   LIST_INITHEAD(&slab->base.free);
+   list_inithead(&slab->base.free);
 
    base_id = __sync_fetch_and_add(&ws->next_bo_unique_id, slab->base.num_entries);
 
@@ -1017,7 +1017,7 @@ amdgpu_bo_sparse_create(struct amdgpu_winsys *ws, uint64_t size,
    if (!bo->u.sparse.commitments)
       goto error_alloc_commitments;
 
-   LIST_INITHEAD(&bo->u.sparse.backing);
+   list_inithead(&bo->u.sparse.backing);
 
    /* For simplicity, we always map a multiple of the page size. */
    map_size = align64(size, RADEON_SPARSE_PAGE_SIZE);

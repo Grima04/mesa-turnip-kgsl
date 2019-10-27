@@ -805,11 +805,11 @@ st_create_context_priv(struct gl_context *ctx, struct pipe_context *pipe,
    st_init_driver_flags(st);
 
    /* Initialize context's winsys buffers list */
-   LIST_INITHEAD(&st->winsys_buffers);
+   list_inithead(&st->winsys_buffers);
 
-   LIST_INITHEAD(&st->zombie_sampler_views.list.node);
+   list_inithead(&st->zombie_sampler_views.list.node);
    simple_mtx_init(&st->zombie_sampler_views.mutex, mtx_plain);
-   LIST_INITHEAD(&st->zombie_shaders.list.node);
+   list_inithead(&st->zombie_shaders.list.node);
    simple_mtx_init(&st->zombie_shaders.mutex, mtx_plain);
 
    return st;

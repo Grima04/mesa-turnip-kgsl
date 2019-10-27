@@ -1923,7 +1923,7 @@ void si_init_query_functions(struct si_context *sctx)
 		sctx->b.render_condition = si_render_condition;
 	}
 
-	LIST_INITHEAD(&sctx->active_queries);
+	list_inithead(&sctx->active_queries);
 }
 
 void si_init_screen_query_functions(struct si_screen *sscreen)

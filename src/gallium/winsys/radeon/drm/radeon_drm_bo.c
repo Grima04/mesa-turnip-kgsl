@@ -796,7 +796,7 @@ struct pb_slab *radeon_bo_slab_alloc(void *priv, unsigned heap,
     if (!slab->entries)
         goto fail_buffer;
 
-    LIST_INITHEAD(&slab->base.free);
+    list_inithead(&slab->base.free);
 
     base_hash = __sync_fetch_and_add(&ws->next_bo_hash, slab->base.num_entries);
 

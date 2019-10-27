@@ -212,7 +212,7 @@ pb_slabs_init(struct pb_slabs *slabs,
    slabs->slab_alloc = slab_alloc;
    slabs->slab_free = slab_free;
 
-   LIST_INITHEAD(&slabs->reclaim);
+   list_inithead(&slabs->reclaim);
 
    num_groups = slabs->num_orders * slabs->num_heaps;
    slabs->groups = CALLOC(num_groups, sizeof(*slabs->groups));
@@ -221,7 +221,7 @@ pb_slabs_init(struct pb_slabs *slabs,
 
    for (i = 0; i < num_groups; ++i) {
       struct pb_slab_group *group = &slabs->groups[i];
-      LIST_INITHEAD(&group->slabs);
+      list_inithead(&group->slabs);
    }
 
    (void) mtx_init(&slabs->mutex, mtx_plain);

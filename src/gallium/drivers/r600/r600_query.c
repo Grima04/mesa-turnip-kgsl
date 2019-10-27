@@ -2125,7 +2125,7 @@ void r600_query_init(struct r600_common_context *rctx)
 	if (((struct r600_common_screen*)rctx->b.screen)->info.num_render_backends > 0)
 	    rctx->b.render_condition = r600_render_condition;
 
-	LIST_INITHEAD(&rctx->active_queries);
+	list_inithead(&rctx->active_queries);
 }
 
 void r600_init_screen_query_functions(struct r600_common_screen *rscreen)

@@ -290,7 +290,7 @@ pb_cache_init(struct pb_cache *mgr, uint num_heaps,
       return;
 
    for (i = 0; i < num_heaps; i++)
-      LIST_INITHEAD(&mgr->buckets[i]);
+      list_inithead(&mgr->buckets[i]);
 
    (void) mtx_init(&mgr->mutex, mtx_plain);
    mgr->cache_size = 0;

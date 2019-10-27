@@ -426,10 +426,10 @@ static OMX_ERRORTYPE h264e_prc_create_encoder(void *ap_obj)
    if (!priv->t_pipe)
       return OMX_ErrorInsufficientResources;
 
-   LIST_INITHEAD(&priv->free_tasks);
-   LIST_INITHEAD(&priv->used_tasks);
-   LIST_INITHEAD(&priv->b_frames);
-   LIST_INITHEAD(&priv->stacked_tasks);
+   list_inithead(&priv->free_tasks);
+   list_inithead(&priv->used_tasks);
+   list_inithead(&priv->b_frames);
+   list_inithead(&priv->stacked_tasks);
 
    return OMX_ErrorNone;
 }

@@ -70,7 +70,7 @@ virgl_resource_cache_init(struct virgl_resource_cache *cache,
                           virgl_resource_cache_entry_release_func destroy_func,
                           void *user_data)
 {
-   LIST_INITHEAD(&cache->resources);
+   list_inithead(&cache->resources);
    cache->timeout_usecs = timeout_usecs;
    cache->entry_is_busy_func = is_busy_func;
    cache->entry_release_func = destroy_func;

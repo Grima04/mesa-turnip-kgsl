@@ -898,7 +898,7 @@ hud_pane_create(struct hud_context *hud,
    pane->sort_items = sort_items;
    pane->initial_max_value = max_value;
    hud_pane_set_max_value(pane, max_value);
-   LIST_INITHEAD(&pane->graph_list);
+   list_inithead(&pane->graph_list);
    return pane;
 }
 
@@ -1885,7 +1885,7 @@ hud_create(struct cso_context *cso, struct hud_context *share)
    hud->constbuf.buffer_size = sizeof(hud->constants);
    hud->constbuf.user_buffer = &hud->constants;
 
-   LIST_INITHEAD(&hud->pane_list);
+   list_inithead(&hud->pane_list);
 
    /* setup sig handler once for all hud contexts */
 #ifdef PIPE_OS_UNIX

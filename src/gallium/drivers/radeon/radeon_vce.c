@@ -91,7 +91,7 @@ static void reset_cpb(struct rvce_encoder *enc)
 {
 	unsigned i;
 
-	LIST_INITHEAD(&enc->cpb_slots);
+	list_inithead(&enc->cpb_slots);
 	for (i = 0; i < enc->cpb_num; ++i) {
 		struct rvce_cpb_slot *slot = &enc->cpb_array[i];
 		slot->index = i;

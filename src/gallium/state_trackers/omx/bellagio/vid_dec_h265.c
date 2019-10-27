@@ -1002,7 +1002,7 @@ void vid_dec_h265_Init(vid_dec_PrivateType *priv)
 {
    priv->picture.base.profile = PIPE_VIDEO_PROFILE_HEVC_MAIN;
 
-   LIST_INITHEAD(&priv->codec_data.h265.dpb_list);
+   list_inithead(&priv->codec_data.h265.dpb_list);
    priv->codec_data.h265.ref_pic_set_list = (struct ref_pic_set *)
       CALLOC(MAX_NUM_REF_PICS, sizeof(struct ref_pic_set));
 

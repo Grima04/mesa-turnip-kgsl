@@ -436,15 +436,15 @@ svga_screen_cache_init(struct svga_screen *svgascreen)
    (void) mtx_init(&cache->mutex, mtx_plain);
 
    for (i = 0; i < SVGA_HOST_SURFACE_CACHE_BUCKETS; ++i)
-      LIST_INITHEAD(&cache->bucket[i]);
+      list_inithead(&cache->bucket[i]);
 
-   LIST_INITHEAD(&cache->unused);
+   list_inithead(&cache->unused);
 
-   LIST_INITHEAD(&cache->validated);
+   list_inithead(&cache->validated);
 
-   LIST_INITHEAD(&cache->invalidated);
+   list_inithead(&cache->invalidated);
 
-   LIST_INITHEAD(&cache->empty);
+   list_inithead(&cache->empty);
    for (i = 0; i < SVGA_HOST_SURFACE_CACHE_SIZE; ++i)
       LIST_ADDTAIL(&cache->entries[i].head, &cache->empty);
 

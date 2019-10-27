@@ -2627,7 +2627,7 @@ threaded_context_create(struct pipe_context *pipe,
       util_queue_fence_init(&tc->batch_slots[i].fence);
    }
 
-   LIST_INITHEAD(&tc->unflushed_queries);
+   list_inithead(&tc->unflushed_queries);
 
    slab_create_child(&tc->pool_transfers, parent_transfer_pool);
 

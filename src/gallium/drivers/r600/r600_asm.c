@@ -54,11 +54,11 @@ static struct r600_bytecode_cf *r600_bytecode_cf(void)
 
 	if (!cf)
 		return NULL;
-	LIST_INITHEAD(&cf->list);
-	LIST_INITHEAD(&cf->alu);
-	LIST_INITHEAD(&cf->vtx);
-	LIST_INITHEAD(&cf->tex);
-	LIST_INITHEAD(&cf->gds);
+	list_inithead(&cf->list);
+	list_inithead(&cf->alu);
+	list_inithead(&cf->vtx);
+	list_inithead(&cf->tex);
+	list_inithead(&cf->gds);
 	return cf;
 }
 
@@ -68,7 +68,7 @@ static struct r600_bytecode_alu *r600_bytecode_alu(void)
 
 	if (!alu)
 		return NULL;
-	LIST_INITHEAD(&alu->list);
+	list_inithead(&alu->list);
 	return alu;
 }
 
@@ -78,7 +78,7 @@ static struct r600_bytecode_vtx *r600_bytecode_vtx(void)
 
 	if (!vtx)
 		return NULL;
-	LIST_INITHEAD(&vtx->list);
+	list_inithead(&vtx->list);
 	return vtx;
 }
 
@@ -88,7 +88,7 @@ static struct r600_bytecode_tex *r600_bytecode_tex(void)
 
 	if (!tex)
 		return NULL;
-	LIST_INITHEAD(&tex->list);
+	list_inithead(&tex->list);
 	return tex;
 }
 
@@ -98,7 +98,7 @@ static struct r600_bytecode_gds *r600_bytecode_gds(void)
 
 	if (gds == NULL)
 		return NULL;
-	LIST_INITHEAD(&gds->list);
+	list_inithead(&gds->list);
 	return gds;
 }
 
@@ -154,7 +154,7 @@ void r600_bytecode_init(struct r600_bytecode *bc,
 		bc->r6xx_nop_after_rel_dst = 0;
 	}
 
-	LIST_INITHEAD(&bc->cf);
+	list_inithead(&bc->cf);
 	bc->chip_class = chip_class;
 	bc->family = family;
 	bc->has_compressed_msaa_texturing = has_compressed_msaa_texturing;
@@ -1867,30 +1867,30 @@ void r600_bytecode_clear(struct r600_bytecode *bc)
 			free(alu);
 		}
 
-		LIST_INITHEAD(&cf->alu);
+		list_inithead(&cf->alu);
 
 		LIST_FOR_EACH_ENTRY_SAFE(tex, next_tex, &cf->tex, list) {
 			free(tex);
 		}
 
-		LIST_INITHEAD(&cf->tex);
+		list_inithead(&cf->tex);
 
 		LIST_FOR_EACH_ENTRY_SAFE(vtx, next_vtx, &cf->vtx, list) {
 			free(vtx);
 		}
 
-		LIST_INITHEAD(&cf->vtx);
+		list_inithead(&cf->vtx);
 
 		LIST_FOR_EACH_ENTRY_SAFE(gds, next_gds, &cf->gds, list) {
 			free(gds);
 		}
 
-		LIST_INITHEAD(&cf->gds);
+		list_inithead(&cf->gds);
 
 		free(cf);
 	}
 
-	LIST_INITHEAD(&cf->list);
+	list_inithead(&cf->list);
 }
 
 static int print_swizzle(unsigned swz)

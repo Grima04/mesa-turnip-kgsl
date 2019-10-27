@@ -215,7 +215,7 @@ vmw_fence_create(struct pb_fence_ops *fence_ops, uint32_t handle,
 
    if (vmw_fence_seq_is_signaled(seqno, ops->last_signaled, seqno)) {
       p_atomic_set(&fence->signalled, 1);
-      LIST_INITHEAD(&fence->ops_list);
+      list_inithead(&fence->ops_list);
    } else {
       p_atomic_set(&fence->signalled, 0);
       LIST_ADDTAIL(&fence->ops_list, &ops->not_signaled);
@@ -486,7 +486,7 @@ vmw_fence_ops_create(struct vmw_winsys_screen *vws)
       return NULL;
 
    (void) mtx_init(&ops->mutex, mtx_plain);
-   LIST_INITHEAD(&ops->not_signaled);
+   list_inithead(&ops->not_signaled);
    ops->base.destroy = &vmw_fence_ops_destroy;
    ops->base.fence_reference = &vmw_fence_ops_fence_reference;
    ops->base.fence_signalled = &vmw_fence_ops_fence_signalled;

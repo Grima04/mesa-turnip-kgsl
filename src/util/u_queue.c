@@ -67,7 +67,7 @@ atexit_handler(void)
 static void
 global_init(void)
 {
-   LIST_INITHEAD(&queue_list);
+   list_inithead(&queue_list);
    atexit(atexit_handler);
 }
 

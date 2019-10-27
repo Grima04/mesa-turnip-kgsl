@@ -50,7 +50,7 @@ void enc_MoveTasks(struct list_head *from, struct list_head *to)
    from->next->prev = to->prev;
    from->prev->next = to;
    to->prev = from->prev;
-   LIST_INITHEAD(from);
+   list_inithead(from);
 }
 
 static void enc_GetPictureParamPreset(struct pipe_h264_enc_picture_desc *picture)

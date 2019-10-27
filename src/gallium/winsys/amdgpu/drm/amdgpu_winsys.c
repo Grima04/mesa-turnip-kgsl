@@ -383,7 +383,7 @@ amdgpu_winsys_create(int fd, const struct pipe_screen_config *config,
       /* init reference */
       pipe_reference_init(&aws->reference, 1);
 
-      LIST_INITHEAD(&aws->global_bo_list);
+      list_inithead(&aws->global_bo_list);
       aws->bo_export_table = util_hash_table_create(hash_pointer, compare_pointers);
 
       (void) simple_mtx_init(&aws->global_bo_list_lock, mtx_plain);

@@ -504,7 +504,7 @@ struct pipe_query *gfx10_sh_query_create(struct si_screen *screen,
 
 void gfx10_init_query(struct si_context *sctx)
 {
-	LIST_INITHEAD(&sctx->shader_query_buffers);
+	list_inithead(&sctx->shader_query_buffers);
 	sctx->atoms.s.shader_query.emit = emit_shader_query;
 }
 

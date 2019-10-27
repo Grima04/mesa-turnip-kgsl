@@ -38,7 +38,7 @@ nouveau_fence_new(struct nouveau_screen *screen, struct nouveau_fence **fence)
 
    (*fence)->screen = screen;
    (*fence)->ref = 1;
-   LIST_INITHEAD(&(*fence)->work);
+   list_inithead(&(*fence)->work);
 
    return true;
 }

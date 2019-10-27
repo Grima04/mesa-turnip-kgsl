@@ -235,10 +235,10 @@ static OMX_ERRORTYPE vid_enc_Constructor(OMX_COMPONENTTYPE *comp, OMX_STRING nam
    priv->scale.xWidth = OMX_VID_ENC_SCALING_WIDTH_DEFAULT;
    priv->scale.xHeight = OMX_VID_ENC_SCALING_WIDTH_DEFAULT;
 
-   LIST_INITHEAD(&priv->free_tasks);
-   LIST_INITHEAD(&priv->used_tasks);
-   LIST_INITHEAD(&priv->b_frames);
-   LIST_INITHEAD(&priv->stacked_tasks);
+   list_inithead(&priv->free_tasks);
+   list_inithead(&priv->used_tasks);
+   list_inithead(&priv->b_frames);
+   list_inithead(&priv->stacked_tasks);
 
    return OMX_ErrorNone;
 }
@@ -658,7 +658,7 @@ static OMX_ERRORTYPE vid_enc_AllocateInBuffer(omx_base_PortType *port, OMX_INOUT
       return OMX_ErrorInsufficientResources;
    }
 
-   LIST_INITHEAD(&inp->tasks);
+   list_inithead(&inp->tasks);
 
    FREE((*buf)->pBuffer);
    r = enc_AllocateBackTexture(port, &inp->resource, &inp->transfer, &(*buf)->pBuffer);
@@ -687,7 +687,7 @@ static OMX_ERRORTYPE vid_enc_UseInBuffer(omx_base_PortType *port, OMX_BUFFERHEAD
       return OMX_ErrorInsufficientResources;
    }
 
-   LIST_INITHEAD(&inp->tasks);
+   list_inithead(&inp->tasks);
 
    return OMX_ErrorNone;
 }

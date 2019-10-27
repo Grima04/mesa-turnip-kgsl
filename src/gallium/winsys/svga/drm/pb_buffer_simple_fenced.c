@@ -835,10 +835,10 @@ simple_fenced_bufmgr_create(struct pb_manager *provider,
    fenced_mgr->provider = provider;
    fenced_mgr->ops = ops;
 
-   LIST_INITHEAD(&fenced_mgr->fenced);
+   list_inithead(&fenced_mgr->fenced);
    fenced_mgr->num_fenced = 0;
 
-   LIST_INITHEAD(&fenced_mgr->unfenced);
+   list_inithead(&fenced_mgr->unfenced);
    fenced_mgr->num_unfenced = 0;
 
    (void) mtx_init(&fenced_mgr->mutex, mtx_plain);

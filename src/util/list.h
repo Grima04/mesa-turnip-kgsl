@@ -158,7 +158,6 @@ static inline void list_validate(const struct list_head *list)
       assert(node->next->prev == node && node->prev->next == node);
 }
 
-#define LIST_INITHEAD(__item) list_inithead(__item)
 #define LIST_ADD(__item, __list) list_add(__item, __list)
 #define LIST_ADDTAIL(__item, __list) list_addtail(__item, __list)
 #define LIST_REPLACE(__from, __to) list_replace(__from, __to)

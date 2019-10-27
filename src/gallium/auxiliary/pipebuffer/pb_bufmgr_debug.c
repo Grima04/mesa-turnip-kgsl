@@ -477,7 +477,7 @@ pb_debug_manager_create(struct pb_manager *provider,
    mgr->overflow_size = overflow_size;
     
    (void) mtx_init(&mgr->mutex, mtx_plain);
-   LIST_INITHEAD(&mgr->list);
+   list_inithead(&mgr->list);
 
    return &mgr->base;
 }

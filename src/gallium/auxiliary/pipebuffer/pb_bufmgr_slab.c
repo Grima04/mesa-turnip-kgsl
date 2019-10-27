@@ -333,8 +333,8 @@ pb_slab_create(struct pb_slab_manager *mgr)
       goto out_err1;
    }
 
-   LIST_INITHEAD(&slab->head);
-   LIST_INITHEAD(&slab->freeBuffers);
+   list_inithead(&slab->head);
+   list_inithead(&slab->freeBuffers);
    slab->numBuffers = numBuffers;
    slab->numFree = 0;
    slab->mgr = mgr;
@@ -470,7 +470,7 @@ pb_slab_manager_create(struct pb_manager *provider,
    mgr->slabSize = slabSize;
    mgr->desc = *desc;
 
-   LIST_INITHEAD(&mgr->slabs);
+   list_inithead(&mgr->slabs);
    
    (void) mtx_init(&mgr->mutex, mtx_plain);
 

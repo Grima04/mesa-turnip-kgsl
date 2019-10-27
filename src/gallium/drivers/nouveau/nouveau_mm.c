@@ -142,7 +142,7 @@ mm_slab_new(struct nouveau_mman *cache, int chunk_order)
       return PIPE_ERROR_OUT_OF_MEMORY;
    }
 
-   LIST_INITHEAD(&slab->head);
+   list_inithead(&slab->head);
 
    slab->cache = cache;
    slab->order = chunk_order;
@@ -255,9 +255,9 @@ nouveau_mm_create(struct nouveau_device *dev, uint32_t domain,
    cache->allocated = 0;
 
    for (i = 0; i < MM_NUM_BUCKETS; ++i) {
-      LIST_INITHEAD(&cache->bucket[i].free);
-      LIST_INITHEAD(&cache->bucket[i].used);
-      LIST_INITHEAD(&cache->bucket[i].full);
+      list_inithead(&cache->bucket[i].free);
+      list_inithead(&cache->bucket[i].used);
+      list_inithead(&cache->bucket[i].full);
    }
 
    return cache;

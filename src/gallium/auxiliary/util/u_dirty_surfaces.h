@@ -50,7 +50,7 @@ struct util_dirty_surface
 static inline void
 util_dirty_surfaces_init(struct util_dirty_surfaces *ds)
 {
-   LIST_INITHEAD(&ds->dirty_list);
+   list_inithead(&ds->dirty_list);
 }
 
 static inline void
@@ -93,7 +93,7 @@ util_dirty_surfaces_use_for_sampling_with(struct pipe_context *pipe, struct util
 static inline void
 util_dirty_surface_init(struct util_dirty_surface *ds)
 {
-   LIST_INITHEAD(&ds->dirty_list);
+   list_inithead(&ds->dirty_list);
 }
 
 static inline boolean

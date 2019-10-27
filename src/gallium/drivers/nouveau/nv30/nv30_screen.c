@@ -655,7 +655,7 @@ nv30_screen_create(struct nouveau_device *dev)
    if (ret)
       FAIL_SCREEN_INIT("error creating query heap: %d\n", ret);
 
-   LIST_INITHEAD(&screen->queries);
+   list_inithead(&screen->queries);
 
    /* Vertex program resources (code/data), currently 6 of the constant
     * slots are reserved to implement user clipping planes
