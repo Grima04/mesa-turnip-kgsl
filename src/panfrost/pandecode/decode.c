@@ -2018,7 +2018,6 @@ pandecode_vertex_tiler_postfix_pre(
                 int job_no, enum mali_job_type job_type,
                 char *suffix, bool is_bifrost)
 {
-        mali_ptr shader_meta_ptr = (u64) (uintptr_t) (p->_shader_upper << 4);
         struct pandecode_mapped_memory *attr_mem;
 
         /* On Bifrost, since the tiler heap (for tiler jobs) and the scratchpad
@@ -2044,9 +2043,9 @@ pandecode_vertex_tiler_postfix_pre(
         int varying_count = 0, attribute_count = 0, uniform_count = 0, uniform_buffer_count = 0;
         int texture_count = 0, sampler_count = 0;
 
-        if (shader_meta_ptr) {
-                struct pandecode_mapped_memory *smem = pandecode_find_mapped_gpu_mem_containing(shader_meta_ptr);
-                struct mali_shader_meta *PANDECODE_PTR_VAR(s, smem, shader_meta_ptr);
+        if (p->shader) {
+                struct pandecode_mapped_memory *smem = pandecode_find_mapped_gpu_mem_containing(p->shader);
+                struct mali_shader_meta *PANDECODE_PTR_VAR(s, smem, p->shader);
 
                 /* Disassemble ahead-of-time to get stats. Initialize with
                  * stats for the missing-shader case so we get validation
@@ -2066,7 +2065,7 @@ pandecode_vertex_tiler_postfix_pre(
                 if (s->shader & ~0xF)
                         info = pandecode_shader_disassemble(s->shader & ~0xF, job_no, job_type, is_bifrost);
 
-                pandecode_log("struct mali_shader_meta shader_meta_%"PRIx64"_%d%s = {\n", shader_meta_ptr, job_no, suffix);
+                pandecode_log("struct mali_shader_meta shader_meta_%"PRIx64"_%d%s = {\n", p->shader, job_no, suffix);
                 pandecode_indent++;
 
                 /* Save for dumps */
@@ -2389,7 +2388,10 @@ pandecode_vertex_tiler_postfix_pre(
 static void
 pandecode_vertex_tiler_postfix(const struct mali_vertex_tiler_postfix *p, int job_no, bool is_bifrost)
 {
-        if (!(p->position_varying || p->occlusion_counter || p->flags))
+        if (p->shader & 0xF)
+                pandecode_msg("warn: shader tagged %X\n", p->shader & 0xF);
+
+        if (!(p->position_varying || p->occlusion_counter))
                 return;
 
         pandecode_log(".postfix = {\n");
@@ -2397,9 +2399,6 @@ pandecode_vertex_tiler_postfix(const struct mali_vertex_tiler_postfix *p, int jo
 
         MEMORY_PROP(p, position_varying);
         MEMORY_PROP(p, occlusion_counter);
-
-        if (p->flags)
-                pandecode_prop("flags = %d", p->flags);
 
         pandecode_indent--;
         pandecode_log("},\n");
@@ -2778,8 +2777,7 @@ pandecode_jc(mali_ptr jc_gpu_va, bool bifrost)
                              h->job_type != JOB_TYPE_FRAGMENT ? 4 : 0;
                 mali_ptr payload_ptr = jc_gpu_va + sizeof(*h) - offset;
 
-                payload = pandecode_fetch_gpu_mem(mem, payload_ptr,
-                                                  MALI_PAYLOAD_SIZE);
+                payload = pandecode_fetch_gpu_mem(mem, payload_ptr, 256);
 
                 int job_no = job_descriptor_number++;
 

@@ -1092,8 +1092,7 @@ struct mali_vertex_tiler_postfix {
         u64 sampler_descriptor;
 
         u64 uniforms;
-        u8 flags : 4;
-        u64 _shader_upper : MALI_SHORT_PTR_BITS - 4; /* struct shader_meta */
+        u64 shader;
         u64 attributes; /* struct attribute_buffer[] */
         u64 attribute_meta; /* attribute_meta[] */
         u64 varyings; /* struct attr */

@@ -888,14 +888,14 @@ panfrost_patch_shader_state_compute(
         struct panfrost_shader_variants *all = ctx->shader[stage];
 
         if (!all) {
-                ctx->payloads[stage].postfix._shader_upper = 0;
+                ctx->payloads[stage].postfix.shader = 0;
                 return;
         }
 
         struct panfrost_shader_state *s = &all->variants[all->active_variant];
 
-        ctx->payloads[stage].postfix._shader_upper =
-                panfrost_patch_shader_state(ctx, s, stage, should_upload) >> 4;
+        ctx->payloads[stage].postfix.shader =
+                panfrost_patch_shader_state(ctx, s, stage, should_upload);
 }
 
 /* Go through dirty flags and actualise them in the cmdstream. */
@@ -1060,7 +1060,7 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                 struct panfrost_transfer transfer = panfrost_allocate_transient(batch, size);
                 memcpy(transfer.cpu, &ctx->fragment_shader_core, sizeof(struct mali_shader_meta));
 
-                ctx->payloads[PIPE_SHADER_FRAGMENT].postfix._shader_upper = (transfer.gpu) >> 4;
+                ctx->payloads[PIPE_SHADER_FRAGMENT].postfix.shader = transfer.gpu;
 
                 if (!screen->require_sfbd) {
                         /* Additional blend descriptor tacked on for jobs using MFBD */
