@@ -275,7 +275,7 @@ debug_realloc(const char *file, unsigned line, const char *function,
    new_ftr->magic = DEBUG_MEMORY_MAGIC;
 
    mtx_lock(&list_mutex);
-   LIST_REPLACE(&old_hdr->head, &new_hdr->head);
+   list_replace(&old_hdr->head, &new_hdr->head);
    mtx_unlock(&list_mutex);
 
    /* copy data */
