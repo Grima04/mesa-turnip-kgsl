@@ -61,18 +61,10 @@ lava-container:arm64:
   image: $CI_REGISTRY_IMAGE/debian/$LAVA_DEBIAN_VERSION:$DEBIAN_ARCH-$LAVA_IMAGE_TAG
   extends:
     - .build-linux
-  # Use ccache transparently, and print stats before/after
-  before_script:
-    - mkdir -p results mesa-build
-    - mkdir -p ccache
-    - export PATH="/usr/lib/ccache:$PATH"
-    - export CCACHE_BASEDIR="$PWD"
-    - export CCACHE_DIR="$PWD/ccache"
-    - ccache --max-size=1500M
-    - ccache --zero-stats || true
-    - ccache --show-stats || true
   script:
     # Build Mesa
+    - mkdir -p results mesa-build
+    - mkdir -p ccache
     - /usr/share/meson/debcrossgen --arch ${DEBIAN_ARCH} -o /tmp/cross_file.txt
     - meson . mesa-build
         --cross-file /tmp/cross_file.txt
@@ -120,9 +112,6 @@ lava-container:arm64:
         --base-artifacts-url $CI_PROJECT_URL/-/jobs/$CI_JOB_ID/artifacts/raw/results
         --device-types ${DEVICE_TYPES}
         --kernel-image-name ${KERNEL_IMAGE_NAME}
-  after_script:
-    - export CCACHE_DIR="$PWD/ccache"
-    - ccache --show-stats
   artifacts:
     when: always
     paths:
