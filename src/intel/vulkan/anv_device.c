@@ -3037,18 +3037,6 @@ anv_vma_free(struct anv_device *device, struct anv_bo *bo)
    bo->offset = 0;
 }
 
-VkResult
-anv_bo_init_new(struct anv_bo *bo, struct anv_device *device, uint64_t size)
-{
-   uint32_t gem_handle = anv_gem_create(device, size);
-   if (!gem_handle)
-      return vk_error(VK_ERROR_OUT_OF_DEVICE_MEMORY);
-
-   anv_bo_init(bo, gem_handle, size);
-
-   return VK_SUCCESS;
-}
-
 VkResult anv_AllocateMemory(
     VkDevice                                    _device,
     const VkMemoryAllocateInfo*                 pAllocateInfo,

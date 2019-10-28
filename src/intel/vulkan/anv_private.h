@@ -647,22 +647,6 @@ struct anv_bo {
    bool from_host_ptr:1;
 };
 
-static inline void
-anv_bo_init(struct anv_bo *bo, uint32_t gem_handle, uint64_t size)
-{
-   bo->gem_handle = gem_handle;
-   bo->refcount = 1;
-   bo->index = 0;
-   bo->offset = -1;
-   bo->size = size;
-   bo->map = NULL;
-   bo->flags = 0;
-   bo->is_external = false;
-   bo->is_wrapper = false;
-   bo->has_fixed_address = false;
-   bo->from_host_ptr = false;
-}
-
 static inline struct anv_bo *
 anv_bo_unwrap(struct anv_bo *bo)
 {
@@ -1373,8 +1357,6 @@ int anv_gem_syncobj_wait(struct anv_device *device,
 
 bool anv_vma_alloc(struct anv_device *device, struct anv_bo *bo);
 void anv_vma_free(struct anv_device *device, struct anv_bo *bo);
-
-VkResult anv_bo_init_new(struct anv_bo *bo, struct anv_device *device, uint64_t size);
 
 struct anv_reloc_list {
    uint32_t                                     num_relocs;

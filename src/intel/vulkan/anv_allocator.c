@@ -389,8 +389,11 @@ anv_block_pool_init(struct anv_block_pool *pool,
       if (pool->fd == -1)
          return vk_error(VK_ERROR_INITIALIZATION_FAILED);
 
-      anv_bo_init(&pool->wrapper_bo, 0, 0);
-      pool->wrapper_bo.is_wrapper = true;
+      pool->wrapper_bo = (struct anv_bo) {
+         .refcount = 1,
+         .offset = -1,
+         .is_wrapper = true,
+      };
       pool->bo = &pool->wrapper_bo;
    }
 
@@ -1536,13 +1539,18 @@ anv_device_alloc_bo(struct anv_device *device,
    /* The kernel is going to give us whole pages anyway */
    size = align_u64(size, 4096);
 
-   struct anv_bo new_bo;
-   VkResult result = anv_bo_init_new(&new_bo, device, size);
-   if (result != VK_SUCCESS)
-      return result;
+   uint32_t gem_handle = anv_gem_create(device, size);
+   if (gem_handle == 0)
+      return vk_error(VK_ERROR_OUT_OF_DEVICE_MEMORY);
 
-   new_bo.flags = bo_flags;
-   new_bo.is_external = (alloc_flags & ANV_BO_ALLOC_EXTERNAL);
+   struct anv_bo new_bo = {
+      .gem_handle = gem_handle,
+      .refcount = 1,
+      .offset = -1,
+      .size = size,
+      .flags = bo_flags,
+      .is_external = (alloc_flags & ANV_BO_ALLOC_EXTERNAL),
+   };
 
    if (alloc_flags & ANV_BO_ALLOC_MAPPED) {
       new_bo.map = anv_gem_mmap(device, new_bo.gem_handle, 0, size, 0);
@@ -1634,12 +1642,16 @@ anv_device_import_bo_from_host_ptr(struct anv_device *device,
       }
       __sync_fetch_and_add(&bo->refcount, 1);
    } else {
-      struct anv_bo new_bo;
-      anv_bo_init(&new_bo, gem_handle, size);
-      new_bo.map = host_ptr;
-      new_bo.flags = bo_flags;
-      new_bo.is_external = true;
-      new_bo.from_host_ptr = true;
+      struct anv_bo new_bo = {
+         .gem_handle = gem_handle,
+         .refcount = 1,
+         .offset = -1,
+         .size = size,
+         .map = host_ptr,
+         .flags = bo_flags,
+         .is_external = true,
+         .from_host_ptr = true,
+      };
 
       if (!anv_vma_alloc(device, &new_bo)) {
          anv_gem_close(device, new_bo.gem_handle);
@@ -1735,10 +1747,14 @@ anv_device_import_bo(struct anv_device *device,
          return vk_error(VK_ERROR_INVALID_EXTERNAL_HANDLE);
       }
 
-      struct anv_bo new_bo;
-      anv_bo_init(&new_bo, gem_handle, size);
-      new_bo.flags = bo_flags;
-      new_bo.is_external = true;
+      struct anv_bo new_bo = {
+         .gem_handle = gem_handle,
+         .refcount = 1,
+         .offset = -1,
+         .size = size,
+         .flags = bo_flags,
+         .is_external = true,
+      };
 
       if (!anv_vma_alloc(device, &new_bo)) {
          anv_gem_close(device, new_bo.gem_handle);
