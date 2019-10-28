@@ -1568,11 +1568,8 @@ static void
 ntq_setup_fs_inputs(struct v3d_compile *c)
 {
         unsigned num_entries = 0;
-        unsigned num_components = 0;
-        nir_foreach_variable(var, &c->s->inputs) {
+        nir_foreach_variable(var, &c->s->inputs)
                 num_entries++;
-                num_components += glsl_get_components(var->type);
-        }
 
         nir_variable *vars[num_entries];
 
