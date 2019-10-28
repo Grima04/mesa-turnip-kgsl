@@ -380,6 +380,8 @@ lima_create_vs_state(struct pipe_context *pctx,
       return NULL;
    }
 
+   ralloc_free(nir);
+
    return so;
 }
 
