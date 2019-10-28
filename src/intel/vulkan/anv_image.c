@@ -1475,7 +1475,7 @@ anv_image_fill_surface_state(struct anv_device *device,
       if (device->info.gen >= 10 && aux_usage != ISL_AUX_USAGE_NONE) {
          if (aux_usage == ISL_AUX_USAGE_HIZ) {
             clear_address = (struct anv_address) {
-               .bo = &device->hiz_clear_bo,
+               .bo = device->hiz_clear_bo,
                .offset = 0,
             };
          } else {

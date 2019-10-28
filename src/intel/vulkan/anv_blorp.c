@@ -245,7 +245,7 @@ get_blorp_surf_for_anv_image(const struct anv_device *device,
           * buffer. We have a single global buffer that stores the 1.0 value.
           */
          const struct anv_address clear_color_addr = (struct anv_address) {
-            .bo = (struct anv_bo *)&device->hiz_clear_bo
+            .bo = device->hiz_clear_bo,
          };
          blorp_surf->clear_color_addr = anv_to_blorp_address(clear_color_addr);
       }

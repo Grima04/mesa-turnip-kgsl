@@ -1586,7 +1586,7 @@ setup_execbuf_for_cmd_buffer(struct anv_execbuf *execbuf,
 static VkResult
 setup_empty_execbuf(struct anv_execbuf *execbuf, struct anv_device *device)
 {
-   VkResult result = anv_execbuf_add_bo(execbuf, &device->trivial_batch_bo,
+   VkResult result = anv_execbuf_add_bo(execbuf, device->trivial_batch_bo,
                                         NULL, 0, &device->alloc);
    if (result != VK_SUCCESS)
       return result;

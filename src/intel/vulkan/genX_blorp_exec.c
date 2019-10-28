@@ -181,7 +181,7 @@ blorp_get_workaround_page(struct blorp_batch *batch)
    struct anv_cmd_buffer *cmd_buffer = batch->driver_batch;
 
    return (struct blorp_address) {
-      .buffer = &cmd_buffer->device->workaround_bo,
+      .buffer = cmd_buffer->device->workaround_bo,
    };
 }
 #endif

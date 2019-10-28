@@ -2191,35 +2191,28 @@ anv_device_init_border_colors(struct anv_device *device)
    }
 }
 
-static void
+static VkResult
 anv_device_init_trivial_batch(struct anv_device *device)
 {
-   anv_bo_init_new(&device->trivial_batch_bo, device, 4096);
-
-   if (device->instance->physicalDevice.has_exec_async)
-      device->trivial_batch_bo.flags |= EXEC_OBJECT_ASYNC;
-
-   if (device->instance->physicalDevice.use_softpin)
-      device->trivial_batch_bo.flags |= EXEC_OBJECT_PINNED;
-
-   anv_vma_alloc(device, &device->trivial_batch_bo);
-
-   void *map = anv_gem_mmap(device, device->trivial_batch_bo.gem_handle,
-                            0, 4096, 0);
+   VkResult result = anv_device_alloc_bo(device, 4096,
+                                         ANV_BO_ALLOC_MAPPED,
+                                         &device->trivial_batch_bo);
+   if (result != VK_SUCCESS)
+      return result;
 
    struct anv_batch batch = {
-      .start = map,
-      .next = map,
-      .end = map + 4096,
+      .start = device->trivial_batch_bo->map,
+      .next = device->trivial_batch_bo->map,
+      .end = device->trivial_batch_bo->map + 4096,
    };
 
    anv_batch_emit(&batch, GEN7_MI_BATCH_BUFFER_END, bbe);
    anv_batch_emit(&batch, GEN7_MI_NOOP, noop);
 
    if (!device->info.has_llc)
-      gen_clflush_range(map, batch.next - map);
+      gen_clflush_range(batch.start, batch.next - batch.start);
 
-   anv_gem_munmap(map, device->trivial_batch_bo.size);
+   return VK_SUCCESS;
 }
 
 VkResult anv_EnumerateDeviceExtensionProperties(
@@ -2306,27 +2299,24 @@ vk_priority_to_gen(int priority)
    }
 }
 
-static void
+static VkResult
 anv_device_init_hiz_clear_value_bo(struct anv_device *device)
 {
-   anv_bo_init_new(&device->hiz_clear_bo, device, 4096);
-
-   if (device->instance->physicalDevice.has_exec_async)
-      device->hiz_clear_bo.flags |= EXEC_OBJECT_ASYNC;
-
-   if (device->instance->physicalDevice.use_softpin)
-      device->hiz_clear_bo.flags |= EXEC_OBJECT_PINNED;
-
-   anv_vma_alloc(device, &device->hiz_clear_bo);
-
-   uint32_t *map = anv_gem_mmap(device, device->hiz_clear_bo.gem_handle,
-                                0, 4096, 0);
+   VkResult result = anv_device_alloc_bo(device, 4096,
+                                         ANV_BO_ALLOC_MAPPED,
+                                         &device->hiz_clear_bo);
+   if (result != VK_SUCCESS)
+      return result;
 
    union isl_color_value hiz_clear = { .u32 = { 0, } };
    hiz_clear.f32[0] = ANV_HZ_FC_VAL;
 
-   memcpy(map, hiz_clear.u32, sizeof(hiz_clear.u32));
-   anv_gem_munmap(map, device->hiz_clear_bo.size);
+   memcpy(device->hiz_clear_bo->map, hiz_clear.u32, sizeof(hiz_clear.u32));
+
+   if (!device->info.has_llc)
+      gen_clflush_range(device->hiz_clear_bo->map, sizeof(hiz_clear.u32));
+
+   return VK_SUCCESS;
 }
 
 static bool
@@ -2647,20 +2637,19 @@ VkResult anv_CreateDevice(
          goto fail_binding_table_pool;
    }
 
-   result = anv_bo_init_new(&device->workaround_bo, device, 4096);
+   result = anv_device_alloc_bo(device, 4096, 0, &device->workaround_bo);
    if (result != VK_SUCCESS)
       goto fail_surface_aux_map_pool;
 
-   if (physical_device->use_softpin)
-      device->workaround_bo.flags |= EXEC_OBJECT_PINNED;
-
-   if (!anv_vma_alloc(device, &device->workaround_bo))
+   result = anv_device_init_trivial_batch(device);
+   if (result != VK_SUCCESS)
       goto fail_workaround_bo;
 
-   anv_device_init_trivial_batch(device);
-
-   if (device->info.gen >= 10)
-      anv_device_init_hiz_clear_value_bo(device);
+   if (device->info.gen >= 10) {
+      result = anv_device_init_hiz_clear_value_bo(device);
+      if (result != VK_SUCCESS)
+         goto fail_trivial_batch_bo;
+   }
 
    anv_scratch_pool_init(device, &device->scratch_pool);
 
@@ -2694,7 +2683,7 @@ VkResult anv_CreateDevice(
       unreachable("unhandled gen");
    }
    if (result != VK_SUCCESS)
-      goto fail_workaround_bo;
+      goto fail_queue;
 
    anv_pipeline_cache_init(&device->default_pipeline_cache, device, true);
 
@@ -2708,11 +2697,15 @@ VkResult anv_CreateDevice(
 
    return VK_SUCCESS;
 
- fail_workaround_bo:
+ fail_queue:
    anv_queue_finish(&device->queue);
    anv_scratch_pool_finish(device, &device->scratch_pool);
-   anv_gem_munmap(device->workaround_bo.map, device->workaround_bo.size);
-   anv_gem_close(device, device->workaround_bo.gem_handle);
+   if (device->info.gen >= 10)
+      anv_device_release_bo(device, device->hiz_clear_bo);
+ fail_trivial_batch_bo:
+   anv_device_release_bo(device, device->trivial_batch_bo);
+ fail_workaround_bo:
+   anv_device_release_bo(device, device->workaround_bo);
  fail_surface_aux_map_pool:
    if (device->info.gen >= 12) {
       gen_aux_map_finish(device->aux_map_ctx);
@@ -2777,14 +2770,10 @@ void anv_DestroyDevice(
 
    anv_scratch_pool_finish(device, &device->scratch_pool);
 
-   anv_gem_munmap(device->workaround_bo.map, device->workaround_bo.size);
-   anv_vma_free(device, &device->workaround_bo);
-   anv_gem_close(device, device->workaround_bo.gem_handle);
-
-   anv_vma_free(device, &device->trivial_batch_bo);
-   anv_gem_close(device, device->trivial_batch_bo.gem_handle);
+   anv_device_release_bo(device, device->workaround_bo);
+   anv_device_release_bo(device, device->trivial_batch_bo);
    if (device->info.gen >= 10)
-      anv_gem_close(device, device->hiz_clear_bo.gem_handle);
+      anv_device_release_bo(device, device->hiz_clear_bo);
 
    if (device->info.gen >= 12) {
       gen_aux_map_finish(device->aux_map_ctx);

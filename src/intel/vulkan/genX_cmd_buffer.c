@@ -1909,7 +1909,7 @@ genX(cmd_buffer_apply_pipe_flushes)(struct anv_cmd_buffer *cmd_buffer)
          if (GEN_GEN == 9 && pipe.VFCacheInvalidationEnable) {
             pipe.PostSyncOperation = WriteImmediateData;
             pipe.Address =
-               (struct anv_address) { &cmd_buffer->device->workaround_bo, 0 };
+               (struct anv_address) { cmd_buffer->device->workaround_bo, 0 };
          }
       }
 
@@ -2855,7 +2855,7 @@ genX(cmd_buffer_flush_state)(struct anv_cmd_buffer *cmd_buffer)
          pc.DepthStallEnable  = true;
          pc.PostSyncOperation = WriteImmediateData;
          pc.Address           =
-            (struct anv_address) { &cmd_buffer->device->workaround_bo, 0 };
+            (struct anv_address) { cmd_buffer->device->workaround_bo, 0 };
       }
    }
 #endif
