@@ -312,7 +312,7 @@ radv_shader_compile_to_nir(struct radv_device *device,
 		assert(module->size % 4 == 0);
 
 		if (device->instance->debug_flags & RADV_DEBUG_DUMP_SPIRV)
-			radv_print_spirv(spirv, module->size, stderr);
+			radv_print_spirv(module->data, module->size, stderr);
 
 		uint32_t num_spec_entries = 0;
 		struct nir_spirv_specialization *spec_entries = NULL;
@@ -1145,7 +1145,14 @@ shader_variant_compile(struct radv_device *device,
 	if (keep_shader_info) {
 		variant->nir_string = radv_dump_nir_shaders(shaders, shader_count);
 		if (!gs_copy_shader && !module->nir) {
-			variant->spirv = (uint32_t *)module->data;
+			variant->spirv = malloc(module->size);
+			if (!variant->spirv) {
+				free(variant);
+				free(binary);
+				return NULL;
+			}
+
+			memcpy(variant->spirv, module->data, module->size);
 			variant->spirv_size = module->size;
 		}
 	}
@@ -1211,6 +1218,7 @@ radv_shader_variant_destroy(struct radv_device *device,
 	list_del(&variant->slab_list);
 	mtx_unlock(&device->shader_slab_mutex);
 
+	free(variant->spirv);
 	free(variant->nir_string);
 	free(variant->disasm_string);
 	free(variant->ir_string);

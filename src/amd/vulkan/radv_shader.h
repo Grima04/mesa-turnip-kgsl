@@ -366,7 +366,7 @@ struct radv_shader_variant {
 
 	/* debug only */
 	bool aco_used;
-	uint32_t *spirv;
+	char *spirv;
 	uint32_t spirv_size;
 	char *nir_string;
 	char *disasm_string;

@@ -643,7 +643,7 @@ radv_check_gpu_hangs(struct radv_queue *queue, struct radeon_cmdbuf *cs)
 }
 
 void
-radv_print_spirv(uint32_t *data, uint32_t size, FILE *fp)
+radv_print_spirv(const char *data, uint32_t size, FILE *fp)
 {
 	char path[] = "/tmp/fileXXXXXX";
 	char line[2048], command[128];
