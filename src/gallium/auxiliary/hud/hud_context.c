@@ -1431,7 +1431,7 @@ hud_parse_env_var(struct hud_context *hud, struct pipe_screen *screen,
          env += num;
 
          strip_hyphens(s);
-         if (added && !LIST_IS_EMPTY(&pane->graph_list)) {
+         if (added && !list_is_empty(&pane->graph_list)) {
             struct hud_graph *graph;
             graph = LIST_ENTRY(struct hud_graph, pane->graph_list.prev, head);
             strncpy(graph->name, s, sizeof(graph->name)-1);

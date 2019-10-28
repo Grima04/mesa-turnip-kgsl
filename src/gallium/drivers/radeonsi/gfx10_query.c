@@ -79,7 +79,7 @@ struct gfx10_sh_query {
 
 static void emit_shader_query(struct si_context *sctx)
 {
-	assert(!LIST_IS_EMPTY(&sctx->shader_query_buffers));
+	assert(!list_is_empty(&sctx->shader_query_buffers));
 
 	struct gfx10_sh_query_buffer *qbuf = list_last_entry(&sctx->shader_query_buffers,
 							     struct gfx10_sh_query_buffer, list);
@@ -119,7 +119,7 @@ static bool gfx10_alloc_query_buffer(struct si_context *sctx)
 
 	struct gfx10_sh_query_buffer *qbuf = NULL;
 
-	if (!LIST_IS_EMPTY(&sctx->shader_query_buffers)) {
+	if (!list_is_empty(&sctx->shader_query_buffers)) {
 		qbuf = list_last_entry(&sctx->shader_query_buffers,
 				       struct gfx10_sh_query_buffer, list);
 		if (qbuf->head + sizeof(struct gfx10_sh_query_buffer_mem) <= qbuf->buf->b.b.width0)
@@ -510,7 +510,7 @@ void gfx10_init_query(struct si_context *sctx)
 
 void gfx10_destroy_query(struct si_context *sctx)
 {
-	while (!LIST_IS_EMPTY(&sctx->shader_query_buffers)) {
+	while (!list_is_empty(&sctx->shader_query_buffers)) {
 		struct gfx10_sh_query_buffer *qbuf =
 			list_first_entry(&sctx->shader_query_buffers,
 					 struct gfx10_sh_query_buffer, list);

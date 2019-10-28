@@ -181,10 +181,10 @@ nouveau_mm_allocate(struct nouveau_mman *cache,
       return NULL;
    }
 
-   if (!LIST_IS_EMPTY(&bucket->used)) {
+   if (!list_is_empty(&bucket->used)) {
       slab = LIST_ENTRY(struct mm_slab, bucket->used.next, head);
    } else {
-      if (LIST_IS_EMPTY(&bucket->free)) {
+      if (list_is_empty(&bucket->free)) {
          mm_slab_new(cache, MAX2(mm_get_order(size), MM_MIN_ORDER));
       }
       slab = LIST_ENTRY(struct mm_slab, bucket->free.next, head);
@@ -284,8 +284,8 @@ nouveau_mm_destroy(struct nouveau_mman *cache)
       return;
 
    for (i = 0; i < MM_NUM_BUCKETS; ++i) {
-      if (!LIST_IS_EMPTY(&cache->bucket[i].used) ||
-          !LIST_IS_EMPTY(&cache->bucket[i].full))
+      if (!list_is_empty(&cache->bucket[i].used) ||
+          !list_is_empty(&cache->bucket[i].full))
          debug_printf("WARNING: destroying GPU memory cache "
                       "with some buffers still in use\n");
 

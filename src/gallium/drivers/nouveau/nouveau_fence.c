@@ -100,7 +100,7 @@ nouveau_fence_del(struct nouveau_fence *fence)
       }
    }
 
-   if (!LIST_IS_EMPTY(&fence->work)) {
+   if (!list_is_empty(&fence->work)) {
       debug_printf("WARNING: deleting fence with work still pending !\n");
       nouveau_fence_trigger_work(fence);
    }

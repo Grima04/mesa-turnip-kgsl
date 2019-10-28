@@ -154,7 +154,7 @@ void si_flush_gfx_cs(struct si_context *ctx, unsigned flags,
 	}
 
 	if (ctx->has_graphics) {
-		if (!LIST_IS_EMPTY(&ctx->active_queries))
+		if (!list_is_empty(&ctx->active_queries))
 			si_suspend_queries(ctx);
 
 		ctx->streamout.suspended = false;
@@ -426,7 +426,7 @@ void si_begin_new_gfx_cs(struct si_context *ctx)
 		si_streamout_buffers_dirty(ctx);
 	}
 
-	if (!LIST_IS_EMPTY(&ctx->active_queries))
+	if (!list_is_empty(&ctx->active_queries))
 		si_resume_queries(ctx);
 
 	assert(!ctx->gfx_cs->prev_dw);

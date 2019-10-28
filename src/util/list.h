@@ -161,9 +161,6 @@ static inline void list_validate(const struct list_head *list)
 #define LIST_ENTRY(__type, __item, __field)   \
     ((__type *)(((char *)(__item)) - offsetof(__type, __field)))
 
-#define LIST_IS_EMPTY(__list)                   \
-    ((__list)->next == (__list))
-
 /**
  * Cast from a pointer to a member of a struct back to the containing struct.
  *

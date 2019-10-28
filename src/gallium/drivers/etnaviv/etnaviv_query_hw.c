@@ -176,7 +176,7 @@ etna_hw_get_query_result(struct etna_context *ctx, struct etna_query *q,
    struct etna_resource *rsc = etna_resource(hq->prsc);
    const struct etna_hw_sample_provider *p = hq->provider;
 
-   assert(LIST_IS_EMPTY(&hq->node));
+   assert(list_is_empty(&hq->node));
 
    if (!wait) {
       int ret;

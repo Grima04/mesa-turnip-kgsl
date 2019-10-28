@@ -256,7 +256,7 @@ svga_screen_cache_add(struct svga_screen *svgascreen,
       }
    }
 
-   if (!LIST_IS_EMPTY(&cache->empty)) {
+   if (!list_is_empty(&cache->empty)) {
       /* An empty entry has no surface associated with it.
        * Use the first empty entry.
        */
@@ -266,7 +266,7 @@ svga_screen_cache_add(struct svga_screen *svgascreen,
       /* Remove from LRU list */
       list_del(&entry->head);
    }
-   else if (!LIST_IS_EMPTY(&cache->unused)) {
+   else if (!list_is_empty(&cache->unused)) {
       /* free the last used buffer and reuse its entry */
       entry = LIST_ENTRY(struct svga_host_surface_cache_entry,
                          cache->unused.prev, head);

@@ -123,7 +123,7 @@ fd_acc_get_query_result(struct fd_context *ctx, struct fd_query *q,
 
 	DBG("%p: wait=%d, active=%d", q, wait, q->active);
 
-	assert(LIST_IS_EMPTY(&aq->node));
+	assert(list_is_empty(&aq->node));
 
 	/* if !wait, then check the last sample (the one most likely to
 	 * not be ready yet) and bail if it is not ready:

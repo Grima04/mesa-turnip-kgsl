@@ -130,7 +130,7 @@ void vid_enc_BufferEncoded_common(vid_enc_PrivateType * priv, OMX_BUFFERHEADERTY
    unsigned size;
 
 #if ENABLE_ST_OMX_BELLAGIO
-   if (!inp || LIST_IS_EMPTY(&inp->tasks)) {
+   if (!inp || list_is_empty(&inp->tasks)) {
       input->nFilledLen = 0; /* mark buffer as empty */
       enc_MoveTasks(&priv->used_tasks, &inp->tasks);
       return;
@@ -182,7 +182,7 @@ struct encode_task *enc_NeedTask_common(vid_enc_PrivateType * priv, OMX_VIDEO_PO
    struct pipe_video_buffer templat = {};
    struct encode_task *task;
 
-   if (!LIST_IS_EMPTY(&priv->free_tasks)) {
+   if (!list_is_empty(&priv->free_tasks)) {
       task = LIST_ENTRY(struct encode_task, priv->free_tasks.next, list);
       list_del(&task->list);
       return task;

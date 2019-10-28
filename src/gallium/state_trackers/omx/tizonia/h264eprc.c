@@ -268,7 +268,7 @@ static void enc_ClearBframes(vid_enc_PrivateType * priv, struct input_buf_privat
 {
    struct encode_task *task;
 
-   if (LIST_IS_EMPTY(&priv->b_frames))
+   if (list_is_empty(&priv->b_frames))
       return;
 
    task = LIST_ENTRY(struct encode_task, priv->b_frames.prev, list);
@@ -382,7 +382,7 @@ static OMX_ERRORTYPE encode_frame(vid_enc_PrivateType * priv, OMX_BUFFERHEADERTY
       enc_MoveTasks(&priv->b_frames, &inp->tasks);
    }
 
-   if (LIST_IS_EMPTY(&inp->tasks)) {
+   if (list_is_empty(&inp->tasks)) {
       return h264e_buffer_emptied(priv, in_buf);
    } else {
       return h264e_manage_buffers(priv);

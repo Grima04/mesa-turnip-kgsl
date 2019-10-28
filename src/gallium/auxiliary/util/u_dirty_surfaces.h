@@ -85,7 +85,7 @@ util_dirty_surfaces_use_levels_for_sampling(struct pipe_context *pipe, struct ut
 static inline void
 util_dirty_surfaces_use_for_sampling_with(struct pipe_context *pipe, struct util_dirty_surfaces *dss, struct pipe_sampler_view *psv, struct pipe_sampler_state *pss, util_dirty_surface_flush_t flush)
 {
-   if(!LIST_IS_EMPTY(&dss->dirty_list))
+   if(!list_is_empty(&dss->dirty_list))
       util_dirty_surfaces_use_levels_for_sampling(pipe, dss, (unsigned)pss->min_lod + psv->u.tex.first_level,
 						  MIN2((unsigned)ceilf(pss->max_lod) + psv->u.tex.first_level, psv->u.tex.last_level), flush);
 }
@@ -99,20 +99,20 @@ util_dirty_surface_init(struct util_dirty_surface *ds)
 static inline boolean
 util_dirty_surface_is_dirty(struct util_dirty_surface *ds)
 {
-   return !LIST_IS_EMPTY(&ds->dirty_list);
+   return !list_is_empty(&ds->dirty_list);
 }
 
 static inline void
 util_dirty_surface_set_dirty(struct util_dirty_surfaces *dss, struct util_dirty_surface *ds)
 {
-   if(LIST_IS_EMPTY(&ds->dirty_list))
+   if(list_is_empty(&ds->dirty_list))
       list_addtail(&ds->dirty_list, &dss->dirty_list);
 }
 
 static inline void
 util_dirty_surface_set_clean(struct util_dirty_surfaces *dss, struct util_dirty_surface *ds)
 {
-   if(!LIST_IS_EMPTY(&ds->dirty_list))
+   if(!list_is_empty(&ds->dirty_list))
       list_delinit(&ds->dirty_list);
 }
 

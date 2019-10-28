@@ -74,7 +74,7 @@ pb_slab_reclaim(struct pb_slabs *slabs, struct pb_slab_entry *entry)
 static void
 pb_slabs_reclaim_locked(struct pb_slabs *slabs)
 {
-   while (!LIST_IS_EMPTY(&slabs->reclaim)) {
+   while (!list_is_empty(&slabs->reclaim)) {
       struct pb_slab_entry *entry =
          LIST_ENTRY(struct pb_slab_entry, slabs->reclaim.next, head);
 
@@ -114,20 +114,20 @@ pb_slab_alloc(struct pb_slabs *slabs, unsigned size, unsigned heap)
    /* If there is no candidate slab at all, or the first slab has no free
     * entries, try reclaiming entries.
     */
-   if (LIST_IS_EMPTY(&group->slabs) ||
-       LIST_IS_EMPTY(&LIST_ENTRY(struct pb_slab, group->slabs.next, head)->free))
+   if (list_is_empty(&group->slabs) ||
+       list_is_empty(&LIST_ENTRY(struct pb_slab, group->slabs.next, head)->free))
       pb_slabs_reclaim_locked(slabs);
 
    /* Remove slabs without free entries. */
-   while (!LIST_IS_EMPTY(&group->slabs)) {
+   while (!list_is_empty(&group->slabs)) {
       slab = LIST_ENTRY(struct pb_slab, group->slabs.next, head);
-      if (!LIST_IS_EMPTY(&slab->free))
+      if (!list_is_empty(&slab->free))
          break;
 
       list_del(&slab->head);
    }
 
-   if (LIST_IS_EMPTY(&group->slabs)) {
+   if (list_is_empty(&group->slabs)) {
       /* Drop the mutex temporarily to prevent a deadlock where the allocation
        * calls back into slab functions (most likely to happen for
        * pb_slab_reclaim if memory is low).
@@ -241,7 +241,7 @@ pb_slabs_deinit(struct pb_slabs *slabs)
    /* Reclaim all slab entries (even those that are still in flight). This
     * implicitly calls slab_free for everything.
     */
-   while (!LIST_IS_EMPTY(&slabs->reclaim)) {
+   while (!list_is_empty(&slabs->reclaim)) {
       struct pb_slab_entry *entry =
          LIST_ENTRY(struct pb_slab_entry, slabs->reclaim.next, head);
       pb_slab_reclaim(slabs, entry);

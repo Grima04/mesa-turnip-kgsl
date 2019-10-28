@@ -820,7 +820,7 @@ static void enc_ClearBframes(omx_base_PortType *port, struct input_buf_private *
    vid_enc_PrivateType *priv = comp->pComponentPrivate;
    struct encode_task *task;
 
-   if (LIST_IS_EMPTY(&priv->b_frames))
+   if (list_is_empty(&priv->b_frames))
       return;
 
    task = LIST_ENTRY(struct encode_task, priv->b_frames.prev, list);
@@ -928,7 +928,7 @@ static OMX_ERRORTYPE vid_enc_EncodeFrame(omx_base_PortType *port, OMX_BUFFERHEAD
       enc_MoveTasks(&priv->b_frames, &inp->tasks);
    }
 
-   if (LIST_IS_EMPTY(&inp->tasks))
+   if (list_is_empty(&inp->tasks))
       return port->ReturnBufferFunction(port, buf);
    else
       return base_port_SendBufferFunction(port, buf);

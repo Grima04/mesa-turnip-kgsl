@@ -353,7 +353,7 @@ free_zombie_sampler_views(struct st_context *st)
 {
    struct st_zombie_sampler_view_node *entry, *next;
 
-   if (LIST_IS_EMPTY(&st->zombie_sampler_views.list.node)) {
+   if (list_is_empty(&st->zombie_sampler_views.list.node)) {
       return;
    }
 
@@ -369,7 +369,7 @@ free_zombie_sampler_views(struct st_context *st)
       free(entry);
    }
 
-   assert(LIST_IS_EMPTY(&st->zombie_sampler_views.list.node));
+   assert(list_is_empty(&st->zombie_sampler_views.list.node));
 
    simple_mtx_unlock(&st->zombie_sampler_views.mutex);
 }
@@ -383,7 +383,7 @@ free_zombie_shaders(struct st_context *st)
 {
    struct st_zombie_shader_node *entry, *next;
 
-   if (LIST_IS_EMPTY(&st->zombie_shaders.list.node)) {
+   if (list_is_empty(&st->zombie_shaders.list.node)) {
       return;
    }
 
@@ -418,7 +418,7 @@ free_zombie_shaders(struct st_context *st)
       free(entry);
    }
 
-   assert(LIST_IS_EMPTY(&st->zombie_shaders.list.node));
+   assert(list_is_empty(&st->zombie_shaders.list.node));
 
    simple_mtx_unlock(&st->zombie_shaders.mutex);
 }

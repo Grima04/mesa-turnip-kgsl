@@ -184,10 +184,10 @@ fd_hw_get_query_result(struct fd_context *ctx, struct fd_query *q,
 
 	DBG("%p: wait=%d, active=%d", q, wait, q->active);
 
-	if (LIST_IS_EMPTY(&hq->periods))
+	if (list_is_empty(&hq->periods))
 		return true;
 
-	assert(LIST_IS_EMPTY(&hq->list));
+	assert(list_is_empty(&hq->list));
 	assert(!hq->period);
 
 	/* if !wait, then check the last sample (the one most likely to

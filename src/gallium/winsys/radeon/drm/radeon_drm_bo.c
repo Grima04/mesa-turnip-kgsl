@@ -295,7 +295,7 @@ static void radeon_bomgr_free_va(const struct radeon_info *info,
     if ((va + size) == heap->start) {
         heap->start = va;
         /* Delete uppermost hole if it reaches the new top */
-        if (!LIST_IS_EMPTY(&heap->holes)) {
+        if (!list_is_empty(&heap->holes)) {
             hole = container_of(heap->holes.next, hole, list);
             if ((hole->offset + hole->size) == va) {
                 heap->start = hole->offset;
