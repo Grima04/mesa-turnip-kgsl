@@ -466,7 +466,6 @@ static const struct debug_control radv_debug_options[] = {
 	{"nodcc", RADV_DEBUG_NO_DCC},
 	{"shaders", RADV_DEBUG_DUMP_SHADERS},
 	{"nocache", RADV_DEBUG_NO_CACHE},
-	{"nomemorycache", RADV_DEBUG_NO_MEMORY_CACHE},
 	{"shaderstats", RADV_DEBUG_DUMP_SHADER_STATS},
 	{"nohiz", RADV_DEBUG_NO_HIZ},
 	{"nocompute", RADV_DEBUG_NO_COMPUTE_QUEUE},
@@ -492,6 +491,7 @@ static const struct debug_control radv_debug_options[] = {
 	{"noshaderballot", RADV_DEBUG_NO_SHADER_BALLOT},
 	{"allentrypoints", RADV_DEBUG_ALL_ENTRYPOINTS},
 	{"metashaders", RADV_DEBUG_DUMP_META_SHADERS},
+	{"nomemorycache", RADV_DEBUG_NO_MEMORY_CACHE},
 	{NULL, 0}
 };
 
