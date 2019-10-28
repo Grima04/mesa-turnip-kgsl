@@ -71,4 +71,6 @@ lp_build_shr_imm(struct lp_build_context *bld, LLVMValueRef a, unsigned imm);
 LLVMValueRef
 lp_build_not(struct lp_build_context *bld, LLVMValueRef a);
 
+LLVMValueRef
+lp_build_popcount(struct lp_build_context *bld, LLVMValueRef a);
 #endif /* !LP_BLD_ARIT_H */
