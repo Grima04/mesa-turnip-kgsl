@@ -27,6 +27,8 @@ import pytest
 from . import post_version
 
 
+# Mock out subprocess.run to avoid having git commits
+@mock.patch('bin.post_version.subprocess.run', mock.Mock())
 class TestUpdateCalendar:
 
     HEAD = textwrap.dedent("""\

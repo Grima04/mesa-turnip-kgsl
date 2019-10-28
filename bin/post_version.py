@@ -25,6 +25,8 @@ import argparse
 import calendar
 import datetime
 import pathlib
+import subprocess
+
 from lxml import (
     etree,
     html,
@@ -84,6 +86,7 @@ def update_index(is_point: bool, version: str, previous_version: str) -> None:
     root.insert(index, header)
 
     tree.write(p.as_posix(), method='html', pretty_print=True)
+    subprocess.run(['git', 'add', p])
 
 
 def update_release_notes(previous_version: str) -> None:
@@ -99,6 +102,7 @@ def update_release_notes(previous_version: str) -> None:
     ul.insert(0, li)
 
     tree.write(p.as_posix(), method='html', pretty_print=True)
+    subprocess.run(['git', 'add', p])
 
 
 def update_calendar(previous_version: str) -> None:
@@ -132,6 +136,7 @@ def update_calendar(previous_version: str) -> None:
         new.insert(0, td)
 
     tree.write(p.as_posix(), method='html', pretty_print=True)
+    subprocess.run(['git', 'add', p])
 
 
 def main() -> None:
@@ -145,6 +150,9 @@ def main() -> None:
     update_index(is_point, args.version, previous_version)
     update_release_notes(previous_version)
     update_calendar(previous_version)
+    subprocess.run(['git', 'commit', '-m',
+                    'docs: update calendar, add news item, and link releases '
+                    f'notes for {previous_version}'])
 
 
 if __name__ == "__main__":
