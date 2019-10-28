@@ -667,9 +667,25 @@ static int si_get_video_param(struct pipe_screen *screen,
 	case PIPE_VIDEO_CAP_NPOT_TEXTURES:
 		return 1;
 	case PIPE_VIDEO_CAP_MAX_WIDTH:
-		return (sscreen->info.family < CHIP_TONGA) ? 2048 : 4096;
+		switch (codec) {
+		case PIPE_VIDEO_FORMAT_HEVC:
+		case PIPE_VIDEO_FORMAT_VP9:
+			return (sscreen->info.family < CHIP_RENOIR) ?
+			       ((sscreen->info.family < CHIP_TONGA) ? 2048 : 4096) :
+			       8192;
+		default:
+			return (sscreen->info.family < CHIP_TONGA) ? 2048 : 4096;
+		}
 	case PIPE_VIDEO_CAP_MAX_HEIGHT:
-		return (sscreen->info.family < CHIP_TONGA) ? 1152 : 4096;
+		switch (codec) {
+		case PIPE_VIDEO_FORMAT_HEVC:
+		case PIPE_VIDEO_FORMAT_VP9:
+			return (sscreen->info.family < CHIP_RENOIR) ?
+			       ((sscreen->info.family < CHIP_TONGA) ? 1152 : 4096) :
+			       4352;
+		default:
+			return (sscreen->info.family < CHIP_TONGA) ? 1152 : 4096;
+		}
 	case PIPE_VIDEO_CAP_PREFERED_FORMAT:
 		if (profile == PIPE_VIDEO_PROFILE_HEVC_MAIN_10 ||
 		    profile == PIPE_VIDEO_PROFILE_VP9_PROFILE2)
