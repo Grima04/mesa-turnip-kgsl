@@ -81,6 +81,58 @@ void *util_sparse_array_get(struct util_sparse_array *arr, uint64_t idx);
 
 void util_sparse_array_validate(struct util_sparse_array *arr);
 
+/** A thread-safe free list for use with struct util_sparse_array
+ *
+ * This data structure provides an easy way to manage a singly linked list of
+ * "free" elements backed by a util_sparse_array.  The list supports only two
+ * operations: push and pop both of which are thread-safe and lock-free.  T
+ */
+struct
+#ifdef _MSC_VER
+ __declspec(align(8))
+#else
+ __attribute__((aligned(8)))
+#endif
+util_sparse_array_free_list
+{
+   /** Head of the list
+    *
+    * The bottom 64 bits of this value are the index to the next free element
+    * or the sentinel value if the list is empty.
+    *
+    * We want this element to be 8-byte aligned.  Otherwise, the performance
+    * of atomic operations on it will be aweful on 32-bit platforms.
+    */
+   uint64_t head;
+
+   /** The array backing this free list */
+   struct util_sparse_array *arr;
+
+   /** Sentinel value to indicate the end of the list
+    *
+    * This value must never be passed into util_sparse_array_free_list_push.
+    */
+   uint32_t sentinel;
+
+   /** Offset into the array element at which to find the "next" value
+    *
+    * The assumption is that there is some uint32_t "next" value embedded in
+    * the array element for use in the free list.  This is its offset.
+    */
+   uint32_t next_offset;
+};
+
+void util_sparse_array_free_list_init(struct util_sparse_array_free_list *fl,
+                                      struct util_sparse_array *arr,
+                                      uint32_t sentinel,
+                                      uint32_t next_offset);
+
+void util_sparse_array_free_list_push(struct util_sparse_array_free_list *fl,
+                                      uint32_t *items, unsigned num_items);
+
+uint32_t util_sparse_array_free_list_pop_idx(struct util_sparse_array_free_list *fl);
+void *util_sparse_array_free_list_pop_elem(struct util_sparse_array_free_list *fl);
+
 #ifdef __cplusplus
 } /* extern C */
 #endif
