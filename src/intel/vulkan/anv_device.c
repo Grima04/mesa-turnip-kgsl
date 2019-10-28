@@ -961,7 +961,7 @@ void anv_GetPhysicalDeviceFeatures(
       .depthClamp                               = true,
       .depthBiasClamp                           = true,
       .fillModeNonSolid                         = true,
-      .depthBounds                              = false,
+      .depthBounds                              = pdevice->info.gen >= 12,
       .wideLines                                = true,
       .largePoints                              = true,
       .alphaToOne                               = true,
