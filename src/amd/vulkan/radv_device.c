@@ -61,6 +61,7 @@
 #include "util/debug.h"
 #include "util/mesa-sha1.h"
 #include "util/timespec.h"
+#include "util/u_atomic.h"
 #include "compiler/glsl_types.h"
 #include "util/xmlpool.h"
 
@@ -74,6 +75,9 @@ radv_timeline_add_point_locked(struct radv_device *device,
                                struct radv_timeline *timeline,
                                uint64_t p);
 
+static void
+radv_timeline_trigger_waiters_locked(struct radv_timeline *timeline,
+                                     struct list_head *processing_list);
 
 static
 void radv_destroy_semaphore_part(struct radv_device *device,
@@ -1820,12 +1824,17 @@ radv_queue_init(struct radv_device *device, struct radv_queue *queue,
 	if (!queue->hw_ctx)
 		return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
+	list_inithead(&queue->pending_submissions);
+	pthread_mutex_init(&queue->pending_mutex, NULL);
+
 	return VK_SUCCESS;
 }
 
 static void
 radv_queue_finish(struct radv_queue *queue)
 {
+	pthread_mutex_destroy(&queue->pending_mutex);
+
 	if (queue->hw_ctx)
 		queue->device->ws->ctx_destroy(queue->hw_ctx);
 
@@ -3592,7 +3601,8 @@ radv_finalize_timelines(struct radv_device *device,
                         const uint64_t *wait_values,
                         uint32_t num_signal_sems,
                         struct radv_semaphore_part **signal_sems,
-                        const uint64_t *signal_values)
+                        const uint64_t *signal_values,
+                        struct list_head *processing_list)
 {
 	for (uint32_t i = 0; i < num_wait_sems; ++i) {
 		if (wait_sems[i] && wait_sems[i]->kind == RADV_SEMAPHORE_TIMELINE) {
@@ -3614,10 +3624,10 @@ radv_finalize_timelines(struct radv_device *device,
 					MAX2(signal_sems[i]->timeline.highest_submitted, point->value);
 				point->wait_count--;
 			}
+			radv_timeline_trigger_waiters_locked(&signal_sems[i]->timeline, processing_list);
 			pthread_mutex_unlock(&signal_sems[i]->timeline.mutex);
 		}
 	}
-	pthread_cond_broadcast(&device->timeline_cond);
 }
 
 static void
@@ -3720,6 +3730,12 @@ struct radv_deferred_queue_submission {
 
 	struct radv_semaphore_part *temporary_semaphore_parts;
 	uint32_t temporary_semaphore_part_count;
+
+	struct list_head queue_pending_list;
+	uint32_t submission_wait_count;
+	struct radv_timeline_waiter *wait_nodes;
+
+	struct list_head processing_list;
 };
 
 struct radv_queue_submission {
@@ -3768,6 +3784,7 @@ radv_create_deferred_submission(struct radv_queue *queue,
 	size += submission->signal_semaphore_count * sizeof(struct radv_semaphore_part *);
 	size += submission->wait_value_count * sizeof(uint64_t);
 	size += submission->signal_value_count * sizeof(uint64_t);
+	size += submission->wait_semaphore_count * sizeof(struct radv_timeline_waiter);
 
 	deferred = calloc(1, size);
 	if (!deferred)
@@ -3830,12 +3847,76 @@ radv_create_deferred_submission(struct radv_queue *queue,
 	deferred->signal_values = deferred->wait_values + submission->wait_value_count;
 	memcpy(deferred->signal_values, submission->signal_values, submission->signal_value_count * sizeof(uint64_t));
 
+	deferred->wait_nodes = (void*)(deferred->signal_values + submission->signal_value_count);
+	/* This is worst-case. radv_queue_enqueue_submission will fill in further, but this
+	 * ensure the submission is not accidentally triggered early when adding wait timelines. */
+	deferred->submission_wait_count = 1 + submission->wait_semaphore_count;
+
 	*out = deferred;
 	return VK_SUCCESS;
 }
 
+static void
+radv_queue_enqueue_submission(struct radv_deferred_queue_submission *submission,
+                              struct list_head *processing_list)
+{
+	uint32_t wait_cnt = 0;
+	struct radv_timeline_waiter *waiter = submission->wait_nodes;
+	for (uint32_t i = 0; i < submission->wait_semaphore_count; ++i) {
+		if (submission->wait_semaphores[i]->kind == RADV_SEMAPHORE_TIMELINE) {
+			pthread_mutex_lock(&submission->wait_semaphores[i]->timeline.mutex);
+			if (submission->wait_semaphores[i]->timeline.highest_submitted < submission->wait_values[i]) {
+				++wait_cnt;
+				waiter->value = submission->wait_values[i];
+				waiter->submission = submission;
+				list_addtail(&waiter->list, &submission->wait_semaphores[i]->timeline.waiters);
+				++waiter;
+			}
+			pthread_mutex_unlock(&submission->wait_semaphores[i]->timeline.mutex);
+		}
+	}
+
+	pthread_mutex_lock(&submission->queue->pending_mutex);
+
+	bool is_first = list_is_empty(&submission->queue->pending_submissions);
+	list_addtail(&submission->queue_pending_list, &submission->queue->pending_submissions);
+
+	pthread_mutex_unlock(&submission->queue->pending_mutex);
+
+	/* If there is already a submission in the queue, that will decrement the counter by 1 when
+	 * submitted, but if the queue was empty, we decrement ourselves as there is no previous
+	 * submission. */
+	uint32_t decrement = submission->wait_semaphore_count - wait_cnt + (is_first ? 1 : 0);
+	if (__atomic_sub_fetch(&submission->submission_wait_count, decrement, __ATOMIC_ACQ_REL) == 0) {
+		list_addtail(&submission->processing_list, processing_list);
+	}
+}
+
+static void
+radv_queue_submission_update_queue(struct radv_deferred_queue_submission *submission,
+                                   struct list_head *processing_list)
+{
+	pthread_mutex_lock(&submission->queue->pending_mutex);
+	list_del(&submission->queue_pending_list);
+
+	/* trigger the next submission in the queue. */
+	if (!list_is_empty(&submission->queue->pending_submissions)) {
+		struct radv_deferred_queue_submission *next_submission =
+			list_first_entry(&submission->queue->pending_submissions,
+			                 struct radv_deferred_queue_submission,
+			                 queue_pending_list);
+		if (p_atomic_dec_zero(&next_submission->submission_wait_count)) {
+			list_addtail(&next_submission->processing_list, processing_list);
+		}
+	}
+	pthread_mutex_unlock(&submission->queue->pending_mutex);
+
+	pthread_cond_broadcast(&submission->queue->device->timeline_cond);
+}
+
 static VkResult
-radv_queue_submit_deferred(struct radv_deferred_queue_submission *submission)
+radv_queue_submit_deferred(struct radv_deferred_queue_submission *submission,
+                           struct list_head *processing_list)
 {
 	RADV_FROM_HANDLE(radv_fence, fence, submission->fence);
 	struct radv_queue *queue = submission->queue;
@@ -3957,7 +4038,12 @@ success:
 	                        submission->wait_values,
 	                        submission->signal_semaphore_count,
 	                        submission->signal_semaphores,
-	                        submission->signal_values);
+	                        submission->signal_values,
+	                        processing_list);
+	/* Has to happen after timeline finalization to make sure the
+	 * condition variable is only triggered when timelines and queue have
+	 * been updated. */
+	radv_queue_submission_update_queue(submission, processing_list);
 	radv_free_sem_info(&sem_info);
 	free(submission);
 	return VK_SUCCESS;
@@ -3970,6 +4056,21 @@ fail:
 	return VK_ERROR_DEVICE_LOST;
 }
 
+static VkResult
+radv_process_submissions(struct list_head *processing_list)
+{
+	while(!list_is_empty(processing_list)) {
+		struct radv_deferred_queue_submission *submission =
+			list_first_entry(processing_list, struct radv_deferred_queue_submission, processing_list);
+		list_del(&submission->processing_list);
+
+		VkResult result = radv_queue_submit_deferred(submission, processing_list);
+		if (result != VK_SUCCESS)
+			return result;
+	}
+	return VK_SUCCESS;
+}
+
 static VkResult radv_queue_submit(struct radv_queue *queue,
                                   const struct radv_queue_submission *submission)
 {
@@ -3979,7 +4080,11 @@ static VkResult radv_queue_submit(struct radv_queue *queue,
 	if (result != VK_SUCCESS)
 		return result;
 
-	return radv_queue_submit_deferred(deferred);
+	struct list_head processing_list;
+	list_inithead(&processing_list);
+
+	radv_queue_enqueue_submission(deferred, &processing_list);
+	return radv_process_submissions(&processing_list);
 }
 
 /* Signals fence as soon as all the work currently put on queue is done. */
@@ -4062,6 +4167,12 @@ VkResult radv_QueueWaitIdle(
 	VkQueue                                     _queue)
 {
 	RADV_FROM_HANDLE(radv_queue, queue, _queue);
+
+	pthread_mutex_lock(&queue->pending_mutex);
+	while (!list_is_empty(&queue->pending_submissions)) {
+		pthread_cond_wait(&queue->device->timeline_cond, &queue->pending_mutex);
+	}
+	pthread_mutex_unlock(&queue->pending_mutex);
 
 	queue->device->ws->ctx_wait_idle(queue->hw_ctx,
 	                                 radv_queue_family_to_ring(queue->queue_family_index),
@@ -4971,6 +5082,7 @@ radv_create_timeline(struct radv_timeline *timeline, uint64_t value)
 	timeline->highest_submitted = value;
 	list_inithead(&timeline->points);
 	list_inithead(&timeline->free_points);
+	list_inithead(&timeline->waiters);
 	pthread_mutex_init(&timeline->mutex, NULL);
 }
 
@@ -5104,6 +5216,22 @@ radv_timeline_wait_locked(struct radv_device *device,
 	pthread_mutex_lock(&timeline->mutex);
 	point->wait_count--;
 	return success ? VK_SUCCESS : VK_TIMEOUT;
+}
+
+static void
+radv_timeline_trigger_waiters_locked(struct radv_timeline *timeline,
+                                     struct list_head *processing_list)
+{
+	list_for_each_entry_safe(struct radv_timeline_waiter, waiter,
+	                         &timeline->waiters, list) {
+		if (waiter->value > timeline->highest_submitted)
+			continue;
+
+		if (p_atomic_dec_zero(&waiter->submission->submission_wait_count)) {
+			list_addtail(&waiter->submission->processing_list, processing_list);
+		}
+		list_del(&waiter->list);
+	}
 }
 
 static
@@ -5288,8 +5416,13 @@ radv_SignalSemaphoreKHR(VkDevice _device,
 		radv_timeline_gc_locked(device, &part->timeline);
 		part->timeline.highest_submitted = MAX2(part->timeline.highest_submitted, pSignalInfo->value);
 		part->timeline.highest_signaled = MAX2(part->timeline.highest_signaled, pSignalInfo->value);
+
+		struct list_head processing_list;
+		list_inithead(&processing_list);
+		radv_timeline_trigger_waiters_locked(&part->timeline, &processing_list);
 		pthread_mutex_unlock(&part->timeline.mutex);
-		break;
+
+		return radv_process_submissions(&processing_list);
 	}
 	case RADV_SEMAPHORE_NONE:
 	case RADV_SEMAPHORE_SYNCOBJ:

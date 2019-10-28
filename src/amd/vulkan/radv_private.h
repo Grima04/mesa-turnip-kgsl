@@ -722,6 +722,9 @@ struct radv_queue {
 	struct radeon_cmdbuf *initial_preamble_cs;
 	struct radeon_cmdbuf *initial_full_flush_preamble_cs;
 	struct radeon_cmdbuf *continue_preamble_cs;
+
+	struct list_head pending_submissions;
+	pthread_mutex_t pending_mutex;
 };
 
 struct radv_bo_list {
@@ -2167,13 +2170,20 @@ struct radv_query_pool {
 	uint32_t pipeline_stats_mask;
 };
 
-
 typedef enum {
 	RADV_SEMAPHORE_NONE,
 	RADV_SEMAPHORE_WINSYS,
 	RADV_SEMAPHORE_SYNCOBJ,
 	RADV_SEMAPHORE_TIMELINE,
 } radv_semaphore_kind;
+
+struct radv_deferred_queue_submission;
+
+struct radv_timeline_waiter {
+	struct list_head list;
+	struct radv_deferred_queue_submission *submission;
+	uint64_t value;
+};
 
 struct radv_timeline_point {
 	struct list_head list;
@@ -2198,6 +2208,10 @@ struct radv_timeline {
 	/* Keep free points on hand so we do not have to recreate syncobjs all
 	 * the time. */
 	struct list_head free_points;
+
+	/* Submissions that are deferred waiting for a specific value to be
+	 * submitted. */
+	struct list_head waiters;
 };
 
 struct radv_semaphore_part {
