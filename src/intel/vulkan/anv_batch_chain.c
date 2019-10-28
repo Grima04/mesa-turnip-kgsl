@@ -118,7 +118,7 @@ anv_reloc_list_grow(struct anv_reloc_list *list,
    if (list->num_relocs + num_additional_relocs <= list->array_length)
       return VK_SUCCESS;
 
-   size_t new_length = MAX2(256, list->array_length * 2);
+   size_t new_length = MAX2(16, list->array_length * 2);
    while (new_length < list->num_relocs + num_additional_relocs)
       new_length *= 2;
 
