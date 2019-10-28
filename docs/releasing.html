@@ -381,15 +381,14 @@ git cherry-pick -x X.Y~1
 git cherry-pick -x X.Y
 </pre>
 
-<p>Then run the <code>./bin/post_verison.py X.Y.Z</code>, where X.Y.Z is the
-version you just made. This will updated docs/relnotes.html and
-docs/index.html. Remove the new release from docs/release-calendar.html. Then
-commit and push:
+<p>Then run the <pre>./bin/post_verison.py X.Y.Z</pre>, where X.Y.Z is the
+version you just made. This will updated docs/relnotes.html,
+docs/index.html, and docs/release-calendar.html. It will then generate
+a git commit automatically. Check that everything looks correct and push:
 </p>
 
 <pre>
-git commit -as -m "docs: update calendar, add news item and link release notes for X.Y.Z"
-git push origin master X.Y
+	git push origin master X.Y
 </pre>
 
 
