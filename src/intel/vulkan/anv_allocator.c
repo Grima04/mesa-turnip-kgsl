@@ -1357,11 +1357,8 @@ anv_scratch_pool_finish(struct anv_device *device, struct anv_scratch_pool *pool
 {
    for (unsigned s = 0; s < MESA_SHADER_STAGES; s++) {
       for (unsigned i = 0; i < 16; i++) {
-         struct anv_scratch_bo *bo = &pool->bos[i][s];
-         if (bo->exists > 0) {
-            anv_vma_free(device, &bo->bo);
-            anv_gem_close(device, bo->bo.gem_handle);
-         }
+         if (pool->bos[i][s] != NULL)
+            anv_device_release_bo(device, pool->bos[i][s]);
       }
    }
 }
@@ -1376,19 +1373,10 @@ anv_scratch_pool_alloc(struct anv_device *device, struct anv_scratch_pool *pool,
    unsigned scratch_size_log2 = ffs(per_thread_scratch / 2048);
    assert(scratch_size_log2 < 16);
 
-   struct anv_scratch_bo *bo = &pool->bos[scratch_size_log2][stage];
+   struct anv_bo *bo = p_atomic_read(&pool->bos[scratch_size_log2][stage]);
 
-   /* We can use "exists" to shortcut and ignore the critical section */
-   if (bo->exists)
-      return &bo->bo;
-
-   pthread_mutex_lock(&device->mutex);
-
-   __sync_synchronize();
-   if (bo->exists) {
-      pthread_mutex_unlock(&device->mutex);
-      return &bo->bo;
-   }
+   if (bo != NULL)
+      return bo;
 
    const struct anv_physical_device *physical_device =
       &device->instance->physicalDevice;
@@ -1447,8 +1435,6 @@ anv_scratch_pool_alloc(struct anv_device *device, struct anv_scratch_pool *pool,
 
    uint32_t size = per_thread_scratch * max_threads[stage];
 
-   anv_bo_init_new(&bo->bo, device, size);
-
    /* Even though the Scratch base pointers in 3DSTATE_*S are 64 bits, they
     * are still relative to the general state base address.  When we emit
     * STATE_BASE_ADDRESS, we set general state base address to 0 and the size
@@ -1466,23 +1452,19 @@ anv_scratch_pool_alloc(struct anv_device *device, struct anv_scratch_pool *pool,
     *
     * so nothing will ever touch the top page.
     */
-   assert(!(bo->bo.flags & EXEC_OBJECT_SUPPORTS_48B_ADDRESS));
+   VkResult result = anv_device_alloc_bo(device, size,
+                                         ANV_BO_ALLOC_32BIT_ADDRESS, &bo);
+   if (result != VK_SUCCESS)
+      return NULL; /* TODO */
 
-   if (device->instance->physicalDevice.has_exec_async)
-      bo->bo.flags |= EXEC_OBJECT_ASYNC;
-
-   if (device->instance->physicalDevice.use_softpin)
-      bo->bo.flags |= EXEC_OBJECT_PINNED;
-
-   anv_vma_alloc(device, &bo->bo);
-
-   /* Set the exists last because it may be read by other threads */
-   __sync_synchronize();
-   bo->exists = true;
-
-   pthread_mutex_unlock(&device->mutex);
-
-   return &bo->bo;
+   struct anv_bo *current_bo =
+      p_atomic_cmpxchg(&pool->bos[scratch_size_log2][stage], NULL, bo);
+   if (current_bo) {
+      anv_device_release_bo(device, bo);
+      return current_bo;
+   } else {
+      return bo;
+   }
 }
 
 VkResult
