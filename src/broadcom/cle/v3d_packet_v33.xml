@@ -289,6 +289,7 @@
     <value name="16-way" value="0"/>
     <value name="8-way" value="1"/>
     <value name="4-way" value="2"/>
+    <value name="1-way" value="3"/>
   </enum>
 
   <enum name="TCS flush mode" prefix="V3D_TCS_FLUSH_MODE">
