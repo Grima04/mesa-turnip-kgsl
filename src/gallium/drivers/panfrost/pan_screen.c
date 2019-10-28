@@ -739,6 +739,7 @@ panfrost_create_screen(int fd, struct renderonly *ro)
         /* Check if we're loading against a supported GPU model. */
 
         switch (screen->gpu_id) {
+        case 0x720: /* T720 */
         case 0x750: /* T760 */
         case 0x820: /* T820 */
         case 0x860: /* T860 */
