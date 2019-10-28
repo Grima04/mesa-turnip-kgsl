@@ -4822,11 +4822,9 @@ LLVMModuleRef ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm,
 	    shaders[shader_count - 1]->info.stage == MESA_SHADER_TESS_CTRL)
 		ac_nir_fixup_ls_hs_input_vgprs(&ctx);
 
-	if (shaders[shader_count - 1]->info.stage != MESA_SHADER_GEOMETRY &&
-	    (ctx.options->key.vs_common_out.as_ngg &&
-	     !ctx.options->key.vs_common_out.as_es)) {
-		/* Unconditionally declare scratch space base for streamout and
-		 * vertex compaction. Whether space is actually allocated is
+	if (is_ngg) {
+		/* Declare scratch space base for streamout and vertex
+		 * compaction. Whether space is actually allocated is
 		 * determined during linking / PM4 creation.
 		 *
 		 * Add an extra dword per vertex to ensure an odd stride, which
