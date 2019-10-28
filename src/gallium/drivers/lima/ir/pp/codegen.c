@@ -596,13 +596,13 @@ static void ppir_codegen_encode_branch(ppir_node *node, void *code)
    }
 
    target = branch->target;
-   while (list_empty(&target->instr_list)) {
+   while (list_is_empty(&target->instr_list)) {
       if (!target->list.next)
          break;
       target = LIST_ENTRY(ppir_block, target->list.next, list);
    }
 
-   assert(!list_empty(&target->instr_list));
+   assert(!list_is_empty(&target->instr_list));
 
    target_instr = list_first_entry(&target->instr_list, ppir_instr, list);
    b->branch.target = target_instr->offset - node->instr->offset;

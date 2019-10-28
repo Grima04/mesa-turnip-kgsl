@@ -688,7 +688,7 @@ bool ppir_regalloc_prog(ppir_compiler *comp)
    ppir_regalloc_update_reglist_ssa(comp);
 
    /* No registers? Probably shader consists of discard instruction */
-   if (list_empty(&comp->reg_list))
+   if (list_is_empty(&comp->reg_list))
       return true;
 
    /* this will most likely succeed in the first

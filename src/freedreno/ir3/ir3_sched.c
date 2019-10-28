@@ -796,7 +796,7 @@ sched_block(struct ir3_sched_ctx *ctx, struct ir3_block *block)
 		}
 	}
 
-	while (!list_empty(&ctx->depth_list)) {
+	while (!list_is_empty(&ctx->depth_list)) {
 		struct ir3_sched_notes notes = {0};
 		struct ir3_instruction *instr;
 

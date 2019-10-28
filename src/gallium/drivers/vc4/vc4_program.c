@@ -185,7 +185,7 @@ ntq_store_dest(struct vc4_compile *c, nir_dest *dest, int chan,
                struct qreg result)
 {
         struct qinst *last_inst = NULL;
-        if (!list_empty(&c->cur_block->instructions))
+        if (!list_is_empty(&c->cur_block->instructions))
                 last_inst = (struct qinst *)c->cur_block->instructions.prev;
 
         assert(result.file == QFILE_UNIF ||
@@ -832,7 +832,7 @@ ntq_src_is_only_ssa_def_user(nir_src *src)
         if (!src->is_ssa)
                 return false;
 
-        if (!list_empty(&src->ssa->if_uses))
+        if (!list_is_empty(&src->ssa->if_uses))
                 return false;
 
         return (src->ssa->uses.next == &src->use_link &&

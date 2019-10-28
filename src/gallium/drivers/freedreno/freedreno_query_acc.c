@@ -91,7 +91,7 @@ fd_acc_begin_query(struct fd_context *ctx, struct fd_query *q)
 		p->resume(aq, batch);
 
 	/* add to active list: */
-	assert(list_empty(&aq->node));
+	assert(list_is_empty(&aq->node));
 	list_addtail(&aq->node, &ctx->acc_active_queries);
 
 	return true;

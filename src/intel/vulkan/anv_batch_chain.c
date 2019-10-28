@@ -812,13 +812,13 @@ void
 anv_cmd_buffer_reset_batch_bo_chain(struct anv_cmd_buffer *cmd_buffer)
 {
    /* Delete all but the first batch bo */
-   assert(!list_empty(&cmd_buffer->batch_bos));
+   assert(!list_is_empty(&cmd_buffer->batch_bos));
    while (cmd_buffer->batch_bos.next != cmd_buffer->batch_bos.prev) {
       struct anv_batch_bo *bbo = anv_cmd_buffer_current_batch_bo(cmd_buffer);
       list_del(&bbo->link);
       anv_batch_bo_destroy(bbo, cmd_buffer);
    }
-   assert(!list_empty(&cmd_buffer->batch_bos));
+   assert(!list_is_empty(&cmd_buffer->batch_bos));
 
    anv_batch_bo_start(anv_cmd_buffer_current_batch_bo(cmd_buffer),
                       &cmd_buffer->batch,

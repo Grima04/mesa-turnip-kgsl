@@ -165,7 +165,7 @@ align_and_verify_space(struct gen_aux_map_context *ctx, uint32_t size,
 static void
 get_current_pos(struct gen_aux_map_context *ctx, uint64_t *gpu, uint64_t **map)
 {
-   assert(!list_empty(&ctx->buffers));
+   assert(!list_is_empty(&ctx->buffers));
    struct aux_map_buffer *tail =
       list_last_entry(&ctx->buffers, struct aux_map_buffer, link);
    if (gpu)

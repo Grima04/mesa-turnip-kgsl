@@ -454,12 +454,12 @@ void gpir_node_print_prog_seq(gpir_compiler *comp);
 
 static inline bool gpir_node_is_root(gpir_node *node)
 {
-   return list_empty(&node->succ_list);
+   return list_is_empty(&node->succ_list);
 }
 
 static inline bool gpir_node_is_leaf(gpir_node *node)
 {
-   return list_empty(&node->pred_list);
+   return list_is_empty(&node->pred_list);
 }
 
 #define gpir_node_to_alu(node) ((gpir_alu_node *)(node))

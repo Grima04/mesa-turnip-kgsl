@@ -68,7 +68,7 @@ compiler_debug_log(void *data, const char *fmt, ...)
    char str[MAX_DEBUG_MESSAGE_LENGTH];
    struct anv_device *device = (struct anv_device *)data;
 
-   if (list_empty(&device->instance->debug_report_callbacks.callbacks))
+   if (list_is_empty(&device->instance->debug_report_callbacks.callbacks))
       return;
 
    va_list args;

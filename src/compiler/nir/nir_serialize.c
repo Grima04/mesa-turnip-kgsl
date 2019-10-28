@@ -762,7 +762,7 @@ read_fixup_phis(read_ctx *ctx)
 
       list_addtail(&src->src.use_link, &src->src.ssa->uses);
    }
-   assert(list_empty(&ctx->phi_srcs));
+   assert(list_is_empty(&ctx->phi_srcs));
 }
 
 static void

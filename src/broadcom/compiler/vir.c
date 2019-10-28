@@ -1034,7 +1034,7 @@ vir_compile_destroy(struct v3d_compile *c)
         c->cursor.link = NULL;
 
         vir_for_each_block(block, c) {
-                while (!list_empty(&block->instructions)) {
+                while (!list_is_empty(&block->instructions)) {
                         struct qinst *qinst =
                                 list_first_entry(&block->instructions,
                                                  struct qinst, link);

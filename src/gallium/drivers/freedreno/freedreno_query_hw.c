@@ -147,7 +147,7 @@ fd_hw_begin_query(struct fd_context *ctx, struct fd_query *q)
 		resume_query(batch, hq, batch->draw);
 
 	/* add to active list: */
-	assert(list_empty(&hq->list));
+	assert(list_is_empty(&hq->list));
 	list_addtail(&hq->list, &ctx->hw_active_queries);
 
 	return true;

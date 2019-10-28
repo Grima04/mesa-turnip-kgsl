@@ -128,7 +128,7 @@ static void schedule_insert_ready_list(struct list_head *ready_list,
 
 static void schedule_ready_list(gpir_block *block, struct list_head *ready_list)
 {
-   if (list_empty(ready_list))
+   if (list_is_empty(ready_list))
       return;
 
    gpir_node *node = list_first_entry(ready_list, gpir_node, list);

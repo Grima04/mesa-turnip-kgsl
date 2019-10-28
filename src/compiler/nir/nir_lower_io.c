@@ -1191,8 +1191,8 @@ lower_explicit_io_deref(nir_builder *b, nir_deref_instr *deref,
     * one deref which could break our list walking since we walk the list
     * backwards.
     */
-   assert(list_empty(&deref->dest.ssa.if_uses));
-   if (list_empty(&deref->dest.ssa.uses)) {
+   assert(list_is_empty(&deref->dest.ssa.if_uses));
+   if (list_is_empty(&deref->dest.ssa.uses)) {
       nir_instr_remove(&deref->instr);
       return;
    }

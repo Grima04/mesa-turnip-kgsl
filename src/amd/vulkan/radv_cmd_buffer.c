@@ -3180,7 +3180,7 @@ VkResult radv_AllocateCommandBuffers(
 
 	for (i = 0; i < pAllocateInfo->commandBufferCount; i++) {
 
-		if (!list_empty(&pool->free_cmd_buffers)) {
+		if (!list_is_empty(&pool->free_cmd_buffers)) {
 			struct radv_cmd_buffer *cmd_buffer = list_first_entry(&pool->free_cmd_buffers, struct radv_cmd_buffer, pool_link);
 
 			list_del(&cmd_buffer->pool_link);

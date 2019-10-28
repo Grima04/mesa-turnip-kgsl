@@ -961,7 +961,7 @@ static void amdgpu_bo_sparse_destroy(struct pb_buffer *_buf)
       fprintf(stderr, "amdgpu: clearing PRT VA region on destroy failed (%d)\n", r);
    }
 
-   while (!list_empty(&bo->u.sparse.backing)) {
+   while (!list_is_empty(&bo->u.sparse.backing)) {
       struct amdgpu_sparse_backing *dummy = NULL;
       sparse_free_backing_buffer(bo,
                                  container_of(bo->u.sparse.backing.next,

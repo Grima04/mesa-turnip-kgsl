@@ -226,8 +226,8 @@ is_not_const_and_not_fsign(struct hash_table *ht, nir_alu_instr *instr, unsigned
 static inline bool
 is_used_once(nir_alu_instr *instr)
 {
-   bool zero_if_use = list_empty(&instr->dest.dest.ssa.if_uses);
-   bool zero_use = list_empty(&instr->dest.dest.ssa.uses);
+   bool zero_if_use = list_is_empty(&instr->dest.dest.ssa.if_uses);
+   bool zero_use = list_is_empty(&instr->dest.dest.ssa.uses);
 
    if (zero_if_use && zero_use)
       return false;
@@ -248,13 +248,13 @@ is_used_once(nir_alu_instr *instr)
 static inline bool
 is_used_by_if(nir_alu_instr *instr)
 {
-   return !list_empty(&instr->dest.dest.ssa.if_uses);
+   return !list_is_empty(&instr->dest.dest.ssa.if_uses);
 }
 
 static inline bool
 is_not_used_by_if(nir_alu_instr *instr)
 {
-   return list_empty(&instr->dest.dest.ssa.if_uses);
+   return list_is_empty(&instr->dest.dest.ssa.if_uses);
 }
 
 static inline bool

@@ -150,7 +150,7 @@ etna_hw_begin_query(struct etna_context *ctx, struct etna_query *q)
    p->start(hq, ctx);
 
    /* add to active list */
-   assert(list_empty(&hq->node));
+   assert(list_is_empty(&hq->node));
    list_addtail(&hq->node, &ctx->active_hw_queries);
 
    return true;

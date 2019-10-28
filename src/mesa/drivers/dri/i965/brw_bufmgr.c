@@ -531,7 +531,7 @@ bo_alloc_internal(struct brw_bufmgr *bufmgr,
    /* Get a buffer out of the cache if available */
 retry:
    alloc_from_cache = false;
-   if (bucket != NULL && !list_empty(&bucket->head)) {
+   if (bucket != NULL && !list_is_empty(&bucket->head)) {
       if (busy && !zeroed) {
          /* Allocate new render-target BOs from the tail (MRU)
           * of the list, as it will likely be hot in the GPU

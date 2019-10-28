@@ -1604,7 +1604,7 @@ static bool schedule_block(gpir_block *block)
    }
 
    list_inithead(&block->node_list);
-   while (!list_empty(&ctx.ready_list)) {
+   while (!list_is_empty(&ctx.ready_list)) {
       if (!schedule_one_instr(&ctx))
          return false;
    }

@@ -84,7 +84,7 @@ static struct combined_store *
 alloc_combined_store(struct combine_stores_state *state)
 {
    struct combined_store *result;
-   if (list_empty(&state->freelist)) {
+   if (list_is_empty(&state->freelist)) {
       result = linear_zalloc_child(state->lin_ctx, sizeof(*result));
    } else {
       result = list_first_entry(&state->freelist,

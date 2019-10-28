@@ -2506,7 +2506,7 @@ emit_function(struct ir3_context *ctx, nir_function_impl *impl)
 	/* at this point, we should have a single empty block,
 	 * into which we emit the 'end' instruction.
 	 */
-	compile_assert(ctx, list_empty(&ctx->block->instr_list));
+	compile_assert(ctx, list_is_empty(&ctx->block->instr_list));
 
 	/* If stream-out (aka transform-feedback) enabled, emit the
 	 * stream-out instructions, followed by a new empty block (into

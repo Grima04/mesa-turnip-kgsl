@@ -200,10 +200,10 @@ legalize_block(struct ir3_legalize_ctx *ctx, struct ir3_block *block)
 		}
 
 		/* need to be able to set (ss) on first instruction: */
-		if (list_empty(&block->instr_list) && (opc_cat(n->opc) >= 5))
+		if (list_is_empty(&block->instr_list) && (opc_cat(n->opc) >= 5))
 			ir3_NOP(block);
 
-		if (is_nop(n) && !list_empty(&block->instr_list)) {
+		if (is_nop(n) && !list_is_empty(&block->instr_list)) {
 			struct ir3_instruction *last = list_last_entry(&block->instr_list,
 					struct ir3_instruction, node);
 			if (is_nop(last) && (last->repeat < 5)) {
@@ -410,7 +410,7 @@ resolve_dest_block(struct ir3_block *block)
 	 *   (2) (block-is-empty || only-instr-is-jump)
 	 */
 	if (block->successors[1] == NULL) {
-		if (list_empty(&block->instr_list)) {
+		if (list_is_empty(&block->instr_list)) {
 			return block->successors[0];
 		} else if (list_length(&block->instr_list) == 1) {
 			struct ir3_instruction *instr = list_first_entry(

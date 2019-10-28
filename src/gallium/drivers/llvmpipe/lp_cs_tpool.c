@@ -44,7 +44,7 @@ lp_cs_tpool_worker(void *data)
    while (!pool->shutdown) {
       struct lp_cs_tpool_task *task;
 
-      while (list_empty(&pool->workqueue) && !pool->shutdown)
+      while (list_is_empty(&pool->workqueue) && !pool->shutdown)
          cnd_wait(&pool->new_work, &pool->m);
 
       if (pool->shutdown)
