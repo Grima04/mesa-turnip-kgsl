@@ -944,7 +944,7 @@ static struct pb_buffer *rvcn_dec_message_decode(struct radeon_decoder *dec,
 				/* SMP collocated context data */
 				ctx_size += 9 * 64 * 2 * 128 * 68;
 				/* SDB left tile pixel */
-				ctx_size += 8 * 2 * 8192;
+				ctx_size += 8 * 2 * 2 * 8192;
 			} else {
 				ctx_size += 32 * 2 * 64 * 64;
 				ctx_size += 9 * 64 * 2 * 64 * 64;
