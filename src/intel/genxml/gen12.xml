@@ -1564,7 +1564,7 @@
     <field name="Constant Body" start="32" end="351" type="3DSTATE_CONSTANT_BODY"/>
   </instruction>
 
-  <instruction name="3DSTATE_DEPTH_BOUNDS" bias="1" length="4">
+  <instruction name="3DSTATE_DEPTH_BOUNDS" bias="2" length="4">
     <field name="Length" start="0" end="7" type="uint" default="2"/>
     <field name="Depth Bounds Test Value Modify Disable" start="14" end="14" type="bool"/>
     <field name="Depth Bounds Test Enable Modify Disable" start="15" end="15" type="bool"/>
