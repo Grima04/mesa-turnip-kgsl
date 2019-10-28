@@ -329,6 +329,7 @@ struct v3d_key {
                 bool clamp_r:1;
         } tex[V3D_MAX_TEXTURE_SAMPLERS];
         uint8_t ucp_enables;
+        bool is_last_geometry_stage;
 };
 
 struct v3d_fs_key {
@@ -369,6 +370,16 @@ struct v3d_fs_key {
         uint32_t point_sprite_mask;
 
         struct pipe_rt_blend_state blend;
+};
+
+struct v3d_gs_key {
+        struct v3d_key base;
+
+        struct v3d_varying_slot used_outputs[V3D_MAX_FS_INPUTS];
+        uint8_t num_used_outputs;
+
+        bool is_coord;
+        bool per_vertex_point_size;
 };
 
 struct v3d_vs_key {
@@ -552,6 +563,7 @@ struct v3d_compile {
         int local_invocation_index_bits;
 
         uint8_t vattr_sizes[V3D_MAX_VS_INPUTS / 4];
+        uint8_t gs_input_sizes[V3D_MAX_GS_INPUTS];
         uint32_t vpm_output_size;
 
         /* Size in bytes of registers that have been spilled. This is how much
@@ -586,6 +598,7 @@ struct v3d_compile {
         struct pipe_shader_state *shader_state;
         struct v3d_key *key;
         struct v3d_fs_key *fs_key;
+        struct v3d_gs_key *gs_key;
         struct v3d_vs_key *vs_key;
 
         /* Live ranges of temps. */
@@ -685,6 +698,26 @@ struct v3d_vs_prog_data {
 
         /* Value to be programmed in VCM_CACHE_SIZE. */
         uint8_t vcm_cache_size;
+};
+
+struct v3d_gs_prog_data {
+        struct v3d_prog_data base;
+
+        /* Whether the program reads gl_PrimitiveIDIn */
+        bool uses_pid;
+
+        /* Number of components read from each input varying. */
+        uint8_t input_sizes[V3D_MAX_GS_INPUTS / 4];
+
+        /* Number of inputs */
+        uint8_t num_inputs;
+        struct v3d_varying_slot input_slots[V3D_MAX_GS_INPUTS];
+
+        /* Total number of components written, for the shader state record. */
+        uint32_t vpm_output_size;
+
+        /* Output primitive type */
+        uint8_t out_prim_type;
 };
 
 struct v3d_fs_prog_data {
