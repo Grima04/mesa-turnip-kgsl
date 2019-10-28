@@ -477,12 +477,6 @@ anv_raster_polygon_mode(struct anv_pipeline *pipeline,
                         const VkPipelineInputAssemblyStateCreateInfo *ia_info,
                         const VkPipelineRasterizationStateCreateInfo *rs_info)
 {
-   /* Points always override everything.  This saves us from having to handle
-    * rs_info->polygonMode in all of the line cases below.
-    */
-   if (rs_info->polygonMode == VK_POLYGON_MODE_POINT)
-      return VK_POLYGON_MODE_POINT;
-
    if (anv_pipeline_has_stage(pipeline, MESA_SHADER_GEOMETRY)) {
       switch (get_gs_prog_data(pipeline)->output_topology) {
       case _3DPRIM_POINTLIST:
