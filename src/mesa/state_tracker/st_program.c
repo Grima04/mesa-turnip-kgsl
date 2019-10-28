@@ -726,6 +726,7 @@ st_create_vp_variant(struct st_context *st,
                     true, can_compact, clipplane_state);
          NIR_PASS_V(state.ir.nir, nir_lower_io_to_temporaries,
                     nir_shader_get_entrypoint(state.ir.nir), true, false);
+         NIR_PASS_V(state.ir.nir, nir_lower_global_vars_to_local);
          finalize = true;
       }
 
