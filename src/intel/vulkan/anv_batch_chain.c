@@ -308,8 +308,8 @@ anv_batch_bo_create(struct anv_cmd_buffer *cmd_buffer,
    if (bbo == NULL)
       return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   result = anv_bo_pool_alloc(&cmd_buffer->device->batch_bo_pool, &bbo->bo,
-                              ANV_CMD_BUFFER_BATCH_SIZE);
+   result = anv_bo_pool_alloc(&cmd_buffer->device->batch_bo_pool,
+                              ANV_CMD_BUFFER_BATCH_SIZE, &bbo->bo);
    if (result != VK_SUCCESS)
       goto fail_alloc;
 
@@ -322,7 +322,7 @@ anv_batch_bo_create(struct anv_cmd_buffer *cmd_buffer,
    return VK_SUCCESS;
 
  fail_bo_alloc:
-   anv_bo_pool_free(&cmd_buffer->device->batch_bo_pool, &bbo->bo);
+   anv_bo_pool_free(&cmd_buffer->device->batch_bo_pool, bbo->bo);
  fail_alloc:
    vk_free(&cmd_buffer->pool->alloc, bbo);
 
@@ -341,8 +341,8 @@ anv_batch_bo_clone(struct anv_cmd_buffer *cmd_buffer,
    if (bbo == NULL)
       return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   result = anv_bo_pool_alloc(&cmd_buffer->device->batch_bo_pool, &bbo->bo,
-                              other_bbo->bo.size);
+   result = anv_bo_pool_alloc(&cmd_buffer->device->batch_bo_pool,
+                              other_bbo->bo->size, &bbo->bo);
    if (result != VK_SUCCESS)
       goto fail_alloc;
 
@@ -352,14 +352,13 @@ anv_batch_bo_clone(struct anv_cmd_buffer *cmd_buffer,
       goto fail_bo_alloc;
 
    bbo->length = other_bbo->length;
-   memcpy(bbo->bo.map, other_bbo->bo.map, other_bbo->length);
-
+   memcpy(bbo->bo->map, other_bbo->bo->map, other_bbo->length);
    *bbo_out = bbo;
 
    return VK_SUCCESS;
 
  fail_bo_alloc:
-   anv_bo_pool_free(&cmd_buffer->device->batch_bo_pool, &bbo->bo);
+   anv_bo_pool_free(&cmd_buffer->device->batch_bo_pool, bbo->bo);
  fail_alloc:
    vk_free(&cmd_buffer->pool->alloc, bbo);
 
@@ -370,8 +369,8 @@ static void
 anv_batch_bo_start(struct anv_batch_bo *bbo, struct anv_batch *batch,
                    size_t batch_padding)
 {
-   batch->next = batch->start = bbo->bo.map;
-   batch->end = bbo->bo.map + bbo->bo.size - batch_padding;
+   batch->next = batch->start = bbo->bo->map;
+   batch->end = bbo->bo->map + bbo->bo->size - batch_padding;
    batch->relocs = &bbo->relocs;
    bbo->relocs.num_relocs = 0;
    _mesa_set_clear(bbo->relocs.deps, NULL);
@@ -381,16 +380,16 @@ static void
 anv_batch_bo_continue(struct anv_batch_bo *bbo, struct anv_batch *batch,
                       size_t batch_padding)
 {
-   batch->start = bbo->bo.map;
-   batch->next = bbo->bo.map + bbo->length;
-   batch->end = bbo->bo.map + bbo->bo.size - batch_padding;
+   batch->start = bbo->bo->map;
+   batch->next = bbo->bo->map + bbo->length;
+   batch->end = bbo->bo->map + bbo->bo->size - batch_padding;
    batch->relocs = &bbo->relocs;
 }
 
 static void
 anv_batch_bo_finish(struct anv_batch_bo *bbo, struct anv_batch *batch)
 {
-   assert(batch->start == bbo->bo.map);
+   assert(batch->start == bbo->bo->map);
    bbo->length = batch->next - batch->start;
    VG(VALGRIND_CHECK_MEM_IS_DEFINED(batch->start, bbo->length));
 }
@@ -400,25 +399,25 @@ anv_batch_bo_grow(struct anv_cmd_buffer *cmd_buffer, struct anv_batch_bo *bbo,
                   struct anv_batch *batch, size_t aditional,
                   size_t batch_padding)
 {
-   assert(batch->start == bbo->bo.map);
+   assert(batch->start == bbo->bo->map);
    bbo->length = batch->next - batch->start;
 
-   size_t new_size = bbo->bo.size;
+   size_t new_size = bbo->bo->size;
    while (new_size <= bbo->length + aditional + batch_padding)
       new_size *= 2;
 
-   if (new_size == bbo->bo.size)
+   if (new_size == bbo->bo->size)
       return VK_SUCCESS;
 
-   struct anv_bo new_bo;
+   struct anv_bo *new_bo;
    VkResult result = anv_bo_pool_alloc(&cmd_buffer->device->batch_bo_pool,
-                                       &new_bo, new_size);
+                                       new_size, &new_bo);
    if (result != VK_SUCCESS)
       return result;
 
-   memcpy(new_bo.map, bbo->bo.map, bbo->length);
+   memcpy(new_bo->map, bbo->bo->map, bbo->length);
 
-   anv_bo_pool_free(&cmd_buffer->device->batch_bo_pool, &bbo->bo);
+   anv_bo_pool_free(&cmd_buffer->device->batch_bo_pool, bbo->bo);
 
    bbo->bo = new_bo;
    anv_batch_bo_continue(bbo, batch, batch_padding);
@@ -434,24 +433,24 @@ anv_batch_bo_link(struct anv_cmd_buffer *cmd_buffer,
 {
    const uint32_t bb_start_offset =
       prev_bbo->length - GEN8_MI_BATCH_BUFFER_START_length * 4;
-   ASSERTED const uint32_t *bb_start = prev_bbo->bo.map + bb_start_offset;
+   ASSERTED const uint32_t *bb_start = prev_bbo->bo->map + bb_start_offset;
 
    /* Make sure we're looking at a MI_BATCH_BUFFER_START */
    assert(((*bb_start >> 29) & 0x07) == 0);
    assert(((*bb_start >> 23) & 0x3f) == 49);
 
    if (cmd_buffer->device->instance->physicalDevice.use_softpin) {
-      assert(prev_bbo->bo.flags & EXEC_OBJECT_PINNED);
-      assert(next_bbo->bo.flags & EXEC_OBJECT_PINNED);
+      assert(prev_bbo->bo->flags & EXEC_OBJECT_PINNED);
+      assert(next_bbo->bo->flags & EXEC_OBJECT_PINNED);
 
       write_reloc(cmd_buffer->device,
-                  prev_bbo->bo.map + bb_start_offset + 4,
-                  next_bbo->bo.offset + next_bbo_offset, true);
+                  prev_bbo->bo->map + bb_start_offset + 4,
+                  next_bbo->bo->offset + next_bbo_offset, true);
    } else {
       uint32_t reloc_idx = prev_bbo->relocs.num_relocs - 1;
       assert(prev_bbo->relocs.relocs[reloc_idx].offset == bb_start_offset + 4);
 
-      prev_bbo->relocs.reloc_bos[reloc_idx] = &next_bbo->bo;
+      prev_bbo->relocs.reloc_bos[reloc_idx] = next_bbo->bo;
       prev_bbo->relocs.relocs[reloc_idx].delta = next_bbo_offset;
 
       /* Use a bogus presumed offset to force a relocation */
@@ -464,7 +463,7 @@ anv_batch_bo_destroy(struct anv_batch_bo *bbo,
                      struct anv_cmd_buffer *cmd_buffer)
 {
    anv_reloc_list_finish(&bbo->relocs, &cmd_buffer->pool->alloc);
-   anv_bo_pool_free(&cmd_buffer->device->batch_bo_pool, &bbo->bo);
+   anv_bo_pool_free(&cmd_buffer->device->batch_bo_pool, bbo->bo);
    vk_free(&cmd_buffer->pool->alloc, bbo);
 }
 
@@ -561,9 +560,9 @@ cmd_buffer_chain_to_batch_bo(struct anv_cmd_buffer *cmd_buffer,
     * chaining command, let's set it back where it should go.
     */
    batch->end += GEN8_MI_BATCH_BUFFER_START_length * 4;
-   assert(batch->end == current_bbo->bo.map + current_bbo->bo.size);
+   assert(batch->end == current_bbo->bo->map + current_bbo->bo->size);
 
-   emit_batch_buffer_start(cmd_buffer, &bbo->bo, 0);
+   emit_batch_buffer_start(cmd_buffer, bbo->bo, 0);
 
    anv_batch_bo_finish(current_bbo, batch);
 }
@@ -870,7 +869,7 @@ anv_cmd_buffer_end_batch_buffer(struct anv_cmd_buffer *cmd_buffer)
        * with our BATCH_BUFFER_END in another BO.
        */
       cmd_buffer->batch.end += GEN8_MI_BATCH_BUFFER_START_length * 4;
-      assert(cmd_buffer->batch.end == batch_bo->bo.map + batch_bo->bo.size);
+      assert(cmd_buffer->batch.end == batch_bo->bo->map + batch_bo->bo->size);
 
       anv_batch_emit(&cmd_buffer->batch, GEN8_MI_BATCH_BUFFER_END, bbe);
 
@@ -911,11 +910,11 @@ anv_cmd_buffer_end_batch_buffer(struct anv_cmd_buffer *cmd_buffer)
           * chaining command, let's set it back where it should go.
           */
          cmd_buffer->batch.end += GEN8_MI_BATCH_BUFFER_START_length * 4;
-         assert(cmd_buffer->batch.start == batch_bo->bo.map);
-         assert(cmd_buffer->batch.end == batch_bo->bo.map + batch_bo->bo.size);
+         assert(cmd_buffer->batch.start == batch_bo->bo->map);
+         assert(cmd_buffer->batch.end == batch_bo->bo->map + batch_bo->bo->size);
 
-         emit_batch_buffer_start(cmd_buffer, &batch_bo->bo, 0);
-         assert(cmd_buffer->batch.start == batch_bo->bo.map);
+         emit_batch_buffer_start(cmd_buffer, batch_bo->bo, 0);
+         assert(cmd_buffer->batch.start == batch_bo->bo->map);
       } else {
          cmd_buffer->exec_mode = ANV_CMD_BUFFER_EXEC_MODE_COPY_AND_CHAIN;
       }
@@ -961,10 +960,10 @@ anv_cmd_buffer_add_secondary(struct anv_cmd_buffer *primary,
       struct anv_batch_bo *last_bbo =
          list_last_entry(&secondary->batch_bos, struct anv_batch_bo, link);
 
-      emit_batch_buffer_start(primary, &first_bbo->bo, 0);
+      emit_batch_buffer_start(primary, first_bbo->bo, 0);
 
       struct anv_batch_bo *this_bbo = anv_cmd_buffer_current_batch_bo(primary);
-      assert(primary->batch.start == this_bbo->bo.map);
+      assert(primary->batch.start == this_bbo->bo->map);
       uint32_t offset = primary->batch.next - primary->batch.start;
 
       /* Make the tail of the secondary point back to right after the
@@ -1383,7 +1382,7 @@ relocate_cmd_buffer(struct anv_cmd_buffer *cmd_buffer,
    struct anv_batch_bo **bbo;
    u_vector_foreach(bbo, &cmd_buffer->seen_bbos) {
       anv_reloc_list_apply(cmd_buffer->device,
-                           &(*bbo)->relocs, &(*bbo)->bo, false);
+                           &(*bbo)->relocs, (*bbo)->bo, false);
    }
 
    for (uint32_t i = 0; i < exec->bo_count; i++)
@@ -1465,10 +1464,10 @@ setup_execbuf_for_cmd_buffer(struct anv_execbuf *execbuf,
     */
    struct anv_batch_bo **bbo;
    u_vector_foreach(bbo, &cmd_buffer->seen_bbos) {
-      adjust_relocations_to_state_pool(ss_pool, &(*bbo)->bo, &(*bbo)->relocs,
+      adjust_relocations_to_state_pool(ss_pool, (*bbo)->bo, &(*bbo)->relocs,
                                        cmd_buffer->last_ss_pool_center);
 
-      result = anv_execbuf_add_bo(execbuf, &(*bbo)->bo, &(*bbo)->relocs, 0,
+      result = anv_execbuf_add_bo(execbuf, (*bbo)->bo, &(*bbo)->relocs, 0,
                                   &cmd_buffer->device->alloc);
       if (result != VK_SUCCESS)
          return result;
@@ -1488,20 +1487,20 @@ setup_execbuf_for_cmd_buffer(struct anv_execbuf *execbuf,
     * corresponding to the first batch_bo in the chain with the last
     * element in the list.
     */
-   if (first_batch_bo->bo.index != execbuf->bo_count - 1) {
-      uint32_t idx = first_batch_bo->bo.index;
+   if (first_batch_bo->bo->index != execbuf->bo_count - 1) {
+      uint32_t idx = first_batch_bo->bo->index;
       uint32_t last_idx = execbuf->bo_count - 1;
 
       struct drm_i915_gem_exec_object2 tmp_obj = execbuf->objects[idx];
-      assert(execbuf->bos[idx] == &first_batch_bo->bo);
+      assert(execbuf->bos[idx] == first_batch_bo->bo);
 
       execbuf->objects[idx] = execbuf->objects[last_idx];
       execbuf->bos[idx] = execbuf->bos[last_idx];
       execbuf->bos[idx]->index = idx;
 
       execbuf->objects[last_idx] = tmp_obj;
-      execbuf->bos[last_idx] = &first_batch_bo->bo;
-      first_batch_bo->bo.index = last_idx;
+      execbuf->bos[last_idx] = first_batch_bo->bo;
+      first_batch_bo->bo->index = last_idx;
    }
 
    /* If we are pinning our BOs, we shouldn't have to relocate anything */
@@ -1523,7 +1522,7 @@ setup_execbuf_for_cmd_buffer(struct anv_execbuf *execbuf,
       __builtin_ia32_mfence();
       u_vector_foreach(bbo, &cmd_buffer->seen_bbos) {
          for (uint32_t i = 0; i < (*bbo)->length; i += CACHELINE_SIZE)
-            __builtin_ia32_clflush((*bbo)->bo.map + i);
+            __builtin_ia32_clflush((*bbo)->bo->map + i);
       }
    }
 
@@ -1732,7 +1731,7 @@ anv_cmd_buffer_execbuf(struct anv_device *device,
       switch (impl->type) {
       case ANV_FENCE_TYPE_BO:
          assert(!pdevice->has_syncobj_wait);
-         result = anv_execbuf_add_bo(&execbuf, &impl->bo.bo, NULL,
+         result = anv_execbuf_add_bo(&execbuf, impl->bo.bo, NULL,
                                      EXEC_OBJECT_WRITE, &device->alloc);
          if (result != VK_SUCCESS)
             return result;
@@ -1756,8 +1755,8 @@ anv_cmd_buffer_execbuf(struct anv_device *device,
          struct anv_batch_bo **bo = u_vector_tail(&cmd_buffer->seen_bbos);
 
          device->cmd_buffer_being_decoded = cmd_buffer;
-         gen_print_batch(&device->decoder_ctx, (*bo)->bo.map,
-                         (*bo)->bo.size, (*bo)->bo.offset, false);
+         gen_print_batch(&device->decoder_ctx, (*bo)->bo->map,
+                         (*bo)->bo->size, (*bo)->bo->offset, false);
          device->cmd_buffer_being_decoded = NULL;
       }
 

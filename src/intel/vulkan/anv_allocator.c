@@ -357,57 +357,6 @@ anv_free_list_pop(union anv_free_list *list,
    return NULL;
 }
 
-/* All pointers in the ptr_free_list are assumed to be page-aligned.  This
- * means that the bottom 12 bits should all be zero.
- */
-#define PFL_COUNT(x) ((uintptr_t)(x) & 0xfff)
-#define PFL_PTR(x) ((void *)((uintptr_t)(x) & ~(uintptr_t)0xfff))
-#define PFL_PACK(ptr, count) ({           \
-   (void *)(((uintptr_t)(ptr) & ~(uintptr_t)0xfff) | ((count) & 0xfff)); \
-})
-
-static bool
-anv_ptr_free_list_pop(void **list, void **elem)
-{
-   void *current = *list;
-   while (PFL_PTR(current) != NULL) {
-      void **next_ptr = PFL_PTR(current);
-      void *new_ptr = VG_NOACCESS_READ(next_ptr);
-      unsigned new_count = PFL_COUNT(current) + 1;
-      void *new = PFL_PACK(new_ptr, new_count);
-      void *old = __sync_val_compare_and_swap(list, current, new);
-      if (old == current) {
-         *elem = PFL_PTR(current);
-         return true;
-      }
-      current = old;
-   }
-
-   return false;
-}
-
-static void
-anv_ptr_free_list_push(void **list, void *elem)
-{
-   void *old, *current;
-   void **next_ptr = elem;
-
-   /* The pointer-based free list requires that the pointer be
-    * page-aligned.  This is because we use the bottom 12 bits of the
-    * pointer to store a counter to solve the ABA concurrency problem.
-    */
-   assert(((uintptr_t)elem & 0xfff) == 0);
-
-   old = *list;
-   do {
-      current = old;
-      VG_NOACCESS_WRITE(next_ptr, PFL_PTR(current));
-      unsigned new_count = PFL_COUNT(current) + 1;
-      void *new = PFL_PACK(elem, new_count);
-      old = __sync_val_compare_and_swap(list, current, new);
-   } while (old != current);
-}
-
 static VkResult
 anv_block_pool_expand_range(struct anv_block_pool *pool,
                             uint32_t center_bo_offset, uint32_t size);
@@ -1311,18 +1260,17 @@ anv_state_stream_alloc(struct anv_state_stream *stream,
    return state;
 }
 
-struct bo_pool_bo_link {
-   struct bo_pool_bo_link *next;
-   struct anv_bo bo;
-};
-
 void
 anv_bo_pool_init(struct anv_bo_pool *pool, struct anv_device *device,
                  uint64_t bo_flags)
 {
    pool->device = device;
    pool->bo_flags = bo_flags;
-   memset(pool->free_list, 0, sizeof(pool->free_list));
+   for (unsigned i = 0; i < ARRAY_SIZE(pool->free_list); i++) {
+      util_sparse_array_free_list_init(&pool->free_list[i],
+                                       &device->bo_cache.bo_map, 0,
+                                       offsetof(struct anv_bo, free_index));
+   }
 
    VG(VALGRIND_CREATE_MEMPOOL(pool, 0, false));
 }
@@ -1331,14 +1279,15 @@ void
 anv_bo_pool_finish(struct anv_bo_pool *pool)
 {
    for (unsigned i = 0; i < ARRAY_SIZE(pool->free_list); i++) {
-      struct bo_pool_bo_link *link = PFL_PTR(pool->free_list[i]);
-      while (link != NULL) {
-         struct bo_pool_bo_link link_copy = VG_NOACCESS_READ(link);
+      while (1) {
+         struct anv_bo *bo =
+            util_sparse_array_free_list_pop_elem(&pool->free_list[i]);
+         if (bo == NULL)
+            break;
 
-         anv_gem_munmap(link_copy.bo.map, link_copy.bo.size);
-         anv_vma_free(pool->device, &link_copy.bo);
-         anv_gem_close(pool->device, link_copy.bo.gem_handle);
-         link = link_copy.next;
+         /* anv_device_release_bo is going to "free" it */
+         VG(VALGRIND_MALLOCLIKE_BLOCK(bo->map, bo->size, 0, 1));
+         anv_device_release_bo(pool->device, bo);
       }
    }
 
@@ -1346,80 +1295,53 @@ anv_bo_pool_finish(struct anv_bo_pool *pool)
 }
 
 VkResult
-anv_bo_pool_alloc(struct anv_bo_pool *pool, struct anv_bo *bo, uint32_t size)
+anv_bo_pool_alloc(struct anv_bo_pool *pool, uint32_t size,
+                  struct anv_bo **bo_out)
 {
-   VkResult result;
-
    const unsigned size_log2 = size < 4096 ? 12 : ilog2_round_up(size);
    const unsigned pow2_size = 1 << size_log2;
    const unsigned bucket = size_log2 - 12;
    assert(bucket < ARRAY_SIZE(pool->free_list));
 
-   void *next_free_void;
-   if (anv_ptr_free_list_pop(&pool->free_list[bucket], &next_free_void)) {
-      struct bo_pool_bo_link *next_free = next_free_void;
-      *bo = VG_NOACCESS_READ(&next_free->bo);
-      assert(bo->gem_handle);
-      assert(bo->map == next_free);
-      assert(size <= bo->size);
-
+   struct anv_bo *bo =
+      util_sparse_array_free_list_pop_elem(&pool->free_list[bucket]);
+   if (bo != NULL) {
       VG(VALGRIND_MEMPOOL_ALLOC(pool, bo->map, size));
-
+      *bo_out = bo;
       return VK_SUCCESS;
    }
 
-   struct anv_bo new_bo;
-
-   result = anv_bo_init_new(&new_bo, pool->device, pow2_size);
+   VkResult result = anv_device_alloc_bo(pool->device,
+                                         pow2_size,
+                                         ANV_BO_ALLOC_MAPPED |
+                                         ANV_BO_ALLOC_SNOOPED,
+                                         &bo);
    if (result != VK_SUCCESS)
       return result;
 
-   new_bo.flags = pool->bo_flags;
-
-   if (!anv_vma_alloc(pool->device, &new_bo))
-      return vk_error(VK_ERROR_OUT_OF_DEVICE_MEMORY);
-
-   assert(new_bo.size == pow2_size);
-
-   new_bo.map = anv_gem_mmap(pool->device, new_bo.gem_handle, 0, pow2_size, 0);
-   if (new_bo.map == MAP_FAILED) {
-      anv_gem_close(pool->device, new_bo.gem_handle);
-      anv_vma_free(pool->device, &new_bo);
-      return vk_error(VK_ERROR_MEMORY_MAP_FAILED);
-   }
-
-   /* We are removing the state flushes, so lets make sure that these buffers
-    * are cached/snooped.
-    */
-   if (!pool->device->info.has_llc) {
-      anv_gem_set_caching(pool->device, new_bo.gem_handle,
-                          I915_CACHING_CACHED);
-   }
-
-   *bo = new_bo;
-
+   /* We want it to look like it came from this pool */
+   VG(VALGRIND_FREELIKE_BLOCK(bo->map, 0));
    VG(VALGRIND_MEMPOOL_ALLOC(pool, bo->map, size));
+
+   *bo_out = bo;
 
    return VK_SUCCESS;
 }
 
 void
-anv_bo_pool_free(struct anv_bo_pool *pool, const struct anv_bo *bo_in)
+anv_bo_pool_free(struct anv_bo_pool *pool, struct anv_bo *bo)
 {
-   /* Make a copy in case the anv_bo happens to be storred in the BO */
-   struct anv_bo bo = *bo_in;
+   VG(VALGRIND_MEMPOOL_FREE(pool, bo->map));
 
-   VG(VALGRIND_MEMPOOL_FREE(pool, bo.map));
-
-   struct bo_pool_bo_link *link = bo.map;
-   VG_NOACCESS_WRITE(&link->bo, bo);
-
-   assert(util_is_power_of_two_or_zero(bo.size));
-   const unsigned size_log2 = ilog2_round_up(bo.size);
+   assert(util_is_power_of_two_or_zero(bo->size));
+   const unsigned size_log2 = ilog2_round_up(bo->size);
    const unsigned bucket = size_log2 - 12;
    assert(bucket < ARRAY_SIZE(pool->free_list));
 
-   anv_ptr_free_list_push(&pool->free_list[bucket], link);
+   assert(util_sparse_array_get(&pool->device->bo_cache.bo_map,
+                                bo->gem_handle) == bo);
+   util_sparse_array_free_list_push(&pool->free_list[bucket],
+                                    &bo->gem_handle, 1);
 }
 
 // Scratch pool

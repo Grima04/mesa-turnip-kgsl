@@ -61,27 +61,26 @@ anv_device_submit_simple_batch(struct anv_device *device,
 {
    struct drm_i915_gem_execbuffer2 execbuf;
    struct drm_i915_gem_exec_object2 exec2_objects[1];
-   struct anv_bo bo, *exec_bos[1];
+   struct anv_bo *bo;
    VkResult result = VK_SUCCESS;
    uint32_t size;
 
    /* Kernel driver requires 8 byte aligned batch length */
    size = align_u32(batch->next - batch->start, 8);
-   result = anv_bo_pool_alloc(&device->batch_bo_pool, &bo, size);
+   result = anv_bo_pool_alloc(&device->batch_bo_pool, size, &bo);
    if (result != VK_SUCCESS)
       return result;
 
-   memcpy(bo.map, batch->start, size);
+   memcpy(bo->map, batch->start, size);
    if (!device->info.has_llc)
-      gen_flush_range(bo.map, size);
+      gen_flush_range(bo->map, size);
 
-   exec_bos[0] = &bo;
-   exec2_objects[0].handle = bo.gem_handle;
+   exec2_objects[0].handle = bo->gem_handle;
    exec2_objects[0].relocation_count = 0;
    exec2_objects[0].relocs_ptr = 0;
    exec2_objects[0].alignment = 0;
-   exec2_objects[0].offset = bo.offset;
-   exec2_objects[0].flags = bo.flags;
+   exec2_objects[0].offset = bo->offset;
+   exec2_objects[0].flags = bo->flags;
    exec2_objects[0].rsvd1 = 0;
    exec2_objects[0].rsvd2 = 0;
 
@@ -99,17 +98,19 @@ anv_device_submit_simple_batch(struct anv_device *device,
    execbuf.rsvd1 = device->context_id;
    execbuf.rsvd2 = 0;
 
-   if (unlikely(INTEL_DEBUG & DEBUG_BATCH))
-      gen_print_batch(&device->decoder_ctx, bo.map, bo.size, bo.offset, false);
+   if (unlikely(INTEL_DEBUG & DEBUG_BATCH)) {
+      gen_print_batch(&device->decoder_ctx, bo->map,
+                      bo->size, bo->offset, false);
+   }
 
-   result = anv_device_execbuf(device, &execbuf, exec_bos);
+   result = anv_device_execbuf(device, &execbuf, &bo);
    if (result != VK_SUCCESS)
       goto fail;
 
-   result = anv_device_wait(device, &bo, INT64_MAX);
+   result = anv_device_wait(device, bo, INT64_MAX);
 
  fail:
-   anv_bo_pool_free(&device->batch_bo_pool, &bo);
+   anv_bo_pool_free(&device->batch_bo_pool, bo);
 
    return result;
 }
@@ -288,8 +289,8 @@ VkResult anv_CreateFence(
    } else {
       fence->permanent.type = ANV_FENCE_TYPE_BO;
 
-      VkResult result = anv_bo_pool_alloc(&device->batch_bo_pool,
-                                          &fence->permanent.bo.bo, 4096);
+      VkResult result = anv_bo_pool_alloc(&device->batch_bo_pool, 4096,
+                                          &fence->permanent.bo.bo);
       if (result != VK_SUCCESS)
          return result;
 
@@ -315,7 +316,7 @@ anv_fence_impl_cleanup(struct anv_device *device,
       break;
 
    case ANV_FENCE_TYPE_BO:
-      anv_bo_pool_free(&device->batch_bo_pool, &impl->bo.bo);
+      anv_bo_pool_free(&device->batch_bo_pool, impl->bo.bo);
       break;
 
    case ANV_FENCE_TYPE_SYNCOBJ:
@@ -417,7 +418,7 @@ VkResult anv_GetFenceStatus(
          return VK_SUCCESS;
 
       case ANV_BO_FENCE_STATE_SUBMITTED: {
-         VkResult result = anv_device_bo_busy(device, &impl->bo.bo);
+         VkResult result = anv_device_bo_busy(device, impl->bo.bo);
          if (result == VK_SUCCESS) {
             impl->bo.state = ANV_BO_FENCE_STATE_SIGNALED;
             return VK_SUCCESS;
@@ -591,7 +592,7 @@ anv_wait_for_bo_fences(struct anv_device *device,
             /* These are the fences we really care about.  Go ahead and wait
              * on it until we hit a timeout.
              */
-            result = anv_device_wait(device, &impl->bo.bo,
+            result = anv_device_wait(device, impl->bo.bo,
                                      anv_get_relative_timeout(abs_timeout_ns));
             switch (result) {
             case VK_SUCCESS:

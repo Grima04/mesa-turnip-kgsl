@@ -2373,13 +2373,13 @@ decode_get_bo(void *v_batch, bool ppgtt, uint64_t address)
 
    u_vector_foreach(bo, &device->cmd_buffer_being_decoded->seen_bbos) {
       /* The decoder zeroes out the top 16 bits, so we need to as well */
-      uint64_t bo_address = (*bo)->bo.offset & (~0ull >> 16);
+      uint64_t bo_address = (*bo)->bo->offset & (~0ull >> 16);
 
-      if (address >= bo_address && address < bo_address + (*bo)->bo.size) {
+      if (address >= bo_address && address < bo_address + (*bo)->bo->size) {
          return (struct gen_batch_decode_bo) {
             .addr = bo_address,
-            .size = (*bo)->bo.size,
-            .map = (*bo)->bo.map,
+            .size = (*bo)->bo->size,
+            .map = (*bo)->bo->map,
          };
       }
    }
@@ -2612,16 +2612,16 @@ VkResult anv_CreateDevice(
       (physical_device->has_exec_capture ? EXEC_OBJECT_CAPTURE : 0) |
       (physical_device->use_softpin ? EXEC_OBJECT_PINNED : 0);
 
-   anv_bo_pool_init(&device->batch_bo_pool, device, bo_flags);
-
    result = anv_bo_cache_init(&device->bo_cache);
    if (result != VK_SUCCESS)
-      goto fail_batch_bo_pool;
+      goto fail_queue_cond;
+
+   anv_bo_pool_init(&device->batch_bo_pool, device, bo_flags);
 
    result = anv_state_pool_init(&device->dynamic_state_pool, device,
                                 DYNAMIC_STATE_POOL_MIN_ADDRESS, 16384);
    if (result != VK_SUCCESS)
-      goto fail_bo_cache;
+      goto fail_batch_bo_pool;
 
    result = anv_state_pool_init(&device->instruction_state_pool, device,
                                 INSTRUCTION_STATE_POOL_MIN_ADDRESS, 16384);
@@ -2727,10 +2727,10 @@ VkResult anv_CreateDevice(
    anv_state_pool_finish(&device->instruction_state_pool);
  fail_dynamic_state_pool:
    anv_state_pool_finish(&device->dynamic_state_pool);
- fail_bo_cache:
-   anv_bo_cache_finish(&device->bo_cache);
  fail_batch_bo_pool:
    anv_bo_pool_finish(&device->batch_bo_pool);
+   anv_bo_cache_finish(&device->bo_cache);
+ fail_queue_cond:
    pthread_cond_destroy(&device->queue_submit);
  fail_mutex:
    pthread_mutex_destroy(&device->mutex);
@@ -2797,9 +2797,9 @@ void anv_DestroyDevice(
    anv_state_pool_finish(&device->instruction_state_pool);
    anv_state_pool_finish(&device->dynamic_state_pool);
 
-   anv_bo_cache_finish(&device->bo_cache);
-
    anv_bo_pool_finish(&device->batch_bo_pool);
+
+   anv_bo_cache_finish(&device->bo_cache);
 
    if (physical_device->use_softpin) {
       util_vma_heap_finish(&device->vma_hi);

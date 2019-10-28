@@ -608,6 +608,9 @@ struct anv_bo {
     */
    uint32_t index;
 
+   /* Index for use with util_sparse_array_free_list */
+   uint32_t free_index;
+
    /* Last known offset.  This value is provided by the kernel when we
     * execbuf and is used as the presumed offset for the next bunch of
     * relocations.
@@ -898,15 +901,15 @@ struct anv_bo_pool {
 
    uint64_t bo_flags;
 
-   void *free_list[16];
+   struct util_sparse_array_free_list free_list[16];
 };
 
 void anv_bo_pool_init(struct anv_bo_pool *pool, struct anv_device *device,
                       uint64_t bo_flags);
 void anv_bo_pool_finish(struct anv_bo_pool *pool);
-VkResult anv_bo_pool_alloc(struct anv_bo_pool *pool, struct anv_bo *bo,
-                           uint32_t size);
-void anv_bo_pool_free(struct anv_bo_pool *pool, const struct anv_bo *bo);
+VkResult anv_bo_pool_alloc(struct anv_bo_pool *pool, uint32_t size,
+                           struct anv_bo **bo_out);
+void anv_bo_pool_free(struct anv_bo_pool *pool, struct anv_bo *bo);
 
 struct anv_scratch_bo {
    bool exists;
@@ -1400,7 +1403,7 @@ struct anv_batch_bo {
    /* Link in the anv_cmd_buffer.owned_batch_bos list */
    struct list_head                             link;
 
-   struct anv_bo                                bo;
+   struct anv_bo *                              bo;
 
    /* Bytes actually consumed in this batch BO */
    uint32_t                                     length;
@@ -2739,7 +2742,7 @@ struct anv_fence_impl {
        * will say it's idle in this case.
        */
       struct {
-         struct anv_bo bo;
+         struct anv_bo *bo;
          enum anv_bo_fence_state state;
       } bo;
 
