@@ -1680,9 +1680,15 @@ endif
 
 pkg = import('pkgconfig')
 
-prog_nm = find_program('nm', required : false)
-with_symbols_check = prog_nm.found() and with_tests
-symbols_check_args = ['--nm', prog_nm.path()]
+if host_machine.system() == 'windows'
+  prog_dumpbin = find_program('dumpbin', required : false)
+  with_symbols_check = prog_dumpbin.found() and with_tests
+  symbols_check_args = ['--dumpbin', prog_dumpbin.path()]
+else
+  prog_nm = find_program('nm', required : false)
+  with_symbols_check = prog_nm.found() and with_tests
+  symbols_check_args = ['--nm', prog_nm.path()]
+endif
 
 # This quirk needs to be applied to sources with functions defined in assembly
 # as GCC LTO drops them. See: https://bugs.freedesktop.org/show_bug.cgi?id=109391
