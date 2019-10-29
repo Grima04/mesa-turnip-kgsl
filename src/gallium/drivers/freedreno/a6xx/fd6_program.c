@@ -410,12 +410,25 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_screen *screen,
 			 A6XX_SP_FS_OUTPUT_CNTL0_SAMPMASK_REGID(smask_regid) |
 			 0xfc000000);
 
+	enum a3xx_threadsize vssz;
+	uint32_t vsregs;
+	if (ds || hs) {
+		vssz = TWO_QUADS;
+		vsregs = 0;
+	} else {
+		vssz = FOUR_QUADS;
+		vsregs = A6XX_SP_VS_CTRL_REG0_MERGEDREGS;
+	}
+
 	OUT_PKT4(ring, REG_A6XX_SP_VS_CTRL_REG0, 1);
-	OUT_RING(ring, A6XX_SP_VS_CTRL_REG0_THREADSIZE(fssz) |
+	OUT_RING(ring, A6XX_SP_VS_CTRL_REG0_THREADSIZE(vssz) |
 			A6XX_SP_VS_CTRL_REG0_FULLREGFOOTPRINT(vs->info.max_reg + 1) |
-			A6XX_SP_VS_CTRL_REG0_MERGEDREGS |
+			vsregs |
 			A6XX_SP_VS_CTRL_REG0_BRANCHSTACK(vs->branchstack) |
 			COND(vs->need_pixlod, A6XX_SP_VS_CTRL_REG0_PIXLODENABLE));
+
+	fd6_emit_shader(ring, vs);
+	ir3_emit_immediates(screen, vs, ring);
 
 	struct ir3_shader_linkage l = {0};
 	const struct ir3_shader_variant *last_shader = fd6_last_shader(state);
@@ -496,9 +509,6 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_screen *screen,
 
 		OUT_RING(ring, reg);
 	}
-
-	fd6_emit_shader(ring, vs);
-	ir3_emit_immediates(screen, vs, ring);
 
 	if (hs) {
 		OUT_PKT4(ring, REG_A6XX_SP_HS_CTRL_REG0, 1);
