@@ -597,10 +597,6 @@ anv_multialloc_alloc2(struct anv_multialloc *ma,
    return anv_multialloc_alloc(ma, alloc ? alloc : parent_alloc, scope);
 }
 
-/* Extra ANV-defined BO flags which won't be passed to the kernel */
-#define ANV_BO_EXTERNAL    (1ull << 31)
-#define ANV_BO_FLAG_MASK   (1ull << 31)
-
 struct anv_bo {
    uint32_t gem_handle;
 
@@ -623,6 +619,9 @@ struct anv_bo {
 
    /** Flags to pass to the kernel through drm_i915_exec_object2::flags */
    uint32_t flags;
+
+   /** True if this BO may be shared with other processes */
+   bool is_external:1;
 };
 
 static inline void
@@ -635,6 +634,7 @@ anv_bo_init(struct anv_bo *bo, uint32_t gem_handle, uint64_t size)
    bo->size = size;
    bo->map = NULL;
    bo->flags = 0;
+   bo->is_external = false;
 }
 
 /* Represents a lock-free linked list of "free" things.  This is used by
@@ -901,6 +901,7 @@ void anv_bo_cache_finish(struct anv_bo_cache *cache);
 VkResult anv_bo_cache_alloc(struct anv_device *device,
                             struct anv_bo_cache *cache,
                             uint64_t size, uint64_t bo_flags,
+                            bool is_external,
                             struct anv_bo **bo);
 VkResult anv_bo_cache_import_host_ptr(struct anv_device *device,
                                       struct anv_bo_cache *cache,
@@ -1219,7 +1220,7 @@ anv_binding_table_pool_free(struct anv_device *device, struct anv_state state) {
 static inline uint32_t
 anv_mocs_for_bo(const struct anv_device *device, const struct anv_bo *bo)
 {
-   if (bo->flags & ANV_BO_EXTERNAL)
+   if (bo->is_external)
       return device->external_mocs;
    else
       return device->default_mocs;

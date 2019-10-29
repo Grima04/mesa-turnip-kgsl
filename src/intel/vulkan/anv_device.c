@@ -3177,7 +3177,7 @@ VkResult anv_AllocateMemory(
                VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT);
 
       result = anv_bo_cache_import(device, &device->bo_cache, fd_info->fd,
-                                   bo_flags | ANV_BO_EXTERNAL, &mem->bo);
+                                   bo_flags, &mem->bo);
       if (result != VK_SUCCESS)
          goto fail;
 
@@ -3242,11 +3242,10 @@ VkResult anv_AllocateMemory(
 
    /* Regular allocate (not importing memory). */
 
-   if (export_info && export_info->handleTypes)
-      bo_flags |= ANV_BO_EXTERNAL;
-
+   bool is_external = export_info && export_info->handleTypes;
    result = anv_bo_cache_alloc(device, &device->bo_cache,
-                               pAllocateInfo->allocationSize, bo_flags,
+                               pAllocateInfo->allocationSize,
+                               bo_flags, is_external,
                                &mem->bo);
    if (result != VK_SUCCESS)
       goto fail;

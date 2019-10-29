@@ -952,7 +952,8 @@ VkResult anv_CreateSemaphore(
       } else {
          semaphore->permanent.type = ANV_SEMAPHORE_TYPE_BO;
          VkResult result = anv_bo_cache_alloc(device, &device->bo_cache,
-                                              4096, ANV_BO_EXTERNAL,
+                                              4096, 0 /* flags */,
+                                              true /* is_external */,
                                               &semaphore->permanent.bo);
          if (result != VK_SUCCESS) {
             vk_free2(&device->alloc, pAllocator, semaphore);
@@ -1106,7 +1107,7 @@ VkResult anv_ImportSemaphoreFdKHR(
          new_impl.type = ANV_SEMAPHORE_TYPE_BO;
 
          VkResult result = anv_bo_cache_import(device, &device->bo_cache,
-                                               fd, ANV_BO_EXTERNAL,
+                                               fd, 0 /* flags */,
                                                &new_impl.bo);
          if (result != VK_SUCCESS)
             return result;

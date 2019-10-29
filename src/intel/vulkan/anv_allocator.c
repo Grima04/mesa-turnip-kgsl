@@ -1624,13 +1624,13 @@ anv_bo_cache_lookup(struct anv_bo_cache *cache, uint32_t gem_handle)
    (EXEC_OBJECT_WRITE | \
     EXEC_OBJECT_ASYNC | \
     EXEC_OBJECT_SUPPORTS_48B_ADDRESS | \
-    EXEC_OBJECT_PINNED | \
-    ANV_BO_EXTERNAL)
+    EXEC_OBJECT_PINNED)
 
 VkResult
 anv_bo_cache_alloc(struct anv_device *device,
                    struct anv_bo_cache *cache,
                    uint64_t size, uint64_t bo_flags,
+                   bool is_external,
                    struct anv_bo **bo_out)
 {
    assert(bo_flags == (bo_flags & ANV_BO_CACHE_SUPPORTED_FLAGS));
@@ -1644,6 +1644,7 @@ anv_bo_cache_alloc(struct anv_device *device,
       return result;
 
    new_bo.flags = bo_flags;
+   new_bo.is_external = is_external;
 
    if (!anv_vma_alloc(device, &new_bo)) {
       anv_gem_close(device, new_bo.gem_handle);
@@ -1672,7 +1673,6 @@ anv_bo_cache_import_host_ptr(struct anv_device *device,
                              uint64_t bo_flags, struct anv_bo **bo_out)
 {
    assert(bo_flags == (bo_flags & ANV_BO_CACHE_SUPPORTED_FLAGS));
-   assert((bo_flags & ANV_BO_EXTERNAL) == 0);
 
    uint32_t gem_handle = anv_gem_userptr(device, host_ptr, size);
    if (!gem_handle)
@@ -1698,6 +1698,7 @@ anv_bo_cache_import_host_ptr(struct anv_device *device,
       struct anv_bo new_bo;
       anv_bo_init(&new_bo, gem_handle, size);
       new_bo.flags = bo_flags;
+      new_bo.is_external = true;
 
       if (!anv_vma_alloc(device, &new_bo)) {
          anv_gem_close(device, new_bo.gem_handle);
@@ -1723,7 +1724,6 @@ anv_bo_cache_import(struct anv_device *device,
                     struct anv_bo **bo_out)
 {
    assert(bo_flags == (bo_flags & ANV_BO_CACHE_SUPPORTED_FLAGS));
-   assert(bo_flags & ANV_BO_EXTERNAL);
 
    pthread_mutex_lock(&cache->mutex);
 
@@ -1740,7 +1740,7 @@ anv_bo_cache_import(struct anv_device *device,
        * client has imported a BO twice in different ways and they get what
        * they have coming.
        */
-      uint64_t new_flags = ANV_BO_EXTERNAL;
+      uint64_t new_flags = 0;
       new_flags |= (bo->flags | bo_flags) & EXEC_OBJECT_WRITE;
       new_flags |= (bo->flags & bo_flags) & EXEC_OBJECT_ASYNC;
       new_flags |= (bo->flags & bo_flags) & EXEC_OBJECT_SUPPORTS_48B_ADDRESS;
@@ -1789,6 +1789,7 @@ anv_bo_cache_import(struct anv_device *device,
       struct anv_bo new_bo;
       anv_bo_init(&new_bo, gem_handle, size);
       new_bo.flags = bo_flags;
+      new_bo.is_external = true;
 
       if (!anv_vma_alloc(device, &new_bo)) {
          anv_gem_close(device, new_bo.gem_handle);
@@ -1818,7 +1819,7 @@ anv_bo_cache_export(struct anv_device *device,
     * to export it.  This is done based on external options passed into
     * anv_AllocateMemory.
     */
-   assert(bo->flags & ANV_BO_EXTERNAL);
+   assert(bo->is_external);
 
    int fd = anv_gem_handle_to_fd(device, bo->gem_handle);
    if (fd < 0)
