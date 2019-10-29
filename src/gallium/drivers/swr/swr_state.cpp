@@ -1231,6 +1231,14 @@ swr_update_derived(struct pipe_context *pipe,
          util_viewport_zmin_zmax(state, rasterizer->clip_halfz,
                                  &vp->minZ, &vp->maxZ);
 
+         if (rasterizer->depth_clip_near) {
+            vp->minZ = 0.0f;
+         }
+
+         if (rasterizer->depth_clip_far) {
+            vp->maxZ = 1.0f;
+         }
+
          vpm->m00[i] = state->scale[0];
          vpm->m11[i] = state->scale[1];
          vpm->m22[i] = state->scale[2];
