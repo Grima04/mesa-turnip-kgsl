@@ -1151,6 +1151,9 @@ radv_initialise_ds_surface(struct radv_device *device,
 			   struct radv_ds_buffer_info *ds,
 			   struct radv_image_view *iview);
 
+bool
+radv_sc_read(int fd, void *buf, size_t size, bool timeout);
+
 /**
  * Attachment state when recording a renderpass instance.
  *

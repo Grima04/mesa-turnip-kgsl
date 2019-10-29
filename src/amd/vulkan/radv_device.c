@@ -1994,6 +1994,45 @@ static int install_seccomp_filter() {
 	return 0;
 }
 
+/* Helper function with timeout support for reading from the pipe between
+ * processes used for secure compile.
+ */
+bool radv_sc_read(int fd, void *buf, size_t size, bool timeout)
+{
+	fd_set fds;
+	struct timeval tv;
+
+	FD_ZERO(&fds);
+	FD_SET(fd, &fds);
+
+	while (true) {
+		/* We can't rely on the value of tv after calling select() so
+		 * we must reset it on each iteration of the loop.
+		 */
+		tv.tv_sec = 5;
+		tv.tv_usec = 0;
+
+		int rval = select(fd + 1, &fds, NULL, NULL, timeout ? &tv : NULL);
+
+		if (rval == -1) {
+			/* select error */
+			return false;
+		} else if (rval) {
+			ssize_t bytes_read = read(fd, buf, size);
+			if (bytes_read < 0)
+				return false;
+
+			buf += bytes_read;
+			size -= bytes_read;
+			if (size == 0)
+				return true;
+		} else {
+			/* select timeout */
+			return false;
+		}
+	}
+}
+
 static void run_secure_compile_device(struct radv_device *device, unsigned process,
 				      int *fd_secure_input, int *fd_secure_output)
 {
