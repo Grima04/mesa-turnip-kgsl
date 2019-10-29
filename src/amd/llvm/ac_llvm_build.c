@@ -4675,3 +4675,82 @@ ac_export_mrt_z(struct ac_llvm_context *ctx, LLVMValueRef depth,
 	args->enabled_channels = mask;
 }
 
+static LLVMTypeRef
+arg_llvm_type(enum ac_arg_type type, unsigned size, struct ac_llvm_context *ctx)
+{
+	if (type == AC_ARG_FLOAT) {
+		return size == 1 ? ctx->f32 : LLVMVectorType(ctx->f32, size);
+	} else if (type == AC_ARG_INT) {
+		return size == 1 ? ctx->i32 : LLVMVectorType(ctx->i32, size);
+	} else {
+		LLVMTypeRef ptr_type;
+		switch (type) {
+		case AC_ARG_CONST_PTR:
+			ptr_type = ctx->i8;
+			break;
+		case AC_ARG_CONST_FLOAT_PTR:
+			ptr_type = ctx->f32;
+			break;
+		case AC_ARG_CONST_PTR_PTR:
+			ptr_type = ac_array_in_const32_addr_space(ctx->i8);
+			break;
+		case AC_ARG_CONST_DESC_PTR:
+			ptr_type = ctx->v4i32;
+			break;
+		case AC_ARG_CONST_IMAGE_PTR:
+			ptr_type = ctx->v8i32;
+			break;
+		default:
+			unreachable("unknown arg type");
+		}
+		if (size == 1) {
+			return ac_array_in_const32_addr_space(ptr_type);
+		} else {
+			assert(size == 2);
+			return ac_array_in_const_addr_space(ptr_type);
+		}
+	}
+}
+
+LLVMValueRef
+ac_build_main(const struct ac_shader_args *args,
+	      struct ac_llvm_context *ctx,
+	      enum ac_llvm_calling_convention convention,
+	      const char *name, LLVMTypeRef ret_type,
+	      LLVMModuleRef module)
+{
+	LLVMTypeRef arg_types[AC_MAX_ARGS];
+
+	for (unsigned i = 0; i < args->arg_count; i++) {
+		arg_types[i] = arg_llvm_type(args->args[i].type,
+					     args->args[i].size, ctx);
+	}
+
+	LLVMTypeRef main_function_type =
+		LLVMFunctionType(ret_type, arg_types, args->arg_count, 0);
+
+	LLVMValueRef main_function =
+	    LLVMAddFunction(module, name, main_function_type);
+	LLVMBasicBlockRef main_function_body =
+	    LLVMAppendBasicBlockInContext(ctx->context, main_function, "main_body");
+	LLVMPositionBuilderAtEnd(ctx->builder, main_function_body);
+
+	LLVMSetFunctionCallConv(main_function, convention);
+	for (unsigned i = 0; i < args->arg_count; ++i) {
+		LLVMValueRef P = LLVMGetParam(main_function, i);
+
+		if (args->args[i].file != AC_ARG_SGPR)
+			continue;
+
+		ac_add_function_attr(ctx->context, main_function, i + 1, AC_FUNC_ATTR_INREG);
+
+		if (LLVMGetTypeKind(LLVMTypeOf(P)) == LLVMPointerTypeKind) {
+			ac_add_function_attr(ctx->context, main_function, i + 1, AC_FUNC_ATTR_NOALIAS);
+			ac_add_attr_dereferenceable(P, UINT64_MAX);
+		}
+	}
+
+	ctx->main_function = main_function;
+	return main_function;
+}
+

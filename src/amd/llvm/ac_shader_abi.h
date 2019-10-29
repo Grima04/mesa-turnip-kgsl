@@ -25,6 +25,7 @@
 #define AC_SHADER_ABI_H
 
 #include <llvm-c/Core.h>
+#include "ac_shader_args.h"
 
 #include "compiler/shader_enums.h"
 
