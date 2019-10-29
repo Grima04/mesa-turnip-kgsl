@@ -193,6 +193,46 @@ v3d_nir_lower_vpm_output(struct v3d_compile *c, nir_builder *b,
                 v3d_nir_store_output(b, state->psiz_vpm_offset, offset_reg, src);
         }
 
+        if (var->data.location == VARYING_SLOT_LAYER) {
+                assert(c->s->info.stage == MESA_SHADER_GEOMETRY);
+                nir_ssa_def *header = nir_load_var(b, state->gs.header_var);
+                header = nir_iand(b, header, nir_imm_int(b, 0xff00ffff));
+
+                /* From the GLES 3.2 spec:
+                 *
+                 *    "When fragments are written to a layered framebuffer, the
+                 *     fragment’s layer number selects an image from the array
+                 *     of images at each attachment (...). If the fragment’s
+                 *     layer number is negative, or greater than or equal to
+                 *     the minimum number of layers of any attachment, the
+                 *     effects of the fragment on the framebuffer contents are
+                 *     undefined."
+                 *
+                 * This suggests we can just ignore that situation, however,
+                 * for V3D an out-of-bounds layer index means that the binner
+                 * might do out-of-bounds writes access to the tile state. The
+                 * simulator has an assert to catch this, so we play safe here
+                 * and we make sure that doesn't happen by setting gl_Layer
+                 * to 0 in that case (we always allocate tile state for at
+                 * least one layer).
+                 */
+                nir_intrinsic_instr *load =
+                        nir_intrinsic_instr_create(b->shader,
+                                                   nir_intrinsic_load_fb_layers_v3d);
+                load->num_components = 1;
+                nir_ssa_dest_init(&load->instr, &load->dest, 1, 32, NULL);
+                nir_builder_instr_insert(b, &load->instr);
+                nir_ssa_def *fb_layers = &load->dest.ssa;
+
+                nir_ssa_def *cond = nir_ige(b, src, fb_layers);
+                nir_ssa_def *layer_id =
+                        nir_bcsel(b, cond,
+                                  nir_imm_int(b, 0),
+                                  nir_ishl(b, src, nir_imm_int(b, 16)));
+                header = nir_ior(b, header, layer_id);
+                nir_store_var(b, state->gs.header_var, header, 0x1);
+        }
+
         /* Scalarize outputs if it hasn't happened already, since we want to
          * schedule each VPM write individually.  We can skip any outut
          * components not read by the FS.

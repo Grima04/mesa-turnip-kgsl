@@ -279,6 +279,14 @@ enum quniform_contents {
          * L2T cache will effectively be the shared memory area.
          */
         QUNIFORM_SHARED_OFFSET,
+
+        /**
+         * Returns the number of layers in the framebuffer.
+         *
+         * This is used to cap gl_Layer in geometry shaders to avoid
+         * out-of-bounds accesses into the tile state during binning.
+         */
+        QUNIFORM_FB_LAYERS,
 };
 
 static inline uint32_t v3d_unit_data_create(uint32_t unit, uint32_t value)
