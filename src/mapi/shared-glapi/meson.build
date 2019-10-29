@@ -74,7 +74,7 @@ if with_any_opengl and with_tests
     ),
     suite : ['mapi'],
   )
-  if prog_nm.found()
+  if with_symbols_check
     test(
       'shared-glapi symbols check',
       symbols_check,

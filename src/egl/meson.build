@@ -186,7 +186,7 @@ if not with_glvnd
   )
 endif
 
-if with_tests and prog_nm.found()
+if with_symbols_check
   if with_glvnd
     egl_symbols = files('egl-glvnd-symbols.txt')
   else

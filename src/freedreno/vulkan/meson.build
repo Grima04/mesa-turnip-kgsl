@@ -119,7 +119,7 @@ libvulkan_freedreno = shared_library(
   install : true,
 )
 
-if with_tests and prog_nm.found()
+if with_symbols_check
   test(
     'tu symbols check',
     symbols_check,

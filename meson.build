@@ -1681,6 +1681,7 @@ endif
 pkg = import('pkgconfig')
 
 prog_nm = find_program('nm', required : false)
+with_symbols_check = prog_nm.found() and with_tests
 
 # This quirk needs to be applied to sources with functions defined in assembly
 # as GCC LTO drops them. See: https://bugs.freedesktop.org/show_bug.cgi?id=109391

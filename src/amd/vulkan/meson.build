@@ -166,7 +166,7 @@ libvulkan_radeon = shared_library(
   install : true,
 )
 
-if with_tests and prog_nm.found()
+if with_symbols_check
   test(
     'radv symbols check',
     symbols_check,
