@@ -2417,7 +2417,7 @@ to upconvert to 32b float internally?
 
 	<!-- always 0x00ffff00 ? */ -->
 	<reg32 offset="0x9101" name="VPC_UNKNOWN_9101"/>
-	<reg32 offset="0x9101" name="VPC_UNKNOWN_9102"/>
+	<reg32 offset="0x9102" name="VPC_UNKNOWN_9102"/>
 
 	<reg32 offset="0x9104" name="VPC_GS_SIV_CNTL"/>
 
