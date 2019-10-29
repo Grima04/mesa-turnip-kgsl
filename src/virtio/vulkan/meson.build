@@ -34,9 +34,12 @@ libvn_files = files(
   'vn_common.c',
   'vn_device.c',
   'vn_icd.c',
+  'vn_renderer_virtgpu.c',
+  'vn_renderer_vtest.c',
 )
 
 vn_deps = [
+  dep_libdrm,
   dep_thread,
   idep_mesautil,
   idep_vulkan_util,

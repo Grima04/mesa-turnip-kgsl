@@ -54,9 +54,14 @@ struct vn_device;
 struct vn_queue;
 struct vn_command_buffer;
 
+struct vn_renderer;
+struct vn_renderer_bo;
+struct vn_renderer_sync;
+
 enum vn_debug {
    VN_DEBUG_INIT = 1ull << 0,
    VN_DEBUG_RESULT = 1ull << 1,
+   VN_DEBUG_VTEST = 1ull << 2,
 };
 
 typedef uint64_t vn_object_id;
