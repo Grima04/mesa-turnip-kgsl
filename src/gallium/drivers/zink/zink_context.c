@@ -306,7 +306,7 @@ bind_stage(struct zink_context *ctx, enum pipe_shader_type stage,
 {
    assert(stage < PIPE_SHADER_COMPUTE);
    ctx->gfx_stages[stage] = shader;
-   ctx->dirty |= ZINK_DIRTY_PROGRAM;
+   ctx->dirty_program = true;
 }
 
 static void
@@ -974,7 +974,7 @@ equals_framebuffer_state(const void *a, const void *b)
 static struct zink_gfx_program *
 get_gfx_program(struct zink_context *ctx)
 {
-   if (ctx->dirty & ZINK_DIRTY_PROGRAM) {
+   if (ctx->dirty_program) {
       struct hash_entry *entry = _mesa_hash_table_search(ctx->program_cache,
                                                          ctx->gfx_stages);
       if (!entry) {
@@ -986,7 +986,7 @@ get_gfx_program(struct zink_context *ctx)
             return NULL;
       }
       ctx->curr_program = entry->data;
-      ctx->dirty &= ~ZINK_DIRTY_PROGRAM;
+      ctx->dirty_program = false;
    }
 
    assert(ctx->curr_program);
@@ -1596,7 +1596,7 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
        !ctx->framebuffer_cache)
       goto fail;
 
-   ctx->dirty = ZINK_DIRTY_PROGRAM;
+   ctx->dirty_program = true;
 
    /* start the first batch */
    zink_start_batch(ctx, zink_curr_batch(ctx));
