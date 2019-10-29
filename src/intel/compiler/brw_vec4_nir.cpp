@@ -627,6 +627,8 @@ vec4_visitor::nir_emit_intrinsic(nir_intrinsic_instr *instr)
    case nir_intrinsic_load_ubo: {
       src_reg surf_index;
 
+      prog_data->base.has_ubo_pull = true;
+
       dest = get_nir_dest(instr->dest);
 
       if (nir_src_is_const(instr->src[0])) {
