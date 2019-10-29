@@ -1954,11 +1954,21 @@ vtn_split_barrier_semantics(struct vtn_builder *b,
    *before = SpvMemorySemanticsMaskNone;
    *after = SpvMemorySemanticsMaskNone;
 
-   const SpvMemorySemanticsMask order_semantics =
+   SpvMemorySemanticsMask order_semantics =
       semantics & (SpvMemorySemanticsAcquireMask |
                    SpvMemorySemanticsReleaseMask |
                    SpvMemorySemanticsAcquireReleaseMask |
                    SpvMemorySemanticsSequentiallyConsistentMask);
+
+   if (util_bitcount(order_semantics) > 1) {
+      /* Old GLSLang versions incorrectly set all the ordering bits.  This was
+       * fixed in c51287d744fb6e7e9ccc09f6f8451e6c64b1dad6 of glslang repo,
+       * and it is in GLSLang since revision "SPIRV99.1321" (from Jul-2016).
+       */
+      vtn_warn("Multiple memory ordering semantics specified, "
+               "assuming AcquireRelease.");
+      order_semantics = SpvMemorySemanticsAcquireReleaseMask;
+   }
 
    const SpvMemorySemanticsMask av_vis_semantics =
       semantics & (SpvMemorySemanticsMakeAvailableMask |
@@ -1978,9 +1988,6 @@ vtn_split_barrier_semantics(struct vtn_builder *b,
 
    if (other_semantics)
       vtn_warn("Ignoring unhandled memory semantics: %u\n", other_semantics);
-
-   vtn_fail_if(util_bitcount(order_semantics) > 1,
-               "Multiple memory ordering bits specified");
 
    /* SequentiallyConsistent is treated as AcquireRelease. */
 
@@ -2016,10 +2023,24 @@ vtn_emit_scoped_memory_barrier(struct vtn_builder *b, SpvScope scope,
                                SpvMemorySemanticsMask semantics)
 {
    nir_memory_semantics nir_semantics = 0;
-   switch (semantics & (SpvMemorySemanticsAcquireMask |
-                        SpvMemorySemanticsReleaseMask |
-                        SpvMemorySemanticsAcquireReleaseMask |
-                        SpvMemorySemanticsSequentiallyConsistentMask)) {
+
+   SpvMemorySemanticsMask order_semantics =
+      semantics & (SpvMemorySemanticsAcquireMask |
+                   SpvMemorySemanticsReleaseMask |
+                   SpvMemorySemanticsAcquireReleaseMask |
+                   SpvMemorySemanticsSequentiallyConsistentMask);
+
+   if (util_bitcount(order_semantics) > 1) {
+      /* Old GLSLang versions incorrectly set all the ordering bits.  This was
+       * fixed in c51287d744fb6e7e9ccc09f6f8451e6c64b1dad6 of glslang repo,
+       * and it is in GLSLang since revision "SPIRV99.1321" (from Jul-2016).
+       */
+      vtn_warn("Multiple memory ordering semantics bits specified, "
+               "assuming AcquireRelease.");
+      order_semantics = SpvMemorySemanticsAcquireReleaseMask;
+   }
+
+   switch (order_semantics) {
    case 0:
       /* Not an ordering barrier. */
       break;
@@ -2039,7 +2060,7 @@ vtn_emit_scoped_memory_barrier(struct vtn_builder *b, SpvScope scope,
       break;
 
    default:
-      vtn_fail("Multiple memory ordering bits specified");
+      unreachable("Invalid memory order semantics");
    }
 
    if (semantics & SpvMemorySemanticsMakeAvailableMask) {
