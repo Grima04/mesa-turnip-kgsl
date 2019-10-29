@@ -73,7 +73,7 @@ if with_symbols_check
     args : [
       '--lib', libgbm,
       '--symbols-file', files('gbm-symbols.txt'),
-      '--nm', prog_nm.path(),
+      symbols_check_args,
     ],
     suite : ['gbm'],
   )

@@ -81,7 +81,7 @@ if with_any_opengl and with_tests
       args : [
         '--lib', libglapi,
         '--symbols-file', files('glapi-symbols.txt'),
-        '--nm', prog_nm.path(),
+        symbols_check_args,
       ],
       suite : ['mapi'],
     )

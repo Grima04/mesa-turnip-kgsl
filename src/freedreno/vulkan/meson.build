@@ -126,7 +126,7 @@ if with_symbols_check
     args : [
       '--lib', libvulkan_freedreno,
       '--symbols-file', vulkan_icd_symbols,
-      '--nm', prog_nm.path(),
+      symbols_check_args,
     ],
     suite : ['freedreno'],
   )

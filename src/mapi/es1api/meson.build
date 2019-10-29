@@ -69,7 +69,7 @@ if with_symbols_check
     args : [
       '--lib', libglesv1_cm,
       '--symbols-file', files('gles1-symbols.txt'),
-      '--nm', prog_nm.path(),
+      symbols_check_args,
     ],
     suite : ['mapi'],
   )

@@ -197,7 +197,7 @@ if with_symbols_check
     args : [
       '--lib', libegl,
       '--symbols-file', egl_symbols,
-      '--nm', prog_nm.path(),
+      symbols_check_args,
     ],
     suite : ['egl'],
   )
