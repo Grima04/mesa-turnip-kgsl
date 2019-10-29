@@ -895,14 +895,10 @@ void add_branch_code(exec_ctx& ctx, Block* block)
    }
 
    if (block->kind & block_kind_continue_or_break) {
+      assert(ctx.program->blocks[ctx.program->blocks[block->linear_succs[1]].linear_succs[0]].kind & block_kind_loop_header);
+      assert(ctx.program->blocks[ctx.program->blocks[block->linear_succs[0]].linear_succs[0]].kind & block_kind_loop_exit);
       assert(block->instructions.back()->opcode == aco_opcode::p_branch);
       block->instructions.pop_back();
-
-      /* because of how linear_succs is created, this needs to be swapped */
-      std::swap(block->linear_succs[0], block->linear_succs[1]);
-
-      assert(ctx.program->blocks[block->linear_succs[1]].kind & block_kind_loop_header);
-      assert(ctx.program->blocks[ctx.program->blocks[block->linear_succs[0]].linear_succs[0]].kind & block_kind_loop_exit);
 
       if (ctx.info[idx].exec.back().second & mask_type_loop) {
          bld.branch(aco_opcode::p_cbranch_nz, bld.exec(ctx.info[idx].exec.back().first), block->linear_succs[1], block->linear_succs[0]);

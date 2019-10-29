@@ -7057,26 +7057,35 @@ static void visit_loop(isel_context *ctx, nir_loop *loop)
           * workaround, break the loop when the loop mask is empty instead of
           * always continuing. */
          ctx->block->kind |= (block_kind_continue_or_break | block_kind_uniform);
-
-         /* create "loop_almost_exit" to avoid critical edges */
          unsigned block_idx = ctx->block->index;
-         Block *loop_almost_exit = ctx->program->create_and_insert_block();
-         loop_almost_exit->loop_nest_depth = ctx->cf_info.loop_nest_depth;
-         loop_almost_exit->kind = block_kind_uniform;
-         bld.reset(loop_almost_exit);
+
+         /* create helper blocks to avoid critical edges */
+         Block *break_block = ctx->program->create_and_insert_block();
+         break_block->loop_nest_depth = ctx->cf_info.loop_nest_depth;
+         break_block->kind = block_kind_uniform;
+         bld.reset(break_block);
          bld.branch(aco_opcode::p_branch);
+         add_linear_edge(block_idx, break_block);
+         add_linear_edge(break_block->index, &loop_exit);
 
-         add_linear_edge(block_idx, loop_almost_exit);
-         add_linear_edge(loop_almost_exit->index, &loop_exit);
+         Block *continue_block = ctx->program->create_and_insert_block();
+         continue_block->loop_nest_depth = ctx->cf_info.loop_nest_depth;
+         continue_block->kind = block_kind_uniform;
+         bld.reset(continue_block);
+         bld.branch(aco_opcode::p_branch);
+         add_linear_edge(block_idx, continue_block);
+         add_linear_edge(continue_block->index, &ctx->program->blocks[loop_header_idx]);
 
+         add_logical_edge(block_idx, &ctx->program->blocks[loop_header_idx]);
          ctx->block = &ctx->program->blocks[block_idx];
       } else {
          ctx->block->kind |= (block_kind_continue | block_kind_uniform);
+         if (!ctx->cf_info.parent_loop.has_divergent_branch)
+            add_edge(ctx->block->index, &ctx->program->blocks[loop_header_idx]);
+         else
+            add_linear_edge(ctx->block->index, &ctx->program->blocks[loop_header_idx]);
       }
-      if (!ctx->cf_info.parent_loop.has_divergent_branch)
-         add_edge(ctx->block->index, &ctx->program->blocks[loop_header_idx]);
-      else
-         add_linear_edge(ctx->block->index, &ctx->program->blocks[loop_header_idx]);
+
       bld.reset(ctx->block);
       bld.branch(aco_opcode::p_branch);
    }
