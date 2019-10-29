@@ -162,10 +162,14 @@ zink_create_sampler_state(struct pipe_context *pctx,
       sci.anisotropyEnable = VK_TRUE;
    }
 
-   VkSampler sampler;
-   VkResult err = vkCreateSampler(screen->dev, &sci, NULL, &sampler);
-   if (err != VK_SUCCESS)
+   VkSampler *sampler = CALLOC(1, sizeof(VkSampler));
+   if (!sampler)
       return NULL;
+
+   if (vkCreateSampler(screen->dev, &sci, NULL, sampler) != VK_SUCCESS) {
+      FREE(sampler);
+      return NULL;
+   }
 
    return sampler;
 }
@@ -178,8 +182,10 @@ zink_bind_sampler_states(struct pipe_context *pctx,
                          void **samplers)
 {
    struct zink_context *ctx = zink_context(pctx);
-   for (unsigned i = 0; i < num_samplers; ++i)
-      ctx->samplers[shader][start_slot + i] = (VkSampler)samplers[i];
+   for (unsigned i = 0; i < num_samplers; ++i) {
+      VkSampler *sampler = samplers[i];
+      ctx->samplers[shader][start_slot + i] = sampler ? *sampler : VK_NULL_HANDLE;
+   }
    ctx->num_samplers[shader] = start_slot + num_samplers;
 }
 
@@ -188,8 +194,9 @@ zink_delete_sampler_state(struct pipe_context *pctx,
                           void *sampler_state)
 {
    struct zink_batch *batch = zink_curr_batch(zink_context(pctx));
-   util_dynarray_append(&batch->zombie_samplers,
-                        VkSampler, sampler_state);
+   util_dynarray_append(&batch->zombie_samplers, VkSampler,
+                        *(VkSampler *)sampler_state);
+   FREE(sampler_state);
 }
 
 
