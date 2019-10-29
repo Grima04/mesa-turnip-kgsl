@@ -57,6 +57,7 @@
 static struct midgard_tiler_descriptor
 panfrost_emit_midg_tiler(struct panfrost_batch *batch, unsigned vertex_count)
 {
+        struct panfrost_screen *screen = pan_screen(batch->ctx->base.screen);
         struct midgard_tiler_descriptor t = {};
         unsigned height = batch->key.height;
         unsigned width = batch->key.width;
@@ -100,6 +101,15 @@ panfrost_emit_midg_tiler(struct panfrost_batch *batch, unsigned vertex_count)
 
                 /* Disable the tiler */
                 t.hierarchy_mask |= MALI_TILER_DISABLED;
+
+                if (screen->require_sfbd) {
+                        t.hierarchy_mask = 0xFFF; /* TODO: What's this? */
+                        t.polygon_list_size = 0x200;
+
+                        /* We don't have a SET_VALUE job, so write the polygon list manually */
+                        uint32_t *polygon_list_body = (uint32_t *) (tiler_dummy->cpu + header_size);
+                        polygon_list_body[0] = 0xa0000000; /* TODO: Just that? */
+                }
         }
 
         t.polygon_list_body =

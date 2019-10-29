@@ -670,11 +670,18 @@ panfrost_batch_get_tiler_heap(struct panfrost_batch *batch)
 struct panfrost_bo *
 panfrost_batch_get_tiler_dummy(struct panfrost_batch *batch)
 {
+        struct panfrost_screen *screen = pan_screen(batch->ctx->base.screen);
+
+        uint32_t create_flags = 0;
+
         if (batch->tiler_dummy)
                 return batch->tiler_dummy;
 
+        if (!screen->require_sfbd)
+                create_flags = PAN_BO_INVISIBLE;
+
         batch->tiler_dummy = panfrost_batch_create_bo(batch, 4096,
-                                                      PAN_BO_INVISIBLE,
+                                                      create_flags,
                                                       PAN_BO_ACCESS_PRIVATE |
                                                       PAN_BO_ACCESS_RW |
                                                       PAN_BO_ACCESS_VERTEX_TILER |
