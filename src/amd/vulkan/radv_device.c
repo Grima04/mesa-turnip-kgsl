@@ -2051,10 +2051,11 @@ static void run_secure_compile_device(struct radv_device *device, unsigned proce
 		goto secure_compile_exit;
 
 	while (true) {
-		read(fd_secure_input[0], &sc_type, sizeof(sc_type));
+		radv_sc_read(fd_secure_input[0], &sc_type, sizeof(sc_type), false);
 
 		if (sc_type == RADV_SC_TYPE_COMPILE_PIPELINE) {
 			struct radv_pipeline *pipeline;
+			bool sc_read = true;
 
 			pipeline = vk_zalloc2(&device->alloc, NULL, sizeof(*pipeline), 8,
 					      VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
@@ -2063,69 +2064,96 @@ static void run_secure_compile_device(struct radv_device *device, unsigned proce
 
 			/* Read pipeline layout */
 			struct radv_pipeline_layout layout;
-			read(fd_secure_input[0], &layout, sizeof(struct radv_pipeline_layout));
-			read(fd_secure_input[0], &layout.num_sets, sizeof(uint32_t));
+			sc_read = radv_sc_read(fd_secure_input[0], &layout, sizeof(struct radv_pipeline_layout), true);
+			sc_read &= radv_sc_read(fd_secure_input[0], &layout.num_sets, sizeof(uint32_t), true);
+			if (!sc_read)
+				goto secure_compile_exit;
+
 			for (uint32_t set = 0; set < layout.num_sets; set++) {
 				uint32_t layout_size;
-				read(fd_secure_input[0], &layout_size, sizeof(uint32_t));
+				sc_read &= radv_sc_read(fd_secure_input[0], &layout_size, sizeof(uint32_t), true);
+				if (!sc_read)
+					goto secure_compile_exit;
+
 				layout.set[set].layout = malloc(layout_size);
 				layout.set[set].layout->layout_size = layout_size;
-				read(fd_secure_input[0], layout.set[set].layout, layout.set[set].layout->layout_size);
+				sc_read &= radv_sc_read(fd_secure_input[0], layout.set[set].layout,
+							layout.set[set].layout->layout_size, true);
 			}
 
 			pipeline->layout = &layout;
 
 			/* Read pipeline key */
 			struct radv_pipeline_key key;
-			read(fd_secure_input[0], &key, sizeof(struct radv_pipeline_key));
+			sc_read &= radv_sc_read(fd_secure_input[0], &key, sizeof(struct radv_pipeline_key), true);
 
 			/* Read pipeline create flags */
 			VkPipelineCreateFlags flags;
-			read(fd_secure_input[0], &flags, sizeof(VkPipelineCreateFlags));
+			sc_read &= radv_sc_read(fd_secure_input[0], &flags, sizeof(VkPipelineCreateFlags), true);
 
 			/* Read stage and shader information */
 			uint32_t num_stages;
 			const VkPipelineShaderStageCreateInfo *pStages[MESA_SHADER_STAGES] = { 0, };
-			read(fd_secure_input[0], &num_stages, sizeof(uint32_t));
+			sc_read &= radv_sc_read(fd_secure_input[0], &num_stages, sizeof(uint32_t), true);
+			if (!sc_read)
+				goto secure_compile_exit;
+
 			for (uint32_t i = 0; i < num_stages; i++) {
 
 				/* Read stage */
 				gl_shader_stage stage;
-				read(fd_secure_input[0], &stage, sizeof(gl_shader_stage));
+				sc_read &= radv_sc_read(fd_secure_input[0], &stage, sizeof(gl_shader_stage), true);
 
 				VkPipelineShaderStageCreateInfo *pStage = calloc(1, sizeof(VkPipelineShaderStageCreateInfo));
 
 				/* Read entry point name */
 				size_t name_size;
-				read(fd_secure_input[0], &name_size, sizeof(size_t));
+				sc_read &= radv_sc_read(fd_secure_input[0], &name_size, sizeof(size_t), true);
+				if (!sc_read)
+					goto secure_compile_exit;
+
 				char *ep_name = malloc(name_size);
-				read(fd_secure_input[0], ep_name, name_size);
+				sc_read &= radv_sc_read(fd_secure_input[0], ep_name, name_size, true);
 				pStage->pName = ep_name;
 
 				/* Read shader module */
 				size_t module_size;
-				read(fd_secure_input[0], &module_size, sizeof(size_t));
+				sc_read &= radv_sc_read(fd_secure_input[0], &module_size, sizeof(size_t), true);
+				if (!sc_read)
+					goto secure_compile_exit;
+
 				struct radv_shader_module *module = malloc(module_size);
-				read(fd_secure_input[0], module, module_size);
+				sc_read &= radv_sc_read(fd_secure_input[0], module, module_size, true);
 				pStage->module = radv_shader_module_to_handle(module);
 
 				/* Read specialization info */
 				bool has_spec_info;
-				read(fd_secure_input[0], &has_spec_info, sizeof(bool));
+				sc_read &= radv_sc_read(fd_secure_input[0], &has_spec_info, sizeof(bool), true);
+				if (!sc_read)
+					goto secure_compile_exit;
+
 				if (has_spec_info) {
 					VkSpecializationInfo *specInfo = malloc(sizeof(VkSpecializationInfo));
 					pStage->pSpecializationInfo = specInfo;
 
-					read(fd_secure_input[0], &specInfo->dataSize, sizeof(size_t));
+					sc_read &= radv_sc_read(fd_secure_input[0], &specInfo->dataSize, sizeof(size_t), true);
+					if (!sc_read)
+						goto secure_compile_exit;
 
 					void *si_data = malloc(specInfo->dataSize);
-					read(fd_secure_input[0], si_data, specInfo->dataSize);
+					sc_read &= radv_sc_read(fd_secure_input[0], si_data, specInfo->dataSize, true);
 					specInfo->pData = si_data;
 
-					read(fd_secure_input[0], &specInfo->mapEntryCount, sizeof(uint32_t));
+					sc_read &= radv_sc_read(fd_secure_input[0], &specInfo->mapEntryCount, sizeof(uint32_t), true);
+					if (!sc_read)
+						goto secure_compile_exit;
+
 					VkSpecializationMapEntry *mapEntries = malloc(sizeof(VkSpecializationMapEntry) * specInfo->mapEntryCount);
-					for (uint32_t j = 0; j < specInfo->mapEntryCount; j++)
-						read(fd_secure_input[0], &mapEntries[j], sizeof(VkSpecializationMapEntry));
+					for (uint32_t j = 0; j < specInfo->mapEntryCount; j++) {
+						sc_read &= radv_sc_read(fd_secure_input[0], &mapEntries[j], sizeof(VkSpecializationMapEntry), true);
+						if (!sc_read)
+							goto secure_compile_exit;
+					}
 
 					specInfo->pMapEntries = mapEntries;
 				}
@@ -2221,9 +2249,9 @@ static VkResult fork_secure_compile_device(struct radv_device *device)
 
 			/* Read the init result returned from the secure process */
 			enum radv_secure_compile_type sc_type;
-			read(fd_secure_output[process][0], &sc_type, sizeof(sc_type));
+			bool sc_read = radv_sc_read(fd_secure_output[process][0], &sc_type, sizeof(sc_type), true);
 
-			if (sc_type == RADV_SC_TYPE_INIT_FAILURE) {
+			if (sc_type == RADV_SC_TYPE_INIT_FAILURE || !sc_read) {
 				close(fd_secure_input[process][0]);
 				close(fd_secure_input[process][1]);
 				close(fd_secure_output[process][1]);

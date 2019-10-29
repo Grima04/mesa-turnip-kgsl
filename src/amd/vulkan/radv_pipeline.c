@@ -4621,7 +4621,7 @@ radv_pipeline_get_streamout_shader(struct radv_pipeline *pipeline)
 	return NULL;
 }
 
-static void
+static VkResult
 radv_secure_compile(struct radv_pipeline *pipeline,
 		    struct radv_device *device,
 		    const struct radv_pipeline_key *key,
@@ -4708,19 +4708,23 @@ radv_secure_compile(struct radv_pipeline *pipeline,
 
 	/* Read the data returned from the secure process */
 	while (sc_type != RADV_SC_TYPE_COMPILE_PIPELINE_FINISHED) {
-		read(fd_secure_output, &sc_type, sizeof(sc_type));
+		if (!radv_sc_read(fd_secure_output, &sc_type, sizeof(sc_type), true))
+			return VK_ERROR_DEVICE_LOST;
 
 		if (sc_type == RADV_SC_TYPE_WRITE_DISK_CACHE) {
 			assert(device->physical_device->disk_cache);
 
 			uint8_t disk_sha1[20];
-			read(fd_secure_output, disk_sha1, sizeof(uint8_t) * 20);
+			if (!radv_sc_read(fd_secure_output, disk_sha1, sizeof(uint8_t) * 20, true))
+				return VK_ERROR_DEVICE_LOST;
 
 			uint32_t entry_size;
-			read(fd_secure_output, &entry_size, sizeof(uint32_t));
+			if (!radv_sc_read(fd_secure_output, &entry_size, sizeof(uint32_t), true))
+				return VK_ERROR_DEVICE_LOST;
 
 			struct cache_entry *entry = malloc(entry_size);
-			read(fd_secure_output, entry, entry_size);
+			if (!radv_sc_read(fd_secure_output, entry, entry_size, true))
+				return VK_ERROR_DEVICE_LOST;
 
 			disk_cache_put(device->physical_device->disk_cache,
 				       disk_sha1, entry, entry_size,
@@ -4729,7 +4733,8 @@ radv_secure_compile(struct radv_pipeline *pipeline,
 			free(entry);
 		} else if (sc_type == RADV_SC_TYPE_READ_DISK_CACHE) {
 			uint8_t disk_sha1[20];
-			read(fd_secure_output, disk_sha1, sizeof(uint8_t) * 20);
+			if (!radv_sc_read(fd_secure_output, disk_sha1, sizeof(uint8_t) * 20, true))
+				return VK_ERROR_DEVICE_LOST;
 
 			size_t size;
 			struct cache_entry *entry = (struct cache_entry *)
@@ -4752,6 +4757,8 @@ radv_secure_compile(struct radv_pipeline *pipeline,
 	device->sc_state->secure_compile_thread_counter--;
 	device->sc_state->secure_compile_processes[process].in_use = false;
 	mtx_unlock(&device->sc_state->secure_compile_mutex);
+
+	return VK_SUCCESS;
 }
 
 static VkResult
@@ -4792,9 +4799,7 @@ radv_pipeline_init(struct radv_pipeline *pipeline,
 
 	struct radv_pipeline_key key = radv_generate_graphics_pipeline_key(pipeline, pCreateInfo, &blend, has_view_index);
 	if (radv_device_use_secure_compile(device->instance)) {
-		radv_secure_compile(pipeline, device, &key, pStages, pCreateInfo->flags, pCreateInfo->stageCount);
-		/* TODO: should we actualy return failure ??? */
-		return VK_SUCCESS;
+		return radv_secure_compile(pipeline, device, &key, pStages, pCreateInfo->flags, pCreateInfo->stageCount);
 	} else {
 		radv_create_shaders(pipeline, device, cache, &key, pStages, pCreateInfo->flags, pipeline_feedback, stage_feedbacks);
 	}
@@ -5057,10 +5062,10 @@ static VkResult radv_compute_pipeline_create(
 	pStages[MESA_SHADER_COMPUTE] = &pCreateInfo->stage;
 
 	if (radv_device_use_secure_compile(device->instance)) {
-		radv_secure_compile(pipeline, device, &(struct radv_pipeline_key) {0}, pStages, pCreateInfo->flags, 1);
+		result = radv_secure_compile(pipeline, device, &(struct radv_pipeline_key) {0}, pStages, pCreateInfo->flags, 1);
 		*pPipeline = radv_pipeline_to_handle(pipeline);
-		/* TODO: should we actualy return failure ??? */
-		return VK_SUCCESS;
+
+		return result;
 	} else {
 		radv_create_shaders(pipeline, device, cache, &(struct radv_pipeline_key) {0}, pStages, pCreateInfo->flags, pipeline_feedback, stage_feedbacks);
 	}

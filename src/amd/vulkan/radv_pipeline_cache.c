@@ -260,17 +260,21 @@ radv_sc_read_from_disk_cache(struct radv_device *device, uint8_t *disk_sha1)
 	      disk_sha1, sizeof(uint8_t) * 20);
 
 	uint8_t found_cache_entry;
-	read(device->sc_state->secure_compile_processes[process].fd_secure_input,
-	     &found_cache_entry, sizeof(uint8_t));
+	if (!radv_sc_read(device->sc_state->secure_compile_processes[process].fd_secure_input,
+			  &found_cache_entry, sizeof(uint8_t), true))
+		return NULL;
 
 	if (found_cache_entry) {
 		size_t entry_size;
-		read(device->sc_state->secure_compile_processes[process].fd_secure_input,
-		     &entry_size, sizeof(size_t));
+		if (!radv_sc_read(device->sc_state->secure_compile_processes[process].fd_secure_input,
+				  &entry_size, sizeof(size_t), true))
+			return NULL;
 
 		entry = malloc(entry_size);
-		read(device->sc_state->secure_compile_processes[process].fd_secure_input,
-		     entry, entry_size);
+		if (!radv_sc_read(device->sc_state->secure_compile_processes[process].fd_secure_input,
+				  entry, entry_size, true))
+			return NULL;
+
 		return entry;
 	}
 
