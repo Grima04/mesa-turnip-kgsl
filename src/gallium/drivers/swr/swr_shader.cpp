@@ -251,7 +251,8 @@ struct BuilderSWR : public Builder {
    swr_gs_llvm_emit_vertex(const struct lp_build_gs_iface *gs_base,
                            struct lp_build_context * bld,
                            LLVMValueRef (*outputs)[4],
-                           LLVMValueRef emitted_vertices_vec);
+                           LLVMValueRef emitted_vertices_vec,
+                           LLVMValueRef stream_id);
 
    void
    swr_gs_llvm_end_primitive(const struct lp_build_gs_iface *gs_base,
@@ -306,13 +307,15 @@ static void
 swr_gs_llvm_emit_vertex(const struct lp_build_gs_iface *gs_base,
                            struct lp_build_context * bld,
                            LLVMValueRef (*outputs)[4],
-                           LLVMValueRef emitted_vertices_vec)
+                           LLVMValueRef emitted_vertices_vec,
+                           LLVMValueRef stream_id)
 {
     swr_gs_llvm_iface *iface = (swr_gs_llvm_iface*)gs_base;
 
     iface->pBuilder->swr_gs_llvm_emit_vertex(gs_base, bld,
                                             outputs,
-                                            emitted_vertices_vec);
+                                            emitted_vertices_vec,
+                                            stream_id);
 }
 
 static void
@@ -411,12 +414,12 @@ void
 BuilderSWR::swr_gs_llvm_emit_vertex(const struct lp_build_gs_iface *gs_base,
                            struct lp_build_context * bld,
                            LLVMValueRef (*outputs)[4],
-                           LLVMValueRef emitted_vertices_vec)
+                           LLVMValueRef emitted_vertices_vec,
+                           LLVMValueRef stream_id)
 {
     swr_gs_llvm_iface *iface = (swr_gs_llvm_iface*)gs_base;
 
     IRB()->SetInsertPoint(unwrap(LLVMGetInsertBlock(gallivm->builder)));
-
     const uint32_t headerSize = VERTEX_COUNT_SIZE + CONTROL_HEADER_SIZE;
     const uint32_t attribSize = 4 * sizeof(float);
     const uint32_t vertSize = attribSize * SWR_VTX_NUM_SLOTS;
@@ -478,6 +481,49 @@ BuilderSWR::swr_gs_llvm_emit_vertex(const struct lp_build_gs_iface *gs_base,
        }
     }
 
+    /* When the output type is not points, the geometry shader may not
+     * output data to multiple streams. So early exit here.
+     */
+    if(iface->pGsState->outputTopology != TOP_POINT_LIST) {
+        STACKRESTORE(pStack);
+        return;
+    }
+
+    // Info about stream id for each vertex
+    // is coded in 2 bits (4 vert per byte "box"):
+    // ----------------- ----------------- ----
+    // |d|d|c|c|b|b|a|a| |h|h|g|g|f|f|e|e| |...
+    // ----------------- ----------------- ----
+
+    // Calculate where need to put stream id for current vert
+    // in 1 byte "box".
+    Value *pShiftControl = MUL(unwrap(emitted_vertices_vec), VIMMED1(2));
+
+    // Calculate in which box put stream id for current vert.
+    Value *pOffsetControl = LSHR(unwrap(emitted_vertices_vec), VIMMED1(2));
+
+    // Skip count header
+    Value *pStreamIdOffset = ADD(pOffsetControl, VIMMED1(VERTEX_COUNT_SIZE));
+
+    for (uint32_t lane = 0; lane < mVWidth; ++lane) {
+       Value *pShift = TRUNC(VEXTRACT(pShiftControl, C(lane)), mInt8Ty);
+       Value *pStream = LOAD(iface->pGsCtx, {0, SWR_GS_CONTEXT_pStreams, lane});
+
+       Value *pStreamOffset = GEP(pStream, VEXTRACT(pStreamIdOffset, C(lane)));
+
+       // Just make sure that not overflow max - stream id = (0,1,2,3)
+       Value *vVal = TRUNC(AND(VEXTRACT(unwrap(stream_id), C(0)), C(0x3)), mInt8Ty);
+
+       // Shift it to correct position in byte "box"
+       vVal = SHL(vVal, pShift);
+
+       // Info about other vertices can be already stored
+       // so we need to read and add bits from current vert info.
+       Value *storedValue = LOAD(pStreamOffset);
+       vVal = OR(storedValue, vVal);
+       STORE(vVal, pStreamOffset);
+    }
+
     STACKRESTORE(pStack);
 }
 
@@ -490,6 +536,15 @@ BuilderSWR::swr_gs_llvm_end_primitive(const struct lp_build_gs_iface *gs_base,
                              LLVMValueRef mask_vec)
 {
     swr_gs_llvm_iface *iface = (swr_gs_llvm_iface*)gs_base;
+
+    /* When the output type is points, the geometry shader may output data
+     * to multiple streams, and end_primitive has no effect. Info about
+     * stream id for vertices is stored into the same place in memory where
+     * end primitive info is stored so early exit in this case.
+     */
+    if (iface->pGsState->outputTopology == TOP_POINT_LIST) {
+        return;
+    }
 
     IRB()->SetInsertPoint(unwrap(LLVMGetInsertBlock(gallivm->builder)));
 
@@ -569,9 +624,13 @@ BuilderSWR::CompileGS(struct swr_context *ctx, swr_jit_gs_key &key)
    pGS->maxNumVerts = info->properties[TGSI_PROPERTY_GS_MAX_OUTPUT_VERTICES];
    pGS->instanceCount = info->properties[TGSI_PROPERTY_GS_INVOCATIONS];
 
-   // XXX: single stream for now...
-   pGS->isSingleStream = true;
-   pGS->singleStreamID = 0;
+   // If point primitive then assume to use multiple streams
+   if(pGS->outputTopology == TOP_POINT_LIST) {
+      pGS->isSingleStream = false;
+   } else {
+      pGS->isSingleStream = true;
+      pGS->singleStreamID = 0;
+   }
 
    pGS->vertexAttribOffset = VERTEX_POSITION_SLOT;
    pGS->inputVertStride = pGS->numInputAttribs + pGS->vertexAttribOffset;

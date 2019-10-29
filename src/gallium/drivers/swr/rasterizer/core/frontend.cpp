@@ -702,8 +702,8 @@ void ProcessStreamIdBuffer(uint32_t stream,
 {
     SWR_ASSERT(stream < MAX_SO_STREAMS);
 
-    uint32_t numInputBytes  = (numEmittedVerts * 2 + 7) / 8;
-    uint32_t numOutputBytes = std::max(numInputBytes / 2, 1U);
+    uint32_t numInputBytes  = AlignUp(numEmittedVerts * 2, 8) / 8;
+    uint32_t numOutputBytes = AlignUp(numEmittedVerts, 8) / 8;
 
     for (uint32_t b = 0; b < numOutputBytes; ++b)
     {

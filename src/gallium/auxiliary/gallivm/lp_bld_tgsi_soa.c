@@ -3978,6 +3978,8 @@ emit_vertex(
    LLVMBuilderRef builder = bld->bld_base.base.gallivm->builder;
 
    if (bld->gs_iface->emit_vertex) {
+      uint32_t imms_idx = emit_data->inst->Src[0].Register.SwizzleX;
+      LLVMValueRef stream_id = bld->immediates[0][imms_idx];
       LLVMValueRef mask = mask_vec(bld_base);
       LLVMValueRef total_emitted_vertices_vec =
          LLVMBuildLoad(builder, bld->total_emitted_vertices_vec_ptr, "");
@@ -3986,7 +3988,8 @@ emit_vertex(
       gather_outputs(bld);
       bld->gs_iface->emit_vertex(bld->gs_iface, &bld->bld_base.base,
                                  bld->outputs,
-                                 total_emitted_vertices_vec);
+                                 total_emitted_vertices_vec,
+                                 stream_id);
       increment_vec_ptr_by_mask(bld_base, bld->emitted_vertices_vec_ptr,
                                 mask);
       increment_vec_ptr_by_mask(bld_base, bld->total_emitted_vertices_vec_ptr,

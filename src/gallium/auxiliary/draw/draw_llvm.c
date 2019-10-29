@@ -1521,7 +1521,8 @@ static void
 draw_gs_llvm_emit_vertex(const struct lp_build_gs_iface *gs_base,
                          struct lp_build_context * bld,
                          LLVMValueRef (*outputs)[4],
-                         LLVMValueRef emitted_vertices_vec)
+                         LLVMValueRef emitted_vertices_vec,
+                         LLVMValueRef stream_id)
 {
    const struct draw_gs_llvm_iface *gs_iface = draw_gs_llvm_iface(gs_base);
    struct draw_gs_llvm_variant *variant = gs_iface->variant;
