@@ -2118,7 +2118,8 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
       return VK_SUCCESS;
    }
 
-   struct anv_pipeline_bind_map *map = &pipeline->shaders[stage]->bind_map;
+   struct anv_shader_bin *bin = pipeline->shaders[stage];
+   struct anv_pipeline_bind_map *map = &bin->bind_map;
    if (map->surface_count == 0) {
       *bt_state = (struct anv_state) { 0, };
       return VK_SUCCESS;
@@ -2292,6 +2293,16 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
          break;
 
       case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+         /* If the shader never does any UBO pulls (this is a fairly common
+          * case) then we don't need to fill out those binding table entries.
+          * The real cost savings here is that we don't have to build the
+          * surface state for them which is surprisingly expensive when it's
+          * on the hot-path.
+          */
+         if (!bin->prog_data->has_ubo_pull)
+            continue;
+         /* Fall through */
+
       case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC: {
          /* Compute the offset within the buffer */
          uint32_t dynamic_offset =
