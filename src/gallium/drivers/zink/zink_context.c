@@ -1174,10 +1174,11 @@ zink_draw_vbo(struct pipe_context *pctx,
    if (ctx->gfx_pipeline_state.blend_state->need_blend_constants)
       vkCmdSetBlendConstants(batch->cmdbuf, ctx->blend_constants);
 
-   for (int i = 0; i < num_wds; ++i)
-      wds[i].dstSet = desc_set;
-
-   vkUpdateDescriptorSets(screen->dev, num_wds, wds, 0, NULL);
+   if (num_wds > 0) {
+      for (int i = 0; i < num_wds; ++i)
+         wds[i].dstSet = desc_set;
+      vkUpdateDescriptorSets(screen->dev, num_wds, wds, 0, NULL);
+   }
 
    vkCmdBindPipeline(batch->cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
    vkCmdBindDescriptorSets(batch->cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS,
