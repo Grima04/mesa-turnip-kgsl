@@ -560,13 +560,13 @@ void mitigate_hazards_gfx10(Program *program)
       Block& block = program->blocks[i];
       NOP_ctx_gfx10 &ctx = all_ctx[i];
 
-      if (block.kind == block_kind_loop_header) {
+      if (block.kind & block_kind_loop_header) {
          loop_header_indices.push(i);
-      } else if (block.kind == block_kind_loop_exit) {
+      } else if (block.kind & block_kind_loop_exit) {
          /* Go through the whole loop again */
          for (unsigned idx = loop_header_indices.top(); idx < i; idx++) {
             NOP_ctx_gfx10 loop_block_ctx;
-            for (unsigned b : block.linear_preds)
+            for (unsigned b : program->blocks[idx].linear_preds)
                loop_block_ctx.join(all_ctx[b]);
 
             handle_block_gfx10(loop_block_ctx, program->blocks[idx]);
