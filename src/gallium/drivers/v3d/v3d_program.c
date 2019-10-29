@@ -220,7 +220,7 @@ v3d_shader_precompile(struct v3d_context *v3d,
                         int slot = var->data.location;
                         for (int i = 0; i < glsl_get_components(var->type); i++) {
                                 int swiz = var->data.location_frac + i;
-                                key.fs_inputs[key.num_fs_inputs++] =
+                                key.used_outputs[key.num_used_outputs++] =
                                         v3d_slot_from_slot_and_component(slot,
                                                                          swiz);
                         }
@@ -230,9 +230,9 @@ v3d_shader_precompile(struct v3d_context *v3d,
 
                 /* Compile VS bin shader: only position (XXX: include TF) */
                 key.is_coord = true;
-                key.num_fs_inputs = 0;
+                key.num_used_outputs = 0;
                 for (int i = 0; i < 4; i++) {
-                        key.fs_inputs[key.num_fs_inputs++] =
+                        key.used_outputs[key.num_used_outputs++] =
                                 v3d_slot_from_slot_and_component(VARYING_SLOT_POS,
                                                                  i);
                 }
@@ -627,11 +627,11 @@ v3d_update_compiled_vs(struct v3d_context *v3d, uint8_t prim_mode)
         v3d_setup_shared_key(v3d, &key->base, &v3d->tex[PIPE_SHADER_VERTEX]);
         key->base.shader_state = v3d->prog.bind_vs;
         key->base.ucp_enables = v3d->rasterizer->base.clip_plane_enable;
-        key->num_fs_inputs = v3d->prog.fs->prog_data.fs->num_inputs;
-        STATIC_ASSERT(sizeof(key->fs_inputs) ==
+        key->num_used_outputs = v3d->prog.fs->prog_data.fs->num_inputs;
+        STATIC_ASSERT(sizeof(key->used_outputs) ==
                       sizeof(v3d->prog.fs->prog_data.fs->input_slots));
-        memcpy(key->fs_inputs, v3d->prog.fs->prog_data.fs->input_slots,
-               sizeof(key->fs_inputs));
+        memcpy(key->used_outputs, v3d->prog.fs->prog_data.fs->input_slots,
+               sizeof(key->used_outputs));
         key->clamp_color = v3d->rasterizer->base.clamp_vertex_color;
 
         key->per_vertex_point_size =
@@ -648,15 +648,15 @@ v3d_update_compiled_vs(struct v3d_context *v3d, uint8_t prim_mode)
         key->is_coord = true;
         /* Coord shaders only output varyings used by transform feedback. */
         struct v3d_uncompiled_shader *shader_state = key->base.shader_state;
-        memcpy(key->fs_inputs, shader_state->tf_outputs,
-               sizeof(*key->fs_inputs) * shader_state->num_tf_outputs);
-        if (shader_state->num_tf_outputs < key->num_fs_inputs) {
-                memset(&key->fs_inputs[shader_state->num_tf_outputs],
+        memcpy(key->used_outputs, shader_state->tf_outputs,
+               sizeof(*key->used_outputs) * shader_state->num_tf_outputs);
+        if (shader_state->num_tf_outputs < key->num_used_outputs) {
+                memset(&key->used_outputs[shader_state->num_tf_outputs],
                        0,
-                       sizeof(*key->fs_inputs) * (key->num_fs_inputs -
+                       sizeof(*key->used_outputs) * (key->num_used_outputs -
                                                   shader_state->num_tf_outputs));
         }
-        key->num_fs_inputs = shader_state->num_tf_outputs;
+        key->num_used_outputs = shader_state->num_tf_outputs;
 
         struct v3d_compiled_shader *cs =
                 v3d_get_compiled_shader(v3d, &key->base, sizeof(*key));

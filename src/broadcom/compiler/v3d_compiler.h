@@ -374,8 +374,8 @@ struct v3d_fs_key {
 struct v3d_vs_key {
         struct v3d_key base;
 
-        struct v3d_varying_slot fs_inputs[V3D_MAX_FS_INPUTS];
-        uint8_t num_fs_inputs;
+        struct v3d_varying_slot used_outputs[V3D_MAX_ANY_STAGE_INPUTS];
+        uint8_t num_used_outputs;
 
         bool is_coord;
         bool per_vertex_point_size;

@@ -749,9 +749,9 @@ v3d_nir_lower_vs_early(struct v3d_compile *c)
         NIR_PASS_V(c->s, nir_lower_io_to_scalar_early,
                    nir_var_shader_in | nir_var_shader_out);
         uint64_t used_outputs[4] = {0};
-        for (int i = 0; i < c->vs_key->num_fs_inputs; i++) {
-                int slot = v3d_slot_get_slot(c->vs_key->fs_inputs[i]);
-                int comp = v3d_slot_get_component(c->vs_key->fs_inputs[i]);
+        for (int i = 0; i < c->vs_key->num_used_outputs; i++) {
+                int slot = v3d_slot_get_slot(c->vs_key->used_outputs[i]);
+                int comp = v3d_slot_get_component(c->vs_key->used_outputs[i]);
                 used_outputs[comp] |= 1ull << slot;
         }
         NIR_PASS_V(c->s, nir_remove_unused_io_vars,
