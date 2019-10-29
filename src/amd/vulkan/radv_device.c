@@ -1947,7 +1947,11 @@ static int install_seccomp_filter() {
 	struct sock_filter filter[] = {
 		/* Check arch is 64bit x86 */
 		BPF_STMT(BPF_LD + BPF_W + BPF_ABS, (offsetof(struct seccomp_data, arch))),
-		BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K, AUDIT_ARCH_X86_64, 0, 10),
+		BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K, AUDIT_ARCH_X86_64, 0, 12),
+
+		/* Futex is required for mutex locks */
+		BPF_STMT(BPF_LD + BPF_W + BPF_ABS, (offsetof(struct seccomp_data, nr))),
+		BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K, __NR_select, 11, 0),
 
 		/* Allow system exit calls for the forked process */
 		BPF_STMT(BPF_LD + BPF_W + BPF_ABS, (offsetof(struct seccomp_data, nr))),
