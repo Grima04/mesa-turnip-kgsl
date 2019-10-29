@@ -992,8 +992,6 @@ v3d_create_surface(struct pipe_context *pctx,
         if (!surface)
                 return NULL;
 
-        assert(surf_tmpl->u.tex.first_layer == surf_tmpl->u.tex.last_layer);
-
         struct pipe_surface *psurf = &surface->base;
         unsigned level = surf_tmpl->u.tex.level;
         struct v3d_resource_slice *slice = &rsc->slices[level];
