@@ -86,13 +86,14 @@ anv_reloc_list_init_clone(struct anv_reloc_list *list,
       list->reloc_bos = NULL;
    }
 
-   if (other_list->deps) {
-      list->deps = _mesa_set_clone(other_list->deps, NULL);
-      if (!list->deps) {
-         vk_free(alloc, list->relocs);
-         vk_free(alloc, list->reloc_bos);
-         return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
-      }
+   list->dep_words = other_list->dep_words;
+
+   if (list->dep_words > 0) {
+      list->deps =
+         vk_alloc(alloc, list->dep_words * sizeof(BITSET_WORD), 8,
+                  VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+      memcpy(list->deps, other_list->deps,
+             list->dep_words * sizeof(BITSET_WORD));
    } else {
       list->deps = NULL;
    }
@@ -106,8 +107,7 @@ anv_reloc_list_finish(struct anv_reloc_list *list,
 {
    vk_free(alloc, list->relocs);
    vk_free(alloc, list->reloc_bos);
-   if (list->deps != NULL)
-      _mesa_set_destroy(list->deps, NULL);
+   vk_free(alloc, list->deps);
 }
 
 static VkResult
@@ -143,6 +143,33 @@ anv_reloc_list_grow(struct anv_reloc_list *list,
    return VK_SUCCESS;
 }
 
+static VkResult
+anv_reloc_list_grow_deps(struct anv_reloc_list *list,
+                         const VkAllocationCallbacks *alloc,
+                         uint32_t min_num_words)
+{
+   if (min_num_words <= list->dep_words)
+      return VK_SUCCESS;
+
+   uint32_t new_length = MAX2(32, list->dep_words * 2);
+   while (new_length < min_num_words)
+      new_length *= 2;
+
+   BITSET_WORD *new_deps =
+      vk_realloc(alloc, list->deps, new_length * sizeof(BITSET_WORD), 8,
+                 VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   if (new_deps == NULL)
+      return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
+   list->deps = new_deps;
+
+   /* Zero out the new data */
+   memset(list->deps + list->dep_words, 0,
+          (new_length - list->dep_words) * sizeof(BITSET_WORD));
+   list->dep_words = new_length;
+
+   return VK_SUCCESS;
+}
+
 #define READ_ONCE(x) (*(volatile __typeof__(x) *)&(x))
 
 VkResult
@@ -160,12 +187,10 @@ anv_reloc_list_add(struct anv_reloc_list *list,
       *address_u64_out = target_bo_offset + delta;
 
    if (unwrapped_target_bo->flags & EXEC_OBJECT_PINNED) {
-      if (list->deps == NULL) {
-         list->deps = _mesa_pointer_set_create(NULL);
-         if (unlikely(list->deps == NULL))
-            return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
-      }
-      _mesa_set_add(list->deps, target_bo);
+      assert(!target_bo->is_wrapper);
+      uint32_t idx = unwrapped_target_bo->gem_handle;
+      anv_reloc_list_grow_deps(list, alloc, (idx / BITSET_WORDBITS) + 1);
+      BITSET_SET(list->deps, unwrapped_target_bo->gem_handle);
       return VK_SUCCESS;
    }
 
@@ -186,6 +211,14 @@ anv_reloc_list_add(struct anv_reloc_list *list,
    VG(VALGRIND_CHECK_MEM_IS_DEFINED(entry, sizeof(*entry)));
 
    return VK_SUCCESS;
+}
+
+static void
+anv_reloc_list_clear(struct anv_reloc_list *list)
+{
+   list->num_relocs = 0;
+   if (list->dep_words > 0)
+      memset(list->deps, 0, list->dep_words * sizeof(BITSET_WORD));
 }
 
 static VkResult
@@ -209,15 +242,9 @@ anv_reloc_list_append(struct anv_reloc_list *list,
       list->num_relocs += other->num_relocs;
    }
 
-   if (other->deps) {
-      if (list->deps == NULL) {
-         list->deps = _mesa_pointer_set_create(NULL);
-         if (unlikely(list->deps == NULL))
-            return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
-      }
-      set_foreach(other->deps, entry)
-         _mesa_set_add_pre_hashed(list->deps, entry->hash, entry->key);
-   }
+   anv_reloc_list_grow_deps(list, alloc, other->dep_words);
+   for (uint32_t w = 0; w < other->dep_words; w++)
+      list->deps[w] |= other->deps[w];
 
    return VK_SUCCESS;
 }
@@ -372,8 +399,7 @@ anv_batch_bo_start(struct anv_batch_bo *bbo, struct anv_batch *batch,
    batch->next = batch->start = bbo->bo->map;
    batch->end = bbo->bo->map + bbo->bo->size - batch_padding;
    batch->relocs = &bbo->relocs;
-   bbo->relocs.num_relocs = 0;
-   _mesa_set_clear(bbo->relocs.deps, NULL);
+   anv_reloc_list_clear(&bbo->relocs);
 }
 
 static void
@@ -844,8 +870,7 @@ anv_cmd_buffer_reset_batch_bo_chain(struct anv_cmd_buffer *cmd_buffer)
    assert(u_vector_length(&cmd_buffer->bt_block_states) == 1);
    cmd_buffer->bt_next = 0;
 
-   cmd_buffer->surface_relocs.num_relocs = 0;
-   _mesa_set_clear(cmd_buffer->surface_relocs.deps, NULL);
+   anv_reloc_list_clear(&cmd_buffer->surface_relocs);
    cmd_buffer->last_ss_pool_center = 0;
 
    /* Reset the list of seen buffers */
@@ -1039,21 +1064,13 @@ anv_execbuf_finish(struct anv_execbuf *exec,
    vk_free(alloc, exec->syncobjs);
 }
 
-static int
-_compare_bo_handles(const void *_bo1, const void *_bo2)
-{
-   struct anv_bo * const *bo1 = _bo1;
-   struct anv_bo * const *bo2 = _bo2;
-
-   return (*bo1)->gem_handle - (*bo2)->gem_handle;
-}
-
 static VkResult
-anv_execbuf_add_bo_set(struct anv_device *device,
-                       struct anv_execbuf *exec,
-                       struct set *deps,
-                       uint32_t extra_flags,
-                       const VkAllocationCallbacks *alloc);
+anv_execbuf_add_bo_bitset(struct anv_device *device,
+                          struct anv_execbuf *exec,
+                          uint32_t dep_words,
+                          BITSET_WORD *deps,
+                          uint32_t extra_flags,
+                          const VkAllocationCallbacks *alloc);
 
 static VkResult
 anv_execbuf_add_bo(struct anv_device *device,
@@ -1147,8 +1164,8 @@ anv_execbuf_add_bo(struct anv_device *device,
          }
       }
 
-      return anv_execbuf_add_bo_set(device, exec, relocs->deps,
-                                    extra_flags, alloc);
+      return anv_execbuf_add_bo_bitset(device, exec, relocs->dep_words,
+                                       relocs->deps, extra_flags, alloc);
    }
 
    return VK_SUCCESS;
@@ -1156,39 +1173,28 @@ anv_execbuf_add_bo(struct anv_device *device,
 
 /* Add BO dependencies to execbuf */
 static VkResult
-anv_execbuf_add_bo_set(struct anv_device *device,
-                       struct anv_execbuf *exec,
-                       struct set *deps,
-                       uint32_t extra_flags,
-                       const VkAllocationCallbacks *alloc)
+anv_execbuf_add_bo_bitset(struct anv_device *device,
+                          struct anv_execbuf *exec,
+                          uint32_t dep_words,
+                          BITSET_WORD *deps,
+                          uint32_t extra_flags,
+                          const VkAllocationCallbacks *alloc)
 {
-   if (!deps || deps->entries <= 0)
-      return VK_SUCCESS;
-
-   const uint32_t entries = deps->entries;
-   struct anv_bo **bos =
-      vk_alloc(alloc, entries * sizeof(*bos),
-               8, VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
-   if (bos == NULL)
-      return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
-
-   struct anv_bo **bo = bos;
-   set_foreach(deps, entry) {
-      *bo++ = (void *)entry->key;
+   for (uint32_t w = 0; w < dep_words; w++) {
+      BITSET_WORD mask = deps[w];
+      while (mask) {
+         int i = u_bit_scan(&mask);
+         uint32_t gem_handle = w * BITSET_WORDBITS + i;
+         struct anv_bo *bo = anv_device_lookup_bo(device, gem_handle);
+         assert(bo->refcount > 0);
+         VkResult result = anv_execbuf_add_bo(device, exec,
+                                              bo, NULL, extra_flags, alloc);
+         if (result != VK_SUCCESS)
+            return result;
+      }
    }
 
-   qsort(bos, entries, sizeof(struct anv_bo*), _compare_bo_handles);
-
-   VkResult result = VK_SUCCESS;
-   for (bo = bos; bo < bos + entries; bo++) {
-      result = anv_execbuf_add_bo(device, exec, *bo, NULL, extra_flags, alloc);
-      if (result != VK_SUCCESS)
-         break;
-   }
-
-   vk_free(alloc, bos);
-
-   return result;
+   return VK_SUCCESS;
 }
 
 static VkResult
@@ -1415,9 +1421,10 @@ setup_execbuf_for_cmd_buffer(struct anv_execbuf *execbuf,
             return result;
       }
       /* Add surface dependencies (BOs) to the execbuf */
-      anv_execbuf_add_bo_set(cmd_buffer->device, execbuf,
-                             cmd_buffer->surface_relocs.deps, 0,
-                             &cmd_buffer->device->alloc);
+      anv_execbuf_add_bo_bitset(cmd_buffer->device, execbuf,
+                                cmd_buffer->surface_relocs.dep_words,
+                                cmd_buffer->surface_relocs.deps,
+                                0, &cmd_buffer->device->alloc);
 
       /* Add the BOs for all memory objects */
       list_for_each_entry(struct anv_device_memory, mem,
