@@ -354,6 +354,8 @@ struct v3d_job {
         */
         uint32_t draw_width;
         uint32_t draw_height;
+        uint32_t num_layers;
+
         /** @} */
         /** @{ Tile information, depending on MSAA and float color buffer. */
         uint32_t draw_tiles_x; /** @< Number of tiles wide for framebuffer. */

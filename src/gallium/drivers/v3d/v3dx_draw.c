@@ -55,11 +55,14 @@ v3d_start_draw(struct v3d_context *v3d)
         job->submit.bcl_start = job->bcl.bo->offset;
         v3d_job_add_bo(job, job->bcl.bo);
 
+        uint32_t fb_layers = util_framebuffer_get_num_layers(&v3d->framebuffer);
+
         /* The PTB will request the tile alloc initial size per tile at start
          * of tile binning.
          */
-        uint32_t tile_alloc_size = (job->draw_tiles_x *
-                                    job->draw_tiles_y) * 64;
+        uint32_t tile_alloc_size =
+                MAX2(fb_layers, 1) * job->draw_tiles_x * job->draw_tiles_y * 64;
+
         /* The PTB allocates in aligned 4k chunks after the initial setup. */
         tile_alloc_size = align(tile_alloc_size, 4096);
 
@@ -79,10 +82,21 @@ v3d_start_draw(struct v3d_context *v3d)
                                        "tile_alloc");
         uint32_t tsda_per_tile_size = v3d->screen->devinfo.ver >= 40 ? 256 : 64;
         job->tile_state = v3d_bo_alloc(v3d->screen,
+                                       MAX2(fb_layers, 1) *
                                        job->draw_tiles_y *
                                        job->draw_tiles_x *
                                        tsda_per_tile_size,
                                        "TSDA");
+#if V3D_VERSION >= 41
+        /* This must go before the binning mode configuration. It is
+         * required for layered framebuffers to work.
+         */
+        if (fb_layers > 0) {
+                cl_emit(&job->bcl, NUMBER_OF_LAYERS, config) {
+                        config.number_of_layers = fb_layers;
+                }
+        }
+#endif
 
 #if V3D_VERSION >= 40
         cl_emit(&job->bcl, TILE_BINNING_MODE_CFG, config) {
@@ -137,6 +151,7 @@ v3d_start_draw(struct v3d_context *v3d)
         job->needs_flush = true;
         job->draw_width = v3d->framebuffer.width;
         job->draw_height = v3d->framebuffer.height;
+        job->num_layers = fb_layers;
 }
 
 static void
