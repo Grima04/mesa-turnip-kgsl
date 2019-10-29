@@ -58,6 +58,6 @@ script:
       ninja -C _build install || travis_terminate 1;
     fi
   - if test "x$BUILD" = xscons; then
-      scons || travis_terminate 1;
-      scons check || travis_terminate 1;
+      scons force_scons=1 || travis_terminate 1;
+      scons force_scons=1 check || travis_terminate 1;
     fi
