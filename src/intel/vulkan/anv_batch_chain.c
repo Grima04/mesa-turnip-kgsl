@@ -1049,13 +1049,15 @@ _compare_bo_handles(const void *_bo1, const void *_bo2)
 }
 
 static VkResult
-anv_execbuf_add_bo_set(struct anv_execbuf *exec,
+anv_execbuf_add_bo_set(struct anv_device *device,
+                       struct anv_execbuf *exec,
                        struct set *deps,
                        uint32_t extra_flags,
                        const VkAllocationCallbacks *alloc);
 
 static VkResult
-anv_execbuf_add_bo(struct anv_execbuf *exec,
+anv_execbuf_add_bo(struct anv_device *device,
+                   struct anv_execbuf *exec,
                    struct anv_bo *bo,
                    struct anv_reloc_list *relocs,
                    uint32_t extra_flags,
@@ -1137,15 +1139,16 @@ anv_execbuf_add_bo(struct anv_execbuf *exec,
 
             /* A quick sanity check on relocations */
             assert(relocs->relocs[i].offset < bo->size);
-            result = anv_execbuf_add_bo(exec, relocs->reloc_bos[i], NULL,
-                                        extra_flags, alloc);
+            result = anv_execbuf_add_bo(device, exec, relocs->reloc_bos[i],
+                                        NULL, extra_flags, alloc);
 
             if (result != VK_SUCCESS)
                return result;
          }
       }
 
-      return anv_execbuf_add_bo_set(exec, relocs->deps, extra_flags, alloc);
+      return anv_execbuf_add_bo_set(device, exec, relocs->deps,
+                                    extra_flags, alloc);
    }
 
    return VK_SUCCESS;
@@ -1153,7 +1156,8 @@ anv_execbuf_add_bo(struct anv_execbuf *exec,
 
 /* Add BO dependencies to execbuf */
 static VkResult
-anv_execbuf_add_bo_set(struct anv_execbuf *exec,
+anv_execbuf_add_bo_set(struct anv_device *device,
+                       struct anv_execbuf *exec,
                        struct set *deps,
                        uint32_t extra_flags,
                        const VkAllocationCallbacks *alloc)
@@ -1177,7 +1181,7 @@ anv_execbuf_add_bo_set(struct anv_execbuf *exec,
 
    VkResult result = VK_SUCCESS;
    for (bo = bos; bo < bos + entries; bo++) {
-      result = anv_execbuf_add_bo(exec, *bo, NULL, extra_flags, alloc);
+      result = anv_execbuf_add_bo(device, exec, *bo, NULL, extra_flags, alloc);
       if (result != VK_SUCCESS)
          break;
    }
@@ -1404,19 +1408,22 @@ setup_execbuf_for_cmd_buffer(struct anv_execbuf *execbuf,
    VkResult result;
    if (cmd_buffer->device->instance->physicalDevice.use_softpin) {
       anv_block_pool_foreach_bo(bo, &ss_pool->block_pool) {
-         result = anv_execbuf_add_bo(execbuf, bo, NULL, 0,
+         result = anv_execbuf_add_bo(cmd_buffer->device, execbuf,
+                                     bo, NULL, 0,
                                      &cmd_buffer->device->alloc);
          if (result != VK_SUCCESS)
             return result;
       }
       /* Add surface dependencies (BOs) to the execbuf */
-      anv_execbuf_add_bo_set(execbuf, cmd_buffer->surface_relocs.deps, 0,
+      anv_execbuf_add_bo_set(cmd_buffer->device, execbuf,
+                             cmd_buffer->surface_relocs.deps, 0,
                              &cmd_buffer->device->alloc);
 
       /* Add the BOs for all memory objects */
       list_for_each_entry(struct anv_device_memory, mem,
                           &cmd_buffer->device->memory_objects, link) {
-         result = anv_execbuf_add_bo(execbuf, mem->bo, NULL, 0,
+         result = anv_execbuf_add_bo(cmd_buffer->device, execbuf,
+                                     mem->bo, NULL, 0,
                                      &cmd_buffer->device->alloc);
          if (result != VK_SUCCESS)
             return result;
@@ -1425,7 +1432,8 @@ setup_execbuf_for_cmd_buffer(struct anv_execbuf *execbuf,
       struct anv_block_pool *pool;
       pool = &cmd_buffer->device->dynamic_state_pool.block_pool;
       anv_block_pool_foreach_bo(bo, pool) {
-         result = anv_execbuf_add_bo(execbuf, bo, NULL, 0,
+         result = anv_execbuf_add_bo(cmd_buffer->device, execbuf,
+                                     bo, NULL, 0,
                                      &cmd_buffer->device->alloc);
          if (result != VK_SUCCESS)
             return result;
@@ -1433,7 +1441,8 @@ setup_execbuf_for_cmd_buffer(struct anv_execbuf *execbuf,
 
       pool = &cmd_buffer->device->instruction_state_pool.block_pool;
       anv_block_pool_foreach_bo(bo, pool) {
-         result = anv_execbuf_add_bo(execbuf, bo, NULL, 0,
+         result = anv_execbuf_add_bo(cmd_buffer->device, execbuf,
+                                     bo, NULL, 0,
                                      &cmd_buffer->device->alloc);
          if (result != VK_SUCCESS)
             return result;
@@ -1441,7 +1450,8 @@ setup_execbuf_for_cmd_buffer(struct anv_execbuf *execbuf,
 
       pool = &cmd_buffer->device->binding_table_pool.block_pool;
       anv_block_pool_foreach_bo(bo, pool) {
-         result = anv_execbuf_add_bo(execbuf, bo, NULL, 0,
+         result = anv_execbuf_add_bo(cmd_buffer->device, execbuf,
+                                     bo, NULL, 0,
                                      &cmd_buffer->device->alloc);
          if (result != VK_SUCCESS)
             return result;
@@ -1452,7 +1462,8 @@ setup_execbuf_for_cmd_buffer(struct anv_execbuf *execbuf,
        * buffer.  We have to add the surface state BO manually because it has
        * relocations of its own that we need to be sure are processsed.
        */
-      result = anv_execbuf_add_bo(execbuf, ss_pool->block_pool.bo,
+      result = anv_execbuf_add_bo(cmd_buffer->device, execbuf,
+                                  ss_pool->block_pool.bo,
                                   &cmd_buffer->surface_relocs, 0,
                                   &cmd_buffer->device->alloc);
       if (result != VK_SUCCESS)
@@ -1467,7 +1478,8 @@ setup_execbuf_for_cmd_buffer(struct anv_execbuf *execbuf,
       adjust_relocations_to_state_pool(ss_pool, (*bbo)->bo, &(*bbo)->relocs,
                                        cmd_buffer->last_ss_pool_center);
 
-      result = anv_execbuf_add_bo(execbuf, (*bbo)->bo, &(*bbo)->relocs, 0,
+      result = anv_execbuf_add_bo(cmd_buffer->device, execbuf,
+                                  (*bbo)->bo, &(*bbo)->relocs, 0,
                                   &cmd_buffer->device->alloc);
       if (result != VK_SUCCESS)
          return result;
@@ -1586,7 +1598,8 @@ setup_execbuf_for_cmd_buffer(struct anv_execbuf *execbuf,
 static VkResult
 setup_empty_execbuf(struct anv_execbuf *execbuf, struct anv_device *device)
 {
-   VkResult result = anv_execbuf_add_bo(execbuf, device->trivial_batch_bo,
+   VkResult result = anv_execbuf_add_bo(device, execbuf,
+                                        device->trivial_batch_bo,
                                         NULL, 0, &device->alloc);
    if (result != VK_SUCCESS)
       return result;
@@ -1630,7 +1643,7 @@ anv_cmd_buffer_execbuf(struct anv_device *device,
       switch (impl->type) {
       case ANV_SEMAPHORE_TYPE_BO:
          assert(!pdevice->has_syncobj);
-         result = anv_execbuf_add_bo(&execbuf, impl->bo, NULL,
+         result = anv_execbuf_add_bo(device, &execbuf, impl->bo, NULL,
                                      0, &device->alloc);
          if (result != VK_SUCCESS)
             return result;
@@ -1688,7 +1701,7 @@ anv_cmd_buffer_execbuf(struct anv_device *device,
       switch (impl->type) {
       case ANV_SEMAPHORE_TYPE_BO:
          assert(!pdevice->has_syncobj);
-         result = anv_execbuf_add_bo(&execbuf, impl->bo, NULL,
+         result = anv_execbuf_add_bo(device, &execbuf, impl->bo, NULL,
                                      EXEC_OBJECT_WRITE, &device->alloc);
          if (result != VK_SUCCESS)
             return result;
@@ -1731,7 +1744,7 @@ anv_cmd_buffer_execbuf(struct anv_device *device,
       switch (impl->type) {
       case ANV_FENCE_TYPE_BO:
          assert(!pdevice->has_syncobj_wait);
-         result = anv_execbuf_add_bo(&execbuf, impl->bo.bo, NULL,
+         result = anv_execbuf_add_bo(device, &execbuf, impl->bo.bo, NULL,
                                      EXEC_OBJECT_WRITE, &device->alloc);
          if (result != VK_SUCCESS)
             return result;
