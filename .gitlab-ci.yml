@@ -14,7 +14,7 @@
 # repository's registry will be used there as well.
 variables:
   UPSTREAM_REPO: mesa/mesa
-  DEBIAN_TAG: "2019-10-23"
+  DEBIAN_TAG: "2019-10-29"
   DEBIAN_ARM64_TAG: "arm64v8-2019-10-23"
   STRETCH_TAG: "2019-09-18"
   DEBIAN_VERSION: buster-slim
