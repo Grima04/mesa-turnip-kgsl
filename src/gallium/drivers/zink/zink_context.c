@@ -1020,8 +1020,10 @@ zink_draw_vbo(struct pipe_context *pctx,
                                                &ctx->gfx_pipeline_state,
                                                dinfo->mode);
 
+   enum pipe_prim_type reduced_prim = u_reduced_prim(dinfo->mode);
+
    bool depth_bias = false;
-   switch (u_reduced_prim(dinfo->mode)) {
+   switch (reduced_prim) {
    case PIPE_PRIM_POINTS:
       depth_bias = rast_state->offset_point;
       break;
@@ -1152,6 +1154,13 @@ zink_draw_vbo(struct pipe_context *pctx,
       fb_scissor.extent.width = ctx->fb_state.width;
       fb_scissor.extent.height = ctx->fb_state.height;
       vkCmdSetScissor(batch->cmdbuf, 0, 1, &fb_scissor);
+   }
+
+   if (reduced_prim == PIPE_PRIM_LINES) {
+      if (screen->feats.wideLines || ctx->line_width == 1.0f)
+         vkCmdSetLineWidth(batch->cmdbuf, ctx->line_width);
+      else
+         debug_printf("BUG: wide lines not supported, needs fallback!");
    }
 
    vkCmdSetStencilReference(batch->cmdbuf, VK_STENCIL_FACE_FRONT_BIT, ctx->stencil_ref.ref_value[0]);

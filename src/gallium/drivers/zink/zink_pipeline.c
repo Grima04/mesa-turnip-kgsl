@@ -85,12 +85,7 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
    rast_state.depthBiasConstantFactor = 0.0;
    rast_state.depthBiasClamp = 0.0;
    rast_state.depthBiasSlopeFactor = 0.0;
-   if (screen->feats.wideLines)
-      rast_state.lineWidth = state->line_width;
-   else {
-      debug_printf("BUG: wide lines not supported, needs fallback!");
-      rast_state.lineWidth = 1.0f;
-   }
+   rast_state.lineWidth = 1.0f;
 
    VkPipelineDepthStencilStateCreateInfo depth_stencil_state = {};
    depth_stencil_state.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
@@ -105,11 +100,12 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
    depth_stencil_state.depthWriteEnable = state->depth_stencil_alpha_state->depth_write;
 
    VkDynamicState dynamicStateEnables[] = {
-      VK_DYNAMIC_STATE_DEPTH_BIAS,
-      VK_DYNAMIC_STATE_SCISSOR,
-      VK_DYNAMIC_STATE_STENCIL_REFERENCE,
       VK_DYNAMIC_STATE_VIEWPORT,
+      VK_DYNAMIC_STATE_SCISSOR,
+      VK_DYNAMIC_STATE_LINE_WIDTH,
+      VK_DYNAMIC_STATE_DEPTH_BIAS,
       VK_DYNAMIC_STATE_BLEND_CONSTANTS,
+      VK_DYNAMIC_STATE_STENCIL_REFERENCE,
    };
 
    VkPipelineDynamicStateCreateInfo pipelineDynamicStateCreateInfo = {};

@@ -424,7 +424,7 @@ zink_bind_rasterizer_state(struct pipe_context *pctx, void *cso)
 
    if (ctx->rast_state) {
       ctx->gfx_pipeline_state.rast_state = &ctx->rast_state->hw_state;
-      ctx->gfx_pipeline_state.line_width = ctx->rast_state->line_width;
+      ctx->line_width = ctx->rast_state->line_width;
    }
 }
 

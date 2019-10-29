@@ -49,8 +49,6 @@ struct zink_gfx_pipeline_state {
 
    struct zink_depth_stencil_alpha_state *depth_stencil_alpha_state;
 
-   float line_width;
-
    VkSampleMask sample_mask;
    uint8_t rast_samples;
 };

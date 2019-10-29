@@ -103,6 +103,7 @@ struct zink_context {
    struct pipe_sampler_view *image_views[PIPE_SHADER_TYPES][PIPE_MAX_SHADER_SAMPLER_VIEWS];
    unsigned num_image_views[PIPE_SHADER_TYPES];
 
+   float line_width;
    float blend_constants[4];
 
    struct pipe_stencil_ref stencil_ref;
