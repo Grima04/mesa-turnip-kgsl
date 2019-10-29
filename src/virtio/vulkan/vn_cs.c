@@ -190,15 +190,28 @@ vn_cs_encoder_reserve_internal(struct vn_cs_encoder *enc, size_t size)
          return false;
    }
 
-   /* TODO allocate bo */
-   struct vn_renderer_bo *bo = NULL;
-   void *base = NULL;
-   VkResult result = VK_ERROR_OUT_OF_HOST_MEMORY;
+   struct vn_renderer_bo *bo;
+   VkResult result =
+      vn_renderer_bo_create_cpu(enc->instance->renderer, buf_size, &bo);
    if (result != VK_SUCCESS)
       return false;
 
+   void *base = vn_renderer_bo_map(bo);
+   if (!base) {
+      vn_renderer_bo_unref(bo);
+      return false;
+   }
+
+   uint32_t roundtrip;
+   result = vn_instance_submit_roundtrip(enc->instance, &roundtrip);
+   if (result != VK_SUCCESS) {
+      vn_renderer_bo_unref(bo);
+      return false;
+   }
+
    vn_cs_encoder_add_buffer(enc, bo, 0, base, buf_size);
    enc->current_buffer_size = buf_size;
+   enc->current_buffer_roundtrip = roundtrip;
 
    vn_cs_encoder_sanity_check(enc);
 

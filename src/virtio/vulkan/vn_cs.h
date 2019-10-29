@@ -46,6 +46,7 @@ struct vn_cs_encoder {
 
    /* the current buffer is buffers[buffer_count - 1].bo */
    size_t current_buffer_size;
+   uint32_t current_buffer_roundtrip;
 
    /* cur is the write pointer.  When cur passes end, the slow path is
     * triggered.
