@@ -71,14 +71,17 @@ void process_live_temps_per_block(Program *program, live& lives, Block* block,
    new_demand.sgpr -= phi_sgpr_ops[block->index];
 
    /* traverse the instructions backwards */
-   for (int idx = block->instructions.size() -1; idx >= 0; idx--)
-   {
+   int idx;
+   for (idx = block->instructions.size() -1; idx >= 0; idx--) {
+      Instruction *insn = block->instructions[idx].get();
+      if (is_phi(insn))
+         break;
+
       /* substract the 2 sgprs from exec */
       if (exec_live)
          assert(new_demand.sgpr >= 2);
       register_demand[idx] = RegisterDemand(new_demand.vgpr, new_demand.sgpr - (exec_live ? 2 : 0));
 
-      Instruction *insn = block->instructions[idx].get();
       /* KILL */
       for (Definition& definition : insn->definitions) {
          if (!definition.isTemp()) {
@@ -105,28 +108,7 @@ void process_live_temps_per_block(Program *program, live& lives, Block* block,
       }
 
       /* GEN */
-      if (insn->opcode == aco_opcode::p_phi ||
-          insn->opcode == aco_opcode::p_linear_phi) {
-         /* directly insert into the predecessors live-out set */
-         std::vector<unsigned>& preds = insn->opcode == aco_opcode::p_phi
-                                      ? block->logical_preds
-                                      : block->linear_preds;
-         for (unsigned i = 0; i < preds.size(); ++i)
-         {
-            Operand &operand = insn->operands[i];
-            if (!operand.isTemp()) {
-               continue;
-            }
-            /* check if we changed an already processed block */
-            const bool inserted = live_temps[preds[i]].insert(operand.getTemp()).second;
-            if (inserted) {
-               operand.setFirstKill(true);
-               worklist.insert(preds[i]);
-               if (insn->opcode == aco_opcode::p_phi && operand.getTemp().type() == RegType::sgpr)
-                  phi_sgpr_ops[preds[i]] += operand.size();
-            }
-         }
-      } else if (insn->opcode == aco_opcode::p_logical_end) {
+      if (insn->opcode == aco_opcode::p_logical_end) {
          new_demand.sgpr += phi_sgpr_ops[block->index];
       } else {
          for (unsigned i = 0; i < insn->operands.size(); ++i)
@@ -160,6 +142,37 @@ void process_live_temps_per_block(Program *program, live& lives, Block* block,
       block->register_demand.update(register_demand[idx]);
    }
 
+   /* update block's register demand for a last time */
+   if (exec_live)
+      assert(new_demand.sgpr >= 2);
+   new_demand.sgpr -= exec_live ? 2 : 0;
+   block->register_demand.update(new_demand);
+
+   /* handle phi definitions */
+   int phi_idx = idx;
+   while (phi_idx >= 0) {
+      register_demand[phi_idx] = new_demand;
+      Instruction *insn = block->instructions[phi_idx].get();
+
+      assert(is_phi(insn));
+      assert(insn->definitions.size() == 1 && insn->definitions[0].isTemp());
+      Definition& definition = insn->definitions[0];
+      const Temp temp = definition.getTemp();
+      size_t n = 0;
+
+      if (temp.is_linear())
+         n = live_sgprs.erase(temp);
+      else
+         n = live_vgprs.erase(temp);
+
+      if (n)
+         definition.setKill(false);
+      else
+         definition.setKill(true);
+
+      phi_idx--;
+   }
+
    /* now, we have the live-in sets and need to merge them into the live-out sets */
    for (unsigned pred_idx : block->logical_preds) {
       for (Temp vgpr : live_vgprs) {
@@ -175,6 +188,32 @@ void process_live_temps_per_block(Program *program, live& lives, Block* block,
          if (it.second)
             worklist.insert(pred_idx);
       }
+   }
+
+   /* handle phi operands */
+   phi_idx = idx;
+   while (phi_idx >= 0) {
+      Instruction *insn = block->instructions[phi_idx].get();
+      assert(is_phi(insn));
+      /* directly insert into the predecessors live-out set */
+      std::vector<unsigned>& preds = insn->opcode == aco_opcode::p_phi
+                                   ? block->logical_preds
+                                   : block->linear_preds;
+      for (unsigned i = 0; i < preds.size(); ++i) {
+         Operand &operand = insn->operands[i];
+         if (!operand.isTemp()) {
+            continue;
+         }
+         /* check if we changed an already processed block */
+         const bool inserted = live_temps[preds[i]].insert(operand.getTemp()).second;
+         if (inserted) {
+            operand.setKill(true);
+            worklist.insert(preds[i]);
+            if (insn->opcode == aco_opcode::p_phi && operand.getTemp().type() == RegType::sgpr)
+               phi_sgpr_ops[preds[i]] += operand.size();
+         }
+      }
+      phi_idx--;
    }
 
    if (!(block->index != 0 || (live_vgprs.empty() && live_sgprs.empty()))) {
