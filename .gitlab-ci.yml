@@ -296,7 +296,7 @@ meson-clang:
     CC: "ccache clang-8"
     CXX: "ccache clang++-8"
 
-meson-windows:
+.meson-windows:
   extends:
     - .build-windows
   before_script:
