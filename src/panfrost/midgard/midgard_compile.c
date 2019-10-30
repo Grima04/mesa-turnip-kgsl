@@ -158,14 +158,12 @@ static midgard_vector_alu_src
 vector_alu_modifiers(nir_alu_src *src, bool is_int, unsigned broadcast_count,
                      bool half, bool sext)
 {
-        if (!src) return blank_alu_src;
-
         /* Figure out how many components there are so we can adjust.
          * Specifically we want to broadcast the last channel so things like
          * ball2/3 work.
          */
 
-        if (broadcast_count) {
+        if (broadcast_count && src) {
                 uint8_t last_component = src->swizzle[broadcast_count - 1];
 
                 for (unsigned c = broadcast_count; c < NIR_MAX_VEC_COMPONENTS; ++c) {
@@ -191,9 +189,11 @@ vector_alu_modifiers(nir_alu_src *src, bool is_int, unsigned broadcast_count,
                 }
 
                 /* These should have been lowered away */
-                assert(!(src->abs || src->negate));
+                if (src)
+                        assert(!(src->abs || src->negate));
         } else {
-                alu_src.mod = (src->abs << 0) | (src->negate << 1);
+                if (src)
+                        alu_src.mod = (src->abs << 0) | (src->negate << 1);
         }
 
         return alu_src;
@@ -597,7 +597,7 @@ emit_explicit_constant(compiler_context *ctx, unsigned node, unsigned to)
         void *constant_value = _mesa_hash_table_u64_search(ctx->ssa_constants, node + 1);
 
         if (constant_value) {
-                midgard_instruction ins = v_mov(SSA_FIXED_REGISTER(REGISTER_CONSTANT), blank_alu_src, to);
+                midgard_instruction ins = v_mov(SSA_FIXED_REGISTER(REGISTER_CONSTANT), to);
                 attach_constants(ctx, &ins, constant_value, node + 1);
                 emit_mir_instruction(ctx, ins);
         }
@@ -1315,7 +1315,7 @@ emit_fragment_store(compiler_context *ctx, unsigned src, unsigned rt)
 
         if (rt != 0) {
                 /* We'll write to r1.z */
-                rt_move = v_mov(~0, blank_alu_src, SSA_FIXED_REGISTER(1));
+                rt_move = v_mov(~0, SSA_FIXED_REGISTER(1));
                 rt_move.mask = 1 << COMPONENT_Z;
                 rt_move.unit = UNIT_SADD;
 
@@ -1439,7 +1439,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                         /* For blend shaders, load the input color, which is
                          * preloaded to r0 */
 
-                        midgard_instruction move = v_mov(SSA_FIXED_REGISTER(0), blank_alu_src, reg);
+                        midgard_instruction move = v_mov(SSA_FIXED_REGISTER(0), reg);
                         emit_mir_instruction(ctx, move);
                         schedule_barrier(ctx);
                 }  else if (ctx->stage == MESA_SHADER_VERTEX) {
@@ -1491,7 +1491,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                 /* Blend constants are embedded directly in the shader and
                  * patched in, so we use some magic routing */
 
-                midgard_instruction ins = v_mov(SSA_FIXED_REGISTER(REGISTER_CONSTANT), blank_alu_src, reg);
+                midgard_instruction ins = v_mov(SSA_FIXED_REGISTER(REGISTER_CONSTANT), reg);
                 ins.has_constants = true;
                 ins.has_blend_constant = true;
                 emit_mir_instruction(ctx, ins);
@@ -1702,13 +1702,12 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
                                 index = make_compiler_temp(ctx);
 
                                 /* mov index, old_index */
-                                midgard_instruction mov = v_mov(old_index, blank_alu_src, index);
+                                midgard_instruction mov = v_mov(old_index, index);
                                 mov.mask = 0x3;
                                 emit_mir_instruction(ctx, mov);
 
                                 /* mov index.zw, #0 */
-                                mov = v_mov(SSA_FIXED_REGISTER(REGISTER_CONSTANT),
-                                                blank_alu_src, index);
+                                mov = v_mov(SSA_FIXED_REGISTER(REGISTER_CONSTANT), index);
                                 mov.has_constants = true;
                                 mov.mask = (1 << COMPONENT_Z) | (1 << COMPONENT_W);
                                 emit_mir_instruction(ctx, mov);
@@ -1905,7 +1904,7 @@ inline_alu_constants(compiler_context *ctx, midgard_block *block)
                         unsigned scratch = alu->dest;
 
                         if (entry) {
-                                midgard_instruction ins = v_mov(SSA_FIXED_REGISTER(REGISTER_CONSTANT), blank_alu_src, scratch);
+                                midgard_instruction ins = v_mov(SSA_FIXED_REGISTER(REGISTER_CONSTANT), scratch);
                                 attach_constants(ctx, &ins, entry, alu->src[1] + 1);
 
                                 /* Set the source */

@@ -49,9 +49,7 @@ midgard_lower_invert(compiler_context *ctx, midgard_block *block)
                                 /* TODO: i16 */
                                 .reg_mode = midgard_reg_mode_32,
                                 .dest_override = midgard_dest_override_none,
-                                .outmod = midgard_outmod_int_wrap,
-                                .src1 = vector_alu_srco_unsigned(blank_alu_src),
-                                .src2 = vector_alu_srco_unsigned(blank_alu_src)
+                                .outmod = midgard_outmod_int_wrap
                         },
                 };
 

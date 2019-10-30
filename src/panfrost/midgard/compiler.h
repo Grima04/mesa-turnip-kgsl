@@ -538,18 +538,10 @@ void mir_insert_instruction_after_scheduled(compiler_context *ctx, midgard_block
 void mir_flip(midgard_instruction *ins);
 void mir_compute_temp_count(compiler_context *ctx);
 
-/* MIR goodies */
-
-static const midgard_vector_alu_src blank_alu_src = {};
-
-static const midgard_scalar_alu_src blank_scalar_alu_src = {
-        .full = true
-};
-
 /* 'Intrinsic' move for aliasing */
 
 static inline midgard_instruction
-v_mov(unsigned src, midgard_vector_alu_src mod, unsigned dest)
+v_mov(unsigned src, unsigned dest)
 {
         midgard_instruction ins = {
                 .type = TAG_ALU_4,
@@ -561,9 +553,7 @@ v_mov(unsigned src, midgard_vector_alu_src mod, unsigned dest)
                         .op = midgard_alu_op_imov,
                         .reg_mode = midgard_reg_mode_32,
                         .dest_override = midgard_dest_override_none,
-                        .outmod = midgard_outmod_int_wrap,
-                        .src1 = vector_alu_srco_unsigned(blank_alu_src),
-                        .src2 = vector_alu_srco_unsigned(mod)
+                        .outmod = midgard_outmod_int_wrap
                 },
         };
 

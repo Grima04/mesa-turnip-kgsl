@@ -719,7 +719,7 @@ mir_schedule_comparison(
 
         /* Otherwise, we insert a move */
 
-        midgard_instruction mov = v_mov(cond, blank_alu_src, cond);
+        midgard_instruction mov = v_mov(cond, cond);
         mov.mask = vector ? 0xF : 0x1;
         memcpy(mov.swizzle[1], swizzle, sizeof(mov.swizzle[1]));
 
@@ -956,7 +956,7 @@ mir_schedule_alu(
                 /* Finally, add a move if necessary */
                 if (bad_writeout || writeout_mask != 0xF) {
                         unsigned temp = (branch->src[0] == ~0) ? SSA_FIXED_REGISTER(0) : make_compiler_temp(ctx);
-                        midgard_instruction mov = v_mov(src, blank_alu_src, temp);
+                        midgard_instruction mov = v_mov(src, temp);
                         vmul = mem_dup(&mov, sizeof(midgard_instruction));
                         vmul->unit = UNIT_VMUL;
                         vmul->mask = 0xF ^ writeout_mask;
@@ -1265,7 +1265,7 @@ static void mir_spill_register(
                         midgard_instruction st;
 
                         if (is_special_w) {
-                                st = v_mov(spill_node, blank_alu_src, spill_slot);
+                                st = v_mov(spill_node, spill_slot);
                                 st.no_spill = true;
                         } else {
                                 ins->dest = SSA_FIXED_REGISTER(26);
@@ -1333,7 +1333,7 @@ static void mir_spill_register(
 
                                 if (is_special) {
                                         /* Move */
-                                        st = v_mov(spill_node, blank_alu_src, consecutive_index);
+                                        st = v_mov(spill_node, consecutive_index);
                                         st.no_spill = true;
                                 } else {
                                         /* TLS load */

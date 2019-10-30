@@ -474,8 +474,7 @@ mir_lower_special_reads(compiler_context *ctx)
                         unsigned idx = spill_idx++;
 
                         midgard_instruction m = hazard_write ?
-                                v_mov(idx, blank_alu_src, i) :
-                                v_mov(i, blank_alu_src, idx);
+                                v_mov(idx, i) : v_mov(i, idx);
 
                         /* Insert move before each read/write, depending on the
                          * hazard we're trying to account for */
@@ -499,7 +498,7 @@ mir_lower_special_reads(compiler_context *ctx)
                                         mir_rewrite_index_dst_single(pre_use, i, idx);
                                 } else {
                                         idx = spill_idx++;
-                                        m = v_mov(i, blank_alu_src, idx);
+                                        m = v_mov(i, idx);
                                         m.mask = mir_from_bytemask(mir_bytemask_of_read_components(pre_use, i), midgard_reg_mode_32);
                                         mir_insert_instruction_before(ctx, pre_use, m);
                                         mir_rewrite_index_src_single(pre_use, i, idx);
