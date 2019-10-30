@@ -4646,10 +4646,10 @@ radv_secure_compile(struct radv_pipeline *pipeline,
 
 	/* Do an early exit if all cache entries are already there. */
 	bool may_need_copy_shader = pStages[MESA_SHADER_GEOMETRY];
-	void *main_entry = disk_cache_get(device->physical_device->disk_cache, allowed_hashes[0], 20);
+	void *main_entry = disk_cache_get(device->physical_device->disk_cache, allowed_hashes[0], NULL);
 	void *copy_entry = NULL;
 	if (may_need_copy_shader)
-		copy_entry = disk_cache_get(device->physical_device->disk_cache, allowed_hashes[1], 20);
+		copy_entry = disk_cache_get(device->physical_device->disk_cache, allowed_hashes[1], NULL);
 
 	bool has_all_cache_entries = main_entry && (!may_need_copy_shader || copy_entry);
 	free(main_entry);
