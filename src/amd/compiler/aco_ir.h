@@ -1076,15 +1076,16 @@ public:
    bool wb_smem_l1_on_end = false;
 
    std::vector<uint8_t> constant_data;
+   Temp private_segment_buffer;
+   Temp scratch_offset;
 
    uint16_t lds_alloc_granule;
    uint32_t lds_limit; /* in bytes */
-
    uint16_t vgpr_limit;
-
+   uint16_t sgpr_limit;
    uint16_t physical_sgprs;
    uint16_t sgpr_alloc_granule; /* minus one. must be power of two */
-   uint16_t sgpr_limit;
+
    bool needs_vcc = false;
    bool needs_xnack_mask = false;
    bool needs_flat_scr = false;

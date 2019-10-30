@@ -4922,9 +4922,9 @@ void visit_shared_atomic(isel_context *ctx, nir_intrinsic_instr *instr)
 Temp get_scratch_resource(isel_context *ctx)
 {
    Builder bld(ctx->program, ctx->block);
-   Temp scratch_addr = ctx->private_segment_buffer;
+   Temp scratch_addr = ctx->program->private_segment_buffer;
    if (ctx->stage != compute_cs)
-      scratch_addr = bld.smem(aco_opcode::s_load_dwordx2, bld.def(s2), ctx->private_segment_buffer, Operand(0u));
+      scratch_addr = bld.smem(aco_opcode::s_load_dwordx2, bld.def(s2), scratch_addr, Operand(0u));
 
    uint32_t rsrc_conf = S_008F0C_ADD_TID_ENABLE(1) |
                         S_008F0C_INDEX_STRIDE(ctx->options->wave_size == 64 ? 3 : 2);;
@@ -4971,11 +4971,11 @@ void visit_load_scratch(isel_context *ctx, nir_intrinsic_instr *instr) {
          std::array<Temp,NIR_MAX_VEC_COMPONENTS> elems;
          Temp lower = bld.mubuf(aco_opcode::buffer_load_dwordx4,
                                 bld.def(v4), offset, rsrc,
-                                ctx->scratch_offset, 0, true);
+                                ctx->program->scratch_offset, 0, true);
          Temp upper = bld.mubuf(dst.size() == 6 ? aco_opcode::buffer_load_dwordx2 :
                                                   aco_opcode::buffer_load_dwordx4,
                                 dst.size() == 6 ? bld.def(v2) : bld.def(v4),
-                                offset, rsrc, ctx->scratch_offset, 16, true);
+                                offset, rsrc, ctx->program->scratch_offset, 16, true);
          emit_split_vector(ctx, lower, 2);
          elems[0] = emit_extract_vector(ctx, lower, 0, v2);
          elems[1] = emit_extract_vector(ctx, lower, 1, v2);
@@ -5000,7 +5000,7 @@ void visit_load_scratch(isel_context *ctx, nir_intrinsic_instr *instr) {
          unreachable("Wrong dst size for nir_intrinsic_load_scratch");
    }
 
-   bld.mubuf(op, Definition(dst), offset, rsrc, ctx->scratch_offset, 0, true);
+   bld.mubuf(op, Definition(dst), offset, rsrc, ctx->program->scratch_offset, 0, true);
    emit_split_vector(ctx, dst, instr->num_components);
 }
 
@@ -5061,7 +5061,7 @@ void visit_store_scratch(isel_context *ctx, nir_intrinsic_instr *instr) {
             unreachable("Invalid data size for nir_intrinsic_store_scratch.");
       }
 
-      bld.mubuf(op, offset, rsrc, ctx->scratch_offset, write_data, start * elem_size_bytes, true);
+      bld.mubuf(op, offset, rsrc, ctx->program->scratch_offset, write_data, start * elem_size_bytes, true);
    }
 }
 
@@ -5292,6 +5292,7 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
       Temp sample_pos;
       Temp addr = get_ssa_temp(ctx, instr->src[0].ssa);
       nir_const_value* const_addr = nir_src_as_const_value(instr->src[0]);
+      Temp private_segment_buffer = ctx->program->private_segment_buffer;
       if (addr.type() == RegType::sgpr) {
          Operand offset;
          if (const_addr) {
@@ -5303,17 +5304,16 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
             offset = bld.sop2(aco_opcode::s_lshl_b32, bld.def(s1), bld.def(s1, scc), addr, Operand(3u));
             offset = bld.sop2(aco_opcode::s_add_u32, bld.def(s1), bld.def(s1, scc), addr, Operand(sample_pos_offset));
          }
-         addr = ctx->private_segment_buffer;
-         sample_pos = bld.smem(aco_opcode::s_load_dwordx2, bld.def(s2), addr, Operand(offset));
+         sample_pos = bld.smem(aco_opcode::s_load_dwordx2, bld.def(s2), private_segment_buffer, Operand(offset));
 
       } else if (ctx->options->chip_class >= GFX9) {
          addr = bld.vop2(aco_opcode::v_lshlrev_b32, bld.def(v1), Operand(3u), addr);
-         sample_pos = bld.global(aco_opcode::global_load_dwordx2, bld.def(v2), addr, ctx->private_segment_buffer, sample_pos_offset);
+         sample_pos = bld.global(aco_opcode::global_load_dwordx2, bld.def(v2), addr, private_segment_buffer, sample_pos_offset);
       } else {
-         /* addr += ctx->private_segment_buffer + sample_pos_offset */
+         /* addr += private_segment_buffer + sample_pos_offset */
          Temp tmp0 = bld.tmp(s1);
          Temp tmp1 = bld.tmp(s1);
-         bld.pseudo(aco_opcode::p_split_vector, Definition(tmp0), Definition(tmp1), ctx->private_segment_buffer);
+         bld.pseudo(aco_opcode::p_split_vector, Definition(tmp0), Definition(tmp1), private_segment_buffer);
          Definition scc_tmp = bld.def(s1, scc);
          tmp0 = bld.sop2(aco_opcode::s_add_u32, bld.def(s1), scc_tmp, tmp0, Operand(sample_pos_offset));
          tmp1 = bld.sop2(aco_opcode::s_addc_u32, bld.def(s1), bld.def(s1, scc), tmp1, Operand(0u), bld.scc(scc_tmp.getTemp()));
