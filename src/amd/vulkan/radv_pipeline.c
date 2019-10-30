@@ -4629,6 +4629,21 @@ radv_secure_compile(struct radv_pipeline *pipeline,
 		    const VkPipelineCreateFlags flags,
 		    unsigned num_stages)
 {
+	uint8_t allowed_pipeline_hashes[2][20];
+	radv_hash_shaders(allowed_pipeline_hashes[0], pStages,
+	                  pipeline->layout, key, get_hash_flags(device));
+
+	/* Generate the GC copy hash */
+	memcpy(allowed_pipeline_hashes[1], allowed_pipeline_hashes[0], 20);
+	allowed_pipeline_hashes[1][0] ^= 1;
+
+	uint8_t allowed_hashes[2][20];
+	for (unsigned i = 0; i < 2; ++i) {
+		disk_cache_compute_key(device->physical_device->disk_cache,
+		                       allowed_pipeline_hashes[i], 20,
+		                       allowed_hashes[i]);
+	}
+
 	unsigned process = 0;
 	uint8_t sc_threads = device->instance->num_sc_threads;
 	while (true) {
@@ -4718,6 +4733,10 @@ radv_secure_compile(struct radv_pipeline *pipeline,
 			if (!radv_sc_read(fd_secure_output, disk_sha1, sizeof(uint8_t) * 20, true))
 				return VK_ERROR_DEVICE_LOST;
 
+			if (memcmp(disk_sha1, allowed_hashes[0], 20) &&
+			    memcmp(disk_sha1, allowed_hashes[1], 20))
+				return VK_ERROR_DEVICE_LOST;
+
 			uint32_t entry_size;
 			if (!radv_sc_read(fd_secure_output, &entry_size, sizeof(uint32_t), true))
 				return VK_ERROR_DEVICE_LOST;
@@ -4734,6 +4753,10 @@ radv_secure_compile(struct radv_pipeline *pipeline,
 		} else if (sc_type == RADV_SC_TYPE_READ_DISK_CACHE) {
 			uint8_t disk_sha1[20];
 			if (!radv_sc_read(fd_secure_output, disk_sha1, sizeof(uint8_t) * 20, true))
+				return VK_ERROR_DEVICE_LOST;
+
+			if (memcmp(disk_sha1, allowed_hashes[0], 20) &&
+			    memcmp(disk_sha1, allowed_hashes[1], 20))
 				return VK_ERROR_DEVICE_LOST;
 
 			size_t size;
