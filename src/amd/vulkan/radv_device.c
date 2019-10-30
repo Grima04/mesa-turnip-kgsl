@@ -3792,6 +3792,7 @@ radv_create_deferred_submission(struct radv_queue *queue,
 	size += submission->buffer_bind_count * sizeof(VkSparseBufferMemoryBindInfo);
 	size += submission->image_opaque_bind_count * sizeof(VkSparseImageOpaqueMemoryBindInfo);
 	size += submission->wait_semaphore_count * sizeof(struct radv_semaphore_part *);
+	size += temporary_count * sizeof(struct radv_semaphore_part);
 	size += submission->signal_semaphore_count * sizeof(struct radv_semaphore_part *);
 	size += submission->wait_value_count * sizeof(uint64_t);
 	size += submission->signal_value_count * sizeof(uint64_t);
