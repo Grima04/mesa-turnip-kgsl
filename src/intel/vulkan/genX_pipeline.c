@@ -2216,12 +2216,15 @@ compute_pipeline_create(
 
    pipeline->blend_state.map = NULL;
 
-   result = anv_reloc_list_init(&pipeline->batch_relocs,
-                                pAllocator ? pAllocator : &device->alloc);
+   const VkAllocationCallbacks *alloc =
+      pAllocator ? pAllocator : &device->alloc;
+
+   result = anv_reloc_list_init(&pipeline->batch_relocs, alloc);
    if (result != VK_SUCCESS) {
       vk_free2(&device->alloc, pAllocator, pipeline);
       return result;
    }
+   pipeline->batch.alloc = alloc;
    pipeline->batch.next = pipeline->batch.start = pipeline->batch_data;
    pipeline->batch.end = pipeline->batch.start + sizeof(pipeline->batch_data);
    pipeline->batch.relocs = &pipeline->batch_relocs;
