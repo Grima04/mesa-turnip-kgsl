@@ -137,15 +137,8 @@ void next_uses_per_block(spill_ctx& ctx, unsigned block_idx, std::set<uint32_t>&
    std::map<Temp, std::pair<uint32_t, uint32_t>> next_uses = ctx.next_use_distances_end[block_idx];
 
    /* to compute the next use distance at the beginning of the block, we have to add the block's size */
-   for (std::map<Temp, std::pair<uint32_t, uint32_t>>::iterator it = next_uses.begin(); it != next_uses.end();) {
+   for (std::map<Temp, std::pair<uint32_t, uint32_t>>::iterator it = next_uses.begin(); it != next_uses.end(); ++it)
       it->second.second = it->second.second + block->instructions.size();
-
-      /* remove the live out exec mask as we really don't want to spill it */
-      if (it->first == block->live_out_exec)
-         it = next_uses.erase(it);
-      else
-         ++it;
-   }
 
    int idx = block->instructions.size() - 1;
    while (idx >= 0) {
@@ -181,6 +174,8 @@ void next_uses_per_block(spill_ctx& ctx, unsigned block_idx, std::set<uint32_t>&
                              block->logical_preds[i] :
                              block->linear_preds[i];
          if (instr->operands[i].isTemp()) {
+            if (instr->operands[i].getTemp() == ctx.program->blocks[pred_idx].live_out_exec)
+               continue;
             if (ctx.next_use_distances_end[pred_idx].find(instr->operands[i].getTemp()) == ctx.next_use_distances_end[pred_idx].end() ||
                 ctx.next_use_distances_end[pred_idx][instr->operands[i].getTemp()] != std::pair<uint32_t, uint32_t>{block_idx, 0})
                worklist.insert(pred_idx);
@@ -198,6 +193,8 @@ void next_uses_per_block(spill_ctx& ctx, unsigned block_idx, std::set<uint32_t>&
       uint32_t dom = pair.second.first;
       std::vector<unsigned>& preds = temp.is_linear() ? block->linear_preds : block->logical_preds;
       for (unsigned pred_idx : preds) {
+         if (temp == ctx.program->blocks[pred_idx].live_out_exec)
+            continue;
          if (ctx.program->blocks[pred_idx].loop_nest_depth > block->loop_nest_depth)
             distance += 0xFFFF;
          if (ctx.next_use_distances_end[pred_idx].find(temp) != ctx.next_use_distances_end[pred_idx].end()) {
@@ -312,13 +309,8 @@ std::vector<std::map<Temp, uint32_t>> local_next_uses(spill_ctx& ctx, Block* blo
    std::vector<std::map<Temp, uint32_t>> local_next_uses(block->instructions.size());
 
    std::map<Temp, uint32_t> next_uses;
-   for (std::pair<Temp, std::pair<uint32_t, uint32_t>> pair : ctx.next_use_distances_end[block->index]) {
-      /* omit live out exec mask */
-      if (pair.first == block->live_out_exec)
-         continue;
-
+   for (std::pair<Temp, std::pair<uint32_t, uint32_t>> pair : ctx.next_use_distances_end[block->index])
       next_uses[pair.first] = pair.second.second + block->instructions.size();
-   }
 
    for (int idx = block->instructions.size() - 1; idx >= 0; idx--) {
       aco_ptr<Instruction>& instr = block->instructions[idx];
