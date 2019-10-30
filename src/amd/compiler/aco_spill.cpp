@@ -157,6 +157,8 @@ void next_uses_per_block(spill_ctx& ctx, unsigned block_idx, std::set<uint32_t>&
          /* omit exec mask */
          if (op.isFixed() && op.physReg() == exec)
             continue;
+         if (op.regClass().type() == RegType::vgpr && op.regClass().is_linear())
+            continue;
          if (op.isTemp())
             next_uses[op.getTemp()] = {block_idx, idx};
       }
@@ -321,6 +323,8 @@ std::vector<std::map<Temp, uint32_t>> local_next_uses(spill_ctx& ctx, Block* blo
 
       for (const Operand& op : instr->operands) {
          if (op.isFixed() && op.physReg() == exec)
+            continue;
+         if (op.regClass().type() == RegType::vgpr && op.regClass().is_linear())
             continue;
          if (op.isTemp())
             next_uses[op.getTemp()] = idx;
@@ -520,7 +524,7 @@ RegisterDemand init_live_in_vars(spill_ctx& ctx, Block* block, unsigned block_id
 
    /* keep variables spilled on all incoming paths */
    for (std::pair<Temp, std::pair<uint32_t, uint32_t>> pair : ctx.next_use_distances_start[block_idx]) {
-      std::vector<unsigned>& preds = pair.first.type() == RegType::vgpr ? block->logical_preds : block->linear_preds;
+      std::vector<unsigned>& preds = pair.first.is_linear() ? block->linear_preds : block->logical_preds;
       /* If it can be rematerialized, keep the variable spilled if all predecessors do not reload it.
        * Otherwise, if any predecessor reloads it, ensure it's reloaded on all other predecessors.
        * The idea is that it's better in practice to rematerialize redundantly than to create lots of phis. */
@@ -803,7 +807,7 @@ void add_coupling_code(spill_ctx& ctx, Block* block, unsigned block_idx)
    /* iterate all (other) spilled variables for which to spill at the predecessor */
    // TODO: would be better to have them sorted: first vgprs and first with longest distance
    for (std::pair<Temp, uint32_t> pair : ctx.spills_entry[block_idx]) {
-      std::vector<unsigned> preds = pair.first.type() == RegType::vgpr ? block->logical_preds : block->linear_preds;
+      std::vector<unsigned> preds = pair.first.is_linear() ? block->linear_preds : block->logical_preds;
 
       for (unsigned pred_idx : preds) {
          /* variable is already spilled at predecessor */
@@ -896,7 +900,7 @@ void add_coupling_code(spill_ctx& ctx, Block* block, unsigned block_idx)
       /* skip spilled variables */
       if (ctx.spills_entry[block_idx].find(pair.first) != ctx.spills_entry[block_idx].end())
          continue;
-      std::vector<unsigned> preds = pair.first.type() == RegType::vgpr ? block->logical_preds : block->linear_preds;
+      std::vector<unsigned> preds = pair.first.is_linear() ? block->linear_preds : block->logical_preds;
 
       /* variable is dead at predecessor, it must be from a phi */
       bool is_dead = false;
@@ -950,7 +954,7 @@ void add_coupling_code(spill_ctx& ctx, Block* block, unsigned block_idx)
 
       if (!is_same) {
          /* the variable was renamed differently in the predecessors: we have to create a phi */
-         aco_opcode opcode = pair.first.type() == RegType::vgpr ? aco_opcode::p_phi : aco_opcode::p_linear_phi;
+         aco_opcode opcode = pair.first.is_linear() ? aco_opcode::p_linear_phi : aco_opcode::p_phi;
          aco_ptr<Pseudo_instruction> phi{create_instruction<Pseudo_instruction>(opcode, Format::PSEUDO, preds.size(), 1)};
          rename = {ctx.program->allocateId(), pair.first.regClass()};
          for (unsigned i = 0; i < phi->operands.size(); i++) {
