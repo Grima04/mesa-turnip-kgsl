@@ -37,6 +37,8 @@ int main(int argc, char **argv)
    };
    struct anv_state_pool state_pool;
 
+   pthread_mutex_init(&device.mutex, NULL);
+   anv_bo_cache_init(&device.bo_cache);
    anv_state_pool_init(&state_pool, &device, 4096, 4096);
 
    /* Get the size of the underlying block_pool */
