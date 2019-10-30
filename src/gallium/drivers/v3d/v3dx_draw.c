@@ -961,15 +961,18 @@ v3d_emit_gl_shader_state(struct v3d_context *v3d,
 }
 
 /**
- * Updates the number of primitvies generated from the number of vertices
- * to draw. We do this here instead of using PRIMITIVE_COUNTS_FEEDBACK because
- * using the GPU packet for this might require sync waits and this is trivial
- * to handle in the CPU instead.
+ * Updates the number of primitives generated from the number of vertices
+ * to draw. This only works when no GS is present, since otherwise the number
+ * of primitives generated cannot be determined in advance and we need to
+ * use the PRIMITIVE_COUNTS_FEEDBACK command instead, however, that requires
+ * a sync wait for the draw to complete, so we only use that when GS is present.
  */
 static void
 v3d_update_primitives_generated_counter(struct v3d_context *v3d,
                                         const struct pipe_draw_info *info)
 {
+        assert(!v3d->prog.gs);
+
         if (!v3d->active_queries)
                 return;
 
@@ -1131,7 +1134,7 @@ v3d_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info)
          */
         if (v3d->streamout.num_targets > 0 &&
             u_base_prim_type(info->mode) != u_base_prim_type(v3d->prim_mode)) {
-                v3d_tf_update_counters(v3d);
+                v3d_update_primitive_counters(v3d);
         }
 
         struct v3d_job *job = v3d_get_job_for_fbo(v3d);
@@ -1239,7 +1242,8 @@ v3d_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info)
                 prim_tf_enable = (V3D_PRIM_POINTS_TF - V3D_PRIM_POINTS);
 #endif
 
-        v3d_update_primitives_generated_counter(v3d, info);
+        if (!v3d->prog.gs)
+                v3d_update_primitives_generated_counter(v3d, info);
 
         uint32_t hw_prim_type = v3d_hw_prim_type(info->mode);
         if (info->index_size) {

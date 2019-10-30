@@ -1234,7 +1234,7 @@ v3d_set_stream_output_targets(struct pipe_context *pctx,
          * draw we need to do it here as well.
          */
         if (num_targets == 0 && so->num_targets > 0)
-                v3d_tf_update_counters(ctx);
+                v3d_update_primitive_counters(ctx);
 
         for (i = 0; i < num_targets; i++) {
                 if (offsets[i] != -1)

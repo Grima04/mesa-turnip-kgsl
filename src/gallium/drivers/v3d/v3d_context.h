@@ -693,7 +693,7 @@ bool v3d_generate_mipmap(struct pipe_context *pctx,
 
 struct v3d_fence *v3d_fence_create(struct v3d_context *v3d);
 
-void v3d_tf_update_counters(struct v3d_context *v3d);
+void v3d_update_primitive_counters(struct v3d_context *v3d);
 
 #ifdef v3dX
 #  include "v3dx_context.h"
