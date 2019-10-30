@@ -66,6 +66,7 @@ gen_device_name_to_pci_device_id(const char *name)
       { "cml", 0x9b41 },
       { "cnl", 0x5a52 },
       { "icl", 0x8a52 },
+      { "ehl", 0x4500 },
       { "tgl", 0x9a49 },
    };
 
@@ -948,6 +949,7 @@ static const struct gen_device_info gen_device_info_icl_1x8 = {
 
 static const struct gen_device_info gen_device_info_ehl_4x8 = {
    GEN11_FEATURES(1, 1, subslices(4), 4),
+   .is_elkhartlake = true,
    .urb = {
       .size = 512,
       .min_entries = {
@@ -969,6 +971,7 @@ static const struct gen_device_info gen_device_info_ehl_4x8 = {
  */
 static const struct gen_device_info gen_device_info_ehl_4x4 = {
    GEN11_FEATURES(1, 1, subslices(4), 4),
+   .is_elkhartlake = true,
    .urb = {
       .size = 512,
       .min_entries = {
@@ -991,6 +994,7 @@ static const struct gen_device_info gen_device_info_ehl_4x4 = {
  */
 static const struct gen_device_info gen_device_info_ehl_2x4 = {
    GEN11_FEATURES(1, 1, subslices(2), 4),
+   .is_elkhartlake = true,
    .urb = {
       .size = 512,
       .min_entries = {
