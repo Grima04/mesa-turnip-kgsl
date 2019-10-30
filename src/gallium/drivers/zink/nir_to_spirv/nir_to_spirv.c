@@ -1058,17 +1058,33 @@ emit_load_const(struct ntv_context *ctx, nir_load_const_instr *load_const)
    SpvId constant;
    if (num_components > 1) {
       SpvId components[num_components];
-      for (int i = 0; i < num_components; i++)
-         components[i] = emit_uint_const(ctx, bit_size,
-                                         load_const->value[i].u32);
+      SpvId type;
+      if (bit_size == 1) {
+         for (int i = 0; i < num_components; i++)
+            components[i] = spirv_builder_const_bool(&ctx->builder,
+                                                     load_const->value[i].b);
 
-      SpvId type = get_uvec_type(ctx, bit_size, num_components);
+         type = get_bvec_type(ctx, num_components);
+      } else {
+         for (int i = 0; i < num_components; i++)
+            components[i] = emit_uint_const(ctx, bit_size,
+                                            load_const->value[i].u32);
+
+         type = get_uvec_type(ctx, bit_size, num_components);
+      }
       constant = spirv_builder_const_composite(&ctx->builder, type,
                                                components, num_components);
    } else {
       assert(num_components == 1);
-      constant = emit_uint_const(ctx, bit_size, load_const->value[0].u32);
+      if (bit_size == 1)
+         constant = spirv_builder_const_bool(&ctx->builder,
+                                             load_const->value[0].b);
+      else
+         constant = emit_uint_const(ctx, bit_size, load_const->value[0].u32);
    }
+
+   if (bit_size == 1)
+      constant = bvec_to_uvec(ctx, constant, num_components);
 
    store_ssa_def_uint(ctx, &load_const->def, constant);
 }
