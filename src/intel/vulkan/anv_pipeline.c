@@ -448,7 +448,7 @@ populate_wm_prog_key(const struct gen_device_info *devinfo,
          key->color_outputs_valid |= (1 << i);
    }
 
-   key->nr_color_regions = util_bitcount(key->color_outputs_valid);
+   key->nr_color_regions = subpass->color_count;
 
    /* To reduce possible shader recompilations we would need to know if
     * there is a SampleMask output variable to compute if we should emit
@@ -920,115 +920,89 @@ static void
 anv_pipeline_link_fs(const struct brw_compiler *compiler,
                      struct anv_pipeline_stage *stage)
 {
-   unsigned num_rts = 0;
-   const int max_rt = FRAG_RESULT_DATA7 - FRAG_RESULT_DATA0 + 1;
-   struct anv_pipeline_binding rt_bindings[max_rt];
-   nir_function_impl *impl = nir_shader_get_entrypoint(stage->nir);
-   int rt_to_bindings[max_rt];
-   memset(rt_to_bindings, -1, sizeof(rt_to_bindings));
-   bool rt_used[max_rt];
-   memset(rt_used, 0, sizeof(rt_used));
-
-   /* Flag used render targets */
-   nir_foreach_variable_safe(var, &stage->nir->outputs) {
-      if (var->data.location < FRAG_RESULT_DATA0)
-         continue;
-
-      const unsigned rt = var->data.location - FRAG_RESULT_DATA0;
-      /* Out-of-bounds */
-      if (rt >= MAX_RTS)
-         continue;
-
-      const unsigned array_len =
-         glsl_type_is_array(var->type) ? glsl_get_length(var->type) : 1;
-      assert(rt + array_len <= max_rt);
-
-      /* Unused */
-      if (!(stage->key.wm.color_outputs_valid & BITFIELD_RANGE(rt, array_len))) {
-         /* If this is the RT at location 0 and we have alpha to coverage
-          * enabled we will have to create a null RT for it, so mark it as
-          * used.
-          */
-         if (rt > 0 || !stage->key.wm.alpha_to_coverage)
-            continue;
+   unsigned num_rt_bindings;
+   struct anv_pipeline_binding rt_bindings[MAX_RTS];
+   if (stage->key.wm.nr_color_regions > 0) {
+      assert(stage->key.wm.nr_color_regions <= MAX_RTS);
+      for (unsigned rt = 0; rt < stage->key.wm.nr_color_regions; rt++) {
+         if (stage->key.wm.color_outputs_valid & BITFIELD_BIT(rt)) {
+            rt_bindings[rt] = (struct anv_pipeline_binding) {
+               .set = ANV_DESCRIPTOR_SET_COLOR_ATTACHMENTS,
+               .binding = 0,
+               .index = rt,
+            };
+         } else {
+            /* Setup a null render target */
+            rt_bindings[rt] = (struct anv_pipeline_binding) {
+               .set = ANV_DESCRIPTOR_SET_COLOR_ATTACHMENTS,
+               .binding = 0,
+               .index = UINT32_MAX,
+            };
+         }
       }
-
-      for (unsigned i = 0; i < array_len; i++)
-         rt_used[rt + i] = true;
-   }
-
-   /* Set new, compacted, location */
-   for (unsigned i = 0; i < max_rt; i++) {
-      if (!rt_used[i])
-         continue;
-
-      rt_to_bindings[i] = num_rts;
-
-      if (stage->key.wm.color_outputs_valid & (1 << i)) {
-         rt_bindings[rt_to_bindings[i]] = (struct anv_pipeline_binding) {
-            .set = ANV_DESCRIPTOR_SET_COLOR_ATTACHMENTS,
-            .binding = 0,
-            .index = i,
-         };
-      } else {
-         /* Setup a null render target */
-         rt_bindings[rt_to_bindings[i]] = (struct anv_pipeline_binding) {
-            .set = ANV_DESCRIPTOR_SET_COLOR_ATTACHMENTS,
-            .binding = 0,
-            .index = UINT32_MAX,
-         };
-      }
-
-      num_rts++;
-   }
-
-   bool deleted_output = false;
-   nir_foreach_variable_safe(var, &stage->nir->outputs) {
-      if (var->data.location < FRAG_RESULT_DATA0)
-         continue;
-
-      const unsigned rt = var->data.location - FRAG_RESULT_DATA0;
-
-      if (rt >= MAX_RTS || !rt_used[rt]) {
-         /* Unused or out-of-bounds, throw it away, unless it is the first
-          * RT and we have alpha to coverage enabled.
-          */
-         deleted_output = true;
-         var->data.mode = nir_var_function_temp;
-         exec_node_remove(&var->node);
-         exec_list_push_tail(&impl->locals, &var->node);
-         continue;
-      }
-
-      /* Give it the new location */
-      assert(rt_to_bindings[rt] != -1);
-      var->data.location = rt_to_bindings[rt] + FRAG_RESULT_DATA0;
-   }
-
-   if (deleted_output)
-      nir_fixup_deref_modes(stage->nir);
-
-   /* Now that we've determined the actual number of render targets, adjust
-    * the key accordingly.
-    */
-   stage->key.wm.nr_color_regions = num_rts;
-   stage->key.wm.color_outputs_valid = (1 << num_rts) - 1;
-
-   if (num_rts == 0) {
-      /* If we have no render targets, we need a null render target */
+      num_rt_bindings = stage->key.wm.nr_color_regions;
+   } else {
+      /* Setup a null render target */
       rt_bindings[0] = (struct anv_pipeline_binding) {
          .set = ANV_DESCRIPTOR_SET_COLOR_ATTACHMENTS,
          .binding = 0,
          .index = UINT32_MAX,
       };
-      num_rts = 1;
+      num_rt_bindings = 1;
    }
 
-   assert(num_rts <= max_rt);
+   assert(num_rt_bindings <= MAX_RTS);
    assert(stage->bind_map.surface_count == 0);
    typed_memcpy(stage->bind_map.surface_to_descriptor,
-                rt_bindings, num_rts);
-   stage->bind_map.surface_count += num_rts;
+                rt_bindings, num_rt_bindings);
+   stage->bind_map.surface_count += num_rt_bindings;
+
+   /* Now that we've set up the color attachments, we can go through and
+    * eliminate any shader outputs that map to VK_ATTACHMENT_UNUSED in the
+    * hopes that dead code can clean them up in this and any earlier shader
+    * stages.
+    */
+   nir_function_impl *impl = nir_shader_get_entrypoint(stage->nir);
+   bool deleted_output = false;
+   nir_foreach_variable_safe(var, &stage->nir->outputs) {
+      /* TODO: We don't delete depth/stencil writes.  We probably could if the
+       * subpass doesn't have a depth/stencil attachment.
+       */
+      if (var->data.location < FRAG_RESULT_DATA0)
+         continue;
+
+      const unsigned rt = var->data.location - FRAG_RESULT_DATA0;
+
+      /* If this is the RT at location 0 and we have alpha to coverage
+       * enabled we still need that write because it will affect the coverage
+       * mask even if it's never written to a color target.
+       */
+      if (rt == 0 && stage->key.wm.alpha_to_coverage)
+         continue;
+
+      const unsigned array_len =
+         glsl_type_is_array(var->type) ? glsl_get_length(var->type) : 1;
+      assert(rt + array_len <= MAX_RTS);
+
+      if (rt >= MAX_RTS || !(stage->key.wm.color_outputs_valid &
+                             BITFIELD_RANGE(rt, array_len))) {
+         deleted_output = true;
+         var->data.mode = nir_var_function_temp;
+         exec_node_remove(&var->node);
+         exec_list_push_tail(&impl->locals, &var->node);
+      }
+   }
+
+   if (deleted_output)
+      nir_fixup_deref_modes(stage->nir);
+
+   /* We stored the number of subpass color attachments in nr_color_regions
+    * when calculating the key for caching.  Now that we've computed the bind
+    * map, we can reduce this to the actual max before we go into the back-end
+    * compiler.
+    */
+   stage->key.wm.nr_color_regions =
+      util_last_bit(stage->key.wm.color_outputs_valid);
 }
 
 static void
