@@ -1008,6 +1008,12 @@ anv_pipeline_link_fs(const struct brw_compiler *compiler,
    if (deleted_output)
       nir_fixup_deref_modes(stage->nir);
 
+   /* Now that we've determined the actual number of render targets, adjust
+    * the key accordingly.
+    */
+   stage->key.wm.nr_color_regions = num_rts;
+   stage->key.wm.color_outputs_valid = (1 << num_rts) - 1;
+
    if (num_rts == 0) {
       /* If we have no render targets, we need a null render target */
       rt_bindings[0] = (struct anv_pipeline_binding) {
@@ -1017,12 +1023,6 @@ anv_pipeline_link_fs(const struct brw_compiler *compiler,
       };
       num_rts = 1;
    }
-
-   /* Now that we've determined the actual number of render targets, adjust
-    * the key accordingly.
-    */
-   stage->key.wm.nr_color_regions = num_rts;
-   stage->key.wm.color_outputs_valid = (1 << num_rts) - 1;
 
    assert(num_rts <= max_rt);
    assert(stage->bind_map.surface_count == 0);
