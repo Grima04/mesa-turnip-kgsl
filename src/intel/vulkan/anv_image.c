@@ -409,9 +409,10 @@ make_surface(struct anv_device *device,
       add_surface(image, &image->planes[plane].shadow_surface, plane);
    }
 
-   /* Add a HiZ surface to a depth buffer that will be used for rendering.
-    */
-   if (aspect == VK_IMAGE_ASPECT_DEPTH_BIT) {
+   /* Add aux surface. */
+   if ((isl_extra_usage_flags & ISL_SURF_USAGE_DISABLE_AUX_BIT)) {
+      /* Nevermind. No aux surface. */
+   } else if (aspect == VK_IMAGE_ASPECT_DEPTH_BIT) {
       /* We don't advertise that depth buffers could be used as storage
        * images.
        */
