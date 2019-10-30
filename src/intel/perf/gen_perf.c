@@ -787,8 +787,11 @@ get_register_queries_function(const struct gen_device_info *devinfo)
    }
    if (devinfo->is_cannonlake)
       return gen_oa_register_queries_cnl;
-   if (devinfo->gen == 11)
+   if (devinfo->gen == 11) {
+      if (devinfo->is_elkhartlake)
+         return gen_oa_register_queries_lkf;
       return gen_oa_register_queries_icl;
+   }
    if (devinfo->gen == 12)
       return gen_oa_register_queries_tgl;
 
