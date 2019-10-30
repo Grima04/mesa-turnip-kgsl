@@ -27,7 +27,7 @@
 #include "util/u_math.h"
 
 #define NIR_SERIALIZE_FUNC_HAS_IMPL ((void *)(intptr_t)1)
-#define MAX_OBJECT_IDS (1 << 30)
+#define MAX_OBJECT_IDS (1 << 20)
 
 typedef struct {
    size_t blob_offset;
@@ -368,8 +368,32 @@ read_reg_list(read_ctx *ctx, struct exec_list *dst)
    }
 }
 
+union packed_src {
+   uint32_t u32;
+   struct {
+      unsigned is_ssa:1;   /* <-- Header */
+      unsigned is_indirect:1;
+      unsigned object_idx:20;
+      unsigned _footer:10; /* <-- Footer */
+   } any;
+   struct {
+      unsigned _header:22; /* <-- Header */
+      unsigned negate:1;   /* <-- Footer */
+      unsigned abs:1;
+      unsigned swizzle_x:2;
+      unsigned swizzle_y:2;
+      unsigned swizzle_z:2;
+      unsigned swizzle_w:2;
+   } alu;
+   struct {
+      unsigned _header:22; /* <-- Header */
+      unsigned src_type:5; /* <-- Footer */
+      unsigned _pad:5;
+   } tex;
+};
+
 static void
-write_src(write_ctx *ctx, const nir_src *src)
+write_src_full(write_ctx *ctx, const nir_src *src, union packed_src header)
 {
    /* Since sources are very frequent, we try to save some space when storing
     * them. In particular, we store whether the source is a register and
@@ -377,41 +401,50 @@ write_src(write_ctx *ctx, const nir_src *src)
     * assume that the high two bits of the index are zero, since otherwise our
     * address space would've been exhausted allocating the remap table!
     */
+   header.any.is_ssa = src->is_ssa;
    if (src->is_ssa) {
-      uint32_t idx = write_lookup_object(ctx, src->ssa) << 2;
-      idx |= 1;
-      blob_write_uint32(ctx->blob, idx);
+      header.any.object_idx = write_lookup_object(ctx, src->ssa);
+      blob_write_uint32(ctx->blob, header.u32);
    } else {
-      uint32_t idx = write_lookup_object(ctx, src->reg.reg) << 2;
-      if (src->reg.indirect)
-         idx |= 2;
-      blob_write_uint32(ctx->blob, idx);
+      header.any.object_idx = write_lookup_object(ctx, src->reg.reg);
+      header.any.is_indirect = !!src->reg.indirect;
+      blob_write_uint32(ctx->blob, header.u32);
       blob_write_uint32(ctx->blob, src->reg.base_offset);
       if (src->reg.indirect) {
-         write_src(ctx, src->reg.indirect);
+         union packed_src header = {0};
+         write_src_full(ctx, src->reg.indirect, header);
       }
    }
 }
 
 static void
+write_src(write_ctx *ctx, const nir_src *src)
+{
+   union packed_src header = {0};
+   write_src_full(ctx, src, header);
+}
+
+static union packed_src
 read_src(read_ctx *ctx, nir_src *src, void *mem_ctx)
 {
-   uint32_t val = blob_read_uint32(ctx->blob);
-   uint32_t idx = val >> 2;
-   src->is_ssa = val & 0x1;
+   STATIC_ASSERT(sizeof(union packed_src) == 4);
+   union packed_src header;
+   header.u32 = blob_read_uint32(ctx->blob);
+
+   src->is_ssa = header.any.is_ssa;
    if (src->is_ssa) {
-      src->ssa = read_lookup_object(ctx, idx);
+      src->ssa = read_lookup_object(ctx, header.any.object_idx);
    } else {
-      bool is_indirect = val & 0x2;
-      src->reg.reg = read_lookup_object(ctx, idx);
+      src->reg.reg = read_lookup_object(ctx, header.any.object_idx);
       src->reg.base_offset = blob_read_uint32(ctx->blob);
-      if (is_indirect) {
+      if (header.any.is_indirect) {
          src->reg.indirect = ralloc(mem_ctx, nir_src);
          read_src(ctx, src->reg.indirect, mem_ctx);
       } else {
          src->reg.indirect = NULL;
       }
    }
+   return header;
 }
 
 union packed_dest {
@@ -568,12 +601,17 @@ write_alu(write_ctx *ctx, const nir_alu_instr *alu)
    write_dest(ctx, &alu->dest.dest, header);
 
    for (unsigned i = 0; i < nir_op_infos[alu->op].num_inputs; i++) {
-      write_src(ctx, &alu->src[i].src);
-      uint32_t flags = alu->src[i].negate;
-      flags |= alu->src[i].abs << 1;
-      for (unsigned j = 0; j < 4; j++)
-         flags |= alu->src[i].swizzle[j] << (2 + 2 * j);
-      blob_write_uint32(ctx->blob, flags);
+      union packed_src src;
+      src.u32 = 0;
+
+      src.alu.negate = alu->src[i].negate;
+      src.alu.abs = alu->src[i].abs;
+      src.alu.swizzle_x = alu->src[i].swizzle[0];
+      src.alu.swizzle_y = alu->src[i].swizzle[1];
+      src.alu.swizzle_z = alu->src[i].swizzle[2];
+      src.alu.swizzle_w = alu->src[i].swizzle[3];
+
+      write_src_full(ctx, &alu->src[i].src, src);
    }
 }
 
@@ -591,12 +629,14 @@ read_alu(read_ctx *ctx, union packed_instr header)
    read_dest(ctx, &alu->dest.dest, &alu->instr, header);
 
    for (unsigned i = 0; i < nir_op_infos[header.alu.op].num_inputs; i++) {
-      read_src(ctx, &alu->src[i].src, &alu->instr);
-      uint32_t flags = blob_read_uint32(ctx->blob);
-      alu->src[i].negate = flags & 1;
-      alu->src[i].abs = flags & 2;
-      for (unsigned j = 0; j < 4; j++)
-         alu->src[i].swizzle[j] = (flags >> (2 * j + 2)) & 3;
+      union packed_src src = read_src(ctx, &alu->src[i].src, &alu->instr);
+
+      alu->src[i].negate = src.alu.negate;
+      alu->src[i].abs = src.alu.abs;
+      alu->src[i].swizzle[0] = src.alu.swizzle_x;
+      alu->src[i].swizzle[1] = src.alu.swizzle_y;
+      alu->src[i].swizzle[2] = src.alu.swizzle_z;
+      alu->src[i].swizzle[3] = src.alu.swizzle_w;
    }
 
    return alu;
@@ -848,8 +888,10 @@ write_tex(write_ctx *ctx, const nir_tex_instr *tex)
    blob_write_uint32(ctx->blob, packed.u32);
 
    for (unsigned i = 0; i < tex->num_srcs; i++) {
-      blob_write_uint32(ctx->blob, tex->src[i].src_type);
-      write_src(ctx, &tex->src[i].src);
+      union packed_src src;
+      src.u32 = 0;
+      src.tex.src_type = tex->src[i].src_type;
+      write_src_full(ctx, &tex->src[i].src, src);
    }
 }
 
@@ -878,8 +920,8 @@ read_tex(read_ctx *ctx, union packed_instr header)
    tex->component = packed.u.component;
 
    for (unsigned i = 0; i < tex->num_srcs; i++) {
-      tex->src[i].src_type = blob_read_uint32(ctx->blob);
-      read_src(ctx, &tex->src[i].src, &tex->instr);
+      union packed_src src = read_src(ctx, &tex->src[i].src, &tex->instr);
+      tex->src[i].src_type = src.tex.src_type;
    }
 
    return tex;
