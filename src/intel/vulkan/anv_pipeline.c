@@ -1056,8 +1056,10 @@ anv_pipeline_compile_fs(const struct brw_compiler *compiler,
                          (uint32_t)fs_stage->prog_data.wm.dispatch_16 +
                          (uint32_t)fs_stage->prog_data.wm.dispatch_32;
 
-   if (fs_stage->key.wm.nr_color_regions == 0 &&
+   if (fs_stage->key.wm.color_outputs_valid == 0 &&
        !fs_stage->prog_data.wm.has_side_effects &&
+       !fs_stage->prog_data.wm.uses_omask &&
+       !fs_stage->key.wm.alpha_to_coverage &&
        !fs_stage->prog_data.wm.uses_kill &&
        fs_stage->prog_data.wm.computed_depth_mode == BRW_PSCDEPTH_OFF &&
        !fs_stage->prog_data.wm.computed_stencil) {
