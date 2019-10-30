@@ -1000,6 +1000,25 @@ get_gfx_program(struct zink_context *ctx)
    return ctx->curr_program;
 }
 
+static bool
+line_width_needed(enum pipe_prim_type reduced_prim,
+                  VkPolygonMode polygon_mode)
+{
+   switch (reduced_prim) {
+   case PIPE_PRIM_POINTS:
+      return false;
+
+   case PIPE_PRIM_LINES:
+      return true;
+
+   case PIPE_PRIM_TRIANGLES:
+      return polygon_mode == VK_POLYGON_MODE_LINE;
+
+   default:
+      unreachable("unexpected reduced prim");
+   }
+}
+
 static void
 zink_draw_vbo(struct pipe_context *pctx,
               const struct pipe_draw_info *dinfo)
@@ -1163,7 +1182,7 @@ zink_draw_vbo(struct pipe_context *pctx,
       vkCmdSetScissor(batch->cmdbuf, 0, 1, &fb_scissor);
    }
 
-   if (reduced_prim == PIPE_PRIM_LINES) {
+   if (line_width_needed(reduced_prim, rast_state->hw_state.polygon_mode)) {
       if (screen->feats.wideLines || ctx->line_width == 1.0f)
          vkCmdSetLineWidth(batch->cmdbuf, ctx->line_width);
       else
