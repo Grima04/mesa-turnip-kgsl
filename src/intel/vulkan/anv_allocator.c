@@ -1846,7 +1846,18 @@ anv_device_release_bo(struct anv_device *device,
    if (!bo->has_fixed_address)
       anv_vma_free(device, bo);
 
-   anv_gem_close(device, bo->gem_handle);
+   uint32_t gem_handle = bo->gem_handle;
+
+   /* Memset the BO just in case.  The refcount being zero should be enough to
+    * prevent someone from assuming the data is valid but it's safer to just
+    * stomp to zero just in case.  We explicitly do this *before* we close the
+    * GEM handle to ensure that if anyone allocates something and gets the
+    * same GEM handle, the memset has already happen and won't stomp all over
+    * any data they may write in this BO.
+    */
+   memset(bo, 0, sizeof(*bo));
+
+   anv_gem_close(device, gem_handle);
 
    /* Don't unlock until we've actually closed the BO.  The whole point of
     * the BO cache is to ensure that we correctly handle races with creating
