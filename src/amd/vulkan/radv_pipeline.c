@@ -4644,6 +4644,20 @@ radv_secure_compile(struct radv_pipeline *pipeline,
 		                       allowed_hashes[i]);
 	}
 
+	/* Do an early exit if all cache entries are already there. */
+	bool may_need_copy_shader = pStages[MESA_SHADER_GEOMETRY];
+	void *main_entry = disk_cache_get(device->physical_device->disk_cache, allowed_hashes[0], 20);
+	void *copy_entry = NULL;
+	if (may_need_copy_shader)
+		copy_entry = disk_cache_get(device->physical_device->disk_cache, allowed_hashes[1], 20);
+
+	bool has_all_cache_entries = main_entry && (!may_need_copy_shader || copy_entry);
+	free(main_entry);
+	free(copy_entry);
+
+	if(has_all_cache_entries)
+		return VK_SUCCESS;
+
 	unsigned process = 0;
 	uint8_t sc_threads = device->instance->num_sc_threads;
 	while (true) {
