@@ -467,7 +467,7 @@ RegisterDemand init_live_in_vars(spill_ctx& ctx, Block* block, unsigned block_id
    }
 
    /* branch block */
-   if (block->linear_preds.size() == 1) {
+   if (block->linear_preds.size() == 1 && !(block->kind & block_kind_loop_exit)) {
       /* keep variables spilled if they are alive and not used in the current block */
       unsigned pred_idx = block->linear_preds[0];
       for (std::pair<Temp, uint32_t> pair : ctx.spills_exit[pred_idx]) {
@@ -654,7 +654,7 @@ void add_coupling_code(spill_ctx& ctx, Block* block, unsigned block_idx)
 
    std::vector<aco_ptr<Instruction>> instructions;
    /* branch block: TODO take other branch into consideration */
-   if (block->linear_preds.size() == 1) {
+   if (block->linear_preds.size() == 1 && !(block->kind & block_kind_loop_exit)) {
       assert(ctx.processed[block->linear_preds[0]]);
 
       if (block->logical_preds.size() == 1) {
