@@ -67,8 +67,9 @@
     - meson-arm64
 
 panfrost-t720-gles2:arm64:
-  extends: .lava-test:arm64
-  stage: panfrost
+  extends:
+    - .lava-test:arm64
+    - .panfrost-rules
   variables:
     DEVICE_TYPE: sun50i-h6-pine-h64
     GPU_VERSION: panfrost-t720
@@ -77,8 +78,9 @@ panfrost-t720-gles2:arm64:
     - lava-sun50i-h6-pine-h64
 
 panfrost-t760-gles2:armhf:
-  extends: .lava-test:armhf
-  stage: panfrost
+  extends:
+    - .lava-test:armhf
+    - .panfrost-rules
   variables:
     DEVICE_TYPE: rk3288-veyron-jaq
     GPU_VERSION: panfrost-t760
@@ -89,8 +91,9 @@ panfrost-t760-gles2:armhf:
     - lava-rk3288-veyron-jaq
 
 panfrost-t860-gles2:arm64:
-  extends: .lava-test:arm64
-  stage: panfrost
+  extends:
+    - .lava-test:arm64
+    - .panfrost-rules
   variables:
     DEVICE_TYPE: rk3399-gru-kevin
     GPU_VERSION: panfrost-t860
@@ -101,8 +104,9 @@ panfrost-t860-gles2:arm64:
     - lava-rk3399-gru-kevin
 
 panfrost-t860-gles3:arm64:
-  extends: .lava-test:arm64
-  stage: panfrost
+  extends:
+    - .lava-test:arm64
+    - .panfrost-rules
   variables:
     DEVICE_TYPE: rk3399-gru-kevin
     GPU_VERSION: panfrost-t860
@@ -116,8 +120,9 @@ panfrost-t860-gles3:arm64:
     - lava-rk3399-gru-kevin
 
 .panfrost-t820-gles2:arm64:
-  extends: .lava-test:arm64
-  stage: panfrost
+  extends:
+    - .lava-test:arm64
+    - .panfrost-rules
   variables:
     DEVICE_TYPE: meson-gxm-khadas-vim2
     GPU_VERSION: panfrost-t820
@@ -128,8 +133,9 @@ panfrost-t860-gles3:arm64:
 
 .lima-mali400-test:armhf:
   parallel: 2
-  extends: .lava-test:armhf
-  stage: misc-tests
+  extends:
+    - .lava-test:armhf
+    - .lima-rules
   variables:
     DEVICE_TYPE: sun8i-h3-libretech-all-h3-cc
     GPU_VERSION: lima
@@ -138,8 +144,9 @@ panfrost-t860-gles3:arm64:
     - lava-sun8i-h3-libretech-all-h3-cc
 
 lima-mali450-test:arm64:
-  extends: .lava-test:arm64
-  stage: misc-tests
+  extends:
+    - .lava-test:arm64
+    - .lima-rules
   variables:
     DEVICE_TYPE: meson-gxl-s905x-libretech-cc
     GPU_VERSION: lima
@@ -148,8 +155,9 @@ lima-mali450-test:arm64:
     - lava-meson-gxl-s905x-libretech-cc
 
 .freedreno-a307-gles2:
-  extends: .lava-test:arm64
-  stage: freedreno
+  extends:
+    - .lava-test:arm64
+    - .freedreno-rules
   variables:
     DEVICE_TYPE: apq8016-sbc
     GPU_VERSION: freedreno-a307

@@ -6,6 +6,7 @@ include:
     ref: b7030c2cd0d6ccc5f6d4f8299bafa4daa9240d71
     file: '/templates/debian.yml'
   - local: '.gitlab-ci/lava-gitlab-ci.yml'
+  - local: '.gitlab-ci/test-source-dep.yml'
 
 stages:
   - container
@@ -567,8 +568,9 @@ scons-old-llvm:
     - x86_test-vk
 
 .piglit-test:
-  extends: .test-gl
-  stage: llvmpipe
+  extends:
+    - .test-gl
+    - .llvmpipe-rules
   artifacts:
     when: on_failure
     name: "mesa_${CI_JOB_NAME}"
@@ -644,12 +646,14 @@ llvmpipe-gles2:
     LP_NUM_THREADS: 0
     DEQP_EXPECTED_FAILS: deqp-llvmpipe-fails.txt
     LIBGL_ALWAYS_SOFTWARE: "true"
-  extends: .deqp-test-gl
-  stage: llvmpipe
+  extends:
+    - .deqp-test-gl
+    - .llvmpipe-rules
 
 softpipe-gles2:
-  extends: llvmpipe-gles2
-  stage: softpipe
+  extends:
+    - llvmpipe-gles2
+    - .softpipe-rules
   variables:
     DEQP_EXPECTED_FAILS: deqp-softpipe-fails.txt
     DEQP_SKIPS: deqp-softpipe-skips.txt
@@ -671,7 +675,7 @@ arm64_a630_gles2:
   extends:
     - .deqp-test-gl
     - .use-arm_test
-  stage: freedreno
+    - .freedreno-rules
   variables:
     DEQP_VER: gles2
     DEQP_EXPECTED_FAILS: deqp-freedreno-a630-fails.txt
@@ -766,7 +770,9 @@ radv-polaris10-fossils:
     - ./artifacts/tracie-runner-vk.sh
 
 llvmpipe-traces:
-  extends: .traces-test-gl
+  extends:
+    - .traces-test-gl
+    - .llvmpipe-rules
   variables:
     LIBGL_ALWAYS_SOFTWARE: "true"
     GALLIUM_DRIVER: "llvmpipe"
