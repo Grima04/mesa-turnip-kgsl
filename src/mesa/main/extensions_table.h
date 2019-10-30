@@ -225,6 +225,7 @@ EXT(EXT_copy_texture                        , dummy_true                        
 EXT(EXT_demote_to_helper_invocation         , EXT_demote_to_helper_invocation        , GLL, GLC, ES1, ES2, 2019)
 EXT(EXT_depth_bounds_test                   , EXT_depth_bounds_test                  , GLL, GLC,  x ,  x , 2002)
 EXT(EXT_depth_clamp                         , ARB_depth_clamp                        ,  x ,  x ,  x , ES2, 2019)
+EXT(EXT_direct_state_access                 , dummy_true                             , GLL,  x ,  x ,  x , 2010)
 EXT(EXT_discard_framebuffer                 , dummy_true                             ,  x ,  x , ES1, ES2, 2009)
 EXT(EXT_disjoint_timer_query                , EXT_disjoint_timer_query               ,  x ,  x ,  x , ES2, 2016)
 EXT(EXT_draw_buffers                        , dummy_true                             ,  x ,  x ,  x , ES2, 2012)

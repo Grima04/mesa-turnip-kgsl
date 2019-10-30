@@ -910,21 +910,6 @@ spec/egl_khr_gl_image/egl_khr_gl_renderbuffer_image-clear-shared-image gl_depth_
 spec/egl_nok_swap_region/basic: skip
 spec/egl_nok_texture_from_pixmap/basic: skip
 spec/ext_depth_bounds_test/depth_bounds: skip
-spec/ext_direct_state_access/client-state-indexed 12: skip
-spec/ext_direct_state_access/client-state-indexed 30: skip
-spec/ext_direct_state_access/compressedmultiteximage gl_compressed_rgb_bptc_signed_float: skip
-spec/ext_direct_state_access/compressedtextureimage gl_compressed_rgb_bptc_signed_float: skip
-spec/ext_direct_state_access/framebuffer: skip
-spec/ext_direct_state_access/indexed-state-queries 12: skip
-spec/ext_direct_state_access/indexed-state-queries 30: skip
-spec/ext_direct_state_access/matrix-commands: skip
-spec/ext_direct_state_access/multi-texture: skip
-spec/ext_direct_state_access/named-buffers 15: skip
-spec/ext_direct_state_access/named-buffers 30: skip
-spec/ext_direct_state_access/named-program: skip
-spec/ext_direct_state_access/program-uniform: skip
-spec/ext_direct_state_access/renderbuffer: skip
-spec/ext_direct_state_access/textures: skip
 spec/ext_framebuffer_blit/fbo-blit-check-limits: fail
 spec/ext_framebuffer_multisample/accuracy 16 color: skip
 spec/ext_framebuffer_multisample/accuracy 16 color depthstencil: skip
@@ -1774,10 +1759,10 @@ wgl/wgl-sanity: skip
 summary:
        name:  results
        ----  --------
-       pass:     4503
+       pass:     4518
        fail:      101
       crash:        2
-       skip:     1668
+       skip:     1653
     timeout:        0
        warn:        2
  incomplete:        0
