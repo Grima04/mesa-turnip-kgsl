@@ -797,14 +797,6 @@ void add_coupling_code(spill_ctx& ctx, Block* block, unsigned block_idx)
       std::vector<unsigned> preds = pair.first.type() == RegType::vgpr ? block->logical_preds : block->linear_preds;
 
       for (unsigned pred_idx : preds) {
-         /* add interferences between spilled variable and predecessors exit spills */
-         for (std::pair<Temp, uint32_t> exit_spill : ctx.spills_exit[pred_idx]) {
-            if (exit_spill.first == pair.first)
-               continue;
-            ctx.interferences[exit_spill.second].second.emplace(pair.second);
-            ctx.interferences[pair.second].second.emplace(exit_spill.second);
-         }
-
          /* variable is already spilled at predecessor */
          std::map<Temp, uint32_t>::iterator spilled = ctx.spills_exit[pred_idx].find(pair.first);
          if (spilled != ctx.spills_exit[pred_idx].end()) {
@@ -816,6 +808,14 @@ void add_coupling_code(spill_ctx& ctx, Block* block, unsigned block_idx)
          /* variable is dead at predecessor, it must be from a phi: this works because of CSSA form */
          if (ctx.next_use_distances_end[pred_idx].find(pair.first) == ctx.next_use_distances_end[pred_idx].end())
             continue;
+
+         /* add interferences between spilled variable and predecessors exit spills */
+         for (std::pair<Temp, uint32_t> exit_spill : ctx.spills_exit[pred_idx]) {
+            if (exit_spill.first == pair.first)
+               continue;
+            ctx.interferences[exit_spill.second].second.emplace(pair.second);
+            ctx.interferences[pair.second].second.emplace(exit_spill.second);
+         }
 
          /* variable is in register at predecessor and has to be spilled */
          /* rename if necessary */
