@@ -656,35 +656,13 @@ void add_coupling_code(spill_ctx& ctx, Block* block, unsigned block_idx)
    /* branch block: TODO take other branch into consideration */
    if (block->linear_preds.size() == 1 && !(block->kind & block_kind_loop_exit)) {
       assert(ctx.processed[block->linear_preds[0]]);
-
-      if (block->logical_preds.size() == 1) {
-         unsigned pred_idx = block->logical_preds[0];
-         for (std::pair<Temp, std::pair<uint32_t, uint32_t>> live : ctx.next_use_distances_start[block_idx]) {
-            if (live.first.type() == RegType::sgpr)
-               continue;
-            /* still spilled */
-            if (ctx.spills_entry[block_idx].find(live.first) != ctx.spills_entry[block_idx].end())
-               continue;
-
-            /* in register at end of predecessor */
-            if (ctx.spills_exit[pred_idx].find(live.first) == ctx.spills_exit[pred_idx].end()) {
-               std::map<Temp, Temp>::iterator it = ctx.renames[pred_idx].find(live.first);
-               if (it != ctx.renames[pred_idx].end())
-                  ctx.renames[block_idx].insert(*it);
-               continue;
-            }
-
-            /* variable is spilled at predecessor and live at current block: create reload instruction */
-            Temp new_name = {ctx.program->allocateId(), live.first.regClass()};
-            aco_ptr<Instruction> reload = do_reload(ctx, live.first, new_name, ctx.spills_exit[pred_idx][live.first]);
-            instructions.emplace_back(std::move(reload));
-            ctx.renames[block_idx][live.first] = new_name;
-         }
-      }
-
+      assert(ctx.register_demand[block_idx].size() == block->instructions.size());
+      std::vector<RegisterDemand> reg_demand;
+      unsigned insert_idx = 0;
       unsigned pred_idx = block->linear_preds[0];
+
       for (std::pair<Temp, std::pair<uint32_t, uint32_t>> live : ctx.next_use_distances_start[block_idx]) {
-         if (live.first.type() == RegType::vgpr)
+         if (!live.first.is_linear())
             continue;
          /* still spilled */
          if (ctx.spills_entry[block_idx].find(live.first) != ctx.spills_entry[block_idx].end())
@@ -702,21 +680,52 @@ void add_coupling_code(spill_ctx& ctx, Block* block, unsigned block_idx)
          Temp new_name = {ctx.program->allocateId(), live.first.regClass()};
          aco_ptr<Instruction> reload = do_reload(ctx, live.first, new_name, ctx.spills_exit[pred_idx][live.first]);
          instructions.emplace_back(std::move(reload));
+         reg_demand.push_back(RegisterDemand());
          ctx.renames[block_idx][live.first] = new_name;
+      }
+
+      if (block->logical_preds.size() == 1) {
+         do {
+            assert(insert_idx < block->instructions.size());
+            instructions.emplace_back(std::move(block->instructions[insert_idx]));
+            reg_demand.push_back(ctx.register_demand[block_idx][insert_idx]);
+            insert_idx++;
+         } while (instructions.back()->opcode != aco_opcode::p_logical_start);
+
+         unsigned pred_idx = block->logical_preds[0];
+         for (std::pair<Temp, std::pair<uint32_t, uint32_t>> live : ctx.next_use_distances_start[block_idx]) {
+            if (live.first.is_linear())
+               continue;
+            /* still spilled */
+            if (ctx.spills_entry[block_idx].find(live.first) != ctx.spills_entry[block_idx].end())
+               continue;
+
+            /* in register at end of predecessor */
+            if (ctx.spills_exit[pred_idx].find(live.first) == ctx.spills_exit[pred_idx].end()) {
+               std::map<Temp, Temp>::iterator it = ctx.renames[pred_idx].find(live.first);
+               if (it != ctx.renames[pred_idx].end())
+                  ctx.renames[block_idx].insert(*it);
+               continue;
+            }
+
+            /* variable is spilled at predecessor and live at current block: create reload instruction */
+            Temp new_name = {ctx.program->allocateId(), live.first.regClass()};
+            aco_ptr<Instruction> reload = do_reload(ctx, live.first, new_name, ctx.spills_exit[pred_idx][live.first]);
+            instructions.emplace_back(std::move(reload));
+            reg_demand.emplace_back(reg_demand.back());
+            ctx.renames[block_idx][live.first] = new_name;
+         }
       }
 
       /* combine new reload instructions with original block */
       if (!instructions.empty()) {
-         unsigned insert_idx = 0;
-         while (block->instructions[insert_idx]->opcode == aco_opcode::p_phi ||
-                block->instructions[insert_idx]->opcode == aco_opcode::p_linear_phi) {
-            insert_idx++;
-         }
-         ctx.register_demand[block->index].insert(std::next(ctx.register_demand[block->index].begin(), insert_idx),
-                                                  instructions.size(), RegisterDemand());
-         block->instructions.insert(std::next(block->instructions.begin(), insert_idx),
-                                    std::move_iterator<std::vector<aco_ptr<Instruction>>::iterator>(instructions.begin()),
-                                    std::move_iterator<std::vector<aco_ptr<Instruction>>::iterator>(instructions.end()));
+         reg_demand.insert(reg_demand.end(), std::next(ctx.register_demand[block->index].begin(), insert_idx),
+                           ctx.register_demand[block->index].end());
+         ctx.register_demand[block_idx] = std::move(reg_demand);
+         instructions.insert(instructions.end(),
+                             std::move_iterator<std::vector<aco_ptr<Instruction>>::iterator>(std::next(block->instructions.begin(), insert_idx)),
+                             std::move_iterator<std::vector<aco_ptr<Instruction>>::iterator>(block->instructions.end()));
+         block->instructions = std::move(instructions);
       }
       return;
    }
