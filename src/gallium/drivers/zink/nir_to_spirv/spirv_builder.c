@@ -608,6 +608,32 @@ spirv_builder_emit_image_fetch(struct spirv_builder *b,
 }
 
 SpvId
+spirv_builder_emit_image_query_size(struct spirv_builder *b,
+                                    SpvId result_type,
+                                    SpvId image,
+                                    SpvId lod)
+{
+   int opcode = SpvOpImageQuerySize;
+   int words = 4;
+   if (lod) {
+      words++;
+      opcode = SpvOpImageQuerySizeLod;
+   }
+
+   SpvId result = spirv_builder_new_id(b);
+   spirv_buffer_prepare(&b->instructions, words);
+   spirv_buffer_emit_word(&b->instructions, opcode | (words << 16));
+   spirv_buffer_emit_word(&b->instructions, result_type);
+   spirv_buffer_emit_word(&b->instructions, result);
+   spirv_buffer_emit_word(&b->instructions, image);
+
+   if (lod)
+      spirv_buffer_emit_word(&b->instructions, lod);
+
+   return result;
+}
+
+SpvId
 spirv_builder_emit_ext_inst(struct spirv_builder *b, SpvId result_type,
                             SpvId set, uint32_t instruction,
                             const SpvId *args, size_t num_args)

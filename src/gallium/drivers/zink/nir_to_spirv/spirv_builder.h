@@ -229,6 +229,12 @@ spirv_builder_emit_image_fetch(struct spirv_builder *b,
                                SpvId lod);
 
 SpvId
+spirv_builder_emit_image_query_size(struct spirv_builder *b,
+                                    SpvId result_type,
+                                    SpvId image,
+                                    SpvId lod);
+
+SpvId
 spirv_builder_emit_ext_inst(struct spirv_builder *b, SpvId result_type,
                             SpvId set, uint32_t instruction,
                             const SpvId args[], size_t num_args);

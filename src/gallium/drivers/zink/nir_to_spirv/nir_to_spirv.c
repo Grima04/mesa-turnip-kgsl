@@ -1366,8 +1366,10 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
           tex->op == nir_texop_txb ||
           tex->op == nir_texop_txl ||
           tex->op == nir_texop_txd ||
-          tex->op == nir_texop_txf);
-   assert(nir_alu_type_get_base_type(tex->dest_type) == nir_type_float);
+          tex->op == nir_texop_txf ||
+          tex->op == nir_texop_txs);
+   assert(tex->op == nir_texop_txs ||
+          nir_alu_type_get_base_type(tex->dest_type) == nir_type_float);
    assert(tex->texture_index == tex->sampler_index);
 
    SpvId coord = 0, proj = 0, bias = 0, lod = 0, dref = 0, dx = 0, dy = 0;
@@ -1396,7 +1398,8 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
 
       case nir_tex_src_lod:
          assert(nir_src_num_components(tex->src[i].src) == 1);
-         if (tex->op == nir_texop_txf)
+         if (tex->op == nir_texop_txf ||
+             tex->op == nir_texop_txs)
             lod = get_src_int(ctx, &tex->src[i].src);
          else
             lod = get_src_float(ctx, &tex->src[i].src);
@@ -1444,6 +1447,15 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
                                         ctx->samplers[tex->texture_index]);
 
    SpvId dest_type = get_dest_type(ctx, &tex->dest, tex->dest_type);
+
+   if (tex->op == nir_texop_txs) {
+      SpvId image = spirv_builder_emit_image(&ctx->builder, image_type, load);
+      SpvId result = spirv_builder_emit_image_query_size(&ctx->builder,
+                                                         dest_type, image,
+                                                         lod);
+      store_dest(ctx, &tex->dest, result, tex->dest_type);
+      return;
+   }
 
    if (proj) {
       SpvId constituents[coord_components + 1];
@@ -1779,8 +1791,10 @@ nir_to_spirv(struct nir_shader *s)
    }
 
    // TODO: only enable when needed
-   if (s->info.stage == MESA_SHADER_FRAGMENT)
+   if (s->info.stage == MESA_SHADER_FRAGMENT) {
       spirv_builder_emit_cap(&ctx.builder, SpvCapabilitySampled1D);
+      spirv_builder_emit_cap(&ctx.builder, SpvCapabilityImageQuery);
+   }
 
    ctx.stage = s->info.stage;
    ctx.GLSL_std_450 = spirv_builder_import(&ctx.builder, "GLSL.std.450");
