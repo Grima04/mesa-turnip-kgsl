@@ -1052,10 +1052,6 @@ emit_alu(struct ntv_context *ctx, nir_alu_instr *alu)
 static void
 emit_load_const(struct ntv_context *ctx, nir_load_const_instr *load_const)
 {
-   uint32_t values[NIR_MAX_VEC_COMPONENTS];
-   for (int i = 0; i < load_const->def.num_components; ++i)
-      values[i] = load_const->value[i].u32;
-
    unsigned bit_size = load_const->def.bit_size;
    unsigned num_components = load_const->def.num_components;
 
@@ -1063,14 +1059,15 @@ emit_load_const(struct ntv_context *ctx, nir_load_const_instr *load_const)
    if (num_components > 1) {
       SpvId components[num_components];
       for (int i = 0; i < num_components; i++)
-         components[i] = emit_uint_const(ctx, bit_size, values[i]);
+         components[i] = emit_uint_const(ctx, bit_size,
+                                         load_const->value[i].u32);
 
       SpvId type = get_uvec_type(ctx, bit_size, num_components);
       constant = spirv_builder_const_composite(&ctx->builder, type,
                                                components, num_components);
    } else {
       assert(num_components == 1);
-      constant = emit_uint_const(ctx, bit_size, values[0]);
+      constant = emit_uint_const(ctx, bit_size, load_const->value[0].u32);
    }
 
    store_ssa_def_uint(ctx, &load_const->def, constant);
