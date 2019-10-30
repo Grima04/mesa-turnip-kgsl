@@ -340,6 +340,7 @@ st_nir_preprocess(struct st_context *st, struct gl_program *prog,
                   struct gl_shader_program *shader_program,
                   gl_shader_stage stage)
 {
+   struct pipe_screen *screen = st->pipe->screen;
    const nir_shader_compiler_options *options =
       st->ctx->Const.ShaderCompilerOptions[prog->info.stage].NirOptions;
    assert(options);
@@ -376,7 +377,8 @@ st_nir_preprocess(struct st_context *st, struct gl_program *prog,
       NIR_PASS_V(nir, nir_lower_io_to_temporaries,
                  nir_shader_get_entrypoint(nir),
                  true, true);
-   } else if (nir->info.stage == MESA_SHADER_FRAGMENT) {
+   } else if (nir->info.stage == MESA_SHADER_FRAGMENT ||
+              !screen->get_param(screen, PIPE_CAP_TGSI_CAN_READ_OUTPUTS)) {
       NIR_PASS_V(nir, nir_lower_io_to_temporaries,
                  nir_shader_get_entrypoint(nir),
                  true, false);
@@ -660,7 +662,6 @@ st_link_nir(struct gl_context *ctx,
             struct gl_shader_program *shader_program)
 {
    struct st_context *st = st_context(ctx);
-   struct pipe_screen *screen = st->pipe->screen;
    unsigned num_linked_shaders = 0;
 
    unsigned last_stage = 0;
@@ -690,10 +691,6 @@ st_link_nir(struct gl_context *ctx,
          prog->Parameters = _mesa_new_parameter_list();
          _mesa_generate_parameters_list_for_uniforms(ctx, shader_program, shader,
                                                      prog->Parameters);
-
-         /* Remove reads from output registers. */
-         if (!screen->get_param(screen, PIPE_CAP_TGSI_CAN_READ_OUTPUTS))
-            lower_output_reads(shader->Stage, shader->ir);
 
          if (ctx->_Shader->Flags & GLSL_DUMP) {
             _mesa_log("\n");
