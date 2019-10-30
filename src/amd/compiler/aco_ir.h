@@ -1209,7 +1209,7 @@ void select_program(Program *program,
                     struct nir_shader *const *shaders,
                     ac_shader_config* config,
                     struct radv_shader_info *info,
-                    struct radv_nir_compiler_options *options);
+                    const struct radv_nir_compiler_options *options);
 
 void lower_wqm(Program* program, live& live_vars,
                const struct radv_nir_compiler_options *options);

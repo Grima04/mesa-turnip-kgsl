@@ -7721,7 +7721,7 @@ void select_program(Program *program,
                     struct nir_shader *const *shaders,
                     ac_shader_config* config,
                     struct radv_shader_info *info,
-                    struct radv_nir_compiler_options *options)
+                    const struct radv_nir_compiler_options *options)
 {
    isel_context ctx = setup_isel_context(program, shader_count, shaders, config, info, options);
 

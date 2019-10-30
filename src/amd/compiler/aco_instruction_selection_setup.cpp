@@ -70,7 +70,7 @@ struct vs_output_state {
 };
 
 struct isel_context {
-   struct radv_nir_compiler_options *options;
+   const struct radv_nir_compiler_options *options;
    Program *program;
    nir_shader *shader;
    uint32_t constant_data_offset;
@@ -1179,7 +1179,7 @@ setup_isel_context(Program* program,
                    struct nir_shader *const *shaders,
                    ac_shader_config* config,
                    radv_shader_info *info,
-                   radv_nir_compiler_options *options)
+                   const radv_nir_compiler_options *options)
 {
    program->stage = 0;
    for (unsigned i = 0; i < shader_count; i++) {
