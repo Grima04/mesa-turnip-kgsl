@@ -1033,11 +1033,14 @@ void process_block(spill_ctx& ctx, unsigned block_idx, Block* block,
 
          RegisterDemand new_demand = ctx.register_demand[block_idx][idx];
          if (idx == 0) {
-            for (const Definition& def : instr->definitions) {
-               if (!def.isTemp())
-                  continue;
-               new_demand += def.getTemp();
+            RegisterDemand demand_before = new_demand;
+            for (const Definition& def : instr->definitions)
+               demand_before -= def.getTemp();
+            for (const Operand& op : instr->operands) {
+               if (op.isFirstKill())
+                  demand_before += op.getTemp();
             }
+            new_demand.update(demand_before);
          } else {
             new_demand.update(ctx.register_demand[block_idx][idx - 1]);
          }
