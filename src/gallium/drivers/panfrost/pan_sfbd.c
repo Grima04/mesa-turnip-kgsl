@@ -29,11 +29,56 @@
 
 #include "util/u_format.h"
 
-static unsigned
+static struct mali_sfbd_format
 panfrost_sfbd_format(struct pipe_surface *surf)
 {
-        /* TODO */
-        return 0xb84e0281; /* RGB32, no MSAA */
+        /* Explode details on the format */
+
+        const struct util_format_description *desc =
+                util_format_description(surf->format);
+
+        /* The swizzle for rendering is inverted from texturing */
+
+        unsigned char swizzle[4];
+        panfrost_invert_swizzle(desc->swizzle, swizzle);
+
+        struct mali_sfbd_format fmt = {
+                .unk1 = 0x1,
+                .swizzle = panfrost_translate_swizzle_4(swizzle),
+                .nr_channels = MALI_POSITIVE(desc->nr_channels),
+                .unk2 = 0x4,
+                .unk3 = 0xb,
+        };
+
+        if (desc->colorspace == UTIL_FORMAT_COLORSPACE_SRGB)
+                fmt.unk2 |= MALI_SFBD_FORMAT_SRGB;
+
+        /* sRGB handled as a dedicated flag */
+        enum pipe_format linearized = util_format_linear(surf->format);
+
+        /* If RGB, we're good to go */
+        if (util_format_is_unorm8(desc))
+                return fmt;
+
+        switch (linearized) {
+        case PIPE_FORMAT_B5G6R5_UNORM:
+                fmt.unk1 = 0x5;
+                fmt.nr_channels = MALI_POSITIVE(2);
+                fmt.unk2 = 0x5;
+                break;
+
+        case PIPE_FORMAT_A4B4G4R4_UNORM:
+        case PIPE_FORMAT_B4G4R4A4_UNORM:
+                fmt.unk1 = 0x4;
+                fmt.nr_channels = MALI_POSITIVE(1);
+                fmt.unk2 = 0x5;
+                break;
+
+        default:
+                unreachable("Invalid format rendering");
+        }
+
+        return fmt;
 }
 
 static void
@@ -92,9 +137,14 @@ panfrost_sfbd_set_cbuf(
         unsigned offset = rsrc->slices[level].offset;
         signed stride = rsrc->slices[level].stride;
 
-        if (rsrc->layout == PAN_LINEAR) {
-                fb->framebuffer = rsrc->bo->gpu + offset;
-                fb->stride = stride;
+        fb->framebuffer = rsrc->bo->gpu + offset;
+        fb->stride = stride;
+
+        if (rsrc->layout == PAN_LINEAR)
+                fb->format.block = MALI_BLOCK_LINEAR;
+        else if (rsrc->layout == PAN_TILED) {
+                fb->format.block = MALI_BLOCK_TILED;
+                fb->stride *= 16;
         } else {
                 fprintf(stderr, "Invalid render layout\n");
                 assert(0);
@@ -111,17 +161,22 @@ panfrost_sfbd_set_zsbuf(
         unsigned level = surf->u.tex.level;
         assert(surf->u.tex.first_layer == 0);
 
-        unsigned offset = rsrc->slices[level].offset;
-
         if (rsrc->layout == PAN_LINEAR) {
                 /* TODO: What about format selection? */
-                /* TODO: Z/S stride selection? */
 
-                fb->depth_buffer = rsrc->bo->gpu + offset;
-                fb->depth_buffer_enable = MALI_DEPTH_STENCIL_ENABLE;
+                fb->depth_buffer = rsrc->bo->gpu + rsrc->slices[level].offset;
+                fb->depth_stride = rsrc->slices[level].stride;
 
-                fb->stencil_buffer = rsrc->bo->gpu + offset;
-                fb->stencil_buffer_enable = MALI_DEPTH_STENCIL_ENABLE;
+                fb->stencil_buffer = rsrc->bo->gpu + rsrc->slices[level].offset;
+                fb->stencil_stride = rsrc->slices[level].stride;
+
+                struct panfrost_resource *stencil = rsrc->separate_stencil;
+                if (stencil) {
+                        struct panfrost_slice stencil_slice = stencil->slices[level];
+
+                        fb->stencil_buffer = stencil->bo->gpu + stencil_slice.offset;
+                        fb->stencil_stride = stencil_slice.stride;
+                }
         } else {
                 fprintf(stderr, "Invalid render layout\n");
                 assert(0);
@@ -144,8 +199,10 @@ panfrost_sfbd_fragment(struct panfrost_batch *batch, bool has_draws)
         if (batch->key.zsbuf)
                 panfrost_sfbd_set_zsbuf(&fb, batch->key.zsbuf);
 
-        if (batch->requirements & PAN_REQ_MSAA)
-                fb.format |= MALI_FRAMEBUFFER_MSAA_A | MALI_FRAMEBUFFER_MSAA_B;
+        if (batch->requirements & PAN_REQ_MSAA) {
+                fb.format.unk1 |= MALI_SFBD_FORMAT_MSAA_A;
+                fb.format.unk2 |= MALI_SFBD_FORMAT_MSAA_B;
+        }
 
         struct pipe_surface *surf = batch->key.cbufs[0];
         struct panfrost_resource *rsrc = pan_resource(surf->texture);

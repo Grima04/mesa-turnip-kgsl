@@ -37,6 +37,9 @@ panfrost_get_default_swizzle(unsigned components);
 enum mali_format
 panfrost_find_format(const struct util_format_description *desc);
 
+void
+panfrost_invert_swizzle(const unsigned char *in, unsigned char *out);
+
 #endif
 
 

@@ -42,6 +42,8 @@
 
 int pandecode_jc(mali_ptr jc_gpu_va, bool bifrost);
 
+static void pandecode_swizzle(unsigned swizzle, enum mali_format format);
+
 #define MEMORY_PROP(obj, p) {\
         if (obj->p) { \
                 char *a = pointer_as_memory_reference(obj->p); \
@@ -238,15 +240,6 @@ static const struct pandecode_flag_info u4_flag_info[] = {
 };
 #undef FLAG_INFO
 
-#define FLAG_INFO(flag) { MALI_FRAMEBUFFER_##flag, "MALI_FRAMEBUFFER_" #flag }
-static const struct pandecode_flag_info fb_fmt_flag_info[] = {
-        FLAG_INFO(MSAA_A),
-        FLAG_INFO(MSAA_B),
-        FLAG_INFO(MSAA_8),
-        {}
-};
-#undef FLAG_INFO
-
 #define FLAG_INFO(flag) { MALI_MFBD_FORMAT_##flag, "MALI_MFBD_FORMAT_" #flag }
 static const struct pandecode_flag_info mfbd_fmt_flag_info[] = {
         FLAG_INFO(MSAA),
@@ -288,6 +281,22 @@ static const struct pandecode_flag_info sampler_flag_info [] = {
         FLAG_INFO(MIP_LINEAR_1),
         FLAG_INFO(MIP_LINEAR_2),
         FLAG_INFO(NORM_COORDS),
+        {}
+};
+#undef FLAG_INFO
+
+#define FLAG_INFO(flag) { MALI_SFBD_FORMAT_##flag, "MALI_SFBD_FORMAT_" #flag }
+static const struct pandecode_flag_info sfbd_unk1_info [] = {
+        FLAG_INFO(MSAA_8),
+        FLAG_INFO(MSAA_A),
+        {}
+};
+#undef FLAG_INFO
+
+#define FLAG_INFO(flag) { MALI_SFBD_FORMAT_##flag, "MALI_SFBD_FORMAT_" #flag }
+static const struct pandecode_flag_info sfbd_unk2_info [] = {
+        FLAG_INFO(MSAA_B),
+        FLAG_INFO(SRGB),
         {}
 };
 #undef FLAG_INFO
@@ -466,9 +475,9 @@ pandecode_wrap_mode(enum mali_wrap_mode op)
 }
 #undef DEFINE_CASE
 
-#define DEFINE_CASE(name) case MALI_MFBD_BLOCK_## name: return "MALI_MFBD_BLOCK_" #name
+#define DEFINE_CASE(name) case MALI_BLOCK_## name: return "MALI_BLOCK_" #name
 static char *
-pandecode_mfbd_block_format(enum mali_mfbd_block_format fmt)
+pandecode_block_format(enum mali_block_format fmt)
 {
         switch (fmt) {
                 DEFINE_CASE(TILED);
@@ -633,6 +642,36 @@ struct pandecode_fbd {
         bool has_extra;
 };
 
+static void
+pandecode_sfbd_format(struct mali_sfbd_format format)
+{
+        pandecode_log(".format = {\n");
+        pandecode_indent++;
+
+        pandecode_log(".unk1 = ");
+        pandecode_log_decoded_flags(sfbd_unk1_info, format.unk1);
+        pandecode_log_cont(",\n");
+
+        /* TODO: Map formats so we can check swizzles and print nicely */
+        pandecode_log("swizzle");
+        pandecode_swizzle(format.swizzle, MALI_RGBA8_UNORM);
+        pandecode_log_cont(",\n");
+
+        pandecode_prop("nr_channels = MALI_POSITIVE(%d)",
+                       MALI_NEGATIVE(format.nr_channels));
+
+        pandecode_log(".unk2 = ");
+        pandecode_log_decoded_flags(sfbd_unk2_info, format.unk2);
+        pandecode_log_cont(",\n");
+
+        pandecode_prop("block = %s", pandecode_block_format(format.block));
+
+        pandecode_prop("unk3 = 0x%" PRIx32, format.unk3);
+
+        pandecode_indent--;
+        pandecode_log("},\n");
+}
+
 static struct pandecode_fbd
 pandecode_sfbd(uint64_t gpu_va, int job_no, bool is_fragment)
 {
@@ -650,9 +689,7 @@ pandecode_sfbd(uint64_t gpu_va, int job_no, bool is_fragment)
         pandecode_prop("unknown1 = 0x%" PRIx32, s->unknown1);
         pandecode_prop("unknown2 = 0x%" PRIx32, s->unknown2);
 
-        pandecode_log(".format = ");
-        pandecode_log_decoded_flags(fb_fmt_flag_info, s->format);
-        pandecode_log_cont(",\n");
+        pandecode_sfbd_format(s->format);
 
         info.width = s->width + 1;
         info.height = s->height + 1;
@@ -675,14 +712,28 @@ pandecode_sfbd(uint64_t gpu_va, int job_no, bool is_fragment)
         pandecode_log_decoded_flags(clear_flag_info, s->clear_flags);
         pandecode_log_cont(",\n");
 
-        if (s->depth_buffer | s->depth_buffer_enable) {
+        if (s->depth_buffer) {
                 MEMORY_PROP(s, depth_buffer);
-                pandecode_prop("depth_buffer_enable = %s", DS_ENABLE(s->depth_buffer_enable));
+                pandecode_prop("depth_stride = %d", s->depth_stride);
         }
 
-        if (s->stencil_buffer | s->stencil_buffer_enable) {
+        if (s->stencil_buffer) {
                 MEMORY_PROP(s, stencil_buffer);
-                pandecode_prop("stencil_buffer_enable = %s", DS_ENABLE(s->stencil_buffer_enable));
+                pandecode_prop("stencil_stride = %d", s->stencil_stride);
+        }
+
+        if (s->depth_stride_zero ||
+            s->stencil_stride_zero ||
+            s->zero7 || s->zero8) {
+                pandecode_msg("XXX: Depth/stencil zeros tripped\n");
+                pandecode_prop("depth_stride_zero = 0x%x",
+                               s->depth_stride_zero);
+                pandecode_prop("stencil_stride_zero = 0x%x",
+                               s->stencil_stride_zero);
+                pandecode_prop("zero7 = 0x%" PRIx32,
+                               s->zero7);
+                pandecode_prop("zero8 = 0x%" PRIx32,
+                               s->zero8);
         }
 
         if (s->clear_color_1 | s->clear_color_2 | s->clear_color_3 | s->clear_color_4) {
@@ -894,8 +945,7 @@ pandecode_rt_format(struct mali_rt_format format)
         pandecode_prop("unk2 = 0x%" PRIx32, format.unk2);
         pandecode_prop("unk3 = 0x%" PRIx32, format.unk3);
 
-        pandecode_prop("block = %s",
-                       pandecode_mfbd_block_format(format.block));
+        pandecode_prop("block = %s", pandecode_block_format(format.block));
 
         /* TODO: Map formats so we can check swizzles and print nicely */
         pandecode_log("swizzle");
@@ -944,7 +994,7 @@ pandecode_render_target(uint64_t gpu_va, unsigned job_no, const struct bifrost_f
 
                 pandecode_rt_format(rt->format);
 
-                if (rt->format.block == MALI_MFBD_BLOCK_AFBC) {
+                if (rt->format.block == MALI_BLOCK_AFBC) {
                         pandecode_log(".afbc = {\n");
                         pandecode_indent++;
 

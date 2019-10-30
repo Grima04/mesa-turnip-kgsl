@@ -118,7 +118,9 @@ panfrost_emit_sfbd(struct panfrost_batch *batch, unsigned vertex_count)
                 .width = MALI_POSITIVE(width),
                 .height = MALI_POSITIVE(height),
                 .unknown2 = 0x1f,
-                .format = 0x30000000,
+                .format = {
+                        .unk3 = 0x3,
+                },
                 .clear_flags = 0x1000,
                 .unknown_address_0 = panfrost_batch_get_scratchpad(batch)->gpu,
                 .tiler = panfrost_emit_midg_tiler(batch, vertex_count),

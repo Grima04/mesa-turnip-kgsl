@@ -394,9 +394,7 @@ panfrost_resource_create_bo(struct panfrost_screen *screen, struct panfrost_reso
         bool is_2d = res->depth0 == 1 && res->array_size == 1;
         bool is_streaming = (res->usage != PIPE_USAGE_STREAM);
 
-        /* TODO: Reenable tiling on SFBD systems when we support rendering to
-         * tiled formats with SFBD */
-        bool should_tile = is_streaming && is_texture && is_2d && !screen->require_sfbd;
+        bool should_tile = is_streaming && is_texture && is_2d;
 
         /* Depth/stencil can't be tiled, only linear or AFBC */
         should_tile &= !(res->bind & PIPE_BIND_DEPTH_STENCIL);

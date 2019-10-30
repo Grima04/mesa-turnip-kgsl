@@ -29,30 +29,6 @@
 
 #include "util/u_format.h"
 
-static void
-panfrost_invert_swizzle(const unsigned char *in, unsigned char *out)
-{
-        /* First, default to all zeroes to prevent uninitialized junk */
-
-        for (unsigned c = 0; c < 4; ++c)
-                out[c] = PIPE_SWIZZLE_0;
-
-        /* Now "do" what the swizzle says */
-
-        for (unsigned c = 0; c < 4; ++c) {
-                unsigned char i = in[c];
-
-                /* Who cares? */
-                assert(PIPE_SWIZZLE_X == 0);
-                if (i > PIPE_SWIZZLE_W)
-                        continue;
-
-                /* Invert */
-                unsigned idx = i - PIPE_SWIZZLE_X;
-                out[idx] = PIPE_SWIZZLE_X + c;
-        }
-}
-
 static struct mali_rt_format
 panfrost_mfbd_format(struct pipe_surface *surf)
 {
@@ -224,15 +200,15 @@ panfrost_mfbd_set_cbuf(
         /* Now, we set the layout specific pieces */
 
         if (rsrc->layout == PAN_LINEAR) {
-                rt->format.block = MALI_MFBD_BLOCK_LINEAR;
+                rt->format.block = MALI_BLOCK_LINEAR;
                 rt->framebuffer = base;
                 rt->framebuffer_stride = stride / 16;
         } else if (rsrc->layout == PAN_TILED) {
-                rt->format.block = MALI_MFBD_BLOCK_TILED;
+                rt->format.block = MALI_BLOCK_TILED;
                 rt->framebuffer = base;
                 rt->framebuffer_stride = stride;
         } else if (rsrc->layout == PAN_AFBC) {
-                rt->format.block = MALI_MFBD_BLOCK_AFBC;
+                rt->format.block = MALI_BLOCK_AFBC;
 
                 unsigned header_size = rsrc->slices[level].header_size;
 
