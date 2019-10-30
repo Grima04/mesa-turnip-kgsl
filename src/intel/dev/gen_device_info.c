@@ -1043,7 +1043,8 @@ static const struct gen_device_info gen_device_info_ehl_2x4 = {
    .gt = _gt, .num_slices = _slices, .l3_banks = _l3,           \
    .simulator_id = 22,                                          \
    .urb.size = (_gt) == 1 ? 512 : 1024,                         \
-   .num_subslices = _dual_subslices
+   .num_subslices = _dual_subslices,                            \
+   .num_eu_per_subslice = 16
 
 #define dual_subslices(args...) { args, }
 
