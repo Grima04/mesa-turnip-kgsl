@@ -2905,6 +2905,10 @@ visit_load_local_invocation_index(struct ac_nir_context *ctx)
 	result = LLVMBuildAnd(ctx->ac.builder, ctx->abi->tg_size,
 			      LLVMConstInt(ctx->ac.i32, 0xfc0, false), "");
 
+	if (ctx->ac.wave_size == 32)
+		result = LLVMBuildLShr(ctx->ac.builder, result,
+				       LLVMConstInt(ctx->ac.i32, 1, false), "");
+
 	return LLVMBuildAdd(ctx->ac.builder, result, thread_id, "");
 }
 
