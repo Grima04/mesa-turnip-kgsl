@@ -72,8 +72,7 @@ struct phys_reg {
         unsigned size;
 };
 
-/* Shift each component up by reg_offset and shift all components horizontally
- * by dst_offset. TODO: vec8+ */
+/* Shift up by reg_offset and horizontally by dst_offset. */
 
 static void
 offset_swizzle(unsigned *swizzle, unsigned reg_offset, unsigned srcsize, unsigned dst_offset)
@@ -83,12 +82,14 @@ offset_swizzle(unsigned *swizzle, unsigned reg_offset, unsigned srcsize, unsigne
         signed reg_comp = reg_offset / srcsize;
         signed dst_comp = dst_offset / srcsize;
 
+        unsigned max_component = (16 / srcsize) - 1;
+
         assert(reg_comp * srcsize == reg_offset);
         assert(dst_comp * srcsize == dst_offset);
 
         for (signed c = 0; c < MIR_VEC_COMPONENTS; ++c) {
                 signed comp = MAX2(c - dst_comp, 0);
-                out[c] = MIN2(swizzle[comp] + reg_comp, 4 - 1);
+                out[c] = MIN2(swizzle[comp] + reg_comp, max_component);
         }
 
         memcpy(swizzle, out, sizeof(out));
