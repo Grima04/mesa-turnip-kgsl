@@ -4850,6 +4850,11 @@ radv_emit_dispatch_packets(struct radv_cmd_buffer *cmd_buffer,
 
 	ASSERTED unsigned cdw_max = radeon_check_space(ws, cs, 25);
 
+	if (compute_shader->info.wave_size == 32) {
+		assert(cmd_buffer->device->physical_device->rad_info.chip_class >= GFX10);
+		dispatch_initiator |= S_00B800_CS_W32_EN(1);
+	}
+
 	if (info->indirect) {
 		uint64_t va = radv_buffer_get_va(info->indirect->bo);
 
