@@ -607,7 +607,8 @@ optimizations.extend([
    (('ine', ('ineg', ('b2i32', 'a@1')), ('ineg', ('b2i32', 'b@1'))), ('ine', a, b)),
    (('b2i32', ('ine', 'a@1', 'b@1')), ('b2i32', ('ixor', a, b))),
 
-   (('iand', ('ieq', 'a@32', 0), ('ieq', 'b@32', 0)), ('ieq', ('ior', 'a@32', 'b@32'), 0), '!options->lower_bitops'),
+   (('iand', ('ieq', 'a@32', 0), ('ieq', 'b@32', 0)), ('ieq', ('ior', a, b), 0), '!options->lower_bitops'),
+   (('ior',  ('ine', 'a@32', 0), ('ine', 'b@32', 0)), ('ine', ('ior', a, b), 0), '!options->lower_bitops'),
 
    # These patterns can result when (a < b || a < c) => (a < min(b, c))
    # transformations occur before constant propagation and loop-unrolling.
@@ -1704,6 +1705,9 @@ late_optimizations = [
 
    (('ior', a, a), a),
    (('iand', a, a), a),
+
+   (('iand', ('ine(is_used_once)', 'a@32', 0), ('ine', 'b@32', 0)), ('ine', ('umin', a, b), 0)),
+   (('ior',  ('ieq(is_used_once)', 'a@32', 0), ('ieq', 'b@32', 0)), ('ieq', ('umin', a, b), 0)),
 
    (('~fadd', ('fneg(is_used_once)', ('fsat(is_used_once)', 'a(is_not_fmul)')), 1.0), ('fsat', ('fadd', 1.0, ('fneg', a)))),
 
