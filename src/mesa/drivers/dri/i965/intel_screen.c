@@ -2799,6 +2799,7 @@ __DRIconfig **intelInitScreen2(__DRIscreen *dri_screen)
       !(screen->kernel_features & KERNEL_ALLOWS_CONTEXT_ISOLATION);
 
    screen->compiler->supports_pull_constants = true;
+   screen->compiler->compact_params = true;
 
    screen->has_exec_fence =
      intel_get_boolean(screen, I915_PARAM_HAS_EXEC_FENCE);
