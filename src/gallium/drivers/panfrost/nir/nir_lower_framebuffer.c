@@ -49,14 +49,14 @@ static nir_ssa_def *
 nir_float_to_unorm8(nir_builder *b, nir_ssa_def *c_float)
 {
    /* First, we degrade quality to fp16; we don't need the extra bits */
-   nir_ssa_def *degraded = nir_f2f16(b, c_float);
+   nir_ssa_def *degraded = /*nir_f2f16(b, c_float)*/c_float;
 
    /* Scale from [0, 1] to [0, 255.0] */
    nir_ssa_def *scaled = nir_fmul_imm(b, nir_fsat(b, degraded), 255.0);
 
    /* Next, we type convert */
    nir_ssa_def *converted = nir_u2u8(b, nir_f2u16(b,
-                                     nir_fround_even(b, scaled)));
+                                     nir_fround_even(b, nir_f2f16(b, scaled))));
 
    return converted;
 }
@@ -65,7 +65,7 @@ static nir_ssa_def *
 nir_unorm8_to_float(nir_builder *b, nir_ssa_def *c_native)
 {
    /* First, we convert up from u8 to f16 */
-   nir_ssa_def *converted = nir_u2f16(b, nir_u2u16(b, c_native));
+   nir_ssa_def *converted = nir_f2f32(b, nir_u2f16(b, nir_u2u16(b, c_native)));
 
    /* Next, we scale down from [0, 255.0] to [0, 1] */
    nir_ssa_def *scaled = nir_fsat(b, nir_fmul_imm(b, converted, 1.0/255.0));
