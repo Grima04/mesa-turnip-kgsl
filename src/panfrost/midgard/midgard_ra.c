@@ -98,12 +98,12 @@ offset_swizzle(unsigned *swizzle, unsigned reg_offset, unsigned srcsize, unsigne
 /* Helper to return the default phys_reg for a given register */
 
 static struct phys_reg
-default_phys_reg(int reg)
+default_phys_reg(int reg, midgard_reg_mode size)
 {
         struct phys_reg r = {
                 .reg = reg,
                 .offset = 0,
-                .size = 4
+                .size = mir_bytes_for_mode(size)
         };
 
         return r;
@@ -117,11 +117,11 @@ index_to_reg(compiler_context *ctx, struct ra_graph *g, unsigned reg, midgard_re
 {
         /* Check for special cases */
         if (reg == ~0)
-                return default_phys_reg(REGISTER_UNUSED);
+                return default_phys_reg(REGISTER_UNUSED, size);
         else if (reg >= SSA_FIXED_MINIMUM)
-                return default_phys_reg(SSA_REG_FROM_FIXED(reg));
+                return default_phys_reg(SSA_REG_FROM_FIXED(reg), size);
         else if (!g)
-                return default_phys_reg(REGISTER_UNUSED);
+                return default_phys_reg(REGISTER_UNUSED, size);
 
         /* Special cases aside, we pick the underlying register */
         int virt = ra_get_node_reg(g, reg);
