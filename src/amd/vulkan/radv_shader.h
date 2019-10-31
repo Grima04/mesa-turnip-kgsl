@@ -134,7 +134,6 @@ struct radv_nir_compiler_options {
 	enum chip_class chip_class;
 	uint32_t tess_offchip_block_dw_size;
 	uint32_t address32_hi;
-	uint8_t wave_size;
 };
 
 enum radv_ud_index {

@@ -1080,16 +1080,6 @@ shader_variant_compile(struct radv_device *device,
 	options->has_ls_vgpr_init_bug = device->physical_device->rad_info.has_ls_vgpr_init_bug;
 	options->use_ngg_streamout = device->physical_device->use_ngg_streamout;
 
-	if ((stage == MESA_SHADER_GEOMETRY && !options->key.vs_common_out.as_ngg) ||
-	    gs_copy_shader)
-		options->wave_size = 64;
-	else if (stage == MESA_SHADER_COMPUTE)
-		options->wave_size = device->physical_device->cs_wave_size;
-	else if (stage == MESA_SHADER_FRAGMENT)
-		options->wave_size = device->physical_device->ps_wave_size;
-	else
-		options->wave_size = device->physical_device->ge_wave_size;
-
 	if (!use_aco || options->dump_shader || options->record_ir)
 		ac_init_llvm_once();
 
@@ -1114,7 +1104,7 @@ shader_variant_compile(struct radv_device *device,
 		radv_init_llvm_compiler(&ac_llvm,
 					thread_compiler,
 					chip_family, tm_options,
-					options->wave_size);
+					info->wave_size);
 
 		if (gs_copy_shader) {
 			assert(shader_count == 1);

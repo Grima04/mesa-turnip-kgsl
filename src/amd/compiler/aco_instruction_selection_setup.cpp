@@ -1250,7 +1250,7 @@ setup_isel_context(Program* program,
    program->info = info;
    program->chip_class = options->chip_class;
    program->family = options->family;
-   program->wave_size = options->wave_size;
+   program->wave_size = info->wave_size;
 
    program->lds_alloc_granule = options->chip_class >= GFX7 ? 512 : 256;
    program->lds_limit = options->chip_class >= GFX7 ? 65536 : 32768;
@@ -1396,9 +1396,8 @@ setup_isel_context(Program* program,
    for (unsigned i = 0; i < shader_count; i++)
       scratch_size = std::max(scratch_size, shaders[i]->scratch_size);
    ctx.scratch_enabled = scratch_size > 0;
-   ctx.program->config->scratch_bytes_per_wave = align(scratch_size * ctx.options->wave_size, 1024);
+   ctx.program->config->scratch_bytes_per_wave = align(scratch_size * ctx.program->wave_size, 1024);
    ctx.program->config->float_mode = V_00B028_FP_64_DENORMS;
-   ctx.program->info->wave_size = ctx.options->wave_size;
 
    ctx.block = ctx.program->create_and_insert_block();
    ctx.block->loop_nest_depth = 0;

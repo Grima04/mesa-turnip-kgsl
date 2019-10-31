@@ -2378,6 +2378,21 @@ radv_fill_shader_keys(struct radv_device *device,
 	keys[MESA_SHADER_FRAGMENT].fs.num_samples = key->num_samples;
 }
 
+static uint8_t
+radv_get_wave_size(struct radv_device *device,
+		   gl_shader_stage stage,
+		   const struct radv_shader_variant_key *key)
+{
+	if (stage == MESA_SHADER_GEOMETRY && !key->vs_common_out.as_ngg)
+		return 64;
+	else if (stage == MESA_SHADER_COMPUTE)
+		return device->physical_device->cs_wave_size;
+	else if (stage == MESA_SHADER_FRAGMENT)
+		return device->physical_device->ps_wave_size;
+	else
+		return device->physical_device->ge_wave_size;
+}
+
 static void
 radv_fill_shader_info(struct radv_pipeline *pipeline,
 		      struct radv_shader_variant_key *keys,
@@ -2476,6 +2491,12 @@ radv_fill_shader_info(struct radv_pipeline *pipeline,
 		radv_nir_shader_info_init(&infos[i]);
 		radv_nir_shader_info_pass(nir[i], pipeline->layout,
 					  &keys[i], &infos[i]);
+	}
+
+	for (int i = 0; i < MESA_SHADER_STAGES; i++) {
+		if (nir[i])
+			infos[i].wave_size =
+				radv_get_wave_size(pipeline->device, i, &keys[i]);
 	}
 }
 
@@ -2807,6 +2828,7 @@ void radv_create_shaders(struct radv_pipeline *pipeline,
 			radv_nir_shader_info_pass(nir[MESA_SHADER_GEOMETRY],
 						  pipeline->layout, &key,
 						  &info);
+			info.wave_size = 64; /* Wave32 not supported. */
 
 			pipeline->gs_copy_shader = radv_create_gs_copy_shader(
 					device, nir[MESA_SHADER_GEOMETRY], &info,

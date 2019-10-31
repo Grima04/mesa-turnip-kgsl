@@ -153,7 +153,7 @@ static Temp emit_bpermute(isel_context *ctx, Builder &bld, Temp index, Temp data
    /* Currently not implemented on GFX6-7 */
    assert(ctx->options->chip_class >= GFX8);
 
-   if (ctx->options->chip_class <= GFX9 || ctx->options->wave_size == 32) {
+   if (ctx->options->chip_class <= GFX9 || ctx->program->wave_size == 32) {
       return bld.ds(aco_opcode::ds_bpermute_b32, bld.def(v1), index_x4, data);
    }
 
@@ -4927,7 +4927,7 @@ Temp get_scratch_resource(isel_context *ctx)
       scratch_addr = bld.smem(aco_opcode::s_load_dwordx2, bld.def(s2), scratch_addr, Operand(0u));
 
    uint32_t rsrc_conf = S_008F0C_ADD_TID_ENABLE(1) |
-                        S_008F0C_INDEX_STRIDE(ctx->options->wave_size == 64 ? 3 : 2);;
+                        S_008F0C_INDEX_STRIDE(ctx->program->wave_size == 64 ? 3 : 2);;
 
    if (ctx->program->chip_class >= GFX10) {
       rsrc_conf |= S_008F0C_FORMAT(V_008F0C_IMG_FORMAT_32_FLOAT) |
