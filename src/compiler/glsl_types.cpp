@@ -2595,6 +2595,12 @@ union packed_type {
       unsigned length:13;
       unsigned explicit_stride:14;
    } array;
+   struct {
+      unsigned base_type:5;
+      unsigned interface_packing_or_packed:2;
+      unsigned interface_row_major:1;
+      unsigned length:24;
+   } strct;
 };
 
 void
@@ -2668,9 +2674,19 @@ encode_type_to_blob(struct blob *blob, const glsl_type *type)
       return;
    case GLSL_TYPE_STRUCT:
    case GLSL_TYPE_INTERFACE:
+      encoded.strct.length = MIN2(type->length, 0xffffff);
+      if (type->is_interface()) {
+         encoded.strct.interface_packing_or_packed = type->interface_packing;
+         encoded.strct.interface_row_major = type->interface_row_major;
+      } else {
+         encoded.strct.interface_packing_or_packed = type->packed;
+      }
       blob_write_uint32(blob, encoded.u32);
       blob_write_string(blob, type->name);
-      blob_write_uint32(blob, type->length);
+
+      /* If we don't have enough bits for length, store it separately. */
+      if (encoded.strct.length == 0xffffff)
+         blob_write_uint32(blob, type->length);
 
       size_t s_field_size, s_field_ptrs;
       get_struct_type_field_and_pointer_sizes(&s_field_size, &s_field_ptrs);
@@ -2683,13 +2699,6 @@ encode_type_to_blob(struct blob *blob, const glsl_type *type)
          blob_write_bytes(blob,
                           ((char *)&type->fields.structure[i]) + s_field_ptrs,
                           s_field_size - s_field_ptrs);
-      }
-
-      if (type->is_interface()) {
-         blob_write_uint32(blob, type->interface_packing);
-         blob_write_uint32(blob, type->interface_row_major);
-      } else {
-         blob_write_uint32(blob, type->packed);
       }
       return;
    case GLSL_TYPE_VOID:
@@ -2763,7 +2772,9 @@ decode_type_from_blob(struct blob_reader *blob)
    case GLSL_TYPE_STRUCT:
    case GLSL_TYPE_INTERFACE: {
       char *name = blob_read_string(blob);
-      unsigned num_fields = blob_read_uint32(blob);
+      unsigned num_fields = encoded.strct.length;
+      if (num_fields == 0xffffff)
+         num_fields = blob_read_uint32(blob);
 
       size_t s_field_size, s_field_ptrs;
       get_struct_type_field_and_pointer_sizes(&s_field_size, &s_field_ptrs);
@@ -2781,12 +2792,12 @@ decode_type_from_blob(struct blob_reader *blob)
       const glsl_type *t;
       if (base_type == GLSL_TYPE_INTERFACE) {
          enum glsl_interface_packing packing =
-            (glsl_interface_packing) blob_read_uint32(blob);
-         bool row_major = blob_read_uint32(blob);
+            (glsl_interface_packing) encoded.strct.interface_packing_or_packed;
+         bool row_major = encoded.strct.interface_row_major;
          t = glsl_type::get_interface_instance(fields, num_fields, packing,
                                                row_major, name);
       } else {
-         unsigned packed = blob_read_uint32(blob);
+         unsigned packed = encoded.strct.interface_packing_or_packed;
          t = glsl_type::get_struct_instance(fields, num_fields, name, packed);
       }
 
