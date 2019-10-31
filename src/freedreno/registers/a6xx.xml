@@ -2717,34 +2717,6 @@ to upconvert to 32b float internally?
 	<!-- always 0x1 ? -->
 	<reg32 offset="0xa0f8" name="SP_UNKNOWN_A0F8"/>
 
-	<reg32 offset="0xa802" name="SP_PRIMITIVE_CNTL">
-		<!-- # of VS outputs including pos/psize -->
-		<bitfield name="VSOUT" low="0" high="4" type="uint"/>
-	</reg32>
-	<array offset="0xa803" name="SP_VS_OUT" stride="1" length="16">
-		<reg32 offset="0x0" name="REG">
-			<bitfield name="A_REGID" low="0" high="7" type="a3xx_regid"/>
-			<bitfield name="A_COMPMASK" low="8" high="11" type="hex"/>
-			<bitfield name="B_REGID" low="16" high="23" type="a3xx_regid"/>
-			<bitfield name="B_COMPMASK" low="24" high="27" type="hex"/>
-		</reg32>
-	</array>
-	<!--
-	Starting with a5xx, position/psize outputs from shader end up in the
-	SP_VS_OUT map, with highest OUTLOCn position.  (Generally they are
-	the last entries too, except when gl_PointCoord is used, blob inserts
-	an extra varying after, but with a lower OUTLOC position.  If present,
-	psize is last, preceded by position.
-	 -->
-	<array offset="0xa813" name="SP_VS_VPC_DST" stride="1" length="8">
-		<reg32 offset="0x0" name="REG">
-			<bitfield name="OUTLOC0" low="0" high="7" type="uint"/>
-			<bitfield name="OUTLOC1" low="8" high="15" type="uint"/>
-			<bitfield name="OUTLOC2" low="16" high="23" type="uint"/>
-			<bitfield name="OUTLOC3" low="24" high="31" type="uint"/>
-		</reg32>
-	</array>
-
 	<bitset name="a6xx_sp_xs_ctrl_reg0" inline="yes">
 		<!--
 		When b31 set we just see FULLREGFOOTPRINT set.  The pattern of
@@ -2784,6 +2756,34 @@ to upconvert to 32b float internally?
 	</bitset>
 
 	<reg32 offset="0xa800" name="SP_VS_CTRL_REG0" type="a6xx_sp_xs_ctrl_reg0"/>
+	<reg32 offset="0xa802" name="SP_PRIMITIVE_CNTL">
+		<!-- # of VS outputs including pos/psize -->
+		<bitfield name="VSOUT" low="0" high="4" type="uint"/>
+	</reg32>
+	<array offset="0xa803" name="SP_VS_OUT" stride="1" length="16">
+		<reg32 offset="0x0" name="REG">
+			<bitfield name="A_REGID" low="0" high="7" type="a3xx_regid"/>
+			<bitfield name="A_COMPMASK" low="8" high="11" type="hex"/>
+			<bitfield name="B_REGID" low="16" high="23" type="a3xx_regid"/>
+			<bitfield name="B_COMPMASK" low="24" high="27" type="hex"/>
+		</reg32>
+	</array>
+	<!--
+	Starting with a5xx, position/psize outputs from shader end up in the
+	SP_VS_OUT map, with highest OUTLOCn position.  (Generally they are
+	the last entries too, except when gl_PointCoord is used, blob inserts
+	an extra varying after, but with a lower OUTLOC position.  If present,
+	psize is last, preceded by position.
+	 -->
+	<array offset="0xa813" name="SP_VS_VPC_DST" stride="1" length="8">
+		<reg32 offset="0x0" name="REG">
+			<bitfield name="OUTLOC0" low="0" high="7" type="uint"/>
+			<bitfield name="OUTLOC1" low="8" high="15" type="uint"/>
+			<bitfield name="OUTLOC2" low="16" high="23" type="uint"/>
+			<bitfield name="OUTLOC3" low="24" high="31" type="uint"/>
+		</reg32>
+	</array>
+
 	<reg32 offset="0xa81b" name="SP_UNKNOWN_A81B"/>
 	<reg32 offset="0xa81c" name="SP_VS_OBJ_START_LO"/>
 	<reg32 offset="0xa81d" name="SP_VS_OBJ_START_HI"/>
