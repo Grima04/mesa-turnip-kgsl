@@ -187,11 +187,6 @@ _libxmlconfig = static_library(
   build_by_default : false,
 )
 
-idep_xmlconfig_headers = declare_dependency(
-  sources : xmlpool_options_h,
-  include_directories : inc_util,
-)
-
 idep_xmlconfig = declare_dependency(
   dependencies : [idep_xmlconfig_headers, dep_expat],
   link_with : _libxmlconfig,
