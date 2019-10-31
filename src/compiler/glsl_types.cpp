@@ -2580,7 +2580,7 @@ union packed_type {
       unsigned interface_row_major:1;
       unsigned vector_elements:3;
       unsigned matrix_columns:3;
-      unsigned _pad:20;
+      unsigned explicit_stride:20;
    } basic;
    struct {
       unsigned base_type:5;
@@ -2623,8 +2623,13 @@ encode_type_to_blob(struct blob *blob, const glsl_type *type)
       assert(type->matrix_columns < 8);
       encoded.basic.vector_elements = type->vector_elements;
       encoded.basic.matrix_columns = type->matrix_columns;
+      encoded.basic.explicit_stride = MIN2(type->explicit_stride, 0xfffff);
       blob_write_uint32(blob, encoded.u32);
-      blob_write_uint32(blob, type->explicit_stride);
+      /* If we don't have enough bits for explicit_stride, store it
+       * separately.
+       */
+      if (encoded.basic.explicit_stride == 0xfffff)
+         blob_write_uint32(blob, type->explicit_stride);
       return;
    case GLSL_TYPE_SAMPLER:
       encoded.sampler.dimensionality = type->sampler_dimensionality;
@@ -2712,7 +2717,9 @@ decode_type_from_blob(struct blob_reader *blob)
    case GLSL_TYPE_UINT64:
    case GLSL_TYPE_INT64:
    case GLSL_TYPE_BOOL: {
-      unsigned explicit_stride = blob_read_uint32(blob);
+      unsigned explicit_stride = encoded.basic.explicit_stride;
+      if (explicit_stride == 0xfffff)
+         explicit_stride = blob_read_uint32(blob);
       return glsl_type::get_instance(base_type, encoded.basic.vector_elements,
                                      encoded.basic.matrix_columns,
                                      explicit_stride,
