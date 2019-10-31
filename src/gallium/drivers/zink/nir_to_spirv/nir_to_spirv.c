@@ -1028,6 +1028,18 @@ emit_alu(struct ntv_context *ctx, nir_alu_instr *alu)
       result = emit_select(ctx, dest_type, src[0], src[1], src[2]);
       break;
 
+   case nir_op_bany_fnequal2:
+   case nir_op_bany_fnequal3:
+   case nir_op_bany_fnequal4:
+      assert(nir_op_infos[alu->op].num_inputs == 2);
+      assert(alu_instr_src_components(alu, 0) ==
+             alu_instr_src_components(alu, 1));
+      result = emit_binop(ctx, SpvOpFOrdNotEqual,
+                          get_bvec_type(ctx, alu_instr_src_components(alu, 0)),
+                          src[0], src[1]);
+      result = emit_unop(ctx, SpvOpAny, dest_type, result);
+      break;
+
    case nir_op_vec2:
    case nir_op_vec3:
    case nir_op_vec4: {
