@@ -2385,17 +2385,27 @@ radv_fill_shader_keys(struct radv_device *device,
 	keys[MESA_SHADER_FRAGMENT].fs.is_int10 = key->is_int10;
 	keys[MESA_SHADER_FRAGMENT].fs.log2_ps_iter_samples = key->log2_ps_iter_samples;
 	keys[MESA_SHADER_FRAGMENT].fs.num_samples = key->num_samples;
+
+	if (nir[MESA_SHADER_COMPUTE]) {
+		keys[MESA_SHADER_COMPUTE].cs.subgroup_size = key->compute_subgroup_size;
+	}
 }
 
 static uint8_t
 radv_get_wave_size(struct radv_device *device,
+		   const VkPipelineShaderStageCreateInfo *pStage,
 		   gl_shader_stage stage,
 		   const struct radv_shader_variant_key *key)
 {
 	if (stage == MESA_SHADER_GEOMETRY && !key->vs_common_out.as_ngg)
 		return 64;
-	else if (stage == MESA_SHADER_COMPUTE)
+	else if (stage == MESA_SHADER_COMPUTE) {
+		if (key->cs.subgroup_size) {
+			/* Return the required subgroup size if specified. */
+			return key->cs.subgroup_size;
+		}
 		return device->physical_device->cs_wave_size;
+	}
 	else if (stage == MESA_SHADER_FRAGMENT)
 		return device->physical_device->ps_wave_size;
 	else
@@ -2404,6 +2414,7 @@ radv_get_wave_size(struct radv_device *device,
 
 static void
 radv_fill_shader_info(struct radv_pipeline *pipeline,
+		      const VkPipelineShaderStageCreateInfo **pStages,
 		      struct radv_shader_variant_key *keys,
                       struct radv_shader_info *infos,
                       nir_shader **nir)
@@ -2505,7 +2516,8 @@ radv_fill_shader_info(struct radv_pipeline *pipeline,
 	for (int i = 0; i < MESA_SHADER_STAGES; i++) {
 		if (nir[i])
 			infos[i].wave_size =
-				radv_get_wave_size(pipeline->device, i, &keys[i]);
+				radv_get_wave_size(pipeline->device, pStages[i],
+						   i, &keys[i]);
 	}
 }
 
@@ -2712,7 +2724,7 @@ void radv_create_shaders(struct radv_pipeline *pipeline,
 
 	radv_fill_shader_keys(device, keys, key, nir);
 
-	radv_fill_shader_info(pipeline, keys, infos, nir);
+	radv_fill_shader_info(pipeline, pStages, keys, infos, nir);
 
 	if ((nir[MESA_SHADER_VERTEX] &&
 	     keys[MESA_SHADER_VERTEX].vs_common_out.as_ngg) ||
@@ -5100,11 +5112,22 @@ static struct radv_pipeline_key
 radv_generate_compute_pipeline_key(struct radv_pipeline *pipeline,
 				   const VkComputePipelineCreateInfo *pCreateInfo)
 {
+	const VkPipelineShaderStageCreateInfo *stage = &pCreateInfo->stage;
 	struct radv_pipeline_key key;
 	memset(&key, 0, sizeof(key));
 
 	if (pCreateInfo->flags & VK_PIPELINE_CREATE_DISABLE_OPTIMIZATION_BIT)
 		key.optimisations_disabled = 1;
+
+	const VkPipelineShaderStageRequiredSubgroupSizeCreateInfoEXT *subgroup_size =
+		vk_find_struct_const(stage->pNext,
+				     PIPELINE_SHADER_STAGE_REQUIRED_SUBGROUP_SIZE_CREATE_INFO_EXT);
+
+	if (subgroup_size) {
+		assert(subgroup_size->requiredSubgroupSize == 32 ||
+		       subgroup_size->requiredSubgroupSize == 64);
+		key.compute_subgroup_size = subgroup_size->requiredSubgroupSize;
+	}
 
 	return key;
 }

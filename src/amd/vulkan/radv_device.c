@@ -1090,6 +1090,13 @@ void radv_GetPhysicalDeviceFeatures2(
 			features->timelineSemaphore = true;
 			break;
 		}
+		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_SIZE_CONTROL_FEATURES_EXT: {
+			VkPhysicalDeviceSubgroupSizeControlFeaturesEXT *features =
+				(VkPhysicalDeviceSubgroupSizeControlFeaturesEXT *)ext;
+			features->subgroupSizeControl = true;
+			features->computeFullSubgroups = true;
+			break;
+		}
 		default:
 			break;
 		}
@@ -1576,6 +1583,21 @@ void radv_GetPhysicalDeviceProperties2(
 			VkPhysicalDeviceTimelineSemaphorePropertiesKHR *props =
 				(VkPhysicalDeviceTimelineSemaphorePropertiesKHR *) ext;
 			props->maxTimelineSemaphoreValueDifference = UINT64_MAX;
+			break;
+		}
+		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_SIZE_CONTROL_PROPERTIES_EXT: {
+			VkPhysicalDeviceSubgroupSizeControlPropertiesEXT *props =
+				(VkPhysicalDeviceSubgroupSizeControlPropertiesEXT *)ext;
+			props->minSubgroupSize = 64;
+			props->maxSubgroupSize = 64;
+			props->maxComputeWorkgroupSubgroups = UINT32_MAX;
+			props->requiredSubgroupSizeStages = 0;
+
+			if (pdevice->rad_info.chip_class >= GFX10) {
+				/* Only GFX10+ supports wave32. */
+				props->minSubgroupSize = 32;
+				props->requiredSubgroupSizeStages = VK_SHADER_STAGE_COMPUTE_BIT;
+			}
 			break;
 		}
 		default:
