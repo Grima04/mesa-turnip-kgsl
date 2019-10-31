@@ -2573,15 +2573,37 @@ get_struct_type_field_and_pointer_sizes(size_t *s_field_size,
      sizeof(((glsl_struct_field *)0)->name);
 }
 
+union packed_type {
+   uint32_t u32;
+   struct {
+      unsigned base_type:5;
+      unsigned interface_row_major:1;
+      unsigned vector_elements:6;
+      unsigned matrix_columns:4;
+      unsigned _pad:16;
+   } basic;
+   struct {
+      unsigned base_type:5;
+      unsigned dimensionality:4;
+      unsigned shadow:1;
+      unsigned array:1;
+      unsigned sampled_type:2;
+      unsigned _pad:19;
+   } sampler;
+};
+
 void
 encode_type_to_blob(struct blob *blob, const glsl_type *type)
 {
-   uint32_t encoding;
-
    if (!type) {
       blob_write_uint32(blob, 0);
       return;
    }
+
+   STATIC_ASSERT(sizeof(union packed_type) == 4);
+   union packed_type encoded;
+   encoded.u32 = 0;
+   encoded.basic.base_type = type->base_type;
 
    switch (type->base_type) {
    case GLSL_TYPE_UINT:
@@ -2596,43 +2618,38 @@ encode_type_to_blob(struct blob *blob, const glsl_type *type)
    case GLSL_TYPE_UINT64:
    case GLSL_TYPE_INT64:
    case GLSL_TYPE_BOOL:
-      encoding = (type->base_type << 24) |
-         (type->interface_row_major << 10) |
-         (type->vector_elements << 4) |
-         (type->matrix_columns);
-      blob_write_uint32(blob, encoding);
+      encoded.basic.interface_row_major = type->interface_row_major;
+      encoded.basic.vector_elements = type->vector_elements;
+      encoded.basic.matrix_columns = type->matrix_columns;
+      blob_write_uint32(blob, encoded.u32);
       blob_write_uint32(blob, type->explicit_stride);
       return;
    case GLSL_TYPE_SAMPLER:
-      encoding = (type->base_type) << 24 |
-         (type->sampler_dimensionality << 4) |
-         (type->sampler_shadow << 3) |
-         (type->sampler_array << 2) |
-         (type->sampled_type);
+      encoded.sampler.dimensionality = type->sampler_dimensionality;
+      encoded.sampler.shadow = type->sampler_shadow;
+      encoded.sampler.array = type->sampler_array;
+      encoded.sampler.sampled_type = type->sampled_type;
       break;
    case GLSL_TYPE_SUBROUTINE:
-      encoding = type->base_type << 24;
-      blob_write_uint32(blob, encoding);
+      blob_write_uint32(blob, encoded.u32);
       blob_write_string(blob, type->name);
       return;
    case GLSL_TYPE_IMAGE:
-      encoding = (type->base_type) << 24 |
-         (type->sampler_dimensionality << 3) |
-         (type->sampler_array << 2) |
-         (type->sampled_type);
+      encoded.sampler.dimensionality = type->sampler_dimensionality;
+      encoded.sampler.array = type->sampler_array;
+      encoded.sampler.sampled_type = type->sampled_type;
       break;
    case GLSL_TYPE_ATOMIC_UINT:
-      encoding = (type->base_type << 24);
       break;
    case GLSL_TYPE_ARRAY:
-      blob_write_uint32(blob, (type->base_type) << 24);
+      blob_write_uint32(blob, encoded.u32);
       blob_write_uint32(blob, type->length);
       blob_write_uint32(blob, type->explicit_stride);
       encode_type_to_blob(blob, type->fields.array);
       return;
    case GLSL_TYPE_STRUCT:
    case GLSL_TYPE_INTERFACE:
-      blob_write_uint32(blob, (type->base_type) << 24);
+      blob_write_uint32(blob, encoded.u32);
       blob_write_string(blob, type->name);
       blob_write_uint32(blob, type->length);
 
@@ -2657,28 +2674,28 @@ encode_type_to_blob(struct blob *blob, const glsl_type *type)
       }
       return;
    case GLSL_TYPE_VOID:
-      encoding = (type->base_type << 24);
       break;
    case GLSL_TYPE_ERROR:
    default:
       assert(!"Cannot encode type!");
-      encoding = 0;
+      encoded.u32 = 0;
       break;
    }
 
-   blob_write_uint32(blob, encoding);
+   blob_write_uint32(blob, encoded.u32);
 }
 
 const glsl_type *
 decode_type_from_blob(struct blob_reader *blob)
 {
-   uint32_t u = blob_read_uint32(blob);
+   union packed_type encoded;
+   encoded.u32 = blob_read_uint32(blob);
 
-   if (u == 0) {
+   if (encoded.u32 == 0) {
       return NULL;
    }
 
-   glsl_base_type base_type = (glsl_base_type) (u >> 24);
+   glsl_base_type base_type = (glsl_base_type)encoded.basic.base_type;
 
    switch (base_type) {
    case GLSL_TYPE_UINT:
@@ -2694,20 +2711,22 @@ decode_type_from_blob(struct blob_reader *blob)
    case GLSL_TYPE_INT64:
    case GLSL_TYPE_BOOL: {
       unsigned explicit_stride = blob_read_uint32(blob);
-      return glsl_type::get_instance(base_type, (u >> 4) & 0x0f, u & 0x0f,
-                                     explicit_stride, (u >> 10) & 0x1);
+      return glsl_type::get_instance(base_type, encoded.basic.vector_elements,
+                                     encoded.basic.matrix_columns,
+                                     explicit_stride,
+                                     encoded.basic.interface_row_major);
    }
    case GLSL_TYPE_SAMPLER:
-      return glsl_type::get_sampler_instance((enum glsl_sampler_dim) ((u >> 4) & 0x0f),
-                                             (u >> 3) & 0x01,
-                                             (u >> 2) & 0x01,
-                                             (glsl_base_type) ((u >> 0) & 0x03));
+      return glsl_type::get_sampler_instance((enum glsl_sampler_dim)encoded.sampler.dimensionality,
+                                             encoded.sampler.shadow,
+                                             encoded.sampler.array,
+                                             (glsl_base_type) encoded.sampler.sampled_type);
    case GLSL_TYPE_SUBROUTINE:
       return glsl_type::get_subroutine_instance(blob_read_string(blob));
    case GLSL_TYPE_IMAGE:
-      return glsl_type::get_image_instance((enum glsl_sampler_dim) ((u >> 3) & 0x0f),
-                                             (u >> 2) & 0x01,
-                                             (glsl_base_type) ((u >> 0) & 0x03));
+      return glsl_type::get_image_instance((enum glsl_sampler_dim)encoded.sampler.dimensionality,
+                                           encoded.sampler.array,
+                                           (glsl_base_type) encoded.sampler.sampled_type);
    case GLSL_TYPE_ATOMIC_UINT:
       return glsl_type::atomic_uint_type;
    case GLSL_TYPE_ARRAY: {
