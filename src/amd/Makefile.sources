@@ -85,6 +85,7 @@ ACO_FILES = \
 	compiler/aco_register_allocation.cpp \
 	compiler/aco_live_var_analysis.cpp \
 	compiler/aco_lower_bool_phis.cpp \
+	compiler/aco_lower_to_cssa.cpp \
 	compiler/aco_lower_to_hw_instr.cpp \
 	compiler/aco_optimizer.cpp \
 	compiler/aco_opt_value_numbering.cpp \
