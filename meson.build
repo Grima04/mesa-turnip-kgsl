@@ -1251,6 +1251,17 @@ endif
 # TODO: some of these may be conditional
 dep_zlib = dependency('zlib', version : '>= 1.2.3', fallback : ['zlib', 'zlib_dep'])
 pre_args += '-DHAVE_ZLIB'
+
+_zstd = get_option('zstd')
+if _zstd != 'false'
+  dep_zstd = dependency('libzstd', required : _zstd == 'true')
+  if dep_zstd.found()
+    pre_args += '-DHAVE_ZSTD'
+  endif
+else
+  dep_zstd = null_dep
+endif
+
 dep_thread = dependency('threads')
 if dep_thread.found() and host_machine.system() != 'windows'
   pre_args += '-DHAVE_PTHREAD'

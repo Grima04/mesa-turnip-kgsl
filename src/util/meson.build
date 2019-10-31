@@ -149,6 +149,7 @@ deps_for_libmesa_util = [
   dep_atomic,
   dep_m,
   dep_valgrind,
+  dep_zstd,
 ]
 
 if with_platform_android
