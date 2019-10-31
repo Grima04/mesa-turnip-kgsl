@@ -355,13 +355,13 @@ struct arg_info {
 	uint8_t num_vgprs_used;
 };
 
-enum ac_arg_regfile {
+enum radv_arg_regfile {
 	ARG_SGPR,
 	ARG_VGPR,
 };
 
 static void
-add_arg(struct arg_info *info, enum ac_arg_regfile regfile, LLVMTypeRef type,
+add_arg(struct arg_info *info, enum radv_arg_regfile regfile, LLVMTypeRef type,
 	LLVMValueRef *param_ptr)
 {
 	assert(info->count < MAX_ARGS);
