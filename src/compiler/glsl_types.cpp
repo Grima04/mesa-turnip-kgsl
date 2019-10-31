@@ -2590,6 +2590,11 @@ union packed_type {
       unsigned sampled_type:2;
       unsigned _pad:19;
    } sampler;
+   struct {
+      unsigned base_type:5;
+      unsigned length:13;
+      unsigned explicit_stride:14;
+   } array;
 };
 
 void
@@ -2649,9 +2654,16 @@ encode_type_to_blob(struct blob *blob, const glsl_type *type)
    case GLSL_TYPE_ATOMIC_UINT:
       break;
    case GLSL_TYPE_ARRAY:
+      encoded.array.length = MIN2(type->length, 0x1fff);
+      encoded.array.explicit_stride = MIN2(type->explicit_stride, 0x3fff);
       blob_write_uint32(blob, encoded.u32);
-      blob_write_uint32(blob, type->length);
-      blob_write_uint32(blob, type->explicit_stride);
+      /* If we don't have enough bits for length or explicit_stride, store it
+       * separately.
+       */
+      if (encoded.array.length == 0x1fff)
+         blob_write_uint32(blob, type->length);
+      if (encoded.array.explicit_stride == 0x3fff)
+         blob_write_uint32(blob, type->explicit_stride);
       encode_type_to_blob(blob, type->fields.array);
       return;
    case GLSL_TYPE_STRUCT:
@@ -2739,8 +2751,12 @@ decode_type_from_blob(struct blob_reader *blob)
    case GLSL_TYPE_ATOMIC_UINT:
       return glsl_type::atomic_uint_type;
    case GLSL_TYPE_ARRAY: {
-      unsigned length = blob_read_uint32(blob);
-      unsigned explicit_stride = blob_read_uint32(blob);
+      unsigned length = encoded.array.length;
+      if (length == 0x1fff)
+         length = blob_read_uint32(blob);
+      unsigned explicit_stride = encoded.array.explicit_stride;
+      if (explicit_stride == 0x3fff)
+         explicit_stride = blob_read_uint32(blob);
       return glsl_type::get_array_instance(decode_type_from_blob(blob),
                                            length, explicit_stride);
    }
