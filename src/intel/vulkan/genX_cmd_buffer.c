@@ -2072,34 +2072,6 @@ cmd_buffer_alloc_push_constants(struct anv_cmd_buffer *cmd_buffer)
    cmd_buffer->state.push_constants_dirty |= VK_SHADER_STAGE_ALL_GRAPHICS;
 }
 
-static const struct anv_descriptor *
-anv_descriptor_for_binding(const struct anv_cmd_pipeline_state *pipe_state,
-                           const struct anv_pipeline_binding *binding)
-{
-   assert(binding->set < MAX_SETS);
-   const struct anv_descriptor_set *set =
-      pipe_state->descriptors[binding->set];
-   const uint32_t offset =
-      set->layout->binding[binding->binding].descriptor_index;
-   return &set->descriptors[offset + binding->index];
-}
-
-static uint32_t
-dynamic_offset_for_binding(const struct anv_cmd_pipeline_state *pipe_state,
-                           const struct anv_pipeline_binding *binding)
-{
-   assert(binding->set < MAX_SETS);
-   const struct anv_descriptor_set *set =
-      pipe_state->descriptors[binding->set];
-
-   uint32_t dynamic_offset_idx =
-      pipe_state->layout->set[binding->set].dynamic_offset_start +
-      set->layout->binding[binding->binding].dynamic_offset_index +
-      binding->index;
-
-   return pipe_state->dynamic_offsets[dynamic_offset_idx];
-}
-
 static struct anv_address
 anv_descriptor_set_address(struct anv_cmd_buffer *cmd_buffer,
                            struct anv_descriptor_set *set)
@@ -2179,7 +2151,6 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
       if (binding->set == ANV_DESCRIPTOR_SET_COLOR_ATTACHMENTS) {
          /* Color attachment binding */
          assert(stage == MESA_SHADER_FRAGMENT);
-         assert(binding->binding == 0);
          if (binding->index < subpass->color_count) {
             const unsigned att =
                subpass->color_attachments[binding->index].attachment;
@@ -2247,7 +2218,7 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
           * given by binding->binding.  (Yes, that's confusing.)
           */
          struct anv_descriptor_set *set =
-            pipe_state->descriptors[binding->binding];
+            pipe_state->descriptors[binding->index];
          assert(set->desc_mem.alloc_size);
          assert(set->desc_surface_state.alloc_size);
          bt_map[s] = set->desc_surface_state.offset + state_offset;
@@ -2257,7 +2228,7 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
       }
 
       const struct anv_descriptor *desc =
-         anv_descriptor_for_binding(pipe_state, binding);
+         &pipe_state->descriptors[binding->set]->descriptors[binding->index];
 
       switch (desc->type) {
       case VK_DESCRIPTOR_TYPE_SAMPLER:
@@ -2339,7 +2310,7 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
       case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC: {
          /* Compute the offset within the buffer */
          uint32_t dynamic_offset =
-            dynamic_offset_for_binding(pipe_state, binding);
+            pipe_state->dynamic_offsets[binding->dynamic_offset_index];
          uint64_t offset = desc->offset + dynamic_offset;
          /* Clamp to the buffer size */
          offset = MIN2(offset, desc->buffer->size);
@@ -2413,7 +2384,7 @@ emit_samplers(struct anv_cmd_buffer *cmd_buffer,
    for (uint32_t s = 0; s < map->sampler_count; s++) {
       struct anv_pipeline_binding *binding = &map->sampler_to_descriptor[s];
       const struct anv_descriptor *desc =
-         anv_descriptor_for_binding(pipe_state, binding);
+         &pipe_state->descriptors[binding->set]->descriptors[binding->index];
 
       if (desc->type != VK_DESCRIPTOR_TYPE_SAMPLER &&
           desc->type != VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
@@ -2608,7 +2579,7 @@ cmd_buffer_flush_push_constants(struct anv_cmd_buffer *cmd_buffer,
                    * confusing.)
                    */
                   struct anv_descriptor_set *set =
-                     gfx_state->base.descriptors[binding->binding];
+                     gfx_state->base.descriptors[binding->index];
                   struct anv_address desc_buffer_addr =
                      anv_descriptor_set_address(cmd_buffer, set);
                   const unsigned desc_buffer_size = set->desc_mem.alloc_size;
@@ -2618,8 +2589,10 @@ cmd_buffer_flush_push_constants(struct anv_cmd_buffer *cmd_buffer,
                   read_addr = anv_address_add(desc_buffer_addr,
                                               range->start * 32);
                } else {
+                  struct anv_descriptor_set *set =
+                     gfx_state->base.descriptors[binding->set];
                   const struct anv_descriptor *desc =
-                     anv_descriptor_for_binding(&gfx_state->base, binding);
+                     &set->descriptors[binding->index];
 
                   if (desc->type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER) {
                      read_len = MIN2(range->length,
@@ -2630,7 +2603,7 @@ cmd_buffer_flush_push_constants(struct anv_cmd_buffer *cmd_buffer,
                      assert(desc->type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC);
 
                      uint32_t dynamic_offset =
-                        dynamic_offset_for_binding(&gfx_state->base, binding);
+                        gfx_state->base.dynamic_offsets[binding->dynamic_offset_index];
                      uint32_t buf_offset =
                         MIN2(desc->offset + dynamic_offset, desc->buffer->size);
                      uint32_t buf_range =

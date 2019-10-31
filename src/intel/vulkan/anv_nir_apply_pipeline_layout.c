@@ -1137,7 +1137,7 @@ anv_nir_apply_pipeline_layout(const struct anv_physical_device *pdevice,
          map->surface_to_descriptor[map->surface_count] =
             (struct anv_pipeline_binding) {
                .set = ANV_DESCRIPTOR_SET_DESCRIPTORS,
-               .binding = s,
+               .index = s,
             };
          state.set[s].desc_offset = map->surface_count;
          map->surface_count++;
@@ -1226,16 +1226,28 @@ anv_nir_apply_pipeline_layout(const struct anv_physical_device *pdevice,
             state.set[set].surface_offsets[b] = BINDLESS_OFFSET;
          } else {
             state.set[set].surface_offsets[b] = map->surface_count;
-            struct anv_sampler **samplers = binding->immutable_samplers;
-            for (unsigned i = 0; i < binding->array_size; i++) {
-               uint8_t planes = samplers ? samplers[i]->n_planes : 1;
-               for (uint8_t p = 0; p < planes; p++) {
+            if (binding->dynamic_offset_index < 0) {
+               struct anv_sampler **samplers = binding->immutable_samplers;
+               for (unsigned i = 0; i < binding->array_size; i++) {
+                  uint8_t planes = samplers ? samplers[i]->n_planes : 1;
+                  for (uint8_t p = 0; p < planes; p++) {
+                     map->surface_to_descriptor[map->surface_count++] =
+                        (struct anv_pipeline_binding) {
+                           .set = set,
+                           .index = binding->descriptor_index + i,
+                           .plane = p,
+                        };
+                  }
+               }
+            } else {
+               for (unsigned i = 0; i < binding->array_size; i++) {
                   map->surface_to_descriptor[map->surface_count++] =
                      (struct anv_pipeline_binding) {
                         .set = set,
-                        .binding = b,
-                        .index = i,
-                        .plane = p,
+                        .index = binding->descriptor_index + i,
+                        .dynamic_offset_index =
+                           layout->set[set].dynamic_offset_start +
+                           binding->dynamic_offset_index + i,
                      };
                }
             }
@@ -1264,8 +1276,7 @@ anv_nir_apply_pipeline_layout(const struct anv_physical_device *pdevice,
                   map->sampler_to_descriptor[map->sampler_count++] =
                      (struct anv_pipeline_binding) {
                         .set = set,
-                        .binding = b,
-                        .index = i,
+                        .index = binding->descriptor_index + i,
                         .plane = p,
                      };
                }
@@ -1294,8 +1305,9 @@ anv_nir_apply_pipeline_layout(const struct anv_physical_device *pdevice,
 
       const uint32_t set = var->data.descriptor_set;
       const uint32_t binding = var->data.binding;
-      const uint32_t array_size =
-         layout->set[set].layout->binding[binding].array_size;
+      struct anv_descriptor_set_binding_layout *bind_layout =
+            &layout->set[set].layout->binding[binding];
+      const uint32_t array_size = bind_layout->array_size;
 
       if (state.set[set].use_count[binding] == 0)
          continue;
@@ -1307,8 +1319,7 @@ anv_nir_apply_pipeline_layout(const struct anv_physical_device *pdevice,
          &map->surface_to_descriptor[state.set[set].surface_offsets[binding]];
       for (unsigned i = 0; i < array_size; i++) {
          assert(pipe_binding[i].set == set);
-         assert(pipe_binding[i].binding == binding);
-         assert(pipe_binding[i].index == i);
+         assert(pipe_binding[i].index == bind_layout->descriptor_index + i);
 
          if (dim == GLSL_SAMPLER_DIM_SUBPASS ||
              dim == GLSL_SAMPLER_DIM_SUBPASS_MS)

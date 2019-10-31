@@ -926,14 +926,12 @@ anv_pipeline_link_fs(const struct brw_compiler *compiler,
          if (stage->key.wm.color_outputs_valid & BITFIELD_BIT(rt)) {
             rt_bindings[rt] = (struct anv_pipeline_binding) {
                .set = ANV_DESCRIPTOR_SET_COLOR_ATTACHMENTS,
-               .binding = 0,
                .index = rt,
             };
          } else {
             /* Setup a null render target */
             rt_bindings[rt] = (struct anv_pipeline_binding) {
                .set = ANV_DESCRIPTOR_SET_COLOR_ATTACHMENTS,
-               .binding = 0,
                .index = UINT32_MAX,
             };
          }
@@ -943,7 +941,6 @@ anv_pipeline_link_fs(const struct brw_compiler *compiler,
       /* Setup a null render target */
       rt_bindings[0] = (struct anv_pipeline_binding) {
          .set = ANV_DESCRIPTOR_SET_COLOR_ATTACHMENTS,
-         .binding = 0,
          .index = UINT32_MAX,
       };
       num_rt_bindings = 1;

@@ -1111,7 +1111,6 @@ emit_cb_state(struct anv_pipeline *pipeline,
          continue;
       }
 
-      assert(binding->binding == 0);
       const VkPipelineColorBlendAttachmentState *a =
          &info->pAttachments[binding->index];
 

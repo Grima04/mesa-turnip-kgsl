@@ -2012,25 +2012,32 @@ anv_descriptor_set_destroy(struct anv_device *device,
 #define ANV_DESCRIPTOR_SET_COLOR_ATTACHMENTS UINT8_MAX
 
 struct anv_pipeline_binding {
-   /* The descriptor set this surface corresponds to.  The special value of
-    * ANV_DESCRIPTOR_SET_COLOR_ATTACHMENTS indicates that the offset refers
-    * to a color attachment and not a regular descriptor.
+   /** Index in the descriptor set
+    *
+    * This is a flattened index; the descriptor set layout is already taken
+    * into account.
+    */
+   uint32_t index;
+
+   /** The descriptor set this surface corresponds to.
+    *
+    * The special ANV_DESCRIPTOR_SET_* values above indicates that this
+    * binding is not a normal descriptor set but something else.
     */
    uint8_t set;
 
-   /* Binding in the descriptor set */
-   uint32_t binding;
+   union {
+      /** Plane in the binding index for images */
+      uint8_t plane;
 
-   /* Index in the binding */
-   uint32_t index;
+      /** Input attachment index (relative to the subpass) */
+      uint8_t input_attachment_index;
 
-   /* Plane in the binding index */
-   uint8_t plane;
+      /** Dynamic offset index (for dynamic UBOs and SSBOs) */
+      uint8_t dynamic_offset_index;
+   };
 
-   /* Input attachment index (relative to the subpass) */
-   uint8_t input_attachment_index;
-
-   /* For a storage image, whether it is write-only */
+   /** For a storage image, whether it is write-only */
    bool write_only;
 };
 
@@ -2468,7 +2475,6 @@ struct anv_attachment_state {
  */
 struct anv_cmd_pipeline_state {
    struct anv_pipeline *pipeline;
-   struct anv_pipeline_layout *layout;
 
    struct anv_descriptor_set *descriptors[MAX_SETS];
    uint32_t dynamic_offsets[MAX_DYNAMIC_BUFFERS];
