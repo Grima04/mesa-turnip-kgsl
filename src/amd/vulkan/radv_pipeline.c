@@ -1779,9 +1779,18 @@ gfx10_get_ngg_info(const struct radv_pipeline_key *key,
 
 	/* Round up towards full wave sizes for better ALU utilization. */
 	if (!max_vert_out_per_gs_instance) {
-		const unsigned wavesize = pipeline->device->physical_device->ge_wave_size;
 		unsigned orig_max_esverts;
 		unsigned orig_max_gsprims;
+		unsigned wavesize;
+
+		if (gs_type == MESA_SHADER_GEOMETRY) {
+			wavesize = gs_info->wave_size;
+		} else {
+			wavesize = nir[MESA_SHADER_TESS_CTRL]
+				? infos[MESA_SHADER_TESS_EVAL].wave_size
+				: infos[MESA_SHADER_VERTEX].wave_size;
+		}
+
 		do {
 			orig_max_esverts = max_esverts;
 			orig_max_gsprims = max_gsprims;
