@@ -503,6 +503,123 @@ v3d_emit_z_stencil_config(struct v3d_job *job, struct v3d_surface *surf,
 
 #define div_round_up(a, b) (((a) + (b) - 1) / b)
 
+static void
+emit_render_layer(struct v3d_job *job, uint32_t layer)
+{
+        uint32_t supertile_w = 1, supertile_h = 1;
+
+        /* If doing multicore binning, we would need to initialize each
+         * core's tile list here.
+         */
+        uint32_t tile_alloc_offset =
+                layer * job->draw_tiles_x * job->draw_tiles_y * 64;
+        cl_emit(&job->rcl, MULTICORE_RENDERING_TILE_LIST_SET_BASE, list) {
+                list.address = cl_address(job->tile_alloc, tile_alloc_offset);
+        }
+
+        cl_emit(&job->rcl, MULTICORE_RENDERING_SUPERTILE_CFG, config) {
+                uint32_t frame_w_in_supertiles, frame_h_in_supertiles;
+                const uint32_t max_supertiles = 256;
+
+                /* Size up our supertiles until we get under the limit. */
+                for (;;) {
+                        frame_w_in_supertiles = div_round_up(job->draw_tiles_x,
+                                                             supertile_w);
+                        frame_h_in_supertiles = div_round_up(job->draw_tiles_y,
+                                                             supertile_h);
+                        if (frame_w_in_supertiles *
+                                frame_h_in_supertiles < max_supertiles) {
+                                break;
+                        }
+
+                        if (supertile_w < supertile_h)
+                                supertile_w++;
+                        else
+                                supertile_h++;
+                }
+
+                config.number_of_bin_tile_lists = 1;
+                config.total_frame_width_in_tiles = job->draw_tiles_x;
+                config.total_frame_height_in_tiles = job->draw_tiles_y;
+
+                config.supertile_width_in_tiles = supertile_w;
+                config.supertile_height_in_tiles = supertile_h;
+
+                config.total_frame_width_in_supertiles = frame_w_in_supertiles;
+                config.total_frame_height_in_supertiles = frame_h_in_supertiles;
+        }
+
+        /* Start by clearing the tile buffer. */
+        cl_emit(&job->rcl, TILE_COORDINATES, coords) {
+                coords.tile_column_number = 0;
+                coords.tile_row_number = 0;
+        }
+
+        /* Emit an initial clear of the tile buffers.  This is necessary
+         * for any buffers that should be cleared (since clearing
+         * normally happens at the *end* of the generic tile list), but
+         * it's also nice to clear everything so the first tile doesn't
+         * inherit any contents from some previous frame.
+         *
+         * Also, implement the GFXH-1742 workaround.  There's a race in
+         * the HW between the RCL updating the TLB's internal type/size
+         * and thespawning of the QPU instances using the TLB's current
+         * internal type/size.  To make sure the QPUs get the right
+         * state, we need 1 dummy store in between internal type/size
+         * changes on V3D 3.x, and 2 dummy stores on 4.x.
+         */
+#if V3D_VERSION < 40
+        cl_emit(&job->rcl, STORE_TILE_BUFFER_GENERAL, store) {
+                store.buffer_to_store = NONE;
+        }
+#else
+        for (int i = 0; i < 2; i++) {
+                if (i > 0)
+                        cl_emit(&job->rcl, TILE_COORDINATES, coords);
+                cl_emit(&job->rcl, END_OF_LOADS, end);
+                cl_emit(&job->rcl, STORE_TILE_BUFFER_GENERAL, store) {
+                        store.buffer_to_store = NONE;
+                }
+                if (i == 0) {
+                        cl_emit(&job->rcl, CLEAR_TILE_BUFFERS, clear) {
+                                clear.clear_z_stencil_buffer = true;
+                                clear.clear_all_render_targets = true;
+                        }
+                }
+                cl_emit(&job->rcl, END_OF_TILE_MARKER, end);
+        }
+#endif
+
+        cl_emit(&job->rcl, FLUSH_VCD_CACHE, flush);
+
+        v3d_rcl_emit_generic_per_tile_list(job, layer);
+
+        /* XXX perf: We should expose GL_MESA_tile_raster_order to
+         * improve X11 performance, but we should use Morton order
+         * otherwise to improve cache locality.
+         */
+        uint32_t supertile_w_in_pixels = job->tile_width * supertile_w;
+        uint32_t supertile_h_in_pixels = job->tile_height * supertile_h;
+        uint32_t min_x_supertile = job->draw_min_x / supertile_w_in_pixels;
+        uint32_t min_y_supertile = job->draw_min_y / supertile_h_in_pixels;
+
+        uint32_t max_x_supertile = 0;
+        uint32_t max_y_supertile = 0;
+        if (job->draw_max_x != 0 && job->draw_max_y != 0) {
+                max_x_supertile = (job->draw_max_x - 1) / supertile_w_in_pixels;
+                max_y_supertile = (job->draw_max_y - 1) / supertile_h_in_pixels;
+        }
+
+        for (int y = min_y_supertile; y <= max_y_supertile; y++) {
+                for (int x = min_x_supertile; x <= max_x_supertile; x++) {
+                        cl_emit(&job->rcl, SUPERTILE_COORDINATES, coords) {
+                                coords.column_number_in_supertiles = x;
+                                coords.row_number_in_supertiles = y;
+                        }
+                }
+        }
+}
+
 void
 v3dX(emit_rcl)(struct v3d_job *job)
 {
@@ -700,121 +817,8 @@ v3dX(emit_rcl)(struct v3d_job *job)
          * of the loop.
          */
         assert(job->num_layers > 0 || (job->load == 0 && job->store == 0));
-        for (int layer = 0; layer < MAX2(1, job->num_layers); layer++) {
-                uint32_t supertile_w = 1, supertile_h = 1;
-
-                /* If doing multicore binning, we would need to initialize each core's
-                 * tile list here.
-                 */
-                uint32_t tile_alloc_offset =
-                        layer * job->draw_tiles_x * job->draw_tiles_y * 64;
-                cl_emit(&job->rcl, MULTICORE_RENDERING_TILE_LIST_SET_BASE, list) {
-                        list.address =
-                                cl_address(job->tile_alloc, tile_alloc_offset);
-                }
-
-                cl_emit(&job->rcl, MULTICORE_RENDERING_SUPERTILE_CFG, config) {
-                        uint32_t frame_w_in_supertiles, frame_h_in_supertiles;
-                        const uint32_t max_supertiles = 256;
-
-                        /* Size up our supertiles until we get under the limit. */
-                        for (;;) {
-                                frame_w_in_supertiles = div_round_up(job->draw_tiles_x,
-                                                                     supertile_w);
-                                frame_h_in_supertiles = div_round_up(job->draw_tiles_y,
-                                                                     supertile_h);
-                                if (frame_w_in_supertiles * frame_h_in_supertiles <
-                                    max_supertiles) {
-                                        break;
-                                }
-
-                                if (supertile_w < supertile_h)
-                                        supertile_w++;
-                                else
-                                        supertile_h++;
-                        }
-
-                        config.number_of_bin_tile_lists = 1;
-                        config.total_frame_width_in_tiles = job->draw_tiles_x;
-                        config.total_frame_height_in_tiles = job->draw_tiles_y;
-
-                        config.supertile_width_in_tiles = supertile_w;
-                        config.supertile_height_in_tiles = supertile_h;
-
-                        config.total_frame_width_in_supertiles = frame_w_in_supertiles;
-                        config.total_frame_height_in_supertiles = frame_h_in_supertiles;
-                }
-
-                /* Start by clearing the tile buffer. */
-                cl_emit(&job->rcl, TILE_COORDINATES, coords) {
-                        coords.tile_column_number = 0;
-                        coords.tile_row_number = 0;
-                }
-
-                /* Emit an initial clear of the tile buffers.  This is necessary for
-                 * any buffers that should be cleared (since clearing normally happens
-                 * at the *end* of the generic tile list), but it's also nice to clear
-                 * everything so the first tile doesn't inherit any contents from some
-                 * previous frame.
-                 *
-                 * Also, implement the GFXH-1742 workaround.  There's a race in the HW
-                 * between the RCL updating the TLB's internal type/size and the
-                 * spawning of the QPU instances using the TLB's current internal
-                 * type/size.  To make sure the QPUs get the right state,, we need 1
-                 * dummy store in between internal type/size changes on V3D 3.x, and 2
-                 * dummy stores on 4.x.
-                 */
-#if V3D_VERSION < 40
-                cl_emit(&job->rcl, STORE_TILE_BUFFER_GENERAL, store) {
-                        store.buffer_to_store = NONE;
-                }
-#else
-                for (int i = 0; i < 2; i++) {
-                        if (i > 0)
-                                cl_emit(&job->rcl, TILE_COORDINATES, coords);
-                        cl_emit(&job->rcl, END_OF_LOADS, end);
-                        cl_emit(&job->rcl, STORE_TILE_BUFFER_GENERAL, store) {
-                                store.buffer_to_store = NONE;
-                        }
-                        if (i == 0) {
-                                cl_emit(&job->rcl, CLEAR_TILE_BUFFERS, clear) {
-                                        clear.clear_z_stencil_buffer = true;
-                                        clear.clear_all_render_targets = true;
-                                }
-                        }
-                        cl_emit(&job->rcl, END_OF_TILE_MARKER, end);
-                }
-#endif
-
-                cl_emit(&job->rcl, FLUSH_VCD_CACHE, flush);
-
-                v3d_rcl_emit_generic_per_tile_list(job, layer);
-
-                /* XXX perf: We should expose GL_MESA_tile_raster_order to improve X11
-                 * performance, but we should use Morton order otherwise to improve
-                 * cache locality.
-                 */
-                uint32_t supertile_w_in_pixels = job->tile_width * supertile_w;
-                uint32_t supertile_h_in_pixels = job->tile_height * supertile_h;
-                uint32_t min_x_supertile = job->draw_min_x / supertile_w_in_pixels;
-                uint32_t min_y_supertile = job->draw_min_y / supertile_h_in_pixels;
-
-                uint32_t max_x_supertile = 0;
-                uint32_t max_y_supertile = 0;
-                if (job->draw_max_x != 0 && job->draw_max_y != 0) {
-                        max_x_supertile = (job->draw_max_x - 1) / supertile_w_in_pixels;
-                        max_y_supertile = (job->draw_max_y - 1) / supertile_h_in_pixels;
-                }
-
-                for (int y = min_y_supertile; y <= max_y_supertile; y++) {
-                        for (int x = min_x_supertile; x <= max_x_supertile; x++) {
-                                cl_emit(&job->rcl, SUPERTILE_COORDINATES, coords) {
-                                        coords.column_number_in_supertiles = x;
-                                        coords.row_number_in_supertiles = y;
-                                }
-                        }
-                }
-        }
+        for (int layer = 0; layer < MAX2(1, job->num_layers); layer++)
+                emit_render_layer(job, layer);
 
         cl_emit(&job->rcl, END_OF_RENDERING, end);
 }
