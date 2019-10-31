@@ -136,17 +136,38 @@ mir_pack_swizzle_alu(midgard_instruction *ins)
         for (unsigned i = 0; i < 2; ++i) {
                 unsigned packed = 0;
 
-                /* TODO: non-32-bit, non-vec4 */
+                /* For 32-bit, swizzle packing is stupid-simple. For 16-bit,
+                 * the strategy is to check whether the nibble we're on is
+                 * upper or lower. We need all components to be on the same
+                 * "side"; that much is enforced by the ISA and should have
+                 * been lowered. TODO: 8-bit/64-bit packing. TODO: vec8 */
+
+                unsigned first = ins->mask ? ffs(ins->mask) - 1 : 0;
+                bool upper = ins->swizzle[i][first] > 3;
+
+                if (upper && ins->mask)
+                        assert(mir_srcsize(ins, i) <= midgard_reg_mode_16);
+
                 for (unsigned c = 0; c < 4; ++c) {
                         unsigned v = ins->swizzle[i][c];
 
-                        /* Check vec4 */
-                        assert(v <= 3);
+                        bool t_upper = v > 3;
+
+                        /* Ensure we're doing something sane */
+
+                        if (ins->mask & (1 << c)) {
+                                assert(t_upper == upper);
+                                assert(v <= 7);
+                        }
+
+                        /* Use the non upper part */
+                        v &= 0x3;
 
                         packed |= v << (2 * c);
                 }
 
                 src[i].swizzle = packed;
+                src[i].rep_high = upper;
         }
 
         ins->alu.src1 = vector_alu_srco_unsigned(src[0]);
