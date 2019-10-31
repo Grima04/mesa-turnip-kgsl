@@ -53,8 +53,8 @@ xsi:schemaLocation="http://nouveau.freedesktop.org/ rules-ng.xsd">
 	<value value="0x82" name="RB6_R32G32B32A32_FLOAT"/>
 	<value value="0x83" name="RB6_R32G32B32A32_UINT"/>
 	<value value="0x84" name="RB6_R32G32B32A32_SINT"/>
-	<value value="0x91" name="RB6_Z24_UNORM_S8_UINT"/>
-	<value value="0xa0" name="RB6_X8Z24_UNORM"/>
+	<value value="0x91" name="RB6_Z24_UNORM_S8_UINT_AS_R8G8B8A8"/>
+	<value value="0xa0" name="RB6_Z24_UNORM_S8_UINT"/>
 </enum>
 
 <!-- these might be same as a5xx -->

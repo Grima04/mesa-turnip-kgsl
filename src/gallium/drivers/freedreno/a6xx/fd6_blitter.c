@@ -432,7 +432,7 @@ emit_blit_or_clear_texture(struct fd_context *ctx, struct fd_ringbuffer *ring,
 			color->ui[2] = (depth_unorm24 >> 16) & 0xff;
 			color->ui[3] = stencil;
 
-			dfmt = RB6_Z24_UNORM_S8_UINT;
+			dfmt = RB6_Z24_UNORM_S8_UINT_AS_R8G8B8A8;
 			break;
 		}
 		case PIPE_FORMAT_B5G6R5_UNORM:

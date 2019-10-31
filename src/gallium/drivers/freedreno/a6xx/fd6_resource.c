@@ -206,8 +206,8 @@ ok_ubwc_format(enum pipe_format pfmt)
 	case RB6_R8G8_SINT:
 	case RB6_R8G8_UINT:
 	case RB6_R8G8_UNORM:
-	case RB6_X8Z24_UNORM:
 	case RB6_Z24_UNORM_S8_UINT:
+	case RB6_Z24_UNORM_S8_UINT_AS_R8G8B8A8:
 		return true;
 	default:
 		return false;

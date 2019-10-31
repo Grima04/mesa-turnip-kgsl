@@ -110,8 +110,8 @@ fd6_ifmt(enum a6xx_color_fmt fmt)
 	case RB6_R5G5B5A1_UNORM:
 	case RB6_R5G6B5_UNORM:
 	case RB6_R10G10B10A2_UINT:
-	case RB6_X8Z24_UNORM:
 	case RB6_Z24_UNORM_S8_UINT:
+	case RB6_Z24_UNORM_S8_UINT_AS_R8G8B8A8:
 		return R2D_RAW;
 	default:
 		unreachable("bad format");
