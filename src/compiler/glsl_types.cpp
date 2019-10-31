@@ -2578,9 +2578,9 @@ union packed_type {
    struct {
       unsigned base_type:5;
       unsigned interface_row_major:1;
-      unsigned vector_elements:6;
-      unsigned matrix_columns:4;
-      unsigned _pad:16;
+      unsigned vector_elements:3;
+      unsigned matrix_columns:3;
+      unsigned _pad:20;
    } basic;
    struct {
       unsigned base_type:5;
@@ -2619,6 +2619,8 @@ encode_type_to_blob(struct blob *blob, const glsl_type *type)
    case GLSL_TYPE_INT64:
    case GLSL_TYPE_BOOL:
       encoded.basic.interface_row_major = type->interface_row_major;
+      assert(type->vector_elements < 8);
+      assert(type->matrix_columns < 8);
       encoded.basic.vector_elements = type->vector_elements;
       encoded.basic.matrix_columns = type->matrix_columns;
       blob_write_uint32(blob, encoded.u32);
