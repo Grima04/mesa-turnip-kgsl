@@ -93,7 +93,9 @@ INSTANTIATE_TEST_CASE_P(
    OSMesaRenderTest,
    OSMesaRenderTestFixture,
    testing::Values(
-      Params{ OSMESA_RGBA, GL_UNSIGNED_BYTE }
+      Params{ OSMESA_RGBA, GL_UNSIGNED_BYTE },
+      Params{ OSMESA_BGRA, GL_UNSIGNED_BYTE },
+      Params{ OSMESA_ARGB, GL_UNSIGNED_BYTE }
    ),
    name_params
 );
