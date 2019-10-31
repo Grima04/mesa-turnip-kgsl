@@ -3139,8 +3139,27 @@ radv_emit_tess_factor_ring(struct radv_queue *queue, struct radeon_cmdbuf *cs,
 }
 
 static void
+radv_emit_graphics_scratch(struct radv_queue *queue, struct radeon_cmdbuf *cs,
+                           uint32_t size_per_wave, uint32_t waves,
+                           struct radeon_winsys_bo *scratch_bo)
+{
+	if (queue->queue_family_index != RADV_QUEUE_GENERAL)
+		return;
+
+	if (!scratch_bo)
+		return;
+
+	radv_cs_add_buffer(queue->device->ws, cs, scratch_bo);
+
+	radeon_set_context_reg(cs, R_0286E8_SPI_TMPRING_SIZE,
+	                       S_0286E8_WAVES(waves) |
+	                       S_0286E8_WAVESIZE(round_up_u32(size_per_wave, 1024)));
+}
+
+static void
 radv_emit_compute_scratch(struct radv_queue *queue, struct radeon_cmdbuf *cs,
-			  struct radeon_winsys_bo *compute_scratch_bo)
+                          uint32_t size_per_wave, uint32_t waves,
+                          struct radeon_winsys_bo *compute_scratch_bo)
 {
 	uint64_t scratch_va;
 
@@ -3155,6 +3174,10 @@ radv_emit_compute_scratch(struct radv_queue *queue, struct radeon_cmdbuf *cs,
 	radeon_emit(cs, scratch_va);
 	radeon_emit(cs, S_008F04_BASE_ADDRESS_HI(scratch_va >> 32) |
 			S_008F04_SWIZZLE_ENABLE(1));
+
+	radeon_set_sh_reg(cs, R_00B860_COMPUTE_TMPRING_SIZE,
+	                 S_00B860_WAVES(waves) |
+	                 S_00B860_WAVESIZE(round_up_u32(size_per_wave, 1024)));
 }
 
 static void
@@ -3235,8 +3258,10 @@ radv_init_compute_state(struct radeon_cmdbuf *cs, struct radv_queue *queue)
 
 static VkResult
 radv_get_preamble_cs(struct radv_queue *queue,
-                     uint32_t scratch_size,
-                     uint32_t compute_scratch_size,
+		     uint32_t scratch_size_per_wave,
+		     uint32_t scratch_waves,
+		     uint32_t compute_scratch_size_per_wave,
+		     uint32_t compute_scratch_waves,
 		     uint32_t esgs_ring_size,
 		     uint32_t gsvs_ring_size,
 		     bool needs_tess_rings,
@@ -3280,8 +3305,22 @@ radv_get_preamble_cs(struct radv_queue *queue,
 	tess_offchip_ring_size = max_offchip_buffers *
 		queue->device->tess_offchip_block_dw_size * 4;
 
-	if (scratch_size <= queue->scratch_size &&
-	    compute_scratch_size <= queue->compute_scratch_size &&
+	scratch_size_per_wave = MAX2(scratch_size_per_wave, queue->scratch_size_per_wave);
+	if (scratch_size_per_wave)
+		scratch_waves = MIN2(scratch_waves, UINT32_MAX / scratch_size_per_wave);
+	else
+		scratch_waves = 0;
+
+	compute_scratch_size_per_wave = MAX2(compute_scratch_size_per_wave, queue->compute_scratch_size_per_wave);
+	if (compute_scratch_size_per_wave)
+		compute_scratch_waves = MIN2(compute_scratch_waves, UINT32_MAX / compute_scratch_size_per_wave);
+	else
+		compute_scratch_waves = 0;
+
+	if (scratch_size_per_wave <= queue->scratch_size_per_wave &&
+	    scratch_waves <= queue->scratch_waves &&
+	    compute_scratch_size_per_wave <= queue->compute_scratch_size_per_wave &&
+	    compute_scratch_waves <= queue->compute_scratch_waves &&
 	    esgs_ring_size <= queue->esgs_ring_size &&
 	    gsvs_ring_size <= queue->gsvs_ring_size &&
 	    !add_tess_rings && !add_gds && !add_sample_positions &&
@@ -3289,13 +3328,16 @@ radv_get_preamble_cs(struct radv_queue *queue,
 		*initial_full_flush_preamble_cs = queue->initial_full_flush_preamble_cs;
 		*initial_preamble_cs = queue->initial_preamble_cs;
 		*continue_preamble_cs = queue->continue_preamble_cs;
-		if (!scratch_size && !compute_scratch_size && !esgs_ring_size && !gsvs_ring_size &&
-		    !needs_tess_rings && !needs_gds && !needs_sample_positions)
+		if (!scratch_size_per_wave && !compute_scratch_size_per_wave &&
+		    !esgs_ring_size && !gsvs_ring_size && !needs_tess_rings &&
+		    !needs_gds && !needs_sample_positions)
 			*continue_preamble_cs = NULL;
 		return VK_SUCCESS;
 	}
 
-	if (scratch_size > queue->scratch_size) {
+	uint32_t scratch_size = scratch_size_per_wave * scratch_waves;
+	uint32_t queue_scratch_size = queue->scratch_size_per_wave * queue->scratch_waves;
+	if (scratch_size > queue_scratch_size) {
 		scratch_bo = queue->device->ws->buffer_create(queue->device->ws,
 		                                              scratch_size,
 		                                              4096,
@@ -3307,7 +3349,9 @@ radv_get_preamble_cs(struct radv_queue *queue,
 	} else
 		scratch_bo = queue->scratch_bo;
 
-	if (compute_scratch_size > queue->compute_scratch_size) {
+	uint32_t compute_scratch_size = compute_scratch_size_per_wave * compute_scratch_waves;
+	uint32_t compute_queue_scratch_size = queue->compute_scratch_size_per_wave * queue->compute_scratch_waves;
+	if (compute_scratch_size > compute_queue_scratch_size) {
 		compute_scratch_bo = queue->device->ws->buffer_create(queue->device->ws,
 		                                                      compute_scratch_size,
 		                                                      4096,
@@ -3475,7 +3519,10 @@ radv_get_preamble_cs(struct radv_queue *queue,
 		radv_emit_tess_factor_ring(queue, cs, hs_offchip_param,
 					   tess_factor_ring_size, tess_rings_bo);
 		radv_emit_global_shader_pointers(queue, cs, descriptor_bo);
-		radv_emit_compute_scratch(queue, cs, compute_scratch_bo);
+		radv_emit_compute_scratch(queue, cs, compute_scratch_size_per_wave,
+		                          compute_scratch_waves, compute_scratch_bo);
+		radv_emit_graphics_scratch(queue, cs, scratch_size_per_wave,
+		                           scratch_waves, scratch_bo);
 
 		if (gds_bo)
 			radv_cs_add_buffer(queue->device->ws, cs, gds_bo);
@@ -3528,15 +3575,17 @@ radv_get_preamble_cs(struct radv_queue *queue,
 		if (queue->scratch_bo)
 			queue->device->ws->buffer_destroy(queue->scratch_bo);
 		queue->scratch_bo = scratch_bo;
-		queue->scratch_size = scratch_size;
 	}
+	queue->scratch_size_per_wave = scratch_size_per_wave;
+	queue->scratch_waves = scratch_waves;
 
 	if (compute_scratch_bo != queue->compute_scratch_bo) {
 		if (queue->compute_scratch_bo)
 			queue->device->ws->buffer_destroy(queue->compute_scratch_bo);
 		queue->compute_scratch_bo = compute_scratch_bo;
-		queue->compute_scratch_size = compute_scratch_size;
 	}
+	queue->compute_scratch_size_per_wave = compute_scratch_size_per_wave;
+	queue->compute_scratch_waves = compute_scratch_waves;
 
 	if (esgs_ring_bo != queue->esgs_ring_bo) {
 		if (queue->esgs_ring_bo)
@@ -3832,8 +3881,8 @@ radv_get_preambles(struct radv_queue *queue,
                    struct radeon_cmdbuf **initial_preamble_cs,
                    struct radeon_cmdbuf **continue_preamble_cs)
 {
-	uint32_t scratch_size = 0;
-	uint32_t compute_scratch_size = 0;
+	uint32_t scratch_size_per_wave = 0, waves_wanted = 0;
+	uint32_t compute_scratch_size_per_wave = 0, compute_waves_wanted = 0;
 	uint32_t esgs_ring_size = 0, gsvs_ring_size = 0;
 	bool tess_rings_needed = false;
 	bool gds_needed = false;
@@ -3843,9 +3892,12 @@ radv_get_preambles(struct radv_queue *queue,
 		RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer,
 				 cmd_buffers[j]);
 
-		scratch_size = MAX2(scratch_size, cmd_buffer->scratch_size_needed);
-		compute_scratch_size = MAX2(compute_scratch_size,
-		                            cmd_buffer->compute_scratch_size_needed);
+		scratch_size_per_wave = MAX2(scratch_size_per_wave, cmd_buffer->scratch_size_per_wave_needed);
+		waves_wanted = MAX2(waves_wanted, cmd_buffer->scratch_waves_wanted);
+		compute_scratch_size_per_wave = MAX2(compute_scratch_size_per_wave,
+		                                     cmd_buffer->compute_scratch_size_per_wave_needed);
+		compute_waves_wanted = MAX2(compute_waves_wanted,
+		                            cmd_buffer->compute_scratch_waves_wanted);
 		esgs_ring_size = MAX2(esgs_ring_size, cmd_buffer->esgs_ring_size_needed);
 		gsvs_ring_size = MAX2(gsvs_ring_size, cmd_buffer->gsvs_ring_size_needed);
 		tess_rings_needed |= cmd_buffer->tess_rings_needed;
@@ -3853,11 +3905,12 @@ radv_get_preambles(struct radv_queue *queue,
 		sample_positions_needed |= cmd_buffer->sample_positions_needed;
 	}
 
-	return radv_get_preamble_cs(queue, scratch_size, compute_scratch_size,
-	                              esgs_ring_size, gsvs_ring_size, tess_rings_needed,
-	                              gds_needed, sample_positions_needed,
-	                              initial_full_flush_preamble_cs,
-	                              initial_preamble_cs, continue_preamble_cs);
+	return radv_get_preamble_cs(queue, scratch_size_per_wave, waves_wanted,
+	                            compute_scratch_size_per_wave, compute_waves_wanted,
+	                            esgs_ring_size, gsvs_ring_size, tess_rings_needed,
+	                            gds_needed, sample_positions_needed,
+	                            initial_full_flush_preamble_cs,
+	                            initial_preamble_cs, continue_preamble_cs);
 }
 
 struct radv_deferred_queue_submission {

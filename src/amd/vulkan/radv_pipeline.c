@@ -180,7 +180,8 @@ radv_pipeline_scratch_init(struct radv_device *device,
 	unsigned min_waves = 1;
 
 	for (int i = 0; i < MESA_SHADER_STAGES; ++i) {
-		if (pipeline->shaders[i]) {
+		if (pipeline->shaders[i] &&
+		    pipeline->shaders[i]->config.scratch_bytes_per_wave) {
 			unsigned max_stage_waves = device->scratch_waves;
 
 			scratch_bytes_per_wave = MAX2(scratch_bytes_per_wave,
@@ -200,14 +201,6 @@ radv_pipeline_scratch_init(struct radv_device *device,
 		min_waves = MAX2(min_waves, round_up_u32(group_size, 64));
 	}
 
-	if (scratch_bytes_per_wave)
-		max_waves = MIN2(max_waves, 0xffffffffu / scratch_bytes_per_wave);
-
-	if (scratch_bytes_per_wave && max_waves < min_waves) {
-		/* Not really true at this moment, but will be true on first
-		 * execution. Avoid having hanging shaders. */
-		return vk_error(device->instance, VK_ERROR_OUT_OF_DEVICE_MEMORY);
-	}
 	pipeline->scratch_bytes_per_wave = scratch_bytes_per_wave;
 	pipeline->max_waves = max_waves;
 	return VK_SUCCESS;
@@ -4481,10 +4474,6 @@ radv_pipeline_generate_pm4(struct radv_pipeline *pipeline,
 	if (pipeline->device->physical_device->rad_info.chip_class >= GFX10 && !radv_pipeline_has_ngg(pipeline))
 		gfx10_pipeline_generate_ge_cntl(ctx_cs, pipeline, tess);
 
-	radeon_set_context_reg(ctx_cs, R_0286E8_SPI_TMPRING_SIZE,
-			       S_0286E8_WAVES(pipeline->max_waves) |
-			       S_0286E8_WAVESIZE(pipeline->scratch_bytes_per_wave >> 10));
-
 	radeon_set_context_reg(ctx_cs, R_028B54_VGT_SHADER_STAGES_EN, radv_compute_vgt_shader_stages_en(pipeline));
 
 	if (pipeline->device->physical_device->rad_info.chip_class >= GFX7) {
@@ -5071,10 +5060,6 @@ radv_compute_generate_pm4(struct radv_pipeline *pipeline)
 	if (device->physical_device->rad_info.chip_class >= GFX10) {
 		radeon_set_sh_reg(&pipeline->cs, R_00B8A0_COMPUTE_PGM_RSRC3, compute_shader->config.rsrc3);
 	}
-
-	radeon_set_sh_reg(&pipeline->cs, R_00B860_COMPUTE_TMPRING_SIZE,
-			  S_00B860_WAVES(pipeline->max_waves) |
-			  S_00B860_WAVESIZE(pipeline->scratch_bytes_per_wave >> 10));
 
 	/* Calculate best compute resource limits. */
 	threads_per_threadgroup = compute_shader->info.cs.block_size[0] *

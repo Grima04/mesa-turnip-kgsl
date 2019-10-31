@@ -332,8 +332,10 @@ radv_reset_cmd_buffer(struct radv_cmd_buffer *cmd_buffer)
 	}
 
 	cmd_buffer->push_constant_stages = 0;
-	cmd_buffer->scratch_size_needed = 0;
-	cmd_buffer->compute_scratch_size_needed = 0;
+	cmd_buffer->scratch_size_per_wave_needed = 0;
+	cmd_buffer->scratch_waves_wanted = 0;
+	cmd_buffer->compute_scratch_size_per_wave_needed = 0;
+	cmd_buffer->compute_scratch_waves_wanted = 0;
 	cmd_buffer->esgs_ring_size_needed = 0;
 	cmd_buffer->gsvs_ring_size_needed = 0;
 	cmd_buffer->tess_rings_needed = false;
@@ -1147,9 +1149,10 @@ radv_emit_graphics_pipeline(struct radv_cmd_buffer *cmd_buffer)
 	radv_update_multisample_state(cmd_buffer, pipeline);
 	radv_update_binning_state(cmd_buffer, pipeline);
 
-	cmd_buffer->scratch_size_needed =
-	                          MAX2(cmd_buffer->scratch_size_needed,
-	                               pipeline->max_waves * pipeline->scratch_bytes_per_wave);
+	cmd_buffer->scratch_size_per_wave_needed = MAX2(cmd_buffer->scratch_size_per_wave_needed,
+	                                                pipeline->scratch_bytes_per_wave);
+	cmd_buffer->scratch_waves_wanted = MAX2(cmd_buffer->scratch_waves_wanted,
+	                                        pipeline->max_waves);
 
 	if (!cmd_buffer->state.emitted_pipeline ||
 	    cmd_buffer->state.emitted_pipeline->graphics.can_use_guardband !=
@@ -3678,9 +3681,10 @@ radv_emit_compute_pipeline(struct radv_cmd_buffer *cmd_buffer)
 	radeon_check_space(cmd_buffer->device->ws, cmd_buffer->cs, pipeline->cs.cdw);
 	radeon_emit_array(cmd_buffer->cs, pipeline->cs.buf, pipeline->cs.cdw);
 
-	cmd_buffer->compute_scratch_size_needed =
-	                          MAX2(cmd_buffer->compute_scratch_size_needed,
-	                               pipeline->max_waves * pipeline->scratch_bytes_per_wave);
+	cmd_buffer->compute_scratch_size_per_wave_needed = MAX2(cmd_buffer->compute_scratch_size_per_wave_needed,
+	                                                        pipeline->scratch_bytes_per_wave);
+	cmd_buffer->compute_scratch_waves_wanted = MAX2(cmd_buffer->compute_scratch_waves_wanted,
+	                                                pipeline->max_waves);
 
 	radv_cs_add_buffer(cmd_buffer->device->ws, cmd_buffer->cs,
 			   pipeline->shaders[MESA_SHADER_COMPUTE]->bo);
@@ -4009,10 +4013,14 @@ void radv_CmdExecuteCommands(
 	for (uint32_t i = 0; i < commandBufferCount; i++) {
 		RADV_FROM_HANDLE(radv_cmd_buffer, secondary, pCmdBuffers[i]);
 
-		primary->scratch_size_needed = MAX2(primary->scratch_size_needed,
-		                                    secondary->scratch_size_needed);
-		primary->compute_scratch_size_needed = MAX2(primary->compute_scratch_size_needed,
-		                                            secondary->compute_scratch_size_needed);
+		primary->scratch_size_per_wave_needed = MAX2(primary->scratch_size_per_wave_needed,
+		                                             secondary->scratch_size_per_wave_needed);
+		primary->scratch_waves_wanted = MAX2(primary->scratch_waves_wanted,
+		                                     secondary->scratch_waves_wanted);
+		primary->compute_scratch_size_per_wave_needed = MAX2(primary->compute_scratch_size_per_wave_needed,
+		                                                     secondary->compute_scratch_size_per_wave_needed);
+		primary->compute_scratch_waves_wanted = MAX2(primary->compute_scratch_waves_wanted,
+		                                             secondary->compute_scratch_waves_wanted);
 
 		if (secondary->esgs_ring_size_needed > primary->esgs_ring_size_needed)
 			primary->esgs_ring_size_needed = secondary->esgs_ring_size_needed;
