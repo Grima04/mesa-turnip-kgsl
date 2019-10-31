@@ -1265,7 +1265,7 @@ iris_invalidate_resource(struct pipe_context *ctx,
    /* Rebind the buffer, replacing any state referring to the old BO's
     * address, and marking state dirty so it's reemitted.
     */
-   ice->vtbl.rebind_buffer(ice, res, old_bo->gtt_offset);
+   ice->vtbl.rebind_buffer(ice, res);
 
    util_range_set_empty(&res->valid_buffer_range);
 

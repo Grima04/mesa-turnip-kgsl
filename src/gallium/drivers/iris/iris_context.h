@@ -432,8 +432,7 @@ struct iris_vtable {
                                 struct iris_batch *batch,
                                 const struct pipe_grid_info *grid);
    void (*rebind_buffer)(struct iris_context *ice,
-                         struct iris_resource *res,
-                         uint64_t old_address);
+                         struct iris_resource *res);
    void (*resolve_conditional_render)(struct iris_context *ice);
    void (*load_register_reg32)(struct iris_batch *batch, uint32_t dst,
                                uint32_t src);

@@ -6368,8 +6368,7 @@ iris_destroy_state(struct iris_context *ice)
 
 static void
 iris_rebind_buffer(struct iris_context *ice,
-                   struct iris_resource *res,
-                   uint64_t old_address)
+                   struct iris_resource *res)
 {
    struct pipe_context *ctx = &ice->ctx;
    struct iris_screen *screen = (void *) ctx->screen;
@@ -6398,9 +6397,10 @@ iris_rebind_buffer(struct iris_context *ice,
          STATIC_ASSERT(GENX(VERTEX_BUFFER_STATE_BufferStartingAddress_start) == 32);
          STATIC_ASSERT(GENX(VERTEX_BUFFER_STATE_BufferStartingAddress_bits) == 64);
          uint64_t *addr = (uint64_t *) &state->state[1];
+         struct iris_bo *bo = iris_resource_bo(state->resource);
 
-         if (*addr == old_address + state->offset) {
-            *addr = res->bo->gtt_offset + state->offset;
+         if (*addr != bo->gtt_offset + state->offset) {
+            *addr = bo->gtt_offset + state->offset;
             ice->state.dirty |= IRIS_DIRTY_VERTEX_BUFFERS;
          }
       }
