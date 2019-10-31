@@ -113,6 +113,25 @@ public:
       Op(Result res) : op((Temp)res) {}
    };
 
+   enum WaveSpecificOpcode {
+      s_cselect = (unsigned) aco_opcode::s_cselect_b64,
+      s_cmp_lg = (unsigned) aco_opcode::s_cmp_lg_u64,
+      s_and = (unsigned) aco_opcode::s_and_b64,
+      s_andn2 = (unsigned) aco_opcode::s_andn2_b64,
+      s_or = (unsigned) aco_opcode::s_or_b64,
+      s_orn2 = (unsigned) aco_opcode::s_orn2_b64,
+      s_not = (unsigned) aco_opcode::s_not_b64,
+      s_mov = (unsigned) aco_opcode::s_mov_b64,
+      s_wqm = (unsigned) aco_opcode::s_wqm_b64,
+      s_and_saveexec = (unsigned) aco_opcode::s_and_saveexec_b64,
+      s_or_saveexec = (unsigned) aco_opcode::s_or_saveexec_b64,
+      s_xnor = (unsigned) aco_opcode::s_xnor_b64,
+      s_xor = (unsigned) aco_opcode::s_xor_b64,
+      s_bcnt1_i32 = (unsigned) aco_opcode::s_bcnt1_i32_b64,
+      s_bitcmp1 = (unsigned) aco_opcode::s_bitcmp1_b64,
+      s_ff1_i32 = (unsigned) aco_opcode::s_ff1_i32_b64,
+   };
+
    Program *program;
    bool use_iterator;
    bool start; // only when use_iterator == false
@@ -200,6 +219,48 @@ public:
 
    Definition def(RegClass rc, PhysReg reg) {
       return Definition(program->allocateId(), reg, rc);
+   }
+
+   inline aco_opcode w64or32(WaveSpecificOpcode opcode) const {
+      if (program->wave_size == 64)
+         return (aco_opcode) opcode;
+
+      switch (opcode) {
+      case s_cselect:
+         return aco_opcode::s_cselect_b32;
+      case s_cmp_lg:
+         return aco_opcode::s_cmp_lg_u32;
+      case s_and:
+         return aco_opcode::s_and_b32;
+      case s_andn2:
+         return aco_opcode::s_andn2_b32;
+      case s_or:
+         return aco_opcode::s_or_b32;
+      case s_orn2:
+         return aco_opcode::s_orn2_b32;
+      case s_not:
+         return aco_opcode::s_not_b32;
+      case s_mov:
+         return aco_opcode::s_mov_b32;
+      case s_wqm:
+         return aco_opcode::s_wqm_b32;
+      case s_and_saveexec:
+         return aco_opcode::s_and_saveexec_b32;
+      case s_or_saveexec:
+         return aco_opcode::s_or_saveexec_b32;
+      case s_xnor:
+         return aco_opcode::s_xnor_b32;
+      case s_xor:
+         return aco_opcode::s_xor_b32;
+      case s_bcnt1_i32:
+         return aco_opcode::s_bcnt1_i32_b32;
+      case s_bitcmp1:
+         return aco_opcode::s_bitcmp1_b32;
+      case s_ff1_i32:
+         return aco_opcode::s_ff1_i32_b32;
+      default:
+         unreachable("Unsupported wave specific opcode.");
+      }
    }
 
 % for fixed in ['m0', 'vcc', 'exec', 'scc']:
@@ -404,6 +465,23 @@ formats = [("pseudo", [Format.PSEUDO], 'Pseudo_instruction', list(itertools.prod
         % endfor
       return insert(instr);
    }
+
+    % if name == 'sop1' or name == 'sop2' or name == 'sopc':
+        <%
+        args[0] = 'WaveSpecificOpcode opcode'
+        params = []
+        for i in range(num_definitions):
+            params.append('def%d' % i)
+        for i in range(num_operands):
+            params.append('op%d' % i)
+        %>\\
+
+   inline Result ${name}(${', '.join(args)})
+   {
+       return ${name}(w64or32(opcode), ${', '.join(params)});
+   }
+
+    % endif
     % endfor
 % endfor
 };
