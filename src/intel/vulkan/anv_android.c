@@ -307,14 +307,7 @@ anv_import_ahw_memory(VkDevice device_h,
    if (dma_buf < 0)
       return VK_ERROR_INVALID_EXTERNAL_HANDLE;
 
-   uint64_t bo_flags = ANV_BO_EXTERNAL;
-   if (device->instance->physicalDevice.supports_48bit_addresses)
-      bo_flags |= EXEC_OBJECT_SUPPORTS_48B_ADDRESS;
-   if (device->instance->physicalDevice.use_softpin)
-      bo_flags |= EXEC_OBJECT_PINNED;
-
-   VkResult result = anv_bo_cache_import(device, &device->bo_cache,
-                                dma_buf, bo_flags, &mem->bo);
+   VkResult result = anv_device_import_bo(device, dma_buf, 0, &mem->bo);
    assert(VK_SUCCESS);
 
    /* "If the vkAllocateMemory command succeeds, the implementation must
@@ -463,13 +456,19 @@ anv_image_from_gralloc(VkDevice device_h,
     */
    int dma_buf = gralloc_info->handle->data[0];
 
-   uint64_t bo_flags = ANV_BO_EXTERNAL;
-   if (device->instance->physicalDevice.supports_48bit_addresses)
-      bo_flags |= EXEC_OBJECT_SUPPORTS_48B_ADDRESS;
-   if (device->instance->physicalDevice.use_softpin)
-      bo_flags |= EXEC_OBJECT_PINNED;
-
-   result = anv_bo_cache_import(device, &device->bo_cache, dma_buf, bo_flags, &bo);
+   /* We need to set the WRITE flag on window system buffers so that GEM will
+    * know we're writing to them and synchronize uses on other rings (for
+    * example, if the display server uses the blitter ring).
+    *
+    * If this function fails and if the imported bo was resident in the cache,
+    * we should avoid updating the bo's flags. Therefore, we defer updating
+    * the flags until success is certain.
+    *
+    */
+   result = anv_device_import_bo(device, dma_buf,
+                                 ANV_BO_ALLOC_IMPLICIT_SYNC |
+                                 ANV_BO_ALLOC_IMPLICIT_WRITE,
+                                 &bo);
    if (result != VK_SUCCESS) {
       return vk_errorf(device->instance, device, result,
                        "failed to import dma-buf from VkNativeBufferANDROID");
@@ -529,18 +528,6 @@ anv_image_from_gralloc(VkDevice device_h,
    image->planes[0].address.bo = bo;
    image->planes[0].bo_is_owned = true;
 
-   /* We need to set the WRITE flag on window system buffers so that GEM will
-    * know we're writing to them and synchronize uses on other rings (for
-    * example, if the display server uses the blitter ring).
-    *
-    * If this function fails and if the imported bo was resident in the cache,
-    * we should avoid updating the bo's flags. Therefore, we defer updating
-    * the flags until success is certain.
-    *
-    */
-   bo->flags &= ~EXEC_OBJECT_ASYNC;
-   bo->flags |= EXEC_OBJECT_WRITE;
-
    /* Don't clobber the out-parameter until success is certain. */
    *out_image_h = image_h;
 
@@ -550,7 +537,7 @@ anv_image_from_gralloc(VkDevice device_h,
    anv_DestroyImage(device_h, image_h, alloc);
  fail_create:
  fail_tiling:
-   anv_bo_cache_release(device, &device->bo_cache, bo);
+   anv_device_release_bo(device, bo);
 
    return result;
 }
