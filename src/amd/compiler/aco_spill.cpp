@@ -1530,12 +1530,12 @@ void assign_spill_slots(spill_ctx& ctx, unsigned spills_to_vgpr) {
                /* spill vgpr */
                ctx.program->config->spilled_vgprs += (*it)->operands[0].size();
                uint32_t spill_slot = vgpr_slot[spill_id];
-               bool add_offset = ctx.program->config->scratch_bytes_per_wave + vgpr_spill_slots * 4 > 4096;
-               unsigned base_offset = add_offset ? 0 : ctx.program->config->scratch_bytes_per_wave;
+               bool add_offset_to_sgpr = ctx.program->config->scratch_bytes_per_wave / ctx.program->wave_size + vgpr_spill_slots * 4 > 4096;
+               unsigned base_offset = add_offset_to_sgpr ? 0 : ctx.program->config->scratch_bytes_per_wave / ctx.program->wave_size;
 
                /* check if the scratch resource descriptor already exists */
                if (scratch_rsrc == Temp()) {
-                  unsigned offset = ctx.program->config->scratch_bytes_per_wave - base_offset;
+                  unsigned offset = add_offset_to_sgpr ? ctx.program->config->scratch_bytes_per_wave : 0;
                   scratch_rsrc = load_scratch_resource(ctx, scratch_offset,
                                                        last_top_level_block_idx == block.index ?
                                                        instructions : ctx.program->blocks[last_top_level_block_idx].instructions,
@@ -1615,12 +1615,12 @@ void assign_spill_slots(spill_ctx& ctx, unsigned spills_to_vgpr) {
             if (vgpr_slot.find(spill_id) != vgpr_slot.end()) {
                /* reload vgpr */
                uint32_t spill_slot = vgpr_slot[spill_id];
-               bool add_offset = ctx.program->config->scratch_bytes_per_wave + vgpr_spill_slots * 4 > 4096;
-               unsigned base_offset = add_offset ? 0 : ctx.program->config->scratch_bytes_per_wave;
+               bool add_offset_to_sgpr = ctx.program->config->scratch_bytes_per_wave / ctx.program->wave_size + vgpr_spill_slots * 4 > 4096;
+               unsigned base_offset = add_offset_to_sgpr ? 0 : ctx.program->config->scratch_bytes_per_wave / ctx.program->wave_size;
 
                /* check if the scratch resource descriptor already exists */
                if (scratch_rsrc == Temp()) {
-                  unsigned offset = ctx.program->config->scratch_bytes_per_wave - base_offset;
+                  unsigned offset = add_offset_to_sgpr ? ctx.program->config->scratch_bytes_per_wave : 0;
                   scratch_rsrc = load_scratch_resource(ctx, scratch_offset,
                                                        last_top_level_block_idx == block.index ?
                                                        instructions : ctx.program->blocks[last_top_level_block_idx].instructions,
