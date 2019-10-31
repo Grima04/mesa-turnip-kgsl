@@ -26,6 +26,7 @@
 
 #include "radv_private.h"
 
+/* Please keep docs/envvars.html up-to-date when you add/remove options. */
 enum {
 	RADV_DEBUG_NO_FAST_CLEARS    =   0x1,
 	RADV_DEBUG_NO_DCC            =   0x2,
