@@ -446,6 +446,9 @@ fd_gmem_render_tiles(struct fd_batch *batch)
 		}
 	}
 
+	if (fd_mesa_debug & FD_DBG_NOGMEM)
+		sysmem = true;
+
 	/* Layered rendering always needs bypass. */
 	for (unsigned i = 0; i < pfb->nr_cbufs; i++) {
 		struct pipe_surface *psurf = pfb->cbufs[i];
