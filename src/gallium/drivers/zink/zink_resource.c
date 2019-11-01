@@ -192,10 +192,9 @@ resource_create(struct pipe_screen *pscreen,
          ici.tiling = VK_IMAGE_TILING_LINEAR;
 
       /* sadly, gallium doesn't let us know if it'll ever need this, so we have to assume */
-      ici.usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-
-      if (templ->bind & PIPE_BIND_SAMPLER_VIEW)
-         ici.usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
+      ici.usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
+                  VK_IMAGE_USAGE_TRANSFER_DST_BIT |
+                  VK_IMAGE_USAGE_SAMPLED_BIT;
 
       if (templ->bind & PIPE_BIND_SHADER_IMAGE)
          ici.usage |= VK_IMAGE_USAGE_STORAGE_BIT;
