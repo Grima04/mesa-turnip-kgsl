@@ -25,6 +25,7 @@
  * IN THE SOFTWARE.
  */
 
+#include "dirent.h"
 #include <errno.h>
 #include <fcntl.h>
 #include <linux/audit.h>
@@ -2066,25 +2067,61 @@ bool radv_sc_read(int fd, void *buf, size_t size, bool timeout)
 	}
 }
 
+static bool radv_close_all_fds(const int *keep_fds, int keep_fd_count)
+{
+	DIR *d;
+	struct dirent *dir;
+	d = opendir("/proc/self/fd");
+	if (!d)
+		return false;
+	int dir_fd = dirfd(d);
+
+	while ((dir = readdir(d)) != NULL) {
+		if (dir->d_name[0] == '.')
+			continue;
+
+		int fd = atoi(dir->d_name);
+		if (fd == dir_fd)
+			continue;
+
+		bool keep = false;
+		for (int i = 0; !keep && i < keep_fd_count; ++i)
+			if (keep_fds[i] == fd)
+				keep = true;
+
+		if (keep)
+			continue;
+
+		close(fd);
+	}
+	closedir(d);
+	return true;
+}
+
 static void run_secure_compile_device(struct radv_device *device, unsigned process,
-				      int *fd_secure_input, int *fd_secure_output)
+				      int fd_secure_input, int fd_secure_output)
 {
 	enum radv_secure_compile_type sc_type;
-	if (install_seccomp_filter() == -1) {
+
+	const int needed_fds[] = {
+		fd_secure_input,
+		fd_secure_output,
+	};
+	if (!radv_close_all_fds(needed_fds, ARRAY_SIZE(needed_fds)) || install_seccomp_filter() == -1) {
 		sc_type = RADV_SC_TYPE_INIT_FAILURE;
 	} else {
 		sc_type = RADV_SC_TYPE_INIT_SUCCESS;
-		device->sc_state->secure_compile_processes[process].fd_secure_input = fd_secure_input[0];
-		device->sc_state->secure_compile_processes[process].fd_secure_output = fd_secure_output[1];
+		device->sc_state->secure_compile_processes[process].fd_secure_input = fd_secure_input;
+		device->sc_state->secure_compile_processes[process].fd_secure_output = fd_secure_output;
 	}
 
-	write(fd_secure_output[1], &sc_type, sizeof(sc_type));
+	write(fd_secure_output, &sc_type, sizeof(sc_type));
 
 	if (sc_type == RADV_SC_TYPE_INIT_FAILURE)
 		goto secure_compile_exit;
 
 	while (true) {
-		radv_sc_read(fd_secure_input[0], &sc_type, sizeof(sc_type), false);
+		radv_sc_read(fd_secure_input, &sc_type, sizeof(sc_type), false);
 
 		if (sc_type == RADV_SC_TYPE_COMPILE_PIPELINE) {
 			struct radv_pipeline *pipeline;
@@ -2097,20 +2134,20 @@ static void run_secure_compile_device(struct radv_device *device, unsigned proce
 
 			/* Read pipeline layout */
 			struct radv_pipeline_layout layout;
-			sc_read = radv_sc_read(fd_secure_input[0], &layout, sizeof(struct radv_pipeline_layout), true);
-			sc_read &= radv_sc_read(fd_secure_input[0], &layout.num_sets, sizeof(uint32_t), true);
+			sc_read = radv_sc_read(fd_secure_input, &layout, sizeof(struct radv_pipeline_layout), true);
+			sc_read &= radv_sc_read(fd_secure_input, &layout.num_sets, sizeof(uint32_t), true);
 			if (!sc_read)
 				goto secure_compile_exit;
 
 			for (uint32_t set = 0; set < layout.num_sets; set++) {
 				uint32_t layout_size;
-				sc_read &= radv_sc_read(fd_secure_input[0], &layout_size, sizeof(uint32_t), true);
+				sc_read &= radv_sc_read(fd_secure_input, &layout_size, sizeof(uint32_t), true);
 				if (!sc_read)
 					goto secure_compile_exit;
 
 				layout.set[set].layout = malloc(layout_size);
 				layout.set[set].layout->layout_size = layout_size;
-				sc_read &= radv_sc_read(fd_secure_input[0], layout.set[set].layout,
+				sc_read &= radv_sc_read(fd_secure_input, layout.set[set].layout,
 							layout.set[set].layout->layout_size, true);
 			}
 
@@ -2118,16 +2155,16 @@ static void run_secure_compile_device(struct radv_device *device, unsigned proce
 
 			/* Read pipeline key */
 			struct radv_pipeline_key key;
-			sc_read &= radv_sc_read(fd_secure_input[0], &key, sizeof(struct radv_pipeline_key), true);
+			sc_read &= radv_sc_read(fd_secure_input, &key, sizeof(struct radv_pipeline_key), true);
 
 			/* Read pipeline create flags */
 			VkPipelineCreateFlags flags;
-			sc_read &= radv_sc_read(fd_secure_input[0], &flags, sizeof(VkPipelineCreateFlags), true);
+			sc_read &= radv_sc_read(fd_secure_input, &flags, sizeof(VkPipelineCreateFlags), true);
 
 			/* Read stage and shader information */
 			uint32_t num_stages;
 			const VkPipelineShaderStageCreateInfo *pStages[MESA_SHADER_STAGES] = { 0, };
-			sc_read &= radv_sc_read(fd_secure_input[0], &num_stages, sizeof(uint32_t), true);
+			sc_read &= radv_sc_read(fd_secure_input, &num_stages, sizeof(uint32_t), true);
 			if (!sc_read)
 				goto secure_compile_exit;
 
@@ -2135,33 +2172,33 @@ static void run_secure_compile_device(struct radv_device *device, unsigned proce
 
 				/* Read stage */
 				gl_shader_stage stage;
-				sc_read &= radv_sc_read(fd_secure_input[0], &stage, sizeof(gl_shader_stage), true);
+				sc_read &= radv_sc_read(fd_secure_input, &stage, sizeof(gl_shader_stage), true);
 
 				VkPipelineShaderStageCreateInfo *pStage = calloc(1, sizeof(VkPipelineShaderStageCreateInfo));
 
 				/* Read entry point name */
 				size_t name_size;
-				sc_read &= radv_sc_read(fd_secure_input[0], &name_size, sizeof(size_t), true);
+				sc_read &= radv_sc_read(fd_secure_input, &name_size, sizeof(size_t), true);
 				if (!sc_read)
 					goto secure_compile_exit;
 
 				char *ep_name = malloc(name_size);
-				sc_read &= radv_sc_read(fd_secure_input[0], ep_name, name_size, true);
+				sc_read &= radv_sc_read(fd_secure_input, ep_name, name_size, true);
 				pStage->pName = ep_name;
 
 				/* Read shader module */
 				size_t module_size;
-				sc_read &= radv_sc_read(fd_secure_input[0], &module_size, sizeof(size_t), true);
+				sc_read &= radv_sc_read(fd_secure_input, &module_size, sizeof(size_t), true);
 				if (!sc_read)
 					goto secure_compile_exit;
 
 				struct radv_shader_module *module = malloc(module_size);
-				sc_read &= radv_sc_read(fd_secure_input[0], module, module_size, true);
+				sc_read &= radv_sc_read(fd_secure_input, module, module_size, true);
 				pStage->module = radv_shader_module_to_handle(module);
 
 				/* Read specialization info */
 				bool has_spec_info;
-				sc_read &= radv_sc_read(fd_secure_input[0], &has_spec_info, sizeof(bool), true);
+				sc_read &= radv_sc_read(fd_secure_input, &has_spec_info, sizeof(bool), true);
 				if (!sc_read)
 					goto secure_compile_exit;
 
@@ -2169,21 +2206,21 @@ static void run_secure_compile_device(struct radv_device *device, unsigned proce
 					VkSpecializationInfo *specInfo = malloc(sizeof(VkSpecializationInfo));
 					pStage->pSpecializationInfo = specInfo;
 
-					sc_read &= radv_sc_read(fd_secure_input[0], &specInfo->dataSize, sizeof(size_t), true);
+					sc_read &= radv_sc_read(fd_secure_input, &specInfo->dataSize, sizeof(size_t), true);
 					if (!sc_read)
 						goto secure_compile_exit;
 
 					void *si_data = malloc(specInfo->dataSize);
-					sc_read &= radv_sc_read(fd_secure_input[0], si_data, specInfo->dataSize, true);
+					sc_read &= radv_sc_read(fd_secure_input, si_data, specInfo->dataSize, true);
 					specInfo->pData = si_data;
 
-					sc_read &= radv_sc_read(fd_secure_input[0], &specInfo->mapEntryCount, sizeof(uint32_t), true);
+					sc_read &= radv_sc_read(fd_secure_input, &specInfo->mapEntryCount, sizeof(uint32_t), true);
 					if (!sc_read)
 						goto secure_compile_exit;
 
 					VkSpecializationMapEntry *mapEntries = malloc(sizeof(VkSpecializationMapEntry) * specInfo->mapEntryCount);
 					for (uint32_t j = 0; j < specInfo->mapEntryCount; j++) {
-						sc_read &= radv_sc_read(fd_secure_input[0], &mapEntries[j], sizeof(VkSpecializationMapEntry), true);
+						sc_read &= radv_sc_read(fd_secure_input, &mapEntries[j], sizeof(VkSpecializationMapEntry), true);
 						if (!sc_read)
 							goto secure_compile_exit;
 					}
@@ -2219,7 +2256,7 @@ static void run_secure_compile_device(struct radv_device *device, unsigned proce
 			vk_free(&device->alloc, pipeline);
 
 			sc_type = RADV_SC_TYPE_COMPILE_PIPELINE_FINISHED;
-			write(fd_secure_output[1], &sc_type, sizeof(sc_type));
+			write(fd_secure_output, &sc_type, sizeof(sc_type));
 
 		} else if (sc_type == RADV_SC_TYPE_DESTROY_DEVICE) {
 			goto secure_compile_exit;
@@ -2227,10 +2264,8 @@ static void run_secure_compile_device(struct radv_device *device, unsigned proce
 	}
 
 secure_compile_exit:
-	close(fd_secure_input[1]);
-	close(fd_secure_input[0]);
-	close(fd_secure_output[1]);
-	close(fd_secure_output[0]);
+	close(fd_secure_input);
+	close(fd_secure_output);
 	_exit(0);
 }
 
@@ -2275,7 +2310,7 @@ static VkResult fork_secure_compile_device(struct radv_device *device)
 	for (unsigned process = 0; process < sc_threads; process++) {
 		if ((device->sc_state->secure_compile_processes[process].sc_pid = fork()) == 0) {
 			device->sc_state->secure_compile_thread_counter = process;
-			run_secure_compile_device(device, process, fd_secure_input[process], fd_secure_output[process]);
+			run_secure_compile_device(device, process, fd_secure_input[process][0], fd_secure_output[process][1]);
 		} else {
 			if (device->sc_state->secure_compile_processes[process].sc_pid == -1)
 				return VK_ERROR_INITIALIZATION_FAILED;
