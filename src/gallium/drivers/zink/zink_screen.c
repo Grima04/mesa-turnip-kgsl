@@ -955,6 +955,9 @@ zink_get_format(struct zink_screen *screen, enum pipe_format format)
 {
    VkFormat ret = zink_pipe_format_to_vk_format(emulate_x8(format));
 
+   if (format == PIPE_FORMAT_X32_S8X24_UINT)
+      return VK_FORMAT_D32_SFLOAT_S8_UINT;
+
    if (format == PIPE_FORMAT_X24S8_UINT)
       /* valid when using aspects to extract stencil,
        * fails format test because it's emulated */
