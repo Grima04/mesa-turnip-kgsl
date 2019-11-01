@@ -8,11 +8,11 @@ include:
     file: '/templates/debian.yml'
 
 # When to automatically run the CI
-.ci-run-policy:
+.lava-ci-run-policy:
   only:
     - branches@mesa/mesa
     - merge_requests
-    - /^ci([-/].*)?$/
+    - /^lava-ci([-/].*)?$/
   retry:
     max: 2
     when:
@@ -23,6 +23,7 @@ include:
   extends:
     - .debian@container-ifnot-exists
     - .container
+    - .lava-ci-run-policy
   variables:
     DEBIAN_TAG: '${DEBIAN_ARCH}-${LAVA_IMAGE_TAG}'
     DEBIAN_EXEC: 'DEBIAN_ARCH=${DEBIAN_ARCH}
@@ -61,6 +62,7 @@ lava-container:arm64:
   image: $CI_REGISTRY_IMAGE/debian/$LAVA_DEBIAN_VERSION:$DEBIAN_ARCH-$LAVA_IMAGE_TAG
   extends:
     - .build-linux
+    - .lava-ci-run-policy
   script:
     # Build Mesa
     - mkdir -p results mesa-build
@@ -138,6 +140,7 @@ lava-build:arm64:
 .lava-test:
   extends:
     - .test
+    - .lava-ci-run-policy
   script:
     - lava_job_id=`lavacli jobs submit $CI_PROJECT_DIR/results/lava-deqp-$DEVICE_TYPE.yml`
     - echo $lava_job_id
