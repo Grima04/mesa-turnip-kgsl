@@ -1268,6 +1268,11 @@ blit_resolve(struct zink_context *ctx, const struct pipe_blit_info *info)
    struct zink_resource *src = zink_resource(info->src.resource);
    struct zink_resource *dst = zink_resource(info->dst.resource);
 
+   struct zink_screen *screen = zink_screen(ctx->base.screen);
+   if (src->format != zink_get_format(screen, info->src.format) ||
+       dst->format != zink_get_format(screen, info->dst.format))
+      return false;
+
    struct zink_batch *batch = zink_batch_no_rp(ctx);
 
    zink_batch_reference_resoure(batch, src);
@@ -1324,6 +1329,11 @@ blit_native(struct zink_context *ctx, const struct pipe_blit_info *info)
 
    struct zink_resource *src = zink_resource(info->src.resource);
    struct zink_resource *dst = zink_resource(info->dst.resource);
+
+   struct zink_screen *screen = zink_screen(ctx->base.screen);
+   if (src->format != zink_get_format(screen, info->src.format) ||
+       dst->format != zink_get_format(screen, info->dst.format))
+      return false;
 
    struct zink_batch *batch = zink_batch_no_rp(ctx);
    zink_batch_reference_resoure(batch, src);
