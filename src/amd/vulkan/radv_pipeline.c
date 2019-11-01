@@ -5065,6 +5065,19 @@ radv_compute_generate_pm4(struct radv_pipeline *pipeline)
 	assert(pipeline->cs.cdw <= pipeline->cs.max_dw);
 }
 
+static struct radv_pipeline_key
+radv_generate_compute_pipeline_key(struct radv_pipeline *pipeline,
+				   const VkComputePipelineCreateInfo *pCreateInfo)
+{
+	struct radv_pipeline_key key;
+	memset(&key, 0, sizeof(key));
+
+	if (pCreateInfo->flags & VK_PIPELINE_CREATE_DISABLE_OPTIMIZATION_BIT)
+		key.optimisations_disabled = 1;
+
+	return key;
+}
+
 static VkResult radv_compute_pipeline_create(
 	VkDevice                                    _device,
 	VkPipelineCache                             _cache,
@@ -5098,13 +5111,16 @@ static VkResult radv_compute_pipeline_create(
 
 	pStages[MESA_SHADER_COMPUTE] = &pCreateInfo->stage;
 
+	struct radv_pipeline_key key =
+		radv_generate_compute_pipeline_key(pipeline, pCreateInfo);
+
 	if (radv_device_use_secure_compile(device->instance)) {
-		result = radv_secure_compile(pipeline, device, &(struct radv_pipeline_key) {0}, pStages, pCreateInfo->flags, 1);
+		result = radv_secure_compile(pipeline, device, &key, pStages, pCreateInfo->flags, 1);
 		*pPipeline = radv_pipeline_to_handle(pipeline);
 
 		return result;
 	} else {
-		radv_create_shaders(pipeline, device, cache, &(struct radv_pipeline_key) {0}, pStages, pCreateInfo->flags, pipeline_feedback, stage_feedbacks);
+		radv_create_shaders(pipeline, device, cache, &key, pStages, pCreateInfo->flags, pipeline_feedback, stage_feedbacks);
 	}
 
 	pipeline->user_data_0[MESA_SHADER_COMPUTE] = radv_pipeline_stage_to_user_data_0(pipeline, MESA_SHADER_COMPUTE, device->physical_device->rad_info.chip_class);
