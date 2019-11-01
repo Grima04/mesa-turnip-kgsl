@@ -73,6 +73,10 @@ blit_native(struct zink_context *ctx, const struct pipe_blit_info *info)
        info->alpha_blend)
       return false;
 
+   if (util_format_is_depth_or_stencil(info->dst.format) &&
+       info->dst.format != info->src.format)
+      return false;
+
    struct zink_resource *src = zink_resource(info->src.resource);
    struct zink_resource *dst = zink_resource(info->dst.resource);
 
