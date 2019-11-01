@@ -1187,7 +1187,7 @@ v_load_store_scratch(
 
 static void mir_spill_register(
                 compiler_context *ctx,
-                struct ra_graph *g,
+                struct lcra_state *l,
                 unsigned *spill_count)
 {
         unsigned spill_index = ctx->temp_count;
@@ -1197,7 +1197,7 @@ static void mir_spill_register(
          * nodes written to from an unspill */
 
         for (unsigned i = 0; i < ctx->temp_count; ++i) {
-                ra_set_node_spill_cost(g, i, 1.0);
+                lcra_set_node_spill_cost(l, i, 1);
         }
 
         /* We can't spill any bundles that contain unspills. This could be
@@ -1218,7 +1218,7 @@ static void mir_spill_register(
                                                 unsigned src = bun->instructions[i]->src[s];
 
                                                 if (src < ctx->temp_count)
-                                                        ra_set_node_spill_cost(g, src, -1.0);
+                                                        lcra_set_node_spill_cost(l, src, -1);
                                         }
                                 }
                         }
@@ -1229,12 +1229,12 @@ static void mir_spill_register(
                         for (unsigned i = 0; i < bun->instruction_count; ++i) {
                                 unsigned dest = bun->instructions[i]->dest;
                                 if (dest < ctx->temp_count)
-                                        ra_set_node_spill_cost(g, dest, -1.0);
+                                        lcra_set_node_spill_cost(l, dest, -1);
                         }
                 }
         }
 
-        int spill_node = ra_get_best_spill_node(g);
+        int spill_node = lcra_get_best_spill_node(l);
 
         if (spill_node < 0) {
                 mir_print_shader(ctx);
@@ -1245,9 +1245,8 @@ static void mir_spill_register(
          * legitimately spill to TLS, but special registers just spill to work
          * registers */
 
-        unsigned class = ra_get_node_class(g, spill_node);
-        bool is_special = (class >> 2) != REG_CLASS_WORK;
-        bool is_special_w = (class >> 2) == REG_CLASS_TEXW;
+        bool is_special = l->class[spill_node] != REG_CLASS_WORK;
+        bool is_special_w = l->class[spill_node] == REG_CLASS_TEXW;
 
         /* Allocate TLS slot (maybe) */
         unsigned spill_slot = !is_special ? (*spill_count)++ : 0;
@@ -1373,7 +1372,7 @@ static void mir_spill_register(
 void
 schedule_program(compiler_context *ctx)
 {
-        struct ra_graph *g = NULL;
+        struct lcra_state *l = NULL;
         bool spilled = false;
         int iter_count = 1000; /* max iterations */
 
@@ -1398,13 +1397,13 @@ schedule_program(compiler_context *ctx)
 
         do {
                 if (spilled) 
-                        mir_spill_register(ctx, g, &spill_count);
+                        mir_spill_register(ctx, l, &spill_count);
 
                 mir_squeeze_index(ctx);
                 mir_invalidate_liveness(ctx);
 
-                g = NULL;
-                g = allocate_registers(ctx, &spilled);
+                l = NULL;
+                l = allocate_registers(ctx, &spilled);
         } while(spilled && ((iter_count--) > 0));
 
         if (iter_count <= 0) {
@@ -1417,5 +1416,5 @@ schedule_program(compiler_context *ctx)
 
         ctx->tls_size = spill_count * 16;
 
-        install_registers(ctx, g);
+        install_registers(ctx, l);
 }

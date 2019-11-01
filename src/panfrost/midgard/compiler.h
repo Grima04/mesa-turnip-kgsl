@@ -27,6 +27,7 @@
 #include "midgard.h"
 #include "helpers.h"
 #include "midgard_compile.h"
+#include "lcra.h"
 
 #include "util/hash_table.h"
 #include "util/u_dynarray.h"
@@ -580,10 +581,6 @@ mir_has_arg(midgard_instruction *ins, unsigned arg)
 
 void schedule_program(compiler_context *ctx);
 
-/* Register allocation */
-
-struct ra_graph;
-
 /* Broad types of register classes so we can handle special
  * registers */
 
@@ -597,8 +594,8 @@ struct ra_graph;
 #define REG_CLASS_FRAGC         5
 
 void mir_lower_special_reads(compiler_context *ctx);
-struct ra_graph* allocate_registers(compiler_context *ctx, bool *spilled);
-void install_registers(compiler_context *ctx, struct ra_graph *g);
+struct lcra_state* allocate_registers(compiler_context *ctx, bool *spilled);
+void install_registers(compiler_context *ctx, struct lcra_state *g);
 void mir_liveness_ins_update(uint16_t *live, midgard_instruction *ins, unsigned max);
 void mir_compute_liveness(compiler_context *ctx);
 void mir_invalidate_liveness(compiler_context *ctx);

@@ -27,6 +27,7 @@
 #include "util/register_allocate.h"
 #include "util/u_math.h"
 #include "util/u_memory.h"
+#include "lcra.h"
 
 /* For work registers, we can subdivide in various ways. So we create
  * classes for the various sizes and conflict accordingly, keeping in
@@ -113,42 +114,26 @@ default_phys_reg(int reg, midgard_reg_mode size)
  * register corresponds to */
 
 static struct phys_reg
-index_to_reg(compiler_context *ctx, struct ra_graph *g, unsigned reg, midgard_reg_mode size)
+index_to_reg(compiler_context *ctx, struct lcra_state *l, unsigned reg, midgard_reg_mode size)
 {
         /* Check for special cases */
         if (reg == ~0)
                 return default_phys_reg(REGISTER_UNUSED, size);
         else if (reg >= SSA_FIXED_MINIMUM)
                 return default_phys_reg(SSA_REG_FROM_FIXED(reg), size);
-        else if (!g)
+        else if (!l)
                 return default_phys_reg(REGISTER_UNUSED, size);
 
-        /* Special cases aside, we pick the underlying register */
-        int virt = ra_get_node_reg(g, reg);
-
-        /* Divide out the register and classification */
-        int phys = virt / WORK_STRIDE;
-        int type = virt % WORK_STRIDE;
-
-        /* Apply shadow registers */
-
-        if (phys >= SHADOW_R28 && phys <= SHADOW_R29)
-                phys += 28 - SHADOW_R28;
-        else if (phys == SHADOW_R0)
-                phys = 0;
-
-        unsigned bytes = mir_bytes_for_mode(size);
-
         struct phys_reg r = {
-                .reg = phys,
-                .offset = __builtin_ctz(reg_type_to_mask[type]) * bytes,
-                .size = bytes
+                .reg = l->solutions[reg] / 16,
+                .offset = l->solutions[reg] & 0xF,
+                .size = mir_bytes_for_mode(size)
         };
 
         /* Report that we actually use this register, and return it */
 
-        if (phys < 16)
-                ctx->work_registers = MAX2(ctx->work_registers, phys);
+        if (r.reg < 16)
+                ctx->work_registers = MAX2(ctx->work_registers, r.reg);
 
         return r;
 }
@@ -525,7 +510,7 @@ mir_lower_special_reads(compiler_context *ctx)
 static void
 mir_compute_segment_interference(
                 compiler_context *ctx,
-                struct ra_graph *l,
+                struct lcra_state *l,
                 midgard_bundle *bun,
                 unsigned pivot,
                 unsigned i)
@@ -546,7 +531,9 @@ mir_compute_segment_interference(
                                                 continue;
                                 }
 
-                                ra_add_node_interference(l, bun->instructions[q]->dest, bun->instructions[j]->src[s]);
+                                unsigned mask = mir_bytemask(bun->instructions[q]);
+                                unsigned rmask = mir_bytemask_of_read_components(bun->instructions[j], bun->instructions[j]->src[s]);
+                                lcra_add_node_interference(l, bun->instructions[q]->dest, mask, bun->instructions[j]->src[s], rmask);
                         }
                 }
         }
@@ -555,7 +542,7 @@ mir_compute_segment_interference(
 static void
 mir_compute_bundle_interference(
                 compiler_context *ctx,
-                struct ra_graph *l,
+                struct lcra_state *l,
                 midgard_bundle *bun)
 {
         if (!IS_ALU(bun->tag))
@@ -580,7 +567,8 @@ mir_compute_bundle_interference(
 static void
 mir_compute_interference(
                 compiler_context *ctx,
-                struct ra_graph *g)
+                struct ra_graph *g,
+                struct lcra_state *l)
 {
         /* First, we need liveness information to be computed per block */
         mir_compute_liveness(ctx);
@@ -600,8 +588,10 @@ mir_compute_interference(
 
                         if (dest < ctx->temp_count) {
                                 for (unsigned i = 0; i < ctx->temp_count; ++i)
-                                        if (live[i])
-                                                ra_add_node_interference(g, dest, i);
+                                        if (live[i]) {
+                                                unsigned mask = mir_bytemask(ins);
+                                                lcra_add_node_interference(l, dest, mask, i, live[i]);
+                                        }
                         }
 
                         /* Update live_in */
@@ -609,7 +599,7 @@ mir_compute_interference(
                 }
 
                 mir_foreach_bundle_in_block(blk, bun)
-                        mir_compute_bundle_interference(ctx, g, bun);
+                        mir_compute_bundle_interference(ctx, l, bun);
 
                 free(live);
         }
@@ -618,7 +608,7 @@ mir_compute_interference(
 /* This routine performs the actual register allocation. It should be succeeded
  * by install_registers */
 
-struct ra_graph *
+struct lcra_state *
 allocate_registers(compiler_context *ctx, bool *spilled)
 {
         /* The number of vec4 work registers available depends on when the
@@ -644,6 +634,21 @@ allocate_registers(compiler_context *ctx, bool *spilled)
          * size (vec2/vec3..). First, we'll go through and determine the
          * minimum size needed to hold values */
 
+        struct lcra_state *l = lcra_alloc_equations(ctx->temp_count, 1, 8, 16, 5);
+
+        /* Starts of classes, in bytes */
+        l->class_start[REG_CLASS_WORK]  = 16 * 0;
+        l->class_start[REG_CLASS_LDST]  = 16 * 26;
+        l->class_start[REG_CLASS_TEXR]  = 16 * 28;
+        l->class_start[REG_CLASS_TEXW]  = 16 * 28;
+
+        l->class_size[REG_CLASS_WORK] = 16 * work_count;
+        l->class_size[REG_CLASS_LDST]  = 16 * 2;
+        l->class_size[REG_CLASS_TEXR]  = 16 * 2;
+        l->class_size[REG_CLASS_TEXW]  = 16 * 2;
+
+        lcra_set_disjoint_class(l, REG_CLASS_TEXR, REG_CLASS_TEXW);
+
         unsigned *found_class = calloc(sizeof(unsigned), ctx->temp_count);
 
         mir_foreach_instr_global(ctx, ins) {
@@ -657,7 +662,16 @@ allocate_registers(compiler_context *ctx, bool *spilled)
 
                 int dest = ins->dest;
                 found_class[dest] = MAX2(found_class[dest], class);
+
+                lcra_set_alignment(l, dest, 2); /* (1 << 2) = 4 */
+
+                /* XXX: Ensure swizzles align the right way with more LCRA constraints? */
+                if (ins->type == TAG_ALU_4 && ins->alu.reg_mode != midgard_reg_mode_32)
+                        lcra_set_alignment(l, dest, 3); /* (1 << 3) = 8 */
         }
+
+        for (unsigned i = 0; i < ctx->temp_count; ++i)
+                lcra_restrict_range(l, i, (found_class[i] + 1) * 4);
 
         /* Next, we'll determine semantic class. We default to zero (work).
          * But, if we're used with a special operation, that will force us to a
@@ -681,6 +695,8 @@ allocate_registers(compiler_context *ctx, bool *spilled)
                                 force_vec4(found_class, ins->src[0]);
                                 force_vec4(found_class, ins->src[1]);
                                 force_vec4(found_class, ins->src[2]);
+
+                                lcra_restrict_range(l, ins->dest, 16);
                         }
                 } else if (ins->type == TAG_TEXTURE_4) {
                         set_class(found_class, ins->dest, REG_CLASS_TEXW);
@@ -700,27 +716,21 @@ allocate_registers(compiler_context *ctx, bool *spilled)
 
         /* Mark writeout to r0 */
         mir_foreach_instr_global(ctx, ins) {
-                if (ins->compact_branch && ins->writeout)
-                        set_class(found_class, ins->src[0], REG_CLASS_FRAGC);
+                if (ins->compact_branch && ins->writeout && ins->src[0] < ctx->temp_count)
+                        l->solutions[ins->src[0]] = 0;
         }
 
         for (unsigned i = 0; i < ctx->temp_count; ++i) {
                 unsigned class = found_class[i];
+                l->class[i] = (class >> 2);
+
                 ra_set_node_class(g, i, classes[class]);
         }
 
-        mir_compute_interference(ctx, g);
+        mir_compute_interference(ctx, g, l);
 
-        if (!ra_allocate(g)) {
-                *spilled = true;
-        } else {
-                *spilled = false;
-        }
-
-        /* Whether we were successful or not, report the graph so we can
-         * compute spill nodes */
-
-        return g;
+        *spilled = !lcra_solve(l);
+        return l;
 }
 
 /* Once registers have been decided via register allocation
@@ -730,7 +740,7 @@ allocate_registers(compiler_context *ctx, bool *spilled)
 static void
 install_registers_instr(
         compiler_context *ctx,
-        struct ra_graph *g,
+        struct lcra_state *l,
         midgard_instruction *ins)
 {
         switch (ins->type) {
@@ -741,9 +751,9 @@ install_registers_instr(
                  if (ins->compact_branch)
                          return;
 
-                struct phys_reg src1 = index_to_reg(ctx, g, ins->src[0], mir_srcsize(ins, 0));
-                struct phys_reg src2 = index_to_reg(ctx, g, ins->src[1], mir_srcsize(ins, 1));
-                struct phys_reg dest = index_to_reg(ctx, g, ins->dest, mir_typesize(ins));
+                struct phys_reg src1 = index_to_reg(ctx, l, ins->src[0], mir_srcsize(ins, 0));
+                struct phys_reg src2 = index_to_reg(ctx, l, ins->src[1], mir_srcsize(ins, 1));
+                struct phys_reg dest = index_to_reg(ctx, l, ins->dest, mir_typesize(ins));
 
                 mir_set_bytemask(ins, mir_bytemask(ins) << dest.offset);
 
@@ -789,13 +799,13 @@ install_registers_instr(
                 bool encodes_src = OP_IS_STORE(ins->load_store.op);
 
                 if (encodes_src) {
-                        struct phys_reg src = index_to_reg(ctx, g, ins->src[0], mir_srcsize(ins, 0));
+                        struct phys_reg src = index_to_reg(ctx, l, ins->src[0], mir_srcsize(ins, 0));
                         assert(src.reg == 26 || src.reg == 27);
 
                         ins->load_store.reg = src.reg - 26;
                         offset_swizzle(ins->swizzle[0], src.offset, src.size, 0);
                } else {
-                        struct phys_reg dst = index_to_reg(ctx, g, ins->dest, mir_typesize(ins));
+                        struct phys_reg dst = index_to_reg(ctx, l, ins->dest, mir_typesize(ins));
 
                         ins->load_store.reg = dst.reg;
                         offset_swizzle(ins->swizzle[0], 0, 4, dst.offset);
@@ -808,14 +818,14 @@ install_registers_instr(
                 unsigned src3 = ins->src[2];
 
                 if (src2 != ~0) {
-                        struct phys_reg src = index_to_reg(ctx, g, src2, mir_srcsize(ins, 1));
+                        struct phys_reg src = index_to_reg(ctx, l, src2, mir_srcsize(ins, 1));
                         unsigned component = src.offset / src.size;
                         assert(component * src.size == src.offset);
                         ins->load_store.arg_1 |= midgard_ldst_reg(src.reg, component);
                 }
 
                 if (src3 != ~0) {
-                        struct phys_reg src = index_to_reg(ctx, g, src3, mir_srcsize(ins, 2));
+                        struct phys_reg src = index_to_reg(ctx, l, src3, mir_srcsize(ins, 2));
                         unsigned component = src.offset / src.size;
                         assert(component * src.size == src.offset);
                         ins->load_store.arg_2 |= midgard_ldst_reg(src.reg, component);
@@ -826,9 +836,9 @@ install_registers_instr(
 
         case TAG_TEXTURE_4: {
                 /* Grab RA results */
-                struct phys_reg dest = index_to_reg(ctx, g, ins->dest, mir_typesize(ins));
-                struct phys_reg coord = index_to_reg(ctx, g, ins->src[1], mir_srcsize(ins, 1));
-                struct phys_reg lod = index_to_reg(ctx, g, ins->src[2], mir_srcsize(ins, 2));
+                struct phys_reg dest = index_to_reg(ctx, l, ins->dest, mir_typesize(ins));
+                struct phys_reg coord = index_to_reg(ctx, l, ins->src[1], mir_srcsize(ins, 1));
+                struct phys_reg lod = index_to_reg(ctx, l, ins->src[2], mir_srcsize(ins, 2));
 
                 assert(dest.reg == 28 || dest.reg == 29);
                 assert(coord.reg == 28 || coord.reg == 29);
@@ -869,8 +879,8 @@ install_registers_instr(
 }
 
 void
-install_registers(compiler_context *ctx, struct ra_graph *g)
+install_registers(compiler_context *ctx, struct lcra_state *l)
 {
         mir_foreach_instr_global(ctx, ins)
-                install_registers_instr(ctx, g, ins);
+                install_registers_instr(ctx, l, ins);
 }
