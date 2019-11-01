@@ -553,7 +553,7 @@ brw_nir_optimize(nir_shader *nir, const struct brw_compiler *compiler,
          (nir->info.stage == MESA_SHADER_TESS_CTRL ||
           nir->info.stage == MESA_SHADER_TESS_EVAL);
       OPT(nir_opt_peephole_select, 0, !is_vec4_tessellation, false);
-      OPT(nir_opt_peephole_select, 1, !is_vec4_tessellation,
+      OPT(nir_opt_peephole_select, 8, !is_vec4_tessellation,
           compiler->devinfo->gen >= 6);
 
       OPT(nir_opt_intrinsics);
