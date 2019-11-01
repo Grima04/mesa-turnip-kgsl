@@ -1859,9 +1859,10 @@ to upconvert to 32b float internally?
 	<reg32 offset="0x8003" name="GRAS_UNKNOWN_8003"/>
 
 	<enum name="a6xx_layer_type">
-	  <value value="0x0" name="MULTISAMPLE_ARRAY"/>
-	  <value value="0x1" name="ARRAY"/> <!-- 2d array and 3d -->
-	  <value value="0x2" name="CUBEMAP"/>
+	  <value value="0x0" name="LAYER_MULTISAMPLE_ARRAY"/>
+	  <value value="0x1" name="LAYER_3D"/>
+	  <value value="0x2" name="LAYER_CUBEMAP"/>
+	  <value value="0x3" name="LAYER_2D_ARRAY"/>
 	</enum>
 
 	<reg32 offset="0x8004" name="GRAS_LAYER_CNTL">

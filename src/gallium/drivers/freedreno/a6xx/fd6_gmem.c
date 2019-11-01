@@ -109,13 +109,13 @@ emit_mrt(struct fd_ringbuffer *ring, struct pipe_framebuffer_state *pfb,
 		if (psurf->u.tex.first_layer < psurf->u.tex.last_layer) {
 			layered = true;
 			if (psurf->texture->target == PIPE_TEXTURE_2D_ARRAY && psurf->texture->nr_samples > 0)
-				type = MULTISAMPLE_ARRAY;
+				type = LAYER_MULTISAMPLE_ARRAY;
 			else if (psurf->texture->target == PIPE_TEXTURE_2D_ARRAY)
-				type = ARRAY;
+				type = LAYER_2D_ARRAY;
 			else if (psurf->texture->target == PIPE_TEXTURE_CUBE)
-				type = CUBEMAP;
+				type = LAYER_CUBEMAP;
 			else if (psurf->texture->target == PIPE_TEXTURE_3D)
-				type = ARRAY;
+				type = LAYER_3D;
 
 			stride /= pfb->samples;
 		}
