@@ -149,6 +149,52 @@ add_surface(struct anv_image *image, struct anv_surface *surf, uint32_t plane)
                                          surf->isl.alignment_B);
 }
 
+/**
+ * Do hardware limitations require the image plane to use a shadow surface?
+ *
+ * If hardware limitations force us to use a shadow surface, then the same
+ * limitations may also constrain the tiling of the primary surface; therefore
+ * paramater @a inout_primary_tiling_flags.
+ *
+ * If the image plane is a separate stencil plane and if the user provided
+ * VkImageStencilUsageCreateInfoEXT, then @a usage must be stencilUsage.
+ *
+ * @see anv_image::planes[]::shadow_surface
+ */
+static bool
+anv_image_plane_needs_shadow_surface(const struct gen_device_info *devinfo,
+                                     struct anv_format_plane plane_format,
+                                     VkImageTiling vk_tiling,
+                                     VkImageUsageFlags vk_plane_usage,
+                                     VkImageCreateFlags vk_create_flags,
+                                     isl_tiling_flags_t *inout_primary_tiling_flags)
+{
+   if (devinfo->gen <= 8 &&
+       (vk_create_flags & VK_IMAGE_CREATE_BLOCK_TEXEL_VIEW_COMPATIBLE_BIT) &&
+       vk_tiling == VK_IMAGE_TILING_OPTIMAL) {
+      /* We must fallback to a linear surface because we may not be able to
+       * correctly handle the offsets if tiled. (On gen9,
+       * RENDER_SURFACE_STATE::X/Y Offset are sufficient). To prevent garbage
+       * performance while texturing, we maintain a tiled shadow surface.
+       */
+      assert(isl_format_is_compressed(plane_format.isl_format));
+
+      if (inout_primary_tiling_flags) {
+         *inout_primary_tiling_flags = ISL_TILING_LINEAR_BIT;
+      }
+
+      return true;
+   }
+
+   if (devinfo->gen <= 7 &&
+       plane_format.aspect == VK_IMAGE_ASPECT_STENCIL_BIT &&
+       (vk_plane_usage & VK_IMAGE_USAGE_SAMPLED_BIT)) {
+      /* gen7 can't sample from W-tiled surfaces. */
+      return true;
+   }
+
+   return false;
+}
 
 bool
 anv_formats_ccs_e_compatible(const struct gen_device_info *devinfo,
@@ -326,31 +372,17 @@ make_surface(struct anv_device *device,
       choose_isl_surf_usage(image->create_flags, image->usage,
                             isl_extra_usage_flags, aspect);
 
-   /* If an image is created as BLOCK_TEXEL_VIEW_COMPATIBLE, then we need to
-    * fall back to linear on Broadwell and earlier because we aren't
-    * guaranteed that we can handle offsets correctly.  On Sky Lake, the
-    * horizontal and vertical alignments are sufficiently high that we can
-    * just use RENDER_SURFACE_STATE::X/Y Offset.
-    */
-   bool needs_shadow = false;
-   isl_surf_usage_flags_t shadow_usage = 0;
-   if (device->info.gen <= 8 &&
-       (image->create_flags & VK_IMAGE_CREATE_BLOCK_TEXEL_VIEW_COMPATIBLE_BIT) &&
-       image->tiling == VK_IMAGE_TILING_OPTIMAL) {
-      assert(isl_format_is_compressed(plane_format.isl_format));
-      tiling_flags = ISL_TILING_LINEAR_BIT;
-      needs_shadow = true;
-      shadow_usage = ISL_SURF_USAGE_TEXTURE_BIT |
-                     (usage & ISL_SURF_USAGE_CUBE_BIT);
-   }
+   VkImageUsageFlags plane_vk_usage =
+      aspect == VK_IMAGE_ASPECT_STENCIL_BIT ?
+      image->stencil_usage : image->usage;
 
-   if (device->info.gen <= 7 &&
-       aspect == VK_IMAGE_ASPECT_STENCIL_BIT &&
-       (image->stencil_usage & VK_IMAGE_USAGE_SAMPLED_BIT)) {
-      needs_shadow = true;
-      shadow_usage = ISL_SURF_USAGE_TEXTURE_BIT |
-                     (usage & ISL_SURF_USAGE_CUBE_BIT);
-   }
+   bool needs_shadow =
+      anv_image_plane_needs_shadow_surface(&device->info,
+                                   plane_format,
+                                   image->tiling,
+                                   plane_vk_usage,
+                                   image->create_flags,
+                                   &tiling_flags);
 
    ok = isl_surf_init(&device->isl_dev, &anv_surf->isl,
       .dim = vk_to_isl_surf_dim[image->type],
@@ -373,12 +405,6 @@ make_surface(struct anv_device *device,
 
    add_surface(image, anv_surf, plane);
 
-   /* If an image is created as BLOCK_TEXEL_VIEW_COMPATIBLE, then we need to
-    * create an identical tiled shadow surface for use while texturing so we
-    * don't get garbage performance.  If we're on gen7 and the image contains
-    * stencil, then we need to maintain a shadow because we can't texture from
-    * W-tiled images.
-    */
    if (needs_shadow) {
       ok = isl_surf_init(&device->isl_dev, &image->planes[plane].shadow_surface.isl,
          .dim = vk_to_isl_surf_dim[image->type],
@@ -391,7 +417,8 @@ make_surface(struct anv_device *device,
          .samples = image->samples,
          .min_alignment_B = 0,
          .row_pitch_B = stride,
-         .usage = shadow_usage,
+         .usage = ISL_SURF_USAGE_TEXTURE_BIT |
+                  (usage & ISL_SURF_USAGE_CUBE_BIT),
          .tiling_flags = ISL_TILING_ANY_MASK);
 
       /* isl_surf_init() will fail only if provided invalid input. Invalid input
