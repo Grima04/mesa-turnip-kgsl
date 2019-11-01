@@ -2392,7 +2392,7 @@ midgard_get_first_tag_from_block(compiler_context *ctx, unsigned block_idx)
 }
 
 int
-midgard_compile_shader_nir(struct midgard_screen *screen, nir_shader *nir, midgard_program *program, bool is_blend, unsigned gpu_id)
+midgard_compile_shader_nir(nir_shader *nir, midgard_program *program, bool is_blend, unsigned gpu_id)
 {
         struct util_dynarray *compiled = &program->compiled;
 
@@ -2402,7 +2402,6 @@ midgard_compile_shader_nir(struct midgard_screen *screen, nir_shader *nir, midga
         compiler_context *ctx = rzalloc(NULL, compiler_context);
 
         ctx->nir = nir;
-        ctx->screen = screen;
         ctx->stage = nir->info.stage;
         ctx->is_blend = is_blend;
         ctx->alpha_ref = program->alpha_ref;

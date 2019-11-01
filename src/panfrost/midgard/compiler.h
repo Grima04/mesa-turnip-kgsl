@@ -217,9 +217,6 @@ typedef struct compiler_context {
         nir_shader *nir;
         gl_shader_stage stage;
 
-        /* The screen we correspond to */
-        struct midgard_screen *screen;
-
         /* Is internally a blend shader? Depends on stage == FRAGMENT */
         bool is_blend;
 
@@ -584,14 +581,10 @@ void schedule_program(compiler_context *ctx);
 /* Broad types of register classes so we can handle special
  * registers */
 
-#define NR_REG_CLASSES 6
-
 #define REG_CLASS_WORK          0
 #define REG_CLASS_LDST          1
-#define REG_CLASS_LDST27        2
 #define REG_CLASS_TEXR          3
 #define REG_CLASS_TEXW          4
-#define REG_CLASS_FRAGC         5
 
 void mir_lower_special_reads(compiler_context *ctx);
 struct lcra_state* allocate_registers(compiler_context *ctx, bool *spilled);

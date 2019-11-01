@@ -173,7 +173,7 @@ panfrost_compile_blend_shader(
         /* Compile the built shader */
 
         midgard_program program;
-        midgard_compile_shader_nir(&ctx->compiler, shader, &program, true, screen->gpu_id);
+        midgard_compile_shader_nir(shader, &program, true, screen->gpu_id);
 
         /* At least two work registers are needed due to an encoding quirk */
         res.work_count = MAX2(program.work_register_count, 2);

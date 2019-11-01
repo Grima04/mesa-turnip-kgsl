@@ -24,7 +24,6 @@
 #include "compiler.h"
 #include "midgard_ops.h"
 #include "util/u_memory.h"
-#include "util/register_allocate.h"
 
 /* Scheduling for Midgard is complicated, to say the least. ALU instructions
  * must be grouped into VLIW bundles according to following model:

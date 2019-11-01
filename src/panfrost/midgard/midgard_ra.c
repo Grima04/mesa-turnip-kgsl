@@ -24,43 +24,9 @@
 
 #include "compiler.h"
 #include "midgard_ops.h"
-#include "util/register_allocate.h"
 #include "util/u_math.h"
 #include "util/u_memory.h"
 #include "lcra.h"
-
-/* For work registers, we can subdivide in various ways. So we create
- * classes for the various sizes and conflict accordingly, keeping in
- * mind that physical registers are divided along 128-bit boundaries.
- * The important part is that 128-bit boundaries are not crossed.
- *
- * For each 128-bit register, we can subdivide to 32-bits 10 ways
- *
- * vec4: xyzw
- * vec3: xyz, yzw
- * vec2: xy, yz, zw,
- * vec1: x, y, z, w
- *
- * For each 64-bit register, we can subdivide similarly to 16-bit
- * (TODO: half-float RA, not that we support fp16 yet)
- */
-
-#define WORK_STRIDE 10
-
-/* We have overlapping register classes for special registers, handled via
- * shadows */
-
-#define SHADOW_R0  17
-#define SHADOW_R28 18
-#define SHADOW_R29 19
-
-/* Prepacked masks/swizzles for virtual register types */
-static unsigned reg_type_to_mask[WORK_STRIDE] = {
-        0xF,                                    /* xyzw */
-        0x7, 0x7 << 1,                          /* xyz */
-                 0x3, 0x3 << 1, 0x3 << 2,                /* xy */
-                 0x1, 0x1 << 1, 0x1 << 2, 0x1 << 3       /* x */
-};
 
 struct phys_reg {
         /* Physical register: 0-31 */
@@ -138,168 +104,13 @@ index_to_reg(compiler_context *ctx, struct lcra_state *l, unsigned reg, midgard_
         return r;
 }
 
-/* This routine creates a register set. Should be called infrequently since
- * it's slow and can be cached. For legibility, variables are named in terms of
- * work registers, although it is also used to create the register set for
- * special register allocation */
-
-static void
-add_shadow_conflicts (struct ra_regs *regs, unsigned base, unsigned shadow, unsigned shadow_count)
-{
-        for (unsigned a = 0; a < WORK_STRIDE; ++a) {
-                unsigned reg_a = (WORK_STRIDE * base) + a;
-
-                for (unsigned b = 0; b < shadow_count; ++b) {
-                        unsigned reg_b = (WORK_STRIDE * shadow) + b;
-
-                        ra_add_reg_conflict(regs, reg_a, reg_b);
-                        ra_add_reg_conflict(regs, reg_b, reg_a);
-                }
-        }
-}
-
-static struct ra_regs *
-create_register_set(unsigned work_count, unsigned *classes)
-{
-        int virtual_count = 32 * WORK_STRIDE;
-
-        /* First, initialize the RA */
-        struct ra_regs *regs = ra_alloc_reg_set(NULL, virtual_count, true);
-
-        for (unsigned c = 0; c < (NR_REG_CLASSES - 1); ++c) {
-                int work_vec4 = ra_alloc_reg_class(regs);
-                int work_vec3 = ra_alloc_reg_class(regs);
-                int work_vec2 = ra_alloc_reg_class(regs);
-                int work_vec1 = ra_alloc_reg_class(regs);
-
-                classes[4*c + 0] = work_vec1;
-                classes[4*c + 1] = work_vec2;
-                classes[4*c + 2] = work_vec3;
-                classes[4*c + 3] = work_vec4;
-
-                /* Special register classes have other register counts */
-                unsigned count =
-                        (c == REG_CLASS_WORK)   ? work_count : 2;
-
-                unsigned first_reg =
-                        (c == REG_CLASS_LDST)   ? 26 :
-                        (c == REG_CLASS_TEXR)   ? 28 :
-                        (c == REG_CLASS_TEXW)   ? SHADOW_R28 :
-                        0;
-
-                /* Add the full set of work registers */
-                for (unsigned i = first_reg; i < (first_reg + count); ++i) {
-                        int base = WORK_STRIDE * i;
-
-                        /* Build a full set of subdivisions */
-                        ra_class_add_reg(regs, work_vec4, base);
-                        ra_class_add_reg(regs, work_vec3, base + 1);
-                        ra_class_add_reg(regs, work_vec3, base + 2);
-                        ra_class_add_reg(regs, work_vec2, base + 3);
-                        ra_class_add_reg(regs, work_vec2, base + 4);
-                        ra_class_add_reg(regs, work_vec2, base + 5);
-                        ra_class_add_reg(regs, work_vec1, base + 6);
-                        ra_class_add_reg(regs, work_vec1, base + 7);
-                        ra_class_add_reg(regs, work_vec1, base + 8);
-                        ra_class_add_reg(regs, work_vec1, base + 9);
-
-                        for (unsigned a = 0; a < 10; ++a) {
-                                unsigned mask1 = reg_type_to_mask[a];
-
-                                for (unsigned b = 0; b < 10; ++b) {
-                                        unsigned mask2 = reg_type_to_mask[b];
-
-                                        if (mask1 & mask2)
-                                                ra_add_reg_conflict(regs,
-                                                                    base + a, base + b);
-                                }
-                        }
-                }
-        }
-
-        int fragc = ra_alloc_reg_class(regs);
-
-        classes[4*REG_CLASS_FRAGC + 0] = fragc;
-        classes[4*REG_CLASS_FRAGC + 1] = fragc;
-        classes[4*REG_CLASS_FRAGC + 2] = fragc;
-        classes[4*REG_CLASS_FRAGC + 3] = fragc;
-        ra_class_add_reg(regs, fragc, WORK_STRIDE * SHADOW_R0);
-
-        /* We have duplicate classes */
-        add_shadow_conflicts(regs,  0, SHADOW_R0,  1);
-        add_shadow_conflicts(regs, 28, SHADOW_R28, WORK_STRIDE);
-        add_shadow_conflicts(regs, 29, SHADOW_R29, WORK_STRIDE);
-
-        /* We're done setting up */
-        ra_set_finalize(regs, NULL);
-
-        return regs;
-}
-
-/* This routine gets a precomputed register set off the screen if it's able, or
- * otherwise it computes one on the fly */
-
-static struct ra_regs *
-get_register_set(struct midgard_screen *screen, unsigned work_count, unsigned **classes)
-{
-        /* Bounds check */
-        assert(work_count >= 8);
-        assert(work_count <= 16);
-
-        /* Compute index */
-        unsigned index = work_count - 8;
-
-        /* Find the reg set */
-        struct ra_regs *cached = screen->regs[index];
-
-        if (cached) {
-                assert(screen->reg_classes[index]);
-                *classes = screen->reg_classes[index];
-                return cached;
-        }
-
-        /* Otherwise, create one */
-        struct ra_regs *created = create_register_set(work_count, screen->reg_classes[index]);
-
-        /* Cache it and use it */
-        screen->regs[index] = created;
-
-        *classes = screen->reg_classes[index];
-        return created;
-}
-
-/* Assign a (special) class, ensuring that it is compatible with whatever class
- * was already set */
-
 static void
 set_class(unsigned *classes, unsigned node, unsigned class)
 {
-        /* Check that we're even a node */
-        if (node >= SSA_FIXED_MINIMUM)
-                return;
-
-        /* First 4 are work, next 4 are load/store.. */
-        unsigned current_class = classes[node] >> 2;
-
-        /* Nothing to do */
-        if (class == current_class)
-                return;
-
-        /* If we're changing, we haven't assigned a special class */
-        assert(current_class == REG_CLASS_WORK);
-
-        classes[node] &= 0x3;
-        classes[node] |= (class << 2);
-}
-
-static void
-force_vec4(unsigned *classes, unsigned node)
-{
-        if (node >= SSA_FIXED_MINIMUM)
-                return;
-
-        /* Force vec4 = 3 */
-        classes[node] |= 0x3;
+        if (node < SSA_FIXED_MINIMUM && class != classes[node]) {
+                assert(classes[node] == REG_CLASS_WORK);
+                classes[node] = class;
+        }
 }
 
 /* Special register classes impose special constraints on who can read their
@@ -312,9 +123,7 @@ check_read_class(unsigned *classes, unsigned tag, unsigned node)
         if (node >= SSA_FIXED_MINIMUM)
                 return true;
 
-        unsigned current_class = classes[node] >> 2;
-
-        switch (current_class) {
+        switch (classes[node]) {
         case REG_CLASS_LDST:
                 return (tag == TAG_LOAD_STORE_4);
         case REG_CLASS_TEXR:
@@ -335,9 +144,7 @@ check_write_class(unsigned *classes, unsigned tag, unsigned node)
         if (node >= SSA_FIXED_MINIMUM)
                 return true;
 
-        unsigned current_class = classes[node] >> 2;
-
-        switch (current_class) {
+        switch (classes[node]) {
         case REG_CLASS_TEXR:
                 return true;
         case REG_CLASS_TEXW:
@@ -567,7 +374,6 @@ mir_compute_bundle_interference(
 static void
 mir_compute_interference(
                 compiler_context *ctx,
-                struct ra_graph *g,
                 struct lcra_state *l)
 {
         /* First, we need liveness information to be computed per block */
@@ -614,25 +420,11 @@ allocate_registers(compiler_context *ctx, bool *spilled)
         /* The number of vec4 work registers available depends on when the
          * uniforms start, so compute that first */
         int work_count = 16 - MAX2((ctx->uniform_cutoff - 8), 0);
-        unsigned *classes = NULL;
-        struct ra_regs *regs = get_register_set(ctx->screen, work_count, &classes);
-
-        assert(regs != NULL);
-        assert(classes != NULL);
 
        /* No register allocation to do with no SSA */
 
         if (!ctx->temp_count)
                 return NULL;
-
-        /* Let's actually do register allocation */
-        int nodes = ctx->temp_count;
-        struct ra_graph *g = ra_alloc_interference_graph(regs, nodes);
-        
-        /* Register class (as known to the Mesa register allocator) is actually
-         * the product of both semantic class (work, load/store, texture..) and
-         * size (vec2/vec3..). First, we'll go through and determine the
-         * minimum size needed to hold values */
 
         struct lcra_state *l = lcra_alloc_equations(ctx->temp_count, 1, 8, 16, 5);
 
@@ -672,6 +464,8 @@ allocate_registers(compiler_context *ctx, bool *spilled)
 
         for (unsigned i = 0; i < ctx->temp_count; ++i)
                 lcra_restrict_range(l, i, (found_class[i] + 1) * 4);
+        
+        free(found_class);
 
         /* Next, we'll determine semantic class. We default to zero (work).
          * But, if we're used with a special operation, that will force us to a
@@ -684,34 +478,26 @@ allocate_registers(compiler_context *ctx, bool *spilled)
                 /* Check if this operation imposes any classes */
 
                 if (ins->type == TAG_LOAD_STORE_4) {
-                        bool force_vec4_only = OP_IS_VEC4_ONLY(ins->load_store.op);
+                        set_class(l->class, ins->src[0], REG_CLASS_LDST);
+                        set_class(l->class, ins->src[1], REG_CLASS_LDST);
+                        set_class(l->class, ins->src[2], REG_CLASS_LDST);
 
-                        set_class(found_class, ins->src[0], REG_CLASS_LDST);
-                        set_class(found_class, ins->src[1], REG_CLASS_LDST);
-                        set_class(found_class, ins->src[2], REG_CLASS_LDST);
-
-                        if (force_vec4_only) {
-                                force_vec4(found_class, ins->dest);
-                                force_vec4(found_class, ins->src[0]);
-                                force_vec4(found_class, ins->src[1]);
-                                force_vec4(found_class, ins->src[2]);
-
+                        if (OP_IS_VEC4_ONLY(ins->load_store.op))
                                 lcra_restrict_range(l, ins->dest, 16);
-                        }
                 } else if (ins->type == TAG_TEXTURE_4) {
-                        set_class(found_class, ins->dest, REG_CLASS_TEXW);
-                        set_class(found_class, ins->src[0], REG_CLASS_TEXR);
-                        set_class(found_class, ins->src[1], REG_CLASS_TEXR);
-                        set_class(found_class, ins->src[2], REG_CLASS_TEXR);
+                        set_class(l->class, ins->dest, REG_CLASS_TEXW);
+                        set_class(l->class, ins->src[0], REG_CLASS_TEXR);
+                        set_class(l->class, ins->src[1], REG_CLASS_TEXR);
+                        set_class(l->class, ins->src[2], REG_CLASS_TEXR);
                 }
         }
 
         /* Check that the semantics of the class are respected */
         mir_foreach_instr_global(ctx, ins) {
-                assert(check_write_class(found_class, ins->type, ins->dest));
-                assert(check_read_class(found_class, ins->type, ins->src[0]));
-                assert(check_read_class(found_class, ins->type, ins->src[1]));
-                assert(check_read_class(found_class, ins->type, ins->src[2]));
+                assert(check_write_class(l->class, ins->type, ins->dest));
+                assert(check_read_class(l->class, ins->type, ins->src[0]));
+                assert(check_read_class(l->class, ins->type, ins->src[1]));
+                assert(check_read_class(l->class, ins->type, ins->src[2]));
         }
 
         /* Mark writeout to r0 */
@@ -719,15 +505,8 @@ allocate_registers(compiler_context *ctx, bool *spilled)
                 if (ins->compact_branch && ins->writeout && ins->src[0] < ctx->temp_count)
                         l->solutions[ins->src[0]] = 0;
         }
-
-        for (unsigned i = 0; i < ctx->temp_count; ++i) {
-                unsigned class = found_class[i];
-                l->class[i] = (class >> 2);
-
-                ra_set_node_class(g, i, classes[class]);
-        }
-
-        mir_compute_interference(ctx, g, l);
+        
+        mir_compute_interference(ctx, l);
 
         *spilled = !lcra_solve(l);
         return l;

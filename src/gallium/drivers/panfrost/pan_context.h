@@ -105,9 +105,6 @@ struct panfrost_context {
         /* Gallium context */
         struct pipe_context base;
 
-        /* Compiler context */
-        struct midgard_screen compiler;
-
         /* Bound job batch and map of panfrost_batch_key to job batches */
         struct panfrost_batch *batch;
         struct hash_table *batches;
