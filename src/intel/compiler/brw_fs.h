@@ -190,7 +190,6 @@ public:
                    fs_reg result, fs_reg *op, unsigned fsign_src);
    void emit_shader_float_controls_execution_mode();
    bool opt_peephole_sel();
-   bool opt_peephole_csel();
    bool opt_peephole_predicated_break();
    bool opt_saturate_propagation();
    bool opt_cmod_propagation();
