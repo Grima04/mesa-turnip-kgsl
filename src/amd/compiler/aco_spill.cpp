@@ -1291,9 +1291,9 @@ Temp load_scratch_resource(spill_ctx& ctx, Temp& scratch_offset,
       rsrc_conf |= S_008F0C_NUM_FORMAT(V_008F0C_BUF_NUM_FORMAT_FLOAT) |
                    S_008F0C_DATA_FORMAT(V_008F0C_BUF_DATA_FORMAT_32);
    }
-   /* older generations need element size = 16 bytes. element size removed in GFX9 */
+   /* older generations need element size = 4 bytes. element size removed in GFX9 */
    if (ctx.program->chip_class <= GFX8)
-      rsrc_conf |= S_008F0C_ELEMENT_SIZE(3);
+      rsrc_conf |= S_008F0C_ELEMENT_SIZE(1);
 
    return bld.pseudo(aco_opcode::p_create_vector, bld.def(s4),
                      private_segment_buffer, Operand(-1u),
@@ -1544,37 +1544,21 @@ void assign_spill_slots(spill_ctx& ctx, unsigned spills_to_vgpr) {
                }
 
                unsigned offset = base_offset + spill_slot * 4;
-               aco_opcode opcode;
+               aco_opcode opcode = aco_opcode::buffer_store_dword;
                assert((*it)->operands[0].isTemp());
                Temp temp = (*it)->operands[0].getTemp();
                assert(temp.type() == RegType::vgpr && !temp.is_linear());
-               switch (temp.size()) {
-               case 1: opcode = aco_opcode::buffer_store_dword; break;
-               case 2: opcode = aco_opcode::buffer_store_dwordx2; break;
-               case 6: temp = bld.tmp(v3); /* fallthrough */
-               case 3: opcode = aco_opcode::buffer_store_dwordx3; break;
-               case 8: temp = bld.tmp(v4); /* fallthrough */
-               case 4: opcode = aco_opcode::buffer_store_dwordx4; break;
-               default: {
+               if (temp.size() > 1) {
                   Instruction* split{create_instruction<Pseudo_instruction>(aco_opcode::p_split_vector, Format::PSEUDO, 1, temp.size())};
                   split->operands[0] = Operand(temp);
                   for (unsigned i = 0; i < temp.size(); i++)
                      split->definitions[i] = bld.def(v1);
                   bld.insert(split);
-                  opcode = aco_opcode::buffer_store_dword;
                   for (unsigned i = 0; i < temp.size(); i++)
                      bld.mubuf(opcode, Operand(), scratch_rsrc, scratch_offset, split->definitions[i].getTemp(), offset + i * 4, false);
-                  continue;
+               } else {
+                  bld.mubuf(opcode, Operand(), scratch_rsrc, scratch_offset, temp, offset, false);
                }
-               }
-
-               if ((*it)->operands[0].size() > 4) {
-                  Temp temp2 = bld.pseudo(aco_opcode::p_split_vector, bld.def(temp.regClass()), Definition(temp), (*it)->operands[0]);
-                  bld.mubuf(opcode, Operand(), scratch_rsrc, scratch_offset, temp2, offset, false);
-                  offset += temp.size() * 4;
-               }
-               bld.mubuf(opcode, Operand(), scratch_rsrc, scratch_offset, temp, offset, false);
-
             } else if (sgpr_slot.find(spill_id) != sgpr_slot.end()) {
                ctx.program->config->spilled_sgprs += (*it)->operands[0].size();
 
@@ -1629,35 +1613,20 @@ void assign_spill_slots(spill_ctx& ctx, unsigned spills_to_vgpr) {
                }
 
                unsigned offset = base_offset + spill_slot * 4;
-               aco_opcode opcode;
+               aco_opcode opcode = aco_opcode::buffer_load_dword;
                Definition def = (*it)->definitions[0];
-               switch (def.size()) {
-               case 1: opcode = aco_opcode::buffer_load_dword; break;
-               case 2: opcode = aco_opcode::buffer_load_dwordx2; break;
-               case 6: def = bld.def(v3); /* fallthrough */
-               case 3: opcode = aco_opcode::buffer_load_dwordx3; break;
-               case 8: def = bld.def(v4); /* fallthrough */
-               case 4: opcode = aco_opcode::buffer_load_dwordx4; break;
-               default: {
+               if (def.size() > 1) {
                   Instruction* vec{create_instruction<Pseudo_instruction>(aco_opcode::p_create_vector, Format::PSEUDO, def.size(), 1)};
                   vec->definitions[0] = def;
-                  opcode = aco_opcode::buffer_load_dword;
                   for (unsigned i = 0; i < def.size(); i++) {
                      Temp tmp = bld.tmp(v1);
                      vec->operands[i] = Operand(tmp);
                      bld.mubuf(opcode, Definition(tmp), Operand(), scratch_rsrc, scratch_offset, offset + i * 4, false);
                   }
                   bld.insert(vec);
-                  continue;
+               } else {
+                  bld.mubuf(opcode, def, Operand(), scratch_rsrc, scratch_offset, offset, false);
                }
-               }
-
-               bld.mubuf(opcode, def, Operand(), scratch_rsrc, scratch_offset, offset, false);
-               if ((*it)->definitions[0].size() > 4) {
-                  Temp temp2 = bld.mubuf(opcode, bld.def(def.regClass()), Operand(), scratch_rsrc, scratch_offset, offset + def.size() * 4, false);
-                  bld.pseudo(aco_opcode::p_create_vector, (*it)->definitions[0], def.getTemp(), temp2);
-               }
-
             } else if (sgpr_slot.find(spill_id) != sgpr_slot.end()) {
                uint32_t spill_slot = sgpr_slot[spill_id];
                reload_in_loop[spill_slot / 64] = block.loop_nest_depth > 0;
