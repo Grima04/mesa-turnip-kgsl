@@ -1110,6 +1110,21 @@ static void fixup_half_instr_dst(struct ir3_instruction *instr)
 			break;
 		}
 		break;
+	case 4:
+		switch (instr->opc) {
+		case OPC_RSQ:
+			instr->opc = OPC_HRSQ;
+			break;
+		case OPC_LOG2:
+			instr->opc = OPC_HLOG2;
+			break;
+		case OPC_EXP2:
+			instr->opc = OPC_HEXP2;
+			break;
+		default:
+			break;
+		}
+		break;
 	case 5:
 		instr->cat5.type = half_type(instr->cat5.type);
 		break;
