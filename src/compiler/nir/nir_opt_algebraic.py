@@ -29,6 +29,7 @@ from collections import OrderedDict
 import nir_algebraic
 from nir_opcodes import type_sizes
 import itertools
+import struct
 from math import pi
 
 # Convenience variables
@@ -83,6 +84,9 @@ def lowered_sincos(c):
     x = ('fsub', ('fmul', 2.0, ('ffract', ('fadd', ('fmul', 0.5 / pi, a), c))), 1.0)
     x = ('fmul', ('fsub', x, ('fmul', x, ('fabs', x))), 4.0)
     return ('ffma', ('ffma', x, ('fabs', x), ('fneg', x)), 0.225, x)
+
+def intBitsToFloat(i):
+    return struct.unpack('!f', struct.pack('!I', i))[0]
 
 optimizations = [
 
@@ -1549,6 +1553,11 @@ late_optimizations = [
    (('fmax', ('fadd(is_used_once)', '#c', a), ('fadd(is_used_once)', '#c', b)), ('fadd', c, ('fmax', a, b))),
 
    (('bcsel', a, 0, ('b2f32', ('inot', 'b@bool'))), ('b2f32', ('inot', ('ior', a, b)))),
+
+   # Putting this in 'optimizations' interferes with the bcsel(a, op(b, c),
+   # op(b, d)) => op(b, bcsel(a, c, d)) transformations.  I do not know why.
+   (('bcsel', ('feq', ('fsqrt', 'a(is_not_negative)'), 0.0), intBitsToFloat(0x7f7fffff), ('frsq', a)),
+    ('fmin', ('frsq', a), intBitsToFloat(0x7f7fffff))),
 
    # Things that look like DPH in the source shader may get expanded to
    # something that looks like dot(v1.xyz, v2.xyz) + v1.w by the time it gets
