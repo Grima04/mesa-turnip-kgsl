@@ -319,8 +319,8 @@ st_release_fp_variants(struct st_context *st, struct st_common_program *stfp)
  * the variant from the linked list.
  */
 static void
-delete_basic_variant(struct st_context *st, struct st_common_variant *v,
-                     GLenum target)
+delete_common_variant(struct st_context *st, struct st_common_variant *v,
+                      GLenum target)
 {
    if (v->driver_shader) {
       if (st->has_shareable_shaders || v->key.st == st) {
@@ -379,7 +379,7 @@ st_release_common_variants(struct st_context *st, struct st_common_program *p)
 
    for (v = p->variants; v; ) {
       struct st_common_variant *next = v->next;
-      delete_basic_variant(st, v, p->Base.Target);
+      delete_common_variant(st, v, p->Base.Target);
       v = next;
    }
 
@@ -1914,7 +1914,7 @@ destroy_program_variants(struct st_context *st, struct gl_program *target)
                /* unlink from list */
                *prevPtr = next;
                /* destroy this variant */
-               delete_basic_variant(st, v, target->Target);
+               delete_common_variant(st, v, target->Target);
             }
             else {
                prevPtr = &v->next;
