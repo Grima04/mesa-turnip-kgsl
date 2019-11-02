@@ -15,7 +15,6 @@ dEQP-GLES2.functional.fbo.render.depth.*
 dEQP-GLES2.functional.fbo.render.*
 dEQP-GLES2.functional.fbo.completeness.*
 dEQP-GLES2.functional.fragment_ops.*
-dEQP-GLES2.functional.light_amount.*
 dEQP-GLES2.functional.polygon_offset.*
 dEQP-GLES2.functional.shaders.*
 dEQP-GLES2.functional.texture.*

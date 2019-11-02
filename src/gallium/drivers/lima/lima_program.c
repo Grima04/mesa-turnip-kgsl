@@ -101,6 +101,7 @@ lima_program_optimize_vs_nir(struct nir_shader *s)
    bool progress;
 
    NIR_PASS_V(s, nir_lower_viewport_transform);
+   NIR_PASS_V(s, nir_lower_point_size, 1.0f, 100.0f);
    NIR_PASS_V(s, nir_lower_io, nir_var_all, type_size, 0);
    NIR_PASS_V(s, nir_lower_load_const_to_scalar);
    NIR_PASS_V(s, lima_nir_lower_uniform_to_scalar);
