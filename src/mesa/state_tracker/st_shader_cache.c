@@ -81,49 +81,29 @@ st_serialise_ir_program(struct gl_context *ctx, struct gl_program *prog,
    if (prog->driver_cache_blob)
       return;
 
+   struct st_program *stp = (struct st_program *)prog;
    struct blob blob;
    blob_init(&blob);
 
-   switch (prog->info.stage) {
-   case MESA_SHADER_VERTEX: {
-      struct st_program *stvp = (struct st_program *) prog;
-
-      blob_write_uint32(&blob, stvp->num_inputs);
-      blob_write_bytes(&blob, stvp->index_to_input,
-                       sizeof(stvp->index_to_input));
-      blob_write_bytes(&blob, stvp->input_to_index,
-                       sizeof(stvp->input_to_index));
-      blob_write_bytes(&blob, stvp->result_to_output,
-                       sizeof(stvp->result_to_output));
-
-      write_stream_out_to_cache(&blob, &stvp->state);
-
-      if (nir)
-         write_nir_to_cache(&blob, prog);
-      else
-         write_tgsi_to_cache(&blob, stvp->state.tokens, prog);
-      break;
+   if (prog->info.stage == MESA_SHADER_VERTEX) {
+      blob_write_uint32(&blob, stp->num_inputs);
+      blob_write_bytes(&blob, stp->index_to_input,
+                       sizeof(stp->index_to_input));
+      blob_write_bytes(&blob, stp->input_to_index,
+                       sizeof(stp->input_to_index));
+      blob_write_bytes(&blob, stp->result_to_output,
+                       sizeof(stp->result_to_output));
    }
-   case MESA_SHADER_TESS_CTRL:
-   case MESA_SHADER_TESS_EVAL:
-   case MESA_SHADER_GEOMETRY:
-   case MESA_SHADER_FRAGMENT:
-   case MESA_SHADER_COMPUTE: {
-      struct st_program *stcp = (struct st_program *) prog;
 
-      if (prog->info.stage == MESA_SHADER_TESS_EVAL ||
-          prog->info.stage == MESA_SHADER_GEOMETRY)
-         write_stream_out_to_cache(&blob, &stcp->state);
+   if (prog->info.stage == MESA_SHADER_VERTEX ||
+       prog->info.stage == MESA_SHADER_TESS_EVAL ||
+       prog->info.stage == MESA_SHADER_GEOMETRY)
+      write_stream_out_to_cache(&blob, &stp->state);
 
-      if (nir)
-         write_nir_to_cache(&blob, prog);
-      else
-         write_tgsi_to_cache(&blob, stcp->state.tokens, prog);
-      break;
-   }
-   default:
-      unreachable("Unsupported stage");
-   }
+   if (nir)
+      write_nir_to_cache(&blob, prog);
+   else
+      write_tgsi_to_cache(&blob, stp->state.tokens, prog);
 
    blob_finish(&blob);
 }
@@ -187,63 +167,38 @@ st_deserialise_ir_program(struct gl_context *ctx,
 
    assert(prog->driver_cache_blob && prog->driver_cache_blob_size > 0);
 
+   struct st_program *stp = st_program(prog);
    struct blob_reader blob_reader;
    blob_reader_init(&blob_reader, buffer, size);
 
-   switch (prog->info.stage) {
-   case MESA_SHADER_VERTEX: {
-      struct st_program *stvp = (struct st_program *) prog;
+   if (prog->info.stage == MESA_SHADER_VERTEX) {
+      st_release_vp_variants(st, stp);
 
-      st_release_vp_variants(st, stvp);
-
-      stvp->num_inputs = blob_read_uint32(&blob_reader);
-      blob_copy_bytes(&blob_reader, (uint8_t *) stvp->index_to_input,
-                      sizeof(stvp->index_to_input));
-      blob_copy_bytes(&blob_reader, (uint8_t *) stvp->input_to_index,
-                      sizeof(stvp->input_to_index));
-      blob_copy_bytes(&blob_reader, (uint8_t *) stvp->result_to_output,
-                      sizeof(stvp->result_to_output));
-
-      read_stream_out_from_cache(&blob_reader, &stvp->state);
-
-      if (nir) {
-         stvp->state.type = PIPE_SHADER_IR_NIR;
-         stvp->shader_program = shProg;
-         stvp->state.ir.nir = nir_deserialize(NULL, options, &blob_reader);
-         prog->nir = stvp->state.ir.nir;
-      } else {
-         read_tgsi_from_cache(&blob_reader, &stvp->state.tokens);
-      }
-      break;
+      stp->num_inputs = blob_read_uint32(&blob_reader);
+      blob_copy_bytes(&blob_reader, (uint8_t *) stp->index_to_input,
+                      sizeof(stp->index_to_input));
+      blob_copy_bytes(&blob_reader, (uint8_t *) stp->input_to_index,
+                      sizeof(stp->input_to_index));
+      blob_copy_bytes(&blob_reader, (uint8_t *) stp->result_to_output,
+                      sizeof(stp->result_to_output));
+   } else if (prog->info.stage == MESA_SHADER_FRAGMENT) {
+      st_release_fp_variants(st, stp);
+   } else {
+      st_release_common_variants(st, stp);
    }
-   case MESA_SHADER_TESS_CTRL:
-   case MESA_SHADER_TESS_EVAL:
-   case MESA_SHADER_GEOMETRY:
-   case MESA_SHADER_FRAGMENT:
-   case MESA_SHADER_COMPUTE: {
-      struct st_program *stcp = st_program(prog);
 
-      if (prog->info.stage == MESA_SHADER_FRAGMENT)
-         st_release_fp_variants(st, stcp);
-      else
-         st_release_common_variants(st, stcp);
+   if (prog->info.stage == MESA_SHADER_VERTEX ||
+       prog->info.stage == MESA_SHADER_TESS_EVAL ||
+       prog->info.stage == MESA_SHADER_GEOMETRY)
+      read_stream_out_from_cache(&blob_reader, &stp->state);
 
-      if (prog->info.stage == MESA_SHADER_TESS_EVAL ||
-          prog->info.stage == MESA_SHADER_GEOMETRY)
-         read_stream_out_from_cache(&blob_reader, &stcp->state);
-
-      if (nir) {
-         stcp->state.type = PIPE_SHADER_IR_NIR;
-         stcp->state.ir.nir = nir_deserialize(NULL, options, &blob_reader);
-         stcp->shader_program = shProg;
-         prog->nir = stcp->state.ir.nir;
-      } else {
-         read_tgsi_from_cache(&blob_reader, &stcp->state.tokens);
-      }
-      break;
-   }
-   default:
-      unreachable("Unsupported stage");
+   if (nir) {
+      stp->state.type = PIPE_SHADER_IR_NIR;
+      stp->state.ir.nir = nir_deserialize(NULL, options, &blob_reader);
+      stp->shader_program = shProg;
+      prog->nir = stp->state.ir.nir;
+   } else {
+      read_tgsi_from_cache(&blob_reader, &stp->state.tokens);
    }
 
    /* Make sure we don't try to read more data than we wrote. This should

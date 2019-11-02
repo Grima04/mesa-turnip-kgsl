@@ -494,11 +494,8 @@ st_translate_stream_output_info(struct gl_program *prog)
    }
 
    /* Translate stream output info. */
-   struct pipe_stream_output_info *so_info = NULL;
-   if (prog->info.stage == MESA_SHADER_VERTEX)
-      so_info = &((struct st_program*)prog)->state.stream_output;
-   else
-      so_info = &((struct st_program*)prog)->state.stream_output;
+   struct pipe_stream_output_info *so_info =
+      &((struct st_program*)prog)->state.stream_output;
 
    for (unsigned i = 0; i < info->NumOutputs; i++) {
       so_info->output[i].register_index =
