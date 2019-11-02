@@ -158,11 +158,11 @@ st_program_string_notify( struct gl_context *ctx,
           !st_translate_vertex_program(st, stvp))
          return false;
    } else {
-      struct st_program *stcp = st_program(prog);
+      struct st_program *stp = st_program(prog);
 
-      st_release_common_variants(st, stcp);
-      if (!stcp->shader_program && /* not GLSL->NIR */
-          !st_translate_common_program(st, stcp))
+      st_release_common_variants(st, stp);
+      if (!stp->shader_program && /* not GLSL->NIR */
+          !st_translate_common_program(st, stp))
          return false;
    }
 

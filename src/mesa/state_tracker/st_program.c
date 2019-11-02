@@ -1555,11 +1555,11 @@ st_get_fp_variant(struct st_context *st,
  */
 bool
 st_translate_common_program(struct st_context *st,
-                            struct st_program *stcp)
+                            struct st_program *stp)
 {
-   struct gl_program *prog = &stcp->Base;
+   struct gl_program *prog = &stp->Base;
    enum pipe_shader_type stage =
-      pipe_shader_type_from_mesa(stcp->Base.info.stage);
+      pipe_shader_type_from_mesa(stp->Base.info.stage);
    struct ureg_program *ureg = ureg_create_with_screen(stage, st->pipe->screen);
 
    if (ureg == NULL)
@@ -1568,15 +1568,15 @@ st_translate_common_program(struct st_context *st,
    switch (stage) {
    case PIPE_SHADER_TESS_CTRL:
       ureg_property(ureg, TGSI_PROPERTY_TCS_VERTICES_OUT,
-                    stcp->Base.info.tess.tcs_vertices_out);
+                    stp->Base.info.tess.tcs_vertices_out);
       break;
 
    case PIPE_SHADER_TESS_EVAL:
-      if (stcp->Base.info.tess.primitive_mode == GL_ISOLINES)
+      if (stp->Base.info.tess.primitive_mode == GL_ISOLINES)
          ureg_property(ureg, TGSI_PROPERTY_TES_PRIM_MODE, GL_LINES);
       else
          ureg_property(ureg, TGSI_PROPERTY_TES_PRIM_MODE,
-                       stcp->Base.info.tess.primitive_mode);
+                       stp->Base.info.tess.primitive_mode);
 
       STATIC_ASSERT((TESS_SPACING_EQUAL + 1) % 3 == PIPE_TESS_SPACING_EQUAL);
       STATIC_ASSERT((TESS_SPACING_FRACTIONAL_ODD + 1) % 3 ==
@@ -1585,23 +1585,23 @@ st_translate_common_program(struct st_context *st,
                     PIPE_TESS_SPACING_FRACTIONAL_EVEN);
 
       ureg_property(ureg, TGSI_PROPERTY_TES_SPACING,
-                    (stcp->Base.info.tess.spacing + 1) % 3);
+                    (stp->Base.info.tess.spacing + 1) % 3);
 
       ureg_property(ureg, TGSI_PROPERTY_TES_VERTEX_ORDER_CW,
-                    !stcp->Base.info.tess.ccw);
+                    !stp->Base.info.tess.ccw);
       ureg_property(ureg, TGSI_PROPERTY_TES_POINT_MODE,
-                    stcp->Base.info.tess.point_mode);
+                    stp->Base.info.tess.point_mode);
       break;
 
    case PIPE_SHADER_GEOMETRY:
       ureg_property(ureg, TGSI_PROPERTY_GS_INPUT_PRIM,
-                    stcp->Base.info.gs.input_primitive);
+                    stp->Base.info.gs.input_primitive);
       ureg_property(ureg, TGSI_PROPERTY_GS_OUTPUT_PRIM,
-                    stcp->Base.info.gs.output_primitive);
+                    stp->Base.info.gs.output_primitive);
       ureg_property(ureg, TGSI_PROPERTY_GS_MAX_OUTPUT_VERTICES,
-                    stcp->Base.info.gs.vertices_out);
+                    stp->Base.info.gs.vertices_out);
       ureg_property(ureg, TGSI_PROPERTY_GS_INVOCATIONS,
-                    stcp->Base.info.gs.invocations);
+                    stp->Base.info.gs.invocations);
       break;
 
    default:
@@ -1626,7 +1626,7 @@ st_translate_common_program(struct st_context *st,
    memset(inputSlotToAttr, 0, sizeof(inputSlotToAttr));
    memset(inputMapping, 0, sizeof(inputMapping));
    memset(outputMapping, 0, sizeof(outputMapping));
-   memset(&stcp->state, 0, sizeof(stcp->state));
+   memset(&stp->state, 0, sizeof(stp->state));
 
    if (prog->info.clip_distance_array_size)
       ureg_property(ureg, TGSI_PROPERTY_NUM_CLIPDIST_ENABLED,
@@ -1706,7 +1706,7 @@ st_translate_common_program(struct st_context *st,
    st_translate_program(st->ctx,
                         stage,
                         ureg,
-                        stcp->glsl_to_tgsi,
+                        stp->glsl_to_tgsi,
                         prog,
                         /* inputs */
                         num_inputs,
@@ -1721,7 +1721,7 @@ st_translate_common_program(struct st_context *st,
                         output_semantic_name,
                         output_semantic_index);
 
-   stcp->state.tokens = ureg_get_tokens(ureg, NULL);
+   stp->state.tokens = ureg_get_tokens(ureg, NULL);
 
    ureg_destroy(ureg);
 
@@ -1732,8 +1732,8 @@ st_translate_common_program(struct st_context *st,
    if (ST_DEBUG & DEBUG_PRINT_IR && ST_DEBUG & DEBUG_MESA)
       _mesa_print_program(prog);
 
-   free_glsl_to_tgsi_visitor(stcp->glsl_to_tgsi);
-   stcp->glsl_to_tgsi = NULL;
+   free_glsl_to_tgsi_visitor(stp->glsl_to_tgsi);
+   stp->glsl_to_tgsi = NULL;
    return true;
 }
 

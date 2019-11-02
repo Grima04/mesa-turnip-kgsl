@@ -341,7 +341,7 @@ st_translate_fragment_program(struct st_context *st,
 
 extern bool
 st_translate_common_program(struct st_context *st,
-                            struct st_program *stcp);
+                            struct st_program *stp);
 
 extern void
 st_finalize_program(struct st_context *st, struct gl_program *prog);
