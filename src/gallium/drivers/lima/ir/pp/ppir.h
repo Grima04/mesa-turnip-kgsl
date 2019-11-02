@@ -273,6 +273,9 @@ typedef struct {
    ppir_src src_coords; /* not to be used after lowering */
    int sampler;
    int sampler_dim;
+   bool lod_bias_en;
+   bool explicit_lod;
+   ppir_src lod_bias;
 } ppir_load_texture_node;
 
 typedef struct {

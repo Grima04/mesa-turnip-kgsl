@@ -104,6 +104,7 @@ lima_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_ACCELERATED:
    case PIPE_CAP_UMA:
    case PIPE_CAP_NATIVE_FENCE_FD:
+   case PIPE_CAP_FRAGMENT_SHADER_TEXTURE_LOD:
       return 1;
 
    /* Unimplemented, but for exporting OpenGL 2.0 */

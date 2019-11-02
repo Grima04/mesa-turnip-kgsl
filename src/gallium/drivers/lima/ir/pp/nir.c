@@ -106,8 +106,15 @@ static void ppir_node_add_src(ppir_compiler *comp, ppir_node *node,
       case ppir_op_const:
          child = ppir_node_clone(node->block, child);
          break;
-      case ppir_op_load_varying:
-         if ((node->op != ppir_op_load_texture)) {
+      case ppir_op_load_varying: {
+         bool is_load_coords = false;
+         if (node->op == ppir_op_load_texture) {
+            nir_tex_src *nts = (nir_tex_src *)ns;
+            if (nts->src_type == nir_tex_src_coord)
+               is_load_coords = true;
+         }
+
+         if (!is_load_coords) {
             /* Clone varying loads for each block */
             if (child->block != node->block) {
                child = ppir_node_clone(node->block, child);
@@ -118,6 +125,7 @@ static void ppir_node_add_src(ppir_compiler *comp, ppir_node *node,
          /* At least one successor is load_texture, promote it to load_coords
           * to ensure that is has exactly one successor */
          child->op = ppir_op_load_coords;
+      }
          /* Fallthrough */
       case ppir_op_load_uniform:
       case ppir_op_load_coords:
@@ -444,7 +452,12 @@ static ppir_node *ppir_emit_tex(ppir_block *block, nir_instr *ni)
    nir_tex_instr *instr = nir_instr_as_tex(ni);
    ppir_load_texture_node *node;
 
-   if (instr->op != nir_texop_tex) {
+   switch (instr->op) {
+   case nir_texop_tex:
+   case nir_texop_txb:
+   case nir_texop_txl:
+      break;
+   default:
       ppir_error("unsupported texop %d\n", instr->op);
       return NULL;
    }
@@ -480,6 +493,12 @@ static ppir_node *ppir_emit_tex(ppir_block *block, nir_instr *ni)
       case nir_tex_src_coord:
          ppir_node_add_src(block->comp, &node->node, &node->src_coords, &instr->src[i].src,
                            u_bit_consecutive(0, instr->coord_components));
+         break;
+      case nir_tex_src_bias:
+      case nir_tex_src_lod:
+         node->lod_bias_en = true;
+         node->explicit_lod = (instr->src[i].src_type == nir_tex_src_lod);
+         ppir_node_add_src(block->comp, &node->node, &node->lod_bias, &instr->src[i].src, 1);
          break;
       default:
          ppir_error("unsupported texture source type\n");

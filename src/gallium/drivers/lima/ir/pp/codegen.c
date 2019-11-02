@@ -126,7 +126,11 @@ static void ppir_codegen_encode_texld(ppir_node *node, void *code)
    ppir_load_texture_node *ldtex = ppir_node_to_load_texture(node);
 
    f->index = ldtex->sampler;
-   f->lod_bias_en = 0;
+
+   f->lod_bias_en = ldtex->lod_bias_en;
+   f->explicit_lod = ldtex->explicit_lod;
+   if (ldtex->lod_bias_en)
+      ppir_target_get_src_reg_index(&ldtex->lod_bias);
 
    switch (ldtex->sampler_dim) {
    case GLSL_SAMPLER_DIM_2D:
