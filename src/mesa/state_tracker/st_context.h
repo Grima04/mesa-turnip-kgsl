@@ -246,7 +246,7 @@ struct st_context
 
    union {
       struct {
-         struct st_vertex_program *vp;    /**< Currently bound vertex program */
+         struct st_common_program *vp;    /**< Currently bound vertex program */
          struct st_common_program *tcp; /**< Currently bound tess control program */
          struct st_common_program *tep; /**< Currently bound tess eval program */
          struct st_common_program *gp;  /**< Currently bound geometry program */

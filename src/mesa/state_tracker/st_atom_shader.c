@@ -176,19 +176,19 @@ st_update_fp( struct st_context *st )
 void
 st_update_vp( struct st_context *st )
 {
-   struct st_vertex_program *stvp;
+   struct st_common_program *stvp;
 
    /* find active shader and params -- Should be covered by
     * ST_NEW_VERTEX_PROGRAM
     */
    assert(st->ctx->VertexProgram._Current);
-   stvp = st_vertex_program(st->ctx->VertexProgram._Current);
+   stvp = st_common_program(st->ctx->VertexProgram._Current);
    assert(stvp->Base.Target == GL_VERTEX_PROGRAM_ARB);
 
    if (st->shader_has_one_variant[MESA_SHADER_VERTEX] &&
-       stvp->variants &&
-       stvp->variants->key.passthrough_edgeflags == st->vertdata_edgeflags) {
-      st->vp_variant = stvp->variants;
+       stvp->vp_variants &&
+       stvp->vp_variants->key.passthrough_edgeflags == st->vertdata_edgeflags) {
+      st->vp_variant = stvp->vp_variants;
    } else {
       struct st_common_variant_key key;
 
@@ -233,7 +233,7 @@ st_update_vp( struct st_context *st )
       st->vp_variant = st_get_vp_variant(st, stvp, &key);
    }
 
-   st_reference_vertprog(st, &st->vp, stvp);
+   st_reference_prog(st, &st->vp, stvp);
 
    cso_set_vertex_shader_handle(st->cso_context, 
                                 st->vp_variant->driver_shader);

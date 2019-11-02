@@ -67,7 +67,7 @@ void st_destroy_atoms( struct st_context *st )
 static void check_program_state( struct st_context *st )
 {
    struct gl_context *ctx = st->ctx;
-   struct st_vertex_program *old_vp = st->vp;
+   struct st_common_program *old_vp = st->vp;
    struct st_common_program *old_tcp = st->tcp;
    struct st_common_program *old_tep = st->tep;
    struct st_common_program *old_gp = st->gp;
@@ -88,7 +88,7 @@ static void check_program_state( struct st_context *st )
       if (old_vp)
          dirty |= old_vp->affected_states;
       if (new_vp)
-         dirty |= ST_NEW_VERTEX_PROGRAM(st, st_vertex_program(new_vp));
+         dirty |= ST_NEW_VERTEX_PROGRAM(st, st_common_program(new_vp));
    }
 
    if (unlikely(new_tcp != &old_tcp->Base)) {
@@ -153,7 +153,7 @@ static void check_attrib_edgeflag(struct st_context *st)
    if (vertdata_edgeflags != st->vertdata_edgeflags) {
       st->vertdata_edgeflags = vertdata_edgeflags;
       if (vp)
-         st->dirty |= ST_NEW_VERTEX_PROGRAM(st, st_vertex_program(vp));
+         st->dirty |= ST_NEW_VERTEX_PROGRAM(st, st_common_program(vp));
    }
 
    edgeflag_culls_prims = edgeflags_enabled && !vertdata_edgeflags &&

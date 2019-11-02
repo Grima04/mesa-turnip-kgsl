@@ -86,7 +86,7 @@ st_serialise_ir_program(struct gl_context *ctx, struct gl_program *prog,
 
    switch (prog->info.stage) {
    case MESA_SHADER_VERTEX: {
-      struct st_vertex_program *stvp = (struct st_vertex_program *) prog;
+      struct st_common_program *stvp = (struct st_common_program *) prog;
 
       blob_write_uint32(&blob, stvp->num_inputs);
       blob_write_bytes(&blob, stvp->index_to_input,
@@ -192,7 +192,7 @@ st_deserialise_ir_program(struct gl_context *ctx,
 
    switch (prog->info.stage) {
    case MESA_SHADER_VERTEX: {
-      struct st_vertex_program *stvp = (struct st_vertex_program *) prog;
+      struct st_common_program *stvp = (struct st_common_program *) prog;
 
       st_release_vp_variants(st, stvp);
 

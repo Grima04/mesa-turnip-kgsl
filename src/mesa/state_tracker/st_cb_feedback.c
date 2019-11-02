@@ -303,7 +303,7 @@ st_RenderMode(struct gl_context *ctx, GLenum newMode )
       ctx->Driver.Draw = st_feedback_draw_vbo;
       /* need to generate/use a vertex program that emits pos/color/tex */
       if (vp)
-         st->dirty |= ST_NEW_VERTEX_PROGRAM(st, st_vertex_program(vp));
+         st->dirty |= ST_NEW_VERTEX_PROGRAM(st, st_common_program(vp));
    }
 }
 

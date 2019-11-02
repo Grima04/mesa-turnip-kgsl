@@ -60,8 +60,8 @@ st_new_program(struct gl_context *ctx, GLenum target, GLuint id,
 {
    switch (target) {
    case GL_VERTEX_PROGRAM_ARB: {
-      struct st_vertex_program *prog = rzalloc(NULL,
-                                               struct st_vertex_program);
+      struct st_common_program *prog = rzalloc(NULL,
+                                               struct st_common_program);
       return _mesa_init_gl_program(&prog->Base, target, id, is_arb_asm);
    }
    case GL_TESS_CONTROL_PROGRAM_NV:
@@ -91,7 +91,7 @@ st_delete_program(struct gl_context *ctx, struct gl_program *prog)
    switch( prog->Target ) {
    case GL_VERTEX_PROGRAM_ARB:
       {
-         struct st_vertex_program *stvp = (struct st_vertex_program *) prog;
+         struct st_common_program *stvp = (struct st_common_program *) prog;
          st_release_vp_variants( st, stvp );
          
          if (stvp->glsl_to_tgsi)
@@ -151,7 +151,7 @@ st_program_string_notify( struct gl_context *ctx,
           !st_translate_fragment_program(st, stfp))
          return false;
    } else if (target == GL_VERTEX_PROGRAM_ARB) {
-      struct st_vertex_program *stvp = (struct st_vertex_program *) prog;
+      struct st_common_program *stvp = (struct st_common_program *) prog;
 
       st_release_vp_variants(st, stvp);
       if (!stvp->shader_program && /* not GLSL->NIR */
@@ -211,8 +211,8 @@ st_get_shader_program_completion_status(struct gl_context *ctx,
 
       switch (i) {
       case MESA_SHADER_VERTEX:
-         if (st_vertex_program(linked->Program)->variants)
-            sh = st_vertex_program(linked->Program)->variants->driver_shader;
+         if (st_common_program(linked->Program)->vp_variants)
+            sh = st_common_program(linked->Program)->vp_variants->driver_shader;
          break;
       case MESA_SHADER_FRAGMENT:
          if (st_common_program(linked->Program)->fp_variants)

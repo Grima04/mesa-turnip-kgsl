@@ -107,7 +107,7 @@ st_set_prog_affected_state_flags(struct gl_program *prog)
 
    switch (prog->info.stage) {
    case MESA_SHADER_VERTEX:
-      states = &((struct st_vertex_program*)prog)->affected_states;
+      states = &((struct st_common_program*)prog)->affected_states;
 
       *states = ST_NEW_VS_STATE |
                 ST_NEW_RASTERIZER |
@@ -258,17 +258,17 @@ delete_vp_variant(struct st_context *st, struct st_vp_variant *vpv)
  */
 void
 st_release_vp_variants( struct st_context *st,
-                        struct st_vertex_program *stvp )
+                        struct st_common_program *stvp )
 {
    struct st_vp_variant *vpv;
 
-   for (vpv = stvp->variants; vpv; ) {
+   for (vpv = stvp->vp_variants; vpv; ) {
       struct st_vp_variant *next = vpv->next;
       delete_vp_variant(st, vpv);
       vpv = next;
    }
 
-   stvp->variants = NULL;
+   stvp->vp_variants = NULL;
 
    delete_ir(&stvp->state);
 }
@@ -440,7 +440,7 @@ st_translate_prog_to_nir(struct st_context *st, struct gl_program *prog,
 }
 
 void
-st_prepare_vertex_program(struct st_vertex_program *stvp)
+st_prepare_vertex_program(struct st_common_program *stvp)
 {
    stvp->num_inputs = 0;
    memset(stvp->input_to_index, ~0, sizeof(stvp->input_to_index));
@@ -496,7 +496,7 @@ st_translate_stream_output_info(struct gl_program *prog)
    /* Translate stream output info. */
    struct pipe_stream_output_info *so_info = NULL;
    if (prog->info.stage == MESA_SHADER_VERTEX)
-      so_info = &((struct st_vertex_program*)prog)->state.stream_output;
+      so_info = &((struct st_common_program*)prog)->state.stream_output;
    else
       so_info = &((struct st_common_program*)prog)->state.stream_output;
 
@@ -521,7 +521,7 @@ st_translate_stream_output_info(struct gl_program *prog)
  */
 bool
 st_translate_vertex_program(struct st_context *st,
-                            struct st_vertex_program *stvp)
+                            struct st_common_program *stvp)
 {
    struct ureg_program *ureg;
    enum pipe_error error;
@@ -668,7 +668,7 @@ static const gl_state_index16 depth_range_state[STATE_LENGTH] =
 
 static struct st_vp_variant *
 st_create_vp_variant(struct st_context *st,
-                     struct st_vertex_program *stvp,
+                     struct st_common_program *stvp,
                      const struct st_common_variant_key *key)
 {
    struct st_vp_variant *vpv = CALLOC_STRUCT(st_vp_variant);
@@ -810,13 +810,13 @@ st_create_vp_variant(struct st_context *st,
  */
 struct st_vp_variant *
 st_get_vp_variant(struct st_context *st,
-                  struct st_vertex_program *stvp,
+                  struct st_common_program *stvp,
                   const struct st_common_variant_key *key)
 {
    struct st_vp_variant *vpv;
 
    /* Search for existing variant */
-   for (vpv = stvp->variants; vpv; vpv = vpv->next) {
+   for (vpv = stvp->vp_variants; vpv; vpv = vpv->next) {
       if (memcmp(&vpv->key, key, sizeof(*key)) == 0) {
          break;
       }
@@ -834,8 +834,8 @@ st_get_vp_variant(struct st_context *st,
           }
 
          /* insert into list */
-         vpv->next = stvp->variants;
-         stvp->variants = vpv;
+         vpv->next = stvp->vp_variants;
+         stvp->vp_variants = vpv;
       }
    }
 
@@ -1862,10 +1862,10 @@ destroy_program_variants(struct st_context *st, struct gl_program *target)
    switch (target->Target) {
    case GL_VERTEX_PROGRAM_ARB:
       {
-         struct st_vertex_program *stvp = (struct st_vertex_program *) target;
-         struct st_vp_variant *vpv, **prevPtr = &stvp->variants;
+         struct st_common_program *stvp = (struct st_common_program *) target;
+         struct st_vp_variant *vpv, **prevPtr = &stvp->vp_variants;
 
-         for (vpv = stvp->variants; vpv; ) {
+         for (vpv = stvp->vp_variants; vpv; ) {
             struct st_vp_variant *next = vpv->next;
             if (vpv->key.st == st) {
                /* unlink from list */
@@ -2012,7 +2012,7 @@ st_precompile_shader_variant(struct st_context *st,
 {
    switch (prog->Target) {
    case GL_VERTEX_PROGRAM_ARB: {
-      struct st_vertex_program *p = (struct st_vertex_program *)prog;
+      struct st_common_program *p = (struct st_common_program *)prog;
       struct st_common_variant_key key;
 
       memset(&key, 0, sizeof(key));
@@ -2057,7 +2057,7 @@ st_finalize_program(struct st_context *st, struct gl_program *prog)
 {
    if (st->current_program[prog->info.stage] == prog) {
       if (prog->info.stage == MESA_SHADER_VERTEX)
-         st->dirty |= ST_NEW_VERTEX_PROGRAM(st, (struct st_vertex_program *)prog);
+         st->dirty |= ST_NEW_VERTEX_PROGRAM(st, (struct st_common_program *)prog);
       else
          st->dirty |= ((struct st_common_program *)prog)->affected_states;
    }

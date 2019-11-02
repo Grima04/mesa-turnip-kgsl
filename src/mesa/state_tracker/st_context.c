@@ -137,8 +137,8 @@ st_query_memory_info(struct gl_context *ctx, struct gl_memory_info *out)
 static uint64_t
 st_get_active_states(struct gl_context *ctx)
 {
-   struct st_vertex_program *vp =
-      st_vertex_program(ctx->VertexProgram._Current);
+   struct st_common_program *vp =
+      st_common_program(ctx->VertexProgram._Current);
    struct st_common_program *tcp =
       st_common_program(ctx->TessCtrlProgram._Current);
    struct st_common_program *tep =
@@ -1055,7 +1055,7 @@ st_destroy_context(struct st_context *st)
 
    st_reference_prog(st, &st->fp, NULL);
    st_reference_prog(st, &st->gp, NULL);
-   st_reference_vertprog(st, &st->vp, NULL);
+   st_reference_prog(st, &st->vp, NULL);
    st_reference_prog(st, &st->tcp, NULL);
    st_reference_prog(st, &st->tep, NULL);
    st_reference_prog(st, &st->cp, NULL);

@@ -7308,12 +7308,12 @@ get_mesa_program_tgsi(struct gl_context *ctx,
       return NULL;
    }
 
-   struct st_vertex_program *stvp;
+   struct st_common_program *stvp;
    struct st_common_program *stp;
 
    switch (shader->Stage) {
    case MESA_SHADER_VERTEX:
-      stvp = (struct st_vertex_program *)prog;
+      stvp = (struct st_common_program *)prog;
       stvp->glsl_to_tgsi = v;
       break;
    case MESA_SHADER_FRAGMENT:
