@@ -328,6 +328,9 @@ struct si_shader_selector {
 
 	struct tgsi_token       *tokens;
 	struct nir_shader       *nir;
+	void			*nir_binary;
+	unsigned		nir_size;
+
 	struct pipe_stream_output_info  so;
 	struct tgsi_shader_info		info;
 	struct tgsi_tessctrl_info	tcs_info;

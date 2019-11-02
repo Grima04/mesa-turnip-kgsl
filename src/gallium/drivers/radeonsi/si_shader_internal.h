@@ -282,7 +282,8 @@ void si_llvm_context_init(struct si_shader_context *ctx,
 			  unsigned wave_size,
 			  unsigned ballot_mask_bits);
 void si_llvm_context_set_ir(struct si_shader_context *ctx,
-			    struct si_shader *shader);
+			    struct si_shader *shader,
+			    struct nir_shader *nir);
 
 void si_llvm_create_func(struct si_shader_context *ctx,
 			 const char *name,

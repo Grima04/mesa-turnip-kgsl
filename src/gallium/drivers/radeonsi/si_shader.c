@@ -42,6 +42,7 @@
 #include "sid.h"
 
 #include "compiler/nir/nir.h"
+#include "compiler/nir/nir_serialize.h"
 
 static const char scratch_rsrc_dword0_symbol[] =
 	"SCRATCH_RSRC_DWORD0";
@@ -6069,7 +6070,8 @@ static bool si_vs_needs_prolog(const struct si_shader_selector *sel,
 	return sel->vs_needs_prolog || key->ls_vgpr_fix;
 }
 
-static bool si_compile_tgsi_main(struct si_shader_context *ctx)
+static bool si_compile_tgsi_main(struct si_shader_context *ctx,
+				 struct nir_shader *nir, bool free_nir)
 {
 	struct si_shader *shader = ctx->shader;
 	struct si_shader_selector *sel = shader->selector;
@@ -6304,7 +6306,10 @@ static bool si_compile_tgsi_main(struct si_shader_context *ctx)
 			return false;
 		}
 	} else {
-		if (!si_nir_build_llvm(ctx, sel->nir)) {
+		bool success = si_nir_build_llvm(ctx, nir);
+		if (free_nir)
+			ralloc_free(nir);
+		if (!success) {
 			fprintf(stderr, "Failed to translate shader from NIR to LLVM\n");
 			return false;
 		}
@@ -6924,6 +6929,27 @@ static bool si_should_optimize_less(struct ac_llvm_compiler *compiler,
 	       sel->info.num_memory_instructions > 1000;
 }
 
+static struct nir_shader *get_nir_shader(struct si_shader_selector *sel,
+					 bool *free_nir)
+{
+	*free_nir = false;
+
+	if (sel->nir) {
+		return sel->nir;
+	} else if (sel->nir_binary) {
+		struct pipe_screen *screen = &sel->screen->b;
+		const void *options =
+			screen->get_compiler_options(screen, PIPE_SHADER_IR_NIR,
+						     sel->type);
+
+		struct blob_reader blob_reader;
+		blob_reader_init(&blob_reader, sel->nir_binary, sel->nir_size);
+		*free_nir = true;
+		return nir_deserialize(NULL, options, &blob_reader);
+	}
+	return NULL;
+}
+
 int si_compile_tgsi_shader(struct si_screen *sscreen,
 			   struct ac_llvm_compiler *compiler,
 			   struct si_shader *shader,
@@ -6931,6 +6957,8 @@ int si_compile_tgsi_shader(struct si_screen *sscreen,
 {
 	struct si_shader_selector *sel = shader->selector;
 	struct si_shader_context ctx;
+	bool free_nir;
+	struct nir_shader *nir = get_nir_shader(sel, &free_nir);
 	int r = -1;
 
 	/* Dump TGSI code before doing TGSI->LLVM conversion in case the
@@ -6940,20 +6968,20 @@ int si_compile_tgsi_shader(struct si_screen *sscreen,
 		if (sel->tokens)
 			tgsi_dump(sel->tokens, 0);
 		else
-			nir_print_shader(sel->nir, stderr);
+			nir_print_shader(nir, stderr);
 		si_dump_streamout(&sel->so);
 	}
 
 	si_init_shader_ctx(&ctx, sscreen, compiler, si_get_shader_wave_size(shader),
-			   sel->nir != NULL);
-	si_llvm_context_set_ir(&ctx, shader);
+			   nir != NULL);
+	si_llvm_context_set_ir(&ctx, shader, nir);
 
 	memset(shader->info.vs_output_param_offset, AC_EXP_PARAM_UNDEFINED,
 	       sizeof(shader->info.vs_output_param_offset));
 
 	shader->info.uses_instanceid = sel->info.uses_instanceid;
 
-	if (!si_compile_tgsi_main(&ctx)) {
+	if (!si_compile_tgsi_main(&ctx, nir, free_nir)) {
 		si_llvm_dispose(&ctx);
 		return -1;
 	}
@@ -6997,15 +7025,16 @@ int si_compile_tgsi_shader(struct si_screen *sscreen,
 			parts[3] = ctx.main_fn;
 
 			/* VS as LS main part */
+			nir = get_nir_shader(ls, &free_nir);
 			struct si_shader shader_ls = {};
 			shader_ls.selector = ls;
 			shader_ls.key.as_ls = 1;
 			shader_ls.key.mono = shader->key.mono;
 			shader_ls.key.opt = shader->key.opt;
 			shader_ls.is_monolithic = true;
-			si_llvm_context_set_ir(&ctx, &shader_ls);
+			si_llvm_context_set_ir(&ctx, &shader_ls, nir);
 
-			if (!si_compile_tgsi_main(&ctx)) {
+			if (!si_compile_tgsi_main(&ctx, nir, free_nir)) {
 				si_llvm_dispose(&ctx);
 				return -1;
 			}
@@ -7063,6 +7092,7 @@ int si_compile_tgsi_shader(struct si_screen *sscreen,
 			gs_prolog = ctx.main_fn;
 
 			/* ES main part */
+			nir = get_nir_shader(es, &free_nir);
 			struct si_shader shader_es = {};
 			shader_es.selector = es;
 			shader_es.key.as_es = 1;
@@ -7070,9 +7100,9 @@ int si_compile_tgsi_shader(struct si_screen *sscreen,
 			shader_es.key.mono = shader->key.mono;
 			shader_es.key.opt = shader->key.opt;
 			shader_es.is_monolithic = true;
-			si_llvm_context_set_ir(&ctx, &shader_es);
+			si_llvm_context_set_ir(&ctx, &shader_es, nir);
 
-			if (!si_compile_tgsi_main(&ctx)) {
+			if (!si_compile_tgsi_main(&ctx, nir, free_nir)) {
 				si_llvm_dispose(&ctx);
 				return -1;
 			}

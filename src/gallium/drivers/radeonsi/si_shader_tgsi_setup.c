@@ -1029,7 +1029,8 @@ void si_llvm_context_init(struct si_shader_context *ctx,
 /* Set the context to a certain TGSI shader. Can be called repeatedly
  * to change the shader. */
 void si_llvm_context_set_ir(struct si_shader_context *ctx,
-			    struct si_shader *shader)
+			    struct si_shader *shader,
+			    struct nir_shader *nir)
 {
 	struct si_shader_selector *sel = shader->selector;
 	const struct tgsi_shader_info *info = &sel->info;
@@ -1058,7 +1059,7 @@ void si_llvm_context_set_ir(struct si_shader_context *ctx,
 	ctx->num_samplers = util_last_bit(info->samplers_declared);
 	ctx->num_images = util_last_bit(info->images_declared);
 
-	if (sel->nir)
+	if (nir)
 		return;
 
 	if (info->array_max[TGSI_FILE_TEMPORARY] > 0) {

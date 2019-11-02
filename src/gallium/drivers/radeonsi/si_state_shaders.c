@@ -2581,6 +2581,22 @@ static void si_init_shader_selector_async(void *job, int thread_index)
 
 		si_shader_vs(sscreen, sel->gs_copy_shader, sel);
 	}
+
+	if (sel->nir) {
+		/* Serialize NIR to save memory. Monolithic shader variants
+		 * have to deserialize NIR before compilation.
+		 */
+		struct blob blob;
+		blob_init(&blob);
+		nir_serialize(&blob, sel->nir, false);
+		sel->nir_binary = malloc(blob.size);
+		memcpy(sel->nir_binary, blob.data, blob.size);
+		sel->nir_size = blob.size;
+		blob_finish(&blob);
+
+		ralloc_free(sel->nir);
+		sel->nir = NULL;
+	}
 }
 
 void si_schedule_initial_compile(struct si_context *sctx, unsigned processor,
@@ -3281,6 +3297,7 @@ void si_destroy_shader_selector(struct si_context *sctx,
 	simple_mtx_destroy(&sel->mutex);
 	free(sel->tokens);
 	ralloc_free(sel->nir);
+	free(sel->nir_binary);
 	free(sel);
 }
 
