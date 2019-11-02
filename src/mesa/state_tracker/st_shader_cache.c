@@ -86,13 +86,15 @@ st_serialise_ir_program(struct gl_context *ctx, struct gl_program *prog,
    blob_init(&blob);
 
    if (prog->info.stage == MESA_SHADER_VERTEX) {
-      blob_write_uint32(&blob, stp->num_inputs);
-      blob_write_bytes(&blob, stp->index_to_input,
-                       sizeof(stp->index_to_input));
-      blob_write_bytes(&blob, stp->input_to_index,
-                       sizeof(stp->input_to_index));
-      blob_write_bytes(&blob, stp->result_to_output,
-                       sizeof(stp->result_to_output));
+      struct st_vertex_program *stvp = (struct st_vertex_program *)stp;
+
+      blob_write_uint32(&blob, stvp->num_inputs);
+      blob_write_bytes(&blob, stvp->index_to_input,
+                       sizeof(stvp->index_to_input));
+      blob_write_bytes(&blob, stvp->input_to_index,
+                       sizeof(stvp->input_to_index));
+      blob_write_bytes(&blob, stvp->result_to_output,
+                       sizeof(stvp->result_to_output));
    }
 
    if (prog->info.stage == MESA_SHADER_VERTEX ||
@@ -174,13 +176,14 @@ st_deserialise_ir_program(struct gl_context *ctx,
    if (prog->info.stage == MESA_SHADER_VERTEX) {
       st_release_vp_variants(st, stp);
 
-      stp->num_inputs = blob_read_uint32(&blob_reader);
-      blob_copy_bytes(&blob_reader, (uint8_t *) stp->index_to_input,
-                      sizeof(stp->index_to_input));
-      blob_copy_bytes(&blob_reader, (uint8_t *) stp->input_to_index,
-                      sizeof(stp->input_to_index));
-      blob_copy_bytes(&blob_reader, (uint8_t *) stp->result_to_output,
-                      sizeof(stp->result_to_output));
+      struct st_vertex_program *stvp = (struct st_vertex_program *)stp;
+      stvp->num_inputs = blob_read_uint32(&blob_reader);
+      blob_copy_bytes(&blob_reader, (uint8_t *) stvp->index_to_input,
+                      sizeof(stvp->index_to_input));
+      blob_copy_bytes(&blob_reader, (uint8_t *) stvp->input_to_index,
+                      sizeof(stvp->input_to_index));
+      blob_copy_bytes(&blob_reader, (uint8_t *) stvp->result_to_output,
+                      sizeof(stvp->result_to_output));
    } else if (prog->info.stage == MESA_SHADER_FRAGMENT) {
       st_release_fp_variants(st, stp);
    } else {

@@ -251,6 +251,12 @@ struct st_program
       struct st_vp_variant *vp_variants;
       struct st_fp_variant *fp_variants;
    };
+};
+
+
+struct st_vertex_program
+{
+   struct st_program Base;
 
    /** maps a TGSI input index back to a Mesa VERT_ATTRIB_x */
    ubyte index_to_input[PIPE_MAX_ATTRIBS];

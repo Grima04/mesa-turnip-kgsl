@@ -440,8 +440,10 @@ st_translate_prog_to_nir(struct st_context *st, struct gl_program *prog,
 }
 
 void
-st_prepare_vertex_program(struct st_program *stvp)
+st_prepare_vertex_program(struct st_program *stp)
 {
+   struct st_vertex_program *stvp = (struct st_vertex_program *)stp;
+
    stvp->num_inputs = 0;
    memset(stvp->input_to_index, ~0, sizeof(stvp->input_to_index));
    memset(stvp->result_to_output, ~0, sizeof(stvp->result_to_output));
@@ -450,12 +452,12 @@ st_prepare_vertex_program(struct st_program *stvp)
     * and TGSI generic input indexes, plus input attrib semantic info.
     */
    for (unsigned attr = 0; attr < VERT_ATTRIB_MAX; attr++) {
-      if ((stvp->Base.info.inputs_read & BITFIELD64_BIT(attr)) != 0) {
+      if ((stp->Base.info.inputs_read & BITFIELD64_BIT(attr)) != 0) {
          stvp->input_to_index[attr] = stvp->num_inputs;
          stvp->index_to_input[stvp->num_inputs] = attr;
          stvp->num_inputs++;
 
-         if ((stvp->Base.DualSlotInputs & BITFIELD64_BIT(attr)) != 0) {
+         if ((stp->Base.DualSlotInputs & BITFIELD64_BIT(attr)) != 0) {
             /* add placeholder for second part of a double attribute */
             stvp->index_to_input[stvp->num_inputs] = ST_DOUBLE_ATTRIB_PLACEHOLDER;
             stvp->num_inputs++;
@@ -469,7 +471,7 @@ st_prepare_vertex_program(struct st_program *stvp)
    /* Compute mapping of vertex program outputs to slots. */
    unsigned num_outputs = 0;
    for (unsigned attr = 0; attr < VARYING_SLOT_MAX; attr++) {
-      if (stvp->Base.info.outputs_written & BITFIELD64_BIT(attr))
+      if (stp->Base.info.outputs_written & BITFIELD64_BIT(attr))
          stvp->result_to_output[attr] = num_outputs++;
    }
    /* pre-setup potentially unused edgeflag output */
@@ -518,7 +520,7 @@ st_translate_stream_output_info(struct gl_program *prog)
  */
 bool
 st_translate_vertex_program(struct st_context *st,
-                            struct st_program *stvp)
+                            struct st_program *stp)
 {
    struct ureg_program *ureg;
    enum pipe_error error;
@@ -527,31 +529,31 @@ st_translate_vertex_program(struct st_context *st,
    ubyte output_semantic_name[VARYING_SLOT_MAX] = {0};
    ubyte output_semantic_index[VARYING_SLOT_MAX] = {0};
 
-   if (stvp->Base.arb.IsPositionInvariant)
-      _mesa_insert_mvp_code(st->ctx, &stvp->Base);
+   if (stp->Base.arb.IsPositionInvariant)
+      _mesa_insert_mvp_code(st->ctx, &stp->Base);
 
-   st_prepare_vertex_program(stvp);
+   st_prepare_vertex_program(stp);
 
    /* ARB_vp: */
-   if (!stvp->glsl_to_tgsi) {
-      _mesa_remove_output_reads(&stvp->Base, PROGRAM_OUTPUT);
+   if (!stp->glsl_to_tgsi) {
+      _mesa_remove_output_reads(&stp->Base, PROGRAM_OUTPUT);
 
       /* This determines which states will be updated when the assembly
        * shader is bound.
        */
-      stvp->affected_states = ST_NEW_VS_STATE |
+      stp->affected_states = ST_NEW_VS_STATE |
                               ST_NEW_RASTERIZER |
                               ST_NEW_VERTEX_ARRAYS;
 
-      if (stvp->Base.Parameters->NumParameters)
-         stvp->affected_states |= ST_NEW_VS_CONSTANTS;
+      if (stp->Base.Parameters->NumParameters)
+         stp->affected_states |= ST_NEW_VS_CONSTANTS;
 
       /* No samplers are allowed in ARB_vp. */
    }
 
    /* Get semantic names and indices. */
    for (attr = 0; attr < VARYING_SLOT_MAX; attr++) {
-      if (stvp->Base.info.outputs_written & BITFIELD64_BIT(attr)) {
+      if (stp->Base.info.outputs_written & BITFIELD64_BIT(attr)) {
          unsigned slot = num_outputs++;
          unsigned semantic_name, semantic_index;
          tgsi_get_gl_varying_semantic(attr, st->needs_texcoord_semantic,
@@ -568,25 +570,27 @@ st_translate_vertex_program(struct st_context *st,
    if (ureg == NULL)
       return false;
 
-   if (stvp->Base.info.clip_distance_array_size)
+   if (stp->Base.info.clip_distance_array_size)
       ureg_property(ureg, TGSI_PROPERTY_NUM_CLIPDIST_ENABLED,
-                    stvp->Base.info.clip_distance_array_size);
-   if (stvp->Base.info.cull_distance_array_size)
+                    stp->Base.info.clip_distance_array_size);
+   if (stp->Base.info.cull_distance_array_size)
       ureg_property(ureg, TGSI_PROPERTY_NUM_CULLDIST_ENABLED,
-                    stvp->Base.info.cull_distance_array_size);
+                    stp->Base.info.cull_distance_array_size);
 
    if (ST_DEBUG & DEBUG_MESA) {
-      _mesa_print_program(&stvp->Base);
-      _mesa_print_program_parameters(st->ctx, &stvp->Base);
+      _mesa_print_program(&stp->Base);
+      _mesa_print_program_parameters(st->ctx, &stp->Base);
       debug_printf("\n");
    }
 
-   if (stvp->glsl_to_tgsi) {
+   struct st_vertex_program *stvp = (struct st_vertex_program *)stp;
+
+   if (stp->glsl_to_tgsi) {
       error = st_translate_program(st->ctx,
                                    PIPE_SHADER_VERTEX,
                                    ureg,
-                                   stvp->glsl_to_tgsi,
-                                   &stvp->Base,
+                                   stp->glsl_to_tgsi,
+                                   &stp->Base,
                                    /* inputs */
                                    stvp->num_inputs,
                                    stvp->input_to_index,
@@ -600,14 +604,14 @@ st_translate_vertex_program(struct st_context *st,
                                    output_semantic_name,
                                    output_semantic_index);
 
-      st_translate_stream_output_info(&stvp->Base);
+      st_translate_stream_output_info(&stp->Base);
 
-      free_glsl_to_tgsi_visitor(stvp->glsl_to_tgsi);
+      free_glsl_to_tgsi_visitor(stp->glsl_to_tgsi);
    } else
       error = st_translate_mesa_program(st->ctx,
                                         PIPE_SHADER_VERTEX,
                                         ureg,
-                                        &stvp->Base,
+                                        &stp->Base,
                                         /* inputs */
                                         stvp->num_inputs,
                                         stvp->input_to_index,
@@ -622,17 +626,17 @@ st_translate_vertex_program(struct st_context *st,
 
    if (error) {
       debug_printf("%s: failed to translate Mesa program:\n", __func__);
-      _mesa_print_program(&stvp->Base);
+      _mesa_print_program(&stp->Base);
       debug_assert(0);
       return false;
    }
 
-   stvp->state.tokens = ureg_get_tokens(ureg, NULL);
+   stp->state.tokens = ureg_get_tokens(ureg, NULL);
    ureg_destroy(ureg);
 
-   if (stvp->glsl_to_tgsi) {
-      stvp->glsl_to_tgsi = NULL;
-      st_store_ir_in_disk_cache(st, &stvp->Base, false);
+   if (stp->glsl_to_tgsi) {
+      stp->glsl_to_tgsi = NULL;
+      st_store_ir_in_disk_cache(st, &stp->Base, false);
    }
 
    /* Translate to NIR.
@@ -644,20 +648,20 @@ st_translate_vertex_program(struct st_context *st,
    if (st->pipe->screen->get_shader_param(st->pipe->screen,
                                           PIPE_SHADER_VERTEX,
                                           PIPE_SHADER_CAP_PREFERRED_IR)) {
-      assert(!stvp->glsl_to_tgsi);
+      assert(!stp->glsl_to_tgsi);
 
       nir_shader *nir =
-         st_translate_prog_to_nir(st, &stvp->Base, MESA_SHADER_VERTEX);
+         st_translate_prog_to_nir(st, &stp->Base, MESA_SHADER_VERTEX);
 
-      if (stvp->state.ir.nir)
-         ralloc_free(stvp->state.ir.nir);
-      stvp->state.type = PIPE_SHADER_IR_NIR;
-      stvp->state.ir.nir = nir;
-      stvp->Base.nir = nir;
+      if (stp->state.ir.nir)
+         ralloc_free(stp->state.ir.nir);
+      stp->state.type = PIPE_SHADER_IR_NIR;
+      stp->state.ir.nir = nir;
+      stp->Base.nir = nir;
       return true;
    }
 
-   return stvp->state.tokens != NULL;
+   return stp->state.tokens != NULL;
 }
 
 static const gl_state_index16 depth_range_state[STATE_LENGTH] =
@@ -678,7 +682,7 @@ st_create_vp_variant(struct st_context *st,
    struct gl_program_parameter_list *params = stvp->Base.Parameters;
 
    vpv->key = *key;
-   vpv->num_inputs = stvp->num_inputs;
+   vpv->num_inputs = ((struct st_vertex_program*)stvp)->num_inputs;
 
    state.stream_output = stvp->state.stream_output;
 
@@ -807,13 +811,14 @@ st_create_vp_variant(struct st_context *st,
  */
 struct st_vp_variant *
 st_get_vp_variant(struct st_context *st,
-                  struct st_program *stvp,
+                  struct st_program *stp,
                   const struct st_common_variant_key *key)
 {
+   struct st_vertex_program *stvp = (struct st_vertex_program *)stp;
    struct st_vp_variant *vpv;
 
    /* Search for existing variant */
-   for (vpv = stvp->vp_variants; vpv; vpv = vpv->next) {
+   for (vpv = stp->vp_variants; vpv; vpv = vpv->next) {
       if (memcmp(&vpv->key, key, sizeof(*key)) == 0) {
          break;
       }
@@ -821,7 +826,7 @@ st_get_vp_variant(struct st_context *st,
 
    if (!vpv) {
       /* create now */
-      vpv = st_create_vp_variant(st, stvp, key);
+      vpv = st_create_vp_variant(st, stp, key);
       if (vpv) {
           for (unsigned index = 0; index < vpv->num_inputs; ++index) {
              unsigned attr = stvp->index_to_input[index];
@@ -831,8 +836,8 @@ st_get_vp_variant(struct st_context *st,
           }
 
          /* insert into list */
-         vpv->next = stvp->vp_variants;
-         stvp->vp_variants = vpv;
+         vpv->next = stp->vp_variants;
+         stp->vp_variants = vpv;
       }
    }
 

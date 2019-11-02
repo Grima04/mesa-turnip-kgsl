@@ -60,17 +60,15 @@ st_new_program(struct gl_context *ctx, GLenum target, GLuint id,
 {
    switch (target) {
    case GL_VERTEX_PROGRAM_ARB: {
-      struct st_program *prog = rzalloc(NULL,
-                                               struct st_program);
-      return _mesa_init_gl_program(&prog->Base, target, id, is_arb_asm);
+      struct st_vertex_program *prog = rzalloc(NULL, struct st_vertex_program);
+      return _mesa_init_gl_program(&prog->Base.Base, target, id, is_arb_asm);
    }
    case GL_TESS_CONTROL_PROGRAM_NV:
    case GL_TESS_EVALUATION_PROGRAM_NV:
    case GL_GEOMETRY_PROGRAM_NV:
    case GL_FRAGMENT_PROGRAM_ARB:
    case GL_COMPUTE_PROGRAM_NV: {
-      struct st_program *prog = rzalloc(NULL,
-                                               struct st_program);
+      struct st_program *prog = rzalloc(NULL, struct st_program);
       return _mesa_init_gl_program(&prog->Base, target, id, is_arb_asm);
    }
    default:
