@@ -150,9 +150,6 @@ st_program_string_notify( struct gl_context *ctx,
       if (!stfp->shader_program && /* not GLSL->NIR */
           !st_translate_fragment_program(st, stfp))
          return false;
-
-      if (st->fp == stfp)
-	 st->dirty |= stfp->affected_states;
    } else if (target == GL_VERTEX_PROGRAM_ARB) {
       struct st_vertex_program *stvp = (struct st_vertex_program *) prog;
 
@@ -160,9 +157,6 @@ st_program_string_notify( struct gl_context *ctx,
       if (!stvp->shader_program && /* not GLSL->NIR */
           !st_translate_vertex_program(st, stvp))
          return false;
-
-      if (st->vp == stvp)
-	 st->dirty |= ST_NEW_VERTEX_PROGRAM(st, stvp);
    } else {
       struct st_common_program *stcp = st_common_program(prog);
 
@@ -170,12 +164,6 @@ st_program_string_notify( struct gl_context *ctx,
       if (!stcp->shader_program && /* not GLSL->NIR */
           !st_translate_common_program(st, stcp))
          return false;
-
-      if ((prog->info.stage == MESA_SHADER_TESS_CTRL && st->tcp == stcp) ||
-          (prog->info.stage == MESA_SHADER_TESS_EVAL && st->tep == stcp) ||
-          (prog->info.stage == MESA_SHADER_GEOMETRY && st->gp == stcp) ||
-          (prog->info.stage == MESA_SHADER_COMPUTE && st->cp == stcp))
-	 st->dirty |= stcp->affected_states;
    }
 
    st_finalize_program(st, prog);

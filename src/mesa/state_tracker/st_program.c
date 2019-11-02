@@ -62,6 +62,7 @@
 #include "st_atifs_to_tgsi.h"
 #include "st_nir.h"
 #include "st_shader_cache.h"
+#include "st_util.h"
 #include "cso_cache/cso_context.h"
 
 
@@ -2054,6 +2055,13 @@ st_precompile_shader_variant(struct st_context *st,
 void
 st_finalize_program(struct st_context *st, struct gl_program *prog)
 {
+   if (st->current_program[prog->info.stage] == prog) {
+      if (prog->info.stage == MESA_SHADER_VERTEX)
+         st->dirty |= ST_NEW_VERTEX_PROGRAM(st, (struct st_vertex_program *)prog);
+      else
+         st->dirty |= ((struct st_common_program *)prog)->affected_states;
+   }
+
    /* Create Gallium shaders now instead of on demand. */
    if (ST_DEBUG & DEBUG_PRECOMPILE ||
        st->shader_has_one_variant[prog->info.stage])

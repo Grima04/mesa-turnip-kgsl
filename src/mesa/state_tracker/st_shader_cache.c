@@ -214,10 +214,6 @@ st_deserialise_ir_program(struct gl_context *ctx,
       } else {
          read_tgsi_from_cache(&blob_reader, &stvp->state.tokens);
       }
-
-      if (st->vp == stvp)
-         st->dirty |= ST_NEW_VERTEX_PROGRAM(st, stvp);
-
       break;
    }
    case MESA_SHADER_TESS_CTRL:
@@ -244,13 +240,6 @@ st_deserialise_ir_program(struct gl_context *ctx,
       } else {
          read_tgsi_from_cache(&blob_reader, &stcp->state.tokens);
       }
-
-      if ((prog->info.stage == MESA_SHADER_TESS_CTRL && st->tcp == stcp) ||
-          (prog->info.stage == MESA_SHADER_TESS_EVAL && st->tep == stcp) ||
-          (prog->info.stage == MESA_SHADER_GEOMETRY && st->gp == stcp) ||
-          (prog->info.stage == MESA_SHADER_FRAGMENT && st->fp == stcp) ||
-          (prog->info.stage == MESA_SHADER_COMPUTE && st->cp == stcp))
-         st->dirty |= stcp->affected_states;
       break;
    }
    default:
