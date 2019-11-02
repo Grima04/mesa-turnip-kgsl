@@ -123,7 +123,6 @@ st_delete_program(struct gl_context *ctx, struct gl_program *prog)
    _mesa_delete_program( ctx, prog );
 }
 
-
 /**
  * Called via ctx->Driver.ProgramStringNotify()
  * Called when the program's text/code is changed.  We have to free
@@ -135,7 +134,6 @@ st_program_string_notify( struct gl_context *ctx,
                                            struct gl_program *prog )
 {
    struct st_context *st = st_context(ctx);
-   gl_shader_stage stage = _mesa_program_enum_to_shader_stage(target);
 
    if (target == GL_FRAGMENT_PROGRAM_ARB ||
        target == GL_FRAGMENT_SHADER_ATI) {
@@ -180,10 +178,7 @@ st_program_string_notify( struct gl_context *ctx,
 	 st->dirty |= stcp->affected_states;
    }
 
-   if (ST_DEBUG & DEBUG_PRECOMPILE ||
-       st->shader_has_one_variant[stage])
-      st_precompile_shader_variant(st, prog);
-
+   st_finalize_program(st, prog);
    return GL_TRUE;
 }
 

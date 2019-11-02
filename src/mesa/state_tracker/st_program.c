@@ -2005,7 +2005,7 @@ st_destroy_program_variants(struct st_context *st)
 /**
  * Compile one shader variant.
  */
-void
+static void
 st_precompile_shader_variant(struct st_context *st,
                              struct gl_program *prog)
 {
@@ -2049,4 +2049,13 @@ st_precompile_shader_variant(struct st_context *st,
    default:
       assert(0);
    }
+}
+
+void
+st_finalize_program(struct st_context *st, struct gl_program *prog)
+{
+   /* Create Gallium shaders now instead of on demand. */
+   if (ST_DEBUG & DEBUG_PRECOMPILE ||
+       st->shader_has_one_variant[prog->info.stage])
+      st_precompile_shader_variant(st, prog);
 }
