@@ -98,10 +98,10 @@ get_texture_target(struct gl_context *ctx, const unsigned unit)
 void
 st_update_fp( struct st_context *st )
 {
-   struct st_common_program *stfp;
+   struct st_program *stfp;
 
    assert(st->ctx->FragmentProgram._Current);
-   stfp = st_common_program(st->ctx->FragmentProgram._Current);
+   stfp = st_program(st->ctx->FragmentProgram._Current);
    assert(stfp->Base.Target == GL_FRAGMENT_PROGRAM_ARB);
 
    void *shader;
@@ -176,13 +176,13 @@ st_update_fp( struct st_context *st )
 void
 st_update_vp( struct st_context *st )
 {
-   struct st_common_program *stvp;
+   struct st_program *stvp;
 
    /* find active shader and params -- Should be covered by
     * ST_NEW_VERTEX_PROGRAM
     */
    assert(st->ctx->VertexProgram._Current);
-   stvp = st_common_program(st->ctx->VertexProgram._Current);
+   stvp = st_program(st->ctx->VertexProgram._Current);
    assert(stvp->Base.Target == GL_VERTEX_PROGRAM_ARB);
 
    if (st->shader_has_one_variant[MESA_SHADER_VERTEX] &&
@@ -242,16 +242,16 @@ st_update_vp( struct st_context *st )
 
 static void *
 st_update_common_program(struct st_context *st, struct gl_program *prog,
-                         unsigned pipe_shader, struct st_common_program **dst)
+                         unsigned pipe_shader, struct st_program **dst)
 {
-   struct st_common_program *stp;
+   struct st_program *stp;
 
    if (!prog) {
       st_reference_prog(st, dst, NULL);
       return NULL;
    }
 
-   stp = st_common_program(prog);
+   stp = st_program(prog);
    st_reference_prog(st, dst, stp);
 
    if (st->shader_has_one_variant[prog->info.stage] && stp->variants)

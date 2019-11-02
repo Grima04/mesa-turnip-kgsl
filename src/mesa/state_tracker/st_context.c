@@ -137,18 +137,18 @@ st_query_memory_info(struct gl_context *ctx, struct gl_memory_info *out)
 static uint64_t
 st_get_active_states(struct gl_context *ctx)
 {
-   struct st_common_program *vp =
-      st_common_program(ctx->VertexProgram._Current);
-   struct st_common_program *tcp =
-      st_common_program(ctx->TessCtrlProgram._Current);
-   struct st_common_program *tep =
-      st_common_program(ctx->TessEvalProgram._Current);
-   struct st_common_program *gp =
-      st_common_program(ctx->GeometryProgram._Current);
-   struct st_common_program *fp =
-      st_common_program(ctx->FragmentProgram._Current);
-   struct st_common_program *cp =
-      st_common_program(ctx->ComputeProgram._Current);
+   struct st_program *vp =
+      st_program(ctx->VertexProgram._Current);
+   struct st_program *tcp =
+      st_program(ctx->TessCtrlProgram._Current);
+   struct st_program *tep =
+      st_program(ctx->TessEvalProgram._Current);
+   struct st_program *gp =
+      st_program(ctx->GeometryProgram._Current);
+   struct st_program *fp =
+      st_program(ctx->FragmentProgram._Current);
+   struct st_program *cp =
+      st_program(ctx->ComputeProgram._Current);
    uint64_t active_shader_states = 0;
 
    if (vp)

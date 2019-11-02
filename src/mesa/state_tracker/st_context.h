@@ -50,7 +50,7 @@ struct draw_context;
 struct draw_stage;
 struct gen_mipmap_state;
 struct st_context;
-struct st_common_program;
+struct st_program;
 struct st_perf_monitor_group;
 struct u_upload_mgr;
 
@@ -246,12 +246,12 @@ struct st_context
 
    union {
       struct {
-         struct st_common_program *vp;    /**< Currently bound vertex program */
-         struct st_common_program *tcp; /**< Currently bound tess control program */
-         struct st_common_program *tep; /**< Currently bound tess eval program */
-         struct st_common_program *gp;  /**< Currently bound geometry program */
-         struct st_common_program *fp;  /**< Currently bound fragment program */
-         struct st_common_program *cp;   /**< Currently bound compute program */
+         struct st_program *vp;    /**< Currently bound vertex program */
+         struct st_program *tcp; /**< Currently bound tess control program */
+         struct st_program *tep; /**< Currently bound tess eval program */
+         struct st_program *gp;  /**< Currently bound geometry program */
+         struct st_program *fp;  /**< Currently bound fragment program */
+         struct st_program *cp;   /**< Currently bound compute program */
       };
       struct gl_program *current_program[MESA_SHADER_STAGES];
    };

@@ -60,8 +60,8 @@ st_new_program(struct gl_context *ctx, GLenum target, GLuint id,
 {
    switch (target) {
    case GL_VERTEX_PROGRAM_ARB: {
-      struct st_common_program *prog = rzalloc(NULL,
-                                               struct st_common_program);
+      struct st_program *prog = rzalloc(NULL,
+                                               struct st_program);
       return _mesa_init_gl_program(&prog->Base, target, id, is_arb_asm);
    }
    case GL_TESS_CONTROL_PROGRAM_NV:
@@ -69,8 +69,8 @@ st_new_program(struct gl_context *ctx, GLenum target, GLuint id,
    case GL_GEOMETRY_PROGRAM_NV:
    case GL_FRAGMENT_PROGRAM_ARB:
    case GL_COMPUTE_PROGRAM_NV: {
-      struct st_common_program *prog = rzalloc(NULL,
-                                               struct st_common_program);
+      struct st_program *prog = rzalloc(NULL,
+                                               struct st_program);
       return _mesa_init_gl_program(&prog->Base, target, id, is_arb_asm);
    }
    default:
@@ -91,7 +91,7 @@ st_delete_program(struct gl_context *ctx, struct gl_program *prog)
    switch( prog->Target ) {
    case GL_VERTEX_PROGRAM_ARB:
       {
-         struct st_common_program *stvp = (struct st_common_program *) prog;
+         struct st_program *stvp = (struct st_program *) prog;
          st_release_vp_variants( st, stvp );
          
          if (stvp->glsl_to_tgsi)
@@ -104,7 +104,7 @@ st_delete_program(struct gl_context *ctx, struct gl_program *prog)
    case GL_FRAGMENT_PROGRAM_ARB:
    case GL_COMPUTE_PROGRAM_NV:
       {
-         struct st_common_program *p = st_common_program(prog);
+         struct st_program *p = st_program(prog);
 
          if (prog->Target == GL_FRAGMENT_PROGRAM_ARB)
             st_release_fp_variants(st, p);
@@ -137,7 +137,7 @@ st_program_string_notify( struct gl_context *ctx,
 
    if (target == GL_FRAGMENT_PROGRAM_ARB ||
        target == GL_FRAGMENT_SHADER_ATI) {
-      struct st_common_program *stfp = (struct st_common_program *) prog;
+      struct st_program *stfp = (struct st_program *) prog;
 
       if (target == GL_FRAGMENT_SHADER_ATI) {
          assert(stfp->ati_fs);
@@ -151,14 +151,14 @@ st_program_string_notify( struct gl_context *ctx,
           !st_translate_fragment_program(st, stfp))
          return false;
    } else if (target == GL_VERTEX_PROGRAM_ARB) {
-      struct st_common_program *stvp = (struct st_common_program *) prog;
+      struct st_program *stvp = (struct st_program *) prog;
 
       st_release_vp_variants(st, stvp);
       if (!stvp->shader_program && /* not GLSL->NIR */
           !st_translate_vertex_program(st, stvp))
          return false;
    } else {
-      struct st_common_program *stcp = st_common_program(prog);
+      struct st_program *stcp = st_program(prog);
 
       st_release_common_variants(st, stcp);
       if (!stcp->shader_program && /* not GLSL->NIR */
@@ -179,7 +179,7 @@ st_new_ati_fs(struct gl_context *ctx, struct ati_fragment_shader *curProg)
 {
    struct gl_program *prog = ctx->Driver.NewProgram(ctx, GL_FRAGMENT_PROGRAM_ARB,
          curProg->Id, true);
-   struct st_common_program *stfp = (struct st_common_program *)prog;
+   struct st_program *stfp = (struct st_program *)prog;
    stfp->ati_fs = curProg;
    return prog;
 }
@@ -211,19 +211,19 @@ st_get_shader_program_completion_status(struct gl_context *ctx,
 
       switch (i) {
       case MESA_SHADER_VERTEX:
-         if (st_common_program(linked->Program)->vp_variants)
-            sh = st_common_program(linked->Program)->vp_variants->driver_shader;
+         if (st_program(linked->Program)->vp_variants)
+            sh = st_program(linked->Program)->vp_variants->driver_shader;
          break;
       case MESA_SHADER_FRAGMENT:
-         if (st_common_program(linked->Program)->fp_variants)
-            sh = st_common_program(linked->Program)->fp_variants->driver_shader;
+         if (st_program(linked->Program)->fp_variants)
+            sh = st_program(linked->Program)->fp_variants->driver_shader;
          break;
       case MESA_SHADER_TESS_CTRL:
       case MESA_SHADER_TESS_EVAL:
       case MESA_SHADER_GEOMETRY:
       case MESA_SHADER_COMPUTE:
-         if (st_common_program(linked->Program)->variants)
-            sh = st_common_program(linked->Program)->variants->driver_shader;
+         if (st_program(linked->Program)->variants)
+            sh = st_program(linked->Program)->variants->driver_shader;
          break;
       }
 

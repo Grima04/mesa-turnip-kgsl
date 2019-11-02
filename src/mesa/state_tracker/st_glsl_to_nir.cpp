@@ -520,12 +520,12 @@ set_st_program(struct gl_program *prog,
                struct gl_shader_program *shader_program,
                nir_shader *nir)
 {
-   struct st_common_program *stvp;
-   struct st_common_program *stp;
+   struct st_program *stvp;
+   struct st_program *stp;
 
    switch (prog->info.stage) {
    case MESA_SHADER_VERTEX:
-      stvp = (struct st_common_program *)prog;
+      stvp = (struct st_program *)prog;
       stvp->shader_program = shader_program;
       stvp->state.type = PIPE_SHADER_IR_NIR;
       stvp->state.ir.nir = nir;
@@ -535,7 +535,7 @@ set_st_program(struct gl_program *prog,
    case MESA_SHADER_TESS_EVAL:
    case MESA_SHADER_COMPUTE:
    case MESA_SHADER_FRAGMENT:
-      stp = (struct st_common_program *)prog;
+      stp = (struct st_program *)prog;
       stp->shader_program = shader_program;
       stp->state.type = PIPE_SHADER_IR_NIR;
       stp->state.ir.nir = nir;
@@ -822,7 +822,7 @@ st_link_nir(struct gl_context *ctx,
 
       /* Initialize st_vertex_program members. */
       if (i == MESA_SHADER_VERTEX)
-         st_prepare_vertex_program(st_common_program(prog));
+         st_prepare_vertex_program(st_program(prog));
 
       /* Get pipe_stream_output_info. */
       if (i == MESA_SHADER_VERTEX ||

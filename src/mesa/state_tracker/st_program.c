@@ -107,7 +107,7 @@ st_set_prog_affected_state_flags(struct gl_program *prog)
 
    switch (prog->info.stage) {
    case MESA_SHADER_VERTEX:
-      states = &((struct st_common_program*)prog)->affected_states;
+      states = &((struct st_program*)prog)->affected_states;
 
       *states = ST_NEW_VS_STATE |
                 ST_NEW_RASTERIZER |
@@ -124,7 +124,7 @@ st_set_prog_affected_state_flags(struct gl_program *prog)
       break;
 
    case MESA_SHADER_TESS_CTRL:
-      states = &(st_common_program(prog))->affected_states;
+      states = &(st_program(prog))->affected_states;
 
       *states = ST_NEW_TCS_STATE;
 
@@ -139,7 +139,7 @@ st_set_prog_affected_state_flags(struct gl_program *prog)
       break;
 
    case MESA_SHADER_TESS_EVAL:
-      states = &(st_common_program(prog))->affected_states;
+      states = &(st_program(prog))->affected_states;
 
       *states = ST_NEW_TES_STATE |
                 ST_NEW_RASTERIZER;
@@ -155,7 +155,7 @@ st_set_prog_affected_state_flags(struct gl_program *prog)
       break;
 
    case MESA_SHADER_GEOMETRY:
-      states = &(st_common_program(prog))->affected_states;
+      states = &(st_program(prog))->affected_states;
 
       *states = ST_NEW_GS_STATE |
                 ST_NEW_RASTERIZER;
@@ -171,7 +171,7 @@ st_set_prog_affected_state_flags(struct gl_program *prog)
       break;
 
    case MESA_SHADER_FRAGMENT:
-      states = &((struct st_common_program*)prog)->affected_states;
+      states = &((struct st_program*)prog)->affected_states;
 
       /* gl_FragCoord and glDrawPixels always use constants. */
       *states = ST_NEW_FS_STATE |
@@ -189,7 +189,7 @@ st_set_prog_affected_state_flags(struct gl_program *prog)
       break;
 
    case MESA_SHADER_COMPUTE:
-      states = &((struct st_common_program*)prog)->affected_states;
+      states = &((struct st_program*)prog)->affected_states;
 
       *states = ST_NEW_CS_STATE;
 
@@ -258,7 +258,7 @@ delete_vp_variant(struct st_context *st, struct st_vp_variant *vpv)
  */
 void
 st_release_vp_variants( struct st_context *st,
-                        struct st_common_program *stvp )
+                        struct st_program *stvp )
 {
    struct st_vp_variant *vpv;
 
@@ -299,7 +299,7 @@ delete_fp_variant(struct st_context *st, struct st_fp_variant *fpv)
  * Free all variants of a fragment program.
  */
 void
-st_release_fp_variants(struct st_context *st, struct st_common_program *stfp)
+st_release_fp_variants(struct st_context *st, struct st_program *stfp)
 {
    struct st_fp_variant *fpv;
 
@@ -374,7 +374,7 @@ delete_common_variant(struct st_context *st, struct st_common_variant *v,
  * Free all basic program variants.
  */
 void
-st_release_common_variants(struct st_context *st, struct st_common_program *p)
+st_release_common_variants(struct st_context *st, struct st_program *p)
 {
    struct st_common_variant *v;
 
@@ -440,7 +440,7 @@ st_translate_prog_to_nir(struct st_context *st, struct gl_program *prog,
 }
 
 void
-st_prepare_vertex_program(struct st_common_program *stvp)
+st_prepare_vertex_program(struct st_program *stvp)
 {
    stvp->num_inputs = 0;
    memset(stvp->input_to_index, ~0, sizeof(stvp->input_to_index));
@@ -496,9 +496,9 @@ st_translate_stream_output_info(struct gl_program *prog)
    /* Translate stream output info. */
    struct pipe_stream_output_info *so_info = NULL;
    if (prog->info.stage == MESA_SHADER_VERTEX)
-      so_info = &((struct st_common_program*)prog)->state.stream_output;
+      so_info = &((struct st_program*)prog)->state.stream_output;
    else
-      so_info = &((struct st_common_program*)prog)->state.stream_output;
+      so_info = &((struct st_program*)prog)->state.stream_output;
 
    for (unsigned i = 0; i < info->NumOutputs; i++) {
       so_info->output[i].register_index =
@@ -521,7 +521,7 @@ st_translate_stream_output_info(struct gl_program *prog)
  */
 bool
 st_translate_vertex_program(struct st_context *st,
-                            struct st_common_program *stvp)
+                            struct st_program *stvp)
 {
    struct ureg_program *ureg;
    enum pipe_error error;
@@ -668,7 +668,7 @@ static const gl_state_index16 depth_range_state[STATE_LENGTH] =
 
 static struct st_vp_variant *
 st_create_vp_variant(struct st_context *st,
-                     struct st_common_program *stvp,
+                     struct st_program *stvp,
                      const struct st_common_variant_key *key)
 {
    struct st_vp_variant *vpv = CALLOC_STRUCT(st_vp_variant);
@@ -810,7 +810,7 @@ st_create_vp_variant(struct st_context *st,
  */
 struct st_vp_variant *
 st_get_vp_variant(struct st_context *st,
-                  struct st_common_program *stvp,
+                  struct st_program *stvp,
                   const struct st_common_variant_key *key)
 {
    struct st_vp_variant *vpv;
@@ -848,7 +848,7 @@ st_get_vp_variant(struct st_context *st,
  */
 bool
 st_translate_fragment_program(struct st_context *st,
-                              struct st_common_program *stfp)
+                              struct st_program *stfp)
 {
    /* Non-GLSL programs: */
    if (!stfp->glsl_to_tgsi) {
@@ -1221,7 +1221,7 @@ st_translate_fragment_program(struct st_context *st,
 
 static struct st_fp_variant *
 st_create_fp_variant(struct st_context *st,
-                     struct st_common_program *stfp,
+                     struct st_program *stfp,
                      const struct st_fp_variant_key *key)
 {
    struct pipe_context *pipe = st->pipe;
@@ -1511,7 +1511,7 @@ st_create_fp_variant(struct st_context *st,
  */
 struct st_fp_variant *
 st_get_fp_variant(struct st_context *st,
-                  struct st_common_program *stfp,
+                  struct st_program *stfp,
                   const struct st_fp_variant_key *key)
 {
    struct st_fp_variant *fpv;
@@ -1558,7 +1558,7 @@ st_get_fp_variant(struct st_context *st,
  */
 bool
 st_translate_common_program(struct st_context *st,
-                            struct st_common_program *stcp)
+                            struct st_program *stcp)
 {
    struct gl_program *prog = &stcp->Base;
    enum pipe_shader_type stage =
@@ -1746,7 +1746,7 @@ st_translate_common_program(struct st_context *st,
  */
 struct st_common_variant *
 st_get_common_variant(struct st_context *st,
-                      struct st_common_program *prog,
+                      struct st_program *prog,
                       const struct st_common_variant_key *key)
 {
    struct pipe_context *pipe = st->pipe;
@@ -1862,7 +1862,7 @@ destroy_program_variants(struct st_context *st, struct gl_program *target)
    switch (target->Target) {
    case GL_VERTEX_PROGRAM_ARB:
       {
-         struct st_common_program *stvp = (struct st_common_program *) target;
+         struct st_program *stvp = (struct st_program *) target;
          struct st_vp_variant *vpv, **prevPtr = &stvp->vp_variants;
 
          for (vpv = stvp->vp_variants; vpv; ) {
@@ -1882,8 +1882,8 @@ destroy_program_variants(struct st_context *st, struct gl_program *target)
       break;
    case GL_FRAGMENT_PROGRAM_ARB:
       {
-         struct st_common_program *stfp =
-            (struct st_common_program *) target;
+         struct st_program *stfp =
+            (struct st_program *) target;
          struct st_fp_variant *fpv, **prevPtr = &stfp->fp_variants;
 
          for (fpv = stfp->fp_variants; fpv; ) {
@@ -1906,7 +1906,7 @@ destroy_program_variants(struct st_context *st, struct gl_program *target)
    case GL_TESS_EVALUATION_PROGRAM_NV:
    case GL_COMPUTE_PROGRAM_NV:
       {
-         struct st_common_program *p = st_common_program(target);
+         struct st_program *p = st_program(target);
          struct st_common_variant *v, **prevPtr = &p->variants;
 
          for (v = p->variants; v; ) {
@@ -2012,7 +2012,7 @@ st_precompile_shader_variant(struct st_context *st,
 {
    switch (prog->Target) {
    case GL_VERTEX_PROGRAM_ARB: {
-      struct st_common_program *p = (struct st_common_program *)prog;
+      struct st_program *p = (struct st_program *)prog;
       struct st_common_variant_key key;
 
       memset(&key, 0, sizeof(key));
@@ -2023,7 +2023,7 @@ st_precompile_shader_variant(struct st_context *st,
    }
 
    case GL_FRAGMENT_PROGRAM_ARB: {
-      struct st_common_program *p = (struct st_common_program *)prog;
+      struct st_program *p = (struct st_program *)prog;
       struct st_fp_variant_key key;
 
       memset(&key, 0, sizeof(key));
@@ -2037,7 +2037,7 @@ st_precompile_shader_variant(struct st_context *st,
    case GL_TESS_EVALUATION_PROGRAM_NV:
    case GL_GEOMETRY_PROGRAM_NV:
    case GL_COMPUTE_PROGRAM_NV: {
-      struct st_common_program *p = st_common_program(prog);
+      struct st_program *p = st_program(prog);
       struct st_common_variant_key key;
 
       memset(&key, 0, sizeof(key));
@@ -2057,9 +2057,9 @@ st_finalize_program(struct st_context *st, struct gl_program *prog)
 {
    if (st->current_program[prog->info.stage] == prog) {
       if (prog->info.stage == MESA_SHADER_VERTEX)
-         st->dirty |= ST_NEW_VERTEX_PROGRAM(st, (struct st_common_program *)prog);
+         st->dirty |= ST_NEW_VERTEX_PROGRAM(st, (struct st_program *)prog);
       else
-         st->dirty |= ((struct st_common_program *)prog)->affected_states;
+         st->dirty |= ((struct st_program *)prog)->affected_states;
    }
 
    /* Create Gallium shaders now instead of on demand. */
