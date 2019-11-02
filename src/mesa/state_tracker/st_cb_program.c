@@ -87,37 +87,17 @@ static void
 st_delete_program(struct gl_context *ctx, struct gl_program *prog)
 {
    struct st_context *st = st_context(ctx);
+   struct st_program *stp = st_program(prog);
 
-   switch( prog->Target ) {
-   case GL_VERTEX_PROGRAM_ARB:
-      {
-         struct st_program *stvp = (struct st_program *) prog;
-         st_release_vp_variants( st, stvp );
-         
-         if (stvp->glsl_to_tgsi)
-            free_glsl_to_tgsi_visitor(stvp->glsl_to_tgsi);
-      }
-      break;
-   case GL_TESS_CONTROL_PROGRAM_NV:
-   case GL_TESS_EVALUATION_PROGRAM_NV:
-   case GL_GEOMETRY_PROGRAM_NV:
-   case GL_FRAGMENT_PROGRAM_ARB:
-   case GL_COMPUTE_PROGRAM_NV:
-      {
-         struct st_program *p = st_program(prog);
+   if (prog->Target == GL_VERTEX_PROGRAM_ARB)
+      st_release_vp_variants(st, stp);
+   if (prog->Target == GL_FRAGMENT_PROGRAM_ARB)
+      st_release_fp_variants(st, stp);
+   else
+      st_release_common_variants(st, stp);
 
-         if (prog->Target == GL_FRAGMENT_PROGRAM_ARB)
-            st_release_fp_variants(st, p);
-         else
-            st_release_common_variants(st, p);
-         
-         if (p->glsl_to_tgsi)
-            free_glsl_to_tgsi_visitor(p->glsl_to_tgsi);
-      }
-      break;
-   default:
-      assert(0); /* problem */
-   }
+   if (stp->glsl_to_tgsi)
+      free_glsl_to_tgsi_visitor(stp->glsl_to_tgsi);
 
    /* delete base class */
    _mesa_delete_program( ctx, prog );
@@ -134,32 +114,27 @@ st_program_string_notify( struct gl_context *ctx,
                                            struct gl_program *prog )
 {
    struct st_context *st = st_context(ctx);
+   struct st_program *stp = (struct st_program *) prog;
 
    if (target == GL_FRAGMENT_PROGRAM_ARB ||
        target == GL_FRAGMENT_SHADER_ATI) {
-      struct st_program *stfp = (struct st_program *) prog;
-
       if (target == GL_FRAGMENT_SHADER_ATI) {
-         assert(stfp->ati_fs);
-         assert(stfp->ati_fs->Program == prog);
+         assert(stp->ati_fs);
+         assert(stp->ati_fs->Program == prog);
 
          st_init_atifs_prog(ctx, prog);
       }
 
-      st_release_fp_variants(st, stfp);
-      if (!stfp->shader_program && /* not GLSL->NIR */
-          !st_translate_fragment_program(st, stfp))
+      st_release_fp_variants(st, stp);
+      if (!stp->shader_program && /* not GLSL->NIR */
+          !st_translate_fragment_program(st, stp))
          return false;
    } else if (target == GL_VERTEX_PROGRAM_ARB) {
-      struct st_program *stvp = (struct st_program *) prog;
-
-      st_release_vp_variants(st, stvp);
-      if (!stvp->shader_program && /* not GLSL->NIR */
-          !st_translate_vertex_program(st, stvp))
+      st_release_vp_variants(st, stp);
+      if (!stp->shader_program && /* not GLSL->NIR */
+          !st_translate_vertex_program(st, stp))
          return false;
    } else {
-      struct st_program *stp = st_program(prog);
-
       st_release_common_variants(st, stp);
       if (!stp->shader_program && /* not GLSL->NIR */
           !st_translate_common_program(st, stp))
