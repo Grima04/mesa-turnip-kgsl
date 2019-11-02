@@ -583,10 +583,13 @@ si_compute_fast_udiv_info32(uint32_t D, unsigned num_bits);
 void si_emit_dpbb_state(struct si_context *sctx);
 
 /* si_state_shaders.c */
-void *si_get_ir_binary(struct si_shader_selector *sel, bool ngg, bool es);
-bool si_shader_cache_load_shader(struct si_screen *sscreen, void *ir_binary,
+void si_get_ir_cache_key(struct si_shader_selector *sel, bool ngg, bool es,
+			 unsigned char ir_sha1_cache_key[20]);
+bool si_shader_cache_load_shader(struct si_screen *sscreen,
+				 unsigned char ir_sha1_cache_key[20],
 				 struct si_shader *shader);
-bool si_shader_cache_insert_shader(struct si_screen *sscreen, void *ir_binary,
+void si_shader_cache_insert_shader(struct si_screen *sscreen,
+				   unsigned char ir_sha1_cache_key[20],
 				   struct si_shader *shader,
 				   bool insert_into_disk_cache);
 bool si_update_shaders(struct si_context *sctx);
