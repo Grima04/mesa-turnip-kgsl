@@ -182,6 +182,9 @@ st_deserialise_ir_program(struct gl_context *ctx,
    const struct nir_shader_compiler_options *options =
       ctx->Const.ShaderCompilerOptions[prog->info.stage].NirOptions;
 
+   st_set_prog_affected_state_flags(prog);
+   _mesa_associate_uniform_storage(ctx, shProg, prog);
+
    assert(prog->driver_cache_blob && prog->driver_cache_blob_size > 0);
 
    struct blob_reader blob_reader;
@@ -266,9 +269,6 @@ st_deserialise_ir_program(struct gl_context *ctx,
                  "TGSI cache item)\n");
       }
    }
-
-   st_set_prog_affected_state_flags(prog);
-   _mesa_associate_uniform_storage(ctx, shProg, prog);
 
    st_finalize_program(st, prog);
 }
