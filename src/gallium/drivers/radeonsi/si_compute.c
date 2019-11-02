@@ -208,8 +208,10 @@ static void si_create_compute_state_async(void *job, int thread_index)
 		simple_mtx_unlock(&sscreen->shader_cache_mutex);
 	}
 
-	if (program->ir_type == PIPE_SHADER_IR_TGSI)
-		FREE(sel->tokens);
+	FREE(sel->tokens);
+	sel->tokens = NULL;
+	ralloc_free(sel->nir);
+	sel->nir = NULL;
 }
 
 static void *si_create_compute_state(
@@ -974,6 +976,7 @@ void si_destroy_compute(struct si_compute *program)
 	FREE(program->global_buffers);
 
 	si_shader_destroy(&program->shader);
+	FREE(program->sel.tokens);
 	ralloc_free(program->sel.nir);
 	FREE(program);
 }
