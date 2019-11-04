@@ -26,6 +26,7 @@
 
 #include <stdio.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <assert.h>
 #include <inttypes.h>
 #include <ctype.h>
@@ -40,6 +41,7 @@
 
 #define DEFINE_CASE(define, str) case define: { printf(str); break; }
 
+static unsigned *midg_tags;
 static bool is_instruction_int = false;
 
 /* Stats */
@@ -770,7 +772,7 @@ print_compact_branch_writeout_field(uint16_t word)
 }
 
 static void
-print_extended_branch_writeout_field(uint8_t *words)
+print_extended_branch_writeout_field(uint8_t *words, unsigned next)
 {
         midgard_branch_extended br;
         memcpy((char *) &br, (char *) words, sizeof(br));
@@ -803,6 +805,18 @@ print_extended_branch_writeout_field(uint8_t *words)
         printf("%d -> ", br.offset);
         print_tag_short(br.dest_tag);
         printf("\n");
+
+        unsigned I = next + br.offset * 4;
+
+        if (midg_tags[I] && midg_tags[I] != br.dest_tag) {
+                printf("\t/* XXX TAG ERROR: jumping to ");
+                print_tag_short(br.dest_tag);
+                printf(" but tagged ");
+                print_tag_short(midg_tags[I]);
+                printf(" */\n");
+        }
+
+        midg_tags[I] = br.dest_tag;
 
         midg_stats.instruction_count++;
 }
@@ -844,7 +858,7 @@ float_bitcast(uint32_t integer)
 
 static void
 print_alu_word(uint32_t *words, unsigned num_quad_words,
-               unsigned tabs)
+               unsigned tabs, unsigned next)
 {
         uint32_t control_word = words[0];
         uint16_t *beginning_ptr = (uint16_t *)(words + 1);
@@ -908,7 +922,7 @@ print_alu_word(uint32_t *words, unsigned num_quad_words,
         }
 
         if ((control_word >> 27) & 1) {
-                print_extended_branch_writeout_field((uint8_t *) word_ptr);
+                print_extended_branch_writeout_field((uint8_t *) word_ptr, next);
                 word_ptr += 3;
                 num_words += 3;
         }
@@ -1453,6 +1467,8 @@ disassemble_midgard(uint8_t *code, size_t size)
 
         unsigned i = 0;
 
+        midg_tags = calloc(sizeof(midg_tags[0]), num_words);
+
         /* Stats for shader-db */
         memset(&midg_stats, 0, sizeof(midg_stats));
         midg_ever_written = 0;
@@ -1462,14 +1478,24 @@ disassemble_midgard(uint8_t *code, size_t size)
                 unsigned next_tag = (words[i] >> 4) & 0xF;
                 unsigned num_quad_words = midgard_word_size[tag];
 
+                if (midg_tags[i] && midg_tags[i] != tag) {
+                        printf("\t/* XXX: TAG ERROR branch, got ");
+                        print_tag_short(tag);
+                        printf(" expected ");
+                        print_tag_short(midg_tags[i]);
+                        printf(" */\n");
+                }
+
+                midg_tags[i] = tag;
+
                 /* Check the tag */
                 if (last_next_tag > 1) {
                         if (last_next_tag != tag) {
-                                printf("/* TAG ERROR got ");
+                                printf("\t/* XXX: TAG ERROR sequence, got ");
                                 print_tag_short(tag);
                                 printf(" expected ");
                                 print_tag_short(last_next_tag);
-                                printf(" */ ");
+                                printf(" */\n");
                         }
                 } else {
                         /* TODO: Check ALU case */
@@ -1487,7 +1513,7 @@ disassemble_midgard(uint8_t *code, size_t size)
                         break;
 
                 case midgard_word_type_alu:
-                        print_alu_word(&words[i], num_quad_words, tabs);
+                        print_alu_word(&words[i], num_quad_words, tabs, i + 4*num_quad_words);
 
                         /* Reset word static analysis state */
                         is_embedded_constant_half = false;
