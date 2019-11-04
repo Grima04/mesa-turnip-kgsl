@@ -865,10 +865,14 @@ iris_resource_create_with_modifiers(struct pipe_screen *pscreen,
 
       /* Use linear for staging buffers */
       if (templ->usage == PIPE_USAGE_STAGING ||
-          templ->bind & (PIPE_BIND_LINEAR | PIPE_BIND_CURSOR) )
+          templ->bind & (PIPE_BIND_LINEAR | PIPE_BIND_CURSOR) ) {
          tiling_flags = ISL_TILING_LINEAR_BIT;
-      else if (templ->bind & PIPE_BIND_SCANOUT)
-         tiling_flags = ISL_TILING_X_BIT;
+      } else if (templ->bind & PIPE_BIND_SCANOUT) {
+         if (devinfo->has_tiling_uapi)
+            tiling_flags = ISL_TILING_X_BIT;
+         else
+            tiling_flags = ISL_TILING_LINEAR_BIT;
+      }
    }
 
    isl_surf_usage_flags_t usage = pipe_bind_to_isl_usage(templ->bind);
@@ -1027,7 +1031,7 @@ iris_resource_from_handle(struct pipe_screen *pscreen,
    struct iris_resource *res = iris_alloc_resource(pscreen, templ);
    const struct isl_drm_modifier_info *mod_inf =
 	   isl_drm_modifier_get_info(whandle->modifier);
-   uint32_t tiling;
+   int tiling;
 
    if (!res)
       return NULL;
@@ -1037,7 +1041,7 @@ iris_resource_from_handle(struct pipe_screen *pscreen,
       if (mod_inf)
          tiling = isl_tiling_to_i915_tiling(mod_inf->tiling);
       else
-         tiling = I915_TILING_LAST + 1;
+         tiling = -1;
       res->bo = iris_bo_import_dmabuf(bufmgr, whandle->handle,
                                       tiling, whandle->stride);
       break;

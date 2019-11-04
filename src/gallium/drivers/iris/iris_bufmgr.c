@@ -174,6 +174,7 @@ struct iris_bufmgr {
 
    bool has_llc:1;
    bool has_mmap_offset:1;
+   bool has_tiling_uapi:1;
    bool bo_reuse:1;
 
    struct gen_aux_map_context *aux_map_ctx;
@@ -1115,6 +1116,11 @@ iris_bo_map_gtt(struct pipe_debug_callback *dbg,
 {
    struct iris_bufmgr *bufmgr = bo->bufmgr;
 
+   /* If we don't support get/set_tiling, there's no support for GTT mapping
+    * either (it won't do any de-tiling for us).
+    */
+   assert(bufmgr->has_tiling_uapi);
+
    /* Get a mapping of the buffer if we haven't before. */
    if (bo->map_gtt == NULL) {
       DBG("bo_map_gtt: mmap %d (%s)\n", bo->gem_handle, bo->name);
@@ -1342,6 +1348,15 @@ bo_set_tiling_internal(struct iris_bo *bo, uint32_t tiling_mode,
        tiling_mode == bo->tiling_mode && stride == bo->stride)
       return 0;
 
+   /* If we can't do map_gtt, the set/get_tiling API isn't useful. And it's
+    * actually not supported by the kernel in those cases.
+    */
+   if (!bufmgr->has_tiling_uapi) {
+      bo->tiling_mode = tiling_mode;
+      bo->stride = stride;
+      return 0;
+   }
+
    memset(&set_tiling, 0, sizeof(set_tiling));
    do {
       /* set_tiling is slightly broken and overwrites the
@@ -1364,7 +1379,7 @@ bo_set_tiling_internal(struct iris_bo *bo, uint32_t tiling_mode,
 
 struct iris_bo *
 iris_bo_import_dmabuf(struct iris_bufmgr *bufmgr, int prime_fd,
-                      uint32_t tiling, uint32_t stride)
+                      int tiling, uint32_t stride)
 {
    uint32_t handle;
    struct iris_bo *bo;
@@ -1425,14 +1440,20 @@ iris_bo_import_dmabuf(struct iris_bufmgr *bufmgr, int prime_fd,
    _mesa_hash_table_insert(bufmgr->handle_table, &bo->gem_handle, bo);
 
    struct drm_i915_gem_get_tiling get_tiling = { .handle = bo->gem_handle };
-   if (gen_ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_GET_TILING, &get_tiling))
+   if (!bufmgr->has_tiling_uapi)
+      get_tiling.tiling_mode = I915_TILING_NONE;
+   else if (gen_ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_GET_TILING, &get_tiling))
       goto err;
 
-   if (get_tiling.tiling_mode == tiling || tiling > I915_TILING_LAST) {
+   if (tiling == -1) {
       bo->tiling_mode = get_tiling.tiling_mode;
-       /* XXX stride is unknown */
+      /* XXX stride is unknown */
    } else {
-      if (bo_set_tiling_internal(bo, tiling, stride)) {
+      /* Modifiers path */
+      if (get_tiling.tiling_mode == tiling || !bufmgr->has_tiling_uapi) {
+         bo->tiling_mode = tiling;
+         bo->stride = stride;
+      } else if (bo_set_tiling_internal(bo, tiling, stride)) {
          goto err;
       }
    }
@@ -1827,6 +1848,7 @@ iris_bufmgr_create(struct gen_device_info *devinfo, int fd, bool bo_reuse)
    list_inithead(&bufmgr->zombie_list);
 
    bufmgr->has_llc = devinfo->has_llc;
+   bufmgr->has_tiling_uapi = devinfo->has_tiling_uapi;
    bufmgr->bo_reuse = bo_reuse;
    bufmgr->has_mmap_offset = gem_param(fd, I915_PARAM_MMAP_GTT_VERSION) >= 4;
 

@@ -393,7 +393,7 @@ void iris_destroy_hw_context(struct iris_bufmgr *bufmgr, uint32_t ctx_id);
 
 int iris_bo_export_dmabuf(struct iris_bo *bo, int *prime_fd);
 struct iris_bo *iris_bo_import_dmabuf(struct iris_bufmgr *bufmgr, int prime_fd,
-                                      uint32_t tiling, uint32_t stride);
+                                      int tiling, uint32_t stride);
 
 /**
  * Exports a bo as a GEM handle into a given DRM file descriptor
