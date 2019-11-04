@@ -1240,6 +1240,10 @@ iris_invalidate_resource(struct pipe_context *ctx,
    if (resource->target != PIPE_BUFFER)
       return;
 
+   /* If it's already invalidated, don't bother doing anything. */
+   if (res->valid_buffer_range.start > res->valid_buffer_range.end)
+      return;
+
    if (!resource_is_busy(ice, res)) {
       /* The resource is idle, so just mark that it contains no data and
        * keep using the same underlying buffer object.
