@@ -2346,7 +2346,8 @@ panfrost_bind_depth_stencil_state(struct pipe_context *pipe,
         ctx->fragment_shader_core.stencil_mask_back = depth_stencil->stencil[back_index].writemask;
 
         /* Depth state (TODO: Refactor) */
-        SET_BIT(ctx->fragment_shader_core.unknown2_3, MALI_DEPTH_TEST, depth_stencil->depth.enabled);
+        SET_BIT(ctx->fragment_shader_core.unknown2_3, MALI_DEPTH_WRITEMASK,
+                depth_stencil->depth.writemask);
 
         int func = depth_stencil->depth.enabled ? depth_stencil->depth.func : PIPE_FUNC_ALWAYS;
 

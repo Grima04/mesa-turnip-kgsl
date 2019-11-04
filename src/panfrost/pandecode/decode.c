@@ -223,7 +223,7 @@ static const struct pandecode_flag_info u3_flag_info[] = {
         FLAG_INFO(HAS_MSAA),
         FLAG_INFO(CAN_DISCARD),
         FLAG_INFO(HAS_BLEND_SHADER),
-        FLAG_INFO(DEPTH_TEST),
+        FLAG_INFO(DEPTH_WRITEMASK),
         {}
 };
 
@@ -2141,7 +2141,7 @@ pandecode_vertex_tiler_postfix_pre(
 
                         /* We're not quite sure what these flags mean without the depth test, if anything */
 
-                        if (unknown2_3 & (MALI_DEPTH_TEST | MALI_DEPTH_FUNC_MASK)) {
+                        if (unknown2_3 & (MALI_DEPTH_WRITEMASK | MALI_DEPTH_FUNC_MASK)) {
                                 const char *func = pandecode_func(MALI_GET_DEPTH_FUNC(unknown2_3));
                                 unknown2_3 &= ~MALI_DEPTH_FUNC_MASK;
 

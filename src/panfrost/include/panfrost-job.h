@@ -123,7 +123,7 @@ enum mali_alt_func {
 #define MALI_GET_DEPTH_FUNC(flags) ((flags >> 8) & 0x7)
 #define MALI_DEPTH_FUNC_MASK	   MALI_DEPTH_FUNC(0x7)
 
-#define MALI_DEPTH_TEST		(1 << 11)
+#define MALI_DEPTH_WRITEMASK    (1 << 11)
 
 /* Next flags to unknown2_4 */
 #define MALI_STENCIL_TEST      	(1 << 0)
