@@ -93,6 +93,9 @@ VK_DEFINE_HANDLE_CASTS(vn_physical_device,
 
 struct vn_device {
    struct vn_device_base base;
+
+   struct vn_instance *instance;
+   struct vn_physical_device *physical_device;
 };
 VK_DEFINE_HANDLE_CASTS(vn_device,
                        base.base.base,

@@ -2665,7 +2665,32 @@ vn_EnumerateDeviceExtensionProperties(VkPhysicalDevice physicalDevice,
                                       uint32_t *pPropertyCount,
                                       VkExtensionProperties *pProperties)
 {
-   return vn_error(NULL, VK_ERROR_OUT_OF_HOST_MEMORY);
+   struct vn_physical_device *physical_dev =
+      vn_physical_device_from_handle(physicalDevice);
+
+   if (pLayerName)
+      return vn_error(physical_dev->instance, VK_ERROR_LAYER_NOT_PRESENT);
+
+   VK_OUTARRAY_MAKE(out, pProperties, pPropertyCount);
+   for (uint32_t i = 0; i < VK_DEVICE_EXTENSION_COUNT; i++) {
+      if (physical_dev->base.base.supported_extensions.extensions[i]) {
+         vk_outarray_append (&out, prop) {
+            *prop = vk_device_extensions[i];
+            prop->specVersion = physical_dev->extension_spec_versions[i];
+         }
+      }
+   }
+
+   return vk_outarray_status(&out);
+}
+
+VkResult
+vn_EnumerateDeviceLayerProperties(VkPhysicalDevice physicalDevice,
+                                  uint32_t *pPropertyCount,
+                                  VkLayerProperties *pProperties)
+{
+   *pPropertyCount = 0;
+   return VK_SUCCESS;
 }
 
 VkResult
@@ -2674,11 +2699,89 @@ vn_CreateDevice(VkPhysicalDevice physicalDevice,
                 const VkAllocationCallbacks *pAllocator,
                 VkDevice *pDevice)
 {
-   return vn_error(NULL, VK_ERROR_INCOMPATIBLE_DRIVER);
+   struct vn_physical_device *physical_dev =
+      vn_physical_device_from_handle(physicalDevice);
+   struct vn_instance *instance = physical_dev->instance;
+   const VkAllocationCallbacks *alloc =
+      pAllocator ? pAllocator : &instance->base.base.alloc;
+   struct vn_device *dev;
+   VkResult result;
+
+   dev = vk_zalloc(alloc, sizeof(*dev), VN_DEFAULT_ALIGN,
+                   VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
+   if (!dev)
+      return vn_error(instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+
+   struct vk_device_dispatch_table dispatch_table;
+   vk_device_dispatch_table_from_entrypoints(&dispatch_table,
+                                             &vn_device_entrypoints, true);
+   result = vn_device_base_init(&dev->base, &physical_dev->base,
+                                &dispatch_table, pCreateInfo, alloc);
+   if (result != VK_SUCCESS) {
+      vk_free(alloc, dev);
+      return vn_error(instance, result);
+   }
+
+   dev->instance = instance;
+   dev->physical_device = physical_dev;
+
+   VkDevice dev_handle = vn_device_to_handle(dev);
+   result = vn_call_vkCreateDevice(instance, physicalDevice, pCreateInfo,
+                                   NULL, &dev_handle);
+   if (result != VK_SUCCESS)
+      goto fail;
+
+   *pDevice = dev_handle;
+
+   return VK_SUCCESS;
+
+fail:
+   vn_device_base_fini(&dev->base);
+   vk_free(alloc, dev);
+   return vn_error(instance, result);
+}
+
+void
+vn_DestroyDevice(VkDevice device, const VkAllocationCallbacks *pAllocator)
+{
+   struct vn_device *dev = vn_device_from_handle(device);
+   const VkAllocationCallbacks *alloc =
+      pAllocator ? pAllocator : &dev->base.base.alloc;
+
+   if (!dev)
+      return;
+
+   vn_async_vkDestroyDevice(dev->instance, device, NULL);
+
+   vn_device_base_fini(&dev->base);
+   vk_free(alloc, dev);
 }
 
 PFN_vkVoidFunction
 vn_GetDeviceProcAddr(VkDevice device, const char *pName)
 {
-   return NULL;
+   struct vn_device *dev = vn_device_from_handle(device);
+   return vk_device_get_proc_addr(&dev->base.base, pName);
+}
+
+void
+vn_GetDeviceGroupPeerMemoryFeatures(
+   VkDevice device,
+   uint32_t heapIndex,
+   uint32_t localDeviceIndex,
+   uint32_t remoteDeviceIndex,
+   VkPeerMemoryFeatureFlags *pPeerMemoryFeatures)
+{
+   struct vn_device *dev = vn_device_from_handle(device);
+
+   /* TODO get and cache the values in vkCreateDevice */
+   vn_call_vkGetDeviceGroupPeerMemoryFeatures(
+      dev->instance, device, heapIndex, localDeviceIndex, remoteDeviceIndex,
+      pPeerMemoryFeatures);
+}
+
+VkResult
+vn_DeviceWaitIdle(VkDevice device)
+{
+   return VK_SUCCESS;
 }
