@@ -73,6 +73,7 @@ foreach d : [[with_gallium_kmsro, [
                'ili9225_dri.so',
                'ili9341_dri.so',
                'imx-drm_dri.so',
+               'mcde_dri.so',
                'meson_dri.so',
                'mi0283qt_dri.so',
                'mxsfb-drm_dri.so',
