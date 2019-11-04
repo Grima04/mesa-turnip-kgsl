@@ -904,8 +904,9 @@ static void si_disk_cache_create(struct si_screen *sscreen)
 	#define ALL_FLAGS (DBG(SI_SCHED) | DBG(GISEL))
 	uint64_t shader_debug_flags = sscreen->debug_flags & ALL_FLAGS;
 	/* Reserve left-most bit for tgsi/nir selector */
-	assert(!(shader_debug_flags & (1 << 31)));
-	shader_debug_flags |= ((sscreen->options.enable_nir & 0x1) << 31);
+	assert(!(shader_debug_flags & (1u << 31)));
+	shader_debug_flags |= (uint32_t)
+		((sscreen->options.enable_nir & 0x1) << 31);
 
 	/* Add the high bits of 32-bit addresses, which affects
 	 * how 32-bit addresses are expanded to 64 bits.
