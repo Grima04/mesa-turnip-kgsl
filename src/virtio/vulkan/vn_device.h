@@ -91,6 +91,12 @@ VK_DEFINE_HANDLE_CASTS(vn_physical_device,
                        VkPhysicalDevice,
                        VK_OBJECT_TYPE_PHYSICAL_DEVICE)
 
+struct vn_device_memory_pool {
+   mtx_t mutex;
+   struct vn_device_memory *memory;
+   VkDeviceSize used;
+};
+
 struct vn_device {
    struct vn_device_base base;
 
@@ -99,6 +105,8 @@ struct vn_device {
 
    struct vn_queue *queues;
    uint32_t queue_count;
+
+   struct vn_device_memory_pool memory_pools[VK_MAX_MEMORY_TYPES];
 };
 VK_DEFINE_HANDLE_CASTS(vn_device,
                        base.base.base,
@@ -170,6 +178,24 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(vn_semaphore,
                                base.base,
                                VkSemaphore,
                                VK_OBJECT_TYPE_SEMAPHORE)
+
+struct vn_device_memory {
+   struct vn_object_base base;
+
+   VkDeviceSize size;
+
+   /* non-NULL when suballocated */
+   struct vn_device_memory *base_memory;
+   /* non-NULL when mappable or external */
+   struct vn_renderer_bo *base_bo;
+   VkDeviceSize base_offset;
+
+   VkDeviceSize map_end;
+};
+VK_DEFINE_NONDISP_HANDLE_CASTS(vn_device_memory,
+                               base.base,
+                               VkDeviceMemory,
+                               VK_OBJECT_TYPE_DEVICE_MEMORY)
 
 struct vn_command_buffer {
    struct vn_object_base base;
