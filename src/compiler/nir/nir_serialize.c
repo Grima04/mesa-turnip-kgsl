@@ -49,6 +49,9 @@ typedef struct {
     * be resolved in the second pass.
     */
    struct util_dynarray phi_fixups;
+
+   /* Don't write optional data such as variable names. */
+   bool strip;
 } write_ctx;
 
 typedef struct {
@@ -159,7 +162,7 @@ write_variable(write_ctx *ctx, const nir_variable *var)
    union packed_var flags;
    flags.u32 = 0;
 
-   flags.u.has_name = !!(var->name);
+   flags.u.has_name = !ctx->strip && var->name;
    flags.u.has_constant_initializer = !!(var->constant_initializer);
    flags.u.has_interface_type = !!(var->interface_type);
    flags.u.num_state_slots = var->num_state_slots;
@@ -167,9 +170,21 @@ write_variable(write_ctx *ctx, const nir_variable *var)
 
    blob_write_uint32(ctx->blob, flags.u32);
 
-   if (var->name)
+   if (flags.u.has_name)
       blob_write_string(ctx->blob, var->name);
-   blob_write_bytes(ctx->blob, (uint8_t *) &var->data, sizeof(var->data));
+
+   struct nir_variable_data data = var->data;
+
+   /* When stripping, we expect that the location is no longer needed,
+    * which is typically after shaders are linked.
+    */
+   if (ctx->strip &&
+       data.mode != nir_var_shader_in &&
+       data.mode != nir_var_shader_out)
+      data.location = 0;
+
+   blob_write_bytes(ctx->blob, &data, sizeof(data));
+
    for (unsigned i = 0; i < var->num_state_slots; i++) {
       blob_write_bytes(ctx->blob, &var->state_slots[i],
                        sizeof(var->state_slots[i]));
@@ -258,8 +273,8 @@ write_register(write_ctx *ctx, const nir_register *reg)
    blob_write_uint32(ctx->blob, reg->bit_size);
    blob_write_uint32(ctx->blob, reg->num_array_elems);
    blob_write_uint32(ctx->blob, reg->index);
-   blob_write_uint32(ctx->blob, !!(reg->name));
-   if (reg->name)
+   blob_write_uint32(ctx->blob, !ctx->strip && reg->name);
+   if (!ctx->strip && reg->name)
       blob_write_string(ctx->blob, reg->name);
 }
 
@@ -357,7 +372,7 @@ write_dest(write_ctx *ctx, const nir_dest *dst)
 {
    uint32_t val = dst->is_ssa;
    if (dst->is_ssa) {
-      val |= !!(dst->ssa.name) << 1;
+      val |= (!ctx->strip && dst->ssa.name) << 1;
       val |= dst->ssa.num_components << 2;
       val |= dst->ssa.bit_size << 5;
    } else {
@@ -366,7 +381,7 @@ write_dest(write_ctx *ctx, const nir_dest *dst)
    blob_write_uint32(ctx->blob, val);
    if (dst->is_ssa) {
       write_add_object(ctx, &dst->ssa);
-      if (dst->ssa.name)
+      if (!ctx->strip && dst->ssa.name)
          blob_write_string(ctx->blob, dst->ssa.name);
    } else {
       blob_write_uint32(ctx->blob, write_lookup_object(ctx, dst->reg.reg));
@@ -1120,40 +1135,36 @@ read_function(read_ctx *ctx)
       fxn->impl = NIR_SERIALIZE_FUNC_HAS_IMPL;
 }
 
+/**
+ * Serialize NIR into a binary blob.
+ *
+ * \param strip  Don't serialize information only useful for debugging,
+ *               such as variable names, making cache hits from similar
+ *               shaders more likely.
+ */
 void
 nir_serialize(struct blob *blob, const nir_shader *nir, bool strip)
 {
-   nir_shader *stripped = NULL;
-
-   if (strip) {
-      /* Drop unnecessary information (like variable names), so the serialized
-       * NIR is smaller, and also to let us detect more isomorphic shaders
-       * when hashing, increasing cache hits.
-       */
-      stripped = nir_shader_clone(NULL, nir);
-      nir_strip(stripped);
-      nir = stripped;
-   }
-
    write_ctx ctx;
    ctx.remap_table = _mesa_pointer_hash_table_create(NULL);
    ctx.next_idx = 0;
    ctx.blob = blob;
    ctx.nir = nir;
+   ctx.strip = strip;
    util_dynarray_init(&ctx.phi_fixups, NULL);
 
    size_t idx_size_offset = blob_reserve_uint32(blob);
 
    struct shader_info info = nir->info;
    uint32_t strings = 0;
-   if (info.name)
+   if (!strip && info.name)
       strings |= 0x1;
-   if (info.label)
+   if (!strip && info.label)
       strings |= 0x2;
    blob_write_uint32(blob, strings);
-   if (info.name)
+   if (!strip && info.name)
       blob_write_string(blob, info.name);
-   if (info.label)
+   if (!strip && info.label)
       blob_write_string(blob, info.label);
    info.name = info.label = NULL;
    blob_write_bytes(blob, (uint8_t *) &info, sizeof(info));
@@ -1189,9 +1200,6 @@ nir_serialize(struct blob *blob, const nir_shader *nir, bool strip)
 
    _mesa_hash_table_destroy(ctx.remap_table, NULL);
    util_dynarray_fini(&ctx.phi_fixups);
-
-   if (strip)
-      ralloc_free(stripped);
 }
 
 nir_shader *
