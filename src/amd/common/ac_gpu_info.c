@@ -623,6 +623,8 @@ bool ac_query_gpu_info(int fd, void *dev_p,
 		case CHIP_NAVI14:
 			pc_lines = 512;
 			break;
+		case CHIP_ARCTURUS:
+			break;
 		default:
 			assert(0);
 		}
