@@ -15,12 +15,14 @@
 variables:
   UPSTREAM_REPO: mesa/mesa
   DEBIAN_TAG: "2019-10-30"
-  DEBIAN_ARM64_TAG: "arm64v8-2019-10-23"
+  DEBIAN_ARM64_TAG: "arm64v8-2019-11-06"
+  DEBIAN_ARM64_TEST_TAG: "arm64v8-test-2019-11-06"
   STRETCH_TAG: "2019-09-18"
   DEBIAN_VERSION: buster-slim
   STRETCH_VERSION: stretch-slim
   DEBIAN_IMAGE: "$CI_REGISTRY_IMAGE/debian/$DEBIAN_VERSION:$DEBIAN_TAG"
   DEBIAN_ARM64_IMAGE: "$CI_REGISTRY_IMAGE/debian/$DEBIAN_VERSION:$DEBIAN_ARM64_TAG"
+  DEBIAN_ARM64_TEST_IMAGE: "$CI_REGISTRY_IMAGE/debian/$DEBIAN_VERSION:$DEBIAN_ARM64_TEST_TAG"
   STRETCH_IMAGE: "$CI_REGISTRY_IMAGE/debian/$STRETCH_VERSION:$STRETCH_TAG"
 
 include:
@@ -117,6 +119,14 @@ debian-10:arm64:
   variables:
     DEBIAN_TAG: "$DEBIAN_ARM64_TAG"
     DEBIAN_EXEC: 'bash .gitlab-ci/debian-arm64-install.sh'
+
+debian-10-test:arm64:
+  extends:
+    - .debian@container-ifnot-exists@arm64v8
+    - .container
+  variables:
+    DEBIAN_TAG: "$DEBIAN_ARM64_TEST_TAG"
+    DEBIAN_EXEC: 'bash .gitlab-ci/debian-arm64-test-install.sh'
 
 
 # BUILD
@@ -463,6 +473,7 @@ scons-old-llvm:
     # Note: Build dir (and thus install) may be dirty due to GIT_STRATEGY
     - rm -rf install
     - tar -xf artifacts/install.tar
+    - LD_LIBRARY_PATH=install/lib ldd install/lib/{*,dri/swrast_dri}.so
     - ./artifacts/deqp-runner.sh
   artifacts:
     when: on_failure
@@ -507,7 +518,7 @@ test-softpipe-gles3-limited:
 
 arm64_a630_gles2:
   extends: .deqp-test
-  image: $DEBIAN_ARM64_IMAGE
+  image: $DEBIAN_ARM64_TEST_IMAGE
   variables:
     DEQP_VER: gles2
     DEQP_RENDERER_MATCH: "FD630"
@@ -520,7 +531,7 @@ arm64_a630_gles2:
     - meson-arm64
   needs:
     - meson-arm64
-    - debian-10:arm64
+    - debian-10-test:arm64
 
 arm64_a630_gles31:
   extends: arm64_a630_gles2
