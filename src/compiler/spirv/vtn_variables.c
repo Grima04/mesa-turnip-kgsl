@@ -30,18 +30,49 @@
 #include "nir_deref.h"
 #include <vulkan/vulkan_core.h>
 
-static void ptr_decoration_cb(struct vtn_builder *b,
-                              struct vtn_value *val, int member,
-                              const struct vtn_decoration *dec,
-                              void *void_ptr);
+static void
+ptr_decoration_cb(struct vtn_builder *b, struct vtn_value *val, int member,
+                  const struct vtn_decoration *dec, void *void_ptr)
+{
+   struct vtn_pointer *ptr = void_ptr;
+
+   switch (dec->decoration) {
+   case SpvDecorationNonUniformEXT:
+      ptr->access |= ACCESS_NON_UNIFORM;
+      break;
+
+   default:
+      break;
+   }
+}
+
+static struct vtn_pointer*
+vtn_decorate_pointer(struct vtn_builder *b, struct vtn_value *val,
+                     struct vtn_pointer *ptr)
+{
+   struct vtn_pointer dummy = { };
+   vtn_foreach_decoration(b, val, ptr_decoration_cb, &dummy);
+
+   /* If we're adding access flags, make a copy of the pointer.  We could
+    * probably just OR them in without doing so but this prevents us from
+    * leaking them any further than actually specified in the SPIR-V.
+    */
+   if (dummy.access & ~ptr->access) {
+      struct vtn_pointer *copy = ralloc(b, struct vtn_pointer);
+      *copy = *ptr;
+      copy->access |= dummy.access;
+      return copy;
+   }
+
+   return ptr;
+}
 
 struct vtn_value *
 vtn_push_value_pointer(struct vtn_builder *b, uint32_t value_id,
                        struct vtn_pointer *ptr)
 {
    struct vtn_value *val = vtn_push_value(b, value_id, vtn_value_type_pointer);
-   val->pointer = ptr;
-   vtn_foreach_decoration(b, val, ptr_decoration_cb, ptr);
+   val->pointer = vtn_decorate_pointer(b, val, ptr);
    return val;
 }
 
@@ -1753,22 +1784,6 @@ var_decoration_cb(struct vtn_builder *b, struct vtn_value *val, int member,
    }
 }
 
-static void
-ptr_decoration_cb(struct vtn_builder *b, struct vtn_value *val, int member,
-                  const struct vtn_decoration *dec, void *void_ptr)
-{
-   struct vtn_pointer *ptr = void_ptr;
-
-   switch (dec->decoration) {
-   case SpvDecorationNonUniformEXT:
-      ptr->access |= ACCESS_NON_UNIFORM;
-      break;
-
-   default:
-      break;
-   }
-}
-
 enum vtn_variable_mode
 vtn_storage_class_to_mode(struct vtn_builder *b,
                           SpvStorageClass class,
@@ -2493,10 +2508,10 @@ vtn_handle_variables(struct vtn_builder *b, SpvOp opcode,
          val->sampled_image->image =
             vtn_pointer_dereference(b, base_val->sampled_image->image, chain);
          val->sampled_image->sampler = base_val->sampled_image->sampler;
-         vtn_foreach_decoration(b, val, ptr_decoration_cb,
-                                val->sampled_image->image);
-         vtn_foreach_decoration(b, val, ptr_decoration_cb,
-                                val->sampled_image->sampler);
+         val->sampled_image->image =
+            vtn_decorate_pointer(b, val, val->sampled_image->image);
+         val->sampled_image->sampler =
+            vtn_decorate_pointer(b, val, val->sampled_image->sampler);
       } else {
          vtn_assert(base_val->value_type == vtn_value_type_pointer);
          struct vtn_pointer *ptr =
