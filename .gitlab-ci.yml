@@ -159,6 +159,7 @@ debian-10:arm64:
     - export PATH="/usr/lib/ccache:$PATH"
     - export CCACHE_BASEDIR="$PWD"
     - ccache --max-size="$CCACHE_SIZE" || true
+    - if [ "$CCACHE_DIR" = "$CI_PROJECT_DIR/ccache" ]; then ccache --zero-stats; fi
     - ccache --show-stats || true
   after_script:
     # In case the install dir is being saved as artifacts, tar it up
@@ -253,7 +254,7 @@ meson-main:
     EXTRA_OPTION: >
       -D I-love-half-baked-turnips=true
     NINJA_FLAGS: "-j4"
-    CCACHE_DIR: "$PWD/ccache"
+    CCACHE_DIR: "$CI_PROJECT_DIR/ccache"
     CCACHE_SIZE: "1500M"
   needs:
     - debian-10:arm64
