@@ -277,6 +277,7 @@ NIR_FILES = \
 	nir/nir_lower_returns.c \
 	nir/nir_lower_samplers.c \
 	nir/nir_lower_scratch.c \
+	nir/nir_lower_ssbo.c \
 	nir/nir_lower_subgroups.c \
 	nir/nir_lower_system_values.c \
 	nir/nir_lower_tex.c \

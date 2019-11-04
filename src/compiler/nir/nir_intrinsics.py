@@ -736,6 +736,8 @@ intrinsic("load_interpolated_input", src_comp=[2, 1], dest_comp=0,
 
 # src[] = { buffer_index, offset }.
 load("ssbo", 2, [ACCESS, ALIGN_MUL, ALIGN_OFFSET], [CAN_ELIMINATE])
+# src[] = { buffer_index }
+load("ssbo_address", 1, [], [CAN_ELIMINATE, CAN_REORDER])
 # src[] = { offset }.
 load("output", 1, [BASE, COMPONENT], flags=[CAN_ELIMINATE])
 # src[] = { vertex, offset }.
