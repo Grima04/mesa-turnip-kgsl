@@ -5509,7 +5509,7 @@ iris_upload_dirty_render_state(struct iris_context *ice,
              BRW_BARYCENTRIC_NONPERSPECTIVE_BITS)
             cl.NonPerspectiveBarycentricEnable = true;
 
-         cl.ForceZeroRTAIndexEnable = cso_fb->layers == 0;
+         cl.ForceZeroRTAIndexEnable = cso_fb->layers <= 1;
          cl.MaximumVPIndex = ice->state.num_viewports - 1;
       }
       iris_emit_merge(batch, cso_rast->clip, dynamic_clip,
