@@ -55,6 +55,12 @@ struct vn_queue;
 struct vn_fence;
 struct vn_semaphore;
 struct vn_device_memory;
+struct vn_buffer;
+struct vn_buffer_view;
+struct vn_image;
+struct vn_image_view;
+struct vn_sampler;
+struct vn_sampler_ycbcr_conversion;
 struct vn_command_buffer;
 
 struct vn_cs_encoder;
