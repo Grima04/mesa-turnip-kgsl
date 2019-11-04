@@ -51,14 +51,19 @@ apt-get install -y --no-remove \
       libgbm-dev \
       libgtk-3-dev \
       libomxil-bellagio-dev \
+      libpciaccess-dev \
       libtool \
       libunwind-dev \
+      libva-dev \
+      libvdpau-dev \
       libvulkan-dev \
       libx11-dev \
       libx11-xcb-dev \
       libxdamage-dev \
       libxext-dev \
+      libxrandr-dev \
       libxrender-dev \
+      libxshmfence-dev \
       libxvmc-dev \
       libxxf86vm-dev \
       llvm-6.0-dev \
@@ -69,7 +74,9 @@ apt-get install -y --no-remove \
       python-mako \
       python3-mako \
       scons \
+      x11proto-dri2-dev \
       x11proto-gl-dev \
+      x11proto-randr-dev \
       xz-utils \
       zlib1g-dev
 
@@ -113,17 +120,9 @@ export               XCB_RELEASES=https://xcb.freedesktop.org/dist
 export           WAYLAND_RELEASES=https://wayland.freedesktop.org/releases
 
 export         XORGMACROS_VERSION=util-macros-1.19.0
-export            GLPROTO_VERSION=glproto-1.4.17
-export          DRI2PROTO_VERSION=dri2proto-2.8
-export       LIBPCIACCESS_VERSION=libpciaccess-0.13.4
 export             LIBDRM_VERSION=libdrm-2.4.100
 export           XCBPROTO_VERSION=xcb-proto-1.13
-export         RANDRPROTO_VERSION=randrproto-1.5.0
-export          LIBXRANDR_VERSION=libXrandr-1.5.0
 export             LIBXCB_VERSION=libxcb-1.13
-export       LIBXSHMFENCE_VERSION=libxshmfence-1.3
-export           LIBVDPAU_VERSION=libvdpau-1.1
-export              LIBVA_VERSION=libva-1.7.0
 export         LIBWAYLAND_VERSION=wayland-1.15.0
 export  WAYLAND_PROTOCOLS_VERSION=wayland-protocols-1.12
 
@@ -131,16 +130,6 @@ wget $XORG_RELEASES/util/$XORGMACROS_VERSION.tar.bz2
 tar -xvf $XORGMACROS_VERSION.tar.bz2 && rm $XORGMACROS_VERSION.tar.bz2
 cd $XORGMACROS_VERSION; ./configure; make install; cd ..
 rm -rf $XORGMACROS_VERSION
-
-wget $XORG_RELEASES/proto/$GLPROTO_VERSION.tar.bz2
-tar -xvf $GLPROTO_VERSION.tar.bz2 && rm $GLPROTO_VERSION.tar.bz2
-cd $GLPROTO_VERSION; ./configure; make install; cd ..
-rm -rf $GLPROTO_VERSION
-
-wget $XORG_RELEASES/proto/$DRI2PROTO_VERSION.tar.bz2
-tar -xvf $DRI2PROTO_VERSION.tar.bz2 && rm $DRI2PROTO_VERSION.tar.bz2
-cd $DRI2PROTO_VERSION; ./configure; make install; cd ..
-rm -rf $DRI2PROTO_VERSION
 
 wget $XCB_RELEASES/$XCBPROTO_VERSION.tar.bz2
 tar -xvf $XCBPROTO_VERSION.tar.bz2 && rm $XCBPROTO_VERSION.tar.bz2
@@ -152,40 +141,10 @@ tar -xvf $LIBXCB_VERSION.tar.bz2 && rm $LIBXCB_VERSION.tar.bz2
 cd $LIBXCB_VERSION; ./configure; make install; cd ..
 rm -rf $LIBXCB_VERSION
 
-wget $XORG_RELEASES/lib/$LIBPCIACCESS_VERSION.tar.bz2
-tar -xvf $LIBPCIACCESS_VERSION.tar.bz2 && rm $LIBPCIACCESS_VERSION.tar.bz2
-cd $LIBPCIACCESS_VERSION; ./configure; make install; cd ..
-rm -rf $LIBPCIACCESS_VERSION
-
 wget https://dri.freedesktop.org/libdrm/$LIBDRM_VERSION.tar.bz2
 tar -xvf $LIBDRM_VERSION.tar.bz2 && rm $LIBDRM_VERSION.tar.bz2
 cd $LIBDRM_VERSION; meson build -D vc4=true -D freedreno=true -D etnaviv=true; ninja -j4 -C build install; cd ..
 rm -rf $LIBDRM_VERSION
-
-wget $XORG_RELEASES/proto/$RANDRPROTO_VERSION.tar.bz2
-tar -xvf $RANDRPROTO_VERSION.tar.bz2 && rm $RANDRPROTO_VERSION.tar.bz2
-cd $RANDRPROTO_VERSION; ./configure; make install; cd ..
-rm -rf $RANDRPROTO_VERSION
-
-wget $XORG_RELEASES/lib/$LIBXRANDR_VERSION.tar.bz2
-tar -xvf $LIBXRANDR_VERSION.tar.bz2 && rm $LIBXRANDR_VERSION.tar.bz2
-cd $LIBXRANDR_VERSION; ./configure; make install; cd ..
-rm -rf $LIBXRANDR_VERSION
-
-wget $XORG_RELEASES/lib/$LIBXSHMFENCE_VERSION.tar.bz2
-tar -xvf $LIBXSHMFENCE_VERSION.tar.bz2 && rm $LIBXSHMFENCE_VERSION.tar.bz2
-cd $LIBXSHMFENCE_VERSION; ./configure; make install; cd ..
-rm -rf $LIBXSHMFENCE_VERSION
-
-wget https://people.freedesktop.org/~aplattner/vdpau/$LIBVDPAU_VERSION.tar.bz2
-tar -xvf $LIBVDPAU_VERSION.tar.bz2 && rm $LIBVDPAU_VERSION.tar.bz2
-cd $LIBVDPAU_VERSION; ./configure; make install; cd ..
-rm -rf $LIBVDPAU_VERSION
-
-wget https://www.freedesktop.org/software/vaapi/releases/libva/$LIBVA_VERSION.tar.bz2
-tar -xvf $LIBVA_VERSION.tar.bz2 && rm $LIBVA_VERSION.tar.bz2
-cd $LIBVA_VERSION; ./configure --disable-wayland --disable-dummy-driver; make install; cd ..
-rm -rf $LIBVA_VERSION
 
 wget $WAYLAND_RELEASES/$LIBWAYLAND_VERSION.tar.xz
 tar -xvf $LIBWAYLAND_VERSION.tar.xz && rm $LIBWAYLAND_VERSION.tar.xz
@@ -248,7 +207,6 @@ apt-get purge -y \
       libgbm-dev \
       libtool \
       unzip \
-      wget \
-      x11proto-gl-dev
+      wget
 
 apt-get autoremove -y --purge
