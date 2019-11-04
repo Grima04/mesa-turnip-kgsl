@@ -534,9 +534,16 @@ mir_compute_segment_interference(
                         if (bun->instructions[j]->src[s] >= ctx->temp_count)
                                 continue;
 
-                        for (unsigned q = pivot; q < j; ++q) {
+                        for (unsigned q = pivot; q < i; ++q) {
                                 if (bun->instructions[q]->dest >= ctx->temp_count)
                                         continue;
+
+                                /* See dEQP-GLES2.functional.shaders.return.output_write_in_func_dynamic_fragment */
+
+                                if (q >= j) {
+                                        if (!(bun->instructions[j]->unit == UNIT_SMUL && bun->instructions[q]->unit == UNIT_VLUT))
+                                                continue;
+                                }
 
                                 ra_add_node_interference(l, bun->instructions[q]->dest, bun->instructions[j]->src[s]);
                         }
