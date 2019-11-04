@@ -244,25 +244,14 @@ void init_context(isel_context *ctx, nir_shader *shader)
                   case nir_op_fge:
                   case nir_op_feq:
                   case nir_op_fne:
-                     size = 2;
-                     break;
                   case nir_op_ilt:
                   case nir_op_ige:
                   case nir_op_ult:
                   case nir_op_uge:
-                     size = alu_instr->src[0].src.ssa->bit_size == 64 ? 2 : 1;
-                     /* fallthrough */
                   case nir_op_ieq:
                   case nir_op_ine:
                   case nir_op_i2b1:
-                     if (ctx->divergent_vals[alu_instr->dest.dest.ssa.index]) {
-                        size = 2;
-                     } else {
-                        for (unsigned i = 0; i < nir_op_infos[alu_instr->op].num_inputs; i++) {
-                           if (allocated[alu_instr->src[i].src.ssa->index].type() == RegType::vgpr)
-                              size = 2;
-                        }
-                     }
+                     size = 2;
                      break;
                   case nir_op_f2i64:
                   case nir_op_f2u64:
@@ -274,13 +263,7 @@ void init_context(isel_context *ctx, nir_shader *shader)
                      break;
                   case nir_op_bcsel:
                      if (alu_instr->dest.dest.ssa.bit_size == 1) {
-                        if (ctx->divergent_vals[alu_instr->dest.dest.ssa.index])
-                           size = 2;
-                        else if (allocated[alu_instr->src[1].src.ssa->index].regClass() == s2 &&
-                                 allocated[alu_instr->src[2].src.ssa->index].regClass() == s2)
-                           size = 2;
-                        else
-                           size = 1;
+                        size = 2;
                      } else {
                         if (ctx->divergent_vals[alu_instr->dest.dest.ssa.index]) {
                            type = RegType::vgpr;
@@ -298,32 +281,14 @@ void init_context(isel_context *ctx, nir_shader *shader)
                      break;
                   case nir_op_mov:
                      if (alu_instr->dest.dest.ssa.bit_size == 1) {
-                        size = allocated[alu_instr->src[0].src.ssa->index].size();
+                        size = 2;
                      } else {
                         type = ctx->divergent_vals[alu_instr->dest.dest.ssa.index] ? RegType::vgpr : RegType::sgpr;
                      }
                      break;
-                  case nir_op_inot:
-                  case nir_op_ixor:
-                     if (alu_instr->dest.dest.ssa.bit_size == 1) {
-                        size = ctx->divergent_vals[alu_instr->dest.dest.ssa.index] ? 2 : 1;
-                        break;
-                     } else {
-                        /* fallthrough */
-                     }
                   default:
                      if (alu_instr->dest.dest.ssa.bit_size == 1) {
-                        if (ctx->divergent_vals[alu_instr->dest.dest.ssa.index]) {
-                           size = 2;
-                        } else {
-                           size = 2;
-                           for (unsigned i = 0; i < nir_op_infos[alu_instr->op].num_inputs; i++) {
-                              if (allocated[alu_instr->src[i].src.ssa->index].regClass() == s1) {
-                                 size = 1;
-                                 break;
-                              }
-                           }
-                        }
+                        size = 2;
                      } else {
                         for (unsigned i = 0; i < nir_op_infos[alu_instr->op].num_inputs; i++) {
                            if (allocated[alu_instr->src[i].src.ssa->index].type() == RegType::vgpr)
@@ -338,6 +303,8 @@ void init_context(isel_context *ctx, nir_shader *shader)
             case nir_instr_type_load_const: {
                unsigned size = nir_instr_as_load_const(instr)->def.num_components;
                if (nir_instr_as_load_const(instr)->def.bit_size == 64)
+                  size *= 2;
+               else if (nir_instr_as_load_const(instr)->def.bit_size == 1)
                   size *= 2;
                allocated[nir_instr_as_load_const(instr)->def.index] = Temp(0, RegClass(RegType::sgpr, size));
                break;
@@ -365,6 +332,8 @@ void init_context(isel_context *ctx, nir_shader *shader)
                   case nir_intrinsic_read_invocation:
                   case nir_intrinsic_first_invocation:
                      type = RegType::sgpr;
+                     if (intrinsic->dest.ssa.bit_size == 1)
+                        size = 2;
                      break;
                   case nir_intrinsic_ballot:
                      type = RegType::sgpr;
@@ -433,11 +402,11 @@ void init_context(isel_context *ctx, nir_shader *shader)
                   case nir_intrinsic_masked_swizzle_amd:
                   case nir_intrinsic_inclusive_scan:
                   case nir_intrinsic_exclusive_scan:
-                     if (!ctx->divergent_vals[intrinsic->dest.ssa.index]) {
-                        type = RegType::sgpr;
-                     } else if (intrinsic->src[0].ssa->bit_size == 1) {
-                        type = RegType::sgpr;
+                     if (intrinsic->dest.ssa.bit_size == 1) {
                         size = 2;
+                        type = RegType::sgpr;
+                     } else if (!ctx->divergent_vals[intrinsic->dest.ssa.index]) {
+                        type = RegType::sgpr;
                      } else {
                         type = RegType::vgpr;
                      }
@@ -452,12 +421,12 @@ void init_context(isel_context *ctx, nir_shader *shader)
                      size = 2;
                      break;
                   case nir_intrinsic_reduce:
-                     if (nir_intrinsic_cluster_size(intrinsic) == 0 ||
+                     if (intrinsic->dest.ssa.bit_size == 1) {
+                        size = 2;
+                        type = RegType::sgpr;
+                     } else if (nir_intrinsic_cluster_size(intrinsic) == 0 ||
                          !ctx->divergent_vals[intrinsic->dest.ssa.index]) {
                         type = RegType::sgpr;
-                     } else if (intrinsic->src[0].ssa->bit_size == 1) {
-                        type = RegType::sgpr;
-                        size = 2;
                      } else {
                         type = RegType::vgpr;
                      }
@@ -554,7 +523,7 @@ void init_context(isel_context *ctx, nir_shader *shader)
                if (phi->dest.ssa.bit_size == 1) {
                   assert(size == 1 && "multiple components not yet supported on boolean phis.");
                   type = RegType::sgpr;
-                  size *= ctx->divergent_vals[phi->dest.ssa.index] ? 2 : 1;
+                  size *= 2;
                   allocated[phi->dest.ssa.index] = Temp(0, RegClass(type, size));
                   break;
                }
