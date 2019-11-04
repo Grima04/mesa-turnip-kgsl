@@ -32,6 +32,7 @@ apt-get install -y --no-remove \
       libpng16-16 \
       libpng-dev \
       libvulkan1 \
+      libvulkan-dev \
       libwaffle-dev \
       libwayland-server0 \
       libxcb-xfixes0 \
@@ -64,6 +65,10 @@ find -name .git -o -name '*ninja*' -o -iname '*cmake*' -o -name '*.[chao]' | xar
 rm -rf target_api
 popd
 
+
+############### Build dEQP runner
+
+. .gitlab-ci/build-cts-runner.sh
 
 ############### Build dEQP
 

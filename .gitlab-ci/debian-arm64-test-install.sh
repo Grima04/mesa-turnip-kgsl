@@ -23,12 +23,19 @@ apt-get -y install \
 	libllvm8 \
 	libpng16-16 \
 	libpng-dev \
+	libvulkan-dev \
+	libvulkan1 \
 	meson \
 	pkg-config \
 	procps \
 	python \
+	waffle-utils \
 	wget \
 	zlib1g
+
+############### Build dEQP runner
+
+. .gitlab-ci/build-cts-runner.sh
 
 ############### Build dEQP
 
@@ -47,6 +54,7 @@ apt-get purge -y \
         libgbm-dev \
         libgles2-mesa-dev \
         libpng-dev \
+        libvulkan-dev \
         meson \
         pkg-config \
         python \

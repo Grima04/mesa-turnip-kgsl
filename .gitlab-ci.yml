@@ -15,9 +15,9 @@
 variables:
   UPSTREAM_REPO: mesa/mesa
   DEBIAN_TAG: "amd64-2019-11-13-2"
-  DEBIAN_TEST_TAG: "amd64-test-2019-11-12"
+  DEBIAN_TEST_TAG: "amd64-test-2019-11-12-2"
   DEBIAN_ARM64_TAG: "arm64v8-2019-11-06"
-  DEBIAN_ARM64_TEST_TAG: "arm64v8-test-2019-11-12"
+  DEBIAN_ARM64_TEST_TAG: "arm64v8-test-2019-11-12-2"
   STRETCH_TAG: "2019-09-18"
   DEBIAN_VERSION: buster-slim
   STRETCH_VERSION: stretch-slim
@@ -520,19 +520,21 @@ piglit-glslparser+quick_shader:
     - ./artifacts/deqp-runner.sh
 
 test-llvmpipe-gles2:
-  parallel: 4
   variables:
     DEQP_VER: gles2
+    DEQP_PARALLEL: 4
+    # Don't use threads inside llvmpipe, we've already got all 4 cores
+    # busy with DEQP_PARALLEL.
+    LP_NUM_THREADS: 0
     DEQP_EXPECTED_FAILS: deqp-llvmpipe-fails.txt
     LIBGL_ALWAYS_SOFTWARE: "true"
-    DEQP_RENDERER_MATCH: "llvmpipe"
   extends: .deqp-test
 
 test-softpipe-gles2:
   extends: test-llvmpipe-gles2
   variables:
     DEQP_EXPECTED_FAILS: deqp-softpipe-fails.txt
-    DEQP_RENDERER_MATCH: "softpipe"
+    DEQP_SKIPS: deqp-softpipe-skips.txt
     GALLIUM_DRIVER: "softpipe"
 
 # The GLES2 CTS run takes about 8 minutes of CPU time, while GLES3 is
@@ -541,9 +543,9 @@ test-softpipe-gles2:
 test-softpipe-gles3-limited:
   variables:
     DEQP_VER: gles3
+    DEQP_PARALLEL: 4
     DEQP_EXPECTED_FAILS: deqp-softpipe-fails.txt
     LIBGL_ALWAYS_SOFTWARE: "true"
-    DEQP_RENDERER_MATCH: "softpipe"
     GALLIUM_DRIVER: "softpipe"
     CI_NODE_INDEX: 1
     CI_NODE_TOTAL: 10
@@ -554,7 +556,6 @@ arm64_a630_gles2:
   image: $DEBIAN_ARM64_TEST_IMAGE
   variables:
     DEQP_VER: gles2
-    DEQP_RENDERER_MATCH: "FD630"
     DEQP_EXPECTED_FAILS: deqp-freedreno-a630-fails.txt
     DEQP_SKIPS: deqp-freedreno-a630-skips.txt
     NIR_VALIDATE: 0
@@ -584,6 +585,5 @@ arm64_a306_gles2:
   variables:
     DEQP_EXPECTED_FAILS: deqp-freedreno-a307-fails.txt
     DEQP_SKIPS: deqp-default-skips.txt
-    DEQP_RENDERER_MATCH: "FD307"
   tags:
     - db410c
