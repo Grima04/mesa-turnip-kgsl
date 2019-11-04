@@ -51,11 +51,13 @@ dump_shader_info(struct ir3_shader_variant *v, bool binning_pass,
 		return;
 
 	pipe_debug_message(debug, SHADER_INFO,
-			"%s shader: %u inst, %u dwords, "
+			"%s shader: %u inst, %u nops, %u non-nops, %u dwords, "
 			"%u half, %u full, %u constlen, "
 			"%u (ss), %u (sy), %d max_sun, %d loops\n",
 			ir3_shader_stage(v),
 			v->info.instrs_count,
+			v->info.nops_count,
+			v->info.instrs_count - v->info.nops_count,
 			v->info.sizedwords,
 			v->info.max_half_reg + 1,
 			v->info.max_reg + 1,

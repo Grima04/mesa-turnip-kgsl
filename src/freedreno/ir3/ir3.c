@@ -922,6 +922,9 @@ void * ir3_assemble(struct ir3 *shader, struct ir3_info *info,
 			if (ret)
 				goto fail;
 			info->instrs_count += 1 + instr->repeat + instr->nop;
+			info->nops_count += instr->nop;
+			if (instr->opc == OPC_NOP)
+				info->nops_count += 1 + instr->repeat;
 			dwords += 2;
 
 			if (instr->flags & IR3_INSTR_SS)

@@ -47,6 +47,7 @@ struct ir3_info {
 	uint32_t gpu_id;
 	uint16_t sizedwords;
 	uint16_t instrs_count;   /* expanded to account for rpt's */
+	uint16_t nops_count;     /* # of nop instructions, including nopN */
 	/* NOTE: max_reg, etc, does not include registers not touched
 	 * by the shader (ie. vertex fetched via VFD_DECODE but not
 	 * touched by shader)
