@@ -1259,6 +1259,7 @@ uint16_t get_sgpr_alloc(Program *program, uint16_t addressable_sgprs);
 uint16_t get_addr_sgpr_from_waves(Program *program, uint16_t max_waves);
 
 typedef struct {
+   const int16_t opcode_gfx7[static_cast<int>(aco_opcode::num_opcodes)];
    const int16_t opcode_gfx9[static_cast<int>(aco_opcode::num_opcodes)];
    const int16_t opcode_gfx10[static_cast<int>(aco_opcode::num_opcodes)];
    const std::bitset<static_cast<int>(aco_opcode::num_opcodes)> can_use_input_modifiers;

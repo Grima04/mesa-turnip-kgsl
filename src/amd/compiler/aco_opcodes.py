@@ -155,7 +155,7 @@ class Opcode(object):
    """Class that represents all the information we have about the opcode
    NOTE: this must be kept in sync with aco_op_info
    """
-   def __init__(self, name, opcode_gfx9, opcode_gfx10, format, input_mod, output_mod):
+   def __init__(self, name, opcode_gfx7, opcode_gfx9, opcode_gfx10, format, input_mod, output_mod):
       """Parameters:
 
       - name is the name of the opcode (prepend nir_op_ for the enum name)
@@ -167,6 +167,7 @@ class Opcode(object):
         constant value of the opcode given the constant values of its inputs.
       """
       assert isinstance(name, str)
+      assert isinstance(opcode_gfx7, int)
       assert isinstance(opcode_gfx9, int)
       assert isinstance(opcode_gfx10, int)
       assert isinstance(format, Format)
@@ -174,6 +175,7 @@ class Opcode(object):
       assert isinstance(output_mod, bool)
 
       self.name = name
+      self.opcode_gfx7 = opcode_gfx7
       self.opcode_gfx9 = opcode_gfx9
       self.opcode_gfx10 = opcode_gfx10
       self.input_mod = "1" if input_mod else "0"
@@ -184,14 +186,11 @@ class Opcode(object):
 # global dictionary of opcodes
 opcodes = {}
 
-# VOPC to GFX6 opcode translation map
-VOPC_GFX6 = [0] * 256
-
-def opcode(name, opcode_gfx9 = -1, opcode_gfx10 = -1, format = Format.PSEUDO, input_mod = False, output_mod = False):
+def opcode(name, opcode_gfx7 = -1, opcode_gfx9 = -1, opcode_gfx10 = -1, format = Format.PSEUDO, input_mod = False, output_mod = False):
    assert name not in opcodes
-   opcodes[name] = Opcode(name, opcode_gfx9, opcode_gfx10, format, input_mod, output_mod)
+   opcodes[name] = Opcode(name, opcode_gfx7, opcode_gfx9, opcode_gfx10, format, input_mod, output_mod)
 
-opcode("exp", 0, 0, format = Format.EXP)
+opcode("exp", 0, 0, 0, format = Format.EXP)
 opcode("p_parallelcopy")
 opcode("p_startpgm")
 opcode("p_phi")
@@ -302,7 +301,7 @@ SOP2 = {
    (  -1,   -1,   -1, 0x2d, 0x36, "s_mul_hi_i32"),
 }
 for (gfx6, gfx7, gfx8, gfx9, gfx10, name) in SOP2:
-    opcode(name, gfx9, gfx10, Format.SOP2)
+    opcode(name, gfx7, gfx9, gfx10, Format.SOP2)
 
 
 # SOPK instructions: 0 input (+ imm), 1 output + optional scc
@@ -338,7 +337,7 @@ SOPK = {
    (  -1,   -1,   -1,   -1, 0x1c, "s_subvector_loop_end"),
 }
 for (gfx6, gfx7, gfx8, gfx9, gfx10, name) in SOPK:
-   opcode(name, gfx9, gfx10, Format.SOPK)
+   opcode(name, gfx7, gfx9, gfx10, Format.SOPK)
 
 
 # SOP1 instructions: 1 input, 1 output (+optional SCC)
@@ -416,7 +415,7 @@ SOP1 = {
    (  -1,   -1,   -1,   -1,   -1, "p_constaddr"),
 }
 for (gfx6, gfx7, gfx8, gfx9, gfx10, name) in SOP1:
-   opcode(name, gfx9, gfx10, Format.SOP1)
+   opcode(name, gfx7, gfx9, gfx10, Format.SOP1)
 
 
 # SOPC instructions: 2 inputs and 0 outputs (+SCC)
@@ -444,7 +443,7 @@ SOPC = {
    (  -1,   -1, 0x13, 0x13, 0x13, "s_cmp_lg_u64"),
 }
 for (gfx6, gfx7, gfx8, gfx9, gfx10, name) in SOPC:
-   opcode(name, gfx9, gfx10, Format.SOPC)
+   opcode(name, gfx7, gfx9, gfx10, Format.SOPC)
 
 
 # SOPP instructions: 0 inputs (+optional scc/vcc), 0 outputs
@@ -491,7 +490,7 @@ SOPP = {
    (  -1,   -1,   -1,   -1, 0x26, "s_ttracedata_imm"),
 }
 for (gfx6, gfx7, gfx8, gfx9, gfx10, name) in SOPP:
-   opcode(name, gfx9, gfx10, Format.SOPP)
+   opcode(name, gfx7, gfx9, gfx10, Format.SOPP)
 
 
 # SMEM instructions: sbase input (2 sgpr), potentially 2 offset inputs, 1 sdata input/output
@@ -585,7 +584,7 @@ SMEM = {
    (  -1,   -1,   -1, 0xac, 0xac, "s_atomic_dec_x2"),
 }
 for (gfx6, gfx7, gfx8, gfx9, gfx10, name) in SMEM:
-   opcode(name, gfx9, gfx10, Format.SMEM)
+   opcode(name, gfx7, gfx9, gfx10, Format.SMEM)
 
 
 # VOP2 instructions: 2 inputs, 1 output (+ optional vcc)
@@ -663,7 +662,7 @@ VOP2 = {
    (  -1,   -1,   -1,   -1, 0x3c, "v_pk_fmac_f16", False),
 }
 for (gfx6, gfx7, gfx8, gfx9, gfx10, name, modifiers) in VOP2:
-   opcode(name, gfx9, gfx10, Format.VOP2, modifiers, modifiers)
+   opcode(name, gfx7, gfx9, gfx10, Format.VOP2, modifiers, modifiers)
 
 
 # VOP1 instructions: instructions with 1 input and 1 output
@@ -763,7 +762,7 @@ VOP1 = {
    (  -1,   -1,   -1,   -1, 0x68, "v_swaprel_b32", False, False),
 }
 for (gfx6, gfx7, gfx8, gfx9, gfx10, name, in_mod, out_mod) in VOP1:
-   opcode(name, gfx9, gfx10, Format.VOP1, in_mod, out_mod)
+   opcode(name, gfx7, gfx9, gfx10, Format.VOP1, in_mod, out_mod)
 
 
 # VOPC instructions:
@@ -777,29 +776,29 @@ VOPC_CLASS = {
    (0xb8, 0xb8, 0x13, 0x13, 0xb8, "v_cmpx_class_f64"),
 }
 for (gfx6, gfx7, gfx8, gfx9, gfx10, name) in VOPC_CLASS:
-    opcode(name, gfx9, gfx10, Format.VOPC, True, False)
+    opcode(name, gfx7, gfx9, gfx10, Format.VOPC, True, False)
 
 COMPF = ["f", "lt", "eq", "le", "gt", "lg", "ge", "o", "u", "nge", "nlg", "ngt", "nle", "neq", "nlt", "tru"]
 
 for i in range(8):
    (gfx6, gfx7, gfx8, gfx9, gfx10, name) = (-1, -1, 0x20+i, 0x20+i, 0xc8+i, "v_cmp_"+COMPF[i]+"_f16")
-   opcode(name, gfx9, gfx10, Format.VOPC, True, False)
+   opcode(name, gfx7, gfx9, gfx10, Format.VOPC, True, False)
    (gfx6, gfx7, gfx8, gfx9, gfx10, name) = (-1, -1, 0x30+i, 0x30+i, 0xd8+i, "v_cmpx_"+COMPF[i]+"_f16")
-   opcode(name, gfx9, gfx10, Format.VOPC, True, False)
+   opcode(name, gfx7, gfx9, gfx10, Format.VOPC, True, False)
    (gfx6, gfx7, gfx8, gfx9, gfx10, name) = (-1, -1, 0x28+i, 0x28+i, 0xe8+i, "v_cmp_"+COMPF[i+8]+"_f16")
-   opcode(name, gfx9, gfx10, Format.VOPC, True, False)
+   opcode(name, gfx7, gfx9, gfx10, Format.VOPC, True, False)
    (gfx6, gfx7, gfx8, gfx9, gfx10, name) = (-1, -1, 0x38+i, 0x38+i, 0xf8+i, "v_cmpx_"+COMPF[i+8]+"_f16")
-   opcode(name, gfx9, gfx10, Format.VOPC, True, False)
+   opcode(name, gfx7, gfx9, gfx10, Format.VOPC, True, False)
 
 for i in range(16):
    (gfx6, gfx7, gfx8, gfx9, gfx10, name) = (0x00+i, 0x00+i, 0x40+i, 0x40+i, 0x00+i, "v_cmp_"+COMPF[i]+"_f32")
-   opcode(name, gfx9, gfx10, Format.VOPC, True, False)
+   opcode(name, gfx7, gfx9, gfx10, Format.VOPC, True, False)
    (gfx6, gfx7, gfx8, gfx9, gfx10, name) = (0x10+i, 0x10+i, 0x50+i, 0x50+i, 0x10+i, "v_cmpx_"+COMPF[i]+"_f32")
-   opcode(name, gfx9, gfx10, Format.VOPC, True, False)
+   opcode(name, gfx7, gfx9, gfx10, Format.VOPC, True, False)
    (gfx6, gfx7, gfx8, gfx9, gfx10, name) = (0x20+i, 0x20+i, 0x60+i, 0x60+i, 0x20+i, "v_cmp_"+COMPF[i]+"_f64")
-   opcode(name, gfx9, gfx10, Format.VOPC, True, False)
+   opcode(name, gfx7, gfx9, gfx10, Format.VOPC, True, False)
    (gfx6, gfx7, gfx8, gfx9, gfx10, name) = (0x30+i, 0x30+i, 0x70+i, 0x70+i, 0x30+i, "v_cmpx_"+COMPF[i]+"_f64")
-   opcode(name, gfx9, gfx10, Format.VOPC, True, False)
+   opcode(name, gfx7, gfx9, gfx10, Format.VOPC, True, False)
    # GFX_6_7
    (gfx6, gfx7, gfx8, gfx9, gfx10, name) = (0x40+i, 0x40+i, -1, -1, -1, "v_cmps_"+COMPF[i]+"_f32")
    (gfx6, gfx7, gfx8, gfx9, gfx10, name) = (0x50+i, 0x50+i, -1, -1, -1, "v_cmpsx_"+COMPF[i]+"_f32")
@@ -811,41 +810,41 @@ COMPI = ["f", "lt", "eq", "le", "gt", "lg", "ge", "tru"]
 # GFX_8_9
 for i in [0,7]: # only 0 and 7
    (gfx6, gfx7, gfx8, gfx9, gfx10, name) = (-1, -1, 0xa0+i, 0xa0+i, -1, "v_cmp_"+COMPI[i]+"_i16")
-   opcode(name, gfx9, gfx10, Format.VOPC)
+   opcode(name, gfx7, gfx9, gfx10, Format.VOPC)
    (gfx6, gfx7, gfx8, gfx9, gfx10, name) = (-1, -1, 0xb0+i, 0xb0+i, -1, "v_cmpx_"+COMPI[i]+"_i16")
-   opcode(name, gfx9, gfx10, Format.VOPC)
+   opcode(name, gfx7, gfx9, gfx10, Format.VOPC)
    (gfx6, gfx7, gfx8, gfx9, gfx10, name) = (-1, -1, 0xa8+i, 0xa8+i, -1, "v_cmp_"+COMPI[i]+"_u16")
-   opcode(name, gfx9, gfx10, Format.VOPC)
+   opcode(name, gfx7, gfx9, gfx10, Format.VOPC)
    (gfx6, gfx7, gfx8, gfx9, gfx10, name) = (-1, -1, 0xb8+i, 0xb8+i, -1, "v_cmpx_"+COMPI[i]+"_u16")
-   opcode(name, gfx9, gfx10, Format.VOPC)
+   opcode(name, gfx7, gfx9, gfx10, Format.VOPC)
 
 for i in range(1, 7): # [1..6]
    (gfx6, gfx7, gfx8, gfx9, gfx10, name) = (-1, -1, 0xa0+i, 0xa0+i, 0x88+i, "v_cmp_"+COMPI[i]+"_i16")
-   opcode(name, gfx9, gfx10, Format.VOPC)
+   opcode(name, gfx7, gfx9, gfx10, Format.VOPC)
    (gfx6, gfx7, gfx8, gfx9, gfx10, name) = (-1, -1, 0xb0+i, 0xb0+i, 0x98+i, "v_cmpx_"+COMPI[i]+"_i16")
-   opcode(name, gfx9, gfx10, Format.VOPC)
+   opcode(name, gfx7, gfx9, gfx10, Format.VOPC)
    (gfx6, gfx7, gfx8, gfx9, gfx10, name) = (-1, -1, 0xa8+i, 0xa8+i, 0xa8+i, "v_cmp_"+COMPI[i]+"_u16")
-   opcode(name, gfx9, gfx10, Format.VOPC)
+   opcode(name, gfx7, gfx9, gfx10, Format.VOPC)
    (gfx6, gfx7, gfx8, gfx9, gfx10, name) = (-1, -1, 0xb8+i, 0xb8+i, 0xb8+i, "v_cmpx_"+COMPI[i]+"_u16")
-   opcode(name, gfx9, gfx10, Format.VOPC)
+   opcode(name, gfx7, gfx9, gfx10, Format.VOPC)
 
 for i in range(8):
    (gfx6, gfx7, gfx8, gfx9, gfx10, name) = (0x80+i, 0x80+i, 0xc0+i, 0xc0+i, 0x80+i, "v_cmp_"+COMPI[i]+"_i32")
-   opcode(name, gfx9, gfx10, Format.VOPC)
+   opcode(name, gfx7, gfx9, gfx10, Format.VOPC)
    (gfx6, gfx7, gfx8, gfx9, gfx10, name) = (0x90+i, 0x90+i, 0xd0+i, 0xd0+i, 0x90+i, "v_cmpx_"+COMPI[i]+"_i32")
-   opcode(name, gfx9, gfx10, Format.VOPC)
+   opcode(name, gfx7, gfx9, gfx10, Format.VOPC)
    (gfx6, gfx7, gfx8, gfx9, gfx10, name) = (0xa0+i, 0xa0+i, 0xe0+i, 0xe0+i, 0xa0+i, "v_cmp_"+COMPI[i]+"_i64")
-   opcode(name, gfx9, gfx10, Format.VOPC)
+   opcode(name, gfx7, gfx9, gfx10, Format.VOPC)
    (gfx6, gfx7, gfx8, gfx9, gfx10, name) = (0xb0+i, 0xb0+i, 0xf0+i, 0xf0+i, 0xb0+i, "v_cmpx_"+COMPI[i]+"_i64")
-   opcode(name, gfx9, gfx10, Format.VOPC)
+   opcode(name, gfx7, gfx9, gfx10, Format.VOPC)
    (gfx6, gfx7, gfx8, gfx9, gfx10, name) = (0xc0+i, 0xc0+i, 0xc8+i, 0xc8+i, 0xc0+i, "v_cmp_"+COMPI[i]+"_u32")
-   opcode(name, gfx9, gfx10, Format.VOPC)
+   opcode(name, gfx7, gfx9, gfx10, Format.VOPC)
    (gfx6, gfx7, gfx8, gfx9, gfx10, name) = (0xd0+i, 0xd0+i, 0xd8+i, 0xd8+i, 0xd0+i, "v_cmpx_"+COMPI[i]+"_u32")
-   opcode(name, gfx9, gfx10, Format.VOPC)
+   opcode(name, gfx7, gfx9, gfx10, Format.VOPC)
    (gfx6, gfx7, gfx8, gfx9, gfx10, name) = (0xe0+i, 0xe0+i, 0xe8+i, 0xe8+i, 0xe0+i, "v_cmp_"+COMPI[i]+"_u64")
-   opcode(name, gfx9, gfx10, Format.VOPC)
+   opcode(name, gfx7, gfx9, gfx10, Format.VOPC)
    (gfx6, gfx7, gfx8, gfx9, gfx10, name) = (0xf0+i, 0xf0+i, 0xf8+i, 0xf8+i, 0xf0+i, "v_cmpx_"+COMPI[i]+"_u64")
-   opcode(name, gfx9, gfx10, Format.VOPC)
+   opcode(name, gfx7, gfx9, gfx10, Format.VOPC)
 
 
 # VOPP instructions: packed 16bit instructions - 1 or 2 inputs and 1 output
@@ -876,7 +875,7 @@ VOPP = {
 # note that these are only supported on gfx9+ so we'll need to distinguish between gfx8 and gfx9 here
 # (gfx6, gfx7, gfx8, gfx9, gfx10, name) = (-1, -1, -1, code, code, name)
 for (code, name) in VOPP:
-   opcode(name, code, code, Format.VOP3P)
+   opcode(name, -1, code, code, Format.VOP3P)
 
 
 # VINTERP instructions: 
@@ -887,7 +886,7 @@ VINTRP = {
 }
 # (gfx6, gfx7, gfx8, gfx9, gfx10, name) = (code, code, code, code, code, name)
 for (code, name) in VINTRP:
-   opcode(name, code, code, Format.VINTRP)
+   opcode(name, code, code, code, Format.VINTRP)
 
 # VOP3 instructions: 3 inputs, 1 output
 # VOP3b instructions: have a unique scalar output, e.g. VOP2 with vcc out
@@ -1015,7 +1014,7 @@ VOP3 = {
 # TODO: many 16bit instructions moved from VOP2 to VOP3 on GFX10
 }
 for (gfx6, gfx7, gfx8, gfx9, gfx10, name, in_mod, out_mod) in VOP3:
-   opcode(name, gfx9, gfx10, Format.VOP3A, in_mod, out_mod)
+   opcode(name, gfx7, gfx9, gfx10, Format.VOP3A, in_mod, out_mod)
 
 
 # DS instructions: 3 inputs (1 addr, 2 data), 1 output
@@ -1177,7 +1176,7 @@ DS = {
    (  -1, 0xff, 0xff, 0xff, 0xff, "ds_read_b128"),
 }
 for (gfx6, gfx7, gfx8, gfx9, gfx10, name) in DS:
-    opcode(name, gfx9, gfx10, Format.DS)
+    opcode(name, gfx7, gfx9, gfx10, Format.DS)
 
 # MUBUF instructions:
 MUBUF = {
@@ -1262,7 +1261,7 @@ MUBUF = {
    (  -1,   -1,   -1,   -1, 0x72, "buffer_gl1_inv"),
 }
 for (gfx6, gfx7, gfx8, gfx9, gfx10, name) in MUBUF:
-    opcode(name, gfx9, gfx10, Format.MUBUF)
+    opcode(name, gfx7, gfx9, gfx10, Format.MUBUF)
 
 MTBUF = {
    (0x00, 0x00, 0x00, 0x00, 0x00, "tbuffer_load_format_x"),
@@ -1283,7 +1282,7 @@ MTBUF = {
    (  -1,   -1, 0x0f, 0x0f, 0x0f, "tbuffer_store_format_d16_xyzw"),
 }
 for (gfx6, gfx7, gfx8, gfx9, gfx10, name) in MTBUF:
-    opcode(name, gfx9, gfx10, Format.MTBUF)
+    opcode(name, gfx7, gfx9, gfx10, Format.MTBUF)
 
 
 IMAGE = {
@@ -1302,7 +1301,7 @@ IMAGE = {
 }
 # (gfx6, gfx7, gfx8, gfx9, gfx10, name) = (code, code, code, code, code, name)
 for (code, name) in IMAGE:
-   opcode(name, code, code, Format.MIMG)
+   opcode(name, code, code, code, Format.MIMG)
 
 IMAGE_ATOMIC = {
    (0x0f, 0x0f, 0x10, "image_atomic_swap"),
@@ -1326,7 +1325,7 @@ IMAGE_ATOMIC = {
 # (gfx6, gfx7, gfx8, gfx9, gfx10, name) = (gfx6, gfx7, gfx89, gfx89, ???, name)
 # gfx7 and gfx10 opcodes are the same here
 for (gfx6, gfx7, gfx89, name) in IMAGE_ATOMIC:
-   opcode(name, gfx89, gfx7, Format.MIMG)
+   opcode(name, gfx7, gfx89, gfx7, Format.MIMG)
 
 IMAGE_SAMPLE = {
    (0x20, "image_sample"),
@@ -1372,7 +1371,7 @@ IMAGE_SAMPLE = {
 }
 # (gfx6, gfx7, gfx8, gfx9, gfx10, name) = (code, code, code, code, code, name)
 for (code, name) in IMAGE_SAMPLE:
-   opcode(name, code, code, Format.MIMG)
+   opcode(name, code, code, code, Format.MIMG)
 
 IMAGE_GATHER4 = {
    (0x40, "image_gather4"),
@@ -1405,7 +1404,7 @@ IMAGE_GATHER4 = {
 }
 # (gfx6, gfx7, gfx8, gfx9, gfx10, name) = (code, code, code, code, code, name)
 for (code, name) in IMAGE_GATHER4:
-   opcode(name, code, code, Format.MIMG)
+   opcode(name, code, code, code, Format.MIMG)
 
 
 FLAT = {
@@ -1466,7 +1465,7 @@ FLAT = {
    (0x60,   -1, 0x60, "flat_atomic_fmax_x2"),
 }
 for (gfx7, gfx8, gfx10, name) in FLAT:
-    opcode(name, gfx8, gfx10, Format.FLAT)
+    opcode(name, gfx7, gfx8, gfx10, Format.FLAT)
 
 GLOBAL = {
    #GFX8_9, GFX10
@@ -1526,7 +1525,7 @@ GLOBAL = {
    (  -1, 0x60, "global_atomic_fmax_x2"),
 }
 for (gfx8, gfx10, name) in GLOBAL:
-    opcode(name, gfx8, gfx10, Format.GLOBAL)
+    opcode(name, -1, gfx8, gfx10, Format.GLOBAL)
 
 SCRATCH = {
    #GFX8_9, GFX10
@@ -1554,7 +1553,7 @@ SCRATCH = {
    (0x25, 0x25, "scratch_load_short_d16_hi"),
 }
 for (gfx8, gfx10, name) in SCRATCH:
-    opcode(name, gfx8, gfx10, Format.SCRATCH)
+    opcode(name, -1, gfx8, gfx10, Format.SCRATCH)
 
 # check for duplicate opcode numbers
 for ver in ['gfx9', 'gfx10']:
