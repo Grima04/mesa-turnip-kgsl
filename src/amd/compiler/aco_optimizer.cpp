@@ -709,7 +709,8 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
          SMEM_instruction *smem = static_cast<SMEM_instruction *>(instr.get());
          Temp base;
          uint32_t offset;
-         if (i == 1 && info.is_constant_or_literal() && info.val <= 0xFFFFF) {
+         if (i == 1 && info.is_constant_or_literal() &&
+             (ctx.program->chip_class < GFX8 || info.val <= 0xFFFFF)) {
             instr->operands[i] = Operand(info.val);
             continue;
          } else if (i == 1 && parse_base_offset(ctx, instr.get(), i, &base, &offset) && base.regClass() == s1 && offset <= 0xFFFFF && ctx.program->chip_class >= GFX9) {
