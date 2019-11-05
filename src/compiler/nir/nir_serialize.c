@@ -185,13 +185,21 @@ read_constant(read_ctx *ctx, nir_variable *nvar)
    return c;
 }
 
+enum var_data_encoding {
+   var_encode_full,
+   var_encode_shader_temp,
+   var_encode_function_temp,
+};
+
 union packed_var {
    uint32_t u32;
    struct {
       unsigned has_name:1;
       unsigned has_constant_initializer:1;
       unsigned has_interface_type:1;
-      unsigned num_state_slots:13;
+      unsigned num_state_slots:7;
+      unsigned data_encoding:2;
+      unsigned _pad:4;
       unsigned num_members:16;
    } u;
 };
@@ -202,7 +210,7 @@ write_variable(write_ctx *ctx, const nir_variable *var)
    write_add_object(ctx, var);
    encode_type_to_blob(ctx->blob, var->type);
 
-   assert(var->num_state_slots < (1 << 13));
+   assert(var->num_state_slots < (1 << 7));
    assert(var->num_members < (1 << 16));
 
    STATIC_ASSERT(sizeof(union packed_var) == 4);
@@ -215,22 +223,32 @@ write_variable(write_ctx *ctx, const nir_variable *var)
    flags.u.num_state_slots = var->num_state_slots;
    flags.u.num_members = var->num_members;
 
+   /* Temporary variables don't serialize var->data. */
+   if (var->data.mode == nir_var_shader_temp)
+      flags.u.data_encoding = var_encode_shader_temp;
+   else if (var->data.mode == nir_var_function_temp)
+      flags.u.data_encoding = var_encode_function_temp;
+   else
+      flags.u.data_encoding = var_encode_full;
+
    blob_write_uint32(ctx->blob, flags.u32);
 
    if (flags.u.has_name)
       blob_write_string(ctx->blob, var->name);
 
-   struct nir_variable_data data = var->data;
+   if (flags.u.data_encoding == var_encode_full) {
+      struct nir_variable_data data = var->data;
 
-   /* When stripping, we expect that the location is no longer needed,
-    * which is typically after shaders are linked.
-    */
-   if (ctx->strip &&
-       data.mode != nir_var_shader_in &&
-       data.mode != nir_var_shader_out)
-      data.location = 0;
+      /* When stripping, we expect that the location is no longer needed,
+       * which is typically after shaders are linked.
+       */
+      if (ctx->strip &&
+          data.mode != nir_var_shader_in &&
+          data.mode != nir_var_shader_out)
+         data.location = 0;
 
-   blob_write_bytes(ctx->blob, &data, sizeof(data));
+      blob_write_bytes(ctx->blob, &data, sizeof(data));
+   }
 
    for (unsigned i = 0; i < var->num_state_slots; i++) {
       blob_write_bytes(ctx->blob, &var->state_slots[i],
@@ -263,7 +281,14 @@ read_variable(read_ctx *ctx)
    } else {
       var->name = NULL;
    }
-   blob_copy_bytes(ctx->blob, (uint8_t *) &var->data, sizeof(var->data));
+
+   if (flags.u.data_encoding == var_encode_shader_temp)
+      var->data.mode = nir_var_shader_temp;
+   else if (flags.u.data_encoding == var_encode_function_temp)
+      var->data.mode = nir_var_function_temp;
+   else
+      blob_copy_bytes(ctx->blob, (uint8_t *) &var->data, sizeof(var->data));
+
    var->num_state_slots = flags.u.num_state_slots;
    if (var->num_state_slots != 0) {
       var->state_slots = ralloc_array(var, nir_state_slot,
