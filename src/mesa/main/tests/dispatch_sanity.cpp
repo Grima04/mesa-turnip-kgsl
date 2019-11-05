@@ -858,8 +858,8 @@ const struct function common_desktop_functions_possible[] = {
    { "glTextureStorage3DEXT", 43, -1 },
    { "glClearBufferData", 43, -1 },
    { "glClearBufferSubData", 43, -1 },
-// { "glClearNamedBufferDataEXT", 43, -1 },             // XXX: Add to xml
-// { "glClearNamedBufferSubDataEXT", 43, -1 },          // XXX: Add to xml
+   { "glClearNamedBufferDataEXT", 43, -1 },
+   { "glClearNamedBufferSubDataEXT", 43, -1 },
    { "glCopyImageSubData", 43, -1 },
    { "glTextureView", 43, -1 },
    { "glBindVertexBuffer", 43, -1 },

@@ -377,7 +377,7 @@ GL_EXT_direct_state_access additions from other extensions (complete list):
   GL_AMD_gpu_shader_int64                               n/a (not enabled in compat profile)
   GL_ARB_bindless_texture                               DONE
   GL_ARB_buffer_storage                                 DONE
-  GL_ARB_clear_buffer_object                            not started
+  GL_ARB_clear_buffer_object                            DONE
   GL_ARB_framebuffer_no_attachments                     DONE
   GL_ARB_gpu_shader_fp64                                not started
   GL_ARB_instanced_arrays                               not started

@@ -1616,9 +1616,11 @@ offsets = {
     "GetVertexArrayPointervEXT": 1580,
     "GetVertexArrayIntegeri_vEXT": 1581,
     "GetVertexArrayPointeri_vEXT": 1582,
-    "NamedFramebufferParameteriEXT": 1583,
-    "GetNamedFramebufferParameterivEXT": 1584,
-    "VertexArrayVertexAttribLOffsetEXT": 1585,
+    "ClearNamedBufferDataEXT": 1583,
+    "ClearNamedBufferSubDataEXT": 1584,
+    "NamedFramebufferParameteriEXT": 1585,
+    "GetNamedFramebufferParameterivEXT": 1586,
+    "VertexArrayVertexAttribLOffsetEXT": 1587,
 }
 
 functions = [
