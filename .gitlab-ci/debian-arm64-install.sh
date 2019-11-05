@@ -17,6 +17,7 @@ apt-get -y install \
 	flex \
 	g++ \
 	gettext \
+	libdrm-dev \
 	libdrm-dev:armhf \
 	libelf-dev \
 	libelf-dev:armhf \
@@ -40,17 +41,6 @@ cross_file="/cross_file-armhf.txt"
 sed -i "s|/usr/bin/\([^-]*\)-linux-gnu\([^-]*\)-g|/usr/lib/ccache/\\1-linux-gnu\\2-g|g" "$cross_file"
 # Don't need wrapper for armhf executables
 sed -i -e '/\[properties\]/a\' -e "needs_exe_wrapper = False" "$cross_file"
-
-export             LIBDRM_VERSION=libdrm-2.4.99
-
-############### Build libdrm
-
-wget https://dri.freedesktop.org/libdrm/$LIBDRM_VERSION.tar.bz2
-tar -xvf $LIBDRM_VERSION.tar.bz2 && rm $LIBDRM_VERSION.tar.bz2
-cd $LIBDRM_VERSION; meson build/ -Detnaviv=true; ninja -C build/ install; cd ..
-rm -rf $LIBDRM_VERSION
-
-############### Uninstall the build software
 
 apt-get purge -y \
         wget

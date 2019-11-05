@@ -15,6 +15,7 @@ apt-get -y install \
 	gcc \
 	git \
 	libc6-dev \
+	libdrm-nouveau2 \
 	libexpat1 \
 	libgbm-dev \
 	libgbm-dev \
@@ -28,15 +29,6 @@ apt-get -y install \
 	python \
 	wget \
 	zlib1g
-
-export             LIBDRM_VERSION=libdrm-2.4.99
-
-############### Build libdrm
-
-wget https://dri.freedesktop.org/libdrm/$LIBDRM_VERSION.tar.bz2
-tar -xvf $LIBDRM_VERSION.tar.bz2 && rm $LIBDRM_VERSION.tar.bz2
-cd $LIBDRM_VERSION; meson build/ -Detnaviv=true; ninja -C build/ install; cd ..
-rm -rf $LIBDRM_VERSION
 
 ############### Build dEQP
 
