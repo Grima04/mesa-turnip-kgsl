@@ -369,7 +369,7 @@ mir_adjust_constants(midgard_instruction *ins,
         if (!ins->has_constants)
                 return true;
 
-        if (ins->alu.reg_mode == midgard_reg_mode_16) {
+        if (ins->alu.reg_mode != midgard_reg_mode_32) {
                 /* TODO: 16-bit constant combining */
                 if (pred->constant_count)
                         return false;
