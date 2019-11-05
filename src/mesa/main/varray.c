@@ -3017,7 +3017,7 @@ vertex_array_attrib_format(GLuint vaobj, GLuint attribIndex, GLint size,
        *   VertexArrayAttrib*Format if <vaobj> is not [compatibility profile:
        *   zero or] the name of an existing vertex array object."
        */
-      vao = _mesa_lookup_vao_err(ctx, false, vaobj, func);
+      vao = _mesa_lookup_vao_err(ctx, vaobj, false, func);
       if (!vao)
          return;
 
