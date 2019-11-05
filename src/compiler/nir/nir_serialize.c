@@ -54,6 +54,7 @@ typedef struct {
    /* The last serialized type. */
    const struct glsl_type *last_type;
    const struct glsl_type *last_interface_type;
+   struct nir_variable_data last_var_data;
 
    /* Don't write optional data such as variable names. */
    bool strip;
@@ -79,6 +80,7 @@ typedef struct {
    /* The last deserialized type. */
    const struct glsl_type *last_type;
    const struct glsl_type *last_interface_type;
+   struct nir_variable_data last_var_data;
 } read_ctx;
 
 static void
@@ -196,6 +198,7 @@ enum var_data_encoding {
    var_encode_full,
    var_encode_shader_temp,
    var_encode_function_temp,
+   var_encode_location_diff,
 };
 
 union packed_var {
@@ -210,6 +213,15 @@ union packed_var {
       unsigned interface_type_same_as_last:1;
       unsigned _pad:2;
       unsigned num_members:16;
+   } u;
+};
+
+union packed_var_data_diff {
+   uint32_t u32;
+   struct {
+      int location:13;
+      int location_frac:3;
+      int driver_location:16;
    } u;
 };
 
@@ -234,13 +246,40 @@ write_variable(write_ctx *ctx, const nir_variable *var)
    flags.u.num_state_slots = var->num_state_slots;
    flags.u.num_members = var->num_members;
 
+   struct nir_variable_data data = var->data;
+
+   /* When stripping, we expect that the location is no longer needed,
+    * which is typically after shaders are linked.
+    */
+   if (ctx->strip &&
+       data.mode != nir_var_shader_in &&
+       data.mode != nir_var_shader_out)
+      data.location = 0;
+
    /* Temporary variables don't serialize var->data. */
-   if (var->data.mode == nir_var_shader_temp)
+   if (data.mode == nir_var_shader_temp)
       flags.u.data_encoding = var_encode_shader_temp;
-   else if (var->data.mode == nir_var_function_temp)
+   else if (data.mode == nir_var_function_temp)
       flags.u.data_encoding = var_encode_function_temp;
-   else
-      flags.u.data_encoding = var_encode_full;
+   else {
+      struct nir_variable_data tmp = data;
+
+      tmp.location = ctx->last_var_data.location;
+      tmp.location_frac = ctx->last_var_data.location_frac;
+      tmp.driver_location = ctx->last_var_data.driver_location;
+
+      /* See if we can encode only the difference in locations from the last
+       * variable.
+       */
+      if (memcmp(&ctx->last_var_data, &tmp, sizeof(tmp)) == 0 &&
+          abs((int)data.location -
+              (int)ctx->last_var_data.location) < (1 << 12) &&
+          abs((int)data.driver_location -
+              (int)ctx->last_var_data.driver_location) < (1 << 15))
+         flags.u.data_encoding = var_encode_location_diff;
+      else
+         flags.u.data_encoding = var_encode_full;
+   }
 
    blob_write_uint32(ctx->blob, flags.u32);
 
@@ -257,18 +296,25 @@ write_variable(write_ctx *ctx, const nir_variable *var)
    if (flags.u.has_name)
       blob_write_string(ctx->blob, var->name);
 
-   if (flags.u.data_encoding == var_encode_full) {
-      struct nir_variable_data data = var->data;
+   if (flags.u.data_encoding == var_encode_full ||
+       flags.u.data_encoding == var_encode_location_diff) {
+      if (flags.u.data_encoding == var_encode_full) {
+         blob_write_bytes(ctx->blob, &data, sizeof(data));
+      } else {
+         /* Serialize only the difference in locations from the last variable.
+          */
+         union packed_var_data_diff diff;
 
-      /* When stripping, we expect that the location is no longer needed,
-       * which is typically after shaders are linked.
-       */
-      if (ctx->strip &&
-          data.mode != nir_var_shader_in &&
-          data.mode != nir_var_shader_out)
-         data.location = 0;
+         diff.u.location = data.location - ctx->last_var_data.location;
+         diff.u.location_frac = data.location_frac -
+                                ctx->last_var_data.location_frac;
+         diff.u.driver_location = data.driver_location -
+                                  ctx->last_var_data.driver_location;
 
-      blob_write_bytes(ctx->blob, &data, sizeof(data));
+         blob_write_uint32(ctx->blob, diff.u32);
+      }
+
+      ctx->last_var_data = data;
    }
 
    for (unsigned i = 0; i < var->num_state_slots; i++) {
@@ -319,8 +365,20 @@ read_variable(read_ctx *ctx)
       var->data.mode = nir_var_shader_temp;
    else if (flags.u.data_encoding == var_encode_function_temp)
       var->data.mode = nir_var_function_temp;
-   else
+   else if (flags.u.data_encoding == var_encode_full) {
       blob_copy_bytes(ctx->blob, (uint8_t *) &var->data, sizeof(var->data));
+      ctx->last_var_data = var->data;
+   } else { /* var_encode_location_diff */
+      union packed_var_data_diff diff;
+      diff.u32 = blob_read_uint32(ctx->blob);
+
+      var->data = ctx->last_var_data;
+      var->data.location += diff.u.location;
+      var->data.location_frac += diff.u.location_frac;
+      var->data.driver_location += diff.u.driver_location;
+
+      ctx->last_var_data = var->data;
+   }
 
    var->num_state_slots = flags.u.num_state_slots;
    if (var->num_state_slots != 0) {
