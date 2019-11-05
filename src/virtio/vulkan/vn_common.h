@@ -73,6 +73,7 @@ struct vn_shader_module;
 struct vn_pipeline_layout;
 struct vn_pipeline_cache;
 struct vn_pipeline;
+struct vn_command_pool;
 struct vn_command_buffer;
 
 struct vn_cs_encoder;
