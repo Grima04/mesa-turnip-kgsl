@@ -145,6 +145,29 @@ panfrost_launch_grid(struct pipe_context *pipe,
         panfrost_flush_all_batches(ctx, true);
 }
 
+static void
+panfrost_set_compute_resources(struct pipe_context *pctx,
+                         unsigned start, unsigned count,
+                         struct pipe_surface **resources)
+{
+        /* TODO */
+}
+
+static void
+panfrost_set_global_binding(struct pipe_context *pctx,
+                      unsigned first, unsigned count,
+                      struct pipe_resource **resources,
+                      uint32_t **handles)
+{
+        /* TODO */
+}
+
+static void
+panfrost_memory_barrier(struct pipe_context *pctx, unsigned flags)
+{
+        /* TODO */
+}
+
 void
 panfrost_compute_context_init(struct pipe_context *pctx)
 {
@@ -153,6 +176,9 @@ panfrost_compute_context_init(struct pipe_context *pctx)
         pctx->delete_compute_state = panfrost_delete_compute_state;
 
         pctx->launch_grid = panfrost_launch_grid;
+
+        pctx->set_compute_resources = panfrost_set_compute_resources;
+        pctx->set_global_binding = panfrost_set_global_binding;
+
+        pctx->memory_barrier = panfrost_memory_barrier;
 }
-
-
