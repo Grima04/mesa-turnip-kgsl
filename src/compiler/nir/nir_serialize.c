@@ -625,7 +625,8 @@ union packed_instr {
       unsigned instr_type:4;
       unsigned deref_type:3;
       unsigned mode:10;
-      unsigned _pad:7;
+      unsigned cast_type_same_as_last:1;
+      unsigned _pad:6;
       unsigned dest:8;
    } deref;
    struct {
@@ -852,8 +853,10 @@ write_deref(write_ctx *ctx, const nir_deref_instr *deref)
    header.deref.deref_type = deref->deref_type;
    header.deref.mode = deref->mode;
 
+   if (deref->deref_type == nir_deref_type_cast)
+      header.deref.cast_type_same_as_last = deref->type == ctx->last_type;
+
    write_dest(ctx, &deref->dest, header);
-   encode_type_to_blob(ctx->blob, deref->type);
 
    if (deref->deref_type == nir_deref_type_var) {
       write_object(ctx, deref->var);
@@ -874,6 +877,10 @@ write_deref(write_ctx *ctx, const nir_deref_instr *deref)
 
    case nir_deref_type_cast:
       blob_write_uint32(ctx->blob, deref->cast.ptr_stride);
+      if (!header.deref.cast_type_same_as_last) {
+         encode_type_to_blob(ctx->blob, deref->type);
+         ctx->last_type = deref->type;
+      }
       break;
 
    case nir_deref_type_array_wildcard:
@@ -894,31 +901,46 @@ read_deref(read_ctx *ctx, union packed_instr header)
    read_dest(ctx, &deref->dest, &deref->instr, header);
 
    deref->mode = header.deref.mode;
-   deref->type = decode_type_from_blob(ctx->blob);
 
    if (deref_type == nir_deref_type_var) {
       deref->var = read_object(ctx);
+      deref->type = deref->var->type;
       return deref;
    }
 
    read_src(ctx, &deref->parent, &deref->instr);
+   nir_deref_instr *parent;
 
    switch (deref->deref_type) {
    case nir_deref_type_struct:
+      parent = nir_src_as_deref(deref->parent);
       deref->strct.index = blob_read_uint32(ctx->blob);
+      deref->type = glsl_get_struct_field(parent->type, deref->strct.index);
       break;
 
    case nir_deref_type_array:
    case nir_deref_type_ptr_as_array:
+      parent = nir_src_as_deref(deref->parent);
+      if (deref->deref_type == nir_deref_type_array)
+         deref->type = glsl_get_array_element(parent->type);
+      else
+         deref->type = parent->type;
       read_src(ctx, &deref->arr.index, &deref->instr);
       break;
 
    case nir_deref_type_cast:
       deref->cast.ptr_stride = blob_read_uint32(ctx->blob);
+      if (header.deref.cast_type_same_as_last) {
+         deref->type = ctx->last_type;
+      } else {
+         deref->type = decode_type_from_blob(ctx->blob);
+         ctx->last_type = deref->type;
+      }
       break;
 
    case nir_deref_type_array_wildcard:
-      /* Nothing to do */
+      parent = nir_src_as_deref(deref->parent);
+      deref->type = glsl_get_array_element(parent->type);
       break;
 
    default:
