@@ -574,6 +574,21 @@ union packed_dest {
    } reg;
 };
 
+enum intrinsic_const_indices_encoding {
+   /* Use the 6 bits of packed_const_indices to store 1-6 indices.
+    * 1 6-bit index, or 2 3-bit indices, or 3 2-bit indices, or
+    * 4-6 1-bit indices.
+    *
+    * The common case for load_ubo is 0, 0, 0, which is trivially represented.
+    * The common cases for load_interpolated_input also fit here, e.g.: 7, 3
+    */
+   const_indices_6bit_all_combined,
+
+   const_indices_8bit,  /* 8 bits per element */
+   const_indices_16bit, /* 16 bits per element */
+   const_indices_32bit, /* 32 bits per element */
+};
+
 enum load_const_packing {
    /* Constants are not packed and are stored in following dwords. */
    load_const_full,
@@ -616,7 +631,8 @@ union packed_instr {
       unsigned instr_type:4;
       unsigned intrinsic:9;
       unsigned num_components:3;
-      unsigned _pad:8;
+      unsigned const_indices_encoding:2;
+      unsigned packed_const_indices:6;
       unsigned dest:8;
    } intrinsic;
    struct {
@@ -874,6 +890,31 @@ write_intrinsic(write_ctx *ctx, const nir_intrinsic_instr *intrin)
    header.intrinsic.num_components =
       encode_num_components_in_3bits(intrin->num_components);
 
+   /* Analyze constant indices to decide how to encode them. */
+   if (num_indices) {
+      unsigned max_bits = 0;
+      for (unsigned i = 0; i < num_indices; i++) {
+         unsigned max = util_last_bit(intrin->const_index[i]);
+         max_bits = MAX2(max_bits, max);
+      }
+
+      if (max_bits * num_indices <= 6) {
+         header.intrinsic.const_indices_encoding = const_indices_6bit_all_combined;
+
+         /* Pack all const indices into 6 bits. */
+         unsigned bit_size = 6 / num_indices;
+         for (unsigned i = 0; i < num_indices; i++) {
+            header.intrinsic.packed_const_indices |=
+               intrin->const_index[i] << (i * bit_size);
+         }
+      } else if (max_bits <= 8)
+         header.intrinsic.const_indices_encoding = const_indices_8bit;
+      else if (max_bits <= 16)
+         header.intrinsic.const_indices_encoding = const_indices_16bit;
+      else
+         header.intrinsic.const_indices_encoding = const_indices_32bit;
+   }
+
    if (nir_intrinsic_infos[intrin->intrinsic].has_dest)
       write_dest(ctx, &intrin->dest, header);
    else
@@ -882,8 +923,22 @@ write_intrinsic(write_ctx *ctx, const nir_intrinsic_instr *intrin)
    for (unsigned i = 0; i < num_srcs; i++)
       write_src(ctx, &intrin->src[i]);
 
-   for (unsigned i = 0; i < num_indices; i++)
-      blob_write_uint32(ctx->blob, intrin->const_index[i]);
+   if (num_indices) {
+      switch (header.intrinsic.const_indices_encoding) {
+      case const_indices_8bit:
+         for (unsigned i = 0; i < num_indices; i++)
+            blob_write_uint8(ctx->blob, intrin->const_index[i]);
+         break;
+      case const_indices_16bit:
+         for (unsigned i = 0; i < num_indices; i++)
+            blob_write_uint16(ctx->blob, intrin->const_index[i]);
+         break;
+      case const_indices_32bit:
+         for (unsigned i = 0; i < num_indices; i++)
+            blob_write_uint32(ctx->blob, intrin->const_index[i]);
+         break;
+      }
+   }
 }
 
 static nir_intrinsic_instr *
@@ -904,8 +959,32 @@ read_intrinsic(read_ctx *ctx, union packed_instr header)
    for (unsigned i = 0; i < num_srcs; i++)
       read_src(ctx, &intrin->src[i], &intrin->instr);
 
-   for (unsigned i = 0; i < num_indices; i++)
-      intrin->const_index[i] = blob_read_uint32(ctx->blob);
+   if (num_indices) {
+      switch (header.intrinsic.const_indices_encoding) {
+      case const_indices_6bit_all_combined: {
+         unsigned bit_size = 6 / num_indices;
+         unsigned bit_mask = u_bit_consecutive(0, bit_size);
+         for (unsigned i = 0; i < num_indices; i++) {
+            intrin->const_index[i] =
+               (header.intrinsic.packed_const_indices >> (i * bit_size)) &
+               bit_mask;
+         }
+         break;
+      }
+      case const_indices_8bit:
+         for (unsigned i = 0; i < num_indices; i++)
+            intrin->const_index[i] = blob_read_uint8(ctx->blob);
+         break;
+      case const_indices_16bit:
+         for (unsigned i = 0; i < num_indices; i++)
+            intrin->const_index[i] = blob_read_uint16(ctx->blob);
+         break;
+      case const_indices_32bit:
+         for (unsigned i = 0; i < num_indices; i++)
+            intrin->const_index[i] = blob_read_uint32(ctx->blob);
+         break;
+      }
+   }
 
    return intrin;
 }
