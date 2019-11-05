@@ -826,6 +826,7 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
         case nir_op_i2i8:
         case nir_op_i2i16:
         case nir_op_i2i32:
+        case nir_op_i2i64:
                 /* If we end up upscale, we'll need a sign-extend on the
                  * operand (the second argument) */
 
@@ -833,7 +834,8 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                 /* fallthrough */
         case nir_op_u2u8:
         case nir_op_u2u16:
-        case nir_op_u2u32: {
+        case nir_op_u2u32:
+        case nir_op_u2u64: {
                 op = midgard_alu_op_imov;
 
                 if (dst_bitsize == (src_bitsize * 2)) {
