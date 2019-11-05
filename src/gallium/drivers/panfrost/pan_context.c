@@ -400,6 +400,7 @@ panfrost_make_stencil_state(const struct pipe_stencil_state *in, struct mali_ste
 static void
 panfrost_default_shader_backend(struct panfrost_context *ctx)
 {
+        struct panfrost_screen *screen = pan_screen(ctx->base.screen);
         struct mali_shader_meta shader = {
                 .alpha_coverage = ~MALI_ALPHA_COVERAGE(0.000000),
 
@@ -407,13 +408,13 @@ panfrost_default_shader_backend(struct panfrost_context *ctx)
                 .unknown2_4 = MALI_NO_MSAA | 0x4e0,
         };
 
-        /* unknown2_4 has 0x10 bit set on T6XX. We don't know why this is
+        /* unknown2_4 has 0x10 bit set on T6XX and T720. We don't know why this is
          * required (independent of 32-bit/64-bit descriptors), or why it's not
          * used on later GPU revisions. Otherwise, all shader jobs fault on
          * these earlier chips (perhaps this is a chicken bit of some kind).
          * More investigation is needed. */
 
-	if (ctx->is_t6xx) {
+	if (screen->require_sfbd) {
 		shader.unknown2_4 |= 0x10;
 	}
 
@@ -2629,8 +2630,6 @@ panfrost_create_context(struct pipe_screen *screen, void *priv, unsigned flags)
         struct panfrost_context *ctx = rzalloc(screen, struct panfrost_context);
         struct panfrost_screen *pscreen = pan_screen(screen);
         struct pipe_context *gallium = (struct pipe_context *) ctx;
-
-        ctx->is_t6xx = pscreen->gpu_id < 0x0700; /* Literally, "earlier than T700" */
 
         gallium->screen = screen;
 

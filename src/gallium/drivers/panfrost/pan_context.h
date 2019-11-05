@@ -188,9 +188,6 @@ struct panfrost_context {
         struct pipe_blend_color blend_color;
         struct pipe_depth_stencil_alpha_state *depth_stencil;
         struct pipe_stencil_ref stencil_ref;
-
-        /* True for t6XX, false for t8xx. */
-        bool is_t6xx;
 };
 
 /* Corresponds to the CSO */
