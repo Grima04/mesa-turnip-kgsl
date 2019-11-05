@@ -616,6 +616,7 @@ const struct function common_desktop_functions_possible[] = {
    { "glVertexAttribL4dv", 41, -1 },
    { "glVertexAttribLPointer", 41, -1 },
    { "glGetVertexAttribLdv", 41, -1 },
+   { "glVertexArrayVertexAttribLOffsetEXT", 41, -1 },
 
    /* GL 4.3 */
    { "glIsRenderbuffer", 43, -1 },

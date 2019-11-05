@@ -1411,6 +1411,40 @@ _mesa_VertexArrayVertexAttribOffsetEXT(GLuint vaobj, GLuint buffer, GLuint index
 
 
 void GLAPIENTRY
+_mesa_VertexArrayVertexAttribLOffsetEXT(GLuint vaobj, GLuint buffer, GLuint index, GLint size,
+                                        GLenum type, GLsizei stride, GLintptr offset)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   GLenum format = GL_RGBA;
+   struct gl_vertex_array_object* vao;
+   struct gl_buffer_object* vbo;
+
+   if (!_lookup_vao_and_vbo_dsa(ctx, vaobj, buffer, offset,
+                                &vao, &vbo,
+                                "glVertexArrayVertexAttribLOffsetEXT"))
+      return;
+
+   if (index >= ctx->Const.Program[MESA_SHADER_VERTEX].MaxAttribs) {
+      _mesa_error(ctx, GL_INVALID_VALUE, "glVertexArrayVertexAttribLOffsetEXT(idx)");
+      return;
+   }
+
+   const GLbitfield legalTypes = DOUBLE_BIT;
+
+   if (!validate_array_and_format(ctx, "glVertexArrayVertexAttribLOffsetEXT",
+                                  vao, vbo,
+                                  VERT_ATTRIB_GENERIC(index), legalTypes,
+                                  1, 4, size, type, stride,
+                                  GL_FALSE, GL_FALSE, GL_TRUE, format, (void*) offset))
+      return;
+
+   update_array(ctx, vao, vbo,
+                VERT_ATTRIB_GENERIC(index), format, 4,
+                size, type, stride, GL_FALSE, GL_FALSE, GL_TRUE, (void*) offset);
+}
+
+
+void GLAPIENTRY
 _mesa_VertexAttribIPointer_no_error(GLuint index, GLint size, GLenum type,
                                     GLsizei stride, const GLvoid *ptr)
 {
