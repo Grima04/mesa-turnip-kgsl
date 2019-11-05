@@ -537,19 +537,17 @@ test-softpipe-gles2:
     DEQP_SKIPS: deqp-softpipe-skips.txt
     GALLIUM_DRIVER: "softpipe"
 
-# The GLES2 CTS run takes about 8 minutes of CPU time, while GLES3 is
-# 25 minutes.  Until we can get its runtime down, just do a partial
-# (every 10 tests) run.
-test-softpipe-gles3-limited:
+test-softpipe-gles3:
+  parallel: 2
   variables:
     DEQP_VER: gles3
-    DEQP_PARALLEL: 4
-    DEQP_EXPECTED_FAILS: deqp-softpipe-fails.txt
-    LIBGL_ALWAYS_SOFTWARE: "true"
-    GALLIUM_DRIVER: "softpipe"
-    CI_NODE_INDEX: 1
-    CI_NODE_TOTAL: 10
-  extends: .deqp-test
+  extends: test-softpipe-gles2
+
+test-softpipe-gles31:
+  parallel: 4
+  variables:
+    DEQP_VER: gles31
+  extends: test-softpipe-gles2
 
 arm64_a630_gles2:
   extends: .deqp-test
