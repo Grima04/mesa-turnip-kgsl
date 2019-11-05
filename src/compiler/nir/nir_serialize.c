@@ -867,25 +867,25 @@ write_deref(write_ctx *ctx, const nir_deref_instr *deref)
 
    write_dest(ctx, &deref->dest, header);
 
-   if (deref->deref_type == nir_deref_type_var) {
+   switch (deref->deref_type) {
+   case nir_deref_type_var:
       if (!header.deref_var.object_idx)
          blob_write_uint32(ctx->blob, var_idx);
-      return;
-   }
+      break;
 
-   write_src(ctx, &deref->parent);
-
-   switch (deref->deref_type) {
    case nir_deref_type_struct:
+      write_src(ctx, &deref->parent);
       blob_write_uint32(ctx->blob, deref->strct.index);
       break;
 
    case nir_deref_type_array:
    case nir_deref_type_ptr_as_array:
+      write_src(ctx, &deref->parent);
       write_src(ctx, &deref->arr.index);
       break;
 
    case nir_deref_type_cast:
+      write_src(ctx, &deref->parent);
       blob_write_uint32(ctx->blob, deref->cast.ptr_stride);
       if (!header.deref.cast_type_same_as_last) {
          encode_type_to_blob(ctx->blob, deref->type);
@@ -894,7 +894,7 @@ write_deref(write_ctx *ctx, const nir_deref_instr *deref)
       break;
 
    case nir_deref_type_array_wildcard:
-      /* Nothing to do */
+      write_src(ctx, &deref->parent);
       break;
 
    default:
@@ -910,22 +910,20 @@ read_deref(read_ctx *ctx, union packed_instr header)
 
    read_dest(ctx, &deref->dest, &deref->instr, header);
 
-   if (deref_type == nir_deref_type_var) {
+   nir_deref_instr *parent;
+
+   switch (deref->deref_type) {
+   case nir_deref_type_var:
       if (header.deref_var.object_idx)
          deref->var = read_lookup_object(ctx, header.deref_var.object_idx);
       else
          deref->var = read_object(ctx);
 
       deref->type = deref->var->type;
-      deref->mode = deref->var->data.mode;
-      return deref;
-   }
+      break;
 
-   read_src(ctx, &deref->parent, &deref->instr);
-   nir_deref_instr *parent;
-
-   switch (deref->deref_type) {
    case nir_deref_type_struct:
+      read_src(ctx, &deref->parent, &deref->instr);
       parent = nir_src_as_deref(deref->parent);
       deref->strct.index = blob_read_uint32(ctx->blob);
       deref->type = glsl_get_struct_field(parent->type, deref->strct.index);
@@ -933,6 +931,7 @@ read_deref(read_ctx *ctx, union packed_instr header)
 
    case nir_deref_type_array:
    case nir_deref_type_ptr_as_array:
+      read_src(ctx, &deref->parent, &deref->instr);
       parent = nir_src_as_deref(deref->parent);
       if (deref->deref_type == nir_deref_type_array)
          deref->type = glsl_get_array_element(parent->type);
@@ -942,6 +941,7 @@ read_deref(read_ctx *ctx, union packed_instr header)
       break;
 
    case nir_deref_type_cast:
+      read_src(ctx, &deref->parent, &deref->instr);
       deref->cast.ptr_stride = blob_read_uint32(ctx->blob);
       if (header.deref.cast_type_same_as_last) {
          deref->type = ctx->last_type;
@@ -952,6 +952,7 @@ read_deref(read_ctx *ctx, union packed_instr header)
       break;
 
    case nir_deref_type_array_wildcard:
+      read_src(ctx, &deref->parent, &deref->instr);
       parent = nir_src_as_deref(deref->parent);
       deref->type = glsl_get_array_element(parent->type);
       break;
@@ -960,7 +961,9 @@ read_deref(read_ctx *ctx, union packed_instr header)
       unreachable("Invalid deref type");
    }
 
-   if (deref->deref_type == nir_deref_type_cast) {
+   if (deref_type == nir_deref_type_var) {
+      deref->mode = deref->var->data.mode;
+   } else if (deref->deref_type == nir_deref_type_cast) {
       deref->mode = header.deref.mode;
    } else {
       assert(deref->parent.is_ssa);
