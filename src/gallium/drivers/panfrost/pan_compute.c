@@ -110,6 +110,19 @@ panfrost_launch_grid(struct pipe_context *pipe,
         /* TODO: Stub */
         struct midgard_payload_vertex_tiler *payload = &ctx->payloads[PIPE_SHADER_COMPUTE];
 
+        /* We implement OpenCL inputs as uniforms (or a UBO -- same thing), so
+         * reuse the graphics path for this by lowering to Gallium */
+
+        struct pipe_constant_buffer ubuf = {
+                .buffer = NULL,
+                .buffer_offset = 0,
+                .buffer_size = ctx->shader[PIPE_SHADER_COMPUTE]->cbase.req_input_mem,
+                .user_buffer = info->input
+        };
+
+        if (info->input)
+                pipe->set_constant_buffer(pipe, PIPE_SHADER_COMPUTE, 0, &ubuf);
+
         panfrost_emit_for_draw(ctx, false);
 
         /* Compute jobs have a "compute FBD". It's not a real framebuffer
