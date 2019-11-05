@@ -53,6 +53,7 @@ void
 genX(cmd_buffer_emit_state_base_address)(struct anv_cmd_buffer *cmd_buffer)
 {
    struct anv_device *device = cmd_buffer->device;
+   uint32_t mocs = device->isl_dev.mocs.internal;
 
    /* If we are emitting a new state base address we probably need to re-emit
     * binding tables.
@@ -77,28 +78,28 @@ genX(cmd_buffer_emit_state_base_address)(struct anv_cmd_buffer *cmd_buffer)
 
    anv_batch_emit(&cmd_buffer->batch, GENX(STATE_BASE_ADDRESS), sba) {
       sba.GeneralStateBaseAddress = (struct anv_address) { NULL, 0 };
-      sba.GeneralStateMOCS = GENX(MOCS);
+      sba.GeneralStateMOCS = mocs;
       sba.GeneralStateBaseAddressModifyEnable = true;
 
-      sba.StatelessDataPortAccessMOCS = GENX(MOCS);
+      sba.StatelessDataPortAccessMOCS = mocs;
 
       sba.SurfaceStateBaseAddress =
          anv_cmd_buffer_surface_base_address(cmd_buffer);
-      sba.SurfaceStateMOCS = GENX(MOCS);
+      sba.SurfaceStateMOCS = mocs;
       sba.SurfaceStateBaseAddressModifyEnable = true;
 
       sba.DynamicStateBaseAddress =
          (struct anv_address) { device->dynamic_state_pool.block_pool.bo, 0 };
-      sba.DynamicStateMOCS = GENX(MOCS);
+      sba.DynamicStateMOCS = mocs;
       sba.DynamicStateBaseAddressModifyEnable = true;
 
       sba.IndirectObjectBaseAddress = (struct anv_address) { NULL, 0 };
-      sba.IndirectObjectMOCS = GENX(MOCS);
+      sba.IndirectObjectMOCS = mocs;
       sba.IndirectObjectBaseAddressModifyEnable = true;
 
       sba.InstructionBaseAddress =
          (struct anv_address) { device->instruction_state_pool.block_pool.bo, 0 };
-      sba.InstructionMOCS = GENX(MOCS);
+      sba.InstructionMOCS = mocs;
       sba.InstructionBaseAddressModifyEnable = true;
 
 #  if (GEN_GEN >= 8)
@@ -143,12 +144,12 @@ genX(cmd_buffer_emit_state_base_address)(struct anv_cmd_buffer *cmd_buffer)
          sba.BindlessSurfaceStateBaseAddress = ANV_NULL_ADDRESS;
          sba.BindlessSurfaceStateSize = 0;
       }
-      sba.BindlessSurfaceStateMOCS = GENX(MOCS);
+      sba.BindlessSurfaceStateMOCS = mocs;
       sba.BindlessSurfaceStateBaseAddressModifyEnable = true;
 #  endif
 #  if (GEN_GEN >= 10)
       sba.BindlessSamplerStateBaseAddress = (struct anv_address) { NULL, 0 };
-      sba.BindlessSamplerStateMOCS = GENX(MOCS);
+      sba.BindlessSamplerStateMOCS = mocs;
       sba.BindlessSamplerStateBaseAddressModifyEnable = true;
       sba.BindlessSamplerStateBufferSize = 0;
 #  endif
@@ -2788,7 +2789,7 @@ genX(cmd_buffer_flush_state)(struct anv_cmd_buffer *cmd_buffer)
 
             if (cmd_buffer->state.xfb_enabled && xfb->buffer && xfb->size != 0) {
                sob.SOBufferEnable = true;
-               sob.MOCS = cmd_buffer->device->default_mocs,
+               sob.MOCS = cmd_buffer->device->isl_dev.mocs.internal,
                sob.StreamOffsetWriteEnable = false;
                sob.SurfaceBaseAddress = anv_address_add(xfb->buffer->address,
                                                         xfb->offset);

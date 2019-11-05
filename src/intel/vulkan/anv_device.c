@@ -3944,7 +3944,7 @@ anv_fill_buffer_surface_state(struct anv_device *device, struct anv_state state,
 {
    isl_buffer_fill_state(&device->isl_dev, state.map,
                          .address = anv_address_physical(address),
-                         .mocs = device->default_mocs,
+                         .mocs = device->isl_dev.mocs.internal,
                          .size_B = range,
                          .format = format,
                          .swizzle = ISL_SWIZZLE_IDENTITY,

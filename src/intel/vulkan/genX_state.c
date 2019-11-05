@@ -164,13 +164,6 @@ genX(emit_slice_hashing_state)(struct anv_device *device,
 VkResult
 genX(init_device_state)(struct anv_device *device)
 {
-   device->default_mocs = GENX(MOCS);
-#if GEN_GEN >= 8
-   device->external_mocs = GENX(EXTERNAL_MOCS);
-#else
-   device->external_mocs = device->default_mocs;
-#endif
-
    struct anv_batch batch;
 
    uint32_t cmds[64];

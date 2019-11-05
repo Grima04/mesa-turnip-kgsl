@@ -1243,9 +1243,6 @@ struct anv_device {
 
     struct anv_scratch_pool                     scratch_pool;
 
-    uint32_t                                    default_mocs;
-    uint32_t                                    external_mocs;
-
     pthread_mutex_t                             mutex;
     pthread_cond_t                              queue_submit;
     int                                         _lost;
@@ -1290,9 +1287,9 @@ static inline uint32_t
 anv_mocs_for_bo(const struct anv_device *device, const struct anv_bo *bo)
 {
    if (bo->is_external)
-      return device->external_mocs;
+      return device->isl_dev.mocs.external;
    else
-      return device->default_mocs;
+      return device->isl_dev.mocs.internal;
 }
 
 void anv_device_init_blorp(struct anv_device *device);
@@ -1633,56 +1630,6 @@ _anv_combine_address(struct anv_batch *batch, void *location,
            VG(VALGRIND_CHECK_MEM_IS_DEFINED(_dst, __anv_cmd_length(cmd) * 4)); \
            _dst = NULL;                                                 \
          }))
-
-/* MEMORY_OBJECT_CONTROL_STATE:
- * .GraphicsDataTypeGFDT                        = 0,
- * .LLCCacheabilityControlLLCCC                 = 0,
- * .L3CacheabilityControlL3CC                   = 1,
- */
-#define GEN7_MOCS 1
-
-/* MEMORY_OBJECT_CONTROL_STATE:
- * .LLCeLLCCacheabilityControlLLCCC             = 0,
- * .L3CacheabilityControlL3CC                   = 1,
- */
-#define GEN75_MOCS 1
-
-/* MEMORY_OBJECT_CONTROL_STATE:
- * .MemoryTypeLLCeLLCCacheabilityControl = WB,
- * .TargetCache = L3DefertoPATforLLCeLLCselection,
- * .AgeforQUADLRU = 0
- */
-#define GEN8_MOCS 0x78
-
-/* MEMORY_OBJECT_CONTROL_STATE:
- * .MemoryTypeLLCeLLCCacheabilityControl = UCwithFenceifcoherentcycle,
- * .TargetCache = L3DefertoPATforLLCeLLCselection,
- * .AgeforQUADLRU = 0
- */
-#define GEN8_EXTERNAL_MOCS 0x18
-
-/* Skylake: MOCS is now an index into an array of 62 different caching
- * configurations programmed by the kernel.
- */
-
-/* TC=LLC/eLLC, LeCC=WB, LRUM=3, L3CC=WB */
-#define GEN9_MOCS (2 << 1)
-
-/* TC=LLC/eLLC, LeCC=WB, LRUM=3, L3CC=WB */
-#define GEN9_EXTERNAL_MOCS (1 << 1)
-
-/* Cannonlake MOCS defines are duplicates of Skylake MOCS defines. */
-#define GEN10_MOCS GEN9_MOCS
-#define GEN10_EXTERNAL_MOCS GEN9_EXTERNAL_MOCS
-
-/* Ice Lake MOCS defines are duplicates of Skylake MOCS defines. */
-#define GEN11_MOCS GEN9_MOCS
-#define GEN11_EXTERNAL_MOCS GEN9_EXTERNAL_MOCS
-
-/* TigerLake MOCS */
-#define GEN12_MOCS GEN9_MOCS
-/* TC=1/LLC Only, LeCC=1/Uncacheable, LRUM=0, L3CC=1/Uncacheable */
-#define GEN12_EXTERNAL_MOCS (3 << 1)
 
 struct anv_device_memory {
    struct list_head                             link;
