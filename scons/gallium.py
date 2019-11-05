@@ -381,6 +381,9 @@ def generate(env):
         if check_header(env, 'sys/shm.h'):
             cppdefines += ['HAVE_SYS_SHM_H']
 
+        if check_functions(env, ['strtok_r']):
+            cppdefines += ['HAVE_STRTOK_R']
+
         #FIXME: we should really be checking for the major()/minor()
         # functions/macros in these headers, but check_functions()'s
         # SConf.CheckFunc() doesn't seem to support macros.
