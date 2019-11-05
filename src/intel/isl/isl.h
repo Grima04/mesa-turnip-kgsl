@@ -1015,6 +1015,11 @@ struct isl_device {
       uint8_t stencil_offset;
       uint8_t hiz_offset;
    } ds;
+
+   struct {
+      uint32_t internal;
+      uint32_t external;
+   } mocs;
 };
 
 struct isl_extent2d {

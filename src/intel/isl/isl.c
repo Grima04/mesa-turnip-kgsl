@@ -95,6 +95,56 @@ __isl_finishme(const char *file, int line, const char *fmt, ...)
    fprintf(stderr, "%s:%d: FINISHME: %s\n", file, line, buf);
 }
 
+static void
+isl_device_setup_mocs(struct isl_device *dev)
+{
+   if (dev->info->gen >= 12) {
+      /* TODO: Set PTE to MOCS 61 when the kernel is ready */
+      /* TC=1/LLC Only, LeCC=1/Uncacheable, LRUM=0, L3CC=1/Uncacheable */
+      dev->mocs.external = 3 << 1;
+      /* TC=LLC/eLLC, LeCC=WB, LRUM=3, L3CC=WB */
+      dev->mocs.internal = 2 << 1;
+   } else if (dev->info->gen >= 9) {
+      /* TC=LLC/eLLC, LeCC=PTE, LRUM=3, L3CC=WB */
+      dev->mocs.external = 1 << 1;
+      /* TC=LLC/eLLC, LeCC=WB, LRUM=3, L3CC=WB */
+      dev->mocs.internal = 2 << 1;
+   } else if (dev->info->gen >= 8) {
+      /* MEMORY_OBJECT_CONTROL_STATE:
+       * .MemoryTypeLLCeLLCCacheabilityControl = UCwithFenceifcoherentcycle,
+       * .TargetCache = L3DefertoPATforLLCeLLCselection,
+       * .AgeforQUADLRU = 0
+       */
+      dev->mocs.external = 0x18;
+      /* MEMORY_OBJECT_CONTROL_STATE:
+       * .MemoryTypeLLCeLLCCacheabilityControl = WB,
+       * .TargetCache = L3DefertoPATforLLCeLLCselection,
+       * .AgeforQUADLRU = 0
+       */
+      dev->mocs.internal = 0x78;
+   } else if (dev->info->gen >= 7) {
+      if (dev->info->is_haswell) {
+         /* MEMORY_OBJECT_CONTROL_STATE:
+          * .LLCeLLCCacheabilityControlLLCCC             = 0,
+          * .L3CacheabilityControlL3CC                   = 1,
+          */
+         dev->mocs.internal = 1;
+         dev->mocs.external = 1;
+      } else {
+         /* MEMORY_OBJECT_CONTROL_STATE:
+          * .GraphicsDataTypeGFDT                        = 0,
+          * .LLCCacheabilityControlLLCCC                 = 0,
+          * .L3CacheabilityControlL3CC                   = 1,
+          */
+         dev->mocs.internal = 1;
+         dev->mocs.external = 1;
+      }
+   } else {
+      dev->mocs.internal = 0;
+      dev->mocs.external = 0;
+   }
+}
+
 void
 isl_device_init(struct isl_device *dev,
                 const struct gen_device_info *info,
@@ -172,6 +222,8 @@ isl_device_init(struct isl_device *dev,
       dev->ds.stencil_offset = 0;
       dev->ds.hiz_offset = 0;
    }
+
+   isl_device_setup_mocs(dev);
 }
 
 /**
