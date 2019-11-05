@@ -376,10 +376,10 @@ mir_round_bytemask_down(uint16_t mask, midgard_reg_mode mode)
 
         for (unsigned c = 0; c < channels; ++c) {
                 /* Get bytes in component */
-                unsigned submask = (mask >> c * channels) & maxmask;
+                unsigned submask = (mask >> (c * bytes)) & maxmask;
 
                 if (submask != maxmask)
-                        mask &= ~(maxmask << (c * channels));
+                        mask &= ~(maxmask << (c * bytes));
         }
 
         return mask;
