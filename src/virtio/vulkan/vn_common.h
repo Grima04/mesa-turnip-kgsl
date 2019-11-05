@@ -69,6 +69,10 @@ struct vn_render_pass;
 struct vn_framebuffer;
 struct vn_event;
 struct vn_query_pool;
+struct vn_shader_module;
+struct vn_pipeline_layout;
+struct vn_pipeline_cache;
+struct vn_pipeline;
 struct vn_command_buffer;
 
 struct vn_cs_encoder;
