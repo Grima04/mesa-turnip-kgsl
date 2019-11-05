@@ -1047,7 +1047,9 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                          * additionally need to signal CAN_DISCARD for nontrivial blend
                          * modes (so we're able to read back the destination buffer) */
 
-                        if (!blend[0].is_shader) {
+                        if (blend[0].is_shader) {
+                                ctx->fragment_shader_core.unknown2_3 |= MALI_HAS_BLEND_SHADER;
+                        } else {
                                 ctx->fragment_shader_core.blend.equation =
                                         *blend[0].equation.equation;
                                 ctx->fragment_shader_core.blend.constant =
