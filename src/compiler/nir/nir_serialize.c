@@ -51,6 +51,10 @@ typedef struct {
     */
    struct util_dynarray phi_fixups;
 
+   /* The last serialized type. */
+   const struct glsl_type *last_type;
+   const struct glsl_type *last_interface_type;
+
    /* Don't write optional data such as variable names. */
    bool strip;
 } write_ctx;
@@ -72,6 +76,9 @@ typedef struct {
    /* List of phi sources. */
    struct list_head phi_srcs;
 
+   /* The last deserialized type. */
+   const struct glsl_type *last_type;
+   const struct glsl_type *last_interface_type;
 } read_ctx;
 
 static void
@@ -199,7 +206,9 @@ union packed_var {
       unsigned has_interface_type:1;
       unsigned num_state_slots:7;
       unsigned data_encoding:2;
-      unsigned _pad:4;
+      unsigned type_same_as_last:1;
+      unsigned interface_type_same_as_last:1;
+      unsigned _pad:2;
       unsigned num_members:16;
    } u;
 };
@@ -208,7 +217,6 @@ static void
 write_variable(write_ctx *ctx, const nir_variable *var)
 {
    write_add_object(ctx, var);
-   encode_type_to_blob(ctx->blob, var->type);
 
    assert(var->num_state_slots < (1 << 7));
    assert(var->num_members < (1 << 16));
@@ -220,6 +228,9 @@ write_variable(write_ctx *ctx, const nir_variable *var)
    flags.u.has_name = !ctx->strip && var->name;
    flags.u.has_constant_initializer = !!(var->constant_initializer);
    flags.u.has_interface_type = !!(var->interface_type);
+   flags.u.type_same_as_last = var->type == ctx->last_type;
+   flags.u.interface_type_same_as_last =
+      var->interface_type && var->interface_type == ctx->last_interface_type;
    flags.u.num_state_slots = var->num_state_slots;
    flags.u.num_members = var->num_members;
 
@@ -232,6 +243,16 @@ write_variable(write_ctx *ctx, const nir_variable *var)
       flags.u.data_encoding = var_encode_full;
 
    blob_write_uint32(ctx->blob, flags.u32);
+
+   if (!flags.u.type_same_as_last) {
+      encode_type_to_blob(ctx->blob, var->type);
+      ctx->last_type = var->type;
+   }
+
+   if (var->interface_type && !flags.u.interface_type_same_as_last) {
+      encode_type_to_blob(ctx->blob, var->interface_type);
+      ctx->last_interface_type = var->interface_type;
+   }
 
    if (flags.u.has_name)
       blob_write_string(ctx->blob, var->name);
@@ -256,8 +277,6 @@ write_variable(write_ctx *ctx, const nir_variable *var)
    }
    if (var->constant_initializer)
       write_constant(ctx, var->constant_initializer);
-   if (var->interface_type)
-      encode_type_to_blob(ctx->blob, var->interface_type);
    if (var->num_members > 0) {
       blob_write_bytes(ctx->blob, (uint8_t *) var->members,
                        var->num_members * sizeof(*var->members));
@@ -270,10 +289,24 @@ read_variable(read_ctx *ctx)
    nir_variable *var = rzalloc(ctx->nir, nir_variable);
    read_add_object(ctx, var);
 
-   var->type = decode_type_from_blob(ctx->blob);
-
    union packed_var flags;
    flags.u32 = blob_read_uint32(ctx->blob);
+
+   if (flags.u.type_same_as_last) {
+      var->type = ctx->last_type;
+   } else {
+      var->type = decode_type_from_blob(ctx->blob);
+      ctx->last_type = var->type;
+   }
+
+   if (flags.u.has_interface_type) {
+      if (flags.u.interface_type_same_as_last) {
+         var->interface_type = ctx->last_interface_type;
+      } else {
+         var->interface_type = decode_type_from_blob(ctx->blob);
+         ctx->last_interface_type = var->interface_type;
+      }
+   }
 
    if (flags.u.has_name) {
       const char *name = blob_read_string(ctx->blob);
@@ -302,10 +335,6 @@ read_variable(read_ctx *ctx)
       var->constant_initializer = read_constant(ctx, var);
    else
       var->constant_initializer = NULL;
-   if (flags.u.has_interface_type)
-      var->interface_type = decode_type_from_blob(ctx->blob);
-   else
-      var->interface_type = NULL;
    var->num_members = flags.u.num_members;
    if (var->num_members > 0) {
       var->members = ralloc_array(var, struct nir_variable_data,
