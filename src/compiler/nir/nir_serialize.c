@@ -1145,9 +1145,8 @@ read_function(read_ctx *ctx)
 void
 nir_serialize(struct blob *blob, const nir_shader *nir, bool strip)
 {
-   write_ctx ctx;
+   write_ctx ctx = {0};
    ctx.remap_table = _mesa_pointer_hash_table_create(NULL);
-   ctx.next_idx = 0;
    ctx.blob = blob;
    ctx.nir = nir;
    ctx.strip = strip;
@@ -1207,12 +1206,11 @@ nir_deserialize(void *mem_ctx,
                 const struct nir_shader_compiler_options *options,
                 struct blob_reader *blob)
 {
-   read_ctx ctx;
+   read_ctx ctx = {0};
    ctx.blob = blob;
    list_inithead(&ctx.phi_srcs);
    ctx.idx_table_len = blob_read_uint32(blob);
    ctx.idx_table = calloc(ctx.idx_table_len, sizeof(uintptr_t));
-   ctx.next_idx = 0;
 
    uint32_t strings = blob_read_uint32(blob);
    char *name = (strings & 0x1) ? blob_read_string(blob) : NULL;
