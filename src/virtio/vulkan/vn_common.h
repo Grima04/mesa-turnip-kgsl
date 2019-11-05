@@ -61,6 +61,10 @@ struct vn_image;
 struct vn_image_view;
 struct vn_sampler;
 struct vn_sampler_ycbcr_conversion;
+struct vn_descriptor_set_layout;
+struct vn_descriptor_pool;
+struct vn_descriptor_set;
+struct vn_descriptor_update_template;
 struct vn_command_buffer;
 
 struct vn_cs_encoder;
