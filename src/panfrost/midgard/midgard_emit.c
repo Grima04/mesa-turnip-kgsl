@@ -279,8 +279,10 @@ emit_alu_bundle(compiler_context *ctx,
                 midgard_scalar_alu scalarized;
 
                 if (ins->unit & UNITS_ANY_VECTOR) {
-                        if (ins->alu.reg_mode == midgard_reg_mode_32)
-                                ins->alu.mask = expand_writemask_32(ins->mask);
+                        if (ins->alu.reg_mode == midgard_reg_mode_64)
+                                ins->alu.mask = expand_writemask(ins->mask, 2);
+                        else if (ins->alu.reg_mode == midgard_reg_mode_32)
+                                ins->alu.mask = expand_writemask(ins->mask, 4);
                         else
                                 ins->alu.mask = ins->mask;
 
