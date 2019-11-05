@@ -312,6 +312,24 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(vn_descriptor_update_template,
                                VkDescriptorUpdateTemplate,
                                VK_OBJECT_TYPE_DESCRIPTOR_UPDATE_TEMPLATE)
 
+struct vn_render_pass {
+   struct vn_object_base base;
+
+   VkExtent2D granularity;
+};
+VK_DEFINE_NONDISP_HANDLE_CASTS(vn_render_pass,
+                               base.base,
+                               VkRenderPass,
+                               VK_OBJECT_TYPE_RENDER_PASS)
+
+struct vn_framebuffer {
+   struct vn_object_base base;
+};
+VK_DEFINE_NONDISP_HANDLE_CASTS(vn_framebuffer,
+                               base.base,
+                               VkFramebuffer,
+                               VK_OBJECT_TYPE_FRAMEBUFFER)
+
 struct vn_command_buffer {
    struct vn_object_base base;
 
