@@ -110,22 +110,10 @@
 #include "iris_genx_macros.h"
 #include "intel/common/gen_guardband.h"
 
-#if GEN_GEN >= 12
-/* TODO: Set PTE to MOCS 61 when the kernel is ready */
-#define MOCS_PTE (3 << 1)
-#define MOCS_WB (2 << 1)
-#elif GEN_GEN >= 9
-#define MOCS_PTE (1 << 1)
-#define MOCS_WB  (2 << 1)
-#elif GEN_GEN == 8
-#define MOCS_PTE 0x18
-#define MOCS_WB 0x78
-#endif
-
 static uint32_t
-mocs(const struct iris_bo *bo)
+mocs(const struct iris_bo *bo, const struct isl_device *dev)
 {
-   return bo && bo->external ? MOCS_PTE : MOCS_WB;
+   return bo && bo->external ? dev->mocs.external : dev->mocs.internal;
 }
 
 /**
@@ -687,6 +675,7 @@ init_glk_barrier_mode(struct iris_batch *batch, uint32_t value)
 static void
 init_state_base_address(struct iris_batch *batch)
 {
+   uint32_t mocs = batch->screen->isl_dev.mocs.internal;
    flush_before_state_base_change(batch);
 
    /* We program most base addresses once at context initialization time.
@@ -697,12 +686,12 @@ init_state_base_address(struct iris_batch *batch)
     * updated occasionally.  See iris_binder.c for the details there.
     */
    iris_emit_cmd(batch, GENX(STATE_BASE_ADDRESS), sba) {
-      sba.GeneralStateMOCS            = MOCS_WB;
-      sba.StatelessDataPortAccessMOCS = MOCS_WB;
-      sba.DynamicStateMOCS            = MOCS_WB;
-      sba.IndirectObjectMOCS          = MOCS_WB;
-      sba.InstructionMOCS             = MOCS_WB;
-      sba.SurfaceStateMOCS            = MOCS_WB;
+      sba.GeneralStateMOCS            = mocs;
+      sba.StatelessDataPortAccessMOCS = mocs;
+      sba.DynamicStateMOCS            = mocs;
+      sba.IndirectObjectMOCS          = mocs;
+      sba.InstructionMOCS             = mocs;
+      sba.SurfaceStateMOCS            = mocs;
 
       sba.GeneralStateBaseAddressModifyEnable   = true;
       sba.DynamicStateBaseAddressModifyEnable   = true;
@@ -712,7 +701,7 @@ init_state_base_address(struct iris_batch *batch)
       sba.DynamicStateBufferSizeModifyEnable    = true;
 #if (GEN_GEN >= 9)
       sba.BindlessSurfaceStateBaseAddressModifyEnable = true;
-      sba.BindlessSurfaceStateMOCS    = MOCS_WB;
+      sba.BindlessSurfaceStateMOCS    = mocs;
 #endif
       sba.IndirectObjectBufferSizeModifyEnable  = true;
       sba.InstructionBuffersizeModifyEnable     = true;
@@ -2109,7 +2098,7 @@ fill_buffer_surface_state(struct isl_device *isl_dev,
                          .format = format,
                          .swizzle = swizzle,
                          .stride_B = cpp,
-                         .mocs = mocs(res->bo));
+                         .mocs = mocs(res->bo, isl_dev));
 }
 
 #define SURFACE_STATE_ALIGNMENT 64
@@ -2212,7 +2201,7 @@ fill_surface_state(struct isl_device *isl_dev,
    struct isl_surf_fill_state_info f = {
       .surf = surf,
       .view = view,
-      .mocs = mocs(res->bo),
+      .mocs = mocs(res->bo, isl_dev),
       .address = res->bo->gtt_offset + res->offset,
       .x_offset_sa = tile_x_sa,
       .y_offset_sa = tile_y_sa,
@@ -2558,7 +2547,7 @@ iris_create_surface(struct pipe_context *ctx,
    struct isl_surf_fill_state_info f = {
       .surf = &isl_surf,
       .view = view,
-      .mocs = mocs(res->bo),
+      .mocs = mocs(res->bo, &screen->isl_dev),
       .address = res->bo->gtt_offset + offset_B,
       .x_offset_sa = tile_x_sa,
       .y_offset_sa = tile_y_sa,
@@ -2984,7 +2973,7 @@ iris_set_framebuffer_state(struct pipe_context *ctx,
 
          info.depth_surf = &zres->surf;
          info.depth_address = zres->bo->gtt_offset + zres->offset;
-         info.mocs = mocs(zres->bo);
+         info.mocs = mocs(zres->bo, isl_dev);
 
          view.format = zres->surf.format;
 
@@ -3002,7 +2991,7 @@ iris_set_framebuffer_state(struct pipe_context *ctx,
          info.stencil_address = stencil_res->bo->gtt_offset + stencil_res->offset;
          if (!zres) {
             view.format = stencil_res->surf.format;
-            info.mocs = mocs(stencil_res->bo);
+            info.mocs = mocs(stencil_res->bo, isl_dev);
          }
       }
    }
@@ -3236,6 +3225,7 @@ iris_set_vertex_buffers(struct pipe_context *ctx,
                         const struct pipe_vertex_buffer *buffers)
 {
    struct iris_context *ice = (struct iris_context *) ctx;
+   struct iris_screen *screen = (struct iris_screen *)ctx->screen;
    struct iris_genx_state *genx = ice->state.genx;
 
    ice->state.bound_vertex_buffers &= ~u_bit_consecutive64(start_slot, count);
@@ -3271,7 +3261,7 @@ iris_set_vertex_buffers(struct pipe_context *ctx,
             vb.BufferSize = res->bo->size - (int) buffer->buffer_offset;
             vb.BufferStartingAddress =
                ro_bo(NULL, res->bo->gtt_offset + (int) buffer->buffer_offset);
-            vb.MOCS = mocs(res->bo);
+            vb.MOCS = mocs(res->bo, &screen->isl_dev);
          } else {
             vb.NullVertexBuffer = true;
          }
@@ -3487,6 +3477,7 @@ iris_set_stream_output_targets(struct pipe_context *ctx,
    struct iris_context *ice = (struct iris_context *) ctx;
    struct iris_genx_state *genx = ice->state.genx;
    uint32_t *so_buffers = genx->so_buffers;
+   struct iris_screen *screen = (struct iris_screen *)ctx->screen;
 
    const bool active = num_targets > 0;
    if (ice->state.streamout_active != active) {
@@ -3572,7 +3563,7 @@ iris_set_stream_output_targets(struct pipe_context *ctx,
          sob.SOBufferEnable = true;
          sob.StreamOffsetWriteEnable = true;
          sob.StreamOutputBufferOffsetAddressEnable = true;
-         sob.MOCS = mocs(res->bo);
+         sob.MOCS = mocs(res->bo, &screen->isl_dev);
 
          sob.SurfaceSize = MAX2(tgt->base.buffer_size / 4, 1) - 1;
          sob.StreamOffset = offset;
@@ -4970,6 +4961,8 @@ iris_update_surface_base_address(struct iris_batch *batch,
    if (batch->last_surface_base_address == binder->bo->gtt_offset)
       return;
 
+   uint32_t mocs = batch->screen->isl_dev.mocs.internal;
+
    flush_before_state_base_change(batch);
 
    iris_emit_cmd(batch, GENX(STATE_BASE_ADDRESS), sba) {
@@ -4979,14 +4972,14 @@ iris_update_surface_base_address(struct iris_batch *batch,
       /* The hardware appears to pay attention to the MOCS fields even
        * if you don't set the "Address Modify Enable" bit for the base.
        */
-      sba.GeneralStateMOCS            = MOCS_WB;
-      sba.StatelessDataPortAccessMOCS = MOCS_WB;
-      sba.DynamicStateMOCS            = MOCS_WB;
-      sba.IndirectObjectMOCS          = MOCS_WB;
-      sba.InstructionMOCS             = MOCS_WB;
-      sba.SurfaceStateMOCS            = MOCS_WB;
+      sba.GeneralStateMOCS            = mocs;
+      sba.StatelessDataPortAccessMOCS = mocs;
+      sba.DynamicStateMOCS            = mocs;
+      sba.IndirectObjectMOCS          = mocs;
+      sba.InstructionMOCS             = mocs;
+      sba.SurfaceStateMOCS            = mocs;
 #if GEN_GEN >= 9
-      sba.BindlessSurfaceStateMOCS    = MOCS_WB;
+      sba.BindlessSurfaceStateMOCS    = mocs;
 #endif
    }
 
@@ -5685,7 +5678,7 @@ iris_upload_dirty_render_state(struct iris_context *ice,
             vb.BufferStartingAddress =
                ro_bo(NULL, res->bo->gtt_offset +
                            (int) ice->draw.draw_params.offset);
-            vb.MOCS = mocs(res->bo);
+            vb.MOCS = mocs(res->bo, &batch->screen->isl_dev);
          }
          dynamic_bound |= 1ull << count;
          count++;
@@ -5707,7 +5700,7 @@ iris_upload_dirty_render_state(struct iris_context *ice,
             vb.BufferStartingAddress =
                ro_bo(NULL, res->bo->gtt_offset +
                            (int) ice->draw.derived_draw_params.offset);
-            vb.MOCS = mocs(res->bo);
+            vb.MOCS = mocs(res->bo, &batch->screen->isl_dev);
          }
          dynamic_bound |= 1ull << count;
          count++;
@@ -5953,7 +5946,7 @@ iris_upload_render_state(struct iris_context *ice,
       uint32_t ib_packet[GENX(3DSTATE_INDEX_BUFFER_length)];
       iris_pack_command(GENX(3DSTATE_INDEX_BUFFER), ib_packet, ib) {
          ib.IndexFormat = draw->index_size >> 1;
-         ib.MOCS = mocs(bo);
+         ib.MOCS = mocs(bo, &batch->screen->isl_dev);
          ib.BufferSize = bo->size - offset;
          ib.BufferStartingAddress = ro_bo(NULL, bo->gtt_offset + offset);
       }

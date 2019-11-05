@@ -480,8 +480,8 @@ iris_resolve_color(struct iris_context *ice,
    //DBG("%s to mt %p level %u layer %u\n", __FUNCTION__, mt, level, layer);
 
    struct blorp_surf surf;
-   iris_blorp_surf_for_resource(&ice->vtbl, &surf, &res->base, res->aux.usage,
-                                level, true);
+   iris_blorp_surf_for_resource(&ice->vtbl, &batch->screen->isl_dev, &surf,
+                                &res->base, res->aux.usage, level, true);
 
    iris_batch_maybe_flush(batch, 1500);
 
@@ -533,8 +533,8 @@ iris_mcs_partial_resolve(struct iris_context *ice,
    assert(isl_aux_usage_has_mcs(res->aux.usage));
 
    struct blorp_surf surf;
-   iris_blorp_surf_for_resource(&ice->vtbl, &surf, &res->base, res->aux.usage,
-                                0, true);
+   iris_blorp_surf_for_resource(&ice->vtbl, &batch->screen->isl_dev, &surf,
+                                &res->base, res->aux.usage, 0, true);
 
    struct blorp_batch blorp_batch;
    blorp_batch_init(&ice->blorp, &blorp_batch, batch, 0);
@@ -684,8 +684,8 @@ iris_hiz_exec(struct iris_context *ice,
    iris_batch_maybe_flush(batch, 1500);
 
    struct blorp_surf surf;
-   iris_blorp_surf_for_resource(&ice->vtbl, &surf, &res->base,
-                                res->aux.usage, level, true);
+   iris_blorp_surf_for_resource(&ice->vtbl, &batch->screen->isl_dev, &surf,
+                                &res->base, res->aux.usage, level, true);
 
    struct blorp_batch blorp_batch;
    enum blorp_batch_flags flags = 0;
