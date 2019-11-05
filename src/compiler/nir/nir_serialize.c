@@ -908,7 +908,30 @@ write_load_const(write_ctx *ctx, const nir_load_const_instr *lc)
    header.load_const.bit_size = encode_bit_size_3bits(lc->def.bit_size);
 
    blob_write_uint32(ctx->blob, header.u32);
-   blob_write_bytes(ctx->blob, lc->value, sizeof(*lc->value) * lc->def.num_components);
+
+   switch (lc->def.bit_size) {
+   case 64:
+      blob_write_bytes(ctx->blob, lc->value,
+                       sizeof(*lc->value) * lc->def.num_components);
+      break;
+
+   case 32:
+      for (unsigned i = 0; i < lc->def.num_components; i++)
+         blob_write_uint32(ctx->blob, lc->value[i].u32);
+      break;
+
+   case 16:
+      for (unsigned i = 0; i < lc->def.num_components; i++)
+         blob_write_uint16(ctx->blob, lc->value[i].u16);
+      break;
+
+   default:
+      assert(lc->def.bit_size <= 8);
+      for (unsigned i = 0; i < lc->def.num_components; i++)
+         blob_write_uint8(ctx->blob, lc->value[i].u8);
+      break;
+   }
+
    write_add_object(ctx, &lc->def);
 }
 
@@ -919,7 +942,28 @@ read_load_const(read_ctx *ctx, union packed_instr header)
       nir_load_const_instr_create(ctx->nir, header.load_const.last_component + 1,
                                   decode_bit_size_3bits(header.load_const.bit_size));
 
-   blob_copy_bytes(ctx->blob, lc->value, sizeof(*lc->value) * lc->def.num_components);
+   switch (lc->def.bit_size) {
+   case 64:
+      blob_copy_bytes(ctx->blob, lc->value, sizeof(*lc->value) * lc->def.num_components);
+      break;
+
+   case 32:
+      for (unsigned i = 0; i < lc->def.num_components; i++)
+         lc->value[i].u32 = blob_read_uint32(ctx->blob);
+      break;
+
+   case 16:
+      for (unsigned i = 0; i < lc->def.num_components; i++)
+         lc->value[i].u16 = blob_read_uint16(ctx->blob);
+      break;
+
+   default:
+      assert(lc->def.bit_size <= 8);
+      for (unsigned i = 0; i < lc->def.num_components; i++)
+         lc->value[i].u8 = blob_read_uint8(ctx->blob);
+      break;
+   }
+
    read_add_object(ctx, &lc->def);
    return lc;
 }
