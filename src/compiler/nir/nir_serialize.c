@@ -624,8 +624,8 @@ union packed_instr {
    struct {
       unsigned instr_type:4;
       unsigned deref_type:3;
-      unsigned mode:10;
       unsigned cast_type_same_as_last:1;
+      unsigned mode:10;
       unsigned _pad:6;
       unsigned dest:8;
    } deref;
@@ -851,10 +851,11 @@ write_deref(write_ctx *ctx, const nir_deref_instr *deref)
 
    header.deref.instr_type = deref->instr.type;
    header.deref.deref_type = deref->deref_type;
-   header.deref.mode = deref->mode;
 
-   if (deref->deref_type == nir_deref_type_cast)
+   if (deref->deref_type == nir_deref_type_cast) {
+      header.deref.mode = deref->mode;
       header.deref.cast_type_same_as_last = deref->type == ctx->last_type;
+   }
 
    write_dest(ctx, &deref->dest, header);
 
@@ -900,11 +901,10 @@ read_deref(read_ctx *ctx, union packed_instr header)
 
    read_dest(ctx, &deref->dest, &deref->instr, header);
 
-   deref->mode = header.deref.mode;
-
    if (deref_type == nir_deref_type_var) {
       deref->var = read_object(ctx);
       deref->type = deref->var->type;
+      deref->mode = deref->var->data.mode;
       return deref;
    }
 
@@ -945,6 +945,13 @@ read_deref(read_ctx *ctx, union packed_instr header)
 
    default:
       unreachable("Invalid deref type");
+   }
+
+   if (deref->deref_type == nir_deref_type_cast) {
+      deref->mode = header.deref.mode;
+   } else {
+      assert(deref->parent.is_ssa);
+      deref->mode = nir_instr_as_deref(deref->parent.ssa->parent_instr)->mode;
    }
 
    return deref;
