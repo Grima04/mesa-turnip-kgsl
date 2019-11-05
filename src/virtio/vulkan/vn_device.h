@@ -330,6 +330,25 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(vn_framebuffer,
                                VkFramebuffer,
                                VK_OBJECT_TYPE_FRAMEBUFFER)
 
+struct vn_event {
+   struct vn_object_base base;
+};
+VK_DEFINE_NONDISP_HANDLE_CASTS(vn_event,
+                               base.base,
+                               VkEvent,
+                               VK_OBJECT_TYPE_EVENT)
+
+struct vn_query_pool {
+   struct vn_object_base base;
+
+   VkAllocationCallbacks allocator;
+   uint32_t result_array_size;
+};
+VK_DEFINE_NONDISP_HANDLE_CASTS(vn_query_pool,
+                               base.base,
+                               VkQueryPool,
+                               VK_OBJECT_TYPE_QUERY_POOL)
+
 struct vn_command_buffer {
    struct vn_object_base base;
 

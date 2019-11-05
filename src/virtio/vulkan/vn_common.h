@@ -67,6 +67,8 @@ struct vn_descriptor_set;
 struct vn_descriptor_update_template;
 struct vn_render_pass;
 struct vn_framebuffer;
+struct vn_event;
+struct vn_query_pool;
 struct vn_command_buffer;
 
 struct vn_cs_encoder;
