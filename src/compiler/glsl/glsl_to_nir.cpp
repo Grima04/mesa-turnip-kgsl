@@ -600,7 +600,7 @@ nir_visitor::visit(ir_variable *ir)
    var->data.bindless = ir->data.bindless;
    var->data.offset = ir->data.offset;
 
-   if (var->type->is_image()) {
+   if (var->type->without_array()->is_image()) {
       var->data.image.access = (gl_access_qualifier)image_access;
       var->data.image.format = ir->data.image_format;
    } else {
