@@ -130,14 +130,15 @@ panfrost_sfbd_set_cbuf(
         struct panfrost_resource *rsrc = pan_resource(surf->texture);
 
         unsigned level = surf->u.tex.level;
-        assert(surf->u.tex.first_layer == 0);
+        unsigned first_layer = surf->u.tex.first_layer;
+        assert(surf->u.tex.last_layer == first_layer);
+        signed stride = rsrc->slices[level].stride;
+
+        mali_ptr base = panfrost_get_texture_address(rsrc, level, first_layer);
 
         fb->format = panfrost_sfbd_format(surf);
 
-        unsigned offset = rsrc->slices[level].offset;
-        signed stride = rsrc->slices[level].stride;
-
-        fb->framebuffer = rsrc->bo->gpu + offset;
+        fb->framebuffer = base;
         fb->stride = stride;
 
         if (rsrc->layout == PAN_LINEAR)
