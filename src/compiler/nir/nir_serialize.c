@@ -617,7 +617,8 @@ union packed_instr {
       unsigned saturate:1;
       unsigned writemask:4;
       unsigned op:9;
-      unsigned _pad:3;
+      unsigned packed_src_ssa_16bit:1;
+      unsigned _pad:2;
       unsigned dest:8;
    } alu;
    struct {
@@ -724,9 +725,37 @@ read_dest(read_ctx *ctx, nir_dest *dst, nir_instr *instr,
    }
 }
 
+static bool
+are_object_ids_16bit(write_ctx *ctx)
+{
+   /* Check the highest object ID, because they are monotonic. */
+   return ctx->next_idx < (1 << 16);
+}
+
+static bool
+is_alu_src_ssa_16bit(write_ctx *ctx, const nir_alu_instr *alu)
+{
+   unsigned num_srcs = nir_op_infos[alu->op].num_inputs;
+
+   for (unsigned i = 0; i < num_srcs; i++) {
+      if (!alu->src[i].src.is_ssa || alu->src[i].abs || alu->src[i].negate)
+         return false;
+
+      unsigned src_components = nir_ssa_alu_instr_src_components(alu, i);
+
+      for (unsigned chan = 0; chan < src_components; chan++) {
+         if (alu->src[i].swizzle[chan] != chan)
+            return false;
+      }
+   }
+
+   return are_object_ids_16bit(ctx);
+}
+
 static void
 write_alu(write_ctx *ctx, const nir_alu_instr *alu)
 {
+   unsigned num_srcs = nir_op_infos[alu->op].num_inputs;
    /* 9 bits for nir_op */
    STATIC_ASSERT(nir_num_opcodes <= 512);
    union packed_instr header;
@@ -739,27 +768,38 @@ write_alu(write_ctx *ctx, const nir_alu_instr *alu)
    header.alu.saturate = alu->dest.saturate;
    header.alu.writemask = alu->dest.write_mask;
    header.alu.op = alu->op;
+   header.alu.packed_src_ssa_16bit = is_alu_src_ssa_16bit(ctx, alu);
 
    write_dest(ctx, &alu->dest.dest, header);
 
-   for (unsigned i = 0; i < nir_op_infos[alu->op].num_inputs; i++) {
-      union packed_src src;
-      src.u32 = 0;
+   if (header.alu.packed_src_ssa_16bit) {
+      for (unsigned i = 0; i < num_srcs; i++) {
+         assert(alu->src[i].src.is_ssa);
+         unsigned idx = write_lookup_object(ctx, alu->src[i].src.ssa);
+         assert(idx < (1 << 16));
+         blob_write_uint16(ctx->blob, idx);
+      }
+   } else {
+      for (unsigned i = 0; i < num_srcs; i++) {
+         union packed_src src;
+         src.u32 = 0;
 
-      src.alu.negate = alu->src[i].negate;
-      src.alu.abs = alu->src[i].abs;
-      src.alu.swizzle_x = alu->src[i].swizzle[0];
-      src.alu.swizzle_y = alu->src[i].swizzle[1];
-      src.alu.swizzle_z = alu->src[i].swizzle[2];
-      src.alu.swizzle_w = alu->src[i].swizzle[3];
+         src.alu.negate = alu->src[i].negate;
+         src.alu.abs = alu->src[i].abs;
+         src.alu.swizzle_x = alu->src[i].swizzle[0];
+         src.alu.swizzle_y = alu->src[i].swizzle[1];
+         src.alu.swizzle_z = alu->src[i].swizzle[2];
+         src.alu.swizzle_w = alu->src[i].swizzle[3];
 
-      write_src_full(ctx, &alu->src[i].src, src);
+         write_src_full(ctx, &alu->src[i].src, src);
+      }
    }
 }
 
 static nir_alu_instr *
 read_alu(read_ctx *ctx, union packed_instr header)
 {
+   unsigned num_srcs = nir_op_infos[header.alu.op].num_inputs;
    nir_alu_instr *alu = nir_alu_instr_create(ctx->nir, header.alu.op);
 
    alu->exact = header.alu.exact;
@@ -770,15 +810,30 @@ read_alu(read_ctx *ctx, union packed_instr header)
 
    read_dest(ctx, &alu->dest.dest, &alu->instr, header);
 
-   for (unsigned i = 0; i < nir_op_infos[header.alu.op].num_inputs; i++) {
-      union packed_src src = read_src(ctx, &alu->src[i].src, &alu->instr);
+   if (header.alu.packed_src_ssa_16bit) {
+      for (unsigned i = 0; i < num_srcs; i++) {
+         nir_alu_src *src = &alu->src[i];
+         src->src.is_ssa = true;
+         src->src.ssa = read_lookup_object(ctx, blob_read_uint16(ctx->blob));
 
-      alu->src[i].negate = src.alu.negate;
-      alu->src[i].abs = src.alu.abs;
-      alu->src[i].swizzle[0] = src.alu.swizzle_x;
-      alu->src[i].swizzle[1] = src.alu.swizzle_y;
-      alu->src[i].swizzle[2] = src.alu.swizzle_z;
-      alu->src[i].swizzle[3] = src.alu.swizzle_w;
+         memset(&src->swizzle, 0, sizeof(src->swizzle));
+
+         unsigned src_components = nir_ssa_alu_instr_src_components(alu, i);
+
+         for (unsigned chan = 0; chan < src_components; chan++)
+            src->swizzle[chan] = chan;
+      }
+   } else {
+      for (unsigned i = 0; i < num_srcs; i++) {
+         union packed_src src = read_src(ctx, &alu->src[i].src, &alu->instr);
+
+         alu->src[i].negate = src.alu.negate;
+         alu->src[i].abs = src.alu.abs;
+         alu->src[i].swizzle[0] = src.alu.swizzle_x;
+         alu->src[i].swizzle[1] = src.alu.swizzle_y;
+         alu->src[i].swizzle[2] = src.alu.swizzle_z;
+         alu->src[i].swizzle[3] = src.alu.swizzle_w;
+      }
    }
 
    return alu;
