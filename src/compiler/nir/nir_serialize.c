@@ -574,6 +574,19 @@ union packed_dest {
    } reg;
 };
 
+enum load_const_packing {
+   /* Constants are not packed and are stored in following dwords. */
+   load_const_full,
+
+   /* packed_value contains high 19 bits, low bits are 0,
+    * good for floating-point decimals
+    */
+   load_const_scalar_hi_19bits,
+
+   /* packed_value contains low 19 bits, high bits are sign-extended */
+   load_const_scalar_lo_19bits_sext,
+};
+
 union packed_instr {
    uint32_t u32;
    struct {
@@ -610,7 +623,8 @@ union packed_instr {
       unsigned instr_type:4;
       unsigned last_component:4;
       unsigned bit_size:3;
-      unsigned _pad:21;
+      unsigned packing:2; /* enum load_const_packing */
+      unsigned packed_value:19; /* meaning determined by packing */
    } load_const;
    struct {
       unsigned instr_type:4;
@@ -906,30 +920,75 @@ write_load_const(write_ctx *ctx, const nir_load_const_instr *lc)
    header.load_const.instr_type = lc->instr.type;
    header.load_const.last_component = lc->def.num_components - 1;
    header.load_const.bit_size = encode_bit_size_3bits(lc->def.bit_size);
+   header.load_const.packing = load_const_full;
+
+   /* Try to pack 1-component constants into the 19 free bits in the header. */
+   if (lc->def.num_components == 1) {
+      switch (lc->def.bit_size) {
+      case 64:
+         if ((lc->value[0].u64 & 0x1fffffffffffull) == 0) {
+            /* packed_value contains high 19 bits, low bits are 0 */
+            header.load_const.packing = load_const_scalar_hi_19bits;
+            header.load_const.packed_value = lc->value[0].u64 >> 45;
+         } else if (((lc->value[0].i64 << 45) >> 45) == lc->value[0].i64) {
+            /* packed_value contains low 19 bits, high bits are sign-extended */
+            header.load_const.packing = load_const_scalar_lo_19bits_sext;
+            header.load_const.packed_value = lc->value[0].u64;
+         }
+         break;
+
+      case 32:
+         if ((lc->value[0].u32 & 0x1fff) == 0) {
+            header.load_const.packing = load_const_scalar_hi_19bits;
+            header.load_const.packed_value = lc->value[0].u32 >> 13;
+         } else if (((lc->value[0].i32 << 13) >> 13) == lc->value[0].i32) {
+            header.load_const.packing = load_const_scalar_lo_19bits_sext;
+            header.load_const.packed_value = lc->value[0].u32;
+         }
+         break;
+
+      case 16:
+         header.load_const.packing = load_const_scalar_lo_19bits_sext;
+         header.load_const.packed_value = lc->value[0].u16;
+         break;
+      case 8:
+         header.load_const.packing = load_const_scalar_lo_19bits_sext;
+         header.load_const.packed_value = lc->value[0].u8;
+         break;
+      case 1:
+         header.load_const.packing = load_const_scalar_lo_19bits_sext;
+         header.load_const.packed_value = lc->value[0].b;
+         break;
+      default:
+         unreachable("invalid bit_size");
+      }
+   }
 
    blob_write_uint32(ctx->blob, header.u32);
 
-   switch (lc->def.bit_size) {
-   case 64:
-      blob_write_bytes(ctx->blob, lc->value,
-                       sizeof(*lc->value) * lc->def.num_components);
-      break;
+   if (header.load_const.packing == load_const_full) {
+      switch (lc->def.bit_size) {
+      case 64:
+         blob_write_bytes(ctx->blob, lc->value,
+                          sizeof(*lc->value) * lc->def.num_components);
+         break;
 
-   case 32:
-      for (unsigned i = 0; i < lc->def.num_components; i++)
-         blob_write_uint32(ctx->blob, lc->value[i].u32);
-      break;
+      case 32:
+         for (unsigned i = 0; i < lc->def.num_components; i++)
+            blob_write_uint32(ctx->blob, lc->value[i].u32);
+         break;
 
-   case 16:
-      for (unsigned i = 0; i < lc->def.num_components; i++)
-         blob_write_uint16(ctx->blob, lc->value[i].u16);
-      break;
+      case 16:
+         for (unsigned i = 0; i < lc->def.num_components; i++)
+            blob_write_uint16(ctx->blob, lc->value[i].u16);
+         break;
 
-   default:
-      assert(lc->def.bit_size <= 8);
-      for (unsigned i = 0; i < lc->def.num_components; i++)
-         blob_write_uint8(ctx->blob, lc->value[i].u8);
-      break;
+      default:
+         assert(lc->def.bit_size <= 8);
+         for (unsigned i = 0; i < lc->def.num_components; i++)
+            blob_write_uint8(ctx->blob, lc->value[i].u8);
+         break;
+      }
    }
 
    write_add_object(ctx, &lc->def);
@@ -942,25 +1001,64 @@ read_load_const(read_ctx *ctx, union packed_instr header)
       nir_load_const_instr_create(ctx->nir, header.load_const.last_component + 1,
                                   decode_bit_size_3bits(header.load_const.bit_size));
 
-   switch (lc->def.bit_size) {
-   case 64:
-      blob_copy_bytes(ctx->blob, lc->value, sizeof(*lc->value) * lc->def.num_components);
+   switch (header.load_const.packing) {
+   case load_const_scalar_hi_19bits:
+      switch (lc->def.bit_size) {
+      case 64:
+         lc->value[0].u64 = (uint64_t)header.load_const.packed_value << 45;
+         break;
+      case 32:
+         lc->value[0].u32 = (uint64_t)header.load_const.packed_value << 13;
+         break;
+      default:
+         unreachable("invalid bit_size");
+      }
       break;
 
-   case 32:
-      for (unsigned i = 0; i < lc->def.num_components; i++)
-         lc->value[i].u32 = blob_read_uint32(ctx->blob);
+   case load_const_scalar_lo_19bits_sext:
+      switch (lc->def.bit_size) {
+      case 64:
+         lc->value[0].i64 = ((int64_t)header.load_const.packed_value << 45) >> 45;
+         break;
+      case 32:
+         lc->value[0].i32 = ((int32_t)header.load_const.packed_value << 13) >> 13;
+         break;
+      case 16:
+         lc->value[0].u16 = header.load_const.packed_value;
+         break;
+      case 8:
+         lc->value[0].u8 = header.load_const.packed_value;
+         break;
+      case 1:
+         lc->value[0].b = header.load_const.packed_value;
+         break;
+      default:
+         unreachable("invalid bit_size");
+      }
       break;
 
-   case 16:
-      for (unsigned i = 0; i < lc->def.num_components; i++)
-         lc->value[i].u16 = blob_read_uint16(ctx->blob);
-      break;
+   case load_const_full:
+      switch (lc->def.bit_size) {
+      case 64:
+         blob_copy_bytes(ctx->blob, lc->value, sizeof(*lc->value) * lc->def.num_components);
+         break;
 
-   default:
-      assert(lc->def.bit_size <= 8);
-      for (unsigned i = 0; i < lc->def.num_components; i++)
-         lc->value[i].u8 = blob_read_uint8(ctx->blob);
+      case 32:
+         for (unsigned i = 0; i < lc->def.num_components; i++)
+            lc->value[i].u32 = blob_read_uint32(ctx->blob);
+         break;
+
+      case 16:
+         for (unsigned i = 0; i < lc->def.num_components; i++)
+            lc->value[i].u16 = blob_read_uint16(ctx->blob);
+         break;
+
+      default:
+         assert(lc->def.bit_size <= 8);
+         for (unsigned i = 0; i < lc->def.num_components; i++)
+            lc->value[i].u8 = blob_read_uint8(ctx->blob);
+         break;
+      }
       break;
    }
 
