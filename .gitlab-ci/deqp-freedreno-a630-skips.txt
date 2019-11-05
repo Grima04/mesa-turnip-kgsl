@@ -3,17 +3,17 @@
 # delete lines from the test list.  Be careful.
 
 # Skip the perf/stress tests to keep runtime manageable
-dEQP-GLES[0-9]*.performance
-dEQP-GLES[0-9]*.stress
+dEQP-GLES[0-9]*.performance.*
+dEQP-GLES[0-9]*.stress.*
 
 # These are really slow on tiling architectures (including llvmpipe).
-dEQP-GLES[0-9]*.functional.flush_finish
+dEQP-GLES[0-9]*.functional.flush_finish.*
 
 # Unstable test results
 dEQP-GLES3.functional.fragment_out.random.*
 dEQP-GLES3.functional.transform_feedback.*
 dEQP-GLES31.functional.primitive_bounding_box.*
-dEQP-GLES31.functional.layout_binding.ssbo.fragment_binding_array
+dEQP-GLES31.functional.layout_binding.ssbo.fragment_binding_array.*
 
 # Seen a couple flakes on this one.  Note that valgrind complains about
 # some things in deqp reference renderer on this one.  Not sure if that
