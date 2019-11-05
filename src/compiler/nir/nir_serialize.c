@@ -100,12 +100,6 @@ write_lookup_object(write_ctx *ctx, const void *obj)
 }
 
 static void
-write_object(write_ctx *ctx, const void *obj)
-{
-   blob_write_uint32(ctx->blob, write_lookup_object(ctx, obj));
-}
-
-static void
 read_add_object(read_ctx *ctx, void *obj)
 {
    assert(ctx->next_idx < ctx->idx_table_len);
@@ -625,10 +619,17 @@ union packed_instr {
       unsigned instr_type:4;
       unsigned deref_type:3;
       unsigned cast_type_same_as_last:1;
-      unsigned mode:10;
-      unsigned _pad:6;
+      unsigned mode:10; /* deref_var redefines this */
+      unsigned _pad:6;  /* deref_var redefines this */
       unsigned dest:8;
    } deref;
+   struct {
+      unsigned instr_type:4;
+      unsigned deref_type:3;
+      unsigned _pad:1;
+      unsigned object_idx:16; /* if 0, the object ID is a separate uint32 */
+      unsigned dest:8;
+   } deref_var;
    struct {
       unsigned instr_type:4;
       unsigned intrinsic:9;
@@ -857,10 +858,18 @@ write_deref(write_ctx *ctx, const nir_deref_instr *deref)
       header.deref.cast_type_same_as_last = deref->type == ctx->last_type;
    }
 
+   unsigned var_idx = 0;
+   if (deref->deref_type == nir_deref_type_var) {
+      var_idx = write_lookup_object(ctx, deref->var);
+      if (var_idx && var_idx < (1 << 16))
+         header.deref_var.object_idx = var_idx;
+   }
+
    write_dest(ctx, &deref->dest, header);
 
    if (deref->deref_type == nir_deref_type_var) {
-      write_object(ctx, deref->var);
+      if (!header.deref_var.object_idx)
+         blob_write_uint32(ctx->blob, var_idx);
       return;
    }
 
@@ -902,7 +911,11 @@ read_deref(read_ctx *ctx, union packed_instr header)
    read_dest(ctx, &deref->dest, &deref->instr, header);
 
    if (deref_type == nir_deref_type_var) {
-      deref->var = read_object(ctx);
+      if (header.deref_var.object_idx)
+         deref->var = read_lookup_object(ctx, header.deref_var.object_idx);
+      else
+         deref->var = read_object(ctx);
+
       deref->type = deref->var->type;
       deref->mode = deref->var->data.mode;
       return deref;
