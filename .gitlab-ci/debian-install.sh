@@ -34,7 +34,6 @@ apt-get install -y --no-remove \
       automake \
       autotools-dev \
       bison \
-      bzip2 \
       clang-8 \
       cmake \
       flex \
@@ -46,19 +45,15 @@ apt-get install -y --no-remove \
       libclang-7-dev \
       libclang-8-dev \
       libclc-dev \
-      libegl1-mesa-dev \
       libelf-dev \
       libepoxy-dev \
       libexpat1-dev \
       libgbm-dev \
-      libgles2-mesa-dev \
       libgtk-3-dev \
       libomxil-bellagio-dev \
-      libpng-dev \
       libtool \
       libunwind-dev \
       libvulkan-dev \
-      libwaffle-dev \
       libx11-dev \
       libx11-xcb-dev \
       libxdamage-dev \
@@ -73,13 +68,8 @@ apt-get install -y --no-remove \
       pkg-config \
       python-mako \
       python3-mako \
-      python3-numpy \
-      python3-six \
       scons \
-      waffle-utils \
       x11proto-gl-dev \
-      xauth \
-      xvfb \
       xz-utils \
       zlib1g-dev
 
@@ -246,20 +236,6 @@ for arch in $CROSS_ARCHITECTURES; do
   fi
 done
 
-############### Build piglit
-
-git clone https://gitlab.freedesktop.org/mesa/piglit.git --single-branch --no-checkout /piglit
-cd /piglit
-git checkout 7a92b02210dabbba31ae5fd71272ea742346a9c8
-patch -p1 <$OLDPWD/.gitlab-ci/piglit/disable-vs_in.diff
-cmake -G Ninja -DCMAKE_BUILD_TYPE=Release
-ninja -j4
-rm -rf .git .ninja* *.ninja **/CMake* **/cmake* ninja.* **/*.[chao] target_api
-
-############### Build dEQP
-
-. .gitlab-ci/build-deqp.sh
-
 
 ############### Uninstall the build software
 
@@ -270,9 +246,7 @@ apt-get purge -y \
       cmake \
       git \
       libgbm-dev \
-      libgles2-mesa-dev \
       libtool \
-      libwaffle-dev \
       unzip \
       wget \
       x11proto-gl-dev
