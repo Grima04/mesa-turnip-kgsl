@@ -25,6 +25,7 @@ files_libzink = files(
   'zink_compiler.c',
   'zink_context.c',
   'zink_fence.c',
+  'zink_format.c',
   'zink_framebuffer.c',
   'zink_pipeline.c',
   'zink_program.c',
