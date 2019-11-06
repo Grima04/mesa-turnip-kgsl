@@ -490,8 +490,7 @@ panfrost_get_compute_param(struct pipe_screen *pscreen, enum pipe_shader_ir ir_t
 
 	switch (param) {
 	case PIPE_COMPUTE_CAP_ADDRESS_BITS:
-                /* TODO: We'll want 64-bit pointers soon */
-		RET((uint32_t []){ 32 });
+		RET((uint32_t []){ 64 });
 
 	case PIPE_COMPUTE_CAP_IR_TARGET:
 		if (ret)
