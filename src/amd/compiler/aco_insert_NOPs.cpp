@@ -205,9 +205,34 @@ int handle_instruction_gfx8_9(NOP_ctx_gfx8_9& ctx, aco_ptr<Instruction>& instr,
    // TODO: setreg / getreg / m0 writes
    // TODO: try to schedule the NOP-causing instruction up to reduce the number of stall cycles
 
-   /* break off from prevous SMEM clause if needed */
-   if (instr->format == Format::SMEM && ctx.chip_class >= GFX8) {
+
+   if (instr->format == Format::SMEM) {
+      if (ctx.chip_class == GFX6) {
+         bool is_buffer_load = instr->operands.size() && instr->operands[0].size() > 2;
+         for (int pred_idx = new_idx - 1; pred_idx >= 0 && pred_idx >= new_idx - 4; pred_idx--) {
+            aco_ptr<Instruction>& pred = new_instructions[pred_idx];
+            /* A read of an SGPR by SMRD instruction requires 4 wait states
+             * when the SGPR was written by a VALU instruction. */
+            if (VALU_writes_sgpr(pred)) {
+               Definition pred_def = pred->definitions[pred->definitions.size() - 1];
+               for (const Operand& op : instr->operands) {
+                  if (regs_intersect(pred_def.physReg(), pred_def.size(), op.physReg(), op.size()))
+                     return 4 + pred_idx - new_idx + 1;
+               }
+            }
+            /* According to LLVM, this is an undocumented hardware behavior */
+            if (is_buffer_load && pred->isSALU() && pred->definitions.size()) {
+               Definition pred_def = pred->definitions[0];
+               Operand& op = instr->operands[0];
+               if (regs_intersect(pred_def.physReg(), pred_def.size(), op.physReg(), op.size()))
+                  return 4 + pred_idx - new_idx + 1;
+            }
+         }
+      }
+
+      /* break off from prevous SMEM clause if needed */
       return handle_SMEM_clause(instr, new_idx, new_instructions);
+
    } else if (instr->isVALU() || instr->format == Format::VINTRP) {
       int NOPs = 0;
 
