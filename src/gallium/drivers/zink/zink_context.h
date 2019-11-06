@@ -152,4 +152,8 @@ void
 zink_blit(struct pipe_context *pctx,
           const struct pipe_blit_info *info);
 
+void
+zink_draw_vbo(struct pipe_context *pctx,
+              const struct pipe_draw_info *dinfo);
+
 #endif
