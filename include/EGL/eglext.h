@@ -1373,9 +1373,6 @@ EGLAPI EGLBoolean EGLAPIENTRY eglImageInvalidateExternalEXT (EGLDisplay dpy, EGL
 #endif
 #endif /* EGL_EXT_image_flush_external */
 
-#include <EGL/eglmesaext.h>
-#include <EGL/eglextchromium.h>
-
 #ifdef __cplusplus
 }
 #endif
