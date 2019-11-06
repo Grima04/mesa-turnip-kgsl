@@ -334,7 +334,7 @@ main(int argc, char **argv)
    struct gen_device_info *devinfo = (struct gen_device_info *)calloc(1, sizeof(*devinfo));
    bool fail = false;
 
-   for (devinfo->gen = 5; devinfo->gen <= 9; devinfo->gen++) {
+   for (devinfo->gen = 5; devinfo->gen <= 12; devinfo->gen++) {
       fail |= run_tests(devinfo);
    }
 
