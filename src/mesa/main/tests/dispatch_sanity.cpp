@@ -546,6 +546,7 @@ const struct function common_desktop_functions_possible[] = {
 
    /* GL_ARB_instanced_arrays */
    { "glVertexAttribDivisorARB", 31, -1 },
+   { "glVertexArrayVertexAttribDivisorEXT", 31, -1 },
 
    /* GL_NV_texture_barrier */
    { "glTextureBarrierNV", 31, -1 },

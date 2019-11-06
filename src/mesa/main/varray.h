@@ -317,6 +317,8 @@ extern void GLAPIENTRY
 _mesa_VertexAttribDivisor_no_error(GLuint index, GLuint divisor);
 extern void GLAPIENTRY
 _mesa_VertexAttribDivisor(GLuint index, GLuint divisor);
+extern void GLAPIENTRY
+_mesa_VertexArrayVertexAttribDivisorEXT(GLuint vaobj, GLuint index, GLuint divisor);
 
 static inline unsigned
 _mesa_primitive_restart_index(const struct gl_context *ctx,
