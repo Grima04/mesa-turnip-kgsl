@@ -897,8 +897,8 @@ const struct function common_desktop_functions_possible[] = {
    { "glTextureBufferRangeEXT", 43, -1 },
    { "glTexStorage2DMultisample", 43, -1 },
    { "glTexStorage3DMultisample", 43, -1 },
-// { "glTextureStorage2DMultisampleEXT", 43, -1 },      // XXX: Add to xml
-// { "glTextureStorage3DMultisampleEXT", 43, -1 },      // XXX: Add to xml
+   { "glTextureStorage2DMultisampleEXT", 43, -1 },
+   { "glTextureStorage3DMultisampleEXT", 43, -1 },
 
    { "glViewportArrayv", 43, -1 },
    { "glViewportIndexedf", 43, -1 },

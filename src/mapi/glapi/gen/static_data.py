@@ -1623,6 +1623,8 @@ offsets = {
     "VertexArrayVertexAttribLOffsetEXT": 1587,
     "VertexArrayVertexAttribDivisorEXT": 1588,
     "TextureBufferRangeEXT": 1589,
+    "TextureStorage2DMultisampleEXT": 1590,
+    "TextureStorage3DMultisampleEXT": 1591,
 }
 
 functions = [

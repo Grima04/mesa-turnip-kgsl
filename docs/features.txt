@@ -386,7 +386,7 @@ GL_EXT_direct_state_access additions from other extensions (complete list):
   GL_ARB_sparse_buffer                                  not started
   GL_ARB_texture_buffer_range                           DONE
   GL_ARB_texture_storage                                DONE
-  GL_ARB_texture_storage_multisample                    not started
+  GL_ARB_texture_storage_multisample                    DONE
   GL_ARB_vertex_attrib_64bit                            DONE
   GL_ARB_vertex_attrib_binding                          DONE
   GL_EXT_buffer_storage                                 DONE

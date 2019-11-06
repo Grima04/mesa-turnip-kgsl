@@ -837,6 +837,18 @@ _mesa_TextureStorage3DMultisample(GLuint texture, GLsizei samples,
                                   GLenum internalformat, GLsizei width,
                                   GLsizei height, GLsizei depth,
                                   GLboolean fixedsamplelocations);
+
+extern void GLAPIENTRY
+_mesa_TextureStorage2DMultisampleEXT(GLuint texture, GLenum target, GLsizei samples,
+                                     GLenum internalformat, GLsizei width,
+                                     GLsizei height, GLboolean fixedsamplelocations);
+
+extern void GLAPIENTRY
+_mesa_TextureStorage3DMultisampleEXT(GLuint texture, GLenum target, GLsizei samples,
+                                     GLenum internalformat, GLsizei width,
+                                     GLsizei height, GLsizei depth,
+                                     GLboolean fixedsamplelocations);
+
 /*@}*/
 
 #ifdef __cplusplus

@@ -6930,6 +6930,52 @@ _mesa_TextureStorage3DMultisample(GLuint texture, GLsizei samples,
                              "glTextureStorage3DMultisample");
 }
 
+void GLAPIENTRY
+_mesa_TextureStorage2DMultisampleEXT(GLuint texture, GLenum target, GLsizei samples,
+                                     GLenum internalformat, GLsizei width,
+                                     GLsizei height,
+                                     GLboolean fixedsamplelocations)
+{
+   struct gl_texture_object *texObj;
+   GET_CURRENT_CONTEXT(ctx);
+
+   texObj = lookup_texture_ext_dsa(ctx, target, texture,
+                                   "glTextureStorage2DMultisampleEXT");
+   if (!texObj)
+      return;
+
+   if (!valid_texstorage_ms_parameters(width, height, 1, 2))
+      return;
+
+   texture_image_multisample(ctx, 2, texObj, NULL, texObj->Target,
+                             samples, internalformat, width, height, 1,
+                             fixedsamplelocations, GL_TRUE, 0,
+                             "glTextureStorage2DMultisampleEXT");
+}
+
+void GLAPIENTRY
+_mesa_TextureStorage3DMultisampleEXT(GLuint texture, GLenum target, GLsizei samples,
+                                     GLenum internalformat, GLsizei width,
+                                     GLsizei height, GLsizei depth,
+                                     GLboolean fixedsamplelocations)
+{
+   struct gl_texture_object *texObj;
+   GET_CURRENT_CONTEXT(ctx);
+
+   texObj = lookup_texture_ext_dsa(ctx, target, texture,
+                                   "glTextureStorage3DMultisampleEXT");
+   if (!texObj)
+      return;
+
+   if (!valid_texstorage_ms_parameters(width, height, depth, 3))
+      return;
+
+   texture_image_multisample(ctx, 3, texObj, NULL, texObj->Target, samples,
+                             internalformat, width, height, depth,
+                             fixedsamplelocations, GL_TRUE, 0,
+                             "glTextureStorage3DMultisampleEXT");
+}
+
 void
 _mesa_texture_storage_ms_memory(struct gl_context *ctx, GLuint dims,
                                 struct gl_texture_object *texObj,
