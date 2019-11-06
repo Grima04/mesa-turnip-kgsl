@@ -163,20 +163,33 @@ panfrost_sfbd_set_zsbuf(
         assert(surf->u.tex.first_layer == 0);
 
         if (rsrc->layout == PAN_LINEAR) {
-                /* TODO: What about format selection? */
+                if (panfrost_is_z24s8_variant(surf->format)) {
 
-                fb->depth_buffer = rsrc->bo->gpu + rsrc->slices[level].offset;
-                fb->depth_stride = rsrc->slices[level].stride;
+                        fb->depth_buffer = rsrc->bo->gpu + rsrc->slices[level].offset;
+                        fb->depth_stride = rsrc->slices[level].stride;
 
-                fb->stencil_buffer = rsrc->bo->gpu + rsrc->slices[level].offset;
-                fb->stencil_stride = rsrc->slices[level].stride;
+                        fb->stencil_buffer = rsrc->bo->gpu + rsrc->slices[level].offset;
+                        fb->stencil_stride = rsrc->slices[level].stride;
 
-                struct panfrost_resource *stencil = rsrc->separate_stencil;
-                if (stencil) {
+                } else if (surf->format == PIPE_FORMAT_Z32_UNORM ||
+                           surf->format == PIPE_FORMAT_Z32_FLOAT) {
+
+                        fb->depth_buffer = rsrc->bo->gpu + rsrc->slices[level].offset;
+                        fb->depth_stride = rsrc->slices[level].stride;
+
+                } else if (surf->format == PIPE_FORMAT_Z32_FLOAT_S8X24_UINT) {
+
+                        fb->depth_buffer = rsrc->bo->gpu + rsrc->slices[level].offset;
+                        fb->depth_stride = rsrc->slices[level].stride;
+
+                        struct panfrost_resource *stencil = rsrc->separate_stencil;
                         struct panfrost_slice stencil_slice = stencil->slices[level];
 
                         fb->stencil_buffer = stencil->bo->gpu + stencil_slice.offset;
                         fb->stencil_stride = stencil_slice.stride;
+                } else {
+                        fprintf(stderr, "Unsupported depth/stencil format\n");
+                        assert(0);
                 }
         } else {
                 fprintf(stderr, "Invalid render layout\n");

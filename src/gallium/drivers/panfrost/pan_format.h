@@ -40,6 +40,9 @@ panfrost_find_format(const struct util_format_description *desc);
 void
 panfrost_invert_swizzle(const unsigned char *in, unsigned char *out);
 
+bool
+panfrost_is_z24s8_variant(enum pipe_format fmt);
+
 #endif
 
 

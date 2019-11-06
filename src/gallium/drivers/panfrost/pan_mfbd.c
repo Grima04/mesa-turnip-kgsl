@@ -226,20 +226,6 @@ panfrost_mfbd_set_cbuf(
         }
 }
 
-/* Is a format encoded like Z24S8 and therefore compatible for render? */
-
-static bool
-panfrost_is_z24s8_variant(enum pipe_format fmt)
-{
-        switch (fmt) {
-                case PIPE_FORMAT_Z24_UNORM_S8_UINT:
-                case PIPE_FORMAT_Z24X8_UNORM:
-                        return true;
-                default:
-                        return false;
-        }
-}
-
 static void
 panfrost_mfbd_set_zsbuf(
         struct bifrost_framebuffer *fb,
