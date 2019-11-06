@@ -711,6 +711,15 @@ emit_builtin_binop(struct ntv_context *ctx, enum GLSLstd450 op, SpvId type,
 }
 
 static SpvId
+emit_builtin_triop(struct ntv_context *ctx, enum GLSLstd450 op, SpvId type,
+                   SpvId src0, SpvId src1, SpvId src2)
+{
+   SpvId args[] = { src0, src1, src2 };
+   return spirv_builder_emit_ext_inst(&ctx->builder, type, ctx->GLSL_std_450,
+                                      op, args, ARRAY_SIZE(args));
+}
+
+static SpvId
 get_fvec_constant(struct ntv_context *ctx, unsigned bit_size,
                   unsigned num_components, float value)
 {
@@ -1011,6 +1020,12 @@ emit_alu(struct ntv_context *ctx, nir_alu_instr *alu)
       result = emit_binop(ctx, op, bool_type, src[0], src[1]);
       result = emit_select(ctx, dest_type, result, one, zero);
       }
+      break;
+
+   case nir_op_flrp:
+      assert(nir_op_infos[alu->op].num_inputs == 3);
+      result = emit_builtin_triop(ctx, GLSLstd450FMix, dest_type,
+                                  src[0], src[1], src[2]);
       break;
 
    case nir_op_fcsel:
