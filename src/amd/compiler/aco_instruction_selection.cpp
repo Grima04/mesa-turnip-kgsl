@@ -4456,7 +4456,7 @@ void visit_store_ssbo(isel_context *ctx, nir_intrinsic_instr *instr)
             Temp elem = emit_extract_vector(ctx, data, start + i, RegClass(data.type(), elem_size_bytes / 4));
             vec->operands[i] = Operand(smem_nonfs ? bld.as_uniform(elem) : elem);
          }
-         write_data = bld.tmp(smem_nonfs ? RegType::sgpr : data.type(), count * elem_size_bytes / 4);
+         write_data = bld.tmp(!smem ? RegType::vgpr : smem_nonfs ? RegType::sgpr : data.type(), count * elem_size_bytes / 4);
          vec->definitions[0] = Definition(write_data);
          ctx->block->instructions.emplace_back(std::move(vec));
       } else if (!smem && data.type() != RegType::vgpr) {
