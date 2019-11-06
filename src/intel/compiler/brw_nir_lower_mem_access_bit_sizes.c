@@ -85,8 +85,7 @@ lower_mem_load_bit_size(nir_builder *b, nir_intrinsic_instr *intrin)
    const unsigned bytes_read = num_components * (bit_size / 8);
    const unsigned align = nir_intrinsic_align(intrin);
 
-   nir_ssa_def *result[NIR_MAX_VEC_COMPONENTS] = { NULL, };
-
+   nir_ssa_def *result;
    nir_src *offset_src = nir_get_io_offset_src(intrin);
    if (bit_size < 32 && nir_src_is_const(*offset_src)) {
       /* The offset is constant so we can use a 32-bit load and just shift it
@@ -102,21 +101,12 @@ lower_mem_load_bit_size(nir_builder *b, nir_intrinsic_instr *intrin)
 
       nir_ssa_def *load = dup_mem_intrinsic(b, intrin, NULL, -load_offset,
                                             load_comps32, 32, 4);
-      nir_ssa_def *unpacked[3];
-      for (unsigned i = 0; i < load_comps32; i++)
-         unpacked[i] = nir_unpack_bits(b, nir_channel(b, load, i), bit_size);
-
-      assert(load_offset % (bit_size / 8) == 0);
-      const unsigned divisor = 32 / bit_size;
-
-      for (unsigned i = 0; i < num_components; i++) {
-         unsigned load_i = i + load_offset / (bit_size / 8);
-         result[i] = nir_channel(b, unpacked[load_i / divisor],
-                                    load_i % divisor);
-      }
+      result = nir_extract_bits(b, &load, 1, load_offset * 8,
+                                num_components, bit_size);
    } else {
       /* Otherwise, we have to break it into smaller loads */
-      unsigned res_idx = 0;
+      nir_ssa_def *loads[8];
+      unsigned num_loads = 0;
       int load_offset = 0;
       while (load_offset < bytes_read) {
          const unsigned bytes_left = bytes_read - load_offset;
@@ -131,23 +121,19 @@ lower_mem_load_bit_size(nir_builder *b, nir_intrinsic_instr *intrin)
             load_comps = DIV_ROUND_UP(MIN2(bytes_left, 16), 4);
          }
 
-         nir_ssa_def *load = dup_mem_intrinsic(b, intrin, NULL, load_offset,
-                                               load_comps, load_bit_size,
-                                               align);
-
-         nir_ssa_def *unpacked = nir_bitcast_vector(b, load, bit_size);
-         for (unsigned i = 0; i < unpacked->num_components; i++) {
-            if (res_idx < num_components)
-               result[res_idx++] = nir_channel(b, unpacked, i);
-         }
+         loads[num_loads++] = dup_mem_intrinsic(b, intrin, NULL, load_offset,
+                                                load_comps, load_bit_size,
+                                                align);
 
          load_offset += load_comps * (load_bit_size / 8);
       }
+      assert(num_loads <= ARRAY_SIZE(loads));
+      result = nir_extract_bits(b, loads, num_loads, 0,
+                                num_components, bit_size);
    }
 
-   nir_ssa_def *vec_result = nir_vec(b, result, num_components);
    nir_ssa_def_rewrite_uses(&intrin->dest.ssa,
-                            nir_src_for_ssa(vec_result));
+                            nir_src_for_ssa(result));
    nir_instr_remove(&intrin->instr);
 
    return true;
@@ -219,19 +205,11 @@ lower_mem_store_bit_size(nir_builder *b, nir_intrinsic_instr *intrin)
          if (store_bit_size == 24)
             store_bit_size = 16;
       }
-
       const unsigned store_bytes = store_comps * (store_bit_size / 8);
       assert(store_bytes % byte_size == 0);
-      const unsigned store_first_src_comp = start / byte_size;
-      const unsigned store_src_comps = store_bytes / byte_size;
-      assert(store_first_src_comp + store_src_comps <= num_components);
 
-      unsigned src_swiz[4] = { 0, };
-      for (unsigned i = 0; i < store_src_comps; i++)
-         src_swiz[i] = store_first_src_comp + i;
-      nir_ssa_def *store_value =
-         nir_swizzle(b, value, src_swiz, store_src_comps);
-      nir_ssa_def *packed = nir_bitcast_vector(b, store_value, store_bit_size);
+      nir_ssa_def *packed = nir_extract_bits(b, &value, 1, start * 8,
+                                             store_comps, store_bit_size);
 
       dup_mem_intrinsic(b, intrin, packed, start,
                         store_comps, store_bit_size, store_align);
