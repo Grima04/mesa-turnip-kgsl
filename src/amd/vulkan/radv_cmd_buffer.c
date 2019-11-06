@@ -5126,19 +5126,19 @@ void radv_CmdEndRenderPass2KHR(
  */
 static void radv_initialize_htile(struct radv_cmd_buffer *cmd_buffer,
                                   struct radv_image *image,
-                                  const VkImageSubresourceRange *range,
-                                  uint32_t clear_word)
+                                  const VkImageSubresourceRange *range)
 {
 	assert(range->baseMipLevel == 0);
 	assert(range->levelCount == 1 || range->levelCount == VK_REMAINING_ARRAY_LAYERS);
 	VkImageAspectFlags aspects = VK_IMAGE_ASPECT_DEPTH_BIT;
 	struct radv_cmd_state *state = &cmd_buffer->state;
+	uint32_t htile_value = vk_format_is_stencil(image->vk_format) ? 0xfffff30f : 0xfffc000f;
 	VkClearDepthStencilValue value = {};
 
 	state->flush_bits |= RADV_CMD_FLAG_FLUSH_AND_INV_DB |
 			     RADV_CMD_FLAG_FLUSH_AND_INV_DB_META;
 
-	state->flush_bits |= radv_clear_htile(cmd_buffer, image, range, clear_word);
+	state->flush_bits |= radv_clear_htile(cmd_buffer, image, range, htile_value);
 
 	state->flush_bits |= RADV_CMD_FLAG_FLUSH_AND_INV_DB_META;
 
@@ -5172,18 +5172,10 @@ static void radv_handle_depth_image_transition(struct radv_cmd_buffer *cmd_buffe
 		return;
 
 	if (src_layout == VK_IMAGE_LAYOUT_UNDEFINED) {
-		uint32_t clear_value = vk_format_is_stencil(image->vk_format) ? 0xfffff30f : 0xfffc000f;
-
-		if (radv_layout_is_htile_compressed(image, dst_layout, dst_render_loop,
-						    dst_queue_mask)) {
-			clear_value = 0;
-		}
-
-		radv_initialize_htile(cmd_buffer, image, range, clear_value);
+		radv_initialize_htile(cmd_buffer, image, range);
 	} else if (!radv_layout_is_htile_compressed(image, src_layout, src_render_loop, src_queue_mask) &&
 	           radv_layout_is_htile_compressed(image, dst_layout, dst_render_loop, dst_queue_mask)) {
-		uint32_t clear_value = vk_format_is_stencil(image->vk_format) ? 0xfffff30f : 0xfffc000f;
-		radv_initialize_htile(cmd_buffer, image, range, clear_value);
+		radv_initialize_htile(cmd_buffer, image, range);
 	} else if (radv_layout_is_htile_compressed(image, src_layout, src_render_loop, src_queue_mask) &&
 	           !radv_layout_is_htile_compressed(image, dst_layout, dst_render_loop, dst_queue_mask)) {
 		cmd_buffer->state.flush_bits |= RADV_CMD_FLAG_FLUSH_AND_INV_DB |
