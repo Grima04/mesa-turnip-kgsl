@@ -52,6 +52,8 @@ struct vn_instance;
 struct vn_physical_device;
 struct vn_device;
 struct vn_queue;
+struct vn_fence;
+struct vn_semaphore;
 struct vn_command_buffer;
 
 struct vn_cs_encoder;
