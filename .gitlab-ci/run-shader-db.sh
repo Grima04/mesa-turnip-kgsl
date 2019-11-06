@@ -12,6 +12,6 @@ cd /usr/local/shader-db
 
 for driver in freedreno v3d; do
     env LD_PRELOAD=$LIBDIR/lib${driver}_noop_drm_shim.so \
-        ./run -j 8 ./shaders \
+        ./run -j 4 ./shaders \
             > $ARTIFACTSDIR/${driver}-shader-db.txt
 done
