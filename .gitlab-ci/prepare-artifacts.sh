@@ -3,8 +3,8 @@
 set -e
 set -o xtrace
 
-# Delete 2MB of includes from artifacts.
-rm -rf install/include
+# Delete unused bin and includes from artifacts to save space.
+rm -rf install/bin install/include
 
 # Strip the drivers in the artifacts to cut 80% of the artifacts size.
 if [ -n "$CROSS" ]; then
