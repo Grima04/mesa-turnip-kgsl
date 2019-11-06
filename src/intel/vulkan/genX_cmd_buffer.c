@@ -2561,19 +2561,7 @@ cmd_buffer_flush_push_constants(struct anv_cmd_buffer *cmd_buffer,
 
                struct anv_address read_addr;
                uint32_t read_len;
-               if (binding->set == ANV_DESCRIPTOR_SET_SHADER_CONSTANTS) {
-                  struct anv_address constant_data = {
-                     .bo = pipeline->device->dynamic_state_pool.block_pool.bo,
-                     .offset = pipeline->shaders[stage]->constant_data.offset,
-                  };
-                  unsigned constant_data_size =
-                     pipeline->shaders[stage]->constant_data_size;
-
-                  read_len = MIN2(range->length,
-                     DIV_ROUND_UP(constant_data_size, 32) - range->start);
-                  read_addr = anv_address_add(constant_data,
-                                              range->start * 32);
-               } else if (binding->set == ANV_DESCRIPTOR_SET_DESCRIPTORS) {
+               if (binding->set == ANV_DESCRIPTOR_SET_DESCRIPTORS) {
                   /* This is a descriptor set buffer so the set index is
                    * actually given by binding->binding.  (Yes, that's
                    * confusing.)
@@ -2589,6 +2577,7 @@ cmd_buffer_flush_push_constants(struct anv_cmd_buffer *cmd_buffer,
                   read_addr = anv_address_add(desc_buffer_addr,
                                               range->start * 32);
                } else {
+                  assert(binding->set < MAX_SETS);
                   struct anv_descriptor_set *set =
                      gfx_state->base.descriptors[binding->set];
                   const struct anv_descriptor *desc =

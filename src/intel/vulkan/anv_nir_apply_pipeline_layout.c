@@ -782,6 +782,11 @@ lower_load_constant(nir_intrinsic_instr *intrin,
 
    b->cursor = nir_before_instr(&intrin->instr);
 
+   /* Any constant-offset load_constant instructions should have been removed
+    * by constant folding.
+    */
+   assert(!nir_src_is_const(intrin->src[0]));
+
    nir_ssa_def *index = nir_imm_int(b, state->constants_offset);
    nir_ssa_def *offset = nir_iadd(b, nir_ssa_for_src(b, intrin->src[0], 1),
                                   nir_imm_int(b, nir_intrinsic_base(intrin)));
