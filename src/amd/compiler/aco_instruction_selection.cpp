@@ -3313,7 +3313,7 @@ void load_buffer(isel_context *ctx, unsigned num_components, Temp dst,
    bool dlc = glc && ctx->options->chip_class >= GFX10;
 
    aco_opcode op;
-   if (dst.type() == RegType::vgpr || (glc && ctx->options->chip_class < GFX8)) {
+   if (dst.type() == RegType::vgpr || (ctx->options->chip_class < GFX8 && !readonly)) {
       if (ctx->options->chip_class < GFX8)
          offset = as_vgpr(ctx, offset);
 
