@@ -56,6 +56,10 @@ typedef struct {
    const struct glsl_type *last_interface_type;
    struct nir_variable_data last_var_data;
 
+   /* For skipping equal ALU headers (typical after scalarization). */
+   nir_instr_type last_instr_type;
+   uintptr_t last_alu_header_offset;
+
    /* Don't write optional data such as variable names. */
    bool strip;
 } write_ctx;
@@ -612,7 +616,8 @@ union packed_instr {
       unsigned writemask:4;
       unsigned op:9;
       unsigned packed_src_ssa_16bit:1;
-      unsigned _pad:2;
+      /* Scalarized ALUs always have the same header. */
+      unsigned num_followup_alu_sharing_header:2;
       unsigned dest:8;
    } alu;
    struct {
@@ -673,7 +678,8 @@ union packed_instr {
 
 /* Write "lo24" as low 24 bits in the first uint32. */
 static void
-write_dest(write_ctx *ctx, const nir_dest *dst, union packed_instr header)
+write_dest(write_ctx *ctx, const nir_dest *dst, union packed_instr header,
+           nir_instr_type instr_type)
 {
    STATIC_ASSERT(sizeof(union packed_dest) == 1);
    union packed_dest dest;
@@ -688,9 +694,43 @@ write_dest(write_ctx *ctx, const nir_dest *dst, union packed_instr header)
    } else {
       dest.reg.is_indirect = !!(dst->reg.indirect);
    }
-
    header.any.dest = dest.u8;
-   blob_write_uint32(ctx->blob, header.u32);
+
+   /* Check if the current ALU instruction has the same header as the previous
+    * instruction that is also ALU. If it is, we don't have to write
+    * the current header. This is a typical occurence after scalarization.
+    */
+   if (instr_type == nir_instr_type_alu) {
+      bool equal_header = false;
+
+      if (ctx->last_instr_type == nir_instr_type_alu) {
+         assert(ctx->last_alu_header_offset);
+         union packed_instr *last_header =
+            (union packed_instr *)(ctx->blob->data +
+                                   ctx->last_alu_header_offset);
+
+         /* Clear the field that counts ALUs with equal headers. */
+         union packed_instr clean_header;
+         clean_header.u32 = last_header->u32;
+         clean_header.alu.num_followup_alu_sharing_header = 0;
+
+         /* There can be at most 4 consecutive ALU instructions
+          * sharing the same header.
+          */
+         if (last_header->alu.num_followup_alu_sharing_header < 3 &&
+             header.u32 == clean_header.u32) {
+            last_header->alu.num_followup_alu_sharing_header++;
+            equal_header = true;
+         }
+      }
+
+      if (!equal_header) {
+         ctx->last_alu_header_offset = ctx->blob->size;
+         blob_write_uint32(ctx->blob, header.u32);
+      }
+   } else {
+      blob_write_uint32(ctx->blob, header.u32);
+   }
 
    if (dst->is_ssa) {
       write_add_object(ctx, &dst->ssa);
@@ -773,7 +813,7 @@ write_alu(write_ctx *ctx, const nir_alu_instr *alu)
    header.alu.op = alu->op;
    header.alu.packed_src_ssa_16bit = is_alu_src_ssa_16bit(ctx, alu);
 
-   write_dest(ctx, &alu->dest.dest, header);
+   write_dest(ctx, &alu->dest.dest, header, alu->instr.type);
 
    if (header.alu.packed_src_ssa_16bit) {
       for (unsigned i = 0; i < num_srcs; i++) {
@@ -873,7 +913,7 @@ write_deref(write_ctx *ctx, const nir_deref_instr *deref)
          are_object_ids_16bit(ctx);
    }
 
-   write_dest(ctx, &deref->dest, header);
+   write_dest(ctx, &deref->dest, header, deref->instr.type);
 
    switch (deref->deref_type) {
    case nir_deref_type_var:
@@ -1039,7 +1079,7 @@ write_intrinsic(write_ctx *ctx, const nir_intrinsic_instr *intrin)
    }
 
    if (nir_intrinsic_infos[intrin->intrinsic].has_dest)
-      write_dest(ctx, &intrin->dest, header);
+      write_dest(ctx, &intrin->dest, header, intrin->instr.type);
    else
       blob_write_uint32(ctx->blob, header.u32);
 
@@ -1324,7 +1364,7 @@ write_tex(write_ctx *ctx, const nir_tex_instr *tex)
    header.tex.op = tex->op;
    header.tex.texture_array_size = tex->texture_array_size;
 
-   write_dest(ctx, &tex->dest, header);
+   write_dest(ctx, &tex->dest, header, tex->instr.type);
 
    blob_write_uint32(ctx->blob, tex->texture_index);
    blob_write_uint32(ctx->blob, tex->sampler_index);
@@ -1397,7 +1437,7 @@ write_phi(write_ctx *ctx, const nir_phi_instr *phi)
     * and then store enough information so that a later fixup pass can fill
     * them in correctly.
     */
-   write_dest(ctx, &phi->dest, header);
+   write_dest(ctx, &phi->dest, header, phi->instr.type);
 
    nir_foreach_phi_src(src, phi) {
       assert(src->src.is_ssa);
@@ -1565,7 +1605,8 @@ write_instr(write_ctx *ctx, const nir_instr *instr)
    }
 }
 
-static void
+/* Return the number of instructions read. */
+static unsigned
 read_instr(read_ctx *ctx, nir_block *block)
 {
    STATIC_ASSERT(sizeof(union packed_instr) == 4);
@@ -1575,8 +1616,9 @@ read_instr(read_ctx *ctx, nir_block *block)
 
    switch (header.any.instr_type) {
    case nir_instr_type_alu:
-      instr = &read_alu(ctx, header)->instr;
-      break;
+      for (unsigned i = 0; i <= header.alu.num_followup_alu_sharing_header; i++)
+         nir_instr_insert_after_block(block, &read_alu(ctx, header)->instr);
+      return header.alu.num_followup_alu_sharing_header + 1;
    case nir_instr_type_deref:
       instr = &read_deref(ctx, header)->instr;
       break;
@@ -1599,7 +1641,7 @@ read_instr(read_ctx *ctx, nir_block *block)
        * are read so that we can set their sources up.
        */
       read_phi(ctx, block, header);
-      return;
+      return 1;
    case nir_instr_type_jump:
       instr = &read_jump(ctx, header)->instr;
       break;
@@ -1613,6 +1655,7 @@ read_instr(read_ctx *ctx, nir_block *block)
    }
 
    nir_instr_insert_after_block(block, instr);
+   return 1;
 }
 
 static void
@@ -1620,8 +1663,14 @@ write_block(write_ctx *ctx, const nir_block *block)
 {
    write_add_object(ctx, block);
    blob_write_uint32(ctx->blob, exec_list_length(&block->instr_list));
-   nir_foreach_instr(instr, block)
+
+   ctx->last_instr_type = ~0;
+   ctx->last_alu_header_offset = 0;
+
+   nir_foreach_instr(instr, block) {
       write_instr(ctx, instr);
+      ctx->last_instr_type = instr->type;
+   }
 }
 
 static void
@@ -1636,8 +1685,8 @@ read_block(read_ctx *ctx, struct exec_list *cf_list)
 
    read_add_object(ctx, block);
    unsigned num_instrs = blob_read_uint32(ctx->blob);
-   for (unsigned i = 0; i < num_instrs; i++) {
-      read_instr(ctx, block);
+   for (unsigned i = 0; i < num_instrs;) {
+      i += read_instr(ctx, block);
    }
 }
 
