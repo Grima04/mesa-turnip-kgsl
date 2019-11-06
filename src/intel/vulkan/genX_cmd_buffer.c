@@ -2309,8 +2309,11 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
 
       case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC: {
          /* Compute the offset within the buffer */
+         struct anv_push_constants *push =
+            &cmd_buffer->state.push_constants[stage];
+
          uint32_t dynamic_offset =
-            pipe_state->dynamic_offsets[binding->dynamic_offset_index];
+            push->dynamic_offsets[binding->dynamic_offset_index];
          uint64_t offset = desc->offset + dynamic_offset;
          /* Clamp to the buffer size */
          offset = MIN2(offset, desc->buffer->size);
@@ -2570,8 +2573,10 @@ cmd_buffer_flush_push_constants(struct anv_cmd_buffer *cmd_buffer,
                      addr = desc->buffer_view->address;
                   } else {
                      assert(desc->type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC);
+                     struct anv_push_constants *push =
+                        &cmd_buffer->state.push_constants[stage];
                      uint32_t dynamic_offset =
-                        gfx_state->base.dynamic_offsets[range->dynamic_offset_index];
+                        push->dynamic_offsets[range->dynamic_offset_index];
                      addr = anv_address_add(desc->buffer->address,
                                             desc->offset + dynamic_offset);
                   }
@@ -3590,12 +3595,12 @@ anv_cmd_buffer_push_base_group_id(struct anv_cmd_buffer *cmd_buffer,
 
    struct anv_push_constants *push =
       &cmd_buffer->state.push_constants[MESA_SHADER_COMPUTE];
-   if (push->base_work_group_id[0] != baseGroupX ||
-       push->base_work_group_id[1] != baseGroupY ||
-       push->base_work_group_id[2] != baseGroupZ) {
-      push->base_work_group_id[0] = baseGroupX;
-      push->base_work_group_id[1] = baseGroupY;
-      push->base_work_group_id[2] = baseGroupZ;
+   if (push->cs.base_work_group_id[0] != baseGroupX ||
+       push->cs.base_work_group_id[1] != baseGroupY ||
+       push->cs.base_work_group_id[2] != baseGroupZ) {
+      push->cs.base_work_group_id[0] = baseGroupX;
+      push->cs.base_work_group_id[1] = baseGroupY;
+      push->cs.base_work_group_id[2] = baseGroupZ;
 
       cmd_buffer->state.push_constants_dirty |= VK_SHADER_STAGE_COMPUTE_BIT;
    }

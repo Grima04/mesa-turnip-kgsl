@@ -586,13 +586,18 @@ anv_cmd_buffer_bind_descriptor_set(struct anv_cmd_buffer *cmd_buffer,
          uint32_t dynamic_offset_start =
             layout->set[set_index].dynamic_offset_start;
 
-         /* Assert that everything is in range */
-         assert(set_layout->dynamic_offset_count <= *dynamic_offset_count);
-         assert(dynamic_offset_start + set_layout->dynamic_offset_count <=
-                ARRAY_SIZE(pipe_state->dynamic_offsets));
+         anv_foreach_stage(stage, set_layout->shader_stages) {
+            struct anv_push_constants *push =
+               &cmd_buffer->state.push_constants[stage];
 
-         typed_memcpy(&pipe_state->dynamic_offsets[dynamic_offset_start],
-                      *dynamic_offsets, set_layout->dynamic_offset_count);
+            /* Assert that everything is in range */
+            assert(set_layout->dynamic_offset_count <= *dynamic_offset_count);
+            assert(dynamic_offset_start + set_layout->dynamic_offset_count <=
+                   ARRAY_SIZE(push->dynamic_offsets));
+
+            typed_memcpy(&push->dynamic_offsets[dynamic_offset_start],
+                         *dynamic_offsets, set_layout->dynamic_offset_count);
+         }
 
          *dynamic_offsets += set_layout->dynamic_offset_count;
          *dynamic_offset_count -= set_layout->dynamic_offset_count;
@@ -749,11 +754,11 @@ anv_push_constant_value(const struct anv_cmd_pipeline_state *state,
       case BRW_PARAM_BUILTIN_ZERO:
          return 0;
       case BRW_PARAM_BUILTIN_BASE_WORK_GROUP_ID_X:
-         return data->base_work_group_id[0];
+         return data->cs.base_work_group_id[0];
       case BRW_PARAM_BUILTIN_BASE_WORK_GROUP_ID_Y:
-         return data->base_work_group_id[1];
+         return data->cs.base_work_group_id[1];
       case BRW_PARAM_BUILTIN_BASE_WORK_GROUP_ID_Z:
-         return data->base_work_group_id[2];
+         return data->cs.base_work_group_id[2];
       default:
          unreachable("Invalid param builtin");
       }
@@ -767,7 +772,7 @@ anv_push_constant_value(const struct anv_cmd_pipeline_state *state,
    } else if (ANV_PARAM_IS_DYN_OFFSET(param)) {
       unsigned idx = ANV_PARAM_DYN_OFFSET_IDX(param);
       assert(idx < MAX_DYNAMIC_BUFFERS);
-      return state->dynamic_offsets[idx];
+      return data->dynamic_offsets[idx];
    }
 
    assert(!"Invalid param");

@@ -2371,11 +2371,26 @@ struct anv_xfb_binding {
 #define ANV_PARAM_DYN_OFFSET_IDX(param)   ((param) & 0xffff)
 
 struct anv_push_constants {
-   /* Push constant data provided by the client through vkPushConstants */
+   /** Push constant data provided by the client through vkPushConstants */
    uint8_t client_data[MAX_PUSH_CONSTANTS_SIZE];
 
-   /* Used for vkCmdDispatchBase */
-   uint32_t base_work_group_id[3];
+   /** Dynamic offsets for dynamic UBOs and SSBOs */
+   uint32_t dynamic_offsets[MAX_DYNAMIC_BUFFERS];
+
+   struct {
+      /** Base workgroup ID
+       *
+       * Used for vkCmdDispatchBase.
+       */
+      uint32_t base_work_group_id[3];
+
+      /** Subgroup ID
+       *
+       * This is never set by software but is implicitly filled out when
+       * uploading the push constants for compute shaders.
+       */
+      uint32_t subgroup_id;
+   } cs;
 };
 
 struct anv_dynamic_state {
@@ -2495,8 +2510,6 @@ struct anv_cmd_pipeline_state {
    struct anv_pipeline *pipeline;
 
    struct anv_descriptor_set *descriptors[MAX_SETS];
-   uint32_t dynamic_offsets[MAX_DYNAMIC_BUFFERS];
-
    struct anv_push_descriptor_set *push_descriptors[MAX_SETS];
 };
 
