@@ -12,8 +12,8 @@ done
 
 apt-get install -y \
       ca-certificates \
-      wget \
-      unzip
+      unzip \
+      wget
 
 sed -i -e 's/http:\/\/deb/https:\/\/deb/g' /etc/apt/sources.list
 echo 'deb https://deb.debian.org/debian buster-backports main' >/etc/apt/sources.list.d/backports.list
@@ -30,68 +30,66 @@ EOF
 apt-get dist-upgrade -y
 
 apt-get install -y --no-remove \
-      llvm-6.0-dev \
-      libclang-6.0-dev \
-      llvm-7-dev \
-      libclang-7-dev \
-      llvm-8-dev \
-      libclang-8-dev \
-      g++ \
-      clang-8 \
-      git \
-      bzip2 \
-      zlib1g-dev \
-      pkg-config \
-      libxrender-dev \
-      libxdamage-dev \
-      libxxf86vm-dev \
-      gcc \
-      git \
-      libepoxy-dev \
-      libegl1-mesa-dev \
-      libgbm-dev \
-      libclc-dev \
-      libxvmc-dev \
-      libomxil-bellagio-dev \
-      xz-utils \
-      libexpat1-dev \
-      libx11-xcb-dev \
-      libelf-dev \
-      libunwind-dev \
       autoconf \
       automake \
       autotools-dev \
-      libtool \
-      libxext-dev \
-      libx11-dev \
-      x11proto-gl-dev \
-      libgtk-3-dev \
-      libpng-dev \
+      bison \
+      bzip2 \
+      clang-8 \
+      cmake \
+      flex \
+      g++ \
+      gcc \
+      gettext \
+      git \
+      libclang-6.0-dev \
+      libclang-7-dev \
+      libclang-8-dev \
+      libclc-dev \
+      libegl1-mesa-dev \
+      libelf-dev \
+      libepoxy-dev \
+      libexpat1-dev \
       libgbm-dev \
       libgles2-mesa-dev \
+      libgtk-3-dev \
+      libomxil-bellagio-dev \
+      libpng-dev \
+      libtool \
+      libunwind-dev \
       libvulkan-dev \
+      libx11-dev \
+      libx11-xcb-dev \
+      libxdamage-dev \
+      libxext-dev \
+      libxrender-dev \
+      libxvmc-dev \
+      libxxf86vm-dev \
+      llvm-6.0-dev \
+      llvm-7-dev \
+      llvm-8-dev \
+      meson \
+      pkg-config \
       python-mako \
       python3-mako \
-      bison \
-      flex \
-      gettext \
-      cmake \
-      meson \
-      scons
+      scons \
+      x11proto-gl-dev \
+      xz-utils \
+      zlib1g-dev
 
 # Cross-build Mesa deps
 for arch in $CROSS_ARCHITECTURES; do
     apt-get install -y --no-remove \
+            crossbuild-essential-${arch} \
             libdrm-dev:${arch} \
-            libexpat1-dev:${arch} \
             libelf-dev:${arch} \
-            crossbuild-essential-${arch}
+            libexpat1-dev:${arch}
 done
 
 # for 64bit windows cross-builds
 apt-get install -y --no-remove \
-    mingw-w64 \
     libz-mingw-w64-dev \
+    mingw-w64 \
     wine \
     wine32 \
     wine64
@@ -251,16 +249,16 @@ done
 ############### Uninstall the build software
 
 apt-get purge -y \
-      wget \
-      unzip \
-      cmake \
-      git \
       autoconf \
       automake \
       autotools-dev \
-      libtool \
-      x11proto-gl-dev \
+      cmake \
+      git \
+      libgbm-dev \
       libgles2-mesa-dev \
-      libgbm-dev
+      libtool \
+      unzip \
+      wget \
+      x11proto-gl-dev
 
 apt-get autoremove -y --purge
