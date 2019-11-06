@@ -649,6 +649,9 @@ radv_cmd_buffer_resolve_subpass(struct radv_cmd_buffer *cmd_buffer)
 		struct radv_image_view *dst_iview =
 			cmd_buffer->state.attachments[dst_att.attachment].iview;
 
+		/* Make sure to not clear the depth/stencil attachment after resolves. */
+		cmd_buffer->state.attachments[dst_att.attachment].pending_clear_aspects = 0;
+
 		radv_pick_resolve_method_images(cmd_buffer->device,
 						src_iview->image,
 						src_iview->vk_format,
