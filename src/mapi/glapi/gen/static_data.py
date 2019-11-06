@@ -1622,6 +1622,7 @@ offsets = {
     "GetNamedFramebufferParameterivEXT": 1586,
     "VertexArrayVertexAttribLOffsetEXT": 1587,
     "VertexArrayVertexAttribDivisorEXT": 1588,
+    "TextureBufferRangeEXT": 1589,
 }
 
 functions = [
