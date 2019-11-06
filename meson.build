@@ -1178,6 +1178,11 @@ if host_machine.system() != 'windows'
   endif
 endif
 
+if cc.has_member('struct dirent', 'd_type', prefix: '''#include <sys/types.h>
+   #include <dirent.h>''')
+   pre_args += '-DHAVE_DIRENT_D_TYPE'
+endif
+
 # strtod locale support
 if cc.links('''
     #define _GNU_SOURCE
