@@ -148,4 +148,8 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags);
 void
 zink_context_query_init(struct pipe_context *ctx);
 
+void
+zink_blit(struct pipe_context *pctx,
+          const struct pipe_blit_info *info);
+
 #endif
