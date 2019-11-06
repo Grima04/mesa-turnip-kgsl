@@ -438,14 +438,14 @@ typedef struct nir_variable {
       /**
        * Descriptor set binding for sampler or UBO.
        */
-      int descriptor_set:5;
+      unsigned descriptor_set:5;
 
       /**
        * Initial binding point for a sampler or UBO.
        *
        * For array types, this represents the binding point for the first element.
        */
-      unsigned binding:5;
+      unsigned binding;
 
       /**
        * Storage location of the base of this variable
