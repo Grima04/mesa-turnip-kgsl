@@ -765,7 +765,7 @@ pandecode_sfbd(uint64_t gpu_va, int job_no, bool is_fragment)
         pandecode_prop("zero1 = 0x%" PRIx64, s->zero1);
         pandecode_prop("zero2 = 0x%" PRIx32, s->zero2);
         pandecode_prop("zero4 = 0x%" PRIx32, s->zero4);
-        pandecode_prop("zero5 = 0x%" PRIx32, s->zero4);
+        pandecode_prop("zero5 = 0x%" PRIx32, s->zero5);
 
         printf(".zero3 = {");
 
