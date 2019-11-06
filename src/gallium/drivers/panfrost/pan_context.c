@@ -2448,6 +2448,8 @@ panfrost_destroy(struct pipe_context *pipe)
         if (panfrost->blitter_wallpaper)
                 util_blitter_destroy(panfrost->blitter_wallpaper);
 
+        u_upload_destroy(pipe->stream_uploader);
+
         ralloc_free(pipe);
 }
 
