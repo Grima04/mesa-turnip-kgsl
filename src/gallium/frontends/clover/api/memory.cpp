@@ -260,7 +260,7 @@ clGetSupportedImageFormats(cl_context d_ctx, cl_mem_flags flags,
 
    validate_flags(NULL, flags, false);
 
-   if (r_buf && !r_count)
+   if (r_buf && !count)
       throw error(CL_INVALID_VALUE);
 
    if (r_buf)
