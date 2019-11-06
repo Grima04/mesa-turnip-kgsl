@@ -1263,14 +1263,14 @@ setup_isel_context(Program* program,
    } else if (program->chip_class >= GFX8) {
       program->physical_sgprs = 800;
       program->sgpr_alloc_granule = 15;
-      program->sgpr_limit = 102;
-   } else {
-      program->physical_sgprs = 512;
-      program->sgpr_alloc_granule = 7;
       if (options->family == CHIP_TONGA || options->family == CHIP_ICELAND)
          program->sgpr_limit = 94; /* workaround hardware bug */
       else
-         program->sgpr_limit = 104;
+         program->sgpr_limit = 102;
+   } else {
+      program->physical_sgprs = 512;
+      program->sgpr_alloc_granule = 7;
+      program->sgpr_limit = 104;
    }
    /* TODO: we don't have to allocate VCC if we don't need it */
    program->needs_vcc = true;
