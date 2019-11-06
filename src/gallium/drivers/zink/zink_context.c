@@ -27,6 +27,7 @@
 #include "zink_compiler.h"
 #include "zink_fence.h"
 #include "zink_framebuffer.h"
+#include "zink_helpers.h"
 #include "zink_pipeline.h"
 #include "zink_program.h"
 #include "zink_render_pass.h"
@@ -67,16 +68,6 @@ zink_context_destroy(struct pipe_context *pctx)
    slab_destroy_child(&ctx->transfer_pool);
    util_blitter_destroy(ctx->blitter);
    FREE(ctx);
-}
-
-static VkFilter
-filter(enum pipe_tex_filter filter)
-{
-   switch (filter) {
-   case PIPE_TEX_FILTER_NEAREST: return VK_FILTER_NEAREST;
-   case PIPE_TEX_FILTER_LINEAR: return VK_FILTER_LINEAR;
-   }
-   unreachable("unexpected filter");
 }
 
 static VkSamplerMipmapMode
@@ -131,8 +122,8 @@ zink_create_sampler_state(struct pipe_context *pctx,
 
    VkSamplerCreateInfo sci = {};
    sci.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-   sci.magFilter = filter(state->mag_img_filter);
-   sci.minFilter = filter(state->min_img_filter);
+   sci.magFilter = zink_filter(state->mag_img_filter);
+   sci.minFilter = zink_filter(state->min_img_filter);
 
    if (state->min_mip_filter != PIPE_TEX_MIPFILTER_NONE) {
       sci.mipmapMode = sampler_mipmap_mode(state->min_mip_filter);
@@ -1384,7 +1375,7 @@ blit_native(struct zink_context *ctx, const struct pipe_blit_info *info)
    vkCmdBlitImage(batch->cmdbuf, src->image, src->layout,
                   dst->image, dst->layout,
                   1, &region,
-                  filter(info->filter));
+                  zink_filter(info->filter));
 
    return true;
 }
