@@ -712,27 +712,25 @@ anv_pipeline_lower_nir(struct anv_pipeline *pipeline,
               nir_address_format_64bit_global);
 
    /* Apply the actual pipeline layout to UBOs, SSBOs, and textures */
-   if (layout) {
-      anv_nir_apply_pipeline_layout(pdevice,
-                                    pipeline->device->robust_buffer_access,
-                                    layout, nir, prog_data,
-                                    &stage->bind_map);
+   anv_nir_apply_pipeline_layout(pdevice,
+                                 pipeline->device->robust_buffer_access,
+                                 layout, nir, prog_data,
+                                 &stage->bind_map);
 
-      NIR_PASS_V(nir, nir_lower_explicit_io, nir_var_mem_ubo,
-                 nir_address_format_32bit_index_offset);
-      NIR_PASS_V(nir, nir_lower_explicit_io, nir_var_mem_ssbo,
-                 anv_nir_ssbo_addr_format(pdevice,
-                    pipeline->device->robust_buffer_access));
+   NIR_PASS_V(nir, nir_lower_explicit_io, nir_var_mem_ubo,
+              nir_address_format_32bit_index_offset);
+   NIR_PASS_V(nir, nir_lower_explicit_io, nir_var_mem_ssbo,
+              anv_nir_ssbo_addr_format(pdevice,
+                 pipeline->device->robust_buffer_access));
 
-      NIR_PASS_V(nir, nir_opt_constant_folding);
+   NIR_PASS_V(nir, nir_opt_constant_folding);
 
-      /* We don't support non-uniform UBOs and non-uniform SSBO access is
-       * handled naturally by falling back to A64 messages.
-       */
-      NIR_PASS_V(nir, nir_lower_non_uniform_access,
-                 nir_lower_non_uniform_texture_access |
-                 nir_lower_non_uniform_image_access);
-   }
+   /* We don't support non-uniform UBOs and non-uniform SSBO access is
+    * handled naturally by falling back to A64 messages.
+    */
+   NIR_PASS_V(nir, nir_lower_non_uniform_access,
+              nir_lower_non_uniform_texture_access |
+              nir_lower_non_uniform_image_access);
 
    if (nir->info.stage != MESA_SHADER_COMPUTE)
       brw_nir_analyze_ubo_ranges(compiler, nir, NULL, prog_data->ubo_ranges);
