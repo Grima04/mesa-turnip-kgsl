@@ -2165,15 +2165,24 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
    case nir_op_fquantize2f16: {
       Temp src = get_alu_src(ctx, instr->src[0]);
       Temp f16 = bld.vop1(aco_opcode::v_cvt_f16_f32, bld.def(v1), src);
+      Temp f32, cmp_res;
 
-      Temp mask = bld.copy(bld.def(s1), Operand(0x36Fu)); /* value is NOT negative/positive denormal value */
+      if (ctx->program->chip_class >= GFX8) {
+         Temp mask = bld.copy(bld.def(s1), Operand(0x36Fu)); /* value is NOT negative/positive denormal value */
+         cmp_res = bld.vopc_e64(aco_opcode::v_cmp_class_f16, bld.hint_vcc(bld.def(bld.lm)), f16, mask);
+         f32 = bld.vop1(aco_opcode::v_cvt_f32_f16, bld.def(v1), f16);
+      } else {
+         /* 0x38800000 is smallest half float value (2^-14) in 32-bit float,
+          * so compare the result and flush to 0 if it's smaller.
+          */
+         f32 = bld.vop1(aco_opcode::v_cvt_f32_f16, bld.def(v1), f16);
+         Temp smallest = bld.copy(bld.def(s1), Operand(0x38800000u));
+         Instruction* vop3 = bld.vopc_e64(aco_opcode::v_cmp_nlt_f32, bld.hint_vcc(bld.def(s2)), f32, smallest);
+         static_cast<VOP3A_instruction*>(vop3)->abs[0] = true;
+         cmp_res = vop3->definitions[0].getTemp();
+      }
 
-      Temp cmp_res = bld.tmp(bld.lm);
-      bld.vopc_e64(aco_opcode::v_cmp_class_f16, Definition(cmp_res), f16, mask).def(0).setHint(vcc);
-
-      Temp f32 = bld.vop1(aco_opcode::v_cvt_f32_f16, bld.def(v1), f16);
-
-      if (ctx->block->fp_mode.preserve_signed_zero_inf_nan32) {
+      if (ctx->block->fp_mode.preserve_signed_zero_inf_nan32 || ctx->program->chip_class < GFX8) {
          Temp copysign_0 = bld.vop2(aco_opcode::v_mul_f32, bld.def(v1), Operand(0u), as_vgpr(ctx, src));
          bld.vop2(aco_opcode::v_cndmask_b32, Definition(dst), copysign_0, f32, cmp_res);
       } else {
