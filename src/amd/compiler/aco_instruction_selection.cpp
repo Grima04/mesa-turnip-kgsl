@@ -2382,25 +2382,32 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
    case nir_op_fddy_fine:
    case nir_op_fddx_coarse:
    case nir_op_fddy_coarse: {
-      Definition tl = bld.def(v1);
-      uint16_t dpp_ctrl;
+      Temp src = get_alu_src(ctx, instr->src[0]);
+      uint16_t dpp_ctrl1, dpp_ctrl2;
       if (instr->op == nir_op_fddx_fine) {
-         bld.vop1_dpp(aco_opcode::v_mov_b32, tl, get_alu_src(ctx, instr->src[0]), dpp_quad_perm(0, 0, 2, 2));
-         dpp_ctrl = dpp_quad_perm(1, 1, 3, 3);
+         dpp_ctrl1 = dpp_quad_perm(0, 0, 2, 2);
+         dpp_ctrl2 = dpp_quad_perm(1, 1, 3, 3);
       } else if (instr->op == nir_op_fddy_fine) {
-         bld.vop1_dpp(aco_opcode::v_mov_b32, tl, get_alu_src(ctx, instr->src[0]), dpp_quad_perm(0, 1, 0, 1));
-         dpp_ctrl = dpp_quad_perm(2, 3, 2, 3);
+         dpp_ctrl1 = dpp_quad_perm(0, 1, 0, 1);
+         dpp_ctrl2 = dpp_quad_perm(2, 3, 2, 3);
       } else {
-         bld.vop1_dpp(aco_opcode::v_mov_b32, tl, get_alu_src(ctx, instr->src[0]), dpp_quad_perm(0, 0, 0, 0));
+         dpp_ctrl1 = dpp_quad_perm(0, 0, 0, 0);
          if (instr->op == nir_op_fddx || instr->op == nir_op_fddx_coarse)
-            dpp_ctrl = dpp_quad_perm(1, 1, 1, 1);
+            dpp_ctrl2 = dpp_quad_perm(1, 1, 1, 1);
          else
-            dpp_ctrl = dpp_quad_perm(2, 2, 2, 2);
+            dpp_ctrl2 = dpp_quad_perm(2, 2, 2, 2);
       }
 
-      Definition tmp = bld.def(v1);
-      bld.vop2_dpp(aco_opcode::v_sub_f32, tmp, get_alu_src(ctx, instr->src[0]), tl.getTemp(), dpp_ctrl);
-      emit_wqm(ctx, tmp.getTemp(), dst, true);
+      Temp tmp;
+      if (ctx->program->chip_class >= GFX8) {
+         Temp tl = bld.vop1_dpp(aco_opcode::v_mov_b32, bld.def(v1), src, dpp_ctrl1);
+         tmp = bld.vop2_dpp(aco_opcode::v_sub_f32, bld.def(v1), src, tl, dpp_ctrl2);
+      } else {
+         Temp tl = bld.ds(aco_opcode::ds_swizzle_b32, bld.def(v1), src, (1 << 15) | dpp_ctrl1);
+         Temp tr = bld.ds(aco_opcode::ds_swizzle_b32, bld.def(v1), src, (1 << 15) | dpp_ctrl2);
+         tmp = bld.vop2(aco_opcode::v_sub_f32, bld.def(v1), tr, tl);
+      }
+      emit_wqm(ctx, tmp, dst, true);
       break;
    }
    default:
@@ -5372,13 +5379,31 @@ void emit_interp_center(isel_context *ctx, Temp dst, Temp pos1, Temp pos2)
    Temp p1 = emit_extract_vector(ctx, persp_center, 0, v1);
    Temp p2 = emit_extract_vector(ctx, persp_center, 1, v1);
 
+   Temp ddx_1, ddx_2, ddy_1, ddy_2;
+   uint32_t dpp_ctrl0 = dpp_quad_perm(0, 0, 0, 0);
+   uint32_t dpp_ctrl1 = dpp_quad_perm(1, 1, 1, 1);
+   uint32_t dpp_ctrl2 = dpp_quad_perm(2, 2, 2, 2);
+
    /* Build DD X/Y */
-   Temp tl_1 = bld.vop1_dpp(aco_opcode::v_mov_b32, bld.def(v1), p1, dpp_quad_perm(0, 0, 0, 0));
-   Temp ddx_1 = bld.vop2_dpp(aco_opcode::v_sub_f32, bld.def(v1), p1, tl_1, dpp_quad_perm(1, 1, 1, 1));
-   Temp ddy_1 = bld.vop2_dpp(aco_opcode::v_sub_f32, bld.def(v1), p1, tl_1, dpp_quad_perm(2, 2, 2, 2));
-   Temp tl_2 = bld.vop1_dpp(aco_opcode::v_mov_b32, bld.def(v1), p2, dpp_quad_perm(0, 0, 0, 0));
-   Temp ddx_2 = bld.vop2_dpp(aco_opcode::v_sub_f32, bld.def(v1), p2, tl_2, dpp_quad_perm(1, 1, 1, 1));
-   Temp ddy_2 = bld.vop2_dpp(aco_opcode::v_sub_f32, bld.def(v1), p2, tl_2, dpp_quad_perm(2, 2, 2, 2));
+   if (ctx->program->chip_class >= GFX8) {
+      Temp tl_1 = bld.vop1_dpp(aco_opcode::v_mov_b32, bld.def(v1), p1, dpp_ctrl0);
+      ddx_1 = bld.vop2_dpp(aco_opcode::v_sub_f32, bld.def(v1), p1, tl_1, dpp_ctrl1);
+      ddy_1 = bld.vop2_dpp(aco_opcode::v_sub_f32, bld.def(v1), p1, tl_1, dpp_ctrl2);
+      Temp tl_2 = bld.vop1_dpp(aco_opcode::v_mov_b32, bld.def(v1), p2, dpp_ctrl0);
+      ddx_2 = bld.vop2_dpp(aco_opcode::v_sub_f32, bld.def(v1), p2, tl_2, dpp_ctrl1);
+      ddy_2 = bld.vop2_dpp(aco_opcode::v_sub_f32, bld.def(v1), p2, tl_2, dpp_ctrl2);
+   } else {
+      Temp tl_1 = bld.ds(aco_opcode::ds_swizzle_b32, bld.def(v1), p1, (1 << 15) | dpp_ctrl0);
+      ddx_1 = bld.ds(aco_opcode::ds_swizzle_b32, bld.def(v1), p1, (1 << 15) | dpp_ctrl1);
+      ddx_1 = bld.vop2(aco_opcode::v_sub_f32, bld.def(v1), ddx_1, tl_1);
+      ddx_2 = bld.ds(aco_opcode::ds_swizzle_b32, bld.def(v1), p1, (1 << 15) | dpp_ctrl2);
+      ddx_2 = bld.vop2(aco_opcode::v_sub_f32, bld.def(v1), ddx_2, tl_1);
+      Temp tl_2 = bld.ds(aco_opcode::ds_swizzle_b32, bld.def(v1), p2, (1 << 15) | dpp_ctrl0);
+      ddy_1 = bld.ds(aco_opcode::ds_swizzle_b32, bld.def(v1), p2, (1 << 15) | dpp_ctrl1);
+      ddy_1 = bld.vop2(aco_opcode::v_sub_f32, bld.def(v1), ddy_1, tl_2);
+      ddy_2 = bld.ds(aco_opcode::ds_swizzle_b32, bld.def(v1), p2, (1 << 15) | dpp_ctrl2);
+      ddy_2 = bld.vop2(aco_opcode::v_sub_f32, bld.def(v1), ddy_2, tl_2);
+   }
 
    /* res_k = p_k + ddx_k * pos1 + ddy_k * pos2 */
    Temp tmp1 = bld.vop3(aco_opcode::v_mad_f32, bld.def(v1), ddx_1, pos1, p1);
@@ -5938,6 +5963,8 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
       } else {
          Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
          unsigned lane = nir_src_as_const_value(instr->src[1])->u32;
+         uint32_t dpp_ctrl = dpp_quad_perm(lane, lane, lane, lane);
+
          if (instr->dest.ssa.bit_size == 1) {
             assert(src.regClass() == bld.lm);
             assert(dst.regClass() == bld.lm);
@@ -5949,15 +5976,20 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
                               bld.sop2(Builder::s_and, bld.def(bld.lm), bld.def(s1, scc), src, Operand(exec, bld.lm))));
             emit_wqm(ctx, tmp, dst);
          } else if (instr->dest.ssa.bit_size == 32) {
-            emit_wqm(ctx,
-                     bld.vop1_dpp(aco_opcode::v_mov_b32, bld.def(v1), src,
-                                  dpp_quad_perm(lane, lane, lane, lane)),
-                     dst);
+            if (ctx->program->chip_class >= GFX8)
+               emit_wqm(ctx, bld.vop1_dpp(aco_opcode::v_mov_b32, bld.def(v1), src, dpp_ctrl), dst);
+            else
+               emit_wqm(ctx, bld.ds(aco_opcode::ds_swizzle_b32, bld.def(v1), src, (1 << 15) | dpp_ctrl), dst);
          } else if (instr->dest.ssa.bit_size == 64) {
             Temp lo = bld.tmp(v1), hi = bld.tmp(v1);
             bld.pseudo(aco_opcode::p_split_vector, Definition(lo), Definition(hi), src);
-            lo = emit_wqm(ctx, bld.vop1_dpp(aco_opcode::v_mov_b32, bld.def(v1), lo, dpp_quad_perm(lane, lane, lane, lane)));
-            hi = emit_wqm(ctx, bld.vop1_dpp(aco_opcode::v_mov_b32, bld.def(v1), hi, dpp_quad_perm(lane, lane, lane, lane)));
+            if (ctx->program->chip_class >= GFX8) {
+               lo = emit_wqm(ctx, bld.vop1_dpp(aco_opcode::v_mov_b32, bld.def(v1), lo, dpp_ctrl));
+               hi = emit_wqm(ctx, bld.vop1_dpp(aco_opcode::v_mov_b32, bld.def(v1), hi, dpp_ctrl));
+            } else {
+               lo = emit_wqm(ctx, bld.ds(aco_opcode::ds_swizzle_b32, bld.def(v1), lo, (1 << 15) | dpp_ctrl));
+               hi = emit_wqm(ctx, bld.ds(aco_opcode::ds_swizzle_b32, bld.def(v1), hi, (1 << 15) | dpp_ctrl));
+            }
             bld.pseudo(aco_opcode::p_create_vector, Definition(dst), lo, hi);
             emit_split_vector(ctx, dst, 2);
          } else {
@@ -5988,29 +6020,42 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
       case nir_intrinsic_quad_swap_diagonal:
          dpp_ctrl = dpp_quad_perm(3, 2, 1, 0);
          break;
-      case nir_intrinsic_quad_swizzle_amd: {
+      case nir_intrinsic_quad_swizzle_amd:
          dpp_ctrl = nir_intrinsic_swizzle_mask(instr);
          break;
-      }
       default:
          break;
       }
+      if (ctx->program->chip_class < GFX8)
+         dpp_ctrl |= (1 << 15);
 
       Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
       if (instr->dest.ssa.bit_size == 1) {
          assert(src.regClass() == bld.lm);
          src = bld.vop2_e64(aco_opcode::v_cndmask_b32, bld.def(v1), Operand(0u), Operand((uint32_t)-1), src);
-         src = bld.vop1_dpp(aco_opcode::v_mov_b32, bld.def(v1), src, dpp_ctrl);
+         if (ctx->program->chip_class >= GFX8)
+            src = bld.vop1_dpp(aco_opcode::v_mov_b32, bld.def(v1), src, dpp_ctrl);
+         else
+            src = bld.ds(aco_opcode::ds_swizzle_b32, bld.def(v1), src, dpp_ctrl);
          Temp tmp = bld.vopc(aco_opcode::v_cmp_lg_u32, bld.def(bld.lm), Operand(0u), src);
          emit_wqm(ctx, tmp, dst);
       } else if (instr->dest.ssa.bit_size == 32) {
-         Temp tmp = bld.vop1_dpp(aco_opcode::v_mov_b32, bld.def(v1), src, dpp_ctrl);
+         Temp tmp;
+         if (ctx->program->chip_class >= GFX8)
+            tmp = bld.vop1_dpp(aco_opcode::v_mov_b32, bld.def(v1), src, dpp_ctrl);
+         else
+            tmp = bld.ds(aco_opcode::ds_swizzle_b32, bld.def(v1), src, dpp_ctrl);
          emit_wqm(ctx, tmp, dst);
       } else if (instr->dest.ssa.bit_size == 64) {
          Temp lo = bld.tmp(v1), hi = bld.tmp(v1);
          bld.pseudo(aco_opcode::p_split_vector, Definition(lo), Definition(hi), src);
-         lo = emit_wqm(ctx, bld.vop1_dpp(aco_opcode::v_mov_b32, bld.def(v1), lo, dpp_ctrl));
-         hi = emit_wqm(ctx, bld.vop1_dpp(aco_opcode::v_mov_b32, bld.def(v1), hi, dpp_ctrl));
+         if (ctx->program->chip_class >= GFX8) {
+            lo = emit_wqm(ctx, bld.vop1_dpp(aco_opcode::v_mov_b32, bld.def(v1), lo, dpp_ctrl));
+            hi = emit_wqm(ctx, bld.vop1_dpp(aco_opcode::v_mov_b32, bld.def(v1), hi, dpp_ctrl));
+         } else {
+            lo = emit_wqm(ctx, bld.ds(aco_opcode::ds_swizzle_b32, bld.def(v1), lo, dpp_ctrl));
+            hi = emit_wqm(ctx, bld.ds(aco_opcode::ds_swizzle_b32, bld.def(v1), hi, dpp_ctrl));
+         }
          bld.pseudo(aco_opcode::p_create_vector, Definition(dst), lo, hi);
          emit_split_vector(ctx, dst, 2);
       } else {
