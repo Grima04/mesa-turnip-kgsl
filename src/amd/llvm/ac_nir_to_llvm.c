@@ -2000,7 +2000,9 @@ static LLVMValueRef load_tess_varyings(struct ac_nir_context *ctx,
 
 	unsigned location = var->data.location;
 	unsigned driver_location = var->data.driver_location;
-	const bool is_patch =  var->data.patch;
+	const bool is_patch = var->data.patch ||
+			      var->data.location == VARYING_SLOT_TESS_LEVEL_INNER ||
+			      var->data.location == VARYING_SLOT_TESS_LEVEL_OUTER;
 	const bool is_compact = var->data.compact;
 
 	get_deref_offset(ctx, nir_instr_as_deref(instr->src[0].ssa->parent_instr),
@@ -2247,7 +2249,9 @@ visit_store_var(struct ac_nir_context *ctx,
 			LLVMValueRef vertex_index = NULL;
 			LLVMValueRef indir_index = NULL;
 			unsigned const_index = 0;
-			const bool is_patch = var->data.patch;
+			const bool is_patch = var->data.patch ||
+					      var->data.location == VARYING_SLOT_TESS_LEVEL_INNER ||
+					      var->data.location == VARYING_SLOT_TESS_LEVEL_OUTER;
 
 			get_deref_offset(ctx, deref, false, NULL,
 			                 is_patch ? NULL : &vertex_index,
