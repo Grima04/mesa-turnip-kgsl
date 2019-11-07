@@ -4904,13 +4904,17 @@ static void create_function(struct si_shader_context *ctx)
 				   &ctx->cs_user_data);
 		}
 
+		/* Hardware SGPRs. */
 		for (i = 0; i < 3; i++) {
 			if (shader->selector->info.uses_block_id[i]) {
 				ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT,
 					   &ctx->args.workgroup_ids[i]);
 			}
 		}
+		if (shader->selector->info.uses_subgroup_info)
+			ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->args.tg_size);
 
+		/* Hardware VGPRs. */
 		ac_add_arg(&ctx->args, AC_ARG_VGPR, 3, AC_ARG_INT,
 			   &ctx->args.local_invocation_ids);
 		break;

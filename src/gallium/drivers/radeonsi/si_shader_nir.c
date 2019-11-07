@@ -236,6 +236,11 @@ static void scan_instruction(const struct nir_shader *nir,
 		case nir_intrinsic_load_num_work_groups:
 			info->uses_grid_size = true;
 			break;
+		case nir_intrinsic_load_local_invocation_index:
+		case nir_intrinsic_load_subgroup_id:
+		case nir_intrinsic_load_num_subgroups:
+			info->uses_subgroup_info = true;
+			break;
 		case nir_intrinsic_load_local_group_size:
 			/* The block size is translated to IMM with a fixed block size. */
 			if (info->properties[TGSI_PROPERTY_CS_FIXED_BLOCK_WIDTH] == 0)
