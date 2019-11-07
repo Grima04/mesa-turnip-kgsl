@@ -425,10 +425,6 @@ struct util_format_description
 };
 
 
-extern const struct util_format_description 
-util_format_description_table[];
-
-
 const struct util_format_description *
 util_format_description(enum pipe_format format);
 
