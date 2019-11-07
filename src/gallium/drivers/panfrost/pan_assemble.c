@@ -65,7 +65,7 @@ panfrost_shader_compile(
                 .alpha_ref = state->alpha_state.ref_value
         };
 
-        midgard_compile_shader_nir(&ctx->compiler, s, &program, false);
+        midgard_compile_shader_nir(&ctx->compiler, s, &program, false, screen->gpu_id);
 
         /* Prepare the compiled binary for upload */
         int size = program.compiled.size;
