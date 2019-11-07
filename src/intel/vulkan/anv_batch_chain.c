@@ -709,20 +709,18 @@ anv_cmd_buffer_alloc_binding_table(struct anv_cmd_buffer *cmd_buffer,
                                    uint32_t entries, uint32_t *state_offset)
 {
    struct anv_device *device = cmd_buffer->device;
-   struct anv_state_pool *state_pool = &device->surface_state_pool;
    struct anv_state *bt_block = u_vector_head(&cmd_buffer->bt_block_states);
-   struct anv_state state;
 
-   state.alloc_size = align_u32(entries * 4, 32);
+   uint32_t bt_size = align_u32(entries * 4, 32);
 
-   if (cmd_buffer->bt_next + state.alloc_size > state_pool->block_size)
+   struct anv_state state = cmd_buffer->bt_next;
+   if (bt_size > state.alloc_size)
       return (struct anv_state) { 0 };
 
-   state.offset = cmd_buffer->bt_next;
-   state.map = anv_block_pool_map(&anv_binding_table_pool(device)->block_pool,
-                                  bt_block->offset + state.offset);
-
-   cmd_buffer->bt_next += state.alloc_size;
+   state.alloc_size = bt_size;
+   cmd_buffer->bt_next.offset += bt_size;
+   cmd_buffer->bt_next.map += bt_size;
+   cmd_buffer->bt_next.alloc_size -= bt_size;
 
    if (device->instance->physicalDevice.use_softpin) {
       assert(bt_block->offset >= 0);
@@ -762,7 +760,12 @@ anv_cmd_buffer_new_binding_table_block(struct anv_cmd_buffer *cmd_buffer)
    }
 
    *bt_block = anv_binding_table_pool_alloc(cmd_buffer->device);
-   cmd_buffer->bt_next = 0;
+
+   /* The bt_next state is a rolling state (we update it as we suballocate
+    * from it) which is relative to the start of the binding table block.
+    */
+   cmd_buffer->bt_next = *bt_block;
+   cmd_buffer->bt_next.offset = 0;
 
    return VK_SUCCESS;
 }
@@ -871,7 +874,7 @@ anv_cmd_buffer_reset_batch_bo_chain(struct anv_cmd_buffer *cmd_buffer)
       anv_binding_table_pool_free(cmd_buffer->device, *bt_block);
    }
    assert(u_vector_length(&cmd_buffer->bt_block_states) == 1);
-   cmd_buffer->bt_next = 0;
+   cmd_buffer->bt_next = ANV_STATE_NULL;
 
    anv_reloc_list_clear(&cmd_buffer->surface_relocs);
    cmd_buffer->last_ss_pool_center = 0;
