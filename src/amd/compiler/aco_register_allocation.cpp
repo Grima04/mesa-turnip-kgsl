@@ -1422,7 +1422,7 @@ void register_allocation(Program *program, std::vector<std::set<Temp>> live_out_
                      for (unsigned j = 0; j < i; j++) {
                         Operand& op = instr->operands[j];
                         if (op.isTemp() && op.tempId() == blocking_id) {
-                           op = Operand(pc_def.getTemp());
+                           op.setTemp(pc_def.getTemp());
                            op.setFixed(reg);
                         }
                      }
