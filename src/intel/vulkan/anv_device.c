@@ -2848,11 +2848,15 @@ void anv_GetDeviceQueue(
     uint32_t                                    queueIndex,
     VkQueue*                                    pQueue)
 {
-   ANV_FROM_HANDLE(anv_device, device, _device);
+   const VkDeviceQueueInfo2 info = {
+      .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_INFO_2,
+      .pNext = NULL,
+      .flags = 0,
+      .queueFamilyIndex = queueNodeIndex,
+      .queueIndex = queueIndex,
+   };
 
-   assert(queueIndex == 0);
-
-   *pQueue = anv_queue_to_handle(&device->queue);
+   anv_GetDeviceQueue2(_device, &info, pQueue);
 }
 
 void anv_GetDeviceQueue2(
