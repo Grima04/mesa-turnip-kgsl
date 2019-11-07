@@ -547,7 +547,7 @@ static void scan_output_helper(const nir_variable *var,
 			       const struct glsl_type *type,
 			       struct tgsi_shader_info *info)
 {
-	if (glsl_type_is_struct(type)) {
+	if (glsl_type_is_struct(type) || glsl_type_is_interface(type)) {
 		for (unsigned i = 0; i < glsl_get_length(type); i++) {
 			const struct glsl_type *ft = glsl_get_struct_field(type, i);
 			scan_output_helper(var, location, ft, info);
