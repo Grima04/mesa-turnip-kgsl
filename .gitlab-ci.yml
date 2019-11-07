@@ -29,6 +29,7 @@ variables:
 
 include:
   - project: 'wayland/ci-templates'
+    # Must be the same as in .gitlab-ci/lava-gitlab-ci.yml
     ref: 1f7f57c64ff4ebbf7292e3b7a13600518b8cb24c
     file: '/templates/debian.yml'
 
