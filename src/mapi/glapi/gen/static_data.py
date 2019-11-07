@@ -1631,6 +1631,7 @@ offsets = {
     "VertexArrayVertexAttribLFormatEXT": 1595,
     "VertexArrayVertexAttribBindingEXT": 1596,
     "VertexArrayVertexBindingDivisorEXT": 1597,
+    "NamedBufferPageCommitmentEXT": 1598,
 }
 
 functions = [

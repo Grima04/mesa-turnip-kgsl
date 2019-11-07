@@ -1299,6 +1299,7 @@ const struct function common_desktop_functions_possible[] = {
    /* GL_ARB_sparse_buffer */
    { "glBufferPageCommitmentARB", 43, -1 },
    { "glNamedBufferPageCommitmentARB", 43, -1 },
+   { "glNamedBufferPageCommitmentEXT", 43, -1 },
 
    /* GL_ARB_bindless_texture */
    { "glGetTextureHandleARB", 40, -1 },

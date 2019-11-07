@@ -457,4 +457,8 @@ void GLAPIENTRY
 _mesa_NamedBufferPageCommitmentARB(GLuint buffer, GLintptr offset,
                                    GLsizeiptr size, GLboolean commit);
 
+void GLAPIENTRY
+_mesa_NamedBufferPageCommitmentEXT(GLuint buffer, GLintptr offset,
+                                   GLsizeiptr size, GLboolean commit);
+
 #endif

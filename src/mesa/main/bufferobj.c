@@ -4954,3 +4954,23 @@ _mesa_NamedBufferPageCommitmentARB(GLuint buffer, GLintptr offset,
    buffer_page_commitment(ctx, bufferObj, offset, size, commit,
                           "glNamedBufferPageCommitmentARB");
 }
+
+void GLAPIENTRY
+_mesa_NamedBufferPageCommitmentEXT(GLuint buffer, GLintptr offset,
+                                   GLsizeiptr size, GLboolean commit)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   struct gl_buffer_object *bufferObj;
+
+   /* Use NamedBuffer* functions logic from EXT_direct_state_access */
+   if (buffer != 0) {
+      bufferObj = _mesa_lookup_bufferobj(ctx, buffer);
+      if (!_mesa_handle_bind_buffer_gen(ctx, buffer, &bufferObj,
+                                        "glNamedBufferPageCommitmentEXT"))
+         return;
+   } else {
+      bufferObj = ctx->Shared->NullBufferObj;
+   }
+   buffer_page_commitment(ctx, bufferObj, offset, size, commit,
+                          "glNamedBufferPageCommitmentEXT");
+}
