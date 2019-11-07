@@ -3688,7 +3688,7 @@ _mesa_GetVertexArrayIntegervEXT(GLuint vaobj, GLenum pname, GLint *param)
       case GL_FOG_COORD_ARRAY_POINTER:
       case GL_SECONDARY_COLOR_ARRAY_POINTER:
          _get_vao_pointerv(pname, vao, &ptr, "glGetVertexArrayIntegervEXT");
-         *param = (int) ((uint64_t) ptr & 0xFFFFFFFF);
+         *param = (int) ((intptr_t) ptr & 0xFFFFFFFF);
          break;
 
       default:
