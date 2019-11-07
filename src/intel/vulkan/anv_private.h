@@ -1803,6 +1803,9 @@ struct anv_descriptor_set_layout {
    /* Number of dynamic offsets used by this descriptor set */
    uint16_t dynamic_offset_count;
 
+   /* For each shader stage, which offsets apply to that stage */
+   uint16_t stage_dynamic_offsets[MESA_SHADER_STAGES];
+
    /* Size of the descriptor buffer for this descriptor set */
    uint32_t descriptor_buffer_size;
 

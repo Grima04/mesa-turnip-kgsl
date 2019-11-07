@@ -469,7 +469,15 @@ VkResult anv_CreateDescriptorSetLayout(
       case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
       case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
          set_layout->binding[b].dynamic_offset_index = dynamic_offset_count;
+         anv_foreach_stage(s, binding->stageFlags) {
+            STATIC_ASSERT(MAX_DYNAMIC_BUFFERS <=
+                          sizeof(set_layout->stage_dynamic_offsets[s]) * 8);
+            set_layout->stage_dynamic_offsets[s] |=
+               BITFIELD_RANGE(set_layout->binding[b].dynamic_offset_index,
+                              binding->descriptorCount);
+         }
          dynamic_offset_count += binding->descriptorCount;
+         assert(dynamic_offset_count < MAX_DYNAMIC_BUFFERS);
          break;
 
       default:
@@ -603,6 +611,7 @@ VkResult anv_CreatePipelineLayout(
          dynamic_offset_count += set_layout->binding[b].array_size;
       }
    }
+   assert(dynamic_offset_count < MAX_DYNAMIC_BUFFERS);
 
    struct mesa_sha1 ctx;
    _mesa_sha1_init(&ctx);

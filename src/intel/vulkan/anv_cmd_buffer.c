@@ -572,53 +572,65 @@ anv_cmd_buffer_bind_descriptor_set(struct anv_cmd_buffer *cmd_buffer,
    struct anv_descriptor_set_layout *set_layout =
       layout->set[set_index].layout;
 
-   struct anv_cmd_pipeline_state *pipe_state;
+   VkShaderStageFlags stages = set_layout->shader_stages &
+      (bind_point == VK_PIPELINE_BIND_POINT_COMPUTE ?
+       VK_SHADER_STAGE_COMPUTE_BIT : VK_SHADER_STAGE_ALL_GRAPHICS);
+
+   VkShaderStageFlags dirty_stages = 0;
    if (bind_point == VK_PIPELINE_BIND_POINT_COMPUTE) {
-      pipe_state = &cmd_buffer->state.compute.base;
+      if (cmd_buffer->state.compute.base.descriptors[set_index] != set) {
+         cmd_buffer->state.compute.base.descriptors[set_index] = set;
+         dirty_stages |= stages;
+      }
    } else {
       assert(bind_point == VK_PIPELINE_BIND_POINT_GRAPHICS);
-      pipe_state = &cmd_buffer->state.gfx.base;
+      if (cmd_buffer->state.gfx.base.descriptors[set_index] != set) {
+         cmd_buffer->state.gfx.base.descriptors[set_index] = set;
+         dirty_stages |= stages;
+      }
    }
-   pipe_state->descriptors[set_index] = set;
+
+   /* If it's a push descriptor set, we have to flag things as dirty
+    * regardless of whether or not the CPU-side data structure changed as we
+    * may have edited in-place.
+    */
+   if (set->pool == NULL)
+      dirty_stages |= stages;
 
    if (dynamic_offsets) {
       if (set_layout->dynamic_offset_count > 0) {
          uint32_t dynamic_offset_start =
             layout->set[set_index].dynamic_offset_start;
 
-         anv_foreach_stage(stage, set_layout->shader_stages) {
+         anv_foreach_stage(stage, stages) {
             struct anv_push_constants *push =
                &cmd_buffer->state.push_constants[stage];
+            uint32_t *push_offsets =
+               &push->dynamic_offsets[dynamic_offset_start];
 
             /* Assert that everything is in range */
             assert(set_layout->dynamic_offset_count <= *dynamic_offset_count);
             assert(dynamic_offset_start + set_layout->dynamic_offset_count <=
                    ARRAY_SIZE(push->dynamic_offsets));
 
-            typed_memcpy(&push->dynamic_offsets[dynamic_offset_start],
-                         *dynamic_offsets, set_layout->dynamic_offset_count);
+            unsigned mask = set_layout->stage_dynamic_offsets[stage];
+            STATIC_ASSERT(MAX_DYNAMIC_BUFFERS <= sizeof(mask) * 8);
+            while (mask) {
+               int i = u_bit_scan(&mask);
+               if (push_offsets[i] != (*dynamic_offsets)[i]) {
+                  push_offsets[i] = (*dynamic_offsets)[i];
+                  dirty_stages |= mesa_to_vk_shader_stage(stage);
+               }
+            }
          }
 
          *dynamic_offsets += set_layout->dynamic_offset_count;
          *dynamic_offset_count -= set_layout->dynamic_offset_count;
-
-         if (bind_point == VK_PIPELINE_BIND_POINT_COMPUTE) {
-            cmd_buffer->state.push_constants_dirty |=
-               VK_SHADER_STAGE_COMPUTE_BIT;
-         } else {
-            cmd_buffer->state.push_constants_dirty |=
-               VK_SHADER_STAGE_ALL_GRAPHICS;
-         }
       }
    }
 
-   if (bind_point == VK_PIPELINE_BIND_POINT_COMPUTE) {
-      cmd_buffer->state.descriptors_dirty |= VK_SHADER_STAGE_COMPUTE_BIT;
-   } else {
-      assert(bind_point == VK_PIPELINE_BIND_POINT_GRAPHICS);
-      cmd_buffer->state.descriptors_dirty |=
-         set_layout->shader_stages & VK_SHADER_STAGE_ALL_GRAPHICS;
-   }
+   cmd_buffer->state.descriptors_dirty |= dirty_stages;
+   cmd_buffer->state.push_constants_dirty |= dirty_stages;
 }
 
 void anv_CmdBindDescriptorSets(
