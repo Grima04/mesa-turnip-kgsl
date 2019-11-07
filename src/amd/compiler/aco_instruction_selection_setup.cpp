@@ -834,8 +834,6 @@ setup_isel_context(Program* program,
                                     (uint8_t*)nir->constant_data + nir->constant_data_size);
 
       /* the variable setup has to be done before lower_io / CSE */
-      if (nir->info.stage == MESA_SHADER_COMPUTE)
-         nir_lower_vars_to_explicit_types(nir, nir_var_mem_shared, shared_var_info);
       setup_variables(&ctx, nir);
 
       /* optimize and lower memory operations */
@@ -848,9 +846,7 @@ setup_isel_context(Program* program,
          lower_to_scalar = true;
          lower_pack = true;
       }
-      if (nir->info.stage == MESA_SHADER_COMPUTE)
-         lower_to_scalar |= nir_lower_explicit_io(nir, nir_var_mem_shared, nir_address_format_32bit_offset);
-      else
+      if (nir->info.stage != MESA_SHADER_COMPUTE)
          nir_lower_io(nir, (nir_variable_mode)(nir_var_shader_in | nir_var_shader_out), type_size, (nir_lower_io_options)0);
       nir_lower_explicit_io(nir, nir_var_mem_global, nir_address_format_64bit_global);
 
