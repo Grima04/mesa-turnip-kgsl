@@ -752,7 +752,7 @@ lower_image_intrinsic(nir_intrinsic_instr *intrin,
       nir_ssa_def_rewrite_uses(&intrin->dest.ssa, nir_src_for_ssa(desc));
    } else if (binding_offset > MAX_BINDING_TABLE_SIZE) {
       const bool write_only =
-         (var->data.image.access & ACCESS_NON_READABLE) != 0;
+         (var->data.access & ACCESS_NON_READABLE) != 0;
       nir_ssa_def *desc =
          build_descriptor_load(deref, 0, 2, 32, state);
       nir_ssa_def *handle = nir_channel(b, desc, write_only ? 1 : 0);
@@ -1321,7 +1321,7 @@ anv_nir_apply_pipeline_layout(const struct anv_physical_device *pdevice,
 
          /* NOTE: This is a uint8_t so we really do need to != 0 here */
          pipe_binding[i].write_only =
-            (var->data.image.access & ACCESS_NON_READABLE) != 0;
+            (var->data.access & ACCESS_NON_READABLE) != 0;
       }
    }
 

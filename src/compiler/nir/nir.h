@@ -431,6 +431,12 @@ typedef struct nir_variable {
       unsigned stream:9;
 
       /**
+       * Access flags for memory variables (SSBO/global), image uniforms, and
+       * bindless images in uniforms/inputs/outputs.
+       */
+      enum gl_access_qualifier access:8;
+
+      /**
        * output index for dual source blending.
        */
       unsigned index;
@@ -480,12 +486,7 @@ typedef struct nir_variable {
       unsigned offset;
 
       union {
-         /**
-          * ARB_shader_image_load_store qualifiers.
-          */
          struct {
-            enum gl_access_qualifier access:8;
-
             /** Image internal format if specified explicitly, otherwise GL_NONE. */
             GLenum16 format;
          } image;

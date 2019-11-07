@@ -1543,20 +1543,20 @@ apply_var_decoration(struct vtn_builder *b,
       var_data->read_only = true;
       break;
    case SpvDecorationNonReadable:
-      var_data->image.access |= ACCESS_NON_READABLE;
+      var_data->access |= ACCESS_NON_READABLE;
       break;
    case SpvDecorationNonWritable:
       var_data->read_only = true;
-      var_data->image.access |= ACCESS_NON_WRITEABLE;
+      var_data->access |= ACCESS_NON_WRITEABLE;
       break;
    case SpvDecorationRestrict:
-      var_data->image.access |= ACCESS_RESTRICT;
+      var_data->access |= ACCESS_RESTRICT;
       break;
    case SpvDecorationVolatile:
-      var_data->image.access |= ACCESS_VOLATILE;
+      var_data->access |= ACCESS_VOLATILE;
       break;
    case SpvDecorationCoherent:
-      var_data->image.access |= ACCESS_COHERENT;
+      var_data->access |= ACCESS_COHERENT;
       break;
    case SpvDecorationComponent:
       var_data->location_frac = dec->operands[0];

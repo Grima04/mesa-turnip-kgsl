@@ -599,11 +599,11 @@ nir_visitor::visit(ir_variable *ir)
    var->data.explicit_binding = ir->data.explicit_binding;
    var->data.bindless = ir->data.bindless;
    var->data.offset = ir->data.offset;
+   var->data.access = (gl_access_qualifier)image_access;
 
    if (var->type->without_array()->is_image()) {
-      var->data.image.access = (gl_access_qualifier)image_access;
       var->data.image.format = ir->data.image_format;
-   } else {
+   } else if (var->data.mode == nir_var_shader_out) {
       var->data.xfb.buffer = ir->data.xfb_buffer;
       var->data.xfb.stride = ir->data.xfb_stride;
    }
@@ -862,7 +862,7 @@ deref_get_qualifier(nir_deref_instr *deref)
    nir_deref_path path;
    nir_deref_path_init(&path, deref, NULL);
 
-   unsigned qualifiers = path.path[0]->var->data.image.access;
+   unsigned qualifiers = path.path[0]->var->data.access;
 
    const glsl_type *parent_type = path.path[0]->type;
    for (nir_deref_instr **cur_ptr = &path.path[1]; *cur_ptr; cur_ptr++) {

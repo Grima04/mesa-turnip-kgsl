@@ -458,7 +458,7 @@ print_var_decl(nir_variable *var, print_state *state)
            cent, samp, patch, inv, get_variable_mode_str(var->data.mode, false),
            glsl_interp_mode_name(var->data.interpolation));
 
-   enum gl_access_qualifier access = var->data.image.access;
+   enum gl_access_qualifier access = var->data.access;
    const char *const coher = (access & ACCESS_COHERENT) ? "coherent " : "";
    const char *const volat = (access & ACCESS_VOLATILE) ? "volatile " : "";
    const char *const restr = (access & ACCESS_RESTRICT) ? "restrict " : "";

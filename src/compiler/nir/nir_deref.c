@@ -401,7 +401,7 @@ deref_path_contains_coherent_decoration(nir_deref_path *path)
 {
    assert(path->path[0]->deref_type == nir_deref_type_var);
 
-   if (path->path[0]->var->data.image.access & ACCESS_COHERENT)
+   if (path->path[0]->var->data.access & ACCESS_COHERENT)
       return true;
 
    for (nir_deref_instr **p = &path->path[1]; *p; p++) {
