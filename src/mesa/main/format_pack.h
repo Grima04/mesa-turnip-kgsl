@@ -29,6 +29,10 @@
 
 #include "formats.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 
 /** Pack a uint8_t rgba[4] color to dest address */
 typedef void (*mesa_pack_ubyte_rgba_func)(const uint8_t src[4], void *dst);
@@ -100,5 +104,9 @@ _mesa_pack_ubyte_stencil_row(mesa_format format, uint32_t n,
 extern void
 _mesa_pack_uint_24_8_depth_stencil_row(mesa_format format, uint32_t n,
                                        const uint32_t *src, void *dst);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

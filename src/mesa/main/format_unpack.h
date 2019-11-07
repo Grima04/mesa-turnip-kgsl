@@ -27,6 +27,10 @@
 
 #include "formats.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 extern void
 _mesa_unpack_rgba_row(mesa_format format, uint32_t n,
                       const void *src, float dst[][4]);
@@ -67,5 +71,9 @@ _mesa_unpack_float_32_uint_24_8_depth_stencil_row(mesa_format format,
                                                   uint32_t n,
                                                   const void *src,
                                                   uint32_t *dst);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* FORMAT_UNPACK_H */
