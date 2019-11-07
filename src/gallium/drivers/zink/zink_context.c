@@ -1311,11 +1311,6 @@ blit_resolve(struct zink_context *ctx, const struct pipe_blit_info *info)
                      dst->image, dst->layout,
                      1, &region);
 
-   /* HACK: I have no idea why this is needed, but without it ioquake3
-    * randomly keeps fading to black.
-    */
-   flush_batch(ctx);
-
    return true;
 }
 
@@ -1390,11 +1385,6 @@ blit_native(struct zink_context *ctx, const struct pipe_blit_info *info)
                   dst->image, dst->layout,
                   1, &region,
                   filter(info->filter));
-
-   /* HACK: I have no idea why this is needed, but without it ioquake3
-    * randomly keeps fading to black.
-    */
-   flush_batch(ctx);
 
    return true;
 }
