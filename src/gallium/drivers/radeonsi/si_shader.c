@@ -1402,7 +1402,7 @@ static void si_nir_store_output_tcs(struct ac_shader_abi *abi,
 	addr = get_tcs_tes_buffer_address_from_generic_indices(ctx, vertex_index,
 							       param_index, name, index);
 
-	for (unsigned chan = 0; chan < 8; chan++) {
+	for (unsigned chan = component; chan < 8; chan++) {
 		if (!(writemask & (1 << chan)))
 			continue;
 		LLVMValueRef value = ac_llvm_extract_elem(&ctx->ac, src, chan - component);
