@@ -32,6 +32,7 @@ libgraw_null = shared_library(
   include_directories : inc_common,
   link_with : libgallium,
   dependencies : idep_mesautil,
+  name_prefix : host_machine.system() == 'windows' ? '' : 'lib',  # otherwise mingw will create libgraw_null.dll
 )
 
 libgraw = libgraw_null

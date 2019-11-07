@@ -32,6 +32,7 @@ libgraw_gdi = shared_library(
   dependencies : [
     dep_ws2_32, idep_mesautil, driver_swrast,
   ],
+  name_prefix : host_machine.system() == 'windows' ? '' : 'lib',  # otherwise mingw will create libgraw.dll
 )
 
 libgraw = libgraw_gdi
