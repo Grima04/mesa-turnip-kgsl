@@ -1477,10 +1477,30 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
         /* Reads 128-bit value raw off the tilebuffer during blending, tasty */
 
         case nir_intrinsic_load_raw_output_pan:
+        case nir_intrinsic_load_output_u8_as_fp16_pan:
                 reg = nir_dest_index(ctx, &instr->dest);
                 assert(ctx->is_blend);
 
+                /* T720 and below use different blend opcodes with slightly
+                 * different semantics than T760 and up */
+
                 midgard_instruction ld = m_ld_color_buffer_8(reg, 0);
+                bool old_blend = ctx->gpu_id < 0x750;
+
+                if (instr->intrinsic == nir_intrinsic_load_output_u8_as_fp16_pan) {
+                        ld.load_store.op = old_blend ?
+                                midgard_op_ld_color_buffer_u8_as_fp16_old :
+                                midgard_op_ld_color_buffer_u8_as_fp16;
+
+                        if (old_blend) {
+                                ld.load_store.address = 1;
+                                ld.load_store.arg_2 = 0x1E;
+                        }
+
+                        for (unsigned c = 2; c < 16; ++c)
+                                ld.swizzle[0][c] = 0;
+                }
+
                 emit_mir_instruction(ctx, ld);
                 break;
 
