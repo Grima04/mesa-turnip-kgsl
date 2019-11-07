@@ -755,6 +755,7 @@ panfrost_create_screen(int fd, struct renderonly *ro)
                                               panfrost_active_bos_cmp);
 
         pthread_mutex_init(&screen->bo_cache.lock, NULL);
+        list_inithead(&screen->bo_cache.lru);
         for (unsigned i = 0; i < ARRAY_SIZE(screen->bo_cache.buckets); ++i)
                 list_inithead(&screen->bo_cache.buckets[i]);
 

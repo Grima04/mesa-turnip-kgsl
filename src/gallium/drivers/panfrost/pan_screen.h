@@ -92,6 +92,12 @@ struct panfrost_screen {
         struct {
                 pthread_mutex_t lock;
 
+                /* List containing all cached BOs sorted in LRU (Least
+                 * Recently Used) order. This allows us to quickly evict BOs
+                 * that are more than 1 second old.
+                 */
+                struct list_head lru;
+
                 /* The BO cache is a set of buckets with power-of-two sizes
                  * ranging from 2^12 (4096, the page size) to
                  * 2^(12 + MAX_BO_CACHE_BUCKETS).
