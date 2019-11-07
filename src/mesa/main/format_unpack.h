@@ -43,9 +43,12 @@ extern void
 _mesa_unpack_ubyte_rgba_row(mesa_format format, uint32_t n,
                             const void *src, uint8_t dst[][4]);
 
-void
+static inline void
 _mesa_unpack_uint_rgba_row(mesa_format format, uint32_t n,
-                           const void *src, uint32_t dst[][4]);
+                           const void *src, uint32_t dst[][4])
+{
+   util_format_unpack_rgba(format, dst, src, n);
+}
 
 extern void
 _mesa_unpack_rgba_block(mesa_format format,
