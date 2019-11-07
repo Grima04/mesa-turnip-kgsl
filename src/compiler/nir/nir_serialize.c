@@ -613,7 +613,8 @@ union packed_instr {
       unsigned no_signed_wrap:1;
       unsigned no_unsigned_wrap:1;
       unsigned saturate:1;
-      unsigned writemask:4;
+      /* Reg: writemask; SSA: swizzles for 2 srcs */
+      unsigned writemask_or_two_swizzles:4;
       unsigned op:9;
       unsigned packed_src_ssa_16bit:1;
       /* Scalarized ALUs always have the same header. */
@@ -787,6 +788,12 @@ is_alu_src_ssa_16bit(write_ctx *ctx, const nir_alu_instr *alu)
       unsigned src_components = nir_ssa_alu_instr_src_components(alu, i);
 
       for (unsigned chan = 0; chan < src_components; chan++) {
+         /* The swizzles for src0.x and src1.x are stored
+          * in writemask_or_two_swizzles for SSA ALUs.
+          */
+         if (alu->dest.dest.is_ssa && i < 2 && chan == 0)
+            continue;
+
          if (alu->src[i].swizzle[chan] != chan)
             return false;
       }
@@ -809,9 +816,19 @@ write_alu(write_ctx *ctx, const nir_alu_instr *alu)
    header.alu.no_signed_wrap = alu->no_signed_wrap;
    header.alu.no_unsigned_wrap = alu->no_unsigned_wrap;
    header.alu.saturate = alu->dest.saturate;
-   header.alu.writemask = alu->dest.write_mask;
    header.alu.op = alu->op;
    header.alu.packed_src_ssa_16bit = is_alu_src_ssa_16bit(ctx, alu);
+
+   if (header.alu.packed_src_ssa_16bit &&
+       alu->dest.dest.is_ssa) {
+      /* For packed srcs of SSA ALUs, this field stores the swizzles. */
+      header.alu.writemask_or_two_swizzles = alu->src[0].swizzle[0];
+      if (num_srcs > 1)
+         header.alu.writemask_or_two_swizzles |= alu->src[1].swizzle[0] << 2;
+   } else if (!alu->dest.dest.is_ssa) {
+      /* For registers, this field is a writemask. */
+      header.alu.writemask_or_two_swizzles = alu->dest.write_mask;
+   }
 
    write_dest(ctx, &alu->dest.dest, header, alu->instr.type);
 
@@ -849,7 +866,6 @@ read_alu(read_ctx *ctx, union packed_instr header)
    alu->no_signed_wrap = header.alu.no_signed_wrap;
    alu->no_unsigned_wrap = header.alu.no_unsigned_wrap;
    alu->dest.saturate = header.alu.saturate;
-   alu->dest.write_mask = header.alu.writemask;
 
    read_dest(ctx, &alu->dest.dest, &alu->instr, header);
 
@@ -877,6 +893,20 @@ read_alu(read_ctx *ctx, union packed_instr header)
          alu->src[i].swizzle[2] = src.alu.swizzle_z;
          alu->src[i].swizzle[3] = src.alu.swizzle_w;
       }
+   }
+
+   if (alu->dest.dest.is_ssa) {
+      alu->dest.write_mask =
+         u_bit_consecutive(0, alu->dest.dest.ssa.num_components);
+   } else {
+      alu->dest.write_mask = header.alu.writemask_or_two_swizzles;
+   }
+
+   if (header.alu.packed_src_ssa_16bit &&
+       alu->dest.dest.is_ssa) {
+      alu->src[0].swizzle[0] = header.alu.writemask_or_two_swizzles & 0x3;
+      if (num_srcs > 1)
+         alu->src[1].swizzle[0] = header.alu.writemask_or_two_swizzles >> 2;
    }
 
    return alu;
