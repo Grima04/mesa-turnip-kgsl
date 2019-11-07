@@ -678,10 +678,7 @@ static LLVMValueRef get_dw_address_from_generic_indices(struct si_shader_context
 							LLVMValueRef base_addr,
 							LLVMValueRef vertex_index,
 							LLVMValueRef param_index,
-							unsigned input_index,
-							ubyte *name,
-							ubyte *index,
-							bool is_patch)
+							ubyte name, ubyte index)
 {
 	if (vertex_dw_stride) {
 		base_addr = ac_build_imad(&ctx->ac, vertex_index,
@@ -693,11 +690,11 @@ static LLVMValueRef get_dw_address_from_generic_indices(struct si_shader_context
 					  LLVMConstInt(ctx->i32, 4, 0), base_addr);
 	}
 
-	int param = is_patch ?
-		si_shader_io_get_unique_index_patch(name[input_index],
-						    index[input_index]) :
-		si_shader_io_get_unique_index(name[input_index],
-					      index[input_index], false);
+	int param = name == TGSI_SEMANTIC_PATCH ||
+		    name == TGSI_SEMANTIC_TESSINNER ||
+		    name == TGSI_SEMANTIC_TESSOUTER ?
+		si_shader_io_get_unique_index_patch(name, index) :
+		si_shader_io_get_unique_index(name, index, false);
 
 	/* Add the base address of the element. */
 	return LLVMBuildAdd(ctx->ac.builder, base_addr,
@@ -772,9 +769,8 @@ static LLVMValueRef get_dw_address(struct si_shader_context *ctx,
 
 	return get_dw_address_from_generic_indices(ctx, vertex_dw_stride,
 						   base_addr, vertex_index,
-						   ind_index, input_index,
-						   name, index,
-						   !reg.Register.Dimension);
+						   ind_index, name[input_index],
+						   index[input_index]);
 }
 
 /* The offchip buffer layout for TCS->TES is
@@ -1108,21 +1104,19 @@ static LLVMValueRef si_nir_load_tcs_varyings(struct ac_shader_abi *abi,
 		param_index = LLVMConstInt(ctx->i32, const_index, 0);
 	}
 
-	ubyte *names;
-	ubyte *indices;
+	ubyte name;
+	ubyte index;
 	if (load_input) {
-		names = info->input_semantic_name;
-		indices = info->input_semantic_index;
+		name = info->input_semantic_name[driver_location];
+		index = info->input_semantic_index[driver_location];
 	} else {
-		names = info->output_semantic_name;
-		indices = info->output_semantic_index;
+		name = info->output_semantic_name[driver_location];
+		index = info->output_semantic_index[driver_location];
 	}
 
 	dw_addr = get_dw_address_from_generic_indices(ctx, stride, dw_addr,
 						      vertex_index, param_index,
-						      driver_location,
-						      names, indices,
-						      is_patch);
+						      name, index);
 
 	LLVMValueRef value[4];
 	for (unsigned i = 0; i < num_components; i++) {
@@ -1353,6 +1347,8 @@ static void si_nir_store_output_tcs(struct ac_shader_abi *abi,
 	bool is_tess_factor = false, is_tess_inner = false;
 
 	driver_location = driver_location / 4;
+	ubyte name = info->output_semantic_name[driver_location];
+	ubyte index = info->output_semantic_index[driver_location];
 
 	bool is_const = !param_index;
 	if (!param_index)
@@ -1363,20 +1359,14 @@ static void si_nir_store_output_tcs(struct ac_shader_abi *abi,
 		dw_addr = get_tcs_out_current_patch_offset(ctx);
 		dw_addr = get_dw_address_from_generic_indices(ctx, stride, dw_addr,
 							      vertex_index, param_index,
-							      driver_location,
-							      info->output_semantic_name,
-							      info->output_semantic_index,
-							      is_patch);
+							      name, index);
 
 		skip_lds_store = !info->reads_pervertex_outputs;
 	} else {
 		dw_addr = get_tcs_out_current_patch_data_offset(ctx);
 		dw_addr = get_dw_address_from_generic_indices(ctx, NULL, dw_addr,
 							      vertex_index, param_index,
-							      driver_location,
-							      info->output_semantic_name,
-							      info->output_semantic_index,
-							      is_patch);
+							      name, index);
 
 		skip_lds_store = !info->reads_perpatch_outputs;
 
