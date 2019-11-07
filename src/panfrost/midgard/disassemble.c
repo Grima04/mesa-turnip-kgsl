@@ -502,19 +502,25 @@ print_mask(uint8_t mask, unsigned bits, midgard_dest_override override)
 }
 
 /* Prints the 4-bit masks found in texture and load/store ops, as opposed to
- * the 8-bit masks found in (vector) ALU ops */
+ * the 8-bit masks found in (vector) ALU ops. Supports texture-style 16-bit
+ * mode as well, but not load/store-style 16-bit mode. */
 
 static void
-print_mask_4(unsigned mask)
+print_mask_4(unsigned mask, bool upper)
 {
-        if (mask == 0xF) return;
+        if (mask == 0xF) {
+                if (upper)
+                        printf("'");
+
+                return;
+        }
 
         printf(".");
 
         for (unsigned i = 0; i < 4; ++i) {
                 bool a = (mask & (1 << i)) != 0;
                 if (a)
-                        printf("%c", components[i]);
+                        printf("%c", components[i + (upper ? 4 : 0)]);
         }
 }
 
@@ -1101,7 +1107,7 @@ print_load_store_instr(uint64_t data,
         }
 
         printf(" r%u", word->reg);
-        print_mask_4(word->mask);
+        print_mask_4(word->mask, false);
 
         if (!OP_IS_STORE(word->op))
                 update_dest(word->reg);
@@ -1149,29 +1155,6 @@ print_load_store_word(uint32_t *word, unsigned tabs)
         if (load_store->word2 != 3) {
                 print_load_store_instr(load_store->word2, tabs);
         }
-}
-
-static void
-print_texture_reg(bool full, bool select, bool upper)
-{
-        if (full)
-                printf("r%d", REG_TEX_BASE + select);
-        else
-                printf("hr%d", (REG_TEX_BASE + select) * 2 + upper);
-
-        if (full && upper)
-                printf("// error: out full / upper mutually exclusive\n");
-
-}
-
-static void
-print_texture_reg_triple(unsigned triple)
-{
-        bool full = triple & 1;
-        bool select = triple & 2;
-        bool upper = triple & 4;
-
-        print_texture_reg(full, select, upper);
 }
 
 static void
@@ -1314,10 +1297,10 @@ print_texture_word(uint32_t *word, unsigned tabs)
         /* Output modifiers are always interpreted floatly */
         print_outmod(texture->outmod, false);
 
-        printf(" ");
-
-        print_texture_reg(texture->out_full, texture->out_reg_select, texture->out_upper);
-        print_mask_4(texture->mask);
+        printf(" %sr%d", texture->out_full ? "" : "h",
+                        REG_TEX_BASE + texture->out_reg_select);
+        print_mask_4(texture->mask, texture->out_upper);
+        assert(!(texture->out_full && texture->out_upper));
         printf(", ");
 
         /* Depending on whether we read from textures directly or indirectly,
@@ -1350,9 +1333,13 @@ print_texture_word(uint32_t *word, unsigned tabs)
         }
 
         print_swizzle_vec4(texture->swizzle, false, false);
-        printf(", ");
+        printf(", %sr%d", texture->in_reg_full ? "" : "h", REG_TEX_BASE + texture->in_reg_select);
+        assert(!(texture->in_reg_full && texture->in_reg_upper));
 
-        print_texture_reg(texture->in_reg_full, texture->in_reg_select, texture->in_reg_upper);
+        /* TODO: integrate with swizzle */
+        if (texture->in_reg_upper)
+                printf("'");
+
         print_swizzle_vec4(texture->in_reg_swizzle, false, false);
 
         /* There is *always* an offset attached. Of
@@ -1367,7 +1354,17 @@ print_texture_word(uint32_t *word, unsigned tabs)
 
         if (texture->offset_register) {
                 printf(" + ");
-                print_texture_reg_triple(texture->offset_x);
+
+                bool full = texture->offset_x & 1;
+                bool select = texture->offset_x & 2;
+                bool upper = texture->offset_x & 4;
+
+                printf("%sr%d", full ? "" : "h", REG_TEX_BASE + select);
+                assert(!(texture->out_full && texture->out_upper));
+
+                /* TODO: integrate with swizzle */
+                if (upper)
+                        printf("'");
 
                 /* The less questions you ask, the better. */
 
