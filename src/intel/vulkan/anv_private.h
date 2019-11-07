@@ -2362,14 +2362,6 @@ struct anv_xfb_binding {
    VkDeviceSize                                 size;
 };
 
-#define ANV_PARAM_PUSH(offset)         ((1 << 16) | (uint32_t)(offset))
-#define ANV_PARAM_IS_PUSH(param)       ((uint32_t)(param) >> 16 == 1)
-#define ANV_PARAM_PUSH_OFFSET(param)   ((param) & 0xffff)
-
-#define ANV_PARAM_DYN_OFFSET(offset)      ((2 << 16) | (uint32_t)(offset))
-#define ANV_PARAM_IS_DYN_OFFSET(param)    ((uint32_t)(param) >> 16 == 2)
-#define ANV_PARAM_DYN_OFFSET_IDX(param)   ((param) & 0xffff)
-
 struct anv_push_constants {
    /** Push constant data provided by the client through vkPushConstants */
    uint8_t client_data[MAX_PUSH_CONSTANTS_SIZE];
@@ -2390,6 +2382,9 @@ struct anv_push_constants {
        * uploading the push constants for compute shaders.
        */
       uint32_t subgroup_id;
+
+      /** Pad out to a multiple of 32 bytes */
+      uint32_t pad[4];
    } cs;
 };
 

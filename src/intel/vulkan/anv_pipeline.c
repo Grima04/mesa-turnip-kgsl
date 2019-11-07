@@ -672,36 +672,10 @@ anv_pipeline_lower_nir(struct anv_pipeline *pipeline,
 
    NIR_PASS_V(nir, anv_nir_lower_ycbcr_textures, layout);
 
-   NIR_PASS_V(nir, anv_nir_lower_push_constants);
-
    if (nir->info.stage != MESA_SHADER_COMPUTE)
       NIR_PASS_V(nir, anv_nir_lower_multiview, pipeline->subpass->view_mask);
 
    nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));
-
-   if (nir->num_uniforms > 0) {
-      assert(prog_data->nr_params == 0);
-
-      /* If the shader uses any push constants at all, we'll just give
-       * them the maximum possible number
-       */
-      assert(nir->num_uniforms <= MAX_PUSH_CONSTANTS_SIZE);
-      nir->num_uniforms = MAX_PUSH_CONSTANTS_SIZE;
-      prog_data->nr_params += MAX_PUSH_CONSTANTS_SIZE / sizeof(float);
-      prog_data->param = ralloc_array(mem_ctx, uint32_t, prog_data->nr_params);
-
-      /* We now set the param values to be offsets into a
-       * anv_push_constant_data structure.  Since the compiler doesn't
-       * actually dereference any of the gl_constant_value pointers in the
-       * params array, it doesn't really matter what we put here.
-       */
-      struct anv_push_constants *null_data = NULL;
-      /* Fill out the push constants section of the param array */
-      for (unsigned i = 0; i < MAX_PUSH_CONSTANTS_SIZE / sizeof(float); i++) {
-         prog_data->param[i] = ANV_PARAM_PUSH(
-            (uintptr_t)&null_data->client_data[i * sizeof(float)]);
-      }
-   }
 
    if (nir->info.num_ssbos > 0 || nir->info.num_images > 0)
       pipeline->needs_data_cache = true;
@@ -732,10 +706,8 @@ anv_pipeline_lower_nir(struct anv_pipeline *pipeline,
               nir_lower_non_uniform_texture_access |
               nir_lower_non_uniform_image_access);
 
-   if (nir->info.stage != MESA_SHADER_COMPUTE)
-      brw_nir_analyze_ubo_ranges(compiler, nir, NULL, prog_data->ubo_ranges);
-
-   assert(nir->num_uniforms == prog_data->nr_params * 4);
+   anv_nir_compute_push_layout(pdevice, nir, prog_data,
+                               &stage->bind_map, mem_ctx);
 
    stage->nir = nir;
 }
@@ -1394,9 +1366,8 @@ anv_pipeline_compile_graphics(struct anv_pipeline *pipeline,
          goto fail;
       }
 
-      anv_compute_push_layout(&pipeline->device->instance->physicalDevice,
-                              &stages[s].prog_data.base,
-                              &stages[s].bind_map);
+      anv_nir_validate_push_layout(&stages[s].prog_data.base,
+                                   &stages[s].bind_map);
 
       struct anv_shader_bin *bin =
          anv_device_upload_kernel(pipeline->device, cache,
@@ -1559,10 +1530,9 @@ anv_pipeline_compile_cs(struct anv_pipeline *pipeline,
          return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
       }
 
-      anv_pipeline_lower_nir(pipeline, mem_ctx, &stage, layout);
+      NIR_PASS_V(stage.nir, anv_nir_add_base_work_group_id);
 
-      NIR_PASS_V(stage.nir, anv_nir_add_base_work_group_id,
-                 &stage.prog_data.cs);
+      anv_pipeline_lower_nir(pipeline, mem_ctx, &stage, layout);
 
       NIR_PASS_V(stage.nir, nir_lower_vars_to_explicit_types,
                  nir_var_mem_shared, shared_type_info);
@@ -1577,6 +1547,8 @@ anv_pipeline_compile_cs(struct anv_pipeline *pipeline,
          ralloc_free(mem_ctx);
          return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
       }
+
+      anv_nir_validate_push_layout(&stage.prog_data.base, &stage.bind_map);
 
       const unsigned code_size = stage.prog_data.base.program_size;
       bin = anv_device_upload_kernel(pipeline->device, cache,

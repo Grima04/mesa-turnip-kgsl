@@ -46,9 +46,8 @@ struct apply_pipeline_layout_state {
    /* Place to flag lowered instructions so we don't lower them twice */
    struct set *lowered_instrs;
 
-   int dynamic_offset_uniform_start;
-
    bool uses_constants;
+   bool has_dynamic_buffers;
    uint8_t constants_offset;
    struct {
       bool desc_buffer_used;
@@ -564,7 +563,7 @@ lower_load_vulkan_descriptor(nir_intrinsic_instr *intrin,
       if (!state->add_bounds_checks)
          desc = nir_pack_64_2x32(b, nir_channels(b, desc, 0x3));
 
-      if (state->dynamic_offset_uniform_start >= 0) {
+      if (state->has_dynamic_buffers) {
          /* This shader has dynamic offsets and we have no way of knowing
           * (save from the dynamic offset base index) if this buffer has a
           * dynamic offset.
@@ -598,8 +597,10 @@ lower_load_vulkan_descriptor(nir_intrinsic_instr *intrin,
          }
 
          nir_intrinsic_instr *dyn_load =
-            nir_intrinsic_instr_create(b->shader, nir_intrinsic_load_uniform);
-         nir_intrinsic_set_base(dyn_load, state->dynamic_offset_uniform_start);
+            nir_intrinsic_instr_create(b->shader,
+                                       nir_intrinsic_load_push_constant);
+         nir_intrinsic_set_base(dyn_load, offsetof(struct anv_push_constants,
+                                                   dynamic_offsets));
          nir_intrinsic_set_range(dyn_load, MAX_DYNAMIC_BUFFERS * 4);
          dyn_load->src[0] = nir_src_for_ssa(nir_imul_imm(b, dyn_offset_idx, 4));
          dyn_load->num_components = 1;
@@ -1119,7 +1120,6 @@ anv_nir_apply_pipeline_layout(const struct anv_physical_device *pdevice,
       .add_bounds_checks = robust_buffer_access,
       .ssbo_addr_format = anv_nir_ssbo_addr_format(pdevice, robust_buffer_access),
       .lowered_instrs = _mesa_pointer_set_create(mem_ctx),
-      .dynamic_offset_uniform_start = -1,
    };
 
    for (unsigned s = 0; s < layout->num_sets; s++) {
@@ -1209,17 +1209,15 @@ anv_nir_apply_pipeline_layout(const struct anv_physical_device *pdevice,
    qsort(infos, used_binding_count, sizeof(struct binding_info),
          compare_binding_infos);
 
-   bool have_dynamic_buffers = false;
-
    for (unsigned i = 0; i < used_binding_count; i++) {
       unsigned set = infos[i].set, b = infos[i].binding;
       struct anv_descriptor_set_binding_layout *binding =
             &layout->set[set].layout->binding[b];
 
-      if (binding->dynamic_offset_index >= 0)
-         have_dynamic_buffers = true;
-
       const uint32_t array_size = binding->array_size;
+
+      if (binding->dynamic_offset_index >= 0)
+         state.has_dynamic_buffers = true;
 
       if (binding->data & ANV_DESCRIPTOR_SURFACE_STATE) {
          if (map->surface_count + array_size > MAX_BINDING_TABLE_SIZE ||
@@ -1288,16 +1286,6 @@ anv_nir_apply_pipeline_layout(const struct anv_physical_device *pdevice,
             }
          }
       }
-   }
-
-   if (have_dynamic_buffers) {
-      state.dynamic_offset_uniform_start = shader->num_uniforms;
-      uint32_t *param = brw_stage_prog_data_add_params(prog_data,
-                                                       MAX_DYNAMIC_BUFFERS);
-      for (unsigned i = 0; i < MAX_DYNAMIC_BUFFERS; i++)
-         param[i] = ANV_PARAM_DYN_OFFSET(i);
-      shader->num_uniforms += MAX_DYNAMIC_BUFFERS * 4;
-      assert(shader->num_uniforms == prog_data->nr_params * 4);
    }
 
    nir_foreach_variable(var, &shader->uniforms) {

@@ -560,7 +560,7 @@ anv_physical_device_init(struct anv_physical_device *device,
    device->compiler->constant_buffer_0_is_relative =
       device->info.gen < 8 || !device->has_context_isolation;
    device->compiler->supports_shader_constants = true;
-   device->compiler->compact_params = true;
+   device->compiler->compact_params = false;
 
    /* Broadwell PRM says:
     *

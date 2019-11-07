@@ -260,7 +260,6 @@ VULKAN_FILES := \
 	vulkan/anv_nir_apply_pipeline_layout.c \
 	vulkan/anv_nir_compute_push_layout.c \
 	vulkan/anv_nir_lower_multiview.c \
-	vulkan/anv_nir_lower_push_constants.c \
 	vulkan/anv_nir_lower_ycbcr_textures.c \
 	vulkan/anv_pass.c \
 	vulkan/anv_perf.c \

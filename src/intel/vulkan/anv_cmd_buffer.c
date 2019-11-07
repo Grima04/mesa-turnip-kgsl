@@ -745,71 +745,18 @@ anv_cmd_buffer_merge_dynamic(struct anv_cmd_buffer *cmd_buffer,
    return state;
 }
 
-static uint32_t
-anv_push_constant_value(const struct anv_cmd_pipeline_state *state,
-                        const struct anv_push_constants *data, uint32_t param)
-{
-   if (BRW_PARAM_IS_BUILTIN(param)) {
-      switch (param) {
-      case BRW_PARAM_BUILTIN_ZERO:
-         return 0;
-      case BRW_PARAM_BUILTIN_BASE_WORK_GROUP_ID_X:
-         return data->cs.base_work_group_id[0];
-      case BRW_PARAM_BUILTIN_BASE_WORK_GROUP_ID_Y:
-         return data->cs.base_work_group_id[1];
-      case BRW_PARAM_BUILTIN_BASE_WORK_GROUP_ID_Z:
-         return data->cs.base_work_group_id[2];
-      default:
-         unreachable("Invalid param builtin");
-      }
-   } else if (ANV_PARAM_IS_PUSH(param)) {
-      uint32_t offset = ANV_PARAM_PUSH_OFFSET(param);
-      assert(offset % sizeof(uint32_t) == 0);
-      if (offset < sizeof(data->client_data))
-         return *(uint32_t *)((uint8_t *)data + offset);
-      else
-         return 0;
-   } else if (ANV_PARAM_IS_DYN_OFFSET(param)) {
-      unsigned idx = ANV_PARAM_DYN_OFFSET_IDX(param);
-      assert(idx < MAX_DYNAMIC_BUFFERS);
-      return data->dynamic_offsets[idx];
-   }
-
-   assert(!"Invalid param");
-   return 0;
-}
-
 struct anv_state
 anv_cmd_buffer_push_constants(struct anv_cmd_buffer *cmd_buffer,
                               gl_shader_stage stage)
 {
-   struct anv_cmd_pipeline_state *pipeline_state = &cmd_buffer->state.gfx.base;
-   struct anv_pipeline *pipeline = cmd_buffer->state.gfx.base.pipeline;
-
-   /* If we don't have this stage, bail. */
-   if (!anv_pipeline_has_stage(pipeline, stage))
-      return (struct anv_state) { .offset = 0 };
-
    struct anv_push_constants *data =
       &cmd_buffer->state.push_constants[stage];
-   const struct brw_stage_prog_data *prog_data =
-      pipeline->shaders[stage]->prog_data;
-
-   /* If we don't actually have any push constants, bail. */
-   if (prog_data == NULL || prog_data->nr_params == 0)
-      return (struct anv_state) { .offset = 0 };
 
    struct anv_state state =
       anv_cmd_buffer_alloc_dynamic_state(cmd_buffer,
-                                         prog_data->nr_params * sizeof(float),
+                                         sizeof(struct anv_push_constants),
                                          32 /* bottom 5 bits MBZ */);
-
-   /* Walk through the param array and fill the buffer with data */
-   uint32_t *u32_map = state.map;
-   for (unsigned i = 0; i < prog_data->nr_params; i++) {
-      u32_map[i] = anv_push_constant_value(pipeline_state, data,
-                                           prog_data->param[i]);
-   }
+   memcpy(state.map, data, sizeof(struct anv_push_constants));
 
    return state;
 }
@@ -817,14 +764,13 @@ anv_cmd_buffer_push_constants(struct anv_cmd_buffer *cmd_buffer,
 struct anv_state
 anv_cmd_buffer_cs_push_constants(struct anv_cmd_buffer *cmd_buffer)
 {
-   struct anv_cmd_pipeline_state *pipeline_state = &cmd_buffer->state.compute.base;
    struct anv_push_constants *data =
       &cmd_buffer->state.push_constants[MESA_SHADER_COMPUTE];
    struct anv_pipeline *pipeline = cmd_buffer->state.compute.base.pipeline;
    const struct brw_cs_prog_data *cs_prog_data = get_cs_prog_data(pipeline);
-   const struct brw_stage_prog_data *prog_data = &cs_prog_data->base;
+   const struct anv_push_range *range =
+      &pipeline->shaders[MESA_SHADER_COMPUTE]->bind_map.push_ranges[0];
 
-   /* If we don't actually have any push constants, bail. */
    if (cs_prog_data->push.total.size == 0)
       return (struct anv_state) { .offset = 0 };
 
@@ -837,33 +783,25 @@ anv_cmd_buffer_cs_push_constants(struct anv_cmd_buffer *cmd_buffer)
                                          aligned_total_push_constants_size,
                                          push_constant_alignment);
 
-   /* Walk through the param array and fill the buffer with data */
-   uint32_t *u32_map = state.map;
+   void *dst = state.map;
+   const void *src = (char *)data + (range->start * 32);
 
    if (cs_prog_data->push.cross_thread.size > 0) {
-      for (unsigned i = 0;
-           i < cs_prog_data->push.cross_thread.dwords;
-           i++) {
-         assert(prog_data->param[i] != BRW_PARAM_BUILTIN_SUBGROUP_ID);
-         u32_map[i] = anv_push_constant_value(pipeline_state, data,
-                                              prog_data->param[i]);
-      }
+      memcpy(dst, src, cs_prog_data->push.cross_thread.size);
+      dst += cs_prog_data->push.cross_thread.size;
+      src += cs_prog_data->push.cross_thread.size;
    }
 
    if (cs_prog_data->push.per_thread.size > 0) {
       for (unsigned t = 0; t < cs_prog_data->threads; t++) {
-         unsigned dst =
-            8 * (cs_prog_data->push.per_thread.regs * t +
-                 cs_prog_data->push.cross_thread.regs);
-         unsigned src = cs_prog_data->push.cross_thread.dwords;
-         for ( ; src < prog_data->nr_params; src++, dst++) {
-            if (prog_data->param[src] == BRW_PARAM_BUILTIN_SUBGROUP_ID) {
-               u32_map[dst] = t;
-            } else {
-               u32_map[dst] = anv_push_constant_value(pipeline_state, data,
-                                                      prog_data->param[src]);
-            }
-         }
+         memcpy(dst, src, cs_prog_data->push.per_thread.size);
+
+         uint32_t *subgroup_id = dst +
+            offsetof(struct anv_push_constants, cs.subgroup_id) -
+            (range->start * 32 + cs_prog_data->push.cross_thread.size);
+         *subgroup_id = t;
+
+         dst += cs_prog_data->push.per_thread.size;
       }
    }
 
