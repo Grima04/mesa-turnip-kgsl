@@ -132,12 +132,21 @@ void validate(Program* program, FILE * output)
                check(instr->definitions[0].getTemp().type() == RegType::vgpr ||
                      (int) instr->format & (int) Format::VOPC ||
                      instr->opcode == aco_opcode::v_readfirstlane_b32 ||
-                     instr->opcode == aco_opcode::v_readlane_b32,
+                     instr->opcode == aco_opcode::v_readlane_b32 ||
+                     instr->opcode == aco_opcode::v_readlane_b32_e64,
                      "Wrong Definition type for VALU instruction", instr.get());
                unsigned num_sgpr = 0;
                unsigned sgpr_idx = instr->operands.size();
-               for (unsigned i = 0; i < instr->operands.size(); i++)
-               {
+               for (unsigned i = 0; i < instr->operands.size(); i++) {
+                  if (instr->opcode == aco_opcode::v_readfirstlane_b32 ||
+                      instr->opcode == aco_opcode::v_readlane_b32 ||
+                      instr->opcode == aco_opcode::v_readlane_b32_e64 ||
+                      instr->opcode == aco_opcode::v_writelane_b32 ||
+                      instr->opcode == aco_opcode::v_writelane_b32_e64) {
+                     check(!instr->operands[i].isLiteral(), "No literal allowed on VALU instruction", instr.get());
+                     check(i == 1 || (instr->operands[i].isTemp() && instr->operands[i].regClass() == v1), "Wrong Operand type for VALU instruction", instr.get());
+                     continue;
+                  }
                   if (instr->operands[i].isTemp() && instr->operands[i].regClass().type() == RegType::sgpr) {
                      check(i != 1 || (int) instr->format & (int) Format::VOP3A, "Wrong source position for SGPR argument", instr.get());
 

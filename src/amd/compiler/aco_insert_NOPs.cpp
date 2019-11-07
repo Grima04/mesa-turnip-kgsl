@@ -110,7 +110,9 @@ bool VALU_writes_sgpr(aco_ptr<Instruction>& instr)
       return true;
    if (instr->isVOP3() && instr->definitions.size() == 2)
       return true;
-   if (instr->opcode == aco_opcode::v_readfirstlane_b32 || instr->opcode == aco_opcode::v_readlane_b32)
+   if (instr->opcode == aco_opcode::v_readfirstlane_b32 ||
+       instr->opcode == aco_opcode::v_readlane_b32 ||
+       instr->opcode == aco_opcode::v_readlane_b32_e64)
       return true;
    return false;
 }
@@ -285,7 +287,9 @@ int handle_instruction_gfx8_9(NOP_ctx_gfx8_9& ctx, aco_ptr<Instruction>& instr,
 
       switch (instr->opcode) {
          case aco_opcode::v_readlane_b32:
-         case aco_opcode::v_writelane_b32: {
+         case aco_opcode::v_readlane_b32_e64:
+         case aco_opcode::v_writelane_b32:
+         case aco_opcode::v_writelane_b32_e64: {
             if (ctx.VALU_wrsgpr + 4 < new_idx)
                break;
             PhysReg reg = instr->operands[1].physReg();

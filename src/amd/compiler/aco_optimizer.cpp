@@ -421,14 +421,19 @@ bool can_use_VOP3(aco_ptr<Instruction>& instr)
    return instr->opcode != aco_opcode::v_madmk_f32 &&
           instr->opcode != aco_opcode::v_madak_f32 &&
           instr->opcode != aco_opcode::v_madmk_f16 &&
-          instr->opcode != aco_opcode::v_madak_f16;
+          instr->opcode != aco_opcode::v_madak_f16 &&
+          instr->opcode != aco_opcode::v_readlane_b32 &&
+          instr->opcode != aco_opcode::v_writelane_b32 &&
+          instr->opcode != aco_opcode::v_readfirstlane_b32;
 }
 
 bool can_apply_sgprs(aco_ptr<Instruction>& instr)
 {
    return instr->opcode != aco_opcode::v_readfirstlane_b32 &&
           instr->opcode != aco_opcode::v_readlane_b32 &&
-          instr->opcode != aco_opcode::v_writelane_b32;
+          instr->opcode != aco_opcode::v_readlane_b32_e64 &&
+          instr->opcode != aco_opcode::v_writelane_b32 &&
+          instr->opcode != aco_opcode::v_writelane_b32_e64;
 }
 
 void to_VOP3(opt_ctx& ctx, aco_ptr<Instruction>& instr)
@@ -458,6 +463,7 @@ bool can_accept_constant(aco_ptr<Instruction>& instr, unsigned operand)
    case aco_opcode::v_interp_p2_f32:
    case aco_opcode::v_mac_f32:
    case aco_opcode::v_writelane_b32:
+   case aco_opcode::v_writelane_b32_e64:
    case aco_opcode::v_cndmask_b32:
       return operand != 2;
    case aco_opcode::s_addk_i32:
@@ -466,6 +472,7 @@ bool can_accept_constant(aco_ptr<Instruction>& instr, unsigned operand)
    case aco_opcode::p_extract_vector:
    case aco_opcode::p_split_vector:
    case aco_opcode::v_readlane_b32:
+   case aco_opcode::v_readlane_b32_e64:
    case aco_opcode::v_readfirstlane_b32:
       return operand != 0;
    default:
@@ -494,7 +501,8 @@ bool valu_can_accept_literal(opt_ctx& ctx, aco_ptr<Instruction>& instr, unsigned
 
 bool valu_can_accept_vgpr(aco_ptr<Instruction>& instr, unsigned operand)
 {
-   if (instr->opcode == aco_opcode::v_readlane_b32 || instr->opcode == aco_opcode::v_writelane_b32)
+   if (instr->opcode == aco_opcode::v_readlane_b32 || instr->opcode == aco_opcode::v_readlane_b32_e64 ||
+       instr->opcode == aco_opcode::v_writelane_b32 || instr->opcode == aco_opcode::v_writelane_b32_e64)
       return operand != 1;
    return true;
 }
@@ -633,7 +641,7 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
          }
          if (info.is_constant() && can_accept_constant(instr, i)) {
             perfwarn(instr->opcode == aco_opcode::v_cndmask_b32 && i == 2, "v_cndmask_b32 with a constant selector", instr.get());
-            if (i == 0) {
+            if (i == 0 || instr->opcode == aco_opcode::v_readlane_b32 || instr->opcode == aco_opcode::v_writelane_b32) {
                instr->operands[i] = Operand(info.val);
                continue;
             } else if (!instr->isVOP3() && can_swap_operands(instr)) {

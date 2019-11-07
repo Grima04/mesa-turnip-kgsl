@@ -418,6 +418,19 @@ public:
       return insert(std::move(sub));
    }
 
+   Result readlane(Definition dst, Op vsrc, Op lane)
+   {
+      if (program->chip_class >= GFX8)
+         return vop3(aco_opcode::v_readlane_b32_e64, dst, vsrc, lane);
+      else
+         return vop2(aco_opcode::v_readlane_b32, dst, vsrc, lane);
+   }
+   Result writelane(Definition dst, Op val, Op lane, Op vsrc) {
+      if (program->chip_class >= GFX8)
+         return vop3(aco_opcode::v_writelane_b32_e64, dst, val, lane, vsrc);
+      else
+         return vop2(aco_opcode::v_writelane_b32, dst, val, lane, vsrc);
+   }
 <%
 import itertools
 formats = [("pseudo", [Format.PSEUDO], 'Pseudo_instruction', list(itertools.product(range(5), range(5))) + [(8, 1), (1, 8)]),

@@ -481,7 +481,7 @@ void emit_reduction(lower_context *ctx, aco_opcode op, ReduceOp reduce_op, unsig
 
          if (cluster_size == 64) {
             for (unsigned i = 0; i < src.size(); i++)
-               bld.vop3(aco_opcode::v_readlane_b32, Definition(PhysReg{sitmp+i}, s1), Operand(PhysReg{tmp+i}, v1), Operand(31u));
+               bld.readlane(Definition(PhysReg{sitmp+i}, s1), Operand(PhysReg{tmp+i}, v1), Operand(31u));
             emit_op(ctx, tmp, sitmp, tmp, vtmp, reduce_op, src.size());
          }
       } else if (cluster_size == 32) {
@@ -519,8 +519,8 @@ void emit_reduction(lower_context *ctx, aco_opcode op, ReduceOp reduce_op, unsig
          if (ctx->program->wave_size == 64) {
             /* fill in the gap in row 2 */
             for (unsigned i = 0; i < src.size(); i++) {
-               bld.vop3(aco_opcode::v_readlane_b32, Definition(PhysReg{sitmp+i}, s1), Operand(PhysReg{tmp+i}, v1), Operand(31u));
-               bld.vop3(aco_opcode::v_writelane_b32, Definition(PhysReg{vtmp+i}, v1), Operand(PhysReg{sitmp+i}, s1), Operand(32u));
+               bld.readlane(Definition(PhysReg{sitmp+i}, s1), Operand(PhysReg{tmp+i}, v1), Operand(31u));
+               bld.writelane(Definition(PhysReg{vtmp+i}, v1), Operand(PhysReg{sitmp+i}, s1), Operand(32u), Operand(PhysReg{vtmp+i}, v1));
             }
          }
          std::swap(tmp, vtmp);
@@ -531,8 +531,7 @@ void emit_reduction(lower_context *ctx, aco_opcode op, ReduceOp reduce_op, unsig
          if (!identity[i].isConstant() || identity[i].constantValue()) { /* bound_ctrl should take case of this overwise */
             if (ctx->program->chip_class < GFX10)
                assert((identity[i].isConstant() && !identity[i].isLiteral()) || identity[i].physReg() == PhysReg{sitmp+i});
-            bld.vop3(aco_opcode::v_writelane_b32, Definition(PhysReg{tmp+i}, v1),
-                     identity[i], Operand(0u));
+            bld.writelane(Definition(PhysReg{tmp+i}, v1), identity[i], Operand(0u), Operand(PhysReg{tmp+i}, v1));
          }
       }
       /* fall through */
@@ -562,7 +561,7 @@ void emit_reduction(lower_context *ctx, aco_opcode op, ReduceOp reduce_op, unsig
             bld.sop1(aco_opcode::s_mov_b32, Definition(exec_lo, s1), Operand(0u));
             bld.sop1(aco_opcode::s_mov_b32, Definition(exec_hi, s1), Operand(0xffffffffu));
             for (unsigned i = 0; i < src.size(); i++)
-               bld.vop3(aco_opcode::v_readlane_b32, Definition(PhysReg{sitmp+i}, s1), Operand(PhysReg{tmp+i}, v1), Operand(31u));
+               bld.readlane(Definition(PhysReg{sitmp+i}, s1), Operand(PhysReg{tmp+i}, v1), Operand(31u));
             emit_op(ctx, tmp, sitmp, tmp, vtmp, reduce_op, src.size());
          }
       } else {
@@ -581,8 +580,8 @@ void emit_reduction(lower_context *ctx, aco_opcode op, ReduceOp reduce_op, unsig
 
    if (op == aco_opcode::p_reduce && dst.regClass().type() == RegType::sgpr) {
       for (unsigned k = 0; k < src.size(); k++) {
-         bld.vop3(aco_opcode::v_readlane_b32, Definition(PhysReg{dst.physReg() + k}, s1),
-                  Operand(PhysReg{tmp + k}, v1), Operand(ctx->program->wave_size - 1));
+         bld.readlane(Definition(PhysReg{dst.physReg() + k}, s1),
+                      Operand(PhysReg{tmp + k}, v1), Operand(ctx->program->wave_size - 1));
       }
    } else if (!(dst.physReg() == tmp) && !dst_written) {
       for (unsigned k = 0; k < src.size(); k++) {
@@ -911,21 +910,20 @@ void lower_to_hw_instr(Program* program)
             case aco_opcode::p_spill:
             {
                assert(instr->operands[0].regClass() == v1.as_linear());
-               for (unsigned i = 0; i < instr->operands[2].size(); i++) {
-                  bld.vop3(aco_opcode::v_writelane_b32, bld.def(v1, instr->operands[0].physReg()),
-                           Operand(PhysReg{instr->operands[2].physReg() + i}, s1),
-                           Operand(instr->operands[1].constantValue() + i));
-               }
+               for (unsigned i = 0; i < instr->operands[2].size(); i++)
+                  bld.writelane(bld.def(v1, instr->operands[0].physReg()),
+                                Operand(PhysReg{instr->operands[2].physReg() + i}, s1),
+                                Operand(instr->operands[1].constantValue() + i),
+                                instr->operands[0]);
                break;
             }
             case aco_opcode::p_reload:
             {
                assert(instr->operands[0].regClass() == v1.as_linear());
-               for (unsigned i = 0; i < instr->definitions[0].size(); i++) {
-                  bld.vop3(aco_opcode::v_readlane_b32,
-                           bld.def(s1, PhysReg{instr->definitions[0].physReg() + i}),
-                           instr->operands[0], Operand(instr->operands[1].constantValue() + i));
-               }
+               for (unsigned i = 0; i < instr->definitions[0].size(); i++)
+                  bld.readlane(bld.def(s1, PhysReg{instr->definitions[0].physReg() + i}),
+                               instr->operands[0],
+                               Operand(instr->operands[1].constantValue() + i));
                break;
             }
             case aco_opcode::p_as_uniform:
