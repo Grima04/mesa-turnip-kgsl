@@ -68,68 +68,6 @@ for f in formats:
    rgb_formats.append(f)
 %>
 
-/* ubyte packing functions */
-
-%for f in rgb_formats:
-   %if not f.is_normalized():
-      <% continue %>
-   %endif
-
-static inline void
-unpack_ubyte_${f.short_name()}(const void *void_src, uint8_t dst[4])
-{
-   ${f.datatype()} *src = (${f.datatype()} *)void_src;
-   %if f.layout == parser.PACKED:
-      %for c in f.channels:
-         %if c.type != 'x':
-            ${c.datatype()} ${c.name} = UNPACK(*src, ${c.shift}, ${c.size});
-         %endif
-      %endfor
-   %elif f.layout == parser.ARRAY:
-      %for (i, c) in enumerate(f.channels):
-         %if c.type != 'x':
-            ${c.datatype()} ${c.name} = src[${i}];
-         %endif
-      %endfor
-   %else:
-      <% assert False %>
-   %endif
-
-   %for i in range(4):
-      <% s = f.swizzle[i] %>
-      %if 0 <= s and s <= parser.Swizzle.SWIZZLE_W:
-         <% c = f.channels[s] %>
-         %if c.type == parser.UNSIGNED:
-            %if f.colorspace == 'srgb' and c.name in 'rgb':
-               <% assert c.size == 8 %>
-               dst[${i}] = util_format_srgb_to_linear_8unorm(${c.name});
-            %else:
-               dst[${i}] = _mesa_unorm_to_unorm(${c.name}, ${c.size}, 8);
-            %endif
-         %elif c.type == parser.SIGNED:
-            dst[${i}] = _mesa_snorm_to_unorm(${c.name}, ${c.size}, 8);
-         %elif c.type == parser.FLOAT:
-            %if c.size == 32:
-               dst[${i}] = _mesa_float_to_unorm(${c.name}, 8);
-            %elif c.size == 16:
-               dst[${i}] = _mesa_half_to_unorm(${c.name}, 8);
-            %else:
-               <% assert False %>
-            %endif
-         %else:
-            <% assert False %>
-         %endif
-      %elif s == parser.Swizzle.SWIZZLE_ZERO:
-         dst[${i}] = 0;
-      %elif s == parser.Swizzle.SWIZZLE_ONE:
-         dst[${i}] = 255;
-      %else:
-         <% assert False %>
-      %endif
-   %endfor
-}
-%endfor
-
 /* integer packing functions */
 
 %for f in rgb_formats:
@@ -174,46 +112,6 @@ unpack_int_${f.short_name()}(const void *void_src, uint32_t dst[4])
 }
 %endfor
 
-
-void
-_mesa_unpack_ubyte_rgba_row(mesa_format format, uint32_t n,
-                            const void *src, uint8_t dst[][4])
-{
-   uint8_t *s = (uint8_t *)src;
-   uint32_t i;
-
-   switch (format) {
-%for f in rgb_formats:
-   %if not f.is_normalized():
-      <% continue %>
-   %endif
-
-   case ${f.name}:
-      for (i = 0; i < n; ++i) {
-         unpack_ubyte_${f.short_name()}(s, dst[i]);
-         s += ${f.block_size() // 8};
-      }
-      break;
-%endfor
-   default:
-      /* get float values, convert to ubyte */
-      {
-         float *tmp = malloc(n * 4 * sizeof(float));
-         if (tmp) {
-            uint32_t i;
-            _mesa_unpack_rgba_row(format, n, src, (float (*)[4]) tmp);
-            for (i = 0; i < n; i++) {
-               dst[i][0] = _mesa_float_to_unorm(tmp[i*4+0], 8);
-               dst[i][1] = _mesa_float_to_unorm(tmp[i*4+1], 8);
-               dst[i][2] = _mesa_float_to_unorm(tmp[i*4+2], 8);
-               dst[i][3] = _mesa_float_to_unorm(tmp[i*4+3], 8);
-            }
-            free(tmp);
-         }
-      }
-      break;
-   }
-}
 
 void
 _mesa_unpack_uint_rgba_row(mesa_format format, uint32_t n,

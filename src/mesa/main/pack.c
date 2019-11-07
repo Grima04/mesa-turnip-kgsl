@@ -1633,6 +1633,34 @@ _mesa_unpack_color_index_to_rgba_ubyte(struct gl_context *ctx, GLuint dims,
    return dst;
 }
 
+void
+_mesa_unpack_ubyte_rgba_row(mesa_format format, uint32_t n,
+                            const void *src, uint8_t dst[][4])
+{
+   const struct util_format_unpack_description *unpack =
+      util_format_unpack_description((enum pipe_format)format);
+
+   if (unpack->unpack_rgba_8unorm) {
+      unpack->unpack_rgba_8unorm((uint8_t *)dst, 0, src, 0, n, 1);
+   } else {
+      /* get float values, convert to ubyte */
+      {
+         float *tmp = malloc(n * 4 * sizeof(float));
+         if (tmp) {
+            uint32_t i;
+            _mesa_unpack_rgba_row(format, n, src, (float (*)[4]) tmp);
+            for (i = 0; i < n; i++) {
+               dst[i][0] = _mesa_float_to_unorm(tmp[i*4+0], 8);
+               dst[i][1] = _mesa_float_to_unorm(tmp[i*4+1], 8);
+               dst[i][2] = _mesa_float_to_unorm(tmp[i*4+2], 8);
+               dst[i][3] = _mesa_float_to_unorm(tmp[i*4+3], 8);
+            }
+            free(tmp);
+         }
+      }
+   }
+}
+
 /**
  * Unpack a 2D rect of pixels returning float RGBA colors.
  * \param format  the source image format
