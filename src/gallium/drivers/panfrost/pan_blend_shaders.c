@@ -168,7 +168,7 @@ panfrost_compile_blend_shader(
                 nir_make_options(cso, 1);
         NIR_PASS_V(shader, nir_lower_blend, options);
 
-        NIR_PASS_V(shader, nir_lower_framebuffer, format);
+        NIR_PASS_V(shader, nir_lower_framebuffer, format, screen->gpu_id);
 
         /* Compile the built shader */
 
