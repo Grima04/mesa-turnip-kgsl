@@ -716,6 +716,13 @@ struct v3d_gs_prog_data {
         /* Total number of components written, for the shader state record. */
         uint32_t vpm_output_size;
 
+        /* Maximum SIMD dispatch width to not exceed VPM output size limits
+         * in the geometry shader. Notice that the final dispatch width has to
+         * be decided at draw time and could be lower based on the VPM pressure
+         * added by other shader stages.
+         */
+        uint8_t simd_width;
+
         /* Output primitive type */
         uint8_t out_prim_type;
 

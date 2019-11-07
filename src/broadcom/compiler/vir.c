@@ -680,6 +680,24 @@ v3d_gs_set_prog_data(struct v3d_compile *c,
         /* Output segment size is in sectors (8 rows of 32 bits per channel) */
         prog_data->vpm_output_size = align(c->vpm_output_size, 8) / 8;
 
+        /* Compute SIMD dispatch width and update VPM output size accordingly
+         * to ensure we can fit our program in memory. Available widths are
+         * 16, 8, 4, 1.
+         *
+         * Notice that at draw time we will have to consider VPM memory
+         * requirements from other stages and choose a smaller dispatch
+         * width if needed to fit the program in VPM memory.
+         */
+        prog_data->simd_width = 16;
+        while ((prog_data->simd_width > 1 && prog_data->vpm_output_size > 16) ||
+               prog_data->simd_width == 2) {
+                prog_data->simd_width >>= 1;
+                prog_data->vpm_output_size =
+                        align(prog_data->vpm_output_size, 2) / 2;
+        }
+        assert(prog_data->vpm_output_size <= 16);
+        assert(prog_data->simd_width != 2);
+
         prog_data->out_prim_type = c->s->info.gs.output_primitive;
         prog_data->num_invocations = c->s->info.gs.invocations;
 }
