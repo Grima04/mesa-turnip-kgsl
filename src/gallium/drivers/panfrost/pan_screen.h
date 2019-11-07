@@ -89,13 +89,16 @@ struct panfrost_screen {
         pthread_mutex_t active_bos_lock;
         struct set *active_bos;
 
-        pthread_mutex_t bo_cache_lock;
+        struct {
+                pthread_mutex_t lock;
 
-        /* The BO cache is a set of buckets with power-of-two sizes ranging
-         * from 2^12 (4096, the page size) to 2^(12 + MAX_BO_CACHE_BUCKETS).
-         * Each bucket is a linked list of free panfrost_bo objects. */
+                /* The BO cache is a set of buckets with power-of-two sizes
+                 * ranging from 2^12 (4096, the page size) to
+                 * 2^(12 + MAX_BO_CACHE_BUCKETS).
+                 * Each bucket is a linked list of free panfrost_bo objects. */
 
-        struct list_head bo_cache[NR_BO_CACHE_BUCKETS];
+                struct list_head buckets[NR_BO_CACHE_BUCKETS];
+        } bo_cache;
 };
 
 static inline struct panfrost_screen *

@@ -186,7 +186,7 @@ pan_bucket_index(unsigned size)
 static struct list_head *
 pan_bucket(struct panfrost_screen *screen, unsigned size)
 {
-        return &screen->bo_cache[pan_bucket_index(size)];
+        return &screen->bo_cache.buckets[pan_bucket_index(size)];
 }
 
 /* Tries to fetch a BO of sufficient size with the appropriate flags from the
@@ -198,7 +198,7 @@ static struct panfrost_bo *
 panfrost_bo_cache_fetch(struct panfrost_screen *screen,
                         size_t size, uint32_t flags, bool dontwait)
 {
-        pthread_mutex_lock(&screen->bo_cache_lock);
+        pthread_mutex_lock(&screen->bo_cache.lock);
         struct list_head *bucket = pan_bucket(screen, size);
         struct panfrost_bo *bo = NULL;
 
@@ -229,7 +229,7 @@ panfrost_bo_cache_fetch(struct panfrost_screen *screen,
                 bo = entry;
                 break;
         }
-        pthread_mutex_unlock(&screen->bo_cache_lock);
+        pthread_mutex_unlock(&screen->bo_cache.lock);
 
         return bo;
 }
@@ -245,7 +245,7 @@ panfrost_bo_cache_put(struct panfrost_bo *bo)
         if (bo->flags & PAN_BO_DONT_REUSE)
                 return false;
 
-        pthread_mutex_lock(&screen->bo_cache_lock);
+        pthread_mutex_lock(&screen->bo_cache.lock);
         struct list_head *bucket = pan_bucket(screen, bo->size);
         struct drm_panfrost_madvise madv;
 
@@ -257,7 +257,7 @@ panfrost_bo_cache_put(struct panfrost_bo *bo)
 
         /* Add us to the bucket */
         list_addtail(&bo->link, bucket);
-        pthread_mutex_unlock(&screen->bo_cache_lock);
+        pthread_mutex_unlock(&screen->bo_cache.lock);
 
         return true;
 }
@@ -272,16 +272,16 @@ void
 panfrost_bo_cache_evict_all(
                 struct panfrost_screen *screen)
 {
-        pthread_mutex_lock(&screen->bo_cache_lock);
-        for (unsigned i = 0; i < ARRAY_SIZE(screen->bo_cache); ++i) {
-                struct list_head *bucket = &screen->bo_cache[i];
+        pthread_mutex_lock(&screen->bo_cache.lock);
+        for (unsigned i = 0; i < ARRAY_SIZE(screen->bo_cache.buckets); ++i) {
+                struct list_head *bucket = &screen->bo_cache.buckets[i];
 
                 list_for_each_entry_safe(struct panfrost_bo, entry, bucket, link) {
                         list_del(&entry->link);
                         panfrost_bo_free(entry);
                 }
         }
-        pthread_mutex_unlock(&screen->bo_cache_lock);
+        pthread_mutex_unlock(&screen->bo_cache.lock);
 }
 
 void
