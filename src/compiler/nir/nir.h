@@ -437,14 +437,14 @@ typedef struct nir_variable {
       enum gl_access_qualifier access:8;
 
       /**
-       * output index for dual source blending.
-       */
-      unsigned index;
-
-      /**
        * Descriptor set binding for sampler or UBO.
        */
       unsigned descriptor_set:5;
+
+      /**
+       * output index for dual source blending.
+       */
+      unsigned index;
 
       /**
        * Initial binding point for a sampler or UBO.
