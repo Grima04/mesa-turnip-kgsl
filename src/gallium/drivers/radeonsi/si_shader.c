@@ -832,16 +832,15 @@ static LLVMValueRef get_tcs_tes_buffer_address_from_generic_indices(
 					struct si_shader_context *ctx,
 					LLVMValueRef vertex_index,
 					LLVMValueRef param_index,
-					unsigned param_base,
-					ubyte *name,
-					ubyte *index,
-					bool is_patch)
+					ubyte name, ubyte index)
 {
 	unsigned param_index_base;
 
-	param_index_base = is_patch ?
-		si_shader_io_get_unique_index_patch(name[param_base], index[param_base]) :
-		si_shader_io_get_unique_index(name[param_base], index[param_base], false);
+	param_index_base = name == TGSI_SEMANTIC_PATCH ||
+			   name == TGSI_SEMANTIC_TESSINNER ||
+			   name == TGSI_SEMANTIC_TESSOUTER ?
+		si_shader_io_get_unique_index_patch(name, index) :
+		si_shader_io_get_unique_index(name, index, false);
 
 	if (param_index) {
 		param_index = LLVMBuildAdd(ctx->ac.builder, param_index,
@@ -870,7 +869,6 @@ static LLVMValueRef get_tcs_tes_buffer_address_from_reg(
 	reg = src ? *src : tgsi_full_src_register_from_dst(dst);
 
 	if (reg.Register.Dimension) {
-
 		if (reg.Dimension.Indirect)
 			vertex_index = si_get_indirect_index(ctx, &reg.DimIndirect,
 							     1, reg.Dimension.Index);
@@ -900,14 +898,13 @@ static LLVMValueRef get_tcs_tes_buffer_address_from_reg(
 
 		param_index = si_get_indirect_index(ctx, &reg.Indirect,
 						    1, reg.Register.Index - param_base);
-
 	} else {
 		param_base = reg.Register.Index;
 	}
 
 	return get_tcs_tes_buffer_address_from_generic_indices(ctx, vertex_index,
-							       param_index, param_base,
-							       name, index, !reg.Register.Dimension);
+							       param_index, name[param_base],
+							       index[param_base]);
 }
 
 static LLVMValueRef buffer_load(struct lp_build_tgsi_context *bld_base,
@@ -1186,6 +1183,8 @@ LLVMValueRef si_nir_load_input_tes(struct ac_shader_abi *abi,
 	LLVMValueRef base, addr;
 
 	driver_location = driver_location / 4;
+	ubyte name = info->input_semantic_name[driver_location];
+	ubyte index = info->input_semantic_index[driver_location];
 
 	base = ac_get_arg(&ctx->ac, ctx->tcs_offchip_offset);
 
@@ -1194,10 +1193,8 @@ LLVMValueRef si_nir_load_input_tes(struct ac_shader_abi *abi,
 	}
 
 	addr = get_tcs_tes_buffer_address_from_generic_indices(ctx, vertex_index,
-							       param_index, driver_location,
-							       info->input_semantic_name,
-							       info->input_semantic_index,
-							       is_patch);
+							       param_index,
+							       name, index);
 
 	/* TODO: This will generate rather ordinary llvm code, although it
 	 * should be easy for the optimiser to fix up. In future we might want
@@ -1210,13 +1207,12 @@ LLVMValueRef si_nir_load_input_tes(struct ac_shader_abi *abi,
 		if (llvm_type_is_64bit(ctx, type)) {
 			offset *= 2;
 			if (offset == 4) {
+				ubyte name = info->input_semantic_name[driver_location + 1];
+				ubyte index = info->input_semantic_index[driver_location + 1];
                                 addr = get_tcs_tes_buffer_address_from_generic_indices(ctx,
                                                                                        vertex_index,
                                                                                        param_index,
-                                                                                       driver_location + 1,
-                                                                                       info->input_semantic_name,
-                                                                                       info->input_semantic_index,
-                                                                                       is_patch);
+										       name, index);
 			}
 
                         offset = offset % 4;
@@ -1390,10 +1386,7 @@ static void si_nir_store_output_tcs(struct ac_shader_abi *abi,
 	base = ac_get_arg(&ctx->ac, ctx->tcs_offchip_offset);
 
 	addr = get_tcs_tes_buffer_address_from_generic_indices(ctx, vertex_index,
-							       param_index, driver_location,
-							       info->output_semantic_name,
-							       info->output_semantic_index,
-							       is_patch);
+							       param_index, name, index);
 
 	for (unsigned chan = 0; chan < 8; chan++) {
 		if (!(writemask & (1 << chan)))
@@ -1402,13 +1395,12 @@ static void si_nir_store_output_tcs(struct ac_shader_abi *abi,
 
 		unsigned buffer_store_offset = chan % 4;
 		if (chan == 4) {
+			ubyte name = info->output_semantic_name[driver_location + 1];
+			ubyte index = info->output_semantic_index[driver_location + 1];
                         addr = get_tcs_tes_buffer_address_from_generic_indices(ctx,
                                                                                vertex_index,
                                                                                param_index,
-                                                                               driver_location + 1,
-                                                                               info->output_semantic_name,
-                                                                               info->output_semantic_index,
-                                                                               is_patch);
+									       name, index);
 		}
 
 		/* Skip LDS stores if there is no LDS read of this output. */
