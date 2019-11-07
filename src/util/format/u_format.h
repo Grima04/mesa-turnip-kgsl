@@ -1038,6 +1038,26 @@ util_format_srgb(enum pipe_format format)
       return PIPE_FORMAT_ASTC_12x10_SRGB;
    case PIPE_FORMAT_ASTC_12x12:
       return PIPE_FORMAT_ASTC_12x12_SRGB;
+   case PIPE_FORMAT_ASTC_3x3x3:
+      return PIPE_FORMAT_ASTC_3x3x3_SRGB;
+   case PIPE_FORMAT_ASTC_4x3x3:
+      return PIPE_FORMAT_ASTC_4x3x3_SRGB;
+   case PIPE_FORMAT_ASTC_4x4x3:
+      return PIPE_FORMAT_ASTC_4x4x3_SRGB;
+   case PIPE_FORMAT_ASTC_4x4x4:
+      return PIPE_FORMAT_ASTC_4x4x4_SRGB;
+   case PIPE_FORMAT_ASTC_5x4x4:
+      return PIPE_FORMAT_ASTC_5x4x4_SRGB;
+   case PIPE_FORMAT_ASTC_5x5x4:
+      return PIPE_FORMAT_ASTC_5x5x4_SRGB;
+   case PIPE_FORMAT_ASTC_5x5x5:
+      return PIPE_FORMAT_ASTC_5x5x5_SRGB;
+   case PIPE_FORMAT_ASTC_6x5x5:
+      return PIPE_FORMAT_ASTC_6x5x5_SRGB;
+   case PIPE_FORMAT_ASTC_6x6x5:
+      return PIPE_FORMAT_ASTC_6x6x5_SRGB;
+   case PIPE_FORMAT_ASTC_6x6x6:
+      return PIPE_FORMAT_ASTC_6x6x6_SRGB;
 
    default:
       return PIPE_FORMAT_NONE;
@@ -1126,6 +1146,26 @@ util_format_linear(enum pipe_format format)
       return PIPE_FORMAT_ASTC_12x10;
    case PIPE_FORMAT_ASTC_12x12_SRGB:
       return PIPE_FORMAT_ASTC_12x12;
+   case PIPE_FORMAT_ASTC_3x3x3_SRGB:
+      return PIPE_FORMAT_ASTC_3x3x3;
+   case PIPE_FORMAT_ASTC_4x3x3_SRGB:
+      return PIPE_FORMAT_ASTC_4x3x3;
+   case PIPE_FORMAT_ASTC_4x4x3_SRGB:
+      return PIPE_FORMAT_ASTC_4x4x3;
+   case PIPE_FORMAT_ASTC_4x4x4_SRGB:
+      return PIPE_FORMAT_ASTC_4x4x4;
+   case PIPE_FORMAT_ASTC_5x4x4_SRGB:
+      return PIPE_FORMAT_ASTC_5x4x4;
+   case PIPE_FORMAT_ASTC_5x5x4_SRGB:
+      return PIPE_FORMAT_ASTC_5x5x4;
+   case PIPE_FORMAT_ASTC_5x5x5_SRGB:
+      return PIPE_FORMAT_ASTC_5x5x5;
+   case PIPE_FORMAT_ASTC_6x5x5_SRGB:
+      return PIPE_FORMAT_ASTC_6x5x5;
+   case PIPE_FORMAT_ASTC_6x6x5_SRGB:
+      return PIPE_FORMAT_ASTC_6x6x5;
+   case PIPE_FORMAT_ASTC_6x6x6_SRGB:
+      return PIPE_FORMAT_ASTC_6x6x6;
    default:
       return format;
    }
