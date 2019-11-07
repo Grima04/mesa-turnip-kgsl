@@ -354,9 +354,21 @@ print_vector_src(unsigned src_binary,
         print_reg(reg, bits);
 
         //swizzle
-        if (bits == 16)
-                print_swizzle_vec8(src->swizzle, src->rep_high, src->rep_low);
-        else if (bits == 8)
+        if (bits == 16) {
+                /* When the mode of the instruction is itself 16-bit,
+                 * rep_low/high work more or less as expected. But if the mode
+                 * is 32-bit and we're stepping down, you only have vec4 and
+                 * the meaning shifts to rep_low as higher-half and rep_high is
+                 * never seen. TODO: are other modes similar? */
+
+                if (mode == midgard_reg_mode_32) {
+                        printf(".");
+                        print_swizzle_helper(src->swizzle, src->rep_low);
+                        assert(!src->rep_high);
+                } else {
+                        print_swizzle_vec8(src->swizzle, src->rep_high, src->rep_low);
+                }
+        } else if (bits == 8)
                 print_swizzle_vec16(src->swizzle, src->rep_high, src->rep_low, override);
         else if (bits == 32)
                 print_swizzle_vec4(src->swizzle, src->rep_high, src->rep_low);
