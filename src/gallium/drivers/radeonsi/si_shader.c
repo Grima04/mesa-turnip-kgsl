@@ -1081,8 +1081,21 @@ static LLVMValueRef si_nir_load_tcs_varyings(struct ac_shader_abi *abi,
 	struct tgsi_shader_info *info = &ctx->shader->selector->info;
 	struct lp_build_tgsi_context *bld_base = &ctx->bld_base;
 	LLVMValueRef dw_addr, stride;
+	ubyte name, index;
 
 	driver_location = driver_location / 4;
+
+	if (load_input) {
+		name = info->input_semantic_name[driver_location];
+		index = info->input_semantic_index[driver_location];
+	} else {
+		name = info->output_semantic_name[driver_location];
+		index = info->output_semantic_index[driver_location];
+	}
+
+	assert((name == TGSI_SEMANTIC_PATCH ||
+		name == TGSI_SEMANTIC_TESSINNER ||
+		name == TGSI_SEMANTIC_TESSOUTER) == is_patch);
 
 	if (load_input) {
 		stride = get_tcs_in_vertex_dw_stride(ctx);
@@ -1099,16 +1112,6 @@ static LLVMValueRef si_nir_load_tcs_varyings(struct ac_shader_abi *abi,
 
 	if (!param_index) {
 		param_index = LLVMConstInt(ctx->i32, const_index, 0);
-	}
-
-	ubyte name;
-	ubyte index;
-	if (load_input) {
-		name = info->input_semantic_name[driver_location];
-		index = info->input_semantic_index[driver_location];
-	} else {
-		name = info->output_semantic_name[driver_location];
-		index = info->output_semantic_index[driver_location];
 	}
 
 	dw_addr = get_dw_address_from_generic_indices(ctx, stride, dw_addr,
@@ -1185,6 +1188,10 @@ LLVMValueRef si_nir_load_input_tes(struct ac_shader_abi *abi,
 	driver_location = driver_location / 4;
 	ubyte name = info->input_semantic_name[driver_location];
 	ubyte index = info->input_semantic_index[driver_location];
+
+	assert((name == TGSI_SEMANTIC_PATCH ||
+		name == TGSI_SEMANTIC_TESSINNER ||
+		name == TGSI_SEMANTIC_TESSOUTER) == is_patch);
 
 	base = ac_get_arg(&ctx->ac, ctx->tcs_offchip_offset);
 
@@ -1349,6 +1356,10 @@ static void si_nir_store_output_tcs(struct ac_shader_abi *abi,
 	bool is_const = !param_index;
 	if (!param_index)
 		param_index = LLVMConstInt(ctx->i32, const_index, 0);
+
+	assert((name == TGSI_SEMANTIC_PATCH ||
+		name == TGSI_SEMANTIC_TESSINNER ||
+		name == TGSI_SEMANTIC_TESSOUTER) == is_patch);
 
 	if (!is_patch) {
 		stride = get_tcs_out_vertex_dw_stride(ctx);
