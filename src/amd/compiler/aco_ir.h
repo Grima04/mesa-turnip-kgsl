@@ -113,6 +113,8 @@ enum barrier_interaction : uint8_t {
    barrier_gs_data = 0x10,
    /* used for geometry shaders to ensure s_sendmsg instructions are in-order. */
    barrier_gs_sendmsg = 0x20,
+   /* used by barriers. created by s_barrier */
+   barrier_barrier = 0x40,
    barrier_count = 6,
 };
 

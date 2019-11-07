@@ -347,11 +347,6 @@ void MoveState::upwards_skip()
    source_idx++;
 }
 
-static bool is_spill_reload(aco_ptr<Instruction>& instr)
-{
-   return instr->opcode == aco_opcode::p_spill || instr->opcode == aco_opcode::p_reload;
-}
-
 bool can_reorder(Instruction* candidate)
 {
    switch (candidate->format) {
@@ -415,64 +410,119 @@ barrier_interaction get_barrier_interaction(Instruction* instr)
          return barrier_gs_sendmsg;
       else
          return barrier_none;
+   case Format::PSEUDO_BARRIER:
+      return barrier_barrier;
    default:
       return barrier_none;
    }
 }
 
-bool can_move_instr(aco_ptr<Instruction>& instr, Instruction* current, int moving_interaction)
+barrier_interaction parse_barrier(Instruction *instr)
 {
+   if (instr->format == Format::PSEUDO_BARRIER) {
+      switch (instr->opcode) {
+      case aco_opcode::p_memory_barrier_atomic:
+         return barrier_atomic;
+      /* For now, buffer and image barriers are treated the same. this is because of
+       * dEQP-VK.memory_model.message_passing.core11.u32.coherent.fence_fence.atomicwrite.device.payload_nonlocal.buffer.guard_nonlocal.image.comp
+       * which seems to use an image load to determine if the result of a buffer load is valid. So the ordering of the two loads is important.
+       * I /think/ we should probably eventually expand the meaning of a buffer barrier so that all buffer operations before it, must stay before it
+       * and that both image and buffer operations after it, must stay after it. We should also do the same for image barriers.
+       * Or perhaps the problem is that we don't have a combined barrier instruction for both buffers and images, but the CTS test expects us to?
+       * Either way, this solution should work. */
+      case aco_opcode::p_memory_barrier_buffer:
+      case aco_opcode::p_memory_barrier_image:
+         return (barrier_interaction)(barrier_image | barrier_buffer);
+      case aco_opcode::p_memory_barrier_shared:
+         return barrier_shared;
+      case aco_opcode::p_memory_barrier_common:
+         return (barrier_interaction)(barrier_image | barrier_buffer | barrier_shared | barrier_atomic);
+      case aco_opcode::p_memory_barrier_gs_data:
+         return barrier_gs_data;
+      case aco_opcode::p_memory_barrier_gs_sendmsg:
+         return barrier_gs_sendmsg;
+      default:
+         break;
+      }
+   } else if (instr->opcode == aco_opcode::s_barrier) {
+      return (barrier_interaction)(barrier_barrier | barrier_image | barrier_buffer | barrier_shared | barrier_atomic);
+   }
+   return barrier_none;
+}
+
+struct hazard_query {
+   bool contains_spill;
+   int barriers;
+   bool can_reorder_vmem;
+   bool can_reorder_smem;
+};
+
+void init_hazard_query(hazard_query *query) {
+   query->contains_spill = false;
+   query->barriers = 0;
+   query->can_reorder_vmem = true;
+   query->can_reorder_smem = true;
+}
+
+void add_to_hazard_query(hazard_query *query, Instruction *instr)
+{
+   query->barriers |= get_barrier_interaction(instr);
+   if (instr->opcode == aco_opcode::p_spill || instr->opcode == aco_opcode::p_reload)
+      query->contains_spill = true;
+
+   bool can_reorder_instr = can_reorder(instr);
+   query->can_reorder_smem &= instr->format != Format::SMEM || can_reorder_instr;
+   query->can_reorder_vmem &= !(instr->isVMEM() || instr->isFlatOrGlobal()) || can_reorder_instr;
+}
+
+enum HazardResult {
+   hazard_success,
+   hazard_fail_reorder_vmem_smem,
+   hazard_fail_reorder_ds,
+   hazard_fail_reorder_sendmsg,
+   hazard_fail_spill,
+   /* Must stop at these failures. The hazard query code doesn't consider them
+    * when added. */
+   hazard_fail_exec,
+   hazard_fail_barrier,
+};
+
+HazardResult perform_hazard_query(hazard_query *query, Instruction *instr)
+{
+   bool can_reorder_candidate = can_reorder(instr);
+
+   if (instr->opcode == aco_opcode::p_exit_early_if)
+      return hazard_fail_exec;
+   for (const Definition& def : instr->definitions) {
+      if (def.isFixed() && def.physReg() == exec)
+         return hazard_fail_exec;
+   }
+
    /* don't move exports so that they stay closer together */
    if (instr->format == Format::EXP)
-      return false;
+      return hazard_fail_barrier;
 
    /* don't move s_memtime/s_memrealtime */
    if (instr->opcode == aco_opcode::s_memtime || instr->opcode == aco_opcode::s_memrealtime)
-      return false;
+      return hazard_fail_barrier;
 
-   /* handle barriers */
+   if (query->barriers & parse_barrier(instr))
+      return hazard_fail_barrier;
 
-   /* TODO: instead of stopping, maybe try to move the barriers and any
-    * instructions interacting with them instead? */
-   if (instr->format != Format::PSEUDO_BARRIER) {
-      if (instr->opcode == aco_opcode::s_barrier) {
-         return can_reorder(current) && moving_interaction == barrier_none;
-      } else if (is_gs_or_done_sendmsg(instr.get())) {
-         int interaction = get_barrier_interaction(current);
-         interaction |= moving_interaction;
-         return !(interaction & get_barrier_interaction(instr.get()));
-      } else {
-         return true;
-      }
-   }
+   if (!query->can_reorder_smem && instr->format == Format::SMEM && !can_reorder_candidate)
+      return hazard_fail_reorder_vmem_smem;
+   if (!query->can_reorder_vmem && (instr->isVMEM() || instr->isFlatOrGlobal()) && !can_reorder_candidate)
+      return hazard_fail_reorder_vmem_smem;
+   if ((query->barriers & barrier_shared) && instr->format == Format::DS)
+      return hazard_fail_reorder_ds;
+   if (is_gs_or_done_sendmsg(instr) && (query->barriers & get_barrier_interaction(instr)))
+      return hazard_fail_reorder_sendmsg;
 
-   int interaction = get_barrier_interaction(current);
-   interaction |= moving_interaction;
+   if ((instr->opcode == aco_opcode::p_spill || instr->opcode == aco_opcode::p_reload) &&
+       query->contains_spill)
+      return hazard_fail_spill;
 
-   switch (instr->opcode) {
-   case aco_opcode::p_memory_barrier_atomic:
-      return !(interaction & barrier_atomic);
-   /* For now, buffer and image barriers are treated the same. this is because of
-    * dEQP-VK.memory_model.message_passing.core11.u32.coherent.fence_fence.atomicwrite.device.payload_nonlocal.buffer.guard_nonlocal.image.comp
-    * which seems to use an image load to determine if the result of a buffer load is valid. So the ordering of the two loads is important.
-    * I /think/ we should probably eventually expand the meaning of a buffer barrier so that all buffer operations before it, must stay before it
-    * and that both image and buffer operations after it, must stay after it. We should also do the same for image barriers.
-    * Or perhaps the problem is that we don't have a combined barrier instruction for both buffers and images, but the CTS test expects us to?
-    * Either way, this solution should work. */
-   case aco_opcode::p_memory_barrier_buffer:
-   case aco_opcode::p_memory_barrier_image:
-      return !(interaction & (barrier_image | barrier_buffer));
-   case aco_opcode::p_memory_barrier_shared:
-      return !(interaction & barrier_shared);
-   case aco_opcode::p_memory_barrier_common:
-      return !(interaction & (barrier_image | barrier_buffer | barrier_shared | barrier_atomic));
-   case aco_opcode::p_memory_barrier_gs_data:
-      return !(interaction & barrier_gs_data);
-   case aco_opcode::p_memory_barrier_gs_sendmsg:
-      return !(interaction & barrier_gs_sendmsg);
-   default:
-      return false;
-   }
+   return hazard_success;
 }
 
 void schedule_SMEM(sched_ctx& ctx, Block* block,
@@ -483,15 +533,15 @@ void schedule_SMEM(sched_ctx& ctx, Block* block,
    int window_size = SMEM_WINDOW_SIZE;
    int max_moves = SMEM_MAX_MOVES;
    int16_t k = 0;
-   bool can_reorder_cur = can_reorder(current);
 
    /* don't move s_memtime/s_memrealtime */
    if (current->opcode == aco_opcode::s_memtime || current->opcode == aco_opcode::s_memrealtime)
       return;
 
    /* first, check if we have instructions before current to move down */
-   int moving_interaction = barrier_none;
-   bool moving_spill = false;
+   hazard_query hq;
+   init_hazard_query(&hq);
+   add_to_hazard_query(&hq, current);
 
    ctx.mv.downwards_init(idx, false, false);
 
@@ -499,7 +549,6 @@ void schedule_SMEM(sched_ctx& ctx, Block* block,
       assert(candidate_idx >= 0);
       assert(candidate_idx == ctx.mv.source_idx);
       aco_ptr<Instruction>& candidate = block->instructions[candidate_idx];
-      bool can_reorder_candidate = can_reorder(candidate.get());
 
       /* break if we'd make the previous SMEM instruction stall */
       bool can_stall_prev_smem = idx <= ctx.last_SMEM_dep_idx && candidate_idx < ctx.last_SMEM_dep_idx;
@@ -507,43 +556,32 @@ void schedule_SMEM(sched_ctx& ctx, Block* block,
          break;
 
       /* break when encountering another MEM instruction, logical_start or barriers */
-      if (!can_reorder_candidate && !can_reorder_cur)
-         break;
       if (candidate->opcode == aco_opcode::p_logical_start)
-         break;
-      if (candidate->opcode == aco_opcode::p_exit_early_if)
-         break;
-      if (!can_move_instr(candidate, current, moving_interaction))
          break;
       if (candidate->isVMEM())
          break;
 
-      /* if current depends on candidate, add additional dependencies and continue */
-      bool writes_exec = false;
-      for (const Definition& def : candidate->definitions) {
-         if (def.isFixed() && def.physReg() == exec)
-            writes_exec = true;
-      }
-      if (writes_exec)
+      bool can_move_down = true;
+
+      HazardResult haz = perform_hazard_query(&hq, candidate.get());
+      if (haz == hazard_fail_reorder_ds || haz == hazard_fail_spill || haz == hazard_fail_reorder_sendmsg)
+         can_move_down = false;
+      else if (haz == hazard_fail_reorder_vmem_smem || haz == hazard_fail_barrier ||
+               haz == hazard_fail_exec)
          break;
 
-      bool can_move_down = true;
-      if (moving_spill && is_spill_reload(candidate))
-         can_move_down = false;
-      if ((moving_interaction & barrier_shared) && candidate->format == Format::DS)
-         can_move_down = false;
-      moving_interaction |= get_barrier_interaction(candidate.get());
-      moving_spill |= is_spill_reload(candidate);
-      if (!can_move_down) {
+      /* don't use LDS/GDS instructions to hide latency since it can
+       * significanly worsen LDS scheduling */
+      if (candidate->format == Format::DS || !can_move_down) {
+         add_to_hazard_query(&hq, candidate.get());
          ctx.mv.downwards_skip();
-         can_reorder_cur &= can_reorder_candidate;
          continue;
       }
 
       MoveResult res = ctx.mv.downwards_move(false);
       if (res == move_fail_ssa || res == move_fail_rar) {
+         add_to_hazard_query(&hq, candidate.get());
          ctx.mv.downwards_skip();
-         can_reorder_cur &= can_reorder_candidate;
          continue;
       } else if (res == move_fail_pressure) {
          break;
@@ -555,10 +593,6 @@ void schedule_SMEM(sched_ctx& ctx, Block* block,
    }
 
    /* find the first instruction depending on current or find another MEM */
-   moving_interaction = barrier_none;
-   moving_spill = false;
-   can_reorder_cur = true;
-
    ctx.mv.upwards_init(idx + 1, false);
 
    bool found_dependency = false;
@@ -567,16 +601,8 @@ void schedule_SMEM(sched_ctx& ctx, Block* block,
       assert(candidate_idx == ctx.mv.source_idx);
       assert(candidate_idx < (int) block->instructions.size());
       aco_ptr<Instruction>& candidate = block->instructions[candidate_idx];
-      bool can_reorder_candidate = can_reorder(candidate.get());
 
       if (candidate->opcode == aco_opcode::p_logical_end)
-         break;
-      if (!can_move_instr(candidate, current, moving_interaction))
-         break;
-
-      const bool writes_exec = std::any_of(candidate->definitions.begin(), candidate->definitions.end(),
-                                           [](const Definition& def) { return def.isFixed() && def.physReg() == exec;});
-      if (writes_exec)
          break;
 
       /* check if candidate depends on current */
@@ -584,31 +610,30 @@ void schedule_SMEM(sched_ctx& ctx, Block* block,
       /* no need to steal from following VMEM instructions */
       if (is_dependency && candidate->isVMEM())
          break;
-      if (moving_spill && is_spill_reload(candidate))
-         is_dependency = true;
-      if ((moving_interaction & barrier_shared) && candidate->format == Format::DS)
-         is_dependency = true;
-      moving_interaction |= get_barrier_interaction(candidate.get());
-      moving_spill |= is_spill_reload(candidate);
+
+      if (found_dependency) {
+         HazardResult haz = perform_hazard_query(&hq, candidate.get());
+         if (haz == hazard_fail_reorder_ds || haz == hazard_fail_spill || haz == hazard_fail_reorder_sendmsg)
+            is_dependency = true;
+         else if (haz == hazard_fail_reorder_vmem_smem || haz == hazard_fail_barrier ||
+                  haz == hazard_fail_exec)
+            break;
+      }
+
       if (is_dependency) {
          if (!found_dependency) {
             ctx.mv.upwards_set_insert_idx(candidate_idx);
+            init_hazard_query(&hq);
             found_dependency = true;
          }
       }
 
-      if (!can_reorder_candidate && !can_reorder_cur)
-         break;
-
-      if (!found_dependency) {
+      if (is_dependency || !found_dependency) {
+         if (found_dependency)
+            add_to_hazard_query(&hq, candidate.get());
+         else
+            k++;
          ctx.mv.upwards_skip();
-         k++;
-         continue;
-      }
-
-      if (is_dependency) {
-         ctx.mv.upwards_skip();
-         can_reorder_cur &= can_reorder_candidate;
          continue;
       }
 
@@ -617,8 +642,8 @@ void schedule_SMEM(sched_ctx& ctx, Block* block,
          /* no need to steal from following VMEM instructions */
          if (res == move_fail_ssa && candidate->isVMEM())
             break;
+         add_to_hazard_query(&hq, candidate.get());
          ctx.mv.upwards_skip();
-         can_reorder_cur &= can_reorder_candidate;
          continue;
       } else if (res == move_fail_pressure) {
          break;
@@ -639,14 +664,13 @@ void schedule_VMEM(sched_ctx& ctx, Block* block,
    int max_moves = VMEM_MAX_MOVES;
    int clause_max_grab_dist = VMEM_CLAUSE_MAX_GRAB_DIST;
    int16_t k = 0;
-   /* initially true as we don't pull other VMEM instructions
-    * through the current instruction */
-   bool can_reorder_vmem = true;
-   bool can_reorder_smem = true;
 
    /* first, check if we have instructions before current to move down */
-   int moving_interaction = barrier_none;
-   bool moving_spill = false;
+   hazard_query indep_hq;
+   hazard_query clause_hq;
+   init_hazard_query(&indep_hq);
+   init_hazard_query(&clause_hq);
+   add_to_hazard_query(&indep_hq, current);
 
    ctx.mv.downwards_init(idx, true, true);
 
@@ -654,17 +678,10 @@ void schedule_VMEM(sched_ctx& ctx, Block* block,
       assert(candidate_idx == ctx.mv.source_idx);
       assert(candidate_idx >= 0);
       aco_ptr<Instruction>& candidate = block->instructions[candidate_idx];
-      bool can_reorder_candidate = can_reorder(candidate.get());
       bool is_vmem = candidate->isVMEM() || candidate->isFlatOrGlobal();
 
       /* break when encountering another VMEM instruction, logical_start or barriers */
-      if (!can_reorder_smem && candidate->format == Format::SMEM && !can_reorder_candidate)
-         break;
       if (candidate->opcode == aco_opcode::p_logical_start)
-         break;
-      if (candidate->opcode == aco_opcode::p_exit_early_if)
-         break;
-      if (!can_move_instr(candidate, current, moving_interaction))
          break;
 
       /* break if we'd make the previous SMEM instruction stall */
@@ -677,41 +694,33 @@ void schedule_VMEM(sched_ctx& ctx, Block* block,
          bool same_resource = true;
          if (current->isVMEM())
             same_resource = candidate->operands[0].tempId() == current->operands[0].tempId();
-         bool can_reorder = can_reorder_vmem || can_reorder_candidate;
          int grab_dist = ctx.mv.insert_idx_clause - candidate_idx;
          /* We can't easily tell how much this will decrease the def-to-use
           * distances, so just use how far it will be moved as a heuristic. */
-         part_of_clause = can_reorder && same_resource && grab_dist < clause_max_grab_dist;
+         part_of_clause = same_resource && grab_dist < clause_max_grab_dist;
       }
 
       /* if current depends on candidate, add additional dependencies and continue */
       bool can_move_down = !is_vmem || part_of_clause;
-      bool writes_exec = false;
-      for (const Definition& def : candidate->definitions) {
-         if (def.isFixed() && def.physReg() == exec)
-            writes_exec = true;
-      }
-      if (writes_exec)
+
+      HazardResult haz = perform_hazard_query(part_of_clause ? &clause_hq : &indep_hq, candidate.get());
+      if (haz == hazard_fail_reorder_ds || haz == hazard_fail_spill || haz == hazard_fail_reorder_sendmsg)
+         can_move_down = false;
+      else if (haz != hazard_success)
          break;
 
-      if (moving_spill && is_spill_reload(candidate))
-         can_move_down = false;
-      if ((moving_interaction & barrier_shared) && candidate->format == Format::DS)
-         can_move_down = false;
-      moving_interaction |= get_barrier_interaction(candidate.get());
-      moving_spill |= is_spill_reload(candidate);
       if (!can_move_down) {
+         add_to_hazard_query(&indep_hq, candidate.get());
+         add_to_hazard_query(&clause_hq, candidate.get());
          ctx.mv.downwards_skip();
-         can_reorder_smem &= candidate->format != Format::SMEM || can_reorder_candidate;
-         can_reorder_vmem &= !is_vmem || can_reorder_candidate;
          continue;
       }
 
       MoveResult res = ctx.mv.downwards_move(part_of_clause);
       if (res == move_fail_ssa || res == move_fail_rar) {
+         add_to_hazard_query(&indep_hq, candidate.get());
+         add_to_hazard_query(&clause_hq, candidate.get());
          ctx.mv.downwards_skip();
-         can_reorder_smem &= candidate->format != Format::SMEM || can_reorder_candidate;
-         can_reorder_vmem &= !is_vmem || can_reorder_candidate;
          continue;
       } else if (res == move_fail_pressure) {
          break;
@@ -722,12 +731,6 @@ void schedule_VMEM(sched_ctx& ctx, Block* block,
    }
 
    /* find the first instruction depending on current or find another VMEM */
-   moving_interaction = barrier_none;
-   moving_spill = false;
-   // TODO: differentiate between loads and stores (load-load can always reorder)
-   can_reorder_vmem = true;
-   can_reorder_smem = true;
-
    ctx.mv.upwards_init(idx + 1, true);
 
    bool found_dependency = false;
@@ -736,42 +739,29 @@ void schedule_VMEM(sched_ctx& ctx, Block* block,
       assert(candidate_idx == ctx.mv.source_idx);
       assert(candidate_idx < (int) block->instructions.size());
       aco_ptr<Instruction>& candidate = block->instructions[candidate_idx];
-      bool can_reorder_candidate = can_reorder(candidate.get());
       bool is_vmem = candidate->isVMEM() || candidate->isFlatOrGlobal();
 
       if (candidate->opcode == aco_opcode::p_logical_end)
          break;
-      if (!can_move_instr(candidate, current, moving_interaction))
-         break;
-
-      const bool writes_exec = std::any_of(candidate->definitions.begin(), candidate->definitions.end(),
-                                           [](const Definition& def) {return def.isFixed() && def.physReg() == exec; });
-      if (writes_exec)
-         break;
 
       /* check if candidate depends on current */
       bool is_dependency = false;
-      if (candidate->format == Format::SMEM)
-         is_dependency = !can_reorder_smem && !can_reorder_candidate;
-      if (is_vmem)
-         is_dependency = !can_reorder_vmem && !can_reorder_candidate;
-      is_dependency |= !found_dependency && !ctx.mv.upwards_check_deps();
-      if (moving_spill && is_spill_reload(candidate))
-         is_dependency = true;
-      if ((moving_interaction & barrier_shared) && candidate->format == Format::DS)
-         is_dependency = true;
-      moving_interaction |= get_barrier_interaction(candidate.get());
-      moving_spill |= is_spill_reload(candidate);
-      if (is_dependency) {
-         /* update flag whether we can reorder other memory instructions */
-         can_reorder_smem &= candidate->format != Format::SMEM || can_reorder_candidate;
-         can_reorder_vmem &= !is_vmem || can_reorder_candidate;
+      if (found_dependency) {
+         HazardResult haz = perform_hazard_query(&indep_hq, candidate.get());
+         if (haz == hazard_fail_reorder_ds || haz == hazard_fail_spill ||
+             haz == hazard_fail_reorder_vmem_smem || haz == hazard_fail_reorder_sendmsg)
+            is_dependency = true;
+         else if (haz == hazard_fail_barrier || haz == hazard_fail_exec)
+            break;
+      }
 
+      is_dependency |= !found_dependency && !ctx.mv.upwards_check_deps();
+      if (is_dependency) {
          if (!found_dependency) {
             ctx.mv.upwards_set_insert_idx(candidate_idx);
+            init_hazard_query(&indep_hq);
             found_dependency = true;
          }
-
       } else if (is_vmem) {
          /* don't move up dependencies of other VMEM instructions */
          for (const Definition& def : candidate->definitions) {
@@ -781,15 +771,16 @@ void schedule_VMEM(sched_ctx& ctx, Block* block,
       }
 
       if (is_dependency || !found_dependency) {
+         if (found_dependency)
+            add_to_hazard_query(&indep_hq, candidate.get());
          ctx.mv.upwards_skip();
          continue;
       }
 
       MoveResult res = ctx.mv.upwards_move();
       if (res == move_fail_ssa || res == move_fail_rar) {
+         add_to_hazard_query(&indep_hq, candidate.get());
          ctx.mv.upwards_skip();
-         can_reorder_smem &= candidate->format != Format::SMEM || can_reorder_candidate;
-         can_reorder_vmem &= !is_vmem || can_reorder_candidate;
          continue;
       } else if (res == move_fail_pressure) {
          break;
@@ -809,47 +800,32 @@ void schedule_position_export(sched_ctx& ctx, Block* block,
 
    ctx.mv.downwards_init(idx, true, false);
 
-   /* first, check if we have instructions before current to move down */
-   int moving_interaction = barrier_none;
-   bool moving_spill = false;
+   hazard_query hq;
+   init_hazard_query(&hq);
+   add_to_hazard_query(&hq, current);
 
    for (int candidate_idx = idx - 1; k < max_moves && candidate_idx > (int) idx - window_size; candidate_idx--) {
       assert(candidate_idx >= 0);
       aco_ptr<Instruction>& candidate = block->instructions[candidate_idx];
 
-      /* break when encountering logical_start or barriers */
       if (candidate->opcode == aco_opcode::p_logical_start)
-         break;
-      if (candidate->opcode == aco_opcode::p_exit_early_if)
          break;
       if (candidate->isVMEM() || candidate->format == Format::SMEM || candidate->isFlatOrGlobal())
          break;
-      if (!can_move_instr(candidate, current, moving_interaction))
+
+      HazardResult haz = perform_hazard_query(&hq, candidate.get());
+      if (haz == hazard_fail_barrier || haz == hazard_fail_exec)
          break;
 
-      /* if current depends on candidate, add additional dependencies and continue */
-      bool writes_exec = false;
-      for (unsigned i = 0; i < candidate->definitions.size(); i++) {
-         if (candidate->definitions[i].isFixed() && candidate->definitions[i].physReg() == exec)
-            writes_exec = true;
-      }
-      if (writes_exec)
-         break;
-
-      bool can_move_down = true;
-      if (moving_spill && is_spill_reload(candidate))
-         can_move_down = false;
-      if ((moving_interaction & barrier_shared) && candidate->format == Format::DS)
-         can_move_down = false;
-      moving_interaction |= get_barrier_interaction(candidate.get());
-      moving_spill |= is_spill_reload(candidate);
-      if (!can_move_down) {
+      if (haz != hazard_success) {
+         add_to_hazard_query(&hq, candidate.get());
          ctx.mv.downwards_skip();
          continue;
       }
 
       MoveResult res = ctx.mv.downwards_move(false);
       if (res == move_fail_ssa || res == move_fail_rar) {
+         add_to_hazard_query(&hq, candidate.get());
          ctx.mv.downwards_skip();
          continue;
       } else if (res == move_fail_pressure) {
