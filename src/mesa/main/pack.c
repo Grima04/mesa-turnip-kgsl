@@ -55,7 +55,8 @@
 #include "glformats.h"
 #include "format_utils.h"
 #include "format_pack.h"
-
+#include "format_unpack.h"
+#include "util/format/u_format.h"
 
 /**
  * Flip the 8 bits in each byte of the given array.

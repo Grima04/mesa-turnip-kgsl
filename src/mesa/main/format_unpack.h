@@ -25,15 +25,19 @@
 #ifndef FORMAT_UNPACK_H
 #define FORMAT_UNPACK_H
 
+#include "util/format/u_format.h"
 #include "formats.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-extern void
+static inline void
 _mesa_unpack_rgba_row(mesa_format format, uint32_t n,
-                      const void *src, float dst[][4]);
+                      const void *src, float dst[][4])
+{
+   util_format_unpack_rgba(format, dst, src, n);
+}
 
 extern void
 _mesa_unpack_ubyte_rgba_row(mesa_format format, uint32_t n,
