@@ -602,10 +602,11 @@ intelSetTexBuffer(__DRIcontext *pDRICtx, GLint target, __DRIdrawable *dPriv)
 }
 
 static void
-intel_image_target_texture_2d(struct gl_context *ctx, GLenum target,
-			      struct gl_texture_object *texObj,
-			      struct gl_texture_image *texImage,
-			      GLeglImageOES image_handle)
+intel_image_target_texture(struct gl_context *ctx, GLenum target,
+                           struct gl_texture_object *texObj,
+                           struct gl_texture_image *texImage,
+                           GLeglImageOES image_handle,
+                           bool storage)
 {
    struct brw_context *brw = brw_context(ctx);
    struct intel_mipmap_tree *mt;
@@ -650,6 +651,16 @@ intel_image_target_texture_2d(struct gl_context *ctx, GLenum target,
 
    intel_set_texture_image_mt(brw, texImage, internal_format, mt->format, mt);
    intel_miptree_release(&mt);
+}
+
+static void
+intel_image_target_texture_2d(struct gl_context *ctx, GLenum target,
+                              struct gl_texture_object *texObj,
+                              struct gl_texture_image *texImage,
+                              GLeglImageOES image_handle)
+{
+   intel_image_target_texture(ctx, target, texObj, texImage, image_handle,
+                              false);
 }
 
 static bool
