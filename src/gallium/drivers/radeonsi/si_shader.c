@@ -1341,7 +1341,6 @@ static void si_nir_store_output_tcs(struct ac_shader_abi *abi,
 	struct si_shader_context *ctx = si_shader_context_from_abi(abi);
 	struct tgsi_shader_info *info = &ctx->shader->selector->info;
 	const unsigned component = var->data.location_frac;
-	const bool is_patch = var->data.patch;
 	unsigned driver_location = var->data.driver_location;
 	LLVMValueRef dw_addr, stride;
 	LLVMValueRef buffer, base, addr;
@@ -1356,6 +1355,10 @@ static void si_nir_store_output_tcs(struct ac_shader_abi *abi,
 	bool is_const = !param_index;
 	if (!param_index)
 		param_index = LLVMConstInt(ctx->i32, const_index, 0);
+
+	const bool is_patch = var->data.patch ||
+			      var->data.location == VARYING_SLOT_TESS_LEVEL_INNER ||
+			      var->data.location == VARYING_SLOT_TESS_LEVEL_OUTER;
 
 	assert((name == TGSI_SEMANTIC_PATCH ||
 		name == TGSI_SEMANTIC_TESSINNER ||
