@@ -523,6 +523,17 @@ reg_cp(struct ir3_cp_ctx *ctx, struct ir3_instruction *instr,
 					(src_reg->array.offset == 0))
 				return false;
 
+			/* When narrowing constant from 32b to 16b, it seems
+			 * to work only for float. So we should do this only with
+			 * float opcodes.
+			 */
+			if (src->cat1.dst_type == TYPE_F16) {
+				if (instr->opc == OPC_MOV && !type_float(instr->cat1.src_type))
+					return false;
+				if (!ir3_cat2_float(instr->opc) && !ir3_cat3_float(instr->opc))
+					return false;
+			}
+
 			src_reg = ir3_reg_clone(instr->block->shader, src_reg);
 			src_reg->flags = new_flags;
 			instr->regs[n+1] = src_reg;
