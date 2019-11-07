@@ -516,10 +516,6 @@ unpack_float_z_Z32X24S8(uint32_t n, const void *src, float *dst)
 
 
 
-/**
- * Unpack Z values.
- * The returned values will always be in the range [0.0, 1.0].
- */
 void
 _mesa_unpack_float_z_row(mesa_format format, uint32_t n,
                          const void *src, float *dst)
