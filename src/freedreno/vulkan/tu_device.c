@@ -257,6 +257,7 @@ tu_physical_device_init(struct tu_physical_device *device,
 
    switch (device->gpu_id) {
    case 630:
+   case 640:
       device->tile_align_w = 32;
       device->tile_align_h = 32;
       break;
