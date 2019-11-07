@@ -309,7 +309,8 @@ util_format_z32_float_unpack_z_32unorm(uint32_t *dst_row, unsigned dst_stride,
       uint32_t *dst = dst_row;
       const float *src = (const float *)src_row;
       for(x = 0; x < width; ++x) {
-         *dst++ = z32_float_to_z32_unorm(*src++);
+         float z = *src++;
+         *dst++ = z32_float_to_z32_unorm(CLAMP(z, 0.0f, 1.0f));
       }
       src_row += src_stride/sizeof(*src_row);
       dst_row += dst_stride/sizeof(*dst_row);
@@ -865,7 +866,7 @@ util_format_z32_float_s8x24_uint_unpack_z_32unorm(uint32_t *dst_row, unsigned ds
       uint32_t *dst = dst_row;
       const float *src = (const float *)src_row;
       for(x = 0; x < width; ++x) {
-         *dst = z32_float_to_z32_unorm(*src);
+         *dst = z32_float_to_z32_unorm(CLAMP(*src, 0.0f, 1.0f));
          src += 2;
          dst += 1;
       }
