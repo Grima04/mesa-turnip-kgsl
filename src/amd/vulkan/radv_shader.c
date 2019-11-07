@@ -301,6 +301,17 @@ radv_optimize_nir(struct nir_shader *shader, bool optimize_conservatively,
         NIR_PASS(progress, shader, nir_opt_move, nir_move_load_ubo);
 }
 
+static void
+shared_var_info(const struct glsl_type *type, unsigned *size, unsigned *align)
+{
+	assert(glsl_type_is_vector_or_scalar(type));
+
+	uint32_t comp_size = glsl_type_is_boolean(type) ? 4 : glsl_get_bit_size(type) / 8;
+	unsigned length = glsl_get_vector_elements(type);
+	*size = comp_size * length,
+	*align = comp_size;
+}
+
 nir_shader *
 radv_shader_compile_to_nir(struct radv_device *device,
 			   struct radv_shader_module *module,
@@ -502,6 +513,14 @@ radv_shader_compile_to_nir(struct radv_device *device,
 	 * to remove any copies introduced by nir_opt_find_array_copies().
 	 */
 	nir_lower_var_copies(nir);
+
+	/* Lower deref operations for compute shared memory. */
+	if (nir->info.stage == MESA_SHADER_COMPUTE) {
+		NIR_PASS_V(nir, nir_lower_vars_to_explicit_types,
+			   nir_var_mem_shared, shared_var_info);
+		NIR_PASS_V(nir, nir_lower_explicit_io,
+			   nir_var_mem_shared, nir_address_format_32bit_offset);
+	}
 
 	/* Lower large variables that are always constant with load_constant
 	 * intrinsics, which get turned into PC-relative loads from a data
