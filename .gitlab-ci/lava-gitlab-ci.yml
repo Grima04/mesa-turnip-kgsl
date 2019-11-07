@@ -36,7 +36,7 @@ include:
                   DEFCONFIG=${DEFCONFIG}
                   DEVICE_TREES="${DEVICE_TREES}"
                   KERNEL_IMAGE_NAME=${KERNEL_IMAGE_NAME}
-                  bash .gitlab-ci/lava-debian-install.sh'
+                  bash .gitlab-ci/container/lava_arm.sh'
     DEBIAN_VERSION: ${LAVA_DEBIAN_VERSION}
 
 lava_armhf:

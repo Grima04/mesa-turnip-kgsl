@@ -184,4 +184,3 @@ chroot /artifacts/rootfs sh /create-rootfs.sh
 rm /artifacts/rootfs/bin/qemu-arm-static
 rm /artifacts/rootfs/bin/qemu-aarch64-static
 rm /artifacts/rootfs/create-rootfs.sh
-

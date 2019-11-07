@@ -89,6 +89,7 @@ stages:
   extends:
     - .ci-run-policy
   variables:
+    DEBIAN_EXEC: 'bash .gitlab-ci/container/${CI_JOB_NAME}.sh'
     # no need to pull the whole repo to build the container image
     GIT_STRATEGY: none
 
@@ -96,8 +97,6 @@ x86_build:
   extends:
     - .debian@container-ifnot-exists
     - .container
-  variables:
-    DEBIAN_EXEC: 'bash .gitlab-ci/debian-install.sh'
 
 .use-x86_build:
   image: $DEBIAN_IMAGE
@@ -108,7 +107,6 @@ x86_test:
   extends: x86_build
   variables:
     DEBIAN_TAG: "$DEBIAN_TEST_TAG"
-    DEBIAN_EXEC: 'bash .gitlab-ci/debian-test-install.sh'
 
 x86_build_old:
   extends: x86_build
@@ -116,7 +114,6 @@ x86_build_old:
     DEBIAN_TAG: $STRETCH_TAG
     DEBIAN_VERSION: $STRETCH_VERSION
     DEBIAN_IMAGE: $STRETCH_IMAGE
-    DEBIAN_EXEC: 'bash .gitlab-ci/debian-stretch-install.sh'
 
 .use-x86_build_old:
   image: $STRETCH_IMAGE
@@ -129,7 +126,6 @@ arm_build:
     - .container
   variables:
     DEBIAN_TAG: "$DEBIAN_ARM64_TAG"
-    DEBIAN_EXEC: 'bash .gitlab-ci/debian-arm64-install.sh'
 
 arm_test:
   extends:
@@ -137,7 +133,6 @@ arm_test:
     - .container
   variables:
     DEBIAN_TAG: "$DEBIAN_ARM64_TEST_TAG"
-    DEBIAN_EXEC: 'bash .gitlab-ci/debian-arm64-test-install.sh'
 
 
 # BUILD
