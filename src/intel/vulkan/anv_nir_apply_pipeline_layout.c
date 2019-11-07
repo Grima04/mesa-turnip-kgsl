@@ -25,6 +25,7 @@
 #include "program/prog_parameter.h"
 #include "nir/nir_builder.h"
 #include "compiler/brw_nir.h"
+#include "util/mesa-sha1.h"
 #include "util/set.h"
 
 /* Sampler tables don't actually have a maximum size but we pick one just so
@@ -1318,6 +1319,7 @@ anv_nir_apply_pipeline_layout(const struct anv_physical_device *pdevice,
              dim == GLSL_SAMPLER_DIM_SUBPASS_MS)
             pipe_binding[i].input_attachment_index = var->data.index + i;
 
+         /* NOTE: This is a uint8_t so we really do need to != 0 here */
          pipe_binding[i].write_only =
             (var->data.image.access & ACCESS_NON_READABLE) != 0;
       }
@@ -1367,4 +1369,15 @@ anv_nir_apply_pipeline_layout(const struct anv_physical_device *pdevice,
    }
 
    ralloc_free(mem_ctx);
+
+   /* Now that we're done computing the surface and sampler portions of the
+    * bind map, hash them.  This lets us quickly determine if the actual
+    * mapping has changed and not just a no-op pipeline change.
+    */
+   _mesa_sha1_compute(map->surface_to_descriptor,
+                      map->surface_count * sizeof(struct anv_pipeline_binding),
+                      map->surface_sha1);
+   _mesa_sha1_compute(map->sampler_to_descriptor,
+                      map->sampler_count * sizeof(struct anv_pipeline_binding),
+                      map->sampler_sha1);
 }

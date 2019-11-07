@@ -380,6 +380,34 @@ anv_cmd_emit_conditional_render_predicate(struct anv_cmd_buffer *cmd_buffer)
                  cmd_buffer);
 }
 
+static bool
+mem_update(void *dst, const void *src, size_t size)
+{
+   if (memcmp(dst, src, size) == 0)
+      return false;
+
+   memcpy(dst, src, size);
+   return true;
+}
+
+static void
+set_dirty_for_bind_map(struct anv_cmd_buffer *cmd_buffer,
+                       gl_shader_stage stage,
+                       const struct anv_pipeline_bind_map *map)
+{
+   if (mem_update(cmd_buffer->state.surface_sha1s[stage],
+                  map->surface_sha1, sizeof(map->surface_sha1)))
+      cmd_buffer->state.descriptors_dirty |= mesa_to_vk_shader_stage(stage);
+
+   if (mem_update(cmd_buffer->state.sampler_sha1s[stage],
+                  map->sampler_sha1, sizeof(map->sampler_sha1)))
+      cmd_buffer->state.descriptors_dirty |= mesa_to_vk_shader_stage(stage);
+
+   if (mem_update(cmd_buffer->state.push_sha1s[stage],
+                  map->push_sha1, sizeof(map->push_sha1)))
+      cmd_buffer->state.push_constants_dirty |= mesa_to_vk_shader_stage(stage);
+}
+
 void anv_CmdBindPipeline(
     VkCommandBuffer                             commandBuffer,
     VkPipelineBindPoint                         pipelineBindPoint,
@@ -389,19 +417,30 @@ void anv_CmdBindPipeline(
    ANV_FROM_HANDLE(anv_pipeline, pipeline, _pipeline);
 
    switch (pipelineBindPoint) {
-   case VK_PIPELINE_BIND_POINT_COMPUTE:
+   case VK_PIPELINE_BIND_POINT_COMPUTE: {
+      if (cmd_buffer->state.compute.base.pipeline == pipeline)
+         return;
+
       cmd_buffer->state.compute.base.pipeline = pipeline;
       cmd_buffer->state.compute.pipeline_dirty = true;
-      cmd_buffer->state.push_constants_dirty |= VK_SHADER_STAGE_COMPUTE_BIT;
-      cmd_buffer->state.descriptors_dirty |= VK_SHADER_STAGE_COMPUTE_BIT;
+      const struct anv_pipeline_bind_map *bind_map =
+         &pipeline->shaders[MESA_SHADER_COMPUTE]->bind_map;
+      set_dirty_for_bind_map(cmd_buffer, MESA_SHADER_COMPUTE, bind_map);
       break;
+   }
 
    case VK_PIPELINE_BIND_POINT_GRAPHICS:
+      if (cmd_buffer->state.gfx.base.pipeline == pipeline)
+         return;
+
       cmd_buffer->state.gfx.base.pipeline = pipeline;
       cmd_buffer->state.gfx.vb_dirty |= pipeline->vb_used;
       cmd_buffer->state.gfx.dirty |= ANV_CMD_DIRTY_PIPELINE;
-      cmd_buffer->state.push_constants_dirty |= pipeline->active_stages;
-      cmd_buffer->state.descriptors_dirty |= pipeline->active_stages;
+
+      anv_foreach_stage(stage, pipeline->active_stages) {
+         set_dirty_for_bind_map(cmd_buffer, stage,
+                                &pipeline->shaders[stage]->bind_map);
+      }
 
       /* Apply the dynamic state from the pipeline */
       cmd_buffer->state.gfx.dirty |=

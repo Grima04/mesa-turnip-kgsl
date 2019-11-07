@@ -1550,6 +1550,12 @@ anv_pipeline_compile_cs(struct anv_pipeline *pipeline,
 
       anv_nir_validate_push_layout(&stage.prog_data.base, &stage.bind_map);
 
+      if (!stage.prog_data.cs.uses_num_work_groups) {
+         assert(stage.bind_map.surface_to_descriptor[0].set ==
+                ANV_DESCRIPTOR_SET_NUM_WORK_GROUPS);
+         stage.bind_map.surface_to_descriptor[0].set = ANV_DESCRIPTOR_SET_NULL;
+      }
+
       const unsigned code_size = stage.prog_data.base.program_size;
       bin = anv_device_upload_kernel(pipeline->device, cache,
                                      &stage.cache_key, sizeof(stage.cache_key),

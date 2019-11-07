@@ -23,6 +23,7 @@
 
 #include "anv_nir.h"
 #include "compiler/brw_nir.h"
+#include "util/mesa-sha1.h"
 
 void
 anv_nir_compute_push_layout(const struct anv_physical_device *pdevice,
@@ -173,6 +174,14 @@ anv_nir_compute_push_layout(const struct anv_physical_device *pdevice,
        */
       map->push_ranges[0] = push_constant_range;
    }
+
+   /* Now that we're done computing the push constant portion of the
+    * bind map, hash it.  This lets us quickly determine if the actual
+    * mapping has changed and not just a no-op pipeline change.
+    */
+   _mesa_sha1_compute(map->push_ranges,
+                      sizeof(map->push_ranges),
+                      map->push_sha1);
 }
 
 void

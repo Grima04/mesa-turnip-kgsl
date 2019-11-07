@@ -2009,6 +2009,7 @@ anv_descriptor_set_destroy(struct anv_device *device,
                            struct anv_descriptor_pool *pool,
                            struct anv_descriptor_set *set);
 
+#define ANV_DESCRIPTOR_SET_NULL             (UINT8_MAX - 5)
 #define ANV_DESCRIPTOR_SET_PUSH_CONSTANTS   (UINT8_MAX - 4)
 #define ANV_DESCRIPTOR_SET_DESCRIPTORS      (UINT8_MAX - 3)
 #define ANV_DESCRIPTOR_SET_NUM_WORK_GROUPS  (UINT8_MAX - 2)
@@ -2042,7 +2043,12 @@ struct anv_pipeline_binding {
    };
 
    /** For a storage image, whether it is write-only */
-   bool write_only;
+   uint8_t write_only;
+
+   /** Pad to 64 bits so that there are no holes and we can safely memcmp
+    * assuming POD zero-initialization.
+    */
+   uint8_t pad;
 };
 
 struct anv_push_range {
@@ -2575,6 +2581,10 @@ struct anv_cmd_state {
    struct anv_state                             binding_tables[MESA_SHADER_STAGES];
    struct anv_state                             samplers[MESA_SHADER_STAGES];
 
+   unsigned char                                sampler_sha1s[MESA_SHADER_STAGES][20];
+   unsigned char                                surface_sha1s[MESA_SHADER_STAGES][20];
+   unsigned char                                push_sha1s[MESA_SHADER_STAGES][20];
+
    /**
     * Whether or not the gen8 PMA fix is enabled.  We ensure that, at the top
     * of any command buffer it is disabled by disabling it in EndCommandBuffer
@@ -2936,6 +2946,10 @@ mesa_to_vk_shader_stage(gl_shader_stage mesa_stage)
         __tmp &= ~(1 << (stage)))
 
 struct anv_pipeline_bind_map {
+   unsigned char                                surface_sha1[20];
+   unsigned char                                sampler_sha1[20];
+   unsigned char                                push_sha1[20];
+
    uint32_t surface_count;
    uint32_t sampler_count;
 

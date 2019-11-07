@@ -2122,8 +2122,7 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
       return VK_SUCCESS;
    }
 
-   struct anv_shader_bin *bin = pipeline->shaders[stage];
-   struct anv_pipeline_bind_map *map = &bin->bind_map;
+   struct anv_pipeline_bind_map *map = &pipeline->shaders[stage]->bind_map;
    if (map->surface_count == 0) {
       *bt_state = (struct anv_state) { 0, };
       return VK_SUCCESS;
@@ -2149,6 +2148,10 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
       struct anv_state surface_state;
 
       switch (binding->set) {
+      case ANV_DESCRIPTOR_SET_NULL:
+         bt_map[s] = 0;
+         break;
+
       case ANV_DESCRIPTOR_SET_COLOR_ATTACHMENTS:
          /* Color attachment binding */
          assert(stage == MESA_SHADER_FRAGMENT);
@@ -2199,8 +2202,6 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
       case ANV_DESCRIPTOR_SET_NUM_WORK_GROUPS: {
          /* This is always the first binding for compute shaders */
          assert(stage == MESA_SHADER_COMPUTE && s == 0);
-         if (!get_cs_prog_data(pipeline)->uses_num_work_groups)
-            break;
 
          struct anv_state surface_state =
             anv_cmd_buffer_alloc_surface_state(cmd_buffer);
@@ -2305,16 +2306,6 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
             break;
 
          case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
-            /* If the shader never does any UBO pulls (this is a fairly common
-             * case) then we don't need to fill out those binding table entries.
-             * The real cost savings here is that we don't have to build the
-             * surface state for them which is surprisingly expensive when it's
-             * on the hot-path.
-             */
-            if (!bin->prog_data->has_ubo_pull)
-               continue;
-            /* Fall through */
-
          case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC: {
             /* Compute the offset within the buffer */
             struct anv_push_constants *push =
@@ -2729,11 +2720,6 @@ genX(cmd_buffer_flush_state)(struct anv_cmd_buffer *cmd_buffer)
 
    if (cmd_buffer->state.gfx.dirty & ANV_CMD_DIRTY_PIPELINE) {
       anv_batch_emit_batch(&cmd_buffer->batch, &pipeline->batch);
-
-      /* The exact descriptor layout is pulled from the pipeline, so we need
-       * to re-emit binding tables on every pipeline change.
-       */
-      cmd_buffer->state.descriptors_dirty |= pipeline->active_stages;
 
       /* If the pipeline changed, we may need to re-allocate push constant
        * space in the URB.
