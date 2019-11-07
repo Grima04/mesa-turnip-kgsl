@@ -216,6 +216,35 @@ mir_pack_swizzle_tex(midgard_instruction *ins)
         /* TODO: bias component */
 }
 
+/* Load store masks are 4-bits. Load/store ops pack for that. vec4 is the
+ * natural mask width; vec8 is constrained to be in pairs, vec2 is duplicated. TODO: 8-bit?
+ */
+
+static void
+mir_pack_ldst_mask(midgard_instruction *ins)
+{
+        midgard_reg_mode mode = mir_typesize(ins);
+        unsigned packed = ins->mask;
+
+        if (mode == midgard_reg_mode_64) {
+                packed = ((ins->mask & 0x2) ? (0x8 | 0x4) : 0) |
+                         ((ins->mask & 0x1) ? (0x2 | 0x1) : 0);
+        } else if (mode == midgard_reg_mode_16) {
+                packed = 0;
+
+                for (unsigned i = 0; i < 4; ++i) {
+                        /* Make sure we're duplicated */
+                        bool u = (ins->mask & (1 << (2*i + 0))) != 0;
+                        bool v = (ins->mask & (1 << (2*i + 1))) != 0;
+                        assert(u == v);
+
+                        packed |= (u << i);
+                }
+        }
+
+        ins->load_store.mask = packed;
+}
+
 static void
 emit_alu_bundle(compiler_context *ctx,
                 midgard_bundle *bundle,
@@ -312,8 +341,7 @@ emit_binary_bundle(compiler_context *ctx,
                 /* Copy masks */
 
                 for (unsigned i = 0; i < bundle->instruction_count; ++i) {
-                        bundle->instructions[i]->load_store.mask =
-                                bundle->instructions[i]->mask;
+                        mir_pack_ldst_mask(bundle->instructions[i]);
 
                         mir_pack_swizzle_ldst(bundle->instructions[i]);
                 }
