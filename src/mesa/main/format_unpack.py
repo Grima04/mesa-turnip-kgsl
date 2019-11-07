@@ -242,42 +242,6 @@ _mesa_unpack_uint_rgba_row(mesa_format format, uint32_t n,
    }
 }
 
-/**
- * Unpack a 2D rect of pixels returning float RGBA colors.
- * \param format  the source image format
- * \param src  start address of the source image
- * \param srcRowStride  source image row stride in bytes
- * \param dst  start address of the dest image
- * \param dstRowStride  dest image row stride in bytes
- * \param x  source image start X pos
- * \param y  source image start Y pos
- * \param width  width of rect region to convert
- * \param height  height of rect region to convert
- */
-void
-_mesa_unpack_rgba_block(mesa_format format,
-                        const void *src, int32_t srcRowStride,
-                        float dst[][4], int32_t dstRowStride,
-                        uint32_t x, uint32_t y, uint32_t width, uint32_t height)
-{
-   const uint32_t srcPixStride = _mesa_get_format_bytes(format);
-   const uint32_t dstPixStride = 4 * sizeof(float);
-   const uint8_t *srcRow;
-   uint8_t *dstRow;
-   uint32_t i;
-
-   /* XXX needs to be fixed for compressed formats */
-
-   srcRow = ((const uint8_t *) src) + srcRowStride * y + srcPixStride * x;
-   dstRow = ((uint8_t *) dst) + dstRowStride * y + dstPixStride * x;
-
-   for (i = 0; i < height; i++) {
-      _mesa_unpack_rgba_row(format, width, srcRow, (float (*)[4]) dstRow);
-
-      dstRow += dstRowStride;
-      srcRow += srcRowStride;
-   }
-}
 
 /** Helper struct for MESA_FORMAT_Z32_FLOAT_S8X24_UINT */
 struct z32f_x24s8
