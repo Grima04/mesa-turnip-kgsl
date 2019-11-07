@@ -2697,7 +2697,7 @@ midgard_compile_shader_nir(struct midgard_screen *screen, nir_shader *nir, midga
         program->tls_size = ctx->tls_size;
 
         if (midgard_debug & MIDGARD_DBG_SHADERS)
-                disassemble_midgard(program->compiled.data, program->compiled.size, gpu_id);
+                disassemble_midgard(program->compiled.data, program->compiled.size, gpu_id, ctx->stage);
 
         if (midgard_debug & MIDGARD_DBG_SHADERDB) {
                 unsigned nr_bundles = 0, nr_ins = 0;

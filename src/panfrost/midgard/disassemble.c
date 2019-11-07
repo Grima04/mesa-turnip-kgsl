@@ -1464,7 +1464,7 @@ print_texture_word(uint32_t *word, unsigned tabs)
 }
 
 struct midgard_disasm_stats
-disassemble_midgard(uint8_t *code, size_t size, unsigned gpu_id)
+disassemble_midgard(uint8_t *code, size_t size, unsigned gpu_id, gl_shader_stage stage)
 {
         uint32_t *words = (uint32_t *) code;
         unsigned num_words = size / 4;
