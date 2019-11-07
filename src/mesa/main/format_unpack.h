@@ -56,18 +56,27 @@ _mesa_unpack_rgba_block(mesa_format format,
                         float dst[][4], int32_t dstRowStride,
                         uint32_t x, uint32_t y, uint32_t width, uint32_t height);
 
-extern void
+static inline void
 _mesa_unpack_float_z_row(mesa_format format, uint32_t n,
-                         const void *src, float *dst);
+                         const void *src, float *dst)
+{
+   util_format_unpack_z_float((enum pipe_format)format, dst, src, n);
+}
 
 
-void
+static inline void
 _mesa_unpack_uint_z_row(mesa_format format, uint32_t n,
-                        const void *src, uint32_t *dst);
+                        const void *src, uint32_t *dst)
+{
+   util_format_unpack_z_32unorm((enum pipe_format)format, dst, src, n);
+}
 
-void
+static inline void
 _mesa_unpack_ubyte_stencil_row(mesa_format format, uint32_t n,
-                               const void *src, uint8_t *dst);
+                               const void *src, uint8_t *dst)
+{
+   util_format_unpack_s_8uint((enum pipe_format)format, dst, src, n);
+}
 
 void
 _mesa_unpack_uint_24_8_depth_stencil_row(mesa_format format, uint32_t n,
