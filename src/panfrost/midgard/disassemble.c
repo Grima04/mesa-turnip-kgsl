@@ -1170,7 +1170,7 @@ print_load_store_word(uint32_t *word, unsigned tabs)
 }
 
 static void
-print_texture_reg_select(uint8_t u)
+print_texture_reg_select(uint8_t u, unsigned base)
 {
         midgard_tex_register_select sel;
         memcpy(&sel, &u, sizeof(u));
@@ -1178,7 +1178,7 @@ print_texture_reg_select(uint8_t u)
         if (!sel.full)
                 printf("h");
 
-        printf("r%u", REG_TEX_BASE + sel.select);
+        printf("r%u", base + sel.select);
 
         unsigned component = sel.component;
 
@@ -1282,7 +1282,7 @@ sampler_type_name(enum mali_sampler_type t)
 #undef DEFINE_CASE
 
 static void
-print_texture_word(uint32_t *word, unsigned tabs)
+print_texture_word(uint32_t *word, unsigned tabs, unsigned in_reg_base, unsigned out_reg_base)
 {
         midgard_texture_word *texture = (midgard_texture_word *) word;
 
@@ -1310,7 +1310,7 @@ print_texture_word(uint32_t *word, unsigned tabs)
         print_outmod(texture->outmod, false);
 
         printf(" %sr%d", texture->out_full ? "" : "h",
-                        REG_TEX_BASE + texture->out_reg_select);
+                        out_reg_base + texture->out_reg_select);
         print_mask_4(texture->mask, texture->out_upper);
         assert(!(texture->out_full && texture->out_upper));
         printf(", ");
@@ -1320,7 +1320,7 @@ print_texture_word(uint32_t *word, unsigned tabs)
 
         if (texture->texture_register) {
                 printf("texture[");
-                print_texture_reg_select(texture->texture_handle);
+                print_texture_reg_select(texture->texture_handle, in_reg_base);
                 printf("], ");
 
                 /* Indirect, tut tut */
@@ -1335,7 +1335,7 @@ print_texture_word(uint32_t *word, unsigned tabs)
 
         if (texture->sampler_register) {
                 printf("[");
-                print_texture_reg_select(texture->sampler_handle);
+                print_texture_reg_select(texture->sampler_handle, in_reg_base);
                 printf("]");
 
                 midg_stats.sampler_count = -16;
@@ -1345,7 +1345,7 @@ print_texture_word(uint32_t *word, unsigned tabs)
         }
 
         print_swizzle_vec4(texture->swizzle, false, false);
-        printf(", %sr%d", texture->in_reg_full ? "" : "h", REG_TEX_BASE + texture->in_reg_select);
+        printf(", %sr%d", texture->in_reg_full ? "" : "h", in_reg_base + texture->in_reg_select);
         assert(!(texture->in_reg_full && texture->in_reg_upper));
 
         /* TODO: integrate with swizzle */
@@ -1371,7 +1371,7 @@ print_texture_word(uint32_t *word, unsigned tabs)
                 bool select = texture->offset_x & 2;
                 bool upper = texture->offset_x & 4;
 
-                printf("%sr%d", full ? "" : "h", REG_TEX_BASE + select);
+                printf("%sr%d", full ? "" : "h", in_reg_base + select);
                 assert(!(texture->out_full && texture->out_upper));
 
                 /* TODO: integrate with swizzle */
@@ -1421,7 +1421,7 @@ print_texture_word(uint32_t *word, unsigned tabs)
 
         if (texture->lod_register) {
                 printf("lod %c ", lod_operand);
-                print_texture_reg_select(texture->bias);
+                print_texture_reg_select(texture->bias, in_reg_base);
                 printf(", ");
 
                 if (texture->bias_int)
@@ -1513,9 +1513,14 @@ disassemble_midgard(uint8_t *code, size_t size, unsigned gpu_id, gl_shader_stage
                 last_next_tag = next_tag;
 
                 switch (midgard_word_types[tag]) {
-                case midgard_word_type_texture:
-                        print_texture_word(&words[i], tabs);
+                case midgard_word_type_texture: {
+                        /* Vertex texturing uses ldst/work space on older Midgard */
+                        bool has_texture_pipeline = (stage == MESA_SHADER_FRAGMENT) && gpu_id >= 0x750;
+                        print_texture_word(&words[i], tabs,
+                                        has_texture_pipeline ? REG_TEX_BASE : 0,
+                                        has_texture_pipeline ? REG_TEX_BASE : REGISTER_LDST_BASE);
                         break;
+                }
 
                 case midgard_word_type_load_store:
                         print_load_store_word(&words[i], tabs);
