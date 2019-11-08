@@ -3566,14 +3566,23 @@ void ac_apply_fmask_to_sample(struct ac_llvm_context *ac, LLVMValueRef fmask,
 static LLVMValueRef
 _ac_build_readlane(struct ac_llvm_context *ctx, LLVMValueRef src, LLVMValueRef lane)
 {
+	LLVMTypeRef type = LLVMTypeOf(src);
+	LLVMValueRef result;
+
 	ac_build_optimization_barrier(ctx, &src);
-	return ac_build_intrinsic(ctx,
+
+	src = LLVMBuildZExt(ctx->builder, src, ctx->i32, "");
+	if (lane)
+		lane = LLVMBuildZExt(ctx->builder, lane, ctx->i32, "");
+
+	result = ac_build_intrinsic(ctx,
 			lane == NULL ? "llvm.amdgcn.readfirstlane" : "llvm.amdgcn.readlane",
-			LLVMTypeOf(src), (LLVMValueRef []) {
-			src, lane },
+			ctx->i32, (LLVMValueRef []) { src, lane },
 			lane == NULL ? 1 : 2,
 			AC_FUNC_ATTR_READNONE |
 			AC_FUNC_ATTR_CONVERGENT);
+
+	return LLVMBuildTrunc(ctx->builder, result, type, "");
 }
 
 /**
@@ -3591,9 +3600,7 @@ ac_build_readlane(struct ac_llvm_context *ctx, LLVMValueRef src, LLVMValueRef la
 	unsigned bits = LLVMGetIntTypeWidth(LLVMTypeOf(src));
 	LLVMValueRef ret;
 
-	if (bits == 32) {
-		ret = _ac_build_readlane(ctx, src, lane);
-	} else {
+	if (bits > 32) {
 		assert(bits % 32 == 0);
 		LLVMTypeRef vec_type = LLVMVectorType(ctx->i32, bits / 32);
 		LLVMValueRef src_vector =
@@ -3606,7 +3613,10 @@ ac_build_readlane(struct ac_llvm_context *ctx, LLVMValueRef src, LLVMValueRef la
 			ret = LLVMBuildInsertElement(ctx->builder, ret, ret_comp,
 						LLVMConstInt(ctx->i32, i, 0), "");
 		}
+	} else {
+		ret = _ac_build_readlane(ctx, src, lane);
 	}
+
 	if (LLVMGetTypeKind(src_type) == LLVMPointerTypeKind)
 		return LLVMBuildIntToPtr(ctx->builder, ret, src_type, "");
 	return LLVMBuildBitCast(ctx->builder, ret, src_type, "");
