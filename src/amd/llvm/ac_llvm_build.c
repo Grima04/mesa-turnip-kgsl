@@ -3864,7 +3864,8 @@ ac_build_set_inactive(struct ac_llvm_context *ctx, LLVMValueRef src,
 					src, inactive }, 2,
 					AC_FUNC_ATTR_READNONE |
 					AC_FUNC_ATTR_CONVERGENT);
-	return LLVMBuildBitCast(ctx->builder, ret, src_type, "");
+
+	return ret;
 }
 
 static LLVMValueRef
