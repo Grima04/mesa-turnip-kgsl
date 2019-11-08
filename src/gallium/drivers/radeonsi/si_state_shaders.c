@@ -47,6 +47,7 @@
 void si_get_ir_cache_key(struct si_shader_selector *sel, bool ngg, bool es,
 			 unsigned char ir_sha1_cache_key[20])
 {
+	struct blob blob = {};
 	unsigned ir_size;
 	void *ir_binary;
 
@@ -54,10 +55,16 @@ void si_get_ir_cache_key(struct si_shader_selector *sel, bool ngg, bool es,
 		ir_binary = sel->tokens;
 		ir_size = tgsi_num_tokens(sel->tokens) *
 			  sizeof(struct tgsi_token);
-	} else {
-		assert(sel->nir_binary);
+	} else if (sel->nir_binary) {
 		ir_binary = sel->nir_binary;
 		ir_size = sel->nir_size;
+	} else {
+		assert(sel->nir);
+
+		blob_init(&blob);
+		nir_serialize(&blob, sel->nir, true);
+		ir_binary = blob.data;
+		ir_size = blob.size;
 	}
 
 	/* These settings affect the compilation, but they are not derived
@@ -83,6 +90,9 @@ void si_get_ir_cache_key(struct si_shader_selector *sel, bool ngg, bool es,
 	    sel->type == PIPE_SHADER_GEOMETRY)
 		_mesa_sha1_update(&ctx, &sel->so, sizeof(sel->so));
 	_mesa_sha1_final(&ctx, ir_sha1_cache_key);
+
+	if (ir_binary == blob.data)
+		blob_finish(&blob);
 }
 
 /** Copy "data" to "ptr" and return the next dword following copied data. */
