@@ -5196,8 +5196,10 @@ link_shaders(struct gl_context *ctx, struct gl_shader_program *prog)
 
       /* Call opts after lowering const arrays to copy propagate things. */
       if (ctx->Const.GLSLLowerConstArrays &&
-          lower_const_arrays_to_uniforms(prog->_LinkedShaders[i]->ir, i))
+          lower_const_arrays_to_uniforms(prog->_LinkedShaders[i]->ir, i,
+                                         ctx->Const.Program[i].MaxUniformComponents))
          linker_optimisation_loop(ctx, prog->_LinkedShaders[i]->ir, i);
+
    }
 
    /* Validation for special cases where we allow sampler array indexing
