@@ -357,7 +357,7 @@ iris_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
    if (iris_resource_level_has_hiz(src_res, info->src.level))
       src_aux_usage = ISL_AUX_USAGE_NONE;
 
-   bool src_clear_supported = src_aux_usage != ISL_AUX_USAGE_NONE &&
+   bool src_clear_supported = isl_aux_usage_has_fast_clears(src_aux_usage) &&
                               src_res->surf.format == src_fmt.fmt;
 
    iris_resource_prepare_access(ice, batch, src_res, info->src.level, 1,
@@ -369,7 +369,7 @@ iris_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
                             ISL_SURF_USAGE_RENDER_TARGET_BIT);
    enum isl_aux_usage dst_aux_usage =
       iris_resource_render_aux_usage(ice, dst_res, dst_fmt.fmt, false, false);
-   bool dst_clear_supported = dst_aux_usage != ISL_AUX_USAGE_NONE;
+   bool dst_clear_supported = isl_aux_usage_has_fast_clears(dst_aux_usage);
 
    struct blorp_surf src_surf, dst_surf;
    iris_blorp_surf_for_resource(&ice->vtbl, &screen->isl_dev,  &src_surf,

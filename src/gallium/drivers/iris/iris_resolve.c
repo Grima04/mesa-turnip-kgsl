@@ -1401,7 +1401,7 @@ iris_resource_prepare_texture(struct iris_context *ice,
    enum isl_aux_usage aux_usage =
       iris_resource_texture_aux_usage(ice, res, view_format);
 
-   bool clear_supported = aux_usage != ISL_AUX_USAGE_NONE;
+   bool clear_supported = isl_aux_usage_has_fast_clears(aux_usage);
 
    /* Clear color is specified as ints or floats and the conversion is done by
     * the sampler.  If we have a texture view, we would have to perform the
@@ -1466,7 +1466,7 @@ iris_resource_prepare_render(struct iris_context *ice,
 {
    iris_resource_prepare_access(ice, batch, res, level, 1, start_layer,
                                 layer_count, aux_usage,
-                                aux_usage != ISL_AUX_USAGE_NONE);
+                                isl_aux_usage_has_fast_clears(aux_usage));
 }
 
 void
