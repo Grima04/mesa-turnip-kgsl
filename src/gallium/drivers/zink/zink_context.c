@@ -1510,6 +1510,18 @@ zink_resource_copy_region(struct pipe_context *pctx,
       vkCmdCopyImage(batch->cmdbuf, src->image, src->layout,
                      dst->image, dst->layout,
                      1, &region);
+   } else if (dst->base.target == PIPE_BUFFER &&
+              src->base.target == PIPE_BUFFER) {
+      VkBufferCopy region;
+      region.srcOffset = src_box->x;
+      region.dstOffset = dstx;
+      region.size = src_box->width;
+
+      struct zink_batch *batch = zink_batch_no_rp(ctx);
+      zink_batch_reference_resoure(batch, src);
+      zink_batch_reference_resoure(batch, dst);
+
+      vkCmdCopyBuffer(batch->cmdbuf, src->buffer, dst->buffer, 1, &region);
    } else
       debug_printf("zink: TODO resource copy\n");
 }
