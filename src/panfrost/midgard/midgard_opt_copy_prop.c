@@ -110,11 +110,12 @@ midgard_opt_copy_prop(compiler_context *ctx, midgard_block *block)
 
                         if (!(is_tex || is_ldst || is_branch)) continue;
 
-                        /* For textures, we get one real swizzle. For stores,
-                         * we also get one. For loads, we get none. */
+                        /* For textures, we get a real swizzle for the
+                         * coordinate and the content. For stores, we get one.
+                         * For loads, we get none. */
 
                         unsigned start =
-                                is_tex ? 1 :
+                                is_tex ? 2 :
                                 OP_IS_STORE(q->load_store.op) ? 1 : 0;
 
                         mir_foreach_src(q, s) {
