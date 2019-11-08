@@ -99,19 +99,6 @@ pipe_put_tile_rgba_format(struct pipe_transfer *pt,
                           enum pipe_format format,
                           const float *p);
 
-
-void
-pipe_get_tile_z(struct pipe_transfer *pt,
-                const void *src,
-                uint x, uint y, uint w, uint h,
-                uint *z);
-
-void
-pipe_put_tile_z(struct pipe_transfer *pt,
-                void *dst,
-                uint x, uint y, uint w, uint h,
-                const uint *z);
-
 void
 pipe_tile_raw_to_rgba(enum pipe_format format,
                       const void *src,
