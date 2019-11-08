@@ -565,17 +565,17 @@ void emit_sopc_instruction(isel_context *ctx, nir_alu_instr *instr, aco_opcode o
 }
 
 void emit_comparison(isel_context *ctx, nir_alu_instr *instr, Temp dst,
-                     aco_opcode v32_op, aco_opcode v64_op, aco_opcode s32_op = aco_opcode::last_opcode, aco_opcode s64_op = aco_opcode::last_opcode)
+                     aco_opcode v32_op, aco_opcode v64_op, aco_opcode s32_op = aco_opcode::num_opcodes, aco_opcode s64_op = aco_opcode::num_opcodes)
 {
    aco_opcode s_op = instr->src[0].src.ssa->bit_size == 64 ? s64_op : s32_op;
    aco_opcode v_op = instr->src[0].src.ssa->bit_size == 64 ? v64_op : v32_op;
    bool divergent_vals = ctx->divergent_vals[instr->dest.dest.ssa.index];
-   bool use_valu = s_op == aco_opcode::last_opcode ||
+   bool use_valu = s_op == aco_opcode::num_opcodes ||
                    divergent_vals ||
                    ctx->allocated[instr->src[0].src.ssa->index].type() == RegType::vgpr ||
                    ctx->allocated[instr->src[1].src.ssa->index].type() == RegType::vgpr;
    aco_opcode op = use_valu ? v_op : s_op;
-   assert(op != aco_opcode::last_opcode);
+   assert(op != aco_opcode::num_opcodes);
 
    if (use_valu)
       emit_vopc_instruction(ctx, instr, op, dst);
@@ -2374,14 +2374,16 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
       if (instr->src[0].src.ssa->bit_size == 1)
          emit_boolean_logic(ctx, instr, Builder::s_xnor, dst);
       else
-         emit_comparison(ctx, instr, dst, aco_opcode::v_cmp_eq_i32, aco_opcode::v_cmp_eq_i64, aco_opcode::s_cmp_eq_i32, aco_opcode::s_cmp_eq_u64);
+         emit_comparison(ctx, instr, dst, aco_opcode::v_cmp_eq_i32, aco_opcode::v_cmp_eq_i64, aco_opcode::s_cmp_eq_i32,
+                         ctx->program->chip_class >= GFX8 ? aco_opcode::s_cmp_eq_u64 : aco_opcode::num_opcodes);
       break;
    }
    case nir_op_ine: {
       if (instr->src[0].src.ssa->bit_size == 1)
          emit_boolean_logic(ctx, instr, Builder::s_xor, dst);
       else
-         emit_comparison(ctx, instr, dst, aco_opcode::v_cmp_lg_i32, aco_opcode::v_cmp_lg_i64, aco_opcode::s_cmp_lg_i32, aco_opcode::s_cmp_lg_u64);
+         emit_comparison(ctx, instr, dst, aco_opcode::v_cmp_lg_i32, aco_opcode::v_cmp_lg_i64, aco_opcode::s_cmp_lg_i32,
+                         ctx->program->chip_class >= GFX8 ? aco_opcode::s_cmp_lg_u64 : aco_opcode::num_opcodes);
       break;
    }
    case nir_op_ult: {
