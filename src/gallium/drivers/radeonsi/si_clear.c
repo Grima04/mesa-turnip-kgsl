@@ -76,12 +76,8 @@ static bool si_set_clear_color(struct si_texture *tex,
 		       color->ui[0] == color->ui[2]);
 		uc.ui[0] = color->ui[0];
 		uc.ui[1] = color->ui[3];
-	} else if (util_format_is_pure_uint(surface_format)) {
-		util_format_write_4ui(surface_format, color->ui, 0, &uc, 0, 0, 0, 1, 1);
-	} else if (util_format_is_pure_sint(surface_format)) {
-		util_format_write_4i(surface_format, color->i, 0, &uc, 0, 0, 0, 1, 1);
 	} else {
-		util_pack_color(color->f, surface_format, &uc);
+		util_pack_color_union(surface_format, &uc, color);
 	}
 
 	if (memcmp(tex->color_clear_value, &uc, 2 * sizeof(uint32_t)) == 0)
@@ -734,8 +730,6 @@ static void si_clear_texture(struct pipe_context *pipe,
 	struct si_texture *stex = (struct si_texture*)tex;
 	struct pipe_surface tmpl = {{0}};
 	struct pipe_surface *sf;
-	const struct util_format_description *desc =
-		util_format_description(tex->format);
 
 	tmpl.format = tex->format;
 	tmpl.u.tex.first_layer = box->z;

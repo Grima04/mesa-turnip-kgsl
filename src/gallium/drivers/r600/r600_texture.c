@@ -1745,12 +1745,8 @@ static void evergreen_set_clear_color(struct r600_texture *rtex,
 		       color->ui[0] == color->ui[2]);
 		uc.ui[0] = color->ui[0];
 		uc.ui[1] = color->ui[3];
-	} else if (util_format_is_pure_uint(surface_format)) {
-		util_format_write_4ui(surface_format, color->ui, 0, &uc, 0, 0, 0, 1, 1);
-	} else if (util_format_is_pure_sint(surface_format)) {
-		util_format_write_4i(surface_format, color->i, 0, &uc, 0, 0, 0, 1, 1);
 	} else {
-		util_pack_color(color->f, surface_format, &uc);
+		util_pack_color_union(surface_format, &uc, color);
 	}
 
 	memcpy(rtex->color_clear_value, &uc, 2 * sizeof(uint32_t));

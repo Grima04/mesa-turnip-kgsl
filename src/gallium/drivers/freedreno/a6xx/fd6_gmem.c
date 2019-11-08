@@ -1052,13 +1052,7 @@ emit_clears(struct fd_batch *batch, struct fd_ringbuffer *ring)
 				break;
 			}
 
-			if (util_format_is_pure_uint(pfmt)) {
-				util_format_write_4ui(pfmt, swapped.ui, 0, &uc, 0, 0, 0, 1, 1);
-			} else if (util_format_is_pure_sint(pfmt)) {
-				util_format_write_4i(pfmt, swapped.i, 0, &uc, 0, 0, 0, 1, 1);
-			} else {
-				util_pack_color(swapped.f, pfmt, &uc);
-			}
+			util_pack_color_union(pfmt, &uc, &swapped);
 
 			OUT_PKT4(ring, REG_A6XX_RB_BLIT_DST_INFO, 1);
 			OUT_RING(ring, A6XX_RB_BLIT_DST_INFO_TILE_MODE(TILE6_LINEAR) |

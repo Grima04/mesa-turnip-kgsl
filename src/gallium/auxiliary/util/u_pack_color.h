@@ -433,7 +433,15 @@ util_pack_color(const float rgba[4], enum pipe_format format, union util_color *
       util_format_write_4f(format, rgba, 0, uc, 0, 0, 0, 1, 1);
    }
 }
- 
+
+static inline void
+util_pack_color_union(enum pipe_format format,
+                      union util_color *dst,
+                      const union pipe_color_union *src)
+{
+   util_format_pack_rgba(format, dst, &src->ui, 1);
+}
+
 /* Integer versions of util_pack_z and util_pack_z_stencil - useful for
  * constructing clear masks.
  */

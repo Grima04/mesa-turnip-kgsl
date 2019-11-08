@@ -338,21 +338,7 @@ util_clear_color_texture_helper(struct pipe_transfer *dst_trans,
 
    assert(dst_trans->stride > 0);
 
-   if (util_format_is_pure_integer(format)) {
-      /*
-       * We expect int/uint clear values here, though some APIs
-       * might disagree (but in any case util_pack_color()
-       * couldn't handle it)...
-       */
-      if (util_format_is_pure_sint(format)) {
-         util_format_write_4i(format, color->i, 0, &uc, 0, 0, 0, 1, 1);
-      } else {
-         assert(util_format_is_pure_uint(format));
-         util_format_write_4ui(format, color->ui, 0, &uc, 0, 0, 0, 1, 1);
-      }
-   } else {
-      util_pack_color(color->f, format, &uc);
-   }
+   util_pack_color_union(format, &uc, color);
 
    util_fill_box(dst_map, format,
                  dst_trans->stride, dst_trans->layer_stride,
