@@ -3696,15 +3696,22 @@ _ac_build_dpp(struct ac_llvm_context *ctx, LLVMValueRef old, LLVMValueRef src,
 	      enum dpp_ctrl dpp_ctrl, unsigned row_mask, unsigned bank_mask,
 	      bool bound_ctrl)
 {
-	return ac_build_intrinsic(ctx, "llvm.amdgcn.update.dpp.i32",
-					LLVMTypeOf(old),
-					(LLVMValueRef[]) {
-						old, src,
-						LLVMConstInt(ctx->i32, dpp_ctrl, 0),
-						LLVMConstInt(ctx->i32, row_mask, 0),
-						LLVMConstInt(ctx->i32, bank_mask, 0),
-						LLVMConstInt(ctx->i1, bound_ctrl, 0) },
-					6, AC_FUNC_ATTR_READNONE | AC_FUNC_ATTR_CONVERGENT);
+	LLVMTypeRef type = LLVMTypeOf(src);
+	LLVMValueRef res;
+
+	old = LLVMBuildZExt(ctx->builder, old, ctx->i32, "");
+	src = LLVMBuildZExt(ctx->builder, src, ctx->i32, "");
+
+	res = ac_build_intrinsic(ctx, "llvm.amdgcn.update.dpp.i32", ctx->i32,
+				 (LLVMValueRef[]) {
+					old, src,
+					LLVMConstInt(ctx->i32, dpp_ctrl, 0),
+					LLVMConstInt(ctx->i32, row_mask, 0),
+					LLVMConstInt(ctx->i32, bank_mask, 0),
+					LLVMConstInt(ctx->i1, bound_ctrl, 0) },
+				 6, AC_FUNC_ATTR_READNONE | AC_FUNC_ATTR_CONVERGENT);
+
+	return LLVMBuildTrunc(ctx->builder, res, type, "");
 }
 
 static LLVMValueRef
@@ -3717,10 +3724,7 @@ ac_build_dpp(struct ac_llvm_context *ctx, LLVMValueRef old, LLVMValueRef src,
 	old = ac_to_integer(ctx, old);
 	unsigned bits = LLVMGetIntTypeWidth(LLVMTypeOf(src));
 	LLVMValueRef ret;
-	if (bits == 32) {
-		ret = _ac_build_dpp(ctx, old, src, dpp_ctrl, row_mask,
-				    bank_mask, bound_ctrl);
-	} else {
+	if (bits > 32) {
 		assert(bits % 32 == 0);
 		LLVMTypeRef vec_type = LLVMVectorType(ctx->i32, bits / 32);
 		LLVMValueRef src_vector =
@@ -3745,6 +3749,9 @@ ac_build_dpp(struct ac_llvm_context *ctx, LLVMValueRef old, LLVMValueRef src,
 						     LLVMConstInt(ctx->i32, i,
 								  0), "");
 		}
+	} else {
+		ret = _ac_build_dpp(ctx, old, src, dpp_ctrl, row_mask,
+				    bank_mask, bound_ctrl);
 	}
 	return LLVMBuildBitCast(ctx->builder, ret, src_type, "");
 }
