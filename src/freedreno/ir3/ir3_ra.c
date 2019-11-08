@@ -701,6 +701,15 @@ ra_block_compute_live_ranges(struct ir3_ra_ctx *ctx, struct ir3_block *block)
 
 	block->data = bd;
 
+	struct ir3_instruction *first_non_input = NULL;
+	list_for_each_entry (struct ir3_instruction, instr, &block->instr_list, node) {
+		if (instr->opc != OPC_META_INPUT) {
+			first_non_input = instr;
+			break;
+		}
+	}
+
+
 	list_for_each_entry (struct ir3_instruction, instr, &block->instr_list, node) {
 		struct ir3_instruction *src;
 		struct ir3_register *reg;
@@ -766,6 +775,9 @@ ra_block_compute_live_ranges(struct ir3_ra_ctx *ctx, struct ir3_block *block)
 				debug_assert(!BITSET_TEST(bd->use, name));
 
 				def(name, id->defn);
+
+				if (instr->opc == OPC_META_INPUT)
+					use(name, first_non_input);
 
 				if (is_high(id->defn)) {
 					ra_set_node_class(ctx->g, name,
