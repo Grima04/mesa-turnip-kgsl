@@ -91,6 +91,7 @@ EXTENSIONS = [
     Extension('VK_KHR_shader_draw_parameters',            1, True),
     Extension('VK_KHR_shader_float_controls',             1, True),
     Extension('VK_KHR_shader_float16_int8',               1, '!device->use_aco'),
+    Extension('VK_KHR_shader_subgroup_extended_types',    1, 'device->rad_info.chip_class >= GFX8 && device->rad_info.chip_class <= GFX9 && !device->use_aco'),
     Extension('VK_KHR_spirv_1_4',                         1, True),
     Extension('VK_KHR_storage_buffer_storage_class',      1, True),
     Extension('VK_KHR_surface',                          25, 'RADV_HAS_SURFACE'),
