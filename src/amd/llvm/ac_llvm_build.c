@@ -4005,6 +4005,7 @@ static LLVMValueRef
 ac_build_alu_op(struct ac_llvm_context *ctx, LLVMValueRef lhs, LLVMValueRef rhs, nir_op op)
 {
 	bool _64bit = ac_get_type_size(LLVMTypeOf(lhs)) == 8;
+	bool _32bit = ac_get_type_size(LLVMTypeOf(lhs)) == 4;
 	switch (op) {
 	case nir_op_iadd: return LLVMBuildAdd(ctx->builder, lhs, rhs, "");
 	case nir_op_fadd: return LLVMBuildFAdd(ctx->builder, lhs, rhs, "");
@@ -4017,8 +4018,8 @@ ac_build_alu_op(struct ac_llvm_context *ctx, LLVMValueRef lhs, LLVMValueRef rhs,
 					LLVMBuildICmp(ctx->builder, LLVMIntULT, lhs, rhs, ""),
 					lhs, rhs, "");
 	case nir_op_fmin: return ac_build_intrinsic(ctx,
-					_64bit ? "llvm.minnum.f64" : "llvm.minnum.f32",
-					_64bit ? ctx->f64 : ctx->f32,
+					_64bit ? "llvm.minnum.f64" : _32bit ? "llvm.minnum.f32" : "llvm.minnum.f16",
+					_64bit ? ctx->f64 : _32bit ? ctx->f32 : ctx->f16,
 					(LLVMValueRef[]){lhs, rhs}, 2, AC_FUNC_ATTR_READNONE);
 	case nir_op_imax: return LLVMBuildSelect(ctx->builder,
 					LLVMBuildICmp(ctx->builder, LLVMIntSGT, lhs, rhs, ""),
@@ -4027,8 +4028,8 @@ ac_build_alu_op(struct ac_llvm_context *ctx, LLVMValueRef lhs, LLVMValueRef rhs,
 					LLVMBuildICmp(ctx->builder, LLVMIntUGT, lhs, rhs, ""),
 					lhs, rhs, "");
 	case nir_op_fmax: return ac_build_intrinsic(ctx,
-					_64bit ? "llvm.maxnum.f64" : "llvm.maxnum.f32",
-					_64bit ? ctx->f64 : ctx->f32,
+					_64bit ? "llvm.maxnum.f64" : _32bit ? "llvm.maxnum.f32" : "llvm.maxnum.f16",
+					_64bit ? ctx->f64 : _32bit ? ctx->f32 : ctx->f16,
 					(LLVMValueRef[]){lhs, rhs}, 2, AC_FUNC_ATTR_READNONE);
 	case nir_op_iand: return LLVMBuildAnd(ctx->builder, lhs, rhs, "");
 	case nir_op_ior: return LLVMBuildOr(ctx->builder, lhs, rhs, "");
