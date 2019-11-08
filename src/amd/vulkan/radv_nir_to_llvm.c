@@ -435,24 +435,6 @@ create_llvm_function(LLVMContextRef ctx, LLVMModuleRef module,
 
 	ac_llvm_set_workgroup_size(main_function, max_workgroup_size);
 
-	if (options->unsafe_math) {
-		/* These were copied from some LLVM test. */
-		LLVMAddTargetDependentFunctionAttr(main_function,
-						   "less-precise-fpmad",
-						   "true");
-		LLVMAddTargetDependentFunctionAttr(main_function,
-						   "no-infs-fp-math",
-						   "true");
-		LLVMAddTargetDependentFunctionAttr(main_function,
-						   "no-nans-fp-math",
-						   "true");
-		LLVMAddTargetDependentFunctionAttr(main_function,
-						   "unsafe-fp-math",
-						   "true");
-		LLVMAddTargetDependentFunctionAttr(main_function,
-					   "no-signed-zeros-fp-math",
-					   "true");
-	}
 	return main_function;
 }
 
@@ -4814,8 +4796,6 @@ LLVMModuleRef ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm,
 
 	if (shader_info->float_controls_mode & FLOAT_CONTROLS_DENORM_FLUSH_TO_ZERO_FP32) {
 		float_mode = AC_FLOAT_MODE_DENORM_FLUSH_TO_ZERO;
-	} else if (options->unsafe_math) {
-		float_mode = AC_FLOAT_MODE_UNSAFE_FP_MATH;
 	}
 
 	ac_llvm_context_init(&ctx.ac, ac_llvm, options->chip_class,
@@ -5275,12 +5255,8 @@ radv_compile_gs_copy_shader(struct ac_llvm_compiler *ac_llvm,
 	ctx.options = options;
 	ctx.shader_info = shader_info;
 
-	enum ac_float_mode float_mode =
-		options->unsafe_math ? AC_FLOAT_MODE_UNSAFE_FP_MATH :
-				       AC_FLOAT_MODE_DEFAULT;
-
 	ac_llvm_context_init(&ctx.ac, ac_llvm, options->chip_class,
-			     options->family, float_mode, 64, 64);
+			     options->family, AC_FLOAT_MODE_DEFAULT, 64, 64);
 	ctx.context = ctx.ac.context;
 
 	ctx.is_gs_copy_shader = true;

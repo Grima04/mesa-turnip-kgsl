@@ -88,10 +88,6 @@ LLVMBuilderRef ac_create_builder(LLVMContextRef ctx,
 		flags.setNoSignedZeros();
 		llvm::unwrap(builder)->setFastMathFlags(flags);
 		break;
-	case AC_FLOAT_MODE_UNSAFE_FP_MATH:
-		flags.setFast();
-		llvm::unwrap(builder)->setFastMathFlags(flags);
-		break;
 	}
 
 	return builder;

@@ -1188,7 +1188,6 @@ radv_shader_variant_compile(struct radv_device *device,
 	if (key)
 		options.key = *key;
 
-	options.unsafe_math = !!(device->instance->debug_flags & RADV_DEBUG_UNSAFE_MATH);
 	options.supports_spill = true;
 	options.robust_buffer_access = device->robust_buffer_access;
 

@@ -156,8 +156,6 @@ static uint32_t get_hash_flags(struct radv_device *device)
 {
 	uint32_t hash_flags = 0;
 
-	if (device->instance->debug_flags & RADV_DEBUG_UNSAFE_MATH)
-		hash_flags |= RADV_HASH_SHADER_UNSAFE_MATH;
 	if (device->instance->debug_flags & RADV_DEBUG_NO_NGG)
 		hash_flags |= RADV_HASH_SHADER_NO_NGG;
 	if (device->instance->perftest_flags & RADV_PERFTEST_SISCHED)
