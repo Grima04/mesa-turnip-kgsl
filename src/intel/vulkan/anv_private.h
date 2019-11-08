@@ -2006,6 +2006,7 @@ anv_descriptor_set_destroy(struct anv_device *device,
                            struct anv_descriptor_pool *pool,
                            struct anv_descriptor_set *set);
 
+#define ANV_DESCRIPTOR_SET_PUSH_CONSTANTS   (UINT8_MAX - 4)
 #define ANV_DESCRIPTOR_SET_DESCRIPTORS      (UINT8_MAX - 3)
 #define ANV_DESCRIPTOR_SET_NUM_WORK_GROUPS  (UINT8_MAX - 2)
 #define ANV_DESCRIPTOR_SET_SHADER_CONSTANTS (UINT8_MAX - 1)
@@ -2039,6 +2040,23 @@ struct anv_pipeline_binding {
 
    /** For a storage image, whether it is write-only */
    bool write_only;
+};
+
+struct anv_push_range {
+   /** Index in the descriptor set */
+   uint32_t index;
+
+   /** Descriptor set index */
+   uint8_t set;
+
+   /** Dynamic offset index (for dynamic UBOs) */
+   uint8_t dynamic_offset_index;
+
+   /** Start offset in units of 32B */
+   uint8_t start;
+
+   /** Range in units of 32B */
+   uint8_t length;
 };
 
 struct anv_pipeline_layout {
@@ -2912,6 +2930,8 @@ struct anv_pipeline_bind_map {
 
    struct anv_pipeline_binding *                surface_to_descriptor;
    struct anv_pipeline_binding *                sampler_to_descriptor;
+
+   struct anv_push_range                        push_ranges[4];
 };
 
 struct anv_shader_bin_key {

@@ -2528,98 +2528,60 @@ cmd_buffer_flush_push_constants(struct anv_cmd_buffer *cmd_buffer,
          c._3DCommandSubOpcode = push_constant_opcodes[stage];
 
          if (anv_pipeline_has_stage(pipeline, stage)) {
-#if GEN_GEN >= 8 || GEN_IS_HASWELL
-            const struct brw_stage_prog_data *prog_data =
-               pipeline->shaders[stage]->prog_data;
             const struct anv_pipeline_bind_map *bind_map =
                &pipeline->shaders[stage]->bind_map;
 
-            /* The Skylake PRM contains the following restriction:
-             *
-             *    "The driver must ensure The following case does not occur
-             *     without a flush to the 3D engine: 3DSTATE_CONSTANT_* with
-             *     buffer 3 read length equal to zero committed followed by a
-             *     3DSTATE_CONSTANT_* with buffer 0 read length not equal to
-             *     zero committed."
-             *
-             * To avoid this, we program the buffers in the highest slots.
-             * This way, slot 0 is only used if slot 3 is also used.
-             */
-            int n = 3;
-
-            for (int i = 3; i >= 0; i--) {
-               const struct brw_ubo_range *range = &prog_data->ubo_ranges[i];
+            for (unsigned i = 0; i < 4; i++) {
+               const struct anv_push_range *range = &bind_map->push_ranges[i];
                if (range->length == 0)
                   continue;
 
-               const unsigned surface =
-                  prog_data->binding_table.ubo_start + range->block;
-
-               assert(surface <= bind_map->surface_count);
-               const struct anv_pipeline_binding *binding =
-                  &bind_map->surface_to_descriptor[surface];
-
                struct anv_address addr;
-               if (binding->set == ANV_DESCRIPTOR_SET_DESCRIPTORS) {
+               switch (range->set) {
+               case ANV_DESCRIPTOR_SET_DESCRIPTORS: {
                   /* This is a descriptor set buffer so the set index is
                    * actually given by binding->binding.  (Yes, that's
                    * confusing.)
                    */
                   struct anv_descriptor_set *set =
-                     gfx_state->base.descriptors[binding->index];
-
+                     gfx_state->base.descriptors[range->index];
                   addr = anv_descriptor_set_address(cmd_buffer, set);
-               } else {
-                  assert(binding->set < MAX_SETS);
+                  break;
+               }
+
+               case ANV_DESCRIPTOR_SET_PUSH_CONSTANTS: {
+                  struct anv_state state =
+                     anv_cmd_buffer_push_constants(cmd_buffer, stage);
+                  addr = (struct anv_address) {
+                     .bo = cmd_buffer->device->dynamic_state_pool.block_pool.bo,
+                     .offset = state.offset,
+                  };
+                  break;
+               }
+
+               default: {
+                  assert(range->set < MAX_SETS);
                   struct anv_descriptor_set *set =
-                     gfx_state->base.descriptors[binding->set];
+                     gfx_state->base.descriptors[range->set];
                   const struct anv_descriptor *desc =
-                     &set->descriptors[binding->index];
+                     &set->descriptors[range->index];
 
                   if (desc->type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER) {
                      addr = desc->buffer_view->address;
                   } else {
                      assert(desc->type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC);
-
                      uint32_t dynamic_offset =
-                        gfx_state->base.dynamic_offsets[binding->dynamic_offset_index];
+                        gfx_state->base.dynamic_offsets[range->dynamic_offset_index];
                      addr = anv_address_add(desc->buffer->address,
                                             desc->offset + dynamic_offset);
                   }
                }
+               }
 
-               c.ConstantBody.Buffer[n] =
+               c.ConstantBody.ReadLength[i] = range->length;
+               c.ConstantBody.Buffer[i] =
                   anv_address_add(addr, range->start * 32);
-               c.ConstantBody.ReadLength[n] = range->length;
-               n--;
             }
-
-            struct anv_state state =
-               anv_cmd_buffer_push_constants(cmd_buffer, stage);
-
-            if (state.alloc_size > 0) {
-               c.ConstantBody.Buffer[n] = (struct anv_address) {
-                  .bo = cmd_buffer->device->dynamic_state_pool.block_pool.bo,
-                  .offset = state.offset,
-               };
-               c.ConstantBody.ReadLength[n] =
-                  DIV_ROUND_UP(state.alloc_size, 32);
-            }
-#else
-            /* For Ivy Bridge, the push constants packets have a different
-             * rule that would require us to iterate in the other direction
-             * and possibly mess around with dynamic state base address.
-             * Don't bother; just emit regular push constants at n = 0.
-             */
-            struct anv_state state =
-               anv_cmd_buffer_push_constants(cmd_buffer, stage);
-
-            if (state.alloc_size > 0) {
-               c.ConstantBody.Buffer[0].offset = state.offset,
-               c.ConstantBody.ReadLength[0] =
-                  DIV_ROUND_UP(state.alloc_size, 32);
-            }
-#endif
          }
       }
 

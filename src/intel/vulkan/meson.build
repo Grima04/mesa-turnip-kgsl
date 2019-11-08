@@ -114,6 +114,7 @@ libanv_files = files(
   'anv_nir.h',
   'anv_nir_add_base_work_group_id.c',
   'anv_nir_apply_pipeline_layout.c',
+  'anv_nir_compute_push_layout.c',
   'anv_nir_lower_multiview.c',
   'anv_nir_lower_push_constants.c',
   'anv_nir_lower_ycbcr_textures.c',

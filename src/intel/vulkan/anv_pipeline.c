@@ -1394,6 +1394,10 @@ anv_pipeline_compile_graphics(struct anv_pipeline *pipeline,
          goto fail;
       }
 
+      anv_compute_push_layout(&pipeline->device->instance->physicalDevice,
+                              &stages[s].prog_data.base,
+                              &stages[s].bind_map);
+
       struct anv_shader_bin *bin =
          anv_device_upload_kernel(pipeline->device, cache,
                                   &stages[s].cache_key,

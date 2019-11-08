@@ -169,6 +169,8 @@ anv_shader_bin_write_to_blob(const struct anv_shader_bin *shader,
    blob_write_bytes(blob, shader->bind_map.sampler_to_descriptor,
                     shader->bind_map.sampler_count *
                     sizeof(*shader->bind_map.sampler_to_descriptor));
+   blob_write_bytes(blob, shader->bind_map.push_ranges,
+                    sizeof(shader->bind_map.push_ranges));
 
    return !blob->out_of_memory;
 }
@@ -212,6 +214,7 @@ anv_shader_bin_create_from_blob(struct anv_device *device,
    bind_map.sampler_to_descriptor = (void *)
       blob_read_bytes(blob, bind_map.sampler_count *
                             sizeof(*bind_map.sampler_to_descriptor));
+   blob_copy_bytes(blob, bind_map.push_ranges, sizeof(bind_map.push_ranges));
 
    if (blob->overrun)
       return NULL;

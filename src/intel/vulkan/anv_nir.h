@@ -59,6 +59,10 @@ void anv_nir_apply_pipeline_layout(const struct anv_physical_device *pdevice,
                                    struct brw_stage_prog_data *prog_data,
                                    struct anv_pipeline_bind_map *map);
 
+void anv_compute_push_layout(const struct anv_physical_device *pdevice,
+                             struct brw_stage_prog_data *prog_data,
+                             struct anv_pipeline_bind_map *map);
+
 bool anv_nir_add_base_work_group_id(nir_shader *shader,
                                     struct brw_cs_prog_data *prog_data);
 
