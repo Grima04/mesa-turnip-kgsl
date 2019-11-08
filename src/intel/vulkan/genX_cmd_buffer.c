@@ -2559,8 +2559,7 @@ cmd_buffer_flush_push_constants(struct anv_cmd_buffer *cmd_buffer,
                const struct anv_pipeline_binding *binding =
                   &bind_map->surface_to_descriptor[surface];
 
-               struct anv_address read_addr;
-               uint32_t read_len;
+               struct anv_address addr;
                if (binding->set == ANV_DESCRIPTOR_SET_DESCRIPTORS) {
                   /* This is a descriptor set buffer so the set index is
                    * actually given by binding->binding.  (Yes, that's
@@ -2568,14 +2567,8 @@ cmd_buffer_flush_push_constants(struct anv_cmd_buffer *cmd_buffer,
                    */
                   struct anv_descriptor_set *set =
                      gfx_state->base.descriptors[binding->index];
-                  struct anv_address desc_buffer_addr =
-                     anv_descriptor_set_address(cmd_buffer, set);
-                  const unsigned desc_buffer_size = set->desc_mem.alloc_size;
 
-                  read_len = MIN2(range->length,
-                     DIV_ROUND_UP(desc_buffer_size, 32) - range->start);
-                  read_addr = anv_address_add(desc_buffer_addr,
-                                              range->start * 32);
+                  addr = anv_descriptor_set_address(cmd_buffer, set);
                } else {
                   assert(binding->set < MAX_SETS);
                   struct anv_descriptor_set *set =
@@ -2584,32 +2577,21 @@ cmd_buffer_flush_push_constants(struct anv_cmd_buffer *cmd_buffer,
                      &set->descriptors[binding->index];
 
                   if (desc->type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER) {
-                     read_len = MIN2(range->length,
-                        DIV_ROUND_UP(desc->buffer_view->range, 32) - range->start);
-                     read_addr = anv_address_add(desc->buffer_view->address,
-                                                 range->start * 32);
+                     addr = desc->buffer_view->address;
                   } else {
                      assert(desc->type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC);
 
                      uint32_t dynamic_offset =
                         gfx_state->base.dynamic_offsets[binding->dynamic_offset_index];
-                     uint32_t buf_offset =
-                        MIN2(desc->offset + dynamic_offset, desc->buffer->size);
-                     uint32_t buf_range =
-                        MIN2(desc->range, desc->buffer->size - buf_offset);
-
-                     read_len = MIN2(range->length,
-                        DIV_ROUND_UP(buf_range, 32) - range->start);
-                     read_addr = anv_address_add(desc->buffer->address,
-                                                 buf_offset + range->start * 32);
+                     addr = anv_address_add(desc->buffer->address,
+                                            desc->offset + dynamic_offset);
                   }
                }
 
-               if (read_len > 0) {
-                  c.ConstantBody.Buffer[n] = read_addr;
-                  c.ConstantBody.ReadLength[n] = read_len;
-                  n--;
-               }
+               c.ConstantBody.Buffer[n] =
+                  anv_address_add(addr, range->start * 32);
+               c.ConstantBody.ReadLength[n] = range->length;
+               n--;
             }
 
             struct anv_state state =
