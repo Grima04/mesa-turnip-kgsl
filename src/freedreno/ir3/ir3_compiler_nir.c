@@ -3440,8 +3440,8 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 		 * since the VS chains to TCS and doesn't get the sysvals redelivered.
 		 */
 
-		ctx->tcs_header->regs[0]->num = 0;
-		ctx->primitive_id->regs[0]->num = 1;
+		ctx->tcs_header->regs[0]->num = regid(0, 0);
+		ctx->primitive_id->regs[0]->num = regid(0, 1);
 		struct ir3_instruction *precolor[] = { ctx->tcs_header, ctx->primitive_id };
 		ret = ir3_ra(so, precolor, ARRAY_SIZE(precolor));
 	} else if (ctx->gs_header) {
@@ -3450,8 +3450,8 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 		 * the sysvals redelivered.
 		 */
 
-		ctx->gs_header->regs[0]->num = 0;
-		ctx->primitive_id->regs[0]->num = 1;
+		ctx->gs_header->regs[0]->num = regid(0, 0);
+		ctx->primitive_id->regs[0]->num = regid(0, 1);
 		struct ir3_instruction *precolor[] = { ctx->gs_header, ctx->primitive_id };
 		ret = ir3_ra(so, precolor, ARRAY_SIZE(precolor));
 	} else if (so->num_sampler_prefetch) {
