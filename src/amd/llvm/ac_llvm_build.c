@@ -3864,8 +3864,15 @@ ac_build_set_inactive(struct ac_llvm_context *ctx, LLVMValueRef src,
 {
 	char name[33], type[8];
 	LLVMTypeRef src_type = LLVMTypeOf(src);
+	unsigned bitsize = ac_get_elem_bits(ctx, src_type);
 	src = ac_to_integer(ctx, src);
 	inactive = ac_to_integer(ctx, inactive);
+
+	if (bitsize < 32) {
+		src = LLVMBuildZExt(ctx->builder, src, ctx->i32, "");
+		inactive = LLVMBuildZExt(ctx->builder, inactive, ctx->i32, "");
+	}
+
 	ac_build_type_name_for_intr(LLVMTypeOf(src), type, sizeof(type));
 	snprintf(name, sizeof(name), "llvm.amdgcn.set.inactive.%s", type);
 	LLVMValueRef ret =
@@ -3874,6 +3881,8 @@ ac_build_set_inactive(struct ac_llvm_context *ctx, LLVMValueRef src,
 					src, inactive }, 2,
 					AC_FUNC_ATTR_READNONE |
 					AC_FUNC_ATTR_CONVERGENT);
+	if (bitsize < 32)
+		ret = LLVMBuildTrunc(ctx->builder, ret, src_type, "");
 
 	return ret;
 }
