@@ -104,7 +104,8 @@ resource_create(struct pipe_screen *pscreen,
       bci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
       bci.size = templ->width0;
 
-      bci.usage = 0;
+      bci.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT |
+                  VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 
       if (templ->bind & PIPE_BIND_VERTEX_BUFFER)
          bci.usage |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
@@ -120,9 +121,6 @@ resource_create(struct pipe_screen *pscreen,
 
       if (templ->bind & PIPE_BIND_COMMAND_ARGS_BUFFER)
          bci.usage |= VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
-
-      if (templ->usage == PIPE_USAGE_STAGING)
-         bci.usage |= VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 
       if (vkCreateBuffer(screen->dev, &bci, NULL, &res->buffer) !=
           VK_SUCCESS) {
