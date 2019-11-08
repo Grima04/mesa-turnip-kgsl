@@ -3904,7 +3904,39 @@ ac_build_set_inactive(struct ac_llvm_context *ctx, LLVMValueRef src,
 static LLVMValueRef
 get_reduction_identity(struct ac_llvm_context *ctx, nir_op op, unsigned type_size)
 {
-	if (type_size == 4) {
+	if (type_size == 1) {
+		switch (op) {
+		case nir_op_iadd: return ctx->i8_0;
+		case nir_op_imul: return ctx->i8_1;
+		case nir_op_imin: return LLVMConstInt(ctx->i8, INT8_MAX, 0);
+		case nir_op_umin: return LLVMConstInt(ctx->i8, UINT8_MAX, 0);
+		case nir_op_imax: return LLVMConstInt(ctx->i8, INT8_MIN, 0);
+		case nir_op_umax: return ctx->i8_0;
+		case nir_op_iand: return LLVMConstInt(ctx->i8, -1, 0);
+		case nir_op_ior: return ctx->i8_0;
+		case nir_op_ixor: return ctx->i8_0;
+		default:
+			unreachable("bad reduction intrinsic");
+		}
+	} else if (type_size == 2) {
+		switch (op) {
+		case nir_op_iadd: return ctx->i16_0;
+		case nir_op_fadd: return ctx->f16_0;
+		case nir_op_imul: return ctx->i16_1;
+		case nir_op_fmul: return ctx->f16_1;
+		case nir_op_imin: return LLVMConstInt(ctx->i16, INT16_MAX, 0);
+		case nir_op_umin: return LLVMConstInt(ctx->i16, UINT16_MAX, 0);
+		case nir_op_fmin: return LLVMConstReal(ctx->f16, INFINITY);
+		case nir_op_imax: return LLVMConstInt(ctx->i16, INT16_MIN, 0);
+		case nir_op_umax: return ctx->i16_0;
+		case nir_op_fmax: return LLVMConstReal(ctx->f16, -INFINITY);
+		case nir_op_iand: return LLVMConstInt(ctx->i16, -1, 0);
+		case nir_op_ior: return ctx->i16_0;
+		case nir_op_ixor: return ctx->i16_0;
+		default:
+			unreachable("bad reduction intrinsic");
+		}
+	} else if (type_size == 4) {
 		switch (op) {
 		case nir_op_iadd: return ctx->i32_0;
 		case nir_op_fadd: return ctx->f32_0;
