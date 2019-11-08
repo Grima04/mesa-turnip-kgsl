@@ -354,93 +354,78 @@ x32_s8_get_tile_rgba(const unsigned *src,
    }
 }
 
-static void
-pipe_tile_raw_to_rgba(enum pipe_format format,
-                      const void *src,
-                      uint w, uint h,
-                      float *dst, unsigned dst_stride)
+void
+pipe_put_tile_rgba(struct pipe_transfer *pt,
+                   void *dst,
+                   uint x, uint y, uint w, uint h,
+                   enum pipe_format format, const void *p)
 {
-   switch (format) {
-   case PIPE_FORMAT_Z16_UNORM:
-      z16_get_tile_rgba((ushort *) src, w, h, dst, dst_stride);
-      break;
-   case PIPE_FORMAT_Z32_UNORM:
-      z32_get_tile_rgba((unsigned *) src, w, h, dst, dst_stride);
-      break;
-   case PIPE_FORMAT_Z24_UNORM_S8_UINT:
-   case PIPE_FORMAT_Z24X8_UNORM:
-      s8z24_get_tile_rgba((unsigned *) src, w, h, dst, dst_stride);
-      break;
-   case PIPE_FORMAT_S8_UINT:
-      s8_get_tile_rgba((unsigned char *) src, w, h, dst, dst_stride);
-      break;
-   case PIPE_FORMAT_X24S8_UINT:
-      s8x24_get_tile_rgba((unsigned *) src, w, h, dst, dst_stride);
-      break;
-   case PIPE_FORMAT_S8_UINT_Z24_UNORM:
-   case PIPE_FORMAT_X8Z24_UNORM:
-      z24s8_get_tile_rgba((unsigned *) src, w, h, dst, dst_stride);
-      break;
-   case PIPE_FORMAT_S8X24_UINT:
-      x24s8_get_tile_rgba((unsigned *) src, w, h, dst, dst_stride);
-      break;
-   case PIPE_FORMAT_Z32_FLOAT:
-      z32f_get_tile_rgba((float *) src, w, h, dst, dst_stride);
-      break;
-   case PIPE_FORMAT_Z32_FLOAT_S8X24_UINT:
-      z32f_x24s8_get_tile_rgba((float *) src, w, h, dst, dst_stride);
-      break;
-   case PIPE_FORMAT_X32_S8X24_UINT:
-      x32_s8_get_tile_rgba((unsigned *) src, w, h, dst, dst_stride);
-      break;
-   default:
-      util_format_read_4f(format,
-                          dst, dst_stride * sizeof(float),
-                          src, util_format_get_stride(format, w),
-                          0, 0, w, h);
+   unsigned src_stride = w * 4;
+   void *packed;
+
+   if (u_clip_tile(x, y, &w, &h, &pt->box))
+      return;
+
+   packed = MALLOC(util_format_get_nblocks(format, w, h) * util_format_get_blocksize(format));
+
+   if (!packed)
+      return;
+   /* softpipe's S8_UINT texture cache fetch needs to take the rgba_format
+    * path, not ui (since there's no ui unpack for s8, but it's technically
+    * pure integer).
+    */
+   if (util_format_is_pure_uint(format)) {
+      util_format_write_4ui(format,
+                            p, src_stride * sizeof(float),
+                            packed, util_format_get_stride(format, w),
+                            0, 0, w, h);
+   } else if (util_format_is_pure_sint(format)) {
+      util_format_write_4i(format,
+                           p, src_stride * sizeof(float),
+                           packed, util_format_get_stride(format, w),
+                           0, 0, w, h);
+   } else {
+      switch (format) {
+      case PIPE_FORMAT_Z16_UNORM:
+         /*z16_put_tile_rgba((ushort *) packed, w, h, p, src_stride);*/
+         break;
+      case PIPE_FORMAT_Z32_UNORM:
+         /*z32_put_tile_rgba((unsigned *) packed, w, h, p, src_stride);*/
+         break;
+      case PIPE_FORMAT_Z24_UNORM_S8_UINT:
+      case PIPE_FORMAT_Z24X8_UNORM:
+         /*s8z24_put_tile_rgba((unsigned *) packed, w, h, p, src_stride);*/
+         break;
+      case PIPE_FORMAT_S8_UINT_Z24_UNORM:
+      case PIPE_FORMAT_X8Z24_UNORM:
+         /*z24s8_put_tile_rgba((unsigned *) packed, w, h, p, src_stride);*/
+         break;
+      case PIPE_FORMAT_Z32_FLOAT:
+         /*z32f_put_tile_rgba((unsigned *) packed, w, h, p, src_stride);*/
+         break;
+      case PIPE_FORMAT_Z32_FLOAT_S8X24_UINT:
+         /*z32f_s8x24_put_tile_rgba((unsigned *) packed, w, h, p, src_stride);*/
+         break;
+      default:
+         util_format_write_4f(format,
+                              p, src_stride * sizeof(float),
+                              packed, util_format_get_stride(format, w),
+                              0, 0, w, h);
+      }
    }
-}
 
-static void
-pipe_tile_raw_to_unsigned(enum pipe_format format,
-                          const void *src,
-                          uint w, uint h,
-                          unsigned *dst, unsigned dst_stride)
-{
-  util_format_read_4ui(format,
-                       dst, dst_stride * sizeof(float),
-                       src, util_format_get_stride(format, w),
-                       0, 0, w, h);
-}
 
-static void
-pipe_tile_raw_to_signed(enum pipe_format format,
-                          void *src,
-                          uint w, uint h,
-                          int *dst, unsigned dst_stride)
-{
-  util_format_read_4i(format,
-                      dst, dst_stride * sizeof(float),
-                      src, util_format_get_stride(format, w),
-                      0, 0, w, h);
+   pipe_put_tile_raw(pt, dst, x, y, w, h, packed, 0);
+
+   FREE(packed);
 }
 
 void
 pipe_get_tile_rgba(struct pipe_transfer *pt,
                    const void *src,
                    uint x, uint y, uint w, uint h,
-                   float *p)
-{
-   pipe_get_tile_rgba_format(pt, src, x, y, w, h, pt->resource->format, p);
-}
-
-
-void
-pipe_get_tile_rgba_format(struct pipe_transfer *pt,
-                          const void *src,
-                          uint x, uint y, uint w, uint h,
-                          enum pipe_format format,
-                          float *p)
+                   enum pipe_format format,
+                   void *dst)
 {
    unsigned dst_stride = w * 4;
    void *packed;
@@ -460,186 +445,58 @@ pipe_get_tile_rgba_format(struct pipe_transfer *pt,
 
    pipe_get_tile_raw(pt, src, x, y, w, h, packed, 0);
 
-   pipe_tile_raw_to_rgba(format, packed, w, h, p, dst_stride);
-
-   FREE(packed);
-}
-
-
-void
-pipe_put_tile_rgba(struct pipe_transfer *pt,
-                   void *dst,
-                   uint x, uint y, uint w, uint h,
-                   const float *p)
-{
-   pipe_put_tile_rgba_format(pt, dst, x, y, w, h, pt->resource->format, p);
-}
-
-
-void
-pipe_put_tile_rgba_format(struct pipe_transfer *pt,
-                          void *dst,
-                          uint x, uint y, uint w, uint h,
-                          enum pipe_format format,
-                          const float *p)
-{
-   unsigned src_stride = w * 4;
-   void *packed;
-
-   if (u_clip_tile(x, y, &w, &h, &pt->box))
-      return;
-
-   packed = MALLOC(util_format_get_nblocks(format, w, h) * util_format_get_blocksize(format));
-
-   if (!packed)
-      return;
-
-   switch (format) {
-   case PIPE_FORMAT_Z16_UNORM:
-      /*z16_put_tile_rgba((ushort *) packed, w, h, p, src_stride);*/
-      break;
-   case PIPE_FORMAT_Z32_UNORM:
-      /*z32_put_tile_rgba((unsigned *) packed, w, h, p, src_stride);*/
-      break;
-   case PIPE_FORMAT_Z24_UNORM_S8_UINT:
-   case PIPE_FORMAT_Z24X8_UNORM:
-      /*s8z24_put_tile_rgba((unsigned *) packed, w, h, p, src_stride);*/
-      break;
-   case PIPE_FORMAT_S8_UINT_Z24_UNORM:
-   case PIPE_FORMAT_X8Z24_UNORM:
-      /*z24s8_put_tile_rgba((unsigned *) packed, w, h, p, src_stride);*/
-      break;
-   case PIPE_FORMAT_Z32_FLOAT:
-      /*z32f_put_tile_rgba((unsigned *) packed, w, h, p, src_stride);*/
-      break;
-   case PIPE_FORMAT_Z32_FLOAT_S8X24_UINT:
-      /*z32f_s8x24_put_tile_rgba((unsigned *) packed, w, h, p, src_stride);*/
-      break;
-   default:
-      util_format_write_4f(format,
-                           p, src_stride * sizeof(float),
+   if (util_format_is_pure_uint(format) &&
+       !util_format_is_depth_or_stencil(format)) {
+      util_format_read_4ui(format,
+                           dst, dst_stride * sizeof(float),
                            packed, util_format_get_stride(format, w),
                            0, 0, w, h);
+   } else if (util_format_is_pure_sint(format)) {
+      util_format_read_4i(format,
+                          dst, dst_stride * sizeof(float),
+                          packed, util_format_get_stride(format, w),
+                          0, 0, w, h);
+   } else {
+      switch (format) {
+      case PIPE_FORMAT_Z16_UNORM:
+         z16_get_tile_rgba((ushort *) packed, w, h, dst, dst_stride);
+         break;
+      case PIPE_FORMAT_Z32_UNORM:
+         z32_get_tile_rgba((unsigned *) packed, w, h, dst, dst_stride);
+         break;
+      case PIPE_FORMAT_Z24_UNORM_S8_UINT:
+      case PIPE_FORMAT_Z24X8_UNORM:
+         s8z24_get_tile_rgba((unsigned *) packed, w, h, dst, dst_stride);
+         break;
+      case PIPE_FORMAT_S8_UINT:
+         s8_get_tile_rgba((unsigned char *) packed, w, h, dst, dst_stride);
+         break;
+      case PIPE_FORMAT_X24S8_UINT:
+         s8x24_get_tile_rgba((unsigned *) packed, w, h, dst, dst_stride);
+         break;
+      case PIPE_FORMAT_S8_UINT_Z24_UNORM:
+      case PIPE_FORMAT_X8Z24_UNORM:
+         z24s8_get_tile_rgba((unsigned *) packed, w, h, dst, dst_stride);
+         break;
+      case PIPE_FORMAT_S8X24_UINT:
+         x24s8_get_tile_rgba((unsigned *) packed, w, h, dst, dst_stride);
+         break;
+      case PIPE_FORMAT_Z32_FLOAT:
+         z32f_get_tile_rgba((float *) packed, w, h, dst, dst_stride);
+         break;
+      case PIPE_FORMAT_Z32_FLOAT_S8X24_UINT:
+         z32f_x24s8_get_tile_rgba((float *) packed, w, h, dst, dst_stride);
+         break;
+      case PIPE_FORMAT_X32_S8X24_UINT:
+         x32_s8_get_tile_rgba((unsigned *) packed, w, h, dst, dst_stride);
+         break;
+      default:
+         util_format_read_4f(format,
+                             dst, dst_stride * sizeof(float),
+                             packed, util_format_get_stride(format, w),
+                             0, 0, w, h);
+      }
    }
-
-   pipe_put_tile_raw(pt, dst, x, y, w, h, packed, 0);
-
-   FREE(packed);
-}
-
-void
-pipe_put_tile_i_format(struct pipe_transfer *pt,
-                       void *dst,
-                       uint x, uint y, uint w, uint h,
-                       enum pipe_format format,
-                       const int *p)
-{
-   unsigned src_stride = w * 4;
-   void *packed;
-
-   if (u_clip_tile(x, y, &w, &h, &pt->box))
-      return;
-
-   packed = MALLOC(util_format_get_nblocks(format, w, h) * util_format_get_blocksize(format));
-
-   if (!packed)
-      return;
-
-   util_format_write_4i(format,
-                        p, src_stride * sizeof(float),
-                        packed, util_format_get_stride(format, w),
-                        0, 0, w, h);
-
-   pipe_put_tile_raw(pt, dst, x, y, w, h, packed, 0);
-
-   FREE(packed);
-}
-
-void
-pipe_put_tile_ui_format(struct pipe_transfer *pt,
-                        void *dst,
-                        uint x, uint y, uint w, uint h,
-                        enum pipe_format format,
-                        const unsigned int *p)
-{
-   unsigned src_stride = w * 4;
-   void *packed;
-
-   if (u_clip_tile(x, y, &w, &h, &pt->box))
-      return;
-
-   packed = MALLOC(util_format_get_nblocks(format, w, h) * util_format_get_blocksize(format));
-
-   if (!packed)
-      return;
-
-   util_format_write_4ui(format,
-                         p, src_stride * sizeof(float),
-                         packed, util_format_get_stride(format, w),
-                         0, 0, w, h);
-
-   pipe_put_tile_raw(pt, dst, x, y, w, h, packed, 0);
-
-   FREE(packed);
-}
-
-void
-pipe_get_tile_ui_format(struct pipe_transfer *pt,
-                        const void *src,
-                        uint x, uint y, uint w, uint h,
-                        enum pipe_format format,
-                        unsigned int *p)
-{
-   unsigned dst_stride = w * 4;
-   void *packed;
-
-   if (u_clip_tile(x, y, &w, &h, &pt->box)) {
-      return;
-   }
-
-   packed = MALLOC(util_format_get_nblocks(format, w, h) * util_format_get_blocksize(format));
-   if (!packed) {
-      return;
-   }
-
-   if (format == PIPE_FORMAT_UYVY || format == PIPE_FORMAT_YUYV) {
-      assert((x & 1) == 0);
-   }
-
-   pipe_get_tile_raw(pt, src, x, y, w, h, packed, 0);
-
-   pipe_tile_raw_to_unsigned(format, packed, w, h, p, dst_stride);
-
-   FREE(packed);
-}
-
-
-void
-pipe_get_tile_i_format(struct pipe_transfer *pt,
-                       const void *src,
-                       uint x, uint y, uint w, uint h,
-                       enum pipe_format format,
-                       int *p)
-{
-   unsigned dst_stride = w * 4;
-   void *packed;
-
-   if (u_clip_tile(x, y, &w, &h, &pt->box)) {
-      return;
-   }
-
-   packed = MALLOC(util_format_get_nblocks(format, w, h) * util_format_get_blocksize(format));
-   if (!packed) {
-      return;
-   }
-
-   if (format == PIPE_FORMAT_UYVY || format == PIPE_FORMAT_YUYV) {
-      assert((x & 1) == 0);
-   }
-
-   pipe_get_tile_raw(pt, src, x, y, w, h, packed, 0);
-
-   pipe_tile_raw_to_signed(format, packed, w, h, p, dst_stride);
 
    FREE(packed);
 }
