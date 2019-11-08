@@ -432,10 +432,18 @@ ac_build_optimization_barrier(struct ac_llvm_context *ctx,
 	} else {
 		LLVMTypeRef ftype = LLVMFunctionType(ctx->i32, &ctx->i32, 1, false);
 		LLVMValueRef inlineasm = LLVMConstInlineAsm(ftype, code, "=v,0", true, false);
+		LLVMTypeRef type = LLVMTypeOf(*pvgpr);
+		unsigned bitsize = ac_get_elem_bits(ctx, type);
 		LLVMValueRef vgpr = *pvgpr;
-		LLVMTypeRef vgpr_type = LLVMTypeOf(vgpr);
-		unsigned vgpr_size = ac_get_type_size(vgpr_type);
+		LLVMTypeRef vgpr_type;
+		unsigned vgpr_size;
 		LLVMValueRef vgpr0;
+
+		if (bitsize < 32)
+			vgpr = LLVMBuildZExt(ctx->builder, vgpr, ctx->i32, "");
+
+		vgpr_type = LLVMTypeOf(vgpr);
+		vgpr_size = ac_get_type_size(vgpr_type);
 
 		assert(vgpr_size % 4 == 0);
 
@@ -444,6 +452,9 @@ ac_build_optimization_barrier(struct ac_llvm_context *ctx,
 		vgpr0 = LLVMBuildCall(builder, inlineasm, &vgpr0, 1, "");
 		vgpr = LLVMBuildInsertElement(builder, vgpr, vgpr0, ctx->i32_0, "");
 		vgpr = LLVMBuildBitCast(builder, vgpr, vgpr_type, "");
+
+		if (bitsize < 32)
+			vgpr = LLVMBuildTrunc(builder, vgpr, type, "");
 
 		*pvgpr = vgpr;
 	}
