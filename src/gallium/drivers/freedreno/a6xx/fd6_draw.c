@@ -129,8 +129,6 @@ fd6_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
 		.info = info,
 		.key = {
 			.vs = ctx->prog.vs,
-			.hs = ctx->prog.hs,
-			.ds = ctx->prog.ds,
 			.gs = ctx->prog.gs,
 			.fs = ctx->prog.fs,
 			.key = {
@@ -158,6 +156,9 @@ fd6_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
 	};
 
 	if (info->mode == PIPE_PRIM_PATCHES) {
+		emit.key.hs = ctx->prog.hs;
+		emit.key.ds = ctx->prog.ds;
+
 		shader_info *ds_info = &emit.key.ds->nir->info;
 		switch (ds_info->tess.primitive_mode) {
 		case GL_ISOLINES:
