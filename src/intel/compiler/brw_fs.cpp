@@ -629,9 +629,6 @@ type_size_scalar(const struct glsl_type *type, bool bindless)
 
 /**
  * Create a MOV to read the timestamp register.
- *
- * The caller is responsible for emitting the MOV.  The return value is
- * the destination of the MOV, with extra parameters set.
  */
 fs_reg
 fs_visitor::get_timestamp(const fs_builder &bld)
