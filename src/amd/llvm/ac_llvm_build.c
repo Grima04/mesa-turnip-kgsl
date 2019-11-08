@@ -3864,12 +3864,27 @@ ac_build_ds_swizzle(struct ac_llvm_context *ctx, LLVMValueRef src, unsigned mask
 static LLVMValueRef
 ac_build_wwm(struct ac_llvm_context *ctx, LLVMValueRef src)
 {
+	LLVMTypeRef src_type = LLVMTypeOf(src);
+	unsigned bitsize = ac_get_elem_bits(ctx, src_type);
 	char name[32], type[8];
+	LLVMValueRef ret;
+
+	src = ac_to_integer(ctx, src);
+
+	if (bitsize < 32)
+		src = LLVMBuildZExt(ctx->builder, src, ctx->i32, "");
+
 	ac_build_type_name_for_intr(LLVMTypeOf(src), type, sizeof(type));
 	snprintf(name, sizeof(name), "llvm.amdgcn.wwm.%s", type);
-	return ac_build_intrinsic(ctx, name, LLVMTypeOf(src),
-				  (LLVMValueRef []) { src }, 1,
-				  AC_FUNC_ATTR_READNONE);
+	ret = ac_build_intrinsic(ctx, name, LLVMTypeOf(src),
+				 (LLVMValueRef []) { src }, 1,
+				 AC_FUNC_ATTR_READNONE);
+
+	if (bitsize < 32)
+		ret = LLVMBuildTrunc(ctx->builder, ret,
+				     ac_to_integer_type(ctx, src_type), "");
+
+	return LLVMBuildBitCast(ctx->builder, ret, src_type, "");
 }
 
 static LLVMValueRef
