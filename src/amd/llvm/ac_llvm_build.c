@@ -3818,10 +3818,17 @@ ds_pattern_bitmode(unsigned and_mask, unsigned or_mask, unsigned xor_mask)
 static LLVMValueRef
 _ac_build_ds_swizzle(struct ac_llvm_context *ctx, LLVMValueRef src, unsigned mask)
 {
-	return ac_build_intrinsic(ctx, "llvm.amdgcn.ds.swizzle",
-				   LLVMTypeOf(src), (LLVMValueRef []) {
+	LLVMTypeRef src_type = LLVMTypeOf(src);
+	LLVMValueRef ret;
+
+	src = LLVMBuildZExt(ctx->builder, src, ctx->i32, "");
+
+	ret = ac_build_intrinsic(ctx, "llvm.amdgcn.ds.swizzle", ctx->i32,
+				 (LLVMValueRef []) {
 					src, LLVMConstInt(ctx->i32, mask, 0) },
-				   2, AC_FUNC_ATTR_READNONE | AC_FUNC_ATTR_CONVERGENT);
+				 2, AC_FUNC_ATTR_READNONE | AC_FUNC_ATTR_CONVERGENT);
+
+	return LLVMBuildTrunc(ctx->builder, ret, src_type, "");
 }
 
 LLVMValueRef
@@ -3831,9 +3838,7 @@ ac_build_ds_swizzle(struct ac_llvm_context *ctx, LLVMValueRef src, unsigned mask
 	src = ac_to_integer(ctx, src);
 	unsigned bits = LLVMGetIntTypeWidth(LLVMTypeOf(src));
 	LLVMValueRef ret;
-	if (bits == 32) {
-		ret = _ac_build_ds_swizzle(ctx, src, mask);
-	} else {
+	if (bits > 32) {
 		assert(bits % 32 == 0);
 		LLVMTypeRef vec_type = LLVMVectorType(ctx->i32, bits / 32);
 		LLVMValueRef src_vector =
@@ -3850,6 +3855,8 @@ ac_build_ds_swizzle(struct ac_llvm_context *ctx, LLVMValueRef src, unsigned mask
 						     LLVMConstInt(ctx->i32, i,
 								  0), "");
 		}
+	} else {
+		ret = _ac_build_ds_swizzle(ctx, src, mask);
 	}
 	return LLVMBuildBitCast(ctx->builder, ret, src_type, "");
 }
