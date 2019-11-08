@@ -2807,7 +2807,8 @@ emit_vertex_bo(struct anv_cmd_buffer *cmd_buffer,
          .VertexBufferIndex = index,
          .AddressModifyEnable = true,
          .BufferPitch = 0,
-         .MOCS = anv_mocs_for_bo(cmd_buffer->device, addr.bo),
+         .MOCS = addr.bo ? anv_mocs_for_bo(cmd_buffer->device, addr.bo) : 0,
+         .NullVertexBuffer = size == 0,
 #if (GEN_GEN >= 8)
          .BufferStartingAddress = addr,
          .BufferSize = size
@@ -2822,25 +2823,29 @@ static void
 emit_base_vertex_instance_bo(struct anv_cmd_buffer *cmd_buffer,
                              struct anv_address addr)
 {
-   emit_vertex_bo(cmd_buffer, addr, 8, ANV_SVGS_VB_INDEX);
+   emit_vertex_bo(cmd_buffer, addr, addr.bo ? 8 : 0, ANV_SVGS_VB_INDEX);
 }
 
 static void
 emit_base_vertex_instance(struct anv_cmd_buffer *cmd_buffer,
                           uint32_t base_vertex, uint32_t base_instance)
 {
-   struct anv_state id_state =
-      anv_cmd_buffer_alloc_dynamic_state(cmd_buffer, 8, 4);
+   if (base_vertex == 0 && base_instance == 0) {
+      emit_base_vertex_instance_bo(cmd_buffer, ANV_NULL_ADDRESS);
+   } else {
+      struct anv_state id_state =
+         anv_cmd_buffer_alloc_dynamic_state(cmd_buffer, 8, 4);
 
-   ((uint32_t *)id_state.map)[0] = base_vertex;
-   ((uint32_t *)id_state.map)[1] = base_instance;
+      ((uint32_t *)id_state.map)[0] = base_vertex;
+      ((uint32_t *)id_state.map)[1] = base_instance;
 
-   struct anv_address addr = {
-      .bo = cmd_buffer->device->dynamic_state_pool.block_pool.bo,
-      .offset = id_state.offset,
-   };
+      struct anv_address addr = {
+         .bo = cmd_buffer->device->dynamic_state_pool.block_pool.bo,
+         .offset = id_state.offset,
+      };
 
-   emit_base_vertex_instance_bo(cmd_buffer, addr);
+      emit_base_vertex_instance_bo(cmd_buffer, addr);
+   }
 }
 
 static void
