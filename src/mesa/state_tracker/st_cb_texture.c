@@ -2345,20 +2345,19 @@ fallback_copy_texsubimage(struct gl_context *ctx,
       data = malloc(width * sizeof(uint));
 
       if (data) {
+         unsigned dst_stride = (stImage->pt->target == PIPE_TEXTURE_1D_ARRAY ?
+                                transfer->layer_stride : transfer->stride);
          /* To avoid a large temp memory allocation, do copy row by row */
          for (row = 0; row < height; row++, srcY += yStep) {
-            pipe_get_tile_z(src_trans, map, 0, srcY, width, 1, data);
+            util_format_unpack_z_32unorm(strb->texture->format,
+                                         data, (uint8_t *)map + src_trans->stride * srcY,
+                                         width);
             if (scaleOrBias) {
                _mesa_scale_and_bias_depth_uint(ctx, width, data);
             }
 
-            if (stImage->pt->target == PIPE_TEXTURE_1D_ARRAY) {
-               pipe_put_tile_z(transfer, texDest + row*transfer->layer_stride,
-                               0, 0, width, 1, data);
-            }
-            else {
-               pipe_put_tile_z(transfer, texDest, 0, row, width, 1, data);
-            }
+            util_format_pack_z_32unorm(stImage->pt->format,
+                                       texDest + row * dst_stride, data, width);
          }
       }
       else {
