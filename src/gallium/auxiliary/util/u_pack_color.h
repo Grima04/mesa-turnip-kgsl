@@ -430,7 +430,7 @@ util_pack_color(const float rgba[4], enum pipe_format format, union util_color *
    /* Handle other cases with a generic function.
     */
    default:
-      util_format_write_4f(format, rgba, 0, uc, 0, 0, 0, 1, 1);
+      util_format_pack_rgba(format, uc, rgba, 1);
    }
 }
 
