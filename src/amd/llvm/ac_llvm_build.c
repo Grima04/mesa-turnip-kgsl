@@ -4320,12 +4320,17 @@ ac_build_quad_swizzle(struct ac_llvm_context *ctx, LLVMValueRef src,
 LLVMValueRef
 ac_build_shuffle(struct ac_llvm_context *ctx, LLVMValueRef src, LLVMValueRef index)
 {
+	LLVMTypeRef type = LLVMTypeOf(src);
+	LLVMValueRef result;
+
 	index = LLVMBuildMul(ctx->builder, index, LLVMConstInt(ctx->i32, 4, 0), "");
-	return ac_build_intrinsic(ctx,
-		  "llvm.amdgcn.ds.bpermute", ctx->i32,
-		  (LLVMValueRef []) {index, src}, 2,
-		  AC_FUNC_ATTR_READNONE |
-		  AC_FUNC_ATTR_CONVERGENT);
+	src = LLVMBuildZExt(ctx->builder, src, ctx->i32, "");
+
+	result = ac_build_intrinsic(ctx, "llvm.amdgcn.ds.bpermute", ctx->i32,
+				    (LLVMValueRef []) {index, src}, 2,
+				    AC_FUNC_ATTR_READNONE |
+				    AC_FUNC_ATTR_CONVERGENT);
+	return LLVMBuildTrunc(ctx->builder, result, type, "");
 }
 
 LLVMValueRef
