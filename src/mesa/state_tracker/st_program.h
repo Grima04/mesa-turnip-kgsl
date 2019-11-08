@@ -353,6 +353,9 @@ st_translate_common_program(struct st_context *st,
                             struct st_program *stp);
 
 extern void
+st_serialize_nir(struct st_program *stp);
+
+extern void
 st_finalize_program(struct st_context *st, struct gl_program *prog);
 
 #ifdef __cplusplus
