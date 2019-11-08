@@ -710,6 +710,14 @@ iris_hiz_exec(struct iris_context *ice,
                                 PIPE_CONTROL_DEPTH_STALL);
 }
 
+static bool
+level_has_aux(const struct iris_resource *res, uint32_t level)
+{
+   return isl_aux_usage_has_hiz(res->aux.usage) ?
+          iris_resource_level_has_hiz(res, level) :
+          res->aux.usage != ISL_AUX_USAGE_NONE;
+}
+
 /**
  * Does the resource's slice have hiz enabled?
  */
@@ -789,126 +797,6 @@ iris_has_color_unresolved(const struct iris_resource *res,
    return false;
 }
 
-static enum isl_aux_op
-get_ccs_d_resolve_op(enum isl_aux_state aux_state,
-                     enum isl_aux_usage aux_usage,
-                     bool fast_clear_supported)
-{
-   assert(aux_usage == ISL_AUX_USAGE_NONE || aux_usage == ISL_AUX_USAGE_CCS_D);
-
-   const bool ccs_supported =
-      (aux_usage == ISL_AUX_USAGE_CCS_D) && fast_clear_supported;
-
-   switch (aux_state) {
-   case ISL_AUX_STATE_CLEAR:
-   case ISL_AUX_STATE_PARTIAL_CLEAR:
-      if (!ccs_supported)
-         return ISL_AUX_OP_FULL_RESOLVE;
-      else
-         return ISL_AUX_OP_NONE;
-
-   case ISL_AUX_STATE_PASS_THROUGH:
-      return ISL_AUX_OP_NONE;
-
-   case ISL_AUX_STATE_RESOLVED:
-   case ISL_AUX_STATE_AUX_INVALID:
-   case ISL_AUX_STATE_COMPRESSED_CLEAR:
-   case ISL_AUX_STATE_COMPRESSED_NO_CLEAR:
-      break;
-   }
-
-   unreachable("Invalid aux state for CCS_D");
-}
-
-static enum isl_aux_op
-get_ccs_e_resolve_op(enum isl_aux_state aux_state,
-                     enum isl_aux_usage aux_usage,
-                     bool fast_clear_supported)
-{
-   /* CCS_E surfaces can be accessed as CCS_D if we're careful. */
-   assert(aux_usage == ISL_AUX_USAGE_NONE ||
-          aux_usage == ISL_AUX_USAGE_CCS_D ||
-          aux_usage == ISL_AUX_USAGE_CCS_E);
-
-   switch (aux_state) {
-   case ISL_AUX_STATE_CLEAR:
-   case ISL_AUX_STATE_PARTIAL_CLEAR:
-      if (fast_clear_supported)
-         return ISL_AUX_OP_NONE;
-      else if (aux_usage == ISL_AUX_USAGE_CCS_E)
-         return ISL_AUX_OP_PARTIAL_RESOLVE;
-      else
-         return ISL_AUX_OP_FULL_RESOLVE;
-
-   case ISL_AUX_STATE_COMPRESSED_CLEAR:
-      if (aux_usage != ISL_AUX_USAGE_CCS_E)
-         return ISL_AUX_OP_FULL_RESOLVE;
-      else if (!fast_clear_supported)
-         return ISL_AUX_OP_PARTIAL_RESOLVE;
-      else
-         return ISL_AUX_OP_NONE;
-
-   case ISL_AUX_STATE_COMPRESSED_NO_CLEAR:
-      if (aux_usage != ISL_AUX_USAGE_CCS_E)
-         return ISL_AUX_OP_FULL_RESOLVE;
-      else
-         return ISL_AUX_OP_NONE;
-
-   case ISL_AUX_STATE_PASS_THROUGH:
-      return ISL_AUX_OP_NONE;
-
-   case ISL_AUX_STATE_RESOLVED:
-   case ISL_AUX_STATE_AUX_INVALID:
-      break;
-   }
-
-   unreachable("Invalid aux state for CCS_E");
-}
-
-static void
-iris_resource_prepare_ccs_access(struct iris_context *ice,
-                                 struct iris_batch *batch,
-                                 struct iris_resource *res,
-                                 uint32_t level, uint32_t layer,
-                                 enum isl_aux_usage aux_usage,
-                                 bool fast_clear_supported)
-{
-   enum isl_aux_state aux_state = iris_resource_get_aux_state(res, level, layer);
-
-   enum isl_aux_op resolve_op;
-   if (res->aux.usage == ISL_AUX_USAGE_CCS_E) {
-      resolve_op = get_ccs_e_resolve_op(aux_state, aux_usage,
-                                        fast_clear_supported);
-   } else {
-      assert(res->aux.usage == ISL_AUX_USAGE_CCS_D);
-      resolve_op = get_ccs_d_resolve_op(aux_state, aux_usage,
-                                        fast_clear_supported);
-   }
-
-   if (resolve_op != ISL_AUX_OP_NONE) {
-      iris_resolve_color(ice, batch, res, level, layer, resolve_op);
-
-      switch (resolve_op) {
-      case ISL_AUX_OP_FULL_RESOLVE:
-         /* The CCS full resolve operation destroys the CCS and sets it to the
-          * pass-through state.  (You can also think of this as being both a
-          * resolve and an ambiguate in one operation.)
-          */
-         iris_resource_set_aux_state(ice, res, level, layer, 1,
-                                     ISL_AUX_STATE_PASS_THROUGH);
-         break;
-
-      case ISL_AUX_OP_PARTIAL_RESOLVE:
-         iris_resource_set_aux_state(ice, res, level, layer, 1,
-                                     ISL_AUX_STATE_COMPRESSED_NO_CLEAR);
-         break;
-
-      default:
-         unreachable("Invalid resolve op");
-      }
-   }
-}
-
 static void
 iris_resource_finish_ccs_write(struct iris_context *ice,
                                struct iris_resource *res,
@@ -984,37 +872,6 @@ iris_resource_finish_ccs_write(struct iris_context *ice,
 }
 
 static void
-iris_resource_prepare_mcs_access(struct iris_context *ice,
-                                 struct iris_batch *batch,
-                                 struct iris_resource *res,
-                                 uint32_t layer,
-                                 enum isl_aux_usage aux_usage,
-                                 bool fast_clear_supported)
-{
-   assert(isl_aux_usage_has_mcs(aux_usage));
-
-   switch (iris_resource_get_aux_state(res, 0, layer)) {
-   case ISL_AUX_STATE_CLEAR:
-   case ISL_AUX_STATE_COMPRESSED_CLEAR:
-      if (!fast_clear_supported) {
-         iris_mcs_partial_resolve(ice, batch, res, layer, 1);
-         iris_resource_set_aux_state(ice, res, 0, layer, 1,
-                                     ISL_AUX_STATE_COMPRESSED_NO_CLEAR);
-      }
-      break;
-
-   case ISL_AUX_STATE_COMPRESSED_NO_CLEAR:
-      break; /* Nothing to do */
-
-   case ISL_AUX_STATE_RESOLVED:
-   case ISL_AUX_STATE_PASS_THROUGH:
-   case ISL_AUX_STATE_AUX_INVALID:
-   case ISL_AUX_STATE_PARTIAL_CLEAR:
-      unreachable("Invalid aux state for MCS");
-   }
-}
-
-static void
 iris_resource_finish_mcs_write(struct iris_context *ice,
                                struct iris_resource *res,
                                uint32_t layer,
@@ -1037,66 +894,6 @@ iris_resource_finish_mcs_write(struct iris_context *ice,
    case ISL_AUX_STATE_AUX_INVALID:
    case ISL_AUX_STATE_PARTIAL_CLEAR:
       unreachable("Invalid aux state for MCS");
-   }
-}
-
-static void
-iris_resource_prepare_hiz_access(struct iris_context *ice,
-                                 struct iris_batch *batch,
-                                 struct iris_resource *res,
-                                 uint32_t level, uint32_t layer,
-                                 enum isl_aux_usage aux_usage,
-                                 bool fast_clear_supported)
-{
-   assert(aux_usage == ISL_AUX_USAGE_NONE ||
-          aux_usage == ISL_AUX_USAGE_HIZ ||
-          aux_usage == ISL_AUX_USAGE_HIZ_CCS ||
-          aux_usage == ISL_AUX_USAGE_CCS_E);
-
-   enum isl_aux_op hiz_op = ISL_AUX_OP_NONE;
-   switch (iris_resource_get_aux_state(res, level, layer)) {
-   case ISL_AUX_STATE_CLEAR:
-   case ISL_AUX_STATE_COMPRESSED_CLEAR:
-      if (aux_usage == ISL_AUX_USAGE_NONE || !fast_clear_supported)
-         hiz_op = ISL_AUX_OP_FULL_RESOLVE;
-      break;
-
-   case ISL_AUX_STATE_COMPRESSED_NO_CLEAR:
-      if (aux_usage == ISL_AUX_USAGE_NONE)
-         hiz_op = ISL_AUX_OP_FULL_RESOLVE;
-      break;
-
-   case ISL_AUX_STATE_PASS_THROUGH:
-   case ISL_AUX_STATE_RESOLVED:
-      break;
-
-   case ISL_AUX_STATE_AUX_INVALID:
-      if (aux_usage != ISL_AUX_USAGE_NONE)
-         hiz_op = ISL_AUX_OP_AMBIGUATE;
-      break;
-
-   case ISL_AUX_STATE_PARTIAL_CLEAR:
-      unreachable("Invalid HiZ state");
-   }
-
-   if (hiz_op != ISL_AUX_OP_NONE) {
-      iris_hiz_exec(ice, batch, res, level, layer, 1, hiz_op, false);
-
-      switch (hiz_op) {
-      case ISL_AUX_OP_FULL_RESOLVE:
-         iris_resource_set_aux_state(ice, res, level, layer, 1,
-                                     ISL_AUX_STATE_RESOLVED);
-         break;
-
-      case ISL_AUX_OP_AMBIGUATE:
-         /* The HiZ resolve operation is actually an ambiguate */
-         iris_resource_set_aux_state(ice, res, level, layer, 1,
-                                     ISL_AUX_STATE_PASS_THROUGH);
-         break;
-
-      default:
-         unreachable("Invalid HiZ op");
-      }
    }
 }
 
@@ -1156,57 +953,38 @@ iris_resource_prepare_access(struct iris_context *ice,
                              enum isl_aux_usage aux_usage,
                              bool fast_clear_supported)
 {
-   num_levels = miptree_level_range_length(res, start_level, num_levels);
+   const uint32_t clamped_levels =
+      miptree_level_range_length(res, start_level, num_levels);
+   for (uint32_t l = 0; l < clamped_levels; l++) {
+      const uint32_t level = start_level + l;
+      if (!level_has_aux(res, level))
+         continue;
 
-   switch (res->aux.usage) {
-   case ISL_AUX_USAGE_NONE:
-      /* Nothing to do */
-      break;
-
-   case ISL_AUX_USAGE_MCS:
-   case ISL_AUX_USAGE_MCS_CCS:
-      assert(start_level == 0 && num_levels == 1);
       const uint32_t level_layers =
-         miptree_layer_range_length(res, 0, start_layer, num_layers);
+         miptree_layer_range_length(res, level, start_layer, num_layers);
       for (uint32_t a = 0; a < level_layers; a++) {
-         iris_resource_prepare_mcs_access(ice, batch, res, start_layer + a,
-                                          aux_usage, fast_clear_supported);
-      }
-      break;
+         const uint32_t layer = start_layer + a;
+         const enum isl_aux_state aux_state =
+            iris_resource_get_aux_state(res, level, layer);
+         const enum isl_aux_op aux_op =
+            isl_aux_prepare_access(aux_state, aux_usage, fast_clear_supported);
 
-   case ISL_AUX_USAGE_CCS_D:
-   case ISL_AUX_USAGE_CCS_E:
-      for (uint32_t l = 0; l < num_levels; l++) {
-         const uint32_t level = start_level + l;
-         const uint32_t level_layers =
-            miptree_layer_range_length(res, level, start_layer, num_layers);
-         for (uint32_t a = 0; a < level_layers; a++) {
-            iris_resource_prepare_ccs_access(ice, batch, res, level,
-                                             start_layer + a,
-                                             aux_usage, fast_clear_supported);
+         if (aux_op == ISL_AUX_OP_NONE) {
+            /* Nothing to do here. */
+         } else if (isl_aux_usage_has_mcs(res->aux.usage)) {
+            assert(aux_op == ISL_AUX_OP_PARTIAL_RESOLVE);
+            iris_mcs_partial_resolve(ice, batch, res, layer, 1);
+         } else if (isl_aux_usage_has_hiz(res->aux.usage)) {
+            iris_hiz_exec(ice, batch, res, level, layer, 1, aux_op, false);
+         } else {
+            assert(isl_aux_usage_has_ccs(res->aux.usage));
+            iris_resolve_color(ice, batch, res, level, layer, aux_op);
          }
+
+         const enum isl_aux_state new_state =
+            isl_aux_state_transition_aux_op(aux_state, res->aux.usage, aux_op);
+         iris_resource_set_aux_state(ice, res, level, layer, 1, new_state);
       }
-      break;
-
-   case ISL_AUX_USAGE_HIZ:
-   case ISL_AUX_USAGE_HIZ_CCS:
-      for (uint32_t l = 0; l < num_levels; l++) {
-         const uint32_t level = start_level + l;
-         if (!iris_resource_level_has_hiz(res, level))
-            continue;
-
-         const uint32_t level_layers =
-            miptree_layer_range_length(res, level, start_layer, num_layers);
-         for (uint32_t a = 0; a < level_layers; a++) {
-            iris_resource_prepare_hiz_access(ice, batch, res, level,
-                                             start_layer + a, aux_usage,
-                                             fast_clear_supported);
-         }
-      }
-      break;
-
-   default:
-      unreachable("Invalid aux usage");
    }
 }
 
