@@ -702,10 +702,10 @@ iris_clear_texture(struct pipe_context *ctx,
       uint8_t stencil = 0;
 
       if (fmt_desc->unpack_z_float)
-         fmt_desc->unpack_z_float(&depth, 0, data, 0, 1, 1);
+         util_format_unpack_z_float(p_res->format, &depth, data, 1);
 
       if (fmt_desc->unpack_s_8uint)
-         fmt_desc->unpack_s_8uint(&stencil, 0, data, 0, 1, 1);
+         util_format_unpack_s_8uint(p_res->format, &stencil, data, 1);
 
       clear_depth_stencil(ice, p_res, level, box, true, true, true,
                           depth, stencil);

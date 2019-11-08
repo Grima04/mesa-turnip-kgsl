@@ -591,12 +591,12 @@ util_clear_texture(struct pipe_context *pipe,
 
       if (util_format_has_depth(desc)) {
          clear |= PIPE_CLEAR_DEPTH;
-         desc->unpack_z_float(&depth, 0, data, 0, 1, 1);
+         util_format_unpack_z_float(tex->format, &depth, data, 1);
       }
 
       if (util_format_has_stencil(desc)) {
          clear |= PIPE_CLEAR_STENCIL;
-         desc->unpack_s_8uint(&stencil, 0, data, 0, 1, 1);
+         util_format_unpack_s_8uint(tex->format, &stencil, data, 1);
       }
 
       zstencil = util_pack64_z_stencil(tex->format, depth, stencil);
@@ -606,12 +606,7 @@ util_clear_texture(struct pipe_context *pipe,
                                        box->width, box->height, box->depth);
    } else {
       union pipe_color_union color;
-      if (util_format_is_pure_uint(tex->format))
-         desc->unpack_rgba_uint(color.ui, 0, data, 0, 1, 1);
-      else if (util_format_is_pure_sint(tex->format))
-         desc->unpack_rgba_sint(color.i, 0, data, 0, 1, 1);
-      else
-         desc->unpack_rgba_float(color.f, 0, data, 0, 1, 1);
+      util_format_unpack_rgba(tex->format, color.ui, data, 1);
 
       util_clear_color_texture(pipe, tex, tex->format, &color, level,
                                box->x, box->y, box->z,

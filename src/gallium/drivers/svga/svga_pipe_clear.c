@@ -309,8 +309,8 @@ svga_clear_texture(struct pipe_context *pipe,
          stencil = 0;
       }
       else {
-         desc->unpack_z_float(&depth, 0, data, 0, 1, 1);
-         desc->unpack_s_8uint(&stencil, 0, data, 0, 1, 1);
+         util_format_unpack_z_float(surface->format, &depth, data, 1);
+         util_format_unpack_s_8uint(surface->format, &stencil, data, 1);
       }
 
       if (util_format_has_depth(desc)) {
@@ -367,18 +367,7 @@ svga_clear_texture(struct pipe_context *pipe,
          color.f[0] = color.f[1] = color.f[2] = color.f[3] = 0;
       }
       else {
-         if (util_format_is_pure_sint(surface->format)) {
-            /* signed integer */
-            desc->unpack_rgba_sint(color.i, 0, data, 0, 1, 1);
-         }
-         else if (util_format_is_pure_uint(surface->format)) {
-            /* unsigned integer */
-            desc->unpack_rgba_uint(color.ui, 0, data, 0, 1, 1);
-         }
-         else {
-            /* floating point */
-            desc->unpack_rgba_float(color.f, 0, data, 0, 1, 1);
-         }
+         util_format_unpack_rgba(surface->format, color.ui, data, 1);
       }
 
       /* Setup render target view */

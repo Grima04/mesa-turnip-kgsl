@@ -149,15 +149,7 @@ nv50_emit_vtxattr(struct nv50_context *nv50, struct pipe_vertex_buffer *vb,
 
    assert(vb->is_user_buffer);
 
-   if (desc->channel[0].pure_integer) {
-      if (desc->channel[0].type == UTIL_FORMAT_TYPE_SIGNED) {
-         desc->unpack_rgba_sint((int32_t *)v, 0, data, 0, 1, 1);
-      } else {
-         desc->unpack_rgba_uint((uint32_t *)v, 0, data, 0, 1, 1);
-      }
-   } else {
-      desc->unpack_rgba_float(v, 0, data, 0, 1, 1);
-   }
+   util_format_unpack_rgba(ve->src_format, v, data, 1);
 
    switch (nc) {
    case 4:
