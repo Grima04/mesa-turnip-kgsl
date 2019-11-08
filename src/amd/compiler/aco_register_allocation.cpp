@@ -881,7 +881,15 @@ void handle_pseudo(ra_ctx& ctx,
          break;
       }
    }
-   if (!writes_sgpr)
+   /* if all operands are constant, no need to care either */
+   bool reads_sgpr = false;
+   for (Operand& op : instr->operands) {
+      if (op.isTemp() && op.getTemp().type() == RegType::sgpr) {
+         reads_sgpr = true;
+         break;
+      }
+   }
+   if (!(writes_sgpr && reads_sgpr))
       return;
 
    Pseudo_instruction *pi = (Pseudo_instruction *)instr;

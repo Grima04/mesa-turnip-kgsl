@@ -265,7 +265,7 @@ aco_ptr<Instruction> do_reload(spill_ctx& ctx, Temp tmp, Temp new_name, uint32_t
       } else if (instr->format == Format::SOP1) {
          res.reset(create_instruction<SOP1_instruction>(instr->opcode, instr->format, instr->operands.size(), instr->definitions.size()));
       } else if (instr->format == Format::PSEUDO) {
-         res.reset(create_instruction<Instruction>(instr->opcode, instr->format, instr->operands.size(), instr->definitions.size()));
+         res.reset(create_instruction<Pseudo_instruction>(instr->opcode, instr->format, instr->operands.size(), instr->definitions.size()));
       }
       for (unsigned i = 0; i < instr->operands.size(); i++) {
          res->operands[i] = instr->operands[i];
