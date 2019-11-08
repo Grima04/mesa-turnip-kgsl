@@ -621,7 +621,12 @@ BuilderSWR::CompileGS(struct swr_context *ctx, swr_jit_gs_key &key)
    pGS->numInputAttribs = (VERTEX_ATTRIB_START_SLOT - VERTEX_POSITION_SLOT) + info->num_inputs;
    pGS->outputTopology =
       swr_convert_prim_topology(info->properties[TGSI_PROPERTY_GS_OUTPUT_PRIM]);
-   pGS->maxNumVerts = info->properties[TGSI_PROPERTY_GS_MAX_OUTPUT_VERTICES];
+
+   /* It's +1 because emit_vertex in swr is always called exactly one time more
+    * than max_vertices passed in Geometry Shader. We need to allocate more memory
+    * to avoid crash/memory overwritten.
+    */
+   pGS->maxNumVerts = info->properties[TGSI_PROPERTY_GS_MAX_OUTPUT_VERTICES] + 1;
    pGS->instanceCount = info->properties[TGSI_PROPERTY_GS_INVOCATIONS];
 
    // If point primitive then assume to use multiple streams
@@ -699,7 +704,7 @@ BuilderSWR::CompileGS(struct swr_context *ctx, swr_jit_gs_key &key)
    struct lp_bld_tgsi_system_values system_values;
    memset(&system_values, 0, sizeof(system_values));
    system_values.prim_id = wrap(LOAD(pGsCtx, {0, SWR_GS_CONTEXT_PrimitiveID}));
-   system_values.instance_id = wrap(LOAD(pGsCtx, {0, SWR_GS_CONTEXT_InstanceID}));
+   system_values.invocation_id = wrap(LOAD(pGsCtx, {0, SWR_GS_CONTEXT_InstanceID}));
 
    std::vector<Constant*> mapConstants;
    Value *vtxAttribMap = ALLOCA(ArrayType::get(mInt32Ty, PIPE_MAX_SHADER_INPUTS));
