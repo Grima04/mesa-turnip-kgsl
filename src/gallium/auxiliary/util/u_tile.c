@@ -354,7 +354,7 @@ x32_s8_get_tile_rgba(const unsigned *src,
    }
 }
 
-void
+static void
 pipe_tile_raw_to_rgba(enum pipe_format format,
                       const void *src,
                       uint w, uint h,
@@ -401,7 +401,7 @@ pipe_tile_raw_to_rgba(enum pipe_format format,
    }
 }
 
-void
+static void
 pipe_tile_raw_to_unsigned(enum pipe_format format,
                           const void *src,
                           uint w, uint h,
@@ -413,7 +413,7 @@ pipe_tile_raw_to_unsigned(enum pipe_format format,
                        0, 0, w, h);
 }
 
-void
+static void
 pipe_tile_raw_to_signed(enum pipe_format format,
                           void *src,
                           uint w, uint h,

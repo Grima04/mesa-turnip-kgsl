@@ -100,24 +100,6 @@ pipe_put_tile_rgba_format(struct pipe_transfer *pt,
                           const float *p);
 
 void
-pipe_tile_raw_to_rgba(enum pipe_format format,
-                      const void *src,
-                      uint w, uint h,
-                      float *dst, unsigned dst_stride);
-
-void
-pipe_tile_raw_to_unsigned(enum pipe_format format,
-                          const void *src,
-                          uint w, uint h,
-                          unsigned *dst, unsigned dst_stride);
-
-void
-pipe_tile_raw_to_signed(enum pipe_format format,
-                        void *src,
-                        uint w, uint h,
-                        int *dst, unsigned dst_stride);
-
-void
 pipe_get_tile_ui_format(struct pipe_transfer *pt,
                         const void *src,
                         uint x, uint y, uint w, uint h,
