@@ -46,7 +46,7 @@ int ST_DEBUG = 0;
 
 static const struct debug_named_value st_debug_flags[] = {
    { "mesa",     DEBUG_MESA, NULL },
-   { "tgsi",     DEBUG_TGSI, NULL },
+   { "tgsi",     DEBUG_PRINT_IR, NULL },
    { "constants",DEBUG_CONSTANTS, NULL },
    { "pipe",     DEBUG_PIPE, NULL },
    { "tex",      DEBUG_TEX, NULL },

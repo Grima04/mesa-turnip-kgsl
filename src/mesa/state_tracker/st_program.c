@@ -791,7 +791,7 @@ st_create_vp_variant(struct st_context *st,
       state.tokens = tokens;
    }
 
-   if (ST_DEBUG & DEBUG_TGSI) {
+   if (ST_DEBUG & DEBUG_PRINT_IR) {
       tgsi_dump(state.tokens, 0);
       debug_printf("\n");
    }
@@ -1489,7 +1489,7 @@ st_create_fp_variant(struct st_context *st,
       state.tokens = tokens;
    }
 
-   if (ST_DEBUG & DEBUG_TGSI) {
+   if (ST_DEBUG & DEBUG_PRINT_IR) {
       tgsi_dump(state.tokens, 0);
       debug_printf("\n");
    }
@@ -1729,12 +1729,12 @@ st_translate_common_program(struct st_context *st,
 
    st_store_ir_in_disk_cache(st, prog, false);
 
-   if ((ST_DEBUG & DEBUG_TGSI) && (ST_DEBUG & DEBUG_MESA)) {
+   if ((ST_DEBUG & DEBUG_PRINT_IR) && (ST_DEBUG & DEBUG_MESA)) {
       _mesa_print_program(prog);
       debug_printf("\n");
    }
 
-   if (ST_DEBUG & DEBUG_TGSI) {
+   if (ST_DEBUG & DEBUG_PRINT_IR) {
       tgsi_dump(stcp->state.tokens, 0);
       debug_printf("\n");
    }
