@@ -31,6 +31,7 @@
 #include "util/u_inlines.h"
 #include "util/u_pack_color.h"
 #include "util/hash_table.h"
+#include "util/u_split_draw.h"
 #include "util/u_upload_mgr.h"
 #include "util/u_prim.h"
 #include "util/u_vbuf.h"
@@ -1317,58 +1318,12 @@ lima_update_varying(struct lima_context *ctx, const struct pipe_draw_info *info)
 }
 
 static void
-lima_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info)
+lima_draw_vbo_update(struct pipe_context *pctx,
+                     const struct pipe_draw_info *info)
 {
-   /* check if draw mode and vertex/index count match,
-    * otherwise gp will hang */
-   if (!u_trim_pipe_prim(info->mode, (unsigned*)&info->count)) {
-      debug_printf("draw mode and vertex/index count mismatch\n");
-      return;
-   }
-
    struct lima_context *ctx = lima_context(pctx);
-   struct pipe_resource *indexbuf = NULL;
-
-   if (!ctx->vs || !ctx->fs) {
-      debug_warn_once("no shader, skip draw\n");
-      return;
-   }
-
-   if (!lima_update_vs_state(ctx) || !lima_update_fs_state(ctx))
-      return;
-
-   if (info->index_size) {
-      if (info->has_user_indices) {
-         util_upload_index_buffer(&ctx->base, info, &indexbuf, &ctx->index_offset, 0x40);
-         ctx->index_res = lima_resource(indexbuf);
-      }
-      else
-         ctx->index_res = lima_resource(info->index.resource);
-
-      lima_submit_add_bo(ctx->gp_submit, ctx->index_res->bo, LIMA_SUBMIT_BO_READ);
-   }
-
-   lima_dump_command_stream_print(
-      ctx->vs->bo->map, ctx->vs->shader_size, false,
-      "add vs at va %x\n", ctx->vs->bo->va);
-
-   lima_dump_command_stream_print(
-      ctx->fs->bo->map, ctx->fs->shader_size, false,
-      "add fs at va %x\n", ctx->fs->bo->va);
-
-   lima_submit_add_bo(ctx->gp_submit, ctx->vs->bo, LIMA_SUBMIT_BO_READ);
-   lima_submit_add_bo(ctx->pp_submit, ctx->fs->bo, LIMA_SUBMIT_BO_READ);
 
    lima_update_submit_bo(ctx);
-
-   /* Mali Utgard GPU always need min/max index info for index draw,
-    * compute it if upper layer does not do for us */
-   if (info->index_size && info->max_index == ~0u)
-      u_vbuf_get_minmax_index(pctx, info, &ctx->min_index, &ctx->max_index);
-   else {
-      ctx->min_index = info->min_index;
-      ctx->max_index = info->max_index;
-   }
 
    lima_update_gp_attribute_info(ctx, info);
 
@@ -1404,9 +1359,103 @@ lima_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info)
    }
 
    ctx->dirty = 0;
+}
+
+static void
+lima_draw_vbo_indexed(struct pipe_context *pctx,
+                      const struct pipe_draw_info *info)
+{
+   struct lima_context *ctx = lima_context(pctx);
+   struct pipe_resource *indexbuf = NULL;
+
+   /* Mali Utgard GPU always need min/max index info for index draw,
+    * compute it if upper layer does not do for us */
+   if (info->max_index == ~0u)
+      u_vbuf_get_minmax_index(pctx, info, &ctx->min_index, &ctx->max_index);
+   else {
+      ctx->min_index = info->min_index;
+      ctx->max_index = info->max_index;
+   }
+
+   if (info->has_user_indices) {
+      util_upload_index_buffer(&ctx->base, info, &indexbuf, &ctx->index_offset, 0x40);
+      ctx->index_res = lima_resource(indexbuf);
+   }
+   else {
+      ctx->index_res = lima_resource(info->index.resource);
+      ctx->index_offset = 0;
+   }
+
+   lima_submit_add_bo(ctx->gp_submit, ctx->index_res->bo, LIMA_SUBMIT_BO_READ);
+   lima_submit_add_bo(ctx->pp_submit, ctx->index_res->bo, LIMA_SUBMIT_BO_READ);
+   lima_draw_vbo_update(pctx, info);
 
    if (indexbuf)
       pipe_resource_reference(&indexbuf, NULL);
+}
+
+static void
+lima_draw_vbo_count(struct pipe_context *pctx,
+                    const struct pipe_draw_info *info)
+{
+   static const uint32_t max_verts = 65535;
+
+   struct pipe_draw_info local_info = *info;
+   unsigned start = info->start;
+   unsigned count = info->count;
+
+   while (count) {
+      unsigned this_count = count;
+      unsigned step;
+
+      u_split_draw(info, max_verts, &this_count, &step);
+
+      local_info.start = start;
+      local_info.count = this_count;
+
+      lima_draw_vbo_update(pctx, &local_info);
+
+      count -= step;
+      start += step;
+   }
+}
+
+static void
+lima_draw_vbo(struct pipe_context *pctx,
+              const struct pipe_draw_info *info)
+{
+   /* check if draw mode and vertex/index count match,
+    * otherwise gp will hang */
+   if (!u_trim_pipe_prim(info->mode, (unsigned*)&info->count)) {
+      debug_printf("draw mode and vertex/index count mismatch\n");
+      return;
+   }
+
+   struct lima_context *ctx = lima_context(pctx);
+
+   if (!ctx->vs || !ctx->fs) {
+      debug_warn_once("no shader, skip draw\n");
+      return;
+   }
+
+   if (!lima_update_vs_state(ctx) || !lima_update_fs_state(ctx))
+      return;
+
+   lima_dump_command_stream_print(
+      ctx->vs->bo->map, ctx->vs->shader_size, false,
+      "add vs at va %x\n", ctx->vs->bo->va);
+
+   lima_dump_command_stream_print(
+      ctx->fs->bo->map, ctx->fs->shader_size, false,
+      "add fs at va %x\n", ctx->fs->bo->va);
+
+   lima_submit_add_bo(ctx->gp_submit, ctx->vs->bo, LIMA_SUBMIT_BO_READ);
+   lima_submit_add_bo(ctx->pp_submit, ctx->fs->bo, LIMA_SUBMIT_BO_READ);
+
+   if (info->index_size)
+      lima_draw_vbo_indexed(pctx, info);
+   else
+      lima_draw_vbo_count(pctx, info);
 }
 
 static void
