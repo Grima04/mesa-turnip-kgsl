@@ -1013,6 +1013,7 @@ static void si_lower_nir(struct si_screen *sscreen, struct nir_shader *nir)
 	si_nir_opts(nir);
 
 	NIR_PASS_V(nir, nir_lower_bool_to_int32);
+	NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_function_temp);
 }
 
 void si_finalize_nir(struct pipe_screen *screen, void *nirptr, bool optimize)
