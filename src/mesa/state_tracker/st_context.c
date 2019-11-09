@@ -960,8 +960,7 @@ st_create_context(gl_api api, struct pipe_context *pipe,
 
    st_debug_init();
 
-   if (pipe->screen->get_disk_shader_cache &&
-       !(ST_DEBUG & DEBUG_PRINT_IR))
+   if (pipe->screen->get_disk_shader_cache)
       ctx->Cache = pipe->screen->get_disk_shader_cache(pipe->screen);
 
    /* XXX: need a capability bit in gallium to query if the pipe

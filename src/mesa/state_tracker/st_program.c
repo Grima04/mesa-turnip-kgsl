@@ -1728,9 +1728,6 @@ st_translate_common_program(struct st_context *st,
    if (ST_DEBUG & DEBUG_PRINT_IR && ST_DEBUG & DEBUG_MESA)
       _mesa_print_program(prog);
 
-   if (ST_DEBUG & DEBUG_PRINT_IR)
-      tgsi_dump(stcp->state.tokens, 0);
-
    free_glsl_to_tgsi_visitor(stcp->glsl_to_tgsi);
    stcp->glsl_to_tgsi = NULL;
    return true;
@@ -1795,7 +1792,10 @@ st_get_common_variant(struct st_context *st,
 
                prog->state.tokens = tokens;
             }
-	    state = prog->state;
+            state = prog->state;
+
+            if (ST_DEBUG & DEBUG_PRINT_IR)
+               tgsi_dump(state.tokens, 0);
          }
          /* fill in new variant */
          switch (prog->Base.info.stage) {
