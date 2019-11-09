@@ -378,9 +378,6 @@ st_translate_common_program(struct st_context *st,
                             struct st_common_program *stcp);
 
 extern void
-st_print_current_vertex_program(void);
-
-extern void
 st_precompile_shader_variant(struct st_context *st,
                              struct gl_program *prog);
 

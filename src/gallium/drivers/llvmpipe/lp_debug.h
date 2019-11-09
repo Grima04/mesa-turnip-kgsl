@@ -32,10 +32,6 @@
 #include "pipe/p_compiler.h"
 #include "util/u_debug.h"
 
-extern void
-st_print_current(void);
-
-
 #define DEBUG_PIPE      0x1
 #define DEBUG_TGSI      0x2
 #define DEBUG_TEX       0x4
