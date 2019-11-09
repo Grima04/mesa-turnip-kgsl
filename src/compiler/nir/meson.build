@@ -269,6 +269,18 @@ nir_algebraic_py = files('nir_algebraic.py')
 
 if with_tests
   test(
+    'nir_builder',
+    executable(
+      'nir_builder_test',
+      files('tests/builder_tests.cpp'),
+      cpp_args : [cpp_vis_args, cpp_msvc_compat_args],
+      include_directories : [inc_common],
+      dependencies : [dep_thread, idep_gtest, idep_nir, idep_mesautil],
+    ),
+    suite : ['compiler', 'nir'],
+  )
+
+  test(
     'nir_control_flow',
     executable(
       'nir_control_flow_test',
