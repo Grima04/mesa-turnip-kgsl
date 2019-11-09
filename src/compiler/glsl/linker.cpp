@@ -2502,6 +2502,22 @@ link_intrastage_shaders(void *mem_ctx,
    link_uniform_blocks(mem_ctx, ctx, prog, linked, &ubo_blocks,
                        &num_ubo_blocks, &ssbo_blocks, &num_ssbo_blocks);
 
+   const unsigned max_uniform_blocks =
+      ctx->Const.Program[linked->Stage].MaxUniformBlocks;
+   if (num_ubo_blocks > max_uniform_blocks) {
+      linker_error(prog, "Too many %s uniform blocks (%d/%d)\n",
+                   _mesa_shader_stage_to_string(linked->Stage),
+                   num_ubo_blocks, max_uniform_blocks);
+   }
+
+   const unsigned max_shader_storage_blocks =
+      ctx->Const.Program[linked->Stage].MaxShaderStorageBlocks;
+   if (num_ssbo_blocks > max_shader_storage_blocks) {
+      linker_error(prog, "Too many %s shader storage blocks (%d/%d)\n",
+                   _mesa_shader_stage_to_string(linked->Stage),
+                   num_ssbo_blocks, max_shader_storage_blocks);
+   }
+
    if (!prog->data->LinkStatus) {
       _mesa_delete_linked_shader(ctx, linked);
       return NULL;
@@ -3356,22 +3372,6 @@ check_resources(struct gl_context *ctx, struct gl_shader_program *prog)
 
       total_shader_storage_blocks += sh->Program->info.num_ssbos;
       total_uniform_blocks += sh->Program->info.num_ubos;
-
-      const unsigned max_uniform_blocks =
-         ctx->Const.Program[i].MaxUniformBlocks;
-      if (max_uniform_blocks < sh->Program->info.num_ubos) {
-         linker_error(prog, "Too many %s uniform blocks (%d/%d)\n",
-                      _mesa_shader_stage_to_string(i),
-                      sh->Program->info.num_ubos, max_uniform_blocks);
-      }
-
-      const unsigned max_shader_storage_blocks =
-         ctx->Const.Program[i].MaxShaderStorageBlocks;
-      if (max_shader_storage_blocks < sh->Program->info.num_ssbos) {
-         linker_error(prog, "Too many %s shader storage blocks (%d/%d)\n",
-                      _mesa_shader_stage_to_string(i),
-                      sh->Program->info.num_ssbos, max_shader_storage_blocks);
-      }
    }
 
    if (total_uniform_blocks > ctx->Const.MaxCombinedUniformBlocks) {
