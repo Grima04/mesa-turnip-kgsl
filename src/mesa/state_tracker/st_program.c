@@ -791,10 +791,8 @@ st_create_vp_variant(struct st_context *st,
       state.tokens = tokens;
    }
 
-   if (ST_DEBUG & DEBUG_PRINT_IR) {
+   if (ST_DEBUG & DEBUG_PRINT_IR)
       tgsi_dump(state.tokens, 0);
-      debug_printf("\n");
-   }
 
    vpv->driver_shader = pipe->create_vs_state(pipe, &state);
    /* Save this for selection/feedback/rasterpos. */
@@ -1489,10 +1487,8 @@ st_create_fp_variant(struct st_context *st,
       state.tokens = tokens;
    }
 
-   if (ST_DEBUG & DEBUG_PRINT_IR) {
+   if (ST_DEBUG & DEBUG_PRINT_IR)
       tgsi_dump(state.tokens, 0);
-      debug_printf("\n");
-   }
 
    /* fill in variant */
    variant->driver_shader = pipe->create_fs_state(pipe, &state);
@@ -1729,15 +1725,11 @@ st_translate_common_program(struct st_context *st,
 
    st_store_ir_in_disk_cache(st, prog, false);
 
-   if ((ST_DEBUG & DEBUG_PRINT_IR) && (ST_DEBUG & DEBUG_MESA)) {
+   if (ST_DEBUG & DEBUG_PRINT_IR && ST_DEBUG & DEBUG_MESA)
       _mesa_print_program(prog);
-      debug_printf("\n");
-   }
 
-   if (ST_DEBUG & DEBUG_PRINT_IR) {
+   if (ST_DEBUG & DEBUG_PRINT_IR)
       tgsi_dump(stcp->state.tokens, 0);
-      debug_printf("\n");
-   }
 
    free_glsl_to_tgsi_visitor(stcp->glsl_to_tgsi);
    stcp->glsl_to_tgsi = NULL;
