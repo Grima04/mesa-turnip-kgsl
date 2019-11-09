@@ -741,6 +741,9 @@ st_create_vp_variant(struct st_context *st,
                                 nir_shader_get_entrypoint(state.ir.nir));
       }
 
+      if (ST_DEBUG & DEBUG_PRINT_IR)
+         nir_print_shader(state.ir.nir, stderr);
+
       vpv->driver_shader = pipe->create_vs_state(pipe, &state);
 
       /* When generating a NIR program, we usually don't have TGSI tokens.
@@ -1359,6 +1362,9 @@ st_create_fp_variant(struct st_context *st,
             screen->finalize_nir(screen, state.ir.nir, false);
       }
 
+      if (ST_DEBUG & DEBUG_PRINT_IR)
+         nir_print_shader(state.ir.nir, stderr);
+
       variant->driver_shader = pipe->create_fs_state(pipe, &state);
       variant->key = *key;
 
@@ -1774,7 +1780,10 @@ st_get_common_variant(struct st_context *st,
                st_finalize_nir(st, &prog->Base, prog->shader_program,
                                state.ir.nir, true);
             }
-	 } else {
+
+            if (ST_DEBUG & DEBUG_PRINT_IR)
+               nir_print_shader(state.ir.nir, stderr);
+         } else {
             if (key->lower_depth_clamp) {
                struct gl_program_parameter_list *params = prog->Base.Parameters;
 
