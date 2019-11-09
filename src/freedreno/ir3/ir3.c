@@ -838,11 +838,11 @@ static int emit_cat6(struct ir3_instruction *instr, void *ptr,
 	if (instr->cat6.dst_offset || (instr->opc == OPC_STG) ||
 			(instr->opc == OPC_STL) || (instr->opc == OPC_STLW)) {
 		instr_cat6c_t *cat6c = ptr;
-		struct ir3_register *src3 = instr->regs[4];
 		cat6->dst_off = true;
 		cat6c->dst = reg(dst, info, instr->repeat, IR3_REG_R | IR3_REG_HALF);
 
 		if (instr->flags & IR3_INSTR_G) {
+			struct ir3_register *src3 = instr->regs[4];
 			cat6c->off = reg(src3, info, instr->repeat, IR3_REG_R | IR3_REG_HALF);
 			if (src3->flags & IR3_REG_IMMED) {
 				/* Immediate offsets are in bytes... */
