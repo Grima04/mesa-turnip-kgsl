@@ -299,7 +299,7 @@ void emit_split_vector(isel_context* ctx, Temp vec_src, unsigned num_components)
       return;
    aco_ptr<Pseudo_instruction> split{create_instruction<Pseudo_instruction>(aco_opcode::p_split_vector, Format::PSEUDO, 1, num_components)};
    split->operands[0] = Operand(vec_src);
-   std::array<Temp,4> elems;
+   std::array<Temp,NIR_MAX_VEC_COMPONENTS> elems;
    for (unsigned i = 0; i < num_components; i++) {
       elems[i] = {ctx->program->allocateId(), RegClass(vec_src.type(), vec_src.size() / num_components)};
       split->definitions[i] = Definition(elems[i]);
@@ -327,7 +327,7 @@ void expand_vector(isel_context* ctx, Temp vec_src, Temp dst, unsigned num_compo
    }
 
    unsigned component_size = dst.size() / num_components;
-   std::array<Temp,4> elems;
+   std::array<Temp,NIR_MAX_VEC_COMPONENTS> elems;
 
    aco_ptr<Pseudo_instruction> vec{create_instruction<Pseudo_instruction>(aco_opcode::p_create_vector, Format::PSEUDO, num_components, 1)};
    vec->definitions[0] = Definition(dst);
@@ -399,7 +399,7 @@ Temp get_alu_src(struct isel_context *ctx, nir_alu_src src, unsigned size=1)
       return emit_extract_vector(ctx, vec, src.swizzle[0], elem_rc);
    } else {
       assert(size <= 4);
-      std::array<Temp,4> elems;
+      std::array<Temp,NIR_MAX_VEC_COMPONENTS> elems;
       aco_ptr<Pseudo_instruction> vec_instr{create_instruction<Pseudo_instruction>(aco_opcode::p_create_vector, Format::PSEUDO, size, 1)};
       for (unsigned i = 0; i < size; ++i) {
          elems[i] = emit_extract_vector(ctx, vec, src.swizzle[i], elem_rc);
@@ -749,7 +749,7 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
    case nir_op_vec2:
    case nir_op_vec3:
    case nir_op_vec4: {
-      std::array<Temp,4> elems;
+      std::array<Temp,NIR_MAX_VEC_COMPONENTS> elems;
       aco_ptr<Pseudo_instruction> vec{create_instruction<Pseudo_instruction>(aco_opcode::p_create_vector, Format::PSEUDO, instr->dest.dest.ssa.num_components, 1)};
       for (unsigned i = 0; i < instr->dest.dest.ssa.num_components; ++i) {
          elems[i] = get_alu_src(ctx, instr->src[i]);
@@ -2754,7 +2754,7 @@ void load_lds(isel_context *ctx, unsigned elem_size_bytes, Temp dst,
    unsigned bytes_read = 0;
    unsigned result_size = 0;
    unsigned total_bytes = num_components * elem_size_bytes;
-   std::array<Temp, 4> result;
+   std::array<Temp, NIR_MAX_VEC_COMPONENTS> result;
 
    while (bytes_read < total_bytes) {
       unsigned todo = total_bytes - bytes_read;
@@ -7149,7 +7149,7 @@ void visit_phi(isel_context *ctx, nir_phi_instr *instr)
    if (instr->dest.ssa.bit_size != 1 && dst.size() > 1) {
       // TODO: scalarize linear phis on divergent ifs
       bool can_scalarize = (opcode == aco_opcode::p_phi || !(ctx->block->kind & block_kind_merge));
-      std::array<Temp, 4> new_vec;
+      std::array<Temp, NIR_MAX_VEC_COMPONENTS> new_vec;
       for (unsigned i = 0; can_scalarize && (i < num_operands); i++) {
          Operand src = operands[i];
          if (src.isTemp() && ctx->allocated_vec.find(src.tempId()) == ctx->allocated_vec.end())

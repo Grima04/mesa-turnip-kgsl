@@ -53,7 +53,7 @@ struct isel_context {
    Block *block;
    bool *divergent_vals;
    std::unique_ptr<Temp[]> allocated;
-   std::unordered_map<unsigned, std::array<Temp,4>> allocated_vec;
+   std::unordered_map<unsigned, std::array<Temp,NIR_MAX_VEC_COMPONENTS>> allocated_vec;
    Stage stage; /* Stage */
    bool has_gfx10_wave64_bpermute = false;
    struct {
