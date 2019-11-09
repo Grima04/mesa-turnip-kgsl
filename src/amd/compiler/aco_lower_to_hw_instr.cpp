@@ -592,6 +592,22 @@ void lower_to_hw_instr(Program* program)
       ctx.program = program;
       Builder bld(program, &ctx.instructions);
 
+      bool set_mode = i == 0 && block->fp_mode.val != program->config->float_mode;
+      for (unsigned pred : block->linear_preds) {
+         if (program->blocks[pred].fp_mode.val != block->fp_mode.val) {
+            set_mode = true;
+            break;
+         }
+      }
+      if (set_mode) {
+         /* only allow changing modes at top-level blocks so this doesn't break
+          * the "jump over empty blocks" optimization */
+         assert(block->kind & block_kind_top_level);
+         uint32_t mode = block->fp_mode.val;
+         /* "((size - 1) << 11) | register" (MODE is encoded as register 1) */
+         bld.sopk(aco_opcode::s_setreg_imm32_b32, Operand(mode), (7 << 11) | 1);
+      }
+
       for (size_t j = 0; j < block->instructions.size(); j++) {
          aco_ptr<Instruction>& instr = block->instructions[j];
          aco_ptr<Instruction> mov;

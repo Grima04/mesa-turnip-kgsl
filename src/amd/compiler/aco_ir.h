@@ -110,6 +110,53 @@ enum barrier_interaction {
    barrier_count = 4,
 };
 
+enum fp_round {
+   fp_round_ne = 0,
+   fp_round_pi = 1,
+   fp_round_ni = 2,
+   fp_round_tz = 3,
+};
+
+enum fp_denorm {
+   /* Note that v_rcp_f32, v_exp_f32, v_log_f32, v_sqrt_f32, v_rsq_f32 and
+    * v_mad_f32/v_madak_f32/v_madmk_f32/v_mac_f32 always flush denormals. */
+   fp_denorm_flush = 0x0,
+   fp_denorm_keep = 0x3,
+};
+
+struct float_mode {
+   /* matches encoding of the MODE register */
+   union {
+      struct {
+          fp_round round32:2;
+          fp_round round16_64:2;
+          unsigned denorm32:2;
+          unsigned denorm16_64:2;
+      };
+      uint8_t val = 0;
+   };
+   /* if false, optimizations which may remove infs/nan/-0.0 can be done */
+   bool preserve_signed_zero_inf_nan32:1;
+   bool preserve_signed_zero_inf_nan16_64:1;
+   /* if false, optimizations which may remove denormal flushing can be done */
+   bool must_flush_denorms32:1;
+   bool must_flush_denorms16_64:1;
+   bool care_about_round32:1;
+   bool care_about_round16_64:1;
+
+   /* Returns true if instructions using the mode "other" can safely use the
+    * current one instead. */
+   bool canReplace(float_mode other) const noexcept {
+      return val == other.val &&
+             (preserve_signed_zero_inf_nan32 || !other.preserve_signed_zero_inf_nan32) &&
+             (preserve_signed_zero_inf_nan16_64 || !other.preserve_signed_zero_inf_nan16_64) &&
+             (must_flush_denorms32  || !other.must_flush_denorms32) &&
+             (must_flush_denorms16_64 || !other.must_flush_denorms16_64) &&
+             (care_about_round32 || !other.care_about_round32) &&
+             (care_about_round16_64 || !other.care_about_round16_64);
+   }
+};
+
 constexpr Format asVOP3(Format format) {
    return (Format) ((uint32_t) Format::VOP3 | (uint32_t) format);
 };
@@ -1019,6 +1066,7 @@ struct RegisterDemand {
 
 /* CFG */
 struct Block {
+   float_mode fp_mode;
    unsigned index;
    unsigned offset = 0;
    std::vector<aco_ptr<Instruction>> instructions;
@@ -1086,6 +1134,7 @@ static constexpr Stage geometry_gs = sw_gs | hw_gs;
 
 class Program final {
 public:
+   float_mode next_fp_mode;
    std::vector<Block> blocks;
    RegisterDemand max_reg_demand = RegisterDemand();
    uint16_t num_waves = 0;
@@ -1133,11 +1182,13 @@ public:
 
    Block* create_and_insert_block() {
       blocks.emplace_back(blocks.size());
+      blocks.back().fp_mode = next_fp_mode;
       return &blocks.back();
    }
 
    Block* insert_block(Block&& block) {
       block.index = blocks.size();
+      block.fp_mode = next_fp_mode;
       blocks.emplace_back(std::move(block));
       return &blocks.back();
    }

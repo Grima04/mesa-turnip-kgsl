@@ -105,7 +105,7 @@ void emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction*
       encoding |=
          !instr->definitions.empty() && !(instr->definitions[0].physReg() == scc) ?
          instr->definitions[0].physReg() << 16 :
-         !instr->operands.empty() && !(instr->operands[0].physReg() == scc) ?
+         !instr->operands.empty() && instr->operands[0].physReg() <= 127 ?
          instr->operands[0].physReg() << 16 : 0;
       encoding |= sopk->imm;
       out.push_back(encoding);

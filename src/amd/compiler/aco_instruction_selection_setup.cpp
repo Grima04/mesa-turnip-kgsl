@@ -1360,7 +1360,6 @@ setup_isel_context(Program* program,
       scratch_size = std::max(scratch_size, shaders[i]->scratch_size);
    ctx.scratch_enabled = scratch_size > 0;
    ctx.program->config->scratch_bytes_per_wave = align(scratch_size * ctx.program->wave_size, 1024);
-   ctx.program->config->float_mode = V_00B028_FP_64_DENORMS;
 
    ctx.block = ctx.program->create_and_insert_block();
    ctx.block->loop_nest_depth = 0;

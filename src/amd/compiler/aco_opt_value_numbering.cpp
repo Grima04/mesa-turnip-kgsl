@@ -303,7 +303,8 @@ void process_block(vn_ctx& ctx, Block& block)
          Instruction* orig_instr = res.first->first;
          assert(instr->definitions.size() == orig_instr->definitions.size());
          /* check if the original instruction dominates the current one */
-         if (dominates(ctx, res.first->second, block.index)) {
+         if (dominates(ctx, res.first->second, block.index) &&
+             ctx.program->blocks[res.first->second].fp_mode.canReplace(block.fp_mode)) {
             for (unsigned i = 0; i < instr->definitions.size(); i++) {
                assert(instr->definitions[i].regClass() == orig_instr->definitions[i].regClass());
                ctx.renames[instr->definitions[i].tempId()] = orig_instr->definitions[i].getTemp();

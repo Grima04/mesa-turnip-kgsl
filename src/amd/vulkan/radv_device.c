@@ -1557,6 +1557,8 @@ void radv_GetPhysicalDeviceProperties2(
 			 * support for changing the register. The same logic
 			 * applies for the rounding modes because they are
 			 * configured with the same config register.
+			 * TODO: we can enable a lot of these for ACO when it
+			 * supports all stages
 			 */
 			properties->shaderDenormFlushToZeroFloat32 = true;
 			properties->shaderDenormPreserveFloat32 = false;
