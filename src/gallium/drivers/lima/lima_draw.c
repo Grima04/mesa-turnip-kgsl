@@ -844,21 +844,7 @@ lima_pack_plbu_cmd(struct lima_context *ctx, const struct pipe_draw_info *info)
          PLBU_CMD_INDEXED_PT_SIZE(gl_point_size_va);
       }
 
-      struct pipe_resource *indexbuf = NULL;
-      unsigned index_offset = 0;
-      struct lima_resource *res;
-      if (info->has_user_indices) {
-         util_upload_index_buffer(&ctx->base, info, &indexbuf, &index_offset, 0x40);
-         res = lima_resource(indexbuf);
-      }
-      else
-         res = lima_resource(info->index.resource);
-
-      lima_submit_add_bo(ctx->gp_submit, res->bo, LIMA_SUBMIT_BO_READ);
-      PLBU_CMD_INDICES(res->bo->va + info->start * info->index_size + index_offset);
-
-      if (indexbuf)
-         pipe_resource_reference(&indexbuf, NULL);
+      PLBU_CMD_INDICES(ctx->index_res->bo->va + info->start * info->index_size + ctx->index_offset);
    }
    else {
       /* can this make the attribute info static? */
@@ -1341,6 +1327,7 @@ lima_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info)
    }
 
    struct lima_context *ctx = lima_context(pctx);
+   struct pipe_resource *indexbuf = NULL;
 
    if (!ctx->vs || !ctx->fs) {
       debug_warn_once("no shader, skip draw\n");
@@ -1349,6 +1336,17 @@ lima_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info)
 
    if (!lima_update_vs_state(ctx) || !lima_update_fs_state(ctx))
       return;
+
+   if (info->index_size) {
+      if (info->has_user_indices) {
+         util_upload_index_buffer(&ctx->base, info, &indexbuf, &ctx->index_offset, 0x40);
+         ctx->index_res = lima_resource(indexbuf);
+      }
+      else
+         ctx->index_res = lima_resource(info->index.resource);
+
+      lima_submit_add_bo(ctx->gp_submit, ctx->index_res->bo, LIMA_SUBMIT_BO_READ);
+   }
 
    lima_dump_command_stream_print(
       ctx->vs->bo->map, ctx->vs->shader_size, false,
@@ -1406,6 +1404,9 @@ lima_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info)
    }
 
    ctx->dirty = 0;
+
+   if (indexbuf)
+      pipe_resource_reference(&indexbuf, NULL);
 }
 
 static void

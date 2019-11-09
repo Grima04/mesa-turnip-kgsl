@@ -244,6 +244,9 @@ struct lima_context {
    struct pipe_debug_callback debug;
 
    int pp_max_stack_size;
+
+   unsigned index_offset;
+   struct lima_resource *index_res;
 };
 
 static inline struct lima_context *
