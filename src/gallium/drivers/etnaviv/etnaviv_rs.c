@@ -535,6 +535,35 @@ etna_get_rs_alignment_mask(const struct etna_context *ctx,
    *height_mask = h_align -1;
 }
 
+static bool msaa_config(const struct pipe_resource *src,
+                        const struct pipe_resource *dst,
+                        int *msaa_xscale,
+                        int *msaa_yscale)
+{
+   int src_xscale = 1, src_yscale = 1;
+   int dst_xscale = 1, dst_yscale = 1;
+
+   assert(src->nr_samples <= 4);
+   assert(dst->nr_samples <= 4);
+
+   translate_samples_to_xyscale(src->nr_samples,
+                                &src_xscale, &src_yscale,
+                                NULL);
+
+   translate_samples_to_xyscale(dst->nr_samples,
+                                &dst_xscale, &dst_yscale,
+                                NULL);
+
+   /* RS does not support upscaling */
+   if ((src_xscale < dst_xscale) || (src_yscale < dst_yscale))
+      return false;
+
+   *msaa_xscale = src_xscale - dst_xscale + 1;
+   *msaa_yscale = src_yscale - dst_yscale + 1;
+
+   return true;
+}
+
 static bool
 etna_try_rs_blit(struct pipe_context *pctx,
                  const struct pipe_blit_info *blit_info)
@@ -549,8 +578,10 @@ etna_try_rs_blit(struct pipe_context *pctx,
    assert(blit_info->src.level <= src->base.last_level);
    assert(blit_info->dst.level <= dst->base.last_level);
 
-   if (!translate_samples_to_xyscale(src->base.nr_samples, &msaa_xscale, &msaa_yscale, NULL))
+   if (!msaa_config(&src->base, &dst->base, &msaa_xscale, &msaa_yscale)) {
+      DBG("upsampling not supported");
       return false;
+   }
 
    /* The width/height are in pixels; they do not change as a result of
     * multi-sampling. So, when blitting from a 4x multisampled surface
