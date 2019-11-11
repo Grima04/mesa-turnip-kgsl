@@ -481,6 +481,12 @@ bool can_accept_constant(aco_ptr<Instruction>& instr, unsigned operand)
 
 bool valu_can_accept_literal(opt_ctx& ctx, aco_ptr<Instruction>& instr, unsigned operand)
 {
+   /* instructions like v_cndmask_b32 can't take a literal because they always
+    * read SGPRs */
+   if (instr->operands.size() >= 3 &&
+       instr->operands[2].isTemp() && instr->operands[2].regClass().type() == RegType::sgpr)
+      return false;
+
    // TODO: VOP3 can take a literal on GFX10
    return !instr->isSDWA() && !instr->isDPP() && !instr->isVOP3() &&
           operand == 0 && can_accept_constant(instr, operand);
