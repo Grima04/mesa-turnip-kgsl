@@ -441,6 +441,16 @@ allocate_registers(compiler_context *ctx, bool *spilled)
 
         lcra_set_disjoint_class(l, REG_CLASS_TEXR, REG_CLASS_TEXW);
 
+        /* To save space on T720, we don't have real texture registers.
+         * Instead, tex inputs reuse the load/store pipeline registers, and
+         * tex outputs use work r0/r1. Note we still use TEXR/TEXW classes,
+         * noting that this handles interferences and sizes correctly. */
+
+        if (ctx->gpu_id == 0x0720) {
+                l->class_start[REG_CLASS_TEXR] = l->class_start[REG_CLASS_LDST];
+                l->class_start[REG_CLASS_TEXW] = l->class_start[REG_CLASS_WORK];
+        }
+
         unsigned *found_class = calloc(sizeof(unsigned), ctx->temp_count);
 
         mir_foreach_instr_global(ctx, ins) {
