@@ -452,14 +452,6 @@ def generate_unpack_kernel(format, dst_channel, dst_native_type):
         depth = format.block_size()
         print('         uint%u_t value = *(const uint%u_t *)src;' % (depth, depth)) 
 
-        # Declare the intermediate variables
-        for i in range(format.nr_channels()):
-            src_channel = channels[i]
-            if src_channel.type == UNSIGNED:
-                print('         uint%u_t %s;' % (depth, src_channel.name))
-            elif src_channel.type == SIGNED:
-                print('         int%u_t %s;' % (depth, src_channel.name))
-
         # Compute the intermediate unshifted values 
         for i in range(format.nr_channels()):
             src_channel = channels[i]
@@ -470,6 +462,7 @@ def generate_unpack_kernel(format, dst_channel, dst_native_type):
                     value = '%s >> %u' % (value, shift)
                 if shift + src_channel.size < depth:
                     value = '(%s) & 0x%x' % (value, (1 << src_channel.size) - 1)
+                print('         uint%u_t %s = %s;' % (depth, src_channel.name, value))
             elif src_channel.type == SIGNED:
                 if shift + src_channel.size < depth:
                     # Align the sign bit
@@ -481,12 +474,10 @@ def generate_unpack_kernel(format, dst_channel, dst_native_type):
                     # Align the LSB bit
                     rshift = depth - src_channel.size
                     value = '(%s) >> %u' % (value, rshift)
+                print('         int%u_t %s = %s;' % (depth, src_channel.name, value))
             else:
                 value = None
-                
-            if value is not None:
-                print('         %s = %s;' % (src_channel.name, value))
-                
+
         # Convert, swizzle, and store final values
         for i in range(4):
             swizzle = swizzles[i]
