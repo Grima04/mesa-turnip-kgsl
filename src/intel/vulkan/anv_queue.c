@@ -1598,20 +1598,15 @@ VkResult anv_GetSemaphoreFdKHR(
          return result;
       break;
 
-   case ANV_SEMAPHORE_TYPE_SYNC_FILE:
-      /* There are two reasons why this could happen:
-       *
-       *  1) The user is trying to export without submitting something that
-       *     signals the semaphore.  If this is the case, it's their bug so
-       *     what we return here doesn't matter.
-       *
-       *  2) The kernel didn't give us a file descriptor.  The most likely
-       *     reason for this is running out of file descriptors.
+   case ANV_SEMAPHORE_TYPE_SYNC_FILE: {
+      /* There's a potential race here with vkQueueSubmit if you are trying
+       * to export a semaphore Fd while the queue submit is still happening.
+       * This can happen if we see all dependencies get resolved via timeline
+       * semaphore waits completing before the execbuf completes and we
+       * process the resulting out fence.  To work around this, take a lock
+       * around grabbing the fd.
        */
-      if (impl->fd < 0)
-         return vk_error(VK_ERROR_TOO_MANY_OBJECTS);
-
-      *pFd = impl->fd;
+      pthread_mutex_lock(&device->mutex);
 
       /* From the Vulkan 1.0.53 spec:
        *
@@ -1623,8 +1618,26 @@ VkResult anv_GetSemaphoreFdKHR(
        * considered to have been waited on and no longer has a sync file
        * attached.
        */
+      int fd = impl->fd;
       impl->fd = -1;
+
+      pthread_mutex_unlock(&device->mutex);
+
+      /* There are two reasons why this could happen:
+       *
+       *  1) The user is trying to export without submitting something that
+       *     signals the semaphore.  If this is the case, it's their bug so
+       *     what we return here doesn't matter.
+       *
+       *  2) The kernel didn't give us a file descriptor.  The most likely
+       *     reason for this is running out of file descriptors.
+       */
+      if (fd < 0)
+         return vk_error(VK_ERROR_TOO_MANY_OBJECTS);
+
+      *pFd = fd;
       return VK_SUCCESS;
+   }
 
    case ANV_SEMAPHORE_TYPE_DRM_SYNCOBJ:
       if (pGetFdInfo->handleType == VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT)
