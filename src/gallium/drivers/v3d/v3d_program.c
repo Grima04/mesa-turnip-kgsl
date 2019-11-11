@@ -175,6 +175,27 @@ type_size(const struct glsl_type *type, bool bindless)
         return glsl_count_attribute_slots(type, false);
 }
 
+static void
+precompile_all_outputs(nir_shader *s,
+                       struct v3d_varying_slot *outputs,
+                       uint8_t *num_outputs)
+{
+        nir_foreach_variable(var, &s->outputs) {
+                const int array_len = MAX2(glsl_get_length(var->type), 1);
+                for (int j = 0; j < array_len; j++) {
+                        const int slot = var->data.location + j;
+                        const int num_components =
+                                glsl_get_components(var->type);
+                        for (int i = 0; i < num_components; i++) {
+                                const int swiz = var->data.location_frac + i;
+                                outputs[(*num_outputs)++] =
+                                        v3d_slot_from_slot_and_component(slot,
+                                                                         swiz);
+                        }
+                }
+        }
+}
+
 /**
  * Precompiles a shader variant at shader state creation time if
  * V3D_DEBUG=precompile is set.  Used for shader-db
@@ -204,9 +225,31 @@ v3d_shader_precompile(struct v3d_context *v3d,
 
                 v3d_setup_shared_precompile_key(so, &key.base);
                 v3d_get_compiled_shader(v3d, &key.base, sizeof(key));
-        } else {
-                /* FIXME: add geometry shaders */
+        } else if (s->info.stage == MESA_SHADER_GEOMETRY) {
+                struct v3d_gs_key key = {
+                        .base.shader_state = so,
+                        .base.is_last_geometry_stage = true,
+                };
 
+                v3d_setup_shared_precompile_key(so, &key.base);
+
+                precompile_all_outputs(s,
+                                       key.used_outputs,
+                                       &key.num_used_outputs);
+
+                v3d_get_compiled_shader(v3d, &key.base, sizeof(key));
+
+                /* Compile GS bin shader: only position (XXX: include TF) */
+                key.is_coord = true;
+                key.num_used_outputs = 0;
+                for (int i = 0; i < 4; i++) {
+                        key.used_outputs[key.num_used_outputs++] =
+                                v3d_slot_from_slot_and_component(VARYING_SLOT_POS,
+                                                                 i);
+                }
+                v3d_get_compiled_shader(v3d, &key.base, sizeof(key));
+        } else {
+                assert(s->info.stage == MESA_SHADER_VERTEX);
                 struct v3d_vs_key key = {
                         .base.shader_state = so,
                         /* Emit fixed function outputs */
@@ -215,20 +258,9 @@ v3d_shader_precompile(struct v3d_context *v3d,
 
                 v3d_setup_shared_precompile_key(so, &key.base);
 
-                /* Compile VS: All outputs */
-                nir_foreach_variable(var, &s->outputs) {
-                        unsigned array_len = MAX2(glsl_get_length(var->type), 1);
-                        assert(array_len == 1);
-                        (void)array_len;
-
-                        int slot = var->data.location;
-                        for (int i = 0; i < glsl_get_components(var->type); i++) {
-                                int swiz = var->data.location_frac + i;
-                                key.used_outputs[key.num_used_outputs++] =
-                                        v3d_slot_from_slot_and_component(slot,
-                                                                         swiz);
-                        }
-                }
+                precompile_all_outputs(s,
+                                       key.used_outputs,
+                                       &key.num_used_outputs);
 
                 v3d_get_compiled_shader(v3d, &key.base, sizeof(key));
 
