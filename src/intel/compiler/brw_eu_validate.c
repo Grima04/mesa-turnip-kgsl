@@ -1867,6 +1867,36 @@ instruction_restrictions(const struct gen_device_info *devinfo,
    return error_msg;
 }
 
+static bool
+brw_validate_instruction(const struct gen_device_info *devinfo,
+                         const brw_inst *inst, int offset,
+                         struct disasm_info *disasm)
+{
+   struct string error_msg = { .str = NULL, .len = 0 };
+
+   if (is_unsupported_inst(devinfo, inst)) {
+      ERROR("Instruction not supported on this Gen");
+   } else {
+      CHECK(sources_not_null);
+      CHECK(send_restrictions);
+      CHECK(alignment_supported);
+      CHECK(general_restrictions_based_on_operand_types);
+      CHECK(general_restrictions_on_region_parameters);
+      CHECK(special_restrictions_for_mixed_float_mode);
+      CHECK(region_alignment_rules);
+      CHECK(vector_immediate_restrictions);
+      CHECK(special_requirements_for_handling_double_precision_data_types);
+      CHECK(instruction_restrictions);
+   }
+
+   if (error_msg.str && disasm) {
+      disasm_insert_error(disasm, offset, error_msg.str);
+   }
+   free(error_msg.str);
+
+   return error_msg.len == 0;
+}
+
 bool
 brw_validate_instructions(const struct gen_device_info *devinfo,
                           const void *assembly, int start_offset, int end_offset,
@@ -1875,9 +1905,10 @@ brw_validate_instructions(const struct gen_device_info *devinfo,
    bool valid = true;
 
    for (int src_offset = start_offset; src_offset < end_offset;) {
-      struct string error_msg = { .str = NULL, .len = 0 };
       const brw_inst *inst = assembly + src_offset;
       bool is_compact = brw_inst_cmpt_control(devinfo, inst);
+      unsigned inst_size = is_compact ? sizeof(brw_compact_inst)
+                                      : sizeof(brw_inst);
       brw_inst uncompacted;
 
       if (is_compact) {
@@ -1886,32 +1917,10 @@ brw_validate_instructions(const struct gen_device_info *devinfo,
          inst = &uncompacted;
       }
 
-      if (is_unsupported_inst(devinfo, inst)) {
-         ERROR("Instruction not supported on this Gen");
-      } else {
-         CHECK(sources_not_null);
-         CHECK(send_restrictions);
-         CHECK(alignment_supported);
-         CHECK(general_restrictions_based_on_operand_types);
-         CHECK(general_restrictions_on_region_parameters);
-         CHECK(special_restrictions_for_mixed_float_mode);
-         CHECK(region_alignment_rules);
-         CHECK(vector_immediate_restrictions);
-         CHECK(special_requirements_for_handling_double_precision_data_types);
-         CHECK(instruction_restrictions);
-      }
+      bool v = brw_validate_instruction(devinfo, inst, src_offset, disasm);
+      valid = valid && v;
 
-      if (error_msg.str && disasm) {
-         disasm_insert_error(disasm, src_offset, error_msg.str);
-      }
-      valid = valid && error_msg.len == 0;
-      free(error_msg.str);
-
-      if (is_compact) {
-         src_offset += sizeof(brw_compact_inst);
-      } else {
-         src_offset += sizeof(brw_inst);
-      }
+      src_offset += inst_size;
    }
 
    return valid;
