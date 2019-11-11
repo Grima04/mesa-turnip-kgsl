@@ -24,6 +24,7 @@
 #include "ac_shader_args.h"
 #include "radv_constants.h"
 #include "util/list.h"
+#include "compiler/shader_enums.h"
 #include "amd_family.h"
 
 struct radv_shader_args {
@@ -73,4 +74,8 @@ radv_shader_args_from_ac(struct ac_shader_args *args)
 	return (struct radv_shader_args *) container_of(args, radv_args, ac);
 }
 
+void radv_declare_shader_args(struct radv_shader_args *args,
+			      gl_shader_stage stage,
+			      bool has_previous_stage,
+			      gl_shader_stage previous_stage);
 

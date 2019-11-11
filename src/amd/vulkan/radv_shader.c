@@ -31,6 +31,7 @@
 #include "radv_private.h"
 #include "radv_shader.h"
 #include "radv_shader_helper.h"
+#include "radv_shader_args.h"
 #include "nir/nir.h"
 #include "nir/nir_builder.h"
 #include "spirv/nir_spirv.h"
@@ -1095,6 +1096,17 @@ shader_variant_compile(struct radv_device *device,
 	options->has_ls_vgpr_init_bug = device->physical_device->rad_info.has_ls_vgpr_init_bug;
 	options->use_ngg_streamout = device->physical_device->use_ngg_streamout;
 
+	struct radv_shader_args args = {};
+	args.options = options;
+	args.shader_info = info;
+	args.is_gs_copy_shader = gs_copy_shader;
+	radv_declare_shader_args(&args, 
+				 gs_copy_shader ? MESA_SHADER_VERTEX
+						: shaders[shader_count - 1]->info.stage,
+				 shader_count >= 2,
+				 shader_count >= 2 ? shaders[shader_count - 2]->info.stage
+						   : MESA_SHADER_VERTEX);
+
 	if (!use_aco || options->dump_shader || options->record_ir)
 		ac_init_llvm_once();
 
@@ -1124,10 +1136,10 @@ shader_variant_compile(struct radv_device *device,
 		if (gs_copy_shader) {
 			assert(shader_count == 1);
 			radv_compile_gs_copy_shader(&ac_llvm, *shaders, &binary,
-						    info, options);
+						    &args);
 		} else {
-			radv_compile_nir_shader(&ac_llvm, &binary, info,
-						shaders, shader_count, options);
+			radv_compile_nir_shader(&ac_llvm, &binary, &args,
+						shaders, shader_count);
 		}
 
 		binary->info = *info;
