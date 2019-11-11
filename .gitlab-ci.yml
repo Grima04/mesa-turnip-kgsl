@@ -1,36 +1,10 @@
-# This is the tag of the docker image used for the build jobs. If the
-# image doesn't exist yet, the containers stage generates it.
-#
-# In order to generate a new image, one should generally change the tag.
-# While removing the image from the registry would also work, that's not
-# recommended except for ephemeral images during development: Replacing
-# an image after a significant amount of time might pull in newer
-# versions of gcc/clang or other packages, which might break the build
-# with older commits using the same tag.
-#
-# After merging a change resulting in generating a new image to the
-# main repository, it's recommended to remove the image from the source
-# repository's container registry, so that the image from the main
-# repository's registry will be used there as well.
 variables:
   UPSTREAM_REPO: mesa/mesa
-  DEBIAN_TAG: "amd64-2019-11-13-2"
-  DEBIAN_TEST_TAG: "amd64-test-2019-11-15"
-  DEBIAN_ARM64_TAG: "arm64v8-2019-11-13"
-  DEBIAN_ARM64_TEST_TAG: "arm64v8-test-2019-11-12-2"
-  STRETCH_TAG: "2019-09-18"
-  DEBIAN_VERSION: buster-slim
-  STRETCH_VERSION: stretch-slim
-  DEBIAN_IMAGE: "$CI_REGISTRY_IMAGE/debian/$DEBIAN_VERSION:$DEBIAN_TAG"
-  DEBIAN_TEST_IMAGE: "$CI_REGISTRY_IMAGE/debian/$DEBIAN_VERSION:$DEBIAN_TEST_TAG"
-  DEBIAN_ARM64_IMAGE: "$CI_REGISTRY_IMAGE/debian/$DEBIAN_VERSION:$DEBIAN_ARM64_TAG"
-  DEBIAN_ARM64_TEST_IMAGE: "$CI_REGISTRY_IMAGE/debian/$DEBIAN_VERSION:$DEBIAN_ARM64_TEST_TAG"
-  STRETCH_IMAGE: "$CI_REGISTRY_IMAGE/debian/$STRETCH_VERSION:$STRETCH_TAG"
 
 include:
   - project: 'wayland/ci-templates'
     # Must be the same as in .gitlab-ci/lava-gitlab-ci.yml
-    ref: 1f7f57c64ff4ebbf7292e3b7a13600518b8cb24c
+    ref: f69acac60d5dde0410124fd5674764600821b7a6
     file: '/templates/debian.yml'
 
 include:
@@ -82,57 +56,97 @@ stages:
       # https://gitlab.com/gitlab-org/gitlab-ce/commit/8788fb925706cad594adf6917a6c5f6587dd1521
       - artifacts
 
-# Build the normal CI native and cross-build docker images.
+# Build the "normal" (non-LAVA) CI docker images.
+#
+# DEBIAN_TAG is the tag of the docker image used by later stage jobs. If the
+# image doesn't exist yet, the container stage job generates it.
+#
+# In order to generate a new image, one should generally change the tag.
+# While removing the image from the registry would also work, that's not
+# recommended except for ephemeral images during development: Replacing
+# an image after a significant amount of time might pull in newer
+# versions of gcc/clang or other packages, which might break the build
+# with older commits using the same tag.
+#
+# After merging a change resulting in generating a new image to the
+# main repository, it's recommended to remove the image from the source
+# repository's container registry, so that the image from the main
+# repository's registry will be used there as well.
 
 .container:
   stage: container
   extends:
     - .ci-run-policy
   variables:
+    DEBIAN_VERSION: buster-slim
+    REPO_SUFFIX: $CI_JOB_NAME
     DEBIAN_EXEC: 'bash .gitlab-ci/container/${CI_JOB_NAME}.sh'
     # no need to pull the whole repo to build the container image
     GIT_STRATEGY: none
 
+# Debian 10 based x86 build image
 x86_build:
   extends:
     - .debian@container-ifnot-exists
     - .container
+  variables:
+    DEBIAN_TAG: &x86_build "2019-11-13"
 
 .use-x86_build:
-  image: $DEBIAN_IMAGE
+  variables:
+    TAG: *x86_build
+  image: "$CI_REGISTRY_IMAGE/debian/x86_build:$TAG"
   needs:
     - x86_build
 
+# Debian 10 based x86 test image
 x86_test:
   extends: x86_build
   variables:
-    DEBIAN_TAG: "$DEBIAN_TEST_TAG"
+    DEBIAN_TAG: &x86_test "2019-11-15"
 
+# Debian 9 based x86 build image (old LLVM)
 x86_build_old:
   extends: x86_build
   variables:
-    DEBIAN_TAG: $STRETCH_TAG
-    DEBIAN_VERSION: $STRETCH_VERSION
-    DEBIAN_IMAGE: $STRETCH_IMAGE
+    DEBIAN_TAG: &x86_build_old "2019-09-18"
+    DEBIAN_VERSION: stretch-slim
 
 .use-x86_build_old:
-  image: $STRETCH_IMAGE
+  variables:
+    TAG: *x86_build_old
+  image: "$CI_REGISTRY_IMAGE/debian/x86_build_old:$TAG"
   needs:
     - x86_build_old
 
+# Debian 10 based ARM build image
 arm_build:
   extends:
     - .debian@container-ifnot-exists@arm64v8
     - .container
   variables:
-    DEBIAN_TAG: "$DEBIAN_ARM64_TAG"
+    DEBIAN_TAG: &arm_build "2019-11-13"
 
-arm_test:
-  extends:
-    - .debian@container-ifnot-exists@arm64v8
-    - .container
+.use-arm_build:
   variables:
-    DEBIAN_TAG: "$DEBIAN_ARM64_TEST_TAG"
+    TAG: *arm_build
+  image: "$CI_REGISTRY_IMAGE/debian/arm_build:$TAG"
+  needs:
+    - arm_build
+
+# Debian 10 based ARM test image
+arm_test:
+  extends: arm_build
+  variables:
+    DEBIAN_TAG: &arm_test "2019-11-12"
+
+.use-arm_test:
+  variables:
+    TAG: *arm_test
+  image: "$CI_REGISTRY_IMAGE/debian/arm_test:$TAG"
+  needs:
+    - meson-arm64
+    - arm_test
 
 
 # BUILD
@@ -249,15 +263,14 @@ meson-main:
       -D gallium-nine=false
 
 .meson-arm:
-  extends: .meson-cross
-  image: $DEBIAN_ARM64_IMAGE
+  extends:
+    - .meson-cross
+    - .use-arm_build
   variables:
     VULKAN_DRIVERS: freedreno
     GALLIUM_DRIVERS: "etnaviv,freedreno,kmsro,lima,nouveau,panfrost,swrast,tegra,v3d,vc4"
     EXTRA_OPTION: >
       -D I-love-half-baked-turnips=true
-  needs:
-    - arm_build
   tags:
     - aarch64
 
@@ -454,10 +467,11 @@ scons-old-llvm:
 .test:
   extends:
     - .ci-run-policy
-  image: $DEBIAN_TEST_IMAGE
   stage: test
   variables:
     GIT_STRATEGY: none # testing doesn't build anything from source
+    TAG: *x86_test
+  image: "$CI_REGISTRY_IMAGE/debian/x86_test:$TAG"
   before_script:
     # Note: Build dir (and thus install) may be dirty due to GIT_STRATEGY
     - rm -rf install
@@ -549,8 +563,9 @@ test-softpipe-gles31:
   extends: test-softpipe-gles2
 
 arm64_a630_gles2:
-  extends: .deqp-test
-  image: $DEBIAN_ARM64_TEST_IMAGE
+  extends:
+    - .deqp-test
+    - .use-arm_test
   variables:
     DEQP_VER: gles2
     DEQP_EXPECTED_FAILS: deqp-freedreno-a630-fails.txt
@@ -560,9 +575,6 @@ arm64_a630_gles2:
     - mesa-cheza
   dependencies:
     - meson-arm64
-  needs:
-    - meson-arm64
-    - arm_test
 
 arm64_a630_gles31:
   extends: arm64_a630_gles2

@@ -1,11 +1,7 @@
-variables:
-    LAVA_DEBIAN_VERSION: testing-slim
-    LAVA_IMAGE_TAG: "lava-2019-10-23-1"
-
 include:
   - project: 'wayland/ci-templates'
     # Must be the same as in .gitlab-ci.yml
-    ref: 1f7f57c64ff4ebbf7292e3b7a13600518b8cb24c
+    ref: f69acac60d5dde0410124fd5674764600821b7a6
     file: '/templates/debian.yml'
 
 # When to automatically run the CI
@@ -28,7 +24,8 @@ include:
     - .container
     - .lava-ci-run-policy
   variables:
-    DEBIAN_TAG: '${DEBIAN_ARCH}-${LAVA_IMAGE_TAG}'
+    REPO_SUFFIX: ${CI_JOB_NAME}
+    DEBIAN_TAG:  &debian_tag '2019-10-23'
     DEBIAN_EXEC: 'DEBIAN_ARCH=${DEBIAN_ARCH}
                   GCC_ARCH=${GCC_ARCH}
                   KERNEL_ARCH=${KERNEL_ARCH}
@@ -37,7 +34,7 @@ include:
                   DEVICE_TREES="${DEVICE_TREES}"
                   KERNEL_IMAGE_NAME=${KERNEL_IMAGE_NAME}
                   bash .gitlab-ci/container/lava_arm.sh'
-    DEBIAN_VERSION: ${LAVA_DEBIAN_VERSION}
+    DEBIAN_VERSION: testing-slim
 
 lava_armhf:
   extends: .lava-container
@@ -62,7 +59,9 @@ lava_arm64:
     KERNEL_IMAGE_NAME: "Image"
 
 .lava-build:
-  image: $CI_REGISTRY_IMAGE/debian/$LAVA_DEBIAN_VERSION:$DEBIAN_ARCH-$LAVA_IMAGE_TAG
+  variables:
+    TAG: *debian_tag
+  image: $CI_REGISTRY_IMAGE/debian/lava_${DEBIAN_ARCH}:$TAG
   extends:
     - .build-linux
     - .lava-ci-run-policy
@@ -146,6 +145,8 @@ lava-build:arm64:
   stage: test
   variables:
     GIT_STRATEGY: none # testing doesn't build anything from source
+    TAG: *debian_tag
+  image: $CI_REGISTRY_IMAGE/debian/lava_${DEBIAN_ARCH}:$TAG
   script:
     - lava_job_id=`lavacli jobs submit $CI_PROJECT_DIR/results/lava-deqp-$DEVICE_TYPE.yml`
     - echo $lava_job_id
@@ -160,7 +161,8 @@ lava-build:arm64:
       - results/
 
 .lava-test:armhf:
-  image: $CI_REGISTRY_IMAGE/debian/$LAVA_DEBIAN_VERSION:armhf-$LAVA_IMAGE_TAG
+  variables:
+    DEBIAN_ARCH: armhf
   extends: .lava-test
   needs:
     - lava_armhf
@@ -169,7 +171,8 @@ lava-build:arm64:
     - lava-build:armhf
 
 .lava-test:arm64:
-  image: $CI_REGISTRY_IMAGE/debian/$LAVA_DEBIAN_VERSION:arm64-$LAVA_IMAGE_TAG
+  variables:
+    DEBIAN_ARCH: arm64
   extends: .lava-test
   needs:
     - lava_arm64
