@@ -177,6 +177,11 @@ ac_get_elem_bits(struct ac_llvm_context *ctx, LLVMTypeRef type)
 	if (LLVMGetTypeKind(type) == LLVMIntegerTypeKind)
 		return LLVMGetIntTypeWidth(type);
 
+	if (LLVMGetTypeKind(type) == LLVMPointerTypeKind) {
+		if (LLVMGetPointerAddressSpace(type) == AC_ADDR_SPACE_LDS)
+			return 32;
+	}
+
 	if (type == ctx->f16)
 		return 16;
 	if (type == ctx->f32)
