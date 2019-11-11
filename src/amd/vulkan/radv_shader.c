@@ -700,20 +700,6 @@ static void radv_postprocess_config(const struct radv_physical_device *pdevice,
 	config_out->num_sgprs = num_sgprs;
 	config_out->num_shared_vgprs = num_shared_vgprs;
 
-	/* Enable 64-bit and 16-bit denormals, because there is no performance
-	 * cost.
-	 *
-	 * If denormals are enabled, all floating-point output modifiers are
-	 * ignored.
-	 *
-	 * Don't enable denormals for 32-bit floats, because:
-	 * - Floating-point output modifiers would be ignored by the hw.
-	 * - Some opcodes don't support denormals, such as v_mad_f32. We would
-	 *   have to stop using those.
-	 * - GFX6 & GFX7 would be very slow.
-	 */
-	config_out->float_mode |= V_00B028_FP_64_DENORMS;
-
 	config_out->rsrc2 = S_00B12C_USER_SGPR(info->num_user_sgprs) |
 			    S_00B12C_SCRATCH_EN(scratch_enabled);
 
@@ -970,6 +956,20 @@ radv_shader_variant_create(struct radv_device *device,
 			free(variant);
 			return NULL;
 		}
+
+		/* Enable 64-bit and 16-bit denormals, because there is no performance
+		 * cost.
+		 *
+		 * If denormals are enabled, all floating-point output modifiers are
+		 * ignored.
+		 *
+		 * Don't enable denormals for 32-bit floats, because:
+		 * - Floating-point output modifiers would be ignored by the hw.
+		 * - Some opcodes don't support denormals, such as v_mad_f32. We would
+		 *   have to stop using those.
+		 * - GFX6 & GFX7 would be very slow.
+		 */
+		config.float_mode |= V_00B028_FP_64_DENORMS;
 
 		if (rtld_binary.lds_size > 0) {
 			unsigned alloc_granularity = device->physical_device->rad_info.chip_class >= GFX7 ? 512 : 256;
