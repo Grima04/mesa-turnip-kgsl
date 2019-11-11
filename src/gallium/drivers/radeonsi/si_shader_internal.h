@@ -44,22 +44,6 @@ struct pipe_debug_callback;
 #define RADEON_LLVM_MAX_SYSTEM_VALUES 11
 #define RADEON_LLVM_MAX_ADDRS 16
 
-enum si_arg_regfile {
-	ARG_SGPR,
-	ARG_VGPR
-};
-
-/**
- * Used to collect types and other info about arguments of the LLVM function
- * before the function is created.
- */
-struct si_function_info {
-	LLVMTypeRef types[100];
-	LLVMValueRef *assign[100];
-	unsigned num_sgpr_params;
-	unsigned num_params;
-};
-
 struct si_shader_output_values {
 	LLVMValueRef values[4];
 	unsigned semantic_name;
@@ -82,6 +66,7 @@ struct si_shader_context {
 	unsigned num_images;
 	unsigned num_samplers;
 
+	struct ac_shader_args args;
 	struct ac_shader_abi abi;
 
 	/** This function is responsible for initilizing the inputs array and will be
@@ -123,19 +108,26 @@ struct si_shader_context {
 	LLVMValueRef main_fn;
 	LLVMTypeRef return_type;
 
-	/* Parameter indices for LLVMGetParam. */
-	int param_rw_buffers;
-	int param_const_and_shader_buffers;
-	int param_samplers_and_images;
-	int param_bindless_samplers_and_images;
+	struct ac_arg const_and_shader_buffers;
+	struct ac_arg samplers_and_images;
+
+	/* For merged shaders, the per-stage descriptors for the stage other
+	 * than the one we're processing, used to pass them through from the
+	 * first stage to the second.
+	 */
+	struct ac_arg other_const_and_shader_buffers;
+	struct ac_arg other_samplers_and_images;
+
+	struct ac_arg rw_buffers;
+	struct ac_arg bindless_samplers_and_images;
 	/* Common inputs for merged shaders. */
-	int param_merged_wave_info;
-	int param_merged_scratch_offset;
+	struct ac_arg merged_wave_info;
+	struct ac_arg merged_scratch_offset;
 	/* API VS */
-	int param_vertex_buffers;
-	int param_rel_auto_id;
-	int param_vs_prim_id;
-	int param_vertex_index0;
+	struct ac_arg vertex_buffers;
+	struct ac_arg rel_auto_id;
+	struct ac_arg vs_prim_id;
+	struct ac_arg vertex_index0;
 	/* VS states and layout of LS outputs / TCS inputs at the end
 	 *   [0] = clamp vertex color
 	 *   [1] = indexed
@@ -144,12 +136,12 @@ struct si_shader_context {
 	 *   [24:31] = stride between vertices in DW = num_inputs * 4
 	 *             max = 32*4
 	 */
-	int param_vs_state_bits;
-	int param_vs_blit_inputs;
+	struct ac_arg vs_state_bits;
+	struct ac_arg vs_blit_inputs;
 	/* HW VS */
-	int param_streamout_config;
-	int param_streamout_write_index;
-	int param_streamout_offset[4];
+	struct ac_arg streamout_config;
+	struct ac_arg streamout_write_index;
+	struct ac_arg streamout_offset[4];
 
 	/* API TCS & TES */
 	/* Layout of TCS outputs in the offchip buffer
@@ -161,7 +153,7 @@ struct si_shader_context {
 	 *   [12:31] = the offset of per patch attributes in the buffer in bytes.
 	 *             max = NUM_PATCHES*32*32*16
 	 */
-	int param_tcs_offchip_layout;
+	struct ac_arg tcs_offchip_layout;
 
 	/* API TCS */
 	/* Offsets where TCS outputs and TCS patch outputs live in LDS:
@@ -169,41 +161,43 @@ struct si_shader_context {
 	 *   [16:31] = TCS output patch0 offset for per-patch / 16
 	 *             max = (NUM_PATCHES + 1) * 32*32
 	 */
-	int param_tcs_out_lds_offsets;
+	struct ac_arg tcs_out_lds_offsets;
 	/* Layout of TCS outputs / TES inputs:
 	 *   [0:12] = stride between output patches in DW, num_outputs * num_vertices * 4
 	 *            max = 32*32*4 + 32*4
 	 *   [13:18] = gl_PatchVerticesIn, max = 32
 	 *   [19:31] = high 13 bits of the 32-bit address of tessellation ring buffers
 	 */
-	int param_tcs_out_lds_layout;
-	int param_tcs_offchip_offset;
-	int param_tcs_factor_offset;
+	struct ac_arg tcs_out_lds_layout;
+	struct ac_arg tcs_offchip_offset;
+	struct ac_arg tcs_factor_offset;
 
 	/* API TES */
-	int param_tes_offchip_addr;
-	int param_tes_u;
-	int param_tes_v;
-	int param_tes_rel_patch_id;
+	struct ac_arg tes_offchip_addr;
+	struct ac_arg tes_u;
+	struct ac_arg tes_v;
+	struct ac_arg tes_rel_patch_id;
 	/* HW ES */
-	int param_es2gs_offset;
+	struct ac_arg es2gs_offset;
 	/* HW GS */
 	/* On gfx10:
 	 *  - bits 0..10: ordered_wave_id
 	 *  - bits 12..20: number of vertices in group
 	 *  - bits 22..30: number of primitives in group
 	 */
-	LLVMValueRef gs_tg_info;
+	struct ac_arg gs_tg_info;
 	/* API GS */
-	int param_gs2vs_offset;
-	int param_gs_wave_id; /* GFX6 */
-	LLVMValueRef gs_vtx_offset[6]; /* in dwords (GFX6) */
-	int param_gs_vtx01_offset; /* in dwords (GFX9) */
-	int param_gs_vtx23_offset; /* in dwords (GFX9) */
-	int param_gs_vtx45_offset; /* in dwords (GFX9) */
+	struct ac_arg gs2vs_offset;
+	struct ac_arg gs_wave_id; /* GFX6 */
+	struct ac_arg gs_vtx_offset[6]; /* in dwords (GFX6) */
+	struct ac_arg gs_vtx01_offset; /* in dwords (GFX9) */
+	struct ac_arg gs_vtx23_offset; /* in dwords (GFX9) */
+	struct ac_arg gs_vtx45_offset; /* in dwords (GFX9) */
+	/* PS */
+	struct ac_arg pos_fixed_pt;
 	/* CS */
-	int param_block_size;
-	int param_cs_user_data;
+	struct ac_arg block_size;
+	struct ac_arg cs_user_data;
 
 	struct ac_llvm_compiler *compiler;
 
@@ -252,14 +246,9 @@ si_shader_context_from_abi(struct ac_shader_abi *abi)
 	return container_of(abi, ctx, abi);
 }
 
-void si_init_function_info(struct si_function_info *fninfo);
-unsigned add_arg_assign(struct si_function_info *fninfo,
-			enum si_arg_regfile regfile, LLVMTypeRef type,
-			LLVMValueRef *assign);
 void si_create_function(struct si_shader_context *ctx,
 			const char *name,
 			LLVMTypeRef *returns, unsigned num_returns,
-			struct si_function_info *fninfo,
 			unsigned max_workgroup_size);
 unsigned si_llvm_compile(LLVMModuleRef M, struct si_shader_binary *binary,
 			 struct ac_llvm_compiler *compiler,
@@ -287,8 +276,7 @@ void si_llvm_context_set_ir(struct si_shader_context *ctx,
 
 void si_llvm_create_func(struct si_shader_context *ctx,
 			 const char *name,
-			 LLVMTypeRef *return_types, unsigned num_return_elems,
-			 LLVMTypeRef *ParamTypes, unsigned ParamCount);
+			 LLVMTypeRef *return_types, unsigned num_return_elems);
 
 void si_llvm_dispose(struct si_shader_context *ctx);
 
@@ -385,7 +373,7 @@ void si_llvm_load_input_fs(
 bool si_nir_build_llvm(struct si_shader_context *ctx, struct nir_shader *nir);
 
 LLVMValueRef si_unpack_param(struct si_shader_context *ctx,
-			     unsigned param, unsigned rshift,
+			     struct ac_arg param, unsigned rshift,
 			     unsigned bitwidth);
 
 void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi,

@@ -224,8 +224,8 @@ image_fetch_rsrc(
 		/* Bindless descriptors are accessible from a different pair of
 		 * user SGPR indices.
 		 */
-		rsrc_ptr = LLVMGetParam(ctx->main_fn,
-					ctx->param_bindless_samplers_and_images);
+		rsrc_ptr = ac_get_arg(&ctx->ac,
+				      ctx->bindless_samplers_and_images);
 		index = lp_build_emit_fetch_src(bld_base, image, TGSI_TYPE_UNSIGNED, 0);
 
 		/* Bindless image descriptors use 16-dword slots. */
@@ -235,7 +235,7 @@ image_fetch_rsrc(
 		if (fmask)
 			index = LLVMBuildAdd(ctx->ac.builder, index, ctx->i32_1, "");
 	} else {
-		rsrc_ptr = LLVMGetParam(ctx->main_fn, ctx->param_samplers_and_images);
+		rsrc_ptr = ac_get_arg(&ctx->ac, ctx->samplers_and_images);
 
 		if (!image->Register.Indirect) {
 			index = LLVMConstInt(ctx->i32, image->Register.Index, 0);
@@ -1126,7 +1126,7 @@ static void tex_fetch_ptrs(struct lp_build_tgsi_context *bld_base,
 			   LLVMValueRef *fmask_ptr)
 {
 	struct si_shader_context *ctx = si_shader_context(bld_base);
-	LLVMValueRef list = LLVMGetParam(ctx->main_fn, ctx->param_samplers_and_images);
+	LLVMValueRef list = ac_get_arg(&ctx->ac, ctx->samplers_and_images);
 	const struct tgsi_full_instruction *inst = emit_data->inst;
 	const struct tgsi_full_src_register *reg;
 	unsigned target = inst->Texture.Texture;
@@ -1152,8 +1152,7 @@ static void tex_fetch_ptrs(struct lp_build_tgsi_context *bld_base,
 		/* Bindless descriptors are accessible from a different pair of
 		 * user SGPR indices.
 		 */
-		list = LLVMGetParam(ctx->main_fn,
-				    ctx->param_bindless_samplers_and_images);
+		list = ac_get_arg(&ctx->ac, ctx->bindless_samplers_and_images);
 		index = lp_build_emit_fetch_src(bld_base, reg,
 						TGSI_TYPE_UNSIGNED, 0);
 
@@ -1735,7 +1734,7 @@ static LLVMValueRef si_llvm_emit_fbfetch(struct si_shader_context *ctx)
 
 	/* Load the image descriptor. */
 	STATIC_ASSERT(SI_PS_IMAGE_COLORBUF0 % 2 == 0);
-	ptr = LLVMGetParam(ctx->main_fn, ctx->param_rw_buffers);
+	ptr = ac_get_arg(&ctx->ac, ctx->rw_buffers);
 	ptr = LLVMBuildPointerCast(ctx->ac.builder, ptr,
 				   ac_array_in_const32_addr_space(ctx->v8i32), "");
 	image = ac_build_load_to_sgpr(&ctx->ac, ptr,
@@ -1743,14 +1742,14 @@ static LLVMValueRef si_llvm_emit_fbfetch(struct si_shader_context *ctx)
 
 	unsigned chan = 0;
 
-	args.coords[chan++] = si_unpack_param(ctx, SI_PARAM_POS_FIXED_PT, 0, 16);
+	args.coords[chan++] = si_unpack_param(ctx, ctx->pos_fixed_pt, 0, 16);
 
 	if (!ctx->shader->key.mono.u.ps.fbfetch_is_1D)
-		args.coords[chan++] = si_unpack_param(ctx, SI_PARAM_POS_FIXED_PT, 16, 16);
+		args.coords[chan++] = si_unpack_param(ctx, ctx->pos_fixed_pt, 16, 16);
 
 	/* Get the current render target layer index. */
 	if (ctx->shader->key.mono.u.ps.fbfetch_layered)
-		args.coords[chan++] = si_unpack_param(ctx, SI_PARAM_ANCILLARY, 16, 11);
+		args.coords[chan++] = si_unpack_param(ctx, ctx->args.ancillary, 16, 11);
 
 	if (ctx->shader->key.mono.u.ps.fbfetch_msaa)
 		args.coords[chan++] = si_get_sample_id(ctx);

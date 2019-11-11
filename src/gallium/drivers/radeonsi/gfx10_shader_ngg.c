@@ -31,12 +31,12 @@
 
 static LLVMValueRef get_wave_id_in_tg(struct si_shader_context *ctx)
 {
-	return si_unpack_param(ctx, ctx->param_merged_wave_info, 24, 4);
+	return si_unpack_param(ctx, ctx->merged_wave_info, 24, 4);
 }
 
 static LLVMValueRef get_tgsize(struct si_shader_context *ctx)
 {
-	return si_unpack_param(ctx, ctx->param_merged_wave_info, 28, 4);
+	return si_unpack_param(ctx, ctx->merged_wave_info, 28, 4);
 }
 
 static LLVMValueRef get_thread_id_in_tg(struct si_shader_context *ctx)
@@ -50,32 +50,22 @@ static LLVMValueRef get_thread_id_in_tg(struct si_shader_context *ctx)
 
 static LLVMValueRef ngg_get_vtx_cnt(struct si_shader_context *ctx)
 {
-	return ac_build_bfe(&ctx->ac, ctx->gs_tg_info,
-			    LLVMConstInt(ctx->ac.i32, 12, false),
-			    LLVMConstInt(ctx->ac.i32, 9, false),
-			    false);
+	return si_unpack_param(ctx, ctx->gs_tg_info, 12, 9);
 }
 
 static LLVMValueRef ngg_get_prim_cnt(struct si_shader_context *ctx)
 {
-	return ac_build_bfe(&ctx->ac, ctx->gs_tg_info,
-			    LLVMConstInt(ctx->ac.i32, 22, false),
-			    LLVMConstInt(ctx->ac.i32, 9, false),
-			    false);
+	return si_unpack_param(ctx, ctx->gs_tg_info, 22, 9);
 }
 
 static LLVMValueRef ngg_get_ordered_id(struct si_shader_context *ctx)
 {
-	return ac_build_bfe(&ctx->ac, ctx->gs_tg_info,
-			    ctx->i32_0,
-			    LLVMConstInt(ctx->ac.i32, 11, false),
-			    false);
+	return si_unpack_param(ctx, ctx->gs_tg_info, 0, 11);
 }
 
 static LLVMValueRef ngg_get_query_buf(struct si_shader_context *ctx)
 {
-	LLVMValueRef buf_ptr = LLVMGetParam(ctx->main_fn,
-					    ctx->param_rw_buffers);
+	LLVMValueRef buf_ptr = ac_get_arg(&ctx->ac, ctx->rw_buffers);
 
 	return ac_build_load_to_sgpr(&ctx->ac, buf_ptr,
 				     LLVMConstInt(ctx->i32, GFX10_GS_QUERY_BUF, false));
@@ -212,7 +202,7 @@ static void build_streamout(struct si_shader_context *ctx,
 	struct tgsi_shader_info *info = &ctx->shader->selector->info;
 	struct pipe_stream_output_info *so = &ctx->shader->selector->so;
 	LLVMBuilderRef builder = ctx->ac.builder;
-	LLVMValueRef buf_ptr = LLVMGetParam(ctx->main_fn, ctx->param_rw_buffers);
+	LLVMValueRef buf_ptr = ac_get_arg(&ctx->ac, ctx->rw_buffers);
 	LLVMValueRef tid = get_thread_id_in_tg(ctx);
 	LLVMValueRef tmp, tmp2;
 	LLVMValueRef i32_2 = LLVMConstInt(ctx->i32, 2, false);
@@ -583,16 +573,16 @@ void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi,
 
 	ac_build_endif(&ctx->ac, ctx->merged_wrap_if_label);
 
-	LLVMValueRef prims_in_wave = si_unpack_param(ctx, ctx->param_merged_wave_info, 8, 8);
-	LLVMValueRef vtx_in_wave = si_unpack_param(ctx, ctx->param_merged_wave_info, 0, 8);
+	LLVMValueRef prims_in_wave = si_unpack_param(ctx, ctx->merged_wave_info, 8, 8);
+	LLVMValueRef vtx_in_wave = si_unpack_param(ctx, ctx->merged_wave_info, 0, 8);
 	LLVMValueRef is_gs_thread = LLVMBuildICmp(builder, LLVMIntULT,
 						  ac_get_thread_id(&ctx->ac), prims_in_wave, "");
 	LLVMValueRef is_es_thread = LLVMBuildICmp(builder, LLVMIntULT,
 						  ac_get_thread_id(&ctx->ac), vtx_in_wave, "");
 	LLVMValueRef vtxindex[] = {
-		si_unpack_param(ctx, ctx->param_gs_vtx01_offset, 0, 16),
-		si_unpack_param(ctx, ctx->param_gs_vtx01_offset, 16, 16),
-		si_unpack_param(ctx, ctx->param_gs_vtx23_offset, 0, 16),
+		si_unpack_param(ctx, ctx->gs_vtx01_offset, 0, 16),
+		si_unpack_param(ctx, ctx->gs_vtx01_offset, 16, 16),
+		si_unpack_param(ctx, ctx->gs_vtx23_offset, 0, 16),
 	};
 
 	/* Determine the number of vertices per primitive. */
@@ -606,7 +596,7 @@ void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi,
 			num_vertices_val = LLVMConstInt(ctx->i32, 3, 0);
 		} else {
 			/* Extract OUTPRIM field. */
-			tmp = si_unpack_param(ctx, ctx->param_vs_state_bits, 2, 2);
+			tmp = si_unpack_param(ctx, ctx->vs_state_bits, 2, 2);
 			num_vertices_val = LLVMBuildAdd(builder, tmp, ctx->i32_1, "");
 			num_vertices = 3; /* TODO: optimize for points & lines */
 		}
@@ -673,14 +663,14 @@ void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi,
 		ac_build_ifcc(&ctx->ac, is_gs_thread, 5400);
 		/* Extract the PROVOKING_VTX_INDEX field. */
 		LLVMValueRef provoking_vtx_in_prim =
-			si_unpack_param(ctx, ctx->param_vs_state_bits, 4, 2);
+			si_unpack_param(ctx, ctx->vs_state_bits, 4, 2);
 
 		/* provoking_vtx_index = vtxindex[provoking_vtx_in_prim]; */
 		LLVMValueRef indices = ac_build_gather_values(&ctx->ac, vtxindex, 3);
 		LLVMValueRef provoking_vtx_index =
 			LLVMBuildExtractElement(builder, indices, provoking_vtx_in_prim, "");
 
-		LLVMBuildStore(builder, ctx->abi.gs_prim_id,
+		LLVMBuildStore(builder, ac_get_arg(&ctx->ac, ctx->args.gs_prim_id),
 			       ac_build_gep0(&ctx->ac, ctx->esgs_ring, provoking_vtx_index));
 		ac_build_endif(&ctx->ac, 5400);
 	}
@@ -690,7 +680,7 @@ void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi,
 	/* Update query buffer */
 	/* TODO: this won't catch 96-bit clear_buffer via transform feedback. */
 	if (!info->properties[TGSI_PROPERTY_VS_BLIT_SGPRS_AMD]) {
-		tmp = si_unpack_param(ctx, ctx->param_vs_state_bits, 6, 1);
+		tmp = si_unpack_param(ctx, ctx->vs_state_bits, 6, 1);
 		tmp = LLVMBuildTrunc(builder, tmp, ctx->i1, "");
 		ac_build_ifcc(&ctx->ac, tmp, 5029); /* if (STREAMOUT_QUERY_ENABLED) */
 		tmp = LLVMBuildICmp(builder, LLVMIntEQ, get_wave_id_in_tg(ctx), ctx->ac.i32_0, "");
@@ -752,7 +742,8 @@ void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi,
 				continue;
 			}
 
-			tmp = LLVMBuildLShr(builder, ctx->abi.gs_invocation_id,
+			tmp = LLVMBuildLShr(builder,
+					    ac_get_arg(&ctx->ac, ctx->args.gs_invocation_id),
 					    LLVMConstInt(ctx->ac.i32, 8 + i, false), "");
 			prim.edgeflag[i] = LLVMBuildTrunc(builder, tmp, ctx->ac.i1, "");
 
@@ -1099,7 +1090,7 @@ void gfx10_ngg_gs_emit_epilogue(struct si_shader_context *ctx)
 	}
 
 	/* Write shader query data. */
-	tmp = si_unpack_param(ctx, ctx->param_vs_state_bits, 6, 1);
+	tmp = si_unpack_param(ctx, ctx->vs_state_bits, 6, 1);
 	tmp = LLVMBuildTrunc(builder, tmp, ctx->i1, "");
 	ac_build_ifcc(&ctx->ac, tmp, 5109); /* if (STREAMOUT_QUERY_ENABLED) */
 	unsigned num_query_comps = sel->so.num_outputs ? 8 : 4;

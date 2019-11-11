@@ -318,50 +318,51 @@ void si_build_prim_discard_compute_shader(struct si_shader_context *ctx)
 	ac_add_function_attr(ctx->ac.context, vs, -1, AC_FUNC_ATTR_ALWAYSINLINE);
 	LLVMSetLinkage(vs, LLVMPrivateLinkage);
 
-	LLVMTypeRef const_desc_type;
+	enum ac_arg_type const_desc_type;
 	if (ctx->shader->selector->info.const_buffers_declared == 1 &&
 	    ctx->shader->selector->info.shader_buffers_declared == 0)
-		const_desc_type = ctx->f32;
+		const_desc_type = AC_ARG_CONST_FLOAT_PTR;
 	else
-		const_desc_type = ctx->v4i32;
+		const_desc_type = AC_ARG_CONST_DESC_PTR;
 
-	struct si_function_info fninfo;
-	si_init_function_info(&fninfo);
+	memset(&ctx->args, 0, sizeof(ctx->args));
 
-	LLVMValueRef index_buffers_and_constants, vertex_counter, vb_desc, const_desc;
-	LLVMValueRef base_vertex, start_instance, block_id, local_id, ordered_wave_id;
-	LLVMValueRef restart_index, vp_scale[2], vp_translate[2], smallprim_precision;
-	LLVMValueRef num_prims_udiv_multiplier, num_prims_udiv_terms, sampler_desc;
-	LLVMValueRef last_wave_prim_id, vertex_count_addr;
+	struct ac_arg param_index_buffers_and_constants, param_vertex_counter;
+	struct ac_arg param_vb_desc, param_const_desc;
+	struct ac_arg param_base_vertex, param_start_instance;
+	struct ac_arg param_block_id, param_local_id, param_ordered_wave_id;
+	struct ac_arg param_restart_index, param_smallprim_precision;
+	struct ac_arg param_num_prims_udiv_multiplier, param_num_prims_udiv_terms;
+	struct ac_arg param_sampler_desc, param_last_wave_prim_id, param_vertex_count_addr;
 
-	add_arg_assign(&fninfo, ARG_SGPR, ac_array_in_const32_addr_space(ctx->v4i32),
-		       &index_buffers_and_constants);
-	add_arg_assign(&fninfo, ARG_SGPR, ctx->i32, &vertex_counter);
-	add_arg_assign(&fninfo, ARG_SGPR, ctx->i32, &last_wave_prim_id);
-	add_arg_assign(&fninfo, ARG_SGPR, ctx->i32, &vertex_count_addr);
-	add_arg_assign(&fninfo, ARG_SGPR, ac_array_in_const32_addr_space(ctx->v4i32),
-		       &vb_desc);
-	add_arg_assign(&fninfo, ARG_SGPR, ac_array_in_const32_addr_space(const_desc_type),
-		       &const_desc);
-	add_arg_assign(&fninfo, ARG_SGPR, ac_array_in_const32_addr_space(ctx->v8i32),
-		       &sampler_desc);
-	add_arg_assign(&fninfo, ARG_SGPR, ctx->i32, &base_vertex);
-	add_arg_assign(&fninfo, ARG_SGPR, ctx->i32, &start_instance);
-	add_arg_assign(&fninfo, ARG_SGPR, ctx->i32, &num_prims_udiv_multiplier);
-	add_arg_assign(&fninfo, ARG_SGPR, ctx->i32, &num_prims_udiv_terms);
-	add_arg_assign(&fninfo, ARG_SGPR, ctx->i32, &restart_index);
-	add_arg_assign(&fninfo, ARG_SGPR, ctx->f32, &smallprim_precision);
+	ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_CONST_DESC_PTR,
+		   &param_index_buffers_and_constants);
+	ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &param_vertex_counter);
+	ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &param_last_wave_prim_id);
+	ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &param_vertex_count_addr);
+	ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_CONST_DESC_PTR,
+		   &param_vb_desc);
+	ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, const_desc_type,
+		   &param_const_desc);
+	ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_CONST_IMAGE_PTR,
+		   &param_sampler_desc);
+	ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &param_base_vertex);
+	ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &param_start_instance);
+	ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &param_num_prims_udiv_multiplier);
+	ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &param_num_prims_udiv_terms);
+	ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &param_restart_index);
+	ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_FLOAT, &param_smallprim_precision);
 
 	/* Block ID and thread ID inputs. */
-	add_arg_assign(&fninfo, ARG_SGPR, ctx->i32, &block_id);
+	ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &param_block_id);
 	if (VERTEX_COUNTER_GDS_MODE == 2)
-		add_arg_assign(&fninfo, ARG_SGPR, ctx->i32, &ordered_wave_id);
-	add_arg_assign(&fninfo, ARG_VGPR, ctx->i32, &local_id);
+		ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &param_ordered_wave_id);
+	ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT, &param_local_id);
 
 	/* Create the compute shader function. */
 	unsigned old_type = ctx->type;
 	ctx->type = PIPE_SHADER_COMPUTE;
-	si_create_function(ctx, "prim_discard_cs", NULL, 0, &fninfo, THREADGROUP_SIZE);
+	si_create_function(ctx, "prim_discard_cs", NULL, 0, THREADGROUP_SIZE);
 	ctx->type = old_type;
 
 	if (VERTEX_COUNTER_GDS_MODE == 1) {
@@ -376,14 +377,14 @@ void si_build_prim_discard_compute_shader(struct si_shader_context *ctx)
 
 	vs_params[num_vs_params++] = LLVMGetUndef(LLVMTypeOf(LLVMGetParam(vs, 0))); /* RW_BUFFERS */
 	vs_params[num_vs_params++] = LLVMGetUndef(LLVMTypeOf(LLVMGetParam(vs, 1))); /* BINDLESS */
-	vs_params[num_vs_params++] = const_desc;
-	vs_params[num_vs_params++] = sampler_desc;
+	vs_params[num_vs_params++] = ac_get_arg(&ctx->ac, param_const_desc);
+	vs_params[num_vs_params++] = ac_get_arg(&ctx->ac, param_sampler_desc);
 	vs_params[num_vs_params++] = LLVMConstInt(ctx->i32,
 					S_VS_STATE_INDEXED(key->opt.cs_indexed), 0);
-	vs_params[num_vs_params++] = base_vertex;
-	vs_params[num_vs_params++] = start_instance;
+	vs_params[num_vs_params++] = ac_get_arg(&ctx->ac, param_base_vertex);
+	vs_params[num_vs_params++] = ac_get_arg(&ctx->ac, param_start_instance);
 	vs_params[num_vs_params++] = ctx->i32_0; /* DrawID */
-	vs_params[num_vs_params++] = vb_desc;
+	vs_params[num_vs_params++] = ac_get_arg(&ctx->ac, param_vb_desc);
 
 	vs_params[(param_vertex_id = num_vs_params++)] = NULL; /* VertexID */
 	vs_params[(param_instance_id = num_vs_params++)] = NULL; /* InstanceID */
@@ -396,6 +397,7 @@ void si_build_prim_discard_compute_shader(struct si_shader_context *ctx)
 	/* Load descriptors. (load 8 dwords at once) */
 	LLVMValueRef input_indexbuf, output_indexbuf, tmp, desc[8];
 
+	LLVMValueRef index_buffers_and_constants = ac_get_arg(&ctx->ac, param_index_buffers_and_constants);
 	tmp = LLVMBuildPointerCast(builder, index_buffers_and_constants,
 				   ac_array_in_const32_addr_space(ctx->v8i32), "");
 	tmp = ac_build_load_to_sgpr(&ctx->ac, tmp, ctx->i32_0);
@@ -408,12 +410,17 @@ void si_build_prim_discard_compute_shader(struct si_shader_context *ctx)
 
 	/* Compute PrimID and InstanceID. */
 	LLVMValueRef global_thread_id =
-		ac_build_imad(&ctx->ac, block_id,
-			      LLVMConstInt(ctx->i32, THREADGROUP_SIZE, 0), local_id);
+		ac_build_imad(&ctx->ac, ac_get_arg(&ctx->ac, param_block_id),
+			      LLVMConstInt(ctx->i32, THREADGROUP_SIZE, 0),
+			      ac_get_arg(&ctx->ac, param_local_id));
 	LLVMValueRef prim_id = global_thread_id; /* PrimID within an instance */
 	LLVMValueRef instance_id = ctx->i32_0;
 
 	if (key->opt.cs_instancing) {
+		LLVMValueRef num_prims_udiv_terms =
+			ac_get_arg(&ctx->ac, param_num_prims_udiv_terms);
+		LLVMValueRef num_prims_udiv_multiplier =
+			ac_get_arg(&ctx->ac, param_num_prims_udiv_multiplier);
 		/* Unpack num_prims_udiv_terms. */
 		LLVMValueRef post_shift = LLVMBuildAnd(builder, num_prims_udiv_terms,
 						       LLVMConstInt(ctx->i32, 0x1f, 0), "");
@@ -477,6 +484,8 @@ void si_build_prim_discard_compute_shader(struct si_shader_context *ctx)
 		}
 	}
 
+	LLVMValueRef ordered_wave_id = ac_get_arg(&ctx->ac, param_ordered_wave_id);
+
 	/* Extract the ordered wave ID. */
 	if (VERTEX_COUNTER_GDS_MODE == 2) {
 		ordered_wave_id = LLVMBuildLShr(builder, ordered_wave_id,
@@ -485,7 +494,8 @@ void si_build_prim_discard_compute_shader(struct si_shader_context *ctx)
 					       LLVMConstInt(ctx->i32, 0xfff, 0), "");
 	}
 	LLVMValueRef thread_id =
-		LLVMBuildAnd(builder, local_id, LLVMConstInt(ctx->i32, 63, 0), "");
+		LLVMBuildAnd(builder, ac_get_arg(&ctx->ac, param_local_id),
+			     LLVMConstInt(ctx->i32, 63, 0), "");
 
 	/* Every other triangle in a strip has a reversed vertex order, so we
 	 * need to swap vertices of odd primitives to get the correct primitive
@@ -493,6 +503,7 @@ void si_build_prim_discard_compute_shader(struct si_shader_context *ctx)
 	 * restart complicates it, because a strip can start anywhere.
 	 */
 	LLVMValueRef prim_restart_accepted = ctx->i1true;
+	LLVMValueRef vertex_counter = ac_get_arg(&ctx->ac, param_vertex_counter);
 
 	if (key->opt.cs_prim_type == PIPE_PRIM_TRIANGLE_STRIP) {
 		/* Without primitive restart, odd primitives have reversed orientation.
@@ -520,7 +531,8 @@ void si_build_prim_discard_compute_shader(struct si_shader_context *ctx)
 
 			for (unsigned i = 0; i < 3; i++) {
 				LLVMValueRef not_reset = LLVMBuildICmp(builder, LLVMIntNE, index[i],
-								       restart_index, "");
+								       ac_get_arg(&ctx->ac, param_restart_index),
+								       "");
 				if (i == 0)
 					index0_is_reset = LLVMBuildNot(builder, not_reset, "");
 				prim_restart_accepted = LLVMBuildAnd(builder, prim_restart_accepted,
@@ -680,6 +692,7 @@ void si_build_prim_discard_compute_shader(struct si_shader_context *ctx)
 	LLVMValueRef vp = ac_build_load_invariant(&ctx->ac, index_buffers_and_constants,
 						  LLVMConstInt(ctx->i32, 2, 0));
 	vp = LLVMBuildBitCast(builder, vp, ctx->v4f32, "");
+	LLVMValueRef vp_scale[2], vp_translate[2];
 	vp_scale[0] = ac_llvm_extract_elem(&ctx->ac, vp, 0);
 	vp_scale[1] = ac_llvm_extract_elem(&ctx->ac, vp, 1);
 	vp_translate[0] = ac_llvm_extract_elem(&ctx->ac, vp, 2);
@@ -699,7 +712,8 @@ void si_build_prim_discard_compute_shader(struct si_shader_context *ctx)
 
 	LLVMValueRef accepted =
 		ac_cull_triangle(&ctx->ac, pos, prim_restart_accepted,
-				 vp_scale, vp_translate, smallprim_precision,
+				 vp_scale, vp_translate,
+				 ac_get_arg(&ctx->ac, param_smallprim_precision),
 				 &options);
 
 	LLVMValueRef accepted_threadmask = ac_get_i1_sgpr_mask(&ctx->ac, accepted);
@@ -788,7 +802,8 @@ void si_build_prim_discard_compute_shader(struct si_shader_context *ctx)
 	if (VERTEX_COUNTER_GDS_MODE == 2) {
 		ac_build_ifcc(&ctx->ac,
 			      LLVMBuildICmp(builder, LLVMIntEQ, global_thread_id,
-					    last_wave_prim_id, ""), 12606);
+					    ac_get_arg(&ctx->ac, param_last_wave_prim_id), ""),
+			      12606);
 		LLVMValueRef count = LLVMBuildAdd(builder, start, num_prims_accepted, "");
 		count = LLVMBuildMul(builder, count,
 				     LLVMConstInt(ctx->i32, vertices_per_prim, 0), "");
@@ -798,7 +813,7 @@ void si_build_prim_discard_compute_shader(struct si_shader_context *ctx)
 		 */
 		if (ctx->screen->info.chip_class <= GFX8) {
 			LLVMValueRef desc[] = {
-				vertex_count_addr,
+				ac_get_arg(&ctx->ac, param_vertex_count_addr),
 				LLVMConstInt(ctx->i32,
 					S_008F04_BASE_ADDRESS_HI(ctx->screen->info.address32_hi), 0),
 				LLVMConstInt(ctx->i32, 4, 0),
@@ -810,7 +825,9 @@ void si_build_prim_discard_compute_shader(struct si_shader_context *ctx)
 						    ctx->i32_0, 0, ac_glc | ac_slc, false);
 		} else {
 			LLVMBuildStore(builder, count,
-				       si_expand_32bit_pointer(ctx, vertex_count_addr));
+				       si_expand_32bit_pointer(ctx,
+							       ac_get_arg(&ctx->ac,
+									  param_vertex_count_addr)));
 		}
 		ac_build_endif(&ctx->ac, 12606);
 	} else {

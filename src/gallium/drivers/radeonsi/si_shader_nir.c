@@ -1047,19 +1047,19 @@ si_nir_lookup_interp_param(struct ac_shader_abi *abi,
 	case INTERP_MODE_SMOOTH:
 	case INTERP_MODE_NONE:
 		if (location == INTERP_CENTER)
-			return ctx->abi.persp_center;
+			return ac_get_arg(&ctx->ac, ctx->args.persp_center);
 		else if (location == INTERP_CENTROID)
 			return ctx->abi.persp_centroid;
 		else if (location == INTERP_SAMPLE)
-			return ctx->abi.persp_sample;
+			return ac_get_arg(&ctx->ac, ctx->args.persp_sample);
 		break;
 	case INTERP_MODE_NOPERSPECTIVE:
 		if (location == INTERP_CENTER)
-			return ctx->abi.linear_center;
+			return ac_get_arg(&ctx->ac, ctx->args.linear_center);
 		else if (location == INTERP_CENTROID)
-			return ctx->abi.linear_centroid;
+			return ac_get_arg(&ctx->ac, ctx->args.linear_centroid);
 		else if (location == INTERP_SAMPLE)
-			return ctx->abi.linear_sample;
+			return ac_get_arg(&ctx->ac, ctx->args.linear_sample);
 		break;
 	default:
 		assert(!"Unhandled interpolation mode.");
@@ -1082,8 +1082,7 @@ si_nir_load_sampler_desc(struct ac_shader_abi *abi,
 	assert(desc_type <= AC_DESC_BUFFER);
 
 	if (bindless) {
-		LLVMValueRef list =
-			LLVMGetParam(ctx->main_fn, ctx->param_bindless_samplers_and_images);
+		LLVMValueRef list = ac_get_arg(&ctx->ac, ctx->bindless_samplers_and_images);
 
 		/* dynamic_index is the bindless handle */
 		if (image) {
@@ -1114,7 +1113,7 @@ si_nir_load_sampler_desc(struct ac_shader_abi *abi,
 	unsigned num_slots = image ? ctx->num_images : ctx->num_samplers;
 	assert(const_index < num_slots || dynamic_index);
 
-	LLVMValueRef list = LLVMGetParam(ctx->main_fn, ctx->param_samplers_and_images);
+	LLVMValueRef list = ac_get_arg(&ctx->ac, ctx->samplers_and_images);
 	LLVMValueRef index = LLVMConstInt(ctx->ac.i32, const_index, false);
 
 	if (dynamic_index) {
@@ -1230,7 +1229,7 @@ bool si_nir_build_llvm(struct si_shader_context *ctx, struct nir_shader *nir)
 			ctx->shader->key.mono.u.ps.interpolate_at_sample_force_center;
 	} else if (nir->info.stage == MESA_SHADER_COMPUTE) {
 		if (nir->info.cs.user_data_components_amd) {
-			ctx->abi.user_data = LLVMGetParam(ctx->main_fn, ctx->param_cs_user_data);
+			ctx->abi.user_data = ac_get_arg(&ctx->ac, ctx->cs_user_data);
 			ctx->abi.user_data = ac_build_expand_to_vec4(&ctx->ac, ctx->abi.user_data,
 								     nir->info.cs.user_data_components_amd);
 		}
@@ -1248,7 +1247,7 @@ bool si_nir_build_llvm(struct si_shader_context *ctx, struct nir_shader *nir)
 		assert(gl_shader_stage_is_compute(nir->info.stage));
 		si_declare_compute_memory(ctx);
 	}
-	ac_nir_translate(&ctx->ac, &ctx->abi, nir);
+	ac_nir_translate(&ctx->ac, &ctx->abi, &ctx->args, nir);
 
 	return true;
 }
