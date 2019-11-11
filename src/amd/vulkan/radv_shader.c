@@ -1111,7 +1111,7 @@ shader_variant_compile(struct radv_device *device,
 		ac_init_llvm_once();
 
 	if (use_aco) {
-		aco_compile_shader(shader_count, shaders, &binary, info, options);
+		aco_compile_shader(shader_count, shaders, &binary, &args);
 		binary->info = *info;
 	} else {
 		enum ac_target_machine_options tm_options = 0;
