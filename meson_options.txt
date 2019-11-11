@@ -221,7 +221,7 @@ option(
   'vulkan-layers',
   type : 'array',
   value : [],
-  choices : ['device-select', 'overlay'],
+  choices : ['device-select', 'intel-nullhw', 'overlay'],
   description : 'List of vulkan layers to build'
 )
 option(
