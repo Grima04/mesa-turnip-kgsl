@@ -1801,12 +1801,13 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
 static void
 emit_tex(compiler_context *ctx, nir_tex_instr *instr)
 {
-        /* Fixup op, since only textureLod is permitted in VS but NIR can give
-         * generic tex in some cases (which confuses the hardware) */
+        /* Fixup op, since only textureLod is permitted in VS on later Midgard
+         * but NIR can give generic tex in some cases (which confuses the
+         * hardware). Interestingly, early Midgard lines up with NIR */
 
         bool is_vertex = ctx->stage == MESA_SHADER_VERTEX;
 
-        if (is_vertex && instr->op == nir_texop_tex)
+        if (is_vertex && instr->op == nir_texop_tex && ctx->gpu_id >= 0x750)
                 instr->op = nir_texop_txl;
 
         switch (instr->op) {
