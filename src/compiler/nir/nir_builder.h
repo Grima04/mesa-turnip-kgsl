@@ -782,7 +782,7 @@ nir_extract_bits(nir_builder *b, nir_ssa_def **srcs, unsigned num_srcs,
    for (unsigned i = 0; i < num_srcs; i++)
       common_bit_size = MIN2(common_bit_size, srcs[i]->bit_size);
    if (first_bit > 0)
-      common_bit_size = MIN2(common_bit_size, (1 << (ffs(first_bit) - 1)));
+      common_bit_size = MIN2(common_bit_size, (1u << (ffs(first_bit) - 1)));
 
    /* We don't want to have to deal with 1-bit values */
    assert(common_bit_size >= 8);
@@ -800,7 +800,7 @@ nir_extract_bits(nir_builder *b, nir_ssa_def **srcs, unsigned num_srcs,
       const unsigned bit = first_bit + (i * common_bit_size);
       while (bit >= src_end_bit) {
          src_idx++;
-         assert(src_idx < num_srcs);
+         assert(src_idx < (int) num_srcs);
          src_start_bit = src_end_bit;
          src_end_bit += srcs[src_idx]->bit_size *
                         srcs[src_idx]->num_components;
