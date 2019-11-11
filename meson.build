@@ -1223,14 +1223,12 @@ ld_args_build_id = cc.get_supported_link_arguments('-Wl,--build-id=sha1')
 
 # check for dl support
 dep_dl = null_dep
-if host_machine.system() != 'windows'
-  if not cc.has_function('dlopen')
-    dep_dl = cc.find_library('dl')
-  endif
-  if cc.has_function('dladdr', dependencies : dep_dl)
-    # This is really only required for megadrivers
-    pre_args += '-DHAVE_DLADDR'
-  endif
+if not cc.has_function('dlopen')
+  dep_dl = cc.find_library('dl', required : host_machine.system() != 'windows')
+endif
+if cc.has_function('dladdr', dependencies : dep_dl)
+  # This is really only required for megadrivers
+  pre_args += '-DHAVE_DLADDR'
 endif
 
 if cc.has_function('dl_iterate_phdr')
