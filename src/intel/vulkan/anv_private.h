@@ -1002,6 +1002,8 @@ struct anv_physical_device {
     /** True if we can use bindless access for samplers */
     bool                                        has_bindless_samplers;
 
+    bool                                        always_flush_cache;
+
     struct anv_device_extension_table           supported_extensions;
     struct anv_physical_device_dispatch_table   dispatch;
 

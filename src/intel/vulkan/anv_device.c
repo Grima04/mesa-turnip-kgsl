@@ -54,6 +54,10 @@ DRI_CONF_BEGIN
       DRI_CONF_VK_X11_OVERRIDE_MIN_IMAGE_COUNT(0)
       DRI_CONF_VK_X11_STRICT_IMAGE_COUNT("false")
    DRI_CONF_SECTION_END
+
+   DRI_CONF_SECTION_DEBUG
+      DRI_CONF_ALWAYS_FLUSH_CACHE("false")
+   DRI_CONF_SECTION_END
 DRI_CONF_END;
 
 /* This is probably far to big but it reflects the max size used for messages
@@ -508,6 +512,9 @@ anv_physical_device_init(struct anv_physical_device *device,
    device->has_bindless_samplers = device->info.gen >= 8;
 
    device->has_mem_available = get_available_system_memory() != 0;
+
+   device->always_flush_cache =
+      driQueryOptionb(&instance->dri_options, "always_flush_cache");
 
    /* Starting with Gen10, the timestamp frequency of the command streamer may
     * vary from one part to another. We can query the value from the kernel.

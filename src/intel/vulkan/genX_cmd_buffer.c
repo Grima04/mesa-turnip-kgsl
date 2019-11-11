@@ -1800,6 +1800,9 @@ genX(cmd_buffer_apply_pipe_flushes)(struct anv_cmd_buffer *cmd_buffer)
 {
    enum anv_pipe_bits bits = cmd_buffer->state.pending_pipe_bits;
 
+   if (cmd_buffer->device->instance->physicalDevice.always_flush_cache)
+      bits |= ANV_PIPE_FLUSH_BITS | ANV_PIPE_INVALIDATE_BITS;
+
    /* Flushes are pipelined while invalidations are handled immediately.
     * Therefore, if we're flushing anything then we need to schedule a stall
     * before any invalidations can happen.
