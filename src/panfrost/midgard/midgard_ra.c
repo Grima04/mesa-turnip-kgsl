@@ -619,19 +619,16 @@ install_registers_instr(
                 struct phys_reg coord = index_to_reg(ctx, l, ins->src[1], mir_srcsize(ins, 1));
                 struct phys_reg lod = index_to_reg(ctx, l, ins->src[2], mir_srcsize(ins, 2));
 
-                assert(dest.reg == 28 || dest.reg == 29);
-                assert(coord.reg == 28 || coord.reg == 29);
-
                 /* First, install the texture coordinate */
                 ins->texture.in_reg_full = 1;
                 ins->texture.in_reg_upper = 0;
-                ins->texture.in_reg_select = coord.reg - 28;
+                ins->texture.in_reg_select = coord.reg & 1;
                 offset_swizzle(ins->swizzle[1], coord.offset, coord.size, 0);
 
                 /* Next, install the destination */
                 ins->texture.out_full = 1;
                 ins->texture.out_upper = 0;
-                ins->texture.out_reg_select = dest.reg - 28;
+                ins->texture.out_reg_select = dest.reg & 1;
                 offset_swizzle(ins->swizzle[0], 0, 4, dest.offset);
                 mir_set_bytemask(ins, mir_bytemask(ins) << dest.offset);
 
