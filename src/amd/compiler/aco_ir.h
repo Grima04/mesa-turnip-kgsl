@@ -616,6 +616,15 @@ struct Instruction {
    }
 
    constexpr bool usesModifiers() const noexcept;
+
+   constexpr bool reads_exec() const noexcept
+   {
+      for (const Operand& op : operands) {
+         if (op.isFixed() && op.physReg() == exec)
+            return true;
+      }
+      return false;
+   }
 };
 
 struct SOPK_instruction : public Instruction {
