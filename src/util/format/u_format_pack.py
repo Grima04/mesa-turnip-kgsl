@@ -727,7 +727,6 @@ def generate(formats):
                 channel = Channel(SIGNED, False, True, 32)
                 native_type = 'int'
                 suffix = 'signed'
-                generate_format_unpack(format, channel, native_type, suffix)
                 generate_format_pack(format, channel, native_type, suffix)   
             elif format.is_pure_signed():
                 native_type = 'int'
@@ -741,7 +740,6 @@ def generate(formats):
                 native_type = 'unsigned'
                 suffix = 'unsigned'
                 channel = Channel(UNSIGNED, False, True, 32)
-                generate_format_unpack(format, channel, native_type, suffix)
                 generate_format_pack(format, channel, native_type, suffix)   
             else:
                 channel = Channel(FLOAT, False, False, 32)
