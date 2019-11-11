@@ -379,21 +379,19 @@ def conversion_expr(src_channel,
             # neither is normalized -- just cast
             return '(%s)%s' % (dst_native_type, value)
 
-        src_one = get_one(src_channel)
-        dst_one = get_one(dst_channel)
-
-        if src_one > dst_one and src_norm and dst_channel.norm:
-            # We can just bitshift
-            src_shift = get_one_shift(src_channel)
-            dst_shift = get_one_shift(dst_channel)
-            value = '(%s >> %s)' % (value, src_shift - dst_shift)
+        if src_norm and dst_channel.norm:
+            return "_mesa_%snorm_to_%snorm(%s, %d, %d)" % ("s" if src_type == SIGNED else "u",
+                                                           "s" if dst_channel.type == SIGNED else "u",
+                                                           value, src_channel.size, dst_channel.size)
         else:
             # We need to rescale using an intermediate type big enough to hold the multiplication of both
+            src_one = get_one(src_channel)
+            dst_one = get_one(dst_channel)
             tmp_native_type = intermediate_native_type(src_size + dst_channel.size, src_channel.sign and dst_channel.sign)
             value = '((%s)%s)' % (tmp_native_type, value)
-            value = '(%s * 0x%x / 0x%x)' % (value, dst_one, src_one)
-        value = '(%s)%s' % (dst_native_type, value)
-        return value
+            value = '(%s)(%s * 0x%x / 0x%x)' % (dst_native_type, value, dst_one, src_one)
+            return value
+
 
     # Promote to either float or double
     if src_type != FLOAT:
@@ -719,6 +717,7 @@ def generate(formats):
     print('#include "u_format.h"')
     print('#include "u_format_other.h"')
     print('#include "util/format_srgb.h"')
+    print('#include "format_utils.h"')
     print('#include "u_format_yuv.h"')
     print('#include "u_format_zs.h"')
     print('#include "u_format_pack.h"')
