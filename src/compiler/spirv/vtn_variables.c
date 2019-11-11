@@ -50,7 +50,7 @@ static struct vtn_pointer*
 vtn_decorate_pointer(struct vtn_builder *b, struct vtn_value *val,
                      struct vtn_pointer *ptr)
 {
-   struct vtn_pointer dummy = { };
+   struct vtn_pointer dummy = { .access = 0 };
    vtn_foreach_decoration(b, val, ptr_decoration_cb, &dummy);
 
    /* If we're adding access flags, make a copy of the pointer.  We could
