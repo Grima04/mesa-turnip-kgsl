@@ -17,6 +17,8 @@ include:
     max: 2
     when:
       - runner_system_failure
+  # Cancel CI run if a newer commit is pushed to the same branch
+  interruptible: true
 
 # Build Docker image with deqp, the rootfs and the build deps for Mesa
 .lava-container:
