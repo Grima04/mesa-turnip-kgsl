@@ -62,7 +62,6 @@ extern "C" {
 #define NIR_MAX_MATRIX_COLUMNS 4
 #define NIR_STREAM_PACKED (1 << 8)
 typedef uint8_t nir_component_mask_t;
-typedef unsigned short GLenum16;
 
 /** Defines a cast function
  *
@@ -488,7 +487,7 @@ typedef struct nir_variable {
       union {
          struct {
             /** Image internal format if specified explicitly, otherwise GL_NONE. */
-            GLenum16 format;
+            uint16_t format; /* GLenum */
          } image;
 
          struct {
