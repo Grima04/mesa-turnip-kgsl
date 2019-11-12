@@ -159,7 +159,7 @@ rm -rf $LIBPCIACCESS_VERSION
 
 wget https://dri.freedesktop.org/libdrm/$LIBDRM_VERSION.tar.bz2
 tar -xvf $LIBDRM_VERSION.tar.bz2 && rm $LIBDRM_VERSION.tar.bz2
-cd $LIBDRM_VERSION; ./configure --enable-vc4 --enable-freedreno --enable-etnaviv-experimental-api; make install; cd ..
+cd $LIBDRM_VERSION; meson build -D vc4=true -D freedreno=true -D etnaviv=true; ninja -j4 -C build install; cd ..
 rm -rf $LIBDRM_VERSION
 
 wget $XORG_RELEASES/proto/$RANDRPROTO_VERSION.tar.bz2
