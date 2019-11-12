@@ -62,7 +62,7 @@ create_indirect_load(struct ir3_context *ctx, unsigned arrsz, int n,
 }
 
 static struct ir3_instruction *
-create_input_compmask(struct ir3_context *ctx, unsigned n, unsigned compmask)
+create_input(struct ir3_context *ctx, unsigned compmask)
 {
 	struct ir3_instruction *in;
 
@@ -1212,7 +1212,7 @@ create_sysval_input(struct ir3_context *ctx, gl_system_value slot,
 		unsigned compmask)
 {
 	assert(compmask);
-	struct ir3_instruction *sysval = create_input_compmask(ctx, 0, compmask);
+	struct ir3_instruction *sysval = create_input(ctx, compmask);
 	add_sysval_input_compmask(ctx, slot, compmask, sysval);
 	return sysval;
 }
@@ -2717,7 +2717,7 @@ setup_input(struct ir3_context *ctx, nir_variable *in)
 		 */
 		assert(frac == 0);
 
-		struct ir3_instruction *input = create_input_compmask(ctx, 0, (1 << ncomp) - 1);
+		struct ir3_instruction *input = create_input(ctx, (1 << ncomp) - 1);
 		struct ir3_instruction *components[ncomp];
 
 		input->input.inidx = n;
@@ -2969,7 +2969,7 @@ emit_instructions(struct ir3_context *ctx)
 	if (ctx->so->type == MESA_SHADER_FRAGMENT) {
 		struct ir3_instruction *xy[2];
 
-		vcoord = create_input_compmask(ctx, 0, 0x3);
+		vcoord = create_input(ctx, 0x3);
 		ir3_split_dest(ctx->block, xy, vcoord, 0, 2);
 
 		ctx->ij_pixel = ir3_create_collect(ctx, xy, 2);
