@@ -30,3 +30,7 @@ dEQP-GLES31.functional.geometry_shading.instanced.*layer.*
 
 # Intermittent timeout
 dEQP-GLES31.functional.ssbo.layout.random.all_shared_buffer.23
+
+# Repeated intermittent fails with vulkan-cts-runner (where test ordering is
+# shuffled around compared to a single-threaded deqp run)
+dEQP-GLES3.functional.fbo.blit.conversion.*to_r16f
