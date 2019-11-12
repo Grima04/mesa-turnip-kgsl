@@ -4636,6 +4636,26 @@ nir_variable_is_in_block(const nir_variable *var)
    return nir_variable_is_in_ubo(var) || nir_variable_is_in_ssbo(var);
 }
 
+typedef struct nir_unsigned_upper_bound_config {
+   unsigned min_subgroup_size;
+   unsigned max_subgroup_size;
+   unsigned max_work_group_invocations;
+   unsigned max_work_group_count[3];
+   unsigned max_work_group_size[3];
+
+   uint32_t vertex_attrib_max[32];
+} nir_unsigned_upper_bound_config;
+
+uint32_t
+nir_unsigned_upper_bound(nir_shader *shader, struct hash_table *range_ht,
+                         nir_ssa_scalar scalar,
+                         const nir_unsigned_upper_bound_config *config);
+
+bool
+nir_addition_might_overflow(nir_shader *shader, struct hash_table *range_ht,
+                            nir_ssa_scalar ssa, unsigned const_val,
+                            const nir_unsigned_upper_bound_config *config);
+
 #ifdef __cplusplus
 } /* extern "C" */
 #endif
