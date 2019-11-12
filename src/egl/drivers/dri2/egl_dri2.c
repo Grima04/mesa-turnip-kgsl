@@ -801,7 +801,6 @@ dri2_setup_screen(_EGLDisplay *disp)
       }
 
       disp->Extensions.KHR_image_base = EGL_TRUE;
-      disp->Extensions.EXT_image_flush_external = EGL_TRUE;
       disp->Extensions.KHR_gl_renderbuffer_image = EGL_TRUE;
       if (dri2_dpy->image->base.version >= 5 &&
           dri2_dpy->image->createImageFromTexture) {
@@ -3476,37 +3475,6 @@ dri2_interop_export_object(_EGLDisplay *disp, _EGLContext *ctx,
    return dri2_dpy->interop->export_object(dri2_ctx->dri_context, in, out);
 }
 
-static void
-dri2_image_flush_external(_EGLDisplay *disp, _EGLContext *ctx,
-                          _EGLImage *image)
-{
-   struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
-   struct dri2_egl_context *dri2_ctx = dri2_egl_context(ctx);
-   struct dri2_egl_image *dri2_img = dri2_egl_image(image);
-
-   if (dri2_dpy->image->base.version < 18)
-      return;
-
-   dri2_dpy->image->imageFlushExternal(dri2_ctx->dri_context,
-                                       dri2_img->dri_image, 0);
-}
-
-static void
-dri2_image_invalidate_external(_EGLDisplay *disp, _EGLContext *ctx,
-                               _EGLImage *image)
-{
-   struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
-   struct dri2_egl_context *dri2_ctx = dri2_egl_context(ctx);
-   struct dri2_egl_image *dri2_img = dri2_egl_image(image);
-
-   if (dri2_dpy->image->base.version < 18)
-      return;
-
-   dri2_dpy->image->imageInvalidateExternal(dri2_ctx->dri_context,
-                                            dri2_img->dri_image, 0);
-}
-
-
 /**
  * This is the main entrypoint into the driver, called by libEGL.
  * Gets an _EGLDriver object and init its dispatch table.
@@ -3565,6 +3533,4 @@ _eglInitDriver(_EGLDriver *dri2_drv)
    dri2_drv->API.GLInteropExportObject = dri2_interop_export_object;
    dri2_drv->API.DupNativeFenceFDANDROID = dri2_dup_native_fence_fd;
    dri2_drv->API.SetBlobCacheFuncsANDROID = dri2_set_blob_cache_funcs;
-   dri2_drv->API.ImageFlushExternal = dri2_image_flush_external;
-   dri2_drv->API.ImageInvalidateExternal = dri2_image_invalidate_external;
 }
