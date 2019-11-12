@@ -806,6 +806,7 @@ static void
 write_alu(write_ctx *ctx, const nir_alu_instr *alu)
 {
    unsigned num_srcs = nir_op_infos[alu->op].num_inputs;
+   unsigned dst_components = nir_dest_num_components(alu->dest.dest);
 
    /* 9 bits for nir_op */
    STATIC_ASSERT(nir_num_opcodes <= 512);
@@ -826,12 +827,15 @@ write_alu(write_ctx *ctx, const nir_alu_instr *alu)
       header.alu.writemask_or_two_swizzles = alu->src[0].swizzle[0];
       if (num_srcs > 1)
          header.alu.writemask_or_two_swizzles |= alu->src[1].swizzle[0] << 2;
-   } else if (!alu->dest.dest.is_ssa) {
-      /* For registers, this field is a writemask. */
+   } else if (!alu->dest.dest.is_ssa && dst_components <= 4) {
+      /* For vec4 registers, this field is a writemask. */
       header.alu.writemask_or_two_swizzles = alu->dest.write_mask;
    }
 
    write_dest(ctx, &alu->dest.dest, header, alu->instr.type);
+
+   if (!alu->dest.dest.is_ssa && dst_components > 4)
+      blob_write_uint32(ctx->blob, alu->dest.write_mask);
 
    if (header.alu.packed_src_ssa_16bit) {
       for (unsigned i = 0; i < num_srcs; i++) {
@@ -888,6 +892,16 @@ read_alu(read_ctx *ctx, union packed_instr header)
 
    read_dest(ctx, &alu->dest.dest, &alu->instr, header);
 
+   unsigned dst_components = nir_dest_num_components(alu->dest.dest);
+
+   if (alu->dest.dest.is_ssa) {
+      alu->dest.write_mask = u_bit_consecutive(0, dst_components);
+   } else if (dst_components <= 4) {
+      alu->dest.write_mask = header.alu.writemask_or_two_swizzles;
+   } else {
+      alu->dest.write_mask = blob_read_uint32(ctx->blob);
+   }
+
    if (header.alu.packed_src_ssa_16bit) {
       for (unsigned i = 0; i < num_srcs; i++) {
          nir_alu_src *src = &alu->src[i];
@@ -928,13 +942,6 @@ read_alu(read_ctx *ctx, union packed_instr header)
             }
          }
       }
-   }
-
-   if (alu->dest.dest.is_ssa) {
-      alu->dest.write_mask =
-         u_bit_consecutive(0, alu->dest.dest.ssa.num_components);
-   } else {
-      alu->dest.write_mask = header.alu.writemask_or_two_swizzles;
    }
 
    if (header.alu.packed_src_ssa_16bit &&
