@@ -134,10 +134,7 @@ Temp emit_wqm(isel_context *ctx, Temp src, Temp dst=Temp(0, s1), bool program_ne
       if (!dst.id())
          return src;
 
-      if (src.type() == RegType::vgpr || src.size() > 1)
-         bld.copy(Definition(dst), src);
-      else
-         bld.sop1(aco_opcode::s_mov_b32, Definition(dst), src);
+      bld.copy(Definition(dst), src);
       return dst;
    }
 
@@ -148,6 +145,9 @@ Temp emit_wqm(isel_context *ctx, Temp src, Temp dst=Temp(0, s1), bool program_ne
 
 static Temp emit_bpermute(isel_context *ctx, Builder &bld, Temp index, Temp data)
 {
+   if (index.regClass() == s1)
+      return bld.vop3(aco_opcode::v_readlane_b32, bld.def(s1), data, index);
+
    Temp index_x4 = bld.vop2(aco_opcode::v_lshlrev_b32, bld.def(v1), Operand(2u), index);
 
    /* Currently not implemented on GFX6-7 */
@@ -5557,11 +5557,11 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
    }
    case nir_intrinsic_shuffle: {
       Temp src = get_ssa_temp(ctx, instr->src[0].ssa);
-      if (!ctx->divergent_vals[instr->dest.ssa.index]) {
+      if (!ctx->divergent_vals[instr->dest.ssa.index] &&
+          !ctx->divergent_vals[instr->src[0].ssa->index]) {
          emit_uniform_subgroup(ctx, instr, src);
       } else {
          Temp tid = get_ssa_temp(ctx, instr->src[1].ssa);
-         assert(tid.regClass() == v1);
          Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
          if (src.regClass() == v1) {
             emit_wqm(ctx, emit_bpermute(ctx, bld, tid, src), dst);
