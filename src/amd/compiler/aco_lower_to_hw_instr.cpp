@@ -835,29 +835,21 @@ void lower_to_hw_instr(Program* program)
                Definition def_temp1(tmp1.physReg(), v1);
                Definition def_temp2(tmp2.physReg(), v1);
 
-               /* Save EXEC and clear it */
-               bld.sop1(aco_opcode::s_and_saveexec_b64, instr->definitions[1], instr->definitions[2],
-                        Definition(exec, s2), Operand(0u), Operand(exec, s2));
+               /* Save EXEC and set it for all lanes */
+               bld.sop1(aco_opcode::s_or_saveexec_b64, instr->definitions[1], instr->definitions[2],
+                        Definition(exec, s2), Operand((uint64_t)-1), Operand(exec, s2));
 
-               /* Set EXEC to enable HI lanes only */
-               bld.sop1(aco_opcode::s_mov_b32, Definition(exec_hi, s1), Operand((uint32_t)-1));
                /* HI: Copy data from high lanes 32-63 to shared vgpr */
-               bld.vop1(aco_opcode::v_mov_b32, shared_vgpr_hi, input_data);
+               bld.vop1_dpp(aco_opcode::v_mov_b32, shared_vgpr_hi, input_data, dpp_quad_perm(0, 1, 2, 3), 0xc, 0xf, false);
 
-               /* Invert EXEC to enable LO lanes only */
-               bld.sop1(aco_opcode::s_not_b64, Definition(exec, s2), Operand(exec, s2));
                /* LO: Copy data from low lanes 0-31 to shared vgpr */
-               bld.vop1(aco_opcode::v_mov_b32, shared_vgpr_lo, input_data);
+               bld.vop1_dpp(aco_opcode::v_mov_b32, shared_vgpr_lo, input_data, dpp_quad_perm(0, 1, 2, 3), 0x3, 0xf, false);
                /* LO: Copy shared vgpr (high lanes' data) to output vgpr */
-               bld.vop1(aco_opcode::v_mov_b32, def_temp1, Operand(shared_vgpr_reg_hi, v1));
+               bld.vop1_dpp(aco_opcode::v_mov_b32, def_temp1, Operand(shared_vgpr_reg_hi, v1), dpp_quad_perm(0, 1, 2, 3), 0x3, 0xf, false);
 
-               /* Invert EXEC to enable HI lanes only */
-               bld.sop1(aco_opcode::s_not_b64, Definition(exec, s2), Operand(exec, s2));
                /* HI: Copy shared vgpr (low lanes' data) to output vgpr */
-               bld.vop1(aco_opcode::v_mov_b32, def_temp1, Operand(shared_vgpr_reg_lo, v1));
+               bld.vop1_dpp(aco_opcode::v_mov_b32, def_temp1, Operand(shared_vgpr_reg_lo, v1), dpp_quad_perm(0, 1, 2, 3), 0xc, 0xf, false);
 
-               /* Enable exec mask for all lanes */
-               bld.sop1(aco_opcode::s_mov_b64, Definition(exec, s2), Operand((uint32_t)-1));
                /* Permute the original input */
                bld.ds(aco_opcode::ds_bpermute_b32, def_temp2, index_x4, input_data);
                /* Permute the swapped input */
