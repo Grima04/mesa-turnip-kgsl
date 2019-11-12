@@ -305,6 +305,8 @@ files_libgallium = files(
   'util/u_screen.h',
   'util/u_simple_shaders.c',
   'util/u_simple_shaders.h',
+  'util/u_split_draw.c',
+  'util/u_split_draw.h',
   'util/u_split_prim.h',
   'util/u_sse.h',
   'util/u_suballoc.c',
