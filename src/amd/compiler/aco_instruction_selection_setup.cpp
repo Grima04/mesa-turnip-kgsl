@@ -125,10 +125,10 @@ struct isel_context {
    bool needs_instance_id;
 
    /* CS inputs */
-   Temp num_workgroups[3] = {Temp(0, s1), Temp(0, s1), Temp(0, s1)};
+   Temp num_workgroups = Temp(0, s3);
    Temp workgroup_ids[3] = {Temp(0, s1), Temp(0, s1), Temp(0, s1)};
    Temp tg_size = Temp(0, s1);
-   Temp local_invocation_ids[3] = {Temp(0, v1), Temp(0, v1), Temp(0, v1)};
+   Temp local_invocation_ids = Temp(0, v3);
 
    /* VS output information */
    unsigned num_clip_distances;
@@ -992,9 +992,7 @@ Pseudo_instruction *add_startpgm(struct isel_context *ctx)
       declare_global_input_sgprs(ctx, &user_sgpr_info, &args, ctx->descriptor_sets);
 
       if (ctx->program->info->cs.uses_grid_size) {
-         add_arg(&args, s1, &ctx->num_workgroups[0], user_sgpr_info.user_sgpr_idx);
-         add_arg(&args, s1, &ctx->num_workgroups[1], user_sgpr_info.user_sgpr_idx + 1);
-         add_arg(&args, s1, &ctx->num_workgroups[2], user_sgpr_info.user_sgpr_idx + 2);
+         add_arg(&args, s3, &ctx->num_workgroups, user_sgpr_info.user_sgpr_idx);
          set_loc_shader(ctx, AC_UD_CS_GRID_SIZE, &user_sgpr_info.user_sgpr_idx, 3);
       }
       assert(user_sgpr_info.user_sgpr_idx == user_sgpr_info.num_sgpr);
@@ -1009,9 +1007,7 @@ Pseudo_instruction *add_startpgm(struct isel_context *ctx)
       if (ctx->options->supports_spill || ctx->scratch_enabled)
          add_arg(&args, s1, &ctx->program->scratch_offset, idx++);
 
-      add_arg(&args, v1, &ctx->local_invocation_ids[0], vgpr_idx++);
-      add_arg(&args, v1, &ctx->local_invocation_ids[1], vgpr_idx++);
-      add_arg(&args, v1, &ctx->local_invocation_ids[2], vgpr_idx++);
+      add_arg(&args, v3, &ctx->local_invocation_ids, vgpr_idx++);
       break;
    }
    default:

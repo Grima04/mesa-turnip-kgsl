@@ -5494,17 +5494,21 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
    case nir_intrinsic_memory_barrier_shared:
       emit_memory_barrier(ctx, instr);
       break;
-   case nir_intrinsic_load_num_work_groups:
-   case nir_intrinsic_load_work_group_id:
+   case nir_intrinsic_load_num_work_groups: {
+      Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
+      bld.copy(Definition(dst), Operand(ctx->num_workgroups));
+      emit_split_vector(ctx, dst, 3);
+      break;
+   }
    case nir_intrinsic_load_local_invocation_id: {
       Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
-      Temp* ids;
-      if (instr->intrinsic == nir_intrinsic_load_num_work_groups)
-         ids = ctx->num_workgroups;
-      else if (instr->intrinsic == nir_intrinsic_load_work_group_id)
-         ids = ctx->workgroup_ids;
-      else
-         ids = ctx->local_invocation_ids;
+      bld.copy(Definition(dst), Operand(ctx->local_invocation_ids));
+      emit_split_vector(ctx, dst, 3);
+      break;
+   }
+   case nir_intrinsic_load_work_group_id: {
+      Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
+      Temp* ids = ctx->workgroup_ids;
       bld.pseudo(aco_opcode::p_create_vector, Definition(dst),
                  ids[0].id() ? Operand(ids[0]) : Operand(1u),
                  ids[1].id() ? Operand(ids[1]) : Operand(1u),
