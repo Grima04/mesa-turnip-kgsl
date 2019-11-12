@@ -39,15 +39,6 @@ tu_extensions_c = custom_target(
   ],
 )
 
-tu_format_table_c = custom_target(
-  'tu_format_table.c',
-  input : ['vk_format_table.py', 'vk_format_layout.csv'],
-  output : 'vk_format_table.c',
-  command : [prog_python, '@INPUT@'],
-  depend_files : files('vk_format_parse.py'),
-  capture : true,
-)
-
 libtu_files = files(
   'tu_blit.c',
   'tu_blit.h',
@@ -108,7 +99,7 @@ endif
 
 libvulkan_freedreno = shared_library(
   'vulkan_freedreno',
-  [libtu_files, tu_entrypoints, tu_extensions_c, tu_format_table_c, freedreno_xml_header_files],
+  [libtu_files, tu_entrypoints, tu_extensions_c, freedreno_xml_header_files],
   include_directories : [
     inc_common,
     inc_compiler,

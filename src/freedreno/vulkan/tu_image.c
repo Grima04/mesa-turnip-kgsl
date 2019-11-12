@@ -74,7 +74,7 @@ static void
 setup_slices(struct tu_image *image, const VkImageCreateInfo *pCreateInfo)
 {
    VkFormat format = pCreateInfo->format;
-   enum vk_format_layout layout = vk_format_description(format)->layout;
+   enum util_format_layout layout = vk_format_description(format)->layout;
    uint32_t layer_size = 0;
    int ta = image->cpp;
 
@@ -113,7 +113,7 @@ setup_slices(struct tu_image *image, const VkImageCreateInfo *pCreateInfo)
       if (level + 1 == pCreateInfo->mipLevels)
          aligned_height = align(aligned_height, 32);
 
-      if (layout == VK_FORMAT_LAYOUT_ASTC)
+      if (layout == UTIL_FORMAT_LAYOUT_ASTC)
          slice->pitch =
             util_align_npot(width, pitchalign * vk_format_get_blockwidth(format));
       else
@@ -218,7 +218,7 @@ tu_image_create(VkDevice _device,
 static enum a6xx_tex_fetchsize
 tu6_fetchsize(VkFormat format)
 {
-   if (vk_format_description(format)->layout == VK_FORMAT_LAYOUT_ASTC)
+   if (vk_format_description(format)->layout == UTIL_FORMAT_LAYOUT_ASTC)
       return TFETCH6_16_BYTE;
 
    switch (vk_format_get_blocksize(format) / vk_format_get_blockwidth(format)) {
@@ -249,8 +249,8 @@ tu6_texswiz(const VkComponentMapping *comps, const unsigned char *fmt_swiz)
       /* if format has 0/1 in channel, use that (needed for bc1_rgb) */
       if (swiz[i] < 4) {
          switch (fmt_swiz[swiz[i]]) {
-         case VK_SWIZZLE_0: swiz[i] = A6XX_TEX_ZERO; break;
-         case VK_SWIZZLE_1: swiz[i] = A6XX_TEX_ONE;  break;
+         case PIPE_SWIZZLE_0: swiz[i] = A6XX_TEX_ZERO; break;
+         case PIPE_SWIZZLE_1: swiz[i] = A6XX_TEX_ONE;  break;
          }
       }
    }

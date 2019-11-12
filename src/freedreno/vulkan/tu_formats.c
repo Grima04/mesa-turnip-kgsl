@@ -323,6 +323,14 @@ tu6_get_native_format(VkFormat format)
    if (format >= tu6_format_table0_first && format <= tu6_format_table0_last)
       fmt = &tu6_format_table0[format - tu6_format_table0_first];
 
+   if (!fmt || !fmt->present)
+      return NULL;
+
+   if (vk_format_to_pipe_format(format) == PIPE_FORMAT_NONE) {
+      tu_finishme("vk_format %d missing matching pipe format.\n", format);
+      return NULL;
+   }
+
    return (fmt && fmt->present) ? fmt : NULL;
 }
 
@@ -499,32 +507,30 @@ union tu_clear_component_value {
 
 static uint32_t
 tu_pack_clear_component_value(union tu_clear_component_value val,
-                              const struct vk_format_channel_description *ch)
+                              const struct util_format_channel_description *ch)
 {
    uint32_t packed;
 
    switch (ch->type) {
-   case VK_FORMAT_TYPE_UNSIGNED:
+   case UTIL_FORMAT_TYPE_UNSIGNED:
       /* normalized, scaled, or pure integer */
-      assert(ch->normalized + ch->scaled + ch->pure_integer == 1);
       if (ch->normalized)
          packed = tu_pack_float32_for_unorm(val.float32, ch->size);
-      else if (ch->scaled)
-         packed = tu_pack_float32_for_uscaled(val.float32, ch->size);
-      else
+      else if (ch->pure_integer)
          packed = tu_pack_uint32_for_uint(val.uint32, ch->size);
+      else
+         packed = tu_pack_float32_for_uscaled(val.float32, ch->size);
       break;
-   case VK_FORMAT_TYPE_SIGNED:
+   case UTIL_FORMAT_TYPE_SIGNED:
       /* normalized, scaled, or pure integer */
-      assert(ch->normalized + ch->scaled + ch->pure_integer == 1);
       if (ch->normalized)
          packed = tu_pack_float32_for_snorm(val.float32, ch->size);
-      else if (ch->scaled)
-         packed = tu_pack_float32_for_sscaled(val.float32, ch->size);
-      else
+      else if (ch->pure_integer)
          packed = tu_pack_int32_for_sint(val.int32, ch->size);
+      else
+         packed = tu_pack_float32_for_sscaled(val.float32, ch->size);
       break;
-   case VK_FORMAT_TYPE_FLOAT:
+   case UTIL_FORMAT_TYPE_FLOAT:
       packed = tu_pack_float32_for_sfloat(val.float32, ch->size);
       break;
    default:
@@ -537,18 +543,18 @@ tu_pack_clear_component_value(union tu_clear_component_value val,
    return packed;
 }
 
-static const struct vk_format_channel_description *
-tu_get_format_channel_description(const struct vk_format_description *desc,
+static const struct util_format_channel_description *
+tu_get_format_channel_description(const struct util_format_description *desc,
                                   int comp)
 {
    switch (desc->swizzle[comp]) {
-   case VK_SWIZZLE_X:
+   case PIPE_SWIZZLE_X:
       return &desc->channel[0];
-   case VK_SWIZZLE_Y:
+   case PIPE_SWIZZLE_Y:
       return &desc->channel[1];
-   case VK_SWIZZLE_Z:
+   case PIPE_SWIZZLE_Z:
       return &desc->channel[2];
-   case VK_SWIZZLE_W:
+   case PIPE_SWIZZLE_W:
       return &desc->channel[3];
    default:
       return NULL;
@@ -557,20 +563,20 @@ tu_get_format_channel_description(const struct vk_format_description *desc,
 
 static union tu_clear_component_value
 tu_get_clear_component_value(const VkClearValue *val, int comp,
-                             enum vk_format_colorspace colorspace)
+                             enum util_format_colorspace colorspace)
 {
    assert(comp < 4);
 
    union tu_clear_component_value tmp;
    switch (colorspace) {
-   case VK_FORMAT_COLORSPACE_ZS:
+   case UTIL_FORMAT_COLORSPACE_ZS:
       assert(comp < 2);
       if (comp == 0)
          tmp.float32 = val->depthStencil.depth;
       else
          tmp.uint32 = val->depthStencil.stencil;
       break;
-   case VK_FORMAT_COLORSPACE_SRGB:
+   case UTIL_FORMAT_COLORSPACE_SRGB:
       if (comp < 3) {
          tmp.float32 = util_format_linear_to_srgb_float(val->color.float32[comp]);
          break;
@@ -594,7 +600,7 @@ tu_get_clear_component_value(const VkClearValue *val, int comp,
 void
 tu_pack_clear_value(const VkClearValue *val, VkFormat format, uint32_t buf[4])
 {
-   const struct vk_format_description *desc = vk_format_description(format);
+   const struct util_format_description *desc = vk_format_description(format);
 
    switch (format) {
    case VK_FORMAT_B10G11R11_UFLOAT_PACK32:
@@ -607,7 +613,7 @@ tu_pack_clear_value(const VkClearValue *val, VkFormat format, uint32_t buf[4])
       break;
    }
 
-   assert(desc && desc->layout == VK_FORMAT_LAYOUT_PLAIN);
+   assert(desc && desc->layout == UTIL_FORMAT_LAYOUT_PLAIN);
 
    /* S8_UINT is special and has no depth */
    const int max_components =
@@ -616,7 +622,7 @@ tu_pack_clear_value(const VkClearValue *val, VkFormat format, uint32_t buf[4])
    int buf_offset = 0;
    int bit_shift = 0;
    for (int comp = 0; comp < max_components; comp++) {
-      const struct vk_format_channel_description *ch =
+      const struct util_format_channel_description *ch =
          tu_get_format_channel_description(desc, comp);
       if (!ch) {
          assert((format == VK_FORMAT_S8_UINT && comp == 0) ||
@@ -645,7 +651,7 @@ tu_pack_clear_value(const VkClearValue *val, VkFormat format, uint32_t buf[4])
 void
 tu_2d_clear_color(const VkClearColorValue *val, VkFormat format, uint32_t buf[4])
 {
-   const struct vk_format_description *desc = vk_format_description(format);
+   const struct util_format_description *desc = vk_format_description(format);
 
    /* not supported by 2D engine, cleared as U32 */
    if (format == VK_FORMAT_E5B9G9R9_UFLOAT_PACK32) {
@@ -655,10 +661,11 @@ tu_2d_clear_color(const VkClearColorValue *val, VkFormat format, uint32_t buf[4]
 
    enum a6xx_2d_ifmt ifmt = tu6_rb_fmt_to_ifmt(tu6_get_native_format(format)->rb);
 
-   assert(desc && desc->layout == VK_FORMAT_LAYOUT_PLAIN);
+   assert(desc && (desc->layout == UTIL_FORMAT_LAYOUT_PLAIN ||
+                   format == VK_FORMAT_B10G11R11_UFLOAT_PACK32));
 
    for (unsigned i = 0; i < desc->nr_channels; i++) {
-      const struct vk_format_channel_description *ch = &desc->channel[i];
+      const struct util_format_channel_description *ch = &desc->channel[i];
 
       switch (ifmt) {
       case R2D_INT32:
@@ -672,10 +679,10 @@ tu_2d_clear_color(const VkClearColorValue *val, VkFormat format, uint32_t buf[4]
          break;
       case R2D_UNORM8: {
          float linear = val->float32[i];
-         if (desc->colorspace == VK_FORMAT_COLORSPACE_SRGB && i < 3)
+         if (desc->colorspace == UTIL_FORMAT_COLORSPACE_SRGB && i < 3)
             linear = util_format_linear_to_srgb_float(val->float32[i]);
 
-         if (ch->type == VK_FORMAT_TYPE_SIGNED)
+         if (ch->type == UTIL_FORMAT_TYPE_SIGNED)
             buf[i] = tu_pack_float32_for_snorm(linear, 8);
          else
             buf[i] = tu_pack_float32_for_unorm(linear, 8);
@@ -718,7 +725,7 @@ tu_physical_device_get_format_properties(
    VkFormatProperties *out_properties)
 {
    VkFormatFeatureFlags linear = 0, tiled = 0, buffer = 0;
-   const struct vk_format_description *desc = vk_format_description(format);
+   const struct util_format_description *desc = vk_format_description(format);
    const struct tu_native_format *native_fmt = tu6_get_native_format(format);
    if (!desc || !native_fmt) {
       goto end;
