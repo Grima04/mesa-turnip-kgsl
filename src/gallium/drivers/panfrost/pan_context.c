@@ -1083,36 +1083,17 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                         struct midgard_blend_rt rts[4];
 
                         for (unsigned i = 0; i < rt_count; ++i) {
-                                unsigned blend_count = 0x200;
-
-                                if (blend[i].is_shader) {
-                                        /* For a blend shader, the bottom nibble corresponds to
-                                         * the number of work registers used, which signals the
-                                         * -existence- of a blend shader */
-
-                                        assert(blend[i].shader.work_count >= 2);
-                                        blend_count |= MIN2(blend[i].shader.work_count, 3);
-                                } else {
-                                        /* Otherwise, the bottom bit simply specifies if
-                                         * blending (anything other than REPLACE) is enabled */
-
-                                        if (!blend[i].no_blending)
-                                                blend_count |= 0x1;
-                                }
-
+                                rts[i].flags = 0x200;
 
                                 bool is_srgb =
                                         (ctx->pipe_framebuffer.nr_cbufs > i) &&
                                         (ctx->pipe_framebuffer.cbufs[i]) &&
                                         util_format_is_srgb(ctx->pipe_framebuffer.cbufs[i]->format);
 
-                                rts[i].flags = blend_count;
-
-                                if (is_srgb)
-                                        rts[i].flags |= MALI_BLEND_SRGB;
-
-                                if (!ctx->blend->base.dither)
-                                        rts[i].flags |= MALI_BLEND_NO_DITHER;
+                                SET_BIT(rts[i].flags, MALI_BLEND_MRT_SHADER, blend[i].is_shader);
+                                SET_BIT(rts[i].flags, MALI_BLEND_LOAD_TIB, !blend[i].no_blending);
+                                SET_BIT(rts[i].flags, MALI_BLEND_SRGB, is_srgb);
+                                SET_BIT(rts[i].flags, MALI_BLEND_NO_DITHER, !ctx->blend->base.dither);
 
                                 /* TODO: sRGB in blend shaders is currently
                                  * unimplemented. Contact me (Alyssa) if you're

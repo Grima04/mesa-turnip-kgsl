@@ -417,6 +417,14 @@ union midgard_blend {
         };
 };
 
+/* We need to load the tilebuffer to blend (i.e. the destination factor is not
+ * ZERO) */
+
+#define MALI_BLEND_LOAD_TIB (0x1)
+
+/* A blend shader is used to blend this render target */
+#define MALI_BLEND_MRT_SHADER (0x2)
+
 /* On MRT Midgard systems (using an MFBD), each render target gets its own
  * blend descriptor */
 
