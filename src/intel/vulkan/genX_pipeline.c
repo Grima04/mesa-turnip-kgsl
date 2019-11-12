@@ -999,6 +999,7 @@ emit_ds_state(struct anv_pipeline *pipeline,
       pipeline->stencil_test_enable = false;
       pipeline->writes_depth = false;
       pipeline->depth_test_enable = false;
+      pipeline->depth_bounds_test_enable = false;
       memset(depth_stencil_dw, 0, sizeof(depth_stencil_dw));
       return;
    }
@@ -1016,8 +1017,6 @@ emit_ds_state(struct anv_pipeline *pipeline,
    pipeline->writes_depth = info.depthWriteEnable;
    pipeline->depth_test_enable = info.depthTestEnable;
    pipeline->depth_bounds_test_enable = info.depthBoundsTestEnable;
-
-   /* VkBool32 depthBoundsTestEnable; // optional (depth_bounds_test) */
 
 #if GEN_GEN <= 7
    struct GENX(DEPTH_STENCIL_STATE) depth_stencil = {
