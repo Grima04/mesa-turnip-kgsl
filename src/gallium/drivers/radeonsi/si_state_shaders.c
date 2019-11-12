@@ -2793,9 +2793,7 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
 
 		/* EN_MAX_VERT_OUT_PER_GS_INSTANCE does not work with tesselation. */
 		sel->tess_turns_off_ngg =
-			(sscreen->info.family == CHIP_NAVI10 ||
-			 sscreen->info.family == CHIP_NAVI12 ||
-			 sscreen->info.family == CHIP_NAVI14) &&
+			sscreen->info.chip_class == GFX10 &&
 			sel->gs_num_invocations * sel->gs_max_out_vertices > 256;
 		break;
 
