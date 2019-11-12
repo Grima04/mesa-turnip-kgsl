@@ -1937,7 +1937,7 @@ instruction_restrictions(const struct gen_device_info *devinfo,
    return error_msg;
 }
 
-static bool
+bool
 brw_validate_instruction(const struct gen_device_info *devinfo,
                          const brw_inst *inst, int offset,
                          struct disasm_info *disasm)

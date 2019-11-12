@@ -160,6 +160,9 @@ test_fuzz_compact_instruction(struct brw_codegen *p, brw_inst src)
 
          clear_pad_bits(p->devinfo, &instr);
 
+         if (!brw_validate_instruction(p->devinfo, &instr, 0, NULL))
+            continue;
+
 	 if (!test_compact_instruction(p, instr)) {
 	    printf("  twiddled bits for fuzzing %d, %d\n", bit0, bit1);
 	    return false;

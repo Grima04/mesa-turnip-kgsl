@@ -1243,6 +1243,9 @@ void brw_debug_compact_uncompact(const struct gen_device_info *devinfo,
                                  brw_inst *orig, brw_inst *uncompacted);
 
 /* brw_eu_validate.c */
+bool brw_validate_instruction(const struct gen_device_info *devinfo,
+                              const brw_inst *inst, int offset,
+                              struct disasm_info *disasm);
 bool brw_validate_instructions(const struct gen_device_info *devinfo,
                                const void *assembly, int start_offset, int end_offset,
                                struct disasm_info *disasm);
