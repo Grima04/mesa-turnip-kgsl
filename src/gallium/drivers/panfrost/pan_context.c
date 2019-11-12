@@ -1001,22 +1001,15 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                                 ctx->fragment_shader_core.midgard1.work_count = 16;
                 }
 
-                /* Set late due to depending on render state */
-                unsigned flags = ctx->fragment_shader_core.midgard1.flags;
-
                 /* Depending on whether it's legal to in the given shader, we
                  * try to enable early-z testing (or forward-pixel kill?) */
 
-                if (!variant->can_discard)
-                        flags |= MALI_EARLY_Z;
+                SET_BIT(ctx->fragment_shader_core.midgard1.flags, MALI_EARLY_Z, !variant->can_discard);
 
                 /* Any time texturing is used, derivatives are implicitly
                  * calculated, so we need to enable helper invocations */
 
-                if (variant->helper_invocations)
-                        flags |= MALI_HELPER_INVOCATIONS;
-
-                ctx->fragment_shader_core.midgard1.flags = flags;
+                SET_BIT(ctx->fragment_shader_core.midgard1.flags, MALI_HELPER_INVOCATIONS, variant->helper_invocations);
 
                 /* Assign the stencil refs late */
 
@@ -1034,10 +1027,8 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                  * thing?" by Peter Harris
                  */
 
-                if (variant->can_discard) {
-                        ctx->fragment_shader_core.unknown2_3 |= MALI_CAN_DISCARD;
-                        ctx->fragment_shader_core.midgard1.flags |= 0x400;
-                }
+                SET_BIT(ctx->fragment_shader_core.unknown2_3, MALI_CAN_DISCARD, variant->can_discard);
+                SET_BIT(ctx->fragment_shader_core.midgard1.flags, 0x400, variant->can_discard);
 
                 /* Even on MFBD, the shader descriptor gets blend shaders. It's
                  * *also* copied to the blend_meta appended (by convention),
@@ -1057,18 +1048,16 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                          * additionally need to signal CAN_DISCARD for nontrivial blend
                          * modes (so we're able to read back the destination buffer) */
 
-                        if (blend[0].is_shader) {
-                                ctx->fragment_shader_core.unknown2_3 |= MALI_HAS_BLEND_SHADER;
-                        } else {
+                        SET_BIT(ctx->fragment_shader_core.unknown2_3, MALI_HAS_BLEND_SHADER, blend[0].is_shader);
+
+                        if (!blend[0].is_shader) {
                                 ctx->fragment_shader_core.blend.equation =
                                         *blend[0].equation.equation;
                                 ctx->fragment_shader_core.blend.constant =
                                         blend[0].equation.constant;
                         }
 
-                        if (!blend[0].no_blending) {
-                                ctx->fragment_shader_core.unknown2_3 |= MALI_CAN_DISCARD;
-                        }
+                        SET_BIT(ctx->fragment_shader_core.unknown2_3, MALI_CAN_DISCARD, !blend[0].no_blending);
                 }
 
                 size_t size = sizeof(struct mali_shader_meta) + (sizeof(struct midgard_blend_rt) * rt_count);
