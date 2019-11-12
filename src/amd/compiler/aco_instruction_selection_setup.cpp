@@ -95,9 +95,6 @@ struct isel_context {
       bool exec_potentially_empty = false;
    } cf_info;
 
-   /* scratch */
-   bool scratch_enabled = false;
-
    /* inputs common for merged stages */
    Temp merged_wave_info = Temp(0, s1);
 
@@ -639,8 +636,7 @@ static void allocate_user_sgprs(isel_context *ctx,
       user_sgpr_info.need_ring_offsets = true;
 
    /* 2 user sgprs will nearly always be allocated for scratch/rings */
-   if (ctx->options->supports_spill || user_sgpr_info.need_ring_offsets || ctx->scratch_enabled)
-      user_sgpr_count += 2;
+   user_sgpr_count += 2;
 
    switch (ctx->stage) {
    case vertex_vs:
@@ -895,10 +891,8 @@ Pseudo_instruction *add_startpgm(struct isel_context *ctx)
    arg_info args = {};
 
    /* this needs to be in sgprs 0 and 1 */
-   if (ctx->options->supports_spill || user_sgpr_info.need_ring_offsets || ctx->scratch_enabled) {
-      add_arg(&args, s2, &ctx->program->private_segment_buffer, 0);
-      set_loc_shader_ptr(ctx, AC_UD_SCRATCH_RING_OFFSETS, &user_sgpr_info.user_sgpr_idx);
-   }
+   add_arg(&args, s2, &ctx->program->private_segment_buffer, 0);
+   set_loc_shader_ptr(ctx, AC_UD_SCRATCH_RING_OFFSETS, &user_sgpr_info.user_sgpr_idx);
 
    unsigned vgpr_idx = 0;
    switch (ctx->stage) {
@@ -928,8 +922,7 @@ Pseudo_instruction *add_startpgm(struct isel_context *ctx)
       else
          declare_streamout_sgprs(ctx, &args, &idx);
 
-      if (ctx->options->supports_spill || ctx->scratch_enabled)
-         add_arg(&args, s1, &ctx->program->scratch_offset, idx++);
+      add_arg(&args, s1, &ctx->program->scratch_offset, idx++);
 
       declare_vs_input_vgprs(ctx, &args);
       break;
@@ -940,8 +933,7 @@ Pseudo_instruction *add_startpgm(struct isel_context *ctx)
       assert(user_sgpr_info.user_sgpr_idx == user_sgpr_info.num_sgpr);
       add_arg(&args, s1, &ctx->prim_mask, user_sgpr_info.user_sgpr_idx);
 
-      if (ctx->options->supports_spill || ctx->scratch_enabled)
-         add_arg(&args, s1, &ctx->program->scratch_offset, user_sgpr_info.user_sgpr_idx + 1);
+      add_arg(&args, s1, &ctx->program->scratch_offset, user_sgpr_info.user_sgpr_idx + 1);
 
       ctx->program->config->spi_ps_input_addr = 0;
       ctx->program->config->spi_ps_input_ena = 0;
@@ -1004,8 +996,7 @@ Pseudo_instruction *add_startpgm(struct isel_context *ctx)
 
       if (ctx->program->info->cs.uses_local_invocation_idx)
          add_arg(&args, s1, &ctx->tg_size, idx++);
-      if (ctx->options->supports_spill || ctx->scratch_enabled)
-         add_arg(&args, s1, &ctx->program->scratch_offset, idx++);
+      add_arg(&args, s1, &ctx->program->scratch_offset, idx++);
 
       add_arg(&args, v3, &ctx->local_invocation_ids, vgpr_idx++);
       break;
@@ -1357,7 +1348,6 @@ setup_isel_context(Program* program,
    unsigned scratch_size = 0;
    for (unsigned i = 0; i < shader_count; i++)
       scratch_size = std::max(scratch_size, shaders[i]->scratch_size);
-   ctx.scratch_enabled = scratch_size > 0;
    ctx.program->config->scratch_bytes_per_wave = align(scratch_size * ctx.program->wave_size, 1024);
 
    ctx.block = ctx.program->create_and_insert_block();

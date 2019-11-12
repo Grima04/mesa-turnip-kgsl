@@ -72,7 +72,6 @@ set_loc_desc(struct radv_shader_args *args, int idx, uint8_t *sgpr_idx)
 }
 
 struct user_sgpr_info {
-	bool need_ring_offsets;
 	bool indirect_all_descriptor_sets;
 	uint8_t remaining_sgprs;
 };
@@ -168,22 +167,8 @@ static void allocate_user_sgprs(struct radv_shader_args *args,
 
 	memset(user_sgpr_info, 0, sizeof(struct user_sgpr_info));
 
-	/* until we sort out scratch/global buffers always assign ring offsets for gs/vs/es */
-	if (stage == MESA_SHADER_GEOMETRY ||
-	    stage == MESA_SHADER_VERTEX ||
-	    stage == MESA_SHADER_TESS_CTRL ||
-	    stage == MESA_SHADER_TESS_EVAL ||
-	    args->is_gs_copy_shader)
-		user_sgpr_info->need_ring_offsets = true;
-
-	if (stage == MESA_SHADER_FRAGMENT &&
-	    args->shader_info->ps.needs_sample_positions)
-		user_sgpr_info->need_ring_offsets = true;
-
-	/* 2 user sgprs will nearly always be allocated for scratch/rings */
-	if (args->options->supports_spill || user_sgpr_info->need_ring_offsets) {
-		user_sgpr_count += 2;
-	}
+	/* 2 user sgprs will always be allocated for scratch/rings */
+	user_sgpr_count += 2;
 
 	switch (stage) {
 	case MESA_SHADER_COMPUTE:
@@ -464,7 +449,7 @@ radv_declare_shader_args(struct radv_shader_args *args,
 	allocate_user_sgprs(args, stage, has_previous_stage,
 			    previous_stage, needs_view_index, &user_sgpr_info);
 
-	if (user_sgpr_info.need_ring_offsets && !args->options->supports_spill) {
+	if (args->options->explicit_scratch_args) {
 		ac_add_arg(&args->ac, AC_ARG_SGPR, 2, AC_ARG_CONST_DESC_PTR,
 			   &args->ring_offsets);
 	}
@@ -490,6 +475,11 @@ radv_declare_shader_args(struct radv_shader_args *args,
 				   &args->ac.tg_size);
 		}
 
+		if (args->options->explicit_scratch_args) {
+			ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT,
+				   &args->scratch_offset);
+		}
+
 		ac_add_arg(&args->ac, AC_ARG_VGPR, 3, AC_ARG_INT,
 			   &args->ac.local_invocation_ids);
 		break;
@@ -513,6 +503,11 @@ radv_declare_shader_args(struct radv_shader_args *args,
 			declare_streamout_sgprs(args, stage);
 		}
 
+		if (args->options->explicit_scratch_args) {
+			ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT,
+				   &args->scratch_offset);
+		}
+
 		declare_vs_input_vgprs(args);
 		break;
 	case MESA_SHADER_TESS_CTRL:
@@ -524,7 +519,7 @@ radv_declare_shader_args(struct radv_shader_args *args,
 			ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT,
 				   &args->tess_factor_offset);
 
-			ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, NULL); // scratch offset
+			ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->scratch_offset);
 			ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, NULL); // unknown
 			ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, NULL); // unknown
 
@@ -556,6 +551,10 @@ radv_declare_shader_args(struct radv_shader_args *args,
 			ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->oc_lds);
 			ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT,
 				   &args->tess_factor_offset);
+			if (args->options->explicit_scratch_args) {
+				ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT,
+					   &args->scratch_offset);
+			}
 			ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT,
 				   &args->ac.tcs_patch_id);
 			ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT,
@@ -578,6 +577,10 @@ radv_declare_shader_args(struct radv_shader_args *args,
 			declare_streamout_sgprs(args, stage);
 			ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->oc_lds);
 		}
+		if (args->options->explicit_scratch_args) {
+			ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT,
+				   &args->scratch_offset);
+		}
 		declare_tes_input_vgprs(args);
 		break;
 	case MESA_SHADER_GEOMETRY:
@@ -595,7 +598,7 @@ radv_declare_shader_args(struct radv_shader_args *args,
 				   &args->merged_wave_info);
 			ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->oc_lds);
 
-			ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, NULL); // scratch offset
+			ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->scratch_offset);
 			ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, NULL); // unknown
 			ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, NULL); // unknown
 
@@ -638,6 +641,10 @@ radv_declare_shader_args(struct radv_shader_args *args,
 
 			ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->gs2vs_offset);
 			ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->gs_wave_id);
+			if (args->options->explicit_scratch_args) {
+				ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT,
+					   &args->scratch_offset);
+			}
 			ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT,
 				   &args->gs_vtx_offset[0]);
 			ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT,
@@ -660,6 +667,10 @@ radv_declare_shader_args(struct radv_shader_args *args,
 		declare_global_input_sgprs(args, &user_sgpr_info);
 
 		ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.prim_mask);
+		if (args->options->explicit_scratch_args) {
+			ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT,
+				   &args->scratch_offset);
+		}
 		ac_add_arg(&args->ac, AC_ARG_VGPR, 2, AC_ARG_INT, &args->ac.persp_sample);
 		ac_add_arg(&args->ac, AC_ARG_VGPR, 2, AC_ARG_INT, &args->ac.persp_center);
 		ac_add_arg(&args->ac, AC_ARG_VGPR, 2, AC_ARG_INT, &args->ac.persp_centroid);
@@ -682,7 +693,7 @@ radv_declare_shader_args(struct radv_shader_args *args,
 	}
 
 	args->shader_info->num_input_vgprs = 0;
-	args->shader_info->num_input_sgprs = args->options->supports_spill ? 2 : 0;
+	args->shader_info->num_input_sgprs = 2;
 	args->shader_info->num_input_sgprs += args->ac.num_sgprs_used;
 
 	if (stage != MESA_SHADER_FRAGMENT)
@@ -690,10 +701,8 @@ radv_declare_shader_args(struct radv_shader_args *args,
 
 	uint8_t user_sgpr_idx = 0;
 
-	if (args->options->supports_spill || user_sgpr_info.need_ring_offsets) {
-		set_loc_shader_ptr(args, AC_UD_SCRATCH_RING_OFFSETS,
-				   &user_sgpr_idx);
-	}
+	set_loc_shader_ptr(args, AC_UD_SCRATCH_RING_OFFSETS,
+			   &user_sgpr_idx);
 
 	/* For merged shaders the user SGPRs start at 8, with 8 system SGPRs in front (including
 	 * the rw_buffers at s0/s1. With user SGPR0 = s8, lets restart the count from 0 */

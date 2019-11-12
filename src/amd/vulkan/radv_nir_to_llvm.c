@@ -411,15 +411,11 @@ static void create_function(struct radv_shader_context *ctx,
 	    ctx->max_workgroup_size,
 	    ctx->args->options);
 
-	if (ctx->args->options->supports_spill) {
-		ctx->ring_offsets = ac_build_intrinsic(&ctx->ac, "llvm.amdgcn.implicit.buffer.ptr",
-						       LLVMPointerType(ctx->ac.i8, AC_ADDR_SPACE_CONST),
-						       NULL, 0, AC_FUNC_ATTR_READNONE);
-		ctx->ring_offsets = LLVMBuildBitCast(ctx->ac.builder, ctx->ring_offsets,
-						     ac_array_in_const_addr_space(ctx->ac.v4i32), "");
-	} else if (ctx->args->ring_offsets.used) {
-		ctx->ring_offsets = ac_get_arg(&ctx->ac, ctx->args->ring_offsets);
-	}
+	ctx->ring_offsets = ac_build_intrinsic(&ctx->ac, "llvm.amdgcn.implicit.buffer.ptr",
+					       LLVMPointerType(ctx->ac.i8, AC_ADDR_SPACE_CONST),
+					       NULL, 0, AC_FUNC_ATTR_READNONE);
+	ctx->ring_offsets = LLVMBuildBitCast(ctx->ac.builder, ctx->ring_offsets,
+					     ac_array_in_const_addr_space(ctx->ac.v4i32), "");
 
 	load_descriptor_sets(ctx);
 

@@ -34,6 +34,7 @@ struct radv_shader_args {
 
 	struct ac_arg descriptor_sets[MAX_SETS];
 	struct ac_arg ring_offsets;
+	struct ac_arg scratch_offset;
 
 	struct ac_arg vertex_buffers;
 	struct ac_arg rel_auto_id;

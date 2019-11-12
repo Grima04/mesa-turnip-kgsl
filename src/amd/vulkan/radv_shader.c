@@ -1118,8 +1118,7 @@ shader_variant_compile(struct radv_device *device,
 		struct ac_llvm_compiler ac_llvm;
 		bool thread_compiler;
 
-		if (options->supports_spill)
-			tm_options |= AC_TM_SUPPORTS_SPILL;
+		tm_options |= AC_TM_SUPPORTS_SPILL;
 		if (device->instance->perftest_flags & RADV_PERFTEST_SISCHED)
 			tm_options |= AC_TM_SISCHED;
 		if (options->check_ir)
@@ -1200,7 +1199,7 @@ radv_shader_variant_compile(struct radv_device *device,
 	if (key)
 		options.key = *key;
 
-	options.supports_spill = true;
+	options.explicit_scratch_args = use_aco;
 	options.robust_buffer_access = device->robust_buffer_access;
 
 	return shader_variant_compile(device, module, shaders, shader_count, shaders[shader_count - 1]->info.stage, info,
