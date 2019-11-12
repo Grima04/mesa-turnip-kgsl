@@ -410,6 +410,9 @@ bool ac_query_gpu_info(int fd, void *dev_p,
 	else
 		info->max_alloc_size = info->gart_size * 0.7;
 
+	/* Set which chips have uncached device memory. */
+	info->has_l2_uncached = info->chip_class >= GFX9;
+
 	/* Set hardware information. */
 	info->gds_size = gds.gds_total_size;
 	info->gds_gfx_partition_size = gds.gds_gfx_partition_size;
