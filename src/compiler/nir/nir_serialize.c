@@ -806,6 +806,7 @@ static void
 write_alu(write_ctx *ctx, const nir_alu_instr *alu)
 {
    unsigned num_srcs = nir_op_infos[alu->op].num_inputs;
+
    /* 9 bits for nir_op */
    STATIC_ASSERT(nir_num_opcodes <= 512);
    union packed_instr header;
@@ -841,17 +842,35 @@ write_alu(write_ctx *ctx, const nir_alu_instr *alu)
       }
    } else {
       for (unsigned i = 0; i < num_srcs; i++) {
+         unsigned src_components = nir_ssa_alu_instr_src_components(alu, i);
          union packed_src src;
          src.u32 = 0;
 
          src.alu.negate = alu->src[i].negate;
          src.alu.abs = alu->src[i].abs;
-         src.alu.swizzle_x = alu->src[i].swizzle[0];
-         src.alu.swizzle_y = alu->src[i].swizzle[1];
-         src.alu.swizzle_z = alu->src[i].swizzle[2];
-         src.alu.swizzle_w = alu->src[i].swizzle[3];
+
+         if (src_components <= 4) {
+            src.alu.swizzle_x = alu->src[i].swizzle[0];
+            src.alu.swizzle_y = alu->src[i].swizzle[1];
+            src.alu.swizzle_z = alu->src[i].swizzle[2];
+            src.alu.swizzle_w = alu->src[i].swizzle[3];
+         }
 
          write_src_full(ctx, &alu->src[i].src, src);
+
+         /* Store swizzles for vec8 and vec16. */
+         if (src_components > 4) {
+            for (unsigned i = 0; i < src_components; i += 8) {
+               unsigned value = 0;
+
+               for (unsigned j = 0; j < 8 && i + j < src_components; j++) {
+                  value |= alu->src[i].swizzle[i + j] <<
+                           (4 * j); /* 4 bits per swizzle */
+               }
+
+               blob_write_uint32(ctx->blob, value);
+            }
+         }
       }
    }
 }
@@ -885,13 +904,29 @@ read_alu(read_ctx *ctx, union packed_instr header)
    } else {
       for (unsigned i = 0; i < num_srcs; i++) {
          union packed_src src = read_src(ctx, &alu->src[i].src, &alu->instr);
+         unsigned src_components = nir_ssa_alu_instr_src_components(alu, i);
 
          alu->src[i].negate = src.alu.negate;
          alu->src[i].abs = src.alu.abs;
-         alu->src[i].swizzle[0] = src.alu.swizzle_x;
-         alu->src[i].swizzle[1] = src.alu.swizzle_y;
-         alu->src[i].swizzle[2] = src.alu.swizzle_z;
-         alu->src[i].swizzle[3] = src.alu.swizzle_w;
+
+         memset(&alu->src[i].swizzle, 0, sizeof(alu->src[i].swizzle));
+
+         if (src_components <= 4) {
+            alu->src[i].swizzle[0] = src.alu.swizzle_x;
+            alu->src[i].swizzle[1] = src.alu.swizzle_y;
+            alu->src[i].swizzle[2] = src.alu.swizzle_z;
+            alu->src[i].swizzle[3] = src.alu.swizzle_w;
+         } else {
+            /* Load swizzles for vec8 and vec16. */
+            for (unsigned i = 0; i < src_components; i += 8) {
+               unsigned value = blob_read_uint32(ctx->blob);
+
+               for (unsigned j = 0; j < 8 && i + j < src_components; j++) {
+                  alu->src[i].swizzle[i + j] =
+                     (value >> (4 * j)) & 0xf; /* 4 bits per swizzle */
+               }
+            }
+         }
       }
    }
 
