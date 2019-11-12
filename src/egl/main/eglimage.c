@@ -265,25 +265,6 @@ _eglParseEXTImageDmaBufImportModifiersAttribs(_EGLImageAttribs *attrs,
    return EGL_SUCCESS;
 }
 
-static EGLint
-_eglParseEXTImageFlushExternalAttribs(_EGLImageAttribs *attrs,
-                                      _EGLDisplay *disp,
-                                      EGLint attr, EGLint val)
-{
-   if (!disp->Extensions.EXT_image_flush_external)
-      return EGL_BAD_PARAMETER;
-
-   switch (attr) {
-   case EGL_IMAGE_EXTERNAL_FLUSH_EXT:
-      attrs->ImageFlushExternal = val;
-      break;
-   default:
-      return EGL_BAD_PARAMETER;
-   }
-
-   return EGL_SUCCESS;
-}
-
 /**
  * Parse the list of image attributes.
  *
@@ -304,10 +285,6 @@ _eglParseImageAttribList(_EGLImageAttribs *attrs, _EGLDisplay *disp,
    for (i = 0; attrib_list[i] != EGL_NONE; i++) {
       EGLint attr = attrib_list[i++];
       EGLint val = attrib_list[i];
-
-      err = _eglParseEXTImageFlushExternalAttribs(attrs, disp, attr, val);
-      if (err == EGL_SUCCESS)
-         continue;
 
       err = _eglParseKHRImageAttribs(attrs, disp, attr, val);
       if (err == EGL_SUCCESS)

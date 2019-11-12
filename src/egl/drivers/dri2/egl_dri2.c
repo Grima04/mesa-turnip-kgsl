@@ -2297,27 +2297,14 @@ dri2_create_image_mesa_drm_buffer(_EGLDisplay *disp, _EGLContext *ctx,
       return NULL;
    }
 
-   if (dri2_dpy->image->base.version >= 18) {
-      unsigned use = 0;
-
-      if (attrs.ImageFlushExternal)
-         use |= __DRI_IMAGE_USE_FLUSH_EXTERNAL;
-
-      dri_image =
-         dri2_dpy->image->createImageFromName2(dri2_dpy->dri_screen,
-                                               attrs.Width, attrs.Height,
-                                               format, name, pitch, use,
-                                               NULL);
-   } else {
-      dri_image =
-         dri2_dpy->image->createImageFromName(dri2_dpy->dri_screen,
-                                              attrs.Width,
-                                              attrs.Height,
-                                              format,
-                                              name,
-                                              pitch,
-                                              NULL);
-   }
+   dri_image =
+      dri2_dpy->image->createImageFromName(dri2_dpy->dri_screen,
+                                           attrs.Width,
+                                           attrs.Height,
+                                           format,
+                                           name,
+                                           pitch,
+                                           NULL);
 
    return dri2_create_image_from_dri(disp, dri_image);
 }
@@ -2659,26 +2646,7 @@ dri2_create_image_dma_buf(_EGLDisplay *disp, _EGLContext *ctx,
       has_modifier = true;
    }
 
-   if (dri2_dpy->image->base.version >= 18) {
-      unsigned use = 0;
-
-      if (attrs.ImageFlushExternal)
-         use |= __DRI_IMAGE_USE_FLUSH_EXTERNAL;
-
-      if (!has_modifier)
-         modifier = DRM_FORMAT_MOD_INVALID;
-
-      dri_image =
-         dri2_dpy->image->createImageFromDmaBufs3(dri2_dpy->dri_screen,
-            attrs.Width, attrs.Height, attrs.DMABufFourCC.Value,
-            modifier, use, fds, num_fds, pitches, offsets,
-            attrs.DMABufYuvColorSpaceHint.Value,
-            attrs.DMABufSampleRangeHint.Value,
-            attrs.DMABufChromaHorizontalSiting.Value,
-            attrs.DMABufChromaVerticalSiting.Value,
-            &error,
-            NULL);
-   } else if (has_modifier) {
+   if (has_modifier) {
       if (dri2_dpy->image->base.version < 15 ||
           dri2_dpy->image->createImageFromDmaBufs2 == NULL) {
          _eglError(EGL_BAD_MATCH, "unsupported dma_buf format modifier");
@@ -2694,7 +2662,8 @@ dri2_create_image_dma_buf(_EGLDisplay *disp, _EGLContext *ctx,
             attrs.DMABufChromaVerticalSiting.Value,
             &error,
             NULL);
-   } else {
+   }
+   else {
       dri_image =
          dri2_dpy->image->createImageFromDmaBufs(dri2_dpy->dri_screen,
             attrs.Width, attrs.Height, attrs.DMABufFourCC.Value,
@@ -2765,8 +2734,6 @@ dri2_create_drm_image_mesa(_EGLDriver *drv, _EGLDisplay *disp,
       dri_use |= __DRI_IMAGE_USE_SCANOUT;
    if (attrs.DRMBufferUseMESA & EGL_DRM_BUFFER_USE_CURSOR_MESA)
       dri_use |= __DRI_IMAGE_USE_CURSOR;
-   if (attrs.ImageFlushExternal)
-      dri_use |= __DRI_IMAGE_USE_FLUSH_EXTERNAL;
 
    dri2_img = malloc(sizeof *dri2_img);
    if (!dri2_img) {
