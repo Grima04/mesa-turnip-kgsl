@@ -718,12 +718,16 @@ brw_preprocess_nir(const struct brw_compiler *compiler, nir_shader *nir,
 
    OPT(nir_lower_clip_cull_distance_arrays);
 
-   if (devinfo->gen >= 7 && is_scalar) {
+   if ((devinfo->gen >= 8 || devinfo->is_haswell) && is_scalar) {
       /* TODO: Yes, we could in theory do this on gen6 and earlier.  However,
        * that would require plumbing through support for these indirect
        * scratch read/write messages with message registers and that's just a
        * pain.  Also, the primary benefit of this is for compute shaders which
        * won't run on gen6 and earlier anyway.
+       *
+       * On gen7 and earlier the scratch space size is limited to 12kB.
+       * By enabling this optimization we may easily exceed this limit without
+       * having any fallback.
        *
        * The threshold of 128B was chosen semi-arbitrarily.  The idea is that
        * 128B per channel on a SIMD8 program is 32 registers or 25% of the
