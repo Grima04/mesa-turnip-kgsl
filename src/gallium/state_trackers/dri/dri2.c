@@ -1108,10 +1108,10 @@ dri2_query_image_by_resource_handle(__DRIimage *image, int attrib, int *value)
       return false;
    }
 
-   usage = PIPE_HANDLE_USAGE_FRAMEBUFFER_WRITE;
-
    if (image->use & __DRI_IMAGE_USE_BACKBUFFER)
-      usage |= PIPE_HANDLE_USAGE_EXPLICIT_FLUSH;
+      usage = PIPE_HANDLE_USAGE_EXPLICIT_FLUSH;
+   else
+      usage = PIPE_HANDLE_USAGE_FRAMEBUFFER_WRITE;
 
    if (!pscreen->resource_get_handle(pscreen, NULL, image->texture,
                                      &whandle, usage))
@@ -1194,10 +1194,10 @@ dri2_query_image_by_resource_param(__DRIimage *image, int attrib, int *value)
       return false;
    }
 
-   handle_usage = PIPE_HANDLE_USAGE_FRAMEBUFFER_WRITE;
-
    if (image->use & __DRI_IMAGE_USE_BACKBUFFER)
-      handle_usage |= PIPE_HANDLE_USAGE_EXPLICIT_FLUSH;
+      handle_usage = PIPE_HANDLE_USAGE_EXPLICIT_FLUSH;
+   else
+      handle_usage = PIPE_HANDLE_USAGE_FRAMEBUFFER_WRITE;
 
    if (!dri2_resource_get_param(image, param, handle_usage, &res_param))
       return false;
