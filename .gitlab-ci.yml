@@ -275,6 +275,7 @@ meson-arm64:
     - .ci-deqp-artifacts
   variables:
     BUILDTYPE: "debugoptimized"
+    VULKAN_DRIVERS: "freedreno,amd"
   script:
     - .gitlab-ci/meson-build.sh
     - .gitlab-ci/prepare-artifacts.sh
