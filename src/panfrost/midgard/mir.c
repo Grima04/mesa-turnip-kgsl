@@ -416,6 +416,35 @@ mir_set_bytemask(midgard_instruction *ins, uint16_t bytemask)
         ins->mask = mir_from_bytemask(bytemask, mir_typesize(ins));
 }
 
+/* Checks if we should use an upper destination override, rather than the lower
+ * one in the IR. Returns zero if no, returns the bytes to shift otherwise */
+
+unsigned
+mir_upper_override(midgard_instruction *ins)
+{
+        /* If there is no override, there is no upper override, tautology */
+        if (ins->alu.dest_override == midgard_dest_override_none)
+                return 0;
+
+        /* Make sure we didn't already lower somehow */
+        assert(ins->alu.dest_override == midgard_dest_override_lower);
+
+        /* What is the mask in terms of currently? */
+        midgard_reg_mode type = mir_typesize(ins);
+
+        /* There are 16 bytes per vector, so there are (16/bytes)
+         * components per vector. So the magic half is half of
+         * (16/bytes), which simplifies to 8/bytes */
+
+        unsigned threshold = 8 / mir_bytes_for_mode(type);
+
+        /* How many components did we shift over? */
+        unsigned zeroes = __builtin_ctz(ins->mask);
+
+        /* Did we hit the threshold? */
+        return (zeroes >= threshold) ? threshold : 0;
+}
+
 /* Creates a mask of the components of a node read by an instruction, by
  * analyzing the swizzle with respect to the instruction's mask. E.g.:
  *

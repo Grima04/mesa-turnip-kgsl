@@ -534,6 +534,7 @@ uint16_t mir_to_bytemask(midgard_reg_mode mode, unsigned mask);
 uint16_t mir_bytemask(midgard_instruction *ins);
 uint16_t mir_round_bytemask_down(uint16_t mask, midgard_reg_mode mode);
 void mir_set_bytemask(midgard_instruction *ins, uint16_t bytemask);
+unsigned mir_upper_override(midgard_instruction *ins);
 
 /* MIR printing */
 
