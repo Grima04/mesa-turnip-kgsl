@@ -129,6 +129,42 @@ radv_get_vram_size(struct radv_physical_device *device)
 	return device->rad_info.vram_size - radv_get_visible_vram_size(device);
 }
 
+static bool
+radv_is_mem_type_vram(enum radv_mem_type type)
+{
+	return type == RADV_MEM_TYPE_VRAM ||
+	       type == RADV_MEM_TYPE_VRAM_UNCACHED;
+}
+
+static bool
+radv_is_mem_type_vram_visible(enum radv_mem_type type)
+{
+	return type == RADV_MEM_TYPE_VRAM_CPU_ACCESS ||
+	       type == RADV_MEM_TYPE_VRAM_CPU_ACCESS_UNCACHED;
+}
+static bool
+radv_is_mem_type_gtt_wc(enum radv_mem_type type)
+{
+	return type == RADV_MEM_TYPE_GTT_WRITE_COMBINE ||
+	       type == RADV_MEM_TYPE_GTT_WRITE_COMBINE_VRAM_UNCACHED;
+}
+
+static bool
+radv_is_mem_type_gtt_cached(enum radv_mem_type type)
+{
+	return type == RADV_MEM_TYPE_GTT_CACHED ||
+	       type == RADV_MEM_TYPE_GTT_CACHED_VRAM_UNCACHED;
+}
+
+static bool
+radv_is_mem_type_uncached(enum radv_mem_type type)
+{
+	return type == RADV_MEM_TYPE_VRAM_UNCACHED ||
+	       type == RADV_MEM_TYPE_VRAM_CPU_ACCESS_UNCACHED ||
+	       type == RADV_MEM_TYPE_GTT_WRITE_COMBINE_VRAM_UNCACHED ||
+	       type == RADV_MEM_TYPE_GTT_CACHED_VRAM_UNCACHED;
+}
+
 static void
 radv_physical_device_init_mem_types(struct radv_physical_device *device)
 {
@@ -209,6 +245,46 @@ radv_physical_device_init_mem_types(struct radv_physical_device *device)
 		};
 	}
 	device->memory_properties.memoryTypeCount = type_count;
+
+	if (device->rad_info.has_l2_uncached) {
+		for (int i = 0; i < device->memory_properties.memoryTypeCount; i++) {
+			VkMemoryType mem_type = device->memory_properties.memoryTypes[i];
+
+			if ((mem_type.propertyFlags & (VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
+						       VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)) ||
+			    mem_type.propertyFlags == VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) {
+				enum radv_mem_type mem_type_id;
+
+				switch (device->mem_type_indices[i]) {
+				case RADV_MEM_TYPE_VRAM:
+					mem_type_id = RADV_MEM_TYPE_VRAM_UNCACHED;
+					break;
+				case RADV_MEM_TYPE_VRAM_CPU_ACCESS:
+					mem_type_id = RADV_MEM_TYPE_VRAM_CPU_ACCESS_UNCACHED;
+					break;
+				case RADV_MEM_TYPE_GTT_WRITE_COMBINE:
+					mem_type_id = RADV_MEM_TYPE_GTT_WRITE_COMBINE_VRAM_UNCACHED;
+					break;
+				case RADV_MEM_TYPE_GTT_CACHED:
+					mem_type_id = RADV_MEM_TYPE_GTT_CACHED_VRAM_UNCACHED;
+					break;
+				default:
+					unreachable("invalid memory type");
+				}
+
+				VkMemoryPropertyFlags property_flags = mem_type.propertyFlags |
+					VK_MEMORY_PROPERTY_DEVICE_COHERENT_BIT_AMD |
+					VK_MEMORY_PROPERTY_DEVICE_UNCACHED_BIT_AMD;
+
+				device->mem_type_indices[type_count] = mem_type_id;
+				device->memory_properties.memoryTypes[type_count++] = (VkMemoryType) {
+					.propertyFlags = property_flags,
+					.heapIndex = mem_type.heapIndex,
+				};
+			}
+		}
+		device->memory_properties.memoryTypeCount = type_count;
+	}
 }
 
 static void
@@ -1095,6 +1171,12 @@ void radv_GetPhysicalDeviceFeatures2(
 			features->computeFullSubgroups = true;
 			break;
 		}
+		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COHERENT_MEMORY_FEATURES_AMD: {
+			VkPhysicalDeviceCoherentMemoryFeaturesAMD *features =
+				(VkPhysicalDeviceCoherentMemoryFeaturesAMD *)ext;
+			features->deviceCoherentMemory = pdevice->rad_info.has_l2_uncached;
+			break;
+		}
 		default:
 			break;
 		}
@@ -1726,8 +1808,7 @@ radv_get_memory_budget_properties(VkPhysicalDevice physicalDevice,
 	for (int i = 0; i < device->memory_properties.memoryTypeCount; i++) {
 		uint32_t heap_index = device->memory_properties.memoryTypes[i].heapIndex;
 
-		switch (device->mem_type_indices[i]) {
-		case RADV_MEM_TYPE_VRAM:
+		if (radv_is_mem_type_vram(device->mem_type_indices[i])) {
 			heap_usage = device->ws->query_value(device->ws,
 							     RADEON_ALLOCATED_VRAM);
 
@@ -1737,8 +1818,7 @@ radv_get_memory_budget_properties(VkPhysicalDevice physicalDevice,
 
 			memoryBudget->heapBudget[heap_index] = heap_budget;
 			memoryBudget->heapUsage[heap_index] = heap_usage;
-			break;
-		case RADV_MEM_TYPE_VRAM_CPU_ACCESS:
+		} else if (radv_is_mem_type_vram_visible(device->mem_type_indices[i])) {
 			heap_usage = device->ws->query_value(device->ws,
 							     RADEON_ALLOCATED_VRAM_VIS);
 
@@ -1748,8 +1828,7 @@ radv_get_memory_budget_properties(VkPhysicalDevice physicalDevice,
 
 			memoryBudget->heapBudget[heap_index] = heap_budget;
 			memoryBudget->heapUsage[heap_index] = heap_usage;
-			break;
-		case RADV_MEM_TYPE_GTT_WRITE_COMBINE:
+		} else if (radv_is_mem_type_gtt_wc(device->mem_type_indices[i])) {
 			heap_usage = device->ws->query_value(device->ws,
 							     RADEON_ALLOCATED_GTT);
 
@@ -1759,9 +1838,6 @@ radv_get_memory_budget_properties(VkPhysicalDevice physicalDevice,
 
 			memoryBudget->heapBudget[heap_index] = heap_budget;
 			memoryBudget->heapUsage[heap_index] = heap_usage;
-			break;
-		default:
-			break;
 		}
 	}
 
@@ -1803,7 +1879,7 @@ VkResult radv_GetMemoryHostPointerPropertiesEXT(
 		const struct radv_physical_device *physical_device = device->physical_device;
 		uint32_t memoryTypeBits = 0;
 		for (int i = 0; i < physical_device->memory_properties.memoryTypeCount; i++) {
-			if (physical_device->mem_type_indices[i] == RADV_MEM_TYPE_GTT_CACHED) {
+			if (radv_is_mem_type_gtt_cached(physical_device->mem_type_indices[i])) {
 				memoryTypeBits = (1 << i);
 				break;
 			}
@@ -4499,7 +4575,7 @@ static VkResult radv_alloc_memory(struct radv_device *device,
 		}
 	} else if (host_ptr_info) {
 		assert(host_ptr_info->handleType == VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_ALLOCATION_BIT_EXT);
-		assert(mem_type_index == RADV_MEM_TYPE_GTT_CACHED);
+		assert(radv_is_mem_type_gtt_cached(mem_type_index));
 		mem->bo = device->ws->buffer_from_ptr(device->ws, host_ptr_info->pHostPointer,
 		                                      pAllocateInfo->allocationSize,
 		                                      priority);
@@ -4511,18 +4587,18 @@ static VkResult radv_alloc_memory(struct radv_device *device,
 		}
 	} else {
 		uint64_t alloc_size = align_u64(pAllocateInfo->allocationSize, 4096);
-		if (mem_type_index == RADV_MEM_TYPE_GTT_WRITE_COMBINE ||
-		    mem_type_index == RADV_MEM_TYPE_GTT_CACHED)
+		if (radv_is_mem_type_gtt_wc(mem_type_index) ||
+		    radv_is_mem_type_gtt_cached(mem_type_index))
 			domain = RADEON_DOMAIN_GTT;
 		else
 			domain = RADEON_DOMAIN_VRAM;
 
-		if (mem_type_index == RADV_MEM_TYPE_VRAM)
+		if (radv_is_mem_type_vram(mem_type_index))
 			flags |= RADEON_FLAG_NO_CPU_ACCESS;
 		else
 			flags |= RADEON_FLAG_CPU_ACCESS;
 
-		if (mem_type_index == RADV_MEM_TYPE_GTT_WRITE_COMBINE)
+		if (radv_is_mem_type_gtt_wc(mem_type_index))
 			flags |= RADEON_FLAG_GTT_WC;
 
 		if (!dedicate_info && !import_info && (!export_info || !export_info->handleTypes)) {
@@ -4530,6 +4606,11 @@ static VkResult radv_alloc_memory(struct radv_device *device,
 			if (device->use_global_bo_list) {
 				flags |= RADEON_FLAG_PREFER_LOCAL_BO;
 			}
+		}
+
+		if (radv_is_mem_type_uncached(mem_type_index)) {
+			assert(device->physical_device->rad_info.has_l2_uncached);
+			flags |= RADEON_FLAG_VA_UNCACHED;
 		}
 
 		mem->bo = device->ws->buffer_create(device->ws, alloc_size, device->physical_device->rad_info.max_alignment,
