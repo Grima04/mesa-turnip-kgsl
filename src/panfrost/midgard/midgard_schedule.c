@@ -1118,7 +1118,8 @@ find_or_allocate_temp(compiler_context *ctx, unsigned hash)
         return temp;
 }
 
-/* Reassigns numbering to get rid of gaps in the indices */
+/* Reassigns numbering to get rid of gaps in the indices and to prioritize
+ * smaller register classes */
 
 static void
 mir_squeeze_index(compiler_context *ctx)
@@ -1128,8 +1129,18 @@ mir_squeeze_index(compiler_context *ctx)
         /* TODO don't leak old hash_to_temp */
         ctx->hash_to_temp = _mesa_hash_table_u64_create(NULL);
 
+        /* We need to prioritize texture registers on older GPUs so we don't
+         * fail RA trying to assign to work registers r0/r1 when a work
+         * register is already there */
+
         mir_foreach_instr_global(ctx, ins) {
-                ins->dest = find_or_allocate_temp(ctx, ins->dest);
+                if (ins->type == TAG_TEXTURE_4)
+                        ins->dest = find_or_allocate_temp(ctx, ins->dest);
+        }
+
+        mir_foreach_instr_global(ctx, ins) {
+                if (ins->type != TAG_TEXTURE_4)
+                        ins->dest = find_or_allocate_temp(ctx, ins->dest);
 
                 for (unsigned i = 0; i < ARRAY_SIZE(ins->src); ++i)
                         ins->src[i] = find_or_allocate_temp(ctx, ins->src[i]);
