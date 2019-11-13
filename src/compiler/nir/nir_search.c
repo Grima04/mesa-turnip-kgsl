@@ -764,7 +764,7 @@ nir_algebraic_automaton(nir_instr *instr, struct util_dynarray *states,
 }
 
 static bool
-nir_algebraic_block(nir_builder *build, nir_block *block,
+nir_algebraic_instr(nir_builder *build, nir_instr *instr,
                     struct hash_table *range_ht,
                     const bool *condition_flags,
                     const struct transform **transforms,
@@ -772,38 +772,35 @@ nir_algebraic_block(nir_builder *build, nir_block *block,
                     struct util_dynarray *states,
                     const struct per_op_table *pass_op_table)
 {
-   bool progress = false;
-   const unsigned execution_mode = build->shader->info.float_controls_execution_mode;
 
-   nir_foreach_instr_reverse_safe(instr, block) {
-      if (instr->type != nir_instr_type_alu)
-         continue;
+   if (instr->type != nir_instr_type_alu)
+      return false;
 
-      nir_alu_instr *alu = nir_instr_as_alu(instr);
-      if (!alu->dest.dest.is_ssa)
-         continue;
+   nir_alu_instr *alu = nir_instr_as_alu(instr);
+   if (!alu->dest.dest.is_ssa)
+      return false;
 
-      unsigned bit_size = alu->dest.dest.ssa.bit_size;
-      const bool ignore_inexact =
-         nir_is_float_control_signed_zero_inf_nan_preserve(execution_mode, bit_size) ||
-         nir_is_denorm_flush_to_zero(execution_mode, bit_size);
+   unsigned bit_size = alu->dest.dest.ssa.bit_size;
+   const unsigned execution_mode =
+      build->shader->info.float_controls_execution_mode;
+   const bool ignore_inexact =
+      nir_is_float_control_signed_zero_inf_nan_preserve(execution_mode, bit_size) ||
+      nir_is_denorm_flush_to_zero(execution_mode, bit_size);
 
-      int xform_idx = *util_dynarray_element(states, uint16_t,
-                                             alu->dest.dest.ssa.index);
-      for (uint16_t i = 0; i < transform_counts[xform_idx]; i++) {
-         const struct transform *xform = &transforms[xform_idx][i];
-         if (condition_flags[xform->condition_offset] &&
-             !(xform->search->inexact && ignore_inexact) &&
-             nir_replace_instr(build, alu, range_ht, states, pass_op_table,
-                               xform->search, xform->replace)) {
-            _mesa_hash_table_clear(range_ht, NULL);
-            progress = true;
-            break;
-         }
+   int xform_idx = *util_dynarray_element(states, uint16_t,
+                                          alu->dest.dest.ssa.index);
+   for (uint16_t i = 0; i < transform_counts[xform_idx]; i++) {
+      const struct transform *xform = &transforms[xform_idx][i];
+      if (condition_flags[xform->condition_offset] &&
+          !(xform->search->inexact && ignore_inexact) &&
+          nir_replace_instr(build, alu, range_ht, states, pass_op_table,
+                            xform->search, xform->replace)) {
+         _mesa_hash_table_clear(range_ht, NULL);
+         return true;
       }
    }
 
-   return progress;
+   return false;
 }
 
 bool
@@ -836,9 +833,12 @@ nir_algebraic_impl(nir_function_impl *impl,
    }
 
    nir_foreach_block_reverse(block, impl) {
-      progress |= nir_algebraic_block(&build, block, range_ht, condition_flags,
-                                      transforms, transform_counts,
-                                      &states, pass_op_table);
+      nir_foreach_instr_reverse_safe(instr, block) {
+         progress |= nir_algebraic_instr(&build, instr,
+                                         range_ht, condition_flags,
+                                         transforms, transform_counts, &states,
+                                         pass_op_table);
+      }
    }
 
    ralloc_free(range_ht);
