@@ -690,6 +690,8 @@ st_link_nir(struct gl_context *ctx,
       }
    }
 
+   st_lower_patch_vertices_in(shader_program);
+
    /* For SPIR-V, we have to perform the NIR linking before applying
     * st_nir_preprocess.
     */
@@ -781,8 +783,6 @@ st_link_nir(struct gl_context *ctx,
       }
       prev = i;
    }
-
-   st_lower_patch_vertices_in(shader_program);
 
    for (unsigned i = 0; i < MESA_SHADER_STAGES; i++) {
       struct gl_linked_shader *shader = shader_program->_LinkedShaders[i];
