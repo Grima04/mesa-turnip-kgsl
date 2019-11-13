@@ -729,6 +729,12 @@ st_link_nir(struct gl_context *ctx,
       st_nir_link_shaders(linked_shader[i]->Program->nir,
                           linked_shader[i + 1]->Program->nir);
    }
+   /* Linking shaders also optimizes them. Separate shaders, compute shaders
+    * and shaders with a fixed-func VS or FS that don't need linking are
+    * optimized here.
+    */
+   if (num_shaders == 1)
+      st_nir_opts(linked_shader[0]->Program->nir);
 
    if (!shader_program->data->spirv)
       nir_build_program_resource_list(ctx, shader_program, false);
@@ -737,13 +743,10 @@ st_link_nir(struct gl_context *ctx,
       struct gl_linked_shader *shader = linked_shader[i];
       nir_shader *nir = shader->Program->nir;
 
+      /* This needs to run after the initial pass of nir_lower_vars_to_ssa, so
+       * that the buffer indices are constants in nir where they where
+       * constants in GLSL. */
       NIR_PASS_V(nir, gl_nir_lower_buffers, shader_program);
-
-      /* Linked shaders are optimized in st_nir_link_shaders. Separate shaders
-       * and shaders with a fixed-func VS or FS are optimized here.
-       */
-      if (num_shaders == 1)
-         st_nir_opts(nir);
 
       /* Remap the locations to slots so those requiring two slots will occupy
        * two locations. For instance, if we have in the IR code a dvec3 attr0 in
