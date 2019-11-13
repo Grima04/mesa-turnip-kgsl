@@ -1514,8 +1514,8 @@ disassemble_midgard(uint8_t *code, size_t size, unsigned gpu_id, gl_shader_stage
 
                 switch (midgard_word_types[tag]) {
                 case midgard_word_type_texture: {
-                        /* Vertex texturing uses ldst/work space on older Midgard */
-                        bool has_texture_pipeline = (stage == MESA_SHADER_FRAGMENT) && gpu_id >= 0x750;
+                        /* Texturing uses ldst/work space on T720 */
+                        bool has_texture_pipeline = gpu_id != 0x0720;
                         print_texture_word(&words[i], tabs,
                                         has_texture_pipeline ? REG_TEX_BASE : 0,
                                         has_texture_pipeline ? REG_TEX_BASE : REGISTER_LDST_BASE);
