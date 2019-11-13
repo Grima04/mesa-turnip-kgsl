@@ -82,11 +82,12 @@ enum Label {
    label_minmax = 1 << 19,
    label_fcmp = 1 << 20,
    label_uniform_bool = 1 << 21,
+   label_constant_64bit = 1 << 22,
 };
 
 static constexpr uint32_t instr_labels = label_vec | label_mul | label_mad | label_omod_success | label_clamp_success | label_add_sub | label_bitwise | label_minmax | label_fcmp;
 static constexpr uint32_t temp_labels = label_abs | label_neg | label_temp | label_vcc | label_b2f | label_uniform_bool | label_omod2 | label_omod4 | label_omod5 | label_clamp;
-static constexpr uint32_t val_labels = label_constant | label_literal | label_mad;
+static constexpr uint32_t val_labels = label_constant | label_constant_64bit | label_literal | label_mad;
 
 struct ssa_info {
    uint32_t val;
@@ -135,6 +136,17 @@ struct ssa_info {
    bool is_constant()
    {
       return label & label_constant;
+   }
+
+   void set_constant_64bit(uint32_t constant)
+   {
+      add_label(label_constant_64bit);
+      val = constant;
+   }
+
+   bool is_constant_64bit()
+   {
+      return label & label_constant_64bit;
    }
 
    void set_abs(Temp abs_temp)
@@ -604,10 +616,10 @@ bool parse_base_offset(opt_ctx &ctx, Instruction* instr, unsigned op_index, Temp
    return false;
 }
 
-Operand get_constant_op(opt_ctx &ctx, uint32_t val)
+Operand get_constant_op(opt_ctx &ctx, uint32_t val, bool is64bit = false)
 {
    // TODO: this functions shouldn't be needed if we store Operand instead of value.
-   Operand op(val);
+   Operand op(val, is64bit);
    if (val == 0x3e22f983 && ctx.program->chip_class >= GFX8)
       op.setFixed(PhysReg{248}); /* 1/2 PI can be an inline constant on GFX8+ */
    return op;
@@ -661,8 +673,8 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
                break;
             }
          }
-         if ((info.is_constant() || (info.is_literal() && instr->format == Format::PSEUDO)) && !instr->operands[i].isFixed() && can_accept_constant(instr, i)) {
-            instr->operands[i] = get_constant_op(ctx, info.val);
+         if ((info.is_constant() || info.is_constant_64bit() || (info.is_literal() && instr->format == Format::PSEUDO)) && !instr->operands[i].isFixed() && can_accept_constant(instr, i)) {
+            instr->operands[i] = get_constant_op(ctx, info.val, info.is_constant_64bit());
             continue;
          }
       }
@@ -696,18 +708,19 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
                static_cast<VOP3A_instruction*>(instr.get())->neg[i] = true;
             continue;
          }
-         if (info.is_constant() && can_accept_constant(instr, i)) {
+         if ((info.is_constant() || info.is_constant_64bit()) && can_accept_constant(instr, i)) {
+            Operand op = get_constant_op(ctx, info.val, info.is_constant_64bit());
             perfwarn(instr->opcode == aco_opcode::v_cndmask_b32 && i == 2, "v_cndmask_b32 with a constant selector", instr.get());
             if (i == 0 || instr->opcode == aco_opcode::v_readlane_b32 || instr->opcode == aco_opcode::v_writelane_b32) {
-               instr->operands[i] = get_constant_op(ctx, info.val);
+               instr->operands[i] = op;
                continue;
             } else if (!instr->isVOP3() && can_swap_operands(instr)) {
                instr->operands[i] = instr->operands[0];
-               instr->operands[0] = get_constant_op(ctx, info.val);
+               instr->operands[0] = op;
                continue;
             } else if (can_use_VOP3(ctx, instr)) {
                to_VOP3(ctx, instr);
-               instr->operands[i] = get_constant_op(ctx, info.val);
+               instr->operands[i] = op;
                continue;
             }
          }
@@ -856,6 +869,8 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
                ctx.info[instr->definitions[i].tempId()].set_literal(vec_op.constantValue());
             else if (vec_op.size() == 1)
                ctx.info[instr->definitions[i].tempId()].set_constant(vec_op.constantValue());
+            else if (vec_op.size() == 2)
+               ctx.info[instr->definitions[i].tempId()].set_constant_64bit(vec_op.constantValue());
          } else {
             assert(vec_op.isTemp());
             ctx.info[instr->definitions[i].tempId()].set_temp(vec_op.getTemp());
@@ -886,6 +901,9 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
                ctx.info[instr->definitions[0].tempId()].set_literal(vec_op.constantValue());
             else if (vec_op.size() == 1)
                ctx.info[instr->definitions[0].tempId()].set_constant(vec_op.constantValue());
+            else if (vec_op.size() == 2)
+               ctx.info[instr->definitions[0].tempId()].set_constant_64bit(vec_op.constantValue());
+
          } else {
             assert(vec_op.isTemp());
             ctx.info[instr->definitions[0].tempId()].set_temp(vec_op.getTemp());
@@ -906,6 +924,8 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
             ctx.info[instr->definitions[0].tempId()].set_literal(instr->operands[0].constantValue());
          else if (instr->operands[0].size() == 1)
             ctx.info[instr->definitions[0].tempId()].set_constant(instr->operands[0].constantValue());
+         else if (instr->operands[0].size() == 2)
+            ctx.info[instr->definitions[0].tempId()].set_constant_64bit(instr->operands[0].constantValue());
       } else if (instr->operands[0].isTemp()) {
          ctx.info[instr->definitions[0].tempId()].set_temp(instr->operands[0].getTemp());
       } else {

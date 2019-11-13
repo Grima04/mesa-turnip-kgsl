@@ -300,10 +300,11 @@ public:
          setFixed(PhysReg{128});
       }
    };
-   explicit Operand(uint32_t v) noexcept
+   explicit Operand(uint32_t v, bool is64bit = false) noexcept
    {
       data_.i = v;
       isConstant_ = true;
+      is64BitConst_ = is64bit;
       if (v <= 64)
          setFixed(PhysReg{128 + v});
       else if (v >= 0xFFFFFFF0) /* [-16 .. -1] */
@@ -324,34 +325,46 @@ public:
          setFixed(PhysReg{246});
       else if (v == 0xc0800000) /* -4.0 */
          setFixed(PhysReg{247});
-      else /* Literal Constant */
+      else { /* Literal Constant */
+         assert(!is64bit && "attempt to create a 64-bit literal constant");
          setFixed(PhysReg{255});
+      }
    };
    explicit Operand(uint64_t v) noexcept
    {
       isConstant_ = true;
       is64BitConst_ = true;
-      if (v <= 64)
+      if (v <= 64) {
+         data_.i = (uint32_t) v;
          setFixed(PhysReg{128 + (uint32_t) v});
-      else if (v >= 0xFFFFFFFFFFFFFFF0) /* [-16 .. -1] */
+      } else if (v >= 0xFFFFFFFFFFFFFFF0) { /* [-16 .. -1] */
+         data_.i = (uint32_t) v;
          setFixed(PhysReg{192 - (uint32_t) v});
-      else if (v == 0x3FE0000000000000) /* 0.5 */
+      } else if (v == 0x3FE0000000000000) { /* 0.5 */
+         data_.i = 0x3f000000;
          setFixed(PhysReg{240});
-      else if (v == 0xBFE0000000000000) /* -0.5 */
+      } else if (v == 0xBFE0000000000000) { /* -0.5 */
+         data_.i = 0xbf000000;
          setFixed(PhysReg{241});
-      else if (v == 0x3FF0000000000000) /* 1.0 */
+      } else if (v == 0x3FF0000000000000) { /* 1.0 */
+         data_.i = 0x3f800000;
          setFixed(PhysReg{242});
-      else if (v == 0xBFF0000000000000) /* -1.0 */
+      } else if (v == 0xBFF0000000000000) { /* -1.0 */
+         data_.i = 0xbf800000;
          setFixed(PhysReg{243});
-      else if (v == 0x4000000000000000) /* 2.0 */
+      } else if (v == 0x4000000000000000) { /* 2.0 */
+         data_.i = 0x40000000;
          setFixed(PhysReg{244});
-      else if (v == 0xC000000000000000) /* -2.0 */
+      } else if (v == 0xC000000000000000) { /* -2.0 */
+         data_.i = 0xc0000000;
          setFixed(PhysReg{245});
-      else if (v == 0x4010000000000000) /* 4.0 */
+      } else if (v == 0x4010000000000000) { /* 4.0 */
+         data_.i = 0x40800000;
          setFixed(PhysReg{246});
-      else if (v == 0xC010000000000000) /* -4.0 */
+      } else if (v == 0xC010000000000000) { /* -4.0 */
+         data_.i = 0xc0800000;
          setFixed(PhysReg{247});
-      else { /* Literal Constant: we don't know if it is a long or double.*/
+      } else { /* Literal Constant: we don't know if it is a long or double.*/
          isConstant_ = 0;
          assert(false && "attempt to create a 64-bit literal constant");
       }
