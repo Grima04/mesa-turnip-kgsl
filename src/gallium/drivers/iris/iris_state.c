@@ -5612,6 +5612,18 @@ iris_upload_dirty_render_state(struct iris_context *ice,
       uint32_t clear_length = GENX(3DSTATE_CLEAR_PARAMS_length) * 4;
       uint32_t cso_z_size = sizeof(cso_z->packets) - clear_length;
       iris_batch_emit(batch, cso_z->packets, cso_z_size);
+      if (GEN_GEN >= 12) {
+         /* GEN:BUG:1408224581
+          *
+          * Workaround: Gen12LP Astep only An additional pipe control with
+          * post-sync = store dword operation would be required.( w/a is to
+          * have an additional pipe control after the stencil state whenever
+          * the surface state bits of this state is changing).
+          */
+         iris_emit_pipe_control_write(batch, "WA for stencil state",
+                                      PIPE_CONTROL_WRITE_IMMEDIATE,
+                                      batch->screen->workaround_bo, 0, 0);
+      }
 
       union isl_color_value clear_value = { .f32 = { 0, } };
 

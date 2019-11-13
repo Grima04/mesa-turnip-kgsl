@@ -1624,6 +1624,20 @@ blorp_emit_depth_stencil_config(struct blorp_batch *batch,
    }
 
    isl_emit_depth_stencil_hiz_s(isl_dev, dw, &info);
+
+#if GEN_GEN >= 12
+   /* GEN:BUG:1408224581
+    *
+    * Workaround: Gen12LP Astep only An additional pipe control with
+    * post-sync = store dword operation would be required.( w/a is to
+    * have an additional pipe control after the stencil state whenever
+    * the surface state bits of this state is changing).
+    */
+   blorp_emit(batch, GENX(PIPE_CONTROL), pc) {
+      pc.PostSyncOperation = WriteImmediateData;
+      pc.Address = blorp_get_workaround_page(batch);
+   }
+#endif
 }
 
 #if GEN_GEN >= 8
