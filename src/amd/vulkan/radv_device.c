@@ -2209,6 +2209,49 @@ static bool radv_close_all_fds(const int *keep_fds, int keep_fd_count)
 	return true;
 }
 
+static bool secure_compile_open_fifo_fds(struct radv_secure_compile_state *sc,
+					 int *fd_server, int *fd_client,
+					 unsigned process, bool make_fifo)
+{
+	bool result = false;
+	char *fifo_server_path = NULL;
+	char *fifo_client_path = NULL;
+
+	if (asprintf(&fifo_server_path, "/tmp/radv_server_%s_%u", sc->uid, process) == -1)
+		goto open_fifo_exit;
+
+	if (asprintf(&fifo_client_path, "/tmp/radv_client_%s_%u", sc->uid, process) == -1)
+		goto open_fifo_exit;
+
+	if (make_fifo) {
+		int file1 = mkfifo(fifo_server_path, 0666);
+		if(file1 < 0)
+			goto open_fifo_exit;
+
+		int file2 = mkfifo(fifo_client_path, 0666);
+		if(file2 < 0)
+			goto open_fifo_exit;
+	}
+
+	*fd_server = open(fifo_server_path, O_RDWR);
+	if(*fd_server < 1)
+		goto open_fifo_exit;
+
+	*fd_client = open(fifo_client_path, O_RDWR);
+	if(*fd_client < 1) {
+		close(*fd_server);
+		goto open_fifo_exit;
+	}
+
+	result = true;
+
+open_fifo_exit:
+	free(fifo_server_path);
+	free(fifo_client_path);
+
+	return result;
+}
+
 static void run_secure_compile_device(struct radv_device *device, unsigned process,
 				      int fd_secure_input, int fd_secure_output)
 {
