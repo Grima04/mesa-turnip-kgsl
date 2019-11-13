@@ -790,11 +790,12 @@ st_link_nir(struct gl_context *ctx,
          continue;
 
       struct gl_program *prog = shader->Program;
+      struct st_program *stp = st_program(prog);
       st_glsl_to_nir_post_opts(st, prog, shader_program);
 
       /* Initialize st_vertex_program members. */
       if (i == MESA_SHADER_VERTEX)
-         st_prepare_vertex_program(st_program(prog));
+         st_prepare_vertex_program(stp);
 
       /* Get pipe_stream_output_info. */
       if (i == MESA_SHADER_VERTEX ||
@@ -804,12 +805,14 @@ st_link_nir(struct gl_context *ctx,
 
       st_store_ir_in_disk_cache(st, prog, true);
 
-      if (!ctx->Driver.ProgramStringNotify(ctx,
-                                           _mesa_shader_stage_to_program(i),
-                                           prog)) {
-         _mesa_reference_program(ctx, &shader->Program, NULL);
-         return false;
-      }
+      if (prog->info.stage == MESA_SHADER_VERTEX)
+	 st_release_vp_variants(st, stp);
+      else if (prog->info.stage == MESA_SHADER_FRAGMENT)
+	 st_release_fp_variants(st, stp);
+      else
+	 st_release_common_variants(st, stp);
+
+      st_finalize_program(st, prog);
 
       /* The GLSL IR won't be needed anymore. */
       ralloc_free(shader->ir);

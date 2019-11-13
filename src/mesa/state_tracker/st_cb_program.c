@@ -114,6 +114,9 @@ st_program_string_notify( struct gl_context *ctx,
    struct st_context *st = st_context(ctx);
    struct st_program *stp = (struct st_program *) prog;
 
+   /* GLSL-to-NIR should not end up here. */
+   assert(!stp->shader_program);
+
    if (target == GL_FRAGMENT_PROGRAM_ARB ||
        target == GL_FRAGMENT_SHADER_ATI) {
       if (target == GL_FRAGMENT_SHADER_ATI) {
@@ -124,18 +127,15 @@ st_program_string_notify( struct gl_context *ctx,
       }
 
       st_release_fp_variants(st, stp);
-      if (!stp->shader_program && /* not GLSL->NIR */
-          !st_translate_fragment_program(st, stp))
+      if (!st_translate_fragment_program(st, stp))
          return false;
    } else if (target == GL_VERTEX_PROGRAM_ARB) {
       st_release_vp_variants(st, stp);
-      if (!stp->shader_program && /* not GLSL->NIR */
-          !st_translate_vertex_program(st, stp))
+      if (!st_translate_vertex_program(st, stp))
          return false;
    } else {
       st_release_common_variants(st, stp);
-      if (!stp->shader_program && /* not GLSL->NIR */
-          !st_translate_common_program(st, stp))
+      if (!st_translate_common_program(st, stp))
          return false;
    }
 
