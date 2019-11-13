@@ -53,25 +53,6 @@
 #define MI_RPC_BO_END_OFFSET_BYTES  (MI_RPC_BO_SIZE / 2)
 #define MI_FREQ_END_OFFSET_BYTES    (3076)
 
-#define INTEL_MASK(high, low) (((1u<<((high)-(low)+1))-1)<<(low))
-
-#define GEN7_RPSTAT1                       0xA01C
-#define  GEN7_RPSTAT1_CURR_GT_FREQ_SHIFT   7
-#define  GEN7_RPSTAT1_CURR_GT_FREQ_MASK    INTEL_MASK(13, 7)
-#define  GEN7_RPSTAT1_PREV_GT_FREQ_SHIFT   0
-#define  GEN7_RPSTAT1_PREV_GT_FREQ_MASK    INTEL_MASK(6, 0)
-
-#define GEN9_RPSTAT0                       0xA01C
-#define  GEN9_RPSTAT0_CURR_GT_FREQ_SHIFT   23
-#define  GEN9_RPSTAT0_CURR_GT_FREQ_MASK    INTEL_MASK(31, 23)
-#define  GEN9_RPSTAT0_PREV_GT_FREQ_SHIFT   0
-#define  GEN9_RPSTAT0_PREV_GT_FREQ_MASK    INTEL_MASK(8, 0)
-
-#define GEN6_SO_PRIM_STORAGE_NEEDED     0x2280
-#define GEN7_SO_PRIM_STORAGE_NEEDED(n)  (0x5240 + (n) * 8)
-#define GEN6_SO_NUM_PRIMS_WRITTEN       0x2288
-#define GEN7_SO_NUM_PRIMS_WRITTEN(n)    (0x5200 + (n) * 8)
-
 #define MAP_READ  (1 << 0)
 #define MAP_WRITE (1 << 1)
 
