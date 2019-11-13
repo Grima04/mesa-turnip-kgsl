@@ -695,9 +695,7 @@ radv_declare_shader_args(struct radv_shader_args *args,
 	args->shader_info->num_input_vgprs = 0;
 	args->shader_info->num_input_sgprs = 2;
 	args->shader_info->num_input_sgprs += args->ac.num_sgprs_used;
-
-	if (stage != MESA_SHADER_FRAGMENT)
-		args->shader_info->num_input_vgprs = args->ac.num_vgprs_used;
+	args->shader_info->num_input_vgprs = args->ac.num_vgprs_used;
 
 	uint8_t user_sgpr_idx = 0;
 

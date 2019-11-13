@@ -65,8 +65,7 @@ void aco_compile_shader(unsigned shader_count,
    std::unique_ptr<aco::Program> program{new aco::Program};
 
    /* Instruction Selection */
-   aco::select_program(program.get(), shader_count, shaders, &config,
-                       args->shader_info, args->options);
+   aco::select_program(program.get(), shader_count, shaders, &config, args);
    if (args->options->dump_preoptir) {
       std::cerr << "After Instruction Selection:\n";
       aco_print_program(program.get(), stderr);

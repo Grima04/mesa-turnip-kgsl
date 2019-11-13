@@ -58,6 +58,7 @@ struct ac_shader_args {
 		enum ac_arg_regfile file;
 		uint8_t offset;
 		uint8_t size;
+		bool skip;
 	} args[AC_MAX_ARGS];
 
 	uint8_t arg_count;

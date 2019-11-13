@@ -37,6 +37,7 @@
 #include "aco_util.h"
 
 struct radv_nir_compiler_options;
+struct radv_shader_args;
 struct radv_shader_info;
 
 namespace aco {
@@ -1208,8 +1209,7 @@ void select_program(Program *program,
                     unsigned shader_count,
                     struct nir_shader *const *shaders,
                     ac_shader_config* config,
-                    struct radv_shader_info *info,
-                    const struct radv_nir_compiler_options *options);
+                    struct radv_shader_args *args);
 
 void lower_wqm(Program* program, live& live_vars,
                const struct radv_nir_compiler_options *options);
