@@ -201,7 +201,7 @@ lcra_count_constraints(struct lcra_state *l, unsigned i)
 signed
 lcra_get_best_spill_node(struct lcra_state *l)
 {
-        signed best_benefit = INT_MIN;
+        float best_benefit = -1.0;
         signed best_node = -1;
 
         for (unsigned i = 0; i < l->node_count; ++i) {
@@ -209,14 +209,10 @@ lcra_get_best_spill_node(struct lcra_state *l)
                 if (l->class[i] != l->spill_class) continue;
                 if (l->spill_cost[i] < 0) continue;
 
-                /* Compute the benefit of spilling a node as the number of
-                 * constraints on the node plus the number of slots it occupies
-                 * minus a multiple of the cost. TODO: Come up with a formula
-                 * whose use I can justify beyond "it makes my shaderdb look
-                 * happy" */
-
-                signed benefit = lcra_count_constraints(l, i);
-                benefit -= l->spill_cost[i] * 2;
+                /* Adapted from Chaitin's heuristic */
+                float constraints = lcra_count_constraints(l, i);
+                float cost = (l->spill_cost[i] + 1);
+                float benefit = constraints / cost;
 
                 if (benefit > best_benefit) {
                         best_benefit = benefit;
