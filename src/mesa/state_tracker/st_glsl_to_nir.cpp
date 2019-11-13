@@ -493,7 +493,8 @@ st_glsl_to_nir_post_opts(struct st_context *st, struct gl_program *prog,
          st_nir_opts(nir);
    }
 
-   nir_variable_mode mask = nir_var_function_temp;
+   nir_variable_mode mask = (nir_variable_mode)
+      (nir_var_shader_in | nir_var_shader_out | nir_var_function_temp );
    nir_remove_dead_variables(nir, mask);
 
    NIR_PASS_V(nir, nir_lower_atomics_to_ssbo,
