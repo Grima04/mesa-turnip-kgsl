@@ -92,38 +92,38 @@ stages:
     # no need to pull the whole repo to build the container image
     GIT_STRATEGY: none
 
-debian-10:amd64:
+x86_build:
   extends:
     - .debian@container-ifnot-exists
     - .container
   variables:
     DEBIAN_EXEC: 'bash .gitlab-ci/debian-install.sh'
 
-.use-debian-10:amd64:
+.use-x86_build:
   image: $DEBIAN_IMAGE
   needs:
-    - debian-10:amd64
+    - x86_build
 
-debian-10-test:amd64:
-  extends: debian-10:amd64
+x86_test:
+  extends: x86_build
   variables:
     DEBIAN_TAG: "$DEBIAN_TEST_TAG"
     DEBIAN_EXEC: 'bash .gitlab-ci/debian-test-install.sh'
 
-debian-9:amd64:
-  extends: debian-10:amd64
+x86_build_old:
+  extends: x86_build
   variables:
     DEBIAN_TAG: $STRETCH_TAG
     DEBIAN_VERSION: $STRETCH_VERSION
     DEBIAN_IMAGE: $STRETCH_IMAGE
     DEBIAN_EXEC: 'bash .gitlab-ci/debian-stretch-install.sh'
 
-.use-debian-9:amd64:
+.use-x86_build_old:
   image: $STRETCH_IMAGE
   needs:
-    - debian-9:amd64
+    - x86_build_old
 
-debian-10:arm64:
+arm_build:
   extends:
     - .debian@container-ifnot-exists@arm64v8
     - .container
@@ -131,7 +131,7 @@ debian-10:arm64:
     DEBIAN_TAG: "$DEBIAN_ARM64_TAG"
     DEBIAN_EXEC: 'bash .gitlab-ci/debian-arm64-install.sh'
 
-debian-10-test:arm64:
+arm_test:
   extends:
     - .debian@container-ifnot-exists@arm64v8
     - .container
@@ -187,14 +187,14 @@ debian-10-test:arm64:
 .meson-build:
   extends:
     - .build-linux
-    - .use-debian-10:amd64
+    - .use-x86_build
   script:
     - .gitlab-ci/meson-build.sh
 
 .scons-build:
   extends:
     - .build-linux
-    - .use-debian-10:amd64
+    - .use-x86_build
   variables:
     SCONSFLAGS: "-j4"
   script:
@@ -262,7 +262,7 @@ meson-main:
     EXTRA_OPTION: >
       -D I-love-half-baked-turnips=true
   needs:
-    - debian-10:arm64
+    - arm_build
   tags:
     - aarch64
 
@@ -368,7 +368,7 @@ meson-clover:
 meson-clover-old-llvm:
   extends:
     - meson-clover
-    - .use-debian-9:amd64
+    - .use-x86_build_old
   variables:
     UNWIND: "false"
     DRI_LOADERS: >
@@ -450,7 +450,7 @@ scons:
 scons-old-llvm:
   extends:
     - scons
-    - .use-debian-9:amd64
+    - .use-x86_build_old
   script:
     - LLVM_VERSION=3.9 .gitlab-ci/scons-build.sh
     - LLVM_VERSION=4.0 .gitlab-ci/scons-build.sh
@@ -477,7 +477,7 @@ scons-old-llvm:
     - meson-main
   needs:
     - meson-main
-    - debian-10-test:amd64
+    - x86_test
 
 .piglit-test:
   extends: .test
@@ -567,7 +567,7 @@ arm64_a630_gles2:
     - meson-arm64
   needs:
     - meson-arm64
-    - debian-10-test:arm64
+    - arm_test
 
 arm64_a630_gles31:
   extends: arm64_a630_gles2

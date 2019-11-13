@@ -39,7 +39,7 @@ include:
                   bash .gitlab-ci/lava-debian-install.sh'
     DEBIAN_VERSION: ${LAVA_DEBIAN_VERSION}
 
-lava-container:armhf:
+lava_armhf:
   extends: .lava-container
   variables:
     DEBIAN_ARCH: "armhf"
@@ -50,7 +50,7 @@ lava-container:armhf:
     DEVICE_TREES: "arch/arm/boot/dts/rk3288-veyron-jaq.dtb arch/arm/boot/dts/sun8i-h3-libretech-all-h3-cc.dtb"
     KERNEL_IMAGE_NAME: "zImage"
 
-lava-container:arm64:
+lava_arm64:
   extends: .lava-container
   variables:
     DEBIAN_ARCH: "arm64"
@@ -124,7 +124,7 @@ lava-container:arm64:
 
 lava-build:armhf:
   extends: .lava-build
-  needs: ["lava-container:armhf"]
+  needs: ["lava_armhf"]
   variables:
     DEBIAN_ARCH: "armhf"
     GCC_ARCH: "arm-linux-gnueabihf"
@@ -133,7 +133,7 @@ lava-build:armhf:
 
 lava-build:arm64:
   extends: .lava-build
-  needs: ["lava-container:arm64"]
+  needs: ["lava_arm64"]
   variables:
     DEBIAN_ARCH: "arm64"
     GCC_ARCH: "aarch64-linux-gnu"
@@ -163,7 +163,7 @@ lava-build:arm64:
   image: $CI_REGISTRY_IMAGE/debian/$LAVA_DEBIAN_VERSION:armhf-$LAVA_IMAGE_TAG
   extends: .lava-test
   needs:
-    - lava-container:armhf
+    - lava_armhf
     - lava-build:armhf
   dependencies:
     - lava-build:armhf
@@ -172,7 +172,7 @@ lava-build:arm64:
   image: $CI_REGISTRY_IMAGE/debian/$LAVA_DEBIAN_VERSION:arm64-$LAVA_IMAGE_TAG
   extends: .lava-test
   needs:
-    - lava-container:arm64
+    - lava_arm64
     - lava-build:arm64
   dependencies:
     - lava-build:arm64
