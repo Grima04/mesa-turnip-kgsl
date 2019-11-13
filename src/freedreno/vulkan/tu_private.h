@@ -419,6 +419,7 @@ struct tu_meta_state
 
 struct tu_fence
 {
+   struct wsi_fence *fence_wsi;
    bool signaled;
    int fd;
 };

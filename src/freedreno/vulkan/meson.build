@@ -87,6 +87,11 @@ if with_platform_wayland
   libtu_files += files('tu_wsi_wayland.c')
 endif
 
+if with_platform_drm
+  tu_flags += '-DVK_USE_PLATFORM_DISPLAY_KHR'
+  libtu_files += files('tu_wsi_display.c')
+endif
+
 libvulkan_freedreno = shared_library(
   'vulkan_freedreno',
   [libtu_files, tu_entrypoints, tu_extensions_c, tu_format_table_c, freedreno_xml_header_files],
