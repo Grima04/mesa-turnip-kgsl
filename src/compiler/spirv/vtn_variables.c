@@ -2609,8 +2609,13 @@ vtn_handle_variables(struct vtn_builder *b, SpvOp opcode,
             vtn_warn("OpStore of a sampler detected.  Doing on-the-fly copy "
                      "propagation to workaround the problem.");
             vtn_assert(dest->var->copy_prop_sampler == NULL);
-            dest->var->copy_prop_sampler =
-               vtn_value(b, w[2], vtn_value_type_pointer)->pointer;
+            struct vtn_value *v = vtn_untyped_value(b, w[2]);
+            if (v->value_type == vtn_value_type_sampled_image) {
+               dest->var->copy_prop_sampler = v->sampled_image->sampler;
+            } else {
+               vtn_assert(v->value_type == vtn_value_type_pointer);
+               dest->var->copy_prop_sampler = v->pointer;
+            }
          } else {
             vtn_fail("Vulkan does not allow OpStore of a sampler or image.");
          }
