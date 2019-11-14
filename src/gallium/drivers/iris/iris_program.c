@@ -212,6 +212,15 @@ iris_fix_edge_flags(nir_shader *nir)
    nir->info.inputs_read &= ~VERT_BIT_EDGEFLAG;
    nir_fixup_deref_modes(nir);
 
+   nir_foreach_function(f, nir) {
+      if (f->impl) {
+         nir_metadata_preserve(f->impl, nir_metadata_block_index |
+                                        nir_metadata_dominance |
+                                        nir_metadata_live_ssa_defs |
+                                        nir_metadata_loop_analysis);
+      }
+   }
+
    return true;
 }
 
@@ -2017,7 +2026,7 @@ iris_create_uncompiled_shader(struct pipe_context *ctx,
    if (!ish)
       return NULL;
 
-   ish->needs_edge_flag = iris_fix_edge_flags(nir);
+   NIR_PASS(ish->needs_edge_flag, nir, iris_fix_edge_flags);
 
    brw_preprocess_nir(screen->compiler, nir, NULL);
 
