@@ -476,7 +476,7 @@ scons-old-llvm:
     # Note: Build dir (and thus install) may be dirty due to GIT_STRATEGY
     - rm -rf install
     - tar -xf artifacts/install.tar
-    - LD_LIBRARY_PATH=install/lib ldd install/lib/{*,dri/swrast_dri}.so
+    - LD_LIBRARY_PATH=install/lib find install/lib -name "*.so" -print -exec ldd {} \;
   artifacts:
     when: on_failure
     name: "$CI_JOB_NAME-$CI_COMMIT_REF_NAME"
