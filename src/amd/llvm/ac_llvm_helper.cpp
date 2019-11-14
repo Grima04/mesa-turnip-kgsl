@@ -192,7 +192,11 @@ struct ac_compiler_passes *ac_create_llvm_passes(LLVMTargetMachineRef tm)
 
 	if (TM->addPassesToEmitFile(p->passmgr, p->ostream,
 				    nullptr,
+#if LLVM_VERSION_MAJOR >= 10
+				    llvm::CGFT_ObjectFile)) {
+#else
 				    llvm::TargetMachine::CGFT_ObjectFile)) {
+#endif
 		fprintf(stderr, "amd: TargetMachine can't emit a file of this type!\n");
 		delete p;
 		return NULL;
