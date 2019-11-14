@@ -80,6 +80,9 @@ struct isel_context {
    /* VS inputs */
    bool needs_instance_id;
 
+   /* GS inputs */
+   Temp gs_wave_id;
+
    /* gathered information */
    uint64_t input_masks[MESA_SHADER_COMPUTE];
    uint64_t output_masks[MESA_SHADER_COMPUTE];
@@ -672,6 +675,9 @@ setup_vs_variables(isel_context *ctx, nir_shader *nir)
    {
       if (ctx->stage == vertex_geometry_gs)
          variable->data.driver_location = util_bitcount64(ctx->output_masks[nir->info.stage] & ((1ull << variable->data.location) - 1ull)) * 4;
+      else if (ctx->stage == vertex_es)
+         //TODO: make this more compact
+         variable->data.driver_location = shader_io_get_unique_index((gl_varying_slot)variable->data.location) * 4;
       else
          variable->data.driver_location = variable->data.location * 4;
    }
@@ -723,7 +729,7 @@ setup_vs_variables(isel_context *ctx, nir_shader *nir)
          pos_written |= 1 << 3;
 
       outinfo->pos_exports = util_bitcount(pos_written);
-   } else if (ctx->stage == vertex_geometry_gs) {
+   } else if (ctx->stage == vertex_geometry_gs || ctx->stage == vertex_es) {
       /* TODO: radv_nir_shader_info_pass() already sets this but it's larger
        * than it needs to be in order to set it better, we have to improve
        * radv_nir_shader_info_pass() because gfx9_get_gs_info() uses
@@ -756,14 +762,22 @@ setup_variables(isel_context *ctx, nir_shader *nir)
       break;
    }
    case MESA_SHADER_GEOMETRY: {
-      assert(ctx->stage == vertex_geometry_gs);
-      nir_foreach_variable(variable, &nir->inputs) {
-         variable->data.driver_location = util_bitcount64(ctx->input_masks[nir->info.stage] & ((1ull << variable->data.location) - 1ull)) * 4;
+      assert(ctx->stage == vertex_geometry_gs || ctx->stage == geometry_gs);
+      if (ctx->stage == vertex_geometry_gs) {
+         nir_foreach_variable(variable, &nir->inputs) {
+            variable->data.driver_location = util_bitcount64(ctx->input_masks[nir->info.stage] & ((1ull << variable->data.location) - 1ull)) * 4;
+         }
+      } else {
+         //TODO: make this more compact
+         nir_foreach_variable(variable, &nir->inputs) {
+            variable->data.driver_location = shader_io_get_unique_index((gl_varying_slot)variable->data.location) * 4;
+         }
       }
       nir_foreach_variable(variable, &nir->outputs) {
          variable->data.driver_location = variable->data.location * 4;
       }
-      ctx->program->info->gs.es_type = MESA_SHADER_VERTEX; /* tesselation shaders are not yet supported */
+      if (ctx->stage == vertex_geometry_gs)
+         ctx->program->info->gs.es_type = MESA_SHADER_VERTEX; /* tesselation shaders are not yet supported */
       break;
    }
    default:
@@ -849,8 +863,12 @@ setup_isel_context(Program* program,
    }
    bool gfx9_plus = args->options->chip_class >= GFX9;
    bool ngg = args->shader_info->is_ngg && args->options->chip_class >= GFX10;
-   if (program->stage == sw_vs)
+   if (program->stage == sw_vs && args->shader_info->vs.as_es)
+      program->stage |= hw_es;
+   else if (program->stage == sw_vs && !args->shader_info->vs.as_ls)
       program->stage |= hw_vs;
+   else if (program->stage == sw_gs)
+      program->stage |= hw_gs;
    else if (program->stage == sw_fs)
       program->stage |= hw_fs;
    else if (program->stage == sw_cs)

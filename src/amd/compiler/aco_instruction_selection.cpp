@@ -3119,26 +3119,73 @@ void visit_store_vsgs_output(isel_context *ctx, nir_intrinsic_instr *instr)
    else
       idx += nir_instr_as_load_const(off_instr)->value[0].u32 * 16u;
 
-   unsigned itemsize = ctx->program->info->vs.es_info.esgs_itemsize;
+   unsigned elem_size_bytes = instr->src[0].ssa->bit_size / 8u;
+   if (ctx->stage == vertex_es) {
+      Temp esgs_ring = bld.smem(aco_opcode::s_load_dwordx4, bld.def(s4), ctx->program->private_segment_buffer, Operand(RING_ESGS_VS * 16u));
 
-   Temp vertex_idx = emit_mbcnt(ctx, bld.def(v1));
-   Temp wave_idx = bld.sop2(aco_opcode::s_bfe_u32, bld.def(s1), bld.def(s1, scc), get_arg(ctx, ctx->args->merged_wave_info), Operand(4u << 16 | 24));
-   vertex_idx = bld.vop2(aco_opcode::v_or_b32, bld.def(v1), vertex_idx,
-                         bld.v_mul24_imm(bld.def(v1), as_vgpr(ctx, wave_idx), ctx->program->wave_size));
+      Temp elems[NIR_MAX_VEC_COMPONENTS * 2];
+      if (elem_size_bytes == 8) {
+         for (unsigned i = 0; i < src.size() / 2; i++) {
+            Temp elem = emit_extract_vector(ctx, src, i, v2);
+            elems[i*2] = bld.tmp(v1);
+            elems[i*2+1] = bld.tmp(v1);
+            bld.pseudo(aco_opcode::p_split_vector, Definition(elems[i*2]), Definition(elems[i*2+1]), elem);
+         }
+         write_mask = widen_mask(write_mask, 2);
+         elem_size_bytes /= 2u;
+      } else {
+         for (unsigned i = 0; i < src.size(); i++)
+            elems[i] = emit_extract_vector(ctx, src, i, v1);
+      }
 
-   Temp lds_base = bld.v_mul24_imm(bld.def(v1), vertex_idx, itemsize);
-   if (!offset.isUndefined())
-      lds_base = bld.vadd32(bld.def(v1), offset, lds_base);
+      while (write_mask) {
+         unsigned index = u_bit_scan(&write_mask);
+         unsigned offset = index * elem_size_bytes;
+         Temp elem = emit_extract_vector(ctx, src, index, RegClass(RegType::vgpr, elem_size_bytes / 4));
 
-   unsigned align = 1 << (ffs(itemsize) - 1);
-   if (idx)
-      align = std::min(align, 1u << (ffs(idx) - 1));
+         Operand vaddr_offset(v1);
+         unsigned const_offset = idx + offset;
+         if (const_offset >= 4096u) {
+            vaddr_offset = bld.copy(bld.def(v1), Operand(const_offset / 4096u * 4096u));
+            const_offset %= 4096u;
+         }
 
-   unsigned elem_size_bytes = instr->src[0].ssa->bit_size / 8;
-   store_lds(ctx, elem_size_bytes, src, write_mask, lds_base, idx, align);
+         aco_ptr<MTBUF_instruction> mtbuf{create_instruction<MTBUF_instruction>(aco_opcode::tbuffer_store_format_x, Format::MTBUF, 4, 0)};
+         mtbuf->operands[0] = vaddr_offset;
+         mtbuf->operands[1] = Operand(esgs_ring);
+         mtbuf->operands[2] = Operand(get_arg(ctx, ctx->args->es2gs_offset));
+         mtbuf->operands[3] = Operand(elem);
+         mtbuf->offen = !vaddr_offset.isUndefined();
+         mtbuf->dfmt = V_008F0C_BUF_DATA_FORMAT_32;
+         mtbuf->nfmt = V_008F0C_BUF_NUM_FORMAT_UINT;
+         mtbuf->offset = const_offset;
+         mtbuf->glc = true;
+         mtbuf->slc = true;
+         mtbuf->barrier = barrier_none;
+         mtbuf->can_reorder = true;
+         bld.insert(std::move(mtbuf));
+      }
+   } else {
+      unsigned itemsize = ctx->program->info->vs.es_info.esgs_itemsize;
+
+      Temp vertex_idx = emit_mbcnt(ctx, bld.def(v1));
+      Temp wave_idx = bld.sop2(aco_opcode::s_bfe_u32, bld.def(s1), bld.def(s1, scc), get_arg(ctx, ctx->args->merged_wave_info), Operand(4u << 16 | 24));
+      vertex_idx = bld.vop2(aco_opcode::v_or_b32, bld.def(v1), vertex_idx,
+                            bld.v_mul24_imm(bld.def(v1), as_vgpr(ctx, wave_idx), ctx->program->wave_size));
+
+      Temp lds_base = bld.v_mul24_imm(bld.def(v1), vertex_idx, itemsize);
+      if (!offset.isUndefined())
+         lds_base = bld.vadd32(bld.def(v1), offset, lds_base);
+
+      unsigned align = 1 << (ffs(itemsize) - 1);
+      if (idx)
+         align = std::min(align, 1u << (ffs(idx) - 1));
+
+      store_lds(ctx, elem_size_bytes, src, write_mask, lds_base, idx, align);
+   }
 }
 
-void visit_store_gs_output_gfx9(isel_context *ctx, nir_intrinsic_instr *instr)
+void visit_store_gs_output(isel_context *ctx, nir_intrinsic_instr *instr)
 {
    /* This wouldn't work if it wasn't in the same block as the
     * emit_vertex_with_counter intrinsic but that doesn't happen because of
@@ -3172,10 +3219,11 @@ void visit_store_output(isel_context *ctx, nir_intrinsic_instr *instr)
       visit_store_vs_output(ctx, instr);
    } else if (ctx->stage == fragment_fs) {
       visit_store_fs_output(ctx, instr);
-   } else if (ctx->stage == vertex_geometry_gs && ctx->shader->info.stage == MESA_SHADER_VERTEX) {
+   } else if (ctx->stage == vertex_es ||
+              (ctx->stage == vertex_geometry_gs && ctx->shader->info.stage == MESA_SHADER_VERTEX)) {
       visit_store_vsgs_output(ctx, instr);
-   } else if (ctx->stage == vertex_geometry_gs && ctx->shader->info.stage == MESA_SHADER_GEOMETRY) {
-      visit_store_gs_output_gfx9(ctx, instr);
+   } else if (ctx->shader->info.stage == MESA_SHADER_GEOMETRY) {
+      visit_store_gs_output(ctx, instr);
    } else {
       unreachable("Shader stage not implemented");
    }
@@ -3488,7 +3536,7 @@ void visit_load_input(isel_context *ctx, nir_intrinsic_instr *instr)
 
 void visit_load_per_vertex_input(isel_context *ctx, nir_intrinsic_instr *instr)
 {
-   assert(ctx->stage == vertex_geometry_gs);
+   assert(ctx->stage == vertex_geometry_gs || ctx->stage == geometry_gs);
    assert(ctx->shader->info.stage == MESA_SHADER_GEOMETRY);
 
    Builder bld(ctx->program, ctx->block);
@@ -3500,9 +3548,14 @@ void visit_load_per_vertex_input(isel_context *ctx, nir_intrinsic_instr *instr)
        * much in practice */
       Temp indirect_vertex = as_vgpr(ctx, get_ssa_temp(ctx, instr->src[0].ssa));
       for (unsigned i = 0; i < ctx->shader->info.gs.vertices_in; i++) {
-         Temp elem = get_arg(ctx, ctx->args->gs_vtx_offset[i / 2u * 2u]);
-         if (i % 2u)
-            elem = bld.vop2(aco_opcode::v_lshrrev_b32, bld.def(v1), Operand(16u), elem);
+         Temp elem;
+         if (ctx->stage == vertex_geometry_gs) {
+            elem = get_arg(ctx, ctx->args->gs_vtx_offset[i / 2u * 2u]);
+            if (i % 2u)
+               elem = bld.vop2(aco_opcode::v_lshrrev_b32, bld.def(v1), Operand(16u), elem);
+         } else {
+            elem = get_arg(ctx, ctx->args->gs_vtx_offset[i]);
+         }
          if (offset.id()) {
             Temp cond = bld.vopc(aco_opcode::v_cmp_eq_u32, bld.hint_vcc(bld.def(s2)),
                                  Operand(i), indirect_vertex);
@@ -3511,12 +3564,16 @@ void visit_load_per_vertex_input(isel_context *ctx, nir_intrinsic_instr *instr)
             offset = elem;
          }
       }
-      offset = bld.vop2(aco_opcode::v_and_b32, bld.def(v1), Operand(0xffffu), offset);
+      if (ctx->stage == vertex_geometry_gs)
+         offset = bld.vop2(aco_opcode::v_and_b32, bld.def(v1), Operand(0xffffu), offset);
    } else {
       unsigned vertex = nir_src_as_uint(instr->src[0]);
-      offset = bld.vop3(
+      if (ctx->stage == vertex_geometry_gs)
+         offset = bld.vop3(
          aco_opcode::v_bfe_u32, bld.def(v1), get_arg(ctx, ctx->args->gs_vtx_offset[vertex / 2u * 2u]),
-         Operand((vertex % 2u) * 16u), Operand(16u));
+            Operand((vertex % 2u) * 16u), Operand(16u));
+      else
+         offset = get_arg(ctx, ctx->args->gs_vtx_offset[vertex]);
    }
 
    unsigned const_offset = nir_intrinsic_base(instr);
@@ -3535,13 +3592,57 @@ void visit_load_per_vertex_input(isel_context *ctx, nir_intrinsic_instr *instr)
    offset = bld.vop2(aco_opcode::v_lshlrev_b32, bld.def(v1), Operand(2u), offset);
 
    unsigned itemsize = ctx->program->info->vs.es_info.esgs_itemsize;
-   unsigned align = 16; /* alignment of indirect offset */
-   align = std::min(align, 1u << (ffs(itemsize) - 1));
-   if (const_offset)
-      align = std::min(align, 1u << (ffs(const_offset) - 1));
 
    unsigned elem_size_bytes = instr->dest.ssa.bit_size / 8;
-   load_lds(ctx, elem_size_bytes, dst, offset, const_offset, align);
+   if (ctx->stage == geometry_gs) {
+      Temp esgs_ring = bld.smem(aco_opcode::s_load_dwordx4, bld.def(s4), ctx->program->private_segment_buffer, Operand(RING_ESGS_GS * 16u));
+
+      const_offset *= ctx->program->wave_size;
+
+      std::array<Temp,NIR_MAX_VEC_COMPONENTS> elems;
+      aco_ptr<Pseudo_instruction> vec{create_instruction<Pseudo_instruction>(
+         aco_opcode::p_create_vector, Format::PSEUDO, instr->dest.ssa.num_components, 1)};
+      for (unsigned i = 0; i < instr->dest.ssa.num_components; i++) {
+         Temp subelems[2];
+         for (unsigned j = 0; j < elem_size_bytes / 4; j++) {
+            Operand soffset(0u);
+            if (const_offset >= 4096u)
+               soffset = bld.copy(bld.def(s1), Operand(const_offset / 4096u * 4096u));
+
+            aco_ptr<MUBUF_instruction> mubuf{create_instruction<MUBUF_instruction>(aco_opcode::buffer_load_dword, Format::MUBUF, 3, 1)};
+            mubuf->definitions[0] = bld.def(v1);
+            subelems[j] = mubuf->definitions[0].getTemp();
+            mubuf->operands[0] = Operand(offset);
+            mubuf->operands[1] = Operand(esgs_ring);
+            mubuf->operands[2] = Operand(soffset);
+            mubuf->offen = true;
+            mubuf->offset = const_offset % 4096u;
+            mubuf->glc = true;
+            mubuf->dlc = ctx->options->chip_class >= GFX10;
+            mubuf->barrier = barrier_none;
+            mubuf->can_reorder = true;
+            bld.insert(std::move(mubuf));
+
+            const_offset += ctx->program->wave_size * 4u;
+         }
+
+         if (elem_size_bytes == 4)
+            elems[i] = subelems[0];
+         else
+            elems[i] = bld.pseudo(aco_opcode::p_create_vector, bld.def(v2), subelems[0], subelems[1]);
+         vec->operands[i] = Operand(elems[i]);
+      }
+      vec->definitions[0] = Definition(dst);
+      ctx->block->instructions.emplace_back(std::move(vec));
+      ctx->allocated_vec.emplace(dst.id(), elems);
+   } else {
+      unsigned align = 16; /* alignment of indirect offset */
+      align = std::min(align, 1u << (ffs(itemsize) - 1));
+      if (const_offset)
+         align = std::min(align, 1u << (ffs(const_offset) - 1));
+
+      load_lds(ctx, elem_size_bytes, dst, offset, const_offset, align);
+   }
 }
 
 Temp load_desc_ptr(isel_context *ctx, unsigned desc_set)
@@ -5830,8 +5931,7 @@ void visit_emit_vertex_with_counter(isel_context *ctx, nir_intrinsic_instr *inst
       ctx->vsgs_output.mask[i] = 0;
    }
 
-   Temp gs_wave_id = bld.sop2(aco_opcode::s_bfe_u32, bld.def(s1, m0), bld.def(s1, scc), get_arg(ctx, ctx->args->merged_wave_info), Operand((8u << 16) | 16u));
-   bld.sopp(aco_opcode::s_sendmsg, bld.m0(gs_wave_id), -1, sendmsg_gs(false, true, stream));
+   bld.sopp(aco_opcode::s_sendmsg, bld.m0(ctx->gs_wave_id), -1, sendmsg_gs(false, true, stream));
 }
 
 Temp emit_boolean_reduce(isel_context *ctx, nir_op op, unsigned cluster_size, Temp src)
@@ -6159,7 +6259,7 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
    }
    case nir_intrinsic_load_view_index:
    case nir_intrinsic_load_layer_id: {
-      if (instr->intrinsic == nir_intrinsic_load_view_index && (ctx->stage & sw_vs)) {
+      if (instr->intrinsic == nir_intrinsic_load_view_index && (ctx->stage & (sw_vs | sw_gs))) {
          Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
          bld.copy(Definition(dst), Operand(get_arg(ctx, ctx->args->ac.view_index)));
          break;
@@ -6849,9 +6949,8 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
       break;
    }
    case nir_intrinsic_end_primitive_with_counter: {
-      Temp gs_wave_id = bld.sop2(aco_opcode::s_bfe_u32, bld.def(s1, m0), bld.def(s1, scc), get_arg(ctx, ctx->args->merged_wave_info), Operand((8u << 16) | 16u));
       unsigned stream = nir_intrinsic_stream_id(instr);
-      bld.sopp(aco_opcode::s_sendmsg, bld.m0(gs_wave_id), -1, sendmsg_gs(true, false, stream));
+      bld.sopp(aco_opcode::s_sendmsg, bld.m0(ctx->gs_wave_id), -1, sendmsg_gs(true, false, stream));
       break;
    }
    case nir_intrinsic_set_vertex_count: {
@@ -8742,7 +8841,10 @@ void select_program(Program *program,
          assert(ctx.stage == vertex_geometry_gs);
          bld.barrier(aco_opcode::p_memory_barrier_shared);
          bld.sopp(aco_opcode::s_barrier);
-      }
+
+         ctx.gs_wave_id = bld.sop2(aco_opcode::s_bfe_u32, bld.def(s1, m0), bld.def(s1, scc), get_arg(&ctx, args->merged_wave_info), Operand((8u << 16) | 16u));
+      } else if (ctx.stage == geometry_gs)
+         ctx.gs_wave_id = get_arg(&ctx, args->gs_wave_id);
 
       if (ctx.stage == fragment_fs)
          handle_bc_optimize(&ctx);
@@ -8755,11 +8857,10 @@ void select_program(Program *program,
 
       if (ctx.stage == vertex_vs) {
          create_vs_exports(&ctx);
-      } else if (nir->info.stage == MESA_SHADER_GEOMETRY && ctx.stage == vertex_geometry_gs) {
+      } else if (nir->info.stage == MESA_SHADER_GEOMETRY) {
          Builder bld(ctx.program, ctx.block);
-         Temp gs_wave_id = bld.sop2(aco_opcode::s_bfe_u32, bld.def(s1, m0), bld.def(s1, scc), get_arg(&ctx, args->merged_wave_info), Operand((8u << 16) | 16u));
          bld.barrier(aco_opcode::p_memory_barrier_gs_data);
-         bld.sopp(aco_opcode::s_sendmsg, bld.m0(gs_wave_id), -1, sendmsg_gs_done(false, false, 0));
+         bld.sopp(aco_opcode::s_sendmsg, bld.m0(ctx.gs_wave_id), -1, sendmsg_gs_done(false, false, 0));
       }
 
       if (shader_count >= 2) {

@@ -478,8 +478,29 @@ bool
 radv_can_dump_shader_stats(struct radv_device *device,
 			   struct radv_shader_module *module);
 
-unsigned
-shader_io_get_unique_index(gl_varying_slot slot);
+static inline unsigned
+shader_io_get_unique_index(gl_varying_slot slot)
+{
+	/* handle patch indices separate */
+	if (slot == VARYING_SLOT_TESS_LEVEL_OUTER)
+		return 0;
+	if (slot == VARYING_SLOT_TESS_LEVEL_INNER)
+		return 1;
+	if (slot >= VARYING_SLOT_PATCH0 && slot <= VARYING_SLOT_TESS_MAX)
+		return 2 + (slot - VARYING_SLOT_PATCH0);
+	if (slot == VARYING_SLOT_POS)
+		return 0;
+	if (slot == VARYING_SLOT_PSIZ)
+		return 1;
+	if (slot == VARYING_SLOT_CLIP_DIST0)
+		return 2;
+	if (slot == VARYING_SLOT_CLIP_DIST1)
+		return 3;
+	/* 3 is reserved for clip dist as well */
+	if (slot >= VARYING_SLOT_VAR0 && slot <= VARYING_SLOT_VAR31)
+		return 4 + (slot - VARYING_SLOT_VAR0);
+	unreachable("illegal slot in get unique index\n");
+}
 
 void
 radv_lower_fs_io(nir_shader *nir);
