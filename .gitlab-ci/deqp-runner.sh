@@ -19,6 +19,13 @@ if [ -z "$DEQP_VER" ]; then
    exit 1
 fi
 
+if [ "$DEQP_VER" == "vk" ]; then
+   if [ -z "$VK_DRIVER" ]; then
+      echo 'VK_DRIVER must be to something like "radeon" or "intel" for the test run'
+      exit 1
+   fi
+fi
+
 if [ -z "$DEQP_SKIPS" ]; then
    echo 'DEQP_SKIPS must be set to something like "deqp-default-skips.txt"'
    exit 1
@@ -29,6 +36,7 @@ ARTIFACTS=`pwd`/artifacts
 # Set up the driver environment.
 export LD_LIBRARY_PATH=`pwd`/install/lib/
 export EGL_PLATFORM=surfaceless
+export VK_ICD_FILENAMES=`pwd`/install/share/vulkan/icd.d/"$VK_DRIVER"_icd.x86_64.json
 
 # the runner was failing to look for libkms in /usr/local/lib for some reason
 # I never figured out.
