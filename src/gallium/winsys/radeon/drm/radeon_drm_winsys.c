@@ -304,10 +304,10 @@ static bool do_winsys_init(struct radeon_drm_winsys *ws)
     }
 
     /* Check for dma */
-    ws->info.num_sdma_rings = 0;
+    ws->info.num_rings[RING_DMA] = 0;
     /* DMA is disabled on R700. There is IB corruption and hangs. */
     if (ws->info.chip_class >= EVERGREEN && ws->info.drm_minor >= 27) {
-        ws->info.num_sdma_rings = 1;
+        ws->info.num_rings[RING_DMA] = 1;
     }
 
     /* Check for UVD and VCE */

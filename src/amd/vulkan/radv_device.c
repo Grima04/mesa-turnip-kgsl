@@ -1701,7 +1701,7 @@ static void radv_get_physical_device_queue_family_properties(
 {
 	int num_queue_families = 1;
 	int idx;
-	if (pdevice->rad_info.num_compute_rings > 0 &&
+	if (pdevice->rad_info.num_rings[RING_COMPUTE] > 0 &&
 	    !(pdevice->instance->debug_flags & RADV_DEBUG_NO_COMPUTE_QUEUE))
 		num_queue_families++;
 
@@ -1727,14 +1727,14 @@ static void radv_get_physical_device_queue_family_properties(
 		idx++;
 	}
 
-	if (pdevice->rad_info.num_compute_rings > 0 &&
+	if (pdevice->rad_info.num_rings[RING_COMPUTE] > 0 &&
 	    !(pdevice->instance->debug_flags & RADV_DEBUG_NO_COMPUTE_QUEUE)) {
 		if (*pCount > idx) {
 			*pQueueFamilyProperties[idx] = (VkQueueFamilyProperties) {
 				.queueFlags = VK_QUEUE_COMPUTE_BIT |
 				              VK_QUEUE_TRANSFER_BIT |
 				              VK_QUEUE_SPARSE_BINDING_BIT,
-				.queueCount = pdevice->rad_info.num_compute_rings,
+				.queueCount = pdevice->rad_info.num_rings[RING_COMPUTE],
 				.timestampValidBits = 64,
 				.minImageTransferGranularity = (VkExtent3D) { 1, 1, 1 },
 			};

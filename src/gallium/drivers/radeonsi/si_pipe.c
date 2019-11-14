@@ -483,7 +483,7 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen,
 	if (!sctx->ctx)
 		goto fail;
 
-	if (sscreen->info.num_sdma_rings &&
+	if (sscreen->info.num_rings[RING_DMA] &&
 	    !(sscreen->debug_flags & DBG(NO_ASYNC_DMA)) &&
 	    /* SDMA timeouts sometimes on gfx10 so disable it for now. See:
 	     *    https://bugs.freedesktop.org/show_bug.cgi?id=111481
