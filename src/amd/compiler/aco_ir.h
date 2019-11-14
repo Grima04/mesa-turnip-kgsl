@@ -324,8 +324,6 @@ public:
          setFixed(PhysReg{246});
       else if (v == 0xc0800000) /* -4.0 */
          setFixed(PhysReg{247});
-      else if (v == 0x3e22f983) /* 1/(2*PI) */
-         setFixed(PhysReg{248});
       else /* Literal Constant */
          setFixed(PhysReg{255});
    };
@@ -353,8 +351,6 @@ public:
          setFixed(PhysReg{246});
       else if (v == 0xC010000000000000) /* -4.0 */
          setFixed(PhysReg{247});
-      else if (v == 0x3fc45f306dc9c882) /* 1/(2*PI) */
-         setFixed(PhysReg{248});
       else { /* Literal Constant: we don't know if it is a long or double.*/
          isConstant_ = 0;
          assert(false && "attempt to create a 64-bit literal constant");

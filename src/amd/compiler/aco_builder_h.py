@@ -327,7 +327,10 @@ public:
       Operand op = op_.op;
       if (dst.regClass() == s1 && op.size() == 1 && op.isLiteral()) {
          uint32_t imm = op.constantValue();
-         if (imm >= 0xffff8000 || imm <= 0x7fff) {
+         if (imm == 0x3e22f983) {
+            if (program->chip_class >= GFX8)
+               op.setFixed(PhysReg{248}); /* it can be an inline constant on GFX8+ */
+         } else if (imm >= 0xffff8000 || imm <= 0x7fff) {
             return sopk(aco_opcode::s_movk_i32, dst, imm & 0xFFFFu);
          } else if (util_bitreverse(imm) <= 64 || util_bitreverse(imm) >= 0xFFFFFFF0) {
             uint32_t rev = util_bitreverse(imm);

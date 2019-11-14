@@ -556,6 +556,15 @@ bool parse_base_offset(opt_ctx &ctx, Instruction* instr, unsigned op_index, Temp
    return false;
 }
 
+Operand get_constant_op(opt_ctx &ctx, uint32_t val)
+{
+   // TODO: this functions shouldn't be needed if we store Operand instead of value.
+   Operand op(val);
+   if (val == 0x3e22f983 && ctx.program->chip_class >= GFX8)
+      op.setFixed(PhysReg{248}); /* 1/2 PI can be an inline constant on GFX8+ */
+   return op;
+}
+
 void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
 {
    if (instr->isSALU() || instr->isVALU() || instr->format == Format::PSEUDO) {
@@ -605,7 +614,7 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
             }
          }
          if ((info.is_constant() || (info.is_literal() && instr->format == Format::PSEUDO)) && !instr->operands[i].isFixed() && can_accept_constant(instr, i)) {
-            instr->operands[i] = Operand(info.val);
+            instr->operands[i] = get_constant_op(ctx, info.val);
             continue;
          }
       }
@@ -642,15 +651,15 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
          if (info.is_constant() && can_accept_constant(instr, i)) {
             perfwarn(instr->opcode == aco_opcode::v_cndmask_b32 && i == 2, "v_cndmask_b32 with a constant selector", instr.get());
             if (i == 0 || instr->opcode == aco_opcode::v_readlane_b32 || instr->opcode == aco_opcode::v_writelane_b32) {
-               instr->operands[i] = Operand(info.val);
+               instr->operands[i] = get_constant_op(ctx, info.val);
                continue;
             } else if (!instr->isVOP3() && can_swap_operands(instr)) {
                instr->operands[i] = instr->operands[0];
-               instr->operands[0] = Operand(info.val);
+               instr->operands[0] = get_constant_op(ctx, info.val);
                continue;
             } else if (can_use_VOP3(instr)) {
                to_VOP3(ctx, instr);
-               instr->operands[i] = Operand(info.val);
+               instr->operands[i] = get_constant_op(ctx, info.val);
                continue;
             }
          }

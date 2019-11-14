@@ -1660,12 +1660,8 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
       Temp src = get_alu_src(ctx, instr->src[0]);
       aco_ptr<Instruction> norm;
       if (dst.size() == 1) {
-         Temp tmp;
-         Operand half_pi(0x3e22f983u);
-         if (src.type() == RegType::sgpr)
-            tmp = bld.vop2_e64(aco_opcode::v_mul_f32, bld.def(v1), half_pi, src);
-         else
-            tmp = bld.vop2(aco_opcode::v_mul_f32, bld.def(v1), half_pi, src);
+         Temp half_pi = bld.copy(bld.def(s1), Operand(0x3e22f983u));
+         Temp tmp = bld.vop2(aco_opcode::v_mul_f32, bld.def(v1), half_pi, as_vgpr(ctx, src));
 
          /* before GFX9, v_sin_f32 and v_cos_f32 had a valid input domain of [-256, +256] */
          if (ctx->options->chip_class < GFX9)
