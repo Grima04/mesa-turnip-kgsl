@@ -565,6 +565,7 @@ The integer capabilities:
 * ``PIPE_CAP_TWO_SIDED_COLOR``: Driver supports two-sided coloring.
 * ``PIPE_CAP_CLIP_PLANES``: Driver supports user-defined clip-planes.
 * ``PIPE_CAP_MAX_VERTEX_BUFFERS``: Number of supported vertex buffers.
+* ``PIPE_CAP_OPENCL_INTEGER_FUNCTIONS``: Driver supports extended OpenCL-style integer functions.  This includes averge, saturating additiong, saturating subtraction, absolute difference, count leading zeros, and count trailing zeros.
 
 .. _pipe_capf:
 
