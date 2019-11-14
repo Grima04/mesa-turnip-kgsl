@@ -1445,18 +1445,26 @@ _mesa_GetSamplerParameteriv(GLuint sampler, GLenum pname, GLint *params)
       *params = lroundf(sampObj->LodBias);
       break;
    case GL_TEXTURE_COMPARE_MODE:
+      if (!ctx->Extensions.ARB_shadow)
+         goto invalid_pname;
       *params = sampObj->CompareMode;
       break;
    case GL_TEXTURE_COMPARE_FUNC:
+      if (!ctx->Extensions.ARB_shadow)
+         goto invalid_pname;
       *params = sampObj->CompareFunc;
       break;
    case GL_TEXTURE_MAX_ANISOTROPY_EXT:
+      if (!ctx->Extensions.EXT_texture_filter_anisotropic)
+         goto invalid_pname;
       /* GL spec 'Data Conversions' section specifies that floating-point
        * value in integer Get function is rounded to nearest integer
        */
       *params = lroundf(sampObj->MaxAnisotropy);
       break;
    case GL_TEXTURE_BORDER_COLOR:
+      if (!ctx->Extensions.ARB_texture_border_clamp)
+         goto invalid_pname;
       params[0] = FLOAT_TO_INT(sampObj->BorderColor.f[0]);
       params[1] = FLOAT_TO_INT(sampObj->BorderColor.f[1]);
       params[2] = FLOAT_TO_INT(sampObj->BorderColor.f[2]);
