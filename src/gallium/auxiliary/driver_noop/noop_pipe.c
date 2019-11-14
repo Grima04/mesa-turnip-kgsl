@@ -516,6 +516,9 @@ static const void *noop_get_compiler_options(struct pipe_screen *pscreen,
 
 static void noop_finalize_nir(struct pipe_screen *pscreen, void *nir, bool optimize)
 {
+   struct pipe_screen *screen = ((struct noop_pipe_screen*)pscreen)->oscreen;
+
+   screen->finalize_nir(screen, nir, optimize);
 }
 
 struct pipe_screen *noop_screen_create(struct pipe_screen *oscreen)
