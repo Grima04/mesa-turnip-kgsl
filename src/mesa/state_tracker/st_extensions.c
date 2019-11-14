@@ -1145,6 +1145,11 @@ void st_init_extensions(struct pipe_screen *screen,
       extensions->EXT_shader_integer_mix = GL_TRUE;
       extensions->ARB_arrays_of_arrays = GL_TRUE;
       extensions->MESA_shader_integer_functions = GL_TRUE;
+
+      if (screen->get_param(screen, PIPE_CAP_OPENCL_INTEGER_FUNCTIONS) &&
+          screen->get_param(screen, PIPE_CAP_INTEGER_MULTIPLY_32X16)) {
+         extensions->INTEL_shader_integer_functions2 = GL_TRUE;
+      }
    } else {
       /* Optional integer support for GLSL 1.2. */
       if (screen->get_shader_param(screen, PIPE_SHADER_VERTEX,
@@ -1676,6 +1681,7 @@ void st_init_extensions(struct pipe_screen *screen,
       spirv_caps->transform_feedback         = extensions->ARB_transform_feedback3;
       spirv_caps->variable_pointers          =
          screen->get_param(screen, PIPE_CAP_GL_SPIRV_VARIABLE_POINTERS);
+      spirv_caps->integer_functions2         = extensions->INTEL_shader_integer_functions2;
 
       consts->SpirVExtensions = CALLOC_STRUCT(spirv_supported_extensions);
       _mesa_fill_supported_spirv_extensions(consts->SpirVExtensions, spirv_caps);
