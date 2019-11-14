@@ -194,17 +194,25 @@ iris_fix_edge_flags(nir_shader *nir)
    if (nir->info.stage != MESA_SHADER_VERTEX)
       return false;
 
-   nir_foreach_variable(var, &nir->outputs) {
-      if (var->data.location == VARYING_SLOT_EDGE) {
-         var->data.mode = nir_var_shader_temp;
-         nir->info.outputs_written &= ~VARYING_BIT_EDGE;
-         nir->info.inputs_read &= ~VERT_BIT_EDGEFLAG;
-         nir_fixup_deref_modes(nir);
-         return true;
+   nir_variable *var = NULL;
+   nir_foreach_variable(v, &nir->outputs) {
+      if (v->data.location == VARYING_SLOT_EDGE) {
+         var = v;
+         break;
       }
    }
 
-   return false;
+   if (!var)
+      return false;
+
+   exec_node_remove(&var->node);
+   var->data.mode = nir_var_shader_temp;
+   exec_list_push_tail(&nir->globals, &var->node);
+   nir->info.outputs_written &= ~VARYING_BIT_EDGE;
+   nir->info.inputs_read &= ~VERT_BIT_EDGEFLAG;
+   nir_fixup_deref_modes(nir);
+
+   return true;
 }
 
 /**
