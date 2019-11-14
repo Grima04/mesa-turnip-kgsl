@@ -1055,14 +1055,14 @@ postvalidate_reg_decl(nir_register *reg, validate_state *state)
 }
 
 static void
-validate_var_decl(nir_variable *var, bool is_global, validate_state *state)
+validate_var_decl(nir_variable *var, nir_variable_mode valid_modes,
+                  validate_state *state)
 {
    state->var = var;
 
-   validate_assert(state, is_global == nir_variable_is_global(var));
-
    /* Must have exactly one mode set */
    validate_assert(state, util_is_power_of_two_nonzero(var->data.mode));
+   validate_assert(state, var->data.mode & valid_modes);
 
    if (var->data.compact) {
       /* The "compact" flag is only valid on arrays of scalars. */
@@ -1090,7 +1090,8 @@ validate_var_decl(nir_variable *var, bool is_global, validate_state *state)
     */
 
    _mesa_hash_table_insert(state->var_defs, var,
-                           is_global ? NULL : state->impl);
+                           valid_modes == nir_var_function_temp ?
+                           state->impl : NULL);
 
    state->var = NULL;
 }
@@ -1119,7 +1120,7 @@ validate_function_impl(nir_function_impl *impl, validate_state *state)
 
    exec_list_validate(&impl->locals);
    nir_foreach_variable(var, &impl->locals) {
-      validate_var_decl(var, false, state);
+      validate_var_decl(var, nir_var_function_temp, state);
    }
 
    state->regs_found = reralloc(state->mem_ctx, state->regs_found,
@@ -1235,32 +1236,35 @@ nir_validate_shader(nir_shader *shader, const char *when)
 
    exec_list_validate(&shader->uniforms);
    nir_foreach_variable(var, &shader->uniforms) {
-      validate_var_decl(var, true, &state);
+      validate_var_decl(var, nir_var_uniform |
+                             nir_var_mem_ubo |
+                             nir_var_mem_ssbo,
+                        &state);
    }
 
    exec_list_validate(&shader->inputs);
    nir_foreach_variable(var, &shader->inputs) {
-     validate_var_decl(var, true, &state);
+     validate_var_decl(var, nir_var_shader_in, &state);
    }
 
    exec_list_validate(&shader->outputs);
    nir_foreach_variable(var, &shader->outputs) {
-     validate_var_decl(var, true, &state);
+     validate_var_decl(var, nir_var_shader_out, &state);
    }
 
    exec_list_validate(&shader->shared);
    nir_foreach_variable(var, &shader->shared) {
-      validate_var_decl(var, true, &state);
+      validate_var_decl(var, nir_var_mem_shared, &state);
    }
 
    exec_list_validate(&shader->globals);
    nir_foreach_variable(var, &shader->globals) {
-     validate_var_decl(var, true, &state);
+     validate_var_decl(var, nir_var_shader_temp, &state);
    }
 
    exec_list_validate(&shader->system_values);
    nir_foreach_variable(var, &shader->system_values) {
-     validate_var_decl(var, true, &state);
+     validate_var_decl(var, nir_var_system_value, &state);
    }
 
    exec_list_validate(&shader->functions);
