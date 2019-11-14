@@ -480,6 +480,14 @@ validate_texture_wrap_mode(struct gl_context *ctx, GLenum wrap)
 
    switch (wrap) {
    case GL_CLAMP:
+      /* From GL 3.0 specification section E.1 "Profiles and Deprecated
+       * Features of OpenGL 3.0":
+       *
+       * - Texture wrap mode CLAMP - CLAMP is no longer accepted as a value of
+       *   texture parameters TEXTURE_WRAP_S, TEXTURE_WRAP_T, or
+       *   TEXTURE_WRAP_R.
+       */
+      return ctx->API == API_OPENGL_COMPAT;
    case GL_CLAMP_TO_EDGE:
    case GL_REPEAT:
    case GL_MIRRORED_REPEAT:
