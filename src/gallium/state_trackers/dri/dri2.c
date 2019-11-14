@@ -777,18 +777,12 @@ dri2_create_image_from_winsys(__DRIscreen *_screen,
    for (i = num_handles - 1; i >= 0; i--) {
       struct pipe_resource *tex;
 
-      if (whandle[i].modifier == DRM_FORMAT_MOD_INVALID) {
-         templ.width0 = width >> map->planes[i].width_shift;
-         templ.height0 = height >> map->planes[i].height_shift;
-         if (is_yuv)
-            templ.format = dri2_get_pipe_format_for_dri_format(map->planes[i].dri_format);
-         else
-            templ.format = map->pipe_format;
-      } else {
-         templ.width0 = width;
-         templ.height0 = height;
+      templ.width0 = width >> map->planes[i].width_shift;
+      templ.height0 = height >> map->planes[i].height_shift;
+      if (is_yuv)
+         templ.format = dri2_get_pipe_format_for_dri_format(map->planes[i].dri_format);
+      else
          templ.format = map->pipe_format;
-      }
       assert(templ.format != PIPE_FORMAT_NONE);
 
       tex = pscreen->resource_from_handle(pscreen,
@@ -844,8 +838,13 @@ dri2_create_image_from_name(__DRIscreen *_screen,
 }
 
 static unsigned
-dri2_get_modifier_num_planes(uint64_t modifier)
+dri2_get_modifier_num_planes(uint64_t modifier, int fourcc)
 {
+   const struct dri2_format_mapping *map = dri2_get_mapping_by_fourcc(fourcc);
+
+   if (!map)
+      return 0;
+
    switch (modifier) {
    case I915_FORMAT_MOD_Y_TILED_CCS:
       return 2;
@@ -867,8 +866,8 @@ dri2_get_modifier_num_planes(uint64_t modifier)
    /* FD_FORMAT_MOD_QCOM_TILED is not in drm_fourcc.h */
    case I915_FORMAT_MOD_X_TILED:
    case I915_FORMAT_MOD_Y_TILED:
-      return 1;
    case DRM_FORMAT_MOD_INVALID:
+      return map->nplanes;
    default:
       return 0;
    }
@@ -886,14 +885,12 @@ dri2_create_image_from_fd(__DRIscreen *_screen,
    __DRIimage *img = NULL;
    unsigned err = __DRI_IMAGE_ERROR_SUCCESS;
    int i, expected_num_fds;
-   uint64_t mod_planes = dri2_get_modifier_num_planes(modifier);
+   int num_handles = dri2_get_modifier_num_planes(modifier, fourcc);
 
-   if (!map || (modifier != DRM_FORMAT_MOD_INVALID && mod_planes == 0)) {
+   if (!map || num_handles == 0) {
       err = __DRI_IMAGE_ERROR_BAD_MATCH;
       goto exit;
    }
-
-   int num_handles = mod_planes > 0 ? mod_planes : map->nplanes;
 
    switch (fourcc) {
    case DRM_FORMAT_YUYV:
@@ -914,7 +911,7 @@ dri2_create_image_from_fd(__DRIscreen *_screen,
 
    for (i = 0; i < num_handles; i++) {
       int fdnum = i >= num_fds ? 0 : i;
-      int index = mod_planes > 0 ? i : map->planes[i].buffer_index;
+      int index = i >= map->nplanes ? i : map->planes[i].buffer_index;
       if (fds[fdnum] < 0) {
          err = __DRI_IMAGE_ERROR_BAD_ALLOC;
          goto exit;
@@ -1411,7 +1408,7 @@ dri2_query_dma_buf_format_modifier_attribs(__DRIscreen *_screen,
 {
    switch (attrib) {
    case __DRI_IMAGE_FORMAT_MODIFIER_ATTRIB_PLANE_COUNT: {
-      uint64_t mod_planes = dri2_get_modifier_num_planes(modifier);
+      uint64_t mod_planes = dri2_get_modifier_num_planes(modifier, fourcc);
       if (mod_planes > 0)
          *value = mod_planes;
       return mod_planes > 0;
