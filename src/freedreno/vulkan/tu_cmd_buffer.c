@@ -2410,19 +2410,48 @@ tu6_emit_consts(struct tu_cmd_buffer *cmd,
    return tu_cs_end_sub_stream(&cmd->draw_state, &cs);
 }
 
-static struct tu_cs_entry
-tu6_emit_textures(struct tu_device *device, struct tu_cs *draw_state,
-                  const struct tu_pipeline *pipeline,
-                  struct tu_descriptor_state *descriptors_state,
-                  gl_shader_stage type, bool *needs_border)
+static VkResult
+tu6_emit_textures(struct tu_cmd_buffer *cmd,
+                  gl_shader_stage type,
+                  struct tu_cs_entry *entry,
+                  bool *needs_border)
 {
+   struct tu_device *device = cmd->device;
+   struct tu_cs *draw_state = &cmd->draw_state;
+   struct tu_descriptor_state *descriptors_state =
+      &cmd->descriptors[VK_PIPELINE_BIND_POINT_GRAPHICS];
    const struct tu_program_descriptor_linkage *link =
-      &pipeline->program.link[type];
+      &cmd->state.pipeline->program.link[type];
+   VkResult result;
 
-   uint32_t size = link->texture_map.num * A6XX_TEX_CONST_DWORDS +
-                   link->sampler_map.num * A6XX_TEX_SAMP_DWORDS;
-   if (!size)
-      return (struct tu_cs_entry) {};
+   if (link->texture_map.num == 0 && link->sampler_map.num == 0) {
+      *entry = (struct tu_cs_entry) {};
+      return VK_SUCCESS;
+   }
+
+   /* allocate and fill texture state */
+   struct ts_cs_memory tex_const;
+   result = tu_cs_alloc(device, draw_state, link->texture_map.num, A6XX_TEX_CONST_DWORDS, &tex_const);
+   if (result != VK_SUCCESS)
+      return result;
+
+   for (unsigned i = 0; i < link->texture_map.num; i++) {
+      memcpy(&tex_const.map[A6XX_TEX_CONST_DWORDS*i],
+             texture_ptr(descriptors_state, &link->texture_map, i),
+             A6XX_TEX_CONST_DWORDS*4);
+   }
+
+   /* allocate and fill sampler state */
+   struct ts_cs_memory tex_samp;
+   result = tu_cs_alloc(device, draw_state, link->sampler_map.num, A6XX_TEX_SAMP_DWORDS, &tex_samp);
+   if (result != VK_SUCCESS)
+      return result;
+
+   for (unsigned i = 0; i < link->sampler_map.num; i++) {
+      struct tu_sampler *sampler = sampler_ptr(descriptors_state, &link->sampler_map, i);
+      memcpy(&tex_samp.map[A6XX_TEX_SAMP_DWORDS*i], sampler->state, sizeof(sampler->state));
+      *needs_border |= sampler->needs_border;
+   }
 
    unsigned tex_samp_reg, tex_const_reg, tex_count_reg;
    enum a6xx_state_block sb;
@@ -2451,30 +2480,9 @@ tu6_emit_textures(struct tu_device *device, struct tu_cs *draw_state,
    }
 
    struct tu_cs cs;
-   tu_cs_begin_sub_stream(device, draw_state, size, &cs);
-
-   for (unsigned i = 0; i < link->texture_map.num; i++) {
-      uint32_t *ptr = texture_ptr(descriptors_state, &link->texture_map, i);
-
-      for (unsigned j = 0; j < A6XX_TEX_CONST_DWORDS; j++)
-         tu_cs_emit(&cs, ptr[j]);
-   }
-
-   for (unsigned i = 0; i < link->sampler_map.num; i++) {
-      struct tu_sampler *sampler = sampler_ptr(descriptors_state, &link->sampler_map, i);
-
-      for (unsigned j = 0; j < A6XX_TEX_SAMP_DWORDS; j++)
-         tu_cs_emit(&cs, sampler->state[j]);
-
-      *needs_border |= sampler->needs_border;
-   }
-
-   struct tu_cs_entry entry = tu_cs_end_sub_stream(draw_state, &cs);
-
-   uint64_t tex_addr = entry.bo->iova + entry.offset;
-   uint64_t samp_addr = tex_addr + link->texture_map.num * A6XX_TEX_CONST_DWORDS*4;
-
-   tu_cs_begin_sub_stream(device, draw_state, 64, &cs);
+   result = tu_cs_begin_sub_stream(device, draw_state, 16, &cs);
+   if (result != VK_SUCCESS)
+      return result;
 
    /* output sampler state: */
    tu_cs_emit_pkt7(&cs, tu6_stage2opcode(type), 3);
@@ -2483,10 +2491,10 @@ tu6_emit_textures(struct tu_device *device, struct tu_cs *draw_state,
       CP_LOAD_STATE6_0_STATE_SRC(SS6_INDIRECT) |
       CP_LOAD_STATE6_0_STATE_BLOCK(sb) |
       CP_LOAD_STATE6_0_NUM_UNIT(link->sampler_map.num));
-   tu_cs_emit_qw(&cs, samp_addr); /* SRC_ADDR_LO/HI */
+   tu_cs_emit_qw(&cs, tex_samp.iova); /* SRC_ADDR_LO/HI */
 
    tu_cs_emit_pkt4(&cs, tex_samp_reg, 2);
-   tu_cs_emit_qw(&cs, samp_addr); /* SRC_ADDR_LO/HI */
+   tu_cs_emit_qw(&cs, tex_samp.iova); /* SRC_ADDR_LO/HI */
 
    /* emit texture state: */
    tu_cs_emit_pkt7(&cs, tu6_stage2opcode(type), 3);
@@ -2495,15 +2503,16 @@ tu6_emit_textures(struct tu_device *device, struct tu_cs *draw_state,
       CP_LOAD_STATE6_0_STATE_SRC(SS6_INDIRECT) |
       CP_LOAD_STATE6_0_STATE_BLOCK(sb) |
       CP_LOAD_STATE6_0_NUM_UNIT(link->texture_map.num));
-   tu_cs_emit_qw(&cs, tex_addr); /* SRC_ADDR_LO/HI */
+   tu_cs_emit_qw(&cs, tex_const.iova); /* SRC_ADDR_LO/HI */
 
    tu_cs_emit_pkt4(&cs, tex_const_reg, 2);
-   tu_cs_emit_qw(&cs, tex_addr); /* SRC_ADDR_LO/HI */
+   tu_cs_emit_qw(&cs, tex_const.iova); /* SRC_ADDR_LO/HI */
 
    tu_cs_emit_pkt4(&cs, tex_count_reg, 1);
    tu_cs_emit(&cs, link->texture_map.num);
 
-   return tu_cs_end_sub_stream(draw_state, &cs);
+   *entry = tu_cs_end_sub_stream(draw_state, &cs);
+   return VK_SUCCESS;
 }
 
 static struct tu_cs_entry
@@ -2599,7 +2608,7 @@ tu6_emit_border_color(struct tu_cmd_buffer *cmd,
 	tu_cs_emit_qw(cs, align(entry.bo->iova + entry.offset, 128));
 }
 
-static void
+static VkResult
 tu6_bind_draw_states(struct tu_cmd_buffer *cmd,
                      struct tu_cs *cs,
                      const struct tu_draw_info *draw)
@@ -2613,10 +2622,8 @@ tu6_bind_draw_states(struct tu_cmd_buffer *cmd,
       &cmd->descriptors[VK_PIPELINE_BIND_POINT_GRAPHICS];
 
    VkResult result = tu_cs_reserve_space(cmd->device, cs, 256);
-   if (result != VK_SUCCESS) {
-      cmd->record_result = result;
-      return;
-   }
+   if (result != VK_SUCCESS)
+      return result;
 
    /* TODO lrz */
 
@@ -2729,6 +2736,15 @@ tu6_bind_draw_states(struct tu_cmd_buffer *cmd,
    if (cmd->state.dirty &
          (TU_CMD_DIRTY_PIPELINE | TU_CMD_DIRTY_DESCRIPTOR_SETS)) {
       bool needs_border = false;
+      struct tu_cs_entry vs_tex, fs_tex;
+
+      result = tu6_emit_textures(cmd, MESA_SHADER_VERTEX, &vs_tex, &needs_border);
+      if (result != VK_SUCCESS)
+         return result;
+
+      result = tu6_emit_textures(cmd, MESA_SHADER_FRAGMENT, &fs_tex, &needs_border);
+      if (result != VK_SUCCESS)
+         return result;
 
       draw_state_groups[draw_state_group_count++] =
          (struct tu_draw_state_group) {
@@ -2746,17 +2762,13 @@ tu6_bind_draw_states(struct tu_cmd_buffer *cmd,
          (struct tu_draw_state_group) {
             .id = TU_DRAW_STATE_VS_TEX,
             .enable_mask = 0x7,
-            .ib = tu6_emit_textures(cmd->device, &cmd->draw_state, pipeline,
-                                    descriptors_state, MESA_SHADER_VERTEX,
-                                    &needs_border)
+            .ib = vs_tex,
          };
       draw_state_groups[draw_state_group_count++] =
          (struct tu_draw_state_group) {
             .id = TU_DRAW_STATE_FS_TEX,
             .enable_mask = 0x6,
-            .ib = tu6_emit_textures(cmd->device, &cmd->draw_state, pipeline,
-                                    descriptors_state, MESA_SHADER_FRAGMENT,
-                                    &needs_border)
+            .ib = fs_tex,
          };
       draw_state_groups[draw_state_group_count++] =
          (struct tu_draw_state_group) {
@@ -2816,6 +2828,7 @@ tu6_bind_draw_states(struct tu_cmd_buffer *cmd,
     * compute pipeline for re-emit.
     */
    cmd->state.dirty = TU_CMD_DIRTY_COMPUTE_PIPELINE;
+   return VK_SUCCESS;
 }
 
 static void
@@ -2871,10 +2884,15 @@ static void
 tu_draw(struct tu_cmd_buffer *cmd, const struct tu_draw_info *draw)
 {
    struct tu_cs *cs = &cmd->draw_cs;
+   VkResult result;
 
-   tu6_bind_draw_states(cmd, cs, draw);
+   result = tu6_bind_draw_states(cmd, cs, draw);
+   if (result != VK_SUCCESS) {
+      cmd->record_result = result;
+      return;
+   }
 
-   VkResult result = tu_cs_reserve_space(cmd->device, cs, 32);
+   result = tu_cs_reserve_space(cmd->device, cs, 32);
    if (result != VK_SUCCESS) {
       cmd->record_result = result;
       return;
@@ -3069,9 +3087,12 @@ tu_dispatch(struct tu_cmd_buffer *cmd,
    tu_emit_compute_driver_params(cs, pipeline, info);
 
    bool needs_border;
-   ib = tu6_emit_textures(cmd->device, &cmd->draw_state, pipeline,
-                          descriptors_state, MESA_SHADER_COMPUTE,
-                          &needs_border);
+   result = tu6_emit_textures(cmd, MESA_SHADER_COMPUTE, &ib, &needs_border);
+   if (result != VK_SUCCESS) {
+      cmd->record_result = result;
+      return;
+   }
+
    if (ib.size)
       tu_cs_emit_ib(cs, &ib);
 
