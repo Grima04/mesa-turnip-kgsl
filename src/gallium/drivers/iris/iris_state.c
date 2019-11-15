@@ -2105,11 +2105,11 @@ fill_buffer_surface_state(struct isl_device *isl_dev,
 
 /**
  * Allocate several contiguous SURFACE_STATE structures, one for each
- * supported auxiliary surface mode.
+ * supported auxiliary surface mode.  This only allocates the CPU-side
+ * copy, they will need to be uploaded later after they're filled in.
  */
-static void *
-alloc_surface_states(struct u_upload_mgr *mgr,
-                     struct iris_state_ref *ref,
+static void
+alloc_surface_states(struct iris_surface_state *surf_state,
                      unsigned aux_usages)
 {
    const unsigned surf_size = 4 * GENX(RENDER_SURFACE_STATE_length);
@@ -2119,13 +2119,68 @@ alloc_surface_states(struct u_upload_mgr *mgr,
 
    assert(aux_usages != 0);
 
+   /* In case we're re-allocating them... */
+   free(surf_state->cpu);
+
+   surf_state->num_states = util_bitcount(aux_usages);
+   surf_state->cpu = calloc(surf_state->num_states, surf_size);
+   surf_state->ref.offset = 0;
+   pipe_resource_reference(&surf_state->ref.res, NULL);
+
+   assert(surf_state->cpu);
+}
+
+/**
+ * Upload the CPU side SURFACE_STATEs into a GPU buffer.
+ */
+static void
+upload_surface_states(struct u_upload_mgr *mgr,
+                      struct iris_surface_state *surf_state)
+{
+   const unsigned surf_size = 4 * GENX(RENDER_SURFACE_STATE_length);
+   const unsigned bytes = surf_state->num_states * surf_size;
+
    void *map =
-      upload_state(mgr, ref, util_bitcount(aux_usages) * surf_size,
-                   SURFACE_STATE_ALIGNMENT);
+      upload_state(mgr, &surf_state->ref, bytes, SURFACE_STATE_ALIGNMENT);
 
-   ref->offset += iris_bo_offset_from_base_address(iris_resource_bo(ref->res));
+   surf_state->ref.offset +=
+      iris_bo_offset_from_base_address(iris_resource_bo(surf_state->ref.res));
 
-   return map;
+   if (map)
+      memcpy(map, surf_state->cpu, bytes);
+}
+
+/**
+ * Update resource addresses in a set of SURFACE_STATE descriptors,
+ * and re-upload them if necessary.
+ */
+static bool
+update_surface_state_addrs(struct u_upload_mgr *mgr,
+                           struct iris_surface_state *surf_state,
+                           struct iris_bo *bo)
+{
+   if (surf_state->bo_address == bo->gtt_offset)
+      return false;
+
+   STATIC_ASSERT(GENX(RENDER_SURFACE_STATE_SurfaceBaseAddress_start) % 64 == 0);
+   STATIC_ASSERT(GENX(RENDER_SURFACE_STATE_SurfaceBaseAddress_bits) == 64);
+
+   uint64_t *ss_addr = (uint64_t *) &surf_state->cpu[GENX(RENDER_SURFACE_STATE_SurfaceBaseAddress_start) / 32];
+
+   /* First, update the CPU copies.  We assume no other fields exist in
+    * the QWord containing Surface Base Address.
+    */
+   for (unsigned i = 0; i < surf_state->num_states; i++) {
+      *ss_addr = *ss_addr - surf_state->bo_address + bo->gtt_offset;
+      ss_addr = ((void *) ss_addr) + SURFACE_STATE_ALIGNMENT;
+   }
+
+   /* Next, upload the updated copies to a GPU buffer. */
+   upload_surface_states(mgr, surf_state);
+
+   surf_state->bo_address = bo->gtt_offset;
+
+   return true;
 }
 
 #if GEN_GEN == 8
@@ -2263,11 +2318,9 @@ iris_create_sampler_view(struct pipe_context *ctx,
 
    isv->res = (struct iris_resource *) tex;
 
-   void *map = alloc_surface_states(ice->state.surface_uploader,
-                                    &isv->surface_state.ref,
-                                    isv->res->aux.sampler_usages);
-   if (!unlikely(map))
-      return NULL;
+   alloc_surface_states(&isv->surface_state, isv->res->aux.sampler_usages);
+
+   isv->surface_state.bo_address = isv->res->bo->gtt_offset;
 
    isl_surf_usage_flags_t usage = ISL_SURF_USAGE_TEXTURE_BIT;
 
@@ -2290,6 +2343,8 @@ iris_create_sampler_view(struct pipe_context *ctx,
       },
       .usage = usage,
    };
+
+   void *map = isv->surface_state.cpu;
 
    /* Fill out SURFACE_STATE for this view. */
    if (tmpl->target != PIPE_BUFFER) {
@@ -2321,6 +2376,8 @@ iris_create_sampler_view(struct pipe_context *ctx,
                                 tmpl->u.buf.offset, tmpl->u.buf.size);
    }
 
+   upload_surface_states(ice->state.surface_uploader, &isv->surface_state);
+
    return &isv->base;
 }
 
@@ -2331,6 +2388,7 @@ iris_sampler_view_destroy(struct pipe_context *ctx,
    struct iris_sampler_view *isv = (void *) state;
    pipe_resource_reference(&state->texture, NULL);
    pipe_resource_reference(&isv->surface_state.ref.res, NULL);
+   free(isv->surface_state.cpu);
    free(isv);
 }
 
@@ -2426,27 +2484,20 @@ iris_create_surface(struct pipe_context *ctx,
       return psurf;
 
 
-   void *map = alloc_surface_states(ice->state.surface_uploader,
-                                    &surf->surface_state.ref,
-                                    res->aux.possible_usages);
-   if (!unlikely(map)) {
-      pipe_resource_reference(&surf->surface_state.ref.res, NULL);
-      return NULL;
-   }
+   alloc_surface_states(&surf->surface_state, res->aux.possible_usages);
+   surf->surface_state.bo_address = res->bo->gtt_offset;
 
 #if GEN_GEN == 8
-   void *map_read = alloc_surface_states(ice->state.surface_uploader,
-                                         &surf->surface_state_read.ref,
-                                         res->aux.possible_usages);
-   if (!unlikely(map_read)) {
-      pipe_resource_reference(&surf->surface_state_read.ref.res, NULL);
-      return NULL;
-   }
+   alloc_surface_states(&surf->surface_state_read, res->aux.possible_usages);
+   surf->surface_state_read.bo_address = res->bo->gtt_offset;
 #endif
 
    if (!isl_format_is_compressed(res->surf.format)) {
       if (iris_resource_unfinished_aux_import(res))
          iris_resource_finish_aux_import(&screen->base, res);
+
+      void *map = surf->surface_state.cpu;
+      UNUSED void *map_read = surf->surface_state_read.cpu;
 
       /* This is a normal surface.  Fill out a SURFACE_STATE for each possible
        * auxiliary surface mode and return the pipe_surface.
@@ -2468,6 +2519,13 @@ iris_create_surface(struct pipe_context *ctx,
          map_read += SURFACE_STATE_ALIGNMENT;
 #endif
       }
+
+      upload_surface_states(ice->state.surface_uploader, &surf->surface_state);
+
+#if GEN_GEN == 8
+      upload_surface_states(ice->state.surface_uploader,
+                            &surf->surface_state_read);
+#endif
 
       return psurf;
    }
@@ -2547,7 +2605,10 @@ iris_create_surface(struct pipe_context *ctx,
       .y_offset_sa = tile_y_sa,
    };
 
-   isl_surf_fill_state_s(&screen->isl_dev, map, &f);
+   isl_surf_fill_state_s(&screen->isl_dev, surf->surface_state.cpu, &f);
+
+   upload_surface_states(ice->state.surface_uploader, &surf->surface_state);
+
    return psurf;
 }
 
@@ -2609,12 +2670,6 @@ iris_set_shader_images(struct pipe_context *ctx,
          const struct pipe_image_view *img = &p_images[i];
          struct iris_resource *res = (void *) img->resource;
 
-         void *map =
-            alloc_surface_states(ice->state.surface_uploader,
-                                 &iv->surface_state.ref, 1 << ISL_AUX_USAGE_NONE);
-         if (!unlikely(map))
-            return;
-
          util_copy_image_view(&iv->base, img);
 
          shs->bound_image_views |= 1 << (start_slot + i);
@@ -2641,6 +2696,11 @@ iris_set_shader_images(struct pipe_context *ctx,
             else
                isl_fmt = isl_lower_storage_image_format(devinfo, isl_fmt);
          }
+
+         alloc_surface_states(&iv->surface_state, 1 << ISL_AUX_USAGE_NONE);
+         iv->surface_state.bo_address = res->bo->gtt_offset;
+
+         void *map = iv->surface_state.cpu;
 
          if (res->base.target != PIPE_BUFFER) {
             struct isl_view view = {
@@ -2683,6 +2743,8 @@ iris_set_shader_images(struct pipe_context *ctx,
             fill_buffer_image_param(&image_params[start_slot + i],
                                     img->format, img->u.buf.size);
          }
+
+         upload_surface_states(ice->state.surface_uploader, &iv->surface_state);
       } else {
          pipe_resource_reference(&iv->base.resource, NULL);
          pipe_resource_reference(&iv->surface_state.ref.res, NULL);
@@ -2762,6 +2824,7 @@ iris_surface_destroy(struct pipe_context *ctx, struct pipe_surface *p_surf)
    pipe_resource_reference(&p_surf->texture, NULL);
    pipe_resource_reference(&surf->surface_state.ref.res, NULL);
    pipe_resource_reference(&surf->surface_state_read.ref.res, NULL);
+   free(surf->surface_state.cpu);
    free(surf);
 }
 
@@ -4437,7 +4500,7 @@ static void
 update_clear_value(struct iris_context *ice,
                    struct iris_batch *batch,
                    struct iris_resource *res,
-                   struct iris_state_ref *state,
+                   struct iris_surface_state *surf_state,
                    unsigned all_aux_modes,
                    struct isl_view *view)
 {
@@ -4454,20 +4517,23 @@ update_clear_value(struct iris_context *ice,
    while (aux_modes) {
       enum isl_aux_usage aux_usage = u_bit_scan(&aux_modes);
 
-      surf_state_update_clear_value(batch, res, state, all_aux_modes,
-                                    aux_usage);
+      surf_state_update_clear_value(batch, res, &surf_state->ref,
+                                    all_aux_modes, aux_usage);
    }
 #elif GEN_GEN == 8
-   pipe_resource_reference(&state->res, NULL);
+   /* TODO: Could update rather than re-filling */
+   alloc_surface_states(surf_state, all_aux_modes);
 
-   void *map = alloc_surface_states(ice->state.surface_uploader,
-                                    state, all_aux_modes);
+   void *map = surf_state->cpu;
+
    while (aux_modes) {
       enum isl_aux_usage aux_usage = u_bit_scan(&aux_modes);
       fill_surface_state(isl_dev, map, res, &res->surf, view, aux_usage,
                          0, 0, 0);
       map += SURFACE_STATE_ALIGNMENT;
    }
+
+   upload_surface_states(ice->state.surface_uploader, surf_state);
 #endif
 }
 
@@ -4503,10 +4569,10 @@ use_surface(struct iris_context *ice,
 
       if (memcmp(&res->aux.clear_color, &surf->clear_color,
                  sizeof(surf->clear_color)) != 0) {
-         update_clear_value(ice, batch, res, &surf->surface_state.ref,
+         update_clear_value(ice, batch, res, &surf->surface_state,
                             res->aux.possible_usages, &surf->view);
          if (GEN_GEN == 8) {
-            update_clear_value(ice, batch, res, &surf->surface_state_read.ref,
+            update_clear_value(ice, batch, res, &surf->surface_state_read,
                                res->aux.possible_usages, &surf->read_view);
          }
          surf->clear_color = res->aux.clear_color;
@@ -4539,7 +4605,7 @@ use_sampler_view(struct iris_context *ice,
          iris_use_pinned_bo(batch, isv->res->aux.clear_color_bo, false);
       if (memcmp(&isv->res->aux.clear_color, &isv->clear_color,
                  sizeof(isv->clear_color)) != 0) {
-         update_clear_value(ice, batch, isv->res, &isv->surface_state.ref,
+         update_clear_value(ice, batch, isv->res, &isv->surface_state,
                             isv->res->aux.sampler_usages, &isv->view);
          isv->clear_color = isv->res->aux.clear_color;
       }
@@ -6338,6 +6404,7 @@ iris_destroy_state(struct iris_context *ice)
       for (int i = 0; i < PIPE_MAX_SHADER_IMAGES; i++) {
          pipe_resource_reference(&shs->image[i].base.resource, NULL);
          pipe_resource_reference(&shs->image[i].surface_state.ref.res, NULL);
+         free(shs->image[i].surface_state.cpu);
       }
       for (int i = 0; i < PIPE_MAX_SHADER_BUFFERS; i++) {
          pipe_resource_reference(&shs->ssbo[i].buffer, NULL);
@@ -6372,7 +6439,6 @@ iris_rebind_buffer(struct iris_context *ice,
                    struct iris_resource *res)
 {
    struct pipe_context *ctx = &ice->ctx;
-   struct iris_screen *screen = (void *) ctx->screen;
    struct iris_genx_state *genx = ice->state.genx;
 
    assert(res->base.target == PIPE_BUFFER);
@@ -6465,16 +6531,10 @@ iris_rebind_buffer(struct iris_context *ice,
          while (bound_sampler_views) {
             const int i = u_bit_scan(&bound_sampler_views);
             struct iris_sampler_view *isv = shs->textures[i];
+            struct iris_bo *bo = isv->res->bo;
 
-            if (res->bo == iris_resource_bo(isv->base.texture)) {
-               void *map = alloc_surface_states(ice->state.surface_uploader,
-                                                &isv->surface_state.ref,
-                                                isv->res->aux.sampler_usages);
-               assert(map);
-               fill_buffer_surface_state(&screen->isl_dev, isv->res, map,
-                                         isv->view.format, isv->view.swizzle,
-                                         isv->base.u.buf.offset,
-                                         isv->base.u.buf.size);
+            if (update_surface_state_addrs(ice->state.surface_uploader,
+                                           &isv->surface_state, bo)) {
                ice->state.dirty |= IRIS_DIRTY_BINDINGS_VS << s;
             }
          }
@@ -6485,9 +6545,11 @@ iris_rebind_buffer(struct iris_context *ice,
          while (bound_image_views) {
             const int i = u_bit_scan(&bound_image_views);
             struct iris_image_view *iv = &shs->image[i];
+            struct iris_bo *bo = iris_resource_bo(iv->base.resource);
 
-            if (res->bo == iris_resource_bo(iv->base.resource)) {
-               iris_set_shader_images(ctx, p_stage, i, 1, &iv->base);
+            if (update_surface_state_addrs(ice->state.surface_uploader,
+                                           &iv->surface_state, bo)) {
+               ice->state.dirty |= IRIS_DIRTY_BINDINGS_VS << s;
             }
          }
       }

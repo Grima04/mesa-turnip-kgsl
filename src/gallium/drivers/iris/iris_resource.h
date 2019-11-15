@@ -183,6 +183,25 @@ struct iris_state_ref {
  * The SURFACE_STATE descriptors for a resource.
  */
 struct iris_surface_state {
+   /**
+    * CPU-side copy of the packed SURFACE_STATE structures, already
+    * aligned so they can be uploaded as a contiguous pile of bytes.
+    *
+    * This can be updated and re-uploaded if (e.g.) addresses need to change.
+    */
+   uint32_t *cpu;
+
+   /**
+    * How many states are there?  (Each aux mode has its own state.)
+    */
+   unsigned num_states;
+
+   /**
+    * Address of the resource (res->bo->gtt_offset).  Note that "Surface
+    * Base Address" may be offset from this value.
+    */
+   uint64_t bo_address;
+
    /** A reference to the GPU buffer holding our uploaded SURFACE_STATE */
    struct iris_state_ref ref;
 };
