@@ -615,6 +615,7 @@ spec/arb_geometry_shader4/preprocessor/enabled-core_vert: skip
 spec/arb_get_program_binary/execution/uniform-after-restore: skip
 spec/arb_gl_spirv/execution: skip
 spec/arb_gl_spirv/execution/uniform: skip
+spec/arb_gl_spirv/execution/xfb: skip
 spec/arb_gl_spirv/linker/uniform: skip
 spec/arb_gpu_shader5/compiler/builtin-functions/fs-gather-comp-float-samplers_frag: skip
 spec/arb_gpu_shader5/compiler/builtin-functions/fs-gather-comp-int-samplers_frag: skip
@@ -5335,7 +5336,7 @@ summary:
        pass:     9617
        fail:        7
       crash:        1
-       skip:     5323
+       skip:     5324
     timeout:        0
        warn:        0
  incomplete:        0
@@ -5344,4 +5345,4 @@ summary:
     changes:        0
       fixes:        0
 regressions:        0
-      total:    14948
+      total:    14949

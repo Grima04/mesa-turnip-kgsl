@@ -57,7 +57,7 @@ apt-get install -y --no-remove \
 
 git clone https://gitlab.freedesktop.org/mesa/piglit.git --single-branch --no-checkout /piglit
 pushd /piglit
-git checkout 7a92b02210dabbba31ae5fd71272ea742346a9c8
+git checkout 594edcc00d55028d4c815f6192ba9885b2340eb6
 patch -p1 <$OLDPWD/.gitlab-ci/piglit/disable-vs_in.diff
 cmake -G Ninja -DCMAKE_BUILD_TYPE=Release
 ninja -j4

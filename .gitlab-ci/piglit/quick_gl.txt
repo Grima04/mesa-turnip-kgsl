@@ -897,6 +897,7 @@ spec/ati_envmap_bumpmap/ati_envmap_bumpmap-bump: skip
 spec/egl 1_4/egl-blob-cache: skip
 spec/egl 1_4/egl-context-priority: skip
 spec/egl 1_4/egl-copy-buffers: fail
+spec/egl 1_4/egl-flush-external: skip
 spec/egl 1_4/egl-gl_oes_egl_image: skip
 spec/egl 1_4/egl-invalid-attr: skip
 spec/egl 1_4/eglcreatepbuffersurface with egl_samples set: skip
@@ -1776,7 +1777,7 @@ summary:
        pass:     4503
        fail:      101
       crash:        2
-       skip:     1667
+       skip:     1668
     timeout:        0
        warn:        2
  incomplete:        0
@@ -1785,4 +1786,4 @@ summary:
     changes:        0
       fixes:        0
 regressions:        0
-      total:     6275
+      total:     6276
