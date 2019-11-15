@@ -1131,12 +1131,9 @@ emit_ubo_read(
 
         midgard_instruction ins = m_ld_ubo_int4(dest, offset);
 
-        assert((offset & 0xF) == 0);
-        offset /= 16;
-
         /* TODO: Don't split */
-        ins.load_store.varying_parameters = (offset & 7) << 7;
-        ins.load_store.address = offset >> 3;
+        ins.load_store.varying_parameters = (offset & 0x7F) << 3;
+        ins.load_store.address = offset >> 7;
         ins.mask = mir_mask_for_intr(instr, true);
 
         if (indirect_offset) {
