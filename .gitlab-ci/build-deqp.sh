@@ -21,6 +21,10 @@ sed -i '/libgbm/d' targets/surfaceless/surfaceless.cmake
 python3 external/fetch_sources.py --insecure
 
 mkdir -p /deqp
+
+# Save the testlog stylesheets:
+cp doc/testlog-stylesheet/testlog.{css,xsl} /deqp
+
 cd /deqp
 cmake -G Ninja \
       -DDEQP_TARGET=surfaceless               \
@@ -36,9 +40,15 @@ for gles in gles2 gles3 gles31; do
         /deqp/mustpass/$gles-master.txt
 done
 
+# Save *some* executor utils, but otherwise strip things down
+# to reduct deqp build size:
+mkdir /deqp/executor.save
+cp /deqp/executor/testlog-to-* /deqp/executor.save
+rm -rf /deqp/executor
+mv /deqp/executor.save /deqp/executor
+
 rm -rf /deqp/external
 rm -rf /deqp/modules/internal
-rm -rf /deqp/executor
 rm -rf /deqp/execserver
 rm -rf /deqp/modules/egl
 rm -rf /deqp/framework
