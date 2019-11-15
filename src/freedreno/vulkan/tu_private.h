@@ -1400,6 +1400,7 @@ struct tu_sampler
    uint32_t state[A6XX_TEX_SAMP_DWORDS];
 
    bool needs_border;
+   VkBorderColor border;
 };
 
 VkResult

@@ -2583,29 +2583,96 @@ tu6_emit_ibo(struct tu_device *device, struct tu_cs *draw_state,
    return tu_cs_end_sub_stream(draw_state, &cs);
 }
 
-static void
+struct PACKED bcolor_entry {
+   uint32_t fp32[4];
+   uint16_t ui16[4];
+   int16_t  si16[4];
+   uint16_t fp16[4];
+   uint16_t rgb565;
+   uint16_t rgb5a1;
+   uint16_t rgba4;
+   uint8_t __pad0[2];
+   uint8_t  ui8[4];
+   int8_t   si8[4];
+   uint32_t rgb10a2;
+   uint32_t z24; /* also s8? */
+   uint16_t srgb[4];      /* appears to duplicate fp16[], but clamped, used for srgb */
+   uint8_t  __pad1[56];
+} border_color[] = {
+   [VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK] = {},
+   [VK_BORDER_COLOR_INT_TRANSPARENT_BLACK] = {},
+   [VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK] = {
+      .fp32[3] = 0x3f800000,
+      .ui16[3] = 0xffff,
+      .si16[3] = 0x7fff,
+      .fp16[3] = 0x3c00,
+      .rgb5a1 = 0x8000,
+      .rgba4 = 0xf000,
+      .ui8[3] = 0xff,
+      .si8[3] = 0x7f,
+      .rgb10a2 = 0xc0000000,
+      .srgb[3] = 0x3c00,
+   },
+   [VK_BORDER_COLOR_INT_OPAQUE_BLACK] = {
+      .fp32[3] = 1,
+      .fp16[3] = 1,
+   },
+   [VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE] = {
+      .fp32[0 ... 3] = 0x3f800000,
+      .ui16[0 ... 3] = 0xffff,
+      .si16[0 ... 3] = 0x7fff,
+      .fp16[0 ... 3] = 0x3c00,
+      .rgb565 = 0xffff,
+      .rgb5a1 = 0xffff,
+      .rgba4 = 0xffff,
+      .ui8[0 ... 3] = 0xff,
+      .si8[0 ... 3] = 0x7f,
+      .rgb10a2 = 0xffffffff,
+      .z24 = 0xffffff,
+      .srgb[0 ... 3] = 0x3c00,
+   },
+   [VK_BORDER_COLOR_INT_OPAQUE_WHITE] = {
+      .fp32[0 ... 3] = 1,
+      .fp16[0 ... 3] = 1,
+   },
+};
+
+static VkResult
 tu6_emit_border_color(struct tu_cmd_buffer *cmd,
                       struct tu_cs *cs)
 {
+   STATIC_ASSERT(sizeof(struct bcolor_entry) == 128);
+
    const struct tu_pipeline *pipeline = cmd->state.pipeline;
+   struct tu_descriptor_state *descriptors_state =
+      &cmd->descriptors[VK_PIPELINE_BIND_POINT_GRAPHICS];
+   const struct tu_descriptor_map *vs_sampler =
+      &pipeline->program.link[MESA_SHADER_VERTEX].sampler_map;
+   const struct tu_descriptor_map *fs_sampler =
+      &pipeline->program.link[MESA_SHADER_FRAGMENT].sampler_map;
+   struct ts_cs_memory ptr;
 
-#define A6XX_BORDER_COLOR_DWORDS (128/4)
-   uint32_t size = A6XX_BORDER_COLOR_DWORDS *
-      (pipeline->program.link[MESA_SHADER_VERTEX].sampler_map.num +
-       pipeline->program.link[MESA_SHADER_FRAGMENT].sampler_map.num) +
-      A6XX_BORDER_COLOR_DWORDS - 1; /* room for alignment */
+   VkResult result = tu_cs_alloc(cmd->device, &cmd->draw_state,
+                                 vs_sampler->num + fs_sampler->num, 128 / 4,
+                                 &ptr);
+   if (result != VK_SUCCESS)
+      return result;
 
-   struct tu_cs border_cs;
-   tu_cs_begin_sub_stream(cmd->device, &cmd->draw_state, size, &border_cs);
+   for (unsigned i = 0; i < vs_sampler->num; i++) {
+      struct tu_sampler *sampler = sampler_ptr(descriptors_state, vs_sampler, i);
+      memcpy(ptr.map, &border_color[sampler->border], 128);
+      ptr.map += 128 / 4;
+   }
 
-   /* TODO: actually fill with border color */
-   for (unsigned i = 0; i < size; i++)
-      tu_cs_emit(&border_cs, 0);
-
-   struct tu_cs_entry entry = tu_cs_end_sub_stream(&cmd->draw_state, &border_cs);
+   for (unsigned i = 0; i < fs_sampler->num; i++) {
+      struct tu_sampler *sampler = sampler_ptr(descriptors_state, fs_sampler, i);
+      memcpy(ptr.map, &border_color[sampler->border], 128);
+      ptr.map += 128 / 4;
+   }
 
    tu_cs_emit_pkt4(cs, REG_A6XX_SP_TP_BORDER_COLOR_BASE_ADDR_LO, 2);
-	tu_cs_emit_qw(cs, align(entry.bo->iova + entry.offset, 128));
+   tu_cs_emit_qw(cs, ptr.iova);
+   return VK_SUCCESS;
 }
 
 static VkResult
@@ -2778,8 +2845,11 @@ tu6_bind_draw_states(struct tu_cmd_buffer *cmd,
                                descriptors_state, MESA_SHADER_FRAGMENT)
          };
 
-      if (needs_border)
-         tu6_emit_border_color(cmd, cs);
+      if (needs_border) {
+         result = tu6_emit_border_color(cmd, cs);
+         if (result != VK_SUCCESS)
+            return result;
+      }
    }
 
    tu_cs_emit_pkt7(cs, CP_SET_DRAW_STATE, 3 * draw_state_group_count);

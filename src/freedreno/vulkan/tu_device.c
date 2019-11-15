@@ -1959,6 +1959,7 @@ tu_init_sampler(struct tu_device *device,
     */
 
    sampler->needs_border = needs_border;
+   sampler->border = pCreateInfo->borderColor;
 }
 
 VkResult
