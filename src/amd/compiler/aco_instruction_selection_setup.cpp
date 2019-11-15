@@ -887,7 +887,7 @@ add_fs_arg(isel_context *ctx, arg_info *args, unsigned &vgpr_idx, fs_input input
    return true;
 }
 
-void add_startpgm(struct isel_context *ctx)
+Pseudo_instruction *add_startpgm(struct isel_context *ctx)
 {
    user_sgpr_info user_sgpr_info;
    bool needs_view_index = needs_view_index_sgpr(ctx);
@@ -1038,7 +1038,10 @@ void add_startpgm(struct isel_context *ctx)
       }
    }
    startpgm->definitions[args.count] = Definition{ctx->program->allocateId(), exec, s2};
+   Pseudo_instruction *instr = startpgm.get();
    ctx->block->instructions.push_back(std::move(startpgm));
+
+   return instr;
 }
 
 int

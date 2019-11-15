@@ -7634,6 +7634,19 @@ static void emit_streamout(isel_context *ctx, unsigned stream)
 
 } /* end namespace */
 
+void split_arguments(isel_context *ctx, Pseudo_instruction *startpgm)
+{
+   /* Split all arguments except for the first (ring_offsets) and the last
+    * (exec) so that the dead channels don't stay live throughout the program.
+    */
+   for (unsigned i = 1; i < startpgm->definitions.size() - 1; i++) {
+      if (startpgm->definitions[i].regClass().size() > 1) {
+         emit_split_vector(ctx, startpgm->definitions[i].getTemp(),
+                           startpgm->definitions[i].regClass().size());
+      }
+   }
+}
+
 void handle_bc_optimize(isel_context *ctx)
 {
    /* needed when SPI_PS_IN_CONTROL.BC_OPTIMIZE_DISABLE is set to 0 */
@@ -7732,8 +7745,10 @@ void select_program(Program *program,
       setup_fp_mode(&ctx, nir);
 
       if (!i) {
-         add_startpgm(&ctx); /* needs to be after init_context() for FS */
+         /* needs to be after init_context() for FS */
+         Pseudo_instruction *startpgm = add_startpgm(&ctx);
          append_logical_start(ctx.block);
+         split_arguments(&ctx, startpgm);
       }
 
       if_context ic;
