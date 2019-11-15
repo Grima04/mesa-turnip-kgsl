@@ -376,7 +376,7 @@ etna_try_blt_blit(struct pipe_context *pctx,
    assert(blit_info->src.level <= src->base.last_level);
    assert(blit_info->dst.level <= dst->base.last_level);
 
-   if (!translate_samples_to_xyscale(src->base.nr_samples, &msaa_xscale, &msaa_yscale, NULL))
+   if (!translate_samples_to_xyscale(src->base.nr_samples, &msaa_xscale, &msaa_yscale))
       return false;
 
    /* The width/height are in pixels; they do not change as a result of

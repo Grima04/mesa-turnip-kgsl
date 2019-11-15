@@ -561,13 +561,8 @@ static bool msaa_config(const struct pipe_resource *src,
    assert(src->nr_samples <= 4);
    assert(dst->nr_samples <= 4);
 
-   translate_samples_to_xyscale(src->nr_samples,
-                                &src_xscale, &src_yscale,
-                                NULL);
-
-   translate_samples_to_xyscale(dst->nr_samples,
-                                &dst_xscale, &dst_yscale,
-                                NULL);
+   translate_samples_to_xyscale(src->nr_samples, &src_xscale, &src_yscale);
+   translate_samples_to_xyscale(dst->nr_samples, &dst_xscale, &dst_yscale);
 
    /* RS does not support upscaling */
    if ((src_xscale < dst_xscale) || (src_yscale < dst_yscale))
