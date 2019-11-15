@@ -65,7 +65,10 @@ void aco_compile_shader(unsigned shader_count,
    std::unique_ptr<aco::Program> program{new aco::Program};
 
    /* Instruction Selection */
-   aco::select_program(program.get(), shader_count, shaders, &config, args);
+   if (args->is_gs_copy_shader)
+      aco::select_gs_copy_shader(program.get(), shaders[0], &config, args);
+   else
+      aco::select_program(program.get(), shader_count, shaders, &config, args);
    if (args->options->dump_preoptir) {
       std::cerr << "After Instruction Selection:\n";
       aco_print_program(program.get(), stderr);
@@ -162,7 +165,7 @@ void aco_compile_shader(unsigned shader_count,
 
    legacy_binary->base.type = RADV_BINARY_TYPE_LEGACY;
    legacy_binary->base.stage = shaders[shader_count-1]->info.stage;
-   legacy_binary->base.is_gs_copy_shader = false;
+   legacy_binary->base.is_gs_copy_shader = args->is_gs_copy_shader;
    legacy_binary->base.total_size = size;
 
    memcpy(legacy_binary->data, code.data(), code.size() * sizeof(uint32_t));

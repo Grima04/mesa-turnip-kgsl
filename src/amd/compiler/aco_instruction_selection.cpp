@@ -25,6 +25,7 @@
 
 #include <algorithm>
 #include <array>
+#include <stack>
 #include <map>
 
 #include "ac_shader_util.h"
@@ -8534,7 +8535,7 @@ static void create_vs_exports(isel_context *ctx)
    if (ctx->num_clip_distances + ctx->num_cull_distances > 4)
       export_vs_varying(ctx, VARYING_SLOT_CLIP_DIST1, true, &next_pos);
 
-   if (ctx->options->key.vs_common_out.export_clip_dists) {
+   if (ctx->export_clip_dists) {
       if (ctx->num_clip_distances + ctx->num_cull_distances > 0)
          export_vs_varying(ctx, VARYING_SLOT_CLIP_DIST0, false, &next_pos);
       if (ctx->num_clip_distances + ctx->num_cull_distances > 4)
@@ -8568,7 +8569,7 @@ static void emit_stream_output(isel_context *ctx,
 
    Temp out[4];
    bool all_undef = true;
-   assert(ctx->stage == vertex_vs);
+   assert(ctx->stage == vertex_vs || ctx->stage == gs_copy_vs);
    for (unsigned i = 0; i < num_comps; i++) {
       out[i] = ctx->vsgs_output.outputs[loc][start + i];
       all_undef = all_undef && !out[i].id();
@@ -8804,13 +8805,24 @@ void setup_fp_mode(isel_context *ctx, nir_shader *shader)
    ctx->block->fp_mode = program->next_fp_mode;
 }
 
+void cleanup_cfg(Program *program)
+{
+   /* create linear_succs/logical_succs */
+   for (Block& BB : program->blocks) {
+      for (unsigned idx : BB.linear_preds)
+         program->blocks[idx].linear_succs.emplace_back(BB.index);
+      for (unsigned idx : BB.logical_preds)
+         program->blocks[idx].logical_succs.emplace_back(BB.index);
+   }
+}
+
 void select_program(Program *program,
                     unsigned shader_count,
                     struct nir_shader *const *shaders,
                     ac_shader_config* config,
                     struct radv_shader_args *args)
 {
-   isel_context ctx = setup_isel_context(program, shader_count, shaders, config, args);
+   isel_context ctx = setup_isel_context(program, shader_count, shaders, config, args, false);
 
    for (unsigned i = 0; i < shader_count; i++) {
       nir_shader *nir = shaders[i];
@@ -8879,12 +8891,162 @@ void select_program(Program *program,
       bld.smem(aco_opcode::s_dcache_wb, false);
    bld.sopp(aco_opcode::s_endpgm);
 
-   /* cleanup CFG */
-   for (Block& BB : program->blocks) {
-      for (unsigned idx : BB.linear_preds)
-         program->blocks[idx].linear_succs.emplace_back(BB.index);
-      for (unsigned idx : BB.logical_preds)
-         program->blocks[idx].logical_succs.emplace_back(BB.index);
+   cleanup_cfg(program);
+}
+
+void select_gs_copy_shader(Program *program, struct nir_shader *gs_shader,
+                           ac_shader_config* config,
+                           struct radv_shader_args *args)
+{
+   isel_context ctx = setup_isel_context(program, 1, &gs_shader, config, args, true);
+
+   program->next_fp_mode.preserve_signed_zero_inf_nan32 = false;
+   program->next_fp_mode.preserve_signed_zero_inf_nan16_64 = false;
+   program->next_fp_mode.must_flush_denorms32 = false;
+   program->next_fp_mode.must_flush_denorms16_64 = false;
+   program->next_fp_mode.care_about_round32 = false;
+   program->next_fp_mode.care_about_round16_64 = false;
+   program->next_fp_mode.denorm16_64 = fp_denorm_keep;
+   program->next_fp_mode.denorm32 = 0;
+   program->next_fp_mode.round32 = fp_round_ne;
+   program->next_fp_mode.round16_64 = fp_round_ne;
+   ctx.block->fp_mode = program->next_fp_mode;
+
+   add_startpgm(&ctx);
+   append_logical_start(ctx.block);
+
+   Builder bld(ctx.program, ctx.block);
+
+   Temp gsvs_ring = bld.smem(aco_opcode::s_load_dwordx4, bld.def(s4), program->private_segment_buffer, Operand(RING_GSVS_VS * 16u));
+
+   Operand stream_id(0u);
+   if (args->shader_info->so.num_outputs)
+      stream_id = bld.sop2(aco_opcode::s_bfe_u32, bld.def(s1), bld.def(s1, scc),
+                           get_arg(&ctx, ctx.args->streamout_config), Operand(0x20018u));
+
+   Temp vtx_offset = bld.vop2(aco_opcode::v_lshlrev_b32, bld.def(v1), Operand(2u), get_arg(&ctx, ctx.args->ac.vertex_id));
+
+   std::stack<Block> endif_blocks;
+
+   for (unsigned stream = 0; stream < 4; stream++) {
+      if (stream_id.isConstant() && stream != stream_id.constantValue())
+         continue;
+
+      unsigned num_components = args->shader_info->gs.num_stream_output_components[stream];
+      if (stream > 0 && (!num_components || !args->shader_info->so.num_outputs))
+         continue;
+
+      memset(ctx.vsgs_output.mask, 0, sizeof(ctx.vsgs_output.mask));
+
+      unsigned BB_if_idx = ctx.block->index;
+      Block BB_endif = Block();
+      if (!stream_id.isConstant()) {
+         /* begin IF */
+         Temp cond = bld.sopc(aco_opcode::s_cmp_eq_u32, bld.def(s1, scc), stream_id, Operand(stream));
+         append_logical_end(ctx.block);
+         ctx.block->kind |= block_kind_uniform;
+         bld.branch(aco_opcode::p_cbranch_z, cond);
+
+         BB_endif.kind |= ctx.block->kind & block_kind_top_level;
+
+         ctx.block = ctx.program->create_and_insert_block();
+         add_edge(BB_if_idx, ctx.block);
+         bld.reset(ctx.block);
+         append_logical_start(ctx.block);
+      }
+
+      unsigned offset = 0;
+      for (unsigned i = 0; i <= VARYING_SLOT_VAR31; ++i) {
+         if (args->shader_info->gs.output_streams[i] != stream)
+            continue;
+
+         unsigned output_usage_mask = args->shader_info->gs.output_usage_mask[i];
+         unsigned length = util_last_bit(output_usage_mask);
+         for (unsigned j = 0; j < length; ++j) {
+            if (!(output_usage_mask & (1 << j)))
+               continue;
+
+            unsigned const_offset = offset * args->shader_info->gs.vertices_out * 16 * 4;
+            Temp voffset = vtx_offset;
+            if (const_offset >= 4096u) {
+               voffset = bld.vadd32(bld.def(v1), Operand(const_offset / 4096u * 4096u), voffset);
+               const_offset %= 4096u;
+            }
+
+            aco_ptr<MUBUF_instruction> mubuf{create_instruction<MUBUF_instruction>(aco_opcode::buffer_load_dword, Format::MUBUF, 3, 1)};
+            mubuf->definitions[0] = bld.def(v1);
+            mubuf->operands[0] = Operand(voffset);
+            mubuf->operands[1] = Operand(gsvs_ring);
+            mubuf->operands[2] = Operand(0u);
+            mubuf->offen = true;
+            mubuf->offset = const_offset;
+            mubuf->glc = true;
+            mubuf->slc = true;
+            mubuf->dlc = args->options->chip_class >= GFX10;
+            mubuf->barrier = barrier_none;
+            mubuf->can_reorder = true;
+
+            ctx.vsgs_output.mask[i] |= 1 << j;
+            ctx.vsgs_output.outputs[i][j] = mubuf->definitions[0].getTemp();
+
+            bld.insert(std::move(mubuf));
+
+            offset++;
+         }
+      }
+
+      if (args->shader_info->so.num_outputs) {
+         emit_streamout(&ctx, stream);
+         bld.reset(ctx.block);
+      }
+
+      if (stream == 0) {
+         create_vs_exports(&ctx);
+         ctx.block->kind |= block_kind_export_end;
+      }
+
+      if (!stream_id.isConstant()) {
+         append_logical_end(ctx.block);
+
+         /* branch from then block to endif block */
+         bld.branch(aco_opcode::p_branch);
+         add_edge(ctx.block->index, &BB_endif);
+         ctx.block->kind |= block_kind_uniform;
+
+         /* emit else block */
+         ctx.block = ctx.program->create_and_insert_block();
+         add_edge(BB_if_idx, ctx.block);
+         bld.reset(ctx.block);
+         append_logical_start(ctx.block);
+
+         endif_blocks.push(std::move(BB_endif));
+      }
    }
+
+   while (!endif_blocks.empty()) {
+      Block BB_endif = std::move(endif_blocks.top());
+      endif_blocks.pop();
+
+      Block *BB_else = ctx.block;
+
+      append_logical_end(BB_else);
+      /* branch from else block to endif block */
+      bld.branch(aco_opcode::p_branch);
+      add_edge(BB_else->index, &BB_endif);
+      BB_else->kind |= block_kind_uniform;
+
+      /** emit endif merge block */
+      ctx.block = program->insert_block(std::move(BB_endif));
+      bld.reset(ctx.block);
+      append_logical_start(ctx.block);
+   }
+
+   program->config->float_mode = program->blocks[0].fp_mode.val;
+
+   append_logical_end(ctx.block);
+   ctx.block->kind |= block_kind_uniform;
+   bld.sopp(aco_opcode::s_endpgm);
+
+   cleanup_cfg(program);
 }
 }
