@@ -1787,6 +1787,39 @@ nir_index_instrs(nir_function_impl *impl)
    return index;
 }
 
+static void
+index_var_list(struct exec_list *list)
+{
+   unsigned next_index = 0;
+   nir_foreach_variable(var, list)
+      var->index = next_index++;
+}
+
+void
+nir_index_vars(nir_shader *shader, nir_function_impl *impl, nir_variable_mode modes)
+{
+   if ((modes & nir_var_function_temp) && impl)
+      index_var_list(&impl->locals);
+
+   if (modes & nir_var_shader_temp)
+      index_var_list(&shader->globals);
+
+   if (modes & nir_var_shader_in)
+      index_var_list(&shader->inputs);
+
+   if (modes & nir_var_shader_out)
+      index_var_list(&shader->outputs);
+
+   if (modes & (nir_var_uniform | nir_var_mem_ubo | nir_var_mem_ssbo))
+      index_var_list(&shader->uniforms);
+
+   if (modes & nir_var_mem_shared)
+      index_var_list(&shader->shared);
+
+   if (modes & nir_var_system_value)
+      index_var_list(&shader->system_values);
+}
+
 static nir_instr *
 cursor_next_instr(nir_cursor cursor)
 {
