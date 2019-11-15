@@ -283,9 +283,27 @@ mir_srcsize(midgard_instruction *ins, unsigned i)
         return mode;
 }
 
+midgard_reg_mode
+mir_mode_for_destsize(unsigned size)
+{
+        switch (size) {
+        case 8:
+                return midgard_reg_mode_8;
+        case 16:
+                return midgard_reg_mode_16;
+        case 32:
+                return midgard_reg_mode_32;
+        case 64:
+                return midgard_reg_mode_64;
+        default:
+                unreachable("Unknown destination size");
+        }
+}
+
+
 /* Converts per-component mask to a byte mask */
 
-static uint16_t
+uint16_t
 mir_to_bytemask(midgard_reg_mode mode, unsigned mask)
 {
         switch (mode) {
