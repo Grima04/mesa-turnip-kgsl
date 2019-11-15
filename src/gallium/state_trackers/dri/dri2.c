@@ -547,6 +547,7 @@ dri2_allocate_textures(struct dri_context *ctx,
          whandle.handle = buf->name;
          whandle.stride = buf->pitch;
          whandle.offset = 0;
+         whandle.format = format;
          whandle.modifier = DRM_FORMAT_MOD_INVALID;
          if (screen->can_share_buffer)
             whandle.type = WINSYS_HANDLE_TYPE_SHARED;
@@ -820,6 +821,7 @@ dri2_create_image_from_name(__DRIscreen *_screen,
    memset(&whandle, 0, sizeof(whandle));
    whandle.type = WINSYS_HANDLE_TYPE_SHARED;
    whandle.handle = name;
+   whandle.format = map->pipe_format;
    whandle.modifier = DRM_FORMAT_MOD_INVALID;
 
    whandle.stride = pitch * util_format_get_blocksize(map->pipe_format);
@@ -921,6 +923,7 @@ dri2_create_image_from_fd(__DRIscreen *_screen,
       whandles[i].handle = (unsigned)fds[fdnum];
       whandles[i].stride = (unsigned)strides[index];
       whandles[i].offset = (unsigned)offsets[index];
+      whandles[i].format = map->pipe_format;
       whandles[i].modifier = modifier;
       whandles[i].plane = index;
    }
@@ -1311,6 +1314,7 @@ dri2_from_names(__DRIscreen *screen, int width, int height, int format,
    whandle.handle = names[0];
    whandle.stride = strides[0];
    whandle.offset = offsets[0];
+   whandle.format = map->pipe_format;
    whandle.modifier = DRM_FORMAT_MOD_INVALID;
 
    img = dri2_create_image_from_winsys(screen, width, height, map,
