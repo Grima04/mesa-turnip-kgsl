@@ -442,7 +442,8 @@ struct radv_shader_variant *
 radv_create_gs_copy_shader(struct radv_device *device, struct nir_shader *nir,
 			   struct radv_shader_info *info,
 			   struct radv_shader_binary **binary_out,
-			   bool multiview,  bool keep_shader_info);
+			   bool multiview,  bool keep_shader_info,
+			   bool use_aco);
 
 void
 radv_shader_variant_destroy(struct radv_device *device,

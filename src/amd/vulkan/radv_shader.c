@@ -1214,14 +1214,15 @@ radv_create_gs_copy_shader(struct radv_device *device,
 			   struct radv_shader_info *info,
 			   struct radv_shader_binary **binary_out,
 			   bool keep_shader_info,
-			   bool multiview)
+			   bool multiview, bool use_aco)
 {
 	struct radv_nir_compiler_options options = {0};
 
+	options.explicit_scratch_args = use_aco;
 	options.key.has_multiview_view_index = multiview;
 
 	return shader_variant_compile(device, NULL, &shader, 1, MESA_SHADER_VERTEX,
-				      info, &options, true, keep_shader_info, false, binary_out);
+				      info, &options, true, keep_shader_info, use_aco, binary_out);
 }
 
 void
