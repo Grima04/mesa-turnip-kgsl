@@ -452,6 +452,7 @@ allocate_registers(compiler_context *ctx, bool *spilled)
         }
 
         unsigned *found_class = calloc(sizeof(unsigned), ctx->temp_count);
+        unsigned *min_alignment = calloc(sizeof(unsigned), ctx->temp_count);
 
         mir_foreach_instr_global(ctx, ins) {
                 if (ins->dest >= SSA_FIXED_MINIMUM) continue;
@@ -465,17 +466,21 @@ allocate_registers(compiler_context *ctx, bool *spilled)
                 int dest = ins->dest;
                 found_class[dest] = MAX2(found_class[dest], class);
 
-                lcra_set_alignment(l, dest, 2); /* (1 << 2) = 4 */
-
                 /* XXX: Ensure swizzles align the right way with more LCRA constraints? */
                 if (ins->type == TAG_ALU_4 && ins->alu.reg_mode != midgard_reg_mode_32)
-                        lcra_set_alignment(l, dest, 3); /* (1 << 3) = 8 */
+                        min_alignment[dest] = 3; /* (1 << 3) = 8 */
+
+                if (ins->type == TAG_LOAD_STORE_4 && ins->load_64)
+                        min_alignment[dest] = 3;
         }
 
-        for (unsigned i = 0; i < ctx->temp_count; ++i)
+        for (unsigned i = 0; i < ctx->temp_count; ++i) {
+                lcra_set_alignment(l, i, min_alignment[i] ? min_alignment[i] : 2);
                 lcra_restrict_range(l, i, (found_class[i] + 1) * 4);
+        }
         
         free(found_class);
+        free(min_alignment);
 
         /* Next, we'll determine semantic class. We default to zero (work).
          * But, if we're used with a special operation, that will force us to a
