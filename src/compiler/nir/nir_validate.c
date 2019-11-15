@@ -126,6 +126,13 @@ static void validate_src(nir_src *src, validate_state *state,
                          unsigned bit_sizes, unsigned num_components);
 
 static void
+validate_num_components(validate_state *state, unsigned num_components)
+{
+   validate_assert(state, num_components >= 1 &&
+                          num_components <= 4);
+}
+
+static void
 validate_reg_src(nir_src *src, validate_state *state,
                  unsigned bit_sizes, unsigned num_components)
 {
@@ -275,10 +282,7 @@ validate_ssa_def(nir_ssa_def *def, validate_state *state)
    BITSET_SET(state->ssa_defs_found, def->index);
 
    validate_assert(state, def->parent_instr == state->instr);
-
-   validate_assert(state, (def->num_components <= 4) ||
-                          (def->num_components == 8) ||
-                          (def->num_components == 16));
+   validate_num_components(state, def->num_components);
 
    list_validate(&def->uses);
    nir_foreach_use(src, def) {
@@ -569,11 +573,15 @@ validate_intrinsic_instr(nir_intrinsic_instr *instr, validate_state *state)
       break;
    }
 
-   unsigned num_srcs = nir_intrinsic_infos[instr->intrinsic].num_srcs;
+   if (instr->num_components > 0)
+      validate_num_components(state, instr->num_components);
+
+   const nir_intrinsic_info *info = &nir_intrinsic_infos[instr->intrinsic];
+   unsigned num_srcs = info->num_srcs;
    for (unsigned i = 0; i < num_srcs; i++) {
       unsigned components_read = nir_intrinsic_src_components(instr, i);
 
-      validate_assert(state, components_read > 0);
+      validate_num_components(state, components_read);
 
       validate_src(&instr->src[i], state, src_bit_sizes[i], components_read);
    }
@@ -582,8 +590,7 @@ validate_intrinsic_instr(nir_intrinsic_instr *instr, validate_state *state)
       unsigned components_written = nir_intrinsic_dest_components(instr);
       unsigned bit_sizes = nir_intrinsic_infos[instr->intrinsic].dest_bit_sizes;
 
-      validate_assert(state, components_written > 0);
-
+      validate_num_components(state, components_written);
       if (dest_bit_size && bit_sizes)
          validate_assert(state, dest_bit_size & bit_sizes);
       else
@@ -987,6 +994,7 @@ prevalidate_reg_decl(nir_register *reg, validate_state *state)
 {
    validate_assert(state, reg->index < state->impl->reg_alloc);
    validate_assert(state, !BITSET_TEST(state->regs_found, reg->index));
+   validate_num_components(state, reg->num_components);
    BITSET_SET(state->regs_found, reg->index);
 
    list_validate(&reg->uses);
