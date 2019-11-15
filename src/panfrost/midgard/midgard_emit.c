@@ -388,6 +388,14 @@ emit_binary_bundle(compiler_context *ctx,
                         mir_pack_ldst_mask(bundle->instructions[i]);
 
                         mir_pack_swizzle_ldst(bundle->instructions[i]);
+
+                        /* Apply a constant offset */
+                        unsigned offset = bundle->instructions[i]->constants[0];
+
+                        if (offset) {
+                                bundle->instructions[i]->load_store.varying_parameters |= (offset & 0x7F) << 3;
+                                bundle->instructions[i]->load_store.address |= (offset >> 7);
+                        }
                 }
 
                 memcpy(&current64, &bundle->instructions[0]->load_store, sizeof(current64));

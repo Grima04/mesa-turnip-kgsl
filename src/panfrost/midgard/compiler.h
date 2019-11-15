@@ -517,7 +517,6 @@ bool mir_special_index(compiler_context *ctx, unsigned idx);
 unsigned mir_use_count(compiler_context *ctx, unsigned value);
 bool mir_is_written_before(compiler_context *ctx, midgard_instruction *ins, unsigned node);
 uint16_t mir_bytemask_of_read_components(midgard_instruction *ins, unsigned node);
-unsigned mir_ubo_shift(midgard_load_store_op op);
 midgard_reg_mode mir_typesize(midgard_instruction *ins);
 midgard_reg_mode mir_srcsize(midgard_instruction *ins, unsigned i);
 unsigned mir_bytes_for_mode(midgard_reg_mode mode);

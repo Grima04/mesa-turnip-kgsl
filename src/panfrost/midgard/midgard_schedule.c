@@ -1169,15 +1169,13 @@ v_load_store_scratch(
                         /* For register spilling - to thread local storage */
                         .arg_1 = 0xEA,
                         .arg_2 = 0x1E,
-
-                        /* Splattered across, TODO combine logically */
-                        .varying_parameters = (byte & 0x1FF) << 1,
-                        .address = (byte >> 9)
                 },
 
                 /* If we spill an unspill, RA goes into an infinite loop */
                 .no_spill = true
         };
+
+        ins.constants[0] = byte;
 
        if (is_store) {
                 /* r0 = r26, r1 = r27 */
