@@ -2009,8 +2009,7 @@ to upconvert to 32b float internally?
 	</enum>
 
 	<bitset name="a6xx_2d_blit_cntl" inline="yes">
-		<bitfield name="ROTATE" low="0" high="1" type="a6xx_rotation"/>
-		<bitfield name="HORIZONTAL_FLIP" low="2" high="2" type="boolean"/>
+		<bitfield name="ROTATE" low="0" high="2" type="a6xx_rotation"/>
 		<bitfield name="SOLID_COLOR" pos="7" type="boolean"/>
 		<bitfield name="COLOR_FORMAT" low="8" high="15" type="a6xx_color_fmt"/>
 		<bitfield name="SCISSOR" pos="16" type="boolean"/>
