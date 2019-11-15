@@ -61,9 +61,9 @@ apt-get install -y --no-remove \
 
 . .gitlab-ci/build-cts-runner.sh
 
-############### Build dEQP
+############### Build dEQP GL
 
-. .gitlab-ci/build-deqp.sh
+. .gitlab-ci/build-deqp-gl.sh
 
 
 ############### Uninstall the build software
