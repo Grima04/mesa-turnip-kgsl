@@ -505,7 +505,7 @@ typedef struct nir_variable {
    } data;
 
    /* Number of nir_variable_data members */
-   unsigned num_members;
+   uint16_t num_members;
 
    /**
     * Built-in state that backs this uniform
@@ -519,7 +519,7 @@ typedef struct nir_variable {
     * \c state_slots will be \c NULL.
     */
    /*@{*/
-   unsigned num_state_slots;    /**< Number of state slots used */
+   uint16_t num_state_slots;    /**< Number of state slots used */
    nir_state_slot *state_slots;  /**< State descriptors. */
    /*@}*/
 
