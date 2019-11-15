@@ -2115,8 +2115,13 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
                   Definition(dst), Operand(0u), src).def(0).setHint(vcc);
       } else {
          assert(src.regClass() == s1 || src.regClass() == s2);
-         Temp tmp = bld.sopc(src.size() == 2 ? aco_opcode::s_cmp_lg_u64 : aco_opcode::s_cmp_lg_u32,
-                             bld.scc(bld.def(s1)), Operand(0u), src);
+         Temp tmp;
+         if (src.regClass() == s2 && ctx->program->chip_class <= GFX7) {
+            tmp = bld.sop2(aco_opcode::s_or_b64, bld.def(s2), bld.def(s1, scc), Operand(0u), src).def(1).getTemp();
+         } else {
+            tmp = bld.sopc(src.size() == 2 ? aco_opcode::s_cmp_lg_u64 : aco_opcode::s_cmp_lg_u32,
+                           bld.scc(bld.def(s1)), Operand(0u), src);
+         }
          bool_to_vector_condition(ctx, tmp, dst);
       }
       break;
