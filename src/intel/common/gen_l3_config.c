@@ -371,6 +371,10 @@ unsigned
 gen_get_l3_config_urb_size(const struct gen_device_info *devinfo,
                            const struct gen_l3_config *cfg)
 {
+   /* We don't have to program the URB size in DG1, it's a fixed value. */
+   if (devinfo->is_dg1)
+      return devinfo->urb.size;
+
    /* From the SKL "L3 Allocation and Programming" documentation:
     *
     * "URB is limited to 1008KB due to programming restrictions.  This is not
