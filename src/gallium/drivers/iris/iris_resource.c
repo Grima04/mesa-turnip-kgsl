@@ -994,6 +994,7 @@ iris_resource_from_handle(struct pipe_screen *pscreen,
    }
    assert(mod_inf);
 
+   res->external_format = whandle->format;
    res->mod_info = mod_inf;
 
    isl_surf_usage_flags_t isl_usage = pipe_bind_to_isl_usage(templ->bind);
@@ -1005,7 +1006,8 @@ iris_resource_from_handle(struct pipe_screen *pscreen,
    if (templ->target == PIPE_BUFFER) {
       res->surf.tiling = ISL_TILING_LINEAR;
    } else {
-      if (whandle->modifier == DRM_FORMAT_MOD_INVALID || whandle->plane == 0) {
+      /* Create a surface for each plane specified by the external format. */
+      if (whandle->plane < util_format_get_num_planes(whandle->format)) {
          UNUSED const bool isl_surf_created_successfully =
             isl_surf_init(&screen->isl_dev, &res->surf,
                           .dim = target_to_isl_surf_dim(templ->target),
@@ -1183,6 +1185,8 @@ iris_resource_get_handle(struct pipe_screen *pscreen,
       whandle->stride = res->surf.row_pitch_B;
       bo = res->bo;
    }
+
+   whandle->format = res->external_format;
    whandle->modifier =
       res->mod_info ? res->mod_info->modifier
                     : tiling_to_modifier(res->bo->tiling_mode);
