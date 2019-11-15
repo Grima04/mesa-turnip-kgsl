@@ -77,9 +77,6 @@ struct isel_context {
    /* FS inputs */
    Temp persp_centroid, linear_centroid;
 
-   /* VS inputs */
-   bool needs_instance_id;
-
    /* GS inputs */
    Temp gs_wave_id;
 
@@ -687,8 +684,6 @@ setup_vs_variables(isel_context *ctx, nir_shader *nir)
 
       memset(outinfo->vs_output_param_offset, AC_EXP_PARAM_UNDEFINED,
              sizeof(outinfo->vs_output_param_offset));
-
-      ctx->needs_instance_id = ctx->program->info->vs.needs_instance_id;
 
       bool export_clip_dists = ctx->options->key.vs_common_out.export_clip_dists;
 

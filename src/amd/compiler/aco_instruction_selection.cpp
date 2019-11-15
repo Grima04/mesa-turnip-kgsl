@@ -3397,7 +3397,6 @@ void visit_load_input(isel_context *ctx, nir_intrinsic_instr *instr)
          uint32_t divisor = ctx->options->key.vs.instance_rate_divisors[location];
          Temp start_instance = get_arg(ctx, ctx->args->ac.start_instance);
          if (divisor) {
-            ctx->needs_instance_id = true;
             Temp instance_id = get_arg(ctx, ctx->args->ac.instance_id);
             if (divisor != 1) {
                Temp divided = bld.tmp(v1);
