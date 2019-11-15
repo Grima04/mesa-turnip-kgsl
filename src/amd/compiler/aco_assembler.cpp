@@ -595,14 +595,14 @@ void emit_block(asm_context& ctx, std::vector<uint32_t>& out, Block& block)
 
 void fix_exports(asm_context& ctx, std::vector<uint32_t>& out, Program* program)
 {
-   for (int idx = program->blocks.size() - 1; idx >= 0; idx--) {
-      Block& block = program->blocks[idx];
+   for (Block& block : program->blocks) {
+      if (!(block.kind & block_kind_export_end))
+         continue;
       std::vector<aco_ptr<Instruction>>::reverse_iterator it = block.instructions.rbegin();
-      bool endBlock = false;
       bool exported = false;
       while ( it != block.instructions.rend())
       {
-         if ((*it)->format == Format::EXP && endBlock) {
+         if ((*it)->format == Format::EXP) {
             Export_instruction* exp = static_cast<Export_instruction*>((*it).get());
             if (program->stage & hw_vs) {
                if (exp->dest >= V_008DFC_SQ_EXP_POS && exp->dest <= (V_008DFC_SQ_EXP_POS + 3)) {
@@ -618,14 +618,9 @@ void fix_exports(asm_context& ctx, std::vector<uint32_t>& out, Program* program)
             }
          } else if ((*it)->definitions.size() && (*it)->definitions[0].physReg() == exec)
             break;
-         else if ((*it)->opcode == aco_opcode::s_endpgm) {
-            if (endBlock)
-               break;
-            endBlock = true;
-         }
          ++it;
       }
-      if (!endBlock || exported)
+      if (exported)
          continue;
       /* we didn't find an Export instruction and have to insert a null export */
       aco_ptr<Export_instruction> exp{create_instruction<Export_instruction>(aco_opcode::exp, Format::EXP, 4, 0)};
@@ -639,7 +634,7 @@ void fix_exports(asm_context& ctx, std::vector<uint32_t>& out, Program* program)
          exp->dest = 9; /* NULL */
       else
          exp->dest = V_008DFC_SQ_EXP_POS;
-      /* insert the null export 1 instruction before endpgm */
+      /* insert the null export 1 instruction before branch/endpgm */
       block.instructions.insert(block.instructions.end() - 1, std::move(exp));
    }
 }
