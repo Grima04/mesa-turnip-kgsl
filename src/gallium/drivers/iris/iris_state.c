@@ -2141,11 +2141,11 @@ get_rt_read_isl_surf(const struct gen_device_info *devinfo,
                      struct iris_resource *res,
                      enum pipe_texture_target target,
                      struct isl_view *view,
+                     uint32_t *offset_to_tile,
                      uint32_t *tile_x_sa,
                      uint32_t *tile_y_sa,
                      struct isl_surf *surf)
 {
-
    *surf = res->surf;
 
    const enum isl_dim_layout dim_layout =
@@ -2168,9 +2168,9 @@ get_rt_read_isl_surf(const struct gen_device_info *devinfo,
    assert(view->levels == 1 && view->array_len == 1);
    assert(*tile_x_sa == 0 && *tile_y_sa == 0);
 
-   res->offset += iris_resource_get_tile_offsets(res, view->base_level,
-                                            view->base_array_layer,
-                                            tile_x_sa, tile_y_sa);
+   *offset_to_tile = iris_resource_get_tile_offsets(res, view->base_level,
+                                                    view->base_array_layer,
+                                                    tile_x_sa, tile_y_sa);
    const unsigned l = view->base_level;
 
    surf->logical_level0_px.width = minify(surf->logical_level0_px.width, l);
@@ -2195,6 +2195,7 @@ fill_surface_state(struct isl_device *isl_dev,
                    struct isl_surf *surf,
                    struct isl_view *view,
                    unsigned aux_usage,
+                   uint32_t extra_main_offset,
                    uint32_t tile_x_sa,
                    uint32_t tile_y_sa)
 {
@@ -2202,7 +2203,7 @@ fill_surface_state(struct isl_device *isl_dev,
       .surf = surf,
       .view = view,
       .mocs = mocs(res->bo, isl_dev),
-      .address = res->bo->gtt_offset + res->offset,
+      .address = res->bo->gtt_offset + res->offset + extra_main_offset,
       .x_offset_sa = tile_x_sa,
       .y_offset_sa = tile_y_sa,
    };
@@ -2310,7 +2311,7 @@ iris_create_sampler_view(struct pipe_context *ctx,
           * surface state with HiZ.
           */
          fill_surface_state(&screen->isl_dev, map, isv->res, &isv->res->surf,
-                            &isv->view, aux_usage, 0, 0);
+                            &isv->view, aux_usage, 0, 0, 0);
 
          map += SURFACE_STATE_ALIGNMENT;
       }
@@ -2452,25 +2453,18 @@ iris_create_surface(struct pipe_context *ctx,
        */
       unsigned aux_modes = res->aux.possible_usages;
       while (aux_modes) {
-#if GEN_GEN == 8
-         uint32_t offset = res->offset;
-#endif
          enum isl_aux_usage aux_usage = u_bit_scan(&aux_modes);
          fill_surface_state(&screen->isl_dev, map, res, &res->surf,
-                            view, aux_usage, 0, 0);
+                            view, aux_usage, 0, 0, 0);
          map += SURFACE_STATE_ALIGNMENT;
 
 #if GEN_GEN == 8
          struct isl_surf surf;
-         uint32_t tile_x_sa = 0, tile_y_sa = 0;
+         uint32_t offset_to_tile = 0, tile_x_sa = 0, tile_y_sa = 0;
          get_rt_read_isl_surf(devinfo, res, target, read_view,
-                              &tile_x_sa, &tile_y_sa, &surf);
+                              &offset_to_tile, &tile_x_sa, &tile_y_sa, &surf);
          fill_surface_state(&screen->isl_dev, map_read, res, &surf, read_view,
-                            aux_usage, tile_x_sa, tile_y_sa);
-         /* Restore offset because we change offset in case of handling
-          * non_coherent fb fetch
-          */
-         res->offset = offset;
+                            aux_usage, offset_to_tile, tile_x_sa, tile_y_sa);
          map_read += SURFACE_STATE_ALIGNMENT;
 #endif
       }
@@ -2670,7 +2664,7 @@ iris_set_shader_images(struct pipe_context *ctx,
                   enum isl_aux_usage usage = u_bit_scan(&aux_modes);
 
                   fill_surface_state(&screen->isl_dev, map, res, &res->surf,
-                                     &view, usage, 0, 0);
+                                     &view, usage, 0, 0, 0);
 
                   map += SURFACE_STATE_ALIGNMENT;
                }
@@ -4470,7 +4464,8 @@ update_clear_value(struct iris_context *ice,
                                     state, all_aux_modes);
    while (aux_modes) {
       enum isl_aux_usage aux_usage = u_bit_scan(&aux_modes);
-      fill_surface_state(isl_dev, map, res, &res->surf, view, aux_usage, 0, 0);
+      fill_surface_state(isl_dev, map, res, &res->surf, view, aux_usage,
+                         0, 0, 0);
       map += SURFACE_STATE_ALIGNMENT;
    }
 #endif
