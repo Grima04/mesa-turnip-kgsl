@@ -180,6 +180,14 @@ struct iris_state_ref {
 };
 
 /**
+ * The SURFACE_STATE descriptors for a resource.
+ */
+struct iris_surface_state {
+   /** A reference to the GPU buffer holding our uploaded SURFACE_STATE */
+   struct iris_state_ref ref;
+};
+
+/**
  * Gallium CSO for sampler views (texture views).
  *
  * In addition to the normal pipe_resource, this adds an ISL view
@@ -200,7 +208,7 @@ struct iris_sampler_view {
    struct iris_resource *res;
 
    /** The resource (BO) holding our SURFACE_STATE. */
-   struct iris_state_ref surface_state;
+   struct iris_surface_state surface_state;
 };
 
 /**
@@ -210,7 +218,7 @@ struct iris_image_view {
    struct pipe_image_view base;
 
    /** The resource (BO) holding our SURFACE_STATE. */
-   struct iris_state_ref surface_state;
+   struct iris_surface_state surface_state;
 };
 
 /**
@@ -226,9 +234,9 @@ struct iris_surface {
    union isl_color_value clear_color;
 
    /** The resource (BO) holding our SURFACE_STATE. */
-   struct iris_state_ref surface_state;
+   struct iris_surface_state surface_state;
    /** The resource (BO) holding our SURFACE_STATE for read. */
-   struct iris_state_ref surface_state_read;
+   struct iris_surface_state surface_state_read;
 };
 
 /**

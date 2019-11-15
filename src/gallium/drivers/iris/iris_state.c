@@ -2264,7 +2264,7 @@ iris_create_sampler_view(struct pipe_context *ctx,
    isv->res = (struct iris_resource *) tex;
 
    void *map = alloc_surface_states(ice->state.surface_uploader,
-                                    &isv->surface_state,
+                                    &isv->surface_state.ref,
                                     isv->res->aux.sampler_usages);
    if (!unlikely(map))
       return NULL;
@@ -2330,7 +2330,7 @@ iris_sampler_view_destroy(struct pipe_context *ctx,
 {
    struct iris_sampler_view *isv = (void *) state;
    pipe_resource_reference(&state->texture, NULL);
-   pipe_resource_reference(&isv->surface_state.res, NULL);
+   pipe_resource_reference(&isv->surface_state.ref.res, NULL);
    free(isv);
 }
 
@@ -2427,19 +2427,19 @@ iris_create_surface(struct pipe_context *ctx,
 
 
    void *map = alloc_surface_states(ice->state.surface_uploader,
-                                    &surf->surface_state,
+                                    &surf->surface_state.ref,
                                     res->aux.possible_usages);
    if (!unlikely(map)) {
-      pipe_resource_reference(&surf->surface_state.res, NULL);
+      pipe_resource_reference(&surf->surface_state.ref.res, NULL);
       return NULL;
    }
 
 #if GEN_GEN == 8
    void *map_read = alloc_surface_states(ice->state.surface_uploader,
-                                         &surf->surface_state_read,
+                                         &surf->surface_state_read.ref,
                                          res->aux.possible_usages);
    if (!unlikely(map_read)) {
-      pipe_resource_reference(&surf->surface_state_read.res, NULL);
+      pipe_resource_reference(&surf->surface_state_read.ref.res, NULL);
       return NULL;
    }
 #endif
@@ -2611,7 +2611,7 @@ iris_set_shader_images(struct pipe_context *ctx,
 
          void *map =
             alloc_surface_states(ice->state.surface_uploader,
-                                 &iv->surface_state, 1 << ISL_AUX_USAGE_NONE);
+                                 &iv->surface_state.ref, 1 << ISL_AUX_USAGE_NONE);
          if (!unlikely(map))
             return;
 
@@ -2685,7 +2685,7 @@ iris_set_shader_images(struct pipe_context *ctx,
          }
       } else {
          pipe_resource_reference(&iv->base.resource, NULL);
-         pipe_resource_reference(&iv->surface_state.res, NULL);
+         pipe_resource_reference(&iv->surface_state.ref.res, NULL);
          fill_default_image_param(&image_params[start_slot + i]);
       }
    }
@@ -2760,8 +2760,8 @@ iris_surface_destroy(struct pipe_context *ctx, struct pipe_surface *p_surf)
 {
    struct iris_surface *surf = (void *) p_surf;
    pipe_resource_reference(&p_surf->texture, NULL);
-   pipe_resource_reference(&surf->surface_state.res, NULL);
-   pipe_resource_reference(&surf->surface_state_read.res, NULL);
+   pipe_resource_reference(&surf->surface_state.ref.res, NULL);
+   pipe_resource_reference(&surf->surface_state_read.ref.res, NULL);
    free(surf);
 }
 
@@ -4491,9 +4491,9 @@ use_surface(struct iris_context *ice,
 
    iris_use_pinned_bo(batch, iris_resource_bo(p_surf->texture), writeable);
    if (GEN_GEN == 8 && is_read_surface) {
-      iris_use_pinned_bo(batch, iris_resource_bo(surf->surface_state_read.res), false);
+      iris_use_pinned_bo(batch, iris_resource_bo(surf->surface_state_read.ref.res), false);
    } else {
-      iris_use_pinned_bo(batch, iris_resource_bo(surf->surface_state.res), false);
+      iris_use_pinned_bo(batch, iris_resource_bo(surf->surface_state.ref.res), false);
    }
 
    if (res->aux.bo) {
@@ -4503,18 +4503,19 @@ use_surface(struct iris_context *ice,
 
       if (memcmp(&res->aux.clear_color, &surf->clear_color,
                  sizeof(surf->clear_color)) != 0) {
-         update_clear_value(ice, batch, res, &surf->surface_state,
+         update_clear_value(ice, batch, res, &surf->surface_state.ref,
                             res->aux.possible_usages, &surf->view);
          if (GEN_GEN == 8) {
-            update_clear_value(ice, batch, res, &surf->surface_state_read,
+            update_clear_value(ice, batch, res, &surf->surface_state_read.ref,
                                res->aux.possible_usages, &surf->read_view);
          }
          surf->clear_color = res->aux.clear_color;
       }
    }
 
-   offset = (GEN_GEN == 8 && is_read_surface) ? surf->surface_state_read.offset
-                                              : surf->surface_state.offset;
+   offset = (GEN_GEN == 8 && is_read_surface)
+               ? surf->surface_state_read.ref.offset
+               : surf->surface_state.ref.offset;
 
    return offset +
           surf_state_offset_for_aux(res, res->aux.possible_usages, aux_usage);
@@ -4530,7 +4531,7 @@ use_sampler_view(struct iris_context *ice,
       iris_resource_texture_aux_usage(ice, isv->res, isv->view.format, 0);
 
    iris_use_pinned_bo(batch, isv->res->bo, false);
-   iris_use_pinned_bo(batch, iris_resource_bo(isv->surface_state.res), false);
+   iris_use_pinned_bo(batch, iris_resource_bo(isv->surface_state.ref.res), false);
 
    if (isv->res->aux.bo) {
       iris_use_pinned_bo(batch, isv->res->aux.bo, false);
@@ -4538,13 +4539,13 @@ use_sampler_view(struct iris_context *ice,
          iris_use_pinned_bo(batch, isv->res->aux.clear_color_bo, false);
       if (memcmp(&isv->res->aux.clear_color, &isv->clear_color,
                  sizeof(isv->clear_color)) != 0) {
-         update_clear_value(ice, batch, isv->res, &isv->surface_state,
+         update_clear_value(ice, batch, isv->res, &isv->surface_state.ref,
                             isv->res->aux.sampler_usages, &isv->view);
          isv->clear_color = isv->res->aux.clear_color;
       }
    }
 
-   return isv->surface_state.offset +
+   return isv->surface_state.ref.offset +
           surf_state_offset_for_aux(isv->res, isv->res->aux.sampler_usages,
                                     aux_usage);
 }
@@ -4578,12 +4579,12 @@ use_image(struct iris_batch *batch, struct iris_context *ice,
    bool write = iv->base.shader_access & PIPE_IMAGE_ACCESS_WRITE;
 
    iris_use_pinned_bo(batch, res->bo, write);
-   iris_use_pinned_bo(batch, iris_resource_bo(iv->surface_state.res), false);
+   iris_use_pinned_bo(batch, iris_resource_bo(iv->surface_state.ref.res), false);
 
    if (res->aux.bo)
       iris_use_pinned_bo(batch, res->aux.bo, write);
 
-   return iv->surface_state.offset;
+   return iv->surface_state.ref.offset;
 }
 
 #define push_bt_entry(addr) \
@@ -6336,7 +6337,7 @@ iris_destroy_state(struct iris_context *ice)
       }
       for (int i = 0; i < PIPE_MAX_SHADER_IMAGES; i++) {
          pipe_resource_reference(&shs->image[i].base.resource, NULL);
-         pipe_resource_reference(&shs->image[i].surface_state.res, NULL);
+         pipe_resource_reference(&shs->image[i].surface_state.ref.res, NULL);
       }
       for (int i = 0; i < PIPE_MAX_SHADER_BUFFERS; i++) {
          pipe_resource_reference(&shs->ssbo[i].buffer, NULL);
@@ -6467,7 +6468,7 @@ iris_rebind_buffer(struct iris_context *ice,
 
             if (res->bo == iris_resource_bo(isv->base.texture)) {
                void *map = alloc_surface_states(ice->state.surface_uploader,
-                                                &isv->surface_state,
+                                                &isv->surface_state.ref,
                                                 isv->res->aux.sampler_usages);
                assert(map);
                fill_buffer_surface_state(&screen->isl_dev, isv->res, map,
