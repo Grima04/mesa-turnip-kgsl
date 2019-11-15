@@ -263,6 +263,41 @@ tu_cs_begin_sub_stream(struct tu_device *dev,
 }
 
 /**
+ * Allocate count*size dwords, aligned to size dwords.
+ * \a cs must be in TU_CS_MODE_SUB_STREAM mode.
+ *
+ */
+VkResult
+tu_cs_alloc(struct tu_device *dev,
+            struct tu_cs *cs,
+            uint32_t count,
+            uint32_t size,
+            struct ts_cs_memory *memory)
+{
+   assert(cs->mode == TU_CS_MODE_SUB_STREAM);
+   assert(size && size <= 1024);
+
+   if (!count)
+      return VK_SUCCESS;
+
+   /* TODO: smarter way to deal with alignment? */
+
+   VkResult result = tu_cs_reserve_space(dev, cs, count * size + (size-1));
+   if (result != VK_SUCCESS)
+      return result;
+
+   struct tu_bo *bo = cs->bos[cs->bo_count - 1];
+   size_t offset = align(tu_cs_get_offset(cs), size);
+
+   memory->map = bo->map + offset * sizeof(uint32_t);
+   memory->iova = bo->iova + offset * sizeof(uint32_t);
+
+   cs->start = cs->cur = (uint32_t*) bo->map + offset + count * size;
+
+   return VK_SUCCESS;
+}
+
+/**
  * End command packet emission to a sub-stream.  \a sub_cs becomes invalid
  * after this call.
  *
