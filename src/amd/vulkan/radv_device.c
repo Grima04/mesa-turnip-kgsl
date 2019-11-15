@@ -398,7 +398,7 @@ radv_physical_device_init(struct radv_physical_device *device,
 	radv_handle_env_var_force_family(device);
 
 	device->use_aco = instance->perftest_flags & RADV_PERFTEST_ACO;
-	if (device->rad_info.chip_class < GFX8 && device->use_aco) {
+	if (device->rad_info.chip_class < GFX7 && device->use_aco) {
 		fprintf(stderr, "WARNING: disabling ACO on unsupported GPUs.\n");
 		device->use_aco = false;
 	}
@@ -439,7 +439,8 @@ radv_physical_device_init(struct radv_physical_device *device,
 	device->dcc_msaa_allowed =
 		(device->instance->perftest_flags & RADV_PERFTEST_DCC_MSAA);
 
-	device->use_shader_ballot = device->use_aco || (device->instance->perftest_flags & RADV_PERFTEST_SHADER_BALLOT);
+	device->use_shader_ballot = (device->use_aco && device->rad_info.chip_class >= GFX8) ||
+				    (device->instance->perftest_flags & RADV_PERFTEST_SHADER_BALLOT);
 
 	device->use_ngg = device->rad_info.chip_class >= GFX10 &&
 			  device->rad_info.family != CHIP_NAVI14 &&
