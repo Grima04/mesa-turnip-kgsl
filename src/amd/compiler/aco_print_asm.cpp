@@ -11,6 +11,10 @@ namespace aco {
 void print_asm(Program *program, std::vector<uint32_t>& binary,
                unsigned exec_size, std::ostream& out)
 {
+   if (program->chip_class <= GFX7) {
+      out << "Disassembly for this GPU currently not supported." << std::endl;
+      return;
+   }
    std::vector<bool> referenced_blocks(program->blocks.size());
    referenced_blocks[0] = true;
    for (Block& block : program->blocks) {
