@@ -2790,6 +2790,9 @@ iris_set_sampler_views(struct pipe_context *ctx,
          view->res->bind_stages |= 1 << stage;
 
          shs->bound_sampler_views |= 1 << (start + i);
+
+         update_surface_state_addrs(ice->state.surface_uploader,
+                                    &view->surface_state, view->res->bo);
       }
    }
 
