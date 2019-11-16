@@ -57,6 +57,7 @@ endif
 LOCAL_STATIC_LIBRARIES += \
 	libfreedreno_drm \
 	libfreedreno_ir3 \
+	libmesa_gallium \
 	libpanfrost_bifrost \
 	libpanfrost_decode \
 	libpanfrost_encoder \
@@ -79,7 +80,6 @@ LOCAL_WHOLE_STATIC_LIBRARIES := \
 	libmesa_nir \
 	libmesa_dri_common \
 	libmesa_megadriver_stub \
-	libmesa_gallium \
 	libmesa_pipe_loader \
 	libmesa_util \
 	libmesa_loader
