@@ -1,4 +1,4 @@
-foreach t : ['srgb']
+foreach t : ['srgb', 'u_format_test', 'u_format_compatible_test']
   test(t,
     executable(
       t,
