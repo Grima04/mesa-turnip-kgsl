@@ -1184,6 +1184,7 @@ anv_layout_to_aux_usage(const struct gen_device_info * const devinfo,
    /* Rendering Layouts */
    case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
       assert(aspect & VK_IMAGE_ASPECT_ANY_COLOR_BIT_ANV);
+      /* fall-through */
    case VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL_KHR:
       if (image->planes[plane].aux_usage == ISL_AUX_USAGE_NONE) {
          assert(image->samples == 1);
