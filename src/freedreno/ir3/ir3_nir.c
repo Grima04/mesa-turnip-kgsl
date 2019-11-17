@@ -415,6 +415,10 @@ ir3_nir_scan_driver_consts(nir_shader *shader,
 					layout->num_driver_params =
 						MAX2(layout->num_driver_params, IR3_DP_VTXID_BASE + 1);
 					break;
+				case nir_intrinsic_load_base_instance:
+					layout->num_driver_params =
+						MAX2(layout->num_driver_params, IR3_DP_INSTID_BASE + 1);
+					break;
 				case nir_intrinsic_load_user_clip_plane:
 					layout->num_driver_params =
 						MAX2(layout->num_driver_params, IR3_DP_UCP7_W + 1);

@@ -1671,6 +1671,12 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 		}
 		dst[0] = ctx->basevertex;
 		break;
+	case nir_intrinsic_load_base_instance:
+		if (!ctx->base_instance) {
+			ctx->base_instance = create_driver_param(ctx, IR3_DP_INSTID_BASE);
+		}
+		dst[0] = ctx->base_instance;
+		break;
 	case nir_intrinsic_load_vertex_id_zero_base:
 	case nir_intrinsic_load_vertex_id:
 		if (!ctx->vertex_id) {

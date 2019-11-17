@@ -57,6 +57,7 @@ enum ir3_driver_param {
 	/* vertex shader driver params: */
 	IR3_DP_VTXID_BASE = 0,
 	IR3_DP_VTXCNT_MAX = 1,
+	IR3_DP_INSTID_BASE = 2,
 	/* user-clip-plane components, up to 8x vec4's: */
 	IR3_DP_UCP0_X     = 4,
 	/* .... */
