@@ -69,6 +69,8 @@ vulkan-cts-runner \
 DEQP_EXITCODE=$?
 
 if [ $DEQP_EXITCODE -ne 0 ]; then
+    # preserve caselist files in case of failures:
+    cp /tmp/cts_runner.*.txt $RESULTS/
     echo "Some unexpected results found (see cts-runner-results.txt in artifacts for full results):"
     cat $RESULTS/cts-runner-results.txt | \
         grep -v ",Pass" | \
