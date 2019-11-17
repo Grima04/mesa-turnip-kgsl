@@ -57,15 +57,56 @@ fi
 
 set +e
 
-vulkan-cts-runner \
-    --deqp /deqp/modules/$DEQP_VER/deqp-$DEQP_VER \
-    --output $RESULTS/cts-runner-results.txt \
-    --caselist /tmp/case-list.txt \
-    --exclude-list $ARTIFACTS/$DEQP_SKIPS \
-    $XFAIL \
-    --job ${DEQP_PARALLEL:-1} \
-    -- \
-    "${DEQP_OPTIONS[@]}"
+run_cts() {
+    caselist=$1
+    output=$2
+    deqp-runner \
+        --deqp /deqp/modules/$DEQP_VER/deqp-$DEQP_VER \
+        --output $output \
+        --caselist $caselist \
+        --exclude-list $ARTIFACTS/$DEQP_SKIPS \
+        $XFAIL \
+        --job ${DEQP_PARALLEL:-1} \
+	--allow-flakes true \
+        -- \
+        "${DEQP_OPTIONS[@]}"
+}
+
+report_flakes() {
+    if [ -z "$FLAKES_CHANNEL" ]; then
+        return 0
+    fi
+    flakes=$1
+    bot="$CI_RUNNER_DESCRIPTION-$CI_PIPELINE_ID"
+    channel="$FLAKES_CHANNEL"
+    (
+    echo NICK $bot
+    echo USER $bot unused unused :Gitlab CI Notifier
+    sleep 10
+    echo "JOIN $channel"
+    sleep 1
+    desc="Flakes detected in job: $CI_JOB_URL on $CI_RUNNER_DESCRIPTION"
+    if [ -n "CI_MERGE_REQUEST_SOURCE_BRANCH_NAME" ]; then
+        desc="$desc on branch $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME ($CI_MERGE_REQUEST_TITLE)"
+    fi
+    echo "PRIVMSG $channel :$desc"
+    for flake in `cat $flakes`; do
+        echo "PRIVMSG $channel :$flake"
+    done
+    echo "PRIVMSG $channel :See $CI_JOB_URL/artifacts/browse/results/"
+    echo "QUIT"
+    ) | nc irc.freenode.net 6667 > /dev/null
+
+}
+
+# wrapper to supress +x to avoid spamming the log
+quiet() {
+    set +x
+    "$@"
+    set -x
+}
+
+run_cts /tmp/case-list.txt $RESULTS/cts-runner-results.txt
 DEQP_EXITCODE=$?
 
 if [ $DEQP_EXITCODE -ne 0 ]; then
@@ -78,6 +119,28 @@ if [ $DEQP_EXITCODE -ne 0 ]; then
         grep -v ",ExpectedFail" > \
         $RESULTS/cts-runner-unexpected-results.txt
     head -n 50 $RESULTS/cts-runner-unexpected-results.txt
+
+    count=`cat $RESULTS/cts-runner-unexpected-results.txt | wc -l`
+
+    # Re-run fails to detect flakes.  But use a small threshold, if
+    # something was fundamentally broken, we don't want to re-run
+    # the entire caselist
+else
+    cat $RESULTS/cts-runner-results.txt | \
+        grep ",Flake" > \
+        $RESULTS/cts-runner-flakes.txt
+
+    count=`cat $RESULTS/cts-runner-flakes.txt | wc -l`
+    if [ $count -gt 0 ]; then
+        echo "Some flakes found (see cts-runner-flakes.txt in artifacts for full results):"
+        head -n 50 $RESULTS/cts-runner-flakes.txt
+
+        # Report the flakes to IRC channel for monitoring (if configured):
+        quiet report_flakes $RESULTS/cts-runner-flakes.txt
+    else
+        # no flakes, so clean-up:
+        rm $RESULTS/cts-runner-flakes.txt
+    fi
 fi
 
 exit $DEQP_EXITCODE

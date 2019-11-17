@@ -26,6 +26,7 @@ apt-get -y install \
 	libvulkan-dev \
 	libvulkan1 \
 	meson \
+	netcat \
 	pkg-config \
 	procps \
 	python \

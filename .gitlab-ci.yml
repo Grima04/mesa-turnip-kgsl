@@ -461,7 +461,7 @@ scons-old-llvm:
     - tar -xf artifacts/install.tar
     - LD_LIBRARY_PATH=install/lib find install/lib -name "*.so" -print -exec ldd {} \;
   artifacts:
-    when: on_failure
+    when: always
     name: "$CI_JOB_NAME-$CI_COMMIT_REF_NAME"
     paths:
       - results/
@@ -555,6 +555,7 @@ arm64_a630_gles2:
     DEQP_SKIPS: deqp-freedreno-a630-skips.txt
     NIR_VALIDATE: 0
     DEQP_PARALLEL: 4
+    FLAKES_CHANNEL: "#freedreno-ci"
   tags:
     - mesa-cheza
   dependencies:
