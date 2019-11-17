@@ -48,6 +48,10 @@
 /* for fd_get_driver/device_uuid() */
 #include "freedreno/common/freedreno_uuid.h"
 
+static void
+tu_semaphore_remove_temp(struct tu_device *device,
+                         struct tu_semaphore *sem);
+
 static int
 tu_device_get_cache_uuid(uint16_t family, void *uuid)
 {
@@ -205,6 +209,9 @@ tu_physical_device_init(struct tu_physical_device *device,
       close(fd);
       return result;
    }
+
+   device->msm_major_version = version->version_major;
+   device->msm_minor_version = version->version_minor;
 
    drmFreeVersion(version);
 
@@ -1456,6 +1463,65 @@ tu_GetDeviceQueue(VkDevice _device,
    tu_GetDeviceQueue2(_device, &info, pQueue);
 }
 
+static VkResult
+tu_get_semaphore_syncobjs(const VkSemaphore *sems,
+                          uint32_t sem_count,
+                          bool wait,
+                          struct drm_msm_gem_submit_syncobj **out,
+                          uint32_t *out_count)
+{
+   uint32_t syncobj_count = 0;
+   struct drm_msm_gem_submit_syncobj *syncobjs;
+
+   for (uint32_t i = 0; i  < sem_count; ++i) {
+      TU_FROM_HANDLE(tu_semaphore, sem, sems[i]);
+
+      struct tu_semaphore_part *part =
+         sem->temporary.kind != TU_SEMAPHORE_NONE ?
+            &sem->temporary : &sem->permanent;
+
+      if (part->kind == TU_SEMAPHORE_SYNCOBJ)
+         ++syncobj_count;
+   }
+
+   *out = NULL;
+   *out_count = syncobj_count;
+   if (!syncobj_count)
+      return VK_SUCCESS;
+
+   *out = syncobjs = calloc(syncobj_count, sizeof (*syncobjs));
+   if (!syncobjs)
+      return VK_ERROR_OUT_OF_HOST_MEMORY;
+
+   for (uint32_t i = 0, j = 0; i  < sem_count; ++i) {
+      TU_FROM_HANDLE(tu_semaphore, sem, sems[i]);
+
+      struct tu_semaphore_part *part =
+         sem->temporary.kind != TU_SEMAPHORE_NONE ?
+            &sem->temporary : &sem->permanent;
+
+      if (part->kind == TU_SEMAPHORE_SYNCOBJ) {
+         syncobjs[j].handle = part->syncobj;
+         syncobjs[j].flags = wait ? MSM_SUBMIT_SYNCOBJ_RESET : 0;
+         ++j;
+      }
+   }
+
+   return VK_SUCCESS;
+}
+
+
+static void
+tu_semaphores_remove_temp(struct tu_device *device,
+                          const VkSemaphore *sems,
+                          uint32_t sem_count)
+{
+   for (uint32_t i = 0; i  < sem_count; ++i) {
+      TU_FROM_HANDLE(tu_semaphore, sem, sems[i]);
+      tu_semaphore_remove_temp(device, sem);
+   }
+}
+
 VkResult
 tu_QueueSubmit(VkQueue _queue,
                uint32_t submitCount,
@@ -1463,12 +1529,33 @@ tu_QueueSubmit(VkQueue _queue,
                VkFence _fence)
 {
    TU_FROM_HANDLE(tu_queue, queue, _queue);
+   VkResult result;
 
    for (uint32_t i = 0; i < submitCount; ++i) {
       const VkSubmitInfo *submit = pSubmits + i;
       const bool last_submit = (i == submitCount - 1);
+      struct drm_msm_gem_submit_syncobj *in_syncobjs = NULL, *out_syncobjs = NULL;
+      uint32_t nr_in_syncobjs, nr_out_syncobjs;
       struct tu_bo_list bo_list;
       tu_bo_list_init(&bo_list);
+
+      result = tu_get_semaphore_syncobjs(pSubmits[i].pWaitSemaphores,
+                                         pSubmits[i].waitSemaphoreCount,
+                                         false, &in_syncobjs, &nr_in_syncobjs);
+      if (result != VK_SUCCESS) {
+         /* TODO: emit VK_ERROR_DEVICE_LOST */
+         fprintf(stderr, "failed to allocate space for semaphore submission\n");
+         abort();
+      }
+
+      result = tu_get_semaphore_syncobjs(pSubmits[i].pSignalSemaphores,
+                                         pSubmits[i].signalSemaphoreCount,
+                                         false, &out_syncobjs, &nr_out_syncobjs);
+      if (result != VK_SUCCESS) {
+         /* TODO: emit VK_ERROR_DEVICE_LOST */
+         fprintf(stderr, "failed to allocate space for semaphore submission\n");
+         abort();
+      }
 
       uint32_t entry_count = 0;
       for (uint32_t j = 0; j < submit->commandBufferCount; ++j) {
@@ -1497,6 +1584,13 @@ tu_QueueSubmit(VkQueue _queue,
       }
 
       uint32_t flags = MSM_PIPE_3D0;
+      if (nr_in_syncobjs) {
+         flags |= MSM_SUBMIT_SYNCOBJ_IN;
+      }
+      if (nr_out_syncobjs) {
+         flags |= MSM_SUBMIT_SYNCOBJ_OUT;
+      }
+
       if (last_submit) {
          flags |= MSM_SUBMIT_FENCE_FD_OUT;
       }
@@ -1508,6 +1602,11 @@ tu_QueueSubmit(VkQueue _queue,
          .nr_bos = bo_list.count,
          .cmds = (uint64_t)(uintptr_t)cmds,
          .nr_cmds = entry_count,
+         .in_syncobjs = (uint64_t)(uintptr_t)in_syncobjs,
+         .out_syncobjs = (uint64_t)(uintptr_t)out_syncobjs,
+         .nr_in_syncobjs = nr_in_syncobjs,
+         .nr_out_syncobjs = nr_out_syncobjs,
+         .syncobj_stride = sizeof(struct drm_msm_gem_submit_syncobj),
       };
 
       int ret = drmCommandWriteRead(queue->device->physical_device->local_fd,
@@ -1519,10 +1618,16 @@ tu_QueueSubmit(VkQueue _queue,
       }
 
       tu_bo_list_destroy(&bo_list);
+      free(in_syncobjs);
+      free(out_syncobjs);
 
+      tu_semaphores_remove_temp(queue->device, pSubmits[i].pWaitSemaphores,
+                                pSubmits[i].waitSemaphoreCount);
       if (last_submit) {
          /* no need to merge fences as queue execution is serialized */
          tu_fence_update_fd(&queue->submit_fence, req.fence_fd);
+      } else if (last_submit) {
+         close(req.fence_fd);
       }
    }
 
@@ -1554,44 +1659,6 @@ tu_DeviceWaitIdle(VkDevice _device)
          tu_QueueWaitIdle(tu_queue_to_handle(&device->queues[i][q]));
       }
    }
-   return VK_SUCCESS;
-}
-
-VkResult
-tu_ImportSemaphoreFdKHR(VkDevice _device,
-                        const VkImportSemaphoreFdInfoKHR *pImportSemaphoreFdInfo)
-{
-   tu_stub();
-
-   return VK_SUCCESS;
-}
-
-VkResult
-tu_GetSemaphoreFdKHR(VkDevice _device,
-                     const VkSemaphoreGetFdInfoKHR *pGetFdInfo,
-                     int *pFd)
-{
-   tu_stub();
-
-   return VK_SUCCESS; 
-}
-
-VkResult
-tu_ImportFenceFdKHR(VkDevice _device,
-                    const VkImportFenceFdInfoKHR *pImportFenceFdInfo)
-{
-   tu_stub();
-
-   return VK_SUCCESS;
-}
-
-VkResult
-tu_GetFenceFdKHR(VkDevice _device,
-                 const VkFenceGetFdInfoKHR *pGetFdInfo,
-                 int *pFd)
-{
-   tu_stub();
-
    return VK_SUCCESS;
 }
 
@@ -1974,6 +2041,30 @@ tu_QueueBindSparse(VkQueue _queue,
 
 // Queue semaphore functions
 
+
+static void
+tu_semaphore_part_destroy(struct tu_device *device,
+                          struct tu_semaphore_part *part)
+{
+   switch(part->kind) {
+   case TU_SEMAPHORE_NONE:
+      break;
+   case TU_SEMAPHORE_SYNCOBJ:
+      drmSyncobjDestroy(device->physical_device->local_fd, part->syncobj);
+      break;
+   }
+   part->kind = TU_SEMAPHORE_NONE;
+}
+
+static void
+tu_semaphore_remove_temp(struct tu_device *device,
+                         struct tu_semaphore *sem)
+{
+   if (sem->temporary.kind != TU_SEMAPHORE_NONE) {
+      tu_semaphore_part_destroy(device, &sem->temporary);
+   }
+}
+
 VkResult
 tu_CreateSemaphore(VkDevice _device,
                    const VkSemaphoreCreateInfo *pCreateInfo,
@@ -1988,6 +2079,21 @@ tu_CreateSemaphore(VkDevice _device,
    if (!sem)
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
+   const VkExportSemaphoreCreateInfo *export =
+      vk_find_struct_const(pCreateInfo->pNext, EXPORT_SEMAPHORE_CREATE_INFO);
+   VkExternalSemaphoreHandleTypeFlags handleTypes =
+      export ? export->handleTypes : 0;
+
+   sem->permanent.kind = TU_SEMAPHORE_NONE;
+   sem->temporary.kind = TU_SEMAPHORE_NONE;
+
+   if (handleTypes) {
+      if (drmSyncobjCreate(device->physical_device->local_fd, 0, &sem->permanent.syncobj) < 0) {
+          vk_free2(&device->alloc, pAllocator, sem);
+          return VK_ERROR_OUT_OF_HOST_MEMORY;
+      }
+      sem->permanent.kind = TU_SEMAPHORE_SYNCOBJ;
+   }
    *pSemaphore = tu_semaphore_to_handle(sem);
    return VK_SUCCESS;
 }
@@ -2001,6 +2107,9 @@ tu_DestroySemaphore(VkDevice _device,
    TU_FROM_HANDLE(tu_semaphore, sem, _semaphore);
    if (!_semaphore)
       return;
+
+   tu_semaphore_part_destroy(device, &sem->permanent);
+   tu_semaphore_part_destroy(device, &sem->temporary);
 
    vk_free2(&device->alloc, pAllocator, sem);
 }
@@ -2339,15 +2448,132 @@ tu_GetMemoryFdPropertiesKHR(VkDevice _device,
    return VK_SUCCESS;
 }
 
+VkResult
+tu_ImportSemaphoreFdKHR(VkDevice _device,
+                        const VkImportSemaphoreFdInfoKHR *pImportSemaphoreFdInfo)
+{
+   TU_FROM_HANDLE(tu_device, device, _device);
+   TU_FROM_HANDLE(tu_semaphore, sem, pImportSemaphoreFdInfo->semaphore);
+   int ret;
+   struct tu_semaphore_part *dst = NULL;
+
+   if (pImportSemaphoreFdInfo->flags & VK_SEMAPHORE_IMPORT_TEMPORARY_BIT) {
+      dst = &sem->temporary;
+   } else {
+      dst = &sem->permanent;
+   }
+
+   uint32_t syncobj = dst->kind == TU_SEMAPHORE_SYNCOBJ ? dst->syncobj : 0;
+
+   switch(pImportSemaphoreFdInfo->handleType) {
+      case VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_FD_BIT: {
+         uint32_t old_syncobj = syncobj;
+         ret = drmSyncobjFDToHandle(device->physical_device->local_fd, pImportSemaphoreFdInfo->fd, &syncobj);
+         if (ret == 0) {
+            close(pImportSemaphoreFdInfo->fd);
+            if (old_syncobj)
+               drmSyncobjDestroy(device->physical_device->local_fd, old_syncobj);
+         }
+         break;
+      }
+      case VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT: {
+         if (!syncobj) {
+            ret = drmSyncobjCreate(device->physical_device->local_fd, 0, &syncobj);
+            if (ret)
+               break;
+         }
+         if (pImportSemaphoreFdInfo->fd == -1) {
+            ret = drmSyncobjSignal(device->physical_device->local_fd, &syncobj, 1);
+         } else {
+            ret = drmSyncobjImportSyncFile(device->physical_device->local_fd, syncobj, pImportSemaphoreFdInfo->fd);
+         }
+         if (!ret)
+            close(pImportSemaphoreFdInfo->fd);
+         break;
+      }
+      default:
+         unreachable("Unhandled semaphore handle type");
+   }
+
+   if (ret) {
+      return VK_ERROR_INVALID_EXTERNAL_HANDLE;
+   }
+   dst->syncobj = syncobj;
+   dst->kind = TU_SEMAPHORE_SYNCOBJ;
+
+   return VK_SUCCESS;
+}
+
+VkResult
+tu_GetSemaphoreFdKHR(VkDevice _device,
+                     const VkSemaphoreGetFdInfoKHR *pGetFdInfo,
+                     int *pFd)
+{
+   TU_FROM_HANDLE(tu_device, device, _device);
+   TU_FROM_HANDLE(tu_semaphore, sem, pGetFdInfo->semaphore);
+   int ret;
+   uint32_t syncobj_handle;
+
+   if (sem->temporary.kind != TU_SEMAPHORE_NONE) {
+      assert(sem->temporary.kind == TU_SEMAPHORE_SYNCOBJ);
+      syncobj_handle = sem->temporary.syncobj;
+   } else {
+      assert(sem->permanent.kind == TU_SEMAPHORE_SYNCOBJ);
+      syncobj_handle = sem->permanent.syncobj;
+   }
+
+   switch(pGetFdInfo->handleType) {
+   case VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_FD_BIT:
+      ret = drmSyncobjHandleToFD(device->physical_device->local_fd, syncobj_handle, pFd);
+      break;
+   case VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT:
+      ret = drmSyncobjExportSyncFile(device->physical_device->local_fd, syncobj_handle, pFd);
+      if (!ret) {
+         if (sem->temporary.kind != TU_SEMAPHORE_NONE) {
+            tu_semaphore_part_destroy(device, &sem->temporary);
+         } else {
+            drmSyncobjReset(device->physical_device->local_fd, &syncobj_handle, 1);
+         }
+      }
+      break;
+   default:
+      unreachable("Unhandled semaphore handle type");
+   }
+
+   if (ret)
+      return vk_error(device->instance, VK_ERROR_INVALID_EXTERNAL_HANDLE);
+   return VK_SUCCESS;
+}
+
+
+static bool tu_has_syncobj(struct tu_physical_device *pdev)
+{
+   uint64_t value;
+   if (drmGetCap(pdev->local_fd, DRM_CAP_SYNCOBJ, &value))
+      return false;
+   return value && pdev->msm_major_version == 1 && pdev->msm_minor_version >= 6;
+}
+
 void
 tu_GetPhysicalDeviceExternalSemaphoreProperties(
    VkPhysicalDevice physicalDevice,
    const VkPhysicalDeviceExternalSemaphoreInfo *pExternalSemaphoreInfo,
    VkExternalSemaphoreProperties *pExternalSemaphoreProperties)
 {
-   pExternalSemaphoreProperties->exportFromImportedHandleTypes = 0;
-   pExternalSemaphoreProperties->compatibleHandleTypes = 0;
-   pExternalSemaphoreProperties->externalSemaphoreFeatures = 0;
+   TU_FROM_HANDLE(tu_physical_device, pdev, physicalDevice);
+
+   if (tu_has_syncobj(pdev) &&
+       (pExternalSemaphoreInfo->handleType == VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_FD_BIT ||
+        pExternalSemaphoreInfo->handleType == VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT)) {
+      pExternalSemaphoreProperties->exportFromImportedHandleTypes = VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_FD_BIT | VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT;
+      pExternalSemaphoreProperties->compatibleHandleTypes = VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_FD_BIT | VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT;
+      pExternalSemaphoreProperties->externalSemaphoreFeatures = VK_EXTERNAL_SEMAPHORE_FEATURE_EXPORTABLE_BIT |
+         VK_EXTERNAL_SEMAPHORE_FEATURE_IMPORTABLE_BIT;
+   } else {
+      pExternalSemaphoreProperties->exportFromImportedHandleTypes = 0;
+      pExternalSemaphoreProperties->compatibleHandleTypes = 0;
+      pExternalSemaphoreProperties->externalSemaphoreFeatures = 0;
+   }
 }
 
 void

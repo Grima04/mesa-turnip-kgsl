@@ -220,6 +220,9 @@ struct tu_physical_device
       uint32_t SP_UNKNOWN_A0F8;
    } magic;
 
+   int msm_major_version;
+   int msm_minor_version;
+
    /* This is the drivers on-disk cache used as a fallback as opposed to
     * the pipeline cache defined by apps.
     */
@@ -1436,10 +1439,24 @@ struct tu_query_pool
    struct tu_bo bo;
 };
 
+enum tu_semaphore_kind
+{
+   TU_SEMAPHORE_NONE,
+   TU_SEMAPHORE_SYNCOBJ,
+};
+
+struct tu_semaphore_part
+{
+   enum tu_semaphore_kind kind;
+   union {
+      uint32_t syncobj;
+   };
+};
+
 struct tu_semaphore
 {
-   uint32_t syncobj;
-   uint32_t temp_syncobj;
+   struct tu_semaphore_part permanent;
+   struct tu_semaphore_part temporary;
 };
 
 void
