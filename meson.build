@@ -1356,7 +1356,7 @@ if dep_libdrm.found()
   endif
 endif
 
-llvm_modules = ['bitwriter', 'engine', 'mcdisassembler', 'mcjit']
+llvm_modules = ['bitwriter', 'engine', 'mcdisassembler', 'mcjit', 'core', 'executionengine', 'scalaropts', 'transformutils', 'instcombine']
 llvm_optional_modules = ['coroutines']
 if with_amd_vk or with_gallium_radeonsi or with_gallium_r600
   llvm_modules += ['amdgpu', 'native', 'bitreader', 'ipo']
