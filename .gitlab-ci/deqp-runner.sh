@@ -99,6 +99,43 @@ report_flakes() {
 
 }
 
+extract_xml_result() {
+    testcase=$1
+    shift 1
+    qpas=$*
+    start="#beginTestCaseResult $testcase"
+    for qpa in $qpas; do
+        while IFS= read -r line; do
+            if [ "$line" = "$start" ]; then
+                dst="$testcase.qpa"
+                echo "#beginSession" > $dst
+                echo $line >> $dst
+                while IFS= read -r line; do
+                    if [ "$line" = "#endTestCaseResult" ]; then
+                        echo $line >> $dst
+                        echo "#endSession" >> $dst
+                        /deqp/executor/testlog-to-xml $dst "$RESULTS/$testcase.xml"
+                        # copy the stylesheets here so they only end up in artifacts
+                        # if we have one or more result xml in artifacts
+                        cp /deqp/testlog.{css,xsl} "$RESULTS/"
+                        return 0
+                    fi
+                    echo $line >> $dst
+                done
+                return 1
+            fi
+        done < $qpa
+    done
+}
+
+extract_xml_results() {
+    qpas=$*
+    while IFS= read -r testcase; do
+        testcase=${testcase%,*}
+        extract_xml_result $testcase $qpas
+    done
+}
+
 # wrapper to supress +x to avoid spamming the log
 quiet() {
     set +x
@@ -119,6 +156,9 @@ if [ $DEQP_EXITCODE -ne 0 ]; then
         grep -v ",ExpectedFail" > \
         $RESULTS/cts-runner-unexpected-results.txt
     head -n 50 $RESULTS/cts-runner-unexpected-results.txt
+
+    # Save the logs for up to the first 50 unexpected results:
+    head -n 50 $RESULTS/cts-runner-unexpected-results.txt | quiet extract_xml_results /tmp/*.qpa
 
     count=`cat $RESULTS/cts-runner-unexpected-results.txt | wc -l`
 
