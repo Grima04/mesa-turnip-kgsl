@@ -136,6 +136,31 @@ extract_xml_results() {
     done
 }
 
+# Generate junit results
+generate_junit() {
+    results=$1
+    echo "<?xml version=\"1.0\" encoding=\"utf-8\"?>"
+    echo "<testsuites>"
+    echo "<testsuite name=\"$DEQP_VER-$CI_NODE_INDEX\">"
+    while read line; do
+        testcase=${line%,*}
+        result=${line#*,}
+        # avoid counting Skip's in the # of tests:
+        if [ "$result" = "Skip" ]; then
+            continue;
+        fi
+        echo "<testcase name=\"$testcase\">"
+        if [ "$result" != "Pass" ]; then
+            echo "<failure type=\"$result\">"
+            echo "$result: See $CI_JOB_URL/artifacts/results/$testcase.xml"
+            echo "</failure>"
+        fi
+        echo "</testcase>"
+    done < $results
+    echo "</testsuite>"
+    echo "</testsuites>"
+}
+
 # wrapper to supress +x to avoid spamming the log
 quiet() {
     set +x
@@ -145,6 +170,8 @@ quiet() {
 
 run_cts /tmp/case-list.txt $RESULTS/cts-runner-results.txt
 DEQP_EXITCODE=$?
+
+quiet generate_junit $RESULTS/cts-runner-results.txt > $RESULTS/results.xml
 
 if [ $DEQP_EXITCODE -ne 0 ]; then
     # preserve caselist files in case of failures:
