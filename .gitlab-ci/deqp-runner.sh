@@ -73,7 +73,9 @@ if [ $DEQP_EXITCODE -ne 0 ]; then
     cat $RESULTS/cts-runner-results.txt | \
         grep -v ",Pass" | \
         grep -v ",Skip" | \
-        grep -v ",ExpectedFail" | \
-        head -n 50
-    exit $DEQP_EXITCODE
+        grep -v ",ExpectedFail" > \
+        $RESULTS/cts-runner-unexpected-results.txt
+    head -n 50 $RESULTS/cts-runner-unexpected-results.txt
 fi
+
+exit $DEQP_EXITCODE
