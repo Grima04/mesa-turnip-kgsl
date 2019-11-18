@@ -621,7 +621,7 @@ midgard_emit_derivatives(compiler_context *ctx, nir_alu_instr *instr);
 void
 midgard_lower_derivatives(compiler_context *ctx, midgard_block *block);
 
-bool mir_op_computes_derivatives(unsigned op);
+bool mir_op_computes_derivatives(gl_shader_stage stage, unsigned op);
 
 /* Final emission */
 

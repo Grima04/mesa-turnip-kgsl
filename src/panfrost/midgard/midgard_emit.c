@@ -430,7 +430,7 @@ emit_binary_bundle(compiler_context *ctx,
 
                 ctx->texture_op_count--;
 
-                if (mir_op_computes_derivatives(ins->texture.op)) {
+                if (mir_op_computes_derivatives(ctx->stage, ins->texture.op)) {
                         bool continues = ctx->texture_op_count > 0;
 
                         /* Control flow complicates helper invocation
