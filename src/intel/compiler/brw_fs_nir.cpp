@@ -3461,7 +3461,14 @@ fs_visitor::nir_emit_fs_intrinsic(const fs_builder &bld,
 
          if (alu != NULL &&
              alu->op != nir_op_bcsel &&
-             alu->op != nir_op_inot) {
+             alu->op != nir_op_inot &&
+             (devinfo->gen > 5 ||
+              (alu->instr.pass_flags & BRW_NIR_BOOLEAN_MASK) != BRW_NIR_BOOLEAN_NEEDS_RESOLVE ||
+              alu->op == nir_op_fne32 || alu->op == nir_op_feq32 ||
+              alu->op == nir_op_flt32 || alu->op == nir_op_fge32 ||
+              alu->op == nir_op_ine32 || alu->op == nir_op_ieq32 ||
+              alu->op == nir_op_ilt32 || alu->op == nir_op_ige32 ||
+              alu->op == nir_op_ult32 || alu->op == nir_op_uge32)) {
             /* Re-emit the instruction that generated the Boolean value, but
              * do not store it.  Since this instruction will be conditional,
              * other instructions that want to use the real Boolean value may
