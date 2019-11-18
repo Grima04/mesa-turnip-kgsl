@@ -459,14 +459,12 @@ scons-old-llvm:
   script:
     - LLVM_VERSION=3.9 .gitlab-ci/scons-build.sh
 
-.test-gl:
+.test:
   extends:
     - .ci-run-policy
   stage: test
   variables:
     GIT_STRATEGY: none # testing doesn't build anything from source
-    TAG: *x86_test-gl
-  image: "$CI_REGISTRY_IMAGE/debian/x86_test-gl:$TAG"
   before_script:
     # Note: Build dir (and thus install) may be dirty due to GIT_STRATEGY
     - rm -rf install
@@ -479,9 +477,26 @@ scons-old-llvm:
       - results/
   dependencies:
     - meson-testing
+
+.test-gl:
+  extends:
+    - .test
+  variables:
+    TAG: *x86_test-gl
+  image: "$CI_REGISTRY_IMAGE/debian/x86_test-gl:$TAG"
   needs:
     - meson-testing
     - x86_test-gl
+
+.test-vk:
+  extends:
+    - .test
+  variables:
+    TAG: *x86_test-vk
+  image: "$CI_REGISTRY_IMAGE/debian/x86_test-vk:$TAG"
+  needs:
+    - meson-testing
+    - x86_test-vk
 
 .piglit-test:
   extends: .test-gl
