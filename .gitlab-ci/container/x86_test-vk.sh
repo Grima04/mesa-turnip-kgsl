@@ -47,7 +47,11 @@ apt-get install -y --no-remove \
       xvfb
 
 
-# TODO: build dEQP runner and dEQP VK.
+############### Build dEQP runner
+
+. .gitlab-ci/build-cts-runner.sh
+
+# TODO: build dEQP VK.
 
 ############### Uninstall the build software
 
