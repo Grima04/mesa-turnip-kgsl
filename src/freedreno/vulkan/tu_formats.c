@@ -556,18 +556,29 @@ tu_get_format_channel_description(const struct vk_format_description *desc,
 }
 
 static union tu_clear_component_value
-tu_get_clear_component_value(const VkClearValue *val, int comp, bool color)
+tu_get_clear_component_value(const VkClearValue *val, int comp,
+                             enum vk_format_colorspace colorspace)
 {
+   assert(comp < 4);
+
    union tu_clear_component_value tmp;
-   if (color) {
-      assert(comp < 4);
-      tmp.uint32 = val->color.uint32[comp];
-   } else {
+   switch (colorspace) {
+   case VK_FORMAT_COLORSPACE_ZS:
       assert(comp < 2);
       if (comp == 0)
          tmp.float32 = val->depthStencil.depth;
       else
          tmp.uint32 = val->depthStencil.stencil;
+      break;
+   case VK_FORMAT_COLORSPACE_SRGB:
+      if (comp < 3) {
+         tmp.float32 = util_format_linear_to_srgb_float(val->color.float32[comp]);
+         break;
+      }
+   default:
+      assert(comp < 4);
+      tmp.uint32 = val->color.uint32[comp];
+      break;
    }
 
    return tmp;
@@ -614,7 +625,7 @@ tu_pack_clear_value(const VkClearValue *val, VkFormat format, uint32_t buf[4])
       }
 
       union tu_clear_component_value v = tu_get_clear_component_value(
-         val, comp, desc->colorspace != VK_FORMAT_COLORSPACE_ZS);
+         val, comp, desc->colorspace);
 
       /* move to the next uint32_t when there is not enough space */
       assert(ch->size <= 32);
