@@ -79,12 +79,24 @@ tu_blit_surf_ext(struct tu_image *image,
 }
 
 static inline struct tu_blit_surf
-tu_blit_surf_whole(struct tu_image *image)
+tu_blit_surf_whole(struct tu_image *image, int level, int layer)
 {
-   return tu_blit_surf(image, (VkImageSubresourceLayers){}, (VkOffset3D[]) {
-      {}, {image->extent.width, image->extent.height}
+   return tu_blit_surf(image, (VkImageSubresourceLayers){
+      .mipLevel = level,
+      .baseArrayLayer = layer,
+   }, (VkOffset3D[]) {
+      {}, {
+         u_minify(image->extent.width, level),
+         u_minify(image->extent.height, level),
+      }
    });
 }
+
+enum tu_blit_type {
+   TU_BLIT_DEFAULT,
+   TU_BLIT_COPY,
+   TU_BLIT_CLEAR,
+};
 
 struct tu_blit {
    struct tu_blit_surf dst;
@@ -93,8 +105,10 @@ struct tu_blit {
    bool filter;
    bool stencil_read;
    enum a6xx_rotation rotation;
+   uint32_t clear_value[4];
+   enum tu_blit_type type;
 };
 
-void tu_blit(struct tu_cmd_buffer *cmdbuf, struct tu_blit *blt, bool copy);
+void tu_blit(struct tu_cmd_buffer *cmdbuf, struct tu_blit *blt);
 
 #endif /* TU_BLIT_H */

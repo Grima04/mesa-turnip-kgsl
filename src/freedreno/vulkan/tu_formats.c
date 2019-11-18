@@ -631,6 +631,75 @@ tu_pack_clear_value(const VkClearValue *val, VkFormat format, uint32_t buf[4])
    }
 }
 
+void
+tu_2d_clear_color(const VkClearColorValue *val, VkFormat format, uint32_t buf[4])
+{
+   const struct vk_format_description *desc = vk_format_description(format);
+
+   /* not supported by 2D engine, cleared as U32 */
+   if (format == VK_FORMAT_E5B9G9R9_UFLOAT_PACK32) {
+      buf[0] = float3_to_rgb9e5(val->float32);
+      return;
+   }
+
+   enum a6xx_2d_ifmt ifmt = tu6_rb_fmt_to_ifmt(tu6_get_native_format(format)->rb);
+
+   assert(desc && desc->layout == VK_FORMAT_LAYOUT_PLAIN);
+
+   for (unsigned i = 0; i < desc->nr_channels; i++) {
+      const struct vk_format_channel_description *ch = &desc->channel[i];
+
+      switch (ifmt) {
+      case R2D_INT32:
+      case R2D_INT16:
+      case R2D_INT8:
+      case R2D_FLOAT32:
+         buf[i] = val->uint32[i];
+         break;
+      case R2D_FLOAT16:
+         buf[i] = util_float_to_half(val->float32[i]);
+         break;
+      case R2D_UNORM8: {
+         float linear = val->float32[i];
+         if (desc->colorspace == VK_FORMAT_COLORSPACE_SRGB && i < 3)
+            linear = util_format_linear_to_srgb_float(val->float32[i]);
+
+         if (ch->type == VK_FORMAT_TYPE_SIGNED)
+            buf[i] = tu_pack_float32_for_snorm(linear, 8);
+         else
+            buf[i] = tu_pack_float32_for_unorm(linear, 8);
+      } break;
+      default:
+         unreachable("unexpected ifmt");
+         break;
+      }
+   }
+}
+
+void
+tu_2d_clear_zs(const VkClearDepthStencilValue *val, VkFormat format, uint32_t buf[4])
+{
+   switch (format) {
+   case VK_FORMAT_X8_D24_UNORM_PACK32:
+   case VK_FORMAT_D24_UNORM_S8_UINT:
+      buf[0] = tu_pack_float32_for_unorm(val->depth, 24);
+      buf[1] = buf[0] >> 8;
+      buf[2] = buf[0] >> 16;
+      buf[3] = val->stencil;
+      return;
+   case VK_FORMAT_D16_UNORM:
+   case VK_FORMAT_D32_SFLOAT:
+      buf[0] = fui(val->depth);
+      return;
+   case VK_FORMAT_S8_UINT:
+      buf[0] = val->stencil;
+      return;
+   default:
+      unreachable("unexpected zs format");
+      break;
+   }
+}
+
 static void
 tu_physical_device_get_format_properties(
    struct tu_physical_device *physical_device,

@@ -1153,10 +1153,10 @@ tu6_render_end(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
          tu_bo_list_add(&cmd->bo_list, dst_img->bo, MSM_SUBMIT_BO_WRITE);
 
          tu_blit(cmd, &(struct tu_blit) {
-            .dst = tu_blit_surf_whole(dst_img),
-            .src = tu_blit_surf_whole(src_img),
+            .dst = tu_blit_surf_whole(dst_img, 0, 0),
+            .src = tu_blit_surf_whole(src_img, 0, 0),
             .layers = 1,
-         }, false);
+         });
       }
    }
 

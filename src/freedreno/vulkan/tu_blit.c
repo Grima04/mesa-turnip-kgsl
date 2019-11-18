@@ -96,6 +96,7 @@ emit_blit_step(struct tu_cmd_buffer *cmdbuf, const struct tu_blit *blt)
    }
 
    uint32_t blit_cntl = A6XX_RB_2D_BLIT_CNTL_ROTATE(blt->rotation) |
+                        COND(blt->type == TU_BLIT_CLEAR, A6XX_RB_2D_BLIT_CNTL_SOLID_COLOR) |
                         A6XX_RB_2D_BLIT_CNTL_COLOR_FORMAT(fmt) | /* not required? */
                         COND(fmt == RB6_Z24_UNORM_S8_UINT_AS_R8G8B8A8, A6XX_RB_2D_BLIT_CNTL_D24S8) |
                         A6XX_RB_2D_BLIT_CNTL_MASK(0xf) |
@@ -110,23 +111,31 @@ emit_blit_step(struct tu_cmd_buffer *cmdbuf, const struct tu_blit *blt)
    /*
     * Emit source:
     */
-   tu_cs_emit_pkt4(cs, REG_A6XX_SP_PS_2D_SRC_INFO, 10);
-   tu_cs_emit(cs, blit_image_info(&blt->src, true, blt->stencil_read) |
-                  A6XX_SP_PS_2D_SRC_INFO_SAMPLES(tu_msaa_samples(blt->src.samples)) |
-                  /* TODO: should disable this bit for integer formats ? */
-                  COND(blt->src.samples > 1, A6XX_SP_PS_2D_SRC_INFO_SAMPLES_AVERAGE) |
-                  COND(blt->filter, A6XX_SP_PS_2D_SRC_INFO_FILTER) |
-                  0x500000);
-   tu_cs_emit(cs, A6XX_SP_PS_2D_SRC_SIZE_WIDTH(blt->src.x + blt->src.width) |
-                  A6XX_SP_PS_2D_SRC_SIZE_HEIGHT(blt->src.y + blt->src.height));
-   tu_cs_emit_qw(cs, blt->src.va);
-   tu_cs_emit(cs, A6XX_SP_PS_2D_SRC_PITCH_PITCH(blt->src.pitch));
+   if (blt->type == TU_BLIT_CLEAR) {
+      tu_cs_emit_pkt4(cs, REG_A6XX_RB_2D_SRC_SOLID_C0, 4);
+      tu_cs_emit(cs, blt->clear_value[0]);
+      tu_cs_emit(cs, blt->clear_value[1]);
+      tu_cs_emit(cs, blt->clear_value[2]);
+      tu_cs_emit(cs, blt->clear_value[3]);
+   } else {
+      tu_cs_emit_pkt4(cs, REG_A6XX_SP_PS_2D_SRC_INFO, 10);
+      tu_cs_emit(cs, blit_image_info(&blt->src, true, blt->stencil_read) |
+                     A6XX_SP_PS_2D_SRC_INFO_SAMPLES(tu_msaa_samples(blt->src.samples)) |
+                     /* TODO: should disable this bit for integer formats ? */
+                     COND(blt->src.samples > 1, A6XX_SP_PS_2D_SRC_INFO_SAMPLES_AVERAGE) |
+                     COND(blt->filter, A6XX_SP_PS_2D_SRC_INFO_FILTER) |
+                     0x500000);
+      tu_cs_emit(cs, A6XX_SP_PS_2D_SRC_SIZE_WIDTH(blt->src.x + blt->src.width) |
+                     A6XX_SP_PS_2D_SRC_SIZE_HEIGHT(blt->src.y + blt->src.height));
+      tu_cs_emit_qw(cs, blt->src.va);
+      tu_cs_emit(cs, A6XX_SP_PS_2D_SRC_PITCH_PITCH(blt->src.pitch));
 
-   tu_cs_emit(cs, 0x00000000);
-   tu_cs_emit(cs, 0x00000000);
-   tu_cs_emit(cs, 0x00000000);
-   tu_cs_emit(cs, 0x00000000);
-   tu_cs_emit(cs, 0x00000000);
+      tu_cs_emit(cs, 0x00000000);
+      tu_cs_emit(cs, 0x00000000);
+      tu_cs_emit(cs, 0x00000000);
+      tu_cs_emit(cs, 0x00000000);
+      tu_cs_emit(cs, 0x00000000);
+   }
 
    /*
     * Emit destination:
@@ -182,9 +191,10 @@ emit_blit_step(struct tu_cmd_buffer *cmdbuf, const struct tu_blit *blt)
    tu_cs_emit(cs, 0);
 }
 
-void tu_blit(struct tu_cmd_buffer *cmdbuf, struct tu_blit *blt, bool copy)
+void tu_blit(struct tu_cmd_buffer *cmdbuf, struct tu_blit *blt)
 {
-   if (copy) {
+   switch (blt->type) {
+   case TU_BLIT_COPY:
       blt->stencil_read =
          blt->dst.fmt == VK_FORMAT_R8_UINT &&
          blt->src.fmt == VK_FORMAT_D24_UNORM_S8_UINT;
@@ -225,7 +235,14 @@ void tu_blit(struct tu_cmd_buffer *cmdbuf, struct tu_blit *blt, bool copy)
       blt->dst.width *= blt->dst.samples;
       blt->src.samples = 1;
       blt->dst.samples = 1;
-   } else {
+      break;
+   case TU_BLIT_CLEAR:
+      /* unsupported format cleared as UINT32 */
+      if (blt->dst.fmt == VK_FORMAT_E5B9G9R9_UFLOAT_PACK32)
+         blt->dst.fmt = blt->src.fmt = VK_FORMAT_R32_UINT;
+      assert(blt->dst.samples == 1); /* TODO */
+      break;
+   default:
       assert(blt->dst.samples == 1);
    }
 
@@ -244,7 +261,7 @@ void tu_blit(struct tu_cmd_buffer *cmdbuf, struct tu_blit *blt, bool copy)
    for (unsigned layer = 0; layer < blt->layers; layer++) {
       if ((blt->src.va & 63) || (blt->src.pitch & 63)) {
          /* per line copy path (buffer_to_image) */
-         assert(copy && !blt->src.tiled);
+         assert(blt->type == TU_BLIT_COPY && !blt->src.tiled);
          struct tu_blit line_blt = *blt;
          uint64_t src_va = line_blt.src.va + blt->src.pitch * blt->src.y;
 
@@ -264,7 +281,7 @@ void tu_blit(struct tu_cmd_buffer *cmdbuf, struct tu_blit *blt, bool copy)
          }
       } else if ((blt->dst.va & 63) || (blt->dst.pitch & 63)) {
          /* per line copy path (image_to_buffer) */
-         assert(copy && !blt->dst.tiled);
+         assert(blt->type == TU_BLIT_COPY && !blt->dst.tiled);
          struct tu_blit line_blt = *blt;
          uint64_t dst_va = line_blt.dst.va + blt->dst.pitch * blt->dst.y;
 
