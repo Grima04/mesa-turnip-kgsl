@@ -1069,7 +1069,10 @@ read_function_impl(read_ctx *ctx, nir_function *fxn)
 static void
 write_function(write_ctx *ctx, const nir_function *fxn)
 {
-   blob_write_uint32(ctx->blob, !!(fxn->name));
+   uint32_t flags = fxn->is_entrypoint;
+   if (fxn->name)
+      flags |= 0x2;
+   blob_write_uint32(ctx->blob, flags);
    if (fxn->name)
       blob_write_string(ctx->blob, fxn->name);
 
@@ -1083,8 +1086,6 @@ write_function(write_ctx *ctx, const nir_function *fxn)
       blob_write_uint32(ctx->blob, val);
    }
 
-   blob_write_uint32(ctx->blob, fxn->is_entrypoint);
-
    /* At first glance, it looks like we should write the function_impl here.
     * However, call instructions need to be able to reference at least the
     * function and those will get processed as we write the function_impls.
@@ -1095,7 +1096,8 @@ write_function(write_ctx *ctx, const nir_function *fxn)
 static void
 read_function(read_ctx *ctx)
 {
-   bool has_name = blob_read_uint32(ctx->blob);
+   uint32_t flags = blob_read_uint32(ctx->blob);
+   bool has_name = flags & 0x2;
    char *name = has_name ? blob_read_string(ctx->blob) : NULL;
 
    nir_function *fxn = nir_function_create(ctx->nir, name);
@@ -1110,7 +1112,7 @@ read_function(read_ctx *ctx)
       fxn->params[i].bit_size = (val >> 8) & 0xff;
    }
 
-   fxn->is_entrypoint = blob_read_uint32(ctx->blob);
+   fxn->is_entrypoint = flags & 0x1;
 }
 
 void
