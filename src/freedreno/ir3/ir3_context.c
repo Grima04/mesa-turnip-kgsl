@@ -525,6 +525,7 @@ ir3_create_array_load(struct ir3_context *ctx, struct ir3_array *arr, int n,
 		mov->cat1.src_type = TYPE_U16;
 		mov->cat1.dst_type = TYPE_U16;
 		flags |= IR3_REG_HALF;
+		arr->half = true;
 	} else {
 		mov->cat1.src_type = TYPE_U32;
 		mov->cat1.dst_type = TYPE_U32;

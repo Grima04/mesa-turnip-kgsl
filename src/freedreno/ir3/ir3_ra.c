@@ -366,6 +366,15 @@ is_high(struct ir3_instruction *instr)
 	return !!(instr->regs[0]->flags & IR3_REG_HIGH);
 }
 
+static unsigned
+reg_size_for_array(struct ir3_array *arr)
+{
+	if (arr->half)
+		return DIV_ROUND_UP(arr->length, 2);
+
+	return arr->length;
+}
+
 static int
 size_to_class(unsigned sz, bool half, bool high)
 {
@@ -665,8 +674,8 @@ ra_init(struct ir3_ra_ctx *ctx)
 	base = ctx->class_base[total_class_count];
 	foreach_array (arr, &ctx->ir->array_list) {
 		arr->base = base;
-		ctx->class_alloc_count[total_class_count] += arr->length;
-		base += arr->length;
+		ctx->class_alloc_count[total_class_count] += reg_size_for_array(arr);
+		base += reg_size_for_array(arr);
 	}
 	ctx->alloc_count += ctx->class_alloc_count[total_class_count];
 
@@ -791,7 +800,10 @@ ra_block_compute_live_ranges(struct ir3_ra_ctx *ctx, struct ir3_block *block)
 				 */
 				for (i = 0; i < arr->length; i++) {
 					unsigned name = arr->base + i;
-					ra_set_node_class(ctx->g, name, ctx->set->classes[0]);
+					if(arr->half)
+						ra_set_node_class(ctx->g, name, ctx->set->half_classes[0]);
+					else
+						ra_set_node_class(ctx->g, name, ctx->set->classes[0]);
 				}
 
 				/* indirect write is treated like a write to all array
@@ -1333,9 +1345,9 @@ retry:
 			/* if it intersects with liverange AND register range.. */
 			if (intersects(arr->start_ip, arr->end_ip,
 					arr2->start_ip, arr2->end_ip) &&
-				intersects(base, base + arr->length,
-					arr2->reg, arr2->reg + arr2->length)) {
-				base = MAX2(base, arr2->reg + arr2->length);
+				intersects(base, base + reg_size_for_array(arr),
+					arr2->reg, arr2->reg + reg_size_for_array(arr2))) {
+				base = MAX2(base, arr2->reg + reg_size_for_array(arr2));
 				goto retry;
 			}
 		}
@@ -1361,7 +1373,7 @@ retry:
 			 */
 			if (intersects(arr->start_ip, arr->end_ip,
 							ctx->def[name], ctx->use[name]) &&
-					intersects(base, base + arr->length,
+					intersects(base, base + reg_size_for_array(arr),
 							regid, regid + class_sizes[id->cls])) {
 				base = MAX2(base, regid + class_sizes[id->cls]);
 				goto retry;
@@ -1373,9 +1385,22 @@ retry:
 		for (unsigned i = 0; i < arr->length; i++) {
 			unsigned name, reg;
 
-			name = arr->base + i;
-			reg = ctx->set->gpr_to_ra_reg[0][base++];
+			if (arr->half) {
+				/* Doesn't need to do this on older generations than a6xx,
+				 * since there's no conflict between full regs and half regs
+				 * on them.
+				 *
+				 * TODO Presumably "base" could start from 0 respectively
+				 * for half regs of arrays on older generations.
+				 */
+				unsigned base_half = base * 2 + i;
+				reg = ctx->set->gpr_to_ra_reg[0+HALF_OFFSET][base_half];
+				base = base_half / 2 + 1;
+			} else {
+				reg = ctx->set->gpr_to_ra_reg[0][base++];
+			}
 
+			name = arr->base + i;
 			ra_set_node_reg(ctx->g, name, reg);
 		}
 	}

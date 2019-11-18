@@ -500,6 +500,9 @@ struct ir3_array {
 	unsigned base;      /* base vreg name */
 	unsigned reg;       /* base physical reg */
 	uint16_t start_ip, end_ip;
+
+	/* Indicates if half-precision */
+	bool half;
 };
 
 struct ir3_array * ir3_lookup_array(struct ir3 *ir, unsigned id);
