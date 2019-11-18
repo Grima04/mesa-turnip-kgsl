@@ -24,6 +24,7 @@
 
 #include <stdio.h>
 #include <stdint.h>
+#include <string.h>
 
 #include "lima_parser.h"
 
@@ -236,11 +237,22 @@ parse_plbu_semaphore(FILE *fp, uint32_t *value1, uint32_t *value2)
 static void
 parse_plbu_primitive_setup(FILE *fp, uint32_t *value1, uint32_t *value2)
 {
+   char prim[10];
+
+   if ((*value1 & 0x0000f000) == 0x00000000)
+       strcpy(prim, "POINTS");
+   else if ((*value1 & 0x0000f000) == 0x00003000)
+       strcpy(prim, "LINES");
+   else if ((*value1 & 0x0000f000) == 0x00002000)
+       strcpy(prim, "TRIANGLES");
+   else
+       strcpy(prim, "UNKNOWN");
+
    if (*value1 == 0x00000200)
       fprintf(fp, "\t/* UNKNOWN_2 (PRIMITIVE_SETUP INIT?) */\n");
    else
-      fprintf(fp, "\t/* PRIMITIVE_SETUP: low_prim: %s, cull: %d (0x%x), index_size: %d (0x%08x) */\n",
-              (*value1 & 0x0000f000) == 0x00003000 ? "true" : "false",
+      fprintf(fp, "\t/* PRIMITIVE_SETUP: prim: %s, cull: %d (0x%x), index_size: %d (0x%08x) */\n",
+              prim,
               (*value1 & 0x000f0000) >> 16, (*value1 & 0x000f0000) >> 16,
               (*value1 & 0x00001e00) >> 9, (*value1 & 0x00001e00) >> 9);
 }
@@ -296,6 +308,12 @@ static void
 parse_plbu_indexed_dest(FILE *fp, uint32_t *value1, uint32_t *value2)
 {
    fprintf(fp, "\t/* INDEXED_DEST: gl_pos: 0x%08x */\n", *value1);
+}
+
+static void
+parse_plbu_indexed_pt_size(FILE *fp, uint32_t *value1, uint32_t *value2)
+{
+   fprintf(fp, "\t/* INDEXED_PT_SIZE: pt_size: 0x%08x */\n", *value1);
 }
 
 static void
@@ -364,6 +382,8 @@ lima_parse_plbu(FILE *fp, uint32_t *data, int size, uint32_t start)
          parse_plbu_indexed_dest(fp, value1, value2);
       else if ((*value2 & 0xff000fff) == 0x10000101)
          parse_plbu_indices(fp, value1, value2);
+      else if ((*value2 & 0xff000fff) == 0x10000102)
+         parse_plbu_indexed_pt_size(fp, value1, value2);
       else if ((*value2 & 0xff000fff) == 0x10000105)
          parse_plbu_viewport_bottom(fp, (float *)value1, value2);
       else if ((*value2 & 0xff000fff) == 0x10000106)
