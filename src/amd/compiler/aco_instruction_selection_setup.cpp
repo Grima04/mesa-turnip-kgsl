@@ -69,6 +69,7 @@ struct isel_context {
          bool is_divergent = false;
       } parent_if;
       bool exec_potentially_empty = false;
+      std::unique_ptr<unsigned[]> nir_to_aco; /* NIR block index to ACO block index */
    } cf_info;
 
    Temp arg_temps[AC_MAX_ARGS];
@@ -132,6 +133,8 @@ void init_context(isel_context *ctx, nir_shader *shader)
    std::unique_ptr<Temp[]> allocated{new Temp[impl->ssa_alloc]()};
 
    unsigned spi_ps_inputs = 0;
+
+   std::unique_ptr<unsigned[]> nir_to_aco{new unsigned[impl->num_blocks]()};
 
    bool done = false;
    while (!done) {
@@ -538,6 +541,7 @@ void init_context(isel_context *ctx, nir_shader *shader)
       allocated[i] = Temp(ctx->program->allocateId(), allocated[i].regClass());
 
    ctx->allocated.reset(allocated.release());
+   ctx->cf_info.nir_to_aco.reset(nir_to_aco.release());
 }
 
 Pseudo_instruction *add_startpgm(struct isel_context *ctx)
@@ -899,6 +903,7 @@ setup_isel_context(Program* program,
 
       nir_function_impl *func = nir_shader_get_entrypoint(nir);
       nir_index_ssa_defs(func);
+      nir_metadata_require(func, nir_metadata_block_index);
 
       if (args->options->dump_preoptir) {
          fprintf(stderr, "NIR shader before instruction selection:\n");
