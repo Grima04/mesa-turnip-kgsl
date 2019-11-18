@@ -318,7 +318,7 @@ fd6_sampler_view_create(struct pipe_context *pctx, struct pipe_resource *prsc,
 	}
 
 	if (so->ubwc_enabled) {
-		so->texconst3 |= A6XX_TEX_CONST_3_FLAG | A6XX_TEX_CONST_3_UNK27;
+		so->texconst3 |= A6XX_TEX_CONST_3_FLAG | A6XX_TEX_CONST_3_TILE_ALL;
 	}
 
 	return &so->base;
