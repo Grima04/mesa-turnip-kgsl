@@ -34,6 +34,7 @@ apt-get install -y --no-remove \
       libvulkan1 \
       libvulkan-dev \
       libwayland-server0 \
+      libxcb-randr0 \
       libxcb-xfixes0 \
       libxkbcommon0 \
       libxkbcommon-dev \
@@ -42,6 +43,7 @@ apt-get install -y --no-remove \
       meson \
       patch \
       pkg-config \
+      python3-distutils \
       python \
       xauth \
       xvfb
@@ -51,7 +53,10 @@ apt-get install -y --no-remove \
 
 . .gitlab-ci/build-cts-runner.sh
 
-# TODO: build dEQP VK.
+############### Build dEQP VK
+
+. .gitlab-ci/build-deqp-vk.sh
+
 
 ############### Uninstall the build software
 
