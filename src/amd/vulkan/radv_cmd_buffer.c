@@ -2866,7 +2866,8 @@ radv_dst_access_flush(struct radv_cmd_buffer *cmd_buffer,
 			flush_bits |= RADV_CMD_FLAG_INV_VCACHE;
 			/* Unlike LLVM, ACO uses SMEM for SSBOs and we have to
 			 * invalidate the scalar cache. */
-			if (cmd_buffer->device->physical_device->use_aco)
+			if (cmd_buffer->device->physical_device->use_aco &&
+			    cmd_buffer->device->physical_device->rad_info.chip_class >= GFX8)
 				flush_bits |= RADV_CMD_FLAG_INV_SCACHE;
 
 			if (!image_is_coherent)
