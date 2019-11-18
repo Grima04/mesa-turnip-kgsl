@@ -5107,6 +5107,7 @@ cmd_buffer_emit_depth_stencil(struct anv_cmd_buffer *cmd_buffer)
 
       info.stencil_surf = &surface->isl;
 
+      info.stencil_aux_usage = image->planes[stencil_plane].aux_usage;
       info.stencil_address =
          anv_batch_emit_reloc(&cmd_buffer->batch,
                               dw + device->isl_dev.ds.stencil_offset / 4,
