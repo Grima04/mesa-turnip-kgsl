@@ -673,7 +673,7 @@ iris_screen_create(int fd, const struct pipe_screen_config *config)
    screen->compiler->shader_perf_log = iris_shader_perf_log;
    screen->compiler->supports_pull_constants = false;
    screen->compiler->supports_shader_constants = true;
-   screen->compiler->compact_params = true;
+   screen->compiler->compact_params = false;
 
    iris_disk_cache_init(screen);
 

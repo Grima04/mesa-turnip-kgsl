@@ -308,13 +308,6 @@ iris_setup_uniforms(const struct brw_compiler *compiler,
 {
    UNUSED const struct gen_device_info *devinfo = compiler->devinfo;
 
-   /* The intel compiler assumes that num_uniforms is in bytes. For
-    * scalar that means 4 bytes per uniform slot.
-    *
-    * Ref: brw_nir_lower_uniforms, type_size_scalar_bytes.
-    */
-   nir->num_uniforms *= 4;
-
    const unsigned IRIS_MAX_SYSTEM_VALUES =
       PIPE_MAX_SHADER_IMAGES * BRW_IMAGE_PARAM_SIZE;
    enum brw_param_builtin *system_values =
@@ -513,12 +506,12 @@ iris_setup_uniforms(const struct brw_compiler *compiler,
    assert(num_cbufs < PIPE_MAX_CONSTANT_BUFFERS);
    nir_validate_shader(nir, "after remap");
 
-   /* We don't use params[], but fs_visitor::nir_setup_uniforms() asserts
-    * about it for compute shaders, so go ahead and make some fake ones
-    * which the backend will dead code eliminate.
+   /* We don't use params[] but gallium leaves num_uniforms set.  We use this
+    * to detect when cbuf0 exists but we don't need it anymore when we get
+    * here.  Instead, zero it out so that the back-end doesn't get confused
+    * when nr_params * 4 != num_uniforms != nr_params * 4.
     */
-   prog_data->nr_params = nir->num_uniforms / 4;
-   prog_data->param = rzalloc_array(mem_ctx, uint32_t, prog_data->nr_params);
+   nir->num_uniforms = 0;
 
    /* Constant loads (if any) need to go at the end of the constant buffers so
     * we need to know num_cbufs before we can lower to them.
