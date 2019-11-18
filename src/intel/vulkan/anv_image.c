@@ -1830,7 +1830,7 @@ anv_image_fill_surface_state(struct anv_device *device,
       state_inout->aux_address = aux_address;
 
       struct anv_address clear_address = ANV_NULL_ADDRESS;
-      if (device->info.gen >= 10 && aux_usage != ISL_AUX_USAGE_NONE) {
+      if (device->info.gen >= 10 && isl_aux_usage_has_fast_clears(aux_usage)) {
          if (aspect == VK_IMAGE_ASPECT_DEPTH_BIT) {
             clear_address = (struct anv_address) {
                .bo = device->hiz_clear_bo,
