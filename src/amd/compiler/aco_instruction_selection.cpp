@@ -2471,6 +2471,7 @@ void visit_store_vs_output(isel_context *ctx, nir_intrinsic_instr *instr)
 
 void visit_store_fs_output(isel_context *ctx, nir_intrinsic_instr *instr)
 {
+   Builder bld(ctx->program, ctx->block);
    unsigned write_mask = nir_intrinsic_write_mask(instr);
    Operand values[4];
    Temp src = get_ssa_temp(ctx, instr->src[0].ssa);
@@ -2510,16 +2511,8 @@ void visit_store_fs_output(isel_context *ctx, nir_intrinsic_instr *instr)
          values[2] = values[0];
          values[0] = Operand(v1);
       } else {
-         aco_ptr<Export_instruction> exp{create_instruction<Export_instruction>(aco_opcode::exp, Format::EXP, 4, 0)};
-         exp->valid_mask = false;
-         exp->done = false;
-         exp->compressed = true;
-         exp->dest = V_008DFC_SQ_EXP_MRTZ;
-         exp->enabled_mask = 0xc;
-         for (int i = 0; i < 4; i++)
-            exp->operands[i] = Operand(v1);
-         exp->operands[1] = Operand(values[0]);
-         ctx->block->instructions.emplace_back(std::move(exp));
+         bld.exp(aco_opcode::exp, Operand(v1), Operand(values[0]), Operand(v1), Operand(v1),
+                 0xc, V_008DFC_SQ_EXP_MRTZ, true);
          return;
       }
 
@@ -2539,23 +2532,9 @@ void visit_store_fs_output(isel_context *ctx, nir_intrinsic_instr *instr)
          values[1] = values[0];
          values[0] = Operand(v1);
       } else {
-         aco_ptr<Instruction> shift{create_instruction<VOP2_instruction>(aco_opcode::v_lshlrev_b32, Format::VOP2, 2, 1)};
-         shift->operands[0] = Operand((uint32_t) 16);
-         shift->operands[1] = values[0];
-         Temp tmp = {ctx->program->allocateId(), v1};
-         shift->definitions[0] = Definition(tmp);
-         ctx->block->instructions.emplace_back(std::move(shift));
-
-         aco_ptr<Export_instruction> exp{create_instruction<Export_instruction>(aco_opcode::exp, Format::EXP, 4, 0)};
-         exp->valid_mask = false;
-         exp->done = false;
-         exp->compressed = true;
-         exp->dest = V_008DFC_SQ_EXP_MRTZ;
-         exp->enabled_mask = 0x3;
-         exp->operands[0] = Operand(tmp);
-         for (int i = 1; i < 4; i++)
-            exp->operands[i] = Operand(v1);
-         ctx->block->instructions.emplace_back(std::move(exp));
+         values[0] = bld.vop2(aco_opcode::v_lshlrev_b32, bld.def(v1), Operand(16u), values[0]);
+         bld.exp(aco_opcode::exp, values[0], Operand(v1), Operand(v1), Operand(v1),
+                 0x3, V_008DFC_SQ_EXP_MRTZ, true);
          return;
       }
 
@@ -2588,6 +2567,7 @@ void visit_store_fs_output(isel_context *ctx, nir_intrinsic_instr *instr)
          /* Special case: on GFX10, the outputs are different for 32_AR */
          enabled_channels = 0x3;
          values[1] = values[3];
+         values[3] = Operand(v1);
       } else {
          enabled_channels = 0x9;
       }
@@ -2637,36 +2617,22 @@ void visit_store_fs_output(isel_context *ctx, nir_intrinsic_instr *instr)
          unsigned enabled = (write_mask >> (i*2) | write_mask >> (i*2+1)) & 0x1;
          if (enabled) {
             enabled_channels |= enabled << (i*2);
-            aco_ptr<VOP3A_instruction> compr{create_instruction<VOP3A_instruction>(compr_op, Format::VOP3A, 2, 1)};
-            Temp tmp{ctx->program->allocateId(), v1};
-            compr->operands[0] = values[i*2].isUndefined() ? Operand(0u) : values[i*2];
-            compr->operands[1] = values[i*2+1].isUndefined() ? Operand(0u): values[i*2+1];
-            compr->definitions[0] = Definition(tmp);
-            values[i] = Operand(tmp);
-            ctx->block->instructions.emplace_back(std::move(compr));
+            values[i] = bld.vop3(compr_op, bld.def(v1),
+                                 values[i*2].isUndefined() ? Operand(0u) : values[i*2],
+                                 values[i*2+1].isUndefined() ? Operand(0u): values[i*2+1]);
          } else {
             values[i] = Operand(v1);
          }
       }
-   }
-
-   aco_ptr<Export_instruction> exp{create_instruction<Export_instruction>(aco_opcode::exp, Format::EXP, 4, 0)};
-   exp->valid_mask = false;
-   exp->done = false;
-   exp->compressed = (bool) compr_op;
-   exp->dest = target;
-   exp->enabled_mask = enabled_channels;
-   if ((bool) compr_op) {
-      for (int i = 0; i < 2; i++)
-         exp->operands[i] = enabled_channels & (3 << (i * 2)) ? values[i] : Operand(v1);
-      exp->operands[2] = Operand(v1);
-      exp->operands[3] = Operand(v1);
+      values[2] = Operand(v1);
+      values[3] = Operand(v1);
    } else {
       for (int i = 0; i < 4; i++)
-         exp->operands[i] = enabled_channels & (1 << i) ? values[i] : Operand(v1);
+         values[i] = enabled_channels & (1 << i) ? values[i] : Operand(v1);
    }
 
-   ctx->block->instructions.emplace_back(std::move(exp));
+   bld.exp(aco_opcode::exp, values[0], values[1], values[2], values[3],
+           enabled_channels, target, (bool) compr_op);
 }
 
 Operand load_lds_size_m0(isel_context *ctx)
