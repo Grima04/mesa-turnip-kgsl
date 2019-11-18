@@ -68,6 +68,9 @@ struct spirv_to_nir_options {
     */
    bool view_index_is_input;
 
+   /* Create a nir library. */
+   bool create_library;
+
    struct spirv_supported_capabilities caps;
 
    /* Address format for various kinds of pointers. */
