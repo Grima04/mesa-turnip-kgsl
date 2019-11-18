@@ -637,7 +637,8 @@ transition_stencil_buffer(struct anv_cmd_buffer *cmd_buffer,
                           uint32_t base_level, uint32_t level_count,
                           uint32_t base_layer, uint32_t layer_count,
                           VkImageLayout initial_layout,
-                          VkImageLayout final_layout)
+                          VkImageLayout final_layout,
+                          bool will_full_fast_clear)
 {
 #if GEN_GEN == 7
    uint32_t plane = anv_image_aspect_to_plane(image->aspects,
@@ -667,7 +668,51 @@ transition_stencil_buffer(struct anv_cmd_buffer *cmd_buffer,
                                base_level, level_count,
                                base_layer, layer_count);
    }
-#endif /* GEN_GEN == 7 */
+#elif GEN_GEN == 12
+   uint32_t plane = anv_image_aspect_to_plane(image->aspects,
+                                              VK_IMAGE_ASPECT_STENCIL_BIT);
+   if (image->planes[plane].aux_usage == ISL_AUX_USAGE_NONE)
+      return;
+
+   if ((initial_layout == VK_IMAGE_LAYOUT_UNDEFINED ||
+        initial_layout == VK_IMAGE_LAYOUT_PREINITIALIZED) &&
+       cmd_buffer->device->physical->has_implicit_ccs &&
+       cmd_buffer->device->info.has_aux_map) {
+      anv_image_init_aux_tt(cmd_buffer, image, VK_IMAGE_ASPECT_STENCIL_BIT,
+                            base_level, level_count, base_layer, layer_count);
+
+      /* If will_full_fast_clear is set, the caller promises to fast-clear the
+       * largest portion of the specified range as it can.
+       */
+      if (will_full_fast_clear)
+         return;
+
+      for (uint32_t l = 0; l < level_count; l++) {
+         const uint32_t level = base_level + l;
+         const VkRect2D clear_rect = {
+            .offset.x = 0,
+            .offset.y = 0,
+            .extent.width = anv_minify(image->extent.width, level),
+            .extent.height = anv_minify(image->extent.height, level),
+         };
+
+         uint32_t aux_layers =
+            anv_image_aux_layers(image, VK_IMAGE_ASPECT_STENCIL_BIT, level);
+         uint32_t level_layer_count =
+            MIN2(layer_count, aux_layers - base_layer);
+
+         /* From Bspec's 3DSTATE_STENCIL_BUFFER_BODY > Stencil Compression
+          * Enable:
+          *
+          *    "When enabled, Stencil Buffer needs to be initialized via
+          *    stencil clear (HZ_OP) before any renderpass."
+          */
+         anv_image_hiz_clear(cmd_buffer, image, VK_IMAGE_ASPECT_STENCIL_BIT,
+                             level, base_layer, level_layer_count,
+                             clear_rect, 0 /* Stencil clear value */);
+      }
+   }
+#endif
 }
 
 #define MI_PREDICATE_SRC0    0x2400
@@ -2354,7 +2399,8 @@ void genX(CmdPipelineBarrier)(
                                    anv_get_levelCount(image, range),
                                    base_layer, layer_count,
                                    pImageMemoryBarriers[i].oldLayout,
-                                   pImageMemoryBarriers[i].newLayout);
+                                   pImageMemoryBarriers[i].newLayout,
+                                   false /* will_full_fast_clear */);
       }
 
       if (range->aspectMask & VK_IMAGE_ASPECT_ANY_COLOR_BIT_ANV) {
@@ -5236,10 +5282,15 @@ cmd_buffer_begin_subpass(struct anv_cmd_buffer *cmd_buffer,
       }
 
       if (image->aspects & VK_IMAGE_ASPECT_STENCIL_BIT) {
+         bool will_full_fast_clear =
+            (att_state->pending_clear_aspects & VK_IMAGE_ASPECT_STENCIL_BIT) &&
+            att_state->fast_clear && full_surface_draw;
+
          transition_stencil_buffer(cmd_buffer, image,
                                    level, 1, base_layer, layer_count,
                                    att_state->current_stencil_layout,
-                                   target_stencil_layout);
+                                   target_stencil_layout,
+                                   will_full_fast_clear);
       }
       att_state->current_layout = target_layout;
       att_state->current_stencil_layout = target_stencil_layout;
@@ -5895,7 +5946,8 @@ cmd_buffer_end_subpass(struct anv_cmd_buffer *cmd_buffer)
                                    iview->planes[0].isl.base_level, 1,
                                    base_layer, layer_count,
                                    att_state->current_stencil_layout,
-                                   target_stencil_layout);
+                                   target_stencil_layout,
+                                   false /* will_full_fast_clear */);
       }
    }
 
