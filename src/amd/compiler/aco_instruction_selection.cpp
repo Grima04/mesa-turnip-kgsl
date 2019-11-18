@@ -5530,9 +5530,9 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
       Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
       struct ac_arg *args = ctx->args->ac.workgroup_ids;
       bld.pseudo(aco_opcode::p_create_vector, Definition(dst),
-                 args[0].used ? Operand(get_arg(ctx, args[0])) : Operand(1u),
-                 args[1].used ? Operand(get_arg(ctx, args[1])) : Operand(1u),
-                 args[2].used ? Operand(get_arg(ctx, args[2])) : Operand(1u));
+                 args[0].used ? Operand(get_arg(ctx, args[0])) : Operand(0u),
+                 args[1].used ? Operand(get_arg(ctx, args[1])) : Operand(0u),
+                 args[2].used ? Operand(get_arg(ctx, args[2])) : Operand(0u));
       emit_split_vector(ctx, dst, 3);
       break;
    }
