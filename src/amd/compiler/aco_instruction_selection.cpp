@@ -5300,7 +5300,8 @@ Temp emit_boolean_reduce(isel_context *ctx, nir_op op, unsigned cluster_size, Te
    } else if (op == nir_op_iand && cluster_size == ctx->program->wave_size) {
       //subgroupAnd(val) -> (exec & ~val) == 0
       Temp tmp = bld.sop2(Builder::s_andn2, bld.def(bld.lm), bld.def(s1, scc), Operand(exec, bld.lm), src).def(1).getTemp();
-      return bld.sop2(Builder::s_cselect, bld.def(bld.lm), Operand(0u), Operand(-1u), bld.scc(tmp));
+      Temp all = bld.sopc(aco_opcode::s_cmp_eq_u32, bld.def(s1, scc), bld.scc(tmp), Operand(0u));
+      return bool_to_vector_condition(ctx, all);
    } else if (op == nir_op_ior && cluster_size == ctx->program->wave_size) {
       //subgroupOr(val) -> (val & exec) != 0
       Temp tmp = bld.sop2(Builder::s_and, bld.def(bld.lm), bld.def(s1, scc), src, Operand(exec, bld.lm)).def(1).getTemp();
@@ -5905,8 +5906,8 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
       assert(dst.regClass() == bld.lm);
 
       Temp tmp = bld.sop2(Builder::s_andn2, bld.def(bld.lm), bld.def(s1, scc), Operand(exec, bld.lm), src).def(1).getTemp();
-      Temp val = bld.sop2(Builder::s_cselect, bld.def(bld.lm), Operand(0u), Operand(-1u), bld.scc(tmp));
-      emit_wqm(ctx, val, dst);
+      Temp all = bld.sopc(aco_opcode::s_cmp_eq_u32, bld.def(s1, scc), bld.scc(tmp), Operand(0u));
+      bool_to_vector_condition(ctx, emit_wqm(ctx, all), dst);
       break;
    }
    case nir_intrinsic_vote_any: {
@@ -5915,9 +5916,8 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
       assert(src.regClass() == bld.lm);
       assert(dst.regClass() == bld.lm);
 
-      Temp tmp = bld.sop2(Builder::s_and, bld.def(bld.lm), bld.def(s1, scc), Operand(exec, bld.lm), src).def(1).getTemp();
-      Temp val = bld.sop2(Builder::s_cselect, bld.def(bld.lm), Operand(-1u), Operand(0u), bld.scc(tmp));
-      emit_wqm(ctx, val, dst);
+      Temp tmp = bool_to_scalar_condition(ctx, src);
+      bool_to_vector_condition(ctx, emit_wqm(ctx, tmp), dst);
       break;
    }
    case nir_intrinsic_reduce:
