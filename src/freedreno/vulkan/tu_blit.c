@@ -48,7 +48,7 @@ blit_copy_format(VkFormat format)
    switch (vk_format_get_blocksizebits(format)) {
    case 8:  return VK_FORMAT_R8_UINT;
    case 16: return VK_FORMAT_R16_UINT;
-   case 32: return VK_FORMAT_R8G8B8A8_UINT;
+   case 32: return VK_FORMAT_R32_UINT;
    case 64: return VK_FORMAT_R32G32_UINT;
    case 96: return VK_FORMAT_R32G32B32_UINT;
    case 128:return VK_FORMAT_R32G32B32A32_UINT;
@@ -74,7 +74,8 @@ blit_image_info(const struct tu_blit_surf *img, bool src, bool stencil_read)
    return A6XX_SP_PS_2D_SRC_INFO_COLOR_FORMAT(rb) |
           A6XX_SP_PS_2D_SRC_INFO_TILE_MODE(img->tile_mode) |
           A6XX_SP_PS_2D_SRC_INFO_COLOR_SWAP(swap) |
-          COND(vk_format_is_srgb(img->fmt), A6XX_SP_PS_2D_SRC_INFO_SRGB);
+          COND(vk_format_is_srgb(img->fmt), A6XX_SP_PS_2D_SRC_INFO_SRGB) |
+          COND(img->ubwc_size, A6XX_SP_PS_2D_SRC_INFO_FLAGS);
 }
 
 static void
@@ -82,7 +83,7 @@ emit_blit_step(struct tu_cmd_buffer *cmdbuf, const struct tu_blit *blt)
 {
    struct tu_cs *cs = &cmdbuf->cs;
 
-   tu_cs_reserve_space(cmdbuf->device, cs, 52);
+   tu_cs_reserve_space(cmdbuf->device, cs, 66);
 
    enum a6xx_color_fmt fmt = tu6_get_native_format(blt->dst.fmt)->rb;
    if (fmt == RB6_Z24_UNORM_S8_UINT)
@@ -135,6 +136,16 @@ emit_blit_step(struct tu_cmd_buffer *cmdbuf, const struct tu_blit *blt)
       tu_cs_emit(cs, 0x00000000);
       tu_cs_emit(cs, 0x00000000);
       tu_cs_emit(cs, 0x00000000);
+
+      if (blt->src.ubwc_size) {
+         tu_cs_emit_pkt4(cs, REG_A6XX_SP_PS_2D_SRC_FLAGS_LO, 6);
+         tu_cs_emit_qw(cs, blt->src.ubwc_va);
+         tu_cs_emit(cs, A6XX_SP_PS_2D_SRC_FLAGS_PITCH_PITCH(blt->src.ubwc_pitch) |
+            A6XX_SP_PS_2D_SRC_FLAGS_PITCH_ARRAY_PITCH(blt->src.ubwc_size >> 2));
+         tu_cs_emit(cs, 0x00000000);
+         tu_cs_emit(cs, 0x00000000);
+         tu_cs_emit(cs, 0x00000000);
+      }
    }
 
    /*
@@ -149,6 +160,16 @@ emit_blit_step(struct tu_cmd_buffer *cmdbuf, const struct tu_blit *blt)
    tu_cs_emit(cs, 0x00000000);
    tu_cs_emit(cs, 0x00000000);
    tu_cs_emit(cs, 0x00000000);
+
+   if (blt->dst.ubwc_size) {
+      tu_cs_emit_pkt4(cs, REG_A6XX_RB_2D_DST_FLAGS_LO, 6);
+      tu_cs_emit_qw(cs, blt->dst.ubwc_va);
+      tu_cs_emit(cs, A6XX_RB_2D_DST_FLAGS_PITCH_PITCH(blt->dst.ubwc_pitch) |
+         A6XX_RB_2D_DST_FLAGS_PITCH_ARRAY_PITCH(blt->dst.ubwc_size >> 2));
+      tu_cs_emit(cs, 0x00000000);
+      tu_cs_emit(cs, 0x00000000);
+      tu_cs_emit(cs, 0x00000000);
+   }
 
    tu_cs_emit_pkt4(cs, REG_A6XX_GRAS_2D_SRC_TL_X, 4);
    tu_cs_emit(cs, A6XX_GRAS_2D_SRC_TL_X_X(blt->src.x));
@@ -196,7 +217,7 @@ void tu_blit(struct tu_cmd_buffer *cmdbuf, struct tu_blit *blt)
    switch (blt->type) {
    case TU_BLIT_COPY:
       blt->stencil_read =
-         blt->dst.fmt == VK_FORMAT_R8_UINT &&
+         blt->dst.fmt == VK_FORMAT_R8_UNORM &&
          blt->src.fmt == VK_FORMAT_D24_UNORM_S8_UINT;
 
       assert(vk_format_get_blocksize(blt->dst.fmt) ==
@@ -210,6 +231,7 @@ void tu_blit(struct tu_cmd_buffer *cmdbuf, struct tu_blit *blt)
          blt->src.pitch /= block_width;
          blt->src.x /= block_width;
          blt->src.y /= block_height;
+         blt->src.fmt = blit_copy_format(blt->src.fmt);
 
          /* for image_to_image copy, width/height is on the src format */
          blt->dst.width = blt->src.width = DIV_ROUND_UP(blt->src.width, block_width);
@@ -223,12 +245,16 @@ void tu_blit(struct tu_cmd_buffer *cmdbuf, struct tu_blit *blt)
          blt->dst.pitch /= block_width;
          blt->dst.x /= block_width;
          blt->dst.y /= block_height;
+         blt->dst.fmt = blit_copy_format(blt->dst.fmt);
       }
 
-      blt->src.fmt = blit_copy_format(blt->src.fmt);
-      blt->dst.fmt = blit_copy_format(blt->dst.fmt);
+      if (blt->dst.fmt == VK_FORMAT_E5B9G9R9_UFLOAT_PACK32)
+         blt->dst.fmt = blit_copy_format(blt->dst.fmt);
 
-      /* TODO: does this work correctly with tiling/etc ? */
+      if (blt->src.fmt == VK_FORMAT_E5B9G9R9_UFLOAT_PACK32)
+         blt->src.fmt = blit_copy_format(blt->src.fmt);
+
+      /* TODO: multisample image copy does not work correctly with tiling/UBWC */
       blt->src.x *= blt->src.samples;
       blt->dst.x *= blt->dst.samples;
       blt->src.width *= blt->src.samples;
@@ -304,6 +330,8 @@ void tu_blit(struct tu_cmd_buffer *cmdbuf, struct tu_blit *blt)
       }
       blt->dst.va += blt->dst.layer_size;
       blt->src.va += blt->src.layer_size;
+      blt->dst.ubwc_va += blt->dst.ubwc_size;
+      blt->src.ubwc_va += blt->src.ubwc_size;
    }
 
    tu_cs_reserve_space(cmdbuf->device, &cmdbuf->cs, 17);

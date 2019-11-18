@@ -200,7 +200,7 @@ tu_blit_buffer(struct tu_buffer *buffer,
                const VkBufferImageCopy *info)
 {
    if (info->imageSubresource.aspectMask == VK_IMAGE_ASPECT_STENCIL_BIT)
-      format = VK_FORMAT_R8_UINT;
+      format = VK_FORMAT_R8_UNORM;
 
    unsigned pitch = (info->bufferRowLength ?: info->imageExtent.width) *
                         vk_format_get_blocksize(format);
