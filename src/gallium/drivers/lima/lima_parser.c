@@ -102,7 +102,7 @@ parse_vs_semaphore(FILE *fp, uint32_t *value1, uint32_t *value2)
    else if (*value1 == 0x00000000)
       fprintf(fp, "\t/* SEMAPHORE_END: index_draw disabled */\n");
    else if (*value1 == 0x00018000)
-      fprintf(fp, "\t/* SEMAPHORE_END: index_draw disabled */\n");
+      fprintf(fp, "\t/* SEMAPHORE_END: index_draw enabled */\n");
    else
       fprintf(fp, "\t/* SEMAPHORE - cmd unknown! */\n");
 }
