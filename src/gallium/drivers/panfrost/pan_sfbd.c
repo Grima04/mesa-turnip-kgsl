@@ -158,43 +158,40 @@ panfrost_sfbd_set_zsbuf(
         struct pipe_surface *surf)
 {
         struct panfrost_resource *rsrc = pan_resource(surf->texture);
+        struct panfrost_context *ctx = pan_context(surf->context);
 
         unsigned level = surf->u.tex.level;
         assert(surf->u.tex.first_layer == 0);
 
-        if (rsrc->layout == PAN_LINEAR) {
-                if (panfrost_is_z24s8_variant(surf->format)) {
+        if (rsrc->layout != PAN_LINEAR)
+                unreachable("Invalid render layout.");
 
-                        fb->depth_buffer = rsrc->bo->gpu + rsrc->slices[level].offset;
-                        fb->depth_stride = rsrc->slices[level].stride;
+        fb->depth_buffer = rsrc->bo->gpu + rsrc->slices[level].offset;
+        fb->depth_stride = rsrc->slices[level].stride;
 
-                        fb->stencil_buffer = rsrc->bo->gpu + rsrc->slices[level].offset;
-                        fb->stencil_stride = rsrc->slices[level].stride;
+        /* No stencil? Job done. */
+        if (!ctx->depth_stencil || !ctx->depth_stencil->stencil[0].enabled)
+                return;
 
-                } else if (surf->format == PIPE_FORMAT_Z32_UNORM ||
-                           surf->format == PIPE_FORMAT_Z32_FLOAT) {
+        if (panfrost_is_z24s8_variant(surf->format)) {
 
-                        fb->depth_buffer = rsrc->bo->gpu + rsrc->slices[level].offset;
-                        fb->depth_stride = rsrc->slices[level].stride;
+                /* Stencil data is interleaved with depth */
+                fb->stencil_buffer = fb->depth_buffer;
+                fb->stencil_stride = fb->depth_stride;
+        } else if (surf->format == PIPE_FORMAT_Z32_UNORM ||
+                   surf->format == PIPE_FORMAT_Z32_FLOAT) {
 
-                } else if (surf->format == PIPE_FORMAT_Z32_FLOAT_S8X24_UINT) {
+                /* No stencil, nothing to do */
+        } else if (surf->format == PIPE_FORMAT_Z32_FLOAT_S8X24_UINT) {
 
-                        fb->depth_buffer = rsrc->bo->gpu + rsrc->slices[level].offset;
-                        fb->depth_stride = rsrc->slices[level].stride;
+                /* Stencil data in separate buffer */
+                struct panfrost_resource *stencil = rsrc->separate_stencil;
+                struct panfrost_slice stencil_slice = stencil->slices[level];
 
-                        struct panfrost_resource *stencil = rsrc->separate_stencil;
-                        struct panfrost_slice stencil_slice = stencil->slices[level];
-
-                        fb->stencil_buffer = stencil->bo->gpu + stencil_slice.offset;
-                        fb->stencil_stride = stencil_slice.stride;
-                } else {
-                        fprintf(stderr, "Unsupported depth/stencil format\n");
-                        assert(0);
-                }
-        } else {
-                fprintf(stderr, "Invalid render layout\n");
-                assert(0);
-        }
+                fb->stencil_buffer = stencil->bo->gpu + stencil_slice.offset;
+                fb->stencil_stride = stencil_slice.stride;
+        } else
+                unreachable("Unsupported depth/stencil format.");
 }
 
 /* Creates an SFBD for the FRAGMENT section of the bound framebuffer */
@@ -207,8 +204,22 @@ panfrost_sfbd_fragment(struct panfrost_batch *batch, bool has_draws)
         panfrost_sfbd_clear(batch, &fb);
 
         /* SFBD does not support MRT natively; sanity check */
-        assert(batch->key.nr_cbufs == 1);
-        panfrost_sfbd_set_cbuf(&fb, batch->key.cbufs[0]);
+        assert(batch->key.nr_cbufs <= 1);
+        if (batch->key.nr_cbufs) {
+                struct pipe_surface *surf = batch->key.cbufs[0];
+                struct panfrost_resource *rsrc = pan_resource(surf->texture);
+                struct panfrost_bo *bo = rsrc->bo;
+
+                panfrost_sfbd_set_cbuf(&fb, surf);
+
+                if (rsrc->checksummed) {
+                        unsigned level = surf->u.tex.level;
+                        struct panfrost_slice *slice = &rsrc->slices[level];
+
+                        fb.checksum_stride = slice->checksum_stride;
+                        fb.checksum = bo->gpu + slice->checksum_offset;
+                }
+        }
 
         if (batch->key.zsbuf)
                 panfrost_sfbd_set_zsbuf(&fb, batch->key.zsbuf);
@@ -216,18 +227,6 @@ panfrost_sfbd_fragment(struct panfrost_batch *batch, bool has_draws)
         if (batch->requirements & PAN_REQ_MSAA) {
                 fb.format.unk1 |= MALI_SFBD_FORMAT_MSAA_A;
                 fb.format.unk2 |= MALI_SFBD_FORMAT_MSAA_B;
-        }
-
-        struct pipe_surface *surf = batch->key.cbufs[0];
-        struct panfrost_resource *rsrc = pan_resource(surf->texture);
-        struct panfrost_bo *bo = rsrc->bo;
-
-        if (rsrc->checksummed) {
-                unsigned level = surf->u.tex.level;
-                struct panfrost_slice *slice = &rsrc->slices[level];
-
-                fb.checksum_stride = slice->checksum_stride;
-                fb.checksum = bo->gpu + slice->checksum_offset;
         }
 
         return panfrost_upload_transient(batch, &fb, sizeof(fb)) | MALI_SFBD;
