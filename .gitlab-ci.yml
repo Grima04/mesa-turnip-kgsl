@@ -105,11 +105,11 @@ x86_build:
   needs:
     - x86_build
 
-# Debian 10 based x86 test image
-x86_test:
+# Debian 10 based x86 test image for GL
+x86_test-gl:
   extends: x86_build
   variables:
-    DEBIAN_TAG: &x86_test "2019-12-02"
+    DEBIAN_TAG: &x86_test-gl "2019-12-05"
 
 # Debian 9 based x86 build image (old LLVM)
 x86_build_old:
@@ -453,14 +453,14 @@ scons-old-llvm:
   script:
     - LLVM_VERSION=3.9 .gitlab-ci/scons-build.sh
 
-.test:
+.test-gl:
   extends:
     - .ci-run-policy
   stage: test
   variables:
     GIT_STRATEGY: none # testing doesn't build anything from source
-    TAG: *x86_test
-  image: "$CI_REGISTRY_IMAGE/debian/x86_test:$TAG"
+    TAG: *x86_test-gl
+  image: "$CI_REGISTRY_IMAGE/debian/x86_test-gl:$TAG"
   before_script:
     # Note: Build dir (and thus install) may be dirty due to GIT_STRATEGY
     - rm -rf install
@@ -475,10 +475,10 @@ scons-old-llvm:
     - meson-testing
   needs:
     - meson-testing
-    - x86_test
+    - x86_test-gl
 
 .piglit-test:
-  extends: .test
+  extends: .test-gl
   artifacts:
     when: on_failure
     name: "$CI_JOB_NAME-$CI_COMMIT_REF_NAME"
@@ -524,8 +524,8 @@ piglit-quick_shader:
       -x spec@glsl-1.50@execution@built-in-functions
     PIGLIT_PROFILES: quick_shader
 
-.deqp-test:
-  extends: .test
+.deqp-test-gl:
+  extends: .test-gl
   variables:
     DEQP_SKIPS: deqp-default-skips.txt
   script:
@@ -540,7 +540,7 @@ test-llvmpipe-gles2:
     LP_NUM_THREADS: 0
     DEQP_EXPECTED_FAILS: deqp-llvmpipe-fails.txt
     LIBGL_ALWAYS_SOFTWARE: "true"
-  extends: .deqp-test
+  extends: .deqp-test-gl
 
 test-softpipe-gles2:
   extends: test-llvmpipe-gles2
@@ -563,7 +563,7 @@ test-softpipe-gles31:
 
 arm64_a630_gles2:
   extends:
-    - .deqp-test
+    - .deqp-test-gl
     - .use-arm_test
   variables:
     DEQP_VER: gles2
