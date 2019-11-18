@@ -212,7 +212,7 @@ etna_link_shaders(struct etna_context *ctx, struct compiled_shader_state *cs,
    cs->ps_inst_mem_size = fs->code_size;
    cs->PS_INST_MEM = fs->code;
 
-   if (vs->needs_icache | fs->needs_icache) {
+   if (vs->needs_icache || fs->needs_icache) {
       /* If either of the shaders needs ICACHE, we use it for both. It is
        * either switched on or off for the entire shader processor.
        */
