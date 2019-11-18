@@ -25,6 +25,7 @@
 #include "nir_control_flow.h"
 #include "util/u_dynarray.h"
 
+#define NIR_SERIALIZE_FUNC_HAS_IMPL ((void *)(intptr_t)1)
 #define MAX_OBJECT_IDS (1 << 30)
 
 typedef struct {
@@ -1072,6 +1073,8 @@ write_function(write_ctx *ctx, const nir_function *fxn)
    uint32_t flags = fxn->is_entrypoint;
    if (fxn->name)
       flags |= 0x2;
+   if (fxn->impl)
+      flags |= 0x4;
    blob_write_uint32(ctx->blob, flags);
    if (fxn->name)
       blob_write_string(ctx->blob, fxn->name);
@@ -1113,6 +1116,8 @@ read_function(read_ctx *ctx)
    }
 
    fxn->is_entrypoint = flags & 0x1;
+   if (flags & 0x4)
+      fxn->impl = NIR_SERIALIZE_FUNC_HAS_IMPL;
 }
 
 void
@@ -1172,7 +1177,8 @@ nir_serialize(struct blob *blob, const nir_shader *nir, bool strip)
    }
 
    nir_foreach_function(fxn, nir) {
-      write_function_impl(&ctx, fxn->impl);
+      if (fxn->impl)
+         write_function_impl(&ctx, fxn->impl);
    }
 
    blob_write_uint32(blob, nir->constant_data_size);
@@ -1231,8 +1237,10 @@ nir_deserialize(void *mem_ctx,
    for (unsigned i = 0; i < num_functions; i++)
       read_function(&ctx);
 
-   nir_foreach_function(fxn, ctx.nir)
-      fxn->impl = read_function_impl(&ctx, fxn);
+   nir_foreach_function(fxn, ctx.nir) {
+      if (fxn->impl == NIR_SERIALIZE_FUNC_HAS_IMPL)
+         fxn->impl = read_function_impl(&ctx, fxn);
+   }
 
    ctx.nir->constant_data_size = blob_read_uint32(blob);
    if (ctx.nir->constant_data_size > 0) {
