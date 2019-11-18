@@ -253,6 +253,14 @@ nir_select(nir_builder *b, nir_ssa_def *x, nir_ssa_def *y, nir_ssa_def *s)
    return nir_bcsel(b, nir_ieq(b, s, nir_imm_intN_t(b, 0, s->bit_size)), x, y);
 }
 
+static inline nir_ssa_def *
+nir_clz_u(nir_builder *b, nir_ssa_def *a)
+{
+   nir_ssa_def *val;
+   val = nir_isub(b, nir_imm_intN_t(b, a->bit_size - 1, 32), nir_ufind_msb(b, a));
+   return nir_u2u(b, val, a->bit_size);
+}
+
 #ifdef __cplusplus
 }
 #endif

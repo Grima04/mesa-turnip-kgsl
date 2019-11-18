@@ -185,6 +185,8 @@ handle_special(struct vtn_builder *b, enum OpenCLstd_Entrypoints opcode,
       return nir_rotate(nb, srcs[0], srcs[1]);
    case OpenCLstd_Smoothstep:
       return nir_smoothstep(nb, srcs[0], srcs[1], srcs[2]);
+   case OpenCLstd_Clz:
+      return nir_clz_u(nb, srcs[0]);
    case OpenCLstd_Select:
       return nir_select(nb, srcs[0], srcs[1], srcs[2]);
    case OpenCLstd_Step:
