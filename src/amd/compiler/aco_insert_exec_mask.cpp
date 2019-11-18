@@ -886,6 +886,8 @@ void add_branch_code(exec_ctx& ctx, Block* block)
       for (int i = num - 1; i >= 0; i--) {
          Instruction *andn2 = bld.sop2(aco_opcode::s_andn2_b64, bld.def(s2), bld.def(s1, scc),
                                        ctx.info[block->index].exec[i].first, cond);
+         if (i == (int)ctx.info[idx].exec.size() - 1)
+            andn2->definitions[0].setFixed(exec);
          if (i == 0)
             bld.pseudo(aco_opcode::p_exit_early_if, bld.scc(andn2->definitions[1].getTemp()));
          ctx.info[block->index].exec[i].first = andn2->definitions[0].getTemp();
