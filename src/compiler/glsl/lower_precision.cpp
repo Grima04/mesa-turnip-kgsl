@@ -33,6 +33,7 @@
 #include "ir_rvalue_visitor.h"
 #include "util/half_float.h"
 #include "util/set.h"
+#include "util/hash_table.h"
 #include <vector>
 
 namespace {
@@ -43,6 +44,9 @@ public:
    ~find_precision_visitor();
 
    virtual void handle_rvalue(ir_rvalue **rvalue);
+   virtual ir_visitor_status visit_enter(ir_call *ir);
+
+   ir_function_signature *map_builtin(ir_function_signature *sig);
 
    bool progress;
 
@@ -51,6 +55,18 @@ public:
     * will be added to this set.
     */
    struct set *lowerable_rvalues;
+
+   /**
+    * A mapping of builtin signature functions to lowered versions. This is
+    * filled in lazily when a lowered version is needed.
+    */
+   struct hash_table *lowered_builtins;
+   /**
+    * A temporary hash table only used in order to clone functions.
+    */
+   struct hash_table *clone_ht;
+
+   void *lowered_builtin_mem_ctx;
 };
 
 class find_lowerable_rvalues_visitor : public ir_hierarchical_visitor {
@@ -378,6 +394,24 @@ find_lowerable_rvalues_visitor::visit_enter(ir_expression *ir)
    return visit_continue;
 }
 
+static bool
+is_lowerable_builtin(ir_call *ir,
+                     const struct set *lowerable_rvalues)
+{
+   if (!ir->callee->is_builtin())
+      return false;
+
+   assert(ir->callee->return_precision == GLSL_PRECISION_NONE);
+
+   foreach_in_list(ir_rvalue, param, &ir->actual_parameters) {
+      if (!param->as_constant() &&
+          _mesa_set_search(lowerable_rvalues, param) == NULL)
+         return false;
+   }
+
+   return true;
+}
+
 ir_visitor_status
 find_lowerable_rvalues_visitor::visit_leave(ir_call *ir)
 {
@@ -397,8 +431,16 @@ find_lowerable_rvalues_visitor::visit_leave(ir_call *ir)
 
    assert(var->data.mode == ir_var_temporary);
 
+   unsigned return_precision = ir->callee->return_precision;
+
+   /* If the call is to a builtin, then the function won’t have a return
+    * precision and we should determine it from the precision of the arguments.
+    */
+   if (is_lowerable_builtin(ir, lowerable_rvalues))
+      return_precision = GLSL_PRECISION_MEDIUM;
+
    can_lower_state lower_state =
-      handle_precision(var->type, ir->callee->return_precision);
+      handle_precision(var->type, return_precision);
 
    if (lower_state == SHOULD_LOWER) {
       /* There probably shouldn’t be any situations where multiple ir_call
@@ -592,15 +634,76 @@ find_precision_visitor::handle_rvalue(ir_rvalue **rvalue)
    progress = true;
 }
 
+ir_visitor_status
+find_precision_visitor::visit_enter(ir_call *ir)
+{
+   ir_rvalue_enter_visitor::visit_enter(ir);
+
+   /* If this is a call to a builtin and the find_lowerable_rvalues_visitor
+    * overrode the precision of the temporary return variable, then we can
+    * replace the builtin implementation with a lowered version.
+    */
+
+   if (!ir->callee->is_builtin() ||
+       ir->return_deref == NULL ||
+       ir->return_deref->variable_referenced()->data.precision !=
+       GLSL_PRECISION_MEDIUM)
+      return visit_continue;
+
+   ir->callee = map_builtin(ir->callee);
+   ir->generate_inline(ir);
+   ir->remove();
+
+   return visit_continue_with_parent;
+}
+
+ir_function_signature *
+find_precision_visitor::map_builtin(ir_function_signature *sig)
+{
+   if (lowered_builtins == NULL) {
+      lowered_builtins = _mesa_pointer_hash_table_create(NULL);
+      clone_ht =_mesa_pointer_hash_table_create(NULL);
+      lowered_builtin_mem_ctx = ralloc_context(NULL);
+   } else {
+      struct hash_entry *entry = _mesa_hash_table_search(lowered_builtins, sig);
+      if (entry)
+         return (ir_function_signature *) entry->data;
+   }
+
+   ir_function_signature *lowered_sig =
+      sig->clone(lowered_builtin_mem_ctx, clone_ht);
+
+   foreach_in_list(ir_variable, param, &lowered_sig->parameters) {
+      param->data.precision = GLSL_PRECISION_MEDIUM;
+   }
+
+   lower_precision(&lowered_sig->body);
+
+   _mesa_hash_table_clear(clone_ht, NULL);
+
+   _mesa_hash_table_insert(lowered_builtins, sig, lowered_sig);
+
+   return lowered_sig;
+}
+
 find_precision_visitor::find_precision_visitor()
    : progress(false),
-     lowerable_rvalues(_mesa_pointer_set_create(NULL))
+     lowerable_rvalues(_mesa_pointer_set_create(NULL)),
+     lowered_builtins(NULL),
+     clone_ht(NULL),
+     lowered_builtin_mem_ctx(NULL)
 {
 }
 
 find_precision_visitor::~find_precision_visitor()
 {
    _mesa_set_destroy(lowerable_rvalues, NULL);
+
+   if (lowered_builtins) {
+      _mesa_hash_table_destroy(lowered_builtins, NULL);
+      _mesa_hash_table_destroy(clone_ht, NULL);
+      ralloc_free(lowered_builtin_mem_ctx);
+   }
 }
 
 }
