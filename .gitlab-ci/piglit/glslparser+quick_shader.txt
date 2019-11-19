@@ -1550,15 +1550,6 @@ spec/arb_shading_language_420pack/preprocessor/disabled-undefined-core_vert: ski
 spec/arb_shading_language_420pack/preprocessor/enabled-core_comp: skip
 spec/arb_shading_language_420pack/preprocessor/enabled-core_tesc: skip
 spec/arb_shading_language_420pack/preprocessor/enabled-core_tese: skip
-spec/arb_shading_language_include/compile/explicit_path_extension_disabled_frag: skip
-spec/arb_shading_language_include/compile/explicit_path_frag: skip
-spec/arb_shading_language_include/compile/explicit_path_no_string_associated_frag: skip
-spec/arb_shading_language_include/compile/explicit_path_not_in_tree_frag: skip
-spec/arb_shading_language_include/compile/line_path_frag: skip
-spec/arb_shading_language_include/compile/relative_path_frag: skip
-spec/arb_shading_language_include/compile/relative_path_no_string_associated_frag: skip
-spec/arb_shading_language_include/compile/relative_path_not_in_tree_frag: skip
-spec/arb_shading_language_include/execution: skip
 spec/arb_shading_language_packing/preprocessor/disabled-defined-compat_frag: skip
 spec/arb_shading_language_packing/preprocessor/disabled-defined-compat_vert: skip
 spec/arb_shading_language_packing/preprocessor/disabled-defined-core_comp: skip
@@ -4906,7 +4897,7 @@ spec/glsl-4_40/execution: skip
 spec/glsl-4_50/execution: skip
 spec/glsl-es-3_10/compiler/helper-invocation_frag: skip
 spec/glsl-es-3_10/compiler/unsized-array-not-in-last-position_comp: skip
-spec/glsl-es-3_10/execution/cs-nir-scheduler-load-shared-regression-check: skip
+spec/glsl-es-3_10/execution: skip
 spec/glsl-es-3_20/compiler/flat_interpolation/default-interface_block-array-int-bad_frag: skip
 spec/glsl-es-3_20/compiler/flat_interpolation/default-interface_block-array-ivec2-bad_frag: skip
 spec/glsl-es-3_20/compiler/flat_interpolation/default-interface_block-array-ivec3-bad_frag: skip
@@ -5333,10 +5324,10 @@ spec/oes_viewport_array: skip
 summary:
        name:  results
        ----  --------
-       pass:     9617
+       pass:     9626
        fail:        7
       crash:        1
-       skip:     5324
+       skip:     5315
     timeout:        0
        warn:        0
  incomplete:        0

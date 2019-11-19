@@ -526,7 +526,6 @@ spec/arb_shader_texture_image_samples/texturesamples/vs-usampler2dmsarray-6: ski
 spec/arb_shader_texture_image_samples/texturesamples/vs-usampler2dmsarray-8: skip
 spec/arb_shader_texture_lod/execution/arb_shader_texture_lod-texgrad: fail
 spec/arb_shader_texture_lod/execution/arb_shader_texture_lod-texgradcube: fail
-spec/arb_shading_language_include/api tests: skip
 spec/arb_sparse_buffer/basic: skip
 spec/arb_sparse_buffer/buffer-data: skip
 spec/arb_sparse_buffer/commit: skip
@@ -1759,10 +1758,10 @@ wgl/wgl-sanity: skip
 summary:
        name:  results
        ----  --------
-       pass:     4518
+       pass:     4519
        fail:      101
       crash:        2
-       skip:     1653
+       skip:     1652
     timeout:        0
        warn:        2
  incomplete:        0
