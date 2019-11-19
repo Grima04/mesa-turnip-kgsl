@@ -513,7 +513,9 @@ tu6_emit_mrt(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
          cs, tiling->gmem_offsets[gmem_index++]); /* RB_MRT[i].BASE_GMEM */
 
       tu_cs_emit_pkt4(cs, REG_A6XX_SP_FS_MRT_REG(i), 1);
-      tu_cs_emit(cs, A6XX_SP_FS_MRT_REG_COLOR_FORMAT(format->rb));
+      tu_cs_emit(cs, A6XX_SP_FS_MRT_REG_COLOR_FORMAT(format->rb) |
+                     COND(vk_format_is_sint(iview->vk_format), A6XX_SP_FS_MRT_REG_COLOR_SINT) |
+                     COND(vk_format_is_uint(iview->vk_format), A6XX_SP_FS_MRT_REG_COLOR_UINT));
 
       tu_cs_emit_pkt4(cs, REG_A6XX_RB_MRT_FLAG_BUFFER(i), 3);
       tu6_emit_flag_buffer(cs, iview);
