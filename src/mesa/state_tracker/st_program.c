@@ -2064,6 +2064,9 @@ st_finalize_program(struct st_context *st, struct gl_program *prog)
          st->dirty |= ((struct st_program *)prog)->affected_states;
    }
 
+   if (prog->nir)
+      nir_sweep(prog->nir);
+
    /* Create Gallium shaders now instead of on demand. */
    if (ST_DEBUG & DEBUG_PRECOMPILE ||
        st->shader_has_one_variant[prog->info.stage])
