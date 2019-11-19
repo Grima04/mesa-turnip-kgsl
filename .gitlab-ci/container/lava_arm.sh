@@ -123,7 +123,7 @@ rm -rf /artifacts/rootfs/deqp/framework
 find . -name CMakeFiles | xargs rm -rf
 find . -name lib\*.a | xargs rm -rf
 du -sh *
-rm -rf /VK-GL-CTS-opengl-es-cts-3.2.5.0
+rm -rf /VK-GL-CTS
 
 
 ############### Cross-build Volt dEQP runner
