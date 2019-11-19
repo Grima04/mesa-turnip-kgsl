@@ -533,14 +533,15 @@ u_vbuf_translate_buffers(struct u_vbuf *mgr, struct translate_key *key,
 
 static boolean
 u_vbuf_translate_find_free_vb_slots(struct u_vbuf *mgr,
-                                    unsigned mask[VB_NUM])
+                                    unsigned mask[VB_NUM],
+                                    unsigned extra_free_vb_mask)
 {
    unsigned type;
    unsigned fallback_vbs[VB_NUM];
    /* Set the bit for each buffer which is incompatible, or isn't set. */
    uint32_t unused_vb_mask =
-      mgr->ve->incompatible_vb_mask_all | mgr->incompatible_vb_mask |
-      ~mgr->enabled_vb_mask;
+      (mgr->ve->incompatible_vb_mask_all | mgr->incompatible_vb_mask |
+      ~mgr->enabled_vb_mask | extra_free_vb_mask) & mgr->allowed_vb_mask;
    uint32_t unused_vb_mask_orig;
    boolean insufficient_buffers = false;
 
@@ -601,6 +602,7 @@ u_vbuf_translate_begin(struct u_vbuf *mgr,
    unsigned i, type;
    const unsigned incompatible_vb_mask = mgr->incompatible_vb_mask &
                                          mgr->ve->used_vb_mask;
+   unsigned extra_free_vb_mask = 0;
 
    const int start[VB_NUM] = {
       start_vertex,           /* VERTEX */
@@ -646,8 +648,15 @@ u_vbuf_translate_begin(struct u_vbuf *mgr,
 
    assert(mask[VB_VERTEX] || mask[VB_INSTANCE] || mask[VB_CONST]);
 
+   /* In the case of unroll_indices, we can regard all non-constant
+    * vertex buffers with only non-instance vertex elements as incompatible
+    * and thus free.
+    */
+   if (unroll_indices)
+       extra_free_vb_mask = mask[VB_VERTEX] & ~mask[VB_INSTANCE];
+
    /* Find free vertex buffer slots. */
-   if (!u_vbuf_translate_find_free_vb_slots(mgr, mask)) {
+   if (!u_vbuf_translate_find_free_vb_slots(mgr, mask, extra_free_vb_mask)) {
       return FALSE;
    }
 
