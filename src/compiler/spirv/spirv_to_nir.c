@@ -4071,7 +4071,6 @@ vtn_handle_preamble_instruction(struct vtn_builder *b, SpvOp opcode,
       case SpvAddressingModelLogical:
          vtn_fail_if(b->shader->info.stage >= MESA_SHADER_STAGES,
                      "AddressingModelLogical only supported for shaders");
-         b->shader->info.cs.ptr_size = 0;
          b->physical_ptrs = false;
          break;
       case SpvAddressingModelPhysicalStorageBuffer64EXT:
