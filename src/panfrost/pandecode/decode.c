@@ -2323,7 +2323,7 @@ pandecode_vertex_tiler_postfix_pre(
                 /* MRT blend fields are used whenever MFBD is used, with
                  * per-RT descriptors */
 
-                if (job_type == JOB_TYPE_TILER) {
+                if (job_type == JOB_TYPE_TILER && p->framebuffer & MALI_MFBD) {
                         void* blend_base = (void *) (s + 1);
 
                         for (unsigned i = 0; i < fbd_info.rt_count; i++) {
