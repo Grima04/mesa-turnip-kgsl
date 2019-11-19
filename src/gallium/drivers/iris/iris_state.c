@@ -5412,12 +5412,23 @@ iris_upload_dirty_render_state(struct iris_context *ice,
       }
    }
 
+   /* GEN:BUG:1604061319
+    *
+    *    3DSTATE_CONSTANT_* needs to be programmed before BTP_*
+    *
+    * Testing shows that all the 3DSTATE_CONSTANT_XS need to be emitted if
+    * any stage has a dirty binding table.
+    */
+   const bool emit_const_wa = GEN_GEN >= 11 &&
+      (dirty & IRIS_ALL_DIRTY_BINDINGS) != 0;
+
 #if GEN_GEN >= 12
    uint32_t nobuffer_stages = 0;
 #endif
 
    for (int stage = 0; stage <= MESA_SHADER_FRAGMENT; stage++) {
-      if (!(dirty & (IRIS_DIRTY_CONSTANTS_VS << stage)))
+      if (!(dirty & (IRIS_DIRTY_CONSTANTS_VS << stage)) &&
+          !emit_const_wa)
          continue;
 
       struct iris_shader_state *shs = &ice->state.shaders[stage];
