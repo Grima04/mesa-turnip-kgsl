@@ -36,3 +36,27 @@ libfreedreno_perfcntrs = static_library(
   build_by_default : false,
 )
 
+dep_libconfig = dependency('libconfig', required : false)
+dep_ncurses = dependency('ncurses', required : false)
+
+if dep_libconfig.found() and dep_ncurses.found()
+  fdperf = executable(
+    'fdperf',
+    'fdperf.c',
+    include_directories : [
+      inc_common,
+      inc_freedreno,
+    ],
+    link_with : [
+      libfreedreno_drm,
+      libfreedreno_perfcntrs,
+    ],
+    dependencies : [
+      dep_libconfig,
+      dep_ncurses,
+      idep_mesautil,
+    ],
+    build_by_default : with_tools.contains('freedreno'),
+    install : with_tools.contains('freedreno'),
+  )
+endif
