@@ -229,7 +229,7 @@ meson-testing:
     GALLIUM_ST: >
       -D dri3=true
     GALLIUM_DRIVERS: "swrast"
-    LLVM_VERSION: "7"
+    VULKAN_DRIVERS: amd
     BUILDTYPE: "debugoptimized"
   script:
     - .gitlab-ci/meson-build.sh

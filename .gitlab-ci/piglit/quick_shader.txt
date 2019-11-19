@@ -114,39 +114,6 @@ spec/arb_bindless_texture/linker/global_bindless_sampler_and_bindless_image: ski
 spec/arb_bindless_texture/linker/global_bindless_sampler_and_bound_image: skip
 spec/arb_bindless_texture/linker/global_bindless_sampler_and_bound_sampler: skip
 spec/arb_bindless_texture/linker/global_bound_sampler_and_bound_image: skip
-spec/arb_compute_shader/execution/atomic-counter: skip
-spec/arb_compute_shader/execution/basic-global-id: skip
-spec/arb_compute_shader/execution/basic-group-id: skip
-spec/arb_compute_shader/execution/basic-group-id-x: skip
-spec/arb_compute_shader/execution/basic-group-id-y: skip
-spec/arb_compute_shader/execution/basic-group-id-z: skip
-spec/arb_compute_shader/execution/basic-local-id-atomic: skip
-spec/arb_compute_shader/execution/basic-local-index: skip
-spec/arb_compute_shader/execution/basic-ssbo: skip
-spec/arb_compute_shader/execution/basic-texelfetch: skip
-spec/arb_compute_shader/execution/basic-uniform-access: skip
-spec/arb_compute_shader/execution/basic-uniform-access-atomic: skip
-spec/arb_compute_shader/execution/border-color: skip
-spec/arb_compute_shader/execution/multiple-texture-reading: skip
-spec/arb_compute_shader/execution/multiple-workgroups: skip
-spec/arb_compute_shader/execution/separate-global-id: skip
-spec/arb_compute_shader/execution/separate-global-id-2: skip
-spec/arb_compute_shader/execution/shared-atomicadd-int: skip
-spec/arb_compute_shader/execution/shared-atomiccompswap-int: skip
-spec/arb_compute_shader/execution/shared-atomicexchange-int: skip
-spec/arb_compute_shader/execution/shared-atomicmax-int: skip
-spec/arb_compute_shader/execution/shared-atomicmax-uint: skip
-spec/arb_compute_shader/execution/shared-atomicmin-int: skip
-spec/arb_compute_shader/execution/shared-atomicmin-uint: skip
-spec/arb_compute_shader/execution/shared-atomics: skip
-spec/arb_compute_shader/execution/simple-barrier: skip
-spec/arb_compute_shader/execution/simple-barrier-atomics: skip
-spec/arb_compute_shader/linker/bug-93840: skip
-spec/arb_compute_shader/linker/matched_local_work_sizes: skip
-spec/arb_compute_shader/linker/mismatched_local_work_sizes: skip
-spec/arb_compute_shader/linker/mix_compute_and_non_compute: skip
-spec/arb_compute_shader/linker/no_local_work_size: skip
-spec/arb_compute_shader/linker/one_local_work_size: skip
 spec/arb_compute_variable_group_size/execution/basic-local-size: skip
 spec/arb_compute_variable_group_size/execution/fixed-local-size: skip
 spec/arb_compute_variable_group_size/execution/global-invocation-id: skip
@@ -6386,13 +6353,8 @@ spec/glsl-4.40/execution/fs-interpolateatoffset-swizzle: skip
 spec/glsl-4.40/execution/fs-interpolateatsample-swizzle: skip
 spec/glsl-4.50/execution/helper-invocation: skip
 spec/glsl-4.50/execution/ssbo-atomiccompswap-int: skip
-spec/glsl-es-3.10/execution/cs-image-atomic-if-else: skip
-spec/glsl-es-3.10/execution/cs-image-atomic-if-else-2: skip
-spec/glsl-es-3.10/execution/cs-image-load-if-else: skip
-spec/glsl-es-3.10/execution/cs-nir-scheduler-load-shared-regression-check: skip
-spec/glsl-es-3.10/execution/fs-atomic-counter-layout: skip
-spec/glsl-es-3.10/execution/fs-simple-atomic-counter-inc-dec-read: skip
-spec/glsl-es-3.10/execution/vs-simple-atomic-counter-inc-dec-read: skip
+spec/glsl-es-3.10/execution/cs-nir-scheduler-load-shared-regression-check: fail
+spec/glsl-es-3.10/execution/vs-simple-atomic-counter-inc-dec-read: fail
 spec/intel_shader_atomic_float_minmax/execution/shared-atomiccompswap-float: skip
 spec/intel_shader_atomic_float_minmax/execution/shared-atomicexchange-float: skip
 spec/intel_shader_atomic_float_minmax/execution/shared-atomicmax-float: skip
@@ -6438,10 +6400,10 @@ spec/oes_viewport_array/viewport-gs-writes-out-of-range: skip
 summary:
        name:  results
        ----  --------
-       pass:     7382
-       fail:       51
+       pass:     7420
+       fail:       53
       crash:        0
-       skip:     6386
+       skip:     6346
     timeout:        0
        warn:        0
  incomplete:        0

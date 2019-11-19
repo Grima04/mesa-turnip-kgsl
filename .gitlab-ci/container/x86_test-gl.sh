@@ -40,6 +40,7 @@ apt-get install -y --no-remove \
       libxkbcommon-dev \
       libxrender1 \
       libxrender-dev \
+      libllvm8 \
       meson \
       patch \
       pkg-config \
