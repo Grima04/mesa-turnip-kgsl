@@ -1227,7 +1227,7 @@ intelDestroyContext(__DRIcontext * driContextPriv)
    driDestroyOptionCache(&brw->optionCache);
 
    /* free the Mesa context */
-   _mesa_free_context_data(&brw->ctx, true);
+   _mesa_free_context_data(&brw->ctx);
 
    ralloc_free(brw);
    driContextPriv->driverPrivate = NULL;

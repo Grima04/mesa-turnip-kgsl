@@ -1076,7 +1076,7 @@ st_destroy_context(struct st_context *st)
 
    st_destroy_program_variants(st);
 
-   _mesa_free_context_data(ctx, false);
+   _mesa_free_context_data(ctx);
 
    /* This will free the st_context too, so 'st' must not be accessed
     * afterwards. */
