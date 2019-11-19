@@ -788,7 +788,9 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
       if (instr->dest.dest.ssa.bit_size == 1) {
          assert(src.regClass() == bld.lm);
          assert(dst.regClass() == bld.lm);
-         bld.sop2(Builder::s_andn2, Definition(dst), bld.def(s1, scc), Operand(exec, bld.lm), src);
+         /* Don't use s_andn2 here, this allows the optimizer to make a better decision */
+         Temp tmp = bld.sop1(Builder::s_not, bld.def(bld.lm), bld.def(s1, scc), src);
+         bld.sop2(Builder::s_and, Definition(dst), bld.def(s1, scc), tmp, Operand(exec, bld.lm));
       } else if (dst.regClass() == v1) {
          emit_vop1_instruction(ctx, instr, aco_opcode::v_not_b32, dst);
       } else if (dst.type() == RegType::sgpr) {
@@ -5300,8 +5302,8 @@ Temp emit_boolean_reduce(isel_context *ctx, nir_op op, unsigned cluster_size, Te
    } else if (op == nir_op_iand && cluster_size == ctx->program->wave_size) {
       //subgroupAnd(val) -> (exec & ~val) == 0
       Temp tmp = bld.sop2(Builder::s_andn2, bld.def(bld.lm), bld.def(s1, scc), Operand(exec, bld.lm), src).def(1).getTemp();
-      Temp all = bld.sopc(aco_opcode::s_cmp_eq_u32, bld.def(s1, scc), bld.scc(tmp), Operand(0u));
-      return bool_to_vector_condition(ctx, all);
+      Temp cond = bool_to_vector_condition(ctx, emit_wqm(ctx, tmp));
+      return bld.sop1(Builder::s_not, bld.def(bld.lm), bld.def(s1, scc), cond);
    } else if (op == nir_op_ior && cluster_size == ctx->program->wave_size) {
       //subgroupOr(val) -> (val & exec) != 0
       Temp tmp = bld.sop2(Builder::s_and, bld.def(bld.lm), bld.def(s1, scc), src, Operand(exec, bld.lm)).def(1).getTemp();
@@ -5906,8 +5908,8 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
       assert(dst.regClass() == bld.lm);
 
       Temp tmp = bld.sop2(Builder::s_andn2, bld.def(bld.lm), bld.def(s1, scc), Operand(exec, bld.lm), src).def(1).getTemp();
-      Temp all = bld.sopc(aco_opcode::s_cmp_eq_u32, bld.def(s1, scc), bld.scc(tmp), Operand(0u));
-      bool_to_vector_condition(ctx, emit_wqm(ctx, all), dst);
+      Temp cond = bool_to_vector_condition(ctx, emit_wqm(ctx, tmp));
+      bld.sop1(Builder::s_not, Definition(dst), bld.def(s1, scc), cond);
       break;
    }
    case nir_intrinsic_vote_any: {

@@ -84,11 +84,13 @@ enum Label {
    label_uniform_bool = 1 << 21,
    label_constant_64bit = 1 << 22,
    label_uniform_bitwise = 1 << 23,
+   label_scc_invert = 1 << 24,
 };
 
 static constexpr uint32_t instr_labels = label_vec | label_mul | label_mad | label_omod_success | label_clamp_success |
                                          label_add_sub | label_bitwise | label_uniform_bitwise | label_minmax | label_fcmp;
-static constexpr uint32_t temp_labels = label_abs | label_neg | label_temp | label_vcc | label_b2f | label_uniform_bool | label_omod2 | label_omod4 | label_omod5 | label_clamp;
+static constexpr uint32_t temp_labels = label_abs | label_neg | label_temp | label_vcc | label_b2f | label_uniform_bool |
+                                        label_omod2 | label_omod4 | label_omod5 | label_clamp | label_scc_invert;
 static constexpr uint32_t val_labels = label_constant | label_constant_64bit | label_literal | label_mad;
 
 struct ssa_info {
@@ -379,6 +381,17 @@ struct ssa_info {
    bool is_fcmp()
    {
       return label & label_fcmp;
+   }
+
+   void set_scc_invert(Temp scc_inv)
+   {
+      add_label(label_scc_invert);
+      temp = scc_inv;
+   }
+
+   bool is_scc_invert()
+   {
+      return label & label_scc_invert;
    }
 
    void set_uniform_bool(Temp uniform_bool)
@@ -830,6 +843,14 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
             continue;
          }
       }
+
+      else if (instr->format == Format::PSEUDO_BRANCH) {
+         if (ctx.info[instr->operands[0].tempId()].is_scc_invert()) {
+            /* Flip the branch instruction to get rid of the scc_invert instruction */
+            instr->opcode = instr->opcode == aco_opcode::p_cbranch_z ? aco_opcode::p_cbranch_nz : aco_opcode::p_cbranch_z;
+            instr->operands[0].setTemp(ctx.info[instr->operands[0].tempId()].temp);
+         }
+      }
    }
 
    /* if this instruction doesn't define anything, return */
@@ -1097,6 +1118,17 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
    case aco_opcode::s_add_u32:
       ctx.info[instr->definitions[0].tempId()].set_add_sub(instr.get());
       break;
+   case aco_opcode::s_not_b32:
+   case aco_opcode::s_not_b64:
+      if (ctx.info[instr->operands[0].tempId()].is_uniform_bool()) {
+         ctx.info[instr->definitions[0].tempId()].set_uniform_bitwise();
+         ctx.info[instr->definitions[1].tempId()].set_scc_invert(ctx.info[instr->operands[0].tempId()].temp);
+      } else if (ctx.info[instr->operands[0].tempId()].is_uniform_bitwise()) {
+         ctx.info[instr->definitions[0].tempId()].set_uniform_bitwise();
+         ctx.info[instr->definitions[1].tempId()].set_scc_invert(ctx.info[instr->operands[0].tempId()].instr->definitions[1].getTemp());
+      }
+      ctx.info[instr->definitions[0].tempId()].set_bitwise(instr.get());
+      break;
    case aco_opcode::s_and_b32:
    case aco_opcode::s_and_b64:
       if (instr->operands[1].isFixed() && instr->operands[1].physReg() == exec && instr->operands[0].isTemp()) {
@@ -1113,8 +1145,6 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
          }
       }
       /* fallthrough */
-   case aco_opcode::s_not_b32:
-   case aco_opcode::s_not_b64:
    case aco_opcode::s_or_b32:
    case aco_opcode::s_or_b64:
    case aco_opcode::s_xor_b32:
@@ -1166,6 +1196,17 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
           instr->operands[1].constantEquals(0)) {
          /* Found a cselect that operates on a uniform bool that comes from eg. s_cmp */
          ctx.info[instr->definitions[0].tempId()].set_uniform_bool(instr->operands[2].getTemp());
+      }
+      if (instr->operands[2].isTemp() && ctx.info[instr->operands[2].tempId()].is_scc_invert()) {
+         /* Flip the operands to get rid of the scc_invert instruction */
+         std::swap(instr->operands[0], instr->operands[1]);
+         instr->operands[2].setTemp(ctx.info[instr->operands[2].tempId()].temp);
+      }
+      break;
+   case aco_opcode::p_wqm:
+      if (instr->operands[0].isTemp() &&
+          ctx.info[instr->operands[0].tempId()].is_scc_invert()) {
+         ctx.info[instr->definitions[0].tempId()].set_temp(instr->operands[0].getTemp());
       }
       break;
    default:
