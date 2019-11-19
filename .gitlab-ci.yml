@@ -209,10 +209,28 @@ arm_test:
   script:
     - .gitlab-ci/scons-build.sh
 
-meson-main:
+meson-testing:
   extends:
     - .meson-build
     - .ci-deqp-artifacts
+  variables:
+    UNWIND: "true"
+    DRI_LOADERS: >
+      -D glx=dri
+      -D gbm=true
+      -D egl=true
+      -D platforms=x11,drm,surfaceless
+    GALLIUM_ST: >
+      -D dri3=true
+    GALLIUM_DRIVERS: "swrast"
+    LLVM_VERSION: "7"
+    BUILDTYPE: "debugoptimized"
+  script:
+    - .gitlab-ci/meson-build.sh
+    - .gitlab-ci/prepare-artifacts.sh
+
+meson-main:
+  extends: .meson-build
   variables:
     UNWIND: "true"
     DRI_LOADERS: >
@@ -240,7 +258,6 @@ meson-main:
   script:
     - .gitlab-ci/meson-build.sh
     - .gitlab-ci/run-shader-db.sh
-    - .gitlab-ci/prepare-artifacts.sh
 
 .meson-cross:
   extends:
@@ -483,9 +500,9 @@ scons-old-llvm:
     paths:
       - results/
   dependencies:
-    - meson-main
+    - meson-testing
   needs:
-    - meson-main
+    - meson-testing
     - x86_test
 
 .piglit-test:
