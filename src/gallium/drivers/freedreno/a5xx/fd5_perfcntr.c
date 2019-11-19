@@ -27,39 +27,10 @@
 #ifndef FD5_PERFCNTR_H_
 #define FD5_PERFCNTR_H_
 
-#include "freedreno_perfcntr.h"
 #include "fd5_format.h"
 
 #define REG(_x) REG_A5XX_ ## _x
-
-#define COUNTER(_sel, _lo, _hi) {  \
-	.select_reg = REG(_sel),       \
-	.counter_reg_lo = REG(_lo),    \
-	.counter_reg_hi = REG(_hi),    \
-}
-
-#define COUNTER2(_sel, _lo, _hi, _en, _clr) { \
-	.select_reg     = REG(_sel),  \
-	.counter_reg_lo = REG(_lo),   \
-	.counter_reg_hi = REG(_hi),   \
-	.enable         = REG(_en),   \
-	.clear          = REG(_clr),  \
-}
-
-#define COUNTABLE(_selector, _query_type, _result_type) {            \
-	.name        = #_selector,                                       \
-	.selector    = _selector,                                        \
-	.query_type  = PIPE_DRIVER_QUERY_TYPE_ ## _query_type,           \
-	.result_type = PIPE_DRIVER_QUERY_RESULT_TYPE_ ## _result_type,   \
-}
-
-#define GROUP(_name, _counters, _countables) {   \
-	.name           = _name,                     \
-	.num_counters   = ARRAY_SIZE(_counters),     \
-	.counters       = _counters,                 \
-	.num_countables = ARRAY_SIZE(_countables),   \
-	.countables     = _countables,               \
-}
+#include "freedreno_perfcntr.h"
 
 static const struct fd_perfcntr_counter cp_counters[] = {
 //RESERVED: for kernel
