@@ -318,7 +318,6 @@ meson-swr-glvnd:
   variables:
     UNWIND: "true"
     DRI_LOADERS: >
-      -D glvnd=true
       -D egl=true
     GALLIUM_ST: >
       -D dri3=true
@@ -336,6 +335,8 @@ meson-clang:
   extends: .meson-build
   variables:
     UNWIND: "true"
+    DRI_LOADERS: >
+      -D glvnd=true
     DRI_DRIVERS: "auto"
     GALLIUM_DRIVERS: "auto"
     VULKAN_DRIVERS: intel,amd,freedreno
