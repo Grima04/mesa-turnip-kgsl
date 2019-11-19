@@ -972,7 +972,7 @@ static const nir_shader_compiler_options nir_options = {
    .use_interpolated_input_intrinsics = true,
    .lower_mul_2x32_64 = true, // TODO
    .max_unroll_iterations = 32,
-   .lower_int64_options = nir_lower_divmod64, // TODO
+   .lower_int64_options = nir_lower_ufind_msb64|nir_lower_divmod64, // TODO
    .lower_doubles_options = nir_lower_dmod, // TODO
    .lower_to_scalar = true,
 };
