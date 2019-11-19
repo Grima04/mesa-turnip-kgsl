@@ -308,6 +308,7 @@ color_attachment_compute_aux_usage(struct anv_device * device,
    att_state->aux_usage =
       anv_layout_to_aux_usage(&device->info, iview->image,
                               VK_IMAGE_ASPECT_COLOR_BIT,
+                              VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
                               VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
    /* If we don't have aux, then we should have returned early in the layer
@@ -465,6 +466,7 @@ depth_stencil_attachment_compute_aux_usage(struct anv_device *device,
    const enum isl_aux_usage first_subpass_aux_usage =
       anv_layout_to_aux_usage(&device->info, iview->image,
                               VK_IMAGE_ASPECT_DEPTH_BIT,
+                              VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
                               pass_att->first_subpass_layout);
    if (!blorp_can_hiz_clear_depth(&device->info,
                                   &iview->image->planes[0].surface.isl,
@@ -1139,9 +1141,9 @@ transition_color_buffer(struct anv_cmd_buffer *cmd_buffer,
    }
 
    const enum isl_aux_usage initial_aux_usage =
-      anv_layout_to_aux_usage(devinfo, image, aspect, initial_layout);
+      anv_layout_to_aux_usage(devinfo, image, aspect, 0, initial_layout);
    const enum isl_aux_usage final_aux_usage =
-      anv_layout_to_aux_usage(devinfo, image, aspect, final_layout);
+      anv_layout_to_aux_usage(devinfo, image, aspect, 0, final_layout);
 
    /* The current code assumes that there is no mixing of CCS_E and CCS_D.
     * We can handle transitions between CCS_D/E to and from NONE.  What we
@@ -1490,7 +1492,9 @@ genX(BeginCommandBuffer)(
 
             enum isl_aux_usage aux_usage =
                anv_layout_to_aux_usage(&cmd_buffer->device->info, iview->image,
-                                       VK_IMAGE_ASPECT_DEPTH_BIT, layout);
+                                       VK_IMAGE_ASPECT_DEPTH_BIT,
+                                       VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+                                       layout);
 
             cmd_buffer->state.hiz_enabled = aux_usage == ISL_AUX_USAGE_HIZ;
          }
@@ -4658,7 +4662,9 @@ cmd_buffer_begin_subpass(struct anv_cmd_buffer *cmd_buffer,
                                  att_state->current_layout, target_layout);
          att_state->aux_usage =
             anv_layout_to_aux_usage(&cmd_buffer->device->info, image,
-                                    VK_IMAGE_ASPECT_DEPTH_BIT, target_layout);
+                                    VK_IMAGE_ASPECT_DEPTH_BIT,
+                                    VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+                                    target_layout);
       }
 
       if (image->aspects & VK_IMAGE_ASPECT_STENCIL_BIT) {
@@ -5047,6 +5053,7 @@ cmd_buffer_end_subpass(struct anv_cmd_buffer *cmd_buffer)
          src_state->aux_usage =
             anv_layout_to_aux_usage(&cmd_buffer->device->info, src_iview->image,
                                     VK_IMAGE_ASPECT_DEPTH_BIT,
+                                    VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
                                     VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
          src_state->current_layout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
 
@@ -5071,6 +5078,7 @@ cmd_buffer_end_subpass(struct anv_cmd_buffer *cmd_buffer)
          dst_state->aux_usage =
             anv_layout_to_aux_usage(&cmd_buffer->device->info, dst_iview->image,
                                     VK_IMAGE_ASPECT_DEPTH_BIT,
+                                    VK_IMAGE_USAGE_TRANSFER_DST_BIT,
                                     VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
          dst_state->current_layout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 

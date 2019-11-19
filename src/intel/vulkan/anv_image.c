@@ -1249,6 +1249,7 @@ anv_layout_to_aux_state(const struct gen_device_info * const devinfo,
  * @param devinfo The device information of the Intel GPU.
  * @param image The image that may contain a collection of buffers.
  * @param aspect The aspect of the image to be accessed.
+ * @param usage The usage which describes how the image will be accessed.
  * @param layout The current layout of the image aspect(s).
  *
  * @return The primary buffer that should be used for the given layout.
@@ -1257,6 +1258,7 @@ enum isl_aux_usage
 anv_layout_to_aux_usage(const struct gen_device_info * const devinfo,
                         const struct anv_image * const image,
                         const VkImageAspectFlagBits aspect,
+                        const VkImageUsageFlagBits usage,
                         const VkImageLayout layout)
 {
    uint32_t plane = anv_image_aspect_to_plane(image->aspects, aspect);
@@ -1305,6 +1307,7 @@ anv_layout_to_aux_usage(const struct gen_device_info * const devinfo,
  * @param devinfo The device information of the Intel GPU.
  * @param image The image that may contain a collection of buffers.
  * @param aspect The aspect of the image to be accessed.
+ * @param usage The usage which describes how the image will be accessed.
  * @param layout The current layout of the image aspect(s).
  */
 enum anv_fast_clear_type
@@ -1791,9 +1794,11 @@ anv_CreateImageView(VkDevice _device,
 
          enum isl_aux_usage general_aux_usage =
             anv_layout_to_aux_usage(&device->info, image, 1UL << iaspect_bit,
+                                    VK_IMAGE_USAGE_SAMPLED_BIT,
                                     VK_IMAGE_LAYOUT_GENERAL);
          enum isl_aux_usage optimal_aux_usage =
             anv_layout_to_aux_usage(&device->info, image, 1UL << iaspect_bit,
+                                    VK_IMAGE_USAGE_SAMPLED_BIT,
                                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
          anv_image_fill_surface_state(device, image, 1ULL << iaspect_bit,
