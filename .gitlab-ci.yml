@@ -545,12 +545,23 @@ piglit-quick_shader:
       -x spec@glsl-1.50@execution@built-in-functions
     PIGLIT_PROFILES: quick_shader
 
-.deqp-test-gl:
-  extends: .test-gl
+.deqp-test:
   variables:
     DEQP_SKIPS: deqp-default-skips.txt
   script:
     - ./artifacts/deqp-runner.sh
+
+.deqp-test-gl:
+  extends:
+    - .test-gl
+    - .deqp-test
+
+.deqp-test-vk:
+  extends:
+    - .test-vk
+    - .deqp-test
+  variables:
+    DEQP_VER: vk
 
 test-llvmpipe-gles2:
   variables:
