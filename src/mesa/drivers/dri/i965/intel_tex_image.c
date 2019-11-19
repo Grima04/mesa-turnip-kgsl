@@ -637,10 +637,14 @@ intel_image_target_texture_2d(struct gl_context *ctx, GLenum target,
       image->internal_format != 0 ?
       image->internal_format : _mesa_get_format_base_format(mt->format);
 
-   /* Setup a sized internal format for MESA_FORMAT_R10G10B10[X2|A2]_UNORM. */
+   /* Fix the internal format when _mesa_get_format_base_format(mt->format)
+    * isn't a valid one for that particular format.
+    */
    if (brw->mesa_format_supports_render[image->format]) {
       if (image->format == MESA_FORMAT_R10G10B10A2_UNORM ||
-          image->format == MESA_FORMAT_R10G10B10X2_UNORM)
+          image->format == MESA_FORMAT_R10G10B10X2_UNORM ||
+          image->format == MESA_FORMAT_B10G10R10A2_UNORM ||
+          image->format == MESA_FORMAT_B10G10R10X2_UNORM)
          internal_format = GL_RGB10_A2;
    }
 
