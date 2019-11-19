@@ -254,7 +254,6 @@ meson-main:
     EXTRA_OPTION: >
       -D osmesa=gallium
       -D tools=all
-    BUILDTYPE: "debugoptimized"
   script:
     - .gitlab-ci/meson-build.sh
     - .gitlab-ci/run-shader-db.sh
