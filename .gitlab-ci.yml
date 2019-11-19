@@ -307,30 +307,6 @@ meson-arm64:
     - .gitlab-ci/meson-build.sh
     - .gitlab-ci/prepare-artifacts.sh
 
-# NOTE: Building SWR is 2x (yes two) times slower than all the other
-# gallium drivers combined.
-# Start this early so that it doesn't limit the total run time.
-#
-# We also stick the glvnd build here, since we want non-glvnd in
-# meson-main for actual driver CI.
-meson-swr-glvnd:
-  extends: .meson-build
-  variables:
-    UNWIND: "true"
-    DRI_LOADERS: >
-      -D egl=true
-    GALLIUM_ST: >
-      -D dri3=true
-      -D gallium-vdpau=false
-      -D gallium-xvmc=false
-      -D gallium-omx=disabled
-      -D gallium-va=false
-      -D gallium-xa=false
-      -D gallium-nine=false
-      -D gallium-opencl=disabled
-    GALLIUM_DRIVERS: "iris"
-    LLVM_VERSION: "6.0"
-
 meson-clang:
   extends: .meson-build
   variables:
