@@ -116,6 +116,7 @@ static const nir_shader_compiler_options options_a6xx = {
 		.vectorize_io = true,
 		.lower_to_scalar = true,
 		.has_imul24 = true,
+		.max_unroll_iterations = 32,
 };
 
 const nir_shader_compiler_options *
@@ -207,7 +208,6 @@ ir3_optimize_loop(nir_shader *s)
 		progress |= OPT(s, nir_opt_if, false);
 		progress |= OPT(s, nir_opt_remove_phis);
 		progress |= OPT(s, nir_opt_undef);
-
 	} while (progress);
 }
 
