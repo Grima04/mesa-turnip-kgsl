@@ -2150,7 +2150,7 @@ bool apply_omod_clamp(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
 
 void combine_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
 {
-   if (instr->definitions.empty() || !ctx.uses[instr->definitions[0].tempId()])
+   if (instr->definitions.empty() || is_dead(ctx.uses, instr.get()))
       return;
 
    if (instr->isVALU()) {
