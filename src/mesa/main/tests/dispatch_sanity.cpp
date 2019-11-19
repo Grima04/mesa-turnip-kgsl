@@ -2418,6 +2418,7 @@ const struct function gles2_functions_possible[] = {
    { "glGetQueryObjecti64vEXT", 20, -1 },
    { "glGetQueryObjectui64vEXT", 20, -1 },
    { "glQueryCounterEXT", 20, -1 },
+   { "glGetInteger64vEXT", 20, -1 },
 
    /* GL_EXT_shader_framebuffer_fetch_non_coherent */
    { "glFramebufferFetchBarrierEXT", 20, -1 },
@@ -2501,7 +2502,8 @@ const struct function gles3_functions_possible[] = {
    // { "glGetBufferPointerv", 30, -1 },
    { "glGetFragDataLocation", 30, -1 },
    { "glGetInteger64i_v", 30, -1 },
-   { "glGetInteger64v", 30, -1 },
+   // We check for the aliased -EXT version in GLES 2
+   //{ "glGetInteger64v", 30, -1 },
    { "glGetIntegeri_v", 30, -1 },
    { "glGetInternalformativ", 30, -1 },
    { "glGetInternalformati64v", 30, -1 },
