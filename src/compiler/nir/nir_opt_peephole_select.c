@@ -91,6 +91,27 @@ block_check_for_allowed_instrs(nir_block *block, unsigned *count,
          }
 
          case nir_intrinsic_load_uniform:
+         case nir_intrinsic_load_helper_invocation:
+         case nir_intrinsic_is_helper_invocation:
+         case nir_intrinsic_load_front_face:
+         case nir_intrinsic_load_view_index:
+         case nir_intrinsic_load_layer_id:
+         case nir_intrinsic_load_frag_coord:
+         case nir_intrinsic_load_sample_pos:
+         case nir_intrinsic_load_sample_id:
+         case nir_intrinsic_load_sample_mask_in:
+         case nir_intrinsic_load_vertex_id_zero_base:
+         case nir_intrinsic_load_first_vertex:
+         case nir_intrinsic_load_base_instance:
+         case nir_intrinsic_load_instance_id:
+         case nir_intrinsic_load_draw_id:
+         case nir_intrinsic_load_num_work_groups:
+         case nir_intrinsic_load_work_group_id:
+         case nir_intrinsic_load_local_invocation_id:
+         case nir_intrinsic_load_local_invocation_index:
+         case nir_intrinsic_load_subgroup_id:
+         case nir_intrinsic_load_subgroup_invocation:
+         case nir_intrinsic_load_num_subgroups:
             if (!alu_ok)
                return false;
             break;
@@ -104,6 +125,7 @@ block_check_for_allowed_instrs(nir_block *block, unsigned *count,
 
       case nir_instr_type_deref:
       case nir_instr_type_load_const:
+      case nir_instr_type_ssa_undef:
          break;
 
       case nir_instr_type_alu: {
