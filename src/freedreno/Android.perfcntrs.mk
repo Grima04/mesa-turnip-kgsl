@@ -1,4 +1,6 @@
-# Copyright (C) 2014 Emil Velikov <emil.l.velikov@gmail.com>
+# Mesa 3-D graphics library
+#
+# Copyright (C)
 #
 # Permission is hereby granted, free of charge, to any person obtaining a
 # copy of this software and associated documentation files (the "Software"),
@@ -18,41 +20,24 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-LOCAL_PATH := $(call my-dir)
+# Android.mk for libfreedreno_perfcntrs.a
 
-# get C_SOURCES
-include $(LOCAL_PATH)/Makefile.sources
+# ---------------------------------------
+# Build libfreedreno_perfcntrs
+# ---------------------------------------
 
 include $(CLEAR_VARS)
 
 LOCAL_SRC_FILES := \
-	$(C_SOURCES) \
-	$(a2xx_SOURCES) \
-	$(a3xx_SOURCES)	\
-	$(a4xx_SOURCES) \
-	$(a5xx_SOURCES) \
-	$(a6xx_SOURCES) \
-	$(ir3_SOURCES)
+	$(perfcntrs_SOURCES)
 
-#LOCAL_CFLAGS := \
-#	-Wno-packed-bitfield-compat
+LOCAL_C_INCLUDES :=
 
-LOCAL_C_INCLUDES := \
-	$(LOCAL_PATH)/ir3 \
-	$(MESA_TOP)/include
+LOCAL_MODULE := libfreedreno_perfcntrs
 
-LOCAL_GENERATED_SOURCES := $(MESA_GEN_NIR_H)
+LOCAL_GENERATED_SOURCES := \
+	$(MESA_GEN_GLSL_H) \
+	$(MESA_GEN_NIR_H)
 
-LOCAL_SHARED_LIBRARIES := libdrm
-LOCAL_STATIC_LIBRARIES := libmesa_glsl libmesa_nir libfreedreno_drm libfreedreno_ir3 libfreedreno_perfcntrs libfreedreno_registers
-LOCAL_MODULE := libmesa_pipe_freedreno
-
-include $(LOCAL_PATH)/Android.gen.mk
-include $(GALLIUM_COMMON_MK)
+include $(MESA_COMMON_MK)
 include $(BUILD_STATIC_LIBRARY)
-
-ifneq ($(HAVE_GALLIUM_FREEDRENO),)
-GALLIUM_TARGET_DRIVERS += msm
-$(eval GALLIUM_LIBS += $(LOCAL_MODULE) libmesa_winsys_freedreno)
-$(eval GALLIUM_SHARED_LIBS += $(LOCAL_SHARED_LIBRARIES))
-endif
