@@ -27,7 +27,9 @@
 #ifndef FD5_PERFCNTR_H_
 #define FD5_PERFCNTR_H_
 
-#include "fd5_format.h"
+#include "util/u_half.h"
+#include "adreno_common.xml.h"
+#include "a5xx.xml.h"
 
 #define REG(_x) REG_A5XX_ ## _x
 #include "freedreno_perfcntr.h"

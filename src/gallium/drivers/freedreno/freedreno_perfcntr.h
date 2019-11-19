@@ -48,6 +48,31 @@ struct fd_perfcntr_counter {
 	unsigned clear;
 };
 
+
+enum fd_perfcntr_type {
+	FD_PERFCNTR_TYPE_UINT64,
+	FD_PERFCNTR_TYPE_UINT,
+	FD_PERFCNTR_TYPE_FLOAT,
+	FD_PERFCNTR_TYPE_PERCENTAGE,
+	FD_PERFCNTR_TYPE_BYTES,
+	FD_PERFCNTR_TYPE_MICROSECONDS,
+	FD_PERFCNTR_TYPE_HZ,
+	FD_PERFCNTR_TYPE_DBM,
+	FD_PERFCNTR_TYPE_TEMPERATURE,
+	FD_PERFCNTR_TYPE_VOLTS,
+	FD_PERFCNTR_TYPE_AMPS,
+	FD_PERFCNTR_TYPE_WATTS,
+};
+
+/* Whether an average value per frame or a cumulative value should be
+ * displayed.
+ */
+enum fd_perfcntr_result_type {
+	FD_PERFCNTR_RESULT_TYPE_AVERAGE,
+	FD_PERFCNTR_RESULT_TYPE_CUMULATIVE,
+};
+
+
 /* Describes a single countable: */
 struct fd_perfcntr_countable {
 	const char *name;
@@ -55,8 +80,8 @@ struct fd_perfcntr_countable {
 	unsigned selector;
 
 	/* description of the countable: */
-	enum pipe_driver_query_type query_type;
-	enum pipe_driver_query_result_type result_type;
+	enum fd_perfcntr_type query_type;
+	enum fd_perfcntr_result_type result_type;
 };
 
 /* Describes an entire counter group: */
@@ -85,8 +110,8 @@ struct fd_perfcntr_group {
 #define COUNTABLE(_selector, _query_type, _result_type) {            \
 	.name        = #_selector,                                       \
 	.selector    = _selector,                                        \
-	.query_type  = PIPE_DRIVER_QUERY_TYPE_ ## _query_type,           \
-	.result_type = PIPE_DRIVER_QUERY_RESULT_TYPE_ ## _result_type,   \
+	.query_type  = FD_PERFCNTR_TYPE_ ## _query_type,                 \
+	.result_type = FD_PERFCNTR_RESULT_TYPE_ ## _result_type,         \
 }
 
 #define GROUP(_name, _counters, _countables) {   \
