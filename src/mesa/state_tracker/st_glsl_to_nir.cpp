@@ -634,16 +634,16 @@ st_link_nir(struct gl_context *ctx,
             struct gl_shader_program *shader_program)
 {
    struct st_context *st = st_context(ctx);
-   unsigned num_linked_shaders = 0;
+   struct gl_linked_shader *linked_shader[MESA_SHADER_STAGES];
+   unsigned num_shaders = 0;
 
-   unsigned last_stage = 0;
    for (unsigned i = 0; i < MESA_SHADER_STAGES; i++) {
-      struct gl_linked_shader *shader = shader_program->_LinkedShaders[i];
-      if (shader == NULL)
-         continue;
+      if (shader_program->_LinkedShaders[i])
+         linked_shader[num_shaders++] = shader_program->_LinkedShaders[i];
+   }
 
-      num_linked_shaders++;
-
+   for (unsigned i = 0; i < num_shaders; i++) {
+      struct gl_linked_shader *shader = linked_shader[i];
       const nir_shader_compiler_options *options =
          st->ctx->Const.ShaderCompilerOptions[shader->Stage].NirOptions;
       struct gl_program *prog = shader->Program;
@@ -683,8 +683,6 @@ st_link_nir(struct gl_context *ctx,
          st_nir_preprocess(st, prog, shader_program, shader->Stage);
       }
 
-      last_stage = i;
-
       if (options->lower_to_scalar) {
          NIR_PASS_V(shader->Program->nir, nir_lower_load_const_to_scalar);
       }
@@ -704,15 +702,12 @@ st_link_nir(struct gl_context *ctx,
 
       nir_build_program_resource_list(ctx, shader_program);
 
-      for (unsigned i = 0; i < MESA_SHADER_STAGES; i++) {
-         struct gl_linked_shader *shader = shader_program->_LinkedShaders[i];
-         if (shader == NULL)
-            continue;
-
+      for (unsigned i = 0; i < num_shaders; i++) {
+         struct gl_linked_shader *shader = linked_shader[i];
          struct gl_program *prog = shader->Program;
+
          prog->ExternalSamplersUsed = gl_external_samplers(prog);
          _mesa_update_shader_textures_used(shader_program, prog);
-
          st_nir_preprocess(st, prog, shader_program, shader->Stage);
       }
    }
@@ -722,29 +717,19 @@ st_link_nir(struct gl_context *ctx,
     * are eliminated if they are (transitively) not used in a later
     * stage.
     */
-   int next = last_stage;
-   for (int i = next - 1; i >= 0; i--) {
-      struct gl_linked_shader *shader = shader_program->_LinkedShaders[i];
-      if (shader == NULL)
-         continue;
-
-      st_nir_link_shaders(&shader->Program->nir,
-                          &shader_program->_LinkedShaders[next]->Program->nir);
-      next = i;
+   for (int i = num_shaders - 2; i >= 0; i--) {
+      st_nir_link_shaders(&linked_shader[i]->Program->nir,
+                          &linked_shader[i + 1]->Program->nir);
    }
 
-   int prev = -1;
-   for (unsigned i = 0; i < MESA_SHADER_STAGES; i++) {
-      struct gl_linked_shader *shader = shader_program->_LinkedShaders[i];
-      if (shader == NULL)
-         continue;
-
+   for (unsigned i = 0; i < num_shaders; i++) {
+      struct gl_linked_shader *shader = linked_shader[i];
       nir_shader *nir = shader->Program->nir;
 
       /* Linked shaders are optimized in st_nir_link_shaders. Separate shaders
        * and shaders with a fixed-func VS or FS are optimized here.
        */
-      if (num_linked_shaders == 1)
+      if (num_shaders == 1)
          st_nir_opts(nir);
 
       NIR_PASS_V(nir, st_nir_lower_wpos_ytransform, shader->Program,
@@ -755,7 +740,7 @@ st_link_nir(struct gl_context *ctx,
 
       nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));
       shader->Program->info = nir->info;
-      if (i == MESA_SHADER_VERTEX) {
+      if (shader->Stage == MESA_SHADER_VERTEX) {
          /* NIR expands dual-slot inputs out to two locations.  We need to
           * compact things back down GL-style single-slot inputs to avoid
           * confusing the state tracker.
@@ -765,9 +750,8 @@ st_link_nir(struct gl_context *ctx,
                                              shader->Program->DualSlotInputs);
       }
 
-      if (prev != -1) {
-         struct gl_program *prev_shader =
-            shader_program->_LinkedShaders[prev]->Program;
+      if (i >= 1) {
+         struct gl_program *prev_shader = linked_shader[i - 1]->Program;
 
          /* We can't use nir_compact_varyings with transform feedback, since
           * the pipe_stream_output->output_register field is based on the
@@ -775,32 +759,28 @@ st_link_nir(struct gl_context *ctx,
           */
          if (!(prev_shader->sh.LinkedTransformFeedback &&
                prev_shader->sh.LinkedTransformFeedback->NumVarying > 0))
-            nir_compact_varyings(shader_program->_LinkedShaders[prev]->Program->nir,
-                              nir, ctx->API != API_OPENGL_COMPAT);
+            nir_compact_varyings(prev_shader->nir,
+                                 nir, ctx->API != API_OPENGL_COMPAT);
 
-         if (ctx->Const.ShaderCompilerOptions[i].NirOptions->vectorize_io)
+         if (ctx->Const.ShaderCompilerOptions[shader->Stage].NirOptions->vectorize_io)
             st_nir_vectorize_io(prev_shader->nir, nir);
       }
-      prev = i;
    }
 
-   for (unsigned i = 0; i < MESA_SHADER_STAGES; i++) {
-      struct gl_linked_shader *shader = shader_program->_LinkedShaders[i];
-      if (shader == NULL)
-         continue;
-
+   for (unsigned i = 0; i < num_shaders; i++) {
+      struct gl_linked_shader *shader = linked_shader[i];
       struct gl_program *prog = shader->Program;
       struct st_program *stp = st_program(prog);
       st_glsl_to_nir_post_opts(st, prog, shader_program);
 
       /* Initialize st_vertex_program members. */
-      if (i == MESA_SHADER_VERTEX)
+      if (shader->Stage == MESA_SHADER_VERTEX)
          st_prepare_vertex_program(stp);
 
       /* Get pipe_stream_output_info. */
-      if (i == MESA_SHADER_VERTEX ||
-          i == MESA_SHADER_TESS_EVAL ||
-          i == MESA_SHADER_GEOMETRY)
+      if (shader->Stage == MESA_SHADER_VERTEX ||
+          shader->Stage == MESA_SHADER_TESS_EVAL ||
+          shader->Stage == MESA_SHADER_GEOMETRY)
          st_translate_stream_output_info(prog);
 
       st_store_ir_in_disk_cache(st, prog, true);
