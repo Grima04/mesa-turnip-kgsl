@@ -60,6 +60,12 @@ void validate(Program* program, FILE * output)
          is_valid = false;
       }
    };
+   auto check_block = [&output, &is_valid](bool check, const char * msg, aco::Block * block) -> void {
+      if (!check) {
+         fprintf(output, "%s: BB%u\n", msg, block->index);
+         is_valid = false;
+      }
+   };
 
    for (Block& block : program->blocks) {
       for (aco_ptr<Instruction>& instr : block.instructions) {
@@ -246,6 +252,31 @@ void validate(Program* program, FILE * output)
          }
       }
    }
+
+   /* validate CFG */
+   for (unsigned i = 0; i < program->blocks.size(); i++) {
+      Block& block = program->blocks[i];
+      check_block(block.index == i, "block.index must match actual index", &block);
+
+      /* predecessors/successors should be sorted */
+      for (unsigned j = 0; j + 1 < block.linear_preds.size(); j++)
+         check_block(block.linear_preds[j] < block.linear_preds[j + 1], "linear predecessors must be sorted", &block);
+      for (unsigned j = 0; j + 1 < block.logical_preds.size(); j++)
+         check_block(block.logical_preds[j] < block.logical_preds[j + 1], "logical predecessors must be sorted", &block);
+      for (unsigned j = 0; j + 1 < block.linear_succs.size(); j++)
+         check_block(block.linear_succs[j] < block.linear_succs[j + 1], "linear successors must be sorted", &block);
+      for (unsigned j = 0; j + 1 < block.logical_succs.size(); j++)
+         check_block(block.logical_succs[j] < block.logical_succs[j + 1], "logical successors must be sorted", &block);
+
+      /* critical edges are not allowed */
+      if (block.linear_preds.size() > 1) {
+         for (unsigned pred : block.linear_preds)
+            check_block(program->blocks[pred].linear_succs.size() == 1, "linear critical edges are not allowed", &program->blocks[pred]);
+         for (unsigned pred : block.logical_preds)
+            check_block(program->blocks[pred].logical_succs.size() == 1, "logical critical edges are not allowed", &program->blocks[pred]);
+      }
+   }
+
    assert(is_valid);
 }
 
