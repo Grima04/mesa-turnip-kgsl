@@ -249,7 +249,7 @@ meson-main:
       -D gallium-xa=true
       -D gallium-nine=true
       -D gallium-opencl=disabled
-    GALLIUM_DRIVERS: "iris,nouveau,kmsro,r300,r600,freedreno,swrast,svga,v3d,vc4,virgl,etnaviv,panfrost,lima,zink"
+    GALLIUM_DRIVERS: "iris,nouveau,kmsro,r300,r600,freedreno,swr,swrast,svga,v3d,vc4,virgl,etnaviv,panfrost,lima,zink"
     LLVM_VERSION: "7"
     EXTRA_OPTION: >
       -D osmesa=gallium
@@ -329,7 +329,7 @@ meson-swr-glvnd:
       -D gallium-xa=false
       -D gallium-nine=false
       -D gallium-opencl=disabled
-    GALLIUM_DRIVERS: "swr,iris"
+    GALLIUM_DRIVERS: "iris"
     LLVM_VERSION: "6.0"
 
 meson-clang:
