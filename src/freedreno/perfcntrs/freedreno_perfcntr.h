@@ -91,6 +91,8 @@ struct fd_perfcntr_group {
 	const struct fd_perfcntr_countable *countables;
 };
 
+const struct fd_perfcntr_group *fd_perfcntrs(unsigned gpu_id, unsigned *count);
+
 #define COUNTER(_sel, _lo, _hi) {  \
 	.select_reg = REG(_sel),       \
 	.counter_reg_lo = REG(_lo),    \

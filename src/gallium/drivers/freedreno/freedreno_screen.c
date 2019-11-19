@@ -941,6 +941,11 @@ fd_screen_create(struct fd_device *dev, struct renderonly *ro)
 		screen->num_vsc_pipes = 8;
 	}
 
+	if (fd_mesa_debug & FD_DBG_PERFC) {
+		screen->perfcntr_groups = fd_perfcntrs(screen->gpu_id,
+				&screen->num_perfcntr_groups);
+	}
+
 	/* NOTE: don't enable if we have too old of a kernel to support
 	 * growable cmdstream buffers, since memory requirement for cmdstream
 	 * buffers would be too much otherwise.

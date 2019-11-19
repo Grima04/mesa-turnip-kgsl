@@ -57,4 +57,5 @@ perfcntrs_SOURCES := \
 	perfcntrs/fd2_perfcntr.c \
 	perfcntrs/fd5_perfcntr.c \
 	perfcntrs/fd6_perfcntr.c \
+	perfcntrs/freedreno_perfcntr.c \
 	perfcntrs/freedreno_perfcntr.h
