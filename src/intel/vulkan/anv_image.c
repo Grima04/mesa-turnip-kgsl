@@ -1240,6 +1240,50 @@ anv_layout_to_aux_state(const struct gen_device_info * const devinfo,
    unreachable("layout is not a VkImageLayout enumeration member.");
 }
 
+ASSERTED static bool
+vk_image_layout_is_read_only(VkImageLayout layout,
+                             VkImageAspectFlagBits aspect)
+{
+   assert(util_bitcount(aspect) == 1);
+
+   switch (layout) {
+   case VK_IMAGE_LAYOUT_UNDEFINED:
+   case VK_IMAGE_LAYOUT_PREINITIALIZED:
+      return true; /* These are only used for layout transitions */
+
+   case VK_IMAGE_LAYOUT_GENERAL:
+   case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
+   case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:
+   case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:
+   case VK_IMAGE_LAYOUT_SHARED_PRESENT_KHR:
+   case VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL_KHR:
+   case VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL_KHR:
+      return false;
+
+   case VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL:
+   case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:
+   case VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL:
+   case VK_IMAGE_LAYOUT_PRESENT_SRC_KHR:
+   case VK_IMAGE_LAYOUT_SHADING_RATE_OPTIMAL_NV:
+   case VK_IMAGE_LAYOUT_FRAGMENT_DENSITY_MAP_OPTIMAL_EXT:
+   case VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL_KHR:
+   case VK_IMAGE_LAYOUT_STENCIL_READ_ONLY_OPTIMAL_KHR:
+      return true;
+
+   case VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL:
+      return aspect == VK_IMAGE_ASPECT_DEPTH_BIT;
+
+   case VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL:
+      return aspect == VK_IMAGE_ASPECT_STENCIL_BIT;
+
+   case VK_IMAGE_LAYOUT_RANGE_SIZE:
+   case VK_IMAGE_LAYOUT_MAX_ENUM:
+      unreachable("Invalid image layout.");
+   }
+
+   unreachable("Invalid image layout.");
+}
+
 /**
  * This function determines the optimal buffer to use for a given
  * VkImageLayout and other pieces of information needed to make that
@@ -1292,6 +1336,22 @@ anv_layout_to_aux_usage(const struct gen_device_info * const devinfo,
       }
 
    case ISL_AUX_STATE_RESOLVED:
+      /* We can only use RESOLVED in read-only layouts because any write will
+       * either land us in AUX_INVALID or COMPRESSED_NO_CLEAR.  We can do
+       * writes in PASS_THROUGH without destroying it so that is allowed.
+       */
+      assert(vk_image_layout_is_read_only(layout, aspect));
+      assert(util_is_power_of_two_or_zero(usage));
+      if (usage == VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) {
+         /* If we have valid HiZ data and are using the image as a read-only
+          * depth/stencil attachment, we should enable HiZ so that we can get
+          * faster depth testing.
+          */
+         return ISL_AUX_USAGE_HIZ;
+      } else {
+         return ISL_AUX_USAGE_NONE;
+      }
+
    case ISL_AUX_STATE_PASS_THROUGH:
    case ISL_AUX_STATE_AUX_INVALID:
       return ISL_AUX_USAGE_NONE;
