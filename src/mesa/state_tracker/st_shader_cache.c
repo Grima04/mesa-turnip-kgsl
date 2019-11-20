@@ -70,20 +70,7 @@ write_tgsi_to_cache(struct blob *blob, const struct tgsi_token *tokens,
 static void
 write_nir_to_cache(struct blob *blob, struct gl_program *prog)
 {
-   if (prog->nir) {
-      /* Reserve intptr_t to store the size. intptr_t is also the alignment
-       * of NIR in the blob, so the NIR size computation will be trivial.
-       */
-      size_t offset = blob_reserve_intptr(blob);
-      nir_serialize(blob, prog->nir, false);
-
-      unsigned nir_size = blob->size - offset - sizeof(intptr_t);
-      *(uintptr_t *)(blob->data + offset) = nir_size;
-   } else {
-      struct st_program *stp = (struct st_program *)prog;
-      blob_write_intptr(blob, stp->nir_size);
-      blob_write_bytes(blob, stp->nir_binary, stp->nir_size);
-   }
+   nir_serialize(blob, prog->nir, false);
    copy_blob_to_driver_cache_blob(blob, prog);
 }
 
@@ -174,6 +161,8 @@ st_deserialise_ir_program(struct gl_context *ctx,
    struct st_context *st = st_context(ctx);
    size_t size = prog->driver_cache_blob_size;
    uint8_t *buffer = (uint8_t *) prog->driver_cache_blob;
+   const struct nir_shader_compiler_options *options =
+      ctx->Const.ShaderCompilerOptions[prog->info.stage].NirOptions;
 
    st_set_prog_affected_state_flags(prog);
    _mesa_associate_uniform_storage(ctx, shProg, prog);
@@ -207,16 +196,10 @@ st_deserialise_ir_program(struct gl_context *ctx,
       read_stream_out_from_cache(&blob_reader, &stp->state);
 
    if (nir) {
-      assert(prog->nir == NULL);
-      assert(stp->state.ir.nir == NULL);
-      assert(stp->nir_binary == NULL);
-
-      /* The remainder of the binary is NIR. */
       stp->state.type = PIPE_SHADER_IR_NIR;
-      stp->nir_size = blob_read_intptr(&blob_reader);
-      stp->nir_binary = malloc(stp->nir_size);
-      blob_copy_bytes(&blob_reader, stp->nir_binary, stp->nir_size);
+      stp->state.ir.nir = nir_deserialize(NULL, options, &blob_reader);
       stp->shader_program = shProg;
+      prog->nir = stp->state.ir.nir;
    } else {
       read_tgsi_from_cache(&blob_reader, &stp->state.tokens);
    }

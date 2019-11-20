@@ -40,7 +40,7 @@
 #include "program/prog_to_nir.h"
 #include "program/programopt.h"
 
-#include "compiler/nir/nir_serialize.h"
+#include "compiler/nir/nir.h"
 
 #include "pipe/p_context.h"
 #include "pipe/p_defines.h"
@@ -664,20 +664,6 @@ st_translate_vertex_program(struct st_context *st,
    return stp->state.tokens != NULL;
 }
 
-static struct nir_shader *
-get_nir_shader(struct st_context *st, struct st_program *stp)
-{
-   if (stp->state.ir.nir)
-      return nir_shader_clone(NULL, stp->state.ir.nir);
-
-   struct blob_reader blob_reader;
-   const struct nir_shader_compiler_options *options =
-      st->ctx->Const.ShaderCompilerOptions[stp->Base.info.stage].NirOptions;
-
-   blob_reader_init(&blob_reader, stp->nir_binary, stp->nir_size);
-   return nir_deserialize(NULL, options, &blob_reader);
-}
-
 static const gl_state_index16 depth_range_state[STATE_LENGTH] =
    { STATE_DEPTH_RANGE };
 
@@ -704,7 +690,7 @@ st_create_vp_variant(struct st_context *st,
       bool finalize = false;
 
       state.type = PIPE_SHADER_IR_NIR;
-      state.ir.nir = get_nir_shader(st, stvp);
+      state.ir.nir = nir_shader_clone(NULL, stvp->state.ir.nir);
       if (key->clamp_color) {
          NIR_PASS_V(state.ir.nir, nir_lower_clamp_color_outputs);
          finalize = true;
@@ -1260,7 +1246,7 @@ st_create_fp_variant(struct st_context *st,
       bool finalize = false;
 
       state.type = PIPE_SHADER_IR_NIR;
-      state.ir.nir = get_nir_shader(st, stfp);
+      state.ir.nir = nir_shader_clone(NULL, stfp->state.ir.nir);
 
       if (key->clamp_color) {
          NIR_PASS_V(state.ir.nir, nir_lower_clamp_color_outputs);
@@ -1784,7 +1770,7 @@ st_get_common_variant(struct st_context *st,
             bool finalize = false;
 
 	    state.type = PIPE_SHADER_IR_NIR;
-	    state.ir.nir = get_nir_shader(st, prog);
+	    state.ir.nir = nir_shader_clone(NULL, prog->state.ir.nir);
 
             if (key->clamp_color) {
                NIR_PASS_V(state.ir.nir, nir_lower_clamp_color_outputs);
@@ -2071,13 +2057,11 @@ st_precompile_shader_variant(struct st_context *st,
 void
 st_finalize_program(struct st_context *st, struct gl_program *prog)
 {
-   struct st_program *stp = (struct st_program *)prog;
-
    if (st->current_program[prog->info.stage] == prog) {
       if (prog->info.stage == MESA_SHADER_VERTEX)
-         st->dirty |= ST_NEW_VERTEX_PROGRAM(st, stp);
+         st->dirty |= ST_NEW_VERTEX_PROGRAM(st, (struct st_program *)prog);
       else
-         st->dirty |= stp->affected_states;
+         st->dirty |= ((struct st_program *)prog)->affected_states;
    }
 
    if (prog->nir)
@@ -2087,24 +2071,4 @@ st_finalize_program(struct st_context *st, struct gl_program *prog)
    if (ST_DEBUG & DEBUG_PRECOMPILE ||
        st->shader_has_one_variant[prog->info.stage])
       st_precompile_shader_variant(st, prog);
-
-   /* Additional shader variants are always generated from serialized NIR
-    * to save memory.
-    */
-   if (prog->nir) {
-      /* Serialize NIR. */
-      struct blob blob;
-      blob_init(&blob);
-      nir_serialize(&blob, prog->nir, false);
-      stp->nir_binary = malloc(blob.size);
-      memcpy(stp->nir_binary, blob.data, blob.size);
-      stp->nir_size = blob.size;
-      blob_finish(&blob);
-
-      /* Free NIR. */
-      assert(stp->state.ir.nir == prog->nir);
-      ralloc_free(prog->nir);
-      prog->nir = NULL;
-      stp->state.ir.nir = NULL;
-   }
 }

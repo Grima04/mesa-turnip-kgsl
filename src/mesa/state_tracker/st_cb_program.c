@@ -97,8 +97,6 @@ st_delete_program(struct gl_context *ctx, struct gl_program *prog)
    if (stp->glsl_to_tgsi)
       free_glsl_to_tgsi_visitor(stp->glsl_to_tgsi);
 
-   free(stp->nir_binary);
-
    /* delete base class */
    _mesa_delete_program( ctx, prog );
 }
