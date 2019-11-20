@@ -1280,12 +1280,13 @@ FIXED_16(float x)
 }
 
 struct mali_sampler_descriptor {
-        uint32_t filter_mode;
+        uint16_t filter_mode;
 
         /* Fixed point. Upper 8-bits is before the decimal point, although it
          * caps [0-31]. Lower 8-bits is after the decimal point: int(round(x *
          * 256)) */
 
+        uint16_t lod_bias;
         uint16_t min_lod;
         uint16_t max_lod;
 

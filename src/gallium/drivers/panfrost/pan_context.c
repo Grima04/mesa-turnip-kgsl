@@ -1824,6 +1824,7 @@ panfrost_create_sampler_state(
                 },
                 .min_lod = FIXED_16(cso->min_lod),
                 .max_lod = FIXED_16(cso->max_lod),
+                .lod_bias = FIXED_16(cso->lod_bias),
                 .seamless_cube_map = cso->seamless_cube_map,
         };
 
