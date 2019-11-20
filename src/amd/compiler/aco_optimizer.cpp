@@ -1207,12 +1207,15 @@ bool combine_ordering_test(opt_ctx &ctx, aco_ptr<Instruction>& instr)
       Temp op1 = op_instr[i]->operands[1].getTemp();
       if (original_temp_id(ctx, op0) != original_temp_id(ctx, op1))
          return false;
-      /* shouldn't happen yet, but best to be safe */
-      if (op1.type() != RegType::vgpr)
-         return false;
 
       op[i] = op1;
    }
+
+   if (op[1].type() == RegType::sgpr)
+      std::swap(op[0], op[1]);
+   //TODO: we can use two different SGPRs on GFX10
+   if (op[0].type() == RegType::sgpr && op[1].type() == RegType::sgpr)
+      return false;
 
    ctx.uses[op[0].id()]++;
    ctx.uses[op[1].id()]++;
@@ -1919,7 +1922,7 @@ void apply_sgprs(opt_ctx &ctx, aco_ptr<Instruction>& instr)
 
    /* we can have two sgprs on one instruction if it is the same sgpr! */
    } else if (sgpr_info_id != 0 &&
-              sgpr_ssa_id == sgpr_info_id &&
+              sgpr_ssa_id == ctx.info[sgpr_info_id].temp.id() &&
               ctx.uses[sgpr_info_id] == 1 &&
               can_use_VOP3(instr)) {
       to_VOP3(ctx, instr);
@@ -2133,6 +2136,7 @@ void combine_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr
          bool clamp = false;
          bool need_vop3 = false;
          int num_sgpr = 0;
+         unsigned cur_sgpr = 0;
          op[0] = mul_instr->operands[0];
          op[1] = mul_instr->operands[1];
          op[2] = instr->operands[add_op_idx];
@@ -2140,8 +2144,10 @@ void combine_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr
          {
             if (op[i].isLiteral())
                return;
-            if (op[i].isTemp() && op[i].getTemp().type() == RegType::sgpr)
+            if (op[i].isTemp() && op[i].getTemp().type() == RegType::sgpr && op[i].tempId() != cur_sgpr) {
                num_sgpr++;
+               cur_sgpr = op[i].tempId();
+            }
             if (!(i == 0 || (op[i].isTemp() && op[i].getTemp().type() == RegType::vgpr)))
                need_vop3 = true;
          }
