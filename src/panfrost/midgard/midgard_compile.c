@@ -48,6 +48,7 @@
 #include "midgard_ops.h"
 #include "helpers.h"
 #include "compiler.h"
+#include "midgard_quirks.h"
 
 #include "disassemble.h"
 
@@ -1493,7 +1494,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                  * different semantics than T760 and up */
 
                 midgard_instruction ld = m_ld_color_buffer_8(reg, 0);
-                bool old_blend = ctx->gpu_id < 0x750;
+                bool old_blend = ctx->quirks & MIDGARD_OLD_BLEND;
 
                 if (instr->intrinsic == nir_intrinsic_load_output_u8_as_fp16_pan) {
                         ld.load_store.op = old_blend ?
@@ -1815,7 +1816,7 @@ emit_tex(compiler_context *ctx, nir_tex_instr *instr)
 
         bool is_vertex = ctx->stage == MESA_SHADER_VERTEX;
 
-        if (is_vertex && instr->op == nir_texop_tex && ctx->gpu_id >= 0x750)
+        if (is_vertex && instr->op == nir_texop_tex && ctx->quirks & MIDGARD_EXPLICIT_LOD)
                 instr->op = nir_texop_txl;
 
         switch (instr->op) {
@@ -2414,7 +2415,7 @@ midgard_compile_shader_nir(nir_shader *nir, midgard_program *program, bool is_bl
         ctx->stage = nir->info.stage;
         ctx->is_blend = is_blend;
         ctx->alpha_ref = program->alpha_ref;
-        ctx->gpu_id = gpu_id;
+        ctx->quirks = midgard_get_quirks(gpu_id);
 
         /* Start off with a safe cutoff, allowing usage of all 16 work
          * registers. Later, we'll promote uniform reads to uniform registers

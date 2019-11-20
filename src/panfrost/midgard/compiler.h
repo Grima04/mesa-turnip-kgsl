@@ -294,7 +294,8 @@ typedef struct compiler_context {
         /* Bitmask of valid metadata */
         unsigned metadata;
 
-        unsigned gpu_id;
+        /* Model-specific quirk set */
+        uint32_t quirks;
 } compiler_context;
 
 /* Per-block live_in/live_out */
