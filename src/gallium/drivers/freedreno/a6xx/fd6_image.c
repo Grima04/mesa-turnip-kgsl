@@ -97,7 +97,7 @@ static void translate_image(struct fd6_image *img, const struct pipe_image_view 
 		img->buffer = false;
 
 		unsigned lvl = pimg->u.tex.level;
-		struct fd_resource_slice *slice = fd_resource_slice(rsc, lvl);
+		struct fdl_slice *slice = fd_resource_slice(rsc, lvl);
 		unsigned layers = pimg->u.tex.last_layer - pimg->u.tex.first_layer + 1;
 
 		img->ubwc_offset = fd_resource_ubwc_offset(rsc, lvl, pimg->u.tex.first_layer);

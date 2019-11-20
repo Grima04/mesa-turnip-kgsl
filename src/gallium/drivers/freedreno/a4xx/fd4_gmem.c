@@ -61,7 +61,7 @@ emit_mrt(struct fd_ringbuffer *ring, unsigned nr_bufs,
 		enum a3xx_color_swap swap = WZYX;
 		bool srgb = false;
 		struct fd_resource *rsc = NULL;
-		struct fd_resource_slice *slice = NULL;
+		struct fdl_slice *slice = NULL;
 		uint32_t stride = 0;
 		uint32_t base = 0;
 		uint32_t offset = 0;
@@ -152,7 +152,7 @@ emit_gmem2mem_surf(struct fd_batch *batch, bool stencil,
 	struct fd_ringbuffer *ring = batch->gmem;
 	struct fd_resource *rsc = fd_resource(psurf->texture);
 	enum pipe_format pformat = psurf->format;
-	struct fd_resource_slice *slice;
+	struct fdl_slice *slice;
 	uint32_t offset;
 
 	if (!rsc->valid)

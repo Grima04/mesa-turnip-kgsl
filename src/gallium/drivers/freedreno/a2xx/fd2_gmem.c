@@ -89,8 +89,7 @@ emit_gmem2mem_surf(struct fd_batch *batch, uint32_t base,
 {
 	struct fd_ringbuffer *ring = batch->tile_fini;
 	struct fd_resource *rsc = fd_resource(psurf->texture);
-	struct fd_resource_slice *slice =
-		fd_resource_slice(rsc, psurf->u.tex.level);
+	struct fdl_slice *slice = fd_resource_slice(rsc, psurf->u.tex.level);
 	uint32_t offset =
 		fd_resource_offset(rsc, psurf->u.tex.level, psurf->u.tex.first_layer);
 	enum pipe_format format = fd_gmem_restore_format(psurf->format);
@@ -230,8 +229,7 @@ emit_mem2gmem_surf(struct fd_batch *batch, uint32_t base,
 {
 	struct fd_ringbuffer *ring = batch->gmem;
 	struct fd_resource *rsc = fd_resource(psurf->texture);
-	struct fd_resource_slice *slice =
-		fd_resource_slice(rsc, psurf->u.tex.level);
+	struct fdl_slice *slice = fd_resource_slice(rsc, psurf->u.tex.level);
 	uint32_t offset =
 		fd_resource_offset(rsc, psurf->u.tex.level, psurf->u.tex.first_layer);
 	enum pipe_format format = fd_gmem_restore_format(psurf->format);
@@ -437,8 +435,7 @@ fd2_emit_sysmem_prep(struct fd_batch *batch)
 		return;
 
 	struct fd_resource *rsc = fd_resource(psurf->texture);
-	struct fd_resource_slice *slice =
-		fd_resource_slice(rsc, psurf->u.tex.level);
+	struct fdl_slice *slice = fd_resource_slice(rsc, psurf->u.tex.level);
 	uint32_t offset =
 		fd_resource_offset(rsc, psurf->u.tex.level, psurf->u.tex.first_layer);
 

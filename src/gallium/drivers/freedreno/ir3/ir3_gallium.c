@@ -343,7 +343,7 @@ ir3_emit_image_dims(struct fd_screen *screen, const struct ir3_shader_variant *v
 
 			dims[off + 0] = util_format_get_blocksize(img->format);
 			if (img->resource->target != PIPE_BUFFER) {
-				struct fd_resource_slice *slice =
+				struct fdl_slice *slice =
 					fd_resource_slice(rsc, img->u.tex.level);
 				/* note for 2d/cube/etc images, even if re-interpreted
 				 * as a different color format, the pixel size should

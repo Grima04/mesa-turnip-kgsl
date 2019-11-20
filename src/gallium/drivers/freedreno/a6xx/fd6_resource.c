@@ -84,7 +84,7 @@ setup_slices(struct fd_resource *rsc, uint32_t alignment, enum pipe_format forma
 	debug_assert(tile_alignment[ta].pitchalign);
 
 	for (level = 0; level <= prsc->last_level; level++) {
-		struct fd_resource_slice *slice = fd_resource_slice(rsc, level);
+		struct fdl_slice *slice = fd_resource_slice(rsc, level);
 		uint32_t tile_mode = fd_resource_tile_mode(prsc, level);
 		uint32_t width, height;
 

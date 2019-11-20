@@ -215,8 +215,7 @@ emit_textures(struct fd_context *ctx, struct fd_ringbuffer *ring,
 				unsigned end   = fd_sampler_last_level(&view->base);
 
 				for (j = 0; j < (end - start + 1); j++) {
-					struct fd_resource_slice *slice =
-						fd_resource_slice(rsc, j + start);
+					struct fdl_slice *slice = fd_resource_slice(rsc, j + start);
 					OUT_RELOC(ring, rsc->bo, slice->offset, 0, 0);
 				}
 			}
@@ -311,7 +310,7 @@ fd3_emit_gmem_restore_tex(struct fd_ringbuffer *ring,
 
 		/* note: PIPE_BUFFER disallowed for surfaces */
 		unsigned lvl = psurf[i]->u.tex.level;
-		struct fd_resource_slice *slice = fd_resource_slice(rsc, lvl);
+		struct fdl_slice *slice = fd_resource_slice(rsc, lvl);
 
 		debug_assert(psurf[i]->u.tex.first_layer == psurf[i]->u.tex.last_layer);
 

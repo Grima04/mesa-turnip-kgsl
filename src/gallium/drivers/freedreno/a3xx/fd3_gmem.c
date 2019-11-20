@@ -55,7 +55,7 @@ emit_mrt(struct fd_ringbuffer *ring, unsigned nr_bufs,
 		enum a3xx_color_swap swap = WZYX;
 		bool srgb = false;
 		struct fd_resource *rsc = NULL;
-		struct fd_resource_slice *slice = NULL;
+		struct fdl_slice *slice = NULL;
 		uint32_t stride = 0;
 		uint32_t base = 0;
 		uint32_t offset = 0;
@@ -330,7 +330,7 @@ emit_gmem2mem_surf(struct fd_batch *batch,
 		format = rsc->base.format;
 	}
 
-	struct fd_resource_slice *slice = fd_resource_slice(rsc, psurf->u.tex.level);
+	struct fdl_slice *slice = fd_resource_slice(rsc, psurf->u.tex.level);
 	uint32_t offset = fd_resource_offset(rsc, psurf->u.tex.level,
 			psurf->u.tex.first_layer);
 
@@ -738,7 +738,7 @@ fd3_emit_sysmem_prep(struct fd_batch *batch)
 		struct pipe_surface *psurf = pfb->cbufs[i];
 		if (!psurf)
 			continue;
-		struct fd_resource_slice *slice =
+		struct fdl_slice *slice =
 			fd_resource_slice(fd_resource(psurf->texture),
 				psurf->u.tex.level);
 		pitch = slice->pitch;

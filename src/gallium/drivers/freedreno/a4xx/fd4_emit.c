@@ -301,7 +301,7 @@ fd4_emit_gmem_restore_tex(struct fd_ringbuffer *ring, unsigned nr_bufs,
 
 			/* note: PIPE_BUFFER disallowed for surfaces */
 			unsigned lvl = bufs[i]->u.tex.level;
-			struct fd_resource_slice *slice = fd_resource_slice(rsc, lvl);
+			struct fdl_slice *slice = fd_resource_slice(rsc, lvl);
 			unsigned offset = fd_resource_offset(rsc, lvl, bufs[i]->u.tex.first_layer);
 
 			/* z32 restore is accomplished using depth write.  If there is

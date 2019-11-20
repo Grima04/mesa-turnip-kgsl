@@ -37,7 +37,7 @@ setup_slices(struct fd_resource *rsc, uint32_t alignment, enum pipe_format forma
 	uint32_t depth = prsc->depth0;
 
 	for (level = 0; level <= prsc->last_level; level++) {
-		struct fd_resource_slice *slice = fd_resource_slice(rsc, level);
+		struct fdl_slice *slice = fd_resource_slice(rsc, level);
 		uint32_t blocks;
 
 		if (rsc->tile_mode) {

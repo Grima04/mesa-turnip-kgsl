@@ -65,7 +65,7 @@ emit_mrt(struct fd_ringbuffer *ring, struct pipe_framebuffer_state *pfb,
 		enum a3xx_color_swap swap = WZYX;
 		bool sint = false, uint = false;
 		struct fd_resource *rsc = NULL;
-		struct fd_resource_slice *slice = NULL;
+		struct fdl_slice *slice = NULL;
 		uint32_t stride = 0;
 		uint32_t offset, ubwc_offset;
 		uint32_t tile_mode;
@@ -182,7 +182,7 @@ emit_zs(struct fd_ringbuffer *ring, struct pipe_surface *zsbuf,
 	if (zsbuf) {
 		struct fd_resource *rsc = fd_resource(zsbuf->texture);
 		enum a6xx_depth_format fmt = fd6_pipe2depth(zsbuf->format);
-		struct fd_resource_slice *slice = fd_resource_slice(rsc, 0);
+		struct fdl_slice *slice = fd_resource_slice(rsc, 0);
 		uint32_t stride = slice->pitch * rsc->cpp;
 		uint32_t size = slice->size0;
 		uint32_t base = gmem ? gmem->zsbuf_base[0] : 0;
@@ -238,7 +238,7 @@ emit_zs(struct fd_ringbuffer *ring, struct pipe_surface *zsbuf,
 		OUT_RING(ring, CP_EVENT_WRITE_0_EVENT(UNK_25));
 
 		if (rsc->stencil) {
-			struct fd_resource_slice *slice = fd_resource_slice(rsc->stencil, 0);
+			struct fdl_slice *slice = fd_resource_slice(rsc->stencil, 0);
 			stride = slice->pitch * rsc->stencil->cpp;
 			size = slice->size0;
 			uint32_t base = gmem ? gmem->zsbuf_base[1] : 0;
@@ -966,7 +966,7 @@ emit_blit(struct fd_batch *batch,
 		  struct pipe_surface *psurf,
 		  bool stencil)
 {
-	struct fd_resource_slice *slice;
+	struct fdl_slice *slice;
 	struct fd_resource *rsc = fd_resource(psurf->texture);
 	enum pipe_format pfmt = psurf->format;
 	uint32_t offset, ubwc_offset;

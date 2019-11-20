@@ -506,7 +506,7 @@ fd_resource_transfer_map(struct pipe_context *pctx,
 {
 	struct fd_context *ctx = fd_context(pctx);
 	struct fd_resource *rsc = fd_resource(prsc);
-	struct fd_resource_slice *slice = fd_resource_slice(rsc, level);
+	struct fdl_slice *slice = fd_resource_slice(rsc, level);
 	struct fd_transfer *trans;
 	struct pipe_transfer *ptrans;
 	enum pipe_format format = prsc->format;
@@ -544,7 +544,7 @@ fd_resource_transfer_map(struct pipe_context *pctx,
 
 		staging_rsc = fd_alloc_staging(ctx, rsc, level, box);
 		if (staging_rsc) {
-			struct fd_resource_slice *staging_slice =
+			struct fdl_slice *staging_slice =
 				fd_resource_slice(staging_rsc, 0);
 			// TODO for PIPE_TRANSFER_READ, need to do untiling blit..
 			trans->staging_prsc = &staging_rsc->base;
@@ -661,7 +661,7 @@ fd_resource_transfer_map(struct pipe_context *pctx,
 				 */
 				staging_rsc = fd_alloc_staging(ctx, rsc, level, box);
 				if (staging_rsc) {
-					struct fd_resource_slice *staging_slice =
+					struct fdl_slice *staging_slice =
 						fd_resource_slice(staging_rsc, 0);
 					trans->staging_prsc = &staging_rsc->base;
 					trans->base.stride = util_format_get_nblocksx(format,
@@ -782,7 +782,7 @@ setup_slices(struct fd_resource *rsc, uint32_t alignment, enum pipe_format forma
 	uint32_t layers_in_level = rsc->layer_first ? 1 : prsc->array_size;
 
 	for (level = 0; level <= prsc->last_level; level++) {
-		struct fd_resource_slice *slice = fd_resource_slice(rsc, level);
+		struct fdl_slice *slice = fd_resource_slice(rsc, level);
 		uint32_t blocks;
 
 		if (layout == UTIL_FORMAT_LAYOUT_ASTC)
@@ -1093,7 +1093,7 @@ fd_resource_from_handle(struct pipe_screen *pscreen,
 {
 	struct fd_screen *screen = fd_screen(pscreen);
 	struct fd_resource *rsc = CALLOC_STRUCT(fd_resource);
-	struct fd_resource_slice *slice = fd_resource_slice(rsc, 0);
+	struct fdl_slice *slice = fd_resource_slice(rsc, 0);
 	struct pipe_resource *prsc = &rsc->base;
 	uint32_t pitchalign = fd_screen(pscreen)->gmem_alignw;
 

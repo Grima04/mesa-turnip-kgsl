@@ -62,7 +62,7 @@ static void translate_image(struct fd5_image *img, struct pipe_image_view *pimg)
 	enum pipe_format format = pimg->format;
 	struct pipe_resource *prsc = pimg->resource;
 	struct fd_resource *rsc = fd_resource(prsc);
-	struct fd_resource_slice *slice = NULL;
+	struct fdl_slice *slice = NULL;
 	unsigned lvl;
 
 	if (!pimg->resource) {

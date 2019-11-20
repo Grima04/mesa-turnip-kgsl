@@ -54,7 +54,7 @@ emit_mrt(struct fd_ringbuffer *ring, unsigned nr_bufs,
 		enum a3xx_color_swap swap = WZYX;
 		bool srgb = false, sint = false, uint = false;
 		struct fd_resource *rsc = NULL;
-		struct fd_resource_slice *slice = NULL;
+		struct fdl_slice *slice = NULL;
 		uint32_t stride = 0;
 		uint32_t size = 0;
 		uint32_t base = 0;
@@ -144,7 +144,7 @@ emit_zs(struct fd_ringbuffer *ring, struct pipe_surface *zsbuf,
 			stride = cpp * gmem->bin_w;
 			size = stride * gmem->bin_h;
 		} else {
-			struct fd_resource_slice *slice = fd_resource_slice(rsc, 0);
+			struct fdl_slice *slice = fd_resource_slice(rsc, 0);
 			stride = slice->pitch * rsc->cpp;
 			size = slice->size0;
 		}
@@ -191,7 +191,7 @@ emit_zs(struct fd_ringbuffer *ring, struct pipe_surface *zsbuf,
 				stride = 1 * gmem->bin_w;
 				size = stride * gmem->bin_h;
 			} else {
-				struct fd_resource_slice *slice = fd_resource_slice(rsc->stencil, 0);
+				struct fdl_slice *slice = fd_resource_slice(rsc->stencil, 0);
 				stride = slice->pitch * rsc->cpp;
 				size = slice->size0;
 			}
@@ -484,7 +484,7 @@ emit_mem2gmem_surf(struct fd_batch *batch, uint32_t base,
 		// possibly we want to flip this around gmem2mem and keep depth
 		// tiled in sysmem (and fixup sampler state to assume tiled).. this
 		// might be required for doing depth/stencil in bypass mode?
-		struct fd_resource_slice *slice = fd_resource_slice(rsc, 0);
+		struct fdl_slice *slice = fd_resource_slice(rsc, 0);
 		enum a5xx_color_fmt format =
 			fd5_pipe2color(fd_gmem_restore_format(rsc->base.format));
 
@@ -609,7 +609,7 @@ emit_gmem2mem_surf(struct fd_batch *batch, uint32_t base,
 {
 	struct fd_ringbuffer *ring = batch->gmem;
 	struct fd_resource *rsc = fd_resource(psurf->texture);
-	struct fd_resource_slice *slice;
+	struct fdl_slice *slice;
 	bool tiled;
 	uint32_t offset;
 

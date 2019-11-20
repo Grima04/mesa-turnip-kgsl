@@ -198,7 +198,7 @@ fd5_sampler_view_create(struct pipe_context *pctx, struct pipe_resource *prsc,
 {
 	struct fd5_pipe_sampler_view *so = CALLOC_STRUCT(fd5_pipe_sampler_view);
 	struct fd_resource *rsc = fd_resource(prsc);
-	struct fd_resource_slice *slice = NULL;
+	struct fdl_slice *slice = NULL;
 	enum pipe_format format = cso->format;
 	unsigned lvl, layers = 0;
 

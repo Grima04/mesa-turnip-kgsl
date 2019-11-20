@@ -325,7 +325,7 @@ emit_blit(struct fd_ringbuffer *ring, const struct pipe_blit_info *info)
 	const struct pipe_box *sbox = &info->src.box;
 	const struct pipe_box *dbox = &info->dst.box;
 	struct fd_resource *src, *dst;
-	struct fd_resource_slice *sslice, *dslice;
+	struct fdl_slice *sslice, *dslice;
 	enum a5xx_color_fmt sfmt, dfmt;
 	enum a5xx_tile_mode stile, dtile;
 	enum a3xx_color_swap sswap, dswap;
