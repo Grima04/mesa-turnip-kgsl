@@ -844,7 +844,7 @@ struct MIMG_instruction : public Instruction {
  *
  */
 struct FLAT_instruction : public Instruction {
-   uint16_t offset; /* Vega only */
+   uint16_t offset; /* Vega/Navi only */
    bool slc; /* system level coherent */
    bool glc; /* globally coherent */
    bool dlc; /* NAVI: device level coherent */
