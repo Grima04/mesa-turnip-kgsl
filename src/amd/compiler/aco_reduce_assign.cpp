@@ -153,7 +153,7 @@ void setup_reduce_temp(Program* program)
          instr->definitions[1] = bld.def(s2);
 
          /* scalar identity temporary */
-         bool need_sitmp = program->chip_class >= GFX10 && cluster_size == 64;
+         bool need_sitmp = (program->chip_class <= GFX7 || program->chip_class >= GFX10) && instr->opcode != aco_opcode::p_reduce;
          if (instr->opcode == aco_opcode::p_exclusive_scan) {
             need_sitmp |=
                (op == imin32 || op == imin64 || op == imax32 || op == imax64 ||

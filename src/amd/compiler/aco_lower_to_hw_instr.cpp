@@ -481,8 +481,8 @@ void emit_reduction(lower_context *ctx, aco_opcode op, ReduceOp reduce_op, unsig
 
          if (cluster_size == 64) {
             for (unsigned i = 0; i < src.size(); i++)
-               bld.readlane(Definition(PhysReg{sitmp+i}, s1), Operand(PhysReg{tmp+i}, v1), Operand(31u));
-            emit_op(ctx, tmp, sitmp, tmp, vtmp, reduce_op, src.size());
+               bld.readlane(Definition(PhysReg{dst.physReg() + i}, s1), Operand(PhysReg{tmp+i}, v1), Operand(31u));
+            emit_op(ctx, tmp, dst.physReg(), tmp, vtmp, reduce_op, src.size());
          }
       } else if (cluster_size == 32) {
          for (unsigned i = 0; i < src.size(); i++)
