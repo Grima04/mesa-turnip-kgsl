@@ -467,8 +467,8 @@ Khronos extensions that are not part of any Vulkan version:
   VK_KHR_sampler_mirror_clamp_to_edge                   DONE (anv, radv)
   VK_KHR_shader_atomic_int64                            DONE (anv, radv)
   VK_KHR_shader_float16_int8                            DONE (anv/gen8+, radv)
-  VK_KHR_shader_float_controls                          DONE (anv/gen8+)
-  VK_KHR_shader_subgroup_extended_types                 not started
+  VK_KHR_shader_float_controls                          DONE (anv/gen8+, radv)
+  VK_KHR_shader_subgroup_extended_types                 DONE (radv)
   VK_KHR_shared_presentable_image                       not started
   VK_KHR_surface                                        DONE (anv, radv)
   VK_KHR_surface_protected_capabilities                 DONE (anv, radv)
