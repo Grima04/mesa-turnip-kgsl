@@ -48,17 +48,28 @@
 
 #define MIDGARD_OLD_BLEND (1 << 2)
 
+/* Errata causing the LOD clamps and bias in the sampler descriptor to be
+ * ignored. This errata affects the command stream but uses a compiler
+ * workaround (applying the clamps/bias manually in the shader. Corresponds in
+ * BASE_HW_ISSUE_10471 in kbase, described as "TEXGRD doesn't honor Sampler
+ * Descriptor LOD clamps nor bias". (I'm assuming TEXGRD is what we call
+ * textureLod) */
+
+#define MIDGARD_BROKEN_LOD (1 << 3)
+
 static inline unsigned
 midgard_get_quirks(unsigned gpu_id)
 {
         switch (gpu_id) {
         case 0x600:
         case 0x620:
-                return MIDGARD_OLD_BLEND;
+                return MIDGARD_OLD_BLEND |
+                        MIDGARD_BROKEN_LOD;
 
         case 0x720:
                 return MIDGARD_INTERPIPE_REG_ALIASING | 
-                        MIDGARD_OLD_BLEND;
+                        MIDGARD_OLD_BLEND |
+                        MIDGARD_BROKEN_LOD;
 
         case 0x820:
         case 0x830:
