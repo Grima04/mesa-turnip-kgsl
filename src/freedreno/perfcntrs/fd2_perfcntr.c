@@ -776,6 +776,7 @@ static const struct fd_perfcntr_counter rb_counters[] = {
 };
 
 const struct fd_perfcntr_group a2xx_perfcntr_groups[] = {
+	GROUP("CP", cp_counters, cp_countables),
 	GROUP("PA_SU", pa_su_counters, pa_su_countables),
 	GROUP("PA_SC", pa_sc_counters, pa_sc_countables),
 	GROUP("VGT", vgt_counters, vgt_countables),
@@ -787,7 +788,6 @@ const struct fd_perfcntr_group a2xx_perfcntr_groups[] = {
 	GROUP("SX", sx_counters, sx_countables),
 //	GROUP("MH", mh_counters, mh_countables),
 	GROUP("RBBM", rbbm_counters, rbbm_countables),
-	GROUP("CP", cp_counters, cp_countables),
 	GROUP("RB", rb_counters, rb_countables),
 };
 
