@@ -763,7 +763,7 @@ const struct fd_perfcntr_group a6xx_perfcntr_groups[] = {
 	GROUP("HLSQ", hlsq_counters, hlsq_countables),
 	GROUP("PC", pc_counters, pc_countables),
 	GROUP("RB", rb_counters, rb_countables),
-	GROUP("RBBM", rbbm_counters, rbbm_countables),
+//	GROUP("RBBM", rbbm_counters, rbbm_countables),
 	GROUP("SP", sp_counters, sp_countables),
 	GROUP("TP", tp_counters, tp_countables),
 	GROUP("UCHE", uche_counters, uche_countables),
