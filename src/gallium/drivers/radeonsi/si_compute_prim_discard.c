@@ -939,6 +939,9 @@ static bool si_shader_select_prim_discard_cs(struct si_context *sctx,
 	sctx->cs_prim_discard_state.cso = sctx->vs_shader.cso;
 	sctx->cs_prim_discard_state.current = NULL;
 
+	if (!sctx->compiler.passes)
+		si_init_compiler(sctx->screen, &sctx->compiler);
+
 	struct si_compiler_ctx_state compiler_state;
 	compiler_state.compiler = &sctx->compiler;
 	compiler_state.debug = sctx->debug;
