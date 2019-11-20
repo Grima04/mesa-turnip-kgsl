@@ -85,11 +85,11 @@ setup_slices(struct fd_resource *rsc, uint32_t alignment, enum pipe_format forma
 
 	for (level = 0; level <= prsc->last_level; level++) {
 		struct fd_resource_slice *slice = fd_resource_slice(rsc, level);
-		bool linear_level = fd_resource_level_linear(prsc, level);
+		uint32_t tile_mode = fd_resource_tile_mode(prsc, level);
 		uint32_t width, height;
 
 		/* tiled levels of 3D textures are rounded up to PoT dimensions: */
-		if ((prsc->target == PIPE_TEXTURE_3D) && rsc->tile_mode && !linear_level) {
+		if ((prsc->target == PIPE_TEXTURE_3D) && tile_mode) {
 			width = twidth;
 			height = theight;
 		} else {
@@ -99,7 +99,7 @@ setup_slices(struct fd_resource *rsc, uint32_t alignment, enum pipe_format forma
 		uint32_t aligned_height = height;
 		uint32_t blocks;
 
-		if (rsc->tile_mode && !linear_level) {
+		if (tile_mode) {
 			pitchalign = tile_alignment[ta].pitchalign;
 			aligned_height = align(aligned_height,
 					tile_alignment[ta].heightalign);

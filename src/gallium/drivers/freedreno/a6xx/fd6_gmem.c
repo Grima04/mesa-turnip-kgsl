@@ -100,11 +100,7 @@ emit_mrt(struct fd_ringbuffer *ring, struct pipe_framebuffer_state *pfb,
 		stride = slice->pitch * rsc->cpp * pfb->samples;
 		swap = rsc->tile_mode ? WZYX : fd6_pipe2swap(pformat);
 
-		if (rsc->tile_mode &&
-			fd_resource_level_linear(psurf->texture, psurf->u.tex.level))
-			tile_mode = TILE6_LINEAR;
-		else
-			tile_mode = rsc->tile_mode;
+		tile_mode = fd_resource_tile_mode(psurf->texture, psurf->u.tex.level);
 
 		if (psurf->u.tex.first_layer < psurf->u.tex.last_layer) {
 			layered = true;
@@ -999,13 +995,7 @@ emit_blit(struct fd_batch *batch,
 	enum a3xx_color_swap swap = rsc->tile_mode ? WZYX : fd6_pipe2swap(pfmt);
 	enum a3xx_msaa_samples samples =
 			fd_msaa_samples(rsc->base.nr_samples);
-	uint32_t tile_mode;
-
-	if (rsc->tile_mode &&
-		fd_resource_level_linear(&rsc->base, psurf->u.tex.level))
-		tile_mode = TILE6_LINEAR;
-	else
-		tile_mode = rsc->tile_mode;
+	uint32_t tile_mode = fd_resource_tile_mode(&rsc->base, psurf->u.tex.level);
 
 	OUT_PKT4(ring, REG_A6XX_RB_BLIT_DST_INFO, 5);
 	OUT_RING(ring,

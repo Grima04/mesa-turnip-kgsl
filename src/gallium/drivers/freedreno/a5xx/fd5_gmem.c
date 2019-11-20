@@ -92,8 +92,7 @@ emit_mrt(struct fd_ringbuffer *ring, unsigned nr_bufs,
 				stride = slice->pitch * rsc->cpp;
 				size = slice->size0;
 
-				if (!fd_resource_level_linear(psurf->texture, psurf->u.tex.level))
-					tile_mode = rsc->tile_mode;
+				tile_mode = fd_resource_tile_mode(psurf->texture, psurf->u.tex.level);
 			}
 		}
 
@@ -632,8 +631,7 @@ emit_gmem2mem_surf(struct fd_batch *batch, uint32_t base,
 	OUT_RING(ring, 0x00000000);   /* RB_BLIT_FLAG_DST_PITCH */
 	OUT_RING(ring, 0x00000000);   /* RB_BLIT_FLAG_DST_ARRAY_PITCH */
 
-	tiled = rsc->tile_mode &&
-		!fd_resource_level_linear(psurf->texture, psurf->u.tex.level);
+	tiled = fd_resource_tile_mode(psurf->texture, psurf->u.tex.level);
 
 	OUT_PKT4(ring, REG_A5XX_RB_RESOLVE_CNTL_3, 5);
 	OUT_RING(ring, 0x00000004 |   /* XXX RB_RESOLVE_CNTL_3 */

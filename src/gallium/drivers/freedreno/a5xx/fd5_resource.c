@@ -64,11 +64,10 @@ setup_slices(struct fd_resource *rsc, uint32_t alignment, enum pipe_format forma
 
 	for (level = 0; level <= prsc->last_level; level++) {
 		struct fd_resource_slice *slice = fd_resource_slice(rsc, level);
-		bool linear_level = fd_resource_level_linear(prsc, level);
 		uint32_t aligned_height = height;
 		uint32_t blocks;
 
-		if (rsc->tile_mode && !linear_level) {
+		if (fd_resource_tile_mode(prsc, level)) {
 			pitchalign = tile_alignment[rsc->cpp].pitchalign;
 			aligned_height = align(aligned_height, heightalign);
 		} else {

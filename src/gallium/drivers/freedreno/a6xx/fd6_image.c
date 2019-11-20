@@ -232,12 +232,8 @@ fd6_emit_ssbo_tex(struct fd_ringbuffer *ring, const struct pipe_shader_buffer *p
 static void emit_image_ssbo(struct fd_ringbuffer *ring, struct fd6_image *img)
 {
 	struct fd_resource *rsc = fd_resource(img->prsc);
-	enum a6xx_tile_mode tile_mode = TILE6_LINEAR;
+	enum a6xx_tile_mode tile_mode = fd_resource_tile_mode(img->prsc, img->level);
 	bool ubwc_enabled = fd_resource_ubwc_enabled(rsc, img->level);
-
-	if (rsc->tile_mode && !fd_resource_level_linear(img->prsc, img->level)) {
-		tile_mode = rsc->tile_mode;
-	}
 
 	OUT_RING(ring, A6XX_IBO_0_FMT(img->fmt) |
 		A6XX_IBO_0_TILE_MODE(tile_mode));

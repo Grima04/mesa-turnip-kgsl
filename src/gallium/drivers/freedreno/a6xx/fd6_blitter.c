@@ -380,10 +380,8 @@ emit_blit_or_clear_texture(struct fd_context *ctx, struct fd_ringbuffer *ring,
 	int blockheight = util_format_get_blockheight(info->src.format);
 	int nelements;
 
-	stile = fd_resource_level_linear(info->src.resource, info->src.level) ?
-			TILE6_LINEAR : src->tile_mode;
-	dtile = fd_resource_level_linear(info->dst.resource, info->dst.level) ?
-			TILE6_LINEAR : dst->tile_mode;
+	stile = fd_resource_tile_mode(info->src.resource, info->src.level);
+	dtile = fd_resource_tile_mode(info->dst.resource, info->dst.level);
 
 	sswap = stile ? WZYX : fd6_pipe2swap(info->src.format);
 	dswap = dtile ? WZYX : fd6_pipe2swap(info->dst.format);

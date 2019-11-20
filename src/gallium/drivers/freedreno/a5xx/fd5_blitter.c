@@ -342,10 +342,8 @@ emit_blit(struct fd_ringbuffer *ring, const struct pipe_blit_info *info)
 	sfmt = fd5_pipe2color(info->src.format);
 	dfmt = fd5_pipe2color(info->dst.format);
 
-	stile = fd_resource_level_linear(info->src.resource, info->src.level) ?
-			TILE5_LINEAR : src->tile_mode;
-	dtile = fd_resource_level_linear(info->dst.resource, info->dst.level) ?
-			TILE5_LINEAR : dst->tile_mode;
+	stile = fd_resource_tile_mode(info->src.resource, info->src.level);
+	dtile = fd_resource_tile_mode(info->dst.resource, info->dst.level);
 
 	sswap = fd5_pipe2swap(info->src.format);
 	dswap = fd5_pipe2swap(info->dst.format);
