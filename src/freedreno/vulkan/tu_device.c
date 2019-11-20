@@ -354,6 +354,7 @@ static const struct debug_control tu_debug_options[] = {
    { "startup", TU_DEBUG_STARTUP },
    { "nir", TU_DEBUG_NIR },
    { "ir3", TU_DEBUG_IR3 },
+   { "nobin", TU_DEBUG_NOBIN },
    { NULL, 0 }
 };
 

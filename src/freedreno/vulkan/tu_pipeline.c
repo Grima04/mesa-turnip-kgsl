@@ -1049,7 +1049,7 @@ tu6_emit_program(struct tu_cs *cs,
    tu6_emit_fs_outputs(cs, fs, builder->color_attachment_count);
 
    tu6_emit_shader_object(cs, MESA_SHADER_VERTEX, vs, binary_bo,
-                          builder->shader_offsets[MESA_SHADER_VERTEX]);
+      binning_pass ? builder->binning_vs_offset : builder->shader_offsets[MESA_SHADER_VERTEX]);
 
    tu6_emit_shader_object(cs, MESA_SHADER_FRAGMENT, fs, binary_bo,
                           builder->shader_offsets[MESA_SHADER_FRAGMENT]);

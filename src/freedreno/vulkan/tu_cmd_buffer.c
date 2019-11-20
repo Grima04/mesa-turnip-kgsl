@@ -36,6 +36,8 @@
 #include "tu_cs.h"
 #include "tu_blit.h"
 
+#define OVERFLOW_FLAG_REG REG_A6XX_CP_SCRATCH_REG(0)
+
 void
 tu_bo_list_init(struct tu_bo_list *list)
 {
@@ -219,8 +221,8 @@ tu_tiling_config_update_pipes(struct tu_tiling_config *tiling,
    const uint32_t used_pipe_count =
       tiling->pipe_count.width * tiling->pipe_count.height;
    const VkExtent2D last_pipe = {
-      .width = tiling->tile_count.width % tiling->pipe0.width,
-      .height = tiling->tile_count.height % tiling->pipe0.height,
+      .width = (tiling->tile_count.width - 1) % tiling->pipe0.width + 1,
+      .height = (tiling->tile_count.height - 1) % tiling->pipe0.height + 1,
    };
 
    assert(used_pipe_count <= max_pipe_count);
@@ -355,18 +357,23 @@ tu6_emit_marker(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
    tu_cs_emit_write_reg(cs, cmd->marker_reg, ++cmd->marker_seqno);
 }
 
-void
+unsigned
 tu6_emit_event_write(struct tu_cmd_buffer *cmd,
                      struct tu_cs *cs,
                      enum vgt_event_type event,
                      bool need_seqno)
 {
+   unsigned seqno = 0;
+
    tu_cs_emit_pkt7(cs, CP_EVENT_WRITE, need_seqno ? 4 : 1);
    tu_cs_emit(cs, CP_EVENT_WRITE_0_EVENT(event));
    if (need_seqno) {
       tu_cs_emit_qw(cs, cmd->scratch_bo.iova);
-      tu_cs_emit(cs, ++cmd->scratch_seqno);
+      seqno = ++cmd->scratch_seqno;
+      tu_cs_emit(cs, seqno);
    }
+
+   return seqno;
 }
 
 static void
@@ -739,6 +746,17 @@ tu6_emit_window_offset(struct tu_cmd_buffer *cmd,
       cs, A6XX_SP_TP_WINDOW_OFFSET_X(x1) | A6XX_SP_TP_WINDOW_OFFSET_Y(y1));
 }
 
+static bool
+use_hw_binning(struct tu_cmd_buffer *cmd)
+{
+   const struct tu_tiling_config *tiling = &cmd->state.tiling_config;
+
+   if (unlikely(cmd->device->physical_device->instance->debug_flags & TU_DEBUG_NOBIN))
+      return false;
+
+   return (tiling->tile_count.width * tiling->tile_count.height) > 2;
+}
+
 static void
 tu6_emit_tile_select(struct tu_cmd_buffer *cmd,
                      struct tu_cs *cs,
@@ -762,8 +780,50 @@ tu6_emit_tile_select(struct tu_cmd_buffer *cmd,
    tu_cs_emit_pkt4(cs, REG_A6XX_VPC_SO_OVERRIDE, 1);
    tu_cs_emit(cs, A6XX_VPC_SO_OVERRIDE_SO_DISABLE);
 
-   if (false) {
-      /* hw binning? */
+   if (use_hw_binning(cmd)) {
+      tu_cs_emit_pkt7(cs, CP_WAIT_FOR_ME, 0);
+
+      tu_cs_emit_pkt7(cs, CP_SET_MODE, 1);
+      tu_cs_emit(cs, 0x0);
+
+      tu_cs_emit_pkt7(cs, CP_REG_TEST, 1);
+      tu_cs_emit(cs, A6XX_CP_REG_TEST_0_REG(OVERFLOW_FLAG_REG) |
+                     A6XX_CP_REG_TEST_0_BIT(0) |
+                     A6XX_CP_REG_TEST_0_UNK25);
+
+      tu_cs_emit_pkt7(cs, CP_COND_REG_EXEC, 2);
+      tu_cs_emit(cs, 0x10000000);
+      tu_cs_emit(cs, 11); /* conditionally execute next 11 dwords */
+
+      /* if (no overflow) */ {
+         tu_cs_emit_pkt7(cs, CP_SET_BIN_DATA5, 7);
+         tu_cs_emit(cs, cmd->state.tiling_config.pipe_sizes[tile->pipe] |
+                        CP_SET_BIN_DATA5_0_VSC_N(tile->slot));
+         tu_cs_emit_qw(cs, cmd->vsc_data.iova + tile->pipe * cmd->vsc_data_pitch);
+         tu_cs_emit_qw(cs, cmd->vsc_data.iova + (tile->pipe * 4) + (32 * cmd->vsc_data_pitch));
+         tu_cs_emit_qw(cs, cmd->vsc_data2.iova + (tile->pipe * cmd->vsc_data2_pitch));
+
+         tu_cs_emit_pkt7(cs, CP_SET_VISIBILITY_OVERRIDE, 1);
+         tu_cs_emit(cs, 0x0);
+
+         /* use a NOP packet to skip over the 'else' side: */
+         tu_cs_emit_pkt7(cs, CP_NOP, 2);
+      } /* else */ {
+         tu_cs_emit_pkt7(cs, CP_SET_VISIBILITY_OVERRIDE, 1);
+         tu_cs_emit(cs, 0x1);
+      }
+
+      tu_cs_emit_pkt7(cs, CP_SET_MODE, 1);
+      tu_cs_emit(cs, 0x0);
+
+      tu_cs_emit_pkt4(cs, REG_A6XX_RB_UNKNOWN_8804, 1);
+      tu_cs_emit(cs, 0x0);
+
+      tu_cs_emit_pkt4(cs, REG_A6XX_SP_TP_UNKNOWN_B304, 1);
+      tu_cs_emit(cs, 0x0);
+
+      tu_cs_emit_pkt4(cs, REG_A6XX_GRAS_UNKNOWN_80A4, 1);
+      tu_cs_emit(cs, 0x0);
    } else {
       tu_cs_emit_pkt7(cs, CP_SET_VISIBILITY_OVERRIDE, 1);
       tu_cs_emit(cs, 0x1);
@@ -837,10 +897,6 @@ static void
 tu6_emit_tile_store(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 {
    const struct tu_subpass *subpass = cmd->state.subpass;
-
-   if (false) {
-      /* hw binning? */
-   }
 
    tu_cs_emit_pkt7(cs, CP_SET_DRAW_STATE, 3);
    tu_cs_emit(cs, CP_SET_DRAW_STATE__0_COUNT(0) |
@@ -1054,9 +1110,228 @@ tu6_init_hw(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 }
 
 static void
+tu6_cache_flush(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
+{
+   unsigned seqno;
+
+   seqno = tu6_emit_event_write(cmd, cs, CACHE_FLUSH_AND_INV_EVENT, true);
+
+   tu_cs_emit_pkt7(cs, CP_WAIT_REG_MEM, 6);
+   tu_cs_emit(cs, 0x00000013);
+   tu_cs_emit_qw(cs, cmd->scratch_bo.iova);
+   tu_cs_emit(cs, seqno);
+   tu_cs_emit(cs, 0xffffffff);
+   tu_cs_emit(cs, 0x00000010);
+
+   seqno = tu6_emit_event_write(cmd, cs, CACHE_FLUSH_TS, true);
+
+   tu_cs_emit_pkt7(cs, CP_UNK_A6XX_14, 4);
+   tu_cs_emit(cs, 0x00000000);
+   tu_cs_emit_qw(cs, cmd->scratch_bo.iova);
+   tu_cs_emit(cs, seqno);
+}
+
+static void
+update_vsc_pipe(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
+{
+   const struct tu_tiling_config *tiling = &cmd->state.tiling_config;
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_VSC_BIN_SIZE, 3);
+   tu_cs_emit(cs, A6XX_VSC_BIN_SIZE_WIDTH(tiling->tile0.extent.width) |
+                  A6XX_VSC_BIN_SIZE_HEIGHT(tiling->tile0.extent.height));
+   tu_cs_emit_qw(cs, cmd->vsc_data.iova + 32 * cmd->vsc_data_pitch); /* VSC_SIZE_ADDRESS_LO/HI */
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_VSC_BIN_COUNT, 1);
+   tu_cs_emit(cs, A6XX_VSC_BIN_COUNT_NX(tiling->tile_count.width) |
+                  A6XX_VSC_BIN_COUNT_NY(tiling->tile_count.height));
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_VSC_PIPE_CONFIG_REG(0), 32);
+   for (unsigned i = 0; i < 32; i++)
+      tu_cs_emit(cs, tiling->pipe_config[i]);
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_VSC_PIPE_DATA2_ADDRESS_LO, 4);
+   tu_cs_emit_qw(cs, cmd->vsc_data2.iova);
+   tu_cs_emit(cs, cmd->vsc_data2_pitch);
+   tu_cs_emit(cs, cmd->vsc_data2.size);
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_VSC_PIPE_DATA_ADDRESS_LO, 4);
+   tu_cs_emit_qw(cs, cmd->vsc_data.iova);
+   tu_cs_emit(cs, cmd->vsc_data_pitch);
+   tu_cs_emit(cs, cmd->vsc_data.size);
+}
+
+static void
+emit_vsc_overflow_test(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
+{
+   const struct tu_tiling_config *tiling = &cmd->state.tiling_config;
+   const uint32_t used_pipe_count =
+      tiling->pipe_count.width * tiling->pipe_count.height;
+
+   /* Clear vsc_scratch: */
+   tu_cs_emit_pkt7(cs, CP_MEM_WRITE, 3);
+   tu_cs_emit_qw(cs, cmd->scratch_bo.iova + VSC_SCRATCH);
+   tu_cs_emit(cs, 0x0);
+
+   /* Check for overflow, write vsc_scratch if detected: */
+   for (int i = 0; i < used_pipe_count; i++) {
+      tu_cs_emit_pkt7(cs, CP_COND_WRITE5, 8);
+      tu_cs_emit(cs, CP_COND_WRITE5_0_FUNCTION(WRITE_GE) |
+            CP_COND_WRITE5_0_WRITE_MEMORY);
+      tu_cs_emit(cs, CP_COND_WRITE5_1_POLL_ADDR_LO(REG_A6XX_VSC_SIZE_REG(i)));
+      tu_cs_emit(cs, CP_COND_WRITE5_2_POLL_ADDR_HI(0));
+      tu_cs_emit(cs, CP_COND_WRITE5_3_REF(cmd->vsc_data_pitch));
+      tu_cs_emit(cs, CP_COND_WRITE5_4_MASK(~0));
+      tu_cs_emit_qw(cs, cmd->scratch_bo.iova + VSC_SCRATCH);
+      tu_cs_emit(cs, CP_COND_WRITE5_7_WRITE_DATA(1 + cmd->vsc_data_pitch));
+
+      tu_cs_emit_pkt7(cs, CP_COND_WRITE5, 8);
+      tu_cs_emit(cs, CP_COND_WRITE5_0_FUNCTION(WRITE_GE) |
+            CP_COND_WRITE5_0_WRITE_MEMORY);
+      tu_cs_emit(cs, CP_COND_WRITE5_1_POLL_ADDR_LO(REG_A6XX_VSC_SIZE2_REG(i)));
+      tu_cs_emit(cs, CP_COND_WRITE5_2_POLL_ADDR_HI(0));
+      tu_cs_emit(cs, CP_COND_WRITE5_3_REF(cmd->vsc_data2_pitch));
+      tu_cs_emit(cs, CP_COND_WRITE5_4_MASK(~0));
+      tu_cs_emit_qw(cs, cmd->scratch_bo.iova + VSC_SCRATCH);
+      tu_cs_emit(cs, CP_COND_WRITE5_7_WRITE_DATA(3 + cmd->vsc_data2_pitch));
+   }
+
+   tu_cs_emit_pkt7(cs, CP_WAIT_MEM_WRITES, 0);
+
+   tu_cs_emit_pkt7(cs, CP_WAIT_FOR_ME, 0);
+
+   tu_cs_emit_pkt7(cs, CP_MEM_TO_REG, 3);
+   tu_cs_emit(cs, CP_MEM_TO_REG_0_REG(OVERFLOW_FLAG_REG) |
+         CP_MEM_TO_REG_0_CNT(1 - 1));
+   tu_cs_emit_qw(cs, cmd->scratch_bo.iova + VSC_SCRATCH);
+
+   /*
+    * This is a bit awkward, we really want a way to invert the
+    * CP_REG_TEST/CP_COND_REG_EXEC logic, so that we can conditionally
+    * execute cmds to use hwbinning when a bit is *not* set.  This
+    * dance is to invert OVERFLOW_FLAG_REG
+    *
+    * A CP_NOP packet is used to skip executing the 'else' clause
+    * if (b0 set)..
+    */
+
+   /* b0 will be set if VSC_DATA or VSC_DATA2 overflow: */
+   tu_cs_emit_pkt7(cs, CP_REG_TEST, 1);
+   tu_cs_emit(cs, A6XX_CP_REG_TEST_0_REG(OVERFLOW_FLAG_REG) |
+         A6XX_CP_REG_TEST_0_BIT(0) |
+         A6XX_CP_REG_TEST_0_UNK25);
+
+   tu_cs_emit_pkt7(cs, CP_COND_REG_EXEC, 2);
+   tu_cs_emit(cs, 0x10000000);
+   tu_cs_emit(cs, 7);  /* conditionally execute next 7 dwords */
+
+   /* if (b0 set) */ {
+      /*
+       * On overflow, mirror the value to control->vsc_overflow
+       * which CPU is checking to detect overflow (see
+       * check_vsc_overflow())
+       */
+      tu_cs_emit_pkt7(cs, CP_REG_TO_MEM, 3);
+      tu_cs_emit(cs, CP_REG_TO_MEM_0_REG(OVERFLOW_FLAG_REG) |
+            CP_REG_TO_MEM_0_CNT(1 - 1));
+      tu_cs_emit_qw(cs, cmd->scratch_bo.iova + VSC_OVERFLOW);
+
+      tu_cs_emit_pkt4(cs, OVERFLOW_FLAG_REG, 1);
+      tu_cs_emit(cs, 0x0);
+
+      tu_cs_emit_pkt7(cs, CP_NOP, 2);  /* skip 'else' when 'if' is taken */
+   } /* else */ {
+      tu_cs_emit_pkt4(cs, OVERFLOW_FLAG_REG, 1);
+      tu_cs_emit(cs, 0x1);
+   }
+}
+
+static void
+tu6_emit_binning_pass(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
+{
+   const struct tu_tiling_config *tiling = &cmd->state.tiling_config;
+
+   uint32_t x1 = tiling->tile0.offset.x;
+   uint32_t y1 = tiling->tile0.offset.y;
+   uint32_t x2 = tiling->render_area.offset.x + tiling->render_area.extent.width - 1;
+   uint32_t y2 = tiling->render_area.offset.x + tiling->render_area.extent.height - 1;
+
+   tu6_emit_window_scissor(cmd, cs, x1, y1, x2, y2);
+
+   tu6_emit_marker(cmd, cs);
+   tu_cs_emit_pkt7(cs, CP_SET_MARKER, 1);
+   tu_cs_emit(cs, A6XX_CP_SET_MARKER_0_MODE(RM6_BINNING));
+   tu6_emit_marker(cmd, cs);
+
+   tu_cs_emit_pkt7(cs, CP_SET_VISIBILITY_OVERRIDE, 1);
+   tu_cs_emit(cs, 0x1);
+
+   tu_cs_emit_pkt7(cs, CP_SET_MODE, 1);
+   tu_cs_emit(cs, 0x1);
+
+   tu_cs_emit_wfi(cs);
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_VFD_MODE_CNTL, 1);
+   tu_cs_emit(cs, A6XX_VFD_MODE_CNTL_BINNING_PASS);
+
+   update_vsc_pipe(cmd, cs);
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_PC_UNKNOWN_9805, 1);
+   tu_cs_emit(cs, 0x1);
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_SP_UNKNOWN_A0F8, 1);
+   tu_cs_emit(cs, 0x1);
+
+   tu_cs_emit_pkt7(cs, CP_EVENT_WRITE, 1);
+   tu_cs_emit(cs, UNK_2C);
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_RB_WINDOW_OFFSET, 1);
+   tu_cs_emit(cs, A6XX_RB_WINDOW_OFFSET_X(0) |
+                  A6XX_RB_WINDOW_OFFSET_Y(0));
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_SP_TP_WINDOW_OFFSET, 1);
+   tu_cs_emit(cs, A6XX_SP_TP_WINDOW_OFFSET_X(0) |
+                  A6XX_SP_TP_WINDOW_OFFSET_Y(0));
+
+   /* emit IB to binning drawcmds: */
+   tu_cs_emit_call(cs, &cmd->draw_cs);
+
+   tu_cs_emit_pkt7(cs, CP_SET_DRAW_STATE, 3);
+   tu_cs_emit(cs, CP_SET_DRAW_STATE__0_COUNT(0) |
+                  CP_SET_DRAW_STATE__0_DISABLE_ALL_GROUPS |
+                  CP_SET_DRAW_STATE__0_GROUP_ID(0));
+   tu_cs_emit(cs, CP_SET_DRAW_STATE__1_ADDR_LO(0));
+   tu_cs_emit(cs, CP_SET_DRAW_STATE__2_ADDR_HI(0));
+
+   tu_cs_emit_pkt7(cs, CP_EVENT_WRITE, 1);
+   tu_cs_emit(cs, UNK_2D);
+
+   tu6_emit_event_write(cmd, cs, CACHE_INVALIDATE, false);
+   tu6_cache_flush(cmd, cs);
+
+   tu_cs_emit_wfi(cs);
+
+   tu_cs_emit_pkt7(cs, CP_WAIT_FOR_ME, 0);
+
+   emit_vsc_overflow_test(cmd, cs);
+
+   tu_cs_emit_pkt7(cs, CP_SET_VISIBILITY_OVERRIDE, 1);
+   tu_cs_emit(cs, 0x0);
+
+   tu_cs_emit_pkt7(cs, CP_SET_MODE, 1);
+   tu_cs_emit(cs, 0x0);
+
+   tu_cs_emit_wfi(cs);
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_RB_CCU_CNTL, 1);
+   tu_cs_emit(cs, 0x7c400004);
+
+   cmd->wait_for_idle = false;
+}
+
+static void
 tu6_render_begin(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 {
-   VkResult result = tu_cs_reserve_space(cmd->device, cs, 256);
+   VkResult result = tu_cs_reserve_space(cmd->device, cs, 1024);
    if (result != VK_SUCCESS) {
       cmd->record_result = result;
       return;
@@ -1080,11 +1355,28 @@ tu6_render_begin(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
    tu6_emit_mrt(cmd, cs);
    tu6_emit_msaa(cmd, cs);
 
-   if (false) {
-      /* hw binning? */
+   if (use_hw_binning(cmd)) {
+      tu6_emit_bin_size(cmd, cs, A6XX_RB_BIN_CONTROL_BINNING_PASS | 0x6000000);
+
+      tu6_emit_render_cntl(cmd, cs, true);
+
+      tu6_emit_binning_pass(cmd, cs);
+
+      tu6_emit_bin_size(cmd, cs, A6XX_RB_BIN_CONTROL_USE_VIZ | 0x6000000);
+
+      tu_cs_emit_pkt4(cs, REG_A6XX_VFD_MODE_CNTL, 1);
+      tu_cs_emit(cs, 0x0);
+
+      tu_cs_emit_pkt4(cs, REG_A6XX_PC_UNKNOWN_9805, 1);
+      tu_cs_emit(cs, 0x1);
+
+      tu_cs_emit_pkt4(cs, REG_A6XX_SP_UNKNOWN_A0F8, 1);
+      tu_cs_emit(cs, 0x1);
+
+      tu_cs_emit_pkt7(cs, CP_SKIP_IB2_ENABLE_GLOBAL, 1);
+      tu_cs_emit(cs, 0x1);
    } else {
       tu6_emit_bin_size(cmd, cs, 0x6000000);
-      /* no draws */
    }
 
    tu6_emit_render_cntl(cmd, cs, false);
@@ -1097,7 +1389,7 @@ tu6_render_tile(struct tu_cmd_buffer *cmd,
                 struct tu_cs *cs,
                 const struct tu_tile *tile)
 {
-   const uint32_t render_tile_space = 64 + tu_cs_get_call_size(&cmd->draw_cs);
+   const uint32_t render_tile_space = 256 + tu_cs_get_call_size(&cmd->draw_cs);
    VkResult result = tu_cs_reserve_space(cmd->device, cs, render_tile_space);
    if (result != VK_SUCCESS) {
       cmd->record_result = result;
@@ -1109,6 +1401,22 @@ tu6_render_tile(struct tu_cmd_buffer *cmd,
 
    tu_cs_emit_call(cs, &cmd->draw_cs);
    cmd->wait_for_idle = true;
+
+   if (use_hw_binning(cmd)) {
+      tu_cs_emit_pkt7(cs, CP_REG_TEST, 1);
+      tu_cs_emit(cs, A6XX_CP_REG_TEST_0_REG(OVERFLOW_FLAG_REG) |
+                     A6XX_CP_REG_TEST_0_BIT(0) |
+                     A6XX_CP_REG_TEST_0_UNK25);
+
+      tu_cs_emit_pkt7(cs, CP_COND_REG_EXEC, 2);
+      tu_cs_emit(cs, 0x10000000);
+      tu_cs_emit(cs, 2);  /* conditionally execute next 2 dwords */
+
+      /* if (no overflow) */ {
+         tu_cs_emit_pkt7(cs, CP_SET_MARKER, 1);
+         tu_cs_emit(cs, A6XX_CP_SET_MARKER_0_MODE(0x5) | 0x10);
+      }
+   }
 
    tu_cs_emit_ib(cs, &cmd->state.tile_store_ib);
 
@@ -1424,13 +1732,36 @@ tu_create_cmd_buffer(struct tu_device *device,
    if (result != VK_SUCCESS)
       return result;
 
+#define VSC_DATA_SIZE(pitch)  ((pitch) * 32 + 0x100)  /* extra size to store VSC_SIZE */
+#define VSC_DATA2_SIZE(pitch) ((pitch) * 32)
+
+   /* TODO: resize on overflow or compute a max size from # of vertices in renderpass?? */
+   cmd_buffer->vsc_data_pitch = 0x440 * 4;
+   cmd_buffer->vsc_data2_pitch = 0x1040 * 4;
+
+   result = tu_bo_init_new(device, &cmd_buffer->vsc_data, VSC_DATA_SIZE(cmd_buffer->vsc_data_pitch));
+   if (result != VK_SUCCESS)
+      goto fail_vsc_data;
+
+   result = tu_bo_init_new(device, &cmd_buffer->vsc_data2, VSC_DATA2_SIZE(cmd_buffer->vsc_data2_pitch));
+   if (result != VK_SUCCESS)
+      goto fail_vsc_data2;
+
    return VK_SUCCESS;
+
+fail_vsc_data2:
+   tu_bo_finish(cmd_buffer->device, &cmd_buffer->vsc_data);
+fail_vsc_data:
+   tu_bo_finish(cmd_buffer->device, &cmd_buffer->scratch_bo);
+   return result;
 }
 
 static void
 tu_cmd_buffer_destroy(struct tu_cmd_buffer *cmd_buffer)
 {
    tu_bo_finish(cmd_buffer->device, &cmd_buffer->scratch_bo);
+   tu_bo_finish(cmd_buffer->device, &cmd_buffer->vsc_data);
+   tu_bo_finish(cmd_buffer->device, &cmd_buffer->vsc_data2);
 
    list_del(&cmd_buffer->pool_link);
 
@@ -1770,6 +2101,13 @@ tu_EndCommandBuffer(VkCommandBuffer commandBuffer)
                      MSM_SUBMIT_BO_WRITE);
    }
 
+   if (cmd_buffer->use_vsc_data) {
+      tu_bo_list_add(&cmd_buffer->bo_list, &cmd_buffer->vsc_data,
+                     MSM_SUBMIT_BO_READ | MSM_SUBMIT_BO_WRITE);
+      tu_bo_list_add(&cmd_buffer->bo_list, &cmd_buffer->vsc_data2,
+                     MSM_SUBMIT_BO_READ | MSM_SUBMIT_BO_WRITE);
+   }
+
    for (uint32_t i = 0; i < cmd_buffer->draw_cs.bo_count; i++) {
       tu_bo_list_add(&cmd_buffer->bo_list, cmd_buffer->draw_cs.bos[i],
                      MSM_SUBMIT_BO_READ | MSM_SUBMIT_BO_DUMP);
@@ -2091,6 +2429,10 @@ tu_CmdBeginRenderPass(VkCommandBuffer commandBuffer,
    tu_cmd_update_tiling_config(cmd_buffer, &pRenderPassBegin->renderArea);
    tu_cmd_prepare_tile_load_ib(cmd_buffer);
    tu_cmd_prepare_tile_store_ib(cmd_buffer);
+
+   /* note: use_hw_binning only checks tiling config */
+   if (use_hw_binning(cmd_buffer))
+      cmd_buffer->use_vsc_data = true;
 }
 
 void
@@ -2928,7 +3270,7 @@ tu6_emit_draw_direct(struct tu_cmd_buffer *cmd,
          CP_DRAW_INDX_OFFSET_0_PRIM_TYPE(primtype) |
          CP_DRAW_INDX_OFFSET_0_SOURCE_SELECT(DI_SRC_SEL_DMA) |
          CP_DRAW_INDX_OFFSET_0_INDEX_SIZE(index_size) |
-         CP_DRAW_INDX_OFFSET_0_VIS_CULL(IGNORE_VISIBILITY) | 0x2000;
+         CP_DRAW_INDX_OFFSET_0_VIS_CULL(USE_VISIBILITY) | 0x2000;
 
       tu_cs_emit_pkt7(cs, CP_DRAW_INDX_OFFSET, 7);
       tu_cs_emit(cs, cp_draw_indx);
@@ -2941,7 +3283,7 @@ tu6_emit_draw_direct(struct tu_cmd_buffer *cmd,
       const uint32_t cp_draw_indx =
          CP_DRAW_INDX_OFFSET_0_PRIM_TYPE(primtype) |
          CP_DRAW_INDX_OFFSET_0_SOURCE_SELECT(DI_SRC_SEL_AUTO_INDEX) |
-         CP_DRAW_INDX_OFFSET_0_VIS_CULL(IGNORE_VISIBILITY) | 0x2000;
+         CP_DRAW_INDX_OFFSET_0_VIS_CULL(USE_VISIBILITY) | 0x2000;
 
       tu_cs_emit_pkt7(cs, CP_DRAW_INDX_OFFSET, 3);
       tu_cs_emit(cs, cp_draw_indx);
@@ -2974,6 +3316,7 @@ tu_draw(struct tu_cmd_buffer *cmd, const struct tu_draw_info *draw)
    }
 
    /* TODO tu6_emit_marker should pick different regs depending on cs */
+
    tu6_emit_marker(cmd, cs);
    tu6_emit_draw_direct(cmd, cs, draw);
    tu6_emit_marker(cmd, cs);

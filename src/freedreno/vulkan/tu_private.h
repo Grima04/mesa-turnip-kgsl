@@ -328,6 +328,7 @@ enum tu_debug_flags
    TU_DEBUG_STARTUP = 1 << 0,
    TU_DEBUG_NIR = 1 << 1,
    TU_DEBUG_IR3 = 1 << 2,
+   TU_DEBUG_NOBIN = 1 << 3,
 };
 
 struct tu_instance
@@ -959,11 +960,19 @@ struct tu_cmd_buffer
 
    struct tu_bo scratch_bo;
    uint32_t scratch_seqno;
+#define VSC_OVERFLOW 0x8
+#define VSC_SCRATCH 0x10
+
+   struct tu_bo vsc_data;
+   struct tu_bo vsc_data2;
+   uint32_t vsc_data_pitch;
+   uint32_t vsc_data2_pitch;
+   bool use_vsc_data;
 
    bool wait_for_idle;
 };
 
-void
+unsigned
 tu6_emit_event_write(struct tu_cmd_buffer *cmd,
                      struct tu_cs *cs,
                      enum vgt_event_type event,
