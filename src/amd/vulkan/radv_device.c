@@ -439,8 +439,7 @@ radv_physical_device_init(struct radv_physical_device *device,
 	device->dcc_msaa_allowed =
 		(device->instance->perftest_flags & RADV_PERFTEST_DCC_MSAA);
 
-	device->use_shader_ballot = device->rad_info.chip_class >= GFX8 &&
-				    (device->use_aco || device->instance->perftest_flags & RADV_PERFTEST_SHADER_BALLOT);
+	device->use_shader_ballot = device->use_aco || (device->instance->perftest_flags & RADV_PERFTEST_SHADER_BALLOT);
 
 	device->use_ngg = device->rad_info.chip_class >= GFX10 &&
 			  device->rad_info.family != CHIP_NAVI14 &&
@@ -1390,13 +1389,13 @@ void radv_GetPhysicalDeviceProperties2(
 			properties->supportedStages = VK_SHADER_STAGE_ALL;
 			properties->supportedOperations =
 							VK_SUBGROUP_FEATURE_BASIC_BIT |
+							VK_SUBGROUP_FEATURE_VOTE_BIT |
+							VK_SUBGROUP_FEATURE_ARITHMETIC_BIT |
 							VK_SUBGROUP_FEATURE_BALLOT_BIT |
-							VK_SUBGROUP_FEATURE_QUAD_BIT |
-							VK_SUBGROUP_FEATURE_VOTE_BIT;
+							VK_SUBGROUP_FEATURE_CLUSTERED_BIT |
+							VK_SUBGROUP_FEATURE_QUAD_BIT;
 			if (pdevice->rad_info.chip_class >= GFX8) {
 				properties->supportedOperations |=
-							VK_SUBGROUP_FEATURE_ARITHMETIC_BIT |
-							VK_SUBGROUP_FEATURE_CLUSTERED_BIT |
 							VK_SUBGROUP_FEATURE_SHUFFLE_BIT |
 							VK_SUBGROUP_FEATURE_SHUFFLE_RELATIVE_BIT;
 			}
