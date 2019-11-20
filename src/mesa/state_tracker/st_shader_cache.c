@@ -70,13 +70,20 @@ write_tgsi_to_cache(struct blob *blob, const struct tgsi_token *tokens,
 static void
 write_nir_to_cache(struct blob *blob, struct gl_program *prog)
 {
-   struct st_program *stp = (struct st_program *)prog;
+   if (prog->nir) {
+      /* Reserve intptr_t to store the size. intptr_t is also the alignment
+       * of NIR in the blob, so the NIR size computation will be trivial.
+       */
+      size_t offset = blob_reserve_intptr(blob);
+      nir_serialize(blob, prog->nir, false);
 
-   st_serialize_nir(stp);
-
-   blob_write_intptr(blob, stp->nir_size);
-   blob_write_bytes(blob, stp->nir_binary, stp->nir_size);
-
+      unsigned nir_size = blob->size - offset - sizeof(intptr_t);
+      *(uintptr_t *)(blob->data + offset) = nir_size;
+   } else {
+      struct st_program *stp = (struct st_program *)prog;
+      blob_write_intptr(blob, stp->nir_size);
+      blob_write_bytes(blob, stp->nir_binary, stp->nir_size);
+   }
    copy_blob_to_driver_cache_blob(blob, prog);
 }
 

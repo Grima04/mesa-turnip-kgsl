@@ -2069,20 +2069,6 @@ st_precompile_shader_variant(struct st_context *st,
 }
 
 void
-st_serialize_nir(struct st_program *stp)
-{
-   if (!stp->nir_binary) {
-      struct blob blob;
-      size_t size;
-
-      blob_init(&blob);
-      nir_serialize(&blob, stp->Base.nir, false);
-      blob_finish_get_buffer(&blob, &stp->nir_binary, &size);
-      stp->nir_size = size;
-   }
-}
-
-void
 st_finalize_program(struct st_context *st, struct gl_program *prog)
 {
    struct st_program *stp = (struct st_program *)prog;
@@ -2106,7 +2092,14 @@ st_finalize_program(struct st_context *st, struct gl_program *prog)
     * to save memory.
     */
    if (prog->nir) {
-      st_serialize_nir(stp);
+      /* Serialize NIR. */
+      struct blob blob;
+      blob_init(&blob);
+      nir_serialize(&blob, prog->nir, false);
+      stp->nir_binary = malloc(blob.size);
+      memcpy(stp->nir_binary, blob.data, blob.size);
+      stp->nir_size = blob.size;
+      blob_finish(&blob);
 
       /* Free NIR. */
       assert(stp->state.ir.nir == prog->nir);
