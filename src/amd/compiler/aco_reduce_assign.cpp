@@ -125,6 +125,8 @@ void setup_reduce_temp(Program* program)
             need_vtmp = true;
          if (program->chip_class >= GFX10 && op == iadd64)
             need_vtmp = true;
+         if (program->chip_class <= GFX7)
+            need_vtmp = true;
 
          need_vtmp |= cluster_size == 32;
 

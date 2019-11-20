@@ -409,6 +409,14 @@ uint32_t get_reduction_identity(ReduceOp op, unsigned idx)
    return 0;
 }
 
+void emit_ds_swizzle(Builder bld, PhysReg dst, PhysReg src, unsigned size, unsigned ds_pattern)
+{
+   for (unsigned i = 0; i < size; i++) {
+      bld.ds(aco_opcode::ds_swizzle_b32, Definition(PhysReg{dst+i}, v1),
+             Operand(PhysReg{src+i}, v1), ds_pattern);
+   }
+}
+
 void emit_reduction(lower_context *ctx, aco_opcode op, ReduceOp reduce_op, unsigned cluster_size, PhysReg tmp,
                     PhysReg stmp, PhysReg vtmp, PhysReg sitmp, Operand src, Definition dst)
 {
@@ -446,58 +454,71 @@ void emit_reduction(lower_context *ctx, aco_opcode op, ReduceOp reduce_op, unsig
                    Operand(stmp, bld.lm));
    }
 
-   bool exec_restored = false;
-   bool dst_written = false;
+   bool reduction_needs_last_op = false;
    switch (op) {
    case aco_opcode::p_reduce:
       if (cluster_size == 1) break;
-      emit_dpp_op(ctx, tmp, tmp, tmp, vtmp, reduce_op, src.size(),
-                  dpp_quad_perm(1, 0, 3, 2), 0xf, 0xf, false);
+
+      if (ctx->program->chip_class <= GFX7) {
+         reduction_needs_last_op = true;
+         emit_ds_swizzle(bld, vtmp, tmp, src.size(), (1 << 15) | dpp_quad_perm(1, 0, 3, 2));
+         if (cluster_size == 2) break;
+         emit_op(ctx, tmp, vtmp, tmp, PhysReg{0}, reduce_op, src.size());
+         emit_ds_swizzle(bld, vtmp, tmp, src.size(), (1 << 15) | dpp_quad_perm(2, 3, 0, 1));
+         if (cluster_size == 4) break;
+         emit_op(ctx, tmp, vtmp, tmp, PhysReg{0}, reduce_op, src.size());
+         emit_ds_swizzle(bld, vtmp, tmp, src.size(), ds_pattern_bitmode(0x1f, 0, 0x04));
+         if (cluster_size == 8) break;
+         emit_op(ctx, tmp, vtmp, tmp, PhysReg{0}, reduce_op, src.size());
+         emit_ds_swizzle(bld, vtmp, tmp, src.size(), ds_pattern_bitmode(0x1f, 0, 0x08));
+         if (cluster_size == 16) break;
+         emit_op(ctx, tmp, vtmp, tmp, PhysReg{0}, reduce_op, src.size());
+         emit_ds_swizzle(bld, vtmp, tmp, src.size(), ds_pattern_bitmode(0x1f, 0, 0x10));
+         if (cluster_size == 32) break;
+         emit_op(ctx, tmp, vtmp, tmp, PhysReg{0}, reduce_op, src.size());
+         for (unsigned i = 0; i < src.size(); i++)
+            bld.readlane(Definition(PhysReg{dst.physReg() + i}, s1), Operand(PhysReg{tmp + i}, v1), Operand(0u));
+         // TODO: it would be more effective to do the last reduction step on SALU
+         emit_op(ctx, tmp, dst.physReg(), tmp, vtmp, reduce_op, src.size());
+         reduction_needs_last_op = false;
+         break;
+      }
+
+      emit_dpp_op(ctx, tmp, tmp, tmp, vtmp, reduce_op, src.size(), dpp_quad_perm(1, 0, 3, 2), 0xf, 0xf, false);
       if (cluster_size == 2) break;
-      emit_dpp_op(ctx, tmp, tmp, tmp, vtmp, reduce_op, src.size(),
-                  dpp_quad_perm(2, 3, 0, 1), 0xf, 0xf, false);
+      emit_dpp_op(ctx, tmp, tmp, tmp, vtmp, reduce_op, src.size(), dpp_quad_perm(2, 3, 0, 1), 0xf, 0xf, false);
       if (cluster_size == 4) break;
-      emit_dpp_op(ctx, tmp, tmp, tmp, vtmp, reduce_op, src.size(),
-                  dpp_row_half_mirror, 0xf, 0xf, false);
+      emit_dpp_op(ctx, tmp, tmp, tmp, vtmp, reduce_op, src.size(), dpp_row_half_mirror, 0xf, 0xf, false);
       if (cluster_size == 8) break;
-      emit_dpp_op(ctx, tmp, tmp, tmp, vtmp, reduce_op, src.size(),
-                  dpp_row_mirror, 0xf, 0xf, false);
+      emit_dpp_op(ctx, tmp, tmp, tmp, vtmp, reduce_op, src.size(), dpp_row_mirror, 0xf, 0xf, false);
       if (cluster_size == 16) break;
 
       if (ctx->program->chip_class >= GFX10) {
          /* GFX10+ doesn't support row_bcast15 and row_bcast31 */
-
          for (unsigned i = 0; i < src.size(); i++)
             bld.vop3(aco_opcode::v_permlanex16_b32, Definition(PhysReg{vtmp+i}, v1), Operand(PhysReg{tmp+i}, v1), Operand(0u), Operand(0u));
 
-         if (cluster_size == 32 && dst.regClass().type() == RegType::vgpr) {
-            bld.sop1(Builder::s_mov, Definition(exec, bld.lm), Operand(stmp, bld.lm));
-            exec_restored = true;
-            emit_op(ctx, dst.physReg(), tmp, vtmp, PhysReg{0}, reduce_op, src.size());
-            dst_written = true;
-         } else {
-            emit_op(ctx, tmp, tmp, vtmp, PhysReg{0}, reduce_op, src.size());
+         if (cluster_size == 32) {
+            reduction_needs_last_op = true;
+            break;
          }
 
-         if (cluster_size == 64) {
-            for (unsigned i = 0; i < src.size(); i++)
-               bld.readlane(Definition(PhysReg{dst.physReg() + i}, s1), Operand(PhysReg{tmp+i}, v1), Operand(31u));
-            emit_op(ctx, tmp, dst.physReg(), tmp, vtmp, reduce_op, src.size());
-         }
-      } else if (cluster_size == 32) {
+         emit_op(ctx, tmp, tmp, vtmp, PhysReg{0}, reduce_op, src.size());
          for (unsigned i = 0; i < src.size(); i++)
-            bld.ds(aco_opcode::ds_swizzle_b32, Definition(PhysReg{vtmp+i}, v1), Operand(PhysReg{tmp+i}, s1), ds_pattern_bitmode(0x1f, 0, 0x10));
-         bld.sop1(Builder::s_mov, Definition(exec, bld.lm), Operand(stmp, bld.lm));
-         exec_restored = true;
-         emit_op(ctx, dst.physReg(), vtmp, tmp, PhysReg{0}, reduce_op, src.size());
-         dst_written = true;
-      } else {
-         assert(cluster_size == 64);
-         emit_dpp_op(ctx, tmp, tmp, tmp, vtmp, reduce_op, src.size(),
-                     dpp_row_bcast15, 0xa, 0xf, false);
-         emit_dpp_op(ctx, tmp, tmp, tmp, vtmp, reduce_op, src.size(),
-                     dpp_row_bcast31, 0xc, 0xf, false);
+            bld.readlane(Definition(PhysReg{dst.physReg() + i}, s1), Operand(PhysReg{tmp+i}, v1), Operand(0u));
+         // TODO: it would be more effective to do the last reduction step on SALU
+         emit_op(ctx, tmp, dst.physReg(), tmp, vtmp, reduce_op, src.size());
+         break;
       }
+
+      if (cluster_size == 32) {
+         emit_ds_swizzle(bld, vtmp, tmp, src.size(), ds_pattern_bitmode(0x1f, 0, 0x10));
+         reduction_needs_last_op = true;
+         break;
+      }
+      assert(cluster_size == 64);
+      emit_dpp_op(ctx, tmp, tmp, tmp, vtmp, reduce_op, src.size(), dpp_row_bcast15, 0xa, 0xf, false);
+      emit_dpp_op(ctx, tmp, tmp, tmp, vtmp, reduce_op, src.size(), dpp_row_bcast31, 0xc, 0xf, false);
       break;
    case aco_opcode::p_exclusive_scan:
       if (ctx->program->chip_class >= GFX10) { /* gfx10 doesn't support wf_sr1, so emulate it */
@@ -575,15 +596,27 @@ void emit_reduction(lower_context *ctx, aco_opcode op, ReduceOp reduce_op, unsig
       unreachable("Invalid reduction mode");
    }
 
-   if (!exec_restored)
-      bld.sop1(Builder::s_mov, Definition(exec, bld.lm), Operand(stmp, bld.lm));
 
-   if (op == aco_opcode::p_reduce && dst.regClass().type() == RegType::sgpr) {
+   if (op == aco_opcode::p_reduce) {
+      if (reduction_needs_last_op && dst.regClass().type() == RegType::vgpr) {
+         bld.sop1(Builder::s_mov, Definition(exec, bld.lm), Operand(stmp, bld.lm));
+         emit_op(ctx, dst.physReg(), tmp, vtmp, PhysReg{0}, reduce_op, src.size());
+         return;
+      }
+
+      if (reduction_needs_last_op)
+         emit_op(ctx, tmp, vtmp, tmp, PhysReg{0}, reduce_op, src.size());
+   }
+
+   /* restore exec */
+   bld.sop1(Builder::s_mov, Definition(exec, bld.lm), Operand(stmp, bld.lm));
+
+   if (dst.regClass().type() == RegType::sgpr) {
       for (unsigned k = 0; k < src.size(); k++) {
          bld.readlane(Definition(PhysReg{dst.physReg() + k}, s1),
                       Operand(PhysReg{tmp + k}, v1), Operand(ctx->program->wave_size - 1));
       }
-   } else if (!(dst.physReg() == tmp) && !dst_written) {
+   } else if (dst.physReg() != tmp) {
       for (unsigned k = 0; k < src.size(); k++) {
          bld.vop1(aco_opcode::v_mov_b32, Definition(PhysReg{dst.physReg() + k}, s1),
                   Operand(PhysReg{tmp + k}, v1));
