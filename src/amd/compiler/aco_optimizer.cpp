@@ -2301,6 +2301,10 @@ void select_instruction(opt_ctx &ctx, aco_ptr<Instruction>& instr)
       /* first, check profitability */
       if (ctx.uses[info->mul_temp_id]) {
          ctx.uses[info->mul_temp_id]++;
+         if (instr->operands[0].isTemp())
+            ctx.uses[instr->operands[0].tempId()]--;
+         if (instr->operands[1].isTemp())
+            ctx.uses[instr->operands[1].tempId()]--;
          instr.swap(info->add_instr);
 
       /* second, check possible literals */
@@ -2333,7 +2337,6 @@ void select_instruction(opt_ctx &ctx, aco_ptr<Instruction>& instr)
             info->literal_idx = literal_idx;
          }
       }
-      return;
    }
 
    /* check for literals */
