@@ -414,12 +414,12 @@ bool can_swap_operands(aco_ptr<Instruction>& instr)
    }
 }
 
-bool can_use_VOP3(aco_ptr<Instruction>& instr)
+bool can_use_VOP3(opt_ctx& ctx, aco_ptr<Instruction>& instr)
 {
    if (instr->isVOP3())
       return true;
 
-   if (instr->operands.size() && instr->operands[0].isLiteral())
+   if (instr->operands.size() && instr->operands[0].isLiteral() && ctx.program->chip_class < GFX10)
       return false;
 
    if (instr->isDPP() || instr->isSDWA())
@@ -452,7 +452,6 @@ void to_VOP3(opt_ctx& ctx, aco_ptr<Instruction>& instr)
    if (instr->isVOP3())
       return;
 
-   assert(!instr->operands[0].isLiteral());
    aco_ptr<Instruction> tmp = std::move(instr);
    Format format = asVOP3(tmp->format);
    instr.reset(create_instruction<VOP3A_instruction>(tmp->opcode, format, tmp->operands.size(), tmp->definitions.size()));
@@ -508,7 +507,9 @@ bool valu_can_accept_vgpr(aco_ptr<Instruction>& instr, unsigned operand)
 /* check constant bus and literal limitations */
 bool check_vop3_operands(opt_ctx& ctx, unsigned num_operands, Operand *operands)
 {
-   int limit = 1;
+   int limit = ctx.program->chip_class >= GFX10 ? 2 : 1;
+   Operand literal32(s1);
+   Operand literal64(s2);
    unsigned num_sgprs = 0;
    unsigned sgpr[] = {0, 0};
 
@@ -525,7 +526,26 @@ bool check_vop3_operands(opt_ctx& ctx, unsigned num_operands, Operand *operands)
                return false;
          }
       } else if (op.isLiteral()) {
-         return false;
+         if (ctx.program->chip_class < GFX10)
+            return false;
+
+         if (!literal32.isUndefined() && literal32.constantValue() != op.constantValue())
+            return false;
+         if (!literal64.isUndefined() && literal64.constantValue() != op.constantValue())
+            return false;
+
+         /* Any number of 32-bit literals counts as only 1 to the limit. Same
+          * (but separately) for 64-bit literals. */
+         if (op.size() == 1 && literal32.isUndefined()) {
+            limit--;
+            literal32 = op;
+         } else if (op.size() == 2 && literal64.isUndefined()) {
+            limit--;
+            literal64 = op;
+         }
+
+         if (limit < 0)
+            return false;
       }
    }
 
@@ -650,7 +670,7 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
             instr->operands[i].setTemp(info.temp);
             info = ctx.info[info.temp.id()];
          }
-         if (info.is_abs() && (can_use_VOP3(instr) || instr->isDPP()) && instr_info.can_use_input_modifiers[(int)instr->opcode]) {
+         if (info.is_abs() && (can_use_VOP3(ctx, instr) || instr->isDPP()) && instr_info.can_use_input_modifiers[(int)instr->opcode]) {
             if (!instr->isDPP())
                to_VOP3(ctx, instr);
             instr->operands[i] = Operand(info.temp);
@@ -663,7 +683,7 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
             instr->opcode = i ? aco_opcode::v_sub_f32 : aco_opcode::v_subrev_f32;
             instr->operands[i].setTemp(info.temp);
             continue;
-         } else if (info.is_neg() && (can_use_VOP3(instr) || instr->isDPP()) && instr_info.can_use_input_modifiers[(int)instr->opcode]) {
+         } else if (info.is_neg() && (can_use_VOP3(ctx, instr) || instr->isDPP()) && instr_info.can_use_input_modifiers[(int)instr->opcode]) {
             if (!instr->isDPP())
                to_VOP3(ctx, instr);
             instr->operands[i].setTemp(info.temp);
@@ -682,7 +702,7 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
                instr->operands[i] = instr->operands[0];
                instr->operands[0] = get_constant_op(ctx, info.val);
                continue;
-            } else if (can_use_VOP3(instr)) {
+            } else if (can_use_VOP3(ctx, instr)) {
                to_VOP3(ctx, instr);
                instr->operands[i] = get_constant_op(ctx, info.val);
                continue;
@@ -1234,8 +1254,8 @@ bool combine_ordering_test(opt_ctx &ctx, aco_ptr<Instruction>& instr)
 
    if (op[1].type() == RegType::sgpr)
       std::swap(op[0], op[1]);
-   //TODO: we can use two different SGPRs on GFX10
-   if (op[0].type() == RegType::sgpr && op[1].type() == RegType::sgpr)
+   unsigned num_sgprs = (op[0].type() == RegType::sgpr) + (op[1].type() == RegType::sgpr);
+   if (num_sgprs > (ctx.program->chip_class >= GFX10 ? 2 : 1))
       return false;
 
    ctx.uses[op[0].id()]++;
@@ -1245,7 +1265,7 @@ bool combine_ordering_test(opt_ctx &ctx, aco_ptr<Instruction>& instr)
 
    aco_opcode new_op = is_or ? aco_opcode::v_cmp_u_f32 : aco_opcode::v_cmp_o_f32;
    Instruction *new_instr;
-   if (neg[0] || neg[1] || abs[0] || abs[1] || opsel) {
+   if (neg[0] || neg[1] || abs[0] || abs[1] || opsel || num_sgprs > 1) {
       VOP3A_instruction *vop3 = create_instruction<VOP3A_instruction>(new_op, asVOP3(Format::VOPC), 2, 1);
       for (unsigned i = 0; i < 2; i++) {
          vop3->neg[i] = neg[i];
@@ -1895,6 +1915,10 @@ bool combine_clamp(opt_ctx& ctx, aco_ptr<Instruction>& instr,
 
 void apply_sgprs(opt_ctx &ctx, aco_ptr<Instruction>& instr)
 {
+   bool is_shift64 = instr->opcode == aco_opcode::v_lshlrev_b64 ||
+                     instr->opcode == aco_opcode::v_lshrrev_b64 ||
+                     instr->opcode == aco_opcode::v_ashrrev_i64;
+
    /* find candidates and create the set of sgprs already read */
    unsigned sgpr_ids[2] = {0, 0};
    uint32_t operand_mask = 0;
@@ -1913,6 +1937,8 @@ void apply_sgprs(opt_ctx &ctx, aco_ptr<Instruction>& instr)
          operand_mask |= 1u << i;
    }
    unsigned max_sgprs = 1;
+   if (ctx.program->chip_class >= GFX10 && !is_shift64)
+      max_sgprs = 2;
    if (has_literal)
       max_sgprs--;
 
@@ -1953,7 +1979,7 @@ void apply_sgprs(opt_ctx &ctx, aco_ptr<Instruction>& instr)
          /* swap bits using a 4-entry LUT */
          uint32_t swapped = (0x3120 >> (operand_mask & 0x3)) & 0xf;
          operand_mask = (operand_mask & ~0x3) | swapped;
-      } else if (can_use_VOP3(instr)) {
+      } else if (can_use_VOP3(ctx, instr)) {
          to_VOP3(ctx, instr);
          instr->operands[sgpr_idx] = Operand(sgpr);
       } else {
@@ -2041,7 +2067,7 @@ bool apply_omod_clamp(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
 
    /* apply omod / clamp modifiers if the def is used only once and the instruction can have modifiers */
    if (!instr->definitions.empty() && ctx.uses[instr->definitions[0].tempId()] == 1 &&
-       can_use_VOP3(instr) && instr_info.can_use_output_modifiers[(int)instr->opcode]) {
+       can_use_VOP3(ctx, instr) && instr_info.can_use_output_modifiers[(int)instr->opcode]) {
       ssa_info& def_info = ctx.info[instr->definitions[0].tempId()];
       if (can_use_omod && def_info.is_omod2() && ctx.uses[def_info.temp.id()]) {
          to_VOP3(ctx, instr);
@@ -2376,7 +2402,7 @@ void select_instruction(opt_ctx &ctx, aco_ptr<Instruction>& instr)
    if (!instr->isSALU() && !instr->isVALU())
       return;
 
-   if (instr->isSDWA() || instr->isDPP() || instr->isVOP3())
+   if (instr->isSDWA() || instr->isDPP() || (instr->isVOP3() && ctx.program->chip_class < GFX10))
       return; /* some encodings can't ever take literals */
 
    /* we do not apply the literals yet as we don't know if it is profitable */
@@ -2385,7 +2411,9 @@ void select_instruction(opt_ctx &ctx, aco_ptr<Instruction>& instr)
    unsigned literal_id = 0;
    unsigned literal_uses = UINT32_MAX;
    Operand literal(s1);
-   unsigned num_operands = instr->isSALU() ? instr->operands.size() : 1;
+   unsigned num_operands = 1;
+   if (instr->isSALU() || (ctx.program->chip_class >= GFX10 && can_use_VOP3(ctx, instr)))
+      num_operands = instr->operands.size();
 
    unsigned sgpr_ids[2] = {0, 0};
    bool is_literal_sgpr = false;
@@ -2420,7 +2448,13 @@ void select_instruction(opt_ctx &ctx, aco_ptr<Instruction>& instr)
 
 
    /* don't go over the constant bus limit */
+   bool is_shift64 = instr->opcode == aco_opcode::v_lshlrev_b64 ||
+                     instr->opcode == aco_opcode::v_lshrrev_b64 ||
+                     instr->opcode == aco_opcode::v_ashrrev_i64;
    unsigned const_bus_limit = instr->isVALU() ? 1 : UINT32_MAX;
+   if (ctx.program->chip_class >= GFX10 && !is_shift64)
+      const_bus_limit = 2;
+
    unsigned num_sgprs = !!sgpr_ids[0] + !!sgpr_ids[1];
    if (num_sgprs == const_bus_limit && !is_literal_sgpr)
       return;
