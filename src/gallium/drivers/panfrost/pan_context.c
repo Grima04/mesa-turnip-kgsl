@@ -881,16 +881,21 @@ panfrost_ubo_count(struct panfrost_context *ctx, enum pipe_shader_type stage)
         return 32 - __builtin_clz(mask);
 }
 
-/* Fixes up a shader state with current state, returning a GPU address to the
- * patched shader */
+/* Fixes up a shader state with current state */
 
-static mali_ptr
-panfrost_patch_shader_state(
-        struct panfrost_context *ctx,
-        struct panfrost_shader_state *ss,
-        enum pipe_shader_type stage,
-        bool should_upload)
+static void
+panfrost_patch_shader_state(struct panfrost_context *ctx,
+                            enum pipe_shader_type stage)
 {
+        struct panfrost_shader_variants *all = ctx->shader[stage];
+
+        if (!all) {
+                ctx->payloads[stage].postfix.shader = 0;
+                return;
+        }
+
+        struct panfrost_shader_state *ss = &all->variants[all->active_variant];
+
         ss->tripipe->texture_count = ctx->sampler_view_count[stage];
         ss->tripipe->sampler_count = ctx->sampler_count[stage];
 
@@ -907,36 +912,9 @@ panfrost_patch_shader_state(
                               PAN_BO_ACCESS_READ |
 			      panfrost_bo_access_for_stage(stage));
 
-        /* We can't reuse over frames; that's not safe. The descriptor must be
-         * transient uploaded */
-
-        if (should_upload) {
-                return panfrost_upload_transient(batch, ss->tripipe,
-                                                 sizeof(struct mali_shader_meta));
-        }
-
-        /* If we don't need an upload, don't bother */
-        return 0;
-
-}
-
-static void
-panfrost_patch_shader_state_compute(
-        struct panfrost_context *ctx,
-        enum pipe_shader_type stage,
-        bool should_upload)
-{
-        struct panfrost_shader_variants *all = ctx->shader[stage];
-
-        if (!all) {
-                ctx->payloads[stage].postfix.shader = 0;
-                return;
-        }
-
-        struct panfrost_shader_state *s = &all->variants[all->active_variant];
-
-        ctx->payloads[stage].postfix.shader =
-                panfrost_patch_shader_state(ctx, s, stage, should_upload);
+        ctx->payloads[stage].postfix.shader = panfrost_upload_transient(batch,
+                                        ss->tripipe,
+                                        sizeof(struct mali_shader_meta));
 }
 
 /* Go through dirty flags and actualise them in the cmdstream. */
@@ -975,8 +953,8 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                 ctx->payloads[PIPE_SHADER_FRAGMENT].postfix.occlusion_counter = ctx->occlusion_query->bo->gpu;
         }
 
-        panfrost_patch_shader_state_compute(ctx, PIPE_SHADER_VERTEX, true);
-        panfrost_patch_shader_state_compute(ctx, PIPE_SHADER_COMPUTE, true);
+        panfrost_patch_shader_state(ctx, PIPE_SHADER_VERTEX);
+        panfrost_patch_shader_state(ctx, PIPE_SHADER_COMPUTE);
 
         if (ctx->dirty & (PAN_DIRTY_RASTERIZER | PAN_DIRTY_VS)) {
                 /* Check if we need to link the gl_PointSize varying */
@@ -997,7 +975,7 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                 assert(ctx->shader[PIPE_SHADER_FRAGMENT]);
                 struct panfrost_shader_state *variant = &ctx->shader[PIPE_SHADER_FRAGMENT]->variants[ctx->shader[PIPE_SHADER_FRAGMENT]->active_variant];
 
-                panfrost_patch_shader_state(ctx, variant, PIPE_SHADER_FRAGMENT, false);
+                panfrost_patch_shader_state(ctx, PIPE_SHADER_FRAGMENT);
 
 #define COPY(name) ctx->fragment_shader_core.name = variant->tripipe->name
 
