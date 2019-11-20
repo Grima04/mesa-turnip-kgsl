@@ -97,6 +97,7 @@ static struct {
 
 static void config_save(void);
 static void config_restore(void);
+static void restore_counter_groups(void);
 
 /*
  * helpers
@@ -863,6 +864,7 @@ static void
 main_ui(void)
 {
 	WINDOW *mainwin;
+	uint32_t last_time = gettime_us();
 
 	/* curses setup: */
 	mainwin = initscr();
@@ -907,6 +909,16 @@ main_ui(void)
 		}
 		resample();
 		redraw(mainwin);
+
+		/* restore the counters every 0.5s in case the GPU has suspended,
+		 * in which case the current selected countables will have reset:
+		 */
+		uint32_t t = gettime_us();
+		if (delta(last_time, t) > 500000) {
+			restore_counter_groups();
+			flush_ring();
+			last_time = t;
+		}
 	}
 
 	/* restore settings.. maybe we need an atexit()??*/
@@ -914,6 +926,23 @@ out:
 	delwin(mainwin);
 	endwin();
 	refresh();
+}
+
+static void
+restore_counter_groups(void)
+{
+	for (unsigned i = 0; i < dev.ngroups; i++) {
+		struct counter_group *group = &dev.groups[i];
+		unsigned j = 0;
+
+		/* NOTE skip CP the first CP counter */
+		if (i == 0)
+			j++;
+
+		for (; j < group->group->num_counters; j++) {
+			select_counter(group, j, group->counter[j].select_val);
+		}
+	}
 }
 
 static void
@@ -939,7 +968,7 @@ setup_counter_groups(const struct fd_perfcntr_group *groups)
 			group->counter[j].val_hi = dev.io + (group->counter[j].counter->counter_reg_hi * 4);
 			group->counter[j].val_lo = dev.io + (group->counter[j].counter->counter_reg_lo * 4);
 
-			select_counter(group, j, j);
+			group->counter[j].select_val = j;
 		}
 
 		for (unsigned j = 0; j < group->group->num_countables; j++) {
@@ -1049,6 +1078,7 @@ main(int argc, char **argv)
 	dev.groups = calloc(dev.ngroups, sizeof(struct counter_group));
 
 	setup_counter_groups(groups);
+	restore_counter_groups();
 	config_restore();
 	flush_ring();
 
