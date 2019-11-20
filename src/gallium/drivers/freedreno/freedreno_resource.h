@@ -156,17 +156,22 @@ fd_resource_slice(struct fd_resource *rsc, unsigned level)
 	return &rsc->slices[level];
 }
 
+static inline uint32_t
+fd_resource_layer_stride(struct fd_resource *rsc, unsigned level)
+{
+	if (rsc->layer_first)
+		return rsc->layer_size;
+	else
+		return fd_resource_slice(rsc, level)->size0;
+}
+
 /* get offset for specified mipmap level and texture/array layer */
 static inline uint32_t
 fd_resource_offset(struct fd_resource *rsc, unsigned level, unsigned layer)
 {
 	struct fd_resource_slice *slice = fd_resource_slice(rsc, level);
-	unsigned offset;
-	if (rsc->layer_first) {
-		offset = slice->offset + (rsc->layer_size * layer);
-	} else {
-		offset = slice->offset + (slice->size0 * layer);
-	}
+	unsigned offset = slice->offset;
+	offset += fd_resource_layer_stride(rsc, level) * layer;
 	debug_assert(offset < fd_bo_size(rsc->bo));
 	return offset + rsc->offset;
 }

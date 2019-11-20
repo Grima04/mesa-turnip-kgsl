@@ -531,7 +531,7 @@ fd_resource_transfer_map(struct pipe_context *pctx,
 	ptrans->usage = usage;
 	ptrans->box = *box;
 	ptrans->stride = util_format_get_nblocksx(format, slice->pitch) * rsc->cpp;
-	ptrans->layer_stride = rsc->layer_first ? rsc->layer_size : slice->size0;
+	ptrans->layer_stride = fd_resource_layer_stride(rsc, level);
 
 	/* we always need a staging texture for tiled buffers:
 	 *
@@ -550,8 +550,7 @@ fd_resource_transfer_map(struct pipe_context *pctx,
 			trans->staging_prsc = &staging_rsc->base;
 			trans->base.stride = util_format_get_nblocksx(format,
 				staging_slice->pitch) * staging_rsc->cpp;
-			trans->base.layer_stride = staging_rsc->layer_first ?
-				staging_rsc->layer_size : staging_slice->size0;
+			trans->base.layer_stride = fd_resource_layer_stride(staging_rsc, 0);
 			trans->staging_box = *box;
 			trans->staging_box.x = 0;
 			trans->staging_box.y = 0;
@@ -667,8 +666,8 @@ fd_resource_transfer_map(struct pipe_context *pctx,
 					trans->staging_prsc = &staging_rsc->base;
 					trans->base.stride = util_format_get_nblocksx(format,
 						staging_slice->pitch) * staging_rsc->cpp;
-					trans->base.layer_stride = staging_rsc->layer_first ?
-						staging_rsc->layer_size : staging_slice->size0;
+					trans->base.layer_stride =
+						fd_resource_layer_stride(staging_rsc, 0);
 					trans->staging_box = *box;
 					trans->staging_box.x = 0;
 					trans->staging_box.y = 0;
