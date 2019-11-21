@@ -499,7 +499,9 @@ optimise_nir(nir_shader *nir, unsigned quirks)
 
         nir_lower_tex_options lower_tex_options = {
                 .lower_txs_lod = true,
-                .lower_txp = ~0
+                .lower_txp = ~0,
+                .lower_tex_without_implicit_lod =
+                        (quirks & MIDGARD_EXPLICIT_LOD),
         };
 
         NIR_PASS(progress, nir, nir_lower_tex, &lower_tex_options);
@@ -1829,15 +1831,6 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
 static void
 emit_tex(compiler_context *ctx, nir_tex_instr *instr)
 {
-        /* Fixup op, since only textureLod is permitted in VS on later Midgard
-         * but NIR can give generic tex in some cases (which confuses the
-         * hardware). Interestingly, early Midgard lines up with NIR */
-
-        bool is_vertex = ctx->stage == MESA_SHADER_VERTEX;
-
-        if (is_vertex && instr->op == nir_texop_tex && ctx->quirks & MIDGARD_EXPLICIT_LOD)
-                instr->op = nir_texop_txl;
-
         switch (instr->op) {
         case nir_texop_tex:
         case nir_texop_txb:
