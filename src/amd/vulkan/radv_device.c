@@ -1394,7 +1394,8 @@ void radv_GetPhysicalDeviceProperties2(
 							VK_SUBGROUP_FEATURE_BALLOT_BIT |
 							VK_SUBGROUP_FEATURE_CLUSTERED_BIT |
 							VK_SUBGROUP_FEATURE_QUAD_BIT;
-			if (pdevice->rad_info.chip_class >= GFX8) {
+			if (pdevice->rad_info.chip_class == GFX8 ||
+			    pdevice->rad_info.chip_class == GFX9) {
 				properties->supportedOperations |=
 							VK_SUBGROUP_FEATURE_SHUFFLE_BIT |
 							VK_SUBGROUP_FEATURE_SHUFFLE_RELATIVE_BIT;
