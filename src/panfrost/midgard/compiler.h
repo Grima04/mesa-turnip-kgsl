@@ -635,6 +635,8 @@ void emit_binary_bundle(
 bool
 nir_undef_to_zero(nir_shader *shader);
 
+void midgard_nir_lod_errata(nir_shader *shader);
+
 /* Optimizations */
 
 bool midgard_opt_copy_prop(compiler_context *ctx, midgard_block *block);
