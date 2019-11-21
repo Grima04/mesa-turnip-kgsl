@@ -158,7 +158,9 @@ fd_resource_offset(struct fd_resource *rsc, unsigned level, unsigned layer)
 static inline uint32_t
 fd_resource_ubwc_offset(struct fd_resource *rsc, unsigned level, unsigned layer)
 {
-	return fdl_ubwc_offset(&rsc->layout, level, layer);
+	uint32_t offset = fdl_ubwc_offset(&rsc->layout, level, layer);
+	debug_assert(offset < fd_bo_size(rsc->bo));
+	return offset;
 }
 
 /* This might be a5xx specific, but higher mipmap levels are always linear: */

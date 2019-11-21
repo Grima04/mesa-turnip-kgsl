@@ -150,6 +150,8 @@ tu_image_create(VkDevice _device,
    /* expect UBWC enabled if we asked for it */
    assert(modifier != DRM_FORMAT_MOD_QCOM_COMPRESSED || ubwc_enabled);
 
+   image->layout.ubwc = ubwc_enabled;
+
    fdl6_layout(&image->layout, vk_format_to_pipe_format(image->vk_format),
                image->samples,
                pCreateInfo->extent.width,
@@ -157,8 +159,7 @@ tu_image_create(VkDevice _device,
                pCreateInfo->extent.depth,
                pCreateInfo->mipLevels,
                pCreateInfo->arrayLayers,
-               pCreateInfo->imageType == VK_IMAGE_TYPE_3D,
-               ubwc_enabled);
+               pCreateInfo->imageType == VK_IMAGE_TYPE_3D);
 
    *pImage = tu_image_to_handle(image);
 

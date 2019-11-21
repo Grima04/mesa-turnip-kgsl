@@ -89,67 +89,6 @@ ok_ubwc_format(struct fd_resource *rsc, enum pipe_format pfmt)
 	}
 }
 
-uint32_t
-fd6_fill_ubwc_buffer_sizes(struct fd_resource *rsc)
-{
-#define RBG_TILE_WIDTH_ALIGNMENT 64
-#define RGB_TILE_HEIGHT_ALIGNMENT 16
-#define UBWC_PLANE_SIZE_ALIGNMENT 4096
-
-	struct pipe_resource *prsc = &rsc->base;
-	uint32_t width = prsc->width0;
-	uint32_t height = prsc->height0;
-
-	if (!ok_ubwc_format(rsc, prsc->format))
-		return 0;
-
-	/* limit things to simple single level 2d for now: */
-	if ((prsc->depth0 != 1) || (prsc->array_size != 1) || (prsc->last_level != 0))
-		return 0;
-
-	uint32_t block_width, block_height;
-	switch (rsc->layout.cpp) {
-	case 2:
-	case 4:
-		block_width = 16;
-		block_height = 4;
-		break;
-	case 8:
-		block_width = 8;
-		block_height = 4;
-		break;
-	case 16:
-		block_width = 4;
-		block_height = 4;
-		break;
-	default:
-		return 0;
-	}
-
-	uint32_t meta_stride =
-		ALIGN_POT(DIV_ROUND_UP(width, block_width), RBG_TILE_WIDTH_ALIGNMENT);
-	uint32_t meta_height =
-		ALIGN_POT(DIV_ROUND_UP(height, block_height), RGB_TILE_HEIGHT_ALIGNMENT);
-	uint32_t meta_size =
-		ALIGN_POT(meta_stride * meta_height, UBWC_PLANE_SIZE_ALIGNMENT);
-
-	/* UBWC goes first, then color data.. this constraint is mainly only
-	 * because it is what the kernel expects for scanout.  For non-2D we
-	 * could just use a separate UBWC buffer..
-	 */
-	for (int level = 0; level <= prsc->last_level; level++) {
-		struct fdl_slice *slice = fd_resource_slice(rsc, level);
-		slice->offset += meta_size;
-	}
-
-	rsc->layout.ubwc_slices[0].offset = 0;
-	rsc->layout.ubwc_slices[0].pitch = meta_stride;
-	rsc->layout.ubwc_layer_size = meta_size;
-	rsc->layout.tile_mode = TILE6_3;
-
-	return meta_size;
-}
-
 /**
  * Ensure the rsc is in an ok state to be used with the specified format.
  * This handles the case of UBWC buffers used with non-UBWC compatible
@@ -159,7 +98,7 @@ void
 fd6_validate_format(struct fd_context *ctx, struct fd_resource *rsc,
 		enum pipe_format format)
 {
-	if (!rsc->layout.ubwc_layer_size)
+	if (!rsc->layout.ubwc)
 		return;
 
 	if (ok_ubwc_format(rsc, format))
@@ -205,10 +144,13 @@ fd6_setup_slices(struct fd_resource *rsc)
 	if (!(fd_mesa_debug & FD_DBG_NOLRZ) && has_depth(rsc->base.format))
 		setup_lrz(rsc);
 
+	if (rsc->layout.ubwc && !ok_ubwc_format(rsc, rsc->base.format))
+		rsc->layout.ubwc = false;
+
 	fdl6_layout(&rsc->layout, prsc->format, fd_resource_nr_samples(prsc),
 			prsc->width0, prsc->height0, prsc->depth0,
 			prsc->last_level + 1, prsc->array_size,
-			prsc->target == PIPE_TEXTURE_3D, false);
+			prsc->target == PIPE_TEXTURE_3D);
 
 	return rsc->layout.size;
 }

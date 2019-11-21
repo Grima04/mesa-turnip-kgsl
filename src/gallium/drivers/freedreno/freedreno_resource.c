@@ -977,6 +977,8 @@ fd_resource_create_with_modifiers(struct pipe_screen *pscreen,
 
 	rsc->internal_format = format;
 
+	rsc->layout.ubwc = rsc->layout.tile_mode && is_a6xx(screen) && allow_ubwc;
+
 	if (prsc->target == PIPE_BUFFER) {
 		assert(prsc->format == PIPE_FORMAT_R8_UNORM);
 		size = prsc->width0;
@@ -984,9 +986,6 @@ fd_resource_create_with_modifiers(struct pipe_screen *pscreen,
 	} else {
 		size = screen->setup_slices(rsc);
 	}
-
-	if (allow_ubwc && screen->fill_ubwc_buffer_sizes && rsc->layout.tile_mode)
-		size += screen->fill_ubwc_buffer_sizes(rsc);
 
 	/* special case for hw-query buffer, which we need to allocate before we
 	 * know the size:
@@ -1098,8 +1097,7 @@ fd_resource_from_handle(struct pipe_screen *pscreen,
 			DBG("bad modifier: %"PRIx64, handle->modifier);
 			goto fail;
 		}
-		debug_assert(screen->fill_ubwc_buffer_sizes);
-		screen->fill_ubwc_buffer_sizes(rsc);
+		/* XXX UBWC setup */
 	} else if (handle->modifier &&
 			(handle->modifier != DRM_FORMAT_MOD_INVALID)) {
 		goto fail;

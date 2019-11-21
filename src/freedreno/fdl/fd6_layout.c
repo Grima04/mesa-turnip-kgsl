@@ -69,7 +69,7 @@ void
 fdl6_layout(struct fdl_layout *layout,
 		enum pipe_format format, uint32_t nr_samples,
 		uint32_t width0, uint32_t height0, uint32_t depth0,
-		uint32_t mip_levels, uint32_t array_size, bool is_3d, bool ubwc)
+		uint32_t mip_levels, uint32_t array_size, bool is_3d)
 {
 	assert(nr_samples > 0);
 	layout->width0 = width0;
@@ -80,6 +80,11 @@ fdl6_layout(struct fdl_layout *layout,
 	layout->cpp *= nr_samples;
 	layout->format = format;
 	layout->nr_samples = nr_samples;
+
+	if (depth0 > 1)
+		layout->ubwc = false;
+	if (tile_alignment[layout->cpp].ubwc_blockwidth == 0)
+		layout->ubwc = false;
 
 	const struct util_format_description *format_desc =
 		util_format_description(format);
@@ -115,8 +120,7 @@ fdl6_layout(struct fdl_layout *layout,
 	for (uint32_t level = 0; level < mip_levels; level++) {
 		struct fdl_slice *slice = &layout->slices[level];
 		struct fdl_slice *ubwc_slice = &layout->ubwc_slices[level];
-		uint32_t tile_mode = (ubwc ?
-				layout->tile_mode : fdl_tile_mode(layout, level));
+		uint32_t tile_mode = fdl_tile_mode(layout, level);
 		uint32_t width, height;
 
 		/* tiled levels of 3D textures are rounded up to PoT dimensions: */
@@ -176,7 +180,7 @@ fdl6_layout(struct fdl_layout *layout,
 
 		layout->size += slice->size0 * depth * layers_in_level;
 
-		if (ubwc) {
+		if (layout->ubwc) {
 			/* with UBWC every level is aligned to 4K */
 			layout->size = align(layout->size, 4096);
 
@@ -219,7 +223,7 @@ fdl6_layout(struct fdl_layout *layout,
 	 * get to program the UBWC and non-UBWC offset/strides
 	 * independently.
 	 */
-	if (ubwc) {
+	if (layout->ubwc) {
 		for (uint32_t level = 0; level < mip_levels; level++)
 			layout->slices[level].offset += layout->ubwc_layer_size * array_size;
 		layout->size += layout->ubwc_layer_size * array_size;
