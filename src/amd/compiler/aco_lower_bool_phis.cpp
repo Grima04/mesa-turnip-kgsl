@@ -187,25 +187,6 @@ void lower_divergent_bool_phi(Program *program, Block *block, aco_ptr<Instructio
    return;
 }
 
-void lower_linear_bool_phi(Program *program, Block *block, aco_ptr<Instruction>& phi)
-{
-   Builder bld(program);
-
-   for (unsigned i = 0; i < phi->operands.size(); i++) {
-      if (!phi->operands[i].isTemp())
-         continue;
-
-      Temp phi_src = phi->operands[i].getTemp();
-      if (phi_src.regClass() == s2) {
-         Temp new_phi_src = bld.tmp(s1);
-         insert_before_logical_end(&program->blocks[block->linear_preds[i]],
-            bld.sopc(aco_opcode::s_cmp_lg_u64, bld.scc(Definition(new_phi_src)),
-                     Operand(0u), phi_src).get_ptr());
-         phi->operands[i].setTemp(new_phi_src);
-      }
-   }
-}
-
 void lower_bool_phis(Program* program)
 {
    for (Block& block : program->blocks) {
@@ -214,11 +195,7 @@ void lower_bool_phis(Program* program)
             assert(phi->definitions[0].regClass() != s1);
             if (phi->definitions[0].regClass() == s2)
                lower_divergent_bool_phi(program, &block, phi);
-         } else if (phi->opcode == aco_opcode::p_linear_phi) {
-            /* if it's a valid non-boolean phi, this should be a no-op */
-            if (phi->definitions[0].regClass() == s1)
-               lower_linear_bool_phi(program, &block, phi);
-         } else {
+         } else if (!is_phi(phi)) {
             break;
          }
       }
