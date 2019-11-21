@@ -129,28 +129,7 @@ can_do_blit(const struct pipe_blit_info *info)
 	debug_assert(info->dst.box.height >= 0);
 	debug_assert(info->dst.box.depth >= 0);
 
-	/* We could probably blit between resources with equal sample count.. */
 	fail_if(info->dst.resource->nr_samples > 1);
-
-	/* CP_BLIT supports resolving, but seems to pick one only of the samples
-	 * (no blending). This doesn't work for RGBA resolves, so we fall back in
-	 * that case.  However, GL/GLES spec says:
-	 *
-	 *   "If the source formats are integer types or stencil values, a single
-	 *    sample’s value is selected for each pixel. If the source formats are
-	 *    floating-point or normalized types, the sample values for each pixel
-	 *    are resolved in an implementationdependent manner. If the source
-	 *    formats are depth values, sample values are resolved in an
-	 *    implementation-dependent manner where the result will be between the
-	 *    minimum and maximum depth values in the pixel."
-	 *
-	 * so do those with CP_BLIT.
-	 *
-	 * TODO since we re-write z/s blits to RGBA, we'll fail this check in some
-	 * cases where we don't need to.
-	 */
-	fail_if((info->mask & PIPE_MASK_RGBA) &&
-			info->src.resource->nr_samples > 1);
 
 	fail_if(info->window_rectangle_include);
 
@@ -525,9 +504,11 @@ emit_blit_or_clear_texture(struct fd_context *ctx, struct fd_ringbuffer *ring,
 		OUT_RING(ring, A6XX_SP_PS_2D_SRC_INFO_COLOR_FORMAT(sfmt) |
 				A6XX_SP_PS_2D_SRC_INFO_TILE_MODE(stile) |
 				A6XX_SP_PS_2D_SRC_INFO_COLOR_SWAP(sswap) |
-				 A6XX_SP_PS_2D_SRC_INFO_SAMPLES(samples) |
-				 COND(subwc_enabled, A6XX_SP_PS_2D_SRC_INFO_FLAGS) |
-				 0x500000 | filter);
+				A6XX_SP_PS_2D_SRC_INFO_SAMPLES(samples) |
+				COND(samples > MSAA_ONE && (info->mask & PIPE_MASK_RGBA),
+						A6XX_SP_PS_2D_SRC_INFO_SAMPLES_AVERAGE) |
+				COND(subwc_enabled, A6XX_SP_PS_2D_SRC_INFO_FLAGS) |
+				0x500000 | filter);
 		OUT_RING(ring, A6XX_SP_PS_2D_SRC_SIZE_WIDTH(width) |
 				 A6XX_SP_PS_2D_SRC_SIZE_HEIGHT(height)); /* SP_PS_2D_SRC_SIZE */
 		OUT_RELOC(ring, src->bo, soff, 0, 0);    /* SP_PS_2D_SRC_LO/HI */
