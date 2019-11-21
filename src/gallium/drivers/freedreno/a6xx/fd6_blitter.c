@@ -133,9 +133,6 @@ can_do_blit(const struct pipe_blit_info *info)
 
 	fail_if(info->window_rectangle_include);
 
-	fail_if(util_format_is_srgb(info->src.format));
-	fail_if(util_format_is_srgb(info->dst.format));
-
 	const struct util_format_description *src_desc =
 		util_format_description(info->src.format);
 	const struct util_format_description *dst_desc =
@@ -167,12 +164,18 @@ emit_setup(struct fd_batch *batch)
 }
 
 static uint32_t
-blit_control(enum a6xx_color_fmt fmt)
+blit_control(enum a6xx_color_fmt fmt, bool is_srgb)
 {
-	unsigned blit_cntl = 0xf00000;
-	blit_cntl |= A6XX_RB_2D_BLIT_CNTL_COLOR_FORMAT(fmt);
-	blit_cntl |= A6XX_RB_2D_BLIT_CNTL_IFMT(fd6_ifmt(fmt));
-	return blit_cntl;
+	enum a6xx_2d_ifmt ifmt = fd6_ifmt(fmt);
+
+	if (is_srgb) {
+		assert(ifmt == R2D_UNORM8);
+		ifmt = R2D_UNORM8_SRGB;
+	}
+
+	return A6XX_RB_2D_BLIT_CNTL_MASK(0xf) |
+		A6XX_RB_2D_BLIT_CNTL_COLOR_FORMAT(fmt) |
+		A6XX_RB_2D_BLIT_CNTL_IFMT(ifmt);
 }
 
 /* buffers need to be handled specially since x/width can exceed the bounds
@@ -235,7 +238,7 @@ emit_blit_buffer(struct fd_context *ctx, struct fd_ringbuffer *ring,
 	OUT_PKT7(ring, CP_SET_MARKER, 1);
 	OUT_RING(ring, A6XX_CP_SET_MARKER_0_MODE(RM6_BLIT2DSCALE));
 
-	uint32_t blit_cntl = blit_control(RB6_R8_UNORM) | 0x20000000;
+	uint32_t blit_cntl = blit_control(RB6_R8_UNORM, false) | 0x20000000;
 	OUT_PKT4(ring, REG_A6XX_RB_2D_BLIT_CNTL, 1);
 	OUT_RING(ring, blit_cntl);
 
@@ -400,7 +403,7 @@ emit_blit_or_clear_texture(struct fd_context *ctx, struct fd_ringbuffer *ring,
 	OUT_PKT7(ring, CP_SET_MARKER, 1);
 	OUT_RING(ring, A6XX_CP_SET_MARKER_0_MODE(RM6_BLIT2DSCALE));
 
-	uint32_t blit_cntl = blit_control(dfmt);
+	uint32_t blit_cntl = blit_control(dfmt, util_format_is_srgb(info->dst.format));
 
 	if (color) {
 		blit_cntl |= A6XX_RB_2D_BLIT_CNTL_SOLID_COLOR;
@@ -508,6 +511,7 @@ emit_blit_or_clear_texture(struct fd_context *ctx, struct fd_ringbuffer *ring,
 				COND(samples > MSAA_ONE && (info->mask & PIPE_MASK_RGBA),
 						A6XX_SP_PS_2D_SRC_INFO_SAMPLES_AVERAGE) |
 				COND(subwc_enabled, A6XX_SP_PS_2D_SRC_INFO_FLAGS) |
+				COND(util_format_is_srgb(info->src.format), A6XX_SP_PS_2D_SRC_INFO_SRGB) |
 				0x500000 | filter);
 		OUT_RING(ring, A6XX_SP_PS_2D_SRC_SIZE_WIDTH(width) |
 				 A6XX_SP_PS_2D_SRC_SIZE_HEIGHT(height)); /* SP_PS_2D_SRC_SIZE */
@@ -535,6 +539,7 @@ emit_blit_or_clear_texture(struct fd_context *ctx, struct fd_ringbuffer *ring,
 		OUT_RING(ring, A6XX_RB_2D_DST_INFO_COLOR_FORMAT(dfmt) |
 				 A6XX_RB_2D_DST_INFO_TILE_MODE(dtile) |
 				 A6XX_RB_2D_DST_INFO_COLOR_SWAP(dswap) |
+				 COND(util_format_is_srgb(info->dst.format), A6XX_RB_2D_DST_INFO_SRGB) |
 				 COND(dubwc_enabled, A6XX_RB_2D_DST_INFO_FLAGS));
 		OUT_RELOCW(ring, dst->bo, doff, 0, 0);    /* RB_2D_DST_LO/HI */
 		OUT_RING(ring, A6XX_RB_2D_DST_SIZE_PITCH(dpitch));
@@ -575,6 +580,10 @@ emit_blit_or_clear_texture(struct fd_context *ctx, struct fd_ringbuffer *ring,
 		if (dfmt == RB6_R10G10B10A2_UNORM)
 			sfmt = RB6_R16G16B16A16_FLOAT;
 
+		/* This register is probably badly named... it seems that it's
+		 * controlling the internal/accumulator format or something like
+		 * that. It's certainly not tied to only the src format.
+		 */
 		OUT_PKT4(ring, REG_A6XX_SP_2D_SRC_FORMAT, 1);
 		OUT_RING(ring, A6XX_SP_2D_SRC_FORMAT_COLOR_FORMAT(sfmt) |
 				COND(util_format_is_pure_sint(info->src.format),
@@ -588,6 +597,7 @@ emit_blit_or_clear_texture(struct fd_context *ctx, struct fd_ringbuffer *ring,
 // TODO sometimes blob uses UINT+NORM but dEQP seems unhappy about that
 //						A6XX_SP_2D_SRC_FORMAT_UINT |
 						A6XX_SP_2D_SRC_FORMAT_NORM) |
+				COND(util_format_is_srgb(info->dst.format), A6XX_SP_2D_SRC_FORMAT_SRGB) |
 				A6XX_SP_2D_SRC_FORMAT_MASK(0xf));
 
 		OUT_PKT4(ring, REG_A6XX_RB_UNKNOWN_8E04, 1);
