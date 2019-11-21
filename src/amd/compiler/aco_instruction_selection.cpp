@@ -566,7 +566,7 @@ void emit_comparison(isel_context *ctx, nir_alu_instr *instr, Temp dst,
       emit_sopc_instruction(ctx, instr, op, dst);
 }
 
-void emit_boolean_logic(isel_context *ctx, nir_alu_instr *instr, aco_opcode op32, aco_opcode op64, Temp dst)
+void emit_boolean_logic(isel_context *ctx, nir_alu_instr *instr, aco_opcode op64, Temp dst)
 {
    Builder bld(ctx->program, ctx->block);
    Temp src0 = get_alu_src(ctx, instr->src[0]);
@@ -887,7 +887,7 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
    }
    case nir_op_ior: {
       if (instr->dest.dest.ssa.bit_size == 1) {
-         emit_boolean_logic(ctx, instr, aco_opcode::s_or_b32, aco_opcode::s_or_b64, dst);
+         emit_boolean_logic(ctx, instr, aco_opcode::s_or_b64, dst);
       } else if (dst.regClass() == v1) {
          emit_vop2_instruction(ctx, instr, aco_opcode::v_or_b32, dst, true);
       } else if (dst.regClass() == s1) {
@@ -903,7 +903,7 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
    }
    case nir_op_iand: {
       if (instr->dest.dest.ssa.bit_size == 1) {
-         emit_boolean_logic(ctx, instr, aco_opcode::s_and_b32, aco_opcode::s_and_b64, dst);
+         emit_boolean_logic(ctx, instr, aco_opcode::s_and_b64, dst);
       } else if (dst.regClass() == v1) {
          emit_vop2_instruction(ctx, instr, aco_opcode::v_and_b32, dst, true);
       } else if (dst.regClass() == s1) {
@@ -919,7 +919,7 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
    }
    case nir_op_ixor: {
       if (instr->dest.dest.ssa.bit_size == 1) {
-         emit_boolean_logic(ctx, instr, aco_opcode::s_xor_b32, aco_opcode::s_xor_b64, dst);
+         emit_boolean_logic(ctx, instr, aco_opcode::s_xor_b64, dst);
       } else if (dst.regClass() == v1) {
          emit_vop2_instruction(ctx, instr, aco_opcode::v_xor_b32, dst, true);
       } else if (dst.regClass() == s1) {
@@ -2324,14 +2324,14 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
    }
    case nir_op_ieq: {
       if (instr->src[0].src.ssa->bit_size == 1)
-         emit_boolean_logic(ctx, instr, aco_opcode::s_xnor_b32, aco_opcode::s_xnor_b64, dst);
+         emit_boolean_logic(ctx, instr, aco_opcode::s_xnor_b64, dst);
       else
          emit_comparison(ctx, instr, dst, aco_opcode::v_cmp_eq_i32, aco_opcode::v_cmp_eq_i64, aco_opcode::s_cmp_eq_i32, aco_opcode::s_cmp_eq_u64);
       break;
    }
    case nir_op_ine: {
       if (instr->src[0].src.ssa->bit_size == 1)
-         emit_boolean_logic(ctx, instr, aco_opcode::s_xor_b32, aco_opcode::s_xor_b64, dst);
+         emit_boolean_logic(ctx, instr, aco_opcode::s_xor_b64, dst);
       else
          emit_comparison(ctx, instr, dst, aco_opcode::v_cmp_lg_i32, aco_opcode::v_cmp_lg_i64, aco_opcode::s_cmp_lg_i32, aco_opcode::s_cmp_lg_u64);
       break;
