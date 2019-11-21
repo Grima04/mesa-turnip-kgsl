@@ -438,8 +438,6 @@ scons:
     SCONS_CHECK_COMMAND: "scons llvm=1 force_scons=1 check"
   script:
     - SCONS_TARGET="" SCONS_CHECK_COMMAND="scons check force_scons=1" .gitlab-ci/scons-build.sh
-    - LLVM_VERSION=6.0 .gitlab-ci/scons-build.sh
-    - LLVM_VERSION=7 .gitlab-ci/scons-build.sh
     - LLVM_VERSION=8 .gitlab-ci/scons-build.sh
 
 scons-old-llvm:
@@ -448,8 +446,6 @@ scons-old-llvm:
     - .use-x86_build_old
   script:
     - LLVM_VERSION=3.9 .gitlab-ci/scons-build.sh
-    - LLVM_VERSION=4.0 .gitlab-ci/scons-build.sh
-    - LLVM_VERSION=5.0 .gitlab-ci/scons-build.sh
 
 .test:
   extends:
