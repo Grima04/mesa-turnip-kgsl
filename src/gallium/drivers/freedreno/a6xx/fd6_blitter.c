@@ -82,7 +82,9 @@ ok_format(enum pipe_format pfmt)
 	return true;
 }
 
+#define DEBUG_BLIT 0
 #define DEBUG_BLIT_FALLBACK 0
+
 #define fail_if(cond)													\
 	do {																\
 		if (cond) {														\
@@ -206,7 +208,7 @@ emit_blit_buffer(struct fd_context *ctx, struct fd_ringbuffer *ring,
 	struct fd_resource *src, *dst;
 	unsigned sshift, dshift;
 
-	if (DEBUG_BLIT_FALLBACK) {
+	if (DEBUG_BLIT) {
 		fprintf(stderr, "buffer blit: ");
 		util_dump_blit_info(stderr, info);
 		fprintf(stderr, "\ndst resource: ");
@@ -358,7 +360,7 @@ emit_blit_or_clear_texture(struct fd_context *ctx, struct fd_ringbuffer *ring,
 	int sx1, sy1, sx2, sy2;
 	int dx1, dy1, dx2, dy2;
 
-	if (DEBUG_BLIT_FALLBACK) {
+	if (DEBUG_BLIT) {
 		fprintf(stderr, "texture blit: ");
 		util_dump_blit_info(stderr, info);
 		fprintf(stderr, "\ndst resource: ");
@@ -668,7 +670,7 @@ handle_zs_blit(struct fd_context *ctx, const struct pipe_blit_info *info)
 {
 	struct pipe_blit_info blit = *info;
 
-	if (DEBUG_BLIT_FALLBACK) {
+	if (DEBUG_BLIT) {
 		fprintf(stderr, "---- handle_zs_blit: ");
 		util_dump_blit_info(stderr, info);
 		fprintf(stderr, "\ndst resource: ");
