@@ -461,7 +461,7 @@ struct pipe_video_buffer *
 vl_video_buffer_create_as_resource(struct pipe_context *pipe,
                                    const struct pipe_video_buffer *tmpl)
 {
-   struct pipe_resource templ, *resources[VL_NUM_COMPONENTS] = {};
+   struct pipe_resource templ, *resources[VL_NUM_COMPONENTS] = {0};
    unsigned array_size =  tmpl->interlaced ? 2 : 1;
 
    memset(&templ, 0, sizeof(templ));
