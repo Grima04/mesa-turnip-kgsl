@@ -47,6 +47,7 @@ enum {
         PAN_SYSVAL_TEXTURE_SIZE = 3,
         PAN_SYSVAL_SSBO = 4,
         PAN_SYSVAL_NUM_WORK_GROUPS = 5,
+        PAN_SYSVAL_SAMPLER = 7,
 } pan_sysval;
 
 #define PAN_TXS_SYSVAL_ID(texidx, dim, is_array)          \

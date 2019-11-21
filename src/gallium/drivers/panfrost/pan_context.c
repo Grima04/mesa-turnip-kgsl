@@ -761,6 +761,29 @@ static void panfrost_upload_ssbo_sysval(
         uniform->u[2] = sb.buffer_size;
 }
 
+static void
+panfrost_upload_sampler_sysval(
+                struct panfrost_context *ctx,
+                enum pipe_shader_type st,
+                unsigned sampler_index,
+                struct sysval_uniform *uniform)
+{
+        struct pipe_sampler_state *sampl =
+                &ctx->samplers[st][sampler_index]->base;
+
+        uniform->f[0] = sampl->min_lod;
+        uniform->f[1] = sampl->max_lod;
+        uniform->f[2] = sampl->lod_bias;
+
+        /* Even without any errata, Midgard represents "no mipmapping" as
+         * fixing the LOD with the clamps; keep behaviour consistent. c.f.
+         * panfrost_create_sampler_state which also explains our choice of
+         * epsilon value (again to keep behaviour consistent) */
+
+        if (sampl->min_mip_filter == PIPE_TEX_MIPFILTER_NONE)
+                uniform->f[1] = uniform->f[0] + (1.0/256.0);
+}
+
 static void panfrost_upload_num_work_groups_sysval(struct panfrost_context *ctx,
                 struct sysval_uniform *uniform)
 {
@@ -796,7 +819,10 @@ static void panfrost_upload_sysvals(struct panfrost_context *ctx, void *buf,
                 case PAN_SYSVAL_NUM_WORK_GROUPS:
                         panfrost_upload_num_work_groups_sysval(ctx, &uniforms[i]);
                         break;
-
+                case PAN_SYSVAL_SAMPLER:
+                        panfrost_upload_sampler_sysval(ctx, st, PAN_SYSVAL_ID(sysval),
+                                                    &uniforms[i]);
+                        break;
                 default:
                         assert(0);
                 }

@@ -346,6 +346,17 @@ midgard_sysval_for_ssbo(nir_intrinsic_instr *instr)
 }
 
 static int
+midgard_sysval_for_sampler(nir_intrinsic_instr *instr)
+{
+        /* TODO: indirect samplers !!! */
+        nir_src index = instr->src[0];
+        assert(nir_src_is_const(index));
+        uint32_t uindex = nir_src_as_uint(index);
+
+        return PAN_SYSVAL(SAMPLER, uindex);
+}
+
+static int
 midgard_nir_sysval_for_intrinsic(nir_intrinsic_instr *instr)
 {
         switch (instr->intrinsic) {
@@ -358,6 +369,8 @@ midgard_nir_sysval_for_intrinsic(nir_intrinsic_instr *instr)
         case nir_intrinsic_load_ssbo: 
         case nir_intrinsic_store_ssbo: 
                 return midgard_sysval_for_ssbo(instr);
+        case nir_intrinsic_load_sampler_lod_parameters_pan:
+                return midgard_sysval_for_sampler(instr);
         default:
                 return ~0;
         }
@@ -1591,6 +1604,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
         case nir_intrinsic_load_viewport_scale:
         case nir_intrinsic_load_viewport_offset:
         case nir_intrinsic_load_num_work_groups:
+        case nir_intrinsic_load_sampler_lod_parameters_pan:
                 emit_sysval_read(ctx, &instr->instr, ~0, 3);
                 break;
 
