@@ -847,6 +847,10 @@ store("raw_output_pan", 1, [])
 load("raw_output_pan", 0, [], [CAN_ELIMINATE, CAN_REORDER])
 load("output_u8_as_fp16_pan", 0, [], [CAN_ELIMINATE, CAN_REORDER])
 
+# Loads the sampler paramaters <min_lod, max_lod, lod_bias>
+# src[] = { sampler_index }
+load("sampler_lod_parameters_pan", 1, [CAN_ELIMINATE, CAN_REORDER])
+
 # V3D-specific instrinc for tile buffer color reads.
 #
 # The hardware requires that we read the samples and components of a pixel
