@@ -516,18 +516,6 @@ st_glsl_to_nir_post_opts(struct st_context *st, struct gl_program *prog,
 }
 
 static void
-set_st_program(struct gl_program *prog,
-               struct gl_shader_program *shader_program,
-               nir_shader *nir)
-{
-   struct st_program *stp = (struct st_program *)prog;
-
-   stp->shader_program = shader_program;
-   stp->state.type = PIPE_SHADER_IR_NIR;
-   stp->state.ir.nir = nir;
-}
-
-static void
 st_nir_vectorize_io(nir_shader *producer, nir_shader *consumer)
 {
    NIR_PASS_V(producer, nir_lower_io_to_vector, nir_var_shader_out);
@@ -659,16 +647,19 @@ st_link_nir(struct gl_context *ctx,
       const nir_shader_compiler_options *options =
          st->ctx->Const.ShaderCompilerOptions[shader->Stage].NirOptions;
       struct gl_program *prog = shader->Program;
+      struct st_program *stp = (struct st_program *)prog;
+
       _mesa_copy_linked_program_data(shader_program, shader);
 
       assert(!prog->nir);
+      stp->shader_program = shader_program;
+      stp->state.type = PIPE_SHADER_IR_NIR;
 
       if (shader_program->data->spirv) {
          prog->Parameters = _mesa_new_parameter_list();
          /* Parameters will be filled during NIR linking. */
 
          prog->nir = _mesa_spirv_to_nir(ctx, shader_program, shader->Stage, options);
-         set_st_program(prog, shader_program, prog->nir);
       } else {
          validate_ir_tree(shader->ir);
 
@@ -689,7 +680,6 @@ st_link_nir(struct gl_context *ctx,
          _mesa_update_shader_textures_used(shader_program, prog);
 
          prog->nir = glsl_to_nir(st->ctx, shader_program, shader->Stage, options);
-         set_st_program(prog, shader_program, prog->nir);
          st_nir_preprocess(st, prog, shader_program, shader->Stage);
       }
 

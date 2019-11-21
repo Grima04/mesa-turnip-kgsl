@@ -208,9 +208,8 @@ st_deserialise_ir_program(struct gl_context *ctx,
 
    if (nir) {
       stp->state.type = PIPE_SHADER_IR_NIR;
-      stp->state.ir.nir = nir_deserialize(NULL, options, &blob_reader);
       stp->shader_program = shProg;
-      prog->nir = stp->state.ir.nir;
+      prog->nir = nir_deserialize(NULL, options, &blob_reader);
    } else {
       read_tgsi_from_cache(&blob_reader, &stp->state.tokens);
    }

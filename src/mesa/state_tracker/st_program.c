@@ -653,10 +653,9 @@ st_translate_vertex_program(struct st_context *st,
       nir_shader *nir =
          st_translate_prog_to_nir(st, &stp->Base, MESA_SHADER_VERTEX);
 
-      if (stp->state.ir.nir)
-         ralloc_free(stp->state.ir.nir);
+      if (stp->Base.nir)
+         ralloc_free(stp->Base.nir);
       stp->state.type = PIPE_SHADER_IR_NIR;
-      stp->state.ir.nir = nir;
       stp->Base.nir = nir;
       return true;
    }
@@ -690,7 +689,7 @@ st_create_vp_variant(struct st_context *st,
       bool finalize = false;
 
       state.type = PIPE_SHADER_IR_NIR;
-      state.ir.nir = nir_shader_clone(NULL, stvp->state.ir.nir);
+      state.ir.nir = nir_shader_clone(NULL, stvp->Base.nir);
       if (key->clamp_color) {
          NIR_PASS_V(state.ir.nir, nir_lower_clamp_color_outputs);
          finalize = true;
@@ -886,10 +885,9 @@ st_translate_fragment_program(struct st_context *st,
          nir_shader *nir =
             st_translate_prog_to_nir(st, &stfp->Base, MESA_SHADER_FRAGMENT);
 
-         if (stfp->state.ir.nir)
-            ralloc_free(stfp->state.ir.nir);
+         if (stfp->Base.nir)
+            ralloc_free(stfp->Base.nir);
          stfp->state.type = PIPE_SHADER_IR_NIR;
-         stfp->state.ir.nir = nir;
          stfp->Base.nir = nir;
          return true;
       }
@@ -1246,7 +1244,7 @@ st_create_fp_variant(struct st_context *st,
       bool finalize = false;
 
       state.type = PIPE_SHADER_IR_NIR;
-      state.ir.nir = nir_shader_clone(NULL, stfp->state.ir.nir);
+      state.ir.nir = nir_shader_clone(NULL, stfp->Base.nir);
 
       if (key->clamp_color) {
          NIR_PASS_V(state.ir.nir, nir_lower_clamp_color_outputs);
@@ -1770,7 +1768,7 @@ st_get_common_variant(struct st_context *st,
             bool finalize = false;
 
 	    state.type = PIPE_SHADER_IR_NIR;
-	    state.ir.nir = nir_shader_clone(NULL, prog->state.ir.nir);
+	    state.ir.nir = nir_shader_clone(NULL, prog->Base.nir);
 
             if (key->clamp_color) {
                NIR_PASS_V(state.ir.nir, nir_lower_clamp_color_outputs);
