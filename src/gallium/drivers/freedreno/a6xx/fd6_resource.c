@@ -145,12 +145,12 @@ setup_slices(struct fd_resource *rsc, uint32_t alignment, enum pipe_format forma
 		size += slice->size0 * depth * layers_in_level;
 
 #if 0
-		debug_printf("%s: %ux%ux%u@%u:\t%2u: stride=%4u, size=%6u,%7u, aligned_height=%3u, blocks=%u, offset=0x%x\n",
+		fprintf(stderr, "%s: %ux%ux%u@%u:\t%2u: stride=%4u, size=%6u,%7u, aligned_height=%3u, blocks=%u, offset=0x%x tiling=%d\n",
 				util_format_name(prsc->format),
 				width, height, depth, rsc->cpp,
 				level, slice->pitch * rsc->cpp,
 				slice->size0, size, aligned_height, blocks,
-				slice->offset);
+				slice->offset, fd_resource_tile_mode(prsc, level));
 #endif
 
 		depth = u_minify(depth, 1);
