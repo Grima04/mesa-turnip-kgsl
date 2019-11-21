@@ -45,7 +45,8 @@ midgard_FILES := \
         midgard/midgard_schedule.c \
         midgard/midgard_errata_lod.c \
         midgard/mir.c \
-        midgard/mir_promote_uniforms.c
+        midgard/mir_promote_uniforms.c \
+        midgard/lcra.c
 
 shared_FILES := \
         shared/pan_tiling.c \
