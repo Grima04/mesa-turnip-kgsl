@@ -588,7 +588,7 @@ emit_blit_or_clear_texture(struct fd_context *ctx, struct fd_ringbuffer *ring,
 // TODO sometimes blob uses UINT+NORM but dEQP seems unhappy about that
 //						A6XX_SP_2D_SRC_FORMAT_UINT |
 						A6XX_SP_2D_SRC_FORMAT_NORM) |
-				0xf000);
+				A6XX_SP_2D_SRC_FORMAT_MASK(0xf));
 
 		OUT_PKT4(ring, REG_A6XX_RB_UNKNOWN_8E04, 1);
 		OUT_RING(ring, fd6_context(ctx)->magic.RB_UNKNOWN_8E04_blit);
