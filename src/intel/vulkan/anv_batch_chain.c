@@ -1136,6 +1136,11 @@ anv_execbuf_add_bo(struct anv_device *device,
       obj->rsvd2 = 0;
    }
 
+   if (extra_flags & EXEC_OBJECT_WRITE) {
+      obj->flags |= EXEC_OBJECT_WRITE;
+      obj->flags &= ~EXEC_OBJECT_ASYNC;
+   }
+
    if (relocs != NULL) {
       assert(obj->relocation_count == 0);
 
