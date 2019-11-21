@@ -37,6 +37,7 @@
 #define VK_STRUCTURE_TYPE_WSI_MEMORY_ALLOCATE_INFO_MESA (VkStructureType)1000001003
 #define VK_STRUCTURE_TYPE_WSI_FORMAT_MODIFIER_PROPERTIES_LIST_MESA (VkStructureType)1000001004
 #define VK_STRUCTURE_TYPE_WSI_SURFACE_SUPPORTED_COUNTERS_MESA (VkStructureType)1000001005
+#define VK_STRUCTURE_TYPE_WSI_MEMORY_SIGNAL_SUBMIT_INFO_MESA (VkStructureType)1000001006
 
 struct wsi_image_create_info {
     VkStructureType sType;
@@ -74,6 +75,13 @@ struct wsi_surface_supported_counters {
 
    VkSurfaceCounterFlagsEXT supported_surface_counters;
 
+};
+
+/* To be chained into VkSubmitInfo */
+struct wsi_memory_signal_submit_info {
+    VkStructureType sType;
+    const void *pNext;
+    VkDeviceMemory memory;
 };
 
 struct wsi_fence {
