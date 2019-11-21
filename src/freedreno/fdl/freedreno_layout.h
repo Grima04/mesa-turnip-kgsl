@@ -100,7 +100,6 @@ struct fdl_layout {
 	uint32_t width0, height0, depth0;
 
 	/* UBWC specific fields: */
-	uint32_t offset;         /* offset to start of pixel data */
 	uint32_t ubwc_offset;    /* offset to UBWC meta data */
 	uint32_t ubwc_pitch;
 	uint32_t ubwc_size;
@@ -119,9 +118,7 @@ static inline uint32_t
 fdl_surface_offset(const struct fdl_layout *layout, unsigned level, unsigned layer)
 {
 	const struct fdl_slice *slice = &layout->slices[level];
-	unsigned offset = slice->offset;
-	offset += fdl_layer_stride(layout, level) * layer;
-	return offset + layout->offset;
+	return slice->offset + fdl_layer_stride(layout, level) * layer;
 }
 
 static inline uint32_t

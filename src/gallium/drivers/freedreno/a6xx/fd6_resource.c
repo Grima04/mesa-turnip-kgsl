@@ -262,8 +262,12 @@ fd6_fill_ubwc_buffer_sizes(struct fd_resource *rsc)
 	 * because it is what the kernel expects for scanout.  For non-2D we
 	 * could just use a separate UBWC buffer..
 	 */
+	for (int level = 0; level <= prsc->last_level; level++) {
+		struct fdl_slice *slice = fd_resource_slice(rsc, level);
+		slice->offset += meta_size;
+	}
+
 	rsc->layout.ubwc_offset = 0;
-	rsc->layout.offset = meta_size;
 	rsc->layout.ubwc_pitch = meta_stride;
 	rsc->layout.ubwc_size = meta_size >> 2;   /* in dwords??? */
 	rsc->layout.tile_mode = TILE6_3;
