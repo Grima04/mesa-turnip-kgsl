@@ -996,10 +996,10 @@ else
     c_vis_args += '-fvisibility=hidden'
   endif
 
-  # Check for C and C++ arguments for MSVC2013 compatibility. These are only
-  # used in parts of the mesa code base that need to compile with old versions
-  # of MSVC, mainly common code
-  foreach a : ['-Werror=pointer-arith', '-Werror=vla']
+  # Check for C and C++ arguments for MSVC compatibility. These are only used
+  # in parts of the mesa code base that need to compile with MSVC, mainly
+  # common code
+  foreach a : ['-Werror=pointer-arith', '-Werror=vla', '-Werror=gnu-empty-initializer']
     if cc.has_argument(a)
       c_msvc_compat_args += a
     endif
