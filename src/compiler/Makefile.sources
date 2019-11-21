@@ -186,8 +186,7 @@ LIBGLSL_GENERATED_FILES = \
 
 LIBGLCPP_FILES = \
 	glsl/glcpp/glcpp.h \
-	glsl/glcpp/pp.c \
-	glsl/glcpp/pp_standalone_scaffolding.c
+	glsl/glcpp/pp.c
 
 LIBGLCPP_GENERATED_FILES = \
 	glsl/glcpp/glcpp-lex.c \
