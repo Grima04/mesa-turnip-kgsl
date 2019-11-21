@@ -1682,6 +1682,57 @@ isl_tiling_to_i915_tiling(enum isl_tiling tiling);
 enum isl_tiling 
 isl_tiling_from_i915_tiling(uint32_t tiling);
 
+/**
+ * Return an isl_aux_op needed to enable an access to occur in an
+ * isl_aux_state suitable for the isl_aux_usage.
+ *
+ * NOTE: If the access will invalidate the main surface, this function should
+ *       not be called and the isl_aux_op of NONE should be used instead.
+ *       Otherwise, an extra (but still lossless) ambiguate may occur.
+ *
+ * @invariant initial_state is possible with an isl_aux_usage compatible with
+ *            the given usage. Two usages are compatible if it's possible to
+ *            switch between them (e.g. CCS_E <-> CCS_D).
+ * @invariant fast_clear is false if the aux doesn't support fast clears.
+ */
+enum isl_aux_op
+isl_aux_prepare_access(enum isl_aux_state initial_state,
+                       enum isl_aux_usage usage,
+                       bool fast_clear_supported);
+
+/**
+ * Return the isl_aux_state entered after performing an isl_aux_op.
+ *
+ * @invariant initial_state is possible with the given usage.
+ * @invariant op is possible with the given usage.
+ * @invariant op must not cause HW to read from an invalid aux.
+ */
+enum isl_aux_state
+isl_aux_state_transition_aux_op(enum isl_aux_state initial_state,
+                                enum isl_aux_usage usage,
+                                enum isl_aux_op op);
+
+/**
+ * Return the isl_aux_state entered after performing a write.
+ *
+ * NOTE: full_surface should be true if the write covers the entire
+ *       slice. Setting it to false in this case will still result in a
+ *       correct (but imprecise) aux state.
+ *
+ * @invariant if usage is not ISL_AUX_USAGE_NONE, then initial_state is
+ *            possible with the given usage.
+ * @invariant usage can be ISL_AUX_USAGE_NONE iff:
+ *            * the main surface is valid, or
+ *            * the main surface is being invalidated/replaced.
+ */
+enum isl_aux_state
+isl_aux_state_transition_write(enum isl_aux_state initial_state,
+                               enum isl_aux_usage usage,
+                               bool full_surface);
+
+bool
+isl_aux_usage_has_fast_clears(enum isl_aux_usage usage);
+
 static inline bool
 isl_aux_usage_has_hiz(enum isl_aux_usage usage)
 {

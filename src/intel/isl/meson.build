@@ -111,6 +111,7 @@ endif
 libisl_files = files(
   'isl.c',
   'isl.h',
+  'isl_aux_info.c',
   'isl_drm.c',
   'isl_genX_priv.h',
   'isl_format.c',
@@ -135,6 +136,17 @@ if with_tests
       dependencies : [dep_m, idep_mesautil],
       include_directories : [inc_common, inc_intel],
       link_with : [libisl, libintel_dev],
+    ),
+    suite : ['intel'],
+  )
+  test(
+    'isl_aux_info',
+    executable(
+      'isl_aux_info_test',
+      'tests/isl_aux_info_test.cpp',
+      dependencies : [dep_m, idep_gtest, idep_mesautil],
+      include_directories : [inc_common, inc_intel],
+      link_with : [libisl],
     ),
     suite : ['intel'],
   )
