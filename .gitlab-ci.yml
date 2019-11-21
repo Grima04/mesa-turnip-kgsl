@@ -558,6 +558,7 @@ arm64_a630_gles2:
     DEQP_EXPECTED_FAILS: deqp-freedreno-a630-fails.txt
     DEQP_SKIPS: deqp-freedreno-a630-skips.txt
     NIR_VALIDATE: 0
+    DEQP_PARALLEL: 4
   tags:
     - mesa-cheza
   dependencies:
@@ -565,18 +566,15 @@ arm64_a630_gles2:
 
 arm64_a630_gles31:
   extends: arm64_a630_gles2
-  parallel: 4
   variables:
     DEQP_VER: gles31
 
 arm64_a630_gles3:
-  parallel: 6
   extends: arm64_a630_gles2
   variables:
     DEQP_VER: gles3
 
 arm64_a306_gles2:
-  parallel: 4
   extends: arm64_a630_gles2
   variables:
     DEQP_EXPECTED_FAILS: deqp-freedreno-a307-fails.txt
