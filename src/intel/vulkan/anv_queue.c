@@ -702,6 +702,7 @@ anv_queue_submit(struct anv_queue *queue,
                  const VkSemaphore *out_semaphores,
                  const uint64_t *out_values,
                  uint32_t num_out_semaphores,
+                 struct anv_bo *wsi_signal_bo,
                  VkFence _fence)
 {
    ANV_FROM_HANDLE(anv_fence, fence, _fence);
@@ -829,6 +830,12 @@ anv_queue_submit(struct anv_queue *queue,
       }
    }
 
+   if (wsi_signal_bo) {
+      result = anv_queue_submit_add_fence_bo(submit, wsi_signal_bo, true /* signal */);
+      if (result != VK_SUCCESS)
+         goto error;
+   }
+
    if (fence) {
       /* Under most circumstances, out fences won't be temporary.  However,
        * the spec does allow it for opaque_fd.  From the Vulkan 1.0.53 spec:
@@ -923,13 +930,21 @@ VkResult anv_QueueSubmit(
        * come up with something more efficient but this shouldn't be a
        * common case.
        */
-      result = anv_queue_submit(queue, NULL, NULL, NULL, 0, NULL, NULL, 0, fence);
+      result = anv_queue_submit(queue, NULL, NULL, NULL, 0, NULL, NULL, 0,
+                                NULL, fence);
       goto out;
    }
 
    for (uint32_t i = 0; i < submitCount; i++) {
       /* Fence for this submit.  NULL for all but the last one */
       VkFence submit_fence = (i == submitCount - 1) ? fence : VK_NULL_HANDLE;
+
+      const struct wsi_memory_signal_submit_info *mem_signal_info =
+         vk_find_struct_const(pSubmits[i].pNext,
+                              WSI_MEMORY_SIGNAL_SUBMIT_INFO_MESA);
+      struct anv_bo *wsi_signal_bo =
+         mem_signal_info && mem_signal_info->memory != VK_NULL_HANDLE ?
+         anv_device_memory_from_handle(mem_signal_info->memory)->bo : NULL;
 
       const VkTimelineSemaphoreSubmitInfoKHR *timeline_info =
          vk_find_struct_const(pSubmits[i].pNext,
@@ -954,6 +969,7 @@ VkResult anv_QueueSubmit(
                                    pSubmits[i].pSignalSemaphores,
                                    signal_values,
                                    pSubmits[i].signalSemaphoreCount,
+                                   wsi_signal_bo,
                                    submit_fence);
          if (result != VK_SUCCESS)
             goto out;
@@ -992,7 +1008,7 @@ VkResult anv_QueueSubmit(
          result = anv_queue_submit(queue, cmd_buffer,
                                    in_semaphores, in_values, num_in_semaphores,
                                    out_semaphores, out_values, num_out_semaphores,
-                                   execbuf_fence);
+                                   wsi_signal_bo, execbuf_fence);
          if (result != VK_SUCCESS)
             goto out;
       }

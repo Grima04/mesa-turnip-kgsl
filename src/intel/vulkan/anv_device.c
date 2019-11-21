@@ -3139,19 +3139,6 @@ VkResult anv_AllocateMemory(
          break;
       }
 
-      case VK_STRUCTURE_TYPE_WSI_MEMORY_ALLOCATE_INFO_MESA: {
-         const struct wsi_memory_allocate_info *wsi_info = (void *)ext;
-         if (wsi_info->implicit_sync) {
-            /* We need to set the WRITE flag on window system buffers so that
-             * GEM will know we're writing to them and synchronize uses on
-             * other rings (eg if the display server uses the blitter ring).
-             */
-            alloc_flags |= ANV_BO_ALLOC_IMPLICIT_SYNC |
-                           ANV_BO_ALLOC_IMPLICIT_WRITE;
-         }
-         break;
-      }
-
       default:
          anv_debug_ignored_stype(ext->sType);
          break;
