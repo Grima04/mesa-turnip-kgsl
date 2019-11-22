@@ -438,13 +438,6 @@ tu6_emit_zs(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
       return;
    }
 
-   uint32_t gmem_index = 0;
-   for (uint32_t i = 0; i < subpass->color_count; ++i) {
-      uint32_t a = subpass->color_attachments[i].attachment;
-      if (a != VK_ATTACHMENT_UNUSED)
-         gmem_index++;
-   }
-
    const struct tu_image_view *iview = fb->attachments[a].attachment;
    enum a6xx_depth_format fmt = tu6_pipe2depth(iview->vk_format);
 
@@ -453,7 +446,7 @@ tu6_emit_zs(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
    tu_cs_emit(cs, A6XX_RB_DEPTH_BUFFER_PITCH(tu_image_stride(iview->image, iview->base_mip)));
    tu_cs_emit(cs, A6XX_RB_DEPTH_BUFFER_ARRAY_PITCH(iview->image->layer_size));
    tu_cs_emit_qw(cs, tu_image_base(iview->image, iview->base_mip, iview->base_layer));
-   tu_cs_emit(cs, tiling->gmem_offsets[gmem_index]);
+   tu_cs_emit(cs, tiling->gmem_offsets[subpass->color_count]);
 
    tu_cs_emit_pkt4(cs, REG_A6XX_GRAS_SU_DEPTH_BUFFER_INFO, 1);
    tu_cs_emit(cs, A6XX_GRAS_SU_DEPTH_BUFFER_INFO_DEPTH_FORMAT(fmt));
@@ -483,7 +476,6 @@ tu6_emit_mrt(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
    unsigned char mrt_comp[MAX_RTS] = { 0 };
    unsigned srgb_cntl = 0;
 
-   uint32_t gmem_index = 0;
    for (uint32_t i = 0; i < subpass->color_count; ++i) {
       uint32_t a = subpass->color_attachments[i].attachment;
       if (a == VK_ATTACHMENT_UNUSED)
@@ -510,7 +502,7 @@ tu6_emit_mrt(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
       tu_cs_emit(cs, A6XX_RB_MRT_ARRAY_PITCH(iview->image->layer_size));
       tu_cs_emit_qw(cs, tu_image_base(iview->image, iview->base_mip, iview->base_layer));
       tu_cs_emit(
-         cs, tiling->gmem_offsets[gmem_index++]); /* RB_MRT[i].BASE_GMEM */
+         cs, tiling->gmem_offsets[i]); /* RB_MRT[i].BASE_GMEM */
 
       tu_cs_emit_pkt4(cs, REG_A6XX_SP_FS_MRT_REG(i), 1);
       tu_cs_emit(cs, A6XX_SP_FS_MRT_REG_COLOR_FORMAT(format->rb) |
@@ -817,16 +809,15 @@ tu6_emit_tile_load(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 
    tu6_emit_blit_scissor(cmd, cs);
 
-   uint32_t gmem_index = 0;
    for (uint32_t i = 0; i < subpass->color_count; ++i) {
       const uint32_t a = subpass->color_attachments[i].attachment;
       if (a != VK_ATTACHMENT_UNUSED)
-         tu6_emit_tile_load_attachment(cmd, cs, a, gmem_index++);
+         tu6_emit_tile_load_attachment(cmd, cs, a, i);
    }
 
    const uint32_t a = subpass->depth_stencil_attachment.attachment;
    if (a != VK_ATTACHMENT_UNUSED)
-      tu6_emit_tile_load_attachment(cmd, cs, a, gmem_index);
+      tu6_emit_tile_load_attachment(cmd, cs, a, subpass->color_count);
 }
 
 static void
@@ -856,22 +847,21 @@ tu6_emit_tile_store(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 
    tu6_emit_blit_scissor(cmd, cs);
 
-   uint32_t gmem_index = 0;
    for (uint32_t i = 0; i < cmd->state.subpass->color_count; ++i) {
       uint32_t a = cmd->state.subpass->color_attachments[i].attachment;
       if (a == VK_ATTACHMENT_UNUSED)
          continue;
 
       const struct tu_image_view *iview = fb->attachments[a].attachment;
-      tu6_emit_blit_info(cmd, cs, iview, tiling->gmem_offsets[gmem_index++],
-                         0);
+      tu6_emit_blit_info(cmd, cs, iview, tiling->gmem_offsets[i], 0);
       tu6_emit_blit(cmd, cs);
    }
 
    const uint32_t a = cmd->state.subpass->depth_stencil_attachment.attachment;
    if (a != VK_ATTACHMENT_UNUSED) {
       const struct tu_image_view *iview = fb->attachments[a].attachment;
-      tu6_emit_blit_info(cmd, cs, iview, tiling->gmem_offsets[gmem_index],
+      tu6_emit_blit_info(cmd, cs, iview,
+                         tiling->gmem_offsets[cmd->state.subpass->color_count],
                          0);
       tu6_emit_blit(cmd, cs);
    }
@@ -1242,8 +1232,10 @@ tu_cmd_update_tiling_config(struct tu_cmd_buffer *cmd,
 
    for (uint32_t i = 0; i < subpass->color_count; ++i) {
       const uint32_t a = subpass->color_attachments[i].attachment;
-      if (a == VK_ATTACHMENT_UNUSED)
+      if (a == VK_ATTACHMENT_UNUSED) {
+         buffer_cpp[buffer_count++] = 0;
          continue;
+      }
 
       const struct tu_render_pass_attachment *att = &pass->attachments[a];
       buffer_cpp[buffer_count++] =
