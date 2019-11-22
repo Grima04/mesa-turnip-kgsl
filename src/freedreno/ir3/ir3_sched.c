@@ -28,6 +28,21 @@
 #include "util/u_math.h"
 
 #include "ir3.h"
+#include "ir3_compiler.h"
+
+#ifdef DEBUG
+#define SCHED_DEBUG (ir3_shader_debug & IR3_DBG_SCHEDMSGS)
+#else
+#define SCHED_DEBUG 0
+#endif
+#define d(fmt, ...) do { if (SCHED_DEBUG) { \
+	printf("SCHED: "fmt"\n", ##__VA_ARGS__); \
+} } while (0)
+
+#define di(instr, fmt, ...) do { if (SCHED_DEBUG) { \
+	printf("SCHED: "fmt": ", ##__VA_ARGS__); \
+	ir3_print_instr(instr); \
+} } while (0)
 
 /*
  * Instruction Scheduling:
@@ -213,6 +228,8 @@ schedule(struct ir3_sched_ctx *ctx, struct ir3_instruction *instr)
 	}
 
 	instr->flags |= IR3_INSTR_MARK;
+
+	di(instr, "schedule");
 
 	list_addtail(&instr->node, &instr->block->instr_list);
 	ctx->scheduled = instr;
@@ -811,6 +828,8 @@ sched_block(struct ir3_sched_ctx *ctx, struct ir3_block *block)
 
 		if (instr) {
 			unsigned delay = delay_calc(ctx->block, instr, false, false);
+
+			d("delay=%u", delay);
 
 			/* and if we run out of instructions that can be scheduled,
 			 * then it is time for nop's:
