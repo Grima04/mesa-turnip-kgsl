@@ -48,23 +48,6 @@
  * blocks depth sorted list, which is used by the scheduling pass.
  */
 
-void
-ir3_insert_by_depth(struct ir3_instruction *instr, struct list_head *list)
-{
-	/* remove from existing spot in list: */
-	list_delinit(&instr->node);
-
-	/* find where to re-insert instruction: */
-	foreach_instr (pos, list) {
-		if (pos->depth > instr->depth) {
-			list_add(&instr->node, &pos->node);
-			return;
-		}
-	}
-	/* if we get here, we didn't find an insertion spot: */
-	list_addtail(&instr->node, list);
-}
-
 static void
 ir3_instr_depth(struct ir3_instruction *instr, unsigned boost, bool falsedep)
 {
@@ -97,8 +80,6 @@ ir3_instr_depth(struct ir3_instruction *instr, unsigned boost, bool falsedep)
 
 	if (!is_meta(instr))
 		instr->depth++;
-
-	ir3_insert_by_depth(instr, &instr->block->instr_list);
 }
 
 static bool
