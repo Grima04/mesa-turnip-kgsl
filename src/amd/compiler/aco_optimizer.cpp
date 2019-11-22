@@ -1807,11 +1807,11 @@ bool combine_clamp(opt_ctx& ctx, aco_ptr<Instruction>& instr,
 
    for (unsigned swap = 0; swap < 2; swap++) {
       Operand operands[3];
-      bool neg[3], abs[3], clamp, inbetween_neg, inbetween_abs;
+      bool neg[3], abs[3], clamp;
       uint8_t opsel = 0, omod = 0;
       if (match_op3_for_vop3(ctx, instr->opcode, other_op, instr.get(), swap,
                              "012", operands, neg, abs, &opsel,
-                             &clamp, &omod, &inbetween_neg, &inbetween_abs, NULL)) {
+                             &clamp, &omod, NULL, NULL, NULL)) {
          int const0_idx = -1, const1_idx = -1;
          uint32_t const0 = 0, const1 = 0;
          for (int i = 0; i < 3; i++) {
@@ -1891,11 +1891,6 @@ bool combine_clamp(opt_ctx& ctx, aco_ptr<Instruction>& instr,
             if (upper_idx == 0 || lower_idx != 0)
                return false;
          }
-
-         neg[1] ^= inbetween_neg;
-         neg[2] ^= inbetween_neg;
-         abs[1] |= inbetween_abs;
-         abs[2] |= inbetween_abs;
 
          ctx.uses[instr->operands[swap].tempId()]--;
          create_vop3_for_op3(ctx, med, instr, operands, neg, abs, opsel, clamp, omod);
