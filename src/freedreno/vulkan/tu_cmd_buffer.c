@@ -664,14 +664,9 @@ tu6_emit_blit_clear(struct tu_cmd_buffer *cmd,
    const struct tu_native_format *format =
       tu6_get_native_format(iview->vk_format);
    assert(format && format->rb >= 0);
-   /* must be WZYX; other values are ignored */
-   const enum a3xx_color_swap swap = WZYX;
 
    tu_cs_emit_pkt4(cs, REG_A6XX_RB_BLIT_DST_INFO, 1);
-   tu_cs_emit(cs, A6XX_RB_BLIT_DST_INFO_TILE_MODE(TILE6_LINEAR) |
-                     A6XX_RB_BLIT_DST_INFO_SAMPLES(tu_msaa_samples(iview->image->samples)) |
-                     A6XX_RB_BLIT_DST_INFO_COLOR_FORMAT(format->rb) |
-                     A6XX_RB_BLIT_DST_INFO_COLOR_SWAP(swap));
+   tu_cs_emit(cs, A6XX_RB_BLIT_DST_INFO_COLOR_FORMAT(format->rb));
 
    tu_cs_emit_pkt4(cs, REG_A6XX_RB_BLIT_INFO, 1);
    tu_cs_emit(cs, A6XX_RB_BLIT_INFO_GMEM | A6XX_RB_BLIT_INFO_CLEAR_MASK(0xf));
@@ -682,7 +677,6 @@ tu6_emit_blit_clear(struct tu_cmd_buffer *cmd,
    tu_cs_emit_pkt4(cs, REG_A6XX_RB_UNKNOWN_88D0, 1);
    tu_cs_emit(cs, 0);
 
-   /* pack clear_value into WZYX order */
    uint32_t clear_vals[4] = { 0 };
    tu_pack_clear_value(clear_value, iview->vk_format, clear_vals);
 
