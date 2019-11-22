@@ -1394,7 +1394,8 @@ bool combine_constant_comparison_ordering(opt_ctx &ctx, aco_ptr<Instruction>& in
    if (cmp->operands[constant_operand].isConstant()) {
       constant = cmp->operands[constant_operand].constantValue();
    } else if (cmp->operands[constant_operand].isTemp()) {
-      unsigned id = cmp->operands[constant_operand].tempId();
+      Temp tmp = cmp->operands[constant_operand].getTemp();
+      unsigned id = original_temp_id(ctx, tmp);
       if (!ctx.info[id].is_constant() && !ctx.info[id].is_literal())
          return false;
       constant = ctx.info[id].val;
