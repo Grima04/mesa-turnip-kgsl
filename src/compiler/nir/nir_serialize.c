@@ -141,6 +141,8 @@ decode_bit_size_3bits(uint8_t bit_size)
    return 0;
 }
 
+#define NUM_COMPONENTS_IS_SEPARATE_7   7
+
 static uint8_t
 encode_num_components_in_3bits(uint8_t num_components)
 {
@@ -151,8 +153,8 @@ encode_num_components_in_3bits(uint8_t num_components)
    if (num_components == 16)
       return 6;
 
-   unreachable("invalid number in num_components");
-   return 0;
+   /* special value indicating that num_components is in the next uint32 */
+   return NUM_COMPONENTS_IS_SEPARATE_7;
 }
 
 static uint8_t
@@ -732,6 +734,10 @@ write_dest(write_ctx *ctx, const nir_dest *dst, union packed_instr header,
       blob_write_uint32(ctx->blob, header.u32);
    }
 
+   if (dest.ssa.is_ssa &&
+       dest.ssa.num_components == NUM_COMPONENTS_IS_SEPARATE_7)
+      blob_write_uint32(ctx->blob, dst->ssa.num_components);
+
    if (dst->is_ssa) {
       write_add_object(ctx, &dst->ssa);
       if (dest.ssa.has_name)
@@ -753,8 +759,11 @@ read_dest(read_ctx *ctx, nir_dest *dst, nir_instr *instr,
 
    if (dest.ssa.is_ssa) {
       unsigned bit_size = decode_bit_size_3bits(dest.ssa.bit_size);
-      unsigned num_components =
-         decode_num_components_in_3bits(dest.ssa.num_components);
+      unsigned num_components;
+      if (dest.ssa.num_components == NUM_COMPONENTS_IS_SEPARATE_7)
+         num_components = blob_read_uint32(ctx->blob);
+      else
+         num_components = decode_num_components_in_3bits(dest.ssa.num_components);
       char *name = dest.ssa.has_name ? blob_read_string(ctx->blob) : NULL;
       nir_ssa_dest_init(instr, dst, num_components, bit_size, name);
       read_add_object(ctx, &dst->ssa);
