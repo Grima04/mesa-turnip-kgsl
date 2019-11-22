@@ -1963,8 +1963,6 @@ void apply_sgprs(opt_ctx &ctx, aco_ptr<Instruction>& instr)
       sgpr_ids[num_sgprs++] = sgpr.id();
       ctx.uses[sgpr_info_id]--;
       ctx.uses[sgpr.id()]++;
-
-      break; /* for testing purposes, only apply 1 new sgpr */
    }
 }
 
