@@ -510,6 +510,7 @@ static void si_do_fast_color_clear(struct si_context *sctx,
 				continue;
 
 			tex->separate_dcc_dirty = true;
+			tex->displayable_dcc_dirty = true;
 
 			/* DCC fast clear with MSAA should clear CMASK to 0xC. */
 			if (tex->buffer.b.b.nr_samples >= 2 && tex->cmask_buffer) {

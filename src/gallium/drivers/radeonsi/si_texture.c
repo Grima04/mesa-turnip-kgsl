@@ -620,6 +620,7 @@ static void si_reallocate_texture_inplace(struct si_context *sctx,
 	tex->can_sample_s = new_tex->can_sample_s;
 
 	tex->separate_dcc_dirty = new_tex->separate_dcc_dirty;
+	tex->displayable_dcc_dirty = new_tex->displayable_dcc_dirty;
 	tex->dcc_gather_statistics = new_tex->dcc_gather_statistics;
 	si_resource_reference(&tex->dcc_separate_buffer,
 				new_tex->dcc_separate_buffer);

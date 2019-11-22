@@ -332,6 +332,8 @@ struct si_texture {
 	 * for a possible future enablement.
 	 */
 	bool				separate_dcc_dirty:1;
+	bool				displayable_dcc_dirty:1;
+
 	/* Statistics gathering for the DCC enablement heuristic. */
 	bool				dcc_gather_statistics:1;
 	/* Counter that should be non-zero if the texture is bound to a
@@ -670,6 +672,7 @@ struct si_framebuffer {
 	ubyte				nr_color_samples; /* at most 8xAA */
 	ubyte				compressed_cb_mask;
 	ubyte				uncompressed_cb_mask;
+	ubyte				displayable_dcc_cb_mask;
 	ubyte				color_is_int8;
 	ubyte				color_is_int10;
 	ubyte				dirty_cbufs;

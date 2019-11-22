@@ -2142,6 +2142,20 @@ static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *i
 			cik_emit_prefetch_L2(sctx, false);
 	}
 
+	/* Mark the displayable dcc buffer as dirty in order to update
+	 * it on the next call to si_flush_resource. */
+	if (sctx->screen->info.use_display_dcc_with_retile_blit) {
+		/* Don't use si_update_fb_dirtiness_after_rendering because it'll
+		 * cause unnecessary texture decompressions on each draw. */
+		unsigned displayable_dcc_cb_mask = sctx->framebuffer.displayable_dcc_cb_mask;
+		while (displayable_dcc_cb_mask) {
+			unsigned i = u_bit_scan(&displayable_dcc_cb_mask);
+			struct pipe_surface *surf = sctx->framebuffer.state.cbufs[i];
+			struct si_texture *tex = (struct si_texture*) surf->texture;
+			tex->displayable_dcc_dirty = true;
+		}
+	}
+
 	/* Clear the context roll flag after the draw call. */
 	sctx->context_roll = false;
 

@@ -2984,6 +2984,7 @@ static void si_set_framebuffer_state(struct pipe_context *ctx,
 
 	sctx->framebuffer.compressed_cb_mask = 0;
 	sctx->framebuffer.uncompressed_cb_mask = 0;
+	sctx->framebuffer.displayable_dcc_cb_mask = 0;
 	sctx->framebuffer.nr_samples = util_framebuffer_get_num_samples(state);
 	sctx->framebuffer.nr_color_samples = sctx->framebuffer.nr_samples;
 	sctx->framebuffer.log_samples = util_logbase2(sctx->framebuffer.nr_samples);
@@ -3023,6 +3024,9 @@ static void si_set_framebuffer_state(struct pipe_context *ctx,
 			sctx->framebuffer.compressed_cb_mask |= 1 << i;
 		else
 			sctx->framebuffer.uncompressed_cb_mask |= 1 << i;
+
+		if (tex->surface.dcc_offset)
+			sctx->framebuffer.displayable_dcc_cb_mask |= 1 << i;
 
 		/* Don't update nr_color_samples for non-AA buffers.
 		 * (e.g. destination of MSAA resolve)

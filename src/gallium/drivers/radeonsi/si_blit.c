@@ -1302,8 +1302,10 @@ static void si_flush_resource(struct pipe_context *ctx,
 					 0, util_max_layer(res, 0),
 					 tex->dcc_separate_buffer != NULL, false);
 
-		if (tex->surface.display_dcc_offset)
+		if (tex->surface.display_dcc_offset && tex->displayable_dcc_dirty) {
 			si_retile_dcc(sctx, tex);
+			tex->displayable_dcc_dirty = false;
+		}
 	}
 
 	/* Always do the analysis even if DCC is disabled at the moment. */
