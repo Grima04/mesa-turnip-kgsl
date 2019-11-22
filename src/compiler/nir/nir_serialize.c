@@ -573,14 +573,14 @@ union packed_dest {
 };
 
 enum intrinsic_const_indices_encoding {
-   /* Use the 6 bits of packed_const_indices to store 1-6 indices.
-    * 1 6-bit index, or 2 3-bit indices, or 3 2-bit indices, or
-    * 4-6 1-bit indices.
+   /* Use the 9 bits of packed_const_indices to store 1-9 indices.
+    * 1 9-bit index, or 2 4-bit indices, or 3 3-bit indices, or
+    * 4 2-bit indices, or 5-9 1-bit indices.
     *
     * The common case for load_ubo is 0, 0, 0, which is trivially represented.
     * The common cases for load_interpolated_input also fit here, e.g.: 7, 3
     */
-   const_indices_6bit_all_combined,
+   const_indices_9bit_all_combined,
 
    const_indices_8bit,  /* 8 bits per element */
    const_indices_16bit, /* 16 bits per element */
@@ -641,8 +641,7 @@ union packed_instr {
       unsigned instr_type:4;
       unsigned intrinsic:9;
       unsigned const_indices_encoding:2;
-      unsigned packed_const_indices:6;
-      unsigned _pad:3;
+      unsigned packed_const_indices:9;
       unsigned dest:8;
    } intrinsic;
    struct {
@@ -1131,11 +1130,11 @@ write_intrinsic(write_ctx *ctx, const nir_intrinsic_instr *intrin)
          max_bits = MAX2(max_bits, max);
       }
 
-      if (max_bits * num_indices <= 6) {
-         header.intrinsic.const_indices_encoding = const_indices_6bit_all_combined;
+      if (max_bits * num_indices <= 9) {
+         header.intrinsic.const_indices_encoding = const_indices_9bit_all_combined;
 
          /* Pack all const indices into 6 bits. */
-         unsigned bit_size = 6 / num_indices;
+         unsigned bit_size = 9 / num_indices;
          for (unsigned i = 0; i < num_indices; i++) {
             header.intrinsic.packed_const_indices |=
                intrin->const_index[i] << (i * bit_size);
@@ -1206,8 +1205,8 @@ read_intrinsic(read_ctx *ctx, union packed_instr header)
 
    if (num_indices) {
       switch (header.intrinsic.const_indices_encoding) {
-      case const_indices_6bit_all_combined: {
-         unsigned bit_size = 6 / num_indices;
+      case const_indices_9bit_all_combined: {
+         unsigned bit_size = 9 / num_indices;
          unsigned bit_mask = u_bit_consecutive(0, bit_size);
          for (unsigned i = 0; i < num_indices; i++) {
             intrin->const_index[i] =
