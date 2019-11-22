@@ -1678,6 +1678,10 @@ bool combine_salu_n2(opt_ctx& ctx, aco_ptr<Instruction>& instr)
       if (!op2_instr || (op2_instr->opcode != aco_opcode::s_not_b32 && op2_instr->opcode != aco_opcode::s_not_b64))
          continue;
 
+      if (instr->operands[!i].isLiteral() && op2_instr->operands[0].isLiteral() &&
+          instr->operands[!i].constantValue() != op2_instr->operands[0].constantValue())
+         continue;
+
       ctx.uses[instr->operands[i].tempId()]--;
       instr->operands[0] = instr->operands[!i];
       instr->operands[1] = op2_instr->operands[0];
@@ -1718,6 +1722,10 @@ bool combine_salu_lshl_add(opt_ctx& ctx, aco_ptr<Instruction>& instr)
 
       uint32_t shift = op2_instr->operands[1].constantValue();
       if (shift < 1 || shift > 4)
+         continue;
+
+      if (instr->operands[!i].isLiteral() && op2_instr->operands[0].isLiteral() &&
+          instr->operands[!i].constantValue() != op2_instr->operands[0].constantValue())
          continue;
 
       ctx.uses[instr->operands[i].tempId()]--;
