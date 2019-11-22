@@ -1566,19 +1566,10 @@ panfrost_draw_vbo(
         if (info->primitive_restart)
                 draw_flags |= MALI_DRAW_PRIMITIVE_RESTART_FIXED_INDEX;
 
-        /* For higher amounts of vertices (greater than what fits in a 16-bit
-         * short), the other value is needed, otherwise there will be bizarre
-         * rendering artefacts. It's not clear what these values mean yet. This
-         * change is also needed for instancing and sometimes points (perhaps
-         * related to dynamically setting gl_PointSize) */
+        /* These doesn't make much sense */
 
-        bool is_points = mode == PIPE_PRIM_POINTS;
-        bool many_verts = ctx->vertex_count > 0xFFFF;
-        bool instanced = ctx->instance_count > 1;
+        draw_flags |= 0x3000;
 
-        draw_flags |= (is_points || many_verts || instanced) ? 0x3000 : 0x18000;
-
-        /* This doesn't make much sense */
         if (mode == PIPE_PRIM_LINE_STRIP) {
                 draw_flags |= 0x800;
         }
