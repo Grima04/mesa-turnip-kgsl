@@ -135,6 +135,9 @@ else
         echo "Some flakes found (see cts-runner-flakes.txt in artifacts for full results):"
         head -n 50 $RESULTS/cts-runner-flakes.txt
 
+        # Save the logs for up to the first 50 flakes:
+        head -n 50 $RESULTS/cts-runner-flakes.txt | quiet extract_xml_results /tmp/*.qpa
+
         # Report the flakes to IRC channel for monitoring (if configured):
         quiet report_flakes $RESULTS/cts-runner-flakes.txt
     else

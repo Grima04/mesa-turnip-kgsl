@@ -103,7 +103,7 @@ x86_build:
 x86_test:
   extends: x86_build
   variables:
-    DEBIAN_TAG: &x86_test "2019-11-20-2"
+    DEBIAN_TAG: &x86_test "2019-11-22"
 
 # Debian 9 based x86 build image (old LLVM)
 x86_build_old:
@@ -138,7 +138,7 @@ arm_build:
 arm_test:
   extends: arm_build
   variables:
-    DEBIAN_TAG: &arm_test "2019-11-12"
+    DEBIAN_TAG: &arm_test "2019-11-22"
 
 .use-arm_test:
   variables:
