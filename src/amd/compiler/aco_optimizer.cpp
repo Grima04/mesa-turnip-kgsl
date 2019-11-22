@@ -1937,7 +1937,7 @@ void apply_sgprs(opt_ctx &ctx, aco_ptr<Instruction>& instr)
       /* Applying two sgprs require making it VOP3, so don't do it unless it's
        * definitively beneficial.
        * TODO: this is too conservative because later the use count could be reduced to 1 */
-      if (num_sgprs && ctx.uses[sgpr_info_id] > 1)
+      if (num_sgprs && ctx.uses[sgpr_info_id] > 1 && !instr->isVOP3())
          break;
 
       Temp sgpr = ctx.info[sgpr_info_id].temp;
