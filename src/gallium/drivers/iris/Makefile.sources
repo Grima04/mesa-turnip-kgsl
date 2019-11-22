@@ -45,6 +45,7 @@ IRIS_C_SOURCES = \
 	iris_genx_macros.h \
 	iris_genx_protos.h \
 	iris_monitor.c \
+	iris_perf.c \
 	iris_pipe.h \
 	iris_pipe_control.c \
 	iris_program.c \
