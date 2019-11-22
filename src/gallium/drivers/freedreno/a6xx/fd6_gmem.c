@@ -112,7 +112,7 @@ emit_mrt(struct fd_ringbuffer *ring, struct pipe_framebuffer_state *pfb,
 		offset = fd_resource_offset(rsc, psurf->u.tex.level,
 				psurf->u.tex.first_layer);
 
-		stride = slice->pitch * rsc->layout.cpp * pfb->samples;
+		stride = slice->pitch * rsc->layout.cpp;
 		swap = fd6_resource_swap(rsc, pformat);
 
 		tile_mode = fd_resource_tile_mode(psurf->texture, psurf->u.tex.level);
@@ -127,8 +127,6 @@ emit_mrt(struct fd_ringbuffer *ring, struct pipe_framebuffer_state *pfb,
 				type = LAYER_CUBEMAP;
 			else if (psurf->texture->target == PIPE_TEXTURE_3D)
 				type = LAYER_3D;
-
-			stride /= pfb->samples;
 		}
 
 		debug_assert((offset + slice->size0) <= fd_bo_size(rsc->bo));
