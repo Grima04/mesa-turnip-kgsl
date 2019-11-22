@@ -53,6 +53,7 @@ with_glx_read_only_text = get_option('glx-read-only-text')
 with_glx_direct = get_option('glx-direct')
 with_osmesa = get_option('osmesa')
 with_swr_arches = get_option('swr-arches')
+with_vulkan_overlay_layer = get_option('vulkan-overlay-layer')
 with_tools = get_option('tools')
 if with_tools.contains('all')
   with_tools = [
@@ -68,6 +69,9 @@ if with_tools.contains('all')
     'xvmc',
   ]
 endif
+
+with_intel_tools = with_tools.contains('intel') or with_tools.contains('intel-ui')
+with_imgui = with_intel_tools or with_vulkan_overlay_layer
 
 dri_drivers_path = get_option('dri-drivers-path')
 if dri_drivers_path == ''
