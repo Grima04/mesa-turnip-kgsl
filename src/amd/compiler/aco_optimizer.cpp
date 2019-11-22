@@ -1868,61 +1868,76 @@ bool combine_clamp(opt_ctx& ctx, aco_ptr<Instruction>& instr,
 
 void apply_sgprs(opt_ctx &ctx, aco_ptr<Instruction>& instr)
 {
-   /* apply sgprs */
-   uint32_t sgpr_idx = 0;
-   uint32_t sgpr_info_id = 0;
-   bool has_sgpr = false;
-   uint32_t sgpr_ssa_id = 0;
-   /* find 'best' possible sgpr */
-   for (unsigned i = 0; i < instr->operands.size(); i++)
-   {
-      if (instr->operands[i].isLiteral()) {
-         has_sgpr = true;
-         break;
-      }
+   /* find candidates and create the set of sgprs already read */
+   unsigned sgpr_ids[2] = {0, 0};
+   uint32_t operand_mask = 0;
+   bool has_literal = false;
+   for (unsigned i = 0; i < instr->operands.size(); i++) {
+      if (instr->operands[i].isLiteral())
+         has_literal = true;
       if (!instr->operands[i].isTemp())
          continue;
       if (instr->operands[i].getTemp().type() == RegType::sgpr) {
-         has_sgpr = true;
-         sgpr_ssa_id = instr->operands[i].tempId();
-         continue;
+         if (instr->operands[i].tempId() != sgpr_ids[0])
+            sgpr_ids[!!sgpr_ids[0]] = instr->operands[i].tempId();
       }
       ssa_info& info = ctx.info[instr->operands[i].tempId()];
-      if (info.is_temp() && info.temp.type() == RegType::sgpr) {
+      if (info.is_temp() && info.temp.type() == RegType::sgpr)
+         operand_mask |= 1u << i;
+   }
+   unsigned max_sgprs = 1;
+   if (has_literal)
+      max_sgprs--;
+
+   unsigned num_sgprs = !!sgpr_ids[0] + !!sgpr_ids[1];
+
+   /* keep on applying sgprs until there is nothing left to be done */
+   while (operand_mask) {
+      uint32_t sgpr_idx = 0;
+      uint32_t sgpr_info_id = 0;
+      uint32_t mask = operand_mask;
+      /* choose a sgpr */
+      while (mask) {
+         unsigned i = u_bit_scan(&mask);
          uint16_t uses = ctx.uses[instr->operands[i].tempId()];
          if (sgpr_info_id == 0 || uses < ctx.uses[sgpr_info_id]) {
             sgpr_idx = i;
             sgpr_info_id = instr->operands[i].tempId();
          }
       }
-   }
-   if (!has_sgpr && sgpr_info_id != 0) {
-      ssa_info& info = ctx.info[sgpr_info_id];
+      operand_mask &= ~(1u << sgpr_idx);
+
+      /* Applying two sgprs require making it VOP3, so don't do it unless it's
+       * definitively beneficial.
+       * TODO: this is too conservative because later the use count could be reduced to 1 */
+      if (num_sgprs && ctx.uses[sgpr_info_id] > 1)
+         break;
+
+      Temp sgpr = ctx.info[sgpr_info_id].temp;
+      bool new_sgpr = sgpr.id() != sgpr_ids[0] && sgpr.id() != sgpr_ids[1];
+      if (new_sgpr && num_sgprs >= max_sgprs)
+         continue;
+
       if (sgpr_idx == 0 || instr->isVOP3()) {
-         instr->operands[sgpr_idx] = Operand(info.temp);
-         ctx.uses[sgpr_info_id]--;
-         ctx.uses[info.temp.id()]++;
+         instr->operands[sgpr_idx] = Operand(sgpr);
       } else if (can_swap_operands(instr)) {
          instr->operands[sgpr_idx] = instr->operands[0];
-         instr->operands[0] = Operand(info.temp);
-         ctx.uses[sgpr_info_id]--;
-         ctx.uses[info.temp.id()]++;
+         instr->operands[0] = Operand(sgpr);
+         /* swap bits using a 4-entry LUT */
+         uint32_t swapped = (0x3120 >> (operand_mask & 0x3)) & 0xf;
+         operand_mask = (operand_mask & ~0x3) | swapped;
       } else if (can_use_VOP3(instr)) {
          to_VOP3(ctx, instr);
-         instr->operands[sgpr_idx] = Operand(info.temp);
-         ctx.uses[sgpr_info_id]--;
-         ctx.uses[info.temp.id()]++;
+         instr->operands[sgpr_idx] = Operand(sgpr);
+      } else {
+         continue;
       }
 
-   /* we can have two sgprs on one instruction if it is the same sgpr! */
-   } else if (sgpr_info_id != 0 &&
-              sgpr_ssa_id == ctx.info[sgpr_info_id].temp.id() &&
-              ctx.uses[sgpr_info_id] == 1 &&
-              can_use_VOP3(instr)) {
-      to_VOP3(ctx, instr);
-      instr->operands[sgpr_idx] = Operand(ctx.info[sgpr_info_id].temp);
+      sgpr_ids[num_sgprs++] = sgpr.id();
       ctx.uses[sgpr_info_id]--;
-      ctx.uses[ctx.info[sgpr_info_id].temp.id()]++;
+      ctx.uses[sgpr.id()]++;
+
+      break; /* for testing purposes, only apply 1 new sgpr */
    }
 }
 
