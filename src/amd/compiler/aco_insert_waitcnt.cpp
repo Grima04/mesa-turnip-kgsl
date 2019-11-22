@@ -729,6 +729,9 @@ void handle_block(Program *program, Block& block, wait_ctx& ctx)
       }
    }
 
+   if (!queued_imm.empty())
+      emit_waitcnt(ctx, new_instructions, queued_imm);
+
    block.instructions.swap(new_instructions);
 }
 
