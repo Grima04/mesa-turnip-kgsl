@@ -1309,7 +1309,7 @@ static void store_output_tcs(struct lp_build_tgsi_context *bld_base,
 		if (reg->Register.WriteMask != 0xF && !is_tess_factor) {
 			ac_build_buffer_store_dword(&ctx->ac, buffer, value, 1,
 						    buf_addr, base,
-						    4 * chan_index, ac_glc, false);
+						    4 * chan_index, ac_glc);
 		}
 
 		/* Write tess factors into VGPRs for the epilog. */
@@ -1329,7 +1329,7 @@ static void store_output_tcs(struct lp_build_tgsi_context *bld_base,
 		LLVMValueRef value = ac_build_gather_values(&ctx->ac,
 		                                            values, 4);
 		ac_build_buffer_store_dword(&ctx->ac, buffer, value, 4, buf_addr,
-					    base, 0, ac_glc, false);
+					    base, 0, ac_glc);
 	}
 }
 
@@ -1432,7 +1432,7 @@ static void si_nir_store_output_tcs(struct ac_shader_abi *abi,
 			ac_build_buffer_store_dword(&ctx->ac, buffer, value, 1,
 						    addr, base,
 						    4 * buffer_store_offset,
-                                                    ac_glc, false);
+                                                    ac_glc);
 		}
 
 		/* Write tess factors into VGPRs for the epilog. */
@@ -1452,7 +1452,7 @@ static void si_nir_store_output_tcs(struct ac_shader_abi *abi,
 		LLVMValueRef value = ac_build_gather_values(&ctx->ac,
 		                                            values, 4);
 		ac_build_buffer_store_dword(&ctx->ac, buffer, value, 4, addr,
-					    base, 0, ac_glc, false);
+					    base, 0, ac_glc);
 	}
 }
 
@@ -2661,7 +2661,7 @@ void si_emit_streamout_output(struct si_shader_context *ctx,
 				    vdata, num_comps,
 				    so_write_offsets[buf_idx],
 				    ctx->i32_0,
-				    stream_out->dst_offset * 4, ac_glc | ac_slc, false);
+				    stream_out->dst_offset * 4, ac_glc | ac_slc);
 }
 
 /**
@@ -3066,7 +3066,7 @@ static void si_copy_tcs_inputs(struct lp_build_tgsi_context *bld_base)
 		LLVMValueRef value = lshs_lds_load(bld_base, ctx->ac.i32, ~0, lds_ptr);
 
 		ac_build_buffer_store_dword(&ctx->ac, buffer, value, 4, buffer_addr,
-					    buffer_offset, 0, ac_glc, false);
+					    buffer_offset, 0, ac_glc);
 	}
 }
 
@@ -3191,7 +3191,7 @@ static void si_write_tess_factors(struct lp_build_tgsi_context *bld_base,
 		ac_build_buffer_store_dword(&ctx->ac, buffer,
 					    LLVMConstInt(ctx->i32, 0x80000000, 0),
 					    1, ctx->i32_0, tf_base,
-					    offset, ac_glc, false);
+					    offset, ac_glc);
 		offset += 4;
 	}
 
@@ -3200,12 +3200,12 @@ static void si_write_tess_factors(struct lp_build_tgsi_context *bld_base,
 	/* Store the tessellation factors. */
 	ac_build_buffer_store_dword(&ctx->ac, buffer, vec0,
 				    MIN2(stride, 4), byteoffset, tf_base,
-				    offset, ac_glc, false);
+				    offset, ac_glc);
 	offset += 16;
 	if (vec1)
 		ac_build_buffer_store_dword(&ctx->ac, buffer, vec1,
 					    stride - 4, byteoffset, tf_base,
-					    offset, ac_glc, false);
+					    offset, ac_glc);
 
 	/* Store the tess factors into the offchip buffer if TES reads them. */
 	if (shader->key.part.tcs.epilog.tes_reads_tess_factors) {
@@ -3228,7 +3228,7 @@ static void si_write_tess_factors(struct lp_build_tgsi_context *bld_base,
 
 		ac_build_buffer_store_dword(&ctx->ac, buf, outer_vec,
 					    outer_comps, tf_outer_offset,
-					    base, 0, ac_glc, false);
+					    base, 0, ac_glc);
 		if (inner_comps) {
 			param_inner = si_shader_io_get_unique_index_patch(
 					      TGSI_SEMANTIC_TESSINNER, 0);
@@ -3239,7 +3239,7 @@ static void si_write_tess_factors(struct lp_build_tgsi_context *bld_base,
 				    ac_build_gather_values(&ctx->ac, inner, inner_comps);
 			ac_build_buffer_store_dword(&ctx->ac, buf, inner_vec,
 						    inner_comps, tf_inner_offset,
-						    base, 0, ac_glc, false);
+						    base, 0, ac_glc);
 		}
 	}
 
@@ -3554,7 +3554,7 @@ static void si_llvm_emit_es_epilogue(struct ac_shader_abi *abi,
 						    out_val, 1, NULL,
 						    ac_get_arg(&ctx->ac, ctx->es2gs_offset),
 						    (4 * param + chan) * 4,
-						    ac_glc | ac_slc, true);
+						    ac_glc | ac_slc | ac_swizzled);
 		}
 	}
 
@@ -4283,7 +4283,7 @@ static void si_llvm_emit_vertex(struct ac_shader_abi *abi,
 						    ctx->gsvs_ring[stream],
 						    out_val, 1,
 						    voffset, soffset, 0,
-						    ac_glc | ac_slc, true);
+						    ac_glc | ac_slc | ac_swizzled);
 		}
 	}
 

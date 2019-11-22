@@ -299,8 +299,7 @@ ac_build_buffer_store_dword(struct ac_llvm_context *ctx,
 			    LLVMValueRef voffset,
 			    LLVMValueRef soffset,
 			    unsigned inst_offset,
-			    unsigned cache_policy,
-			    bool swizzle_enable_hint);
+			    unsigned cache_policy);
 
 void
 ac_build_buffer_store_format(struct ac_llvm_context *ctx,
@@ -533,6 +532,7 @@ enum ac_image_cache_policy {
 	ac_glc = 1 << 0, /* per-CU cache control */
 	ac_slc = 1 << 1, /* global L2 cache control */
 	ac_dlc = 1 << 2, /* per-shader-array cache control */
+	ac_swizzled = 1 << 3, /* the access is swizzled, disabling load/store merging */
 };
 
 struct ac_image_args {

@@ -822,7 +822,7 @@ void si_build_prim_discard_compute_shader(struct si_shader_context *ctx)
 			};
 			LLVMValueRef rsrc = ac_build_gather_values(&ctx->ac, desc, 4);
 			ac_build_buffer_store_dword(&ctx->ac, rsrc, count, 1, ctx->i32_0,
-						    ctx->i32_0, 0, ac_glc | ac_slc, false);
+						    ctx->i32_0, 0, ac_glc | ac_slc);
 		} else {
 			LLVMBuildStore(builder, count,
 				       si_expand_32bit_pointer(ctx,

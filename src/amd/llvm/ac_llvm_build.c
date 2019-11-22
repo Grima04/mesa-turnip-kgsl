@@ -1237,8 +1237,7 @@ ac_build_buffer_store_dword(struct ac_llvm_context *ctx,
 			    LLVMValueRef voffset,
 			    LLVMValueRef soffset,
 			    unsigned inst_offset,
-			    unsigned cache_policy,
-			    bool swizzle_enable_hint)
+			    unsigned cache_policy)
 {
 	/* Split 3 channel stores, because only LLVM 9+ support 3-channel
 	 * intrinsics. */
@@ -1252,12 +1251,10 @@ ac_build_buffer_store_dword(struct ac_llvm_context *ctx,
 		v01 = ac_build_gather_values(ctx, v, 2);
 
 		ac_build_buffer_store_dword(ctx, rsrc, v01, 2, voffset,
-					    soffset, inst_offset, cache_policy,
-					    swizzle_enable_hint);
+					    soffset, inst_offset, cache_policy);
 		ac_build_buffer_store_dword(ctx, rsrc, v[2], 1, voffset,
 					    soffset, inst_offset + 8,
-					    cache_policy,
-					    swizzle_enable_hint);
+					    cache_policy);
 		return;
 	}
 
@@ -1265,7 +1262,7 @@ ac_build_buffer_store_dword(struct ac_llvm_context *ctx,
 	 * (voffset is swizzled, but soffset isn't swizzled).
 	 * llvm.amdgcn.buffer.store doesn't have a separate soffset parameter.
 	 */
-	if (!swizzle_enable_hint) {
+	if (!(cache_policy & ac_swizzled)) {
 		LLVMValueRef offset = soffset;
 
 		if (inst_offset)

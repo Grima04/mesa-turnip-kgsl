@@ -649,8 +649,7 @@ static void store_emit_buffer(struct si_shader_context *ctx,
 		}
 
 		ac_build_buffer_store_dword(&ctx->ac, resource, data, count,
-					    voff, ctx->i32_0, 0, cache_policy,
-					    false);
+					    voff, ctx->i32_0, 0, cache_policy);
 	}
 }
 
