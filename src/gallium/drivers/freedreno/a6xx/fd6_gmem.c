@@ -44,10 +44,31 @@
 #include "fd6_emit.h"
 #include "fd6_program.h"
 #include "fd6_format.h"
+#include "fd6_resource.h"
 #include "fd6_zsa.h"
 
 /* some bits in common w/ a4xx: */
 #include "a4xx/fd4_draw.h"
+
+/**
+ * Emits the flags registers, suitable for RB_MRT_FLAG_BUFFER,
+ * RB_DEPTH_FLAG_BUFFER, SP_PS_2D_SRC_FLAGS, and RB_BLIT_FLAG_DST.
+ */
+void
+fd6_emit_flag_reference(struct fd_ringbuffer *ring, struct fd_resource *rsc,
+		int level, int layer)
+{
+	if (fd_resource_ubwc_enabled(rsc, level)) {
+		OUT_RELOCW(ring, rsc->bo, fd_resource_ubwc_offset(rsc, level, layer), 0, 0);
+		OUT_RING(ring,
+				A6XX_RB_MRT_FLAG_BUFFER_PITCH_PITCH(rsc->layout.ubwc_pitch) |
+				A6XX_RB_MRT_FLAG_BUFFER_PITCH_ARRAY_PITCH(rsc->layout.ubwc_size));
+	} else {
+		OUT_RING(ring, 0x00000000);    /* RB_MRT_FLAG_BUFFER[i].ADDR_LO */
+		OUT_RING(ring, 0x00000000);    /* RB_MRT_FLAG_BUFFER[i].ADDR_HI */
+		OUT_RING(ring, 0x00000000);
+	}
+}
 
 static void
 emit_mrt(struct fd_ringbuffer *ring, struct pipe_framebuffer_state *pfb,
@@ -67,9 +88,8 @@ emit_mrt(struct fd_ringbuffer *ring, struct pipe_framebuffer_state *pfb,
 		struct fd_resource *rsc = NULL;
 		struct fdl_slice *slice = NULL;
 		uint32_t stride = 0;
-		uint32_t offset, ubwc_offset;
+		uint32_t offset;
 		uint32_t tile_mode;
-		bool ubwc_enabled;
 
 		if (!pfb->cbufs[i])
 			continue;
@@ -93,9 +113,6 @@ emit_mrt(struct fd_ringbuffer *ring, struct pipe_framebuffer_state *pfb,
 
 		offset = fd_resource_offset(rsc, psurf->u.tex.level,
 				psurf->u.tex.first_layer);
-		ubwc_offset = fd_resource_ubwc_offset(rsc, psurf->u.tex.level,
-				psurf->u.tex.first_layer);
-		ubwc_enabled = fd_resource_ubwc_enabled(rsc, psurf->u.tex.level);
 
 		stride = slice->pitch * rsc->layout.cpp * pfb->samples;
 		swap = rsc->layout.tile_mode ? WZYX : fd6_pipe2swap(pformat);
@@ -132,15 +149,8 @@ emit_mrt(struct fd_ringbuffer *ring, struct pipe_framebuffer_state *pfb,
 				COND(uint, A6XX_SP_FS_MRT_REG_COLOR_UINT));
 
 		OUT_PKT4(ring, REG_A6XX_RB_MRT_FLAG_BUFFER(i), 3);
-		if (ubwc_enabled) {
-			OUT_RELOCW(ring, rsc->bo, ubwc_offset, 0, 0);	/* BASE_LO/HI */
-			OUT_RING(ring, A6XX_RB_MRT_FLAG_BUFFER_PITCH_PITCH(rsc->layout.ubwc_pitch) |
-				A6XX_RB_MRT_FLAG_BUFFER_PITCH_ARRAY_PITCH(rsc->layout.ubwc_size));
-		} else {
-			OUT_RING(ring, 0x00000000);    /* RB_MRT_FLAG_BUFFER[i].ADDR_LO */
-			OUT_RING(ring, 0x00000000);    /* RB_MRT_FLAG_BUFFER[i].ADDR_HI */
-			OUT_RING(ring, 0x00000000);
-		}
+		fd6_emit_flag_reference(ring, rsc,
+				psurf->u.tex.level, psurf->u.tex.first_layer);
 	}
 
 	OUT_PKT4(ring, REG_A6XX_RB_SRGB_CNTL, 1);
@@ -188,10 +198,6 @@ emit_zs(struct fd_ringbuffer *ring, struct pipe_surface *zsbuf,
 		uint32_t base = gmem ? gmem->zsbuf_base[0] : 0;
 		uint32_t offset = fd_resource_offset(rsc, zsbuf->u.tex.level,
 				zsbuf->u.tex.first_layer);
-		uint32_t ubwc_offset = fd_resource_ubwc_offset(rsc, zsbuf->u.tex.level,
-				zsbuf->u.tex.first_layer);
-
-		bool ubwc_enabled = fd_resource_ubwc_enabled(rsc, zsbuf->u.tex.level);
 
 		OUT_PKT4(ring, REG_A6XX_RB_DEPTH_BUFFER_INFO, 6);
 		OUT_RING(ring, A6XX_RB_DEPTH_BUFFER_INFO_DEPTH_FORMAT(fmt));
@@ -204,15 +210,8 @@ emit_zs(struct fd_ringbuffer *ring, struct pipe_surface *zsbuf,
 		OUT_RING(ring, A6XX_GRAS_SU_DEPTH_BUFFER_INFO_DEPTH_FORMAT(fmt));
 
 		OUT_PKT4(ring, REG_A6XX_RB_DEPTH_FLAG_BUFFER_BASE_LO, 3);
-		if (ubwc_enabled) {
-			OUT_RELOCW(ring, rsc->bo, ubwc_offset, 0, 0);	/* BASE_LO/HI */
-			OUT_RING(ring, A6XX_RB_DEPTH_FLAG_BUFFER_PITCH_PITCH(rsc->layout.ubwc_pitch) |
-				A6XX_RB_DEPTH_FLAG_BUFFER_PITCH_ARRAY_PITCH(rsc->layout.ubwc_size));
-		} else {
-			OUT_RING(ring, 0x00000000);    /* RB_DEPTH_FLAG_BUFFER_BASE_LO */
-			OUT_RING(ring, 0x00000000);    /* RB_DEPTH_FLAG_BUFFER_BASE_HI */
-			OUT_RING(ring, 0x00000000);    /* RB_DEPTH_FLAG_BUFFER_PITCH */
-		}
+		fd6_emit_flag_reference(ring, rsc,
+				zsbuf->u.tex.level, zsbuf->u.tex.first_layer);
 
 		if (rsc->lrz) {
 			OUT_PKT4(ring, REG_A6XX_GRAS_LRZ_BUFFER_BASE_LO, 5);
@@ -969,7 +968,7 @@ emit_blit(struct fd_batch *batch,
 	struct fdl_slice *slice;
 	struct fd_resource *rsc = fd_resource(psurf->texture);
 	enum pipe_format pfmt = psurf->format;
-	uint32_t offset, ubwc_offset;
+	uint32_t offset;
 	bool ubwc_enabled;
 
 	debug_assert(psurf->u.tex.first_layer == psurf->u.tex.last_layer);
@@ -984,8 +983,6 @@ emit_blit(struct fd_batch *batch,
 	offset = fd_resource_offset(rsc, psurf->u.tex.level,
 			psurf->u.tex.first_layer);
 	ubwc_enabled = fd_resource_ubwc_enabled(rsc, psurf->u.tex.level);
-	ubwc_offset = fd_resource_ubwc_offset(rsc, psurf->u.tex.level,
-			psurf->u.tex.first_layer);
 
 	debug_assert(psurf->u.tex.first_layer == psurf->u.tex.last_layer);
 
@@ -1013,9 +1010,8 @@ emit_blit(struct fd_batch *batch,
 
 	if (ubwc_enabled) {
 		OUT_PKT4(ring, REG_A6XX_RB_BLIT_FLAG_DST_LO, 3);
-		OUT_RELOCW(ring, rsc->bo, ubwc_offset, 0, 0);
-		OUT_RING(ring, A6XX_RB_BLIT_FLAG_DST_PITCH_PITCH(rsc->layout.ubwc_pitch) |
-				 A6XX_RB_BLIT_FLAG_DST_PITCH_ARRAY_PITCH(rsc->layout.ubwc_size));
+		fd6_emit_flag_reference(ring, rsc,
+				psurf->u.tex.level, psurf->u.tex.first_layer);
 	}
 
 	fd6_emit_blit(batch, ring);

@@ -35,6 +35,7 @@
 #include "fd6_blitter.h"
 #include "fd6_format.h"
 #include "fd6_emit.h"
+#include "fd6_resource.h"
 
 /* Make sure none of the requested dimensions extend beyond the size of the
  * resource.  Not entirely sure why this happens, but sometimes it does, and
@@ -499,8 +500,6 @@ emit_blit_or_clear_texture(struct fd_context *ctx, struct fd_ringbuffer *ring,
 	for (unsigned i = 0; i < info->dst.box.depth; i++) {
 		unsigned soff = fd_resource_offset(src, info->src.level, sbox->z + i);
 		unsigned doff = fd_resource_offset(dst, info->dst.level, dbox->z + i);
-		unsigned subwcoff = fd_resource_ubwc_offset(src, info->src.level, sbox->z + i);
-		unsigned dubwcoff = fd_resource_ubwc_offset(dst, info->dst.level, dbox->z + i);
 		bool subwc_enabled = fd_resource_ubwc_enabled(src, info->src.level);
 		bool dubwc_enabled = fd_resource_ubwc_enabled(dst, info->dst.level);
 
@@ -536,9 +535,7 @@ emit_blit_or_clear_texture(struct fd_context *ctx, struct fd_ringbuffer *ring,
 
 		if (subwc_enabled) {
 			OUT_PKT4(ring, REG_A6XX_SP_PS_2D_SRC_FLAGS_LO, 6);
-			OUT_RELOC(ring, src->bo, subwcoff, 0, 0);
-			OUT_RING(ring, A6XX_SP_PS_2D_SRC_FLAGS_PITCH_PITCH(src->layout.ubwc_pitch) |
-					 A6XX_SP_PS_2D_SRC_FLAGS_PITCH_ARRAY_PITCH(src->layout.ubwc_size));
+			fd6_emit_flag_reference(ring, src, info->src.level, sbox->z + i);
 			OUT_RING(ring, 0x00000000);
 			OUT_RING(ring, 0x00000000);
 			OUT_RING(ring, 0x00000000);
@@ -562,9 +559,7 @@ emit_blit_or_clear_texture(struct fd_context *ctx, struct fd_ringbuffer *ring,
 
 		if (dubwc_enabled) {
 			OUT_PKT4(ring, REG_A6XX_RB_2D_DST_FLAGS_LO, 6);
-			OUT_RELOCW(ring, dst->bo, dubwcoff, 0, 0);
-			OUT_RING(ring, A6XX_RB_2D_DST_FLAGS_PITCH_PITCH(dst->layout.ubwc_pitch) |
-					 A6XX_RB_2D_DST_FLAGS_PITCH_ARRAY_PITCH(dst->layout.ubwc_size));
+			fd6_emit_flag_reference(ring, dst, info->dst.level, dbox->z + i);
 			OUT_RING(ring, 0x00000000);
 			OUT_RING(ring, 0x00000000);
 			OUT_RING(ring, 0x00000000);
