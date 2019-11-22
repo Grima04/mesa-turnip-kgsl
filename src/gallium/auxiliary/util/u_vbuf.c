@@ -91,6 +91,7 @@
 #include "util/format/u_format.h"
 #include "util/u_inlines.h"
 #include "util/u_memory.h"
+#include "util/u_screen.h"
 #include "util/u_upload_mgr.h"
 #include "translate/translate.h"
 #include "translate/translate_cache.h"
@@ -291,6 +292,10 @@ boolean u_vbuf_get_caps(struct pipe_screen *screen, struct u_vbuf_caps *caps,
       screen->get_param(screen, PIPE_CAP_USER_VERTEX_BUFFERS);
    caps->max_vertex_buffers =
       screen->get_param(screen, PIPE_CAP_MAX_VERTEX_BUFFERS);
+
+   /* OpenGL 2.0 requires a minimum of 16 vertex buffers */
+   if (caps->max_vertex_buffers < 16)
+      fallback = TRUE;
 
    if (!caps->buffer_offset_unaligned ||
        !caps->buffer_stride_unaligned ||
