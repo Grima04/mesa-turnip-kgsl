@@ -505,6 +505,33 @@ bool valu_can_accept_vgpr(aco_ptr<Instruction>& instr, unsigned operand)
    return true;
 }
 
+/* check constant bus and literal limitations */
+bool check_vop3_operands(opt_ctx& ctx, unsigned num_operands, Operand *operands)
+{
+   int limit = 1;
+   unsigned num_sgprs = 0;
+   unsigned sgpr[] = {0, 0};
+
+   for (unsigned i = 0; i < num_operands; i++) {
+      Operand op = operands[i];
+
+      if (op.hasRegClass() && op.regClass().type() == RegType::sgpr) {
+         /* two reads of the same SGPR count as 1 to the limit */
+         if (op.tempId() != sgpr[0] && op.tempId() != sgpr[1]) {
+            if (num_sgprs < 2)
+               sgpr[num_sgprs++] = op.tempId();
+            limit--;
+            if (limit < 0)
+               return false;
+         }
+      } else if (op.isLiteral()) {
+         return false;
+      }
+   }
+
+   return true;
+}
+
 bool parse_base_offset(opt_ctx &ctx, Instruction* instr, unsigned op_index, Temp *base, uint32_t *offset)
 {
    Operand op = instr->operands[op_index];
@@ -1524,17 +1551,8 @@ bool match_op3_for_vop3(opt_ctx &ctx, aco_opcode op1, aco_opcode op2,
    }
 
    /* check operands */
-   unsigned sgpr_id = 0;
-   for (unsigned i = 0; i < 3; i++) {
-      Operand op = operands[i];
-      if (op.isLiteral()) {
-         return false;
-      } else if (op.isTemp() && op.getTemp().type() == RegType::sgpr) {
-         if (sgpr_id && sgpr_id != op.tempId())
-            return false;
-         sgpr_id = op.tempId();
-      }
-   }
+   if (!check_vop3_operands(ctx, 3, operands))
+      return false;
 
    return true;
 }
@@ -2144,25 +2162,17 @@ void combine_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr
          unsigned omod = 0;
          bool clamp = false;
          bool need_vop3 = false;
-         int num_sgpr = 0;
-         unsigned cur_sgpr = 0;
          op[0] = mul_instr->operands[0];
          op[1] = mul_instr->operands[1];
          op[2] = instr->operands[add_op_idx];
-         for (unsigned i = 0; i < 3; i++)
-         {
-            if (op[i].isLiteral())
-               return;
-            if (op[i].isTemp() && op[i].getTemp().type() == RegType::sgpr && op[i].tempId() != cur_sgpr) {
-               num_sgpr++;
-               cur_sgpr = op[i].tempId();
-            }
+         // TODO: would be better to check this before selecting a mul instr?
+         if (!check_vop3_operands(ctx, 3, op))
+            return;
+
+         for (unsigned i = 0; i < 3; i++) {
             if (!(i == 0 || (op[i].isTemp() && op[i].getTemp().type() == RegType::vgpr)))
                need_vop3 = true;
          }
-         // TODO: would be better to check this before selecting a mul instr?
-         if (num_sgpr > 1)
-            return;
 
          if (mul_instr->isVOP3()) {
             VOP3A_instruction* vop3 = static_cast<VOP3A_instruction*> (mul_instr);
