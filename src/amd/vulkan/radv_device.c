@@ -3973,8 +3973,7 @@ radv_finalize_timelines(struct radv_device *device,
 			pthread_mutex_lock(&wait_sems[i]->timeline.mutex);
 			struct radv_timeline_point *point =
 				radv_timeline_find_point_at_least_locked(device, &wait_sems[i]->timeline, wait_values[i]);
-			if (point)
-				--point->wait_count;
+			point->wait_count -= 2;
 			pthread_mutex_unlock(&wait_sems[i]->timeline.mutex);
 		}
 	}
@@ -3983,11 +3982,9 @@ radv_finalize_timelines(struct radv_device *device,
 			pthread_mutex_lock(&signal_sems[i]->timeline.mutex);
 			struct radv_timeline_point *point =
 				radv_timeline_find_point_at_least_locked(device, &signal_sems[i]->timeline, signal_values[i]);
-			if (point) {
-				signal_sems[i]->timeline.highest_submitted =
-					MAX2(signal_sems[i]->timeline.highest_submitted, point->value);
-				point->wait_count--;
-			}
+			signal_sems[i]->timeline.highest_submitted =
+				MAX2(signal_sems[i]->timeline.highest_submitted, point->value);
+			point->wait_count -= 2;
 			radv_timeline_trigger_waiters_locked(&signal_sems[i]->timeline, processing_list);
 			pthread_mutex_unlock(&signal_sems[i]->timeline.mutex);
 		}
@@ -5580,8 +5577,6 @@ radv_timeline_wait_locked(struct radv_device *device,
 	struct radv_timeline_point *point = radv_timeline_find_point_at_least_locked(device, timeline, value);
 	if (!point)
 		return VK_SUCCESS;
-
-	point->wait_count++;
 
 	pthread_mutex_unlock(&timeline->mutex);
 
