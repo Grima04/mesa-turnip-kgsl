@@ -328,8 +328,7 @@ spec/arb_post_depth_coverage/arb_post_depth_coverage-basic: skip
 spec/arb_post_depth_coverage/arb_post_depth_coverage-multisampling: skip
 spec/arb_post_depth_coverage/arb_post_depth_coverage-sample-shading: skip
 spec/arb_program_interface_query/arb_program_interface_query-getprogramresourceindex: fail
-spec/arb_query_buffer_object/coherency: skip
-spec/arb_query_buffer_object/qbo: skip
+spec/arb_query_buffer_object/qbo: fail
 spec/arb_sample_locations/test: skip
 spec/arb_sample_shading/arb_sample_shading-api: skip
 spec/arb_sample_shading/arb_sample_shading-builtin-gl-sample-mask-mrt-alpha: skip
@@ -1758,10 +1757,10 @@ wgl/wgl-sanity: skip
 summary:
        name:  results
        ----  --------
-       pass:     4519
-       fail:      101
+       pass:     4520
+       fail:      102
       crash:        2
-       skip:     1652
+       skip:     1650
     timeout:        0
        warn:        2
  incomplete:        0
