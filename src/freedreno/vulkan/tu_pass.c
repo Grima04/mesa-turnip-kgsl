@@ -150,9 +150,8 @@ tu_CreateRenderPass(VkDevice _device,
          }
       }
 
-      subpass->has_resolve = false;
+      subpass->resolve_attachments = desc->pResolveAttachments ? p : NULL;
       if (desc->pResolveAttachments) {
-         subpass->resolve_attachments = p;
          p += desc->colorAttachmentCount;
 
          for (uint32_t j = 0; j < desc->colorAttachmentCount; j++) {
@@ -162,7 +161,6 @@ tu_CreateRenderPass(VkDevice _device,
                .layout = desc->pResolveAttachments[j].layout,
             };
             if (a != VK_ATTACHMENT_UNUSED) {
-               subpass->has_resolve = true;
                pass->attachments[desc->pResolveAttachments[j].attachment]
                   .view_mask |= subpass->view_mask;
             }
@@ -325,9 +323,8 @@ tu_CreateRenderPass2KHR(VkDevice _device,
          }
       }
 
-      subpass->has_resolve = false;
+      subpass->resolve_attachments = desc->pResolveAttachments ? p : NULL;
       if (desc->pResolveAttachments) {
-         subpass->resolve_attachments = p;
          p += desc->colorAttachmentCount;
 
          for (uint32_t j = 0; j < desc->colorAttachmentCount; j++) {
@@ -337,7 +334,6 @@ tu_CreateRenderPass2KHR(VkDevice _device,
                .layout = desc->pResolveAttachments[j].layout,
             };
             if (a != VK_ATTACHMENT_UNUSED) {
-               subpass->has_resolve = true;
                pass->attachments[desc->pResolveAttachments[j].attachment]
                   .view_mask |= subpass->view_mask;
             }

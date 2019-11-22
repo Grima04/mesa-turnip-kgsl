@@ -815,10 +815,28 @@ tu6_emit_tile_load(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 }
 
 static void
+tu6_emit_store_attachment(struct tu_cmd_buffer *cmd,
+                          struct tu_cs *cs,
+                          uint32_t a,
+                          uint32_t gmem_index)
+{
+   const struct tu_framebuffer *fb = cmd->state.framebuffer;
+   const struct tu_tiling_config *tiling = &cmd->state.tiling_config;
+
+   if (a == VK_ATTACHMENT_UNUSED)
+      return;
+
+   tu6_emit_blit_info(cmd, cs, fb->attachments[a].attachment,
+                      tiling->gmem_offsets[gmem_index], 0);
+   tu6_emit_blit(cmd, cs);
+}
+
+static void
 tu6_emit_tile_store(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 {
    const struct tu_framebuffer *fb = cmd->state.framebuffer;
    const struct tu_tiling_config *tiling = &cmd->state.tiling_config;
+   const struct tu_subpass *subpass = cmd->state.subpass;
 
    if (false) {
       /* hw binning? */
@@ -841,24 +859,20 @@ tu6_emit_tile_store(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 
    tu6_emit_blit_scissor(cmd, cs);
 
-   for (uint32_t i = 0; i < cmd->state.subpass->color_count; ++i) {
-      uint32_t a = cmd->state.subpass->color_attachments[i].attachment;
-      if (a == VK_ATTACHMENT_UNUSED)
-         continue;
-
-      const struct tu_image_view *iview = fb->attachments[a].attachment;
-      tu6_emit_blit_info(cmd, cs, iview, tiling->gmem_offsets[i], 0);
-      tu6_emit_blit(cmd, cs);
+   for (uint32_t i = 0; i < subpass->color_count; ++i) {
+      tu6_emit_store_attachment(cmd, cs,
+                                subpass->color_attachments[i].attachment,
+                                i);
+      if (subpass->resolve_attachments) {
+         tu6_emit_store_attachment(cmd, cs,
+                                   subpass->resolve_attachments[i].attachment,
+                                   i);
+      }
    }
 
-   const uint32_t a = cmd->state.subpass->depth_stencil_attachment.attachment;
-   if (a != VK_ATTACHMENT_UNUSED) {
-      const struct tu_image_view *iview = fb->attachments[a].attachment;
-      tu6_emit_blit_info(cmd, cs, iview,
-                         tiling->gmem_offsets[cmd->state.subpass->color_count],
-                         0);
-      tu6_emit_blit(cmd, cs);
-   }
+   tu6_emit_store_attachment(cmd, cs,
+                             subpass->depth_stencil_attachment.attachment,
+                             subpass->color_count);
 }
 
 static void
@@ -1119,31 +1133,6 @@ tu6_render_end(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
    tu6_emit_lrz_flush(cmd, cs);
 
    tu6_emit_event_write(cmd, cs, CACHE_FLUSH_TS, true);
-
-   if (subpass->has_resolve) {
-      for (uint32_t i = 0; i < subpass->color_count; ++i) {
-         struct tu_subpass_attachment src_att = subpass->color_attachments[i];
-         struct tu_subpass_attachment dst_att = subpass->resolve_attachments[i];
-
-         if (dst_att.attachment == VK_ATTACHMENT_UNUSED)
-            continue;
-
-         struct tu_image *src_img = fb->attachments[src_att.attachment].attachment->image;
-         struct tu_image *dst_img = fb->attachments[dst_att.attachment].attachment->image;
-
-         assert(src_img->extent.width == dst_img->extent.width);
-         assert(src_img->extent.height == dst_img->extent.height);
-
-         tu_bo_list_add(&cmd->bo_list, src_img->bo, MSM_SUBMIT_BO_READ);
-         tu_bo_list_add(&cmd->bo_list, dst_img->bo, MSM_SUBMIT_BO_WRITE);
-
-         tu_blit(cmd, &(struct tu_blit) {
-            .dst = tu_blit_surf_whole(dst_img, 0, 0),
-            .src = tu_blit_surf_whole(src_img, 0, 0),
-            .layers = 1,
-         });
-      }
-   }
 
    tu_cs_sanity_check(cs);
 }

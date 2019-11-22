@@ -1485,9 +1485,6 @@ struct tu_subpass
    struct tu_subpass_attachment *resolve_attachments;
    struct tu_subpass_attachment depth_stencil_attachment;
 
-   /** Subpass has at least one resolve attachment */
-   bool has_resolve;
-
    struct tu_subpass_barrier start_barrier;
 
    uint32_t view_mask;
