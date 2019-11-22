@@ -416,6 +416,9 @@ bool can_swap_operands(aco_ptr<Instruction>& instr)
 
 bool can_use_VOP3(aco_ptr<Instruction>& instr)
 {
+   if (instr->isVOP3())
+      return true;
+
    if (instr->operands.size() && instr->operands[0].isLiteral())
       return false;
 
@@ -426,6 +429,10 @@ bool can_use_VOP3(aco_ptr<Instruction>& instr)
           instr->opcode != aco_opcode::v_madak_f32 &&
           instr->opcode != aco_opcode::v_madmk_f16 &&
           instr->opcode != aco_opcode::v_madak_f16 &&
+          instr->opcode != aco_opcode::v_fmamk_f32 &&
+          instr->opcode != aco_opcode::v_fmaak_f32 &&
+          instr->opcode != aco_opcode::v_fmamk_f16 &&
+          instr->opcode != aco_opcode::v_fmaak_f16 &&
           instr->opcode != aco_opcode::v_readlane_b32 &&
           instr->opcode != aco_opcode::v_writelane_b32 &&
           instr->opcode != aco_opcode::v_readfirstlane_b32;
