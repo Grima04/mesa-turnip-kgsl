@@ -287,6 +287,11 @@ Pay close attention to the prompts as you might be required to enter
 your GPG and SSH passphrase(s) to sign and upload the files,
 respectively.
 
+Ensure that you do sign the tarballs, that your key is mentioned in the
+release notes, and is published in `docs/release-maintainers-keys/
+</release-maintainers-keys/>`__.
+
+
 Add the sha256sums to the release notes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
