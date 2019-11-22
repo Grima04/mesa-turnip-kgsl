@@ -1624,6 +1624,40 @@ bool combine_three_valu_op(opt_ctx& ctx, aco_ptr<Instruction>& instr, aco_opcode
    return false;
 }
 
+bool combine_minmax(opt_ctx& ctx, aco_ptr<Instruction>& instr, aco_opcode opposite, aco_opcode minmax3)
+{
+   if (combine_three_valu_op(ctx, instr, instr->opcode, minmax3, "012", 1 | 2))
+      return true;
+
+   uint32_t omod_clamp = ctx.info[instr->definitions[0].tempId()].label &
+                         (label_omod_success | label_clamp_success);
+
+   /* min(-max(a, b), c) -> min3(-a, -b, c) *
+    * max(-min(a, b), c) -> max3(-a, -b, c) */
+   for (unsigned swap = 0; swap < 2; swap++) {
+      Operand operands[3];
+      bool neg[3], abs[3], clamp;
+      uint8_t opsel = 0, omod = 0;
+      bool inbetween_neg;
+      if (match_op3_for_vop3(ctx, instr->opcode, opposite,
+                             instr.get(), swap, "012",
+                             operands, neg, abs, &opsel,
+                             &clamp, &omod, &inbetween_neg, NULL, NULL) &&
+          inbetween_neg) {
+         ctx.uses[instr->operands[swap].tempId()]--;
+         neg[1] = true;
+         neg[2] = true;
+         create_vop3_for_op3(ctx, minmax3, instr, operands, neg, abs, opsel, clamp, omod);
+         if (omod_clamp & label_omod_success)
+            ctx.info[instr->definitions[0].tempId()].set_omod_success(instr.get());
+         if (omod_clamp & label_clamp_success)
+            ctx.info[instr->definitions[0].tempId()].set_clamp_success(instr.get());
+         return true;
+      }
+   }
+   return false;
+}
+
 /* s_not_b32(s_and_b32(a, b)) -> s_nand_b32(a, b)
  * s_not_b32(s_or_b32(a, b)) -> s_nor_b32(a, b)
  * s_not_b32(s_xor_b32(a, b)) -> s_xnor_b32(a, b)
@@ -2303,7 +2337,7 @@ void combine_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr
       bool some_gfx9_only;
       if (get_minmax_info(instr->opcode, &min, &max, &min3, &max3, &med3, &some_gfx9_only) &&
           (!some_gfx9_only || ctx.program->chip_class >= GFX9)) {
-         if (combine_three_valu_op(ctx, instr, instr->opcode, instr->opcode == min ? min3 : max3, "012", 1 | 2));
+         if (combine_minmax(ctx, instr, instr->opcode == min ? max : min, instr->opcode == min ? min3 : max3)) ;
          else combine_clamp(ctx, instr, min, max, med3);
       }
    }
