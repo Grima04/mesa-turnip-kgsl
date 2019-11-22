@@ -399,7 +399,7 @@ wait_imm kill(Instruction* instr, wait_ctx& ctx)
       switch (instr->opcode) {
       case aco_opcode::p_memory_barrier_all:
          for (unsigned i = 0; i < barrier_count; i++) {
-            if ((1 << i) == barrier_shared && workgroup_size <= 64)
+            if ((1 << i) == barrier_shared && workgroup_size <= ctx.program->wave_size)
                continue;
             imm.combine(ctx.barrier_imm[i]);
          }
@@ -414,7 +414,7 @@ wait_imm kill(Instruction* instr, wait_ctx& ctx)
          imm.combine(ctx.barrier_imm[ffs(barrier_image) - 1]);
          break;
       case aco_opcode::p_memory_barrier_shared:
-         if (workgroup_size > 64)
+         if (workgroup_size > ctx.program->wave_size)
             imm.combine(ctx.barrier_imm[ffs(barrier_shared) - 1]);
          break;
       default:
