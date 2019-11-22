@@ -1794,6 +1794,9 @@ bool get_minmax_info(aco_opcode op, aco_opcode *min, aco_opcode *max, aco_opcode
 bool combine_clamp(opt_ctx& ctx, aco_ptr<Instruction>& instr,
                    aco_opcode min, aco_opcode max, aco_opcode med)
 {
+   /* TODO: GLSL's clamp(x, minVal, maxVal) and SPIR-V's
+    * FClamp(x, minVal, maxVal)/NClamp(x, minVal, maxVal) are undefined if
+    * minVal > maxVal, which means we can always select it to a v_med3_f32 */
    aco_opcode other_op;
    if (instr->opcode == min)
       other_op = max;
@@ -1818,8 +1821,7 @@ bool combine_clamp(opt_ctx& ctx, aco_ptr<Instruction>& instr,
             uint32_t val;
             if (operands[i].isConstant()) {
                val = operands[i].constantValue();
-            } else if (operands[i].isTemp() && ctx.uses[operands[i].tempId()] == 1 &&
-                       ctx.info[operands[i].tempId()].is_constant_or_literal()) {
+            } else if (operands[i].isTemp() && ctx.info[operands[i].tempId()].is_constant_or_literal()) {
                val = ctx.info[operands[i].tempId()].val;
             } else {
                continue;
