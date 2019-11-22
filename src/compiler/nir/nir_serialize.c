@@ -640,9 +640,9 @@ union packed_instr {
    struct {
       unsigned instr_type:4;
       unsigned intrinsic:9;
-      unsigned num_components:3;
       unsigned const_indices_encoding:2;
       unsigned packed_const_indices:6;
+      unsigned _pad:3;
       unsigned dest:8;
    } intrinsic;
    struct {
@@ -1122,8 +1122,6 @@ write_intrinsic(write_ctx *ctx, const nir_intrinsic_instr *intrin)
 
    header.intrinsic.instr_type = intrin->instr.type;
    header.intrinsic.intrinsic = intrin->intrinsic;
-   header.intrinsic.num_components =
-      encode_num_components_in_3bits(intrin->num_components);
 
    /* Analyze constant indices to decide how to encode them. */
    if (num_indices) {
@@ -1185,14 +1183,26 @@ read_intrinsic(read_ctx *ctx, union packed_instr header)
    unsigned num_srcs = nir_intrinsic_infos[op].num_srcs;
    unsigned num_indices = nir_intrinsic_infos[op].num_indices;
 
-   intrin->num_components =
-      decode_num_components_in_3bits(header.intrinsic.num_components);
-
    if (nir_intrinsic_infos[op].has_dest)
       read_dest(ctx, &intrin->dest, &intrin->instr, header);
 
    for (unsigned i = 0; i < num_srcs; i++)
       read_src(ctx, &intrin->src[i], &intrin->instr);
+
+   /* Vectorized instrinsics have num_components same as dst or src that has
+    * 0 components in the info. Find it.
+    */
+   if (nir_intrinsic_infos[op].has_dest &&
+       nir_intrinsic_infos[op].dest_components == 0) {
+      intrin->num_components = nir_dest_num_components(intrin->dest);
+   } else {
+      for (unsigned i = 0; i < num_srcs; i++) {
+         if (nir_intrinsic_infos[op].src_components[i] == 0) {
+            intrin->num_components = nir_src_num_components(intrin->src[i]);
+            break;
+         }
+      }
+   }
 
    if (num_indices) {
       switch (header.intrinsic.const_indices_encoding) {
