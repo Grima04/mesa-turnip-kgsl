@@ -1004,14 +1004,15 @@ static void si_lower_nir(struct si_screen *sscreen, struct nir_shader *nir)
 	 *
 	 * st/mesa calls finalize_nir twice, but we can't call this pass twice.
 	 */
+	bool changed = false;
 	if (!nir->constant_data) {
-		NIR_PASS_V(nir, nir_opt_large_constants,
-			   glsl_get_natural_size_align_bytes, 16);
+		NIR_PASS(changed, nir, nir_opt_large_constants,
+			 glsl_get_natural_size_align_bytes, 16);
 	}
 
-	ac_lower_indirect_derefs(nir, sscreen->info.chip_class);
-
-	si_nir_opts(nir);
+	changed |= ac_lower_indirect_derefs(nir, sscreen->info.chip_class);
+	if (changed)
+		si_nir_opts(nir);
 
 	NIR_PASS_V(nir, nir_lower_bool_to_int32);
 	NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_function_temp);

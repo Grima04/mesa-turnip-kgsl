@@ -4783,17 +4783,19 @@ void ac_nir_translate(struct ac_llvm_context *ac, struct ac_shader_abi *abi,
 	ralloc_free(ctx.vars);
 }
 
-void
+bool
 ac_lower_indirect_derefs(struct nir_shader *nir, enum chip_class chip_class)
 {
+	bool progress = false;
+
 	/* Lower large variables to scratch first so that we won't bloat the
 	 * shader by generating large if ladders for them. We later lower
 	 * scratch to alloca's, assuming LLVM won't generate VGPR indexing.
 	 */
-	NIR_PASS_V(nir, nir_lower_vars_to_scratch,
-		   nir_var_function_temp,
-		   256,
-		   glsl_get_natural_size_align_bytes);
+	NIR_PASS(progress, nir, nir_lower_vars_to_scratch,
+		 nir_var_function_temp,
+		 256,
+		 glsl_get_natural_size_align_bytes);
 
 	/* While it would be nice not to have this flag, we are constrained
 	 * by the reality that LLVM 9.0 has buggy VGPR indexing on GFX9.
@@ -4825,7 +4827,8 @@ ac_lower_indirect_derefs(struct nir_shader *nir, enum chip_class chip_class)
 	 */
 	indirect_mask |= nir_var_function_temp;
 
-	nir_lower_indirect_derefs(nir, indirect_mask);
+	progress |= nir_lower_indirect_derefs(nir, indirect_mask);
+	return progress;
 }
 
 static unsigned

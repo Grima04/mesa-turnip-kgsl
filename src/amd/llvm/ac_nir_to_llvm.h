@@ -46,7 +46,7 @@ static inline unsigned ac_llvm_reg_index_soa(unsigned index, unsigned chan)
 	return (index * 4) + chan;
 }
 
-void ac_lower_indirect_derefs(struct nir_shader *nir, enum chip_class);
+bool ac_lower_indirect_derefs(struct nir_shader *nir, enum chip_class);
 
 bool ac_are_tessfactors_def_in_all_invocs(const struct nir_shader *nir);
 
