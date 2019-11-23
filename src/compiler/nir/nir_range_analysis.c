@@ -218,6 +218,13 @@ analyze_constant(const struct nir_alu_instr *instr, unsigned src,
  */
 #define _______ unknown
 
+
+/* MSVC doesn't have C99's _Pragma() */
+#ifdef _MSC_VER
+#define _Pragma(x)
+#endif
+
+
 #ifndef NDEBUG
 #define ASSERT_TABLE_IS_COMMUTATIVE(t)                        \
    do {                                                       \
