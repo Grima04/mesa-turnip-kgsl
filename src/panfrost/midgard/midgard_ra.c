@@ -524,10 +524,15 @@ allocate_registers(compiler_context *ctx, bool *spilled)
                 assert(check_read_class(l->class, ins->type, ins->src[2]));
         }
 
-        /* Mark writeout to r0 */
+        /* Mark writeout to r0, render target to r1.z */
         mir_foreach_instr_global(ctx, ins) {
-                if (ins->compact_branch && ins->writeout && ins->src[0] < ctx->temp_count)
+                if (!(ins->compact_branch && ins->writeout)) continue;
+
+                if (ins->src[0] < ctx->temp_count)
                         l->solutions[ins->src[0]] = 0;
+
+                if (ins->src[1] < ctx->temp_count)
+                        l->solutions[ins->src[1]] = (16 * 1) + COMPONENT_Z * 4;
         }
         
         mir_compute_interference(ctx, l);

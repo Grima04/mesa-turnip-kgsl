@@ -1330,51 +1330,26 @@ compute_builtin_arg(nir_op op)
 
 /* Emit store for a fragment shader, which is encoded via a fancy branch. TODO:
  * Handle MRT here */
+static void
+emit_fragment_epilogue(compiler_context *ctx, unsigned rt);
 
 static void
 emit_fragment_store(compiler_context *ctx, unsigned src, unsigned rt)
 {
         emit_explicit_constant(ctx, src, src);
 
-        /* If we're doing MRT, we need to specify the render target */
-
-        midgard_instruction rt_move = {
-                .dest = ~0
-        };
-
-        if (rt != 0) {
-                /* We'll write to r1.z */
-                rt_move = v_mov(~0, SSA_FIXED_REGISTER(1));
-                rt_move.mask = 1 << COMPONENT_Z;
-                rt_move.unit = UNIT_SADD;
-
-                /* r1.z = (rt * 0x100) */
-                rt_move.has_inline_constant = true;
-                rt_move.inline_constant = (rt * 0x100);
-
-                /* r1 */
-                ctx->work_registers = MAX2(ctx->work_registers, 1);
-
-                /* Do the write */
-                emit_mir_instruction(ctx, rt_move);
-        }
-
-        /* Next, generate the branch. For R render targets in the writeout, the
-         * i'th render target jumps to pseudo-offset [2(R-1) + i] */
-
-        unsigned outputs = ctx->is_blend ? 1 : ctx->nir->num_outputs;
-        unsigned offset = (2 * (outputs - 1)) + rt;
-
         struct midgard_instruction ins =
-                v_alu_br_compact_cond(midgard_jmp_writeout_op_writeout, TAG_ALU_4, offset, midgard_condition_always);
+                v_alu_br_compact_cond(midgard_jmp_writeout_op_writeout, TAG_ALU_4, 0, midgard_condition_always);
 
         /* Add dependencies */
         ins.src[0] = src;
-        ins.src[1] = rt_move.dest;
+        ins.constants[0] = rt * 0x100;
 
         /* Emit the branch */
         emit_mir_instruction(ctx, ins);
         schedule_barrier(ctx);
+
+        emit_fragment_epilogue(ctx, rt);
 }
 
 static void
@@ -2229,10 +2204,20 @@ midgard_opt_pos_propagate(compiler_context *ctx, midgard_block *block)
 }
 
 static void
-emit_fragment_epilogue(compiler_context *ctx)
+emit_fragment_epilogue(compiler_context *ctx, unsigned rt)
 {
-        /* Just emit the last chunk with the branch */
+        /* Include a move to specify the render target */
+
+        if (rt > 0) {
+                midgard_instruction rt_move = v_mov(SSA_FIXED_REGISTER(1),
+                                SSA_FIXED_REGISTER(1));
+                rt_move.mask = 1 << COMPONENT_Z;
+                rt_move.unit = UNIT_SADD;
+                emit_mir_instruction(ctx, rt_move);
+        }
+
         EMIT(alu_br_compact_cond, midgard_jmp_writeout_op_writeout, TAG_ALU_4, ~0, midgard_condition_always);
+        schedule_barrier(ctx);
 }
 
 static midgard_block *
@@ -2524,19 +2509,6 @@ midgard_compile_shader_nir(nir_shader *nir, midgard_program *program, bool is_bl
                 ctx->func = func;
 
                 emit_cf_list(ctx, &func->impl->body);
-
-                /* Emit empty exit block with successor */
-
-                struct midgard_block *semi_end = ctx->current_block;
-
-                struct midgard_block *end =
-                        emit_block(ctx, func->impl->end_block);
-
-                if (ctx->stage == MESA_SHADER_FRAGMENT)
-                        emit_fragment_epilogue(ctx);
-
-                midgard_block_add_successor(semi_end, end);
-
                 break; /* TODO: Multi-function shaders */
         }
 

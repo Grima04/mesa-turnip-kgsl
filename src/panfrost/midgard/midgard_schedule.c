@@ -910,6 +910,19 @@ mir_schedule_alu(
                         unreachable("Bad condition");
         }
 
+        /* If we have a render target reference, schedule a move for it */
+
+        if (branch && branch->writeout && branch->constants[0]) {
+                midgard_instruction mov = v_mov(~0, make_compiler_temp(ctx));
+                sadd = mem_dup(&mov, sizeof(midgard_instruction));
+                sadd->unit = UNIT_SADD;
+                sadd->mask = 0x1;
+                sadd->has_inline_constant = true;
+                sadd->inline_constant = branch->constants[0];
+                branch->src[1] = mov.dest;
+                /* TODO: Don't leak */
+        }
+
         /* Stage 2, let's schedule sadd before vmul for writeout */
         mir_choose_alu(&sadd, instructions, worklist, len, &predicate, UNIT_SADD);
 
