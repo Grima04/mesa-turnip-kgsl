@@ -357,7 +357,7 @@ option(
 option(
   'prefer-iris',
   type : 'boolean',
-  value : false,
+  value : true,
   description : 'Prefer new Intel iris driver over older i965 driver'
 )
 option('egl-lib-suffix',
