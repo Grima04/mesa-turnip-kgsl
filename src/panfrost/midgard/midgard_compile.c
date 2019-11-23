@@ -1374,6 +1374,7 @@ emit_fragment_store(compiler_context *ctx, unsigned src, unsigned rt)
 
         /* Emit the branch */
         emit_mir_instruction(ctx, ins);
+        schedule_barrier(ctx);
 }
 
 static void
