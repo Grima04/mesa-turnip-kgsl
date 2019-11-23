@@ -652,6 +652,9 @@ st_create_context_priv(struct gl_context *ctx, struct pipe_context *pipe,
    st->has_astc_2d_ldr =
       screen->is_format_supported(screen, PIPE_FORMAT_ASTC_4x4_SRGB,
                                   PIPE_TEXTURE_2D, 0, 0, PIPE_BIND_SAMPLER_VIEW);
+   st->has_astc_5x5_ldr =
+      screen->is_format_supported(screen, PIPE_FORMAT_ASTC_5x5_SRGB,
+                                  PIPE_TEXTURE_2D, 0, 0, PIPE_BIND_SAMPLER_VIEW);
    st->prefer_blit_based_texture_transfer = screen->get_param(screen,
                               PIPE_CAP_PREFER_BLIT_BASED_TEXTURE_TRANSFER);
    st->force_persample_in_shader =
