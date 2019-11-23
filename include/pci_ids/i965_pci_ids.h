@@ -95,6 +95,7 @@ CHIPSET(0x22B0, chv,     "Intel(R) HD Graphics (Cherrytrail)")
 CHIPSET(0x22B1, chv,     "Intel(R) HD Graphics XXX (Braswell)") /* Overridden in brw_get_renderer_string */
 CHIPSET(0x22B2, chv,     "Intel(R) HD Graphics (Cherryview)")
 CHIPSET(0x22B3, chv,     "Intel(R) HD Graphics (Cherryview)")
+#ifndef PREFER_IRIS
 CHIPSET(0x1602, bdw_gt1, "Intel(R) Broadwell GT1")
 CHIPSET(0x1606, bdw_gt1, "Intel(R) Broadwell GT1")
 CHIPSET(0x160A, bdw_gt1, "Intel(R) Broadwell GT1")
@@ -240,3 +241,4 @@ CHIPSET(0x4500, ehl_4x8, "Intel(R) HD Graphics (Elkhart Lake 4x8)")
 CHIPSET(0x4571, ehl_4x8, "Intel(R) HD Graphics (Elkhart Lake 4x8)")
 CHIPSET(0x4551, ehl_4x4, "Intel(R) HD Graphics (Elkhart Lake 4x4)")
 CHIPSET(0x4541, ehl_2x4, "Intel(R) HD Graphics (Elkhart Lake 2x4)")
+#endif
