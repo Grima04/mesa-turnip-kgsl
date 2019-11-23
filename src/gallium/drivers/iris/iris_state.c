@@ -4596,9 +4596,8 @@ use_sampler_view(struct iris_context *ice,
                  struct iris_batch *batch,
                  struct iris_sampler_view *isv)
 {
-   // XXX: ASTC hacks
    enum isl_aux_usage aux_usage =
-      iris_resource_texture_aux_usage(ice, isv->res, isv->view.format, 0);
+      iris_resource_texture_aux_usage(ice, isv->res, isv->view.format);
 
    iris_use_pinned_bo(batch, isv->res->bo, false);
    iris_use_pinned_bo(batch, iris_resource_bo(isv->surface_state.ref.res), false);
