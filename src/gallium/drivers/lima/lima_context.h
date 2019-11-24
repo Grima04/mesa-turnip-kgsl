@@ -188,7 +188,6 @@ struct lima_context {
    } dirty;
 
    struct u_upload_mgr *uploader;
-   struct u_suballocator *suballocator;
    struct blitter_context *blitter;
 
    struct slab_child_pool transfer_pool;
@@ -282,7 +281,7 @@ uint32_t lima_ctx_buff_va(struct lima_context *ctx, enum lima_ctx_buff buff,
                           unsigned submit);
 void *lima_ctx_buff_map(struct lima_context *ctx, enum lima_ctx_buff buff);
 void *lima_ctx_buff_alloc(struct lima_context *ctx, enum lima_ctx_buff buff,
-                          unsigned size, bool uploader);
+                          unsigned size);
 
 void lima_state_init(struct lima_context *ctx);
 void lima_state_fini(struct lima_context *ctx);

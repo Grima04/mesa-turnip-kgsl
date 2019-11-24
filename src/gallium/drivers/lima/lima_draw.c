@@ -984,7 +984,7 @@ lima_pack_render_state(struct lima_context *ctx, const struct pipe_draw_info *in
 {
    struct lima_render_state *render =
       lima_ctx_buff_alloc(ctx, lima_ctx_buff_pp_plb_rsw,
-                          sizeof(*render), true);
+                          sizeof(*render));
 
    /* do hw support RGBA independ blend?
     * PIPE_CAP_INDEP_BLEND_ENABLE
@@ -1146,7 +1146,7 @@ lima_update_gp_attribute_info(struct lima_context *ctx, const struct pipe_draw_i
 
    uint32_t *attribute =
       lima_ctx_buff_alloc(ctx, lima_ctx_buff_gp_attribute_info,
-                          MAX2(1, ve->num_elements) * 8, true);
+                          MAX2(1, ve->num_elements) * 8);
 
    int n = 0;
    for (int i = 0; i < ve->num_elements; i++) {
@@ -1182,7 +1182,7 @@ lima_update_gp_uniform(struct lima_context *ctx)
 
    int size = vs->uniform_pending_offset + vs->constant_size + 32;
    void *vs_const_buff =
-      lima_ctx_buff_alloc(ctx, lima_ctx_buff_gp_uniform, size, true);
+      lima_ctx_buff_alloc(ctx, lima_ctx_buff_gp_uniform, size);
 
    if (ccb->buffer)
       memcpy(vs_const_buff, ccb->buffer, ccb->size);
@@ -1215,10 +1215,10 @@ lima_update_pp_uniform(struct lima_context *ctx)
 
    uint16_t *fp16_const_buff =
       lima_ctx_buff_alloc(ctx, lima_ctx_buff_pp_uniform,
-                          const_buff_size * sizeof(uint16_t), true);
+                          const_buff_size * sizeof(uint16_t));
 
    uint32_t *array =
-      lima_ctx_buff_alloc(ctx, lima_ctx_buff_pp_uniform_array, 4, true);
+      lima_ctx_buff_alloc(ctx, lima_ctx_buff_pp_uniform_array, 4);
 
    for (int i = 0; i < const_buff_size; i++)
        fp16_const_buff[i] = util_float_to_half(const_buff[i]);
@@ -1242,7 +1242,7 @@ lima_update_varying(struct lima_context *ctx, const struct pipe_draw_info *info)
 
    uint32_t *varying =
       lima_ctx_buff_alloc(ctx, lima_ctx_buff_gp_varying_info,
-                          vs->num_outputs * 8, true);
+                          vs->num_outputs * 8);
    int n = 0;
 
    int offset = 0;
@@ -1577,7 +1577,7 @@ _lima_flush(struct lima_context *ctx, bool end_of_frame)
 
    if (vs_cmd_size) {
       void *vs_cmd =
-         lima_ctx_buff_alloc(ctx, lima_ctx_buff_gp_vs_cmd, vs_cmd_size, true);
+         lima_ctx_buff_alloc(ctx, lima_ctx_buff_gp_vs_cmd, vs_cmd_size);
       memcpy(vs_cmd, util_dynarray_begin(&ctx->vs_cmd_array), vs_cmd_size);
       util_dynarray_clear(&ctx->vs_cmd_array);
       vs_cmd_va = lima_ctx_buff_va(ctx, lima_ctx_buff_gp_vs_cmd,
@@ -1589,7 +1589,7 @@ _lima_flush(struct lima_context *ctx, bool end_of_frame)
    }
 
    void *plbu_cmd =
-      lima_ctx_buff_alloc(ctx, lima_ctx_buff_gp_plbu_cmd, plbu_cmd_size, true);
+      lima_ctx_buff_alloc(ctx, lima_ctx_buff_gp_plbu_cmd, plbu_cmd_size);
    memcpy(plbu_cmd, util_dynarray_begin(&ctx->plbu_cmd_array), plbu_cmd_size);
    util_dynarray_clear(&ctx->plbu_cmd_array);
    plbu_cmd_va = lima_ctx_buff_va(ctx, lima_ctx_buff_gp_plbu_cmd,
@@ -1638,7 +1638,7 @@ _lima_flush(struct lima_context *ctx, bool end_of_frame)
    uint32_t pp_stack_va = 0;
    if (ctx->pp_max_stack_size) {
       lima_ctx_buff_alloc(ctx, lima_ctx_buff_pp_stack, screen->num_pp *
-                          ctx->pp_max_stack_size * pp_stack_pp_size, true);
+                          ctx->pp_max_stack_size * pp_stack_pp_size);
       pp_stack_va = lima_ctx_buff_va(ctx, lima_ctx_buff_pp_stack,
                                      LIMA_CTX_BUFF_SUBMIT_PP);
    }
