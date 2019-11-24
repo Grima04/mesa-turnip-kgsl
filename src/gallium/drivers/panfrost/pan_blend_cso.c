@@ -75,11 +75,12 @@ panfrost_get_blend_shader(
         /* Prevent NULL collision issues.. */
         assert(fmt != 0);
 
-        /* Check the cache */
+        /* Check the cache. Key by the RT and format */
         struct hash_table_u64 *shaders = blend->rt[rt].shaders;
+        unsigned key = (fmt << 3) | rt;
 
         struct panfrost_blend_shader *shader =
-                _mesa_hash_table_u64_search(shaders, fmt);
+                _mesa_hash_table_u64_search(shaders, key);
 
         if (shader)
                 return shader;
@@ -87,10 +88,10 @@ panfrost_get_blend_shader(
         /* Cache miss. Build one instead, cache it, and go */
 
         struct panfrost_blend_shader generated =
-                panfrost_compile_blend_shader(ctx, &blend->base, fmt);
+                panfrost_compile_blend_shader(ctx, &blend->base, fmt, rt);
 
         shader = mem_dup(&generated, sizeof(generated));
-        _mesa_hash_table_u64_insert(shaders, fmt, shader);
+        _mesa_hash_table_u64_insert(shaders, key, shader);
         return  shader;
 }
 

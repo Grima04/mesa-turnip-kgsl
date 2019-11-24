@@ -1607,9 +1607,9 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                                 splatter.swizzle[1][c] = 0;
 
                         emit_mir_instruction(ctx, splatter);
-                        emit_fragment_store(ctx, expanded, 0);
+                        emit_fragment_store(ctx, expanded, ctx->blend_rt);
                 } else
-                        emit_fragment_store(ctx, reg, 0);
+                        emit_fragment_store(ctx, reg, ctx->blend_rt);
 
                 break;
 
@@ -2433,7 +2433,7 @@ midgard_get_first_tag_from_block(compiler_context *ctx, unsigned block_idx)
 }
 
 int
-midgard_compile_shader_nir(nir_shader *nir, midgard_program *program, bool is_blend, unsigned gpu_id)
+midgard_compile_shader_nir(nir_shader *nir, midgard_program *program, bool is_blend, unsigned blend_rt, unsigned gpu_id)
 {
         struct util_dynarray *compiled = &program->compiled;
 
@@ -2446,6 +2446,7 @@ midgard_compile_shader_nir(nir_shader *nir, midgard_program *program, bool is_bl
         ctx->stage = nir->info.stage;
         ctx->is_blend = is_blend;
         ctx->alpha_ref = program->alpha_ref;
+        ctx->blend_rt = blend_rt;
         ctx->quirks = midgard_get_quirks(gpu_id);
 
         /* Start off with a safe cutoff, allowing usage of all 16 work

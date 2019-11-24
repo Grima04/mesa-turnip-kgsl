@@ -129,7 +129,8 @@ struct panfrost_blend_shader
 panfrost_compile_blend_shader(
         struct panfrost_context *ctx,
         struct pipe_blend_state *cso,
-        enum pipe_format format)
+        enum pipe_format format,
+        unsigned rt)
 {
         struct panfrost_screen *screen = pan_screen(ctx->base.screen);
         struct panfrost_blend_shader res;
@@ -173,7 +174,7 @@ panfrost_compile_blend_shader(
         /* Compile the built shader */
 
         midgard_program program;
-        midgard_compile_shader_nir(shader, &program, true, screen->gpu_id);
+        midgard_compile_shader_nir(shader, &program, true, rt, screen->gpu_id);
 
         /* Allow us to patch later */
         res.patch_index = program.blend_patch_offset;

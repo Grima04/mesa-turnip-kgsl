@@ -224,6 +224,9 @@ typedef struct compiler_context {
         /* Is internally a blend shader? Depends on stage == FRAGMENT */
         bool is_blend;
 
+        /* Render target number for a keyed blend shader. Depends on is_blend */
+        unsigned blend_rt;
+
         /* Tracking for blend constant patching */
         int blend_constant_offset;
 
