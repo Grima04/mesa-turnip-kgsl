@@ -2253,15 +2253,25 @@ open_fifo_exit:
 }
 
 static void run_secure_compile_device(struct radv_device *device, unsigned process,
-				      int fd_secure_input, int fd_secure_output)
+				      int fd_idle_device_output)
 {
+	int fd_secure_input;
+	int fd_secure_output;
+	bool fifo_result = secure_compile_open_fifo_fds(device->sc_state,
+							&fd_secure_input,
+							&fd_secure_output,
+							process, false);
+
 	enum radv_secure_compile_type sc_type;
 
 	const int needed_fds[] = {
 		fd_secure_input,
 		fd_secure_output,
+		fd_idle_device_output,
 	};
-	if (!radv_close_all_fds(needed_fds, ARRAY_SIZE(needed_fds)) || install_seccomp_filter() == -1) {
+
+	if (!fifo_result || !radv_close_all_fds(needed_fds, ARRAY_SIZE(needed_fds)) ||
+	    install_seccomp_filter() == -1) {
 		sc_type = RADV_SC_TYPE_INIT_FAILURE;
 	} else {
 		sc_type = RADV_SC_TYPE_INIT_SUCCESS;
@@ -2269,7 +2279,7 @@ static void run_secure_compile_device(struct radv_device *device, unsigned proce
 		device->sc_state->secure_compile_processes[process].fd_secure_output = fd_secure_output;
 	}
 
-	write(fd_secure_output, &sc_type, sizeof(sc_type));
+	write(fd_idle_device_output, &sc_type, sizeof(sc_type));
 
 	if (sc_type == RADV_SC_TYPE_INIT_FAILURE)
 		goto secure_compile_exit;
@@ -2420,6 +2430,89 @@ static void run_secure_compile_device(struct radv_device *device, unsigned proce
 secure_compile_exit:
 	close(fd_secure_input);
 	close(fd_secure_output);
+	close(fd_idle_device_output);
+	_exit(0);
+}
+
+static enum radv_secure_compile_type fork_secure_compile_device(struct radv_device *device, unsigned process)
+{
+	int fd_secure_input[2];
+	int fd_secure_output[2];
+
+	/* create pipe descriptors (used to communicate between processes) */
+	if (pipe(fd_secure_input) == -1 || pipe(fd_secure_output) == -1)
+		return RADV_SC_TYPE_INIT_FAILURE;
+
+
+	int sc_pid;
+	if ((sc_pid = fork()) == 0) {
+		device->sc_state->secure_compile_thread_counter = process;
+		run_secure_compile_device(device, process, fd_secure_output[1]);
+	} else {
+		if (sc_pid == -1)
+			return RADV_SC_TYPE_INIT_FAILURE;
+
+		/* Read the init result returned from the secure process */
+		enum radv_secure_compile_type sc_type;
+		bool sc_read = radv_sc_read(fd_secure_output[0], &sc_type, sizeof(sc_type), true);
+
+		if (sc_type == RADV_SC_TYPE_INIT_FAILURE || !sc_read) {
+			close(fd_secure_input[0]);
+			close(fd_secure_input[1]);
+			close(fd_secure_output[1]);
+			close(fd_secure_output[0]);
+			int status;
+			waitpid(sc_pid, &status, 0);
+
+			return RADV_SC_TYPE_INIT_FAILURE;
+		} else {
+			assert(sc_type == RADV_SC_TYPE_INIT_SUCCESS);
+			write(device->sc_state->secure_compile_processes[process].fd_secure_output, &sc_type, sizeof(sc_type));
+
+			close(fd_secure_input[0]);
+			close(fd_secure_input[1]);
+			close(fd_secure_output[1]);
+			close(fd_secure_output[0]);
+
+			int status;
+			waitpid(sc_pid, &status, 0);
+		}
+	}
+
+	return RADV_SC_TYPE_INIT_SUCCESS;
+}
+
+/* Run a bare bones fork of a device that was forked right after its creation.
+ * This device will have low overhead when it is forked again before each
+ * pipeline compilation. This device sits idle and its only job is to fork
+ * itself.
+ */
+static void run_secure_compile_idle_device(struct radv_device *device, unsigned process,
+					    int fd_secure_input, int fd_secure_output)
+{
+	enum radv_secure_compile_type sc_type = RADV_SC_TYPE_INIT_SUCCESS;
+	device->sc_state->secure_compile_processes[process].fd_secure_input = fd_secure_input;
+	device->sc_state->secure_compile_processes[process].fd_secure_output = fd_secure_output;
+
+	write(fd_secure_output, &sc_type, sizeof(sc_type));
+
+	while (true) {
+		radv_sc_read(fd_secure_input, &sc_type, sizeof(sc_type), false);
+
+		if (sc_type == RADV_SC_TYPE_FORK_DEVICE) {
+			sc_type = fork_secure_compile_device(device, process);
+
+			if (sc_type == RADV_SC_TYPE_INIT_FAILURE)
+				goto secure_compile_exit;
+
+		} else if (sc_type == RADV_SC_TYPE_DESTROY_DEVICE) {
+			goto secure_compile_exit;
+		}
+	}
+
+secure_compile_exit:
+	close(fd_secure_input);
+	close(fd_secure_output);
 	_exit(0);
 }
 
@@ -2437,13 +2530,22 @@ static void destroy_secure_compile_device(struct radv_device *device, unsigned p
 	waitpid(device->sc_state->secure_compile_processes[process].sc_pid, &status, 0);
 }
 
-static VkResult fork_secure_compile_device(struct radv_device *device)
+static VkResult fork_secure_compile_idle_device(struct radv_device *device)
 {
 	device->sc_state = vk_zalloc(&device->alloc,
 				     sizeof(struct radv_secure_compile_state),
 				     8, VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
 
 	mtx_init(&device->sc_state->secure_compile_mutex, mtx_plain);
+
+	pid_t upid = getpid();
+	time_t seconds = time(NULL);
+
+	char *uid;
+	if (asprintf(&uid, "%ld_%ld", (long) upid, (long) seconds) == -1)
+		return VK_ERROR_INITIALIZATION_FAILED;
+
+	device->sc_state->uid = uid;
 
 	uint8_t sc_threads = device->instance->num_sc_threads;
 	int fd_secure_input[MAX_SC_PROCS][2];
@@ -2464,7 +2566,7 @@ static VkResult fork_secure_compile_device(struct radv_device *device)
 	for (unsigned process = 0; process < sc_threads; process++) {
 		if ((device->sc_state->secure_compile_processes[process].sc_pid = fork()) == 0) {
 			device->sc_state->secure_compile_thread_counter = process;
-			run_secure_compile_device(device, process, fd_secure_input[process][0], fd_secure_output[process][1]);
+			run_secure_compile_idle_device(device, process, fd_secure_input[process][0], fd_secure_output[process][1]);
 		} else {
 			if (device->sc_state->secure_compile_processes[process].sc_pid == -1)
 				return VK_ERROR_INITIALIZATION_FAILED;
@@ -2473,7 +2575,18 @@ static VkResult fork_secure_compile_device(struct radv_device *device)
 			enum radv_secure_compile_type sc_type;
 			bool sc_read = radv_sc_read(fd_secure_output[process][0], &sc_type, sizeof(sc_type), true);
 
-			if (sc_type == RADV_SC_TYPE_INIT_FAILURE || !sc_read) {
+			bool fifo_result;
+			if (sc_read && sc_type == RADV_SC_TYPE_INIT_SUCCESS) {
+				fifo_result = secure_compile_open_fifo_fds(device->sc_state,
+									   &device->sc_state->secure_compile_processes[process].fd_server,
+									   &device->sc_state->secure_compile_processes[process].fd_client,
+									   process, true);
+
+				device->sc_state->secure_compile_processes[process].fd_secure_input = fd_secure_input[process][1];
+				device->sc_state->secure_compile_processes[process].fd_secure_output = fd_secure_output[process][0];
+			}
+
+			if (sc_type == RADV_SC_TYPE_INIT_FAILURE || !sc_read || !fifo_result) {
 				close(fd_secure_input[process][0]);
 				close(fd_secure_input[process][1]);
 				close(fd_secure_output[process][1]);
@@ -2487,10 +2600,6 @@ static VkResult fork_secure_compile_device(struct radv_device *device)
 				}
 
 				return VK_ERROR_INITIALIZATION_FAILED;
-			} else {
-				assert(sc_type == RADV_SC_TYPE_INIT_SUCCESS);
-				device->sc_state->secure_compile_processes[process].fd_secure_input = fd_secure_input[process][1];
-				device->sc_state->secure_compile_processes[process].fd_secure_output = fd_secure_output[process][0];
 			}
 		}
 	}
@@ -2729,7 +2838,8 @@ VkResult radv_CreateDevice(
 	/* Fork device for secure compile as required */
 	device->instance->num_sc_threads = sc_threads;
 	if (radv_device_use_secure_compile(device->instance)) {
-		result = fork_secure_compile_device(device);
+
+		result = fork_secure_compile_idle_device(device);
 		if (result != VK_SUCCESS)
 			goto fail_meta;
 	}
@@ -2793,15 +2903,16 @@ void radv_DestroyDevice(
 
 	pthread_cond_destroy(&device->timeline_cond);
 	radv_bo_list_finish(&device->bo_list);
-
 	if (radv_device_use_secure_compile(device->instance)) {
 		for (unsigned i = 0; i < device->instance->num_sc_threads; i++ ) {
 			destroy_secure_compile_device(device, i);
 		}
 	}
 
-	if (device->sc_state)
+	if (device->sc_state) {
+		free(device->sc_state->uid);
 		vk_free(&device->alloc, device->sc_state->secure_compile_processes);
+	}
 	vk_free(&device->alloc, device->sc_state);
 	vk_free(&device->alloc, device);
 }

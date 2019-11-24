@@ -4708,8 +4708,19 @@ radv_secure_compile(struct radv_pipeline *pipeline,
 	int fd_secure_input = device->sc_state->secure_compile_processes[process].fd_secure_input;
 	int fd_secure_output = device->sc_state->secure_compile_processes[process].fd_secure_output;
 
+	/* Fork a copy of the slim untainted secure compile process */
+	enum radv_secure_compile_type sc_type = RADV_SC_TYPE_FORK_DEVICE;
+	write(fd_secure_input, &sc_type, sizeof(sc_type));
+
+	if (!radv_sc_read(fd_secure_output, &sc_type, sizeof(sc_type), true) ||
+	    sc_type != RADV_SC_TYPE_INIT_SUCCESS)
+		return VK_ERROR_DEVICE_LOST;
+
+	fd_secure_input = device->sc_state->secure_compile_processes[process].fd_server;
+	fd_secure_output = device->sc_state->secure_compile_processes[process].fd_client;
+
 	/* Write pipeline / shader module out to secure process via pipe */
-	enum radv_secure_compile_type sc_type = RADV_SC_TYPE_COMPILE_PIPELINE;
+	sc_type = RADV_SC_TYPE_COMPILE_PIPELINE;
 	write(fd_secure_input, &sc_type, sizeof(sc_type));
 
 	/* Write pipeline layout out to secure process */
@@ -4817,6 +4828,9 @@ radv_secure_compile(struct radv_pipeline *pipeline,
 			free(entry);
 		}
 	}
+
+	sc_type = RADV_SC_TYPE_DESTROY_DEVICE;
+	write(fd_secure_input, &sc_type, sizeof(sc_type));
 
 	mtx_lock(&device->sc_state->secure_compile_mutex);
 	device->sc_state->secure_compile_thread_counter--;
