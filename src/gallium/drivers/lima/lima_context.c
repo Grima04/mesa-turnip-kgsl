@@ -146,6 +146,9 @@ lima_context_destroy(struct pipe_context *pctx)
    if (ctx->plb_gp_stream)
       lima_bo_unreference(ctx->plb_gp_stream);
 
+   if (ctx->gp_output)
+      lima_bo_unreference(ctx->gp_output);
+
    if (ctx->plb_pp_stream)
       assert(!_mesa_hash_table_num_entries(ctx->plb_pp_stream));
 
