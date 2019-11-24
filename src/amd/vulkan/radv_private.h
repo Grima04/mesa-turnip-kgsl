@@ -135,6 +135,7 @@ enum radv_secure_compile_type {
 	RADV_SC_TYPE_COMPILE_PIPELINE_FINISHED,
 	RADV_SC_TYPE_READ_DISK_CACHE,
 	RADV_SC_TYPE_WRITE_DISK_CACHE,
+	RADV_SC_TYPE_FORK_DEVICE,
 	RADV_SC_TYPE_DESTROY_DEVICE,
 	RADV_SC_TYPE_COUNT
 };
@@ -745,9 +746,18 @@ struct radv_bo_list {
 };
 
 struct radv_secure_compile_process {
-	/* Secure process file descriptors */
+	/* Secure process file descriptors. Used to communicate between the
+	 * user facing device and the idle forked device used to fork a clean
+	 * process for each new pipeline compile.
+	 */
 	int fd_secure_input;
 	int fd_secure_output;
+
+	/* FIFO file descriptors used to communicate between the user facing
+	 * device and the secure process that does the actual secure compile.
+	 */
+	int fd_server;
+	int fd_client;
 
 	/* Secure compile process id */
 	pid_t sc_pid;
@@ -760,6 +770,9 @@ struct radv_secure_compile_state {
 	struct radv_secure_compile_process *secure_compile_processes;
 	uint32_t secure_compile_thread_counter;
 	mtx_t secure_compile_mutex;
+
+	/* Unique process ID used to build name for FIFO file descriptor */
+	char *uid;
 };
 
 struct radv_device {
