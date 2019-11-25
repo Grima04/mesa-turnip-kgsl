@@ -5332,6 +5332,7 @@ VkResult radv_GetPipelineExecutablePropertiesKHR(
 			break;
 		}
 
+		pProperties[executable_idx].subgroupSize = pipeline->shaders[i]->info.wave_size;
 		desc_copy(pProperties[executable_idx].name, name);
 		desc_copy(pProperties[executable_idx].description, description);
 
@@ -5343,6 +5344,7 @@ VkResult radv_GetPipelineExecutablePropertiesKHR(
 				break;
 
 			pProperties[executable_idx].stages = VK_SHADER_STAGE_GEOMETRY_BIT;
+			pProperties[executable_idx].subgroupSize = 64;
 			desc_copy(pProperties[executable_idx].name, "GS Copy Shader");
 			desc_copy(pProperties[executable_idx].description,
 				  "Extra shader stage that loads the GS output ringbuffer into the rasterizer");
@@ -5350,9 +5352,6 @@ VkResult radv_GetPipelineExecutablePropertiesKHR(
 			++executable_idx;
 		}
 	}
-
-	for (unsigned i = 0; i < count; ++i)
-		pProperties[i].subgroupSize = 64;
 
 	VkResult result = *pExecutableCount < total_count ? VK_INCOMPLETE : VK_SUCCESS;
 	*pExecutableCount = count;
