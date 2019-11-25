@@ -167,6 +167,7 @@ blorp_alloc_vertex_buffer(struct blorp_batch *batch, uint32_t size,
 static void
 blorp_vf_invalidate_for_vb_48b_transitions(struct blorp_batch *batch,
                                            const struct blorp_address *addrs,
+                                           uint32_t *sizes,
                                            unsigned num_vbs)
 {
    /* anv forces all vertex buffers into the low 4GB so there are never any
