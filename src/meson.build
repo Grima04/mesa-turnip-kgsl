@@ -73,7 +73,7 @@ endif
 if with_gallium_radeonsi or with_amd_vk
   subdir('amd')
 endif
-if with_gallium_vc4 or with_gallium_v3d
+if with_gallium_vc4 or with_gallium_v3d or with_broadcom_vk
   subdir('broadcom')
 endif
 if with_gallium_etnaviv

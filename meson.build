@@ -273,6 +273,7 @@ with_amd_vk = _vulkan_drivers.contains('amd')
 with_freedreno_vk = _vulkan_drivers.contains('freedreno')
 with_swrast_vk = _vulkan_drivers.contains('swrast')
 with_freedreno_kgsl = get_option('freedreno-kgsl')
+with_broadcom_vk = _vulkan_drivers.contains('broadcom')
 with_any_vk = _vulkan_drivers.length() != 0
 
 if with_swrast_vk and not with_gallium_softpipe
