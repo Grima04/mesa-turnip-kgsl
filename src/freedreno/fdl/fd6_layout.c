@@ -198,8 +198,8 @@ fdl6_layout(struct fdl_layout *layout,
 
 			ubwc_slice->size0 = align(meta_pitch * meta_height, UBWC_PLANE_SIZE_ALIGNMENT);
 			ubwc_slice->pitch = meta_pitch;
-			ubwc_slice->offset = layout->ubwc_size;
-			layout->ubwc_size += ubwc_slice->size0;
+			ubwc_slice->offset = layout->ubwc_layer_size;
+			layout->ubwc_layer_size += ubwc_slice->size0;
 		}
 
 		depth = u_minify(depth, 1);
@@ -221,8 +221,8 @@ fdl6_layout(struct fdl_layout *layout,
 	 */
 	if (ubwc) {
 		for (uint32_t level = 0; level < mip_levels; level++)
-			layout->slices[level].offset += layout->ubwc_size * array_size;
-		layout->size += layout->ubwc_size * array_size;
+			layout->slices[level].offset += layout->ubwc_layer_size * array_size;
+		layout->size += layout->ubwc_layer_size * array_size;
 	}
 }
 

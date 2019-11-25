@@ -278,7 +278,7 @@ fd6_sampler_view_create(struct pipe_context *pctx, struct pipe_resource *prsc,
 				cso->swizzle_b, cso->swizzle_a);
 
 	if (so->ubwc_enabled) {
-		so->texconst9 |= A6XX_TEX_CONST_9_FLAG_BUFFER_ARRAY_PITCH(rsc->layout.ubwc_size);
+		so->texconst9 |= A6XX_TEX_CONST_9_FLAG_BUFFER_ARRAY_PITCH(rsc->layout.ubwc_layer_size >> 2);
 		so->texconst10 |= A6XX_TEX_CONST_10_FLAG_BUFFER_PITCH(rsc->layout.ubwc_slices[lvl].pitch);
 	}
 

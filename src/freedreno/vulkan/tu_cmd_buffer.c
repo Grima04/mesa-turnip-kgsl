@@ -597,12 +597,12 @@ tu6_emit_blit_info(struct tu_cmd_buffer *cmd,
                       .samples = tu_msaa_samples(iview->image->samples),
                       .color_format = format->rb,
                       .color_swap = format->swap,
-                      .flags = iview->image->layout.ubwc_size != 0),
+                      .flags = iview->image->layout.ubwc_layer_size != 0),
                    A6XX_RB_BLIT_DST(tu_image_view_base_ref(iview)),
                    A6XX_RB_BLIT_DST_PITCH(tu_image_stride(iview->image, iview->base_mip)),
                    A6XX_RB_BLIT_DST_ARRAY_PITCH(iview->image->layout.layer_size));
 
-   if (iview->image->layout.ubwc_size) {
+   if (iview->image->layout.ubwc_layer_size) {
       tu_cs_emit_regs(cs,
                       A6XX_RB_BLIT_FLAG_DST(tu_image_view_ubwc_base_ref(iview)),
                       A6XX_RB_BLIT_FLAG_DST_PITCH(tu_image_view_ubwc_pitches(iview)));

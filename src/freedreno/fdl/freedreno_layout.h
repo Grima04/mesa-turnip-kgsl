@@ -92,6 +92,7 @@ struct fdl_layout {
 	struct fdl_slice slices[FDL_MAX_MIP_LEVELS];
 	struct fdl_slice ubwc_slices[FDL_MAX_MIP_LEVELS];
 	uint32_t layer_size;
+	uint32_t ubwc_layer_size; /* in bytes */
 	bool layer_first : 1;    /* see above description */
 
 	/* Note that for tiled textures, beyond a certain mipmap level (ie.
@@ -112,8 +113,6 @@ struct fdl_layout {
 	enum pipe_format format;
 
 	uint32_t size; /* Size of the whole image, in bytes. */
-
-	uint32_t ubwc_size;
 };
 
 static inline uint32_t
@@ -138,7 +137,7 @@ fdl_ubwc_offset(const struct fdl_layout *layout, unsigned level, unsigned layer)
 	/* for now this doesn't do anything clever, but when UBWC is enabled
 	 * for multi layer/level images, it will.
 	 */
-	if (layout->ubwc_size) {
+	if (layout->ubwc_layer_size) {
 		assert(level == 0);
 		assert(layer == 0);
 	}
@@ -166,7 +165,7 @@ fdl_tile_mode(const struct fdl_layout *layout, int level)
 static inline bool
 fdl_ubwc_enabled(const struct fdl_layout *layout, int level)
 {
-	return layout->ubwc_size && fdl_tile_mode(layout, level);
+	return layout->ubwc_layer_size && fdl_tile_mode(layout, level);
 }
 
 void

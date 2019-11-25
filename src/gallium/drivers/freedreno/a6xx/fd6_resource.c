@@ -136,7 +136,7 @@ fd6_fill_ubwc_buffer_sizes(struct fd_resource *rsc)
 
 	rsc->layout.ubwc_slices[0].offset = 0;
 	rsc->layout.ubwc_slices[0].pitch = meta_stride;
-	rsc->layout.ubwc_size = meta_size >> 2;   /* in dwords??? */
+	rsc->layout.ubwc_layer_size = meta_size;
 	rsc->layout.tile_mode = TILE6_3;
 
 	return meta_size;
@@ -151,7 +151,7 @@ void
 fd6_validate_format(struct fd_context *ctx, struct fd_resource *rsc,
 		enum pipe_format format)
 {
-	if (!rsc->layout.ubwc_size)
+	if (!rsc->layout.ubwc_layer_size)
 		return;
 
 	if (ok_ubwc_format(format))

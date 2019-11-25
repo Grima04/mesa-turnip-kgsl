@@ -1362,7 +1362,7 @@ tu_image_base(struct tu_image *image, int level, int layer)
 static inline VkDeviceSize
 tu_image_ubwc_size(struct tu_image *image, int level)
 {
-   return image->layout.ubwc_size;
+   return image->layout.ubwc_layer_size;
 }
 
 static inline uint32_t

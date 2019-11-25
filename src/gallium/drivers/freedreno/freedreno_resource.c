@@ -227,7 +227,7 @@ fd_try_shadow_resource(struct fd_context *ctx, struct fd_resource *rsc,
 		swap(rsc->layout.slices[level], shadow->layout.slices[level]);
 		swap(rsc->layout.ubwc_slices[level], shadow->layout.ubwc_slices[level]);
 	}
-	swap(rsc->layout.ubwc_size, shadow->layout.ubwc_size);
+	swap(rsc->layout.ubwc_layer_size, shadow->layout.ubwc_layer_size);
 	rsc->seqno = p_atomic_inc_return(&ctx->screen->rsc_seqno);
 
 	/* at this point, the newly created shadow buffer is not referenced
@@ -728,7 +728,7 @@ fd_resource_modifier(struct fd_resource *rsc)
 	if (!rsc->layout.tile_mode)
 		return DRM_FORMAT_MOD_LINEAR;
 
-	if (rsc->layout.ubwc_size)
+	if (rsc->layout.ubwc_layer_size)
 		return DRM_FORMAT_MOD_QCOM_COMPRESSED;
 
 	/* TODO invent a modifier for tiled but not UBWC buffers: */
