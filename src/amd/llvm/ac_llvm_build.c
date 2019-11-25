@@ -3768,6 +3768,11 @@ static LLVMValueRef
 _ac_build_permlane16(struct ac_llvm_context *ctx, LLVMValueRef src, uint64_t sel,
 		     bool exchange_rows, bool bound_ctrl)
 {
+	LLVMTypeRef type = LLVMTypeOf(src);
+	LLVMValueRef result;
+
+	src = LLVMBuildZExt(ctx->builder, src, ctx->i32, "");
+
 	LLVMValueRef args[6] = {
 		src,
 		src,
@@ -3776,10 +3781,13 @@ _ac_build_permlane16(struct ac_llvm_context *ctx, LLVMValueRef src, uint64_t sel
 		ctx->i1true, /* fi */
 		bound_ctrl ? ctx->i1true : ctx->i1false,
 	};
-	return ac_build_intrinsic(ctx, exchange_rows ? "llvm.amdgcn.permlanex16"
-						     : "llvm.amdgcn.permlane16",
-				  ctx->i32, args, 6,
-				  AC_FUNC_ATTR_READNONE | AC_FUNC_ATTR_CONVERGENT);
+
+	result = ac_build_intrinsic(ctx, exchange_rows ? "llvm.amdgcn.permlanex16"
+						       : "llvm.amdgcn.permlane16",
+				    ctx->i32, args, 6,
+				    AC_FUNC_ATTR_READNONE | AC_FUNC_ATTR_CONVERGENT);
+
+	return LLVMBuildTrunc(ctx->builder, result, type, "");
 }
 
 static LLVMValueRef
@@ -3790,10 +3798,7 @@ ac_build_permlane16(struct ac_llvm_context *ctx, LLVMValueRef src, uint64_t sel,
 	src = ac_to_integer(ctx, src);
 	unsigned bits = LLVMGetIntTypeWidth(LLVMTypeOf(src));
 	LLVMValueRef ret;
-	if (bits == 32) {
-		ret = _ac_build_permlane16(ctx, src, sel, exchange_rows,
-					   bound_ctrl);
-	} else {
+	if (bits > 32) {
 		assert(bits % 32 == 0);
 		LLVMTypeRef vec_type = LLVMVectorType(ctx->i32, bits / 32);
 		LLVMValueRef src_vector =
@@ -3812,6 +3817,9 @@ ac_build_permlane16(struct ac_llvm_context *ctx, LLVMValueRef src, uint64_t sel,
 						     LLVMConstInt(ctx->i32, i,
 								  0), "");
 		}
+	} else {
+		ret = _ac_build_permlane16(ctx, src, sel, exchange_rows,
+					   bound_ctrl);
 	}
 	return LLVMBuildBitCast(ctx->builder, ret, src_type, "");
 }
