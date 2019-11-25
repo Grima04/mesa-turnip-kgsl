@@ -5784,6 +5784,15 @@ iris_upload_dirty_render_state(struct iris_context *ice,
       }
 
       if (count) {
+#if GEN_GEN >= 11
+         /* Gen11+ doesn't need the cache workaround below */
+         uint64_t bound = dynamic_bound;
+         while (bound) {
+            const int i = u_bit_scan64(&bound);
+            iris_use_optional_res(batch, genx->vertex_buffers[i].resource,
+                                  false);
+         }
+#else
          /* The VF cache designers cut corners, and made the cache key's
           * <VertexBufferIndex, Memory Address> tuple only consider the bottom
           * 32 bits of the address.  If you have two vertex buffers which get
@@ -5819,6 +5828,7 @@ iris_upload_dirty_render_state(struct iris_context *ice,
                                          "workaround: VF cache 32-bit key [VB]",
                                          flush_flags);
          }
+#endif
 
          const unsigned vb_dwords = GENX(VERTEX_BUFFER_STATE_length);
 
@@ -6034,6 +6044,7 @@ iris_upload_render_state(struct iris_context *ice,
          iris_use_pinned_bo(batch, bo, false);
       }
 
+#if GEN_GEN < 11
       /* The VF cache key only uses 32-bits, see vertex buffer comment above */
       uint16_t high_bits = bo->gtt_offset >> 32ull;
       if (high_bits != ice->state.last_index_bo_high_bits) {
@@ -6043,6 +6054,7 @@ iris_upload_render_state(struct iris_context *ice,
                                       PIPE_CONTROL_CS_STALL);
          ice->state.last_index_bo_high_bits = high_bits;
       }
+#endif
    }
 
 #define _3DPRIM_END_OFFSET          0x2420
