@@ -44,8 +44,13 @@ static void
 write_stream_out_to_cache(struct blob *blob,
                           struct pipe_shader_state *state)
 {
-   blob_write_bytes(blob, &state->stream_output,
-                    sizeof(state->stream_output));
+   blob_write_uint32(blob, state->stream_output.num_outputs);
+   if (state->stream_output.num_outputs) {
+      blob_write_bytes(blob, &state->stream_output.stride,
+                       sizeof(state->stream_output.stride));
+      blob_write_bytes(blob, &state->stream_output.output,
+                       sizeof(state->stream_output.output));
+   }
 }
 
 static void
@@ -139,8 +144,14 @@ static void
 read_stream_out_from_cache(struct blob_reader *blob_reader,
                            struct pipe_shader_state *state)
 {
-   blob_copy_bytes(blob_reader, (uint8_t *) &state->stream_output,
-                    sizeof(state->stream_output));
+   memset(&state->stream_output, 0, sizeof(state->stream_output));
+   state->stream_output.num_outputs = blob_read_uint32(blob_reader);
+   if (state->stream_output.num_outputs) {
+      blob_copy_bytes(blob_reader, &state->stream_output.stride,
+                      sizeof(state->stream_output.stride));
+      blob_copy_bytes(blob_reader, &state->stream_output.output,
+                      sizeof(state->stream_output.output));
+   }
 }
 
 static void
