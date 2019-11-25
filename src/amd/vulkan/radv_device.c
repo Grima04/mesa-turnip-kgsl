@@ -1249,6 +1249,12 @@ void radv_GetPhysicalDeviceFeatures2(
 			features->stippledSmoothLines = false;
 			break;
 		}
+		case VK_STRUCTURE_TYPE_DEVICE_MEMORY_OVERALLOCATION_CREATE_INFO_AMD: {
+			VkDeviceMemoryOverallocationCreateInfoAMD *features =
+				(VkDeviceMemoryOverallocationCreateInfoAMD *)ext;
+			features->overallocationBehavior = true;
+			break;
+		}
 		default:
 			break;
 		}
