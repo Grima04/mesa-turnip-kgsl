@@ -4553,7 +4553,7 @@ ac_build_canonicalize(struct ac_llvm_context *ctx, LLVMValueRef src0,
 	} else if (bitsize == 32) {
 		intr = "llvm.canonicalize.f32";
 		type = ctx->f32;
-	} else if (bitsize == 64) {
+	} else {
 		intr = "llvm.canonicalize.f64";
 		type = ctx->f64;
 	}
