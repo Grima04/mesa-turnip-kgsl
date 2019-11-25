@@ -6189,6 +6189,8 @@ void radv_CmdWriteBufferMarkerAMD(
 
 	si_emit_cache_flush(cmd_buffer);
 
+	ASSERTED unsigned cdw_max = radeon_check_space(cmd_buffer->device->ws, cmd_buffer->cs, 12);
+
 	if (!(pipelineStage & ~VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT)) {
 		radeon_emit(cs, PKT3(PKT3_COPY_DATA, 4, 0));
 		radeon_emit(cs, COPY_DATA_SRC_SEL(COPY_DATA_IMM) |
@@ -6208,4 +6210,6 @@ void radv_CmdWriteBufferMarkerAMD(
 					   va, marker,
 					   cmd_buffer->gfx9_eop_bug_va);
 	}
+
+	assert(cmd_buffer->cs->cdw <= cdw_max);
 }
