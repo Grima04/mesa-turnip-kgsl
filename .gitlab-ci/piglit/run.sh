@@ -22,6 +22,8 @@ if diff -q .gitlab-ci/piglit/$PIGLIT_RESULTS.txt{.baseline,}; then
     exit 0
 fi
 
+./piglit summary html --exclude-details=pass $OLDPWD/summary $OLDPWD/results
+
 echo Unexpected change in results:
 diff -u .gitlab-ci/piglit/$PIGLIT_RESULTS.txt{.baseline,}
 exit 1

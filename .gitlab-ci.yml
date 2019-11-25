@@ -473,6 +473,11 @@ scons-old-llvm:
 
 .piglit-test:
   extends: .test
+  artifacts:
+    when: on_failure
+    name: "$CI_JOB_NAME-$CI_COMMIT_REF_NAME"
+    paths:
+      - summary/
   variables:
     LIBGL_ALWAYS_SOFTWARE: 1
     PIGLIT_NO_WINDOW: 1
