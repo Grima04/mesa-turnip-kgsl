@@ -32,6 +32,11 @@
 
 #include "compiler/shader_enums.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
 void
 tgsi_get_gl_varying_semantic(gl_varying_slot attr,
                              bool needs_texcoord_semantic,
@@ -83,5 +88,9 @@ tgsi_processor_to_shader_stage(unsigned processor)
       unreachable("invalid TGSI processor");
    }
 }
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* TGSI_FROM_MESA_H */
