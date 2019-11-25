@@ -2535,6 +2535,7 @@ cmd_buffer_flush_push_constants(struct anv_cmd_buffer *cmd_buffer,
             const struct anv_pipeline_bind_map *bind_map =
                &pipeline->shaders[stage]->bind_map;
 
+#if GEN_GEN >= 8 || GEN_IS_HASWELL
             for (unsigned i = 0; i < 4; i++) {
                const struct anv_push_range *range = &bind_map->push_ranges[i];
                if (range->length == 0)
@@ -2588,6 +2589,22 @@ cmd_buffer_flush_push_constants(struct anv_cmd_buffer *cmd_buffer,
                c.ConstantBody.Buffer[i] =
                   anv_address_add(addr, range->start * 32);
             }
+#else
+            /* For Ivy Bridge, push constants are relative to dynamic state
+             * base address and we only ever push actual push constants.
+             */
+            if (bind_map->push_ranges[0].length > 0) {
+               assert(bind_map->push_ranges[0].set ==
+                      ANV_DESCRIPTOR_SET_PUSH_CONSTANTS);
+               struct anv_state state =
+                  anv_cmd_buffer_push_constants(cmd_buffer, stage);
+               c.ConstantBody.ReadLength[0] = bind_map->push_ranges[0].length;
+               c.ConstantBody.Buffer[0].offset = state.offset;
+            }
+            assert(bind_map->push_ranges[1].length == 0);
+            assert(bind_map->push_ranges[2].length == 0);
+            assert(bind_map->push_ranges[3].length == 0);
+#endif
          }
       }
 
