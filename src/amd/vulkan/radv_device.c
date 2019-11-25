@@ -1171,9 +1171,9 @@ void radv_GetPhysicalDeviceFeatures2(
 			features->texelBufferAlignment = true;
 			break;
 		}
-		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES_KHR: {
-			VkPhysicalDeviceTimelineSemaphoreFeaturesKHR *features =
-				(VkPhysicalDeviceTimelineSemaphoreFeaturesKHR *) ext;
+		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES: {
+			VkPhysicalDeviceTimelineSemaphoreFeatures *features =
+				(VkPhysicalDeviceTimelineSemaphoreFeatures *) ext;
 			features->timelineSemaphore = true;
 			break;
 		}
@@ -1685,9 +1685,9 @@ void radv_GetPhysicalDeviceProperties2(
 			properties->shaderSignedZeroInfNanPreserveFloat64 = pdevice->rad_info.chip_class >= GFX8;
 			break;
 		}
-		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_PROPERTIES_KHR: {
-			VkPhysicalDeviceTimelineSemaphorePropertiesKHR *props =
-				(VkPhysicalDeviceTimelineSemaphorePropertiesKHR *) ext;
+		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_PROPERTIES: {
+			VkPhysicalDeviceTimelineSemaphoreProperties *props =
+				(VkPhysicalDeviceTimelineSemaphoreProperties *) ext;
 			props->maxTimelineSemaphoreValueDifference = UINT64_MAX;
 			break;
 		}
@@ -4508,8 +4508,8 @@ VkResult radv_QueueSubmit(
 			wait_dst_stage_mask |= pSubmits[i].pWaitDstStageMask[j];
 		}
 
-		const VkTimelineSemaphoreSubmitInfoKHR *timeline_info =
-			vk_find_struct_const(pSubmits[i].pNext, TIMELINE_SEMAPHORE_SUBMIT_INFO_KHR);
+		const VkTimelineSemaphoreSubmitInfo *timeline_info =
+			vk_find_struct_const(pSubmits[i].pNext, TIMELINE_SEMAPHORE_SUBMIT_INFO);
 
 		result = radv_queue_submit(queue, &(struct radv_queue_submission) {
 				.cmd_buffers = pSubmits[i].pCommandBuffers,
@@ -5153,8 +5153,8 @@ static bool radv_sparse_bind_has_effects(const VkBindSparseInfo *info)
 		if (i != fence_idx && !radv_sparse_bind_has_effects(pBindInfo + i))
 			continue;
 
-		const VkTimelineSemaphoreSubmitInfoKHR *timeline_info =
-			vk_find_struct_const(pBindInfo[i].pNext, TIMELINE_SEMAPHORE_SUBMIT_INFO_KHR);
+		const VkTimelineSemaphoreSubmitInfo *timeline_info =
+			vk_find_struct_const(pBindInfo[i].pNext, TIMELINE_SEMAPHORE_SUBMIT_INFO);
 
 		VkResult result = radv_queue_submit(queue, &(struct radv_queue_submission) {
 				.buffer_binds = pBindInfo[i].pBufferBinds,
@@ -5638,11 +5638,11 @@ void radv_destroy_semaphore_part(struct radv_device *device,
 static VkSemaphoreTypeKHR
 radv_get_semaphore_type(const void *pNext, uint64_t *initial_value)
 {
-	const VkSemaphoreTypeCreateInfoKHR *type_info =
-		vk_find_struct_const(pNext, SEMAPHORE_TYPE_CREATE_INFO_KHR);
+	const VkSemaphoreTypeCreateInfo *type_info =
+		vk_find_struct_const(pNext, SEMAPHORE_TYPE_CREATE_INFO);
 
 	if (!type_info)
-		return VK_SEMAPHORE_TYPE_BINARY_KHR;
+		return VK_SEMAPHORE_TYPE_BINARY;
 
 	if (initial_value)
 		*initial_value = type_info->initialValue;
@@ -5672,7 +5672,7 @@ VkResult radv_CreateSemaphore(
 	sem->temporary.kind = RADV_SEMAPHORE_NONE;
 	sem->permanent.kind = RADV_SEMAPHORE_NONE;
 
-	if (type == VK_SEMAPHORE_TYPE_TIMELINE_KHR) {
+	if (type == VK_SEMAPHORE_TYPE_TIMELINE) {
 		radv_create_timeline(&sem->permanent.timeline, initial_value);
 		sem->permanent.kind = RADV_SEMAPHORE_TIMELINE;
 	} else if (device->always_use_syncobj || handleTypes) {
@@ -5712,9 +5712,9 @@ void radv_DestroySemaphore(
 }
 
 VkResult
-radv_GetSemaphoreCounterValueKHR(VkDevice _device,
-                                 VkSemaphore _semaphore,
-                                 uint64_t* pValue)
+radv_GetSemaphoreCounterValue(VkDevice _device,
+			      VkSemaphore _semaphore,
+			      uint64_t* pValue)
 {
 	RADV_FROM_HANDLE(radv_device, device, _device);
 	RADV_FROM_HANDLE(radv_semaphore, semaphore, _semaphore);
@@ -5741,7 +5741,7 @@ radv_GetSemaphoreCounterValueKHR(VkDevice _device,
 
 static VkResult
 radv_wait_timelines(struct radv_device *device,
-                    const VkSemaphoreWaitInfoKHR* pWaitInfo,
+                    const VkSemaphoreWaitInfo* pWaitInfo,
                     uint64_t abs_timeout)
 {
 	if ((pWaitInfo->flags & VK_SEMAPHORE_WAIT_ANY_BIT_KHR) && pWaitInfo->semaphoreCount > 1) {
@@ -5772,9 +5772,9 @@ radv_wait_timelines(struct radv_device *device,
 	return VK_SUCCESS;
 }
 VkResult
-radv_WaitSemaphoresKHR(VkDevice _device,
-                       const VkSemaphoreWaitInfoKHR* pWaitInfo,
-                       uint64_t timeout)
+radv_WaitSemaphores(VkDevice _device,
+		    const VkSemaphoreWaitInfo* pWaitInfo,
+		    uint64_t timeout)
 {
 	RADV_FROM_HANDLE(radv_device, device, _device);
 	uint64_t abs_timeout = radv_get_absolute_timeout(timeout);
@@ -5782,8 +5782,8 @@ radv_WaitSemaphoresKHR(VkDevice _device,
 }
 
 VkResult
-radv_SignalSemaphoreKHR(VkDevice _device,
-                        const VkSemaphoreSignalInfoKHR* pSignalInfo)
+radv_SignalSemaphore(VkDevice _device,
+                     const VkSemaphoreSignalInfo* pSignalInfo)
 {
 	RADV_FROM_HANDLE(radv_device, device, _device);
 	RADV_FROM_HANDLE(radv_semaphore, semaphore, pSignalInfo->semaphore);
@@ -7003,7 +7003,7 @@ void radv_GetPhysicalDeviceExternalSemaphoreProperties(
 	RADV_FROM_HANDLE(radv_physical_device, pdevice, physicalDevice);
 	VkSemaphoreTypeKHR type = radv_get_semaphore_type(pExternalSemaphoreInfo->pNext, NULL);
 	
-	if (type == VK_SEMAPHORE_TYPE_TIMELINE_KHR) {
+	if (type == VK_SEMAPHORE_TYPE_TIMELINE) {
 		pExternalSemaphoreProperties->exportFromImportedHandleTypes = 0;
 		pExternalSemaphoreProperties->compatibleHandleTypes = 0;
 		pExternalSemaphoreProperties->externalSemaphoreFeatures = 0;
