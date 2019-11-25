@@ -3912,7 +3912,16 @@ VkResult anv_CreateBuffer(
     VkBuffer*                                   pBuffer)
 {
    ANV_FROM_HANDLE(anv_device, device, _device);
+   struct anv_physical_device *pdevice = &device->instance->physicalDevice;
    struct anv_buffer *buffer;
+
+   /* Don't allow creating buffers bigger than our address space.  The real
+    * issue here is that we may align up the buffer size and we don't want
+    * doing so to cause roll-over.  However, no one has any business
+    * allocating a buffer larger than our GTT size.
+    */
+   if (pCreateInfo->size > pdevice->gtt_size)
+      return vk_error(VK_ERROR_OUT_OF_DEVICE_MEMORY);
 
    assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO);
 
