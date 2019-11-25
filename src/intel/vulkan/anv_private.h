@@ -981,15 +981,17 @@ struct anv_physical_device {
     struct isl_device                           isl_dev;
     struct gen_perf_config *                    perf;
     int                                         cmd_parser_version;
+    bool                                        has_softpin;
     bool                                        has_exec_async;
     bool                                        has_exec_capture;
     bool                                        has_exec_fence;
     bool                                        has_syncobj;
     bool                                        has_syncobj_wait;
     bool                                        has_context_priority;
-    bool                                        use_softpin;
     bool                                        has_context_isolation;
     bool                                        has_mem_available;
+
+    bool                                        use_softpin;
     bool                                        always_use_bindless;
 
     /** True if we can access buffers using A64 messages */
