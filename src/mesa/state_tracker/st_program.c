@@ -208,127 +208,23 @@ st_set_prog_affected_state_flags(struct gl_program *prog)
    }
 }
 
-static void
-delete_ir(struct pipe_shader_state *ir)
-{
-   if (ir->tokens) {
-      ureg_free_tokens(ir->tokens);
-      ir->tokens = NULL;
-   }
-
-   /* Note: Any setup of ->ir.nir that has had pipe->create_*_state called on
-    * it has resulted in the driver taking ownership of the NIR.  Those
-    * callers should be NULLing out the nir field in any pipe_shader_state
-    * that might have this called in order to indicate that.
-    *
-    * GLSL IR and ARB programs will have set gl_program->nir to the same
-    * shader as ir->ir.nir, so it will be freed by _mesa_delete_program().
-    */
-}
 
 /**
- * Delete a vertex program variant.  Note the caller must unlink
- * the variant from the linked list.
+ * Delete a shader variant.  Note the caller must unlink the variant from
+ * the linked list.
  */
 static void
-delete_vp_variant(struct st_context *st, struct st_vp_variant *vpv)
-{
-   if (vpv->driver_shader) {
-      if (st->has_shareable_shaders || vpv->key.st == st) {
-         cso_delete_vertex_shader(st->cso_context, vpv->driver_shader);
-      } else {
-         st_save_zombie_shader(vpv->key.st, PIPE_SHADER_VERTEX,
-                               vpv->driver_shader);
-      }
-   }
-
-   if (vpv->draw_shader)
-      draw_delete_vertex_shader( st->draw, vpv->draw_shader );
-
-   if (vpv->tokens)
-      ureg_free_tokens(vpv->tokens);
-
-   free( vpv );
-}
-
-
-
-/**
- * Clean out any old compilations:
- */
-void
-st_release_vp_variants( struct st_context *st,
-                        struct st_program *stvp )
-{
-   struct st_vp_variant *vpv;
-
-   for (vpv = stvp->vp_variants; vpv; ) {
-      struct st_vp_variant *next = vpv->next;
-      delete_vp_variant(st, vpv);
-      vpv = next;
-   }
-
-   stvp->vp_variants = NULL;
-
-   delete_ir(&stvp->state);
-}
-
-
-
-/**
- * Delete a fragment program variant.  Note the caller must unlink
- * the variant from the linked list.
- */
-static void
-delete_fp_variant(struct st_context *st, struct st_fp_variant *fpv)
-{
-   if (fpv->driver_shader) {
-      if (st->has_shareable_shaders || fpv->key.st == st) {
-         cso_delete_fragment_shader(st->cso_context, fpv->driver_shader);
-      } else {
-         st_save_zombie_shader(fpv->key.st, PIPE_SHADER_FRAGMENT,
-                               fpv->driver_shader);
-      }
-   }
-
-   free(fpv);
-}
-
-
-/**
- * Free all variants of a fragment program.
- */
-void
-st_release_fp_variants(struct st_context *st, struct st_program *stfp)
-{
-   struct st_fp_variant *fpv;
-
-   for (fpv = stfp->fp_variants; fpv; ) {
-      struct st_fp_variant *next = fpv->next;
-      delete_fp_variant(st, fpv);
-      fpv = next;
-   }
-
-   stfp->fp_variants = NULL;
-
-   delete_ir(&stfp->state);
-}
-
-
-/**
- * Delete a basic program variant.  Note the caller must unlink
- * the variant from the linked list.
- */
-static void
-delete_common_variant(struct st_context *st, struct st_common_variant *v,
-                      GLenum target)
+delete_variant(struct st_context *st, struct st_variant *v, GLenum target)
 {
    if (v->driver_shader) {
-      if (st->has_shareable_shaders || v->key.st == st) {
+      if (st->has_shareable_shaders || v->st == st) {
          /* The shader's context matches the calling context, or we
           * don't care.
           */
          switch (target) {
+         case GL_VERTEX_PROGRAM_ARB:
+            cso_delete_vertex_shader(st->cso_context, v->driver_shader);
+            break;
          case GL_TESS_CONTROL_PROGRAM_NV:
             cso_delete_tessctrl_shader(st->cso_context, v->driver_shader);
             break;
@@ -337,6 +233,9 @@ delete_common_variant(struct st_context *st, struct st_common_variant *v,
             break;
          case GL_GEOMETRY_PROGRAM_NV:
             cso_delete_geometry_shader(st->cso_context, v->driver_shader);
+            break;
+         case GL_FRAGMENT_PROGRAM_ARB:
+            cso_delete_fragment_shader(st->cso_context, v->driver_shader);
             break;
          case GL_COMPUTE_PROGRAM_NV:
             cso_delete_compute_shader(st->cso_context, v->driver_shader);
@@ -348,22 +247,21 @@ delete_common_variant(struct st_context *st, struct st_common_variant *v,
          /* We can't delete a shader with a context different from the one
           * that created it.  Add it to the creating context's zombie list.
           */
-         enum pipe_shader_type type;
-         switch (target) {
-         case GL_TESS_CONTROL_PROGRAM_NV:
-            type = PIPE_SHADER_TESS_CTRL;
-            break;
-         case GL_TESS_EVALUATION_PROGRAM_NV:
-            type = PIPE_SHADER_TESS_EVAL;
-            break;
-         case GL_GEOMETRY_PROGRAM_NV:
-            type = PIPE_SHADER_GEOMETRY;
-            break;
-         default:
-            unreachable("");
-         }
-         st_save_zombie_shader(v->key.st, type, v->driver_shader);
+         enum pipe_shader_type type =
+            pipe_shader_type_from_mesa(_mesa_program_enum_to_shader_stage(target));
+
+         st_save_zombie_shader(v->st, type, v->driver_shader);
       }
+   }
+
+   if (target == GL_VERTEX_PROGRAM_ARB) {
+      struct st_vp_variant *vpv = (struct st_vp_variant *)v;
+
+      if (vpv->draw_shader)
+         draw_delete_vertex_shader( st->draw, vpv->draw_shader );
+
+      if (vpv->tokens)
+         ureg_free_tokens(vpv->tokens);
    }
 
    free(v);
@@ -374,18 +272,31 @@ delete_common_variant(struct st_context *st, struct st_common_variant *v,
  * Free all basic program variants.
  */
 void
-st_release_common_variants(struct st_context *st, struct st_program *p)
+st_release_variants(struct st_context *st, struct st_program *p)
 {
-   struct st_common_variant *v;
+   struct st_variant *v;
 
    for (v = p->variants; v; ) {
-      struct st_common_variant *next = v->next;
-      delete_common_variant(st, v, p->Base.Target);
+      struct st_variant *next = v->next;
+      delete_variant(st, v, p->Base.Target);
       v = next;
    }
 
    p->variants = NULL;
-   delete_ir(&p->state);
+
+   if (p->state.tokens) {
+      ureg_free_tokens(p->state.tokens);
+      p->state.tokens = NULL;
+   }
+
+   /* Note: Any setup of ->ir.nir that has had pipe->create_*_state called on
+    * it has resulted in the driver taking ownership of the NIR.  Those
+    * callers should be NULLing out the nir field in any pipe_shader_state
+    * that might have this called in order to indicate that.
+    *
+    * GLSL IR and ARB programs will have set gl_program->nir to the same
+    * shader as ir->ir.nir, so it will be freed by _mesa_delete_program().
+    */
 }
 
 void
@@ -745,7 +656,7 @@ st_create_vp_variant(struct st_context *st,
       if (ST_DEBUG & DEBUG_PRINT_IR)
          nir_print_shader(state.ir.nir, stderr);
 
-      vpv->driver_shader = pipe->create_vs_state(pipe, &state);
+      vpv->base.driver_shader = pipe->create_vs_state(pipe, &state);
 
       /* When generating a NIR program, we usually don't have TGSI tokens.
        * However, we do create them for ARB_vertex_program / fixed-function VS
@@ -798,7 +709,7 @@ st_create_vp_variant(struct st_context *st,
    if (ST_DEBUG & DEBUG_PRINT_IR)
       tgsi_dump(state.tokens, 0);
 
-   vpv->driver_shader = pipe->create_vs_state(pipe, &state);
+   vpv->base.driver_shader = pipe->create_vs_state(pipe, &state);
    /* Save this for selection/feedback/rasterpos. */
    vpv->tokens = state.tokens;
    return vpv;
@@ -817,7 +728,8 @@ st_get_vp_variant(struct st_context *st,
    struct st_vp_variant *vpv;
 
    /* Search for existing variant */
-   for (vpv = stp->vp_variants; vpv; vpv = vpv->next) {
+   for (vpv = st_vp_variant(stp->variants); vpv;
+        vpv = st_vp_variant(vpv->base.next)) {
       if (memcmp(&vpv->key, key, sizeof(*key)) == 0) {
          break;
       }
@@ -827,16 +739,18 @@ st_get_vp_variant(struct st_context *st,
       /* create now */
       vpv = st_create_vp_variant(st, stp, key);
       if (vpv) {
-          for (unsigned index = 0; index < vpv->num_inputs; ++index) {
-             unsigned attr = stvp->index_to_input[index];
-             if (attr == ST_DOUBLE_ATTRIB_PLACEHOLDER)
-                continue;
-             vpv->vert_attrib_mask |= 1u << attr;
-          }
+         vpv->base.st = key->st;
+
+         for (unsigned index = 0; index < vpv->num_inputs; ++index) {
+            unsigned attr = stvp->index_to_input[index];
+            if (attr == ST_DOUBLE_ATTRIB_PLACEHOLDER)
+               continue;
+            vpv->vert_attrib_mask |= 1u << attr;
+         }
 
          /* insert into list */
-         vpv->next = stp->vp_variants;
-         stp->vp_variants = vpv;
+         vpv->base.next = stp->variants;
+         stp->variants = &vpv->base;
       }
    }
 
@@ -1366,7 +1280,7 @@ st_create_fp_variant(struct st_context *st,
       if (ST_DEBUG & DEBUG_PRINT_IR)
          nir_print_shader(state.ir.nir, stderr);
 
-      variant->driver_shader = pipe->create_fs_state(pipe, &state);
+      variant->base.driver_shader = pipe->create_fs_state(pipe, &state);
       variant->key = *key;
 
       return variant;
@@ -1498,7 +1412,7 @@ st_create_fp_variant(struct st_context *st,
       tgsi_dump(state.tokens, 0);
 
    /* fill in variant */
-   variant->driver_shader = pipe->create_fs_state(pipe, &state);
+   variant->base.driver_shader = pipe->create_fs_state(pipe, &state);
    variant->key = *key;
 
    if (state.tokens != stfp->state.tokens)
@@ -1517,7 +1431,8 @@ st_get_fp_variant(struct st_context *st,
    struct st_fp_variant *fpv;
 
    /* Search for existing variant */
-   for (fpv = stfp->fp_variants; fpv; fpv = fpv->next) {
+   for (fpv = st_fp_variant(stfp->variants); fpv;
+        fpv = st_fp_variant(fpv->base.next)) {
       if (memcmp(&fpv->key, key, sizeof(*key)) == 0) {
          break;
       }
@@ -1527,6 +1442,8 @@ st_get_fp_variant(struct st_context *st,
       /* create new */
       fpv = st_create_fp_variant(st, stfp, key);
       if (fpv) {
+         fpv->base.st = key->st;
+
          if (key->bitmap || key->drawpixels) {
             /* Regular variants should always come before the
              * bitmap & drawpixels variants, (unless there
@@ -1534,17 +1451,17 @@ st_get_fp_variant(struct st_context *st,
              * st_update_fp can take a fast path when
              * shader_has_one_variant is set.
              */
-            if (!stfp->fp_variants) {
-               stfp->fp_variants = fpv;
+            if (!stfp->variants) {
+               stfp->variants = &fpv->base;
             } else {
                /* insert into list after the first one */
-               fpv->next = stfp->fp_variants->next;
-               stfp->fp_variants->next = fpv;
+               fpv->base.next = stfp->variants->next;
+               stfp->variants->next = &fpv->base;
             }
          } else {
             /* insert into list */
-            fpv->next = stfp->fp_variants;
-            stfp->fp_variants = fpv;
+            fpv->base.next = stfp->variants;
+            stfp->variants = &fpv->base;
          }
       }
    }
@@ -1744,25 +1661,24 @@ st_translate_common_program(struct st_context *st,
 /**
  * Get/create a basic program variant.
  */
-struct st_common_variant *
+struct st_variant *
 st_get_common_variant(struct st_context *st,
                       struct st_program *prog,
                       const struct st_common_variant_key *key)
 {
    struct pipe_context *pipe = st->pipe;
-   struct st_common_variant *v;
+   struct st_variant *v;
    struct pipe_shader_state state = {0};
 
    /* Search for existing variant */
    for (v = prog->variants; v; v = v->next) {
-      if (memcmp(&v->key, key, sizeof(*key)) == 0) {
+      if (memcmp(&st_common_variant(v)->key, key, sizeof(*key)) == 0)
          break;
-      }
    }
 
    if (!v) {
       /* create new */
-      v = CALLOC_STRUCT(st_common_variant);
+      v = (struct st_variant*)CALLOC_STRUCT(st_common_variant);
       if (v) {
 	 if (prog->state.type == PIPE_SHADER_IR_NIR) {
             bool finalize = false;
@@ -1837,7 +1753,8 @@ st_get_common_variant(struct st_context *st,
             return NULL;
          }
 
-         v->key = *key;
+         st_common_variant(v)->key = *key;
+         v->st = key->st;
 
          /* insert into list */
          v->next = prog->variants;
@@ -1859,74 +1776,21 @@ destroy_program_variants(struct st_context *st, struct gl_program *target)
    if (!target || target == &_mesa_DummyProgram)
       return;
 
-   switch (target->Target) {
-   case GL_VERTEX_PROGRAM_ARB:
-      {
-         struct st_program *stvp = (struct st_program *) target;
-         struct st_vp_variant *vpv, **prevPtr = &stvp->vp_variants;
+   struct st_program *p = st_program(target);
+   struct st_variant *v, **prevPtr = &p->variants;
 
-         for (vpv = stvp->vp_variants; vpv; ) {
-            struct st_vp_variant *next = vpv->next;
-            if (vpv->key.st == st) {
-               /* unlink from list */
-               *prevPtr = next;
-               /* destroy this variant */
-               delete_vp_variant(st, vpv);
-            }
-            else {
-               prevPtr = &vpv->next;
-            }
-            vpv = next;
-         }
+   for (v = p->variants; v; ) {
+      struct st_variant *next = v->next;
+      if (v->st == st) {
+         /* unlink from list */
+         *prevPtr = next;
+         /* destroy this variant */
+         delete_variant(st, v, target->Target);
       }
-      break;
-   case GL_FRAGMENT_PROGRAM_ARB:
-      {
-         struct st_program *stfp =
-            (struct st_program *) target;
-         struct st_fp_variant *fpv, **prevPtr = &stfp->fp_variants;
-
-         for (fpv = stfp->fp_variants; fpv; ) {
-            struct st_fp_variant *next = fpv->next;
-            if (fpv->key.st == st) {
-               /* unlink from list */
-               *prevPtr = next;
-               /* destroy this variant */
-               delete_fp_variant(st, fpv);
-            }
-            else {
-               prevPtr = &fpv->next;
-            }
-            fpv = next;
-         }
+      else {
+         prevPtr = &v->next;
       }
-      break;
-   case GL_GEOMETRY_PROGRAM_NV:
-   case GL_TESS_CONTROL_PROGRAM_NV:
-   case GL_TESS_EVALUATION_PROGRAM_NV:
-   case GL_COMPUTE_PROGRAM_NV:
-      {
-         struct st_program *p = st_program(target);
-         struct st_common_variant *v, **prevPtr = &p->variants;
-
-         for (v = p->variants; v; ) {
-            struct st_common_variant *next = v->next;
-            if (v->key.st == st) {
-               /* unlink from list */
-               *prevPtr = next;
-               /* destroy this variant */
-               delete_common_variant(st, v, target->Target);
-            }
-            else {
-               prevPtr = &v->next;
-            }
-            v = next;
-         }
-      }
-      break;
-   default:
-      _mesa_problem(NULL, "Unexpected program target 0x%x in "
-                    "destroy_program_variants_cb()", target->Target);
+      v = next;
    }
 }
 

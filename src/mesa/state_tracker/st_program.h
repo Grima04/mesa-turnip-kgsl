@@ -139,17 +139,29 @@ struct st_fp_variant_key
    struct st_external_sampler_key external;
 };
 
+/**
+ * Base class for shader variants.
+ */
+struct st_variant
+{
+   /** next in linked list */
+   struct st_variant *next;
+
+   /** st_context from the shader key */
+   struct st_context *st;
+
+   void *driver_shader;
+};
 
 /**
  * Variant of a fragment program.
  */
 struct st_fp_variant
 {
+   struct st_variant base;
+
    /** Parameters which generated this version of fragment program */
    struct st_fp_variant_key key;
-
-   /** Driver's compiled shader */
-   void *driver_shader;
 
    /** For glBitmap variants */
    uint bitmap_sampler;
@@ -157,9 +169,6 @@ struct st_fp_variant
    /** For glDrawPixels variants */
    unsigned drawpix_sampler;
    unsigned pixelmap_sampler;
-
-   /** next in linked list */
-   struct st_fp_variant *next;
 };
 
 
@@ -190,6 +199,8 @@ struct st_common_variant_key
  */
 struct st_vp_variant
 {
+   struct st_variant base;
+
    /* Parameters which generated this translated version of a vertex
     * shader:
     */
@@ -201,14 +212,8 @@ struct st_vp_variant
     */
    const struct tgsi_token *tokens;
 
-   /** Driver's compiled shader */
-   void *driver_shader;
-
    /** For using our private draw module (glRasterPos) */
    struct draw_vertex_shader *draw_shader;
-
-   /** Next in linked list */
-   struct st_vp_variant *next;  
 
    /** similar to that in st_vertex_program, but with edgeflags info too */
    GLuint num_inputs;
@@ -219,16 +224,14 @@ struct st_vp_variant
 
 
 /**
- * Geometry program variant.
+ * Common shader variant.
  */
 struct st_common_variant
 {
+   struct st_variant base;
+
    /* Parameters which generated this variant. */
    struct st_common_variant_key key;
-
-   void *driver_shader;
-
-   struct st_common_variant *next;
 };
 
 
@@ -243,14 +246,10 @@ struct st_program
    struct ati_fragment_shader *ati_fs;
    uint64_t affected_states; /**< ST_NEW_* flags to mark dirty when binding */
 
-  /* used when bypassing glsl_to_tgsi: */
+   /* used when bypassing glsl_to_tgsi: */
    struct gl_shader_program *shader_program;
 
-   union {
-      struct st_common_variant *variants;
-      struct st_vp_variant *vp_variants;
-      struct st_fp_variant *fp_variants;
-   };
+   struct st_variant *variants;
 };
 
 
@@ -285,6 +284,24 @@ st_reference_prog(struct st_context *st,
                            (struct gl_program *) prog);
 }
 
+static inline struct st_common_variant *
+st_common_variant(struct st_variant *v)
+{
+   return (struct st_common_variant*)v;
+}
+
+static inline struct st_vp_variant *
+st_vp_variant(struct st_variant *v)
+{
+   return (struct st_vp_variant*)v;
+}
+
+static inline struct st_fp_variant *
+st_fp_variant(struct st_variant *v)
+{
+   return (struct st_fp_variant*)v;
+}
+
 /**
  * This defines mapping from Mesa VARYING_SLOTs to TGSI GENERIC slots.
  */
@@ -309,21 +326,13 @@ st_get_fp_variant(struct st_context *st,
                   struct st_program *stfp,
                   const struct st_fp_variant_key *key);
 
-extern struct st_common_variant *
+extern struct st_variant *
 st_get_common_variant(struct st_context *st,
                       struct st_program *p,
                       const struct st_common_variant_key *key);
 
 extern void
-st_release_vp_variants( struct st_context *st,
-                        struct st_program *stvp );
-
-extern void
-st_release_fp_variants( struct st_context *st,
-                        struct st_program *stfp );
-
-extern void
-st_release_common_variants(struct st_context *st, struct st_program *p);
+st_release_variants(struct st_context *st, struct st_program *p);
 
 extern void
 st_destroy_program_variants(struct st_context *st);

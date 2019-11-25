@@ -785,13 +785,7 @@ st_link_nir(struct gl_context *ctx,
 
       st_store_ir_in_disk_cache(st, prog, true);
 
-      if (prog->info.stage == MESA_SHADER_VERTEX)
-	 st_release_vp_variants(st, stp);
-      else if (prog->info.stage == MESA_SHADER_FRAGMENT)
-	 st_release_fp_variants(st, stp);
-      else
-	 st_release_common_variants(st, stp);
-
+      st_release_variants(st, stp);
       st_finalize_program(st, prog);
 
       /* The GLSL IR won't be needed anymore. */

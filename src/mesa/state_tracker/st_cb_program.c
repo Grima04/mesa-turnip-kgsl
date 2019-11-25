@@ -87,12 +87,7 @@ st_delete_program(struct gl_context *ctx, struct gl_program *prog)
    struct st_context *st = st_context(ctx);
    struct st_program *stp = st_program(prog);
 
-   if (prog->Target == GL_VERTEX_PROGRAM_ARB)
-      st_release_vp_variants(st, stp);
-   if (prog->Target == GL_FRAGMENT_PROGRAM_ARB)
-      st_release_fp_variants(st, stp);
-   else
-      st_release_common_variants(st, stp);
+   st_release_variants(st, stp);
 
    if (stp->glsl_to_tgsi)
       free_glsl_to_tgsi_visitor(stp->glsl_to_tgsi);
@@ -117,6 +112,8 @@ st_program_string_notify( struct gl_context *ctx,
    /* GLSL-to-NIR should not end up here. */
    assert(!stp->shader_program);
 
+   st_release_variants(st, stp);
+
    if (target == GL_FRAGMENT_PROGRAM_ARB ||
        target == GL_FRAGMENT_SHADER_ATI) {
       if (target == GL_FRAGMENT_SHADER_ATI) {
@@ -126,15 +123,12 @@ st_program_string_notify( struct gl_context *ctx,
          st_init_atifs_prog(ctx, prog);
       }
 
-      st_release_fp_variants(st, stp);
       if (!st_translate_fragment_program(st, stp))
          return false;
    } else if (target == GL_VERTEX_PROGRAM_ARB) {
-      st_release_vp_variants(st, stp);
       if (!st_translate_vertex_program(st, stp))
          return false;
    } else {
-      st_release_common_variants(st, stp);
       if (!st_translate_common_program(st, stp))
          return false;
    }
@@ -182,23 +176,8 @@ st_get_shader_program_completion_status(struct gl_context *ctx,
       if (!linked || !linked->Program)
          continue;
 
-      switch (i) {
-      case MESA_SHADER_VERTEX:
-         if (st_program(linked->Program)->vp_variants)
-            sh = st_program(linked->Program)->vp_variants->driver_shader;
-         break;
-      case MESA_SHADER_FRAGMENT:
-         if (st_program(linked->Program)->fp_variants)
-            sh = st_program(linked->Program)->fp_variants->driver_shader;
-         break;
-      case MESA_SHADER_TESS_CTRL:
-      case MESA_SHADER_TESS_EVAL:
-      case MESA_SHADER_GEOMETRY:
-      case MESA_SHADER_COMPUTE:
-         if (st_program(linked->Program)->variants)
-            sh = st_program(linked->Program)->variants->driver_shader;
-         break;
-      }
+      if (st_program(linked->Program)->variants)
+         sh = st_program(linked->Program)->variants->driver_shader;
 
       unsigned type = pipe_shader_type_from_mesa(i);
 

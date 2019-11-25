@@ -109,10 +109,10 @@ st_update_fp( struct st_context *st )
    if (st->shader_has_one_variant[MESA_SHADER_FRAGMENT] &&
        !stfp->ati_fs && /* ATI_fragment_shader always has multiple variants */
        !stfp->Base.ExternalSamplersUsed && /* external samplers need variants */
-       stfp->fp_variants &&
-       !stfp->fp_variants->key.drawpixels &&
-       !stfp->fp_variants->key.bitmap) {
-      shader = stfp->fp_variants->driver_shader;
+       stfp->variants &&
+       !st_fp_variant(stfp->variants)->key.drawpixels &&
+       !st_fp_variant(stfp->variants)->key.bitmap) {
+      shader = stfp->variants->driver_shader;
    } else {
       struct st_fp_variant_key key;
 
@@ -160,7 +160,7 @@ st_update_fp( struct st_context *st )
 
       key.external = st_get_external_sampler_key(st, &stfp->Base);
 
-      shader = st_get_fp_variant(st, stfp, &key)->driver_shader;
+      shader = st_get_fp_variant(st, stfp, &key)->base.driver_shader;
    }
 
    st_reference_prog(st, &st->fp, stfp);
@@ -186,9 +186,9 @@ st_update_vp( struct st_context *st )
    assert(stvp->Base.Target == GL_VERTEX_PROGRAM_ARB);
 
    if (st->shader_has_one_variant[MESA_SHADER_VERTEX] &&
-       stvp->vp_variants &&
-       stvp->vp_variants->key.passthrough_edgeflags == st->vertdata_edgeflags) {
-      st->vp_variant = stvp->vp_variants;
+       stvp->variants &&
+       st_vp_variant(stvp->variants)->key.passthrough_edgeflags == st->vertdata_edgeflags) {
+      st->vp_variant = st_vp_variant(stvp->variants);
    } else {
       struct st_common_variant_key key;
 
@@ -236,7 +236,7 @@ st_update_vp( struct st_context *st )
    st_reference_prog(st, &st->vp, stvp);
 
    cso_set_vertex_shader_handle(st->cso_context, 
-                                st->vp_variant->driver_shader);
+                                st->vp_variant->base.driver_shader);
 }
 
 

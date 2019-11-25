@@ -184,9 +184,9 @@ st_deserialise_ir_program(struct gl_context *ctx,
    struct blob_reader blob_reader;
    blob_reader_init(&blob_reader, buffer, size);
 
-   if (prog->info.stage == MESA_SHADER_VERTEX) {
-      st_release_vp_variants(st, stp);
+   st_release_variants(st, stp);
 
+   if (prog->info.stage == MESA_SHADER_VERTEX) {
       struct st_vertex_program *stvp = (struct st_vertex_program *)stp;
       stvp->num_inputs = blob_read_uint32(&blob_reader);
       blob_copy_bytes(&blob_reader, (uint8_t *) stvp->index_to_input,
@@ -195,10 +195,6 @@ st_deserialise_ir_program(struct gl_context *ctx,
                       sizeof(stvp->input_to_index));
       blob_copy_bytes(&blob_reader, (uint8_t *) stvp->result_to_output,
                       sizeof(stvp->result_to_output));
-   } else if (prog->info.stage == MESA_SHADER_FRAGMENT) {
-      st_release_fp_variants(st, stp);
-   } else {
-      st_release_common_variants(st, stp);
    }
 
    if (prog->info.stage == MESA_SHADER_VERTEX ||

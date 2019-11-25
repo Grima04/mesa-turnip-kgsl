@@ -1363,7 +1363,7 @@ st_DrawPixels(struct gl_context *ctx, GLint x, GLint y,
       fpv = (format != GL_COLOR_INDEX) ? get_color_fp_variant(st) :
                                          get_color_index_fp_variant(st);
 
-      driver_fp = fpv->driver_shader;
+      driver_fp = fpv->base.driver_shader;
 
       if (ctx->Pixel.MapColorFlag && format != GL_COLOR_INDEX) {
          pipe_sampler_view_reference(&sv[1],
@@ -1741,7 +1741,7 @@ st_CopyPixels(struct gl_context *ctx, GLint srcx, GLint srcy,
 
       rbRead = st_get_color_read_renderbuffer(ctx);
 
-      driver_fp = fpv->driver_shader;
+      driver_fp = fpv->base.driver_shader;
 
       if (ctx->Pixel.MapColorFlag) {
          pipe_sampler_view_reference(&sv[1],
