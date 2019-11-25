@@ -223,10 +223,10 @@ fd_try_shadow_resource(struct fd_context *ctx, struct fd_resource *rsc,
 	/* TODO valid_buffer_range?? */
 	swap(rsc->bo,        shadow->bo);
 	swap(rsc->write_batch,   shadow->write_batch);
-	for (int level = 0; level <= prsc->last_level; level++)
+	for (int level = 0; level <= prsc->last_level; level++) {
 		swap(rsc->layout.slices[level], shadow->layout.slices[level]);
-	swap(rsc->layout.ubwc_offset, shadow->layout.ubwc_offset);
-	swap(rsc->layout.ubwc_pitch, shadow->layout.ubwc_pitch);
+		swap(rsc->layout.ubwc_slices[level], shadow->layout.ubwc_slices[level]);
+	}
 	swap(rsc->layout.ubwc_size, shadow->layout.ubwc_size);
 	rsc->seqno = p_atomic_inc_return(&ctx->screen->rsc_seqno);
 

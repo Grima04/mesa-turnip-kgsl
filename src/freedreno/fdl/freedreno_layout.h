@@ -81,6 +81,7 @@ struct fdl_slice {
  */
 struct fdl_layout {
 	struct fdl_slice slices[MAX_MIP_LEVELS];
+	struct fdl_slice ubwc_slices[MAX_MIP_LEVELS];
 	uint32_t layer_size;
 	bool layer_first : 1;    /* see above description */
 
@@ -99,9 +100,6 @@ struct fdl_layout {
 
 	uint32_t width0, height0, depth0;
 
-	/* UBWC specific fields: */
-	uint32_t ubwc_offset;    /* offset to UBWC meta data */
-	uint32_t ubwc_pitch;
 	uint32_t ubwc_size;
 };
 
@@ -131,7 +129,7 @@ fdl_ubwc_offset(const struct fdl_layout *layout, unsigned level, unsigned layer)
 		debug_assert(level == 0);
 		debug_assert(layer == 0);
 	}
-	return layout->ubwc_offset;
+	return layout->ubwc_slices[0].offset;
 }
 
 static inline bool

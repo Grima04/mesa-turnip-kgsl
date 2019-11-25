@@ -196,9 +196,10 @@ static void emit_image_tex(struct fd_ringbuffer *ring, struct fd6_image *img)
 	OUT_RING(ring, 0x00000000);   /* texconst6 */
 
 	if (ubwc_enabled) {
+		struct fdl_slice *ubwc_slice = &rsc->layout.ubwc_slices[img->level];
 		OUT_RELOC(ring, rsc->bo, img->ubwc_offset, 0, 0);
 		OUT_RING(ring, A6XX_TEX_CONST_9_FLAG_BUFFER_ARRAY_PITCH(rsc->layout.ubwc_size));
-		OUT_RING(ring, A6XX_TEX_CONST_10_FLAG_BUFFER_PITCH(rsc->layout.ubwc_pitch));
+		OUT_RING(ring, A6XX_TEX_CONST_10_FLAG_BUFFER_PITCH(ubwc_slice->pitch));
 	} else {
 		OUT_RING(ring, 0x00000000);   /* texconst7 */
 		OUT_RING(ring, 0x00000000);   /* texconst8 */
@@ -254,9 +255,10 @@ static void emit_image_ssbo(struct fd_ringbuffer *ring, struct fd6_image *img)
 	OUT_RING(ring, 0x00000000);
 
 	if (ubwc_enabled) {
+		struct fdl_slice *ubwc_slice = &rsc->layout.ubwc_slices[img->level];
 		OUT_RELOCW(ring, rsc->bo, img->ubwc_offset, 0, 0);
 		OUT_RING(ring, A6XX_IBO_9_FLAG_BUFFER_ARRAY_PITCH(rsc->layout.ubwc_size));
-		OUT_RING(ring, A6XX_IBO_10_FLAG_BUFFER_PITCH(rsc->layout.ubwc_pitch));
+		OUT_RING(ring, A6XX_IBO_10_FLAG_BUFFER_PITCH(ubwc_slice->pitch));
 	} else {
 		OUT_RING(ring, 0x00000000);
 		OUT_RING(ring, 0x00000000);

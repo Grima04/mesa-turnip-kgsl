@@ -267,8 +267,8 @@ fd6_fill_ubwc_buffer_sizes(struct fd_resource *rsc)
 		slice->offset += meta_size;
 	}
 
-	rsc->layout.ubwc_offset = 0;
-	rsc->layout.ubwc_pitch = meta_stride;
+	rsc->layout.ubwc_slices[0].offset = 0;
+	rsc->layout.ubwc_slices[0].pitch = meta_stride;
 	rsc->layout.ubwc_size = meta_size >> 2;   /* in dwords??? */
 	rsc->layout.tile_mode = TILE6_3;
 
