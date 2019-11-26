@@ -2633,6 +2633,61 @@ cmd_buffer_emit_push_constant(struct anv_cmd_buffer *cmd_buffer,
    }
 }
 
+#if GEN_GEN >= 12
+static void
+cmd_buffer_emit_push_constant_all(struct anv_cmd_buffer *cmd_buffer,
+                                  uint32_t shader_mask, uint32_t count)
+{
+   if (count == 0) {
+      anv_batch_emit(&cmd_buffer->batch, GENX(3DSTATE_CONSTANT_ALL), c) {
+         c.ShaderUpdateEnable = shader_mask;
+      }
+      return;
+   }
+
+   const struct anv_cmd_graphics_state *gfx_state = &cmd_buffer->state.gfx;
+   const struct anv_pipeline *pipeline = gfx_state->base.pipeline;
+
+   static const uint32_t push_constant_opcodes[] = {
+      [MESA_SHADER_VERTEX]                      = 21,
+      [MESA_SHADER_TESS_CTRL]                   = 25, /* HS */
+      [MESA_SHADER_TESS_EVAL]                   = 26, /* DS */
+      [MESA_SHADER_GEOMETRY]                    = 22,
+      [MESA_SHADER_FRAGMENT]                    = 23,
+      [MESA_SHADER_COMPUTE]                     = 0,
+   };
+
+   gl_shader_stage stage = vk_to_mesa_shader_stage(shader_mask);
+   assert(stage < ARRAY_SIZE(push_constant_opcodes));
+   assert(push_constant_opcodes[stage] > 0);
+
+   const struct anv_pipeline_bind_map *bind_map =
+      &pipeline->shaders[stage]->bind_map;
+
+   uint32_t *dw;
+   const uint32_t buffers = (1 << count) - 1;
+   const uint32_t num_dwords = 2 + 2 * count;
+
+   dw = anv_batch_emitn(&cmd_buffer->batch, num_dwords,
+                        GENX(3DSTATE_CONSTANT_ALL),
+                        .ShaderUpdateEnable = shader_mask,
+                        .PointerBufferMask = buffers);
+
+   for (int i = 0; i < count; i++) {
+      const struct anv_push_range *range = &bind_map->push_ranges[i];
+      const struct anv_address addr =
+         get_push_range_address(cmd_buffer, stage, range);
+
+      GENX(3DSTATE_CONSTANT_ALL_DATA_pack)(
+         &cmd_buffer->batch, dw + 2 + i * 2,
+         &(struct GENX(3DSTATE_CONSTANT_ALL_DATA)) {
+            .PointerToConstantBuffer = anv_address_add(addr, range->start * 32),
+            .ConstantBufferReadLength = range->length,
+         });
+   }
+}
+#endif
+
 static void
 cmd_buffer_flush_push_constants(struct anv_cmd_buffer *cmd_buffer,
                                 VkShaderStageFlags dirty_stages)
@@ -2641,24 +2696,56 @@ cmd_buffer_flush_push_constants(struct anv_cmd_buffer *cmd_buffer,
    const struct anv_cmd_graphics_state *gfx_state = &cmd_buffer->state.gfx;
    const struct anv_pipeline *pipeline = gfx_state->base.pipeline;
 
+#if GEN_GEN >= 12
+   uint32_t nobuffer_stages = 0;
+#endif
 
    anv_foreach_stage(stage, dirty_stages) {
       unsigned buffer_count = 0;
+      flushed |= mesa_to_vk_shader_stage(stage);
+      uint32_t max_push_range = 0;
 
       if (anv_pipeline_has_stage(pipeline, stage)) {
          const struct anv_pipeline_bind_map *bind_map =
             &pipeline->shaders[stage]->bind_map;
+
          for (unsigned i = 0; i < 4; i++) {
             const struct anv_push_range *range = &bind_map->push_ranges[i];
-            if (range->length > 0)
+            if (range->length > 0) {
                buffer_count++;
+               if (GEN_GEN >= 12 && range->length > max_push_range)
+                  max_push_range = range->length;
+            }
          }
       }
 
-      cmd_buffer_emit_push_constant(cmd_buffer, stage, buffer_count);
+#if GEN_GEN >= 12
+      /* If this stage doesn't have any push constants, emit it later in a
+       * single CONSTANT_ALL packet.
+       */
+      if (buffer_count == 0) {
+         nobuffer_stages |= 1 << stage;
+         continue;
+      }
 
-      flushed |= mesa_to_vk_shader_stage(stage);
+      /* The Constant Buffer Read Length field from 3DSTATE_CONSTANT_ALL
+       * contains only 5 bits, so we can only use it for buffers smaller than
+       * 32.
+       */
+      if (max_push_range < 32) {
+         cmd_buffer_emit_push_constant_all(cmd_buffer, 1 << stage,
+                                           buffer_count);
+         continue;
+      }
+#endif
+
+      cmd_buffer_emit_push_constant(cmd_buffer, stage, buffer_count);
    }
+
+#if GEN_GEN >= 12
+   if (nobuffer_stages)
+      cmd_buffer_emit_push_constant_all(cmd_buffer, nobuffer_stages, 0);
+#endif
 
    cmd_buffer->state.push_constants_dirty &= ~flushed;
 }
