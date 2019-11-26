@@ -1293,7 +1293,6 @@ struct tu_image
    VkSampleCountFlagBits samples;
 
 
-   VkDeviceSize size;
    uint32_t alignment;
 
    struct fdl_layout layout;

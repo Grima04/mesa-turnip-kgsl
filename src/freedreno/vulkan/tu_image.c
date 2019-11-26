@@ -50,147 +50,6 @@ tu6_get_image_tile_mode(struct tu_image *image, int level)
       return image->layout.tile_mode;
 }
 
-/* indexed by cpp, including msaa 2x and 4x: */
-static const struct {
-   uint8_t pitchalign;
-   uint8_t heightalign;
-   uint8_t ubwc_blockwidth;
-   uint8_t ubwc_blockheight;
-} tile_alignment[] = {
-/* TODO:
- * cpp=1 UBWC needs testing at larger texture sizes
- * missing UBWC blockwidth/blockheight for npot+64 cpp
- * missing 96/128 CPP for 8x MSAA with 32_32_32/32_32_32_32
- */
-   [1]  = { 128, 32, 16, 4 },
-   [2]  = { 128, 16, 16, 4 },
-   [3]  = {  64, 32 },
-   [4]  = {  64, 16, 16, 4 },
-   [6]  = {  64, 16 },
-   [8]  = {  64, 16, 8, 4, },
-   [12] = {  64, 16 },
-   [16] = {  64, 16, 4, 4, },
-   [24] = {  64, 16 },
-   [32] = {  64, 16, 4, 2 },
-   [48] = {  64, 16 },
-   [64] = {  64, 16 },
-   /* special case for r8g8: */
-   [0]  = { 64, 32, 16, 4 },
-};
-
-static void
-setup_slices(struct tu_image *image,
-             const VkImageCreateInfo *pCreateInfo,
-             bool ubwc_enabled)
-{
-#define RGB_TILE_WIDTH_ALIGNMENT 64
-#define RGB_TILE_HEIGHT_ALIGNMENT 16
-#define UBWC_PLANE_SIZE_ALIGNMENT 4096
-   VkFormat format = pCreateInfo->format;
-   enum util_format_layout layout = vk_format_description(format)->layout;
-   uint32_t layer_size = 0;
-   uint32_t ubwc_size = 0;
-   int ta = image->layout.cpp;
-
-   if (image->type != VK_IMAGE_TYPE_3D)
-      image->layout.layer_first = true;
-
-   /* The r8g8 format seems to not play by the normal tiling rules: */
-   if (image->layout.cpp == 2 && vk_format_get_nr_components(format) == 2)
-      ta = 0;
-
-   for (unsigned level = 0; level < pCreateInfo->mipLevels; level++) {
-      struct fdl_slice *slice = &image->layout.slices[level];
-      struct fdl_slice *ubwc_slice = &image->layout.ubwc_slices[level];
-      uint32_t width = u_minify(pCreateInfo->extent.width, level);
-      uint32_t height = u_minify(pCreateInfo->extent.height, level);
-      uint32_t depth = u_minify(pCreateInfo->extent.depth, level);
-      uint32_t aligned_height = height;
-      uint32_t blocks;
-      uint32_t pitchalign;
-
-      if (image->layout.tile_mode &&
-          !image_level_linear(image, level, ubwc_enabled)) {
-         /* tiled levels of 3D textures are rounded up to PoT dimensions: */
-         if (pCreateInfo->imageType == VK_IMAGE_TYPE_3D) {
-            width = util_next_power_of_two(width);
-            height = aligned_height = util_next_power_of_two(height);
-         }
-         pitchalign = tile_alignment[ta].pitchalign;
-         aligned_height = align(aligned_height, tile_alignment[ta].heightalign);
-      } else {
-         pitchalign = 64;
-      }
-
-      /* The blits used for mem<->gmem work at a granularity of
-       * 32x32, which can cause faults due to over-fetch on the
-       * last level.  The simple solution is to over-allocate a
-       * bit the last level to ensure any over-fetch is harmless.
-       * The pitch is already sufficiently aligned, but height
-       * may not be:
-       */
-      if (level + 1 == pCreateInfo->mipLevels)
-         aligned_height = align(aligned_height, 32);
-
-      if (layout == UTIL_FORMAT_LAYOUT_ASTC)
-         slice->pitch =
-            util_align_npot(width, pitchalign * vk_format_get_blockwidth(format));
-      else
-         slice->pitch = align(width, pitchalign);
-
-      slice->offset = layer_size;
-      blocks = vk_format_get_block_count(format, slice->pitch, aligned_height);
-
-      /* 1d array and 2d array textures must all have the same layer size
-       * for each miplevel on a6xx. 3d textures can have different layer
-       * sizes for high levels, but the hw auto-sizer is buggy (or at least
-       * different than what this code does), so as soon as the layer size
-       * range gets into range, we stop reducing it.
-       */
-      if (pCreateInfo->imageType == VK_IMAGE_TYPE_3D) {
-         if (level < 1 || image->layout.slices[level - 1].size0 > 0xf000) {
-            slice->size0 = align(blocks * image->layout.cpp, 4096);
-         } else {
-            slice->size0 = image->layout.slices[level - 1].size0;
-         }
-      } else {
-         slice->size0 = blocks * image->layout.cpp;
-      }
-
-      layer_size += slice->size0 * depth;
-      if (ubwc_enabled) {
-         /* with UBWC every level is aligned to 4K */
-         layer_size = align(layer_size, 4096);
-
-         uint32_t block_width = tile_alignment[ta].ubwc_blockwidth;
-         uint32_t block_height = tile_alignment[ta].ubwc_blockheight;
-         uint32_t meta_pitch = align(DIV_ROUND_UP(width, block_width), RGB_TILE_WIDTH_ALIGNMENT);
-         uint32_t meta_height = align(DIV_ROUND_UP(height, block_height), RGB_TILE_HEIGHT_ALIGNMENT);
-
-         /* it looks like mipmaps need alignment to power of two
-          * TODO: needs testing with large npot textures
-          * (needed for the first level?)
-          */
-         if (pCreateInfo->mipLevels > 1) {
-            meta_pitch = util_next_power_of_two(meta_pitch);
-            meta_height = util_next_power_of_two(meta_height);
-         }
-
-         ubwc_slice->pitch = meta_pitch;
-         ubwc_slice->offset = ubwc_size;
-         ubwc_size += align(meta_pitch * meta_height, UBWC_PLANE_SIZE_ALIGNMENT);
-      }
-   }
-   image->layout.layer_size = align(layer_size, 4096);
-
-   VkDeviceSize offset = ubwc_size * pCreateInfo->arrayLayers;
-   for (unsigned level = 0; level < pCreateInfo->mipLevels; level++)
-      image->layout.slices[level].offset += offset;
-
-   image->size = offset + image->layout.layer_size * pCreateInfo->arrayLayers;
-   image->layout.ubwc_size = ubwc_size;
-}
-
 VkResult
 tu_image_create(VkDevice _device,
                 const VkImageCreateInfo *pCreateInfo,
@@ -224,7 +83,6 @@ tu_image_create(VkDevice _device,
    image->level_count = pCreateInfo->mipLevels;
    image->layer_count = pCreateInfo->arrayLayers;
    image->samples = pCreateInfo->samples;
-   image->layout.cpp = vk_format_get_blocksize(image->vk_format) * image->samples;
 
    image->exclusive = pCreateInfo->sharingMode == VK_SHARING_MODE_EXCLUSIVE;
    if (pCreateInfo->sharingMode == VK_SHARING_MODE_CONCURRENT) {
@@ -268,7 +126,10 @@ tu_image_create(VkDevice _device,
       ubwc_enabled = false;
    }
 
-   if (!tile_alignment[image->layout.cpp].ubwc_blockwidth) {
+   uint32_t ubwc_blockwidth, ubwc_blockheight;
+   fdl6_get_ubwc_blockwidth(&image->layout,
+                            &ubwc_blockwidth, &ubwc_blockheight);
+   if (!ubwc_blockwidth) {
       tu_finishme("UBWC for cpp=%d", image->layout.cpp);
       ubwc_enabled = false;
    }
@@ -276,7 +137,15 @@ tu_image_create(VkDevice _device,
    /* expect UBWC enabled if we asked for it */
    assert(modifier != DRM_FORMAT_MOD_QCOM_COMPRESSED || ubwc_enabled);
 
-   setup_slices(image, pCreateInfo, ubwc_enabled);
+   fdl6_layout(&image->layout, vk_format_to_pipe_format(image->vk_format),
+               image->samples,
+               pCreateInfo->extent.width,
+               pCreateInfo->extent.height,
+               pCreateInfo->extent.depth,
+               pCreateInfo->mipLevels,
+               pCreateInfo->arrayLayers,
+               pCreateInfo->imageType == VK_IMAGE_TYPE_3D,
+               ubwc_enabled);
 
    *pImage = tu_image_to_handle(image);
 
@@ -418,8 +287,9 @@ tu_image_view_init(struct tu_image_view *iview,
    iview->descriptor[5] = base_addr >> 32;
 
    if (image->layout.ubwc_size) {
-      uint32_t block_width = tile_alignment[image->layout.cpp].ubwc_blockwidth;
-      uint32_t block_height = tile_alignment[image->layout.cpp].ubwc_blockheight;
+      uint32_t block_width, block_height;
+      fdl6_get_ubwc_blockwidth(&image->layout,
+                               &block_width, &block_height);
 
       iview->descriptor[3] |= A6XX_TEX_CONST_3_FLAG | A6XX_TEX_CONST_3_TILE_ALL;
       iview->descriptor[7] = ubwc_addr;

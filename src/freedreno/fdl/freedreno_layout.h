@@ -174,6 +174,10 @@ void
 fdl6_layout(struct fdl_layout *layout,
 		enum pipe_format format, uint32_t nr_samples,
 		uint32_t width0, uint32_t height0, uint32_t depth0,
-		uint32_t mip_levels, uint32_t array_size, bool is_3d);
+		uint32_t mip_levels, uint32_t array_size, bool is_3d, bool ubwc);
+
+void
+fdl6_get_ubwc_blockwidth(struct fdl_layout *layout,
+		uint32_t *blockwidth, uint32_t *blockheight);
 
 #endif /* FREEDRENO_LAYOUT_H_ */

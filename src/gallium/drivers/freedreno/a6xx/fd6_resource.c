@@ -200,7 +200,7 @@ fd6_setup_slices(struct fd_resource *rsc)
 	fdl6_layout(&rsc->layout, prsc->format, fd_resource_nr_samples(prsc),
 			prsc->width0, prsc->height0, prsc->depth0,
 			prsc->last_level + 1, prsc->array_size,
-			prsc->target == PIPE_TEXTURE_3D);
+			prsc->target == PIPE_TEXTURE_3D, false);
 
 	/* The caller does this bit of layout setup again. */
 	if (rsc->layout.layer_first)
