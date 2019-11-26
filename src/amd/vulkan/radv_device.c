@@ -1645,16 +1645,16 @@ void radv_GetPhysicalDeviceProperties2(
 			properties->uniformTexelBufferOffsetSingleTexelAlignment = true;
 			break;
 		}
-		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FLOAT_CONTROLS_PROPERTIES_KHR : {
-			VkPhysicalDeviceFloatControlsPropertiesKHR *properties =
-				(VkPhysicalDeviceFloatControlsPropertiesKHR *)ext;
+		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FLOAT_CONTROLS_PROPERTIES : {
+			VkPhysicalDeviceFloatControlsProperties *properties =
+				(VkPhysicalDeviceFloatControlsProperties *)ext;
 
 			/* On AMD hardware, denormals and rounding modes for
 			 * fp16/fp64 are controlled by the same config
 			 * register.
 			 */
-			properties->denormBehaviorIndependence = VK_SHADER_FLOAT_CONTROLS_INDEPENDENCE_32_BIT_ONLY_KHR;
-			properties->roundingModeIndependence = VK_SHADER_FLOAT_CONTROLS_INDEPENDENCE_32_BIT_ONLY_KHR;
+			properties->denormBehaviorIndependence = VK_SHADER_FLOAT_CONTROLS_INDEPENDENCE_32_BIT_ONLY;
+			properties->roundingModeIndependence = VK_SHADER_FLOAT_CONTROLS_INDEPENDENCE_32_BIT_ONLY;
 
 			/* Do not allow both preserving and flushing denorms
 			 * because different shaders in the same pipeline can
