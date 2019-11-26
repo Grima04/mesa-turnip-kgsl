@@ -1108,6 +1108,16 @@ radv_fast_clear_depth(struct radv_cmd_buffer *cmd_buffer,
 					      htile_mask);
 	}
 
+	if (iview->image->planes[0].surface.has_stencil &&
+	    !(aspects == (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT))) {
+		/* Synchronize after performing a depth-only or a stencil-only
+		 * fast clear because the driver uses an optimized path which
+		 * performs a read-modify-write operation, and the two separate
+		 * aspects might use the same HTILE memory.
+		 */
+		cmd_buffer->state.flush_bits |= flush_bits;
+	}
+
 	radv_update_ds_clear_metadata(cmd_buffer, iview, clear_value, aspects);
 	if (post_flush) {
 		*post_flush |= flush_bits;
