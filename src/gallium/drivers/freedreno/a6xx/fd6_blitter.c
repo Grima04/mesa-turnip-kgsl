@@ -637,7 +637,57 @@ fd6_clear_surface(struct fd_context *ctx,
 	emit_blit_or_clear_texture(ctx, ring, &info, color);
 }
 
-static bool handle_rgba_blit(struct fd_context *ctx, const struct pipe_blit_info *info);
+static bool
+handle_rgba_blit(struct fd_context *ctx, const struct pipe_blit_info *info)
+{
+	struct fd_batch *batch;
+
+	debug_assert(!(info->mask & PIPE_MASK_ZS));
+
+	if (!can_do_blit(info))
+		return false;
+
+	fd_fence_ref(&ctx->last_fence, NULL);
+
+	batch = fd_bc_alloc_batch(&ctx->screen->batch_cache, ctx, true);
+
+	fd6_emit_restore(batch, batch->draw);
+	fd6_emit_lrz_flush(batch->draw);
+
+	mtx_lock(&ctx->screen->lock);
+
+	fd_batch_resource_used(batch, fd_resource(info->src.resource), false);
+	fd_batch_resource_used(batch, fd_resource(info->dst.resource), true);
+
+	mtx_unlock(&ctx->screen->lock);
+
+	emit_setup(batch);
+
+	if ((info->src.resource->target == PIPE_BUFFER) &&
+			(info->dst.resource->target == PIPE_BUFFER)) {
+		assert(fd_resource(info->src.resource)->layout.tile_mode == TILE6_LINEAR);
+		assert(fd_resource(info->dst.resource)->layout.tile_mode == TILE6_LINEAR);
+		emit_blit_buffer(ctx, batch->draw, info);
+	} else {
+		/* I don't *think* we need to handle blits between buffer <-> !buffer */
+		debug_assert(info->src.resource->target != PIPE_BUFFER);
+		debug_assert(info->dst.resource->target != PIPE_BUFFER);
+		emit_blit_or_clear_texture(ctx, batch->draw, info, NULL);
+	}
+
+	fd6_event_write(batch, batch->draw, 0x1d, true);
+	fd6_event_write(batch, batch->draw, FACENESS_FLUSH, true);
+	fd6_event_write(batch, batch->draw, CACHE_FLUSH_TS, true);
+	fd6_cache_inv(batch, batch->draw);
+
+	fd_resource(info->dst.resource)->valid = true;
+	batch->needs_flush = true;
+
+	fd_batch_flush(batch, false);
+	fd_batch_reference(&batch, NULL);
+
+	return true;
+}
 
 /**
  * Re-written z/s blits can still fail for various reasons (for example MSAA).
@@ -729,58 +779,6 @@ handle_zs_blit(struct fd_context *ctx, const struct pipe_blit_info *info)
 	default:
 		return false;
 	}
-}
-
-static bool
-handle_rgba_blit(struct fd_context *ctx, const struct pipe_blit_info *info)
-{
-	struct fd_batch *batch;
-
-	debug_assert(!(info->mask & PIPE_MASK_ZS));
-
-	if (!can_do_blit(info))
-		return false;
-
-	fd_fence_ref(&ctx->last_fence, NULL);
-
-	batch = fd_bc_alloc_batch(&ctx->screen->batch_cache, ctx, true);
-
-	fd6_emit_restore(batch, batch->draw);
-	fd6_emit_lrz_flush(batch->draw);
-
-	mtx_lock(&ctx->screen->lock);
-
-	fd_batch_resource_used(batch, fd_resource(info->src.resource), false);
-	fd_batch_resource_used(batch, fd_resource(info->dst.resource), true);
-
-	mtx_unlock(&ctx->screen->lock);
-
-	emit_setup(batch);
-
-	if ((info->src.resource->target == PIPE_BUFFER) &&
-			(info->dst.resource->target == PIPE_BUFFER)) {
-		assert(fd_resource(info->src.resource)->layout.tile_mode == TILE6_LINEAR);
-		assert(fd_resource(info->dst.resource)->layout.tile_mode == TILE6_LINEAR);
-		emit_blit_buffer(ctx, batch->draw, info);
-	} else {
-		/* I don't *think* we need to handle blits between buffer <-> !buffer */
-		debug_assert(info->src.resource->target != PIPE_BUFFER);
-		debug_assert(info->dst.resource->target != PIPE_BUFFER);
-		emit_blit_or_clear_texture(ctx, batch->draw, info, NULL);
-	}
-
-	fd6_event_write(batch, batch->draw, 0x1d, true);
-	fd6_event_write(batch, batch->draw, FACENESS_FLUSH, true);
-	fd6_event_write(batch, batch->draw, CACHE_FLUSH_TS, true);
-	fd6_cache_inv(batch, batch->draw);
-
-	fd_resource(info->dst.resource)->valid = true;
-	batch->needs_flush = true;
-
-	fd_batch_flush(batch, false);
-	fd_batch_reference(&batch, NULL);
-
-	return true;
 }
 
 static bool
