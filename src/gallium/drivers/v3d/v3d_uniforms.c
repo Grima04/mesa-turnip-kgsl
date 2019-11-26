@@ -215,10 +215,15 @@ v3d_write_uniforms(struct v3d_context *v3d, struct v3d_job *job,
         struct v3d_uniform_list *uinfo = &shader->prog_data.base->uniforms;
         const uint32_t *gallium_uniforms = cb->cb[0].user_buffer;
 
-        /* We always need to return some space for uniforms, because the HW
-         * will be prefetching, even if we don't read any in the program.
+        /* The hardware always pre-fetches the next uniform (also when there
+         * aren't any), so we always allocate space for an extra slot. This
+         * fixes MMU exceptions reported since Linux kernel 5.4 when the
+         * uniforms fill up the tail bytes of a page in the indirect
+         * BO. In that scenario, when the hardware pre-fetches after reading
+         * the last uniform it will read beyond the end of the page and trigger
+         * the MMU exception.
          */
-        v3d_cl_ensure_space(&job->indirect, MAX2(uinfo->count, 1) * 4, 4);
+        v3d_cl_ensure_space(&job->indirect, (uinfo->count + 1) * 4, 4);
 
         struct v3d_cl_reloc uniform_stream = cl_get_address(&job->indirect);
         v3d_bo_reference(uniform_stream.bo);
