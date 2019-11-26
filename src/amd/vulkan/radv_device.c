@@ -1058,6 +1058,14 @@ void radv_GetPhysicalDeviceFeatures2(
 			features->bufferDeviceAddressMultiDevice = false;
 			break;
 		}
+		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES_KHR: {
+			VkPhysicalDeviceBufferDeviceAddressFeaturesKHR *features =
+				(VkPhysicalDeviceBufferDeviceAddressFeaturesKHR *)ext;
+			features->bufferDeviceAddress = true;
+			features->bufferDeviceAddressCaptureReplay = false;
+			features->bufferDeviceAddressMultiDevice = false;
+			break;
+		}
 		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_CLIP_ENABLE_FEATURES_EXT: {
 			VkPhysicalDeviceDepthClipEnableFeaturesEXT *features =
 				(VkPhysicalDeviceDepthClipEnableFeaturesEXT *)ext;
@@ -2687,7 +2695,8 @@ VkResult radv_CreateDevice(
 	device->use_global_bo_list =
 		(device->instance->perftest_flags & RADV_PERFTEST_BO_LIST) ||
 		device->enabled_extensions.EXT_descriptor_indexing ||
-		device->enabled_extensions.EXT_buffer_device_address;
+		device->enabled_extensions.EXT_buffer_device_address ||
+		device->enabled_extensions.KHR_buffer_device_address;
 
 	device->robust_buffer_access = pCreateInfo->pEnabledFeatures &&
 	                               pCreateInfo->pEnabledFeatures->robustBufferAccess;
@@ -5934,14 +5943,26 @@ void radv_DestroyBuffer(
 	vk_free2(&device->alloc, pAllocator, buffer);
 }
 
-VkDeviceAddress radv_GetBufferDeviceAddressEXT(
+VkDeviceAddress radv_GetBufferDeviceAddressKHR(
 	VkDevice                                    device,
-	const VkBufferDeviceAddressInfoEXT*         pInfo)
+	const VkBufferDeviceAddressInfoKHR*         pInfo)
 {
 	RADV_FROM_HANDLE(radv_buffer, buffer, pInfo->buffer);
 	return radv_buffer_get_va(buffer->bo) + buffer->offset;
 }
 
+
+uint64_t radv_GetBufferOpaqueCaptureAddressKHR(VkDevice device,
+					       const VkBufferDeviceAddressInfoKHR* pInfo)
+{
+	return 0;
+}
+
+uint64_t radv_GetDeviceMemoryOpaqueCaptureAddressKHR(VkDevice device,
+						     const VkDeviceMemoryOpaqueCaptureAddressInfoKHR* pInfo)
+{
+	return 0;
+}
 
 static inline unsigned
 si_tile_mode_index(const struct radv_image_plane *plane, unsigned level, bool stencil)
