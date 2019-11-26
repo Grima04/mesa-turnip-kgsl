@@ -2503,6 +2503,27 @@ struct anv_attachment_state {
    struct anv_image_view *                      image_view;
 };
 
+/** State tracking for vertex buffer flushes
+ *
+ * On Gen8-9, the VF cache only considers the bottom 32 bits of memory
+ * addresses.  If you happen to have two vertex buffers which get placed
+ * exactly 4 GiB apart and use them in back-to-back draw calls, you can get
+ * collisions.  In order to solve this problem, we track vertex address ranges
+ * which are live in the cache and invalidate the cache if one ever exceeds 32
+ * bits.
+ */
+struct anv_vb_cache_range {
+   /* Virtual address at which the live vertex buffer cache range starts for
+    * this vertex buffer index.
+    */
+   uint64_t start;
+
+   /* Virtual address of the byte after where vertex buffer cache range ends.
+    * This is exclusive such that end - start is the size of the range.
+    */
+   uint64_t end;
+};
+
 /** State tracking for particular pipeline bind point
  *
  * This struct is the base struct for anv_cmd_graphics_state and
@@ -2530,6 +2551,11 @@ struct anv_cmd_graphics_state {
 
    anv_cmd_dirty_mask_t dirty;
    uint32_t vb_dirty;
+
+   struct anv_vb_cache_range ib_bound_range;
+   struct anv_vb_cache_range ib_dirty_range;
+   struct anv_vb_cache_range vb_bound_ranges[33];
+   struct anv_vb_cache_range vb_dirty_ranges[33];
 
    struct anv_dynamic_state dynamic;
 

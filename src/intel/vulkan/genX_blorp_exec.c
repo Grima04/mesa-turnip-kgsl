@@ -139,19 +139,6 @@ blorp_alloc_vertex_buffer(struct blorp_batch *batch, uint32_t size,
                           struct blorp_address *addr)
 {
    struct anv_cmd_buffer *cmd_buffer = batch->driver_batch;
-
-   /* From the Skylake PRM, 3DSTATE_VERTEX_BUFFERS:
-    *
-    *    "The VF cache needs to be invalidated before binding and then using
-    *    Vertex Buffers that overlap with any previously bound Vertex Buffer
-    *    (at a 64B granularity) since the last invalidation.  A VF cache
-    *    invalidate is performed by setting the "VF Cache Invalidation Enable"
-    *    bit in PIPE_CONTROL."
-    *
-    * This restriction first appears in the Skylake PRM but the internal docs
-    * also list it as being an issue on Broadwell.  In order to avoid this
-    * problem, we align all vertex buffer allocations to 64 bytes.
-    */
    struct anv_state vb_state =
       anv_cmd_buffer_alloc_dynamic_state(cmd_buffer, size, 64);
 
@@ -170,9 +157,25 @@ blorp_vf_invalidate_for_vb_48b_transitions(struct blorp_batch *batch,
                                            uint32_t *sizes,
                                            unsigned num_vbs)
 {
-   /* anv forces all vertex buffers into the low 4GB so there are never any
-    * transitions that require a VF invalidation.
+   struct anv_cmd_buffer *cmd_buffer = batch->driver_batch;
+
+   for (unsigned i = 0; i < num_vbs; i++) {
+      struct anv_address anv_addr = {
+         .bo = addrs[i].buffer,
+         .offset = addrs[i].offset,
+      };
+      genX(cmd_buffer_set_binding_for_gen8_vb_flush)(cmd_buffer,
+                                                     i, anv_addr, sizes[i]);
+   }
+
+   genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
+
+   /* Technically, we should call this *after* 3DPRIMITIVE but it doesn't
+    * really matter for blorp because we never call apply_pipe_flushes after
+    * this point.
     */
+   genX(cmd_buffer_update_dirty_vbs_for_gen8_vb_flush)(cmd_buffer, SEQUENTIAL,
+                                                       (1 << num_vbs) - 1);
 }
 
 #if GEN_GEN >= 8

@@ -1392,6 +1392,10 @@ genX(BeginCommandBuffer)(
     * executing anything.  The chances are fairly high that they will use
     * blorp at least once per primary command buffer so it shouldn't be
     * wasted.
+    *
+    * There is also a workaround on gen8 which requires us to invalidate the
+    * VF cache occasionally.  It's easier if we can assume we start with a
+    * fresh cache (See also genX(cmd_buffer_set_binding_for_gen8_vb_flush).)
     */
    cmd_buffer->state.pending_pipe_bits |= ANV_PIPE_VF_CACHE_INVALIDATE_BIT;
 
@@ -1596,6 +1600,14 @@ genX(CmdExecuteCommands)(
       }
 
       anv_cmd_buffer_add_secondary(primary, secondary);
+   }
+
+   /* The secondary isn't counted in our VF cache tracking so we need to
+    * invalidate the whole thing.
+    */
+   if (GEN_GEN >= 8 && GEN_GEN <= 9) {
+      primary->state.pending_pipe_bits |=
+         ANV_PIPE_CS_STALL_BIT | ANV_PIPE_VF_CACHE_INVALIDATE_BIT;
    }
 
    /* The secondary may have selected a different pipeline (3D or compute) and
@@ -1834,6 +1846,18 @@ genX(cmd_buffer_apply_pipe_flushes)(struct anv_cmd_buffer *cmd_buffer)
        *    to set "CS Stall" upon setting "Tile Cache Flush" bit.
        */
       bits |= ANV_PIPE_TILE_CACHE_FLUSH_BIT;
+   }
+
+   if ((GEN_GEN >= 8 && GEN_GEN <= 9) &&
+       (bits & ANV_PIPE_CS_STALL_BIT) &&
+       (bits & ANV_PIPE_VF_CACHE_INVALIDATE_BIT)) {
+      /* If we are doing a VF cache invalidate AND a CS stall (it must be
+       * both) then we can reset our vertex cache tracking.
+       */
+      memset(cmd_buffer->state.gfx.vb_dirty_ranges, 0,
+             sizeof(cmd_buffer->state.gfx.vb_dirty_ranges));
+      memset(&cmd_buffer->state.gfx.ib_dirty_range, 0,
+             sizeof(cmd_buffer->state.gfx.ib_dirty_range));
    }
 
    if (bits & (ANV_PIPE_FLUSH_BITS | ANV_PIPE_CS_STALL_BIT)) {
@@ -2830,6 +2854,12 @@ genX(cmd_buffer_flush_state)(struct anv_cmd_buffer *cmd_buffer)
 #endif
          };
 
+#if GEN_GEN >= 8 && GEN_GEN <= 9
+         genX(cmd_buffer_set_binding_for_gen8_vb_flush)(cmd_buffer, vb,
+                                                        state.BufferStartingAddress,
+                                                        state.BufferSize);
+#endif
+
          GENX(VERTEX_BUFFER_STATE_pack)(&cmd_buffer->batch, &p[1 + i * 4], &state);
          i++;
       }
@@ -2967,6 +2997,9 @@ emit_vertex_bo(struct anv_cmd_buffer *cmd_buffer,
          .EndAddress = anv_address_add(addr, size),
 #endif
       });
+
+   genX(cmd_buffer_set_binding_for_gen8_vb_flush)(cmd_buffer,
+                                                  index, addr, size);
 }
 
 static void
@@ -3014,6 +3047,25 @@ emit_draw_index(struct anv_cmd_buffer *cmd_buffer, uint32_t draw_index)
    emit_vertex_bo(cmd_buffer, addr, 4, ANV_DRAWID_VB_INDEX);
 }
 
+static void
+update_dirty_vbs_for_gen8_vb_flush(struct anv_cmd_buffer *cmd_buffer,
+                                   uint32_t access_type)
+{
+   struct anv_pipeline *pipeline = cmd_buffer->state.gfx.base.pipeline;
+   const struct brw_vs_prog_data *vs_prog_data = get_vs_prog_data(pipeline);
+
+   uint64_t vb_used = pipeline->vb_used;
+   if (vs_prog_data->uses_firstvertex ||
+       vs_prog_data->uses_baseinstance)
+      vb_used |= 1ull << ANV_SVGS_VB_INDEX;
+   if (vs_prog_data->uses_drawid)
+      vb_used |= 1ull << ANV_DRAWID_VB_INDEX;
+
+   genX(cmd_buffer_update_dirty_vbs_for_gen8_vb_flush)(cmd_buffer,
+                                                       access_type == RANDOM,
+                                                       vb_used);
+}
+
 void genX(CmdDraw)(
     VkCommandBuffer                             commandBuffer,
     uint32_t                                    vertexCount,
@@ -3059,6 +3111,8 @@ void genX(CmdDraw)(
       prim.StartInstanceLocation    = firstInstance;
       prim.BaseVertexLocation       = 0;
    }
+
+   update_dirty_vbs_for_gen8_vb_flush(cmd_buffer, SEQUENTIAL);
 }
 
 void genX(CmdDrawIndexed)(
@@ -3107,6 +3161,8 @@ void genX(CmdDrawIndexed)(
       prim.StartInstanceLocation    = firstInstance;
       prim.BaseVertexLocation       = vertexOffset;
    }
+
+   update_dirty_vbs_for_gen8_vb_flush(cmd_buffer, RANDOM);
 }
 
 /* Auto-Draw / Indirect Registers */
@@ -3179,6 +3235,8 @@ void genX(CmdDrawIndirectByteCountEXT)(
       prim.VertexAccessType         = SEQUENTIAL;
       prim.PrimitiveTopologyType    = pipeline->topology;
    }
+
+   update_dirty_vbs_for_gen8_vb_flush(cmd_buffer, SEQUENTIAL);
 #endif /* GEN_IS_HASWELL || GEN_GEN >= 8 */
 }
 
@@ -3263,6 +3321,8 @@ void genX(CmdDrawIndirect)(
          prim.PrimitiveTopologyType    = pipeline->topology;
       }
 
+      update_dirty_vbs_for_gen8_vb_flush(cmd_buffer, SEQUENTIAL);
+
       offset += stride;
    }
 }
@@ -3310,6 +3370,8 @@ void genX(CmdDrawIndexedIndirect)(
          prim.VertexAccessType         = RANDOM;
          prim.PrimitiveTopologyType    = pipeline->topology;
       }
+
+      update_dirty_vbs_for_gen8_vb_flush(cmd_buffer, RANDOM);
 
       offset += stride;
    }
@@ -3465,6 +3527,8 @@ void genX(CmdDrawIndirectCountKHR)(
          prim.PrimitiveTopologyType    = pipeline->topology;
       }
 
+      update_dirty_vbs_for_gen8_vb_flush(cmd_buffer, SEQUENTIAL);
+
       offset += stride;
    }
 }
@@ -3529,6 +3593,8 @@ void genX(CmdDrawIndexedIndirectCountKHR)(
          prim.VertexAccessType         = RANDOM;
          prim.PrimitiveTopologyType    = pipeline->topology;
       }
+
+      update_dirty_vbs_for_gen8_vb_flush(cmd_buffer, RANDOM);
 
       offset += stride;
    }
@@ -4112,6 +4178,120 @@ genX(cmd_buffer_emit_gen7_depth_flush)(struct anv_cmd_buffer *cmd_buffer)
    }
    anv_batch_emit(&cmd_buffer->batch, GENX(PIPE_CONTROL), pipe) {
       pipe.DepthStallEnable = true;
+   }
+}
+
+/* From the Skylake PRM, 3DSTATE_VERTEX_BUFFERS:
+ *
+ *    "The VF cache needs to be invalidated before binding and then using
+ *    Vertex Buffers that overlap with any previously bound Vertex Buffer
+ *    (at a 64B granularity) since the last invalidation.  A VF cache
+ *    invalidate is performed by setting the "VF Cache Invalidation Enable"
+ *    bit in PIPE_CONTROL."
+ *
+ * This is implemented by carefully tracking all vertex and index buffer
+ * bindings and flushing if the cache ever ends up with a range in the cache
+ * that would exceed 4 GiB.  This is implemented in three parts:
+ *
+ *    1. genX(cmd_buffer_set_binding_for_gen8_vb_flush)() which must be called
+ *       every time a 3DSTATE_VERTEX_BUFFER packet is emitted and informs the
+ *       tracking code of the new binding.  If this new binding would cause
+ *       the cache to have a too-large range on the next draw call, a pipeline
+ *       stall and VF cache invalidate are added to pending_pipeline_bits.
+ *
+ *    2. genX(cmd_buffer_apply_pipe_flushes)() resets the cache tracking to
+ *       empty whenever we emit a VF invalidate.
+ *
+ *    3. genX(cmd_buffer_update_dirty_vbs_for_gen8_vb_flush)() must be called
+ *       after every 3DPRIMITIVE and copies the bound range into the dirty
+ *       range for each used buffer.  This has to be a separate step because
+ *       we don't always re-bind all buffers and so 1. can't know which
+ *       buffers are actually bound.
+ */
+void
+genX(cmd_buffer_set_binding_for_gen8_vb_flush)(struct anv_cmd_buffer *cmd_buffer,
+                                               int vb_index,
+                                               struct anv_address vb_address,
+                                               uint32_t vb_size)
+{
+   if (GEN_GEN < 8 || GEN_GEN > 9 ||
+       !cmd_buffer->device->instance->physicalDevice.use_softpin)
+      return;
+
+   struct anv_vb_cache_range *bound, *dirty;
+   if (vb_index == -1) {
+      bound = &cmd_buffer->state.gfx.ib_bound_range;
+      dirty = &cmd_buffer->state.gfx.ib_dirty_range;
+   } else {
+      assert(vb_index >= 0);
+      assert(vb_index < ARRAY_SIZE(cmd_buffer->state.gfx.vb_bound_ranges));
+      assert(vb_index < ARRAY_SIZE(cmd_buffer->state.gfx.vb_dirty_ranges));
+      bound = &cmd_buffer->state.gfx.vb_bound_ranges[vb_index];
+      dirty = &cmd_buffer->state.gfx.vb_dirty_ranges[vb_index];
+   }
+
+   if (vb_size == 0) {
+      bound->start = 0;
+      bound->end = 0;
+      return;
+   }
+
+   assert(vb_address.bo && (vb_address.bo->flags & EXEC_OBJECT_PINNED));
+   bound->start = gen_48b_address(anv_address_physical(vb_address));
+   bound->end = bound->start + vb_size;
+   assert(bound->end > bound->start); /* No overflow */
+
+   /* Align everything to a cache line */
+   bound->start &= ~(64ull - 1ull);
+   bound->end = align_u64(bound->end, 64);
+
+   /* Compute the dirty range */
+   dirty->start = MIN2(dirty->start, bound->start);
+   dirty->end = MAX2(dirty->end, bound->end);
+
+   /* If our range is larger than 32 bits, we have to flush */
+   assert(bound->end - bound->start <= (1ull << 32));
+   if (dirty->end - dirty->start > (1ull << 32)) {
+      cmd_buffer->state.pending_pipe_bits |=
+         ANV_PIPE_CS_STALL_BIT | ANV_PIPE_VF_CACHE_INVALIDATE_BIT;
+   }
+}
+
+void
+genX(cmd_buffer_update_dirty_vbs_for_gen8_vb_flush)(struct anv_cmd_buffer *cmd_buffer,
+                                                    uint32_t access_type,
+                                                    uint64_t vb_used)
+{
+   if (GEN_GEN < 8 || GEN_GEN > 9 ||
+       !cmd_buffer->device->instance->physicalDevice.use_softpin)
+      return;
+
+   if (access_type == RANDOM) {
+      /* We have an index buffer */
+      struct anv_vb_cache_range *bound = &cmd_buffer->state.gfx.ib_bound_range;
+      struct anv_vb_cache_range *dirty = &cmd_buffer->state.gfx.ib_dirty_range;
+
+      if (bound->end > bound->start) {
+         dirty->start = MIN2(dirty->start, bound->start);
+         dirty->end = MAX2(dirty->end, bound->end);
+      }
+   }
+
+   uint64_t mask = vb_used;
+   while (mask) {
+      int i = u_bit_scan64(&mask);
+      assert(i >= 0);
+      assert(i < ARRAY_SIZE(cmd_buffer->state.gfx.vb_bound_ranges));
+      assert(i < ARRAY_SIZE(cmd_buffer->state.gfx.vb_dirty_ranges));
+
+      struct anv_vb_cache_range *bound, *dirty;
+      bound = &cmd_buffer->state.gfx.vb_bound_ranges[i];
+      dirty = &cmd_buffer->state.gfx.vb_dirty_ranges[i];
+
+      if (bound->end > bound->start) {
+         dirty->start = MIN2(dirty->start, bound->start);
+         dirty->end = MAX2(dirty->end, bound->end);
+      }
    }
 }
 

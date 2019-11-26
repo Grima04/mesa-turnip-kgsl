@@ -141,8 +141,12 @@ anv_physical_device_init_heaps(struct anv_physical_device *device, int fd)
       }
    }
 
+   /* We only allow 48-bit addresses with softpin because knowing the actual
+    * address is required for the vertex cache flush workaround.
+    */
    device->supports_48bit_addresses = (device->info.gen >= 8) &&
-      gtt_size > (4ULL << 30 /* GiB */);
+                                      device->has_softpin &&
+                                      gtt_size > (4ULL << 30 /* GiB */);
 
    uint64_t heap_size = anv_compute_heap_size(fd, gtt_size);
 
@@ -471,10 +475,6 @@ anv_physical_device_init(struct anv_physical_device *device,
       goto fail;
    }
 
-   result = anv_physical_device_init_heaps(device, fd);
-   if (result != VK_SUCCESS)
-      goto fail;
-
    device->has_softpin = anv_gem_get_param(fd, I915_PARAM_HAS_EXEC_SOFTPIN);
    device->has_exec_async = anv_gem_get_param(fd, I915_PARAM_HAS_EXEC_ASYNC);
    device->has_exec_capture = anv_gem_get_param(fd, I915_PARAM_HAS_EXEC_CAPTURE);
@@ -483,6 +483,10 @@ anv_physical_device_init(struct anv_physical_device *device,
    device->has_syncobj_wait = device->has_syncobj &&
                               anv_gem_supports_syncobj_wait(fd);
    device->has_context_priority = anv_gem_has_context_priority(fd);
+
+   result = anv_physical_device_init_heaps(device, fd);
+   if (result != VK_SUCCESS)
+      goto fail;
 
    device->use_softpin = device->has_softpin &&
                          device->supports_48bit_addresses;
