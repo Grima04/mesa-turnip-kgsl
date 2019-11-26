@@ -473,9 +473,6 @@ scons-old-llvm:
 
 .piglit-test:
   extends: .test
-  artifacts:
-    reports:
-      junit: results/results.xml
   variables:
     LIBGL_ALWAYS_SOFTWARE: 1
     PIGLIT_NO_WINDOW: 1
