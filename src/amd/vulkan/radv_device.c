@@ -1064,9 +1064,9 @@ void radv_GetPhysicalDeviceFeatures2(
 			features->bufferDeviceAddressMultiDevice = false;
 			break;
 		}
-		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES_KHR: {
-			VkPhysicalDeviceBufferDeviceAddressFeaturesKHR *features =
-				(VkPhysicalDeviceBufferDeviceAddressFeaturesKHR *)ext;
+		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES: {
+			VkPhysicalDeviceBufferDeviceAddressFeatures *features =
+				(VkPhysicalDeviceBufferDeviceAddressFeatures *)ext;
 			features->bufferDeviceAddress = true;
 			features->bufferDeviceAddressCaptureReplay = false;
 			features->bufferDeviceAddressMultiDevice = false;
@@ -5948,23 +5948,23 @@ void radv_DestroyBuffer(
 	vk_free2(&device->alloc, pAllocator, buffer);
 }
 
-VkDeviceAddress radv_GetBufferDeviceAddressKHR(
+VkDeviceAddress radv_GetBufferDeviceAddress(
 	VkDevice                                    device,
-	const VkBufferDeviceAddressInfoKHR*         pInfo)
+	const VkBufferDeviceAddressInfo*         pInfo)
 {
 	RADV_FROM_HANDLE(radv_buffer, buffer, pInfo->buffer);
 	return radv_buffer_get_va(buffer->bo) + buffer->offset;
 }
 
 
-uint64_t radv_GetBufferOpaqueCaptureAddressKHR(VkDevice device,
-					       const VkBufferDeviceAddressInfoKHR* pInfo)
+uint64_t radv_GetBufferOpaqueCaptureAddress(VkDevice device,
+					    const VkBufferDeviceAddressInfo* pInfo)
 {
 	return 0;
 }
 
-uint64_t radv_GetDeviceMemoryOpaqueCaptureAddressKHR(VkDevice device,
-						     const VkDeviceMemoryOpaqueCaptureAddressInfoKHR* pInfo)
+uint64_t radv_GetDeviceMemoryOpaqueCaptureAddress(VkDevice device,
+						  const VkDeviceMemoryOpaqueCaptureAddressInfo* pInfo)
 {
 	return 0;
 }
