@@ -1219,6 +1219,58 @@ void radv_GetPhysicalDeviceFeatures2(
 			features->shaderDrawParameters = true;
 			break;
 		}
+		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES: {
+			VkPhysicalDeviceVulkan12Features *features =
+				(VkPhysicalDeviceVulkan12Features *)ext;
+			features->samplerMirrorClampToEdge = true;
+			features->drawIndirectCount = true;
+			features->storageBuffer8BitAccess = pdevice->rad_info.chip_class >= GFX8 && !pdevice->use_aco;
+			features->uniformAndStorageBuffer8BitAccess = pdevice->rad_info.chip_class >= GFX8 && !pdevice->use_aco;
+			features->storagePushConstant8 = pdevice->rad_info.chip_class >= GFX8 && !pdevice->use_aco;
+			features->shaderBufferInt64Atomics = LLVM_VERSION_MAJOR >= 9;
+			features->shaderSharedInt64Atomics = LLVM_VERSION_MAJOR >= 9;
+			features->shaderFloat16 = pdevice->rad_info.chip_class >= GFX8 && !pdevice->use_aco;
+			features->shaderInt8 = !pdevice->use_aco;
+			features->descriptorIndexing = true;
+			features->shaderInputAttachmentArrayDynamicIndexing = true;
+			features->shaderUniformTexelBufferArrayDynamicIndexing = true;
+			features->shaderStorageTexelBufferArrayDynamicIndexing = true;
+			features->shaderUniformBufferArrayNonUniformIndexing = true;
+			features->shaderSampledImageArrayNonUniformIndexing = true;
+			features->shaderStorageBufferArrayNonUniformIndexing = true;
+			features->shaderStorageImageArrayNonUniformIndexing = true;
+			features->shaderInputAttachmentArrayNonUniformIndexing = true;
+			features->shaderUniformTexelBufferArrayNonUniformIndexing = true;
+			features->shaderStorageTexelBufferArrayNonUniformIndexing = true;
+			features->descriptorBindingUniformBufferUpdateAfterBind = true;
+			features->descriptorBindingSampledImageUpdateAfterBind = true;
+			features->descriptorBindingStorageImageUpdateAfterBind = true;
+			features->descriptorBindingStorageBufferUpdateAfterBind = true;
+			features->descriptorBindingUniformTexelBufferUpdateAfterBind = true;
+			features->descriptorBindingStorageTexelBufferUpdateAfterBind = true;
+			features->descriptorBindingUpdateUnusedWhilePending = true;
+			features->descriptorBindingPartiallyBound = true;
+			features->descriptorBindingVariableDescriptorCount = true;
+			features->runtimeDescriptorArray = true;
+			features->samplerFilterMinmax = pdevice->rad_info.chip_class >= GFX7;
+			features->scalarBlockLayout = pdevice->rad_info.chip_class >= GFX7;
+			features->imagelessFramebuffer = true;
+			features->uniformBufferStandardLayout = true;
+			features->shaderSubgroupExtendedTypes = true;
+			features->separateDepthStencilLayouts = true;
+			features->hostQueryReset = true;
+			features->timelineSemaphore = pdevice->rad_info.has_syncobj_wait_for_submit;
+			features->bufferDeviceAddress = true;
+			features->bufferDeviceAddressCaptureReplay = false;
+			features->bufferDeviceAddressMultiDevice = false;
+			features->vulkanMemoryModel = false;
+			features->vulkanMemoryModelDeviceScope = false;
+			features->vulkanMemoryModelAvailabilityVisibilityChains = false;
+			features->shaderOutputViewportIndex = true;
+			features->shaderOutputLayer = true;
+			features->subgroupBroadcastDynamicId = true;
+			break;
+		}
 		default:
 			break;
 		}
@@ -1757,6 +1809,102 @@ void radv_GetPhysicalDeviceProperties2(
 			props->protectedNoFault = false;
 			props->maxPerSetDescriptors = RADV_MAX_PER_SET_DESCRIPTORS;
 			props->maxMemoryAllocationSize = RADV_MAX_MEMORY_ALLOCATION_SIZE;
+			break;
+		}
+		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_PROPERTIES: {
+			VkPhysicalDeviceVulkan12Properties *props =
+				(VkPhysicalDeviceVulkan12Properties *)ext;
+
+			{
+				props->driverID = VK_DRIVER_ID_MESA_RADV;
+				snprintf(props->driverName, VK_MAX_DRIVER_NAME_SIZE, "radv");
+				snprintf(props->driverInfo, VK_MAX_DRIVER_INFO_SIZE,
+					 "Mesa " PACKAGE_VERSION MESA_GIT_SHA1
+					 " (LLVM " MESA_LLVM_VERSION_STRING ")");
+
+				props->conformanceVersion = (VkConformanceVersion) {
+					.major = 1,
+					.minor = 1,
+					.subminor = 2,
+					.patch = 0,
+				};
+			}
+
+			props->denormBehaviorIndependence = VK_SHADER_FLOAT_CONTROLS_INDEPENDENCE_32_BIT_ONLY_KHR;
+			props->roundingModeIndependence = VK_SHADER_FLOAT_CONTROLS_INDEPENDENCE_32_BIT_ONLY_KHR;
+
+			props->shaderDenormFlushToZeroFloat32 = true;
+			props->shaderDenormPreserveFloat32 = false;
+			props->shaderRoundingModeRTEFloat32 = true;
+			props->shaderRoundingModeRTZFloat32 = false;
+			props->shaderSignedZeroInfNanPreserveFloat32 = true;
+
+			props->shaderDenormFlushToZeroFloat16 = false;
+			props->shaderDenormPreserveFloat16 = pdevice->rad_info.chip_class >= GFX8;
+			props->shaderRoundingModeRTEFloat16 = pdevice->rad_info.chip_class >= GFX8;
+			props->shaderRoundingModeRTZFloat16 = false;
+			props->shaderSignedZeroInfNanPreserveFloat16 = pdevice->rad_info.chip_class >= GFX8;
+
+			props->shaderDenormFlushToZeroFloat64 = false;
+			props->shaderDenormPreserveFloat64 = pdevice->rad_info.chip_class >= GFX8;
+			props->shaderRoundingModeRTEFloat64 = pdevice->rad_info.chip_class >= GFX8;
+			props->shaderRoundingModeRTZFloat64 = false;
+			props->shaderSignedZeroInfNanPreserveFloat64 = pdevice->rad_info.chip_class >= GFX8;
+
+			props->maxUpdateAfterBindDescriptorsInAllPools = UINT32_MAX / 64;
+			props->shaderUniformBufferArrayNonUniformIndexingNative = false;
+			props->shaderSampledImageArrayNonUniformIndexingNative = false;
+			props->shaderStorageBufferArrayNonUniformIndexingNative = false;
+			props->shaderStorageImageArrayNonUniformIndexingNative = false;
+			props->shaderInputAttachmentArrayNonUniformIndexingNative = false;
+			props->robustBufferAccessUpdateAfterBind = false;
+			props->quadDivergentImplicitLod = false;
+
+			size_t max_descriptor_set_size = ((1ull << 31) - 16 * MAX_DYNAMIC_BUFFERS -
+				MAX_INLINE_UNIFORM_BLOCK_SIZE * MAX_INLINE_UNIFORM_BLOCK_COUNT) /
+			          (32 /* uniform buffer, 32 due to potential space wasted on alignment */ +
+			           32 /* storage buffer, 32 due to potential space wasted on alignment */ +
+			           32 /* sampler, largest when combined with image */ +
+			           64 /* sampled image */ +
+			           64 /* storage image */);
+			props->maxPerStageDescriptorUpdateAfterBindSamplers = max_descriptor_set_size;
+			props->maxPerStageDescriptorUpdateAfterBindUniformBuffers = max_descriptor_set_size;
+			props->maxPerStageDescriptorUpdateAfterBindStorageBuffers = max_descriptor_set_size;
+			props->maxPerStageDescriptorUpdateAfterBindSampledImages = max_descriptor_set_size;
+			props->maxPerStageDescriptorUpdateAfterBindStorageImages = max_descriptor_set_size;
+			props->maxPerStageDescriptorUpdateAfterBindInputAttachments = max_descriptor_set_size;
+			props->maxPerStageUpdateAfterBindResources = max_descriptor_set_size;
+			props->maxDescriptorSetUpdateAfterBindSamplers = max_descriptor_set_size;
+			props->maxDescriptorSetUpdateAfterBindUniformBuffers = max_descriptor_set_size;
+			props->maxDescriptorSetUpdateAfterBindUniformBuffersDynamic = MAX_DYNAMIC_UNIFORM_BUFFERS;
+			props->maxDescriptorSetUpdateAfterBindStorageBuffers = max_descriptor_set_size;
+			props->maxDescriptorSetUpdateAfterBindStorageBuffersDynamic = MAX_DYNAMIC_STORAGE_BUFFERS;
+			props->maxDescriptorSetUpdateAfterBindSampledImages = max_descriptor_set_size;
+			props->maxDescriptorSetUpdateAfterBindStorageImages = max_descriptor_set_size;
+			props->maxDescriptorSetUpdateAfterBindInputAttachments = max_descriptor_set_size;
+
+			/* We support all of the depth resolve modes */
+			props->supportedDepthResolveModes =
+				VK_RESOLVE_MODE_SAMPLE_ZERO_BIT_KHR |
+				VK_RESOLVE_MODE_AVERAGE_BIT_KHR |
+				VK_RESOLVE_MODE_MIN_BIT_KHR |
+				VK_RESOLVE_MODE_MAX_BIT_KHR;
+
+			/* Average doesn't make sense for stencil so we don't support that */
+			props->supportedStencilResolveModes =
+				VK_RESOLVE_MODE_SAMPLE_ZERO_BIT_KHR |
+				VK_RESOLVE_MODE_MIN_BIT_KHR |
+				VK_RESOLVE_MODE_MAX_BIT_KHR;
+
+			props->independentResolveNone = true;
+			props->independentResolve = true;
+
+			props->filterMinmaxImageComponentMapping = pdevice->rad_info.chip_class >= GFX9;
+			props->filterMinmaxSingleComponentFormats = true;
+
+			props->maxTimelineSemaphoreValueDifference = UINT64_MAX;
+
+			props->framebufferIntegerColorSampleCounts = VK_SAMPLE_COUNT_1_BIT;
 			break;
 		}
 		default:
