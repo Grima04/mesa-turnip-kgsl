@@ -998,9 +998,9 @@ void radv_GetPhysicalDeviceFeatures2(
 			features->samplerYcbcrConversion = true;
 			break;
 		}
-		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES_EXT: {
-			VkPhysicalDeviceDescriptorIndexingFeaturesEXT *features =
-				(VkPhysicalDeviceDescriptorIndexingFeaturesEXT*)ext;
+		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES: {
+			VkPhysicalDeviceDescriptorIndexingFeatures *features =
+				(VkPhysicalDeviceDescriptorIndexingFeatures*)ext;
 			features->shaderInputAttachmentArrayDynamicIndexing = true;
 			features->shaderUniformTexelBufferArrayDynamicIndexing = true;
 			features->shaderStorageTexelBufferArrayDynamicIndexing = true;
@@ -1499,9 +1499,9 @@ void radv_GetPhysicalDeviceProperties2(
 			properties->maxVertexAttribDivisor = UINT32_MAX;
 			break;
 		}
-		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_PROPERTIES_EXT: {
-			VkPhysicalDeviceDescriptorIndexingPropertiesEXT *properties =
-				(VkPhysicalDeviceDescriptorIndexingPropertiesEXT*)ext;
+		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_PROPERTIES: {
+			VkPhysicalDeviceDescriptorIndexingProperties *properties =
+				(VkPhysicalDeviceDescriptorIndexingProperties*)ext;
 			properties->maxUpdateAfterBindDescriptorsInAllPools = UINT32_MAX / 64;
 			properties->shaderUniformBufferArrayNonUniformIndexingNative = false;
 			properties->shaderSampledImageArrayNonUniformIndexingNative = false;
