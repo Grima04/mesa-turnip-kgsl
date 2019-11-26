@@ -1202,6 +1202,23 @@ void radv_GetPhysicalDeviceFeatures2(
 			features->separateDepthStencilLayouts = true;
 			break;
 		}
+		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES: {
+			VkPhysicalDeviceVulkan11Features *features =
+				(VkPhysicalDeviceVulkan11Features *)ext;
+			features->storageBuffer16BitAccess = pdevice->rad_info.chip_class >= GFX8 && !pdevice->use_aco;
+			features->uniformAndStorageBuffer16BitAccess = pdevice->rad_info.chip_class >= GFX8 && !pdevice->use_aco;
+			features->storagePushConstant16 = pdevice->rad_info.chip_class >= GFX8 && !pdevice->use_aco;
+			features->storageInputOutput16 = pdevice->rad_info.chip_class >= GFX8 && !pdevice->use_aco && LLVM_VERSION_MAJOR >= 9;
+			features->multiview = true;
+			features->multiviewGeometryShader = true;
+			features->multiviewTessellationShader = true;
+			features->variablePointersStorageBuffer = true;
+			features->variablePointers = true;
+			features->protectedMemory = false;
+			features->samplerYcbcrConversion = true;
+			features->shaderDrawParameters = true;
+			break;
+		}
 		default:
 			break;
 		}
@@ -1704,6 +1721,42 @@ void radv_GetPhysicalDeviceProperties2(
 				props->minSubgroupSize = 32;
 				props->requiredSubgroupSizeStages = VK_SHADER_STAGE_COMPUTE_BIT;
 			}
+			break;
+		}
+		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_PROPERTIES: {
+			VkPhysicalDeviceVulkan11Properties *props =
+				(VkPhysicalDeviceVulkan11Properties *)ext;
+
+			memcpy(props->deviceUUID, pdevice->device_uuid, VK_UUID_SIZE);
+			memcpy(props->driverUUID, pdevice->driver_uuid, VK_UUID_SIZE);
+			memset(props->deviceLUID, 0, VK_LUID_SIZE);
+			/* The LUID is for Windows. */
+			props->deviceLUIDValid = false;
+			props->deviceNodeMask = 0;
+			{
+				props->subgroupSize = RADV_SUBGROUP_SIZE;
+				props->subgroupSupportedStages = VK_SHADER_STAGE_ALL;
+				props->subgroupSupportedOperations =
+							VK_SUBGROUP_FEATURE_BASIC_BIT |
+							VK_SUBGROUP_FEATURE_VOTE_BIT |
+							VK_SUBGROUP_FEATURE_ARITHMETIC_BIT |
+							VK_SUBGROUP_FEATURE_BALLOT_BIT |
+							VK_SUBGROUP_FEATURE_CLUSTERED_BIT |
+							VK_SUBGROUP_FEATURE_QUAD_BIT;
+				if (pdevice->rad_info.chip_class == GFX8 ||
+				    pdevice->rad_info.chip_class == GFX9) {
+					props->subgroupSupportedOperations |=
+									VK_SUBGROUP_FEATURE_SHUFFLE_BIT |
+									VK_SUBGROUP_FEATURE_SHUFFLE_RELATIVE_BIT;
+				}
+				props->subgroupQuadOperationsInAllStages = true;
+			}
+			props->pointClippingBehavior = VK_POINT_CLIPPING_BEHAVIOR_ALL_CLIP_PLANES;
+			props->maxMultiviewViewCount = MAX_VIEWS;
+			props->maxMultiviewInstanceIndex = INT_MAX;
+			props->protectedNoFault = false;
+			props->maxPerSetDescriptors = RADV_MAX_PER_SET_DESCRIPTORS;
+			props->maxMemoryAllocationSize = RADV_MAX_MEMORY_ALLOCATION_SIZE;
 			break;
 		}
 		default:
