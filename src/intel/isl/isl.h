@@ -1624,6 +1624,12 @@ isl_format_has_bc_compression(enum isl_format fmt)
 }
 
 static inline bool
+isl_format_is_planar(enum isl_format fmt)
+{
+   return fmt == ISL_FORMAT_PLANAR_420_8;
+}
+
+static inline bool
 isl_format_is_yuv(enum isl_format fmt)
 {
    const struct isl_format_layout *fmtl = isl_format_get_layout(fmt);

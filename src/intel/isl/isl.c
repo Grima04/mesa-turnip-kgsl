@@ -822,8 +822,8 @@ isl_calc_phys_level0_extent_sa(const struct isl_device *dev,
 {
    const struct isl_format_layout *fmtl = isl_format_get_layout(info->format);
 
-   if (isl_format_is_yuv(info->format))
-      isl_finishme("%s:%s: YUV format", __FILE__, __func__);
+   if (isl_format_is_planar(info->format))
+      unreachable("Planar formats unsupported");
 
    switch (info->dim) {
    case ISL_SURF_DIM_1D:
