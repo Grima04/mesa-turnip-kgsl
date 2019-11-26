@@ -2574,8 +2574,8 @@ get_push_range_address(struct anv_cmd_buffer *cmd_buffer,
 }
 
 static void
-cmd_buffer_flush_push_constants(struct anv_cmd_buffer *cmd_buffer,
-                                VkShaderStageFlags dirty_stages)
+cmd_buffer_emit_push_constant(struct anv_cmd_buffer *cmd_buffer,
+                              gl_shader_stage stage, unsigned buffer_count)
 {
    const struct anv_cmd_graphics_state *gfx_state = &cmd_buffer->state.gfx;
    const struct anv_pipeline *pipeline = gfx_state->base.pipeline;
@@ -2589,59 +2589,73 @@ cmd_buffer_flush_push_constants(struct anv_cmd_buffer *cmd_buffer,
       [MESA_SHADER_COMPUTE]                     = 0,
    };
 
-   VkShaderStageFlags flushed = 0;
+   assert(stage < ARRAY_SIZE(push_constant_opcodes));
+   assert(push_constant_opcodes[stage] > 0);
 
-   anv_foreach_stage(stage, dirty_stages) {
-      assert(stage < ARRAY_SIZE(push_constant_opcodes));
-      assert(push_constant_opcodes[stage] > 0);
+   anv_batch_emit(&cmd_buffer->batch, GENX(3DSTATE_CONSTANT_VS), c) {
+      c._3DCommandSubOpcode = push_constant_opcodes[stage];
 
-      anv_batch_emit(&cmd_buffer->batch, GENX(3DSTATE_CONSTANT_VS), c) {
-         c._3DCommandSubOpcode = push_constant_opcodes[stage];
+      if (anv_pipeline_has_stage(pipeline, stage)) {
+         const struct anv_pipeline_bind_map *bind_map =
+            &pipeline->shaders[stage]->bind_map;
 
-         if (anv_pipeline_has_stage(pipeline, stage)) {
-            const struct anv_pipeline_bind_map *bind_map =
-               &pipeline->shaders[stage]->bind_map;
+         /* The Skylake PRM contains the following restriction:
+          *
+          *    "The driver must ensure The following case does not occur
+          *     without a flush to the 3D engine: 3DSTATE_CONSTANT_* with
+          *     buffer 3 read length equal to zero committed followed by a
+          *     3DSTATE_CONSTANT_* with buffer 0 read length not equal to
+          *     zero committed."
+          *
+          * To avoid this, we program the buffers in the highest slots.
+          * This way, slot 0 is only used if slot 3 is also used.
+          */
+         assert(buffer_count <= 4);
+         const unsigned shift = 4 - buffer_count;
+         for (unsigned i = 0; i < buffer_count; i++) {
+            const struct anv_push_range *range = &bind_map->push_ranges[i];
 
-            unsigned buffer_count = 0;
-            for (unsigned i = 0; i < 4; i++) {
-               const struct anv_push_range *range = &bind_map->push_ranges[i];
-               if (range->length > 0)
-                  buffer_count++;
-            }
+            /* At this point we only have non-empty ranges */
+            assert(range->length > 0);
 
-            /* The Skylake PRM contains the following restriction:
-             *
-             *    "The driver must ensure The following case does not occur
-             *     without a flush to the 3D engine: 3DSTATE_CONSTANT_* with
-             *     buffer 3 read length equal to zero committed followed by a
-             *     3DSTATE_CONSTANT_* with buffer 0 read length not equal to
-             *     zero committed."
-             *
-             * To avoid this, we program the buffers in the highest slots.
-             * This way, slot 0 is only used if slot 3 is also used.
+            /* For Ivy Bridge, make sure we only set the first range (actual
+             * push constants)
              */
-            assert(buffer_count <= 4);
-            const unsigned shift = 4 - buffer_count;
-            for (unsigned i = 0; i < buffer_count; i++) {
-               const struct anv_push_range *range = &bind_map->push_ranges[i];
+            assert((GEN_GEN >= 8 || GEN_IS_HASWELL) || i == 0);
 
-               /* At this point we only have non-empty ranges */
-               assert(range->length > 0);
-
-               /* For Ivy Bridge, make sure we only set the first range (actual
-                * push constants)
-                */
-               assert((GEN_GEN >= 8 || GEN_IS_HASWELL) || i == 0);
-
-               const struct anv_address addr =
-                  get_push_range_address(cmd_buffer, stage, range);
-
-               c.ConstantBody.ReadLength[i + shift] = range->length;
-               c.ConstantBody.Buffer[i + shift] =
-                  anv_address_add(addr, range->start * 32);
-            }
+            const struct anv_address addr =
+               get_push_range_address(cmd_buffer, stage, range);
+            c.ConstantBody.ReadLength[i + shift] = range->length;
+            c.ConstantBody.Buffer[i + shift] =
+               anv_address_add(addr, range->start * 32);
          }
       }
+   }
+}
+
+static void
+cmd_buffer_flush_push_constants(struct anv_cmd_buffer *cmd_buffer,
+                                VkShaderStageFlags dirty_stages)
+{
+   VkShaderStageFlags flushed = 0;
+   const struct anv_cmd_graphics_state *gfx_state = &cmd_buffer->state.gfx;
+   const struct anv_pipeline *pipeline = gfx_state->base.pipeline;
+
+
+   anv_foreach_stage(stage, dirty_stages) {
+      unsigned buffer_count = 0;
+
+      if (anv_pipeline_has_stage(pipeline, stage)) {
+         const struct anv_pipeline_bind_map *bind_map =
+            &pipeline->shaders[stage]->bind_map;
+         for (unsigned i = 0; i < 4; i++) {
+            const struct anv_push_range *range = &bind_map->push_ranges[i];
+            if (range->length > 0)
+               buffer_count++;
+         }
+      }
+
+      cmd_buffer_emit_push_constant(cmd_buffer, stage, buffer_count);
 
       flushed |= mesa_to_vk_shader_stage(stage);
    }
