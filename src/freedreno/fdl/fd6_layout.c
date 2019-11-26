@@ -35,7 +35,7 @@ static const struct {
 	unsigned heightalign;
 } tile_alignment[] = {
 	[1]  = { 128, 32 },
-	[2]  = {  64, 32 },
+	[2]  = { 128, 16 },
 	[3]  = {  64, 32 },
 	[4]  = {  64, 16 },
 	[6]  = {  64, 16 },
@@ -47,8 +47,8 @@ static const struct {
 	[48] = {  64, 16 },
 	[64] = {  64, 16 },
 
-	/* special cases for r16: */
-	[0]  = { 128, 16 },
+	/* special cases for r8g8: */
+	[0]  = {  64, 32 },
 };
 
 /* NOTE: good way to test this is:  (for example)
@@ -81,7 +81,7 @@ fdl6_layout(struct fdl_layout *layout,
 	int ta = layout->cpp;
 
 	/* The z16/r16 formats seem to not play by the normal tiling rules: */
-	if ((layout->cpp == 2) && (util_format_get_nr_components(format) == 1))
+	if ((layout->cpp == 2) && (util_format_get_nr_components(format) == 2))
 		ta = 0;
 
 	uint32_t alignment;
