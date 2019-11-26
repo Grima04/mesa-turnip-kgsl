@@ -403,7 +403,7 @@ tu6_emit_flag_buffer(struct tu_cs *cs, const struct tu_image_view *iview)
    uint64_t va = tu_image_ubwc_base(iview->image, iview->base_mip, iview->base_layer);
    uint32_t pitch = tu_image_ubwc_pitch(iview->image, iview->base_mip);
    uint32_t size = tu_image_ubwc_size(iview->image, iview->base_mip);
-   if (iview->image->ubwc_size) {
+   if (iview->image->layout.ubwc_size) {
       tu_cs_emit_qw(cs, va);
       tu_cs_emit(cs, A6XX_RB_DEPTH_FLAG_BUFFER_PITCH_PITCH(pitch) |
                      A6XX_RB_DEPTH_FLAG_BUFFER_PITCH_ARRAY_PITCH(size >> 2));
@@ -453,7 +453,7 @@ tu6_emit_zs(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
    tu_cs_emit_pkt4(cs, REG_A6XX_RB_DEPTH_BUFFER_INFO, 6);
    tu_cs_emit(cs, A6XX_RB_DEPTH_BUFFER_INFO_DEPTH_FORMAT(fmt));
    tu_cs_emit(cs, A6XX_RB_DEPTH_BUFFER_PITCH(tu_image_stride(iview->image, iview->base_mip)));
-   tu_cs_emit(cs, A6XX_RB_DEPTH_BUFFER_ARRAY_PITCH(iview->image->layer_size));
+   tu_cs_emit(cs, A6XX_RB_DEPTH_BUFFER_ARRAY_PITCH(iview->image->layout.layer_size));
    tu_cs_emit_qw(cs, tu_image_base(iview->image, iview->base_mip, iview->base_layer));
    tu_cs_emit(cs, tiling->gmem_offsets[subpass->color_count]);
 
@@ -508,7 +508,7 @@ tu6_emit_mrt(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
                         A6XX_RB_MRT_BUF_INFO_COLOR_TILE_MODE(tile_mode) |
                         A6XX_RB_MRT_BUF_INFO_COLOR_SWAP(format->swap));
       tu_cs_emit(cs, A6XX_RB_MRT_PITCH(tu_image_stride(iview->image, iview->base_mip)));
-      tu_cs_emit(cs, A6XX_RB_MRT_ARRAY_PITCH(iview->image->layer_size));
+      tu_cs_emit(cs, A6XX_RB_MRT_ARRAY_PITCH(iview->image->layout.layer_size));
       tu_cs_emit_qw(cs, tu_image_base(iview->image, iview->base_mip, iview->base_layer));
       tu_cs_emit(
          cs, tiling->gmem_offsets[i]); /* RB_MRT[i].BASE_GMEM */
@@ -649,12 +649,13 @@ tu6_emit_blit_info(struct tu_cmd_buffer *cmd,
                      A6XX_RB_BLIT_DST_INFO_SAMPLES(tu_msaa_samples(iview->image->samples)) |
                      A6XX_RB_BLIT_DST_INFO_COLOR_FORMAT(format->rb) |
                      A6XX_RB_BLIT_DST_INFO_COLOR_SWAP(format->swap) |
-                     COND(iview->image->ubwc_size, A6XX_RB_BLIT_DST_INFO_FLAGS));
+                     COND(iview->image->layout.ubwc_size,
+                          A6XX_RB_BLIT_DST_INFO_FLAGS));
    tu_cs_emit_qw(cs, tu_image_base(iview->image, iview->base_mip, iview->base_layer));
    tu_cs_emit(cs, A6XX_RB_BLIT_DST_PITCH(tu_image_stride(iview->image, iview->base_mip)));
-   tu_cs_emit(cs, A6XX_RB_BLIT_DST_ARRAY_PITCH(iview->image->layer_size));
+   tu_cs_emit(cs, A6XX_RB_BLIT_DST_ARRAY_PITCH(iview->image->layout.layer_size));
 
-   if (iview->image->ubwc_size) {
+   if (iview->image->layout.ubwc_size) {
       tu_cs_emit_pkt4(cs, REG_A6XX_RB_BLIT_FLAG_DST_LO, 3);
       tu6_emit_flag_buffer(cs, iview);
    }

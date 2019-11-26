@@ -68,6 +68,8 @@
  * texture.
  */
 
+#define FDL_MAX_MIP_LEVELS 14
+
 struct fdl_slice {
 	uint32_t offset;         /* offset of first layer in slice */
 	uint32_t pitch;
@@ -80,8 +82,8 @@ struct fdl_slice {
  * to derive this.
  */
 struct fdl_layout {
-	struct fdl_slice slices[MAX_MIP_LEVELS];
-	struct fdl_slice ubwc_slices[MAX_MIP_LEVELS];
+	struct fdl_slice slices[FDL_MAX_MIP_LEVELS];
+	struct fdl_slice ubwc_slices[FDL_MAX_MIP_LEVELS];
 	uint32_t layer_size;
 	bool layer_first : 1;    /* see above description */
 

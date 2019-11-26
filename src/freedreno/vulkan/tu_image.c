@@ -44,10 +44,10 @@ image_level_linear(struct tu_image *image, int level, bool ubwc)
 enum a6xx_tile_mode
 tu6_get_image_tile_mode(struct tu_image *image, int level)
 {
-   if (image_level_linear(image, level, !!image->ubwc_size))
+   if (image_level_linear(image, level, !!image->layout.ubwc_size))
       return TILE6_LINEAR;
    else
-      return image->tile_mode;
+      return image->layout.tile_mode;
 }
 
 /* indexed by cpp, including msaa 2x and 4x: */
@@ -90,15 +90,18 @@ setup_slices(struct tu_image *image,
    enum util_format_layout layout = vk_format_description(format)->layout;
    uint32_t layer_size = 0;
    uint32_t ubwc_size = 0;
-   int ta = image->cpp;
+   int ta = image->layout.cpp;
+
+   if (image->type != VK_IMAGE_TYPE_3D)
+      image->layout.layer_first = true;
 
    /* The r8g8 format seems to not play by the normal tiling rules: */
-   if (image->cpp == 2 && vk_format_get_nr_components(format) == 2)
+   if (image->layout.cpp == 2 && vk_format_get_nr_components(format) == 2)
       ta = 0;
 
    for (unsigned level = 0; level < pCreateInfo->mipLevels; level++) {
-      struct tu_image_level *slice = &image->levels[level];
-      struct tu_image_level *ubwc_slice = &image->ubwc_levels[level];
+      struct fdl_slice *slice = &image->layout.slices[level];
+      struct fdl_slice *ubwc_slice = &image->layout.ubwc_slices[level];
       uint32_t width = u_minify(pCreateInfo->extent.width, level);
       uint32_t height = u_minify(pCreateInfo->extent.height, level);
       uint32_t depth = u_minify(pCreateInfo->extent.depth, level);
@@ -106,7 +109,8 @@ setup_slices(struct tu_image *image,
       uint32_t blocks;
       uint32_t pitchalign;
 
-      if (image->tile_mode && !image_level_linear(image, level, ubwc_enabled)) {
+      if (image->layout.tile_mode &&
+          !image_level_linear(image, level, ubwc_enabled)) {
          /* tiled levels of 3D textures are rounded up to PoT dimensions: */
          if (pCreateInfo->imageType == VK_IMAGE_TYPE_3D) {
             width = util_next_power_of_two(width);
@@ -144,16 +148,16 @@ setup_slices(struct tu_image *image,
        * range gets into range, we stop reducing it.
        */
       if (pCreateInfo->imageType == VK_IMAGE_TYPE_3D) {
-         if (level < 1 || image->levels[level - 1].size > 0xf000) {
-            slice->size = align(blocks * image->cpp, 4096);
+         if (level < 1 || image->layout.slices[level - 1].size0 > 0xf000) {
+            slice->size0 = align(blocks * image->layout.cpp, 4096);
          } else {
-            slice->size = image->levels[level - 1].size;
+            slice->size0 = image->layout.slices[level - 1].size0;
          }
       } else {
-         slice->size = blocks * image->cpp;
+         slice->size0 = blocks * image->layout.cpp;
       }
 
-      layer_size += slice->size * depth;
+      layer_size += slice->size0 * depth;
       if (ubwc_enabled) {
          /* with UBWC every level is aligned to 4K */
          layer_size = align(layer_size, 4096);
@@ -177,14 +181,14 @@ setup_slices(struct tu_image *image,
          ubwc_size += align(meta_pitch * meta_height, UBWC_PLANE_SIZE_ALIGNMENT);
       }
    }
-   image->layer_size = align(layer_size, 4096);
+   image->layout.layer_size = align(layer_size, 4096);
 
    VkDeviceSize offset = ubwc_size * pCreateInfo->arrayLayers;
    for (unsigned level = 0; level < pCreateInfo->mipLevels; level++)
-      image->levels[level].offset += offset;
+      image->layout.slices[level].offset += offset;
 
-   image->size = offset + image->layer_size * pCreateInfo->arrayLayers;
-   image->ubwc_size = ubwc_size;
+   image->size = offset + image->layout.layer_size * pCreateInfo->arrayLayers;
+   image->layout.ubwc_size = ubwc_size;
 }
 
 VkResult
@@ -220,7 +224,7 @@ tu_image_create(VkDevice _device,
    image->level_count = pCreateInfo->mipLevels;
    image->layer_count = pCreateInfo->arrayLayers;
    image->samples = pCreateInfo->samples;
-   image->cpp = vk_format_get_blocksize(image->vk_format) * image->samples;
+   image->layout.cpp = vk_format_get_blocksize(image->vk_format) * image->samples;
 
    image->exclusive = pCreateInfo->sharingMode == VK_SHARING_MODE_EXCLUSIVE;
    if (pCreateInfo->sharingMode == VK_SHARING_MODE_CONCURRENT) {
@@ -237,14 +241,14 @@ tu_image_create(VkDevice _device,
       vk_find_struct_const(pCreateInfo->pNext,
                            EXTERNAL_MEMORY_IMAGE_CREATE_INFO) != NULL;
 
-   image->tile_mode = TILE6_3;
+   image->layout.tile_mode = TILE6_3;
    bool ubwc_enabled = true;
 
    /* disable tiling when linear is requested and for compressed formats */
    if (pCreateInfo->tiling == VK_IMAGE_TILING_LINEAR ||
        modifier == DRM_FORMAT_MOD_LINEAR ||
        vk_format_is_compressed(image->vk_format)) {
-      image->tile_mode = TILE6_LINEAR;
+      image->layout.tile_mode = TILE6_LINEAR;
       ubwc_enabled = false;
    }
 
@@ -264,8 +268,8 @@ tu_image_create(VkDevice _device,
       ubwc_enabled = false;
    }
 
-   if (!tile_alignment[image->cpp].ubwc_blockwidth) {
-      tu_finishme("UBWC for cpp=%d", image->cpp);
+   if (!tile_alignment[image->layout.cpp].ubwc_blockwidth) {
+      tu_finishme("UBWC for cpp=%d", image->layout.cpp);
       ubwc_enabled = false;
    }
 
@@ -401,7 +405,7 @@ tu_image_view_init(struct tu_image_view *iview,
       COND(vk_format_is_srgb(iview->vk_format), A6XX_TEX_CONST_0_SRGB) |
       A6XX_TEX_CONST_0_FMT(fmt->tex) |
       A6XX_TEX_CONST_0_SAMPLES(tu_msaa_samples(image->samples)) |
-      A6XX_TEX_CONST_0_SWAP(image->tile_mode ? WZYX : fmt->swap) |
+      A6XX_TEX_CONST_0_SWAP(image->layout.tile_mode ? WZYX : fmt->swap) |
       tu6_texswiz(&pCreateInfo->components, vk_format_description(iview->vk_format)->swizzle) |
       A6XX_TEX_CONST_0_MIPLVLS(iview->level_count - 1);
    iview->descriptor[1] = A6XX_TEX_CONST_1_WIDTH(width) | A6XX_TEX_CONST_1_HEIGHT(height);
@@ -413,9 +417,9 @@ tu_image_view_init(struct tu_image_view *iview,
    iview->descriptor[4] = base_addr;
    iview->descriptor[5] = base_addr >> 32;
 
-   if (image->ubwc_size) {
-      uint32_t block_width = tile_alignment[image->cpp].ubwc_blockwidth;
-      uint32_t block_height = tile_alignment[image->cpp].ubwc_blockheight;
+   if (image->layout.ubwc_size) {
+      uint32_t block_width = tile_alignment[image->layout.cpp].ubwc_blockwidth;
+      uint32_t block_height = tile_alignment[image->layout.cpp].ubwc_blockheight;
 
       iview->descriptor[3] |= A6XX_TEX_CONST_3_FLAG | A6XX_TEX_CONST_3_TILE_ALL;
       iview->descriptor[7] = ubwc_addr;
@@ -431,7 +435,7 @@ tu_image_view_init(struct tu_image_view *iview,
       iview->descriptor[5] |= A6XX_TEX_CONST_5_DEPTH(iview->layer_count);
    } else {
       iview->descriptor[3] |=
-         A6XX_TEX_CONST_3_MIN_LAYERSZ(image->levels[image->level_count - 1].size);
+         A6XX_TEX_CONST_3_MIN_LAYERSZ(image->layout.slices[image->level_count - 1].size0);
       iview->descriptor[5] |=
          A6XX_TEX_CONST_5_DEPTH(u_minify(image->extent.depth, iview->base_mip));
    }
@@ -506,18 +510,18 @@ tu_GetImageSubresourceLayout(VkDevice _device,
 {
    TU_FROM_HANDLE(tu_image, image, _image);
 
-   const uint32_t layer_offset = image->layer_size * pSubresource->arrayLayer;
-   const struct tu_image_level *level =
-      image->levels + pSubresource->mipLevel;
+   const struct fdl_slice *slice = image->layout.slices + pSubresource->mipLevel;
 
-   pLayout->offset = layer_offset + level->offset;
-   pLayout->size = level->size;
+   pLayout->offset = fdl_surface_offset(&image->layout,
+                                        pSubresource->mipLevel,
+                                        pSubresource->arrayLayer);
+   pLayout->size = slice->size0;
    pLayout->rowPitch =
-      level->pitch * vk_format_get_blocksize(image->vk_format);
-   pLayout->arrayPitch = image->layer_size;
-   pLayout->depthPitch = level->size;
+      slice->pitch * vk_format_get_blocksize(image->vk_format);
+   pLayout->arrayPitch = image->layout.layer_size;
+   pLayout->depthPitch = slice->size0;
 
-   if (image->ubwc_size) {
+   if (image->layout.ubwc_size) {
       /* UBWC starts at offset 0 */
       pLayout->offset = 0;
       /* UBWC scanout won't match what the kernel wants if we have levels/layers */

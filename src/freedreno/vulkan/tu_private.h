@@ -58,6 +58,7 @@
 #include "adreno_common.xml.h"
 #include "adreno_pm4.xml.h"
 #include "a6xx.xml.h"
+#include "fdl/freedreno_layout.h"
 
 #include "tu_descriptor_set.h"
 #include "tu_extensions.h"
@@ -1295,13 +1296,7 @@ struct tu_image
    VkDeviceSize size;
    uint32_t alignment;
 
-   /* memory layout */
-   VkDeviceSize layer_size;
-   struct tu_image_level levels[15];
-   unsigned tile_mode;
-   unsigned cpp;
-   struct tu_image_level ubwc_levels[15];
-   uint32_t ubwc_size;
+   struct fdl_layout layout;
 
    unsigned queue_family_mask;
    bool exclusive;
@@ -1341,40 +1336,39 @@ tu_get_levelCount(const struct tu_image *image,
 static inline VkDeviceSize
 tu_layer_size(struct tu_image *image, int level)
 {
-   if (image->type == VK_IMAGE_TYPE_3D)
-      return image->levels[level].size;
-   return image->layer_size;
+   return fdl_layer_stride(&image->layout, level);
 }
 
 static inline uint32_t
 tu_image_stride(struct tu_image *image, int level)
 {
-   return image->levels[level].pitch * image->cpp;
+   return image->layout.slices[level].pitch * image->layout.cpp;
 }
 
 static inline uint64_t
 tu_image_base(struct tu_image *image, int level, int layer)
 {
-   return image->bo->iova + image->bo_offset + image->levels[level].offset +
-          layer * tu_layer_size(image, level);
+   return image->bo->iova + image->bo_offset +
+      fdl_surface_offset(&image->layout, level, layer);
 }
 
 static inline VkDeviceSize
 tu_image_ubwc_size(struct tu_image *image, int level)
 {
-   return image->ubwc_size;
+   return image->layout.ubwc_size;
 }
 
 static inline uint32_t
 tu_image_ubwc_pitch(struct tu_image *image, int level)
 {
-   return image->ubwc_levels[level].pitch;
+   return image->layout.ubwc_slices[level].pitch;
 }
 
 static inline uint64_t
 tu_image_ubwc_base(struct tu_image *image, int level, int layer)
 {
-   return image->bo->iova + image->bo_offset + image->ubwc_levels[level].offset +
+   return image->bo->iova + image->bo_offset +
+          image->layout.ubwc_slices[level].offset +
           layer * tu_image_ubwc_size(image, level);
 }
 
