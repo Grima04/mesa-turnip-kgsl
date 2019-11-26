@@ -1190,9 +1190,9 @@ void radv_GetPhysicalDeviceFeatures2(
 			features->deviceCoherentMemory = pdevice->rad_info.has_l2_uncached;
 			break;
 		}
-		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SUBGROUP_EXTENDED_TYPES_FEATURES_KHR: {
-			VkPhysicalDeviceShaderSubgroupExtendedTypesFeaturesKHR *features =
-				(VkPhysicalDeviceShaderSubgroupExtendedTypesFeaturesKHR *)ext;
+		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SUBGROUP_EXTENDED_TYPES_FEATURES: {
+			VkPhysicalDeviceShaderSubgroupExtendedTypesFeatures *features =
+				(VkPhysicalDeviceShaderSubgroupExtendedTypesFeatures *)ext;
 			features->shaderSubgroupExtendedTypes = true;
 			break;
 		}
