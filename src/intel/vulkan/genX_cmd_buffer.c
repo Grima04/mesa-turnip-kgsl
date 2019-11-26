@@ -2509,6 +2509,70 @@ cmd_buffer_emit_descriptor_pointers(struct anv_cmd_buffer *cmd_buffer,
    }
 }
 
+static struct anv_address
+get_push_range_address(struct anv_cmd_buffer *cmd_buffer,
+                       gl_shader_stage stage,
+                       const struct anv_push_range *range)
+{
+#if GEN_GEN >= 8 || GEN_IS_HASWELL
+   const struct anv_cmd_graphics_state *gfx_state = &cmd_buffer->state.gfx;
+   switch (range->set) {
+   case ANV_DESCRIPTOR_SET_DESCRIPTORS: {
+      /* This is a descriptor set buffer so the set index is
+       * actually given by binding->binding.  (Yes, that's
+       * confusing.)
+       */
+      struct anv_descriptor_set *set =
+         gfx_state->base.descriptors[range->index];
+      return anv_descriptor_set_address(cmd_buffer, set);
+      break;
+   }
+
+   case ANV_DESCRIPTOR_SET_PUSH_CONSTANTS: {
+      struct anv_state state =
+         anv_cmd_buffer_push_constants(cmd_buffer, stage);
+      return (struct anv_address) {
+         .bo = cmd_buffer->device->dynamic_state_pool.block_pool.bo,
+         .offset = state.offset,
+      };
+      break;
+   }
+
+   default: {
+      assert(range->set < MAX_SETS);
+      struct anv_descriptor_set *set =
+         gfx_state->base.descriptors[range->set];
+      const struct anv_descriptor *desc =
+         &set->descriptors[range->index];
+
+      if (desc->type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER) {
+         return desc->buffer_view->address;
+      } else {
+         assert(desc->type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC);
+         struct anv_push_constants *push =
+            &cmd_buffer->state.push_constants[stage];
+         uint32_t dynamic_offset =
+            push->dynamic_offsets[range->dynamic_offset_index];
+         return anv_address_add(desc->buffer->address,
+                                desc->offset + dynamic_offset);
+      }
+   }
+   }
+#else
+   /* For Ivy Bridge, push constants are relative to dynamic state
+    * base address and we only ever push actual push constants.
+    */
+   assert(range->length > 0);
+   assert(range->set == ANV_DESCRIPTOR_SET_PUSH_CONSTANTS);
+   struct anv_state state =
+      anv_cmd_buffer_push_constants(cmd_buffer, stage);
+   return (struct anv_address) {
+      .bo = cmd_buffer->device->dynamic_state_pool.block_pool.bo,
+      .offset = state.offset,
+   };
+#endif
+}
+
 static void
 cmd_buffer_flush_push_constants(struct anv_cmd_buffer *cmd_buffer,
                                 VkShaderStageFlags dirty_stages)
@@ -2538,7 +2602,6 @@ cmd_buffer_flush_push_constants(struct anv_cmd_buffer *cmd_buffer,
             const struct anv_pipeline_bind_map *bind_map =
                &pipeline->shaders[stage]->bind_map;
 
-#if GEN_GEN >= 8 || GEN_IS_HASWELL
             unsigned buffer_count = 0;
             for (unsigned i = 0; i < 4; i++) {
                const struct anv_push_range *range = &bind_map->push_ranges[i];
@@ -2565,70 +2628,18 @@ cmd_buffer_flush_push_constants(struct anv_cmd_buffer *cmd_buffer,
                /* At this point we only have non-empty ranges */
                assert(range->length > 0);
 
-               struct anv_address addr;
-               switch (range->set) {
-               case ANV_DESCRIPTOR_SET_DESCRIPTORS: {
-                  /* This is a descriptor set buffer so the set index is
-                   * actually given by binding->binding.  (Yes, that's
-                   * confusing.)
-                   */
-                  struct anv_descriptor_set *set =
-                     gfx_state->base.descriptors[range->index];
-                  addr = anv_descriptor_set_address(cmd_buffer, set);
-                  break;
-               }
+               /* For Ivy Bridge, make sure we only set the first range (actual
+                * push constants)
+                */
+               assert((GEN_GEN >= 8 || GEN_IS_HASWELL) || i == 0);
 
-               case ANV_DESCRIPTOR_SET_PUSH_CONSTANTS: {
-                  struct anv_state state =
-                     anv_cmd_buffer_push_constants(cmd_buffer, stage);
-                  addr = (struct anv_address) {
-                     .bo = cmd_buffer->device->dynamic_state_pool.block_pool.bo,
-                     .offset = state.offset,
-                  };
-                  break;
-               }
-
-               default: {
-                  assert(range->set < MAX_SETS);
-                  struct anv_descriptor_set *set =
-                     gfx_state->base.descriptors[range->set];
-                  const struct anv_descriptor *desc =
-                     &set->descriptors[range->index];
-
-                  if (desc->type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER) {
-                     addr = desc->buffer_view->address;
-                  } else {
-                     assert(desc->type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC);
-                     struct anv_push_constants *push =
-                        &cmd_buffer->state.push_constants[stage];
-                     uint32_t dynamic_offset =
-                        push->dynamic_offsets[range->dynamic_offset_index];
-                     addr = anv_address_add(desc->buffer->address,
-                                            desc->offset + dynamic_offset);
-                  }
-               }
-               }
+               const struct anv_address addr =
+                  get_push_range_address(cmd_buffer, stage, range);
 
                c.ConstantBody.ReadLength[i + shift] = range->length;
                c.ConstantBody.Buffer[i + shift] =
                   anv_address_add(addr, range->start * 32);
             }
-#else
-            /* For Ivy Bridge, push constants are relative to dynamic state
-             * base address and we only ever push actual push constants.
-             */
-            if (bind_map->push_ranges[0].length > 0) {
-               assert(bind_map->push_ranges[0].set ==
-                      ANV_DESCRIPTOR_SET_PUSH_CONSTANTS);
-               struct anv_state state =
-                  anv_cmd_buffer_push_constants(cmd_buffer, stage);
-               c.ConstantBody.ReadLength[0] = bind_map->push_ranges[0].length;
-               c.ConstantBody.Buffer[0].offset = state.offset;
-            }
-            assert(bind_map->push_ranges[1].length == 0);
-            assert(bind_map->push_ranges[2].length == 0);
-            assert(bind_map->push_ranges[3].length == 0);
-#endif
          }
       }
 
