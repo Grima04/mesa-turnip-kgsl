@@ -18,18 +18,16 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-inc_freedreno = include_directories(['.', './registers'])
+libfreedreno_layout = static_library(
+  'freedreno_layout',
+  [
+    'fd6_layout.c',
+    'freedreno_layout.c',
+  ],
+  include_directories : [inc_freedreno, inc_common],
+  c_args : [c_vis_args, no_override_init_args],
+  cpp_args : [cpp_vis_args],
+  dependencies : idep_nir_headers,
+  build_by_default : false,
+)
 
-subdir('drm')
-subdir('fdl')
-subdir('ir3')
-subdir('registers')
-subdir('perfcntrs')
-
-if with_tools.contains('drm-shim')
-  subdir('drm-shim')
-endif
-
-if with_freedreno_vk
-  subdir('vulkan')
-endif

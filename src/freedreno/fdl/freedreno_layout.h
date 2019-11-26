@@ -24,6 +24,13 @@
 #ifndef FREEDRENO_LAYOUT_H_
 #define FREEDRENO_LAYOUT_H_
 
+#include <stdbool.h>
+#include <stdint.h>
+
+#include "util/u_debug.h"
+#include "util/u_math.h"
+#include "util/format/u_format.h"
+
 /* Shared freedreno mipmap layout helper
  *
  * It does *not* attempt to track surface transitions, in particular
@@ -102,6 +109,8 @@ struct fdl_layout {
 
 	uint32_t width0, height0, depth0;
 
+	uint32_t size; /* Size of the whole image, in bytes. */
+
 	uint32_t ubwc_size;
 };
 
@@ -128,8 +137,8 @@ fdl_ubwc_offset(const struct fdl_layout *layout, unsigned level, unsigned layer)
 	 * for multi layer/level images, it will.
 	 */
 	if (layout->ubwc_size) {
-		debug_assert(level == 0);
-		debug_assert(layer == 0);
+		assert(level == 0);
+		assert(layer == 0);
 	}
 	return layout->ubwc_slices[0].offset;
 }
@@ -157,5 +166,14 @@ fdl_ubwc_enabled(const struct fdl_layout *layout, int level)
 {
 	return layout->ubwc_size && fdl_tile_mode(layout, level);
 }
+
+void
+fdl_layout_buffer(struct fdl_layout *layout, uint32_t size);
+
+void
+fdl6_layout(struct fdl_layout *layout,
+		enum pipe_format format, uint32_t nr_samples,
+		uint32_t width0, uint32_t height0, uint32_t depth0,
+		uint32_t mip_levels, uint32_t array_size, bool is_3d);
 
 #endif /* FREEDRENO_LAYOUT_H_ */

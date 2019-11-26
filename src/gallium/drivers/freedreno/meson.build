@@ -243,6 +243,7 @@ driver_freedreno = declare_dependency(
     libfreedreno,
     libfreedreno_drm,
     libfreedreno_ir3,
+    libfreedreno_layout,
     libfreedreno_perfcntrs
   ],
   dependencies : idep_nir,
@@ -260,6 +261,7 @@ ir3_compiler = executable(
     libfreedreno,
     libfreedreno_drm,
     libfreedreno_ir3,
+    libfreedreno_layout,
     libgallium,
     libglsl_standalone,
   ],

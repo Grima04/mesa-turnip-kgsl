@@ -991,7 +991,13 @@ fd_resource_create_with_modifiers(struct pipe_screen *pscreen,
 
 	rsc->internal_format = format;
 
-	size = screen->setup_slices(rsc);
+	if (prsc->target == PIPE_BUFFER) {
+		assert(prsc->format == PIPE_FORMAT_R8_UNORM);
+		size = prsc->width0;
+		fdl_layout_buffer(&rsc->layout, size);
+	} else {
+		size = screen->setup_slices(rsc);
+	}
 
 	if (allow_ubwc && screen->fill_ubwc_buffer_sizes && rsc->layout.tile_mode)
 		size += screen->fill_ubwc_buffer_sizes(rsc);
