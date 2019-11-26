@@ -81,7 +81,9 @@ shaders/activeprogram-get: skip
 shaders/createshaderprogram-attached-shaders: skip
 shaders/createshaderprogram-bad-type: skip
 shaders/glsl-bug-110796: fail
-shaders/glsl-fs-fogscale: fail
+shaders/glsl-fs-fogscale/gs-out and fs: skip
+shaders/glsl-fs-fogscale/vs and fs: fail
+shaders/glsl-fs-fogscale/vs, gs and fs: skip
 shaders/sso-simple: skip
 shaders/sso-uniforms-01: skip
 shaders/sso-uniforms-02: skip
@@ -91,117 +93,313 @@ shaders/useshaderprogram-bad-program: skip
 shaders/useshaderprogram-bad-type: skip
 shaders/useshaderprogram-flushverts-1: skip
 shaders/zero-tex-coord texturegather: skip
-spec/!opengl 1_0/gl-1_0-swapbuffers-behavior: fail
-spec/!opengl 1_1/depthstencil-default_fb-blit samples=16: skip
-spec/!opengl 1_1/depthstencil-default_fb-blit samples=2: skip
-spec/!opengl 1_1/depthstencil-default_fb-blit samples=32: skip
-spec/!opengl 1_1/depthstencil-default_fb-blit samples=4: skip
-spec/!opengl 1_1/depthstencil-default_fb-blit samples=6: skip
-spec/!opengl 1_1/depthstencil-default_fb-blit samples=8: skip
-spec/!opengl 1_1/depthstencil-default_fb-clear samples=16: skip
-spec/!opengl 1_1/depthstencil-default_fb-clear samples=2: skip
-spec/!opengl 1_1/depthstencil-default_fb-clear samples=32: skip
-spec/!opengl 1_1/depthstencil-default_fb-clear samples=4: skip
-spec/!opengl 1_1/depthstencil-default_fb-clear samples=6: skip
-spec/!opengl 1_1/depthstencil-default_fb-clear samples=8: skip
-spec/!opengl 1_1/depthstencil-default_fb-copypixels samples=16: skip
-spec/!opengl 1_1/depthstencil-default_fb-copypixels samples=2: skip
-spec/!opengl 1_1/depthstencil-default_fb-copypixels samples=32: skip
-spec/!opengl 1_1/depthstencil-default_fb-copypixels samples=4: skip
-spec/!opengl 1_1/depthstencil-default_fb-copypixels samples=6: skip
-spec/!opengl 1_1/depthstencil-default_fb-copypixels samples=8: skip
-spec/!opengl 1_1/depthstencil-default_fb-drawpixels-24_8 samples=16: skip
-spec/!opengl 1_1/depthstencil-default_fb-drawpixels-24_8 samples=2: skip
-spec/!opengl 1_1/depthstencil-default_fb-drawpixels-24_8 samples=32: skip
-spec/!opengl 1_1/depthstencil-default_fb-drawpixels-24_8 samples=4: skip
-spec/!opengl 1_1/depthstencil-default_fb-drawpixels-24_8 samples=6: skip
-spec/!opengl 1_1/depthstencil-default_fb-drawpixels-24_8 samples=8: skip
-spec/!opengl 1_1/depthstencil-default_fb-drawpixels-32f_24_8_rev samples=16: skip
-spec/!opengl 1_1/depthstencil-default_fb-drawpixels-32f_24_8_rev samples=2: skip
-spec/!opengl 1_1/depthstencil-default_fb-drawpixels-32f_24_8_rev samples=32: skip
-spec/!opengl 1_1/depthstencil-default_fb-drawpixels-32f_24_8_rev samples=4: skip
-spec/!opengl 1_1/depthstencil-default_fb-drawpixels-32f_24_8_rev samples=6: skip
-spec/!opengl 1_1/depthstencil-default_fb-drawpixels-32f_24_8_rev samples=8: skip
-spec/!opengl 1_1/depthstencil-default_fb-drawpixels-float-and-ushort samples=16: skip
-spec/!opengl 1_1/depthstencil-default_fb-drawpixels-float-and-ushort samples=2: skip
-spec/!opengl 1_1/depthstencil-default_fb-drawpixels-float-and-ushort samples=32: skip
-spec/!opengl 1_1/depthstencil-default_fb-drawpixels-float-and-ushort samples=4: skip
-spec/!opengl 1_1/depthstencil-default_fb-drawpixels-float-and-ushort samples=6: skip
-spec/!opengl 1_1/depthstencil-default_fb-drawpixels-float-and-ushort samples=8: skip
-spec/!opengl 1_1/depthstencil-default_fb-readpixels-24_8 samples=16: skip
-spec/!opengl 1_1/depthstencil-default_fb-readpixels-24_8 samples=2: skip
-spec/!opengl 1_1/depthstencil-default_fb-readpixels-24_8 samples=32: skip
-spec/!opengl 1_1/depthstencil-default_fb-readpixels-24_8 samples=4: skip
-spec/!opengl 1_1/depthstencil-default_fb-readpixels-24_8 samples=6: skip
-spec/!opengl 1_1/depthstencil-default_fb-readpixels-24_8 samples=8: skip
-spec/!opengl 1_1/depthstencil-default_fb-readpixels-32f_24_8_rev samples=16: skip
-spec/!opengl 1_1/depthstencil-default_fb-readpixels-32f_24_8_rev samples=2: skip
-spec/!opengl 1_1/depthstencil-default_fb-readpixels-32f_24_8_rev samples=32: skip
-spec/!opengl 1_1/depthstencil-default_fb-readpixels-32f_24_8_rev samples=4: skip
-spec/!opengl 1_1/depthstencil-default_fb-readpixels-32f_24_8_rev samples=6: skip
-spec/!opengl 1_1/depthstencil-default_fb-readpixels-32f_24_8_rev samples=8: skip
-spec/!opengl 1_1/depthstencil-default_fb-readpixels-float-and-ushort samples=16: skip
-spec/!opengl 1_1/depthstencil-default_fb-readpixels-float-and-ushort samples=2: skip
-spec/!opengl 1_1/depthstencil-default_fb-readpixels-float-and-ushort samples=32: skip
-spec/!opengl 1_1/depthstencil-default_fb-readpixels-float-and-ushort samples=4: skip
-spec/!opengl 1_1/depthstencil-default_fb-readpixels-float-and-ushort samples=6: skip
-spec/!opengl 1_1/depthstencil-default_fb-readpixels-float-and-ushort samples=8: skip
-spec/!opengl 1_1/draw-pixels samples=16: skip
-spec/!opengl 1_1/draw-pixels samples=2: skip
-spec/!opengl 1_1/draw-pixels samples=32: skip
-spec/!opengl 1_1/draw-pixels samples=4: skip
-spec/!opengl 1_1/draw-pixels samples=6: skip
-spec/!opengl 1_1/draw-pixels samples=8: skip
-spec/!opengl 1_1/linestipple: fail
-spec/!opengl 1_1/polygon-mode-facing: fail
-spec/!opengl 1_1/polygon-mode-offset: fail
-spec/!opengl 1_1/read-front: fail
-spec/!opengl 1_1/read-front clear-front-first: fail
-spec/!opengl 1_1/read-front clear-front-first samples=16: skip
-spec/!opengl 1_1/read-front clear-front-first samples=2: skip
-spec/!opengl 1_1/read-front clear-front-first samples=32: skip
-spec/!opengl 1_1/read-front clear-front-first samples=4: skip
-spec/!opengl 1_1/read-front clear-front-first samples=6: skip
-spec/!opengl 1_1/read-front clear-front-first samples=8: skip
-spec/!opengl 1_1/read-front samples=16: skip
-spec/!opengl 1_1/read-front samples=2: skip
-spec/!opengl 1_1/read-front samples=32: skip
-spec/!opengl 1_1/read-front samples=4: skip
-spec/!opengl 1_1/read-front samples=6: skip
-spec/!opengl 1_1/read-front samples=8: skip
-spec/!opengl 1_1/windowoverlap: skip
-spec/!opengl 1_2/copyteximage 3d samples=16: skip
-spec/!opengl 1_2/copyteximage 3d samples=2: skip
-spec/!opengl 1_2/copyteximage 3d samples=32: skip
-spec/!opengl 1_2/copyteximage 3d samples=4: skip
-spec/!opengl 1_2/copyteximage 3d samples=6: skip
-spec/!opengl 1_2/copyteximage 3d samples=8: skip
-spec/!opengl 1_4/copy-pixels samples=16: skip
-spec/!opengl 1_4/copy-pixels samples=2: skip
-spec/!opengl 1_4/copy-pixels samples=32: skip
-spec/!opengl 1_4/copy-pixels samples=4: skip
-spec/!opengl 1_4/copy-pixels samples=6: skip
-spec/!opengl 1_4/copy-pixels samples=8: skip
-spec/!opengl 1_4/gl-1_4-polygon-offset: fail
-spec/!opengl 1_4/gl-1_4-rgba-mipmap-texture-with-rgb-visual: skip
-spec/!opengl 3_0/minmax: fail
-spec/!opengl 3_1/minmax: fail
-spec/!opengl 3_2/gl-3_2-adj-prims pv-first: fail
-spec/!opengl 3_2/layered-rendering/clear-color-all-types 2d_multisample_array single_level: fail
-spec/!opengl 3_2/layered-rendering/clear-color-mismatched-layer-count: fail
-spec/!opengl 3_2/minmax: fail
-spec/!opengl 3_3/minmax: fail
-spec/!opengl 4_2/gl-max-vertex-attrib-stride: skip
-spec/!opengl 4_2/required-renderbuffer-attachment-formats: skip
-spec/!opengl 4_2/required-sized-texture-formats: skip
-spec/!opengl 4_2/required-texture-attachment-formats: skip
-spec/!opengl 4_3/get_glsl_version: skip
-spec/!opengl 4_5/compare-framebuffer-parameter-with-get: skip
-spec/!opengl 4_5/named-framebuffer-draw-buffers-errors: skip
-spec/!opengl 4_5/named-framebuffer-read-buffer-errors: skip
-spec/!opengl es 2_0/invalid-es3-queries_gles2: skip
-spec/!opengl es 3_0/gles-3_0-transform-feedback-uniform-buffer-object: fail
-spec/!opengl es 3_0/minmax: fail
+spec/!opengl 1.0/gl-1.0-swapbuffers-behavior: fail
+spec/!opengl 1.1/depthstencil-default_fb-blit samples=16: skip
+spec/!opengl 1.1/depthstencil-default_fb-blit samples=2: skip
+spec/!opengl 1.1/depthstencil-default_fb-blit samples=32: skip
+spec/!opengl 1.1/depthstencil-default_fb-blit samples=4: skip
+spec/!opengl 1.1/depthstencil-default_fb-blit samples=6: skip
+spec/!opengl 1.1/depthstencil-default_fb-blit samples=8: skip
+spec/!opengl 1.1/depthstencil-default_fb-clear samples=16: skip
+spec/!opengl 1.1/depthstencil-default_fb-clear samples=2: skip
+spec/!opengl 1.1/depthstencil-default_fb-clear samples=32: skip
+spec/!opengl 1.1/depthstencil-default_fb-clear samples=4: skip
+spec/!opengl 1.1/depthstencil-default_fb-clear samples=6: skip
+spec/!opengl 1.1/depthstencil-default_fb-clear samples=8: skip
+spec/!opengl 1.1/depthstencil-default_fb-copypixels samples=16: skip
+spec/!opengl 1.1/depthstencil-default_fb-copypixels samples=2: skip
+spec/!opengl 1.1/depthstencil-default_fb-copypixels samples=32: skip
+spec/!opengl 1.1/depthstencil-default_fb-copypixels samples=4: skip
+spec/!opengl 1.1/depthstencil-default_fb-copypixels samples=6: skip
+spec/!opengl 1.1/depthstencil-default_fb-copypixels samples=8: skip
+spec/!opengl 1.1/depthstencil-default_fb-drawpixels-24_8 samples=16: skip
+spec/!opengl 1.1/depthstencil-default_fb-drawpixels-24_8 samples=2: skip
+spec/!opengl 1.1/depthstencil-default_fb-drawpixels-24_8 samples=32: skip
+spec/!opengl 1.1/depthstencil-default_fb-drawpixels-24_8 samples=4: skip
+spec/!opengl 1.1/depthstencil-default_fb-drawpixels-24_8 samples=6: skip
+spec/!opengl 1.1/depthstencil-default_fb-drawpixels-24_8 samples=8: skip
+spec/!opengl 1.1/depthstencil-default_fb-drawpixels-32f_24_8_rev samples=16: skip
+spec/!opengl 1.1/depthstencil-default_fb-drawpixels-32f_24_8_rev samples=2: skip
+spec/!opengl 1.1/depthstencil-default_fb-drawpixels-32f_24_8_rev samples=32: skip
+spec/!opengl 1.1/depthstencil-default_fb-drawpixels-32f_24_8_rev samples=4: skip
+spec/!opengl 1.1/depthstencil-default_fb-drawpixels-32f_24_8_rev samples=6: skip
+spec/!opengl 1.1/depthstencil-default_fb-drawpixels-32f_24_8_rev samples=8: skip
+spec/!opengl 1.1/depthstencil-default_fb-drawpixels-float-and-ushort samples=16: skip
+spec/!opengl 1.1/depthstencil-default_fb-drawpixels-float-and-ushort samples=2: skip
+spec/!opengl 1.1/depthstencil-default_fb-drawpixels-float-and-ushort samples=32: skip
+spec/!opengl 1.1/depthstencil-default_fb-drawpixels-float-and-ushort samples=4: skip
+spec/!opengl 1.1/depthstencil-default_fb-drawpixels-float-and-ushort samples=6: skip
+spec/!opengl 1.1/depthstencil-default_fb-drawpixels-float-and-ushort samples=8: skip
+spec/!opengl 1.1/depthstencil-default_fb-readpixels-24_8 samples=16: skip
+spec/!opengl 1.1/depthstencil-default_fb-readpixels-24_8 samples=2: skip
+spec/!opengl 1.1/depthstencil-default_fb-readpixels-24_8 samples=32: skip
+spec/!opengl 1.1/depthstencil-default_fb-readpixels-24_8 samples=4: skip
+spec/!opengl 1.1/depthstencil-default_fb-readpixels-24_8 samples=6: skip
+spec/!opengl 1.1/depthstencil-default_fb-readpixels-24_8 samples=8: skip
+spec/!opengl 1.1/depthstencil-default_fb-readpixels-32f_24_8_rev samples=16: skip
+spec/!opengl 1.1/depthstencil-default_fb-readpixels-32f_24_8_rev samples=2: skip
+spec/!opengl 1.1/depthstencil-default_fb-readpixels-32f_24_8_rev samples=32: skip
+spec/!opengl 1.1/depthstencil-default_fb-readpixels-32f_24_8_rev samples=4: skip
+spec/!opengl 1.1/depthstencil-default_fb-readpixels-32f_24_8_rev samples=6: skip
+spec/!opengl 1.1/depthstencil-default_fb-readpixels-32f_24_8_rev samples=8: skip
+spec/!opengl 1.1/depthstencil-default_fb-readpixels-float-and-ushort samples=16: skip
+spec/!opengl 1.1/depthstencil-default_fb-readpixels-float-and-ushort samples=2: skip
+spec/!opengl 1.1/depthstencil-default_fb-readpixels-float-and-ushort samples=32: skip
+spec/!opengl 1.1/depthstencil-default_fb-readpixels-float-and-ushort samples=4: skip
+spec/!opengl 1.1/depthstencil-default_fb-readpixels-float-and-ushort samples=6: skip
+spec/!opengl 1.1/depthstencil-default_fb-readpixels-float-and-ushort samples=8: skip
+spec/!opengl 1.1/draw-pixels samples=16: skip
+spec/!opengl 1.1/draw-pixels samples=2: skip
+spec/!opengl 1.1/draw-pixels samples=32: skip
+spec/!opengl 1.1/draw-pixels samples=4: skip
+spec/!opengl 1.1/draw-pixels samples=6: skip
+spec/!opengl 1.1/draw-pixels samples=8: skip
+spec/!opengl 1.1/linestipple/line strip: fail
+spec/!opengl 1.1/polygon-mode-facing: fail
+spec/!opengl 1.1/polygon-mode-offset/config 0: expected white pixel on bottom edge: fail
+spec/!opengl 1.1/polygon-mode-offset/config 0: expected white pixel on left edge: fail
+spec/!opengl 1.1/polygon-mode-offset/config 0: expected white pixel on right edge: fail
+spec/!opengl 1.1/polygon-mode-offset/config 0: expected white pixel on top edge: fail
+spec/!opengl 1.1/polygon-mode-offset/config 3: expected white pixel on bottom edge: fail
+spec/!opengl 1.1/polygon-mode-offset/config 3: expected white pixel on left edge: fail
+spec/!opengl 1.1/polygon-mode-offset/config 3: expected white pixel on right edge: fail
+spec/!opengl 1.1/polygon-mode-offset/config 3: expected white pixel on top edge: fail
+spec/!opengl 1.1/polygon-mode-offset/config 4: expected white pixel on bottom edge: fail
+spec/!opengl 1.1/polygon-mode-offset/config 4: expected white pixel on left edge: fail
+spec/!opengl 1.1/polygon-mode-offset/config 4: expected white pixel on right edge: fail
+spec/!opengl 1.1/polygon-mode-offset/config 4: expected white pixel on top edge: fail
+spec/!opengl 1.1/read-front: fail
+spec/!opengl 1.1/read-front clear-front-first: fail
+spec/!opengl 1.1/read-front clear-front-first samples=16: skip
+spec/!opengl 1.1/read-front clear-front-first samples=2: skip
+spec/!opengl 1.1/read-front clear-front-first samples=32: skip
+spec/!opengl 1.1/read-front clear-front-first samples=4: skip
+spec/!opengl 1.1/read-front clear-front-first samples=6: skip
+spec/!opengl 1.1/read-front clear-front-first samples=8: skip
+spec/!opengl 1.1/read-front samples=16: skip
+spec/!opengl 1.1/read-front samples=2: skip
+spec/!opengl 1.1/read-front samples=32: skip
+spec/!opengl 1.1/read-front samples=4: skip
+spec/!opengl 1.1/read-front samples=6: skip
+spec/!opengl 1.1/read-front samples=8: skip
+spec/!opengl 1.1/teximage-colors gl_alpha12/exact upload-download of gl_alpha12: skip
+spec/!opengl 1.1/teximage-colors gl_alpha4/exact upload-download of gl_alpha4: skip
+spec/!opengl 1.1/teximage-colors gl_alpha/exact upload-download of gl_alpha: skip
+spec/!opengl 1.1/teximage-colors gl_luminance12/exact upload-download of gl_luminance12: skip
+spec/!opengl 1.1/teximage-colors gl_luminance12_alpha12/exact upload-download of gl_luminance12_alpha12: skip
+spec/!opengl 1.1/teximage-colors gl_luminance12_alpha4/exact upload-download of gl_luminance12_alpha4: skip
+spec/!opengl 1.1/teximage-colors gl_luminance4/exact upload-download of gl_luminance4: skip
+spec/!opengl 1.1/teximage-colors gl_luminance4_alpha4/exact upload-download of gl_luminance4_alpha4: skip
+spec/!opengl 1.1/teximage-colors gl_luminance6_alpha2/exact upload-download of gl_luminance6_alpha2: skip
+spec/!opengl 1.1/teximage-colors gl_luminance/exact upload-download of gl_luminance: skip
+spec/!opengl 1.1/teximage-colors gl_luminance_alpha/exact upload-download of gl_luminance_alpha: skip
+spec/!opengl 1.1/teximage-colors gl_r11f_g11f_b10f/exact upload-download of gl_r11f_g11f_b10f: skip
+spec/!opengl 1.1/teximage-colors gl_r16f/exact upload-download of gl_r16f: skip
+spec/!opengl 1.1/teximage-colors gl_red/exact upload-download of gl_red: skip
+spec/!opengl 1.1/teximage-colors gl_rg16f/exact upload-download of gl_rg16f: skip
+spec/!opengl 1.1/teximage-colors gl_rg/exact upload-download of gl_rg: skip
+spec/!opengl 1.1/teximage-colors gl_rgb10/exact upload-download of gl_rgb10: skip
+spec/!opengl 1.1/teximage-colors gl_rgb12/exact upload-download of gl_rgb12: skip
+spec/!opengl 1.1/teximage-colors gl_rgb16f/exact upload-download of gl_rgb16f: skip
+spec/!opengl 1.1/teximage-colors gl_rgb4/exact upload-download of gl_rgb4: skip
+spec/!opengl 1.1/teximage-colors gl_rgb5/exact upload-download of gl_rgb5: skip
+spec/!opengl 1.1/teximage-colors gl_rgb9_e5/exact upload-download of gl_rgb9_e5: skip
+spec/!opengl 1.1/teximage-colors gl_rgb/exact upload-download of gl_rgb: skip
+spec/!opengl 1.1/teximage-colors gl_rgba12/exact upload-download of gl_rgba12: skip
+spec/!opengl 1.1/teximage-colors gl_rgba/exact upload-download of gl_rgba: skip
+spec/!opengl 1.1/windowoverlap: skip
+spec/!opengl 1.2/copyteximage 3d samples=16: skip
+spec/!opengl 1.2/copyteximage 3d samples=2: skip
+spec/!opengl 1.2/copyteximage 3d samples=32: skip
+spec/!opengl 1.2/copyteximage 3d samples=4: skip
+spec/!opengl 1.2/copyteximage 3d samples=6: skip
+spec/!opengl 1.2/copyteximage 3d samples=8: skip
+spec/!opengl 1.4/copy-pixels samples=16: skip
+spec/!opengl 1.4/copy-pixels samples=2: skip
+spec/!opengl 1.4/copy-pixels samples=32: skip
+spec/!opengl 1.4/copy-pixels samples=4: skip
+spec/!opengl 1.4/copy-pixels samples=6: skip
+spec/!opengl 1.4/copy-pixels samples=8: skip
+spec/!opengl 1.4/gl-1.4-polygon-offset: fail
+spec/!opengl 1.4/gl-1.4-rgba-mipmap-texture-with-rgb-visual: skip
+spec/!opengl 2.0/vertex-program-two-side back back2/gs-out and fs: skip
+spec/!opengl 2.0/vertex-program-two-side back back2/tcs-out, tes and fs: skip
+spec/!opengl 2.0/vertex-program-two-side back back2/tes-out and fs: skip
+spec/!opengl 2.0/vertex-program-two-side back back2/vs, gs and fs: skip
+spec/!opengl 2.0/vertex-program-two-side back back2/vs, tcs, tes and fs: skip
+spec/!opengl 2.0/vertex-program-two-side back front2 back2/gs-out and fs: skip
+spec/!opengl 2.0/vertex-program-two-side back front2 back2/tcs-out, tes and fs: skip
+spec/!opengl 2.0/vertex-program-two-side back front2 back2/tes-out and fs: skip
+spec/!opengl 2.0/vertex-program-two-side back front2 back2/vs, gs and fs: skip
+spec/!opengl 2.0/vertex-program-two-side back front2 back2/vs, tcs, tes and fs: skip
+spec/!opengl 2.0/vertex-program-two-side back front2/gs-out and fs: skip
+spec/!opengl 2.0/vertex-program-two-side back front2/tcs-out, tes and fs: skip
+spec/!opengl 2.0/vertex-program-two-side back front2/tes-out and fs: skip
+spec/!opengl 2.0/vertex-program-two-side back front2/vs, gs and fs: skip
+spec/!opengl 2.0/vertex-program-two-side back front2/vs, tcs, tes and fs: skip
+spec/!opengl 2.0/vertex-program-two-side back2/gs-out and fs: skip
+spec/!opengl 2.0/vertex-program-two-side back2/tcs-out, tes and fs: skip
+spec/!opengl 2.0/vertex-program-two-side back2/tes-out and fs: skip
+spec/!opengl 2.0/vertex-program-two-side back2/vs, gs and fs: skip
+spec/!opengl 2.0/vertex-program-two-side back2/vs, tcs, tes and fs: skip
+spec/!opengl 2.0/vertex-program-two-side back/gs-out and fs: skip
+spec/!opengl 2.0/vertex-program-two-side back/tcs-out, tes and fs: skip
+spec/!opengl 2.0/vertex-program-two-side back/tes-out and fs: skip
+spec/!opengl 2.0/vertex-program-two-side back/vs, gs and fs: skip
+spec/!opengl 2.0/vertex-program-two-side back/vs, tcs, tes and fs: skip
+spec/!opengl 2.0/vertex-program-two-side enabled back back2/gs-out and fs: skip
+spec/!opengl 2.0/vertex-program-two-side enabled back back2/tcs-out, tes and fs: skip
+spec/!opengl 2.0/vertex-program-two-side enabled back back2/tes-out and fs: skip
+spec/!opengl 2.0/vertex-program-two-side enabled back back2/vs, gs and fs: skip
+spec/!opengl 2.0/vertex-program-two-side enabled back back2/vs, tcs, tes and fs: skip
+spec/!opengl 2.0/vertex-program-two-side enabled back front2 back2/gs-out and fs: skip
+spec/!opengl 2.0/vertex-program-two-side enabled back front2 back2/tcs-out, tes and fs: skip
+spec/!opengl 2.0/vertex-program-two-side enabled back front2 back2/tes-out and fs: skip
+spec/!opengl 2.0/vertex-program-two-side enabled back front2 back2/vs, gs and fs: skip
+spec/!opengl 2.0/vertex-program-two-side enabled back front2 back2/vs, tcs, tes and fs: skip
+spec/!opengl 2.0/vertex-program-two-side enabled back front2/gs-out and fs: skip
+spec/!opengl 2.0/vertex-program-two-side enabled back front2/tcs-out, tes and fs: skip
+spec/!opengl 2.0/vertex-program-two-side enabled back front2/tes-out and fs: skip
+spec/!opengl 2.0/vertex-program-two-side enabled back front2/vs, gs and fs: skip
+spec/!opengl 2.0/vertex-program-two-side enabled back front2/vs, tcs, tes and fs: skip
+spec/!opengl 2.0/vertex-program-two-side enabled back2/gs-out and fs: skip
+spec/!opengl 2.0/vertex-program-two-side enabled back2/tcs-out, tes and fs: skip
+spec/!opengl 2.0/vertex-program-two-side enabled back2/tes-out and fs: skip
+spec/!opengl 2.0/vertex-program-two-side enabled back2/vs, gs and fs: skip
+spec/!opengl 2.0/vertex-program-two-side enabled back2/vs, tcs, tes and fs: skip
+spec/!opengl 2.0/vertex-program-two-side enabled back/gs-out and fs: skip
+spec/!opengl 2.0/vertex-program-two-side enabled back/tcs-out, tes and fs: skip
+spec/!opengl 2.0/vertex-program-two-side enabled back/tes-out and fs: skip
+spec/!opengl 2.0/vertex-program-two-side enabled back/vs, gs and fs: skip
+spec/!opengl 2.0/vertex-program-two-side enabled back/vs, tcs, tes and fs: skip
+spec/!opengl 2.0/vertex-program-two-side enabled front back back2/gs-out and fs: skip
+spec/!opengl 2.0/vertex-program-two-side enabled front back back2/tcs-out, tes and fs: skip
+spec/!opengl 2.0/vertex-program-two-side enabled front back back2/tes-out and fs: skip
+spec/!opengl 2.0/vertex-program-two-side enabled front back back2/vs, gs and fs: skip
+spec/!opengl 2.0/vertex-program-two-side enabled front back back2/vs, tcs, tes and fs: skip
+spec/!opengl 2.0/vertex-program-two-side enabled front back front2 back2/gs-out and fs: skip
+spec/!opengl 2.0/vertex-program-two-side enabled front back front2 back2/tcs-out, tes and fs: skip
+spec/!opengl 2.0/vertex-program-two-side enabled front back front2 back2/tes-out and fs: skip
+spec/!opengl 2.0/vertex-program-two-side enabled front back front2 back2/vs, gs and fs: skip
+spec/!opengl 2.0/vertex-program-two-side enabled front back front2 back2/vs, tcs, tes and fs: skip
+spec/!opengl 2.0/vertex-program-two-side enabled front back front2/gs-out and fs: skip
+spec/!opengl 2.0/vertex-program-two-side enabled front back front2/tcs-out, tes and fs: skip
+spec/!opengl 2.0/vertex-program-two-side enabled front back front2/tes-out and fs: skip
+spec/!opengl 2.0/vertex-program-two-side enabled front back front2/vs, gs and fs: skip
+spec/!opengl 2.0/vertex-program-two-side enabled front back front2/vs, tcs, tes and fs: skip
+spec/!opengl 2.0/vertex-program-two-side enabled front back2/gs-out and fs: skip
+spec/!opengl 2.0/vertex-program-two-side enabled front back2/tcs-out, tes and fs: skip
+spec/!opengl 2.0/vertex-program-two-side enabled front back2/tes-out and fs: skip
+spec/!opengl 2.0/vertex-program-two-side enabled front back2/vs, gs and fs: skip
+spec/!opengl 2.0/vertex-program-two-side enabled front back2/vs, tcs, tes and fs: skip
+spec/!opengl 2.0/vertex-program-two-side enabled front back/gs-out and fs: skip
+spec/!opengl 2.0/vertex-program-two-side enabled front back/tcs-out, tes and fs: skip
+spec/!opengl 2.0/vertex-program-two-side enabled front back/tes-out and fs: skip
+spec/!opengl 2.0/vertex-program-two-side enabled front back/vs, gs and fs: skip
+spec/!opengl 2.0/vertex-program-two-side enabled front back/vs, tcs, tes and fs: skip
+spec/!opengl 2.0/vertex-program-two-side enabled front front2 back2/gs-out and fs: skip
+spec/!opengl 2.0/vertex-program-two-side enabled front front2 back2/tcs-out, tes and fs: skip
+spec/!opengl 2.0/vertex-program-two-side enabled front front2 back2/tes-out and fs: skip
+spec/!opengl 2.0/vertex-program-two-side enabled front front2 back2/vs, gs and fs: skip
+spec/!opengl 2.0/vertex-program-two-side enabled front front2 back2/vs, tcs, tes and fs: skip
+spec/!opengl 2.0/vertex-program-two-side enabled front front2/gs-out and fs: skip
+spec/!opengl 2.0/vertex-program-two-side enabled front front2/tcs-out, tes and fs: skip
+spec/!opengl 2.0/vertex-program-two-side enabled front front2/tes-out and fs: skip
+spec/!opengl 2.0/vertex-program-two-side enabled front front2/vs, gs and fs: skip
+spec/!opengl 2.0/vertex-program-two-side enabled front front2/vs, tcs, tes and fs: skip
+spec/!opengl 2.0/vertex-program-two-side enabled front2 back2/gs-out and fs: skip
+spec/!opengl 2.0/vertex-program-two-side enabled front2 back2/tcs-out, tes and fs: skip
+spec/!opengl 2.0/vertex-program-two-side enabled front2 back2/tes-out and fs: skip
+spec/!opengl 2.0/vertex-program-two-side enabled front2 back2/vs, gs and fs: skip
+spec/!opengl 2.0/vertex-program-two-side enabled front2 back2/vs, tcs, tes and fs: skip
+spec/!opengl 2.0/vertex-program-two-side enabled front2/gs-out and fs: skip
+spec/!opengl 2.0/vertex-program-two-side enabled front2/tcs-out, tes and fs: skip
+spec/!opengl 2.0/vertex-program-two-side enabled front2/tes-out and fs: skip
+spec/!opengl 2.0/vertex-program-two-side enabled front2/vs, gs and fs: skip
+spec/!opengl 2.0/vertex-program-two-side enabled front2/vs, tcs, tes and fs: skip
+spec/!opengl 2.0/vertex-program-two-side enabled front/gs-out and fs: skip
+spec/!opengl 2.0/vertex-program-two-side enabled front/tcs-out, tes and fs: skip
+spec/!opengl 2.0/vertex-program-two-side enabled front/tes-out and fs: skip
+spec/!opengl 2.0/vertex-program-two-side enabled front/vs, gs and fs: skip
+spec/!opengl 2.0/vertex-program-two-side enabled front/vs, tcs, tes and fs: skip
+spec/!opengl 2.0/vertex-program-two-side enabled/gs-out and fs: skip
+spec/!opengl 2.0/vertex-program-two-side enabled/tcs-out, tes and fs: skip
+spec/!opengl 2.0/vertex-program-two-side enabled/tes-out and fs: skip
+spec/!opengl 2.0/vertex-program-two-side enabled/vs, gs and fs: skip
+spec/!opengl 2.0/vertex-program-two-side enabled/vs, tcs, tes and fs: skip
+spec/!opengl 2.0/vertex-program-two-side front back back2/gs-out and fs: skip
+spec/!opengl 2.0/vertex-program-two-side front back back2/tcs-out, tes and fs: skip
+spec/!opengl 2.0/vertex-program-two-side front back back2/tes-out and fs: skip
+spec/!opengl 2.0/vertex-program-two-side front back back2/vs, gs and fs: skip
+spec/!opengl 2.0/vertex-program-two-side front back back2/vs, tcs, tes and fs: skip
+spec/!opengl 2.0/vertex-program-two-side front back front2 back2/gs-out and fs: skip
+spec/!opengl 2.0/vertex-program-two-side front back front2 back2/tcs-out, tes and fs: skip
+spec/!opengl 2.0/vertex-program-two-side front back front2 back2/tes-out and fs: skip
+spec/!opengl 2.0/vertex-program-two-side front back front2 back2/vs, gs and fs: skip
+spec/!opengl 2.0/vertex-program-two-side front back front2 back2/vs, tcs, tes and fs: skip
+spec/!opengl 2.0/vertex-program-two-side front back front2/gs-out and fs: skip
+spec/!opengl 2.0/vertex-program-two-side front back front2/tcs-out, tes and fs: skip
+spec/!opengl 2.0/vertex-program-two-side front back front2/tes-out and fs: skip
+spec/!opengl 2.0/vertex-program-two-side front back front2/vs, gs and fs: skip
+spec/!opengl 2.0/vertex-program-two-side front back front2/vs, tcs, tes and fs: skip
+spec/!opengl 2.0/vertex-program-two-side front back2/gs-out and fs: skip
+spec/!opengl 2.0/vertex-program-two-side front back2/tcs-out, tes and fs: skip
+spec/!opengl 2.0/vertex-program-two-side front back2/tes-out and fs: skip
+spec/!opengl 2.0/vertex-program-two-side front back2/vs, gs and fs: skip
+spec/!opengl 2.0/vertex-program-two-side front back2/vs, tcs, tes and fs: skip
+spec/!opengl 2.0/vertex-program-two-side front back/gs-out and fs: skip
+spec/!opengl 2.0/vertex-program-two-side front back/tcs-out, tes and fs: skip
+spec/!opengl 2.0/vertex-program-two-side front back/tes-out and fs: skip
+spec/!opengl 2.0/vertex-program-two-side front back/vs, gs and fs: skip
+spec/!opengl 2.0/vertex-program-two-side front back/vs, tcs, tes and fs: skip
+spec/!opengl 2.0/vertex-program-two-side front front2 back2/gs-out and fs: skip
+spec/!opengl 2.0/vertex-program-two-side front front2 back2/tcs-out, tes and fs: skip
+spec/!opengl 2.0/vertex-program-two-side front front2 back2/tes-out and fs: skip
+spec/!opengl 2.0/vertex-program-two-side front front2 back2/vs, gs and fs: skip
+spec/!opengl 2.0/vertex-program-two-side front front2 back2/vs, tcs, tes and fs: skip
+spec/!opengl 2.0/vertex-program-two-side front front2/gs-out and fs: skip
+spec/!opengl 2.0/vertex-program-two-side front front2/tcs-out, tes and fs: skip
+spec/!opengl 2.0/vertex-program-two-side front front2/tes-out and fs: skip
+spec/!opengl 2.0/vertex-program-two-side front front2/vs, gs and fs: skip
+spec/!opengl 2.0/vertex-program-two-side front front2/vs, tcs, tes and fs: skip
+spec/!opengl 2.0/vertex-program-two-side front2 back2/gs-out and fs: skip
+spec/!opengl 2.0/vertex-program-two-side front2 back2/tcs-out, tes and fs: skip
+spec/!opengl 2.0/vertex-program-two-side front2 back2/tes-out and fs: skip
+spec/!opengl 2.0/vertex-program-two-side front2 back2/vs, gs and fs: skip
+spec/!opengl 2.0/vertex-program-two-side front2 back2/vs, tcs, tes and fs: skip
+spec/!opengl 2.0/vertex-program-two-side front2/gs-out and fs: skip
+spec/!opengl 2.0/vertex-program-two-side front2/tcs-out, tes and fs: skip
+spec/!opengl 2.0/vertex-program-two-side front2/tes-out and fs: skip
+spec/!opengl 2.0/vertex-program-two-side front2/vs, gs and fs: skip
+spec/!opengl 2.0/vertex-program-two-side front2/vs, tcs, tes and fs: skip
+spec/!opengl 2.0/vertex-program-two-side front/gs-out and fs: skip
+spec/!opengl 2.0/vertex-program-two-side front/tcs-out, tes and fs: skip
+spec/!opengl 2.0/vertex-program-two-side front/tes-out and fs: skip
+spec/!opengl 2.0/vertex-program-two-side front/vs, gs and fs: skip
+spec/!opengl 2.0/vertex-program-two-side front/vs, tcs, tes and fs: skip
+spec/!opengl 2.0/vertex-program-two-side/gs-out and fs: skip
+spec/!opengl 2.0/vertex-program-two-side/tcs-out, tes and fs: skip
+spec/!opengl 2.0/vertex-program-two-side/tes-out and fs: skip
+spec/!opengl 2.0/vertex-program-two-side/vs, gs and fs: skip
+spec/!opengl 2.0/vertex-program-two-side/vs, tcs, tes and fs: skip
+spec/!opengl 3.0/minmax: fail
+spec/!opengl 3.1/minmax: fail
+spec/!opengl 3.2/gl-3.2-adj-prims pv-first: fail
+spec/!opengl 3.2/layered-rendering/clear-color-all-types 2d_multisample_array single_level: fail
+spec/!opengl 3.2/layered-rendering/clear-color-mismatched-layer-count: fail
+spec/!opengl 3.2/minmax: fail
+spec/!opengl 3.3/minmax: fail
+spec/!opengl 4.2/gl-max-vertex-attrib-stride: skip
+spec/!opengl 4.2/required-renderbuffer-attachment-formats: skip
+spec/!opengl 4.2/required-sized-texture-formats: skip
+spec/!opengl 4.2/required-texture-attachment-formats: skip
+spec/!opengl 4.3/get_glsl_version: skip
+spec/!opengl 4.5/compare-framebuffer-parameter-with-get: skip
+spec/!opengl 4.5/named-framebuffer-draw-buffers-errors: skip
+spec/!opengl 4.5/named-framebuffer-read-buffer-errors: skip
+spec/!opengl es 2.0/invalid-es3-queries_gles2: skip
+spec/!opengl es 3.0/gles-3.0-transform-feedback-uniform-buffer-object: fail
+spec/!opengl es 3.0/minmax: fail
 spec/3dfx_texture_compression_fxt1/compressedteximage gl_compressed_rgb_fxt1_3dfx: skip
 spec/3dfx_texture_compression_fxt1/compressedteximage gl_compressed_rgba_fxt1_3dfx: skip
 spec/3dfx_texture_compression_fxt1/fbo-generatemipmap-formats: skip
@@ -279,6 +477,9 @@ spec/arb_depth_buffer_float/depthstencil-render-miplevels 585 d=z32f_s8_s=z24_s8
 spec/arb_depth_buffer_float/depthstencil-render-miplevels 585 d=z32f_s=z24_s8: skip
 spec/arb_depth_buffer_float/depthstencil-render-miplevels 585 s=z24_s8_d=z32f: skip
 spec/arb_depth_buffer_float/depthstencil-render-miplevels 585 s=z24_s8_d=z32f_s8: skip
+spec/arb_direct_state_access/create-programpipelines/default compute shader program == 0: skip
+spec/arb_direct_state_access/create-programpipelines/default tcs == 0: skip
+spec/arb_direct_state_access/create-programpipelines/default tes == 0: skip
 spec/arb_direct_state_access/getcompressedtextureimage: skip
 spec/arb_direct_state_access/gettextureimage-formats: skip
 spec/arb_direct_state_access/gettextureimage-formats init-by-rendering: skip
@@ -287,7 +488,9 @@ spec/arb_enhanced_layouts/arb_enhanced_layouts-transform-feedback-layout-qualifi
 spec/arb_enhanced_layouts/gs-stream-location-aliasing: fail
 spec/arb_fragment_program/fp-indirections: skip
 spec/arb_fragment_shader_interlock/arb_fragment_shader_interlock-image-load-store: skip
-spec/arb_framebuffer_no_attachments/arb_framebuffer_no_attachments-atomic: fail
+spec/arb_framebuffer_no_attachments/arb_framebuffer_no_attachments-atomic/ms4: fail
+spec/arb_framebuffer_no_attachments/arb_framebuffer_no_attachments-atomic/per-sample: skip
+spec/arb_framebuffer_no_attachments/arb_framebuffer_no_attachments-params/dsa: skip
 spec/arb_framebuffer_no_attachments/arb_framebuffer_no_attachments-roundup-samples: skip
 spec/arb_framebuffer_object/fbo-blit-scaled-linear: fail
 spec/arb_geometry_shader4/arb_geometry_shader4-ignore-adjacent-vertices  gl_line_strip_adjacency: skip
@@ -317,7 +520,7 @@ spec/arb_indirect_parameters/conditional-render: skip
 spec/arb_indirect_parameters/tf-count-arrays: skip
 spec/arb_indirect_parameters/tf-count-elements: skip
 spec/arb_internalformat_query/minmax: skip
-spec/arb_internalformat_query/misc_ api error checks: skip
+spec/arb_internalformat_query/misc. api error checks: skip
 spec/arb_occlusion_query/occlusion_query_meta_no_fragments: fail
 spec/arb_occlusion_query/occlusion_query_meta_save: fail
 spec/arb_pipeline_statistics_query/arb_pipeline_statistics_query-comp: skip
@@ -327,8 +530,157 @@ spec/arb_pixel_buffer_object/cubemap pbo: fail
 spec/arb_post_depth_coverage/arb_post_depth_coverage-basic: skip
 spec/arb_post_depth_coverage/arb_post_depth_coverage-multisampling: skip
 spec/arb_post_depth_coverage/arb_post_depth_coverage-sample-shading: skip
-spec/arb_program_interface_query/arb_program_interface_query-getprogramresourceindex: fail
-spec/arb_query_buffer_object/qbo: fail
+spec/arb_program_interface_query/arb_program_interface_query-getprogramresourceindex/'vs_input2[1][0]' on gl_program_input: fail
+spec/arb_program_interface_query/arb_program_interface_query-getprogramresourceiv/compute on gl_compute_subroutine_uniform: skip
+spec/arb_program_interface_query/arb_program_interface_query-getprogramresourceiv/tcs_patch on gl_program_output: skip
+spec/arb_program_interface_query/arb_program_interface_query-getprogramresourceiv/tess_control on gl_tess_control_subroutine_uniform: skip
+spec/arb_program_interface_query/arb_program_interface_query-resource-location/test_subroutine_stages_compute: skip
+spec/arb_program_interface_query/arb_program_interface_query-resource-location/test_subroutine_stages_tcs_tes: skip
+spec/arb_program_interface_query/arb_program_interface_query-resource-query/gl_compute_subroutine: skip
+spec/arb_program_interface_query/arb_program_interface_query-resource-query/gl_compute_subroutine_uniform: skip
+spec/arb_program_interface_query/arb_program_interface_query-resource-query/gl_program_input(cs): skip
+spec/arb_program_interface_query/arb_program_interface_query-resource-query/gl_program_input(tcs): skip
+spec/arb_program_interface_query/arb_program_interface_query-resource-query/gl_program_input(tcs,tes): skip
+spec/arb_program_interface_query/arb_program_interface_query-resource-query/gl_program_input(tes): skip
+spec/arb_program_interface_query/arb_program_interface_query-resource-query/gl_program_input(vs,tcs,tes): skip
+spec/arb_program_interface_query/arb_program_interface_query-resource-query/gl_program_output(cs): skip
+spec/arb_program_interface_query/arb_program_interface_query-resource-query/gl_program_output(tcs): skip
+spec/arb_program_interface_query/arb_program_interface_query-resource-query/gl_program_output(tcs,tes): skip
+spec/arb_program_interface_query/arb_program_interface_query-resource-query/gl_program_output(tcs,tes,gs): skip
+spec/arb_program_interface_query/arb_program_interface_query-resource-query/gl_program_output(tes): skip
+spec/arb_program_interface_query/arb_program_interface_query-resource-query/gl_tess_control_subroutine: skip
+spec/arb_program_interface_query/arb_program_interface_query-resource-query/gl_tess_control_subroutine_uniform: skip
+spec/arb_program_interface_query/arb_program_interface_query-resource-query/gl_tess_evaluation_subroutine: skip
+spec/arb_program_interface_query/arb_program_interface_query-resource-query/gl_tess_evaluation_subroutine_uniform: skip
+spec/arb_program_interface_query/arb_program_interface_query-resource-query/gl_uniform(cs): skip
+spec/arb_program_interface_query/arb_program_interface_query-resource-query/gl_uniform(tes,tcs): skip
+spec/arb_program_interface_query/arb_program_interface_query-resource-query/gl_uniform_block(cs): skip
+spec/arb_program_interface_query/arb_program_interface_query-resource-query/gl_uniform_block(tcs,tes): skip
+spec/arb_query_buffer_object/coherency/index-buffer-gl_compute_shader_invocations: skip
+spec/arb_query_buffer_object/coherency/index-buffer-gl_fragment_shader_invocations: skip
+spec/arb_query_buffer_object/coherency/index-buffer-gl_geometry_shader_invocations: skip
+spec/arb_query_buffer_object/coherency/index-buffer-gl_geometry_shader_primitives_emitted: skip
+spec/arb_query_buffer_object/coherency/index-buffer-gl_primitives_generated: skip
+spec/arb_query_buffer_object/coherency/index-buffer-gl_primitives_submitted: skip
+spec/arb_query_buffer_object/coherency/index-buffer-gl_samples_passed: skip
+spec/arb_query_buffer_object/coherency/index-buffer-gl_tess_control_shader_patches: skip
+spec/arb_query_buffer_object/coherency/index-buffer-gl_tess_evaluation_shader_invocations: skip
+spec/arb_query_buffer_object/coherency/index-buffer-gl_time_elapsed: skip
+spec/arb_query_buffer_object/coherency/index-buffer-gl_timestamp: skip
+spec/arb_query_buffer_object/coherency/index-buffer-gl_transform_feedback_primitives_written: skip
+spec/arb_query_buffer_object/coherency/index-buffer-gl_vertex_shader_invocations: skip
+spec/arb_query_buffer_object/coherency/index-buffer-gl_vertices_submitted: skip
+spec/arb_query_buffer_object/coherency/indirect-dispatch-gl_any_samples_passed: skip
+spec/arb_query_buffer_object/coherency/indirect-dispatch-gl_any_samples_passed_conservative: skip
+spec/arb_query_buffer_object/coherency/indirect-dispatch-gl_clipping_input_primitives: skip
+spec/arb_query_buffer_object/coherency/indirect-dispatch-gl_clipping_output_primitives: skip
+spec/arb_query_buffer_object/coherency/indirect-dispatch-gl_compute_shader_invocations: skip
+spec/arb_query_buffer_object/coherency/indirect-dispatch-gl_fragment_shader_invocations: skip
+spec/arb_query_buffer_object/coherency/indirect-dispatch-gl_geometry_shader_invocations: skip
+spec/arb_query_buffer_object/coherency/indirect-dispatch-gl_geometry_shader_primitives_emitted: skip
+spec/arb_query_buffer_object/coherency/indirect-dispatch-gl_primitives_generated: skip
+spec/arb_query_buffer_object/coherency/indirect-dispatch-gl_primitives_submitted: skip
+spec/arb_query_buffer_object/coherency/indirect-dispatch-gl_samples_passed: skip
+spec/arb_query_buffer_object/coherency/indirect-dispatch-gl_tess_control_shader_patches: skip
+spec/arb_query_buffer_object/coherency/indirect-dispatch-gl_tess_evaluation_shader_invocations: skip
+spec/arb_query_buffer_object/coherency/indirect-dispatch-gl_transform_feedback_primitives_written: skip
+spec/arb_query_buffer_object/coherency/indirect-dispatch-gl_vertex_shader_invocations: skip
+spec/arb_query_buffer_object/coherency/indirect-dispatch-gl_vertices_submitted: skip
+spec/arb_query_buffer_object/coherency/indirect-draw-count-gl_any_samples_passed: skip
+spec/arb_query_buffer_object/coherency/indirect-draw-count-gl_any_samples_passed_conservative: skip
+spec/arb_query_buffer_object/coherency/indirect-draw-count-gl_clipping_input_primitives: skip
+spec/arb_query_buffer_object/coherency/indirect-draw-count-gl_clipping_output_primitives: skip
+spec/arb_query_buffer_object/coherency/indirect-draw-count-gl_compute_shader_invocations: skip
+spec/arb_query_buffer_object/coherency/indirect-draw-count-gl_fragment_shader_invocations: skip
+spec/arb_query_buffer_object/coherency/indirect-draw-count-gl_geometry_shader_invocations: skip
+spec/arb_query_buffer_object/coherency/indirect-draw-count-gl_geometry_shader_primitives_emitted: skip
+spec/arb_query_buffer_object/coherency/indirect-draw-count-gl_primitives_generated: skip
+spec/arb_query_buffer_object/coherency/indirect-draw-count-gl_primitives_submitted: skip
+spec/arb_query_buffer_object/coherency/indirect-draw-count-gl_samples_passed: skip
+spec/arb_query_buffer_object/coherency/indirect-draw-count-gl_tess_control_shader_patches: skip
+spec/arb_query_buffer_object/coherency/indirect-draw-count-gl_tess_evaluation_shader_invocations: skip
+spec/arb_query_buffer_object/coherency/indirect-draw-count-gl_time_elapsed: skip
+spec/arb_query_buffer_object/coherency/indirect-draw-count-gl_timestamp: skip
+spec/arb_query_buffer_object/coherency/indirect-draw-count-gl_transform_feedback_primitives_written: skip
+spec/arb_query_buffer_object/coherency/indirect-draw-count-gl_vertex_shader_invocations: skip
+spec/arb_query_buffer_object/coherency/indirect-draw-count-gl_vertices_submitted: skip
+spec/arb_query_buffer_object/coherency/indirect-draw-gl_compute_shader_invocations: skip
+spec/arb_query_buffer_object/coherency/indirect-draw-gl_fragment_shader_invocations: skip
+spec/arb_query_buffer_object/coherency/indirect-draw-gl_geometry_shader_invocations: skip
+spec/arb_query_buffer_object/coherency/indirect-draw-gl_geometry_shader_primitives_emitted: skip
+spec/arb_query_buffer_object/coherency/indirect-draw-gl_primitives_generated: skip
+spec/arb_query_buffer_object/coherency/indirect-draw-gl_primitives_submitted: skip
+spec/arb_query_buffer_object/coherency/indirect-draw-gl_samples_passed: skip
+spec/arb_query_buffer_object/coherency/indirect-draw-gl_tess_control_shader_patches: skip
+spec/arb_query_buffer_object/coherency/indirect-draw-gl_tess_evaluation_shader_invocations: skip
+spec/arb_query_buffer_object/coherency/indirect-draw-gl_time_elapsed: skip
+spec/arb_query_buffer_object/coherency/indirect-draw-gl_timestamp: skip
+spec/arb_query_buffer_object/coherency/indirect-draw-gl_transform_feedback_primitives_written: skip
+spec/arb_query_buffer_object/coherency/indirect-draw-gl_vertex_shader_invocations: skip
+spec/arb_query_buffer_object/coherency/indirect-draw-gl_vertices_submitted: skip
+spec/arb_query_buffer_object/qbo/query-gl_compute_shader_invocations-async-gl_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_compute_shader_invocations-async-gl_unsigned_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_compute_shader_invocations-async-gl_unsigned_int64_arb: skip
+spec/arb_query_buffer_object/qbo/query-gl_compute_shader_invocations-async_cpu_read_after-gl_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_compute_shader_invocations-async_cpu_read_after-gl_unsigned_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_compute_shader_invocations-async_cpu_read_after-gl_unsigned_int64_arb: skip
+spec/arb_query_buffer_object/qbo/query-gl_compute_shader_invocations-async_cpu_read_before-gl_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_compute_shader_invocations-async_cpu_read_before-gl_unsigned_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_compute_shader_invocations-async_cpu_read_before-gl_unsigned_int64_arb: skip
+spec/arb_query_buffer_object/qbo/query-gl_compute_shader_invocations-sync-gl_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_compute_shader_invocations-sync-gl_unsigned_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_compute_shader_invocations-sync-gl_unsigned_int64_arb: skip
+spec/arb_query_buffer_object/qbo/query-gl_compute_shader_invocations-sync_cpu_read_after_cache_test-gl_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_compute_shader_invocations-sync_cpu_read_after_cache_test-gl_unsigned_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_compute_shader_invocations-sync_cpu_read_after_cache_test-gl_unsigned_int64_arb: skip
+spec/arb_query_buffer_object/qbo/query-gl_primitives_generated-async_cpu_read_after-gl_int: fail
+spec/arb_query_buffer_object/qbo/query-gl_primitives_generated-async_cpu_read_after-gl_unsigned_int: fail
+spec/arb_query_buffer_object/qbo/query-gl_primitives_generated-async_cpu_read_after-gl_unsigned_int64_arb: fail
+spec/arb_query_buffer_object/qbo/query-gl_primitives_generated-async_cpu_read_before-gl_int: fail
+spec/arb_query_buffer_object/qbo/query-gl_primitives_generated-async_cpu_read_before-gl_unsigned_int: fail
+spec/arb_query_buffer_object/qbo/query-gl_primitives_generated-async_cpu_read_before-gl_unsigned_int64_arb: fail
+spec/arb_query_buffer_object/qbo/query-gl_primitives_generated-sync-gl_int: fail
+spec/arb_query_buffer_object/qbo/query-gl_primitives_generated-sync-gl_unsigned_int: fail
+spec/arb_query_buffer_object/qbo/query-gl_primitives_generated-sync-gl_unsigned_int64_arb: fail
+spec/arb_query_buffer_object/qbo/query-gl_primitives_generated-sync_cpu_read_after_cache_test-gl_int: fail
+spec/arb_query_buffer_object/qbo/query-gl_primitives_generated-sync_cpu_read_after_cache_test-gl_unsigned_int: fail
+spec/arb_query_buffer_object/qbo/query-gl_primitives_generated-sync_cpu_read_after_cache_test-gl_unsigned_int64_arb: fail
+spec/arb_query_buffer_object/qbo/query-gl_tess_control_shader_patches-async-gl_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_tess_control_shader_patches-async-gl_unsigned_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_tess_control_shader_patches-async-gl_unsigned_int64_arb: skip
+spec/arb_query_buffer_object/qbo/query-gl_tess_control_shader_patches-async_cpu_read_after-gl_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_tess_control_shader_patches-async_cpu_read_after-gl_unsigned_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_tess_control_shader_patches-async_cpu_read_after-gl_unsigned_int64_arb: skip
+spec/arb_query_buffer_object/qbo/query-gl_tess_control_shader_patches-async_cpu_read_before-gl_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_tess_control_shader_patches-async_cpu_read_before-gl_unsigned_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_tess_control_shader_patches-async_cpu_read_before-gl_unsigned_int64_arb: skip
+spec/arb_query_buffer_object/qbo/query-gl_tess_control_shader_patches-sync-gl_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_tess_control_shader_patches-sync-gl_unsigned_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_tess_control_shader_patches-sync-gl_unsigned_int64_arb: skip
+spec/arb_query_buffer_object/qbo/query-gl_tess_control_shader_patches-sync_cpu_read_after_cache_test-gl_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_tess_control_shader_patches-sync_cpu_read_after_cache_test-gl_unsigned_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_tess_control_shader_patches-sync_cpu_read_after_cache_test-gl_unsigned_int64_arb: skip
+spec/arb_query_buffer_object/qbo/query-gl_tess_evaluation_shader_invocations-async-gl_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_tess_evaluation_shader_invocations-async-gl_unsigned_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_tess_evaluation_shader_invocations-async-gl_unsigned_int64_arb: skip
+spec/arb_query_buffer_object/qbo/query-gl_tess_evaluation_shader_invocations-async_cpu_read_after-gl_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_tess_evaluation_shader_invocations-async_cpu_read_after-gl_unsigned_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_tess_evaluation_shader_invocations-async_cpu_read_after-gl_unsigned_int64_arb: skip
+spec/arb_query_buffer_object/qbo/query-gl_tess_evaluation_shader_invocations-async_cpu_read_before-gl_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_tess_evaluation_shader_invocations-async_cpu_read_before-gl_unsigned_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_tess_evaluation_shader_invocations-async_cpu_read_before-gl_unsigned_int64_arb: skip
+spec/arb_query_buffer_object/qbo/query-gl_tess_evaluation_shader_invocations-sync-gl_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_tess_evaluation_shader_invocations-sync-gl_unsigned_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_tess_evaluation_shader_invocations-sync-gl_unsigned_int64_arb: skip
+spec/arb_query_buffer_object/qbo/query-gl_tess_evaluation_shader_invocations-sync_cpu_read_after_cache_test-gl_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_tess_evaluation_shader_invocations-sync_cpu_read_after_cache_test-gl_unsigned_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_tess_evaluation_shader_invocations-sync_cpu_read_after_cache_test-gl_unsigned_int64_arb: skip
+spec/arb_query_buffer_object/qbo/query-gl_time_elapsed-async_cpu_read_before-gl_int: fail
+spec/arb_query_buffer_object/qbo/query-gl_time_elapsed-async_cpu_read_before-gl_unsigned_int: fail
+spec/arb_query_buffer_object/qbo/query-gl_time_elapsed-async_cpu_read_before-gl_unsigned_int64_arb: fail
+spec/arb_query_buffer_object/qbo/query-gl_time_elapsed-sync_cpu_read_after_cache_test-gl_int: fail
+spec/arb_query_buffer_object/qbo/query-gl_time_elapsed-sync_cpu_read_after_cache_test-gl_unsigned_int: fail
+spec/arb_query_buffer_object/qbo/query-gl_time_elapsed-sync_cpu_read_after_cache_test-gl_unsigned_int64_arb: fail
 spec/arb_sample_locations/test: skip
 spec/arb_sample_shading/arb_sample_shading-api: skip
 spec/arb_sample_shading/arb_sample_shading-builtin-gl-sample-mask-mrt-alpha: skip
@@ -394,7 +746,18 @@ spec/arb_sample_shading/samplemask 6 all: skip
 spec/arb_sample_shading/samplemask 8: skip
 spec/arb_sample_shading/samplemask 8 all: skip
 spec/arb_separate_shader_objects/mix-and-match-tcs-tes: skip
+spec/arb_separate_shader_objects/programuniform coverage/double matrices: skip
+spec/arb_separate_shader_objects/programuniform coverage/double scalar and vectors: skip
 spec/arb_separate_shader_objects/rendezvous by location (5 stages): skip
+spec/arb_separate_shader_objects/validateprogrampipeline/only tes from tes/tcs program: skip
+spec/arb_separate_shader_objects/validateprogrampipeline/tcs splitting a vs/gs pipeline: skip
+spec/arb_separate_shader_objects/validateprogrampipeline/tes splitting a vs/gs program: skip
+spec/arb_separate_shader_objects/validateprogrampipeline/tes/tcs without vs: skip
+spec/arb_shader_atomic_counters/max-counters/combined test above maximum number of atomic counter buffers: skip
+spec/arb_shader_atomic_counters/semantics/tessellation control shader atomic built-in semantics: skip
+spec/arb_shader_atomic_counters/semantics/tessellation evaluation shader atomic built-in semantics: skip
+spec/arb_shader_atomic_counters/unused-result/tessellation control shader atomic built-in semantics: skip
+spec/arb_shader_atomic_counters/unused-result/tessellation evaluation shader atomic built-in semantics: skip
 spec/arb_shader_draw_parameters/baseinstance: skip
 spec/arb_shader_draw_parameters/baseinstance-indirect: skip
 spec/arb_shader_draw_parameters/basevertex: skip
@@ -409,10 +772,41 @@ spec/arb_shader_draw_parameters/drawid-indirect-vertexid: skip
 spec/arb_shader_draw_parameters/drawid-vertexid: skip
 spec/arb_shader_draw_parameters/vertexid-zerobased: skip
 spec/arb_shader_draw_parameters/vertexid-zerobased-indirect: skip
-spec/arb_shader_image_load_store/early-z: fail
-spec/arb_shader_image_load_store/indexing: fail
-spec/arb_shader_image_load_store/invalid: fail
-spec/arb_shader_image_load_store/max-images: fail
+spec/arb_shader_image_load_store/early-z/occlusion query test/early-z pass: fail
+spec/arb_shader_image_load_store/indexing/fragment shader/dynamically uniform indexing test: fail
+spec/arb_shader_image_load_store/indexing/geometry shader/dynamically uniform indexing test: fail
+spec/arb_shader_image_load_store/indexing/vertex shader/dynamically uniform indexing test: fail
+spec/arb_shader_image_load_store/invalid/imageload/address bounds test/image2d/r11f_g11f_b10f: fail
+spec/arb_shader_image_load_store/invalid/imageload/address bounds test/image2d/r16: fail
+spec/arb_shader_image_load_store/invalid/imageload/address bounds test/image2d/r16_snorm: fail
+spec/arb_shader_image_load_store/invalid/imageload/address bounds test/image2d/r16f: fail
+spec/arb_shader_image_load_store/invalid/imageload/address bounds test/image2d/r16i: fail
+spec/arb_shader_image_load_store/invalid/imageload/address bounds test/image2d/r16ui: fail
+spec/arb_shader_image_load_store/invalid/imageload/address bounds test/image2d/r32f: fail
+spec/arb_shader_image_load_store/invalid/imageload/address bounds test/image2d/r32i: fail
+spec/arb_shader_image_load_store/invalid/imageload/address bounds test/image2d/r32ui: fail
+spec/arb_shader_image_load_store/invalid/imageload/address bounds test/image2d/r8: fail
+spec/arb_shader_image_load_store/invalid/imageload/address bounds test/image2d/r8_snorm: fail
+spec/arb_shader_image_load_store/invalid/imageload/address bounds test/image2d/r8i: fail
+spec/arb_shader_image_load_store/invalid/imageload/address bounds test/image2d/r8ui: fail
+spec/arb_shader_image_load_store/invalid/imageload/address bounds test/image2d/rg16: fail
+spec/arb_shader_image_load_store/invalid/imageload/address bounds test/image2d/rg16_snorm: fail
+spec/arb_shader_image_load_store/invalid/imageload/address bounds test/image2d/rg16f: fail
+spec/arb_shader_image_load_store/invalid/imageload/address bounds test/image2d/rg16i: fail
+spec/arb_shader_image_load_store/invalid/imageload/address bounds test/image2d/rg16ui: fail
+spec/arb_shader_image_load_store/invalid/imageload/address bounds test/image2d/rg32f: fail
+spec/arb_shader_image_load_store/invalid/imageload/address bounds test/image2d/rg32i: fail
+spec/arb_shader_image_load_store/invalid/imageload/address bounds test/image2d/rg32ui: fail
+spec/arb_shader_image_load_store/invalid/imageload/address bounds test/image2d/rg8: fail
+spec/arb_shader_image_load_store/invalid/imageload/address bounds test/image2d/rg8_snorm: fail
+spec/arb_shader_image_load_store/invalid/imageload/address bounds test/image2d/rg8i: fail
+spec/arb_shader_image_load_store/invalid/imageload/address bounds test/image2d/rg8ui: fail
+spec/arb_shader_image_load_store/max-images/combined max image uniforms test: fail
+spec/arb_shader_image_load_store/max-images/fragment shader max image uniforms test: fail
+spec/arb_shader_image_load_store/max-images/geometry shader max image uniforms test: fail
+spec/arb_shader_image_load_store/max-images/vertex shader max image uniforms test: fail
+spec/arb_shader_image_load_store/max-size/imagecube max size test/8192x8192x6x1: skip
+spec/arb_shader_image_load_store/max-size/imagecubearray max size test/8192x8192x6x1: skip
 spec/arb_shader_storage_buffer_object/minmax: skip
 spec/arb_shader_texture_image_samples/builtin-image: skip
 spec/arb_shader_texture_image_samples/texturesamples/fs-isampler2dms-16: skip
@@ -709,7 +1103,67 @@ spec/arb_texture_float/multisample-formats 4 gl_arb_texture_float: skip
 spec/arb_texture_float/multisample-formats 6 gl_arb_texture_float: skip
 spec/arb_texture_float/multisample-formats 8 gl_arb_texture_float: skip
 spec/arb_texture_multisample/arb_texture_multisample-clear: skip
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch: fail
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_r11f_g11f_b10f: fail
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_r16: fail
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_r16_snorm: fail
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_r16f: fail
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_r16i: fail
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_r16ui: fail
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_r32f: fail
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_r32i: fail
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_r32ui: fail
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_r3_g3_b2: fail
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_r8: fail
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_r8_snorm: fail
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_r8i: fail
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_r8ui: fail
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rg16: fail
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rg16_snorm: fail
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rg16f: fail
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rg16i: fail
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rg16ui: fail
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rg32f: fail
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rg32i: fail
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rg32ui: fail
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rg8: fail
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rg8_snorm: fail
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rg8i: fail
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rg8ui: fail
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgb10: fail
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgb10_a2: fail
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgb10_a2ui: fail
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgb12: fail
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgb16_snorm: fail
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgb16f: fail
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgb16i: fail
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgb16ui: fail
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgb32f: fail
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgb32i: fail
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgb32ui: fail
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgb4: fail
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgb5: fail
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgb5_a1: fail
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgb8: fail
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgb8_snorm: fail
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgb8i: fail
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgb8ui: fail
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgb9_e5: fail
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgba12: fail
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgba16: fail
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgba16f: fail
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgba16i: fail
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgba16ui: fail
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgba2: fail
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgba32f: fail
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgba32i: fail
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgba32ui: fail
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgba4: fail
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgba8: fail
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgba8_snorm: fail
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgba8i: fail
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgba8ui: fail
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_srgb8: fail
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_srgb8_alpha8: fail
 spec/arb_texture_multisample/arb_texture_multisample-negative-max-samples: skip
 spec/arb_texture_multisample/arb_texture_multisample-sample-mask-execution: skip
 spec/arb_texture_multisample/arb_texture_multisample-sample-mask-execution -tex: skip
@@ -876,14 +1330,46 @@ spec/arb_texture_rg/multisample-formats 6 gl_arb_texture_rg-int: skip
 spec/arb_texture_rg/multisample-formats 8 gl_arb_texture_rg: skip
 spec/arb_texture_rg/multisample-formats 8 gl_arb_texture_rg-float: skip
 spec/arb_texture_rg/multisample-formats 8 gl_arb_texture_rg-int: skip
-spec/arb_texture_stencil8/fbo-clear-formats: skip
-spec/arb_texture_stencil8/texwrap formats bordercolor: fail
-spec/arb_texture_stencil8/texwrap formats bordercolor-swizzled: fail
-spec/arb_texture_view/rendering-formats: fail
+spec/arb_texture_stencil8/fbo-clear-formats/gl_stencil_index8 (fbo incomplete): skip
+spec/arb_texture_stencil8/texwrap formats bordercolor-swizzled/gl_stencil_index8, swizzled, border color only: fail
+spec/arb_texture_stencil8/texwrap formats bordercolor/gl_stencil_index8, border color only: fail
+spec/arb_texture_view/rendering-formats/clear gl_r8 as gl_r8_snorm: fail
+spec/arb_texture_view/rendering-formats/clear gl_r8 as gl_r8i: fail
+spec/arb_texture_view/rendering-formats/clear gl_rg8 as gl_r16_snorm: fail
+spec/arb_texture_view/rendering-formats/clear gl_rg8 as gl_r16f: fail
+spec/arb_texture_view/rendering-formats/clear gl_rg8 as gl_r16i: fail
+spec/arb_texture_view/rendering-formats/clear gl_rg8 as gl_rg8_snorm: fail
+spec/arb_texture_view/rendering-formats/clear gl_rg8 as gl_rg8i: fail
+spec/arb_texture_view/rendering-formats/clear gl_rgb8 as gl_rgb8_snorm: fail
+spec/arb_texture_view/rendering-formats/clear gl_rgb8 as gl_rgb8i: fail
+spec/arb_texture_view/rendering-formats/clear gl_rgba8 as gl_r32f: fail
+spec/arb_texture_view/rendering-formats/clear gl_rgba8 as gl_r32i: fail
+spec/arb_texture_view/rendering-formats/clear gl_rgba8 as gl_rg16_snorm: fail
+spec/arb_texture_view/rendering-formats/clear gl_rgba8 as gl_rg16f: fail
+spec/arb_texture_view/rendering-formats/clear gl_rgba8 as gl_rg16i: fail
+spec/arb_texture_view/rendering-formats/clear gl_rgba8 as gl_rgba8_snorm: fail
+spec/arb_texture_view/rendering-formats/clear gl_rgba8 as gl_rgba8i: fail
+spec/arb_texture_view/rendering-formats/clear gl_rgba8_snorm as gl_r32f: fail
 spec/arb_timer_query/query gl_timestamp: fail
 spec/arb_transform_feedback3/arb_transform_feedback3-draw_using_invalid_stream_index: skip
 spec/arb_transform_feedback3/arb_transform_feedback3-ext_interleaved_two_bufs_gs: skip
 spec/arb_transform_feedback3/arb_transform_feedback3-ext_interleaved_two_bufs_gs_max: skip
+spec/arb_transform_feedback_overflow_query/arb_transform_feedback_overflow_query-basic/arb_transform_feedback_overflow_query-buffer_object_0: skip
+spec/arb_transform_feedback_overflow_query/arb_transform_feedback_overflow_query-basic/arb_transform_feedback_overflow_query-buffer_object_1: skip
+spec/arb_transform_feedback_overflow_query/arb_transform_feedback_overflow_query-basic/arb_transform_feedback_overflow_query-buffer_object_2: skip
+spec/arb_transform_feedback_overflow_query/arb_transform_feedback_overflow_query-basic/arb_transform_feedback_overflow_query-buffer_object_any: skip
+spec/arb_transform_feedback_overflow_query/arb_transform_feedback_overflow_query-basic/arb_transform_feedback_overflow_query-buffer_object_no_overflow: skip
+spec/arb_transform_feedback_overflow_query/arb_transform_feedback_overflow_query-basic/arb_transform_feedback_overflow_query-conditional_render_0: skip
+spec/arb_transform_feedback_overflow_query/arb_transform_feedback_overflow_query-basic/arb_transform_feedback_overflow_query-conditional_render_1: skip
+spec/arb_transform_feedback_overflow_query/arb_transform_feedback_overflow_query-basic/arb_transform_feedback_overflow_query-conditional_render_2: skip
+spec/arb_transform_feedback_overflow_query/arb_transform_feedback_overflow_query-basic/arb_transform_feedback_overflow_query-conditional_render_any: skip
+spec/arb_transform_feedback_overflow_query/arb_transform_feedback_overflow_query-basic/arb_transform_feedback_overflow_query-conditional_render_any_inverted: skip
+spec/arb_transform_feedback_overflow_query/arb_transform_feedback_overflow_query-basic/arb_transform_feedback_overflow_query-conditional_render_no_overflow: skip
+spec/arb_transform_feedback_overflow_query/arb_transform_feedback_overflow_query-basic/arb_transform_feedback_overflow_query-simple_query_0: skip
+spec/arb_transform_feedback_overflow_query/arb_transform_feedback_overflow_query-basic/arb_transform_feedback_overflow_query-simple_query_1: skip
+spec/arb_transform_feedback_overflow_query/arb_transform_feedback_overflow_query-basic/arb_transform_feedback_overflow_query-simple_query_2: skip
+spec/arb_transform_feedback_overflow_query/arb_transform_feedback_overflow_query-basic/arb_transform_feedback_overflow_query-simple_query_any: skip
+spec/arb_transform_feedback_overflow_query/arb_transform_feedback_overflow_query-basic/arb_transform_feedback_overflow_query-simple_query_no_overflow: skip
 spec/arb_transform_feedback_overflow_query/arb_transform_feedback_overflow_query-errors: skip
 spec/arb_vertex_attrib_64bit/get_double_attribs-display-lists: skip
 spec/arb_vertex_program/vp-address-02: skip
@@ -892,22 +1378,46 @@ spec/arb_vertex_type_2_10_10_10_rev/attrib-p-type-size-match: skip
 spec/arb_viewport_array/display-list: skip
 spec/arb_viewport_array/render-viewport-2: skip
 spec/ati_envmap_bumpmap/ati_envmap_bumpmap-bump: skip
-spec/egl 1_4/egl-blob-cache: skip
-spec/egl 1_4/egl-context-priority: skip
-spec/egl 1_4/egl-copy-buffers: fail
-spec/egl 1_4/egl-flush-external: skip
-spec/egl 1_4/egl-gl_oes_egl_image: skip
-spec/egl 1_4/egl-invalid-attr: skip
-spec/egl 1_4/eglcreatepbuffersurface with egl_samples set: skip
-spec/egl_android_native_fence_sync/egl_khr_fence_sync android_native: skip
-spec/egl_chromium_sync_control/conformance: skip
+spec/egl 1.4/egl-blob-cache: skip
+spec/egl 1.4/egl-context-priority: skip
+spec/egl 1.4/egl-copy-buffers: fail
+spec/egl 1.4/egl-flush-external: skip
+spec/egl 1.4/egl-gl_oes_egl_image: skip
+spec/egl 1.4/egl-invalid-attr: skip
+spec/egl 1.4/eglcreatepbuffersurface with egl_samples set: skip
+spec/egl_android_native_fence_sync/egl_khr_fence_sync android_native/eglclientwaitsynckhr_native_zero_timeout: skip
+spec/egl_android_native_fence_sync/egl_khr_fence_sync android_native/eglclientwaitsynckhr_nonzero_timeout: skip
+spec/egl_android_native_fence_sync/egl_khr_fence_sync android_native/eglcreatesynckhr_default_attributes: skip
+spec/egl_android_native_fence_sync/egl_khr_fence_sync android_native/eglcreatesynckhr_invalid_attrib_list: skip
+spec/egl_android_native_fence_sync/egl_khr_fence_sync android_native/eglcreatesynckhr_invalid_display: skip
+spec/egl_android_native_fence_sync/egl_khr_fence_sync android_native/eglcreatesynckhr_native_dup_fence: skip
+spec/egl_android_native_fence_sync/egl_khr_fence_sync android_native/eglcreatesynckhr_native_dup_invalid: skip
+spec/egl_android_native_fence_sync/egl_khr_fence_sync android_native/eglcreatesynckhr_native_from_fd: skip
+spec/egl_android_native_fence_sync/egl_khr_fence_sync android_native/eglcreatesynckhr_no_current_context: skip
+spec/egl_android_native_fence_sync/egl_khr_fence_sync android_native/eglcreatesynckhr_wrong_display_same_thread: skip
+spec/egl_android_native_fence_sync/egl_khr_fence_sync android_native/eglgetsyncattribkhr_invalid_attrib: skip
+spec/egl_chromium_sync_control/conformance/eglgetsyncvalueschromium_msc_and_sbc_test: skip
+spec/egl_chromium_sync_control/conformance/eglgetsyncvalueschromium_null_pointers: skip
+spec/egl_chromium_sync_control/conformance/eglgetsyncvalueschromium_ust_test: skip
 spec/egl_ext_device_drm/conformance: skip
 spec/egl_ext_image_dma_buf_import_modifiers/conformance: skip
-spec/egl_ext_platform_device/conformance: skip
+spec/egl_ext_platform_device/conformance/create_pbuffer: skip
+spec/egl_ext_platform_device/conformance/create_pixmap: skip
+spec/egl_ext_platform_device/conformance/create_window: skip
+spec/egl_ext_platform_device/conformance/initialize_display: skip
+spec/egl_khr_fence_sync/conformance/eglcreatesynckhr_with_display_bound_in_other_thread: skip
+spec/egl_khr_fence_sync/conformance/eglcreatesynckhr_wrong_display_same_thread: skip
 spec/egl_khr_gl_image/egl_khr_gl_renderbuffer_image-clear-shared-image gl_depth_component24: fail
 spec/egl_nok_swap_region/basic: skip
 spec/egl_nok_texture_from_pixmap/basic: skip
 spec/ext_depth_bounds_test/depth_bounds: skip
+spec/ext_direct_state_access/indexed-state-queries 12/getdoublei_vext: skip
+spec/ext_direct_state_access/indexed-state-queries 12/getfloati_vext: skip
+spec/ext_direct_state_access/indexed-state-queries 12/getpointeri_vext: skip
+spec/ext_direct_state_access/named-buffers 15/flushmappednamedbufferrangeext: skip
+spec/ext_direct_state_access/named-buffers 15/mapnamedbufferext: skip
+spec/ext_direct_state_access/named-buffers 15/mapnamedbufferrangeext: skip
+spec/ext_direct_state_access/named-buffers 15/namedcopybuffersubdataext: skip
 spec/ext_framebuffer_blit/fbo-blit-check-limits: fail
 spec/ext_framebuffer_multisample/accuracy 16 color: skip
 spec/ext_framebuffer_multisample/accuracy 16 color depthstencil: skip
@@ -1608,6 +2118,10 @@ spec/ext_texture_snorm/multisample-formats 32 gl_ext_texture_snorm: skip
 spec/ext_texture_snorm/multisample-formats 4 gl_ext_texture_snorm: skip
 spec/ext_texture_snorm/multisample-formats 6 gl_ext_texture_snorm: skip
 spec/ext_texture_snorm/multisample-formats 8 gl_ext_texture_snorm: skip
+spec/ext_texture_srgb/fbo-alphatest-formats/gl_sluminance: skip
+spec/ext_texture_srgb/fbo-alphatest-formats/gl_sluminance8: skip
+spec/ext_texture_srgb/fbo-alphatest-formats/gl_sluminance8_alpha8: skip
+spec/ext_texture_srgb/fbo-alphatest-formats/gl_sluminance_alpha: skip
 spec/ext_texture_srgb/multisample-formats 16 gl_ext_texture_srgb: skip
 spec/ext_texture_srgb/multisample-formats 2 gl_ext_texture_srgb: skip
 spec/ext_texture_srgb/multisample-formats 32 gl_ext_texture_srgb: skip
@@ -1620,54 +2134,55 @@ spec/ext_transform_feedback/pipeline-basic-primgen: fail
 spec/ext_transform_feedback/primgen-query transform-feedback-disabled: fail
 spec/ext_transform_feedback/tessellation quad_strip flat_first: warn
 spec/ext_transform_feedback/tessellation quads flat_first: warn
-spec/ext_window_rectangles/dlist: skip
+spec/ext_window_rectangles/dlist/call: skip
+spec/ext_window_rectangles/dlist/compile and execute: skip
 spec/ext_window_rectangles/errors: skip
 spec/ext_window_rectangles/errors_gles3: skip
 spec/ext_window_rectangles/render: skip
 spec/ext_window_rectangles/render_gles3: skip
-spec/glsl-1_20/execution/tex-miplevel-selection gl2:texture() cube: fail
-spec/glsl-1_20/execution/tex-miplevel-selection gl2:texture(bias) cube: fail
-spec/glsl-1_30/execution/tex-miplevel-selection texture() cube: fail
-spec/glsl-1_30/execution/tex-miplevel-selection texture() cubearray: fail
-spec/glsl-1_30/execution/tex-miplevel-selection texture() cubearrayshadow: fail
-spec/glsl-1_30/execution/tex-miplevel-selection texture() cubeshadow: fail
-spec/glsl-1_30/execution/tex-miplevel-selection texture(bias) cube: fail
-spec/glsl-1_30/execution/tex-miplevel-selection texture(bias) cubearray: fail
-spec/glsl-1_30/execution/tex-miplevel-selection texture(bias) cubeshadow: fail
-spec/glsl-1_30/execution/tex-miplevel-selection textureoffset 2darrayshadow: skip
-spec/glsl-1_50/built-in constants compatibility: skip
-spec/glsl-1_50/execution/texturesize/tes-texturesize-isampler1d: skip
-spec/glsl-1_50/execution/texturesize/tes-texturesize-isampler1darray: skip
-spec/glsl-1_50/execution/texturesize/tes-texturesize-isampler2d: skip
-spec/glsl-1_50/execution/texturesize/tes-texturesize-isampler2darray: skip
-spec/glsl-1_50/execution/texturesize/tes-texturesize-isampler2drect: skip
-spec/glsl-1_50/execution/texturesize/tes-texturesize-isampler3d: skip
-spec/glsl-1_50/execution/texturesize/tes-texturesize-isamplerbuffer: skip
-spec/glsl-1_50/execution/texturesize/tes-texturesize-isamplercube: skip
-spec/glsl-1_50/execution/texturesize/tes-texturesize-sampler1d: skip
-spec/glsl-1_50/execution/texturesize/tes-texturesize-sampler1darray: skip
-spec/glsl-1_50/execution/texturesize/tes-texturesize-sampler1darrayshadow: skip
-spec/glsl-1_50/execution/texturesize/tes-texturesize-sampler1dshadow: skip
-spec/glsl-1_50/execution/texturesize/tes-texturesize-sampler2d: skip
-spec/glsl-1_50/execution/texturesize/tes-texturesize-sampler2darray: skip
-spec/glsl-1_50/execution/texturesize/tes-texturesize-sampler2darrayshadow: skip
-spec/glsl-1_50/execution/texturesize/tes-texturesize-sampler2drect: skip
-spec/glsl-1_50/execution/texturesize/tes-texturesize-sampler2drectshadow: skip
-spec/glsl-1_50/execution/texturesize/tes-texturesize-sampler2dshadow: skip
-spec/glsl-1_50/execution/texturesize/tes-texturesize-sampler3d: skip
-spec/glsl-1_50/execution/texturesize/tes-texturesize-samplerbuffer: skip
-spec/glsl-1_50/execution/texturesize/tes-texturesize-samplercube: skip
-spec/glsl-1_50/execution/texturesize/tes-texturesize-samplercubeshadow: skip
-spec/glsl-1_50/execution/texturesize/tes-texturesize-usampler1d: skip
-spec/glsl-1_50/execution/texturesize/tes-texturesize-usampler1darray: skip
-spec/glsl-1_50/execution/texturesize/tes-texturesize-usampler2d: skip
-spec/glsl-1_50/execution/texturesize/tes-texturesize-usampler2darray: skip
-spec/glsl-1_50/execution/texturesize/tes-texturesize-usampler3d: skip
-spec/glsl-1_50/execution/texturesize/tes-texturesize-usamplerbuffer: skip
-spec/glsl-1_50/execution/texturesize/tes-texturesize-usamplercube: skip
-spec/glsl-1_50/gs-max-output: fail
-spec/glsl-es-3_00/execution/varying-struct-centroid_gles3: fail
-spec/glsl-es-3_10/built-in constants: skip
+spec/glsl-1.20/execution/tex-miplevel-selection gl2:texture() cube: fail
+spec/glsl-1.20/execution/tex-miplevel-selection gl2:texture(bias) cube: fail
+spec/glsl-1.30/execution/tex-miplevel-selection texture() cube: fail
+spec/glsl-1.30/execution/tex-miplevel-selection texture() cubearray: fail
+spec/glsl-1.30/execution/tex-miplevel-selection texture() cubearrayshadow: fail
+spec/glsl-1.30/execution/tex-miplevel-selection texture() cubeshadow: fail
+spec/glsl-1.30/execution/tex-miplevel-selection texture(bias) cube: fail
+spec/glsl-1.30/execution/tex-miplevel-selection texture(bias) cubearray: fail
+spec/glsl-1.30/execution/tex-miplevel-selection texture(bias) cubeshadow: fail
+spec/glsl-1.30/execution/tex-miplevel-selection textureoffset 2darrayshadow: skip
+spec/glsl-1.50/built-in constants compatibility: skip
+spec/glsl-1.50/execution/texturesize/tes-texturesize-isampler1d: skip
+spec/glsl-1.50/execution/texturesize/tes-texturesize-isampler1darray: skip
+spec/glsl-1.50/execution/texturesize/tes-texturesize-isampler2d: skip
+spec/glsl-1.50/execution/texturesize/tes-texturesize-isampler2darray: skip
+spec/glsl-1.50/execution/texturesize/tes-texturesize-isampler2drect: skip
+spec/glsl-1.50/execution/texturesize/tes-texturesize-isampler3d: skip
+spec/glsl-1.50/execution/texturesize/tes-texturesize-isamplerbuffer: skip
+spec/glsl-1.50/execution/texturesize/tes-texturesize-isamplercube: skip
+spec/glsl-1.50/execution/texturesize/tes-texturesize-sampler1d: skip
+spec/glsl-1.50/execution/texturesize/tes-texturesize-sampler1darray: skip
+spec/glsl-1.50/execution/texturesize/tes-texturesize-sampler1darrayshadow: skip
+spec/glsl-1.50/execution/texturesize/tes-texturesize-sampler1dshadow: skip
+spec/glsl-1.50/execution/texturesize/tes-texturesize-sampler2d: skip
+spec/glsl-1.50/execution/texturesize/tes-texturesize-sampler2darray: skip
+spec/glsl-1.50/execution/texturesize/tes-texturesize-sampler2darrayshadow: skip
+spec/glsl-1.50/execution/texturesize/tes-texturesize-sampler2drect: skip
+spec/glsl-1.50/execution/texturesize/tes-texturesize-sampler2drectshadow: skip
+spec/glsl-1.50/execution/texturesize/tes-texturesize-sampler2dshadow: skip
+spec/glsl-1.50/execution/texturesize/tes-texturesize-sampler3d: skip
+spec/glsl-1.50/execution/texturesize/tes-texturesize-samplerbuffer: skip
+spec/glsl-1.50/execution/texturesize/tes-texturesize-samplercube: skip
+spec/glsl-1.50/execution/texturesize/tes-texturesize-samplercubeshadow: skip
+spec/glsl-1.50/execution/texturesize/tes-texturesize-usampler1d: skip
+spec/glsl-1.50/execution/texturesize/tes-texturesize-usampler1darray: skip
+spec/glsl-1.50/execution/texturesize/tes-texturesize-usampler2d: skip
+spec/glsl-1.50/execution/texturesize/tes-texturesize-usampler2darray: skip
+spec/glsl-1.50/execution/texturesize/tes-texturesize-usampler3d: skip
+spec/glsl-1.50/execution/texturesize/tes-texturesize-usamplerbuffer: skip
+spec/glsl-1.50/execution/texturesize/tes-texturesize-usamplercube: skip
+spec/glsl-1.50/gs-max-output: fail
+spec/glsl-es-3.00/execution/varying-struct-centroid_gles3: fail
+spec/glsl-es-3.10/built-in constants: skip
 spec/intel_blackhole_render/intel_blackhole-dispatch: skip
 spec/intel_blackhole_render/intel_blackhole-draw: skip
 spec/intel_blackhole_render/intel_blackhole-draw_gles2: skip
@@ -1680,22 +2195,41 @@ spec/intel_conservative_rasterization/intel_conservative_rasterization-invalid: 
 spec/intel_conservative_rasterization/intel_conservative_rasterization-invalid_gles3: skip
 spec/intel_conservative_rasterization/intel_conservative_rasterization-tri: skip
 spec/intel_conservative_rasterization/intel_conservative_rasterization-tri_gles3: skip
-spec/khr_texture_compression_astc/array-gl: fail
+spec/khr_texture_compression_astc/array-gl/12x12 block dim: fail
+spec/khr_texture_compression_astc/array-gl/5x5 block dim: fail
 spec/khr_texture_compression_astc/array-gles: skip
-spec/khr_texture_compression_astc/miptree-gl ldr: fail
-spec/khr_texture_compression_astc/miptree-gl srgb: fail
-spec/khr_texture_compression_astc/miptree-gl srgb-fp: fail
-spec/khr_texture_compression_astc/miptree-gl srgb-sd: fail
-spec/khr_texture_compression_astc/miptree-gles ldr: fail
-spec/khr_texture_compression_astc/miptree-gles srgb: fail
-spec/khr_texture_compression_astc/miptree-gles srgb-fp: fail
-spec/khr_texture_compression_astc/miptree-gles srgb-sd: fail
-spec/khr_texture_compression_astc/sliced-3d-miptree-gl ldr: fail
-spec/khr_texture_compression_astc/sliced-3d-miptree-gl srgb: fail
-spec/khr_texture_compression_astc/sliced-3d-miptree-gl srgb-fp: fail
-spec/khr_texture_compression_astc/sliced-3d-miptree-gles ldr: fail
-spec/khr_texture_compression_astc/sliced-3d-miptree-gles srgb: fail
-spec/khr_texture_compression_astc/sliced-3d-miptree-gles srgb-fp: fail
+spec/khr_texture_compression_astc/miptree-gl hdr/hdr: notrun
+spec/khr_texture_compression_astc/miptree-gl ldr/ldr: notrun
+spec/khr_texture_compression_astc/miptree-gl ldr/ldr profile: fail
+spec/khr_texture_compression_astc/miptree-gl srgb-fp/srgb decode full precision: fail
+spec/khr_texture_compression_astc/miptree-gl srgb-fp/srgb-fp: notrun
+spec/khr_texture_compression_astc/miptree-gl srgb-sd/srgb skip decode: fail
+spec/khr_texture_compression_astc/miptree-gl srgb-sd/srgb-sd: notrun
+spec/khr_texture_compression_astc/miptree-gl srgb/srgb: notrun
+spec/khr_texture_compression_astc/miptree-gl srgb/srgb decode: fail
+spec/khr_texture_compression_astc/miptree-gles hdr/hdr: notrun
+spec/khr_texture_compression_astc/miptree-gles ldr/ldr: notrun
+spec/khr_texture_compression_astc/miptree-gles ldr/ldr profile: fail
+spec/khr_texture_compression_astc/miptree-gles srgb-fp/srgb decode full precision: fail
+spec/khr_texture_compression_astc/miptree-gles srgb-fp/srgb-fp: notrun
+spec/khr_texture_compression_astc/miptree-gles srgb-sd/srgb skip decode: fail
+spec/khr_texture_compression_astc/miptree-gles srgb-sd/srgb-sd: notrun
+spec/khr_texture_compression_astc/miptree-gles srgb/srgb: notrun
+spec/khr_texture_compression_astc/miptree-gles srgb/srgb decode: fail
+spec/khr_texture_compression_astc/sliced-3d-miptree-gl hdr/hdr: notrun
+spec/khr_texture_compression_astc/sliced-3d-miptree-gl ldr/ldr: notrun
+spec/khr_texture_compression_astc/sliced-3d-miptree-gl ldr/ldr profile: fail
+spec/khr_texture_compression_astc/sliced-3d-miptree-gl srgb-fp/srgb decode full precision: fail
+spec/khr_texture_compression_astc/sliced-3d-miptree-gl srgb-fp/srgb-fp: notrun
+spec/khr_texture_compression_astc/sliced-3d-miptree-gl srgb/srgb: notrun
+spec/khr_texture_compression_astc/sliced-3d-miptree-gl srgb/srgb decode: fail
+spec/khr_texture_compression_astc/sliced-3d-miptree-gles hdr/hdr: notrun
+spec/khr_texture_compression_astc/sliced-3d-miptree-gles ldr/ldr: notrun
+spec/khr_texture_compression_astc/sliced-3d-miptree-gles ldr/ldr profile: fail
+spec/khr_texture_compression_astc/sliced-3d-miptree-gles srgb-fp/srgb decode full precision: fail
+spec/khr_texture_compression_astc/sliced-3d-miptree-gles srgb-fp/srgb-fp: notrun
+spec/khr_texture_compression_astc/sliced-3d-miptree-gles srgb/srgb: notrun
+spec/khr_texture_compression_astc/sliced-3d-miptree-gles srgb/srgb decode: fail
 spec/nv_fill_rectangle/invalid-draw-mode: skip
 spec/nv_fragment_program_option/fp-abs-02: skip
 spec/nv_fragment_program_option/fp-condition_codes-01: skip
@@ -1757,10 +2291,10 @@ wgl/wgl-sanity: skip
 summary:
        name:  results
        ----  --------
-       pass:     4520
-       fail:      102
+       pass:    17783
+       fail:      236
       crash:        2
-       skip:     1650
+       skip:     2032
     timeout:        0
        warn:        2
  incomplete:        0
@@ -1769,4 +2303,4 @@ summary:
     changes:        0
       fixes:        0
 regressions:        0
-      total:     6276
+      total:    20073
