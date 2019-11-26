@@ -478,32 +478,20 @@ fd6_tex_const_0(struct pipe_resource *prsc,
 			 unsigned swizzle_b, unsigned swizzle_a)
 {
 	struct fd_resource *rsc = fd_resource(prsc);
-	uint32_t swap, texconst0 = 0;
 	unsigned char swiz[4];
-
-	if (util_format_is_srgb(format)) {
-		texconst0 |= A6XX_TEX_CONST_0_SRGB;
-	}
-
-	if (rsc->layout.tile_mode && !fd_resource_level_linear(prsc, level)) {
-		texconst0 |= A6XX_TEX_CONST_0_TILE_MODE(rsc->layout.tile_mode);
-		swap = WZYX;
-	} else {
-		swap = fd6_pipe2swap(format);
-	}
 
 	fd6_tex_swiz(format, swiz,
 			swizzle_r, swizzle_g,
 			swizzle_b, swizzle_a);
 
-	texconst0 |=
+	return
 		A6XX_TEX_CONST_0_FMT(fd6_pipe2tex(format)) |
 		A6XX_TEX_CONST_0_SAMPLES(fd_msaa_samples(prsc->nr_samples)) |
-		A6XX_TEX_CONST_0_SWAP(swap) |
+		A6XX_TEX_CONST_0_SWAP(rsc->layout.tile_mode ? WZYX : fd6_pipe2swap(format)) |
+		A6XX_TEX_CONST_0_TILE_MODE(fd_resource_tile_mode(prsc, level)) |
+		COND(util_format_is_srgb(format), A6XX_TEX_CONST_0_SRGB) |
 		A6XX_TEX_CONST_0_SWIZ_X(fd6_pipe2swiz(swiz[0])) |
 		A6XX_TEX_CONST_0_SWIZ_Y(fd6_pipe2swiz(swiz[1])) |
 		A6XX_TEX_CONST_0_SWIZ_Z(fd6_pipe2swiz(swiz[2])) |
 		A6XX_TEX_CONST_0_SWIZ_W(fd6_pipe2swiz(swiz[3]));
-
-	return texconst0;
 }
