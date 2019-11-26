@@ -90,6 +90,7 @@ static const struct debug_named_value debug_options[] = {
 		{"perfcntrs", FD_DBG_PERFC,  "Expose performance counters"},
 		{"noubwc",    FD_DBG_NOUBWC, "Disable UBWC for all internal buffers"},
 		{"nolrz",     FD_DBG_NOLRZ,  "Disable LRZ (a6xx)"},
+		{"notile",    FD_DBG_NOTILE, "Disable tiling for all internal buffers"},
 		DEBUG_NAMED_VALUE_END
 };
 

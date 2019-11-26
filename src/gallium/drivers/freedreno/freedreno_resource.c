@@ -963,6 +963,9 @@ fd_resource_create_with_modifiers(struct pipe_screen *pscreen,
 	if (tmpl->bind & LINEAR)
 		linear = true;
 
+	if (fd_mesa_debug & FD_DBG_NOTILE)
+		linear = true;
+
 	/* Normally, for non-shared buffers, allow buffer compression if
 	 * not shared, otherwise only allow if QCOM_COMPRESSED modifier
 	 * is requested:
