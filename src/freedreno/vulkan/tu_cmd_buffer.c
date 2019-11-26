@@ -834,8 +834,6 @@ tu6_emit_store_attachment(struct tu_cmd_buffer *cmd,
 static void
 tu6_emit_tile_store(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 {
-   const struct tu_framebuffer *fb = cmd->state.framebuffer;
-   const struct tu_tiling_config *tiling = &cmd->state.tiling_config;
    const struct tu_subpass *subpass = cmd->state.subpass;
 
    if (false) {
@@ -1118,9 +1116,6 @@ tu6_render_tile(struct tu_cmd_buffer *cmd,
 static void
 tu6_render_end(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 {
-   const struct tu_subpass *subpass = cmd->state.subpass;
-   const struct tu_framebuffer *fb = cmd->state.framebuffer;
-
    VkResult result = tu_cs_reserve_space(cmd->device, cs, 16);
    if (result != VK_SUCCESS) {
       cmd->record_result = result;

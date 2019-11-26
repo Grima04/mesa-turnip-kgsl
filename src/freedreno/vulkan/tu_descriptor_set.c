@@ -678,8 +678,6 @@ static void write_texel_buffer_descriptor(struct tu_device *device,
                                           struct tu_bo **buffer_list,
                                           const VkBufferView _buffer_view)
 {
-   TU_FROM_HANDLE(tu_buffer_view, buffer_view, _buffer_view);
-
    tu_finishme("texel buffer descriptor");
 }
 
