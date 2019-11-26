@@ -256,9 +256,14 @@ struct vn_ctx {
    vn_ctx(Program* program) : program(program) {}
 };
 
+
+/* dominates() returns true if the parent block dominates the child block and
+ * if the parent block is part of the same loop or has a smaller loop nest depth.
+ */
 bool dominates(vn_ctx& ctx, uint32_t parent, uint32_t child)
 {
-   while (parent < child)
+   unsigned parent_loop_nest_depth = ctx.program->blocks[parent].loop_nest_depth;
+   while (parent < child && parent_loop_nest_depth <= ctx.program->blocks[child].loop_nest_depth)
       child = ctx.program->blocks[child].logical_idom;
 
    return parent == child;
