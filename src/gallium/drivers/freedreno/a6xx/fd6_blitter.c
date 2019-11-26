@@ -113,13 +113,8 @@ can_do_blit(const struct pipe_blit_info *info)
 	fail_if(!ok_format(info->src.format));
 	fail_if(!ok_format(info->dst.format));
 
-	/* We can blit if both or neither formats are compressed formats... */
-	fail_if(util_format_is_compressed(info->src.format) !=
-			util_format_is_compressed(info->src.format));
-
-	/* ... but only if they're the same compression format. */
-	fail_if(util_format_is_compressed(info->src.format) &&
-			info->src.format != info->dst.format);
+	debug_assert(!util_format_is_compressed(info->src.format));
+	debug_assert(!util_format_is_compressed(info->dst.format));
 
 	fail_if(!ok_dims(info->src.resource, &info->src.box, info->src.level));
 
@@ -361,11 +356,6 @@ emit_blit_or_clear_texture(struct fd_context *ctx, struct fd_ringbuffer *ring,
 	sfmt = fd6_pipe2color(info->src.format);
 	dfmt = fd6_pipe2color(info->dst.format);
 
-	int blocksize = util_format_get_blocksize(info->src.format);
-	int blockwidth = util_format_get_blockwidth(info->src.format);
-	int blockheight = util_format_get_blockheight(info->src.format);
-	int nelements;
-
 	stile = fd_resource_tile_mode(info->src.resource, info->src.level);
 	dtile = fd_resource_tile_mode(info->dst.resource, info->dst.level);
 
@@ -375,30 +365,25 @@ emit_blit_or_clear_texture(struct fd_context *ctx, struct fd_ringbuffer *ring,
 	sswap = fd6_resource_swap(src, info->src.format);
 	dswap = fd6_resource_swap(dst, info->dst.format);
 
-	if (util_format_is_compressed(info->src.format)) {
-		debug_assert(info->src.format == info->dst.format);
-		sfmt = dfmt = RB6_R8_UNORM;
-		nelements = blocksize;
-	} else {
-		debug_assert(!util_format_is_compressed(info->dst.format));
-		nelements = (dst->base.nr_samples ? dst->base.nr_samples : 1);
-	}
+	/* Use the underlying resource format so that we get the right block width
+	 * for compressed textures.
+	 */
+	spitch = util_format_get_nblocksx(src->base.format, sslice->pitch) * src->layout.cpp;
+	dpitch = util_format_get_nblocksx(dst->base.format, dslice->pitch) * dst->layout.cpp;
 
-	spitch = DIV_ROUND_UP(sslice->pitch, blockwidth) * src->layout.cpp;
-	dpitch = DIV_ROUND_UP(dslice->pitch, blockwidth) * dst->layout.cpp;
+	uint32_t nr_samples = fd_resource_nr_samples(&dst->base);
+	sx1 = sbox->x * nr_samples;
+	sy1 = sbox->y;
+	sx2 = (sbox->x + sbox->width) * nr_samples - 1;
+	sy2 = sbox->y + sbox->height - 1;
 
-	sx1 = sbox->x / blockwidth * nelements;
-	sy1 = sbox->y / blockheight;
-	sx2 = DIV_ROUND_UP(sbox->x + sbox->width, blockwidth) * nelements - 1;
-	sy2 = DIV_ROUND_UP(sbox->y + sbox->height, blockheight) - 1;
+	dx1 = dbox->x * nr_samples;
+	dy1 = dbox->y;
+	dx2 = (dbox->x + dbox->width) * nr_samples - 1;
+	dy2 = dbox->y + dbox->height - 1;
 
-	dx1 = dbox->x / blockwidth * nelements;
-	dy1 = dbox->y / blockheight;
-	dx2 = DIV_ROUND_UP(dbox->x + dbox->width, blockwidth) * nelements - 1;
-	dy2 = DIV_ROUND_UP(dbox->y + dbox->height, blockheight) - 1;
-
-	uint32_t width = DIV_ROUND_UP(u_minify(src->base.width0, info->src.level), blockwidth) * nelements;
-	uint32_t height = DIV_ROUND_UP(u_minify(src->base.height0, info->src.level), blockheight);
+	uint32_t width = u_minify(src->base.width0, info->src.level) * nr_samples;
+	uint32_t height = u_minify(src->base.height0, info->src.level);
 
 	OUT_PKT7(ring, CP_SET_MARKER, 1);
 	OUT_RING(ring, A6XX_CP_SET_MARKER_0_MODE(RM6_BLIT2DSCALE));
@@ -782,10 +767,55 @@ handle_zs_blit(struct fd_context *ctx, const struct pipe_blit_info *info)
 }
 
 static bool
+handle_compressed_blit(struct fd_context *ctx, const struct pipe_blit_info *info)
+{
+	struct pipe_blit_info blit = *info;
+
+	if (DEBUG_BLIT) {
+		fprintf(stderr, "---- handle_compressed_blit: ");
+		util_dump_blit_info(stderr, info);
+		fprintf(stderr, "\ndst resource: ");
+		util_dump_resource(stderr, info->dst.resource);
+		fprintf(stderr, "\nsrc resource: ");
+		util_dump_resource(stderr, info->src.resource);
+		fprintf(stderr, "\n");
+	}
+
+	if (info->src.format != info->dst.format)
+		return fd_blitter_blit(ctx, info);
+
+	if (util_format_get_blocksize(info->src.format) == 8) {
+		blit.src.format = blit.dst.format = PIPE_FORMAT_R16G16B16A16_UINT;
+	} else {
+		debug_assert(util_format_get_blocksize(info->src.format) == 16);
+		blit.src.format = blit.dst.format = PIPE_FORMAT_R32G32B32A32_UINT;
+	}
+
+	int bw = util_format_get_blockwidth(info->src.format);
+	int bh = util_format_get_blockheight(info->src.format);
+
+	blit.src.box.x /= bw;
+	blit.src.box.y /= bh;
+	blit.src.box.width /= bw;
+	blit.src.box.height /= bh;
+
+	blit.dst.box.x /= bw;
+	blit.dst.box.y /= bh;
+	blit.dst.box.width /= bw;
+	blit.dst.box.height /= bh;
+
+	return do_rewritten_blit(ctx, &blit);
+}
+
+static bool
 fd6_blit(struct fd_context *ctx, const struct pipe_blit_info *info)
 {
 	if (info->mask & PIPE_MASK_ZS)
 		return handle_zs_blit(ctx, info);
+	if (util_format_is_compressed(info->src.format) ||
+			util_format_is_compressed(info->dst.format))
+		return handle_compressed_blit(ctx, info);
+
 	return handle_rgba_blit(ctx, info);
 }
 
