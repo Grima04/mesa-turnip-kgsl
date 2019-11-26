@@ -1393,7 +1393,7 @@ void radv_GetPhysicalDeviceProperties2(
 		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES: {
 			VkPhysicalDeviceSubgroupProperties *properties =
 			    (VkPhysicalDeviceSubgroupProperties*)ext;
-			properties->subgroupSize = 64;
+			properties->subgroupSize = RADV_SUBGROUP_SIZE;
 			properties->supportedStages = VK_SHADER_STAGE_ALL;
 			properties->supportedOperations =
 							VK_SUBGROUP_FEATURE_BASIC_BIT |
@@ -1414,11 +1414,8 @@ void radv_GetPhysicalDeviceProperties2(
 		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_3_PROPERTIES: {
 			VkPhysicalDeviceMaintenance3Properties *properties =
 			    (VkPhysicalDeviceMaintenance3Properties*)ext;
-			/* Make sure everything is addressable by a signed 32-bit int, and
-			 * our largest descriptors are 96 bytes. */
-			properties->maxPerSetDescriptors = (1ull << 31) / 96;
-			/* Our buffer size fields allow only this much */
-			properties->maxMemoryAllocationSize = 0xFFFFFFFFull;
+			properties->maxPerSetDescriptors = RADV_MAX_PER_SET_DESCRIPTORS;
+			properties->maxMemoryAllocationSize = RADV_MAX_MEMORY_ALLOCATION_SIZE;
 			break;
 		}
 		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLER_FILTER_MINMAX_PROPERTIES_EXT: {
