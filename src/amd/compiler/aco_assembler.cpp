@@ -425,7 +425,7 @@ void emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction*
       encoding = (0xFF & instr->operands[0].physReg());
       if (!instr->definitions.empty())
          encoding |= (0xFF & instr->definitions[0].physReg()) << 24;
-      else
+      if (instr->operands.size() >= 3)
          encoding |= (0xFF & instr->operands[2].physReg()) << 8;
       if (!instr->operands[1].isUndefined()) {
          assert(ctx.chip_class >= GFX10 || instr->operands[1].physReg() != 0x7F);
