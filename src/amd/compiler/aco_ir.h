@@ -850,6 +850,7 @@ struct FLAT_instruction : public Instruction {
    bool dlc; /* NAVI: device level coherent */
    bool lds;
    bool nv;
+   bool disable_wqm;
 };
 
 struct Export_instruction : public Instruction {

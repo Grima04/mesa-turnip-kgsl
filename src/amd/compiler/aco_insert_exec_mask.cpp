@@ -134,6 +134,9 @@ bool needs_exact(aco_ptr<Instruction>& instr) {
    } else if (instr->format == Format::MIMG) {
       MIMG_instruction *mimg = static_cast<MIMG_instruction *>(instr.get());
       return mimg->disable_wqm;
+   } else if (instr->format == Format::FLAT || instr->format == Format::GLOBAL) {
+      FLAT_instruction *flat = static_cast<FLAT_instruction *>(instr.get());
+      return flat->disable_wqm;
    } else {
       return instr->format == Format::EXP || instr->opcode == aco_opcode::p_fs_buffer_store_smem;
    }

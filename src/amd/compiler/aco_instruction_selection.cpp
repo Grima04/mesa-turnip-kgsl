@@ -4764,6 +4764,8 @@ void visit_store_global(isel_context *ctx, nir_intrinsic_instr *instr)
       flat->glc = glc;
       flat->dlc = false;
       flat->offset = offset;
+      flat->disable_wqm = true;
+      ctx->program->needs_exact = true;
       ctx->block->instructions.emplace_back(std::move(flat));
    }
 }
