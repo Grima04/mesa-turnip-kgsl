@@ -431,7 +431,7 @@ void emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction*
          assert(ctx.chip_class >= GFX10 || instr->operands[1].physReg() != 0x7F);
          assert(instr->format != Format::FLAT);
          encoding |= instr->operands[1].physReg() << 16;
-      } else if (instr->format != Format::FLAT) {
+      } else if (instr->format != Format::FLAT || ctx.chip_class >= GFX10) { /* SADDR is actually used with FLAT on GFX10 */
          if (ctx.chip_class <= GFX9)
             encoding |= 0x7F << 16;
          else
