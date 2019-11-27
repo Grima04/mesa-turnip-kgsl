@@ -809,7 +809,7 @@ tu_GetPhysicalDeviceProperties(VkPhysicalDevice physicalDevice,
       .sampledImageStencilSampleCounts = sample_counts,
       .storageImageSampleCounts = VK_SAMPLE_COUNT_1_BIT,
       .maxSampleMaskWords = 1,
-      .timestampComputeAndGraphics = true,
+      .timestampComputeAndGraphics = false, /* FINISHME */
       .timestampPeriod = 1,
       .maxClipDistances = 8,
       .maxCullDistances = 8,
@@ -898,7 +898,7 @@ static const VkQueueFamilyProperties tu_queue_family_properties = {
    .queueFlags =
       VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT | VK_QUEUE_TRANSFER_BIT,
    .queueCount = 1,
-   .timestampValidBits = 64,
+   .timestampValidBits = 0, /* FINISHME */
    .minImageTransferGranularity = { 1, 1, 1 },
 };
 
