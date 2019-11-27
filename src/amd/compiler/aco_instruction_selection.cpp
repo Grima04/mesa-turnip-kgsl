@@ -4772,6 +4772,91 @@ void visit_store_global(isel_context *ctx, nir_intrinsic_instr *instr)
    }
 }
 
+void visit_global_atomic(isel_context *ctx, nir_intrinsic_instr *instr)
+{
+   /* return the previous value if dest is ever used */
+   bool return_previous = false;
+   nir_foreach_use_safe(use_src, &instr->dest.ssa) {
+      return_previous = true;
+      break;
+   }
+   nir_foreach_if_use_safe(use_src, &instr->dest.ssa) {
+      return_previous = true;
+      break;
+   }
+
+   Builder bld(ctx->program, ctx->block);
+   Temp addr = as_vgpr(ctx, get_ssa_temp(ctx, instr->src[0].ssa));
+   Temp data = as_vgpr(ctx, get_ssa_temp(ctx, instr->src[1].ssa));
+
+   if (instr->intrinsic == nir_intrinsic_global_atomic_comp_swap)
+      data = bld.pseudo(aco_opcode::p_create_vector, bld.def(RegType::vgpr, data.size() * 2),
+                        get_ssa_temp(ctx, instr->src[2].ssa), data);
+
+   Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
+
+   bool global = ctx->options->chip_class >= GFX9;
+   aco_opcode op32, op64;
+   switch (instr->intrinsic) {
+      case nir_intrinsic_global_atomic_add:
+         op32 = global ? aco_opcode::global_atomic_add : aco_opcode::flat_atomic_add;
+         op64 = global ? aco_opcode::global_atomic_add_x2 : aco_opcode::flat_atomic_add_x2;
+         break;
+      case nir_intrinsic_global_atomic_imin:
+         op32 = global ? aco_opcode::global_atomic_smin : aco_opcode::flat_atomic_smin;
+         op64 = global ? aco_opcode::global_atomic_smin_x2 : aco_opcode::flat_atomic_smin_x2;
+         break;
+      case nir_intrinsic_global_atomic_umin:
+         op32 = global ? aco_opcode::global_atomic_umin : aco_opcode::flat_atomic_umin;
+         op64 = global ? aco_opcode::global_atomic_umin_x2 : aco_opcode::flat_atomic_umin_x2;
+         break;
+      case nir_intrinsic_global_atomic_imax:
+         op32 = global ? aco_opcode::global_atomic_smax : aco_opcode::flat_atomic_smax;
+         op64 = global ? aco_opcode::global_atomic_smax_x2 : aco_opcode::flat_atomic_smax_x2;
+         break;
+      case nir_intrinsic_global_atomic_umax:
+         op32 = global ? aco_opcode::global_atomic_umax : aco_opcode::flat_atomic_umax;
+         op64 = global ? aco_opcode::global_atomic_umax_x2 : aco_opcode::flat_atomic_umax_x2;
+         break;
+      case nir_intrinsic_global_atomic_and:
+         op32 = global ? aco_opcode::global_atomic_and : aco_opcode::flat_atomic_and;
+         op64 = global ? aco_opcode::global_atomic_and_x2 : aco_opcode::flat_atomic_and_x2;
+         break;
+      case nir_intrinsic_global_atomic_or:
+         op32 = global ? aco_opcode::global_atomic_or : aco_opcode::flat_atomic_or;
+         op64 = global ? aco_opcode::global_atomic_or_x2 : aco_opcode::flat_atomic_or_x2;
+         break;
+      case nir_intrinsic_global_atomic_xor:
+         op32 = global ? aco_opcode::global_atomic_xor : aco_opcode::flat_atomic_xor;
+         op64 = global ? aco_opcode::global_atomic_xor_x2 : aco_opcode::flat_atomic_xor_x2;
+         break;
+      case nir_intrinsic_global_atomic_exchange:
+         op32 = global ? aco_opcode::global_atomic_swap : aco_opcode::flat_atomic_swap;
+         op64 = global ? aco_opcode::global_atomic_swap_x2 : aco_opcode::flat_atomic_swap_x2;
+         break;
+      case nir_intrinsic_global_atomic_comp_swap:
+         op32 = global ? aco_opcode::global_atomic_cmpswap : aco_opcode::flat_atomic_cmpswap;
+         op64 = global ? aco_opcode::global_atomic_cmpswap_x2 : aco_opcode::flat_atomic_cmpswap_x2;
+         break;
+      default:
+         unreachable("visit_atomic_global should only be called with nir_intrinsic_global_atomic_* instructions.");
+   }
+   aco_opcode op = instr->dest.ssa.bit_size == 32 ? op32 : op64;
+   aco_ptr<FLAT_instruction> flat{create_instruction<FLAT_instruction>(op, global ? Format::GLOBAL : Format::FLAT, 3, return_previous ? 1 : 0)};
+   flat->operands[0] = Operand(addr);
+   flat->operands[1] = Operand(s1);
+   flat->operands[2] = Operand(data);
+   if (return_previous)
+      flat->definitions[0] = Definition(dst);
+   flat->glc = return_previous;
+   flat->dlc = false; /* Not needed for atomics */
+   flat->offset = 0;
+   flat->disable_wqm = true;
+   flat->barrier = barrier_buffer;
+   ctx->program->needs_exact = true;
+   ctx->block->instructions.emplace_back(std::move(flat));
+}
+
 void emit_memory_barrier(isel_context *ctx, nir_intrinsic_instr *instr) {
    Builder bld(ctx->program, ctx->block);
    switch(instr->intrinsic) {
@@ -5488,6 +5573,18 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
       break;
    case nir_intrinsic_store_global:
       visit_store_global(ctx, instr);
+      break;
+   case nir_intrinsic_global_atomic_add:
+   case nir_intrinsic_global_atomic_imin:
+   case nir_intrinsic_global_atomic_umin:
+   case nir_intrinsic_global_atomic_imax:
+   case nir_intrinsic_global_atomic_umax:
+   case nir_intrinsic_global_atomic_and:
+   case nir_intrinsic_global_atomic_or:
+   case nir_intrinsic_global_atomic_xor:
+   case nir_intrinsic_global_atomic_exchange:
+   case nir_intrinsic_global_atomic_comp_swap:
+      visit_global_atomic(ctx, instr);
       break;
    case nir_intrinsic_ssbo_atomic_add:
    case nir_intrinsic_ssbo_atomic_imin:
