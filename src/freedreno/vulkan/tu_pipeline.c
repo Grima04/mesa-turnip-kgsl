@@ -1901,6 +1901,32 @@ tu_pipeline_builder_init_graphics(
    }
 }
 
+static VkResult
+tu_graphics_pipeline_create(VkDevice device,
+                            VkPipelineCache pipelineCache,
+                            const VkGraphicsPipelineCreateInfo *pCreateInfo,
+                            const VkAllocationCallbacks *pAllocator,
+                            VkPipeline *pPipeline)
+{
+   TU_FROM_HANDLE(tu_device, dev, device);
+   TU_FROM_HANDLE(tu_pipeline_cache, cache, pipelineCache);
+
+   struct tu_pipeline_builder builder;
+   tu_pipeline_builder_init_graphics(&builder, dev, cache,
+                                     pCreateInfo, pAllocator);
+
+   struct tu_pipeline *pipeline = NULL;
+   VkResult result = tu_pipeline_builder_build(&builder, &pipeline);
+   tu_pipeline_builder_finish(&builder);
+
+   if (result == VK_SUCCESS)
+      *pPipeline = tu_pipeline_to_handle(pipeline);
+   else
+      *pPipeline = NULL;
+
+   return result;
+}
+
 VkResult
 tu_CreateGraphicsPipelines(VkDevice device,
                            VkPipelineCache pipelineCache,
@@ -1909,25 +1935,15 @@ tu_CreateGraphicsPipelines(VkDevice device,
                            const VkAllocationCallbacks *pAllocator,
                            VkPipeline *pPipelines)
 {
-   TU_FROM_HANDLE(tu_device, dev, device);
-   TU_FROM_HANDLE(tu_pipeline_cache, cache, pipelineCache);
    VkResult final_result = VK_SUCCESS;
 
    for (uint32_t i = 0; i < count; i++) {
-      struct tu_pipeline_builder builder;
-      tu_pipeline_builder_init_graphics(&builder, dev, cache,
-                                        &pCreateInfos[i], pAllocator);
+      VkResult result = tu_graphics_pipeline_create(device, pipelineCache,
+                                                    &pCreateInfos[i], pAllocator,
+                                                    &pPipelines[i]);
 
-      struct tu_pipeline *pipeline = NULL;
-      VkResult result = tu_pipeline_builder_build(&builder, &pipeline);
-      tu_pipeline_builder_finish(&builder);
-
-      if (result == VK_SUCCESS) {
-         pPipelines[i] = tu_pipeline_to_handle(pipeline);
-      } else {
-         pPipelines[i] = NULL;
+      if (result != VK_SUCCESS)
          final_result = result;
-      }
    }
 
    return final_result;
