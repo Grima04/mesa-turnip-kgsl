@@ -302,7 +302,8 @@ panfrost_scoreboard_set_value(struct panfrost_batch *batch)
         /* Okay, we do. Let's generate it. We'll need the job's polygon list
          * regardless of size. */
 
-        mali_ptr polygon_list = panfrost_batch_get_polygon_list(batch, 0);
+        mali_ptr polygon_list = panfrost_batch_get_polygon_list(batch,
+                MALI_TILER_MINIMUM_HEADER_SIZE);
 
         struct panfrost_transfer job =
                 panfrost_set_value_job(batch, polygon_list);

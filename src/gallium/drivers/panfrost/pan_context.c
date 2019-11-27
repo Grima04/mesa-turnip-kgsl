@@ -59,24 +59,25 @@ static struct midgard_tiler_descriptor
 panfrost_emit_midg_tiler(struct panfrost_batch *batch, unsigned vertex_count)
 {
         struct panfrost_screen *screen = pan_screen(batch->ctx->base.screen);
+        bool hierarchy = !(screen->quirks & MIDGARD_NO_HIER_TILING);
         struct midgard_tiler_descriptor t = {0};
         unsigned height = batch->key.height;
         unsigned width = batch->key.width;
 
         t.hierarchy_mask =
-                panfrost_choose_hierarchy_mask(width, height, vertex_count);
+                panfrost_choose_hierarchy_mask(width, height, vertex_count, hierarchy);
 
         /* Compute the polygon header size and use that to offset the body */
 
         unsigned header_size = panfrost_tiler_header_size(
-                                       width, height, t.hierarchy_mask);
+                                       width, height, t.hierarchy_mask, hierarchy);
 
         t.polygon_list_size = panfrost_tiler_full_size(
-                                     width, height, t.hierarchy_mask);
+                                     width, height, t.hierarchy_mask, hierarchy);
 
         /* Sanity check */
 
-        if (t.hierarchy_mask) {
+        if (vertex_count) {
                 struct panfrost_bo *tiler_heap;
 
                 tiler_heap = panfrost_batch_get_tiler_heap(batch);
@@ -92,6 +93,7 @@ panfrost_emit_midg_tiler(struct panfrost_batch *batch, unsigned vertex_count)
                 struct panfrost_bo *tiler_dummy;
 
                 tiler_dummy = panfrost_batch_get_tiler_dummy(batch);
+                header_size = MALI_TILER_MINIMUM_HEADER_SIZE;
 
                 /* The tiler is disabled, so don't allow the tiler heap */
                 t.heap_start = tiler_dummy->gpu;
@@ -101,11 +103,11 @@ panfrost_emit_midg_tiler(struct panfrost_batch *batch, unsigned vertex_count)
                 t.polygon_list = tiler_dummy->gpu;
 
                 /* Disable the tiler */
-                t.hierarchy_mask |= MALI_TILER_DISABLED;
-
-                if (screen->quirks & MIDGARD_SFBD) {
-                        t.hierarchy_mask = 0xFFF; /* TODO: What's this? */
-                        t.polygon_list_size = 0x200;
+                if (hierarchy)
+                        t.hierarchy_mask |= MALI_TILER_DISABLED;
+                else {
+                        t.hierarchy_mask = MALI_TILER_USER;
+                        t.polygon_list_size = MALI_TILER_MINIMUM_HEADER_SIZE + 4;
 
                         /* We don't have a SET_VALUE job, so write the polygon list manually */
                         uint32_t *polygon_list_body = (uint32_t *) (tiler_dummy->cpu + header_size);

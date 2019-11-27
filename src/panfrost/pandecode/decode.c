@@ -513,7 +513,8 @@ pandecode_midgard_tiler_descriptor(
                 const struct midgard_tiler_descriptor *t,
                 unsigned width,
                 unsigned height,
-                bool is_fragment)
+                bool is_fragment,
+                bool has_hierarchy)
 {
         pandecode_log(".tiler = {\n");
         pandecode_indent++;
@@ -546,8 +547,8 @@ pandecode_midgard_tiler_descriptor(
         /* Now that we've sanity checked, we'll try to calculate the sizes
          * ourselves for comparison */
 
-        unsigned ref_header = panfrost_tiler_header_size(width, height, t->hierarchy_mask);
-        unsigned ref_size = panfrost_tiler_full_size(width, height, t->hierarchy_mask);
+        unsigned ref_header = panfrost_tiler_header_size(width, height, t->hierarchy_mask, has_hierarchy);
+        unsigned ref_size = panfrost_tiler_full_size(width, height, t->hierarchy_mask, has_hierarchy);
 
         if (!((ref_header == body_offset) && (ref_size == t->polygon_list_size))) {
                 pandecode_msg("XXX: bad polygon list size (expected %d / 0x%x)\n",
@@ -609,44 +610,6 @@ pandecode_midgard_tiler_descriptor(
 
         /* We've never seen weights used in practice, but we know from the
          * kernel these fields is there */
-
-        bool nonzero_weights = false;
-
-        for (unsigned w = 0; w < ARRAY_SIZE(t->weights); ++w) {
-                nonzero_weights |= t->weights[w] != 0x0;
-        }
-
-        if (nonzero_weights) {
-                pandecode_log(".weights = {");
-
-                for (unsigned w = 0; w < ARRAY_SIZE(t->weights); ++w) {
-                        pandecode_log("%d, ", t->weights[w]);
-                }
-
-                pandecode_log("},");
-        }
-
-        pandecode_indent--;
-        pandecode_log("}\n");
-}
-
-static void
-pandecode_midgard_tiler_descriptor_0x20(
-                const struct midgard_tiler_descriptor *t)
-{
-        pandecode_log(".tiler = {\n");
-        pandecode_indent++;
-
-        pandecode_prop("hierarchy_mask = 0x%" PRIx16, t->hierarchy_mask);
-        pandecode_prop("flags = 0x%" PRIx16, t->flags);
-        MEMORY_PROP(t, polygon_list);
-        MEMORY_PROP(t, polygon_list_body);
-        pandecode_prop("polygon_list_size = 0x%x", t->polygon_list_size);
-        MEMORY_PROP(t, heap_start);
-        MEMORY_PROP(t, heap_end);
-
-        /* We've never seen weights used in practice, but we know from the
-         * kernel these fields are there */
 
         bool nonzero_weights = false;
 
@@ -792,11 +755,9 @@ pandecode_sfbd(uint64_t gpu_va, int job_no, bool is_fragment, unsigned gpu_id)
 
         MEMORY_PROP(s, unknown_address_0);
         const struct midgard_tiler_descriptor t = s->tiler;
-        if (gpu_id == 0x0720 || gpu_id == 0x0820 || gpu_id == 0x0830)
-                /* These ones don't have an "Advanced Tiling Unit" */
-                pandecode_midgard_tiler_descriptor_0x20(&t);
-        else
-                pandecode_midgard_tiler_descriptor(&t, s->width + 1, s->height + 1, is_fragment);
+
+        bool has_hierarchy = !(gpu_id == 0x0720 || gpu_id == 0x0820 || gpu_id == 0x0830);
+        pandecode_midgard_tiler_descriptor(&t, s->width + 1, s->height + 1, is_fragment, has_hierarchy);
 
         pandecode_indent--;
         pandecode_log("};\n");
@@ -1157,7 +1118,7 @@ pandecode_mfbd_bfr(uint64_t gpu_va, int job_no, bool is_fragment)
         pandecode_prop("unknown2 = 0x%x", fb->unknown2);
         MEMORY_PROP(fb, scratchpad);
         const struct midgard_tiler_descriptor t = fb->tiler;
-        pandecode_midgard_tiler_descriptor(&t, fb->width1 + 1, fb->height1 + 1, is_fragment);
+        pandecode_midgard_tiler_descriptor(&t, fb->width1 + 1, fb->height1 + 1, is_fragment, true);
 
         if (fb->zero3 || fb->zero4) {
                 pandecode_msg("XXX: framebuffer zeros tripped\n");

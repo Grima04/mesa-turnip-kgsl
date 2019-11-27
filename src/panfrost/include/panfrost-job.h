@@ -1392,8 +1392,16 @@ struct mali_payload_fragment {
 /* See pan_tiler.c for derivation */
 #define MALI_HIERARCHY_MASK ((1 << 9) - 1)
 
-/* Flag disabling the tiler for clear-only jobs */
+/* Flag disabling the tiler for clear-only jobs, with
+   hierarchical tiling */
 #define MALI_TILER_DISABLED (1 << 12)
+
+/* Flag selecting userspace-generated polygon list, for clear-only jobs without
+ * hierarhical tiling. */
+#define MALI_TILER_USER 0xFFF
+
+/* Absent any geometry, the minimum size of the polygon list header */
+#define MALI_TILER_MINIMUM_HEADER_SIZE 0x200
 
 struct midgard_tiler_descriptor {
         /* Size of the entire polygon list; see pan_tiler.c for the
