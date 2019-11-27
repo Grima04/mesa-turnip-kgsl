@@ -234,7 +234,18 @@ static LLVMValueRef emit_intrin_3f_param(struct ac_llvm_context *ctx,
 static LLVMValueRef emit_bcsel(struct ac_llvm_context *ctx,
 			       LLVMValueRef src0, LLVMValueRef src1, LLVMValueRef src2)
 {
+	LLVMTypeRef src1_type = LLVMTypeOf(src1);
+	LLVMTypeRef src2_type = LLVMTypeOf(src2);
+
 	assert(LLVMGetTypeKind(LLVMTypeOf(src0)) != LLVMVectorTypeKind);
+
+	if (LLVMGetTypeKind(src1_type) == LLVMPointerTypeKind &&
+	    LLVMGetTypeKind(src2_type) != LLVMPointerTypeKind) {
+		src2 = LLVMBuildIntToPtr(ctx->builder, src2, src1_type, "");
+	} else if (LLVMGetTypeKind(src2_type) == LLVMPointerTypeKind &&
+		   LLVMGetTypeKind(src1_type) != LLVMPointerTypeKind) {
+		src1 = LLVMBuildIntToPtr(ctx->builder, src1, src2_type, "");
+	}
 
 	LLVMValueRef v = LLVMBuildICmp(ctx->builder, LLVMIntNE, src0,
 				       ctx->i32_0, "");
