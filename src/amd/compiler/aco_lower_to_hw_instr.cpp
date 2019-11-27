@@ -412,7 +412,8 @@ uint32_t get_reduction_identity(ReduceOp op, unsigned idx)
 void emit_reduction(lower_context *ctx, aco_opcode op, ReduceOp reduce_op, unsigned cluster_size, PhysReg tmp,
                     PhysReg stmp, PhysReg vtmp, PhysReg sitmp, Operand src, Definition dst)
 {
-   assert(cluster_size == 64 || op == aco_opcode::p_reduce);
+   assert(cluster_size == ctx->program->wave_size || op == aco_opcode::p_reduce);
+   assert(cluster_size <= ctx->program->wave_size);
 
    Builder bld(ctx->program, &ctx->instructions);
 
@@ -462,23 +463,34 @@ void emit_reduction(lower_context *ctx, aco_opcode op, ReduceOp reduce_op, unsig
       emit_dpp_op(ctx, tmp, tmp, tmp, vtmp, reduce_op, src.size(),
                   dpp_row_mirror, 0xf, 0xf, false);
       if (cluster_size == 16) break;
-      if (cluster_size == 32) {
+
+      if (ctx->program->chip_class >= GFX10) {
+         /* GFX10+ doesn't support row_bcast15 and row_bcast31 */
+
+         for (unsigned i = 0; i < src.size(); i++)
+            bld.vop3(aco_opcode::v_permlanex16_b32, Definition(PhysReg{vtmp+i}, v1), Operand(PhysReg{tmp+i}, v1), Operand(0u), Operand(0u));
+
+         if (cluster_size == 32 && dst.regClass().type() == RegType::vgpr) {
+            bld.sop1(Builder::s_mov, Definition(exec, bld.lm), Operand(stmp, bld.lm));
+            exec_restored = true;
+            emit_op(ctx, dst.physReg(), tmp, vtmp, PhysReg{0}, reduce_op, src.size());
+            dst_written = true;
+         } else {
+            emit_op(ctx, tmp, tmp, vtmp, PhysReg{0}, reduce_op, src.size());
+         }
+
+         if (cluster_size == 64) {
+            for (unsigned i = 0; i < src.size(); i++)
+               bld.vop3(aco_opcode::v_readlane_b32, Definition(PhysReg{sitmp+i}, s1), Operand(PhysReg{tmp+i}, v1), Operand(31u));
+            emit_op(ctx, tmp, sitmp, tmp, vtmp, reduce_op, src.size());
+         }
+      } else if (cluster_size == 32) {
          for (unsigned i = 0; i < src.size(); i++)
             bld.ds(aco_opcode::ds_swizzle_b32, Definition(PhysReg{vtmp+i}, v1), Operand(PhysReg{tmp+i}, s1), ds_pattern_bitmode(0x1f, 0, 0x10));
          bld.sop1(Builder::s_mov, Definition(exec, bld.lm), Operand(stmp, bld.lm));
          exec_restored = true;
          emit_op(ctx, dst.physReg(), vtmp, tmp, PhysReg{0}, reduce_op, src.size());
          dst_written = true;
-      } else if (ctx->program->chip_class >= GFX10) {
-         assert(cluster_size == 64);
-         /* GFX10+ doesn't support row_bcast15 and row_bcast31 */
-         for (unsigned i = 0; i < src.size(); i++)
-            bld.vop3(aco_opcode::v_permlanex16_b32, Definition(PhysReg{vtmp+i}, v1), Operand(PhysReg{tmp+i}, v1), Operand(0u), Operand(0u));
-         emit_op(ctx, tmp, tmp, vtmp, PhysReg{0}, reduce_op, src.size());
-
-         for (unsigned i = 0; i < src.size(); i++)
-            bld.vop3(aco_opcode::v_readlane_b32, Definition(PhysReg{sitmp+i}, s1), Operand(PhysReg{tmp+i}, v1), Operand(31u));
-         emit_op(ctx, tmp, sitmp, tmp, vtmp, reduce_op, src.size());
       } else {
          assert(cluster_size == 64);
          emit_dpp_op(ctx, tmp, tmp, tmp, vtmp, reduce_op, src.size(),
@@ -504,10 +516,12 @@ void emit_reduction(lower_context *ctx, aco_opcode op, ReduceOp reduce_op, unsig
          }
          bld.sop1(Builder::s_mov, Definition(exec, bld.lm), Operand(UINT64_MAX));
 
-         /* fill in the gap in row 2 */
-         for (unsigned i = 0; i < src.size(); i++) {
-            bld.vop3(aco_opcode::v_readlane_b32, Definition(PhysReg{sitmp+i}, s1), Operand(PhysReg{tmp+i}, v1), Operand(31u));
-            bld.vop3(aco_opcode::v_writelane_b32, Definition(PhysReg{vtmp+i}, v1), Operand(PhysReg{sitmp+i}, s1), Operand(32u));
+         if (ctx->program->wave_size == 64) {
+            /* fill in the gap in row 2 */
+            for (unsigned i = 0; i < src.size(); i++) {
+               bld.vop3(aco_opcode::v_readlane_b32, Definition(PhysReg{sitmp+i}, s1), Operand(PhysReg{tmp+i}, v1), Operand(31u));
+               bld.vop3(aco_opcode::v_writelane_b32, Definition(PhysReg{vtmp+i}, v1), Operand(PhysReg{sitmp+i}, s1), Operand(32u));
+            }
          }
          std::swap(tmp, vtmp);
       } else {
@@ -523,7 +537,7 @@ void emit_reduction(lower_context *ctx, aco_opcode op, ReduceOp reduce_op, unsig
       }
       /* fall through */
    case aco_opcode::p_inclusive_scan:
-      assert(cluster_size == 64);
+      assert(cluster_size == ctx->program->wave_size);
       emit_dpp_op(ctx, tmp, tmp, tmp, vtmp, reduce_op, src.size(),
                   dpp_row_sr(1), 0xf, 0xf, false, identity);
       emit_dpp_op(ctx, tmp, tmp, tmp, vtmp, reduce_op, src.size(),
@@ -544,11 +558,13 @@ void emit_reduction(lower_context *ctx, aco_opcode op, ReduceOp reduce_op, unsig
          }
          emit_op(ctx, tmp, tmp, vtmp, PhysReg{0}, reduce_op, src.size());
 
-         bld.sop1(aco_opcode::s_mov_b32, Definition(exec_lo, s1), Operand(0u));
-         bld.sop1(aco_opcode::s_mov_b32, Definition(exec_hi, s1), Operand(0xffffffffu));
-         for (unsigned i = 0; i < src.size(); i++)
-            bld.vop3(aco_opcode::v_readlane_b32, Definition(PhysReg{sitmp+i}, s1), Operand(PhysReg{tmp+i}, v1), Operand(31u));
-         emit_op(ctx, tmp, sitmp, tmp, vtmp, reduce_op, src.size());
+         if (ctx->program->wave_size == 64) {
+            bld.sop1(aco_opcode::s_mov_b32, Definition(exec_lo, s1), Operand(0u));
+            bld.sop1(aco_opcode::s_mov_b32, Definition(exec_hi, s1), Operand(0xffffffffu));
+            for (unsigned i = 0; i < src.size(); i++)
+               bld.vop3(aco_opcode::v_readlane_b32, Definition(PhysReg{sitmp+i}, s1), Operand(PhysReg{tmp+i}, v1), Operand(31u));
+            emit_op(ctx, tmp, sitmp, tmp, vtmp, reduce_op, src.size());
+         }
       } else {
          emit_dpp_op(ctx, tmp, tmp, tmp, vtmp, reduce_op, src.size(),
                      dpp_row_bcast15, 0xa, 0xf, false, identity);
@@ -563,10 +579,10 @@ void emit_reduction(lower_context *ctx, aco_opcode op, ReduceOp reduce_op, unsig
    if (!exec_restored)
       bld.sop1(Builder::s_mov, Definition(exec, bld.lm), Operand(stmp, bld.lm));
 
-   if (op == aco_opcode::p_reduce && cluster_size == 64) {
+   if (op == aco_opcode::p_reduce && dst.regClass().type() == RegType::sgpr) {
       for (unsigned k = 0; k < src.size(); k++) {
          bld.vop3(aco_opcode::v_readlane_b32, Definition(PhysReg{dst.physReg() + k}, s1),
-                  Operand(PhysReg{tmp + k}, v1), Operand(63u));
+                  Operand(PhysReg{tmp + k}, v1), Operand(ctx->program->wave_size - 1));
       }
    } else if (!(dst.physReg() == tmp) && !dst_written) {
       for (unsigned k = 0; k < src.size(); k++) {

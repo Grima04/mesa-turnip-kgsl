@@ -390,8 +390,7 @@ void init_context(isel_context *ctx, nir_shader *shader)
                      if (intrinsic->dest.ssa.bit_size == 1) {
                         size = lane_mask_size;
                         type = RegType::sgpr;
-                     } else if (nir_intrinsic_cluster_size(intrinsic) == 0 ||
-                         !ctx->divergent_vals[intrinsic->dest.ssa.index]) {
+                     } else if (!ctx->divergent_vals[intrinsic->dest.ssa.index]) {
                         type = RegType::sgpr;
                      } else {
                         type = RegType::vgpr;
