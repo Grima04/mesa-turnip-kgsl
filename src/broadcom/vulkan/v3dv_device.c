@@ -201,11 +201,37 @@ v3dv_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
    return VK_SUCCESS;
 }
 
+static void
+physical_device_finish(struct v3dv_physical_device *device)
+{
+   /* FIXME: stub */
+}
+
 void
 v3dv_DestroyInstance(VkInstance _instance,
                      const VkAllocationCallbacks *pAllocator)
 {
-   /* FIXME: stub */
+   V3DV_FROM_HANDLE(v3dv_instance, instance, _instance);
+
+   if (!instance)
+      return;
+
+   if (instance->physicalDeviceCount > 0) {
+      /* We support at most one physical device. */
+      assert(instance->physicalDeviceCount == 1);
+      physical_device_finish(&instance->physicalDevice);
+   }
+
+   vk_free(&instance->alloc, (char *)instance->app_info.app_name);
+   vk_free(&instance->alloc, (char *)instance->app_info.engine_name);
+
+   VG(VALGRIND_DESTROY_MEMPOOL(instance));
+
+   vk_debug_report_instance_destroy(&instance->debug_report_callbacks);
+
+   glsl_type_singleton_decref();
+
+   vk_free(&instance->alloc, instance);
 }
 
 VkResult
