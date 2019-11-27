@@ -3024,6 +3024,9 @@ static LLVMValueRef visit_var_atomic(struct ac_nir_context *ctx,
 
 	nir_deref_instr *deref = nir_instr_as_deref(instr->src[0].ssa->parent_instr);
 	if (deref->mode == nir_var_mem_global) {
+		/* use "singlethread" sync scope to implement relaxed ordering */
+		sync_scope = LLVM_VERSION_MAJOR >= 9 ? "singlethread-one-as" : "singlethread";
+
 		LLVMTypeRef ptr_type = LLVMPointerType(LLVMTypeOf(src), LLVMGetPointerAddressSpace(LLVMTypeOf(ptr)));
 		ptr = LLVMBuildBitCast(ctx->ac.builder, ptr, ptr_type , "");
 	}
