@@ -222,11 +222,39 @@ st_feedback_draw_vbo(struct gl_context *ctx,
       info.has_user_indices = false;
    }
 
-   /* set the constant buffer */
-   draw_set_mapped_constant_buffer(st->draw, PIPE_SHADER_VERTEX, 0,
+   /* set constant buffers */
+   draw_set_mapped_constant_buffer(draw, PIPE_SHADER_VERTEX, 0,
                                    st->state.constants[PIPE_SHADER_VERTEX].ptr,
                                    st->state.constants[PIPE_SHADER_VERTEX].size);
 
+   const struct gl_program *prog = &vp->Base.Base;
+   struct pipe_transfer *ubo_transfer[PIPE_MAX_CONSTANT_BUFFERS] = {0};
+   assert(prog->info.num_ubos <= ARRAY_SIZE(ubo_transfer));
+
+   for (unsigned i = 0; i < prog->info.num_ubos; i++) {
+      struct gl_buffer_binding *binding =
+         &st->ctx->UniformBufferBindings[prog->sh.UniformBlocks[i]->Binding];
+      struct st_buffer_object *st_obj = st_buffer_object(binding->BufferObject);
+      struct pipe_resource *buf = st_obj->buffer;
+
+      if (!buf)
+         continue;
+
+      unsigned offset = binding->Offset;
+      unsigned size = buf->width0 - offset;
+
+      /* AutomaticSize is FALSE if the buffer was set with BindBufferRange.
+       * Take the minimum just to be sure.
+       */
+      if (!binding->AutomaticSize)
+         size = MIN2(size, (unsigned) binding->Size);
+
+      void *ptr = pipe_buffer_map_range(pipe, buf, offset, size,
+                                        PIPE_TRANSFER_READ, &ubo_transfer[i]);
+
+      draw_set_mapped_constant_buffer(draw, PIPE_SHADER_VERTEX, 1 + i, ptr,
+                                      size);
+   }
 
    /* draw here */
    for (i = 0; i < nr_prims; i++) {
@@ -249,6 +277,13 @@ st_feedback_draw_vbo(struct gl_context *ctx,
       draw_vbo(draw, &info);
    }
 
+   for (unsigned i = 0; i < prog->info.num_ubos; i++) {
+      if (ubo_transfer[i]) {
+         draw_set_mapped_constant_buffer(draw, PIPE_SHADER_VERTEX, 1 + i,
+                                         NULL, 0);
+         pipe_buffer_unmap(pipe, ubo_transfer[i]);
+      }
+   }
 
    /*
     * unmap vertex/index buffers
