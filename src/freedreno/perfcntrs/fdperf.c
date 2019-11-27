@@ -282,6 +282,7 @@ find_device_fn(const char *fpath, const struct stat *sb, int typeflag, struct FT
 		char *str = readfile(fpath, &sz);
 		if ((strcmp(str, "qcom,adreno-3xx") == 0) ||
 				(strcmp(str, "qcom,kgsl-3d0") == 0) ||
+				(strstr(str, "amd,imageon") == str) ||
 				(strstr(str, "qcom,adreno") == str)) {
 			int dlen = strlen(fpath) - strlen("/compatible");
 			dev.dtnode = malloc(dlen + 1);
