@@ -102,9 +102,8 @@ zink_batch_reference_resoure(struct zink_batch *batch,
 {
    struct set_entry *entry = _mesa_set_search(batch->resources, res);
    if (!entry) {
-      struct pipe_resource *tmp = NULL;
       entry = _mesa_set_add(batch->resources, res);
-      pipe_resource_reference(&tmp, &res->base);
+      pipe_reference(NULL, &res->base.reference);
    }
 }
 
