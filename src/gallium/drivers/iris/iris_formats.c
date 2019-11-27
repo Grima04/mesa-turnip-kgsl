@@ -283,6 +283,8 @@ iris_isl_format_for_pipe_format(enum pipe_format pf)
       [PIPE_FORMAT_ETC2_RG11_UNORM]         = ISL_FORMAT_EAC_RG11,
       [PIPE_FORMAT_ETC2_RG11_SNORM]         = ISL_FORMAT_EAC_SIGNED_RG11,
 
+      [PIPE_FORMAT_FXT1_RGB]                = ISL_FORMAT_FXT1,
+      [PIPE_FORMAT_FXT1_RGBA]               = ISL_FORMAT_FXT1,
 
       [PIPE_FORMAT_ASTC_4x4]                = ISL_FORMAT_ASTC_LDR_2D_4X4_FLT16,
       [PIPE_FORMAT_ASTC_5x4]                = ISL_FORMAT_ASTC_LDR_2D_5X4_FLT16,
