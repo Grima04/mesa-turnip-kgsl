@@ -359,7 +359,7 @@ wait_imm parse_wait_instr(wait_ctx& ctx, Instruction *instr)
       imm.vs = std::min<uint8_t>(imm.vs, static_cast<SOPK_instruction*>(instr)->imm);
       return imm;
    } else if (instr->opcode == aco_opcode::s_waitcnt) {
-      return wait_imm(ctx.chip_class, static_cast<SOPK_instruction*>(instr)->imm);
+      return wait_imm(ctx.chip_class, static_cast<SOPP_instruction*>(instr)->imm);
    }
    return wait_imm();
 }
