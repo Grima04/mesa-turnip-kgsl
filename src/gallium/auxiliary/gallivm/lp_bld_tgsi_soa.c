@@ -3097,13 +3097,46 @@ load_emit(
    LLVMBuilderRef builder = bld->bld_base.base.gallivm->builder;
    const struct tgsi_full_src_register *bufreg = &emit_data->inst->Src[0];
    unsigned buf = bufreg->Register.Index;
-   assert(bufreg->Register.File == TGSI_FILE_BUFFER || bufreg->Register.File == TGSI_FILE_IMAGE || bufreg->Register.File == TGSI_FILE_MEMORY);
+   assert(bufreg->Register.File == TGSI_FILE_BUFFER ||
+          bufreg->Register.File == TGSI_FILE_IMAGE ||
+          bufreg->Register.File == TGSI_FILE_MEMORY ||
+          bufreg->Register.File == TGSI_FILE_CONSTBUF);
    bool is_shared = bufreg->Register.File == TGSI_FILE_MEMORY;
    struct lp_build_context *uint_bld = &bld_base->uint_bld;
 
-   if (bufreg->Register.File == TGSI_FILE_IMAGE)
+   if (bufreg->Register.File == TGSI_FILE_IMAGE) {
       img_load_emit(action, bld_base, emit_data);
-   else if (0) {
+   } else if (bufreg->Register.File == TGSI_FILE_CONSTBUF) {
+      LLVMValueRef consts_ptr = bld->consts[buf];
+      LLVMValueRef num_consts = bld->consts_sizes[buf];
+
+      LLVMValueRef indirect_index;
+      LLVMValueRef overflow_mask;
+
+      indirect_index = lp_build_emit_fetch(bld_base, emit_data->inst, 1, 0);
+      indirect_index = lp_build_shr_imm(uint_bld, indirect_index, 4);
+
+      /* All fetches are from the same constant buffer, so
+       * we need to propagate the size to a vector to do a
+       * vector comparison */
+      num_consts = lp_build_broadcast_scalar(uint_bld, num_consts);
+
+      /* Gather values from the constant buffer */
+      unsigned chan_index;
+      TGSI_FOR_EACH_DST0_ENABLED_CHANNEL(emit_data->inst, chan_index) {
+         /* Construct a boolean vector telling us which channels
+          * overflow the bound constant buffer */
+         overflow_mask = lp_build_compare(gallivm, uint_bld->type, PIPE_FUNC_GEQUAL,
+                                          indirect_index, num_consts);
+
+         /* index_vec = indirect_index * 4 */
+         LLVMValueRef index_vec = lp_build_shl_imm(uint_bld, indirect_index, 2);
+         index_vec = lp_build_add(uint_bld, index_vec,
+                                  lp_build_const_int_vec(gallivm, uint_bld->type, chan_index));
+
+         emit_data->output[chan_index] = build_gather(bld_base, consts_ptr, index_vec, overflow_mask, NULL);
+      }
+   } else if (0) {
       /* for indirect support with ARB_gpu_shader5 */
    } else {
       LLVMValueRef index;
