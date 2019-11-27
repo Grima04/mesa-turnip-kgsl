@@ -499,7 +499,7 @@ dri_flush(__DRIcontext *cPriv,
       struct pipe_screen *screen = drawable->screen->base.screen;
       struct pipe_fence_handle *new_fence = NULL;
 
-      st->flush(st, flush_flags, &new_fence);
+      st->flush(st, flush_flags, &new_fence, args.ctx ? notify_before_flush_cb : NULL, &args);
 
       /* throttle on the previous fence */
       if (drawable->throttle_fence) {
@@ -509,7 +509,7 @@ dri_flush(__DRIcontext *cPriv,
       drawable->throttle_fence = new_fence;
    }
    else if (flags & (__DRI2_FLUSH_DRAWABLE | __DRI2_FLUSH_CONTEXT)) {
-      st->flush(st, flush_flags, NULL);
+      st->flush(st, flush_flags, NULL, NULL, NULL);
    }
 
    if (drawable) {

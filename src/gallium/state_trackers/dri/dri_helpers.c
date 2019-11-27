@@ -97,7 +97,7 @@ dri2_create_fence(__DRIcontext *_ctx)
    if (!fence)
       return NULL;
 
-   stapi->flush(stapi, 0, &fence->pipe_fence);
+   stapi->flush(stapi, 0, &fence->pipe_fence, NULL, NULL);
 
    if (!fence->pipe_fence) {
       FREE(fence);
@@ -117,7 +117,7 @@ dri2_create_fence_fd(__DRIcontext *_ctx, int fd)
 
    if (fd == -1) {
       /* exporting driver created fence, flush: */
-      stapi->flush(stapi, ST_FLUSH_FENCE_FD, &fence->pipe_fence);
+      stapi->flush(stapi, ST_FLUSH_FENCE_FD, &fence->pipe_fence, NULL, NULL);
    } else {
       /* importing a foreign fence fd: */
       ctx->create_fence_fd(ctx, &fence->pipe_fence, fd, PIPE_FD_TYPE_NATIVE_SYNC);

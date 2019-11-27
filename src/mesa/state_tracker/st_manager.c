@@ -649,7 +649,9 @@ st_framebuffers_purge(struct st_context *st)
 
 static void
 st_context_flush(struct st_context_iface *stctxi, unsigned flags,
-                 struct pipe_fence_handle **fence)
+                 struct pipe_fence_handle **fence,
+                 void (*before_flush_cb) (void*),
+                 void* args)
 {
    struct st_context *st = (struct st_context *) stctxi;
    unsigned pipe_flags = 0;
@@ -661,6 +663,9 @@ st_context_flush(struct st_context_iface *stctxi, unsigned flags,
 
    FLUSH_VERTICES(st->ctx, 0);
    FLUSH_CURRENT(st->ctx, 0);
+   /* Notify the caller that we're ready to flush */
+   if (before_flush_cb)
+      before_flush_cb(args);
    st_flush(st, fence, pipe_flags);
 
    if ((flags & ST_FLUSH_WAIT) && fence && *fence) {
