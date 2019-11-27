@@ -27,6 +27,7 @@
 #include <sys/mman.h>
 #include <sys/sysinfo.h>
 #include <unistd.h>
+#include <xf86drm.h>
 
 #include "v3dv_private.h"
 #include "vk_util.h"
@@ -234,14 +235,82 @@ v3dv_DestroyInstance(VkInstance _instance,
    vk_free(&instance->alloc, instance);
 }
 
+static VkResult
+physical_device_init(struct v3dv_physical_device *device,
+                     struct v3dv_instance *instance,
+                     drmDevicePtr drm_device)
+{
+   /* FIXME stub */
+   return VK_SUCCESS;
+}
+
+static VkResult
+enumerate_devices(struct v3dv_instance *instance)
+{
+   /* TODO: Check for more devices? */
+   drmDevicePtr devices[8];
+   VkResult result = VK_ERROR_INCOMPATIBLE_DRIVER;
+   int max_devices;
+
+   instance->physicalDeviceCount = 0;
+
+   max_devices = drmGetDevices2(0, devices, ARRAY_SIZE(devices));
+   if (max_devices < 1)
+      return VK_ERROR_INCOMPATIBLE_DRIVER;
+
+   for (unsigned i = 0; i < (unsigned)max_devices; i++) {
+      if (devices[i]->available_nodes & 1 << DRM_NODE_RENDER &&
+          devices[i]->bustype == DRM_BUS_PCI &&
+          /* FIXME: so we can run past this point for now */
+          (true || devices[i]->deviceinfo.pci->vendor_id == 0x14E4)) {
+         result = physical_device_init(&instance->physicalDevice,
+                                       instance, devices[i]);
+         if (result != VK_ERROR_INCOMPATIBLE_DRIVER)
+            break;
+      }
+   }
+   drmFreeDevices(devices, max_devices);
+
+   if (result == VK_SUCCESS)
+      instance->physicalDeviceCount = 1;
+
+   return result;
+}
+
+static VkResult
+instance_ensure_physical_device(struct v3dv_instance *instance)
+{
+   if (instance->physicalDeviceCount < 0) {
+      VkResult result = enumerate_devices(instance);
+      if (result != VK_SUCCESS &&
+          result != VK_ERROR_INCOMPATIBLE_DRIVER)
+         return result;
+   }
+
+   return VK_SUCCESS;
+}
+
 VkResult
 v3dv_EnumeratePhysicalDevices(VkInstance _instance,
                               uint32_t *pPhysicalDeviceCount,
                               VkPhysicalDevice *pPhysicalDevices)
 {
-   /* FIXME: stub */
+   V3DV_FROM_HANDLE(v3dv_instance, instance, _instance);
+   VK_OUTARRAY_MAKE(out, pPhysicalDevices, pPhysicalDeviceCount);
+ 
+   VkResult result = instance_ensure_physical_device(instance);
+   if (result != VK_SUCCESS)
+      return result;
 
-   return VK_SUCCESS;
+   if (instance->physicalDeviceCount == 0)
+      return VK_SUCCESS;
+
+   assert(instance->physicalDeviceCount == 1);
+   vk_outarray_append(&out, i) {
+      *i = v3dv_physical_device_to_handle(&instance->physicalDevice);
+   }
+
+   return vk_outarray_status(&out);
 }
 
 void
