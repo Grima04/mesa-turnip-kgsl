@@ -1197,6 +1197,24 @@ void radv_GetPhysicalDeviceFeatures2(
 	return radv_GetPhysicalDeviceFeatures(physicalDevice, &pFeatures->features);
 }
 
+static size_t
+radv_max_descriptor_set_size()
+{
+	/* make sure that the entire descriptor set is addressable with a signed
+	 * 32-bit int. So the sum of all limits scaled by descriptor size has to
+	 * be at most 2 GiB. the combined image & samples object count as one of
+	 * both. This limit is for the pipeline layout, not for the set layout, but
+	 * there is no set limit, so we just set a pipeline limit. I don't think
+	 * any app is going to hit this soon. */
+	return ((1ull << 31) - 16 * MAX_DYNAMIC_BUFFERS
+	                     - MAX_INLINE_UNIFORM_BLOCK_SIZE * MAX_INLINE_UNIFORM_BLOCK_COUNT) /
+	          (32 /* uniform buffer, 32 due to potential space wasted on alignment */ +
+	           32 /* storage buffer, 32 due to potential space wasted on alignment */ +
+	           32 /* sampler, largest when combined with image */ +
+	           64 /* sampled image */ +
+	           64 /* storage image */);
+}
+
 void radv_GetPhysicalDeviceProperties(
 	VkPhysicalDevice                            physicalDevice,
 	VkPhysicalDeviceProperties*                 pProperties)
@@ -1204,18 +1222,7 @@ void radv_GetPhysicalDeviceProperties(
 	RADV_FROM_HANDLE(radv_physical_device, pdevice, physicalDevice);
 	VkSampleCountFlags sample_counts = 0xf;
 
-	/* make sure that the entire descriptor set is addressable with a signed
-	 * 32-bit int. So the sum of all limits scaled by descriptor size has to
-	 * be at most 2 GiB. the combined image & samples object count as one of
-	 * both. This limit is for the pipeline layout, not for the set layout, but
-	 * there is no set limit, so we just set a pipeline limit. I don't think
-	 * any app is going to hit this soon. */
-	size_t max_descriptor_set_size = ((1ull << 31) - 16 * MAX_DYNAMIC_BUFFERS) /
-	          (32 /* uniform buffer, 32 due to potential space wasted on alignment */ +
-	           32 /* storage buffer, 32 due to potential space wasted on alignment */ +
-	           32 /* sampler, largest when combined with image */ +
-	           64 /* sampled image */ +
-	           64 /* storage image */);
+	size_t max_descriptor_set_size = radv_max_descriptor_set_size();
 
 	VkPhysicalDeviceLimits limits = {
 		.maxImageDimension1D                      = (1 << 14),
@@ -1492,13 +1499,7 @@ void radv_GetPhysicalDeviceProperties2(
 			properties->robustBufferAccessUpdateAfterBind = false;
 			properties->quadDivergentImplicitLod = false;
 
-			size_t max_descriptor_set_size = ((1ull << 31) - 16 * MAX_DYNAMIC_BUFFERS -
-				MAX_INLINE_UNIFORM_BLOCK_SIZE * MAX_INLINE_UNIFORM_BLOCK_COUNT) /
-			          (32 /* uniform buffer, 32 due to potential space wasted on alignment */ +
-			           32 /* storage buffer, 32 due to potential space wasted on alignment */ +
-			           32 /* sampler, largest when combined with image */ +
-			           64 /* sampled image */ +
-			           64 /* storage image */);
+			size_t max_descriptor_set_size = radv_max_descriptor_set_size();
 			properties->maxPerStageDescriptorUpdateAfterBindSamplers = max_descriptor_set_size;
 			properties->maxPerStageDescriptorUpdateAfterBindUniformBuffers = max_descriptor_set_size;
 			properties->maxPerStageDescriptorUpdateAfterBindStorageBuffers = max_descriptor_set_size;
