@@ -376,6 +376,53 @@ st_feedback_draw_vbo(struct gl_context *ctx,
                               img_stride, mip_offset);
    }
 
+   /* shader images */
+   struct pipe_image_view images[PIPE_MAX_SHADER_IMAGES];
+   struct pipe_transfer *img_transfer[PIPE_MAX_SHADER_IMAGES] = {0};
+
+   for (unsigned i = 0; i < prog->info.num_images; i++) {
+      struct pipe_image_view *img = &images[i];
+
+      st_convert_image_from_unit(st, img, prog->sh.ImageUnits[i],
+                                 prog->sh.ImageAccess[i]);
+
+      struct pipe_resource *res = img->resource;
+      if (!res)
+         continue;
+
+      unsigned width, height, num_layers, row_stride, img_stride;
+      void *addr;
+
+      if (res->target != PIPE_BUFFER) {
+         width = u_minify(res->width0, img->u.tex.level);
+         height = u_minify(res->height0, img->u.tex.level);
+         num_layers = img->u.tex.last_layer - img->u.tex.first_layer + 1;
+
+         addr = pipe_transfer_map_3d(pipe, res, img->u.tex.level,
+                                     PIPE_TRANSFER_READ, 0, 0,
+                                     img->u.tex.first_layer,
+                                     width, height, num_layers,
+                                     &img_transfer[i]);
+         row_stride = img_transfer[i]->stride;
+         img_stride = img_transfer[i]->layer_stride;
+      } else {
+         width = img->u.buf.size / util_format_get_blocksize(img->format);
+
+         /* probably don't really need to fill that out */
+         row_stride = 0;
+         img_stride = 0;
+         height = num_layers = 1;
+
+         addr = pipe_buffer_map_range(pipe, res, img->u.buf.offset,
+                                      img->u.buf.size, PIPE_TRANSFER_READ,
+                                      &img_transfer[i]);
+      }
+
+      draw_set_mapped_image(draw, PIPE_SHADER_VERTEX, i, width, height,
+                            num_layers, addr, row_stride, img_stride);
+   }
+   draw_set_images(draw, PIPE_SHADER_VERTEX, images, prog->info.num_images);
+
    /* draw here */
    for (i = 0; i < nr_prims; i++) {
       info.count = prims[i].count;
@@ -395,6 +442,14 @@ st_feedback_draw_vbo(struct gl_context *ctx,
       }
 
       draw_vbo(draw, &info);
+   }
+
+   /* unmap images */
+   for (unsigned i = 0; i < prog->info.num_images; i++) {
+      if (img_transfer[i]) {
+         draw_set_mapped_image(draw, PIPE_SHADER_VERTEX, i, 0, 0, 0, NULL, 0, 0);
+         pipe_transfer_unmap(pipe, img_transfer[i]);
+      }
    }
 
    /* unmap sampler views */
