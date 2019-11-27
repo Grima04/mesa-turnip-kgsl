@@ -287,17 +287,23 @@ int handle_instruction_gfx8_9(NOP_ctx_gfx8_9& ctx, aco_ptr<Instruction>& instr,
 
       /* Write VGPRs holding writedata > 64 bit from MIMG/MUBUF instructions */
       // FIXME: handle case if the last instruction of a block without branch is such store
-      // TODO: confirm that DS instructions cannot cause WAR hazards here
       if (new_idx > 0) {
          aco_ptr<Instruction>& pred = new_instructions.back();
-         if (pred->isVMEM() &&
-             pred->operands.size() == 4 &&
-             pred->operands[3].size() > 2 &&
-             pred->operands[1].size() != 8 &&
-             (pred->format != Format::MUBUF || pred->operands[2].physReg() >= 102)) {
-            /* Ops that use a 256-bit T# do not need a wait state.
-             * BUFFER_STORE_* operations that use an SGPR for "offset"
-             * do not require any wait states. */
+         /* >64-bit MUBUF/MTBUF store with a constant in SOFFSET */
+         bool consider_buf = (pred->format == Format::MUBUF || pred->format == Format::MTBUF) &&
+                             pred->operands.size() == 4 &&
+                             pred->operands[3].size() > 2 &&
+                             pred->operands[2].physReg() >= 128;
+         /* MIMG store with a 128-bit T# with more than two bits set in dmask (making it a >64-bit store) */
+         bool consider_mimg = pred->format == Format::MIMG &&
+                              pred->operands.size() == 4 &&
+                              pred->operands[3].size() > 2 &&
+                              pred->operands[1].size() != 8;
+         /* FLAT/GLOBAL/SCRATCH store with >64-bit data */
+         bool consider_flat = (pred->isFlatOrGlobal() || pred->format == Format::SCRATCH) &&
+                              pred->operands.size() == 3 &&
+                              pred->operands[2].size() > 2;
+         if (consider_buf || consider_mimg || consider_flat) {
             PhysReg wrdata = pred->operands[3].physReg();
             unsigned size = pred->operands[3].size();
             assert(wrdata >= 256);
