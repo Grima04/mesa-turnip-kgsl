@@ -45,6 +45,7 @@
 #include "pipe/p_defines.h"
 #include "util/u_inlines.h"
 #include "util/u_draw.h"
+#include "util/format/u_format.h"
 
 #include "draw/draw_private.h"
 #include "draw/draw_context.h"
@@ -256,6 +257,93 @@ st_feedback_draw_vbo(struct gl_context *ctx,
                                       size);
    }
 
+   /* samplers */
+   struct pipe_sampler_state *samplers[PIPE_MAX_SAMPLERS];
+   for (unsigned i = 0; i < st->state.num_vert_samplers; i++)
+      samplers[i] = &st->state.vert_samplers[i];
+
+   draw_set_samplers(draw, PIPE_SHADER_VERTEX, samplers,
+                     st->state.num_vert_samplers);
+
+   /* sampler views */
+   draw_set_sampler_views(draw, PIPE_SHADER_VERTEX,
+                          st->state.vert_sampler_views,
+                          st->state.num_sampler_views[PIPE_SHADER_VERTEX]);
+
+   struct pipe_transfer *sv_transfer[PIPE_MAX_SAMPLERS][PIPE_MAX_TEXTURE_LEVELS];
+
+   for (unsigned i = 0; i < st->state.num_sampler_views[PIPE_SHADER_VERTEX]; i++) {
+      struct pipe_sampler_view *view = st->state.vert_sampler_views[i];
+      if (!view)
+         continue;
+
+      struct pipe_resource *res = view->texture;
+      unsigned width0 = res->width0;
+      unsigned num_layers = res->depth0;
+      unsigned first_level = 0;
+      unsigned last_level = 0;
+      uint32_t row_stride[PIPE_MAX_TEXTURE_LEVELS];
+      uint32_t img_stride[PIPE_MAX_TEXTURE_LEVELS];
+      uint32_t mip_offset[PIPE_MAX_TEXTURE_LEVELS];
+      uintptr_t mip_addr[PIPE_MAX_TEXTURE_LEVELS];
+      uintptr_t base_addr;
+
+      if (res->target != PIPE_BUFFER) {
+         first_level = view->u.tex.first_level;
+         last_level = view->u.tex.last_level;
+         num_layers = view->u.tex.last_layer - view->u.tex.first_layer + 1;
+         base_addr = UINTPTR_MAX;
+
+         for (unsigned j = first_level; j <= last_level; j++) {
+            unsigned map_layers = res->target == PIPE_TEXTURE_3D ?
+                                     util_num_layers(res, j) : num_layers;
+
+            sv_transfer[i][j] = NULL;
+            mip_addr[j] = (uintptr_t)
+                          pipe_transfer_map_3d(pipe, res, j,
+                                               PIPE_TRANSFER_READ, 0, 0,
+                                               view->u.tex.first_layer,
+                                               u_minify(res->width0, j),
+                                               u_minify(res->height0, j),
+                                               map_layers, &sv_transfer[i][j]);
+            row_stride[j] = sv_transfer[i][j]->stride;
+            img_stride[j] = sv_transfer[i][j]->layer_stride;
+
+            /* Get the minimum address, because the draw module takes only
+             * 1 address for the whole texture + uint32 offsets for mip levels,
+             * so we need to convert mapped resource pointers into that scheme.
+             */
+            base_addr = MIN2(base_addr, mip_addr[j]);
+         }
+         for (unsigned j = first_level; j <= last_level; j++) {
+            /* TODO: The draw module should accept pointers for mipmap levels
+             * instead of offsets. This is unlikely to work on 64-bit archs.
+             */
+            assert(mip_addr[j] - base_addr <= UINT32_MAX);
+            mip_offset[j] = mip_addr[j] - base_addr;
+         }
+      } else {
+         width0 = view->u.buf.size / util_format_get_blocksize(view->format);
+
+         /* probably don't really need to fill that out */
+         mip_offset[0] = 0;
+         row_stride[0] = 0;
+         img_stride[0] = 0;
+
+         sv_transfer[i][0] = NULL;
+         base_addr = (uintptr_t)
+                     pipe_buffer_map_range(pipe, res, view->u.buf.offset,
+                                           view->u.buf.size,
+                                           PIPE_TRANSFER_READ,
+                                           &sv_transfer[i][0]);
+      }
+
+      draw_set_mapped_texture(draw, PIPE_SHADER_VERTEX, i, width0,
+                              res->height0, num_layers, first_level,
+                              last_level, (void*)base_addr, row_stride,
+                              img_stride, mip_offset);
+   }
+
    /* draw here */
    for (i = 0; i < nr_prims; i++) {
       info.count = prims[i].count;
@@ -276,6 +364,25 @@ st_feedback_draw_vbo(struct gl_context *ctx,
 
       draw_vbo(draw, &info);
    }
+
+   /* unmap sampler views */
+   for (unsigned i = 0; i < st->state.num_sampler_views[PIPE_SHADER_VERTEX]; i++) {
+      struct pipe_sampler_view *view = st->state.vert_sampler_views[i];
+
+      if (view) {
+         if (view->texture->target != PIPE_BUFFER) {
+            for (unsigned j = view->u.tex.first_level;
+                 j <= view->u.tex.last_level; j++) {
+               pipe_transfer_unmap(pipe, sv_transfer[i][j]);
+            }
+         } else {
+            pipe_transfer_unmap(pipe, sv_transfer[i][0]);
+         }
+      }
+   }
+
+   draw_set_samplers(draw, PIPE_SHADER_VERTEX, NULL, 0);
+   draw_set_sampler_views(draw, PIPE_SHADER_VERTEX, NULL, 0);
 
    for (unsigned i = 0; i < prog->info.num_ubos; i++) {
       if (ubo_transfer[i]) {
