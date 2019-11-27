@@ -3022,6 +3022,12 @@ static LLVMValueRef visit_var_atomic(struct ac_nir_context *ctx,
 
 	const char *sync_scope = LLVM_VERSION_MAJOR >= 9 ? "workgroup-one-as" : "workgroup";
 
+	nir_deref_instr *deref = nir_instr_as_deref(instr->src[0].ssa->parent_instr);
+	if (deref->mode == nir_var_mem_global) {
+		LLVMTypeRef ptr_type = LLVMPointerType(LLVMTypeOf(src), LLVMGetPointerAddressSpace(LLVMTypeOf(ptr)));
+		ptr = LLVMBuildBitCast(ctx->ac.builder, ptr, ptr_type , "");
+	}
+
 	if (instr->intrinsic == nir_intrinsic_shared_atomic_comp_swap ||
 	    instr->intrinsic == nir_intrinsic_deref_atomic_comp_swap) {
 		LLVMValueRef src1 = get_src(ctx, instr->src[src_idx + 1]);
