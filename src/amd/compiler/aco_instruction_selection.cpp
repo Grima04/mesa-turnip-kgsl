@@ -4644,6 +4644,7 @@ void visit_load_global(isel_context *ctx, nir_intrinsic_instr *instr)
       flat->operands[1] = Operand(s1);
       flat->glc = glc;
       flat->dlc = dlc;
+      flat->barrier = barrier_buffer;
 
       if (dst.type() == RegType::sgpr) {
          Temp vec = bld.tmp(RegType::vgpr, dst.size());
@@ -4765,6 +4766,7 @@ void visit_store_global(isel_context *ctx, nir_intrinsic_instr *instr)
       flat->dlc = false;
       flat->offset = offset;
       flat->disable_wqm = true;
+      flat->barrier = barrier_buffer;
       ctx->program->needs_exact = true;
       ctx->block->instructions.emplace_back(std::move(flat));
    }

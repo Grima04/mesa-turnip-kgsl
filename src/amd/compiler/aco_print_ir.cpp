@@ -373,6 +373,7 @@ static void print_instr_format_specific(struct Instruction *instr, FILE *output)
          fprintf(output, " nv");
       if (flat->disable_wqm)
          fprintf(output, " disable_wqm");
+      print_barrier_reorder(flat->can_reorder, flat->barrier, output);
       break;
    }
    case Format::MTBUF: {

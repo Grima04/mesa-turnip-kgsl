@@ -850,7 +850,9 @@ struct FLAT_instruction : public Instruction {
    bool dlc; /* NAVI: device level coherent */
    bool lds;
    bool nv;
-   bool disable_wqm;
+   bool disable_wqm; /* Require an exec mask without helper invocations */
+   bool can_reorder;
+   barrier_interaction barrier;
 };
 
 struct Export_instruction : public Instruction {
@@ -972,7 +974,8 @@ constexpr barrier_interaction get_barrier_interaction(Instruction* instr)
       return static_cast<MIMG_instruction*>(instr)->barrier;
    case Format::FLAT:
    case Format::GLOBAL:
-      return barrier_buffer;
+   case Format::SCRATCH:
+      return static_cast<FLAT_instruction*>(instr)->barrier;
    case Format::DS:
       return barrier_shared;
    default:
