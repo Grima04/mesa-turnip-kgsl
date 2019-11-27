@@ -1809,7 +1809,8 @@ tu_CmdBindPipeline(VkCommandBuffer commandBuffer,
       cmd->state.dirty |= TU_CMD_DIRTY_PIPELINE;
       break;
    case VK_PIPELINE_BIND_POINT_COMPUTE:
-      tu_finishme("binding compute pipeline");
+      cmd->state.compute_pipeline = pipeline;
+      cmd->state.dirty |= TU_CMD_DIRTY_COMPUTE_PIPELINE;
       break;
    default:
       unreachable("unrecognized pipeline bind point");
@@ -2557,13 +2558,17 @@ tu6_emit_ibo(struct tu_device *device, struct tu_cs *draw_state,
    /* emit texture state: */
    tu_cs_emit_pkt7(&cs, CP_LOAD_STATE6, 3);
    tu_cs_emit(&cs, CP_LOAD_STATE6_0_DST_OFF(0) |
-              CP_LOAD_STATE6_0_STATE_TYPE(ST6_SHADER) |
+              CP_LOAD_STATE6_0_STATE_TYPE(type == MESA_SHADER_COMPUTE ?
+                                          ST6_IBO : ST6_SHADER) |
               CP_LOAD_STATE6_0_STATE_SRC(SS6_INDIRECT) |
-              CP_LOAD_STATE6_0_STATE_BLOCK(SB6_IBO) |
+              CP_LOAD_STATE6_0_STATE_BLOCK(type == MESA_SHADER_COMPUTE ?
+                                           SB6_CS_SHADER : SB6_IBO) |
               CP_LOAD_STATE6_0_NUM_UNIT(link->image_mapping.num_ibo));
    tu_cs_emit_qw(&cs, ibo_addr); /* SRC_ADDR_LO/HI */
 
-   tu_cs_emit_pkt4(&cs, REG_A6XX_SP_IBO_LO, 2);
+   tu_cs_emit_pkt4(&cs,
+                   type == MESA_SHADER_COMPUTE ?
+                   REG_A6XX_SP_IBO_LO : REG_A6XX_SP_CS_IBO_LO, 2);
    tu_cs_emit_qw(&cs, ibo_addr); /* SRC_ADDR_LO/HI */
 
    return tu_cs_end_sub_stream(draw_state, &cs);
@@ -2806,7 +2811,11 @@ tu6_bind_draw_states(struct tu_cmd_buffer *cmd,
             }
       }
    }
-   cmd->state.dirty = 0;
+
+   /* Fragment shader state overwrites compute shader state, so flag the
+    * compute pipeline for re-emit.
+    */
+   cmd->state.dirty = TU_CMD_DIRTY_COMPUTE_PIPELINE;
 }
 
 static void
@@ -2989,9 +2998,156 @@ struct tu_dispatch_info
 };
 
 static void
-tu_dispatch(struct tu_cmd_buffer *cmd_buffer,
+tu_emit_compute_driver_params(struct tu_cs *cs, struct tu_pipeline *pipeline,
+                              const struct tu_dispatch_info *info)
+{
+   gl_shader_stage type = MESA_SHADER_COMPUTE;
+   const struct tu_program_descriptor_linkage *link =
+      &pipeline->program.link[type];
+   const struct ir3_const_state *const_state = &link->const_state;
+   uint32_t offset_dwords = const_state->offsets.driver_param;
+
+   if (link->constlen <= offset_dwords)
+      return;
+
+   if (!info->indirect) {
+      uint32_t driver_params[] = {
+         info->blocks[0],
+         info->blocks[1],
+         info->blocks[2],
+         pipeline->compute.local_size[0],
+         pipeline->compute.local_size[1],
+         pipeline->compute.local_size[2],
+      };
+      uint32_t num_consts = MIN2(const_state->num_driver_params,
+                                 link->constlen - offset_dwords);
+      uint32_t align_size = align(num_consts, 4);
+
+      /* push constants */
+      tu_cs_emit_pkt7(cs, tu6_stage2opcode(type), 3 + align_size);
+      tu_cs_emit(cs, CP_LOAD_STATE6_0_DST_OFF(offset_dwords / 4) |
+                 CP_LOAD_STATE6_0_STATE_TYPE(ST6_CONSTANTS) |
+                 CP_LOAD_STATE6_0_STATE_SRC(SS6_DIRECT) |
+                 CP_LOAD_STATE6_0_STATE_BLOCK(tu6_stage2shadersb(type)) |
+                 CP_LOAD_STATE6_0_NUM_UNIT(align_size / 4));
+      tu_cs_emit(cs, 0);
+      tu_cs_emit(cs, 0);
+      uint32_t i;
+      for (i = 0; i < num_consts; i++)
+         tu_cs_emit(cs, driver_params[i]);
+      for (; i < align_size; i++)
+         tu_cs_emit(cs, 0);
+   } else {
+      tu_finishme("Indirect driver params");
+   }
+}
+
+static void
+tu_dispatch(struct tu_cmd_buffer *cmd,
             const struct tu_dispatch_info *info)
 {
+   struct tu_cs *cs = &cmd->cs;
+   struct tu_pipeline *pipeline = cmd->state.compute_pipeline;
+   struct tu_descriptor_state *descriptors_state =
+      &cmd->descriptors[VK_PIPELINE_BIND_POINT_COMPUTE];
+
+   VkResult result = tu_cs_reserve_space(cmd->device, cs, 256);
+   if (result != VK_SUCCESS) {
+      cmd->record_result = result;
+      return;
+   }
+
+   if (cmd->state.dirty & TU_CMD_DIRTY_COMPUTE_PIPELINE)
+      tu_cs_emit_ib(cs, &pipeline->program.state_ib);
+
+   struct tu_cs_entry ib;
+
+   ib = tu6_emit_consts(cmd, pipeline, descriptors_state, MESA_SHADER_COMPUTE);
+   if (ib.size)
+      tu_cs_emit_ib(cs, &ib);
+
+   tu_emit_compute_driver_params(cs, pipeline, info);
+
+   bool needs_border;
+   ib = tu6_emit_textures(cmd->device, &cmd->draw_state, pipeline,
+                          descriptors_state, MESA_SHADER_COMPUTE,
+                          &needs_border);
+   if (ib.size)
+      tu_cs_emit_ib(cs, &ib);
+
+   if (needs_border)
+      tu6_emit_border_color(cmd, cs);
+
+   ib = tu6_emit_ibo(cmd->device, &cmd->draw_state, pipeline,
+                     descriptors_state, MESA_SHADER_COMPUTE);
+   if (ib.size)
+      tu_cs_emit_ib(cs, &ib);
+
+   /* track BOs */
+   if (cmd->state.dirty & TU_CMD_DIRTY_DESCRIPTOR_SETS) {
+      unsigned i;
+      for_each_bit(i, descriptors_state->valid) {
+         struct tu_descriptor_set *set = descriptors_state->sets[i];
+         for (unsigned j = 0; j < set->layout->buffer_count; ++j)
+            if (set->descriptors[j]) {
+               tu_bo_list_add(&cmd->bo_list, set->descriptors[j],
+                              MSM_SUBMIT_BO_READ | MSM_SUBMIT_BO_WRITE);
+            }
+      }
+   }
+
+   /* Compute shader state overwrites fragment shader state, so we flag the
+    * graphics pipeline for re-emit.
+    */
+   cmd->state.dirty = TU_CMD_DIRTY_PIPELINE;
+
+   tu_cs_emit_pkt7(cs, CP_SET_MARKER, 1);
+   tu_cs_emit(cs, A6XX_CP_SET_MARKER_0_MODE(0x8));
+
+   const uint32_t *local_size = pipeline->compute.local_size;
+   const uint32_t *num_groups = info->blocks;
+   tu_cs_emit_pkt4(cs, REG_A6XX_HLSQ_CS_NDRANGE_0, 7);
+   tu_cs_emit(cs,
+              A6XX_HLSQ_CS_NDRANGE_0_KERNELDIM(3) |
+              A6XX_HLSQ_CS_NDRANGE_0_LOCALSIZEX(local_size[0] - 1) |
+              A6XX_HLSQ_CS_NDRANGE_0_LOCALSIZEY(local_size[1] - 1) |
+              A6XX_HLSQ_CS_NDRANGE_0_LOCALSIZEZ(local_size[2] - 1));
+   tu_cs_emit(cs, A6XX_HLSQ_CS_NDRANGE_1_GLOBALSIZE_X(local_size[0] * num_groups[0]));
+   tu_cs_emit(cs, 0);            /* HLSQ_CS_NDRANGE_2_GLOBALOFF_X */
+   tu_cs_emit(cs, A6XX_HLSQ_CS_NDRANGE_3_GLOBALSIZE_Y(local_size[1] * num_groups[1]));
+   tu_cs_emit(cs, 0);            /* HLSQ_CS_NDRANGE_4_GLOBALOFF_Y */
+   tu_cs_emit(cs, A6XX_HLSQ_CS_NDRANGE_5_GLOBALSIZE_Z(local_size[2] * num_groups[2]));
+   tu_cs_emit(cs, 0);            /* HLSQ_CS_NDRANGE_6_GLOBALOFF_Z */
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_HLSQ_CS_KERNEL_GROUP_X, 3);
+   tu_cs_emit(cs, 1);            /* HLSQ_CS_KERNEL_GROUP_X */
+   tu_cs_emit(cs, 1);            /* HLSQ_CS_KERNEL_GROUP_Y */
+   tu_cs_emit(cs, 1);            /* HLSQ_CS_KERNEL_GROUP_Z */
+
+   if (info->indirect) {
+      uint64_t iova = tu_buffer_iova(info->indirect) + info->indirect_offset;
+
+      tu_bo_list_add(&cmd->bo_list, info->indirect->bo,
+                     MSM_SUBMIT_BO_READ | MSM_SUBMIT_BO_WRITE);
+
+      tu_cs_emit_pkt7(cs, CP_EXEC_CS_INDIRECT, 4);
+      tu_cs_emit(cs, 0x00000000);
+      tu_cs_emit_qw(cs, iova);
+      tu_cs_emit(cs,
+                 A5XX_CP_EXEC_CS_INDIRECT_3_LOCALSIZEX(local_size[0] - 1) |
+                 A5XX_CP_EXEC_CS_INDIRECT_3_LOCALSIZEY(local_size[1] - 1) |
+                 A5XX_CP_EXEC_CS_INDIRECT_3_LOCALSIZEZ(local_size[2] - 1));
+   } else {
+      tu_cs_emit_pkt7(cs, CP_EXEC_CS, 4);
+      tu_cs_emit(cs, 0x00000000);
+      tu_cs_emit(cs, CP_EXEC_CS_1_NGROUPS_X(info->blocks[0]));
+      tu_cs_emit(cs, CP_EXEC_CS_2_NGROUPS_Y(info->blocks[1]));
+      tu_cs_emit(cs, CP_EXEC_CS_3_NGROUPS_Z(info->blocks[2]));
+   }
+
+   tu_cs_emit_wfi(cs);
+
+   tu6_emit_cache_flush(cmd, cs);
 }
 
 void

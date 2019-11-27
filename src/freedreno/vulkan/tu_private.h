@@ -825,8 +825,9 @@ struct tu_tiling_config
 enum tu_cmd_dirty_bits
 {
    TU_CMD_DIRTY_PIPELINE = 1 << 0,
-   TU_CMD_DIRTY_VERTEX_BUFFERS = 1 << 1,
-   TU_CMD_DIRTY_DESCRIPTOR_SETS = 1 << 2,
+   TU_CMD_DIRTY_COMPUTE_PIPELINE = 1 << 1,
+   TU_CMD_DIRTY_VERTEX_BUFFERS = 1 << 2,
+   TU_CMD_DIRTY_DESCRIPTOR_SETS = 1 << 3,
 
    TU_CMD_DIRTY_DYNAMIC_LINE_WIDTH = 1 << 16,
    TU_CMD_DIRTY_DYNAMIC_STENCIL_COMPARE_MASK = 1 << 17,
@@ -839,6 +840,7 @@ struct tu_cmd_state
    uint32_t dirty;
 
    struct tu_pipeline *pipeline;
+   struct tu_pipeline *compute_pipeline;
 
    /* Vertex buffers */
    struct
@@ -1167,6 +1169,11 @@ struct tu_pipeline
    {
       struct tu_cs_entry state_ib;
    } blend;
+
+   struct
+   {
+      uint32_t local_size[3];
+   } compute;
 };
 
 void

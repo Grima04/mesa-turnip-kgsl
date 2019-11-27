@@ -477,6 +477,52 @@ tu6_emit_fs_config(struct tu_cs *cs, const struct ir3_shader_variant *fs)
 }
 
 static void
+tu6_emit_cs_config(struct tu_cs *cs, const struct ir3_shader_variant *v)
+{
+   tu_cs_emit_pkt4(cs, REG_A6XX_HLSQ_UPDATE_CNTL, 1);
+   tu_cs_emit(cs, 0xff);
+
+   unsigned constlen = align(v->constlen, 4);
+   tu_cs_emit_pkt4(cs, REG_A6XX_HLSQ_CS_CNTL, 1);
+   tu_cs_emit(cs, A6XX_HLSQ_CS_CNTL_CONSTLEN(constlen) |
+              A6XX_HLSQ_CS_CNTL_ENABLED);
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_SP_CS_CONFIG, 2);
+   tu_cs_emit(cs, A6XX_SP_CS_CONFIG_ENABLED |
+              A6XX_SP_CS_CONFIG_NIBO(v->image_mapping.num_ibo) |
+              A6XX_SP_CS_CONFIG_NTEX(v->num_samp) |
+              A6XX_SP_CS_CONFIG_NSAMP(v->num_samp) |
+              A6XX_SP_CS_CONFIG_NIBO(v->image_mapping.num_ibo));
+   tu_cs_emit(cs, v->instrlen);
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_SP_CS_CTRL_REG0, 1);
+   tu_cs_emit(cs, A6XX_SP_CS_CTRL_REG0_THREADSIZE(FOUR_QUADS) |
+              A6XX_SP_CS_CTRL_REG0_FULLREGFOOTPRINT(v->info.max_reg + 1) |
+              A6XX_SP_CS_CTRL_REG0_MERGEDREGS |
+              A6XX_SP_CS_CTRL_REG0_BRANCHSTACK(v->branchstack) |
+              COND(v->need_pixlod, A6XX_SP_CS_CTRL_REG0_PIXLODENABLE));
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_SP_CS_UNKNOWN_A9B1, 1);
+   tu_cs_emit(cs, 0x41);
+
+   uint32_t local_invocation_id =
+      ir3_find_sysval_regid(v, SYSTEM_VALUE_LOCAL_INVOCATION_ID);
+   uint32_t work_group_id =
+      ir3_find_sysval_regid(v, SYSTEM_VALUE_WORK_GROUP_ID);
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_HLSQ_CS_CNTL_0, 2);
+   tu_cs_emit(cs,
+              A6XX_HLSQ_CS_CNTL_0_WGIDCONSTID(work_group_id) |
+              A6XX_HLSQ_CS_CNTL_0_UNK0(regid(63, 0)) |
+              A6XX_HLSQ_CS_CNTL_0_UNK1(regid(63, 0)) |
+              A6XX_HLSQ_CS_CNTL_0_LOCALIDREGID(local_invocation_id));
+   tu_cs_emit(cs, 0x2fc);             /* HLSQ_CS_UNKNOWN_B998 */
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_SP_CS_IBO_COUNT, 1);
+   tu_cs_emit(cs, v->image_mapping.num_ibo);
+}
+
+static void
 tu6_emit_vs_system_values(struct tu_cs *cs,
                           const struct ir3_shader_variant *vs)
 {
@@ -1441,13 +1487,12 @@ tu6_emit_blend_constants(struct tu_cs *cs, const float constants[4])
 }
 
 static VkResult
-tu_pipeline_builder_create_pipeline(struct tu_pipeline_builder *builder,
-                                    struct tu_pipeline **out_pipeline)
+tu_pipeline_create(struct tu_device *dev,
+                   const VkAllocationCallbacks *pAllocator,
+                   struct tu_pipeline **out_pipeline)
 {
-   struct tu_device *dev = builder->device;
-
    struct tu_pipeline *pipeline =
-      vk_zalloc2(&dev->alloc, builder->alloc, sizeof(*pipeline), 8,
+      vk_zalloc2(&dev->alloc, pAllocator, sizeof(*pipeline), 8,
                  VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (!pipeline)
       return VK_ERROR_OUT_OF_HOST_MEMORY;
@@ -1457,7 +1502,7 @@ tu_pipeline_builder_create_pipeline(struct tu_pipeline_builder *builder,
    /* reserve the space now such that tu_cs_begin_sub_stream never fails */
    VkResult result = tu_cs_reserve_space(dev, &pipeline->cs, 2048);
    if (result != VK_SUCCESS) {
-      vk_free2(&dev->alloc, builder->alloc, pipeline);
+      vk_free2(&dev->alloc, pAllocator, pipeline);
       return result;
    }
 
@@ -1813,7 +1858,8 @@ static VkResult
 tu_pipeline_builder_build(struct tu_pipeline_builder *builder,
                           struct tu_pipeline **pipeline)
 {
-   VkResult result = tu_pipeline_builder_create_pipeline(builder, pipeline);
+   VkResult result = tu_pipeline_create(builder->device, builder->alloc,
+                                        pipeline);
    if (result != VK_SUCCESS)
       return result;
 
@@ -1949,38 +1995,133 @@ tu_CreateGraphicsPipelines(VkDevice device,
    return final_result;
 }
 
+static void
+tu6_emit_compute_program(struct tu_cs *cs,
+                         struct tu_shader *shader,
+                         const struct tu_bo *binary_bo)
+{
+   const struct ir3_shader_variant *v = &shader->variants[0];
+
+   tu6_emit_cs_config(cs, v);
+
+   /* The compute program is the only one in the pipeline, so 0 offset. */
+   tu6_emit_shader_object(cs, MESA_SHADER_COMPUTE, v, binary_bo, 0);
+
+   tu6_emit_immediates(cs, v, CP_LOAD_STATE6_FRAG, SB6_CS_SHADER);
+}
+
 static VkResult
-tu_compute_pipeline_create(VkDevice _device,
+tu_compute_upload_shader(VkDevice device,
+                         struct tu_pipeline *pipeline,
+                         struct tu_shader *shader)
+{
+   TU_FROM_HANDLE(tu_device, dev, device);
+   struct tu_bo *bo = &pipeline->program.binary_bo;
+   struct ir3_shader_variant *v = &shader->variants[0];
+
+   uint32_t shader_size = sizeof(uint32_t) * v->info.sizedwords;
+   VkResult result =
+      tu_bo_init_new(dev, bo, shader_size);
+   if (result != VK_SUCCESS)
+      return result;
+
+   result = tu_bo_map(dev, bo);
+   if (result != VK_SUCCESS)
+      return result;
+
+   memcpy(bo->map, shader->binary, shader_size);
+
+   return VK_SUCCESS;
+}
+
+
+static VkResult
+tu_compute_pipeline_create(VkDevice device,
                            VkPipelineCache _cache,
                            const VkComputePipelineCreateInfo *pCreateInfo,
                            const VkAllocationCallbacks *pAllocator,
                            VkPipeline *pPipeline)
 {
+   TU_FROM_HANDLE(tu_device, dev, device);
+   const VkPipelineShaderStageCreateInfo *stage_info = &pCreateInfo->stage;
+   VkResult result;
+
+   struct tu_pipeline *pipeline;
+
+   result = tu_pipeline_create(dev, pAllocator, &pipeline);
+   if (result != VK_SUCCESS)
+      return result;
+
+   struct tu_shader_compile_options options;
+   tu_shader_compile_options_init(&options, NULL);
+
+   struct tu_shader *shader =
+      tu_shader_create(dev, MESA_SHADER_COMPUTE, stage_info, pAllocator);
+   if (!shader) {
+      result = VK_ERROR_OUT_OF_HOST_MEMORY;
+      goto fail;
+   }
+
+   result = tu_shader_compile(dev, shader, NULL, &options, pAllocator);
+   if (result != VK_SUCCESS)
+      return result;
+
+   struct tu_program_descriptor_linkage *link = &pipeline->program.link[MESA_SHADER_COMPUTE];
+   struct ir3_shader_variant *v = &shader->variants[0];
+
+   link->ubo_state = v->shader->ubo_state;
+   link->const_state = v->shader->const_state;
+   link->constlen = v->constlen;
+   link->texture_map = shader->texture_map;
+   link->sampler_map = shader->sampler_map;
+   link->ubo_map = shader->ubo_map;
+   link->ssbo_map = shader->ssbo_map;
+   link->image_mapping =  v->image_mapping;
+
+   result = tu_compute_upload_shader(device, pipeline, shader);
+   if (result != VK_SUCCESS)
+      return result;
+
+   for (int i = 0; i < 3; i++)
+      pipeline->compute.local_size[i] = v->shader->nir->info.cs.local_size[i];
+
+   struct tu_cs prog_cs;
+   tu_cs_begin_sub_stream(dev, &pipeline->cs, 512, &prog_cs);
+   tu6_emit_compute_program(&prog_cs, shader, &pipeline->program.binary_bo);
+   pipeline->program.state_ib = tu_cs_end_sub_stream(&pipeline->cs, &prog_cs);
+
+   *pPipeline = tu_pipeline_to_handle(pipeline);
    return VK_SUCCESS;
+
+fail:
+   tu_shader_destroy(dev, shader, pAllocator);
+   if (result != VK_SUCCESS) {
+      tu_pipeline_finish(pipeline, dev, pAllocator);
+      vk_free2(&dev->alloc, pAllocator, pipeline);
+   }
+
+   return result;
 }
 
 VkResult
-tu_CreateComputePipelines(VkDevice _device,
+tu_CreateComputePipelines(VkDevice device,
                           VkPipelineCache pipelineCache,
                           uint32_t count,
                           const VkComputePipelineCreateInfo *pCreateInfos,
                           const VkAllocationCallbacks *pAllocator,
                           VkPipeline *pPipelines)
 {
-   VkResult result = VK_SUCCESS;
+   VkResult final_result = VK_SUCCESS;
 
-   unsigned i = 0;
-   for (; i < count; i++) {
-      VkResult r;
-      r = tu_compute_pipeline_create(_device, pipelineCache, &pCreateInfos[i],
-                                     pAllocator, &pPipelines[i]);
-      if (r != VK_SUCCESS) {
-         result = r;
-      }
-      pPipelines[i] = VK_NULL_HANDLE;
+   for (uint32_t i = 0; i < count; i++) {
+      VkResult result = tu_compute_pipeline_create(device, pipelineCache,
+                                                   &pCreateInfos[i],
+                                                   pAllocator, &pPipelines[i]);
+      if (result != VK_SUCCESS)
+         final_result = result;
    }
 
-   return result;
+   return final_result;
 }
 
 void
