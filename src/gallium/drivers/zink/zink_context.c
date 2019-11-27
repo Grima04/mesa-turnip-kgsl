@@ -1041,6 +1041,8 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
 {
    struct zink_screen *screen = zink_screen(pscreen);
    struct zink_context *ctx = CALLOC_STRUCT(zink_context);
+   if (!ctx)
+      goto fail;
 
    ctx->base.screen = pscreen;
    ctx->base.priv = priv;
