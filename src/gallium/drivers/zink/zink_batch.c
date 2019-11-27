@@ -113,8 +113,7 @@ zink_batch_reference_sampler_view(struct zink_batch *batch,
 {
    struct set_entry *entry = _mesa_set_search(batch->sampler_views, sv);
    if (!entry) {
-      struct pipe_sampler_view *tmp = NULL;
       entry = _mesa_set_add(batch->sampler_views, sv);
-      pipe_sampler_view_reference(&tmp, &sv->base);
+      pipe_reference(NULL, &sv->base.reference);
    }
 }
