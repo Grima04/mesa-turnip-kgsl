@@ -31,6 +31,35 @@
 #include "v3dv_private.h"
 #include "vk_util.h"
 
+#include "compiler/glsl_types.h"
+
+static void *
+default_alloc_func(void *pUserData, size_t size, size_t align,
+                   VkSystemAllocationScope allocationScope)
+{
+   return malloc(size);
+}
+
+static void *
+default_realloc_func(void *pUserData, void *pOriginal, size_t size,
+                     size_t align, VkSystemAllocationScope allocationScope)
+{
+   return realloc(pOriginal, size);
+}
+
+static void
+default_free_func(void *pUserData, void *pMemory)
+{
+   free(pMemory);
+}
+
+static const VkAllocationCallbacks default_alloc = {
+   .pUserData = NULL,
+   .pfnAllocation = default_alloc_func,
+   .pfnReallocation = default_realloc_func,
+   .pfnFree = default_free_func,
+};
+
 VkResult
 v3dv_EnumerateInstanceExtensionProperties(const char *pLayerName,
                                           uint32_t *pPropertyCount,
@@ -54,7 +83,120 @@ v3dv_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
                     const VkAllocationCallbacks *pAllocator,
                     VkInstance *pInstance)
 {
-   /* FIXME: stub */
+   struct v3dv_instance *instance;
+   VkResult result;
+
+   assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO);
+
+   struct v3dv_instance_extension_table enabled_extensions = {};
+   for (uint32_t i = 0; i < pCreateInfo->enabledExtensionCount; i++) {
+      int idx;
+      for (idx = 0; idx < V3DV_INSTANCE_EXTENSION_COUNT; idx++) {
+         if (strcmp(pCreateInfo->ppEnabledExtensionNames[i],
+                    v3dv_instance_extensions[idx].extensionName) == 0)
+            break;
+      }
+
+      if (idx >= V3DV_INSTANCE_EXTENSION_COUNT)
+         return vk_error(NULL, VK_ERROR_EXTENSION_NOT_PRESENT);
+
+      if (!v3dv_instance_extensions_supported.extensions[idx])
+         return vk_error(NULL, VK_ERROR_EXTENSION_NOT_PRESENT);
+
+      enabled_extensions.extensions[idx] = true;
+   }
+
+   instance = vk_alloc2(&default_alloc, pAllocator, sizeof(*instance), 8,
+                        VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE);
+   if (!instance)
+      return vk_error(NULL, VK_ERROR_OUT_OF_HOST_MEMORY);
+
+   instance->_loader_data.loaderMagic = ICD_LOADER_MAGIC;
+
+   if (pAllocator)
+      instance->alloc = *pAllocator;
+   else
+      instance->alloc = default_alloc;
+
+   instance->app_info = (struct v3dv_app_info) { .api_version = 0 };
+   if (pCreateInfo->pApplicationInfo) {
+      const VkApplicationInfo *app = pCreateInfo->pApplicationInfo;
+
+      instance->app_info.app_name =
+         vk_strdup(&instance->alloc, app->pApplicationName,
+                   VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE);
+      instance->app_info.app_version = app->applicationVersion;
+
+      instance->app_info.engine_name =
+         vk_strdup(&instance->alloc, app->pEngineName,
+                   VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE);
+      instance->app_info.engine_version = app->engineVersion;
+
+      instance->app_info.api_version = app->apiVersion;
+   }
+
+   if (instance->app_info.api_version == 0)
+      instance->app_info.api_version = VK_API_VERSION_1_0;
+
+   instance->enabled_extensions = enabled_extensions;
+
+   for (unsigned i = 0; i < ARRAY_SIZE(instance->dispatch.entrypoints); i++) {
+      /* Vulkan requires that entrypoints for extensions which have not been
+       * enabled must not be advertised.
+       */
+      if (!v3dv_instance_entrypoint_is_enabled(i,
+                                              instance->app_info.api_version,
+                                              &instance->enabled_extensions)) {
+         instance->dispatch.entrypoints[i] = NULL;
+      } else {
+         instance->dispatch.entrypoints[i] =
+            v3dv_instance_dispatch_table.entrypoints[i];
+      }
+   }
+
+   struct v3dv_physical_device *pdevice = &instance->physicalDevice;
+   for (unsigned i = 0; i < ARRAY_SIZE(pdevice->dispatch.entrypoints); i++) {
+      /* Vulkan requires that entrypoints for extensions which have not been
+       * enabled must not be advertised.
+       */
+      if (!v3dv_physical_device_entrypoint_is_enabled(i,
+                                                     instance->app_info.api_version,
+                                                     &instance->enabled_extensions)) {
+         pdevice->dispatch.entrypoints[i] = NULL;
+      } else {
+         pdevice->dispatch.entrypoints[i] =
+            v3dv_physical_device_dispatch_table.entrypoints[i];
+      }
+   }
+
+   for (unsigned i = 0; i < ARRAY_SIZE(instance->device_dispatch.entrypoints); i++) {
+      /* Vulkan requires that entrypoints for extensions which have not been
+       * enabled must not be advertised.
+       */
+      if (!v3dv_device_entrypoint_is_enabled(i,
+                                            instance->app_info.api_version,
+                                            &instance->enabled_extensions,
+                                            NULL)) {
+         instance->device_dispatch.entrypoints[i] = NULL;
+      } else {
+         instance->device_dispatch.entrypoints[i] =
+            v3dv_device_dispatch_table.entrypoints[i];
+      }
+   }
+
+   instance->physicalDeviceCount = -1;
+
+   result = vk_debug_report_instance_init(&instance->debug_report_callbacks);
+   if (result != VK_SUCCESS) {
+      vk_free2(&default_alloc, pAllocator, instance);
+      return vk_error(NULL, result);
+   }
+
+   glsl_type_singleton_init_or_ref();
+
+   VG(VALGRIND_CREATE_MEMPOOL(instance, 0, false));
+
+   *pInstance = v3dv_instance_to_handle(instance);
 
    return VK_SUCCESS;
 }

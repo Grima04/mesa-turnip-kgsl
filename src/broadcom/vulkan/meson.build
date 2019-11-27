@@ -77,6 +77,8 @@ libvulkan_broadcom = shared_library(
   ],
   link_with : [
     libbroadcom_v3d,
+    # For glsl_type_singleton_init_or_ref:
+    libglsl,
   ],
   dependencies : v3dv_deps,
   c_args : v3dv_flags,

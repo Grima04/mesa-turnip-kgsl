@@ -51,6 +51,8 @@
 #include "v3dv_entrypoints.h"
 #include "v3dv_extensions.h"
 
+#include "vk_alloc.h"
+
 struct v3dv_instance;
 
 struct v3dv_device {
