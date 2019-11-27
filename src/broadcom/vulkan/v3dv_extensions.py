@@ -62,7 +62,7 @@ API_VERSIONS = [
 MAX_API_VERSION = None # Computed later
 
 EXTENSIONS = [
-    #FIXME: for now we don't support additional extensions beyond 1.0. Revisit later
+    Extension('VK_EXT_debug_report',                      9, True),
 ]
 
 # Sort the extension list the way we expect: KHR, then EXT, then vendors

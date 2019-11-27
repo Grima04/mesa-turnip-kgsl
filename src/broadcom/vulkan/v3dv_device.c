@@ -239,3 +239,25 @@ v3dv_GetDeviceQueue(VkDevice _device,
 {
    /* FIXME: stub */
 }
+
+VkResult
+v3dv_CreateDebugReportCallbackEXT(VkInstance _instance,
+                                 const VkDebugReportCallbackCreateInfoEXT* pCreateInfo,
+                                 const VkAllocationCallbacks* pAllocator,
+                                 VkDebugReportCallbackEXT* pCallback)
+{
+   V3DV_FROM_HANDLE(v3dv_instance, instance, _instance);
+   return vk_create_debug_report_callback(&instance->debug_report_callbacks,
+                                          pCreateInfo, pAllocator, &instance->alloc,
+                                          pCallback);
+}
+
+void
+v3dv_DestroyDebugReportCallbackEXT(VkInstance _instance,
+                                  VkDebugReportCallbackEXT _callback,
+                                  const VkAllocationCallbacks* pAllocator)
+{
+   V3DV_FROM_HANDLE(v3dv_instance, instance, _instance);
+   vk_destroy_debug_report_callback(&instance->debug_report_callbacks,
+                                    _callback, pAllocator, &instance->alloc);
+}
