@@ -36,7 +36,8 @@
  * list". Finally, the rasterization unit consumes the polygon list to invoke
  * the fragment shader.
  *
- * In practice, it's a bit more complicated than this. 16x16 is the logical
+ * In practice, it's a bit more complicated than this. On Midgard chips with an
+ * "advanced tiling unit" (all except T720/T820/T830), 16x16 is the logical
  * tile size, but Midgard features "hierarchical tiling", where power-of-two
  * multiples of the base tile size can be used: hierarchy level 0 (16x16),
  * level 1 (32x32), level 2 (64x64), per public information about Midgard's
@@ -152,6 +153,50 @@
  * Once we have that mask and the framebuffer dimensions, we can compute the
  * size of the statically-sized polygon list structures, allocate them, and go!
  *
+ * -----
+ *
+ * On T720, T820, and T830, there is no support for hierarchical tiling.
+ * Instead, the hardware allows the driver to select the tile size dynamically
+ * on a per-framebuffer basis, including allowing rectangular/non-square tiles.
+ * Rules for tile size selection are as follows:
+ *
+ *  - Dimensions must be powers-of-two.
+ *  - The smallest tile is 16x16.
+ *  - The tile width/height is at most the framebuffer w/h (clamp up to 16 pix)
+ *  - There must be no more than 64 tiles in either dimension.
+ *
+ * Within these constraints, the driver is free to pick a tile size according
+ * to some heuristic, similar to units with an advanced tiling unit.
+ *
+ * To pick a size without any heuristics, we may satisfy the constraints by
+ * defaulting to 16x16 (a power-of-two). This fits the minimum. For the size
+ * constraint, consider:
+ *
+ *      # of tiles < 64
+ *      ceil (fb / tile) < 64
+ *      (fb / tile) <= (64 - 1)
+ *      tile <= fb / (64 - 1) <= next_power_of_two(fb / (64 - 1))
+ *
+ * Hence we clamp up to align_pot(fb / (64 - 1)).
+ 
+ * Extending to use a selection heuristic left for future work.
+ *
+ * Once the tile size (w, h) is chosen, we compute the hierarchy "mask":
+ *
+ *      hierarchy_mask = (log2(h / 16) << 6) | log2(w / 16)
+ *
+ * Of course with no hierarchical tiling, this is not a mask; it's just a field
+ * specifying the tile size. But I digress.
+ *
+ * We also compute the polgon list sizes (with framebuffer size W, H) as:
+ *
+ *      full_size = 0x200 + 0x200 * ceil(W / w) * ceil(H / h)
+ *      offset = 8 * ceil(W / w) * ceil(H / h)
+ *
+ * It further appears necessary to round down offset to the nearest 0x200.
+ * Possibly we would also round down full_size to the nearest 0x200 but
+ * full_size/0x200 = (1 + ceil(W / w) * ceil(H / h)) is an integer so there's
+ * nothing to do.
  */
 
 /* Hierarchical tiling spans from 16x16 to 4096x4096 tiles */
