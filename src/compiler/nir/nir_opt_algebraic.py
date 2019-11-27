@@ -1013,6 +1013,56 @@ optimizations.extend([
    (('usub_sat', a, b), ('bcsel', ('ult', a, b), 0, ('isub', a, b)), 'options->lower_add_sat'),
    (('usub_sat@64', a, b), ('bcsel', ('ult', a, b), 0, ('isub', a, b)), 'options->lower_usub_sat64 || (options->lower_int64_options & nir_lower_iadd64) != 0'),
 
+   # int64_t sum = a + b;
+   #
+   # if (a < 0 && b < 0 && a < sum)
+   #    sum = INT64_MIN;
+   # } else if (a >= 0 && b >= 0 && sum < a)
+   #    sum = INT64_MAX;
+   # }
+   #
+   # A couple optimizations are applied.
+   #
+   # 1. a < sum => sum >= 0.  This replacement works because it is known that
+   #    a < 0 and b < 0, so sum should also be < 0 unless there was
+   #    underflow.
+   #
+   # 2. sum < a => sum < 0.  This replacement works because it is known that
+   #    a >= 0 and b >= 0, so sum should also be >= 0 unless there was
+   #    overflow.
+   #
+   # 3. Invert the second if-condition and swap the order of parameters for
+   #    the bcsel. !(a >= 0 && b >= 0 && sum < 0) becomes !(a >= 0) || !(b >=
+   #    0) || !(sum < 0), and that becomes (a < 0) || (b < 0) || (sum >= 0)
+   #
+   # On Intel Gen11, this saves ~11 instructions.
+   (('iadd_sat@64', a, b), ('bcsel',
+                            ('iand', ('iand', ('ilt', a, 0), ('ilt', b, 0)), ('ige', ('iadd', a, b), 0)),
+                            0x8000000000000000,
+                            ('bcsel',
+                             ('ior', ('ior', ('ilt', a, 0), ('ilt', b, 0)), ('ige', ('iadd', a, b), 0)),
+                             ('iadd', a, b),
+                             0x7fffffffffffffff)),
+    '(options->lower_int64_options & nir_lower_iadd64) != 0'),
+
+   # int64_t sum = a - b;
+   #
+   # if (a < 0 && b >= 0 && a < sum)
+   #    sum = INT64_MIN;
+   # } else if (a >= 0 && b < 0 && a >= sum)
+   #    sum = INT64_MAX;
+   # }
+   #
+   # Optimizations similar to the iadd_sat case are applied here.
+   (('isub_sat@64', a, b), ('bcsel',
+                            ('iand', ('iand', ('ilt', a, 0), ('ige', b, 0)), ('ige', ('isub', a, b), 0)),
+                            0x8000000000000000,
+                            ('bcsel',
+                             ('ior', ('ior', ('ilt', a, 0), ('ige', b, 0)), ('ige', ('isub', a, b), 0)),
+                             ('isub', a, b),
+                             0x7fffffffffffffff)),
+    '(options->lower_int64_options & nir_lower_iadd64) != 0'),
+
    # Alternative lowering that doesn't rely on bfi.
    (('bitfield_insert', 'base', 'insert', 'offset', 'bits'),
     ('bcsel', ('ult', 31, 'bits'),
