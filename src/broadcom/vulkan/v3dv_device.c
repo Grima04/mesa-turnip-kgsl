@@ -498,3 +498,105 @@ v3dv_DestroyDebugReportCallbackEXT(VkInstance _instance,
    vk_destroy_debug_report_callback(&instance->debug_report_callbacks,
                                     _callback, pAllocator, &instance->alloc);
 }
+
+VkResult
+v3dv_AllocateMemory(VkDevice _device,
+                    const VkMemoryAllocateInfo *pAllocateInfo,
+                    const VkAllocationCallbacks *pAllocator,
+                    VkDeviceMemory *pMem)
+{
+   V3DV_FROM_HANDLE(v3dv_device, device, _device);
+   struct v3dv_device_memory *mem;
+   /* struct v3dv_physical_device *pdevice = &device->instance->physicalDevice; */
+
+   assert(pAllocateInfo->sType == VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO);
+
+   /* The Vulkan 1.0.33 spec says "allocationSize must be greater than 0". */
+   assert(pAllocateInfo->allocationSize > 0);
+
+   if (pAllocateInfo->allocationSize > MAX_MEMORY_ALLOCATION_SIZE)
+      return VK_ERROR_OUT_OF_DEVICE_MEMORY;
+
+   mem = vk_alloc2(&device->alloc, pAllocator, sizeof(*mem), 8,
+                   VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   if (mem == NULL)
+      return vk_error(NULL, VK_ERROR_OUT_OF_HOST_MEMORY);
+
+   /* FIXME: assert(pAllocateInfo->memoryTypeIndex < pdevice->memory.type_count); */
+   /* FIXME: mem->type = &pdevice->memory.types[pAllocateInfo->memoryTypeIndex]; */
+   mem->map = NULL;
+   mem->map_size = 0;
+
+   /* FIXME: stub */
+
+   return VK_SUCCESS;
+}
+
+void
+v3dv_FreeMemory(VkDevice _device,
+                VkDeviceMemory _mem,
+                const VkAllocationCallbacks *pAllocator)
+{
+   V3DV_FROM_HANDLE(v3dv_device, device, _device);
+   V3DV_FROM_HANDLE(v3dv_device_memory, mem, _mem);
+
+   if (mem == NULL)
+      return;
+
+   if (mem->map)
+      v3dv_UnmapMemory(_device, _mem);
+
+   /* FIXME: stub */
+
+   vk_free2(&device->alloc, pAllocator, mem);
+}
+
+VkResult
+v3dv_MapMemory(VkDevice _device,
+               VkDeviceMemory _memory,
+               VkDeviceSize offset,
+               VkDeviceSize size,
+               VkMemoryMapFlags flags,
+               void **ppData)
+{
+   V3DV_FROM_HANDLE(v3dv_device, device, _device);
+   V3DV_FROM_HANDLE(v3dv_device_memory, mem, _memory);
+
+   if (mem == NULL) {
+      *ppData = NULL;
+      return VK_SUCCESS;
+   }
+
+   /* FIXME: stub */
+
+   return vk_error(device->instance, VK_ERROR_MEMORY_MAP_FAILED);
+}
+
+void
+v3dv_UnmapMemory(VkDevice _device,
+                 VkDeviceMemory _memory)
+{
+   /* FIXME: stub */
+}
+
+VkResult
+v3dv_FlushMappedMemoryRanges(VkDevice _device,
+                             uint32_t memoryRangeCount,
+                             const VkMappedMemoryRange *pMemoryRanges)
+{
+   /* FIXME: stub (although note that both radv and tu just returns success
+    * here. Pending further research)
+    */
+   return VK_SUCCESS;
+}
+
+VkResult
+v3dv_InvalidateMappedMemoryRanges(VkDevice _device,
+                                  uint32_t memoryRangeCount,
+                                  const VkMappedMemoryRange *pMemoryRanges)
+{
+   /* FIXME: stub (although note that both radv and tu just returns success
+    * here. Pending further research)
+    */
+   return VK_SUCCESS;
+}

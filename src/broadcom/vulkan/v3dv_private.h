@@ -53,6 +53,14 @@
 
 #include "vk_alloc.h"
 
+/*
+ * FIXME: confirm value
+ *
+ * FIXME: seems like a good idea having something like this, as anv, but both
+ * tu/radv doesn't check for this issue. Need to revisit.
+ */
+#define MAX_MEMORY_ALLOCATION_SIZE (1ull << 31)
+
 struct v3dv_instance;
 
 struct v3dv_device {
@@ -123,6 +131,14 @@ struct v3dv_cmd_buffer {
    /* FIXME: stub */
 };
 
+struct v3dv_device_memory {
+   /* FIXME: stub */
+   /* FIXME: likely would include links to structures similar to v3d_bo
+    * (perhaps we should refactor existing v3d_bo?) */
+   VkDeviceSize map_size;
+   void *map;
+};
+
 uint32_t v3dv_physical_device_api_version(struct v3dv_physical_device *dev);
 
 int v3dv_get_instance_entrypoint_index(const char *name);
@@ -173,6 +189,20 @@ void v3dv_loge_v(const char *format, va_list va);
       return (__VkType) _obj;                           \
    }
 
+#define V3DV_DEFINE_NONDISP_HANDLE_CASTS(__v3dv_type, __VkType)              \
+                                                                           \
+   static inline struct __v3dv_type *                                       \
+   __v3dv_type ## _from_handle(__VkType _handle)                            \
+   {                                                                       \
+      return (struct __v3dv_type *)(uintptr_t) _handle;                     \
+   }                                                                       \
+                                                                           \
+   static inline __VkType                                                  \
+   __v3dv_type ## _to_handle(struct __v3dv_type *_obj)                       \
+   {                                                                       \
+      return (__VkType)(uintptr_t) _obj;                                   \
+   }
+
 #define V3DV_FROM_HANDLE(__v3dv_type, __name, __handle)			\
    struct __v3dv_type *__name = __v3dv_type ## _from_handle(__handle)
 
@@ -182,5 +212,6 @@ V3DV_DEFINE_HANDLE_CASTS(v3dv_instance, VkInstance)
 V3DV_DEFINE_HANDLE_CASTS(v3dv_physical_device, VkPhysicalDevice)
 V3DV_DEFINE_HANDLE_CASTS(v3dv_queue, VkQueue)
 
+V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_device_memory, VkDeviceMemory)
 
 #endif /* V3DV_PRIVATE_H */
