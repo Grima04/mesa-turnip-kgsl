@@ -5667,9 +5667,21 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
    }
    case nir_intrinsic_load_local_invocation_index: {
       Temp id = emit_mbcnt(ctx, bld.def(v1));
-      Temp tg_num = bld.sop2(aco_opcode::s_and_b32, bld.def(s1), bld.def(s1, scc), Operand(0xfc0u),
-                             get_arg(ctx, ctx->args->ac.tg_size));
-      bld.vop2(aco_opcode::v_or_b32, Definition(get_ssa_temp(ctx, &instr->dest.ssa)), tg_num, id);
+
+      /* The tg_size bits [6:11] contain the subgroup id,
+       * we need this multiplied by the wave size, and then OR the thread id to it.
+       */
+      if (ctx->program->wave_size == 64) {
+         /* After the s_and the bits are already multiplied by 64 (left shifted by 6) so we can just feed that to v_or */
+         Temp tg_num = bld.sop2(aco_opcode::s_and_b32, bld.def(s1), bld.def(s1, scc), Operand(0xfc0u),
+                                get_arg(ctx, ctx->args->ac.tg_size));
+         bld.vop2(aco_opcode::v_or_b32, Definition(get_ssa_temp(ctx, &instr->dest.ssa)), tg_num, id);
+      } else {
+         /* Extract the bit field and multiply the result by 32 (left shift by 5), then do the OR  */
+         Temp tg_num = bld.sop2(aco_opcode::s_bfe_u32, bld.def(s1), bld.def(s1, scc),
+                                get_arg(ctx, ctx->args->ac.tg_size), Operand(0x6u | (0x6u << 16)));
+         bld.vop3(aco_opcode::v_lshl_or_b32, Definition(get_ssa_temp(ctx, &instr->dest.ssa)), tg_num, Operand(0x5u), id);
+      }
       break;
    }
    case nir_intrinsic_load_subgroup_id: {
