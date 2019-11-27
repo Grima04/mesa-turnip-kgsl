@@ -54,7 +54,7 @@ void process_live_temps_per_block(Program *program, live& lives, Block* block,
    bool exec_live = false;
    if (block->live_out_exec != Temp()) {
       live_sgprs.insert(block->live_out_exec);
-      new_demand.sgpr += 2;
+      new_demand.sgpr += program->lane_mask.size();
       exec_live = true;
    }
 
@@ -77,10 +77,10 @@ void process_live_temps_per_block(Program *program, live& lives, Block* block,
       if (is_phi(insn))
          break;
 
-      /* substract the 2 sgprs from exec */
+      /* substract the 1 or 2 sgprs from exec */
       if (exec_live)
-         assert(new_demand.sgpr >= 2);
-      register_demand[idx] = RegisterDemand(new_demand.vgpr, new_demand.sgpr - (exec_live ? 2 : 0));
+         assert(new_demand.sgpr >= (int16_t) program->lane_mask.size());
+      register_demand[idx] = RegisterDemand(new_demand.vgpr, new_demand.sgpr - (exec_live ? program->lane_mask.size() : 0));
 
       /* KILL */
       for (Definition& definition : insn->definitions) {
@@ -144,8 +144,8 @@ void process_live_temps_per_block(Program *program, live& lives, Block* block,
 
    /* update block's register demand for a last time */
    if (exec_live)
-      assert(new_demand.sgpr >= 2);
-   new_demand.sgpr -= exec_live ? 2 : 0;
+      assert(new_demand.sgpr >= (int16_t) program->lane_mask.size());
+   new_demand.sgpr -= exec_live ? program->lane_mask.size() : 0;
    block->register_demand.update(new_demand);
 
    /* handle phi definitions */

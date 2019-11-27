@@ -172,7 +172,7 @@ void setup_reduce_temp(Program* program)
             clobber_vcc = true;
 
          if (clobber_vcc)
-            instr->definitions[4] = Definition(vcc, s2);
+            instr->definitions[4] = Definition(vcc, bld.lm);
       }
    }
 }

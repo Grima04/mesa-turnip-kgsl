@@ -190,7 +190,7 @@ void validate(Program* program, FILE * output)
                }
             } else if (instr->opcode == aco_opcode::p_phi) {
                check(instr->operands.size() == block.logical_preds.size(), "Number of Operands does not match number of predecessors", instr.get());
-               check(instr->definitions[0].getTemp().type() == RegType::vgpr || instr->definitions[0].getTemp().regClass() == s2, "Logical Phi Definition must be vgpr or divergent boolean", instr.get());
+               check(instr->definitions[0].getTemp().type() == RegType::vgpr || instr->definitions[0].getTemp().regClass() == program->lane_mask, "Logical Phi Definition must be vgpr or divergent boolean", instr.get());
             } else if (instr->opcode == aco_opcode::p_linear_phi) {
                for (const Operand& op : instr->operands)
                   check(!op.isTemp() || op.getTemp().is_linear(), "Wrong Operand type", instr.get());

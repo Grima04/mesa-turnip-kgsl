@@ -351,12 +351,12 @@ Temp bool_to_vector_condition(isel_context *ctx, Temp val, Temp dst = Temp(0, s2
 {
    Builder bld(ctx->program, ctx->block);
    if (!dst.id())
-      dst = bld.tmp(s2);
+      dst = bld.tmp(bld.lm);
 
    assert(val.regClass() == s1);
-   assert(dst.regClass() == s2);
+   assert(dst.regClass() == bld.lm);
 
-   return bld.sop2(aco_opcode::s_cselect_b64, bld.hint_vcc(Definition(dst)), Operand((uint32_t) -1), Operand(0u), bld.scc(val));
+   return bld.sop2(Builder::s_cselect, bld.hint_vcc(Definition(dst)), Operand((uint32_t) -1), Operand(0u), bld.scc(val));
 }
 
 Temp bool_to_scalar_condition(isel_context *ctx, Temp val, Temp dst = Temp(0, s1))
@@ -365,12 +365,12 @@ Temp bool_to_scalar_condition(isel_context *ctx, Temp val, Temp dst = Temp(0, s1
    if (!dst.id())
       dst = bld.tmp(s1);
 
-   assert(val.regClass() == s2);
+   assert(val.regClass() == bld.lm);
    assert(dst.regClass() == s1);
 
    /* if we're currently in WQM mode, ensure that the source is also computed in WQM */
    Temp tmp = bld.tmp(s1);
-   bld.sop2(aco_opcode::s_and_b64, bld.def(s2), bld.scc(Definition(tmp)), val, Operand(exec, s2));
+   bld.sop2(Builder::s_and, bld.def(bld.lm), bld.scc(Definition(tmp)), val, Operand(exec, bld.lm));
    return emit_wqm(ctx, tmp, dst);
 }
 
@@ -489,6 +489,8 @@ void emit_vopc_instruction(isel_context *ctx, nir_alu_instr *instr, aco_opcode o
 {
    Temp src0 = get_alu_src(ctx, instr->src[0]);
    Temp src1 = get_alu_src(ctx, instr->src[1]);
+   assert(src0.size() == src1.size());
+
    aco_ptr<Instruction> vopc;
    if (src1.type() == RegType::sgpr) {
       if (src0.type() == RegType::vgpr) {
@@ -549,12 +551,13 @@ void emit_sopc_instruction(isel_context *ctx, nir_alu_instr *instr, aco_opcode o
 {
    Temp src0 = get_alu_src(ctx, instr->src[0]);
    Temp src1 = get_alu_src(ctx, instr->src[1]);
+   Builder bld(ctx->program, ctx->block);
 
-   assert(dst.regClass() == s2);
+   assert(dst.regClass() == bld.lm);
    assert(src0.type() == RegType::sgpr);
    assert(src1.type() == RegType::sgpr);
+   assert(src0.regClass() == src1.regClass());
 
-   Builder bld(ctx->program, ctx->block);
    /* Emit the SALU comparison instruction */
    Temp cmp = bld.sopc(op, bld.scc(bld.def(s1)), src0, src1);
    /* Turn the result into a per-lane bool */
@@ -580,17 +583,17 @@ void emit_comparison(isel_context *ctx, nir_alu_instr *instr, Temp dst,
       emit_sopc_instruction(ctx, instr, op, dst);
 }
 
-void emit_boolean_logic(isel_context *ctx, nir_alu_instr *instr, aco_opcode op64, Temp dst)
+void emit_boolean_logic(isel_context *ctx, nir_alu_instr *instr, Builder::WaveSpecificOpcode op, Temp dst)
 {
    Builder bld(ctx->program, ctx->block);
    Temp src0 = get_alu_src(ctx, instr->src[0]);
    Temp src1 = get_alu_src(ctx, instr->src[1]);
 
-   assert(dst.regClass() == s2);
-   assert(src0.regClass() == s2);
-   assert(src1.regClass() == s2);
+   assert(dst.regClass() == bld.lm);
+   assert(src0.regClass() == bld.lm);
+   assert(src1.regClass() == bld.lm);
 
-   bld.sop2(op64, Definition(dst), bld.def(s1, scc), src0, src1);
+   bld.sop2(op, Definition(dst), bld.def(s1, scc), src0, src1);
 }
 
 void emit_bcsel(isel_context *ctx, nir_alu_instr *instr, Temp dst)
@@ -600,7 +603,7 @@ void emit_bcsel(isel_context *ctx, nir_alu_instr *instr, Temp dst)
    Temp then = get_alu_src(ctx, instr->src[1]);
    Temp els = get_alu_src(ctx, instr->src[2]);
 
-   assert(cond.regClass() == s2);
+   assert(cond.regClass() == bld.lm);
 
    if (dst.type() == RegType::vgpr) {
       aco_ptr<Instruction> bcsel;
@@ -628,14 +631,15 @@ void emit_bcsel(isel_context *ctx, nir_alu_instr *instr, Temp dst)
    }
 
    if (instr->dest.dest.ssa.bit_size == 1) {
-      assert(dst.regClass() == s2);
-      assert(then.regClass() == s2);
-      assert(els.regClass() == s2);
+      assert(dst.regClass() == bld.lm);
+      assert(then.regClass() == bld.lm);
+      assert(els.regClass() == bld.lm);
    }
 
    if (!ctx->divergent_vals[instr->src[0].src.ssa->index]) { /* uniform condition and values in sgpr */
       if (dst.regClass() == s1 || dst.regClass() == s2) {
          assert((then.regClass() == s1 || then.regClass() == s2) && els.regClass() == then.regClass());
+         assert(dst.size() == then.size());
          aco_opcode op = dst.regClass() == s1 ? aco_opcode::s_cselect_b32 : aco_opcode::s_cselect_b64;
          bld.sop2(op, Definition(dst), then, els, bld.scc(bool_to_scalar_condition(ctx, cond)));
       } else {
@@ -652,20 +656,20 @@ void emit_bcsel(isel_context *ctx, nir_alu_instr *instr, Temp dst)
    assert(instr->dest.dest.ssa.bit_size == 1);
 
    if (cond.id() != then.id())
-      then = bld.sop2(aco_opcode::s_and_b64, bld.def(s2), bld.def(s1, scc), cond, then);
+      then = bld.sop2(Builder::s_and, bld.def(bld.lm), bld.def(s1, scc), cond, then);
 
    if (cond.id() == els.id())
-      bld.sop1(aco_opcode::s_mov_b64, Definition(dst), then);
+      bld.sop1(Builder::s_mov, Definition(dst), then);
    else
-      bld.sop2(aco_opcode::s_or_b64, Definition(dst), bld.def(s1, scc), then,
-               bld.sop2(aco_opcode::s_andn2_b64, bld.def(s2), bld.def(s1, scc), els, cond));
+      bld.sop2(Builder::s_or, Definition(dst), bld.def(s1, scc), then,
+               bld.sop2(Builder::s_andn2, bld.def(bld.lm), bld.def(s1, scc), els, cond));
 }
 
 void emit_scaled_op(isel_context *ctx, Builder& bld, Definition dst, Temp val,
                     aco_opcode op, uint32_t undo)
 {
    /* multiply by 16777216 to handle denormals */
-   Temp is_denormal = bld.vopc(aco_opcode::v_cmp_class_f32, bld.hint_vcc(bld.def(s2)),
+   Temp is_denormal = bld.vopc(aco_opcode::v_cmp_class_f32, bld.hint_vcc(bld.def(bld.lm)),
                                as_vgpr(ctx, val), bld.copy(bld.def(v1), Operand((1u << 7) | (1u << 4))));
    Temp scaled = bld.vop2(aco_opcode::v_mul_f32, bld.def(v1), Operand(0x4b800000u), val);
    scaled = bld.vop1(op, bld.def(v1), scaled);
@@ -766,9 +770,9 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
    case nir_op_inot: {
       Temp src = get_alu_src(ctx, instr->src[0]);
       if (instr->dest.dest.ssa.bit_size == 1) {
-         assert(src.regClass() == s2);
-         assert(dst.regClass() == s2);
-         bld.sop2(aco_opcode::s_andn2_b64, Definition(dst), bld.def(s1, scc), Operand(exec, s2), src);
+         assert(src.regClass() == bld.lm);
+         assert(dst.regClass() == bld.lm);
+         bld.sop2(Builder::s_andn2, Definition(dst), bld.def(s1, scc), Operand(exec, bld.lm), src);
       } else if (dst.regClass() == v1) {
          emit_vop1_instruction(ctx, instr, aco_opcode::v_not_b32, dst);
       } else if (dst.type() == RegType::sgpr) {
@@ -835,12 +839,12 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
          bld.sop2(aco_opcode::s_or_b64, Definition(dst), bld.def(s1, scc), neg, neqz);
       } else if (dst.regClass() == v1) {
          Temp tmp = bld.vop2(aco_opcode::v_ashrrev_i32, bld.def(v1), Operand(31u), src);
-         Temp gtz = bld.vopc(aco_opcode::v_cmp_ge_i32, bld.hint_vcc(bld.def(s2)), Operand(0u), src);
+         Temp gtz = bld.vopc(aco_opcode::v_cmp_ge_i32, bld.hint_vcc(bld.def(bld.lm)), Operand(0u), src);
          bld.vop2(aco_opcode::v_cndmask_b32, Definition(dst), Operand(1u), tmp, gtz);
       } else if (dst.regClass() == v2) {
          Temp upper = emit_extract_vector(ctx, src, 1, v1);
          Temp neg = bld.vop2(aco_opcode::v_ashrrev_i32, bld.def(v1), Operand(31u), upper);
-         Temp gtz = bld.vopc(aco_opcode::v_cmp_ge_i64, bld.hint_vcc(bld.def(s2)), Operand(0u), src);
+         Temp gtz = bld.vopc(aco_opcode::v_cmp_ge_i64, bld.hint_vcc(bld.def(bld.lm)), Operand(0u), src);
          Temp lower = bld.vop2(aco_opcode::v_cndmask_b32, bld.def(v1), Operand(1u), neg, gtz);
          upper = bld.vop2(aco_opcode::v_cndmask_b32, bld.def(v1), Operand(0u), neg, gtz);
          bld.pseudo(aco_opcode::p_create_vector, Definition(dst), lower, upper);
@@ -901,7 +905,7 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
    }
    case nir_op_ior: {
       if (instr->dest.dest.ssa.bit_size == 1) {
-         emit_boolean_logic(ctx, instr, aco_opcode::s_or_b64, dst);
+         emit_boolean_logic(ctx, instr, Builder::s_or, dst);
       } else if (dst.regClass() == v1) {
          emit_vop2_instruction(ctx, instr, aco_opcode::v_or_b32, dst, true);
       } else if (dst.regClass() == s1) {
@@ -917,7 +921,7 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
    }
    case nir_op_iand: {
       if (instr->dest.dest.ssa.bit_size == 1) {
-         emit_boolean_logic(ctx, instr, aco_opcode::s_and_b64, dst);
+         emit_boolean_logic(ctx, instr, Builder::s_and, dst);
       } else if (dst.regClass() == v1) {
          emit_vop2_instruction(ctx, instr, aco_opcode::v_and_b32, dst, true);
       } else if (dst.regClass() == s1) {
@@ -933,7 +937,7 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
    }
    case nir_op_ixor: {
       if (instr->dest.dest.ssa.bit_size == 1) {
-         emit_boolean_logic(ctx, instr, aco_opcode::s_xor_b64, dst);
+         emit_boolean_logic(ctx, instr, Builder::s_xor, dst);
       } else if (dst.regClass() == v1) {
          emit_vop2_instruction(ctx, instr, aco_opcode::v_xor_b32, dst, true);
       } else if (dst.regClass() == s1) {
@@ -1709,16 +1713,16 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
    case nir_op_fsign: {
       Temp src = as_vgpr(ctx, get_alu_src(ctx, instr->src[0]));
       if (dst.size() == 1) {
-         Temp cond = bld.vopc(aco_opcode::v_cmp_nlt_f32, bld.hint_vcc(bld.def(s2)), Operand(0u), src);
+         Temp cond = bld.vopc(aco_opcode::v_cmp_nlt_f32, bld.hint_vcc(bld.def(bld.lm)), Operand(0u), src);
          src = bld.vop2(aco_opcode::v_cndmask_b32, bld.def(v1), Operand(0x3f800000u), src, cond);
-         cond = bld.vopc(aco_opcode::v_cmp_le_f32, bld.hint_vcc(bld.def(s2)), Operand(0u), src);
+         cond = bld.vopc(aco_opcode::v_cmp_le_f32, bld.hint_vcc(bld.def(bld.lm)), Operand(0u), src);
          bld.vop2(aco_opcode::v_cndmask_b32, Definition(dst), Operand(0xbf800000u), src, cond);
       } else if (dst.size() == 2) {
-         Temp cond = bld.vopc(aco_opcode::v_cmp_nlt_f64, bld.hint_vcc(bld.def(s2)), Operand(0u), src);
+         Temp cond = bld.vopc(aco_opcode::v_cmp_nlt_f64, bld.hint_vcc(bld.def(bld.lm)), Operand(0u), src);
          Temp tmp = bld.vop1(aco_opcode::v_mov_b32, bld.def(v1), Operand(0x3FF00000u));
          Temp upper = bld.vop2_e64(aco_opcode::v_cndmask_b32, bld.def(v1), tmp, emit_extract_vector(ctx, src, 1, v1), cond);
 
-         cond = bld.vopc(aco_opcode::v_cmp_le_f64, bld.hint_vcc(bld.def(s2)), Operand(0u), src);
+         cond = bld.vopc(aco_opcode::v_cmp_le_f64, bld.hint_vcc(bld.def(bld.lm)), Operand(0u), src);
          tmp = bld.vop1(aco_opcode::v_mov_b32, bld.def(v1), Operand(0xBFF00000u));
          upper = bld.vop2(aco_opcode::v_cndmask_b32, bld.def(v1), tmp, upper, cond);
 
@@ -1922,7 +1926,7 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
       Temp src = get_alu_src(ctx, instr->src[0]);
       if (instr->src[0].src.ssa->bit_size == 32 && dst.type() == RegType::vgpr) {
          Temp exponent = bld.vop1(aco_opcode::v_frexp_exp_i32_f32, bld.def(v1), src);
-         Temp exponent_in_range = bld.vopc(aco_opcode::v_cmp_ge_i32, bld.hint_vcc(bld.def(s2)), Operand(64u), exponent);
+         Temp exponent_in_range = bld.vopc(aco_opcode::v_cmp_ge_i32, bld.hint_vcc(bld.def(bld.lm)), Operand(64u), exponent);
          exponent = bld.vop2(aco_opcode::v_max_i32, bld.def(v1), Operand(0x0u), exponent);
          Temp mantissa = bld.vop2(aco_opcode::v_and_b32, bld.def(v1), Operand(0x7fffffu), src);
          mantissa = bld.vop2(aco_opcode::v_or_b32, bld.def(v1), Operand(0x800000u), mantissa);
@@ -1986,7 +1990,7 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
    }
    case nir_op_b2f32: {
       Temp src = get_alu_src(ctx, instr->src[0]);
-      assert(src.regClass() == s2);
+      assert(src.regClass() == bld.lm);
 
       if (dst.regClass() == s1) {
          src = bool_to_scalar_condition(ctx, src);
@@ -2000,7 +2004,7 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
    }
    case nir_op_b2f64: {
       Temp src = get_alu_src(ctx, instr->src[0]);
-      assert(src.regClass() == s2);
+      assert(src.regClass() == bld.lm);
 
       if (dst.regClass() == s2) {
          src = bool_to_scalar_condition(ctx, src);
@@ -2073,7 +2077,7 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
    }
    case nir_op_b2i32: {
       Temp src = get_alu_src(ctx, instr->src[0]);
-      assert(src.regClass() == s2);
+      assert(src.regClass() == bld.lm);
 
       if (dst.regClass() == s1) {
          // TODO: in a post-RA optimization, we can check if src is in VCC, and directly use VCCNZ
@@ -2087,7 +2091,7 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
    }
    case nir_op_i2b1: {
       Temp src = get_alu_src(ctx, instr->src[0]);
-      assert(dst.regClass() == s2);
+      assert(dst.regClass() == bld.lm);
 
       if (src.type() == RegType::vgpr) {
          assert(src.regClass() == v1 || src.regClass() == v2);
@@ -2164,7 +2168,7 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
 
       Temp mask = bld.copy(bld.def(s1), Operand(0x36Fu)); /* value is NOT negative/positive denormal value */
 
-      Temp cmp_res = bld.tmp(s2);
+      Temp cmp_res = bld.tmp(bld.lm);
       bld.vopc_e64(aco_opcode::v_cmp_class_f16, Definition(cmp_res), f16, mask).def(0).setHint(vcc);
 
       Temp f32 = bld.vop1(aco_opcode::v_cvt_f32_f16, bld.def(v1), f16);
@@ -2338,14 +2342,14 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
    }
    case nir_op_ieq: {
       if (instr->src[0].src.ssa->bit_size == 1)
-         emit_boolean_logic(ctx, instr, aco_opcode::s_xnor_b64, dst);
+         emit_boolean_logic(ctx, instr, Builder::s_xnor, dst);
       else
          emit_comparison(ctx, instr, dst, aco_opcode::v_cmp_eq_i32, aco_opcode::v_cmp_eq_i64, aco_opcode::s_cmp_eq_i32, aco_opcode::s_cmp_eq_u64);
       break;
    }
    case nir_op_ine: {
       if (instr->src[0].src.ssa->bit_size == 1)
-         emit_boolean_logic(ctx, instr, aco_opcode::s_xor_b64, dst);
+         emit_boolean_logic(ctx, instr, Builder::s_xor, dst);
       else
          emit_comparison(ctx, instr, dst, aco_opcode::v_cmp_lg_i32, aco_opcode::v_cmp_lg_i64, aco_opcode::s_cmp_lg_i32, aco_opcode::s_cmp_lg_u64);
       break;
@@ -2405,8 +2409,10 @@ void visit_load_const(isel_context *ctx, nir_load_const_instr *instr)
    Builder bld(ctx->program, ctx->block);
 
    if (instr->def.bit_size == 1) {
-      assert(dst.regClass() == s2);
-      bld.sop1(aco_opcode::s_mov_b64, Definition(dst), Operand((uint64_t)(instr->value[0].b ? -1 : 0)));
+      assert(dst.regClass() == bld.lm);
+      int val = instr->value[0].b ? -1 : 0;
+      Operand op = bld.lm.size() == 1 ? Operand((uint32_t) val) : Operand((uint64_t) val);
+      bld.sop1(Builder::s_mov, Definition(dst), op);
    } else if (dst.size() == 1) {
       bld.copy(Definition(dst), Operand(instr->value[0].u32));
    } else {
@@ -3033,7 +3039,7 @@ Temp adjust_vertex_fetch_alpha(isel_context *ctx, unsigned adjustment, Temp alph
    /* Convert back to the right type. */
    if (adjustment == RADV_ALPHA_ADJUST_SNORM) {
       alpha = bld.vop1(aco_opcode::v_cvt_f32_i32, bld.def(v1), alpha);
-      Temp clamp = bld.vopc(aco_opcode::v_cmp_le_f32, bld.hint_vcc(bld.def(s2)), Operand(0xbf800000u), alpha);
+      Temp clamp = bld.vopc(aco_opcode::v_cmp_le_f32, bld.hint_vcc(bld.def(bld.lm)), Operand(0xbf800000u), alpha);
       alpha = bld.vop2(aco_opcode::v_cndmask_b32, bld.def(v1), Operand(0xbf800000u), alpha, clamp);
    } else if (adjustment == RADV_ALPHA_ADJUST_SSCALED) {
       alpha = bld.vop1(aco_opcode::v_cvt_f32_i32, bld.def(v1), alpha);
@@ -3599,8 +3605,8 @@ void visit_discard_if(isel_context *ctx, nir_intrinsic_instr *instr)
    // TODO: optimize uniform conditions
    Builder bld(ctx->program, ctx->block);
    Temp src = get_ssa_temp(ctx, instr->src[0].ssa);
-   assert(src.regClass() == s2);
-   src = bld.sop2(aco_opcode::s_and_b64, bld.def(s2), bld.def(s1, scc), src, Operand(exec, s2));
+   assert(src.regClass() == bld.lm);
+   src = bld.sop2(Builder::s_and, bld.def(bld.lm), bld.def(s1, scc), src, Operand(exec, bld.lm));
    bld.pseudo(aco_opcode::p_discard_if, src);
    ctx->block->kind |= block_kind_uses_discard_if;
    return;
@@ -3663,7 +3669,7 @@ void visit_discard(isel_context* ctx, nir_intrinsic_instr *instr)
       ctx->program->needs_exact = true;
       /* save exec somewhere temporarily so that it doesn't get
        * overwritten before the discard from outer exec masks */
-      Temp cond = bld.sop2(aco_opcode::s_and_b64, bld.def(s2), bld.def(s1, scc), Operand(0xFFFFFFFF), Operand(exec, s2));
+      Temp cond = bld.sop2(Builder::s_and, bld.def(bld.lm), bld.def(s1, scc), Operand(0xFFFFFFFF), Operand(exec, bld.lm));
       bld.pseudo(aco_opcode::p_discard_if, cond);
       ctx->block->kind |= block_kind_uses_discard_if;
       return;
@@ -3950,7 +3956,7 @@ static Temp adjust_sample_index_using_fmask(isel_context *ctx, bool da, Temp coo
    /* Don't rewrite the sample index if WORD1.DATA_FORMAT of the FMASK
     * resource descriptor is 0 (invalid),
     */
-   Temp compare = bld.tmp(s2);
+   Temp compare = bld.tmp(bld.lm);
    bld.vopc_e64(aco_opcode::v_cmp_lg_u32, Definition(compare),
                 Operand(0u), emit_extract_vector(ctx, fmask_desc_ptr, 1, s1)).def(0).setHint(vcc);
 
@@ -4739,12 +4745,12 @@ void visit_store_global(isel_context *ctx, nir_intrinsic_instr *instr)
       if (offset > 0 && ctx->options->chip_class < GFX9) {
          Temp addr0 = bld.tmp(v1), addr1 = bld.tmp(v1);
          Temp new_addr0 = bld.tmp(v1), new_addr1 = bld.tmp(v1);
-         Temp carry = bld.tmp(s2);
+         Temp carry = bld.tmp(bld.lm);
          bld.pseudo(aco_opcode::p_split_vector, Definition(addr0), Definition(addr1), addr);
 
          bld.vop2(aco_opcode::v_add_co_u32, Definition(new_addr0), bld.hint_vcc(Definition(carry)),
                   Operand(offset), addr0);
-         bld.vop2(aco_opcode::v_addc_co_u32, Definition(new_addr1), bld.def(s2),
+         bld.vop2(aco_opcode::v_addc_co_u32, Definition(new_addr1), bld.def(bld.lm),
                   Operand(0u), addr1,
                   carry).def(1).setHint(vcc);
 
@@ -5219,25 +5225,25 @@ Temp emit_boolean_reduce(isel_context *ctx, nir_op op, unsigned cluster_size, Te
       return src;
    } if (op == nir_op_iand && cluster_size == 4) {
       //subgroupClusteredAnd(val, 4) -> ~wqm(exec & ~val)
-      Temp tmp = bld.sop2(aco_opcode::s_andn2_b64, bld.def(s2), bld.def(s1, scc), Operand(exec, s2), src);
-      return bld.sop1(aco_opcode::s_not_b64, bld.def(s2), bld.def(s1, scc),
-                      bld.sop1(aco_opcode::s_wqm_b64, bld.def(s2), bld.def(s1, scc), tmp));
+      Temp tmp = bld.sop2(Builder::s_andn2, bld.def(bld.lm), bld.def(s1, scc), Operand(exec, bld.lm), src);
+      return bld.sop1(Builder::s_not, bld.def(bld.lm), bld.def(s1, scc),
+                      bld.sop1(Builder::s_wqm, bld.def(bld.lm), bld.def(s1, scc), tmp));
    } else if (op == nir_op_ior && cluster_size == 4) {
       //subgroupClusteredOr(val, 4) -> wqm(val & exec)
-      return bld.sop1(aco_opcode::s_wqm_b64, bld.def(s2), bld.def(s1, scc),
-                      bld.sop2(aco_opcode::s_and_b64, bld.def(s2), bld.def(s1, scc), src, Operand(exec, s2)));
+      return bld.sop1(Builder::s_wqm, bld.def(bld.lm), bld.def(s1, scc),
+                      bld.sop2(Builder::s_and, bld.def(bld.lm), bld.def(s1, scc), src, Operand(exec, bld.lm)));
    } else if (op == nir_op_iand && cluster_size == 64) {
       //subgroupAnd(val) -> (exec & ~val) == 0
-      Temp tmp = bld.sop2(aco_opcode::s_andn2_b64, bld.def(s2), bld.def(s1, scc), Operand(exec, s2), src).def(1).getTemp();
-      return bld.sop2(aco_opcode::s_cselect_b64, bld.def(s2), Operand(0u), Operand(-1u), bld.scc(tmp));
+      Temp tmp = bld.sop2(Builder::s_andn2, bld.def(bld.lm), bld.def(s1, scc), Operand(exec, bld.lm), src).def(1).getTemp();
+      return bld.sop2(Builder::s_cselect, bld.def(bld.lm), Operand(0u), Operand(-1u), bld.scc(tmp));
    } else if (op == nir_op_ior && cluster_size == 64) {
       //subgroupOr(val) -> (val & exec) != 0
-      Temp tmp = bld.sop2(aco_opcode::s_and_b64, bld.def(s2), bld.def(s1, scc), src, Operand(exec, s2)).def(1).getTemp();
+      Temp tmp = bld.sop2(Builder::s_and, bld.def(bld.lm), bld.def(s1, scc), src, Operand(exec, bld.lm)).def(1).getTemp();
       return bool_to_vector_condition(ctx, tmp);
    } else if (op == nir_op_ixor && cluster_size == 64) {
       //subgroupXor(val) -> s_bcnt1_i32_b64(val & exec) & 1
-      Temp tmp = bld.sop2(aco_opcode::s_and_b64, bld.def(s2), bld.def(s1, scc), src, Operand(exec, s2));
-      tmp = bld.sop1(aco_opcode::s_bcnt1_i32_b64, bld.def(s1), bld.def(s1, scc), tmp);
+      Temp tmp = bld.sop2(Builder::s_and, bld.def(bld.lm), bld.def(s1, scc), src, Operand(exec, bld.lm));
+      tmp = bld.sop1(Builder::s_bcnt1_i32, bld.def(s1), bld.def(s1, scc), tmp);
       tmp = bld.sop2(aco_opcode::s_and_b32, bld.def(s1), bld.def(s1, scc), tmp, Operand(1u)).def(1).getTemp();
       return bool_to_vector_condition(ctx, tmp);
    } else {
@@ -5256,25 +5262,28 @@ Temp emit_boolean_reduce(isel_context *ctx, nir_op op, unsigned cluster_size, Te
 
       Temp tmp;
       if (op == nir_op_iand)
-         tmp = bld.sop2(aco_opcode::s_orn2_b64, bld.def(s2), bld.def(s1, scc), src, Operand(exec, s2));
+         tmp = bld.sop2(Builder::s_orn2, bld.def(bld.lm), bld.def(s1, scc), src, Operand(exec, bld.lm));
       else
-         tmp = bld.sop2(aco_opcode::s_and_b64, bld.def(s2), bld.def(s1, scc), src, Operand(exec, s2));
+         tmp = bld.sop2(Builder::s_and, bld.def(bld.lm), bld.def(s1, scc), src, Operand(exec, bld.lm));
 
       uint32_t cluster_mask = cluster_size == 32 ? -1 : (1u << cluster_size) - 1u;
-      tmp = bld.vop3(aco_opcode::v_lshrrev_b64, bld.def(v2), cluster_offset, tmp);
+      if (ctx->program->wave_size == 64)
+         tmp = bld.vop3(aco_opcode::v_lshrrev_b64, bld.def(v2), cluster_offset, tmp);
+      else
+         tmp = bld.vop2_e64(aco_opcode::v_lshrrev_b32, bld.def(v1), cluster_offset, tmp);
       tmp = emit_extract_vector(ctx, tmp, 0, v1);
       if (cluster_mask != 0xffffffff)
          tmp = bld.vop2(aco_opcode::v_and_b32, bld.def(v1), Operand(cluster_mask), tmp);
 
       Definition cmp_def = Definition();
       if (op == nir_op_iand) {
-         cmp_def = bld.vopc(aco_opcode::v_cmp_eq_u32, bld.def(s2), Operand(cluster_mask), tmp).def(0);
+         cmp_def = bld.vopc(aco_opcode::v_cmp_eq_u32, bld.def(bld.lm), Operand(cluster_mask), tmp).def(0);
       } else if (op == nir_op_ior) {
-         cmp_def = bld.vopc(aco_opcode::v_cmp_lg_u32, bld.def(s2), Operand(0u), tmp).def(0);
+         cmp_def = bld.vopc(aco_opcode::v_cmp_lg_u32, bld.def(bld.lm), Operand(0u), tmp).def(0);
       } else if (op == nir_op_ixor) {
          tmp = bld.vop2(aco_opcode::v_and_b32, bld.def(v1), Operand(1u),
                         bld.vop3(aco_opcode::v_bcnt_u32_b32, bld.def(v1), tmp, Operand(0u)));
-         cmp_def = bld.vopc(aco_opcode::v_cmp_lg_u32, bld.def(s2), Operand(0u), tmp).def(0);
+         cmp_def = bld.vopc(aco_opcode::v_cmp_lg_u32, bld.def(bld.lm), Operand(0u), tmp).def(0);
       }
       cmp_def.setHint(vcc);
       return cmp_def.getTemp();
@@ -5290,9 +5299,9 @@ Temp emit_boolean_exclusive_scan(isel_context *ctx, nir_op op, Temp src)
    //subgroupExclusiveXor(val) -> mbcnt(val & exec) & 1 != 0
    Temp tmp;
    if (op == nir_op_iand)
-      tmp = bld.sop2(aco_opcode::s_andn2_b64, bld.def(s2), bld.def(s1, scc), Operand(exec, s2), src);
+      tmp = bld.sop2(Builder::s_andn2, bld.def(bld.lm), bld.def(s1, scc), Operand(exec, bld.lm), src);
    else
-      tmp = bld.sop2(aco_opcode::s_and_b64, bld.def(s2), bld.def(s1, scc), src, Operand(exec, s2));
+      tmp = bld.sop2(Builder::s_and, bld.def(s2), bld.def(s1, scc), src, Operand(exec, bld.lm));
 
    Builder::Result lohi = bld.pseudo(aco_opcode::p_split_vector, bld.def(s1), bld.def(s1), tmp);
    Temp lo = lohi.def(0).getTemp();
@@ -5301,11 +5310,11 @@ Temp emit_boolean_exclusive_scan(isel_context *ctx, nir_op op, Temp src)
 
    Definition cmp_def = Definition();
    if (op == nir_op_iand)
-      cmp_def = bld.vopc(aco_opcode::v_cmp_eq_u32, bld.def(s2), Operand(0u), mbcnt).def(0);
+      cmp_def = bld.vopc(aco_opcode::v_cmp_eq_u32, bld.def(bld.lm), Operand(0u), mbcnt).def(0);
    else if (op == nir_op_ior)
-      cmp_def = bld.vopc(aco_opcode::v_cmp_lg_u32, bld.def(s2), Operand(0u), mbcnt).def(0);
+      cmp_def = bld.vopc(aco_opcode::v_cmp_lg_u32, bld.def(bld.lm), Operand(0u), mbcnt).def(0);
    else if (op == nir_op_ixor)
-      cmp_def = bld.vopc(aco_opcode::v_cmp_lg_u32, bld.def(s2), Operand(0u),
+      cmp_def = bld.vopc(aco_opcode::v_cmp_lg_u32, bld.def(bld.lm), Operand(0u),
                          bld.vop2(aco_opcode::v_and_b32, bld.def(v1), Operand(1u), mbcnt)).def(0);
    cmp_def.setHint(vcc);
    return cmp_def.getTemp();
@@ -5320,11 +5329,11 @@ Temp emit_boolean_inclusive_scan(isel_context *ctx, nir_op op, Temp src)
    //subgroupInclusiveXor(val) -> subgroupExclusiveXor(val) ^^ val
    Temp tmp = emit_boolean_exclusive_scan(ctx, op, src);
    if (op == nir_op_iand)
-      return bld.sop2(aco_opcode::s_and_b64, bld.def(s2), bld.def(s1, scc), tmp, src);
+      return bld.sop2(Builder::s_and, bld.def(bld.lm), bld.def(s1, scc), tmp, src);
    else if (op == nir_op_ior)
-      return bld.sop2(aco_opcode::s_or_b64, bld.def(s2), bld.def(s1, scc), tmp, src);
+      return bld.sop2(Builder::s_or, bld.def(bld.lm), bld.def(s1, scc), tmp, src);
    else if (op == nir_op_ixor)
-      return bld.sop2(aco_opcode::s_xor_b64, bld.def(s2), bld.def(s1, scc), tmp, src);
+      return bld.sop2(Builder::s_xor, bld.def(bld.lm), bld.def(s1, scc), tmp, src);
 
    assert(false);
    return Temp();
@@ -5453,7 +5462,7 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
          Temp pck0 = bld.tmp(v1);
          Temp carry = bld.vadd32(Definition(pck0), tmp0, addr, true).def(1).getTemp();
          tmp1 = as_vgpr(ctx, tmp1);
-         Temp pck1 = bld.vop2_e64(aco_opcode::v_addc_co_u32, bld.def(v1), bld.hint_vcc(bld.def(s2)), tmp1, Operand(0u), carry);
+         Temp pck1 = bld.vop2_e64(aco_opcode::v_addc_co_u32, bld.def(v1), bld.hint_vcc(bld.def(bld.lm)), tmp1, Operand(0u), carry);
          addr = bld.pseudo(aco_opcode::p_create_vector, bld.def(v2), pck0, pck1);
 
          /* sample_pos = flat_load_dwordx2 addr */
@@ -5685,11 +5694,12 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
       break;
    }
    case nir_intrinsic_ballot: {
-      Definition tmp = bld.def(s2);
       Temp src = get_ssa_temp(ctx, instr->src[0].ssa);
+      Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
+      Definition tmp = bld.def(dst.regClass());
       if (instr->src[0].ssa->bit_size == 1) {
-         assert(src.regClass() == s2);
-         bld.sop2(aco_opcode::s_and_b64, tmp, bld.def(s1, scc), Operand(exec, s2), src);
+         assert(src.regClass() == bld.lm);
+         bld.sop2(Builder::s_and, tmp, bld.def(s1, scc), Operand(exec, bld.lm), src);
       } else if (instr->src[0].ssa->bit_size == 32 && src.regClass() == v1) {
          bld.vopc(aco_opcode::v_cmp_lg_u32, tmp, Operand(0u), src);
       } else if (instr->src[0].ssa->bit_size == 64 && src.regClass() == v2) {
@@ -5699,7 +5709,7 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
          nir_print_instr(&instr->instr, stderr);
          fprintf(stderr, "\n");
       }
-      emit_wqm(ctx, tmp.getTemp(), get_ssa_temp(ctx, &instr->dest.ssa));
+      emit_wqm(ctx, tmp.getTemp(), dst);
       break;
    }
    case nir_intrinsic_shuffle:
@@ -5722,15 +5732,19 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
             bld.pseudo(aco_opcode::p_create_vector, Definition(dst), lo, hi);
             emit_split_vector(ctx, dst, 2);
          } else if (instr->dest.ssa.bit_size == 1 && tid.regClass() == s1) {
-            assert(src.regClass() == s2);
-            Temp tmp = bld.sopc(aco_opcode::s_bitcmp1_b64, bld.def(s1, scc), src, tid);
+            assert(src.regClass() == bld.lm);
+            Temp tmp = bld.sopc(Builder::s_bitcmp1, bld.def(s1, scc), src, tid);
             bool_to_vector_condition(ctx, emit_wqm(ctx, tmp), dst);
          } else if (instr->dest.ssa.bit_size == 1 && tid.regClass() == v1) {
-            assert(src.regClass() == s2);
-            Temp tmp = bld.vop3(aco_opcode::v_lshrrev_b64, bld.def(v2), tid, src);
+            assert(src.regClass() == bld.lm);
+            Temp tmp;
+            if (ctx->program->wave_size == 64)
+               tmp = bld.vop3(aco_opcode::v_lshrrev_b64, bld.def(v2), tid, src);
+            else
+               tmp = bld.vop2_e64(aco_opcode::v_lshrrev_b32, bld.def(v1), tid, src);
             tmp = emit_extract_vector(ctx, tmp, 0, v1);
             tmp = bld.vop2(aco_opcode::v_and_b32, bld.def(v1), Operand(1u), tmp);
-            emit_wqm(ctx, bld.vopc(aco_opcode::v_cmp_lg_u32, bld.def(s2), Operand(0u), tmp), dst);
+            emit_wqm(ctx, bld.vopc(aco_opcode::v_cmp_lg_u32, bld.def(bld.lm), Operand(0u), tmp), dst);
          } else {
             fprintf(stderr, "Unimplemented NIR instr bit size: ");
             nir_print_instr(&instr->instr, stderr);
@@ -5763,9 +5777,9 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
          bld.pseudo(aco_opcode::p_create_vector, Definition(dst), lo, hi);
          emit_split_vector(ctx, dst, 2);
       } else if (instr->dest.ssa.bit_size == 1) {
-         assert(src.regClass() == s2);
-         Temp tmp = bld.sopc(aco_opcode::s_bitcmp1_b64, bld.def(s1, scc), src,
-                             bld.sop1(aco_opcode::s_ff1_i32_b64, bld.def(s1), Operand(exec, s2)));
+         assert(src.regClass() == bld.lm);
+         Temp tmp = bld.sopc(Builder::s_bitcmp1, bld.def(s1, scc), src,
+                             bld.sop1(Builder::s_ff1_i32, bld.def(s1), Operand(exec, bld.lm)));
          bool_to_vector_condition(ctx, emit_wqm(ctx, tmp), dst);
       } else if (src.regClass() == s1) {
          bld.sop1(aco_opcode::s_mov_b32, Definition(dst), src);
@@ -5781,22 +5795,22 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
    case nir_intrinsic_vote_all: {
       Temp src = get_ssa_temp(ctx, instr->src[0].ssa);
       Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
-      assert(src.regClass() == s2);
-      assert(dst.regClass() == s2);
+      assert(src.regClass() == bld.lm);
+      assert(dst.regClass() == bld.lm);
 
-      Temp tmp = bld.sop2(aco_opcode::s_andn2_b64, bld.def(s2), bld.def(s1, scc), Operand(exec, s2), src).def(1).getTemp();
-      Temp val = bld.sop2(aco_opcode::s_cselect_b64, bld.def(s2), Operand(0u), Operand(-1u), bld.scc(tmp));
+      Temp tmp = bld.sop2(Builder::s_andn2, bld.def(bld.lm), bld.def(s1, scc), Operand(exec, bld.lm), src).def(1).getTemp();
+      Temp val = bld.sop2(Builder::s_cselect, bld.def(bld.lm), Operand(0u), Operand(-1u), bld.scc(tmp));
       emit_wqm(ctx, val, dst);
       break;
    }
    case nir_intrinsic_vote_any: {
       Temp src = get_ssa_temp(ctx, instr->src[0].ssa);
       Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
-      assert(src.regClass() == s2);
-      assert(dst.regClass() == s2);
+      assert(src.regClass() == bld.lm);
+      assert(dst.regClass() == bld.lm);
 
-      Temp tmp = bld.sop2(aco_opcode::s_and_b64, bld.def(s2), bld.def(s1, scc), Operand(exec, s2), src).def(1).getTemp();
-      Temp val = bld.sop2(aco_opcode::s_cselect_b64, bld.def(s2), Operand(-1u), Operand(0u), bld.scc(tmp));
+      Temp tmp = bld.sop2(Builder::s_and, bld.def(bld.lm), bld.def(s1, scc), Operand(exec, bld.lm), src).def(1).getTemp();
+      Temp val = bld.sop2(Builder::s_cselect, bld.def(bld.lm), Operand(-1u), Operand(0u), bld.scc(tmp));
       emit_wqm(ctx, val, dst);
       break;
    }
@@ -5879,7 +5893,7 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
 
          Temp tmp_dst = bld.tmp(dst.regClass());
          reduce->definitions[0] = Definition(tmp_dst);
-         reduce->definitions[1] = bld.def(s2); // used internally
+         reduce->definitions[1] = bld.def(ctx->program->lane_mask); // used internally
          reduce->definitions[2] = Definition();
          reduce->definitions[3] = Definition(scc, s1);
          reduce->definitions[4] = Definition();
@@ -5899,13 +5913,14 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
          Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
          unsigned lane = nir_src_as_const_value(instr->src[1])->u32;
          if (instr->dest.ssa.bit_size == 1) {
-            assert(src.regClass() == s2);
+            assert(src.regClass() == bld.lm);
+            assert(dst.regClass() == bld.lm);
             uint32_t half_mask = 0x11111111u << lane;
             Temp mask_tmp = bld.pseudo(aco_opcode::p_create_vector, bld.def(s2), Operand(half_mask), Operand(half_mask));
-            Temp tmp = bld.tmp(s2);
-            bld.sop1(aco_opcode::s_wqm_b64, Definition(tmp),
-                     bld.sop2(aco_opcode::s_and_b64, bld.def(s2), bld.def(s1, scc), mask_tmp,
-                              bld.sop2(aco_opcode::s_and_b64, bld.def(s2), bld.def(s1, scc), src, Operand(exec, s2))));
+            Temp tmp = bld.tmp(bld.lm);
+            bld.sop1(Builder::s_wqm, Definition(tmp),
+                     bld.sop2(Builder::s_and, bld.def(bld.lm), bld.def(s1, scc), mask_tmp,
+                              bld.sop2(Builder::s_and, bld.def(bld.lm), bld.def(s1, scc), src, Operand(exec, bld.lm))));
             emit_wqm(ctx, tmp, dst);
          } else if (instr->dest.ssa.bit_size == 32) {
             emit_wqm(ctx,
@@ -5957,10 +5972,10 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
 
       Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
       if (instr->dest.ssa.bit_size == 1) {
-         assert(src.regClass() == s2);
+         assert(src.regClass() == bld.lm);
          src = bld.vop2_e64(aco_opcode::v_cndmask_b32, bld.def(v1), Operand(0u), Operand((uint32_t)-1), src);
          src = bld.vop1_dpp(aco_opcode::v_mov_b32, bld.def(v1), src, dpp_ctrl);
-         Temp tmp = bld.vopc(aco_opcode::v_cmp_lg_u32, bld.def(s2), Operand(0u), src);
+         Temp tmp = bld.vopc(aco_opcode::v_cmp_lg_u32, bld.def(bld.lm), Operand(0u), src);
          emit_wqm(ctx, tmp, dst);
       } else if (instr->dest.ssa.bit_size == 32) {
          Temp tmp = bld.vop1_dpp(aco_opcode::v_mov_b32, bld.def(v1), src, dpp_ctrl);
@@ -6060,15 +6075,15 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
       break;
    case nir_intrinsic_demote_if: {
       Temp src = get_ssa_temp(ctx, instr->src[0].ssa);
-      assert(src.regClass() == s2);
-      Temp cond = bld.sop2(aco_opcode::s_and_b64, bld.def(s2), bld.def(s1, scc), src, Operand(exec, s2));
+      assert(src.regClass() == bld.lm);
+      Temp cond = bld.sop2(Builder::s_and, bld.def(bld.lm), bld.def(s1, scc), src, Operand(exec, bld.lm));
       bld.pseudo(aco_opcode::p_demote_to_helper, cond);
       ctx->block->kind |= block_kind_uses_demote;
       ctx->program->needs_exact = true;
       break;
    }
    case nir_intrinsic_first_invocation: {
-      emit_wqm(ctx, bld.sop1(aco_opcode::s_ff1_i32_b64, bld.def(s1), Operand(exec, s2)),
+      emit_wqm(ctx, bld.sop1(Builder::s_ff1_i32, bld.def(s1), Operand(exec, bld.lm)),
                get_ssa_temp(ctx, &instr->dest.ssa));
       break;
    }
@@ -6180,14 +6195,14 @@ void build_cube_select(isel_context *ctx, Temp ma, Temp id, Temp deriv,
    Operand two(0x40000000u);
    Operand four(0x40800000u);
 
-   Temp is_ma_positive = bld.vopc(aco_opcode::v_cmp_le_f32, bld.hint_vcc(bld.def(s2)), Operand(0u), ma);
+   Temp is_ma_positive = bld.vopc(aco_opcode::v_cmp_le_f32, bld.hint_vcc(bld.def(bld.lm)), Operand(0u), ma);
    Temp sgn_ma = bld.vop2_e64(aco_opcode::v_cndmask_b32, bld.def(v1), neg_one, one, is_ma_positive);
    Temp neg_sgn_ma = bld.vop2(aco_opcode::v_sub_f32, bld.def(v1), Operand(0u), sgn_ma);
 
-   Temp is_ma_z = bld.vopc(aco_opcode::v_cmp_le_f32, bld.hint_vcc(bld.def(s2)), four, id);
+   Temp is_ma_z = bld.vopc(aco_opcode::v_cmp_le_f32, bld.hint_vcc(bld.def(bld.lm)), four, id);
    Temp is_ma_y = bld.vopc(aco_opcode::v_cmp_le_f32, bld.def(s2), two, id);
-   is_ma_y = bld.sop2(aco_opcode::s_andn2_b64, bld.hint_vcc(bld.def(s2)), is_ma_y, is_ma_z);
-   Temp is_not_ma_x = bld.sop2(aco_opcode::s_or_b64, bld.hint_vcc(bld.def(s2)), bld.def(s1, scc), is_ma_z, is_ma_y);
+   is_ma_y = bld.sop2(Builder::s_andn2, bld.hint_vcc(bld.def(bld.lm)), is_ma_y, is_ma_z);
+   Temp is_not_ma_x = bld.sop2(aco_opcode::s_or_b64, bld.hint_vcc(bld.def(bld.lm)), bld.def(s1, scc), is_ma_z, is_ma_y);
 
    // select sc
    Temp tmp = bld.vop2(aco_opcode::v_cndmask_b32, bld.def(v1), deriv_z, deriv_x, is_not_ma_x);
@@ -6667,7 +6682,7 @@ void visit_tex(isel_context *ctx, nir_tex_instr *instr)
                             Operand((uint32_t)V_008F14_IMG_NUM_FORMAT_SINT),
                             bld.scc(compare_cube_wa));
          }
-         tg4_compare_cube_wa64 = bld.tmp(s2);
+         tg4_compare_cube_wa64 = bld.tmp(bld.lm);
          bool_to_vector_condition(ctx, compare_cube_wa, tg4_compare_cube_wa64);
 
          nfmt = bld.sop2(aco_opcode::s_lshl_b32, bld.def(s1), bld.def(s1, scc), nfmt, Operand(26u));
@@ -6800,7 +6815,7 @@ void visit_tex(isel_context *ctx, nir_tex_instr *instr)
          assert(dmask == 1 && dst.regClass() == v1);
          assert(dst.id() != tmp_dst.id());
 
-         Temp tmp = bld.tmp(s2);
+         Temp tmp = bld.tmp(bld.lm);
          bld.vopc(aco_opcode::v_cmp_eq_u32, Definition(tmp), Operand(0u), tmp_dst).def(0).setHint(vcc);
          bld.vop2_e64(aco_opcode::v_cndmask_b32, Definition(dst), Operand(0u), Operand((uint32_t)-1), tmp);
 
@@ -6921,7 +6936,7 @@ void visit_phi(isel_context *ctx, nir_phi_instr *instr)
 {
    aco_ptr<Pseudo_instruction> phi;
    Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
-   assert(instr->dest.ssa.bit_size != 1 || dst.regClass() == s2);
+   assert(instr->dest.ssa.bit_size != 1 || dst.regClass() == ctx->program->lane_mask);
 
    bool logical = !dst.is_linear() || ctx->divergent_vals[instr->dest.ssa.index];
    logical |= ctx->block->kind & block_kind_merge;
@@ -7295,7 +7310,7 @@ static void begin_divergent_if_then(isel_context *ctx, if_context *ic, Temp cond
    ctx->block->kind |= block_kind_branch;
 
    /* branch to linear then block */
-   assert(cond.regClass() == s2);
+   assert(cond.regClass() == ctx->program->lane_mask);
    aco_ptr<Pseudo_branch_instruction> branch;
    branch.reset(create_instruction<Pseudo_branch_instruction>(aco_opcode::p_cbranch_z, Format::PSEUDO_BRANCH, 1, 0));
    branch->operands[0] = Operand(cond);
@@ -7439,7 +7454,7 @@ static void visit_if(isel_context *ctx, nir_if *if_stmt)
       ctx->block->kind |= block_kind_uniform;
 
       /* emit branch */
-      assert(cond.regClass() == s2);
+      assert(cond.regClass() == bld.lm);
       // TODO: in a post-RA optimizer, we could check if the condition is in VCC and omit this instruction
       cond = bool_to_scalar_condition(ctx, cond);
 
@@ -7825,7 +7840,7 @@ void handle_bc_optimize(isel_context *ctx)
    ctx->persp_centroid = get_arg(ctx, ctx->args->ac.persp_centroid);
    ctx->linear_centroid = get_arg(ctx, ctx->args->ac.linear_centroid);
    if (uses_center && uses_centroid) {
-      Temp sel = bld.vopc_e64(aco_opcode::v_cmp_lt_i32, bld.hint_vcc(bld.def(s2)),
+      Temp sel = bld.vopc_e64(aco_opcode::v_cmp_lt_i32, bld.hint_vcc(bld.def(bld.lm)),
                               get_arg(ctx, ctx->args->ac.prim_mask), Operand(0u));
 
       if (G_0286CC_PERSP_CENTROID_ENA(spi_ps_input_ena)) {
@@ -7934,7 +7949,7 @@ void select_program(Program *program,
          Builder bld(ctx.program, ctx.block);
          Temp count = bld.sop2(aco_opcode::s_bfe_u32, bld.def(s1), bld.def(s1, scc), ctx.merged_wave_info, Operand((8u << 16) | (i * 8u)));
          Temp thread_id = emit_mbcnt(&ctx, bld.def(v1));
-         Temp cond = bld.vopc(aco_opcode::v_cmp_gt_u32, bld.hint_vcc(bld.def(s2)), count, thread_id);
+         Temp cond = bld.vopc(aco_opcode::v_cmp_gt_u32, bld.hint_vcc(bld.def(bld.lm)), count, thread_id);
 
          begin_divergent_if_then(&ctx, &ic, cond);
       }

@@ -58,6 +58,7 @@ void collect_phi_info(ssa_elimination_ctx& ctx)
             std::vector<unsigned>& preds = phi->opcode == aco_opcode::p_phi ? block.logical_preds : block.linear_preds;
             phi_info& info = phi->opcode == aco_opcode::p_phi ? ctx.logical_phi_info : ctx.linear_phi_info;
             const auto result = info.emplace(preds[i], std::vector<std::pair<Definition, Operand>>());
+            assert(phi->definitions[0].size() == phi->operands[i].size());
             result.first->second.emplace_back(phi->definitions[0], phi->operands[i]);
             ctx.empty_blocks[preds[i]] = false;
          }

@@ -1719,6 +1719,7 @@ void register_allocation(Program *program, std::vector<std::set<Temp>> live_out_
 
                pc->operands[i] = parallelcopy[i].first;
                pc->definitions[i] = parallelcopy[i].second;
+               assert(pc->operands[i].size() == pc->definitions[i].size());
 
                /* it might happen that the operand is already renamed. we have to restore the original name. */
                std::map<unsigned, Temp>::iterator it = ctx.orig_names.find(pc->operands[i].tempId());

@@ -126,6 +126,7 @@ unsigned get_interp_input(nir_intrinsic_op intrin, enum glsl_interp_mode interp)
 void init_context(isel_context *ctx, nir_shader *shader)
 {
    nir_function_impl *impl = nir_shader_get_entrypoint(shader);
+   unsigned lane_mask_size = ctx->program->lane_mask.size();
 
    ctx->shader = shader;
    ctx->divergent_vals = nir_divergence_analysis(shader, nir_divergence_view_index_uniform);
@@ -207,7 +208,7 @@ void init_context(isel_context *ctx, nir_shader *shader)
                   case nir_op_ieq:
                   case nir_op_ine:
                   case nir_op_i2b1:
-                     size = 2;
+                     size = lane_mask_size;
                      break;
                   case nir_op_f2i64:
                   case nir_op_f2u64:
@@ -219,7 +220,7 @@ void init_context(isel_context *ctx, nir_shader *shader)
                      break;
                   case nir_op_bcsel:
                      if (alu_instr->dest.dest.ssa.bit_size == 1) {
-                        size = 2;
+                        size = lane_mask_size;
                      } else {
                         if (ctx->divergent_vals[alu_instr->dest.dest.ssa.index]) {
                            type = RegType::vgpr;
@@ -237,14 +238,14 @@ void init_context(isel_context *ctx, nir_shader *shader)
                      break;
                   case nir_op_mov:
                      if (alu_instr->dest.dest.ssa.bit_size == 1) {
-                        size = 2;
+                        size = lane_mask_size;
                      } else {
                         type = ctx->divergent_vals[alu_instr->dest.dest.ssa.index] ? RegType::vgpr : RegType::sgpr;
                      }
                      break;
                   default:
                      if (alu_instr->dest.dest.ssa.bit_size == 1) {
-                        size = 2;
+                        size = lane_mask_size;
                      } else {
                         for (unsigned i = 0; i < nir_op_infos[alu_instr->op].num_inputs; i++) {
                            if (allocated[alu_instr->src[i].src.ssa->index].type() == RegType::vgpr)
@@ -261,7 +262,7 @@ void init_context(isel_context *ctx, nir_shader *shader)
                if (nir_instr_as_load_const(instr)->def.bit_size == 64)
                   size *= 2;
                else if (nir_instr_as_load_const(instr)->def.bit_size == 1)
-                  size *= 2;
+                  size *= lane_mask_size;
                allocated[nir_instr_as_load_const(instr)->def.index] = Temp(0, RegClass(RegType::sgpr, size));
                break;
             }
@@ -289,11 +290,11 @@ void init_context(isel_context *ctx, nir_shader *shader)
                   case nir_intrinsic_first_invocation:
                      type = RegType::sgpr;
                      if (intrinsic->dest.ssa.bit_size == 1)
-                        size = 2;
+                        size = lane_mask_size;
                      break;
                   case nir_intrinsic_ballot:
                      type = RegType::sgpr;
-                     size = 2;
+                     size = lane_mask_size;
                      break;
                   case nir_intrinsic_load_sample_id:
                   case nir_intrinsic_load_sample_mask_in:
@@ -369,7 +370,7 @@ void init_context(isel_context *ctx, nir_shader *shader)
                   case nir_intrinsic_inclusive_scan:
                   case nir_intrinsic_exclusive_scan:
                      if (intrinsic->dest.ssa.bit_size == 1) {
-                        size = 2;
+                        size = lane_mask_size;
                         type = RegType::sgpr;
                      } else if (!ctx->divergent_vals[intrinsic->dest.ssa.index]) {
                         type = RegType::sgpr;
@@ -384,11 +385,11 @@ void init_context(isel_context *ctx, nir_shader *shader)
                   case nir_intrinsic_load_helper_invocation:
                   case nir_intrinsic_is_helper_invocation:
                      type = RegType::sgpr;
-                     size = 2;
+                     size = lane_mask_size;
                      break;
                   case nir_intrinsic_reduce:
                      if (intrinsic->dest.ssa.bit_size == 1) {
-                        size = 2;
+                        size = lane_mask_size;
                         type = RegType::sgpr;
                      } else if (nir_intrinsic_cluster_size(intrinsic) == 0 ||
                          !ctx->divergent_vals[intrinsic->dest.ssa.index]) {
@@ -489,7 +490,7 @@ void init_context(isel_context *ctx, nir_shader *shader)
                if (phi->dest.ssa.bit_size == 1) {
                   assert(size == 1 && "multiple components not yet supported on boolean phis.");
                   type = RegType::sgpr;
-                  size *= 2;
+                  size *= lane_mask_size;
                   allocated[phi->dest.ssa.index] = Temp(0, RegClass(type, size));
                   break;
                }
@@ -590,7 +591,7 @@ Pseudo_instruction *add_startpgm(struct isel_context *ctx)
       startpgm->definitions[arg].setFixed(PhysReg{file == AC_ARG_SGPR ? reg : reg + 256});
       arg++;
    }
-   startpgm->definitions[arg_count] = Definition{ctx->program->allocateId(), exec, s2};
+   startpgm->definitions[arg_count] = Definition{ctx->program->allocateId(), exec, ctx->program->lane_mask};
    Pseudo_instruction *instr = startpgm.get();
    ctx->block->instructions.push_back(std::move(startpgm));
 
@@ -796,6 +797,7 @@ setup_isel_context(Program* program,
    program->chip_class = args->options->chip_class;
    program->family = args->options->family;
    program->wave_size = args->shader_info->wave_size;
+   program->lane_mask = program->wave_size == 32 ? s1 : s2;
 
    program->lds_alloc_granule = args->options->chip_class >= GFX7 ? 512 : 256;
    program->lds_limit = args->options->chip_class >= GFX7 ? 65536 : 32768;

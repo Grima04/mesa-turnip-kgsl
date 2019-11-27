@@ -135,13 +135,14 @@ public:
    Program *program;
    bool use_iterator;
    bool start; // only when use_iterator == false
+   RegClass lm;
 
    std::vector<aco_ptr<Instruction>> *instructions;
    std::vector<aco_ptr<Instruction>>::iterator it;
 
-   Builder(Program *pgm) : program(pgm), use_iterator(false), start(false), instructions(NULL) {}
-   Builder(Program *pgm, Block *block) : program(pgm), use_iterator(false), start(false), instructions(&block->instructions) {}
-   Builder(Program *pgm, std::vector<aco_ptr<Instruction>> *instrs) : program(pgm), use_iterator(false), start(false), instructions(instrs) {}
+   Builder(Program *pgm) : program(pgm), use_iterator(false), start(false), lm(pgm->lane_mask), instructions(NULL) {}
+   Builder(Program *pgm, Block *block) : program(pgm), use_iterator(false), start(false), lm(pgm ? pgm->lane_mask : s2), instructions(&block->instructions) {}
+   Builder(Program *pgm, std::vector<aco_ptr<Instruction>> *instrs) : program(pgm), use_iterator(false), start(false), lm(pgm ? pgm->lane_mask : s2), instructions(instrs) {}
 
    void moveEnd(Block *block) {
       instructions = &block->instructions;
@@ -265,17 +266,26 @@ public:
 
 % for fixed in ['m0', 'vcc', 'exec', 'scc']:
    Operand ${fixed}(Temp tmp) {
+       % if fixed == 'vcc' or fixed == 'exec':
+          assert(tmp.regClass() == lm);
+       % endif
        Operand op(tmp);
        op.setFixed(aco::${fixed});
        return op;
    }
 
    Definition ${fixed}(Definition def) {
+       % if fixed == 'vcc' or fixed == 'exec':
+          assert(def.regClass() == lm);
+       % endif
        def.setFixed(aco::${fixed});
        return def;
    }
 
    Definition hint_${fixed}(Definition def) {
+       % if fixed == 'vcc' or fixed == 'exec':
+          assert(def.regClass() == lm);
+       % endif
        def.setHint(aco::${fixed});
        return def;
    }
@@ -350,11 +360,11 @@ public:
       assert((post_ra || b.op.hasRegClass()) && b.op.regClass().type() == RegType::vgpr);
 
       if (!carry_in.op.isUndefined())
-         return vop2(aco_opcode::v_addc_co_u32, Definition(dst), hint_vcc(def(s2)), a, b, carry_in);
+         return vop2(aco_opcode::v_addc_co_u32, Definition(dst), hint_vcc(def(lm)), a, b, carry_in);
       else if (program->chip_class >= GFX10 && carry_out)
          return vop3(aco_opcode::v_add_co_u32_e64, Definition(dst), def(s2), a, b);
       else if (program->chip_class < GFX9 || carry_out)
-         return vop2(aco_opcode::v_add_co_u32, Definition(dst), hint_vcc(def(s2)), a, b);
+         return vop2(aco_opcode::v_add_co_u32, Definition(dst), hint_vcc(def(lm)), a, b);
       else
          return vop2(aco_opcode::v_add_u32, Definition(dst), a, b);
    }
@@ -407,6 +417,7 @@ public:
       }
       return insert(std::move(sub));
    }
+
 <%
 import itertools
 formats = [("pseudo", [Format.PSEUDO], 'Pseudo_instruction', list(itertools.product(range(5), range(5))) + [(8, 1), (1, 8)]),

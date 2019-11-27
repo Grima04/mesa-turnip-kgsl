@@ -1149,6 +1149,7 @@ public:
    enum chip_class chip_class;
    enum radeon_family family;
    unsigned wave_size;
+   RegClass lane_mask;
    Stage stage; /* Stage */
    bool needs_exact = false; /* there exists an instruction with disable_wqm = true */
    bool needs_wqm = false; /* there exists a p_wqm instruction */
