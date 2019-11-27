@@ -442,6 +442,7 @@ select_counter(struct counter_group *group, int ctr, int n)
 	 */
 	struct fd_ringbuffer *ring = dev.ring;
 	switch (dev.chipid >> 24) {
+	case 2:
 	case 3:
 	case 4:
 		OUT_PKT3(ring, CP_WAIT_FOR_IDLE, 1);
