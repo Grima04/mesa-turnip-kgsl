@@ -65,6 +65,7 @@ v3dv_flags = ['-DV3D_VERSION=42']
 
 v3dv_deps = [
   dep_libdrm,
+  dep_valgrind,
   idep_vulkan_util,
 ]
 

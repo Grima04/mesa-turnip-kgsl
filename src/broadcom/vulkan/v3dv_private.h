@@ -35,6 +35,14 @@
 #include <vulkan/vulkan.h>
 #include <vulkan/vk_icd.h>
 
+#ifdef HAVE_VALGRIND
+#include <valgrind/valgrind.h>
+#include <valgrind/memcheck.h>
+#define VG(x) x
+#else
+#define VG(x) ((void)0)
+#endif
+
 #include "common/v3d_device_info.h"
 
 #include "vk_debug_report.h"
