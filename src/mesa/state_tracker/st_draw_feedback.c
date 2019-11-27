@@ -257,6 +257,38 @@ st_feedback_draw_vbo(struct gl_context *ctx,
                                       size);
    }
 
+   /* shader buffers */
+   /* TODO: atomic counter buffers */
+   struct pipe_transfer *ssbo_transfer[PIPE_MAX_SHADER_BUFFERS] = {0};
+   unsigned ssbo_first_slot = st->has_hw_atomics ? 0 :
+      st->ctx->Const.Program[MESA_SHADER_VERTEX].MaxAtomicBuffers;
+
+   for (unsigned i = 0; i < prog->info.num_ssbos; i++) {
+      struct gl_buffer_binding *binding =
+         &st->ctx->ShaderStorageBufferBindings[
+            prog->sh.ShaderStorageBlocks[i]->Binding];
+      struct st_buffer_object *st_obj = st_buffer_object(binding->BufferObject);
+      struct pipe_resource *buf = st_obj->buffer;
+
+      if (!buf)
+         continue;
+
+      unsigned offset = binding->Offset;
+      unsigned size = buf->width0 - binding->Offset;
+
+      /* AutomaticSize is FALSE if the buffer was set with BindBufferRange.
+       * Take the minimum just to be sure.
+       */
+      if (!binding->AutomaticSize)
+         size = MIN2(size, (unsigned) binding->Size);
+
+      void *ptr = pipe_buffer_map_range(pipe, buf, offset, size,
+                                        PIPE_TRANSFER_READ, &ssbo_transfer[i]);
+
+      draw_set_mapped_shader_buffer(draw, PIPE_SHADER_VERTEX,
+                                    ssbo_first_slot + i, ptr, size);
+   }
+
    /* samplers */
    struct pipe_sampler_state *samplers[PIPE_MAX_SAMPLERS];
    for (unsigned i = 0; i < st->state.num_vert_samplers; i++)
@@ -383,6 +415,14 @@ st_feedback_draw_vbo(struct gl_context *ctx,
 
    draw_set_samplers(draw, PIPE_SHADER_VERTEX, NULL, 0);
    draw_set_sampler_views(draw, PIPE_SHADER_VERTEX, NULL, 0);
+
+   for (unsigned i = 0; i < prog->info.num_ssbos; i++) {
+      if (ssbo_transfer[i]) {
+         draw_set_mapped_constant_buffer(draw, PIPE_SHADER_VERTEX, 1 + i,
+                                         NULL, 0);
+         pipe_buffer_unmap(pipe, ssbo_transfer[i]);
+      }
+   }
 
    for (unsigned i = 0; i < prog->info.num_ubos; i++) {
       if (ubo_transfer[i]) {
