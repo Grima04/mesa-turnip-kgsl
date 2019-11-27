@@ -495,6 +495,7 @@ util_format_is_compressed(enum pipe_format format)
    case UTIL_FORMAT_LAYOUT_BPTC:
    case UTIL_FORMAT_LAYOUT_ASTC:
    case UTIL_FORMAT_LAYOUT_ATC:
+   case UTIL_FORMAT_LAYOUT_FXT1:
       /* XXX add other formats in the future */
       return TRUE;
    default:
