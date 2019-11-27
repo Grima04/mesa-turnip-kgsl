@@ -840,7 +840,7 @@ get_const_def(struct spirv_builder *b, SpvOp op, SpvId type,
    }
 
    struct spirv_const *cnst = CALLOC_STRUCT(spirv_const);
-   if (!type)
+   if (!cnst)
       return 0;
 
    cnst->op = op;
