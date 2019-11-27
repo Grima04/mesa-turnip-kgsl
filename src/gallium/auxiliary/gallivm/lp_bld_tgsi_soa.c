@@ -1689,7 +1689,8 @@ lp_build_lod_property(
     * constant coords maybe).
     * There's at least hope for sample opcodes as well as size queries.
     */
-   if (reg->Register.File == TGSI_FILE_CONSTANT ||
+   if (inst->Instruction.Opcode == TGSI_OPCODE_TEX_LZ ||
+       reg->Register.File == TGSI_FILE_CONSTANT ||
        reg->Register.File == TGSI_FILE_IMMEDIATE) {
       lod_property = LP_SAMPLER_LOD_SCALAR;
    }
@@ -1814,8 +1815,10 @@ emit_tex( struct lp_build_tgsi_soa_context *bld,
    /* Note lod and especially projected are illegal in a LOT of cases */
    if (modifier == LP_BLD_TEX_MODIFIER_LOD_BIAS ||
        modifier == LP_BLD_TEX_MODIFIER_EXPLICIT_LOD) {
-      if (inst->Texture.Texture == TGSI_TEXTURE_SHADOWCUBE ||
-          inst->Texture.Texture == TGSI_TEXTURE_CUBE_ARRAY) {
+      if (inst->Instruction.Opcode == TGSI_OPCODE_TEX_LZ) {
+         lod = bld->bld_base.base.zero;
+      } else if (inst->Texture.Texture == TGSI_TEXTURE_SHADOWCUBE ||
+                 inst->Texture.Texture == TGSI_TEXTURE_CUBE_ARRAY) {
          /* note that shadow cube array with bias/explicit lod does not exist */
          lod = lp_build_emit_fetch(&bld->bld_base, inst, 1, 0);
       }
@@ -2172,7 +2175,8 @@ emit_fetch_texels( struct lp_build_tgsi_soa_context *bld,
    /* always have lod except for buffers and msaa targets ? */
    if (target != TGSI_TEXTURE_BUFFER &&
        target != TGSI_TEXTURE_2D_MSAA &&
-       target != TGSI_TEXTURE_2D_ARRAY_MSAA) {
+       target != TGSI_TEXTURE_2D_ARRAY_MSAA &&
+       inst->Instruction.Opcode != TGSI_OPCODE_TXF_LZ) {
       sample_key |= LP_SAMPLER_LOD_EXPLICIT << LP_SAMPLER_LOD_CONTROL_SHIFT;
       explicit_lod = lp_build_emit_fetch(&bld->bld_base, inst, 0, 3);
       lod_property = lp_build_lod_property(&bld->bld_base, inst, 0);
@@ -4096,9 +4100,11 @@ lp_build_tgsi_soa(struct gallivm_state *gallivm,
    bld.bld_base.op_actions[TGSI_OPCODE_TXB].emit = txb_emit;
    bld.bld_base.op_actions[TGSI_OPCODE_TXD].emit = txd_emit;
    bld.bld_base.op_actions[TGSI_OPCODE_TXL].emit = txl_emit;
+   bld.bld_base.op_actions[TGSI_OPCODE_TEX_LZ].emit = txl_emit;
    bld.bld_base.op_actions[TGSI_OPCODE_TXP].emit = txp_emit;
    bld.bld_base.op_actions[TGSI_OPCODE_TXQ].emit = txq_emit;
    bld.bld_base.op_actions[TGSI_OPCODE_TXF].emit = txf_emit;
+   bld.bld_base.op_actions[TGSI_OPCODE_TXF_LZ].emit = txf_emit;
    bld.bld_base.op_actions[TGSI_OPCODE_TEX2].emit = tex2_emit;
    bld.bld_base.op_actions[TGSI_OPCODE_TXB2].emit = txb2_emit;
    bld.bld_base.op_actions[TGSI_OPCODE_TXL2].emit = txl2_emit;
