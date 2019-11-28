@@ -118,4 +118,11 @@ fd6_ifmt(enum a6xx_color_fmt fmt)
 		return 0;
 	}
 }
+
+static inline uint32_t
+fd6_resource_swap(struct fd_resource *rsc, enum pipe_format format)
+{
+	return rsc->layout.tile_mode ? WZYX : fd6_pipe2swap(format);
+}
+
 #endif /* FD6_UTIL_H_ */

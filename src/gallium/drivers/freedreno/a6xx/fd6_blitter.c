@@ -390,8 +390,8 @@ emit_blit_or_clear_texture(struct fd_context *ctx, struct fd_ringbuffer *ring,
 	/* Linear levels of a tiled resource are always WZYX, so look at
 	 * rsc->tile_mode to determine the swap.
 	 */
-	sswap = src->layout.tile_mode ? WZYX : fd6_pipe2swap(info->src.format);
-	dswap = dst->layout.tile_mode ? WZYX : fd6_pipe2swap(info->dst.format);
+	sswap = fd6_resource_swap(src, info->src.format);
+	dswap = fd6_resource_swap(dst, info->dst.format);
 
 	if (util_format_is_compressed(info->src.format)) {
 		debug_assert(info->src.format == info->dst.format);

@@ -487,7 +487,7 @@ fd6_tex_const_0(struct pipe_resource *prsc,
 	return
 		A6XX_TEX_CONST_0_FMT(fd6_pipe2tex(format)) |
 		A6XX_TEX_CONST_0_SAMPLES(fd_msaa_samples(prsc->nr_samples)) |
-		A6XX_TEX_CONST_0_SWAP(rsc->layout.tile_mode ? WZYX : fd6_pipe2swap(format)) |
+		A6XX_TEX_CONST_0_SWAP(fd6_resource_swap(rsc, format)) |
 		A6XX_TEX_CONST_0_TILE_MODE(fd_resource_tile_mode(prsc, level)) |
 		COND(util_format_is_srgb(format), A6XX_TEX_CONST_0_SRGB) |
 		A6XX_TEX_CONST_0_SWIZ_X(fd6_pipe2swiz(swiz[0])) |

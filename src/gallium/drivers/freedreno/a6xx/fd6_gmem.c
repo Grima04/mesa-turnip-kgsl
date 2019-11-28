@@ -113,7 +113,7 @@ emit_mrt(struct fd_ringbuffer *ring, struct pipe_framebuffer_state *pfb,
 				psurf->u.tex.first_layer);
 
 		stride = slice->pitch * rsc->layout.cpp * pfb->samples;
-		swap = rsc->layout.tile_mode ? WZYX : fd6_pipe2swap(pformat);
+		swap = fd6_resource_swap(rsc, pformat);
 
 		tile_mode = fd_resource_tile_mode(psurf->texture, psurf->u.tex.level);
 
@@ -961,7 +961,7 @@ emit_blit(struct fd_batch *batch,
 	enum a6xx_color_fmt format = fd6_pipe2color(pfmt);
 	uint32_t stride = slice->pitch * rsc->layout.cpp;
 	uint32_t size = slice->size0;
-	enum a3xx_color_swap swap = rsc->layout.tile_mode ? WZYX : fd6_pipe2swap(pfmt);
+	enum a3xx_color_swap swap = fd6_resource_swap(rsc, pfmt);
 	enum a3xx_msaa_samples samples =
 			fd_msaa_samples(rsc->base.nr_samples);
 	uint32_t tile_mode = fd_resource_tile_mode(&rsc->base, psurf->u.tex.level);
