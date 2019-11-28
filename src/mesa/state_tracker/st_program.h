@@ -211,9 +211,6 @@ struct st_vp_variant
     */
    struct st_common_variant_key key;
 
-   /** similar to that in st_vertex_program, but with edgeflags info too */
-   GLuint num_inputs;
-
    /** Bitfield of VERT_BIT_* bits of mesa vertex processing inputs */
    GLbitfield vert_attrib_mask;
 };

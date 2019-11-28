@@ -568,7 +568,7 @@ st_update_array(struct st_context *st)
    st_setup_current(st, vp, vp_variant, velements, vbuffer, &num_vbuffers);
 
    /* Set the array into cso */
-   num_velements = vp_variant->num_inputs;
+   num_velements = vp->num_inputs + vp_variant->key.passthrough_edgeflags;
    set_vertex_attribs(st, vbuffer, num_vbuffers, velements, num_velements);
 
    /* Unreference uploaded buffer resources. */

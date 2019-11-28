@@ -583,7 +583,6 @@ st_create_vp_variant(struct st_context *st,
    struct gl_program_parameter_list *params = stvp->Base.Parameters;
 
    vpv->key = *key;
-   vpv->num_inputs = ((struct st_vertex_program*)stvp)->num_inputs;
 
    state.stream_output = stvp->state.stream_output;
 
@@ -598,7 +597,6 @@ st_create_vp_variant(struct st_context *st,
       }
       if (key->passthrough_edgeflags) {
          NIR_PASS_V(state.ir.nir, nir_lower_passthrough_edgeflags);
-         vpv->num_inputs++;
          finalize = true;
       }
 
@@ -670,11 +668,9 @@ st_create_vp_variant(struct st_context *st,
       if (tokens) {
          tgsi_free_tokens(state.tokens);
          state.tokens = tokens;
-
-         if (key->passthrough_edgeflags)
-            vpv->num_inputs++;
-      } else
+      } else {
          fprintf(stderr, "mesa: cannot emulate deprecated features\n");
+      }
    }
 
    if (key->lower_depth_clamp) {
@@ -726,7 +722,8 @@ st_get_vp_variant(struct st_context *st,
       if (vpv) {
          vpv->base.st = key->st;
 
-         for (unsigned index = 0; index < vpv->num_inputs; ++index) {
+         unsigned num_inputs = stvp->num_inputs + key->passthrough_edgeflags;
+         for (unsigned index = 0; index < num_inputs; ++index) {
             unsigned attr = stvp->index_to_input[index];
             if (attr == ST_DOUBLE_ATTRIB_PLACEHOLDER)
                continue;
