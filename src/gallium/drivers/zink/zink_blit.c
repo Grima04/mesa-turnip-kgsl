@@ -171,7 +171,7 @@ zink_blit(struct pipe_context *pctx,
    util_blitter_save_scissor(ctx->blitter, ctx->scissor_states);
    util_blitter_save_fragment_sampler_states(ctx->blitter,
                                              ctx->num_samplers[PIPE_SHADER_FRAGMENT],
-                                             (void **)ctx->samplers[PIPE_SHADER_FRAGMENT]);
+                                             ctx->sampler_states[PIPE_SHADER_FRAGMENT]);
    util_blitter_save_fragment_sampler_views(ctx->blitter,
                                             ctx->num_image_views[PIPE_SHADER_FRAGMENT],
                                             ctx->image_views[PIPE_SHADER_FRAGMENT]);

@@ -173,6 +173,7 @@ zink_bind_sampler_states(struct pipe_context *pctx,
    struct zink_context *ctx = zink_context(pctx);
    for (unsigned i = 0; i < num_samplers; ++i) {
       VkSampler *sampler = samplers[i];
+      ctx->sampler_states[shader][start_slot + i] = sampler;
       ctx->samplers[shader][start_slot + i] = sampler ? *sampler : VK_NULL_HANDLE;
    }
    ctx->num_samplers[shader] = start_slot + num_samplers;
