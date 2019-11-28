@@ -85,6 +85,12 @@ struct v3dv_physical_device {
    struct v3dv_device_extension_table supported_extensions;
    struct v3dv_physical_device_dispatch_table dispatch;
 
+   char path[20];
+   const char *name;
+   int32_t local_fd;
+   int32_t master_fd;
+   uint8_t pipeline_cache_uuid[VK_UUID_SIZE];
+
    /* FIXME: stub */
 };
 

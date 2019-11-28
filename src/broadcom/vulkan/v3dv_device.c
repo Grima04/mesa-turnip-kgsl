@@ -22,6 +22,7 @@
  */
 
 #include <assert.h>
+#include <fcntl.h>
 #include <stdbool.h>
 #include <string.h>
 #include <sys/mman.h>
@@ -205,7 +206,9 @@ v3dv_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
 static void
 physical_device_finish(struct v3dv_physical_device *device)
 {
-   /* FIXME: stub */
+   close(device->local_fd);
+   if (device->master_fd >= 0)
+      close(device->master_fd);
 }
 
 void
@@ -240,7 +243,25 @@ physical_device_init(struct v3dv_physical_device *device,
                      struct v3dv_instance *instance,
                      drmDevicePtr drm_device)
 {
-   /* FIXME stub */
+   const char *path = drm_device->nodes[DRM_NODE_RENDER];
+   int32_t fd = open(path, O_RDWR | O_CLOEXEC);
+   if (fd < 0)
+      return vk_error(instance, VK_ERROR_INCOMPATIBLE_DRIVER);
+
+   device->_loader_data.loaderMagic = ICD_LOADER_MAGIC;
+   device->instance = instance;
+
+   assert(strlen(path) < ARRAY_SIZE(device->path));
+   snprintf(device->path, ARRAY_SIZE(device->path), "%s", path);
+
+   /* FIXME: we will have to do plenty more here */
+   device->name = "Broadcom Video Core VI";
+   device->local_fd = fd;
+   device->master_fd = -1;
+
+   uint8_t zeroes[VK_UUID_SIZE] = { 0 };
+   memcpy(device->pipeline_cache_uuid, zeroes, VK_UUID_SIZE);
+
    return VK_SUCCESS;
 }
 
