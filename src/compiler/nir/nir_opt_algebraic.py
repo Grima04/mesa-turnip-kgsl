@@ -1063,6 +1063,24 @@ optimizations.extend([
                              0x7fffffffffffffff)),
     '(options->lower_int64_options & nir_lower_iadd64) != 0'),
 
+   # These are done here instead of in the backend because the int64 lowering
+   # pass will make a mess of the patterns.  The first patterns are
+   # conditioned on nir_lower_minmax64 because it was not clear that it was
+   # always an improvement on platforms that have real int64 support.  No
+   # shaders in shader-db hit this, so it was hard to say one way or the
+   # other.
+   (('ilt', ('imax(is_used_once)', 'a@64', 'b@64'), 0), ('ilt', ('imax', ('unpack_64_2x32_split_y', a), ('unpack_64_2x32_split_y', b)), 0), '(options->lower_int64_options & nir_lower_minmax64) != 0'),
+   (('ilt', ('imin(is_used_once)', 'a@64', 'b@64'), 0), ('ilt', ('imin', ('unpack_64_2x32_split_y', a), ('unpack_64_2x32_split_y', b)), 0), '(options->lower_int64_options & nir_lower_minmax64) != 0'),
+   (('ige', ('imax(is_used_once)', 'a@64', 'b@64'), 0), ('ige', ('imax', ('unpack_64_2x32_split_y', a), ('unpack_64_2x32_split_y', b)), 0), '(options->lower_int64_options & nir_lower_minmax64) != 0'),
+   (('ige', ('imin(is_used_once)', 'a@64', 'b@64'), 0), ('ige', ('imin', ('unpack_64_2x32_split_y', a), ('unpack_64_2x32_split_y', b)), 0), '(options->lower_int64_options & nir_lower_minmax64) != 0'),
+   (('ilt', 'a@64', 0), ('ilt', ('unpack_64_2x32_split_y', a), 0), '(options->lower_int64_options & nir_lower_icmp64) != 0'),
+   (('ige', 'a@64', 0), ('ige', ('unpack_64_2x32_split_y', a), 0), '(options->lower_int64_options & nir_lower_icmp64) != 0'),
+
+   (('ine', 'a@64', 0), ('ine', ('ior', ('unpack_64_2x32_split_x', a), ('unpack_64_2x32_split_y', a)), 0), '(options->lower_int64_options & nir_lower_icmp64) != 0'),
+   (('ieq', 'a@64', 0), ('ieq', ('ior', ('unpack_64_2x32_split_x', a), ('unpack_64_2x32_split_y', a)), 0), '(options->lower_int64_options & nir_lower_icmp64) != 0'),
+   # 0u < uint(a) <=> uint(a) != 0u
+   (('ult', 0, 'a@64'), ('ine', ('ior', ('unpack_64_2x32_split_x', a), ('unpack_64_2x32_split_y', a)), 0), '(options->lower_int64_options & nir_lower_icmp64) != 0'),
+
    # Alternative lowering that doesn't rely on bfi.
    (('bitfield_insert', 'base', 'insert', 'offset', 'bits'),
     ('bcsel', ('ult', 31, 'bits'),
