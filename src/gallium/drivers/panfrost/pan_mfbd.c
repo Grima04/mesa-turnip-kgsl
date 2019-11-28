@@ -357,8 +357,8 @@ mali_ptr
 panfrost_mfbd_fragment(struct panfrost_batch *batch, bool has_draws)
 {
         struct bifrost_framebuffer fb = panfrost_emit_mfbd(batch, has_draws);
-        struct bifrost_fb_extra fbx = {};
-        struct bifrost_render_target rts[4] = {};
+        struct bifrost_fb_extra fbx = {0};
+        struct bifrost_render_target rts[4] = {0};
 
         /* We always upload at least one dummy GL_NONE render target */
 

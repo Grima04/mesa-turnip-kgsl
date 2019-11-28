@@ -58,7 +58,7 @@ static struct midgard_tiler_descriptor
 panfrost_emit_midg_tiler(struct panfrost_batch *batch, unsigned vertex_count)
 {
         struct panfrost_screen *screen = pan_screen(batch->ctx->base.screen);
-        struct midgard_tiler_descriptor t = {};
+        struct midgard_tiler_descriptor t = {0};
         unsigned height = batch->key.height;
         unsigned width = batch->key.width;
 
@@ -1959,7 +1959,7 @@ update_so_info(struct pipe_stream_output_info *so_info,
                uint64_t outputs_written)
 {
 	uint64_t so_outputs = 0;
-	uint8_t reverse_map[64] = {};
+	uint8_t reverse_map[64] = {0};
 	unsigned slot = 0;
 
 	while (outputs_written)

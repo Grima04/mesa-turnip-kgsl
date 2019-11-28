@@ -106,7 +106,7 @@ void
 panfrost_blit_wallpaper(struct panfrost_context *ctx, struct pipe_box *box)
 {
         struct panfrost_batch *batch = ctx->wallpaper_batch;
-        struct pipe_blit_info binfo = { };
+        struct pipe_blit_info binfo = {0};
 
         panfrost_blitter_save(ctx, ctx->blitter_wallpaper);
 
