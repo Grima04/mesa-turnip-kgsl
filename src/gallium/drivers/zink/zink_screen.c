@@ -490,6 +490,8 @@ zink_is_format_supported(struct pipe_screen *pscreen,
 
    if (sample_count >= 1) {
       VkSampleCountFlagBits sample_mask = vk_sample_count_flags(sample_count);
+      if (!sample_mask)
+         return false;
       const struct util_format_description *desc = util_format_description(format);
       if (util_format_is_depth_or_stencil(format)) {
          if (util_format_has_depth(desc)) {
