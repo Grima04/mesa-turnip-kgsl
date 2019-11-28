@@ -5709,17 +5709,22 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
       Temp src = get_ssa_temp(ctx, instr->src[0].ssa);
       Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
       Definition tmp = bld.def(dst.regClass());
+      Definition lanemask_tmp = dst.size() == bld.lm.size() ? tmp : bld.def(src.regClass());
       if (instr->src[0].ssa->bit_size == 1) {
          assert(src.regClass() == bld.lm);
-         bld.sop2(Builder::s_and, tmp, bld.def(s1, scc), Operand(exec, bld.lm), src);
+         bld.sop2(Builder::s_and, lanemask_tmp, bld.def(s1, scc), Operand(exec, bld.lm), src);
       } else if (instr->src[0].ssa->bit_size == 32 && src.regClass() == v1) {
-         bld.vopc(aco_opcode::v_cmp_lg_u32, tmp, Operand(0u), src);
+         bld.vopc(aco_opcode::v_cmp_lg_u32, lanemask_tmp, Operand(0u), src);
       } else if (instr->src[0].ssa->bit_size == 64 && src.regClass() == v2) {
-         bld.vopc(aco_opcode::v_cmp_lg_u64, tmp, Operand(0u), src);
+         bld.vopc(aco_opcode::v_cmp_lg_u64, lanemask_tmp, Operand(0u), src);
       } else {
          fprintf(stderr, "Unimplemented NIR instr bit size: ");
          nir_print_instr(&instr->instr, stderr);
          fprintf(stderr, "\n");
+      }
+      if (dst.size() != bld.lm.size()) {
+         /* Wave32 with ballot size set to 64 */
+         bld.pseudo(aco_opcode::p_create_vector, Definition(tmp), lanemask_tmp.getTemp(), Operand(0u));
       }
       emit_wqm(ctx, tmp.getTemp(), dst);
       break;
