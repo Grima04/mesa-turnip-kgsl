@@ -341,11 +341,197 @@ v3dv_GetPhysicalDeviceFeatures(VkPhysicalDevice physicalDevice,
    /* FIXME: stub */
 }
 
+static uint64_t
+compute_heap_size()
+{
+   /* Query the total ram from the system */
+   struct sysinfo info;
+   sysinfo(&info);
+
+   uint64_t total_ram = (uint64_t)info.totalram * (uint64_t)info.mem_unit;
+
+   /* We don't want to burn too much ram with the GPU.  If the user has 4GiB
+    * or less, we use at most half.  If they have more than 4GiB, we use 3/4.
+    */
+   uint64_t available_ram;
+   if (total_ram <= 4ull * 1024ull * 1024ull * 1024ull)
+      available_ram = total_ram / 2;
+   else
+      available_ram = total_ram * 3 / 4;
+
+   return available_ram;
+}
+
+
 void
 v3dv_GetPhysicalDeviceProperties(VkPhysicalDevice physicalDevice,
                                  VkPhysicalDeviceProperties *pProperties)
 {
-   /* FIXME: stub */
+   V3DV_FROM_HANDLE(v3dv_physical_device, pdevice, physicalDevice);
+
+   const uint32_t page_size = 4096;
+   const uint32_t mem_size = compute_heap_size();
+
+   /* Per-stage limits */
+   const uint32_t max_samplers = 16;
+   const uint32_t max_uniform_buffers = 12;
+   const uint32_t max_storage_buffers = 4;
+   const uint32_t max_sampled_images = 16;
+   const uint32_t max_storage_images = 4;
+
+   const uint32_t max_vertex_attributes = 16;
+   const uint32_t max_varying_components = 16 * 4;
+   const uint32_t max_render_targets = 4;
+
+   const uint32_t v3d_coord_shift = 6;
+   const uint32_t v3d_coord_scale = (1 << v3d_coord_shift);
+   const float point_size_granularity = 2.0f / v3d_coord_scale;
+
+   const uint32_t max_fb_size = 4096;
+
+   const VkSampleCountFlags supported_sample_counts = VK_SAMPLE_COUNT_1_BIT;
+
+   /* FIXME: this will probably require an in-depth review */
+   VkPhysicalDeviceLimits limits = {
+      .maxImageDimension1D                      = 4096,
+      .maxImageDimension2D                      = 4096,
+      .maxImageDimension3D                      = 4096,
+      .maxImageDimensionCube                    = 4096,
+      .maxImageArrayLayers                      = 2048,
+      .maxTexelBufferElements                   = (1ul << 28),
+      .maxUniformBufferRange                    = (1ul << 27) - 1,
+      .maxStorageBufferRange                    = (1ul << 27) - 1,
+      .maxPushConstantsSize                     = (1ul << 27) - 1,
+      .maxMemoryAllocationCount                 = mem_size / page_size,
+      .maxSamplerAllocationCount                = 64 * 1024,
+      .bufferImageGranularity                   = 256, /* A cache line */
+      .sparseAddressSpaceSize                   = 0,
+      .maxBoundDescriptorSets                   = 16,
+      .maxPerStageDescriptorSamplers            = max_samplers,
+      .maxPerStageDescriptorUniformBuffers      = max_uniform_buffers,
+      .maxPerStageDescriptorStorageBuffers      = max_storage_buffers,
+      .maxPerStageDescriptorSampledImages       = max_sampled_images,
+      .maxPerStageDescriptorStorageImages       = max_storage_images,
+      .maxPerStageDescriptorInputAttachments    = 4,
+      .maxPerStageResources                     = 128,
+
+      /* We multiply some limits by 6 to account for all shader stages */
+      .maxDescriptorSetSamplers                 = 6 * max_samplers,
+      .maxDescriptorSetUniformBuffers           = 6 * max_uniform_buffers,
+      .maxDescriptorSetUniformBuffersDynamic    = 8,
+      .maxDescriptorSetStorageBuffers           = 6 * max_storage_buffers,
+      .maxDescriptorSetStorageBuffersDynamic    = 4,
+      .maxDescriptorSetSampledImages            = 6 * max_sampled_images,
+      .maxDescriptorSetStorageImages            = 6 * max_storage_images,
+      .maxDescriptorSetInputAttachments         = 4,
+
+      /* Vertex limits */
+      .maxVertexInputAttributes                 = max_vertex_attributes,
+      .maxVertexInputBindings                   = max_vertex_attributes,
+      .maxVertexInputAttributeOffset            = 0xffffffff,
+      .maxVertexInputBindingStride              = 0xffffffff,
+      .maxVertexOutputComponents                = max_varying_components,
+
+      /* Tessellation limits */
+      .maxTessellationGenerationLevel           = 0,
+      .maxTessellationPatchSize                 = 0,
+      .maxTessellationControlPerVertexInputComponents = 0,
+      .maxTessellationControlPerVertexOutputComponents = 0,
+      .maxTessellationControlPerPatchOutputComponents = 0,
+      .maxTessellationControlTotalOutputComponents = 0,
+      .maxTessellationEvaluationInputComponents = 0,
+      .maxTessellationEvaluationOutputComponents = 0,
+
+      /* Geometry limits */
+      .maxGeometryShaderInvocations             = 0,
+      .maxGeometryInputComponents               = 0,
+      .maxGeometryOutputComponents              = 0,
+      .maxGeometryOutputVertices                = 0,
+      .maxGeometryTotalOutputComponents         = 0,
+
+      /* Fragment limits */
+      .maxFragmentInputComponents               = max_varying_components,
+      .maxFragmentOutputAttachments             = 4,
+      .maxFragmentDualSrcAttachments            = 0,
+      .maxFragmentCombinedOutputResources       = max_render_targets +
+                                                  max_storage_buffers +
+                                                  max_storage_images,
+
+      /* Compute limits */
+      .maxComputeSharedMemorySize               = 16384,
+      .maxComputeWorkGroupCount                 = { 65535, 65535, 65535 },
+      .maxComputeWorkGroupInvocations           = 256,
+      .maxComputeWorkGroupSize                  = { 256, 256, 256 },
+
+      .subPixelPrecisionBits                    = v3d_coord_shift,
+      .subTexelPrecisionBits                    = 8,
+      .mipmapPrecisionBits                      = 8,
+      .maxDrawIndexedIndexValue                 = 0x00ffffff,
+      .maxDrawIndirectCount                     = 0x7fffffff,
+      .maxSamplerLodBias                        = 14.0f,
+      .maxSamplerAnisotropy                     = 16.0f,
+      .maxViewports                             = 1,
+      .maxViewportDimensions                    = { max_fb_size, max_fb_size },
+      .viewportBoundsRange                      = { -2.0 * max_fb_size,
+                                                    2.0 * max_fb_size - 1 },
+      .viewportSubPixelBits                     = 0,
+      .minMemoryMapAlignment                    = page_size,
+      .minTexelBufferOffsetAlignment            = 16,
+      .minUniformBufferOffsetAlignment          = 256,
+      .minStorageBufferOffsetAlignment          = 256,
+      .minTexelOffset                           = -8,
+      .maxTexelOffset                           = 7,
+      .minTexelGatherOffset                     = -8,
+      .maxTexelGatherOffset                     = 7,
+      .minInterpolationOffset                   = -0.5,
+      .maxInterpolationOffset                   = 0.5,
+      .subPixelInterpolationOffsetBits          = v3d_coord_shift,
+      .maxFramebufferWidth                      = max_fb_size,
+      .maxFramebufferHeight                     = max_fb_size,
+      .maxFramebufferLayers                     = 256,
+      .framebufferColorSampleCounts             = supported_sample_counts,
+      .framebufferDepthSampleCounts             = supported_sample_counts,
+      .framebufferStencilSampleCounts           = supported_sample_counts,
+      .framebufferNoAttachmentsSampleCounts     = supported_sample_counts,
+      .maxColorAttachments                      = max_render_targets,
+      .sampledImageColorSampleCounts            = supported_sample_counts,
+      .sampledImageIntegerSampleCounts          = supported_sample_counts,
+      .sampledImageDepthSampleCounts            = supported_sample_counts,
+      .sampledImageStencilSampleCounts          = supported_sample_counts,
+      .storageImageSampleCounts                 = VK_SAMPLE_COUNT_1_BIT,
+      .maxSampleMaskWords                       = 1,
+      .timestampComputeAndGraphics              = false,
+      .timestampPeriod                          = 0.0f,
+      .maxClipDistances                         = 0,
+      .maxCullDistances                         = 0,
+      .maxCombinedClipAndCullDistances          = 0,
+      .discreteQueuePriorities                  = 2,
+      .pointSizeRange                           = { point_size_granularity,
+                                                    512.0f },
+      .lineWidthRange                           = { 1.0f, 1.0f },
+      .pointSizeGranularity                     = point_size_granularity,
+      .lineWidthGranularity                     = 0.0f,
+      .strictLines                              = true,
+      .standardSampleLocations                  = false,
+      .optimalBufferCopyOffsetAlignment         = 32,
+      .optimalBufferCopyRowPitchAlignment       = 32,
+      .nonCoherentAtomSize                      = 256,
+   };
+
+   *pProperties = (VkPhysicalDeviceProperties) {
+      .apiVersion = v3dv_physical_device_api_version(pdevice),
+      .driverVersion = vk_get_driver_version(),
+      .vendorID = 0x14E4,
+      .deviceID = 0, /* FIXME */
+      .deviceType = VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU,
+      .limits = limits,
+      .sparseProperties = { 0 },
+   };
+
+   snprintf(pProperties->deviceName, sizeof(pProperties->deviceName),
+            "%s", pdevice->name);
+   memcpy(pProperties->pipelineCacheUUID,
+          pdevice->pipeline_cache_uuid, VK_UUID_SIZE);
 }
 
 void
