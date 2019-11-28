@@ -189,8 +189,6 @@ files_libmesa_common = files(
   'main/matrix.h',
   'main/mipmap.c',
   'main/mipmap.h',
-  'main/mm.c',
-  'main/mm.h',
   'main/menums.h',
   'main/mtypes.h',
   'main/multisample.c',

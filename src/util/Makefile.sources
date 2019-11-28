@@ -112,6 +112,8 @@ MESA_UTIL_FILES := \
 	os_memory_stdc.h \
 	os_memory.h \
 	u_memory.h \
+	u_mm.h \
+	u_mm.c \
 	vma.c \
 	vma.h
 
