@@ -568,12 +568,12 @@ st_translate_vertex_program(struct st_context *st,
 static const gl_state_index16 depth_range_state[STATE_LENGTH] =
    { STATE_DEPTH_RANGE };
 
-static struct st_vp_variant *
+static struct st_common_variant *
 st_create_vp_variant(struct st_context *st,
                      struct st_program *stvp,
                      const struct st_common_variant_key *key)
 {
-   struct st_vp_variant *vpv = CALLOC_STRUCT(st_vp_variant);
+   struct st_common_variant *vpv = CALLOC_STRUCT(st_common_variant);
    struct pipe_context *pipe = st->pipe;
    struct pipe_screen *screen = pipe->screen;
    struct pipe_shader_state state = {0};
@@ -700,17 +700,17 @@ st_create_vp_variant(struct st_context *st,
 /**
  * Find/create a vertex program variant.
  */
-struct st_vp_variant *
+struct st_common_variant *
 st_get_vp_variant(struct st_context *st,
                   struct st_program *stp,
                   const struct st_common_variant_key *key)
 {
    struct st_vertex_program *stvp = (struct st_vertex_program *)stp;
-   struct st_vp_variant *vpv;
+   struct st_common_variant *vpv;
 
    /* Search for existing variant */
-   for (vpv = st_vp_variant(stp->variants); vpv;
-        vpv = st_vp_variant(vpv->base.next)) {
+   for (vpv = st_common_variant(stp->variants); vpv;
+        vpv = st_common_variant(vpv->base.next)) {
       if (memcmp(&vpv->key, key, sizeof(*key)) == 0) {
          break;
       }

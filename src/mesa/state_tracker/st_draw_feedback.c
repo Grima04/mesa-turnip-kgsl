@@ -108,7 +108,7 @@ st_feedback_draw_vbo(struct gl_context *ctx,
    struct pipe_context *pipe = st->pipe;
    struct draw_context *draw = st_get_draw_context(st);
    const struct st_vertex_program *vp;
-   struct st_vp_variant *vp_variant;
+   struct st_common_variant *vp_variant;
    struct pipe_vertex_buffer vbuffers[PIPE_MAX_SHADER_INPUTS];
    unsigned num_vbuffers = 0;
    struct pipe_vertex_element velements[PIPE_MAX_ATTRIBS];

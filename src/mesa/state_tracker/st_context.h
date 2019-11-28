@@ -259,7 +259,7 @@ struct st_context
       struct gl_program *current_program[MESA_SHADER_STAGES];
    };
 
-   struct st_vp_variant *vp_variant;
+   struct st_common_variant *vp_variant;
 
    struct {
       struct pipe_resource *pixelmap_texture;
