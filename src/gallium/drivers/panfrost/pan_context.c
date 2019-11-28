@@ -30,6 +30,7 @@
 #include "pan_bo.h"
 #include "pan_context.h"
 #include "pan_format.h"
+#include "panfrost-quirks.h"
 
 #include "util/macros.h"
 #include "util/format/u_format.h"
@@ -102,7 +103,7 @@ panfrost_emit_midg_tiler(struct panfrost_batch *batch, unsigned vertex_count)
                 /* Disable the tiler */
                 t.hierarchy_mask |= MALI_TILER_DISABLED;
 
-                if (screen->require_sfbd) {
+                if (screen->quirks & MIDGARD_SFBD) {
                         t.hierarchy_mask = 0xFFF; /* TODO: What's this? */
                         t.polygon_list_size = 0x200;
 
@@ -217,7 +218,7 @@ panfrost_attach_vt_framebuffer(struct panfrost_context *ctx)
         struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
 
         if (!batch->framebuffer)
-                batch->framebuffer = screen->require_sfbd ?
+                batch->framebuffer = (screen->quirks & MIDGARD_SFBD) ?
                                      panfrost_attach_vt_sfbd(batch) :
                                      panfrost_attach_vt_mfbd(batch);
 
@@ -426,9 +427,8 @@ panfrost_default_shader_backend(struct panfrost_context *ctx)
          * these earlier chips (perhaps this is a chicken bit of some kind).
          * More investigation is needed. */
 
-	if (screen->require_sfbd) {
+	if (screen->quirks & MIDGARD_SFBD)
 		shader.unknown2_4 |= 0x10;
-	}
 
         struct pipe_stencil_state default_stencil = {
                 .enabled = 0,
@@ -1068,7 +1068,7 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                         ctx->fragment_shader_core.blend.shader = 0;
                 }
 
-                if (screen->require_sfbd) {
+                if (screen->quirks & MIDGARD_SFBD) {
                         /* When only a single render target platform is used, the blend
                          * information is inside the shader meta itself. We
                          * additionally need to signal CAN_DISCARD for nontrivial blend
@@ -1092,7 +1092,7 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
 
                 ctx->payloads[PIPE_SHADER_FRAGMENT].postfix.shader = transfer.gpu;
 
-                if (!screen->require_sfbd) {
+                if (!(screen->quirks & MIDGARD_SFBD)) {
                         /* Additional blend descriptor tacked on for jobs using MFBD */
 
                         struct midgard_blend_rt rts[4];

@@ -30,6 +30,7 @@
 #include "pan_blend_shaders.h"
 #include "pan_blending.h"
 #include "pan_bo.h"
+#include "panfrost-quirks.h"
 
 /* A given Gallium blend state can be encoded to the hardware in numerous,
  * dramatically divergent ways due to the interactions of blending with
@@ -149,7 +150,7 @@ panfrost_bind_blend_state(struct pipe_context *pipe,
         if (!blend)
                 return;
 
-        if (screen->require_sfbd) {
+        if (screen->quirks & MIDGARD_SFBD) {
                 SET_BIT(ctx->fragment_shader_core.unknown2_4, MALI_NO_DITHER, !blend->dither);
         }
 

@@ -52,6 +52,7 @@
 
 #include "pan_context.h"
 #include "midgard/midgard_compile.h"
+#include "panfrost-quirks.h"
 
 static const struct debug_named_value debug_options[] = {
         {"msgs",      PAN_DBG_MSGS,	"Print debug messages"},
@@ -732,7 +733,7 @@ panfrost_create_screen(int fd, struct renderonly *ro)
         screen->fd = fd;
 
         screen->gpu_id = panfrost_query_gpu_version(screen);
-        screen->require_sfbd = screen->gpu_id < 0x0750; /* T760 is the first to support MFBD */
+        screen->quirks = panfrost_get_quirks(screen->gpu_id);
         screen->kernel_version = drmGetVersion(fd);
 
         /* Check if we're loading against a supported GPU model. */
@@ -744,8 +745,7 @@ panfrost_create_screen(int fd, struct renderonly *ro)
                 break;
         default:
                 /* Fail to load against untested models */
-                debug_printf("panfrost: Unsupported model %X",
-                             screen->gpu_id);
+                debug_printf("panfrost: Unsupported model %X", screen->gpu_id);
                 return NULL;
         }
 

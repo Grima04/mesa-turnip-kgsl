@@ -25,6 +25,7 @@
 #include "pan_context.h"
 #include "pan_util.h"
 #include "pan_format.h"
+#include "panfrost-quirks.h"
 
 #include "util/format/u_format.h"
 
@@ -52,7 +53,7 @@ panfrost_fragment_job(struct panfrost_batch *batch, bool has_draws)
 {
         struct panfrost_screen *screen = pan_screen(batch->ctx->base.screen);
 
-        mali_ptr framebuffer = screen->require_sfbd ?
+        mali_ptr framebuffer = screen->quirks & MIDGARD_SFBD ?
                                panfrost_sfbd_fragment(batch, has_draws) :
                                panfrost_mfbd_fragment(batch, has_draws);
 

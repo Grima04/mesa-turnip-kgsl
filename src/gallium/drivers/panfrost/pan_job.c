@@ -35,6 +35,7 @@
 #include "util/u_pack_color.h"
 #include "pan_util.h"
 #include "pandecode/decode.h"
+#include "panfrost-quirks.h"
 
 /* panfrost_bo_access is here to help us keep track of batch accesses to BOs
  * and build a proper dependency graph such that batches can be pipelined for
@@ -677,7 +678,7 @@ panfrost_batch_get_tiler_dummy(struct panfrost_batch *batch)
         if (batch->tiler_dummy)
                 return batch->tiler_dummy;
 
-        if (!screen->require_sfbd)
+        if (!(screen->quirks & MIDGARD_NO_HIER_TILING))
                 create_flags = PAN_BO_INVISIBLE;
 
         batch->tiler_dummy = panfrost_batch_create_bo(batch, 4096,
