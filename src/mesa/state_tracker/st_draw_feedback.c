@@ -137,16 +137,13 @@ st_feedback_draw_vbo(struct gl_context *ctx,
       vbo_get_minmax_indices(ctx, prims, ib, &min_index, &max_index, nr_prims);
 
    /* must get these after state validation! */
+   struct st_common_variant_key key;
+   /* We have to use memcpy to make sure that all bits are copied. */
+   memcpy(&key, &st->vp_variant->key, sizeof(key));
+   key.is_draw_shader = true;
+
    vp = (struct st_vertex_program *)st->vp;
-   vp_variant = st->vp_variant;
-
-   struct pipe_shader_state state = {0};
-   state.type = PIPE_SHADER_IR_TGSI;
-   state.tokens = vp_variant->tokens;
-
-   if (!vp_variant->draw_shader) {
-      vp_variant->draw_shader = draw_create_vertex_shader(draw, &state);
-   }
+   vp_variant = st_get_vp_variant(st, st->vp, &key);
 
    /*
     * Set up the draw module's state.
@@ -158,7 +155,7 @@ st_feedback_draw_vbo(struct gl_context *ctx,
    draw_set_viewport_states(draw, 0, 1, &st->state.viewport[0]);
    draw_set_clip_state(draw, &st->state.clip);
    draw_set_rasterizer_state(draw, &st->state.rasterizer, NULL);
-   draw_bind_vertex_shader(draw, vp_variant->draw_shader);
+   draw_bind_vertex_shader(draw, vp_variant->base.driver_shader);
    set_feedback_vertex_format(ctx);
 
    /* Must setup these after state validation! */

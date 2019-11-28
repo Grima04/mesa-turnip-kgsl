@@ -41,6 +41,7 @@
 #include "program/programopt.h"
 
 #include "compiler/nir/nir.h"
+#include "draw/draw_context.h"
 
 #include "pipe/p_context.h"
 #include "pipe/p_defines.h"
@@ -252,16 +253,6 @@ delete_variant(struct st_context *st, struct st_variant *v, GLenum target)
 
          st_save_zombie_shader(v->st, type, v->driver_shader);
       }
-   }
-
-   if (target == GL_VERTEX_PROGRAM_ARB) {
-      struct st_vp_variant *vpv = (struct st_vp_variant *)v;
-
-      if (vpv->draw_shader)
-         draw_delete_vertex_shader( st->draw, vpv->draw_shader );
-
-      if (vpv->tokens)
-         ureg_free_tokens(vpv->tokens);
    }
 
    free(v);
@@ -656,18 +647,10 @@ st_create_vp_variant(struct st_context *st,
       if (ST_DEBUG & DEBUG_PRINT_IR)
          nir_print_shader(state.ir.nir, stderr);
 
-      vpv->base.driver_shader = pipe->create_vs_state(pipe, &state);
-
-      /* When generating a NIR program, we usually don't have TGSI tokens.
-       * However, we do create them for ARB_vertex_program / fixed-function VS
-       * programs which we may need to use with the draw module for legacy
-       * feedback/select emulation.  If they exist, copy them.
-       *
-       * TODO: Lowering for shader variants is not applied to TGSI when
-       * generating a NIR shader.
-       */
-      if (stvp->state.tokens)
-         vpv->tokens = tgsi_dup_tokens(stvp->state.tokens);
+      if (key->is_draw_shader)
+         vpv->base.driver_shader = draw_create_vertex_shader(st->draw, &state);
+      else
+         vpv->base.driver_shader = pipe->create_vs_state(pipe, &state);
 
       return vpv;
    }
@@ -709,9 +692,11 @@ st_create_vp_variant(struct st_context *st,
    if (ST_DEBUG & DEBUG_PRINT_IR)
       tgsi_dump(state.tokens, 0);
 
-   vpv->base.driver_shader = pipe->create_vs_state(pipe, &state);
-   /* Save this for selection/feedback/rasterpos. */
-   vpv->tokens = state.tokens;
+   if (key->is_draw_shader)
+      vpv->base.driver_shader = draw_create_vertex_shader(st->draw, &state);
+   else
+      vpv->base.driver_shader = pipe->create_vs_state(pipe, &state);
+
    return vpv;
 }
 

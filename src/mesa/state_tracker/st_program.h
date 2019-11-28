@@ -190,6 +190,11 @@ struct st_common_variant_key
 
    /* for user-defined clip-planes */
    uint8_t lower_ucp;
+
+   /* Whether st_variant::driver_shader is for the draw module,
+    * not for the driver.
+    */
+   bool is_draw_shader;
 };
 
 
@@ -205,15 +210,6 @@ struct st_vp_variant
     * shader:
     */
    struct st_common_variant_key key;
-
-   /**
-    * The shader variant saved for the draw module to later emulate
-    * selection/feedback/rasterpos.
-    */
-   const struct tgsi_token *tokens;
-
-   /** For using our private draw module (glRasterPos) */
-   struct draw_vertex_shader *draw_shader;
 
    /** similar to that in st_vertex_program, but with edgeflags info too */
    GLuint num_inputs;
