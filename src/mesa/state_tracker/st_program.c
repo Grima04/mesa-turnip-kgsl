@@ -450,7 +450,20 @@ st_translate_vertex_program(struct st_context *st,
       if (stp->Base.Parameters->NumParameters)
          stp->affected_states |= ST_NEW_VS_CONSTANTS;
 
-      /* No samplers are allowed in ARB_vp. */
+      /* Translate to NIR if preferred. */
+      if (st->pipe->screen->get_shader_param(st->pipe->screen,
+                                             PIPE_SHADER_VERTEX,
+                                             PIPE_SHADER_CAP_PREFERRED_IR)) {
+         assert(!stp->glsl_to_tgsi);
+
+         if (stp->Base.nir)
+            ralloc_free(stp->Base.nir);
+
+         stp->state.type = PIPE_SHADER_IR_NIR;
+         stp->Base.nir = st_translate_prog_to_nir(st, &stp->Base,
+                                                  MESA_SHADER_VERTEX);
+         return true;
+      }
    }
 
    /* Get semantic names and indices. */
@@ -539,27 +552,6 @@ st_translate_vertex_program(struct st_context *st,
    if (stp->glsl_to_tgsi) {
       stp->glsl_to_tgsi = NULL;
       st_store_ir_in_disk_cache(st, &stp->Base, false);
-   }
-
-   /* Translate to NIR.
-    *
-    * This must be done after the translation to TGSI is done, because
-    * we'll pass the NIR shader to the driver and the TGSI version to
-    * the draw module for the select/feedback/rasterpos code.
-    */
-   if (st->pipe->screen->get_shader_param(st->pipe->screen,
-                                          PIPE_SHADER_VERTEX,
-                                          PIPE_SHADER_CAP_PREFERRED_IR)) {
-      assert(!stp->glsl_to_tgsi);
-
-      nir_shader *nir =
-         st_translate_prog_to_nir(st, &stp->Base, MESA_SHADER_VERTEX);
-
-      if (stp->Base.nir)
-         ralloc_free(stp->Base.nir);
-      stp->state.type = PIPE_SHADER_IR_NIR;
-      stp->Base.nir = nir;
-      return true;
    }
 
    return stp->state.tokens != NULL;
