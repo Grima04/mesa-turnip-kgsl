@@ -578,7 +578,24 @@ void
 v3dv_GetPhysicalDeviceMemoryProperties(VkPhysicalDevice physicalDevice,
                                        VkPhysicalDeviceMemoryProperties *pMemoryProperties)
 {
-   /* FIXME: stub */
+   pMemoryProperties->memoryHeapCount = 1;
+   pMemoryProperties->memoryHeaps[0].size = compute_heap_size();
+   pMemoryProperties->memoryHeaps[0].flags = VK_MEMORY_HEAP_DEVICE_LOCAL_BIT;
+
+   pMemoryProperties->memoryTypeCount = 2;
+
+   /* This is the only combination required by the spec */
+   pMemoryProperties->memoryTypes[0].propertyFlags =
+      VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT |
+      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+      VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+   pMemoryProperties->memoryTypes[0].heapIndex = 0;
+
+   pMemoryProperties->memoryTypes[1].propertyFlags =
+      VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT |
+      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+      VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
+   pMemoryProperties->memoryTypes[1].heapIndex = 0;
 }
 
 
