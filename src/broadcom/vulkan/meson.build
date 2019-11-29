@@ -63,9 +63,15 @@ libv3dv_files = files(
 # driver.
 v3dv_flags = ['-DV3D_VERSION=42']
 
+dep_v3dv3 = dependency('v3dv3', required : false)
+if dep_v3dv3.found()
+  v3dv_flags += '-DUSE_V3D_SIMULATOR'
+endif
+
 v3dv_deps = [
   dep_libdrm,
   dep_valgrind,
+  dep_v3dv3,
   idep_vulkan_util,
 ]
 

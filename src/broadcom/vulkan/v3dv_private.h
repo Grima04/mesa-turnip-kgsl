@@ -35,6 +35,8 @@
 #include <vulkan/vulkan.h>
 #include <vulkan/vk_icd.h>
 
+#include <xf86drm.h>
+
 #ifdef HAVE_VALGRIND
 #include <valgrind/valgrind.h>
 #include <valgrind/memcheck.h>
@@ -52,6 +54,7 @@
 #include "v3dv_extensions.h"
 
 #include "vk_alloc.h"
+#include "simulator/v3d_simulator.h"
 
 /*
  * FIXME: confirm value
@@ -62,6 +65,14 @@
 #define MAX_MEMORY_ALLOCATION_SIZE (1ull << 31)
 
 struct v3dv_instance;
+
+#ifdef USE_V3D_SIMULATOR
+#define using_v3d_simulator true
+#else
+#define using_v3d_simulator false
+#endif
+
+struct v3d_simulator_file;
 
 struct v3dv_device {
    VK_LOADER_DATA _loader_data;
@@ -92,6 +103,9 @@ struct v3dv_physical_device {
    uint8_t pipeline_cache_uuid[VK_UUID_SIZE];
 
    /* FIXME: stub */
+   struct v3d_device_info devinfo;
+
+   struct v3d_simulator_file *sim_file;
 };
 
 struct v3dv_app_info {
@@ -219,5 +233,14 @@ V3DV_DEFINE_HANDLE_CASTS(v3dv_physical_device, VkPhysicalDevice)
 V3DV_DEFINE_HANDLE_CASTS(v3dv_queue, VkQueue)
 
 V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_device_memory, VkDeviceMemory)
+
+static inline int
+v3dv_ioctl(int fd, unsigned long request, void *arg)
+{
+   if (using_v3d_simulator)
+      return v3d_simulator_ioctl(fd, request, arg);
+   else
+      return drmIoctl(fd, request, arg);
+}
 
 #endif /* V3DV_PRIVATE_H */

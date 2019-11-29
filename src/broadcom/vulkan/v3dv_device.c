@@ -209,6 +209,10 @@ physical_device_finish(struct v3dv_physical_device *device)
    close(device->local_fd);
    if (device->master_fd >= 0)
       close(device->master_fd);
+
+#if using_v3d_simulator
+   v3d_simulator_destroy(device->sim_file);
+#endif
 }
 
 void
@@ -255,12 +259,15 @@ physical_device_init(struct v3dv_physical_device *device,
    snprintf(device->path, ARRAY_SIZE(device->path), "%s", path);
 
    /* FIXME: we will have to do plenty more here */
-   device->name = "Broadcom Video Core VI";
    device->local_fd = fd;
    device->master_fd = -1;
 
    uint8_t zeroes[VK_UUID_SIZE] = { 0 };
    memcpy(device->pipeline_cache_uuid, zeroes, VK_UUID_SIZE);
+
+#if using_v3d_simulator
+   device->sim_file = v3d_simulator_init(device->local_fd);
+#endif
 
    return VK_SUCCESS;
 }
