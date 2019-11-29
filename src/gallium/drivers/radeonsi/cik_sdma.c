@@ -106,6 +106,186 @@ static unsigned encode_tile_info(struct si_context *sctx,
 		(G_009910_PIPE_CONFIG(tile_mode) << 26);
 }
 
+
+static bool si_sdma_v4_copy_texture(struct si_context *sctx,
+				  struct pipe_resource *dst,
+				  unsigned dst_level,
+				  unsigned dstx, unsigned dsty, unsigned dstz,
+				  struct pipe_resource *src,
+				  unsigned src_level,
+				  const struct pipe_box *src_box)
+{
+	struct si_texture *ssrc = (struct si_texture*)src;
+	struct si_texture *sdst = (struct si_texture*)dst;
+
+	unsigned bpp = sdst->surface.bpe;
+	uint64_t dst_address = sdst->buffer.gpu_address +
+		sdst->surface.u.gfx9.surf_offset;
+	uint64_t src_address = ssrc->buffer.gpu_address +
+		ssrc->surface.u.gfx9.surf_offset;
+	unsigned dst_pitch = sdst->surface.u.gfx9.surf_pitch;
+	unsigned src_pitch = ssrc->surface.u.gfx9.surf_pitch;
+	uint64_t dst_slice_pitch = ((uint64_t)sdst->surface.u.gfx9.surf_slice_size) / bpp;
+	uint64_t src_slice_pitch = ((uint64_t)ssrc->surface.u.gfx9.surf_slice_size) / bpp;
+	unsigned srcx = src_box->x / ssrc->surface.blk_w;
+	unsigned srcy = src_box->y / ssrc->surface.blk_h;
+	unsigned srcz = src_box->z;
+	unsigned copy_width = DIV_ROUND_UP(src_box->width, ssrc->surface.blk_w);
+	unsigned copy_height = DIV_ROUND_UP(src_box->height, ssrc->surface.blk_h);
+	unsigned copy_depth = src_box->depth;
+	unsigned xalign = MAX2(1, 4 / bpp);
+
+	assert(src_level <= src->last_level);
+	assert(dst_level <= dst->last_level);
+	assert(sdst->surface.u.gfx9.surf_offset +
+	       dst_slice_pitch * bpp * (dstz + src_box->depth) <=
+	       sdst->buffer.buf->size);
+	assert(ssrc->surface.u.gfx9.surf_offset +
+	       src_slice_pitch * bpp * (srcz + src_box->depth) <=
+	       ssrc->buffer.buf->size);
+
+	if (!si_prepare_for_dma_blit(sctx, sdst, dst_level, dstx, dsty,
+				     dstz, ssrc, src_level, src_box))
+		return false;
+
+	dstx /= sdst->surface.blk_w;
+	dsty /= sdst->surface.blk_h;
+
+	if (srcx >= (1 << 14) ||
+	    srcy >= (1 << 14) ||
+	    srcz >= (1 << 11) ||
+	    dstx >= (1 << 14) ||
+	    dsty >= (1 << 14) ||
+	    dstz >= (1 << 11))
+		return false;
+
+	/* Linear -> linear sub-window copy. */
+	if (ssrc->surface.is_linear &&
+	    sdst->surface.is_linear) {
+		struct radeon_cmdbuf *cs = sctx->dma_cs;
+
+		/* Check if everything fits into the bitfields */
+		if (!(src_pitch <= (1 << 19) &&
+		      dst_pitch <= (1 << 19) &&
+		      src_slice_pitch <= (1 << 28) &&
+		      dst_slice_pitch <= (1 << 28) &&
+		      copy_width <= (1 << 14) &&
+		      copy_height <= (1 << 14) &&
+		      copy_depth <= (1 << 11)))
+			return false;
+
+		si_need_dma_space(sctx, 13, &sdst->buffer, &ssrc->buffer);
+
+		src_address += ssrc->surface.u.gfx9.offset[src_level];
+		dst_address += sdst->surface.u.gfx9.offset[dst_level];
+
+		/* Check alignments */
+		if ((src_address % 4) != 0 ||
+		    (dst_address % 4) != 0 ||
+		    (src_pitch % xalign) != 0)
+			return false;
+
+		radeon_emit(cs, CIK_SDMA_PACKET(CIK_SDMA_OPCODE_COPY,
+						CIK_SDMA_COPY_SUB_OPCODE_LINEAR_SUB_WINDOW, 0) |
+			    (util_logbase2(bpp) << 29));
+		radeon_emit(cs, src_address);
+		radeon_emit(cs, src_address >> 32);
+		radeon_emit(cs, srcx | (srcy << 16));
+		radeon_emit(cs, srcz | ((src_pitch - 1) << 13));
+		radeon_emit(cs, src_slice_pitch - 1);
+		radeon_emit(cs, dst_address);
+		radeon_emit(cs, dst_address >> 32);
+		radeon_emit(cs, dstx | (dsty << 16));
+		radeon_emit(cs, dstz | ((dst_pitch - 1) << 13));
+		radeon_emit(cs, dst_slice_pitch - 1);
+		radeon_emit(cs, (copy_width - 1) | ((copy_height - 1) << 16));
+		radeon_emit(cs, (copy_depth - 1));
+		return true;
+	}
+
+	/* Linear <-> Tiled sub-window copy */
+	if (ssrc->surface.is_linear != sdst->surface.is_linear) {
+		struct si_texture *tiled = ssrc->surface.is_linear ? sdst : ssrc;
+		struct si_texture *linear = tiled == ssrc ? sdst : ssrc;
+		unsigned tiled_level =	tiled	== ssrc ? src_level : dst_level;
+		unsigned linear_level =	linear	== ssrc ? src_level : dst_level;
+		unsigned tiled_x =	tiled	== ssrc ? srcx : dstx;
+		unsigned linear_x =	linear  == ssrc ? srcx : dstx;
+		unsigned tiled_y =	tiled	== ssrc ? srcy : dsty;
+		unsigned linear_y =	linear  == ssrc ? srcy : dsty;
+		unsigned tiled_z =	tiled	== ssrc ? srcz : dstz;
+		unsigned linear_z =	linear  == ssrc ? srcz : dstz;
+		unsigned tiled_width = tiled == ssrc ?
+			DIV_ROUND_UP(ssrc->buffer.b.b.width0, ssrc->surface.blk_w) :
+			DIV_ROUND_UP(sdst->buffer.b.b.width0, sdst->surface.blk_w);
+		unsigned tiled_height = tiled == ssrc ?
+			DIV_ROUND_UP(ssrc->buffer.b.b.height0, ssrc->surface.blk_h) :
+			DIV_ROUND_UP(sdst->buffer.b.b.height0, sdst->surface.blk_h);
+		unsigned tiled_depth =	tiled	== ssrc ?
+			ssrc->buffer.b.b.depth0 :
+			sdst->buffer.b.b.depth0;
+		unsigned linear_pitch =	linear	== ssrc ? src_pitch : dst_pitch;
+		unsigned linear_slice_pitch = linear == ssrc ? src_slice_pitch : dst_slice_pitch;
+		uint64_t tiled_address =  tiled  == ssrc ? src_address : dst_address;
+		uint64_t linear_address = linear == ssrc ? src_address : dst_address;
+		struct radeon_cmdbuf *cs = sctx->dma_cs;
+
+		linear_address += linear->surface.u.gfx9.offset[linear_level];
+
+		/* Check if everything fits into the bitfields */
+		if (!(tiled_x <= (1 << 14) &&
+		      tiled_y <= (1 << 14) &&
+		      tiled_z <= (1 << 11) &&
+		      tiled_width <= (1 << 14) &&
+		      tiled_height <= (1 << 14) &&
+		      tiled_depth <= (1 << 11) &&
+		      tiled->surface.u.gfx9.surf.epitch <= (1 << 16) &&
+		      linear_x <= (1 << 14) &&
+		      linear_y <= (1 << 14) &&
+		      linear_z <= (1 << 11) &&
+		      linear_pitch <= (1 << 14) &&
+		      linear_slice_pitch <= (1 << 28) &&
+		      copy_width <= (1 << 14) &&
+		      copy_height <= (1 << 14) &&
+		      copy_depth <= (1 << 11)))
+			return false;
+
+		/* Check alignments */
+		if ((tiled_address % 256 != 0) ||
+		    (linear_address % 4 != 0) ||
+		    (linear_pitch % xalign != 0) ||
+		    (linear_slice_pitch % xalign != 0))
+			return false;
+
+		si_need_dma_space(sctx, 14, &sdst->buffer, &ssrc->buffer);
+
+		radeon_emit(cs, CIK_SDMA_PACKET(CIK_SDMA_OPCODE_COPY,
+						CIK_SDMA_COPY_SUB_OPCODE_TILED_SUB_WINDOW, 0) |
+						tiled->buffer.b.b.last_level << 20 |
+						tiled_level << 24 |
+						(linear == sdst ? 1u : 0) << 31);
+		radeon_emit(cs, (uint32_t) tiled_address);
+		radeon_emit(cs, (uint32_t) (tiled_address >> 32));
+		radeon_emit(cs, tiled_x | (tiled_y << 16));
+		radeon_emit(cs, tiled_z | ((tiled_width - 1) << 16));
+		radeon_emit(cs, (tiled_height - 1) | (tiled_depth - 1) << 16);
+		radeon_emit(cs, util_logbase2(bpp) |
+				tiled->surface.u.gfx9.surf.swizzle_mode << 3 |
+				tiled->surface.u.gfx9.resource_type << 9 |
+				tiled->surface.u.gfx9.surf.epitch << 16);
+		radeon_emit(cs, (uint32_t) linear_address);
+		radeon_emit(cs, (uint32_t) (linear_address >> 32));
+		radeon_emit(cs, linear_x | (linear_y << 16));
+		radeon_emit(cs, linear_z | ((linear_pitch - 1) << 16));
+		radeon_emit(cs, linear_slice_pitch - 1);
+		radeon_emit(cs, (copy_width - 1) | ((copy_height - 1) << 16));
+		radeon_emit(cs, (copy_depth - 1));
+		return true;
+	}
+
+	return false;
+}
+
 static bool cik_sdma_copy_texture(struct si_context *sctx,
 				  struct pipe_resource *dst,
 				  unsigned dst_level,
@@ -517,12 +697,17 @@ static void cik_sdma_copy(struct pipe_context *ctx,
 	 *
 	 * Keep SDMA enabled on APUs.
 	 */
-	if ((sctx->screen->debug_flags & DBG(FORCE_DMA) ||
-	     !sctx->screen->info.has_dedicated_vram) &&
-	    (sctx->chip_class == GFX7 || sctx->chip_class == GFX8) &&
-	    cik_sdma_copy_texture(sctx, dst, dst_level, dstx, dsty, dstz,
-				  src, src_level, src_box))
-		return;
+	if (sctx->screen->debug_flags & DBG(FORCE_DMA) ||
+	    !sctx->screen->info.has_dedicated_vram) {
+		if ((sctx->chip_class == GFX7 || sctx->chip_class == GFX8) &&
+		    cik_sdma_copy_texture(sctx, dst, dst_level, dstx, dsty, dstz,
+					  src, src_level, src_box))
+			return;
+		else if (sctx->chip_class == GFX9 &&
+			 si_sdma_v4_copy_texture(sctx, dst, dst_level, dstx, dsty, dstz,
+						 src, src_level, src_box))
+			return;
+	}
 
 fallback:
 	si_resource_copy_region(ctx, dst, dst_level, dstx, dsty, dstz,
