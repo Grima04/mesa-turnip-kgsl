@@ -210,6 +210,8 @@ physical_device_finish(struct v3dv_physical_device *device)
    if (device->master_fd >= 0)
       close(device->master_fd);
 
+   free(device->name);
+
 #if using_v3d_simulator
    v3d_simulator_destroy(device->sim_file);
 #endif
@@ -247,6 +249,9 @@ physical_device_init(struct v3dv_physical_device *device,
                      struct v3dv_instance *instance,
                      drmDevicePtr drm_device)
 {
+   VkResult result = VK_SUCCESS;
+   int32_t master_fd = -1;
+
    const char *path = drm_device->nodes[DRM_NODE_RENDER];
    int32_t fd = open(path, O_RDWR | O_CLOEXEC);
    if (fd < 0)
@@ -260,7 +265,7 @@ physical_device_init(struct v3dv_physical_device *device,
 
    /* FIXME: we will have to do plenty more here */
    device->local_fd = fd;
-   device->master_fd = -1;
+   device->master_fd = master_fd;
 
    uint8_t zeroes[VK_UUID_SIZE] = { 0 };
    memcpy(device->pipeline_cache_uuid, zeroes, VK_UUID_SIZE);
@@ -269,7 +274,20 @@ physical_device_init(struct v3dv_physical_device *device,
    device->sim_file = v3d_simulator_init(device->local_fd);
 #endif
 
-   return VK_SUCCESS;
+   if (!v3d_get_device_info(device->local_fd, &device->devinfo, &v3dv_ioctl)) {
+      result = VK_ERROR_INCOMPATIBLE_DRIVER;
+      goto fail;
+   }
+
+   asprintf(&device->name, "V3D %d.%d",
+            device->devinfo.ver / 10, device->devinfo.ver % 10);
+
+ fail:
+   close(fd);
+   if (master_fd != -1)
+      close(master_fd);
+
+   return result;
 }
 
 static VkResult
