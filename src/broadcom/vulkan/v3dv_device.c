@@ -759,9 +759,22 @@ v3dv_EnumerateDeviceExtensionProperties(VkPhysicalDevice physicalDevice,
                                         uint32_t *pPropertyCount,
                                         VkExtensionProperties *pProperties)
 {
-   /* FIXME: stub */
+   /* We don't support any layers */
+   if (pLayerName)
+      return vk_error(NULL, VK_ERROR_LAYER_NOT_PRESENT);
 
-   return VK_SUCCESS;
+   V3DV_FROM_HANDLE(v3dv_physical_device, device, physicalDevice);
+   VK_OUTARRAY_MAKE(out, pProperties, pPropertyCount);
+
+   for (int i = 0; i < V3DV_DEVICE_EXTENSION_COUNT; i++) {
+      if (device->supported_extensions.extensions[i]) {
+         vk_outarray_append(&out, prop) {
+            *prop = v3dv_device_extensions[i];
+         }
+      }
+   }
+
+   return vk_outarray_status(&out);
 }
 
 VkResult
