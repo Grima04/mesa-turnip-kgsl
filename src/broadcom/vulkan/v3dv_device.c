@@ -67,6 +67,10 @@ v3dv_EnumerateInstanceExtensionProperties(const char *pLayerName,
                                           uint32_t *pPropertyCount,
                                           VkExtensionProperties *pProperties)
 {
+   /* We don't support any layers  */
+   if (pLayerName)
+      return vk_error(NULL, VK_ERROR_LAYER_NOT_PRESENT);
+
    VK_OUTARRAY_MAKE(out, pProperties, pPropertyCount);
 
    for (int i = 0; i < V3DV_INSTANCE_EXTENSION_COUNT; i++) {
