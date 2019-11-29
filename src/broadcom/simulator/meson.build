@@ -1,4 +1,4 @@
-# Copyright © 2017 Broadcom
+# Copyright © 2019 Raspberry Pi
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -17,49 +17,47 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
+inc_simulator = include_directories('.')
 
-inc_broadcom = include_directories('.', 'cle')
+libbroadcom_simulator_files = files(
+  'v3d_simulator.c',
+  'v3d_simulator_wrapper.cpp',
+)
 
-subdir('cle')
+files_per_version = files(
+    'v3dx_simulator.c',
+)
 
-v3d_versions = ['33', '41', '42']
-v3d_libs = []
-
-if with_gallium_v3d
-  subdir('compiler')
-  subdir('qpu')
-  subdir('simulator')
-endif
-
-if with_tools.contains('drm-shim')
-  subdir('drm-shim')
+v3d_args = []
+dep_v3dv3 = dependency('v3dv3', required: false)
+if dep_v3dv3.found()
+  v3d_args += '-DUSE_V3D_SIMULATOR'
 endif
 
 per_version_libs = []
 foreach ver : v3d_versions
   per_version_libs += static_library(
-    'libbroadcom-v' + ver,
-    [
-      files('clif/v3dx_dump.c'),
-      v3d_xml_pack
+    'v3d-simulator-v' + ver,
+    [files_per_version, v3d_xml_pack],
+    include_directories : [
+      inc_src, inc_include, inc_gallium_aux, inc_broadcom,
     ],
-    include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux, inc_broadcom],
-    c_args : [no_override_init_args, '-DV3D_VERSION=' + ver],
-    gnu_symbol_visibility : 'hidden',
-    dependencies: [dep_valgrind, dep_thread],
-  )
+    c_args : [v3d_args, '-DV3D_VERSION=' + ver],
+    gnu_symbol_visibility: 'hidden',
+    dependencies : [dep_v3dv3, dep_libdrm, dep_valgrind],
+)
 endforeach
 
-libbroadcom_v3d = static_library(
-  'libbroadcom_v3d',
-  [
-    files('common/v3d_debug.c', 'common/v3d_device_info.c', 'clif/clif_dump.c'),
-    v3d_xml_pack,
-  ],
-  include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux, inc_broadcom],
-  c_args : [no_override_init_args],
-  gnu_symbol_visibility : 'hidden',
-  link_whole : v3d_libs + per_version_libs,
+libbroadcom_simulator = static_library(
+  'broadcom_simulator',
+  [libbroadcom_simulator_files],
+  include_directories : [inc_src, inc_include, inc_gallium, inc_gallium_aux],
+  c_args : [v3d_args, no_override_init_args],
+  cpp_args : [v3d_args],
+  gnu_symbol_visibility : 'hidden', 
+  dependencies : [dep_v3dv3, dep_libdrm, dep_valgrind],
+  link_with : [per_version_libs],
   build_by_default : false,
-  dependencies: [dep_valgrind, dep_thread],
 )
+
+v3d_libs += libbroadcom_simulator

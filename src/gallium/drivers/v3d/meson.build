@@ -35,8 +35,6 @@ files_libv3d = files(
   'v3d_resource.h',
   'v3d_screen.c',
   'v3d_screen.h',
-  'v3d_simulator.c',
-  'v3d_simulator_wrapper.cpp',
   'v3d_uniforms.c',
 )
 
@@ -46,7 +44,6 @@ files_per_version = files(
   'v3dx_format_table.c',
   'v3dx_job.c',
   'v3dx_rcl.c',
-  'v3dx_simulator.c',
   'v3dx_state.c',
 )
 
@@ -111,7 +108,7 @@ libv3d = static_library(
   ],
   include_directories : [
     inc_src, inc_include, inc_gallium, inc_gallium_aux, inc_broadcom,
-    inc_gallium_drivers,
+    inc_simulator, inc_gallium_drivers,
   ],
   c_args : [v3d_args],
   cpp_args : [v3d_args],

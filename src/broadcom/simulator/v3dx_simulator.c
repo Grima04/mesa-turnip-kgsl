@@ -22,7 +22,7 @@
  */
 
 /**
- * @file v3d_simulator_hw.c
+ * @file v3dx_simulator.c
  *
  * Implements the actual HW interaction betweeh the GL driver's VC5 simulator and the simulator.
  *
@@ -33,9 +33,15 @@
 
 #ifdef USE_V3D_SIMULATOR
 
-#include "v3d_screen.h"
-#include "v3d_context.h"
+#include <assert.h>
+#include <stdbool.h>
+#include <stdio.h>
+
+#include "v3d_simulator.h"
 #include "v3d_simulator_wrapper.h"
+
+#include "util/macros.h"
+#include "drm-uapi/v3d_drm.h"
 
 #define HW_REGISTER_RO(x) (x)
 #define HW_REGISTER_RW(x) (x)

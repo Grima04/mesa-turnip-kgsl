@@ -48,18 +48,23 @@
 
 #ifdef USE_V3D_SIMULATOR
 
+#include <stdio.h>
 #include <sys/mman.h>
+#include "c11/threads.h"
 #include "util/hash_table.h"
 #include "util/ralloc.h"
 #include "util/set.h"
 #include "util/u_dynarray.h"
 #include "util/u_memory.h"
 #include "util/u_mm.h"
-#include "drm-uapi/i915_drm.h"
-#include "v3d_simulator_wrapper.h"
+#include "util/u_math.h"
 
-#include "v3d_screen.h"
-#include "v3d_context.h"
+#include <xf86drm.h>
+#include "drm-uapi/i915_drm.h"
+#include "drm-uapi/v3d_drm.h"
+
+#include "v3d_simulator.h"
+#include "v3d_simulator_wrapper.h"
 
 /** Global (across GEM fds) state for the simulator */
 static struct v3d_simulator_state {
@@ -580,7 +585,7 @@ v3d_simulator_ioctl(int fd, unsigned long request, void *args)
 }
 
 static void
-v3d_simulator_init_global(const struct v3d_device_info *devinfo)
+v3d_simulator_init_global()
 {
         mtx_lock(&sim_state.mutex);
         if (sim_state.refcount++) {
@@ -623,37 +628,38 @@ v3d_simulator_init_global(const struct v3d_device_info *devinfo)
                 v3d33_simulator_init_regs(sim_state.v3d);
 }
 
-void
-v3d_simulator_init(struct v3d_screen *screen)
+struct v3d_simulator_file *
+v3d_simulator_init(int fd)
 {
-        v3d_simulator_init_global(&screen->devinfo);
+        v3d_simulator_init_global();
 
-        screen->sim_file = rzalloc(screen, struct v3d_simulator_file);
-        struct v3d_simulator_file *sim_file = screen->sim_file;
+        struct v3d_simulator_file *sim_file = rzalloc(NULL, struct v3d_simulator_file);
 
-        drmVersionPtr version = drmGetVersion(screen->fd);
+        drmVersionPtr version = drmGetVersion(fd);
         if (version && strncmp(version->name, "i915", version->name_len) == 0)
                 sim_file->is_i915 = true;
         drmFreeVersion(version);
 
-        screen->sim_file->bo_map =
-                _mesa_hash_table_create(screen->sim_file,
+        sim_file->bo_map =
+                _mesa_hash_table_create(sim_file,
                                         _mesa_hash_pointer,
                                         _mesa_key_pointer_equal);
 
         mtx_lock(&sim_state.mutex);
-        _mesa_hash_table_insert(sim_state.fd_map, int_to_key(screen->fd + 1),
-                                screen->sim_file);
+        _mesa_hash_table_insert(sim_state.fd_map, int_to_key(fd + 1),
+                                sim_file);
         mtx_unlock(&sim_state.mutex);
 
         sim_file->gmp = u_mmAllocMem(sim_state.heap, 8096, GMP_ALIGN2, 0);
         sim_file->gmp_vaddr = (sim_state.mem + sim_file->gmp->ofs -
                                sim_state.mem_base);
         memset(sim_file->gmp_vaddr, 0, 8096);
+
+        return sim_file;
 }
 
 void
-v3d_simulator_destroy(struct v3d_screen *screen)
+v3d_simulator_destroy(struct v3d_simulator_file *sim_file)
 {
         mtx_lock(&sim_state.mutex);
         if (!--sim_state.refcount) {
@@ -664,6 +670,7 @@ v3d_simulator_destroy(struct v3d_screen *screen)
                 sim_state.mem = NULL;
         }
         mtx_unlock(&sim_state.mutex);
+        ralloc_free(sim_file);
 }
 
 #endif /* USE_V3D_SIMULATOR */

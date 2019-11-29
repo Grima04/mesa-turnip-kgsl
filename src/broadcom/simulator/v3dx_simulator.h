@@ -1,4 +1,5 @@
 /*
+ * Copyright © 2019 Raspberry Pi
  * Copyright © 2014-2017 Broadcom
  * Copyright (C) 2012 Rob Clark <robclark@freedesktop.org>
  *
@@ -23,21 +24,23 @@
  */
 
 /* This file generates the per-v3d-version function prototypes.  It must only
- * be included from v3d_context.h.
+ * be included from v3d_simulator.h.
  */
 
 struct v3d_hw;
-struct v3d_format;
+struct drm_v3d_get_param;
+struct drm_v3d_submit_cl;
+struct drm_v3d_submit_tfu;
+struct drm_v3d_submit_csd;
 
-void v3dX(emit_state)(struct pipe_context *pctx);
-void v3dX(emit_rcl)(struct v3d_job *job);
-void v3dX(draw_init)(struct pipe_context *pctx);
-void v3dX(state_init)(struct pipe_context *pctx);
-
-void v3dX(bcl_epilogue)(struct v3d_context *v3d, struct v3d_job *job);
-
-const struct v3d_format *v3dX(get_format_desc)(enum pipe_format f);
-void v3dX(get_internal_type_bpp_for_output_format)(uint32_t format,
-                                                   uint32_t *type,
-                                                   uint32_t *bpp);
-bool v3dX(tfu_supports_tex_format)(uint32_t tex_format);
+void v3dX(simulator_init_regs)(struct v3d_hw *v3d);
+int v3dX(simulator_get_param_ioctl)(struct v3d_hw *v3d,
+                                    struct drm_v3d_get_param *args);
+void v3dX(simulator_submit_cl_ioctl)(struct v3d_hw *v3d,
+                                     struct drm_v3d_submit_cl *args,
+                                     uint32_t gmp_offset);
+int v3dX(simulator_submit_tfu_ioctl)(struct v3d_hw *v3d,
+                                     struct drm_v3d_submit_tfu *args);
+int v3dX(simulator_submit_csd_ioctl)(struct v3d_hw *v3d,
+                                     struct drm_v3d_submit_csd *args,
+                                     uint32_t gmp_offset);

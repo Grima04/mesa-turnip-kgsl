@@ -1,4 +1,5 @@
 /*
+ * Copyright © 2019 Raspberry Pi
  * Copyright © 2014-2017 Broadcom
  * Copyright (C) 2012 Rob Clark <robclark@freedesktop.org>
  *
@@ -22,22 +23,33 @@
  * IN THE SOFTWARE.
  */
 
-/* This file generates the per-v3d-version function prototypes.  It must only
- * be included from v3d_context.h.
- */
+#ifndef V3D_SIMULATOR_H
+#define V3D_SIMULATOR_H
 
-struct v3d_hw;
-struct v3d_format;
+#ifdef V3D_VERSION
+#include "broadcom/common/v3d_macros.h"
+#endif
 
-void v3dX(emit_state)(struct pipe_context *pctx);
-void v3dX(emit_rcl)(struct v3d_job *job);
-void v3dX(draw_init)(struct pipe_context *pctx);
-void v3dX(state_init)(struct pipe_context *pctx);
+#include <stdint.h>
 
-void v3dX(bcl_epilogue)(struct v3d_context *v3d, struct v3d_job *job);
+struct v3d_simulator_file;
 
-const struct v3d_format *v3dX(get_format_desc)(enum pipe_format f);
-void v3dX(get_internal_type_bpp_for_output_format)(uint32_t format,
-                                                   uint32_t *type,
-                                                   uint32_t *bpp);
-bool v3dX(tfu_supports_tex_format)(uint32_t tex_format);
+struct v3d_simulator_file* v3d_simulator_init(int fd);
+void v3d_simulator_destroy(struct v3d_simulator_file *sim_file);
+uint32_t v3d_simulator_get_spill(uint32_t spill_size);
+int v3d_simulator_ioctl(int fd, unsigned long request, void *arg);
+void v3d_simulator_open_from_handle(int fd, int handle, uint32_t size);
+
+#ifdef v3dX
+#  include "v3dx_simulator.h"
+#else
+#  define v3dX(x) v3d33_##x
+#  include "v3dx_simulator.h"
+#  undef v3dX
+
+#  define v3dX(x) v3d41_##x
+#  include "v3dx_simulator.h"
+#  undef v3dX
+#endif
+
+#endif
