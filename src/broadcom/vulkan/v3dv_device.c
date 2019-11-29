@@ -543,6 +543,13 @@ v3dv_GetPhysicalDeviceProperties(VkPhysicalDevice physicalDevice,
       .nonCoherentAtomSize                      = 256,
    };
 
+   /* FIXME:
+    * Getting deviceID and UUID will probably require to use the kernel pci
+    * interface. See this:
+    * https://www.kernel.org/doc/html/latest/PCI/pci.html#how-to-find-pci-devices-manually
+    * And check the getparam ioctl in the i915 kernel with CHIPSET_ID for
+    * example.
+    */
    *pProperties = (VkPhysicalDeviceProperties) {
       .apiVersion = v3dv_physical_device_api_version(pdevice),
       .driverVersion = vk_get_driver_version(),
