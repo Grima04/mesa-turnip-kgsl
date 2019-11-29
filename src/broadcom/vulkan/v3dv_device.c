@@ -628,12 +628,27 @@ v3dv_GetPhysicalDeviceProperties(VkPhysicalDevice physicalDevice,
           pdevice->pipeline_cache_uuid, VK_UUID_SIZE);
 }
 
+/* We support exactly one queue family. */
+static const VkQueueFamilyProperties
+v3dv_queue_family_properties = {
+   .queueFlags = VK_QUEUE_GRAPHICS_BIT |
+                 VK_QUEUE_COMPUTE_BIT |
+                 VK_QUEUE_TRANSFER_BIT,
+   .queueCount = 1,
+   .timestampValidBits = 0, /* FIXME */
+   .minImageTransferGranularity = { 1, 1, 1 },
+};
+
 void
 v3dv_GetPhysicalDeviceQueueFamilyProperties(VkPhysicalDevice physicalDevice,
                                             uint32_t *pCount,
                                             VkQueueFamilyProperties *pQueueFamilyProperties)
 {
-   /* FIXME: stub */
+   VK_OUTARRAY_MAKE(out, pQueueFamilyProperties, pCount);
+
+   vk_outarray_append(&out, p) {
+      *p = v3dv_queue_family_properties;
+   }
 }
 
 void
