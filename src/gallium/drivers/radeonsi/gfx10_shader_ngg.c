@@ -958,10 +958,28 @@ void gfx10_ngg_gs_emit_vertex(struct si_shader_context *ctx,
 	const LLVMValueRef iscompleteprim =
 		LLVMBuildICmp(builder, LLVMIntUGE, curverts, tmp, "");
 
+	/* Since the geometry shader emits triangle strips, we need to
+	 * track which primitive is odd and swap vertex indices to get
+	 * the correct vertex order.
+	 */
+	LLVMValueRef is_odd = ctx->i1false;
+	if (stream == 0 && u_vertices_per_prim(sel->gs_output_prim) == 3) {
+		tmp = LLVMBuildAnd(builder, curverts, ctx->i32_1, "");
+		is_odd = LLVMBuildICmp(builder, LLVMIntEQ, tmp, ctx->i32_1, "");
+	}
+
 	tmp = LLVMBuildAdd(builder, curverts, ctx->ac.i32_1, "");
 	LLVMBuildStore(builder, tmp, ctx->gs_curprim_verts[stream]);
 
+	/* The per-vertex primitive flag encoding:
+	 *   bit 0: whether this vertex finishes a primitive
+	 *   bit 1: whether the primitive is odd (if we are emitting triangle strips)
+	 */
 	tmp = LLVMBuildZExt(builder, iscompleteprim, ctx->ac.i8, "");
+	tmp = LLVMBuildOr(builder, tmp,
+			  LLVMBuildShl(builder,
+				       LLVMBuildZExt(builder, is_odd, ctx->ac.i8, ""),
+				       ctx->ac.i8_1, ""), "");
 	LLVMBuildStore(builder, tmp, ngg_gs_get_emit_primflag_ptr(ctx, vertexptr, stream));
 
 	tmp = LLVMBuildLoad(builder, ctx->gs_generated_prims[stream], "");
@@ -1206,18 +1224,50 @@ void gfx10_ngg_gs_emit_epilogue(struct si_shader_context *ctx)
 	tmp = LLVMBuildICmp(builder, LLVMIntULT, tid, num_emit_threads, "");
 	ac_build_ifcc(&ctx->ac, tmp, 5140);
 	{
+		LLVMValueRef flags;
 		struct ngg_prim prim = {};
 		prim.num_vertices = verts_per_prim;
 
 		tmp = ngg_gs_vertex_ptr(ctx, tid);
-		tmp = LLVMBuildLoad(builder, ngg_gs_get_emit_primflag_ptr(ctx, tmp, 0), "");
-		prim.isnull = LLVMBuildICmp(builder, LLVMIntEQ, tmp,
-					    LLVMConstInt(ctx->ac.i8, 0, false), "");
+		flags = LLVMBuildLoad(builder, ngg_gs_get_emit_primflag_ptr(ctx, tmp, 0), "");
+		prim.isnull = LLVMBuildNot(builder, LLVMBuildTrunc(builder, flags, ctx->i1, ""), "");
 
 		for (unsigned i = 0; i < verts_per_prim; ++i) {
 			prim.index[i] = LLVMBuildSub(builder, vertlive_scan.result_exclusive,
 				LLVMConstInt(ctx->ac.i32, verts_per_prim - i - 1, false), "");
 			prim.edgeflag[i] = ctx->ac.i1false;
+		}
+
+		/* Geometry shaders output triangle strips, but NGG expects triangles.
+		 * We need to change the vertex order for odd triangles to get correct
+		 * front/back facing by swapping 2 vertex indices, but we also have to
+		 * keep the provoking vertex in the same place.
+		 *
+		 * If the first vertex is provoking, swap index 1 and 2.
+		 * If the last vertex is provoking, swap index 0 and 1.
+		 */
+		if (verts_per_prim == 3) {
+			LLVMValueRef is_odd = LLVMBuildLShr(builder, flags, ctx->ac.i8_1, "");
+			is_odd = LLVMBuildTrunc(builder, is_odd, ctx->i1, "");
+			LLVMValueRef flatshade_first =
+				LLVMBuildICmp(builder, LLVMIntEQ,
+					      si_unpack_param(ctx, ctx->vs_state_bits, 4, 2),
+					      ctx->i32_0, "");
+
+			struct ngg_prim in = prim;
+			prim.index[0] = LLVMBuildSelect(builder, flatshade_first,
+							in.index[0],
+							LLVMBuildSelect(builder, is_odd,
+									in.index[1], in.index[0], ""), "");
+			prim.index[1] = LLVMBuildSelect(builder, flatshade_first,
+							LLVMBuildSelect(builder, is_odd,
+									in.index[2], in.index[1], ""),
+							LLVMBuildSelect(builder, is_odd,
+									in.index[0], in.index[1], ""), "");
+			prim.index[2] = LLVMBuildSelect(builder, flatshade_first,
+							LLVMBuildSelect(builder, is_odd,
+									in.index[1], in.index[2], ""),
+							in.index[2], "");
 		}
 
 		build_export_prim(ctx, &prim);
