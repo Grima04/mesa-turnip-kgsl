@@ -894,6 +894,7 @@ struct si_context {
 	void				*cs_copy_image_1d_array;
 	void				*cs_clear_render_target;
 	void				*cs_clear_render_target_1d_array;
+	void				*cs_clear_12bytes_buffer;
 	void				*cs_dcc_retile;
 	void				*cs_fmask_expand[3][2]; /* [log2(samples)-1][is_array] */
 	struct si_screen		*screen;
@@ -1450,6 +1451,7 @@ void *si_create_copy_image_compute_shader(struct pipe_context *ctx);
 void *si_create_copy_image_compute_shader_1d_array(struct pipe_context *ctx);
 void *si_clear_render_target_shader(struct pipe_context *ctx);
 void *si_clear_render_target_shader_1d_array(struct pipe_context *ctx);
+void *si_clear_12bytes_buffer_shader(struct pipe_context *ctx);
 void *si_create_dcc_retile_cs(struct pipe_context *ctx);
 void *si_create_fmask_expand_cs(struct pipe_context *ctx, unsigned num_samples,
 				bool is_array);
