@@ -74,20 +74,6 @@ struct v3dv_instance;
 
 struct v3d_simulator_file;
 
-struct v3dv_device {
-   VK_LOADER_DATA _loader_data;
-
-   VkAllocationCallbacks alloc;
-
-   struct v3dv_instance *instance;
-
-   struct v3dv_device_extension_table enabled_extensions;
-   struct v3dv_device_dispatch_table dispatch;
-
-   /* FIXME: stub */
-};
-
-
 struct v3dv_physical_device {
    VK_LOADER_DATA _loader_data;
 
@@ -139,6 +125,23 @@ struct v3dv_queue {
    struct v3dv_device *device;
 
    VkDeviceQueueCreateFlags flags;
+
+   /* FIXME: stub */
+};
+
+struct v3dv_device {
+   VK_LOADER_DATA _loader_data;
+
+   VkAllocationCallbacks alloc;
+
+   struct v3dv_instance *instance;
+
+   struct v3dv_device_extension_table enabled_extensions;
+   struct v3dv_device_dispatch_table dispatch;
+
+   int32_t fd;
+   struct v3d_device_info devinfo;
+   struct v3dv_queue queue;
 
    /* FIXME: stub */
 };
