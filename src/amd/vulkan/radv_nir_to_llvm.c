@@ -1280,34 +1280,28 @@ adjust_vertex_fetch_alpha(struct radv_shader_context *ctx,
 	return LLVMBuildBitCast(ctx->ac.builder, alpha, ctx->ac.i32, "");
 }
 
-static unsigned
-get_num_channels_from_data_format(unsigned data_format)
-{
-	switch (data_format) {
-	case V_008F0C_BUF_DATA_FORMAT_8:
-	case V_008F0C_BUF_DATA_FORMAT_16:
-	case V_008F0C_BUF_DATA_FORMAT_32:
-		return 1;
-	case V_008F0C_BUF_DATA_FORMAT_8_8:
-	case V_008F0C_BUF_DATA_FORMAT_16_16:
-	case V_008F0C_BUF_DATA_FORMAT_32_32:
-		return 2;
-	case V_008F0C_BUF_DATA_FORMAT_10_11_11:
-	case V_008F0C_BUF_DATA_FORMAT_11_11_10:
-	case V_008F0C_BUF_DATA_FORMAT_32_32_32:
-		return 3;
-	case V_008F0C_BUF_DATA_FORMAT_8_8_8_8:
-	case V_008F0C_BUF_DATA_FORMAT_10_10_10_2:
-	case V_008F0C_BUF_DATA_FORMAT_2_10_10_10:
-	case V_008F0C_BUF_DATA_FORMAT_16_16_16_16:
-	case V_008F0C_BUF_DATA_FORMAT_32_32_32_32:
-		return 4;
-	default:
-		break;
-	}
-
-	return 4;
-}
+static const struct vertex_format_info {
+	uint8_t vertex_byte_size;
+	uint8_t num_channels;
+	uint8_t chan_byte_size;
+	uint8_t chan_format;
+} vertex_format_table[] = {
+	{  0, 4, 0, V_008F0C_BUF_DATA_FORMAT_INVALID	},	/* BUF_DATA_FORMAT_INVALID	*/
+	{  1, 1, 1, V_008F0C_BUF_DATA_FORMAT_8		},	/* BUF_DATA_FORMAT_8		*/
+	{  2, 1, 2, V_008F0C_BUF_DATA_FORMAT_16		},	/* BUF_DATA_FORMAT_16		*/
+	{  2, 2, 1, V_008F0C_BUF_DATA_FORMAT_8		},	/* BUF_DATA_FORMAT_8_8		*/
+	{  4, 1, 4, V_008F0C_BUF_DATA_FORMAT_32		},	/* BUF_DATA_FORMAT_32		*/
+	{  4, 2, 2, V_008F0C_BUF_DATA_FORMAT_16		},	/* BUF_DATA_FORMAT_16_16	*/
+	{  4, 3, 0, V_008F0C_BUF_DATA_FORMAT_10_11_11	},	/* BUF_DATA_FORMAT_10_11_11	*/
+	{  4, 3, 0, V_008F0C_BUF_DATA_FORMAT_11_11_10	},	/* BUF_DATA_FORMAT_11_11_10	*/
+	{  4, 4, 0, V_008F0C_BUF_DATA_FORMAT_10_10_10_2	},	/* BUF_DATA_FORMAT_10_10_10_2	*/
+	{  4, 4, 0, V_008F0C_BUF_DATA_FORMAT_2_10_10_10	},	/* BUF_DATA_FORMAT_2_10_10_10	*/
+	{  4, 4, 1, V_008F0C_BUF_DATA_FORMAT_8		},	/* BUF_DATA_FORMAT_8_8_8_8	*/
+	{  8, 2, 4, V_008F0C_BUF_DATA_FORMAT_32		},	/* BUF_DATA_FORMAT_32_32	*/
+	{  8, 4, 2, V_008F0C_BUF_DATA_FORMAT_16		},	/* BUF_DATA_FORMAT_16_16_16_16	*/
+	{ 12, 3, 4, V_008F0C_BUF_DATA_FORMAT_32		},	/* BUF_DATA_FORMAT_32_32_32	*/
+	{ 16, 4, 4, V_008F0C_BUF_DATA_FORMAT_32		},	/* BUF_DATA_FORMAT_32_32_32_32	*/
+};
 
 static LLVMValueRef
 radv_fixup_vertex_input_fetches(struct radv_shader_context *ctx,
@@ -1393,11 +1387,13 @@ handle_vs_input_decl(struct radv_shader_context *ctx,
 							       ctx->args->ac.base_vertex), "");
 		}
 
+		assert(data_format < ARRAY_SIZE(vertex_format_table));
+		const struct vertex_format_info *vtx_info = &vertex_format_table[data_format];
+
 		/* Adjust the number of channels to load based on the vertex
 		 * attribute format.
 		 */
-		unsigned num_format_channels = get_num_channels_from_data_format(data_format);
-		unsigned num_channels = MIN2(num_input_channels, num_format_channels);
+		unsigned num_channels = MIN2(num_input_channels, vtx_info->num_channels);
 		unsigned attrib_binding = ctx->args->options->key.vs.vertex_attribute_bindings[attrib_index];
 		unsigned attrib_offset = ctx->args->options->key.vs.vertex_attribute_offsets[attrib_index];
 		unsigned attrib_stride = ctx->args->options->key.vs.vertex_attribute_strides[attrib_index];
@@ -1409,27 +1405,70 @@ handle_vs_input_decl(struct radv_shader_context *ctx,
 			num_channels = MAX2(num_channels, 3);
 		}
 
-		if (attrib_stride != 0 && attrib_offset > attrib_stride) {
-			LLVMValueRef buffer_offset =
-				LLVMConstInt(ctx->ac.i32,
-					     attrib_offset / attrib_stride, false);
-
-			buffer_index = LLVMBuildAdd(ctx->ac.builder,
-						    buffer_index,
-						    buffer_offset, "");
-
-			attrib_offset = attrib_offset % attrib_stride;
-		}
-
 		t_offset = LLVMConstInt(ctx->ac.i32, attrib_binding, false);
 		t_list = ac_build_load_to_sgpr(&ctx->ac, t_list_ptr, t_offset);
 
-		input = ac_build_struct_tbuffer_load(&ctx->ac, t_list,
-						     buffer_index,
-						     LLVMConstInt(ctx->ac.i32, attrib_offset, false),
-						     ctx->ac.i32_0, ctx->ac.i32_0,
-						     num_channels,
-						     data_format, num_format, 0, true);
+		/* Perform per-channel vertex fetch operations if unaligned
+		 * access are detected. Only GFX6 and GFX10 are affected.
+		 */
+		bool unaligned_vertex_fetches = false;
+		if ((ctx->ac.chip_class == GFX6 || ctx->ac.chip_class == GFX10) &&
+		    vtx_info->chan_format != data_format &&
+		    ((attrib_offset % vtx_info->vertex_byte_size) ||
+		     (attrib_stride % vtx_info->vertex_byte_size)))
+			unaligned_vertex_fetches = true;
+
+		if (unaligned_vertex_fetches) {
+			unsigned chan_format = vtx_info->chan_format;
+			LLVMValueRef values[4];
+
+			assert(ctx->ac.chip_class == GFX6 ||
+			       ctx->ac.chip_class == GFX10);
+
+			for (unsigned chan  = 0; chan < num_channels; chan++) {
+				unsigned chan_offset = attrib_offset + chan * vtx_info->chan_byte_size;
+				LLVMValueRef chan_index = buffer_index;
+
+				if (attrib_stride != 0 && chan_offset > attrib_stride) {
+					LLVMValueRef buffer_offset =
+						LLVMConstInt(ctx->ac.i32,
+							     chan_offset / attrib_stride, false);
+
+					chan_index = LLVMBuildAdd(ctx->ac.builder,
+								  buffer_index,
+								  buffer_offset, "");
+
+					chan_offset = chan_offset % attrib_stride;
+				}
+
+				values[chan] = ac_build_struct_tbuffer_load(&ctx->ac, t_list,
+									   chan_index,
+									   LLVMConstInt(ctx->ac.i32, chan_offset, false),
+									   ctx->ac.i32_0, ctx->ac.i32_0, 1,
+									   chan_format, num_format, 0, true);
+			}
+
+			input = ac_build_gather_values(&ctx->ac, values, num_channels);
+		} else {
+			if (attrib_stride != 0 && attrib_offset > attrib_stride) {
+				LLVMValueRef buffer_offset =
+					LLVMConstInt(ctx->ac.i32,
+						     attrib_offset / attrib_stride, false);
+
+				buffer_index = LLVMBuildAdd(ctx->ac.builder,
+							    buffer_index,
+							    buffer_offset, "");
+
+				attrib_offset = attrib_offset % attrib_stride;
+			}
+
+			input = ac_build_struct_tbuffer_load(&ctx->ac, t_list,
+							     buffer_index,
+							     LLVMConstInt(ctx->ac.i32, attrib_offset, false),
+							     ctx->ac.i32_0, ctx->ac.i32_0,
+							     num_channels,
+							     data_format, num_format, 0, true);
+		}
 
 		if (ctx->args->options->key.vs.post_shuffle & (1 << attrib_index)) {
 			LLVMValueRef c[4];
