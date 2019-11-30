@@ -2357,7 +2357,6 @@ static void build_sendmsg_gs_alloc_req(struct radv_shader_context *ctx,
 struct ngg_prim {
 	unsigned num_vertices;
 	LLVMValueRef isnull;
-	LLVMValueRef swap;
 	LLVMValueRef index[3];
 	LLVMValueRef edgeflag[3];
 };
@@ -2367,52 +2366,19 @@ static void build_export_prim(struct radv_shader_context *ctx,
 {
 	LLVMBuilderRef builder = ctx->ac.builder;
 	struct ac_export_args args;
-	LLVMValueRef vertices[3];
-	LLVMValueRef odd, even;
 	LLVMValueRef tmp;
 
 	tmp = LLVMBuildZExt(builder, prim->isnull, ctx->ac.i32, "");
 	args.out[0] = LLVMBuildShl(builder, tmp, LLVMConstInt(ctx->ac.i32, 31, false), "");
 
 	for (unsigned i = 0; i < prim->num_vertices; ++i) {
-               tmp = LLVMBuildZExt(builder, prim->edgeflag[i], ctx->ac.i32, "");
-               tmp = LLVMBuildShl(builder, tmp,
-                                  LLVMConstInt(ctx->ac.i32, 9, false), "");
-               vertices[i] = LLVMBuildOr(builder, prim->index[i], tmp, "");
-	}
-
-	switch (prim->num_vertices) {
-	case 1:
-		args.out[0] = LLVMBuildOr(builder, args.out[0], vertices[0], "");
-		break;
-	case 2:
-		tmp = LLVMBuildShl(builder, vertices[1],
-				   LLVMConstInt(ctx->ac.i32, 10, false), "");
-		tmp = LLVMBuildOr(builder, args.out[0], tmp, "");
-		args.out[0] = LLVMBuildOr(builder, tmp, vertices[0], "");
-		break;
-	case 3:
-		/* Swap vertices if needed to follow drawing order. */
-		tmp = LLVMBuildShl(builder, vertices[2],
-				   LLVMConstInt(ctx->ac.i32, 20, false), "");
-		even = LLVMBuildOr(builder, args.out[0], tmp, "");
-		tmp = LLVMBuildShl(builder, vertices[1],
-				   LLVMConstInt(ctx->ac.i32, 10, false), "");
-		even = LLVMBuildOr(builder, even, tmp, "");
-		even = LLVMBuildOr(builder, even, vertices[0], "");
-
-		tmp = LLVMBuildShl(builder, vertices[1],
-				   LLVMConstInt(ctx->ac.i32, 20, false), "");
-		odd = LLVMBuildOr(builder, args.out[0], tmp, "");
-		tmp = LLVMBuildShl(builder, vertices[2],
-				   LLVMConstInt(ctx->ac.i32, 10, false), "");
-		odd = LLVMBuildOr(builder, odd, tmp, "");
-		odd = LLVMBuildOr(builder, odd, vertices[0], "");
-
-		args.out[0] = LLVMBuildSelect(builder, prim->swap, odd, even, "");
-		break;
-	default:
-		unreachable("invalid number of vertices");
+		tmp = LLVMBuildShl(builder, prim->index[i],
+				   LLVMConstInt(ctx->ac.i32, 10 * i, false), "");
+		args.out[0] = LLVMBuildOr(builder, args.out[0], tmp, "");
+		tmp = LLVMBuildZExt(builder, prim->edgeflag[i], ctx->ac.i32, "");
+		tmp = LLVMBuildShl(builder, tmp,
+				   LLVMConstInt(ctx->ac.i32, 10 * i + 9, false), "");
+		args.out[0] = LLVMBuildOr(builder, args.out[0], tmp, "");
 	}
 
 	args.out[0] = LLVMBuildBitCast(builder, args.out[0], ctx->ac.f32, "");
@@ -3040,7 +3006,6 @@ handle_ngg_outputs_post_2(struct radv_shader_context *ctx)
 
 		prim.num_vertices = num_vertices;
 		prim.isnull = ctx->ac.i1false;
-		prim.swap = ctx->ac.i1false;
 		memcpy(prim.index, vtxindex, sizeof(vtxindex[0]) * 3);
 
 		for (unsigned i = 0; i < num_vertices; ++i) {
@@ -3338,6 +3303,7 @@ static void gfx10_ngg_gs_emit_epilogue_2(struct radv_shader_context *ctx)
 	tmp = LLVMBuildICmp(builder, LLVMIntULT, tid, num_emit_threads, "");
 	ac_build_ifcc(&ctx->ac, tmp, 5140);
 	{
+		LLVMValueRef flags;
 		struct ngg_prim prim = {};
 		prim.num_vertices = verts_per_prim;
 
@@ -3348,17 +3314,31 @@ static void gfx10_ngg_gs_emit_epilogue_2(struct radv_shader_context *ctx)
 			ctx->ac.i32_0, /* primflag */
 		};
 		tmp = LLVMBuildGEP(builder, tmp, gep_idx, 3, "");
-		tmp = LLVMBuildLoad(builder, tmp, "");
-		prim.isnull = LLVMBuildICmp(builder, LLVMIntEQ, tmp,
-					    LLVMConstInt(ctx->ac.i8, 0, false), "");
-		prim.swap = LLVMBuildICmp(builder, LLVMIntEQ,
-					  LLVMBuildAnd(builder, tid, LLVMConstInt(ctx->ac.i32, 1, false), ""),
-					  LLVMConstInt(ctx->ac.i32, 1, false), "");
+		flags = LLVMBuildLoad(builder, tmp, "");
+		prim.isnull = LLVMBuildNot(builder, LLVMBuildTrunc(builder, flags, ctx->ac.i1, ""), "");
 
 		for (unsigned i = 0; i < verts_per_prim; ++i) {
 			prim.index[i] = LLVMBuildSub(builder, vertlive_scan.result_exclusive,
 				LLVMConstInt(ctx->ac.i32, verts_per_prim - i - 1, false), "");
 			prim.edgeflag[i] = ctx->ac.i1false;
+		}
+
+		/* Geometry shaders output triangle strips, but NGG expects
+		 * triangles. We need to change the vertex order for odd
+		 * triangles to get correct front/back facing by swapping 2
+		 * vertex indices, but we also have to keep the provoking
+		 * vertex in the same place.
+		 */
+		if (verts_per_prim == 3) {
+			LLVMValueRef is_odd = LLVMBuildLShr(builder, flags, ctx->ac.i8_1, "");
+			is_odd = LLVMBuildTrunc(builder, is_odd, ctx->ac.i1, "");
+
+			struct ngg_prim in = prim;
+			prim.index[0] = in.index[0];
+			prim.index[1] = LLVMBuildSelect(builder, is_odd,
+							in.index[2], in.index[1], "");
+			prim.index[2] = LLVMBuildSelect(builder, is_odd,
+							in.index[1], in.index[2], "");
 		}
 
 		build_export_prim(ctx, &prim);
@@ -3514,6 +3494,17 @@ static void gfx10_ngg_gs_emit_vertex(struct radv_shader_context *ctx,
 	const LLVMValueRef iscompleteprim =
 		LLVMBuildICmp(builder, LLVMIntUGE, curverts, tmp, "");
 
+	/* Since the geometry shader emits triangle strips, we need to
+	 * track which primitive is odd and swap vertex indices to get
+	 * the correct vertex order.
+	 */
+	LLVMValueRef is_odd = ctx->ac.i1false;
+	if (stream == 0 &&
+	    si_conv_gl_prim_to_vertices(ctx->shader->info.gs.output_primitive) == 3) {
+		tmp = LLVMBuildAnd(builder, curverts, ctx->ac.i32_1, "");
+		is_odd = LLVMBuildICmp(builder, LLVMIntEQ, tmp, ctx->ac.i32_1, "");
+	}
+
 	tmp = LLVMBuildAdd(builder, curverts, ctx->ac.i32_1, "");
 	LLVMBuildStore(builder, tmp, ctx->gs_curprim_verts[stream]);
 
@@ -3525,7 +3516,15 @@ static void gfx10_ngg_gs_emit_vertex(struct radv_shader_context *ctx,
 	const LLVMValueRef primflagptr =
 		LLVMBuildGEP(builder, vertexptr, gep_idx, 3, "");
 
+	/* The per-vertex primitive flag encoding:
+	 *   bit 0: whether this vertex finishes a primitive
+	 *   bit 1: whether the primitive is odd (if we are emitting triangle strips)
+	 */
 	tmp = LLVMBuildZExt(builder, iscompleteprim, ctx->ac.i8, "");
+	tmp = LLVMBuildOr(builder, tmp,
+			  LLVMBuildShl(builder,
+				       LLVMBuildZExt(builder, is_odd, ctx->ac.i8, ""),
+				       ctx->ac.i8_1, ""), "");
 	LLVMBuildStore(builder, tmp, primflagptr);
 
 	tmp = LLVMBuildLoad(builder, ctx->gs_generated_prims[stream], "");
