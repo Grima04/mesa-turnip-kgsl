@@ -26,41 +26,20 @@
 #include "v3dv_private.h"
 
 VkResult
-v3dv_CreateShaderModule(VkDevice _device,
-                        const VkShaderModuleCreateInfo *pCreateInfo,
-                        const VkAllocationCallbacks *pAllocator,
-                        VkShaderModule *pShaderModule)
+v3dv_CreatePipelineLayout(VkDevice _device,
+                         const VkPipelineLayoutCreateInfo *pCreateInfo,
+                         const VkAllocationCallbacks *pAllocator,
+                         VkPipelineLayout *pPipelineLayout)
 {
-   /* FIXME: stub */
+   /* FIXME: stub*/
 
    return VK_SUCCESS;
 }
 
 void
-v3dv_DestroyShaderModule(VkDevice _device,
-                         VkShaderModule _module,
-                         const VkAllocationCallbacks *pAllocator)
+v3dv_DestroyPipelineLayout(VkDevice _device,
+                          VkPipelineLayout _pipelineLayout,
+                          const VkAllocationCallbacks *pAllocator)
 {
    /* FIXME: stub */
-}
-
-void
-v3dv_DestroyPipeline(VkDevice _device,
-                     VkPipeline _pipeline,
-                     const VkAllocationCallbacks *pAllocator)
-{
-   /* FIXME: stub */
-}
-
-VkResult
-v3dv_CreateGraphicsPipelines(VkDevice _device,
-                             VkPipelineCache pipelineCache,
-                             uint32_t count,
-                             const VkGraphicsPipelineCreateInfo *pCreateInfos,
-                             const VkAllocationCallbacks *pAllocator,
-                             VkPipeline *pPipelines)
-{
-   /* FIXME: stub */
-
-   return VK_SUCCESS;
 }
