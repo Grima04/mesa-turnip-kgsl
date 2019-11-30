@@ -25,7 +25,6 @@
 #include <stdbool.h>
 #include <string.h>
 #include <sys/mman.h>
-#include <sys/sysinfo.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include "drm-uapi/drm_fourcc.h"
@@ -38,6 +37,7 @@
 #include "util/disk_cache.h"
 #include "util/mesa-sha1.h"
 #include "util/os_file.h"
+#include "util/os_misc.h"
 #include "util/u_atomic.h"
 #include "util/u_string.h"
 #include "util/driconf.h"
@@ -107,10 +107,9 @@ static uint64_t
 anv_compute_heap_size(int fd, uint64_t gtt_size)
 {
    /* Query the total ram from the system */
-   struct sysinfo info;
-   sysinfo(&info);
-
-   uint64_t total_ram = (uint64_t)info.totalram * (uint64_t)info.mem_unit;
+   uint64_t total_ram;
+   if (!os_get_total_physical_memory(&total_ram))
+      return 0;
 
    /* We don't want to burn too much ram with the GPU.  If the user has 4GiB
     * or less, we use at most half.  If they have more than 4GiB, we use 3/4.
