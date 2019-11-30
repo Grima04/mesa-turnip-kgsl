@@ -175,9 +175,6 @@ panfrost_compile_blend_shader(
         midgard_program program;
         midgard_compile_shader_nir(shader, &program, true, screen->gpu_id);
 
-        /* At least two work registers are needed due to an encoding quirk */
-        res.work_count = MAX2(program.work_register_count, 2);
-
         /* Allow us to patch later */
         res.patch_index = program.blend_patch_offset;
         res.first_tag = program.first_tag;

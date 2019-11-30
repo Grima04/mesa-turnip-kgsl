@@ -436,8 +436,7 @@ union midgard_blend {
 struct midgard_blend_rt {
         /* Flags base value of 0x200 to enable the render target.
          * OR with 0x1 for blending (anything other than REPLACE).
-         * OR with 0x2 for programmable blending with 0-2 registers
-         * OR with 0x3 for programmable blending with 2+ registers
+         * OR with 0x2 for programmable blending
          * OR with MALI_BLEND_SRGB for implicit sRGB
          */
 
