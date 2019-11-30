@@ -815,6 +815,7 @@ static void si_destroy_screen(struct pipe_screen* pscreen)
 	slab_destroy_parent(&sscreen->pool_transfers);
 
 	disk_cache_destroy(sscreen->disk_shader_cache);
+	util_live_shader_cache_deinit(&sscreen->live_shader_cache);
 	sscreen->ws->destroy(sscreen->ws);
 	FREE(sscreen);
 }
@@ -1002,6 +1003,7 @@ radeonsi_screen_create_impl(struct radeon_winsys *ws,
 	si_init_screen_state_functions(sscreen);
 	si_init_screen_texture_functions(sscreen);
 	si_init_screen_query_functions(sscreen);
+	si_init_screen_live_shader_cache(sscreen);
 
 	/* Set these flags in debug_flags early, so that the shader cache takes
 	 * them into account.

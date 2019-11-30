@@ -601,6 +601,9 @@ struct si_screen {
 	simple_mtx_t			shader_cache_mutex;
 	struct hash_table		*shader_cache;
 
+	/* Shader cache of live shaders. */
+	struct util_live_shader_cache	live_shader_cache;
+
 	/* Shader compiler queue for multithreaded compilation. */
 	struct util_queue		shader_compiler_queue;
 	/* Use at most 3 normal compiler threads on quadcore and better.
@@ -1585,6 +1588,19 @@ static inline void
 si_texture_reference(struct si_texture **ptr, struct si_texture *res)
 {
 	pipe_resource_reference((struct pipe_resource **)ptr, &res->buffer.b.b);
+}
+
+static inline void
+si_shader_selector_reference(struct si_context *sctx, /* sctx can optionally be NULL */
+			     struct si_shader_selector **dst,
+			     struct si_shader_selector *src)
+{
+	if (*dst == src)
+		return;
+
+	struct si_screen *sscreen = src ? src->screen : (*dst)->screen;
+	util_shader_reference(&sctx->b, &sscreen->live_shader_cache,
+			      (void**)dst, src);
 }
 
 static inline bool

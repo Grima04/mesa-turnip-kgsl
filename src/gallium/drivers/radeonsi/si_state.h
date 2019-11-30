@@ -599,6 +599,7 @@ void si_shader_cache_insert_shader(struct si_screen *sscreen,
 				   struct si_shader *shader,
 				   bool insert_into_disk_cache);
 bool si_update_shaders(struct si_context *sctx);
+void si_init_screen_live_shader_cache(struct si_screen *sscreen);
 void si_init_shader_functions(struct si_context *sctx);
 bool si_init_shader_cache(struct si_screen *sscreen);
 void si_destroy_shader_cache(struct si_screen *sscreen);

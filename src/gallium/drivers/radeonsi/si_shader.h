@@ -132,6 +132,7 @@
 #define SI_SHADER_H
 
 #include "util/u_inlines.h"
+#include "util/u_live_shader_cache.h"
 #include "util/u_queue.h"
 #include "util/simple_mtx.h"
 
@@ -404,7 +405,7 @@ struct si_shader_info {
  * binaries for one NIR program. This can be shared by multiple contexts.
  */
 struct si_shader_selector {
-	struct pipe_reference	reference;
+	struct util_live_shader	base;
 	struct si_screen	*screen;
 	struct util_queue_fence ready;
 	struct si_compiler_ctx_state compiler_ctx_state;
@@ -916,20 +917,6 @@ static inline bool
 si_shader_uses_bindless_images(struct si_shader_selector *selector)
 {
 	return selector ? selector->info.uses_bindless_images : false;
-}
-
-void si_destroy_shader_selector(struct si_context *sctx,
-			        struct si_shader_selector *sel);
-
-static inline void
-si_shader_selector_reference(struct si_context *sctx,
-			     struct si_shader_selector **dst,
-			     struct si_shader_selector *src)
-{
-	if (pipe_reference(&(*dst)->reference, &src->reference))
-		si_destroy_shader_selector(sctx, *dst);
-
-	*dst = src;
 }
 
 #endif

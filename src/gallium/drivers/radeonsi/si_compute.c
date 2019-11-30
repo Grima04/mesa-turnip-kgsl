@@ -213,7 +213,7 @@ static void *si_create_compute_state(
 	struct si_compute *program = CALLOC_STRUCT(si_compute);
 	struct si_shader_selector *sel = &program->sel;
 
-	pipe_reference_init(&sel->reference, 1);
+	pipe_reference_init(&sel->base.reference, 1);
 	sel->type = PIPE_SHADER_COMPUTE;
 	sel->screen = sscreen;
 	program->shader.selector = &program->sel;
