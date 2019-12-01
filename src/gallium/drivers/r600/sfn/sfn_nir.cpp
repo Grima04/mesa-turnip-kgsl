@@ -1,0 +1,543 @@
+/* -*- mesa-c++  -*-
+ *
+ * Copyright (c) 2019 Collabora LTD
+ *
+ * Author: Gert Wollny <gert.wollny@collabora.com>
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation
+ * on the rights to use, copy, modify, merge, publish, distribute, sub
+ * license, and/or sell copies of the Software, and to permit persons to whom
+ * the Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice (including the next
+ * paragraph) shall be included in all copies or substantial portions of the
+ * Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT. IN NO EVENT SHALL
+ * THE AUTHOR(S) AND/OR THEIR SUPPLIERS BE LIABLE FOR ANY CLAIM,
+ * DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+ * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
+ * USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
+
+#include "sfn_nir.h"
+#include "nir_builder.h"
+
+#include "../r600_pipe.h"
+#include "../r600_shader.h"
+
+#include "sfn_instruction_tex.h"
+
+#include "sfn_shader_vertex.h"
+#include "sfn_shader_fragment.h"
+#include "sfn_ir_to_assembly.h"
+
+#include <vector>
+
+namespace r600 {
+
+using std::vector;
+
+ShaderFromNir::ShaderFromNir():sh(nullptr),
+   m_current_if_id(0),
+   m_current_loop_id(0)
+{
+}
+
+bool ShaderFromNir::lower(const nir_shader *shader, r600_pipe_shader *pipe_shader,
+                          r600_pipe_shader_selector *sel, r600_shader_key& key,
+                          struct r600_shader* gs_shader)
+{
+   sh = shader;
+   assert(sh);
+
+   switch (shader->info.stage) {
+   case MESA_SHADER_VERTEX:
+      if (key.vs.as_es) {
+         sfn_log << SfnLog::trans << "VS; next type GS not yet supported\n";
+      } else if (key.vs.as_ls) {
+         sfn_log << "VS: next type TCS and TES not yet supported\n";
+         return false;
+      } else {
+         sfn_log << SfnLog::trans << "Start VS for FS\n";
+         impl.reset(new VertexShaderFromNirForFS(pipe_shader, *sel, key));
+      }
+      break;
+   case MESA_SHADER_FRAGMENT:
+      sfn_log << SfnLog::trans << "Start FS\n";
+      impl.reset(new FragmentShaderFromNir(*shader, pipe_shader->shader, *sel, key));
+      break;
+   default:
+      return false;
+   }
+
+   sfn_log << SfnLog::trans << "Process declarations\n";
+   if (!process_declaration())
+      return false;
+
+   // at this point all functions should be inlined
+   const nir_function *func = reinterpret_cast<const nir_function *>(exec_list_get_head_const(&sh->functions));
+
+   sfn_log << SfnLog::trans << "Scan shader\n";
+   nir_foreach_block(block, func->impl) {
+      nir_foreach_instr(instr, block) {
+         if (!impl->scan_instruction(instr)) {
+            fprintf(stderr, "Unhandled sysvalue access ");
+            nir_print_instr(instr, stderr);
+            fprintf(stderr, "\n");
+            return false;
+         }
+      }
+   }
+
+   sfn_log << SfnLog::trans << "Reserve registers\n";
+   if (!impl->allocate_reserved_registers()) {
+      return false;
+   }
+
+   ValuePool::array_list arrays;
+   sfn_log << SfnLog::trans << "Allocate local registers\n";
+   foreach_list_typed(nir_register, reg, node, &func->impl->registers) {
+      impl->allocate_local_register(*reg, arrays);
+   }
+
+   sfn_log << SfnLog::trans << "Emit shader start\n";
+   impl->allocate_arrays(arrays);
+
+   impl->emit_shader_start();
+
+   sfn_log << SfnLog::trans << "Process shader \n";
+   foreach_list_typed(nir_cf_node, node, node, &func->impl->body) {
+      if (!process_cf_node(node))
+         return false;
+   }
+
+   // Add optimizations here
+   sfn_log << SfnLog::trans << "Finalize\n";
+   impl->finalize();
+
+   sfn_log << SfnLog::trans << "Finished translating to R600 IR\n";
+   return true;
+}
+
+Shader ShaderFromNir::shader() const
+{
+   return Shader{impl->m_output, impl->get_temp_registers()};
+}
+
+
+bool ShaderFromNir::process_cf_node(nir_cf_node *node)
+{
+   SFN_TRACE_FUNC(SfnLog::flow, "CF");
+   switch (node->type) {
+   case nir_cf_node_block:
+      return process_block(nir_cf_node_as_block(node));
+   case nir_cf_node_if:
+      return process_if(nir_cf_node_as_if(node));
+   case nir_cf_node_loop:
+      return process_loop(nir_cf_node_as_loop(node));
+   default:
+      return false;
+   }
+}
+
+bool ShaderFromNir::process_if(nir_if *if_stmt)
+{
+   SFN_TRACE_FUNC(SfnLog::flow, "IF");
+
+   if (!impl->emit_if_start(m_current_if_id, if_stmt))
+      return false;
+
+   int if_id = m_current_if_id++;
+   m_if_stack.push(if_id);
+
+   foreach_list_typed(nir_cf_node, n, node, &if_stmt->then_list)
+         if (!process_cf_node(n)) return false;
+
+   if (!if_stmt->then_list.is_empty()) {
+      if (!impl->emit_else_start(if_id))
+         return false;
+
+      foreach_list_typed(nir_cf_node, n, node, &if_stmt->else_list)
+            if (!process_cf_node(n)) return false;
+   }
+
+   if (!impl->emit_ifelse_end(if_id))
+      return false;
+
+   m_if_stack.pop();
+   return true;
+}
+
+bool ShaderFromNir::process_loop(nir_loop *node)
+{
+   SFN_TRACE_FUNC(SfnLog::flow, "LOOP");
+   int loop_id = m_current_loop_id++;
+
+   if (!impl->emit_loop_start(loop_id))
+      return false;
+
+   foreach_list_typed(nir_cf_node, n, node, &node->body)
+         if (!process_cf_node(n)) return false;
+
+   if (!impl->emit_loop_end(loop_id))
+      return false;
+
+   return true;
+}
+
+bool ShaderFromNir::process_block(nir_block *block)
+{
+   SFN_TRACE_FUNC(SfnLog::flow, "BLOCK");
+   nir_foreach_instr(instr, block) {
+      int r = emit_instruction(instr);
+      if (!r) {
+         sfn_log << SfnLog::err << "R600: Unsupported instruction: "
+                 << *instr << "\n";
+         return false;
+      }
+   }
+   return true;
+}
+
+
+ShaderFromNir::~ShaderFromNir()
+{
+}
+
+pipe_shader_type ShaderFromNir::processor_type() const
+{
+   return impl->m_processor_type;
+}
+
+
+bool ShaderFromNir::emit_instruction(nir_instr *instr)
+{
+   assert(impl);
+
+   sfn_log << SfnLog::instr << "Read instruction " << *instr << "\n";
+
+   switch (instr->type) {
+   case nir_instr_type_alu:
+      return impl->emit_alu_instruction(instr);
+   case nir_instr_type_deref:
+      return impl->emit_deref_instruction(nir_instr_as_deref(instr));
+   case nir_instr_type_intrinsic:
+      return impl->emit_intrinsic_instruction(nir_instr_as_intrinsic(instr));
+   case nir_instr_type_load_const:
+      return impl->set_literal_constant(nir_instr_as_load_const(instr));
+   case nir_instr_type_tex:
+      return impl->emit_tex_instruction(instr);
+   case nir_instr_type_jump:
+      return impl->emit_jump_instruction(nir_instr_as_jump(instr));
+   default:
+      fprintf(stderr, "R600: %s: ShaderFromNir Unsupported instruction: type %d:'", __func__, instr->type);
+      nir_print_instr(instr, stderr);
+      fprintf(stderr, "'\n");
+      return false;
+   case nir_instr_type_ssa_undef:
+      return impl->create_undef(nir_instr_as_ssa_undef(instr));
+      return true;
+   }
+}
+
+bool ShaderFromNir::process_declaration()
+{
+   // scan declarations
+   nir_foreach_variable(variable, &sh->inputs) {
+      if (!impl->process_inputs(variable)) {
+         fprintf(stderr, "R600: error parsing input varible %s\n", variable->name);
+         return false;
+      }
+   }
+
+   // scan declarations
+   nir_foreach_variable(variable, &sh->outputs) {
+      if (!impl->process_outputs(variable)) {
+         fprintf(stderr, "R600: error parsing outputs varible %s\n", variable->name);
+         return false;
+      }
+   }
+
+   // scan declarations
+   nir_foreach_variable(variable, &sh->uniforms) {
+      if (!impl->process_uniforms(variable)) {
+         fprintf(stderr, "R600: error parsing outputs varible %s\n", variable->name);
+         return false;
+      }
+   }
+
+   return true;
+}
+
+const std::vector<Instruction::Pointer>& ShaderFromNir::shader_ir() const
+{
+   assert(impl);
+   return impl->m_output;
+}
+
+
+AssemblyFromShader::~AssemblyFromShader()
+{
+}
+
+bool AssemblyFromShader::lower(const std::vector<Instruction::Pointer>& ir)
+{
+   return do_lower(ir);
+}
+
+static nir_ssa_def *
+r600_nir_lower_pack_unpack_2x16_impl(nir_builder *b, nir_instr *instr, void *_options)
+{
+   nir_alu_instr *alu = nir_instr_as_alu(instr);
+
+   switch (alu->op) {
+   case nir_op_unpack_half_2x16: {
+      nir_ssa_def *packed = nir_ssa_for_alu_src(b, alu, 0);
+      return  nir_vec2(b, nir_unpack_half_2x16_split_x(b, packed),
+                       nir_unpack_half_2x16_split_y(b, packed));
+
+   }
+   case nir_op_pack_half_2x16: {
+      nir_ssa_def *src_vec2 = nir_ssa_for_alu_src(b, alu, 0);
+      return nir_pack_half_2x16_split(b, nir_channel(b, src_vec2, 0),
+                                      nir_channel(b, src_vec2, 1));
+   }
+   default:
+      return nullptr;
+   }
+}
+
+bool r600_nir_lower_pack_unpack_2x16_filter(const nir_instr *instr, const void *_options)
+{
+   return instr->type == nir_instr_type_alu;
+}
+
+bool r600_nir_lower_pack_unpack_2x16(nir_shader *shader)
+{
+   return nir_shader_lower_instructions(shader,
+                                        r600_nir_lower_pack_unpack_2x16_filter,
+                                        r600_nir_lower_pack_unpack_2x16_impl,
+                                        nullptr);
+};
+
+}
+
+using r600::r600_nir_lower_int_tg4;
+using r600::r600_nir_lower_pack_unpack_2x16;
+
+int
+r600_glsl_type_size(const struct glsl_type *type, bool is_bindless)
+{
+   return glsl_count_vec4_slots(type, false, is_bindless);
+}
+
+void
+r600_get_natural_size_align_bytes(const struct glsl_type *type,
+                                  unsigned *size, unsigned *align)
+{
+   if (type->base_type != GLSL_TYPE_ARRAY) {
+      *align = 1;
+      *size = 1;
+   } else {
+      unsigned elem_size, elem_align;
+      glsl_get_natural_size_align_bytes(type->fields.array,
+                                        &elem_size, &elem_align);
+      *align = 1;
+      *size = type->length;
+   }
+}
+
+static bool
+optimize_once(nir_shader *shader)
+{
+   bool progress = false;
+   NIR_PASS(progress, shader, nir_copy_prop);
+   NIR_PASS(progress, shader, nir_opt_dce);
+   NIR_PASS(progress, shader, nir_opt_algebraic);
+   NIR_PASS(progress, shader, nir_opt_constant_folding);
+   NIR_PASS(progress, shader, nir_opt_copy_prop_vars);
+   NIR_PASS(progress, shader, nir_opt_vectorize);
+
+   NIR_PASS(progress, shader, nir_opt_remove_phis);
+
+   if (nir_opt_trivial_continues(shader)) {
+           progress = true;
+           NIR_PASS(progress, shader, nir_copy_prop);
+           NIR_PASS(progress, shader, nir_opt_dce);
+   }
+
+   NIR_PASS(progress, shader, nir_opt_if, false);
+   NIR_PASS(progress, shader, nir_opt_dead_cf);
+   NIR_PASS(progress, shader, nir_opt_cse);
+   NIR_PASS(progress, shader, nir_opt_peephole_select, 200, true, true);
+
+   NIR_PASS(progress, shader, nir_opt_conditional_discard);
+   NIR_PASS(progress, shader, nir_opt_dce);
+   NIR_PASS(progress, shader, nir_opt_undef);
+
+   NIR_PASS(progress, shader, nir_remove_dead_variables, nir_var_shader_in);
+   NIR_PASS(progress, shader, nir_remove_dead_variables,  nir_var_shader_out);
+   return progress;
+}
+
+bool has_saturate(const nir_function *func)
+{
+   nir_foreach_block(block, func->impl) {
+      nir_foreach_instr(instr, block) {
+         if (instr->type == nir_instr_type_alu) {
+            auto alu = nir_instr_as_alu(instr);
+            if (alu->dest.saturate)
+               return true;
+         }
+      }
+   }
+   return false;
+}
+
+int r600_shader_from_nir(struct r600_context *rctx,
+                         struct r600_pipe_shader *pipeshader,
+                         r600_shader_key *key)
+{
+   char filename[4000];
+   struct r600_pipe_shader_selector *sel = pipeshader->selector;
+
+   r600::ShaderFromNir convert;
+
+   if (rctx->screen->b.debug_flags & DBG_PREOPT_IR) {
+      fprintf(stderr, "PRE-OPT-NIR-----------.------------------------------\n");
+      nir_print_shader(sel->nir, stderr);
+      fprintf(stderr, "END PRE-OPT-NIR--------------------------------------\n\n");
+   }
+
+   NIR_PASS_V(sel->nir, nir_lower_vars_to_ssa);
+   NIR_PASS_V(sel->nir, nir_lower_regs_to_ssa);
+   NIR_PASS_V(sel->nir, nir_lower_phis_to_scalar);
+
+   static const struct nir_lower_tex_options lower_tex_options = {
+      .lower_txp = ~0u,
+   };
+   NIR_PASS_V(sel->nir, nir_lower_tex, &lower_tex_options);
+
+   NIR_PASS_V(sel->nir, r600::r600_nir_lower_txl_txf_array_or_cube);
+
+   NIR_PASS_V(sel->nir, r600_nir_lower_int_tg4);
+   NIR_PASS_V(sel->nir, r600_nir_lower_pack_unpack_2x16);
+
+   NIR_PASS_V(sel->nir, nir_lower_io, nir_var_uniform, r600_glsl_type_size,
+              nir_lower_io_lower_64bit_to_32);
+
+   if (sel->nir->info.stage == MESA_SHADER_TESS_CTRL ||
+       sel->nir->info.stage == MESA_SHADER_TESS_EVAL)
+      NIR_PASS_V(sel->nir, nir_lower_io, nir_var_shader_in, r600_glsl_type_size,
+                 nir_lower_io_lower_64bit_to_32);
+
+   if (sel->nir->info.stage == MESA_SHADER_TESS_CTRL)
+      NIR_PASS_V(sel->nir, nir_lower_io, nir_var_shader_out, r600_glsl_type_size,
+                 nir_lower_io_lower_64bit_to_32);
+
+   const nir_function *func = reinterpret_cast<const nir_function *>(exec_list_get_head_const(&sel->nir->functions));
+   bool optimize = func->impl->registers.length() == 0 && !has_saturate(func);
+
+
+   /* It seems the output of this optimization is cached somewhere, and
+    * when there are registers, then we can no longer copy propagate, so
+    * skip the optimization then. (There is probably a better way, but yeah)
+    */
+   if (optimize)
+      while(optimize_once(sel->nir));
+
+   while (optimize && optimize_once(sel->nir));
+
+   NIR_PASS_V(sel->nir, nir_lower_locals_to_regs);
+   //NIR_PASS_V(sel->nir, nir_opt_algebraic);
+   //NIR_PASS_V(sel->nir, nir_copy_prop);
+   NIR_PASS_V(sel->nir, nir_lower_to_source_mods, nir_lower_float_source_mods);
+   NIR_PASS_V(sel->nir, nir_convert_from_ssa, true);
+   NIR_PASS_V(sel->nir, nir_opt_dce);
+
+   if ((rctx->screen->b.debug_flags & DBG_NIR) &&
+       (rctx->screen->b.debug_flags & DBG_ALL_SHADERS)) {
+      fprintf(stderr, "-- NIR --------------------------------------------------------\n");
+      struct nir_function *func = (struct nir_function *)exec_list_get_head(&sel->nir->functions);
+      nir_index_ssa_defs(func->impl);
+      nir_print_shader(sel->nir, stderr);
+      fprintf(stderr, "-- END --------------------------------------------------------\n");
+   }
+
+   memset(&pipeshader->shader, 0, sizeof(r600_shader));
+
+   if (sel->nir->info.stage == MESA_SHADER_TESS_EVAL ||
+       sel->nir->info.stage == MESA_SHADER_VERTEX ||
+       sel->nir->info.stage == MESA_SHADER_GEOMETRY) {
+      pipeshader->shader.clip_dist_write |= ((1 << sel->nir->info.clip_distance_array_size) - 1);
+      pipeshader->shader.cull_dist_write = ((1 << sel->nir->info.cull_distance_array_size) - 1)
+                                           << sel->nir->info.clip_distance_array_size;
+      pipeshader->shader.cc_dist_mask = (1 <<  (sel->nir->info.cull_distance_array_size +
+                                                sel->nir->info.clip_distance_array_size)) - 1;
+   }
+
+   // For learning we print out the complete failed shader
+   // and instead of asserts we use exceptions
+   bool r;
+   try {
+      struct r600_shader* gs_shader = nullptr;
+      if (rctx->gs_shader)
+         gs_shader = &rctx->gs_shader->current->shader;
+      r = convert.lower(sel->nir, pipeshader, sel, *key, gs_shader);
+
+   } catch (std::logic_error& x) {
+      r = false;
+   }
+   if (!r || rctx->screen->b.debug_flags & DBG_ALL_SHADERS) {
+      static int shnr = 0;
+
+      snprintf(filename, 4000, "nir-%s_%d.inc", sel->nir->info.name, shnr++);
+
+      if (access(filename, F_OK) == -1) {
+         FILE *f = fopen(filename, "w");
+
+         if (f) {
+            fprintf(f, "const char *shader_blob_%s = {\nR\"(", sel->nir->info.name);
+            nir_print_shader(sel->nir, f);
+            fprintf(f, ")\";\n");
+            fclose(f);
+         }
+      }
+      if (!r)
+         return -2;
+   }
+
+   auto shader = convert.shader();
+
+   r600_screen *rscreen = rctx->screen;
+   r600_bytecode_init(&pipeshader->shader.bc, rscreen->b.chip_class, rscreen->b.family,
+                      rscreen->has_compressed_msaa_texturing);
+
+   r600::sfn_log << r600::SfnLog::shader_info
+                 << "pipeshader->shader.processor_type = "
+                 << pipeshader->shader.processor_type << "\n";
+
+   pipeshader->shader.bc.type = pipeshader->shader.processor_type;
+   pipeshader->shader.bc.isa = rctx->isa;
+
+   r600::AssemblyFromShaderLegacy afs(&pipeshader->shader, key);
+   if (!afs.lower(shader.m_ir)) {
+      R600_ERR("%s: Lowering to assembly failed\n", __func__);
+      return -1;
+   }
+
+   if (sel->nir->info.stage == MESA_SHADER_GEOMETRY) {
+      r600::sfn_log << r600::SfnLog::shader_info << "Geometry shader, create copy shader\n";
+      generate_gs_copy_shader(rctx, pipeshader, &sel->so);
+      assert(pipeshader->gs_copy_shader);
+   } else {
+      r600::sfn_log << r600::SfnLog::shader_info << "This is not a Geometry shader\n";
+   }
+
+   return 0;
+}
