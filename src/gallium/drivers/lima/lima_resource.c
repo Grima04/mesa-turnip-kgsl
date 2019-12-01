@@ -178,9 +178,13 @@ _lima_resource_create_with_modifiers(struct pipe_screen *pscreen,
                                      int count)
 {
    struct lima_screen *screen = lima_screen(pscreen);
-   bool should_tile = false;
+   bool should_tile = true;
    unsigned width, height;
    bool should_align_dimensions;
+   bool has_user_modifiers = true;
+
+   if (count == 1 && modifiers[0] == DRM_FORMAT_MOD_INVALID)
+      has_user_modifiers = false;
 
    /* VBOs/PBOs are untiled (and 1 height). */
    if (templat->target == PIPE_BUFFER)
@@ -189,9 +193,13 @@ _lima_resource_create_with_modifiers(struct pipe_screen *pscreen,
    if (templat->bind & (PIPE_BIND_LINEAR | PIPE_BIND_SCANOUT))
       should_tile = false;
 
-   /* if linear buffer is not allowed, alloc fail */
-   if (!should_tile && !drm_find_modifier(DRM_FORMAT_MOD_LINEAR, modifiers, count))
-      return NULL;
+   if (drm_find_modifier(DRM_FORMAT_MOD_LINEAR, modifiers, count))
+      should_tile = false;
+
+   if (has_user_modifiers &&
+      !drm_find_modifier(DRM_FORMAT_MOD_ARM_16X16_BLOCK_U_INTERLEAVED,
+                         modifiers, count))
+      should_tile = false;
 
    if (should_tile || (templat->bind & PIPE_BIND_RENDER_TARGET) ||
        (templat->bind & PIPE_BIND_DEPTH_STENCIL)) {
@@ -228,10 +236,9 @@ static struct pipe_resource *
 lima_resource_create(struct pipe_screen *pscreen,
                      const struct pipe_resource *templat)
 {
-   static const uint64_t modifiers[] = {
-      DRM_FORMAT_MOD_LINEAR,
-   };
-   return _lima_resource_create_with_modifiers(pscreen, templat, modifiers, ARRAY_SIZE(modifiers));
+   const uint64_t mod = DRM_FORMAT_MOD_INVALID;
+
+   return _lima_resource_create_with_modifiers(pscreen, templat, &mod, 1);
 }
 
 static struct pipe_resource *
@@ -315,8 +322,17 @@ lima_resource_from_handle(struct pipe_screen *pscreen,
    else
       res->levels[0].width = pres->width0;
 
-   handle->modifier = DRM_FORMAT_MOD_LINEAR;
-   res->tiled = false;
+   switch (handle->modifier) {
+   case DRM_FORMAT_MOD_LINEAR:
+      res->tiled = false;
+      break;
+   case DRM_FORMAT_MOD_ARM_16X16_BLOCK_U_INTERLEAVED:
+      res->tiled = true;
+      break;
+   default:
+      fprintf(stderr, "Attempted to import unsupported modifier 0x%llx\n",
+                  (long long)handle->modifier);
+   }
 
    return pres;
 
@@ -334,7 +350,10 @@ lima_resource_get_handle(struct pipe_screen *pscreen,
    struct lima_screen *screen = lima_screen(pscreen);
    struct lima_resource *res = lima_resource(pres);
 
-   handle->modifier = DRM_FORMAT_MOD_LINEAR;
+   if (res->tiled)
+      handle->modifier = DRM_FORMAT_MOD_ARM_16X16_BLOCK_U_INTERLEAVED;
+   else
+      handle->modifier = DRM_FORMAT_MOD_LINEAR;
 
    if (handle->type == WINSYS_HANDLE_TYPE_KMS && screen->ro &&
        renderonly_get_handle(res->scanout, handle))
