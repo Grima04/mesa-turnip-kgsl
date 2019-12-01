@@ -910,7 +910,8 @@ const char *r600_get_llvm_processor_name(enum radeon_family family)
 static unsigned get_max_threads_per_block(struct r600_common_screen *screen,
 					  enum pipe_shader_ir ir_type)
 {
-	if (ir_type != PIPE_SHADER_IR_TGSI)
+	if (ir_type != PIPE_SHADER_IR_TGSI &&
+	    ir_type != PIPE_SHADER_IR_NIR)
 		return 256;
 	if (screen->chip_class >= EVERGREEN)
 		return 1024;
