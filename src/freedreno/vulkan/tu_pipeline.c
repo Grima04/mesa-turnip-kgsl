@@ -450,7 +450,8 @@ tu6_emit_fs_config(struct tu_cs *cs, const struct ir3_shader_variant *fs)
       sp_fs_ctrl |= A6XX_SP_FS_CTRL_REG0_PIXLODENABLE;
 
    uint32_t sp_fs_config = A6XX_SP_FS_CONFIG_NTEX(fs->num_samp) |
-                           A6XX_SP_FS_CONFIG_NSAMP(fs->num_samp);
+                           A6XX_SP_FS_CONFIG_NSAMP(fs->num_samp) |
+                           A6XX_SP_FS_CONFIG_NIBO(fs->image_mapping.num_ibo);
    if (fs->instrlen)
       sp_fs_config |= A6XX_SP_FS_CONFIG_ENABLED;
 
@@ -470,6 +471,9 @@ tu6_emit_fs_config(struct tu_cs *cs, const struct ir3_shader_variant *fs)
    tu_cs_emit_pkt4(cs, REG_A6XX_HLSQ_FS_CNTL, 1);
    tu_cs_emit(cs, A6XX_HLSQ_FS_CNTL_CONSTLEN(align(fs->constlen, 4)) |
                   A6XX_HLSQ_FS_CNTL_ENABLED);
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_SP_IBO_COUNT, 1);
+   tu_cs_emit(cs, fs->image_mapping.num_ibo);
 }
 
 static void

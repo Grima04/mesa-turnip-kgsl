@@ -93,6 +93,8 @@ typedef uint32_t xcb_window_t;
 #define NUM_META_FS_KEYS 13
 #define TU_MAX_DRM_DEVICES 8
 #define MAX_VIEWS 8
+/* The Qualcomm driver exposes 0x20000058 */
+#define MAX_STORAGE_BUFFER_RANGE 0x20000000
 
 #define NUM_DEPTH_CLEAR_PIPELINES 3
 

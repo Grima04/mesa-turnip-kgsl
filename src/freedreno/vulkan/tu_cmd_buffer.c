@@ -2174,6 +2174,7 @@ enum tu_draw_state_group_id
    TU_DRAW_STATE_FS_CONST,
    TU_DRAW_STATE_VS_TEX,
    TU_DRAW_STATE_FS_TEX,
+   TU_DRAW_STATE_FS_IBO,
 
    TU_DRAW_STATE_COUNT,
 };
@@ -2495,6 +2496,70 @@ tu6_emit_textures(struct tu_device *device, struct tu_cs *draw_state,
    return tu_cs_end_sub_stream(draw_state, &cs);
 }
 
+static struct tu_cs_entry
+tu6_emit_ibo(struct tu_device *device, struct tu_cs *draw_state,
+             const struct tu_pipeline *pipeline,
+             struct tu_descriptor_state *descriptors_state,
+             gl_shader_stage type)
+{
+   const struct tu_program_descriptor_linkage *link =
+      &pipeline->program.link[type];
+
+   uint32_t size = link->image_mapping.num_ibo * A6XX_TEX_CONST_DWORDS;
+   if (!size)
+      return (struct tu_cs_entry) {};
+
+   struct tu_cs cs;
+   tu_cs_begin_sub_stream(device, draw_state, size, &cs);
+
+   for (unsigned i = 0; i < link->image_mapping.num_ibo; i++) {
+      unsigned idx = link->image_mapping.ibo_to_image[i];
+
+      if (idx & IBO_SSBO) {
+         idx &= ~IBO_SSBO;
+
+         uint64_t va = buffer_ptr(descriptors_state, &link->ssbo_map, idx);
+         /* We don't expose robustBufferAccess, so leave the size unlimited. */
+         uint32_t sz = MAX_STORAGE_BUFFER_RANGE / 4;
+
+         tu_cs_emit(&cs, A6XX_IBO_0_FMT(TFMT6_32_UINT));
+         tu_cs_emit(&cs,
+                    A6XX_IBO_1_WIDTH(sz & MASK(15)) |
+                    A6XX_IBO_1_HEIGHT(sz >> 15));
+         tu_cs_emit(&cs,
+                    A6XX_IBO_2_UNK4 |
+                    A6XX_IBO_2_UNK31 |
+                    A6XX_IBO_2_TYPE(A6XX_TEX_1D));
+         tu_cs_emit(&cs, 0);
+         tu_cs_emit_qw(&cs, va);
+         for (int i = 6; i < A6XX_TEX_CONST_DWORDS; i++)
+            tu_cs_emit(&cs, 0);
+      } else {
+         tu_finishme("Emit images");
+      }
+   }
+
+   struct tu_cs_entry entry = tu_cs_end_sub_stream(draw_state, &cs);
+
+   uint64_t ibo_addr = entry.bo->iova + entry.offset;
+
+   tu_cs_begin_sub_stream(device, draw_state, 64, &cs);
+
+   /* emit texture state: */
+   tu_cs_emit_pkt7(&cs, CP_LOAD_STATE6, 3);
+   tu_cs_emit(&cs, CP_LOAD_STATE6_0_DST_OFF(0) |
+              CP_LOAD_STATE6_0_STATE_TYPE(ST6_SHADER) |
+              CP_LOAD_STATE6_0_STATE_SRC(SS6_INDIRECT) |
+              CP_LOAD_STATE6_0_STATE_BLOCK(SB6_IBO) |
+              CP_LOAD_STATE6_0_NUM_UNIT(link->image_mapping.num_ibo));
+   tu_cs_emit_qw(&cs, ibo_addr); /* SRC_ADDR_LO/HI */
+
+   tu_cs_emit_pkt4(&cs, REG_A6XX_SP_IBO_LO, 2);
+   tu_cs_emit_qw(&cs, ibo_addr); /* SRC_ADDR_LO/HI */
+
+   return tu_cs_end_sub_stream(draw_state, &cs);
+}
+
 static void
 tu6_emit_border_color(struct tu_cmd_buffer *cmd,
                       struct tu_cs *cs)
@@ -2678,6 +2743,13 @@ tu6_bind_draw_states(struct tu_cmd_buffer *cmd,
             .ib = tu6_emit_textures(cmd->device, &cmd->draw_state, pipeline,
                                     descriptors_state, MESA_SHADER_FRAGMENT,
                                     &needs_border)
+         };
+      draw_state_groups[draw_state_group_count++] =
+         (struct tu_draw_state_group) {
+            .id = TU_DRAW_STATE_FS_IBO,
+            .enable_mask = 0x6,
+            .ib = tu6_emit_ibo(cmd->device, &cmd->draw_state, pipeline,
+                               descriptors_state, MESA_SHADER_FRAGMENT)
          };
 
       if (needs_border)
