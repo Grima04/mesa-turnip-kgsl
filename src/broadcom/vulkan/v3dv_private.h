@@ -48,6 +48,11 @@
 #include "common/v3d_device_info.h"
 #include "common/v3d_limits.h"
 
+#include "compiler/shader_enums.h"
+#include "compiler/spirv/nir_spirv.h"
+
+#include "compiler/v3d_compiler.h"
+
 #include "vk_debug_report.h"
 #include "util/set.h"
 #include "util/hash_table.h"
@@ -71,6 +76,7 @@ pack_emit_reloc(void *cl, const void *reloc) {}
 
 #include "vk_alloc.h"
 #include "simulator/v3d_simulator.h"
+
 
 /* FIXME: pipe_box from Gallium. Needed for some v3d_tiling.c functions.
  * In the future we might want to drop that depedency, but for now it is
@@ -117,6 +123,9 @@ struct v3dv_physical_device {
    struct v3d_device_info devinfo;
 
    struct v3d_simulator_file *sim_file;
+
+   const struct v3d_compiler *compiler;
+   uint32_t next_program_id;
 };
 
 struct v3dv_app_info {
@@ -420,6 +429,77 @@ struct v3dv_shader_module {
    char data[0];
 };
 
+/* FIXME: the same function at anv, radv and tu, perhaps create common
+ * place?
+ */
+static inline gl_shader_stage
+vk_to_mesa_shader_stage(VkShaderStageFlagBits vk_stage)
+{
+   assert(__builtin_popcount(vk_stage) == 1);
+   return ffs(vk_stage) - 1;
+}
+
+/*
+ * Utility struct so shader_module_compile_to_nir and other methods doesn't
+ * have so many parameters.
+ *
+ * FIXME: for the case of the coordinate shader and the vertex shader, module,
+ * entrypoint, spec_info and nir are the same. There are also info only
+ * relevant to some stages. But seemed too much a hassle to create a new
+ * struct only to handle that. Revisit if such kind of info starts to grow.
+ */
+struct v3dv_pipeline_stage {
+   struct v3dv_pipeline *pipeline;
+
+   gl_shader_stage stage;
+   /* FIXME: is_coord only make sense if stage == MESA_SHADER_VERTEX. Perhaps
+    * a stage base/vs/fs as keys and prog_data?
+    */
+   bool is_coord;
+
+   const struct v3dv_shader_module *module;
+   const char *entrypoint;
+   const VkSpecializationInfo *spec_info;
+
+   nir_shader *nir;
+
+   /** A name for this program, so you can track it in shader-db output. */
+   uint32_t program_id;
+
+   union {
+      struct v3d_key base;
+      struct v3d_vs_key vs;
+      struct v3d_fs_key fs;
+   } key;
+
+   union {
+      struct v3d_prog_data *base;
+      struct v3d_vs_prog_data *vs;
+      struct v3d_fs_prog_data *fs;
+   } prog_data;
+
+   /* FIXME: using one bo per shader. Eventually we would be interested on
+    * reusing the same bo for all the shaders, like a bo per v3dv_pipeline for
+    * shaders.
+    */
+   struct v3dv_bo *assembly_bo;
+};
+
+struct v3dv_pipeline {
+   struct v3dv_device *device;
+
+   VkShaderStageFlags active_stages;
+
+   struct v3dv_subpass *subpass;
+
+   /* Note: We can't use just a MESA_SHADER_STAGES array as we need to track
+    * too the coordinate shader
+    */
+   struct v3dv_pipeline_stage *vs;
+   struct v3dv_pipeline_stage *vs_bin;
+   struct v3dv_pipeline_stage *fs;
+};
+
 uint32_t v3dv_physical_device_api_version(struct v3dv_physical_device *dev);
 
 int v3dv_get_instance_entrypoint_index(const char *name);
@@ -518,6 +598,7 @@ V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_device_memory, VkDeviceMemory)
 V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_framebuffer, VkFramebuffer)
 V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_image, VkImage)
 V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_image_view, VkImageView)
+V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_pipeline, VkPipeline)
 V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_render_pass, VkRenderPass)
 V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_shader_module, VkShaderModule)
 

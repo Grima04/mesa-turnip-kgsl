@@ -84,6 +84,8 @@ v3dv_deps = [
   dep_libdrm,
   dep_valgrind,
   dep_v3dv3,
+  idep_nir,
+  idep_nir_headers,
   idep_vulkan_util,
 ]
 

@@ -36,7 +36,9 @@
 
 #include "broadcom/cle/v3dx_pack.h"
 
+#include "compiler/v3d_compiler.h"
 #include "compiler/glsl_types.h"
+
 #include "drm-uapi/v3d_drm.h"
 #include "vk_util.h"
 
@@ -310,6 +312,9 @@ physical_device_init(struct v3dv_physical_device *device,
       result = VK_ERROR_INCOMPATIBLE_DRIVER;
       goto fail;
    }
+
+   device->compiler = v3d_compiler_init(&device->devinfo);
+   device->next_program_id = 0;
 
    asprintf(&device->name, "V3D %d.%d",
             device->devinfo.ver / 10, device->devinfo.ver % 10);
