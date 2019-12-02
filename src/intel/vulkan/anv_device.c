@@ -998,6 +998,15 @@ void anv_GetPhysicalDeviceFeatures2(
          break;
       }
 
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES_KHR: {
+         VkPhysicalDeviceBufferDeviceAddressFeaturesKHR *features = (void *)ext;
+         features->bufferDeviceAddress = pdevice->has_a64_buffer_access;
+         features->bufferDeviceAddressCaptureReplay =
+            pdevice->has_a64_buffer_access;
+         features->bufferDeviceAddressMultiDevice = false;
+         break;
+      }
+
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COMPUTE_SHADER_DERIVATIVES_FEATURES_NV: {
          VkPhysicalDeviceComputeShaderDerivativesFeaturesNV *features =
             (VkPhysicalDeviceComputeShaderDerivativesFeaturesNV *)ext;
@@ -3092,6 +3101,8 @@ VkResult anv_AllocateMemory(
    const VkImportMemoryFdInfoKHR *fd_info = NULL;
    const VkImportMemoryHostPointerInfoEXT *host_ptr_info = NULL;
    const VkMemoryDedicatedAllocateInfo *dedicated_info = NULL;
+   VkMemoryAllocateFlags vk_flags = 0;
+   uint64_t client_address = 0;
 
    vk_foreach_struct_const(ext, pAllocateInfo->pNext) {
       switch (ext->sType) {
@@ -3111,9 +3122,22 @@ VkResult anv_AllocateMemory(
          host_ptr_info = (void *)ext;
          break;
 
+      case VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO: {
+         const VkMemoryAllocateFlagsInfo *flags_info = (void *)ext;
+         vk_flags = flags_info->flags;
+         break;
+      }
+
       case VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO:
          dedicated_info = (void *)ext;
          break;
+
+      case VK_STRUCTURE_TYPE_MEMORY_OPAQUE_CAPTURE_ADDRESS_ALLOCATE_INFO_KHR: {
+         const VkMemoryOpaqueCaptureAddressAllocateInfoKHR *addr_info =
+            (const VkMemoryOpaqueCaptureAddressAllocateInfoKHR *)ext;
+         client_address = addr_info->opaqueCaptureAddress;
+         break;
+      }
 
       case VK_STRUCTURE_TYPE_WSI_MEMORY_ALLOCATE_INFO_MESA: {
          const struct wsi_memory_allocate_info *wsi_info = (void *)ext;
@@ -3133,6 +3157,9 @@ VkResult anv_AllocateMemory(
          break;
       }
    }
+
+   if (vk_flags & VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT_KHR)
+      alloc_flags |= ANV_BO_ALLOC_CLIENT_VISIBLE_ADDRESS;
 
    /* Check if we need to support Android HW buffer export. If so,
     * create AHardwareBuffer and import memory from it.
@@ -3174,7 +3201,7 @@ VkResult anv_AllocateMemory(
                VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT);
 
       result = anv_device_import_bo(device, fd_info->fd, alloc_flags,
-                                    0 /* client_address */, &mem->bo);
+                                    client_address, &mem->bo);
       if (result != VK_SUCCESS)
          goto fail;
 
@@ -3227,9 +3254,8 @@ VkResult anv_AllocateMemory(
                                                   host_ptr_info->pHostPointer,
                                                   pAllocateInfo->allocationSize,
                                                   alloc_flags,
-                                                  0 /* client_address */,
+                                                  client_address,
                                                   &mem->bo);
-
       if (result != VK_SUCCESS)
          goto fail;
 
@@ -3243,8 +3269,7 @@ VkResult anv_AllocateMemory(
       alloc_flags |= ANV_BO_ALLOC_EXTERNAL;
 
    result = anv_device_alloc_bo(device, pAllocateInfo->allocationSize,
-                                alloc_flags, 0 /* explicit_address */,
-                                &mem->bo);
+                                alloc_flags, client_address, &mem->bo);
    if (result != VK_SUCCESS)
       goto fail;
 
@@ -3932,15 +3957,35 @@ void anv_DestroyBuffer(
    vk_free2(&device->alloc, pAllocator, buffer);
 }
 
-VkDeviceAddress anv_GetBufferDeviceAddressEXT(
+VkDeviceAddress anv_GetBufferDeviceAddressKHR(
     VkDevice                                    device,
-    const VkBufferDeviceAddressInfoEXT*         pInfo)
+    const VkBufferDeviceAddressInfoKHR*         pInfo)
 {
    ANV_FROM_HANDLE(anv_buffer, buffer, pInfo->buffer);
 
+   assert(!anv_address_is_null(buffer->address));
    assert(buffer->address.bo->flags & EXEC_OBJECT_PINNED);
 
    return anv_address_physical(buffer->address);
+}
+
+uint64_t anv_GetBufferOpaqueCaptureAddressKHR(
+    VkDevice                                    device,
+    const VkBufferDeviceAddressInfoKHR*         pInfo)
+{
+   return 0;
+}
+
+uint64_t anv_GetDeviceMemoryOpaqueCaptureAddressKHR(
+    VkDevice                                    device,
+    const VkDeviceMemoryOpaqueCaptureAddressInfoKHR* pInfo)
+{
+   ANV_FROM_HANDLE(anv_device_memory, memory, pInfo->memory);
+
+   assert(memory->bo->flags & EXEC_OBJECT_PINNED);
+   assert(memory->bo->has_client_visible_address);
+
+   return gen_48b_address(memory->bo->offset);
 }
 
 void
