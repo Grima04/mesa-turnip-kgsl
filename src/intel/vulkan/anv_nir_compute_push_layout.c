@@ -131,20 +131,12 @@ anv_nir_compute_push_layout(const struct anv_physical_device *pdevice,
       }
       assert(total_push_regs <= 64);
 
-      /* The Skylake PRM contains the following restriction:
-       *
-       *    "The driver must ensure The following case does not occur
-       *     without a flush to the 3D engine: 3DSTATE_CONSTANT_* with
-       *     buffer 3 read length equal to zero committed followed by a
-       *     3DSTATE_CONSTANT_* with buffer 0 read length not equal to
-       *     zero committed."
-       *
-       * To avoid this, we program the buffers in the highest slots.
-       * This way, slot 0 is only used if slot 3 is also used.
-       */
-      int n = 3;
+      int n = 0;
 
-      for (int i = 3; i >= 0; i--) {
+      if (push_constant_range.length > 0)
+         map->push_ranges[n++] = push_constant_range;
+
+      for (int i = 0; i < 4; i++) {
          const struct brw_ubo_range *ubo_range = &prog_data->ubo_ranges[i];
          if (ubo_range->length == 0)
             continue;
@@ -152,7 +144,7 @@ anv_nir_compute_push_layout(const struct anv_physical_device *pdevice,
          const struct anv_pipeline_binding *binding =
             &map->surface_to_descriptor[ubo_range->block];
 
-         map->push_ranges[n--] = (struct anv_push_range) {
+         map->push_ranges[n++] = (struct anv_push_range) {
             .set = binding->set,
             .index = binding->index,
             .dynamic_offset_index = binding->dynamic_offset_index,
@@ -160,9 +152,6 @@ anv_nir_compute_push_layout(const struct anv_physical_device *pdevice,
             .length = ubo_range->length,
          };
       }
-
-      if (push_constant_range.length > 0)
-         map->push_ranges[n--] = push_constant_range;
    } else {
       /* For Ivy Bridge, the push constants packets have a different
        * rule that would require us to iterate in the other direction

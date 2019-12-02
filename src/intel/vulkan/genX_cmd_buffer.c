@@ -2539,10 +2539,31 @@ cmd_buffer_flush_push_constants(struct anv_cmd_buffer *cmd_buffer,
                &pipeline->shaders[stage]->bind_map;
 
 #if GEN_GEN >= 8 || GEN_IS_HASWELL
+            unsigned buffer_count = 0;
             for (unsigned i = 0; i < 4; i++) {
                const struct anv_push_range *range = &bind_map->push_ranges[i];
-               if (range->length == 0)
-                  continue;
+               if (range->length > 0)
+                  buffer_count++;
+            }
+
+            /* The Skylake PRM contains the following restriction:
+             *
+             *    "The driver must ensure The following case does not occur
+             *     without a flush to the 3D engine: 3DSTATE_CONSTANT_* with
+             *     buffer 3 read length equal to zero committed followed by a
+             *     3DSTATE_CONSTANT_* with buffer 0 read length not equal to
+             *     zero committed."
+             *
+             * To avoid this, we program the buffers in the highest slots.
+             * This way, slot 0 is only used if slot 3 is also used.
+             */
+            assert(buffer_count <= 4);
+            const unsigned shift = 4 - buffer_count;
+            for (unsigned i = 0; i < buffer_count; i++) {
+               const struct anv_push_range *range = &bind_map->push_ranges[i];
+
+               /* At this point we only have non-empty ranges */
+               assert(range->length > 0);
 
                struct anv_address addr;
                switch (range->set) {
@@ -2588,8 +2609,8 @@ cmd_buffer_flush_push_constants(struct anv_cmd_buffer *cmd_buffer,
                }
                }
 
-               c.ConstantBody.ReadLength[i] = range->length;
-               c.ConstantBody.Buffer[i] =
+               c.ConstantBody.ReadLength[i + shift] = range->length;
+               c.ConstantBody.Buffer[i + shift] =
                   anv_address_add(addr, range->start * 32);
             }
 #else
