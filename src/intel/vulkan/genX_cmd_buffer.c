@@ -2942,8 +2942,6 @@ genX(cmd_buffer_flush_state)(struct anv_cmd_buffer *cmd_buffer)
       gen7_cmd_buffer_emit_scissor(cmd_buffer);
 
    genX(cmd_buffer_flush_dynamic_state)(cmd_buffer);
-
-   genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
 }
 
 static void
@@ -3041,6 +3039,11 @@ void genX(CmdDraw)(
    if (vs_prog_data->uses_drawid)
       emit_draw_index(cmd_buffer, 0);
 
+   /* Emitting draw index or vertex index BOs may result in needing
+    * additional VF cache flushes.
+    */
+   genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
+
    /* Our implementation of VK_KHR_multiview uses instancing to draw the
     * different views.  We need to multiply instanceCount by the view count.
     */
@@ -3083,6 +3086,11 @@ void genX(CmdDrawIndexed)(
       emit_base_vertex_instance(cmd_buffer, vertexOffset, firstInstance);
    if (vs_prog_data->uses_drawid)
       emit_draw_index(cmd_buffer, 0);
+
+   /* Emitting draw index or vertex index BOs may result in needing
+    * additional VF cache flushes.
+    */
+   genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
 
    /* Our implementation of VK_KHR_multiview uses instancing to draw the
     * different views.  We need to multiply instanceCount by the view count.
@@ -3137,6 +3145,11 @@ void genX(CmdDrawIndirectByteCountEXT)(
       emit_base_vertex_instance(cmd_buffer, firstVertex, firstInstance);
    if (vs_prog_data->uses_drawid)
       emit_draw_index(cmd_buffer, 0);
+
+   /* Emitting draw index or vertex index BOs may result in needing
+    * additional VF cache flushes.
+    */
+   genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
 
    /* Our implementation of VK_KHR_multiview uses instancing to draw the
     * different views.  We need to multiply instanceCount by the view count.
@@ -3236,6 +3249,11 @@ void genX(CmdDrawIndirect)(
       if (vs_prog_data->uses_drawid)
          emit_draw_index(cmd_buffer, i);
 
+      /* Emitting draw index or vertex index BOs may result in needing
+       * additional VF cache flushes.
+       */
+      genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
+
       load_indirect_parameters(cmd_buffer, draw, false);
 
       anv_batch_emit(&cmd_buffer->batch, GENX(3DPRIMITIVE), prim) {
@@ -3278,6 +3296,11 @@ void genX(CmdDrawIndexedIndirect)(
          emit_base_vertex_instance_bo(cmd_buffer, anv_address_add(draw, 12));
       if (vs_prog_data->uses_drawid)
          emit_draw_index(cmd_buffer, i);
+
+      /* Emitting draw index or vertex index BOs may result in needing
+       * additional VF cache flushes.
+       */
+      genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
 
       load_indirect_parameters(cmd_buffer, draw, true);
 
@@ -3428,6 +3451,11 @@ void genX(CmdDrawIndirectCountKHR)(
       if (vs_prog_data->uses_drawid)
          emit_draw_index(cmd_buffer, i);
 
+      /* Emitting draw index or vertex index BOs may result in needing
+       * additional VF cache flushes.
+       */
+      genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
+
       load_indirect_parameters(cmd_buffer, draw, false);
 
       anv_batch_emit(&cmd_buffer->batch, GENX(3DPRIMITIVE), prim) {
@@ -3487,6 +3515,11 @@ void genX(CmdDrawIndexedIndirectCountKHR)(
          emit_base_vertex_instance_bo(cmd_buffer, anv_address_add(draw, 12));
       if (vs_prog_data->uses_drawid)
          emit_draw_index(cmd_buffer, i);
+
+      /* Emitting draw index or vertex index BOs may result in needing
+       * additional VF cache flushes.
+       */
+      genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
 
       load_indirect_parameters(cmd_buffer, draw, true);
 
