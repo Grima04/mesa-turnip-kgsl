@@ -3088,10 +3088,22 @@ VkResult anv_AllocateMemory(
    /* The Vulkan 1.0.33 spec says "allocationSize must be greater than 0". */
    assert(pAllocateInfo->allocationSize > 0);
 
-   if (pAllocateInfo->allocationSize > MAX_MEMORY_ALLOCATION_SIZE)
-      return VK_ERROR_OUT_OF_DEVICE_MEMORY;
+   VkDeviceSize aligned_alloc_size =
+      align_u64(pAllocateInfo->allocationSize, 4096);
 
-   /* FINISHME: Fail if allocation request exceeds heap size. */
+   if (aligned_alloc_size > MAX_MEMORY_ALLOCATION_SIZE)
+      return vk_error(VK_ERROR_OUT_OF_DEVICE_MEMORY);
+
+   assert(pAllocateInfo->memoryTypeIndex < pdevice->memory.type_count);
+   struct anv_memory_type *mem_type =
+      &pdevice->memory.types[pAllocateInfo->memoryTypeIndex];
+   assert(mem_type->heapIndex < pdevice->memory.heap_count);
+   struct anv_memory_heap *mem_heap =
+      &pdevice->memory.heaps[mem_type->heapIndex];
+
+   uint64_t mem_heap_used = p_atomic_read(&mem_heap->used);
+   if (mem_heap_used + aligned_alloc_size > mem_heap->size)
+      return vk_error(VK_ERROR_OUT_OF_DEVICE_MEMORY);
 
    mem = vk_alloc2(&device->alloc, pAllocator, sizeof(*mem), 8,
                     VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
@@ -3099,7 +3111,7 @@ VkResult anv_AllocateMemory(
       return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
 
    assert(pAllocateInfo->memoryTypeIndex < pdevice->memory.type_count);
-   mem->type = &pdevice->memory.types[pAllocateInfo->memoryTypeIndex];
+   mem->type = mem_type;
    mem->map = NULL;
    mem->map_size = 0;
    mem->ahw = NULL;
@@ -3107,8 +3119,7 @@ VkResult anv_AllocateMemory(
 
    enum anv_bo_alloc_flags alloc_flags = 0;
 
-   assert(mem->type->heapIndex < pdevice->memory.heap_count);
-   if (!pdevice->memory.heaps[mem->type->heapIndex].supports_48bit_addresses)
+   if (!mem_heap->supports_48bit_addresses)
       alloc_flags |= ANV_BO_ALLOC_32BIT_ADDRESS;
 
    const struct wsi_memory_allocate_info *wsi_info =
@@ -3273,14 +3284,21 @@ VkResult anv_AllocateMemory(
    }
 
  success:
+   mem_heap_used = p_atomic_add_return(&mem_heap->used, mem->bo->size);
+   if (mem_heap_used > mem_heap->size) {
+      p_atomic_add(&mem_heap->used, -mem->bo->size);
+      anv_device_release_bo(device, mem->bo);
+      result = vk_errorf(device->instance, NULL,
+                         VK_ERROR_OUT_OF_DEVICE_MEMORY,
+                         "Out of heap memory");
+      goto fail;
+   }
+
    pthread_mutex_lock(&device->mutex);
    list_addtail(&mem->link, &device->memory_objects);
    pthread_mutex_unlock(&device->mutex);
 
    *pMem = anv_device_memory_to_handle(mem);
-
-   p_atomic_add(&pdevice->memory.heaps[mem->type->heapIndex].used,
-                mem->bo->size);
 
    return VK_SUCCESS;
 
