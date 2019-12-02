@@ -485,6 +485,8 @@ llvmpipe_set_active_query_state(struct pipe_context *pipe, bool enable)
    struct llvmpipe_context *llvmpipe = llvmpipe_context(pipe);
 
    llvmpipe->queries_disabled = !enable;
+   /* for OQs we need to regenerate the fragment shader */
+   llvmpipe->dirty |= LP_NEW_OCCLUSION_QUERY;
 }
 
 void llvmpipe_init_query_funcs(struct llvmpipe_context *llvmpipe )

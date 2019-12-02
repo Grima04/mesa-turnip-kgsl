@@ -521,8 +521,6 @@ spec/arb_indirect_parameters/tf-count-arrays: skip
 spec/arb_indirect_parameters/tf-count-elements: skip
 spec/arb_internalformat_query/minmax: skip
 spec/arb_internalformat_query/misc. api error checks: skip
-spec/arb_occlusion_query/occlusion_query_meta_no_fragments: fail
-spec/arb_occlusion_query/occlusion_query_meta_save: fail
 spec/arb_pipeline_statistics_query/arb_pipeline_statistics_query-comp: skip
 spec/arb_pipeline_statistics_query/arb_pipeline_statistics_query-frag: fail
 spec/arb_pixel_buffer_object/cubemap npot pbo: fail
@@ -2285,8 +2283,8 @@ wgl/wgl-sanity: skip
 summary:
        name:  results
        ----  --------
-       pass:    17782
-       fail:      235
+       pass:    17784
+       fail:      233
       crash:        2
        skip:     2027
     timeout:        0

@@ -3348,7 +3348,7 @@ make_variant_key(struct llvmpipe_context *lp,
    /* alpha.ref_value is passed in jit_context */
 
    key->flatshade = lp->rasterizer->flatshade;
-   if (lp->active_occlusion_queries) {
+   if (lp->active_occlusion_queries && !lp->queries_disabled) {
       key->occlusion_count = TRUE;
    }
 
