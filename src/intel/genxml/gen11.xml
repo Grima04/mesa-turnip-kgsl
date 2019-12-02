@@ -7006,6 +7006,13 @@
     <field name="All Allocation" start="25" end="31" type="uint"/>
   </register>
 
+  <register name="TCCNTLREG" length="1" num="0xb0a4">
+    <field name="URB Partial Write Merging Enable" start="0" end="0" type="bool"/>
+    <field name="Color/Z Partial Write Merging Enable" start="1" end="1" type="bool"/>
+    <field name="L3 Data Partial Write Merging Enable" start="2" end="2" type="bool"/>
+    <field name="TC Disable" start="3" end="3" type="bool"/>
+  </register>
+
   <register name="PERFCNT1" length="2" num="0x91b8">
     <field name="Value" start="0" end="43" type="uint"/>
     <field name="Event Selection" start="52" end="59" type="uint"/>
