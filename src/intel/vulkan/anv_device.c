@@ -2616,17 +2616,11 @@ VkResult anv_CreateDevice(
    }
    pthread_condattr_destroy(&condattr);
 
-   uint64_t bo_flags =
-      (physical_device->supports_48bit_addresses ? EXEC_OBJECT_SUPPORTS_48B_ADDRESS : 0) |
-      (physical_device->has_exec_async ? EXEC_OBJECT_ASYNC : 0) |
-      (physical_device->has_exec_capture ? EXEC_OBJECT_CAPTURE : 0) |
-      (physical_device->use_softpin ? EXEC_OBJECT_PINNED : 0);
-
    result = anv_bo_cache_init(&device->bo_cache);
    if (result != VK_SUCCESS)
       goto fail_queue_cond;
 
-   anv_bo_pool_init(&device->batch_bo_pool, device, bo_flags);
+   anv_bo_pool_init(&device->batch_bo_pool, device);
 
    result = anv_state_pool_init(&device->dynamic_state_pool, device,
                                 DYNAMIC_STATE_POOL_MIN_ADDRESS, 16384);

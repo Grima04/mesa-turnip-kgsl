@@ -900,13 +900,10 @@ anv_state_table_get(struct anv_state_table *table, uint32_t idx)
 struct anv_bo_pool {
    struct anv_device *device;
 
-   uint64_t bo_flags;
-
    struct util_sparse_array_free_list free_list[16];
 };
 
-void anv_bo_pool_init(struct anv_bo_pool *pool, struct anv_device *device,
-                      uint64_t bo_flags);
+void anv_bo_pool_init(struct anv_bo_pool *pool, struct anv_device *device);
 void anv_bo_pool_finish(struct anv_bo_pool *pool);
 VkResult anv_bo_pool_alloc(struct anv_bo_pool *pool, uint32_t size,
                            struct anv_bo **bo_out);

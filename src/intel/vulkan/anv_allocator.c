@@ -1264,11 +1264,9 @@ anv_state_stream_alloc(struct anv_state_stream *stream,
 }
 
 void
-anv_bo_pool_init(struct anv_bo_pool *pool, struct anv_device *device,
-                 uint64_t bo_flags)
+anv_bo_pool_init(struct anv_bo_pool *pool, struct anv_device *device)
 {
    pool->device = device;
-   pool->bo_flags = bo_flags;
    for (unsigned i = 0; i < ARRAY_SIZE(pool->free_list); i++) {
       util_sparse_array_free_list_init(&pool->free_list[i],
                                        &device->bo_cache.bo_map, 0,
