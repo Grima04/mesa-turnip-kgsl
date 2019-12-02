@@ -3264,9 +3264,10 @@ VkResult anv_AllocateMemory(
                                       i915_tiling);
          if (ret) {
             anv_device_release_bo(device, mem->bo);
-            return vk_errorf(device->instance, NULL,
-                             VK_ERROR_OUT_OF_DEVICE_MEMORY,
-                             "failed to set BO tiling: %m");
+            result = vk_errorf(device->instance, NULL,
+                               VK_ERROR_OUT_OF_DEVICE_MEMORY,
+                               "failed to set BO tiling: %m");
+            goto fail;
          }
       }
    }
