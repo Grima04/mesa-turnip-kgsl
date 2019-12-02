@@ -312,6 +312,9 @@ void draw_set_force_passthrough( struct draw_context *draw,
 void draw_collect_pipeline_statistics(struct draw_context *draw,
                                       boolean enable);
 
+void draw_collect_primitives_generated(struct draw_context *draw,
+                                       bool eanble);
+
 /*******************************************************************************
  * Draw pipeline 
  */

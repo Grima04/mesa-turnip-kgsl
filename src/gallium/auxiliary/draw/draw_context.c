@@ -1156,6 +1156,15 @@ draw_collect_pipeline_statistics(struct draw_context *draw,
 }
 
 /**
+ * Enable/disable primitives generated gathering.
+ */
+void draw_collect_primitives_generated(struct draw_context *draw,
+                                       bool enable)
+{
+   draw->collect_primgen = enable;
+}
+
+/**
  * Computes clipper invocation statistics.
  *
  * Figures out how many primitives would have been

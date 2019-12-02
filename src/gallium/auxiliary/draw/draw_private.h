@@ -348,6 +348,8 @@ struct draw_context
    struct pipe_query_data_pipeline_statistics statistics;
    boolean collect_statistics;
 
+   bool collect_primgen;
+
    struct draw_assembler *ia;
 
    void *driver_private;
