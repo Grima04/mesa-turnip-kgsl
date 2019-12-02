@@ -278,6 +278,12 @@ struct v3dv_image {
    uint32_t alignment;
 };
 
+struct v3dv_shader_module {
+   unsigned char sha1[20];
+   uint32_t size;
+   char data[0];
+};
+
 uint32_t v3dv_physical_device_api_version(struct v3dv_physical_device *dev);
 
 int v3dv_get_instance_entrypoint_index(const char *name);
@@ -370,6 +376,7 @@ V3DV_DEFINE_HANDLE_CASTS(v3dv_queue, VkQueue)
 
 V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_device_memory, VkDeviceMemory)
 V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_image, VkImage)
+V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_shader_module, VkShaderModule)
 
 static inline int
 v3dv_ioctl(int fd, unsigned long request, void *arg)

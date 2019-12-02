@@ -31,7 +31,24 @@ v3dv_CreateShaderModule(VkDevice _device,
                         const VkAllocationCallbacks *pAllocator,
                         VkShaderModule *pShaderModule)
 {
-   /* FIXME: stub */
+   V3DV_FROM_HANDLE(v3dv_device, device, _device);
+   struct v3dv_shader_module *module;
+
+   assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO);
+   assert(pCreateInfo->flags == 0);
+
+   module = vk_alloc2(&device->alloc, pAllocator,
+                       sizeof(*module) + pCreateInfo->codeSize, 8,
+                       VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   if (module == NULL)
+      return vk_error(NULL, VK_ERROR_OUT_OF_HOST_MEMORY);
+
+   module->size = pCreateInfo->codeSize;
+   memcpy(module->data, pCreateInfo->pCode, module->size);
+
+   _mesa_sha1_compute(module->data, module->size, module->sha1);
+
+   *pShaderModule = v3dv_shader_module_to_handle(module);
 
    return VK_SUCCESS;
 }
@@ -41,7 +58,13 @@ v3dv_DestroyShaderModule(VkDevice _device,
                          VkShaderModule _module,
                          const VkAllocationCallbacks *pAllocator)
 {
-   /* FIXME: stub */
+   V3DV_FROM_HANDLE(v3dv_device, device, _device);
+   V3DV_FROM_HANDLE(v3dv_shader_module, module, _module);
+
+   if (!module)
+      return;
+
+   vk_free2(&device->alloc, pAllocator, module);
 }
 
 void
