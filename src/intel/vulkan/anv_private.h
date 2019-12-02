@@ -1214,8 +1214,6 @@ struct anv_device {
     pthread_mutex_t                             vma_mutex;
     struct util_vma_heap                        vma_lo;
     struct util_vma_heap                        vma_hi;
-    uint64_t                                    vma_lo_available;
-    uint64_t                                    vma_hi_available;
 
     /** List of all anv_device_memory objects */
     struct list_head                            memory_objects;

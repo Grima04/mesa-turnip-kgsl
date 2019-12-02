@@ -2557,13 +2557,12 @@ VkResult anv_CreateDevice(
       struct anv_memory_heap *low_heap =
          &physical_device->memory.heaps[physical_device->memory.heap_count - 1];
       util_vma_heap_init(&device->vma_lo, low_heap->vma_start, low_heap->vma_size);
-      device->vma_lo_available = low_heap->size;
 
       struct anv_memory_heap *high_heap =
          &physical_device->memory.heaps[0];
-      util_vma_heap_init(&device->vma_hi, high_heap->vma_start, high_heap->vma_size);
-      device->vma_hi_available = physical_device->memory.heap_count == 1 ? 0 :
-         high_heap->size;
+      uint64_t high_heap_size =
+         physical_device->memory.heap_count == 1 ? 0 : high_heap->size;
+      util_vma_heap_init(&device->vma_hi, high_heap->vma_start, high_heap_size);
    }
 
    list_inithead(&device->memory_objects);
@@ -3019,22 +3018,19 @@ anv_vma_alloc(struct anv_device *device, struct anv_bo *bo)
 
    bo->offset = 0;
 
-   if (bo->flags & EXEC_OBJECT_SUPPORTS_48B_ADDRESS &&
-       device->vma_hi_available >= bo->size) {
+   if (bo->flags & EXEC_OBJECT_SUPPORTS_48B_ADDRESS) {
       uint64_t addr = util_vma_heap_alloc(&device->vma_hi, bo->size, 4096);
       if (addr) {
          bo->offset = gen_canonical_address(addr);
          assert(addr == gen_48b_address(bo->offset));
-         device->vma_hi_available -= bo->size;
       }
    }
 
-   if (bo->offset == 0 && device->vma_lo_available >= bo->size) {
+   if (bo->offset == 0) {
       uint64_t addr = util_vma_heap_alloc(&device->vma_lo, bo->size, 4096);
       if (addr) {
          bo->offset = gen_canonical_address(addr);
          assert(addr == gen_48b_address(bo->offset));
-         device->vma_lo_available -= bo->size;
       }
    }
 
@@ -3056,7 +3052,6 @@ anv_vma_free(struct anv_device *device, struct anv_bo *bo)
    if (addr_48b >= LOW_HEAP_MIN_ADDRESS &&
        addr_48b <= LOW_HEAP_MAX_ADDRESS) {
       util_vma_heap_free(&device->vma_lo, addr_48b, bo->size);
-      device->vma_lo_available += bo->size;
    } else {
       ASSERTED const struct anv_physical_device *physical_device =
          &device->instance->physicalDevice;
@@ -3064,7 +3059,6 @@ anv_vma_free(struct anv_device *device, struct anv_bo *bo)
              addr_48b < (physical_device->memory.heaps[0].vma_start +
                          physical_device->memory.heaps[0].vma_size));
       util_vma_heap_free(&device->vma_hi, addr_48b, bo->size);
-      device->vma_hi_available += bo->size;
    }
 
    pthread_mutex_unlock(&device->vma_mutex);
