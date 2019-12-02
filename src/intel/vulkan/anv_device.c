@@ -126,16 +126,15 @@ anv_compute_heap_size(int fd, uint64_t gtt_size)
 static VkResult
 anv_physical_device_init_heaps(struct anv_physical_device *device, int fd)
 {
-   uint64_t gtt_size;
    if (anv_gem_get_context_param(fd, 0, I915_CONTEXT_PARAM_GTT_SIZE,
-                                 &gtt_size) == -1) {
+                                 &device->gtt_size) == -1) {
       /* If, for whatever reason, we can't actually get the GTT size from the
        * kernel (too old?) fall back to the aperture size.
        */
       anv_perf_warn(NULL, NULL,
                     "Failed to get I915_CONTEXT_PARAM_GTT_SIZE: %m");
 
-      if (anv_gem_get_aperture(fd, &gtt_size) == -1) {
+      if (anv_gem_get_aperture(fd, &device->gtt_size) == -1) {
          return vk_errorf(NULL, NULL, VK_ERROR_INITIALIZATION_FAILED,
                           "failed to get aperture size: %m");
       }
@@ -146,9 +145,9 @@ anv_physical_device_init_heaps(struct anv_physical_device *device, int fd)
     */
    device->supports_48bit_addresses = (device->info.gen >= 8) &&
                                       device->has_softpin &&
-                                      gtt_size > (4ULL << 30 /* GiB */);
+                                      device->gtt_size > (4ULL << 30 /* GiB */);
 
-   uint64_t heap_size = anv_compute_heap_size(fd, gtt_size);
+   uint64_t heap_size = anv_compute_heap_size(fd, device->gtt_size);
 
    if (heap_size > (2ull << 30) && !device->supports_48bit_addresses) {
       /* When running with an overridden PCI ID, we may get a GTT size from
@@ -169,8 +168,6 @@ anv_physical_device_init_heaps(struct anv_physical_device *device, int fd)
        */
       device->memory.heap_count = 1;
       device->memory.heaps[0] = (struct anv_memory_heap) {
-         .vma_start = LOW_HEAP_MIN_ADDRESS,
-         .vma_size = LOW_HEAP_SIZE,
          .size = heap_size,
          .flags = VK_MEMORY_HEAP_DEVICE_LOCAL_BIT,
          .supports_48bit_addresses = false,
@@ -190,19 +187,11 @@ anv_physical_device_init_heaps(struct anv_physical_device *device, int fd)
 
       device->memory.heap_count = 2;
       device->memory.heaps[0] = (struct anv_memory_heap) {
-         .vma_start = HIGH_HEAP_MIN_ADDRESS,
-         /* Leave the last 4GiB out of the high vma range, so that no state
-          * base address + size can overflow 48 bits. For more information see
-          * the comment about Wa32bitGeneralStateOffset in anv_allocator.c
-          */
-         .vma_size = gtt_size - (1ull << 32) - HIGH_HEAP_MIN_ADDRESS,
          .size = heap_size_48bit,
          .flags = VK_MEMORY_HEAP_DEVICE_LOCAL_BIT,
          .supports_48bit_addresses = true,
       };
       device->memory.heaps[1] = (struct anv_memory_heap) {
-         .vma_start = LOW_HEAP_MIN_ADDRESS,
-         .vma_size = LOW_HEAP_SIZE,
          .size = heap_size_32bit,
          .flags = VK_MEMORY_HEAP_DEVICE_LOCAL_BIT,
          .supports_48bit_addresses = false,
@@ -2554,15 +2543,16 @@ VkResult anv_CreateDevice(
       }
 
       /* keep the page with address zero out of the allocator */
-      struct anv_memory_heap *low_heap =
-         &physical_device->memory.heaps[physical_device->memory.heap_count - 1];
-      util_vma_heap_init(&device->vma_lo, low_heap->vma_start, low_heap->vma_size);
+      util_vma_heap_init(&device->vma_lo,
+                         LOW_HEAP_MIN_ADDRESS, LOW_HEAP_SIZE);
 
-      struct anv_memory_heap *high_heap =
-         &physical_device->memory.heaps[0];
-      uint64_t high_heap_size =
-         physical_device->memory.heap_count == 1 ? 0 : high_heap->size;
-      util_vma_heap_init(&device->vma_hi, high_heap->vma_start, high_heap_size);
+      /* Leave the last 4GiB out of the high vma range, so that no state
+       * base address + size can overflow 48 bits. For more information see
+       * the comment about Wa32bitGeneralStateOffset in anv_allocator.c
+       */
+      util_vma_heap_init(&device->vma_hi, HIGH_HEAP_MIN_ADDRESS,
+                         physical_device->gtt_size - (1ull << 32) -
+                         HIGH_HEAP_MIN_ADDRESS);
    }
 
    list_inithead(&device->memory_objects);
@@ -3053,11 +3043,7 @@ anv_vma_free(struct anv_device *device, struct anv_bo *bo)
        addr_48b <= LOW_HEAP_MAX_ADDRESS) {
       util_vma_heap_free(&device->vma_lo, addr_48b, bo->size);
    } else {
-      ASSERTED const struct anv_physical_device *physical_device =
-         &device->instance->physicalDevice;
-      assert(addr_48b >= physical_device->memory.heaps[0].vma_start &&
-             addr_48b < (physical_device->memory.heaps[0].vma_start +
-                         physical_device->memory.heaps[0].vma_size));
+      assert(addr_48b >= HIGH_HEAP_MIN_ADDRESS);
       util_vma_heap_free(&device->vma_hi, addr_48b, bo->size);
    }
 

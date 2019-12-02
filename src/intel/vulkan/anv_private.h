@@ -947,8 +947,6 @@ struct anv_memory_heap {
    VkMemoryHeapFlags flags;
 
    /* Driver-internal book-keeping */
-   uint64_t          vma_start;
-   uint64_t          vma_size;
    bool              supports_48bit_addresses;
    VkDeviceSize      used;
 };
@@ -990,6 +988,7 @@ struct anv_physical_device {
     bool                                        has_context_priority;
     bool                                        has_context_isolation;
     bool                                        has_mem_available;
+    uint64_t                                    gtt_size;
 
     bool                                        use_softpin;
     bool                                        always_use_bindless;
