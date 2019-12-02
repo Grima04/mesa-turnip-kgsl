@@ -1331,7 +1331,10 @@ enum anv_bo_alloc_flags {
    /** Specifies that the BO should be captured in error states */
    ANV_BO_ALLOC_CAPTURE =        (1 << 4),
 
-   /** Specifies that the BO will have an address assigned by the caller */
+   /** Specifies that the BO will have an address assigned by the caller
+    *
+    * Such BOs do not exist in any VMA heap.
+    */
    ANV_BO_ALLOC_FIXED_ADDRESS = (1 << 5),
 
    /** Enables implicit synchronization on the BO
@@ -1349,6 +1352,7 @@ enum anv_bo_alloc_flags {
 
 VkResult anv_device_alloc_bo(struct anv_device *device, uint64_t size,
                              enum anv_bo_alloc_flags alloc_flags,
+                             uint64_t explicit_address,
                              struct anv_bo **bo);
 VkResult anv_device_import_bo_from_host_ptr(struct anv_device *device,
                                             void *host_ptr, uint32_t size,

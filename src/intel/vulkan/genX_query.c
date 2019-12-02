@@ -125,6 +125,7 @@ VkResult genX(CreateQueryPool)(
    result = anv_device_alloc_bo(device, size,
                                 ANV_BO_ALLOC_MAPPED |
                                 ANV_BO_ALLOC_SNOOPED,
+                                0 /* explicit_address */,
                                 &pool->bo);
    if (result != VK_SUCCESS)
       goto fail;

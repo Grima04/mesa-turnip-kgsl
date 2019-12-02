@@ -2158,6 +2158,7 @@ anv_device_init_trivial_batch(struct anv_device *device)
 {
    VkResult result = anv_device_alloc_bo(device, 4096,
                                          ANV_BO_ALLOC_MAPPED,
+                                         0 /* explicit_address */,
                                          &device->trivial_batch_bo);
    if (result != VK_SUCCESS)
       return result;
@@ -2266,6 +2267,7 @@ anv_device_init_hiz_clear_value_bo(struct anv_device *device)
 {
    VkResult result = anv_device_alloc_bo(device, 4096,
                                          ANV_BO_ALLOC_MAPPED,
+                                         0 /* explicit_address */,
                                          &device->hiz_clear_bo);
    if (result != VK_SUCCESS)
       return result;
@@ -2597,7 +2599,9 @@ VkResult anv_CreateDevice(
          goto fail_binding_table_pool;
    }
 
-   result = anv_device_alloc_bo(device, 4096, 0, &device->workaround_bo);
+   result = anv_device_alloc_bo(device, 4096, 0 /* flags */,
+                                0 /* explicit_address */,
+                                &device->workaround_bo);
    if (result != VK_SUCCESS)
       goto fail_surface_aux_map_pool;
 
@@ -3184,7 +3188,8 @@ VkResult anv_AllocateMemory(
       alloc_flags |= ANV_BO_ALLOC_EXTERNAL;
 
    result = anv_device_alloc_bo(device, pAllocateInfo->allocationSize,
-                                alloc_flags, &mem->bo);
+                                alloc_flags, 0 /* explicit_address */,
+                                &mem->bo);
    if (result != VK_SUCCESS)
       goto fail;
 

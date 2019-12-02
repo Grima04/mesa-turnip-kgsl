@@ -167,6 +167,7 @@ anv_timeline_add_point_locked(struct anv_device *device,
          result = anv_device_alloc_bo(device, 4096,
                                       ANV_BO_ALLOC_EXTERNAL |
                                       ANV_BO_ALLOC_IMPLICIT_SYNC,
+                                      0 /* explicit_address */,
                                       &(*point)->bo);
          if (result != VK_SUCCESS)
             vk_free(&device->alloc, *point);
@@ -573,6 +574,7 @@ anv_queue_submit_simple_batch(struct anv_queue *queue,
       result = anv_device_alloc_bo(device, 4096,
                                    ANV_BO_ALLOC_EXTERNAL |
                                    ANV_BO_ALLOC_IMPLICIT_SYNC,
+                                   0 /* explicit_address */,
                                    &sync_bo);
       if (result != VK_SUCCESS)
          goto err_free_submit;
@@ -1669,6 +1671,7 @@ binary_semaphore_create(struct anv_device *device,
          anv_device_alloc_bo(device, 4096,
                              ANV_BO_ALLOC_EXTERNAL |
                              ANV_BO_ALLOC_IMPLICIT_SYNC,
+                             0 /* explicit_address */,
                              &impl->bo);
       /* If we're going to use this as a fence, we need to *not* have the
        * EXEC_OBJECT_ASYNC bit set.

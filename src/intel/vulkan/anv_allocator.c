@@ -498,18 +498,17 @@ anv_block_pool_expand_range(struct anv_block_pool *pool,
    if (pool->use_softpin) {
       uint32_t new_bo_size = size - pool->size;
       struct anv_bo *new_bo;
+      assert(center_bo_offset == 0);
       VkResult result = anv_device_alloc_bo(pool->device, new_bo_size,
                                             bo_alloc_flags |
                                             ANV_BO_ALLOC_FIXED_ADDRESS |
                                             ANV_BO_ALLOC_MAPPED |
                                             ANV_BO_ALLOC_SNOOPED,
+                                            pool->start_address + pool->size,
                                             &new_bo);
       if (result != VK_SUCCESS)
          return result;
 
-      assert(center_bo_offset == 0);
-
-      new_bo->offset = pool->start_address + pool->size;
       pool->bos[pool->nbos++] = new_bo;
 
       /* This pointer will always point to the first BO in the list */
@@ -1316,6 +1315,7 @@ anv_bo_pool_alloc(struct anv_bo_pool *pool, uint32_t size,
                                          pow2_size,
                                          ANV_BO_ALLOC_MAPPED |
                                          ANV_BO_ALLOC_SNOOPED,
+                                         0 /* explicit_address */,
                                          &bo);
    if (result != VK_SUCCESS)
       return result;
@@ -1454,7 +1454,9 @@ anv_scratch_pool_alloc(struct anv_device *device, struct anv_scratch_pool *pool,
     * so nothing will ever touch the top page.
     */
    VkResult result = anv_device_alloc_bo(device, size,
-                                         ANV_BO_ALLOC_32BIT_ADDRESS, &bo);
+                                         ANV_BO_ALLOC_32BIT_ADDRESS,
+                                         0 /* explicit_address */,
+                                         &bo);
    if (result != VK_SUCCESS)
       return NULL; /* TODO */
 
@@ -1528,6 +1530,7 @@ VkResult
 anv_device_alloc_bo(struct anv_device *device,
                     uint64_t size,
                     enum anv_bo_alloc_flags alloc_flags,
+                    uint64_t explicit_address,
                     struct anv_bo **bo_out)
 {
    const uint32_t bo_flags =
@@ -1580,7 +1583,9 @@ anv_device_alloc_bo(struct anv_device *device,
 
    if (alloc_flags & ANV_BO_ALLOC_FIXED_ADDRESS) {
       new_bo.has_fixed_address = true;
+      new_bo.offset = explicit_address;
    } else {
+      assert(explicit_address == 0);
       if (!anv_vma_alloc(device, &new_bo)) {
          if (new_bo.map)
             anv_gem_munmap(new_bo.map, size);

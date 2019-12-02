@@ -746,6 +746,7 @@ VkResult anv_CreateDescriptorPool(
                                             descriptor_bo_size,
                                             ANV_BO_ALLOC_MAPPED |
                                             ANV_BO_ALLOC_SNOOPED,
+                                            0 /* explicit_address */,
                                             &pool->bo);
       if (result != VK_SUCCESS) {
          vk_free2(&device->alloc, pAllocator, pool);
