@@ -161,59 +161,14 @@ anv_physical_device_init_heaps(struct anv_physical_device *device, int fd)
       heap_size = 2ull << 30;
    }
 
-   if (heap_size <= 3ull * (1ull << 30)) {
-      /* In this case, everything fits nicely into the 32-bit address space,
-       * so there's no need for supporting 48bit addresses on client-allocated
-       * memory objects.
-       */
-      device->memory.heap_count = 1;
-      device->memory.heaps[0] = (struct anv_memory_heap) {
-         .size = heap_size,
-         .flags = VK_MEMORY_HEAP_DEVICE_LOCAL_BIT,
-         .supports_48bit_addresses = false,
-      };
-   } else {
-      /* Not everything will fit nicely into a 32-bit address space.  In this
-       * case we need a 64-bit heap.  Advertise a small 32-bit heap and a
-       * larger 48-bit heap.  If we're in this case, then we have a total heap
-       * size larger than 3GiB which most likely means they have 8 GiB of
-       * video memory and so carving off 1 GiB for the 32-bit heap should be
-       * reasonable.
-       */
-      const uint64_t heap_size_32bit = 1ull << 30;
-      const uint64_t heap_size_48bit = heap_size - heap_size_32bit;
-
-      assert(device->supports_48bit_addresses);
-
-      device->memory.heap_count = 2;
-      device->memory.heaps[0] = (struct anv_memory_heap) {
-         .size = heap_size_48bit,
-         .flags = VK_MEMORY_HEAP_DEVICE_LOCAL_BIT,
-         .supports_48bit_addresses = true,
-      };
-      device->memory.heaps[1] = (struct anv_memory_heap) {
-         .size = heap_size_32bit,
-         .flags = VK_MEMORY_HEAP_DEVICE_LOCAL_BIT,
-         .supports_48bit_addresses = false,
-      };
-   }
+   device->memory.heap_count = 1;
+   device->memory.heaps[0] = (struct anv_memory_heap) {
+      .size = heap_size,
+      .flags = VK_MEMORY_HEAP_DEVICE_LOCAL_BIT,
+   };
 
    uint32_t type_count = 0;
    for (uint32_t heap = 0; heap < device->memory.heap_count; heap++) {
-      uint32_t valid_buffer_usage = ~0;
-
-      /* There appears to be a hardware issue in the VF cache where it only
-       * considers the bottom 32 bits of memory addresses.  If you happen to
-       * have two vertex buffers which get placed exactly 4 GiB apart and use
-       * them in back-to-back draw calls, you can get collisions.  In order to
-       * solve this problem, we require vertex and index buffers be bound to
-       * memory allocated out of the 32-bit heap.
-       */
-      if (device->memory.heaps[heap].supports_48bit_addresses) {
-         valid_buffer_usage &= ~(VK_BUFFER_USAGE_INDEX_BUFFER_BIT |
-                                 VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
-      }
-
       if (device->info.has_llc) {
          /* Big core GPUs share LLC with the CPU and thus one memory type can be
           * both cached and coherent at the same time.
@@ -224,7 +179,6 @@ anv_physical_device_init_heaps(struct anv_physical_device *device, int fd)
                              VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
                              VK_MEMORY_PROPERTY_HOST_CACHED_BIT,
             .heapIndex = heap,
-            .valid_buffer_usage = valid_buffer_usage,
          };
       } else {
          /* The spec requires that we expose a host-visible, coherent memory
@@ -237,14 +191,12 @@ anv_physical_device_init_heaps(struct anv_physical_device *device, int fd)
                              VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
                              VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
             .heapIndex = heap,
-            .valid_buffer_usage = valid_buffer_usage,
          };
          device->memory.types[type_count++] = (struct anv_memory_type) {
             .propertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT |
                              VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
                              VK_MEMORY_PROPERTY_HOST_CACHED_BIT,
             .heapIndex = heap,
-            .valid_buffer_usage = valid_buffer_usage,
          };
       }
    }
@@ -3099,9 +3051,6 @@ VkResult anv_AllocateMemory(
 
    enum anv_bo_alloc_flags alloc_flags = 0;
 
-   if (!mem_heap->supports_48bit_addresses)
-      alloc_flags |= ANV_BO_ALLOC_32BIT_ADDRESS;
-
    const struct wsi_memory_allocate_info *wsi_info =
       vk_find_struct_const(pAllocateInfo->pNext, WSI_MEMORY_ALLOCATE_INFO_MESA);
    if (wsi_info && wsi_info->implicit_sync) {
@@ -3539,12 +3488,7 @@ void anv_GetBufferMemoryRequirements(
     *    only if the memory type `i` in the VkPhysicalDeviceMemoryProperties
     *    structure for the physical device is supported.
     */
-   uint32_t memory_types = 0;
-   for (uint32_t i = 0; i < pdevice->memory.type_count; i++) {
-      uint32_t valid_usage = pdevice->memory.types[i].valid_buffer_usage;
-      if ((valid_usage & buffer->usage) == buffer->usage)
-         memory_types |= (1u << i);
-   }
+   uint32_t memory_types = (1ull << pdevice->memory.type_count) - 1;
 
    /* Base alignment requirement of a cache line */
    uint32_t alignment = 16;
@@ -3738,7 +3682,6 @@ anv_bind_buffer_memory(const VkBindBufferMemoryInfo *pBindInfo)
    assert(pBindInfo->sType == VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_INFO);
 
    if (mem) {
-      assert((buffer->usage & mem->type->valid_buffer_usage) == buffer->usage);
       buffer->address = (struct anv_address) {
          .bo = mem->bo,
          .offset = pBindInfo->memoryOffset,

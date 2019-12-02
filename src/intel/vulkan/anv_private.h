@@ -936,9 +936,6 @@ struct anv_memory_type {
    /* Standard bits passed on to the client */
    VkMemoryPropertyFlags   propertyFlags;
    uint32_t                heapIndex;
-
-   /* Driver-internal book-keeping */
-   VkBufferUsageFlags      valid_buffer_usage;
 };
 
 struct anv_memory_heap {
@@ -947,7 +944,6 @@ struct anv_memory_heap {
    VkMemoryHeapFlags flags;
 
    /* Driver-internal book-keeping */
-   bool              supports_48bit_addresses;
    VkDeviceSize      used;
 };
 
