@@ -934,11 +934,16 @@ v3dv_DestroyDevice(VkDevice _device,
 
 void
 v3dv_GetDeviceQueue(VkDevice _device,
-                    uint32_t queueNodeIndex,
+                    uint32_t queueFamilyIndex,
                     uint32_t queueIndex,
                     VkQueue *pQueue)
 {
-   /* FIXME: stub */
+   V3DV_FROM_HANDLE(v3dv_device, device, _device);
+
+   assert(queueIndex == 0);
+   assert(queueFamilyIndex == 0);
+
+   *pQueue = v3dv_queue_to_handle(&device->queue);
 }
 
 VkResult
