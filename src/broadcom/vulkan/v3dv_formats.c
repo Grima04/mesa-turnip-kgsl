@@ -23,6 +23,7 @@
 
 #include "v3dv_private.h"
 #include "vk_util.h"
+#include "vk_format_info.h"
 
 #include "broadcom/cle/v3dx_pack.h"
 #include "util/format/u_format.h"
@@ -78,7 +79,25 @@ image_format_features(VkFormat vk_format,
    if (!v3dv_format || !v3dv_format->supported)
       return 0;
 
-   return 0;
+   const VkImageAspectFlags aspects = vk_format_aspects(vk_format);
+
+   if (aspects != VK_IMAGE_ASPECT_COLOR_BIT)
+      return 0;
+
+   VkFormatFeatureFlags flags =
+      VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT |
+      VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT |
+      VK_FORMAT_FEATURE_BLIT_SRC_BIT |
+      VK_FORMAT_FEATURE_TRANSFER_SRC_BIT |
+      VK_FORMAT_FEATURE_TRANSFER_DST_BIT;
+
+   if (v3dv_format->rt_type != V3D_OUTPUT_IMAGE_FORMAT_NO) {
+      flags |= VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT |
+               VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BLEND_BIT |
+               VK_FORMAT_FEATURE_BLIT_DST_BIT;
+   }
+
+   return flags;
 }
 
 static VkFormatFeatureFlags
@@ -87,8 +106,20 @@ buffer_format_features(VkFormat vk_format, const struct v3dv_format *v3dv_format
    if (!v3dv_format || !v3dv_format->supported)
       return 0;
 
+   if (!v3dv_format->supported)
+      return 0;
+
    /* FIXME */
-   return 0;
+   const VkImageAspectFlags aspects = vk_format_aspects(vk_format);
+   if (aspects != VK_IMAGE_ASPECT_COLOR_BIT)
+      return 0;
+
+   VkFormatFeatureFlags flags = 0;
+
+   flags |= VK_FORMAT_FEATURE_VERTEX_BUFFER_BIT |
+            VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT;
+
+   return flags;
 }
 
 void
