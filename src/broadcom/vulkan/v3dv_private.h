@@ -56,6 +56,15 @@
 #include "vk_alloc.h"
 #include "simulator/v3d_simulator.h"
 
+/* FIXME: hooks for the packet definition functions. */
+static inline void
+pack_emit_reloc(void *cl, const void *reloc) {}
+
+#define __gen_user_data char
+#define __gen_address_type char
+#define __gen_emit_reloc pack_emit_reloc
+#define __gen_address_offset(reloc) (0)
+
 /*
  * FIXME: confirm value
  *
