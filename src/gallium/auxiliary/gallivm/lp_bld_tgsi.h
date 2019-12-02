@@ -173,6 +173,7 @@ struct lp_bld_tgsi_system_values {
    LLVMValueRef thread_id;
    LLVMValueRef block_id;
    LLVMValueRef grid_size;
+   LLVMValueRef front_facing;
 };
 
 

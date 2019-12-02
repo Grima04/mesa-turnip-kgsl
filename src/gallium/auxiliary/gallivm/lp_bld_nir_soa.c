@@ -943,6 +943,9 @@ static void emit_sysval_intrin(struct lp_build_nir_context *bld_base,
    case nir_intrinsic_load_invocation_id:
       result[0] = lp_build_broadcast_scalar(&bld_base->uint_bld, bld->system_values.invocation_id);
       break;
+   case nir_intrinsic_load_front_face:
+      result[0] = lp_build_broadcast_scalar(&bld_base->uint_bld, bld->system_values.front_facing);
+      break;
    default:
       break;
    }

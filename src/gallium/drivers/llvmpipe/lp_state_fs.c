@@ -342,6 +342,10 @@ generate_fs_loop(struct gallivm_state *gallivm,
 
    memset(&system_values, 0, sizeof(system_values));
 
+   /* truncate then sign extend. */
+   system_values.front_facing = LLVMBuildTrunc(gallivm->builder, facing, LLVMInt1TypeInContext(gallivm->context), "");
+   system_values.front_facing = LLVMBuildSExt(gallivm->builder, system_values.front_facing, LLVMInt32TypeInContext(gallivm->context), "");
+
    if (key->depth.enabled ||
        key->stencil[0].enabled) {
 
