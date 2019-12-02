@@ -625,10 +625,11 @@ radv_handle_per_app_options(struct radv_instance *instance,
 		if (LLVM_VERSION_MAJOR < 9)
 			instance->debug_flags |= RADV_DEBUG_NO_LOAD_STORE_OPT;
 	} else if (!strcmp(name, "Wolfenstein: Youngblood")) {
-		if (!(instance->debug_flags & RADV_DEBUG_NO_SHADER_BALLOT)) {
+		if (!(instance->debug_flags & RADV_DEBUG_NO_SHADER_BALLOT) &&
+		    !(instance->perftest_flags & RADV_PERFTEST_ACO)) {
 			/* Force enable VK_AMD_shader_ballot because it looks
 			 * safe and it gives a nice boost (+20% on Vega 56 at
-			 * this time).
+			 * this time). It also prevents corruption on LLVM.
 			 */
 			instance->perftest_flags |= RADV_PERFTEST_SHADER_BALLOT;
 		}
