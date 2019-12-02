@@ -127,7 +127,9 @@ struct gen_perf_config;
 #define SURFACE_STATE_POOL_MAX_ADDRESS     0x00017fffffffULL
 #define INSTRUCTION_STATE_POOL_MIN_ADDRESS 0x000180000000ULL /* 6 GiB */
 #define INSTRUCTION_STATE_POOL_MAX_ADDRESS 0x0001bfffffffULL
-#define HIGH_HEAP_MIN_ADDRESS              0x0001c0000000ULL /* 7 GiB */
+#define CLIENT_VISIBLE_HEAP_MIN_ADDRESS    0x0001c0000000ULL /* 7 GiB */
+#define CLIENT_VISIBLE_HEAP_MAX_ADDRESS    0x0002bfffffffULL
+#define HIGH_HEAP_MIN_ADDRESS              0x0002c0000000ULL /* 11 GiB */
 
 #define LOW_HEAP_SIZE               \
    (LOW_HEAP_MAX_ADDRESS - LOW_HEAP_MIN_ADDRESS + 1)
@@ -139,6 +141,8 @@ struct gen_perf_config;
    (SURFACE_STATE_POOL_MAX_ADDRESS - SURFACE_STATE_POOL_MIN_ADDRESS + 1)
 #define INSTRUCTION_STATE_POOL_SIZE \
    (INSTRUCTION_STATE_POOL_MAX_ADDRESS - INSTRUCTION_STATE_POOL_MIN_ADDRESS + 1)
+#define CLIENT_VISIBLE_HEAP_SIZE               \
+   (CLIENT_VISIBLE_HEAP_MAX_ADDRESS - CLIENT_VISIBLE_HEAP_MIN_ADDRESS + 1)
 
 /* Allowing different clear colors requires us to perform a depth resolve at
  * the end of certain render passes. This is because while slow clears store
@@ -662,6 +666,9 @@ struct anv_bo {
 
    /** True if this BO wraps a host pointer */
    bool from_host_ptr:1;
+
+   /** See also ANV_BO_ALLOC_CLIENT_VISIBLE_ADDRESS */
+   bool has_client_visible_address:1;
 };
 
 static inline struct anv_bo *
@@ -1208,6 +1215,7 @@ struct anv_device {
 
     pthread_mutex_t                             vma_mutex;
     struct util_vma_heap                        vma_lo;
+    struct util_vma_heap                        vma_cva;
     struct util_vma_heap                        vma_hi;
 
     /** List of all anv_device_memory objects */
@@ -1348,6 +1356,9 @@ enum anv_bo_alloc_flags {
     * This is equivalent to EXEC_OBJECT_WRITE.
     */
    ANV_BO_ALLOC_IMPLICIT_WRITE = (1 << 7),
+
+   /** Has an address which is visible to the client */
+   ANV_BO_ALLOC_CLIENT_VISIBLE_ADDRESS = (1 << 8),
 };
 
 VkResult anv_device_alloc_bo(struct anv_device *device, uint64_t size,
@@ -1357,9 +1368,11 @@ VkResult anv_device_alloc_bo(struct anv_device *device, uint64_t size,
 VkResult anv_device_import_bo_from_host_ptr(struct anv_device *device,
                                             void *host_ptr, uint32_t size,
                                             enum anv_bo_alloc_flags alloc_flags,
+                                            uint64_t client_address,
                                             struct anv_bo **bo_out);
 VkResult anv_device_import_bo(struct anv_device *device, int fd,
                               enum anv_bo_alloc_flags alloc_flags,
+                              uint64_t client_address,
                               struct anv_bo **bo);
 VkResult anv_device_export_bo(struct anv_device *device,
                               struct anv_bo *bo, int *fd_out);
@@ -1433,7 +1446,8 @@ int anv_gem_syncobj_wait(struct anv_device *device,
                          uint32_t *handles, uint32_t num_handles,
                          int64_t abs_timeout_ns, bool wait_all);
 
-bool anv_vma_alloc(struct anv_device *device, struct anv_bo *bo);
+bool anv_vma_alloc(struct anv_device *device, struct anv_bo *bo,
+                   uint64_t client_address);
 void anv_vma_free(struct anv_device *device, struct anv_bo *bo);
 
 struct anv_reloc_list {

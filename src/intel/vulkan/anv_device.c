@@ -2500,6 +2500,9 @@ VkResult anv_CreateDevice(
       util_vma_heap_init(&device->vma_lo,
                          LOW_HEAP_MIN_ADDRESS, LOW_HEAP_SIZE);
 
+      util_vma_heap_init(&device->vma_cva, CLIENT_VISIBLE_HEAP_MIN_ADDRESS,
+                         CLIENT_VISIBLE_HEAP_SIZE);
+
       /* Leave the last 4GiB out of the high vma range, so that no state
        * base address + size can overflow 48 bits. For more information see
        * the comment about Wa32bitGeneralStateOffset in anv_allocator.c
@@ -2690,6 +2693,7 @@ VkResult anv_CreateDevice(
  fail_vmas:
    if (physical_device->use_softpin) {
       util_vma_heap_finish(&device->vma_hi);
+      util_vma_heap_finish(&device->vma_cva);
       util_vma_heap_finish(&device->vma_lo);
    }
  fail_queue:
@@ -2754,6 +2758,7 @@ void anv_DestroyDevice(
 
    if (physical_device->use_softpin) {
       util_vma_heap_finish(&device->vma_hi);
+      util_vma_heap_finish(&device->vma_cva);
       util_vma_heap_finish(&device->vma_lo);
    }
 
@@ -2955,14 +2960,37 @@ VkResult anv_DeviceWaitIdle(
 }
 
 bool
-anv_vma_alloc(struct anv_device *device, struct anv_bo *bo)
+anv_vma_alloc(struct anv_device *device, struct anv_bo *bo,
+              uint64_t client_address)
 {
-   if (!(bo->flags & EXEC_OBJECT_PINNED))
+   if (!(bo->flags & EXEC_OBJECT_PINNED)) {
+      assert(!(bo->has_client_visible_address));
       return true;
+   }
 
    pthread_mutex_lock(&device->vma_mutex);
 
    bo->offset = 0;
+
+   if (bo->has_client_visible_address) {
+      assert(bo->flags & EXEC_OBJECT_SUPPORTS_48B_ADDRESS);
+      if (client_address) {
+         if (util_vma_heap_alloc_addr(&device->vma_cva,
+                                      client_address, bo->size)) {
+            bo->offset = gen_canonical_address(client_address);
+         }
+      } else {
+         uint64_t addr = util_vma_heap_alloc(&device->vma_cva, bo->size, 4096);
+         if (addr) {
+            bo->offset = gen_canonical_address(addr);
+            assert(addr == gen_48b_address(bo->offset));
+         }
+      }
+      /* We don't want to fall back to other heaps */
+      goto done;
+   }
+
+   assert(client_address == 0);
 
    if (bo->flags & EXEC_OBJECT_SUPPORTS_48B_ADDRESS) {
       uint64_t addr = util_vma_heap_alloc(&device->vma_hi, bo->size, 4096);
@@ -2980,6 +3008,7 @@ anv_vma_alloc(struct anv_device *device, struct anv_bo *bo)
       }
    }
 
+done:
    pthread_mutex_unlock(&device->vma_mutex);
 
    return bo->offset != 0;
@@ -2998,6 +3027,9 @@ anv_vma_free(struct anv_device *device, struct anv_bo *bo)
    if (addr_48b >= LOW_HEAP_MIN_ADDRESS &&
        addr_48b <= LOW_HEAP_MAX_ADDRESS) {
       util_vma_heap_free(&device->vma_lo, addr_48b, bo->size);
+   } else if (addr_48b >= CLIENT_VISIBLE_HEAP_MIN_ADDRESS &&
+              addr_48b <= CLIENT_VISIBLE_HEAP_MAX_ADDRESS) {
+      util_vma_heap_free(&device->vma_cva, addr_48b, bo->size);
    } else {
       assert(addr_48b >= HIGH_HEAP_MIN_ADDRESS);
       util_vma_heap_free(&device->vma_hi, addr_48b, bo->size);
@@ -3117,7 +3149,7 @@ VkResult anv_AllocateMemory(
                VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT);
 
       result = anv_device_import_bo(device, fd_info->fd, alloc_flags,
-                                    &mem->bo);
+                                    0 /* client_address */, &mem->bo);
       if (result != VK_SUCCESS)
          goto fail;
 
@@ -3173,6 +3205,7 @@ VkResult anv_AllocateMemory(
                                                   host_ptr_info->pHostPointer,
                                                   pAllocateInfo->allocationSize,
                                                   alloc_flags,
+                                                  0 /* client_address */,
                                                   &mem->bo);
 
       if (result != VK_SUCCESS)

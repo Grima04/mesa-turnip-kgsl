@@ -1911,6 +1911,7 @@ VkResult anv_ImportSemaphoreFdKHR(
          VkResult result = anv_device_import_bo(device, fd,
                                                 ANV_BO_ALLOC_EXTERNAL |
                                                 ANV_BO_ALLOC_IMPLICIT_SYNC,
+                                                0 /* client_address */,
                                                 &new_impl.bo);
          if (result != VK_SUCCESS)
             return result;

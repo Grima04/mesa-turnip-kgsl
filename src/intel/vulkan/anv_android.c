@@ -307,7 +307,9 @@ anv_import_ahw_memory(VkDevice device_h,
    if (dma_buf < 0)
       return VK_ERROR_INVALID_EXTERNAL_HANDLE;
 
-   VkResult result = anv_device_import_bo(device, dma_buf, 0, &mem->bo);
+   VkResult result = anv_device_import_bo(device, dma_buf, 0,
+                                          0 /* client_address */,
+                                          &mem->bo);
    assert(VK_SUCCESS);
 
    /* "If the vkAllocateMemory command succeeds, the implementation must
@@ -468,6 +470,7 @@ anv_image_from_gralloc(VkDevice device_h,
    result = anv_device_import_bo(device, dma_buf,
                                  ANV_BO_ALLOC_IMPLICIT_SYNC |
                                  ANV_BO_ALLOC_IMPLICIT_WRITE,
+                                 0 /* client_address */,
                                  &bo);
    if (result != VK_SUCCESS) {
       return vk_errorf(device->instance, device, result,

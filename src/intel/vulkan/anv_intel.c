@@ -74,6 +74,7 @@ VkResult anv_CreateDmaBufImageINTEL(
 
    result = anv_device_import_bo(device, pCreateInfo->fd,
                                  ANV_BO_ALLOC_IMPLICIT_SYNC,
+                                 0 /* address */,
                                  &mem->bo);
    if (result != VK_SUCCESS)
       goto fail_import;
