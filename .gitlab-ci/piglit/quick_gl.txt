@@ -631,18 +631,6 @@ spec/arb_query_buffer_object/qbo/query-gl_compute_shader_invocations-sync-gl_uns
 spec/arb_query_buffer_object/qbo/query-gl_compute_shader_invocations-sync_cpu_read_after_cache_test-gl_int: skip
 spec/arb_query_buffer_object/qbo/query-gl_compute_shader_invocations-sync_cpu_read_after_cache_test-gl_unsigned_int: skip
 spec/arb_query_buffer_object/qbo/query-gl_compute_shader_invocations-sync_cpu_read_after_cache_test-gl_unsigned_int64_arb: skip
-spec/arb_query_buffer_object/qbo/query-gl_primitives_generated-async_cpu_read_after-gl_int: fail
-spec/arb_query_buffer_object/qbo/query-gl_primitives_generated-async_cpu_read_after-gl_unsigned_int: fail
-spec/arb_query_buffer_object/qbo/query-gl_primitives_generated-async_cpu_read_after-gl_unsigned_int64_arb: fail
-spec/arb_query_buffer_object/qbo/query-gl_primitives_generated-async_cpu_read_before-gl_int: fail
-spec/arb_query_buffer_object/qbo/query-gl_primitives_generated-async_cpu_read_before-gl_unsigned_int: fail
-spec/arb_query_buffer_object/qbo/query-gl_primitives_generated-async_cpu_read_before-gl_unsigned_int64_arb: fail
-spec/arb_query_buffer_object/qbo/query-gl_primitives_generated-sync-gl_int: fail
-spec/arb_query_buffer_object/qbo/query-gl_primitives_generated-sync-gl_unsigned_int: fail
-spec/arb_query_buffer_object/qbo/query-gl_primitives_generated-sync-gl_unsigned_int64_arb: fail
-spec/arb_query_buffer_object/qbo/query-gl_primitives_generated-sync_cpu_read_after_cache_test-gl_int: fail
-spec/arb_query_buffer_object/qbo/query-gl_primitives_generated-sync_cpu_read_after_cache_test-gl_unsigned_int: fail
-spec/arb_query_buffer_object/qbo/query-gl_primitives_generated-sync_cpu_read_after_cache_test-gl_unsigned_int64_arb: fail
 spec/arb_query_buffer_object/qbo/query-gl_tess_control_shader_patches-async-gl_int: skip
 spec/arb_query_buffer_object/qbo/query-gl_tess_control_shader_patches-async-gl_unsigned_int: skip
 spec/arb_query_buffer_object/qbo/query-gl_tess_control_shader_patches-async-gl_unsigned_int64_arb: skip
@@ -2121,9 +2109,6 @@ spec/ext_texture_srgb/multisample-formats 4 gl_ext_texture_srgb: skip
 spec/ext_texture_srgb/multisample-formats 6 gl_ext_texture_srgb: skip
 spec/ext_texture_srgb/multisample-formats 8 gl_ext_texture_srgb: skip
 spec/ext_timer_query/time-elapsed: fail
-spec/ext_transform_feedback2/counting with pause: fail
-spec/ext_transform_feedback/pipeline-basic-primgen: fail
-spec/ext_transform_feedback/primgen-query transform-feedback-disabled: fail
 spec/ext_transform_feedback/tessellation quad_strip flat_first: warn
 spec/ext_transform_feedback/tessellation quads flat_first: warn
 spec/ext_window_rectangles/dlist/call: skip
@@ -2283,8 +2268,8 @@ wgl/wgl-sanity: skip
 summary:
        name:  results
        ----  --------
-       pass:    17784
-       fail:      233
+       pass:    17799
+       fail:      218
       crash:        2
        skip:     2027
     timeout:        0
