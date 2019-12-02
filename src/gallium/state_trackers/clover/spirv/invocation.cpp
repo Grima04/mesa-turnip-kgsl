@@ -410,6 +410,12 @@ namespace {
                return false;
             }
             break;
+         case SpvCapabilityInt64Atomics:
+            if (!dev.has_int64_atomics()) {
+               r_log += "Capability 'Int64Atomics' is not supported.\n";
+               return false;
+            }
+            break;
          default:
             r_log += "Capability '" + std::to_string(capability) +
                      "' is not supported.\n";
