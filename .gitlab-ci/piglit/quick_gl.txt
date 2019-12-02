@@ -2103,7 +2103,6 @@ spec/ext_texture_array/copyteximage 2d_array samples=32: skip
 spec/ext_texture_array/copyteximage 2d_array samples=4: skip
 spec/ext_texture_array/copyteximage 2d_array samples=6: skip
 spec/ext_texture_array/copyteximage 2d_array samples=8: skip
-spec/ext_texture_format_bgra8888/api-errors: fail
 spec/ext_texture_integer/fbo-integer: fail
 spec/ext_texture_integer/multisample-formats 16 gl_ext_texture_integer: skip
 spec/ext_texture_integer/multisample-formats 2 gl_ext_texture_integer: skip
@@ -2291,8 +2290,8 @@ wgl/wgl-sanity: skip
 summary:
        name:  results
        ----  --------
-       pass:    17783
-       fail:      236
+       pass:    17787
+       fail:      235
       crash:        2
        skip:     2032
     timeout:        0
@@ -2303,4 +2302,4 @@ summary:
     changes:        0
       fixes:        0
 regressions:        0
-      total:    20073
+      total:    20076
