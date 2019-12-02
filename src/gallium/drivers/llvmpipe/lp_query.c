@@ -482,6 +482,9 @@ llvmpipe_check_render_cond(struct llvmpipe_context *lp)
 static void
 llvmpipe_set_active_query_state(struct pipe_context *pipe, bool enable)
 {
+   struct llvmpipe_context *llvmpipe = llvmpipe_context(pipe);
+
+   llvmpipe->queries_disabled = !enable;
 }
 
 void llvmpipe_init_query_funcs(struct llvmpipe_context *llvmpipe )

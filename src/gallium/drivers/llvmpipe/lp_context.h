@@ -103,6 +103,8 @@ struct llvmpipe_context {
 
    unsigned active_occlusion_queries;
 
+   bool queries_disabled;
+
    unsigned dirty; /**< Mask of LP_NEW_x flags */
    unsigned cs_dirty; /**< Mask of LP_CSNEW_x flags */
    /** Mapped vertex buffers */
