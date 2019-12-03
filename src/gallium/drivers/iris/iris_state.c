@@ -5108,12 +5108,16 @@ setup_constant_buffers(struct iris_context *ice,
    struct iris_compiled_shader *shader = ice->shaders.prog[stage];
    struct brw_stage_prog_data *prog_data = (void *) shader->prog_data;
 
+   uint32_t push_range_sum = 0;
+
    int n = 0;
    for (int i = 0; i < 4; i++) {
       const struct brw_ubo_range *range = &prog_data->ubo_ranges[i];
 
       if (range->length == 0)
          continue;
+
+      push_range_sum += range->length;
 
       if (range->length > push_bos->max_length)
          push_bos->max_length = range->length;
@@ -5134,6 +5138,13 @@ setup_constant_buffers(struct iris_context *ice,
          : ro_bo(batch->screen->workaround_bo, 0);
       n++;
    }
+
+   /* From the 3DSTATE_CONSTANT_XS and 3DSTATE_CONSTANT_ALL programming notes:
+    *
+    *    "The sum of all four read length fields must be less than or
+    *    equal to the size of 64."
+    */
+   assert(push_range_sum <= 64);
 
    push_bos->buffer_count = n;
 }
