@@ -198,6 +198,9 @@ typedef struct midgard_block {
          * simple bit fields, but for us, liveness is a vector idea. */
         uint16_t *live_in;
         uint16_t *live_out;
+
+        /* Indicates this is a fixed-function fragment epilogue block */
+        bool epilogue;
 } midgard_block;
 
 typedef struct midgard_bundle {

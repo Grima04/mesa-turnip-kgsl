@@ -2217,6 +2217,7 @@ emit_fragment_epilogue(compiler_context *ctx, unsigned rt)
         }
 
         EMIT(alu_br_compact_cond, midgard_jmp_writeout_op_writeout, TAG_ALU_4, ~0, midgard_condition_always);
+        ctx->current_block->epilogue = true;
         schedule_barrier(ctx);
 }
 
