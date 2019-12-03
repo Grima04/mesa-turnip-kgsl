@@ -235,7 +235,12 @@ static LLVMValueRef fcmp32(struct lp_build_nir_context *bld_base,
 {
    LLVMBuilderRef builder = bld_base->base.gallivm->builder;
    struct lp_build_context *flt_bld = get_flt_bld(bld_base, src_bit_size);
-   LLVMValueRef result = lp_build_cmp(flt_bld, compare, src[0], src[1]);
+   LLVMValueRef result;
+
+   if (compare != PIPE_FUNC_NOTEQUAL)
+      result = lp_build_cmp_ordered(flt_bld, compare, src[0], src[1]);
+   else
+      result = lp_build_cmp(flt_bld, compare, src[0], src[1]);
    if (src_bit_size == 64)
       result = LLVMBuildTrunc(builder, result, bld_base->int_bld.vec_type, "");
    return result;
