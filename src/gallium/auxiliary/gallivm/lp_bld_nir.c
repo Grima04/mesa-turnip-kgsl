@@ -217,37 +217,39 @@ static LLVMValueRef int_to_bool32(struct lp_build_nir_context *bld_base,
 }
 
 static LLVMValueRef flt_to_bool32(struct lp_build_nir_context *bld_base,
-				  uint32_t src_bit_size,
-				  LLVMValueRef val)
+                                  uint32_t src_bit_size,
+                                  LLVMValueRef val)
 {
    LLVMBuilderRef builder = bld_base->base.gallivm->builder;
    struct lp_build_context *flt_bld = get_flt_bld(bld_base, src_bit_size);
-   LLVMValueRef result = lp_build_compare(bld_base->base.gallivm, flt_bld->type, PIPE_FUNC_NOTEQUAL, val, flt_bld->zero);
+   LLVMValueRef result = lp_build_cmp(flt_bld, PIPE_FUNC_NOTEQUAL, val, flt_bld->zero);
    if (src_bit_size == 64)
       result = LLVMBuildTrunc(builder, result, bld_base->int_bld.vec_type, "");
    return result;
 }
 
 static LLVMValueRef fcmp32(struct lp_build_nir_context *bld_base,
-			   enum pipe_compare_func compare,
-			   uint32_t src_bit_size,
-			   LLVMValueRef src[4])
+                           enum pipe_compare_func compare,
+                           uint32_t src_bit_size,
+                           LLVMValueRef src[4])
 {
    LLVMBuilderRef builder = bld_base->base.gallivm->builder;
-   LLVMValueRef result = lp_build_compare(bld_base->base.gallivm, get_flt_bld(bld_base, src_bit_size)->type, compare, src[0], src[1]);
+   struct lp_build_context *flt_bld = get_flt_bld(bld_base, src_bit_size);
+   LLVMValueRef result = lp_build_cmp(flt_bld, compare, src[0], src[1]);
    if (src_bit_size == 64)
       result = LLVMBuildTrunc(builder, result, bld_base->int_bld.vec_type, "");
    return result;
 }
 
 static LLVMValueRef icmp32(struct lp_build_nir_context *bld_base,
-			   enum pipe_compare_func compare,
-			   bool is_unsigned,
-			   uint32_t src_bit_size,
-			   LLVMValueRef src[4])
+                           enum pipe_compare_func compare,
+                           bool is_unsigned,
+                           uint32_t src_bit_size,
+                           LLVMValueRef src[4])
 {
    LLVMBuilderRef builder = bld_base->base.gallivm->builder;
-   LLVMValueRef result = lp_build_compare(bld_base->base.gallivm, get_int_bld(bld_base, is_unsigned, src_bit_size)->type, compare, src[0], src[1]);
+   struct lp_build_context *i_bld = get_int_bld(bld_base, is_unsigned, src_bit_size);
+   LLVMValueRef result = lp_build_cmp(i_bld, compare, src[0], src[1]);
    if (src_bit_size == 64)
       result = LLVMBuildTrunc(builder, result, bld_base->int_bld.vec_type, "");
    return result;
