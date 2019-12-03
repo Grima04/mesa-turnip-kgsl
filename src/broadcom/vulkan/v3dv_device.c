@@ -796,6 +796,33 @@ v3dv_EnumerateDeviceExtensionProperties(VkPhysicalDevice physicalDevice,
    return vk_outarray_status(&out);
 }
 
+VkResult
+v3dv_EnumerateInstanceLayerProperties(uint32_t *pPropertyCount,
+                                      VkLayerProperties *pProperties)
+{
+   if (pProperties == NULL) {
+      *pPropertyCount = 0;
+      return VK_SUCCESS;
+   }
+
+   return vk_error(NULL, VK_ERROR_LAYER_NOT_PRESENT);
+}
+
+VkResult
+v3dv_EnumerateDeviceLayerProperties(VkPhysicalDevice physicalDevice,
+                                    uint32_t *pPropertyCount,
+                                    VkLayerProperties *pProperties)
+{
+   V3DV_FROM_HANDLE(v3dv_physical_device, physical_device, physicalDevice);
+
+   if (pProperties == NULL) {
+      *pPropertyCount = 0;
+      return VK_SUCCESS;
+   }
+
+   return vk_error(physical_device->instance, VK_ERROR_LAYER_NOT_PRESENT);
+}
+
 static VkResult
 queue_init(struct v3dv_device *device, struct v3dv_queue *queue)
 {
