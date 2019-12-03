@@ -489,6 +489,7 @@ piglit-quick_gl:
   variables:
     LP_NUM_THREADS: 0
     PIGLIT_OPTIONS: >
+      --process-isolation false
       -x arb_gpu_shader5
       -x glx-multithread-clearbuffer
       -x glx-multithread-shader-compile
@@ -496,7 +497,13 @@ piglit-quick_gl:
       -x maxsize
     PIGLIT_PROFILES: quick_gl
 
-piglit-glslparser+quick_shader:
+piglit-glslparser:
+  extends: .piglit-test
+  variables:
+    LP_NUM_THREADS: 0
+    PIGLIT_PROFILES: glslparser
+
+piglit-quick_shader:
   extends: .piglit-test
   variables:
     LP_NUM_THREADS: 1
@@ -507,8 +514,7 @@ piglit-glslparser+quick_shader:
       -x spec@arb_separate_shader_objects@linker
       -x spec@arb_shader_storage_buffer_object@execution
       -x spec@glsl-1.50@execution@built-in-functions
-    PIGLIT_PROFILES: "glslparser quick_shader"
-    PIGLIT_RESULTS: "glslparser+quick_shader"
+    PIGLIT_PROFILES: quick_shader
 
 .deqp-test:
   extends: .test
