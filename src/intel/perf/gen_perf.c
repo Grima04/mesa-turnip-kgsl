@@ -2296,7 +2296,7 @@ accumulate_oa_reports(struct gen_perf_context *perf_ctx,
    first_samples_node = query->oa.samples_head->next;
 
    foreach_list_typed_from(struct oa_sample_buf, buf, link,
-                           &perf_ctx.sample_buffers,
+                           &perf_ctx->sample_buffers,
                            first_samples_node)
    {
       int offset = 0;
