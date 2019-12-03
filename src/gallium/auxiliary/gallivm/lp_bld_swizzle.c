@@ -662,23 +662,29 @@ lp_build_transpose_aos(struct gallivm_state *gallivm,
 
    LLVMValueRef double_type_zero = LLVMConstNull(double_type);
    /* Interleave x, y, z, w -> xy and zw */
-   if (src[0]) {
+   if (src[0] || src[1]) {
+      LLVMValueRef src0 = src[0];
       LLVMValueRef src1 = src[1];
+      if (!src0)
+         src0 = LLVMConstNull(single_type);
       if (!src1)
          src1 = LLVMConstNull(single_type);
-      t0 = lp_build_interleave2_half(gallivm, single_type_lp, src[0], src1, 0);
-      t2 = lp_build_interleave2_half(gallivm, single_type_lp, src[0], src1, 1);
+      t0 = lp_build_interleave2_half(gallivm, single_type_lp, src0, src1, 0);
+      t2 = lp_build_interleave2_half(gallivm, single_type_lp, src0, src1, 1);
 
       /* Cast to double width type for second interleave */
       t0 = LLVMBuildBitCast(gallivm->builder, t0, double_type, "t0");
       t2 = LLVMBuildBitCast(gallivm->builder, t2, double_type, "t2");
    }
-   if (src[2]) {
+   if (src[2] || src[3]) {
+      LLVMValueRef src2 = src[2];
       LLVMValueRef src3 = src[3];
+      if (!src2)
+         src2 = LLVMConstNull(single_type);
       if (!src3)
          src3 = LLVMConstNull(single_type);
-      t1 = lp_build_interleave2_half(gallivm, single_type_lp, src[2], src3, 0);
-      t3 = lp_build_interleave2_half(gallivm, single_type_lp, src[2], src3, 1);
+      t1 = lp_build_interleave2_half(gallivm, single_type_lp, src2, src3, 0);
+      t3 = lp_build_interleave2_half(gallivm, single_type_lp, src2, src3, 1);
 
       /* Cast to double width type for second interleave */
       t1 = LLVMBuildBitCast(gallivm->builder, t1, double_type, "t1");
