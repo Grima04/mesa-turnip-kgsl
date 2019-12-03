@@ -1161,6 +1161,7 @@ public:
    uint16_t sgpr_limit;
    uint16_t physical_sgprs;
    uint16_t sgpr_alloc_granule; /* minus one. must be power of two */
+   uint16_t vgpr_alloc_granule; /* minus one. must be power of two */
 
    bool needs_vcc = false;
    bool needs_xnack_mask = false;
@@ -1248,11 +1249,13 @@ void aco_print_program(Program *program, FILE *output);
 /* number of sgprs that need to be allocated but might notbe addressable as s0-s105 */
 uint16_t get_extra_sgprs(Program *program);
 
-/* get number of sgprs allocated required to address a number of sgprs */
+/* get number of sgprs/vgprs allocated required to address a number of sgprs/vgprs */
 uint16_t get_sgpr_alloc(Program *program, uint16_t addressable_sgprs);
+uint16_t get_vgpr_alloc(Program *program, uint16_t addressable_vgprs);
 
-/* return number of addressable SGPRs for max_waves */
+/* return number of addressable sgprs/vgprs for max_waves */
 uint16_t get_addr_sgpr_from_waves(Program *program, uint16_t max_waves);
+uint16_t get_addr_vgpr_from_waves(Program *program, uint16_t max_waves);
 
 typedef struct {
    const int16_t opcode_gfx7[static_cast<int>(aco_opcode::num_opcodes)];

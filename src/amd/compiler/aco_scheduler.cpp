@@ -934,7 +934,8 @@ void schedule_program(Program *program, live& live_vars)
       ctx.num_waves = 8;
 
    assert(ctx.num_waves > 0 && ctx.num_waves <= program->num_waves);
-   ctx.max_registers = { int16_t(((256 / ctx.num_waves) & ~3) - 2), int16_t(get_addr_sgpr_from_waves(program, ctx.num_waves))};
+   ctx.max_registers = { int16_t(get_addr_vgpr_from_waves(program, ctx.num_waves) - 2),
+                         int16_t(get_addr_sgpr_from_waves(program, ctx.num_waves))};
 
    for (Block& block : program->blocks)
       schedule_block(ctx, program, &block, live_vars);
