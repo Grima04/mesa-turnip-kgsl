@@ -620,6 +620,20 @@ TEST_F(nir_load_store_vectorize_test, ssbo_load_identical_store_identical)
    ASSERT_EQ(count_intrinsics(nir_intrinsic_load_ssbo), 2);
 }
 
+TEST_F(nir_load_store_vectorize_test, ssbo_store_identical_load_identical)
+{
+   create_store(nir_var_mem_ssbo, 0, 0, 0x1);
+   create_load(nir_var_mem_ssbo, 0, 0, 0x2);
+   create_store(nir_var_mem_ssbo, 0, 0, 0x3);
+
+   nir_validate_shader(b->shader, NULL);
+   ASSERT_EQ(count_intrinsics(nir_intrinsic_store_ssbo), 2);
+
+   EXPECT_FALSE(run_vectorizer(nir_var_mem_ssbo));
+
+   ASSERT_EQ(count_intrinsics(nir_intrinsic_store_ssbo), 2);
+}
+
 /* if nir_opt_load_store_vectorize were implemented like many load/store
  * optimization passes are (for example, nir_opt_combine_stores and
  * nir_opt_copy_prop_vars) and stopped tracking a load when an aliasing store is
