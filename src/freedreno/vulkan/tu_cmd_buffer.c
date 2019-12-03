@@ -2413,27 +2413,24 @@ tu6_emit_textures(struct tu_device *device, struct tu_cs *draw_state,
    if (!size)
       return (struct tu_cs_entry) {};
 
-   unsigned opcode, tex_samp_reg, tex_const_reg, tex_count_reg;
+   unsigned tex_samp_reg, tex_const_reg, tex_count_reg;
    enum a6xx_state_block sb;
 
    switch (type) {
    case MESA_SHADER_VERTEX:
       sb = SB6_VS_TEX;
-      opcode = CP_LOAD_STATE6_GEOM;
       tex_samp_reg = REG_A6XX_SP_VS_TEX_SAMP_LO;
       tex_const_reg = REG_A6XX_SP_VS_TEX_CONST_LO;
       tex_count_reg = REG_A6XX_SP_VS_TEX_COUNT;
       break;
    case MESA_SHADER_FRAGMENT:
       sb = SB6_FS_TEX;
-      opcode = CP_LOAD_STATE6_FRAG;
       tex_samp_reg = REG_A6XX_SP_FS_TEX_SAMP_LO;
       tex_const_reg = REG_A6XX_SP_FS_TEX_CONST_LO;
       tex_count_reg = REG_A6XX_SP_FS_TEX_COUNT;
       break;
    case MESA_SHADER_COMPUTE:
       sb = SB6_CS_TEX;
-      opcode = CP_LOAD_STATE6_FRAG;
       tex_samp_reg = REG_A6XX_SP_CS_TEX_SAMP_LO;
       tex_const_reg = REG_A6XX_SP_CS_TEX_CONST_LO;
       tex_count_reg = REG_A6XX_SP_CS_TEX_COUNT;
@@ -2469,7 +2466,7 @@ tu6_emit_textures(struct tu_device *device, struct tu_cs *draw_state,
    tu_cs_begin_sub_stream(device, draw_state, 64, &cs);
 
    /* output sampler state: */
-   tu_cs_emit_pkt7(&cs, opcode, 3);
+   tu_cs_emit_pkt7(&cs, tu6_stage2opcode(type), 3);
    tu_cs_emit(&cs, CP_LOAD_STATE6_0_DST_OFF(0) |
       CP_LOAD_STATE6_0_STATE_TYPE(ST6_SHADER) |
       CP_LOAD_STATE6_0_STATE_SRC(SS6_INDIRECT) |
@@ -2481,7 +2478,7 @@ tu6_emit_textures(struct tu_device *device, struct tu_cs *draw_state,
    tu_cs_emit_qw(&cs, samp_addr); /* SRC_ADDR_LO/HI */
 
    /* emit texture state: */
-   tu_cs_emit_pkt7(&cs, opcode, 3);
+   tu_cs_emit_pkt7(&cs, tu6_stage2opcode(type), 3);
    tu_cs_emit(&cs, CP_LOAD_STATE6_0_DST_OFF(0) |
       CP_LOAD_STATE6_0_STATE_TYPE(ST6_CONSTANTS) |
       CP_LOAD_STATE6_0_STATE_SRC(SS6_INDIRECT) |
