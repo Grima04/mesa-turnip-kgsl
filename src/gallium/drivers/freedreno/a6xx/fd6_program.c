@@ -256,9 +256,6 @@ setup_config_stateobj(struct fd_ringbuffer *ring, struct fd6_program_state *stat
 	OUT_RING(ring, state->fs->image_mapping.num_ibo);
 }
 
-#define VALIDREG(r)      ((r) != regid(63,0))
-#define CONDREG(r, val)  COND(VALIDREG(r), (val))
-
 static inline uint32_t
 next_regid(uint32_t reg, uint32_t increment)
 {

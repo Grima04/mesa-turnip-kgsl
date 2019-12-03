@@ -3472,9 +3472,9 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 	 */
 
 	for (unsigned i = 0; i < so->inputs_count; i++)
-		so->inputs[i].regid = regid(63, 0);
+		so->inputs[i].regid = INVALID_REG;
 	for (unsigned i = 0; i < so->outputs_count; i++)
-		so->outputs[i].regid = regid(63, 0);
+		so->outputs[i].regid = INVALID_REG;
 
 	struct ir3_instruction *out;
 	foreach_output(out, ir) {
@@ -3490,8 +3490,19 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 		assert(in->opc == OPC_META_INPUT);
 		unsigned inidx = in->input.inidx;
 
-		so->inputs[inidx].regid = in->regs[0]->num;
-		so->inputs[inidx].half  = !!(in->regs[0]->flags & IR3_REG_HALF);
+		if (pre_assign_inputs) {
+			if (VALIDREG(so->nonbinning->inputs[inidx].regid)) {
+				compile_assert(ctx, in->regs[0]->num ==
+						so->nonbinning->inputs[inidx].regid);
+				compile_assert(ctx, !!(in->regs[0]->flags & IR3_REG_HALF) ==
+						so->nonbinning->inputs[inidx].half);
+			}
+			so->inputs[inidx].regid = so->nonbinning->inputs[inidx].regid;
+			so->inputs[inidx].half  = so->nonbinning->inputs[inidx].half;
+		} else {
+			so->inputs[inidx].regid = in->regs[0]->num;
+			so->inputs[inidx].half  = !!(in->regs[0]->flags & IR3_REG_HALF);
+		}
 	}
 
 	if (ctx->astc_srgb)

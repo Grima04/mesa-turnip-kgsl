@@ -614,6 +614,10 @@ static inline uint32_t reg_comp(struct ir3_register *reg)
 	return reg->num & 0x3;
 }
 
+#define INVALID_REG      regid(63, 0)
+#define VALIDREG(r)      ((r) != INVALID_REG)
+#define CONDREG(r, val)  COND(VALIDREG(r), (val))
+
 static inline bool is_flow(struct ir3_instruction *instr)
 {
 	return (opc_cat(instr->opc) == 0);
