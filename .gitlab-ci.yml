@@ -527,6 +527,7 @@ piglit-quick_gl:
   extends: .piglit-test
   variables:
     LP_NUM_THREADS: 0
+    NIR_VALIDATE: 0
     PIGLIT_OPTIONS: >
       --process-isolation false
       -x arb_gpu_shader5
@@ -542,12 +543,14 @@ piglit-glslparser:
   extends: .piglit-test
   variables:
     LP_NUM_THREADS: 0
+    NIR_VALIDATE: 0
     PIGLIT_PROFILES: glslparser
 
 piglit-quick_shader:
   extends: .piglit-test
   variables:
     LP_NUM_THREADS: 1
+    NIR_VALIDATE: 0
     PIGLIT_PROFILES: quick_shader
 
 .deqp-test:
@@ -572,6 +575,7 @@ test-llvmpipe-gles2:
   variables:
     DEQP_VER: gles2
     DEQP_PARALLEL: 4
+    NIR_VALIDATE: 0
     # Don't use threads inside llvmpipe, we've already got all 4 cores
     # busy with DEQP_PARALLEL.
     LP_NUM_THREADS: 0

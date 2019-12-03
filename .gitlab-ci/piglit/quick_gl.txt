@@ -398,7 +398,6 @@ spec/!opengl 4.5/compare-framebuffer-parameter-with-get: skip
 spec/!opengl 4.5/named-framebuffer-draw-buffers-errors: skip
 spec/!opengl 4.5/named-framebuffer-read-buffer-errors: skip
 spec/!opengl es 2.0/invalid-es3-queries_gles2: skip
-spec/!opengl es 3.0/gles-3.0-transform-feedback-uniform-buffer-object: fail
 spec/!opengl es 3.0/minmax: fail
 spec/3dfx_texture_compression_fxt1/compressedteximage gl_compressed_rgb_fxt1_3dfx: skip
 spec/3dfx_texture_compression_fxt1/compressedteximage gl_compressed_rgba_fxt1_3dfx: skip
@@ -2222,8 +2221,8 @@ wgl/wgl-sanity: skip
 summary:
        name:  results
        ----  --------
-       pass:    19301
-       fail:      237
+       pass:    19302
+       fail:      236
       crash:        2
        skip:     1962
     timeout:        0

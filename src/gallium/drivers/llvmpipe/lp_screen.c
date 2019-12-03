@@ -73,7 +73,7 @@ static const struct debug_named_value lp_debug_flags[] = {
    { "mem", DEBUG_MEM, NULL },
    { "fs", DEBUG_FS, NULL },
    { "cs", DEBUG_CS, NULL },
-   { "nir", DEBUG_NIR, NULL },
+   { "tgsi_ir", DEBUG_TGSI_IR, NULL },
    DEBUG_NAMED_VALUE_END
 };
 #endif
@@ -395,8 +395,10 @@ llvmpipe_get_param(struct pipe_screen *screen, enum pipe_cap param)
    case PIPE_CAP_TGSI_FS_FACE_IS_INTEGER_SYSVAL:
       return 1;
    case PIPE_CAP_LOAD_CONSTBUF:
-   case PIPE_CAP_PACKED_UNIFORMS:
-      return !!(LP_DEBUG & DEBUG_NIR);
+   case PIPE_CAP_PACKED_UNIFORMS: {
+      struct llvmpipe_screen *lscreen = llvmpipe_screen(screen);
+      return !lscreen->use_tgsi;
+   }
    default:
       return u_pipe_screen_get_param_defaults(screen, param);
    }
@@ -411,16 +413,27 @@ llvmpipe_get_shader_param(struct pipe_screen *screen,
    {
    case PIPE_SHADER_FRAGMENT:
    case PIPE_SHADER_COMPUTE:
+      if (param == PIPE_SHADER_CAP_PREFERRED_IR) {
+         struct llvmpipe_screen *lscreen = llvmpipe_screen(screen);
+         if (lscreen->use_tgsi)
+            return PIPE_SHADER_IR_TGSI;
+         else
+            return PIPE_SHADER_IR_NIR;
+      }
+
       switch (param) {
       default:
-         if ((LP_DEBUG & DEBUG_NIR) && param == PIPE_SHADER_CAP_PREFERRED_IR)
-            return PIPE_SHADER_IR_NIR;
          return gallivm_get_shader_param(param);
       }
    case PIPE_SHADER_VERTEX:
    case PIPE_SHADER_GEOMETRY:
-      if ((LP_DEBUG & DEBUG_NIR) && param == PIPE_SHADER_CAP_PREFERRED_IR)
-         return PIPE_SHADER_IR_NIR;
+      if (param == PIPE_SHADER_CAP_PREFERRED_IR) {
+         struct llvmpipe_screen *lscreen = llvmpipe_screen(screen);
+         if (lscreen->use_tgsi)
+            return PIPE_SHADER_IR_TGSI;
+         else
+            return PIPE_SHADER_IR_NIR;
+      }
 
       switch (param) {
       case PIPE_SHADER_CAP_MAX_TEXTURE_SAMPLERS:
@@ -822,6 +835,7 @@ llvmpipe_create_screen(struct sw_winsys *winsys)
    screen->base.finalize_nir = llvmpipe_finalize_nir;
    llvmpipe_init_screen_resource_funcs(&screen->base);
 
+   screen->use_tgsi = (LP_DEBUG & DEBUG_TGSI_IR);
    screen->num_threads = util_cpu_caps.nr_cpus > 1 ? util_cpu_caps.nr_cpus : 0;
 #ifdef EMBEDDED_DEVICE
    screen->num_threads = 0;
