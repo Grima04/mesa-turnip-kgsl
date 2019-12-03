@@ -30,6 +30,8 @@
 #include <unistd.h>
 #include <xf86drm.h>
 
+#include "common/v3d_debug.h"
+
 #include "v3dv_private.h"
 #include "vk_util.h"
 
@@ -123,6 +125,8 @@ v3dv_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
       instance->alloc = *pAllocator;
    else
       instance->alloc = default_alloc;
+
+   v3d_process_debug_variable();
 
    instance->app_info = (struct v3dv_app_info) { .api_version = 0 };
    if (pCreateInfo->pApplicationInfo) {
