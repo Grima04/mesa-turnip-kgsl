@@ -1999,12 +1999,13 @@ read_oa_samples_until(struct gen_perf_context *perf_ctx,
          exec_list_push_tail(&perf_ctx->free_sample_buffers, &buf->link);
 
          if (len < 0) {
-            if (errno == EAGAIN)
-               return ((last_timestamp - start_timestamp) >=
+            if (errno == EAGAIN) {
+               return ((last_timestamp - start_timestamp) < INT32_MAX &&
+                       (last_timestamp - start_timestamp) >=
                        (end_timestamp - start_timestamp)) ?
                       OA_READ_STATUS_FINISHED :
                       OA_READ_STATUS_UNFINISHED;
-            else {
+            } else {
                DBG("Error reading i915 perf samples: %m\n");
             }
          } else
