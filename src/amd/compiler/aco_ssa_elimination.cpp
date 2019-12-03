@@ -153,7 +153,8 @@ void try_remove_invert_block(ssa_elimination_ctx& ctx, Block* block)
    for (aco_ptr<Instruction>& instr : block->instructions) {
       if (instr->opcode != aco_opcode::p_linear_phi &&
           instr->opcode != aco_opcode::p_phi &&
-          instr->opcode != aco_opcode::s_andn2_b64 &&
+          (instr->opcode != aco_opcode::s_andn2_b64 || ctx.program->wave_size != 64) &&
+          (instr->opcode != aco_opcode::s_andn2_b32 || ctx.program->wave_size != 32) &&
           instr->opcode != aco_opcode::p_branch)
          return;
    }
