@@ -1360,6 +1360,13 @@ radv_emit_fb_color_state(struct radv_cmd_buffer *cmd_buffer,
 		cb_color_info &= C_028C70_DCC_ENABLE;
 	}
 
+	if (!radv_layout_can_fast_clear(image, layout, in_render_loop,
+	                                radv_image_queue_family_mask(image,
+	                                                             cmd_buffer->queue_family_index,
+	                                                             cmd_buffer->queue_family_index))) {
+		cb_color_info &= C_028C70_COMPRESSION;
+	}
+
 	if (radv_image_is_tc_compat_cmask(image) &&
 	    (radv_is_fmask_decompress_pipeline(cmd_buffer) ||
 	     radv_is_dcc_decompress_pipeline(cmd_buffer))) {
@@ -1367,6 +1374,19 @@ radv_emit_fb_color_state(struct radv_cmd_buffer *cmd_buffer,
 		 * doesn't occur (DCC_COMPRESS also implies FMASK_DECOMPRESS).
 		 */
 		cb_color_info &= C_028C70_FMASK_COMPRESS_1FRAG_ONLY;
+	}
+
+	if (radv_image_has_fmask(image) &&
+	    (radv_is_fmask_decompress_pipeline(cmd_buffer) ||
+	     radv_is_hw_resolve_pipeline(cmd_buffer))) {
+		/* Make sure FMASK is enabled if it has been cleared because:
+		 *
+		 * 1) it's required for FMASK_DECOMPRESS operations to avoid
+		 * GPU hangs
+		 * 2) it's necessary for CB_RESOLVE which can read compressed
+		 * FMASK data anyways.
+		 */
+		cb_color_info |= S_028C70_COMPRESSION(1);
 	}
 
 	if (cmd_buffer->device->physical_device->rad_info.chip_class >= GFX10) {
