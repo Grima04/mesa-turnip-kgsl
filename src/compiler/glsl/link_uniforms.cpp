@@ -1059,7 +1059,8 @@ private:
       this->uniforms[id].opaque[shader_type].index = ~0;
       this->uniforms[id].opaque[shader_type].active = false;
 
-      this->uniforms[id].active_shader_mask |= 1 << shader_type;
+      if (current_var->data.used || base_type->is_subroutine())
+         this->uniforms[id].active_shader_mask |= 1 << shader_type;
 
       /* This assigns uniform indices to sampler and image uniforms. */
       handle_samplers(base_type, &this->uniforms[id], name);
