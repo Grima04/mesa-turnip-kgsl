@@ -1,7 +1,7 @@
 include:
   - project: 'wayland/ci-templates'
     # Must be the same as in .gitlab-ci.yml
-    ref: f69acac60d5dde0410124fd5674764600821b7a6
+    ref: 0a9bdd33a98f05af6761ab118b5074952242aab0
     file: '/templates/debian.yml'
 
 # When to automatically run the CI
