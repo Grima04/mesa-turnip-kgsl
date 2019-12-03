@@ -406,6 +406,9 @@ static LLVMValueRef do_alu_action(struct lp_build_nir_context *bld_base,
    case nir_op_bitfield_select:
       result = lp_build_xor(&bld_base->uint_bld, src[2], lp_build_and(&bld_base->uint_bld, src[0], lp_build_xor(&bld_base->uint_bld, src[1], src[2])));
       break;
+   case nir_op_bitfield_reverse:
+      result = lp_build_bitfield_reverse(get_int_bld(bld_base, false, src_bit_size[0]), src[0]);
+      break;
    case nir_op_f2b32:
       result = flt_to_bool32(bld_base, src_bit_size[0], src[0]);
       break;
@@ -653,6 +656,12 @@ static LLVMValueRef do_alu_action(struct lp_build_nir_context *bld_base,
       result = lp_build_div(&bld_base->uint_bld,
                             src[0], src[1]);
       break;
+   case nir_op_ufind_msb: {
+      struct lp_build_context *uint_bld = get_int_bld(bld_base, true, src_bit_size[0]);
+      result = lp_build_ctlz(uint_bld, src[0]);
+      result = lp_build_sub(uint_bld, lp_build_const_int_vec(gallivm, uint_bld->type, src_bit_size[0] - 1), result);
+      break;
+   }
    case nir_op_uge32:
       result = icmp32(bld_base, PIPE_FUNC_GEQUAL, true, src_bit_size[0], src);
       break;

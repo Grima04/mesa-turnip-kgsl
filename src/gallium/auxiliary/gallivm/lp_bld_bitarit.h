@@ -75,5 +75,11 @@ LLVMValueRef
 lp_build_popcount(struct lp_build_context *bld, LLVMValueRef a);
 
 LLVMValueRef
+lp_build_bitfield_reverse(struct lp_build_context *bld, LLVMValueRef a);
+
+LLVMValueRef
 lp_build_cttz(struct lp_build_context *bld, LLVMValueRef a);
+
+LLVMValueRef
+lp_build_ctlz(struct lp_build_context *bld, LLVMValueRef a);
 #endif /* !LP_BLD_ARIT_H */
