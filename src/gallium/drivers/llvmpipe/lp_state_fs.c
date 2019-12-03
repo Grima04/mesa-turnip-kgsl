@@ -559,6 +559,9 @@ generate_fs_loop(struct gallivm_state *gallivm,
          struct lp_type s_type = zs_type;
          if (zs_format_desc->block.bits < type.width)
             z_type.width = type.width;
+         if (zs_format_desc->block.bits == 8)
+            s_type.width = type.width;
+
          else if (zs_format_desc->block.bits > 32) {
             z_type.width = z_type.width / 2;
             s_type.width = s_type.width / 2;
