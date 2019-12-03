@@ -224,10 +224,10 @@ setup_point_coefficients( struct lp_setup_context *setup,
       boolean perspective = !!(interp == LP_INTERP_PERSPECTIVE);
       unsigned i;
 
-      if (perspective & usage_mask) {
+      if (perspective && usage_mask) {
          fragcoord_usage_mask |= TGSI_WRITEMASK_W;
       }
-      
+
       switch (interp) {
       case LP_INTERP_POSITION:
          /*
