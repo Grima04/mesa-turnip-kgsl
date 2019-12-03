@@ -1339,7 +1339,7 @@ emit_fragment_store(compiler_context *ctx, unsigned src, unsigned rt)
         emit_explicit_constant(ctx, src, src);
 
         struct midgard_instruction ins =
-                v_alu_br_compact_cond(midgard_jmp_writeout_op_writeout, TAG_ALU_4, 0, midgard_condition_always);
+                v_alu_br_compact_cond(midgard_jmp_writeout_op_writeout, TAG_ALU_8, 0, midgard_condition_always);
 
         /* Add dependencies */
         ins.src[0] = src;
@@ -2216,7 +2216,7 @@ emit_fragment_epilogue(compiler_context *ctx, unsigned rt)
                 emit_mir_instruction(ctx, rt_move);
         }
 
-        EMIT(alu_br_compact_cond, midgard_jmp_writeout_op_writeout, TAG_ALU_4, ~0, midgard_condition_always);
+        EMIT(alu_br_compact_cond, midgard_jmp_writeout_op_writeout, TAG_ALU_8, -2, midgard_condition_always);
         ctx->current_block->epilogue = true;
         schedule_barrier(ctx);
 }

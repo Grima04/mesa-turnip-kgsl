@@ -889,6 +889,32 @@ mir_schedule_alu(
         if (!writeout)
                 mir_choose_alu(&vlut, instructions, worklist, len, &predicate, UNIT_VLUT);
 
+        if (writeout) {
+                midgard_instruction add = v_mov(~0, make_compiler_temp(ctx));
+
+                if (!ctx->is_blend) {
+                        add.alu.op = midgard_alu_op_iadd;
+                        add.src[0] = SSA_FIXED_REGISTER(31);
+
+                        for (unsigned c = 0; c < 16; ++c)
+                                add.swizzle[0][c] = COMPONENT_X;
+
+                        add.has_inline_constant = true;
+                        add.inline_constant = 0;
+                } else {
+                        add.src[1] = SSA_FIXED_REGISTER(1);
+
+                        for (unsigned c = 0; c < 16; ++c)
+                                add.swizzle[1][c] = COMPONENT_W;
+                }
+
+                vadd = mem_dup(&add, sizeof(midgard_instruction));
+
+                vadd->unit = UNIT_VADD;
+                vadd->mask = 0x1;
+                branch->src[2] = add.dest;
+        }
+
         mir_choose_alu(&vadd, instructions, worklist, len, &predicate, UNIT_VADD);
         
         mir_update_worklist(worklist, len, instructions, vlut);

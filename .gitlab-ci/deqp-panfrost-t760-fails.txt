@@ -29,6 +29,5 @@ dEQP-GLES2.functional.fbo.render.shared_depthbuffer.tex2d_rgba_depth_component16
 dEQP-GLES2.functional.fbo.render.shared_depthbuffer.tex2d_rgb_depth_component16 Fail
 dEQP-GLES2.functional.fbo.render.shared_depthbuffer.rbo_rgb5_a1_depth_component16 Fail
 dEQP-GLES2.functional.fbo.render.shared_depthbuffer.rbo_rgba4_depth_component16 Fail
-dEQP-GLES2.functional.fragment_ops.interaction.basic_shader.6  Fail
 dEQP-GLES2.functional.shaders.scoping.valid.local_variable_hides_function_parameter_fragment Fail
 dEQP-GLES2.functional.shaders.scoping.valid.local_variable_hides_function_parameter_vertex Fail
