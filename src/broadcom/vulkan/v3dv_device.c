@@ -974,6 +974,13 @@ v3dv_GetDeviceQueue(VkDevice _device,
 }
 
 VkResult
+v3dv_DeviceWaitIdle(VkDevice _device)
+{
+   /* FIXME: stub */
+   return VK_SUCCESS;
+}
+
+VkResult
 v3dv_CreateDebugReportCallbackEXT(VkInstance _instance,
                                  const VkDebugReportCallbackCreateInfoEXT* pCreateInfo,
                                  const VkAllocationCallbacks* pAllocator,
