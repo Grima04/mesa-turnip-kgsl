@@ -62,7 +62,7 @@ static const struct v3dv_format format_table[] = {
    FORMAT(B8G8R8A8_UNORM,          RGBA8,       RGBA8,       SWIZ_ZYXW, 16),
 };
 
-static inline const struct v3dv_format *
+const struct v3dv_format *
 v3dv_get_format(VkFormat format)
 {
    if (format < ARRAY_SIZE(format_table) && format_table[format].supported)

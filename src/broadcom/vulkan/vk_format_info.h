@@ -27,6 +27,9 @@
 #include <stdbool.h>
 #include <vulkan/vulkan.h>
 
+#include "util/format/u_format.h"
+#include "vulkan/util/vk_format.h"
+
 static inline VkImageAspectFlags
 vk_format_aspects(VkFormat format)
 {
@@ -97,6 +100,24 @@ vk_format_has_depth(VkFormat format)
 {
    const VkImageAspectFlags aspects = vk_format_aspects(format);
    return aspects & VK_IMAGE_ASPECT_DEPTH_BIT;
+}
+
+static inline unsigned
+vk_format_get_blocksize(VkFormat format)
+{
+   return util_format_get_blocksize(vk_format_to_pipe_format(format));
+}
+
+static inline unsigned
+vk_format_get_blockwidth(VkFormat format)
+{
+   return util_format_get_blockwidth(vk_format_to_pipe_format(format));
+}
+
+static inline unsigned
+vk_format_get_blockheight(VkFormat format)
+{
+   return util_format_get_blockheight(vk_format_to_pipe_format(format));
 }
 
 #endif /* VK_FORMAT_INFO_H */

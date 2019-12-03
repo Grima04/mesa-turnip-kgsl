@@ -54,9 +54,11 @@ v3dv_extensions_h = custom_target(
 libv3dv_files = files(
   'v3dv_device.c',
   'v3dv_formats.c',
+  'v3dv_image.c',
   'v3dv_pipeline.c',
   'v3dv_private.h',
   'v3dv_util.c',
+  'v3d_tiling.c',
 )
 
 # The vulkan driver only supports version >= 42, which is the version present in
