@@ -266,6 +266,18 @@ genX(init_device_state)(struct anv_device *device)
       lri.DataDWord      = half_slice_chicken7;
    }
 
+   uint32_t tccntlreg;
+   anv_pack_struct(&tccntlreg, GENX(TCCNTLREG),
+                   .L3DataPartialWriteMergingEnable = true,
+                   .ColorZPartialWriteMergingEnable = true,
+                   .URBPartialWriteMergingEnable = true,
+                   .TCDisable = true);
+
+   anv_batch_emit(&batch, GENX(MI_LOAD_REGISTER_IMM), lri) {
+      lri.RegisterOffset = GENX(TCCNTLREG_num);
+      lri.DataDWord      = tccntlreg;
+   }
+
 #endif
    genX(emit_slice_hashing_state)(device, &batch);
 
