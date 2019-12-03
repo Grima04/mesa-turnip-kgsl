@@ -516,9 +516,6 @@ piglit-glslparser+quick_shader:
     DEQP_SKIPS: deqp-default-skips.txt
   script:
     - ./artifacts/deqp-runner.sh
-  artifacts:
-    reports:
-      junit: results/results.xml
 
 test-llvmpipe-gles2:
   variables:
