@@ -148,6 +148,7 @@ vc4_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
         case PIPE_CAP_TEXTURE_MULTISAMPLE:
         case PIPE_CAP_TEXTURE_SWIZZLE:
         case PIPE_CAP_TEXTURE_BARRIER:
+        case PIPE_CAP_TGSI_TEXCOORD:
                 return 1;
 
         case PIPE_CAP_NATIVE_FENCE_FD:

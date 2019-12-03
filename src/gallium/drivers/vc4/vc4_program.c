@@ -25,6 +25,7 @@
 #include <inttypes.h>
 #include "util/format/u_format.h"
 #include "util/crc32.h"
+#include "util/u_helpers.h"
 #include "util/u_math.h"
 #include "util/u_memory.h"
 #include "util/ralloc.h"
@@ -1608,11 +1609,8 @@ ntq_setup_inputs(struct vc4_compile *c)
                 if (c->stage == QSTAGE_FRAG) {
                         if (var->data.location == VARYING_SLOT_POS) {
                                 emit_fragcoord_input(c, loc);
-                        } else if (var->data.location == VARYING_SLOT_PNTC ||
-                                   (var->data.location >= VARYING_SLOT_VAR0 &&
-                                    (c->fs_key->point_sprite_mask &
-                                     (1 << (var->data.location -
-                                            VARYING_SLOT_VAR0))))) {
+                        } else if (util_varying_is_point_coord(var->data.location,
+                                                               c->fs_key->point_sprite_mask)) {
                                 c->inputs[loc * 4 + 0] = c->point_x;
                                 c->inputs[loc * 4 + 1] = c->point_y;
                         } else {
