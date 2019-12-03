@@ -733,11 +733,6 @@ llvmpipe_is_format_supported( struct pipe_screen *_screen,
 
       if (format_desc->colorspace != UTIL_FORMAT_COLORSPACE_ZS)
          return false;
-
-      /* TODO: Support stencil-only formats */
-      if (format_desc->swizzle[0] == PIPE_SWIZZLE_NONE) {
-         return false;
-      }
    }
 
    if (format_desc->layout == UTIL_FORMAT_LAYOUT_ASTC ||

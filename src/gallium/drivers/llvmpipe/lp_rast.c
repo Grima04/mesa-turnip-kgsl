@@ -211,7 +211,11 @@ lp_rast_clear_zstencil(struct lp_rasterizer_task *task,
          switch (block_size) {
          case 1:
             assert(clear_mask == 0xff);
-            memset(dst, (uint8_t) clear_value, height * width);
+            for (i = 0; i < height; i++) {
+               uint8_t *row = (uint8_t *)dst;
+               memset(row, (uint8_t) clear_value, width);
+               dst += dst_stride;
+            }
             break;
          case 2:
             if (clear_mask == 0xffff) {
