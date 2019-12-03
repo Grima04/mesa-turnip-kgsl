@@ -4213,20 +4213,8 @@ build_program_resource_list(struct gl_context *ctx,
       if (shProg->data->UniformStorage[i].hidden)
          continue;
 
-      uint8_t stageref =
-         build_stageref(shProg, shProg->data->UniformStorage[i].name,
-                        ir_var_uniform);
-
-      /* Add stagereferences for uniforms in a uniform block. */
       bool is_shader_storage =
         shProg->data->UniformStorage[i].is_shader_storage;
-      int block_index = shProg->data->UniformStorage[i].block_index;
-      if (block_index != -1) {
-         stageref |= is_shader_storage ?
-            shProg->data->ShaderStorageBlocks[block_index].stageref :
-            shProg->data->UniformBlocks[block_index].stageref;
-      }
-
       GLenum type = is_shader_storage ? GL_BUFFER_VARIABLE : GL_UNIFORM;
       if (!link_util_should_add_buffer_variable(shProg,
                                                 &shProg->data->UniformStorage[i],
@@ -4269,6 +4257,7 @@ build_program_resource_list(struct gl_context *ctx,
          buffer_block_index = shProg->data->UniformStorage[i].block_index;
       }
 
+      uint8_t stageref = shProg->data->UniformStorage[i].active_shader_mask;
       if (!link_util_add_program_resource(shProg, resource_set, type,
                                           &shProg->data->UniformStorage[i], stageref))
          return;
