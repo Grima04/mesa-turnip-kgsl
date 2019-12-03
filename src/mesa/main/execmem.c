@@ -101,7 +101,7 @@ _mesa_exec_malloc(GLuint size)
 
    if (exec_heap) {
       size = (size + 31) & ~31;
-      block = u_mmAllocMem( exec_heap, size, 32, 0 );
+      block = u_mmAllocMem(exec_heap, size, 5, 0);
    }
 
    if (block)
