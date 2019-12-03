@@ -1465,8 +1465,8 @@ get_free_sample_buf(struct gen_perf_context *perf_ctx)
 
       exec_node_init(&buf->link);
       buf->refcount = 0;
-      buf->len = 0;
    }
+   buf->len = 0;
 
    return buf;
 }
@@ -1983,7 +1983,8 @@ read_oa_samples_until(struct gen_perf_context *perf_ctx,
       exec_list_get_tail(&perf_ctx->sample_buffers);
    struct oa_sample_buf *tail_buf =
       exec_node_data(struct oa_sample_buf, tail_node, link);
-   uint32_t last_timestamp = tail_buf->last_timestamp;
+   uint32_t last_timestamp =
+      tail_buf->len == 0 ? start_timestamp : tail_buf->last_timestamp;
 
    while (1) {
       struct oa_sample_buf *buf = get_free_sample_buf(perf_ctx);
