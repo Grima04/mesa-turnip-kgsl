@@ -1161,6 +1161,7 @@ static void visit_intrinsic(struct lp_build_nir_context *bld_base,
    case nir_intrinsic_load_vertex_id:
    case nir_intrinsic_load_primitive_id:
    case nir_intrinsic_load_instance_id:
+   case nir_intrinsic_load_base_instance:
    case nir_intrinsic_load_work_group_id:
    case nir_intrinsic_load_local_invocation_id:
    case nir_intrinsic_load_num_work_groups:

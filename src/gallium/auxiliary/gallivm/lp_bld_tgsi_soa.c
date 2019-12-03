@@ -1306,6 +1306,11 @@ emit_fetch_system_value(
       atype = TGSI_TYPE_UNSIGNED;
       break;
 
+   case TGSI_SEMANTIC_BASEINSTANCE:
+      res = lp_build_broadcast_scalar(&bld_base->uint_bld, bld->system_values.base_instance);
+      atype = TGSI_TYPE_UNSIGNED;
+      break;
+
    case TGSI_SEMANTIC_PRIMID:
       res = bld->system_values.prim_id;
       atype = TGSI_TYPE_UNSIGNED;

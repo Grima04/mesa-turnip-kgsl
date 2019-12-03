@@ -1631,7 +1631,7 @@ draw_llvm_generate(struct draw_llvm *llvm, struct draw_llvm_variant *variant)
    char func_name[64];
    struct lp_type vs_type;
    LLVMValueRef count, fetch_elts, start_or_maxelt;
-   LLVMValueRef vertex_id_offset, start_instance;
+   LLVMValueRef vertex_id_offset;
    LLVMValueRef stride, step, io_itr;
    LLVMValueRef ind_vec, start_vec, have_elts, fetch_max, tmp;
    LLVMValueRef io_ptr, vbuffers_ptr, vb_ptr;
@@ -1721,7 +1721,7 @@ draw_llvm_generate(struct draw_llvm *llvm, struct draw_llvm_variant *variant)
    vb_ptr                    = LLVMGetParam(variant_func, 6);
    system_values.instance_id = LLVMGetParam(variant_func, 7);
    vertex_id_offset          = LLVMGetParam(variant_func, 8);
-   start_instance            = LLVMGetParam(variant_func, 9);
+   system_values.base_instance = LLVMGetParam(variant_func, 9);
    fetch_elts                = LLVMGetParam(variant_func, 10);
 
    lp_build_name(context_ptr, "context");
@@ -1733,7 +1733,7 @@ draw_llvm_generate(struct draw_llvm *llvm, struct draw_llvm_variant *variant)
    lp_build_name(vb_ptr, "vb");
    lp_build_name(system_values.instance_id, "instance_id");
    lp_build_name(vertex_id_offset, "vertex_id_offset");
-   lp_build_name(start_instance, "start_instance");
+   lp_build_name(system_values.base_instance, "start_instance");
    lp_build_name(fetch_elts, "fetch_elts");
 
    /*
@@ -1848,7 +1848,7 @@ draw_llvm_generate(struct draw_llvm *llvm, struct draw_llvm_variant *variant)
                                              lp_build_const_int32(gallivm,
                                                                   velem->instance_divisor),
                                              "instance_divisor");
-            instance_index[j] = lp_build_uadd_overflow(gallivm, start_instance,
+            instance_index[j] = lp_build_uadd_overflow(gallivm, system_values.base_instance,
                                                        current_instance, &ofbit);
          }
 
