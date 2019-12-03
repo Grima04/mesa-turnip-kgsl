@@ -44,7 +44,7 @@
 #include "lp_screen.h"
 #include "lp_memory.h"
 #include "lp_cs_tpool.h"
-#include "state_tracker/sw_winsys.h"
+#include "frontend/sw_winsys.h"
 #include "nir/nir_to_tgsi_info.h"
 #include "nir_serialize.h"
 struct lp_cs_job_info {

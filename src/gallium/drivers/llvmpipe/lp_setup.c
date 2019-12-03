@@ -53,7 +53,7 @@
 #include "lp_setup_context.h"
 #include "lp_screen.h"
 #include "lp_state.h"
-#include "state_tracker/sw_winsys.h"
+#include "frontend/sw_winsys.h"
 
 #include "draw/draw_context.h"
 #include "draw/draw_vbuf.h"

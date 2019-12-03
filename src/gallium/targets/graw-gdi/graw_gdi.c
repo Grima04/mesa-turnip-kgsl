@@ -28,7 +28,7 @@
 
 #include "gdi/gdi_sw_winsys.h"
 #include "pipe/p_screen.h"
-#include "state_tracker/graw.h"
+#include "frontend/graw.h"
 #include "target-helpers/inline_debug_helper.h"
 #include "target-helpers/inline_sw_helper.h"
 #include <windows.h>

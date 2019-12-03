@@ -603,7 +603,7 @@ struct svga_context
    boolean disable_rasterizer; /* Set if to disable rasterization */
 };
 
-/* A flag for each state_tracker state object:
+/* A flag for each frontend state object:
  */
 #define SVGA_NEW_BLEND               0x1
 #define SVGA_NEW_DEPTH_STENCIL_ALPHA 0x2

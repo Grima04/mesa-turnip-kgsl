@@ -35,7 +35,7 @@
 #include "util/u_hash_table.h"
 #include "util/u_inlines.h"
 #include "util/u_pointer.h"
-#include "state_tracker/drm_driver.h"
+#include "frontend/drm_driver.h"
 #include "virgl/virgl_screen.h"
 #include "virgl/virgl_public.h"
 

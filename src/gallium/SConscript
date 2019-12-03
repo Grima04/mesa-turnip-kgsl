@@ -45,12 +45,12 @@ if env['platform'] == 'windows':
 if not env['embedded']:
     if env['x11']:
         SConscript([
-            'state_trackers/glx/xlib/SConscript',
+            'frontends/glx/xlib/SConscript',
             'targets/libgl-xlib/SConscript',
         ])
 
     if env['platform'] == 'windows':
         SConscript([
-            'state_trackers/wgl/SConscript',
+            'frontends/wgl/SConscript',
             'targets/libgl-gdi/SConscript',
         ])

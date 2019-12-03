@@ -27,7 +27,7 @@
 #include "si_pipe.h"
 #include "si_query.h"
 #include "sid.h"
-#include "state_tracker/drm_driver.h"
+#include "frontend/drm_driver.h"
 #include "util/format/u_format.h"
 #include "util/os_time.h"
 #include "util/u_log.h"

@@ -24,7 +24,7 @@
 #define IRIS_SCREEN_H
 
 #include "pipe/p_screen.h"
-#include "state_tracker/drm_driver.h"
+#include "frontend/drm_driver.h"
 #include "util/disk_cache.h"
 #include "util/slab.h"
 #include "util/u_screen.h"

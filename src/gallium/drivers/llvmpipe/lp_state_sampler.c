@@ -38,7 +38,7 @@
 #include "lp_screen.h"
 #include "lp_state.h"
 #include "lp_debug.h"
-#include "state_tracker/sw_winsys.h"
+#include "frontend/sw_winsys.h"
 
 
 static void *

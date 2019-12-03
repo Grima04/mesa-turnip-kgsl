@@ -37,7 +37,7 @@
 #include "util/u_screen.h"
 #include "util/u_string.h"
 
-#include "state_tracker/sw_winsys.h"
+#include "frontend/sw_winsys.h"
 
 static const struct debug_named_value
 debug_options[] = {

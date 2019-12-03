@@ -45,7 +45,7 @@
 #include "util/u_screen.h"
 #include "util/u_string.h"
 
-#include "state_tracker/drm_driver.h"
+#include "frontend/drm_driver.h"
 
 #include "drm-uapi/drm_fourcc.h"
 

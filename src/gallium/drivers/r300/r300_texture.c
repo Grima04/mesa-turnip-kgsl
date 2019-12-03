@@ -36,7 +36,7 @@
 #include "util/u_memory.h"
 
 #include "pipe/p_screen.h"
-#include "state_tracker/winsys_handle.h"
+#include "frontend/winsys_handle.h"
 
 /* These formats are supported by swapping their bytes.
  * The swizzles must be set exactly like their non-swapped counterparts,

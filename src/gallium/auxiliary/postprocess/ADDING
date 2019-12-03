@@ -65,7 +65,7 @@ drivers/dri/common/xmlpool/t_options.h, and regenerate options.h by running make
 directory. Use the name you put into filters.h as the config option name.
 
 With driconf aware of the option, make Gallium aware of it too. Add it to
-state_trackers/dri/common/dri_screen.c in a proper section, specifying its default value and
+frontends/dri/common/dri_screen.c in a proper section, specifying its default value and
 the accepted range (if applicable).
 
 Do check that __driNConfigOptions is still correct after the addition.

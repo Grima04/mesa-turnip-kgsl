@@ -41,7 +41,7 @@
 #include "sp_tex_sample.h"
 #include "sp_tex_tile_cache.h"
 #include "sp_screen.h"
-#include "state_tracker/sw_winsys.h"
+#include "frontend/sw_winsys.h"
 
 
 /**

@@ -33,7 +33,7 @@
 #include "os/os_mman.h"
 #include "util/os_time.h"
 
-#include "state_tracker/drm_driver.h"
+#include "frontend/drm_driver.h"
 
 #include <sys/ioctl.h>
 #include <xf86drm.h>

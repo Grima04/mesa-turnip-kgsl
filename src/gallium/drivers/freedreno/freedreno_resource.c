@@ -48,7 +48,7 @@
 #include <errno.h>
 
 /* XXX this should go away, needed for 'struct winsys_handle' */
-#include "state_tracker/drm_driver.h"
+#include "frontend/drm_driver.h"
 
 /* A private modifier for now, so we have a way to request tiled but not
  * compressed.  It would perhaps be good to get real modifiers for the

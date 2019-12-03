@@ -32,7 +32,7 @@
 
 #include "target-helpers/drm_helper.h"
 #include "target-helpers/sw_helper.h"
-#include "state_tracker/drm_driver.h"
+#include "frontend/drm_driver.h"
 
 #include "d3dadapter/d3dadapter9.h"
 #include "d3dadapter/drm.h"

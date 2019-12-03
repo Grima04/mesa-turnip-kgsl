@@ -77,7 +77,7 @@ each directory.
     <li><b>program</b> - Vertex/fragment shader and GLSL compiler code
     <li><b>sparc</b> - Assembly code/optimizations for SPARC systems
         (not used with Gallium)
-    <li><b>state_tracker</b> - State tracker / driver for Gallium.  This
+    <li><b>state_tracker</b> - Translator from Mesa to Gallium.  This
         is basically a Mesa device driver that speaks to Gallium.  This
         directory may be moved to src/mesa/drivers/gallium at some point.
     <li><b>swrast</b> - Software rasterization module.  For drawing points,
@@ -127,7 +127,7 @@ each directory.
           vertex shaders.
           Geometry shaders will also be implemented in this module.
       <li><b>cso_cache</b> - Constant State Objects Cache.  Used to filter out
-          redundant state changes between state trackers and drivers.
+          redundant state changes between frontends and drivers.
       <li><b>gallivm</b> - LLVM module for Gallium.  For LLVM-based
            compilation, optimization and code generation for TGSI shaders.
            Incomplete.
@@ -144,17 +144,17 @@ each directory.
           creation, memory management, 2D blitting, simple rendering, etc.
       <li>XXX more
       </ul>
-    <li><b>state_trackers</b> -
+    <li><b>frontends</b> -
        <ul>
-       <li><b>clover</b> - OpenCL state tracker
-       <li><b>dri</b> - Meta state tracker for DRI drivers
-       <li><b>glx</b> - Meta state tracker for GLX
-       <li><b>wgl</b> - Windows WGL state tracker
-       <li><b>xa</b> - XA state tracker
-       <li><b>xvmc</b> - XvMC state tracker
-       <li><b>vdpau</b> - VDPAU state tracker
-       <li><b>va</b> - VA-API state tracker
-       <li><b>omx_bellagio</b> - OpenMAX Bellagio state tracker
+       <li><b>clover</b> - OpenCL frontend
+       <li><b>dri</b> - Meta frontend for DRI drivers
+       <li><b>glx</b> - Meta frontend for GLX
+       <li><b>wgl</b> - Windows WGL frontend
+       <li><b>xa</b> - XA frontend
+       <li><b>xvmc</b> - XvMC frontend
+       <li><b>vdpau</b> - VDPAU frontend
+       <li><b>va</b> - VA-API frontend
+       <li><b>omx_bellagio</b> - OpenMAX Bellagio frontend
        </ul>
     <li><b>winsys</b> -
        <ul>

@@ -1,4 +1,4 @@
-#include "state_tracker/drm_driver.h"
+#include "frontend/drm_driver.h"
 #include "target-helpers/inline_debug_helper.h"
 #include "radeonsi/si_public.h"
 #include "util/xmlpool.h"

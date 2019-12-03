@@ -37,7 +37,7 @@
 #include "pipe/p_screen.h"
 #include "draw/draw_context.h"
 
-#include "state_tracker/sw_winsys.h"
+#include "frontend/sw_winsys.h"
 #include "tgsi/tgsi_exec.h"
 
 #include "sp_texture.h"

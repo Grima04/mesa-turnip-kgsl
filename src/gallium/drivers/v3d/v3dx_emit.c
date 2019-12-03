@@ -799,7 +799,7 @@ v3dX(emit_state)(struct pipe_context *pctx)
         if (v3d->dirty & VC5_DIRTY_SAMPLE_STATE) {
                 cl_emit(&job->bcl, SAMPLE_STATE, state) {
                         /* Note: SampleCoverage was handled at the
-                         * state_tracker level by converting to sample_mask.
+                         * frontend level by converting to sample_mask.
                          */
                         state.coverage = 1.0;
                         state.mask = job->msaa ? v3d->sample_mask : 0xf;

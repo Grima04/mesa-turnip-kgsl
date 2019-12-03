@@ -30,7 +30,7 @@
 #include "util/hash_table.h"
 #include "util/os_time.h"
 #include "util/u_hash_table.h"
-#include "state_tracker/drm_driver.h"
+#include "frontend/drm_driver.h"
 #include "drm-uapi/amdgpu_drm.h"
 #include <xf86drm.h>
 #include <stdio.h>

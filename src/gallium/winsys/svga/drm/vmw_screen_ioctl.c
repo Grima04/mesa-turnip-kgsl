@@ -37,7 +37,7 @@
 #include "util/u_memory.h"
 #include "util/u_math.h"
 #include "svgadump/svga_dump.h"
-#include "state_tracker/drm_driver.h"
+#include "frontend/drm_driver.h"
 #include "vmw_screen.h"
 #include "vmw_context.h"
 #include "vmw_fence.h"

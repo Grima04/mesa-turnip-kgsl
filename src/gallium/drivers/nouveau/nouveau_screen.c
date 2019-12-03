@@ -26,7 +26,7 @@
 #include <compiler/glsl_types.h>
 
 /* XXX this should go away */
-#include "state_tracker/drm_driver.h"
+#include "frontend/drm_driver.h"
 
 int nouveau_mesa_debug = 0;
 

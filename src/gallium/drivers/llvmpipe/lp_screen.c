@@ -52,7 +52,7 @@
 #include "lp_rast.h"
 #include "lp_cs_tpool.h"
 
-#include "state_tracker/sw_winsys.h"
+#include "frontend/sw_winsys.h"
 
 #include "nir.h"
 

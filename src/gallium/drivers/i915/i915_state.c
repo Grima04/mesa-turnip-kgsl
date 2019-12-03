@@ -113,7 +113,7 @@ i915_create_blend_state(struct pipe_context *pipe,
       unsigned dstA   = blend->rt[0].alpha_dst_factor;
 
       /* Special handling for MIN/MAX filter modes handled at
-       * state_tracker level.
+       * frontend level.
        */
 
       if (srcA != srcRGB ||

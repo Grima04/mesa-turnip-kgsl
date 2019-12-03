@@ -53,7 +53,7 @@ libgallium_nine = shared_library(
     inc_include, inc_src, inc_loader, inc_mapi, inc_mesa, inc_util,
     inc_dri_common, inc_gallium, inc_gallium_aux, inc_gallium_winsys,
     inc_gallium_drivers, inc_d3d9,
-    include_directories('../../state_trackers/nine'),
+    include_directories('../../frontends/nine'),
   ],
   c_args : [c_vis_args, gallium_nine_c_args],
   cpp_args : [cpp_vis_args],

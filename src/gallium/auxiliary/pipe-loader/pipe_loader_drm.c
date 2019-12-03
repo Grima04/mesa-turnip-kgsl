@@ -39,7 +39,7 @@
 
 #include "loader.h"
 #include "target-helpers/drm_helper_public.h"
-#include "state_tracker/drm_driver.h"
+#include "frontend/drm_driver.h"
 #include "pipe_loader_priv.h"
 
 #include "util/u_memory.h"

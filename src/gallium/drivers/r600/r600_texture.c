@@ -33,7 +33,7 @@
 #include "util/u_pack_color.h"
 #include "util/u_surface.h"
 #include "util/os_time.h"
-#include "state_tracker/winsys_handle.h"
+#include "frontend/winsys_handle.h"
 #include <errno.h>
 #include <inttypes.h>
 

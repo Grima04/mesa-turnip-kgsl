@@ -33,7 +33,7 @@
 #include <fcntl.h>
 #include "drm-uapi/drm_fourcc.h"
 
-#include "state_tracker/winsys_handle.h"
+#include "frontend/winsys_handle.h"
 #include "util/format/u_format.h"
 #include "util/u_memory.h"
 #include "util/u_surface.h"
