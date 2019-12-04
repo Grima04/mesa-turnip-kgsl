@@ -914,20 +914,11 @@ void add_branch_code(exec_ctx& ctx, Block* block)
       assert(block->instructions.back()->opcode == aco_opcode::p_branch);
       block->instructions.pop_back();
 
-      if (ctx.info[idx].exec.back().second & mask_type_loop) {
-         bld.branch(aco_opcode::p_cbranch_nz, bld.exec(ctx.info[idx].exec.back().first), block->linear_succs[1], block->linear_succs[0]);
-      } else {
-         Temp cond = Temp();
-         for (int exec_idx = ctx.info[idx].exec.size() - 1; exec_idx >= 0; exec_idx--) {
-            if (ctx.info[idx].exec[exec_idx].second & mask_type_loop) {
-               cond = bld.sopc(Builder::s_cmp_lg, bld.def(s1, scc), ctx.info[idx].exec[exec_idx].first, Operand(0u));
-               break;
-            }
-         }
-         assert(cond != Temp());
+      while (!(ctx.info[idx].exec.back().second & mask_type_loop))
+         ctx.info[idx].exec.pop_back();
 
-         bld.branch(aco_opcode::p_cbranch_nz, bld.scc(cond), block->linear_succs[1], block->linear_succs[0]);
-      }
+      ctx.info[idx].exec.back().first = bld.pseudo(aco_opcode::p_parallelcopy, bld.def(bld.lm, exec), ctx.info[idx].exec.back().first);
+      bld.branch(aco_opcode::p_cbranch_nz, bld.exec(ctx.info[idx].exec.back().first), block->linear_succs[1], block->linear_succs[0]);
       return;
    }
 
