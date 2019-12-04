@@ -1107,3 +1107,17 @@ v3dv_InvalidateMappedMemoryRanges(VkDevice _device,
     */
    return VK_SUCCESS;
 }
+
+void
+v3dv_GetImageMemoryRequirements(VkDevice _device,
+                                VkImage _image,
+                                VkMemoryRequirements *pMemoryRequirements)
+{
+   V3DV_FROM_HANDLE(v3dv_image, image, _image);
+
+   assert(image->size > 0);
+
+   pMemoryRequirements->size = image->size;
+   pMemoryRequirements->alignment = image->alignment;
+   pMemoryRequirements->memoryTypeBits = 0x3; /* Both memory types */
+}
