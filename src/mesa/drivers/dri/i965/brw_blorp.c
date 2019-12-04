@@ -395,7 +395,7 @@ brw_blorp_blit_miptrees(struct brw_context *brw,
    /* We do format workarounds for some depth formats so we can't reliably
     * sample with HiZ.  One of these days, we should fix that.
     */
-   if (src_aux_usage == ISL_AUX_USAGE_HIZ)
+   if (src_aux_usage == ISL_AUX_USAGE_HIZ && src_mt->format != src_format)
       src_aux_usage = ISL_AUX_USAGE_NONE;
    const bool src_clear_supported =
       src_aux_usage != ISL_AUX_USAGE_NONE && src_mt->format == src_format;
