@@ -5625,6 +5625,20 @@ VkResult radv_GetPipelineExecutableStatisticsKHR(
 	}
 	++s;
 
+	if (shader->statistics) {
+		for (unsigned i = 0; i < shader->statistics->count; i++) {
+			struct radv_compiler_statistic_info *info = &shader->statistics->infos[i];
+			uint32_t value = shader->statistics->values[i];
+			if (s < end) {
+				desc_copy(s->name, info->name);
+				desc_copy(s->description, info->desc);
+				s->format = VK_PIPELINE_EXECUTABLE_STATISTIC_FORMAT_UINT64_KHR;
+				s->value.u64 = value;
+			}
+			++s;
+		}
+	}
+
 	if (!pStatistics)
 		*pStatisticCount = s - pStatistics;
 	else if (s > end) {

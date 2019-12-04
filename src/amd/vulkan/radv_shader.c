@@ -1026,15 +1026,20 @@ radv_shader_variant_create(struct radv_device *device,
 		ac_rtld_close(&rtld_binary);
 	} else {
 		struct radv_shader_binary_legacy* bin = (struct radv_shader_binary_legacy *)binary;
-		memcpy(dest_ptr, bin->data, bin->code_size);
+		memcpy(dest_ptr, bin->data + bin->stats_size, bin->code_size);
 
 		/* Add end-of-code markers for the UMR disassembler. */
 		uint32_t *ptr32 = (uint32_t *)dest_ptr + bin->code_size / 4;
 		for (unsigned i = 0; i < DEBUGGER_NUM_MARKERS; i++)
 			ptr32[i] = DEBUGGER_END_OF_CODE_MARKER;
 
-		variant->ir_string = bin->ir_size ? strdup((const char*)(bin->data + bin->code_size)) : NULL;
-		variant->disasm_string = bin->disasm_size ? strdup((const char*)(bin->data + bin->code_size + bin->ir_size)) : NULL;
+		variant->ir_string = bin->ir_size ? strdup((const char*)(bin->data + bin->stats_size + bin->code_size)) : NULL;
+		variant->disasm_string = bin->disasm_size ? strdup((const char*)(bin->data + bin->stats_size + bin->code_size + bin->ir_size)) : NULL;
+
+		if (bin->stats_size) {
+			variant->statistics = calloc(bin->stats_size, 1);
+			memcpy(variant->statistics, bin->data, bin->stats_size);
+		}
 	}
 	return variant;
 }
@@ -1203,6 +1208,7 @@ radv_shader_variant_destroy(struct radv_device *device,
 	free(variant->nir_string);
 	free(variant->disasm_string);
 	free(variant->ir_string);
+	free(variant->statistics);
 	free(variant);
 }
 
@@ -1332,13 +1338,23 @@ generate_shader_stats(struct radv_device *device,
 				   "Code Size: %d bytes\n"
 				   "LDS: %d blocks\n"
 				   "Scratch: %d bytes per wave\n"
-				   "Max Waves: %d\n"
-				   "********************\n\n\n",
+				   "Max Waves: %d\n",
 				   conf->num_sgprs, conf->num_vgprs,
 				   conf->spilled_sgprs, conf->spilled_vgprs,
 				   variant->info.private_mem_vgprs, variant->exec_size,
 				   conf->lds_size, conf->scratch_bytes_per_wave,
 				   max_simd_waves);
+
+	if (variant->statistics) {
+		_mesa_string_buffer_printf(buf, "*** COMPILER STATS ***\n");
+		for (unsigned i = 0; i < variant->statistics->count; i++) {
+			struct radv_compiler_statistic_info *info = &variant->statistics->infos[i];
+			uint32_t value = variant->statistics->values[i];
+			_mesa_string_buffer_printf(buf, "%s: %lu\n", info->name, value);
+		}
+	}
+
+	_mesa_string_buffer_printf(buf, "********************\n\n\n");
 }
 
 void

@@ -168,6 +168,8 @@ void aco_compile_shader(unsigned shader_count,
    legacy_binary->base.is_gs_copy_shader = args->is_gs_copy_shader;
    legacy_binary->base.total_size = size;
 
+   legacy_binary->stats_size = 0;
+
    memcpy(legacy_binary->data, code.data(), code.size() * sizeof(uint32_t));
    legacy_binary->exec_size = exec_size;
    legacy_binary->code_size = code.size() * sizeof(uint32_t);

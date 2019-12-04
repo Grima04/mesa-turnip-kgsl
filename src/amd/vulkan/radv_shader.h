@@ -349,9 +349,10 @@ struct radv_shader_binary_legacy {
 	unsigned exec_size;
 	unsigned ir_size;
 	unsigned disasm_size;
+	unsigned stats_size;
 	
-	/* data has size of code_size + ir_size + disasm_size + 2, where
-	 * the +2 is for 0 of the ir strings. */
+	/* data has size of stats_size + code_size + ir_size + disasm_size + 2,
+	 * where the +2 is for 0 of the ir strings. */
 	uint8_t data[0];
 };
 
@@ -360,6 +361,17 @@ struct radv_shader_binary_rtld {
 	unsigned elf_size;
 	unsigned llvm_ir_size;
 	uint8_t data[0];
+};
+
+struct radv_compiler_statistic_info {
+	char name[32];
+	char desc[64];
+};
+
+struct radv_compiler_statistics {
+	unsigned count;
+	struct radv_compiler_statistic_info *infos;
+	uint32_t values[];
 };
 
 struct radv_shader_variant {
@@ -378,6 +390,7 @@ struct radv_shader_variant {
 	char *nir_string;
 	char *disasm_string;
 	char *ir_string;
+	struct radv_compiler_statistics *statistics;
 
 	struct list_head slab_list;
 };
