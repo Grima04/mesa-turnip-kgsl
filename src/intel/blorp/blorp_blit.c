@@ -2588,6 +2588,7 @@ blorp_copy(struct blorp_batch *batch,
       isl_format_get_layout(params.dst.surf.format);
 
    assert(params.src.aux_usage == ISL_AUX_USAGE_NONE ||
+          params.src.aux_usage == ISL_AUX_USAGE_HIZ ||
           params.src.aux_usage == ISL_AUX_USAGE_MCS ||
           params.src.aux_usage == ISL_AUX_USAGE_MCS_CCS ||
           params.src.aux_usage == ISL_AUX_USAGE_CCS_E);
@@ -2596,7 +2597,14 @@ blorp_copy(struct blorp_batch *batch,
           params.dst.aux_usage == ISL_AUX_USAGE_MCS_CCS ||
           params.dst.aux_usage == ISL_AUX_USAGE_CCS_E);
 
-   if (params.dst.aux_usage == ISL_AUX_USAGE_CCS_E) {
+   if (params.src.aux_usage == ISL_AUX_USAGE_HIZ) {
+      /* Depth <-> Color copies are not allowed and HiZ isn't allowed in
+       * destinations because we draw as color.
+       */
+      assert(params.dst.aux_usage == ISL_AUX_USAGE_NONE);
+      params.src.view.format = params.src.surf.format;
+      params.dst.view.format = params.src.surf.format;
+   } else if (params.dst.aux_usage == ISL_AUX_USAGE_CCS_E) {
       params.dst.view.format = get_ccs_compatible_uint_format(dst_fmtl);
       if (params.src.aux_usage == ISL_AUX_USAGE_CCS_E) {
          params.src.view.format = get_ccs_compatible_uint_format(src_fmtl);
