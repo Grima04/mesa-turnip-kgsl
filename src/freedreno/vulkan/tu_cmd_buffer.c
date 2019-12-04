@@ -1815,6 +1815,13 @@ tu_CmdBindPipeline(VkCommandBuffer commandBuffer,
       unreachable("unrecognized pipeline bind point");
       break;
    }
+
+   tu_bo_list_add(&cmd->bo_list, &pipeline->program.binary_bo,
+                  MSM_SUBMIT_BO_READ | MSM_SUBMIT_BO_DUMP);
+   for (uint32_t i = 0; i < pipeline->cs.bo_count; i++) {
+      tu_bo_list_add(&cmd->bo_list, pipeline->cs.bos[i],
+                     MSM_SUBMIT_BO_READ | MSM_SUBMIT_BO_DUMP);
+   }
 }
 
 void
@@ -2781,14 +2788,6 @@ tu6_bind_draw_states(struct tu_cmd_buffer *cmd,
    tu_cs_sanity_check(cs);
 
    /* track BOs */
-   if (cmd->state.dirty & TU_CMD_DIRTY_PIPELINE) {
-      tu_bo_list_add(&cmd->bo_list, &pipeline->program.binary_bo,
-                     MSM_SUBMIT_BO_READ | MSM_SUBMIT_BO_DUMP);
-      for (uint32_t i = 0; i < pipeline->cs.bo_count; i++) {
-         tu_bo_list_add(&cmd->bo_list, pipeline->cs.bos[i],
-                        MSM_SUBMIT_BO_READ | MSM_SUBMIT_BO_DUMP);
-      }
-   }
    if (cmd->state.dirty & TU_CMD_DIRTY_VERTEX_BUFFERS) {
       for (uint32_t i = 0; i < MAX_VBS; i++) {
          const struct tu_buffer *buf = cmd->state.vb.buffers[i];
