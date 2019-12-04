@@ -1131,7 +1131,6 @@ anv_layout_to_aux_usage(const struct gen_device_info * const devinfo,
     */
    case VK_IMAGE_LAYOUT_GENERAL:
    case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:
-   case VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL:
       if (aspect == VK_IMAGE_ASPECT_DEPTH_BIT) {
          /* This buffer could be a depth buffer used in a transfer operation.
           * BLORP currently doesn't use HiZ for transfer operations so we must
@@ -1151,6 +1150,7 @@ anv_layout_to_aux_usage(const struct gen_device_info * const devinfo,
    case VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL:
       assert((image->aspects & VK_IMAGE_ASPECT_ANY_COLOR_BIT_ANV) == 0);
       /* Fall-through */
+   case VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL:
    case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:
       if (aspect == VK_IMAGE_ASPECT_DEPTH_BIT) {
          if (anv_can_sample_with_hiz(devinfo, image))
