@@ -111,7 +111,7 @@ u_pipe_screen_get_param_defaults(struct pipe_screen *pscreen,
       return 120;
 
    case PIPE_CAP_ESSL_FEATURE_LEVEL:
-      /* Tell state-tracker to fallback to PIPE_CAP_GLSL_FEATURE_LEVEL */
+      /* Tell gallium frontend to fallback to PIPE_CAP_GLSL_FEATURE_LEVEL */
       return 0;
 
    case PIPE_CAP_QUADS_FOLLOW_PROVOKING_VERTEX_CONVENTION:

@@ -23,7 +23,7 @@
 
 /*
  * Off-Screen rendering into client memory.
- * State tracker for gallium (for softpipe and llvmpipe)
+ * OpenGL gallium frontend for softpipe and llvmpipe.
  *
  * Notes:
  *

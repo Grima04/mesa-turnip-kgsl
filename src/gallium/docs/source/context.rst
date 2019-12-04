@@ -382,7 +382,7 @@ Queries
 ^^^^^^^
 
 Queries gather some statistic from the 3D pipeline over one or more
-draws.  Queries may be nested, though not all state trackers exercise this.
+draws.  Queries may be nested, though not all gallium frontends exercise this.
 
 Queries can be created with ``create_query`` and deleted with
 ``destroy_query``. To start a query, use ``begin_query``, and when finished,
@@ -856,7 +856,7 @@ for particular texture types or formats.
 Device resets
 ^^^^^^^^^^^^^
 
-The state tracker can query or request notifications of when the GPU
+Gallium frontends can query or request notifications of when the GPU
 is reset for whatever reason (application error, driver error). When
 a GPU reset happens, the context becomes unusable and all related state
 should be considered lost and undefined. Despite that, context

@@ -449,7 +449,7 @@ struct svga_winsys_context
                       struct svga_winsys_gb_shader *shader,
                       unsigned flags);
 
-   /** To report perf/conformance/etc issues to the state tracker */
+   /** To report perf/conformance/etc issues to the gallium frontend */
    struct pipe_debug_callback *debug_callback;
 
    /** The more recent command issued to command buffer */

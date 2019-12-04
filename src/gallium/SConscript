@@ -39,7 +39,7 @@ if env['platform'] == 'windows':
 
 
 #
-# State trackers and targets
+# Frontends and targets
 #
 
 if not env['embedded']:

@@ -870,7 +870,7 @@ static void si_nir_lower_ps_inputs(struct nir_shader *nir)
 
 void si_nir_adjust_driver_locations(struct nir_shader *nir)
 {
-   /* Adjust the driver location of inputs and outputs. The state tracker
+	/* Adjust the driver location of inputs and outputs. the gallium frontend
     * interprets them as slots, while the ac/nir backend interprets them
     * as individual components.
     */

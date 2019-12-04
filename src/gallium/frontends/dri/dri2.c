@@ -594,10 +594,10 @@ dri2_allocate_textures(struct dri_context *ctx,
                 * such that they contain the same data as the single-sample
                 * resources we just got from the X server.
                 *
-                * The reason for this is that the state tracker (and
+                * The reason for this is that the gallium frontend (and
                 * therefore the app) can access the MSAA resources only.
                 * The single-sample resources are not exposed
-                * to the state tracker.
+                * to the gallium frontend.
                 *
                 */
                dri_pipe_blit(ctx->st->pipe,
@@ -748,7 +748,7 @@ dri2_create_image_from_winsys(__DRIscreen *_screen,
       tex_usage |= PIPE_BIND_SAMPLER_VIEW;
 
    if (!tex_usage && util_format_is_yuv(map->pipe_format)) {
-      /* YUV format sampling can be emulated by the Mesa state tracker by
+      /* YUV format sampling can be emulated by the GL gallium frontend by
        * using multiple samplers of varying formats.
        * If no tex_usage is set and we detect a YUV format,
        * test for support of all planes' sampler formats and

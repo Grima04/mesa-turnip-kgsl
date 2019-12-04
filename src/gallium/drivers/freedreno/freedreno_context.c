@@ -380,7 +380,7 @@ fd_context_init(struct fd_context *ctx, struct pipe_screen *pscreen,
 
 	(void) mtx_init(&ctx->gmem_lock, mtx_plain);
 
-	/* need some sane default in case state tracker doesn't
+	/* need some sane default in case gallium frontends don't
 	 * set some state:
 	 */
 	ctx->sample_mask = 0xffff;

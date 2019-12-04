@@ -453,7 +453,7 @@ NineSwapChain9_Resize( struct NineSwapChain9 *This,
     return D3D_OK;
 }
 
-/* Throttling: code adapted from the dri state tracker */
+/* Throttling: code adapted from the dri frontend */
 
 /**
  * swap_fences_pop_front - pull a fence from the throttle queue

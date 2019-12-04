@@ -132,7 +132,7 @@ struct softpipe_context {
    /** Which vertex shader output slot contains layer */
    int8_t layer_slot;
 
-   /** The reduced version of the primitive supplied by the state tracker */
+   /** The reduced version of the primitive supplied by the gallium frontend */
    unsigned reduced_api_prim;
 
    /** Derived information about which winding orders to cull */

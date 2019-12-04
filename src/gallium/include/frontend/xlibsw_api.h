@@ -8,7 +8,7 @@
 /* This is what the xlib software winsys expects to find in the
  * "private" field of flush_frontbuffers().
  *
- * Xlib-based state trackers somehow need to know this.
+ * Xlib-based gallium frontends somehow need to know this.
  */
 struct xlib_drawable {
    Visual *visual;

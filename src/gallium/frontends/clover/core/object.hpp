@@ -35,7 +35,7 @@
 #include "util/macros.h"
 
 ///
-/// Main namespace of the CL state tracker.
+/// Main namespace of the CL gallium frontend.
 ///
 namespace clover {
    ///

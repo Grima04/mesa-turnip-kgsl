@@ -1283,7 +1283,7 @@ struct pipe_resource *si_texture_create(struct pipe_screen *screen,
 
    if (templ->nr_samples >= 2) {
       /* This is hackish (overwriting the const pipe_resource template),
-       * but should be harmless and state trackers can also see
+		 * but should be harmless and gallium frontends can also see
        * the overriden number of samples in the created pipe_resource.
        */
       if (is_zs && sscreen->eqaa_force_z_samples) {

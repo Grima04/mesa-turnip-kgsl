@@ -208,7 +208,7 @@ svga_set_viewport_states(struct pipe_context *pipe,
 
 /**
  * Called by state tracker to specify a callback function the driver
- * can use to report info back to the state tracker.
+ * can use to report info back to the gallium frontend.
  */
 static void
 svga_set_debug_callback(struct pipe_context *pipe,

@@ -452,7 +452,7 @@ struct svga_context
       boolean no_line_width;
       boolean force_hw_line_stipple;
 
-      /** To report perf/conformance/etc issues to the state tracker */
+      /** To report perf/conformance/etc issues to the gallium frontend */
       struct pipe_debug_callback callback;
    } debug;
 
@@ -507,7 +507,7 @@ struct svga_context
       struct svga_hw_clear_state    hw_clear;
    } state;
 
-   struct svga_state curr;      /* state from the state tracker */
+   struct svga_state curr;      /* state from the gallium frontend */
    unsigned dirty;              /* statechanges since last update_state() */
 
    union {

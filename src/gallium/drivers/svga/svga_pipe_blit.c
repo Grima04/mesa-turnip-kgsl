@@ -382,7 +382,7 @@ can_blit_via_intra_surface_copy(struct svga_context *svga,
 
 
 /**
- * The state tracker implements some resource copies with blits (for
+ * the gallium frontend implements some resource copies with blits (for
  * GL_ARB_copy_image).  This function checks if we should really do the blit
  * with a VGPU10 CopyRegion command or software fallback (for incompatible
  * src/dst formats).

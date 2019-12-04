@@ -1334,7 +1334,7 @@ iris_create_zsa_state(struct pipe_context *ctx,
       state->stencil[0].writemask != 0 ||
       (two_sided_stencil && state->stencil[1].writemask != 0);
 
-   /* The state tracker needs to optimize away EQUAL writes for us. */
+   /* gallium frontends need to optimize away EQUAL writes for us. */
    assert(!(state->depth.func == PIPE_FUNC_EQUAL && state->depth.writemask));
 
    iris_pack_command(GENX(3DSTATE_WM_DEPTH_STENCIL), cso->wmds, wmds) {
@@ -1987,7 +1987,7 @@ iris_upload_sampler_states(struct iris_context *ice, gl_shader_stage stage)
    struct iris_shader_state *shs = &ice->state.shaders[stage];
    const struct shader_info *info = iris_get_shader_info(ice, stage);
 
-   /* We assume the state tracker will call pipe->bind_sampler_states()
+   /* We assume gallium frontends will call pipe->bind_sampler_states()
     * if the program's number of textures changes.
     */
    unsigned count = info ? util_last_bit(info->textures_used) : 0;
@@ -2586,7 +2586,7 @@ iris_create_surface(struct pipe_context *ctx,
        * texture, the tile offsets may be anything and we can't rely on
        * X/Y Offset.
        *
-       * Return NULL to force the state tracker to take fallback paths.
+       * Return NULL to force gallium frontends to take fallback paths.
        */
       if (view->array_len > 1 || GEN_GEN == 8)
          return NULL;

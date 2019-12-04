@@ -25,7 +25,7 @@ usage: merge_driinfo.py <list of input files>
 
 Generates a source file which contains the DRI_CONF_xxx macros for generating
 the driinfo XML that describes the available DriConf options for a driver and
-its supported state trackers, based on the merged information from the input
+its supported gallium frontends, based on the merged information from the input
 files.
 """
 

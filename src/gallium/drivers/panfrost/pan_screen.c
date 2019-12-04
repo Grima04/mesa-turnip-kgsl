@@ -506,7 +506,7 @@ panfrost_is_format_supported( struct pipe_screen *screen,
          * and then in the off-chance there's a CPU read we blit back to
          * staging.
          *
-         * ...alternatively, we can make the state tracker deal with that. */
+         * ...alternatively, we can make the gallium frontend deal with that. */
 
         if (bind & PIPE_BIND_DEPTH_STENCIL) {
                 switch (format) {

@@ -62,7 +62,7 @@ svga_buffer_needs_hw_storage(const struct svga_screen *ss,
        */
       bind_mask |= PIPE_BIND_CUSTOM;
       /* Uniform buffer objects.
-       * Make sure we don't create hardware storage for state-tracker
+       * Make sure we don't create hardware storage for gallium frontend
        * const0 buffers, because we frequently map them for reading.
        * They are distinguished by having PIPE_USAGE_STREAM, but not
        * PIPE_BIND_CUSTOM.
@@ -217,7 +217,7 @@ svga_buffer_transfer_map(struct pipe_context *pipe,
                /*
                 * We have a pending DMA upload from a hardware buffer, therefore
                 * we need to ensure that the host finishes processing that DMA
-                * command before the state tracker can start overwriting the
+                * command before the gallium frontend can start overwriting the
                 * hardware buffer.
                 *
                 * XXX: This could be avoided by tying the hardware buffer to
@@ -464,7 +464,7 @@ svga_buffer_create(struct pipe_screen *screen,
       /* If the buffer is not used for constant buffer, set
        * the vertex/index bind flags as well so that the buffer will be
        * accepted for those uses.
-       * Note that the PIPE_BIND_ flags we get from the state tracker are
+       * Note that the PIPE_BIND_ flags we get from the gallium frontend are
        * just a hint about how the buffer may be used.  And OpenGL buffer
        * object may be used for many different things.
        * Also note that we do not unconditionally set the streamout

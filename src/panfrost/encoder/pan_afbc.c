@@ -94,7 +94,7 @@ panfrost_format_supports_afbc(enum pipe_format format)
 
         /* Z32/Z16/S8 are all compressible as well, but they are implemented as
          * Z24S8 with wasted bits. So Z24S8 is the only format we actually need
-         * to handle compressed, and we can make the state tracker deal with
+         * to handle compressed, and we can make the gallium frontend deal with
          * the rest. */
 
         if (format == PIPE_FORMAT_Z24_UNORM_S8_UINT)

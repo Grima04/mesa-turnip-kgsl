@@ -238,7 +238,7 @@ threaded_context_flush(struct pipe_context *_pipe,
 {
    struct threaded_context *tc = threaded_context(_pipe);
 
-   /* This is called from the state-tracker / application thread. */
+   /* This is called from the gallium frontend / application thread. */
    if (token->tc && token->tc == tc) {
       struct tc_batch *last = &tc->batch_slots[tc->last];
 

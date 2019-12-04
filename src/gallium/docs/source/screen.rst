@@ -85,7 +85,7 @@ The integer capabilities:
   per-instance vertex attribs.
 * ``PIPE_CAP_FRAGMENT_COLOR_CLAMPED``: Whether fragment color clamping is
   supported.  That is, is the pipe_rasterizer_state::clamp_fragment_color
-  flag supported by the driver?  If not, the state tracker will insert
+  flag supported by the driver?  If not, gallium frontends will insert
   clamping code into the fragment shaders when needed.
 
 * ``PIPE_CAP_MIXED_COLORBUFFER_FORMATS``: Whether mixed colorbuffer formats are
@@ -99,7 +99,7 @@ The integer capabilities:
   the vertex colors are never clamped. This is the default for DX10 hardware.
   If both clamped and unclamped CAPs are supported, the clamping can be
   controlled through pipe_rasterizer_state.  If the driver cannot do vertex
-  color clamping, the state tracker may insert clamping code into the vertex
+  color clamping, gallium frontends may insert clamping code into the vertex
   shader.
 * ``PIPE_CAP_GLSL_FEATURE_LEVEL``: Whether the driver supports features
   equivalent to a specific GLSL version. E.g. for GLSL 1.3, report 130.
@@ -121,7 +121,7 @@ The integer capabilities:
 * ``PIPE_CAP_QUADS_FOLLOW_PROVOKING_VERTEX_CONVENTION``: Whether quads adhere to
   the flatshade_first setting in ``pipe_rasterizer_state``.
 * ``PIPE_CAP_USER_VERTEX_BUFFERS``: Whether the driver supports user vertex
-  buffers.  If not, the state tracker must upload all data which is not in hw
+  buffers.  If not, gallium frontends must upload all data which is not in hw
   resources.  If user-space buffers are supported, the driver must also still
   accept HW resource buffers.
 * ``PIPE_CAP_VERTEX_BUFFER_OFFSET_4BYTE_ALIGNED_ONLY``: This CAP describes a hw
@@ -164,7 +164,7 @@ The integer capabilities:
   input that will always be replaced with sprite coordinates.
 * ``PIPE_CAP_PREFER_BLIT_BASED_TEXTURE_TRANSFER``: Whether it is preferable
   to use a blit to implement a texture transfer which needs format conversions
-  and swizzling in state trackers. Generally, all hardware drivers with
+  and swizzling in gallium frontends. Generally, all hardware drivers with
   dedicated memory should return 1 and all software rasterizers should return 0.
 * ``PIPE_CAP_QUERY_PIPELINE_STATISTICS``: Whether PIPE_QUERY_PIPELINE_STATISTICS
   is supported.
@@ -256,7 +256,7 @@ The integer capabilities:
   for enabling ARB_clip_control.
 * ``PIPE_CAP_VERTEXID_NOBASE``: If true, the driver only supports
   TGSI_SEMANTIC_VERTEXID_NOBASE (and not TGSI_SEMANTIC_VERTEXID). This means
-  state trackers for APIs whose vertexIDs are offset by basevertex (such as GL)
+  gallium frontends for APIs whose vertexIDs are offset by basevertex (such as GL)
   will need to lower TGSI_SEMANTIC_VERTEXID to TGSI_SEMANTIC_VERTEXID_NOBASE
   and TGSI_SEMANTIC_BASEVERTEX, so drivers setting this must handle both these
   semantics. Only relevant if geometry shaders are supported.
@@ -310,11 +310,11 @@ The integer capabilities:
   supported in vertex shaders.
 * ``PIPE_CAP_TGSI_PACK_HALF_FLOAT``: Whether the ``UP2H`` and ``PK2H``
   TGSI opcodes are supported.
-* ``PIPE_CAP_TGSI_FS_POSITION_IS_SYSVAL``: If state trackers should use
+* ``PIPE_CAP_TGSI_FS_POSITION_IS_SYSVAL``: If gallium frontends should use
   a system value for the POSITION fragment shader input.
-* ``PIPE_CAP_TGSI_FS_POINT_IS_SYSVAL``: If state trackers should use
+* ``PIPE_CAP_TGSI_FS_POINT_IS_SYSVAL``: If gallium frontends should use
   a system value for the POINT fragment shader input.
-* ``PIPE_CAP_TGSI_FS_FACE_IS_INTEGER_SYSVAL``: If state trackers should use
+* ``PIPE_CAP_TGSI_FS_FACE_IS_INTEGER_SYSVAL``: If gallium frontends should use
   a system value for the FACE fragment shader input.
   Also, the FACE system value is integer, not float.
 * ``PIPE_CAP_SHADER_BUFFER_OFFSET_ALIGNMENT``: Describes the required
@@ -528,7 +528,7 @@ The integer capabilities:
   A driver might rely on the input mapping that was defined with the original
   GLSL code.
 * ``PIPE_CAP_IMAGE_LOAD_FORMATTED``: True if a format for image loads does not need to be specified in the shader IR
-* ``PIPE_CAP_THROTTLE``: Whether or not state trackers should throttle pipe_context
+* ``PIPE_CAP_THROTTLE``: Whether or not gallium frontends should throttle pipe_context
   execution. 0 = throttling is disabled.
 * ``PIPE_CAP_DMABUF``: Whether Linux DMABUF handles are supported by
   resource_from_handle and resource_get_handle.
@@ -537,7 +537,7 @@ The integer capabilities:
 * ``PIPE_CAP_FRAGMENT_SHADER_INTERLOCK``: True if fragment shader interlock
   functionality is supported.
 * ``PIPE_CAP_CS_DERIVED_SYSTEM_VALUES_SUPPORTED``: True if driver handles
-  gl_LocalInvocationIndex and gl_GlobalInvocationID.  Otherwise, state tracker will
+  gl_LocalInvocationIndex and gl_GlobalInvocationID.  Otherwise, gallium frontends will
   lower those system values.
 * ``PIPE_CAP_ATOMIC_FLOAT_MINMAX``: Atomic float point minimum,
   maximum, exchange and compare-and-swap support to buffer and shared variables.
@@ -552,7 +552,7 @@ The integer capabilities:
   types with texture functions having interaction with LOD of texture lookup.
 * ``PIPE_CAP_SHADER_SAMPLES_IDENTICAL``: True if the driver supports a shader query to tell whether all samples of a multisampled surface are definitely identical.
 * ``PIPE_CAP_TGSI_ATOMINC_WRAP``: Atomic increment/decrement + wrap around are supported.
-* ``PIPE_CAP_PREFER_IMM_ARRAYS_AS_CONSTBUF``: True if the state tracker should
+* ``PIPE_CAP_PREFER_IMM_ARRAYS_AS_CONSTBUF``: True if gallium frontends should
   turn arrays whose contents can be deduced at compile time into constant
   buffer loads, or false if the driver can handle such arrays itself in a more
   efficient manner.
@@ -667,7 +667,7 @@ MOV OUT[0], CONST[0][3]  # copy vector 3 of constbuf 0
   ignore tgsi_declaration_range::Last for shader inputs and outputs.
 * ``PIPE_SHADER_CAP_MAX_UNROLL_ITERATIONS_HINT``: This is the maximum number
   of iterations that loops are allowed to have to be unrolled. It is only
-  a hint to state trackers. Whether any loops will be unrolled is not
+  a hint to gallium frontends. Whether any loops will be unrolled is not
   guaranteed.
 * ``PIPE_SHADER_CAP_MAX_SHADER_BUFFERS``: Maximum number of memory buffers
   (also used to implement atomic counters). Having this be non-0 also
@@ -677,7 +677,7 @@ MOV OUT[0], CONST[0][3]  # copy vector 3 of constbuf 0
   program.  It should be a mask of ``pipe_shader_ir`` bits.
 * ``PIPE_SHADER_CAP_MAX_SHADER_IMAGES``: Maximum number of image units.
 * ``PIPE_SHADER_CAP_LOWER_IF_THRESHOLD``: IF and ELSE branches with a lower
-  cost than this value should be lowered by the state tracker for better
+  cost than this value should be lowered by gallium frontends for better
   performance. This is a tunable for the GLSL compiler and the behavior is
   specific to the compiler.
 * ``PIPE_SHADER_CAP_TGSI_SKIP_MERGE_REGISTERS``: Whether the merge registers

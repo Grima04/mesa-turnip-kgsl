@@ -30,19 +30,15 @@
 #include "pipe/p_format.h"
 
 /**
- * \file API for communication between state trackers and state tracker
- * managers.
+ * \file API for communication between gallium frontends and supporting
+ * frontends such as DRI.
  *
- * While both are state tackers, we use the term state tracker for rendering
- * APIs such as OpenGL or OpenVG, and state tracker manager for window system
- * APIs such as EGL or GLX in this file.
- *
- * This file defines an API to be implemented by both state trackers and state
- * tracker managers.
+ * This file defines an API to be implemented by both gallium frontends and
+ * their managers.
  */
 
 /**
- * The supported rendering API of a state tracker.
+ * The supported rendering API.
  */
 enum st_api_type {
    ST_API_OPENGL,
@@ -69,7 +65,7 @@ enum st_profile_type
 #define ST_PROFILE_OPENGL_ES2_MASK   (1 << ST_PROFILE_OPENGL_ES2)
 
 /**
- * Optional API/state tracker features.
+ * Optional API features.
  */
 enum st_api_feature
 {
@@ -155,10 +151,10 @@ enum st_attachment_type {
  */
 enum st_manager_param {
    /**
-    * The dri state tracker on old libGL's doesn't do the right thing
+    * The DRI frontend on old libGL's doesn't do the right thing
     * with regards to invalidating the framebuffers.
     *
-    * For the mesa state tracker that means that it needs to invalidate
+    * For the GL gallium frontend that means that it needs to invalidate
     * the framebuffer in glViewport itself.
     */
    ST_MANAGER_BROKEN_INVALIDATE
@@ -274,11 +270,11 @@ struct st_manager;
 /**
  * Represent a windowing system drawable.
  *
- * The framebuffer is implemented by the state tracker manager and
- * used by the state trackers.
+ * The framebuffer is implemented by the frontend manager and
+ * used by gallium frontends.
  *
- * Instead of the winsys poking into the API context to figure
- * out what buffers that might be needed in the future by the API
+ * Instead of the winsys poking into the frontend context to figure
+ * out what buffers that might be needed in the future by the frontend
  * context, it calls into the framebuffer to get the textures.
  *
  * This structure along with the notify_invalid_framebuffer
@@ -303,12 +299,12 @@ struct st_framebuffer_iface
    uint32_t ID;
 
    /**
-    * The state tracker manager that manages this object.
+    * The frontend manager that manages this object.
     */
    struct st_manager *state_manager;
 
    /**
-    * Available for the state tracker manager to use.
+    * Available for the frontend manager to use.
     */
    void *st_manager_private;
 
@@ -330,7 +326,7 @@ struct st_framebuffer_iface
                        enum st_attachment_type statt);
 
    /**
-    * The state tracker asks for the textures it needs.
+    * the gallium frontend asks for the textures it needs.
     *
     * It should try to only ask for attachments that it currently renders
     * to, thus allowing the winsys to delay the allocation of textures not
@@ -358,18 +354,18 @@ struct st_framebuffer_iface
 /**
  * Represent a rendering context.
  *
- * This entity is created from st_api and used by the state tracker manager.
+ * This entity is created from st_api and used by the frontend manager.
  */
 struct st_context_iface
 {
    /**
-    * Available for the state tracker and the manager to use.
+    * Available for the gallium frontend and the manager to use.
     */
    void *st_context_private;
    void *st_manager_private;
 
    /**
-    * The state tracker manager that manages this object.
+    * The frontend manager that manages this object.
     */
    struct st_manager *state_manager;
 
@@ -435,9 +431,9 @@ struct st_context_iface
 
 
 /**
- * Represent a state tracker manager.
+ * Represent a frontend manager.
  *
- * This interface is implemented by the state tracker manager.  It corresponds
+ * This interface is implemented by the frontend manager.  It corresponds
  * to a "display" in the window system.
  */
 struct st_manager
@@ -477,12 +473,12 @@ struct st_manager
                                   struct util_queue_monitoring *queue_info);
 
    /**
-    * Destroy any private data used by the state tracker manager.
+    * Destroy any private data used by the frontend manager.
     */
    void (*destroy)(struct st_manager *smapi);
 
    /**
-    * Available for the state tracker manager to use.
+    * Available for the frontend manager to use.
     */
    void *st_manager_private;
 };
@@ -490,7 +486,7 @@ struct st_manager
 /**
  * Represent a rendering API such as OpenGL or OpenVG.
  *
- * Implemented by the state tracker and used by the state tracker manager.
+ * Implemented by the gallium frontend and used by the frontend manager.
  */
 struct st_api
 {

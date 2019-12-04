@@ -21,7 +21,7 @@ OpenGL: glClampColor(GL_CLAMP_VERTEX_COLOR) in GL 3.0 or GL_ARB_color_buffer_flo
 D3D11: seems always disabled
 
 Note the PIPE_CAP_VERTEX_COLOR_CLAMPED query indicates whether or not the
-driver supports this control.  If it's not supported, the state tracker may
+driver supports this control.  If it's not supported, gallium frontends may
 have to insert extra clamping code.
 
 
@@ -36,7 +36,7 @@ OpenGL: glClampColor(GL_CLAMP_FRAGMENT_COLOR) in GL 3.0 or ARB_color_buffer_floa
 D3D11: seems always disabled
 
 Note the PIPE_CAP_FRAGMENT_COLOR_CLAMPED query indicates whether or not the
-driver supports this control.  If it's not supported, the state tracker may
+driver supports this control.  If it's not supported, gallium frontends may
 have to insert extra clamping code.
 
 
@@ -184,7 +184,7 @@ the state of 'sprite_coord_mode' (see below).
 If any bit is set, then point_smooth MUST be disabled (there are no
 round sprites) and point_quad_rasterization MUST be true (sprites are
 always rasterized as quads).  Any mismatch between these states should
-be considered a bug in the state-tracker.
+be considered a bug in the gallium frontend.
 
 This feature is implemented in the :ref:`Draw` module but may also be
 implemented natively by GPUs or implemented with a geometry shader.

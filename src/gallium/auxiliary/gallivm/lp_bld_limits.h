@@ -40,7 +40,7 @@
  * TGSI translation limits.
  *
  * Some are slightly above SM 3.0 requirements to give some wiggle room to
- * the state trackers.
+ * the gallium frontends.
  */
 
 #define LP_MAX_TGSI_TEMPS 4096

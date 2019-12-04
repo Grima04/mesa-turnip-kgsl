@@ -545,7 +545,7 @@ llvmpipe_transfer_map_ms( struct pipe_context *pipe,
                                    do_not_block,
                                    __FUNCTION__)) {
          /*
-          * It would have blocked, but state tracker requested no to.
+          * It would have blocked, but gallium frontend requested no to.
           */
          assert(do_not_block);
          return NULL;

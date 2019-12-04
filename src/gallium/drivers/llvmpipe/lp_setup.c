@@ -440,7 +440,7 @@ lp_setup_try_clear_color_buffer(struct lp_setup_context *setup,
    else {
       /* Put ourselves into the 'pre-clear' state, specifically to try
        * and accumulate multiple clears to color and depth_stencil
-       * buffers which the app or state-tracker might issue
+       * buffers which the app or gallium frontend might issue
        * separately.
        */
       set_scene_state( setup, SETUP_CLEARED, __FUNCTION__ );
@@ -504,7 +504,7 @@ lp_setup_try_clear_zs(struct lp_setup_context *setup,
    else {
       /* Put ourselves into the 'pre-clear' state, specifically to try
        * and accumulate multiple clears to color and depth_stencil
-       * buffers which the app or state-tracker might issue
+       * buffers which the app or gallium frontend might issue
        * separately.
        */
       set_scene_state( setup, SETUP_CLEARED, __FUNCTION__ );

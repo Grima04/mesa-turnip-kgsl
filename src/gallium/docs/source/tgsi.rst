@@ -2506,7 +2506,7 @@ after lookup.
   If per-sample shading is not in effect or the source resource or render
   target is not multisampled, the result is (0.5, 0.5, undef, undef).
 
-  NOTE: no driver has implemented this opcode yet (and no state tracker
+  NOTE: no driver has implemented this opcode yet (and no gallium frontend
   emits it).  This information is subject to change.
 
 .. opcode:: SAMPLE_INFO
@@ -2525,7 +2525,7 @@ after lookup.
   If per-sample shading is not in effect or the source resource or render
   target is not multisampled, the result is (1, 0, 0, 0).
 
-  NOTE: no driver has implemented this opcode yet (and no state tracker
+  NOTE: no driver has implemented this opcode yet (and no gallium frontend
   emits it).  This information is subject to change.
 
 .. opcode:: LOD - level of detail

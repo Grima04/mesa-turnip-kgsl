@@ -112,7 +112,7 @@ void si_flush_gfx_cs(struct si_context *ctx, unsigned flags, struct pipe_fence_h
 
    ctx->gfx_flush_in_progress = true;
 
-   /* If the state tracker is flushing the GFX IB, si_flush_from_st is
+	/* If the gallium frontend is flushing the GFX IB, si_flush_from_st is
     * responsible for flushing the DMA IB and merging the fences from both.
     * If the driver flushes the GFX IB internally, and it should never ask
     * for a fence handle.

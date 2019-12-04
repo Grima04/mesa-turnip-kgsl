@@ -937,7 +937,7 @@ svga_texture_create(struct pipe_screen *screen,
 
    /* Verify the number of mipmap levels isn't impossibly large.  For example,
     * if the base 2D image is 16x16, we can't have 8 mipmap levels.
-    * The state tracker should never ask us to create a resource with invalid
+    * the gallium frontend should never ask us to create a resource with invalid
     * parameters.
     */
    {
@@ -1119,7 +1119,7 @@ svga_texture_create(struct pipe_screen *screen,
     * and it always requests PIPE_BIND_RENDER_TARGET, therefore
     * passing the SVGA3D_SURFACE_HINT_RENDERTARGET here defeats its purpose.
     *
-    * However, this was changed since other state trackers
+    * However, this was changed since other gallium frontends
     * (XA for example) uses it accurately and certain device versions
     * relies on it in certain situations to render correctly.
     */

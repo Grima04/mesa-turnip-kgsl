@@ -179,7 +179,7 @@ lp_sampler_static_sampler_state(struct lp_static_sampler_state *state,
     * spurious recompiles, as the sampler static state is part of the shader
     * key.
     *
-    * Ideally the state tracker or cso_cache module would make all state
+    * Ideally gallium frontends or cso_cache module would make all state
     * canonical, but until that happens it's better to be safe than sorry here.
     *
     * XXX: Actually there's much more than can be done here, especially

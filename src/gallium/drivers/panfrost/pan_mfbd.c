@@ -254,7 +254,7 @@ panfrost_mfbd_set_zsbuf(
 
         if (rsrc->layout == MALI_TEXTURE_AFBC) {
                 /* The only Z/S format we can compress is Z24S8 or variants
-                 * thereof (handled by the state tracker) */
+                 * thereof (handled by the gallium frontend) */
                 assert(panfrost_is_z24s8_variant(surf->format));
 
                 unsigned header_size = rsrc->slices[level].header_size;

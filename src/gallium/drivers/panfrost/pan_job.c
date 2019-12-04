@@ -1313,7 +1313,7 @@ panfrost_batch_clear(struct panfrost_batch *batch,
 
         /* Clearing affects the entire framebuffer (by definition -- this is
          * the Gallium clear callback, which clears the whole framebuffer. If
-         * the scissor test were enabled from the GL side, the state tracker
+         * the scissor test were enabled from the GL side, the gallium frontend
          * would emit a quad instead and we wouldn't go down this code path) */
 
         panfrost_batch_union_scissor(batch, 0, 0,

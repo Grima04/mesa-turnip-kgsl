@@ -76,7 +76,7 @@ option(
   type : 'combo',
   value : 'auto',
   choices : ['auto', 'true', 'false'],
-  description : 'enable gallium vdpau state tracker.',
+  description : 'enable gallium vdpau frontend.',
 )
 option(
   'vdpau-libs-path',
@@ -89,7 +89,7 @@ option(
   type : 'combo',
   value : 'auto',
   choices : ['auto', 'true', 'false'],
-  description : 'enable gallium xvmc state tracker.',
+  description : 'enable gallium xvmc frontend.',
 )
 option(
   'xvmc-libs-path',
@@ -102,7 +102,7 @@ option(
   type : 'combo',
   value : 'auto',
   choices : ['auto', 'disabled', 'bellagio', 'tizonia'],
-  description : 'enable gallium omx state tracker.',
+  description : 'enable gallium omx frontend.',
 )
 option(
   'omx-libs-path',
@@ -115,7 +115,7 @@ option(
   type : 'combo',
   value : 'auto',
   choices : ['auto', 'true', 'false'],
-  description : 'enable gallium va state tracker.',
+  description : 'enable gallium va frontend.',
 )
 option(
   'va-libs-path',
@@ -128,26 +128,26 @@ option(
   type : 'combo',
   value : 'auto',
   choices : ['auto', 'true', 'false'],
-  description : 'enable gallium xa state tracker.',
+  description : 'enable gallium xa frontend.',
 )
 option(
   'gallium-nine',
   type : 'boolean',
   value : false,
-  description : 'build gallium "nine" Direct3D 9.x state tracker.',
+  description : 'build gallium "nine" Direct3D 9.x frontend.',
 )
 option(
   'gallium-opencl',
   type : 'combo',
   choices : ['icd', 'standalone', 'disabled'],
   value : 'disabled',
-  description : 'build gallium "clover" OpenCL state tracker.',
+  description : 'build gallium "clover" OpenCL frontend.',
 )
 option(
   'opencl-spirv',
   type : 'boolean',
   value : false,
-  description : 'build gallium "clover" OpenCL state tracker with SPIR-V binary support.',
+  description : 'build gallium "clover" OpenCL frontend with SPIR-V binary support.',
 )
 option(
   'd3d-drivers-path',

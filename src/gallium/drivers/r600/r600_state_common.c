@@ -1191,7 +1191,7 @@ static void r600_set_constant_buffer(struct pipe_context *ctx,
 	struct pipe_constant_buffer *cb;
 	const uint8_t *ptr;
 
-	/* Note that the state tracker can unbind constant buffers by
+	/* Note that the gallium frontend can unbind constant buffers by
 	 * passing NULL here.
 	 */
 	if (unlikely(!input || (!input->buffer && !input->user_buffer))) {
@@ -1871,7 +1871,7 @@ static bool r600_update_derived_state(struct r600_context *rctx)
 	 * to LS slots and won't reflect what is dirty as VS stage even if the
 	 * TES didn't overwrite it. The story for re-enabled TES is similar.
 	 * In any case, we're not allowed to submit any TES state when
-	 * TES is disabled (the state tracker may not do this but this looks
+	 * TES is disabled (the gallium frontend may not do this but this looks
 	 * like an optimization to me, not something which can be relied on).
 	 */
 

@@ -380,7 +380,7 @@ fd_try_shadow_resource(struct fd_context *ctx, struct fd_resource *rsc,
  * Uncompress an UBWC compressed buffer "in place".  This works basically
  * like resource shadowing, creating a new resource, and doing an uncompress
  * blit, and swapping the state between shadow and original resource so it
- * appears to the state tracker as if nothing changed.
+ * appears to the gallium frontends as if nothing changed.
  */
 void
 fd_resource_uncompress(struct fd_context *ctx, struct fd_resource *rsc)

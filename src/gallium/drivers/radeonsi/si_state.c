@@ -4284,7 +4284,7 @@ struct pipe_sampler_view *si_create_sampler_view_custom(struct pipe_context *ctx
       depth = u_minify(depth, force_level);
    }
 
-   /* This is not needed if state trackers set last_layer correctly. */
+   /* This is not needed if gallium frontends set last_layer correctly. */
    if (state->target == PIPE_TEXTURE_1D || state->target == PIPE_TEXTURE_2D ||
        state->target == PIPE_TEXTURE_RECT || state->target == PIPE_TEXTURE_CUBE)
       last_layer = state->u.tex.first_layer;
@@ -4554,7 +4554,7 @@ static void si_emit_sample_mask(struct si_context *sctx)
    unsigned mask = sctx->sample_mask;
 
    /* Needed for line and polygon smoothing as well as for the Polaris
-    * small primitive filter. We expect the state tracker to take care of
+	 * small primitive filter. We expect the gallium frontend to take care of
     * this for us.
     */
    assert(mask == 0xffff || sctx->framebuffer.nr_samples > 1 ||

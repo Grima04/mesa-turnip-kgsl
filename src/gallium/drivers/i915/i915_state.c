@@ -888,7 +888,7 @@ static void i915_set_clip_state( struct pipe_context *pipe,
 
 
 
-/* Called when driver state tracker notices changes to the viewport
+/* Called when gallium frontends notice changes to the viewport
  * matrix:
  */
 static void i915_set_viewport_states( struct pipe_context *pipe,

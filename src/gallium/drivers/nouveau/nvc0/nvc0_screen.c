@@ -57,7 +57,7 @@ nvc0_screen_is_format_supported(struct pipe_screen *pscreen,
    if (MAX2(1, sample_count) != MAX2(1, storage_sample_count))
       return false;
 
-   /* Short-circuit the rest of the logic -- this is used by the state tracker
+   /* Short-circuit the rest of the logic -- this is used by the gallium frontend
     * to determine valid MS levels in a no-attachments scenario.
     */
    if (format == PIPE_FORMAT_NONE && bindings & PIPE_BIND_RENDER_TARGET)

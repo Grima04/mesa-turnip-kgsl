@@ -28,7 +28,7 @@
 /**
  * @file
  *
- * Fake WGL API implementation.
+ * Fake WGL gallium frontend.
  *
  * These functions implement the WGL API, on top of the ICD DDI, so that the
  * resulting DLL can be used as a drop-in replacement for the system's

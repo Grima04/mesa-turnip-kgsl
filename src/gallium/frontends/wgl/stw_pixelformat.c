@@ -190,7 +190,7 @@ stw_pixelformat_add(struct stw_device *stw_dev,
    pfi->pfd.dwDamageMask = 0;
 
    /*
-    * since state trackers can allocate depth/stencil/accum buffers, we provide
+    * since gallium frontend can allocate depth/stencil/accum buffers, we provide
     * only color buffers here
     */
    pfi->stvis.buffer_mask = ST_ATTACHMENT_FRONT_LEFT_MASK;

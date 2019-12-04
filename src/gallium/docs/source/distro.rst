@@ -1,7 +1,7 @@
 Distribution
 ============
 
-Along with the interface definitions, the following drivers, state trackers,
+Along with the interface definitions, the following drivers, gallium frontends,
 and auxiliary modules are shipped in the standard Gallium distribution.
 
 Drivers
@@ -78,8 +78,8 @@ Rbug
 
 Wrapper driver. :ref:`rbug` driver used with stand alone rbug-gui.
 
-State Trackers
---------------
+Gallium frontends
+-----------------
 
 Clover
 ^^^^^^
@@ -101,9 +101,9 @@ GLX
 MesaGL
 ^^^^^^
 
-Tracker implementing a GL state machine. Not usable as a standalone tracker;
-Mesa should be built with another state tracker, such as :ref:`DRI` or
-:ref:`EGL`.
+The gallium frontend implementing a GL state machine. Not usable as
+a standalone frontend; Mesa should be built with another gallium frontend,
+such as :ref:`DRI` or :ref:`EGL`.
 
 VDPAU
 ^^^^^

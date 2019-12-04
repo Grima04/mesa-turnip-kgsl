@@ -385,7 +385,7 @@ stw_get_framebuffer_resource(struct st_framebuffer_iface *stfb,
 
 
 /**
- * Create an st_api of the state tracker.
+ * Create an st_api of the gallium frontend.
  */
 struct st_api *
 stw_st_create_api(void)

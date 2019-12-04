@@ -191,7 +191,7 @@ llvmpipe_create_sampler_view(struct pipe_context *pipe,
 #ifdef DEBUG
      /*
       * This is possibly too lenient, but the primary reason is just
-      * to catch state trackers which forget to initialize this, so
+      * to catch gallium frontends which forget to initialize this, so
       * it only catches clearly impossible view targets.
       */
       if (view->target != texture->target) {

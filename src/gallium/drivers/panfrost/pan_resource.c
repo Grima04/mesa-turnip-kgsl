@@ -817,7 +817,7 @@ panfrost_generate_mipmap(
                                 PIPE_TEX_FILTER_LINEAR);
 
         /* If the blit was successful, flush once more. If it wasn't, well, let
-         * the state tracker deal with it. */
+         * the gallium frontend deal with it. */
 
         if (blit_res) {
                 panfrost_flush_batches_accessing_bo(ctx, rsrc->bo, PAN_BO_ACCESS_WRITE);

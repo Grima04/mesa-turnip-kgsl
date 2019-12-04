@@ -534,8 +534,8 @@ vgpu9_get_shader_param(struct pipe_screen *screen,
          /*
           * Although PS 3.0 has some addressing abilities it can only represent
           * loops that can be statically determined and unrolled. Given we can
-          * only handle a subset of the cases that the state tracker already
-          * does it is better to defer loop unrolling to the state tracker.
+          * only handle a subset of the cases that the gallium frontend already
+          * does it is better to defer loop unrolling to the gallium frontend.
           */
          return 0;
       case PIPE_SHADER_CAP_TGSI_CONT_SUPPORTED:

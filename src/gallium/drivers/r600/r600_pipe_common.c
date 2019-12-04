@@ -356,9 +356,9 @@ static void r600_flush_from_st(struct pipe_context *ctx,
 			ws->cs_sync_flush(rctx->gfx.cs);
 	} else {
 		/* Instead of flushing, create a deferred fence. Constraints:
-		 * - The state tracker must allow a deferred flush.
-		 * - The state tracker must request a fence.
-		 * Thread safety in fence_finish must be ensured by the state tracker.
+		 * - the gallium frontend must allow a deferred flush.
+		 * - the gallium frontend must request a fence.
+		 * Thread safety in fence_finish must be ensured by the gallium frontend.
 		 */
 		if (flags & PIPE_FLUSH_DEFERRED && fence) {
 			gfx_fence = rctx->ws->cs_get_next_fence(rctx->gfx.cs);

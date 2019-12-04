@@ -55,13 +55,13 @@ struct hgl_buffer
 struct hgl_context
 {
 	struct st_api* api;
-		// State Tracker API
+		// API
 	struct st_manager* manager;
-		// State Tracker Manager
+		// Manager
 	struct st_context_iface* st;
-		// State Tracker Interface Object
+		// Interface Object
 	struct st_visual* stVisual;
-		// State Tracker Visual
+		// Visual
 
 	struct pipe_screen* screen;
 

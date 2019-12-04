@@ -255,10 +255,10 @@ enum pipe_transfer_usage
 
    /** 
     * The transfer should map the texture storage directly. The driver may
-    * return NULL if that isn't possible, and the state tracker needs to cope
+    * return NULL if that isn't possible, and the gallium frontend needs to cope
     * with that and use an alternative path without this flag.
     *
-    * E.g. the state tracker could have a simpler path which maps textures and
+    * E.g. the gallium frontend could have a simpler path which maps textures and
     * does read/modify/write cycles on them directly, and a more complicated
     * path which uses minimal read and write transfers.
     *
@@ -448,7 +448,7 @@ enum pipe_flush_flags
 #define PIPE_TEXTURE_BARRIER_FRAMEBUFFER  (1 << 1)
 
 /**
- * Resource binding flags -- state tracker must specify in advance all
+ * Resource binding flags -- gallium frontends must specify in advance all
  * the ways a resource might be used.
  */
 #define PIPE_BIND_DEPTH_STENCIL        (1 << 0) /* create_surface */
@@ -462,7 +462,7 @@ enum pipe_flush_flags
 /* gap */
 #define PIPE_BIND_STREAM_OUTPUT        (1 << 10) /* set_stream_output_buffers */
 #define PIPE_BIND_CURSOR               (1 << 11) /* mouse cursor */
-#define PIPE_BIND_CUSTOM               (1 << 12) /* state-tracker/winsys usages */
+#define PIPE_BIND_CUSTOM               (1 << 12) /* gallium frontend/winsys usages */
 #define PIPE_BIND_GLOBAL               (1 << 13) /* set_global_binding */
 #define PIPE_BIND_SHADER_BUFFER        (1 << 14) /* set_shader_buffers */
 #define PIPE_BIND_SHADER_IMAGE         (1 << 15) /* set_shader_images */
@@ -477,10 +477,9 @@ enum pipe_flush_flags
  * below do not fit within that and probably need to be migrated to some
  * other place.
  *
- * It seems like scanout is used by the Xorg state tracker to ask for
- * a texture suitable for actual scanout (hence the name), which
- * implies extra layout constraints on some hardware.  It may also
- * have some special meaning regarding mouse cursor images.
+ * Scanout is used to ask for a texture suitable for actual scanout (hence
+ * the name), which implies extra layout constraints on some hardware.
+ * It may also have some special meaning regarding mouse cursor images.
  *
  * The shared flag is quite underspecified, but certainly isn't a
  * binding flag - it seems more like a message to the winsys to create
@@ -504,7 +503,7 @@ enum pipe_flush_flags
 #define PIPE_RESOURCE_FLAG_SINGLE_THREAD_USE     (1 << 4)
 #define PIPE_RESOURCE_FLAG_ENCRYPTED             (1 << 5)
 #define PIPE_RESOURCE_FLAG_DRV_PRIV    (1 << 8) /* driver/winsys private */
-#define PIPE_RESOURCE_FLAG_ST_PRIV     (1 << 24) /* state-tracker/winsys private */
+#define PIPE_RESOURCE_FLAG_ST_PRIV     (1 << 24) /* gallium frontend/winsys private */
 
 /**
  * Hint about the expected lifecycle of a resource.
@@ -1044,7 +1043,7 @@ enum pipe_shader_cap
  * get TGSI.
  *
  * Note that PIPE_SHADER_IR_TGSI should be zero for backwards compat with
- * state trackers that only understand TGSI.
+ * gallium frontends that only understand TGSI.
  */
 enum pipe_shader_ir
 {

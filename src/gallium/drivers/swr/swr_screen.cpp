@@ -127,7 +127,7 @@ swr_is_format_supported(struct pipe_screen *_screen,
       /*
        * Although possible, it is unnatural to render into compressed or YUV
        * surfaces. So disable these here to avoid going into weird paths
-       * inside the state trackers.
+       * inside gallium frontends.
        */
       if (format_desc->block.width != 1 || format_desc->block.height != 1)
          return false;

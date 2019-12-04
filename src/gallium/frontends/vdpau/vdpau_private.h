@@ -546,7 +546,7 @@ VdpGenerateCSCMatrix vlVdpGenerateCSCMatrix;
 VdpPresentationQueueTargetCreateX11 vlVdpPresentationQueueTargetCreateX11;
 
 
-/* interop to mesa state tracker */
+/* interop for GL gallium frontend */
 VdpVideoSurfaceGallium vlVdpVideoSurfaceGallium;
 VdpOutputSurfaceGallium vlVdpOutputSurfaceGallium;
 VdpVideoSurfaceDMABuf vlVdpVideoSurfaceDMABuf;

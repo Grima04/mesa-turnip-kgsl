@@ -107,7 +107,7 @@ dri_st_framebuffer_validate(struct st_context_iface *stctx,
    if (!out)
       return true;
 
-   /* Set the window-system buffers for the state tracker. */
+   /* Set the window-system buffers for the gallium frontend. */
    for (i = 0; i < count; i++)
       pipe_resource_reference(&out[i], textures[statts[i]]);
 
@@ -130,7 +130,7 @@ dri_st_framebuffer_flush_front(struct st_context_iface *stctx,
 }
 
 /**
- * The state tracker framebuffer interface flush_swapbuffers callback
+ * The gallium frontend framebuffer interface flush_swapbuffers callback
  */
 static bool
 dri_st_framebuffer_flush_swapbuffers(struct st_context_iface *stctx,
@@ -552,8 +552,8 @@ dri_flush(__DRIcontext *cPriv,
          drawable->msaa_textures[ST_ATTACHMENT_BACK_LEFT];
       drawable->msaa_textures[ST_ATTACHMENT_BACK_LEFT] = tmp;
 
-      /* Now that we have swapped the buffers, this tells the state
-       * tracker to revalidate the framebuffer.
+      /* Now that we have swapped the buffers, this tells the gallium
+       * frontend to revalidate the framebuffer.
        */
       p_atomic_inc(&drawable->base.stamp);
    }

@@ -3124,7 +3124,7 @@ lp_build_sample_soa_code(struct gallivm_state *gallivm,
        * here which would say it's pure int despite such formats should sample
        * the depth component).
        * In GL such filters make the texture incomplete, this makes it robust
-       * against state trackers which set this up regardless (we'd crash in the
+       * against gallium frontends which set this up regardless (we'd crash in the
        * lerp later otherwise).
        * At least in some apis it may be legal to use such filters with lod
        * queries and/or gather (at least for gather d3d10 says only the wrap

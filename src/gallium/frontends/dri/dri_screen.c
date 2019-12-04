@@ -451,7 +451,7 @@ dri_fill_st_visual(struct st_visual *stvis,
 
    if (mode->depthBits > 0 || mode->stencilBits > 0)
       stvis->buffer_mask |= ST_ATTACHMENT_DEPTH_STENCIL_MASK;
-   /* let the state tracker allocate the accum buffer */
+   /* let the gallium frontend allocate the accum buffer */
 }
 
 static bool

@@ -178,7 +178,7 @@ compute_vertex_info(struct llvmpipe_context *llvmpipe)
  * Called just prior to drawing anything (pipe::draw_arrays(), etc).
  *
  * Hopefully this will remain quite simple, otherwise need to pull in
- * something like the state tracker mechanism.
+ * something like the gallium frontend mechanism.
  */
 void llvmpipe_update_derived( struct llvmpipe_context *llvmpipe )
 {

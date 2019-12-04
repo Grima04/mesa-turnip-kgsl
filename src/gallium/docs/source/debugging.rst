@@ -46,8 +46,8 @@ the shader sanity checker prints its warnings and errors to stderr.
 Whether the :ref:`Draw` module will attempt to use LLVM for vertex and geometry shaders.
 
 
-State tracker-specific
-""""""""""""""""""""""
+GL State tracker-specific
+"""""""""""""""""""""""""
 
 .. envvar:: ST_DEBUG <flags> (0x0)
 

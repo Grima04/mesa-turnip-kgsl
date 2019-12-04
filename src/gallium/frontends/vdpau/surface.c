@@ -461,7 +461,7 @@ vlVdpVideoSurfaceClear(vlVdpSurface *vlsurf)
 }
 
 /**
- * Interop to mesa state tracker
+ * Interop for the GL gallium frontend
  */
 struct pipe_video_buffer *vlVdpVideoSurfaceGallium(VdpVideoSurface surface)
 {

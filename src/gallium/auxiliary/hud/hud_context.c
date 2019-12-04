@@ -27,7 +27,7 @@
 
 /* This head-up display module can draw transparent graphs on top of what
  * the app is rendering, visualizing various data like framerate, cpu load,
- * performance counters, etc. It can be hook up into any state tracker.
+ * performance counters, etc. It can be hook up into any gallium frontend.
  *
  * The HUD is controlled with the GALLIUM_HUD environment variable.
  * Set GALLIUM_HUD=help for more info.
