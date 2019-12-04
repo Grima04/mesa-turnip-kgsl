@@ -1042,6 +1042,17 @@ device_alloc(struct v3dv_device *device,
    return VK_SUCCESS;
 }
 
+static void
+device_free(struct v3dv_device *device, struct v3dv_device_memory *mem)
+{
+   struct drm_gem_close c;
+   memset(&c, 0, sizeof(c));
+   c.handle = mem->handle;
+   int ret = v3dv_ioctl(device->fd, DRM_IOCTL_GEM_CLOSE, &c);
+   if (ret != 0)
+      fprintf(stderr, "close object %d: %s\n", mem->handle, strerror(errno));
+}
+
 VkResult
 v3dv_AllocateMemory(VkDevice _device,
                     const VkMemoryAllocateInfo *pAllocateInfo,
@@ -1085,7 +1096,7 @@ v3dv_FreeMemory(VkDevice _device,
    if (mem->map)
       v3dv_UnmapMemory(_device, _mem);
 
-   /* FIXME: stub */
+   device_free(device, mem);
 
    vk_free2(&device->alloc, pAllocator, mem);
 }
