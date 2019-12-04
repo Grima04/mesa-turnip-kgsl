@@ -63,6 +63,15 @@ draw_get_option_use_llvm(void)
 }
 #endif
 
+bool
+draw_has_llvm(void)
+{
+#ifdef LLVM_AVAILABLE
+   return draw_get_option_use_llvm();
+#else
+   return false;
+#endif
+}
 
 /**
  * Create new draw module context with gallivm state for LLVM JIT.

@@ -462,7 +462,11 @@ st_translate_vertex_program(struct st_context *st,
          stp->state.type = PIPE_SHADER_IR_NIR;
          stp->Base.nir = st_translate_prog_to_nir(st, &stp->Base,
                                                   MESA_SHADER_VERTEX);
-         return true;
+         /* For st_draw_feedback, we need to generate TGSI too if draw doesn't
+          * use LLVM.
+          */
+         if (draw_has_llvm())
+            return true;
       }
    }
 
@@ -578,7 +582,8 @@ st_create_vp_variant(struct st_context *st,
 
    state.stream_output = stvp->state.stream_output;
 
-   if (stvp->state.type == PIPE_SHADER_IR_NIR) {
+   if (stvp->state.type == PIPE_SHADER_IR_NIR &&
+       (!key->is_draw_shader || draw_has_llvm())) {
       bool finalize = false;
 
       state.type = PIPE_SHADER_IR_NIR;
