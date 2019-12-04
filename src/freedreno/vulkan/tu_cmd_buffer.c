@@ -1640,6 +1640,7 @@ tu_BeginCommandBuffer(VkCommandBuffer commandBuffer,
    cmd_buffer->usage_flags = pBeginInfo->flags;
 
    tu_cs_begin(&cmd_buffer->cs);
+   tu_cs_begin(&cmd_buffer->draw_cs);
 
    cmd_buffer->marker_seqno = 0;
    cmd_buffer->scratch_seqno = 0;
@@ -1788,6 +1789,7 @@ tu_EndCommandBuffer(VkCommandBuffer commandBuffer)
    }
 
    tu_cs_end(&cmd_buffer->cs);
+   tu_cs_end(&cmd_buffer->draw_cs);
 
    assert(!cmd_buffer->state.attachments);
 
@@ -2084,10 +2086,6 @@ tu_CmdBeginRenderPass(VkCommandBuffer commandBuffer,
    tu_cmd_update_tiling_config(cmd_buffer, &pRenderPassBegin->renderArea);
    tu_cmd_prepare_tile_load_ib(cmd_buffer);
    tu_cmd_prepare_tile_store_ib(cmd_buffer);
-
-   /* draw_cs should contain entries only for this render pass */
-   assert(!cmd_buffer->draw_cs.entry_count);
-   tu_cs_begin(&cmd_buffer->draw_cs);
 }
 
 void
@@ -2988,6 +2986,7 @@ tu_CmdEndRenderPass(VkCommandBuffer commandBuffer)
 
    /* discard draw_cs entries now that the tiles are rendered */
    tu_cs_discard_entries(&cmd_buffer->draw_cs);
+   tu_cs_begin(&cmd_buffer->draw_cs);
 
    vk_free(&cmd_buffer->pool->alloc, cmd_buffer->state.attachments);
    cmd_buffer->state.attachments = NULL;
