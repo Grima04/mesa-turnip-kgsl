@@ -675,9 +675,6 @@ tu6_emit_vpc_varying_modes(struct tu_cs *cs,
    tu_cs_emit_array(cs, ps_repl_modes, 8);
 }
 
-#define VALIDREG(r)      ((r) != regid(63,0))
-#define CONDREG(r, val)  COND(VALIDREG(r), (val))
-
 static void
 tu6_emit_fs_inputs(struct tu_cs *cs, const struct ir3_shader_variant *fs)
 {
