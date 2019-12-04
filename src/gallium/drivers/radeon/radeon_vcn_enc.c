@@ -254,6 +254,17 @@ static void radeon_enc_begin_frame(struct pipe_video_codec *encoder,
 {
 	struct radeon_encoder *enc = (struct radeon_encoder*)encoder;
 	struct vl_video_buffer *vid_buf = (struct vl_video_buffer *)source;
+	bool need_rate_control = false;
+
+	if (u_reduce_video_profile(enc->base.profile) == PIPE_VIDEO_FORMAT_MPEG4_AVC) {
+		struct pipe_h264_enc_picture_desc *pic = (struct pipe_h264_enc_picture_desc *)picture;
+		need_rate_control =
+			enc->enc_pic.rc_layer_init.target_bit_rate != pic->rate_ctrl.target_bitrate;
+	} else if (u_reduce_video_profile(picture->profile) == PIPE_VIDEO_FORMAT_HEVC) {
+		struct pipe_h265_enc_picture_desc *pic = (struct pipe_h265_enc_picture_desc *)picture;
+		need_rate_control =
+			enc->enc_pic.rc_layer_init.target_bit_rate != pic->rc.target_bitrate;
+	}
 
 	radeon_vcn_enc_get_param(enc, picture);
 
@@ -272,6 +283,10 @@ static void radeon_enc_begin_frame(struct pipe_video_codec *encoder,
 		enc->begin(enc);
 		flush(enc);
 		si_vid_destroy_buffer(&fb);
+	}
+	if (need_rate_control) {
+		enc->begin(enc);
+		flush(enc);
 	}
 }
 
