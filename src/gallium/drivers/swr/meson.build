@@ -129,6 +129,8 @@ files_swr_arch = files(
   'rasterizer/core/state.h',
   'rasterizer/core/state_funcs.h',
   'rasterizer/core/tessellator.h',
+  'rasterizer/core/tessellator.hpp',
+  'rasterizer/core/tessellator.cpp',
   'rasterizer/core/threads.cpp',
   'rasterizer/core/threads.h',
   'rasterizer/core/tilemgr.cpp',
@@ -316,5 +318,5 @@ libmesaswr = static_library(
 
 driver_swr = declare_dependency(
   compile_args : '-DGALLIUM_SWR',
-  link_with : libmesaswr,
+  link_with : libmesaswr
 )
