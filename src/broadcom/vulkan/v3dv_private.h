@@ -82,14 +82,6 @@ pack_emit_reloc(void *cl, const void *reloc) {}
 #define __gen_emit_reloc pack_emit_reloc
 #define __gen_address_offset(reloc) (0)
 
-/*
- * FIXME: confirm value
- *
- * FIXME: seems like a good idea having something like this, as anv, but both
- * tu/radv doesn't check for this issue. Need to revisit.
- */
-#define MAX_MEMORY_ALLOCATION_SIZE (1ull << 31)
-
 struct v3dv_instance;
 
 #ifdef USE_V3D_SIMULATOR
@@ -182,11 +174,15 @@ struct v3dv_cmd_buffer {
 };
 
 struct v3dv_device_memory {
-   /* FIXME: stub */
-   /* FIXME: likely would include links to structures similar to v3d_bo
-    * (perhaps we should refactor existing v3d_bo?) */
+   /* FIXME: Can we refactor and resuse v3d_bo here? */
+   uint32_t handle;
+   VkDeviceSize size;
+   VkDeviceSize offset;
+
    VkDeviceSize map_size;
    void *map;
+
+   const VkMemoryType *type;
 };
 
 #define V3D_OUTPUT_IMAGE_FORMAT_NO 255

@@ -30,12 +30,12 @@
 #include <unistd.h>
 #include <xf86drm.h>
 
-#include "common/v3d_debug.h"
-
 #include "v3dv_private.h"
-#include "vk_util.h"
 
+#include "common/v3d_debug.h"
 #include "compiler/glsl_types.h"
+#include "drm-uapi/v3d_drm.h"
+#include "vk_util.h"
 
 static void *
 default_alloc_func(void *pUserData, size_t size, size_t align,
@@ -1010,6 +1010,38 @@ v3dv_DestroyDebugReportCallbackEXT(VkInstance _instance,
                                     _callback, pAllocator, &instance->alloc);
 }
 
+static VkResult
+device_alloc(struct v3dv_device *device,
+             struct v3dv_device_memory *mem,
+             VkDeviceSize size)
+{
+   /* FIXME: implement a BO cache like in v3d */
+
+   /* Our kernel interface is 32-bit */
+   assert((size & 0xffffffff) == size);
+
+   const uint32_t page_align = 4096; /* Always allocate full pages */
+   size = align(size, page_align);
+   struct drm_v3d_create_bo create = {
+      .size = size
+   };
+
+   int ret = v3dv_ioctl(device->fd, DRM_IOCTL_V3D_CREATE_BO, &create);
+   if (ret != 0)
+      return VK_ERROR_OUT_OF_DEVICE_MEMORY;
+
+   assert(create.offset % page_align == 0);
+   assert((create.offset & 0xffffffff) == create.offset);
+
+   mem->handle = create.handle;
+   mem->size = size;
+   mem->offset = create.offset;
+   mem->map = NULL;
+   mem->map_size = 0;
+
+   return VK_SUCCESS;
+}
+
 VkResult
 v3dv_AllocateMemory(VkDevice _device,
                     const VkMemoryAllocateInfo *pAllocateInfo,
@@ -1018,29 +1050,25 @@ v3dv_AllocateMemory(VkDevice _device,
 {
    V3DV_FROM_HANDLE(v3dv_device, device, _device);
    struct v3dv_device_memory *mem;
-   /* struct v3dv_physical_device *pdevice = &device->instance->physicalDevice; */
+   struct v3dv_physical_device *pdevice = &device->instance->physicalDevice;
 
    assert(pAllocateInfo->sType == VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO);
 
    /* The Vulkan 1.0.33 spec says "allocationSize must be greater than 0". */
    assert(pAllocateInfo->allocationSize > 0);
 
-   if (pAllocateInfo->allocationSize > MAX_MEMORY_ALLOCATION_SIZE)
-      return VK_ERROR_OUT_OF_DEVICE_MEMORY;
-
    mem = vk_alloc2(&device->alloc, pAllocator, sizeof(*mem), 8,
                    VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (mem == NULL)
       return vk_error(NULL, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   /* FIXME: assert(pAllocateInfo->memoryTypeIndex < pdevice->memory.type_count); */
-   /* FIXME: mem->type = &pdevice->memory.types[pAllocateInfo->memoryTypeIndex]; */
-   mem->map = NULL;
-   mem->map_size = 0;
+   assert(pAllocateInfo->memoryTypeIndex < pdevice->memory.memoryTypeCount);
+   mem->type = &pdevice->memory.memoryTypes[pAllocateInfo->memoryTypeIndex];
 
-   /* FIXME: stub */
+   VkResult result = device_alloc(device, mem, pAllocateInfo->allocationSize);
 
-   return VK_SUCCESS;
+   *pMem = v3dv_device_memory_to_handle(mem);
+   return result;
 }
 
 void
