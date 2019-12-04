@@ -62,6 +62,8 @@ static radv_compiler_statistic_info statistic_infos[] = {
    [aco::statistic_cycles] = {"Busy Cycles", "Estimate of busy cycles"},
    [aco::statistic_vmem_clauses] = {"VMEM Clause", "Number of VMEM clauses (includes 1-sized clauses)"},
    [aco::statistic_smem_clauses] = {"SMEM Clause", "Number of SMEM clauses (includes 1-sized clauses)"},
+   [aco::statistic_vmem_score] = {"VMEM Score", "Average VMEM def-use distances"},
+   [aco::statistic_smem_score] = {"SMEM Score", "Average SMEM def-use distances"},
    [aco::statistic_sgpr_presched] = {"Pre-Sched SGPRs", "SGPR usage before scheduling"},
    [aco::statistic_vgpr_presched] = {"Pre-Sched VGPRs", "VGPR usage before scheduling"},
 };
