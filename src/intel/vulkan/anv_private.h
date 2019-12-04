@@ -672,6 +672,13 @@ struct anv_bo {
 };
 
 static inline struct anv_bo *
+anv_bo_ref(struct anv_bo *bo)
+{
+   p_atomic_inc(&bo->refcount);
+   return bo;
+}
+
+static inline struct anv_bo *
 anv_bo_unwrap(struct anv_bo *bo)
 {
    while (bo->is_wrapper)
@@ -2804,6 +2811,7 @@ void anv_cmd_emit_conditional_render_predicate(struct anv_cmd_buffer *cmd_buffer
 enum anv_fence_type {
    ANV_FENCE_TYPE_NONE = 0,
    ANV_FENCE_TYPE_BO,
+   ANV_FENCE_TYPE_WSI_BO,
    ANV_FENCE_TYPE_SYNCOBJ,
    ANV_FENCE_TYPE_WSI,
 };
@@ -2875,6 +2883,7 @@ enum anv_semaphore_type {
    ANV_SEMAPHORE_TYPE_NONE = 0,
    ANV_SEMAPHORE_TYPE_DUMMY,
    ANV_SEMAPHORE_TYPE_BO,
+   ANV_SEMAPHORE_TYPE_WSI_BO,
    ANV_SEMAPHORE_TYPE_SYNC_FILE,
    ANV_SEMAPHORE_TYPE_DRM_SYNCOBJ,
    ANV_SEMAPHORE_TYPE_TIMELINE,
@@ -2909,10 +2918,11 @@ struct anv_semaphore_impl {
    enum anv_semaphore_type type;
 
    union {
-      /* A BO representing this semaphore when type == ANV_SEMAPHORE_TYPE_BO.
-       * This BO will be added to the object list on any execbuf2 calls for
-       * which this semaphore is used as a wait or signal fence.  When used as
-       * a signal fence, the EXEC_OBJECT_WRITE flag will be set.
+      /* A BO representing this semaphore when type == ANV_SEMAPHORE_TYPE_BO
+       * or type == ANV_SEMAPHORE_TYPE_WSI_BO.  This BO will be added to the
+       * object list on any execbuf2 calls for which this semaphore is used as
+       * a wait or signal fence.  When used as a signal fence or when type ==
+       * ANV_SEMAPHORE_TYPE_WSI_BO, the EXEC_OBJECT_WRITE flag will be set.
        */
       struct anv_bo *bo;
 
