@@ -528,7 +528,38 @@ static void print_instr_format_specific(struct Instruction *instr, FILE *output)
       if (dpp->bound_ctrl)
          fprintf(output, " bound_ctrl:1");
    } else if ((int)instr->format & (int)Format::SDWA) {
-      fprintf(output, " (printing unimplemented)");
+      SDWA_instruction* sdwa = static_cast<SDWA_instruction*>(instr);
+      switch (sdwa->omod) {
+      case 1:
+         fprintf(output, " *2");
+         break;
+      case 2:
+         fprintf(output, " *4");
+         break;
+      case 3:
+         fprintf(output, " *0.5");
+         break;
+      }
+      if (sdwa->clamp)
+         fprintf(output, " clamp");
+      switch (sdwa->dst_sel & sdwa_asuint) {
+      case sdwa_udword:
+         break;
+      case sdwa_ubyte0:
+      case sdwa_ubyte1:
+      case sdwa_ubyte2:
+      case sdwa_ubyte3:
+         fprintf(output, " dst_sel:%sbyte%u", sdwa->dst_sel & sdwa_sext ? "s" : "u",
+                 sdwa->dst_sel & sdwa_bytenum);
+         break;
+      case sdwa_uword0:
+      case sdwa_uword1:
+         fprintf(output, " dst_sel:%sword%u", sdwa->dst_sel & sdwa_sext ? "s" : "u",
+                 sdwa->dst_sel & sdwa_wordnum);
+         break;
+      }
+      if (sdwa->dst_preserve)
+         fprintf(output, " dst_preserve");
    }
 }
 
@@ -546,23 +577,33 @@ void aco_print_instr(struct Instruction *instr, FILE *output)
    if (instr->operands.size()) {
       bool abs[instr->operands.size()];
       bool neg[instr->operands.size()];
+      uint8_t sel[instr->operands.size()];
       if ((int)instr->format & (int)Format::VOP3A) {
          VOP3A_instruction* vop3 = static_cast<VOP3A_instruction*>(instr);
          for (unsigned i = 0; i < instr->operands.size(); ++i) {
             abs[i] = vop3->abs[i];
             neg[i] = vop3->neg[i];
+            sel[i] = sdwa_udword;
          }
       } else if (instr->isDPP()) {
          DPP_instruction* dpp = static_cast<DPP_instruction*>(instr);
-         assert(instr->operands.size() <= 2);
          for (unsigned i = 0; i < instr->operands.size(); ++i) {
-            abs[i] = dpp->abs[i];
-            neg[i] = dpp->neg[i];
+            abs[i] = i < 2 ? dpp->abs[i] : false;
+            neg[i] = i < 2 ? dpp->neg[i] : false;
+            sel[i] = sdwa_udword;
+         }
+      } else if (instr->isSDWA()) {
+         SDWA_instruction* sdwa = static_cast<SDWA_instruction*>(instr);
+         for (unsigned i = 0; i < instr->operands.size(); ++i) {
+            abs[i] = i < 2 ? sdwa->abs[i] : false;
+            neg[i] = i < 2 ? sdwa->neg[i] : false;
+            sel[i] = i < 2 ? sdwa->sel[i] : sdwa_udword;
          }
       } else {
          for (unsigned i = 0; i < instr->operands.size(); ++i) {
             abs[i] = false;
             neg[i] = false;
+            sel[i] = sdwa_udword;
          }
       }
       for (unsigned i = 0; i < instr->operands.size(); ++i) {
@@ -575,7 +616,20 @@ void aco_print_instr(struct Instruction *instr, FILE *output)
             fprintf(output, "-");
          if (abs[i])
             fprintf(output, "|");
+         if (sel[i] & sdwa_sext)
+            fprintf(output, "sext(");
          print_operand(&instr->operands[i], output);
+         if (sel[i] & sdwa_sext)
+            fprintf(output, ")");
+         if ((sel[i] & sdwa_asuint) == sdwa_udword) {
+            /* print nothing */
+         } else if (sel[i] & sdwa_isword) {
+            unsigned index = sel[i] & sdwa_wordnum;
+            fprintf(output, "[%u:%u]", index * 16, index * 16 + 15);
+         } else {
+            unsigned index = sel[i] & sdwa_bytenum;
+            fprintf(output, "[%u:%u]", index * 8, index * 8 + 7);
+         }
          if (abs[i])
             fprintf(output, "|");
        }

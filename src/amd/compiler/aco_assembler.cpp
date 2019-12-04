@@ -547,7 +547,7 @@ void emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction*
          /* first emit the instruction without the DPP operand */
          Operand dpp_op = instr->operands[0];
          instr->operands[0] = Operand(PhysReg{250}, v1);
-         instr->format = (Format) ((uint32_t) instr->format & ~(1 << 14));
+         instr->format = (Format) ((uint16_t) instr->format & ~(uint16_t)Format::DPP);
          emit_instruction(ctx, out, instr);
          DPP_instruction* dpp = static_cast<DPP_instruction*>(instr);
          uint32_t encoding = (0xF & dpp->row_mask) << 28;
@@ -561,6 +561,47 @@ void emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction*
          encoding |= (0xFF) & dpp_op.physReg();
          out.push_back(encoding);
          return;
+      } else if (instr->isSDWA()) {
+         /* first emit the instruction without the SDWA operand */
+         Operand sdwa_op = instr->operands[0];
+         instr->operands[0] = Operand(PhysReg{249}, v1);
+         instr->format = (Format) ((uint16_t) instr->format & ~(uint16_t)Format::SDWA);
+         emit_instruction(ctx, out, instr);
+
+         SDWA_instruction* sdwa = static_cast<SDWA_instruction*>(instr);
+         uint32_t encoding = 0;
+
+         if ((uint16_t)instr->format & (uint16_t)Format::VOPC) {
+            if (instr->definitions[0].physReg() != vcc) {
+               encoding |= instr->definitions[0].physReg() << 8;
+               encoding |= 1 << 15;
+            }
+            encoding |= (sdwa->clamp ? 1 : 0) << 13;
+         } else {
+            encoding |= (uint32_t)(sdwa->dst_sel & sdwa_asuint) << 8;
+            uint32_t dst_u = sdwa->dst_sel & sdwa_sext ? 1 : 0;
+            encoding |= dst_u << 11;
+            encoding |= (sdwa->clamp ? 1 : 0) << 13;
+            encoding |= sdwa->omod << 14;
+         }
+
+         encoding |= (uint32_t)(sdwa->sel[0] & sdwa_asuint) << 16;
+         encoding |= sdwa->sel[0] & sdwa_sext ? 1 << 19 : 0;
+         encoding |= sdwa->abs[0] << 21;
+         encoding |= sdwa->neg[0] << 20;
+
+         if (instr->operands.size() >= 2) {
+            encoding |= (uint32_t)(sdwa->sel[1] & sdwa_asuint) << 24;
+            encoding |= sdwa->sel[1] & sdwa_sext ? 1 << 27 : 0;
+            encoding |= sdwa->abs[1] << 29;
+            encoding |= sdwa->neg[1] << 28;
+         }
+
+         encoding |= 0xFF & sdwa_op.physReg();
+         encoding |= (sdwa_op.physReg() < 256) << 23;
+         if (instr->operands.size() >= 2)
+            encoding |= (instr->operands[1].physReg() < 256) << 31;
+         out.push_back(encoding);
       } else {
          unreachable("unimplemented instruction format");
       }

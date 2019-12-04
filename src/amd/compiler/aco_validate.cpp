@@ -93,6 +93,50 @@ void validate(Program* program, FILE * output)
                   "Format cannot have VOP3A/VOP3B applied", instr.get());
          }
 
+         /* check SDWA */
+         if (instr->isSDWA()) {
+            check(base_format == Format::VOP2 ||
+                  base_format == Format::VOP1 ||
+                  base_format == Format::VOPC,
+                  "Format cannot have SDWA applied", instr.get());
+
+            check(program->chip_class >= GFX8, "SDWA is GFX8+ only", instr.get());
+
+            SDWA_instruction *sdwa = static_cast<SDWA_instruction*>(instr.get());
+            check(sdwa->omod == 0 || program->chip_class >= GFX9, "SDWA omod only supported on GFX9+", instr.get());
+            if (base_format == Format::VOPC) {
+               check(sdwa->clamp == false || program->chip_class == GFX8, "SDWA VOPC clamp only supported on GFX8", instr.get());
+               check((instr->definitions[0].isFixed() && instr->definitions[0].physReg() == vcc) ||
+                     program->chip_class >= GFX9,
+                     "SDWA+VOPC definition must be fixed to vcc on GFX8", instr.get());
+            }
+
+            if (instr->operands.size() >= 3) {
+               check(instr->operands[2].isFixed() && instr->operands[2].physReg() == vcc,
+                     "3rd operand must be fixed to vcc with SDWA", instr.get());
+            }
+            if (instr->definitions.size() >= 2) {
+               check(instr->definitions[1].isFixed() && instr->definitions[1].physReg() == vcc,
+                     "2nd definition must be fixed to vcc with SDWA", instr.get());
+            }
+
+            check(instr->opcode != aco_opcode::v_madmk_f32 &&
+                  instr->opcode != aco_opcode::v_madak_f32 &&
+                  instr->opcode != aco_opcode::v_madmk_f16 &&
+                  instr->opcode != aco_opcode::v_madak_f16 &&
+                  instr->opcode != aco_opcode::v_readfirstlane_b32 &&
+                  instr->opcode != aco_opcode::v_clrexcp &&
+                  instr->opcode != aco_opcode::v_swap_b32,
+                  "SDWA can't be used with this opcode", instr.get());
+            if (program->chip_class != GFX8) {
+               check(instr->opcode != aco_opcode::v_mac_f32 &&
+                     instr->opcode != aco_opcode::v_mac_f16 &&
+                     instr->opcode != aco_opcode::v_fmac_f32 &&
+                     instr->opcode != aco_opcode::v_fmac_f16,
+                     "SDWA can't be used with this opcode", instr.get());
+            }
+         }
+
          /* check for undefs */
          for (unsigned i = 0; i < instr->operands.size(); i++) {
             if (instr->operands[i].isUndefined()) {
@@ -137,6 +181,10 @@ void validate(Program* program, FILE * output)
                if (program->chip_class >= GFX10 && !is_shift64)
                   const_bus_limit = 2;
 
+               uint32_t scalar_mask = instr->isVOP3() ? 0x7 : 0x5;
+               if (instr->isSDWA())
+                  scalar_mask = program->chip_class >= GFX9 ? 0x7 : 0x4;
+
                check(instr->definitions[0].getTemp().type() == RegType::vgpr ||
                      (int) instr->format & (int) Format::VOPC ||
                      instr->opcode == aco_opcode::v_readfirstlane_b32 ||
@@ -158,7 +206,7 @@ void validate(Program* program, FILE * output)
                      continue;
                   }
                   if (op.isTemp() && instr->operands[i].regClass().type() == RegType::sgpr) {
-                     check(i != 1 || instr->isVOP3(), "Wrong source position for SGPR argument", instr.get());
+                     check(scalar_mask & (1 << i), "Wrong source position for SGPR argument", instr.get());
 
                      if (op.tempId() != sgpr[0] && op.tempId() != sgpr[1]) {
                         if (num_sgprs < 2)
@@ -167,7 +215,7 @@ void validate(Program* program, FILE * output)
                   }
 
                   if (op.isConstant() && !op.isLiteral())
-                     check(i == 0 || instr->isVOP3(), "Wrong source position for constant argument", instr.get());
+                     check(scalar_mask & (1 << i), "Wrong source position for constant argument", instr.get());
                }
                check(num_sgprs + (literal.isUndefined() ? 0 : 1) <= const_bus_limit, "Too many SGPRs/literals", instr.get());
             }

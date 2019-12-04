@@ -169,6 +169,11 @@ constexpr Format asVOP3(Format format) {
    return (Format) ((uint32_t) Format::VOP3 | (uint32_t) format);
 };
 
+constexpr Format asSDWA(Format format) {
+   assert(format == Format::VOP1 || format == Format::VOP2 || format == Format::VOPC);
+   return (Format) ((uint32_t) Format::SDWA | (uint32_t) format);
+}
+
 enum class RegType {
    none = 0,
    sgpr,
@@ -839,6 +844,55 @@ struct DPP_instruction : public Instruction {
    uint8_t row_mask : 4;
    uint8_t bank_mask : 4;
    bool bound_ctrl : 1;
+};
+
+enum sdwa_sel : uint8_t {
+    /* masks */
+    sdwa_wordnum = 0x1,
+    sdwa_bytenum = 0x3,
+    sdwa_asuint = 0x7,
+
+    /* flags */
+    sdwa_isword = 0x4,
+    sdwa_sext = 0x8,
+
+    /* specific values */
+    sdwa_ubyte0 = 0,
+    sdwa_ubyte1 = 1,
+    sdwa_ubyte2 = 2,
+    sdwa_ubyte3 = 3,
+    sdwa_uword0 = sdwa_isword | 0,
+    sdwa_uword1 = sdwa_isword | 1,
+    sdwa_udword = 6,
+
+    sdwa_sbyte0 = sdwa_ubyte0 | sdwa_sext,
+    sdwa_sbyte1 = sdwa_ubyte1 | sdwa_sext,
+    sdwa_sbyte2 = sdwa_ubyte2 | sdwa_sext,
+    sdwa_sbyte3 = sdwa_ubyte3 | sdwa_sext,
+    sdwa_sword0 = sdwa_uword0 | sdwa_sext,
+    sdwa_sword1 = sdwa_uword1 | sdwa_sext,
+    sdwa_sdword = sdwa_udword | sdwa_sext,
+};
+
+/**
+ * Sub-Dword Addressing Format:
+ * This format can be used for VOP1, VOP2 or VOPC instructions.
+ *
+ * omod and SGPR/constant operands are only available on GFX9+. For VOPC,
+ * the definition doesn't have to be VCC on GFX9+.
+ *
+ */
+struct SDWA_instruction : public Instruction {
+   /* these destination modifiers aren't available with VOPC except for
+    * clamp on GFX8 */
+   unsigned dst_sel:4;
+   bool dst_preserve:1;
+   bool clamp:1;
+   unsigned omod:2; /* GFX9+ */
+
+   unsigned sel[2];
+   bool neg[2];
+   bool abs[2];
 };
 
 struct Interp_instruction : public Instruction {
