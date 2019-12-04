@@ -1053,6 +1053,79 @@ device_free(struct v3dv_device *device, struct v3dv_device_memory *mem)
       fprintf(stderr, "close object %d: %s\n", mem->handle, strerror(errno));
 }
 
+static VkResult
+device_map_unsynchronized(struct v3dv_device *device,
+                          struct v3dv_device_memory *mem,
+                          uint32_t size)
+{
+   assert(mem != NULL && size < mem->size);
+
+   /* From the spec:
+    *
+    *   "After a successful call to vkMapMemory the memory object memory is
+    *   considered to be currently host mapped. It is an application error to
+    *   call vkMapMemory on a memory object that is already host mapped."
+    */
+   assert(mem->map = NULL);
+
+   struct drm_v3d_mmap_bo map;
+   memset(&map, 0, sizeof(map));
+   map.handle = mem->handle;
+   int ret = v3dv_ioctl(device->fd, DRM_IOCTL_V3D_MMAP_BO, &map);
+   if (ret != 0) {
+      fprintf(stderr, "map ioctl failure\n");
+      return VK_ERROR_MEMORY_MAP_FAILED;
+   }
+
+   mem->map = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED,
+                   device->fd, map.offset);
+   if (mem->map == MAP_FAILED) {
+      fprintf(stderr, "mmap of bo %d (offset 0x%016llx, size %d) failed\n",
+              mem->handle, (long long)map.offset, (uint32_t)mem->size);
+      return VK_ERROR_MEMORY_MAP_FAILED;
+   }
+   VG(VALGRIND_MALLOCLIKE_BLOCK(mem->map, mem->size, 0, false));
+
+   mem->map_size = size;
+
+   return VK_SUCCESS;
+}
+
+static bool
+device_memory_wait(struct v3dv_device *device,
+                   struct v3dv_device_memory *mem,
+                   uint64_t timeout_ns)
+{
+   struct drm_v3d_wait_bo wait = {
+      .handle = mem->handle,
+      .timeout_ns = timeout_ns,
+   };
+   int ret = v3dv_ioctl(device->fd, DRM_IOCTL_V3D_WAIT_BO, &wait);
+   if (ret == -1)
+      return -errno;
+   else
+      return 0;
+}
+
+static VkResult
+device_map(struct v3dv_device *device,
+           struct v3dv_device_memory *mem,
+           uint32_t size)
+{
+   VkResult result = device_map_unsynchronized(device, mem, size);
+   if (result != VK_SUCCESS)
+      return result;
+
+   const uint64_t infinite = 0xffffffffffffffffull;
+   bool ok = device_memory_wait(device, mem, infinite);
+   if (!ok) {
+      fprintf(stderr, "memory wait for map failed\n");
+      return VK_ERROR_MEMORY_MAP_FAILED;
+   }
+
+   return VK_SUCCESS;
+}
+
 VkResult
 v3dv_AllocateMemory(VkDevice _device,
                     const VkMemoryAllocateInfo *pAllocateInfo,
@@ -1117,9 +1190,23 @@ v3dv_MapMemory(VkDevice _device,
       return VK_SUCCESS;
    }
 
-   /* FIXME: stub */
+   assert(offset < mem->size);
 
-   return vk_error(device->instance, VK_ERROR_MEMORY_MAP_FAILED);
+   /* We always map from the beginning of the region, so if our offset
+    * is not 0 and we are not mapping the entire region, we need to
+    * add the offset to the map size.
+    */
+   if (size == VK_WHOLE_SIZE)
+      size = mem->size;
+   else if (offset > 0)
+      size += offset;
+
+   VkResult result = device_map(device, mem, size);
+   if (result != VK_SUCCESS)
+      return vk_error(device->instance, result);
+
+   *ppData = ((uint8_t *) mem->map) + offset;
+   return VK_SUCCESS;
 }
 
 void
