@@ -503,7 +503,7 @@ enum pipe_flush_flags
 #define PIPE_RESOURCE_FLAG_SINGLE_THREAD_USE     (1 << 4)
 #define PIPE_RESOURCE_FLAG_ENCRYPTED             (1 << 5)
 #define PIPE_RESOURCE_FLAG_DRV_PRIV    (1 << 8) /* driver/winsys private */
-#define PIPE_RESOURCE_FLAG_ST_PRIV     (1 << 24) /* gallium frontend/winsys private */
+#define PIPE_RESOURCE_FLAG_FRONTEND_PRIV         (1 << 24) /* gallium frontend private */
 
 /**
  * Hint about the expected lifecycle of a resource.

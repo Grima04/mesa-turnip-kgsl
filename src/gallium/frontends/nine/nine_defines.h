@@ -26,8 +26,8 @@
 #include "pipe/p_defines.h"
 
 
-#define NINE_RESOURCE_FLAG_LOCKABLE (PIPE_RESOURCE_FLAG_ST_PRIV << 1)
-#define NINE_RESOURCE_FLAG_DUMMY    (PIPE_RESOURCE_FLAG_ST_PRIV << 2)
+#define NINE_RESOURCE_FLAG_LOCKABLE (PIPE_RESOURCE_FLAG_FRONTEND_PRIV << 1)
+#define NINE_RESOURCE_FLAG_DUMMY    (PIPE_RESOURCE_FLAG_FRONTEND_PRIV << 2)
 
 /* vertexdeclaration9.c */
 uint16_t nine_d3d9_to_nine_declusage(unsigned usage, unsigned index);
