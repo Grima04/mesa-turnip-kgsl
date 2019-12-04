@@ -1123,6 +1123,16 @@ anv_fence_impl_cleanup(struct anv_device *device,
    impl->type = ANV_FENCE_TYPE_NONE;
 }
 
+void
+anv_fence_reset_temporary(struct anv_device *device,
+                          struct anv_fence *fence)
+{
+   if (fence->temporary.type == ANV_FENCE_TYPE_NONE)
+      return;
+
+   anv_fence_impl_cleanup(device, &fence->temporary);
+}
+
 void anv_DestroyFence(
     VkDevice                                    _device,
     VkFence                                     _fence,
@@ -1157,8 +1167,7 @@ VkResult anv_ResetFences(
        *    first restored. The remaining operations described therefore
        *    operate on the restored payload.
        */
-      if (fence->temporary.type != ANV_FENCE_TYPE_NONE)
-         anv_fence_impl_cleanup(device, &fence->temporary);
+      anv_fence_reset_temporary(device, fence);
 
       struct anv_fence_impl *impl = &fence->permanent;
 

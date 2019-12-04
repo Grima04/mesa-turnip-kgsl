@@ -2863,6 +2863,9 @@ struct anv_fence {
    struct anv_fence_impl temporary;
 };
 
+void anv_fence_reset_temporary(struct anv_device *device,
+                               struct anv_fence *fence);
+
 struct anv_event {
    uint64_t                                     semaphore;
    struct anv_state                             state;
