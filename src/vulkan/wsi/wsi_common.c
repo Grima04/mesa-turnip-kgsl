@@ -1004,7 +1004,28 @@ wsi_common_acquire_next_image2(const struct wsi_device *wsi,
 {
    WSI_FROM_HANDLE(wsi_swapchain, swapchain, pAcquireInfo->swapchain);
 
-   return swapchain->acquire_next_image(swapchain, pAcquireInfo, pImageIndex);
+   VkResult result = swapchain->acquire_next_image(swapchain, pAcquireInfo,
+                                                   pImageIndex);
+   if (result != VK_SUCCESS)
+      return result;
+
+   if (pAcquireInfo->semaphore != VK_NULL_HANDLE &&
+       wsi->signal_semaphore_for_memory != NULL) {
+      struct wsi_image *image =
+         swapchain->get_wsi_image(swapchain, *pImageIndex);
+      wsi->signal_semaphore_for_memory(device, pAcquireInfo->semaphore,
+                                       image->memory);
+   }
+
+   if (pAcquireInfo->fence != VK_NULL_HANDLE &&
+       wsi->signal_fence_for_memory != NULL) {
+      struct wsi_image *image =
+         swapchain->get_wsi_image(swapchain, *pImageIndex);
+      wsi->signal_fence_for_memory(device, pAcquireInfo->fence,
+                                   image->memory);
+   }
+
+   return VK_SUCCESS;
 }
 
 VkResult

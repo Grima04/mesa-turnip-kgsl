@@ -130,6 +130,22 @@ struct wsi_device {
 
    uint64_t (*image_get_modifier)(VkImage image);
 
+   /* Signals the semaphore such that any wait on the semaphore will wait on
+    * any reads or writes on the give memory object.  This is used to
+    * implement the semaphore signal operation in vkAcquireNextImage.
+    */
+   void (*signal_semaphore_for_memory)(VkDevice device,
+                                       VkSemaphore semaphore,
+                                       VkDeviceMemory memory);
+
+   /* Signals the fence such that any wait on the fence will wait on any reads
+    * or writes on the give memory object.  This is used to implement the
+    * semaphore signal operation in vkAcquireNextImage.
+    */
+   void (*signal_fence_for_memory)(VkDevice device,
+                                   VkFence fence,
+                                   VkDeviceMemory memory);
+
 #define WSI_CB(cb) PFN_vk##cb cb
    WSI_CB(AllocateMemory);
    WSI_CB(AllocateCommandBuffers);
