@@ -299,6 +299,12 @@ brw_blorp_blit_miptrees(struct brw_context *brw,
        dst_level, dst_layer, dst_x0, dst_y0, dst_x1, dst_y1,
        mirror_x, mirror_y);
 
+   if (src_format == MESA_FORMAT_NONE)
+      src_format = src_mt->format;
+
+   if (dst_format == MESA_FORMAT_NONE)
+      dst_format = dst_mt->format;
+
    if (!decode_srgb)
       src_format = _mesa_get_srgb_format_linear(src_format);
 

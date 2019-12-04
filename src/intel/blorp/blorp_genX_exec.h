@@ -1356,8 +1356,12 @@ blorp_emit_surface_state(struct blorp_batch *batch,
       surf.dim = ISL_SURF_DIM_2D;
    }
 
-   /* Blorp doesn't support HiZ in any of the blit or slow-clear paths */
-   assert(!isl_aux_usage_has_hiz(surface->aux_usage));
+   if (isl_aux_usage_has_hiz(surface->aux_usage)) {
+      /* BLORP doesn't render with depth so we can't use HiZ */
+      assert(!is_render_target);
+      /* We can't reinterpret HiZ */
+      assert(surface->surf.format == surface->view.format);
+   }
    enum isl_aux_usage aux_usage = surface->aux_usage;
 
    isl_channel_mask_t write_disable_mask = 0;
