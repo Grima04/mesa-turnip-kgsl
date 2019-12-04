@@ -657,9 +657,16 @@ enum mali_exception_access {
         MALI_EXCEPTION_ACCESS_WRITE   = 3
 };
 
+/* Details about set_value from panfrost igt tests which use it as a generic
+ * dword write primitive */
+
+#define MALI_SET_VALUE_ZERO 3
+
 struct mali_payload_set_value {
-        u64 out;
-        u64 unknown;
+        u64 address;
+        u32 value_descriptor;
+        u32 reserved;
+        u64 immediate;
 } __attribute__((packed));
 
 /* Special attributes have a fixed index */

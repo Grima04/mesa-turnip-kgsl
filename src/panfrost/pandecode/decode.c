@@ -2905,8 +2905,19 @@ pandecode_jc(mali_ptr jc_gpu_va, bool bifrost, unsigned gpu_id)
                         struct mali_payload_set_value *s = payload;
                         pandecode_log("struct mali_payload_set_value payload_%"PRIx64"_%d = {\n", payload_ptr, job_no);
                         pandecode_indent++;
-                        MEMORY_PROP(s, out);
-                        pandecode_prop("unknown = 0x%" PRIX64, s->unknown);
+                        MEMORY_PROP(s, address);
+
+                        if (s->value_descriptor != MALI_SET_VALUE_ZERO) {
+                                pandecode_msg("XXX: unknown value descriptor\n");
+                                pandecode_prop("value_descriptor = 0x%" PRIX32, s->value_descriptor);
+                        }
+
+                        if (s->reserved) {
+                                pandecode_msg("XXX: set value tripped\n");
+                                pandecode_prop("reserved = 0x%" PRIX32, s->reserved);
+                        }
+
+                        pandecode_prop("immediate = 0x%" PRIX64, s->immediate);
                         pandecode_indent--;
                         pandecode_log("};\n");
 

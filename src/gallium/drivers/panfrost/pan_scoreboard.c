@@ -30,7 +30,7 @@
 /*
  * Within a batch (panfrost_job), there are various types of Mali jobs:
  *
- *  - SET_VALUE: initializes tiler
+ *  - SET_VALUE: generic write primitive, used to zero tiler field
  *  - VERTEX: runs a vertex shader
  *  - TILER: runs tiling and sets up a fragment shader
  *  - FRAGMENT: runs fragment shaders and writes out
@@ -278,8 +278,9 @@ panfrost_set_value_job(struct panfrost_batch *batch, mali_ptr polygon_list)
         };
 
         struct mali_payload_set_value payload = {
-                .out = polygon_list,
-                .unknown = 0x3,
+                .address = polygon_list,
+                .value_descriptor = MALI_SET_VALUE_ZERO,
+                .immediate = 0
         };
 
         struct panfrost_transfer transfer = panfrost_allocate_transient(batch, sizeof(job) + sizeof(payload));
