@@ -241,4 +241,7 @@ CHIPSET(0x4500, ehl_4x8, "Intel(R) HD Graphics (Elkhart Lake 4x8)")
 CHIPSET(0x4571, ehl_4x8, "Intel(R) HD Graphics (Elkhart Lake 4x8)")
 CHIPSET(0x4551, ehl_4x4, "Intel(R) HD Graphics (Elkhart Lake 4x4)")
 CHIPSET(0x4541, ehl_2x4, "Intel(R) HD Graphics (Elkhart Lake 2x4)")
+CHIPSET(0x4E51, ehl_4x4, "Intel(R) HD Graphics (Jasper Lake 4x4)")
+CHIPSET(0x4E61, ehl_4x6, "Intel(R) HD Graphics (Jasper Lake 4x6)")
+CHIPSET(0x4E71, ehl_4x8, "Intel(R) HD Graphics (Jasper Lake 4x8)")
 #endif
