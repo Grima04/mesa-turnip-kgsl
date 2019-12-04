@@ -784,6 +784,7 @@ void handle_operands(std::map<PhysReg, copy_operation>& copy_map, lower_context*
 
          copy_map.erase(it);
          it = copy_map.begin();
+         ctx->program->statistics[statistic_copies]++;
          continue;
       } else {
          /* the target reg is used as operand, check the next entry */
@@ -813,6 +814,7 @@ void handle_operands(std::map<PhysReg, copy_operation>& copy_map, lower_context*
       Definition op_as_def = Definition(swap.op.physReg(), swap.op.regClass());
       if (chip_class >= GFX9 && swap.def.getTemp().type() == RegType::vgpr) {
          bld.vop1(aco_opcode::v_swap_b32, swap.def, op_as_def, swap.op, def_as_op);
+         ctx->program->statistics[statistic_copies]++;
       } else if (swap.op.physReg() == scc || swap.def.physReg() == scc) {
          /* we need to swap scc and another sgpr */
          assert(!preserve_scc);
@@ -822,6 +824,7 @@ void handle_operands(std::map<PhysReg, copy_operation>& copy_map, lower_context*
          bld.sop1(aco_opcode::s_mov_b32, Definition(pi->scratch_sgpr, s1), Operand(scc, s1));
          bld.sopc(aco_opcode::s_cmp_lg_i32, Definition(scc, s1), Operand(other, s1), Operand(0u));
          bld.sop1(aco_opcode::s_mov_b32, Definition(other, s1), Operand(pi->scratch_sgpr, s1));
+         ctx->program->statistics[statistic_copies] += 3;
       } else if (swap.def.getTemp().type() == RegType::sgpr) {
          if (preserve_scc) {
             bld.sop1(aco_opcode::s_mov_b32, Definition(pi->scratch_sgpr, s1), swap.op);
@@ -832,10 +835,12 @@ void handle_operands(std::map<PhysReg, copy_operation>& copy_map, lower_context*
             bld.sop2(aco_opcode::s_xor_b32, swap.def, Definition(scc, s1), swap.op, def_as_op);
             bld.sop2(aco_opcode::s_xor_b32, op_as_def, Definition(scc, s1), swap.op, def_as_op);
          }
+         ctx->program->statistics[statistic_copies] += 3;
       } else {
          bld.vop2(aco_opcode::v_xor_b32, op_as_def, swap.op, def_as_op);
          bld.vop2(aco_opcode::v_xor_b32, swap.def, swap.op, def_as_op);
          bld.vop2(aco_opcode::v_xor_b32, op_as_def, swap.op, def_as_op);
+         ctx->program->statistics[statistic_copies] += 3;
       }
 
       /* change the operand reg of the target's use */

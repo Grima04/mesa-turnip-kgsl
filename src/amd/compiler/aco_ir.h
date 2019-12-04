@@ -1219,6 +1219,19 @@ static constexpr Stage tess_control_hs = sw_tcs | hw_hs;
 static constexpr Stage tess_eval_es = sw_tes | hw_es; /* tesselation evaluation before geometry */
 static constexpr Stage geometry_gs = sw_gs | hw_gs;
 
+enum statistic {
+   statistic_hash,
+   statistic_instructions,
+   statistic_copies,
+   statistic_branches,
+   statistic_cycles,
+   statistic_vmem_clauses,
+   statistic_smem_clauses,
+   statistic_sgpr_presched,
+   statistic_vgpr_presched,
+   num_statistics
+};
+
 class Program final {
 public:
    float_mode next_fp_mode;
@@ -1256,6 +1269,9 @@ public:
 
    bool needs_vcc = false;
    bool needs_flat_scr = false;
+
+   bool collect_statistics = false;
+   uint32_t statistics[num_statistics];
 
    uint32_t allocateId()
    {
@@ -1336,6 +1352,10 @@ void perfwarn(bool cond, const char *msg, Instruction *instr=NULL);
 #else
 #define perfwarn(program, cond, msg, ...) do {} while(0)
 #endif
+
+void collect_presched_stats(Program *program);
+void collect_preasm_stats(Program *program);
+void collect_postasm_stats(Program *program, const std::vector<uint32_t>& code);
 
 void aco_print_instr(Instruction *instr, FILE *output);
 void aco_print_program(Program *program, FILE *output);
