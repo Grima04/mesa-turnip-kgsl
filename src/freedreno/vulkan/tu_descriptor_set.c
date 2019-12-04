@@ -688,9 +688,8 @@ static void write_buffer_descriptor(struct tu_device *device,
                                     const VkDescriptorBufferInfo *buffer_info)
 {
    TU_FROM_HANDLE(tu_buffer, buffer, buffer_info->buffer);
-   uint64_t va = buffer->bo->iova;
 
-   va += buffer_info->offset + buffer->bo_offset;
+   uint64_t va = tu_buffer_iova(buffer) + buffer_info->offset;
    dst[0] = va;
    dst[1] = va >> 32;
 
@@ -706,13 +705,12 @@ static void write_dynamic_buffer_descriptor(struct tu_device *device,
                                             const VkDescriptorBufferInfo *buffer_info)
 {
    TU_FROM_HANDLE(tu_buffer, buffer, buffer_info->buffer);
-   uint64_t va = buffer->bo->iova;
+   uint64_t va = tu_buffer_iova(buffer) + buffer_info->offset;
    unsigned size = buffer_info->range;
 
    if (buffer_info->range == VK_WHOLE_SIZE)
       size = buffer->size - buffer_info->offset;
 
-   va += buffer_info->offset + buffer->bo_offset;
    range->va = va;
    range->size = size;
 

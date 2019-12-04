@@ -208,7 +208,7 @@ tu_blit_buffer(struct tu_buffer *buffer,
    return (struct tu_blit_surf) {
       .fmt = format,
       .tile_mode = TILE6_LINEAR,
-      .va = buffer->bo->iova + buffer->bo_offset + info->bufferOffset,
+      .va = tu_buffer_iova(buffer) + info->bufferOffset,
       .pitch = pitch,
       .layer_size = (info->bufferImageHeight ?: info->imageExtent.height) * pitch / vk_format_get_blockwidth(format) / vk_format_get_blockheight(format),
       .width = info->imageExtent.width,

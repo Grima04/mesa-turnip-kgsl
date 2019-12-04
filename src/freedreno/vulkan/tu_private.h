@@ -665,6 +665,12 @@ struct tu_buffer
    VkDeviceSize bo_offset;
 };
 
+static inline uint64_t
+tu_buffer_iova(struct tu_buffer *buffer)
+{
+   return buffer->bo->iova + buffer->bo_offset;
+}
+
 enum tu_dynamic_state_bits
 {
    TU_DYNAMIC_VIEWPORT = 1 << 0,
