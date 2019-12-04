@@ -1792,7 +1792,7 @@ void register_allocation(Program *program, std::vector<std::set<Temp>> live_out_
          if (instr_needs_vop3) {
 
             /* if the first operand is a literal, we have to move it to a reg */
-            if (instr->operands.size() && instr->operands[0].isLiteral()) {
+            if (instr->operands.size() && instr->operands[0].isLiteral() && program->chip_class < GFX10) {
                bool can_sgpr = true;
                /* check, if we have to move to vgpr */
                for (const Operand& op : instr->operands) {
