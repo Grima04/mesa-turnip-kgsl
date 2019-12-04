@@ -1126,6 +1126,24 @@ device_map(struct v3dv_device *device,
    return VK_SUCCESS;
 }
 
+static void
+device_unmap(struct v3dv_device *device, struct v3dv_device_memory *mem)
+{
+   assert(mem->map && mem->map_size > 0);
+
+   munmap(mem->map, mem->map_size);
+   VG(VALGRIND_FREELIKE_BLOCK(mem->map, 0));
+   mem->map = NULL;
+   mem->map_size = 0;
+
+   struct drm_gem_close c;
+   memset(&c, 0, sizeof(c));
+   c.handle = mem->handle;
+   int ret = v3dv_ioctl(device->fd, DRM_IOCTL_GEM_CLOSE, &c);
+   if (ret != 0)
+      fprintf(stderr, "close object %d: %s\n", mem->handle, strerror(errno));
+}
+
 VkResult
 v3dv_AllocateMemory(VkDevice _device,
                     const VkMemoryAllocateInfo *pAllocateInfo,
@@ -1213,7 +1231,13 @@ void
 v3dv_UnmapMemory(VkDevice _device,
                  VkDeviceMemory _memory)
 {
-   /* FIXME: stub */
+   V3DV_FROM_HANDLE(v3dv_device, device, _device);
+   V3DV_FROM_HANDLE(v3dv_device_memory, mem, _memory);
+
+   if (mem == NULL)
+      return;
+
+   device_unmap(device, mem);
 }
 
 VkResult
