@@ -165,6 +165,9 @@ mir_create_dependency_graph(midgard_instruction **instructions, unsigned count, 
                 util_dynarray_fini(&last_read[i]);
                 util_dynarray_fini(&last_write[i]);
         }
+
+        free(last_read);
+        free(last_write);
 }
 
 /* Does the mask cover more than a scalar? */
