@@ -62,6 +62,8 @@ static uint32_t
 tu_bo_list_add_info(struct tu_bo_list *list,
                     const struct drm_msm_gem_submit_bo *bo_info)
 {
+   assert(bo_info->handle != 0);
+
    for (uint32_t i = 0; i < list->count; ++i) {
       if (list->bo_infos[i].handle == bo_info->handle) {
          assert(list->bo_infos[i].presumed == bo_info->presumed);
