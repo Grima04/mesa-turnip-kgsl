@@ -114,7 +114,8 @@ struct v3dv_physical_device {
    int32_t master_fd;
    uint8_t pipeline_cache_uuid[VK_UUID_SIZE];
 
-   /* FIXME: stub */
+   VkPhysicalDeviceMemoryProperties memory;
+
    struct v3d_device_info devinfo;
 
    struct v3d_simulator_file *sim_file;

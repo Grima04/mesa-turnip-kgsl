@@ -252,6 +252,27 @@ v3dv_DestroyInstance(VkInstance _instance,
    vk_free(&instance->alloc, instance);
 }
 
+static uint64_t
+compute_heap_size()
+{
+   /* Query the total ram from the system */
+   struct sysinfo info;
+   sysinfo(&info);
+
+   uint64_t total_ram = (uint64_t)info.totalram * (uint64_t)info.mem_unit;
+
+   /* We don't want to burn too much ram with the GPU.  If the user has 4GiB
+    * or less, we use at most half.  If they have more than 4GiB, we use 3/4.
+    */
+   uint64_t available_ram;
+   if (total_ram <= 4ull * 1024ull * 1024ull * 1024ull)
+      available_ram = total_ram / 2;
+   else
+      available_ram = total_ram * 3 / 4;
+
+   return available_ram;
+}
+
 static VkResult
 physical_device_init(struct v3dv_physical_device *device,
                      struct v3dv_instance *instance,
@@ -290,7 +311,28 @@ physical_device_init(struct v3dv_physical_device *device,
    asprintf(&device->name, "V3D %d.%d",
             device->devinfo.ver / 10, device->devinfo.ver % 10);
 
- fail:
+   /* Setup available memory heaps and types */
+   VkPhysicalDeviceMemoryProperties *mem = &device->memory;
+   mem->memoryHeapCount = 1;
+   mem->memoryHeaps[0].size = compute_heap_size();
+   mem->memoryHeaps[0].flags = VK_MEMORY_HEAP_DEVICE_LOCAL_BIT;
+
+   mem->memoryTypeCount = 2;
+
+   /* This is the only combination required by the spec */
+   mem->memoryTypes[0].propertyFlags =
+      VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT |
+      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+      VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+   mem->memoryTypes[0].heapIndex = 0;
+
+   mem->memoryTypes[1].propertyFlags =
+      VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT |
+      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+      VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
+   mem->memoryTypes[1].heapIndex = 0;
+
+fail:
    close(fd);
    if (master_fd != -1)
       close(master_fd);
@@ -431,28 +473,6 @@ v3dv_GetPhysicalDeviceFeatures(VkPhysicalDevice physicalDevice,
       .inheritedQueries = false,
    };
 }
-
-static uint64_t
-compute_heap_size()
-{
-   /* Query the total ram from the system */
-   struct sysinfo info;
-   sysinfo(&info);
-
-   uint64_t total_ram = (uint64_t)info.totalram * (uint64_t)info.mem_unit;
-
-   /* We don't want to burn too much ram with the GPU.  If the user has 4GiB
-    * or less, we use at most half.  If they have more than 4GiB, we use 3/4.
-    */
-   uint64_t available_ram;
-   if (total_ram <= 4ull * 1024ull * 1024ull * 1024ull)
-      available_ram = total_ram / 2;
-   else
-      available_ram = total_ram * 3 / 4;
-
-   return available_ram;
-}
-
 
 void
 v3dv_GetPhysicalDeviceProperties(VkPhysicalDevice physicalDevice,
@@ -659,24 +679,8 @@ void
 v3dv_GetPhysicalDeviceMemoryProperties(VkPhysicalDevice physicalDevice,
                                        VkPhysicalDeviceMemoryProperties *pMemoryProperties)
 {
-   pMemoryProperties->memoryHeapCount = 1;
-   pMemoryProperties->memoryHeaps[0].size = compute_heap_size();
-   pMemoryProperties->memoryHeaps[0].flags = VK_MEMORY_HEAP_DEVICE_LOCAL_BIT;
-
-   pMemoryProperties->memoryTypeCount = 2;
-
-   /* This is the only combination required by the spec */
-   pMemoryProperties->memoryTypes[0].propertyFlags =
-      VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT |
-      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-      VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-   pMemoryProperties->memoryTypes[0].heapIndex = 0;
-
-   pMemoryProperties->memoryTypes[1].propertyFlags =
-      VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT |
-      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-      VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
-   pMemoryProperties->memoryTypes[1].heapIndex = 0;
+   V3DV_FROM_HANDLE(v3dv_physical_device, device, physicalDevice);
+   *pMemoryProperties = device->memory;
 }
 
 
