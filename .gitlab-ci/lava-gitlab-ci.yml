@@ -11,7 +11,7 @@ include:
     - .container
   variables:
     REPO_SUFFIX: ${CI_JOB_NAME}
-    DEBIAN_TAG:  &debian_tag '2019-12-03-1'
+    DEBIAN_TAG:  &debian_tag '2019-12-05-1'
     DEBIAN_EXEC: 'DEBIAN_ARCH=${DEBIAN_ARCH}
                   GCC_ARCH=${GCC_ARCH}
                   KERNEL_ARCH=${KERNEL_ARCH}
