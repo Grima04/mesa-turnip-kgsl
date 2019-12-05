@@ -10,7 +10,14 @@ website <https://mesonbuild.com/>`__.
 **Mesa's Meson build system is generally considered stable and ready for
 production.**
 
-.. note:: Mesa requires Meson >= 0.52.0 to build.
+.. note::
+
+   Mesa requires Meson >= 0.52.0 to build.
+
+   If your distribution doesn't have something recent enough in its
+   repositories, you can `try the methods suggested here
+   <https://mesonbuild.com/Getting-meson.html>`__ to install the
+   current version of Meson.
 
 The Meson build of Mesa is tested on Linux, macOS, Windows, Cygwin,
 Haiku, FreeBSD, DragonflyBSD, NetBSD, and should work on OpenBSD.
