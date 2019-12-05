@@ -109,7 +109,7 @@ panfrost_emit_midg_tiler(struct panfrost_batch *batch, unsigned vertex_count)
                         t.hierarchy_mask = MALI_TILER_USER;
                         t.polygon_list_size = MALI_TILER_MINIMUM_HEADER_SIZE + 4;
 
-                        /* We don't have a SET_VALUE job, so write the polygon list manually */
+                        /* We don't have a WRITE_VALUE job, so write the polygon list manually */
                         uint32_t *polygon_list_body = (uint32_t *) (tiler_dummy->cpu + header_size);
                         polygon_list_body[0] = 0xa0000000; /* TODO: Just that? */
                 }
@@ -182,7 +182,7 @@ panfrost_clear(
          * the existing batch targeting this FBO has draws. We could probably
          * avoid that by replacing plain clears by quad-draws with a specific
          * color/depth/stencil value, thus avoiding the generation of extra
-         * fragment/set_value jobs.
+         * fragment jobs.
          */
         struct panfrost_batch *batch = panfrost_get_fresh_batch_for_fbo(ctx);
 

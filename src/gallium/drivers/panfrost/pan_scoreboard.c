@@ -30,7 +30,7 @@
 /*
  * Within a batch (panfrost_job), there are various types of Mali jobs:
  *
- *  - SET_VALUE: generic write primitive, used to zero tiler field
+ *  - WRITE_VALUE: generic write primitive, used to zero tiler field
  *  - VERTEX: runs a vertex shader
  *  - TILER: runs tiling and sets up a fragment shader
  *  - FRAGMENT: runs fragment shaders and writes out
@@ -267,20 +267,19 @@ panfrost_scoreboard_queue_fused_job_prepend(
         batch->first_tiler = tiler;
 }
 
-/* Generates a set value job, used below as part of TILER job scheduling. */
+/* Generates a write value job, used to initialize the tiler structures. */
 
 static struct panfrost_transfer
-panfrost_set_value_job(struct panfrost_batch *batch, mali_ptr polygon_list)
+panfrost_write_value_job(struct panfrost_batch *batch, mali_ptr polygon_list)
 {
         struct mali_job_descriptor_header job = {
-                .job_type = JOB_TYPE_SET_VALUE,
+                .job_type = JOB_TYPE_WRITE_VALUE,
                 .job_descriptor_size = 1,
         };
 
-        struct mali_payload_set_value payload = {
+        struct mali_payload_write_value payload = {
                 .address = polygon_list,
-                .value_descriptor = MALI_SET_VALUE_ZERO,
-                .immediate = 0
+                .value_descriptor = MALI_WRITE_VALUE_ZERO,
         };
 
         struct panfrost_transfer transfer = panfrost_allocate_transient(batch, sizeof(job) + sizeof(payload));
@@ -290,11 +289,12 @@ panfrost_set_value_job(struct panfrost_batch *batch, mali_ptr polygon_list)
         return transfer;
 }
 
-/* If there are any tiler jobs, there needs to be a corresponding set value job
- * linked to the first vertex job feeding into tiling. */
+/* If there are any tiler jobs, we need to initialize the tiler by writing
+ * zeroes to a magic tiler structure. We do so via a WRITE_VALUE job linked to
+ * the first vertex job feeding into tiling. */
 
 static void
-panfrost_scoreboard_set_value(struct panfrost_batch *batch)
+panfrost_scoreboard_initialize_tiler(struct panfrost_batch *batch)
 {
         /* Check if we even need tiling */
         if (!batch->last_tiler.gpu)
@@ -307,7 +307,7 @@ panfrost_scoreboard_set_value(struct panfrost_batch *batch)
                 MALI_TILER_MINIMUM_HEADER_SIZE);
 
         struct panfrost_transfer job =
-                panfrost_set_value_job(batch, polygon_list);
+                panfrost_write_value_job(batch, polygon_list);
 
         /* Queue it */
         panfrost_scoreboard_queue_compute_job(batch, job);
@@ -350,7 +350,7 @@ void
 panfrost_scoreboard_link_batch(struct panfrost_batch *batch)
 {
         /* Finalize the batch */
-        panfrost_scoreboard_set_value(batch);
+        panfrost_scoreboard_initialize_tiler(batch);
 
         /* Let no_incoming represent the set S described. */
 
@@ -373,7 +373,7 @@ panfrost_scoreboard_link_batch(struct panfrost_batch *batch)
          * Proposition: Given a node N of type T, no more than one other node
          * depends on N.
          *
-         * If type is SET_VALUE: The only dependency added against us is from
+         * If type is WRITE_VALUE: The only dependency added against us is from
          * the first tiler job, so there is 1 dependent.
          *
          * If type is VERTEX: If there is a tiler node, that tiler node depends

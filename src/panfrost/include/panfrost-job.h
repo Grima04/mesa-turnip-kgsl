@@ -34,7 +34,7 @@
 enum mali_job_type {
         JOB_NOT_STARTED	= 0,
         JOB_TYPE_NULL = 1,
-        JOB_TYPE_SET_VALUE = 2,
+        JOB_TYPE_WRITE_VALUE = 2,
         JOB_TYPE_CACHE_FLUSH = 3,
         JOB_TYPE_COMPUTE = 4,
         JOB_TYPE_VERTEX = 5,
@@ -657,12 +657,12 @@ enum mali_exception_access {
         MALI_EXCEPTION_ACCESS_WRITE   = 3
 };
 
-/* Details about set_value from panfrost igt tests which use it as a generic
+/* Details about write_value from panfrost igt tests which use it as a generic
  * dword write primitive */
 
-#define MALI_SET_VALUE_ZERO 3
+#define MALI_WRITE_VALUE_ZERO 3
 
-struct mali_payload_set_value {
+struct mali_payload_write_value {
         u64 address;
         u32 value_descriptor;
         u32 reserved;

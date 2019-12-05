@@ -100,7 +100,7 @@ struct panfrost_batch {
          * These arrays contain the headers for the "primary batch", our jargon
          * referring to the part of the panfrost_job that actually contains
          * meaningful work. In an OpenGL ES setting, that means the
-         * SET_VALUE/VERTEX/TILER jobs. Excluded is specifically the FRAGMENT
+         * WRITE_VALUE/VERTEX/TILER jobs. Excluded is specifically the FRAGMENT
          * job, which is sent on as a secondary batch containing only a single
          * hardware job. Since there's one and only one FRAGMENT job issued per
          * panfrost_job, there is no need to do any scoreboarding / management;

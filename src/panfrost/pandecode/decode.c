@@ -309,7 +309,7 @@ pandecode_job_type(enum mali_job_type type)
 
         switch (type) {
                 DEFINE_CASE(NULL);
-                DEFINE_CASE(SET_VALUE);
+                DEFINE_CASE(WRITE_VALUE);
                 DEFINE_CASE(CACHE_FLUSH);
                 DEFINE_CASE(COMPUTE);
                 DEFINE_CASE(VERTEX);
@@ -2901,13 +2901,13 @@ pandecode_jc(mali_ptr jc_gpu_va, bool bifrost, unsigned gpu_id)
                  * reason. */
 
                 switch (h->job_type) {
-                case JOB_TYPE_SET_VALUE: {
-                        struct mali_payload_set_value *s = payload;
-                        pandecode_log("struct mali_payload_set_value payload_%"PRIx64"_%d = {\n", payload_ptr, job_no);
+                case JOB_TYPE_WRITE_VALUE: {
+                        struct mali_payload_write_value *s = payload;
+                        pandecode_log("struct mali_payload_write_value payload_%"PRIx64"_%d = {\n", payload_ptr, job_no);
                         pandecode_indent++;
                         MEMORY_PROP(s, address);
 
-                        if (s->value_descriptor != MALI_SET_VALUE_ZERO) {
+                        if (s->value_descriptor != MALI_WRITE_VALUE_ZERO) {
                                 pandecode_msg("XXX: unknown value descriptor\n");
                                 pandecode_prop("value_descriptor = 0x%" PRIX32, s->value_descriptor);
                         }
