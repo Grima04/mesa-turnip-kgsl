@@ -5993,6 +5993,22 @@ static bool si_vs_needs_prolog(const struct si_shader_selector *sel,
 	return sel->vs_needs_prolog || key->ls_vgpr_fix;
 }
 
+LLVMValueRef si_is_es_thread(struct si_shader_context *ctx)
+{
+	/* Return true if the current thread should execute an ES thread. */
+	return LLVMBuildICmp(ctx->ac.builder, LLVMIntULT,
+			     ac_get_thread_id(&ctx->ac),
+			     si_unpack_param(ctx, ctx->merged_wave_info, 0, 8), "");
+}
+
+LLVMValueRef si_is_gs_thread(struct si_shader_context *ctx)
+{
+	/* Return true if the current thread should execute a GS thread. */
+	return LLVMBuildICmp(ctx->ac.builder, LLVMIntULT,
+			     ac_get_thread_id(&ctx->ac),
+			     si_unpack_param(ctx, ctx->merged_wave_info, 8, 8), "");
+}
+
 static bool si_compile_tgsi_main(struct si_shader_context *ctx,
 				 struct nir_shader *nir, bool free_nir)
 {
@@ -6160,7 +6176,7 @@ static bool si_compile_tgsi_main(struct si_shader_context *ctx,
 		} else if (ctx->type == PIPE_SHADER_TESS_CTRL ||
 			   ctx->type == PIPE_SHADER_GEOMETRY ||
 			   (shader->key.as_ngg && !shader->key.as_es)) {
-			LLVMValueRef num_threads;
+			LLVMValueRef thread_enabled;
 			bool nested_barrier;
 
 			if (!shader->is_monolithic ||
@@ -6177,21 +6193,15 @@ static bool si_compile_tgsi_main(struct si_shader_context *ctx,
 					nested_barrier = true;
 				}
 
-				/* Number of patches / primitives */
-				num_threads = si_unpack_param(ctx, ctx->merged_wave_info, 8, 8);
+				thread_enabled = si_is_gs_thread(ctx);
 			} else {
-				/* Number of vertices */
-				num_threads = si_unpack_param(ctx, ctx->merged_wave_info, 0, 8);
+				thread_enabled = si_is_es_thread(ctx);
 				nested_barrier = false;
 			}
 
-			LLVMValueRef ena =
-				LLVMBuildICmp(ctx->ac.builder, LLVMIntULT,
-					    ac_get_thread_id(&ctx->ac), num_threads, "");
-
 			ctx->merged_wrap_if_entry_block = LLVMGetInsertBlock(ctx->ac.builder);
 			ctx->merged_wrap_if_label = 11500;
-			ac_build_ifcc(&ctx->ac, ena, ctx->merged_wrap_if_label);
+			ac_build_ifcc(&ctx->ac, thread_enabled, ctx->merged_wrap_if_label);
 
 			if (nested_barrier) {
 				/* Execute a barrier before the second shader in
@@ -7423,12 +7433,7 @@ static void si_build_vs_prolog_function(struct si_shader_context *ctx,
 	LLVMBasicBlockRef if_entry_block = NULL;
 
 	if (key->vs_prolog.is_monolithic && key->vs_prolog.as_ngg) {
-		LLVMValueRef num_threads;
-		LLVMValueRef ena;
-
-		num_threads = si_unpack_param(ctx, merged_wave_info, 0, 8);
-		ena = LLVMBuildICmp(ctx->ac.builder, LLVMIntULT,
-					ac_get_thread_id(&ctx->ac), num_threads, "");
+		LLVMValueRef ena = si_is_es_thread(ctx);
 		if_entry_block = LLVMGetInsertBlock(ctx->ac.builder);
 		ac_build_ifcc(&ctx->ac, ena, 11501);
 		wrapped = true;

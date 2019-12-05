@@ -573,12 +573,8 @@ void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi,
 
 	ac_build_endif(&ctx->ac, ctx->merged_wrap_if_label);
 
-	LLVMValueRef prims_in_wave = si_unpack_param(ctx, ctx->merged_wave_info, 8, 8);
-	LLVMValueRef vtx_in_wave = si_unpack_param(ctx, ctx->merged_wave_info, 0, 8);
-	LLVMValueRef is_gs_thread = LLVMBuildICmp(builder, LLVMIntULT,
-						  ac_get_thread_id(&ctx->ac), prims_in_wave, "");
-	LLVMValueRef is_es_thread = LLVMBuildICmp(builder, LLVMIntULT,
-						  ac_get_thread_id(&ctx->ac), vtx_in_wave, "");
+	LLVMValueRef is_gs_thread = si_is_gs_thread(ctx);
+	LLVMValueRef is_es_thread = si_is_es_thread(ctx);
 	LLVMValueRef vtxindex[] = {
 		si_unpack_param(ctx, ctx->gs_vtx01_offset, 0, 16),
 		si_unpack_param(ctx, ctx->gs_vtx01_offset, 16, 16),
