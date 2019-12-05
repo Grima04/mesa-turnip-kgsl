@@ -273,6 +273,9 @@ struct v3dv_image {
    uint32_t size; /* Total size in bytes */
    uint32_t cube_map_stride;
    uint32_t alignment;
+
+   struct v3dv_device_memory *mem;
+   VkDeviceSize mem_offset;
 };
 
 struct v3dv_shader_module {

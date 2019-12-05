@@ -1275,3 +1275,27 @@ v3dv_GetImageMemoryRequirements(VkDevice _device,
    pMemoryRequirements->alignment = image->alignment;
    pMemoryRequirements->memoryTypeBits = 0x3; /* Both memory types */
 }
+
+VkResult
+v3dv_BindImageMemory(VkDevice _device,
+                     VkImage _image,
+                     VkDeviceMemory _memory,
+                     VkDeviceSize memoryOffset)
+{
+   V3DV_FROM_HANDLE(v3dv_device_memory, mem, _memory);
+   V3DV_FROM_HANDLE(v3dv_image, image, _image);
+
+   /* Valid usage:
+    *
+    *   "memoryOffset must be an integer multiple of the alignment member of
+    *    the VkMemoryRequirements structure returned from a call to
+    *    vkGetImageMemoryRequirements with image"
+    */
+   assert(memoryOffset % image->alignment == 0);
+   assert(memoryOffset < mem->size);
+
+   image->mem = mem;
+   image->mem_offset = memoryOffset;
+
+   return VK_SUCCESS;
+}
