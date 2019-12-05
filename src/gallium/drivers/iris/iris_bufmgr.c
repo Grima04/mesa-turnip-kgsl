@@ -1407,7 +1407,20 @@ iris_bo_import_dmabuf(struct iris_bufmgr *bufmgr, int prime_fd,
    bo->reusable = false;
    bo->external = true;
    bo->kflags = EXEC_OBJECT_SUPPORTS_48B_ADDRESS | EXEC_OBJECT_PINNED;
-   bo->gtt_offset = vma_alloc(bufmgr, IRIS_MEMZONE_OTHER, bo->size, 1);
+
+   /* From the Bspec, Memory Compression - Gen12:
+    *
+    *    The base address for the surface has to be 64K page aligned and the
+    *    surface is expected to be padded in the virtual domain to be 4 4K
+    *    pages.
+    *
+    * The dmabuf may contain a compressed surface. Align the BO to 64KB just
+    * in case. We always align to 64KB even on platforms where we don't need
+    * to, because it's a fairly reasonable thing to do anyway.
+    */
+   bo->gtt_offset =
+      vma_alloc(bufmgr, IRIS_MEMZONE_OTHER, bo->size, 64 * 1024);
+
    bo->gem_handle = handle;
    _mesa_hash_table_insert(bufmgr->handle_table, &bo->gem_handle, bo);
 

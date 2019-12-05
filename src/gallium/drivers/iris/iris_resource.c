@@ -766,6 +766,8 @@ iris_resource_finish_aux_import(struct pipe_screen *pscreen,
 
    iris_resource_destroy(&screen->base, res->base.next);
    res->base.next = NULL;
+
+   map_aux_addresses(screen, res);
 }
 
 static struct pipe_resource *
