@@ -696,6 +696,7 @@ build_vbo_state(struct fd6_emit *emit, const struct ir3_shader_variant *vp)
 static struct fd_ringbuffer *
 build_lrz(struct fd6_emit *emit, bool binning_pass)
 {
+	struct fd6_blend_stateobj *blend = fd6_blend_stateobj(emit->ctx->blend);
 	struct fd6_zsa_stateobj *zsa = fd6_zsa_stateobj(emit->ctx->zsa);
 	struct pipe_framebuffer_state *pfb = &emit->ctx->batch->framebuffer;
 	struct fd_resource *rsc = fd_resource(pfb->zsbuf->texture);
@@ -708,7 +709,7 @@ build_lrz(struct fd6_emit *emit, bool binning_pass)
 	if (emit->no_lrz_write || !rsc->lrz || !rsc->lrz_valid) {
 		gras_lrz_cntl = 0;
 		rb_lrz_cntl = 0;
-	} else if (binning_pass && zsa->lrz_write) {
+	} else if (binning_pass && blend->lrz_write && zsa->lrz_write) {
 		gras_lrz_cntl |= A6XX_GRAS_LRZ_CNTL_LRZ_WRITE;
 	}
 
@@ -943,7 +944,7 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 			fd6_emit_add_group(emit, zsa->stateobj, FD6_GROUP_ZSA, 0x7);
 	}
 
-	if ((dirty & (FD_DIRTY_ZSA | FD_DIRTY_PROG)) && pfb->zsbuf) {
+	if ((dirty & (FD_DIRTY_ZSA | FD_DIRTY_BLEND | FD_DIRTY_PROG)) && pfb->zsbuf) {
 		struct fd_ringbuffer *state;
 
 		state = build_lrz(emit, false);
