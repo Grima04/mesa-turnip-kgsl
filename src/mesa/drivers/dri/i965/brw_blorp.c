@@ -463,6 +463,15 @@ brw_blorp_copy_miptrees(struct brw_context *brw,
    bool src_clear_supported, dst_clear_supported;
 
    switch (src_mt->aux_usage) {
+   case ISL_AUX_USAGE_HIZ:
+      if (intel_miptree_sample_with_hiz(brw, src_mt)) {
+         src_aux_usage = src_mt->aux_usage;
+         src_clear_supported = true;
+      } else {
+         src_aux_usage = ISL_AUX_USAGE_NONE;
+         src_clear_supported = false;
+      }
+      break;
    case ISL_AUX_USAGE_MCS:
    case ISL_AUX_USAGE_CCS_E:
       src_aux_usage = src_mt->aux_usage;
