@@ -1029,8 +1029,8 @@ void radv_GetPhysicalDeviceFeatures2(
 		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT: {
 			VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT *features =
 				(VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT *)ext;
-			features->vertexAttributeInstanceRateDivisor = VK_TRUE;
-			features->vertexAttributeInstanceRateZeroDivisor = VK_TRUE;
+			features->vertexAttributeInstanceRateDivisor = true;
+			features->vertexAttributeInstanceRateZeroDivisor = true;
 			break;
 		}
 		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_FEATURES_EXT: {
@@ -1049,7 +1049,7 @@ void radv_GetPhysicalDeviceFeatures2(
 		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PRIORITY_FEATURES_EXT: {
 			VkPhysicalDeviceMemoryPriorityFeaturesEXT *features =
 				(VkPhysicalDeviceMemoryPriorityFeaturesEXT *)ext;
-			features->memoryPriority = VK_TRUE;
+			features->memoryPriority = true;
 			break;
 		}
 		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES_EXT: {
@@ -1531,12 +1531,12 @@ void radv_GetPhysicalDeviceProperties2(
 			properties->primitiveOverestimationSize = 0;
 			properties->maxExtraPrimitiveOverestimationSize = 0;
 			properties->extraPrimitiveOverestimationSizeGranularity = 0;
-			properties->primitiveUnderestimation = VK_FALSE;
-			properties->conservativePointAndLineRasterization = VK_FALSE;
-			properties->degenerateTrianglesRasterized = VK_FALSE;
-			properties->degenerateLinesRasterized = VK_FALSE;
-			properties->fullyCoveredFragmentShaderInputVariable = VK_FALSE;
-			properties->conservativeRasterizationPostDepthCoverage = VK_FALSE;
+			properties->primitiveUnderestimation = false;
+			properties->conservativePointAndLineRasterization = false;
+			properties->degenerateTrianglesRasterized = false;
+			properties->degenerateLinesRasterized = false;
+			properties->fullyCoveredFragmentShaderInputVariable = false;
+			properties->conservativeRasterizationPostDepthCoverage = false;
 			break;
 		}
 		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PCI_BUS_INFO_PROPERTIES_EXT: {
@@ -1602,7 +1602,7 @@ void radv_GetPhysicalDeviceProperties2(
 			properties->sampleLocationCoordinateRange[0] = 0.0f;
 			properties->sampleLocationCoordinateRange[1] = 0.9375f;
 			properties->sampleLocationSubPixelBits = 4;
-			properties->variableSampleLocations = VK_FALSE;
+			properties->variableSampleLocations = false;
 			break;
 		}
 		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_STENCIL_RESOLVE_PROPERTIES_KHR: {
@@ -1622,8 +1622,8 @@ void radv_GetPhysicalDeviceProperties2(
 				VK_RESOLVE_MODE_MIN_BIT_KHR |
 				VK_RESOLVE_MODE_MAX_BIT_KHR;
 
-			properties->independentResolveNone = VK_TRUE;
-			properties->independentResolve = VK_TRUE;
+			properties->independentResolveNone = true;
+			properties->independentResolve = true;
 			break;
 		}
 		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXEL_BUFFER_ALIGNMENT_PROPERTIES_EXT: {
