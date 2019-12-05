@@ -491,6 +491,8 @@ piglit-quick_gl:
     PIGLIT_OPTIONS: >
       --process-isolation false
       -x arb_gpu_shader5
+      -x egl_ext_device_
+      -x egl_ext_platform_device
       -x glx-multithread-clearbuffer
       -x glx-multithread-shader-compile
       -x max-texture-size

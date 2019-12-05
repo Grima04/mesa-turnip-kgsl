@@ -1399,12 +1399,7 @@ spec/egl_android_native_fence_sync/egl_khr_fence_sync android_native/eglgetsynca
 spec/egl_chromium_sync_control/conformance/eglgetsyncvalueschromium_msc_and_sbc_test: skip
 spec/egl_chromium_sync_control/conformance/eglgetsyncvalueschromium_null_pointers: skip
 spec/egl_chromium_sync_control/conformance/eglgetsyncvalueschromium_ust_test: skip
-spec/egl_ext_device_drm/conformance: skip
 spec/egl_ext_image_dma_buf_import_modifiers/conformance: skip
-spec/egl_ext_platform_device/conformance/create_pbuffer: skip
-spec/egl_ext_platform_device/conformance/create_pixmap: skip
-spec/egl_ext_platform_device/conformance/create_window: skip
-spec/egl_ext_platform_device/conformance/initialize_display: skip
 spec/egl_khr_fence_sync/conformance/eglcreatesynckhr_with_display_bound_in_other_thread: skip
 spec/egl_khr_fence_sync/conformance/eglcreatesynckhr_wrong_display_same_thread: skip
 spec/egl_khr_gl_image/egl_khr_gl_renderbuffer_image-clear-shared-image gl_depth_component24: fail
@@ -2290,10 +2285,10 @@ wgl/wgl-sanity: skip
 summary:
        name:  results
        ----  --------
-       pass:    17787
+       pass:    17782
        fail:      235
       crash:        2
-       skip:     2032
+       skip:     2027
     timeout:        0
        warn:        2
  incomplete:        0
@@ -2302,4 +2297,4 @@ summary:
     changes:        0
       fixes:        0
 regressions:        0
-      total:    20076
+      total:    20066
