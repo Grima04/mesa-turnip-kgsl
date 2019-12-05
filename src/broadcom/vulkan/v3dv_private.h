@@ -278,6 +278,23 @@ struct v3dv_image {
    VkDeviceSize mem_offset;
 };
 
+struct v3dv_image_view {
+   const struct v3dv_image *image;
+   VkImageAspectFlags aspects;
+   VkExtent3D extent;
+
+   VkFormat vk_format;
+   const struct v3dv_format *format;
+   bool swap_rb;
+   enum v3d_tiling_mode tiling;
+   uint32_t internal_bpp;
+   uint32_t internal_type;
+
+   uint32_t first_layer;
+   uint32_t last_layer;
+   uint32_t offset;
+};
+
 struct v3dv_shader_module {
    unsigned char sha1[20];
    uint32_t size;
@@ -321,6 +338,7 @@ void v3dv_loge(const char *format, ...) v3dv_printflike(1, 2);
 void v3dv_loge_v(const char *format, va_list va);
 
 const struct v3dv_format *v3dv_get_format(VkFormat);
+void v3dv_get_internal_type_bpp_for_output_format(uint32_t format, uint32_t *type, uint32_t *bpp);
 
 uint32_t v3d_utile_width(int cpp);
 uint32_t v3d_utile_height(int cpp);
@@ -376,7 +394,15 @@ V3DV_DEFINE_HANDLE_CASTS(v3dv_queue, VkQueue)
 
 V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_device_memory, VkDeviceMemory)
 V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_image, VkImage)
+V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_image_view, VkImageView)
 V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_shader_module, VkShaderModule)
+
+/* This is defined as a macro so that it works for both
+ * VkImageSubresourceRange and VkImageSubresourceLayers
+ */
+#define v3dv_layer_count(_image, _range) \
+   ((_range)->layerCount == VK_REMAINING_ARRAY_LAYERS ? \
+    (_image)->array_size - (_range)->baseArrayLayer : (_range)->layerCount)
 
 static inline int
 v3dv_ioctl(int fd, unsigned long request, void *arg)

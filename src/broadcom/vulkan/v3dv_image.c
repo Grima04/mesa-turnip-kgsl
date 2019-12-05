@@ -244,6 +244,17 @@ v3d_setup_slices(struct v3dv_image *image)
    }
 }
 
+static uint32_t
+layer_offset(struct v3dv_image *image, uint32_t level, uint32_t layer)
+{
+   struct v3d_resource_slice *slice = &image->slices[level];
+
+   if (image->type == VK_IMAGE_TYPE_3D)
+      return slice->offset + layer * slice->size;
+   else
+      return slice->offset + layer * image->cube_map_stride;
+}
+
 VkResult
 v3dv_CreateImage(VkDevice _device,
                  const VkImageCreateInfo *pCreateInfo,
@@ -294,6 +305,79 @@ v3dv_CreateImage(VkDevice _device,
    v3d_setup_slices(image);
 
    *pImage = v3dv_image_to_handle(image);
+
+   return VK_SUCCESS;
+}
+
+VkResult
+v3dv_CreateImageView(VkDevice _device,
+                     const VkImageViewCreateInfo *pCreateInfo,
+                     const VkAllocationCallbacks *pAllocator,
+                     VkImageView *pView)
+{
+   V3DV_FROM_HANDLE(v3dv_device, device, _device);
+   V3DV_FROM_HANDLE(v3dv_image, image, pCreateInfo->image);
+   struct v3dv_image_view *iview;
+
+   iview = vk_zalloc2(&device->alloc, pAllocator, sizeof(*iview), 8,
+                      VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   if (iview == NULL)
+      return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+
+   const VkImageSubresourceRange *range = &pCreateInfo->subresourceRange;
+
+   assert(range->layerCount > 0);
+   assert(range->baseMipLevel < image->levels);
+
+   /* FIXME: we don't handle depth/stencil yet */
+   assert((range->aspectMask &
+           (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) == 0);
+
+#ifdef DEBUG
+   switch (image->type) {
+   case VK_IMAGE_TYPE_1D:
+   case VK_IMAGE_TYPE_2D:
+      assert(range->baseArrayLayer + v3dv_layer_count(image, range) - 1 <=
+             image->array_size);
+      break;
+   case VK_IMAGE_TYPE_3D:
+      assert(range->baseArrayLayer + v3dv_layer_count(image, range) - 1
+             <= u_minify(image->extent.depth, range->baseMipLevel));
+      break;
+   default:
+      unreachable("bad VkImageType");
+   }
+#endif
+
+   iview->image = image;
+   iview->aspects = range->aspectMask;
+   iview->extent = (VkExtent3D) {
+      .width  = u_minify(image->extent.width , range->baseMipLevel),
+      .height = u_minify(image->extent.height, range->baseMipLevel),
+      .depth  = u_minify(image->extent.depth , range->baseMipLevel),
+   };
+
+   iview->first_layer = range->baseArrayLayer;
+   iview->last_layer = range->baseArrayLayer +
+                       v3dv_layer_count(image, range) - 1;
+   iview->offset = layer_offset(image, range->baseMipLevel, iview->first_layer);
+
+   iview->tiling = image->slices[0].tiling;
+
+   iview->vk_format = pCreateInfo->format;
+   iview->format = v3dv_get_format(pCreateInfo->format);
+   assert(iview->format && iview->format->supported);
+
+   const struct util_format_description *desc =
+      vk_format_description(iview->vk_format);
+   iview->swap_rb = desc->swizzle[0] == PIPE_SWIZZLE_Z &&
+                    iview->vk_format != VK_FORMAT_B5G6R5_UNORM_PACK16;
+
+   v3dv_get_internal_type_bpp_for_output_format(iview->format->rt_type,
+                                               &iview->internal_type,
+                                               &iview->internal_bpp);
+
+   *pView = v3dv_image_view_to_handle(iview);
 
    return VK_SUCCESS;
 }

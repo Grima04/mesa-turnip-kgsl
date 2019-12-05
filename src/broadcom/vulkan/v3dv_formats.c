@@ -71,6 +71,136 @@ v3dv_get_format(VkFormat format)
       return NULL;
 }
 
+void
+v3dv_get_internal_type_bpp_for_output_format(uint32_t format,
+                                             uint32_t *type,
+                                             uint32_t *bpp)
+{
+   switch (format) {
+   case V3D_OUTPUT_IMAGE_FORMAT_RGBA8:
+   case V3D_OUTPUT_IMAGE_FORMAT_RGB8:
+   case V3D_OUTPUT_IMAGE_FORMAT_RG8:
+   case V3D_OUTPUT_IMAGE_FORMAT_R8:
+   case V3D_OUTPUT_IMAGE_FORMAT_ABGR4444:
+   case V3D_OUTPUT_IMAGE_FORMAT_BGR565:
+   case V3D_OUTPUT_IMAGE_FORMAT_ABGR1555:
+      *type = V3D_INTERNAL_TYPE_8;
+      *bpp = V3D_INTERNAL_BPP_32;
+      break;
+
+   case V3D_OUTPUT_IMAGE_FORMAT_RGBA8I:
+   case V3D_OUTPUT_IMAGE_FORMAT_RG8I:
+   case V3D_OUTPUT_IMAGE_FORMAT_R8I:
+      *type = V3D_INTERNAL_TYPE_8I;
+      *bpp = V3D_INTERNAL_BPP_32;
+      break;
+
+   case V3D_OUTPUT_IMAGE_FORMAT_RGBA8UI:
+   case V3D_OUTPUT_IMAGE_FORMAT_RG8UI:
+   case V3D_OUTPUT_IMAGE_FORMAT_R8UI:
+      *type = V3D_INTERNAL_TYPE_8UI;
+      *bpp = V3D_INTERNAL_BPP_32;
+      break;
+
+   case V3D_OUTPUT_IMAGE_FORMAT_SRGB8_ALPHA8:
+   case V3D_OUTPUT_IMAGE_FORMAT_SRGB:
+   case V3D_OUTPUT_IMAGE_FORMAT_RGB10_A2:
+   case V3D_OUTPUT_IMAGE_FORMAT_R11F_G11F_B10F:
+   case V3D_OUTPUT_IMAGE_FORMAT_RGBA16F:
+      /* Note that sRGB RTs are stored in the tile buffer at 16F,
+       * and the conversion to sRGB happens at tilebuffer load/store.
+       */
+      *type = V3D_INTERNAL_TYPE_16F;
+      *bpp = V3D_INTERNAL_BPP_64;
+      break;
+
+   case V3D_OUTPUT_IMAGE_FORMAT_RG16F:
+   case V3D_OUTPUT_IMAGE_FORMAT_R16F:
+      *type = V3D_INTERNAL_TYPE_16F;
+      /* Use 64bpp to make sure the TLB doesn't throw away the alpha
+       * channel before alpha test happens.
+       */
+      *bpp = V3D_INTERNAL_BPP_64;
+      break;
+
+   case V3D_OUTPUT_IMAGE_FORMAT_RGBA16I:
+      *type = V3D_INTERNAL_TYPE_16I;
+      *bpp = V3D_INTERNAL_BPP_64;
+      break;
+
+   case V3D_OUTPUT_IMAGE_FORMAT_RG16I:
+   case V3D_OUTPUT_IMAGE_FORMAT_R16I:
+      *type = V3D_INTERNAL_TYPE_16I;
+      *bpp = V3D_INTERNAL_BPP_32;
+      break;
+
+   case V3D_OUTPUT_IMAGE_FORMAT_RGB10_A2UI:
+   case V3D_OUTPUT_IMAGE_FORMAT_RGBA16UI:
+      *type = V3D_INTERNAL_TYPE_16UI;
+      *bpp = V3D_INTERNAL_BPP_64;
+      break;
+
+   case V3D_OUTPUT_IMAGE_FORMAT_RG16UI:
+   case V3D_OUTPUT_IMAGE_FORMAT_R16UI:
+      *type = V3D_INTERNAL_TYPE_16UI;
+      *bpp = V3D_INTERNAL_BPP_32;
+      break;
+
+   case V3D_OUTPUT_IMAGE_FORMAT_RGBA32I:
+      *type = V3D_INTERNAL_TYPE_32I;
+      *bpp = V3D_INTERNAL_BPP_128;
+      break;
+
+   case V3D_OUTPUT_IMAGE_FORMAT_RG32I:
+      *type = V3D_INTERNAL_TYPE_32I;
+      *bpp = V3D_INTERNAL_BPP_64;
+      break;
+
+   case V3D_OUTPUT_IMAGE_FORMAT_R32I:
+      *type = V3D_INTERNAL_TYPE_32I;
+      *bpp = V3D_INTERNAL_BPP_32;
+      break;
+
+   case V3D_OUTPUT_IMAGE_FORMAT_RGBA32UI:
+      *type = V3D_INTERNAL_TYPE_32UI;
+      *bpp = V3D_INTERNAL_BPP_128;
+      break;
+
+   case V3D_OUTPUT_IMAGE_FORMAT_RG32UI:
+      *type = V3D_INTERNAL_TYPE_32UI;
+      *bpp = V3D_INTERNAL_BPP_64;
+      break;
+
+   case V3D_OUTPUT_IMAGE_FORMAT_R32UI:
+      *type = V3D_INTERNAL_TYPE_32UI;
+      *bpp = V3D_INTERNAL_BPP_32;
+      break;
+
+   case V3D_OUTPUT_IMAGE_FORMAT_RGBA32F:
+      *type = V3D_INTERNAL_TYPE_32F;
+      *bpp = V3D_INTERNAL_BPP_128;
+      break;
+
+   case V3D_OUTPUT_IMAGE_FORMAT_RG32F:
+      *type = V3D_INTERNAL_TYPE_32F;
+      *bpp = V3D_INTERNAL_BPP_64;
+      break;
+
+   case V3D_OUTPUT_IMAGE_FORMAT_R32F:
+      *type = V3D_INTERNAL_TYPE_32F;
+      *bpp = V3D_INTERNAL_BPP_32;
+      break;
+
+   default:
+      /* Provide some default values, as we'll be called at RB
+       * creation time, even if an RB with this format isn't supported.
+       */
+      *type = V3D_INTERNAL_TYPE_8;
+      *bpp = V3D_INTERNAL_BPP_32;
+      break;
+   }
+}
+
 static VkFormatFeatureFlags
 image_format_features(VkFormat vk_format,
                       const struct v3dv_format *v3dv_format,
