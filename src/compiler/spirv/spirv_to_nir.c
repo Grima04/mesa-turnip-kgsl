@@ -1351,6 +1351,7 @@ vtn_handle_type(struct vtn_builder *b, SpvOp opcode,
             case SpvStorageClassFunction:
             case SpvStorageClassWorkgroup:
             case SpvStorageClassCrossWorkgroup:
+            case SpvStorageClassUniformConstant:
                val->type->stride = align(glsl_get_cl_size(val->type->deref->type),
                                          glsl_get_cl_alignment(val->type->deref->type));
                break;
