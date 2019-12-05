@@ -27,6 +27,7 @@
 
 
 #include "os_misc.h"
+#include "os_file.h"
 
 #include <stdarg.h>
 
@@ -44,6 +45,8 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <inttypes.h>
 
 #endif
 
@@ -179,6 +182,34 @@ os_get_total_physical_memory(uint64_t *size)
    return (ret == TRUE);
 #else
 #error unexpected platform in os_sysinfo.c
+   return false;
+#endif
+}
+
+bool
+os_get_available_system_memory(uint64_t *size)
+{
+#if DETECT_OS_LINUX
+   char *meminfo = os_read_file("/proc/meminfo", NULL);
+   if (!meminfo)
+      return false;
+
+   char *str = strstr(meminfo, "MemAvailable:");
+   if (!str) {
+      free(meminfo);
+      return false;
+   }
+
+   uint64_t kb_mem_available;
+   if (sscanf(str, "MemAvailable: %" PRIx64, &kb_mem_available) == 1) {
+      free(meminfo);
+      *size = kb_mem_available << 10;
+      return true;
+   }
+
+   free(meminfo);
+   return false;
+#else
    return false;
 #endif
 }
