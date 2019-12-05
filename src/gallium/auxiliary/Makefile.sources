@@ -318,8 +318,6 @@ C_SOURCES := \
 NIR_SOURCES := \
 	nir/tgsi_to_nir.c \
 	nir/tgsi_to_nir.h \
-	nir/nir_to_tgsi_info.c \
-	nir/nir_to_tgsi_info.h \
 	nir/nir_draw_helpers.c \
 	nir/nir_draw_helpers.h
 
@@ -451,6 +449,8 @@ GALLIVM_SOURCES := \
 	gallivm/lp_bld_tgsi_soa.c \
 	gallivm/lp_bld_type.c \
 	gallivm/lp_bld_type.h \
+	nir/nir_to_tgsi_info.c \
+	nir/nir_to_tgsi_info.h \
 	draw/draw_llvm.c \
 	draw/draw_llvm.h \
 	draw/draw_llvm_sample.c \
