@@ -3447,10 +3447,11 @@ void load_buffer(isel_context *ctx, unsigned num_components, Temp dst,
          Temp vec = bld.tmp(RegType::vgpr, dst.size());
          instr->definitions[0] = Definition(vec);
          bld.insert(std::move(instr));
-         bld.pseudo(aco_opcode::p_as_uniform, Definition(dst), vec);
+         expand_vector(ctx, vec, dst, num_components, (1 << num_components) - 1);
       } else {
          instr->definitions[0] = Definition(dst);
          bld.insert(std::move(instr));
+         emit_split_vector(ctx, dst, num_components);
       }
    } else {
       switch (num_bytes) {
@@ -3506,9 +3507,8 @@ void load_buffer(isel_context *ctx, unsigned num_components, Temp dst,
       } else {
          bld.insert(std::move(load));
       }
-
+      emit_split_vector(ctx, dst, num_components);
    }
-   emit_split_vector(ctx, dst, num_components);
 }
 
 void visit_load_ubo(isel_context *ctx, nir_intrinsic_instr *instr)
