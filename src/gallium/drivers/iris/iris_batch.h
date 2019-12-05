@@ -85,6 +85,11 @@ struct iris_batch {
    int exec_count;
    int exec_array_size;
 
+   /** Whether INTEL_BLACKHOLE_RENDER is enabled in the batch (aka first
+    * instruction is a MI_BATCH_BUFFER_END).
+    */
+   bool noop_enabled;
+
    /**
     * A list of iris_syncpts associated with this batch.
     *
@@ -148,6 +153,10 @@ void _iris_batch_flush(struct iris_batch *batch, const char *file, int line);
 #define iris_batch_flush(batch) _iris_batch_flush((batch), __FILE__, __LINE__)
 
 bool iris_batch_references(struct iris_batch *batch, struct iris_bo *bo);
+
+uint64_t iris_batch_prepare_noop(struct iris_batch *batch,
+                                 bool noop_enable,
+                                 uint64_t dirty_flags);
 
 #define RELOC_WRITE EXEC_OBJECT_WRITE
 

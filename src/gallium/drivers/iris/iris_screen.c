@@ -315,6 +315,9 @@ iris_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
              PIPE_CONTEXT_PRIORITY_MEDIUM |
              PIPE_CONTEXT_PRIORITY_HIGH;
 
+   case PIPE_CAP_FRONTEND_NOOP:
+      return true;
+
    // XXX: don't hardcode 00:00:02.0 PCI here
    case PIPE_CAP_PCI_GROUP:
       return 0;

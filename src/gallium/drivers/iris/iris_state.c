@@ -7415,6 +7415,19 @@ genX(emit_hashing_mode)(struct iris_context *ice, struct iris_batch *batch,
 #endif
 }
 
+static void
+iris_set_frontend_noop(struct pipe_context *ctx, bool enable)
+{
+   struct iris_context *ice = (struct iris_context *) ctx;
+
+   ice->state.dirty |= iris_batch_prepare_noop(&ice->batches[IRIS_BATCH_RENDER],
+                                               enable,
+                                               IRIS_ALL_DIRTY_FOR_RENDER);
+   ice->state.dirty |= iris_batch_prepare_noop(&ice->batches[IRIS_BATCH_COMPUTE],
+                                               enable,
+                                               IRIS_ALL_DIRTY_FOR_COMPUTE);
+}
+
 void
 genX(init_state)(struct iris_context *ice)
 {
@@ -7459,6 +7472,7 @@ genX(init_state)(struct iris_context *ice)
    ctx->create_stream_output_target = iris_create_stream_output_target;
    ctx->stream_output_target_destroy = iris_stream_output_target_destroy;
    ctx->set_stream_output_targets = iris_set_stream_output_targets;
+   ctx->set_frontend_noop = iris_set_frontend_noop;
 
    ice->vtbl.destroy_state = iris_destroy_state;
    ice->vtbl.init_render_context = iris_init_render_context;
