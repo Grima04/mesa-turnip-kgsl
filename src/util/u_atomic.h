@@ -92,7 +92,7 @@
 #define p_atomic_add(_v, _i) ((void) p_atomic_add_return((_v), (_i))
 #define p_atomic_inc_return(_v) (++(*(_v)))
 #define p_atomic_dec_return(_v) (--(*(_v)))
-#define p_atomic_add(_v, _i) (*(_v) = *(_v) + (_i))
+#define p_atomic_add_return(_v, _i) (*(_v) = *(_v) + (_i))
 #define p_atomic_cmpxchg(_v, _old, _new) (*(_v) == (_old) ? (*(_v) = (_new), (_old)) : *(_v))
 
 #endif
