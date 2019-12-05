@@ -63,7 +63,7 @@ void lima_dump_blob(FILE *fp, void *data, int size, bool is_float)
          fprintf(fp, "0x%08x, ", ((uint32_t *)data)[i]);
 
       if ((i % 4 == 3) || (i == size / 4 - 1)) {
-         fprintf(fp, "/* 0x%08x */", (i - 3) * 4);
+         fprintf(fp, "/* 0x%08x */", MAX2((i - 3) * 4, 0));
          if (i) fprintf(fp, "\n");
       }
    }
