@@ -62,6 +62,7 @@ module clover::nir::spirv_to_nir(const module &mod, const device &dev,
                                  std::string &r_log)
 {
    struct spirv_to_nir_options spirv_options = {};
+   spirv_options.environment = NIR_SPIRV_OPENCL;
    spirv_options.caps.address = true;
    spirv_options.caps.float64 = true;
    spirv_options.caps.int8 = true;
