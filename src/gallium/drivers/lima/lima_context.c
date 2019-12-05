@@ -105,6 +105,19 @@ lima_context_free_drm_ctx(struct lima_screen *screen, int id)
 }
 
 static void
+lima_invalidate_resource(struct pipe_context *pctx, struct pipe_resource *prsc)
+{
+   struct lima_context *ctx = lima_context(pctx);
+
+   if (ctx->framebuffer.base.zsbuf && (ctx->framebuffer.base.zsbuf->texture == prsc))
+      ctx->resolve &= ~(PIPE_CLEAR_DEPTH | PIPE_CLEAR_STENCIL);
+
+   if (ctx->framebuffer.base.nr_cbufs &&
+       (ctx->framebuffer.base.cbufs[0]->texture == prsc))
+      ctx->resolve &= ~PIPE_CLEAR_COLOR0;
+}
+
+static void
 lima_context_destroy(struct pipe_context *pctx)
 {
    struct lima_context *ctx = lima_context(pctx);
@@ -192,6 +205,7 @@ lima_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    ctx->base.screen = pscreen;
    ctx->base.destroy = lima_context_destroy;
    ctx->base.set_debug_callback = lima_set_debug_callback;
+   ctx->base.invalidate_resource = lima_invalidate_resource;
 
    lima_resource_context_init(ctx);
    lima_fence_context_init(ctx);
@@ -272,16 +286,4 @@ lima_need_flush(struct lima_context *ctx, struct lima_bo *bo, bool write)
 {
    return lima_submit_has_bo(ctx->gp_submit, bo, write) ||
       lima_submit_has_bo(ctx->pp_submit, bo, write);
-}
-
-bool
-lima_is_scanout(struct lima_context *ctx)
-{
-        /* If there is no color buffer, it's an FBO */
-        if (!ctx->framebuffer.base.nr_cbufs)
-                return false;
-
-        return ctx->framebuffer.base.cbufs[0]->texture->bind & PIPE_BIND_DISPLAY_TARGET ||
-               ctx->framebuffer.base.cbufs[0]->texture->bind & PIPE_BIND_SCANOUT ||
-               ctx->framebuffer.base.cbufs[0]->texture->bind & PIPE_BIND_SHARED;
 }

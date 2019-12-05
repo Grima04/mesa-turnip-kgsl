@@ -680,6 +680,8 @@ lima_clear(struct pipe_context *pctx, unsigned buffers,
 
    lima_flush(ctx);
 
+   ctx->resolve |= buffers;
+
    /* no need to reload if cleared */
    if (ctx->framebuffer.base.nr_cbufs && (buffers & PIPE_CLEAR_COLOR0)) {
       struct lima_surface *surf = lima_surface(ctx->framebuffer.base.cbufs[0]);
@@ -1525,6 +1527,17 @@ lima_draw_vbo_update(struct pipe_context *pctx,
       ctx->gp_output = NULL;
    }
 
+   if (ctx->framebuffer.base.zsbuf) {
+      if (ctx->zsa->base.depth.enabled)
+         ctx->resolve |= PIPE_CLEAR_DEPTH;
+      if (ctx->zsa->base.stencil[0].enabled ||
+          ctx->zsa->base.stencil[1].enabled)
+         ctx->resolve |= PIPE_CLEAR_STENCIL;
+   }
+
+   if (ctx->framebuffer.base.nr_cbufs)
+      ctx->resolve |= PIPE_CLEAR_COLOR0;
+
    ctx->dirty = 0;
 }
 
@@ -1722,14 +1735,11 @@ lima_pack_pp_frame_reg(struct lima_context *ctx, uint32_t *frame_reg,
    frame->blocking = (fb->shift_min << 28) | (fb->shift_h << 16) | fb->shift_w;
    frame->foureight = 0x8888;
 
-   if (fb->base.nr_cbufs)
+   if (fb->base.nr_cbufs && (ctx->resolve & PIPE_CLEAR_COLOR0))
       lima_pack_wb_cbuf_reg(ctx, wb_reg, wb_idx++);
 
-   /* Mali4x0 can use on-tile buffer for depth/stencil, so to save some
-    * memory bandwidth don't write depth/stencil back to memory if we're
-    * rendering to scanout
-    */
-   if (!lima_is_scanout(ctx) && fb->base.zsbuf)
+   if (fb->base.zsbuf &&
+       (ctx->resolve & (PIPE_CLEAR_DEPTH | PIPE_CLEAR_STENCIL)))
       lima_pack_wb_zsbuf_reg(ctx, wb_reg, wb_idx++);
 }
 
@@ -1885,6 +1895,8 @@ _lima_flush(struct lima_context *ctx, bool end_of_frame)
 
    ctx->damage_rect.minx = ctx->damage_rect.miny = 0xffff;
    ctx->damage_rect.maxx = ctx->damage_rect.maxy = 0;
+
+   ctx->resolve = 0;
 
    lima_dump_file_next();
 }

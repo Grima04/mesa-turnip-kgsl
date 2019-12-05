@@ -187,6 +187,8 @@ struct lima_context {
       LIMA_CONTEXT_DIRTY_TEXTURES     = (1 << 14),
    } dirty;
 
+   unsigned resolve;
+
    struct u_upload_mgr *uploader;
    struct blitter_context *blitter;
 
