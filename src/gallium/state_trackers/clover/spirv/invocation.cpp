@@ -62,7 +62,7 @@ namespace {
       case SpvStorageClassFunction:
          return module::argument::scalar;
       case SpvStorageClassUniformConstant:
-         return module::argument::constant;
+         return module::argument::global;
       case SpvStorageClassWorkgroup:
          return module::argument::local;
       case SpvStorageClassCrossWorkgroup:
