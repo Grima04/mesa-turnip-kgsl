@@ -777,8 +777,13 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
          unsigned k = 0;
          for (Operand& old_op : old_vec->operands) {
             if (old_op.isTemp() && ctx.info[old_op.tempId()].is_vec()) {
-               for (unsigned j = 0; j < ctx.info[old_op.tempId()].instr->operands.size(); j++)
-                  instr->operands[k++] = ctx.info[old_op.tempId()].instr->operands[j];
+               for (unsigned j = 0; j < ctx.info[old_op.tempId()].instr->operands.size(); j++) {
+                  Operand op = ctx.info[old_op.tempId()].instr->operands[j];
+                  if (op.isTemp() && ctx.info[op.tempId()].is_temp() &&
+                      ctx.info[op.tempId()].temp.type() == instr->definitions[0].regClass().type())
+                     op.setTemp(ctx.info[op.tempId()].temp);
+                  instr->operands[k++] = op;
+               }
             } else {
                instr->operands[k++] = old_op;
             }
