@@ -3375,9 +3375,6 @@ void load_buffer(isel_context *ctx, unsigned num_components, Temp dst,
 
    aco_opcode op;
    if (dst.type() == RegType::vgpr || (ctx->options->chip_class < GFX8 && !readonly)) {
-      if (ctx->options->chip_class < GFX8)
-         offset = as_vgpr(ctx, offset);
-
       Operand vaddr = offset.type() == RegType::vgpr ? Operand(offset) : Operand(v1);
       Operand soffset = offset.type() == RegType::sgpr ? Operand(offset) : Operand((uint32_t) 0);
       unsigned const_offset = 0;
@@ -4469,12 +4466,7 @@ void visit_store_ssbo(isel_context *ctx, nir_intrinsic_instr *instr)
    Temp data = get_ssa_temp(ctx, instr->src[0].ssa);
    unsigned elem_size_bytes = instr->src[0].ssa->bit_size / 8;
    unsigned writemask = nir_intrinsic_write_mask(instr);
-
-   Temp offset;
-   if (ctx->options->chip_class < GFX8)
-      offset = as_vgpr(ctx,get_ssa_temp(ctx, instr->src[2].ssa));
-   else
-      offset = get_ssa_temp(ctx, instr->src[2].ssa);
+   Temp offset = get_ssa_temp(ctx, instr->src[2].ssa);
 
    Temp rsrc = convert_pointer_to_64_bit(ctx, get_ssa_temp(ctx, instr->src[1].ssa));
    rsrc = bld.smem(aco_opcode::s_load_dwordx4, bld.def(s4), rsrc, Operand(0u));
@@ -4611,12 +4603,7 @@ void visit_atomic_ssbo(isel_context *ctx, nir_intrinsic_instr *instr)
       data = bld.pseudo(aco_opcode::p_create_vector, bld.def(RegType::vgpr, data.size() * 2),
                         get_ssa_temp(ctx, instr->src[3].ssa), data);
 
-   Temp offset;
-   if (ctx->options->chip_class < GFX8)
-      offset = as_vgpr(ctx, get_ssa_temp(ctx, instr->src[1].ssa));
-   else
-      offset = get_ssa_temp(ctx, instr->src[1].ssa);
-
+   Temp offset = get_ssa_temp(ctx, instr->src[1].ssa);
    Temp rsrc = convert_pointer_to_64_bit(ctx, get_ssa_temp(ctx, instr->src[0].ssa));
    rsrc = bld.smem(aco_opcode::s_load_dwordx4, bld.def(s4), rsrc, Operand(0u));
 
