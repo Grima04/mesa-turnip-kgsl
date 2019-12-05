@@ -105,6 +105,9 @@ st_Enable(struct gl_context *ctx, GLenum cap, GLboolean state)
    case GL_DEBUG_OUTPUT_SYNCHRONOUS:
       st_update_debug_callback(st);
       break;
+   case GL_BLACKHOLE_RENDER_INTEL:
+      st->pipe->set_frontend_noop(st->pipe, ctx->IntelBlackholeRender);
+      break;
    default:
       break;
    }

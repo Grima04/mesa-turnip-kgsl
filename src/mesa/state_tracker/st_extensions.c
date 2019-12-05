@@ -793,6 +793,7 @@ void st_init_extensions(struct pipe_screen *screen,
       { o(OES_texture_float_linear),         PIPE_CAP_TEXTURE_FLOAT_LINEAR             },
       { o(OES_texture_half_float_linear),    PIPE_CAP_TEXTURE_HALF_FLOAT_LINEAR        },
       { o(OES_texture_view),                 PIPE_CAP_SAMPLER_VIEW_TARGET              },
+      { o(INTEL_blackhole_render),           PIPE_CAP_FRONTEND_NOOP,                   },
    };
 
    /* Required: render target and sampler support */

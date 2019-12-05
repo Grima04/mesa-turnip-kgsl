@@ -912,6 +912,8 @@ enum pipe_cap
    PIPE_CAP_MAX_VERTEX_BUFFERS,
    PIPE_CAP_OPENCL_INTEGER_FUNCTIONS,
    PIPE_CAP_INTEGER_MULTIPLY_32X16,
+   /* Turn draw, dispatch, blit into NOOP */
+   PIPE_CAP_FRONTEND_NOOP,
 };
 
 /**
