@@ -74,6 +74,13 @@ bool si_prepare_for_dma_blit(struct si_context *sctx, struct si_texture *dst, un
    if (vi_dcc_enabled(src, src_level) || vi_dcc_enabled(dst, dst_level))
       return false;
 
+   /* TMZ: mixing encrypted and non-encrypted buffer in a single command
+    * doesn't seem supported.
+    */
+   if ((src->buffer.flags & RADEON_FLAG_ENCRYPTED) !=
+       (dst->buffer.flags & RADEON_FLAG_ENCRYPTED))
+      return false;
+
    /* CMASK as:
     *   src: Both texture and SDMA paths need decompression. Use SDMA.
     *   dst: If overwriting the whole texture, discard CMASK and use

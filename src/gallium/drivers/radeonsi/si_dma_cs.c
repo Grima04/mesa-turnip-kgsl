@@ -74,7 +74,7 @@ void si_sdma_clear_buffer(struct si_context *sctx, struct pipe_resource *dst, ui
    assert(size % 4 == 0);
 
    if (!cs || dst->flags & PIPE_RESOURCE_FLAG_SPARSE ||
-       sctx->screen->debug_flags & DBG(NO_SDMA_CLEARS)) {
+       sctx->screen->debug_flags & DBG(NO_SDMA_CLEARS) || sctx->ws->ws_is_secure(sctx->ws)) {
       sctx->b.clear_buffer(&sctx->b, dst, offset, size, &clear_value, 4);
       return;
    }
@@ -130,7 +130,8 @@ void si_sdma_copy_buffer(struct si_context *sctx, struct pipe_resource *dst,
    struct si_resource *sdst = si_resource(dst);
    struct si_resource *ssrc = si_resource(src);
 
-   if (!cs || dst->flags & PIPE_RESOURCE_FLAG_SPARSE || src->flags & PIPE_RESOURCE_FLAG_SPARSE) {
+   if (!cs || dst->flags & PIPE_RESOURCE_FLAG_SPARSE || src->flags & PIPE_RESOURCE_FLAG_SPARSE ||
+       (ssrc->flags & RADEON_FLAG_ENCRYPTED) != (sdst->flags & RADEON_FLAG_ENCRYPTED)) {
       si_copy_buffer(sctx, dst, src, dst_offset, src_offset, size);
       return;
    }
@@ -188,7 +189,8 @@ void si_sdma_copy_buffer(struct si_context *sctx, struct pipe_resource *dst,
 
    for (i = 0; i < ncopy; i++) {
       csize = size >= 4 ? MIN2(size & align, CIK_SDMA_COPY_MAX_SIZE) : size;
-      radeon_emit(cs, CIK_SDMA_PACKET(CIK_SDMA_OPCODE_COPY, CIK_SDMA_COPY_SUB_OPCODE_LINEAR, 0));
+      radeon_emit(cs, CIK_SDMA_PACKET(CIK_SDMA_OPCODE_COPY, CIK_SDMA_COPY_SUB_OPCODE_LINEAR,
+                                      (sctx->ws->cs_is_secure(cs) ? 1u : 0) << 2));
       radeon_emit(cs, sctx->chip_class >= GFX9 ? csize - 1 : csize);
       radeon_emit(cs, 0); /* src/dst endian swap */
       radeon_emit(cs, src_offset);
@@ -223,6 +225,17 @@ void si_need_dma_space(struct si_context *ctx, unsigned num_dw, struct si_resour
         (src && ws->cs_is_buffer_referenced(ctx->gfx_cs, src->buf, RADEON_USAGE_WRITE))))
       si_flush_gfx_cs(ctx, RADEON_FLUSH_ASYNC_START_NEXT_GFX_IB_NOW, NULL);
 
+   bool use_secure_cmd = false;
+   /* if TMZ is supported and enabled */
+   if (ctx->ws->ws_is_secure(ctx->ws)) {
+      if (src && src->flags & RADEON_FLAG_ENCRYPTED) {
+         assert(!dst || (dst->flags & RADEON_FLAG_ENCRYPTED));
+         use_secure_cmd = true;
+      } else if (dst && (dst->flags & RADEON_FLAG_ENCRYPTED)) {
+         use_secure_cmd = true;
+      }
+   }
+
    /* Flush if there's not enough space, or if the memory usage per IB
     * is too large.
     *
@@ -237,12 +250,14 @@ void si_need_dma_space(struct si_context *ctx, unsigned num_dw, struct si_resour
     */
    num_dw++; /* for emit_wait_idle below */
    if (!ctx->sdma_uploads_in_progress &&
-       (!ws->cs_check_space(ctx->sdma_cs, num_dw, false) ||
+       (use_secure_cmd != ctx->ws->cs_is_secure(ctx->sdma_cs) ||
+        !ws->cs_check_space(ctx->sdma_cs, num_dw, false) ||
         ctx->sdma_cs->used_vram + ctx->sdma_cs->used_gart > 64 * 1024 * 1024 ||
         !radeon_cs_memory_below_limit(ctx->screen, ctx->sdma_cs, vram, gtt))) {
       si_flush_dma_cs(ctx, PIPE_FLUSH_ASYNC, NULL);
       assert((num_dw + ctx->sdma_cs->current.cdw) <= ctx->sdma_cs->current.max_dw);
    }
+   ctx->ws->cs_set_secure(ctx->sdma_cs, use_secure_cmd);
 
    /* Wait for idle if either buffer has been used in the IB before to
     * prevent read-after-write hazards.
