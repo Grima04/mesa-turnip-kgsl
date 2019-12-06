@@ -706,7 +706,11 @@ build_lrz(struct fd6_emit *emit, bool binning_pass)
 	struct fd_ringbuffer *ring = fd_submit_new_ringbuffer(emit->ctx->batch->submit,
 			16, FD_RINGBUFFER_STREAMING);
 
-	if (emit->no_lrz_write || !rsc->lrz || !rsc->lrz_valid) {
+	if (zsa->invalidate_lrz) {
+		rsc->lrz_valid = false;
+		gras_lrz_cntl = 0;
+		rb_lrz_cntl = 0;
+	} else if (emit->no_lrz_write || !rsc->lrz || !rsc->lrz_valid) {
 		gras_lrz_cntl = 0;
 		rb_lrz_cntl = 0;
 	} else if (binning_pass && blend->lrz_write && zsa->lrz_write) {

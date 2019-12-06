@@ -1975,10 +1975,9 @@ to upconvert to 32b float internally?
 		<bitfield name="LRZ_WRITE" pos="1" type="boolean"/>
 		<doc>update MAX instead of MIN value, ie. GL_GREATER/GL_GEQUAL</doc>
 		<bitfield name="GREATER" pos="2" type="boolean"/>
-		<!-- set at end of batch that had LRZ enabled (to flush/disable it?) -->
 		<bitfield name="UNK3" pos="3" type="boolean"/>
 		<!-- set when depth-test + depth-write enabled -->
-		<bitfield name="UNK4" pos="4" type="boolean"/>
+		<bitfield name="Z_TEST_ENABLE" pos="4" type="boolean"/>
 	</reg32>
 	<reg32 offset="0x8101" name="GRAS_UNKNOWN_8101"/>
 	<reg32 offset="0x8102" name="GRAS_2D_BLIT_INFO">

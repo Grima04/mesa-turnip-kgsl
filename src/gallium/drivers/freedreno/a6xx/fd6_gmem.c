@@ -284,7 +284,7 @@ use_hw_binning(struct fd_batch *batch)
 
 	// TODO figure out hw limits for binning
 
-	return fd_binning_enabled && ((gmem->nbins_x * gmem->nbins_y) > 2) &&
+	return fd_binning_enabled && ((gmem->nbins_x * gmem->nbins_y) >= 2) &&
 			(batch->num_draws > 0);
 }
 
