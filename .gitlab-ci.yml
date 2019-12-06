@@ -636,6 +636,7 @@ arm64_a306_gles2:
 .test-radv:
   variables:
     VK_DRIVER: radeon
+    RADV_DEBUG: checkir
   # Can only be triggered manually on personal branches because RADV is the only
   # driver that does Vulkan testing at the moment.
   rules:
