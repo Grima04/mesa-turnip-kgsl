@@ -732,6 +732,14 @@ st_link_nir(struct gl_context *ctx,
       if (num_shaders == 1)
          st_nir_opts(nir);
 
+      /* Remap the locations to slots so those requiring two slots will occupy
+       * two locations. For instance, if we have in the IR code a dvec3 attr0 in
+       * location 0 and vec4 attr1 in location 1, in NIR attr0 will use
+       * locations/slots 0 and 1, and attr1 will use location/slot 2
+       */
+      if (nir->info.stage == MESA_SHADER_VERTEX && !shader_program->data->spirv)
+         nir_remap_dual_slot_attributes(nir, &shader->Program->DualSlotInputs);
+
       NIR_PASS_V(nir, st_nir_lower_wpos_ytransform, shader->Program,
                  st->pipe->screen);
 

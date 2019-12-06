@@ -235,13 +235,6 @@ glsl_to_nir(struct gl_context *ctx,
       }
    }
 
-   /* Remap the locations to slots so those requiring two slots will occupy
-    * two locations. For instance, if we have in the IR code a dvec3 attr0 in
-    * location 0 and vec4 attr1 in location 1, in NIR attr0 will use
-    * locations/slots 0 and 1, and attr1 will use location/slot 2 */
-   if (shader->info.stage == MESA_SHADER_VERTEX)
-      nir_remap_dual_slot_attributes(shader, &sh->Program->DualSlotInputs);
-
    shader->info.name = ralloc_asprintf(shader, "GLSL%d", shader_prog->Name);
    if (shader_prog->Label)
       shader->info.label = ralloc_strdup(shader, shader_prog->Label);
