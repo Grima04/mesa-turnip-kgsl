@@ -486,6 +486,15 @@ static unsigned ngg_nogs_vertex_size(struct si_shader *shader)
 	if (shader->selector->info.writes_edgeflag)
 		lds_vertex_size = MAX2(lds_vertex_size, 1);
 
+	/* LDS size for passing data from GS to ES.
+	 * GS stores Primitive IDs into LDS at the address corresponding
+	 * to the ES thread of the provoking vertex. All ES threads
+	 * load and export PrimitiveID for their thread.
+	 */
+	if (shader->selector->type == PIPE_SHADER_VERTEX &&
+	    shader->key.mono.u.vs_export_prim_id)
+		lds_vertex_size = MAX2(lds_vertex_size, 1);
+
 	return lds_vertex_size;
 }
 
@@ -630,9 +639,10 @@ void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi,
 		LLVMValueRef indices = ac_build_gather_values(&ctx->ac, vtxindex, 3);
 		LLVMValueRef provoking_vtx_index =
 			LLVMBuildExtractElement(builder, indices, provoking_vtx_in_prim, "");
+		LLVMValueRef vertex_ptr = ngg_nogs_vertex_ptr(ctx, provoking_vtx_index);
 
 		LLVMBuildStore(builder, ac_get_arg(&ctx->ac, ctx->args.gs_prim_id),
-			       ac_build_gep0(&ctx->ac, ctx->esgs_ring, provoking_vtx_index));
+			       ac_build_gep0(&ctx->ac, vertex_ptr, ctx->i32_0));
 		ac_build_endif(&ctx->ac, 5400);
 	}
 
@@ -724,8 +734,8 @@ void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi,
 				/* Wait for GS stores to finish. */
 				ac_build_s_barrier(&ctx->ac);
 
-				tmp = ac_build_gep0(&ctx->ac, ctx->esgs_ring,
-						    get_thread_id_in_tg(ctx));
+				tmp = ngg_nogs_vertex_ptr(ctx, get_thread_id_in_tg(ctx));
+				tmp = ac_build_gep0(&ctx->ac, tmp, ctx->i32_0);
 				outputs[i].values[0] = LLVMBuildLoad(builder, tmp, "");
 			} else {
 				assert(ctx->type == PIPE_SHADER_TESS_EVAL);
@@ -1329,15 +1339,6 @@ void gfx10_ngg_calculate_subgroup_info(struct si_shader *shader)
 		/* VS and TES. */
 		/* LDS size for passing data from ES to GS. */
 		esvert_lds_size = ngg_nogs_vertex_size(shader);
-
-		/* LDS size for passing data from GS to ES.
-		 * GS stores Primitive IDs into LDS at the address corresponding
-		 * to the ES thread of the provoking vertex. All ES threads
-		 * load and export PrimitiveID for their thread.
-		 */
-		if (gs_sel->type == PIPE_SHADER_VERTEX &&
-		    shader->key.mono.u.vs_export_prim_id)
-			esvert_lds_size = MAX2(esvert_lds_size, 1);
 	}
 
 	unsigned max_gsprims = max_gsprims_base;
