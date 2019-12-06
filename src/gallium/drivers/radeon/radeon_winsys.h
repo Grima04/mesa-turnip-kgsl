@@ -67,6 +67,7 @@ enum radeon_bo_flag
   RADEON_FLAG_NO_INTERPROCESS_SHARING = (1 << 4),
   RADEON_FLAG_READ_ONLY = (1 << 5),
   RADEON_FLAG_32BIT = (1 << 6),
+  RADEON_FLAG_ENCRYPTED = (1 << 7)
 };
 
 enum radeon_dependency_flag

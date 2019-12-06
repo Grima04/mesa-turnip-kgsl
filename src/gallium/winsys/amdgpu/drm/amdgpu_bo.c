@@ -520,6 +520,8 @@ static struct amdgpu_winsys_bo *amdgpu_create_bo(struct amdgpu_winsys *ws,
    if (ws->zero_all_vram_allocs &&
        (request.preferred_heap & AMDGPU_GEM_DOMAIN_VRAM))
       request.flags |= AMDGPU_GEM_CREATE_VRAM_CLEARED;
+   if ((flags & RADEON_FLAG_ENCRYPTED) && ws->secure)
+      request.flags |= AMDGPU_GEM_CREATE_ENCRYPTED;
 
    r = amdgpu_bo_alloc(ws->dev, &request, &buf_handle);
    if (r) {
@@ -527,6 +529,7 @@ static struct amdgpu_winsys_bo *amdgpu_create_bo(struct amdgpu_winsys *ws,
       fprintf(stderr, "amdgpu:    size      : %"PRIu64" bytes\n", size);
       fprintf(stderr, "amdgpu:    alignment : %u bytes\n", alignment);
       fprintf(stderr, "amdgpu:    domains   : %u\n", initial_domain);
+      fprintf(stderr, "amdgpu:    flags   : %" PRIx64 "\n", request.flags);
       goto error_bo_alloc;
    }
 
@@ -1423,6 +1426,8 @@ static struct pb_buffer *amdgpu_bo_from_handle(struct radeon_winsys *rws,
       flags |= RADEON_FLAG_NO_CPU_ACCESS;
    if (info.alloc_flags & AMDGPU_GEM_CREATE_CPU_GTT_USWC)
       flags |= RADEON_FLAG_GTT_WC;
+   if (info.alloc_flags & AMDGPU_GEM_CREATE_ENCRYPTED)
+      flags |= RADEON_FLAG_ENCRYPTED;
 
    /* Initialize the structure. */
    simple_mtx_init(&bo->lock, mtx_plain);
