@@ -56,6 +56,12 @@ struct instance_data {
    bool first_line_printed;
 
    int control_client;
+
+   /* Dumping of frame stats to a file has been enabled. */
+   bool capture_enabled;
+
+   /* Dumping of frame stats to a file has been enabled and started. */
+   bool capture_started;
 };
 
 struct frame_stat {
@@ -562,7 +568,17 @@ static void parse_command(struct instance_data *instance_data,
                           const char *cmd, unsigned cmdlen,
                           const char *param, unsigned paramlen)
 {
-   /* TODO: Parse commands here. */
+   if (!strncmp(cmd, "capture", cmdlen)) {
+      int value = atoi(param);
+      bool enabled = value > 0;
+
+      if (enabled) {
+         instance_data->capture_enabled = true;
+      } else {
+         instance_data->capture_enabled = false;
+         instance_data->capture_started = false;
+      }
+   }
 }
 
 #define BUFSIZE 4096
@@ -769,11 +785,26 @@ static void snapshot_swapchain_frame(struct swapchain_data *data)
       data->accumulated_stats.stats[s] += device_data->frame_stats.stats[s] + data->frame_stats.stats[s];
    }
 
+   /* If capture has been enabled but it hasn't started yet, it means we are on
+    * the first snapshot after it has been enabled. At this point we want to
+    * use the stats captured so far to update the display, but we don't want
+    * this data to cause noise to the stats that we want to capture from now
+    * on.
+    *
+    * capture_begin == true will trigger an update of the fps on display, and a
+    * flush of the data, but no stats will be written to the output file. This
+    * way, we will have only stats from after the capture has been enabled
+    * written to the output_file.
+    */
+   const bool capture_begin =
+      instance_data->capture_enabled && !instance_data->capture_started;
+
    if (data->last_fps_update) {
       double elapsed = (double)(now - data->last_fps_update); /* us */
-      if (elapsed >= instance_data->params.fps_sampling_period) {
+      if (capture_begin ||
+          elapsed >= instance_data->params.fps_sampling_period) {
          data->fps = 1000000.0f * data->n_frames_since_update / elapsed;
-         if (instance_data->params.output_file) {
+         if (instance_data->capture_started) {
             if (!instance_data->first_line_printed) {
                bool first_column = true;
 
@@ -812,6 +843,9 @@ static void snapshot_swapchain_frame(struct swapchain_data *data)
          memset(&data->accumulated_stats, 0, sizeof(data->accumulated_stats));
          data->n_frames_since_update = 0;
          data->last_fps_update = now;
+
+         if (capture_begin)
+            instance_data->capture_started = true;
       }
    } else {
       data->last_fps_update = now;
@@ -2444,6 +2478,13 @@ static VkResult overlay_CreateInstance(
    instance_data_map_physical_devices(instance_data, true);
 
    parse_overlay_env(&instance_data->params, getenv("VK_LAYER_MESA_OVERLAY_CONFIG"));
+
+   /* If there's no control file, and an output_file was specified, start
+    * capturing fps data right away.
+    */
+   instance_data->capture_enabled =
+      instance_data->params.output_file && instance_data->params.control < 0;
+   instance_data->capture_started = instance_data->capture_enabled;
 
    for (int i = OVERLAY_PARAM_ENABLED_vertices;
         i <= OVERLAY_PARAM_ENABLED_compute_invocations; i++) {
