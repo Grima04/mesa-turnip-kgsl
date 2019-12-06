@@ -685,25 +685,6 @@ mir_choose_spill_node(
                 compiler_context *ctx,
                 struct lcra_state *l)
 {
-        /* Our first step is to calculate spill cost to figure out the best
-         * spill node. All nodes are equal in spill cost, but we can't spill
-         * nodes written to from an unspill */
-
-        unsigned *cost = calloc(ctx->temp_count, sizeof(cost[0]));
-
-        mir_foreach_instr_global(ctx, ins) {
-                if (ins->dest < ctx->temp_count)
-                        cost[ins->dest]++;
-
-                mir_foreach_src(ins, s) {
-                        if (ins->src[s] < ctx->temp_count)
-                                cost[ins->src[s]]++;
-                }
-        }
-
-        for (unsigned i = 0; i < ctx->temp_count; ++i)
-                lcra_set_node_spill_cost(l, i, cost[i]);
-
         /* We can't spill a previously spilled value or an unspill */
 
         mir_foreach_instr_global(ctx, ins) {
@@ -719,8 +700,6 @@ mir_choose_spill_node(
                         }
                 }
         }
-
-        free(cost);
 
         return lcra_get_best_spill_node(l);
 }
