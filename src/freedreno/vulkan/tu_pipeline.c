@@ -1934,6 +1934,7 @@ tu_pipeline_builder_init_graphics(
          subpass->depth_stencil_attachment.attachment != VK_ATTACHMENT_UNUSED;
 
       assert(subpass->color_count == 0 ||
+             !create_info->pColorBlendState ||
              subpass->color_count == create_info->pColorBlendState->attachmentCount);
       builder->color_attachment_count = subpass->color_count;
       for (uint32_t i = 0; i < subpass->color_count; i++) {
