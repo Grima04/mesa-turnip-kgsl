@@ -88,6 +88,8 @@ spec/arb_arrays_of_arrays/execution/sampler/vs-struct-nonconst-non-opaque-member
 spec/arb_arrays_of_arrays/execution/sampler/vs-struct-nonconst-sampler-const: skip
 spec/arb_arrays_of_arrays/execution/sampler/vs-struct-nonconst-sampler-nonconst: skip
 spec/arb_arrays_of_arrays/execution/tessellation/tcs-tes-patch: skip
+spec/arb_arrays_of_arrays/execution/ubo/fs-mixed-const-nonconst: skip
+spec/arb_arrays_of_arrays/execution/ubo/fs-nonconst: skip
 spec/arb_bindless_texture/execution/images/basic-arithmetic-uvec2-imagestore: skip
 spec/arb_bindless_texture/execution/images/basic-imageatomicexchange: skip
 spec/arb_bindless_texture/execution/images/basic-imagestore: skip
@@ -1326,6 +1328,18 @@ spec/arb_gpu_shader_int64/execution/fs-shift-vector-by-scalar: skip
 spec/arb_gpu_shader_int64/execution/fs-shift-vector-by-vector: skip
 spec/arb_gpu_shader_int64/execution/fs-ushr-and-mask: skip
 spec/arb_gpu_shader_int64/execution/fs-ushr-and-mask-loop: skip
+spec/arb_separate_shader_objects/linker/pervertex-clipdistance-tcs-out-tes: skip
+spec/arb_separate_shader_objects/linker/pervertex-clipdistance-tes-out-gs: skip
+spec/arb_separate_shader_objects/linker/pervertex-clipdistance-vs-out-tcs: skip
+spec/arb_separate_shader_objects/linker/pervertex-culldistance-tcs-out-tes: skip
+spec/arb_separate_shader_objects/linker/pervertex-culldistance-tes-out-gs: skip
+spec/arb_separate_shader_objects/linker/pervertex-culldistance-vs-out-tcs: skip
+spec/arb_separate_shader_objects/linker/pervertex-pointsize-tcs-out-tes: skip
+spec/arb_separate_shader_objects/linker/pervertex-pointsize-tes-out-gs: skip
+spec/arb_separate_shader_objects/linker/pervertex-pointsize-vs-out-tcs: skip
+spec/arb_separate_shader_objects/linker/pervertex-position-tcs-out-tes: skip
+spec/arb_separate_shader_objects/linker/pervertex-position-tes-out-gs: skip
+spec/arb_separate_shader_objects/linker/pervertex-position-vs-out-tcs: skip
 spec/arb_shader_atomic_counters/linker/different-bindings-atomic-counter: skip
 spec/arb_shader_ballot/execution/fs-ballot: skip
 spec/arb_shader_ballot/execution/fs-ballot-if-else: skip
@@ -1666,6 +1680,8 @@ spec/arb_shader_precision/vs-sqrt-float: skip
 spec/arb_shader_precision/vs-sqrt-vec2: skip
 spec/arb_shader_precision/vs-sqrt-vec3: skip
 spec/arb_shader_precision/vs-sqrt-vec4: skip
+spec/arb_shader_storage_buffer_object/execution/indirect: fail
+spec/arb_shader_storage_buffer_object/execution/ssbo-atomiccompswap-int: skip
 spec/arb_shader_subroutine/execution/simple-subroutine-dlist: skip
 spec/arb_shading_language_420pack/linker/different-bindings-shader-storage-blocks: skip
 spec/arb_shading_language_420pack/linker/different-bindings-shader-storage-blocks-instanced: skip
@@ -3463,6 +3479,7 @@ spec/glsl-1.30/execution/fs-texturelod-miplevels: fail
 spec/glsl-1.30/execution/fs-texturelod-miplevels-biased: fail
 spec/glsl-1.30/execution/vs-texturelod-miplevels: fail
 spec/glsl-1.30/execution/vs-texturelod-miplevels-biased: fail
+spec/glsl-1.50/execution/built-in-functions/gs-pow-float-float: fail
 spec/glsl-1.50/execution/compatibility/clipping/gs-clip-vertex-const-accept: skip
 spec/glsl-1.50/execution/compatibility/clipping/gs-clip-vertex-const-reject: skip
 spec/glsl-1.50/execution/compatibility/clipping/gs-clip-vertex-different-from-position: skip
@@ -6400,10 +6417,10 @@ spec/oes_viewport_array/viewport-gs-writes-out-of-range: skip
 summary:
        name:  results
        ----  --------
-       pass:     7420
-       fail:       53
+       pass:     8930
+       fail:       55
       crash:        0
-       skip:     6346
+       skip:     6361
     timeout:        0
        warn:        0
  incomplete:        0
@@ -6412,4 +6429,4 @@ summary:
     changes:        0
       fixes:        0
 regressions:        0
-      total:    13819
+      total:    15346

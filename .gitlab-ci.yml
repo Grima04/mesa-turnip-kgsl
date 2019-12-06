@@ -548,13 +548,6 @@ piglit-quick_shader:
   extends: .piglit-test
   variables:
     LP_NUM_THREADS: 1
-    PIGLIT_OPTIONS: >
-      -x spec@arb_arrays_of_arrays@execution@ubo
-      -x spec@arb_gpu_shader_int64@execution$$
-      -x spec@arb_separate_shader_objects@execution
-      -x spec@arb_separate_shader_objects@linker
-      -x spec@arb_shader_storage_buffer_object@execution
-      -x spec@glsl-1.50@execution@built-in-functions
     PIGLIT_PROFILES: quick_shader
 
 .deqp-test:
