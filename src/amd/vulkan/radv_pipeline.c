@@ -955,10 +955,27 @@ static uint32_t si_translate_fill(VkPolygonMode func)
 	}
 }
 
-static uint8_t radv_pipeline_get_ps_iter_samples(const VkPipelineMultisampleStateCreateInfo *vkms)
+static uint8_t radv_pipeline_get_ps_iter_samples(const VkGraphicsPipelineCreateInfo *pCreateInfo)
 {
-	uint32_t num_samples = vkms->rasterizationSamples;
+	const VkPipelineMultisampleStateCreateInfo *vkms = pCreateInfo->pMultisampleState;
+	RADV_FROM_HANDLE(radv_render_pass, pass, pCreateInfo->renderPass);
+	struct radv_subpass *subpass = &pass->subpasses[pCreateInfo->subpass];
 	uint32_t ps_iter_samples = 1;
+	uint32_t num_samples;
+
+	/* From the Vulkan 1.1.129 spec, 26.7. Sample Shading:
+	 *
+	 * "If the VK_AMD_mixed_attachment_samples extension is enabled and the
+	 *  subpass uses color attachments, totalSamples is the number of
+	 *  samples of the color attachments. Otherwise, totalSamples is the
+	 *  value of VkPipelineMultisampleStateCreateInfo::rasterizationSamples
+	 *  specified at pipeline creation time."
+	 */
+	if (subpass->has_color_att) {
+		num_samples = subpass->color_sample_count;
+	} else {
+		num_samples = vkms->rasterizationSamples;
+	}
 
 	if (vkms->sampleShadingEnable) {
 		ps_iter_samples = ceil(vkms->minSampleShading * num_samples);
@@ -1167,7 +1184,7 @@ radv_pipeline_init_multisample_state(struct radv_pipeline *pipeline,
 		if (pipeline->shaders[MESA_SHADER_FRAGMENT]->info.ps.force_persample) {
 			ps_iter_samples = ms->num_samples;
 		} else {
-			ps_iter_samples = radv_pipeline_get_ps_iter_samples(vkms);
+			ps_iter_samples = radv_pipeline_get_ps_iter_samples(pCreateInfo);
 		}
 	} else {
 		ms->num_samples = 1;
@@ -1210,11 +1227,15 @@ radv_pipeline_init_multisample_state(struct radv_pipeline *pipeline,
 	                        S_028A48_VPORT_SCISSOR_ENABLE(1);
 
 	if (ms->num_samples > 1) {
+		RADV_FROM_HANDLE(radv_render_pass, pass, pCreateInfo->renderPass);
+		struct radv_subpass *subpass = &pass->subpasses[pCreateInfo->subpass];
+		uint32_t z_samples = subpass->depth_stencil_attachment ? subpass->depth_sample_count : ms->num_samples;
 		unsigned log_samples = util_logbase2(ms->num_samples);
+		unsigned log_z_samples = util_logbase2(z_samples);
 		unsigned log_ps_iter_samples = util_logbase2(ps_iter_samples);
 		ms->pa_sc_mode_cntl_0 |= S_028A48_MSAA_ENABLE(1);
 		ms->pa_sc_line_cntl |= S_028BDC_EXPAND_LINE_WIDTH(1); /* CM_R_028BDC_PA_SC_LINE_CNTL */
-		ms->db_eqaa |= S_028804_MAX_ANCHOR_SAMPLES(log_samples) |
+		ms->db_eqaa |= S_028804_MAX_ANCHOR_SAMPLES(log_z_samples) |
 			S_028804_PS_ITER_SAMPLES(log_ps_iter_samples) |
 			S_028804_MASK_EXPORT_NUM_SAMPLES(log_samples) |
 			S_028804_ALPHA_TO_MASK_NUM_SAMPLES(log_samples);
@@ -2320,7 +2341,7 @@ radv_generate_graphics_pipeline_key(struct radv_pipeline *pipeline,
 		radv_pipeline_get_multisample_state(pCreateInfo);
 	if (vkms && vkms->rasterizationSamples > 1) {
 		uint32_t num_samples = vkms->rasterizationSamples;
-		uint32_t ps_iter_samples = radv_pipeline_get_ps_iter_samples(vkms);
+		uint32_t ps_iter_samples = radv_pipeline_get_ps_iter_samples(pCreateInfo);
 		key.num_samples = num_samples;
 		key.log2_ps_iter_samples = util_logbase2(ps_iter_samples);
 	}
