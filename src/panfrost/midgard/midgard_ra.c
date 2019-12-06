@@ -688,7 +688,7 @@ mir_choose_spill_node(
         /* We can't spill a previously spilled value or an unspill */
 
         mir_foreach_instr_global(ctx, ins) {
-                if (ins->no_spill) {
+                if (ins->no_spill & (1 << l->spill_class)) {
                         lcra_set_node_spill_cost(l, ins->dest, -1);
 
                         mir_foreach_src(ins, s)
@@ -736,10 +736,10 @@ mir_spill_register(
 
                         if (is_special_w) {
                                 st = v_mov(spill_node, spill_slot);
-                                st.no_spill = true;
+                                st.no_spill |= (1 << spill_class);
                         } else {
                                 ins->dest = spill_index++;
-                                ins->no_spill = true;
+                                ins->no_spill |= (1 << spill_class);
                                 st = v_load_store_scratch(ins->dest, spill_slot, true, ins->mask);
                         }
 
@@ -790,7 +790,7 @@ mir_spill_register(
                                 if (is_special) {
                                         /* Move */
                                         st = v_mov(spill_node, index);
-                                        st.no_spill = true;
+                                        st.no_spill |= (1 << spill_class);
                                 } else {
                                         /* TLS load */
                                         st = v_load_store_scratch(index, spill_slot, false, 0xF);

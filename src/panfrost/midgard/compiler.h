@@ -127,9 +127,10 @@ typedef struct midgard_instruction {
         bool invert;
 
         /* Hint for the register allocator not to spill the destination written
-         * from this instruction (because it is a spill/unspill node itself) */
+         * from this instruction (because it is a spill/unspill node itself).
+         * Bitmask of spilled classes */
 
-        bool no_spill;
+        unsigned no_spill;
 
         /* Generic hint for intra-pass use */
         bool hint;
@@ -565,6 +566,14 @@ v_mov(unsigned src, unsigned dest)
         return ins;
 }
 
+/* Broad types of register classes so we can handle special
+ * registers */
+
+#define REG_CLASS_WORK          0
+#define REG_CLASS_LDST          1
+#define REG_CLASS_TEXR          3
+#define REG_CLASS_TEXW          4
+
 /* Like a move, but to thread local storage! */
 
 static inline midgard_instruction
@@ -592,7 +601,7 @@ v_load_store_scratch(
                 },
 
                 /* If we spill an unspill, RA goes into an infinite loop */
-                .no_spill = true
+                .no_spill = (1 << REG_CLASS_WORK)
         };
 
         ins.constants[0] = byte;
@@ -630,14 +639,6 @@ mir_has_arg(midgard_instruction *ins, unsigned arg)
 /* Scheduling */
 
 void schedule_program(compiler_context *ctx);
-
-/* Broad types of register classes so we can handle special
- * registers */
-
-#define REG_CLASS_WORK          0
-#define REG_CLASS_LDST          1
-#define REG_CLASS_TEXR          3
-#define REG_CLASS_TEXW          4
 
 void mir_ra(compiler_context *ctx);
 void mir_squeeze_index(compiler_context *ctx);
