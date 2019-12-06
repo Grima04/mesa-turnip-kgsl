@@ -688,8 +688,7 @@ anv_pipeline_lower_nir(struct anv_pipeline *pipeline,
    /* Apply the actual pipeline layout to UBOs, SSBOs, and textures */
    anv_nir_apply_pipeline_layout(pdevice,
                                  pipeline->device->robust_buffer_access,
-                                 layout, nir, prog_data,
-                                 &stage->bind_map);
+                                 layout, nir, &stage->bind_map);
 
    NIR_PASS_V(nir, nir_lower_explicit_io, nir_var_mem_ubo,
               nir_address_format_32bit_index_offset);

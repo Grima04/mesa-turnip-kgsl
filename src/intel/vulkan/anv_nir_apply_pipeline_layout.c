@@ -1109,7 +1109,6 @@ anv_nir_apply_pipeline_layout(const struct anv_physical_device *pdevice,
                               bool robust_buffer_access,
                               const struct anv_pipeline_layout *layout,
                               nir_shader *shader,
-                              struct brw_stage_prog_data *prog_data,
                               struct anv_pipeline_bind_map *map)
 {
    void *mem_ctx = ralloc_context(NULL);
