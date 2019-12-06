@@ -46,6 +46,7 @@ midgard_FILES := \
         midgard/midgard_errata_lod.c \
         midgard/mir.c \
         midgard/mir_promote_uniforms.c \
+        midgard/mir_squeeze.c \
         midgard/lcra.c
 
 shared_FILES := \

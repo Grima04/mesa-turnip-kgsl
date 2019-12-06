@@ -565,6 +565,49 @@ v_mov(unsigned src, unsigned dest)
         return ins;
 }
 
+/* Like a move, but to thread local storage! */
+
+static inline midgard_instruction
+v_load_store_scratch(
+                unsigned srcdest,
+                unsigned index,
+                bool is_store,
+                unsigned mask)
+{
+        /* We index by 32-bit vec4s */
+        unsigned byte = (index * 4 * 4);
+
+        midgard_instruction ins = {
+                .type = TAG_LOAD_STORE_4,
+                .mask = mask,
+                .dest = ~0,
+                .src = { ~0, ~0, ~0 },
+                .swizzle = SWIZZLE_IDENTITY_4,
+                .load_store = {
+                        .op = is_store ? midgard_op_st_int4 : midgard_op_ld_int4,
+
+                        /* For register spilling - to thread local storage */
+                        .arg_1 = 0xEA,
+                        .arg_2 = 0x1E,
+                },
+
+                /* If we spill an unspill, RA goes into an infinite loop */
+                .no_spill = true
+        };
+
+        ins.constants[0] = byte;
+
+        if (is_store) {
+                /* r0 = r26, r1 = r27 */
+                assert(srcdest == SSA_FIXED_REGISTER(26) || srcdest == SSA_FIXED_REGISTER(27));
+                ins.src[0] = srcdest;
+        } else {
+                ins.dest = srcdest;
+        }
+
+        return ins;
+}
+
 static inline bool
 mir_has_arg(midgard_instruction *ins, unsigned arg)
 {
@@ -591,9 +634,9 @@ void schedule_program(compiler_context *ctx);
 #define REG_CLASS_TEXR          3
 #define REG_CLASS_TEXW          4
 
+void mir_ra(compiler_context *ctx);
+void mir_squeeze_index(compiler_context *ctx);
 void mir_lower_special_reads(compiler_context *ctx);
-struct lcra_state* allocate_registers(compiler_context *ctx, bool *spilled);
-void install_registers(compiler_context *ctx, struct lcra_state *g);
 void mir_liveness_ins_update(uint16_t *live, midgard_instruction *ins, unsigned max);
 void mir_compute_liveness(compiler_context *ctx);
 void mir_invalidate_liveness(compiler_context *ctx);
