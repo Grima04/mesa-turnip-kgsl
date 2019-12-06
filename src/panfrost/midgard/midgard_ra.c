@@ -473,6 +473,14 @@ allocate_registers(compiler_context *ctx, bool *spilled)
 
                 if (ins->type == TAG_LOAD_STORE_4 && ins->load_64)
                         min_alignment[dest] = 3;
+
+                /* We don't have a swizzle for the conditional and we don't
+                 * want to muck with the conditional itself, so just force
+                 * alignment for now */
+
+                if (ins->type == TAG_ALU_4 && OP_IS_CSEL_V(ins->alu.op))
+                        min_alignment[dest] = 4; /* 1 << 4= 16-byte = vec4 */
+
         }
 
         for (unsigned i = 0; i < ctx->temp_count; ++i) {
