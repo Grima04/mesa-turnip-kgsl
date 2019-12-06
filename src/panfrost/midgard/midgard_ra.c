@@ -704,36 +704,18 @@ mir_choose_spill_node(
         for (unsigned i = 0; i < ctx->temp_count; ++i)
                 lcra_set_node_spill_cost(l, i, cost[i]);
 
-        /* We can't spill any bundles that contain unspills. This could be
-         * optimized to allow use of r27 to spill twice per bundle, but if
-         * you're at the point of optimizing spilling, it's too late.
-         *
-         * We also can't double-spill. */
+        /* We can't spill a previously spilled value or an unspill */
 
-        mir_foreach_block(ctx, block) {
-                mir_foreach_bundle_in_block(block, bun) {
-                        bool no_spill = false;
+        mir_foreach_instr_global(ctx, ins) {
+                if (ins->no_spill) {
+                        if (ins->dest < ctx->temp_count)
+                                lcra_set_node_spill_cost(l, ins->dest, -1);
 
-                        for (unsigned i = 0; i < bun->instruction_count; ++i) {
-                                no_spill |= bun->instructions[i]->no_spill;
+                        mir_foreach_src(ins, s) {
+                                unsigned src = ins->src[s];
 
-                                if (bun->instructions[i]->no_spill) {
-                                        mir_foreach_src(bun->instructions[i], s) {
-                                                unsigned src = bun->instructions[i]->src[s];
-
-                                                if (src < ctx->temp_count)
-                                                        lcra_set_node_spill_cost(l, src, -1);
-                                        }
-                                }
-                        }
-
-                        if (!no_spill)
-                                continue;
-
-                        for (unsigned i = 0; i < bun->instruction_count; ++i) {
-                                unsigned dest = bun->instructions[i]->dest;
-                                if (dest < ctx->temp_count)
-                                        lcra_set_node_spill_cost(l, dest, -1);
+                                if (src < ctx->temp_count)
+                                        lcra_set_node_spill_cost(l, src, -1);
                         }
                 }
         }
