@@ -199,7 +199,8 @@ static unsigned si_texture_get_offset(struct si_screen *sscreen,
 
 		/* Each texture is an array of slices. Each slice is an array
 		 * of mipmap levels. */
-		return box->z * tex->surface.u.gfx9.surf_slice_size +
+		return tex->surface.u.gfx9.surf_offset +
+		       box->z * tex->surface.u.gfx9.surf_slice_size +
 		       tex->surface.u.gfx9.offset[level] +
 		       (box->y / tex->surface.blk_h *
 			tex->surface.u.gfx9.surf_pitch +
