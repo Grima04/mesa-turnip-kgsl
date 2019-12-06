@@ -785,11 +785,6 @@ mir_spill_register(
                                 index = ++spill_index;
 
                                 midgard_instruction *before = ins;
-
-                                /* TODO: Remove me I'm a fossil */
-                                if (ins->type == TAG_ALU_4 && OP_IS_CSEL(ins->alu.op))
-                                        before = mir_prev_op(before);
-
                                 midgard_instruction st;
 
                                 if (is_special) {
