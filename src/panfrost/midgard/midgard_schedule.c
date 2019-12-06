@@ -1094,6 +1094,9 @@ schedule_block(compiler_context *ctx, midgard_block *block)
         mir_foreach_instr_in_block_scheduled_rev(block, ins) {
                 list_add(&ins->link, &block->instructions);
         }
+
+	free(instructions); /* Allocated by flatten_mir() */
+	free(worklist);
 }
 
 /* When we're 'squeezing down' the values in the IR, we maintain a hash
