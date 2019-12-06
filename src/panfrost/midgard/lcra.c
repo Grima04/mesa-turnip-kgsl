@@ -67,6 +67,22 @@ lcra_alloc_equations(
 }
 
 void
+lcra_free(struct lcra_state *l)
+{
+        free(l->alignment);
+        free(l->linear);
+        free(l->modulus);
+        free(l->class);
+        free(l->class_start);
+        free(l->class_disjoint);
+        free(l->class_size);
+        free(l->spill_cost);
+        free(l->solutions);
+
+        free(l);
+}
+
+void
 lcra_set_alignment(struct lcra_state *l, unsigned node, unsigned align_log2)
 {
         l->alignment[node] = align_log2 + 1;

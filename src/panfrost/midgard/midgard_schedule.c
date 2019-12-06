@@ -1427,7 +1427,11 @@ schedule_program(compiler_context *ctx)
                 mir_squeeze_index(ctx);
                 mir_invalidate_liveness(ctx);
 
-                l = NULL;
+                if (l) {
+                        lcra_free(l);
+                        l = NULL;
+                }
+
                 l = allocate_registers(ctx, &spilled);
         } while(spilled && ((iter_count--) > 0));
 
@@ -1442,4 +1446,6 @@ schedule_program(compiler_context *ctx)
         ctx->tls_size = spill_count * 16;
 
         install_registers(ctx, l);
+
+        lcra_free(l);
 }
