@@ -598,12 +598,17 @@ v_load_store_scratch(
         ins.constants[0] = byte;
 
         if (is_store) {
-                /* r0 = r26, r1 = r27 */
-                assert(srcdest == SSA_FIXED_REGISTER(26) || srcdest == SSA_FIXED_REGISTER(27));
                 ins.src[0] = srcdest;
-        } else {
+
+                /* Ensure we are tightly swizzled so liveness analysis is
+                 * correct */
+
+                for (unsigned i = 0; i < 4; ++i) {
+                        if (!(mask & (1 << i)))
+                                ins.swizzle[0][i] = COMPONENT_X;
+                }
+        } else
                 ins.dest = srcdest;
-        }
 
         return ins;
 }

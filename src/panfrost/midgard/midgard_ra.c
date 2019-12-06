@@ -738,7 +738,7 @@ mir_spill_register(
                                 st = v_mov(spill_node, spill_slot);
                                 st.no_spill = true;
                         } else {
-                                ins->dest = SSA_FIXED_REGISTER(26);
+                                ins->dest = spill_index++;
                                 ins->no_spill = true;
                                 st = v_load_store_scratch(ins->dest, spill_slot, true, ins->mask);
                         }
