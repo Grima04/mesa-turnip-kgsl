@@ -865,7 +865,6 @@ radv_update_multisample_state(struct radv_cmd_buffer *cmd_buffer,
 			      struct radv_pipeline *pipeline)
 {
 	int num_samples = pipeline->graphics.ms.num_samples;
-	struct radv_multisample_state *ms = &pipeline->graphics.ms;
 	struct radv_pipeline *old_pipeline = cmd_buffer->state.emitted_pipeline;
 
 	if (pipeline->shaders[MESA_SHADER_FRAGMENT]->info.ps.needs_sample_positions)
@@ -874,16 +873,7 @@ radv_update_multisample_state(struct radv_cmd_buffer *cmd_buffer,
 	if (old_pipeline && num_samples == old_pipeline->graphics.ms.num_samples)
 		return;
 
-	radeon_set_context_reg_seq(cmd_buffer->cs, R_028BE0_PA_SC_AA_CONFIG, 1);
-	radeon_emit(cmd_buffer->cs, ms->pa_sc_aa_config);
-
 	radv_emit_default_sample_locations(cmd_buffer->cs, num_samples);
-
-	/* GFX9: Flush DFSM when the AA mode changes. */
-	if (cmd_buffer->device->dfsm_allowed) {
-		radeon_emit(cmd_buffer->cs, PKT3(PKT3_EVENT_WRITE, 0, 0));
-		radeon_emit(cmd_buffer->cs, EVENT_TYPE(V_028A90_FLUSH_DFSM) | EVENT_INDEX(0));
-	}
 
 	cmd_buffer->state.context_roll_without_scissor_emitted = true;
 }
