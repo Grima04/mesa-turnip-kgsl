@@ -718,7 +718,7 @@ _mesa_get_tex_max_num_levels(GLenum target, GLsizei width, GLsizei height,
       return 1;
    }
 
-   return _mesa_logbase2(size) + 1;
+   return util_logbase2(size) + 1;
 }
 
 
@@ -844,7 +844,7 @@ _mesa_init_teximage_fields_ms(struct gl_context *ctx,
    img->Depth = depth;
 
    img->Width2 = width - 2 * border;   /* == 1 << img->WidthLog2; */
-   img->WidthLog2 = _mesa_logbase2(img->Width2);
+   img->WidthLog2 = util_logbase2(img->Width2);
 
    switch(target) {
    case GL_TEXTURE_1D:
@@ -887,7 +887,7 @@ _mesa_init_teximage_fields_ms(struct gl_context *ctx,
    case GL_TEXTURE_2D_MULTISAMPLE:
    case GL_PROXY_TEXTURE_2D_MULTISAMPLE:
       img->Height2 = height - 2 * border; /* == 1 << img->HeightLog2; */
-      img->HeightLog2 = _mesa_logbase2(img->Height2);
+      img->HeightLog2 = util_logbase2(img->Height2);
       if (depth == 0)
          img->Depth2 = 0;
       else
@@ -901,16 +901,16 @@ _mesa_init_teximage_fields_ms(struct gl_context *ctx,
    case GL_TEXTURE_2D_MULTISAMPLE_ARRAY:
    case GL_PROXY_TEXTURE_2D_MULTISAMPLE_ARRAY:
       img->Height2 = height - 2 * border; /* == 1 << img->HeightLog2; */
-      img->HeightLog2 = _mesa_logbase2(img->Height2);
+      img->HeightLog2 = util_logbase2(img->Height2);
       img->Depth2 = depth; /* no border */
       img->DepthLog2 = 0; /* not used */
       break;
    case GL_TEXTURE_3D:
    case GL_PROXY_TEXTURE_3D:
       img->Height2 = height - 2 * border; /* == 1 << img->HeightLog2; */
-      img->HeightLog2 = _mesa_logbase2(img->Height2);
+      img->HeightLog2 = util_logbase2(img->Height2);
       img->Depth2 = depth - 2 * border;   /* == 1 << img->DepthLog2; */
-      img->DepthLog2 = _mesa_logbase2(img->Depth2);
+      img->DepthLog2 = util_logbase2(img->Depth2);
       break;
    default:
       _mesa_problem(NULL, "invalid target 0x%x in _mesa_init_teximage_fields()",

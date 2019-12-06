@@ -593,7 +593,7 @@ gen7_set_dp_scratch_message(struct brw_codegen *p,
    const struct gen_device_info *devinfo = p->devinfo;
    assert(num_regs == 1 || num_regs == 2 || num_regs == 4 ||
           (devinfo->gen >= 8 && num_regs == 8));
-   const unsigned block_size = (devinfo->gen >= 8 ? _mesa_logbase2(num_regs) :
+   const unsigned block_size = (devinfo->gen >= 8 ? util_logbase2(num_regs) :
                                 num_regs - 1);
 
    brw_set_desc(p, inst, brw_message_desc(
@@ -3421,7 +3421,7 @@ brw_broadcast(struct brw_codegen *p,
          /* Take into account the component size and horizontal stride. */
          assert(src.vstride == src.hstride + src.width);
          brw_SHL(p, addr, vec1(idx),
-                 brw_imm_ud(_mesa_logbase2(type_sz(src.type)) +
+                 brw_imm_ud(util_logbase2(type_sz(src.type)) +
                             src.hstride - 1));
 
          /* We can only address up to limit bytes using the indirect

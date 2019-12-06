@@ -298,8 +298,8 @@ subscript(fs_reg reg, brw_reg_type type, unsigned i)
       /* The stride is encoded inconsistently for fixed GRF and ARF registers
        * as the log2 of the actual vertical and horizontal strides.
        */
-      const int delta = _mesa_logbase2(type_sz(reg.type)) -
-                        _mesa_logbase2(type_sz(type));
+      const int delta = util_logbase2(type_sz(reg.type)) -
+                        util_logbase2(type_sz(type));
       reg.hstride += (reg.hstride ? delta : 0);
       reg.vstride += (reg.vstride ? delta : 0);
 

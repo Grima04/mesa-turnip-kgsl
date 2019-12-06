@@ -587,7 +587,7 @@ fs_generator::generate_shuffle(fs_inst *inst,
          /* Take into account the component size and horizontal stride. */
          assert(src.vstride == src.hstride + src.width);
          brw_SHL(p, addr, group_idx,
-                 brw_imm_uw(_mesa_logbase2(type_sz(src.type)) +
+                 brw_imm_uw(util_logbase2(type_sz(src.type)) +
                             src.hstride - 1));
 
          /* Add on the register start offset */

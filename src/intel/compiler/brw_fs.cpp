@@ -6297,7 +6297,7 @@ get_fpu_lowered_simd_width(const struct gen_device_info *devinfo,
    /* Only power-of-two execution sizes are representable in the instruction
     * control fields.
     */
-   return 1 << _mesa_logbase2(max_width);
+   return 1 << util_logbase2(max_width);
 }
 
 /**

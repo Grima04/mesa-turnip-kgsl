@@ -681,7 +681,7 @@ static radeon_mipmap_tree *radeon_miptree_create_for_teximage(radeonContextPtr r
 		    texImage->Level == firstLevel) {
 			lastLevel = firstLevel;
 		} else {
-			lastLevel = firstLevel + _mesa_logbase2(MAX2(MAX2(width, height), depth));
+			lastLevel = firstLevel + util_logbase2(MAX2(MAX2(width, height), depth));
 		}
 	}
 

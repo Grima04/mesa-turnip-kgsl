@@ -86,7 +86,7 @@ brw_alloc_reg_set(struct brw_compiler *compiler, int dispatch_width)
 {
    const struct gen_device_info *devinfo = compiler->devinfo;
    int base_reg_count = BRW_MAX_GRF;
-   const int index = _mesa_logbase2(dispatch_width / 8);
+   const int index = util_logbase2(dispatch_width / 8);
 
    if (dispatch_width > 8 && devinfo->gen >= 7) {
       /* For IVB+, we don't need the PLN hacks or the even-reg alignment in
@@ -423,7 +423,7 @@ public:
        * for reg_width == 2.
        */
       int reg_width = fs->dispatch_width / 8;
-      rsi = _mesa_logbase2(reg_width);
+      rsi = util_logbase2(reg_width);
       payload_node_count = ALIGN(fs->first_non_payload_grf, reg_width);
 
       /* Get payload IP information */
