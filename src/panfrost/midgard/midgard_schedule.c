@@ -1392,6 +1392,8 @@ static void mir_spill_register(
         mir_foreach_instr_global(ctx, ins) {
                 ins->hint = false;
         }
+
+        free(cost);
 }
 
 void
