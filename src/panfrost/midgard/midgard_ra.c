@@ -678,18 +678,13 @@ install_registers(compiler_context *ctx, struct lcra_state *l)
 }
 
 
-/* If register allocation fails, find the best spill node and spill it to fix
- * whatever the issue was. This spill node could be a work register (spilling
- * to thread local storage), but it could also simply be a special register
- * that needs to spill to become a work register. */
+/* If register allocation fails, find the best spill node */
 
-static void mir_spill_register(
+static signed
+mir_choose_spill_node(
                 compiler_context *ctx,
-                struct lcra_state *l,
-                unsigned *spill_count)
+                struct lcra_state *l)
 {
-        unsigned spill_index = ctx->temp_count;
-
         /* Our first step is to calculate spill cost to figure out the best
          * spill node. All nodes are equal in spill cost, but we can't spill
          * nodes written to from an unspill */
@@ -743,19 +738,28 @@ static void mir_spill_register(
                 }
         }
 
-        int spill_node = lcra_get_best_spill_node(l);
+        free(cost);
 
-        if (spill_node < 0) {
-                mir_print_shader(ctx);
-                assert(0);
-        }
+        return lcra_get_best_spill_node(l);
+}
+
+/* Once we've chosen a spill node, spill it */
+
+static void
+mir_spill_register(
+                compiler_context *ctx,
+                unsigned spill_node,
+                unsigned spill_class,
+                unsigned *spill_count)
+{
+        unsigned spill_index = ctx->temp_count;
 
         /* We have a spill node, so check the class. Work registers
          * legitimately spill to TLS, but special registers just spill to work
          * registers */
 
-        bool is_special = l->class[spill_node] != REG_CLASS_WORK;
-        bool is_special_w = l->class[spill_node] == REG_CLASS_TEXW;
+        bool is_special = spill_class != REG_CLASS_WORK;
+        bool is_special_w = spill_class == REG_CLASS_TEXW;
 
         /* Allocate TLS slot (maybe) */
         unsigned spill_slot = !is_special ? (*spill_count)++ : 0;
@@ -876,8 +880,6 @@ static void mir_spill_register(
         mir_foreach_instr_global(ctx, ins) {
                 ins->hint = false;
         }
-
-        free(cost);
 }
 
 /* Run register allocation in a loop, spilling until we succeed */
@@ -896,8 +898,16 @@ mir_ra(compiler_context *ctx)
         mir_create_pipeline_registers(ctx);
 
         do {
-                if (spilled) 
-                        mir_spill_register(ctx, l, &spill_count);
+                if (spilled) {
+                        signed spill_node = mir_choose_spill_node(ctx, l);
+
+                        if (spill_node == -1) {
+                                fprintf(stderr, "ERROR: Failed to choose spill node\n");
+                                return;
+                        }
+
+                        mir_spill_register(ctx, spill_node, l->spill_class, &spill_count);
+                }
 
                 mir_squeeze_index(ctx);
                 mir_invalidate_liveness(ctx);
