@@ -3648,7 +3648,9 @@ radv_pipeline_generate_multisample_state(struct radeon_cmdbuf *ctx_cs,
 	radeon_emit(ctx_cs, ms->pa_sc_aa_mask[1]);
 
 	radeon_set_context_reg(ctx_cs, R_028804_DB_EQAA, ms->db_eqaa);
+	radeon_set_context_reg(ctx_cs, R_028A48_PA_SC_MODE_CNTL_0, ms->pa_sc_mode_cntl_0);
 	radeon_set_context_reg(ctx_cs, R_028A4C_PA_SC_MODE_CNTL_1, ms->pa_sc_mode_cntl_1);
+	radeon_set_context_reg(ctx_cs, R_028BDC_PA_SC_LINE_CNTL, ms->pa_sc_line_cntl);
 
 	/* The exclusion bits can be set to improve rasterization efficiency
 	 * if no sample lies on the pixel boundary (-8 sample offset). It's

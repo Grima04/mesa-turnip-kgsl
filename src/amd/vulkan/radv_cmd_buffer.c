@@ -874,11 +874,8 @@ radv_update_multisample_state(struct radv_cmd_buffer *cmd_buffer,
 	if (old_pipeline && num_samples == old_pipeline->graphics.ms.num_samples)
 		return;
 
-	radeon_set_context_reg_seq(cmd_buffer->cs, R_028BDC_PA_SC_LINE_CNTL, 2);
-	radeon_emit(cmd_buffer->cs, ms->pa_sc_line_cntl);
+	radeon_set_context_reg_seq(cmd_buffer->cs, R_028BE0_PA_SC_AA_CONFIG, 1);
 	radeon_emit(cmd_buffer->cs, ms->pa_sc_aa_config);
-
-	radeon_set_context_reg(cmd_buffer->cs, R_028A48_PA_SC_MODE_CNTL_0, ms->pa_sc_mode_cntl_0);
 
 	radv_emit_default_sample_locations(cmd_buffer->cs, num_samples);
 
