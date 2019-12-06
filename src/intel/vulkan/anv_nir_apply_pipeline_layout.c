@@ -40,7 +40,7 @@ struct apply_pipeline_layout_state {
    nir_shader *shader;
    nir_builder builder;
 
-   struct anv_pipeline_layout *layout;
+   const struct anv_pipeline_layout *layout;
    bool add_bounds_checks;
    nir_address_format ssbo_addr_format;
 
@@ -1107,7 +1107,7 @@ compare_binding_infos(const void *_a, const void *_b)
 void
 anv_nir_apply_pipeline_layout(const struct anv_physical_device *pdevice,
                               bool robust_buffer_access,
-                              struct anv_pipeline_layout *layout,
+                              const struct anv_pipeline_layout *layout,
                               nir_shader *shader,
                               struct brw_stage_prog_data *prog_data,
                               struct anv_pipeline_bind_map *map)
@@ -1172,12 +1172,12 @@ anv_nir_apply_pipeline_layout(const struct anv_physical_device *pdevice,
       rzalloc_array(mem_ctx, struct binding_info, used_binding_count);
    used_binding_count = 0;
    for (uint32_t set = 0; set < layout->num_sets; set++) {
-      struct anv_descriptor_set_layout *set_layout = layout->set[set].layout;
+      const struct anv_descriptor_set_layout *set_layout = layout->set[set].layout;
       for (unsigned b = 0; b < set_layout->binding_count; b++) {
          if (state.set[set].use_count[b] == 0)
             continue;
 
-         struct anv_descriptor_set_binding_layout *binding =
+         const struct anv_descriptor_set_binding_layout *binding =
                &layout->set[set].layout->binding[b];
 
          /* Do a fixed-point calculation to generate a score based on the
@@ -1212,7 +1212,7 @@ anv_nir_apply_pipeline_layout(const struct anv_physical_device *pdevice,
 
    for (unsigned i = 0; i < used_binding_count; i++) {
       unsigned set = infos[i].set, b = infos[i].binding;
-      struct anv_descriptor_set_binding_layout *binding =
+      const struct anv_descriptor_set_binding_layout *binding =
             &layout->set[set].layout->binding[b];
 
       const uint32_t array_size = binding->array_size;
@@ -1299,7 +1299,7 @@ anv_nir_apply_pipeline_layout(const struct anv_physical_device *pdevice,
 
       const uint32_t set = var->data.descriptor_set;
       const uint32_t binding = var->data.binding;
-      struct anv_descriptor_set_binding_layout *bind_layout =
+      const struct anv_descriptor_set_binding_layout *bind_layout =
             &layout->set[set].layout->binding[binding];
       const uint32_t array_size = bind_layout->array_size;
 
