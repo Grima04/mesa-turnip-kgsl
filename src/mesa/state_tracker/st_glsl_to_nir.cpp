@@ -405,7 +405,6 @@ st_nir_preprocess(struct st_context *st, struct gl_program *prog,
                  nir_var_mem_shared, nir_address_format_32bit_offset);
    }
 
-   NIR_PASS_V(nir, gl_nir_lower_buffers, shader_program);
    /* Do a round of constant folding to clean up address calculations */
    NIR_PASS_V(nir, nir_opt_constant_folding);
 }
@@ -725,6 +724,8 @@ st_link_nir(struct gl_context *ctx,
    for (unsigned i = 0; i < num_shaders; i++) {
       struct gl_linked_shader *shader = linked_shader[i];
       nir_shader *nir = shader->Program->nir;
+
+      NIR_PASS_V(nir, gl_nir_lower_buffers, shader_program);
 
       /* Linked shaders are optimized in st_nir_link_shaders. Separate shaders
        * and shaders with a fixed-func VS or FS are optimized here.
