@@ -6939,6 +6939,7 @@ int si_compile_tgsi_shader(struct si_screen *sscreen,
 					     shader->info.num_input_sgprs,
 					     &shader->key.part.vs.prolog,
 					     shader, &prolog_key);
+			prolog_key.vs_prolog.is_monolithic = true;
 			si_build_vs_prolog_function(&ctx, &prolog_key);
 			parts[0] = ctx.main_fn;
 		}
