@@ -122,6 +122,9 @@ struct amdgpu_cs_context {
 
    /* the error returned from cs_flush for non-async submissions */
    int                         error_code;
+
+   /* TMZ: will this command be submitted using the TMZ flag */
+   bool secure;
 };
 
 struct amdgpu_cs {

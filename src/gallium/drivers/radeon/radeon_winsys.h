@@ -673,6 +673,13 @@ struct radeon_winsys {
 
    bool (*read_registers)(struct radeon_winsys *ws, unsigned reg_offset, unsigned num_registers,
                           uint32_t *out);
+
+   /**
+    * Secure context
+    */
+   bool (*ws_is_secure)(struct radeon_winsys *ws);
+   bool (*cs_is_secure)(struct radeon_cmdbuf *cs);
+   void (*cs_set_secure)(struct radeon_cmdbuf *cs, bool secure);
 };
 
 static inline bool radeon_emitted(struct radeon_cmdbuf *cs, unsigned num_dw)
