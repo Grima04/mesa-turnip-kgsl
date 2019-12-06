@@ -949,6 +949,8 @@ elif host_machine.system() == 'windows'
   else
     pre_args += ['-D__MSVCRT_VERSION__=0x0700']
   endif
+elif host_machine.system() == 'openbsd'
+  pre_args += '-D_ISOC11_SOURCE'
 endif
 
 # Check for generic C arguments
