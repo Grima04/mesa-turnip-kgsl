@@ -93,7 +93,7 @@ draw_create_vs_llvm(struct draw_context *draw,
    /* due to some bugs in the feedback state tracker we have to check
       for ir.nir & PIPE_SHADER_IR_NIR here. */
    if (state->ir.nir && state->type == PIPE_SHADER_IR_NIR)
-      nir_tgsi_scan_shader(state->ir.nir, &vs->base.info, false);
+      nir_tgsi_scan_shader(state->ir.nir, &vs->base.info, true);
    else {
       /* we make a private copy of the tokens */
       vs->base.state.tokens = tgsi_dup_tokens(state->tokens);

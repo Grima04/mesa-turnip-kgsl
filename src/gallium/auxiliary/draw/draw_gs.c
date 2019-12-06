@@ -803,7 +803,7 @@ draw_create_geometry_shader(struct draw_context *draw,
 
       tgsi_scan_shader(state->tokens, &gs->info);
    } else
-      nir_tgsi_scan_shader(state->ir.nir, &gs->info, false);
+      nir_tgsi_scan_shader(state->ir.nir, &gs->info, true);
 
    /* setup the defaults */
    gs->max_out_prims = 0;

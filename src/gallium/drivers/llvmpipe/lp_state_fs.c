@@ -2987,7 +2987,7 @@ llvmpipe_create_fs_state(struct pipe_context *pipe,
       shader->base.tokens = tgsi_dup_tokens(templ->tokens);
    } else {
       shader->base.ir.nir = templ->ir.nir;
-      nir_tgsi_scan_shader(templ->ir.nir, &shader->info.base, false);
+      nir_tgsi_scan_shader(templ->ir.nir, &shader->info.base, true);
    }
 
    shader->draw_data = draw_create_fragment_shader(llvmpipe->draw, templ);

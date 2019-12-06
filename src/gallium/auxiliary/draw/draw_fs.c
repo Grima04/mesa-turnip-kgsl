@@ -51,7 +51,7 @@ draw_create_fragment_shader(struct draw_context *draw,
       if (shader->type == PIPE_SHADER_IR_TGSI)
          tgsi_scan_shader(shader->tokens, &dfs->info);
       else
-         nir_tgsi_scan_shader(shader->ir.nir, &dfs->info, false);
+         nir_tgsi_scan_shader(shader->ir.nir, &dfs->info, true);
    }
 
    return dfs;
