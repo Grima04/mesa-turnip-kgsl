@@ -69,6 +69,9 @@ lcra_alloc_equations(
 void
 lcra_free(struct lcra_state *l)
 {
+        if (!l)
+                return;
+
         free(l->alignment);
         free(l->linear);
         free(l->modulus);
