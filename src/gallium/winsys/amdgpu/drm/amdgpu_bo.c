@@ -238,8 +238,11 @@ static void amdgpu_bo_destroy_or_cache(struct pb_buffer *_buf)
 
 static void amdgpu_clean_up_buffer_managers(struct amdgpu_winsys *ws)
 {
-   for (unsigned i = 0; i < NUM_SLAB_ALLOCATORS; i++)
+   for (unsigned i = 0; i < NUM_SLAB_ALLOCATORS; i++) {
       pb_slabs_reclaim(&ws->bo_slabs[i]);
+      if (ws->secure)
+        pb_slabs_reclaim(&ws->bo_slabs_encrypted[i]);
+   }
 
    pb_cache_release_all_buffers(&ws->bo_cache);
 }
@@ -612,11 +615,14 @@ bool amdgpu_bo_can_reclaim_slab(void *priv, struct pb_slab_entry *entry)
    return amdgpu_bo_can_reclaim(&bo->base);
 }
 
-static struct pb_slabs *get_slabs(struct amdgpu_winsys *ws, uint64_t size)
+static struct pb_slabs *get_slabs(struct amdgpu_winsys *ws, uint64_t size,
+                                  enum radeon_bo_flag flags)
 {
+   struct pb_slabs *bo_slabs = ((flags & RADEON_FLAG_ENCRYPTED) && ws->secure) ?
+      ws->bo_slabs_encrypted : ws->bo_slabs;
    /* Find the correct slab allocator for the given size. */
    for (unsigned i = 0; i < NUM_SLAB_ALLOCATORS; i++) {
-      struct pb_slabs *slabs = &ws->bo_slabs[i];
+      struct pb_slabs *slabs = &bo_slabs[i];
 
       if (size <= 1 << (slabs->min_order + slabs->num_orders - 1))
          return slabs;
@@ -632,7 +638,14 @@ static void amdgpu_bo_slab_destroy(struct pb_buffer *_buf)
 
    assert(!bo->bo);
 
-   pb_slab_free(get_slabs(bo->ws, bo->base.size), &bo->u.slab.entry);
+   if (bo->flags & RADEON_FLAG_ENCRYPTED)
+      pb_slab_free(get_slabs(bo->ws,
+                             bo->base.size,
+                             RADEON_FLAG_ENCRYPTED), &bo->u.slab.entry);
+   else
+      pb_slab_free(get_slabs(bo->ws,
+                             bo->base.size,
+                             0), &bo->u.slab.entry);
 }
 
 static const struct pb_vtbl amdgpu_winsys_bo_slab_vtbl = {
@@ -640,9 +653,10 @@ static const struct pb_vtbl amdgpu_winsys_bo_slab_vtbl = {
    /* other functions are never called */
 };
 
-struct pb_slab *amdgpu_bo_slab_alloc(void *priv, unsigned heap,
-                                     unsigned entry_size,
-                                     unsigned group_index)
+static struct pb_slab *amdgpu_bo_slab_alloc(void *priv, unsigned heap,
+                                            unsigned entry_size,
+                                            unsigned group_index,
+                                            bool encrypted)
 {
    struct amdgpu_winsys *ws = priv;
    struct amdgpu_slab *slab = CALLOC_STRUCT(amdgpu_slab);
@@ -654,10 +668,15 @@ struct pb_slab *amdgpu_bo_slab_alloc(void *priv, unsigned heap,
    if (!slab)
       return NULL;
 
+   if (encrypted)
+      flags |= RADEON_FLAG_ENCRYPTED;
+
+   struct pb_slabs *slabs = (flags & RADEON_FLAG_ENCRYPTED && ws->secure) ?
+      ws->bo_slabs_encrypted : ws->bo_slabs;
+
    /* Determine the slab buffer size. */
    for (unsigned i = 0; i < NUM_SLAB_ALLOCATORS; i++) {
-      struct pb_slabs *slabs = &ws->bo_slabs[i];
-      unsigned max_entry_size = 1 << (slabs->min_order + slabs->num_orders - 1);
+      unsigned max_entry_size = 1 << (slabs[i].min_order + slabs[i].num_orders - 1);
 
       if (entry_size <= max_entry_size) {
          /* The slab size is twice the size of the largest possible entry. */
@@ -724,6 +743,20 @@ fail_buffer:
 fail:
    FREE(slab);
    return NULL;
+}
+
+struct pb_slab *amdgpu_bo_slab_alloc_encrypted(void *priv, unsigned heap,
+                                               unsigned entry_size,
+                                               unsigned group_index)
+{
+   return amdgpu_bo_slab_alloc(priv, heap, entry_size, group_index, true);
+}
+
+struct pb_slab *amdgpu_bo_slab_alloc_normal(void *priv, unsigned heap,
+                                            unsigned entry_size,
+                                            unsigned group_index)
+{
+   return amdgpu_bo_slab_alloc(priv, heap, entry_size, group_index, false);
 }
 
 void amdgpu_bo_slab_free(void *priv, struct pb_slab *pslab)
@@ -1257,7 +1290,9 @@ amdgpu_bo_create(struct amdgpu_winsys *ws,
    /* Sparse buffers must have NO_CPU_ACCESS set. */
    assert(!(flags & RADEON_FLAG_SPARSE) || flags & RADEON_FLAG_NO_CPU_ACCESS);
 
-   struct pb_slabs *last_slab = &ws->bo_slabs[NUM_SLAB_ALLOCATORS - 1];
+   struct pb_slabs *slabs = (flags & RADEON_FLAG_ENCRYPTED && ws->secure) ?
+      ws->bo_slabs_encrypted : ws->bo_slabs;
+   struct pb_slabs *last_slab = &slabs[NUM_SLAB_ALLOCATORS - 1];
    unsigned max_slab_entry_size = 1 << (last_slab->min_order + last_slab->num_orders - 1);
 
    /* Sub-allocate small buffers from slabs. */
@@ -1265,14 +1300,14 @@ amdgpu_bo_create(struct amdgpu_winsys *ws,
        size <= max_slab_entry_size &&
        /* The alignment must be at most the size of the smallest slab entry or
         * the next power of two. */
-       alignment <= MAX2(1 << ws->bo_slabs[0].min_order, util_next_power_of_two(size))) {
+       alignment <= MAX2(1 << slabs[0].min_order, util_next_power_of_two(size))) {
       struct pb_slab_entry *entry;
       int heap = radeon_get_heap_index(domain, flags);
 
       if (heap < 0 || heap >= RADEON_MAX_SLAB_HEAPS)
          goto no_slab;
 
-      struct pb_slabs *slabs = get_slabs(ws, size);
+      struct pb_slabs *slabs = get_slabs(ws, size, flags);
       entry = pb_slab_alloc(slabs, size, heap);
       if (!entry) {
          /* Clean up buffer managers and try again. */
@@ -1313,7 +1348,7 @@ no_slab:
    bool use_reusable_pool = flags & RADEON_FLAG_NO_INTERPROCESS_SHARING;
 
    if (use_reusable_pool) {
-       heap = radeon_get_heap_index(domain, flags);
+       heap = radeon_get_heap_index(domain, flags & ~RADEON_FLAG_ENCRYPTED);
        assert(heap >= 0 && heap < RADEON_MAX_CACHED_HEAPS);
 
        /* Get a buffer from the cache. */
@@ -1345,8 +1380,9 @@ amdgpu_buffer_create(struct radeon_winsys *ws,
                      enum radeon_bo_domain domain,
                      enum radeon_bo_flag flags)
 {
-   return amdgpu_bo_create(amdgpu_winsys(ws), size, alignment, domain,
+   struct pb_buffer * res = amdgpu_bo_create(amdgpu_winsys(ws), size, alignment, domain,
                            flags);
+   return res;
 }
 
 static struct pb_buffer *amdgpu_bo_from_handle(struct radeon_winsys *rws,

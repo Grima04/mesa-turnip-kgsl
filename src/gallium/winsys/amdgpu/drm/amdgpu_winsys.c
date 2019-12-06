@@ -456,8 +456,20 @@ amdgpu_winsys_create(int fd, const struct pipe_screen_config *config,
                             RADEON_MAX_SLAB_HEAPS,
                             aws,
                             amdgpu_bo_can_reclaim_slab,
-                            amdgpu_bo_slab_alloc,
+                            amdgpu_bo_slab_alloc_normal,
                             amdgpu_bo_slab_free)) {
+            amdgpu_winsys_destroy(&ws->base);
+            simple_mtx_unlock(&dev_tab_mutex);
+            return NULL;
+         }
+
+         if (aws->secure && !pb_slabs_init(&aws->bo_slabs_encrypted[i],
+                                           min_order, max_order,
+                                           RADEON_MAX_SLAB_HEAPS,
+                                           aws,
+                                           amdgpu_bo_can_reclaim_slab,
+                                           amdgpu_bo_slab_alloc_encrypted,
+                                           amdgpu_bo_slab_free)) {
             amdgpu_winsys_destroy(&ws->base);
             simple_mtx_unlock(&dev_tab_mutex);
             return NULL;
