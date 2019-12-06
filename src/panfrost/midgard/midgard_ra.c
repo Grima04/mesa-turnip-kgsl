@@ -771,27 +771,18 @@ mir_spill_register(
          * spilling is to use memory to back work registers) */
 
         mir_foreach_block(ctx, block) {
-                bool consecutive_skip = false;
-                unsigned consecutive_index = 0;
-
                 mir_foreach_instr_in_block(block, ins) {
                         /* We can't rewrite the moves used to spill in the
                          * first place. These moves are hinted. */
                         if (ins->hint) continue;
 
-                        if (!mir_has_arg(ins, spill_node)) {
-                                consecutive_skip = false;
-                                continue;
-                        }
+                        /* If we don't use the spilled value, nothing to do */
+                        if (!mir_has_arg(ins, spill_node)) continue;
 
-                        if (consecutive_skip) {
-                                /* Rewrite */
-                                mir_rewrite_index_src_single(ins, spill_node, consecutive_index);
-                                continue;
-                        }
+                        unsigned index = 0;
 
                         if (!is_special_w) {
-                                consecutive_index = ++spill_index;
+                                index = ++spill_index;
 
                                 midgard_instruction *before = ins;
 
@@ -803,11 +794,11 @@ mir_spill_register(
 
                                 if (is_special) {
                                         /* Move */
-                                        st = v_mov(spill_node, consecutive_index);
+                                        st = v_mov(spill_node, index);
                                         st.no_spill = true;
                                 } else {
                                         /* TLS load */
-                                        st = v_load_store_scratch(consecutive_index, spill_slot, false, 0xF);
+                                        st = v_load_store_scratch(index, spill_slot, false, 0xF);
                                 }
 
                                 /* Mask the load based on the component count
@@ -816,15 +807,14 @@ mir_spill_register(
                                 st.mask = mir_from_bytemask(read_bytemask, midgard_reg_mode_32);
 
                                 mir_insert_instruction_before_scheduled(ctx, block, before, st);
-                               // consecutive_skip = true;
                         } else {
                                 /* Special writes already have their move spilled in */
-                                consecutive_index = spill_slot;
+                                index = spill_slot;
                         }
 
 
                         /* Rewrite to use */
-                        mir_rewrite_index_src_single(ins, spill_node, consecutive_index);
+                        mir_rewrite_index_src_single(ins, spill_node, index);
 
                         if (!is_special)
                                 ctx->fills++;
