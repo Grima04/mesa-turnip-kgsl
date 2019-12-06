@@ -255,37 +255,6 @@ tu_tiling_config_update_pipes(struct tu_tiling_config *tiling,
 }
 
 static void
-tu_tiling_config_update(struct tu_tiling_config *tiling,
-                        const struct tu_device *dev,
-                        const uint32_t *buffer_cpp,
-                        uint32_t buffer_count,
-                        const VkRect2D *render_area)
-{
-   /* see if there is any real change */
-   const bool ra_changed =
-      render_area &&
-      memcmp(&tiling->render_area, render_area, sizeof(*render_area));
-   const bool buf_changed = tiling->buffer_count != buffer_count ||
-                            memcmp(tiling->buffer_cpp, buffer_cpp,
-                                   sizeof(*buffer_cpp) * buffer_count);
-   if (!ra_changed && !buf_changed)
-      return;
-
-   if (ra_changed)
-      tiling->render_area = *render_area;
-
-   if (buf_changed) {
-      memcpy(tiling->buffer_cpp, buffer_cpp,
-             sizeof(*buffer_cpp) * buffer_count);
-      tiling->buffer_count = buffer_count;
-   }
-
-   tu_tiling_config_update_tile_layout(tiling, dev);
-   tu_tiling_config_update_pipe_layout(tiling, dev);
-   tu_tiling_config_update_pipes(tiling, dev);
-}
-
-static void
 tu_tiling_config_get_tile(const struct tu_tiling_config *tiling,
                           const struct tu_device *dev,
                           uint32_t tx,
@@ -416,10 +385,11 @@ tu6_emit_flag_buffer(struct tu_cs *cs, const struct tu_image_view *iview)
 }
 
 static void
-tu6_emit_zs(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
+tu6_emit_zs(struct tu_cmd_buffer *cmd,
+            const struct tu_subpass *subpass,
+            struct tu_cs *cs)
 {
    const struct tu_framebuffer *fb = cmd->state.framebuffer;
-   const struct tu_subpass *subpass = cmd->state.subpass;
    const struct tu_tiling_config *tiling = &cmd->state.tiling_config;
 
    const uint32_t a = subpass->depth_stencil_attachment.attachment;
@@ -457,7 +427,7 @@ tu6_emit_zs(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
    tu_cs_emit(cs, A6XX_RB_DEPTH_BUFFER_PITCH(tu_image_stride(iview->image, iview->base_mip)));
    tu_cs_emit(cs, A6XX_RB_DEPTH_BUFFER_ARRAY_PITCH(iview->image->layout.layer_size));
    tu_cs_emit_qw(cs, tu_image_base(iview->image, iview->base_mip, iview->base_layer));
-   tu_cs_emit(cs, tiling->gmem_offsets[subpass->color_count]);
+   tu_cs_emit(cs, tiling->gmem_offsets[a]);
 
    tu_cs_emit_pkt4(cs, REG_A6XX_GRAS_SU_DEPTH_BUFFER_INFO, 1);
    tu_cs_emit(cs, A6XX_GRAS_SU_DEPTH_BUFFER_INFO_DEPTH_FORMAT(fmt));
@@ -479,10 +449,11 @@ tu6_emit_zs(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 }
 
 static void
-tu6_emit_mrt(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
+tu6_emit_mrt(struct tu_cmd_buffer *cmd,
+             const struct tu_subpass *subpass,
+             struct tu_cs *cs)
 {
    const struct tu_framebuffer *fb = cmd->state.framebuffer;
-   const struct tu_subpass *subpass = cmd->state.subpass;
    const struct tu_tiling_config *tiling = &cmd->state.tiling_config;
    unsigned char mrt_comp[MAX_RTS] = { 0 };
    unsigned srgb_cntl = 0;
@@ -513,7 +484,7 @@ tu6_emit_mrt(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
       tu_cs_emit(cs, A6XX_RB_MRT_ARRAY_PITCH(iview->image->layout.layer_size));
       tu_cs_emit_qw(cs, tu_image_base(iview->image, iview->base_mip, iview->base_layer));
       tu_cs_emit(
-         cs, tiling->gmem_offsets[i]); /* RB_MRT[i].BASE_GMEM */
+         cs, tiling->gmem_offsets[a]); /* RB_MRT[i].BASE_GMEM */
 
       tu_cs_emit_pkt4(cs, REG_A6XX_SP_FS_MRT_REG(i), 1);
       tu_cs_emit(cs, A6XX_SP_FS_MRT_REG_COLOR_FORMAT(format->rb) |
@@ -552,11 +523,11 @@ tu6_emit_mrt(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 }
 
 static void
-tu6_emit_msaa(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
+tu6_emit_msaa(struct tu_cmd_buffer *cmd,
+              const struct tu_subpass *subpass,
+              struct tu_cs *cs)
 {
-   const struct tu_subpass *subpass = cmd->state.subpass;
-   const enum a3xx_msaa_samples samples =
-      tu_msaa_samples(subpass->max_sample_count);
+   const enum a3xx_msaa_samples samples = tu_msaa_samples(subpass->samples);
 
    tu_cs_emit_pkt4(cs, REG_A6XX_SP_TP_RAS_MSAA_CNTL, 2);
    tu_cs_emit(cs, A6XX_SP_TP_RAS_MSAA_CNTL_SAMPLES(samples));
@@ -615,13 +586,21 @@ tu6_emit_render_cntl(struct tu_cmd_buffer *cmd,
 }
 
 static void
-tu6_emit_blit_scissor(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
+tu6_emit_blit_scissor(struct tu_cmd_buffer *cmd, struct tu_cs *cs, bool align)
 {
    const VkRect2D *render_area = &cmd->state.tiling_config.render_area;
-   const uint32_t x1 = render_area->offset.x;
-   const uint32_t y1 = render_area->offset.y;
-   const uint32_t x2 = x1 + render_area->extent.width - 1;
-   const uint32_t y2 = y1 + render_area->extent.height - 1;
+   uint32_t x1 = render_area->offset.x;
+   uint32_t y1 = render_area->offset.y;
+   uint32_t x2 = x1 + render_area->extent.width - 1;
+   uint32_t y2 = y1 + render_area->extent.height - 1;
+
+   /* TODO: alignment requirement seems to be less than tile_align_w/h */
+   if (align) {
+      x1 = x1 & ~cmd->device->physical_device->tile_align_w;
+      y1 = y1 & ~cmd->device->physical_device->tile_align_h;
+      x2 = ALIGN_POT(x2 + 1, cmd->device->physical_device->tile_align_w) - 1;
+      y2 = ALIGN_POT(y2 + 1, cmd->device->physical_device->tile_align_h) - 1;
+   }
 
    tu_cs_emit_pkt4(cs, REG_A6XX_RB_BLIT_SCISSOR_TL, 2);
    tu_cs_emit(cs,
@@ -635,10 +614,10 @@ tu6_emit_blit_info(struct tu_cmd_buffer *cmd,
                    struct tu_cs *cs,
                    const struct tu_image_view *iview,
                    uint32_t gmem_offset,
-                   uint32_t blit_info)
+                   bool resolve)
 {
    tu_cs_emit_pkt4(cs, REG_A6XX_RB_BLIT_INFO, 1);
-   tu_cs_emit(cs, blit_info);
+   tu_cs_emit(cs, resolve ? 0 : (A6XX_RB_BLIT_INFO_UNK0 | A6XX_RB_BLIT_INFO_GMEM));
 
    const struct tu_native_format *format =
       tu6_get_native_format(iview->vk_format);
@@ -664,39 +643,6 @@ tu6_emit_blit_info(struct tu_cmd_buffer *cmd,
 
    tu_cs_emit_pkt4(cs, REG_A6XX_RB_BLIT_BASE_GMEM, 1);
    tu_cs_emit(cs, gmem_offset);
-}
-
-static void
-tu6_emit_blit_clear(struct tu_cmd_buffer *cmd,
-                    struct tu_cs *cs,
-                    const struct tu_image_view *iview,
-                    uint32_t gmem_offset,
-                    const VkClearValue *clear_value)
-{
-   const struct tu_native_format *format =
-      tu6_get_native_format(iview->vk_format);
-   assert(format && format->rb >= 0);
-
-   tu_cs_emit_pkt4(cs, REG_A6XX_RB_BLIT_DST_INFO, 1);
-   tu_cs_emit(cs, A6XX_RB_BLIT_DST_INFO_COLOR_FORMAT(format->rb));
-
-   tu_cs_emit_pkt4(cs, REG_A6XX_RB_BLIT_INFO, 1);
-   tu_cs_emit(cs, A6XX_RB_BLIT_INFO_GMEM | A6XX_RB_BLIT_INFO_CLEAR_MASK(0xf));
-
-   tu_cs_emit_pkt4(cs, REG_A6XX_RB_BLIT_BASE_GMEM, 1);
-   tu_cs_emit(cs, gmem_offset);
-
-   tu_cs_emit_pkt4(cs, REG_A6XX_RB_UNKNOWN_88D0, 1);
-   tu_cs_emit(cs, 0);
-
-   uint32_t clear_vals[4] = { 0 };
-   tu_pack_clear_value(clear_value, iview->vk_format, clear_vals);
-
-   tu_cs_emit_pkt4(cs, REG_A6XX_RB_BLIT_CLEAR_COLOR_DW0, 4);
-   tu_cs_emit(cs, clear_vals[0]);
-   tu_cs_emit(cs, clear_vals[1]);
-   tu_cs_emit(cs, clear_vals[2]);
-   tu_cs_emit(cs, clear_vals[3]);
 }
 
 static void
@@ -837,69 +783,120 @@ tu6_emit_tile_select(struct tu_cmd_buffer *cmd,
 }
 
 static void
-tu6_emit_tile_load_attachment(struct tu_cmd_buffer *cmd,
-                              struct tu_cs *cs,
-                              uint32_t a,
-                              uint32_t gmem_index)
+tu6_emit_load_attachment(struct tu_cmd_buffer *cmd, struct tu_cs *cs, uint32_t a)
 {
-   const struct tu_framebuffer *fb = cmd->state.framebuffer;
    const struct tu_tiling_config *tiling = &cmd->state.tiling_config;
-   const struct tu_attachment_state *attachments = cmd->state.attachments;
-
+   const struct tu_framebuffer *fb = cmd->state.framebuffer;
    const struct tu_image_view *iview = fb->attachments[a].attachment;
-   const struct tu_attachment_state *att = attachments + a;
-   if (att->pending_clear_aspects) {
-      tu6_emit_blit_clear(cmd, cs, iview,
-                          tiling->gmem_offsets[gmem_index],
-                          &att->clear_value);
-   } else {
-      tu6_emit_blit_info(cmd, cs, iview,
-                         tiling->gmem_offsets[gmem_index],
-                         A6XX_RB_BLIT_INFO_UNK0 | A6XX_RB_BLIT_INFO_GMEM);
-   }
+   const struct tu_render_pass_attachment *attachment =
+      &cmd->state.pass->attachments[a];
 
-   tu6_emit_blit(cmd, cs);
+   if (!attachment->needs_gmem)
+      return;
+
+   const uint32_t x1 = tiling->render_area.offset.x;
+   const uint32_t y1 = tiling->render_area.offset.y;
+   const uint32_t x2 = x1 + tiling->render_area.extent.width;
+   const uint32_t y2 = y1 + tiling->render_area.extent.height;
+   const uint32_t tile_x2 =
+      tiling->tile0.offset.x + tiling->tile0.extent.width * tiling->tile_count.width;
+   const uint32_t tile_y2 =
+      tiling->tile0.offset.y + tiling->tile0.extent.height * tiling->tile_count.height;
+   bool need_load =
+      x1 != tiling->tile0.offset.x || x2 != MIN2(fb->width, tile_x2) ||
+      y1 != tiling->tile0.offset.y || y2 != MIN2(fb->height, tile_y2);
+
+   if (need_load)
+      tu_finishme("improve handling of unaligned render area");
+
+   if (attachment->load_op == VK_ATTACHMENT_LOAD_OP_LOAD)
+      need_load = true;
+
+   if (vk_format_has_stencil(iview->vk_format) &&
+       attachment->stencil_load_op == VK_ATTACHMENT_LOAD_OP_LOAD)
+      need_load = true;
+
+   if (need_load) {
+      tu6_emit_blit_info(cmd, cs, iview, tiling->gmem_offsets[a], false);
+      tu6_emit_blit(cmd, cs);
+   }
 }
 
 static void
-tu6_emit_tile_load(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
+tu6_emit_clear_attachment(struct tu_cmd_buffer *cmd, struct tu_cs *cs,
+                          uint32_t a,
+                          const VkRenderPassBeginInfo *info)
 {
-   const struct tu_subpass *subpass = cmd->state.subpass;
+   const struct tu_tiling_config *tiling = &cmd->state.tiling_config;
+   const struct tu_framebuffer *fb = cmd->state.framebuffer;
+   const struct tu_image_view *iview = fb->attachments[a].attachment;
+   const struct tu_render_pass_attachment *attachment =
+      &cmd->state.pass->attachments[a];
+   unsigned clear_mask = 0;
 
-   tu6_emit_blit_scissor(cmd, cs);
+   /* note: this means it isn't used by any subpass and shouldn't be cleared anyway */
+   if (!attachment->needs_gmem)
+      return;
 
-   for (uint32_t i = 0; i < subpass->color_count; ++i) {
-      const uint32_t a = subpass->color_attachments[i].attachment;
-      if (a != VK_ATTACHMENT_UNUSED)
-         tu6_emit_tile_load_attachment(cmd, cs, a, i);
+   if (attachment->load_op == VK_ATTACHMENT_LOAD_OP_CLEAR)
+      clear_mask = 0xf;
+
+   if (vk_format_has_stencil(iview->vk_format)) {
+      clear_mask &= 0x1;
+      if (attachment->stencil_load_op == VK_ATTACHMENT_LOAD_OP_CLEAR)
+         clear_mask |= 0x2;
    }
+   if (!clear_mask)
+      return;
 
-   const uint32_t a = subpass->depth_stencil_attachment.attachment;
-   if (a != VK_ATTACHMENT_UNUSED)
-      tu6_emit_tile_load_attachment(cmd, cs, a, subpass->color_count);
+   const struct tu_native_format *format =
+      tu6_get_native_format(iview->vk_format);
+   assert(format && format->rb >= 0);
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_RB_BLIT_DST_INFO, 1);
+   tu_cs_emit(cs, A6XX_RB_BLIT_DST_INFO_COLOR_FORMAT(format->rb));
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_RB_BLIT_INFO, 1);
+   tu_cs_emit(cs, A6XX_RB_BLIT_INFO_GMEM | A6XX_RB_BLIT_INFO_CLEAR_MASK(clear_mask));
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_RB_BLIT_BASE_GMEM, 1);
+   tu_cs_emit(cs, tiling->gmem_offsets[a]);
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_RB_UNKNOWN_88D0, 1);
+   tu_cs_emit(cs, 0);
+
+   uint32_t clear_vals[4] = { 0 };
+   tu_pack_clear_value(&info->pClearValues[a], iview->vk_format, clear_vals);
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_RB_BLIT_CLEAR_COLOR_DW0, 4);
+   tu_cs_emit(cs, clear_vals[0]);
+   tu_cs_emit(cs, clear_vals[1]);
+   tu_cs_emit(cs, clear_vals[2]);
+   tu_cs_emit(cs, clear_vals[3]);
+
+   tu6_emit_blit(cmd, cs);
 }
 
 static void
 tu6_emit_store_attachment(struct tu_cmd_buffer *cmd,
                           struct tu_cs *cs,
                           uint32_t a,
-                          uint32_t gmem_index)
+                          uint32_t gmem_a)
 {
-   const struct tu_framebuffer *fb = cmd->state.framebuffer;
-   const struct tu_tiling_config *tiling = &cmd->state.tiling_config;
-
-   if (a == VK_ATTACHMENT_UNUSED)
+   if (cmd->state.pass->attachments[a].store_op == VK_ATTACHMENT_STORE_OP_DONT_CARE)
       return;
 
-   tu6_emit_blit_info(cmd, cs, fb->attachments[a].attachment,
-                      tiling->gmem_offsets[gmem_index], 0);
+   tu6_emit_blit_info(cmd, cs,
+                      cmd->state.framebuffer->attachments[a].attachment,
+                      cmd->state.tiling_config.gmem_offsets[gmem_a], true);
    tu6_emit_blit(cmd, cs);
 }
 
 static void
 tu6_emit_tile_store(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 {
-   const struct tu_subpass *subpass = cmd->state.subpass;
+   const struct tu_render_pass *pass = cmd->state.pass;
+   const struct tu_subpass *subpass = &pass->subpasses[pass->subpass_count-1];
 
    tu_cs_emit_pkt7(cs, CP_SET_DRAW_STATE, 3);
    tu_cs_emit(cs, CP_SET_DRAW_STATE__0_COUNT(0) |
@@ -916,22 +913,21 @@ tu6_emit_tile_store(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
    tu_cs_emit(cs, A6XX_CP_SET_MARKER_0_MODE(RM6_RESOLVE) | 0x10);
    tu6_emit_marker(cmd, cs);
 
-   tu6_emit_blit_scissor(cmd, cs);
+   tu6_emit_blit_scissor(cmd, cs, true);
 
-   for (uint32_t i = 0; i < subpass->color_count; ++i) {
-      tu6_emit_store_attachment(cmd, cs,
-                                subpass->color_attachments[i].attachment,
-                                i);
-      if (subpass->resolve_attachments) {
-         tu6_emit_store_attachment(cmd, cs,
-                                   subpass->resolve_attachments[i].attachment,
-                                   i);
-      }
+   for (uint32_t a = 0; a < pass->attachment_count; ++a) {
+      if (pass->attachments[a].needs_gmem)
+         tu6_emit_store_attachment(cmd, cs, a, a);
    }
 
-   tu6_emit_store_attachment(cmd, cs,
-                             subpass->depth_stencil_attachment.attachment,
-                             subpass->color_count);
+   if (subpass->resolve_attachments) {
+      for (unsigned i = 0; i < subpass->color_count; i++) {
+         uint32_t a = subpass->resolve_attachments[i].attachment;
+         if (a != VK_ATTACHMENT_UNUSED)
+            tu6_emit_store_attachment(cmd, cs, a,
+                                      subpass->color_attachments[i].attachment);
+      }
+   }
 }
 
 static void
@@ -1354,10 +1350,6 @@ tu6_render_begin(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
    tu_cs_emit_pkt4(cs, REG_A6XX_RB_CCU_CNTL, 1);
    tu_cs_emit(cs, 0x7c400004); /* RB_CCU_CNTL */
 
-   tu6_emit_zs(cmd, cs);
-   tu6_emit_mrt(cmd, cs);
-   tu6_emit_msaa(cmd, cs);
-
    if (use_hw_binning(cmd)) {
       tu6_emit_bin_size(cmd, cs, A6XX_RB_BIN_CONTROL_BINNING_PASS | 0x6000000);
 
@@ -1464,11 +1456,13 @@ tu_cmd_render_tiles(struct tu_cmd_buffer *cmd)
 }
 
 static void
-tu_cmd_prepare_tile_load_ib(struct tu_cmd_buffer *cmd)
+tu_cmd_prepare_tile_load_ib(struct tu_cmd_buffer *cmd,
+                            const VkRenderPassBeginInfo *info)
 {
-   const uint32_t tile_load_space = 16 + 32 * MAX_RTS;
-   const struct tu_subpass *subpass = cmd->state.subpass;
-   struct tu_attachment_state *attachments = cmd->state.attachments;
+   const uint32_t tile_load_space =
+      6 + (23+19) * cmd->state.pass->attachment_count +
+      21 + (13 * cmd->state.subpass->color_count + 8) + 11;
+
    struct tu_cs sub_cs;
 
    VkResult result = tu_cs_begin_sub_stream(cmd->device, &cmd->tile_cs,
@@ -1478,22 +1472,27 @@ tu_cmd_prepare_tile_load_ib(struct tu_cmd_buffer *cmd)
       return;
    }
 
-   /* emit to tile-load sub_cs */
-   tu6_emit_tile_load(cmd, &sub_cs);
+   tu6_emit_blit_scissor(cmd, &sub_cs, true);
+
+   for (uint32_t i = 0; i < cmd->state.pass->attachment_count; ++i)
+      tu6_emit_load_attachment(cmd, &sub_cs, i);
+
+   tu6_emit_blit_scissor(cmd, &sub_cs, false);
+
+   for (uint32_t i = 0; i < cmd->state.pass->attachment_count; ++i)
+      tu6_emit_clear_attachment(cmd, &sub_cs, i, info);
+
+   tu6_emit_zs(cmd, cmd->state.subpass, &sub_cs);
+   tu6_emit_mrt(cmd, cmd->state.subpass, &sub_cs);
+   tu6_emit_msaa(cmd, cmd->state.subpass, &sub_cs);
 
    cmd->state.tile_load_ib = tu_cs_end_sub_stream(&cmd->tile_cs, &sub_cs);
-
-   for (uint32_t i = 0; i < subpass->color_count; ++i) {
-      const uint32_t a = subpass->color_attachments[i].attachment;
-      if (a != VK_ATTACHMENT_UNUSED)
-         attachments[a].pending_clear_aspects = 0;
-   }
 }
 
 static void
 tu_cmd_prepare_tile_store_ib(struct tu_cmd_buffer *cmd)
 {
-   const uint32_t tile_store_space = 32 + 32 * MAX_RTS;
+   const uint32_t tile_store_space = 32 + 23 * cmd->state.pass->attachment_count;
    struct tu_cs sub_cs;
 
    VkResult result = tu_cs_begin_sub_stream(cmd->device, &cmd->tile_cs,
@@ -1515,37 +1514,20 @@ tu_cmd_update_tiling_config(struct tu_cmd_buffer *cmd,
 {
    const struct tu_device *dev = cmd->device;
    const struct tu_render_pass *pass = cmd->state.pass;
-   const struct tu_subpass *subpass = cmd->state.subpass;
    struct tu_tiling_config *tiling = &cmd->state.tiling_config;
 
-   uint32_t buffer_cpp[MAX_RTS + 2];
-   uint32_t buffer_count = 0;
-
-   for (uint32_t i = 0; i < subpass->color_count; ++i) {
-      const uint32_t a = subpass->color_attachments[i].attachment;
-      if (a == VK_ATTACHMENT_UNUSED) {
-         buffer_cpp[buffer_count++] = 0;
-         continue;
-      }
-
-      const struct tu_render_pass_attachment *att = &pass->attachments[a];
-      buffer_cpp[buffer_count++] =
-         vk_format_get_blocksize(att->format) * att->samples;
+   tiling->render_area = *render_area;
+   for (uint32_t a = 0; a < pass->attachment_count; a++) {
+      if (pass->attachments[a].needs_gmem)
+         tiling->buffer_cpp[a] = pass->attachments[a].cpp;
+      else
+         tiling->buffer_cpp[a] = 0;
    }
+   tiling->buffer_count = pass->attachment_count;
 
-   if (subpass->depth_stencil_attachment.attachment != VK_ATTACHMENT_UNUSED) {
-      const uint32_t a = subpass->depth_stencil_attachment.attachment;
-      const struct tu_render_pass_attachment *att = &pass->attachments[a];
-
-      /* TODO */
-      assert(att->format != VK_FORMAT_D32_SFLOAT_S8_UINT);
-
-      buffer_cpp[buffer_count++] =
-         vk_format_get_blocksize(att->format) * att->samples;
-   }
-
-   tu_tiling_config_update(tiling, dev, buffer_cpp, buffer_count,
-                           render_area);
+   tu_tiling_config_update_tile_layout(tiling, dev);
+   tu_tiling_config_update_pipe_layout(tiling, dev);
+   tu_tiling_config_update_pipes(tiling, dev);
 }
 
 const struct tu_dynamic_state default_dynamic_state = {
@@ -1802,72 +1784,6 @@ tu_reset_cmd_buffer(struct tu_cmd_buffer *cmd_buffer)
    cmd_buffer->status = TU_CMD_BUFFER_STATUS_INITIAL;
 
    return cmd_buffer->record_result;
-}
-
-static VkResult
-tu_cmd_state_setup_attachments(struct tu_cmd_buffer *cmd_buffer,
-                               const VkRenderPassBeginInfo *info)
-{
-   struct tu_cmd_state *state = &cmd_buffer->state;
-   const struct tu_framebuffer *fb = state->framebuffer;
-   const struct tu_render_pass *pass = state->pass;
-
-   for (uint32_t i = 0; i < fb->attachment_count; ++i) {
-      const struct tu_image_view *iview = fb->attachments[i].attachment;
-      tu_bo_list_add(&cmd_buffer->bo_list, iview->image->bo,
-                     MSM_SUBMIT_BO_READ | MSM_SUBMIT_BO_WRITE);
-   }
-
-   if (pass->attachment_count == 0) {
-      state->attachments = NULL;
-      return VK_SUCCESS;
-   }
-
-   state->attachments =
-      vk_alloc(&cmd_buffer->pool->alloc,
-               pass->attachment_count * sizeof(state->attachments[0]), 8,
-               VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
-   if (state->attachments == NULL) {
-      cmd_buffer->record_result = VK_ERROR_OUT_OF_HOST_MEMORY;
-      return cmd_buffer->record_result;
-   }
-
-   for (uint32_t i = 0; i < pass->attachment_count; ++i) {
-      const struct tu_render_pass_attachment *att = &pass->attachments[i];
-      VkImageAspectFlags att_aspects = vk_format_aspects(att->format);
-      VkImageAspectFlags clear_aspects = 0;
-
-      if (att_aspects == VK_IMAGE_ASPECT_COLOR_BIT) {
-         /* color attachment */
-         if (att->load_op == VK_ATTACHMENT_LOAD_OP_CLEAR) {
-            clear_aspects |= VK_IMAGE_ASPECT_COLOR_BIT;
-         }
-      } else {
-         /* depthstencil attachment */
-         if ((att_aspects & VK_IMAGE_ASPECT_DEPTH_BIT) &&
-             att->load_op == VK_ATTACHMENT_LOAD_OP_CLEAR) {
-            clear_aspects |= VK_IMAGE_ASPECT_DEPTH_BIT;
-            if ((att_aspects & VK_IMAGE_ASPECT_STENCIL_BIT) &&
-                att->stencil_load_op == VK_ATTACHMENT_LOAD_OP_DONT_CARE)
-               clear_aspects |= VK_IMAGE_ASPECT_STENCIL_BIT;
-         }
-         if ((att_aspects & VK_IMAGE_ASPECT_STENCIL_BIT) &&
-             att->stencil_load_op == VK_ATTACHMENT_LOAD_OP_CLEAR) {
-            clear_aspects |= VK_IMAGE_ASPECT_STENCIL_BIT;
-         }
-      }
-
-      state->attachments[i].pending_clear_aspects = clear_aspects;
-      state->attachments[i].cleared_views = 0;
-      if (clear_aspects && info) {
-         assert(info->clearValueCount > i);
-         state->attachments[i].clear_value = info->pClearValues[i];
-      }
-
-      state->attachments[i].current_layout = att->initial_layout;
-   }
-
-   return VK_SUCCESS;
 }
 
 VkResult
@@ -2129,8 +2045,6 @@ tu_EndCommandBuffer(VkCommandBuffer commandBuffer)
 
    tu_cs_end(&cmd_buffer->cs);
    tu_cs_end(&cmd_buffer->draw_cs);
-
-   assert(!cmd_buffer->state.attachments);
 
    cmd_buffer->status = TU_CMD_BUFFER_STATUS_EXECUTABLE;
 
@@ -2417,26 +2331,28 @@ tu_CmdBeginRenderPass(VkCommandBuffer commandBuffer,
                       const VkRenderPassBeginInfo *pRenderPassBegin,
                       VkSubpassContents contents)
 {
-   TU_FROM_HANDLE(tu_cmd_buffer, cmd_buffer, commandBuffer);
+   TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
    TU_FROM_HANDLE(tu_render_pass, pass, pRenderPassBegin->renderPass);
-   TU_FROM_HANDLE(tu_framebuffer, framebuffer, pRenderPassBegin->framebuffer);
+   TU_FROM_HANDLE(tu_framebuffer, fb, pRenderPassBegin->framebuffer);
    VkResult result;
 
-   cmd_buffer->state.pass = pass;
-   cmd_buffer->state.subpass = pass->subpasses;
-   cmd_buffer->state.framebuffer = framebuffer;
+   cmd->state.pass = pass;
+   cmd->state.subpass = pass->subpasses;
+   cmd->state.framebuffer = fb;
 
-   result = tu_cmd_state_setup_attachments(cmd_buffer, pRenderPassBegin);
-   if (result != VK_SUCCESS)
-      return;
-
-   tu_cmd_update_tiling_config(cmd_buffer, &pRenderPassBegin->renderArea);
-   tu_cmd_prepare_tile_load_ib(cmd_buffer);
-   tu_cmd_prepare_tile_store_ib(cmd_buffer);
+   tu_cmd_update_tiling_config(cmd, &pRenderPassBegin->renderArea);
+   tu_cmd_prepare_tile_load_ib(cmd, pRenderPassBegin);
+   tu_cmd_prepare_tile_store_ib(cmd);
 
    /* note: use_hw_binning only checks tiling config */
-   if (use_hw_binning(cmd_buffer))
-      cmd_buffer->use_vsc_data = true;
+   if (use_hw_binning(cmd))
+      cmd->use_vsc_data = true;
+
+   for (uint32_t i = 0; i < fb->attachment_count; ++i) {
+      const struct tu_image_view *iview = fb->attachments[i].attachment;
+      tu_bo_list_add(&cmd->bo_list, iview->image->bo,
+                     MSM_SUBMIT_BO_READ | MSM_SUBMIT_BO_WRITE);
+   }
 }
 
 void
@@ -2452,14 +2368,53 @@ void
 tu_CmdNextSubpass(VkCommandBuffer commandBuffer, VkSubpassContents contents)
 {
    TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
+   const struct tu_render_pass *pass = cmd->state.pass;
+   const struct tu_tiling_config *tiling = &cmd->state.tiling_config;
+   struct tu_cs *cs = &cmd->draw_cs;
 
-   tu_cmd_render_tiles(cmd);
+   VkResult result = tu_cs_reserve_space(cmd->device, cs, 1024);
+   if (result != VK_SUCCESS) {
+      cmd->record_result = result;
+      return;
+   }
 
-   cmd->state.subpass++;
+   const struct tu_subpass *subpass = cmd->state.subpass++;
+   /* TODO:
+    * if msaa samples change between subpasses,
+    * attachment store is broken for some attachments
+    */
+   if (subpass->resolve_attachments) {
+      tu6_emit_blit_scissor(cmd, cs, true);
+      for (unsigned i = 0; i < subpass->color_count; i++) {
+         uint32_t a = subpass->resolve_attachments[i].attachment;
+         if (a != VK_ATTACHMENT_UNUSED) {
+               tu6_emit_store_attachment(cmd, cs, a,
+                                         subpass->color_attachments[i].attachment);
+         }
+      }
+   }
 
-   tu_cmd_update_tiling_config(cmd, NULL);
-   tu_cmd_prepare_tile_load_ib(cmd);
-   tu_cmd_prepare_tile_store_ib(cmd);
+   /* emit mrt/zs/msaa state for the subpass that is starting */
+   tu6_emit_zs(cmd, cmd->state.subpass, cs);
+   tu6_emit_mrt(cmd, cmd->state.subpass, cs);
+   tu6_emit_msaa(cmd, cmd->state.subpass, cs);
+
+   /* TODO:
+    * since we don't know how to do GMEM->GMEM resolve,
+    * resolve attachments are resolved to memory then loaded to GMEM again if needed
+    */
+   if (subpass->resolve_attachments) {
+      for (unsigned i = 0; i < subpass->color_count; i++) {
+         uint32_t a = subpass->resolve_attachments[i].attachment;
+         const struct tu_image_view *iview =
+            cmd->state.framebuffer->attachments[a].attachment;
+         if (a != VK_ATTACHMENT_UNUSED && pass->attachments[a].needs_gmem) {
+               tu_finishme("missing GMEM->GMEM resolve, performance will suffer\n");
+               tu6_emit_blit_info(cmd, cs, iview, tiling->gmem_offsets[a], false);
+               tu6_emit_blit(cmd, cs);
+         }
+      }
+   }
 }
 
 void
@@ -3650,9 +3605,6 @@ tu_CmdEndRenderPass(VkCommandBuffer commandBuffer)
    /* discard draw_cs entries now that the tiles are rendered */
    tu_cs_discard_entries(&cmd_buffer->draw_cs);
    tu_cs_begin(&cmd_buffer->draw_cs);
-
-   vk_free(&cmd_buffer->pool->alloc, cmd_buffer->state.attachments);
-   cmd_buffer->state.attachments = NULL;
 
    cmd_buffer->state.pass = NULL;
    cmd_buffer->state.subpass = NULL;

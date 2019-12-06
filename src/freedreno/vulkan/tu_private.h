@@ -96,6 +96,10 @@ typedef uint32_t xcb_window_t;
 #define MAX_VIEWS 8
 /* The Qualcomm driver exposes 0x20000058 */
 #define MAX_STORAGE_BUFFER_RANGE 0x20000000
+/* TODO: this isn't a hardware limit, but for a high # of attachments
+ * we are missing logic to avoid having them all in GMEM at the same time
+ */
+#define MAX_ATTACHMENTS 64
 
 #define NUM_DEPTH_CLEAR_PIPELINES 3
 
@@ -775,19 +779,6 @@ tu_get_debug_option_name(int id);
 const char *
 tu_get_perftest_option_name(int id);
 
-/**
- * Attachment state when recording a renderpass instance.
- *
- * The clear value is valid only if there exists a pending clear.
- */
-struct tu_attachment_state
-{
-   VkImageAspectFlags pending_clear_aspects;
-   uint32_t cleared_views;
-   VkClearValue clear_value;
-   VkImageLayout current_layout;
-};
-
 struct tu_descriptor_state
 {
    struct tu_descriptor_set *sets[MAX_SETS];
@@ -809,7 +800,7 @@ struct tu_tile
 struct tu_tiling_config
 {
    VkRect2D render_area;
-   uint32_t buffer_cpp[MAX_RTS + 2];
+   uint32_t buffer_cpp[MAX_ATTACHMENTS];
    uint32_t buffer_count;
 
    /* position and size of the first tile */
@@ -817,7 +808,7 @@ struct tu_tiling_config
    /* number of tiles */
    VkExtent2D tile_count;
 
-   uint32_t gmem_offsets[MAX_RTS + 2];
+   uint32_t gmem_offsets[MAX_ATTACHMENTS];
 
    /* size of the first VSC pipe */
    VkExtent2D pipe0;
@@ -869,7 +860,6 @@ struct tu_cmd_state
    const struct tu_render_pass *pass;
    const struct tu_subpass *subpass;
    const struct tu_framebuffer *framebuffer;
-   struct tu_attachment_state *attachments;
 
    struct tu_tiling_config tiling_config;
 
@@ -1483,21 +1473,9 @@ struct tu_framebuffer
    struct tu_attachment_info attachments[0];
 };
 
-struct tu_subpass_barrier
-{
-   VkPipelineStageFlags src_stage_mask;
-   VkAccessFlags src_access_mask;
-   VkAccessFlags dst_access_mask;
-};
-
-void
-tu_subpass_barrier(struct tu_cmd_buffer *cmd_buffer,
-                   const struct tu_subpass_barrier *barrier);
-
 struct tu_subpass_attachment
 {
    uint32_t attachment;
-   VkImageLayout layout;
 };
 
 struct tu_subpass
@@ -1509,21 +1487,18 @@ struct tu_subpass
    struct tu_subpass_attachment *resolve_attachments;
    struct tu_subpass_attachment depth_stencil_attachment;
 
-   struct tu_subpass_barrier start_barrier;
-
-   uint32_t view_mask;
-   VkSampleCountFlagBits max_sample_count;
+   VkSampleCountFlagBits samples;
 };
 
 struct tu_render_pass_attachment
 {
    VkFormat format;
-   uint32_t samples;
+   uint32_t cpp;
    VkAttachmentLoadOp load_op;
    VkAttachmentLoadOp stencil_load_op;
-   VkImageLayout initial_layout;
-   VkImageLayout final_layout;
-   uint32_t view_mask;
+   VkAttachmentStoreOp store_op;
+   VkAttachmentStoreOp stencil_store_op;
+   bool needs_gmem;
 };
 
 struct tu_render_pass
@@ -1532,7 +1507,6 @@ struct tu_render_pass
    uint32_t subpass_count;
    struct tu_subpass_attachment *subpass_attachments;
    struct tu_render_pass_attachment *attachments;
-   struct tu_subpass_barrier end_barrier;
    struct tu_subpass subpasses[0];
 };
 

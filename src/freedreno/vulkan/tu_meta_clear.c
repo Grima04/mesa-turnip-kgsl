@@ -126,14 +126,11 @@ tu_CmdClearAttachments(VkCommandBuffer commandBuffer,
       tu_cs_emit(cs, A6XX_RB_BLIT_SCISSOR_BR_X(x2) | A6XX_RB_BLIT_SCISSOR_BR_Y(y2));
 
       for (unsigned j = 0; j < attachmentCount; j++) {
-         uint32_t index, a;
-         if (pAttachments[j].aspectMask & VK_IMAGE_ASPECT_COLOR_BIT) {
-            index = pAttachments[j].colorAttachment;
-            a = subpass->color_attachments[index].attachment;
-         } else {
-            index = subpass->color_count;
+         uint32_t a;
+         if (pAttachments[j].aspectMask & VK_IMAGE_ASPECT_COLOR_BIT)
+            a = subpass->color_attachments[pAttachments[j].colorAttachment].attachment;
+         else
             a = subpass->depth_stencil_attachment.attachment;
-         }
          /* TODO: partial depth/stencil clear? */
 
          VkFormat fmt = cmd->state.pass->attachments[a].format;
@@ -147,7 +144,7 @@ tu_CmdClearAttachments(VkCommandBuffer commandBuffer,
          tu_cs_emit(cs, A6XX_RB_BLIT_INFO_GMEM | A6XX_RB_BLIT_INFO_CLEAR_MASK(0xf));
 
          tu_cs_emit_pkt4(cs, REG_A6XX_RB_BLIT_BASE_GMEM, 1);
-         tu_cs_emit(cs, cmd->state.tiling_config.gmem_offsets[index]);
+         tu_cs_emit(cs, cmd->state.tiling_config.gmem_offsets[a]);
 
          tu_cs_emit_pkt4(cs, REG_A6XX_RB_UNKNOWN_88D0, 1);
          tu_cs_emit(cs, 0);
