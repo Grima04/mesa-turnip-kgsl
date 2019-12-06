@@ -37,6 +37,7 @@
 #include "util/list.h"
 #include "util/ralloc.h"
 #include "util/os_time.h"
+#include "util/os_socket.h"
 #include "util/simple_mtx.h"
 
 #include "vk_enum_to_str.h"
@@ -320,6 +321,8 @@ static void destroy_instance_data(struct instance_data *data)
 {
    if (data->params.output_file)
       fclose(data->params.output_file);
+   if (data->params.control >= 0)
+      os_socket_close(data->params.control);
    unmap_object(HKEY(data->instance));
    ralloc_free(data);
 }
