@@ -1101,7 +1101,15 @@ void anv_GetPhysicalDeviceFeatures2(
             (VkPhysicalDeviceLineRasterizationFeaturesEXT *)ext;
          features->rectangularLines = true;
          features->bresenhamLines = true;
-         features->smoothLines = true;
+         /* Support for Smooth lines with MSAA was removed on gen11.  From the
+          * BSpec section "Multisample ModesState" table for "AA Line Support
+          * Requirements":
+          *
+          *    GEN10:BUG:######## 	NUM_MULTISAMPLES == 1
+          *
+          * Fortunately, this isn't a case most people care about.
+          */
+         features->smoothLines = pdevice->info.gen < 10;
          features->stippledRectangularLines = false;
          features->stippledBresenhamLines = true;
          features->stippledSmoothLines = false;
