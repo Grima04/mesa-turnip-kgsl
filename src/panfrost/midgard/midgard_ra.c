@@ -689,15 +689,10 @@ mir_choose_spill_node(
 
         mir_foreach_instr_global(ctx, ins) {
                 if (ins->no_spill) {
-                        if (ins->dest < ctx->temp_count)
-                                lcra_set_node_spill_cost(l, ins->dest, -1);
+                        lcra_set_node_spill_cost(l, ins->dest, -1);
 
-                        mir_foreach_src(ins, s) {
-                                unsigned src = ins->src[s];
-
-                                if (src < ctx->temp_count)
-                                        lcra_set_node_spill_cost(l, src, -1);
-                        }
+                        mir_foreach_src(ins, s)
+                                lcra_set_node_spill_cost(l, ins->src[s], -1);
                 }
         }
 

@@ -197,7 +197,8 @@ lcra_solve(struct lcra_state *l)
 void
 lcra_set_node_spill_cost(struct lcra_state *l, unsigned node, signed cost)
 {
-        l->spill_cost[node] = cost;
+        if (node < l->node_count)
+                l->spill_cost[node] = cost;
 }
 
 /* Count along the lower triangle */
