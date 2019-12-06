@@ -4,25 +4,11 @@ include:
     ref: 0a9bdd33a98f05af6761ab118b5074952242aab0
     file: '/templates/debian.yml'
 
-# When to automatically run the CI
-.lava-ci-run-policy:
-  only:
-    - branches@mesa/mesa
-    - merge_requests
-    - /^lava-ci([-/].*)?$/
-  retry:
-    max: 2
-    when:
-      - runner_system_failure
-  # Cancel CI run if a newer commit is pushed to the same branch
-  interruptible: true
-
 # Build Docker image with deqp, the rootfs and the build deps for Mesa
 .lava-container:
   extends:
     - .debian@container-ifnot-exists
     - .container
-    - .lava-ci-run-policy
   variables:
     REPO_SUFFIX: ${CI_JOB_NAME}
     DEBIAN_TAG:  &debian_tag '2019-12-03-1'
@@ -64,7 +50,7 @@ lava_arm64:
   image: $CI_REGISTRY_IMAGE/debian/lava_${DEBIAN_ARCH}:$TAG
   extends:
     - .build-linux
-    - .lava-ci-run-policy
+    - .ci-run-policy
   script:
     # Build Mesa
     - mkdir -p results mesa-build
@@ -141,7 +127,7 @@ lava-build:arm64:
 
 .lava-test:
   extends:
-    - .lava-ci-run-policy
+    - .ci-run-policy
   stage: test
   variables:
     GIT_STRATEGY: none # testing doesn't build anything from source
