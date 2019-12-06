@@ -691,8 +691,10 @@ mir_choose_spill_node(
                 if (ins->no_spill & (1 << l->spill_class)) {
                         lcra_set_node_spill_cost(l, ins->dest, -1);
 
-                        mir_foreach_src(ins, s)
-                                lcra_set_node_spill_cost(l, ins->src[s], -1);
+                        if (l->spill_class != REG_CLASS_WORK) {
+                                mir_foreach_src(ins, s)
+                                        lcra_set_node_spill_cost(l, ins->src[s], -1);
+                        }
                 }
         }
 
