@@ -397,10 +397,11 @@ add_interface_variables(const struct gl_context *ctx,
  */
 void
 nir_build_program_resource_list(struct gl_context *ctx,
-                                struct gl_shader_program *prog)
+                                struct gl_shader_program *prog,
+                                bool rebuild_resourse_list)
 {
    /* Rebuild resource list. */
-   if (prog->data->ProgramResourceList) {
+   if (prog->data->ProgramResourceList && rebuild_resourse_list) {
       ralloc_free(prog->data->ProgramResourceList);
       prog->data->ProgramResourceList = NULL;
       prog->data->NumProgramResourceList = 0;

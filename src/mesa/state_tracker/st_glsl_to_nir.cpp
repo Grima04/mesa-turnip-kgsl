@@ -699,7 +699,7 @@ st_link_nir(struct gl_context *ctx,
       if (!gl_nir_link(ctx, shader_program, &opts))
          return GL_FALSE;
 
-      nir_build_program_resource_list(ctx, shader_program);
+      nir_build_program_resource_list(ctx, shader_program, true);
 
       for (unsigned i = 0; i < num_shaders; i++) {
          struct gl_linked_shader *shader = linked_shader[i];
@@ -720,6 +720,9 @@ st_link_nir(struct gl_context *ctx,
       st_nir_link_shaders(linked_shader[i]->Program->nir,
                           linked_shader[i + 1]->Program->nir);
    }
+
+   if (!shader_program->data->spirv)
+      nir_build_program_resource_list(ctx, shader_program, false);
 
    for (unsigned i = 0; i < num_shaders; i++) {
       struct gl_linked_shader *shader = linked_shader[i];

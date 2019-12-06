@@ -4124,7 +4124,8 @@ add_fragdata_arrays(const struct gl_context *ctx,
  */
 void
 build_program_resource_list(struct gl_context *ctx,
-                            struct gl_shader_program *shProg)
+                            struct gl_shader_program *shProg,
+                            bool add_packed_varyings_only)
 {
    /* Rebuild resource list. */
    if (shProg->data->ProgramResourceList) {
@@ -4163,6 +4164,9 @@ build_program_resource_list(struct gl_context *ctx,
                                output_stage, GL_PROGRAM_OUTPUT))
          return;
    }
+
+   if (add_packed_varyings_only)
+      return;
 
    if (!add_fragdata_arrays(ctx, shProg, resource_set))
       return;

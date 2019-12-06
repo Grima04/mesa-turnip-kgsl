@@ -384,9 +384,9 @@ brw_link_shader(struct gl_context *ctx, struct gl_shader_program *shProg)
 
    /* SPIR-V programs build its resource list from linked NIR shaders. */
    if (!shProg->data->spirv)
-      build_program_resource_list(ctx, shProg);
+      build_program_resource_list(ctx, shProg, false);
    else
-      nir_build_program_resource_list(ctx, shProg);
+      nir_build_program_resource_list(ctx, shProg, true);
 
    for (stage = 0; stage < ARRAY_SIZE(shProg->_LinkedShaders); stage++) {
       struct gl_linked_shader *shader = shProg->_LinkedShaders[stage];
