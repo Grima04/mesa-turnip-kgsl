@@ -22,11 +22,37 @@
  *
  */
 
+#include "util/u_math.h"
+
+#include <assert.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
 
 #include "lima_parser.h"
+
+typedef struct {
+   char *info;
+} render_state_info;
+
+static render_state_info render_state_infos[] = {
+   { .info = "BLEND_COLOR_BG", },
+   { .info = "BLEND_COLOR_RA", },
+   { .info = "ALPHA_BLEND", },
+   { .info = "DEPTH_TEST", },
+   { .info = "DEPTH_RANGE", },
+   { .info = "STENCIL_FRONT", },
+   { .info = "STENCIL_BACK", },
+   { .info = "STENCIL_TEST", },
+   { .info = "MULTI_SAMPLE", },
+   { .info = "SHADER_ADDRESS (FS)", },
+   { .info = "VARYING_TYPES", },
+   { .info = "UNIFORMS_ADDRESS (PP)", },
+   { .info = "TEXTURES_ADDRESS", },
+   { .info = "AUX0", },
+   { .info = "AUX1", },
+   { .info = "VARYINGS_ADDRESS", },
+};
 
 /* VS CMD stream parser functions */
 
@@ -415,4 +441,150 @@ lima_parse_plbu(FILE *fp, uint32_t *data, int size, uint32_t start)
    }
    fprintf(fp, "/* ============ PLBU CMD STREAM END =============== */\n");
    fprintf(fp, "\n");
+}
+
+static void
+parse_rsw(FILE *fp, uint32_t *value, int i, uint32_t *helper)
+{
+   fprintf(fp, "\t/* %s", render_state_infos[i].info);
+
+   switch (i) {
+   case 0: /* BLEND COLOR BG */
+      fprintf(fp, ": blend_color.color[1] = %f, blend_color.color[2] = %f */\n",
+              (float)(ubyte_to_float((*value & 0xffff0000) >> 16)),
+              (float)(ubyte_to_float(*value & 0x0000ffff)));
+      break;
+   case 1: /* BLEND COLOR RA */
+      fprintf(fp, ": blend_color.color[3] = %f, blend_color.color[0] = %f */\n",
+              (float)(ubyte_to_float((*value & 0xffff0000) >> 16)),
+              (float)(ubyte_to_float(*value & 0x0000ffff)));
+      break;
+   case 2: /* ALPHA BLEND */
+      fprintf(fp, "(1): colormask 0x%02x, rgb_func %d, alpha_func %d */\n",
+              (*value & 0xf0000000) >> 28, /* colormask */
+              (*value & 0x00000007), /* rgb_func */
+              (*value & 0x00000038) >> 3); /* alpha_func */
+      /* add a few tabs for alignment */
+      fprintf(fp, "\t\t\t\t\t\t/* %s(2)", render_state_infos[i].info);
+      fprintf(fp, ": rgb_src_factor %d, rbg_dst_factor %d, alpha_src_factor %d",
+              (*value & 0x000007c0) >> 6, /* rgb_src_factor */
+              (*value & 0x0000f800) >> 11, /* rgb_dst_factor */
+              (*value & 0x000f0000) >> 16); /* alpha_src_factor */
+      fprintf(fp, ", alpha_dst_factor %d, bits 24-27 0x%02x */\n",
+              (*value & 0x00f00000) >> 20, /* alpha_dst_factor */
+              (*value & 0x0f000000) >> 24); /* bits 24-27 */
+      break;
+   case 3: /* DEPTH TEST */
+      if ((*value & 0x00000001) == 0x00000001)
+         fprintf(fp, ": depth test enabled && writes allowed");
+      else
+         fprintf(fp, ": depth test disabled || writes not allowed");
+
+      fprintf(fp, ", PIPE_FUNC_%d", *value & 0x0000000e);
+      fprintf(fp, ", offset_scale: %d", *value & 0xffff0000);
+      fprintf(fp, ", unknown bits 4-15: 0x%08x */\n", *value & 0x0000fff0);
+      break;
+   case 4: /* DEPTH RANGE */
+      fprintf(fp, ": viewport.far = %f, viewport.near = %f */\n",
+              (float)(ushort_to_float((*value & 0xffff0000) >> 16)),
+              (float)(ushort_to_float(*value & 0x0000ffff)));
+      break;
+   case 5: /* STENCIL FRONT */
+      fprintf(fp, " (to investigate) */\n");
+      break;
+   case 6: /* STENCIL BACK */
+      fprintf(fp, " (to investigate) */\n");
+      break;
+   case 7: /* STENCIL TEST */
+      fprintf(fp, " (to investigate) */\n");
+      break;
+   case 8: /* MULTI SAMPLE */
+      if ((*value & 0x00000f00) == 0x00000000)
+         fprintf(fp, ": points");
+      else if ((*value & 0x00000f00) == 0x00000400)
+         fprintf(fp, ": lines");
+      else if ((*value & 0x00000f00) == 0x00000800)
+         fprintf(fp, ": triangles");
+      else
+         fprintf(fp, ": unknown");
+
+      if ((*value & 0x00000078) == 0x00000068)
+         fprintf(fp, ", fb_samples */\n");
+      else if ((*value & 0x00000078) == 0x00000000)
+         fprintf(fp, " */\n");
+      else
+         fprintf(fp, ", UNKNOWN\n");
+      break;
+   case 9: /* SHADER ADDRESS */
+      fprintf(fp, ": fs shader @ 0x%08x, ((uint32_t *)ctx->fs->bo->map)[0] & 0x1f: 0x%08x */\n",
+              *value & 0xffffffe0, *value & 0x0000001f);
+      break;
+   case 10: /* VARYING TYPES */
+      assert(*helper);
+      fprintf(fp, "(1): ");
+      int val, j;
+      /* 0 - 5 */
+      for (j = 0; j < 6; j++) {
+         val = *value & (0x07 << (j * 3));
+         fprintf(fp, "val %d-%d, ", j, val);
+      }
+      /* 6 - 9 */
+      /* add a few tabs for alignment */
+      fprintf(fp, "\n\t\t\t\t\t\t/* %s(2): ", render_state_infos[i].info);
+      for (j = 6; j < 10; j++) {
+         val = *value & (0x07 << (j * 3));
+         fprintf(fp, "val %d-%d, ", j, val);
+      }
+      /* 10 */
+      val = ((*value & 0x0c000000) >> 30) | ((*helper & 0x00000001) << 2);
+      fprintf(fp, "val %d-%d, ", j, val);
+      j++;
+      /* 11 */
+      val = (*helper & 0x0000000e) >> 1;
+      fprintf(fp, "val %d-%d */\n", j, val);
+      break;
+   case 11: /* UNIFORMS ADDRESS */
+      fprintf(fp, ": pp uniform info @ 0x%08x, bits: 0x%01x */\n",
+              *value & 0xfffffff0, *value & 0x0000000f);
+      break;
+   case 12: /* TEXTURES ADDRESS */
+      fprintf(fp, ": address: 0x%08x */\n", *value);
+      break;
+   case 13: /* AUX0 */
+      fprintf(fp, ": varying_stride: %d, tex_stateobj.num_samplers: %d */\n",
+              *value & 0x0000001f, (*value & 0xffffc000) >> 14);
+      break;
+   case 14: /* AUX1 */
+      fprintf(fp, ": ");
+      if ((*value & 0x00002000) == 0x00002000)
+         fprintf(fp, "blend->base.dither true, ");
+      if ((*value & 0x00010000) == 0x00010000)
+         fprintf(fp, "ctx->const_buffer[PIPE_SHADER_FRAGMENT].buffer true ");
+      fprintf(fp, "*/\n");
+      break;
+   case 15: /* VARYINGS ADDRESS */
+      fprintf(fp, ": varyings @ 0x%08x */\n", *value & 0xfffffff0);
+      break;
+   default: /* should never be executed! */
+      fprintf(fp, ": something went wrong!!! */\n");
+      break;
+   }
+}
+
+void
+lima_parse_render_state(FILE *fp, uint32_t *data, int size, uint32_t start)
+{
+   uint32_t *value;
+
+   fprintf(fp, "/* ============ RSW BEGIN ========================= */\n");
+   for (int i = 0; i * 4 < size; i++) {
+      value = &data[i];
+      fprintf(fp, "/* 0x%08x (0x%08x) */\t0x%08x",
+              start + i * 4, i * 4, *value);
+      if (i == 10)
+         parse_rsw(fp, value, i, &data[15]);
+      else
+         parse_rsw(fp, value, i, NULL);
+   }
+   fprintf(fp, "/* ============ RSW END =========================== */\n");
 }

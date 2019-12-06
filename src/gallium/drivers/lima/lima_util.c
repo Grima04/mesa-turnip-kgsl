@@ -85,6 +85,13 @@ lima_dump_plbu_command_stream_print(void *data, int size, uint32_t start)
 }
 
 void
+lima_dump_rsw_command_stream_print(void *data, int size, uint32_t start)
+{
+   if (lima_dump_command_stream)
+      lima_parse_render_state(lima_dump_command_stream, (uint32_t *)data, size, start);
+}
+
+void
 lima_dump_command_stream_print(void *data, int size, bool is_float,
                                const char *fmt, ...)
 {

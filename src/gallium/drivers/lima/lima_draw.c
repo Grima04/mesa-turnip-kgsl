@@ -1153,6 +1153,10 @@ lima_pack_render_state(struct lima_context *ctx, const struct pipe_draw_info *in
    lima_dump_command_stream_print(
       render, sizeof(*render), false, "add render state at va %x\n",
       lima_ctx_buff_va(ctx, lima_ctx_buff_pp_plb_rsw, 0));
+
+   lima_dump_rsw_command_stream_print(render, sizeof(*render),
+                                      lima_ctx_buff_va(ctx, lima_ctx_buff_pp_plb_rsw, 0));
+
 }
 
 static void

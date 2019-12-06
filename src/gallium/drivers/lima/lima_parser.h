@@ -26,5 +26,6 @@
 
 void lima_parse_vs(FILE *fp, uint32_t *data, int size, uint32_t start);
 void lima_parse_plbu(FILE *fp, uint32_t *data, int size, uint32_t start);
+void lima_parse_render_state(FILE *fp, uint32_t *data, int size, uint32_t start);
 
 #endif
