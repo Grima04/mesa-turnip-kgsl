@@ -919,6 +919,8 @@ static void *si_create_rs_state(struct pipe_context *ctx,
 	rs->flatshade_first = state->flatshade_first;
 	rs->sprite_coord_enable = state->sprite_coord_enable;
 	rs->rasterizer_discard = state->rasterizer_discard;
+	rs->polygon_mode_enabled = state->fill_front != PIPE_POLYGON_MODE_FILL ||
+				   state->fill_back != PIPE_POLYGON_MODE_FILL;
 	rs->pa_sc_line_stipple = state->line_stipple_enable ?
 				S_028A0C_LINE_PATTERN(state->line_stipple_pattern) |
 				S_028A0C_REPEAT_COUNT(state->line_stipple_factor) : 0;
@@ -976,8 +978,7 @@ static void *si_create_rs_state(struct pipe_context *ctx,
 		S_028814_POLY_OFFSET_FRONT_ENABLE(util_get_offset(state, state->fill_front)) |
 		S_028814_POLY_OFFSET_BACK_ENABLE(util_get_offset(state, state->fill_back)) |
 		S_028814_POLY_OFFSET_PARA_ENABLE(state->offset_point || state->offset_line) |
-		S_028814_POLY_MODE(state->fill_front != PIPE_POLYGON_MODE_FILL ||
-				   state->fill_back != PIPE_POLYGON_MODE_FILL) |
+		S_028814_POLY_MODE(rs->polygon_mode_enabled) |
 		S_028814_POLYMODE_FRONT_PTYPE(si_translate_fill(state->fill_front)) |
 		S_028814_POLYMODE_BACK_PTYPE(si_translate_fill(state->fill_back)));
 

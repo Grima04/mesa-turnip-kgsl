@@ -94,6 +94,7 @@ struct si_state_rasterizer {
 	unsigned		cull_back:1;
 	unsigned		depth_clamp_any:1;
 	unsigned		provoking_vertex_first:1;
+	unsigned		polygon_mode_enabled:1;
 };
 
 struct si_dsa_stencil_ref_part {

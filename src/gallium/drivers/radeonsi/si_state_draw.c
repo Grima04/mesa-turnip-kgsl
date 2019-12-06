@@ -1993,6 +1993,7 @@ static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *i
 	    (!sctx->tes_shader.cso || pd_msg("uses tess")) &&
 	    (!sctx->gs_shader.cso || pd_msg("uses GS")) &&
 	    (!sctx->ps_shader.cso->info.uses_primid || pd_msg("PS uses PrimID")) &&
+	    !rs->polygon_mode_enabled &&
 #if SI_PRIM_DISCARD_DEBUG /* same as cso->prim_discard_cs_allowed */
 	    (!sctx->vs_shader.cso->info.uses_bindless_images || pd_msg("uses bindless images")) &&
 	    (!sctx->vs_shader.cso->info.uses_bindless_samplers || pd_msg("uses bindless samplers")) &&
