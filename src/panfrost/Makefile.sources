@@ -17,7 +17,8 @@ bifrost_FILES := \
 encoder_FILES := \
         encoder/pan_encoder.h \
         encoder/pan_invocation.c \
-        encoder/pan_tiler.c
+        encoder/pan_tiler.c \
+        encoder/pan_scratch.c
 
 midgard_FILES := \
         midgard/compiler.h \
