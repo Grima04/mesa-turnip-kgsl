@@ -487,13 +487,9 @@ anv_block_pool_expand_range(struct anv_block_pool *pool,
     * hard work for us.  When using softpin, we're in control and the fixed
     * addresses we choose are fine for base addresses.
     */
-   enum anv_bo_alloc_flags bo_alloc_flags = 0;
+   enum anv_bo_alloc_flags bo_alloc_flags = ANV_BO_ALLOC_CAPTURE;
    if (!pool->use_softpin)
       bo_alloc_flags |= ANV_BO_ALLOC_32BIT_ADDRESS;
-
-   uint64_t bo_flags = 0;
-   if (pool->device->instance->physicalDevice.has_exec_capture)
-      bo_flags |= EXEC_OBJECT_CAPTURE;
 
    if (pool->use_softpin) {
       uint32_t new_bo_size = size - pool->size;
@@ -1315,7 +1311,8 @@ anv_bo_pool_alloc(struct anv_bo_pool *pool, uint32_t size,
    VkResult result = anv_device_alloc_bo(pool->device,
                                          pow2_size,
                                          ANV_BO_ALLOC_MAPPED |
-                                         ANV_BO_ALLOC_SNOOPED,
+                                         ANV_BO_ALLOC_SNOOPED |
+                                         ANV_BO_ALLOC_CAPTURE,
                                          0 /* explicit_address */,
                                          &bo);
    if (result != VK_SUCCESS)
