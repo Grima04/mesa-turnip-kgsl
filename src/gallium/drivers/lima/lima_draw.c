@@ -848,7 +848,7 @@ lima_pack_plbu_cmd(struct lima_context *ctx, const struct pipe_draw_info *info)
       unsigned index_offset = 0;
       struct lima_resource *res;
       if (info->has_user_indices) {
-         util_upload_index_buffer(&ctx->base, info, &indexbuf, &index_offset);
+         util_upload_index_buffer(&ctx->base, info, &indexbuf, &index_offset, 0x40);
          res = lima_resource(indexbuf);
       }
       else

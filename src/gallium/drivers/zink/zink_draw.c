@@ -149,7 +149,7 @@ zink_draw_vbo(struct pipe_context *pctx,
    struct pipe_resource *index_buffer = NULL;
    if (dinfo->index_size > 0) {
       if (dinfo->has_user_indices) {
-         if (!util_upload_index_buffer(pctx, dinfo, &index_buffer, &index_offset)) {
+         if (!util_upload_index_buffer(pctx, dinfo, &index_buffer, &index_offset, 4)) {
             debug_printf("util_upload_index_buffer() failed\n");
             return;
          }

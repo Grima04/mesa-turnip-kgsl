@@ -226,7 +226,7 @@ etna_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info)
    if (info->index_size) {
       indexbuf = info->has_user_indices ? NULL : info->index.resource;
       if (info->has_user_indices &&
-          !util_upload_index_buffer(pctx, info, &indexbuf, &index_offset)) {
+          !util_upload_index_buffer(pctx, info, &indexbuf, &index_offset, 4)) {
          BUG("Index buffer upload failed.");
          return;
       }
