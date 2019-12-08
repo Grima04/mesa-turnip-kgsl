@@ -329,9 +329,13 @@ lima_resource_from_handle(struct pipe_screen *pscreen,
    case DRM_FORMAT_MOD_ARM_16X16_BLOCK_U_INTERLEAVED:
       res->tiled = true;
       break;
+   case DRM_FORMAT_MOD_INVALID:
+      res->tiled = screen->ro == NULL;
+      break;
    default:
       fprintf(stderr, "Attempted to import unsupported modifier 0x%llx\n",
                   (long long)handle->modifier);
+      goto err_out;
    }
 
    return pres;
