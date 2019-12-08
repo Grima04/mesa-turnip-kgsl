@@ -435,6 +435,18 @@ gpu_supports_render_format(struct etna_screen *screen, enum pipe_format format,
 }
 
 static bool
+gpu_supports_vertex_format(struct etna_screen *screen, enum pipe_format format)
+{
+   if (translate_vertex_format_type(format) == ETNA_NO_MATCH)
+      return false;
+
+   if (util_format_is_pure_integer(format))
+      return VIV_FEATURE(screen, chipMinorFeatures4, HALTI2);
+
+   return true;
+}
+
+static bool
 etna_screen_is_format_supported(struct pipe_screen *pscreen,
                                 enum pipe_format format,
                                 enum pipe_texture_target target,
@@ -472,7 +484,7 @@ etna_screen_is_format_supported(struct pipe_screen *pscreen,
    }
 
    if (usage & PIPE_BIND_VERTEX_BUFFER) {
-      if (translate_vertex_format_type(format) != ETNA_NO_MATCH)
+      if (gpu_supports_vertex_format(screen, format))
          allowed |= PIPE_BIND_VERTEX_BUFFER;
    }
 
