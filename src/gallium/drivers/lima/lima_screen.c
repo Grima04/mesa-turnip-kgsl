@@ -406,6 +406,7 @@ lima_screen_query_dmabuf_modifiers(struct pipe_screen *pscreen,
                                    int *count)
 {
    uint64_t available_modifiers[] = {
+      DRM_FORMAT_MOD_ARM_16X16_BLOCK_U_INTERLEAVED,
       DRM_FORMAT_MOD_LINEAR,
    };
 
