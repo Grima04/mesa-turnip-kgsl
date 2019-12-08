@@ -96,10 +96,30 @@ etna_lower_io(nir_shader *shader, struct etna_shader_variant *v)
                                                  ssa->parent_instr);
                } break;
                case nir_intrinsic_store_deref: {
+                  nir_deref_instr *deref = nir_src_as_deref(intr->src[0]);
+                  if (shader->info.stage == MESA_SHADER_VERTEX &&
+                      v->shader->specs->vs_need_z_div &&
+                      deref->var->data.location == VARYING_SLOT_POS) {
+
+                     assert(deref->deref_type == nir_deref_type_var);
+
+                     b.cursor = nir_before_instr(instr);
+
+                     nir_ssa_def *out[4];
+                     out[0] = nir_channel(&b, intr->src[1].ssa, 0);
+                     out[1] = nir_channel(&b, intr->src[1].ssa, 1);
+                     out[2] = nir_fmul_imm(&b, nir_fadd(&b, nir_channel(&b, intr->src[1].ssa, 2),
+                                                        nir_channel(&b, intr->src[1].ssa, 3)),
+                                           0.5f);
+                     out[3] = nir_channel(&b, intr->src[1].ssa, 3);
+
+                     nir_instr_rewrite_src(instr, &intr->src[1],
+                                           nir_src_for_ssa(nir_vec(&b, out, 4)));
+                  }
+
                   if (shader->info.stage != MESA_SHADER_FRAGMENT || !v->key.frag_rb_swap)
                      break;
 
-                  nir_deref_instr *deref = nir_src_as_deref(intr->src[0]);
                   assert(deref->deref_type == nir_deref_type_var);
 
                   if (deref->var->data.location != FRAG_RESULT_COLOR &&
