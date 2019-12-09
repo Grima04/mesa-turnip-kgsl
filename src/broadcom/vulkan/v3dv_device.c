@@ -1381,3 +1381,49 @@ v3dv_DestroyBuffer(VkDevice _device,
 
    vk_free2(&device->alloc, pAllocator, buffer);
 }
+
+VkResult
+v3dv_CreateFramebuffer(VkDevice _device,
+                       const VkFramebufferCreateInfo *pCreateInfo,
+                       const VkAllocationCallbacks *pAllocator,
+                       VkFramebuffer *pFramebuffer)
+{
+   V3DV_FROM_HANDLE(v3dv_device, device, _device);
+   struct v3dv_framebuffer *framebuffer;
+
+   assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO);
+
+   size_t size = sizeof(*framebuffer) +
+                 sizeof(struct v3dv_image_view *) * pCreateInfo->attachmentCount;
+   framebuffer = vk_alloc2(&device->alloc, pAllocator, size, 8,
+                           VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   if (framebuffer == NULL)
+      return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+
+   framebuffer->width = pCreateInfo->width;
+   framebuffer->height = pCreateInfo->height;
+   framebuffer->layers = pCreateInfo->layers;
+   framebuffer->attachment_count = pCreateInfo->attachmentCount;
+   for (uint32_t i = 0; i < pCreateInfo->attachmentCount; i++) {
+      framebuffer->attachments[i] =
+         v3dv_image_view_from_handle(pCreateInfo->pAttachments[i]);
+   }
+
+   *pFramebuffer = v3dv_framebuffer_to_handle(framebuffer);
+
+   return VK_SUCCESS;
+}
+
+void
+v3dv_DestroyFramebuffer(VkDevice _device,
+                        VkFramebuffer _fb,
+                        const VkAllocationCallbacks *pAllocator)
+{
+   V3DV_FROM_HANDLE(v3dv_device, device, _device);
+   V3DV_FROM_HANDLE(v3dv_framebuffer, fb, _fb);
+
+   if (!fb)
+      return;
+
+   vk_free2(&device->alloc, pAllocator, fb);
+}

@@ -334,6 +334,15 @@ struct v3dv_render_pass {
    struct v3dv_subpass_attachment *subpass_attachments;
 };
 
+struct v3dv_framebuffer {
+   uint32_t width;
+   uint32_t height;
+   uint32_t layers;
+
+   uint32_t attachment_count;
+   struct v3dv_image_view *attachments[0];
+};
+
 struct v3dv_shader_module {
    unsigned char sha1[20];
    uint32_t size;
@@ -433,6 +442,7 @@ V3DV_DEFINE_HANDLE_CASTS(v3dv_queue, VkQueue)
 
 V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_buffer, VkBuffer)
 V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_device_memory, VkDeviceMemory)
+V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_framebuffer, VkFramebuffer)
 V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_image, VkImage)
 V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_image_view, VkImageView)
 V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_render_pass, VkRenderPass)
