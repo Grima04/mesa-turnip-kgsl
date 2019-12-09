@@ -2597,6 +2597,28 @@ write_tex_const(struct tu_cmd_buffer *cmd,
    }
 }
 
+static void
+write_image_ibo(struct tu_cmd_buffer *cmd,
+                uint32_t *dst,
+                struct tu_descriptor_state *descriptors_state,
+                const struct tu_descriptor_map *map,
+                unsigned i, unsigned array_index)
+{
+   assert(descriptors_state->valid & (1 << map->set[i]));
+
+   struct tu_descriptor_set *set = descriptors_state->sets[map->set[i]];
+   assert(map->binding[i] < set->layout->binding_count);
+
+   const struct tu_descriptor_set_binding_layout *layout =
+      &set->layout->binding[map->binding[i]];
+
+   assert(layout->type == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
+
+   memcpy(dst, &set->mapped_ptr[layout->offset / 4 +
+                                (array_index * 2 + 1) * A6XX_TEX_CONST_DWORDS],
+          A6XX_TEX_CONST_DWORDS * 4);
+}
+
 static uint64_t
 buffer_ptr(struct tu_descriptor_state *descriptors_state,
            const struct tu_descriptor_map *map,
@@ -2956,7 +2978,7 @@ tu6_emit_ibo(struct tu_cmd_buffer *cmd,
       &pipeline->program.link[type];
    VkResult result;
 
-   unsigned num_desc = link->ssbo_map.num_desc;
+   unsigned num_desc = link->ssbo_map.num_desc + link->image_map.num_desc;
 
    if (num_desc == 0) {
       *entry = (struct tu_cs_entry) {};
@@ -2993,6 +3015,18 @@ tu6_emit_ibo(struct tu_cmd_buffer *cmd,
          ssbo_index++;
       }
    }
+
+   for (unsigned i = 0; i < link->image_map.num; i++) {
+      for (int j = 0; j < link->image_map.array_size[i]; j++) {
+         uint32_t *dst = &ibo_const.map[A6XX_TEX_CONST_DWORDS * ssbo_index];
+
+         write_image_ibo(cmd, dst,
+                         descriptors_state, &link->image_map, i, j);
+
+         ssbo_index++;
+      }
+   }
+
    assert(ssbo_index == num_desc);
 
    struct tu_cs cs;

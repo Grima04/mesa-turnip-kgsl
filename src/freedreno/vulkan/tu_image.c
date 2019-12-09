@@ -269,6 +269,8 @@ tu_image_view_init(struct tu_image_view *iview,
    enum a6xx_tile_mode tile_mode = tu6_get_image_tile_mode(image, iview->base_mip);
    uint32_t width = u_minify(image->extent.width, iview->base_mip);
    uint32_t height = u_minify(image->extent.height, iview->base_mip);
+   uint32_t depth = pCreateInfo->viewType == VK_IMAGE_VIEW_TYPE_3D ?
+      u_minify(image->extent.depth, iview->base_mip) : iview->layer_count;
 
    unsigned fmt_tex = fmt->tex;
    if (iview->aspect_mask == VK_IMAGE_ASPECT_STENCIL_BIT &&
@@ -290,7 +292,7 @@ tu_image_view_init(struct tu_image_view *iview,
       A6XX_TEX_CONST_2_TYPE(tu6_tex_type(pCreateInfo->viewType));
    iview->descriptor[3] = A6XX_TEX_CONST_3_ARRAY_PITCH(tu_layer_size(image, iview->base_mip));
    iview->descriptor[4] = base_addr;
-   iview->descriptor[5] = base_addr >> 32;
+   iview->descriptor[5] = (base_addr >> 32) | A6XX_TEX_CONST_5_DEPTH(depth);
 
    if (image->layout.ubwc_size) {
       uint32_t block_width, block_height;
@@ -307,13 +309,36 @@ tu_image_view_init(struct tu_image_view *iview,
          A6XX_TEX_CONST_10_FLAG_BUFFER_LOGH(util_logbase2_ceil(DIV_ROUND_UP(height, block_height)));
    }
 
-   if (pCreateInfo->viewType != VK_IMAGE_VIEW_TYPE_3D) {
-      iview->descriptor[5] |= A6XX_TEX_CONST_5_DEPTH(iview->layer_count);
-   } else {
+   if (pCreateInfo->viewType == VK_IMAGE_VIEW_TYPE_3D) {
       iview->descriptor[3] |=
          A6XX_TEX_CONST_3_MIN_LAYERSZ(image->layout.slices[image->level_count - 1].size0);
-      iview->descriptor[5] |=
-         A6XX_TEX_CONST_5_DEPTH(u_minify(image->extent.depth, iview->base_mip));
+   }
+
+   if (image->usage & VK_IMAGE_USAGE_STORAGE_BIT) {
+      memset(iview->storage_descriptor, 0, sizeof(iview->storage_descriptor));
+
+      iview->storage_descriptor[0] =
+         A6XX_IBO_0_FMT(fmt->tex) |
+         A6XX_IBO_0_TILE_MODE(tile_mode);
+      iview->storage_descriptor[1] =
+         A6XX_IBO_1_WIDTH(width) |
+         A6XX_IBO_1_HEIGHT(height);
+      iview->storage_descriptor[2] =
+         A6XX_IBO_2_PITCH(pitch) |
+         A6XX_IBO_2_TYPE(tu6_tex_type(pCreateInfo->viewType));
+      iview->storage_descriptor[3] = A6XX_IBO_3_ARRAY_PITCH(tu_layer_size(image, iview->base_mip));
+
+      iview->storage_descriptor[4] = base_addr;
+      iview->storage_descriptor[5] = (base_addr >> 32) | A6XX_IBO_5_DEPTH(depth);
+
+      if (image->layout.ubwc_size) {
+         iview->storage_descriptor[3] |= A6XX_IBO_3_FLAG | A6XX_IBO_3_UNK27;
+         iview->storage_descriptor[7] |= ubwc_addr;
+         iview->storage_descriptor[8] |= ubwc_addr >> 32;
+         iview->storage_descriptor[9] = A6XX_IBO_9_FLAG_BUFFER_ARRAY_PITCH(tu_image_ubwc_size(image, iview->base_mip) >> 2);
+         iview->storage_descriptor[10] =
+            A6XX_IBO_10_FLAG_BUFFER_PITCH(tu_image_ubwc_pitch(image, iview->base_mip));
+      }
    }
 }
 

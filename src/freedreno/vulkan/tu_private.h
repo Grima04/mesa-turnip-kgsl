@@ -1058,6 +1058,7 @@ struct tu_shader
    struct tu_descriptor_map sampler_map;
    struct tu_descriptor_map ubo_map;
    struct tu_descriptor_map ssbo_map;
+   struct tu_descriptor_map image_map;
 
    /* This may be true for vertex shaders.  When true, variants[1] is the
     * binning variant and binning_binary is non-NULL.
@@ -1105,7 +1106,7 @@ struct tu_program_descriptor_linkage
    struct tu_descriptor_map sampler_map;
    struct tu_descriptor_map ubo_map;
    struct tu_descriptor_map ssbo_map;
-   struct ir3_ibo_mapping image_mapping;
+   struct tu_descriptor_map image_map;
 };
 
 struct tu_pipeline

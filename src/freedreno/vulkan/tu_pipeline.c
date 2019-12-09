@@ -361,10 +361,10 @@ tu6_blend_op(VkBlendOp op)
 static unsigned
 tu_shader_nibo(const struct tu_shader *shader)
 {
-   /* In tu_cmd_buffer.c we emit the SSBO's IBOS, but not yet storage image
-    * IBOs.
+   /* Don't use ir3_shader_nibo(), because that would include declared but
+    * unused storage images and SSBOs.
     */
-   return shader->ssbo_map.num_desc;
+   return shader->ssbo_map.num_desc + shader->image_map.num_desc;
 }
 
 static void
@@ -1641,7 +1641,7 @@ tu_pipeline_set_linkage(struct tu_program_descriptor_linkage *link,
    link->sampler_map = shader->sampler_map;
    link->ubo_map = shader->ubo_map;
    link->ssbo_map = shader->ssbo_map;
-   link->image_mapping =  v->image_mapping;
+   link->image_map = shader->image_map;
 }
 
 static void

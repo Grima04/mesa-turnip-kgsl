@@ -90,9 +90,11 @@ descriptor_size(enum VkDescriptorType type)
       /* 64bit pointer */
       return 8;
    case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
-   case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
    case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
       return A6XX_TEX_CONST_DWORDS * 4;
+   case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+      /* We may need the IBO or the TEX representation, or both. */
+      return A6XX_TEX_CONST_DWORDS * 4 * 2;
    case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
       /* texture const + tu_sampler struct (includes border color) */
       return A6XX_TEX_CONST_DWORDS * 4 + sizeof(struct tu_sampler);
@@ -744,15 +746,12 @@ write_image_descriptor(struct tu_device *device,
              const VkDescriptorImageInfo *image_info)
 {
    TU_FROM_HANDLE(tu_image_view, iview, image_info->imageView);
-   uint32_t *descriptor;
 
+   memcpy(dst, iview->descriptor, sizeof(iview->descriptor));
    if (descriptor_type == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE) {
-      descriptor = iview->storage_descriptor;
-   } else {
-      descriptor = iview->descriptor;
+      memcpy(&dst[A6XX_TEX_CONST_DWORDS], iview->storage_descriptor,
+             sizeof(iview->storage_descriptor));
    }
-
-   memcpy(dst, descriptor, sizeof(iview->descriptor));
 
    if (cmd_buffer)
       tu_bo_list_add(&cmd_buffer->bo_list, iview->image->bo, MSM_SUBMIT_BO_READ);

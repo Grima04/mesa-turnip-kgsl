@@ -295,6 +295,24 @@ lower_vulkan_resource_index(nir_builder *b, nir_intrinsic_instr *instr,
    nir_instr_remove(&instr->instr);
 }
 
+static void
+add_image_deref_mapping(nir_intrinsic_instr *instr, struct tu_shader *shader,
+                const struct tu_pipeline_layout *layout)
+{
+   nir_deref_instr *deref = nir_src_as_deref(instr->src[0]);
+   nir_variable *var = nir_deref_instr_get_variable(deref);
+
+   uint32_t set = var->data.descriptor_set;
+   uint32_t binding = var->data.binding;
+   struct tu_descriptor_set_layout *set_layout = layout->set[set].layout;
+   struct tu_descriptor_set_binding_layout *binding_layout =
+      &set_layout->binding[binding];
+
+   var->data.driver_location =
+      map_add(&shader->image_map, set, binding, var->data.index,
+              binding_layout->array_size);
+}
+
 static bool
 lower_intrinsic(nir_builder *b, nir_intrinsic_instr *instr,
                 struct tu_shader *shader,
@@ -314,6 +332,26 @@ lower_intrinsic(nir_builder *b, nir_intrinsic_instr *instr,
 
    case nir_intrinsic_vulkan_resource_index:
       lower_vulkan_resource_index(b, instr, shader, layout);
+      return true;
+
+   case nir_intrinsic_image_deref_load:
+   case nir_intrinsic_image_deref_store:
+   case nir_intrinsic_image_deref_atomic_add:
+   case nir_intrinsic_image_deref_atomic_imin:
+   case nir_intrinsic_image_deref_atomic_umin:
+   case nir_intrinsic_image_deref_atomic_imax:
+   case nir_intrinsic_image_deref_atomic_umax:
+   case nir_intrinsic_image_deref_atomic_and:
+   case nir_intrinsic_image_deref_atomic_or:
+   case nir_intrinsic_image_deref_atomic_xor:
+   case nir_intrinsic_image_deref_atomic_exchange:
+   case nir_intrinsic_image_deref_atomic_comp_swap:
+   case nir_intrinsic_image_deref_size:
+   case nir_intrinsic_image_deref_samples:
+   case nir_intrinsic_image_deref_load_param_intel:
+   case nir_intrinsic_image_deref_load_raw_intel:
+   case nir_intrinsic_image_deref_store_raw_intel:
+      add_image_deref_mapping(instr, shader, layout);
       return true;
 
    default:
