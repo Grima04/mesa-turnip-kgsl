@@ -1,7 +1,7 @@
 /**
  * \file imports.c
  * Standard C library function wrappers.
- * 
+ *
  * Imports are services which the device driver or window system or
  * operating system provides to the core renderer.  The core renderer (Mesa)
  * will call these functions in order to do memory allocation, simple I/O,
@@ -60,25 +60,3 @@
 #elif defined(__IBMC__) || defined(__IBMCPP__)
 extern int vsnprintf(char *str, size_t count, const char *fmt, va_list arg);
 #endif
-
-
-/** Needed due to #ifdef's, above. */
-int
-_mesa_vsnprintf(char *str, size_t size, const char *fmt, va_list args)
-{
-   return vsnprintf( str, size, fmt, args);
-}
-
-/** Wrapper around vsnprintf() */
-int
-_mesa_snprintf( char *str, size_t size, const char *fmt, ... )
-{
-   int r;
-   va_list args;
-   va_start( args, fmt );  
-   r = vsnprintf( str, size, fmt, args );
-   va_end( args );
-   return r;
-}
-
-

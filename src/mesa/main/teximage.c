@@ -1892,7 +1892,7 @@ texture_error_check( struct gl_context *ctx,
     * requires GL_OES_texture_float) are filtered elsewhere.
     */
    char bufCallerName[20];
-   _mesa_snprintf(bufCallerName, 20, "glTexImage%dD", dimensions);
+   snprintf(bufCallerName, 20, "glTexImage%dD", dimensions);
    if (_mesa_is_gles(ctx) &&
        texture_format_error_check_gles(ctx, format, type,
                                        internalFormat, bufCallerName)) {
@@ -1921,7 +1921,7 @@ texture_error_check( struct gl_context *ctx,
       if (type != GL_UNSIGNED_SHORT_8_8_MESA &&
           type != GL_UNSIGNED_SHORT_8_8_REV_MESA) {
          char message[100];
-         _mesa_snprintf(message, sizeof(message),
+         snprintf(message, sizeof(message),
                         "glTexImage%dD(format/type YCBCR mismatch)",
                         dimensions);
          _mesa_error(ctx, GL_INVALID_ENUM, "%s", message);
@@ -1938,7 +1938,7 @@ texture_error_check( struct gl_context *ctx,
       }
       if (border != 0) {
          char message[100];
-         _mesa_snprintf(message, sizeof(message),
+         snprintf(message, sizeof(message),
                         "glTexImage%dD(format=GL_YCBCR_MESA and border=%d)",
                         dimensions, border);
          _mesa_error(ctx, GL_INVALID_VALUE, "%s", message);

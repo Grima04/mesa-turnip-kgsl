@@ -2095,7 +2095,7 @@ init_draw_stencil_pixels(struct gl_context *ctx)
       texTarget = "RECT";
    else
       texTarget = "2D";
-   _mesa_snprintf(program2, sizeof(program2), program, texTarget);
+   snprintf(program2, sizeof(program2), program, texTarget);
 
    _mesa_GenProgramsARB(1, &drawpix->StencilFP);
    _mesa_BindProgramARB(GL_FRAGMENT_PROGRAM_ARB, drawpix->StencilFP);
@@ -2129,7 +2129,7 @@ init_draw_depth_pixels(struct gl_context *ctx)
       texTarget = "RECT";
    else
       texTarget = "2D";
-   _mesa_snprintf(program2, sizeof(program2), program, texTarget);
+   snprintf(program2, sizeof(program2), program, texTarget);
 
    _mesa_GenProgramsARB(1, &drawpix->DepthFP);
    _mesa_BindProgramARB(GL_FRAGMENT_PROGRAM_ARB, drawpix->DepthFP);

@@ -36,6 +36,7 @@
 #include "vbo/vbo_exec.h"
 #include "vbo/vbo_save.h"
 #include "main/varray.h"
+#include "main/macros.h"
 
 
 struct _glapi_table;

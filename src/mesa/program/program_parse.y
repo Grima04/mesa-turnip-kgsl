@@ -890,7 +890,7 @@ addrRegPosOffset: INTEGER
 	{
 	   if (($1 < 0) || ($1 > (state->limits->MaxAddressOffset - 1))) {
               char s[100];
-              _mesa_snprintf(s, sizeof(s),
+              snprintf(s, sizeof(s),
                              "relative address offset too large (%d)", $1);
 	      yyerror(& @1, state, s);
 	      YYERROR;
@@ -904,7 +904,7 @@ addrRegNegOffset: INTEGER
 	{
 	   if (($1 < 0) || ($1 > state->limits->MaxAddressOffset)) {
               char s[100];
-              _mesa_snprintf(s, sizeof(s),
+              snprintf(s, sizeof(s),
                              "relative address offset too large (%d)", $1);
 	      yyerror(& @1, state, s);
 	      YYERROR;
@@ -1121,7 +1121,7 @@ optArraySize:
         {
 	   if (($1 < 1) || ((unsigned) $1 > state->limits->MaxParameters)) {
               char msg[100];
-              _mesa_snprintf(msg, sizeof(msg),
+              snprintf(msg, sizeof(msg),
                              "invalid parameter array size (size=%d max=%u)",
                              $1, state->limits->MaxParameters);
 	      yyerror(& @1, state, msg);
@@ -2034,7 +2034,7 @@ ALIAS_statement: ALIAS IDENTIFIER '=' USED_IDENTIFIER
 
 	   if (exist != NULL) {
 	      char m[1000];
-	      _mesa_snprintf(m, sizeof(m), "redeclared identifier: %s", $2);
+	      snprintf(m, sizeof(m), "redeclared identifier: %s", $2);
 	      free($2);
 	      yyerror(& @2, state, m);
 	      YYERROR;

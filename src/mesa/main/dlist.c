@@ -13548,7 +13548,7 @@ execute_list(struct gl_context *ctx, GLuint list)
          default:
             {
                char msg[1000];
-               _mesa_snprintf(msg, sizeof(msg), "Error in execute_list: opcode=%d",
+               snprintf(msg, sizeof(msg), "Error in execute_list: opcode=%d",
                              (int) opcode);
                _mesa_problem(ctx, "%s", msg);
             }

@@ -120,7 +120,7 @@ create_version_string(struct gl_context *ctx, const char *prefix)
 
    ctx->VersionString = malloc(max);
    if (ctx->VersionString) {
-      _mesa_snprintf(ctx->VersionString, max,
+      snprintf(ctx->VersionString, max,
 		     "%s%u.%u%s Mesa " PACKAGE_VERSION MESA_GIT_SHA1,
 		     prefix,
 		     ctx->Version / 10, ctx->Version % 10,

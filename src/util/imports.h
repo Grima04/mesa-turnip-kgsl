@@ -47,15 +47,6 @@
 extern "C" {
 #endif
 
-/*
- * For GL_ARB_vertex_buffer_object we need to treat vertex array pointers
- * as offsets into buffer stores.  Since the vertex array pointer and
- * buffer store pointer are both pointers and we need to add them, we use
- * this macro.
- * Both pointers/offsets are expressed in bytes.
- */
-#define ADD_POINTERS(A, B)  ( (uint8_t *) (A) + (uintptr_t) (B) )
-
 
 /**
  * Sometimes we treat floats as ints.  On x86 systems, moving a float
@@ -66,21 +57,6 @@ extern "C" {
  * The following union typedef is used to solve that.
  */
 typedef union { float f; int i; unsigned u; } fi_type;
-
-
-
-/*@}*/
-
-
-/**********************************************************************
- * Functions
- */
-
-extern int
-_mesa_snprintf( char *str, size_t size, const char *fmt, ... ) PRINTFLIKE(3, 4);
-
-extern int
-_mesa_vsnprintf(char *str, size_t size, const char *fmt, va_list arg);
 
 
 #ifdef __cplusplus
