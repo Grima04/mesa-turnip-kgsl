@@ -354,8 +354,14 @@ panfrost_mfbd_upload(struct panfrost_batch *batch,
 static struct bifrost_framebuffer
 panfrost_emit_mfbd(struct panfrost_batch *batch, unsigned vertex_count)
 {
+        struct panfrost_context *ctx = batch->ctx;
+        struct pipe_context *gallium = (struct pipe_context *) ctx;
+        struct panfrost_screen *screen = pan_screen(gallium->screen);
+
         unsigned width = batch->key.width;
         unsigned height = batch->key.height;
+
+        unsigned shift = panfrost_get_stack_shift(batch->stack_size);
 
         struct bifrost_framebuffer framebuffer = {
                 .width1 = MALI_POSITIVE(width),
@@ -371,9 +377,9 @@ panfrost_emit_mfbd(struct panfrost_batch *batch, unsigned vertex_count)
                 .unknown2 = 0x1f,
                 .tiler = panfrost_emit_midg_tiler(batch, vertex_count),
                 
-                .stack_shift = 0x5,
+                .stack_shift = shift,
                 .unk0 = 0x1e,
-                .scratchpad = panfrost_batch_get_scratchpad(batch)->gpu
+                .scratchpad = panfrost_batch_get_scratchpad(batch, shift, screen->thread_tls_alloc, screen->core_count)->gpu
         };
 
         return framebuffer;

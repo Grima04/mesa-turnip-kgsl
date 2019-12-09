@@ -636,19 +636,21 @@ panfrost_batch_get_polygon_list(struct panfrost_batch *batch, unsigned size)
 }
 
 struct panfrost_bo *
-panfrost_batch_get_scratchpad(struct panfrost_batch *batch)
+panfrost_batch_get_scratchpad(struct panfrost_batch *batch,
+                unsigned shift,
+                unsigned thread_tls_alloc,
+                unsigned core_count)
 {
-        if (batch->scratchpad)
-                return batch->scratchpad;
+        unsigned size = panfrost_get_total_stack_size(shift,
+                        thread_tls_alloc,
+                        core_count);
 
-        batch->scratchpad = panfrost_batch_create_bo(batch, 64 * 4 * 4096,
-                                                     PAN_BO_INVISIBLE,
-                                                     PAN_BO_ACCESS_PRIVATE |
-                                                     PAN_BO_ACCESS_RW |
-                                                     PAN_BO_ACCESS_VERTEX_TILER |
-                                                     PAN_BO_ACCESS_FRAGMENT);
-        assert(batch->scratchpad);
-        return batch->scratchpad;
+        return panfrost_batch_create_bo(batch, size,
+                                             PAN_BO_INVISIBLE,
+                                             PAN_BO_ACCESS_PRIVATE |
+                                             PAN_BO_ACCESS_RW |
+                                             PAN_BO_ACCESS_VERTEX_TILER |
+                                             PAN_BO_ACCESS_FRAGMENT);
 }
 
 struct panfrost_bo *
