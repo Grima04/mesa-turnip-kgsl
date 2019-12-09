@@ -318,9 +318,6 @@ fd_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
 		if (is_a6xx(screen)) return 1;
 		return 0;
 
-	case PIPE_CAP_ALLOW_MAPPED_BUFFERS_DURING_EXECUTION:
-		return 0;
-
 	case PIPE_CAP_CONTEXT_PRIORITY_MASK:
 		return screen->priority_mask;
 
