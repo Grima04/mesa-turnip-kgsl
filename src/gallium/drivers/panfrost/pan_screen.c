@@ -670,54 +670,6 @@ panfrost_screen_get_compiler_options(struct pipe_screen *pscreen,
         return &midgard_nir_options;
 }
 
-static __u64
-panfrost_query_raw(
-                struct panfrost_screen *screen,
-                enum drm_panfrost_param param,
-                bool required,
-                unsigned default_value)
-{
-        struct drm_panfrost_get_param get_param = {0,};
-        ASSERTED int ret;
-
-        get_param.param = DRM_PANFROST_PARAM_GPU_PROD_ID;
-        ret = drmIoctl(screen->fd, DRM_IOCTL_PANFROST_GET_PARAM, &get_param);
-
-        if (ret) {
-                assert(!required);
-                return default_value;
-        }
-
-        return get_param.value;
-}
-
-static unsigned
-panfrost_query_gpu_version(struct panfrost_screen *screen)
-{
-        return panfrost_query_raw(screen, DRM_PANFROST_PARAM_GPU_PROD_ID, true, 0);
-}
-
-static unsigned
-panfrost_query_core_count(struct panfrost_screen *screen)
-{
-        /* On older kernels, worst-case to 16 cores */
-
-        unsigned mask = panfrost_query_raw(screen,
-                        DRM_PANFROST_PARAM_SHADER_PRESENT, false, 0xffff);
-
-        return util_bitcount(mask);
-}
-
-static unsigned
-panfrost_query_thread_tls_alloc(struct panfrost_screen *screen)
-{
-        /* On older kernels, we worst-case to 1024 threads, the architectural
-         * maximum for Midgard */
-
-        return panfrost_query_raw(screen,
-                        DRM_PANFROST_PARAM_THREAD_TLS_ALLOC, false, 1024);
-}
-
 static uint32_t
 panfrost_active_bos_hash(const void *key)
 {
@@ -768,9 +720,9 @@ panfrost_create_screen(int fd, struct renderonly *ro)
 
         screen->fd = fd;
 
-        screen->gpu_id = panfrost_query_gpu_version(screen);
-        screen->core_count = panfrost_query_core_count(screen);
-        screen->thread_tls_alloc = panfrost_query_thread_tls_alloc(screen);
+        screen->gpu_id = panfrost_query_gpu_version(screen->fd);
+        screen->core_count = panfrost_query_core_count(screen->fd);
+        screen->thread_tls_alloc = panfrost_query_thread_tls_alloc(screen->fd);
         screen->quirks = panfrost_get_quirks(screen->gpu_id);
         screen->kernel_version = drmGetVersion(fd);
 
