@@ -670,17 +670,27 @@ panfrost_screen_get_compiler_options(struct pipe_screen *pscreen,
         return &midgard_nir_options;
 }
 
-static unsigned
-panfrost_query_gpu_version(struct panfrost_screen *screen)
+static __u64
+panfrost_query_raw(
+                struct panfrost_screen *screen,
+                enum drm_panfrost_param param,
+                bool required)
 {
         struct drm_panfrost_get_param get_param = {0,};
         ASSERTED int ret;
 
         get_param.param = DRM_PANFROST_PARAM_GPU_PROD_ID;
         ret = drmIoctl(screen->fd, DRM_IOCTL_PANFROST_GET_PARAM, &get_param);
-        assert(!ret);
+
+        assert(!(ret && required));
 
         return get_param.value;
+}
+
+static unsigned
+panfrost_query_gpu_version(struct panfrost_screen *screen)
+{
+        return panfrost_query_raw(screen, DRM_PANFROST_PARAM_GPU_PROD_ID, true);
 }
 
 static uint32_t
