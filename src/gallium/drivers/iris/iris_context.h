@@ -174,6 +174,78 @@ enum iris_nos_dep {
    IRIS_NOS_COUNT,
 };
 
+/** @{
+ *
+ * Program cache keys for state based recompiles.
+ */
+
+struct iris_base_prog_key {
+   unsigned program_string_id;
+};
+
+struct iris_vue_prog_key {
+   struct iris_base_prog_key base;
+
+   unsigned nr_userclip_plane_consts:4;
+};
+
+struct iris_vs_prog_key {
+   struct iris_vue_prog_key vue;
+};
+
+struct iris_tcs_prog_key {
+   struct iris_vue_prog_key vue;
+
+   uint16_t tes_primitive_mode;
+
+   uint8_t input_vertices;
+
+   bool quads_workaround;
+
+   /** A bitfield of per-patch outputs written. */
+   uint32_t patch_outputs_written;
+
+   /** A bitfield of per-vertex outputs written. */
+   uint64_t outputs_written;
+};
+
+struct iris_tes_prog_key {
+   struct iris_vue_prog_key vue;
+
+   /** A bitfield of per-patch inputs read. */
+   uint32_t patch_inputs_read;
+
+   /** A bitfield of per-vertex inputs read. */
+   uint64_t inputs_read;
+};
+
+struct iris_gs_prog_key {
+   struct iris_vue_prog_key vue;
+};
+
+struct iris_fs_prog_key {
+   struct iris_base_prog_key base;
+
+   unsigned nr_color_regions:5;
+   bool flat_shade:1;
+   bool alpha_test_replicate_alpha:1;
+   bool alpha_to_coverage:1;
+   bool clamp_fragment_color:1;
+   bool persample_interp:1;
+   bool multisample_fbo:1;
+   bool force_dual_color_blend:1;
+   bool coherent_fb_fetch:1;
+
+   uint8_t color_outputs_valid;
+   uint64_t input_slots_valid;
+};
+
+struct iris_cs_prog_key {
+   struct iris_base_prog_key base;
+};
+
+/** @} */
+
 struct iris_depth_stencil_alpha_state;
 
 /**
@@ -481,22 +553,22 @@ struct iris_vtable {
    void (*populate_vs_key)(const struct iris_context *ice,
                            const struct shader_info *info,
                            gl_shader_stage last_stage,
-                           struct brw_vs_prog_key *key);
+                           struct iris_vs_prog_key *key);
    void (*populate_tcs_key)(const struct iris_context *ice,
-                            struct brw_tcs_prog_key *key);
+                            struct iris_tcs_prog_key *key);
    void (*populate_tes_key)(const struct iris_context *ice,
                             const struct shader_info *info,
                             gl_shader_stage last_stage,
-                            struct brw_tes_prog_key *key);
+                            struct iris_tes_prog_key *key);
    void (*populate_gs_key)(const struct iris_context *ice,
                            const struct shader_info *info,
                            gl_shader_stage last_stage,
-                           struct brw_gs_prog_key *key);
+                           struct iris_gs_prog_key *key);
    void (*populate_fs_key)(const struct iris_context *ice,
                            const struct shader_info *info,
-                           struct brw_wm_prog_key *key);
+                           struct iris_fs_prog_key *key);
    void (*populate_cs_key)(const struct iris_context *ice,
-                           struct brw_cs_prog_key *key);
+                           struct iris_cs_prog_key *key);
    uint32_t (*mocs)(const struct iris_bo *bo, const struct isl_device *isl_dev);
    void (*lost_genx_state)(struct iris_context *ice, struct iris_batch *batch);
 };

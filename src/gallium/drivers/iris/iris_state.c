@@ -4008,14 +4008,14 @@ static void
 iris_populate_vs_key(const struct iris_context *ice,
                      const struct shader_info *info,
                      gl_shader_stage last_stage,
-                     struct brw_vs_prog_key *key)
+                     struct iris_vs_prog_key *key)
 {
    const struct iris_rasterizer_state *cso_rast = ice->state.cso_rast;
 
    if (info->clip_distance_array_size == 0 &&
        (info->outputs_written & (VARYING_BIT_POS | VARYING_BIT_CLIP_VERTEX)) &&
        last_stage == MESA_SHADER_VERTEX)
-      key->nr_userclip_plane_consts = cso_rast->num_clip_plane_consts;
+      key->vue.nr_userclip_plane_consts = cso_rast->num_clip_plane_consts;
 }
 
 /**
@@ -4023,7 +4023,7 @@ iris_populate_vs_key(const struct iris_context *ice,
  */
 static void
 iris_populate_tcs_key(const struct iris_context *ice,
-                      struct brw_tcs_prog_key *key)
+                      struct iris_tcs_prog_key *key)
 {
 }
 
@@ -4034,14 +4034,14 @@ static void
 iris_populate_tes_key(const struct iris_context *ice,
                       const struct shader_info *info,
                       gl_shader_stage last_stage,
-                      struct brw_tes_prog_key *key)
+                      struct iris_tes_prog_key *key)
 {
    const struct iris_rasterizer_state *cso_rast = ice->state.cso_rast;
 
    if (info->clip_distance_array_size == 0 &&
        (info->outputs_written & (VARYING_BIT_POS | VARYING_BIT_CLIP_VERTEX)) &&
        last_stage == MESA_SHADER_TESS_EVAL)
-      key->nr_userclip_plane_consts = cso_rast->num_clip_plane_consts;
+      key->vue.nr_userclip_plane_consts = cso_rast->num_clip_plane_consts;
 }
 
 /**
@@ -4051,14 +4051,14 @@ static void
 iris_populate_gs_key(const struct iris_context *ice,
                      const struct shader_info *info,
                      gl_shader_stage last_stage,
-                     struct brw_gs_prog_key *key)
+                     struct iris_gs_prog_key *key)
 {
    const struct iris_rasterizer_state *cso_rast = ice->state.cso_rast;
 
    if (info->clip_distance_array_size == 0 &&
        (info->outputs_written & (VARYING_BIT_POS | VARYING_BIT_CLIP_VERTEX)) &&
        last_stage == MESA_SHADER_GEOMETRY)
-      key->nr_userclip_plane_consts = cso_rast->num_clip_plane_consts;
+      key->vue.nr_userclip_plane_consts = cso_rast->num_clip_plane_consts;
 }
 
 /**
@@ -4067,7 +4067,7 @@ iris_populate_gs_key(const struct iris_context *ice,
 static void
 iris_populate_fs_key(const struct iris_context *ice,
                      const struct shader_info *info,
-                     struct brw_wm_prog_key *key)
+                     struct iris_fs_prog_key *key)
 {
    struct iris_screen *screen = (void *) ice->ctx.screen;
    const struct pipe_framebuffer_state *fb = &ice->state.framebuffer;
@@ -4100,7 +4100,7 @@ iris_populate_fs_key(const struct iris_context *ice,
 
 static void
 iris_populate_cs_key(const struct iris_context *ice,
-                     struct brw_cs_prog_key *key)
+                     struct iris_cs_prog_key *key)
 {
 }
 

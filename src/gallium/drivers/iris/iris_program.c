@@ -46,12 +46,13 @@
 #include "iris_context.h"
 #include "nir/tgsi_to_nir.h"
 
-#define KEY_INIT_NO_ID(gen)                              \
+#define KEY_ID(prefix) .prefix.program_string_id = ish->program_id
+#define BRW_KEY_INIT(gen, prog_id)                       \
+   .base.program_string_id = prog_id,                    \
    .base.subgroup_size_type = BRW_SUBGROUP_SIZE_UNIFORM, \
    .base.tex.swizzles[0 ... MAX_SAMPLERS - 1] = 0x688,   \
    .base.tex.compressed_multisample_layout_mask = ~0,    \
    .base.tex.msaa_16 = (gen >= 9 ? ~0 : 0)
-#define KEY_INIT(gen) .base.program_string_id = ish->program_id, KEY_INIT_NO_ID(gen)
 
 static unsigned
 get_new_program_id(struct iris_screen *screen)
@@ -952,7 +953,7 @@ last_vue_stage(struct iris_context *ice)
 static struct iris_compiled_shader *
 iris_compile_vs(struct iris_context *ice,
                 struct iris_uncompiled_shader *ish,
-                const struct brw_vs_prog_key *key)
+                const struct iris_vs_prog_key *key)
 {
    struct iris_screen *screen = (struct iris_screen *)ice->ctx.screen;
    const struct brw_compiler *compiler = screen->compiler;
@@ -968,10 +969,10 @@ iris_compile_vs(struct iris_context *ice,
 
    nir_shader *nir = nir_shader_clone(mem_ctx, ish->nir);
 
-   if (key->nr_userclip_plane_consts) {
+   if (key->vue.nr_userclip_plane_consts) {
       nir_function_impl *impl = nir_shader_get_entrypoint(nir);
-      nir_lower_clip_vs(nir, (1 << key->nr_userclip_plane_consts) - 1, true,
-                        false, NULL);
+      nir_lower_clip_vs(nir, (1 << key->vue.nr_userclip_plane_consts) - 1,
+                        true, false, NULL);
       nir_lower_io_to_temporaries(nir, impl, true, false);
       nir_lower_global_vars_to_local(nir);
       nir_lower_vars_to_ssa(nir);
@@ -993,15 +994,18 @@ iris_compile_vs(struct iris_context *ice,
                        &vue_prog_data->vue_map, nir->info.outputs_written,
                        nir->info.separate_shader);
 
-   /* Don't tell the backend about our clip plane constants, we've already
-    * lowered them in NIR and we don't want it doing it again.
-    */
-   struct brw_vs_prog_key key_no_ucp = *key;
-   key_no_ucp.nr_userclip_plane_consts = 0;
+   struct brw_vs_prog_key brw_key = {
+      BRW_KEY_INIT(devinfo->gen, key->vue.base.program_string_id),
+
+      /* Don't tell the backend about our clip plane constants, we've
+       * already lowered them in NIR and don't want it doing it again.
+       */
+      .nr_userclip_plane_consts = 0,
+   };
 
    char *error_str = NULL;
    const unsigned *program =
-      brw_compile_vs(compiler, &ice->dbg, mem_ctx, &key_no_ucp, vs_prog_data,
+      brw_compile_vs(compiler, &ice->dbg, mem_ctx, &brw_key, vs_prog_data,
                      nir, -1, NULL, &error_str);
    if (program == NULL) {
       dbg_printf("Failed to compile vertex shader: %s\n", error_str);
@@ -1010,7 +1014,7 @@ iris_compile_vs(struct iris_context *ice,
    }
 
    if (ish->compiled_once) {
-      iris_debug_recompile(ice, &nir->info, &key->base);
+      iris_debug_recompile(ice, &nir->info, &brw_key.base);
    } else {
       ish->compiled_once = true;
    }
@@ -1041,10 +1045,8 @@ iris_update_compiled_vs(struct iris_context *ice)
    struct iris_shader_state *shs = &ice->state.shaders[MESA_SHADER_VERTEX];
    struct iris_uncompiled_shader *ish =
       ice->shaders.uncompiled[MESA_SHADER_VERTEX];
-   struct iris_screen *screen = (struct iris_screen *)ice->ctx.screen;
-   const struct gen_device_info *devinfo = &screen->devinfo;
 
-   struct brw_vs_prog_key key = { KEY_INIT(devinfo->gen) };
+   struct iris_vs_prog_key key = { KEY_ID(vue.base) };
    ice->vtbl.populate_vs_key(ice, &ish->nir->info, last_vue_stage(ice), &key);
 
    struct iris_compiled_shader *old = ice->shaders.prog[IRIS_CACHE_VS];
@@ -1140,7 +1142,7 @@ get_unified_tess_slots(const struct iris_context *ice,
 static struct iris_compiled_shader *
 iris_compile_tcs(struct iris_context *ice,
                  struct iris_uncompiled_shader *ish,
-                 const struct brw_tcs_prog_key *key)
+                 const struct iris_tcs_prog_key *key)
 {
    struct iris_screen *screen = (struct iris_screen *)ice->ctx.screen;
    const struct brw_compiler *compiler = screen->compiler;
@@ -1160,6 +1162,15 @@ iris_compile_tcs(struct iris_context *ice,
 
    struct iris_binding_table bt;
 
+   struct brw_tcs_prog_key brw_key = {
+      BRW_KEY_INIT(devinfo->gen, key->vue.base.program_string_id),
+      .tes_primitive_mode = key->tes_primitive_mode,
+      .input_vertices = key->input_vertices,
+      .patch_outputs_written = key->patch_outputs_written,
+      .outputs_written = key->outputs_written,
+      .quads_workaround = key->quads_workaround,
+   };
+
    if (ish) {
       nir = nir_shader_clone(mem_ctx, ish->nir);
 
@@ -1169,7 +1180,8 @@ iris_compile_tcs(struct iris_context *ice,
                                num_system_values, num_cbufs);
       brw_nir_analyze_ubo_ranges(compiler, nir, NULL, prog_data->ubo_ranges);
    } else {
-      nir = brw_nir_create_passthrough_tcs(mem_ctx, compiler, options, key);
+      nir =
+         brw_nir_create_passthrough_tcs(mem_ctx, compiler, options, &brw_key);
 
       /* Reserve space for passing the default tess levels as constants. */
       num_cbufs = 1;
@@ -1207,8 +1219,8 @@ iris_compile_tcs(struct iris_context *ice,
 
    char *error_str = NULL;
    const unsigned *program =
-      brw_compile_tcs(compiler, &ice->dbg, mem_ctx, key, tcs_prog_data, nir,
-                      -1, NULL, &error_str);
+      brw_compile_tcs(compiler, &ice->dbg, mem_ctx, &brw_key, tcs_prog_data,
+                      nir, -1, NULL, &error_str);
    if (program == NULL) {
       dbg_printf("Failed to compile control shader: %s\n", error_str);
       ralloc_free(mem_ctx);
@@ -1217,7 +1229,7 @@ iris_compile_tcs(struct iris_context *ice,
 
    if (ish) {
       if (ish->compiled_once) {
-         iris_debug_recompile(ice, &nir->info, &key->base);
+         iris_debug_recompile(ice, &nir->info, &brw_key.base);
       } else {
          ish->compiled_once = true;
       }
@@ -1252,9 +1264,8 @@ iris_update_compiled_tcs(struct iris_context *ice)
 
    const struct shader_info *tes_info =
       iris_get_shader_info(ice, MESA_SHADER_TESS_EVAL);
-   struct brw_tcs_prog_key key = {
-      KEY_INIT_NO_ID(devinfo->gen),
-      .base.program_string_id = tcs ? tcs->program_id : 0,
+   struct iris_tcs_prog_key key = {
+      .vue.base.program_string_id = tcs ? tcs->program_id : 0,
       .tes_primitive_mode = tes_info->tess.primitive_mode,
       .input_vertices =
          !tcs || compiler->use_tcs_8_patch ? ice->state.vertices_per_patch : 0,
@@ -1291,7 +1302,7 @@ iris_update_compiled_tcs(struct iris_context *ice)
 static struct iris_compiled_shader *
 iris_compile_tes(struct iris_context *ice,
                  struct iris_uncompiled_shader *ish,
-                 const struct brw_tes_prog_key *key)
+                 const struct iris_tes_prog_key *key)
 {
    struct iris_screen *screen = (struct iris_screen *)ice->ctx.screen;
    const struct brw_compiler *compiler = screen->compiler;
@@ -1307,10 +1318,10 @@ iris_compile_tes(struct iris_context *ice,
 
    nir_shader *nir = nir_shader_clone(mem_ctx, ish->nir);
 
-   if (key->nr_userclip_plane_consts) {
+   if (key->vue.nr_userclip_plane_consts) {
       nir_function_impl *impl = nir_shader_get_entrypoint(nir);
-      nir_lower_clip_vs(nir, (1 << key->nr_userclip_plane_consts) - 1, true,
-                        false, NULL);
+      nir_lower_clip_vs(nir, (1 << key->vue.nr_userclip_plane_consts) - 1,
+                        true, false, NULL);
       nir_lower_io_to_temporaries(nir, impl, true, false);
       nir_lower_global_vars_to_local(nir);
       nir_lower_vars_to_ssa(nir);
@@ -1330,9 +1341,15 @@ iris_compile_tes(struct iris_context *ice,
    brw_compute_tess_vue_map(&input_vue_map, key->inputs_read,
                             key->patch_inputs_read);
 
+   struct brw_tes_prog_key brw_key = {
+      BRW_KEY_INIT(devinfo->gen, key->vue.base.program_string_id),
+      .patch_inputs_read = key->patch_inputs_read,
+      .inputs_read = key->inputs_read,
+   };
+
    char *error_str = NULL;
    const unsigned *program =
-      brw_compile_tes(compiler, &ice->dbg, mem_ctx, key, &input_vue_map,
+      brw_compile_tes(compiler, &ice->dbg, mem_ctx, &brw_key, &input_vue_map,
                       tes_prog_data, nir, -1, NULL, &error_str);
    if (program == NULL) {
       dbg_printf("Failed to compile evaluation shader: %s\n", error_str);
@@ -1341,7 +1358,7 @@ iris_compile_tes(struct iris_context *ice,
    }
 
    if (ish->compiled_once) {
-      iris_debug_recompile(ice, &nir->info, &key->base);
+      iris_debug_recompile(ice, &nir->info, &brw_key.base);
    } else {
       ish->compiled_once = true;
    }
@@ -1373,10 +1390,8 @@ iris_update_compiled_tes(struct iris_context *ice)
    struct iris_shader_state *shs = &ice->state.shaders[MESA_SHADER_TESS_EVAL];
    struct iris_uncompiled_shader *ish =
       ice->shaders.uncompiled[MESA_SHADER_TESS_EVAL];
-   struct iris_screen *screen = (struct iris_screen *)ice->ctx.screen;
-   const struct gen_device_info *devinfo = &screen->devinfo;
 
-   struct brw_tes_prog_key key = { KEY_INIT(devinfo->gen) };
+   struct iris_tes_prog_key key = { KEY_ID(vue.base) };
    get_unified_tess_slots(ice, &key.inputs_read, &key.patch_inputs_read);
    ice->vtbl.populate_tes_key(ice, &ish->nir->info, last_vue_stage(ice), &key);
 
@@ -1412,7 +1427,7 @@ iris_update_compiled_tes(struct iris_context *ice)
 static struct iris_compiled_shader *
 iris_compile_gs(struct iris_context *ice,
                 struct iris_uncompiled_shader *ish,
-                const struct brw_gs_prog_key *key)
+                const struct iris_gs_prog_key *key)
 {
    struct iris_screen *screen = (struct iris_screen *)ice->ctx.screen;
    const struct brw_compiler *compiler = screen->compiler;
@@ -1428,10 +1443,10 @@ iris_compile_gs(struct iris_context *ice,
 
    nir_shader *nir = nir_shader_clone(mem_ctx, ish->nir);
 
-   if (key->nr_userclip_plane_consts) {
+   if (key->vue.nr_userclip_plane_consts) {
       nir_function_impl *impl = nir_shader_get_entrypoint(nir);
-      nir_lower_clip_gs(nir, (1 << key->nr_userclip_plane_consts) - 1, false,
-                        NULL);
+      nir_lower_clip_gs(nir, (1 << key->vue.nr_userclip_plane_consts) - 1,
+                        false, NULL);
       nir_lower_io_to_temporaries(nir, impl, true, false);
       nir_lower_global_vars_to_local(nir);
       nir_lower_vars_to_ssa(nir);
@@ -1451,10 +1466,14 @@ iris_compile_gs(struct iris_context *ice,
                        &vue_prog_data->vue_map, nir->info.outputs_written,
                        nir->info.separate_shader);
 
+   struct brw_gs_prog_key brw_key = {
+      BRW_KEY_INIT(devinfo->gen, key->vue.base.program_string_id),
+   };
+
    char *error_str = NULL;
    const unsigned *program =
-      brw_compile_gs(compiler, &ice->dbg, mem_ctx, key, gs_prog_data, nir,
-                     NULL, -1, NULL, &error_str);
+      brw_compile_gs(compiler, &ice->dbg, mem_ctx, &brw_key, gs_prog_data,
+                     nir, NULL, -1, NULL, &error_str);
    if (program == NULL) {
       dbg_printf("Failed to compile geometry shader: %s\n", error_str);
       ralloc_free(mem_ctx);
@@ -1462,7 +1481,7 @@ iris_compile_gs(struct iris_context *ice,
    }
 
    if (ish->compiled_once) {
-      iris_debug_recompile(ice, &nir->info, &key->base);
+      iris_debug_recompile(ice, &nir->info, &brw_key.base);
    } else {
       ish->compiled_once = true;
    }
@@ -1497,9 +1516,7 @@ iris_update_compiled_gs(struct iris_context *ice)
    struct iris_compiled_shader *shader = NULL;
 
    if (ish) {
-      struct iris_screen *screen = (struct iris_screen *)ice->ctx.screen;
-      const struct gen_device_info *devinfo = &screen->devinfo;
-      struct brw_gs_prog_key key = { KEY_INIT(devinfo->gen) };
+      struct iris_gs_prog_key key = { KEY_ID(vue.base) };
       ice->vtbl.populate_gs_key(ice, &ish->nir->info, last_vue_stage(ice), &key);
 
       shader =
@@ -1527,7 +1544,7 @@ iris_update_compiled_gs(struct iris_context *ice)
 static struct iris_compiled_shader *
 iris_compile_fs(struct iris_context *ice,
                 struct iris_uncompiled_shader *ish,
-                const struct brw_wm_prog_key *key,
+                const struct iris_fs_prog_key *key,
                 struct brw_vue_map *vue_map)
 {
    struct iris_screen *screen = (struct iris_screen *)ice->ctx.screen;
@@ -1568,9 +1585,24 @@ iris_compile_fs(struct iris_context *ice,
 
    brw_nir_analyze_ubo_ranges(compiler, nir, NULL, prog_data->ubo_ranges);
 
+   struct brw_wm_prog_key brw_key = {
+      BRW_KEY_INIT(devinfo->gen, key->base.program_string_id),
+      .nr_color_regions = key->nr_color_regions,
+      .flat_shade = key->flat_shade,
+      .alpha_test_replicate_alpha = key->alpha_test_replicate_alpha,
+      .alpha_to_coverage = key->alpha_to_coverage,
+      .clamp_fragment_color = key->clamp_fragment_color,
+      .persample_interp = key->persample_interp,
+      .multisample_fbo = key->multisample_fbo,
+      .force_dual_color_blend = key->force_dual_color_blend,
+      .coherent_fb_fetch = key->coherent_fb_fetch,
+      .color_outputs_valid = key->color_outputs_valid,
+      .input_slots_valid = key->input_slots_valid,
+   };
+
    char *error_str = NULL;
    const unsigned *program =
-      brw_compile_fs(compiler, &ice->dbg, mem_ctx, key, fs_prog_data,
+      brw_compile_fs(compiler, &ice->dbg, mem_ctx, &brw_key, fs_prog_data,
                      nir, -1, -1, -1, true, false, vue_map,
                      NULL, &error_str);
    if (program == NULL) {
@@ -1580,7 +1612,7 @@ iris_compile_fs(struct iris_context *ice,
    }
 
    if (ish->compiled_once) {
-      iris_debug_recompile(ice, &nir->info, &key->base);
+      iris_debug_recompile(ice, &nir->info, &brw_key.base);
    } else {
       ish->compiled_once = true;
    }
@@ -1604,12 +1636,10 @@ iris_compile_fs(struct iris_context *ice,
 static void
 iris_update_compiled_fs(struct iris_context *ice)
 {
-   struct iris_screen *screen = (struct iris_screen *)ice->ctx.screen;
-   const struct gen_device_info *devinfo = &screen->devinfo;
    struct iris_shader_state *shs = &ice->state.shaders[MESA_SHADER_FRAGMENT];
    struct iris_uncompiled_shader *ish =
       ice->shaders.uncompiled[MESA_SHADER_FRAGMENT];
-   struct brw_wm_prog_key key = { KEY_INIT(devinfo->gen) };
+   struct iris_fs_prog_key key = { KEY_ID(base) };
    ice->vtbl.populate_fs_key(ice, &ish->nir->info, &key);
 
    if (ish->nos & (1ull << IRIS_NOS_LAST_VUE_MAP))
@@ -1826,7 +1856,7 @@ iris_update_compiled_shaders(struct iris_context *ice)
 static struct iris_compiled_shader *
 iris_compile_cs(struct iris_context *ice,
                 struct iris_uncompiled_shader *ish,
-                const struct brw_cs_prog_key *key)
+                const struct iris_cs_prog_key *key)
 {
    struct iris_screen *screen = (struct iris_screen *)ice->ctx.screen;
    const struct brw_compiler *compiler = screen->compiler;
@@ -1848,9 +1878,13 @@ iris_compile_cs(struct iris_context *ice,
    iris_setup_binding_table(devinfo, nir, &bt, /* num_render_targets */ 0,
                             num_system_values, num_cbufs);
 
+   struct brw_cs_prog_key brw_key = {
+      BRW_KEY_INIT(devinfo->gen, key->base.program_string_id),
+   };
+
    char *error_str = NULL;
    const unsigned *program =
-      brw_compile_cs(compiler, &ice->dbg, mem_ctx, key, cs_prog_data,
+      brw_compile_cs(compiler, &ice->dbg, mem_ctx, &brw_key, cs_prog_data,
                      nir, -1, NULL, &error_str);
    if (program == NULL) {
       dbg_printf("Failed to compile compute shader: %s\n", error_str);
@@ -1859,7 +1893,7 @@ iris_compile_cs(struct iris_context *ice,
    }
 
    if (ish->compiled_once) {
-      iris_debug_recompile(ice, &nir->info, &key->base);
+      iris_debug_recompile(ice, &nir->info, &brw_key.base);
    } else {
       ish->compiled_once = true;
    }
@@ -1882,9 +1916,7 @@ iris_update_compiled_cs(struct iris_context *ice)
    struct iris_uncompiled_shader *ish =
       ice->shaders.uncompiled[MESA_SHADER_COMPUTE];
 
-   struct iris_screen *screen = (struct iris_screen *)ice->ctx.screen;
-   const struct gen_device_info *devinfo = &screen->devinfo;
-   struct brw_cs_prog_key key = { KEY_INIT(devinfo->gen) };
+   struct iris_cs_prog_key key = { KEY_ID(base) };
    ice->vtbl.populate_cs_key(ice, &key);
 
    struct iris_compiled_shader *old = ice->shaders.prog[IRIS_CACHE_CS];
@@ -2095,8 +2127,7 @@ iris_create_vs_state(struct pipe_context *ctx,
       ish->nos |= (1ull << IRIS_NOS_RASTERIZER);
 
    if (screen->precompile) {
-      const struct gen_device_info *devinfo = &screen->devinfo;
-      struct brw_vs_prog_key key = { KEY_INIT(devinfo->gen) };
+      struct iris_vs_prog_key key = { KEY_ID(vue.base) };
 
       if (!iris_disk_cache_retrieve(ice, ish, &key, sizeof(key)))
          iris_compile_vs(ice, ish, &key);
@@ -2117,9 +2148,8 @@ iris_create_tcs_state(struct pipe_context *ctx,
 
    if (screen->precompile) {
       const unsigned _GL_TRIANGLES = 0x0004;
-      const struct gen_device_info *devinfo = &screen->devinfo;
-      struct brw_tcs_prog_key key = {
-         KEY_INIT(devinfo->gen),
+      struct iris_tcs_prog_key key = {
+         KEY_ID(vue.base),
          // XXX: make sure the linker fills this out from the TES...
          .tes_primitive_mode =
             info->tess.primitive_mode ? info->tess.primitive_mode
@@ -2157,9 +2187,8 @@ iris_create_tes_state(struct pipe_context *ctx,
       ish->nos |= (1ull << IRIS_NOS_RASTERIZER);
 
    if (screen->precompile) {
-      const struct gen_device_info *devinfo = &screen->devinfo;
-      struct brw_tes_prog_key key = {
-         KEY_INIT(devinfo->gen),
+      struct iris_tes_prog_key key = {
+         KEY_ID(vue.base),
          // XXX: not ideal, need TCS output/TES input unification
          .inputs_read = info->inputs_read,
          .patch_inputs_read = info->patch_inputs_read,
@@ -2185,8 +2214,7 @@ iris_create_gs_state(struct pipe_context *ctx,
       ish->nos |= (1ull << IRIS_NOS_RASTERIZER);
 
    if (screen->precompile) {
-      const struct gen_device_info *devinfo = &screen->devinfo;
-      struct brw_gs_prog_key key = { KEY_INIT(devinfo->gen) };
+      struct iris_gs_prog_key key = { KEY_ID(vue.base) };
 
       if (!iris_disk_cache_retrieve(ice, ish, &key, sizeof(key)))
          iris_compile_gs(ice, ish, &key);
@@ -2225,8 +2253,8 @@ iris_create_fs_state(struct pipe_context *ctx,
          util_bitcount64(info->inputs_read & BRW_FS_VARYING_INPUT_MASK) <= 16;
 
       const struct gen_device_info *devinfo = &screen->devinfo;
-      struct brw_wm_prog_key key = {
-         KEY_INIT(devinfo->gen),
+      struct iris_fs_prog_key key = {
+         KEY_ID(base),
          .nr_color_regions = util_bitcount(color_outputs),
          .coherent_fb_fetch = devinfo->gen >= 9,
          .input_slots_valid =
@@ -2254,8 +2282,7 @@ iris_create_compute_state(struct pipe_context *ctx,
    // XXX: disallow more than 64KB of shared variables
 
    if (screen->precompile) {
-      const struct gen_device_info *devinfo = &screen->devinfo;
-      struct brw_cs_prog_key key = { KEY_INIT(devinfo->gen) };
+      struct iris_cs_prog_key key = { KEY_ID(base) };
 
       if (!iris_disk_cache_retrieve(ice, ish, &key, sizeof(key)))
          iris_compile_cs(ice, ish, &key);
