@@ -53,9 +53,7 @@
 #include "pan_blend_shaders.h"
 #include "pan_util.h"
 
-/* Framebuffer descriptor */
-
-static struct midgard_tiler_descriptor
+struct midgard_tiler_descriptor
 panfrost_emit_midg_tiler(struct panfrost_batch *batch, unsigned vertex_count)
 {
         struct panfrost_screen *screen = pan_screen(batch->ctx->base.screen);
@@ -121,55 +119,6 @@ panfrost_emit_midg_tiler(struct panfrost_batch *batch, unsigned vertex_count)
         return t;
 }
 
-struct mali_single_framebuffer
-panfrost_emit_sfbd(struct panfrost_batch *batch, unsigned vertex_count)
-{
-        unsigned width = batch->key.width;
-        unsigned height = batch->key.height;
-
-        struct mali_single_framebuffer framebuffer = {
-                .width = MALI_POSITIVE(width),
-                .height = MALI_POSITIVE(height),
-                .unknown2 = 0x1f,
-                .format = {
-                        .unk3 = 0x3,
-                },
-                .clear_flags = 0x1000,
-                .scratchpad = panfrost_batch_get_scratchpad(batch)->gpu,
-                .tiler = panfrost_emit_midg_tiler(batch, vertex_count),
-        };
-
-        return framebuffer;
-}
-
-struct bifrost_framebuffer
-panfrost_emit_mfbd(struct panfrost_batch *batch, unsigned vertex_count)
-{
-        unsigned width = batch->key.width;
-        unsigned height = batch->key.height;
-
-        struct bifrost_framebuffer framebuffer = {
-                .stack_shift = 0x5,
-                .unk0 = 0x1e,
-                .width1 = MALI_POSITIVE(width),
-                .height1 = MALI_POSITIVE(height),
-                .width2 = MALI_POSITIVE(width),
-                .height2 = MALI_POSITIVE(height),
-
-                .unk1 = 0x1080,
-
-                .rt_count_1 = MALI_POSITIVE(batch->key.nr_cbufs),
-                .rt_count_2 = 4,
-
-                .unknown2 = 0x1f,
-
-                .scratchpad = panfrost_batch_get_scratchpad(batch)->gpu,
-                .tiler = panfrost_emit_midg_tiler(batch, vertex_count)
-        };
-
-        return framebuffer;
-}
-
 static void
 panfrost_clear(
         struct pipe_context *pipe,
@@ -191,42 +140,28 @@ panfrost_clear(
         panfrost_batch_clear(batch, buffers, color, depth, stencil);
 }
 
-static mali_ptr
-panfrost_attach_vt_mfbd(struct panfrost_batch *batch)
-{
-        struct bifrost_framebuffer mfbd = panfrost_emit_mfbd(batch, ~0);
-
-        return panfrost_upload_transient(batch, &mfbd, sizeof(mfbd)) | MALI_MFBD;
-}
-
-static mali_ptr
-panfrost_attach_vt_sfbd(struct panfrost_batch *batch)
-{
-        struct mali_single_framebuffer sfbd = panfrost_emit_sfbd(batch, ~0);
-
-        return panfrost_upload_transient(batch, &sfbd, sizeof(sfbd)) | MALI_SFBD;
-}
-
 static void
 panfrost_attach_vt_framebuffer(struct panfrost_context *ctx)
 {
-        /* Skip the attach if we can */
-
-        if (ctx->payloads[PIPE_SHADER_VERTEX].postfix.framebuffer) {
-                assert(ctx->payloads[PIPE_SHADER_FRAGMENT].postfix.framebuffer);
-                return;
-        }
-
         struct panfrost_screen *screen = pan_screen(ctx->base.screen);
         struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
 
-        if (!batch->framebuffer)
-                batch->framebuffer = (screen->quirks & MIDGARD_SFBD) ?
-                                     panfrost_attach_vt_sfbd(batch) :
-                                     panfrost_attach_vt_mfbd(batch);
+        /* If we haven't, reserve space for the framebuffer */
+
+        if (!batch->framebuffer.gpu) {
+                unsigned size = (screen->quirks & MIDGARD_SFBD) ?
+                        sizeof(struct mali_single_framebuffer) :
+                        sizeof(struct bifrost_framebuffer);
+
+                batch->framebuffer = panfrost_allocate_transient(batch, size);
+
+                /* Tag the pointer */
+                if (!(screen->quirks & MIDGARD_SFBD))
+                        batch->framebuffer.gpu |= MALI_MFBD;
+        }
 
         for (unsigned i = 0; i < PIPE_SHADER_TYPES; ++i)
-                ctx->payloads[i].postfix.framebuffer = batch->framebuffer;
+                ctx->payloads[i].postfix.framebuffer = batch->framebuffer.gpu;
 }
 
 /* Reset per-frame context, called on context initialisation as well as after

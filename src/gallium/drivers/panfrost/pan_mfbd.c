@@ -351,6 +351,43 @@ panfrost_mfbd_upload(struct panfrost_batch *batch,
 
 #undef UPLOAD
 
+static struct bifrost_framebuffer
+panfrost_emit_mfbd(struct panfrost_batch *batch, unsigned vertex_count)
+{
+        unsigned width = batch->key.width;
+        unsigned height = batch->key.height;
+
+        struct bifrost_framebuffer framebuffer = {
+                .width1 = MALI_POSITIVE(width),
+                .height1 = MALI_POSITIVE(height),
+                .width2 = MALI_POSITIVE(width),
+                .height2 = MALI_POSITIVE(height),
+
+                .unk1 = 0x1080,
+
+                .rt_count_1 = MALI_POSITIVE(batch->key.nr_cbufs),
+                .rt_count_2 = 4,
+
+                .unknown2 = 0x1f,
+                .tiler = panfrost_emit_midg_tiler(batch, vertex_count),
+                
+                .stack_shift = 0x5,
+                .unk0 = 0x1e,
+                .scratchpad = panfrost_batch_get_scratchpad(batch)->gpu
+        };
+
+        return framebuffer;
+}
+
+void
+panfrost_attach_mfbd(struct panfrost_batch *batch, unsigned vertex_count)
+{
+        struct bifrost_framebuffer mfbd =
+                panfrost_emit_mfbd(batch, vertex_count);
+
+        memcpy(batch->framebuffer.cpu, &mfbd, sizeof(mfbd));
+}
+
 /* Creates an MFBD for the FRAGMENT section of the bound framebuffer */
 
 mali_ptr

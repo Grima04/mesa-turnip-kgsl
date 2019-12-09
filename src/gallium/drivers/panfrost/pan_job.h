@@ -149,7 +149,7 @@ struct panfrost_batch {
         struct panfrost_bo *tiler_dummy;
 
         /* Framebuffer descriptor. */
-        mali_ptr framebuffer;
+        struct panfrost_transfer framebuffer;
 
         /* Output sync object. Only valid when submitted is true. */
         struct panfrost_batch_fence *out_sync;

@@ -194,6 +194,37 @@ panfrost_sfbd_set_zsbuf(
                 unreachable("Unsupported depth/stencil format.");
 }
 
+
+static struct mali_single_framebuffer
+panfrost_emit_sfbd(struct panfrost_batch *batch, unsigned vertex_count)
+{
+        unsigned width = batch->key.width;
+        unsigned height = batch->key.height;
+
+        struct mali_single_framebuffer framebuffer = {
+                .width = MALI_POSITIVE(width),
+                .height = MALI_POSITIVE(height),
+                .unknown2 = 0x1f,
+                .format = {
+                        .unk3 = 0x3,
+                },
+                .clear_flags = 0x1000,
+                .scratchpad = panfrost_batch_get_scratchpad(batch)->gpu,
+                .tiler = panfrost_emit_midg_tiler(batch, vertex_count),
+        };
+
+        return framebuffer;
+}
+
+void
+panfrost_attach_sfbd(struct panfrost_batch *batch, unsigned vertex_count)
+{
+        struct mali_single_framebuffer sfbd =
+                panfrost_emit_sfbd(batch, vertex_count);
+
+        memcpy(batch->framebuffer.cpu, &sfbd, sizeof(sfbd));
+}
+
 /* Creates an SFBD for the FRAGMENT section of the bound framebuffer */
 
 mali_ptr

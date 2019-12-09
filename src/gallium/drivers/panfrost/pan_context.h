@@ -305,11 +305,14 @@ panfrost_flush(
 mali_ptr panfrost_sfbd_fragment(struct panfrost_batch *batch, bool has_draws);
 mali_ptr panfrost_mfbd_fragment(struct panfrost_batch *batch, bool has_draws);
 
-struct bifrost_framebuffer
-panfrost_emit_mfbd(struct panfrost_batch *batch, unsigned vertex_count);
+void
+panfrost_attach_mfbd(struct panfrost_batch *batch, unsigned vertex_count);
 
-struct mali_single_framebuffer
-panfrost_emit_sfbd(struct panfrost_batch *batch, unsigned vertex_count);
+void
+panfrost_attach_sfbd(struct panfrost_batch *batch, unsigned vertex_count);
+
+struct midgard_tiler_descriptor
+panfrost_emit_midg_tiler(struct panfrost_batch *batch, unsigned vertex_count);
 
 mali_ptr
 panfrost_fragment_job(struct panfrost_batch *batch, bool has_draws,

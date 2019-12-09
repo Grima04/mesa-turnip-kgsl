@@ -957,6 +957,20 @@ panfrost_batch_submit(struct panfrost_batch *batch)
 
         panfrost_batch_draw_wallpaper(batch);
 
+        /* Now that all draws are in, we can finally prepare the
+         * FBD for the batch */
+
+        if (batch->framebuffer.gpu) {
+                struct panfrost_context *ctx = batch->ctx;
+                struct pipe_context *gallium = (struct pipe_context *) ctx;
+                struct panfrost_screen *screen = pan_screen(gallium->screen);
+
+                if (screen->quirks & MIDGARD_SFBD)
+                        panfrost_attach_sfbd(batch, ~0);
+                else
+                        panfrost_attach_mfbd(batch, ~0);
+        }
+
         panfrost_scoreboard_link_batch(batch);
 
         ret = panfrost_batch_submit_jobs(batch);
