@@ -149,7 +149,8 @@ panfrost_emit_mfbd(struct panfrost_batch *batch, unsigned vertex_count)
         unsigned height = batch->key.height;
 
         struct bifrost_framebuffer framebuffer = {
-                .unk0 = 0x1e5, /* 1e4 if no spill */
+                .stack_shift = 0x5,
+                .unk0 = 0x1e,
                 .width1 = MALI_POSITIVE(width),
                 .height1 = MALI_POSITIVE(height),
                 .width2 = MALI_POSITIVE(width),

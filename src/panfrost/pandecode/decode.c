@@ -1078,6 +1078,7 @@ pandecode_mfbd_bfr(uint64_t gpu_va, int job_no, bool is_fragment)
         pandecode_log("struct bifrost_framebuffer framebuffer_%"PRIx64"_%d = {\n", gpu_va, job_no);
         pandecode_indent++;
 
+        pandecode_prop("stack_shift = 0x%x", fb->stack_shift);
         pandecode_prop("unk0 = 0x%x", fb->unk0);
 
         if (fb->sample_locations)

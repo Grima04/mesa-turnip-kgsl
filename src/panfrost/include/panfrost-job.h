@@ -1671,7 +1671,8 @@ struct bifrost_fb_extra {
 #define MALI_MFBD_EXTRA (1 << 13)
 
 struct bifrost_framebuffer {
-        u32 unk0; // = 0x10
+        u32 stack_shift : 4;
+        u32 unk0 : 28;
 
         u32 unknown2; // = 0x1f, same as SFBD
         mali_ptr scratchpad;
