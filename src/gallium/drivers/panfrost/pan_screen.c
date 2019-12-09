@@ -70,13 +70,13 @@ int pan_debug = 0;
 static const char *
 panfrost_get_name(struct pipe_screen *screen)
 {
-        return "panfrost";
+        return panfrost_model_name(pan_screen(screen)->gpu_id);
 }
 
 static const char *
 panfrost_get_vendor(struct pipe_screen *screen)
 {
-        return "panfrost";
+        return "Panfrost";
 }
 
 static const char *
