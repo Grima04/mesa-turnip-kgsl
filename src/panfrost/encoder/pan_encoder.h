@@ -66,4 +66,15 @@ panfrost_choose_hierarchy_mask(
         unsigned width, unsigned height,
         unsigned vertex_count, bool hierarchy);
 
+/* Stack sizes */
+
+unsigned
+panfrost_get_stack_shift(unsigned stack_size);
+
+unsigned
+panfrost_get_total_stack_size(
+                unsigned stack_shift,
+                unsigned threads_per_core,
+                unsigned core_count);
+
 #endif

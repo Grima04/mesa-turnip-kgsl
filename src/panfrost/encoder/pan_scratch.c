@@ -77,3 +77,23 @@
  * There are other valid characterisations of this formula, of course, but this
  * is computationally simple, so good enough for our purposes.
  */
+
+/* Computes log_stack_size = ceil(log2(max(s, 256))) - 4 */
+
+unsigned
+panfrost_get_stack_shift(unsigned stack_size)
+{
+        return util_logbase2_ceil(MAX2(stack_size, 256)) - 4;
+}
+
+/* Computes the aligned stack size given the shift and thread count */
+
+unsigned
+panfrost_get_total_stack_size(
+                unsigned stack_shift,
+                unsigned threads_per_core,
+                unsigned core_count)
+{
+        unsigned stack_size = 1 << (stack_shift + 4);
+        return stack_size * threads_per_core * core_count;
+}
