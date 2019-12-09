@@ -7739,7 +7739,10 @@ static void export_vs_varying(isel_context *ctx, int slot, bool is_pos, int *nex
       else
          exp->operands[i] = Operand(v1);
    }
-   exp->valid_mask = false;
+   /* Navi10-14 skip POS0 exports if EXEC=0 and DONE=0, causing a hang.
+    * Setting valid_mask=1 prevents it and has no other effect.
+    */
+   exp->valid_mask = ctx->options->chip_class >= GFX10 && is_pos && *next_pos == 0;
    exp->done = false;
    exp->compressed = false;
    if (is_pos)
@@ -7779,7 +7782,7 @@ static void export_vs_psiz_layer_viewport(isel_context *ctx, int *next_pos)
          exp->enabled_mask |= 0x4;
       }
    }
-   exp->valid_mask = false;
+   exp->valid_mask = ctx->options->chip_class >= GFX10 && *next_pos == 0;
    exp->done = false;
    exp->compressed = false;
    exp->dest = V_008DFC_SQ_EXP_POS + (*next_pos)++;
