@@ -34,6 +34,7 @@ void lima_dump_blob(FILE *fp, void *data, int size, bool is_float);
 void lima_dump_vs_command_stream_print(void *data, int size, uint32_t start);
 void lima_dump_plbu_command_stream_print(void *data, int size, uint32_t start);
 void lima_dump_rsw_command_stream_print(void *data, int size, uint32_t start);
+void lima_dump_texture_descriptor(void *data, int size, uint32_t start, uint32_t offset);
 void lima_dump_command_stream_print(void *data, int size, bool is_float,
                                     const char *fmt, ...);
 

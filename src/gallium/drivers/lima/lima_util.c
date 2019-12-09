@@ -92,6 +92,13 @@ lima_dump_rsw_command_stream_print(void *data, int size, uint32_t start)
 }
 
 void
+lima_dump_texture_descriptor(void *data, int size, uint32_t start, uint32_t offset)
+{
+   if (lima_dump_command_stream)
+      lima_parse_texture_descriptor(lima_dump_command_stream, (uint32_t *)data, size, start, offset);
+}
+
+void
 lima_dump_command_stream_print(void *data, int size, bool is_float,
                                const char *fmt, ...)
 {
