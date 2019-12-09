@@ -753,7 +753,7 @@ pandecode_sfbd(uint64_t gpu_va, int job_no, bool is_fragment, unsigned gpu_id)
                 pandecode_prop("clear_stencil = 0x%x", s->clear_stencil);
         }
 
-        MEMORY_PROP(s, unknown_address_0);
+        MEMORY_PROP(s, scratchpad);
         const struct midgard_tiler_descriptor t = s->tiler;
 
         bool has_hierarchy = !(gpu_id == 0x0720 || gpu_id == 0x0820 || gpu_id == 0x0830);

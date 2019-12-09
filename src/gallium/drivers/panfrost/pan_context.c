@@ -135,7 +135,7 @@ panfrost_emit_sfbd(struct panfrost_batch *batch, unsigned vertex_count)
                         .unk3 = 0x3,
                 },
                 .clear_flags = 0x1000,
-                .unknown_address_0 = panfrost_batch_get_scratchpad(batch)->gpu,
+                .scratchpad = panfrost_batch_get_scratchpad(batch)->gpu,
                 .tiler = panfrost_emit_midg_tiler(batch, vertex_count),
         };
 

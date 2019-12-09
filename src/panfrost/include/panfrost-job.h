@@ -1470,7 +1470,8 @@ struct mali_sfbd_format {
 struct mali_single_framebuffer {
         u32 unknown1;
         u32 unknown2;
-        u64 unknown_address_0;
+        mali_ptr scratchpad;
+
         u64 zero1;
         u64 zero0;
 
