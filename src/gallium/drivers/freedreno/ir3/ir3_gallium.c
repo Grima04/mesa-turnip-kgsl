@@ -235,6 +235,11 @@ ir3_user_consts_size(struct ir3_ubo_analysis_state *state,
 	}
 }
 
+/**
+ * Uploads sub-ranges of UBOs to the hardware's constant buffer (UBO access
+ * outside of these ranges will be done using full UBO accesses in the
+ * shader).
+ */
 void
 ir3_emit_user_consts(struct fd_screen *screen, const struct ir3_shader_variant *v,
 		struct fd_ringbuffer *ring, struct fd_constbuf_stateobj *constbuf)
@@ -242,31 +247,28 @@ ir3_emit_user_consts(struct fd_screen *screen, const struct ir3_shader_variant *
 	struct ir3_ubo_analysis_state *state;
 	state = &v->shader->ubo_state;
 
-	for (uint32_t i = 0; i < ARRAY_SIZE(state->range); i++) {
+	uint32_t i;
+	foreach_bit(i, state->enabled & constbuf->enabled_mask) {
 		struct pipe_constant_buffer *cb = &constbuf->cb[i];
 
-		if (state->range[i].start < state->range[i].end &&
-			constbuf->enabled_mask & (1 << i)) {
+		uint32_t size = state->range[i].end - state->range[i].start;
+		uint32_t offset = cb->buffer_offset + state->range[i].start;
 
-			uint32_t size = state->range[i].end - state->range[i].start;
-			uint32_t offset = cb->buffer_offset + state->range[i].start;
+		/* and even if the start of the const buffer is before
+		 * first_immediate, the end may not be:
+		 */
+		size = MIN2(size, (16 * v->constlen) - state->range[i].offset);
 
-			/* and even if the start of the const buffer is before
-			 * first_immediate, the end may not be:
-			 */
-			size = MIN2(size, (16 * v->constlen) - state->range[i].offset);
+		if (size == 0)
+			continue;
 
-			if (size == 0)
-				continue;
+		/* things should be aligned to vec4: */
+		debug_assert((state->range[i].offset % 16) == 0);
+		debug_assert((size % 16) == 0);
+		debug_assert((offset % 16) == 0);
 
-			/* things should be aligned to vec4: */
-			debug_assert((state->range[i].offset % 16) == 0);
-			debug_assert((size % 16) == 0);
-			debug_assert((offset % 16) == 0);
-
-			emit_const(screen, ring, v, state->range[i].offset / 4,
-							offset, size / 4, cb->user_buffer, cb->buffer);
-		}
+		emit_const(screen, ring, v, state->range[i].offset / 4,
+				offset, size / 4, cb->user_buffer, cb->buffer);
 	}
 }
 
