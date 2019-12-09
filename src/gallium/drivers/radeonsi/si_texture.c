@@ -1722,10 +1722,12 @@ struct pipe_resource *si_texture_create(struct pipe_screen *screen,
 		tex->plane_index = i;
 		tex->num_planes = num_planes;
 
-		if (!last_plane)
+		if (!plane0) {
 			plane0 = last_plane = tex;
-		else
+		} else {
 			last_plane->buffer.b.b.next = &tex->buffer.b.b;
+			last_plane = tex;
+		}
 	}
 
 	return (struct pipe_resource *)plane0;
