@@ -299,6 +299,9 @@ struct v3dv_buffer {
    VkDeviceSize size;
    VkBufferUsageFlags usage;
    uint32_t alignment;
+
+   struct v3dv_device_memory *mem;
+   VkDeviceSize mem_offset;
 };
 
 struct v3dv_shader_module {

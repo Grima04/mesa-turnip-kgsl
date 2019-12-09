@@ -1314,6 +1314,30 @@ v3dv_GetBufferMemoryRequirements(VkDevice _device,
 }
 
 VkResult
+v3dv_BindBufferMemory(VkDevice _device,
+                      VkBuffer _buffer,
+                      VkDeviceMemory _memory,
+                      VkDeviceSize memoryOffset)
+{
+   V3DV_FROM_HANDLE(v3dv_device_memory, mem, _memory);
+   V3DV_FROM_HANDLE(v3dv_buffer, buffer, _buffer);
+
+   /* Valid usage:
+    *
+    *   "memoryOffset must be an integer multiple of the alignment member of
+    *    the VkMemoryRequirements structure returned from a call to
+    *    vkGetBufferMemoryRequirements with buffer"
+    */
+   assert(memoryOffset % buffer->alignment == 0);
+   assert(memoryOffset < mem->size);
+
+   buffer->mem = mem;
+   buffer->mem_offset = memoryOffset;
+
+   return VK_SUCCESS;
+}
+
+VkResult
 v3dv_CreateBuffer(VkDevice  _device,
                   const VkBufferCreateInfo *pCreateInfo,
                   const VkAllocationCallbacks *pAllocator,
