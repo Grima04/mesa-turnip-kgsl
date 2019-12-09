@@ -1299,3 +1299,48 @@ v3dv_BindImageMemory(VkDevice _device,
 
    return VK_SUCCESS;
 }
+
+VkResult
+v3dv_CreateBuffer(VkDevice  _device,
+                  const VkBufferCreateInfo *pCreateInfo,
+                  const VkAllocationCallbacks *pAllocator,
+                  VkBuffer *pBuffer)
+{
+   V3DV_FROM_HANDLE(v3dv_device, device, _device);
+   struct v3dv_buffer *buffer;
+
+   assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO);
+   assert(pCreateInfo->usage != 0);
+
+   /* We don't support any flags for now */
+   assert(pCreateInfo->flags == 0);
+
+   buffer = vk_alloc2(&device->alloc, pAllocator, sizeof(*buffer), 8,
+                       VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   if (buffer == NULL)
+      return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+
+   buffer->size = pCreateInfo->size;
+   buffer->usage = pCreateInfo->usage;
+   buffer->alignment = 256; /* nonCoherentAtomSize */
+
+   assert((buffer->size & 0xffffffff) == buffer->size);
+
+   *pBuffer = v3dv_buffer_to_handle(buffer);
+
+   return VK_SUCCESS;
+}
+
+void
+v3dv_DestroyBuffer(VkDevice _device,
+                   VkBuffer _buffer,
+                   const VkAllocationCallbacks *pAllocator)
+{
+   V3DV_FROM_HANDLE(v3dv_device, device, _device);
+   V3DV_FROM_HANDLE(v3dv_buffer, buffer, _buffer);
+
+   if (!buffer)
+      return;
+
+   vk_free2(&device->alloc, pAllocator, buffer);
+}

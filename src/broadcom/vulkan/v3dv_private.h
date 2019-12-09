@@ -295,6 +295,12 @@ struct v3dv_image_view {
    uint32_t offset;
 };
 
+struct v3dv_buffer {
+   VkDeviceSize size;
+   VkBufferUsageFlags usage;
+   uint32_t alignment;
+};
+
 struct v3dv_shader_module {
    unsigned char sha1[20];
    uint32_t size;
@@ -392,6 +398,7 @@ V3DV_DEFINE_HANDLE_CASTS(v3dv_instance, VkInstance)
 V3DV_DEFINE_HANDLE_CASTS(v3dv_physical_device, VkPhysicalDevice)
 V3DV_DEFINE_HANDLE_CASTS(v3dv_queue, VkQueue)
 
+V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_buffer, VkBuffer)
 V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_device_memory, VkDeviceMemory)
 V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_image, VkImage)
 V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_image_view, VkImageView)
