@@ -111,6 +111,7 @@ panfrost_shader_compile(
         state->writes_point_size = program.writes_point_size;
         state->reads_point_coord = false;
         state->helper_invocations = s->info.fs.needs_helper_invocations;
+        state->stack_size = program.tls_size;
 
         if (outputs_written)
                 *outputs_written = s->info.outputs_written;
