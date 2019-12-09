@@ -2353,7 +2353,7 @@ void select_instruction(opt_ctx &ctx, aco_ptr<Instruction>& instr)
       return;
    }
 
-   /* convert split_vector into extract_vector if only one definition is ever used */
+   /* convert split_vector into a copy or extract_vector if only one definition is ever used */
    if (instr->opcode == aco_opcode::p_split_vector) {
       unsigned num_used = 0;
       unsigned idx = 0;
@@ -2363,7 +2363,39 @@ void select_instruction(opt_ctx &ctx, aco_ptr<Instruction>& instr)
             idx = i;
          }
       }
-      if (num_used == 1) {
+      bool done = false;
+      if (num_used == 1 && ctx.info[instr->operands[0].tempId()].is_vec() &&
+          ctx.uses[instr->operands[0].tempId()] == 1) {
+         Instruction *vec = ctx.info[instr->operands[0].tempId()].instr;
+
+         unsigned off = 0;
+         Operand op;
+         for (Operand& vec_op : vec->operands) {
+            if (off == idx * instr->definitions[0].size()) {
+               op = vec_op;
+               break;
+            }
+            off += vec_op.size();
+         }
+         if (off != instr->operands[0].size()) {
+            ctx.uses[instr->operands[0].tempId()]--;
+            for (Operand& vec_op : vec->operands) {
+               if (vec_op.isTemp())
+                  ctx.uses[vec_op.tempId()]--;
+            }
+            if (op.isTemp())
+               ctx.uses[op.tempId()]++;
+
+            aco_ptr<Pseudo_instruction> extract{create_instruction<Pseudo_instruction>(aco_opcode::p_create_vector, Format::PSEUDO, 1, 1)};
+            extract->operands[0] = op;
+            extract->definitions[0] = instr->definitions[idx];
+            instr.reset(extract.release());
+
+            done = true;
+         }
+      }
+
+      if (!done && num_used == 1) {
          aco_ptr<Pseudo_instruction> extract{create_instruction<Pseudo_instruction>(aco_opcode::p_extract_vector, Format::PSEUDO, 2, 1)};
          extract->operands[0] = instr->operands[0];
          extract->operands[1] = Operand((uint32_t) idx);
