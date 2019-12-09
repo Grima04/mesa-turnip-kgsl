@@ -4372,31 +4372,27 @@ void visit_image_atomic(isel_context *ctx, nir_intrinsic_instr *instr)
 void get_buffer_size(isel_context *ctx, Temp desc, Temp dst, bool in_elements)
 {
    if (in_elements && ctx->options->chip_class == GFX8) {
+      /* we only have to divide by 1, 2, 4, 8, 12 or 16 */
       Builder bld(ctx->program, ctx->block);
+
+      Temp size = emit_extract_vector(ctx, desc, 2, s1);
+
+      Temp size_div3 = bld.vop3(aco_opcode::v_mul_hi_u32, bld.def(v1), bld.copy(bld.def(v1), Operand(0xaaaaaaabu)), size);
+      size_div3 = bld.sop2(aco_opcode::s_lshr_b32, bld.def(s1), bld.as_uniform(size_div3), Operand(1u));
 
       Temp stride = emit_extract_vector(ctx, desc, 1, s1);
       stride = bld.sop2(aco_opcode::s_bfe_u32, bld.def(s1), bld.def(s1, scc), stride, Operand((5u << 16) | 16u));
-      stride = bld.vop1(aco_opcode::v_cvt_f32_ubyte0, bld.def(v1), stride);
-      stride = bld.vop1(aco_opcode::v_rcp_iflag_f32, bld.def(v1), stride);
 
-      Temp size = emit_extract_vector(ctx, desc, 2, s1);
-      size = bld.vop1(aco_opcode::v_cvt_f32_u32, bld.def(v1), size);
+      Temp is12 = bld.sopc(aco_opcode::s_cmp_eq_i32, bld.def(s1, scc), stride, Operand(12u));
+      size = bld.sop2(aco_opcode::s_cselect_b32, bld.def(s1), size_div3, size, bld.scc(is12));
 
-      Temp res = bld.vop2(aco_opcode::v_mul_f32, bld.def(v1), size, stride);
-      res = bld.vop1(aco_opcode::v_cvt_u32_f32, bld.def(v1), res);
-      bld.pseudo(aco_opcode::p_as_uniform, Definition(dst), res);
+      Temp shr_dst = dst.type() == RegType::vgpr ? bld.tmp(s1) : dst;
+      bld.sop2(aco_opcode::s_lshr_b32, Definition(shr_dst), bld.def(s1, scc),
+               size, bld.sop1(aco_opcode::s_ff1_i32_b32, bld.def(s1), stride));
+      if (dst.type() == RegType::vgpr)
+         bld.copy(Definition(dst), shr_dst);
 
-      // TODO: we can probably calculate this faster on the scalar unit to do: size / stride{1,2,4,8,12,16}
-      /* idea
-       * for 1,2,4,8,16, the result is just (stride >> S_FF1_I32_B32)
-       * in case 12 (or 3?), we have to divide by 3:
-       * set v_skip in case it's 12 (if we also have to take care of 3, shift first)
-       * use v_mul_hi_u32 with magic number to divide
-       * we need some pseudo merge opcode to overwrite the original SALU result with readfirstlane
-       * disable v_skip
-       * total: 6 SALU + 2 VALU instructions vs 1 SALU + 6 VALU instructions
-       */
-
+      /* TODO: we can probably calculate this faster with v_skip when stride != 12 */
    } else {
       emit_extract_vector(ctx, desc, 2, dst);
    }
