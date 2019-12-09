@@ -89,7 +89,7 @@
 #define p_atomic_dec_zero(_v) (p_atomic_dec_return(_v) == 0)
 #define p_atomic_inc(_v) ((void) p_atomic_inc_return(_v))
 #define p_atomic_dec(_v) ((void) p_atomic_dec_return(_v))
-#define p_atomic_add(_v, _i) ((void) p_atomic_add_return((_v), (_i))
+#define p_atomic_add(_v, _i) ((void) p_atomic_add_return((_v), (_i)))
 #define p_atomic_inc_return(_v) (++(*(_v)))
 #define p_atomic_dec_return(_v) (--(*(_v)))
 #define p_atomic_add_return(_v, _i) (*(_v) = *(_v) + (_i))
@@ -146,7 +146,7 @@
                                      (assert(!"should not get here"), 0))
 
 #define p_atomic_add(_v, _i) \
-   ((void) p_atomic_add_return((_v), (_i))
+   ((void) p_atomic_add_return((_v), (_i)))
 
 #define p_atomic_add_return(_v, _i) (\
    sizeof *(_v) == sizeof(char)    ? _InterlockedExchangeAdd8 ((char *)   (_v), (_i)) : \
