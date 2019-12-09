@@ -1300,6 +1300,19 @@ v3dv_BindImageMemory(VkDevice _device,
    return VK_SUCCESS;
 }
 
+void
+v3dv_GetBufferMemoryRequirements(VkDevice _device,
+                                 VkBuffer _buffer,
+                                 VkMemoryRequirements* pMemoryRequirements)
+{
+   V3DV_FROM_HANDLE(v3dv_buffer, buffer, _buffer);
+
+   pMemoryRequirements->memoryTypeBits = 0x3; /* Both memory types */
+   pMemoryRequirements->alignment = buffer->alignment;
+   pMemoryRequirements->size =
+      align64(buffer->size, pMemoryRequirements->alignment);
+}
+
 VkResult
 v3dv_CreateBuffer(VkDevice  _device,
                   const VkBufferCreateInfo *pCreateInfo,
