@@ -59,6 +59,7 @@ static const struct debug_named_value debug_options[] = {
         {"trace",     PAN_DBG_TRACE,    "Trace the command stream"},
         {"deqp",      PAN_DBG_DEQP,     "Hacks for dEQP"},
         {"afbc",      PAN_DBG_AFBC,     "Enable non-conformant AFBC impl"},
+        {"sync",      PAN_DBG_SYNC,     "Wait for each job's completion and check for any GPU fault"},
         DEBUG_NAMED_VALUE_END
 };
 

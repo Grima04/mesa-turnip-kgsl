@@ -311,7 +311,8 @@ struct mali_single_framebuffer
 panfrost_emit_sfbd(struct panfrost_batch *batch, unsigned vertex_count);
 
 mali_ptr
-panfrost_fragment_job(struct panfrost_batch *batch, bool has_draws);
+panfrost_fragment_job(struct panfrost_batch *batch, bool has_draws,
+                      struct mali_job_descriptor_header **header_cpu);
 
 void
 panfrost_shader_compile(

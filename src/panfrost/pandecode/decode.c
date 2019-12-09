@@ -490,7 +490,7 @@ pandecode_block_format(enum mali_block_format fmt)
 #undef DEFINE_CASE
 
 #define DEFINE_CASE(name) case MALI_EXCEPTION_ACCESS_## name: return ""#name
-static char *
+char *
 pandecode_exception_access(enum mali_exception_access access)
 {
         switch (access) {

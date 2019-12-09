@@ -807,7 +807,8 @@ panfrost_batch_draw_wallpaper(struct panfrost_batch *batch)
 static int
 panfrost_batch_submit_ioctl(struct panfrost_batch *batch,
                             mali_ptr first_job_desc,
-                            uint32_t reqs)
+                            uint32_t reqs,
+                            struct mali_job_descriptor_header *header)
 {
         struct panfrost_context *ctx = batch->ctx;
         struct pipe_context *gallium = (struct pipe_context *) ctx;
@@ -877,6 +878,26 @@ panfrost_batch_submit_ioctl(struct panfrost_batch *batch,
                 return errno;
         }
 
+        if (pan_debug & PAN_DBG_SYNC) {
+                u32 status;
+
+                /* Wait so we can get errors reported back */
+                drmSyncobjWait(screen->fd, &batch->out_sync->syncobj, 1,
+                               INT64_MAX, 0, NULL);
+
+                status = header->exception_status;
+
+                if (status && status != 0x1) {
+                        fprintf(stderr, "Job %" PRIx64 " failed: source ID: 0x%x access: %s exception: 0x%x (exception_status 0x%x) fault_pointer 0x%" PRIx64 " \n",
+                               first_job_desc,
+                               (status >> 16) & 0xFFFF,
+                               pandecode_exception_access((status >> 8) & 0x3),
+                               status  & 0xFF,
+                               status,
+                               header->fault_pointer);
+                }
+        }
+
         /* Trace the job if we're doing that */
         if (pan_debug & PAN_DBG_TRACE) {
                 /* Wait so we can get errors reported back */
@@ -892,17 +913,19 @@ static int
 panfrost_batch_submit_jobs(struct panfrost_batch *batch)
 {
         bool has_draws = batch->first_job.gpu;
+        struct mali_job_descriptor_header *header;
         int ret = 0;
 
         if (has_draws) {
-                ret = panfrost_batch_submit_ioctl(batch, batch->first_job.gpu, 0);
+                header = (struct mali_job_descriptor_header *)batch->first_job.cpu;
+                ret = panfrost_batch_submit_ioctl(batch, batch->first_job.gpu, 0, header);
                 assert(!ret);
         }
 
         if (batch->first_tiler.gpu || batch->clear) {
-                mali_ptr fragjob = panfrost_fragment_job(batch, has_draws);
+                mali_ptr fragjob = panfrost_fragment_job(batch, has_draws, &header);
 
-                ret = panfrost_batch_submit_ioctl(batch, fragjob, PANFROST_JD_REQ_FS);
+                ret = panfrost_batch_submit_ioctl(batch, fragjob, PANFROST_JD_REQ_FS, header);
                 assert(!ret);
         }
 
