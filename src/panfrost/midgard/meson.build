@@ -38,6 +38,7 @@ libpanfrost_midgard_files = files(
   'midgard_opt_float.c',
   'midgard_opt_perspective.c',
   'midgard_errata_lod.c',
+  'nir_undef_to_zero.c',
   'disassemble.c',
   'lcra.c'
 )
