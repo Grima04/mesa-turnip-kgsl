@@ -77,7 +77,6 @@ class Format(Enum):
       elif self == Format.MTBUF:
          return [('unsigned', 'dfmt', None),
                  ('unsigned', 'nfmt', None),
-                 ('unsigned', 'img_format', None),
                  ('unsigned', 'offset', None),
                  ('bool', 'offen', None),
                  ('bool', 'idxen', 'false'),
@@ -85,8 +84,7 @@ class Format(Enum):
                  ('bool', 'glc', 'false'),
                  ('bool', 'dlc', 'false'),
                  ('bool', 'slc', 'false'),
-                 ('bool', 'tfe', 'false'),
-                 ('bool', 'lds', 'false')]
+                 ('bool', 'tfe', 'false')]
       elif self == Format.MUBUF:
          return [('unsigned', 'offset', None),
                  ('bool', 'offen', None),

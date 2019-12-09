@@ -3066,32 +3066,59 @@ void visit_load_interpolated_input(isel_context *ctx, nir_intrinsic_instr *instr
    }
 }
 
-unsigned get_num_channels_from_data_format(unsigned data_format)
+bool check_vertex_fetch_size(isel_context *ctx, const ac_data_format_info *vtx_info,
+                             unsigned offset, unsigned stride, unsigned channels)
 {
-   switch (data_format) {
-   case V_008F0C_BUF_DATA_FORMAT_8:
-   case V_008F0C_BUF_DATA_FORMAT_16:
-   case V_008F0C_BUF_DATA_FORMAT_32:
-      return 1;
-   case V_008F0C_BUF_DATA_FORMAT_8_8:
-   case V_008F0C_BUF_DATA_FORMAT_16_16:
-   case V_008F0C_BUF_DATA_FORMAT_32_32:
-      return 2;
-   case V_008F0C_BUF_DATA_FORMAT_10_11_11:
-   case V_008F0C_BUF_DATA_FORMAT_11_11_10:
-   case V_008F0C_BUF_DATA_FORMAT_32_32_32:
-      return 3;
-   case V_008F0C_BUF_DATA_FORMAT_8_8_8_8:
-   case V_008F0C_BUF_DATA_FORMAT_10_10_10_2:
-   case V_008F0C_BUF_DATA_FORMAT_2_10_10_10:
-   case V_008F0C_BUF_DATA_FORMAT_16_16_16_16:
-   case V_008F0C_BUF_DATA_FORMAT_32_32_32_32:
-      return 4;
-   default:
-      break;
+   unsigned vertex_byte_size = vtx_info->chan_byte_size * channels;
+   if (vtx_info->chan_byte_size != 4 && channels == 3)
+      return false;
+   return true;
+}
+
+uint8_t get_fetch_data_format(isel_context *ctx, const ac_data_format_info *vtx_info,
+                              unsigned offset, unsigned stride, unsigned *channels)
+{
+   if (!vtx_info->chan_byte_size) {
+      *channels = vtx_info->num_channels;
+      return vtx_info->chan_format;
    }
 
-   return 4;
+   unsigned num_channels = *channels;
+   if (!check_vertex_fetch_size(ctx, vtx_info, offset, stride, *channels)) {
+      unsigned new_channels = num_channels + 1;
+      /* first, assume more loads is worse and try using a larger data format */
+      while (new_channels <= 4 && !check_vertex_fetch_size(ctx, vtx_info, offset, stride, new_channels)) {
+         new_channels++;
+         /* don't make the attribute potentially out-of-bounds */
+         if (offset + new_channels * vtx_info->chan_byte_size > stride)
+            new_channels = 5;
+      }
+
+      if (new_channels == 5) {
+         /* then try decreasing load size (at the cost of more loads) */
+         new_channels = *channels;
+         while (new_channels > 1 && !check_vertex_fetch_size(ctx, vtx_info, offset, stride, new_channels))
+            new_channels--;
+      }
+
+      if (new_channels < *channels)
+         *channels = new_channels;
+      num_channels = new_channels;
+   }
+
+   switch (vtx_info->chan_format) {
+   case V_008F0C_BUF_DATA_FORMAT_8:
+      return (uint8_t[]){V_008F0C_BUF_DATA_FORMAT_8, V_008F0C_BUF_DATA_FORMAT_8_8,
+                         V_008F0C_BUF_DATA_FORMAT_INVALID, V_008F0C_BUF_DATA_FORMAT_8_8_8_8}[num_channels - 1];
+   case V_008F0C_BUF_DATA_FORMAT_16:
+      return (uint8_t[]){V_008F0C_BUF_DATA_FORMAT_16, V_008F0C_BUF_DATA_FORMAT_16_16,
+                         V_008F0C_BUF_DATA_FORMAT_INVALID, V_008F0C_BUF_DATA_FORMAT_16_16_16_16}[num_channels - 1];
+   case V_008F0C_BUF_DATA_FORMAT_32:
+      return (uint8_t[]){V_008F0C_BUF_DATA_FORMAT_32, V_008F0C_BUF_DATA_FORMAT_32_32,
+                         V_008F0C_BUF_DATA_FORMAT_32_32_32, V_008F0C_BUF_DATA_FORMAT_32_32_32_32}[num_channels - 1];
+   }
+   unreachable("shouldn't reach here");
+   return V_008F0C_BUF_DATA_FORMAT_INVALID;
 }
 
 /* For 2_10_10_10 formats the alpha is handled as unsigned by pre-vega HW.
@@ -3148,11 +3175,11 @@ void visit_load_input(isel_context *ctx, nir_intrinsic_instr *instr)
       unsigned attrib_format = ctx->options->key.vs.vertex_attribute_formats[location];
 
       unsigned dfmt = attrib_format & 0xf;
-
       unsigned nfmt = (attrib_format >> 4) & 0x7;
-      unsigned num_dfmt_channels = get_num_channels_from_data_format(dfmt);
+      const struct ac_data_format_info *vtx_info = ac_get_data_format_info(dfmt);
+
       unsigned mask = nir_ssa_def_components_read(&instr->dest.ssa) << component;
-      unsigned num_channels = MIN2(util_last_bit(mask), num_dfmt_channels);
+      unsigned num_channels = MIN2(util_last_bit(mask), vtx_info->num_channels);
       unsigned alpha_adjust = (ctx->options->key.vs.alpha_adjust >> (location * 2)) & 3;
       bool post_shuffle = ctx->options->key.vs.post_shuffle & (1 << location);
       if (post_shuffle)
@@ -3183,53 +3210,74 @@ void visit_load_input(isel_context *ctx, nir_intrinsic_instr *instr)
                             get_arg(ctx, ctx->args->ac.vertex_id));
       }
 
-      if (attrib_stride != 0 && attrib_offset > attrib_stride) {
-         index = bld.vadd32(bld.def(v1), Operand(attrib_offset / attrib_stride), index);
-         attrib_offset = attrib_offset % attrib_stride;
+      Temp channels[num_channels];
+      unsigned channel_start = 0;
+      bool direct_fetch = false;
+
+      /* load channels */
+      while (channel_start < num_channels) {
+         unsigned fetch_size = num_channels - channel_start;
+         unsigned fetch_offset = attrib_offset + channel_start * vtx_info->chan_byte_size;
+         unsigned fetch_dfmt = get_fetch_data_format(ctx, vtx_info, fetch_offset, attrib_stride, &fetch_size);
+
+         Temp fetch_index = index;
+         if (attrib_stride != 0 && fetch_offset > attrib_stride) {
+            fetch_index = bld.vadd32(bld.def(v1), Operand(fetch_offset / attrib_stride), fetch_index);
+            fetch_offset = fetch_offset % attrib_stride;
+         }
+
+         Operand soffset(0u);
+         if (fetch_offset >= 4096) {
+            soffset = bld.copy(bld.def(s1), Operand(fetch_offset / 4096 * 4096));
+            fetch_offset %= 4096;
+         }
+
+         aco_opcode opcode;
+         switch (fetch_size) {
+         case 1:
+            opcode = aco_opcode::tbuffer_load_format_x;
+            break;
+         case 2:
+            opcode = aco_opcode::tbuffer_load_format_xy;
+            break;
+         case 3:
+            opcode = aco_opcode::tbuffer_load_format_xyz;
+            break;
+         case 4:
+            opcode = aco_opcode::tbuffer_load_format_xyzw;
+            break;
+         default:
+            unreachable("Unimplemented load_input vector size");
+         }
+
+         Temp fetch_dst;
+         if (channel_start == 0 && fetch_size == dst.size() && !post_shuffle &&
+             (alpha_adjust == RADV_ALPHA_ADJUST_NONE || num_channels <= 3)) {
+            direct_fetch = true;
+            fetch_dst = dst;
+         } else {
+            fetch_dst = bld.tmp(RegType::vgpr, fetch_size);
+         }
+
+         Instruction *mtbuf = bld.mtbuf(opcode,
+                                        Definition(fetch_dst), fetch_index, list, soffset,
+                                        fetch_dfmt, nfmt, fetch_offset,
+                                        false, true).instr;
+         static_cast<MTBUF_instruction*>(mtbuf)->can_reorder = true;
+
+         emit_split_vector(ctx, fetch_dst, fetch_dst.size());
+
+         if (fetch_size == 1) {
+            channels[channel_start] = fetch_dst;
+         } else {
+            for (unsigned i = 0; i < MIN2(fetch_size, num_channels - channel_start); i++)
+               channels[channel_start + i] = emit_extract_vector(ctx, fetch_dst, i, v1);
+         }
+
+         channel_start += fetch_size;
       }
 
-      Operand soffset(0u);
-      if (attrib_offset >= 4096) {
-         soffset = bld.copy(bld.def(s1), Operand(attrib_offset));
-         attrib_offset = 0;
-      }
-
-      aco_opcode opcode;
-      switch (num_channels) {
-      case 1:
-         opcode = aco_opcode::tbuffer_load_format_x;
-         break;
-      case 2:
-         opcode = aco_opcode::tbuffer_load_format_xy;
-         break;
-      case 3:
-         opcode = aco_opcode::tbuffer_load_format_xyz;
-         break;
-      case 4:
-         opcode = aco_opcode::tbuffer_load_format_xyzw;
-         break;
-      default:
-         unreachable("Unimplemented load_input vector size");
-      }
-
-      Temp tmp = post_shuffle || num_channels != dst.size() || alpha_adjust != RADV_ALPHA_ADJUST_NONE || component ? bld.tmp(RegType::vgpr, num_channels) : dst;
-
-      aco_ptr<MTBUF_instruction> mubuf{create_instruction<MTBUF_instruction>(opcode, Format::MTBUF, 3, 1)};
-      mubuf->operands[0] = Operand(index);
-      mubuf->operands[1] = Operand(list);
-      mubuf->operands[2] = soffset;
-      mubuf->definitions[0] = Definition(tmp);
-      mubuf->idxen = true;
-      mubuf->can_reorder = true;
-      mubuf->dfmt = dfmt;
-      mubuf->nfmt = nfmt;
-      assert(attrib_offset < 4096);
-      mubuf->offset = attrib_offset;
-      ctx->block->instructions.emplace_back(std::move(mubuf));
-
-      emit_split_vector(ctx, tmp, tmp.size());
-
-      if (tmp.id() != dst.id()) {
+      if (!direct_fetch) {
          bool is_float = nfmt != V_008F0C_BUF_NUM_FORMAT_UINT &&
                          nfmt != V_008F0C_BUF_NUM_FORMAT_SINT;
 
@@ -3238,13 +3286,18 @@ void visit_load_input(isel_context *ctx, nir_intrinsic_instr *instr)
          const unsigned *swizzle = post_shuffle ? swizzle_post_shuffle : swizzle_normal;
 
          aco_ptr<Instruction> vec{create_instruction<Pseudo_instruction>(aco_opcode::p_create_vector, Format::PSEUDO, dst.size(), 1)};
+         std::array<Temp,NIR_MAX_VEC_COMPONENTS> elems;
+         unsigned num_temp = 0;
          for (unsigned i = 0; i < dst.size(); i++) {
             unsigned idx = i + component;
-            if (idx == 3 && alpha_adjust != RADV_ALPHA_ADJUST_NONE && num_channels >= 4) {
-               Temp alpha = emit_extract_vector(ctx, tmp, swizzle[3], v1);
-               vec->operands[3] = Operand(adjust_vertex_fetch_alpha(ctx, alpha_adjust, alpha));
-            } else if (idx < num_channels) {
-               vec->operands[i] = Operand(emit_extract_vector(ctx, tmp, swizzle[idx], v1));
+            if (idx < num_channels && channels[swizzle[idx]].id()) {
+               Temp channel = channels[swizzle[idx]];
+               if (idx == 3 && alpha_adjust != RADV_ALPHA_ADJUST_NONE)
+                  channel = adjust_vertex_fetch_alpha(ctx, alpha_adjust, channel);
+               vec->operands[i] = Operand(channel);
+
+               num_temp++;
+               elems[i] = channel;
             } else if (is_float && idx == 3) {
                vec->operands[i] = Operand(0x3f800000u);
             } else if (!is_float && idx == 3) {
@@ -3256,8 +3309,10 @@ void visit_load_input(isel_context *ctx, nir_intrinsic_instr *instr)
          vec->definitions[0] = Definition(dst);
          ctx->block->instructions.emplace_back(std::move(vec));
          emit_split_vector(ctx, dst, dst.size());
-      }
 
+         if (num_temp == dst.size())
+            ctx->allocated_vec.emplace(dst.id(), elems);
+      }
    } else if (ctx->stage == fragment_fs) {
       nir_instr *off_instr = instr->src[0].ssa->parent_instr;
       if (off_instr->type != nir_instr_type_load_const ||
