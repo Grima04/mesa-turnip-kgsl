@@ -23,11 +23,138 @@
 
 #include "v3dv_private.h"
 
+static uint32_t
+num_subpass_attachments(const VkSubpassDescription *desc)
+{
+   return desc->inputAttachmentCount +
+          desc->colorAttachmentCount +
+          (desc->pResolveAttachments ? desc->colorAttachmentCount : 0) +
+          (desc->pDepthStencilAttachment != NULL);
+}
+
 VkResult
-v3dv_CreateRenderPass(VkDevice device,
+v3dv_CreateRenderPass(VkDevice _device,
                       const VkRenderPassCreateInfo *pCreateInfo,
                       const VkAllocationCallbacks *pAllocator,
                       VkRenderPass *pRenderPass)
 {
+   V3DV_FROM_HANDLE(v3dv_device, device, _device);
+   struct v3dv_render_pass *pass;
+
+   assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO);
+
+   size_t size = sizeof(*pass);
+   size_t subpasses_offset = size;
+   size += pCreateInfo->subpassCount * sizeof(pass->subpasses[0]);
+   size_t attachments_offset = size;
+   size += pCreateInfo->attachmentCount * sizeof(pass->attachments[0]);
+
+   pass = vk_alloc2(&device->alloc, pAllocator, size, 8,
+                    VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   if (pass == NULL)
+      return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+
+   memset(pass, 0, size);
+   pass->attachment_count = pCreateInfo->attachmentCount;
+   pass->attachments = (void *) pass + attachments_offset;
+   pass->subpass_count = pCreateInfo->subpassCount;
+   pass->subpasses = (void *) pass + subpasses_offset;
+
+   for (uint32_t i = 0; i < pCreateInfo->attachmentCount; i++)
+      pass->attachments[i].desc = pCreateInfo->pAttachments[i];
+
+   uint32_t subpass_attachment_count = 0;
+   for (uint32_t i = 0; i < pCreateInfo->subpassCount; i++) {
+      const VkSubpassDescription *desc = &pCreateInfo->pSubpasses[i];
+      subpass_attachment_count += num_subpass_attachments(desc);
+   }
+
+   if (subpass_attachment_count) {
+      const size_t subpass_attachment_bytes =
+         subpass_attachment_count * sizeof(struct v3dv_subpass_attachment);
+      pass->subpass_attachments =
+         vk_alloc2(&device->alloc, pAllocator, subpass_attachment_bytes, 8,
+                   VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+      if (pass->subpass_attachments == NULL) {
+         vk_free2(&device->alloc, pAllocator, pass);
+         return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+      }
+   } else {
+      pass->subpass_attachments = NULL;
+   }
+
+   struct v3dv_subpass_attachment *p = pass->subpass_attachments;
+   for (uint32_t i = 0; i < pCreateInfo->subpassCount; i++) {
+      const VkSubpassDescription *desc = &pCreateInfo->pSubpasses[i];
+      struct v3dv_subpass *subpass = &pass->subpasses[i];
+
+      subpass->input_count = desc->inputAttachmentCount;
+      subpass->color_count = desc->colorAttachmentCount;
+
+      if (desc->inputAttachmentCount > 0) {
+         subpass->input_attachments = p;
+         p += desc->inputAttachmentCount;
+
+         for (uint32_t j = 0; j < desc->inputAttachmentCount; j++) {
+            subpass->input_attachments[j] = (struct v3dv_subpass_attachment) {
+               .attachment = desc->pInputAttachments[j].attachment,
+               .layout = desc->pInputAttachments[j].layout,
+            };
+         }
+      }
+
+      if (desc->colorAttachmentCount > 0) {
+         subpass->color_attachments = p;
+         p += desc->colorAttachmentCount;
+
+         for (uint32_t j = 0; j < desc->colorAttachmentCount; j++) {
+            subpass->color_attachments[j] = (struct v3dv_subpass_attachment) {
+               .attachment = desc->pColorAttachments[j].attachment,
+               .layout = desc->pColorAttachments[j].layout,
+            };
+         }
+      }
+
+      if (desc->pResolveAttachments) {
+         subpass->resolve_attachments = p;
+         p += desc->colorAttachmentCount;
+
+         for (uint32_t j = 0; j < desc->colorAttachmentCount; j++) {
+            subpass->resolve_attachments[j] = (struct v3dv_subpass_attachment) {
+               .attachment = desc->pResolveAttachments[j].attachment,
+               .layout = desc->pResolveAttachments[j].layout,
+            };
+         }
+      }
+
+      if (desc->pDepthStencilAttachment) {
+         subpass->ds_attachment = (struct v3dv_subpass_attachment) {
+            .attachment = desc->pDepthStencilAttachment->attachment,
+            .layout = desc->pDepthStencilAttachment->layout,
+         };
+      } else {
+         subpass->ds_attachment.attachment = VK_ATTACHMENT_UNUSED;
+      }
+   }
+
+   /* FIXME: handle subpass dependencies */
+
+   *pRenderPass = v3dv_render_pass_to_handle(pass);
+
    return VK_SUCCESS;
+}
+
+void
+v3dv_DestroyRenderPass(VkDevice _device,
+                       VkRenderPass _pass,
+                       const VkAllocationCallbacks *pAllocator)
+{
+   V3DV_FROM_HANDLE(v3dv_device, device, _device);
+   V3DV_FROM_HANDLE(v3dv_render_pass, pass, _pass);
+
+   if (!_pass)
+      return;
+
+   vk_free2(&device->alloc, pAllocator, pass->subpass_attachments);
+   vk_free2(&device->alloc, pAllocator, pass);
 }

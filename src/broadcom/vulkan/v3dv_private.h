@@ -304,6 +304,36 @@ struct v3dv_buffer {
    VkDeviceSize mem_offset;
 };
 
+struct v3dv_subpass_attachment {
+   uint32_t attachment;
+   VkImageLayout layout;
+};
+
+struct v3dv_subpass {
+   uint32_t input_count;
+   struct v3dv_subpass_attachment *input_attachments;
+
+   uint32_t color_count;
+   struct v3dv_subpass_attachment *color_attachments;
+   struct v3dv_subpass_attachment *resolve_attachments;
+
+   struct v3dv_subpass_attachment ds_attachment;
+};
+
+struct v3dv_render_pass_attachment {
+   VkAttachmentDescription desc;
+};
+
+struct v3dv_render_pass {
+   uint32_t attachment_count;
+   struct v3dv_render_pass_attachment *attachments;
+
+   uint32_t subpass_count;
+   struct v3dv_subpass *subpasses;
+
+   struct v3dv_subpass_attachment *subpass_attachments;
+};
+
 struct v3dv_shader_module {
    unsigned char sha1[20];
    uint32_t size;
