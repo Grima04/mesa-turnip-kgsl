@@ -1265,6 +1265,16 @@ panfrost_queue_draw(struct panfrost_context *ctx)
                 panfrost_scoreboard_queue_fused_job_prepend(batch, vertex, tiler);
         else
                 panfrost_scoreboard_queue_fused_job(batch, vertex, tiler);
+
+        for (unsigned i = 0; i < PIPE_SHADER_TYPES; ++i) {
+                struct panfrost_shader_variants *all = ctx->shader[i];
+
+                if (!all)
+                        continue;
+
+                struct panfrost_shader_state *ss = &all->variants[all->active_variant];
+                batch->stack_size = MAX2(batch->stack_size, ss->stack_size);
+        }
 }
 
 /* The entire frame is in memory -- send it off to the kernel! */

@@ -83,6 +83,9 @@ struct panfrost_batch {
         float clear_depth;
         unsigned clear_stencil;
 
+        /* Amount of thread local storage required per thread */
+        unsigned stack_size;
+
         /* Whether this job uses the corresponding requirement (PAN_REQ_*
          * bitmask) */
         unsigned requirements;

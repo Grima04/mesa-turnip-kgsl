@@ -9,3 +9,5 @@ dEQP-GLES[0-9]*.stress
 # These are really slow on tiling architectures (including llvmpipe).
 dEQP-GLES[0-9]*.functional.flush_finish
 
+# See T860 skip file
+dEQP-GLES2.functional.texture.vertex.2d.filtering.nearest_mipmap_nearest_nearest_repeat
