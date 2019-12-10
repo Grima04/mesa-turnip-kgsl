@@ -277,6 +277,7 @@ generate_compute(struct llvmpipe_context *lp,
       LLVMValueRef consts_ptr, num_consts_ptr;
       LLVMValueRef ssbo_ptr, num_ssbo_ptr;
       LLVMValueRef shared_ptr;
+      LLVMValueRef kernel_args_ptr;
       struct lp_build_mask_context mask;
       struct lp_bld_tgsi_system_values system_values;
 
@@ -285,6 +286,8 @@ generate_compute(struct llvmpipe_context *lp,
       num_consts_ptr = lp_jit_cs_context_num_constants(gallivm, context_ptr);
       ssbo_ptr = lp_jit_cs_context_ssbos(gallivm, context_ptr);
       num_ssbo_ptr = lp_jit_cs_context_num_ssbos(gallivm, context_ptr);
+      kernel_args_ptr = lp_jit_cs_context_kernel_args(gallivm, context_ptr);
+
       shared_ptr = lp_jit_cs_thread_data_shared(gallivm, thread_data_ptr);
 
       /* these are coroutine entrypoint necessities */
@@ -360,6 +363,7 @@ generate_compute(struct llvmpipe_context *lp,
       params.image = image;
       params.shared_ptr = shared_ptr;
       params.coro = &coro_info;
+      params.kernel_args = kernel_args_ptr;
 
       if (shader->base.type == PIPE_SHADER_IR_TGSI)
          lp_build_tgsi_soa(gallivm, shader->base.tokens, &params, NULL);
@@ -1093,7 +1097,7 @@ update_csctx_ssbo(struct llvmpipe_context *llvmpipe)
 }
 
 static void
-llvmpipe_cs_update_derived(struct llvmpipe_context *llvmpipe)
+llvmpipe_cs_update_derived(struct llvmpipe_context *llvmpipe, void *input)
 {
    if (llvmpipe->cs_dirty & (LP_CSNEW_CS))
       llvmpipe_update_cs(llvmpipe);
@@ -1126,6 +1130,12 @@ llvmpipe_cs_update_derived(struct llvmpipe_context *llvmpipe)
       lp_csctx_set_cs_images(llvmpipe->csctx,
                               ARRAY_SIZE(llvmpipe->images[PIPE_SHADER_COMPUTE]),
                               llvmpipe->images[PIPE_SHADER_COMPUTE]);
+
+   if (input) {
+      struct lp_cs_context *csctx = llvmpipe->csctx;
+      csctx->input = input;
+      csctx->cs.current.jit_context.kernel_args = input;
+   }
 
    llvmpipe->cs_dirty = 0;
 }
@@ -1193,7 +1203,7 @@ static void llvmpipe_launch_grid(struct pipe_context *pipe,
 
    memset(&job_info, 0, sizeof(job_info));
 
-   llvmpipe_cs_update_derived(llvmpipe);
+   llvmpipe_cs_update_derived(llvmpipe, info->input);
 
    fill_grid_size(pipe, info, job_info.grid_size);
 

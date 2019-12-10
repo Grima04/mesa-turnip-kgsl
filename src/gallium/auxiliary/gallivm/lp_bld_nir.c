@@ -1152,6 +1152,17 @@ static void visit_discard(struct lp_build_nir_context *bld_base,
    bld_base->discard(bld_base, cond);
 }
 
+static void visit_load_kernel_input(struct lp_build_nir_context *bld_base,
+                                    nir_intrinsic_instr *instr, LLVMValueRef result[4])
+{
+   LLVMValueRef offset = get_src(bld_base, instr->src[0]);
+
+   bool offset_is_uniform = nir_src_is_dynamically_uniform(instr->src[0]);
+   bld_base->load_kernel_arg(bld_base, nir_dest_num_components(instr->dest), nir_dest_bit_size(instr->dest),
+                             nir_src_bit_size(instr->src[0]),
+                             offset_is_uniform, offset, result);
+}
+
 static void visit_intrinsic(struct lp_build_nir_context *bld_base,
                             nir_intrinsic_instr *instr)
 {
@@ -1253,6 +1264,9 @@ static void visit_intrinsic(struct lp_build_nir_context *bld_base,
       visit_barrier(bld_base);
       break;
    case nir_intrinsic_memory_barrier:
+      break;
+   case nir_intrinsic_load_kernel_input:
+      visit_load_kernel_input(bld_base, instr, result);
       break;
    default:
       assert(0);

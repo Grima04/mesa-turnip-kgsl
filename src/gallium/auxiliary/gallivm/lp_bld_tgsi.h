@@ -256,6 +256,7 @@ struct lp_build_tgsi_params {
    const struct lp_build_image_soa *image;
    LLVMValueRef shared_ptr;
    const struct lp_build_coro_suspend_info *coro;
+   LLVMValueRef kernel_args;
 };
 
 void

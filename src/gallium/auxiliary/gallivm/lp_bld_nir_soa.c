@@ -488,6 +488,45 @@ static void emit_store_reg(struct lp_build_nir_context *bld_base,
    }
 }
 
+static void emit_load_kernel_arg(struct lp_build_nir_context *bld_base,
+                                 unsigned nc,
+                                 unsigned bit_size,
+                                 unsigned offset_bit_size,
+                                 bool offset_is_uniform,
+                                 LLVMValueRef offset,
+                                 LLVMValueRef result[4])
+{
+   struct lp_build_nir_soa_context *bld = (struct lp_build_nir_soa_context *)bld_base;
+   struct gallivm_state *gallivm = bld_base->base.gallivm;
+   LLVMBuilderRef builder = gallivm->builder;
+   struct lp_build_context *bld_broad = get_int_bld(bld_base, true, bit_size);
+   LLVMValueRef kernel_args_ptr = bld->kernel_args_ptr;
+   unsigned size_shift = 0;
+   struct lp_build_context *bld_offset = get_int_bld(bld_base, true, offset_bit_size);
+   if (bit_size == 16)
+      size_shift = 1;
+   else if (bit_size == 32)
+      size_shift = 2;
+   else if (bit_size == 64)
+      size_shift = 3;
+   if (size_shift)
+      offset = lp_build_shr(bld_offset, offset, lp_build_const_int_vec(gallivm, bld_offset->type, size_shift));
+
+   LLVMTypeRef ptr_type = LLVMPointerType(bld_broad->elem_type, 0);
+   kernel_args_ptr = LLVMBuildBitCast(builder, kernel_args_ptr, ptr_type, "");
+
+   if (offset_is_uniform) {
+      offset = LLVMBuildExtractElement(builder, offset, lp_build_const_int32(gallivm, 0), "");
+
+      for (unsigned c = 0; c < nc; c++) {
+         LLVMValueRef this_offset = LLVMBuildAdd(builder, offset, offset_bit_size == 64 ? lp_build_const_int64(gallivm, c) : lp_build_const_int32(gallivm, c), "");
+
+         LLVMValueRef scalar = lp_build_pointer_get(builder, kernel_args_ptr, this_offset);
+         result[c] = lp_build_broadcast_scalar(bld_broad, scalar);
+      }
+   }
+}
+
 static void emit_load_ubo(struct lp_build_nir_context *bld_base,
                           unsigned nc,
                           unsigned bit_size,
@@ -1205,6 +1244,7 @@ void lp_build_nir_soa(struct gallivm_state *gallivm,
    bld.bld_base.store_reg = emit_store_reg;
    bld.bld_base.emit_var_decl = emit_var_decl;
    bld.bld_base.load_ubo = emit_load_ubo;
+   bld.bld_base.load_kernel_arg = emit_load_kernel_arg;
    bld.bld_base.tex = emit_tex;
    bld.bld_base.tex_size = emit_tex_size;
    bld.bld_base.bgnloop = bgnloop;
@@ -1241,7 +1281,7 @@ void lp_build_nir_soa(struct gallivm_state *gallivm,
    bld.image = params->image;
    bld.shared_ptr = params->shared_ptr;
    bld.coro = params->coro;
-
+   bld.kernel_args_ptr = params->kernel_args;
    bld.indirects = 0;
    if (params->info->indirect_files & (1 << TGSI_FILE_INPUT))
       bld.indirects |= nir_var_shader_in;

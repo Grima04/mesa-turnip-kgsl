@@ -61,6 +61,13 @@ struct lp_build_nir_context
                     bool offset_is_uniform,
                     LLVMValueRef index, LLVMValueRef offset, LLVMValueRef result[4]);
 
+   void (*load_kernel_arg)(struct lp_build_nir_context *bld_base,
+                           unsigned nc,
+                           unsigned bit_size,
+                           unsigned offset_bit_size,
+                           bool offset_is_uniform,
+                           LLVMValueRef offset, LLVMValueRef result[4]);
+
    /* for SSBO and shared memory */
    void (*load_mem)(struct lp_build_nir_context *bld_base,
                     unsigned nc, unsigned bit_size,
@@ -186,6 +193,8 @@ struct lp_build_nir_soa_context
     * set. The inputs[] array above is unused then.
     */
    LLVMValueRef inputs_array;
+
+   LLVMValueRef kernel_args_ptr;
 };
 
 bool

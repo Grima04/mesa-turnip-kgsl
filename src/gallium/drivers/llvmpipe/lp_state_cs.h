@@ -120,6 +120,8 @@ struct lp_cs_context {
    struct {
       struct pipe_image_view current;
    } images[LP_MAX_TGSI_SHADER_IMAGES];
+
+   void *input;
 };
 
 struct lp_cs_context *lp_csctx_create(struct pipe_context *pipe);
