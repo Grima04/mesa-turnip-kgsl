@@ -996,6 +996,10 @@ static void emit_sysval_intrin(struct lp_build_nir_context *bld_base,
       break;
    default:
       break;
+   case nir_intrinsic_load_local_group_size:
+     for (unsigned i = 0; i < 3; i++)
+       result[i] = lp_build_broadcast_scalar(&bld_base->uint_bld, LLVMBuildExtractElement(gallivm->builder, bld->system_values.block_size, lp_build_const_int32(gallivm, i), ""));
+     break;
    case nir_intrinsic_load_work_dim:
       result[0] = lp_build_broadcast_scalar(&bld_base->uint_bld, bld->system_values.work_dim);
       break;

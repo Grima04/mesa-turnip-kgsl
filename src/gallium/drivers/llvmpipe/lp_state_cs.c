@@ -63,7 +63,7 @@ generate_compute(struct llvmpipe_context *lp,
    struct gallivm_state *gallivm = variant->gallivm;
    const struct lp_compute_shader_variant_key *key = &variant->key;
    char func_name[64], func_name_coro[64];
-   LLVMTypeRef arg_types[14];
+   LLVMTypeRef arg_types[17];
    LLVMTypeRef func_type, coro_func_type;
    LLVMTypeRef int32_type = LLVMInt32TypeInContext(gallivm->context);
    LLVMValueRef context_ptr;
@@ -112,6 +112,9 @@ generate_compute(struct llvmpipe_context *lp,
    arg_types[11] = variant->jit_cs_thread_data_ptr_type;  /* per thread data */
    arg_types[12] = int32_type;                         /* coro only - num X loops */
    arg_types[13] = int32_type;                         /* coro only - partials */
+   arg_types[14] = int32_type;                         /* coro block_x_size */
+   arg_types[15] = int32_type;                         /* coro block_y_size */
+   arg_types[16] = int32_type;                         /* coro block_z_size */
    func_type = LLVMFunctionType(LLVMVoidTypeInContext(gallivm->context),
                                 arg_types, ARRAY_SIZE(arg_types) - 5, 0);
 
@@ -197,7 +200,7 @@ generate_compute(struct llvmpipe_context *lp,
    lp_build_loop_begin(&loop_state[0], gallivm,
                        lp_build_const_int32(gallivm, 0)); /* x loop */
    {
-      LLVMValueRef args[14];
+      LLVMValueRef args[17];
       args[0] = context_ptr;
       args[1] = loop_state[0].counter;
       args[2] = loop_state[1].counter;
@@ -212,6 +215,9 @@ generate_compute(struct llvmpipe_context *lp,
       args[11] = thread_data_ptr;
       args[12] = num_x_loop;
       args[13] = partials;
+      args[14] = x_size_arg;
+      args[15] = y_size_arg;
+      args[16] = z_size_arg;
 
       /* idx = (z * (size_x * size_y) + y * size_x + x */
       LLVMValueRef coro_hdl_idx = LLVMBuildMul(gallivm->builder, loop_state[2].counter,
@@ -231,7 +237,7 @@ generate_compute(struct llvmpipe_context *lp,
                                        lp_build_const_int32(gallivm, 0), "");
       /* first time here - call the coroutine function entry point */
       lp_build_if(&ifstate, gallivm, cmp);
-      LLVMValueRef coro_ret = LLVMBuildCall(gallivm->builder, coro, args, 14, "");
+      LLVMValueRef coro_ret = LLVMBuildCall(gallivm->builder, coro, args, 17, "");
       LLVMBuildStore(gallivm->builder, coro_ret, coro_entry);
       lp_build_else(&ifstate);
       /* subsequent calls for this invocation - check if done. */
@@ -263,6 +269,7 @@ generate_compute(struct llvmpipe_context *lp,
    LLVMBuildRetVoid(builder);
 
    /* This is stage (b) - generate the compute shader code inside the coroutine. */
+   LLVMValueRef block_x_size_arg, block_y_size_arg, block_z_size_arg;
    context_ptr  = LLVMGetParam(coro, 0);
    x_size_arg = LLVMGetParam(coro, 1);
    y_size_arg = LLVMGetParam(coro, 2);
@@ -277,6 +284,9 @@ generate_compute(struct llvmpipe_context *lp,
    thread_data_ptr  = LLVMGetParam(coro, 11);
    num_x_loop = LLVMGetParam(coro, 12);
    partials = LLVMGetParam(coro, 13);
+   block_x_size_arg = LLVMGetParam(coro, 14);
+   block_y_size_arg = LLVMGetParam(coro, 15);
+   block_z_size_arg = LLVMGetParam(coro, 16);
    block = LLVMAppendBasicBlockInContext(gallivm->context, coro, "entry");
    LLVMPositionBuilderAtEnd(builder, block);
    {
@@ -327,6 +337,11 @@ generate_compute(struct llvmpipe_context *lp,
          system_values.grid_size = LLVMBuildInsertElement(builder, system_values.grid_size, gstids[i], lp_build_const_int32(gallivm, i), "");
 
       system_values.work_dim = work_dim_arg;
+
+      LLVMValueRef bsize[3] = { block_x_size_arg, block_y_size_arg, block_z_size_arg };
+      system_values.block_size = LLVMGetUndef(LLVMVectorType(int32_type, 3));
+      for (i = 0; i < 3; i++)
+         system_values.block_size = LLVMBuildInsertElement(builder, system_values.block_size, bsize[i], lp_build_const_int32(gallivm, i), "");
 
       LLVMValueRef last_x_loop = LLVMBuildICmp(gallivm->builder, LLVMIntEQ, x_size_arg, LLVMBuildSub(gallivm->builder, num_x_loop, lp_build_const_int32(gallivm, 1), ""), "");
       LLVMValueRef use_partial_mask = LLVMBuildAnd(gallivm->builder, last_x_loop, has_partials, "");
