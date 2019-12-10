@@ -218,7 +218,11 @@ static void
 delete_variant(struct st_context *st, struct st_variant *v, GLenum target)
 {
    if (v->driver_shader) {
-      if (st->has_shareable_shaders || v->st == st) {
+      if (target == GL_VERTEX_PROGRAM_ARB &&
+          ((struct st_common_variant*)v)->key.is_draw_shader) {
+         /* Draw shader. */
+         draw_delete_vertex_shader(st->draw, v->driver_shader);
+      } else if (st->has_shareable_shaders || v->st == st) {
          /* The shader's context matches the calling context, or we
           * don't care.
           */
