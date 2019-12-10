@@ -201,6 +201,18 @@ v3dv_get_internal_type_bpp_for_output_format(uint32_t format,
    }
 }
 
+const uint8_t *
+v3dv_get_format_swizzle(VkFormat f)
+{
+   const struct v3dv_format *vf = v3dv_get_format(f);
+   static const uint8_t fallback[] = {0, 1, 2, 3};
+
+   if (!vf)
+      return fallback;
+
+   return vf->swizzle;
+}
+
 static VkFormatFeatureFlags
 image_format_features(VkFormat vk_format,
                       const struct v3dv_format *v3dv_format,

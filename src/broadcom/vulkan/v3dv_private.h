@@ -457,6 +457,7 @@ void v3dv_loge(const char *format, ...) v3dv_printflike(1, 2);
 void v3dv_loge_v(const char *format, va_list va);
 
 const struct v3dv_format *v3dv_get_format(VkFormat);
+const uint8_t *v3dv_get_format_swizzle(VkFormat f);
 void v3dv_get_internal_type_bpp_for_output_format(uint32_t format, uint32_t *type, uint32_t *bpp);
 
 uint32_t v3d_utile_width(int cpp);
