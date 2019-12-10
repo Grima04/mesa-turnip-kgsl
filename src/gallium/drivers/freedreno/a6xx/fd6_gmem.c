@@ -133,54 +133,49 @@ emit_mrt(struct fd_ringbuffer *ring, struct pipe_framebuffer_state *pfb,
 
 		debug_assert((offset + slice->size0) <= fd_bo_size(rsc->bo));
 
-		OUT_PKT4(ring, REG_A6XX_RB_MRT_BUF_INFO(i), 6);
-		OUT_RING(ring, A6XX_RB_MRT_BUF_INFO_COLOR_FORMAT(format) |
-				A6XX_RB_MRT_BUF_INFO_COLOR_TILE_MODE(tile_mode) |
-				A6XX_RB_MRT_BUF_INFO_COLOR_SWAP(swap));
-		OUT_RING(ring, A6XX_RB_MRT_PITCH(stride).value);
-		OUT_RING(ring, A6XX_RB_MRT_ARRAY_PITCH(slice->size0).value);
-		OUT_RELOCW(ring, rsc->bo, offset, 0, 0);	/* BASE_LO/HI */
-		OUT_RING(ring, base);			/* RB_MRT[i].BASE_GMEM */
-		OUT_PKT4(ring, REG_A6XX_SP_FS_MRT_REG(i), 1);
-		OUT_RING(ring, A6XX_SP_FS_MRT_REG_COLOR_FORMAT(format) |
-				COND(sint, A6XX_SP_FS_MRT_REG_COLOR_SINT) |
-				COND(uint, A6XX_SP_FS_MRT_REG_COLOR_UINT));
+		OUT_REG(ring,
+			A6XX_RB_MRT_BUF_INFO(i,
+				.color_format = format,
+				.color_tile_mode = tile_mode,
+				.color_swap = swap),
+			A6XX_RB_MRT_PITCH(i, .a6xx_rb_mrt_pitch = stride),
+			A6XX_RB_MRT_ARRAY_PITCH(i, .a6xx_rb_mrt_array_pitch = slice->size0),
+			A6XX_RB_MRT_BASE(i, .bo = rsc->bo, .bo_offset = offset),
+			A6XX_RB_MRT_BASE_GMEM(i, .unknown = base));
+
+		OUT_REG(ring,
+				A6XX_SP_FS_MRT_REG(i, .color_format = format,
+						.color_sint = sint, .color_uint = uint));
 
 		OUT_PKT4(ring, REG_A6XX_RB_MRT_FLAG_BUFFER(i), 3);
 		fd6_emit_flag_reference(ring, rsc,
 				psurf->u.tex.level, psurf->u.tex.first_layer);
 	}
 
-	OUT_PKT4(ring, REG_A6XX_RB_SRGB_CNTL, 1);
-	OUT_RING(ring, srgb_cntl);
+	OUT_REG(ring, A6XX_RB_SRGB_CNTL(.dword = srgb_cntl));
+	OUT_REG(ring, A6XX_SP_SRGB_CNTL(.dword = srgb_cntl));
 
-	OUT_PKT4(ring, REG_A6XX_SP_SRGB_CNTL, 1);
-	OUT_RING(ring, srgb_cntl);
+	OUT_REG(ring, A6XX_RB_RENDER_COMPONENTS(
+		.rt0 = mrt_comp[0],
+		.rt1 = mrt_comp[1],
+		.rt2 = mrt_comp[2],
+		.rt3 = mrt_comp[3],
+		.rt4 = mrt_comp[4],
+		.rt5 = mrt_comp[5],
+		.rt6 = mrt_comp[6],
+		.rt7 = mrt_comp[7]));
 
-	OUT_PKT4(ring, REG_A6XX_RB_RENDER_COMPONENTS, 1);
-	OUT_RING(ring, A6XX_RB_RENDER_COMPONENTS_RT0(mrt_comp[0]) |
-			A6XX_RB_RENDER_COMPONENTS_RT1(mrt_comp[1]) |
-			A6XX_RB_RENDER_COMPONENTS_RT2(mrt_comp[2]) |
-			A6XX_RB_RENDER_COMPONENTS_RT3(mrt_comp[3]) |
-			A6XX_RB_RENDER_COMPONENTS_RT4(mrt_comp[4]) |
-			A6XX_RB_RENDER_COMPONENTS_RT5(mrt_comp[5]) |
-			A6XX_RB_RENDER_COMPONENTS_RT6(mrt_comp[6]) |
-			A6XX_RB_RENDER_COMPONENTS_RT7(mrt_comp[7]));
+	OUT_REG(ring, A6XX_SP_FS_RENDER_COMPONENTS(
+		.rt0 = mrt_comp[0],
+		.rt1 = mrt_comp[1],
+		.rt2 = mrt_comp[2],
+		.rt3 = mrt_comp[3],
+		.rt4 = mrt_comp[4],
+		.rt5 = mrt_comp[5],
+		.rt6 = mrt_comp[6],
+		.rt7 = mrt_comp[7]));
 
-	OUT_PKT4(ring, REG_A6XX_SP_FS_RENDER_COMPONENTS, 1);
-	OUT_RING(ring,
-			A6XX_SP_FS_RENDER_COMPONENTS_RT0(mrt_comp[0]) |
-			A6XX_SP_FS_RENDER_COMPONENTS_RT1(mrt_comp[1]) |
-			A6XX_SP_FS_RENDER_COMPONENTS_RT2(mrt_comp[2]) |
-			A6XX_SP_FS_RENDER_COMPONENTS_RT3(mrt_comp[3]) |
-			A6XX_SP_FS_RENDER_COMPONENTS_RT4(mrt_comp[4]) |
-			A6XX_SP_FS_RENDER_COMPONENTS_RT5(mrt_comp[5]) |
-			A6XX_SP_FS_RENDER_COMPONENTS_RT6(mrt_comp[6]) |
-			A6XX_SP_FS_RENDER_COMPONENTS_RT7(mrt_comp[7]));
-
-	OUT_PKT4(ring, REG_A6XX_GRAS_LAYER_CNTL, 1);
-	OUT_RING(ring, COND(layered, A6XX_GRAS_LAYER_CNTL_LAYERED |
-					A6XX_GRAS_LAYER_CNTL_TYPE(type)));
+	OUT_REG(ring, A6XX_GRAS_LAYER_CNTL(.layered = layered, .type = type));
 }
 
 static void
