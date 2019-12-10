@@ -295,21 +295,22 @@ setup_lrz(struct fd_resource *rsc)
 	struct fd_screen *screen = fd_screen(rsc->base.screen);
 	const uint32_t flags = DRM_FREEDRENO_GEM_CACHE_WCOMBINE |
 			DRM_FREEDRENO_GEM_TYPE_KMEM; /* TODO */
-	unsigned lrz_pitch  = align(DIV_ROUND_UP(rsc->base.width0, 8), 64);
-	unsigned lrz_height = DIV_ROUND_UP(rsc->base.height0, 8);
+	unsigned width0 = rsc->base.width0;
+	unsigned height0 = rsc->base.height0;
 
 	/* LRZ buffer is super-sampled: */
 	switch (rsc->base.nr_samples) {
 	case 4:
-		lrz_pitch *= 2;
-		/* fallthrough */
+		width0 *= 2;
+		/* fallthru */
 	case 2:
-		lrz_height *= 2;
+		height0 *= 2;
 	}
 
-	unsigned size = lrz_pitch * lrz_height * 2;
+	unsigned lrz_pitch  = align(DIV_ROUND_UP(width0, 8), 32);
+	unsigned lrz_height = align(DIV_ROUND_UP(height0, 8), 16);
 
-	size += 0x1000; /* for GRAS_LRZ_FAST_CLEAR_BUFFER */
+	unsigned size = lrz_pitch * lrz_height * 2;
 
 	rsc->lrz_height = lrz_height;
 	rsc->lrz_width = lrz_pitch;
