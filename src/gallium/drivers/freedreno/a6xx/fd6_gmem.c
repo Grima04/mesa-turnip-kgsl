@@ -351,15 +351,12 @@ update_vsc_pipe(struct fd_batch *batch)
 			DRM_FREEDRENO_GEM_TYPE_KMEM, "vsc_data2");
 	}
 
-	OUT_PKT4(ring, REG_A6XX_VSC_BIN_SIZE, 3);
-	OUT_RING(ring, A6XX_VSC_BIN_SIZE_WIDTH(gmem->bin_w) |
-			A6XX_VSC_BIN_SIZE_HEIGHT(gmem->bin_h));
-	OUT_RELOCW(ring, fd6_ctx->vsc_data,
-			32 * fd6_ctx->vsc_data_pitch, 0, 0); /* VSC_SIZE_ADDRESS_LO/HI */
+	OUT_REG(ring,
+		A6XX_VSC_BIN_SIZE(.width = gmem->bin_w, .height = gmem->bin_h),
+		A6XX_VSC_SIZE_ADDRESS(.bo = fd6_ctx->vsc_data, .bo_offset = 32 * fd6_ctx->vsc_data_pitch));
 
-	OUT_PKT4(ring, REG_A6XX_VSC_BIN_COUNT, 1);
-	OUT_RING(ring, A6XX_VSC_BIN_COUNT_NX(gmem->nbins_x) |
-			A6XX_VSC_BIN_COUNT_NY(gmem->nbins_y));
+	OUT_REG(ring, A6XX_VSC_BIN_COUNT(.nx = gmem->nbins_x,
+					.ny = gmem->nbins_y));
 
 	OUT_PKT4(ring, REG_A6XX_VSC_PIPE_CONFIG_REG(0), 32);
 	for (i = 0; i < 32; i++) {
@@ -370,15 +367,15 @@ update_vsc_pipe(struct fd_batch *batch)
 				A6XX_VSC_PIPE_CONFIG_REG_H(pipe->h));
 	}
 
-	OUT_PKT4(ring, REG_A6XX_VSC_PIPE_DATA2_ADDRESS_LO, 4);
-	OUT_RELOCW(ring, fd6_ctx->vsc_data2, 0, 0, 0);
-	OUT_RING(ring, fd6_ctx->vsc_data2_pitch);
-	OUT_RING(ring, fd_bo_size(fd6_ctx->vsc_data2));
+	OUT_REG(ring,
+		A6XX_VSC_PIPE_DATA2_ADDRESS(.bo = fd6_ctx->vsc_data2),
+		A6XX_VSC_PIPE_DATA2_PITCH(.dword = fd6_ctx->vsc_data2_pitch),
+		A6XX_VSC_PIPE_DATA2_ARRAY_PITCH(.dword = fd_bo_size(fd6_ctx->vsc_data2)));
 
-	OUT_PKT4(ring, REG_A6XX_VSC_PIPE_DATA_ADDRESS_LO, 4);
-	OUT_RELOCW(ring, fd6_ctx->vsc_data, 0, 0, 0);
-	OUT_RING(ring, fd6_ctx->vsc_data_pitch);
-	OUT_RING(ring, fd_bo_size(fd6_ctx->vsc_data));
+	OUT_REG(ring,
+		A6XX_VSC_PIPE_DATA_ADDRESS(.bo = fd6_ctx->vsc_data),
+		A6XX_VSC_PIPE_DATA_PITCH(.dword = fd6_ctx->vsc_data_pitch),
+		A6XX_VSC_PIPE_DATA_ARRAY_PITCH(.dword = fd_bo_size(fd6_ctx->vsc_data)));
 }
 
 /* TODO we probably have more than 8 scratch regs.. although the first
