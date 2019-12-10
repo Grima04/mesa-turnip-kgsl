@@ -51,6 +51,7 @@ struct lp_cs_job_info {
    unsigned grid_size[3];
    unsigned block_size[3];
    unsigned req_local_mem;
+   unsigned work_dim;
    struct lp_cs_exec *current;
 };
 
@@ -62,14 +63,14 @@ generate_compute(struct llvmpipe_context *lp,
    struct gallivm_state *gallivm = variant->gallivm;
    const struct lp_compute_shader_variant_key *key = &variant->key;
    char func_name[64], func_name_coro[64];
-   LLVMTypeRef arg_types[13];
+   LLVMTypeRef arg_types[14];
    LLVMTypeRef func_type, coro_func_type;
    LLVMTypeRef int32_type = LLVMInt32TypeInContext(gallivm->context);
    LLVMValueRef context_ptr;
    LLVMValueRef x_size_arg, y_size_arg, z_size_arg;
    LLVMValueRef grid_x_arg, grid_y_arg, grid_z_arg;
    LLVMValueRef grid_size_x_arg, grid_size_y_arg, grid_size_z_arg;
-   LLVMValueRef thread_data_ptr;
+   LLVMValueRef work_dim_arg, thread_data_ptr;
    LLVMBasicBlockRef block;
    LLVMBuilderRef builder;
    struct lp_build_sampler_soa *sampler;
@@ -107,11 +108,12 @@ generate_compute(struct llvmpipe_context *lp,
    arg_types[7] = int32_type;                          /* grid_size_x */
    arg_types[8] = int32_type;                          /* grid_size_y */
    arg_types[9] = int32_type;                          /* grid_size_z */
-   arg_types[10] = variant->jit_cs_thread_data_ptr_type;  /* per thread data */
-   arg_types[11] = int32_type;
-   arg_types[12] = int32_type;
+   arg_types[10] = int32_type;                         /* work dim */
+   arg_types[11] = variant->jit_cs_thread_data_ptr_type;  /* per thread data */
+   arg_types[12] = int32_type;                         /* coro only - num X loops */
+   arg_types[13] = int32_type;                         /* coro only - partials */
    func_type = LLVMFunctionType(LLVMVoidTypeInContext(gallivm->context),
-                                arg_types, ARRAY_SIZE(arg_types) - 2, 0);
+                                arg_types, ARRAY_SIZE(arg_types) - 5, 0);
 
    coro_func_type = LLVMFunctionType(LLVMPointerType(LLVMInt8TypeInContext(gallivm->context), 0),
                                      arg_types, ARRAY_SIZE(arg_types), 0);
@@ -141,7 +143,8 @@ generate_compute(struct llvmpipe_context *lp,
    grid_size_x_arg = LLVMGetParam(function, 7);
    grid_size_y_arg = LLVMGetParam(function, 8);
    grid_size_z_arg = LLVMGetParam(function, 9);
-   thread_data_ptr  = LLVMGetParam(function, 10);
+   work_dim_arg = LLVMGetParam(function, 10);
+   thread_data_ptr  = LLVMGetParam(function, 11);
 
    lp_build_name(context_ptr, "context");
    lp_build_name(x_size_arg, "x_size");
@@ -153,6 +156,7 @@ generate_compute(struct llvmpipe_context *lp,
    lp_build_name(grid_size_x_arg, "grid_size_x");
    lp_build_name(grid_size_y_arg, "grid_size_y");
    lp_build_name(grid_size_z_arg, "grid_size_z");
+   lp_build_name(work_dim_arg, "work_dim");
    lp_build_name(thread_data_ptr, "thread_data");
 
    block = LLVMAppendBasicBlockInContext(gallivm->context, function, "entry");
@@ -193,7 +197,7 @@ generate_compute(struct llvmpipe_context *lp,
    lp_build_loop_begin(&loop_state[0], gallivm,
                        lp_build_const_int32(gallivm, 0)); /* x loop */
    {
-      LLVMValueRef args[13];
+      LLVMValueRef args[14];
       args[0] = context_ptr;
       args[1] = loop_state[0].counter;
       args[2] = loop_state[1].counter;
@@ -204,9 +208,10 @@ generate_compute(struct llvmpipe_context *lp,
       args[7] = grid_size_x_arg;
       args[8] = grid_size_y_arg;
       args[9] = grid_size_z_arg;
-      args[10] = thread_data_ptr;
-      args[11] = num_x_loop;
-      args[12] = partials;
+      args[10] = work_dim_arg;
+      args[11] = thread_data_ptr;
+      args[12] = num_x_loop;
+      args[13] = partials;
 
       /* idx = (z * (size_x * size_y) + y * size_x + x */
       LLVMValueRef coro_hdl_idx = LLVMBuildMul(gallivm->builder, loop_state[2].counter,
@@ -226,7 +231,7 @@ generate_compute(struct llvmpipe_context *lp,
                                        lp_build_const_int32(gallivm, 0), "");
       /* first time here - call the coroutine function entry point */
       lp_build_if(&ifstate, gallivm, cmp);
-      LLVMValueRef coro_ret = LLVMBuildCall(gallivm->builder, coro, args, 13, "");
+      LLVMValueRef coro_ret = LLVMBuildCall(gallivm->builder, coro, args, 14, "");
       LLVMBuildStore(gallivm->builder, coro_ret, coro_entry);
       lp_build_else(&ifstate);
       /* subsequent calls for this invocation - check if done. */
@@ -268,9 +273,10 @@ generate_compute(struct llvmpipe_context *lp,
    grid_size_x_arg = LLVMGetParam(coro, 7);
    grid_size_y_arg = LLVMGetParam(coro, 8);
    grid_size_z_arg = LLVMGetParam(coro, 9);
-   thread_data_ptr  = LLVMGetParam(coro, 10);
-   num_x_loop = LLVMGetParam(coro, 11);
-   partials = LLVMGetParam(coro, 12);
+   work_dim_arg = LLVMGetParam(coro, 10);
+   thread_data_ptr  = LLVMGetParam(coro, 11);
+   num_x_loop = LLVMGetParam(coro, 12);
+   partials = LLVMGetParam(coro, 13);
    block = LLVMAppendBasicBlockInContext(gallivm->context, coro, "entry");
    LLVMPositionBuilderAtEnd(builder, block);
    {
@@ -319,6 +325,8 @@ generate_compute(struct llvmpipe_context *lp,
       system_values.grid_size = LLVMGetUndef(LLVMVectorType(int32_type, 3));
       for (i = 0; i < 3; i++)
          system_values.grid_size = LLVMBuildInsertElement(builder, system_values.grid_size, gstids[i], lp_build_const_int32(gallivm, i), "");
+
+      system_values.work_dim = work_dim_arg;
 
       LLVMValueRef last_x_loop = LLVMBuildICmp(gallivm->builder, LLVMIntEQ, x_size_arg, LLVMBuildSub(gallivm->builder, num_x_loop, lp_build_const_int32(gallivm, 1), ""), "");
       LLVMValueRef use_partial_mask = LLVMBuildAnd(gallivm->builder, last_x_loop, has_partials, "");
@@ -1162,7 +1170,7 @@ cs_exec_fn(void *init_data, int iter_idx, struct lp_cs_local_mem *lmem)
    variant->jit_function(&job_info->current->jit_context,
                          job_info->block_size[0], job_info->block_size[1], job_info->block_size[2],
                          grid_x, grid_y, grid_z,
-                         job_info->grid_size[0], job_info->grid_size[1], job_info->grid_size[2],
+                         job_info->grid_size[0], job_info->grid_size[1], job_info->grid_size[2], job_info->work_dim,
                          &thread_data);
 }
 
@@ -1210,6 +1218,7 @@ static void llvmpipe_launch_grid(struct pipe_context *pipe,
    job_info.block_size[0] = info->block[0];
    job_info.block_size[1] = info->block[1];
    job_info.block_size[2] = info->block[2];
+   job_info.work_dim = info->work_dim;
    job_info.req_local_mem = llvmpipe->cs->req_local_mem;
    job_info.current = &llvmpipe->csctx->cs.current;
 

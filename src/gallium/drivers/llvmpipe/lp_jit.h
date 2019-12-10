@@ -385,6 +385,7 @@ typedef void
                   uint32_t grid_size_x,
                   uint32_t grid_size_y,
                   uint32_t grid_size_z,
+                  uint32_t work_dim,
                   struct lp_jit_cs_thread_data *thread_data);
 
 void

@@ -1246,6 +1246,7 @@ static void visit_intrinsic(struct lp_build_nir_context *bld_base,
    case nir_intrinsic_load_invocation_id:
    case nir_intrinsic_load_front_face:
    case nir_intrinsic_load_draw_id:
+   case nir_intrinsic_load_work_dim:
       bld_base->sysval_intrin(bld_base, instr, result);
       break;
    case nir_intrinsic_discard_if:
