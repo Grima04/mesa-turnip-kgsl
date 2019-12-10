@@ -53,6 +53,7 @@
 
 #include "v3dv_entrypoints.h"
 #include "v3dv_extensions.h"
+#include "v3dv_bo.h"
 
 #include "vk_alloc.h"
 #include "simulator/v3d_simulator.h"
@@ -166,14 +167,7 @@ struct v3dv_device {
 };
 
 struct v3dv_device_memory {
-   /* FIXME: Can we refactor and resuse v3d_bo here? */
-   uint32_t handle;
-   VkDeviceSize size;
-   VkDeviceSize offset;
-
-   VkDeviceSize map_size;
-   void *map;
-
+   struct v3dv_bo bo;
    const VkMemoryType *type;
 };
 

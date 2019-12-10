@@ -52,6 +52,7 @@ v3dv_extensions_h = custom_target(
 )
 
 libv3dv_files = files(
+  'v3dv_bo.c',
   'v3dv_cmd_buffer.c',
   'v3dv_debug.c',
   'v3dv_debug.h',
