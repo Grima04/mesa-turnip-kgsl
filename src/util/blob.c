@@ -215,6 +215,15 @@ BLOB_WRITE_TYPE(blob_write_intptr, intptr_t)
    assert(ALIGN((_offset), (_align)) == (_offset))
 
 bool
+blob_overwrite_uint8 (struct blob *blob,
+                      size_t offset,
+                      uint8_t value)
+{
+   ASSERT_ALIGNED(offset, sizeof(value));
+   return blob_overwrite_bytes(blob, offset, &value, sizeof(value));
+}
+
+bool
 blob_overwrite_uint32 (struct blob *blob,
                        size_t offset,
                        uint32_t value)
