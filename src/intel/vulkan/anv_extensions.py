@@ -53,10 +53,7 @@ API_PATCH_VERSION = 102
 # available.
 API_VERSIONS = [
     ApiVersion('1.0',   True),
-
-    # DRM_IOCTL_SYNCOBJ_WAIT is required for VK_KHR_external_fence which is a
-    # required core feature in Vulkan 1.1
-    ApiVersion('1.1',   'device->has_syncobj_wait'),
+    ApiVersion('1.1',   True),
 ]
 
 MAX_API_VERSION = None # Computed later
