@@ -592,7 +592,6 @@ for (gfx6, gfx7, gfx8, gfx9, gfx10, name) in SMEM:
 # TODO: misses some GFX6_7 opcodes which were shifted to VOP3 in GFX8
 VOP2 = {
   # GFX6, GFX7, GFX8, GFX9, GFX10, name, input/output modifiers
-   (0x00, 0x00, 0x00, 0x00, 0x01, "v_cndmask_b32", False),
    (0x01, 0x01,   -1,   -1,   -1, "v_readlane_b32", False),
    (0x02, 0x02,   -1,   -1,   -1, "v_writelane_b32", False),
    (0x03, 0x03, 0x01, 0x01, 0x03, "v_add_f32", True),
@@ -666,6 +665,11 @@ VOP2 = {
 }
 for (gfx6, gfx7, gfx8, gfx9, gfx10, name, modifiers) in VOP2:
    opcode(name, gfx7, gfx9, gfx10, Format.VOP2, modifiers, modifiers)
+
+if True:
+    # v_cndmask_b32 can use input modifiers but not output modifiers
+    (gfx6, gfx7, gfx8, gfx9, gfx10, name) = (0x00, 0x00, 0x00, 0x00, 0x01, "v_cndmask_b32")
+    opcode(name, gfx7, gfx9, gfx10, Format.VOP2, True, False)
 
 
 # VOP1 instructions: instructions with 1 input and 1 output
