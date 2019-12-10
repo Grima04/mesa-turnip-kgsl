@@ -62,6 +62,7 @@ pipe_shader_type_from_mesa(gl_shader_stage stage)
    case MESA_SHADER_FRAGMENT:
       return PIPE_SHADER_FRAGMENT;
    case MESA_SHADER_COMPUTE:
+   case MESA_SHADER_KERNEL:
       return PIPE_SHADER_COMPUTE;
    default:
       unreachable("bad shader stage");
