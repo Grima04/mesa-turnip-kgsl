@@ -499,6 +499,12 @@ llvmpipe_delete_compute_state(struct pipe_context *pipe,
    struct lp_compute_shader *shader = cs;
    struct lp_cs_variant_list_item *li;
 
+   if (llvmpipe->cs == cs)
+      llvmpipe->cs = NULL;
+   for (unsigned i = 0; i < shader->max_global_buffers; i++)
+      pipe_resource_reference(&shader->global_buffers[i], NULL);
+   FREE(shader->global_buffers);
+
    /* Delete all the variants */
    li = first_elem(&shader->variants);
    while(!at_end(&shader->variants, li)) {
@@ -1249,12 +1255,62 @@ static void llvmpipe_launch_grid(struct pipe_context *pipe,
    llvmpipe->pipeline_statistics.cs_invocations += num_tasks * info->block[0] * info->block[1] * info->block[2];
 }
 
+static void
+llvmpipe_set_compute_resources(struct pipe_context *pipe,
+                               unsigned start, unsigned count,
+                               struct pipe_surface **resources)
+{
+
+
+}
+
+static void
+llvmpipe_set_global_binding(struct pipe_context *pipe,
+                            unsigned first, unsigned count,
+                            struct pipe_resource **resources,
+                            uint32_t **handles)
+{
+   struct llvmpipe_context *llvmpipe = llvmpipe_context(pipe);
+   struct lp_compute_shader *cs = llvmpipe->cs;
+   unsigned i;
+
+   if (first + count > cs->max_global_buffers) {
+      unsigned old_max = cs->max_global_buffers;
+      cs->max_global_buffers = first + count;
+      cs->global_buffers = realloc(cs->global_buffers,
+                                   cs->max_global_buffers * sizeof(cs->global_buffers[0]));
+      if (!cs->global_buffers) {
+         return;
+      }
+
+      memset(&cs->global_buffers[old_max], 0, (cs->max_global_buffers - old_max) * sizeof(cs->global_buffers[0]));
+   }
+
+   if (!resources) {
+      for (i = 0; i < count; i++)
+         pipe_resource_reference(&cs->global_buffers[first + i], NULL);
+      return;
+   }
+
+   for (i = 0; i < count; i++) {
+      uint64_t va;
+      uint32_t offset;
+      pipe_resource_reference(&cs->global_buffers[first + i], resources[i]);
+      struct llvmpipe_resource *lp_res = llvmpipe_resource(resources[i]);
+      offset = *handles[i];
+      va = (uint64_t)((char *)lp_res->data + offset);
+      memcpy(handles[i], &va, sizeof(va));
+   }
+}
+
 void
 llvmpipe_init_compute_funcs(struct llvmpipe_context *llvmpipe)
 {
    llvmpipe->pipe.create_compute_state = llvmpipe_create_compute_state;
    llvmpipe->pipe.bind_compute_state = llvmpipe_bind_compute_state;
    llvmpipe->pipe.delete_compute_state = llvmpipe_delete_compute_state;
+   llvmpipe->pipe.set_compute_resources = llvmpipe_set_compute_resources;
+   llvmpipe->pipe.set_global_binding = llvmpipe_set_global_binding;
    llvmpipe->pipe.launch_grid = llvmpipe_launch_grid;
 }
 

@@ -1212,6 +1212,41 @@ static void visit_load_kernel_input(struct lp_build_nir_context *bld_base,
                              offset_is_uniform, offset, result);
 }
 
+static void visit_load_global(struct lp_build_nir_context *bld_base,
+                              nir_intrinsic_instr *instr, LLVMValueRef result[4])
+{
+   LLVMValueRef addr = get_src(bld_base, instr->src[0]);
+   bld_base->load_global(bld_base, nir_dest_num_components(instr->dest), nir_dest_bit_size(instr->dest),
+                         nir_src_bit_size(instr->src[0]),
+                         addr, result);
+}
+
+static void visit_store_global(struct lp_build_nir_context *bld_base,
+                               nir_intrinsic_instr *instr)
+{
+   LLVMValueRef val = get_src(bld_base, instr->src[0]);
+   int nc = nir_src_num_components(instr->src[0]);
+   int bitsize = nir_src_bit_size(instr->src[0]);
+   LLVMValueRef addr = get_src(bld_base, instr->src[1]);
+   int addr_bitsize = nir_src_bit_size(instr->src[1]);
+   int writemask = instr->const_index[0];
+   bld_base->store_global(bld_base, writemask, nc, bitsize, addr_bitsize, addr, val);
+}
+
+static void visit_global_atomic(struct lp_build_nir_context *bld_base,
+                                nir_intrinsic_instr *instr,
+                                LLVMValueRef result[4])
+{
+   LLVMValueRef addr = get_src(bld_base, instr->src[0]);
+   LLVMValueRef val = get_src(bld_base, instr->src[1]);
+   LLVMValueRef val2 = NULL;
+   int addr_bitsize = nir_src_bit_size(instr->src[0]);
+   if (instr->intrinsic == nir_intrinsic_global_atomic_comp_swap)
+      val2 = get_src(bld_base, instr->src[2]);
+
+   bld_base->atomic_global(bld_base, instr->intrinsic, addr_bitsize, addr, val, val2, &result[0]);
+}
+
 static void visit_intrinsic(struct lp_build_nir_context *bld_base,
                             nir_intrinsic_instr *instr)
 {
@@ -1318,6 +1353,24 @@ static void visit_intrinsic(struct lp_build_nir_context *bld_base,
       break;
    case nir_intrinsic_load_kernel_input:
       visit_load_kernel_input(bld_base, instr, result);
+     break;
+   case nir_intrinsic_load_global:
+      visit_load_global(bld_base, instr, result);
+      break;
+   case nir_intrinsic_store_global:
+      visit_store_global(bld_base, instr);
+      break;
+   case nir_intrinsic_global_atomic_add:
+   case nir_intrinsic_global_atomic_imin:
+   case nir_intrinsic_global_atomic_umin:
+   case nir_intrinsic_global_atomic_imax:
+   case nir_intrinsic_global_atomic_umax:
+   case nir_intrinsic_global_atomic_and:
+   case nir_intrinsic_global_atomic_or:
+   case nir_intrinsic_global_atomic_xor:
+   case nir_intrinsic_global_atomic_exchange:
+   case nir_intrinsic_global_atomic_comp_swap:
+      visit_global_atomic(bld_base, instr, result);
       break;
    default:
       assert(0);

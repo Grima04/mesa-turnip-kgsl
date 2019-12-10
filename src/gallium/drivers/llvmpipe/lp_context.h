@@ -169,6 +169,10 @@ struct llvmpipe_context {
 
    /** The LLVMContext to use for LLVM related work */
    LLVMContextRef context;
+
+   int max_global_buffers;
+   struct pipe_resource **global_buffers;
+
 };
 
 

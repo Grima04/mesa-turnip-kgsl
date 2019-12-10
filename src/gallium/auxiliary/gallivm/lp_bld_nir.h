@@ -72,6 +72,24 @@ struct lp_build_nir_context
                            bool offset_is_uniform,
                            LLVMValueRef offset, LLVMValueRef result[4]);
 
+   void (*load_global)(struct lp_build_nir_context *bld_base,
+                       unsigned nc, unsigned bit_size,
+                       unsigned offset_bit_size,
+                       LLVMValueRef offset, LLVMValueRef result[4]);
+
+   void (*store_global)(struct lp_build_nir_context *bld_base,
+                        unsigned writemask,
+                        unsigned nc, unsigned bit_size,
+                        unsigned addr_bit_size,
+                        LLVMValueRef addr, LLVMValueRef dst);
+
+   void (*atomic_global)(struct lp_build_nir_context *bld_base,
+                         nir_intrinsic_op op,
+                         unsigned addr_bit_size,
+                         LLVMValueRef addr,
+                         LLVMValueRef val, LLVMValueRef val2,
+                         LLVMValueRef *result);
+
    /* for SSBO and shared memory */
    void (*load_mem)(struct lp_build_nir_context *bld_base,
                     unsigned nc, unsigned bit_size,
