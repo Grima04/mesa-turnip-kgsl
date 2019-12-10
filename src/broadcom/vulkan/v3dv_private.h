@@ -343,6 +343,11 @@ struct v3dv_framebuffer {
    struct v3dv_image_view *attachments[0];
 };
 
+struct v3dv_cmd_pool {
+   VkAllocationCallbacks alloc;
+   struct list_head cmd_buffers;
+};
+
 struct v3dv_shader_module {
    unsigned char sha1[20];
    uint32_t size;
@@ -440,6 +445,7 @@ V3DV_DEFINE_HANDLE_CASTS(v3dv_instance, VkInstance)
 V3DV_DEFINE_HANDLE_CASTS(v3dv_physical_device, VkPhysicalDevice)
 V3DV_DEFINE_HANDLE_CASTS(v3dv_queue, VkQueue)
 
+V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_cmd_pool, VkCommandPool)
 V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_buffer, VkBuffer)
 V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_device_memory, VkDeviceMemory)
 V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_framebuffer, VkFramebuffer)
