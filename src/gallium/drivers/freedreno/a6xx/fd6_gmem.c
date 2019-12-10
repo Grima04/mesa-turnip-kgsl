@@ -47,9 +47,6 @@
 #include "fd6_resource.h"
 #include "fd6_zsa.h"
 
-/* some bits in common w/ a4xx: */
-#include "a4xx/fd4_draw.h"
-
 /**
  * Emits the flags registers, suitable for RB_MRT_FLAG_BUFFER,
  * RB_DEPTH_FLAG_BUFFER, SP_PS_2D_SRC_FLAGS, and RB_BLIT_FLAG_DST.
