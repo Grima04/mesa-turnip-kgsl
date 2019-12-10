@@ -579,6 +579,14 @@ typedef struct nir_variable {
    nir_constant *constant_initializer;
 
    /**
+    * Global variable assigned in the initializer of the variable
+    * This field should only be used temporarily by creators of NIR shaders
+    * and then lower_constant_initializers can be used to get rid of them.
+    * Most of the rest of NIR ignores this field or asserts that it's NULL.
+    */
+   struct nir_variable *pointer_initializer;
+
+   /**
     * For variables that are in an interface block or are an instance of an
     * interface block, this is the \c GLSL_TYPE_INTERFACE type for that block.
     *

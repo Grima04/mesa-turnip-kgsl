@@ -61,15 +61,23 @@ lower_const_initializer(struct nir_builder *b, struct exec_list *var_list)
    b->cursor = nir_before_cf_list(&b->impl->body);
 
    nir_foreach_variable(var, var_list) {
-      if (!var->constant_initializer)
-         continue;
+      if (var->constant_initializer) {
+         build_constant_load(b, nir_build_deref_var(b, var),
+                             var->constant_initializer);
 
-      progress = true;
+         progress = true;
+         var->constant_initializer = NULL;
+      } else if (var->pointer_initializer) {
+         nir_deref_instr *src_deref = nir_build_deref_var(b, var->pointer_initializer);
+         nir_deref_instr *dst_deref = nir_build_deref_var(b, var);
 
-      build_constant_load(b, nir_build_deref_var(b, var),
-                          var->constant_initializer);
+         /* Note that this stores a pointer to src into dst */
+         nir_store_deref(b, dst_deref, &src_deref->dest.ssa, ~0);
 
-      var->constant_initializer = NULL;
+         progress = true;
+         var->pointer_initializer = NULL;
+      }
+
    }
 
    return progress;

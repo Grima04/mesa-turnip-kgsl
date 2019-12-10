@@ -558,6 +558,8 @@ print_var_decl(nir_variable *var, print_state *state)
       print_constant(var->constant_initializer, var->type, state);
       fprintf(fp, " }");
    }
+   if (var->pointer_initializer)
+      fprintf(fp, " = &%s", get_var_name(var->pointer_initializer, state));
 
    fprintf(fp, "\n");
    print_annotation(state, var);

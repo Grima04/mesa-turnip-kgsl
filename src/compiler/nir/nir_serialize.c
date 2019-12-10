@@ -206,12 +206,13 @@ union packed_var {
    struct {
       unsigned has_name:1;
       unsigned has_constant_initializer:1;
+      unsigned has_pointer_initializer:1;
       unsigned has_interface_type:1;
       unsigned num_state_slots:7;
       unsigned data_encoding:2;
       unsigned type_same_as_last:1;
       unsigned interface_type_same_as_last:1;
-      unsigned _pad:2;
+      unsigned _pad:1;
       unsigned num_members:16;
    } u;
 };
@@ -238,6 +239,7 @@ write_variable(write_ctx *ctx, const nir_variable *var)
 
    flags.u.has_name = !ctx->strip && var->name;
    flags.u.has_constant_initializer = !!(var->constant_initializer);
+   flags.u.has_pointer_initializer = !!(var->pointer_initializer);
    flags.u.has_interface_type = !!(var->interface_type);
    flags.u.type_same_as_last = var->type == ctx->last_type;
    flags.u.interface_type_same_as_last =
@@ -322,6 +324,8 @@ write_variable(write_ctx *ctx, const nir_variable *var)
    }
    if (var->constant_initializer)
       write_constant(ctx, var->constant_initializer);
+   if (var->pointer_initializer)
+      write_lookup_object(ctx, var->pointer_initializer);
    if (var->num_members > 0) {
       blob_write_bytes(ctx->blob, (uint8_t *) var->members,
                        var->num_members * sizeof(*var->members));
@@ -392,6 +396,12 @@ read_variable(read_ctx *ctx)
       var->constant_initializer = read_constant(ctx, var);
    else
       var->constant_initializer = NULL;
+
+   if (flags.u.has_pointer_initializer)
+      var->pointer_initializer = read_object(ctx);
+   else
+      var->pointer_initializer = NULL;
+
    var->num_members = flags.u.num_members;
    if (var->num_members > 0) {
       var->members = ralloc_array(var, struct nir_variable_data,
