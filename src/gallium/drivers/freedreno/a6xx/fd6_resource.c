@@ -323,7 +323,7 @@ fd6_setup_slices(struct fd_resource *rsc)
 {
 	uint32_t alignment;
 
-	if ((fd_mesa_debug & FD_DBG_LRZ) && has_depth(rsc->base.format))
+	if (!(fd_mesa_debug & FD_DBG_NOLRZ) && has_depth(rsc->base.format))
 		setup_lrz(rsc);
 
 	switch (rsc->base.target) {

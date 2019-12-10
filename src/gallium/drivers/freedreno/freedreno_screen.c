@@ -82,13 +82,14 @@ static const struct debug_named_value debug_options[] = {
 		{"inorder",   FD_DBG_INORDER,"Disable reordering for draws/blits"},
 		{"bstat",     FD_DBG_BSTAT,  "Print batch stats at context destroy"},
 		{"nogrow",    FD_DBG_NOGROW, "Disable \"growable\" cmdstream buffers, even if kernel supports it"},
-		{"lrz",       FD_DBG_LRZ,    "Enable experimental LRZ support (a5xx+)"},
+		{"lrz",       FD_DBG_LRZ,    "Enable experimental LRZ support (a5xx)"},
 		{"noindirect",FD_DBG_NOINDR, "Disable hw indirect draws (emulate on CPU)"},
 		{"noblit",    FD_DBG_NOBLIT, "Disable blitter (fallback to generic blit path)"},
 		{"hiprio",    FD_DBG_HIPRIO, "Force high-priority context"},
 		{"ttile",     FD_DBG_TTILE,  "Enable texture tiling (a2xx/a3xx/a5xx)"},
 		{"perfcntrs", FD_DBG_PERFC,  "Expose performance counters"},
 		{"noubwc",    FD_DBG_NOUBWC, "Disable UBWC for all internal buffers"},
+		{"nolrz",     FD_DBG_NOLRZ,  "Disable LRZ (a6xx)"},
 		DEBUG_NAMED_VALUE_END
 };
 
