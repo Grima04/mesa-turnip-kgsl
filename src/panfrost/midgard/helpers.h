@@ -69,6 +69,19 @@
                 op == TEXTURE_OP_DFDY \
         )
 
+#define OP_IS_UNSIGNED_CMP(op) ( \
+                op == midgard_alu_op_ult || \
+                op == midgard_alu_op_ule \
+        )
+
+#define OP_IS_INTEGER_CMP(op) ( \
+                op == midgard_alu_op_ieq || \
+                op == midgard_alu_op_ine || \
+                op == midgard_alu_op_ilt || \
+                op == midgard_alu_op_ile || \
+                OP_IS_UNSIGNED_CMP(op) \
+        )
+
 /* ALU control words are single bit fields with a lot of space */
 
 #define ALU_ENAB_VEC_MUL  (1 << 17)

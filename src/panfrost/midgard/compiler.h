@@ -121,7 +121,7 @@ typedef struct midgard_instruction {
         uint16_t mask;
 
         /* For ALU ops only: set to true to invert (bitwise NOT) the
-         * destination of an integer-out op. Not imeplemented in hardware but
+         * destination of an integer-out op. Not implemented in hardware but
          * allows more optimizations */
 
         bool invert;
@@ -704,5 +704,6 @@ bool midgard_opt_fuse_src_invert(compiler_context *ctx, midgard_block *block);
 bool midgard_opt_fuse_dest_invert(compiler_context *ctx, midgard_block *block);
 bool midgard_opt_csel_invert(compiler_context *ctx, midgard_block *block);
 bool midgard_opt_promote_fmov(compiler_context *ctx, midgard_block *block);
+bool midgard_opt_drop_cmp_invert(compiler_context *ctx, midgard_block *block);
 
 #endif
