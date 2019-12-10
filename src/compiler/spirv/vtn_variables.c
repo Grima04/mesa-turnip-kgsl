@@ -2155,7 +2155,7 @@ assign_missing_member_locations(struct vtn_variable *var)
 static void
 vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
                     struct vtn_type *ptr_type, SpvStorageClass storage_class,
-                    nir_constant *initializer)
+                    nir_constant *const_initializer, nir_variable *var_initializer)
 {
    vtn_assert(ptr_type->base_type == vtn_base_type_pointer);
    struct vtn_type *type = ptr_type->deref;
@@ -2378,10 +2378,14 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
       unreachable("Should have been caught before");
    }
 
-   if (initializer) {
+   /* We can only have one type of initializer */
+   assert(!(const_initializer && var_initializer));
+   if (const_initializer) {
       var->var->constant_initializer =
-         nir_constant_clone(initializer, var->var);
+         nir_constant_clone(const_initializer, var->var);
    }
+   if (var_initializer)
+      var->var->pointer_initializer = var_initializer;
 
    vtn_foreach_decoration(b, val, var_decoration_cb, var);
    vtn_foreach_decoration(b, val, ptr_decoration_cb, val->pointer);
@@ -2503,11 +2507,25 @@ vtn_handle_variables(struct vtn_builder *b, SpvOp opcode,
       struct vtn_value *val = vtn_push_value(b, w[2], vtn_value_type_pointer);
 
       SpvStorageClass storage_class = w[3];
-      nir_constant *initializer = NULL;
-      if (count > 4)
-         initializer = vtn_value(b, w[4], vtn_value_type_constant)->constant;
+      nir_constant *const_initializer = NULL;
+      nir_variable *var_initializer = NULL;
+      if (count > 4) {
+         struct vtn_value *init = vtn_untyped_value(b, w[4]);
+         switch (init->value_type) {
+         case vtn_value_type_constant:
+            const_initializer = init->constant;
+            break;
+         case vtn_value_type_pointer:
+            var_initializer = init->pointer->var->var;
+            break;
+         default:
+            vtn_fail("SPIR-V variable initializer %u must be constant or pointer",
+               w[4]);
+         }
+      }
 
-      vtn_create_variable(b, val, ptr_type, storage_class, initializer);
+      vtn_create_variable(b, val, ptr_type, storage_class, const_initializer, var_initializer);
+
       break;
    }
 
