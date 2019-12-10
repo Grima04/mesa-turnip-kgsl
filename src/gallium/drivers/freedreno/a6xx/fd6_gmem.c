@@ -588,34 +588,22 @@ emit_conditional_ib(struct fd_batch *batch, struct fd_tile *tile,
 static void
 set_scissor(struct fd_ringbuffer *ring, uint32_t x1, uint32_t y1, uint32_t x2, uint32_t y2)
 {
-	OUT_PKT4(ring, REG_A6XX_GRAS_SC_WINDOW_SCISSOR_TL, 2);
-	OUT_RING(ring, A6XX_GRAS_SC_WINDOW_SCISSOR_TL_X(x1) |
-			 A6XX_GRAS_SC_WINDOW_SCISSOR_TL_Y(y1));
-	OUT_RING(ring, A6XX_GRAS_SC_WINDOW_SCISSOR_BR_X(x2) |
-			 A6XX_GRAS_SC_WINDOW_SCISSOR_BR_Y(y2));
+	OUT_REG(ring,
+			A6XX_GRAS_SC_WINDOW_SCISSOR_TL(.x = x1, .y = y1),
+			A6XX_GRAS_SC_WINDOW_SCISSOR_BR(.x = x2, .y = y2));
 
-	OUT_PKT4(ring, REG_A6XX_GRAS_RESOLVE_CNTL_1, 2);
-	OUT_RING(ring, A6XX_GRAS_RESOLVE_CNTL_1_X(x1) |
-			 A6XX_GRAS_RESOLVE_CNTL_1_Y(y1));
-	OUT_RING(ring, A6XX_GRAS_RESOLVE_CNTL_2_X(x2) |
-			 A6XX_GRAS_RESOLVE_CNTL_2_Y(y2));
+	OUT_REG(ring,
+			A6XX_GRAS_RESOLVE_CNTL_1(.x = x1, .y = y1),
+			A6XX_GRAS_RESOLVE_CNTL_2(.x = x2, .y = y2));
 }
 
 static void
 set_bin_size(struct fd_ringbuffer *ring, uint32_t w, uint32_t h, uint32_t flag)
 {
-	OUT_PKT4(ring, REG_A6XX_GRAS_BIN_CONTROL, 1);
-	OUT_RING(ring, A6XX_GRAS_BIN_CONTROL_BINW(w) |
-			 A6XX_GRAS_BIN_CONTROL_BINH(h) | flag);
-
-	OUT_PKT4(ring, REG_A6XX_RB_BIN_CONTROL, 1);
-	OUT_RING(ring, A6XX_RB_BIN_CONTROL_BINW(w) |
-			 A6XX_RB_BIN_CONTROL_BINH(h) | flag);
-
+	OUT_REG(ring, A6XX_GRAS_BIN_CONTROL(.binw = w, .binh = h, .dword = flag));
+	OUT_REG(ring, A6XX_RB_BIN_CONTROL(.binw = w, .binh = h, .dword = flag));
 	/* no flag for RB_BIN_CONTROL2... */
-	OUT_PKT4(ring, REG_A6XX_RB_BIN_CONTROL2, 1);
-	OUT_RING(ring, A6XX_RB_BIN_CONTROL2_BINW(w) |
-			 A6XX_RB_BIN_CONTROL2_BINH(h));
+	OUT_REG(ring, A6XX_RB_BIN_CONTROL2(.binw = w, .binh = h));
 }
 
 static void
@@ -647,8 +635,7 @@ emit_binning_pass(struct fd_batch *batch)
 
 	OUT_WFI5(ring);
 
-	OUT_PKT4(ring, REG_A6XX_VFD_MODE_CNTL, 1);
-	OUT_RING(ring, A6XX_VFD_MODE_CNTL_BINNING_PASS);
+	OUT_REG(ring, A6XX_VFD_MODE_CNTL(.binning_pass = true));
 
 	update_vsc_pipe(batch);
 
@@ -1480,7 +1467,10 @@ fd6_emit_sysmem_prep(struct fd_batch *batch)
 
 	fd6_emit_restore(batch, ring);
 
-	set_scissor(ring, 0, 0, pfb->width - 1, pfb->height - 1);
+	if (pfb->width > 0 && pfb->height > 0)
+		set_scissor(ring, 0, 0, pfb->width - 1, pfb->height - 1);
+	else
+		set_scissor(ring, 0, 0, 0, 0);
 
 	set_window_offset(ring, 0, 0);
 
