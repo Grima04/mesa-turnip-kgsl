@@ -113,6 +113,14 @@ pending(struct fd_resource *rsc, bool write)
 	return false;
 }
 
+static inline bool
+has_depth(enum pipe_format format)
+{
+	const struct util_format_description *desc =
+			util_format_description(format);
+	return util_format_has_depth(desc);
+}
+
 struct fd_transfer {
 	struct pipe_transfer base;
 	struct pipe_resource *staging_prsc;

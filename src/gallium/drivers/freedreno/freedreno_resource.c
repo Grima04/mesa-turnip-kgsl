@@ -877,25 +877,6 @@ fd_resource_resize(struct pipe_resource *prsc, uint32_t sz)
 	realloc_bo(rsc, fd_screen(prsc->screen)->setup_slices(rsc));
 }
 
-// TODO common helper?
-static bool
-has_depth(enum pipe_format format)
-{
-	switch (format) {
-	case PIPE_FORMAT_Z16_UNORM:
-	case PIPE_FORMAT_Z32_UNORM:
-	case PIPE_FORMAT_Z32_FLOAT:
-	case PIPE_FORMAT_Z32_FLOAT_S8X24_UINT:
-	case PIPE_FORMAT_Z24_UNORM_S8_UINT:
-	case PIPE_FORMAT_S8_UINT_Z24_UNORM:
-	case PIPE_FORMAT_Z24X8_UNORM:
-	case PIPE_FORMAT_X8Z24_UNORM:
-		return true;
-	default:
-		return false;
-	}
-}
-
 static void
 fd_resource_layout_init(struct pipe_resource *prsc)
 {
@@ -1008,32 +989,6 @@ fd_resource_create_with_modifiers(struct pipe_screen *pscreen,
 	util_range_init(&rsc->valid_buffer_range);
 
 	rsc->internal_format = format;
-
-	// XXX probably need some extra work if we hit rsc shadowing path w/ lrz..
-	if ((is_a5xx(screen) || is_a6xx(screen)) &&
-		 (fd_mesa_debug & FD_DBG_LRZ) && has_depth(format)) {
-		const uint32_t flags = DRM_FREEDRENO_GEM_CACHE_WCOMBINE |
-				DRM_FREEDRENO_GEM_TYPE_KMEM; /* TODO */
-		unsigned lrz_pitch  = align(DIV_ROUND_UP(tmpl->width0, 8), 64);
-		unsigned lrz_height = DIV_ROUND_UP(tmpl->height0, 8);
-
-		/* LRZ buffer is super-sampled: */
-		switch (prsc->nr_samples) {
-		case 4:
-			lrz_pitch *= 2;
-		case 2:
-			lrz_height *= 2;
-		}
-
-		unsigned size = lrz_pitch * lrz_height * 2;
-
-		size += 0x1000; /* for GRAS_LRZ_FAST_CLEAR_BUFFER */
-
-		rsc->lrz_height = lrz_height;
-		rsc->lrz_width = lrz_pitch;
-		rsc->lrz_pitch = lrz_pitch;
-		rsc->lrz = fd_bo_new(screen->dev, size, flags, "lrz");
-	}
 
 	size = screen->setup_slices(rsc);
 
