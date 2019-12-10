@@ -39,6 +39,7 @@
 #define LIMA_DEBUG_SHADERDB       (1 << 3)
 #define LIMA_DEBUG_NO_BO_CACHE    (1 << 4)
 #define LIMA_DEBUG_BO_CACHE       (1 << 5)
+#define LIMA_DEBUG_NO_TILING      (1 << 6)
 
 extern uint32_t lima_debug;
 extern int lima_ctx_num_plb;

@@ -447,6 +447,8 @@ static const struct debug_named_value debug_options[] = {
           "disable BO cache" },
         { "bocache", LIMA_DEBUG_BO_CACHE,
           "print debug info for BO cache" },
+        { "notiling", LIMA_DEBUG_NO_TILING,
+          "don't use tiled buffers" },
         { NULL }
 };
 
