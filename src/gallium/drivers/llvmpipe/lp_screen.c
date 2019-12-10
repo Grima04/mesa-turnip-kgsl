@@ -74,6 +74,7 @@ static const struct debug_named_value lp_debug_flags[] = {
    { "fs", DEBUG_FS, NULL },
    { "cs", DEBUG_CS, NULL },
    { "tgsi_ir", DEBUG_TGSI_IR, NULL },
+   { "cl", DEBUG_CL, NULL },
    DEBUG_NAMED_VALUE_END
 };
 #endif
@@ -411,8 +412,10 @@ llvmpipe_get_shader_param(struct pipe_screen *screen,
 {
    switch(shader)
    {
-   case PIPE_SHADER_FRAGMENT:
    case PIPE_SHADER_COMPUTE:
+      if ((LP_DEBUG & DEBUG_CL) && param == PIPE_SHADER_CAP_SUPPORTED_IRS)
+         return (1 << PIPE_SHADER_IR_TGSI) | (1 << PIPE_SHADER_IR_NIR) | (1 << PIPE_SHADER_IR_NIR_SERIALIZED);
+   case PIPE_SHADER_FRAGMENT:
       if (param == PIPE_SHADER_CAP_PREFERRED_IR) {
          struct llvmpipe_screen *lscreen = llvmpipe_screen(screen);
          if (lscreen->use_tgsi)
@@ -420,7 +423,6 @@ llvmpipe_get_shader_param(struct pipe_screen *screen,
          else
             return PIPE_SHADER_IR_NIR;
       }
-
       switch (param) {
       default:
          return gallivm_get_shader_param(param);
