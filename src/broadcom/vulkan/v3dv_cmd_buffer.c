@@ -52,6 +52,88 @@ v3dv_CreateCommandPool(VkDevice _device,
    return VK_SUCCESS;
 }
 
+static VkResult
+cmd_buffer_create(struct v3dv_device *device,
+                  struct v3dv_cmd_pool *pool,
+                  VkCommandBufferLevel level,
+                  VkCommandBuffer *pCommandBuffer)
+{
+   struct v3dv_cmd_buffer *cmd_buffer;
+   cmd_buffer = vk_zalloc(&pool->alloc, sizeof(*cmd_buffer), 8,
+                          VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   if (cmd_buffer == NULL)
+      return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+
+   cmd_buffer->_loader_data.loaderMagic = ICD_LOADER_MAGIC;
+   cmd_buffer->device = device;
+   cmd_buffer->pool = pool;
+   cmd_buffer->level = level;
+   cmd_buffer->usage_flags = 0;
+
+   /* FIXME: setup command list structures */
+
+   assert(pool);
+   list_addtail(&cmd_buffer->pool_link, &pool->cmd_buffers);
+
+   *pCommandBuffer = v3dv_cmd_buffer_to_handle(cmd_buffer);
+
+   return VK_SUCCESS;
+}
+
+static void
+cmd_buffer_destroy(struct v3dv_cmd_buffer *cmd_buffer)
+{
+   list_del(&cmd_buffer->pool_link);
+   vk_free(&cmd_buffer->pool->alloc, cmd_buffer);
+}
+
+VkResult
+v3dv_AllocateCommandBuffers(VkDevice _device,
+                            const VkCommandBufferAllocateInfo *pAllocateInfo,
+                            VkCommandBuffer *pCommandBuffers)
+{
+   V3DV_FROM_HANDLE(v3dv_device, device, _device);
+   V3DV_FROM_HANDLE(v3dv_cmd_pool, pool, pAllocateInfo->commandPool);
+
+   /* FIXME: implement secondary command buffers */
+   assert(pAllocateInfo->level == VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+
+   VkResult result = VK_SUCCESS;
+   uint32_t i;
+
+   for (i = 0; i < pAllocateInfo->commandBufferCount; i++) {
+      result = cmd_buffer_create(device, pool, pAllocateInfo->level,
+                                 &pCommandBuffers[i]);
+      if (result != VK_SUCCESS)
+         break;
+   }
+
+   if (result != VK_SUCCESS) {
+      v3dv_FreeCommandBuffers(_device, pAllocateInfo->commandPool,
+                              i, pCommandBuffers);
+      for (i = 0; i < pAllocateInfo->commandBufferCount; i++)
+         pCommandBuffers[i] = VK_NULL_HANDLE;
+   }
+
+   return result;
+}
+
+void
+v3dv_FreeCommandBuffers(VkDevice device,
+                        VkCommandPool commandPool,
+                        uint32_t commandBufferCount,
+                        const VkCommandBuffer *pCommandBuffers)
+{
+   for (uint32_t i = 0; i < commandBufferCount; i++) {
+      V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, pCommandBuffers[i]);
+
+      if (!cmd_buffer)
+         continue;
+
+      cmd_buffer_destroy(cmd_buffer);
+   }
+}
+
 void
 v3dv_DestroyCommandPool(VkDevice _device,
                         VkCommandPool commandPool,
@@ -62,6 +144,11 @@ v3dv_DestroyCommandPool(VkDevice _device,
 
    if (!pool)
       return;
+
+   list_for_each_entry_safe(struct v3dv_cmd_buffer, cmd_buffer,
+                            &pool->cmd_buffers, pool_link) {
+      cmd_buffer_destroy(cmd_buffer);
+   }
 
    vk_free2(&device->alloc, pAllocator, pool);
 }

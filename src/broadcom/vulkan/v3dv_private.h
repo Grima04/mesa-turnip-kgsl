@@ -165,14 +165,6 @@ struct v3dv_device {
    /* FIXME: stub */
 };
 
-struct v3dv_cmd_buffer {
-   VK_LOADER_DATA _loader_data;
-
-   struct v3dv_device *device;
-
-   /* FIXME: stub */
-};
-
 struct v3dv_device_memory {
    /* FIXME: Can we refactor and resuse v3d_bo here? */
    uint32_t handle;
@@ -346,6 +338,18 @@ struct v3dv_framebuffer {
 struct v3dv_cmd_pool {
    VkAllocationCallbacks alloc;
    struct list_head cmd_buffers;
+};
+
+struct v3dv_cmd_buffer {
+   VK_LOADER_DATA _loader_data;
+
+   struct v3dv_device *device;
+
+   struct v3dv_cmd_pool *pool;
+   struct list_head pool_link;
+
+   VkCommandBufferUsageFlags usage_flags;
+   VkCommandBufferLevel level;
 };
 
 struct v3dv_shader_module {
