@@ -524,17 +524,67 @@ llvmpipe_get_compute_param(struct pipe_screen *_screen,
       }
       return sizeof(uint64_t);
    case PIPE_COMPUTE_CAP_GRID_DIMENSION:
+      if (ret) {
+         uint32_t *grid_dim = ret;
+         *grid_dim = 3;
+      }
+      return sizeof(uint32_t);
    case PIPE_COMPUTE_CAP_MAX_GLOBAL_SIZE:
-   case PIPE_COMPUTE_CAP_MAX_PRIVATE_SIZE:
-   case PIPE_COMPUTE_CAP_MAX_INPUT_SIZE:
+      if (ret) {
+         uint64_t *max_global_size = ret;
+         *max_global_size = (1ULL << 31);
+      }
+      return sizeof(uint64_t);
    case PIPE_COMPUTE_CAP_MAX_MEM_ALLOC_SIZE:
-   case PIPE_COMPUTE_CAP_MAX_CLOCK_FREQUENCY:
-   case PIPE_COMPUTE_CAP_MAX_COMPUTE_UNITS:
+      if (ret) {
+         uint64_t *max_mem_alloc_size = ret;
+         *max_mem_alloc_size = (1ULL << 31);
+      }
+      return sizeof(uint64_t);
+   case PIPE_COMPUTE_CAP_MAX_PRIVATE_SIZE:
+      if (ret) {
+         uint64_t *max_private = ret;
+         *max_private = (1UL << 31);
+      }
+      return sizeof(uint64_t);
+   case PIPE_COMPUTE_CAP_MAX_INPUT_SIZE:
+      if (ret) {
+         uint64_t *max_input = ret;
+         *max_input = 4096;
+      }
+      return sizeof(uint64_t);
    case PIPE_COMPUTE_CAP_IMAGES_SUPPORTED:
-   case PIPE_COMPUTE_CAP_SUBGROUP_SIZE:
-   case PIPE_COMPUTE_CAP_ADDRESS_BITS:
+      if (ret) {
+         uint32_t *images = ret;
+         *images = 0;
+      }
+      return sizeof(uint32_t);
    case PIPE_COMPUTE_CAP_MAX_VARIABLE_THREADS_PER_BLOCK:
-      break;
+      return 0;
+   case PIPE_COMPUTE_CAP_SUBGROUP_SIZE:
+      if (ret) {
+         uint32_t *subgroup_size = ret;
+         *subgroup_size = 32;
+      }
+      return sizeof(uint32_t);
+   case PIPE_COMPUTE_CAP_MAX_COMPUTE_UNITS:
+      if (ret) {
+         uint32_t *max_compute_units = ret;
+         *max_compute_units = 8;
+      }
+      return sizeof(uint32_t);
+   case PIPE_COMPUTE_CAP_MAX_CLOCK_FREQUENCY:
+      if (ret) {
+         uint32_t *max_clock_freq = ret;
+         *max_clock_freq = 300;
+      }
+      return sizeof(uint32_t);
+   case PIPE_COMPUTE_CAP_ADDRESS_BITS:
+      if (ret) {
+         uint32_t *address_bits = ret;
+         *address_bits = 64;
+      }
+      return sizeof(uint32_t);
    }
    return 0;
 }
