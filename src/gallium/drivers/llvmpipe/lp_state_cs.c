@@ -46,7 +46,7 @@
 #include "lp_cs_tpool.h"
 #include "state_tracker/sw_winsys.h"
 #include "nir/nir_to_tgsi_info.h"
-
+#include "nir_serialize.h"
 struct lp_cs_job_info {
    unsigned grid_size[3];
    unsigned block_size[3];
@@ -426,15 +426,26 @@ llvmpipe_create_compute_state(struct pipe_context *pipe,
       return NULL;
 
    shader->base.type = templ->ir_type;
-   if (templ->ir_type == PIPE_SHADER_IR_TGSI) {
+   if (templ->ir_type == PIPE_SHADER_IR_NIR_SERIALIZED) {
+      struct blob_reader reader;
+      const struct pipe_binary_program_header *hdr = templ->prog;
+
+      blob_reader_init(&reader, hdr->blob, hdr->num_bytes);
+      shader->base.ir.nir = nir_deserialize(NULL, pipe->screen->get_compiler_options(pipe->screen, PIPE_SHADER_IR_NIR, PIPE_SHADER_COMPUTE), &reader);
+      shader->base.type = PIPE_SHADER_IR_NIR;
+
+      pipe->screen->finalize_nir(pipe->screen, shader->base.ir.nir, false);
+   } else if (templ->ir_type == PIPE_SHADER_IR_NIR)
+      shader->base.ir.nir = (struct nir_shader *)templ->prog;
+
+   if (shader->base.type == PIPE_SHADER_IR_TGSI) {
       /* get/save the summary info for this shader */
       lp_build_tgsi_info(templ->prog, &shader->info);
 
       /* we need to keep a local copy of the tokens */
       shader->base.tokens = tgsi_dup_tokens(templ->prog);
    } else {
-      shader->base.ir.nir = (struct nir_shader *)templ->prog;
-      nir_tgsi_scan_shader(templ->prog, &shader->info.base, false);
+      nir_tgsi_scan_shader(shader->base.ir.nir, &shader->info.base, false);
    }
 
    shader->req_local_mem = templ->req_local_mem;

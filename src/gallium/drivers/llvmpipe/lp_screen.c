@@ -733,6 +733,8 @@ llvmpipe_destroy_screen( struct pipe_screen *_screen )
    if(winsys->destroy)
       winsys->destroy(winsys);
 
+   glsl_type_singleton_decref();
+
    mtx_destroy(&screen->rast_mutex);
    mtx_destroy(&screen->cs_mutex);
    FREE(screen);
@@ -795,6 +797,8 @@ llvmpipe_create_screen(struct sw_winsys *winsys)
    struct llvmpipe_screen *screen;
 
    util_cpu_detect();
+
+   glsl_type_singleton_init_or_ref();
 
 #ifdef DEBUG
    LP_DEBUG = debug_get_flags_option("LP_DEBUG", lp_debug_flags, 0 );
