@@ -5460,15 +5460,17 @@ static void si_init_config(struct si_context *sctx)
 		si_pm4_set_reg(pm4, R_008A14_PA_CL_ENHANCE, S_008A14_NUM_CLIP_SEQ(3) |
 			       S_008A14_CLIP_VTX_REORDER_ENA(1));
 
+	/* CLEAR_STATE doesn't restore these correctly. */
+	si_pm4_set_reg(pm4, R_028240_PA_SC_GENERIC_SCISSOR_TL, S_028240_WINDOW_OFFSET_DISABLE(1));
+	si_pm4_set_reg(pm4, R_028244_PA_SC_GENERIC_SCISSOR_BR,
+		       S_028244_BR_X(16384) | S_028244_BR_Y(16384));
+
 	/* CLEAR_STATE doesn't clear these correctly on certain generations.
 	 * I don't know why. Deduced by trial and error.
 	 */
 	if (sctx->chip_class <= GFX7 || !has_clear_state) {
 		si_pm4_set_reg(pm4, R_028B28_VGT_STRMOUT_DRAW_OPAQUE_OFFSET, 0);
 		si_pm4_set_reg(pm4, R_028204_PA_SC_WINDOW_SCISSOR_TL, S_028204_WINDOW_OFFSET_DISABLE(1));
-		si_pm4_set_reg(pm4, R_028240_PA_SC_GENERIC_SCISSOR_TL, S_028240_WINDOW_OFFSET_DISABLE(1));
-		si_pm4_set_reg(pm4, R_028244_PA_SC_GENERIC_SCISSOR_BR,
-			       S_028244_BR_X(16384) | S_028244_BR_Y(16384));
 		si_pm4_set_reg(pm4, R_028030_PA_SC_SCREEN_SCISSOR_TL, 0);
 		si_pm4_set_reg(pm4, R_028034_PA_SC_SCREEN_SCISSOR_BR,
 			       S_028034_BR_X(16384) | S_028034_BR_Y(16384));
