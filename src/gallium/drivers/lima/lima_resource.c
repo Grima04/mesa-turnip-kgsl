@@ -193,6 +193,10 @@ _lima_resource_create_with_modifiers(struct pipe_screen *pscreen,
    if (templat->bind & (PIPE_BIND_LINEAR | PIPE_BIND_SCANOUT))
       should_tile = false;
 
+   /* If there's no user modifiers and buffer is shared we use linear */
+   if (!has_user_modifiers && (templat->bind & PIPE_BIND_SHARED))
+      should_tile = false;
+
    if (drm_find_modifier(DRM_FORMAT_MOD_LINEAR, modifiers, count))
       should_tile = false;
 
@@ -330,7 +334,10 @@ lima_resource_from_handle(struct pipe_screen *pscreen,
       res->tiled = true;
       break;
    case DRM_FORMAT_MOD_INVALID:
-      res->tiled = screen->ro == NULL;
+      /* Modifier wasn't specified and it's shared buffer. We create these
+       * as linear, so disable tiling.
+       */
+      res->tiled = false;
       break;
    default:
       fprintf(stderr, "Attempted to import unsupported modifier 0x%llx\n",
