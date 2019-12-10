@@ -57,6 +57,10 @@ static LLVMValueRef cast_type(struct lp_build_nir_context *bld_base, LLVMValueRe
       break;
    case nir_type_int:
       switch (bit_size) {
+      case 8:
+         return LLVMBuildBitCast(builder, val, bld_base->int8_bld.vec_type, "");
+      case 16:
+         return LLVMBuildBitCast(builder, val, bld_base->int16_bld.vec_type, "");
       case 32:
          return LLVMBuildBitCast(builder, val, bld_base->int_bld.vec_type, "");
       case 64:
@@ -68,6 +72,10 @@ static LLVMValueRef cast_type(struct lp_build_nir_context *bld_base, LLVMValueRe
       break;
    case nir_type_uint:
       switch (bit_size) {
+      case 8:
+         return LLVMBuildBitCast(builder, val, bld_base->uint8_bld.vec_type, "");
+      case 16:
+         return LLVMBuildBitCast(builder, val, bld_base->uint16_bld.vec_type, "");
       case 32:
          return LLVMBuildBitCast(builder, val, bld_base->uint_bld.vec_type, "");
       case 64:
@@ -85,20 +93,6 @@ static LLVMValueRef cast_type(struct lp_build_nir_context *bld_base, LLVMValueRe
    return NULL;
 }
 
-static struct lp_build_context *get_int_bld(struct lp_build_nir_context *bld_base,
-                                            bool is_unsigned,
-                                            unsigned op_bit_size)
-{
-   if (is_unsigned)
-      if (op_bit_size == 64)
-         return &bld_base->uint64_bld;
-      else
-         return &bld_base->uint_bld;
-   else if (op_bit_size == 64)
-      return &bld_base->int64_bld;
-   else
-      return &bld_base->int_bld;
-}
 
 static struct lp_build_context *get_flt_bld(struct lp_build_nir_context *bld_base,
                                             unsigned op_bit_size)

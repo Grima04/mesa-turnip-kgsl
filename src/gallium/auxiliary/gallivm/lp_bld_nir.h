@@ -45,6 +45,10 @@ struct lp_build_nir_context
    struct lp_build_context base;
    struct lp_build_context uint_bld;
    struct lp_build_context int_bld;
+   struct lp_build_context uint8_bld;
+   struct lp_build_context int8_bld;
+   struct lp_build_context uint16_bld;
+   struct lp_build_context int16_bld;
    struct lp_build_context dbl_bld;
    struct lp_build_context uint64_bld;
    struct lp_build_context int64_bld;
@@ -216,6 +220,38 @@ lp_nir_array_build_gather_values(LLVMBuilderRef builder,
       arr = LLVMBuildInsertValue(builder, arr, values[i], i, "");
    }
    return arr;
+}
+
+
+static inline struct lp_build_context *get_int_bld(struct lp_build_nir_context *bld_base,
+                                                   bool is_unsigned,
+                                                   unsigned op_bit_size)
+{
+   if (is_unsigned) {
+      switch (op_bit_size) {
+      case 64:
+         return &bld_base->uint64_bld;
+      case 32:
+      default:
+         return &bld_base->uint_bld;
+      case 16:
+         return &bld_base->uint16_bld;
+      case 8:
+         return &bld_base->uint8_bld;
+      }
+   } else {
+      switch (op_bit_size) {
+      case 64:
+         return &bld_base->int64_bld;
+      default:
+      case 32:
+         return &bld_base->int_bld;
+      case 16:
+         return &bld_base->int16_bld;
+      case 8:
+         return &bld_base->int8_bld;
+      }
+   }
 }
 
 #endif

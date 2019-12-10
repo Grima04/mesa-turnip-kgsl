@@ -1238,6 +1238,30 @@ void lp_build_nir_soa(struct gallivm_state *gallivm,
       int64_type.width *= 2;
       lp_build_context_init(&bld.bld_base.int64_bld, gallivm, int64_type);
    }
+   {
+      struct lp_type uint16_type;
+      uint16_type = lp_uint_type(type);
+      uint16_type.width /= 2;
+      lp_build_context_init(&bld.bld_base.uint16_bld, gallivm, uint16_type);
+   }
+   {
+      struct lp_type int16_type;
+      int16_type = lp_int_type(type);
+      int16_type.width /= 2;
+      lp_build_context_init(&bld.bld_base.int16_bld, gallivm, int16_type);
+   }
+   {
+      struct lp_type uint8_type;
+      uint8_type = lp_uint_type(type);
+      uint8_type.width /= 4;
+      lp_build_context_init(&bld.bld_base.uint8_bld, gallivm, uint8_type);
+   }
+   {
+      struct lp_type int8_type;
+      int8_type = lp_int_type(type);
+      int8_type.width /= 4;
+      lp_build_context_init(&bld.bld_base.int8_bld, gallivm, int8_type);
+   }
    bld.bld_base.load_var = emit_load_var;
    bld.bld_base.store_var = emit_store_var;
    bld.bld_base.load_reg = emit_load_reg;
