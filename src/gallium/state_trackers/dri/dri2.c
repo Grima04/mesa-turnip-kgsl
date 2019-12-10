@@ -445,10 +445,8 @@ dri2_allocate_textures(struct dri_context *ctx,
       /* Flush the texture before unreferencing, so that other clients can
        * see what the driver has rendered.
        */
-      if (i != ST_ATTACHMENT_DEPTH_STENCIL && drawable->textures[i]) {
-         struct pipe_context *pipe = ctx->st->pipe;
-         pipe->flush_resource(pipe, drawable->textures[i]);
-      }
+      if (i != ST_ATTACHMENT_DEPTH_STENCIL && drawable->textures[i])
+         ctx->st->flush_resource(ctx->st, drawable->textures[i]);
 
       pipe_resource_reference(&drawable->textures[i], NULL);
    }
@@ -1517,11 +1515,11 @@ dri2_blit_image(__DRIcontext *context, __DRIimage *dst, __DRIimage *src,
    pipe->blit(pipe, &blit);
 
    if (flush_flag == __BLIT_FLAG_FLUSH) {
-      pipe->flush_resource(pipe, dst->texture);
+      ctx->st->flush_resource(ctx->st, dst->texture);
       ctx->st->flush(ctx->st, 0, NULL, NULL, NULL);
    } else if (flush_flag == __BLIT_FLAG_FINISH) {
       screen = dri_screen(ctx->sPriv)->base.screen;
-      pipe->flush_resource(pipe, dst->texture);
+      ctx->st->flush_resource(ctx->st, dst->texture);
       ctx->st->flush(ctx->st, 0, &fence, NULL, NULL);
       (void) screen->fence_finish(screen, NULL, fence, PIPE_TIMEOUT_INFINITE);
       screen->fence_reference(screen, &fence, NULL);
