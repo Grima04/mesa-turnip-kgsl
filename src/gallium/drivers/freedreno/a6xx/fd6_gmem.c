@@ -979,19 +979,14 @@ emit_blit(struct fd_batch *batch,
 			fd_msaa_samples(rsc->base.nr_samples);
 	uint32_t tile_mode = fd_resource_tile_mode(&rsc->base, psurf->u.tex.level);
 
-	OUT_PKT4(ring, REG_A6XX_RB_BLIT_DST_INFO, 5);
-	OUT_RING(ring,
-			 A6XX_RB_BLIT_DST_INFO_TILE_MODE(tile_mode) |
-			 A6XX_RB_BLIT_DST_INFO_SAMPLES(samples) |
-			 A6XX_RB_BLIT_DST_INFO_COLOR_FORMAT(format) |
-			 A6XX_RB_BLIT_DST_INFO_COLOR_SWAP(swap) |
-			 COND(ubwc_enabled, A6XX_RB_BLIT_DST_INFO_FLAGS));
-	OUT_RELOCW(ring, rsc->bo, offset, 0, 0);  /* RB_BLIT_DST_LO/HI */
-	OUT_RING(ring, A6XX_RB_BLIT_DST_PITCH(stride).value);
-	OUT_RING(ring, A6XX_RB_BLIT_DST_ARRAY_PITCH(size).value);
+	OUT_REG(ring,
+		A6XX_RB_BLIT_DST_INFO(.tile_mode = tile_mode, .samples = samples,
+			.color_format = format, .color_swap = swap, .flags = ubwc_enabled),
+		A6XX_RB_BLIT_DST(.bo = rsc->bo, .bo_offset = offset),
+		A6XX_RB_BLIT_DST_PITCH(.a6xx_rb_blit_dst_pitch = stride),
+		A6XX_RB_BLIT_DST_ARRAY_PITCH(.a6xx_rb_blit_dst_array_pitch = size));
 
-	OUT_PKT4(ring, REG_A6XX_RB_BLIT_BASE_GMEM, 1);
-	OUT_RING(ring, base);
+	OUT_REG(ring, A6XX_RB_BLIT_BASE_GMEM(.dword = base));
 
 	if (ubwc_enabled) {
 		OUT_PKT4(ring, REG_A6XX_RB_BLIT_FLAG_DST_LO, 3);
@@ -1009,27 +1004,12 @@ emit_restore_blit(struct fd_batch *batch,
 				  struct pipe_surface *psurf,
 				  unsigned buffer)
 {
-	uint32_t info = 0;
-	bool stencil = false;
+	bool stencil = (buffer == FD_BUFFER_STENCIL);
 
-	switch (buffer) {
-	case FD_BUFFER_COLOR:
-		info |= A6XX_RB_BLIT_INFO_UNK0;
-		break;
-	case FD_BUFFER_STENCIL:
-		info |= A6XX_RB_BLIT_INFO_UNK0;
-		stencil = true;
-		break;
-	case FD_BUFFER_DEPTH:
-		info |= A6XX_RB_BLIT_INFO_DEPTH | A6XX_RB_BLIT_INFO_UNK0;
-		break;
-	}
-
-	if (util_format_is_pure_integer(psurf->format))
-		info |= A6XX_RB_BLIT_INFO_INTEGER;
-
-	OUT_PKT4(ring, REG_A6XX_RB_BLIT_INFO, 1);
-	OUT_RING(ring, info | A6XX_RB_BLIT_INFO_GMEM);
+	OUT_REG(ring, A6XX_RB_BLIT_INFO(
+		.gmem = true, .unk0 = true,
+		.depth = (buffer == FD_BUFFER_DEPTH),
+		.integer = util_format_is_pure_integer(psurf->format)));
 
 	emit_blit(batch, ring, base, psurf, stencil);
 }
