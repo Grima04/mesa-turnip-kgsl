@@ -46,6 +46,7 @@
 #include "fd6_format.h"
 #include "fd6_resource.h"
 #include "fd6_zsa.h"
+#include "fd6_pack.h"
 
 /**
  * Emits the flags registers, suitable for RB_MRT_FLAG_BUFFER,
@@ -136,8 +137,8 @@ emit_mrt(struct fd_ringbuffer *ring, struct pipe_framebuffer_state *pfb,
 		OUT_RING(ring, A6XX_RB_MRT_BUF_INFO_COLOR_FORMAT(format) |
 				A6XX_RB_MRT_BUF_INFO_COLOR_TILE_MODE(tile_mode) |
 				A6XX_RB_MRT_BUF_INFO_COLOR_SWAP(swap));
-		OUT_RING(ring, A6XX_RB_MRT_PITCH(stride));
-		OUT_RING(ring, A6XX_RB_MRT_ARRAY_PITCH(slice->size0));
+		OUT_RING(ring, A6XX_RB_MRT_PITCH(stride).value);
+		OUT_RING(ring, A6XX_RB_MRT_ARRAY_PITCH(slice->size0).value);
 		OUT_RELOCW(ring, rsc->bo, offset, 0, 0);	/* BASE_LO/HI */
 		OUT_RING(ring, base);			/* RB_MRT[i].BASE_GMEM */
 		OUT_PKT4(ring, REG_A6XX_SP_FS_MRT_REG(i), 1);
@@ -198,8 +199,8 @@ emit_zs(struct fd_ringbuffer *ring, struct pipe_surface *zsbuf,
 
 		OUT_PKT4(ring, REG_A6XX_RB_DEPTH_BUFFER_INFO, 6);
 		OUT_RING(ring, A6XX_RB_DEPTH_BUFFER_INFO_DEPTH_FORMAT(fmt));
-		OUT_RING(ring, A6XX_RB_DEPTH_BUFFER_PITCH(stride));
-		OUT_RING(ring, A6XX_RB_DEPTH_BUFFER_ARRAY_PITCH(size));
+		OUT_RING(ring, A6XX_RB_DEPTH_BUFFER_PITCH(stride).value);
+		OUT_RING(ring, A6XX_RB_DEPTH_BUFFER_ARRAY_PITCH(size).value);
 		OUT_RELOCW(ring, rsc->bo, offset, 0, 0);  /* RB_DEPTH_BUFFER_BASE_LO/HI */
 		OUT_RING(ring, base); /* RB_DEPTH_BUFFER_BASE_GMEM */
 
@@ -241,8 +242,8 @@ emit_zs(struct fd_ringbuffer *ring, struct pipe_surface *zsbuf,
 
 			OUT_PKT4(ring, REG_A6XX_RB_STENCIL_INFO, 6);
 			OUT_RING(ring, A6XX_RB_STENCIL_INFO_SEPARATE_STENCIL);
-			OUT_RING(ring, A6XX_RB_STENCIL_BUFFER_PITCH(stride));
-			OUT_RING(ring, A6XX_RB_STENCIL_BUFFER_ARRAY_PITCH(size));
+			OUT_RING(ring, A6XX_RB_STENCIL_BUFFER_PITCH(stride).value);
+			OUT_RING(ring, A6XX_RB_STENCIL_BUFFER_ARRAY_PITCH(size).value);
 			OUT_RELOCW(ring, rsc->stencil->bo, 0, 0, 0);  /* RB_STENCIL_BASE_LO/HI */
 			OUT_RING(ring, base);  /* RB_STENCIL_BASE_LO */
 		} else {
@@ -999,8 +1000,8 @@ emit_blit(struct fd_batch *batch,
 			 A6XX_RB_BLIT_DST_INFO_COLOR_SWAP(swap) |
 			 COND(ubwc_enabled, A6XX_RB_BLIT_DST_INFO_FLAGS));
 	OUT_RELOCW(ring, rsc->bo, offset, 0, 0);  /* RB_BLIT_DST_LO/HI */
-	OUT_RING(ring, A6XX_RB_BLIT_DST_PITCH(stride));
-	OUT_RING(ring, A6XX_RB_BLIT_DST_ARRAY_PITCH(size));
+	OUT_RING(ring, A6XX_RB_BLIT_DST_PITCH(stride).value);
+	OUT_RING(ring, A6XX_RB_BLIT_DST_ARRAY_PITCH(size).value);
 
 	OUT_PKT4(ring, REG_A6XX_RB_BLIT_BASE_GMEM, 1);
 	OUT_RING(ring, base);

@@ -36,6 +36,7 @@
 #include "fd6_format.h"
 #include "fd6_emit.h"
 #include "fd6_resource.h"
+#include "fd6_pack.h"
 
 /* Make sure none of the requested dimensions extend beyond the size of the
  * resource.  Not entirely sure why this happens, but sometimes it does, and
