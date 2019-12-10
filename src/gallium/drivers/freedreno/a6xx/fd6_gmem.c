@@ -192,28 +192,26 @@ emit_zs(struct fd_ringbuffer *ring, struct pipe_surface *zsbuf,
 		uint32_t offset = fd_resource_offset(rsc, zsbuf->u.tex.level,
 				zsbuf->u.tex.first_layer);
 
-		OUT_PKT4(ring, REG_A6XX_RB_DEPTH_BUFFER_INFO, 6);
-		OUT_RING(ring, A6XX_RB_DEPTH_BUFFER_INFO_DEPTH_FORMAT(fmt));
-		OUT_RING(ring, A6XX_RB_DEPTH_BUFFER_PITCH(stride).value);
-		OUT_RING(ring, A6XX_RB_DEPTH_BUFFER_ARRAY_PITCH(size).value);
-		OUT_RELOCW(ring, rsc->bo, offset, 0, 0);  /* RB_DEPTH_BUFFER_BASE_LO/HI */
-		OUT_RING(ring, base); /* RB_DEPTH_BUFFER_BASE_GMEM */
+		OUT_REG(ring,
+			A6XX_RB_DEPTH_BUFFER_INFO(.depth_format = fmt),
+			A6XX_RB_DEPTH_BUFFER_PITCH(.a6xx_rb_depth_buffer_pitch = stride),
+			A6XX_RB_DEPTH_BUFFER_ARRAY_PITCH(.a6xx_rb_depth_buffer_array_pitch = size),
+			A6XX_RB_DEPTH_BUFFER_BASE(.bo = rsc->bo, .bo_offset = offset),
+			A6XX_RB_DEPTH_BUFFER_BASE_GMEM(.dword = base));
 
-		OUT_PKT4(ring, REG_A6XX_GRAS_SU_DEPTH_BUFFER_INFO, 1);
-		OUT_RING(ring, A6XX_GRAS_SU_DEPTH_BUFFER_INFO_DEPTH_FORMAT(fmt));
+		OUT_REG(ring, A6XX_GRAS_SU_DEPTH_BUFFER_INFO(.depth_format = fmt));
 
 		OUT_PKT4(ring, REG_A6XX_RB_DEPTH_FLAG_BUFFER_BASE_LO, 3);
 		fd6_emit_flag_reference(ring, rsc,
 				zsbuf->u.tex.level, zsbuf->u.tex.first_layer);
 
 		if (rsc->lrz) {
-			OUT_PKT4(ring, REG_A6XX_GRAS_LRZ_BUFFER_BASE_LO, 5);
-			OUT_RELOCW(ring, rsc->lrz, 0, 0, 0);
-			OUT_RING(ring, A6XX_GRAS_LRZ_BUFFER_PITCH_PITCH(rsc->lrz_pitch));
-			//OUT_RELOCW(ring, rsc->lrz, 0, 0, 0); /* GRAS_LRZ_FAST_CLEAR_BUFFER_BASE_LO/HI */
-			// XXX a6xx seems to use a different buffer here.. not sure what for..
-			OUT_RING(ring, 0x00000000);
-			OUT_RING(ring, 0x00000000);
+			OUT_REG(ring, 
+				A6XX_GRAS_LRZ_BUFFER_BASE(.bo = rsc->lrz),
+				A6XX_GRAS_LRZ_BUFFER_PITCH(.pitch = rsc->lrz_pitch),
+				// XXX a6xx seems to use a different buffer here.. not sure what for..
+				A6XX_GRAS_LRZ_FAST_CLEAR_BUFFER_BASE_LO(0),
+				A6XX_GRAS_LRZ_FAST_CLEAR_BUFFER_BASE_HI(0));
 		} else {
 			OUT_PKT4(ring, REG_A6XX_GRAS_LRZ_BUFFER_BASE_LO, 5);
 			OUT_RING(ring, 0x00000000);
@@ -235,27 +233,25 @@ emit_zs(struct fd_ringbuffer *ring, struct pipe_surface *zsbuf,
 			size = slice->size0;
 			uint32_t base = gmem ? gmem->zsbuf_base[1] : 0;
 
-			OUT_PKT4(ring, REG_A6XX_RB_STENCIL_INFO, 6);
-			OUT_RING(ring, A6XX_RB_STENCIL_INFO_SEPARATE_STENCIL);
-			OUT_RING(ring, A6XX_RB_STENCIL_BUFFER_PITCH(stride).value);
-			OUT_RING(ring, A6XX_RB_STENCIL_BUFFER_ARRAY_PITCH(size).value);
-			OUT_RELOCW(ring, rsc->stencil->bo, 0, 0, 0);  /* RB_STENCIL_BASE_LO/HI */
-			OUT_RING(ring, base);  /* RB_STENCIL_BASE_LO */
+			OUT_REG(ring,
+				A6XX_RB_STENCIL_INFO(.separate_stencil = true),
+				A6XX_RB_STENCIL_BUFFER_PITCH(.a6xx_rb_stencil_buffer_pitch = stride),
+				A6XX_RB_STENCIL_BUFFER_ARRAY_PITCH(.a6xx_rb_stencil_buffer_array_pitch = size),
+				A6XX_RB_STENCIL_BUFFER_BASE(.bo = rsc->stencil->bo),
+				A6XX_RB_STENCIL_BUFFER_BASE_GMEM(.dword = base));
 		} else {
-			OUT_PKT4(ring, REG_A6XX_RB_STENCIL_INFO, 1);
-			OUT_RING(ring, 0x00000000);     /* RB_STENCIL_INFO */
+			OUT_REG(ring, A6XX_RB_STENCIL_INFO(0));
 		}
 	} else {
-		OUT_PKT4(ring, REG_A6XX_RB_DEPTH_BUFFER_INFO, 6);
-		OUT_RING(ring, A6XX_RB_DEPTH_BUFFER_INFO_DEPTH_FORMAT(DEPTH6_NONE));
+		OUT_PKT4(ring, REG_A6XX_RB_DEPTH_BUFFER_INFO, 6);                                                                                                                                                                                                                                                                                                                                                                         
+		OUT_RING(ring, A6XX_RB_DEPTH_BUFFER_INFO_DEPTH_FORMAT(DEPTH6_NONE));                                                                                                                                                                                                                                                                                                                                                      
 		OUT_RING(ring, 0x00000000);    /* RB_DEPTH_BUFFER_PITCH */
 		OUT_RING(ring, 0x00000000);    /* RB_DEPTH_BUFFER_ARRAY_PITCH */
 		OUT_RING(ring, 0x00000000);    /* RB_DEPTH_BUFFER_BASE_LO */
 		OUT_RING(ring, 0x00000000);    /* RB_DEPTH_BUFFER_BASE_HI */
 		OUT_RING(ring, 0x00000000);    /* RB_DEPTH_BUFFER_BASE_GMEM */
 
-		OUT_PKT4(ring, REG_A6XX_GRAS_SU_DEPTH_BUFFER_INFO, 1);
-		OUT_RING(ring, A6XX_GRAS_SU_DEPTH_BUFFER_INFO_DEPTH_FORMAT(DEPTH6_NONE));
+		OUT_REG(ring, A6XX_GRAS_SU_DEPTH_BUFFER_INFO(.depth_format = DEPTH6_NONE));
 
 		OUT_PKT4(ring, REG_A6XX_GRAS_LRZ_BUFFER_BASE_LO, 5);
 		OUT_RING(ring, 0x00000000);    /* RB_DEPTH_FLAG_BUFFER_BASE_LO */
@@ -264,8 +260,7 @@ emit_zs(struct fd_ringbuffer *ring, struct pipe_surface *zsbuf,
 		OUT_RING(ring, 0x00000000);    /* GRAS_LRZ_FAST_CLEAR_BUFFER_BASE_LO */
 		OUT_RING(ring, 0x00000000);    /* GRAS_LRZ_FAST_CLEAR_BUFFER_BASE_HI */
 
-		OUT_PKT4(ring, REG_A6XX_RB_STENCIL_INFO, 1);
-		OUT_RING(ring, 0x00000000);     /* RB_STENCIL_INFO */
+		OUT_REG(ring, A6XX_RB_STENCIL_INFO(0));
 	}
 }
 
