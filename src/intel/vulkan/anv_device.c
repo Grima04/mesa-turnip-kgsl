@@ -2972,6 +2972,14 @@ bool
 anv_vma_alloc(struct anv_device *device, struct anv_bo *bo,
               uint64_t client_address)
 {
+   const struct anv_physical_device *pdevice = &device->instance->physicalDevice;
+   const struct gen_device_info *devinfo = &pdevice->info;
+   /* Gen12 CCS surface addresses need to be 64K aligned. We have no way of
+    * telling what this allocation is for so pick the largest alignment.
+    */
+   const uint32_t vma_alignment =
+      devinfo->gen >= 12 ? (64 * 1024) : (4 * 1024);
+
    if (!(bo->flags & EXEC_OBJECT_PINNED)) {
       assert(!(bo->has_client_visible_address));
       return true;
@@ -2989,7 +2997,8 @@ anv_vma_alloc(struct anv_device *device, struct anv_bo *bo,
             bo->offset = gen_canonical_address(client_address);
          }
       } else {
-         uint64_t addr = util_vma_heap_alloc(&device->vma_cva, bo->size, 4096);
+         uint64_t addr =
+            util_vma_heap_alloc(&device->vma_cva, bo->size, vma_alignment);
          if (addr) {
             bo->offset = gen_canonical_address(addr);
             assert(addr == gen_48b_address(bo->offset));
@@ -3002,7 +3011,8 @@ anv_vma_alloc(struct anv_device *device, struct anv_bo *bo,
    assert(client_address == 0);
 
    if (bo->flags & EXEC_OBJECT_SUPPORTS_48B_ADDRESS) {
-      uint64_t addr = util_vma_heap_alloc(&device->vma_hi, bo->size, 4096);
+      uint64_t addr =
+         util_vma_heap_alloc(&device->vma_hi, bo->size, vma_alignment);
       if (addr) {
          bo->offset = gen_canonical_address(addr);
          assert(addr == gen_48b_address(bo->offset));
@@ -3010,7 +3020,8 @@ anv_vma_alloc(struct anv_device *device, struct anv_bo *bo,
    }
 
    if (bo->offset == 0) {
-      uint64_t addr = util_vma_heap_alloc(&device->vma_lo, bo->size, 4096);
+      uint64_t addr =
+         util_vma_heap_alloc(&device->vma_lo, bo->size, vma_alignment);
       if (addr) {
          bo->offset = gen_canonical_address(addr);
          assert(addr == gen_48b_address(bo->offset));
