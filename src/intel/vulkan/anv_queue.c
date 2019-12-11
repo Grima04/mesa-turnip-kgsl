@@ -1461,7 +1461,11 @@ anv_wait_for_fences(struct anv_device *device,
    if (fenceCount <= 1 || waitAll) {
       for (uint32_t i = 0; i < fenceCount; i++) {
          ANV_FROM_HANDLE(anv_fence, fence, pFences[i]);
-         switch (fence->permanent.type) {
+         struct anv_fence_impl *impl =
+            fence->temporary.type != ANV_FENCE_TYPE_NONE ?
+            &fence->temporary : &fence->permanent;
+
+         switch (impl->type) {
          case ANV_FENCE_TYPE_BO:
          case ANV_FENCE_TYPE_WSI_BO:
             result = anv_wait_for_bo_fences(device, 1, &pFences[i],
@@ -1497,7 +1501,10 @@ static bool anv_all_fences_syncobj(uint32_t fenceCount, const VkFence *pFences)
 {
    for (uint32_t i = 0; i < fenceCount; ++i) {
       ANV_FROM_HANDLE(anv_fence, fence, pFences[i]);
-      if (fence->permanent.type != ANV_FENCE_TYPE_SYNCOBJ)
+      struct anv_fence_impl *impl =
+         fence->temporary.type != ANV_FENCE_TYPE_NONE ?
+         &fence->temporary : &fence->permanent;
+      if (impl->type != ANV_FENCE_TYPE_SYNCOBJ)
          return false;
    }
    return true;
@@ -1507,7 +1514,10 @@ static bool anv_all_fences_bo(uint32_t fenceCount, const VkFence *pFences)
 {
    for (uint32_t i = 0; i < fenceCount; ++i) {
       ANV_FROM_HANDLE(anv_fence, fence, pFences[i]);
-      if (fence->permanent.type != ANV_FENCE_TYPE_BO)
+      struct anv_fence_impl *impl =
+         fence->temporary.type != ANV_FENCE_TYPE_NONE ?
+         &fence->temporary : &fence->permanent;
+      if (impl->type != ANV_FENCE_TYPE_BO)
          return false;
    }
    return true;
