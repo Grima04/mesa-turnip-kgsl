@@ -678,20 +678,6 @@ spec/arb_shader_atomic_counters/semantics/tessellation control shader atomic bui
 spec/arb_shader_atomic_counters/semantics/tessellation evaluation shader atomic built-in semantics: skip
 spec/arb_shader_atomic_counters/unused-result/tessellation control shader atomic built-in semantics: skip
 spec/arb_shader_atomic_counters/unused-result/tessellation evaluation shader atomic built-in semantics: skip
-spec/arb_shader_draw_parameters/baseinstance: skip
-spec/arb_shader_draw_parameters/baseinstance-indirect: skip
-spec/arb_shader_draw_parameters/basevertex: skip
-spec/arb_shader_draw_parameters/basevertex-baseinstance: skip
-spec/arb_shader_draw_parameters/basevertex-baseinstance-indirect: skip
-spec/arb_shader_draw_parameters/basevertex-indirect: skip
-spec/arb_shader_draw_parameters/drawid: skip
-spec/arb_shader_draw_parameters/drawid-indirect: skip
-spec/arb_shader_draw_parameters/drawid-indirect-baseinstance: skip
-spec/arb_shader_draw_parameters/drawid-indirect-basevertex: skip
-spec/arb_shader_draw_parameters/drawid-indirect-vertexid: skip
-spec/arb_shader_draw_parameters/drawid-vertexid: skip
-spec/arb_shader_draw_parameters/vertexid-zerobased: skip
-spec/arb_shader_draw_parameters/vertexid-zerobased-indirect: skip
 spec/arb_shader_image_load_store/early-z/occlusion query test/early-z pass: fail
 spec/arb_shader_image_load_store/indexing/compute shader/dynamically uniform indexing test: fail
 spec/arb_shader_image_load_store/indexing/fragment shader/dynamically uniform indexing test: fail
@@ -2236,10 +2222,10 @@ wgl/wgl-sanity: skip
 summary:
        name:  results
        ----  --------
-       pass:    19287
+       pass:    19301
        fail:      237
       crash:        2
-       skip:     1976
+       skip:     1962
     timeout:        0
        warn:        2
  incomplete:        0
