@@ -344,7 +344,7 @@ static int gfx6_compute_level(ADDR_HANDLE addrlib,
 	    surf_level->mode == RADEON_SURF_MODE_2D &&
 	    level == 0 &&
 	    !(surf->flags & RADEON_SURF_NO_HTILE)) {
-		AddrHtileIn->flags.tcCompatible = AddrSurfInfoIn->flags.tcCompatible;
+		AddrHtileIn->flags.tcCompatible = AddrSurfInfoOut->tcCompatible;
 		AddrHtileIn->pitch = AddrSurfInfoOut->pitch;
 		AddrHtileIn->height = AddrSurfInfoOut->height;
 		AddrHtileIn->numSlices = AddrSurfInfoOut->depth;
