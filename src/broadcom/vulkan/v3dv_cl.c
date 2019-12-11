@@ -34,6 +34,14 @@ v3dv_cl_init(struct v3dv_cmd_buffer *cmd_buffer, struct v3dv_cl *cl)
 }
 
 void
+v3dv_cl_begin(struct v3dv_cl *cl)
+{
+   assert(!cl->cmd_buffer ||
+          cl->cmd_buffer->status == V3DV_CMD_BUFFER_STATUS_INITIALIZED);
+   assert(v3dv_cl_offset(cl) == 0);
+}
+
+void
 v3dv_cl_reset(struct v3dv_cl *cl)
 {
    /* FIXME: consider keeping the BO when the command buffer is reset with

@@ -70,7 +70,11 @@ cmd_buffer_create(struct v3dv_device *device,
    cmd_buffer->level = level;
    cmd_buffer->usage_flags = 0;
 
-   /* FIXME: setup command list structures */
+   v3dv_cl_init(cmd_buffer, &cmd_buffer->bcl);
+   v3dv_cl_init(cmd_buffer, &cmd_buffer->rcl);
+   v3dv_cl_init(cmd_buffer, &cmd_buffer->indirect);
+
+   cmd_buffer->status = V3DV_CMD_BUFFER_STATUS_NEW;
 
    assert(pool);
    list_addtail(&cmd_buffer->pool_link, &pool->cmd_buffers);
@@ -93,10 +97,13 @@ cmd_buffer_destroy(struct v3dv_cmd_buffer *cmd_buffer)
 static VkResult
 cmd_buffer_reset(struct v3dv_cmd_buffer *cmd_buffer)
 {
-   cmd_buffer->usage_flags = 0;
-   v3dv_cl_reset(&cmd_buffer->bcl);
-   v3dv_cl_reset(&cmd_buffer->rcl);
-   v3dv_cl_reset(&cmd_buffer->indirect);
+   if (cmd_buffer->status != V3DV_CMD_BUFFER_STATUS_INITIALIZED) {
+      cmd_buffer->usage_flags = 0;
+      v3dv_cl_reset(&cmd_buffer->bcl);
+      v3dv_cl_reset(&cmd_buffer->rcl);
+      v3dv_cl_reset(&cmd_buffer->indirect);
+      cmd_buffer->status = V3DV_CMD_BUFFER_STATUS_INITIALIZED;
+   }
    return VK_SUCCESS;
 }
 
@@ -183,11 +190,15 @@ v3dv_BeginCommandBuffer(VkCommandBuffer commandBuffer,
    if (result != VK_SUCCESS)
       return result;
 
+   assert(cmd_buffer->status == V3DV_CMD_BUFFER_STATUS_INITIALIZED);
+
    cmd_buffer->usage_flags = pBeginInfo->flags;
 
-   v3dv_cl_init(cmd_buffer, &cmd_buffer->bcl);
-   v3dv_cl_init(cmd_buffer, &cmd_buffer->rcl);
-   v3dv_cl_init(cmd_buffer, &cmd_buffer->indirect);
+   v3dv_cl_begin(&cmd_buffer->bcl);
+   v3dv_cl_begin(&cmd_buffer->rcl);
+   v3dv_cl_begin(&cmd_buffer->indirect);
+
+   cmd_buffer->status = V3DV_CMD_BUFFER_STATUS_RECORDING;
 
    return VK_SUCCESS;
 }

@@ -335,6 +335,12 @@ struct v3dv_cmd_pool {
    struct list_head cmd_buffers;
 };
 
+enum v3dv_cmd_buffer_status {
+   V3DV_CMD_BUFFER_STATUS_NEW           = 0,
+   V3DV_CMD_BUFFER_STATUS_INITIALIZED   = 1,
+   V3DV_CMD_BUFFER_STATUS_RECORDING     = 2
+};
+
 struct v3dv_cmd_buffer {
    VK_LOADER_DATA _loader_data;
 
@@ -349,6 +355,8 @@ struct v3dv_cmd_buffer {
    struct v3dv_cl bcl;
    struct v3dv_cl rcl;
    struct v3dv_cl indirect;
+
+   enum v3dv_cmd_buffer_status status;
 };
 
 struct v3dv_shader_module {

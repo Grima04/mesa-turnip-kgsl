@@ -42,7 +42,14 @@ struct v3dv_cl {
    uint32_t size;
 };
 
+static inline uint32_t
+v3dv_cl_offset(struct v3dv_cl *cl)
+{
+   return (char *)cl->next - (char *)cl->base;
+}
+
 void v3dv_cl_init(struct v3dv_cmd_buffer *cmd_buffer, struct v3dv_cl *cl);
+void v3dv_cl_begin(struct v3dv_cl *cl);
 void v3dv_cl_reset(struct v3dv_cl *cl);
 void v3dv_cl_destroy(struct v3dv_cl *cl);
 
