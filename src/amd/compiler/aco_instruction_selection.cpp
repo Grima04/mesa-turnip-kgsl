@@ -2818,8 +2818,11 @@ void load_lds(isel_context *ctx, unsigned elem_size_bytes, Temp dst,
          return;
       }
 
-      if (dst.type() == RegType::sgpr)
-         res = bld.as_uniform(res);
+      if (dst.type() == RegType::sgpr) {
+         Temp new_res = bld.tmp(RegType::sgpr, res.size());
+         expand_vector(ctx, res, new_res, res.size(), (1 << res.size()) - 1);
+         res = new_res;
+      }
 
       if (num_elements == 1) {
          result[result_size++] = res;
