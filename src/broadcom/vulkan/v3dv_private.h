@@ -345,6 +345,10 @@ struct v3dv_cmd_buffer {
 
    VkCommandBufferUsageFlags usage_flags;
    VkCommandBufferLevel level;
+
+   struct v3dv_cl bcl;
+   struct v3dv_cl rcl;
+   struct v3dv_cl indirect;
 };
 
 struct v3dv_shader_module {

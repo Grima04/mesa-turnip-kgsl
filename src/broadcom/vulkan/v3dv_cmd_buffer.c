@@ -84,7 +84,20 @@ static void
 cmd_buffer_destroy(struct v3dv_cmd_buffer *cmd_buffer)
 {
    list_del(&cmd_buffer->pool_link);
+   v3dv_cl_destroy(&cmd_buffer->bcl);
+   v3dv_cl_destroy(&cmd_buffer->rcl);
+   v3dv_cl_destroy(&cmd_buffer->indirect);
    vk_free(&cmd_buffer->pool->alloc, cmd_buffer);
+}
+
+static VkResult
+cmd_buffer_reset(struct v3dv_cmd_buffer *cmd_buffer)
+{
+   cmd_buffer->usage_flags = 0;
+   v3dv_cl_reset(&cmd_buffer->bcl);
+   v3dv_cl_reset(&cmd_buffer->rcl);
+   v3dv_cl_reset(&cmd_buffer->indirect);
+   return VK_SUCCESS;
 }
 
 VkResult
@@ -151,4 +164,30 @@ v3dv_DestroyCommandPool(VkDevice _device,
    }
 
    vk_free2(&device->alloc, pAllocator, pool);
+}
+
+VkResult
+v3dv_BeginCommandBuffer(VkCommandBuffer commandBuffer,
+                        const VkCommandBufferBeginInfo *pBeginInfo)
+{
+   V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
+
+   assert(cmd_buffer->level == VK_COMMAND_BUFFER_LEVEL_SECONDARY ||
+          !(cmd_buffer->usage_flags & VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT));
+
+   /* If this is the first vkBeginCommandBuffer, we must initialize the
+    * command buffer's state. Otherwise, we must reset its state. In both
+    * cases we reset it.
+    */
+   VkResult result = cmd_buffer_reset(cmd_buffer);
+   if (result != VK_SUCCESS)
+      return result;
+
+   cmd_buffer->usage_flags = pBeginInfo->flags;
+
+   v3dv_cl_init(cmd_buffer, &cmd_buffer->bcl);
+   v3dv_cl_init(cmd_buffer, &cmd_buffer->rcl);
+   v3dv_cl_init(cmd_buffer, &cmd_buffer->indirect);
+
+   return VK_SUCCESS;
 }
