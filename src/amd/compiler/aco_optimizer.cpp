@@ -1345,6 +1345,12 @@ bool combine_constant_comparison_ordering(opt_ctx &ctx, aco_ptr<Instruction>& in
    if (prop_nan0 != prop_nan1)
       return false;
 
+   if (nan_test->isVOP3()) {
+      VOP3A_instruction *vop3 = static_cast<VOP3A_instruction*>(nan_test);
+      if (vop3->neg[0] != vop3->neg[1] || vop3->abs[0] != vop3->abs[1] || vop3->opsel == 1 || vop3->opsel == 2)
+         return false;
+   }
+
    int constant_operand = -1;
    for (unsigned i = 0; i < 2; i++) {
       if (cmp->operands[i].isTemp() && original_temp_id(ctx, cmp->operands[i].getTemp()) == prop_nan0) {
