@@ -348,7 +348,8 @@ anv_device_submit_deferred_locked(struct anv_device *device)
 }
 
 static VkResult
-_anv_queue_submit(struct anv_queue *queue, struct anv_queue_submit **_submit)
+_anv_queue_submit(struct anv_queue *queue, struct anv_queue_submit **_submit,
+                  bool flush_queue)
 {
    struct anv_queue_submit *submit = *_submit;
 
@@ -361,6 +362,18 @@ _anv_queue_submit(struct anv_queue *queue, struct anv_queue_submit **_submit)
    pthread_mutex_lock(&queue->device->mutex);
    list_addtail(&submit->link, &queue->queued_submits);
    VkResult result = anv_device_submit_deferred_locked(queue->device);
+   if (flush_queue) {
+      while (result == VK_SUCCESS && !list_is_empty(&queue->queued_submits)) {
+         int ret = pthread_cond_wait(&queue->device->queue_submit,
+                                     &queue->device->mutex);
+         if (ret != 0) {
+            result = anv_device_set_lost(queue->device, "wait timeout");
+            break;
+         }
+
+         result = anv_device_submit_deferred_locked(queue->device);
+      }
+   }
    pthread_mutex_unlock(&queue->device->mutex);
    return result;
 }
@@ -599,7 +612,7 @@ anv_queue_submit_simple_batch(struct anv_queue *queue,
       submit->simple_bo_size = size;
    }
 
-   result = _anv_queue_submit(queue, &submit);
+   result = _anv_queue_submit(queue, &submit, true);
 
    if (result == VK_SUCCESS) {
       if (has_syncobj_wait) {
@@ -889,7 +902,7 @@ anv_queue_submit(struct anv_queue *queue,
       }
    }
 
-   result = _anv_queue_submit(queue, &submit);
+   result = _anv_queue_submit(queue, &submit, false);
    if (result != VK_SUCCESS)
       goto error;
 
