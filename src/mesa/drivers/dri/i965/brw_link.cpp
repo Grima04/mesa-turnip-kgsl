@@ -272,7 +272,7 @@ brw_link_shader(struct gl_context *ctx, struct gl_shader_program *shProg)
       static const gl_nir_linker_options opts = {
          .fill_parameters = false,
       };
-      if (!gl_nir_link(ctx, shProg, &opts))
+      if (!gl_nir_link_spirv(ctx, shProg, &opts))
          return GL_FALSE;
    }
 

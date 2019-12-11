@@ -705,7 +705,7 @@ st_link_nir(struct gl_context *ctx,
       static const gl_nir_linker_options opts = {
          true /*fill_parameters */
       };
-      if (!gl_nir_link(ctx, shader_program, &opts))
+      if (!gl_nir_link_spirv(ctx, shader_program, &opts))
          return GL_FALSE;
 
       nir_build_program_resource_list(ctx, shader_program, true);
