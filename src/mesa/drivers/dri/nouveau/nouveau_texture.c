@@ -41,6 +41,8 @@
 #include "util/u_memory.h"
 #include "drivers/common/meta.h"
 #include "swrast/s_texfetch.h"
+#include "util/macros.h"
+
 
 static struct gl_texture_object *
 nouveau_texture_new(struct gl_context *ctx, GLuint name, GLenum target)
@@ -246,7 +248,7 @@ nouveau_choose_tex_format(struct gl_context *ctx, GLenum target,
 		return MESA_FORMAT_RGBA_DXT5;
 
 	default:
-		assert(0);
+		unreachable("Unknown format");
 	}
 }
 
