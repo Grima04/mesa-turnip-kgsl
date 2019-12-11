@@ -1999,12 +1999,13 @@ draw_llvm_generate(struct draw_llvm *llvm, struct draw_llvm_variant *variant)
        * the primitive was split (we split rendering into chunks of at
        * most 4095-vertices) we need to back out the original start
        * index out of our vertex id here.
+       * for ARB_shader_draw_parameters, base_vertex should be 0 for non-indexed draws.
        */
-      system_values.basevertex = lp_build_broadcast_scalar(&blduivec,
-                                                           vertex_id_offset);
+      LLVMValueRef base_vertex = lp_build_select(&bld, have_elts, vertex_id_offset, lp_build_const_int32(gallivm, 0));;
+      system_values.basevertex = lp_build_broadcast_scalar(&blduivec, base_vertex);
       system_values.vertex_id = true_index_array;
       system_values.vertex_id_nobase = LLVMBuildSub(builder, true_index_array,
-                                                      system_values.basevertex, "");
+                                                    lp_build_broadcast_scalar(&blduivec, vertex_id_offset), "");
 
       ptr_aos = (const LLVMValueRef (*)[TGSI_NUM_CHANNELS]) inputs;
       generate_vs(variant,
