@@ -106,27 +106,24 @@ class nir_serialize_all_but_one_test : public nir_serialize_test {};
 
 } // namespace
 
+#if NIR_MAX_VEC_COMPONENTS == 16
+#define COMPONENTS 2, 3, 4, 8, 16
+#else
+#define COMPONENTS 2, 3, 4
+#endif
+
+
 INSTANTIATE_TEST_CASE_P(
    nir_serialize_all_test,
    nir_serialize_all_test,
-   ::testing::Values(
-#if NIR_MAX_VEC_COMPONENTS == 16
-      1, 2, 3, 4, 8, 16
-#else
-      1, 2, 3, 4
-#endif
-));
+   ::testing::Values(1, COMPONENTS)
+);
 
 INSTANTIATE_TEST_CASE_P(
    nir_serialize_all_but_one_test,
    nir_serialize_all_but_one_test,
-   ::testing::Values(
-#if NIR_MAX_VEC_COMPONENTS == 16
-      2, 3, 4, 8, 16
-#else
-      2, 3, 4
-#endif
-));
+   ::testing::Values(COMPONENTS)
+);
 
 TEST_P(nir_serialize_all_test, alu_single_value_src_swizzle)
 {
