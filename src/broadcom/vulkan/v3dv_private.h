@@ -55,6 +55,16 @@
 #include "v3dv_extensions.h"
 #include "v3dv_bo.h"
 
+/* FIXME: hooks for the packet definition functions. */
+static inline void
+pack_emit_reloc(void *cl, const void *reloc) {}
+
+#define __gen_user_data char
+#define __gen_address_type char
+#define __gen_emit_reloc pack_emit_reloc
+#define __gen_address_offset(reloc) (0)
+#include "v3dv_cl.h"
+
 #include "vk_alloc.h"
 #include "simulator/v3d_simulator.h"
 
@@ -73,15 +83,6 @@
 #else
 #define v3dv_assert(x)
 #endif
-
-/* FIXME: hooks for the packet definition functions. */
-static inline void
-pack_emit_reloc(void *cl, const void *reloc) {}
-
-#define __gen_user_data char
-#define __gen_address_type char
-#define __gen_emit_reloc pack_emit_reloc
-#define __gen_address_offset(reloc) (0)
 
 struct v3dv_instance;
 
