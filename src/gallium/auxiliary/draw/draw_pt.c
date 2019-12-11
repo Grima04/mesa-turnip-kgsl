@@ -485,6 +485,7 @@ draw_vbo(struct draw_context *draw,
    draw->pt.user.min_index = info->min_index;
    draw->pt.user.max_index = info->max_index;
    draw->pt.user.eltSize = info->index_size ? draw->pt.user.eltSizeIB : 0;
+   draw->pt.user.drawid = info->drawid;
 
    if (0)
       debug_printf("draw_vbo(mode=%u start=%u count=%u):\n",

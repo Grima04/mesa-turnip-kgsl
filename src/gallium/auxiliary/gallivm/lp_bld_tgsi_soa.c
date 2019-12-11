@@ -1345,6 +1345,11 @@ emit_fetch_system_value(
       res = lp_build_broadcast_scalar(&bld_base->uint_bld, bld->system_values.front_facing);
       break;
 
+   case TGSI_SEMANTIC_DRAWID:
+      res = lp_build_broadcast_scalar(&bld_base->uint_bld, bld->system_values.draw_id);
+      atype = TGSI_TYPE_UNSIGNED;
+      break;
+
    default:
       assert(!"unexpected semantic in emit_fetch_system_value");
       res = bld_base->base.zero;
