@@ -907,7 +907,16 @@ anv_queue_submit(struct anv_queue *queue,
       goto error;
 
    if (fence && fence->permanent.type == ANV_FENCE_TYPE_BO) {
-      /* BO fences can't be shared, so they can't be temporary. */
+      /* If we have permanent BO fence, the only type of temporary possible
+       * would be BO_WSI (because BO fences are not shareable). The Vulkan spec
+       * also requires that the fence passed to vkQueueSubmit() be :
+       *
+       *    * unsignaled
+       *    * not be associated with any other queue command that has not yet
+       *      completed execution on that queue
+       *
+       * So the only acceptable type for the temporary is NONE.
+       */
       assert(fence->temporary.type == ANV_FENCE_TYPE_NONE);
 
       /* Once the execbuf has returned, we need to set the fence state to
@@ -1234,8 +1243,6 @@ VkResult anv_GetFenceStatus(
    switch (impl->type) {
    case ANV_FENCE_TYPE_BO:
    case ANV_FENCE_TYPE_WSI_BO:
-      /* BO fences don't support import/export */
-      assert(fence->temporary.type == ANV_FENCE_TYPE_NONE);
       switch (impl->bo.state) {
       case ANV_BO_FENCE_STATE_RESET:
          /* If it hasn't even been sent off to the GPU yet, it's not ready */
@@ -1440,12 +1447,9 @@ done:
 
 static VkResult
 anv_wait_for_wsi_fence(struct anv_device *device,
-                       const VkFence _fence,
+                       struct anv_fence_impl *impl,
                        uint64_t abs_timeout)
 {
-   ANV_FROM_HANDLE(anv_fence, fence, _fence);
-   struct anv_fence_impl *impl = &fence->permanent;
-
    return impl->fence_wsi->wait(impl->fence_wsi, abs_timeout);
 }
 
@@ -1476,7 +1480,7 @@ anv_wait_for_fences(struct anv_device *device,
                                                  true, abs_timeout);
             break;
          case ANV_FENCE_TYPE_WSI:
-            result = anv_wait_for_wsi_fence(device, pFences[i], abs_timeout);
+            result = anv_wait_for_wsi_fence(device, impl, abs_timeout);
             break;
          case ANV_FENCE_TYPE_NONE:
             result = VK_SUCCESS;
@@ -1517,7 +1521,8 @@ static bool anv_all_fences_bo(uint32_t fenceCount, const VkFence *pFences)
       struct anv_fence_impl *impl =
          fence->temporary.type != ANV_FENCE_TYPE_NONE ?
          &fence->temporary : &fence->permanent;
-      if (impl->type != ANV_FENCE_TYPE_BO)
+      if (impl->type != ANV_FENCE_TYPE_BO &&
+          impl->type != ANV_FENCE_TYPE_WSI_BO)
          return false;
    }
    return true;
