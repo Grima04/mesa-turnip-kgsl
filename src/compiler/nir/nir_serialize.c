@@ -879,7 +879,7 @@ write_alu(write_ctx *ctx, const nir_alu_instr *alu)
                unsigned value = 0;
 
                for (unsigned j = 0; j < 8 && o + j < src_channels; j++) {
-                  value |= alu->src[i].swizzle[o + j] <<
+                  value |= (uint32_t)alu->src[i].swizzle[o + j] <<
                            (4 * j); /* 4 bits per swizzle */
                }
 
