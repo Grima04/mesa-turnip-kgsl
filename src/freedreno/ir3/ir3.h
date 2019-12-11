@@ -58,6 +58,8 @@ struct ir3_info {
 
 	/* number of sync bits: */
 	uint16_t ss, sy;
+
+	uint16_t last_baryf;     /* instruction # of last varying fetch */
 };
 
 struct ir3_register {

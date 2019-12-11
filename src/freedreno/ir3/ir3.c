@@ -915,6 +915,10 @@ void * ir3_assemble(struct ir3 *shader, struct ir3_info *info,
 			int ret = emit[opc_cat(instr->opc)](instr, dwords, info);
 			if (ret)
 				goto fail;
+
+			if ((instr->opc == OPC_BARY_F) && (instr->regs[0]->flags & IR3_REG_EI))
+				info->last_baryf = info->instrs_count;
+
 			info->instrs_count += 1 + instr->repeat + instr->nop;
 			info->nops_count += instr->nop;
 			if (instr->opc == OPC_NOP)
