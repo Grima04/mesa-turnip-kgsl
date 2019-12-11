@@ -1928,18 +1928,20 @@ bool apply_omod_clamp(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
 {
    /* check if we could apply omod on predecessor */
    if (instr->opcode == aco_opcode::v_mul_f32) {
-      if (instr->operands[1].isTemp() && ctx.info[instr->operands[1].tempId()].is_omod_success()) {
-
+      bool op0 = instr->operands[0].isTemp() && ctx.info[instr->operands[0].tempId()].is_omod_success();
+      bool op1 = instr->operands[1].isTemp() && ctx.info[instr->operands[1].tempId()].is_omod_success();
+      if (op0 || op1) {
+         unsigned idx = op0 ? 0 : 1;
          /* omod was successfully applied */
          /* if the omod instruction is v_mad, we also have to change the original add */
-         if (ctx.info[instr->operands[1].tempId()].is_mad()) {
-            Instruction* add_instr = ctx.mad_infos[ctx.info[instr->operands[1].tempId()].val].add_instr.get();
+         if (ctx.info[instr->operands[idx].tempId()].is_mad()) {
+            Instruction* add_instr = ctx.mad_infos[ctx.info[instr->operands[idx].tempId()].val].add_instr.get();
             if (ctx.info[instr->definitions[0].tempId()].is_clamp())
                static_cast<VOP3A_instruction*>(add_instr)->clamp = true;
             add_instr->definitions[0] = instr->definitions[0];
          }
 
-         Instruction* omod_instr = ctx.info[instr->operands[1].tempId()].instr;
+         Instruction* omod_instr = ctx.info[instr->operands[idx].tempId()].instr;
          /* check if we have an additional clamp modifier */
          if (ctx.info[instr->definitions[0].tempId()].is_clamp() && ctx.uses[instr->definitions[0].tempId()] == 1) {
             static_cast<VOP3A_instruction*>(omod_instr)->clamp = true;
@@ -1949,7 +1951,7 @@ bool apply_omod_clamp(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
          omod_instr->definitions[0] = instr->definitions[0];
 
          /* change the definition of instr to something unused, e.g. the original omod def */
-         instr->definitions[0] = Definition(instr->operands[1].getTemp());
+         instr->definitions[0] = Definition(instr->operands[idx].getTemp());
          ctx.uses[instr->definitions[0].tempId()] = 0;
          return true;
       }
