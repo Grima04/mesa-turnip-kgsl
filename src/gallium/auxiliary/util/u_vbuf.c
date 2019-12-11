@@ -1030,6 +1030,12 @@ u_vbuf_get_minmax_index_mapped(const struct pipe_draw_info *info,
                                const void *indices, unsigned *out_min_index,
                                unsigned *out_max_index)
 {
+   if (!info->count) {
+      *out_min_index = 0;
+      *out_max_index = 0;
+      return;
+   }
+
    switch (info->index_size) {
    case 4: {
       const unsigned *ui_indices = (const unsigned*)indices;
