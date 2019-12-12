@@ -1876,6 +1876,11 @@ tu_BeginCommandBuffer(VkCommandBuffer commandBuffer,
       default:
          break;
       }
+   } else if (cmd_buffer->level == VK_COMMAND_BUFFER_LEVEL_SECONDARY &&
+              (pBeginInfo->flags & VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT)) {
+      assert(pBeginInfo->pInheritanceInfo);
+      cmd_buffer->state.pass = tu_render_pass_from_handle(pBeginInfo->pInheritanceInfo->renderPass);
+      cmd_buffer->state.subpass = &cmd_buffer->state.pass->subpasses[pBeginInfo->pInheritanceInfo->subpass];
    }
 
    cmd_buffer->status = TU_CMD_BUFFER_STATUS_RECORDING;
@@ -2203,6 +2208,27 @@ tu_CmdExecuteCommands(VkCommandBuffer commandBuffer,
                       uint32_t commandBufferCount,
                       const VkCommandBuffer *pCmdBuffers)
 {
+   TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
+   VkResult result;
+
+   assert(commandBufferCount > 0);
+
+   for (uint32_t i = 0; i < commandBufferCount; i++) {
+      TU_FROM_HANDLE(tu_cmd_buffer, secondary, pCmdBuffers[i]);
+
+      result = tu_bo_list_merge(&cmd->bo_list, &secondary->bo_list);
+      if (result != VK_SUCCESS) {
+         cmd->record_result = result;
+         break;
+      }
+
+      result = tu_cs_add_entries(&cmd->draw_cs, &secondary->draw_cs);
+      if (result != VK_SUCCESS) {
+         cmd->record_result = result;
+         break;
+      }
+   }
+   cmd->state.dirty = ~0u; /* TODO: set dirty only what needs to be */
 }
 
 VkResult
@@ -2565,6 +2591,9 @@ write_tex_const(struct tu_cmd_buffer *cmd,
       dst[5] = A6XX_TEX_CONST_5_DEPTH(1);
       for (unsigned i = 6; i < A6XX_TEX_CONST_DWORDS; i++)
          dst[i] = 0;
+
+      if (cmd->level == VK_COMMAND_BUFFER_LEVEL_SECONDARY)
+         tu_finishme("patch input attachment pitch for secondary cmd buffer");
    }
 }
 

@@ -66,6 +66,9 @@ tu_cs_reserve_space(struct tu_device *dev,
 void
 tu_cs_reset(struct tu_device *dev, struct tu_cs *cs);
 
+VkResult
+tu_cs_add_entries(struct tu_cs *cs, struct tu_cs *target);
+
 /**
  * Discard all entries.  This allows \a cs to be reused while keeping the
  * existing BOs and command packets intact.

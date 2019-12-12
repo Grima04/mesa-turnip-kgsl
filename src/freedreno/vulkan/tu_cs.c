@@ -159,7 +159,7 @@ tu_cs_add_bo(struct tu_device *dev, struct tu_cs *cs, uint32_t size)
  * Reserve an IB entry.
  */
 static VkResult
-tu_cs_reserve_entry(struct tu_device *dev, struct tu_cs *cs)
+tu_cs_reserve_entry(struct tu_cs *cs)
 {
    /* entries are only for TU_CS_MODE_GROW */
    assert(cs->mode == TU_CS_MODE_GROW);
@@ -207,6 +207,34 @@ tu_cs_add_entry(struct tu_cs *cs)
    };
 
    cs->start = cs->cur;
+}
+
+/**
+ * same behavior as tu_cs_emit_call but without the indirect
+ */
+VkResult
+tu_cs_add_entries(struct tu_cs *cs, struct tu_cs *target)
+{
+   VkResult result;
+
+   assert(cs->mode == TU_CS_MODE_GROW);
+   assert(target->mode == TU_CS_MODE_GROW);
+
+   if (!tu_cs_is_empty(cs)) {
+      tu_cs_add_entry(cs);
+      result = tu_cs_reserve_entry(cs);
+      if (result != VK_SUCCESS)
+         return result;
+   }
+
+   for (unsigned i = 0; i < target->entry_count; i++) {
+      cs->entries[cs->entry_count++] = target->entries[i];
+      result = tu_cs_reserve_entry(cs);
+      if (result != VK_SUCCESS)
+         return result;
+   }
+
+   return VK_SUCCESS;
 }
 
 /**
@@ -367,7 +395,7 @@ tu_cs_reserve_space(struct tu_device *dev,
 
    if (cs->mode == TU_CS_MODE_GROW) {
       /* reserve an entry for the next call to this function or tu_cs_end */
-      return tu_cs_reserve_entry(dev, cs);
+      return tu_cs_reserve_entry(cs);
    }
 
    return VK_SUCCESS;
