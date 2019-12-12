@@ -231,6 +231,9 @@ xsi:schemaLocation="http://nouveau.freedesktop.org/ rules-ng.xsd">
 	<value value="0xcc" name="TFMT6_ASTC_10x10"/>
 	<value value="0xcd" name="TFMT6_ASTC_12x10"/>
 	<value value="0xce" name="TFMT6_ASTC_12x12"/>
+
+	<!-- same as X8Z24_UNORM but for sampling stencil (integer, 2nd channel) -->
+	<value value="0xea" name="TFMT6_S8Z24_UINT"/>
 </enum>
 
 <enum name="a6xx_tex_fetchsize">
