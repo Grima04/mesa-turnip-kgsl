@@ -107,6 +107,8 @@ struct swr_draw_context {
    struct swr_query_result *pStats; // @llvm_struct
    SWR_INTERFACE *pAPI; // @llvm_struct - Needed for the swr_memory callbacks
    SWR_TILE_INTERFACE *pTileAPI; // @llvm_struct - Needed for the swr_memory callbacks
+
+   uint64_t* soPrims; //number of primitives written to StreamOut buffer
 };
 
 /* gen_llvm_types FINI */
@@ -160,6 +162,7 @@ struct swr_context {
    // streamout
    pipe_stream_output_target *so_targets[MAX_SO_STREAMS];
    uint32_t num_so_targets;
+   uint64_t so_primCounter; // number of primitives written to StreamOut buffer
 
    /* Temp storage for user_buffer constants */
    struct swr_scratch_buffers *scratch;

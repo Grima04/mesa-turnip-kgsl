@@ -1763,21 +1763,22 @@ swr_update_derived(struct pipe_context *pipe,
 
       pipe_stream_output_info *stream_output = &ctx->vs->pipe.stream_output;
 
-      for (uint32_t i = 0; i < ctx->num_so_targets; i++) {
+      for (uint32_t i = 0; i < MAX_SO_STREAMS; i++) {
          SWR_STREAMOUT_BUFFER buffer = {0};
-         if (!ctx->so_targets[i])
-            continue;
-         buffer.enable = true;
-         buffer.pBuffer =
-            (gfxptr_t)(swr_resource_data(ctx->so_targets[i]->buffer) +
-                         ctx->so_targets[i]->buffer_offset);
-         buffer.bufferSize = ctx->so_targets[i]->buffer_size >> 2;
-         buffer.pitch = stream_output->stride[i];
-         buffer.streamOffset = 0;
+         if (ctx->so_targets[i]) {
+             buffer.enable = true;
+             buffer.pBuffer =
+                (gfxptr_t)(swr_resource_data(ctx->so_targets[i]->buffer) +
+                             ctx->so_targets[i]->buffer_offset);
+             buffer.bufferSize = ctx->so_targets[i]->buffer_size >> 2;
+             buffer.pitch = stream_output->stride[i];
+             buffer.streamOffset = 0;
+	 }
 
          ctx->api.pfnSwrSetSoBuffers(ctx->swrContext, &buffer, i);
       }
    }
+
 
    if (ctx->dirty & (SWR_NEW_CLIP | SWR_NEW_RASTERIZER | SWR_NEW_VS)) {
       // shader exporting clip distances overrides all user clip planes
@@ -1902,6 +1903,7 @@ swr_set_so_targets(struct pipe_context *pipe,
    }
 
    swr->num_so_targets = num_targets;
+   swr->swrDC.soPrims = &swr->so_primCounter;
 
    swr->dirty |= SWR_NEW_SO;
 }

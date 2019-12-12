@@ -62,6 +62,16 @@ swr_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info)
 
    swr_update_draw_context(ctx);
 
+   struct pipe_draw_info resolved_info;
+   /* DrawTransformFeedback */
+   if (info->count_from_stream_output) {
+      // trick copied from softpipe to modify const struct *info
+      memcpy(&resolved_info, (void*)info, sizeof(struct pipe_draw_info));
+      resolved_info.count = ctx->so_primCounter * resolved_info.vertices_per_patch;
+      resolved_info.max_index = resolved_info.count - 1;
+      info = &resolved_info;
+   }
+
    if (ctx->vs->pipe.stream_output.num_outputs) {
       if (!ctx->vs->soFunc[info->mode]) {
          STREAMOUT_COMPILE_STATE state = {0};

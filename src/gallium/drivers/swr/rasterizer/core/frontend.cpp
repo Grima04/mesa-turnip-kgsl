@@ -589,6 +589,8 @@ static void StreamOut(
         }
     }
 
+    pDC->dynState.soPrims += soContext.numPrimsWritten;
+
     UPDATE_STAT_FE(SoPrimStorageNeeded[streamIndex], soContext.numPrimStorageNeeded);
     UPDATE_STAT_FE(SoNumPrimsWritten[streamIndex], soContext.numPrimsWritten);
 
