@@ -109,7 +109,7 @@ tu_sort_variables_by_location(struct exec_list *variables)
 }
 
 static unsigned
-map_add(struct tu_descriptor_map *map, int set, int binding)
+map_add(struct tu_descriptor_map *map, int set, int binding, int value)
 {
    unsigned index;
    for (index = 0; index < map->num; index++) {
@@ -121,6 +121,7 @@ map_add(struct tu_descriptor_map *map, int set, int binding)
 
    map->set[index] = set;
    map->binding[index] = binding;
+   map->value[index] = value;
    map->num = MAX2(map->num, index + 1);
    return index;
 }
@@ -189,12 +190,14 @@ lower_tex_src_to_offset(nir_builder *b, nir_tex_instr *instr, unsigned src_idx,
    if (is_sampler) {
       instr->sampler_index = map_add(&shader->sampler_map,
                                      deref->var->data.descriptor_set,
-                                     deref->var->data.binding);
+                                     deref->var->data.binding,
+                                     0);
       instr->sampler_index += base_index;
    } else {
       instr->texture_index = map_add(&shader->texture_map,
                                      deref->var->data.descriptor_set,
-                                     deref->var->data.binding);
+                                     deref->var->data.binding,
+                                     deref->var->data.index);
       instr->texture_index += base_index;
       instr->texture_array_size = array_elements;
    }
@@ -269,11 +272,11 @@ lower_intrinsic(nir_builder *b, nir_intrinsic_instr *instr,
    case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
    case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
       /* skip index 0 which is used for push constants */
-      index = map_add(&shader->ubo_map, set, binding) + 1;
+      index = map_add(&shader->ubo_map, set, binding, 0) + 1;
       break;
    case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
    case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
-      index = map_add(&shader->ssbo_map, set, binding);
+      index = map_add(&shader->ssbo_map, set, binding, 0);
       break;
    default:
       tu_finishme("unsupported desc_type for vulkan_resource_index");
@@ -419,6 +422,9 @@ tu_shader_create(struct tu_device *dev,
 
    NIR_PASS_V(nir, nir_lower_system_values);
    NIR_PASS_V(nir, nir_lower_frexp);
+
+   if (stage == MESA_SHADER_FRAGMENT)
+      NIR_PASS_V(nir, nir_lower_input_attachments, true);
 
    NIR_PASS_V(nir, tu_lower_io, shader);
 

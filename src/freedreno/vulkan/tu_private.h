@@ -1054,6 +1054,7 @@ struct tu_descriptor_map
    unsigned num;
    int set[64];
    int binding[64];
+   int value[64];
 };
 
 struct tu_shader

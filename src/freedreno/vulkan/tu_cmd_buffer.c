@@ -2520,9 +2520,12 @@ sampler_ptr(struct tu_descriptor_state *descriptors_state,
    }
 }
 
-static uint32_t*
-texture_ptr(struct tu_descriptor_state *descriptors_state,
-            const struct tu_descriptor_map *map, unsigned i)
+static void
+write_tex_const(struct tu_cmd_buffer *cmd,
+                uint32_t *dst,
+                struct tu_descriptor_state *descriptors_state,
+                const struct tu_descriptor_map *map,
+                unsigned i)
 {
    assert(descriptors_state->valid & (1 << map->set[i]));
 
@@ -2535,13 +2538,32 @@ texture_ptr(struct tu_descriptor_state *descriptors_state,
    switch (layout->type) {
    case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
    case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
-      return &set->mapped_ptr[layout->offset / 4];
    case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
    case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
-      return &set->mapped_ptr[layout->offset / 4];
+   case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
+      memcpy(dst, &set->mapped_ptr[layout->offset / 4], A6XX_TEX_CONST_DWORDS*4);
+      break;
    default:
       unreachable("unimplemented descriptor type");
       break;
+   }
+
+   if (layout->type == VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT) {
+      const struct tu_tiling_config *tiling = &cmd->state.tiling_config;
+      uint32_t a = cmd->state.subpass->input_attachments[map->value[i]].attachment;
+
+      assert(cmd->state.pass->attachments[a].needs_gmem);
+      dst[0] &= ~(A6XX_TEX_CONST_0_SWAP__MASK | A6XX_TEX_CONST_0_TILE_MODE__MASK);
+      dst[0] |= A6XX_TEX_CONST_0_TILE_MODE(TILE6_2);
+      dst[2] &= ~(A6XX_TEX_CONST_2_TYPE__MASK | A6XX_TEX_CONST_2_PITCH__MASK);
+      dst[2] |=
+         A6XX_TEX_CONST_2_TYPE(A6XX_TEX_2D) |
+         A6XX_TEX_CONST_2_PITCH(tiling->tile0.extent.width * tiling->buffer_cpp[a]);
+      dst[3] = 0;
+      dst[4] = 0x100000 + tiling->gmem_offsets[a];
+      dst[5] = A6XX_TEX_CONST_5_DEPTH(1);
+      for (unsigned i = 6; i < A6XX_TEX_CONST_DWORDS; i++)
+         dst[i] = 0;
    }
 }
 
@@ -2737,9 +2759,9 @@ tu6_emit_textures(struct tu_cmd_buffer *cmd,
       return result;
 
    for (unsigned i = 0; i < link->texture_map.num; i++) {
-      memcpy(&tex_const.map[A6XX_TEX_CONST_DWORDS*i],
-             texture_ptr(descriptors_state, &link->texture_map, i),
-             A6XX_TEX_CONST_DWORDS*4);
+      write_tex_const(cmd,
+                      &tex_const.map[A6XX_TEX_CONST_DWORDS*i],
+                      descriptors_state, &link->texture_map, i);
    }
 
    /* allocate and fill sampler state */
