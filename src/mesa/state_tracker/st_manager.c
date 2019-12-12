@@ -520,7 +520,7 @@ void
 st_framebuffer_reference(struct st_framebuffer **ptr,
                          struct st_framebuffer *stfb)
 {
-   struct gl_framebuffer *fb = &stfb->Base;
+   struct gl_framebuffer *fb = stfb ? &stfb->Base : NULL;
    _mesa_reference_framebuffer((struct gl_framebuffer **) ptr, fb);
 }
 
