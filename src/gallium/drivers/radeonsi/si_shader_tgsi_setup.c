@@ -1071,6 +1071,8 @@ void si_llvm_context_set_ir(struct si_shader_context *ctx,
 	/* Re-set these to start with a clean slate. */
 	ctx->bld_base.num_instructions = 0;
 	ctx->bld_base.pc = 0;
+	memset(ctx->input_decls, 0, sizeof(ctx->input_decls));
+	memset(ctx->inputs, 0, sizeof(ctx->inputs));
 	memset(ctx->outputs, 0, sizeof(ctx->outputs));
 
 	ctx->bld_base.emit_store = si_llvm_emit_store;
