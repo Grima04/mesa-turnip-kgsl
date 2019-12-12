@@ -265,7 +265,10 @@ fd_try_shadow_resource(struct fd_context *ctx, struct fd_resource *rsc,
 		set_box(box.height, u_minify(prsc->height0, l));
 		set_box(box.depth,  u_minify(prsc->depth0, l));
 
-		do_blit(ctx, &blit, fallback);
+		for (int i = 0; i < prsc->array_size; i++) {
+			set_box(box.z, i);
+			do_blit(ctx, &blit, fallback);
+		}
 	}
 
 	/* deal w/ current level specially, since we might need to split
