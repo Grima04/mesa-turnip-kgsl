@@ -1057,10 +1057,16 @@ wsi_common_queue_present(const struct wsi_device *wsi,
          if (result != VK_SUCCESS)
             goto fail_present;
       } else {
-         wsi->WaitForFences(device, 1, &swapchain->fences[image_index],
-                            true, 1);
+         result =
+            wsi->WaitForFences(device, 1, &swapchain->fences[image_index],
+                               true, ~0ull);
+         if (result != VK_SUCCESS)
+            goto fail_present;
 
-         wsi->ResetFences(device, 1, &swapchain->fences[image_index]);
+         result =
+            wsi->ResetFences(device, 1, &swapchain->fences[image_index]);
+         if (result != VK_SUCCESS)
+            goto fail_present;
       }
 
       struct wsi_image *image =
