@@ -862,7 +862,8 @@ tu6_emit_fs_outputs(struct tu_cs *cs,
    }
 
    tu_cs_emit_pkt4(cs, REG_A6XX_RB_FS_OUTPUT_CNTL0, 2);
-   tu_cs_emit(cs, fs->writes_pos ? A6XX_RB_FS_OUTPUT_CNTL0_FRAG_WRITES_Z : 0);
+   tu_cs_emit(cs, COND(fs->writes_pos, A6XX_RB_FS_OUTPUT_CNTL0_FRAG_WRITES_Z) |
+                  COND(fs->writes_smask, A6XX_RB_FS_OUTPUT_CNTL0_FRAG_WRITES_SAMPMASK));
    tu_cs_emit(cs, A6XX_RB_FS_OUTPUT_CNTL1_MRT(mrt_count));
 
    uint32_t gras_su_depth_plane_cntl = 0;
