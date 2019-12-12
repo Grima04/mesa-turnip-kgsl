@@ -278,7 +278,7 @@ static LLVMValueRef get_alu_src(struct lp_build_nir_context *bld_base,
          value = LLVMBuildExtractValue(gallivm->builder, value,
                                        src.swizzle[0], "");
       } else if (src_components == 1 && num_components > 1) {
-         LLVMValueRef values[] = {value, value, value, value};
+         LLVMValueRef values[] = {value, value, value, value, value, value, value, value, value, value, value, value, value, value, value, value};
          value = lp_nir_array_build_gather_values(builder, values, num_components);
       } else {
          LLVMValueRef arr = LLVMGetUndef(LLVMArrayType(LLVMTypeOf(LLVMBuildExtractValue(builder, value, 0, "")), num_components));
@@ -778,6 +778,8 @@ static void visit_alu(struct lp_build_nir_context *bld_base, const nir_alu_instr
    case nir_op_vec2:
    case nir_op_vec3:
    case nir_op_vec4:
+   case nir_op_vec8:
+   case nir_op_vec16:
       src_components = 1;
       break;
    case nir_op_pack_half_2x16:
@@ -800,7 +802,7 @@ static void visit_alu(struct lp_build_nir_context *bld_base, const nir_alu_instr
    }
 
    LLVMValueRef result[NIR_MAX_VEC_COMPONENTS];
-   if (instr->op == nir_op_vec4 || instr->op == nir_op_vec3 || instr->op == nir_op_vec2) {
+   if (instr->op == nir_op_vec4 || instr->op == nir_op_vec3 || instr->op == nir_op_vec2 || instr->op == nir_op_vec8 || instr->op == nir_op_vec16) {
       for (unsigned i = 0; i < nir_op_infos[instr->op].num_inputs; i++) {
          result[i] = cast_type(bld_base, src[i], nir_op_infos[instr->op].input_types[i], src_bit_size[i]);
       }
