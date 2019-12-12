@@ -868,8 +868,10 @@ tu_get_image_format_properties(
          VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)) &&
        !(info->flags & VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT) &&
        !(info->usage & VK_IMAGE_USAGE_STORAGE_BIT)) {
-      sampleCounts |= VK_SAMPLE_COUNT_2_BIT | VK_SAMPLE_COUNT_4_BIT |
-                      VK_SAMPLE_COUNT_8_BIT;
+      sampleCounts |= VK_SAMPLE_COUNT_2_BIT | VK_SAMPLE_COUNT_4_BIT;
+      /* 8x MSAA on 128bpp formats doesn't seem to work */
+      if (vk_format_get_blocksize(info->format) <= 8)
+         sampleCounts |= VK_SAMPLE_COUNT_8_BIT;
    }
 
    if (info->usage & VK_IMAGE_USAGE_SAMPLED_BIT) {
