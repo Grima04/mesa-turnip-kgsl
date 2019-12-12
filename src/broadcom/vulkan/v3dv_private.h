@@ -168,7 +168,7 @@ struct v3dv_device {
 };
 
 struct v3dv_device_memory {
-   struct v3dv_bo bo;
+   struct v3dv_bo *bo;
    const VkMemoryType *type;
 };
 

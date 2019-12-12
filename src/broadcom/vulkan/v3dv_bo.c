@@ -27,10 +27,16 @@
 #include <sys/mman.h>
 
 #include "drm-uapi/v3d_drm.h"
+#include "util/u_memory.h"
 
-bool
-v3dv_bo_alloc(struct v3dv_device *device, uint32_t size, struct v3dv_bo *bo)
+struct v3dv_bo *
+v3dv_bo_alloc(struct v3dv_device *device, uint32_t size)
 {
+   struct v3dv_bo *bo = vk_alloc(&device->alloc, sizeof(struct v3dv_bo), 8,
+                                 VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
+   if (!bo)
+      return NULL;
+
    const uint32_t page_align = 4096; /* Always allocate full pages */
    size = align(size, page_align);
    struct drm_v3d_create_bo create = {
@@ -39,7 +45,7 @@ v3dv_bo_alloc(struct v3dv_device *device, uint32_t size, struct v3dv_bo *bo)
 
    int ret = v3dv_ioctl(device->fd, DRM_IOCTL_V3D_CREATE_BO, &create);
    if (ret != 0)
-      return false;
+      return NULL;
 
    assert(create.offset % page_align == 0);
    assert((create.offset & 0xffffffff) == create.offset);
@@ -50,7 +56,7 @@ v3dv_bo_alloc(struct v3dv_device *device, uint32_t size, struct v3dv_bo *bo)
    bo->map = NULL;
    bo->map_size = 0;
 
-   return true;
+   return bo;
 }
 
 bool
@@ -67,6 +73,8 @@ v3dv_bo_free(struct v3dv_device *device, struct v3dv_bo *bo)
    int ret = v3dv_ioctl(device->fd, DRM_IOCTL_GEM_CLOSE, &c);
    if (ret != 0)
       fprintf(stderr, "close object %d: %s\n", bo->handle, strerror(errno));
+
+   vk_free(&device->alloc, bo);
 
    return ret == 0;
 }

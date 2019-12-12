@@ -35,7 +35,7 @@ struct v3dv_bo {
    void *map;
 };
 
-bool v3dv_bo_alloc(struct v3dv_device *device, uint32_t size, struct v3dv_bo *bo);
+struct v3dv_bo *v3dv_bo_alloc(struct v3dv_device *device, uint32_t size);
 
 bool v3dv_bo_free(struct v3dv_device *device, struct v3dv_bo *bo);
 

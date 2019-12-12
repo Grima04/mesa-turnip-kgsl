@@ -1017,8 +1017,8 @@ device_alloc(struct v3dv_device *device,
 {
    /* Our kernel interface is 32-bit */
    assert((size & 0xffffffff) == size);
-   bool ok = v3dv_bo_alloc(device, size, &mem->bo);
-   if (!ok)
+   mem->bo = v3dv_bo_alloc(device, size);
+   if (!mem->bo)
       return VK_ERROR_OUT_OF_DEVICE_MEMORY;
    return VK_SUCCESS;
 }
@@ -1026,7 +1026,7 @@ device_alloc(struct v3dv_device *device,
 static void
 device_free(struct v3dv_device *device, struct v3dv_device_memory *mem)
 {
-   v3dv_bo_free(device, &mem->bo);
+   v3dv_bo_free(device, mem->bo);
 }
 
 static VkResult
@@ -1040,9 +1040,9 @@ device_map(struct v3dv_device *device,
     *   considered to be currently host mapped. It is an application error to
     *   call vkMapMemory on a memory object that is already host mapped."
     */
-   assert(mem && mem->bo.map == NULL);
+   assert(mem && mem->bo->map == NULL);
 
-   bool ok = v3dv_bo_map(device, &mem->bo, size);
+   bool ok = v3dv_bo_map(device, mem->bo, size);
    if (!ok)
       return VK_ERROR_MEMORY_MAP_FAILED;
 
@@ -1052,8 +1052,8 @@ device_map(struct v3dv_device *device,
 static void
 device_unmap(struct v3dv_device *device, struct v3dv_device_memory *mem)
 {
-   assert(mem && mem->bo.map && mem->bo.map_size > 0);
-   v3dv_bo_unmap(device, &mem->bo);
+   assert(mem && mem->bo->map && mem->bo->map_size > 0);
+   v3dv_bo_unmap(device, mem->bo);
 }
 
 VkResult
@@ -1096,7 +1096,7 @@ v3dv_FreeMemory(VkDevice _device,
    if (mem == NULL)
       return;
 
-   if (mem->bo.map)
+   if (mem->bo->map)
       v3dv_UnmapMemory(_device, _mem);
 
    device_free(device, mem);
@@ -1120,14 +1120,14 @@ v3dv_MapMemory(VkDevice _device,
       return VK_SUCCESS;
    }
 
-   assert(offset < mem->bo.size);
+   assert(offset < mem->bo->size);
 
    /* We always map from the beginning of the region, so if our offset
     * is not 0 and we are not mapping the entire region, we need to
     * add the offset to the map size.
     */
    if (size == VK_WHOLE_SIZE)
-      size = mem->bo.size;
+      size = mem->bo->size;
    else if (offset > 0)
       size += offset;
 
@@ -1135,7 +1135,7 @@ v3dv_MapMemory(VkDevice _device,
    if (result != VK_SUCCESS)
       return vk_error(device->instance, result);
 
-   *ppData = ((uint8_t *) mem->bo.map) + offset;
+   *ppData = ((uint8_t *) mem->bo->map) + offset;
    return VK_SUCCESS;
 }
 
@@ -1204,7 +1204,7 @@ v3dv_BindImageMemory(VkDevice _device,
     *    vkGetImageMemoryRequirements with image"
     */
    assert(memoryOffset % image->alignment == 0);
-   assert(memoryOffset < mem->bo.size);
+   assert(memoryOffset < mem->bo->size);
 
    image->mem = mem;
    image->mem_offset = memoryOffset;
@@ -1241,7 +1241,7 @@ v3dv_BindBufferMemory(VkDevice _device,
     *    vkGetBufferMemoryRequirements with buffer"
     */
    assert(memoryOffset % buffer->alignment == 0);
-   assert(memoryOffset < mem->bo.size);
+   assert(memoryOffset < mem->bo->size);
 
    buffer->mem = mem;
    buffer->mem_offset = memoryOffset;
