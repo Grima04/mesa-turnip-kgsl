@@ -1134,10 +1134,10 @@ pan_pack_color(uint32_t *packed, const union pipe_color_union *color, enum pipe_
 
         if (util_format_is_rgba8_variant(desc)) {
                 pan_pack_color_32(packed,
-                                  (float_to_ubyte(clear_alpha) << 24) |
-                                  (float_to_ubyte(color->f[2]) << 16) |
-                                  (float_to_ubyte(color->f[1]) <<  8) |
-                                  (float_to_ubyte(color->f[0]) <<  0));
+                                  ((uint32_t) float_to_ubyte(clear_alpha) << 24) |
+                                  ((uint32_t) float_to_ubyte(color->f[2]) << 16) |
+                                  ((uint32_t) float_to_ubyte(color->f[1]) <<  8) |
+                                  ((uint32_t) float_to_ubyte(color->f[0]) <<  0));
         } else if (format == PIPE_FORMAT_B5G6R5_UNORM) {
                 /* First, we convert the components to R5, G6, B5 separately */
                 unsigned r5 = CLAMP(color->f[0], 0.0, 1.0) * 31.0;
