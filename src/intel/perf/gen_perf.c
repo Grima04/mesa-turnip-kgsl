@@ -1851,14 +1851,6 @@ gen_perf_begin_query(struct gen_perf_context *perf_ctx,
       query->oa.begin_report_id = perf_ctx->next_query_start_report_id;
       perf_ctx->next_query_start_report_id += 2;
 
-      /* We flush the batchbuffer here to minimize the chances that MI_RPC
-       * delimiting commands end up in different batchbuffers. If that's the
-       * case, the measurement will include the time it takes for the kernel
-       * scheduler to load a new request into the hardware. This is manifested in
-       * tools like frameretrace by spikes in the "GPU Core Clocks" counter.
-       */
-      perf_cfg->vtbl.batchbuffer_flush(perf_ctx->ctx, __FILE__, __LINE__);
-
       /* Take a starting OA counter snapshot. */
       perf_cfg->vtbl.emit_mi_report_perf_count(perf_ctx->ctx, query->oa.bo, 0,
                                                query->oa.begin_report_id);
