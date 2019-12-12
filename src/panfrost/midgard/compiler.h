@@ -390,7 +390,7 @@ mir_next_op(struct midgard_instruction *ins)
         mir_foreach_bundle_in_block_rev(block, _bundle) \
                 for (i = (_bundle->instruction_count - 1), v = _bundle->instructions[i]; \
                                 i >= 0; \
-                                --i, v = _bundle->instructions[i]) \
+                                --i, v = (i >= 0) ? _bundle->instructions[i] : NULL) \
 
 #define mir_foreach_instr_global(ctx, v) \
         mir_foreach_block(ctx, v_block) \
