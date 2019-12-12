@@ -61,6 +61,7 @@ struct tgsi_full_declaration;
 struct tgsi_full_immediate;
 struct tgsi_full_instruction;
 struct tgsi_full_src_register;
+struct tgsi_full_dst_register;
 struct tgsi_opcode_info;
 struct tgsi_token;
 struct tgsi_shader_info;
@@ -178,6 +179,10 @@ struct lp_bld_tgsi_system_values {
    LLVMValueRef front_facing;
    LLVMValueRef work_dim;
    LLVMValueRef block_size;
+   LLVMValueRef tess_coord;
+   LLVMValueRef tess_outer;
+   LLVMValueRef tess_inner;
+   LLVMValueRef vertices_in;
 };
 
 
@@ -253,6 +258,8 @@ struct lp_build_tgsi_params {
    const struct lp_build_sampler_soa *sampler;
    const struct tgsi_shader_info *info;
    const struct lp_build_gs_iface *gs_iface;
+   const struct lp_build_tcs_iface *tcs_iface;
+   const struct lp_build_tes_iface *tes_iface;
    LLVMValueRef ssbo_ptr;
    LLVMValueRef ssbo_sizes_ptr;
    const struct lp_build_image_soa *image;
@@ -302,6 +309,14 @@ typedef LLVMValueRef (*lp_build_emit_fetch_fn)(struct lp_build_tgsi_context *,
                                         enum tgsi_opcode_type,
                                         unsigned);
 
+typedef void (*lp_build_emit_store_reg_fn)(struct lp_build_tgsi_context *,
+                              enum tgsi_opcode_type,
+                              const struct tgsi_full_dst_register *,
+                              unsigned,
+                              unsigned,
+                              LLVMValueRef,
+                              LLVMValueRef);
+
 struct lp_build_tgsi_context
 {
    struct lp_build_context base;
@@ -331,6 +346,7 @@ struct lp_build_tgsi_context
    const struct tgsi_shader_info *info;
 
    lp_build_emit_fetch_fn emit_fetch_funcs[TGSI_FILE_COUNT];
+   lp_build_emit_store_reg_fn emit_store_reg_funcs[TGSI_FILE_COUNT];
 
    LLVMValueRef (*emit_swizzle)(struct lp_build_tgsi_context *,
                          LLVMValueRef, unsigned, unsigned, unsigned, unsigned);
@@ -371,6 +387,12 @@ struct lp_build_tgsi_context
      */
    void (*emit_prologue)(struct lp_build_tgsi_context*);
 
+   /** This function allows the user to insert some instructions after
+     * declarations section, but before any other code.
+     * It is optional and does not need to be implemented.
+     */
+   void (*emit_prologue_post_decl)(struct lp_build_tgsi_context*);
+
    /** This function allows the user to insert some instructions at the end of
      * the program.  This callback is intended to be used for emitting
      * instructions to handle the export for the output registers, but it can
@@ -405,6 +427,57 @@ struct lp_build_gs_iface
                        LLVMValueRef emitted_prims_vec);
 };
 
+struct lp_build_tcs_iface
+{
+   void (*emit_prologue)(struct lp_build_context * bld);
+   void (*emit_epilogue)(struct lp_build_context * bld);
+   void (*emit_barrier)(struct lp_build_context *bld_base);
+
+   void (*emit_store_output)(const struct lp_build_tcs_iface *tcs_iface,
+                             struct lp_build_context * bld,
+                             unsigned name,
+                             boolean is_vindex_indirect,
+                             LLVMValueRef vertex_index,
+                             boolean is_aindex_indirect,
+                             LLVMValueRef attrib_index,
+                             LLVMValueRef swizzle_index,
+                             LLVMValueRef value);
+
+   LLVMValueRef (*emit_fetch_input)(const struct lp_build_tcs_iface *tcs_iface,
+                                    struct lp_build_context * bld,
+                                    boolean is_vindex_indirect,
+                                    LLVMValueRef vertex_index,
+                                    boolean is_aindex_indirect,
+                                    LLVMValueRef attrib_index,
+                                    LLVMValueRef swizzle_index);
+
+   LLVMValueRef (*emit_fetch_output)(const struct lp_build_tcs_iface *tcs_iface,
+                                    struct lp_build_context * bld,
+                                    boolean is_vindex_indirect,
+                                    LLVMValueRef vertex_index,
+                                    boolean is_aindex_indirect,
+                                    LLVMValueRef attrib_index,
+                                    LLVMValueRef swizzle_index,
+                                    uint32_t name);
+};
+
+struct lp_build_tes_iface
+{
+   LLVMValueRef (*fetch_vertex_input)(const struct lp_build_tes_iface *tes_iface,
+                                      struct lp_build_context * bld,
+                                      boolean is_vindex_indirect,
+                                      LLVMValueRef vertex_index,
+                                      boolean is_aindex_indirect,
+                                      LLVMValueRef attrib_index,
+                                      LLVMValueRef swizzle_index);
+
+   LLVMValueRef (*fetch_patch_input)(const struct lp_build_tes_iface *tes_iface,
+                                     struct lp_build_context * bld,
+                                     boolean is_aindex_indirect,
+                                     LLVMValueRef attrib_index,
+                                     LLVMValueRef swizzle_index);
+};
+
 struct lp_build_tgsi_soa_context
 {
    struct lp_build_tgsi_context bld_base;
@@ -413,6 +486,9 @@ struct lp_build_tgsi_soa_context
    struct lp_build_context elem_bld;
 
    const struct lp_build_gs_iface *gs_iface;
+   const struct lp_build_tcs_iface *tcs_iface;
+   const struct lp_build_tes_iface *tes_iface;
+
    LLVMValueRef emitted_prims_vec_ptr;
    LLVMValueRef total_emitted_vertices_vec_ptr;
    LLVMValueRef emitted_vertices_vec_ptr;
