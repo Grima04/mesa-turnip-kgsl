@@ -998,7 +998,8 @@ fd_resource_create_with_modifiers(struct pipe_screen *pscreen,
 		return prsc;
 	}
 
-	if (rsc->layout.layer_first) {
+	/* Set the layer size if the (non-a6xx) backend hasn't done so. */
+	if (rsc->layout.layer_first && !rsc->layout.layer_size) {
 		rsc->layout.layer_size = align(size, 4096);
 		size = rsc->layout.layer_size * prsc->array_size;
 	}

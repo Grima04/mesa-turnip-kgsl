@@ -202,9 +202,5 @@ fd6_setup_slices(struct fd_resource *rsc)
 			prsc->last_level + 1, prsc->array_size,
 			prsc->target == PIPE_TEXTURE_3D, false);
 
-	/* The caller does this bit of layout setup again. */
-	if (rsc->layout.layer_first)
-		return rsc->layout.size / prsc->array_size;
-	else
-		return rsc->layout.size;
+	return rsc->layout.size;
 }
