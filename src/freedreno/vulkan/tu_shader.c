@@ -225,6 +225,14 @@ static bool
 lower_intrinsic(nir_builder *b, nir_intrinsic_instr *instr,
                 struct tu_shader *shader)
 {
+   /* TODO: remove this when layered rendering is implemented */
+   if (instr->intrinsic == nir_intrinsic_load_layer_id) {
+      nir_ssa_def_rewrite_uses(&instr->dest.ssa,
+                               nir_src_for_ssa(nir_imm_int(b, 0)));
+      nir_instr_remove(&instr->instr);
+      return true;
+   }
+
    if (instr->intrinsic == nir_intrinsic_load_push_constant) {
       /* note: ir3 wants load_ubo, not load_uniform */
       assert(nir_intrinsic_base(instr) == 0);
