@@ -163,14 +163,14 @@ static void assign_ssa(struct lp_build_nir_context *bld_base, int idx, LLVMValue
 }
 
 static void assign_ssa_dest(struct lp_build_nir_context *bld_base, const nir_ssa_def *ssa,
-                            LLVMValueRef vals[4])
+                            LLVMValueRef vals[NIR_MAX_VEC_COMPONENTS])
 {
    assign_ssa(bld_base, ssa->index, ssa->num_components == 1 ? vals[0] : lp_nir_array_build_gather_values(bld_base->base.gallivm->builder, vals, ssa->num_components));
 }
 
 static void assign_reg(struct lp_build_nir_context *bld_base, const nir_reg_dest *reg,
                        unsigned write_mask,
-                       LLVMValueRef vals[4])
+                       LLVMValueRef vals[NIR_MAX_VEC_COMPONENTS])
 {
    struct hash_entry *entry = _mesa_hash_table_search(bld_base->regs, reg->reg);
    LLVMValueRef reg_storage = (LLVMValueRef)entry->data;
@@ -181,7 +181,7 @@ static void assign_reg(struct lp_build_nir_context *bld_base, const nir_reg_dest
    bld_base->store_reg(bld_base, reg_bld, reg, write_mask ? write_mask : 0xf, indir_src, reg_storage, vals);
 }
 
-static void assign_dest(struct lp_build_nir_context *bld_base, const nir_dest *dest, LLVMValueRef vals[4])
+static void assign_dest(struct lp_build_nir_context *bld_base, const nir_dest *dest, LLVMValueRef vals[NIR_MAX_VEC_COMPONENTS])
 {
    if (dest->is_ssa)
       assign_ssa_dest(bld_base, &dest->ssa, vals);
@@ -189,7 +189,7 @@ static void assign_dest(struct lp_build_nir_context *bld_base, const nir_dest *d
       assign_reg(bld_base, &dest->reg, 0, vals);
 }
 
-static void assign_alu_dest(struct lp_build_nir_context *bld_base, const nir_alu_dest *dest, LLVMValueRef vals[4])
+static void assign_alu_dest(struct lp_build_nir_context *bld_base, const nir_alu_dest *dest, LLVMValueRef vals[NIR_MAX_VEC_COMPONENTS])
 {
    if (dest->dest.is_ssa)
       assign_ssa_dest(bld_base, &dest->dest.ssa, vals);
@@ -225,7 +225,7 @@ static LLVMValueRef flt_to_bool32(struct lp_build_nir_context *bld_base,
 static LLVMValueRef fcmp32(struct lp_build_nir_context *bld_base,
                            enum pipe_compare_func compare,
                            uint32_t src_bit_size,
-                           LLVMValueRef src[4])
+                           LLVMValueRef src[NIR_MAX_VEC_COMPONENTS])
 {
    LLVMBuilderRef builder = bld_base->base.gallivm->builder;
    struct lp_build_context *flt_bld = get_flt_bld(bld_base, src_bit_size);
@@ -244,7 +244,7 @@ static LLVMValueRef icmp32(struct lp_build_nir_context *bld_base,
                            enum pipe_compare_func compare,
                            bool is_unsigned,
                            uint32_t src_bit_size,
-                           LLVMValueRef src[4])
+                           LLVMValueRef src[NIR_MAX_VEC_COMPONENTS])
 {
    LLVMBuilderRef builder = bld_base->base.gallivm->builder;
    struct lp_build_context *i_bld = get_int_bld(bld_base, is_unsigned, src_bit_size);
@@ -332,8 +332,8 @@ static LLVMValueRef emit_b2i(struct lp_build_nir_context *bld_base,
 }
 
 static LLVMValueRef emit_b32csel(struct lp_build_nir_context *bld_base,
-                               unsigned src_bit_size[4],
-                               LLVMValueRef src[4])
+                               unsigned src_bit_size[NIR_MAX_VEC_COMPONENTS],
+                               LLVMValueRef src[NIR_MAX_VEC_COMPONENTS])
 {
    LLVMValueRef sel = cast_type(bld_base, src[0], nir_type_int, 32);
    LLVMValueRef v = lp_build_compare(bld_base->base.gallivm, bld_base->int_bld.type, PIPE_FUNC_NOTEQUAL, sel, bld_base->int_bld.zero);
@@ -401,7 +401,7 @@ do_int_divide(struct lp_build_nir_context *bld_base,
 }
 
 static LLVMValueRef do_alu_action(struct lp_build_nir_context *bld_base,
-                                  nir_op op, unsigned src_bit_size[4], LLVMValueRef src[4])
+                                  nir_op op, unsigned src_bit_size[NIR_MAX_VEC_COMPONENTS], LLVMValueRef src[NIR_MAX_VEC_COMPONENTS])
 {
    struct gallivm_state *gallivm = bld_base->base.gallivm;
    LLVMBuilderRef builder = gallivm->builder;
@@ -770,8 +770,8 @@ static LLVMValueRef do_alu_action(struct lp_build_nir_context *bld_base,
 static void visit_alu(struct lp_build_nir_context *bld_base, const nir_alu_instr *instr)
 {
    struct gallivm_state *gallivm = bld_base->base.gallivm;
-   LLVMValueRef src[4];
-   unsigned src_bit_size[4];
+   LLVMValueRef src[NIR_MAX_VEC_COMPONENTS];
+   unsigned src_bit_size[NIR_MAX_VEC_COMPONENTS];
    unsigned num_components = nir_dest_num_components(instr->dest.dest);
    unsigned src_components;
    switch (instr->op) {
@@ -799,14 +799,14 @@ static void visit_alu(struct lp_build_nir_context *bld_base, const nir_alu_instr
       src_bit_size[i] = nir_src_bit_size(instr->src[i].src);
    }
 
-   LLVMValueRef result[4];
+   LLVMValueRef result[NIR_MAX_VEC_COMPONENTS];
    if (instr->op == nir_op_vec4 || instr->op == nir_op_vec3 || instr->op == nir_op_vec2) {
       for (unsigned i = 0; i < nir_op_infos[instr->op].num_inputs; i++) {
          result[i] = cast_type(bld_base, src[i], nir_op_infos[instr->op].input_types[i], src_bit_size[i]);
       }
    } else {
       for (unsigned c = 0; c < num_components; c++) {
-         LLVMValueRef src_chan[4];
+         LLVMValueRef src_chan[NIR_MAX_VEC_COMPONENTS];
 
          for (unsigned i = 0; i < nir_op_infos[instr->op].num_inputs; i++) {
             if (num_components > 1) {
@@ -826,7 +826,7 @@ static void visit_alu(struct lp_build_nir_context *bld_base, const nir_alu_instr
 static void visit_load_const(struct lp_build_nir_context *bld_base,
                              const nir_load_const_instr *instr)
 {
-   LLVMValueRef result[4];
+   LLVMValueRef result[NIR_MAX_VEC_COMPONENTS];
    struct lp_build_context *int_bld = get_int_bld(bld_base, true, instr->def.bit_size);
    for (unsigned i = 0; i < instr->def.num_components; i++)
       result[i] = lp_build_const_int_vec(bld_base->base.gallivm, int_bld->type, instr->value[i].u64);
@@ -906,7 +906,7 @@ out:
 
 static void visit_load_var(struct lp_build_nir_context *bld_base,
                            nir_intrinsic_instr *instr,
-                           LLVMValueRef result[4])
+                           LLVMValueRef result[NIR_MAX_VEC_COMPONENTS])
 {
    nir_deref_instr *deref = nir_instr_as_deref(instr->src[0].ssa->parent_instr);
    nir_variable *var = nir_deref_instr_get_variable(deref);
@@ -949,7 +949,7 @@ visit_store_var(struct lp_build_nir_context *bld_base,
 
 static void visit_load_ubo(struct lp_build_nir_context *bld_base,
                            nir_intrinsic_instr *instr,
-                           LLVMValueRef result[4])
+                           LLVMValueRef result[NIR_MAX_VEC_COMPONENTS])
 {
    struct gallivm_state *gallivm = bld_base->base.gallivm;
    LLVMBuilderRef builder = gallivm->builder;
@@ -965,7 +965,7 @@ static void visit_load_ubo(struct lp_build_nir_context *bld_base,
 
 static void visit_load_ssbo(struct lp_build_nir_context *bld_base,
                            nir_intrinsic_instr *instr,
-                           LLVMValueRef result[4])
+                           LLVMValueRef result[NIR_MAX_VEC_COMPONENTS])
 {
    LLVMValueRef idx = get_src(bld_base, instr->src[0]);
    LLVMValueRef offset = get_src(bld_base, instr->src[1]);
@@ -987,7 +987,7 @@ static void visit_store_ssbo(struct lp_build_nir_context *bld_base,
 
 static void visit_get_buffer_size(struct lp_build_nir_context *bld_base,
                                   nir_intrinsic_instr *instr,
-                                  LLVMValueRef result[4])
+                                  LLVMValueRef result[NIR_MAX_VEC_COMPONENTS])
 {
    LLVMValueRef idx = get_src(bld_base, instr->src[0]);
    result[0] = bld_base->get_buffer_size(bld_base, idx);
@@ -995,7 +995,7 @@ static void visit_get_buffer_size(struct lp_build_nir_context *bld_base,
 
 static void visit_ssbo_atomic(struct lp_build_nir_context *bld_base,
                               nir_intrinsic_instr *instr,
-                              LLVMValueRef result[4])
+                              LLVMValueRef result[NIR_MAX_VEC_COMPONENTS])
 {
    LLVMValueRef idx = get_src(bld_base, instr->src[0]);
    LLVMValueRef offset = get_src(bld_base, instr->src[1]);
@@ -1010,7 +1010,7 @@ static void visit_ssbo_atomic(struct lp_build_nir_context *bld_base,
 
 static void visit_load_image(struct lp_build_nir_context *bld_base,
                              nir_intrinsic_instr *instr,
-                             LLVMValueRef result[4])
+                             LLVMValueRef result[NIR_MAX_VEC_COMPONENTS])
 {
    struct gallivm_state *gallivm = bld_base->base.gallivm;
    LLVMBuilderRef builder = gallivm->builder;
@@ -1070,7 +1070,7 @@ static void visit_store_image(struct lp_build_nir_context *bld_base,
 
 static void visit_atomic_image(struct lp_build_nir_context *bld_base,
                                nir_intrinsic_instr *instr,
-                               LLVMValueRef result[4])
+                               LLVMValueRef result[NIR_MAX_VEC_COMPONENTS])
 {
    struct gallivm_state *gallivm = bld_base->base.gallivm;
    LLVMBuilderRef builder = gallivm->builder;
@@ -1139,7 +1139,7 @@ static void visit_atomic_image(struct lp_build_nir_context *bld_base,
 
 static void visit_image_size(struct lp_build_nir_context *bld_base,
                              nir_intrinsic_instr *instr,
-                             LLVMValueRef result[4])
+                             LLVMValueRef result[NIR_MAX_VEC_COMPONENTS])
 {
    nir_deref_instr *deref = nir_instr_as_deref(instr->src[0].ssa->parent_instr);
    nir_variable *var = nir_deref_instr_get_variable(deref);
@@ -1153,7 +1153,7 @@ static void visit_image_size(struct lp_build_nir_context *bld_base,
 
 static void visit_shared_load(struct lp_build_nir_context *bld_base,
                                 nir_intrinsic_instr *instr,
-                                LLVMValueRef result[4])
+                                LLVMValueRef result[NIR_MAX_VEC_COMPONENTS])
 {
    LLVMValueRef offset = get_src(bld_base, instr->src[0]);
    bld_base->load_mem(bld_base, nir_dest_num_components(instr->dest), nir_dest_bit_size(instr->dest),
@@ -1173,7 +1173,7 @@ static void visit_shared_store(struct lp_build_nir_context *bld_base,
 
 static void visit_shared_atomic(struct lp_build_nir_context *bld_base,
                                 nir_intrinsic_instr *instr,
-                                LLVMValueRef result[4])
+                                LLVMValueRef result[NIR_MAX_VEC_COMPONENTS])
 {
    LLVMValueRef offset = get_src(bld_base, instr->src[0]);
    LLVMValueRef val = get_src(bld_base, instr->src[1]);
@@ -1202,7 +1202,7 @@ static void visit_discard(struct lp_build_nir_context *bld_base,
 }
 
 static void visit_load_kernel_input(struct lp_build_nir_context *bld_base,
-                                    nir_intrinsic_instr *instr, LLVMValueRef result[4])
+                                    nir_intrinsic_instr *instr, LLVMValueRef result[NIR_MAX_VEC_COMPONENTS])
 {
    LLVMValueRef offset = get_src(bld_base, instr->src[0]);
 
@@ -1213,7 +1213,7 @@ static void visit_load_kernel_input(struct lp_build_nir_context *bld_base,
 }
 
 static void visit_load_global(struct lp_build_nir_context *bld_base,
-                              nir_intrinsic_instr *instr, LLVMValueRef result[4])
+                              nir_intrinsic_instr *instr, LLVMValueRef result[NIR_MAX_VEC_COMPONENTS])
 {
    LLVMValueRef addr = get_src(bld_base, instr->src[0]);
    bld_base->load_global(bld_base, nir_dest_num_components(instr->dest), nir_dest_bit_size(instr->dest),
@@ -1235,7 +1235,7 @@ static void visit_store_global(struct lp_build_nir_context *bld_base,
 
 static void visit_global_atomic(struct lp_build_nir_context *bld_base,
                                 nir_intrinsic_instr *instr,
-                                LLVMValueRef result[4])
+                                LLVMValueRef result[NIR_MAX_VEC_COMPONENTS])
 {
    LLVMValueRef addr = get_src(bld_base, instr->src[0]);
    LLVMValueRef val = get_src(bld_base, instr->src[1]);
@@ -1250,7 +1250,7 @@ static void visit_global_atomic(struct lp_build_nir_context *bld_base,
 static void visit_intrinsic(struct lp_build_nir_context *bld_base,
                             nir_intrinsic_instr *instr)
 {
-   LLVMValueRef result[4] = {0};
+   LLVMValueRef result[NIR_MAX_VEC_COMPONENTS] = {0};
    switch (instr->intrinsic) {
    case nir_intrinsic_load_deref:
       visit_load_var(bld_base, instr, result);
@@ -1384,7 +1384,7 @@ static void visit_intrinsic(struct lp_build_nir_context *bld_base,
 static void visit_txs(struct lp_build_nir_context *bld_base, nir_tex_instr *instr)
 {
    struct lp_sampler_size_query_params params;
-   LLVMValueRef sizes_out[4];
+   LLVMValueRef sizes_out[NIR_MAX_VEC_COMPONENTS];
    LLVMValueRef explicit_lod = NULL;
 
    for (unsigned i = 0; i < instr->num_srcs; i++) {
@@ -1439,7 +1439,7 @@ static void visit_tex(struct lp_build_nir_context *bld_base, nir_tex_instr *inst
    unsigned sample_key = 0;
    nir_deref_instr *texture_deref_instr = NULL;
    nir_deref_instr *sampler_deref_instr = NULL;
-   LLVMValueRef texel[4];
+   LLVMValueRef texel[NIR_MAX_VEC_COMPONENTS];
    unsigned lod_src = 0;
    LLVMValueRef coord_undef = LLVMGetUndef(bld_base->base.int_vec_type);
 
@@ -1614,7 +1614,7 @@ static void visit_ssa_undef(struct lp_build_nir_context *bld_base,
                             const nir_ssa_undef_instr *instr)
 {
    unsigned num_components = instr->def.num_components;
-   LLVMValueRef undef[4];
+   LLVMValueRef undef[NIR_MAX_VEC_COMPONENTS];
    for (unsigned i = 0; i < num_components; i++)
       undef[i] = LLVMGetUndef(bld_base->base.vec_type);
    assign_ssa_dest(bld_base, &instr->def, undef);

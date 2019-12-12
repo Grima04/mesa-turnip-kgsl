@@ -282,7 +282,7 @@ static void emit_load_var(struct lp_build_nir_context *bld_base,
                            unsigned vertex_index,
                            unsigned const_index,
                            LLVMValueRef indir_index,
-                           LLVMValueRef result[4])
+                           LLVMValueRef result[NIR_MAX_VEC_COMPONENTS])
 {
    struct lp_build_nir_soa_context *bld = (struct lp_build_nir_soa_context *)bld_base;
    struct gallivm_state *gallivm = bld_base->base.gallivm;
@@ -425,7 +425,7 @@ static LLVMValueRef emit_load_reg(struct lp_build_nir_context *bld_base,
    struct gallivm_state *gallivm = bld_base->base.gallivm;
    LLVMBuilderRef builder = gallivm->builder;
    int nc = reg->reg->num_components;
-   LLVMValueRef vals[4];
+   LLVMValueRef vals[NIR_MAX_VEC_COMPONENTS];
    struct lp_build_context *uint_bld = &bld_base->uint_bld;
    if (reg->reg->num_array_elems) {
       LLVMValueRef indirect_val = lp_build_const_int_vec(gallivm, uint_bld->type, reg->base_offset);
@@ -455,7 +455,7 @@ static void emit_store_reg(struct lp_build_nir_context *bld_base,
                            unsigned writemask,
                            LLVMValueRef indir_src,
                            LLVMValueRef reg_storage,
-                           LLVMValueRef dst[4])
+                           LLVMValueRef dst[NIR_MAX_VEC_COMPONENTS])
 {
    struct lp_build_nir_soa_context *bld = (struct lp_build_nir_soa_context *)bld_base;
    struct gallivm_state *gallivm = bld_base->base.gallivm;
@@ -494,7 +494,7 @@ static void emit_load_kernel_arg(struct lp_build_nir_context *bld_base,
                                  unsigned offset_bit_size,
                                  bool offset_is_uniform,
                                  LLVMValueRef offset,
-                                 LLVMValueRef result[4])
+                                 LLVMValueRef result[NIR_MAX_VEC_COMPONENTS])
 {
    struct lp_build_nir_soa_context *bld = (struct lp_build_nir_soa_context *)bld_base;
    struct gallivm_state *gallivm = bld_base->base.gallivm;
@@ -553,7 +553,7 @@ static void emit_load_global(struct lp_build_nir_context *bld_base,
                              unsigned bit_size,
                              unsigned addr_bit_size,
                              LLVMValueRef addr,
-                             LLVMValueRef outval[4])
+                             LLVMValueRef outval[NIR_MAX_VEC_COMPONENTS])
 {
    struct gallivm_state *gallivm = bld_base->base.gallivm;
    LLVMBuilderRef builder = gallivm->builder;
@@ -728,7 +728,7 @@ static void emit_load_ubo(struct lp_build_nir_context *bld_base,
                           bool offset_is_uniform,
                           LLVMValueRef index,
                           LLVMValueRef offset,
-                          LLVMValueRef result[4])
+                          LLVMValueRef result[NIR_MAX_VEC_COMPONENTS])
 {
    struct lp_build_nir_soa_context *bld = (struct lp_build_nir_soa_context *)bld_base;
    struct gallivm_state *gallivm = bld_base->base.gallivm;
@@ -779,7 +779,7 @@ static void emit_load_mem(struct lp_build_nir_context *bld_base,
                           unsigned bit_size,
                           LLVMValueRef index,
                           LLVMValueRef offset,
-                          LLVMValueRef outval[4])
+                          LLVMValueRef outval[NIR_MAX_VEC_COMPONENTS])
 {
    struct gallivm_state *gallivm = bld_base->base.gallivm;
    struct lp_build_nir_soa_context *bld = (struct lp_build_nir_soa_context *)bld_base;
@@ -1148,7 +1148,7 @@ static void emit_tex_size(struct lp_build_nir_context *bld_base,
 
 static void emit_sysval_intrin(struct lp_build_nir_context *bld_base,
                                nir_intrinsic_instr *instr,
-                               LLVMValueRef result[4])
+                               LLVMValueRef result[NIR_MAX_VEC_COMPONENTS])
 {
    struct lp_build_nir_soa_context *bld = (struct lp_build_nir_soa_context *)bld_base;
    struct gallivm_state *gallivm = bld_base->base.gallivm;
