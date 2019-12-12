@@ -223,11 +223,7 @@ fd_try_shadow_resource(struct fd_context *ctx, struct fd_resource *rsc,
 	/* TODO valid_buffer_range?? */
 	swap(rsc->bo,        shadow->bo);
 	swap(rsc->write_batch,   shadow->write_batch);
-	for (int level = 0; level <= prsc->last_level; level++) {
-		swap(rsc->layout.slices[level], shadow->layout.slices[level]);
-		swap(rsc->layout.ubwc_slices[level], shadow->layout.ubwc_slices[level]);
-	}
-	swap(rsc->layout.ubwc_layer_size, shadow->layout.ubwc_layer_size);
+	swap(rsc->layout, shadow->layout);
 	rsc->seqno = p_atomic_inc_return(&ctx->screen->rsc_seqno);
 
 	/* at this point, the newly created shadow buffer is not referenced
