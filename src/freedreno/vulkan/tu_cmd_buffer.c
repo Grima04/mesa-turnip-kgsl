@@ -2090,8 +2090,9 @@ tu_CmdPushConstants(VkCommandBuffer commandBuffer,
                     uint32_t size,
                     const void *pValues)
 {
-   TU_FROM_HANDLE(tu_cmd_buffer, cmd_buffer, commandBuffer);
-   memcpy((void*) cmd_buffer->push_constants + offset, pValues, size);
+   TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
+   memcpy((void*) cmd->push_constants + offset, pValues, size);
+   cmd->state.dirty |= TU_CMD_DIRTY_PUSH_CONSTANTS;
 }
 
 VkResult
@@ -3146,18 +3147,7 @@ tu6_bind_draw_states(struct tu_cmd_buffer *cmd,
    }
 
    if (cmd->state.dirty &
-         (TU_CMD_DIRTY_PIPELINE | TU_CMD_DIRTY_DESCRIPTOR_SETS)) {
-      bool needs_border = false;
-      struct tu_cs_entry vs_tex, fs_tex;
-
-      result = tu6_emit_textures(cmd, MESA_SHADER_VERTEX, &vs_tex, &needs_border);
-      if (result != VK_SUCCESS)
-         return result;
-
-      result = tu6_emit_textures(cmd, MESA_SHADER_FRAGMENT, &fs_tex, &needs_border);
-      if (result != VK_SUCCESS)
-         return result;
-
+         (TU_CMD_DIRTY_PIPELINE | TU_CMD_DIRTY_DESCRIPTOR_SETS | TU_CMD_DIRTY_PUSH_CONSTANTS)) {
       draw_state_groups[draw_state_group_count++] =
          (struct tu_draw_state_group) {
             .id = TU_DRAW_STATE_VS_CONST,
@@ -3170,6 +3160,21 @@ tu6_bind_draw_states(struct tu_cmd_buffer *cmd,
             .enable_mask = 0x6,
             .ib = tu6_emit_consts(cmd, pipeline, descriptors_state, MESA_SHADER_FRAGMENT)
          };
+   }
+
+   if (cmd->state.dirty &
+         (TU_CMD_DIRTY_PIPELINE | TU_CMD_DIRTY_DESCRIPTOR_SETS)) {
+      bool needs_border = false;
+      struct tu_cs_entry vs_tex, fs_tex;
+
+      result = tu6_emit_textures(cmd, MESA_SHADER_VERTEX, &vs_tex, &needs_border);
+      if (result != VK_SUCCESS)
+         return result;
+
+      result = tu6_emit_textures(cmd, MESA_SHADER_FRAGMENT, &fs_tex, &needs_border);
+      if (result != VK_SUCCESS)
+         return result;
+
       draw_state_groups[draw_state_group_count++] =
          (struct tu_draw_state_group) {
             .id = TU_DRAW_STATE_VS_TEX,
