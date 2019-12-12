@@ -1615,8 +1615,9 @@ static void visit_ssa_undef(struct lp_build_nir_context *bld_base,
 {
    unsigned num_components = instr->def.num_components;
    LLVMValueRef undef[NIR_MAX_VEC_COMPONENTS];
+   struct lp_build_context *undef_bld = get_int_bld(bld_base, true, instr->def.bit_size);
    for (unsigned i = 0; i < num_components; i++)
-      undef[i] = LLVMGetUndef(bld_base->base.vec_type);
+      undef[i] = LLVMGetUndef(undef_bld->vec_type);
    assign_ssa_dest(bld_base, &instr->def, undef);
 }
 
