@@ -735,7 +735,11 @@ BuilderSWR::CompileGS(struct swr_context *ctx, swr_jit_gs_key &key)
    for (uint32_t lane = 0; lane < mVWidth; ++lane)
    {
       Value* pStream = LOAD(pGsCtx, {0, SWR_GS_CONTEXT_pStreams, lane});
+#if LLVM_VERSION_MAJOR >= 10
+      MEMSET(pStream, C((char)0), VERTEX_COUNT_SIZE + CONTROL_HEADER_SIZE, MaybeAlign(sizeof(float) * KNOB_SIMD_WIDTH));
+#else
       MEMSET(pStream, C((char)0), VERTEX_COUNT_SIZE + CONTROL_HEADER_SIZE, sizeof(float) * KNOB_SIMD_WIDTH);
+#endif
    }
 
    struct swr_gs_llvm_iface gs_iface;
