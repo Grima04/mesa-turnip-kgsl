@@ -50,7 +50,7 @@ fdl_dump_layout(struct fdl_layout *layout)
 		uint32_t tile_mode = (layout->ubwc_size ?
 				layout->tile_mode : fdl_tile_mode(layout, level));
 
-		fprintf(stderr, "%s: %ux%ux%u@%ux%u:\t%2u: stride=%4u, size=%6u,%6u, aligned_height=%3u, offset=0x%x,0x%x tiling=%d\n",
+		fprintf(stderr, "%s: %ux%ux%u@%ux%u:\t%2u: stride=%4u, size=%6u,%6u, aligned_height=%3u, offset=0x%x,0x%x, layersz %5u,%5u tiling=%d\n",
 				util_format_name(layout->format),
 				u_minify(layout->width0, level),
 				u_minify(layout->height0, level),
@@ -61,6 +61,7 @@ fdl_dump_layout(struct fdl_layout *layout)
 				slice->size0, ubwc_slice->size0,
 				slice->size0 / (slice->pitch * layout->cpp),
 				slice->offset, ubwc_slice->offset,
+				layout->layer_size, layout->ubwc_size,
 				tile_mode);
 	}
 }
