@@ -50,17 +50,7 @@ panfrost_pack_work_groups_compute(
         unsigned size_z,
         bool quirk_graphics)
 {
-        /* First of all, all 6 values are off-by-one (strictly positive).
-         * Account for that, first by ensuring all values are strictly positive
-         * and then by offsetting */
-
-        assert(num_x > 0);
-        assert(num_y > 0);
-        assert(num_z > 0);
-
-        assert(size_x > 0);
-        assert(size_y > 0);
-        assert(size_z > 0);
+        /* First of all, all 6 values are off-by-one (strictly positive). */
 
         num_x = MALI_POSITIVE(num_x);
         num_y = MALI_POSITIVE(num_y);
