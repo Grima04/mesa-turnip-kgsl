@@ -170,14 +170,16 @@ tu_tiling_config_update_tile_layout(struct tu_tiling_config *tiling,
 
    /* do not exceed gmem size */
    while (tu_tiling_config_update_gmem_layout(tiling, dev) != VK_SUCCESS) {
-      if (tiling->tile0.extent.width > tiling->tile0.extent.height) {
+      if (tiling->tile0.extent.width > MAX2(tile_align_w, tiling->tile0.extent.height)) {
          tiling->tile_count.width++;
          tiling->tile0.extent.width =
-            align(ra_width / tiling->tile_count.width, tile_align_w);
+            align(DIV_ROUND_UP(ra_width, tiling->tile_count.width), tile_align_w);
       } else {
+         /* if this assert fails then layout is impossible.. */
+         assert(tiling->tile0.extent.height > tile_align_h);
          tiling->tile_count.height++;
          tiling->tile0.extent.height =
-            align(ra_height / tiling->tile_count.height, tile_align_h);
+            align(DIV_ROUND_UP(ra_height, tiling->tile_count.height), tile_align_h);
       }
    }
 }
