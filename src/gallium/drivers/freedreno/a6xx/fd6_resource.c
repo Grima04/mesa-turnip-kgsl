@@ -35,7 +35,7 @@
  * it can be tiled doesn't mean it can be compressed.
  */
 static bool
-ok_ubwc_format(enum pipe_format pfmt)
+ok_ubwc_format(struct fd_resource *rsc, enum pipe_format pfmt)
 {
 	/* NOTE: both x24s8 and z24s8 map to RB6_X8Z24_UNORM, but UBWC
 	 * does not seem to work properly when sampling x24s8.. possibly
@@ -46,6 +46,14 @@ ok_ubwc_format(enum pipe_format pfmt)
 	 * UBWC seem fine).  Recheck on a later revision of a6xx
 	 */
 	if (pfmt == PIPE_FORMAT_X24S8_UINT)
+		return false;
+
+	/* We don't fully understand what's going wrong with this combination, but
+	 * we haven't been able to make it work.  It's enough of a corner-case
+	 * that we can just disable UBWC for these resources.
+	 */
+	if (rsc->base.target != PIPE_TEXTURE_2D &&
+			pfmt == PIPE_FORMAT_Z24_UNORM_S8_UINT)
 		return false;
 
 	switch (fd6_pipe2color(pfmt)) {
@@ -92,7 +100,7 @@ fd6_fill_ubwc_buffer_sizes(struct fd_resource *rsc)
 	uint32_t width = prsc->width0;
 	uint32_t height = prsc->height0;
 
-	if (!ok_ubwc_format(prsc->format))
+	if (!ok_ubwc_format(rsc, prsc->format))
 		return 0;
 
 	/* limit things to simple single level 2d for now: */
@@ -154,7 +162,7 @@ fd6_validate_format(struct fd_context *ctx, struct fd_resource *rsc,
 	if (!rsc->layout.ubwc_layer_size)
 		return;
 
-	if (ok_ubwc_format(format))
+	if (ok_ubwc_format(rsc, format))
 		return;
 
 	fd_resource_uncompress(ctx, rsc);
