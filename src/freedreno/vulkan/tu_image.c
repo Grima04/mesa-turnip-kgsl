@@ -170,7 +170,9 @@ tu6_fetchsize(VkFormat format)
 }
 
 static uint32_t
-tu6_texswiz(const VkComponentMapping *comps, const unsigned char *fmt_swiz)
+tu6_texswiz(const VkComponentMapping *comps,
+            VkFormat format,
+            VkImageAspectFlagBits aspect_mask)
 {
    unsigned char swiz[4] = {comps->r, comps->g, comps->b, comps->a};
    unsigned char vk_swizzle[] = {
@@ -181,10 +183,15 @@ tu6_texswiz(const VkComponentMapping *comps, const unsigned char *fmt_swiz)
       [VK_COMPONENT_SWIZZLE_B] = A6XX_TEX_Z,
       [VK_COMPONENT_SWIZZLE_A] = A6XX_TEX_W,
    };
+   const unsigned char *fmt_swiz = vk_format_description(format)->swizzle;
+
    for (unsigned i = 0; i < 4; i++) {
       swiz[i] = (swiz[i] == VK_COMPONENT_SWIZZLE_IDENTITY) ? i : vk_swizzle[swiz[i]];
       /* if format has 0/1 in channel, use that (needed for bc1_rgb) */
       if (swiz[i] < 4) {
+         if (aspect_mask == VK_IMAGE_ASPECT_STENCIL_BIT &&
+             format == VK_FORMAT_D24_UNORM_S8_UINT)
+            swiz[i] = A6XX_TEX_Y;
          switch (fmt_swiz[swiz[i]]) {
          case PIPE_SWIZZLE_0: swiz[i] = A6XX_TEX_ZERO; break;
          case PIPE_SWIZZLE_1: swiz[i] = A6XX_TEX_ONE;  break;
@@ -244,12 +251,6 @@ tu_image_view_init(struct tu_image_view *iview,
    iview->vk_format = pCreateInfo->format;
    iview->aspect_mask = pCreateInfo->subresourceRange.aspectMask;
 
-   if (iview->aspect_mask == VK_IMAGE_ASPECT_STENCIL_BIT) {
-      iview->vk_format = vk_format_stencil_only(iview->vk_format);
-   } else if (iview->aspect_mask == VK_IMAGE_ASPECT_DEPTH_BIT) {
-      iview->vk_format = vk_format_depth_only(iview->vk_format);
-   }
-
    // should we minify?
    iview->extent = image->extent;
 
@@ -269,13 +270,18 @@ tu_image_view_init(struct tu_image_view *iview,
    uint32_t width = u_minify(image->extent.width, iview->base_mip);
    uint32_t height = u_minify(image->extent.height, iview->base_mip);
 
+   unsigned fmt_tex = fmt->tex;
+   if (iview->aspect_mask == VK_IMAGE_ASPECT_STENCIL_BIT &&
+       iview->vk_format == VK_FORMAT_D24_UNORM_S8_UINT)
+      fmt_tex = TFMT6_S8Z24_UINT;
+
    iview->descriptor[0] =
       A6XX_TEX_CONST_0_TILE_MODE(tile_mode) |
       COND(vk_format_is_srgb(iview->vk_format), A6XX_TEX_CONST_0_SRGB) |
-      A6XX_TEX_CONST_0_FMT(fmt->tex) |
+      A6XX_TEX_CONST_0_FMT(fmt_tex) |
       A6XX_TEX_CONST_0_SAMPLES(tu_msaa_samples(image->samples)) |
       A6XX_TEX_CONST_0_SWAP(image->layout.tile_mode ? WZYX : fmt->swap) |
-      tu6_texswiz(&pCreateInfo->components, vk_format_description(iview->vk_format)->swizzle) |
+      tu6_texswiz(&pCreateInfo->components, iview->vk_format, iview->aspect_mask) |
       A6XX_TEX_CONST_0_MIPLVLS(iview->level_count - 1);
    iview->descriptor[1] = A6XX_TEX_CONST_1_WIDTH(width) | A6XX_TEX_CONST_1_HEIGHT(height);
    iview->descriptor[2] =
