@@ -1674,13 +1674,20 @@ pandecode_vertex_tiler_prefix(struct mali_vertex_tiler_prefix *p, int job_no, bo
          * invocation_count for an explanation.
          */
 
-        unsigned size_x = bits(p->invocation_count, 0, p->size_y_shift) + 1;
-        unsigned size_y = bits(p->invocation_count, p->size_y_shift, p->size_z_shift) + 1;
-        unsigned size_z = bits(p->invocation_count, p->size_z_shift, p->workgroups_x_shift) + 1;
+        unsigned size_y_shift = bits(p->invocation_shifts, 0, 5);
+        unsigned size_z_shift = bits(p->invocation_shifts, 5, 10);
+        unsigned workgroups_x_shift = bits(p->invocation_shifts, 10, 16);
+        unsigned workgroups_y_shift = bits(p->invocation_shifts, 16, 22);
+        unsigned workgroups_z_shift = bits(p->invocation_shifts, 22, 28);
+        unsigned workgroups_x_shift_2 = bits(p->invocation_shifts, 28, 32);
 
-        unsigned groups_x = bits(p->invocation_count, p->workgroups_x_shift, p->workgroups_y_shift) + 1;
-        unsigned groups_y = bits(p->invocation_count, p->workgroups_y_shift, p->workgroups_z_shift) + 1;
-        unsigned groups_z = bits(p->invocation_count, p->workgroups_z_shift, 32) + 1;
+        unsigned size_x = bits(p->invocation_count, 0, size_y_shift) + 1;
+        unsigned size_y = bits(p->invocation_count, size_y_shift, size_z_shift) + 1;
+        unsigned size_z = bits(p->invocation_count, size_z_shift, workgroups_x_shift) + 1;
+
+        unsigned groups_x = bits(p->invocation_count, workgroups_x_shift, workgroups_y_shift) + 1;
+        unsigned groups_y = bits(p->invocation_count, workgroups_y_shift, workgroups_z_shift) + 1;
+        unsigned groups_z = bits(p->invocation_count, workgroups_z_shift, 32) + 1;
 
         /* Even though we have this decoded, we want to ensure that the
          * representation is "unique" so we don't lose anything by printing only
@@ -1695,31 +1702,21 @@ pandecode_vertex_tiler_prefix(struct mali_vertex_tiler_prefix *p, int job_no, bo
 
         bool canonical =
                 (p->invocation_count == ref.invocation_count) &&
-                (p->size_y_shift == ref.size_y_shift) &&
-                (p->size_z_shift == ref.size_z_shift) &&
-                (p->workgroups_x_shift == ref.workgroups_x_shift) &&
-                (p->workgroups_y_shift == ref.workgroups_y_shift) &&
-                (p->workgroups_z_shift == ref.workgroups_z_shift) &&
-                (p->workgroups_x_shift_2 == ref.workgroups_x_shift_2);
+                (p->invocation_shifts == ref.invocation_shifts);
 
         if (!canonical) {
                 pandecode_msg("XXX: non-canonical workgroups packing\n");
-                pandecode_msg("expected: %X, %d, %d, %d, %d, %d, %d\n",
+                pandecode_msg("expected: %X, %X",
                                 ref.invocation_count,
-                                ref.size_y_shift,
-                                ref.size_z_shift,
-                                ref.workgroups_x_shift,
-                                ref.workgroups_y_shift,
-                                ref.workgroups_z_shift,
-                                ref.workgroups_x_shift_2);
+                                ref.invocation_shifts);
 
                 pandecode_prop("invocation_count = 0x%" PRIx32, p->invocation_count);
-                pandecode_prop("size_y_shift = %d", p->size_y_shift);
-                pandecode_prop("size_z_shift = %d", p->size_z_shift);
-                pandecode_prop("workgroups_x_shift = %d", p->workgroups_x_shift);
-                pandecode_prop("workgroups_y_shift = %d", p->workgroups_y_shift);
-                pandecode_prop("workgroups_z_shift = %d", p->workgroups_z_shift);
-                pandecode_prop("workgroups_x_shift_2 = %d", p->workgroups_x_shift_2);
+                pandecode_prop("size_y_shift = %d", size_y_shift);
+                pandecode_prop("size_z_shift = %d", size_z_shift);
+                pandecode_prop("workgroups_x_shift = %d", workgroups_x_shift);
+                pandecode_prop("workgroups_y_shift = %d", workgroups_y_shift);
+                pandecode_prop("workgroups_z_shift = %d", workgroups_z_shift);
+                pandecode_prop("workgroups_x_shift_2 = %d", workgroups_x_shift_2);
         }
 
         /* Regardless, print the decode */

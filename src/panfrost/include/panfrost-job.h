@@ -937,13 +937,16 @@ struct mali_vertex_tiler_prefix {
          */
         u32 invocation_count;
 
-        u32 size_y_shift : 5;
-        u32 size_z_shift : 5;
-        u32 workgroups_x_shift : 6;
-        u32 workgroups_y_shift : 6;
-        u32 workgroups_z_shift : 6;
-        /* This is max(workgroups_x_shift, 2) in all the cases I've seen. */
-        u32 workgroups_x_shift_2 : 4;
+        /* Bitfield for shifts:
+         *
+         * size_y_shift : 5
+         * size_z_shift : 5
+         * workgroups_x_shift : 6
+         * workgroups_y_shift : 6
+         * workgroups_z_shift : 6
+         * workgroups_x_shift_2 : 4
+         */
+        u32 invocation_shifts;
 
         u32 draw_mode : 4;
         u32 unknown_draw : 22;
