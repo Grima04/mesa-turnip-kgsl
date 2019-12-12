@@ -1003,6 +1003,9 @@ fd_resource_create_with_modifiers(struct pipe_screen *pscreen,
 		size = rsc->layout.layer_size * prsc->array_size;
 	}
 
+	if (fd_mesa_debug & FD_DBG_LAYOUT)
+		fdl_dump_layout(&rsc->layout);
+
 	realloc_bo(rsc, size);
 	if (!rsc->bo)
 		goto fail;

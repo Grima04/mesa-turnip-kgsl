@@ -88,6 +88,8 @@ enum fd_debug_flag {
 	FD_DBG_NOUBWC       = BITFIELD_BIT(23),
 	FD_DBG_NOLRZ        = BITFIELD_BIT(24),
 	FD_DBG_NOTILE       = BITFIELD_BIT(25),
+	FD_DBG_LAYOUT       = BITFIELD_BIT(26),
+
 };
 
 extern int fd_mesa_debug;

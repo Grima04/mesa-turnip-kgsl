@@ -108,6 +108,8 @@ struct fdl_layout {
 	uint8_t cpp;
 
 	uint32_t width0, height0, depth0;
+	uint32_t nr_samples;
+	enum pipe_format format;
 
 	uint32_t size; /* Size of the whole image, in bytes. */
 
@@ -175,6 +177,9 @@ fdl6_layout(struct fdl_layout *layout,
 		enum pipe_format format, uint32_t nr_samples,
 		uint32_t width0, uint32_t height0, uint32_t depth0,
 		uint32_t mip_levels, uint32_t array_size, bool is_3d, bool ubwc);
+
+void
+fdl_dump_layout(struct fdl_layout *layout);
 
 void
 fdl6_get_ubwc_blockwidth(struct fdl_layout *layout,

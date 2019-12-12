@@ -91,6 +91,7 @@ static const struct debug_named_value debug_options[] = {
 		{"noubwc",    FD_DBG_NOUBWC, "Disable UBWC for all internal buffers"},
 		{"nolrz",     FD_DBG_NOLRZ,  "Disable LRZ (a6xx)"},
 		{"notile",    FD_DBG_NOTILE, "Disable tiling for all internal buffers"},
+		{"layout",    FD_DBG_LAYOUT, "Dump resource layouts"},
 		DEBUG_NAMED_VALUE_END
 };
 
