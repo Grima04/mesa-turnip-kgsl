@@ -18,8 +18,11 @@
 */
 
 #include "tessellator.hpp"
-// #include <math.h> // ceil
+#if defined(_WIN32) || defined(_WIN64)
+#include <math.h> // ceil
+#else
 #include <cmath>
+#endif
 //#include <windows.h> // Just used for some commented out debug stat printing.
 //#include <strsafe.h> // Ditto.
 #define min(x,y) (x < y ? x : y)
