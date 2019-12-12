@@ -269,3 +269,94 @@ v3dv_GetPhysicalDeviceFormatProperties(VkPhysicalDevice physicalDevice,
    };
 }
 
+VkResult
+v3dv_GetPhysicalDeviceImageFormatProperties(
+   VkPhysicalDevice physicalDevice,
+   VkFormat format,
+   VkImageType type,
+   VkImageTiling tiling,
+   VkImageUsageFlags usage,
+   VkImageCreateFlags createFlags,
+   VkImageFormatProperties *pImageFormatProperties)
+{
+   const struct v3dv_format *v3dv_format = v3dv_get_format(format);
+   VkFormatFeatureFlags format_feature_flags =
+      image_format_features(format, v3dv_format, tiling);
+   if (!format_feature_flags)
+      goto unsupported;
+
+   if (usage & VK_IMAGE_USAGE_SAMPLED_BIT) {
+      if (!(format_feature_flags & VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT)) {
+         goto unsupported;
+      }
+   }
+
+   if (usage & VK_IMAGE_USAGE_STORAGE_BIT) {
+      if (!(format_feature_flags & VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT)) {
+         goto unsupported;
+      }
+   }
+
+   if (usage & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) {
+      if (!(format_feature_flags & VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT)) {
+         goto unsupported;
+      }
+   }
+
+   if (usage & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) {
+      if (!(format_feature_flags &
+            VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)) {
+         goto unsupported;
+      }
+   }
+
+   /* FIXME: these are taken from VkPhysicalDeviceLimits, we should just put
+    * these limits available in the physical device and read them from there
+    * wherever we need them.
+    */
+   switch (type) {
+   case VK_IMAGE_TYPE_1D:
+      pImageFormatProperties->maxExtent.width = 4096;
+      pImageFormatProperties->maxExtent.height = 1;
+      pImageFormatProperties->maxExtent.depth = 1;
+      pImageFormatProperties->maxArrayLayers = 2048;
+      pImageFormatProperties->maxMipLevels = 13; /* log2(maxWidth) + 1 */
+      break;
+   case VK_IMAGE_TYPE_2D:
+      pImageFormatProperties->maxExtent.width = 4096;
+      pImageFormatProperties->maxExtent.height = 4096;
+      pImageFormatProperties->maxExtent.depth = 1;
+      pImageFormatProperties->maxArrayLayers = 2048;
+      pImageFormatProperties->maxMipLevels = 13; /* log2(maxWidth) + 1 */
+      break;
+   case VK_IMAGE_TYPE_3D:
+      pImageFormatProperties->maxExtent.width = 4096;
+      pImageFormatProperties->maxExtent.height = 4096;
+      pImageFormatProperties->maxExtent.depth = 4096;
+      pImageFormatProperties->maxArrayLayers = 1;
+      pImageFormatProperties->maxMipLevels = 13; /* log2(maxWidth) + 1 */
+      break;
+   default:
+      unreachable("bad VkImageType");
+   }
+
+   pImageFormatProperties->sampleCounts = VK_SAMPLE_COUNT_1_BIT;
+
+   if (tiling == VK_IMAGE_TILING_LINEAR)
+      pImageFormatProperties->maxMipLevels = 1;
+
+   pImageFormatProperties->maxResourceSize = 0xffffffff; /* 32-bit allocation */
+
+   return VK_SUCCESS;
+
+unsupported:
+   *pImageFormatProperties = (VkImageFormatProperties) {
+      .maxExtent = { 0, 0, 0 },
+      .maxMipLevels = 0,
+      .maxArrayLayers = 0,
+      .sampleCounts = 0,
+      .maxResourceSize = 0,
+   };
+
+   return VK_ERROR_FORMAT_NOT_SUPPORTED;
+}
