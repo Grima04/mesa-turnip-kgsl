@@ -258,8 +258,8 @@ tu_physical_device_init(struct tu_physical_device *device,
    switch (device->gpu_id) {
    case 630:
    case 640:
-      device->tile_align_w = 32;
-      device->tile_align_h = 32;
+      device->tile_align_w = 64;
+      device->tile_align_h = 16;
       break;
    default:
       result = vk_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,
