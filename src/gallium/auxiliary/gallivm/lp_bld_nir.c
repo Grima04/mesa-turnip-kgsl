@@ -249,7 +249,9 @@ static LLVMValueRef icmp32(struct lp_build_nir_context *bld_base,
    LLVMBuilderRef builder = bld_base->base.gallivm->builder;
    struct lp_build_context *i_bld = get_int_bld(bld_base, is_unsigned, src_bit_size);
    LLVMValueRef result = lp_build_cmp(i_bld, compare, src[0], src[1]);
-   if (src_bit_size == 64)
+   if (src_bit_size < 32)
+      result = LLVMBuildSExt(builder, result, bld_base->int_bld.vec_type, "");
+   else if (src_bit_size == 64)
       result = LLVMBuildTrunc(builder, result, bld_base->int_bld.vec_type, "");
    return result;
 }
@@ -571,8 +573,20 @@ static LLVMValueRef do_alu_action(struct lp_build_nir_context *bld_base,
    case nir_op_i2f64:
       result = lp_build_int_to_float(&bld_base->dbl_bld, src[0]);
       break;
+   case nir_op_i2i8:
+      result = LLVMBuildTrunc(builder, src[0], bld_base->int8_bld.vec_type, "");
+      break;
+   case nir_op_i2i16:
+      if (src_bit_size[0] < 16)
+         result = LLVMBuildSExt(builder, src[0], bld_base->int16_bld.vec_type, "");
+      else
+         result = LLVMBuildTrunc(builder, src[0], bld_base->int16_bld.vec_type, "");
+      break;
    case nir_op_i2i32:
-      result = LLVMBuildTrunc(builder, src[0], bld_base->int_bld.vec_type, "");
+      if (src_bit_size[0] < 32)
+         result = LLVMBuildSExt(builder, src[0], bld_base->int_bld.vec_type, "");
+      else
+         result = LLVMBuildTrunc(builder, src[0], bld_base->int_bld.vec_type, "");
       break;
    case nir_op_i2i64:
       result = LLVMBuildSExt(builder, src[0], bld_base->int64_bld.vec_type, "");
@@ -688,8 +702,20 @@ static LLVMValueRef do_alu_action(struct lp_build_nir_context *bld_base,
    case nir_op_u2f64:
       result = LLVMBuildUIToFP(builder, src[0], bld_base->dbl_bld.vec_type, "");
       break;
+   case nir_op_u2u8:
+      result = LLVMBuildTrunc(builder, src[0], bld_base->uint8_bld.vec_type, "");
+      break;
+   case nir_op_u2u16:
+      if (src_bit_size[0] < 16)
+         result = LLVMBuildZExt(builder, src[0], bld_base->uint16_bld.vec_type, "");
+      else
+         result = LLVMBuildTrunc(builder, src[0], bld_base->uint16_bld.vec_type, "");
+      break;
    case nir_op_u2u32:
-      result = LLVMBuildTrunc(builder, src[0], bld_base->uint_bld.vec_type, "");
+      if (src_bit_size[0] < 32)
+         result = LLVMBuildZExt(builder, src[0], bld_base->uint_bld.vec_type, "");
+      else
+         result = LLVMBuildTrunc(builder, src[0], bld_base->uint_bld.vec_type, "");
       break;
    case nir_op_u2u64:
       result = LLVMBuildZExt(builder, src[0], bld_base->uint64_bld.vec_type, "");
