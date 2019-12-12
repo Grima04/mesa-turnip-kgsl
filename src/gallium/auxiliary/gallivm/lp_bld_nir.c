@@ -578,7 +578,7 @@ static LLVMValueRef do_alu_action(struct lp_build_nir_context *bld_base,
       result = LLVMBuildSExt(builder, src[0], bld_base->int64_bld.vec_type, "");
       break;
    case nir_op_iabs:
-      result = lp_build_abs(&bld_base->int_bld, src[0]);
+      result = lp_build_abs(get_int_bld(bld_base, false, src_bit_size[0]), src[0]);
       break;
    case nir_op_iadd:
       result = lp_build_add(get_int_bld(bld_base, false, src_bit_size[0]),
@@ -601,13 +601,14 @@ static LLVMValueRef do_alu_action(struct lp_build_nir_context *bld_base,
       result = icmp32(bld_base, PIPE_FUNC_LESS, false, src_bit_size[0], src);
       break;
    case nir_op_imax:
-      result = lp_build_max(&bld_base->int_bld, src[0], src[1]);
+      result = lp_build_max(get_int_bld(bld_base, false, src_bit_size[0]), src[0], src[1]);
       break;
    case nir_op_imin:
-      result = lp_build_min(&bld_base->int_bld, src[0], src[1]);
+      result = lp_build_min(get_int_bld(bld_base, false, src_bit_size[0]), src[0], src[1]);
       break;
    case nir_op_imul:
-      result = lp_build_mul(&bld_base->int_bld,
+   case nir_op_imul24:
+      result = lp_build_mul(get_int_bld(bld_base, false, src_bit_size[0]),
                             src[0], src[1]);
       break;
    case nir_op_imul_high: {
@@ -629,17 +630,39 @@ static LLVMValueRef do_alu_action(struct lp_build_nir_context *bld_base,
       result = lp_build_or(get_int_bld(bld_base, false, src_bit_size[0]),
                            src[0], src[1]);
       break;
-   case nir_op_ishl:
-      src[1] = lp_build_and(&bld_base->uint_bld, src[1], lp_build_const_int_vec(gallivm, bld_base->uint_bld.type, (src_bit_size[0] - 1)));
-      result = lp_build_shl(&bld_base->int_bld, src[0], src[1]);
+   case nir_op_irem:
+      result = lp_build_mod(get_int_bld(bld_base, false, src_bit_size[0]),
+                            src[0], src[1]);
       break;
-   case nir_op_ishr:
-      src[1] = lp_build_and(&bld_base->uint_bld, src[1], lp_build_const_int_vec(gallivm, bld_base->uint_bld.type, (src_bit_size[0] - 1)));
-      result = lp_build_shr(&bld_base->int_bld, src[0], src[1]);
+   case nir_op_ishl: {
+      struct lp_build_context *uint_bld = get_int_bld(bld_base, true, src_bit_size[0]);
+      struct lp_build_context *int_bld = get_int_bld(bld_base, false, src_bit_size[0]);
+      if (src_bit_size[0] == 64)
+         src[1] = LLVMBuildZExt(builder, src[1], uint_bld->vec_type, "");
+      if (src_bit_size[0] < 32)
+         src[1] = LLVMBuildTrunc(builder, src[1], uint_bld->vec_type, "");
+      src[1] = lp_build_and(uint_bld, src[1], lp_build_const_int_vec(gallivm, uint_bld->type, (src_bit_size[0] - 1)));
+      result = lp_build_shl(int_bld, src[0], src[1]);
       break;
+   }
+   case nir_op_ishr: {
+      struct lp_build_context *uint_bld = get_int_bld(bld_base, true, src_bit_size[0]);
+      struct lp_build_context *int_bld = get_int_bld(bld_base, false, src_bit_size[0]);
+      if (src_bit_size[0] == 64)
+         src[1] = LLVMBuildZExt(builder, src[1], uint_bld->vec_type, "");
+      if (src_bit_size[0] < 32)
+         src[1] = LLVMBuildTrunc(builder, src[1], uint_bld->vec_type, "");
+      src[1] = lp_build_and(uint_bld, src[1], lp_build_const_int_vec(gallivm, uint_bld->type, (src_bit_size[0] - 1)));
+      result = lp_build_shr(int_bld, src[0], src[1]);
+      break;
+   }
    case nir_op_isign:
-      result = lp_build_sgn(&bld_base->int_bld, src[0]);
+      result = lp_build_sgn(get_int_bld(bld_base, false, src_bit_size[0]), src[0]);
       break;
+   case nir_op_isub:
+      result = lp_build_sub(get_int_bld(bld_base, false, src_bit_size[0]),
+                            src[0], src[1]);
+
    case nir_op_ixor:
       result = lp_build_xor(get_int_bld(bld_base, false, src_bit_size[0]),
                             src[0], src[1]);
@@ -687,13 +710,13 @@ static LLVMValueRef do_alu_action(struct lp_build_nir_context *bld_base,
       result = icmp32(bld_base, PIPE_FUNC_LESS, true, src_bit_size[0], src);
       break;
    case nir_op_umax:
-      result = lp_build_max(&bld_base->uint_bld, src[0], src[1]);
+      result = lp_build_max(get_int_bld(bld_base, true, src_bit_size[0]), src[0], src[1]);
       break;
    case nir_op_umin:
-      result = lp_build_min(&bld_base->uint_bld, src[0], src[1]);
+      result = lp_build_min(get_int_bld(bld_base, true, src_bit_size[0]), src[0], src[1]);
       break;
    case nir_op_umod:
-      result = lp_build_mod(&bld_base->uint_bld, src[0], src[1]);
+      result = lp_build_mod(get_int_bld(bld_base, true, src_bit_size[0]), src[0], src[1]);
       break;
    case nir_op_umul_high: {
       LLVMValueRef hi_bits;
@@ -701,10 +724,16 @@ static LLVMValueRef do_alu_action(struct lp_build_nir_context *bld_base,
       result = hi_bits;
       break;
    }
-   case nir_op_ushr:
-      src[1] = lp_build_and(&bld_base->uint_bld, src[1], lp_build_const_int_vec(gallivm, bld_base->uint_bld.type, (src_bit_size[0] - 1)));
-      result = lp_build_shr(&bld_base->uint_bld, src[0], src[1]);
+   case nir_op_ushr: {
+      struct lp_build_context *uint_bld = get_int_bld(bld_base, true, src_bit_size[0]);
+      if (src_bit_size[0] == 64)
+         src[1] = LLVMBuildZExt(builder, src[1], uint_bld->vec_type, "");
+      if (src_bit_size[0] < 32)
+         src[1] = LLVMBuildTrunc(builder, src[1], uint_bld->vec_type, "");
+      src[1] = lp_build_and(uint_bld, src[1], lp_build_const_int_vec(gallivm, uint_bld->type, (src_bit_size[0] - 1)));
+      result = lp_build_shr(uint_bld, src[0], src[1]);
       break;
+   }
    default:
       assert(0);
       break;
