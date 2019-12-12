@@ -345,7 +345,7 @@ tu6_rb_fmt_to_ifmt(enum a6xx_color_fmt fmt)
    case RB6_R8G8_UNORM:
    case RB6_R8G8_SNORM:
    case RB6_R8G8B8A8_UNORM:
-   case RB6_R8G8B8_UNORM:
+   case RB6_R8G8B8X8_UNORM:
    case RB6_R8G8B8A8_SNORM:
    case RB6_R4G4B4A4_UNORM:
    case RB6_R5G5B5A1_UNORM:
