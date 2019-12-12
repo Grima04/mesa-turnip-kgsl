@@ -1254,7 +1254,7 @@ tu6_emit_binning_pass(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
    uint32_t x1 = tiling->tile0.offset.x;
    uint32_t y1 = tiling->tile0.offset.y;
    uint32_t x2 = tiling->render_area.offset.x + tiling->render_area.extent.width - 1;
-   uint32_t y2 = tiling->render_area.offset.x + tiling->render_area.extent.height - 1;
+   uint32_t y2 = tiling->render_area.offset.y + tiling->render_area.extent.height - 1;
 
    tu6_emit_window_scissor(cmd, cs, x1, y1, x2, y2);
 
