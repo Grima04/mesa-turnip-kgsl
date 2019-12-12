@@ -2213,17 +2213,23 @@ panfrost_set_sampler_views(
         struct pipe_sampler_view **views)
 {
         struct panfrost_context *ctx = pan_context(pctx);
+        unsigned new_nr = 0;
+        unsigned i;
 
         assert(start_slot == 0);
 
-        unsigned new_nr = 0;
-        for (unsigned i = 0; i < num_views; ++i) {
+        for (i = 0; i < num_views; ++i) {
                 if (views[i])
                         new_nr = i + 1;
+		pipe_sampler_view_reference((struct pipe_sampler_view **)&ctx->sampler_views[shader][i],
+		                            views[i]);
         }
 
+        for (; i < ctx->sampler_view_count[shader]; i++) {
+		pipe_sampler_view_reference((struct pipe_sampler_view **)&ctx->sampler_views[shader][i],
+		                            NULL);
+        }
         ctx->sampler_view_count[shader] = new_nr;
-        memcpy(ctx->sampler_views[shader], views, num_views * sizeof (void *));
 
         ctx->dirty |= PAN_DIRTY_TEXTURES;
 }
