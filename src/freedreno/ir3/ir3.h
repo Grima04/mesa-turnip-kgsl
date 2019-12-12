@@ -1089,6 +1089,24 @@ static inline bool __is_false_dep(struct ir3_instruction *instr, unsigned n)
 #define foreach_output(__outinstr, __ir) \
 	foreach_output_n(__outinstr, __i, __ir)
 
+/* iterators for instructions: */
+#define foreach_instr(__instr, __list) \
+	list_for_each_entry(struct ir3_instruction, __instr, __list, node)
+#define foreach_instr_rev(__instr, __list) \
+	list_for_each_entry_rev(struct ir3_instruction, __instr, __list, node)
+#define foreach_instr_safe(__instr, __list) \
+	list_for_each_entry_safe(struct ir3_instruction, __instr, __list, node)
+
+/* iterators for blocks: */
+#define foreach_block(__block, __list) \
+	list_for_each_entry(struct ir3_block, __block, __list, node)
+#define foreach_block_safe(__block, __list) \
+	list_for_each_entry_safe(struct ir3_block, __block, __list, node)
+
+/* iterators for arrays: */
+#define foreach_array(__array, __list) \
+	list_for_each_entry(struct ir3_array, __array, __list, node)
+
 /* dump: */
 void ir3_print(struct ir3 *ir);
 void ir3_print_instr(struct ir3_instruction *instr);

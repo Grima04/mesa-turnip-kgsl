@@ -2806,8 +2806,8 @@ pack_inlocs(struct ir3_context *ctx)
 	 * First Step: scan shader to find which bary.f/ldlv remain:
 	 */
 
-	list_for_each_entry (struct ir3_block, block, &ctx->ir->block_list, node) {
-		list_for_each_entry (struct ir3_instruction, instr, &block->instr_list, node) {
+	foreach_block (block, &ctx->ir->block_list) {
+		foreach_instr (instr, &block->instr_list) {
 			if (is_input(instr)) {
 				unsigned inloc = instr->regs[1]->iim_val;
 				unsigned i = inloc / 4;
@@ -2870,8 +2870,8 @@ pack_inlocs(struct ir3_context *ctx)
 	 * Third Step: reassign packed inloc's:
 	 */
 
-	list_for_each_entry (struct ir3_block, block, &ctx->ir->block_list, node) {
-		list_for_each_entry (struct ir3_instruction, instr, &block->instr_list, node) {
+	foreach_block (block, &ctx->ir->block_list) {
+		foreach_instr (instr, &block->instr_list) {
 			if (is_input(instr)) {
 				unsigned inloc = instr->regs[1]->iim_val;
 				unsigned i = inloc / 4;
@@ -3185,9 +3185,8 @@ collect_tex_prefetches(struct ir3_context *ctx, struct ir3 *ir)
 	unsigned idx = 0;
 
 	/* Collect sampling instructions eligible for pre-dispatch. */
-	list_for_each_entry(struct ir3_block, block, &ir->block_list, node) {
-		list_for_each_entry_safe(struct ir3_instruction, instr,
-				&block->instr_list, node) {
+	foreach_block (block, &ir->block_list) {
+		foreach_instr_safe (instr, &block->instr_list) {
 			if (instr->opc == OPC_META_TEX_PREFETCH) {
 				assert(idx < ARRAY_SIZE(ctx->so->sampler_prefetch));
 				struct ir3_sampler_prefetch *fetch =
@@ -3522,8 +3521,8 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 	 */
 	if (so->type == MESA_SHADER_TESS_CTRL ||
 		so->type == MESA_SHADER_GEOMETRY ) {
-		list_for_each_entry (struct ir3_block, block, &ir->block_list, node) {
-			list_for_each_entry (struct ir3_instruction, instr, &block->instr_list, node) {
+		foreach_block (block, &ir->block_list) {
+			foreach_instr (instr, &block->instr_list) {
 				instr->flags |= IR3_INSTR_SS | IR3_INSTR_SY;
 				break;
 			}
