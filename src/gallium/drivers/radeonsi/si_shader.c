@@ -7429,17 +7429,6 @@ static void si_build_vs_prolog_function(struct si_shader_context *ctx,
 					   key->vs_prolog.num_input_sgprs + i, "");
 	}
 
-	LLVMValueRef original_ret = ret;
-	bool wrapped = false;
-	LLVMBasicBlockRef if_entry_block = NULL;
-
-	if (key->vs_prolog.is_monolithic && key->vs_prolog.as_ngg) {
-		LLVMValueRef ena = si_is_es_thread(ctx);
-		if_entry_block = LLVMGetInsertBlock(ctx->ac.builder);
-		ac_build_ifcc(&ctx->ac, ena, 11501);
-		wrapped = true;
-	}
-
 	/* Compute vertex load indices from instance divisors. */
 	LLVMValueRef instance_divisor_constbuf = NULL;
 
@@ -7493,20 +7482,6 @@ static void si_build_vs_prolog_function(struct si_shader_context *ctx,
 		index = ac_to_float(&ctx->ac, index);
 		ret = LLVMBuildInsertValue(ctx->ac.builder, ret, index,
 					   ctx->args.arg_count + i, "");
-	}
-
-	if (wrapped) {
-		LLVMBasicBlockRef bbs[2] = {
-			LLVMGetInsertBlock(ctx->ac.builder),
-			if_entry_block,
-		};
-		ac_build_endif(&ctx->ac, 11501);
-
-		LLVMValueRef values[2] = {
-			ret,
-			original_ret
-		};
-		ret = ac_build_phi(&ctx->ac, LLVMTypeOf(ret), 2, values, bbs);
 	}
 
 	si_llvm_build_ret(ctx, ret);
