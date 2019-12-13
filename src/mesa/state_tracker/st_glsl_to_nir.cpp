@@ -31,6 +31,7 @@
 #include "program/prog_statevars.h"
 #include "program/prog_parameter.h"
 #include "program/ir_to_mesa.h"
+#include "main/context.h"
 #include "main/mtypes.h"
 #include "main/errors.h"
 #include "main/glspirv.h"
@@ -368,9 +369,16 @@ st_nir_preprocess(struct st_context *st, struct gl_program *prog,
       st->ctx->SoftFP64 = glsl_float64_funcs_to_nir(st->ctx, options);
    }
 
-   nir_variable_mode mask =
-      (nir_variable_mode) (nir_var_shader_in | nir_var_shader_out);
-   nir_remove_dead_variables(nir, mask);
+   /* ES has strict SSO validation rules for shader IO matching so we can't
+    * remove dead IO until the resource list has been built. Here we skip
+    * removing them until later. This will potentially make the IO lowering
+    * calls below do a little extra work but should otherwise have no impact.
+    */
+   if (!_mesa_is_gles(st->ctx) || !nir->info.separate_shader) {
+      nir_variable_mode mask =
+         (nir_variable_mode) (nir_var_shader_in | nir_var_shader_out);
+      nir_remove_dead_variables(nir, mask);
+   }
 
    if (options->lower_all_io_to_temps ||
        nir->info.stage == MESA_SHADER_VERTEX ||
