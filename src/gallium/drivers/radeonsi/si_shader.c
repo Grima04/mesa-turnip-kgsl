@@ -5993,7 +5993,9 @@ static bool si_vs_needs_prolog(const struct si_shader_selector *sel,
 {
 	/* VGPR initialization fixup for Vega10 and Raven is always done in the
 	 * VS prolog. */
-	return sel->vs_needs_prolog || key->ls_vgpr_fix;
+	return sel->vs_needs_prolog ||
+	       key->ls_vgpr_fix ||
+	       key->unpack_instance_id_from_vertex_id;
 }
 
 LLVMValueRef si_is_es_thread(struct si_shader_context *ctx)
@@ -6932,7 +6934,7 @@ int si_compile_tgsi_shader(struct si_screen *sscreen,
 
 	if (shader->is_monolithic && ctx.type == PIPE_SHADER_VERTEX) {
 		LLVMValueRef parts[2];
-		bool need_prolog = sel->vs_needs_prolog;
+		bool need_prolog = si_vs_needs_prolog(sel, &shader->key.part.vs.prolog);
 
 		parts[1] = ctx.main_fn;
 
@@ -7055,7 +7057,8 @@ int si_compile_tgsi_shader(struct si_screen *sscreen,
 			es_main = ctx.main_fn;
 
 			/* ES prolog */
-			if (es->vs_needs_prolog) {
+			if (es->type == PIPE_SHADER_VERTEX &&
+			    si_vs_needs_prolog(es, &shader->key.part.gs.vs_prolog)) {
 				union si_shader_part_key vs_prolog_key;
 				si_get_vs_prolog_key(&es->info,
 						     shader_es.info.num_input_sgprs,
