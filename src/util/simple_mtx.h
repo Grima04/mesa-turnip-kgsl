@@ -71,9 +71,11 @@ simple_mtx_init(simple_mtx_t *mtx, ASSERTED int type)
 }
 
 static inline void
-simple_mtx_destroy(simple_mtx_t *mtx)
+simple_mtx_destroy(ASSERTED simple_mtx_t *mtx)
 {
+#ifndef NDEBUG
    mtx->val = _SIMPLE_MTX_INVALID_VALUE;
+#endif
 }
 
 static inline void
