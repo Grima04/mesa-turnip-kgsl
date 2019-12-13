@@ -293,7 +293,9 @@ static int si_init_surface(struct si_screen *sscreen,
 
 	/* GFX9: DCC clear for 4x and 8x MSAA textures unimplemented. */
 	if (sscreen->info.chip_class == GFX9 &&
-	    ptex->nr_storage_samples >= 4)
+	    (ptex->nr_storage_samples >= 4 ||
+	     (sscreen->info.family == CHIP_RAVEN &&
+	      ptex->nr_storage_samples >= 2 && bpe < 4)))
 		flags |= RADEON_SURF_DISABLE_DCC;
 
 	/* TODO: GFX10: DCC causes corruption with MSAA. */
