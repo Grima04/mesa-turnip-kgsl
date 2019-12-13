@@ -29,7 +29,6 @@
 
 #include "anv_private.h"
 
-#include "util/simple_mtx.h"
 #include "util/anon_file.h"
 
 #ifdef HAVE_VALGRIND
