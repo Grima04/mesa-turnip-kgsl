@@ -1700,7 +1700,8 @@ panfrost_bind_vertex_elements_state(
 static void *
 panfrost_create_shader_state(
         struct pipe_context *pctx,
-        const struct pipe_shader_state *cso)
+        const struct pipe_shader_state *cso,
+        enum pipe_shader_type stage)
 {
         struct panfrost_shader_variants *so = CALLOC_STRUCT(panfrost_shader_variants);
         so->base = *cso;
@@ -1709,6 +1710,21 @@ panfrost_create_shader_state(
 
         if (cso->type == PIPE_SHADER_IR_TGSI)
                 so->base.tokens = tgsi_dup_tokens(so->base.tokens);
+
+        /* Precompile for shader-db if we need to */
+        if (unlikely((pan_debug & PAN_DBG_PRECOMPILE) && cso->type == PIPE_SHADER_IR_NIR)) {
+                struct panfrost_context *ctx = pan_context(pctx);
+
+                struct mali_shader_meta meta;
+                struct panfrost_shader_state state;
+                uint64_t outputs_written;
+
+                panfrost_shader_compile(ctx, &meta,
+                              PIPE_SHADER_IR_NIR,
+                                      so->base.ir.nir,
+                                        tgsi_processor_to_shader_stage(stage), &state,
+                                        &outputs_written);
+        }
 
         return so;
 }
@@ -1974,6 +1990,18 @@ panfrost_bind_shader_state(
                 shader_state->so_mask =
                         update_so_info(&shader_state->stream_output, outputs_written);
         }
+}
+
+static void *
+panfrost_create_vs_state(struct pipe_context *pctx, const struct pipe_shader_state *hwcso)
+{
+        return panfrost_create_shader_state(pctx, hwcso, PIPE_SHADER_VERTEX);
+}
+
+static void *
+panfrost_create_fs_state(struct pipe_context *pctx, const struct pipe_shader_state *hwcso)
+{
+        return panfrost_create_shader_state(pctx, hwcso, PIPE_SHADER_FRAGMENT);
 }
 
 static void
@@ -2595,11 +2623,11 @@ panfrost_create_context(struct pipe_screen *screen, void *priv, unsigned flags)
         gallium->bind_vertex_elements_state = panfrost_bind_vertex_elements_state;
         gallium->delete_vertex_elements_state = panfrost_generic_cso_delete;
 
-        gallium->create_fs_state = panfrost_create_shader_state;
+        gallium->create_fs_state = panfrost_create_fs_state;
         gallium->delete_fs_state = panfrost_delete_shader_state;
         gallium->bind_fs_state = panfrost_bind_fs_state;
 
-        gallium->create_vs_state = panfrost_create_shader_state;
+        gallium->create_vs_state = panfrost_create_vs_state;
         gallium->delete_vs_state = panfrost_delete_shader_state;
         gallium->bind_vs_state = panfrost_bind_vs_state;
 

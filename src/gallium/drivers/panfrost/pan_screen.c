@@ -60,6 +60,7 @@ static const struct debug_named_value debug_options[] = {
         {"deqp",      PAN_DBG_DEQP,     "Hacks for dEQP"},
         {"afbc",      PAN_DBG_AFBC,     "Enable non-conformant AFBC impl"},
         {"sync",      PAN_DBG_SYNC,     "Wait for each job's completion and check for any GPU fault"},
+        {"precompile", PAN_DBG_PRECOMPILE, "Precompile shaders for shader-db"},
         DEBUG_NAMED_VALUE_END
 };
 
