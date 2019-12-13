@@ -1,1 +1,1 @@
-VK_KHR_shader_non_semantic_info on Intel.
+VK_KHR_shader_non_semantic_info on Intel, RADV.
