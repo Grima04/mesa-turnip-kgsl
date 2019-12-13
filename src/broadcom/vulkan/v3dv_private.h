@@ -326,6 +326,12 @@ struct v3dv_framebuffer {
    uint32_t height;
    uint32_t layers;
 
+   uint32_t internal_bpp;
+   uint32_t tile_width;
+   uint32_t tile_height;
+   uint32_t draw_tiles_x;
+   uint32_t draw_tiles_y;
+
    uint32_t attachment_count;
    struct v3dv_image_view *attachments[0];
 };

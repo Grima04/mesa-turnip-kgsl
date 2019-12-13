@@ -33,6 +33,9 @@
 #include "v3dv_private.h"
 
 #include "common/v3d_debug.h"
+
+#include "broadcom/cle/v3dx_pack.h"
+
 #include "compiler/glsl_types.h"
 #include "drm-uapi/v3d_drm.h"
 #include "vk_util.h"
@@ -1294,6 +1297,47 @@ v3dv_DestroyBuffer(VkDevice _device,
    vk_free2(&device->alloc, pAllocator, buffer);
 }
 
+static void
+compute_tile_size_for_framebuffer(struct v3dv_framebuffer *framebuffer)
+{
+   static const uint8_t tile_sizes[] = {
+      64, 64,
+      64, 32,
+      32, 32,
+      32, 16,
+      16, 16,
+   };
+
+   uint32_t tile_size_index = 0;
+
+   /* FIXME: MSAA */
+
+   if (framebuffer->attachment_count > 2)
+      tile_size_index += 2;
+   else if (framebuffer->attachment_count > 1)
+      tile_size_index += 1;
+
+   STATIC_ASSERT(RENDER_TARGET_MAXIMUM_32BPP == 0);
+   uint8_t max_bpp = RENDER_TARGET_MAXIMUM_32BPP;
+   for (uint32_t i = 0; i < framebuffer->attachment_count; i++) {
+      const struct v3dv_image_view *att = framebuffer->attachments[i];
+      if (att)
+         max_bpp = MAX2(max_bpp, att->internal_bpp);
+   }
+   framebuffer->internal_bpp = max_bpp;
+
+   tile_size_index += framebuffer->internal_bpp;
+   assert(tile_size_index < ARRAY_SIZE(tile_sizes));
+
+   framebuffer->tile_width = tile_sizes[tile_size_index * 2];
+   framebuffer->tile_height = tile_sizes[tile_size_index * 2 + 1];
+
+   framebuffer->draw_tiles_x =
+      DIV_ROUND_UP(framebuffer->width, framebuffer->tile_width);
+   framebuffer->draw_tiles_y =
+      DIV_ROUND_UP(framebuffer->height, framebuffer->tile_height);
+}
+
 VkResult
 v3dv_CreateFramebuffer(VkDevice _device,
                        const VkFramebufferCreateInfo *pCreateInfo,
@@ -1320,6 +1364,8 @@ v3dv_CreateFramebuffer(VkDevice _device,
       framebuffer->attachments[i] =
          v3dv_image_view_from_handle(pCreateInfo->pAttachments[i]);
    }
+
+   compute_tile_size_for_framebuffer(framebuffer);
 
    *pFramebuffer = v3dv_framebuffer_to_handle(framebuffer);
 
