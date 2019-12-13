@@ -3481,6 +3481,9 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 
 	ir3_debug_print(ir, "AFTER RA");
 
+	ir3_postsched(ctx);
+	ir3_debug_print(ir, "AFTER POSTSCHED");
+
 	if (compiler->gpu_id >= 600) {
 		if (ir3_a6xx_fixup_atomic_dests(ir, so)) {
 			ir3_debug_print(ir, "AFTER ATOMIC FIXUP");
