@@ -1373,6 +1373,10 @@ static void visit_intrinsic(struct lp_build_nir_context *bld_base,
    case nir_intrinsic_global_atomic_exchange:
    case nir_intrinsic_global_atomic_comp_swap:
       visit_global_atomic(bld_base, instr, result);
+   case nir_intrinsic_vote_all:
+   case nir_intrinsic_vote_any:
+   case nir_intrinsic_vote_ieq:
+      bld_base->vote(bld_base, cast_type(bld_base, get_src(bld_base, instr->src[0]), nir_type_int, 32), instr, result);
       break;
    default:
       assert(0);

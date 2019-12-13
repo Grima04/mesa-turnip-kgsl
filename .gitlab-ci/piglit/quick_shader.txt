@@ -1352,15 +1352,6 @@ spec/arb_shader_ballot/execution/fs-readinvocation-uint: skip
 spec/arb_shader_ballot/execution/fs-readinvocation-uint-uniform: skip
 spec/arb_shader_clock/execution/clock: skip
 spec/arb_shader_clock/execution/clock2x32: skip
-spec/arb_shader_group_vote/cs-all: skip
-spec/arb_shader_group_vote/cs-any: skip
-spec/arb_shader_group_vote/cs-eq: skip
-spec/arb_shader_group_vote/vs-all-const: skip
-spec/arb_shader_group_vote/vs-all-uniform: skip
-spec/arb_shader_group_vote/vs-any-const: skip
-spec/arb_shader_group_vote/vs-any-uniform: skip
-spec/arb_shader_group_vote/vs-eq-const: skip
-spec/arb_shader_group_vote/vs-eq-uniform: skip
 spec/arb_shader_image_load_store/execution/gl45-imageatomicexchange-float: skip
 spec/arb_shader_precision/fs-degrees-float: skip
 spec/arb_shader_precision/fs-degrees-vec2: skip
@@ -6417,10 +6408,10 @@ spec/oes_viewport_array/viewport-gs-writes-out-of-range: skip
 summary:
        name:  results
        ----  --------
-       pass:     8930
+       pass:     8939
        fail:       55
       crash:        0
-       skip:     6361
+       skip:     6352
     timeout:        0
        warn:        0
  incomplete:        0

@@ -1400,6 +1400,63 @@ emit_prologue(struct lp_build_nir_soa_context *bld)
    }
 }
 
+static void emit_vote(struct lp_build_nir_context *bld_base, LLVMValueRef src, nir_intrinsic_instr *instr, LLVMValueRef result[4])
+{
+   struct gallivm_state * gallivm = bld_base->base.gallivm;
+   LLVMBuilderRef builder = gallivm->builder;
+
+   LLVMValueRef exec_mask = mask_vec(bld_base);
+   struct lp_build_loop_state loop_state;
+
+   LLVMValueRef outer_cond = LLVMBuildICmp(builder, LLVMIntNE, exec_mask, bld_base->uint_bld.zero, "");
+
+   LLVMValueRef res_store = lp_build_alloca(gallivm, bld_base->int_bld.elem_type, "");
+   LLVMValueRef init_val;
+   if (instr->intrinsic == nir_intrinsic_vote_ieq) {
+      /* for equal we unfortunately have to loop and find the first valid one. */
+      lp_build_loop_begin(&loop_state, gallivm, lp_build_const_int32(gallivm, 0));
+      LLVMValueRef if_cond = LLVMBuildExtractElement(gallivm->builder, outer_cond, loop_state.counter, "");
+
+      struct lp_build_if_state ifthen;
+      lp_build_if(&ifthen, gallivm, if_cond);
+      LLVMValueRef value_ptr = LLVMBuildExtractElement(gallivm->builder, src,
+                                                       loop_state.counter, "");
+      LLVMBuildStore(builder, value_ptr, res_store);
+      lp_build_endif(&ifthen);
+      lp_build_loop_end_cond(&loop_state, lp_build_const_int32(gallivm, bld_base->uint_bld.type.length),
+			     NULL, LLVMIntUGE);
+      lp_build_print_value(gallivm, "init_val is ", LLVMBuildLoad(builder, res_store, ""));
+      init_val = LLVMBuildLoad(builder, res_store, "");
+   } else {
+      LLVMBuildStore(builder, lp_build_const_int32(gallivm, instr->intrinsic == nir_intrinsic_vote_any ? 0 : -1), res_store);
+   }
+
+   LLVMValueRef res;
+   lp_build_loop_begin(&loop_state, gallivm, lp_build_const_int32(gallivm, 0));
+   LLVMValueRef value_ptr = LLVMBuildExtractElement(gallivm->builder, src,
+                                                       loop_state.counter, "");
+   struct lp_build_if_state ifthen;
+   LLVMValueRef if_cond;
+   if_cond = LLVMBuildExtractElement(gallivm->builder, outer_cond, loop_state.counter, "");
+
+   lp_build_if(&ifthen, gallivm, if_cond);
+   res = LLVMBuildLoad(builder, res_store, "");
+
+   if (instr->intrinsic == nir_intrinsic_vote_ieq) {
+      LLVMValueRef tmp = LLVMBuildICmp(builder, LLVMIntEQ, init_val, value_ptr, "");
+      tmp = LLVMBuildSExt(builder, tmp, bld_base->uint_bld.elem_type, "");
+      res = LLVMBuildOr(builder, res, tmp, "");
+   } else if (instr->intrinsic == nir_intrinsic_vote_any)
+      res = LLVMBuildOr(builder, res, value_ptr, "");
+   else
+      res = LLVMBuildAnd(builder, res, value_ptr, "");
+   LLVMBuildStore(builder, res, res_store);
+   lp_build_endif(&ifthen);
+   lp_build_loop_end_cond(&loop_state, lp_build_const_int32(gallivm, bld_base->uint_bld.type.length),
+			  NULL, LLVMIntUGE);
+   result[0] = lp_build_broadcast_scalar(&bld_base->uint_bld, LLVMBuildLoad(builder, res_store, ""));
+}
+
 void lp_build_nir_soa(struct gallivm_state *gallivm,
                       struct nir_shader *shader,
                       const struct lp_build_tgsi_params *params,
@@ -1494,6 +1551,7 @@ void lp_build_nir_soa(struct gallivm_state *gallivm,
    bld.bld_base.barrier = emit_barrier;
    bld.bld_base.image_op = emit_image_op;
    bld.bld_base.image_size = emit_image_size;
+   bld.bld_base.vote = emit_vote;
 
    bld.mask = params->mask;
    bld.inputs = params->inputs;
