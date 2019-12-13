@@ -49,6 +49,8 @@
 #include "common/v3d_limits.h"
 
 #include "vk_debug_report.h"
+#include "util/set.h"
+#include "util/hash_table.h"
 #include "util/xmlconfig.h"
 
 #include "v3dv_entrypoints.h"
@@ -59,10 +61,12 @@
 static inline void
 pack_emit_reloc(void *cl, const void *reloc) {}
 
-#define __gen_user_data char
-#define __gen_address_type char
-#define __gen_emit_reloc pack_emit_reloc
-#define __gen_address_offset(reloc) (0)
+#define __gen_user_data struct v3dv_cl
+#define __gen_address_type struct v3dv_cl_reloc
+#define __gen_address_offset(reloc) (((reloc)->bo ? (reloc)->bo->offset : 0) + \
+                                     (reloc)->offset)
+#define __gen_emit_reloc cl_pack_emit_reloc
+#define __gen_unpack_address(cl, s, e) __unpack_address(cl, s, e)
 #include "v3dv_cl.h"
 
 #include "vk_alloc.h"
@@ -347,6 +351,11 @@ enum v3dv_cmd_buffer_status {
    V3DV_CMD_BUFFER_STATUS_RECORDING     = 2
 };
 
+struct v3dv_cmd_buffer_state {
+   const struct v3dv_render_pass *pass;
+   const struct v3dv_framebuffer *framebuffer;
+};
+
 struct v3dv_cmd_buffer {
    VK_LOADER_DATA _loader_data;
 
@@ -363,7 +372,20 @@ struct v3dv_cmd_buffer {
    struct v3dv_cl indirect;
 
    enum v3dv_cmd_buffer_status status;
+
+   struct v3dv_cmd_buffer_state state;
+
+   /* Set of all BOs referenced by the job. This will be used for making
+    * the list of BOs that the kernel will need to have paged in to
+    * execute our job.
+    */
+   struct set *bos;
+
+   struct v3dv_bo *tile_alloc;
+   struct v3dv_bo *tile_state;
 };
+
+void v3dv_cmd_buffer_add_bo(struct v3dv_cmd_buffer *cmd_buffer, struct v3dv_bo *bo);
 
 struct v3dv_shader_module {
    unsigned char sha1[20];

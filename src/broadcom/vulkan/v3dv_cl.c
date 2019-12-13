@@ -22,6 +22,7 @@
  */
 
 #include "v3dv_private.h"
+#include "broadcom/cle/v3dx_pack.h"
 
 void
 v3dv_cl_init(struct v3dv_cmd_buffer *cmd_buffer, struct v3dv_cl *cl)
@@ -59,4 +60,37 @@ v3dv_cl_destroy(struct v3dv_cl *cl)
       assert(cl->cmd_buffer && cl->cmd_buffer->device);
       v3dv_bo_free(cl->cmd_buffer->device, cl->bo);
    }
+}
+
+void
+v3dv_cl_ensure_space_with_branch(struct v3dv_cl *cl, uint32_t space)
+{
+   if (v3dv_cl_offset(cl) + space + cl_packet_length(BRANCH) <= cl->size)
+      return;
+
+   struct v3dv_bo *bo = v3dv_bo_alloc(cl->cmd_buffer->device, space);
+   if (!bo) {
+      fprintf(stderr, "failed to allocate memory for command list");
+      abort();
+   }
+
+   /* Chain to the new BO from the old one if needed */
+   if (cl->bo) {
+      cl_emit(cl, BRANCH, branch) {
+         branch.address = v3dv_cl_address(bo, 0);
+      }
+   }
+
+   v3dv_cmd_buffer_add_bo(cl->cmd_buffer, bo);
+
+   bool ok = v3dv_bo_map(cl->cmd_buffer->device, bo, bo->size);
+   if (!ok) {
+      fprintf(stderr, "failed to map command list buffer");
+      abort();
+   }
+
+   cl->bo = bo;
+   cl->base = cl->bo->map;
+   cl->size = cl->bo->size;
+   cl->next = cl->base;
 }
