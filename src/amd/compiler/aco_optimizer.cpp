@@ -393,6 +393,10 @@ bool can_swap_operands(aco_ptr<Instruction>& instr)
    case aco_opcode::v_xor_b32:
    case aco_opcode::v_max_f32:
    case aco_opcode::v_min_f32:
+   case aco_opcode::v_max_i32:
+   case aco_opcode::v_min_i32:
+   case aco_opcode::v_max_u32:
+   case aco_opcode::v_min_u32:
    case aco_opcode::v_cmp_eq_f32:
    case aco_opcode::v_cmp_lg_f32:
       return true;
