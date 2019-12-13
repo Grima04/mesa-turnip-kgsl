@@ -463,7 +463,7 @@ union si_shader_part_key {
 		unsigned	num_input_sgprs:6;
 		/* For merged stages such as LS-HS, HS input VGPRs are first. */
 		unsigned	num_merged_next_stage_vgprs:3;
-		unsigned	last_input:4;
+		unsigned	num_inputs:5;
 		unsigned	as_ls:1;
 		unsigned	as_es:1;
 		unsigned	as_ngg:1;

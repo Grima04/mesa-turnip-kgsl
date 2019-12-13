@@ -4515,9 +4515,12 @@ static void declare_vs_input_vgprs(struct si_shader_context *ctx,
 
 	if (!shader->is_gs_copy_shader) {
 		/* Vertex load indices. */
-		ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT, &ctx->vertex_index0);
-		for (unsigned i = 1; i < shader->selector->info.num_inputs; i++)
-			ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT, NULL);
+		if (shader->selector->info.num_inputs) {
+			ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT,
+				   &ctx->vertex_index0);
+			for (unsigned i = 1; i < shader->selector->info.num_inputs; i++)
+				ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT, NULL);
+		}
 		*num_prolog_vgprs += shader->selector->info.num_inputs;
 	}
 }
@@ -6271,7 +6274,7 @@ static void si_get_vs_prolog_key(const struct tgsi_shader_info *info,
 	memset(key, 0, sizeof(*key));
 	key->vs_prolog.states = *prolog_key;
 	key->vs_prolog.num_input_sgprs = num_input_sgprs;
-	key->vs_prolog.last_input = MAX2(1, info->num_inputs) - 1;
+	key->vs_prolog.num_inputs = info->num_inputs;
 	key->vs_prolog.as_ls = shader_out->key.as_ls;
 	key->vs_prolog.as_es = shader_out->key.as_es;
 	key->vs_prolog.as_ngg = shader_out->key.as_ngg;
@@ -7334,7 +7337,7 @@ static void si_build_vs_prolog_function(struct si_shader_context *ctx,
 	memset(&ctx->args, 0, sizeof(ctx->args));
 
 	/* 4 preloaded VGPRs + vertex load indices as prolog outputs */
-	returns = alloca((num_all_input_regs + key->vs_prolog.last_input + 1) *
+	returns = alloca((num_all_input_regs + key->vs_prolog.num_inputs) *
 			 sizeof(LLVMTypeRef));
 	num_returns = 0;
 
@@ -7354,7 +7357,7 @@ static void si_build_vs_prolog_function(struct si_shader_context *ctx,
 	}
 
 	/* Vertex load indices. */
-	for (i = 0; i <= key->vs_prolog.last_input; i++)
+	for (i = 0; i < key->vs_prolog.num_inputs; i++)
 		returns[num_returns++] = ctx->f32;
 
 	/* Create the function. */
@@ -7440,7 +7443,7 @@ static void si_build_vs_prolog_function(struct si_shader_context *ctx,
 			ac_build_load_to_sgpr(&ctx->ac, list, buf_index);
 	}
 
-	for (i = 0; i <= key->vs_prolog.last_input; i++) {
+	for (i = 0; i < key->vs_prolog.num_inputs; i++) {
 		bool divisor_is_one =
 			key->vs_prolog.states.instance_divisor_is_one & (1u << i);
 		bool divisor_is_fetched =
