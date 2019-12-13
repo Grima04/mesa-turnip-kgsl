@@ -399,7 +399,7 @@ bool brw_try_override_assembly(struct brw_codegen *p, int start_offset,
    ASSERTED bool valid =
       brw_validate_instructions(p->devinfo, p->store,
                                 start_offset, p->next_insn_offset,
-                                0);
+                                NULL);
    assert(valid);
 
    return true;
