@@ -2459,7 +2459,7 @@ static void
 pandecode_vertex_tiler_postfix(const struct mali_vertex_tiler_postfix *p, int job_no, bool is_bifrost)
 {
         if (p->shader & 0xF)
-                pandecode_msg("warn: shader tagged %X\n", p->shader & 0xF);
+                pandecode_msg("warn: shader tagged %X\n", (unsigned) (p->shader & 0xF));
 
         if (!(p->position_varying || p->occlusion_counter))
                 return;
