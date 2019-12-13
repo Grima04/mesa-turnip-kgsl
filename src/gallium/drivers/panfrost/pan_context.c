@@ -2555,7 +2555,6 @@ struct pipe_context *
 panfrost_create_context(struct pipe_screen *screen, void *priv, unsigned flags)
 {
         struct panfrost_context *ctx = rzalloc(screen, struct panfrost_context);
-        struct panfrost_screen *pscreen = pan_screen(screen);
         struct pipe_context *gallium = (struct pipe_context *) ctx;
 
         gallium->screen = screen;
