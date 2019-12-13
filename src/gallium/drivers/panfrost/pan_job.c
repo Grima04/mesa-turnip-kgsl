@@ -646,12 +646,18 @@ panfrost_batch_get_scratchpad(struct panfrost_batch *batch,
                         thread_tls_alloc,
                         core_count);
 
-        return panfrost_batch_create_bo(batch, size,
+        if (batch->scratchpad) {
+                assert(batch->scratchpad->size >= size);
+        } else {
+                batch->scratchpad = panfrost_batch_create_bo(batch, size,
                                              PAN_BO_INVISIBLE,
                                              PAN_BO_ACCESS_PRIVATE |
                                              PAN_BO_ACCESS_RW |
                                              PAN_BO_ACCESS_VERTEX_TILER |
                                              PAN_BO_ACCESS_FRAGMENT);
+        }
+
+        return batch->scratchpad;
 }
 
 struct panfrost_bo *
