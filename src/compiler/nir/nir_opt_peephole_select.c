@@ -152,10 +152,6 @@ block_check_for_allowed_instrs(nir_block *block, unsigned *count,
          if (!mov->dest.dest.is_ssa)
             return false;
 
-         const struct nir_block *const expected_block = mov->instr.block;
-         const nir_alu_type expected_type =
-            nir_alu_type_get_base_type(nir_op_infos[mov->op].output_type);
-
          if (alu_ok) {
             /* If the ALU operation is an fsat or a move-like operation, do
              * not count it.  The expectation is that it will eventually be
