@@ -3214,6 +3214,15 @@ void visit_load_input(isel_context *ctx, nir_intrinsic_instr *instr)
       unsigned channel_start = 0;
       bool direct_fetch = false;
 
+      /* skip unused channels at the start */
+      if (vtx_info->chan_byte_size && !post_shuffle) {
+         channel_start = ffs(mask) - 1;
+         for (unsigned i = 0; i < channel_start; i++)
+            channels[i] = Temp(0, s1);
+      } else if (vtx_info->chan_byte_size && post_shuffle && !(mask & 0x8)) {
+         num_channels = 3 - (ffs(mask) - 1);
+      }
+
       /* load channels */
       while (channel_start < num_channels) {
          unsigned fetch_size = num_channels - channel_start;
@@ -3290,7 +3299,7 @@ void visit_load_input(isel_context *ctx, nir_intrinsic_instr *instr)
          unsigned num_temp = 0;
          for (unsigned i = 0; i < dst.size(); i++) {
             unsigned idx = i + component;
-            if (idx < num_channels && channels[swizzle[idx]].id()) {
+            if (swizzle[idx] < num_channels && channels[swizzle[idx]].id()) {
                Temp channel = channels[swizzle[idx]];
                if (idx == 3 && alpha_adjust != RADV_ALPHA_ADJUST_NONE)
                   channel = adjust_vertex_fetch_alpha(ctx, alpha_adjust, channel);
