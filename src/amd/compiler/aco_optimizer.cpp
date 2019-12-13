@@ -924,7 +924,8 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
       break;
    }
    case aco_opcode::v_and_b32: /* abs */
-      if (!instr->usesModifiers() && instr->operands[0].constantEquals(0x7FFFFFFF) && instr->operands[1].isTemp())
+      if (!instr->usesModifiers() && instr->operands[0].constantEquals(0x7FFFFFFF) &&
+          instr->operands[1].isTemp() && instr->operands[1].getTemp().type() == RegType::vgpr)
          ctx.info[instr->definitions[0].tempId()].set_abs(instr->operands[1].getTemp());
       else
          ctx.info[instr->definitions[0].tempId()].set_bitwise(instr.get());
@@ -933,7 +934,7 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
       if (!instr->usesModifiers() && instr->operands[0].constantEquals(0x80000000u) && instr->operands[1].isTemp()) {
          if (ctx.info[instr->operands[1].tempId()].is_neg()) {
             ctx.info[instr->definitions[0].tempId()].set_temp(ctx.info[instr->operands[1].tempId()].temp);
-         } else {
+         } else if (instr->operands[1].getTemp().type() == RegType::vgpr) {
             if (ctx.info[instr->operands[1].tempId()].is_abs()) { /* neg(abs(x)) */
                instr->operands[1].setTemp(ctx.info[instr->operands[1].tempId()].temp);
                instr->opcode = aco_opcode::v_or_b32;
