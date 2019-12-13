@@ -914,12 +914,12 @@ mir_schedule_alu(
         mir_choose_alu(&sadd, instructions, worklist, len, &predicate, UNIT_SADD);
 
         /* Check if writeout reads its own register */
-        bool bad_writeout = false;
 
         if (branch && branch->writeout) {
                 midgard_instruction *stages[] = { sadd, vadd, smul };
                 unsigned src = (branch->src[0] == ~0) ? SSA_FIXED_REGISTER(0) : branch->src[0];
                 unsigned writeout_mask = 0x0;
+                bool bad_writeout = false;
 
                 for (unsigned i = 0; i < ARRAY_SIZE(stages); ++i) {
                         if (!stages[i])

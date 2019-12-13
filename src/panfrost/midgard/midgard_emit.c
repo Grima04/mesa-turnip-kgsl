@@ -142,7 +142,7 @@ mir_pack_swizzle_64(unsigned *swizzle, unsigned max_component)
         for (unsigned i = 0; i < 2; ++i) {
                 assert(swizzle[i] <= max_component);
 
-                unsigned a = swizzle[i] & 1 ?
+                unsigned a = (swizzle[i] & 1) ?
                         (COMPONENT_W << 2) | COMPONENT_Z :
                         (COMPONENT_Y << 2) | COMPONENT_X;
 
