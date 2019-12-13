@@ -385,6 +385,25 @@ merge_64bit(struct lp_build_nir_context *bld_base,
    return LLVMBuildShuffleVector(builder, input, input2, LLVMConstVector(shuffles, len), "");
 }
 
+static LLVMValueRef
+do_int_divide(struct lp_build_nir_context *bld_base,
+              bool is_unsigned, unsigned src_bit_size,
+              LLVMValueRef src, LLVMValueRef src2)
+{
+   struct gallivm_state *gallivm = bld_base->base.gallivm;
+   LLVMBuilderRef builder = gallivm->builder;
+   struct lp_build_context *int_bld = get_int_bld(bld_base, is_unsigned, src_bit_size);
+   LLVMValueRef div_mask = lp_build_cmp(int_bld, PIPE_FUNC_EQUAL, src2,
+                                        int_bld->zero);
+   LLVMValueRef divisor = LLVMBuildOr(builder,
+                                      div_mask,
+                                      src2, "");
+   LLVMValueRef result = lp_build_div(int_bld, src, divisor);
+   /* udiv by zero is guaranteed to return 0xffffffff at least with d3d10
+    * may as well do same for idiv */
+   return LLVMBuildOr(builder, div_mask, result, "");
+}
+
 static LLVMValueRef do_alu_action(struct lp_build_nir_context *bld_base,
                                   nir_op op, unsigned src_bit_size[4], LLVMValueRef src[4])
 {
@@ -576,8 +595,7 @@ static LLVMValueRef do_alu_action(struct lp_build_nir_context *bld_base,
                             src[0], src[1]);
       break;
    case nir_op_idiv:
-      result = lp_build_div(&bld_base->int_bld,
-                            src[0], src[1]);
+      result = do_int_divide(bld_base, false, src_bit_size[0], src[0], src[1]);
       break;
    case nir_op_ieq32:
       result = icmp32(bld_base, PIPE_FUNC_EQUAL, false, src_bit_size[0], src);
@@ -660,8 +678,7 @@ static LLVMValueRef do_alu_action(struct lp_build_nir_context *bld_base,
       result = LLVMBuildZExt(builder, src[0], bld_base->uint64_bld.vec_type, "");
       break;
    case nir_op_udiv:
-      result = lp_build_div(&bld_base->uint_bld,
-                            src[0], src[1]);
+      result = do_int_divide(bld_base, true, src_bit_size[0], src[0], src[1]);
       break;
    case nir_op_ufind_msb: {
       struct lp_build_context *uint_bld = get_int_bld(bld_base, true, src_bit_size[0]);
