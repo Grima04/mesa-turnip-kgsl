@@ -500,7 +500,7 @@ panfrost_upload_sampler_descriptors(struct panfrost_context *ctx)
         for (int t = 0; t <= PIPE_SHADER_FRAGMENT; ++t) {
                 mali_ptr upload = 0;
 
-                if (ctx->sampler_count[t] && ctx->sampler_view_count[t]) {
+                if (ctx->sampler_count[t]) {
                         size_t transfer_size = desc_size * ctx->sampler_count[t];
 
                         struct panfrost_transfer transfer =
