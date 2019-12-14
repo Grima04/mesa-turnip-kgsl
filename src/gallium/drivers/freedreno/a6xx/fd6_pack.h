@@ -76,12 +76,12 @@ struct fd_reg_pair {
 	do {													\
 		const struct fd_reg_pair regs[] = { __VA_ARGS__ };	\
 		unsigned count = ARRAY_SIZE(regs);					\
-		uint32_t *p = ring->cur;							\
 															\
 		STATIC_ASSERT(count > 0);							\
 		STATIC_ASSERT(count <= 16);							\
 															\
 		BEGIN_RING(ring, count + 1);						\
+		uint32_t *p = ring->cur;							\
 		*p++ = CP_TYPE4_PKT | count |						\
 			(_odd_parity_bit(count) << 7) |					\
 			((regs[0].reg & 0x3ffff) << 8) |				\
