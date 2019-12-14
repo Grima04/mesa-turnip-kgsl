@@ -60,7 +60,7 @@ static LLVMValueRef ngg_get_prim_cnt(struct si_shader_context *ctx)
 
 static LLVMValueRef ngg_get_ordered_id(struct si_shader_context *ctx)
 {
-	return si_unpack_param(ctx, ctx->gs_tg_info, 0, 11);
+	return si_unpack_param(ctx, ctx->gs_tg_info, 0, 12);
 }
 
 static LLVMValueRef ngg_get_query_buf(struct si_shader_context *ctx)
