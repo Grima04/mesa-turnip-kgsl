@@ -2326,7 +2326,6 @@ tu_CmdBeginRenderPass(VkCommandBuffer commandBuffer,
    TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
    TU_FROM_HANDLE(tu_render_pass, pass, pRenderPassBegin->renderPass);
    TU_FROM_HANDLE(tu_framebuffer, fb, pRenderPassBegin->framebuffer);
-   VkResult result;
 
    cmd->state.pass = pass;
    cmd->state.subpass = pass->subpasses;
