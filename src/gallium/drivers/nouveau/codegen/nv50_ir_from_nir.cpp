@@ -2813,6 +2813,7 @@ Converter::visit(nir_alu_instr *insn)
    }
    default:
       ERROR("unknown nir_op %s\n", info.name);
+      assert(false);
       return false;
    }
 
