@@ -141,8 +141,7 @@ swr_is_format_supported(struct pipe_screen *_screen,
          return false;
    }
 
-   if (format_desc->layout == UTIL_FORMAT_LAYOUT_BPTC ||
-       format_desc->layout == UTIL_FORMAT_LAYOUT_ASTC ||
+   if (format_desc->layout == UTIL_FORMAT_LAYOUT_ASTC ||
        format_desc->layout == UTIL_FORMAT_LAYOUT_FXT1)
    {
       return false;
