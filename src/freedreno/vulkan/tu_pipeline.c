@@ -43,6 +43,7 @@ struct tu_pipeline_builder
 {
    struct tu_device *device;
    struct tu_pipeline_cache *cache;
+   struct tu_pipeline_layout *layout;
    const VkAllocationCallbacks *alloc;
    const VkGraphicsPipelineCreateInfo *create_info;
 
@@ -358,7 +359,8 @@ tu6_blend_op(VkBlendOp op)
 }
 
 static void
-tu6_emit_vs_config(struct tu_cs *cs, const struct ir3_shader_variant *vs)
+tu6_emit_vs_config(struct tu_cs *cs, struct tu_shader *shader,
+                   const struct ir3_shader_variant *vs)
 {
    uint32_t sp_vs_ctrl =
       A6XX_SP_VS_CTRL_REG0_THREADSIZE(FOUR_QUADS) |
@@ -368,8 +370,8 @@ tu6_emit_vs_config(struct tu_cs *cs, const struct ir3_shader_variant *vs)
    if (vs->need_pixlod)
       sp_vs_ctrl |= A6XX_SP_VS_CTRL_REG0_PIXLODENABLE;
 
-   uint32_t sp_vs_config = A6XX_SP_VS_CONFIG_NTEX(vs->num_samp) |
-                           A6XX_SP_VS_CONFIG_NSAMP(vs->num_samp);
+   uint32_t sp_vs_config = A6XX_SP_VS_CONFIG_NTEX(shader->texture_map.num_desc) |
+                           A6XX_SP_VS_CONFIG_NSAMP(shader->sampler_map.num_desc);
    if (vs->instrlen)
       sp_vs_config |= A6XX_SP_VS_CONFIG_ENABLED;
 
@@ -386,7 +388,8 @@ tu6_emit_vs_config(struct tu_cs *cs, const struct ir3_shader_variant *vs)
 }
 
 static void
-tu6_emit_hs_config(struct tu_cs *cs, const struct ir3_shader_variant *hs)
+tu6_emit_hs_config(struct tu_cs *cs, struct tu_shader *shader,
+                   const struct ir3_shader_variant *hs)
 {
    uint32_t sp_hs_config = 0;
    if (hs->instrlen)
@@ -404,7 +407,8 @@ tu6_emit_hs_config(struct tu_cs *cs, const struct ir3_shader_variant *hs)
 }
 
 static void
-tu6_emit_ds_config(struct tu_cs *cs, const struct ir3_shader_variant *ds)
+tu6_emit_ds_config(struct tu_cs *cs, struct tu_shader *shader,
+                   const struct ir3_shader_variant *ds)
 {
    uint32_t sp_ds_config = 0;
    if (ds->instrlen)
@@ -419,7 +423,8 @@ tu6_emit_ds_config(struct tu_cs *cs, const struct ir3_shader_variant *ds)
 }
 
 static void
-tu6_emit_gs_config(struct tu_cs *cs, const struct ir3_shader_variant *gs)
+tu6_emit_gs_config(struct tu_cs *cs, struct tu_shader *shader,
+                   const struct ir3_shader_variant *gs)
 {
    uint32_t sp_gs_config = 0;
    if (gs->instrlen)
@@ -437,7 +442,8 @@ tu6_emit_gs_config(struct tu_cs *cs, const struct ir3_shader_variant *gs)
 }
 
 static void
-tu6_emit_fs_config(struct tu_cs *cs, const struct ir3_shader_variant *fs)
+tu6_emit_fs_config(struct tu_cs *cs, struct tu_shader *shader,
+                   const struct ir3_shader_variant *fs)
 {
    uint32_t sp_fs_ctrl =
       A6XX_SP_FS_CTRL_REG0_THREADSIZE(FOUR_QUADS) | 0x1000000 |
@@ -449,8 +455,8 @@ tu6_emit_fs_config(struct tu_cs *cs, const struct ir3_shader_variant *fs)
    if (fs->need_pixlod)
       sp_fs_ctrl |= A6XX_SP_FS_CTRL_REG0_PIXLODENABLE;
 
-   uint32_t sp_fs_config = A6XX_SP_FS_CONFIG_NTEX(fs->num_samp) |
-                           A6XX_SP_FS_CONFIG_NSAMP(fs->num_samp) |
+   uint32_t sp_fs_config = A6XX_SP_FS_CONFIG_NTEX(shader->texture_map.num_desc) |
+                           A6XX_SP_FS_CONFIG_NSAMP(shader->sampler_map.num_desc) |
                            A6XX_SP_FS_CONFIG_NIBO(fs->image_mapping.num_ibo);
    if (fs->instrlen)
       sp_fs_config |= A6XX_SP_FS_CONFIG_ENABLED;
@@ -477,7 +483,8 @@ tu6_emit_fs_config(struct tu_cs *cs, const struct ir3_shader_variant *fs)
 }
 
 static void
-tu6_emit_cs_config(struct tu_cs *cs, const struct ir3_shader_variant *v)
+tu6_emit_cs_config(struct tu_cs *cs, const struct tu_shader *shader,
+                   const struct ir3_shader_variant *v)
 {
    tu_cs_emit_pkt4(cs, REG_A6XX_HLSQ_UPDATE_CNTL, 1);
    tu_cs_emit(cs, 0xff);
@@ -490,8 +497,8 @@ tu6_emit_cs_config(struct tu_cs *cs, const struct ir3_shader_variant *v)
    tu_cs_emit_pkt4(cs, REG_A6XX_SP_CS_CONFIG, 2);
    tu_cs_emit(cs, A6XX_SP_CS_CONFIG_ENABLED |
               A6XX_SP_CS_CONFIG_NIBO(v->image_mapping.num_ibo) |
-              A6XX_SP_CS_CONFIG_NTEX(v->num_samp) |
-              A6XX_SP_CS_CONFIG_NSAMP(v->num_samp));
+              A6XX_SP_CS_CONFIG_NTEX(shader->texture_map.num_desc) |
+              A6XX_SP_CS_CONFIG_NSAMP(shader->sampler_map.num_desc));
    tu_cs_emit(cs, v->instrlen);
 
    tu_cs_emit_pkt4(cs, REG_A6XX_SP_CS_CTRL_REG0, 1);
@@ -1036,11 +1043,11 @@ tu6_emit_program(struct tu_cs *cs,
       fs = &dummy_variant;
    }
 
-   tu6_emit_vs_config(cs, vs);
-   tu6_emit_hs_config(cs, hs);
-   tu6_emit_ds_config(cs, ds);
-   tu6_emit_gs_config(cs, gs);
-   tu6_emit_fs_config(cs, fs);
+   tu6_emit_vs_config(cs, builder->shaders[MESA_SHADER_VERTEX], vs);
+   tu6_emit_hs_config(cs, builder->shaders[MESA_SHADER_TESS_CTRL], hs);
+   tu6_emit_ds_config(cs, builder->shaders[MESA_SHADER_TESS_EVAL], ds);
+   tu6_emit_gs_config(cs, builder->shaders[MESA_SHADER_GEOMETRY], gs);
+   tu6_emit_fs_config(cs, builder->shaders[MESA_SHADER_FRAGMENT], fs);
 
    tu6_emit_vs_system_values(cs, vs);
    tu6_emit_vpc(cs, vs, fs, binning_pass);
@@ -1535,7 +1542,8 @@ tu_pipeline_builder_compile_shaders(struct tu_pipeline_builder *builder)
          continue;
 
       struct tu_shader *shader =
-         tu_shader_create(builder->device, stage, stage_info, builder->alloc);
+         tu_shader_create(builder->device, stage, stage_info, builder->layout,
+                          builder->alloc);
       if (!shader)
          return VK_ERROR_OUT_OF_HOST_MEMORY;
 
@@ -1910,11 +1918,14 @@ tu_pipeline_builder_init_graphics(
    const VkGraphicsPipelineCreateInfo *create_info,
    const VkAllocationCallbacks *alloc)
 {
+   TU_FROM_HANDLE(tu_pipeline_layout, layout, create_info->layout);
+
    *builder = (struct tu_pipeline_builder) {
       .device = dev,
       .cache = cache,
       .create_info = create_info,
       .alloc = alloc,
+      .layout = layout,
    };
 
    builder->rasterizer_discard =
@@ -2003,7 +2014,7 @@ tu6_emit_compute_program(struct tu_cs *cs,
 {
    const struct ir3_shader_variant *v = &shader->variants[0];
 
-   tu6_emit_cs_config(cs, v);
+   tu6_emit_cs_config(cs, shader, v);
 
    /* The compute program is the only one in the pipeline, so 0 offset. */
    tu6_emit_shader_object(cs, MESA_SHADER_COMPUTE, v, binary_bo, 0);
@@ -2044,6 +2055,7 @@ tu_compute_pipeline_create(VkDevice device,
                            VkPipeline *pPipeline)
 {
    TU_FROM_HANDLE(tu_device, dev, device);
+   TU_FROM_HANDLE(tu_pipeline_layout, layout, pCreateInfo->layout);
    const VkPipelineShaderStageCreateInfo *stage_info = &pCreateInfo->stage;
    VkResult result;
 
@@ -2053,11 +2065,13 @@ tu_compute_pipeline_create(VkDevice device,
    if (result != VK_SUCCESS)
       return result;
 
+   pipeline->layout = layout;
+
    struct tu_shader_compile_options options;
    tu_shader_compile_options_init(&options, NULL);
 
    struct tu_shader *shader =
-      tu_shader_create(dev, MESA_SHADER_COMPUTE, stage_info, pAllocator);
+      tu_shader_create(dev, MESA_SHADER_COMPUTE, stage_info, layout, pAllocator);
    if (!shader) {
       result = VK_ERROR_OUT_OF_HOST_MEMORY;
       goto fail;

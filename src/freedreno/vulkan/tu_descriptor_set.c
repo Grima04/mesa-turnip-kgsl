@@ -21,6 +21,21 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  */
+
+/**
+ * @file
+ *
+ * The texture and sampler descriptors are laid out in a single global space
+ * across all shader stages, for both simplicity of implementation and because
+ * that seems to be how things have to be structured for border color
+ * handling.
+ *
+ * Each shader stage will declare its texture/sampler count based on the last
+ * descriptor set it uses.  At draw emit time (though it really should be
+ * CmdBind time), we upload the descriptor sets used by each shader stage to
+ * their stage.
+ */
+
 #include "tu_private.h"
 
 #include <assert.h>

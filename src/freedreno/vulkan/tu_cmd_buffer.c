@@ -2490,7 +2490,8 @@ struct tu_draw_state_group
 
 static struct tu_sampler*
 sampler_ptr(struct tu_descriptor_state *descriptors_state,
-            const struct tu_descriptor_map *map, unsigned i)
+            const struct tu_descriptor_map *map, unsigned i,
+            unsigned array_index)
 {
    assert(descriptors_state->valid & (1 << map->set[i]));
 
@@ -2504,7 +2505,10 @@ sampler_ptr(struct tu_descriptor_state *descriptors_state,
    case VK_DESCRIPTOR_TYPE_SAMPLER:
       return (struct tu_sampler*) &set->mapped_ptr[layout->offset / 4];
    case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
-      return (struct tu_sampler*) &set->mapped_ptr[layout->offset / 4 + A6XX_TEX_CONST_DWORDS];
+      return (struct tu_sampler*) &set->mapped_ptr[layout->offset / 4 + A6XX_TEX_CONST_DWORDS +
+                                                   array_index *
+                                                   (A6XX_TEX_CONST_DWORDS +
+                                                    sizeof(struct tu_sampler) / 4)];
    default:
       unreachable("unimplemented descriptor type");
       break;
@@ -2516,7 +2520,7 @@ write_tex_const(struct tu_cmd_buffer *cmd,
                 uint32_t *dst,
                 struct tu_descriptor_state *descriptors_state,
                 const struct tu_descriptor_map *map,
-                unsigned i)
+                unsigned i, unsigned array_index)
 {
    assert(descriptors_state->valid & (1 << map->set[i]));
 
@@ -2528,11 +2532,19 @@ write_tex_const(struct tu_cmd_buffer *cmd,
 
    switch (layout->type) {
    case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
-   case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
    case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
    case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
    case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
-      memcpy(dst, &set->mapped_ptr[layout->offset / 4], A6XX_TEX_CONST_DWORDS*4);
+      memcpy(dst, &set->mapped_ptr[layout->offset / 4 +
+                                   array_index * A6XX_TEX_CONST_DWORDS],
+             A6XX_TEX_CONST_DWORDS * 4);
+      break;
+   case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
+      memcpy(dst, &set->mapped_ptr[layout->offset / 4 +
+                                   array_index *
+                                   (A6XX_TEX_CONST_DWORDS +
+                                    sizeof(struct tu_sampler) / 4)],
+             A6XX_TEX_CONST_DWORDS * 4);
       break;
    default:
       unreachable("unimplemented descriptor type");
@@ -2541,7 +2553,8 @@ write_tex_const(struct tu_cmd_buffer *cmd,
 
    if (layout->type == VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT) {
       const struct tu_tiling_config *tiling = &cmd->state.tiling_config;
-      uint32_t a = cmd->state.subpass->input_attachments[map->value[i]].attachment;
+      uint32_t a = cmd->state.subpass->input_attachments[map->value[i] +
+                                                         array_index].attachment;
 
       assert(cmd->state.pass->attachments[a].needs_gmem);
       dst[0] &= ~(A6XX_TEX_CONST_0_SWAP__MASK | A6XX_TEX_CONST_0_TILE_MODE__MASK);
@@ -2561,7 +2574,7 @@ write_tex_const(struct tu_cmd_buffer *cmd,
 static uint64_t
 buffer_ptr(struct tu_descriptor_state *descriptors_state,
            const struct tu_descriptor_map *map,
-           unsigned i)
+           unsigned i, unsigned array_index)
 {
    assert(descriptors_state->valid & (1 << map->set[i]));
 
@@ -2574,11 +2587,12 @@ buffer_ptr(struct tu_descriptor_state *descriptors_state,
    switch (layout->type) {
    case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
    case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
-      return descriptors_state->dynamic_buffers[layout->dynamic_offset_offset];
+      return descriptors_state->dynamic_buffers[layout->dynamic_offset_offset +
+                                                array_index];
    case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
    case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
-      return (uint64_t) set->mapped_ptr[layout->offset / 4 + 1] << 32 |
-                        set->mapped_ptr[layout->offset / 4];
+      return (uint64_t) set->mapped_ptr[layout->offset / 4 + array_index * 2 + 1] << 32 |
+                        set->mapped_ptr[layout->offset / 4 + array_index * 2];
    default:
       unreachable("unimplemented descriptor type");
       break;
@@ -2663,7 +2677,22 @@ tu6_emit_user_consts(struct tu_cs *cs, const struct tu_pipeline *pipeline,
             continue;
          }
 
-         uint64_t va = buffer_ptr(descriptors_state, &link->ubo_map, i - 1);
+         /* Look through the UBO map to find our UBO index, and get the VA for
+          * that UBO.
+          */
+         uint64_t va = 0;
+         uint32_t ubo_idx = i - 1;
+         uint32_t ubo_map_base = 0;
+         for (int j = 0; j < link->ubo_map.num; j++) {
+            if (ubo_idx >= ubo_map_base &&
+                ubo_idx < ubo_map_base + link->ubo_map.array_size[j]) {
+               va = buffer_ptr(descriptors_state, &link->ubo_map, j,
+                               ubo_idx - ubo_map_base);
+               break;
+            }
+            ubo_map_base += link->ubo_map.array_size[j];
+         }
+         assert(va);
 
          tu_cs_emit_pkt7(cs, tu6_stage2opcode(type), 3);
          tu_cs_emit(cs, CP_LOAD_STATE6_0_DST_OFF(state->range[i].offset / 16) |
@@ -2684,9 +2713,8 @@ tu6_emit_ubos(struct tu_cs *cs, const struct tu_pipeline *pipeline,
    const struct tu_program_descriptor_linkage *link =
       &pipeline->program.link[type];
 
-   uint32_t num = MIN2(link->ubo_map.num, link->const_state.num_ubos);
+   uint32_t num = MIN2(link->ubo_map.num_desc, link->const_state.num_ubos);
    uint32_t anum = align(num, 2);
-   uint32_t i;
 
    if (!num)
       return;
@@ -2700,10 +2728,15 @@ tu6_emit_ubos(struct tu_cs *cs, const struct tu_pipeline *pipeline,
    tu_cs_emit(cs, CP_LOAD_STATE6_1_EXT_SRC_ADDR(0));
    tu_cs_emit(cs, CP_LOAD_STATE6_2_EXT_SRC_ADDR_HI(0));
 
-   for (i = 0; i < num; i++)
-      tu_cs_emit_qw(cs, buffer_ptr(descriptors_state, &link->ubo_map, i));
+   unsigned emitted = 0;
+   for (unsigned i = 0; emitted < num && i < link->ubo_map.num; i++) {
+      for (unsigned j = 0; emitted < num && j < link->ubo_map.array_size[i]; j++) {
+         tu_cs_emit_qw(cs, buffer_ptr(descriptors_state, &link->ubo_map, i, j));
+         emitted++;
+      }
+   }
 
-   for (; i < anum; i++) {
+   for (; emitted < anum; emitted++) {
       tu_cs_emit(cs, 0xffffffff);
       tu_cs_emit(cs, 0xffffffff);
    }
@@ -2738,33 +2771,45 @@ tu6_emit_textures(struct tu_cmd_buffer *cmd,
       &pipeline->program.link[type];
    VkResult result;
 
-   if (link->texture_map.num == 0 && link->sampler_map.num == 0) {
+   if (link->texture_map.num_desc == 0 && link->sampler_map.num_desc == 0) {
       *entry = (struct tu_cs_entry) {};
       return VK_SUCCESS;
    }
 
    /* allocate and fill texture state */
    struct ts_cs_memory tex_const;
-   result = tu_cs_alloc(device, draw_state, link->texture_map.num, A6XX_TEX_CONST_DWORDS, &tex_const);
+   result = tu_cs_alloc(device, draw_state, link->texture_map.num_desc,
+                        A6XX_TEX_CONST_DWORDS, &tex_const);
    if (result != VK_SUCCESS)
       return result;
 
+   int tex_index = 0;
    for (unsigned i = 0; i < link->texture_map.num; i++) {
-      write_tex_const(cmd,
-                      &tex_const.map[A6XX_TEX_CONST_DWORDS*i],
-                      descriptors_state, &link->texture_map, i);
+      for (int j = 0; j < link->texture_map.array_size[i]; j++) {
+         write_tex_const(cmd,
+                         &tex_const.map[A6XX_TEX_CONST_DWORDS * tex_index++],
+                         descriptors_state, &link->texture_map, i, j);
+      }
    }
 
    /* allocate and fill sampler state */
-   struct ts_cs_memory tex_samp;
-   result = tu_cs_alloc(device, draw_state, link->sampler_map.num, A6XX_TEX_SAMP_DWORDS, &tex_samp);
-   if (result != VK_SUCCESS)
-      return result;
+   struct ts_cs_memory tex_samp = { 0 };
+   if (link->sampler_map.num_desc) {
+      result = tu_cs_alloc(device, draw_state, link->sampler_map.num_desc,
+                           A6XX_TEX_SAMP_DWORDS, &tex_samp);
+      if (result != VK_SUCCESS)
+         return result;
 
-   for (unsigned i = 0; i < link->sampler_map.num; i++) {
-      struct tu_sampler *sampler = sampler_ptr(descriptors_state, &link->sampler_map, i);
-      memcpy(&tex_samp.map[A6XX_TEX_SAMP_DWORDS*i], sampler->state, sizeof(sampler->state));
-      *needs_border |= sampler->needs_border;
+      int sampler_index = 0;
+      for (unsigned i = 0; i < link->sampler_map.num; i++) {
+         for (int j = 0; j < link->sampler_map.array_size[i]; j++) {
+            struct tu_sampler *sampler = sampler_ptr(descriptors_state,
+                                                     &link->sampler_map, i, j);
+            memcpy(&tex_samp.map[A6XX_TEX_SAMP_DWORDS * sampler_index++],
+                   sampler->state, sizeof(sampler->state));
+            *needs_border |= sampler->needs_border;
+         }
+      }
    }
 
    unsigned tex_samp_reg, tex_const_reg, tex_count_reg;
@@ -2798,17 +2843,19 @@ tu6_emit_textures(struct tu_cmd_buffer *cmd,
    if (result != VK_SUCCESS)
       return result;
 
-   /* output sampler state: */
-   tu_cs_emit_pkt7(&cs, tu6_stage2opcode(type), 3);
-   tu_cs_emit(&cs, CP_LOAD_STATE6_0_DST_OFF(0) |
-      CP_LOAD_STATE6_0_STATE_TYPE(ST6_SHADER) |
-      CP_LOAD_STATE6_0_STATE_SRC(SS6_INDIRECT) |
-      CP_LOAD_STATE6_0_STATE_BLOCK(sb) |
-      CP_LOAD_STATE6_0_NUM_UNIT(link->sampler_map.num));
-   tu_cs_emit_qw(&cs, tex_samp.iova); /* SRC_ADDR_LO/HI */
+   if (link->sampler_map.num_desc) {
+      /* output sampler state: */
+      tu_cs_emit_pkt7(&cs, tu6_stage2opcode(type), 3);
+      tu_cs_emit(&cs, CP_LOAD_STATE6_0_DST_OFF(0) |
+                 CP_LOAD_STATE6_0_STATE_TYPE(ST6_SHADER) |
+                 CP_LOAD_STATE6_0_STATE_SRC(SS6_INDIRECT) |
+                 CP_LOAD_STATE6_0_STATE_BLOCK(sb) |
+                 CP_LOAD_STATE6_0_NUM_UNIT(link->sampler_map.num_desc));
+      tu_cs_emit_qw(&cs, tex_samp.iova); /* SRC_ADDR_LO/HI */
 
-   tu_cs_emit_pkt4(&cs, tex_samp_reg, 2);
-   tu_cs_emit_qw(&cs, tex_samp.iova); /* SRC_ADDR_LO/HI */
+      tu_cs_emit_pkt4(&cs, tex_samp_reg, 2);
+      tu_cs_emit_qw(&cs, tex_samp.iova); /* SRC_ADDR_LO/HI */
+   }
 
    /* emit texture state: */
    tu_cs_emit_pkt7(&cs, tu6_stage2opcode(type), 3);
@@ -2816,14 +2863,14 @@ tu6_emit_textures(struct tu_cmd_buffer *cmd,
       CP_LOAD_STATE6_0_STATE_TYPE(ST6_CONSTANTS) |
       CP_LOAD_STATE6_0_STATE_SRC(SS6_INDIRECT) |
       CP_LOAD_STATE6_0_STATE_BLOCK(sb) |
-      CP_LOAD_STATE6_0_NUM_UNIT(link->texture_map.num));
+      CP_LOAD_STATE6_0_NUM_UNIT(link->texture_map.num_desc));
    tu_cs_emit_qw(&cs, tex_const.iova); /* SRC_ADDR_LO/HI */
 
    tu_cs_emit_pkt4(&cs, tex_const_reg, 2);
    tu_cs_emit_qw(&cs, tex_const.iova); /* SRC_ADDR_LO/HI */
 
    tu_cs_emit_pkt4(&cs, tex_count_reg, 1);
-   tu_cs_emit(&cs, link->texture_map.num);
+   tu_cs_emit(&cs, link->texture_map.num_desc);
 
    *entry = tu_cs_end_sub_stream(draw_state, &cs);
    return VK_SUCCESS;
@@ -2860,7 +2907,8 @@ tu6_emit_ibo(struct tu_cmd_buffer *cmd,
       if (idx & IBO_SSBO) {
          idx &= ~IBO_SSBO;
 
-         uint64_t va = buffer_ptr(descriptors_state, &link->ssbo_map, idx);
+         uint64_t va = buffer_ptr(descriptors_state, &link->ssbo_map, idx,
+                                  0 /* XXX */);
          /* We don't expose robustBufferAccess, so leave the size unlimited. */
          uint32_t sz = MAX_STORAGE_BUFFER_RANGE / 4;
 
@@ -2992,21 +3040,26 @@ tu6_emit_border_color(struct tu_cmd_buffer *cmd,
    struct ts_cs_memory ptr;
 
    VkResult result = tu_cs_alloc(cmd->device, &cmd->sub_cs,
-                                 vs_sampler->num + fs_sampler->num, 128 / 4,
+                                 vs_sampler->num_desc + fs_sampler->num_desc,
+                                 128 / 4,
                                  &ptr);
    if (result != VK_SUCCESS)
       return result;
 
    for (unsigned i = 0; i < vs_sampler->num; i++) {
-      struct tu_sampler *sampler = sampler_ptr(descriptors_state, vs_sampler, i);
-      memcpy(ptr.map, &border_color[sampler->border], 128);
-      ptr.map += 128 / 4;
+      for (unsigned j = 0; j < vs_sampler->array_size[i]; j++) {
+         struct tu_sampler *sampler = sampler_ptr(descriptors_state, vs_sampler, i, j);
+         memcpy(ptr.map, &border_color[sampler->border], 128);
+         ptr.map += 128 / 4;
+      }
    }
 
    for (unsigned i = 0; i < fs_sampler->num; i++) {
-      struct tu_sampler *sampler = sampler_ptr(descriptors_state, fs_sampler, i);
-      memcpy(ptr.map, &border_color[sampler->border], 128);
-      ptr.map += 128 / 4;
+      for (unsigned j = 0; j < fs_sampler->array_size[i]; j++) {
+         struct tu_sampler *sampler = sampler_ptr(descriptors_state, fs_sampler, i, j);
+         memcpy(ptr.map, &border_color[sampler->border], 128);
+         ptr.map += 128 / 4;
+      }
    }
 
    tu_cs_emit_pkt4(cs, REG_A6XX_SP_TP_BORDER_COLOR_BASE_ADDR_LO, 2);

@@ -1050,10 +1050,12 @@ struct tu_shader_compile_options
 struct tu_descriptor_map
 {
    /* TODO: avoid fixed size array/justify the size */
-   unsigned num;
+   unsigned num; /* number of array entries */
+   unsigned num_desc; /* Number of descriptors (sum of array_size[]) */
    int set[64];
    int binding[64];
    int value[64];
+   int array_size[64];
 };
 
 struct tu_shader
@@ -1080,6 +1082,7 @@ struct tu_shader *
 tu_shader_create(struct tu_device *dev,
                  gl_shader_stage stage,
                  const VkPipelineShaderStageCreateInfo *stage_info,
+                 struct tu_pipeline_layout *layout,
                  const VkAllocationCallbacks *alloc);
 
 void
