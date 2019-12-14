@@ -151,7 +151,7 @@ GL 4.1, GLSL 4.10 --- all DONE: i965/gen7+, nvc0, r600, radeonsi, virgl
 
 GL 4.2, GLSL 4.20 -- all DONE: i965/gen7+, nvc0, r600, radeonsi, virgl
 
-  GL_ARB_texture_compression_bptc                       DONE (freedreno, i965)
+  GL_ARB_texture_compression_bptc                       DONE (freedreno, i965, llvmpipe, softpipe, swr)
   GL_ARB_compressed_texture_pixel_storage               DONE (all drivers)
   GL_ARB_shader_atomic_counters                         DONE (freedreno/a5xx+, i965, llvmpipe, softpipe)
   GL_ARB_texture_storage                                DONE (all drivers)
