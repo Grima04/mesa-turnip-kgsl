@@ -2727,16 +2727,16 @@ tu6_emit_consts(struct tu_cmd_buffer *cmd,
 
 static VkResult
 tu6_emit_textures(struct tu_cmd_buffer *cmd,
+                  const struct tu_pipeline *pipeline,
+                  struct tu_descriptor_state *descriptors_state,
                   gl_shader_stage type,
                   struct tu_cs_entry *entry,
                   bool *needs_border)
 {
    struct tu_device *device = cmd->device;
    struct tu_cs *draw_state = &cmd->sub_cs;
-   struct tu_descriptor_state *descriptors_state =
-      &cmd->descriptors[VK_PIPELINE_BIND_POINT_GRAPHICS];
    const struct tu_program_descriptor_linkage *link =
-      &cmd->state.pipeline->program.link[type];
+      &pipeline->program.link[type];
    VkResult result;
 
    if (link->texture_map.num == 0 && link->sampler_map.num == 0) {
@@ -3136,11 +3136,13 @@ tu6_bind_draw_states(struct tu_cmd_buffer *cmd,
       bool needs_border = false;
       struct tu_cs_entry vs_tex, fs_tex;
 
-      result = tu6_emit_textures(cmd, MESA_SHADER_VERTEX, &vs_tex, &needs_border);
+      result = tu6_emit_textures(cmd, pipeline, descriptors_state,
+                                 MESA_SHADER_VERTEX, &vs_tex, &needs_border);
       if (result != VK_SUCCESS)
          return result;
 
-      result = tu6_emit_textures(cmd, MESA_SHADER_FRAGMENT, &fs_tex, &needs_border);
+      result = tu6_emit_textures(cmd, pipeline, descriptors_state,
+                                 MESA_SHADER_FRAGMENT, &fs_tex, &needs_border);
       if (result != VK_SUCCESS)
          return result;
 
@@ -3477,7 +3479,8 @@ tu_dispatch(struct tu_cmd_buffer *cmd,
    tu_emit_compute_driver_params(cs, pipeline, info);
 
    bool needs_border;
-   result = tu6_emit_textures(cmd, MESA_SHADER_COMPUTE, &ib, &needs_border);
+   result = tu6_emit_textures(cmd, pipeline, descriptors_state,
+                              MESA_SHADER_COMPUTE, &ib, &needs_border);
    if (result != VK_SUCCESS) {
       cmd->record_result = result;
       return;
