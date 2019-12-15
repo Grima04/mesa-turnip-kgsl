@@ -491,8 +491,7 @@ tu6_emit_cs_config(struct tu_cs *cs, const struct ir3_shader_variant *v)
    tu_cs_emit(cs, A6XX_SP_CS_CONFIG_ENABLED |
               A6XX_SP_CS_CONFIG_NIBO(v->image_mapping.num_ibo) |
               A6XX_SP_CS_CONFIG_NTEX(v->num_samp) |
-              A6XX_SP_CS_CONFIG_NSAMP(v->num_samp) |
-              A6XX_SP_CS_CONFIG_NIBO(v->image_mapping.num_ibo));
+              A6XX_SP_CS_CONFIG_NSAMP(v->num_samp));
    tu_cs_emit(cs, v->instrlen);
 
    tu_cs_emit_pkt4(cs, REG_A6XX_SP_CS_CTRL_REG0, 1);
