@@ -3633,6 +3633,8 @@ bool nir_lower_vars_to_scratch(nir_shader *shader,
                                int size_threshold,
                                glsl_type_size_align_func size_align);
 
+void nir_lower_clip_halfz(nir_shader *shader);
+
 void nir_shader_gather_info(nir_shader *shader, nir_function_impl *entrypoint);
 
 void nir_gather_ssa_types(nir_function_impl *impl,
