@@ -2704,7 +2704,7 @@ setup_input(struct ir3_context *ctx, nir_variable *in)
 		return;
 
 	so->inputs[n].slot = slot;
-	so->inputs[n].compmask = (1 << (ncomp + frac)) - 1;
+	so->inputs[n].compmask |= (1 << (ncomp + frac)) - 1;
 	so->inputs_count = MAX2(so->inputs_count, n + 1);
 	so->inputs[n].interpolate = in->data.interpolation;
 
@@ -2767,17 +2767,25 @@ setup_input(struct ir3_context *ctx, nir_variable *in)
 			ctx->inputs[idx] = instr;
 		}
 	} else if (ctx->so->type == MESA_SHADER_VERTEX) {
-		/* We shouldn't have fractional input for VS input.. that only shows
-		 * up with varying packing
-		 */
-		assert(frac == 0);
+		struct ir3_instruction *input = NULL, *in;
+		struct ir3_instruction *components[4];
+		unsigned mask = (1 << (ncomp + frac)) - 1;
 
-		struct ir3_instruction *input = create_input(ctx, (1 << ncomp) - 1);
-		struct ir3_instruction *components[ncomp];
+		foreach_input(in, ctx->ir) {
+			if (in->input.inidx == n) {
+				input = in;
+				break;
+			}
+		}
 
-		input->input.inidx = n;
+		if (!input) {
+			input = create_input(ctx, mask);
+			input->input.inidx = n;
+		} else {
+			input->regs[0]->wrmask |= mask;
+		}
 
-		ir3_split_dest(ctx->block, components, input, 0, ncomp);
+		ir3_split_dest(ctx->block, components, input, frac, ncomp);
 
 		for (int i = 0; i < ncomp; i++) {
 			unsigned idx = (n * 4) + i + frac;
