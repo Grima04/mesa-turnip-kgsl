@@ -2830,24 +2830,33 @@ tu6_emit_textures(struct tu_cmd_buffer *cmd,
    return VK_SUCCESS;
 }
 
-static struct tu_cs_entry
-tu6_emit_ibo(struct tu_device *device, struct tu_cs *draw_state,
+static VkResult
+tu6_emit_ibo(struct tu_cmd_buffer *cmd,
              const struct tu_pipeline *pipeline,
              struct tu_descriptor_state *descriptors_state,
-             gl_shader_stage type)
+             gl_shader_stage type,
+             struct tu_cs_entry *entry)
 {
+   struct tu_device *device = cmd->device;
+   struct tu_cs *draw_state = &cmd->sub_cs;
    const struct tu_program_descriptor_linkage *link =
       &pipeline->program.link[type];
+   VkResult result;
 
-   uint32_t size = link->image_mapping.num_ibo * A6XX_TEX_CONST_DWORDS;
-   if (!size)
-      return (struct tu_cs_entry) {};
+   if (link->image_mapping.num_ibo == 0) {
+      *entry = (struct tu_cs_entry) {};
+      return VK_SUCCESS;
+   }
 
-   struct tu_cs cs;
-   tu_cs_begin_sub_stream(device, draw_state, size, &cs);
+   struct ts_cs_memory ibo_const;
+   result = tu_cs_alloc(device, draw_state, link->image_mapping.num_ibo,
+                        A6XX_TEX_CONST_DWORDS, &ibo_const);
+   if (result != VK_SUCCESS)
+      return result;
 
    for (unsigned i = 0; i < link->image_mapping.num_ibo; i++) {
       unsigned idx = link->image_mapping.ibo_to_image[i];
+      uint32_t *dst = &ibo_const.map[A6XX_TEX_CONST_DWORDS * i];
 
       if (idx & IBO_SSBO) {
          idx &= ~IBO_SSBO;
@@ -2856,28 +2865,26 @@ tu6_emit_ibo(struct tu_device *device, struct tu_cs *draw_state,
          /* We don't expose robustBufferAccess, so leave the size unlimited. */
          uint32_t sz = MAX_STORAGE_BUFFER_RANGE / 4;
 
-         tu_cs_emit(&cs, A6XX_IBO_0_FMT(TFMT6_32_UINT));
-         tu_cs_emit(&cs,
-                    A6XX_IBO_1_WIDTH(sz & MASK(15)) |
-                    A6XX_IBO_1_HEIGHT(sz >> 15));
-         tu_cs_emit(&cs,
-                    A6XX_IBO_2_UNK4 |
-                    A6XX_IBO_2_UNK31 |
-                    A6XX_IBO_2_TYPE(A6XX_TEX_1D));
-         tu_cs_emit(&cs, 0);
-         tu_cs_emit_qw(&cs, va);
+         dst[0] = A6XX_IBO_0_FMT(TFMT6_32_UINT);
+         dst[1] = A6XX_IBO_1_WIDTH(sz & MASK(15)) |
+                  A6XX_IBO_1_HEIGHT(sz >> 15);
+         dst[2] = A6XX_IBO_2_UNK4 |
+                  A6XX_IBO_2_UNK31 |
+                  A6XX_IBO_2_TYPE(A6XX_TEX_1D);
+         dst[3] = 0;
+         dst[4] = va;
+         dst[5] = va >> 32;
          for (int i = 6; i < A6XX_TEX_CONST_DWORDS; i++)
-            tu_cs_emit(&cs, 0);
+            dst[i] = 0;
       } else {
          tu_finishme("Emit images");
       }
    }
 
-   struct tu_cs_entry entry = tu_cs_end_sub_stream(draw_state, &cs);
-
-   uint64_t ibo_addr = entry.bo->iova + entry.offset;
-
-   tu_cs_begin_sub_stream(device, draw_state, 64, &cs);
+   struct tu_cs cs;
+   result = tu_cs_begin_sub_stream(device, draw_state, 7, &cs);
+   if (result != VK_SUCCESS)
+      return result;
 
    uint32_t opcode, ibo_addr_reg;
    enum a6xx_state_block sb;
@@ -2907,12 +2914,13 @@ tu6_emit_ibo(struct tu_device *device, struct tu_cs *draw_state,
               CP_LOAD_STATE6_0_STATE_SRC(SS6_INDIRECT) |
               CP_LOAD_STATE6_0_STATE_BLOCK(sb) |
               CP_LOAD_STATE6_0_NUM_UNIT(link->image_mapping.num_ibo));
-   tu_cs_emit_qw(&cs, ibo_addr); /* SRC_ADDR_LO/HI */
+   tu_cs_emit_qw(&cs, ibo_const.iova); /* SRC_ADDR_LO/HI */
 
    tu_cs_emit_pkt4(&cs, ibo_addr_reg, 2);
-   tu_cs_emit_qw(&cs, ibo_addr); /* SRC_ADDR_LO/HI */
+   tu_cs_emit_qw(&cs, ibo_const.iova); /* SRC_ADDR_LO/HI */
 
-   return tu_cs_end_sub_stream(draw_state, &cs);
+   *entry = tu_cs_end_sub_stream(draw_state, &cs);
+   return VK_SUCCESS;
 }
 
 struct PACKED bcolor_entry {
@@ -3151,7 +3159,7 @@ tu6_bind_draw_states(struct tu_cmd_buffer *cmd,
    if (cmd->state.dirty &
          (TU_CMD_DIRTY_PIPELINE | TU_CMD_DIRTY_DESCRIPTOR_SETS)) {
       bool needs_border = false;
-      struct tu_cs_entry vs_tex, fs_tex;
+      struct tu_cs_entry vs_tex, fs_tex, fs_ibo;
 
       result = tu6_emit_textures(cmd, pipeline, descriptors_state,
                                  MESA_SHADER_VERTEX, &vs_tex, &needs_border);
@@ -3160,6 +3168,11 @@ tu6_bind_draw_states(struct tu_cmd_buffer *cmd,
 
       result = tu6_emit_textures(cmd, pipeline, descriptors_state,
                                  MESA_SHADER_FRAGMENT, &fs_tex, &needs_border);
+      if (result != VK_SUCCESS)
+         return result;
+
+      result = tu6_emit_ibo(cmd, pipeline, descriptors_state,
+                            MESA_SHADER_FRAGMENT, &fs_ibo);
       if (result != VK_SUCCESS)
          return result;
 
@@ -3179,8 +3192,7 @@ tu6_bind_draw_states(struct tu_cmd_buffer *cmd,
          (struct tu_draw_state_group) {
             .id = TU_DRAW_STATE_FS_IBO,
             .enable_mask = 0x6,
-            .ib = tu6_emit_ibo(cmd->device, &cmd->sub_cs, pipeline,
-                               descriptors_state, MESA_SHADER_FRAGMENT)
+            .ib = fs_ibo,
          };
 
       if (needs_border) {
@@ -3509,8 +3521,12 @@ tu_dispatch(struct tu_cmd_buffer *cmd,
    if (needs_border)
       tu_finishme("compute border color");
 
-   ib = tu6_emit_ibo(cmd->device, &cmd->sub_cs, pipeline,
-                     descriptors_state, MESA_SHADER_COMPUTE);
+   result = tu6_emit_ibo(cmd, pipeline, descriptors_state, MESA_SHADER_COMPUTE, &ib);
+   if (result != VK_SUCCESS) {
+      cmd->record_result = result;
+      return;
+   }
+
    if (ib.size)
       tu_cs_emit_ib(cs, &ib);
 
