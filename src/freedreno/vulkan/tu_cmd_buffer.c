@@ -2879,20 +2879,37 @@ tu6_emit_ibo(struct tu_device *device, struct tu_cs *draw_state,
 
    tu_cs_begin_sub_stream(device, draw_state, 64, &cs);
 
+   uint32_t opcode, ibo_addr_reg;
+   enum a6xx_state_block sb;
+   enum a6xx_state_type st;
+
+   switch (type) {
+   case MESA_SHADER_FRAGMENT:
+      opcode = CP_LOAD_STATE6;
+      st = ST6_SHADER;
+      sb = SB6_IBO;
+      ibo_addr_reg = REG_A6XX_SP_IBO_LO;
+      break;
+   case MESA_SHADER_COMPUTE:
+      opcode = CP_LOAD_STATE6_FRAG;
+      st = ST6_IBO;
+      sb = SB6_CS_SHADER;
+      ibo_addr_reg = REG_A6XX_SP_CS_IBO_LO;
+      break;
+   default:
+      unreachable("unsupported stage for ibos");
+   }
+
    /* emit texture state: */
-   tu_cs_emit_pkt7(&cs, CP_LOAD_STATE6, 3);
+   tu_cs_emit_pkt7(&cs, opcode, 3);
    tu_cs_emit(&cs, CP_LOAD_STATE6_0_DST_OFF(0) |
-              CP_LOAD_STATE6_0_STATE_TYPE(type == MESA_SHADER_COMPUTE ?
-                                          ST6_IBO : ST6_SHADER) |
+              CP_LOAD_STATE6_0_STATE_TYPE(st) |
               CP_LOAD_STATE6_0_STATE_SRC(SS6_INDIRECT) |
-              CP_LOAD_STATE6_0_STATE_BLOCK(type == MESA_SHADER_COMPUTE ?
-                                           SB6_CS_SHADER : SB6_IBO) |
+              CP_LOAD_STATE6_0_STATE_BLOCK(sb) |
               CP_LOAD_STATE6_0_NUM_UNIT(link->image_mapping.num_ibo));
    tu_cs_emit_qw(&cs, ibo_addr); /* SRC_ADDR_LO/HI */
 
-   tu_cs_emit_pkt4(&cs,
-                   type == MESA_SHADER_COMPUTE ?
-                   REG_A6XX_SP_IBO_LO : REG_A6XX_SP_CS_IBO_LO, 2);
+   tu_cs_emit_pkt4(&cs, ibo_addr_reg, 2);
    tu_cs_emit_qw(&cs, ibo_addr); /* SRC_ADDR_LO/HI */
 
    return tu_cs_end_sub_stream(draw_state, &cs);
