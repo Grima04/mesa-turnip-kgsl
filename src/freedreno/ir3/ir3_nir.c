@@ -48,6 +48,7 @@ static const nir_shader_compiler_options options = {
 		.lower_uadd_carry = true,
 		.lower_usub_borrow = true,
 		.lower_mul_high = true,
+		.lower_mul_2x32_64 = true,
 		.fuse_ffma = true,
 		.vertex_id_zero_based = true,
 		.lower_extract_byte = true,
@@ -77,6 +78,7 @@ static const nir_shader_compiler_options options_a6xx = {
 		.lower_uadd_carry = true,
 		.lower_usub_borrow = true,
 		.lower_mul_high = true,
+		.lower_mul_2x32_64 = true,
 		.fuse_ffma = true,
 		.vertex_id_zero_based = false,
 		.lower_extract_byte = true,
@@ -150,6 +152,7 @@ ir3_optimize_loop(nir_shader *s)
 		progress |= OPT(s, nir_opt_peephole_select, 16, true, true);
 		progress |= OPT(s, nir_opt_intrinsics);
 		progress |= OPT(s, nir_opt_algebraic);
+		progress |= OPT(s, nir_lower_alu);
 		progress |= OPT(s, nir_opt_constant_folding);
 
 		if (lower_flrp != 0) {
