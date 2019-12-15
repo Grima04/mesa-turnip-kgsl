@@ -80,34 +80,6 @@ tu_spirv_to_nir(struct ir3_compiler *compiler,
    return nir;
 }
 
-static void
-tu_sort_variables_by_location(struct exec_list *variables)
-{
-   struct exec_list sorted;
-   exec_list_make_empty(&sorted);
-
-   nir_foreach_variable_safe(var, variables)
-   {
-      exec_node_remove(&var->node);
-
-      /* insert the variable into the sorted list */
-      nir_variable *next = NULL;
-      nir_foreach_variable(tmp, &sorted)
-      {
-         if (var->data.location < tmp->data.location) {
-            next = tmp;
-            break;
-         }
-      }
-      if (next)
-         exec_node_insert_node_before(&next->node, &var->node);
-      else
-         exec_list_push_tail(&sorted, &var->node);
-   }
-
-   exec_list_move_nodes_to(&sorted, variables);
-}
-
 static unsigned
 map_add(struct tu_descriptor_map *map, int set, int binding, int value,
         int array_size)
@@ -474,26 +446,6 @@ tu_shader_create(struct tu_device *dev,
 
    /* ir3 doesn't support indirect input/output */
    NIR_PASS_V(nir, nir_lower_indirect_derefs, nir_var_shader_in | nir_var_shader_out);
-
-   switch (stage) {
-   case MESA_SHADER_VERTEX:
-      tu_sort_variables_by_location(&nir->outputs);
-      break;
-   case MESA_SHADER_TESS_CTRL:
-   case MESA_SHADER_TESS_EVAL:
-   case MESA_SHADER_GEOMETRY:
-      tu_sort_variables_by_location(&nir->inputs);
-      tu_sort_variables_by_location(&nir->outputs);
-      break;
-   case MESA_SHADER_FRAGMENT:
-      tu_sort_variables_by_location(&nir->inputs);
-      break;
-   case MESA_SHADER_COMPUTE:
-      break;
-   default:
-      unreachable("invalid gl_shader_stage");
-      break;
-   }
 
    nir_assign_io_var_locations(&nir->inputs, &nir->num_inputs, stage);
    nir_assign_io_var_locations(&nir->outputs, &nir->num_outputs, stage);
