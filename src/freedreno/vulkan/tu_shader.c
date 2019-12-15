@@ -447,6 +447,8 @@ tu_shader_create(struct tu_device *dev,
    /* ir3 doesn't support indirect input/output */
    NIR_PASS_V(nir, nir_lower_indirect_derefs, nir_var_shader_in | nir_var_shader_out);
 
+   NIR_PASS_V(nir, nir_lower_io_arrays_to_elements_no_indirects, false);
+
    nir_assign_io_var_locations(&nir->inputs, &nir->num_inputs, stage);
    nir_assign_io_var_locations(&nir->outputs, &nir->num_outputs, stage);
 
@@ -469,8 +471,6 @@ tu_shader_create(struct tu_device *dev,
 
       NIR_PASS_V(nir, ir3_nir_move_varying_inputs);
    }
-
-   NIR_PASS_V(nir, nir_lower_io_arrays_to_elements_no_indirects, false);
 
    nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));
 
