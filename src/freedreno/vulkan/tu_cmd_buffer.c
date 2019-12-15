@@ -3490,7 +3490,7 @@ tu_dispatch(struct tu_cmd_buffer *cmd,
       tu_cs_emit_ib(cs, &ib);
 
    if (needs_border)
-      tu6_emit_border_color(cmd, cs);
+      tu_finishme("compute border color");
 
    ib = tu6_emit_ibo(cmd->device, &cmd->sub_cs, pipeline,
                      descriptors_state, MESA_SHADER_COMPUTE);
