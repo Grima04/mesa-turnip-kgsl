@@ -1117,6 +1117,18 @@ optimizations.extend([
                                            127.0))),
      'options->lower_unpack_snorm_4x8'),
 
+   (('pack_half_2x16_split', 'a@32', 'b@32'),
+    ('ior', ('ishl', ('u2u32', ('f2f16', b)), 16), ('u2u32', ('f2f16', a))),
+    'options->lower_pack_half_2x16_split'),
+
+   (('unpack_half_2x16_split_x', 'a@32'),
+    ('f2f32', ('u2u16', a)),
+    'options->lower_unpack_half_2x16_split'),
+
+   (('unpack_half_2x16_split_y', 'a@32'),
+    ('f2f32', ('u2u16', ('ushr', a, 16))),
+    'options->lower_unpack_half_2x16_split'),
+
    (('isign', a), ('imin', ('imax', a, -1), 1), 'options->lower_isign'),
    (('fsign', a), ('fsub', ('b2f', ('flt', 0.0, a)), ('b2f', ('flt', a, 0.0))), 'options->lower_fsign'),
 
