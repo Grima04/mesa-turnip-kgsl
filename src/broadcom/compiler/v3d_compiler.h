@@ -343,6 +343,7 @@ struct v3d_key {
                 bool clamp_t:1;
                 bool clamp_r:1;
         } tex[V3D_MAX_TEXTURE_SAMPLERS];
+        uint8_t num_tex_used;
         uint8_t ucp_enables;
         bool is_last_geometry_stage;
 };

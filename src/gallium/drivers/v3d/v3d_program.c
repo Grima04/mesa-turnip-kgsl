@@ -445,6 +445,7 @@ v3d_setup_shared_key(struct v3d_context *v3d, struct v3d_key *key,
 {
         const struct v3d_device_info *devinfo = &v3d->screen->devinfo;
 
+        key->num_tex_used = texstate->num_textures;
         for (int i = 0; i < texstate->num_textures; i++) {
                 struct pipe_sampler_view *sampler = texstate->textures[i];
                 struct v3d_sampler_view *v3d_sampler = v3d_sampler_view(sampler);
@@ -504,6 +505,7 @@ v3d_setup_shared_precompile_key(struct v3d_uncompiled_shader *uncompiled,
 {
         nir_shader *s = uncompiled->base.ir.nir;
 
+        key->num_tex_used = s->info.num_textures;
         for (int i = 0; i < s->info.num_textures; i++) {
                 key->tex[i].return_size = 16;
                 key->tex[i].return_channels = 2;
