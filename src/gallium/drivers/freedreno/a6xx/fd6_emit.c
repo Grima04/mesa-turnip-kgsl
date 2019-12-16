@@ -574,11 +574,11 @@ fd6_emit_combined_textures(struct fd_ringbuffer *ring, struct fd6_emit *emit,
 		enum fd6_state_id state_id;
 		unsigned enable_mask;
 	} s[PIPE_SHADER_TYPES] = {
-		[PIPE_SHADER_VERTEX]    = { FD6_GROUP_VS_TEX, 0x7 },
-		[PIPE_SHADER_TESS_CTRL]  = { FD6_GROUP_HS_TEX, 0x7 },
-		[PIPE_SHADER_TESS_EVAL]  = { FD6_GROUP_DS_TEX, 0x7 },
-		[PIPE_SHADER_GEOMETRY]  = { FD6_GROUP_GS_TEX, 0x7 },
-		[PIPE_SHADER_FRAGMENT]  = { FD6_GROUP_FS_TEX, 0x6 },
+		[PIPE_SHADER_VERTEX]    = { FD6_GROUP_VS_TEX, ENABLE_ALL },
+		[PIPE_SHADER_TESS_CTRL]  = { FD6_GROUP_HS_TEX, ENABLE_ALL },
+		[PIPE_SHADER_TESS_EVAL]  = { FD6_GROUP_DS_TEX, ENABLE_ALL },
+		[PIPE_SHADER_GEOMETRY]  = { FD6_GROUP_GS_TEX, ENABLE_ALL },
+		[PIPE_SHADER_FRAGMENT]  = { FD6_GROUP_FS_TEX, ENABLE_DRAW },
 	};
 
 	debug_assert(s[type].state_id);
@@ -889,7 +889,7 @@ fd6_emit_tess_const(struct fd6_emit *emit)
 		emit_stage_tess_consts(constobj, emit->gs, gs_params, ARRAY_SIZE(gs_params));
 	}
 
-	fd6_emit_take_group(emit, constobj, FD6_GROUP_PRIMITIVE_PARAMS, 0x7);
+	fd6_emit_take_group(emit, constobj, FD6_GROUP_PRIMITIVE_PARAMS, ENABLE_ALL);
 }
 
 static void
@@ -936,26 +936,27 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 		struct fd_ringbuffer *state;
 
 		state = build_vbo_state(emit, emit->vs);
-		fd6_emit_take_group(emit, state, FD6_GROUP_VBO, 0x7);
+		fd6_emit_take_group(emit, state, FD6_GROUP_VBO, ENABLE_ALL);
 	}
 
 	if (dirty & FD_DIRTY_ZSA) {
 		struct fd6_zsa_stateobj *zsa = fd6_zsa_stateobj(ctx->zsa);
 
 		if (util_format_is_pure_integer(pipe_surface_format(pfb->cbufs[0])))
-			fd6_emit_add_group(emit, zsa->stateobj_no_alpha, FD6_GROUP_ZSA, 0x7);
+			fd6_emit_add_group(emit, zsa->stateobj_no_alpha, FD6_GROUP_ZSA, ENABLE_ALL);
 		else
-			fd6_emit_add_group(emit, zsa->stateobj, FD6_GROUP_ZSA, 0x7);
+			fd6_emit_add_group(emit, zsa->stateobj, FD6_GROUP_ZSA, ENABLE_ALL);
 	}
 
 	if ((dirty & (FD_DIRTY_ZSA | FD_DIRTY_BLEND | FD_DIRTY_PROG)) && pfb->zsbuf) {
 		struct fd_ringbuffer *state;
 
 		state = build_lrz(emit, false);
-		fd6_emit_take_group(emit, state, FD6_GROUP_LRZ, 0x6);
+		fd6_emit_take_group(emit, state, FD6_GROUP_LRZ, ENABLE_DRAW);
 
 		state = build_lrz(emit, true);
-		fd6_emit_take_group(emit, state, FD6_GROUP_LRZ_BINNING, 0x1);
+		fd6_emit_take_group(emit, state,
+				FD6_GROUP_LRZ_BINNING, CP_SET_DRAW_STATE__0_BINNING);
 	}
 
 	if (dirty & FD_DIRTY_STENCIL_REF) {
@@ -1008,10 +1009,10 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 	}
 
 	if (dirty & FD_DIRTY_PROG) {
-		fd6_emit_add_group(emit, prog->config_stateobj, FD6_GROUP_PROG_CONFIG, 0x7);
-		fd6_emit_add_group(emit, prog->stateobj, FD6_GROUP_PROG, 0x6);
+		fd6_emit_add_group(emit, prog->config_stateobj, FD6_GROUP_PROG_CONFIG, ENABLE_ALL);
+		fd6_emit_add_group(emit, prog->stateobj, FD6_GROUP_PROG, ENABLE_DRAW);
 		fd6_emit_add_group(emit, prog->binning_stateobj,
-				FD6_GROUP_PROG_BINNING, 0x1);
+				FD6_GROUP_PROG_BINNING, CP_SET_DRAW_STATE__0_BINNING);
 
 		/* emit remaining non-stateobj program state, ie. what depends
 		 * on other emit state, so cannot be pre-baked.  This could
@@ -1025,7 +1026,7 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 		struct fd6_rasterizer_stateobj *rasterizer =
 				fd6_rasterizer_stateobj(ctx->rasterizer);
 		fd6_emit_add_group(emit, rasterizer->stateobj,
-						   FD6_GROUP_RASTERIZER, 0x7);
+						   FD6_GROUP_RASTERIZER, ENABLE_ALL);
 	}
 
 	/* Since the primitive restart state is not part of a tracked object, we
@@ -1063,11 +1064,11 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 		OUT_RING(ring, A6XX_SP_FS_OUTPUT_CNTL1_MRT(nr));
 	}
 
-	fd6_emit_consts(emit, vs, PIPE_SHADER_VERTEX, FD6_GROUP_VS_CONST, 0x7);
-	fd6_emit_consts(emit, hs, PIPE_SHADER_TESS_CTRL, FD6_GROUP_HS_CONST, 0x7);
-	fd6_emit_consts(emit, ds, PIPE_SHADER_TESS_EVAL, FD6_GROUP_DS_CONST, 0x7);
-	fd6_emit_consts(emit, gs, PIPE_SHADER_GEOMETRY, FD6_GROUP_GS_CONST, 0x7);
-	fd6_emit_consts(emit, fs, PIPE_SHADER_FRAGMENT, FD6_GROUP_FS_CONST, 0x6);
+	fd6_emit_consts(emit, vs, PIPE_SHADER_VERTEX, FD6_GROUP_VS_CONST, ENABLE_ALL);
+	fd6_emit_consts(emit, hs, PIPE_SHADER_TESS_CTRL, FD6_GROUP_HS_CONST, ENABLE_ALL);
+	fd6_emit_consts(emit, ds, PIPE_SHADER_TESS_EVAL, FD6_GROUP_DS_CONST, ENABLE_ALL);
+	fd6_emit_consts(emit, gs, PIPE_SHADER_GEOMETRY, FD6_GROUP_GS_CONST, ENABLE_ALL);
+	fd6_emit_consts(emit, fs, PIPE_SHADER_FRAGMENT, FD6_GROUP_FS_CONST, ENABLE_DRAW);
 
 	if (emit->key.key.has_gs || emit->key.key.tessellation)
 		fd6_emit_tess_const(emit);
@@ -1077,9 +1078,9 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 		struct fd_ringbuffer *dpconstobj = fd_submit_new_ringbuffer(
 				ctx->batch->submit, IR3_DP_VS_COUNT * 4, FD_RINGBUFFER_STREAMING);
 		ir3_emit_vs_driver_params(vs, dpconstobj, ctx, emit->info);
-		fd6_emit_take_group(emit, dpconstobj, FD6_GROUP_VS_DRIVER_PARAMS, 0x7);
+		fd6_emit_take_group(emit, dpconstobj, FD6_GROUP_VS_DRIVER_PARAMS, ENABLE_ALL);
 	} else {
-		fd6_emit_take_group(emit, NULL, FD6_GROUP_VS_DRIVER_PARAMS, 0x7);
+		fd6_emit_take_group(emit, NULL, FD6_GROUP_VS_DRIVER_PARAMS, ENABLE_ALL);
 	}
 
 	struct ir3_stream_output_info *info = &fd6_last_shader(prog)->shader->stream_output;
@@ -1193,7 +1194,7 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 		ir3_emit_image_dims(ctx->screen, fs, obj,
 				&ctx->shaderimg[PIPE_SHADER_FRAGMENT]);
 
-		fd6_emit_take_group(emit, obj, FD6_GROUP_IBO, 0x6);
+		fd6_emit_take_group(emit, obj, FD6_GROUP_IBO, ENABLE_DRAW);
 		fd_ringbuffer_del(state);
 	}
 
@@ -1204,16 +1205,18 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 			unsigned n = g->stateobj ?
 				fd_ringbuffer_size(g->stateobj) / 4 : 0;
 
+			debug_assert((g->enable_mask & ~ENABLE_ALL) == 0);
+
 			if (n == 0) {
 				OUT_RING(ring, CP_SET_DRAW_STATE__0_COUNT(0) |
 						CP_SET_DRAW_STATE__0_DISABLE |
-						CP_SET_DRAW_STATE__0_ENABLE_MASK(g->enable_mask) |
+						g->enable_mask |
 						CP_SET_DRAW_STATE__0_GROUP_ID(g->group_id));
 				OUT_RING(ring, 0x00000000);
 				OUT_RING(ring, 0x00000000);
 			} else {
 				OUT_RING(ring, CP_SET_DRAW_STATE__0_COUNT(n) |
-						CP_SET_DRAW_STATE__0_ENABLE_MASK(g->enable_mask) |
+						g->enable_mask |
 						CP_SET_DRAW_STATE__0_GROUP_ID(g->group_id));
 				OUT_RB(ring, g->stateobj);
 			}

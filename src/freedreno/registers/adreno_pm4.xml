@@ -762,13 +762,9 @@ opcode: CP_LOAD_STATE4 (30) (4 dwords)
 			<bitfield name="DISABLE" pos="17" type="boolean"/>
 			<bitfield name="DISABLE_ALL_GROUPS" pos="18" type="boolean"/>
 			<bitfield name="LOAD_IMMED" pos="19" type="boolean"/>
-			<!--
-			I think this is a bitmask of states that this group applies to
-			(ie. binning/bypass/gmem)?  At least starting w/ a6xx blob
-			emits different VS state at the same time, with ENABLE_MASK=0x1
-			for binning pass VS state, and ENABLE_MASK=0x6 for full VS.
-			-->
-			<bitfield name="ENABLE_MASK" low="20" high="23" variants="A6XX-"/>
+			<bitfield name="BINNING" pos="20" variants="A6XX-" type="boolean"/>
+			<bitfield name="GMEM" pos="21" variants="A6XX-" type="boolean"/>
+			<bitfield name="SYSMEM" pos="22" variants="A6XX-" type="boolean"/>
 			<bitfield name="GROUP_ID" low="24" high="28" type="uint"/>
 		</reg32>
 		<reg32 offset="1" name="1">

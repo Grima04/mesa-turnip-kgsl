@@ -2462,6 +2462,9 @@ struct tu_draw_info
    uint64_t count_buffer_offset;
 };
 
+#define ENABLE_ALL (CP_SET_DRAW_STATE__0_BINNING | CP_SET_DRAW_STATE__0_GMEM | CP_SET_DRAW_STATE__0_SYSMEM)
+#define ENABLE_DRAW (CP_SET_DRAW_STATE__0_GMEM | CP_SET_DRAW_STATE__0_SYSMEM)
+
 enum tu_draw_state_group_id
 {
    TU_DRAW_STATE_PROGRAM,
@@ -3155,49 +3158,49 @@ tu6_bind_draw_states(struct tu_cmd_buffer *cmd,
       draw_state_groups[draw_state_group_count++] =
          (struct tu_draw_state_group) {
             .id = TU_DRAW_STATE_PROGRAM,
-            .enable_mask = 0x6,
+            .enable_mask = ENABLE_DRAW,
             .ib = pipeline->program.state_ib,
          };
       draw_state_groups[draw_state_group_count++] =
          (struct tu_draw_state_group) {
             .id = TU_DRAW_STATE_PROGRAM_BINNING,
-            .enable_mask = 0x1,
+            .enable_mask = CP_SET_DRAW_STATE__0_BINNING,
             .ib = pipeline->program.binning_state_ib,
          };
       draw_state_groups[draw_state_group_count++] =
          (struct tu_draw_state_group) {
             .id = TU_DRAW_STATE_VI,
-            .enable_mask = 0x6,
+            .enable_mask = ENABLE_DRAW,
             .ib = pipeline->vi.state_ib,
          };
       draw_state_groups[draw_state_group_count++] =
          (struct tu_draw_state_group) {
             .id = TU_DRAW_STATE_VI_BINNING,
-            .enable_mask = 0x1,
+            .enable_mask = CP_SET_DRAW_STATE__0_BINNING,
             .ib = pipeline->vi.binning_state_ib,
          };
       draw_state_groups[draw_state_group_count++] =
          (struct tu_draw_state_group) {
             .id = TU_DRAW_STATE_VP,
-            .enable_mask = 0x7,
+            .enable_mask = ENABLE_ALL,
             .ib = pipeline->vp.state_ib,
          };
       draw_state_groups[draw_state_group_count++] =
          (struct tu_draw_state_group) {
             .id = TU_DRAW_STATE_RAST,
-            .enable_mask = 0x7,
+            .enable_mask = ENABLE_ALL,
             .ib = pipeline->rast.state_ib,
          };
       draw_state_groups[draw_state_group_count++] =
          (struct tu_draw_state_group) {
             .id = TU_DRAW_STATE_DS,
-            .enable_mask = 0x7,
+            .enable_mask = ENABLE_ALL,
             .ib = pipeline->ds.state_ib,
          };
       draw_state_groups[draw_state_group_count++] =
          (struct tu_draw_state_group) {
             .id = TU_DRAW_STATE_BLEND,
-            .enable_mask = 0x7,
+            .enable_mask = ENABLE_ALL,
             .ib = pipeline->blend.state_ib,
          };
    }
@@ -3207,13 +3210,13 @@ tu6_bind_draw_states(struct tu_cmd_buffer *cmd,
       draw_state_groups[draw_state_group_count++] =
          (struct tu_draw_state_group) {
             .id = TU_DRAW_STATE_VS_CONST,
-            .enable_mask = 0x7,
+            .enable_mask = ENABLE_ALL,
             .ib = tu6_emit_consts(cmd, pipeline, descriptors_state, MESA_SHADER_VERTEX)
          };
       draw_state_groups[draw_state_group_count++] =
          (struct tu_draw_state_group) {
             .id = TU_DRAW_STATE_FS_CONST,
-            .enable_mask = 0x6,
+            .enable_mask = ENABLE_DRAW,
             .ib = tu6_emit_consts(cmd, pipeline, descriptors_state, MESA_SHADER_FRAGMENT)
          };
    }
@@ -3241,19 +3244,19 @@ tu6_bind_draw_states(struct tu_cmd_buffer *cmd,
       draw_state_groups[draw_state_group_count++] =
          (struct tu_draw_state_group) {
             .id = TU_DRAW_STATE_VS_TEX,
-            .enable_mask = 0x7,
+            .enable_mask = ENABLE_ALL,
             .ib = vs_tex,
          };
       draw_state_groups[draw_state_group_count++] =
          (struct tu_draw_state_group) {
             .id = TU_DRAW_STATE_FS_TEX,
-            .enable_mask = 0x6,
+            .enable_mask = ENABLE_DRAW,
             .ib = fs_tex,
          };
       draw_state_groups[draw_state_group_count++] =
          (struct tu_draw_state_group) {
             .id = TU_DRAW_STATE_FS_IBO,
-            .enable_mask = 0x6,
+            .enable_mask = ENABLE_DRAW,
             .ib = fs_ibo,
          };
 
@@ -3267,10 +3270,10 @@ tu6_bind_draw_states(struct tu_cmd_buffer *cmd,
    tu_cs_emit_pkt7(cs, CP_SET_DRAW_STATE, 3 * draw_state_group_count);
    for (uint32_t i = 0; i < draw_state_group_count; i++) {
       const struct tu_draw_state_group *group = &draw_state_groups[i];
-
+      debug_assert((group->enable_mask & ~ENABLE_ALL) == 0);
       uint32_t cp_set_draw_state =
          CP_SET_DRAW_STATE__0_COUNT(group->ib.size / 4) |
-         CP_SET_DRAW_STATE__0_ENABLE_MASK(group->enable_mask) |
+         group->enable_mask |
          CP_SET_DRAW_STATE__0_GROUP_ID(group->id);
       uint64_t iova;
       if (group->ib.size) {

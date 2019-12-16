@@ -66,13 +66,16 @@ enum fd6_state_id {
 	FD6_GROUP_ZSA,
 };
 
+#define ENABLE_ALL (CP_SET_DRAW_STATE__0_BINNING | CP_SET_DRAW_STATE__0_GMEM | CP_SET_DRAW_STATE__0_SYSMEM)
+#define ENABLE_DRAW (CP_SET_DRAW_STATE__0_GMEM | CP_SET_DRAW_STATE__0_SYSMEM)
+
 struct fd6_state_group {
 	struct fd_ringbuffer *stateobj;
 	enum fd6_state_id group_id;
 	/* enable_mask controls which states the stateobj is evaluated in,
 	 * b0 is binning pass b1 and/or b2 is draw pass
 	 */
-	uint8_t enable_mask;
+	uint32_t enable_mask;
 };
 
 /* grouped together emit-state for prog/vertex/state emit: */
