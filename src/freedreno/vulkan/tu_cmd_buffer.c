@@ -2488,7 +2488,7 @@ struct tu_draw_state_group
    struct tu_cs_entry ib;
 };
 
-static struct tu_sampler*
+const static struct tu_sampler*
 sampler_ptr(struct tu_descriptor_state *descriptors_state,
             const struct tu_descriptor_map *map, unsigned i,
             unsigned array_index)
@@ -2500,6 +2500,13 @@ sampler_ptr(struct tu_descriptor_state *descriptors_state,
 
    const struct tu_descriptor_set_binding_layout *layout =
       &set->layout->binding[map->binding[i]];
+
+   if (layout->immutable_samplers_offset) {
+      const struct tu_sampler *immutable_samplers =
+         tu_immutable_samplers(set->layout, layout);
+
+      return &immutable_samplers[array_index];
+   }
 
    switch (layout->type) {
    case VK_DESCRIPTOR_TYPE_SAMPLER:
@@ -2803,8 +2810,9 @@ tu6_emit_textures(struct tu_cmd_buffer *cmd,
       int sampler_index = 0;
       for (unsigned i = 0; i < link->sampler_map.num; i++) {
          for (int j = 0; j < link->sampler_map.array_size[i]; j++) {
-            struct tu_sampler *sampler = sampler_ptr(descriptors_state,
-                                                     &link->sampler_map, i, j);
+            const struct tu_sampler *sampler = sampler_ptr(descriptors_state,
+                                                           &link->sampler_map,
+                                                           i, j);
             memcpy(&tex_samp.map[A6XX_TEX_SAMP_DWORDS * sampler_index++],
                    sampler->state, sizeof(sampler->state));
             *needs_border |= sampler->needs_border;
@@ -3048,7 +3056,8 @@ tu6_emit_border_color(struct tu_cmd_buffer *cmd,
 
    for (unsigned i = 0; i < vs_sampler->num; i++) {
       for (unsigned j = 0; j < vs_sampler->array_size[i]; j++) {
-         struct tu_sampler *sampler = sampler_ptr(descriptors_state, vs_sampler, i, j);
+         const struct tu_sampler *sampler = sampler_ptr(descriptors_state,
+                                                        vs_sampler, i, j);
          memcpy(ptr.map, &border_color[sampler->border], 128);
          ptr.map += 128 / 4;
       }
@@ -3056,7 +3065,8 @@ tu6_emit_border_color(struct tu_cmd_buffer *cmd,
 
    for (unsigned i = 0; i < fs_sampler->num; i++) {
       for (unsigned j = 0; j < fs_sampler->array_size[i]; j++) {
-         struct tu_sampler *sampler = sampler_ptr(descriptors_state, fs_sampler, i, j);
+         const struct tu_sampler *sampler = sampler_ptr(descriptors_state,
+                                                        fs_sampler, i, j);
          memcpy(ptr.map, &border_color[sampler->border], 128);
          ptr.map += 128 / 4;
       }

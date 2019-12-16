@@ -806,8 +806,6 @@ tu_update_descriptor_sets(struct tu_device *device,
       uint32_t *ptr = set->mapped_ptr;
       struct tu_bo **buffer_list = set->descriptors;
 
-      const struct tu_sampler *samplers = tu_immutable_samplers(set->layout, binding_layout);
-
       ptr += binding_layout->offset / 4;
 
       ptr += binding_layout->size * writeset->dstArrayElement / 4;
@@ -849,11 +847,6 @@ tu_update_descriptor_sets(struct tu_device *device,
                                                     writeset->descriptorType,
                                                     writeset->pImageInfo + j,
                                                     !binding_layout->immutable_samplers_offset);
-            if (binding_layout->immutable_samplers_offset) {
-               const unsigned idx = writeset->dstArrayElement + j;
-               memcpy((char*)ptr + A6XX_TEX_CONST_DWORDS*4, &samplers[idx],
-                      sizeof(struct tu_sampler));
-            }
             break;
          case VK_DESCRIPTOR_TYPE_SAMPLER:
             write_sampler_descriptor(device, ptr, writeset->pImageInfo + j);
