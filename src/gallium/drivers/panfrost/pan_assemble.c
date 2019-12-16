@@ -27,6 +27,7 @@
 #include <string.h>
 #include "pan_bo.h"
 #include "pan_context.h"
+#include "pan_util.h"
 
 #include "compiler/nir/nir.h"
 #include "nir/tgsi_to_nir.h"
@@ -65,7 +66,8 @@ panfrost_shader_compile(
                 .alpha_ref = state->alpha_state.ref_value
         };
 
-        midgard_compile_shader_nir(s, &program, false, 0, screen->gpu_id);
+        midgard_compile_shader_nir(s, &program, false, 0, screen->gpu_id,
+                        pan_debug & PAN_DBG_PRECOMPILE);
 
         /* Prepare the compiled binary for upload */
         int size = program.compiled.size;

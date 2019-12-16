@@ -2420,7 +2420,7 @@ midgard_get_first_tag_from_block(compiler_context *ctx, unsigned block_idx)
 }
 
 int
-midgard_compile_shader_nir(nir_shader *nir, midgard_program *program, bool is_blend, unsigned blend_rt, unsigned gpu_id)
+midgard_compile_shader_nir(nir_shader *nir, midgard_program *program, bool is_blend, unsigned blend_rt, unsigned gpu_id, bool shaderdb)
 {
         struct util_dynarray *compiled = &program->compiled;
 
@@ -2735,7 +2735,7 @@ midgard_compile_shader_nir(nir_shader *nir, midgard_program *program, bool is_bl
         if (midgard_debug & MIDGARD_DBG_SHADERS)
                 disassemble_midgard(program->compiled.data, program->compiled.size, gpu_id, ctx->stage);
 
-        if (midgard_debug & MIDGARD_DBG_SHADERDB) {
+        if (midgard_debug & MIDGARD_DBG_SHADERDB || shaderdb) {
                 unsigned nr_bundles = 0, nr_ins = 0;
 
                 /* Count instructions and bundles */

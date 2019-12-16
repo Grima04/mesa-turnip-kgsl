@@ -174,7 +174,7 @@ panfrost_compile_blend_shader(
         /* Compile the built shader */
 
         midgard_program program;
-        midgard_compile_shader_nir(shader, &program, true, rt, screen->gpu_id);
+        midgard_compile_shader_nir(shader, &program, true, rt, screen->gpu_id, false);
 
         /* Allow us to patch later */
         res.patch_index = program.blend_patch_offset;
