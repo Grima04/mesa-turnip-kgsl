@@ -2265,12 +2265,7 @@ void select_instruction(opt_ctx &ctx, aco_ptr<Instruction>& instr)
 {
    const uint32_t threshold = 4;
 
-   /* Dead Code Elimination:
-    * We remove instructions if they define temporaries which all are unused */
-   const bool is_used = instr->definitions.empty() ||
-                        std::any_of(instr->definitions.begin(), instr->definitions.end(),
-                                    [&ctx](const Definition& def) { return ctx.uses[def.tempId()]; });
-   if (!is_used) {
+   if (is_dead(ctx.uses, instr.get())) {
       instr.reset();
       return;
    }
