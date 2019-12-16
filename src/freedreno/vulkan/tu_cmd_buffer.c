@@ -1428,7 +1428,7 @@ tu6_render_end(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
    }
 
    tu_cs_emit_pkt4(cs, REG_A6XX_GRAS_LRZ_CNTL, 1);
-   tu_cs_emit(cs, A6XX_GRAS_LRZ_CNTL_ENABLE | A6XX_GRAS_LRZ_CNTL_UNK3);
+   tu_cs_emit(cs, 0);
 
    tu6_emit_lrz_flush(cmd, cs);
 
