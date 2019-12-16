@@ -2116,7 +2116,7 @@ pandecode_vertex_tiler_postfix_pre(
         };
 
         if (is_bifrost)
-                pandecode_scratchpad(p->framebuffer & ~FBD_TYPE, job_no, suffix);
+                pandecode_scratchpad(p->framebuffer & ~1, job_no, suffix);
         else if (p->framebuffer & MALI_MFBD)
                 fbd_info = pandecode_mfbd_bfr((u64) ((uintptr_t) p->framebuffer) & FBD_MASK, job_no, false);
         else if (job_type == JOB_TYPE_COMPUTE)
@@ -2734,7 +2734,7 @@ pandecode_fragment_job(const struct pandecode_mapped_memory *mem,
 {
         const struct mali_payload_fragment *PANDECODE_PTR_VAR(s, mem, payload);
 
-        bool is_mfbd = (s->framebuffer & FBD_TYPE) == MALI_MFBD;
+        bool is_mfbd = s->framebuffer & MALI_MFBD;
 
         /* Bifrost theoretically may retain support for SFBD on compute jobs,
          * but for graphics workloads with a FRAGMENT payload, use MFBD */
@@ -2754,7 +2754,7 @@ pandecode_fragment_job(const struct pandecode_mapped_memory *mem,
          * additional structures follow the MFBD header (an extra payload or
          * not, as well as a count of render targets) */
 
-        unsigned expected_tag = is_mfbd ? MALI_MFBD : MALI_SFBD;
+        unsigned expected_tag = is_mfbd ? MALI_MFBD : 0;
 
         if (is_mfbd) {
                 if (info.has_extra)

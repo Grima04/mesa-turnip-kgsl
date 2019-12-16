@@ -872,13 +872,10 @@ struct mali_attr_meta {
         int32_t src_offset;
 } __attribute__((packed));
 
-enum mali_fbd_type {
-        MALI_SFBD = 0,
-        MALI_MFBD = 1,
-};
-
-#define FBD_TYPE (1)
 #define FBD_MASK (~0x3f)
+
+/* MFBD, rather than SFBD */
+#define MALI_MFBD (0x1)
 
 /* ORed into an MFBD address to specify the fbx section is included */
 #define MALI_MFBD_TAG_EXTRA (0x2)

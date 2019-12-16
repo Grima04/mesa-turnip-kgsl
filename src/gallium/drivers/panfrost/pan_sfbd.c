@@ -269,5 +269,5 @@ panfrost_sfbd_fragment(struct panfrost_batch *batch, bool has_draws)
                 fb.format.unk2 |= MALI_SFBD_FORMAT_MSAA_B;
         }
 
-        return panfrost_upload_transient(batch, &fb, sizeof(fb)) | MALI_SFBD;
+        return panfrost_upload_transient(batch, &fb, sizeof(fb));
 }
