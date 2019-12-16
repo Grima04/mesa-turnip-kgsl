@@ -3839,6 +3839,7 @@ typedef struct nir_lower_subgroups_options {
    bool lower_shuffle:1;
    bool lower_shuffle_to_32bit:1;
    bool lower_quad:1;
+   bool lower_quad_broadcast_dynamic:1;
 } nir_lower_subgroups_options;
 
 bool nir_lower_subgroups(nir_shader *shader,
