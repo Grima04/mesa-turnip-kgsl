@@ -1731,7 +1731,10 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
 
         /* We may need a temporary for the coordinate */
 
-        bool needs_temp_coord = (midgard_texop == TEXTURE_OP_TEXEL_FETCH);
+        bool needs_temp_coord =
+                (midgard_texop == TEXTURE_OP_TEXEL_FETCH) ||
+                (instr->is_shadow);
+
         unsigned coords = needs_temp_coord ? make_compiler_temp_reg(ctx) : 0;
 
         for (unsigned i = 0; i < instr->num_srcs; ++i) {
@@ -1795,7 +1798,8 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
                                         ins.swizzle[1][2] = COMPONENT_Z;
                                         ins.swizzle[1][3] = COMPONENT_Z;
                                 } else if (nr_components == 2) {
-                                        ins.swizzle[1][2] = COMPONENT_X;
+                                        ins.swizzle[1][2] =
+                                                instr->is_shadow ? COMPONENT_Z : COMPONENT_X;
                                         ins.swizzle[1][3] = COMPONENT_X;
                                 } else
                                         unreachable("Invalid texture 2D components");
@@ -1818,6 +1822,21 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
 
                         break;
                 };
+
+                case nir_tex_src_comparator: {
+                        /* TODO: generalize */
+                        unsigned comp = COMPONENT_Z;
+
+                        /* mov coord_temp.foo, coords */
+                        midgard_instruction mov = v_mov(index, coords);
+                        mov.mask = 1 << comp;
+
+                        for (unsigned i = 0; i < MIR_VEC_COMPONENTS; ++i)
+                                mov.swizzle[1][i] = COMPONENT_X;
+
+                        emit_mir_instruction(ctx, mov);
+                        break;
+                }
 
                 default:
                         unreachable("Unknown texture source type\n");
