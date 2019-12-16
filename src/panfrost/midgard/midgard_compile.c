@@ -1744,7 +1744,7 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
                         if (midgard_texop == TEXTURE_OP_TEXEL_FETCH) {
                                 unsigned old_index = index;
 
-                                index = make_compiler_temp(ctx);
+                                index = make_compiler_temp_reg(ctx);
 
                                 /* mov index, old_index */
                                 midgard_instruction mov = v_mov(old_index, index);
