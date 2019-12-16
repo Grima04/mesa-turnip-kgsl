@@ -77,9 +77,14 @@ panfrost_shader_compile(
          * I bet someone just thought that would be a cute pun. At least,
          * that's how I'd do it. */
 
-        state->bo = panfrost_bo_create(screen, size, PAN_BO_EXECUTE);
-        memcpy(state->bo->cpu, dst, size);
-        meta->shader = state->bo->gpu | program.first_tag;
+        if (size) {
+                state->bo = panfrost_bo_create(screen, size, PAN_BO_EXECUTE);
+                memcpy(state->bo->cpu, dst, size);
+                meta->shader = state->bo->gpu | program.first_tag;
+        } else {
+                /* no shader */
+                meta->shader = 0x0;
+        }
 
         util_dynarray_fini(&program.compiled);
 
