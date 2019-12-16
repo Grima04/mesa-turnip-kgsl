@@ -1465,7 +1465,7 @@ tu_cmd_prepare_tile_load_ib(struct tu_cmd_buffer *cmd,
 
    struct tu_cs sub_cs;
 
-   VkResult result = tu_cs_begin_sub_stream(cmd->device, &cmd->tile_cs,
+   VkResult result = tu_cs_begin_sub_stream(cmd->device, &cmd->sub_cs,
                                             tile_load_space, &sub_cs);
    if (result != VK_SUCCESS) {
       cmd->record_result = result;
@@ -1486,7 +1486,7 @@ tu_cmd_prepare_tile_load_ib(struct tu_cmd_buffer *cmd,
    tu6_emit_mrt(cmd, cmd->state.subpass, &sub_cs);
    tu6_emit_msaa(cmd, cmd->state.subpass, &sub_cs);
 
-   cmd->state.tile_load_ib = tu_cs_end_sub_stream(&cmd->tile_cs, &sub_cs);
+   cmd->state.tile_load_ib = tu_cs_end_sub_stream(&cmd->sub_cs, &sub_cs);
 }
 
 static void
@@ -1495,7 +1495,7 @@ tu_cmd_prepare_tile_store_ib(struct tu_cmd_buffer *cmd)
    const uint32_t tile_store_space = 32 + 23 * cmd->state.pass->attachment_count;
    struct tu_cs sub_cs;
 
-   VkResult result = tu_cs_begin_sub_stream(cmd->device, &cmd->tile_cs,
+   VkResult result = tu_cs_begin_sub_stream(cmd->device, &cmd->sub_cs,
                                             tile_store_space, &sub_cs);
    if (result != VK_SUCCESS) {
       cmd->record_result = result;
@@ -1505,7 +1505,7 @@ tu_cmd_prepare_tile_store_ib(struct tu_cmd_buffer *cmd)
    /* emit to tile-store sub_cs */
    tu6_emit_tile_store(cmd, &sub_cs);
 
-   cmd->state.tile_store_ib = tu_cs_end_sub_stream(&cmd->tile_cs, &sub_cs);
+   cmd->state.tile_store_ib = tu_cs_end_sub_stream(&cmd->sub_cs, &sub_cs);
 }
 
 static void
@@ -1703,8 +1703,7 @@ tu_create_cmd_buffer(struct tu_device *device,
    tu_bo_list_init(&cmd_buffer->bo_list);
    tu_cs_init(&cmd_buffer->cs, TU_CS_MODE_GROW, 4096);
    tu_cs_init(&cmd_buffer->draw_cs, TU_CS_MODE_GROW, 4096);
-   tu_cs_init(&cmd_buffer->draw_state, TU_CS_MODE_SUB_STREAM, 2048);
-   tu_cs_init(&cmd_buffer->tile_cs, TU_CS_MODE_SUB_STREAM, 1024);
+   tu_cs_init(&cmd_buffer->sub_cs, TU_CS_MODE_SUB_STREAM, 2048);
 
    *pCommandBuffer = tu_cmd_buffer_to_handle(cmd_buffer);
 
@@ -1755,8 +1754,7 @@ tu_cmd_buffer_destroy(struct tu_cmd_buffer *cmd_buffer)
 
    tu_cs_finish(cmd_buffer->device, &cmd_buffer->cs);
    tu_cs_finish(cmd_buffer->device, &cmd_buffer->draw_cs);
-   tu_cs_finish(cmd_buffer->device, &cmd_buffer->draw_state);
-   tu_cs_finish(cmd_buffer->device, &cmd_buffer->tile_cs);
+   tu_cs_finish(cmd_buffer->device, &cmd_buffer->sub_cs);
 
    tu_bo_list_destroy(&cmd_buffer->bo_list);
    vk_free(&cmd_buffer->pool->alloc, cmd_buffer);
@@ -1772,8 +1770,7 @@ tu_reset_cmd_buffer(struct tu_cmd_buffer *cmd_buffer)
    tu_bo_list_reset(&cmd_buffer->bo_list);
    tu_cs_reset(cmd_buffer->device, &cmd_buffer->cs);
    tu_cs_reset(cmd_buffer->device, &cmd_buffer->draw_cs);
-   tu_cs_reset(cmd_buffer->device, &cmd_buffer->draw_state);
-   tu_cs_reset(cmd_buffer->device, &cmd_buffer->tile_cs);
+   tu_cs_reset(cmd_buffer->device, &cmd_buffer->sub_cs);
 
    for (unsigned i = 0; i < VK_PIPELINE_BIND_POINT_RANGE_SIZE; i++) {
       cmd_buffer->descriptors[i].dirty = 0;
@@ -2033,13 +2030,8 @@ tu_EndCommandBuffer(VkCommandBuffer commandBuffer)
                      MSM_SUBMIT_BO_READ | MSM_SUBMIT_BO_DUMP);
    }
 
-   for (uint32_t i = 0; i < cmd_buffer->draw_state.bo_count; i++) {
-      tu_bo_list_add(&cmd_buffer->bo_list, cmd_buffer->draw_state.bos[i],
-                     MSM_SUBMIT_BO_READ | MSM_SUBMIT_BO_DUMP);
-   }
-
-   for (uint32_t i = 0; i < cmd_buffer->tile_cs.bo_count; i++) {
-      tu_bo_list_add(&cmd_buffer->bo_list, cmd_buffer->tile_cs.bos[i],
+   for (uint32_t i = 0; i < cmd_buffer->sub_cs.bo_count; i++) {
+      tu_bo_list_add(&cmd_buffer->bo_list, cmd_buffer->sub_cs.bos[i],
                      MSM_SUBMIT_BO_READ | MSM_SUBMIT_BO_DUMP);
    }
 
@@ -2725,12 +2717,12 @@ tu6_emit_consts(struct tu_cmd_buffer *cmd,
                 gl_shader_stage type)
 {
    struct tu_cs cs;
-   tu_cs_begin_sub_stream(cmd->device, &cmd->draw_state, 512, &cs); /* TODO: maximum size? */
+   tu_cs_begin_sub_stream(cmd->device, &cmd->sub_cs, 512, &cs); /* TODO: maximum size? */
 
    tu6_emit_user_consts(&cs, pipeline, descriptors_state, type, cmd->push_constants);
    tu6_emit_ubos(&cs, pipeline, descriptors_state, type);
 
-   return tu_cs_end_sub_stream(&cmd->draw_state, &cs);
+   return tu_cs_end_sub_stream(&cmd->sub_cs, &cs);
 }
 
 static VkResult
@@ -2740,7 +2732,7 @@ tu6_emit_textures(struct tu_cmd_buffer *cmd,
                   bool *needs_border)
 {
    struct tu_device *device = cmd->device;
-   struct tu_cs *draw_state = &cmd->draw_state;
+   struct tu_cs *draw_state = &cmd->sub_cs;
    struct tu_descriptor_state *descriptors_state =
       &cmd->descriptors[VK_PIPELINE_BIND_POINT_GRAPHICS];
    const struct tu_program_descriptor_linkage *link =
@@ -2975,7 +2967,7 @@ tu6_emit_border_color(struct tu_cmd_buffer *cmd,
       &pipeline->program.link[MESA_SHADER_FRAGMENT].sampler_map;
    struct ts_cs_memory ptr;
 
-   VkResult result = tu_cs_alloc(cmd->device, &cmd->draw_state,
+   VkResult result = tu_cs_alloc(cmd->device, &cmd->sub_cs,
                                  vs_sampler->num + fs_sampler->num, 128 / 4,
                                  &ptr);
    if (result != VK_SUCCESS)
@@ -3168,7 +3160,7 @@ tu6_bind_draw_states(struct tu_cmd_buffer *cmd,
          (struct tu_draw_state_group) {
             .id = TU_DRAW_STATE_FS_IBO,
             .enable_mask = 0x6,
-            .ib = tu6_emit_ibo(cmd->device, &cmd->draw_state, pipeline,
+            .ib = tu6_emit_ibo(cmd->device, &cmd->sub_cs, pipeline,
                                descriptors_state, MESA_SHADER_FRAGMENT)
          };
 
@@ -3497,7 +3489,7 @@ tu_dispatch(struct tu_cmd_buffer *cmd,
    if (needs_border)
       tu6_emit_border_color(cmd, cs);
 
-   ib = tu6_emit_ibo(cmd->device, &cmd->draw_state, pipeline,
+   ib = tu6_emit_ibo(cmd->device, &cmd->sub_cs, pipeline,
                      descriptors_state, MESA_SHADER_COMPUTE);
    if (ib.size)
       tu_cs_emit_ib(cs, &ib);

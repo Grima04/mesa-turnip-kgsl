@@ -944,8 +944,7 @@ struct tu_cmd_buffer
    struct tu_bo_list bo_list;
    struct tu_cs cs;
    struct tu_cs draw_cs;
-   struct tu_cs draw_state;
-   struct tu_cs tile_cs;
+   struct tu_cs sub_cs;
 
    uint16_t marker_reg;
    uint32_t marker_seqno;
