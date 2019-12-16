@@ -1725,6 +1725,7 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
                         .out_full = 1,
 
                         .sampler_type = midgard_sampler_type(instr->dest_type),
+                        .shadow = instr->is_shadow,
                 }
         };
 
