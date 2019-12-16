@@ -305,3 +305,14 @@ v3dv_CmdBeginRenderPass(VkCommandBuffer commandBuffer,
     */
    cl_emit(&cmd_buffer->bcl, START_TILE_BINNING, bin);
 }
+
+void
+v3dv_CmdEndRenderPass(VkCommandBuffer commandBuffer)
+{
+}
+
+VkResult
+v3dv_EndCommandBuffer(VkCommandBuffer commandBuffer)
+{
+   return VK_SUCCESS;
+}

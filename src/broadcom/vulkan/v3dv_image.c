@@ -309,6 +309,13 @@ v3dv_CreateImage(VkDevice _device,
    return VK_SUCCESS;
 }
 
+void
+v3dv_DestroyImage(VkDevice device,
+                  VkImage image,
+                  const VkAllocationCallbacks* pAllocator)
+{
+}
+
 VkResult
 v3dv_CreateImageView(VkDevice _device,
                      const VkImageViewCreateInfo *pCreateInfo,
@@ -380,4 +387,11 @@ v3dv_CreateImageView(VkDevice _device,
    *pView = v3dv_image_view_to_handle(iview);
 
    return VK_SUCCESS;
+}
+
+void
+v3dv_DestroyImageView(VkDevice device,
+                      VkImageView imageView,
+                      const VkAllocationCallbacks* pAllocator)
+{
 }

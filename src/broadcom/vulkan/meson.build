@@ -61,9 +61,11 @@ libv3dv_files = files(
   'v3dv_device.c',
   'v3dv_formats.c',
   'v3dv_image.c',
+  'v3dv_meta_copy.c',
   'v3dv_pass.c',
   'v3dv_pipeline.c',
   'v3dv_private.h',
+  'v3dv_queue.c',
   'v3dv_util.c',
   'v3d_tiling.c',
 )
