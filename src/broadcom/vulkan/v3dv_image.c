@@ -358,16 +358,18 @@ v3dv_CreateImageView(VkDevice _device,
 
    iview->image = image;
    iview->aspects = range->aspectMask;
+
+   iview->base_level = range->baseMipLevel;
    iview->extent = (VkExtent3D) {
-      .width  = u_minify(image->extent.width , range->baseMipLevel),
-      .height = u_minify(image->extent.height, range->baseMipLevel),
-      .depth  = u_minify(image->extent.depth , range->baseMipLevel),
+      .width  = u_minify(image->extent.width , iview->base_level),
+      .height = u_minify(image->extent.height, iview->base_level),
+      .depth  = u_minify(image->extent.depth , iview->base_level),
    };
 
    iview->first_layer = range->baseArrayLayer;
    iview->last_layer = range->baseArrayLayer +
                        v3dv_layer_count(image, range) - 1;
-   iview->offset = layer_offset(image, range->baseMipLevel, iview->first_layer);
+   iview->offset = layer_offset(image, iview->base_level, iview->first_layer);
 
    iview->tiling = image->slices[0].tiling;
 

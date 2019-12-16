@@ -281,6 +281,7 @@ struct v3dv_image_view {
    uint32_t internal_bpp;
    uint32_t internal_type;
 
+   uint32_t base_level;
    uint32_t first_layer;
    uint32_t last_layer;
    uint32_t offset;
