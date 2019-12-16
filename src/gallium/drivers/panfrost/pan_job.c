@@ -623,6 +623,7 @@ panfrost_batch_get_polygon_list(struct panfrost_batch *batch, unsigned size)
                 assert(batch->polygon_list->size >= size);
         } else {
                 /* Create the BO as invisible, as there's no reason to map */
+                size = util_next_power_of_two(size);
 
                 batch->polygon_list = panfrost_batch_create_bo(batch, size,
                                                                PAN_BO_INVISIBLE,
@@ -962,7 +963,7 @@ panfrost_batch_submit(struct panfrost_batch *batch)
         /* Now that all draws are in, we can finally prepare the
          * FBD for the batch */
 
-        if (batch->framebuffer.gpu) {
+        if (batch->framebuffer.gpu && batch->first_job.gpu) {
                 struct panfrost_context *ctx = batch->ctx;
                 struct pipe_context *gallium = (struct pipe_context *) ctx;
                 struct panfrost_screen *screen = pan_screen(gallium->screen);
