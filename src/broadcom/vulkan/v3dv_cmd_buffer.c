@@ -105,10 +105,6 @@ cmd_buffer_destroy(struct v3dv_cmd_buffer *cmd_buffer)
 {
    list_del(&cmd_buffer->pool_link);
 
-   /* FIXME: we are probably double-freeing these BOs in the loop below.
-    * either have a refcount system for BOs like in v3d or don't free the
-    * BO when we destroy a CL.
-    */
    v3dv_cl_destroy(&cmd_buffer->bcl);
    v3dv_cl_destroy(&cmd_buffer->rcl);
    v3dv_cl_destroy(&cmd_buffer->indirect);

@@ -48,18 +48,16 @@ v3dv_cl_reset(struct v3dv_cl *cl)
    /* FIXME: consider keeping the BO when the command buffer is reset with
     * flag VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT.
     */
-   v3dv_cl_destroy(cl);
    v3dv_cl_init(cl->cmd_buffer, cl);
 }
 
 void
 v3dv_cl_destroy(struct v3dv_cl *cl)
 {
-   assert(cl);
-   if (cl->bo) {
-      assert(cl->cmd_buffer && cl->cmd_buffer->device);
-      v3dv_bo_free(cl->cmd_buffer->device, cl->bo);
-   }
+   /* The CL's BO is owned by the command buffer, so don't free it here */
+
+   /* Leave the CL in a reset state to catch use after destroy instances */
+   v3dv_cl_init(NULL, cl);
 }
 
 void
@@ -81,6 +79,7 @@ v3dv_cl_ensure_space_with_branch(struct v3dv_cl *cl, uint32_t space)
       }
    }
 
+   /* The command buffer takes ownership of the BO */
    v3dv_cmd_buffer_add_bo(cl->cmd_buffer, bo);
 
    bool ok = v3dv_bo_map(cl->cmd_buffer->device, bo, bo->size);
