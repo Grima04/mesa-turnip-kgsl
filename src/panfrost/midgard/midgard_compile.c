@@ -1728,6 +1728,11 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
                 }
         };
 
+        /* We may need a temporary for the coordinate */
+
+        bool needs_temp_coord = (midgard_texop == TEXTURE_OP_TEXEL_FETCH);
+        unsigned coords = needs_temp_coord ? make_compiler_temp_reg(ctx) : 0;
+
         for (unsigned i = 0; i < instr->num_srcs; ++i) {
                 int index = nir_src_index(ctx, &instr->src[i].src);
                 unsigned nr_components = nir_src_num_components(instr->src[i].src);
@@ -1736,23 +1741,24 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
                 case nir_tex_src_coord: {
                         emit_explicit_constant(ctx, index, index);
 
+                        if (needs_temp_coord) {
+                                /* mov coord_temp, coords */
+                                midgard_instruction mov = v_mov(index, coords);
+                                mov.mask = 0x3;
+                                emit_mir_instruction(ctx, mov);
+                        } else {
+                                coords = index;
+                        }
+
                         /* Texelfetch coordinates uses all four elements
                          * (xyz/index) regardless of texture dimensionality,
                          * which means it's necessary to zero the unused
                          * components to keep everything happy */
 
                         if (midgard_texop == TEXTURE_OP_TEXEL_FETCH) {
-                                unsigned old_index = index;
-
-                                index = make_compiler_temp_reg(ctx);
-
-                                /* mov index, old_index */
-                                midgard_instruction mov = v_mov(old_index, index);
-                                mov.mask = 0x3;
-                                emit_mir_instruction(ctx, mov);
-
                                 /* mov index.zw, #0 */
-                                mov = v_mov(SSA_FIXED_REGISTER(REGISTER_CONSTANT), index);
+                                midgard_instruction mov =
+                                        v_mov(SSA_FIXED_REGISTER(REGISTER_CONSTANT), coords);
                                 mov.has_constants = true;
                                 mov.mask = (1 << COMPONENT_Z) | (1 << COMPONENT_W);
                                 emit_mir_instruction(ctx, mov);
@@ -1768,7 +1774,7 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
 
                                 unsigned temp = make_compiler_temp(ctx);
                                 midgard_instruction ld = m_ld_cubemap_coords(temp, 0);
-                                ld.src[1] = index;
+                                ld.src[1] = coords;
                                 ld.mask = 0x3; /* xy */
                                 ld.load_store.arg_1 = 0x20;
                                 ld.swizzle[1][3] = COMPONENT_X;
@@ -1779,7 +1785,7 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
                                 ins.swizzle[1][2] = COMPONENT_X;
                                 ins.swizzle[1][3] = COMPONENT_X;
                         } else {
-                                ins.src[1] = index;
+                                ins.src[1] = coords;
                         }
 
                         if (instr->sampler_dim == GLSL_SAMPLER_DIM_2D) {
