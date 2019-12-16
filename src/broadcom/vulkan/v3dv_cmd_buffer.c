@@ -115,9 +115,6 @@ cmd_buffer_destroy(struct v3dv_cmd_buffer *cmd_buffer)
    }
    _mesa_set_destroy(cmd_buffer->bos, NULL);
 
-   v3dv_bo_free(cmd_buffer->device, cmd_buffer->tile_alloc);
-   v3dv_bo_free(cmd_buffer->device, cmd_buffer->tile_state);
-
    vk_free(&cmd_buffer->pool->alloc, cmd_buffer);
 }
 
@@ -268,6 +265,7 @@ v3dv_CmdBeginRenderPass(VkCommandBuffer commandBuffer,
    tile_alloc_size += 512 * 1024;
 
    cmd_buffer->tile_alloc = v3dv_bo_alloc(cmd_buffer->device, tile_alloc_size);
+   v3dv_cmd_buffer_add_bo(cmd_buffer, cmd_buffer->tile_alloc);
 
    const uint32_t tsda_per_tile_size = 256;
    const uint32_t tile_state_size = MAX2(fb_layers, 1) *
@@ -275,7 +273,7 @@ v3dv_CmdBeginRenderPass(VkCommandBuffer commandBuffer,
                                     framebuffer->draw_tiles_y *
                                     tsda_per_tile_size;
    cmd_buffer->tile_state = v3dv_bo_alloc(cmd_buffer->device, tile_state_size);
-
+   v3dv_cmd_buffer_add_bo(cmd_buffer, cmd_buffer->tile_state);
 
    /* This must go before the binning mode configuration. It is
     * required for layered framebuffers to work.
