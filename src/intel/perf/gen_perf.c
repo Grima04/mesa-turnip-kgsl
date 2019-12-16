@@ -1512,11 +1512,11 @@ free_sample_bufs(struct gen_perf_context *perf_ctx)
  * pipeline statistics for the performance query object.
  */
 static void
-snapshot_statistics_registers(void *context,
-                              struct gen_perf_config *perf,
+snapshot_statistics_registers(struct gen_perf_context *ctx,
                               struct gen_perf_query_object *obj,
                               uint32_t offset_in_bytes)
 {
+   struct gen_perf_config *perf = ctx->perf;
    const struct gen_perf_query_info *query = obj->queryinfo;
    const int n_counters = query->n_counters;
 
@@ -1525,10 +1525,24 @@ snapshot_statistics_registers(void *context,
 
       assert(counter->data_type == GEN_PERF_COUNTER_DATA_TYPE_UINT64);
 
-      perf->vtbl.store_register_mem64(context, obj->pipeline_stats.bo,
-                                      counter->pipeline_stat.reg,
-                                      offset_in_bytes + i * sizeof(uint64_t));
+      perf->vtbl.store_register_mem(ctx->ctx, obj->pipeline_stats.bo,
+                                    counter->pipeline_stat.reg, 8,
+                                    offset_in_bytes + i * sizeof(uint64_t));
    }
+}
+
+static void
+snapshot_freq_register(struct gen_perf_context *ctx,
+                       struct gen_perf_query_object *query,
+                       uint32_t bo_offset)
+{
+   struct gen_perf_config *perf = ctx->perf;
+   const struct gen_device_info *devinfo = ctx->devinfo;
+
+   if (devinfo->gen == 8 && !devinfo->is_cherryview)
+      perf->vtbl.store_register_mem(ctx->ctx, query->oa.bo, GEN7_RPSTAT1, 4, bo_offset);
+   else if (devinfo->gen >= 9)
+      perf->vtbl.store_register_mem(ctx->ctx, query->oa.bo, GEN9_RPSTAT0, 4, bo_offset);
 }
 
 static void
@@ -1848,8 +1862,7 @@ gen_perf_begin_query(struct gen_perf_context *perf_ctx,
       /* Take a starting OA counter snapshot. */
       perf_cfg->vtbl.emit_mi_report_perf_count(perf_ctx->ctx, query->oa.bo, 0,
                                                query->oa.begin_report_id);
-      perf_cfg->vtbl.capture_frequency_stat_register(perf_ctx->ctx, query->oa.bo,
-                                                     MI_FREQ_START_OFFSET_BYTES);
+      snapshot_freq_register(perf_ctx, query, MI_FREQ_START_OFFSET_BYTES);
 
       ++perf_ctx->n_active_oa_queries;
 
@@ -1889,7 +1902,7 @@ gen_perf_begin_query(struct gen_perf_context *perf_ctx,
                                  STATS_BO_SIZE);
 
       /* Take starting snapshots. */
-      snapshot_statistics_registers(perf_ctx->ctx , perf_cfg, query, 0);
+      snapshot_statistics_registers(perf_ctx, query, 0);
 
       ++perf_ctx->n_active_pipeline_stats_queries;
       break;
@@ -1927,8 +1940,7 @@ gen_perf_end_query(struct gen_perf_context *perf_ctx,
        */
       if (!query->oa.results_accumulated) {
          /* Take an ending OA counter snapshot. */
-         perf_cfg->vtbl.capture_frequency_stat_register(perf_ctx->ctx, query->oa.bo,
-                                                     MI_FREQ_END_OFFSET_BYTES);
+         snapshot_freq_register(perf_ctx, query, MI_FREQ_END_OFFSET_BYTES);
          perf_cfg->vtbl.emit_mi_report_perf_count(perf_ctx->ctx, query->oa.bo,
                                              MI_RPC_BO_END_OFFSET_BYTES,
                                              query->oa.begin_report_id + 1);
@@ -1943,7 +1955,7 @@ gen_perf_end_query(struct gen_perf_context *perf_ctx,
       break;
 
    case GEN_PERF_QUERY_TYPE_PIPELINE:
-      snapshot_statistics_registers(perf_ctx->ctx, perf_cfg, query,
+      snapshot_statistics_registers(perf_ctx, query,
                                     STATS_BO_END_OFFSET_BYTES);
       --perf_ctx->n_active_pipeline_stats_queries;
       break;

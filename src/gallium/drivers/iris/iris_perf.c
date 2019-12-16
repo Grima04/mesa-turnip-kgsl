@@ -57,27 +57,18 @@ iris_perf_batchbuffer_flush(void *c, const char *file, int line)
 }
 
 static void
-iris_perf_capture_frequency_stat_register(void *ctx,
-                                                void *bo,
-                                                uint32_t bo_offset)
+iris_perf_store_register_mem(void *ctx, void *bo,
+                             uint32_t reg, uint32_t reg_size,
+                             uint32_t offset)
 {
    struct iris_context *ice = ctx;
    struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
-   struct gen_device_info *devinfo = &batch->screen->devinfo;
-
-   if (devinfo->gen == 8 && !devinfo->is_cherryview)
-      ice->vtbl.store_register_mem32(batch, GEN7_RPSTAT1, bo, bo_offset, false);
-   else if (devinfo->gen >= 9)
-      ice->vtbl.store_register_mem32(batch, GEN9_RPSTAT0, bo, bo_offset, false);
-}
-
-static void
-iris_perf_store_register_mem64(void *ctx, void *bo,
-                                     uint32_t reg, uint32_t offset)
-{
-   struct iris_context *ice = ctx;
-   struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
-   ice->vtbl.store_register_mem64(batch, reg, bo, offset, false);
+   if (reg_size == 8) {
+      ice->vtbl.store_register_mem64(batch, reg, bo, offset, false);
+   } else {
+      assert(reg_size == 4);
+      ice->vtbl.store_register_mem32(batch, reg, bo, offset, false);
+   }
 }
 
 typedef void (*bo_unreference_t)(void *);
@@ -85,9 +76,9 @@ typedef void *(*bo_map_t)(void *, void *, unsigned flags);
 typedef void (*bo_unmap_t)(void *);
 typedef void (*emit_mi_report_t)(void *, void *, uint32_t, uint32_t);
 typedef void (*emit_mi_flush_t)(void *);
-typedef void (*capture_frequency_stat_register_t)(void *, void *, uint32_t );
-typedef void (*store_register_mem64_t)(void *ctx, void *bo,
-                                       uint32_t reg, uint32_t offset);
+typedef void (*store_register_mem_t)(void *ctx, void *bo,
+                                     uint32_t reg, uint32_t reg_size,
+                                     uint32_t offset);
 typedef bool (*batch_references_t)(void *batch, void *bo);
 typedef void (*bo_wait_rendering_t)(void *bo);
 typedef int (*bo_busy_t)(void *bo);
@@ -105,10 +96,8 @@ iris_perf_init_vtbl(struct gen_perf_config *perf_cfg)
    perf_cfg->vtbl.emit_mi_report_perf_count =
       (emit_mi_report_t)iris_perf_emit_mi_report_perf_count;
    perf_cfg->vtbl.batchbuffer_flush = iris_perf_batchbuffer_flush;
-   perf_cfg->vtbl.capture_frequency_stat_register =
-      (capture_frequency_stat_register_t) iris_perf_capture_frequency_stat_register;
-   perf_cfg->vtbl.store_register_mem64 =
-      (store_register_mem64_t) iris_perf_store_register_mem64;
+   perf_cfg->vtbl.store_register_mem =
+      (store_register_mem_t) iris_perf_store_register_mem;
    perf_cfg->vtbl.batch_references = (batch_references_t)iris_batch_references;
    perf_cfg->vtbl.bo_wait_rendering =
       (bo_wait_rendering_t)iris_bo_wait_rendering;

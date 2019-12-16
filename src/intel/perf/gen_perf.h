@@ -226,9 +226,7 @@ struct gen_perf_config {
                                         uint32_t report_id);
       void (*batchbuffer_flush)(void *ctx,
                                 const char *file, int line);
-      void (*capture_frequency_stat_register)(void *ctx, void *bo,
-                                              uint32_t bo_offset);
-      void (*store_register_mem64)(void *ctx, void *bo, uint32_t reg, uint32_t offset);
+      void (*store_register_mem)(void *ctx, void *bo, uint32_t reg, uint32_t reg_size, uint32_t offset);
 
    } vtbl;
 };
