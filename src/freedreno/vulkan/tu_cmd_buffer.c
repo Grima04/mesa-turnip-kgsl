@@ -738,7 +738,7 @@ tu6_emit_tile_select(struct tu_cmd_buffer *cmd,
       tu_cs_emit_pkt7(cs, CP_REG_TEST, 1);
       tu_cs_emit(cs, A6XX_CP_REG_TEST_0_REG(OVERFLOW_FLAG_REG) |
                      A6XX_CP_REG_TEST_0_BIT(0) |
-                     A6XX_CP_REG_TEST_0_UNK25);
+                     A6XX_CP_REG_TEST_0_WAIT_FOR_ME);
 
       tu_cs_emit_pkt7(cs, CP_COND_REG_EXEC, 2);
       tu_cs_emit(cs, 0x10000000);
@@ -1124,7 +1124,7 @@ tu6_cache_flush(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 
    seqno = tu6_emit_event_write(cmd, cs, CACHE_FLUSH_TS, true);
 
-   tu_cs_emit_pkt7(cs, CP_UNK_A6XX_14, 4);
+   tu_cs_emit_pkt7(cs, CP_WAIT_MEM_GTE, 4);
    tu_cs_emit(cs, 0x00000000);
    tu_cs_emit_qw(cs, cmd->scratch_bo.iova);
    tu_cs_emit(cs, seqno);
@@ -1217,7 +1217,7 @@ emit_vsc_overflow_test(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
    tu_cs_emit_pkt7(cs, CP_REG_TEST, 1);
    tu_cs_emit(cs, A6XX_CP_REG_TEST_0_REG(OVERFLOW_FLAG_REG) |
          A6XX_CP_REG_TEST_0_BIT(0) |
-         A6XX_CP_REG_TEST_0_UNK25);
+         A6XX_CP_REG_TEST_0_WAIT_FOR_ME);
 
    tu_cs_emit_pkt7(cs, CP_COND_REG_EXEC, 2);
    tu_cs_emit(cs, 0x10000000);
@@ -1231,7 +1231,7 @@ emit_vsc_overflow_test(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
        */
       tu_cs_emit_pkt7(cs, CP_REG_TO_MEM, 3);
       tu_cs_emit(cs, CP_REG_TO_MEM_0_REG(OVERFLOW_FLAG_REG) |
-            CP_REG_TO_MEM_0_CNT(1 - 1));
+            CP_REG_TO_MEM_0_CNT(0));
       tu_cs_emit_qw(cs, cmd->scratch_bo.iova + VSC_OVERFLOW);
 
       tu_cs_emit_pkt4(cs, OVERFLOW_FLAG_REG, 1);
@@ -1401,7 +1401,7 @@ tu6_render_tile(struct tu_cmd_buffer *cmd,
       tu_cs_emit_pkt7(cs, CP_REG_TEST, 1);
       tu_cs_emit(cs, A6XX_CP_REG_TEST_0_REG(OVERFLOW_FLAG_REG) |
                      A6XX_CP_REG_TEST_0_BIT(0) |
-                     A6XX_CP_REG_TEST_0_UNK25);
+                     A6XX_CP_REG_TEST_0_WAIT_FOR_ME);
 
       tu_cs_emit_pkt7(cs, CP_COND_REG_EXEC, 2);
       tu_cs_emit(cs, 0x10000000);

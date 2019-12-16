@@ -186,7 +186,7 @@ fd6_cache_flush(struct fd_batch *batch, struct fd_ringbuffer *ring)
 
 	seqno = fd6_event_write(batch, ring, CACHE_FLUSH_TS, true);
 
-	OUT_PKT7(ring, CP_UNK_A6XX_14, 4);
+	OUT_PKT7(ring, CP_WAIT_MEM_GTE, 4);
 	OUT_RING(ring, 0x00000000);
 	OUT_RELOC(ring, control_ptr(fd6_ctx, seqno));
 	OUT_RING(ring, seqno);

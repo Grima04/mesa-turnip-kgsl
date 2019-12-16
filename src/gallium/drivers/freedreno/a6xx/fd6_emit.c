@@ -754,7 +754,7 @@ fd6_emit_streamout(struct fd_ringbuffer *ring, struct fd6_emit *emit, struct ir3
 			OUT_PKT7(ring, CP_MEM_TO_REG, 3);
 			OUT_RING(ring, CP_MEM_TO_REG_0_REG(REG_A6XX_VPC_SO_BUFFER_OFFSET(i)) |
 					CP_MEM_TO_REG_0_64B | CP_MEM_TO_REG_0_ACCUMULATE |
-					CP_MEM_TO_REG_0_CNT(1 - 1));
+					CP_MEM_TO_REG_0_CNT(0));
 			OUT_RELOC(ring, control_ptr(fd6_context(ctx), flush_base[i].offset));
 		}
 
@@ -1457,7 +1457,7 @@ fd6_framebuffer_barrier(struct fd_context *ctx)
 
 	fd6_event_write(batch, ring, 0x31, false);
 
-	OUT_PKT7(ring, CP_UNK_A6XX_14, 4);
+	OUT_PKT7(ring, CP_WAIT_MEM_GTE, 4);
 	OUT_RING(ring, 0x00000000);
 	OUT_RELOC(ring, control_ptr(fd6_ctx, seqno));
 	OUT_RING(ring, seqno);

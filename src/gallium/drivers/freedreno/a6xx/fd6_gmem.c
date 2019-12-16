@@ -442,7 +442,7 @@ emit_vsc_overflow_test(struct fd_batch *batch)
 
 	OUT_PKT7(ring, CP_MEM_TO_REG, 3);
 	OUT_RING(ring, CP_MEM_TO_REG_0_REG(OVERFLOW_FLAG_REG) |
-			CP_MEM_TO_REG_0_CNT(1 - 1));
+			CP_MEM_TO_REG_0_CNT(0));
 	OUT_RELOC(ring, control_ptr(fd6_ctx, vsc_scratch));  /* SRC_LO/HI */
 
 	/*
@@ -461,7 +461,7 @@ emit_vsc_overflow_test(struct fd_batch *batch)
 	OUT_PKT7(ring, CP_REG_TEST, 1);
 	OUT_RING(ring, A6XX_CP_REG_TEST_0_REG(OVERFLOW_FLAG_REG) |
 			A6XX_CP_REG_TEST_0_BIT(0) |
-			A6XX_CP_REG_TEST_0_UNK25);
+			A6XX_CP_REG_TEST_0_WAIT_FOR_ME);
 
 	OUT_PKT7(ring, CP_COND_REG_EXEC, 2);
 	OUT_RING(ring, 0x10000000);
@@ -568,7 +568,7 @@ emit_conditional_ib(struct fd_batch *batch, struct fd_tile *tile,
 	OUT_PKT7(ring, CP_REG_TEST, 1);
 	OUT_RING(ring, A6XX_CP_REG_TEST_0_REG(REG_A6XX_VSC_STATE_REG(tile->p)) |
 			A6XX_CP_REG_TEST_0_BIT(tile->n) |
-			A6XX_CP_REG_TEST_0_UNK25);
+			A6XX_CP_REG_TEST_0_WAIT_FOR_ME);
 
 	OUT_PKT7(ring, CP_COND_REG_EXEC, 2);
 	OUT_RING(ring, 0x10000000);
@@ -856,7 +856,7 @@ fd6_emit_tile_prep(struct fd_batch *batch, struct fd_tile *tile)
 		OUT_PKT7(ring, CP_REG_TEST, 1);
 		OUT_RING(ring, A6XX_CP_REG_TEST_0_REG(OVERFLOW_FLAG_REG) |
 				A6XX_CP_REG_TEST_0_BIT(0) |
-				A6XX_CP_REG_TEST_0_UNK25);
+				A6XX_CP_REG_TEST_0_WAIT_FOR_ME);
 
 		OUT_PKT7(ring, CP_COND_REG_EXEC, 2);
 		OUT_RING(ring, 0x10000000);
@@ -1332,7 +1332,7 @@ fd6_emit_tile_gmem2mem(struct fd_batch *batch, struct fd_tile *tile)
 		OUT_PKT7(ring, CP_REG_TEST, 1);
 		OUT_RING(ring, A6XX_CP_REG_TEST_0_REG(OVERFLOW_FLAG_REG) |
 				A6XX_CP_REG_TEST_0_BIT(0) |
-				A6XX_CP_REG_TEST_0_UNK25);
+				A6XX_CP_REG_TEST_0_WAIT_FOR_ME);
 
 		OUT_PKT7(ring, CP_COND_REG_EXEC, 2);
 		OUT_RING(ring, 0x10000000);

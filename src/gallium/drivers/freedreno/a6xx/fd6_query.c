@@ -325,7 +325,7 @@ primitives_generated_resume(struct fd_acc_query *aq, struct fd_batch *batch)
 
 	OUT_PKT7(ring, CP_REG_TO_MEM, 3);
 	OUT_RING(ring, CP_REG_TO_MEM_0_64B |
-			CP_REG_TO_MEM_0_CNT(counter_count - 1) |
+			CP_REG_TO_MEM_0_CNT(counter_count) |
 			CP_REG_TO_MEM_0_REG(counter_base));
 	primitives_relocw(ring, aq, prim_start);
 
@@ -342,7 +342,7 @@ primitives_generated_pause(struct fd_acc_query *aq, struct fd_batch *batch)
 	/* snapshot the end values: */
 	OUT_PKT7(ring, CP_REG_TO_MEM, 3);
 	OUT_RING(ring, CP_REG_TO_MEM_0_64B |
-			CP_REG_TO_MEM_0_CNT(counter_count - 1) |
+			CP_REG_TO_MEM_0_CNT(counter_count) |
 			CP_REG_TO_MEM_0_REG(counter_base));
 	primitives_relocw(ring, aq, prim_stop);
 
