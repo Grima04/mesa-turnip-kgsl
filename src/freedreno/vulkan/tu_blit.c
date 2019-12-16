@@ -265,8 +265,9 @@ void tu_blit(struct tu_cmd_buffer *cmdbuf, struct tu_blit *blt)
    case TU_BLIT_CLEAR:
       /* unsupported format cleared as UINT32 */
       if (blt->dst.fmt == VK_FORMAT_E5B9G9R9_UFLOAT_PACK32)
-         blt->dst.fmt = blt->src.fmt = VK_FORMAT_R32_UINT;
+         blt->dst.fmt = VK_FORMAT_R32_UINT;
       assert(blt->dst.samples == 1); /* TODO */
+      blt->src = blt->dst;
       break;
    default:
       assert(blt->dst.samples == 1);
