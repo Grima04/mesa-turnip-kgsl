@@ -173,14 +173,14 @@ panfrost-t720-test:arm64:
   tags:
     - lava-sun50i-h6-pine-h64
 
-.panfrost-t760-test:armhf:
+panfrost-t760-test:armhf:
   extends: .lava-test:armhf
   variables:
     DEVICE_TYPE: rk3288-veyron-jaq
   tags:
     - lava-rk3288-veyron-jaq
 
-.panfrost-t860-test:arm64:
+panfrost-t860-test:arm64:
   extends: .lava-test:arm64
   variables:
     DEVICE_TYPE: rk3399-gru-kevin
