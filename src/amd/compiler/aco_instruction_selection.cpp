@@ -6195,6 +6195,9 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
    }
    case nir_intrinsic_demote:
       bld.pseudo(aco_opcode::p_demote_to_helper);
+
+      if (ctx->cf_info.loop_nest_depth || ctx->cf_info.parent_if.is_divergent)
+         ctx->cf_info.exec_potentially_empty = true;
       ctx->block->kind |= block_kind_uses_demote;
       ctx->program->needs_exact = true;
       break;
@@ -6203,6 +6206,9 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
       assert(src.regClass() == bld.lm);
       Temp cond = bld.sop2(Builder::s_and, bld.def(bld.lm), bld.def(s1, scc), src, Operand(exec, bld.lm));
       bld.pseudo(aco_opcode::p_demote_to_helper, cond);
+
+      if (ctx->cf_info.loop_nest_depth || ctx->cf_info.parent_if.is_divergent)
+         ctx->cf_info.exec_potentially_empty = true;
       ctx->block->kind |= block_kind_uses_demote;
       ctx->program->needs_exact = true;
       break;
