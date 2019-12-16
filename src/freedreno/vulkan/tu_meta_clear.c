@@ -152,7 +152,7 @@ tu_CmdClearAttachments(VkCommandBuffer commandBuffer,
          tu_cs_emit(cs, A6XX_RB_BLIT_INFO_GMEM | A6XX_RB_BLIT_INFO_CLEAR_MASK(clear_mask));
 
          tu_cs_emit_pkt4(cs, REG_A6XX_RB_BLIT_BASE_GMEM, 1);
-         tu_cs_emit(cs, cmd->state.tiling_config.gmem_offsets[a]);
+         tu_cs_emit(cs, cmd->state.pass->attachments[a].gmem_offset);
 
          tu_cs_emit_pkt4(cs, REG_A6XX_RB_UNKNOWN_88D0, 1);
          tu_cs_emit(cs, 0);

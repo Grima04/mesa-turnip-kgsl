@@ -36,6 +36,54 @@ static void update_samples(struct tu_subpass *subpass,
    subpass->samples = samples;
 }
 
+#define GMEM_ALIGN 0x4000
+
+static void
+compute_gmem_offsets(struct tu_render_pass *pass, uint32_t gmem_size)
+{
+   /* calculate total bytes per pixel */
+   uint32_t cpp_total = 0;
+   for (uint32_t i = 0; i < pass->attachment_count; i++) {
+      struct tu_render_pass_attachment *att = &pass->attachments[i];
+      if (att->gmem_offset >= 0)
+         cpp_total += att->cpp;
+   }
+
+   /* no gmem attachments */
+   if (cpp_total == 0) {
+      /* any value non-zero value so tiling config works with no attachments */
+      pass->gmem_pixels = 1024*1024;
+      return;
+   }
+
+   /* TODO: this algorithm isn't optimal
+    * for example, two attachments with cpp = {1, 4}
+    * result:  nblocks = {12, 52}, pixels = 196608
+    * optimal: nblocks = {13, 51}, pixels = 208896
+    */
+   uint32_t block_total = 0, gmem_blocks = gmem_size / GMEM_ALIGN;
+   uint32_t offset = 0, pixels = ~0u;
+   for (uint32_t i = 0; i < pass->attachment_count; i++) {
+      struct tu_render_pass_attachment *att = &pass->attachments[i];
+      if (att->gmem_offset < 0)
+         continue;
+
+      att->gmem_offset = offset;
+
+      /* Note: divide by 16 is for GMEM_ALIGN=16k, tile align w=64/h=16 */
+      uint32_t align = MAX2(1, att->cpp / 16);
+      uint32_t nblocks = MAX2((gmem_blocks * att->cpp / cpp_total) & ~(align - 1), align);
+
+      gmem_blocks -= nblocks;
+      cpp_total -= att->cpp;
+      offset += nblocks * GMEM_ALIGN;
+      pixels = MIN2(pixels, nblocks * GMEM_ALIGN / att->cpp);
+   }
+
+   pass->gmem_pixels = pixels;
+   assert(pixels);
+}
+
 VkResult
 tu_CreateRenderPass(VkDevice _device,
                     const VkRenderPassCreateInfo *pCreateInfo,
@@ -48,7 +96,6 @@ tu_CreateRenderPass(VkDevice _device,
    size_t attachments_offset;
 
    assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO);
-   assert(pCreateInfo->attachmentCount < MAX_ATTACHMENTS);
 
    size = sizeof(*pass);
    size += pCreateInfo->subpassCount * sizeof(pass->subpasses[0]);
@@ -77,6 +124,7 @@ tu_CreateRenderPass(VkDevice _device,
       if (pCreateInfo->pAttachments[i].stencilStoreOp == VK_ATTACHMENT_STORE_OP_STORE &&
           vk_format_has_stencil(att->format))
          att->store_op = VK_ATTACHMENT_STORE_OP_STORE;
+      att->gmem_offset = -1;
    }
 
    uint32_t subpass_attachment_count = 0;
@@ -118,7 +166,7 @@ tu_CreateRenderPass(VkDevice _device,
             uint32_t a = desc->pInputAttachments[j].attachment;
             subpass->input_attachments[j].attachment = a;
             if (a != VK_ATTACHMENT_UNUSED)
-               pass->attachments[a].needs_gmem = true;
+               pass->attachments[a].gmem_offset = 0;
          }
       }
 
@@ -131,7 +179,7 @@ tu_CreateRenderPass(VkDevice _device,
             subpass->color_attachments[j].attachment = a;
 
             if (a != VK_ATTACHMENT_UNUSED) {
-               pass->attachments[a].needs_gmem = true;
+               pass->attachments[a].gmem_offset = 0;
                update_samples(subpass, pCreateInfo->pAttachments[a].samples);
             }
          }
@@ -150,7 +198,7 @@ tu_CreateRenderPass(VkDevice _device,
          desc->pDepthStencilAttachment->attachment : VK_ATTACHMENT_UNUSED;
       subpass->depth_stencil_attachment.attachment = a;
       if (a != VK_ATTACHMENT_UNUSED) {
-            pass->attachments[a].needs_gmem = true;
+            pass->attachments[a].gmem_offset = 0;
             update_samples(subpass, pCreateInfo->pAttachments[a].samples);
       }
 
@@ -158,6 +206,8 @@ tu_CreateRenderPass(VkDevice _device,
    }
 
    *pRenderPass = tu_render_pass_to_handle(pass);
+
+   compute_gmem_offsets(pass, device->physical_device->gmem_size);
 
    return VK_SUCCESS;
 }
@@ -174,7 +224,6 @@ tu_CreateRenderPass2KHR(VkDevice _device,
    size_t attachments_offset;
 
    assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO_2_KHR);
-   assert(pCreateInfo->attachmentCount < MAX_ATTACHMENTS);
 
    size = sizeof(*pass);
    size += pCreateInfo->subpassCount * sizeof(pass->subpasses[0]);
@@ -204,6 +253,7 @@ tu_CreateRenderPass2KHR(VkDevice _device,
       if (pCreateInfo->pAttachments[i].stencilStoreOp == VK_ATTACHMENT_STORE_OP_STORE &&
           vk_format_has_stencil(att->format))
          att->store_op = VK_ATTACHMENT_STORE_OP_STORE;
+      att->gmem_offset = -1;
    }
    uint32_t subpass_attachment_count = 0;
    struct tu_subpass_attachment *p;
@@ -244,7 +294,7 @@ tu_CreateRenderPass2KHR(VkDevice _device,
             uint32_t a = desc->pInputAttachments[j].attachment;
             subpass->input_attachments[j].attachment = a;
             if (a != VK_ATTACHMENT_UNUSED)
-               pass->attachments[a].needs_gmem = true;
+               pass->attachments[a].gmem_offset = 0;
          }
       }
 
@@ -257,7 +307,7 @@ tu_CreateRenderPass2KHR(VkDevice _device,
             subpass->color_attachments[j].attachment = a;
 
             if (a != VK_ATTACHMENT_UNUSED) {
-               pass->attachments[a].needs_gmem = true;
+               pass->attachments[a].gmem_offset = 0;
                update_samples(subpass, pCreateInfo->pAttachments[a].samples);
             }
          }
@@ -277,7 +327,7 @@ tu_CreateRenderPass2KHR(VkDevice _device,
          desc->pDepthStencilAttachment->attachment : VK_ATTACHMENT_UNUSED;
       subpass->depth_stencil_attachment.attachment = a;
       if (a != VK_ATTACHMENT_UNUSED) {
-            pass->attachments[a].needs_gmem = true;
+            pass->attachments[a].gmem_offset = 0;
             update_samples(subpass, pCreateInfo->pAttachments[a].samples);
       }
 
@@ -285,6 +335,8 @@ tu_CreateRenderPass2KHR(VkDevice _device,
    }
 
    *pRenderPass = tu_render_pass_to_handle(pass);
+
+   compute_gmem_offsets(pass, device->physical_device->gmem_size);
 
    return VK_SUCCESS;
 }

@@ -96,10 +96,6 @@ typedef uint32_t xcb_window_t;
 #define MAX_VIEWS 8
 /* The Qualcomm driver exposes 0x20000058 */
 #define MAX_STORAGE_BUFFER_RANGE 0x20000000
-/* TODO: this isn't a hardware limit, but for a high # of attachments
- * we are missing logic to avoid having them all in GMEM at the same time
- */
-#define MAX_ATTACHMENTS 64
 
 #define NUM_DEPTH_CLEAR_PIPELINES 3
 
@@ -800,15 +796,11 @@ struct tu_tile
 struct tu_tiling_config
 {
    VkRect2D render_area;
-   uint32_t buffer_cpp[MAX_ATTACHMENTS];
-   uint32_t buffer_count;
 
    /* position and size of the first tile */
    VkRect2D tile0;
    /* number of tiles */
    VkExtent2D tile_count;
-
-   uint32_t gmem_offsets[MAX_ATTACHMENTS];
 
    /* size of the first VSC pipe */
    VkExtent2D pipe0;
@@ -1501,13 +1493,14 @@ struct tu_render_pass_attachment
    VkAttachmentLoadOp stencil_load_op;
    VkAttachmentStoreOp store_op;
    VkAttachmentStoreOp stencil_store_op;
-   bool needs_gmem;
+   int32_t gmem_offset;
 };
 
 struct tu_render_pass
 {
    uint32_t attachment_count;
    uint32_t subpass_count;
+   uint32_t gmem_pixels;
    struct tu_subpass_attachment *subpass_attachments;
    struct tu_render_pass_attachment *attachments;
    struct tu_subpass subpasses[0];
