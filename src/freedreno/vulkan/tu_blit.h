@@ -114,6 +114,7 @@ struct tu_blit {
    uint32_t layers;
    bool filter;
    bool stencil_read;
+   bool buffer; /* 1d copy/clear */
    enum a6xx_rotation rotation;
    uint32_t clear_value[4];
    enum tu_blit_type type;
