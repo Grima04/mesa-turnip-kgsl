@@ -113,6 +113,11 @@ struct gen_perf_query_result {
     * query.
     */
    uint64_t unslice_frequency[2];
+
+   /**
+    * Timestamp of the query.
+    */
+   uint64_t begin_timestamp;
 };
 
 struct gen_perf_query_counter {

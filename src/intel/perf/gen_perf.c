@@ -1147,6 +1147,8 @@ gen_perf_query_result_accumulate(struct gen_perf_query_result *result,
    if (result->hw_id == OA_REPORT_INVALID_CTX_ID &&
        start[2] != OA_REPORT_INVALID_CTX_ID)
       result->hw_id = start[2];
+   if (result->reports_accumulated == 0)
+      result->begin_timestamp = start[1];
    result->reports_accumulated++;
 
    switch (query->oa_format) {

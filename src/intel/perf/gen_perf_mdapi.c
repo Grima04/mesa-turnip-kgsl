@@ -73,6 +73,7 @@ gen_perf_query_result_write_mdapi(void *data, uint32_t data_size,
       mdapi_data->ReportsCount = result->reports_accumulated;
       mdapi_data->TotalTime =
          gen_device_info_timebase_scale(devinfo, result->accumulator[0]);
+      mdapi_data->BeginTimestamp = result->begin_timestamp;
       mdapi_data->GPUTicks = result->accumulator[1];
       mdapi_data->CoreFrequency = freq_end;
       mdapi_data->CoreFrequencyChanged = freq_end != freq_start;
@@ -101,6 +102,7 @@ gen_perf_query_result_write_mdapi(void *data, uint32_t data_size,
       mdapi_data->ReportsCount = result->reports_accumulated;
       mdapi_data->TotalTime =
          gen_device_info_timebase_scale(devinfo, result->accumulator[0]);
+      mdapi_data->BeginTimestamp = result->begin_timestamp;
       mdapi_data->GPUTicks = result->accumulator[1];
       mdapi_data->CoreFrequency = freq_end;
       mdapi_data->CoreFrequencyChanged = freq_end != freq_start;
