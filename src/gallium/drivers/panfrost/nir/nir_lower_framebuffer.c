@@ -51,11 +51,16 @@ static nir_intrinsic_op
 nir_best_load_for_format(
       const struct util_format_description *desc,
       unsigned *special_bitsize,
+      unsigned *special_components,
       unsigned gpu_id)
 {
    if (util_format_is_unorm8(desc) && gpu_id != 0x750) {
       *special_bitsize = 16;
       return nir_intrinsic_load_output_u8_as_fp16_pan;
+   } else if (desc->format == PIPE_FORMAT_R11G11B10_FLOAT) {
+      *special_bitsize = 32;
+      *special_components = 1;
+      return nir_intrinsic_load_raw_output_pan;
    } else
       return nir_intrinsic_load_raw_output_pan;
 }
@@ -244,7 +249,24 @@ nir_native_to_shader(nir_builder *b,
       return nir_unorm8_to_float(b, c_native);
    else if (homogenous_bits && float_or_pure_int)
       return c_native; /* type is already correct */
-   else {
+
+   /* Special formats */
+   switch (desc->format) {
+   case PIPE_FORMAT_R11G11B10_FLOAT: {
+      nir_ssa_def *unpacked = nir_format_unpack_11f11f10f(b, c_native);
+
+      /* Extend to vec4 with alpha */
+      nir_ssa_def *components[4] = {
+         nir_channel(b, unpacked, 0),
+         nir_channel(b, unpacked, 1),
+         nir_channel(b, unpacked, 2),
+         nir_imm_float(b, 1.0)
+      };
+
+      return nir_vec(b, components, 4);
+   }
+
+   default:
       printf("%s\n", desc->name);
       unreachable("Unknown format name");
    }
@@ -345,15 +367,17 @@ nir_lower_framebuffer(nir_shader *shader, enum pipe_format format,
 
                /* Determine the best op for the format/hardware */
                unsigned bitsize = raw_bitsize_in;
+               unsigned components = 4;
                nir_intrinsic_op op = nir_best_load_for_format(format_desc,
                                                               &bitsize,
+                                                              &components,
                                                               gpu_id);
 
                /* Rewrite to use a native load by creating a new intrinsic */
                nir_intrinsic_instr *new = nir_intrinsic_instr_create(shader, op);
-               new->num_components = 4;
+               new->num_components = components;
 
-               nir_ssa_dest_init(&new->instr, &new->dest, 4, bitsize, NULL);
+               nir_ssa_dest_init(&new->instr, &new->dest, components, bitsize, NULL);
                nir_builder_instr_insert(&b, &new->instr);
 
                /* Convert the raw value */
