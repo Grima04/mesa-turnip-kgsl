@@ -1872,17 +1872,15 @@ bool combine_constant_comparison_ordering(opt_ctx &ctx, aco_ptr<Instruction>& in
    return true;
 }
 
-/* s_not_b64(cmp(a, b) -> get_inverse(cmp)(a, b) */
+/* s_andn2(exec, cmp(a, b)) -> get_inverse(cmp)(a, b) */
 bool combine_inverse_comparison(opt_ctx &ctx, aco_ptr<Instruction>& instr)
 {
-   if (instr->opcode != aco_opcode::s_not_b64)
+   if (!instr->operands[0].isFixed() || instr->operands[0].physReg() != exec)
       return false;
-   if (instr->definitions[1].isTemp() && ctx.uses[instr->definitions[1].tempId()])
-      return false;
-   if (!instr->operands[0].isTemp())
+   if (ctx.uses[instr->definitions[1].tempId()])
       return false;
 
-   Instruction *cmp = follow_operand(ctx, instr->operands[0]);
+   Instruction *cmp = follow_operand(ctx, instr->operands[1]);
    if (!cmp)
       return false;
 
@@ -1896,6 +1894,8 @@ bool combine_inverse_comparison(opt_ctx &ctx, aco_ptr<Instruction>& instr)
       ctx.uses[cmp->operands[1].tempId()]++;
    decrease_uses(ctx, cmp);
 
+   /* This creates a new instruction instead of modifying the existing
+    * comparison so that the comparison is done with the correct exec mask. */
    Instruction *new_instr;
    if (cmp->isVOP3()) {
       VOP3A_instruction *new_vop3 = create_instruction<VOP3A_instruction>(new_opcode, asVOP3(Format::VOPC), 2, 1);
@@ -2759,11 +2759,8 @@ void combine_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr
       combine_three_valu_op(ctx, instr, aco_opcode::v_add_u32, aco_opcode::v_add_lshl_u32, "120", 2);
    } else if ((instr->opcode == aco_opcode::s_add_u32 || instr->opcode == aco_opcode::s_add_i32) && ctx.program->chip_class >= GFX9) {
       combine_salu_lshl_add(ctx, instr);
-   } else if (instr->opcode == aco_opcode::s_not_b32) {
+   } else if (instr->opcode == aco_opcode::s_not_b32 || instr->opcode == aco_opcode::s_not_b64) {
       combine_salu_not_bitwise(ctx, instr);
-   } else if (instr->opcode == aco_opcode::s_not_b64) {
-      if (combine_inverse_comparison(ctx, instr)) ;
-      else combine_salu_not_bitwise(ctx, instr);
    } else if (instr->opcode == aco_opcode::s_and_b32 || instr->opcode == aco_opcode::s_or_b32 ||
               instr->opcode == aco_opcode::s_and_b64 || instr->opcode == aco_opcode::s_or_b64) {
       if (combine_ordering_test(ctx, instr)) ;
@@ -2779,6 +2776,10 @@ void combine_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr
          else combine_clamp(ctx, instr, min, max, med3);
       }
    }
+
+   /* do this after combine_salu_n2() */
+   if (instr->opcode == aco_opcode::s_andn2_b32 || instr->opcode == aco_opcode::s_andn2_b64)
+      combine_inverse_comparison(ctx, instr);
 }
 
 bool to_uniform_bool_instr(opt_ctx &ctx, aco_ptr<Instruction> &instr)
