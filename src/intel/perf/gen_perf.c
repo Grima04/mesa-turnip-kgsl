@@ -2372,6 +2372,12 @@ accumulate_oa_reports(struct gen_perf_context *perf_ctx,
                gen_perf_query_result_accumulate(&query->oa.result,
                                                 query->queryinfo,
                                                 last, report);
+            } else {
+               /* We're not adding the delta because we've identified it's not
+                * for the context we filter for. We can consider that the
+                * query was split.
+                */
+               query->oa.result.query_disjoint = true;
             }
 
             last = report;
