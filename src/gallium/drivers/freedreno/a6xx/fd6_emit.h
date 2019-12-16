@@ -178,18 +178,19 @@ fd6_cache_flush(struct fd_batch *batch, struct fd_ringbuffer *ring)
 	seqno = fd6_event_write(batch, ring, CACHE_FLUSH_AND_INV_EVENT, true);
 
 	OUT_PKT7(ring, CP_WAIT_REG_MEM, 6);
-	OUT_RING(ring, 0x00000013);
+	OUT_RING(ring, CP_WAIT_REG_MEM_0_FUNCTION(WRITE_EQ) |
+		       CP_WAIT_REG_MEM_0_POLL_MEMORY);
 	OUT_RELOC(ring, control_ptr(fd6_ctx, seqno));
-	OUT_RING(ring, seqno);
-	OUT_RING(ring, 0xffffffff);
-	OUT_RING(ring, 0x00000010);
+	OUT_RING(ring, CP_WAIT_REG_MEM_3_REF(seqno));
+	OUT_RING(ring, CP_WAIT_REG_MEM_4_MASK(~0));
+	OUT_RING(ring, CP_WAIT_REG_MEM_5_DELAY_LOOP_CYCLES(16));
 
 	seqno = fd6_event_write(batch, ring, CACHE_FLUSH_TS, true);
 
 	OUT_PKT7(ring, CP_WAIT_MEM_GTE, 4);
-	OUT_RING(ring, 0x00000000);
+	OUT_RING(ring, CP_WAIT_MEM_GTE_0_RESERVED(0));
 	OUT_RELOC(ring, control_ptr(fd6_ctx, seqno));
-	OUT_RING(ring, seqno);
+	OUT_RING(ring, CP_WAIT_MEM_GTE_3_REF(seqno));
 }
 
 static inline void

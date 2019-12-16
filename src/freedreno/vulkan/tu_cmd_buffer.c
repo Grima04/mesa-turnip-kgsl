@@ -1116,18 +1116,19 @@ tu6_cache_flush(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
    seqno = tu6_emit_event_write(cmd, cs, CACHE_FLUSH_AND_INV_EVENT, true);
 
    tu_cs_emit_pkt7(cs, CP_WAIT_REG_MEM, 6);
-   tu_cs_emit(cs, 0x00000013);
+   tu_cs_emit(cs, CP_WAIT_REG_MEM_0_FUNCTION(WRITE_EQ) |
+                  CP_WAIT_REG_MEM_0_POLL_MEMORY);
    tu_cs_emit_qw(cs, cmd->scratch_bo.iova);
-   tu_cs_emit(cs, seqno);
-   tu_cs_emit(cs, 0xffffffff);
-   tu_cs_emit(cs, 0x00000010);
+   tu_cs_emit(cs, CP_WAIT_REG_MEM_3_REF(seqno));
+   tu_cs_emit(cs, CP_WAIT_REG_MEM_4_MASK(~0));
+   tu_cs_emit(cs, CP_WAIT_REG_MEM_5_DELAY_LOOP_CYCLES(16));
 
    seqno = tu6_emit_event_write(cmd, cs, CACHE_FLUSH_TS, true);
 
    tu_cs_emit_pkt7(cs, CP_WAIT_MEM_GTE, 4);
-   tu_cs_emit(cs, 0x00000000);
+   tu_cs_emit(cs, CP_WAIT_MEM_GTE_0_RESERVED(0));
    tu_cs_emit_qw(cs, cmd->scratch_bo.iova);
-   tu_cs_emit(cs, seqno);
+   tu_cs_emit(cs, CP_WAIT_MEM_GTE_3_REF(seqno));
 }
 
 static void
