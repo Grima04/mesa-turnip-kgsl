@@ -1202,7 +1202,8 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
 
 	shader->ctx_reg.ngg.vgt_primitiveid_en =
 		S_028A84_PRIMITIVEID_EN(es_enable_prim_id) |
-		S_028A84_NGG_DISABLE_PROVOK_REUSE(es_enable_prim_id);
+		S_028A84_NGG_DISABLE_PROVOK_REUSE(shader->key.mono.u.vs_export_prim_id ||
+						  gs_sel->info.writes_primid);
 
 	if (gs_type == PIPE_SHADER_GEOMETRY) {
 		shader->ctx_reg.ngg.vgt_esgs_ring_itemsize = es_sel->esgs_itemsize / 4;
