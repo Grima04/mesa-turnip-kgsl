@@ -134,9 +134,14 @@ cmd_buffer_reset(struct v3dv_cmd_buffer *cmd_buffer)
 {
    if (cmd_buffer->status != V3DV_CMD_BUFFER_STATUS_INITIALIZED) {
       cmd_buffer->usage_flags = 0;
+
+      _mesa_set_clear(cmd_buffer->bos, NULL);
+      cmd_buffer->bo_count = 0;
+
       v3dv_cl_reset(&cmd_buffer->bcl);
       v3dv_cl_reset(&cmd_buffer->rcl);
       v3dv_cl_reset(&cmd_buffer->indirect);
+
       cmd_buffer->status = V3DV_CMD_BUFFER_STATUS_INITIALIZED;
    }
    return VK_SUCCESS;
