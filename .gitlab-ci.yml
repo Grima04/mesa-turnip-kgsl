@@ -261,6 +261,8 @@ meson-testing:
     GALLIUM_DRIVERS: "swrast"
     VULKAN_DRIVERS: amd
     BUILDTYPE: "debugoptimized"
+    EXTRA_OPTION: >
+      -D werror=true
   script:
     - .gitlab-ci/meson-build.sh
     - .gitlab-ci/prepare-artifacts.sh
@@ -461,6 +463,7 @@ meson-vulkan:
     VULKAN_DRIVERS: intel,amd,freedreno
     EXTRA_OPTION: >
       -D vulkan-overlay-layer=true
+      -D werror=true
 
 # While the main point of this build is testing the i386 cross build,
 # we also use this one to test some other options that are exclusive
