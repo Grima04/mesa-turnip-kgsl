@@ -2468,22 +2468,32 @@ bool apply_omod_clamp(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
       bool op1 = instr->operands[1].isTemp() && ctx.info[instr->operands[1].tempId()].is_omod_success();
       if (op0 || op1) {
          unsigned idx = op0 ? 0 : 1;
-         /* omod was successfully applied */
-         /* if the omod instruction is v_mad, we also have to change the original add */
-         if (ctx.info[instr->operands[idx].tempId()].is_mad()) {
-            Instruction* add_instr = ctx.mad_infos[ctx.info[instr->operands[idx].tempId()].instr->pass_flags].add_instr.get();
-            if (ctx.info[instr->definitions[0].tempId()].is_clamp())
-               static_cast<VOP3A_instruction*>(add_instr)->clamp = true;
-            add_instr->definitions[0] = instr->definitions[0];
-         }
-
          Instruction* omod_instr = ctx.info[instr->operands[idx].tempId()].instr;
+
+         /* omod was successfully applied */
+
          /* check if we have an additional clamp modifier */
          if (ctx.info[instr->definitions[0].tempId()].is_clamp() && ctx.uses[instr->definitions[0].tempId()] == 1 &&
              ctx.uses[ctx.info[instr->definitions[0].tempId()].temp.id()]) {
+            /* if the omod instruction is v_mad, we also have to change the original add */
+            if (ctx.info[instr->operands[idx].tempId()].is_mad()) {
+               uint32_t mad_info_idx = ctx.info[instr->operands[idx].tempId()].instr->pass_flags;
+               Instruction* add_instr = ctx.mad_infos[mad_info_idx].add_instr.get();
+               static_cast<VOP3A_instruction*>(add_instr)->clamp = true;
+            }
+
             static_cast<VOP3A_instruction*>(omod_instr)->clamp = true;
             ctx.info[instr->definitions[0].tempId()].set_clamp_success(omod_instr);
          }
+
+         /* if the omod instruction is v_mad, we also have to change the original add */
+         if (ctx.info[instr->operands[idx].tempId()].is_mad()) {
+            uint32_t mad_info_idx = ctx.info[instr->operands[idx].tempId()].instr->pass_flags;
+            Instruction* add_instr = ctx.mad_infos[mad_info_idx].add_instr.get();
+            add_instr->definitions[0] = instr->definitions[0];
+            ctx.info[instr->definitions[0].tempId()].set_mad(omod_instr, mad_info_idx);
+         }
+
          /* change definition ssa-id of modified instruction */
          omod_instr->definitions[0] = instr->definitions[0];
 
@@ -2514,13 +2524,17 @@ bool apply_omod_clamp(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
       }
       if (found_zero && found_one && instr->operands[idx].isTemp() &&
           ctx.info[instr->operands[idx].tempId()].is_clamp_success()) {
+         Instruction* clamp_instr = ctx.info[instr->operands[idx].tempId()].instr;
+
          /* clamp was successfully applied */
          /* if the clamp instruction is v_mad, we also have to change the original add */
          if (ctx.info[instr->operands[idx].tempId()].is_mad()) {
-            Instruction* add_instr = ctx.mad_infos[ctx.info[instr->operands[idx].tempId()].instr->pass_flags].add_instr.get();
+            uint32_t mad_info_idx = ctx.info[instr->operands[idx].tempId()].instr->pass_flags;
+            Instruction* add_instr = ctx.mad_infos[mad_info_idx].add_instr.get();
             add_instr->definitions[0] = instr->definitions[0];
+
+            ctx.info[instr->definitions[0].tempId()].set_mad(clamp_instr, mad_info_idx);
          }
-         Instruction* clamp_instr = ctx.info[instr->operands[idx].tempId()].instr;
          /* change definition ssa-id of modified instruction */
          clamp_instr->definitions[0] = instr->definitions[0];
 
