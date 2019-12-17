@@ -3483,7 +3483,7 @@ load_emit(
 
       scalar_ptr = is_shared ? bld->shared_ptr : bld->ssbos[buf];
 
-      LLVMValueRef ssbo_limit;
+      LLVMValueRef ssbo_limit = NULL;
 
       if (!is_shared) {
          ssbo_limit = LLVMBuildAShr(gallivm->builder, bld->ssbo_sizes[buf], lp_build_const_int32(gallivm, 2), "");
@@ -3602,7 +3602,7 @@ store_emit(
 
       scalar_ptr = is_shared ? bld->shared_ptr : bld->ssbos[buf];
 
-      LLVMValueRef ssbo_limit;
+      LLVMValueRef ssbo_limit = NULL;
 
       if (!is_shared) {
          ssbo_limit = LLVMBuildAShr(gallivm->builder, bld->ssbo_sizes[buf], lp_build_const_int32(gallivm, 2), "");
