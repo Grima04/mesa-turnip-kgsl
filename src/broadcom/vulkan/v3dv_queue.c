@@ -22,12 +22,85 @@
  */
 
 #include "v3dv_private.h"
+#include "drm-uapi/v3d_drm.h"
+
+#include <errno.h>
+
+static VkResult
+queue_submit(struct v3dv_queue *queue,
+             const VkSubmitInfo *pSubmit,
+             VkFence fence)
+{
+   /* FIXME */
+   assert(fence == 0);
+   assert(pSubmit->waitSemaphoreCount == 0);
+   assert(pSubmit->signalSemaphoreCount == 0);
+   assert(pSubmit->commandBufferCount == 1);
+
+   V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, pSubmit->pCommandBuffers[0]);
+
+   struct drm_v3d_submit_cl submit;
+
+   /* While the RCL will implicitly depend on the last RCL to have finished, we
+    * also need to block on any previous TFU job we may have dispatched.
+    */
+   submit.in_sync_rcl = 0; /* FIXME */
+
+   /* Update the sync object for the last rendering by our context. */
+   submit.out_sync = 0; /* FIXME */
+
+   submit.bcl_start = cmd_buffer->bcl.bo->offset;
+   submit.bcl_end = cmd_buffer->bcl.bo->offset + v3dv_cl_offset(&cmd_buffer->bcl);
+   submit.rcl_start = cmd_buffer->rcl.bo->offset;
+   submit.rcl_end = cmd_buffer->rcl.bo->offset + v3dv_cl_offset(&cmd_buffer->rcl);
+
+   submit.flags = 0; /* FIXME */
+
+   submit.qma = cmd_buffer->tile_alloc->offset;
+   submit.qms = cmd_buffer->tile_alloc->size;
+   submit.qts = cmd_buffer->tile_state->offset;
+
+   submit.bo_handle_count = cmd_buffer->bo_count;
+   uint32_t *bo_handles =
+      (uint32_t *) malloc(sizeof(uint32_t) * MAX2(4, submit.bo_handle_count * 2));
+   uint32_t bo_idx = 0;
+   set_foreach(cmd_buffer->bos, entry) {
+      struct v3dv_bo *bo = (struct v3dv_bo *)entry->key;
+      bo_handles[bo_idx++] = bo->handle;
+   }
+   assert(bo_idx == submit.bo_handle_count);
+   submit.bo_handles = (uintptr_t)(void *)bo_handles;
+
+   int ret = v3dv_ioctl(queue->device->fd, DRM_IOCTL_V3D_SUBMIT_CL, &submit);
+   static bool warned = false;
+   if (ret && !warned) {
+      fprintf(stderr, "Draw call returned %s. Expect corruption.\n",
+              strerror(errno));
+      warned = true;
+   }
+
+   free(bo_handles);
+
+   if (ret)
+      return VK_ERROR_DEVICE_LOST;
+
+   return VK_SUCCESS;
+}
 
 VkResult
-v3dv_QueueSubmit(VkQueue queue,
+v3dv_QueueSubmit(VkQueue _queue,
                  uint32_t submitCount,
                  const VkSubmitInfo* pSubmits,
                  VkFence fence)
 {
-   return VK_SUCCESS;
+   V3DV_FROM_HANDLE(v3dv_queue, queue, _queue);
+
+   VkResult result = VK_SUCCESS;
+   for (uint32_t i = 0; i < submitCount; i++) {
+      result = queue_submit(queue, &pSubmits[i], fence);
+      if (result != VK_SUCCESS)
+         break;
+   }
+
+   return result;
 }
