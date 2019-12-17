@@ -42,7 +42,7 @@ wsi_device_init(struct wsi_device *wsi,
                 const struct driOptionCache *dri_options)
 {
    const char *present_mode;
-   VkResult result;
+   UNUSED VkResult result;
 
    memset(wsi, 0, sizeof(*wsi));
 
@@ -145,10 +145,13 @@ wsi_device_init(struct wsi_device *wsi,
    }
 
    return VK_SUCCESS;
-
+#if defined(VK_USE_PLATFORM_XCB_KHR) || \
+   defined(VK_USE_PLATFORM_WAYLAND_KHR) || \
+   defined(VK_USE_PLATFORM_DISPLAY_KHR)
 fail:
    wsi_device_finish(wsi, alloc);
    return result;
+#endif
 }
 
 void
