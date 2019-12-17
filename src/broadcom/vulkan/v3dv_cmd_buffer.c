@@ -23,6 +23,7 @@
 
 #include "v3dv_private.h"
 #include "broadcom/cle/v3dx_pack.h"
+#include "util/u_pack_color.h"
 
 void
 v3dv_cmd_buffer_add_bo(struct v3dv_cmd_buffer *cmd_buffer, struct v3dv_bo *bo)
@@ -235,6 +236,62 @@ v3dv_BeginCommandBuffer(VkCommandBuffer commandBuffer,
    return VK_SUCCESS;
 }
 
+static void
+emit_clip_window(struct v3dv_cmd_buffer *cmd_buffer, VkRect2D *rect)
+{
+   cl_emit(&cmd_buffer->bcl, CLIP_WINDOW, clip) {
+      clip.clip_window_left_pixel_coordinate = rect->offset.x;
+      clip.clip_window_bottom_pixel_coordinate = rect->offset.y;
+      clip.clip_window_width_in_pixels = rect->extent.width;
+      clip.clip_window_height_in_pixels = rect->extent.height;
+   }
+}
+
+static void
+compute_tlb_color_clear(struct v3dv_cmd_buffer *cmd_buffer,
+                        uint32_t attachment_idx,
+                        const VkClearColorValue *color)
+{
+   assert(attachment_idx < cmd_buffer->state.framebuffer->attachment_count);
+
+   struct v3dv_image_view *iview =
+      cmd_buffer->state.framebuffer->attachments[attachment_idx];
+   uint32_t internal_size = 4 << iview->internal_bpp;
+
+   struct v3dv_cmd_buffer_attachment_state *attachment =
+      &cmd_buffer->state.attachments[attachment_idx];
+   uint32_t *hw_color =  &attachment->clear_value.color[0];
+
+   union util_color uc;
+   switch (iview->internal_type) {
+   case V3D_INTERNAL_TYPE_8:
+      util_pack_color(color->float32, PIPE_FORMAT_R8G8B8A8_UNORM, &uc);
+      memcpy(hw_color, uc.ui, internal_size);
+   break;
+   case V3D_INTERNAL_TYPE_8I:
+   case V3D_INTERNAL_TYPE_8UI:
+      hw_color[0] = ((color->uint32[0] & 0xff) |
+                     (color->uint32[1] & 0xff) << 8 |
+                     (color->uint32[2] & 0xff) << 16 |
+                     (color->uint32[3] & 0xff) << 24);
+   break;
+   case V3D_INTERNAL_TYPE_16F:
+      util_pack_color(color->float32, PIPE_FORMAT_R16G16B16A16_FLOAT, &uc);
+      memcpy(hw_color, uc.ui, internal_size);
+   break;
+   case V3D_INTERNAL_TYPE_16I:
+   case V3D_INTERNAL_TYPE_16UI:
+      hw_color[0] = ((color->uint32[0] & 0xffff) | color->uint32[1] << 16);
+      hw_color[1] = ((color->uint32[2] & 0xffff) | color->uint32[3] << 16);
+   break;
+   case V3D_INTERNAL_TYPE_32F:
+   case V3D_INTERNAL_TYPE_32I:
+   case V3D_INTERNAL_TYPE_32UI:
+      memcpy(hw_color, color->uint32, internal_size);
+      break;
+   }
+}
+
 void
 v3dv_CmdBeginRenderPass(VkCommandBuffer commandBuffer,
                         const VkRenderPassBeginInfo *pRenderPassBegin,
@@ -310,6 +367,39 @@ v3dv_CmdBeginRenderPass(VkCommandBuffer commandBuffer,
     *  any prefix state data before the binning list proper starts."
     */
    cl_emit(&cmd_buffer->bcl, START_TILE_BINNING, bin);
+
+   /* FIXME: might want to merge actual scissor rect here if possible */
+   /* FIXME: probably need to align the render area to tile boundaries since
+    *        the tile clears will render full tiles anyway.
+    *        See vkGetRenderAreaGranularity().
+    */
+   cmd_buffer->state.render_area = pRenderPassBegin->renderArea;
+   emit_clip_window(cmd_buffer, &cmd_buffer->state.render_area);
+
+   /* Compute tile color clear values */
+   for (uint32_t i = 0; i < cmd_buffer->state.pass->attachment_count; i++) {
+      const struct v3dv_render_pass_attachment *attachment =
+         &cmd_buffer->state.pass->attachments[i];
+
+      if (attachment->desc.loadOp != VK_ATTACHMENT_LOAD_OP_CLEAR)
+         continue;
+
+      const struct v3dv_image_view *iview =
+         cmd_buffer->state.framebuffer->attachments[i];
+
+      /* FIXME: support depth/stencil clear */
+      assert((iview->aspects &
+              (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) == 0);
+
+      if (iview->aspects & VK_IMAGE_ASPECT_COLOR_BIT) {
+         const VkClearColorValue *clear_color =
+            &pRenderPassBegin->pClearValues[i].color;
+         compute_tlb_color_clear(cmd_buffer, i, clear_color);
+      }
+   }
+
+   /* Setup for first subpass */
+   cmd_buffer->state.subpass_idx = 0;
 }
 
 void

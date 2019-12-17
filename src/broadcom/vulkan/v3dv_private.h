@@ -358,9 +358,23 @@ enum v3dv_cmd_buffer_status {
    V3DV_CMD_BUFFER_STATUS_RECORDING     = 2
 };
 
+union v3dv_clear_value {
+   uint32_t color[4];
+   float z;
+   uint8_t s;
+};
+
+struct v3dv_cmd_buffer_attachment_state {
+   union v3dv_clear_value clear_value;
+};
+
 struct v3dv_cmd_buffer_state {
    const struct v3dv_render_pass *pass;
    const struct v3dv_framebuffer *framebuffer;
+   VkRect2D render_area;
+   struct v3dv_cmd_buffer_attachment_state attachments[6]; /* FIXME */
+
+   uint32_t subpass_idx;
 };
 
 struct v3dv_cmd_buffer {
