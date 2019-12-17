@@ -804,5 +804,21 @@ v3dv_CmdEndRenderPass(VkCommandBuffer commandBuffer)
 VkResult
 v3dv_EndCommandBuffer(VkCommandBuffer commandBuffer)
 {
+   V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
+
+   if (v3dv_cl_offset(&cmd_buffer->bcl) == 0)
+      return VK_SUCCESS; /* FIXME? */
+
+   v3dv_cl_ensure_space_with_branch(&cmd_buffer->bcl, cl_packet_length(FLUSH));
+
+   /* We just FLUSH here to tell the HW to cap the bin CLs with a
+    * return. Any remaining state changes won't be flushed to
+    * the bins first -- you would need FLUSH_ALL for that, but
+    * the HW for it hasn't been validated.
+    */
+   cl_emit(&cmd_buffer->bcl, FLUSH, flush);
+
+   cmd_buffer->status = V3DV_CMD_BUFFER_STATUS_EXECUTABLE;
+
    return VK_SUCCESS;
 }

@@ -355,7 +355,8 @@ struct v3dv_cmd_pool {
 enum v3dv_cmd_buffer_status {
    V3DV_CMD_BUFFER_STATUS_NEW           = 0,
    V3DV_CMD_BUFFER_STATUS_INITIALIZED   = 1,
-   V3DV_CMD_BUFFER_STATUS_RECORDING     = 2
+   V3DV_CMD_BUFFER_STATUS_RECORDING     = 2,
+   V3DV_CMD_BUFFER_STATUS_EXECUTABLE    = 3
 };
 
 union v3dv_clear_value {
