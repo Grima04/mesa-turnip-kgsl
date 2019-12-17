@@ -450,7 +450,7 @@ tu6_emit_fs_config(struct tu_cs *cs, struct tu_shader *shader,
       A6XX_SP_FS_CTRL_REG0_FULLREGFOOTPRINT(fs->info.max_reg + 1) |
       A6XX_SP_FS_CTRL_REG0_MERGEDREGS |
       A6XX_SP_FS_CTRL_REG0_BRANCHSTACK(fs->branchstack);
-   if (fs->total_in > 0 || fs->frag_coord)
+   if (fs->total_in > 0)
       sp_fs_ctrl |= A6XX_SP_FS_CTRL_REG0_VARYING;
    if (fs->need_pixlod)
       sp_fs_ctrl |= A6XX_SP_FS_CTRL_REG0_PIXLODENABLE;
