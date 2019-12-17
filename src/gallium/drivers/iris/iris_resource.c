@@ -553,6 +553,8 @@ iris_resource_configure_aux(struct iris_screen *screen,
          initial_state = ISL_AUX_STATE_PASS_THROUGH;
       *alloc_flags |= BO_ALLOC_ZEROED;
       break;
+   case ISL_AUX_USAGE_MC:
+      unreachable("Unsupported aux mode");
    }
 
    /* Create the aux_state for the auxiliary buffer. */
