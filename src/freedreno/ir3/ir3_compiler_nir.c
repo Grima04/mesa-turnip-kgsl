@@ -2878,6 +2878,10 @@ pack_inlocs(struct ir3_context *ctx)
 				unsigned j = inloc % 4;
 
 				instr->regs[1]->iim_val = so->inputs[i].inloc + j;
+			} else if (instr->opc == OPC_META_TEX_PREFETCH) {
+				unsigned i = instr->prefetch.input_offset / 4;
+				unsigned j = instr->prefetch.input_offset % 4;
+				instr->prefetch.input_offset = so->inputs[i].inloc + j;
 			}
 		}
 	}
