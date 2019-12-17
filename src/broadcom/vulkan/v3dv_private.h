@@ -402,6 +402,7 @@ struct v3dv_cmd_buffer {
     * execute our job.
     */
    struct set *bos;
+   uint32_t bo_count;
 
    struct v3dv_bo *tile_alloc;
    struct v3dv_bo *tile_state;

@@ -35,6 +35,7 @@ v3dv_cmd_buffer_add_bo(struct v3dv_cmd_buffer *cmd_buffer, struct v3dv_bo *bo)
       return;
 
    _mesa_set_add(cmd_buffer->bos, bo);
+   cmd_buffer->bo_count++;
 }
 
 VkResult
@@ -86,6 +87,8 @@ cmd_buffer_create(struct v3dv_device *device,
 
    cmd_buffer->bos =
       _mesa_set_create(NULL, _mesa_hash_pointer, _mesa_key_pointer_equal);
+   cmd_buffer->bo_count = 0;
+
    v3dv_cl_init(cmd_buffer, &cmd_buffer->bcl);
    v3dv_cl_init(cmd_buffer, &cmd_buffer->rcl);
    v3dv_cl_init(cmd_buffer, &cmd_buffer->indirect);
