@@ -84,12 +84,11 @@ cmd_buffer_create(struct v3dv_device *device,
    cmd_buffer->level = level;
    cmd_buffer->usage_flags = 0;
 
+   cmd_buffer->bos =
+      _mesa_set_create(NULL, _mesa_hash_pointer, _mesa_key_pointer_equal);
    v3dv_cl_init(cmd_buffer, &cmd_buffer->bcl);
    v3dv_cl_init(cmd_buffer, &cmd_buffer->rcl);
    v3dv_cl_init(cmd_buffer, &cmd_buffer->indirect);
-
-   cmd_buffer->bos =
-      _mesa_set_create(NULL, _mesa_hash_pointer, _mesa_key_pointer_equal);
 
    cmd_buffer->status = V3DV_CMD_BUFFER_STATUS_NEW;
 
