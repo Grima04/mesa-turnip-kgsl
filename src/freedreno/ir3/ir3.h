@@ -102,6 +102,22 @@ struct ir3_register {
 
 	} flags;
 
+	/* used for cat5 instructions, but also for internal/IR level
+	 * tracking of what registers are read/written by an instruction.
+	 * wrmask may be a bad name since it is used to represent both
+	 * src and dst that touch multiple adjacent registers.
+	 */
+	unsigned wrmask : 16;  /* up to vec16 */
+
+	/* for relative addressing, 32bits for array size is too small,
+	 * but otoh we don't need to deal with disjoint sets, so instead
+	 * use a simple size field (number of scalar components).
+	 *
+	 * Note the size field isn't important for relative const (since
+	 * we don't have to do register allocation for constants).
+	 */
+	unsigned size : 15;
+
 	bool merged : 1;    /* half-regs conflict with full regs (ie >= a6xx) */
 
 	/* normal registers:
@@ -129,20 +145,6 @@ struct ir3_register {
 	 * back to a previous instruction that we depend on).
 	 */
 	struct ir3_instruction *instr;
-
-	union {
-		/* used for cat5 instructions, but also for internal/IR level
-		 * tracking of what registers are read/written by an instruction.
-		 * wrmask may be a bad name since it is used to represent both
-		 * src and dst that touch multiple adjacent registers.
-		 */
-		unsigned wrmask;
-		/* for relative addressing, 32bits for array size is too small,
-		 * but otoh we don't need to deal with disjoint sets, so instead
-		 * use a simple size field (number of scalar components).
-		 */
-		unsigned size;
-	};
 };
 
 /*
