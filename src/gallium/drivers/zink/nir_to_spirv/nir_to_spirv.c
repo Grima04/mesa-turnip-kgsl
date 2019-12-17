@@ -1324,11 +1324,12 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
 {
    assert(tex->op == nir_texop_tex ||
           tex->op == nir_texop_txb ||
-          tex->op == nir_texop_txl);
+          tex->op == nir_texop_txl ||
+          tex->op == nir_texop_txd);
    assert(nir_alu_type_get_base_type(tex->dest_type) == nir_type_float);
    assert(tex->texture_index == tex->sampler_index);
 
-   SpvId coord = 0, proj = 0, bias = 0, lod = 0, dref = 0;
+   SpvId coord = 0, proj = 0, bias = 0, lod = 0, dref = 0, dx = 0, dy = 0;
    unsigned coord_components = 0;
    for (unsigned i = 0; i < tex->num_srcs; i++) {
       switch (tex->src[i].src_type) {
@@ -1359,6 +1360,16 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
          assert(nir_src_num_components(tex->src[i].src) == 1);
          dref = get_src_float(ctx, &tex->src[i].src);
          assert(dref != 0);
+         break;
+
+      case nir_tex_src_ddx:
+         dx = get_src_float(ctx, &tex->src[i].src);
+         assert(dx != 0);
+         break;
+
+      case nir_tex_src_ddy:
+         dy = get_src_float(ctx, &tex->src[i].src);
+         assert(dy != 0);
          break;
 
       default:
@@ -1418,7 +1429,7 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
                                                   actual_dest_type, load,
                                                   coord,
                                                   proj != 0,
-                                                  lod, bias, dref);
+                                                  lod, bias, dref, dx, dy);
    spirv_builder_emit_decoration(&ctx->builder, result,
                                  SpvDecorationRelaxedPrecision);
 
