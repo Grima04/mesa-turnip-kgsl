@@ -1461,7 +1461,7 @@ tu_cmd_prepare_tile_load_ib(struct tu_cmd_buffer *cmd,
                             const VkRenderPassBeginInfo *info)
 {
    const uint32_t tile_load_space =
-      6 + (23+19) * cmd->state.pass->attachment_count +
+      8 + (23+19) * cmd->state.pass->attachment_count +
       21 + (13 * cmd->state.subpass->color_count + 8) + 11;
 
    struct tu_cs sub_cs;
@@ -1482,6 +1482,13 @@ tu_cmd_prepare_tile_load_ib(struct tu_cmd_buffer *cmd,
 
    for (uint32_t i = 0; i < cmd->state.pass->attachment_count; ++i)
       tu6_emit_clear_attachment(cmd, &sub_cs, i, info);
+
+   /* invalidate because reading input attachments will cache GMEM and
+    * the cache isn''t updated when GMEM is written
+    * TODO: is there a no-cache bit for textures?
+    */
+   if (cmd->state.subpass->input_count)
+      tu6_emit_event_write(cmd, &sub_cs, CACHE_INVALIDATE, false);
 
    tu6_emit_zs(cmd, cmd->state.subpass, &sub_cs);
    tu6_emit_mrt(cmd, cmd->state.subpass, &sub_cs);
@@ -2385,6 +2392,13 @@ tu_CmdNextSubpass(VkCommandBuffer commandBuffer, VkSubpassContents contents)
          }
       }
    }
+
+   /* invalidate because reading input attachments will cache GMEM and
+    * the cache isn''t updated when GMEM is written
+    * TODO: is there a no-cache bit for textures?
+    */
+   if (cmd->state.subpass->input_count)
+      tu6_emit_event_write(cmd, cs, CACHE_INVALIDATE, false);
 
    /* emit mrt/zs/msaa state for the subpass that is starting */
    tu6_emit_zs(cmd, cmd->state.subpass, cs);
