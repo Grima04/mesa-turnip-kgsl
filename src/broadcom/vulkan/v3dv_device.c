@@ -1336,6 +1336,26 @@ compute_tile_size_for_framebuffer(struct v3dv_framebuffer *framebuffer)
       DIV_ROUND_UP(framebuffer->width, framebuffer->tile_width);
    framebuffer->draw_tiles_y =
       DIV_ROUND_UP(framebuffer->height, framebuffer->tile_height);
+
+   /* Size up our supertiles until we get under the limit */
+   const uint32_t max_supertiles = 256;
+   framebuffer->supertile_width = 1;
+   framebuffer->supertile_height = 1;
+   for (;;) {
+      framebuffer->frame_width_in_supertiles =
+         DIV_ROUND_UP(framebuffer->draw_tiles_x, framebuffer->supertile_width);
+      framebuffer->frame_height_in_supertiles =
+         DIV_ROUND_UP(framebuffer->draw_tiles_y, framebuffer->supertile_height);
+      const uint32_t num_supertiles = framebuffer->frame_width_in_supertiles *
+                                      framebuffer->frame_height_in_supertiles;
+      if (num_supertiles < max_supertiles)
+         break;
+
+      if (framebuffer->supertile_width < framebuffer->supertile_height)
+         framebuffer->supertile_width++;
+      else
+         framebuffer->supertile_height++;
+   }
 }
 
 VkResult
