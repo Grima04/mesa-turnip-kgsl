@@ -786,6 +786,18 @@ si_get_main_shader_part(struct si_shader_selector *sel,
 }
 
 static inline bool
+gfx10_is_ngg_passthrough(struct si_shader *shader)
+{
+	struct si_shader_selector *sel = shader->selector;
+
+	return sel->type != PIPE_SHADER_GEOMETRY &&
+	       !sel->so.num_outputs &&
+	       !sel->info.writes_edgeflag &&
+	       (sel->type != PIPE_SHADER_VERTEX ||
+		!shader->key.mono.u.vs_export_prim_id);
+}
+
+static inline bool
 si_shader_uses_bindless_samplers(struct si_shader_selector *selector)
 {
 	return selector ? selector->info.uses_bindless_samplers : false;
