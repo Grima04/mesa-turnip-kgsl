@@ -425,7 +425,7 @@ static LLVMValueRef emit_load_reg(struct lp_build_nir_context *bld_base,
    struct gallivm_state *gallivm = bld_base->base.gallivm;
    LLVMBuilderRef builder = gallivm->builder;
    int nc = reg->reg->num_components;
-   LLVMValueRef vals[NIR_MAX_VEC_COMPONENTS];
+   LLVMValueRef vals[NIR_MAX_VEC_COMPONENTS] = { NULL };
    struct lp_build_context *uint_bld = &bld_base->uint_bld;
    if (reg->reg->num_array_elems) {
       LLVMValueRef indirect_val = lp_build_const_int_vec(gallivm, uint_bld->type, reg->base_offset);
