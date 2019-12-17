@@ -216,8 +216,8 @@ static unsigned si_texture_get_offset(struct si_screen *sscreen, struct si_textu
 
 static int si_init_surface(struct si_screen *sscreen, struct radeon_surf *surface,
                            const struct pipe_resource *ptex, enum radeon_surf_mode array_mode,
-                           bool is_imported, bool is_scanout, bool is_flushed_depth,
-                           bool tc_compatible_htile)
+                           uint64_t modifier, bool is_imported, bool is_scanout,
+                           bool is_flushed_depth, bool tc_compatible_htile)
 {
    const struct util_format_description *desc = util_format_description(ptex->format);
    bool is_depth, is_stencil;
@@ -316,7 +316,7 @@ static int si_init_surface(struct si_screen *sscreen, struct radeon_surf *surfac
          surface->u.gfx9.surf.swizzle_mode = ADDR_SW_64KB_R_X;
    }
 
-   surface->modifier = DRM_FORMAT_MOD_INVALID;
+   surface->modifier = modifier;
 
    r = sscreen->ws->surface_init(sscreen->ws, ptex, flags, bpe, array_mode, surface);
    if (r) {
@@ -627,7 +627,7 @@ static bool si_resource_get_param(struct pipe_screen *screen, struct pipe_contex
       return true;
 
    case PIPE_RESOURCE_PARAM_MODIFIER:
-      *value = DRM_FORMAT_MOD_INVALID;
+      *value = tex->surface.modifier;
       return true;
 
    case PIPE_RESOURCE_PARAM_HANDLE_TYPE_SHARED:
@@ -679,6 +679,7 @@ static bool si_texture_get_handle(struct pipe_screen *screen, struct pipe_contex
    struct si_texture *tex = (struct si_texture *)resource;
    bool update_metadata = false;
    unsigned stride, offset, slice_size;
+   uint64_t modifier = DRM_FORMAT_MOD_INVALID;
    bool flush = false;
 
    ctx = threaded_context_unwrap_sync(ctx);
@@ -750,6 +751,8 @@ static bool si_texture_get_handle(struct pipe_screen *screen, struct pipe_contex
       } else {
          slice_size = (uint64_t)tex->surface.u.legacy.level[0].slice_size_dw * 4;
       }
+
+      modifier = tex->surface.modifier;
    } else {
       /* Buffer exports are for the OpenCL interop. */
       /* Move a suballocated buffer into a non-suballocated allocation. */
@@ -803,6 +806,7 @@ static bool si_texture_get_handle(struct pipe_screen *screen, struct pipe_contex
 
    whandle->stride = stride;
    whandle->offset = offset + slice_size * whandle->layer;
+   whandle->modifier = modifier;
 
    return sscreen->ws->buffer_get_handle(sscreen->ws, res->buf, whandle);
 }
@@ -1289,8 +1293,10 @@ static enum radeon_surf_mode si_choose_tiling(struct si_screen *sscreen,
    return RADEON_SURF_MODE_2D;
 }
 
-struct pipe_resource *si_texture_create(struct pipe_screen *screen,
-                                        const struct pipe_resource *templ)
+static struct pipe_resource *
+si_texture_create_with_modifier(struct pipe_screen *screen,
+                                const struct pipe_resource *templ,
+                                uint64_t modifier)
 {
    struct si_screen *sscreen = (struct si_screen *)screen;
    bool is_zs = util_format_is_depth_or_stencil(templ->format);
@@ -1352,9 +1358,9 @@ struct pipe_resource *si_texture_create(struct pipe_screen *screen,
       if (num_planes > 1)
          plane_templ[i].bind |= PIPE_BIND_SHARED;
 
-      if (si_init_surface(sscreen, &surface[i], &plane_templ[i], tile_mode, false,
-                          plane_templ[i].bind & PIPE_BIND_SCANOUT, is_flushed_depth,
-                          tc_compatible_htile))
+      if (si_init_surface(sscreen, &surface[i], &plane_templ[i], tile_mode, modifier,
+                          false, plane_templ[i].bind & PIPE_BIND_SCANOUT,
+                          is_flushed_depth, tc_compatible_htile))
          return NULL;
 
       plane_offset[i] = align64(total_size, surface[i].surf_alignment);
@@ -1387,11 +1393,138 @@ struct pipe_resource *si_texture_create(struct pipe_screen *screen,
    return (struct pipe_resource *)plane0;
 }
 
+struct pipe_resource *si_texture_create(struct pipe_screen *screen,
+                                        const struct pipe_resource *templ)
+{
+   return si_texture_create_with_modifier(screen, templ, DRM_FORMAT_MOD_INVALID);
+}
+
+static void si_query_dmabuf_modifiers(struct pipe_screen *screen,
+                                      enum pipe_format format,
+                                      int max,
+                                      uint64_t *modifiers,
+                                      unsigned int *external_only,
+                                      int *count)
+{
+   struct si_screen *sscreen = (struct si_screen *)screen;
+
+   if (util_format_is_yuv(format)) {
+      if (max) {
+         *modifiers = DRM_FORMAT_MOD_LINEAR;
+         if (external_only)
+            *external_only = 1;
+      }
+      *count = 1;
+      return;
+   }
+
+   unsigned ac_mod_count = max;
+   ac_get_supported_modifiers(&sscreen->info, &(struct ac_modifier_options) {
+         /* Disable DCC until we have support for auxiliary planes. */
+         .dcc = false,
+         /* Do not support DCC with retiling yet. This needs explicit
+          * resource flushes, but the app has no way to promise doing
+          * flushes with modifiers. */
+         .dcc_retile = false,
+      }, format, &ac_mod_count,  max ? modifiers : NULL);
+   if (max && external_only) {
+      for (unsigned i = 0; i < ac_mod_count; ++i)
+         external_only[i] = 0;
+   }
+   *count = ac_mod_count;
+}
+
+static bool
+si_is_dmabuf_modifier_supported(struct pipe_screen *screen,
+                               uint64_t modifier,
+                               enum pipe_format format,
+                               bool *external_only)
+{
+   int allowed_mod_count;
+   si_query_dmabuf_modifiers(screen, format, 0, NULL, NULL, &allowed_mod_count);
+
+   uint64_t *allowed_modifiers = (uint64_t *)calloc(allowed_mod_count, sizeof(uint64_t));
+   if (!allowed_modifiers)
+      return false;
+
+   unsigned *external_array = NULL;
+   if (external_only) {
+      external_array = (unsigned *)calloc(allowed_mod_count, sizeof(unsigned));
+      if (!external_array) {
+         free(allowed_modifiers);
+         return false;
+      }
+   }
+
+   si_query_dmabuf_modifiers(screen, format, allowed_mod_count, allowed_modifiers,
+                            external_array, &allowed_mod_count);
+
+   bool supported = false;
+   for (int i = 0; i < allowed_mod_count && !supported; ++i) {
+      if (allowed_modifiers[i] != modifier)
+         continue;
+
+      supported = true;
+      if (external_only)
+         *external_only = external_array[i];
+   }
+
+   free(allowed_modifiers);
+   free(external_array);
+   return supported;
+}
+
+static struct pipe_resource *
+si_texture_create_with_modifiers(struct pipe_screen *screen,
+                                 const struct pipe_resource *templ,
+                                 const uint64_t *modifiers,
+                                 int modifier_count)
+{
+   /* Buffers with modifiers make zero sense. */
+   assert(templ->target != PIPE_BUFFER);
+
+   /* Select modifier. */
+   int allowed_mod_count;
+   si_query_dmabuf_modifiers(screen, templ->format, 0, NULL, NULL, &allowed_mod_count);
+
+   uint64_t *allowed_modifiers = (uint64_t *)calloc(allowed_mod_count, sizeof(uint64_t));
+   if (!allowed_modifiers) {
+      return NULL;
+   }
+
+   /* This does not take external_only into account. We assume it is the same for all modifiers. */
+   si_query_dmabuf_modifiers(screen, templ->format, allowed_mod_count, allowed_modifiers, NULL, &allowed_mod_count);
+
+   uint64_t modifier = DRM_FORMAT_MOD_INVALID;
+
+   /* Try to find the first allowed modifier that is in the application provided
+    * list. We assume that the allowed modifiers are ordered in descending
+    * preference in the list provided by si_query_dmabuf_modifiers. */
+   for (int i = 0; i < allowed_mod_count; ++i) {
+      bool found = false;
+      for (int j = 0; j < modifier_count && !found; ++j)
+         if (modifiers[j] == allowed_modifiers[i])
+            found = true;
+
+      if (found) {
+         modifier = allowed_modifiers[i];
+         break;
+      }
+   }
+
+   free(allowed_modifiers);
+
+   if (modifier == DRM_FORMAT_MOD_INVALID) {
+      return NULL;
+   }
+   return si_texture_create_with_modifier(screen, templ, modifier);
+}
+
 static struct pipe_resource *si_texture_from_winsys_buffer(struct si_screen *sscreen,
                                                            const struct pipe_resource *templ,
                                                            struct pb_buffer *buf, unsigned stride,
-                                                           uint64_t offset, unsigned usage,
-                                                           bool dedicated)
+                                                           uint64_t offset, uint64_t modifier,
+                                                           unsigned usage, bool dedicated)
 {
    struct radeon_surf surface = {};
    struct radeon_bo_metadata metadata = {};
@@ -1430,7 +1563,7 @@ static struct pipe_resource *si_texture_from_winsys_buffer(struct si_screen *ssc
       metadata.mode = RADEON_SURF_MODE_LINEAR_ALIGNED;
    }
 
-   r = si_init_surface(sscreen, &surface, templ, metadata.mode, true,
+   r = si_init_surface(sscreen, &surface, templ, metadata.mode, modifier, true,
                        surface.flags & RADEON_SURF_SCANOUT, false, false);
    if (r)
       return NULL;
@@ -1503,7 +1636,7 @@ static struct pipe_resource *si_texture_from_handle(struct pipe_screen *screen,
       return NULL;
 
    return si_texture_from_winsys_buffer(sscreen, templ, buf, whandle->stride, whandle->offset,
-                                        usage, true);
+                                        whandle->modifier, usage, true);
 }
 
 bool si_init_flushed_depth_texture(struct pipe_context *ctx, struct pipe_resource *texture)
@@ -2301,7 +2434,7 @@ static struct pipe_resource *si_resource_from_memobj(struct pipe_screen *screen,
    else
       res = si_texture_from_winsys_buffer(sscreen, templ, memobj->buf,
                                           memobj->stride,
-                                          offset,
+                                          offset, DRM_FORMAT_MOD_INVALID,
                                           PIPE_HANDLE_USAGE_FRAMEBUFFER_WRITE | PIPE_HANDLE_USAGE_SHADER_WRITE,
                                           memobj->b.dedicated);
 
@@ -2342,9 +2475,12 @@ void si_init_screen_texture_functions(struct si_screen *sscreen)
    sscreen->b.resource_get_param = si_resource_get_param;
    sscreen->b.resource_get_info = si_texture_get_info;
    sscreen->b.resource_from_memobj = si_resource_from_memobj;
+   sscreen->b.resource_create_with_modifiers = si_texture_create_with_modifiers;
    sscreen->b.memobj_create_from_handle = si_memobj_from_handle;
    sscreen->b.memobj_destroy = si_memobj_destroy;
    sscreen->b.check_resource_capability = si_check_resource_capability;
+   sscreen->b.query_dmabuf_modifiers = si_query_dmabuf_modifiers;
+   sscreen->b.is_dmabuf_modifier_supported = si_is_dmabuf_modifier_supported;
 }
 
 void si_init_context_texture_functions(struct si_context *sctx)
