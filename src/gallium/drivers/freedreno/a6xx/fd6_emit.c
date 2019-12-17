@@ -753,7 +753,7 @@ fd6_emit_streamout(struct fd_ringbuffer *ring, struct fd6_emit *emit, struct ir3
 		} else {
 			OUT_PKT7(ring, CP_MEM_TO_REG, 3);
 			OUT_RING(ring, CP_MEM_TO_REG_0_REG(REG_A6XX_VPC_SO_BUFFER_OFFSET(i)) |
-					CP_MEM_TO_REG_0_64B | CP_MEM_TO_REG_0_ACCUMULATE |
+					CP_MEM_TO_REG_0_SHIFT_BY_2 | CP_MEM_TO_REG_0_UNK31 |
 					CP_MEM_TO_REG_0_CNT(0));
 			OUT_RELOC(ring, control_ptr(fd6_context(ctx), flush_base[i].offset));
 		}

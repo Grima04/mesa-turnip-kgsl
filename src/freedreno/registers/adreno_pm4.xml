@@ -966,8 +966,10 @@ opcode: CP_LOAD_STATE4 (30) (4 dwords)
 		<bitfield name="REG" low="0" high="15" type="hex"/>
 		<!-- number of registers/dwords copied is max(CNT, 1). -->
 		<bitfield name="CNT" low="19" high="29" type="uint"/>
-		<bitfield name="64B" pos="30" type="boolean"/>
-		<bitfield name="ACCUMULATE" pos="31" type="boolean"/>
+		<!-- shift each DWORD left by 2 while copying -->
+		<bitfield name="SHIFT_BY_2" pos="30" type="boolean"/>
+		<!-- does the same thing as CP_MEM_TO_MEM::UNK31 -->
+		<bitfield name="UNK31" pos="31" type="boolean"/>
 	</reg32>
 	<reg32 offset="1" name="1">
 		<bitfield name="SRC" low="0" high="31"/>
