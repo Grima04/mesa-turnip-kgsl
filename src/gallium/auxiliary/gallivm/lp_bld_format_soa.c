@@ -874,7 +874,7 @@ lp_build_insert_soa_chan(struct lp_build_context *bld,
     const unsigned width = chan_desc.size;
     const unsigned start = chan_desc.shift;
     const unsigned stop = start + width;
-    LLVMValueRef chan;
+    LLVMValueRef chan = NULL;
     switch(chan_desc.type) {
     case UTIL_FORMAT_TYPE_UNSIGNED:
 
