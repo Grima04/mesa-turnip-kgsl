@@ -2285,7 +2285,7 @@ static LLVMValueRef ngg_get_ordered_id(struct radv_shader_context *ctx)
 {
 	return ac_build_bfe(&ctx->ac, ac_get_arg(&ctx->ac, ctx->args->gs_tg_info),
 			    ctx->ac.i32_0,
-			    LLVMConstInt(ctx->ac.i32, 11, false),
+			    LLVMConstInt(ctx->ac.i32, 12, false),
 			    false);
 }
 
