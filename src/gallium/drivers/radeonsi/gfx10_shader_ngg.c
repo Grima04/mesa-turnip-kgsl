@@ -98,6 +98,7 @@ struct ngg_prim {
 	LLVMValueRef isnull;
 	LLVMValueRef index[3];
 	LLVMValueRef edgeflag[3];
+	LLVMValueRef passthrough;
 };
 
 static void build_export_prim(struct si_shader_context *ctx,
@@ -107,17 +108,21 @@ static void build_export_prim(struct si_shader_context *ctx,
 	struct ac_export_args args;
 	LLVMValueRef tmp;
 
-	tmp = LLVMBuildZExt(builder, prim->isnull, ctx->ac.i32, "");
-	args.out[0] = LLVMBuildShl(builder, tmp, LLVMConstInt(ctx->ac.i32, 31, false), "");
+	if (prim->passthrough) {
+		args.out[0] = prim->passthrough;
+	} else {
+		tmp = LLVMBuildZExt(builder, prim->isnull, ctx->ac.i32, "");
+		args.out[0] = LLVMBuildShl(builder, tmp, LLVMConstInt(ctx->ac.i32, 31, false), "");
 
-	for (unsigned i = 0; i < prim->num_vertices; ++i) {
-		tmp = LLVMBuildShl(builder, prim->index[i],
-				   LLVMConstInt(ctx->ac.i32, 10 * i, false), "");
-		args.out[0] = LLVMBuildOr(builder, args.out[0], tmp, "");
-		tmp = LLVMBuildZExt(builder, prim->edgeflag[i], ctx->ac.i32, "");
-		tmp = LLVMBuildShl(builder, tmp,
-				   LLVMConstInt(ctx->ac.i32, 10 * i + 9, false), "");
-		args.out[0] = LLVMBuildOr(builder, args.out[0], tmp, "");
+		for (unsigned i = 0; i < prim->num_vertices; ++i) {
+			tmp = LLVMBuildShl(builder, prim->index[i],
+					   LLVMConstInt(ctx->ac.i32, 10 * i, false), "");
+			args.out[0] = LLVMBuildOr(builder, args.out[0], tmp, "");
+			tmp = LLVMBuildZExt(builder, prim->edgeflag[i], ctx->ac.i32, "");
+			tmp = LLVMBuildShl(builder, tmp,
+					   LLVMConstInt(ctx->ac.i32, 10 * i + 9, false), "");
+			args.out[0] = LLVMBuildOr(builder, args.out[0], tmp, "");
+		}
 	}
 
 	args.out[0] = LLVMBuildBitCast(builder, args.out[0], ctx->ac.f32, "");
@@ -729,25 +734,29 @@ void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi,
 	{
 		struct ngg_prim prim = {};
 
-		prim.num_vertices = num_vertices;
-		prim.isnull = ctx->ac.i1false;
-		memcpy(prim.index, vtxindex, sizeof(vtxindex[0]) * 3);
+		if (gfx10_is_ngg_passthrough(ctx->shader)) {
+			prim.passthrough = ac_get_arg(&ctx->ac, ctx->gs_vtx01_offset);
+		} else {
+			prim.num_vertices = num_vertices;
+			prim.isnull = ctx->ac.i1false;
+			memcpy(prim.index, vtxindex, sizeof(vtxindex[0]) * 3);
 
-		for (unsigned i = 0; i < num_vertices; ++i) {
-			if (ctx->type != PIPE_SHADER_VERTEX) {
-				prim.edgeflag[i] = ctx->i1false;
-				continue;
-			}
+			for (unsigned i = 0; i < num_vertices; ++i) {
+				if (ctx->type != PIPE_SHADER_VERTEX) {
+					prim.edgeflag[i] = ctx->i1false;
+					continue;
+				}
 
-			tmp = LLVMBuildLShr(builder,
-					    ac_get_arg(&ctx->ac, ctx->args.gs_invocation_id),
-					    LLVMConstInt(ctx->ac.i32, 8 + i, false), "");
-			prim.edgeflag[i] = LLVMBuildTrunc(builder, tmp, ctx->ac.i1, "");
+				tmp = LLVMBuildLShr(builder,
+						    ac_get_arg(&ctx->ac, ctx->args.gs_invocation_id),
+						    LLVMConstInt(ctx->ac.i32, 8 + i, false), "");
+				prim.edgeflag[i] = LLVMBuildTrunc(builder, tmp, ctx->ac.i1, "");
 
-			if (sel->info.writes_edgeflag) {
-				tmp2 = LLVMBuildLoad(builder, user_edgeflags[i], "");
-				prim.edgeflag[i] = LLVMBuildAnd(builder, prim.edgeflag[i],
-								tmp2, "");
+				if (sel->info.writes_edgeflag) {
+					tmp2 = LLVMBuildLoad(builder, user_edgeflags[i], "");
+					prim.edgeflag[i] = LLVMBuildAnd(builder, prim.edgeflag[i],
+									tmp2, "");
+				}
 			}
 		}
 

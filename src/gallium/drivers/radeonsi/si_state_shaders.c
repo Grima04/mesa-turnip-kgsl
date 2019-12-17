@@ -3872,9 +3872,9 @@ static struct si_pm4_state *si_build_vgt_shader_config(struct si_screen *screen,
 	}
 
 	if (key.u.ngg) {
-		stages |= S_028B54_PRIMGEN_EN(1);
-		if (key.u.streamout)
-			stages |= S_028B54_NGG_WAVE_ID_EN(1);
+		stages |= S_028B54_PRIMGEN_EN(1) |
+			  S_028B54_NGG_WAVE_ID_EN(key.u.streamout) |
+			  S_028B54_PRIMGEN_PASSTHRU_EN(key.u.ngg_passthrough);
 	} else if (key.u.gs)
 		stages |= S_028B54_VS_EN(V_028B54_VS_STAGE_COPY_SHADER);
 
@@ -4026,6 +4026,10 @@ bool si_update_shaders(struct si_context *sctx)
 			si_pm4_bind_state(sctx, es, sctx->vs_shader.current->pm4);
 		}
 	}
+
+	/* This must be done after the shader variant is selected. */
+	if (sctx->ngg)
+		key.u.ngg_passthrough = gfx10_is_ngg_passthrough(si_get_vs(sctx)->current);
 
 	si_update_vgt_shader_config(sctx, key);
 

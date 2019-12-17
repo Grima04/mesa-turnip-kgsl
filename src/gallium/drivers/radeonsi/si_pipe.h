@@ -790,7 +790,7 @@ union si_vgt_param_key {
 	uint32_t index;
 };
 
-#define SI_NUM_VGT_STAGES_KEY_BITS 4
+#define SI_NUM_VGT_STAGES_KEY_BITS 5
 #define SI_NUM_VGT_STAGES_STATES (1 << SI_NUM_VGT_STAGES_KEY_BITS)
 
 /* The VGT_SHADER_STAGES key used to index the table of precomputed values.
@@ -801,6 +801,7 @@ union si_vgt_stages_key {
 #if UTIL_ARCH_LITTLE_ENDIAN
 		unsigned tess:1;
 		unsigned gs:1;
+		unsigned ngg_passthrough:1;
 		unsigned ngg:1; /* gfx10+ */
 		unsigned streamout:1; /* only used with NGG */
 		unsigned _pad:32 - SI_NUM_VGT_STAGES_KEY_BITS;
@@ -808,6 +809,7 @@ union si_vgt_stages_key {
 		unsigned _pad:32 - SI_NUM_VGT_STAGES_KEY_BITS;
 		unsigned streamout:1;
 		unsigned ngg:1;
+		unsigned ngg_passthrough:1;
 		unsigned gs:1;
 		unsigned tess:1;
 #endif
