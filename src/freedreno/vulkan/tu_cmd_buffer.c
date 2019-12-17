@@ -318,6 +318,10 @@ tu_tiling_config_get_tile(const struct tu_tiling_config *tiling,
    const uint32_t py = ty / tiling->pipe0.height;
    const uint32_t sx = tx - tiling->pipe0.width * px;
    const uint32_t sy = ty - tiling->pipe0.height * py;
+   /* last pipe has different width */
+   const uint32_t pipe_width =
+      MIN2(tiling->pipe0.width,
+           tiling->tile_count.width - px * tiling->pipe0.width);
 
    assert(tx < tiling->tile_count.width && ty < tiling->tile_count.height);
    assert(px < tiling->pipe_count.width && py < tiling->pipe_count.height);
@@ -325,7 +329,7 @@ tu_tiling_config_get_tile(const struct tu_tiling_config *tiling,
 
    /* convert to 1D indices */
    tile->pipe = tiling->pipe_count.width * py + px;
-   tile->slot = tiling->pipe0.width * sy + sx;
+   tile->slot = pipe_width * sy + sx;
 
    /* get the blit area for the tile */
    tile->begin = (VkOffset2D) {
