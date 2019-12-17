@@ -109,11 +109,19 @@ cmd_buffer_destroy(struct v3dv_cmd_buffer *cmd_buffer)
    v3dv_cl_destroy(&cmd_buffer->rcl);
    v3dv_cl_destroy(&cmd_buffer->indirect);
 
+   /* Since we don't ref BOs, when we add them to the command buffer, don't
+    * unref them here either.
+    */
+#if 0
    set_foreach(cmd_buffer->bos, entry) {
       struct v3dv_bo *bo = (struct v3dv_bo *)entry->key;
       v3dv_bo_free(cmd_buffer->device, bo);
    }
+#endif
    _mesa_set_destroy(cmd_buffer->bos, NULL);
+
+   v3dv_bo_free(cmd_buffer->device, cmd_buffer->tile_alloc);
+   v3dv_bo_free(cmd_buffer->device, cmd_buffer->tile_state);
 
    vk_free(&cmd_buffer->pool->alloc, cmd_buffer);
 }
