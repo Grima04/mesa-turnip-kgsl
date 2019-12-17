@@ -187,7 +187,7 @@ panfrost-t860-test:arm64:
   tags:
     - lava-rk3399-gru-kevin
 
-panfrost-t820-test:arm64:
+.panfrost-t820-test:arm64:
   extends: .lava-test:arm64
   variables:
     DEVICE_TYPE: meson-gxm-khadas-vim2
