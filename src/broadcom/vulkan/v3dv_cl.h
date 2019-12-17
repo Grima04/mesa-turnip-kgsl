@@ -76,6 +76,12 @@ v3dv_cl_address(struct v3dv_bo *bo, uint32_t offset)
    return reloc;
 }
 
+static inline struct v3dv_cl_reloc
+v3dv_cl_get_address(struct v3dv_cl *cl)
+{
+   return (struct v3dv_cl_reloc){ .bo = cl->bo, .offset = v3dv_cl_offset(cl) };
+}
+
 void v3dv_cl_init(struct v3dv_cmd_buffer *cmd_buffer, struct v3dv_cl *cl);
 void v3dv_cl_begin(struct v3dv_cl *cl);
 void v3dv_cl_reset(struct v3dv_cl *cl);
@@ -100,6 +106,7 @@ cl_advance(struct v3dv_cl_out **cl, uint32_t n)
    (*cl) = (struct v3dv_cl_out *)((char *)(*cl) + n);
 }
 
+uint32_t v3dv_cl_ensure_space(struct v3dv_cl *cl, uint32_t space, uint32_t alignment);
 void v3dv_cl_ensure_space_with_branch(struct v3dv_cl *cl, uint32_t space);
 
 #define cl_packet_header(packet) V3DX(packet ## _header)

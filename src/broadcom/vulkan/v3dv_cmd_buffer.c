@@ -402,9 +402,403 @@ v3dv_CmdBeginRenderPass(VkCommandBuffer commandBuffer,
    cmd_buffer->state.subpass_idx = 0;
 }
 
+static void
+setup_render_target(struct v3dv_cmd_buffer *cmd_buffer, int rt,
+                    uint32_t *rt_bpp, uint32_t *rt_type, uint32_t *rt_clamp)
+{
+   const struct v3dv_cmd_buffer_state *state = &cmd_buffer->state;
+
+   assert(state->subpass_idx < state->pass->subpass_count);
+   const struct v3dv_subpass *subpass =
+      &state->pass->subpasses[state->subpass_idx];
+
+   if (rt >= subpass->color_count)
+      return;
+
+   struct v3dv_subpass_attachment *attachment = &subpass->color_attachments[rt];
+   const uint32_t attachment_idx = attachment->attachment;
+   if (attachment_idx == VK_ATTACHMENT_UNUSED)
+      return;
+
+   const struct v3dv_framebuffer *framebuffer = state->framebuffer;
+   assert(attachment_idx < framebuffer->attachment_count);
+   struct v3dv_image_view *iview = framebuffer->attachments[attachment_idx];
+
+   *rt_bpp = iview->internal_bpp;
+   *rt_type = iview->internal_type;
+   *rt_clamp = V3D_RENDER_TARGET_CLAMP_NONE;
+}
+
+static void
+emit_loads(struct v3dv_cmd_buffer *cmd_buffer,
+           struct v3dv_cl *cl,
+           uint32_t layer)
+{
+   /* FIXME: implement tile loads */
+   cl_emit(cl, END_OF_LOADS, end);
+}
+
+static void
+store_general(struct v3dv_cmd_buffer *cmd_buffer,
+              struct v3dv_cl *cl,
+              struct v3dv_image_view *iview,
+              uint32_t layer,
+              uint32_t buffer)
+{
+   const struct v3dv_image *image = iview->image;
+   uint32_t layer_offset = v3dv_layer_offset(image,
+                                             iview->base_level,
+                                             iview->first_layer + layer);
+
+   cl_emit(cl, STORE_TILE_BUFFER_GENERAL, store) {
+      store.buffer_to_store = buffer;
+      store.address = v3dv_cl_address(image->mem->bo, layer_offset);
+      store.clear_buffer_being_stored = false;
+
+      store.output_image_format = iview->format->rt_type;
+      store.r_b_swap = iview->swap_rb;
+      store.memory_format = iview->tiling;
+
+      const struct v3d_resource_slice *slice = &image->slices[iview->base_level];
+      if (slice->tiling == VC5_TILING_UIF_NO_XOR ||
+          slice->tiling == VC5_TILING_UIF_XOR) {
+         store.height_in_ub_or_stride =
+            slice->padded_height_of_output_image_in_uif_blocks;
+      } else if (slice->tiling == VC5_TILING_RASTER) {
+         store.height_in_ub_or_stride = slice->stride;
+      }
+
+      if (image->samples > VK_SAMPLE_COUNT_1_BIT)
+         store.decimate_mode = V3D_DECIMATE_MODE_ALL_SAMPLES;
+      else
+         store.decimate_mode = V3D_DECIMATE_MODE_SAMPLE_0;
+   }
+}
+
+static void
+emit_stores(struct v3dv_cmd_buffer *cmd_buffer,
+            struct v3dv_cl *cl,
+            uint32_t layer)
+{
+   const struct v3dv_cmd_buffer_state *state = &cmd_buffer->state;
+   const struct v3dv_framebuffer *framebuffer = state->framebuffer;
+   const struct v3dv_subpass *subpass =
+      &state->pass->subpasses[state->subpass_idx];
+
+   bool has_stores = false;
+   bool has_clears = false;
+   for (uint32_t i = 0; i < subpass->color_count; i++) {
+      uint32_t attachment_idx = subpass->color_attachments[i].attachment;
+
+      if (attachment_idx == VK_ATTACHMENT_UNUSED)
+         continue;
+
+      const struct v3dv_render_pass_attachment *attachment =
+         &state->pass->attachments[attachment_idx];
+
+      /* FIXME: we should probbably precompute this somehwere in the state */
+      if (attachment->desc.loadOp == VK_ATTACHMENT_LOAD_OP_CLEAR)
+         has_clears = true;
+
+      if (attachment->desc.storeOp != VK_ATTACHMENT_STORE_OP_STORE)
+         continue;
+
+      struct v3dv_image_view *iview = framebuffer->attachments[attachment_idx];
+
+      store_general(cmd_buffer, cl, iview, layer, RENDER_TARGET_0 + i);
+
+      has_stores = true;
+   }
+
+   /* FIXME: depth/stencil store */
+
+   /* We always need to emit at least one dummy store */
+   if (!has_stores) {
+      cl_emit(cl, STORE_TILE_BUFFER_GENERAL, store) {
+         store.buffer_to_store = NONE;
+      }
+   }
+
+   /* GFXH-1461/GFXH-1689: The per-buffer store command's clear
+    * buffer bit is broken for depth/stencil.  In addition, the
+    * clear packet's Z/S bit is broken, but the RTs bit ends up
+    * clearing Z/S.
+    */
+   if (has_clears) {
+      cl_emit(cl, CLEAR_TILE_BUFFERS, clear) {
+         clear.clear_z_stencil_buffer = true;
+         clear.clear_all_render_targets = true;
+      }
+   }
+}
+
+static void
+emit_generic_per_tile_list(struct v3dv_cmd_buffer *cmd_buffer, uint32_t layer)
+{
+   /* Emit the generic list in our indirect state -- the rcl will just
+    * have pointers into it.
+    */
+   struct v3dv_cl *cl = &cmd_buffer->indirect;
+   v3dv_cl_ensure_space(cl, 200, 1);
+   struct v3dv_cl_reloc tile_list_start = v3dv_cl_get_address(cl);
+
+   cl_emit(cl, TILE_COORDINATES_IMPLICIT, coords);
+
+   emit_loads(cmd_buffer, cl, layer);
+
+   /* The binner starts out writing tiles assuming that the initial mode
+    * is triangles, so make sure that's the case.
+    */
+   cl_emit(cl, PRIM_LIST_FORMAT, fmt) {
+      fmt.primitive_type = LIST_TRIANGLES;
+   }
+
+   cl_emit(cl, BRANCH_TO_IMPLICIT_TILE_LIST, branch);
+
+   emit_stores(cmd_buffer, cl, layer);
+
+   cl_emit(cl, END_OF_TILE_MARKER, end);
+
+   cl_emit(cl, RETURN_FROM_SUB_LIST, ret);
+
+   cl_emit(&cmd_buffer->rcl, START_ADDRESS_OF_GENERIC_TILE_LIST, branch) {
+      branch.start = tile_list_start;
+      branch.end = v3dv_cl_get_address(cl);
+   }
+}
+
+static void
+emit_render_layer(struct v3dv_cmd_buffer *cmd_buffer, uint32_t layer)
+{
+   const struct v3dv_cmd_buffer_state *state = &cmd_buffer->state;
+   const struct v3dv_framebuffer *framebuffer = state->framebuffer;
+
+   struct v3dv_cl *rcl = &cmd_buffer->rcl;
+
+   /* If doing multicore binning, we would need to initialize each
+    * core's tile list here.
+    */
+   const uint32_t tile_alloc_offset =
+      64 * layer * framebuffer->draw_tiles_x * framebuffer->draw_tiles_y;
+   cl_emit(rcl, MULTICORE_RENDERING_TILE_LIST_SET_BASE, list) {
+      list.address = v3dv_cl_address(cmd_buffer->tile_alloc, tile_alloc_offset);
+   }
+
+   cl_emit(rcl, MULTICORE_RENDERING_SUPERTILE_CFG, config) {
+      config.number_of_bin_tile_lists = 1;
+      config.total_frame_width_in_tiles = framebuffer->draw_tiles_x;
+      config.total_frame_height_in_tiles = framebuffer->draw_tiles_y;
+
+      config.supertile_width_in_tiles = framebuffer->supertile_width;
+      config.supertile_height_in_tiles = framebuffer->supertile_height;
+
+      config.total_frame_width_in_supertiles =
+         framebuffer->frame_width_in_supertiles;
+      config.total_frame_height_in_supertiles =
+         framebuffer->frame_height_in_supertiles;
+   }
+
+   /* Start by clearing the tile buffer. */
+   cl_emit(rcl, TILE_COORDINATES, coords) {
+      coords.tile_column_number = 0;
+      coords.tile_row_number = 0;
+   }
+
+   /* Emit an initial clear of the tile buffers. This is necessary
+    * for any buffers that should be cleared (since clearing
+    * normally happens at the *end* of the generic tile list), but
+    * it's also nice to clear everything so the first tile doesn't
+    * inherit any contents from some previous frame.
+    *
+    * Also, implement the GFXH-1742 workaround. There's a race in
+    * the HW between the RCL updating the TLB's internal type/size
+    * and the spawning of the QPU instances using the TLB's current
+    * internal type/size. To make sure the QPUs get the right
+    * state, we need 1 dummy store in between internal type/size
+    * changes on V3D 3.x, and 2 dummy stores on 4.x.
+    */
+   for (int i = 0; i < 2; i++) {
+      if (i > 0)
+         cl_emit(rcl, TILE_COORDINATES, coords);
+      cl_emit(rcl, END_OF_LOADS, end);
+      cl_emit(rcl, STORE_TILE_BUFFER_GENERAL, store) {
+         store.buffer_to_store = NONE;
+      }
+      if (i == 0) {
+         cl_emit(rcl, CLEAR_TILE_BUFFERS, clear) {
+            clear.clear_z_stencil_buffer = true;
+            clear.clear_all_render_targets = true;
+         }
+      }
+      cl_emit(rcl, END_OF_TILE_MARKER, end);
+   }
+
+   cl_emit(rcl, FLUSH_VCD_CACHE, flush);
+
+   emit_generic_per_tile_list(cmd_buffer, layer);
+
+   uint32_t supertile_w_in_pixels =
+      framebuffer->tile_width * framebuffer->supertile_width;
+   uint32_t supertile_h_in_pixels =
+      framebuffer->tile_height * framebuffer->supertile_height;
+   const uint32_t min_x_supertile =
+      state->render_area.offset.x / supertile_w_in_pixels;
+   const uint32_t min_y_supertile =
+      state->render_area.offset.y / supertile_h_in_pixels;
+
+   const uint32_t max_render_x =
+      state->render_area.offset.x + state->render_area.extent.width - 1;
+   const uint32_t max_render_y =
+      state->render_area.offset.y + state->render_area.extent.height - 1;
+   const uint32_t max_x_supertile = max_render_x / supertile_w_in_pixels;
+   const uint32_t max_y_supertile = max_render_y / supertile_h_in_pixels;
+
+   for (int y = min_y_supertile; y <= max_y_supertile; y++) {
+      for (int x = min_x_supertile; x <= max_x_supertile; x++) {
+         cl_emit(rcl, SUPERTILE_COORDINATES, coords) {
+            coords.column_number_in_supertiles = x;
+            coords.row_number_in_supertiles = y;
+         }
+      }
+   }
+}
+
+static void
+emit_rcl(struct v3dv_cmd_buffer *cmd_buffer)
+{
+   /* FIXME */
+   const uint32_t fb_layers = 1;
+
+   v3dv_cl_ensure_space_with_branch(&cmd_buffer->rcl, 200 +
+                                    MAX2(fb_layers, 1) * 256 *
+                                    cl_packet_length(SUPERTILE_COORDINATES));
+
+   const struct v3dv_cmd_buffer_state *state = &cmd_buffer->state;
+   const struct v3dv_framebuffer *framebuffer = state->framebuffer;
+
+   assert(state->subpass_idx < state->pass->subpass_count);
+   const struct v3dv_subpass *subpass =
+      &state->pass->subpasses[state->subpass_idx];
+
+   struct v3dv_cl *rcl = &cmd_buffer->rcl;
+
+   /* Comon config must be the first TILE_RENDERING_MODE_CFG and
+    * Z_STENCIL_CLEAR_VALUES must be last. The ones in between are optional
+    * updates to the previous HW state.
+    */
+   cl_emit(rcl, TILE_RENDERING_MODE_CFG_COMMON, config) {
+      config.early_z_disable = true; /* FIXME */
+      config.image_width_pixels = framebuffer->width;
+      config.image_height_pixels = framebuffer->height;
+      config.number_of_render_targets = MAX2(subpass->color_count, 1);
+      config.multisample_mode_4x = false; /* FIXME */
+      config.maximum_bpp_of_all_render_targets = framebuffer->internal_bpp;
+   }
+
+   for (uint32_t i = 0; i < subpass->color_count; i++) {
+      uint32_t attachment_idx = subpass->color_attachments[i].attachment;
+      struct v3dv_image_view *iview =
+         state->framebuffer->attachments[attachment_idx];
+
+      const uint32_t *clear_color =
+         &state->attachments[attachment_idx].clear_value.color[0];
+
+      uint32_t clear_pad = 0;
+      if (iview->tiling == VC5_TILING_UIF_NO_XOR ||
+          iview->tiling == VC5_TILING_UIF_XOR) {
+         const struct v3dv_image *image = iview->image;
+         const struct v3d_resource_slice *slice =
+            &image->slices[iview->base_level];
+
+         int uif_block_height = v3d_utile_height(image->cpp) * 2;
+
+         uint32_t implicit_padded_height =
+            align(framebuffer->height, uif_block_height) / uif_block_height;
+
+         if (slice->padded_height_of_output_image_in_uif_blocks -
+             implicit_padded_height >= 15) {
+            clear_pad = slice->padded_height_of_output_image_in_uif_blocks;
+         }
+      }
+
+      cl_emit(rcl, TILE_RENDERING_MODE_CFG_CLEAR_COLORS_PART1, clear) {
+         clear.clear_color_low_32_bits = clear_color[0];
+         clear.clear_color_next_24_bits = clear_color[1] & 0xffffff;
+         clear.render_target_number = i;
+      };
+
+      if (iview->internal_bpp >= V3D_INTERNAL_BPP_64) {
+         cl_emit(rcl, TILE_RENDERING_MODE_CFG_CLEAR_COLORS_PART2, clear) {
+            clear.clear_color_mid_low_32_bits =
+              ((clear_color[1] >> 24) | (clear_color[2] << 8));
+            clear.clear_color_mid_high_24_bits =
+              ((clear_color[2] >> 24) | ((clear_color[3] & 0xffff) << 8));
+            clear.render_target_number = i;
+         };
+      }
+
+      if (iview->internal_bpp >= V3D_INTERNAL_BPP_128 || clear_pad) {
+         cl_emit(rcl, TILE_RENDERING_MODE_CFG_CLEAR_COLORS_PART3, clear) {
+            clear.uif_padded_height_in_uif_blocks = clear_pad;
+            clear.clear_color_high_16_bits = clear_color[3] >> 16;
+            clear.render_target_number = i;
+         };
+      }
+   }
+
+   cl_emit(rcl, TILE_RENDERING_MODE_CFG_COLOR, rt) {
+      setup_render_target(cmd_buffer, 0,
+                          &rt.render_target_0_internal_bpp,
+                          &rt.render_target_0_internal_type,
+                          &rt.render_target_0_clamp);
+      setup_render_target(cmd_buffer, 1,
+                          &rt.render_target_1_internal_bpp,
+                          &rt.render_target_1_internal_type,
+                          &rt.render_target_1_clamp);
+      setup_render_target(cmd_buffer, 2,
+                          &rt.render_target_2_internal_bpp,
+                          &rt.render_target_2_internal_type,
+                          &rt.render_target_2_clamp);
+      setup_render_target(cmd_buffer, 3,
+                          &rt.render_target_3_internal_bpp,
+                          &rt.render_target_3_internal_type,
+                          &rt.render_target_3_clamp);
+   }
+
+   /* Ends rendering mode config. */
+   cl_emit(rcl, TILE_RENDERING_MODE_CFG_ZS_CLEAR_VALUES, clear) {
+      clear.z_clear_value = 0; /* FIXME */
+      clear.stencil_clear_value = 0; /* FIXME */
+   };
+
+   /* Always set initial block size before the first branch, which needs
+    * to match the value from binning mode config.
+    */
+   cl_emit(rcl, TILE_LIST_INITIAL_BLOCK_SIZE, init) {
+      init.use_auto_chained_tile_lists = true;
+      init.size_of_first_block_in_chained_tile_lists =
+         TILE_ALLOCATION_BLOCK_SIZE_64B;
+   }
+
+   for (int layer = 0; layer < MAX2(1, fb_layers); layer++)
+      emit_render_layer(cmd_buffer, layer);
+
+   cl_emit(rcl, END_OF_RENDERING, end);
+}
+
 void
 v3dv_CmdEndRenderPass(VkCommandBuffer commandBuffer)
 {
+   V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
+
+   /* Emit last subpass */
+   struct v3dv_cmd_buffer_state *state = &cmd_buffer->state;
+   assert(state->subpass_idx == state->pass->subpass_count - 1);
+   emit_rcl(cmd_buffer);
+
+   /* We are no longer inside a render pass */
+   state->pass = NULL;
+   state->framebuffer = NULL;
 }
 
 VkResult

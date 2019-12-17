@@ -63,6 +63,39 @@ v3dv_cl_destroy(struct v3dv_cl *cl)
    v3dv_cl_init(NULL, cl);
 }
 
+uint32_t
+v3dv_cl_ensure_space(struct v3dv_cl *cl, uint32_t space, uint32_t alignment)
+{
+   uint32_t offset = align(v3dv_cl_offset(cl), alignment);
+
+   if (offset + space <= cl->size) {
+      cl->next = cl->base + offset;
+      return offset;
+   }
+
+   struct v3dv_bo *bo = v3dv_bo_alloc(cl->cmd_buffer->device, space);
+   if (!bo) {
+      fprintf(stderr, "failed to allocate memory for command list");
+      abort();
+   }
+
+   v3dv_cmd_buffer_add_bo(cl->cmd_buffer, bo);
+
+   bool ok = v3dv_bo_map(cl->cmd_buffer->device, bo, bo->size);
+   if (!ok) {
+      fprintf(stderr, "failed to map command list buffer");
+      abort();
+   }
+
+   cl->bo = bo;
+   cl->base = cl->bo->map;
+   cl->size = cl->bo->size;
+   cl->next = cl->base;
+
+   return 0;
+}
+
+
 void
 v3dv_cl_ensure_space_with_branch(struct v3dv_cl *cl, uint32_t space)
 {
