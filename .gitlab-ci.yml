@@ -6,8 +6,6 @@ include:
     # Must be the same as in .gitlab-ci/lava-gitlab-ci.yml
     ref: 0a9bdd33a98f05af6761ab118b5074952242aab0
     file: '/templates/debian.yml'
-
-include:
   - local: '.gitlab-ci/lava-gitlab-ci.yml'
 
 stages:
@@ -36,7 +34,7 @@ stages:
       # https://gitlab.com/gitlab-org/gitlab-ce/commit/8788fb925706cad594adf6917a6c5f6587dd1521
       - artifacts
 
-# Build the "normal" (non-LAVA) CI docker images.
+# Build the CI docker images.
 #
 # DEBIAN_TAG is the tag of the docker image used by later stage jobs. If the
 # image doesn't exist yet, the container stage job generates it.
@@ -96,7 +94,7 @@ x86_build:
     - .debian@container-ifnot-exists
     - .container
   variables:
-    DEBIAN_TAG: &x86_build "2020-01-07"
+    DEBIAN_TAG: &x86_build "2020-01-14"
 
 .use-x86_build:
   variables:
@@ -109,13 +107,13 @@ x86_build:
 x86_test-gl:
   extends: x86_build
   variables:
-    DEBIAN_TAG: &x86_test-gl "2020-01-07"
+    DEBIAN_TAG: &x86_test-gl "2020-01-14"
 
 # Debian 10 based x86 test image for VK
 x86_test-vk:
   extends: x86_build
   variables:
-    DEBIAN_TAG: &x86_test-vk "2020-01-07"
+    DEBIAN_TAG: &x86_test-vk "2020-01-14"
   # Can only be triggered manually on personal branches because RADV is the only
   # driver that does Vulkan testing at the moment.
   rules:
@@ -149,7 +147,7 @@ arm_build:
     - .debian@container-ifnot-exists@arm64v8
     - .container
   variables:
-    DEBIAN_TAG: &arm_build "2019-11-13"
+    DEBIAN_TAG: &arm_build "2020-01-14"
 
 .use-arm_build:
   variables:
@@ -304,23 +302,28 @@ meson-main:
   variables:
     VULKAN_DRIVERS: freedreno
     GALLIUM_DRIVERS: "etnaviv,freedreno,kmsro,lima,nouveau,panfrost,swrast,tegra,v3d,vc4"
+    BUILDTYPE: "debugoptimized"
     EXTRA_OPTION: >
       -D I-love-half-baked-turnips=true
   tags:
     - aarch64
 
 meson-armhf:
-  extends: .meson-arm
+  extends:
+    - .meson-arm
+    - .ci-deqp-artifacts
   variables:
     CROSS: armhf
     LLVM_VERSION: "7"
+  script:
+    - .gitlab-ci/meson-build.sh
+    - .gitlab-ci/prepare-artifacts.sh
 
 meson-arm64:
   extends:
     - .meson-arm
     - .ci-deqp-artifacts
   variables:
-    BUILDTYPE: "debugoptimized"
     LLVM_VERSION: "8"
     VULKAN_DRIVERS: "freedreno,amd"
   script:
