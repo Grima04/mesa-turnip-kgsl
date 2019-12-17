@@ -966,8 +966,8 @@ v3dv_DestroyDevice(VkDevice _device,
                    const VkAllocationCallbacks *pAllocator)
 {
    V3DV_FROM_HANDLE(v3dv_device, device, _device);
-
    queue_finish(&device->queue);
+   vk_free2(&default_alloc, pAllocator, device);
 }
 
 void
