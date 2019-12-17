@@ -4188,7 +4188,7 @@ LLVMModuleRef ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm,
 
 		ac_setup_rings(&ctx);
 
-		LLVMBasicBlockRef merge_block;
+		LLVMBasicBlockRef merge_block = NULL;
 		if (shader_count >= 2 || is_ngg) {
 			LLVMValueRef fn = LLVMGetBasicBlockParent(LLVMGetInsertBlock(ctx.ac.builder));
 			LLVMBasicBlockRef then_block = LLVMAppendBasicBlockInContext(ctx.ac.context, fn, "");
