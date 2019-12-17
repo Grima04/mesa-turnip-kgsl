@@ -244,10 +244,10 @@ v3d_setup_slices(struct v3dv_image *image)
    }
 }
 
-static uint32_t
-layer_offset(struct v3dv_image *image, uint32_t level, uint32_t layer)
+uint32_t
+v3dv_layer_offset(const struct v3dv_image *image, uint32_t level, uint32_t layer)
 {
-   struct v3d_resource_slice *slice = &image->slices[level];
+   const struct v3d_resource_slice *slice = &image->slices[level];
 
    if (image->type == VK_IMAGE_TYPE_3D)
       return slice->offset + layer * slice->size;
@@ -372,7 +372,8 @@ v3dv_CreateImageView(VkDevice _device,
    iview->first_layer = range->baseArrayLayer;
    iview->last_layer = range->baseArrayLayer +
                        v3dv_layer_count(image, range) - 1;
-   iview->offset = layer_offset(image, iview->base_level, iview->first_layer);
+   iview->offset =
+      v3dv_layer_offset(image, iview->base_level, iview->first_layer);
 
    iview->tiling = image->slices[0].tiling;
 

@@ -287,6 +287,8 @@ struct v3dv_image_view {
    uint32_t offset;
 };
 
+uint32_t v3dv_layer_offset(const struct v3dv_image *image, uint32_t level, uint32_t layer);
+
 struct v3dv_buffer {
    VkDeviceSize size;
    VkBufferUsageFlags usage;
