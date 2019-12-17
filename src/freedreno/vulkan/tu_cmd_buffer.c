@@ -254,21 +254,16 @@ tu_tiling_config_update_pipe_layout(struct tu_tiling_config *tiling,
    };
    tiling->pipe_count = tiling->tile_count;
 
-   /* do not exceed max pipe count vertically */
-   while (tiling->pipe_count.height > max_pipe_count) {
-      tiling->pipe0.height += 2;
-      tiling->pipe_count.height =
-         (tiling->tile_count.height + tiling->pipe0.height - 1) /
-         tiling->pipe0.height;
-   }
-
-   /* do not exceed max pipe count */
-   while (tiling->pipe_count.width * tiling->pipe_count.height >
-          max_pipe_count) {
-      tiling->pipe0.width += 1;
-      tiling->pipe_count.width =
-         (tiling->tile_count.width + tiling->pipe0.width - 1) /
-         tiling->pipe0.width;
+   while (tiling->pipe_count.width * tiling->pipe_count.height > max_pipe_count) {
+      if (tiling->pipe0.width < tiling->pipe0.height) {
+         tiling->pipe0.width += 1;
+         tiling->pipe_count.width =
+            DIV_ROUND_UP(tiling->tile_count.width, tiling->pipe0.width);
+      } else {
+         tiling->pipe0.height += 1;
+         tiling->pipe_count.height =
+            DIV_ROUND_UP(tiling->tile_count.height, tiling->pipe0.height);
+      }
    }
 }
 
