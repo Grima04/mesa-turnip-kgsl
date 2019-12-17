@@ -466,6 +466,7 @@ meson-i386:
       -D vulkan-overlay-layer=true
       -D llvm=false
       -D osmesa=classic
+      -D werror=true
 
 meson-mingw32-x86_64:
   extends: .meson-build
