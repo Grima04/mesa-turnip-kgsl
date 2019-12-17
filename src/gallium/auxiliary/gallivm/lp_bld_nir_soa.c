@@ -641,38 +641,6 @@ static void emit_atomic_global(struct lp_build_nir_context *bld_base,
    struct gallivm_state *gallivm = bld_base->base.gallivm;
    LLVMBuilderRef builder = gallivm->builder;
    struct lp_build_context *uint_bld = &bld_base->uint_bld;
-   LLVMAtomicRMWBinOp op;
-   switch (nir_op) {
-   case nir_intrinsic_global_atomic_add:
-      op = LLVMAtomicRMWBinOpAdd;
-      break;
-   case nir_intrinsic_global_atomic_exchange:
-      op = LLVMAtomicRMWBinOpXchg;
-      break;
-   case nir_intrinsic_global_atomic_and:
-      op = LLVMAtomicRMWBinOpAnd;
-      break;
-   case nir_intrinsic_global_atomic_or:
-      op = LLVMAtomicRMWBinOpOr;
-      break;
-   case nir_intrinsic_global_atomic_xor:
-      op = LLVMAtomicRMWBinOpXor;
-      break;
-   case nir_intrinsic_global_atomic_umin:
-      op = LLVMAtomicRMWBinOpUMin;
-      break;
-   case nir_intrinsic_global_atomic_umax:
-      op = LLVMAtomicRMWBinOpUMax;
-      break;
-   case nir_intrinsic_global_atomic_imin:
-      op = LLVMAtomicRMWBinOpMin;
-      break;
-   case nir_intrinsic_global_atomic_imax:
-      op = LLVMAtomicRMWBinOpMax;
-      break;
-   default:
-      break;
-   }
 
    LLVMValueRef atom_res = lp_build_alloca(gallivm,
                                            uint_bld->vec_type, "");
@@ -704,6 +672,39 @@ static void emit_atomic_global(struct lp_build_nir_context *bld_base,
                                       false);
       scalar = LLVMBuildExtractValue(gallivm->builder, scalar, 0, "");
    } else {
+      LLVMAtomicRMWBinOp op;
+      switch (nir_op) {
+      case nir_intrinsic_global_atomic_add:
+         op = LLVMAtomicRMWBinOpAdd;
+         break;
+      case nir_intrinsic_global_atomic_exchange:
+         op = LLVMAtomicRMWBinOpXchg;
+         break;
+      case nir_intrinsic_global_atomic_and:
+         op = LLVMAtomicRMWBinOpAnd;
+         break;
+      case nir_intrinsic_global_atomic_or:
+         op = LLVMAtomicRMWBinOpOr;
+         break;
+      case nir_intrinsic_global_atomic_xor:
+         op = LLVMAtomicRMWBinOpXor;
+         break;
+      case nir_intrinsic_global_atomic_umin:
+         op = LLVMAtomicRMWBinOpUMin;
+         break;
+      case nir_intrinsic_global_atomic_umax:
+         op = LLVMAtomicRMWBinOpUMax;
+         break;
+      case nir_intrinsic_global_atomic_imin:
+         op = LLVMAtomicRMWBinOpMin;
+         break;
+      case nir_intrinsic_global_atomic_imax:
+         op = LLVMAtomicRMWBinOpMax;
+         break;
+      default:
+         unreachable("unknown atomic op");
+      }
+
       scalar = LLVMBuildAtomicRMW(builder, op,
                                   addr_ptr, value_ptr,
                                   LLVMAtomicOrderingSequentiallyConsistent,
@@ -922,7 +923,6 @@ static void emit_atomic_mem(struct lp_build_nir_context *bld_base,
    LLVMBuilderRef builder = bld->bld_base.base.gallivm->builder;
    LLVMValueRef ssbo_ptr;
    struct lp_build_context *uint_bld = &bld_base->uint_bld;
-   LLVMAtomicRMWBinOp op;
    LLVMValueRef ssbo_limit = NULL;
 
    if (index) {
@@ -932,47 +932,6 @@ static void emit_atomic_mem(struct lp_build_nir_context *bld_base,
       ssbo_ptr = lp_build_array_get(gallivm, bld->ssbo_ptr, LLVMBuildExtractElement(builder, index, lp_build_const_int32(gallivm, 0), ""));
    } else
       ssbo_ptr = bld->shared_ptr;
-
-   switch (nir_op) {
-   case nir_intrinsic_shared_atomic_add:
-   case nir_intrinsic_ssbo_atomic_add:
-      op = LLVMAtomicRMWBinOpAdd;
-      break;
-   case nir_intrinsic_shared_atomic_exchange:
-   case nir_intrinsic_ssbo_atomic_exchange:
-      op = LLVMAtomicRMWBinOpXchg;
-      break;
-   case nir_intrinsic_shared_atomic_and:
-   case nir_intrinsic_ssbo_atomic_and:
-      op = LLVMAtomicRMWBinOpAnd;
-      break;
-   case nir_intrinsic_shared_atomic_or:
-   case nir_intrinsic_ssbo_atomic_or:
-      op = LLVMAtomicRMWBinOpOr;
-      break;
-   case nir_intrinsic_shared_atomic_xor:
-   case nir_intrinsic_ssbo_atomic_xor:
-      op = LLVMAtomicRMWBinOpXor;
-      break;
-   case nir_intrinsic_shared_atomic_umin:
-   case nir_intrinsic_ssbo_atomic_umin:
-      op = LLVMAtomicRMWBinOpUMin;
-      break;
-   case nir_intrinsic_shared_atomic_umax:
-   case nir_intrinsic_ssbo_atomic_umax:
-      op = LLVMAtomicRMWBinOpUMax;
-      break;
-   case nir_intrinsic_ssbo_atomic_imin:
-   case nir_intrinsic_shared_atomic_imin:
-      op = LLVMAtomicRMWBinOpMin;
-      break;
-   case nir_intrinsic_ssbo_atomic_imax:
-   case nir_intrinsic_shared_atomic_imax:
-      op = LLVMAtomicRMWBinOpMax;
-      break;
-   default:
-      break;
-   }
 
    offset = lp_build_shr_imm(uint_bld, offset, 2);
    LLVMValueRef atom_res = lp_build_alloca(gallivm,
@@ -1015,6 +974,48 @@ static void emit_atomic_mem(struct lp_build_nir_context *bld_base,
                                       false);
       scalar = LLVMBuildExtractValue(gallivm->builder, scalar, 0, "");
    } else {
+      LLVMAtomicRMWBinOp op;
+
+      switch (nir_op) {
+      case nir_intrinsic_shared_atomic_add:
+      case nir_intrinsic_ssbo_atomic_add:
+         op = LLVMAtomicRMWBinOpAdd;
+         break;
+      case nir_intrinsic_shared_atomic_exchange:
+      case nir_intrinsic_ssbo_atomic_exchange:
+         op = LLVMAtomicRMWBinOpXchg;
+         break;
+      case nir_intrinsic_shared_atomic_and:
+      case nir_intrinsic_ssbo_atomic_and:
+         op = LLVMAtomicRMWBinOpAnd;
+         break;
+      case nir_intrinsic_shared_atomic_or:
+      case nir_intrinsic_ssbo_atomic_or:
+         op = LLVMAtomicRMWBinOpOr;
+         break;
+      case nir_intrinsic_shared_atomic_xor:
+      case nir_intrinsic_ssbo_atomic_xor:
+         op = LLVMAtomicRMWBinOpXor;
+         break;
+      case nir_intrinsic_shared_atomic_umin:
+      case nir_intrinsic_ssbo_atomic_umin:
+         op = LLVMAtomicRMWBinOpUMin;
+         break;
+      case nir_intrinsic_shared_atomic_umax:
+      case nir_intrinsic_ssbo_atomic_umax:
+         op = LLVMAtomicRMWBinOpUMax;
+         break;
+      case nir_intrinsic_ssbo_atomic_imin:
+      case nir_intrinsic_shared_atomic_imin:
+         op = LLVMAtomicRMWBinOpMin;
+         break;
+      case nir_intrinsic_ssbo_atomic_imax:
+      case nir_intrinsic_shared_atomic_imax:
+         op = LLVMAtomicRMWBinOpMax;
+         break;
+      default:
+         unreachable("unknown atomic op");
+      }
       scalar = LLVMBuildAtomicRMW(builder, op,
                                   scalar_ptr, value_ptr,
                                   LLVMAtomicOrderingSequentiallyConsistent,
