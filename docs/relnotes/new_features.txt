@@ -14,3 +14,5 @@ VK_KHR_shader_terminate_invocation on ANV
 driconf: add glx_extension_override
 driconf: add indirect_gl_extension_override
 VK_AMD_mixed_attachment_samples on RADV (GFX6-GFX7).
+GL_MESA_pack_invert on r100 and vieux
+GL_ANGLE_pack_reverse_row_order
