@@ -3033,7 +3033,7 @@ fill_geom_tess_rings(struct radv_queue *queue,
 
 		if (queue->device->physical_device->rad_info.chip_class >= GFX10) {
 			desc[3] |= S_008F0C_FORMAT(V_008F0C_IMG_FORMAT_32_FLOAT) |
-				   S_008F0C_OOB_SELECT(2) |
+				   S_008F0C_OOB_SELECT(V_008F0C_OOB_SELECT_DISABLED) |
 				   S_008F0C_RESOURCE_LEVEL(1);
 		} else {
 			desc[3] |= S_008F0C_NUM_FORMAT(V_008F0C_BUF_NUM_FORMAT_FLOAT) |
@@ -3054,7 +3054,7 @@ fill_geom_tess_rings(struct radv_queue *queue,
 
 		if (queue->device->physical_device->rad_info.chip_class >= GFX10) {
 			desc[7] |= S_008F0C_FORMAT(V_008F0C_IMG_FORMAT_32_FLOAT) |
-				   S_008F0C_OOB_SELECT(2) |
+				   S_008F0C_OOB_SELECT(V_008F0C_OOB_SELECT_DISABLED) |
 				   S_008F0C_RESOURCE_LEVEL(1);
 		} else {
 			desc[7] |= S_008F0C_NUM_FORMAT(V_008F0C_BUF_NUM_FORMAT_FLOAT) |
@@ -3080,7 +3080,7 @@ fill_geom_tess_rings(struct radv_queue *queue,
 
 		if (queue->device->physical_device->rad_info.chip_class >= GFX10) {
 			desc[3] |= S_008F0C_FORMAT(V_008F0C_IMG_FORMAT_32_FLOAT) |
-				   S_008F0C_OOB_SELECT(2) |
+				   S_008F0C_OOB_SELECT(V_008F0C_OOB_SELECT_DISABLED) |
 				   S_008F0C_RESOURCE_LEVEL(1);
 		} else {
 			desc[3] |= S_008F0C_NUM_FORMAT(V_008F0C_BUF_NUM_FORMAT_FLOAT) |
@@ -3103,7 +3103,7 @@ fill_geom_tess_rings(struct radv_queue *queue,
 
 		if (queue->device->physical_device->rad_info.chip_class >= GFX10) {
 			desc[7] |= S_008F0C_FORMAT(V_008F0C_IMG_FORMAT_32_FLOAT) |
-				   S_008F0C_OOB_SELECT(2) |
+				   S_008F0C_OOB_SELECT(V_008F0C_OOB_SELECT_DISABLED) |
 				   S_008F0C_RESOURCE_LEVEL(1);
 		} else {
 			desc[7] |= S_008F0C_NUM_FORMAT(V_008F0C_BUF_NUM_FORMAT_FLOAT) |
@@ -3129,7 +3129,7 @@ fill_geom_tess_rings(struct radv_queue *queue,
 
 		if (queue->device->physical_device->rad_info.chip_class >= GFX10) {
 			desc[3] |= S_008F0C_FORMAT(V_008F0C_IMG_FORMAT_32_FLOAT) |
-				   S_008F0C_OOB_SELECT(3) |
+				   S_008F0C_OOB_SELECT(V_008F0C_OOB_SELECT_RAW) |
 				   S_008F0C_RESOURCE_LEVEL(1);
 		} else {
 			desc[3] |= S_008F0C_NUM_FORMAT(V_008F0C_BUF_NUM_FORMAT_FLOAT) |
@@ -3146,7 +3146,7 @@ fill_geom_tess_rings(struct radv_queue *queue,
 
 		if (queue->device->physical_device->rad_info.chip_class >= GFX10) {
 			desc[7] |= S_008F0C_FORMAT(V_008F0C_IMG_FORMAT_32_FLOAT) |
-				   S_008F0C_OOB_SELECT(3) |
+				   S_008F0C_OOB_SELECT(V_008F0C_OOB_SELECT_RAW) |
 				   S_008F0C_RESOURCE_LEVEL(1);
 		} else {
 			desc[7] |= S_008F0C_NUM_FORMAT(V_008F0C_BUF_NUM_FORMAT_FLOAT) |

@@ -1033,7 +1033,7 @@ static LLVMValueRef get_tess_ring_descriptor(struct si_shader_context *ctx,
 
 	if (ctx->screen->info.chip_class >= GFX10)
 		rsrc3 |= S_008F0C_FORMAT(V_008F0C_IMG_FORMAT_32_FLOAT) |
-			 S_008F0C_OOB_SELECT(3) |
+			 S_008F0C_OOB_SELECT(V_008F0C_OOB_SELECT_RAW) |
 			 S_008F0C_RESOURCE_LEVEL(1);
 	else
 		rsrc3 |= S_008F0C_NUM_FORMAT(V_008F0C_BUF_NUM_FORMAT_FLOAT) |
@@ -2240,7 +2240,7 @@ static LLVMValueRef load_const_buffer_desc_fast_path(struct si_shader_context *c
 
 	if (ctx->screen->info.chip_class >= GFX10)
 		rsrc3 |= S_008F0C_FORMAT(V_008F0C_IMG_FORMAT_32_FLOAT) |
-			 S_008F0C_OOB_SELECT(3) |
+			 S_008F0C_OOB_SELECT(V_008F0C_OOB_SELECT_RAW) |
 			 S_008F0C_RESOURCE_LEVEL(1);
 	else
 		rsrc3 |= S_008F0C_NUM_FORMAT(V_008F0C_BUF_NUM_FORMAT_FLOAT) |
@@ -5093,7 +5093,7 @@ static void preload_ring_buffers(struct si_shader_context *ctx)
 
 			if (ctx->ac.chip_class >= GFX10) {
 				rsrc3 |= S_008F0C_FORMAT(V_008F0C_IMG_FORMAT_32_FLOAT) |
-					 S_008F0C_OOB_SELECT(2) |
+					 S_008F0C_OOB_SELECT(V_008F0C_OOB_SELECT_DISABLED) |
 					 S_008F0C_RESOURCE_LEVEL(1);
 			} else {
 				rsrc3 |= S_008F0C_NUM_FORMAT(V_008F0C_BUF_NUM_FORMAT_FLOAT) |

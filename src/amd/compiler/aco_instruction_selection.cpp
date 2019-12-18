@@ -3530,7 +3530,7 @@ void visit_load_ubo(isel_context *ctx, nir_intrinsic_instr *instr)
                            S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_W);
       if (ctx->options->chip_class >= GFX10) {
          desc_type |= S_008F0C_FORMAT(V_008F0C_IMG_FORMAT_32_FLOAT) |
-                      S_008F0C_OOB_SELECT(3) |
+                      S_008F0C_OOB_SELECT(V_008F0C_OOB_SELECT_RAW) |
                       S_008F0C_RESOURCE_LEVEL(1);
       } else {
          desc_type |= S_008F0C_NUM_FORMAT(V_008F0C_BUF_NUM_FORMAT_FLOAT) |
@@ -3633,7 +3633,7 @@ void visit_load_constant(isel_context *ctx, nir_intrinsic_instr *instr)
                         S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_W);
    if (ctx->options->chip_class >= GFX10) {
       desc_type |= S_008F0C_FORMAT(V_008F0C_IMG_FORMAT_32_FLOAT) |
-                   S_008F0C_OOB_SELECT(3) |
+                   S_008F0C_OOB_SELECT(V_008F0C_OOB_SELECT_RAW) |
                    S_008F0C_RESOURCE_LEVEL(1);
    } else {
       desc_type |= S_008F0C_NUM_FORMAT(V_008F0C_BUF_NUM_FORMAT_FLOAT) |
@@ -5105,7 +5105,7 @@ Temp get_scratch_resource(isel_context *ctx)
 
    if (ctx->program->chip_class >= GFX10) {
       rsrc_conf |= S_008F0C_FORMAT(V_008F0C_IMG_FORMAT_32_FLOAT) |
-                   S_008F0C_OOB_SELECT(3) |
+                   S_008F0C_OOB_SELECT(V_008F0C_OOB_SELECT_RAW) |
                    S_008F0C_RESOURCE_LEVEL(1);
    } else if (ctx->program->chip_class <= GFX7) { /* dfmt modifies stride on GFX8/GFX9 when ADD_TID_EN=1 */
       rsrc_conf |= S_008F0C_NUM_FORMAT(V_008F0C_BUF_NUM_FORMAT_FLOAT) |

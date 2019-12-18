@@ -3850,7 +3850,7 @@ si_make_buffer_descriptor(struct si_screen *screen, struct si_resource *buf,
 		 *       else: swizzle_address >= NUM_RECORDS
 		 */
 		state[7] |= S_008F0C_FORMAT(fmt->img_format) |
-			    S_008F0C_OOB_SELECT(0) |
+			    S_008F0C_OOB_SELECT(V_008F0C_OOB_SELECT_STRUCTURED_WITH_OFFSET) |
 			    S_008F0C_RESOURCE_LEVEL(1);
 	} else {
 		int first_non_void;
