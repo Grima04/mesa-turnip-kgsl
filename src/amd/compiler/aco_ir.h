@@ -1155,6 +1155,7 @@ public:
    Temp private_segment_buffer;
    Temp scratch_offset;
 
+   uint16_t min_waves = 0;
    uint16_t lds_alloc_granule;
    uint32_t lds_limit; /* in bytes */
    uint16_t vgpr_limit;
@@ -1216,6 +1217,7 @@ void select_program(Program *program,
 void lower_wqm(Program* program, live& live_vars,
                const struct radv_nir_compiler_options *options);
 void lower_bool_phis(Program* program);
+void calc_min_waves(Program* program);
 void update_vgpr_sgpr_demand(Program* program, const RegisterDemand new_demand);
 live live_var_analysis(Program* program, const struct radv_nir_compiler_options *options);
 std::vector<uint16_t> dead_code_analysis(Program *program);
