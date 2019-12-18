@@ -98,6 +98,11 @@ pixel_storei(GLenum pname, GLint param, bool no_error)
             goto invalid_enum_error;
          ctx->Pack.Invert = param;
          break;
+      case GL_PACK_REVERSE_ROW_ORDER_ANGLE:
+         if (!no_error && !_mesa_is_gles(ctx))
+            goto invalid_enum_error;
+         ctx->Pack.Invert = param;
+         break;
       case GL_PACK_COMPRESSED_BLOCK_WIDTH:
          if (!no_error && !_mesa_is_desktop_gl(ctx))
             goto invalid_enum_error;

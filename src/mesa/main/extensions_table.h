@@ -27,6 +27,7 @@ EXT(AMD_vertex_shader_viewport_index        , AMD_vertex_shader_viewport_index  
 
 EXT(ANDROID_extension_pack_es31a            , ANDROID_extension_pack_es31a           ,  x ,  x ,  x ,  31, 2014)
 
+EXT(ANGLE_pack_reverse_row_order            , dummy_true                             ,  x ,  x ,  x , ES2, 2011)
 EXT(ANGLE_texture_compression_dxt3          , ANGLE_texture_compression_dxt          , GLL, GLC, ES1, ES2, 2011)
 EXT(ANGLE_texture_compression_dxt5          , ANGLE_texture_compression_dxt          , GLL, GLC, ES1, ES2, 2011)
 
