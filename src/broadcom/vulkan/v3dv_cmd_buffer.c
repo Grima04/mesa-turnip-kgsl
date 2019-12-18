@@ -142,6 +142,11 @@ cmd_buffer_reset(struct v3dv_cmd_buffer *cmd_buffer)
       v3dv_cl_reset(&cmd_buffer->rcl);
       v3dv_cl_reset(&cmd_buffer->indirect);
 
+      struct v3dv_cmd_buffer_state *state = &cmd_buffer->state;
+      state->pass = NULL;
+      state->framebuffer = NULL;
+      state->subpass_idx = 0;
+
       cmd_buffer->status = V3DV_CMD_BUFFER_STATUS_INITIALIZED;
    }
    return VK_SUCCESS;
