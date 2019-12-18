@@ -143,10 +143,8 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return 0;
 #endif
 
-#if 0 /* TODO: Enable me */
    case PIPE_CAP_MIXED_COLORBUFFER_FORMATS:
       return 1;
-#endif
 
    case PIPE_CAP_SEAMLESS_CUBE_MAP:
       return 1;
