@@ -365,19 +365,6 @@ get_atomic_dest_mov(struct ir3_instruction *atomic)
 	list_delinit(&mov->node);
 	list_add(&mov->node, &atomic->node);
 
-	/* And because this is after instruction scheduling, we don't really
-	 * have a good way to know if extra delay slots are needed.  For
-	 * example, if the result is consumed by an stib (storeImage()) there
-	 * would be no extra delay slots in place already, but 5 are needed.
-	 * Just plan for the worst and hope nobody looks at the resulting
-	 * code that is generated :-(
-	 */
-	struct ir3_instruction *nop = ir3_NOP(atomic->block);
-	nop->repeat = 5;
-
-	list_delinit(&nop->node);
-	list_add(&nop->node, &mov->node);
-
 	return atomic->data = mov;
 }
 

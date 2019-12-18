@@ -335,3 +335,24 @@ ir3_delay_calc(struct ir3_block *block, struct ir3_instruction *instr,
 
 	return delay;
 }
+
+/**
+ * Remove nop instructions.  The scheduler can insert placeholder nop's
+ * so that ir3_delay_calc() can account for nop's that won't be needed
+ * due to nop's triggered by a previous instruction.  However, before
+ * legalize, we want to remove these.  The legalize pass can insert
+ * some nop's if needed to hold (for example) sync flags.  This final
+ * remaining nops are inserted by legalize after this.
+ */
+void
+ir3_remove_nops(struct ir3 *ir)
+{
+	foreach_block (block, &ir->block_list) {
+		foreach_instr_safe (instr, &block->instr_list) {
+			if (instr->opc == OPC_NOP) {
+				list_del(&instr->node);
+			}
+		}
+	}
+
+}

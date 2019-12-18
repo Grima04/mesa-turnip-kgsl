@@ -211,26 +211,6 @@ legalize_block(struct ir3_legalize_ctx *ctx, struct ir3_block *block)
 		if (list_is_empty(&block->instr_list) && (opc_cat(n->opc) >= 5))
 			ir3_NOP(block);
 
-		if (is_nop(n) && !list_is_empty(&block->instr_list)) {
-			struct ir3_instruction *last = list_last_entry(&block->instr_list,
-					struct ir3_instruction, node);
-			if (is_nop(last) && (last->repeat < 5)) {
-				last->repeat++;
-				last->flags |= n->flags;
-				continue;
-			}
-
-			/* NOTE: I think the nopN encoding works for a5xx and
-			 * probably a4xx, but not a3xx.  So far only tested on
-			 * a6xx.
-			 */
-			if ((ctx->compiler->gpu_id >= 600) && !n->flags && (last->nop < 3) &&
-					((opc_cat(last->opc) == 2) || (opc_cat(last->opc) == 3))) {
-				last->nop++;
-				continue;
-			}
-		}
-
 		if (ctx->compiler->samgq_workaround &&
 			ctx->type == MESA_SHADER_VERTEX && n->opc == OPC_SAMGQ) {
 			struct ir3_instruction *samgp;
@@ -573,6 +553,54 @@ mark_xvergence_points(struct ir3 *ir)
 	}
 }
 
+/* Insert nop's required to make this a legal/valid shader program: */
+static void
+nop_sched(struct ir3 *ir)
+{
+	foreach_block (block, &ir->block_list) {
+		struct ir3_instruction *last = NULL;
+		struct list_head instr_list;
+
+		/* remove all the instructions from the list, we'll be adding
+		 * them back in as we go
+		 */
+		list_replace(&block->instr_list, &instr_list);
+		list_inithead(&block->instr_list);
+
+		foreach_instr_safe (instr, &instr_list) {
+			unsigned delay = ir3_delay_calc(block, instr, false, true);
+
+			/* NOTE: I think the nopN encoding works for a5xx and
+			 * probably a4xx, but not a3xx.  So far only tested on
+			 * a6xx.
+			 */
+
+			if ((delay > 0) && (ir->compiler->gpu_id >= 600) && last &&
+					((opc_cat(last->opc) == 2) || (opc_cat(last->opc) == 3))) {
+				/* the previous cat2/cat3 instruction can encode at most 3 nop's: */
+				unsigned transfer = MIN2(delay, 3 - last->nop);
+				last->nop += transfer;
+				delay -= transfer;
+			}
+
+			if ((delay > 0) && last && (last->opc == OPC_NOP)) {
+				/* the previous nop can encode at most 5 repeats: */
+				unsigned transfer = MIN2(delay, 5 - last->repeat);
+				last->repeat += transfer;
+				delay -= transfer;
+			}
+
+			if (delay > 0) {
+				debug_assert(delay <= 6);
+				ir3_NOP(block)->repeat = delay - 1;
+			}
+
+			list_addtail(&instr->node, &block->instr_list);
+			last = instr;
+		}
+	}
+}
+
 void
 ir3_legalize(struct ir3 *ir, struct ir3_shader_variant *so, int *max_bary)
 {
@@ -589,6 +617,8 @@ ir3_legalize(struct ir3 *ir, struct ir3_shader_variant *so, int *max_bary)
 		block->data = rzalloc(ctx, struct ir3_legalize_block_data);
 	}
 
+	ir3_remove_nops(ir);
+
 	/* process each block: */
 	do {
 		progress = false;
@@ -598,6 +628,8 @@ ir3_legalize(struct ir3 *ir, struct ir3_shader_variant *so, int *max_bary)
 	} while (progress);
 
 	*max_bary = ctx->max_bary;
+
+	nop_sched(ir);
 
 	do {
 		ir3_count_instructions(ir);

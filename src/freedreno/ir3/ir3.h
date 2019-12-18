@@ -1120,6 +1120,7 @@ unsigned ir3_distance(struct ir3_block *block, struct ir3_instruction *instr,
 		unsigned maxd, bool pred);
 unsigned ir3_delay_calc(struct ir3_block *block, struct ir3_instruction *instr,
 		bool soft, bool pred);
+void ir3_remove_nops(struct ir3 *ir);
 
 /* depth calculation: */
 struct ir3_shader_variant;

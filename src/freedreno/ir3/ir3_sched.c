@@ -717,7 +717,6 @@ sched_block(struct ir3_sched_ctx *ctx, struct ir3_block *block)
 
 		if (instr) {
 			unsigned delay = ir3_delay_calc(ctx->block, instr, false, false);
-
 			d("delay=%u", delay);
 
 			/* and if we run out of instructions that can be scheduled,
@@ -770,17 +769,9 @@ sched_block(struct ir3_sched_ctx *ctx, struct ir3_block *block)
 	if (block->successors[1]) {
 		/* if/else, conditional branches to "then" or "else": */
 		struct ir3_instruction *br;
-		unsigned delay = 6;
 
 		debug_assert(ctx->pred);
 		debug_assert(block->condition);
-
-		delay -= ir3_distance(ctx->block, ctx->pred, delay, false);
-
-		while (delay > 0) {
-			ir3_NOP(block);
-			delay--;
-		}
 
 		/* create "else" branch first (since "then" block should
 		 * frequently/always end up being a fall-thru):
@@ -814,45 +805,6 @@ sched_block(struct ir3_sched_ctx *ctx, struct ir3_block *block)
 	 */
 }
 
-/* After scheduling individual blocks, we still could have cases where
- * one (or more) paths into a block, a value produced by a previous
- * has too few delay slots to be legal.  We can't deal with this in the
- * first pass, because loops (ie. we can't ensure all predecessor blocks
- * are already scheduled in the first pass).  All we can really do at
- * this point is stuff in extra nop's until things are legal.
- */
-static void
-sched_intra_block(struct ir3_sched_ctx *ctx, struct ir3_block *block)
-{
-	unsigned n = 0;
-
-	ctx->block = block;
-
-	foreach_instr_safe (instr, &block->instr_list) {
-		unsigned delay = 0;
-
-		set_foreach(block->predecessors, entry) {
-			struct ir3_block *pred = (struct ir3_block *)entry->key;
-			unsigned d = ir3_delay_calc(pred, instr, false, true);
-			delay = MAX2(d, delay);
-		}
-
-		while (delay > n) {
-			struct ir3_instruction *nop = ir3_NOP(block);
-
-			/* move to before instr: */
-			list_delinit(&nop->node);
-			list_addtail(&nop->node, &instr->node);
-
-			n++;
-		}
-
-		/* we can bail once we hit worst case delay: */
-		if (++n > 6)
-			break;
-	}
-}
-
 int ir3_sched(struct ir3 *ir)
 {
 	struct ir3_sched_ctx ctx = {0};
@@ -863,10 +815,6 @@ int ir3_sched(struct ir3 *ir)
 	foreach_block (block, &ir->block_list) {
 		ctx.live_values = 0;
 		sched_block(&ctx, block);
-	}
-
-	foreach_block (block, &ir->block_list) {
-		sched_intra_block(&ctx, block);
 	}
 
 	if (ctx.error)
