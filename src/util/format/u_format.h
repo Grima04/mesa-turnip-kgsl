@@ -1341,6 +1341,7 @@ util_format_get_plane_format(enum pipe_format format, unsigned plane)
       return !plane ? PIPE_FORMAT_R8_UNORM : PIPE_FORMAT_RG88_UNORM;
    case PIPE_FORMAT_NV21:
       return !plane ? PIPE_FORMAT_R8_UNORM : PIPE_FORMAT_GR88_UNORM;
+   case PIPE_FORMAT_P010:
    case PIPE_FORMAT_P016:
       return !plane ? PIPE_FORMAT_R16_UNORM : PIPE_FORMAT_R16G16_UNORM;
    default:
@@ -1358,6 +1359,7 @@ util_format_get_plane_width(enum pipe_format format, unsigned plane,
    case PIPE_FORMAT_IYUV:
    case PIPE_FORMAT_NV12:
    case PIPE_FORMAT_NV21:
+   case PIPE_FORMAT_P010:
    case PIPE_FORMAT_P016:
       return !plane ? width : (width + 1) / 2;
    default:
@@ -1374,6 +1376,7 @@ util_format_get_plane_height(enum pipe_format format, unsigned plane,
    case PIPE_FORMAT_IYUV:
    case PIPE_FORMAT_NV12:
    case PIPE_FORMAT_NV21:
+   case PIPE_FORMAT_P010:
    case PIPE_FORMAT_P016:
       return !plane ? height : (height + 1) / 2;
    case PIPE_FORMAT_YV16:
