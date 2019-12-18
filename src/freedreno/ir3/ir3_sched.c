@@ -761,48 +761,6 @@ sched_block(struct ir3_sched_ctx *ctx, struct ir3_block *block)
 			}
 		}
 	}
-
-	/* And lastly, insert branch/jump instructions to take us to
-	 * the next block.  Later we'll strip back out the branches
-	 * that simply jump to next instruction.
-	 */
-	if (block->successors[1]) {
-		/* if/else, conditional branches to "then" or "else": */
-		struct ir3_instruction *br;
-
-		debug_assert(ctx->pred);
-		debug_assert(block->condition);
-
-		/* create "else" branch first (since "then" block should
-		 * frequently/always end up being a fall-thru):
-		 */
-		br = ir3_BR(block);
-		br->cat0.inv = true;
-		br->cat0.target = block->successors[1];
-
-		/* NOTE: we have to hard code delay of 6 above, since
-		 * we want to insert the nop's before constructing the
-		 * branch.  Throw in an assert so we notice if this
-		 * ever breaks on future generation:
-		 */
-		debug_assert(ir3_delayslots(ctx->pred, br, 0) == 6);
-
-		br = ir3_BR(block);
-		br->cat0.target = block->successors[0];
-
-	} else if (block->successors[0]) {
-		/* otherwise unconditional jump to next block: */
-		struct ir3_instruction *jmp;
-
-		jmp = ir3_JUMP(block);
-		jmp->cat0.target = block->successors[0];
-	}
-
-	/* NOTE: if we kept track of the predecessors, we could do a better
-	 * job w/ (jp) flags.. every node w/ > predecessor is a join point.
-	 * Note that as we eliminate blocks which contain only an unconditional
-	 * jump we probably need to propagate (jp) flag..
-	 */
 }
 
 int ir3_sched(struct ir3 *ir)

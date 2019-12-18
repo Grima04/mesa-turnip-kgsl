@@ -553,6 +553,45 @@ mark_xvergence_points(struct ir3 *ir)
 	}
 }
 
+/* Insert the branch/jump instructions for flow control between blocks.
+ * Initially this is done naively, without considering if the successor
+ * block immediately follows the current block (ie. so no jump required),
+ * but that is cleaned up in resolve_jumps().
+ *
+ * TODO what ensures that the last write to p0.x in a block is the
+ * branch condition?  Have we been getting lucky all this time?
+ */
+static void
+block_sched(struct ir3 *ir)
+{
+	foreach_block (block, &ir->block_list) {
+		if (block->successors[1]) {
+			/* if/else, conditional branches to "then" or "else": */
+			struct ir3_instruction *br;
+
+			debug_assert(block->condition);
+
+			/* create "else" branch first (since "then" block should
+			 * frequently/always end up being a fall-thru):
+			 */
+			br = ir3_BR(block, block->condition, 0);
+			br->cat0.inv = true;
+			br->cat0.target = block->successors[1];
+
+			/* "then" branch: */
+			br = ir3_BR(block, block->condition, 0);
+			br->cat0.target = block->successors[0];
+
+		} else if (block->successors[0]) {
+			/* otherwise unconditional jump to next block: */
+			struct ir3_instruction *jmp;
+
+			jmp = ir3_JUMP(block);
+			jmp->cat0.target = block->successors[0];
+		}
+	}
+}
+
 /* Insert nop's required to make this a legal/valid shader program: */
 static void
 nop_sched(struct ir3 *ir)
@@ -629,6 +668,7 @@ ir3_legalize(struct ir3 *ir, struct ir3_shader_variant *so, int *max_bary)
 
 	*max_bary = ctx->max_bary;
 
+	block_sched(ir);
 	nop_sched(ir);
 
 	do {

@@ -1116,8 +1116,6 @@ void ir3_print_instr(struct ir3_instruction *instr);
 /* delay calculation: */
 int ir3_delayslots(struct ir3_instruction *assigner,
 		struct ir3_instruction *consumer, unsigned n);
-unsigned ir3_distance(struct ir3_block *block, struct ir3_instruction *instr,
-		unsigned maxd, bool pred);
 unsigned ir3_delay_calc(struct ir3_block *block, struct ir3_instruction *instr,
 		bool soft, bool pred);
 void ir3_remove_nops(struct ir3 *ir);
@@ -1359,7 +1357,7 @@ ir3_##name(struct ir3_block *block,                                      \
 #define INSTR4(name)        __INSTR4(0, name, OPC_##name)
 
 /* cat0 instructions: */
-INSTR0(BR)
+INSTR1(BR)
 INSTR0(JUMP)
 INSTR1(KILL)
 INSTR0(END)

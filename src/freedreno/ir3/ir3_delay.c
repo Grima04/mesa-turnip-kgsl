@@ -126,8 +126,8 @@ count_instruction(struct ir3_instruction *n)
  *    find the worst case (shortest) distance (only possible after
  *    individual blocks are all scheduled)
  */
-unsigned
-ir3_distance(struct ir3_block *block, struct ir3_instruction *instr,
+static unsigned
+distance(struct ir3_block *block, struct ir3_instruction *instr,
 		unsigned maxd, bool pred)
 {
 	unsigned d = 0;
@@ -162,7 +162,7 @@ ir3_distance(struct ir3_block *block, struct ir3_instruction *instr,
 			struct ir3_block *pred = (struct ir3_block *)entry->key;
 			unsigned n;
 
-			n = ir3_distance(pred, instr, min, pred);
+			n = distance(pred, instr, min, pred);
 
 			min = MIN2(min, n);
 		}
@@ -204,7 +204,7 @@ delay_calc_srcn(struct ir3_block *block,
 		} else {
 			delay = ir3_delayslots(assigner, consumer, srcn);
 		}
-		delay -= ir3_distance(block, assigner, delay, pred);
+		delay -= distance(block, assigner, delay, pred);
 	}
 
 	return delay;
