@@ -373,9 +373,13 @@ struct v3dv_cmd_buffer_state {
    const struct v3dv_render_pass *pass;
    const struct v3dv_framebuffer *framebuffer;
    VkRect2D render_area;
-   struct v3dv_cmd_buffer_attachment_state attachments[6]; /* FIXME */
 
+   uint32_t clear_value_count;
+   VkClearValue *clear_values;
+
+   /* Subpass state */
    uint32_t subpass_idx;
+   struct v3dv_cmd_buffer_attachment_state attachments[6]; /* 4 color + D + S */
 };
 
 struct v3dv_cmd_buffer {

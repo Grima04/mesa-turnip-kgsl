@@ -260,9 +260,9 @@ emit_clip_window(struct v3dv_cmd_buffer *cmd_buffer, VkRect2D *rect)
 }
 
 static void
-compute_tlb_color_clear(struct v3dv_cmd_buffer *cmd_buffer,
-                        uint32_t attachment_idx,
-                        const VkClearColorValue *color)
+cmd_buffer_state_set_attachment_clear_color(struct v3dv_cmd_buffer *cmd_buffer,
+                                            uint32_t attachment_idx,
+                                            const VkClearColorValue *color)
 {
    assert(attachment_idx < cmd_buffer->state.framebuffer->attachment_count);
 
@@ -304,6 +304,23 @@ compute_tlb_color_clear(struct v3dv_cmd_buffer *cmd_buffer,
    }
 }
 
+static void
+cmd_buffer_state_set_clear_values(struct v3dv_cmd_buffer *cmd_buffer,
+                                  uint32_t count, const VkClearValue *values)
+{
+   struct v3dv_cmd_buffer_state *state = &cmd_buffer->state;
+
+   const uint32_t bytes = sizeof(VkClearValue) * count;
+   if (state->clear_value_count < count) {
+      vk_free(&cmd_buffer->device->alloc, state->clear_values);
+      state->clear_value_count = count;
+      state->clear_values = vk_alloc(&cmd_buffer->device->alloc, bytes, 8,
+                                     VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   }
+
+   memcpy(state->clear_values, values, bytes);
+}
+
 void
 v3dv_CmdBeginRenderPass(VkCommandBuffer commandBuffer,
                         const VkRenderPassBeginInfo *pRenderPassBegin,
@@ -313,8 +330,15 @@ v3dv_CmdBeginRenderPass(VkCommandBuffer commandBuffer,
    V3DV_FROM_HANDLE(v3dv_render_pass, pass, pRenderPassBegin->renderPass);
    V3DV_FROM_HANDLE(v3dv_framebuffer, framebuffer, pRenderPassBegin->framebuffer);
 
-   cmd_buffer->state.pass = pass;
-   cmd_buffer->state.framebuffer = framebuffer;
+   struct v3dv_cmd_buffer_state *state = &cmd_buffer->state;
+   state->pass = pass;
+   state->framebuffer = framebuffer;
+
+   /* Store clear values in the command buffer state for later reference */
+   assert(pRenderPassBegin->clearValueCount <= pass->attachment_count);
+   cmd_buffer_state_set_clear_values(cmd_buffer,
+                                     pRenderPassBegin->clearValueCount,
+                                     pRenderPassBegin->pClearValues);
 
    v3dv_cl_ensure_space_with_branch(&cmd_buffer->bcl, 256);
 
@@ -385,33 +409,11 @@ v3dv_CmdBeginRenderPass(VkCommandBuffer commandBuffer,
     *        the tile clears will render full tiles anyway.
     *        See vkGetRenderAreaGranularity().
     */
-   cmd_buffer->state.render_area = pRenderPassBegin->renderArea;
-   emit_clip_window(cmd_buffer, &cmd_buffer->state.render_area);
-
-   /* Compute tile color clear values */
-   for (uint32_t i = 0; i < cmd_buffer->state.pass->attachment_count; i++) {
-      const struct v3dv_render_pass_attachment *attachment =
-         &cmd_buffer->state.pass->attachments[i];
-
-      if (attachment->desc.loadOp != VK_ATTACHMENT_LOAD_OP_CLEAR)
-         continue;
-
-      const struct v3dv_image_view *iview =
-         cmd_buffer->state.framebuffer->attachments[i];
-
-      /* FIXME: support depth/stencil clear */
-      assert((iview->aspects &
-              (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) == 0);
-
-      if (iview->aspects & VK_IMAGE_ASPECT_COLOR_BIT) {
-         const VkClearColorValue *clear_color =
-            &pRenderPassBegin->pClearValues[i].color;
-         compute_tlb_color_clear(cmd_buffer, i, clear_color);
-      }
-   }
+   state->render_area = pRenderPassBegin->renderArea;
+   emit_clip_window(cmd_buffer, &state->render_area);
 
    /* Setup for first subpass */
-   cmd_buffer->state.subpass_idx = 0;
+   state->subpass_idx = 0;
 }
 
 static void
@@ -798,6 +800,54 @@ emit_rcl(struct v3dv_cmd_buffer *cmd_buffer)
    cl_emit(rcl, END_OF_RENDERING, end);
 }
 
+static void
+setup_subpass(struct v3dv_cmd_buffer *cmd_buffer)
+{
+   const struct v3dv_cmd_buffer_state *state = &cmd_buffer->state;
+
+   assert(state->subpass_idx < state->pass->subpass_count);
+   const struct v3dv_subpass *subpass =
+      &state->pass->subpasses[state->subpass_idx];
+
+   /* Compute hardware color clear values for each subpass attachment */
+   /* FIXME: support depth/stencil */
+   for (uint32_t i = 0; i < subpass->color_count; i++) {
+      uint32_t rp_attachment_idx = subpass->color_attachments[i].attachment;
+      const struct v3dv_render_pass_attachment *attachment =
+         &cmd_buffer->state.pass->attachments[rp_attachment_idx];
+
+      /* FIXME: if a previous subpass has alredy computed the hw clear color
+       *        for this attachment we could skip this. We can just flag this
+       *        in the command buffer state.
+       */
+
+      if (attachment->desc.loadOp != VK_ATTACHMENT_LOAD_OP_CLEAR)
+         continue;
+
+      const uint32_t sp_attachment_idx = i;
+      const struct v3dv_image_view *iview =
+         cmd_buffer->state.framebuffer->attachments[sp_attachment_idx];
+
+      assert((iview->aspects &
+              (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) == 0);
+
+      if (iview->aspects & VK_IMAGE_ASPECT_COLOR_BIT) {
+         const VkClearColorValue *clear_color =
+            &state->clear_values[rp_attachment_idx].color;
+         cmd_buffer_state_set_attachment_clear_color(cmd_buffer,
+                                                     sp_attachment_idx,
+                                                     clear_color);
+      }
+   }
+}
+
+static void
+execute_subpass(struct v3dv_cmd_buffer *cmd_buffer)
+{
+   setup_subpass(cmd_buffer);
+   emit_rcl(cmd_buffer);
+}
+
 void
 v3dv_CmdEndRenderPass(VkCommandBuffer commandBuffer)
 {
@@ -806,7 +856,7 @@ v3dv_CmdEndRenderPass(VkCommandBuffer commandBuffer)
    /* Emit last subpass */
    struct v3dv_cmd_buffer_state *state = &cmd_buffer->state;
    assert(state->subpass_idx == state->pass->subpass_count - 1);
-   emit_rcl(cmd_buffer);
+   execute_subpass(cmd_buffer);
 
    /* We are no longer inside a render pass */
    state->pass = NULL;
