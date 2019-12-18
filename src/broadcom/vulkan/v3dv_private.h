@@ -389,6 +389,8 @@ struct v3dv_cmd_buffer_state {
    /* Subpass state */
    uint32_t subpass_idx;
    struct v3dv_cmd_buffer_attachment_state attachments[6]; /* 4 color + D + S */
+
+   struct v3dv_pipeline *pipeline;
 };
 
 struct v3dv_cmd_buffer {

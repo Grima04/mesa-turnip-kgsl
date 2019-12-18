@@ -884,3 +884,30 @@ v3dv_EndCommandBuffer(VkCommandBuffer commandBuffer)
 
    return VK_SUCCESS;
 }
+
+
+void
+v3dv_CmdBindPipeline(VkCommandBuffer commandBuffer,
+                     VkPipelineBindPoint pipelineBindPoint,
+                     VkPipeline _pipeline)
+{
+   V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
+   V3DV_FROM_HANDLE(v3dv_pipeline, pipeline, _pipeline);
+
+   switch (pipelineBindPoint) {
+   case VK_PIPELINE_BIND_POINT_COMPUTE:
+      assert(!"VK_PIPELINE_BIND_POINT_COMPUTE not supported yet");
+      break;
+
+   case VK_PIPELINE_BIND_POINT_GRAPHICS:
+      if (cmd_buffer->state.pipeline == pipeline)
+         return;
+
+      cmd_buffer->state.pipeline = pipeline;
+      break;
+
+   default:
+      assert(!"invalid bind point");
+      break;
+   }
+}
