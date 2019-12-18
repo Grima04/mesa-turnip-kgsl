@@ -126,7 +126,6 @@ intelInitExtensions(struct gl_context *ctx)
    ctx->Extensions.APPLE_object_purgeable = true;
    ctx->Extensions.ATI_texture_env_combine3 = true;
    ctx->Extensions.MESA_framebuffer_flip_y = true;
-   ctx->Extensions.MESA_pack_invert = true;
    ctx->Extensions.NV_conditional_render = true;
    ctx->Extensions.NV_fog_distance = true;
    ctx->Extensions.NV_primitive_restart = true;
