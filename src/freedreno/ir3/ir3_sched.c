@@ -265,117 +265,6 @@ deepest(struct ir3_instruction **srcs, unsigned nsrcs)
 	return d;
 }
 
-/**
- * @block: the block to search in, starting from end; in first pass,
- *    this will be the block the instruction would be inserted into
- *    (but has not yet, ie. it only contains already scheduled
- *    instructions).  For intra-block scheduling (second pass), this
- *    would be one of the predecessor blocks.
- * @instr: the instruction to search for
- * @maxd:  max distance, bail after searching this # of instruction
- *    slots, since it means the instruction we are looking for is
- *    far enough away
- * @pred:  if true, recursively search into predecessor blocks to
- *    find the worst case (shortest) distance (only possible after
- *    individual blocks are all scheduled
- */
-static unsigned
-distance(struct ir3_block *block, struct ir3_instruction *instr,
-		unsigned maxd, bool pred)
-{
-	unsigned d = 0;
-
-	foreach_instr_rev (n, &block->instr_list) {
-		if ((n == instr) || (d >= maxd))
-			return d;
-		/* NOTE: don't count branch/jump since we don't know yet if they will
-		 * be eliminated later in resolve_jumps().. really should do that
-		 * earlier so we don't have this constraint.
-		 */
-		if (is_alu(n) || (is_flow(n) && (n->opc != OPC_JUMP) && (n->opc != OPC_BR)))
-			d++;
-	}
-
-	/* if coming from a predecessor block, assume it is assigned far
-	 * enough away.. we'll fix up later.
-	 */
-	if (!pred)
-		return maxd;
-
-	if (pred && (block->data != block)) {
-		/* Search into predecessor blocks, finding the one with the
-		 * shortest distance, since that will be the worst case
-		 */
-		unsigned min = maxd - d;
-
-		/* (ab)use block->data to prevent recursion: */
-		block->data = block;
-
-		set_foreach(block->predecessors, entry) {
-			struct ir3_block *pred = (struct ir3_block *)entry->key;
-			unsigned n;
-
-			n = distance(pred, instr, min, pred);
-
-			min = MIN2(min, n);
-		}
-
-		block->data = NULL;
-		d += min;
-	}
-
-	return d;
-}
-
-/* calculate delay for specified src: */
-static unsigned
-delay_calc_srcn(struct ir3_block *block,
-		struct ir3_instruction *assigner,
-		struct ir3_instruction *consumer,
-		unsigned srcn, bool soft, bool pred)
-{
-	unsigned delay = 0;
-
-	if (is_meta(assigner)) {
-		struct ir3_instruction *src;
-		foreach_ssa_src(src, assigner) {
-			unsigned d;
-			d = delay_calc_srcn(block, src, consumer, srcn, soft, pred);
-			delay = MAX2(delay, d);
-		}
-	} else {
-		if (soft) {
-			if (is_sfu(assigner)) {
-				delay = 4;
-			} else {
-				delay = ir3_delayslots(assigner, consumer, srcn);
-			}
-		} else {
-			delay = ir3_delayslots(assigner, consumer, srcn);
-		}
-		delay -= distance(block, assigner, delay, pred);
-	}
-
-	return delay;
-}
-
-/* calculate delay for instruction (maximum of delay for all srcs): */
-static unsigned
-delay_calc(struct ir3_block *block, struct ir3_instruction *instr,
-		bool soft, bool pred)
-{
-	unsigned delay = 0;
-	struct ir3_instruction *src;
-
-	foreach_ssa_src_n(src, i, instr) {
-		unsigned d;
-		d = delay_calc_srcn(block, src, instr, i, soft, pred);
-		delay = MAX2(delay, d);
-	}
-
-	return delay;
-}
-
 struct ir3_sched_notes {
 	/* there is at least one kill which could be scheduled, except
 	 * for unscheduled bary.f's:
@@ -658,7 +547,7 @@ find_eligible_instr(struct ir3_sched_ctx *ctx, struct ir3_sched_notes *notes,
 				continue;
 		}
 
-		int rank = delay_calc(ctx->block, candidate, soft, false);
+		int rank = ir3_delay_calc(ctx->block, candidate, soft, false);
 
 		/* if too many live values, prioritize instructions that reduce the
 		 * number of live values:
@@ -827,7 +716,7 @@ sched_block(struct ir3_sched_ctx *ctx, struct ir3_block *block)
 			instr = find_eligible_instr(ctx, &notes, false);
 
 		if (instr) {
-			unsigned delay = delay_calc(ctx->block, instr, false, false);
+			unsigned delay = ir3_delay_calc(ctx->block, instr, false, false);
 
 			d("delay=%u", delay);
 
@@ -886,7 +775,7 @@ sched_block(struct ir3_sched_ctx *ctx, struct ir3_block *block)
 		debug_assert(ctx->pred);
 		debug_assert(block->condition);
 
-		delay -= distance(ctx->block, ctx->pred, delay, false);
+		delay -= ir3_distance(ctx->block, ctx->pred, delay, false);
 
 		while (delay > 0) {
 			ir3_NOP(block);
@@ -944,7 +833,7 @@ sched_intra_block(struct ir3_sched_ctx *ctx, struct ir3_block *block)
 
 		set_foreach(block->predecessors, entry) {
 			struct ir3_block *pred = (struct ir3_block *)entry->key;
-			unsigned d = delay_calc(pred, instr, false, true);
+			unsigned d = ir3_delay_calc(pred, instr, false, true);
 			delay = MAX2(d, delay);
 		}
 

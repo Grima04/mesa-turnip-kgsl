@@ -54,6 +54,7 @@ libfreedreno_ir3_files = files(
   'ir3_context.c',
   'ir3_context.h',
   'ir3_cp.c',
+  'ir3_delay.c',
   'ir3_depth.c',
   'ir3_group.c',
   'ir3_image.c',

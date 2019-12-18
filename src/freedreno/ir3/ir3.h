@@ -1113,10 +1113,16 @@ static inline bool __is_false_dep(struct ir3_instruction *instr, unsigned n)
 void ir3_print(struct ir3 *ir);
 void ir3_print_instr(struct ir3_instruction *instr);
 
-/* depth calculation: */
-struct ir3_shader_variant;
+/* delay calculation: */
 int ir3_delayslots(struct ir3_instruction *assigner,
 		struct ir3_instruction *consumer, unsigned n);
+unsigned ir3_distance(struct ir3_block *block, struct ir3_instruction *instr,
+		unsigned maxd, bool pred);
+unsigned ir3_delay_calc(struct ir3_block *block, struct ir3_instruction *instr,
+		bool soft, bool pred);
+
+/* depth calculation: */
+struct ir3_shader_variant;
 void ir3_insert_by_depth(struct ir3_instruction *instr, struct list_head *list);
 void ir3_depth(struct ir3 *ir, struct ir3_shader_variant *so);
 
