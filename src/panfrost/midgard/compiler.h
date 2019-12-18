@@ -655,9 +655,7 @@ void mir_invalidate_liveness(compiler_context *ctx);
 bool mir_is_live_after(compiler_context *ctx, midgard_block *block, midgard_instruction *start, int src);
 
 void mir_create_pipeline_registers(compiler_context *ctx);
-
-void
-midgard_promote_uniforms(compiler_context *ctx, unsigned promoted_count);
+void midgard_promote_uniforms(compiler_context *ctx);
 
 midgard_instruction *
 emit_ubo_read(
