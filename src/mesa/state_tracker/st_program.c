@@ -694,6 +694,10 @@ st_create_vp_variant(struct st_context *st,
    else
       vpv->base.driver_shader = pipe->create_vs_state(pipe, &state);
 
+   if (state.tokens) {
+      tgsi_free_tokens(state.tokens);
+   }
+
    return vpv;
 }
 
