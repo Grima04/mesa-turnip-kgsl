@@ -494,7 +494,6 @@ optimise_nir(nir_shader *nir, unsigned quirks)
                 (nir->options->lower_flrp64 ? 64 : 0);
 
         NIR_PASS(progress, nir, nir_lower_regs_to_ssa);
-        NIR_PASS(progress, nir, midgard_nir_lower_fdot2);
         NIR_PASS(progress, nir, nir_lower_idiv, nir_lower_idiv_fast);
 
         nir_lower_tex_options lower_tex_options = {
@@ -502,9 +501,15 @@ optimise_nir(nir_shader *nir, unsigned quirks)
                 .lower_txp = ~0,
                 .lower_tex_without_implicit_lod =
                         (quirks & MIDGARD_EXPLICIT_LOD),
+
+                /* TODO: we have native gradient.. */
+                .lower_txd = true,
         };
 
         NIR_PASS(progress, nir, nir_lower_tex, &lower_tex_options);
+
+        /* Must lower fdot2 after tex is lowered */
+        NIR_PASS(progress, nir, midgard_nir_lower_fdot2);
 
         /* T720 is broken. */
 
