@@ -1204,6 +1204,16 @@ retry:
 			ra_set_node_reg(ctx->g, name, reg);
 		}
 	}
+
+	if (ir3_shader_debug & IR3_DBG_OPTMSGS) {
+		foreach_array (arr, &ctx->ir->array_list) {
+			unsigned first = arr->reg;
+			unsigned last  = arr->reg + arr->length - 1;
+			debug_printf("arr[%d] at r%d.%c->r%d.%c\n", arr->id,
+					(first >> 2), "xyzw"[first & 0x3],
+					(last >> 2), "xyzw"[last & 0x3]);
+		}
+	}
 }
 
 static int
