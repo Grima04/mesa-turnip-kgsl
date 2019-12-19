@@ -38,9 +38,6 @@ panfrost_emit_vertex_data(struct panfrost_batch *batch)
         union mali_attr attrs[PIPE_MAX_ATTRIBS * 2];
         unsigned k = 0;
 
-        unsigned vertex_count = ctx->vertex_count;
-        unsigned instanced_count = ctx->instance_count;
-
         for (unsigned i = 0; i < so->num_elements; ++i) {
                 /* We map a mali_attr to be 1:1 with the mali_attr_meta, which
                  * means duplicating some vertex buffers (who cares? aside from
@@ -97,7 +94,7 @@ panfrost_emit_vertex_data(struct panfrost_batch *batch)
 
                 unsigned divisor = elem->instance_divisor;
 
-                if (divisor && instanced_count == 1) {
+                if (divisor && ctx->instance_count == 1) {
                         /* Silly corner case where there's a divisor(=1) but
                          * there's no legitimate instancing. So we want *every*
                          * attribute to be the same. So set stride to zero so
@@ -106,7 +103,7 @@ panfrost_emit_vertex_data(struct panfrost_batch *batch)
                         attrs[k].size = attrs[k].stride + chopped_addr;
                         attrs[k].stride = 0;
                         attrs[k++].elements |= MALI_ATTR_LINEAR;
-                } else if (instanced_count <= 1) {
+                } else if (ctx->instance_count <= 1) {
                         /* Normal, non-instanced attributes */
                         attrs[k++].elements |= MALI_ATTR_LINEAR;
                 } else {
