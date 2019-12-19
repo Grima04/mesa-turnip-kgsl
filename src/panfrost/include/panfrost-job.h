@@ -816,9 +816,10 @@ enum mali_attr_mode {
         MALI_ATTR_INTERNAL = 6
 };
 
-/* Pseudo-address for gl_FrontFacing, used with INTERNAL. Same addres is used
- * for gl_FragCoord with IMAGE, needing a coordinate flip. Who knows. */
+/* Pseudo-address for gl_VertexID, gl_FragCoord, gl_FrontFacing */
 
+#define MALI_ATTR_VERTEXID (0x22)
+#define MALI_ATTR_INSTANCEID (0x24)
 #define MALI_VARYING_FRAG_COORD (0x25)
 #define MALI_VARYING_FRONT_FACING (0x26)
 
@@ -832,7 +833,7 @@ enum mali_attr_mode {
 /* Used for comparison to check if an address is special. Mostly a guess, but
  * it doesn't really matter. */
 
-#define MALI_VARYING_SPECIAL (0x100)
+#define MALI_RECORD_SPECIAL (0x100)
 
 union mali_attr {
 	/* This is used for actual attributes. */

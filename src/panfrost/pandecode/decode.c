@@ -441,9 +441,15 @@ static char *pandecode_attr_mode_short(enum mali_attr_mode mode)
 }
 
 static const char *
-pandecode_special_varying(uint64_t v)
+pandecode_special_record(uint64_t v, bool* attribute)
 {
         switch(v) {
+        case MALI_ATTR_VERTEXID:
+                *attribute = true;
+                return "gl_VertexID";
+        case MALI_ATTR_INSTANCEID:
+                *attribute = true;
+                return "gl_InstanceID";
         case MALI_VARYING_FRAG_COORD:
                 return "gl_FragCoord";
         case MALI_VARYING_FRONT_FACING:
@@ -451,7 +457,7 @@ pandecode_special_varying(uint64_t v)
         case MALI_VARYING_POINT_COORD:
                 return "gl_PointCoord";
         default:
-                pandecode_msg("XXX: invalid special varying %" PRIx64 "\n", v);
+                pandecode_msg("XXX: invalid special record %" PRIx64 "\n", v);
                 return "";
         }
 }
@@ -1334,27 +1340,44 @@ pandecode_attributes(const struct pandecode_mapped_memory *mem,
 
         for (int i = 0; i < count; ++i) {
                 /* First, check for special records */
-                if (attr[i].elements < MALI_VARYING_SPECIAL) {
-                        /* Special records are always varyings */
+                if (attr[i].elements < MALI_RECORD_SPECIAL) {
+                        if (attr[i].size)
+                                pandecode_msg("XXX: tripped size=%d\n", attr[i].size);
 
-                        if (!varying)
-                                pandecode_msg("XXX: Special varying in attribute field\n");
+                        if (attr[i].stride) {
+                                /* gl_InstanceID passes a magic divisor in the
+                                 * stride field to divide by the padded vertex
+                                 * count. No other records should do so, so
+                                 * stride should otherwise be zero. Note that
+                                 * stride in the usual attribute sense doesn't
+                                 * apply to special records. */
 
-                        if (job_type != JOB_TYPE_TILER)
-                                pandecode_msg("XXX: Special varying in non-FS\n");
+                                bool has_divisor = attr[i].elements == MALI_ATTR_INSTANCEID;
 
-                        /* We're special, so all fields should be zero */
-                        unsigned zero = attr[i].stride | attr[i].size;
-                        zero |= attr[i].shift | attr[i].extra_flags;
-
-                        if (zero)
-                                pandecode_msg("XXX: Special varying has non-zero fields\n");
-                        else {
-                                /* Print the special varying name */
-                                pandecode_log("varying_%d = %s;", i, pandecode_special_varying(attr[i].elements));
-                                continue;
+                                pandecode_log_cont("/* %smagic divisor = %X */ ",
+                                                has_divisor ? "" : "XXX: ", attr[i].stride);
                         }
-                }
+
+                        if (attr[i].shift || attr[i].extra_flags) {
+                                /* Attributes use these fields for
+                                 * instancing/padding/etc type issues, but
+                                 * varyings don't */
+
+                                pandecode_log_cont("/* %sshift=%d, extra=%d */ ",
+                                                varying ? "XXX: " : "",
+                                                attr[i].shift, attr[i].extra_flags);
+                        }
+
+                        /* Print the special record name */
+                        bool attribute = false;
+                        pandecode_log("%s_%d = %s;\n", prefix, i, pandecode_special_record(attr[i].elements, &attribute));
+
+                        /* Sanity check */
+                        if (attribute == varying)
+                                pandecode_msg("XXX: mismatched special record\n");
+
+                        continue;
+        }
 
                 enum mali_attr_mode mode = attr[i].elements & 7;
 
