@@ -91,6 +91,14 @@ struct radv_tessellation_state {
 	uint32_t tf_param;
 };
 
+static const VkPipelineMultisampleStateCreateInfo *
+radv_pipeline_get_multisample_state(const VkGraphicsPipelineCreateInfo *pCreateInfo)
+{
+	if (!pCreateInfo->pRasterizationState->rasterizerDiscardEnable)
+		return pCreateInfo->pMultisampleState;
+	return NULL;
+}
+
 bool radv_pipeline_has_ngg(const struct radv_pipeline *pipeline)
 {
 	struct radv_shader_variant *variant = NULL;
@@ -699,7 +707,7 @@ radv_pipeline_init_blend_state(struct radv_pipeline *pipeline,
 			       const struct radv_graphics_pipeline_create_info *extra)
 {
 	const VkPipelineColorBlendStateCreateInfo *vkblend = pCreateInfo->pColorBlendState;
-	const VkPipelineMultisampleStateCreateInfo *vkms = pCreateInfo->pMultisampleState;
+	const VkPipelineMultisampleStateCreateInfo *vkms = radv_pipeline_get_multisample_state(pCreateInfo);
 	struct radv_blend_state blend = {0};
 	unsigned mode = V_028808_CB_NORMAL;
 	int i;
@@ -1092,7 +1100,7 @@ radv_pipeline_init_multisample_state(struct radv_pipeline *pipeline,
 				     struct radv_blend_state *blend,
 				     const VkGraphicsPipelineCreateInfo *pCreateInfo)
 {
-	const VkPipelineMultisampleStateCreateInfo *vkms = pCreateInfo->pMultisampleState;
+	const VkPipelineMultisampleStateCreateInfo *vkms = radv_pipeline_get_multisample_state(pCreateInfo);
 	struct radv_multisample_state *ms = &pipeline->graphics.ms;
 	unsigned num_tile_pipes = pipeline->device->physical_device->rad_info.num_tile_pipes;
 	bool out_of_order_rast = false;
@@ -2268,11 +2276,11 @@ radv_generate_graphics_pipeline_key(struct radv_pipeline *pipeline,
 	if (pCreateInfo->pTessellationState)
 		key.tess_input_vertices = pCreateInfo->pTessellationState->patchControlPoints;
 
-
-	if (pCreateInfo->pMultisampleState &&
-	    pCreateInfo->pMultisampleState->rasterizationSamples > 1) {
-		uint32_t num_samples = pCreateInfo->pMultisampleState->rasterizationSamples;
-		uint32_t ps_iter_samples = radv_pipeline_get_ps_iter_samples(pCreateInfo->pMultisampleState);
+	const VkPipelineMultisampleStateCreateInfo *vkms =
+		radv_pipeline_get_multisample_state(pCreateInfo);
+	if (vkms && vkms->rasterizationSamples > 1) {
+		uint32_t num_samples = vkms->rasterizationSamples;
+		uint32_t ps_iter_samples = radv_pipeline_get_ps_iter_samples(vkms);
 		key.num_samples = num_samples;
 		key.log2_ps_iter_samples = util_logbase2(ps_iter_samples);
 	}
