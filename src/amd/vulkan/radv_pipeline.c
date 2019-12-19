@@ -111,6 +111,18 @@ radv_pipeline_get_tessellation_state(const VkGraphicsPipelineCreateInfo *pCreate
 	return NULL;
 }
 
+static const VkPipelineDepthStencilStateCreateInfo *
+radv_pipeline_get_depth_stencil_state(const VkGraphicsPipelineCreateInfo *pCreateInfo)
+{
+	RADV_FROM_HANDLE(radv_render_pass, pass, pCreateInfo->renderPass);
+	struct radv_subpass *subpass = pass->subpasses + pCreateInfo->subpass;
+
+	if (!pCreateInfo->pRasterizationState->rasterizerDiscardEnable &&
+	    subpass->depth_stencil_attachment)
+		return pCreateInfo->pDepthStencilState;
+	return NULL;
+}
+
 bool radv_pipeline_has_ngg(const struct radv_pipeline *pipeline)
 {
 	struct radv_shader_variant *variant = NULL;
@@ -1008,6 +1020,7 @@ radv_pipeline_out_of_order_rast(struct radv_pipeline *pipeline,
 {
 	RADV_FROM_HANDLE(radv_render_pass, pass, pCreateInfo->renderPass);
 	struct radv_subpass *subpass = pass->subpasses + pCreateInfo->subpass;
+	const VkPipelineDepthStencilStateCreateInfo *vkds = radv_pipeline_get_depth_stencil_state(pCreateInfo);
 	unsigned colormask = blend->cb_target_enabled_4bit;
 
 	if (!pipeline->device->physical_device->out_of_order_rast_allowed)
@@ -1022,10 +1035,7 @@ radv_pipeline_out_of_order_rast(struct radv_pipeline *pipeline,
 		.zs = true, .pass_set = true
 	};
 
-	if (pCreateInfo->pDepthStencilState &&
-	    subpass->depth_stencil_attachment) {
-		const VkPipelineDepthStencilStateCreateInfo *vkds =
-			pCreateInfo->pDepthStencilState;
+	if (vkds) {
 		struct radv_render_pass_attachment *attachment =
 			pass->attachments + subpass->depth_stencil_attachment->attachment;
 		bool has_stencil = vk_format_is_stencil(attachment->format);
@@ -3463,7 +3473,7 @@ radv_pipeline_generate_depth_stencil_state(struct radeon_cmdbuf *ctx_cs,
                                            const VkGraphicsPipelineCreateInfo *pCreateInfo,
                                            const struct radv_graphics_pipeline_create_info *extra)
 {
-	const VkPipelineDepthStencilStateCreateInfo *vkds = pCreateInfo->pDepthStencilState;
+	const VkPipelineDepthStencilStateCreateInfo *vkds = radv_pipeline_get_depth_stencil_state(pCreateInfo);
 	RADV_FROM_HANDLE(radv_render_pass, pass, pCreateInfo->renderPass);
 	struct radv_subpass *subpass = pass->subpasses + pCreateInfo->subpass;
 	struct radv_shader_variant *ps = pipeline->shaders[MESA_SHADER_FRAGMENT];
