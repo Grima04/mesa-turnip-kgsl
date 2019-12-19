@@ -426,24 +426,15 @@ lower_mod(nir_builder *b, nir_ssa_def *src0, nir_ssa_def *src1)
     *
     * If the division is lowered, it could add some rounding errors that make
     * floor() to return the quotient minus one when x = N * y. If this is the
-    * case, we should return zero because mod(x, y) output value is [0, y).
-    * But fortunately Vulkan spec allows this kind of errors; from Vulkan
-    * spec, appendix A (Precision and Operation of SPIR-V instructions:
-    *
-    *   "The OpFRem and OpFMod instructions use cheap approximations of
-    *   remainder, and the error can be large due to the discontinuity in
-    *   trunc() and floor(). This can produce mathematically unexpected
-    *   results in some cases, such as FMod(x,x) computing x rather than 0,
-    *   and can also cause the result to have a different sign than the
-    *   infinitely precise result."
-    *
-    * In practice this means the output value is actually in the interval
-    * [0, y].
-    *
+    * case, we return zero because mod(x, y) output value is [0, y).
     */
    nir_ssa_def *floor = nir_ffloor(b, nir_fdiv(b, src0, src1));
+   nir_ssa_def *mod = nir_fsub(b, src0, nir_fmul(b, src1, floor));
 
-   return nir_fsub(b, src0, nir_fmul(b, src1, floor));
+   return nir_bcsel(b,
+                    nir_fne(b, mod, src1),
+                    mod,
+                    nir_imm_double(b, 0.0));
 }
 
 static nir_ssa_def *
