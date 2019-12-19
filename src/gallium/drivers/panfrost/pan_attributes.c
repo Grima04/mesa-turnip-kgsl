@@ -165,23 +165,11 @@ panfrost_padded_vertex_count(
 
 static unsigned
 panfrost_vertex_instanced(
-        struct panfrost_batch *batch,
-        struct panfrost_resource *rsrc,
+        unsigned padded_count,
+        unsigned instance_shift, unsigned instance_odd,
         unsigned divisor,
-        union mali_attr *attrs,
-        mali_ptr addr,
-        unsigned vertex_count,
-        unsigned instance_count)
+        union mali_attr *attrs)
 {
-        /* First, grab the padded vertex count */
-
-        struct pan_shift_odd o = {
-                .shift = batch->ctx->payloads[PIPE_SHADER_FRAGMENT].instance_shift,
-                .odd = batch->ctx->payloads[PIPE_SHADER_FRAGMENT].instance_odd,
-        };
-
-        unsigned padded_count = batch->ctx->padded_count;
-
         /* Depending if there is an instance divisor or not, packing varies.
          * When there is a divisor, the hardware-level divisor is actually the
          * product of the instance divisor and the padded count */
@@ -193,8 +181,8 @@ panfrost_vertex_instanced(
                  * the modulus */
 
                 attrs->elements |= MALI_ATTR_MODULO;
-                attrs->shift = o.shift;
-                attrs->extra_flags = o.odd;
+                attrs->shift = instance_shift;
+                attrs->extra_flags = instance_odd;
 
                 return 1;
         } else if (util_is_power_of_two_or_zero(hw_divisor)) {
@@ -337,8 +325,11 @@ panfrost_emit_vertex_data(struct panfrost_batch *batch)
                         /* Normal, non-instanced attributes */
                         attrs[k++].elements |= MALI_ATTR_LINEAR;
                 } else {
-                        k += panfrost_vertex_instanced(
-                                     batch, rsrc, divisor, &attrs[k], addr, vertex_count, instanced_count);
+                        unsigned instance_shift = batch->ctx->payloads[PIPE_SHADER_FRAGMENT].instance_shift;
+                        unsigned instance_odd = batch->ctx->payloads[PIPE_SHADER_FRAGMENT].instance_odd;
+
+                        k += panfrost_vertex_instanced(batch->ctx->padded_count,
+                                        instance_shift, instance_odd, divisor, &attrs[k]);
                 }
         }
 
