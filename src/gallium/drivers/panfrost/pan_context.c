@@ -1551,16 +1551,16 @@ panfrost_draw_vbo(
         /* Encode the padded vertex count */
 
         if (info->instance_count > 1) {
-                struct pan_shift_odd so =
-                        panfrost_padded_vertex_count(vertex_count);
+                ctx->padded_count = panfrost_padded_vertex_count(vertex_count);
 
-                ctx->payloads[PIPE_SHADER_VERTEX].instance_shift = so.shift;
-                ctx->payloads[PIPE_SHADER_FRAGMENT].instance_shift = so.shift;
+                unsigned shift = __builtin_ctz(ctx->padded_count);
+                unsigned k = ctx->padded_count >> (shift + 1);
 
-                ctx->payloads[PIPE_SHADER_VERTEX].instance_odd = so.odd;
-                ctx->payloads[PIPE_SHADER_FRAGMENT].instance_odd = so.odd;
+                ctx->payloads[PIPE_SHADER_VERTEX].instance_shift = shift;
+                ctx->payloads[PIPE_SHADER_FRAGMENT].instance_shift = shift;
 
-                ctx->padded_count = pan_expand_shift_odd(so);
+                ctx->payloads[PIPE_SHADER_VERTEX].instance_odd = k;
+                ctx->payloads[PIPE_SHADER_FRAGMENT].instance_odd = k;
         } else {
                 ctx->padded_count = vertex_count;
 

@@ -37,82 +37,18 @@
 /* Given an odd number (of the form 2k + 1), compute k */
 #define ODD(odd) ((odd - 1) >> 1)
 
-/* Given the shift/odd pair, recover the original padded integer */
-
-unsigned
-pan_expand_shift_odd(struct pan_shift_odd o)
-{
-        unsigned odd = 2*o.odd + 1;
-        unsigned shift = 1 << o.shift;
-        return odd * shift;
-}
-
-static inline struct pan_shift_odd
-pan_factored(unsigned pot, unsigned odd)
-{
-        struct pan_shift_odd out;
-
-        assert(util_is_power_of_two_or_zero(pot));
-        assert(odd & 1);
-
-        /* Odd is of the form (2k + 1) = (k << 1) + 1 = (k << 1) | 1.
-         *
-         * So (odd >> 1) = ((k << 1) | 1) >> 1 = ((k << 1) >> 1) | (1 >> 1)
-         *  = k | 0 = k */
-
-        out.odd = (odd >> 1);
-
-        /* POT is the form (1 << shift) */
-        out.shift = __builtin_ctz(pot);
-
-        return out;
-}
-
-
-/* For small vertices. Second argument is whether the primitive takes a
- * power-of-two argument, which determines how rounding works. True for POINTS
- * and LINES, false for TRIANGLES. Presumably true for QUADS but you'd be crazy
- * to try instanced quads on ES class hardware <3 */
-
-static struct {
-        unsigned pot;
-        unsigned odd;
-} small_lut[] = {
-        {  0, 1 },
-        {  1, 1 },
-        {  2, 1 },
-        {  1, 3 },
-        {  4, 1 },
-        {  1, 5 },
-        {  2, 3 },
-        {  1, 7 },
-        {  8, 1 },
-        {  1, 9 },
-        {  2, 5 },
-        {  4, 3 }, /* 11 */
-        {  4, 3 },
-        {  2, 7 }, /* 13 */
-        {  2, 7 },
-        { 16, 1 }, /* 15 */
-        { 16, 1 },
-        {  2, 9 },
-        {  4, 5 }, /* 20 */
-        {  4, 5 }
-};
-
-static struct pan_shift_odd
+static unsigned
 panfrost_small_padded_vertex_count(unsigned idx)
 {
-        return pan_factored(
-                       small_lut[idx].pot,
-                       small_lut[idx].odd);
+        if (idx == 11 || idx == 13 || idx == 15 || idx == 19)
+                return idx + 1;
+        else
+                return idx;
 }
 
-static struct pan_shift_odd
+static unsigned
 panfrost_large_padded_vertex_count(uint32_t vertex_count)
 {
-        struct pan_shift_odd out = { 0 };
-
         /* First, we have to find the highest set one */
         unsigned highest = 32 - __builtin_clz(vertex_count);
 
@@ -129,22 +65,21 @@ panfrost_large_padded_vertex_count(uint32_t vertex_count)
         switch (middle_two) {
         case 0b00:
                 if (nibble & 1)
-                        return pan_factored(1 << n, 9);
+                        return (1 << n) * 9;
                 else
-                        return pan_factored(1 << (n + 1), 5);
+                        return (1 << (n + 1)) * 5;
         case 0b01:
-                return pan_factored(1 << (n + 2), 3);
+                return (1 << (n + 2)) * 3;
         case 0b10:
-                return pan_factored(1 << (n + 1), 7);
+                return (1 << (n + 1)) * 7;
         case 0b11:
-        default: /* unreachable */
-                return pan_factored(1 << (n + 4), 1);
+                return (1 << (n + 4));
+        default:
+                return 0; /* unreachable */
         }
-
-        return out;
 }
 
-struct pan_shift_odd
+unsigned
 panfrost_padded_vertex_count(unsigned vertex_count)
 {
         if (vertex_count < 20)
