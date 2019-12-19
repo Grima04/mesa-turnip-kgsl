@@ -1300,6 +1300,37 @@ emit_varying_read(
         emit_mir_instruction(ctx, ins);
 }
 
+static void
+emit_attr_read(
+        compiler_context *ctx,
+        unsigned dest, unsigned offset,
+        unsigned nr_comp, nir_alu_type t)
+{
+        midgard_instruction ins = m_ld_attr_32(dest, offset);
+        ins.load_store.arg_1 = 0x1E;
+        ins.load_store.arg_2 = 0x1E;
+        ins.mask = mask_of(nr_comp);
+
+        /* Use the type appropriate load */
+        switch (t) {
+        case nir_type_uint:
+        case nir_type_bool:
+                ins.load_store.op = midgard_op_ld_attr_32u;
+                break;
+        case nir_type_int:
+                ins.load_store.op = midgard_op_ld_attr_32i;
+                break;
+        case nir_type_float:
+                ins.load_store.op = midgard_op_ld_attr_32;
+                break;
+        default:
+                unreachable("Attempted to load unknown type");
+                break;
+        }
+
+        emit_mir_instruction(ctx, ins);
+}
+
 void
 emit_sysval_read(compiler_context *ctx, nir_instr *instr, signed dest_override,
                 unsigned nr_components)
@@ -1455,30 +1486,8 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                         midgard_instruction move = v_mov(SSA_FIXED_REGISTER(0), reg);
                         emit_mir_instruction(ctx, move);
                         schedule_barrier(ctx);
-                }  else if (ctx->stage == MESA_SHADER_VERTEX) {
-                        midgard_instruction ins = m_ld_attr_32(reg, offset);
-                        ins.load_store.arg_1 = 0x1E;
-                        ins.load_store.arg_2 = 0x1E;
-                        ins.mask = mask_of(nr_comp);
-
-                        /* Use the type appropriate load */
-                        switch (t) {
-                        case nir_type_uint:
-                        case nir_type_bool:
-                                ins.load_store.op = midgard_op_ld_attr_32u;
-                                break;
-                        case nir_type_int:
-                                ins.load_store.op = midgard_op_ld_attr_32i;
-                                break;
-                        case nir_type_float:
-                                ins.load_store.op = midgard_op_ld_attr_32;
-                                break;
-                        default:
-                                unreachable("Attempted to load unknown type");
-                                break;
-                        }
-
-                        emit_mir_instruction(ctx, ins);
+                } else if (ctx->stage == MESA_SHADER_VERTEX) {
+                        emit_attr_read(ctx, reg, offset, nr_comp, t);
                 } else {
                         DBG("Unknown load\n");
                         assert(0);
