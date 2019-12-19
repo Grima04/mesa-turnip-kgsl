@@ -45,6 +45,18 @@ void ac_add_attr_dereferenceable(LLVMValueRef val, uint64_t bytes)
    A->addAttr(llvm::Attribute::getWithDereferenceableBytes(A->getContext(), bytes));
 }
 
+void ac_add_attr_alignment(LLVMValueRef val, uint64_t bytes)
+{
+#if LLVM_VERSION_MAJOR >= 10
+	llvm::Argument *A = llvm::unwrap<llvm::Argument>(val);
+	A->addAttr(llvm::Attribute::getWithAlignment(A->getContext(), llvm::Align(bytes)));
+#else
+	/* Avoid unused parameter warnings. */
+	(void)val;
+	(void)bytes;
+#endif
+}
+
 bool ac_is_sgpr_param(LLVMValueRef arg)
 {
 	llvm::Argument *A = llvm::unwrap<llvm::Argument>(arg);

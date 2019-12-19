@@ -4988,6 +4988,7 @@ ac_build_main(const struct ac_shader_args *args,
 		if (LLVMGetTypeKind(LLVMTypeOf(P)) == LLVMPointerTypeKind) {
 			ac_add_function_attr(ctx->context, main_function, i + 1, AC_FUNC_ATTR_NOALIAS);
 			ac_add_attr_dereferenceable(P, UINT64_MAX);
+			ac_add_attr_alignment(P, 32);
 		}
 	}
 
