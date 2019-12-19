@@ -530,9 +530,9 @@ spirv_builder_emit_image_sample(struct spirv_builder *b,
       operands++;
    }
 
-   SpvImageOperandsMask operand_mask = 0;
+   SpvImageOperandsMask operand_mask = SpvImageOperandsMaskNone;
    SpvId extra_operands[4];
-   int num_extra_operands = SpvImageOperandsMaskNone;
+   int num_extra_operands = 0;
    if (bias) {
       extra_operands[++num_extra_operands] = bias;
       operand_mask |= SpvImageOperandsBiasMask;
