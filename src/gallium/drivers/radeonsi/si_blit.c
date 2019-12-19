@@ -444,7 +444,7 @@ static void si_blit_decompress_color(struct si_context *sctx,
 	if (!need_dcc_decompress)
 		level_mask &= tex->dirty_level_mask;
 	if (!level_mask)
-		return;
+		goto expand_fmask;
 
 	if (unlikely(sctx->log))
 		u_log_printf(sctx->log,
@@ -515,6 +515,7 @@ static void si_blit_decompress_color(struct si_context *sctx,
 				   vi_dcc_enabled(tex, first_level),
 				   tex->surface.u.gfx9.dcc.pipe_aligned);
 
+expand_fmask:
 	if (need_fmask_expand && tex->surface.fmask_offset && tex->fmask_is_not_identity) {
 		si_compute_expand_fmask(&sctx->b, &tex->buffer.b.b);
 		tex->fmask_is_not_identity = false;
