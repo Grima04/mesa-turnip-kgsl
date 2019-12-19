@@ -562,8 +562,12 @@ print_var_decl(nir_variable *var, print_state *state)
       }
 
       if (!loc) {
-         snprintf(buf, sizeof(buf), "%u", var->data.location);
-         loc = buf;
+         if (var->data.location == ~0) {
+            loc = "~0";
+         } else {
+            snprintf(buf, sizeof(buf), "%u", var->data.location);
+            loc = buf;
+         }
       }
 
       /* For shader I/O vars that have been split to components or packed,
