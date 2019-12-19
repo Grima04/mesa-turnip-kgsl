@@ -2495,6 +2495,7 @@ enum tu_draw_state_group_id
    TU_DRAW_STATE_VS_TEX,
    TU_DRAW_STATE_FS_TEX,
    TU_DRAW_STATE_FS_IBO,
+   TU_DRAW_STATE_VS_PARAMS,
 
    TU_DRAW_STATE_COUNT,
 };
@@ -2780,6 +2781,46 @@ tu6_emit_consts(struct tu_cmd_buffer *cmd,
    tu6_emit_ubos(&cs, pipeline, descriptors_state, type);
 
    return tu_cs_end_sub_stream(&cmd->sub_cs, &cs);
+}
+
+static VkResult
+tu6_emit_vs_params(struct tu_cmd_buffer *cmd,
+                   const struct tu_draw_info *draw,
+                   struct tu_cs_entry *entry)
+{
+   /* TODO: fill out more than just base instance */
+   const struct tu_program_descriptor_linkage *link =
+      &cmd->state.pipeline->program.link[MESA_SHADER_VERTEX];
+   const struct ir3_const_state *const_state = &link->const_state;
+   struct tu_cs cs;
+
+   if (const_state->offsets.driver_param >= link->constlen) {
+      *entry = (struct tu_cs_entry) {};
+      return VK_SUCCESS;
+   }
+
+   VkResult result = tu_cs_begin_sub_stream(cmd->device, &cmd->sub_cs, 8, &cs);
+   if (result != VK_SUCCESS)
+      return result;
+
+   tu_cs_emit_pkt7(&cs, CP_LOAD_STATE6_GEOM, 3 + 4);
+   tu_cs_emit(&cs, CP_LOAD_STATE6_0_DST_OFF(const_state->offsets.driver_param) |
+         CP_LOAD_STATE6_0_STATE_TYPE(ST6_CONSTANTS) |
+         CP_LOAD_STATE6_0_STATE_SRC(SS6_DIRECT) |
+         CP_LOAD_STATE6_0_STATE_BLOCK(SB6_VS_SHADER) |
+         CP_LOAD_STATE6_0_NUM_UNIT(1));
+   tu_cs_emit(&cs, 0);
+   tu_cs_emit(&cs, 0);
+
+   STATIC_ASSERT(IR3_DP_INSTID_BASE == 2);
+
+   tu_cs_emit(&cs, 0);
+   tu_cs_emit(&cs, 0);
+   tu_cs_emit(&cs, draw->first_instance);
+   tu_cs_emit(&cs, 0);
+
+   *entry = tu_cs_end_sub_stream(&cmd->sub_cs, &cs);
+   return VK_SUCCESS;
 }
 
 static VkResult
@@ -3281,6 +3322,18 @@ tu6_bind_draw_states(struct tu_cmd_buffer *cmd,
             return result;
       }
    }
+
+   struct tu_cs_entry vs_params;
+   result = tu6_emit_vs_params(cmd, draw, &vs_params);
+   if (result != VK_SUCCESS)
+      return result;
+
+   draw_state_groups[draw_state_group_count++] =
+      (struct tu_draw_state_group) {
+         .id = TU_DRAW_STATE_VS_PARAMS,
+         .enable_mask = ENABLE_ALL,
+         .ib = vs_params,
+      };
 
    tu_cs_emit_pkt7(cs, CP_SET_DRAW_STATE, 3 * draw_state_group_count);
    for (uint32_t i = 0; i < draw_state_group_count; i++) {
