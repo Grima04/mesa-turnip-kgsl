@@ -736,18 +736,18 @@ radv_pipeline_init_blend_state(struct radv_pipeline *pipeline,
 	unsigned mode = V_028808_CB_NORMAL;
 	int i;
 
-	if (!vkblend)
-		return blend;
-
 	if (extra && extra->custom_blend_mode) {
 		blend.single_cb_enable = true;
 		mode = extra->custom_blend_mode;
 	}
+
 	blend.cb_color_control = 0;
-	if (vkblend->logicOpEnable)
-		blend.cb_color_control |= S_028808_ROP3(si_translate_blend_logic_op(vkblend->logicOp));
-	else
-		blend.cb_color_control |= S_028808_ROP3(V_028808_ROP3_COPY);
+	if (vkblend) {
+		if (vkblend->logicOpEnable)
+			blend.cb_color_control |= S_028808_ROP3(si_translate_blend_logic_op(vkblend->logicOp));
+		else
+			blend.cb_color_control |= S_028808_ROP3(V_028808_ROP3_COPY);
+	}
 
 	blend.db_alpha_to_mask = S_028B70_ALPHA_TO_MASK_OFFSET0(3) |
 		S_028B70_ALPHA_TO_MASK_OFFSET1(1) |
@@ -761,117 +761,119 @@ radv_pipeline_init_blend_state(struct radv_pipeline *pipeline,
 	}
 
 	blend.cb_target_mask = 0;
-	for (i = 0; i < vkblend->attachmentCount; i++) {
-		const VkPipelineColorBlendAttachmentState *att = &vkblend->pAttachments[i];
-		unsigned blend_cntl = 0;
-		unsigned srcRGB_opt, dstRGB_opt, srcA_opt, dstA_opt;
-		VkBlendOp eqRGB = att->colorBlendOp;
-		VkBlendFactor srcRGB = att->srcColorBlendFactor;
-		VkBlendFactor dstRGB = att->dstColorBlendFactor;
-		VkBlendOp eqA = att->alphaBlendOp;
-		VkBlendFactor srcA = att->srcAlphaBlendFactor;
-		VkBlendFactor dstA = att->dstAlphaBlendFactor;
+	if (vkblend) {
+		for (i = 0; i < vkblend->attachmentCount; i++) {
+			const VkPipelineColorBlendAttachmentState *att = &vkblend->pAttachments[i];
+			unsigned blend_cntl = 0;
+			unsigned srcRGB_opt, dstRGB_opt, srcA_opt, dstA_opt;
+			VkBlendOp eqRGB = att->colorBlendOp;
+			VkBlendFactor srcRGB = att->srcColorBlendFactor;
+			VkBlendFactor dstRGB = att->dstColorBlendFactor;
+			VkBlendOp eqA = att->alphaBlendOp;
+			VkBlendFactor srcA = att->srcAlphaBlendFactor;
+			VkBlendFactor dstA = att->dstAlphaBlendFactor;
 
-		blend.sx_mrt_blend_opt[i] = S_028760_COLOR_COMB_FCN(V_028760_OPT_COMB_BLEND_DISABLED) | S_028760_ALPHA_COMB_FCN(V_028760_OPT_COMB_BLEND_DISABLED);
+			blend.sx_mrt_blend_opt[i] = S_028760_COLOR_COMB_FCN(V_028760_OPT_COMB_BLEND_DISABLED) | S_028760_ALPHA_COMB_FCN(V_028760_OPT_COMB_BLEND_DISABLED);
 
-		if (!att->colorWriteMask)
-			continue;
+			if (!att->colorWriteMask)
+				continue;
 
-		blend.cb_target_mask |= (unsigned)att->colorWriteMask << (4 * i);
-		blend.cb_target_enabled_4bit |= 0xf << (4 * i);
-		if (!att->blendEnable) {
+			blend.cb_target_mask |= (unsigned)att->colorWriteMask << (4 * i);
+			blend.cb_target_enabled_4bit |= 0xf << (4 * i);
+			if (!att->blendEnable) {
+				blend.cb_blend_control[i] = blend_cntl;
+				continue;
+			}
+
+			if (is_dual_src(srcRGB) || is_dual_src(dstRGB) || is_dual_src(srcA) || is_dual_src(dstA))
+				if (i == 0)
+					blend.mrt0_is_dual_src = true;
+
+			if (eqRGB == VK_BLEND_OP_MIN || eqRGB == VK_BLEND_OP_MAX) {
+				srcRGB = VK_BLEND_FACTOR_ONE;
+				dstRGB = VK_BLEND_FACTOR_ONE;
+			}
+			if (eqA == VK_BLEND_OP_MIN || eqA == VK_BLEND_OP_MAX) {
+				srcA = VK_BLEND_FACTOR_ONE;
+				dstA = VK_BLEND_FACTOR_ONE;
+			}
+
+			radv_blend_check_commutativity(&blend, eqRGB, srcRGB, dstRGB,
+						       0x7 << (4 * i));
+			radv_blend_check_commutativity(&blend, eqA, srcA, dstA,
+						       0x8 << (4 * i));
+
+			/* Blending optimizations for RB+.
+			 * These transformations don't change the behavior.
+			 *
+			 * First, get rid of DST in the blend factors:
+			 *    func(src * DST, dst * 0) ---> func(src * 0, dst * SRC)
+			 */
+			si_blend_remove_dst(&eqRGB, &srcRGB, &dstRGB,
+					    VK_BLEND_FACTOR_DST_COLOR,
+					    VK_BLEND_FACTOR_SRC_COLOR);
+
+			si_blend_remove_dst(&eqA, &srcA, &dstA,
+					    VK_BLEND_FACTOR_DST_COLOR,
+					    VK_BLEND_FACTOR_SRC_COLOR);
+
+			si_blend_remove_dst(&eqA, &srcA, &dstA,
+					    VK_BLEND_FACTOR_DST_ALPHA,
+					    VK_BLEND_FACTOR_SRC_ALPHA);
+
+			/* Look up the ideal settings from tables. */
+			srcRGB_opt = si_translate_blend_opt_factor(srcRGB, false);
+			dstRGB_opt = si_translate_blend_opt_factor(dstRGB, false);
+			srcA_opt = si_translate_blend_opt_factor(srcA, true);
+			dstA_opt = si_translate_blend_opt_factor(dstA, true);
+
+			/* Handle interdependencies. */
+			if (si_blend_factor_uses_dst(srcRGB))
+				dstRGB_opt = V_028760_BLEND_OPT_PRESERVE_NONE_IGNORE_NONE;
+			if (si_blend_factor_uses_dst(srcA))
+				dstA_opt = V_028760_BLEND_OPT_PRESERVE_NONE_IGNORE_NONE;
+
+			if (srcRGB == VK_BLEND_FACTOR_SRC_ALPHA_SATURATE &&
+			    (dstRGB == VK_BLEND_FACTOR_ZERO ||
+			     dstRGB == VK_BLEND_FACTOR_SRC_ALPHA ||
+			     dstRGB == VK_BLEND_FACTOR_SRC_ALPHA_SATURATE))
+				dstRGB_opt = V_028760_BLEND_OPT_PRESERVE_NONE_IGNORE_A0;
+
+			/* Set the final value. */
+			blend.sx_mrt_blend_opt[i] =
+				S_028760_COLOR_SRC_OPT(srcRGB_opt) |
+				S_028760_COLOR_DST_OPT(dstRGB_opt) |
+				S_028760_COLOR_COMB_FCN(si_translate_blend_opt_function(eqRGB)) |
+				S_028760_ALPHA_SRC_OPT(srcA_opt) |
+				S_028760_ALPHA_DST_OPT(dstA_opt) |
+				S_028760_ALPHA_COMB_FCN(si_translate_blend_opt_function(eqA));
+			blend_cntl |= S_028780_ENABLE(1);
+
+			blend_cntl |= S_028780_COLOR_COMB_FCN(si_translate_blend_function(eqRGB));
+			blend_cntl |= S_028780_COLOR_SRCBLEND(si_translate_blend_factor(srcRGB));
+			blend_cntl |= S_028780_COLOR_DESTBLEND(si_translate_blend_factor(dstRGB));
+			if (srcA != srcRGB || dstA != dstRGB || eqA != eqRGB) {
+				blend_cntl |= S_028780_SEPARATE_ALPHA_BLEND(1);
+				blend_cntl |= S_028780_ALPHA_COMB_FCN(si_translate_blend_function(eqA));
+				blend_cntl |= S_028780_ALPHA_SRCBLEND(si_translate_blend_factor(srcA));
+				blend_cntl |= S_028780_ALPHA_DESTBLEND(si_translate_blend_factor(dstA));
+			}
 			blend.cb_blend_control[i] = blend_cntl;
-			continue;
+
+			blend.blend_enable_4bit |= 0xfu << (i * 4);
+
+			if (srcRGB == VK_BLEND_FACTOR_SRC_ALPHA ||
+			    dstRGB == VK_BLEND_FACTOR_SRC_ALPHA ||
+			    srcRGB == VK_BLEND_FACTOR_SRC_ALPHA_SATURATE ||
+			    dstRGB == VK_BLEND_FACTOR_SRC_ALPHA_SATURATE ||
+			    srcRGB == VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA ||
+			    dstRGB == VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA)
+				blend.need_src_alpha |= 1 << i;
 		}
-
-		if (is_dual_src(srcRGB) || is_dual_src(dstRGB) || is_dual_src(srcA) || is_dual_src(dstA))
-			if (i == 0)
-				blend.mrt0_is_dual_src = true;
-
-		if (eqRGB == VK_BLEND_OP_MIN || eqRGB == VK_BLEND_OP_MAX) {
-			srcRGB = VK_BLEND_FACTOR_ONE;
-			dstRGB = VK_BLEND_FACTOR_ONE;
+		for (i = vkblend->attachmentCount; i < 8; i++) {
+			blend.cb_blend_control[i] = 0;
+			blend.sx_mrt_blend_opt[i] = S_028760_COLOR_COMB_FCN(V_028760_OPT_COMB_BLEND_DISABLED) | S_028760_ALPHA_COMB_FCN(V_028760_OPT_COMB_BLEND_DISABLED);
 		}
-		if (eqA == VK_BLEND_OP_MIN || eqA == VK_BLEND_OP_MAX) {
-			srcA = VK_BLEND_FACTOR_ONE;
-			dstA = VK_BLEND_FACTOR_ONE;
-		}
-
-		radv_blend_check_commutativity(&blend, eqRGB, srcRGB, dstRGB,
-					       0x7 << (4 * i));
-		radv_blend_check_commutativity(&blend, eqA, srcA, dstA,
-					       0x8 << (4 * i));
-
-		/* Blending optimizations for RB+.
-		 * These transformations don't change the behavior.
-		 *
-		 * First, get rid of DST in the blend factors:
-		 *    func(src * DST, dst * 0) ---> func(src * 0, dst * SRC)
-		 */
-		si_blend_remove_dst(&eqRGB, &srcRGB, &dstRGB,
-				    VK_BLEND_FACTOR_DST_COLOR,
-				    VK_BLEND_FACTOR_SRC_COLOR);
-
-		si_blend_remove_dst(&eqA, &srcA, &dstA,
-				    VK_BLEND_FACTOR_DST_COLOR,
-				    VK_BLEND_FACTOR_SRC_COLOR);
-
-		si_blend_remove_dst(&eqA, &srcA, &dstA,
-				    VK_BLEND_FACTOR_DST_ALPHA,
-				    VK_BLEND_FACTOR_SRC_ALPHA);
-
-		/* Look up the ideal settings from tables. */
-		srcRGB_opt = si_translate_blend_opt_factor(srcRGB, false);
-		dstRGB_opt = si_translate_blend_opt_factor(dstRGB, false);
-		srcA_opt = si_translate_blend_opt_factor(srcA, true);
-		dstA_opt = si_translate_blend_opt_factor(dstA, true);
-
-				/* Handle interdependencies. */
-		if (si_blend_factor_uses_dst(srcRGB))
-			dstRGB_opt = V_028760_BLEND_OPT_PRESERVE_NONE_IGNORE_NONE;
-		if (si_blend_factor_uses_dst(srcA))
-			dstA_opt = V_028760_BLEND_OPT_PRESERVE_NONE_IGNORE_NONE;
-
-		if (srcRGB == VK_BLEND_FACTOR_SRC_ALPHA_SATURATE &&
-		    (dstRGB == VK_BLEND_FACTOR_ZERO ||
-		     dstRGB == VK_BLEND_FACTOR_SRC_ALPHA ||
-		     dstRGB == VK_BLEND_FACTOR_SRC_ALPHA_SATURATE))
-			dstRGB_opt = V_028760_BLEND_OPT_PRESERVE_NONE_IGNORE_A0;
-
-		/* Set the final value. */
-		blend.sx_mrt_blend_opt[i] =
-			S_028760_COLOR_SRC_OPT(srcRGB_opt) |
-			S_028760_COLOR_DST_OPT(dstRGB_opt) |
-			S_028760_COLOR_COMB_FCN(si_translate_blend_opt_function(eqRGB)) |
-			S_028760_ALPHA_SRC_OPT(srcA_opt) |
-			S_028760_ALPHA_DST_OPT(dstA_opt) |
-			S_028760_ALPHA_COMB_FCN(si_translate_blend_opt_function(eqA));
-		blend_cntl |= S_028780_ENABLE(1);
-
-		blend_cntl |= S_028780_COLOR_COMB_FCN(si_translate_blend_function(eqRGB));
-		blend_cntl |= S_028780_COLOR_SRCBLEND(si_translate_blend_factor(srcRGB));
-		blend_cntl |= S_028780_COLOR_DESTBLEND(si_translate_blend_factor(dstRGB));
-		if (srcA != srcRGB || dstA != dstRGB || eqA != eqRGB) {
-			blend_cntl |= S_028780_SEPARATE_ALPHA_BLEND(1);
-			blend_cntl |= S_028780_ALPHA_COMB_FCN(si_translate_blend_function(eqA));
-			blend_cntl |= S_028780_ALPHA_SRCBLEND(si_translate_blend_factor(srcA));
-			blend_cntl |= S_028780_ALPHA_DESTBLEND(si_translate_blend_factor(dstA));
-		}
-		blend.cb_blend_control[i] = blend_cntl;
-
-		blend.blend_enable_4bit |= 0xfu << (i * 4);
-
-		if (srcRGB == VK_BLEND_FACTOR_SRC_ALPHA ||
-		    dstRGB == VK_BLEND_FACTOR_SRC_ALPHA ||
-		    srcRGB == VK_BLEND_FACTOR_SRC_ALPHA_SATURATE ||
-		    dstRGB == VK_BLEND_FACTOR_SRC_ALPHA_SATURATE ||
-		    srcRGB == VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA ||
-		    dstRGB == VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA)
-			blend.need_src_alpha |= 1 << i;
-	}
-	for (i = vkblend->attachmentCount; i < 8; i++) {
-		blend.cb_blend_control[i] = 0;
-		blend.sx_mrt_blend_opt[i] = S_028760_COLOR_COMB_FCN(V_028760_OPT_COMB_BLEND_DISABLED) | S_028760_ALPHA_COMB_FCN(V_028760_OPT_COMB_BLEND_DISABLED);
 	}
 
 	if (pipeline->device->physical_device->rad_info.has_rbplus) {
@@ -887,7 +889,8 @@ radv_pipeline_init_blend_state(struct radv_pipeline *pipeline,
 		/* RB+ doesn't work with dual source blending, logic op and
 		 * RESOLVE.
 		 */
-		if (blend.mrt0_is_dual_src || vkblend->logicOpEnable ||
+		if (blend.mrt0_is_dual_src ||
+		    (vkblend && vkblend->logicOpEnable) ||
 		    mode == V_028808_CB_RESOLVE)
 			blend.cb_color_control |= S_028808_DISABLE_DUAL_QUAD(1);
 	}
