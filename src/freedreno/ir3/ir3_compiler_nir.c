@@ -3495,7 +3495,7 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 		assert(in->opc == OPC_META_INPUT);
 		unsigned inidx = in->input.inidx;
 
-		if (pre_assign_inputs) {
+		if (pre_assign_inputs && !so->inputs[inidx].sysval) {
 			if (VALIDREG(so->nonbinning->inputs[inidx].regid)) {
 				compile_assert(ctx, in->regs[0]->num ==
 						so->nonbinning->inputs[inidx].regid);
