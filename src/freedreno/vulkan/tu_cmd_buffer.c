@@ -3577,38 +3577,35 @@ tu_emit_compute_driver_params(struct tu_cs *cs, struct tu_pipeline *pipeline,
    const struct tu_program_descriptor_linkage *link =
       &pipeline->program.link[type];
    const struct ir3_const_state *const_state = &link->const_state;
-   uint32_t offset_dwords = const_state->offsets.driver_param;
+   uint32_t offset = const_state->offsets.driver_param;
 
-   if (link->constlen <= offset_dwords)
+   if (link->constlen <= offset)
       return;
 
    if (!info->indirect) {
-      uint32_t driver_params[] = {
-         info->blocks[0],
-         info->blocks[1],
-         info->blocks[2],
-         pipeline->compute.local_size[0],
-         pipeline->compute.local_size[1],
-         pipeline->compute.local_size[2],
+      uint32_t driver_params[IR3_DP_CS_COUNT] = {
+         [IR3_DP_NUM_WORK_GROUPS_X] = info->blocks[0],
+         [IR3_DP_NUM_WORK_GROUPS_Y] = info->blocks[1],
+         [IR3_DP_NUM_WORK_GROUPS_Z] = info->blocks[2],
+         [IR3_DP_LOCAL_GROUP_SIZE_X] = pipeline->compute.local_size[0],
+         [IR3_DP_LOCAL_GROUP_SIZE_Y] = pipeline->compute.local_size[1],
+         [IR3_DP_LOCAL_GROUP_SIZE_Z] = pipeline->compute.local_size[2],
       };
-      uint32_t num_consts = MIN2(const_state->num_driver_params,
-                                 link->constlen - offset_dwords);
-      uint32_t align_size = align(num_consts, 4);
 
+      uint32_t num_consts = MIN2(const_state->num_driver_params,
+                                 (link->constlen - offset) * 4);
       /* push constants */
-      tu_cs_emit_pkt7(cs, tu6_stage2opcode(type), 3 + align_size);
-      tu_cs_emit(cs, CP_LOAD_STATE6_0_DST_OFF(offset_dwords / 4) |
+      tu_cs_emit_pkt7(cs, tu6_stage2opcode(type), 3 + num_consts);
+      tu_cs_emit(cs, CP_LOAD_STATE6_0_DST_OFF(offset) |
                  CP_LOAD_STATE6_0_STATE_TYPE(ST6_CONSTANTS) |
                  CP_LOAD_STATE6_0_STATE_SRC(SS6_DIRECT) |
                  CP_LOAD_STATE6_0_STATE_BLOCK(tu6_stage2shadersb(type)) |
-                 CP_LOAD_STATE6_0_NUM_UNIT(align_size / 4));
+                 CP_LOAD_STATE6_0_NUM_UNIT(num_consts / 4));
       tu_cs_emit(cs, 0);
       tu_cs_emit(cs, 0);
       uint32_t i;
       for (i = 0; i < num_consts; i++)
          tu_cs_emit(cs, driver_params[i]);
-      for (; i < align_size; i++)
-         tu_cs_emit(cs, 0);
    } else {
       tu_finishme("Indirect driver params");
    }
