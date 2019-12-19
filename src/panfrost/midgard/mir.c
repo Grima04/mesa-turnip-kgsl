@@ -265,7 +265,6 @@ mir_srcsize(midgard_instruction *ins, unsigned i)
 
         if (i >= 2) {
                 /* TODO: 16-bit conditions, ffma */
-                assert(i == 2);
                 return midgard_reg_mode_32;
         }
 

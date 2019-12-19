@@ -133,7 +133,7 @@ schedule_barrier(compiler_context *ctx)
 			.type = TAG_LOAD_STORE_4, \
                         .mask = 0xF, \
                         .dest = ~0, \
-                        .src = { ~0, ~0, ~0 }, \
+                        .src = { ~0, ~0, ~0, ~0 }, \
                         .swizzle = SWIZZLE_IDENTITY_4, \
 			.load_store = { \
 				.op = midgard_op_##name, \
@@ -238,7 +238,7 @@ v_alu_br_compact_cond(midgard_jmp_writeout_op op, unsigned tag, signed offset, u
                 .compact_branch = true,
                 .br_compact = compact,
                 .dest = ~0,
-                .src = { ~0, ~0, ~0 },
+                .src = { ~0, ~0, ~0, ~0 },
         };
 
         if (op == midgard_jmp_writeout_op_writeout)
@@ -259,7 +259,7 @@ v_branch(bool conditional, bool invert)
                         .invert_conditional = invert
                 },
                 .dest = ~0,
-                .src = { ~0, ~0, ~0 },
+                .src = { ~0, ~0, ~0, ~0 },
         };
 
         return ins;
@@ -992,6 +992,7 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                         quirk_flipped_r24 ? ~0 : src0,
                         quirk_flipped_r24 ? src0       : src1,
                         src2,
+                        ~0
                 },
                 .dest = dest,
         };
@@ -1712,7 +1713,7 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
                 .type = TAG_TEXTURE_4,
                 .mask = 0xF,
                 .dest = nir_dest_index(ctx, &instr->dest),
-                .src = { ~0, ~0, ~0 },
+                .src = { ~0, ~0, ~0, ~0 },
                 .swizzle = SWIZZLE_IDENTITY_4,
                 .texture = {
                         .op = midgard_texop,
@@ -1821,6 +1822,16 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
                         emit_explicit_constant(ctx, index, index);
 
                         break;
+                };
+
+                case nir_tex_src_offset: {
+                        ins.texture.offset_register = true;
+                        ins.src[3] = index;
+
+                        for (unsigned c = 0; c < MIR_VEC_COMPONENTS; ++c)
+                                ins.swizzle[3][c] = (c > COMPONENT_Z) ? 0 : c;
+
+                        emit_explicit_constant(ctx, index, index);
                 };
 
                 case nir_tex_src_comparator: {

@@ -78,7 +78,7 @@ typedef struct midgard_branch {
  * emitted before the register allocation pass.
  */
 
-#define MIR_SRC_COUNT 3
+#define MIR_SRC_COUNT 4
 #define MIR_VEC_COMPONENTS 16
 
 typedef struct midgard_instruction {
@@ -89,7 +89,7 @@ typedef struct midgard_instruction {
 
         /* Instruction arguments represented as block-local SSA
          * indices, rather than registers. ~0 means unused. */
-        unsigned src[3];
+        unsigned src[MIR_SRC_COUNT];
         unsigned dest;
 
         /* vec16 swizzle, unpacked, per source */
@@ -558,7 +558,7 @@ v_mov(unsigned src, unsigned dest)
         midgard_instruction ins = {
                 .type = TAG_ALU_4,
                 .mask = 0xF,
-                .src = { SSA_UNUSED, src, SSA_UNUSED },
+                .src = { ~0, src, ~0, ~0 },
                 .swizzle = SWIZZLE_IDENTITY,
                 .dest = dest,
                 .alu = {
@@ -596,7 +596,7 @@ v_load_store_scratch(
                 .type = TAG_LOAD_STORE_4,
                 .mask = mask,
                 .dest = ~0,
-                .src = { ~0, ~0, ~0 },
+                .src = { ~0, ~0, ~0, ~0 },
                 .swizzle = SWIZZLE_IDENTITY_4,
                 .load_store = {
                         .op = is_store ? midgard_op_st_int4 : midgard_op_ld_int4,

@@ -513,6 +513,7 @@ allocate_registers(compiler_context *ctx, bool *spilled)
                         set_class(l->class, ins->src[0], REG_CLASS_TEXR);
                         set_class(l->class, ins->src[1], REG_CLASS_TEXR);
                         set_class(l->class, ins->src[2], REG_CLASS_TEXR);
+                        set_class(l->class, ins->src[3], REG_CLASS_TEXR);
                 }
         }
 
@@ -542,6 +543,14 @@ allocate_registers(compiler_context *ctx, bool *spilled)
 
         *spilled = !lcra_solve(l);
         return l;
+}
+
+/* Reverses 2 bits, used to pack swizzles of offsets for some reason */
+
+static unsigned
+mir_reverse2(unsigned in)
+{
+        return (in >> 1) | ((in & 1) << 1);
 }
 
 /* Once registers have been decided via register allocation
@@ -650,6 +659,7 @@ install_registers_instr(
                 struct phys_reg dest = index_to_reg(ctx, l, ins->dest, mir_typesize(ins));
                 struct phys_reg coord = index_to_reg(ctx, l, ins->src[1], mir_srcsize(ins, 1));
                 struct phys_reg lod = index_to_reg(ctx, l, ins->src[2], mir_srcsize(ins, 2));
+                struct phys_reg offset = index_to_reg(ctx, l, ins->src[3], mir_srcsize(ins, 2));
 
                 /* First, install the texture coordinate */
                 ins->texture.in_reg_full = 1;
@@ -668,7 +678,7 @@ install_registers_instr(
                 if (ins->src[2] != ~0) {
                         assert(!(lod.offset & 3));
                         midgard_tex_register_select sel = {
-                                .select = lod.reg,
+                                .select = lod.reg & 1,
                                 .full = 1,
                                 .component = lod.offset / 4
                         };
@@ -676,6 +686,24 @@ install_registers_instr(
                         uint8_t packed;
                         memcpy(&packed, &sel, sizeof(packed));
                         ins->texture.bias = packed;
+                }
+
+                /* If there is an offset register, install it */
+                if (ins->src[3] != ~0) {
+                        ins->texture.offset_x = 
+                                (1)                   | /* full */
+                                (offset.reg & 1) << 1 | /* select */
+                                0 << 2;                 /* upper */
+
+                        unsigned x = offset.offset / 4;
+                        unsigned y = x + 1;
+                        unsigned z = x + 2;
+
+                        ins->texture.offset_y =
+                                mir_reverse2(y) | (mir_reverse2(x) << 2);
+
+                        ins->texture.offset_z =
+                                mir_reverse2(z);
                 }
 
                 break;

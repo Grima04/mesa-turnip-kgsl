@@ -40,7 +40,7 @@ midgard_lower_invert(compiler_context *ctx, midgard_block *block)
                 midgard_instruction not = {
                         .type = TAG_ALU_4,
                         .mask = ins->mask,
-                        .src = { temp, ~0, ~0 },
+                        .src = { temp, ~0, ~0, ~0 },
                         .swizzle = SWIZZLE_IDENTITY,
                         .dest = ins->dest,
                         .has_inline_constant = true,
