@@ -121,12 +121,12 @@ TU_FORMAT_TABLE(tu6_format_table0) = {
    TU6_xxx(R8G8B8_SRGB,                8_8_8_UNORM,       R8G8B8_UNORM,       WZYX), /* 29 */
 
    /* 24-bit BGR */
-   TU6_Vxx(B8G8R8_UNORM,               8_8_8_UNORM,       R8G8B8_UNORM,       WXYZ), /* 30 */
-   TU6_Vxx(B8G8R8_SNORM,               8_8_8_SNORM,       R8G8B8_SNORM,       WXYZ), /* 31 */
-   TU6_Vxx(B8G8R8_USCALED,             8_8_8_UINT,        R8G8B8_UINT,        WXYZ), /* 32 */
-   TU6_Vxx(B8G8R8_SSCALED,             8_8_8_SINT,        R8G8B8_SINT,        WXYZ), /* 33 */
-   TU6_Vxx(B8G8R8_UINT,                8_8_8_UINT,        R8G8B8_UINT,        WXYZ), /* 34 */
-   TU6_Vxx(B8G8R8_SINT,                8_8_8_SINT,        R8G8B8_SINT,        WXYZ), /* 35 */
+   TU6_xxx(B8G8R8_UNORM,               8_8_8_UNORM,       R8G8B8_UNORM,       WXYZ), /* 30 */
+   TU6_xxx(B8G8R8_SNORM,               8_8_8_SNORM,       R8G8B8_SNORM,       WXYZ), /* 31 */
+   TU6_xxx(B8G8R8_USCALED,             8_8_8_UINT,        R8G8B8_UINT,        WXYZ), /* 32 */
+   TU6_xxx(B8G8R8_SSCALED,             8_8_8_SINT,        R8G8B8_SINT,        WXYZ), /* 33 */
+   TU6_xxx(B8G8R8_UINT,                8_8_8_UINT,        R8G8B8_UINT,        WXYZ), /* 34 */
+   TU6_xxx(B8G8R8_SINT,                8_8_8_SINT,        R8G8B8_SINT,        WXYZ), /* 35 */
    TU6_xxx(B8G8R8_SRGB,                8_8_8_UNORM,       R8G8B8_UNORM,       WXYZ), /* 36 */
 
    /* 32-bit RGBA */
