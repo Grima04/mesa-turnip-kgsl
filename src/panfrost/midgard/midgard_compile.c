@@ -1165,7 +1165,9 @@ emit_ubo_read(
 
         midgard_instruction ins = m_ld_ubo_int4(dest, 0);
         ins.constants[0] = offset;
-        mir_set_intr_mask(instr, &ins, true);
+
+        if (instr->type == nir_instr_type_intrinsic)
+                mir_set_intr_mask(instr, &ins, true);
 
         if (indirect_offset) {
                 ins.src[2] = nir_src_index(ctx, indirect_offset);
