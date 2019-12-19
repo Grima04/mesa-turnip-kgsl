@@ -446,7 +446,8 @@ static const struct gen_device_info gen_device_info_bdw_gt1 = {
          [MESA_SHADER_VERTEX]    = 2560,
          [MESA_SHADER_TESS_CTRL] = 504,
          [MESA_SHADER_TESS_EVAL] = 1536,
-         [MESA_SHADER_GEOMETRY]  = 960,
+         /* Reduced from 960, seems to be similar to the bug on Gen9 GT1. */
+         [MESA_SHADER_GEOMETRY]  = 690,
       },
    },
    .simulator_id = 11,
