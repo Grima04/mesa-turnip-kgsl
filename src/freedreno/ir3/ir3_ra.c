@@ -775,7 +775,7 @@ ra_block_compute_live_ranges(struct ir3_ra_ctx *ctx, struct ir3_block *block)
 
 				def(name, id->defn);
 
-				if (instr->opc == OPC_META_INPUT)
+				if ((instr->opc == OPC_META_INPUT) && first_non_input)
 					use(name, first_non_input);
 
 				if (is_high(id->defn)) {
