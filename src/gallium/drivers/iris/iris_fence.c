@@ -300,6 +300,22 @@ iris_fence_get_fd(struct pipe_screen *p_screen,
    struct iris_screen *screen = (struct iris_screen *)p_screen;
    int fd = -1;
 
+   if (fence->count == 0) {
+      /* Our fence has no syncobj's recorded.  This means that all of the
+       * batches had already completed, their syncobj's had been signalled,
+       * and so we didn't bother to record them.  But we're being asked to
+       * export such a fence.  So export a dummy already-signalled syncobj.
+       */
+      struct drm_syncobj_handle args = {
+         .flags = DRM_SYNCOBJ_HANDLE_TO_FD_FLAGS_EXPORT_SYNC_FILE, .fd = -1,
+      };
+
+      args.handle = gem_syncobj_create(screen->fd, DRM_SYNCOBJ_CREATE_SIGNALED);
+      gen_ioctl(screen->fd, DRM_IOCTL_SYNCOBJ_HANDLE_TO_FD, &args);
+      gem_syncobj_destroy(screen->fd, args.handle);
+      return args.fd;
+   }
+
    for (unsigned i = 0; i < fence->count; i++) {
       struct drm_syncobj_handle args = {
          .handle = fence->syncpt[i]->handle,
