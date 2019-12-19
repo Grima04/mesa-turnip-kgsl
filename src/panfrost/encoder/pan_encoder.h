@@ -86,4 +86,24 @@ unsigned panfrost_query_thread_tls_alloc(int fd);
 
 const char * panfrost_model_name(unsigned gpu_id);
 
+/* Attributes / instancing */
+
+struct pan_shift_odd {
+        unsigned shift;
+        unsigned odd;
+};
+
+struct pan_shift_odd
+panfrost_padded_vertex_count(unsigned vertex_count);
+
+unsigned
+panfrost_vertex_instanced(
+        unsigned padded_count,
+        unsigned instance_shift, unsigned instance_odd,
+        unsigned divisor,
+        union mali_attr *attrs);
+
+unsigned
+pan_expand_shift_odd(struct pan_shift_odd o);
+
 #endif

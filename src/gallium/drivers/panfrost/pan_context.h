@@ -336,20 +336,6 @@ panfrost_vertex_buffer_address(struct panfrost_context *ctx, unsigned i);
 void
 panfrost_emit_vertex_data(struct panfrost_batch *batch);
 
-struct pan_shift_odd {
-        unsigned shift;
-        unsigned odd;
-};
-
-struct pan_shift_odd
-panfrost_padded_vertex_count(
-        unsigned vertex_count,
-        bool primitive_pot);
-
-
-unsigned
-pan_expand_shift_odd(struct pan_shift_odd o);
-
 /* Compute */
 
 void

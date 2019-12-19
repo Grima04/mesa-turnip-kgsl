@@ -1551,16 +1551,8 @@ panfrost_draw_vbo(
         /* Encode the padded vertex count */
 
         if (info->instance_count > 1) {
-                /* Triangles have non-even vertex counts so they change how
-                 * padding works internally */
-
-                bool is_triangle =
-                        mode == PIPE_PRIM_TRIANGLES ||
-                        mode == PIPE_PRIM_TRIANGLE_STRIP ||
-                        mode == PIPE_PRIM_TRIANGLE_FAN;
-
                 struct pan_shift_odd so =
-                        panfrost_padded_vertex_count(vertex_count, !is_triangle);
+                        panfrost_padded_vertex_count(vertex_count);
 
                 ctx->payloads[PIPE_SHADER_VERTEX].instance_shift = so.shift;
                 ctx->payloads[PIPE_SHADER_FRAGMENT].instance_shift = so.shift;
