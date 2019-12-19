@@ -96,10 +96,20 @@ panfrost_shader_compile(
         meta->midgard1.uniform_count = MIN2(program.uniform_count, program.uniform_cutoff);
         meta->midgard1.work_count = program.work_register_count;
 
+        bool vertex_id = s->info.system_values_read & (1 << SYSTEM_VALUE_VERTEX_ID);
+        bool instance_id = s->info.system_values_read & (1 << SYSTEM_VALUE_INSTANCE_ID);
+
         switch (stage) {
         case MESA_SHADER_VERTEX:
                 meta->attribute_count = util_bitcount64(s->info.inputs_read);
                 meta->varying_count = util_bitcount64(s->info.outputs_written);
+
+                if (vertex_id)
+                        meta->attribute_count = MAX2(meta->attribute_count, PAN_VERTEX_ID + 1);
+
+                if (instance_id)
+                        meta->attribute_count = MAX2(meta->attribute_count, PAN_INSTANCE_ID + 1);
+
                 break;
         case MESA_SHADER_FRAGMENT:
                 meta->attribute_count = 0;
