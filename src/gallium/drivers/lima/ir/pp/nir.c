@@ -504,7 +504,6 @@ static ppir_node *ppir_emit_tex(ppir_block *block, nir_instr *ni)
          break;
       default:
          ppir_error("unsupported texture source type\n");
-         assert(0);
          return NULL;
       }
    }
