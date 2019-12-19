@@ -1400,6 +1400,27 @@ emit_compute_builtin(compiler_context *ctx, nir_intrinsic_instr *instr)
         ins.load_store.arg_1 = compute_builtin_arg(instr->intrinsic);
         emit_mir_instruction(ctx, ins);
 }
+
+static unsigned
+vertex_builtin_arg(nir_op op)
+{
+        switch (op) {
+        case nir_intrinsic_load_vertex_id:
+                return PAN_VERTEX_ID;
+        case nir_intrinsic_load_instance_id:
+                return PAN_INSTANCE_ID;
+        default:
+                unreachable("Invalid vertex builtin");
+        }
+}
+
+static void
+emit_vertex_builtin(compiler_context *ctx, nir_intrinsic_instr *instr)
+{
+        unsigned reg = nir_dest_index(ctx, &instr->dest);
+        emit_attr_read(ctx, reg, vertex_builtin_arg(instr->intrinsic), 1, nir_type_int);
+}
+
 static void
 emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
 {
@@ -1630,6 +1651,11 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
         case nir_intrinsic_load_work_group_id:
         case nir_intrinsic_load_local_invocation_id:
                 emit_compute_builtin(ctx, instr);
+                break;
+
+        case nir_intrinsic_load_vertex_id:
+        case nir_intrinsic_load_instance_id:
+                emit_vertex_builtin(ctx, instr);
                 break;
 
         default:
