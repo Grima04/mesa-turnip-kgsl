@@ -101,18 +101,21 @@ panfrost-t860-test:arm64:
   tags:
     - lava-meson-gxm-khadas-vim2
 
-.lima-test:armhf:
+.lima-mali400-test:armhf:
+  parallel: 2
   extends: .lava-test:armhf
   variables:
     DEVICE_TYPE: sun8i-h3-libretech-all-h3-cc
     GPU_VERSION: lima
+    ENV_VARS: "DEQP_PARALLEL=3"
   tags:
     - lava-sun8i-h3-libretech-all-h3-cc
 
-.lima-test:arm64:
+lima-mali450-test:arm64:
   extends: .lava-test:arm64
   variables:
     DEVICE_TYPE: meson-gxl-s905x-libretech-cc
     GPU_VERSION: lima
+    ENV_VARS: "DEQP_PARALLEL=6"
   tags:
     - lava-meson-gxl-s905x-libretech-cc
