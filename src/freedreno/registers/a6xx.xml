@@ -2707,7 +2707,12 @@ to upconvert to 32b float internally?
 
 	<!-- always 0x0 ? -->
 	<reg32 offset="0xa008" name="VFD_UNKNOWN_A008"/>
-	<reg32 offset="0xa009" name="VFD_UNKNOWN_A009"/>
+	<reg32 offset="0xa009" name="VFD_ADD_OFFSET">
+		<!-- add VFD_INDEX_OFFSET to REGID4VTX -->
+		<bitfield name="VERTEX" pos="0" type="boolean"/>
+		<!-- add VFD_INSTANCE_START_OFFSET to REGID4INST -->
+		<bitfield name="INSTANCE" pos="1" type="boolean"/>
+	</reg32>
 
 	<reg32 offset="0xa00e" name="VFD_INDEX_OFFSET"/>
 	<reg32 offset="0xa00f" name="VFD_INSTANCE_START_OFFSET"/>
