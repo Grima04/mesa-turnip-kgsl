@@ -1999,7 +1999,7 @@ pandecode_texture(mali_ptr u,
 
         if (!f.unknown2) {
                 pandecode_msg("XXX: expected unknown texture bit set\n");
-                pandecode_prop("unknown2 = %" PRId32, f.unknown1);
+                pandecode_prop("unknown2 = %" PRId32, f.unknown2);
         }
 
         if (t->swizzle_zero) {
