@@ -323,20 +323,6 @@ else
   egl_native_platform = 'surfaceless'
 endif
 
-_xlib_lease = get_option('xlib-lease')
-if _xlib_lease == 'true'
-  _xlib_lease = 'enabled'
-  warning('xlib_lease option "true" deprecated, please use "enabled" instead.')
-elif _xlib_lease == 'false'
-  _xlib_lease = 'disabled'
-  warning('xlib_lease option "false" deprecated, please use "disabled" instead.')
-endif
-if _xlib_lease == 'auto'
-  with_xlib_lease = with_platform_x11 and with_platform_drm
-else
-  with_xlib_lease = _xlib_lease == 'enabled'
-endif
-
 with_glx = get_option('glx')
 if with_glx == 'auto'
   if with_dri
@@ -385,6 +371,20 @@ else
 endif
 if with_gbm and not system_has_kms_drm
   error('GBM only supports DRM/KMS platforms')
+endif
+
+_xlib_lease = get_option('xlib-lease')
+if _xlib_lease == 'true'
+  _xlib_lease = 'enabled'
+  warning('xlib_lease option "true" deprecated, please use "enabled" instead.')
+elif _xlib_lease == 'false'
+  _xlib_lease = 'disabled'
+  warning('xlib_lease option "false" deprecated, please use "disabled" instead.')
+endif
+if _xlib_lease == 'auto'
+  with_xlib_lease = with_platform_x11 and with_platform_drm
+else
+  with_xlib_lease = _xlib_lease == 'enabled'
 endif
 
 _egl = get_option('egl')
