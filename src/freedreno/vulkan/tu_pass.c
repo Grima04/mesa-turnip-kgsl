@@ -61,7 +61,7 @@ compute_gmem_offsets(struct tu_render_pass *pass, uint32_t gmem_size)
     * result:  nblocks = {12, 52}, pixels = 196608
     * optimal: nblocks = {13, 51}, pixels = 208896
     */
-   uint32_t block_total = 0, gmem_blocks = gmem_size / GMEM_ALIGN;
+   uint32_t gmem_blocks = gmem_size / GMEM_ALIGN;
    uint32_t offset = 0, pixels = ~0u;
    for (uint32_t i = 0; i < pass->attachment_count; i++) {
       struct tu_render_pass_attachment *att = &pass->attachments[i];
