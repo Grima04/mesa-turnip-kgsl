@@ -123,6 +123,18 @@ radv_pipeline_get_depth_stencil_state(const VkGraphicsPipelineCreateInfo *pCreat
 	return NULL;
 }
 
+static const VkPipelineColorBlendStateCreateInfo *
+radv_pipeline_get_color_blend_state(const VkGraphicsPipelineCreateInfo *pCreateInfo)
+{
+	RADV_FROM_HANDLE(radv_render_pass, pass, pCreateInfo->renderPass);
+	struct radv_subpass *subpass = pass->subpasses + pCreateInfo->subpass;
+
+	if (!pCreateInfo->pRasterizationState->rasterizerDiscardEnable &&
+	    subpass->has_color_att)
+		return pCreateInfo->pColorBlendState;
+	return NULL;
+}
+
 bool radv_pipeline_has_ngg(const struct radv_pipeline *pipeline)
 {
 	struct radv_shader_variant *variant = NULL;
@@ -730,7 +742,7 @@ radv_pipeline_init_blend_state(struct radv_pipeline *pipeline,
 			       const VkGraphicsPipelineCreateInfo *pCreateInfo,
 			       const struct radv_graphics_pipeline_create_info *extra)
 {
-	const VkPipelineColorBlendStateCreateInfo *vkblend = pCreateInfo->pColorBlendState;
+	const VkPipelineColorBlendStateCreateInfo *vkblend = radv_pipeline_get_color_blend_state(pCreateInfo);
 	const VkPipelineMultisampleStateCreateInfo *vkms = radv_pipeline_get_multisample_state(pCreateInfo);
 	struct radv_blend_state blend = {0};
 	unsigned mode = V_028808_CB_NORMAL;
@@ -1024,13 +1036,14 @@ radv_pipeline_out_of_order_rast(struct radv_pipeline *pipeline,
 	RADV_FROM_HANDLE(radv_render_pass, pass, pCreateInfo->renderPass);
 	struct radv_subpass *subpass = pass->subpasses + pCreateInfo->subpass;
 	const VkPipelineDepthStencilStateCreateInfo *vkds = radv_pipeline_get_depth_stencil_state(pCreateInfo);
+	const VkPipelineColorBlendStateCreateInfo *vkblend = radv_pipeline_get_color_blend_state(pCreateInfo);
 	unsigned colormask = blend->cb_target_enabled_4bit;
 
 	if (!pipeline->device->physical_device->out_of_order_rast_allowed)
 		return false;
 
 	/* Be conservative if a logic operation is enabled with color buffers. */
-	if (colormask && pCreateInfo->pColorBlendState->logicOpEnable)
+	if (colormask && vkblend && vkblend->logicOpEnable)
 		return false;
 
 	/* Default depth/stencil invariance when no attachment is bound. */
@@ -3225,7 +3238,8 @@ radv_gfx9_compute_bin_size(struct radv_pipeline *pipeline, const VkGraphicsPipel
 	unsigned effective_samples = total_samples;
 	unsigned color_bytes_per_pixel = 0;
 
-	const VkPipelineColorBlendStateCreateInfo *vkblend = pCreateInfo->pColorBlendState;
+	const VkPipelineColorBlendStateCreateInfo *vkblend =
+		radv_pipeline_get_color_blend_state(pCreateInfo);
 	if (vkblend) {
 		for (unsigned i = 0; i < subpass->color_count; i++) {
 			if (!vkblend->pAttachments[i].colorWriteMask)
@@ -3296,7 +3310,8 @@ radv_gfx10_compute_bin_size(struct radv_pipeline *pipeline, const VkGraphicsPipe
 	unsigned color_bytes_per_pixel = 0;
 	unsigned fmask_bytes_per_pixel = 0;
 
-	const VkPipelineColorBlendStateCreateInfo *vkblend = pCreateInfo->pColorBlendState;
+	const VkPipelineColorBlendStateCreateInfo *vkblend =
+		radv_pipeline_get_color_blend_state(pCreateInfo);
 	if (vkblend) {
 		for (unsigned i = 0; i < subpass->color_count; i++) {
 			if (!vkblend->pAttachments[i].colorWriteMask)
@@ -3373,7 +3388,8 @@ radv_pipeline_generate_disabled_binning_state(struct radeon_cmdbuf *ctx_cs,
 	if (pipeline->device->physical_device->rad_info.chip_class >= GFX10) {
 		RADV_FROM_HANDLE(radv_render_pass, pass, pCreateInfo->renderPass);
 		struct radv_subpass *subpass = pass->subpasses + pCreateInfo->subpass;
-		const VkPipelineColorBlendStateCreateInfo *vkblend = pCreateInfo->pColorBlendState;
+		const VkPipelineColorBlendStateCreateInfo *vkblend =
+			radv_pipeline_get_color_blend_state(pCreateInfo);
 		unsigned min_bytes_per_pixel = 0;
 
 		if (vkblend) {
