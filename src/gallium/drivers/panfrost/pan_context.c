@@ -440,7 +440,7 @@ panfrost_stage_attributes(struct panfrost_context *ctx)
         struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
         struct panfrost_vertex_state *so = ctx->vertex;
 
-        size_t sz = sizeof(struct mali_attr_meta) * so->num_elements;
+        size_t sz = sizeof(struct mali_attr_meta) * PAN_MAX_ATTRIBUTE;
         struct panfrost_transfer transfer = panfrost_allocate_transient(batch, sz);
         struct mali_attr_meta *target = (struct mali_attr_meta *) transfer.cpu;
 
@@ -481,12 +481,17 @@ panfrost_stage_attributes(struct panfrost_context *ctx)
                 /* Also, somewhat obscurely per-instance data needs to be
                  * offset in response to a delayed start in an indexed draw */
 
-                if (so->pipe[i].instance_divisor && ctx->instance_count > 1 && start) {
+                if (so->pipe[i].instance_divisor && ctx->instance_count > 1 && start)
                         target[i].src_offset -= buf->stride * start;
-                }
-
-
         }
+
+        /* Let's also include vertex builtins */
+
+        target[PAN_VERTEX_ID].format = MALI_R32UI;
+        target[PAN_VERTEX_ID].swizzle = panfrost_get_default_swizzle(1);
+
+        target[PAN_INSTANCE_ID].format = MALI_R32UI;
+        target[PAN_INSTANCE_ID].swizzle = panfrost_get_default_swizzle(1);
 
         ctx->payloads[PIPE_SHADER_VERTEX].postfix.attribute_meta = transfer.gpu;
 }

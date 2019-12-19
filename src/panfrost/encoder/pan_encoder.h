@@ -98,4 +98,7 @@ panfrost_vertex_instanced(
         unsigned divisor,
         union mali_attr *attrs);
 
+void panfrost_vertex_id(unsigned padded_count, union mali_attr *attr);
+void panfrost_instance_id(unsigned padded_count, union mali_attr *attr);
+
 #endif

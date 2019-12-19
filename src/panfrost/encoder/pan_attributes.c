@@ -179,3 +179,43 @@ panfrost_vertex_instanced(
                 return 2;
         }
 }
+
+/* Records for gl_VertexID and gl_InstanceID use a slightly special encoding,
+ * but the idea is the same */
+
+void
+panfrost_vertex_id(
+        unsigned padded_count,
+        union mali_attr *attr)
+{
+        /* We factor the padded count as shift/odd and that's it */
+
+        attr->elements = MALI_ATTR_VERTEXID;
+        attr->shift = __builtin_ctz(padded_count);
+        attr->extra_flags = padded_count >> (attr->shift + 1);
+        attr->stride = attr->size = 0;
+}
+
+void
+panfrost_instance_id(
+        unsigned padded_count,
+        union mali_attr *attr)
+{
+        attr->elements = MALI_ATTR_INSTANCEID;
+        attr->stride = attr->extra_flags = attr->size = 0;
+        
+        /* POT records have just a shift directly with an off-by-one for
+         * unclear reasons. NPOT records have a magic divisor smushed into the
+         * stride field (which is unused for these special records) */
+
+        if (util_is_power_of_two_or_zero(padded_count)) {
+                attr->shift = __builtin_ctz(padded_count) - 1;
+        } else {
+                unsigned shift = 0, flags = 0;
+
+                attr->stride = panfrost_compute_magic_divisor(padded_count, &shift, &flags);
+                attr->shift = shift;
+                attr->extra_flags = flags;
+        }
+}
+ 
