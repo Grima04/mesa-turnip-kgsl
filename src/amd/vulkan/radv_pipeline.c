@@ -99,6 +99,18 @@ radv_pipeline_get_multisample_state(const VkGraphicsPipelineCreateInfo *pCreateI
 	return NULL;
 }
 
+static const VkPipelineTessellationStateCreateInfo *
+radv_pipeline_get_tessellation_state(const VkGraphicsPipelineCreateInfo *pCreateInfo)
+{
+	for (uint32_t i = 0; i < pCreateInfo->stageCount; i++) {
+		if (pCreateInfo->pStages[i].stage == VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT ||
+		    pCreateInfo->pStages[i].stage == VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) {
+			return pCreateInfo->pTessellationState;
+		}
+	}
+	return NULL;
+}
+
 bool radv_pipeline_has_ngg(const struct radv_pipeline *pipeline)
 {
 	struct radv_shader_variant *variant = NULL;
@@ -2273,8 +2285,10 @@ radv_generate_graphics_pipeline_key(struct radv_pipeline *pipeline,
 		}
 	}
 
-	if (pCreateInfo->pTessellationState)
-		key.tess_input_vertices = pCreateInfo->pTessellationState->patchControlPoints;
+	const VkPipelineTessellationStateCreateInfo *tess =
+		radv_pipeline_get_tessellation_state(pCreateInfo);
+	if (tess)
+		key.tess_input_vertices = tess->patchControlPoints;
 
 	const VkPipelineMultisampleStateCreateInfo *vkms =
 		radv_pipeline_get_multisample_state(pCreateInfo);
