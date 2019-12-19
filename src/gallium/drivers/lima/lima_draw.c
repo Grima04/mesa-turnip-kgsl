@@ -1710,6 +1710,8 @@ _lima_flush(struct lima_context *ctx, bool end_of_frame)
    }
 
    ctx->pp_max_stack_size = 0;
+
+   lima_dump_file_next();
 }
 
 void

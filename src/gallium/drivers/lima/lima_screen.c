@@ -39,6 +39,7 @@
 #include "lima_bo.h"
 #include "lima_fence.h"
 #include "lima_format.h"
+#include "lima_util.h"
 #include "ir/lima_ir.h"
 
 #include "xf86drm.h"
@@ -50,10 +51,7 @@ lima_screen_destroy(struct pipe_screen *pscreen)
 {
    struct lima_screen *screen = lima_screen(pscreen);
 
-   if (lima_dump_command_stream) {
-      fclose(lima_dump_command_stream);
-      lima_dump_command_stream = NULL;
-   }
+   lima_dump_file_close();
 
    slab_destroy_parent(&screen->transfer_pool);
 
@@ -446,14 +444,8 @@ lima_screen_parse_env(void)
 {
    lima_debug = debug_get_option_lima_debug();
 
-   if (lima_debug & LIMA_DEBUG_DUMP) {
-      const char *dump_command = "lima.dump";
-      printf("lima: dump command stream to file %s\n", dump_command);
-      lima_dump_command_stream = fopen(dump_command, "w");
-      if (!lima_dump_command_stream)
-         fprintf(stderr, "lima: fail to open command stream log file %s\n",
-                 dump_command);
-   }
+   if (lima_debug & LIMA_DEBUG_DUMP)
+      lima_dump_file_open();
 
    lima_ctx_num_plb = debug_get_num_option("LIMA_CTX_NUM_PLB", LIMA_CTX_PLB_DEF_NUM);
    if (lima_ctx_num_plb > LIMA_CTX_PLB_MAX_NUM ||

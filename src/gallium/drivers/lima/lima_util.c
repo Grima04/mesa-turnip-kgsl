@@ -27,10 +27,13 @@
 
 #include <pipe/p_defines.h>
 
+#include "util/u_debug.h"
+
 #include "lima_util.h"
 #include "lima_parser.h"
 
 FILE *lima_dump_command_stream = NULL;
+int lima_dump_frame_count = 0;
 
 bool lima_get_absolute_timeout(uint64_t *timeout)
 {
@@ -96,6 +99,40 @@ lima_dump_texture_descriptor(void *data, int size, uint32_t start, uint32_t offs
 {
    if (lima_dump_command_stream)
       lima_parse_texture_descriptor(lima_dump_command_stream, (uint32_t *)data, size, start, offset);
+}
+
+void
+lima_dump_file_open(void)
+{
+   if (lima_dump_command_stream)
+      return;
+
+   char buffer[1024];
+   const char *dump_command = debug_get_option("LIMA_DUMP_FILE", "lima.dump");
+   snprintf(buffer, sizeof(buffer), "%s.%04d", dump_command, lima_dump_frame_count);
+
+   printf("lima: dump command stream to file %s\n", buffer);
+   lima_dump_command_stream = fopen(buffer, "w");
+   if (!lima_dump_command_stream)
+      fprintf(stderr, "lima: failed to open command stream log file %s\n",
+              buffer);
+}
+
+void
+lima_dump_file_close(void)
+{
+   if (lima_dump_command_stream) {
+      fclose(lima_dump_command_stream);
+      lima_dump_command_stream = NULL;
+   }
+}
+
+void
+lima_dump_file_next(void)
+{
+   lima_dump_file_close();
+   lima_dump_frame_count++;
+   lima_dump_file_open();
 }
 
 void
