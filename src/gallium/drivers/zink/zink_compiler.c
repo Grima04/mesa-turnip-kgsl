@@ -123,23 +123,17 @@ lower_pos_write(nir_builder *b, struct nir_instr *instr)
       return;
 
    nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
-   struct nir_src *src;
-   if (intr->intrinsic == nir_intrinsic_store_output) {
-      if (nir_intrinsic_base(intr) != VARYING_SLOT_POS)
-         return;
-      src = &intr->src[0];
-   } else if (intr->intrinsic == nir_intrinsic_store_deref) {
-      nir_variable *var = nir_intrinsic_get_var(intr, 0);
-      if (var->data.mode != nir_var_shader_out ||
-          var->data.location != VARYING_SLOT_POS)
-         return;
-      src = &intr->src[1];
-   } else
+   if (intr->intrinsic != nir_intrinsic_store_deref)
+      return;
+
+   nir_variable *var = nir_intrinsic_get_var(intr, 0);
+   if (var->data.mode != nir_var_shader_out ||
+       var->data.location != VARYING_SLOT_POS)
       return;
 
    b->cursor = nir_before_instr(&intr->instr);
 
-   nir_ssa_def *pos = nir_ssa_for_src(b, *src, 4);
+   nir_ssa_def *pos = nir_ssa_for_src(b, intr->src[1], 4);
    nir_ssa_def *def = nir_vec4(b,
                                nir_channel(b, pos, 0),
                                nir_channel(b, pos, 1),
@@ -149,7 +143,7 @@ lower_pos_write(nir_builder *b, struct nir_instr *instr)
                                                      nir_channel(b, pos, 3)),
                                             0.5),
                                nir_channel(b, pos, 3));
-   nir_instr_rewrite_src(&intr->instr, src, nir_src_for_ssa(def));
+   nir_instr_rewrite_src(&intr->instr, intr->src + 1, nir_src_for_ssa(def));
 }
 
 static void
