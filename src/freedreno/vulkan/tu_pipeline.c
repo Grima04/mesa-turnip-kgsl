@@ -358,6 +358,15 @@ tu6_blend_op(VkBlendOp op)
    }
 }
 
+static unsigned
+tu_shader_nibo(const struct tu_shader *shader)
+{
+   /* In tu_cmd_buffer.c we emit the SSBO's IBOS, but not yet storage image
+    * IBOs.
+    */
+   return shader->ssbo_map.num_desc;
+}
+
 static void
 tu6_emit_vs_config(struct tu_cs *cs, struct tu_shader *shader,
                    const struct ir3_shader_variant *vs)
@@ -457,7 +466,7 @@ tu6_emit_fs_config(struct tu_cs *cs, struct tu_shader *shader,
 
    uint32_t sp_fs_config = A6XX_SP_FS_CONFIG_NTEX(shader->texture_map.num_desc) |
                            A6XX_SP_FS_CONFIG_NSAMP(shader->sampler_map.num_desc) |
-                           A6XX_SP_FS_CONFIG_NIBO(fs->image_mapping.num_ibo);
+                           A6XX_SP_FS_CONFIG_NIBO(tu_shader_nibo(shader));
    if (fs->instrlen)
       sp_fs_config |= A6XX_SP_FS_CONFIG_ENABLED;
 
@@ -479,7 +488,7 @@ tu6_emit_fs_config(struct tu_cs *cs, struct tu_shader *shader,
                   A6XX_HLSQ_FS_CNTL_ENABLED);
 
    tu_cs_emit_pkt4(cs, REG_A6XX_SP_IBO_COUNT, 1);
-   tu_cs_emit(cs, fs->image_mapping.num_ibo);
+   tu_cs_emit(cs, tu_shader_nibo(shader));
 }
 
 static void
@@ -496,7 +505,7 @@ tu6_emit_cs_config(struct tu_cs *cs, const struct tu_shader *shader,
 
    tu_cs_emit_pkt4(cs, REG_A6XX_SP_CS_CONFIG, 2);
    tu_cs_emit(cs, A6XX_SP_CS_CONFIG_ENABLED |
-              A6XX_SP_CS_CONFIG_NIBO(v->image_mapping.num_ibo) |
+              A6XX_SP_CS_CONFIG_NIBO(tu_shader_nibo(shader)) |
               A6XX_SP_CS_CONFIG_NTEX(shader->texture_map.num_desc) |
               A6XX_SP_CS_CONFIG_NSAMP(shader->sampler_map.num_desc));
    tu_cs_emit(cs, v->instrlen);
@@ -525,7 +534,7 @@ tu6_emit_cs_config(struct tu_cs *cs, const struct tu_shader *shader,
    tu_cs_emit(cs, 0x2fc);             /* HLSQ_CS_UNKNOWN_B998 */
 
    tu_cs_emit_pkt4(cs, REG_A6XX_SP_CS_IBO_COUNT, 1);
-   tu_cs_emit(cs, v->image_mapping.num_ibo);
+   tu_cs_emit(cs, tu_shader_nibo(shader));
 }
 
 static void

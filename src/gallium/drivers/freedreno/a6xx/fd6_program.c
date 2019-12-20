@@ -221,39 +221,39 @@ setup_config_stateobj(struct fd_ringbuffer *ring, struct fd6_program_state *stat
 
 	OUT_PKT4(ring, REG_A6XX_SP_VS_CONFIG, 1);
 	OUT_RING(ring, COND(state->vs, A6XX_SP_VS_CONFIG_ENABLED) |
-			A6XX_SP_VS_CONFIG_NIBO(state->vs->image_mapping.num_ibo) |
+			A6XX_SP_VS_CONFIG_NIBO(ir3_shader_nibo(state->vs)) |
 			A6XX_SP_VS_CONFIG_NTEX(state->vs->num_samp) |
 			A6XX_SP_VS_CONFIG_NSAMP(state->vs->num_samp));
 
 	OUT_PKT4(ring, REG_A6XX_SP_HS_CONFIG, 1);
 	OUT_RING(ring, COND(state->hs,
 					A6XX_SP_HS_CONFIG_ENABLED |
-					A6XX_SP_HS_CONFIG_NIBO(state->hs->image_mapping.num_ibo) |
+					A6XX_SP_HS_CONFIG_NIBO(ir3_shader_nibo(state->hs)) |
 					A6XX_SP_HS_CONFIG_NTEX(state->hs->num_samp) |
 					A6XX_SP_HS_CONFIG_NSAMP(state->hs->num_samp)));
 
 	OUT_PKT4(ring, REG_A6XX_SP_DS_CONFIG, 1);
 	OUT_RING(ring, COND(state->ds,
 					A6XX_SP_DS_CONFIG_ENABLED |
-					A6XX_SP_DS_CONFIG_NIBO(state->ds->image_mapping.num_ibo) |
+					A6XX_SP_DS_CONFIG_NIBO(ir3_shader_nibo(state->ds)) |
 					A6XX_SP_DS_CONFIG_NTEX(state->ds->num_samp) |
 					A6XX_SP_DS_CONFIG_NSAMP(state->ds->num_samp)));
 
 	OUT_PKT4(ring, REG_A6XX_SP_GS_CONFIG, 1);
 	OUT_RING(ring, COND(state->gs,
 					A6XX_SP_GS_CONFIG_ENABLED |
-					A6XX_SP_GS_CONFIG_NIBO(state->gs->image_mapping.num_ibo) |
+					A6XX_SP_GS_CONFIG_NIBO(ir3_shader_nibo(state->gs)) |
 					A6XX_SP_GS_CONFIG_NTEX(state->gs->num_samp) |
 					A6XX_SP_GS_CONFIG_NSAMP(state->gs->num_samp)));
 
 	OUT_PKT4(ring, REG_A6XX_SP_FS_CONFIG, 1);
 	OUT_RING(ring, COND(state->fs, A6XX_SP_FS_CONFIG_ENABLED) |
-			A6XX_SP_FS_CONFIG_NIBO(state->fs->image_mapping.num_ibo) |
+			A6XX_SP_FS_CONFIG_NIBO(ir3_shader_nibo(state->fs)) |
 			A6XX_SP_FS_CONFIG_NTEX(state->fs->num_samp) |
 			A6XX_SP_FS_CONFIG_NSAMP(state->fs->num_samp));
 
 	OUT_PKT4(ring, REG_A6XX_SP_IBO_COUNT, 1);
-	OUT_RING(ring, state->fs->image_mapping.num_ibo);
+	OUT_RING(ring, ir3_shader_nibo(state->fs));
 }
 
 static inline uint32_t

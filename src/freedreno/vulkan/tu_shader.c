@@ -294,6 +294,7 @@ lower_intrinsic(nir_builder *b, nir_intrinsic_instr *instr,
          tu_finishme("non-constant vulkan_resource_index array index");
       index = map_add(&shader->ssbo_map, set, binding, 0,
                       binding_layout->array_size);
+      index += const_val->u32;
       break;
    default:
       tu_finishme("unsupported desc_type for vulkan_resource_index");
@@ -344,6 +345,12 @@ tu_lower_io(nir_shader *shader, struct tu_shader *tu_shader,
       if (function->impl)
          progress |= lower_impl(function->impl, tu_shader, layout);
    }
+
+   /* spirv_to_nir produces num_ssbos equal to the number of SSBO-containing
+    * variables, while ir3 wants the number of descriptors (like the gallium
+    * path).
+    */
+   shader->info.num_ssbos = tu_shader->ssbo_map.num_desc;
 
    return progress;
 }

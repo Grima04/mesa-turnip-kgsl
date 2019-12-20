@@ -1142,11 +1142,11 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 		emit_border_color(ctx, ring);
 
 	if (hs) {
-		debug_assert(hs->image_mapping.num_ibo == 0);
-		debug_assert(ds->image_mapping.num_ibo == 0);
+		debug_assert(ir3_shader_nibo(hs) == 0);
+		debug_assert(ir3_shader_nibo(ds) == 0);
 	}
 	if (gs) {
-		debug_assert(gs->image_mapping.num_ibo == 0);
+		debug_assert(ir3_shader_nibo(gs) == 0);
 	}
 
 #define DIRTY_IBO (FD_DIRTY_SHADER_SSBO | FD_DIRTY_SHADER_IMAGE | \
@@ -1156,14 +1156,13 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 			fd6_build_ibo_state(ctx, fs, PIPE_SHADER_FRAGMENT);
 		struct fd_ringbuffer *obj = fd_submit_new_ringbuffer(
 			ctx->batch->submit, 0x100, FD_RINGBUFFER_STREAMING);
-		const struct ir3_ibo_mapping *mapping = &fs->image_mapping;
 
 		OUT_PKT7(obj, CP_LOAD_STATE6, 3);
 		OUT_RING(obj, CP_LOAD_STATE6_0_DST_OFF(0) |
 			CP_LOAD_STATE6_0_STATE_TYPE(ST6_SHADER) |
 			CP_LOAD_STATE6_0_STATE_SRC(SS6_INDIRECT) |
 			CP_LOAD_STATE6_0_STATE_BLOCK(SB6_IBO) |
-			CP_LOAD_STATE6_0_NUM_UNIT(mapping->num_ibo));
+			CP_LOAD_STATE6_0_NUM_UNIT(ir3_shader_nibo(fs)));
 		OUT_RB(obj, state);
 
 		OUT_PKT4(obj, REG_A6XX_SP_IBO_LO, 2);
@@ -1173,7 +1172,7 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 		 * de-duplicate this from program->config_stateobj
 		 */
 		OUT_PKT4(obj, REG_A6XX_SP_IBO_COUNT, 1);
-		OUT_RING(obj, mapping->num_ibo);
+		OUT_RING(obj, ir3_shader_nibo(fs));
 
 		ir3_emit_ssbo_sizes(ctx->screen, fs, obj,
 				&ctx->shaderbuf[PIPE_SHADER_FRAGMENT]);
@@ -1250,21 +1249,20 @@ fd6_emit_cs_state(struct fd_context *ctx, struct fd_ringbuffer *ring,
 	if (dirty & (FD_DIRTY_SHADER_SSBO | FD_DIRTY_SHADER_IMAGE)) {
 		struct fd_ringbuffer *state =
 			fd6_build_ibo_state(ctx, cp, PIPE_SHADER_COMPUTE);
-		const struct ir3_ibo_mapping *mapping = &cp->image_mapping;
 
 		OUT_PKT7(ring, CP_LOAD_STATE6_FRAG, 3);
 		OUT_RING(ring, CP_LOAD_STATE6_0_DST_OFF(0) |
 			CP_LOAD_STATE6_0_STATE_TYPE(ST6_IBO) |
 			CP_LOAD_STATE6_0_STATE_SRC(SS6_INDIRECT) |
 			CP_LOAD_STATE6_0_STATE_BLOCK(SB6_CS_SHADER) |
-			CP_LOAD_STATE6_0_NUM_UNIT(mapping->num_ibo));
+			CP_LOAD_STATE6_0_NUM_UNIT(ir3_shader_nibo(cp)));
 		OUT_RB(ring, state);
 
 		OUT_PKT4(ring, REG_A6XX_SP_CS_IBO_LO, 2);
 		OUT_RB(ring, state);
 
 		OUT_PKT4(ring, REG_A6XX_SP_CS_IBO_COUNT, 1);
-		OUT_RING(ring, mapping->num_ibo);
+		OUT_RING(ring, ir3_shader_nibo(cp));
 
 		fd_ringbuffer_del(state);
 	}

@@ -400,13 +400,10 @@ emit_ssbos(struct fd_context *ctx, struct fd_ringbuffer *ring,
 		const struct ir3_shader_variant *v)
 {
 	unsigned count = util_last_bit(so->enabled_mask);
-	const struct ir3_ibo_mapping *m = &v->image_mapping;
 
 	for (unsigned i = 0; i < count; i++) {
-		unsigned slot = m->ssbo_to_ibo[i];
-
 		OUT_PKT7(ring, CP_LOAD_STATE4, 5);
-		OUT_RING(ring, CP_LOAD_STATE4_0_DST_OFF(slot) |
+		OUT_RING(ring, CP_LOAD_STATE4_0_DST_OFF(i) |
 				CP_LOAD_STATE4_0_STATE_SRC(SS4_DIRECT) |
 				CP_LOAD_STATE4_0_STATE_BLOCK(sb) |
 				CP_LOAD_STATE4_0_NUM_UNIT(1));
@@ -424,7 +421,7 @@ emit_ssbos(struct fd_context *ctx, struct fd_ringbuffer *ring,
 		OUT_RING(ring, A5XX_SSBO_1_1_HEIGHT(sz >> 16));
 
 		OUT_PKT7(ring, CP_LOAD_STATE4, 5);
-		OUT_RING(ring, CP_LOAD_STATE4_0_DST_OFF(slot) |
+		OUT_RING(ring, CP_LOAD_STATE4_0_DST_OFF(i) |
 				CP_LOAD_STATE4_0_STATE_SRC(SS4_DIRECT) |
 				CP_LOAD_STATE4_0_STATE_BLOCK(sb) |
 				CP_LOAD_STATE4_0_NUM_UNIT(1));

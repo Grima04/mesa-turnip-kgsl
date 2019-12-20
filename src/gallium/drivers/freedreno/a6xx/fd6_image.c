@@ -232,6 +232,15 @@ fd6_emit_ssbo_tex(struct fd_ringbuffer *ring, const struct pipe_shader_buffer *p
 
 static void emit_image_ssbo(struct fd_ringbuffer *ring, struct fd6_image *img)
 {
+	/* If the SSBO isn't present (becasue gallium doesn't pack atomic
+	 * counters), zero-fill the slot.
+	 */
+	if (!img->prsc) {
+		for (int i = 0; i < 16; i++)
+			OUT_RING(ring, 0);
+		return;
+	}
+
 	struct fd_resource *rsc = fd_resource(img->prsc);
 	enum a6xx_tile_mode tile_mode = fd_resource_tile_mode(img->prsc, img->level);
 	bool ubwc_enabled = fd_resource_ubwc_enabled(rsc, img->level);
@@ -280,24 +289,24 @@ fd6_build_ibo_state(struct fd_context *ctx, const struct ir3_shader_variant *v,
 {
 	struct fd_shaderbuf_stateobj *bufso = &ctx->shaderbuf[shader];
 	struct fd_shaderimg_stateobj *imgso = &ctx->shaderimg[shader];
-	const struct ir3_ibo_mapping *mapping = &v->image_mapping;
 
 	struct fd_ringbuffer *state =
 		fd_submit_new_ringbuffer(ctx->batch->submit,
-			mapping->num_ibo * 16 * 4, FD_RINGBUFFER_STREAMING);
+				(v->shader->nir->info.num_ssbos +
+				 v->shader->nir->info.num_images) * 16 * 4,
+				FD_RINGBUFFER_STREAMING);
 
 	assert(shader == PIPE_SHADER_COMPUTE || shader == PIPE_SHADER_FRAGMENT);
 
-	for (unsigned i = 0; i < mapping->num_ibo; i++) {
+	for (unsigned i = 0; i < v->shader->nir->info.num_ssbos; i++) {
 		struct fd6_image img;
-		unsigned idx = mapping->ibo_to_image[i];
+		translate_buf(&img, &bufso->sb[i]);
+		emit_image_ssbo(state, &img);
+	}
 
-		if (idx & IBO_SSBO) {
-			translate_buf(&img, &bufso->sb[idx & ~IBO_SSBO]);
-		} else {
-			translate_image(&img, &imgso->si[idx]);
-		}
-
+	for (unsigned i = 0; i < v->shader->nir->info.num_images; i++) {
+		struct fd6_image img;
+		translate_image(&img, &imgso->si[i]);
 		emit_image_ssbo(state, &img);
 	}
 
