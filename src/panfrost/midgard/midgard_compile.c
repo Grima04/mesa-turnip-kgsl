@@ -1741,6 +1741,7 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
 
         bool needs_temp_coord =
                 (midgard_texop == TEXTURE_OP_TEXEL_FETCH) ||
+                (instr->sampler_dim == GLSL_SAMPLER_DIM_CUBE) ||
                 (instr->is_shadow);
 
         unsigned coords = needs_temp_coord ? make_compiler_temp_reg(ctx) : 0;
@@ -1755,7 +1756,25 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
 
                         unsigned coord_mask = mask_of(instr->coord_components);
 
-                        if (needs_temp_coord) {
+                        if (instr->sampler_dim == GLSL_SAMPLER_DIM_CUBE) {
+                                /* texelFetch is undefined on samplerCube */
+                                assert(midgard_texop != TEXTURE_OP_TEXEL_FETCH);
+
+                                /* For cubemaps, we use a special ld/st op to
+                                 * select the face and copy the xy into the
+                                 * texture register */
+
+                                midgard_instruction ld = m_ld_cubemap_coords(coords, 0);
+                                ld.src[1] = index;
+                                ld.mask = 0x3; /* xy */
+                                ld.load_store.arg_1 = 0x20;
+                                ld.swizzle[1][3] = COMPONENT_X;
+                                emit_mir_instruction(ctx, ld);
+
+                                /* xyzw -> xyxx */
+                                ins.swizzle[1][2] = instr->is_shadow ? COMPONENT_Z : COMPONENT_X;
+                                ins.swizzle[1][3] = COMPONENT_X;
+                        } else if (needs_temp_coord) {
                                 /* mov coord_temp, coords */
                                 midgard_instruction mov = v_mov(index, coords);
                                 mov.mask = coord_mask;
@@ -1763,6 +1782,8 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
                         } else {
                                 coords = index;
                         }
+
+                        ins.src[1] = coords;
 
                         /* Texelfetch coordinates uses all four elements
                          * (xyz/index) regardless of texture dimensionality,
@@ -1776,30 +1797,6 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
                                 mov.has_constants = true;
                                 mov.mask = coord_mask ^ 0xF;
                                 emit_mir_instruction(ctx, mov);
-                        }
-
-                        if (instr->sampler_dim == GLSL_SAMPLER_DIM_CUBE) {
-                                /* texelFetch is undefined on samplerCube */
-                                assert(midgard_texop != TEXTURE_OP_TEXEL_FETCH);
-
-                                /* For cubemaps, we use a special ld/st op to
-                                 * select the face and copy the xy into the
-                                 * texture register */
-
-                                unsigned temp = make_compiler_temp(ctx);
-                                midgard_instruction ld = m_ld_cubemap_coords(temp, 0);
-                                ld.src[1] = coords;
-                                ld.mask = 0x3; /* xy */
-                                ld.load_store.arg_1 = 0x20;
-                                ld.swizzle[1][3] = COMPONENT_X;
-                                emit_mir_instruction(ctx, ld);
-
-                                ins.src[1] = temp;
-                                /* xyzw -> xyxx */
-                                ins.swizzle[1][2] = COMPONENT_X;
-                                ins.swizzle[1][3] = COMPONENT_X;
-                        } else {
-                                ins.src[1] = coords;
                         }
 
                         if (instr->sampler_dim == GLSL_SAMPLER_DIM_2D) {
@@ -1855,7 +1852,6 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
                 };
 
                 case nir_tex_src_comparator: {
-                        /* TODO: generalize */
                         unsigned comp = COMPONENT_Z;
 
                         /* mov coord_temp.foo, coords */
