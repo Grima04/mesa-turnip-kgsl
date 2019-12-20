@@ -702,8 +702,8 @@ tu6_emit_tile_select(struct tu_cmd_buffer *cmd,
                      A6XX_CP_REG_TEST_0_WAIT_FOR_ME);
 
       tu_cs_emit_pkt7(cs, CP_COND_REG_EXEC, 2);
-      tu_cs_emit(cs, 0x10000000);
-      tu_cs_emit(cs, 11); /* conditionally execute next 11 dwords */
+      tu_cs_emit(cs, CP_COND_REG_EXEC_0_MODE(PRED_TEST));
+      tu_cs_emit(cs, CP_COND_REG_EXEC_1_DWORDS(11));
 
       /* if (no overflow) */ {
          tu_cs_emit_pkt7(cs, CP_SET_BIN_DATA5, 7);
@@ -1174,8 +1174,8 @@ emit_vsc_overflow_test(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
          A6XX_CP_REG_TEST_0_WAIT_FOR_ME);
 
    tu_cs_emit_pkt7(cs, CP_COND_REG_EXEC, 2);
-   tu_cs_emit(cs, 0x10000000);
-   tu_cs_emit(cs, 7);  /* conditionally execute next 7 dwords */
+   tu_cs_emit(cs, CP_COND_REG_EXEC_0_MODE(PRED_TEST));
+   tu_cs_emit(cs, CP_COND_REG_EXEC_1_DWORDS(7));
 
    /* if (b0 set) */ {
       /*

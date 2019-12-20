@@ -1446,9 +1446,36 @@ opcode: CP_LOAD_STATE4 (30) (4 dwords)
 
 <!-- I *think* this existed at least as far back as a4xx -->
 <domain name="CP_COND_REG_EXEC" width="32">
+	<enum name="compare_mode">
+		<!-- use the predicate bit set by CP_REG_TEST -->
+		<value value="1" name="PRED_TEST"/>
+		<!-- compare two registers directly for equality -->
+		<value value="2" name="REG_COMPARE"/>
+		<!-- test if certain render modes are set via CP_SET_MARKER -->
+		<value value="3" name="RENDER_MODE" variants="A6XX-"/>
+	</enum>
 	<reg32 offset="0" name="0">
-		<bitfield name="UNK28" pos="28" type="boolean"/>
+		<bitfield name="REG0" low="0" high="17" type="hex"/>
+
+		<!--
+			Note: these bits have the same meaning, and use the same
+			internal mechanism as the bits in CP_SET_DRAW_STATE.
+			When RENDER_MODE is selected, they're used as
+			a bitmask of which modes pass the test.
+		-->
+
+		<!-- RM6_BINNING -->
+		<bitfield name="BINNING" pos="20" variants="A6XX-" type="boolean"/>
+		<!-- all others -->
+		<bitfield name="GMEM" pos="21" variants="A6XX-" type="boolean"/>
+		<!-- RM6_BYPASS -->
+		<bitfield name="SYSMEM" pos="22" variants="A6XX-" type="boolean"/>
+
+		<bitfield name="MODE" low="28" high="31" type="compare_mode"/>
 	</reg32>
+
+	<!-- in REG_COMPARE mode, there's an extra DWORD here with REG1 -->
+
 	<reg32 offset="1" name="1">
 		<bitfield name="DWORDS" low="0" high="31" type="uint"/>
 	</reg32>

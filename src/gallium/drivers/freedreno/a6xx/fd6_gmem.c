@@ -462,8 +462,8 @@ emit_vsc_overflow_test(struct fd_batch *batch)
 			A6XX_CP_REG_TEST_0_WAIT_FOR_ME);
 
 	OUT_PKT7(ring, CP_COND_REG_EXEC, 2);
-	OUT_RING(ring, 0x10000000);
-	OUT_RING(ring, 7);  /* conditionally execute next 7 dwords */
+	OUT_RING(ring, CP_COND_REG_EXEC_0_MODE(PRED_TEST));
+	OUT_RING(ring, CP_COND_REG_EXEC_1_DWORDS(7));
 
 	/* if (b0 set) */ {
 		/*
@@ -569,8 +569,8 @@ emit_conditional_ib(struct fd_batch *batch, struct fd_tile *tile,
 			A6XX_CP_REG_TEST_0_WAIT_FOR_ME);
 
 	OUT_PKT7(ring, CP_COND_REG_EXEC, 2);
-	OUT_RING(ring, 0x10000000);
-	OUT_RING(ring, 4 * count);  /* conditionally execute next 4*count dwords */
+	OUT_RING(ring, CP_COND_REG_EXEC_0_MODE(PRED_TEST));
+	OUT_RING(ring, CP_COND_REG_EXEC_1_DWORDS(4 * count));
 
 	for (unsigned i = 0; i < count; i++) {
 		uint32_t dwords;
@@ -857,8 +857,8 @@ fd6_emit_tile_prep(struct fd_batch *batch, struct fd_tile *tile)
 				A6XX_CP_REG_TEST_0_WAIT_FOR_ME);
 
 		OUT_PKT7(ring, CP_COND_REG_EXEC, 2);
-		OUT_RING(ring, 0x10000000);
-		OUT_RING(ring, 11);  /* conditionally execute next 11 dwords */
+		OUT_RING(ring, CP_COND_REG_EXEC_0_MODE(PRED_TEST));
+		OUT_RING(ring, CP_COND_REG_EXEC_1_DWORDS(11));
 
 		/* if (no overflow) */ {
 			OUT_PKT7(ring, CP_SET_BIN_DATA5, 7);
@@ -1333,8 +1333,8 @@ fd6_emit_tile_gmem2mem(struct fd_batch *batch, struct fd_tile *tile)
 				A6XX_CP_REG_TEST_0_WAIT_FOR_ME);
 
 		OUT_PKT7(ring, CP_COND_REG_EXEC, 2);
-		OUT_RING(ring, 0x10000000);
-		OUT_RING(ring, 2);  /* conditionally execute next 2 dwords */
+		OUT_RING(ring, CP_COND_REG_EXEC_0_MODE(PRED_TEST));
+		OUT_RING(ring, CP_COND_REG_EXEC_1_DWORDS(2));
 
 		/* if (no overflow) */ {
 			OUT_PKT7(ring, CP_SET_MARKER, 1);
