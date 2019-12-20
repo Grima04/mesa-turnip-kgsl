@@ -1826,6 +1826,10 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
 
                         ins.texture.lod_register = true;
                         ins.src[2] = index;
+
+                        for (unsigned c = 0; c < MIR_VEC_COMPONENTS; ++c)
+                                ins.swizzle[2][c] = COMPONENT_X;
+
                         emit_explicit_constant(ctx, index, index);
 
                         break;
