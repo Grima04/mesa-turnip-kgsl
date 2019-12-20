@@ -516,9 +516,9 @@ static void si_blit_decompress_color(struct si_context *sctx,
 				   tex->surface.u.gfx9.dcc.pipe_aligned);
 
 expand_fmask:
-	if (need_fmask_expand && tex->surface.fmask_offset && tex->fmask_is_not_identity) {
+	if (need_fmask_expand && tex->surface.fmask_offset && !tex->fmask_is_identity) {
 		si_compute_expand_fmask(&sctx->b, &tex->buffer.b.b);
-		tex->fmask_is_not_identity = false;
+		tex->fmask_is_identity = true;
 	}
 }
 

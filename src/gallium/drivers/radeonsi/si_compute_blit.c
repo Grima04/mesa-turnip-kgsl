@@ -325,7 +325,7 @@ void si_clear_buffer(struct si_context *sctx, struct pipe_resource *dst,
 		    (!force_cpdma &&
 		     clear_value_size == 4 &&
 		     offset % 4 == 0 &&
-		     (size > 32*1024 || sctx->chip_class <= GFX8))) {
+		     (size > 32*1024 || sctx->chip_class <= GFX9))) {
 			si_compute_do_clear_or_copy(sctx, dst, offset, NULL, 0,
 						    aligned_size, clear_value,
 						    clear_value_size, coher);

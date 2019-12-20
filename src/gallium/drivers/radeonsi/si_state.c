@@ -2838,7 +2838,7 @@ void si_update_fb_dirtiness_after_rendering(struct si_context *sctx)
 
 		if (tex->surface.fmask_offset) {
 			tex->dirty_level_mask |= 1 << surf->u.tex.level;
-			tex->fmask_is_not_identity = true;
+			tex->fmask_is_identity = false;
 		}
 		if (tex->dcc_gather_statistics)
 			tex->separate_dcc_dirty = true;

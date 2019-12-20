@@ -321,7 +321,7 @@ struct si_texture {
 	uint16_t			stencil_dirty_level_mask; /* each bit says if that mipmap is compressed */
 	enum pipe_format		db_render_format:16;
 	uint8_t				stencil_clear_value;
-	bool				fmask_is_not_identity:1;
+	bool				fmask_is_identity:1;
 	bool				tc_compatible_htile:1;
 	bool				htile_stencil_disabled:1;
 	bool				depth_cleared:1; /* if it was cleared at least once */
