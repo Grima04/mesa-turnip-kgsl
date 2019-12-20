@@ -92,10 +92,10 @@ descriptor_size(enum VkDescriptorType type)
    case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
    case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
    case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
-      return A6XX_TEX_CONST_DWORDS*4;
+      return A6XX_TEX_CONST_DWORDS * 4;
    case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
       /* texture const + tu_sampler struct (includes border color) */
-      return A6XX_TEX_CONST_DWORDS*4 + sizeof(struct tu_sampler);
+      return A6XX_TEX_CONST_DWORDS * 4 + sizeof(struct tu_sampler);
    case VK_DESCRIPTOR_TYPE_SAMPLER:
       return sizeof(struct tu_sampler);
    default:
@@ -845,7 +845,7 @@ tu_update_descriptor_sets(struct tu_device *device,
             break;
          case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
             write_combined_image_sampler_descriptor(device, cmd_buffer,
-                                                    A6XX_TEX_CONST_DWORDS*4,
+                                                    A6XX_TEX_CONST_DWORDS * 4,
                                                     ptr, buffer_list,
                                                     writeset->descriptorType,
                                                     writeset->pImageInfo + j,
