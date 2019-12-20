@@ -3448,7 +3448,7 @@ glsl_to_tgsi_visitor::visit_atomic_counter_intrinsic(ir_call *ir)
       resource = buffer;
    } else {
       st_src_reg buffer(PROGRAM_BUFFER,
-                        ctx->Const.Program[shader->Stage].MaxShaderStorageBlocks +
+                        prog->info.num_ssbos +
                         location->data.binding,
                         GLSL_TYPE_ATOMIC_UINT);
 
@@ -7051,7 +7051,7 @@ st_translate_program(
 
       if (!st_context(ctx)->has_hw_atomics) {
          for (i = 0; i < prog->info.num_abos; i++) {
-            unsigned index = (frag_const->MaxShaderStorageBlocks +
+            unsigned index = (prog->info.num_ssbos +
                               prog->sh.AtomicBuffers[i]->Binding);
             assert(prog->sh.AtomicBuffers[i]->Binding <
                    frag_const->MaxAtomicBuffers);

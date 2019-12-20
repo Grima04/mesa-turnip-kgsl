@@ -75,10 +75,10 @@ st_bind_atomics(struct st_context *st, struct gl_program *prog,
       return;
 
    /* For !has_hw_atomics, the atomic counters have been rewritten to be above
-    * the SSBO range.
+    * the SSBOs used by the program.
     */
-   unsigned buffer_base = st->ctx->Const.Program[stage].MaxShaderStorageBlocks;
-
+   unsigned buffer_base = prog->info.num_ssbos;
+   unsigned used_bindings = 0;
    for (i = 0; i < prog->sh.data->NumAtomicBuffers; i++) {
       struct gl_active_atomic_buffer *atomic =
          &prog->sh.data->AtomicBuffers[i];
@@ -88,7 +88,9 @@ st_bind_atomics(struct st_context *st, struct gl_program *prog,
 
       st->pipe->set_shader_buffers(st->pipe, shader_type,
                                    buffer_base + atomic->Binding, 1, &sb, 0x1);
+      used_bindings = MAX2(atomic->Binding + 1, used_bindings);
    }
+   st->last_used_atomic_bindings[shader_type] = used_bindings;
 }
 
 void

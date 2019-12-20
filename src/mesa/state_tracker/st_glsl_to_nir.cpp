@@ -504,8 +504,7 @@ st_glsl_to_nir_post_opts(struct st_context *st, struct gl_program *prog,
    nir_remove_dead_variables(nir, mask);
 
    if (!st->has_hw_atomics)
-      NIR_PASS_V(nir, nir_lower_atomics_to_ssbo,
-                 st->ctx->Const.Program[nir->info.stage].MaxShaderStorageBlocks);
+      NIR_PASS_V(nir, nir_lower_atomics_to_ssbo, prog->info.num_ssbos);
 
    st_finalize_nir_before_variants(nir);
 
