@@ -1849,6 +1849,7 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
                                 ins.swizzle[3][c] = (c > COMPONENT_Z) ? 0 : c;
 
                         emit_explicit_constant(ctx, index, index);
+                        break;
                 };
 
                 case nir_tex_src_comparator: {
