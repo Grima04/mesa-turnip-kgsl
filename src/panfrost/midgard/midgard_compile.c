@@ -1753,10 +1753,12 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
                 case nir_tex_src_coord: {
                         emit_explicit_constant(ctx, index, index);
 
+                        unsigned coord_mask = mask_of(instr->coord_components);
+
                         if (needs_temp_coord) {
                                 /* mov coord_temp, coords */
                                 midgard_instruction mov = v_mov(index, coords);
-                                mov.mask = 0x3;
+                                mov.mask = coord_mask;
                                 emit_mir_instruction(ctx, mov);
                         } else {
                                 coords = index;
@@ -1768,11 +1770,11 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
                          * components to keep everything happy */
 
                         if (midgard_texop == TEXTURE_OP_TEXEL_FETCH) {
-                                /* mov index.zw, #0 */
+                                /* mov index.zw, #0, or generalized */
                                 midgard_instruction mov =
                                         v_mov(SSA_FIXED_REGISTER(REGISTER_CONSTANT), coords);
                                 mov.has_constants = true;
-                                mov.mask = (1 << COMPONENT_Z) | (1 << COMPONENT_W);
+                                mov.mask = coord_mask ^ 0xF;
                                 emit_mir_instruction(ctx, mov);
                         }
 
