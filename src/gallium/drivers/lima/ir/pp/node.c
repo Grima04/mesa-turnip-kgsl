@@ -456,7 +456,8 @@ void ppir_node_replace_child(ppir_node *parent, ppir_node *old_child, ppir_node 
    case ppir_node_type_load_texture:
    {
       ppir_load_texture_node *load_texture = ppir_node_to_load_texture(parent);
-      _ppir_node_replace_child(&load_texture->src_coords, old_child, new_child);
+      for (int i = 0; i < load_texture->num_src; i++)
+         _ppir_node_replace_child(ppir_node_get_src(parent, i), old_child, new_child);
       break;
    }
    case ppir_node_type_store:

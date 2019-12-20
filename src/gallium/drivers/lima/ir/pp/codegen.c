@@ -130,7 +130,7 @@ static void ppir_codegen_encode_texld(ppir_node *node, void *code)
    f->lod_bias_en = ldtex->lod_bias_en;
    f->explicit_lod = ldtex->explicit_lod;
    if (ldtex->lod_bias_en)
-      ppir_target_get_src_reg_index(&ldtex->lod_bias);
+      ppir_target_get_src_reg_index(&ldtex->src[1]);
 
    switch (ldtex->sampler_dim) {
    case GLSL_SAMPLER_DIM_2D:

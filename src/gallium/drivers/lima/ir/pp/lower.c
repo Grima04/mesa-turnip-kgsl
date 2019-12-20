@@ -168,7 +168,7 @@ static bool ppir_lower_texture(ppir_block *block, ppir_node *node)
          return false;
       list_addtail(&load->node.list, &node->list);
 
-      load->src = load_tex->src_coords;
+      load->src = load_tex->src[0];
       load->num_src = 1;
       if (load_tex->sampler_dim == GLSL_SAMPLER_DIM_CUBE)
          load->num_components = 3;
@@ -187,8 +187,8 @@ static bool ppir_lower_texture(ppir_block *block, ppir_node *node)
    }
 
    assert(load);
-   load_tex->src_coords.type = load->dest.type = ppir_target_pipeline;
-   load_tex->src_coords.pipeline = load->dest.pipeline = ppir_pipeline_reg_discard;
+   load_tex->src[0].type = load->dest.type = ppir_target_pipeline;
+   load_tex->src[0].pipeline = load->dest.pipeline = ppir_pipeline_reg_discard;
 
    if (ppir_node_has_single_src_succ(node)) {
       ppir_node *succ = ppir_node_first_succ(node);

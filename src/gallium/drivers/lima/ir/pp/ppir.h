@@ -270,12 +270,13 @@ typedef struct {
 typedef struct {
    ppir_node node;
    ppir_dest dest;
-   ppir_src src_coords; /* not to be used after lowering */
+   ppir_src src[2]; /* src[0] temporarily stores src_coords,
+                       not to be used after lowering */
+   int num_src;
    int sampler;
    int sampler_dim;
    bool lod_bias_en;
    bool explicit_lod;
-   ppir_src lod_bias;
 } ppir_load_texture_node;
 
 typedef struct {
@@ -475,6 +476,7 @@ static inline int ppir_node_get_src_num(ppir_node *node)
    case ppir_node_type_load:
       return ppir_node_to_load(node)->num_src;
    case ppir_node_type_load_texture:
+      return ppir_node_to_load_texture(node)->num_src;
    case ppir_node_type_store:
       return 1;
    default:
@@ -495,7 +497,7 @@ static inline ppir_src *ppir_node_get_src(ppir_node *node, int idx)
    case ppir_node_type_branch:
       return &ppir_node_to_branch(node)->src[idx];
    case ppir_node_type_load_texture:
-      return &ppir_node_to_load_texture(node)->src_coords;
+      return &ppir_node_to_load_texture(node)->src[idx];
    case ppir_node_type_load:
       return &ppir_node_to_load(node)->src;
    case ppir_node_type_store:
