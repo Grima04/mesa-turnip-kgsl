@@ -1621,6 +1621,21 @@ tu_pipeline_builder_parse_dynamic(struct tu_pipeline_builder *builder,
 }
 
 static void
+tu_pipeline_set_linkage(struct tu_program_descriptor_linkage *link,
+                        struct tu_shader *shader,
+                        struct ir3_shader_variant *v)
+{
+   link->ubo_state = v->shader->ubo_state;
+   link->const_state = v->shader->const_state;
+   link->constlen = v->constlen;
+   link->texture_map = shader->texture_map;
+   link->sampler_map = shader->sampler_map;
+   link->ubo_map = shader->ubo_map;
+   link->ssbo_map = shader->ssbo_map;
+   link->image_mapping =  v->image_mapping;
+}
+
+static void
 tu_pipeline_builder_parse_shader_stages(struct tu_pipeline_builder *builder,
                                         struct tu_pipeline *pipeline)
 {
@@ -1638,17 +1653,9 @@ tu_pipeline_builder_parse_shader_stages(struct tu_pipeline_builder *builder,
       if (!builder->shaders[i])
          continue;
 
-      struct tu_program_descriptor_linkage *link = &pipeline->program.link[i];
-      struct ir3_shader *shader = builder->shaders[i]->variants[0].shader;
-
-      link->ubo_state = shader->ubo_state;
-      link->const_state = shader->const_state;
-      link->constlen = builder->shaders[i]->variants[0].constlen;
-      link->texture_map = builder->shaders[i]->texture_map;
-      link->sampler_map = builder->shaders[i]->sampler_map;
-      link->ubo_map = builder->shaders[i]->ubo_map;
-      link->ssbo_map = builder->shaders[i]->ssbo_map;
-      link->image_mapping =  builder->shaders[i]->variants[0].image_mapping;
+      tu_pipeline_set_linkage(&pipeline->program.link[i],
+                              builder->shaders[i],
+                              &builder->shaders[i]->variants[0]);
    }
 }
 
@@ -2081,17 +2088,10 @@ tu_compute_pipeline_create(VkDevice device,
    if (result != VK_SUCCESS)
       return result;
 
-   struct tu_program_descriptor_linkage *link = &pipeline->program.link[MESA_SHADER_COMPUTE];
    struct ir3_shader_variant *v = &shader->variants[0];
 
-   link->ubo_state = v->shader->ubo_state;
-   link->const_state = v->shader->const_state;
-   link->constlen = v->constlen;
-   link->texture_map = shader->texture_map;
-   link->sampler_map = shader->sampler_map;
-   link->ubo_map = shader->ubo_map;
-   link->ssbo_map = shader->ssbo_map;
-   link->image_mapping =  v->image_mapping;
+   tu_pipeline_set_linkage(&pipeline->program.link[MESA_SHADER_COMPUTE],
+                           shader, v);
 
    result = tu_compute_upload_shader(device, pipeline, shader);
    if (result != VK_SUCCESS)
