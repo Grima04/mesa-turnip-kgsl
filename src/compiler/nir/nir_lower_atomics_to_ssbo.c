@@ -32,7 +32,8 @@
 #endif
 
 /*
- * Remap atomic counters to SSBOs, starting from the passed in ssbo_offset.
+ * Remap atomic counters to SSBOs, starting from the shader's next SSBO slot
+ * (info.num_ssbos).
  */
 
 static bool
@@ -161,8 +162,9 @@ is_atomic_uint(const struct glsl_type *type)
 }
 
 bool
-nir_lower_atomics_to_ssbo(nir_shader *shader, unsigned ssbo_offset)
+nir_lower_atomics_to_ssbo(nir_shader *shader)
 {
+   unsigned ssbo_offset = shader->info.num_ssbos;
    bool progress = false;
 
    nir_foreach_function(function, shader) {
