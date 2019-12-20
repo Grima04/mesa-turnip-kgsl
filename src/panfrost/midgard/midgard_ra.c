@@ -518,6 +518,13 @@ allocate_registers(compiler_context *ctx, bool *spilled)
                         set_class(l->class, ins->src[1], REG_CLASS_TEXR);
                         set_class(l->class, ins->src[2], REG_CLASS_TEXR);
                         set_class(l->class, ins->src[3], REG_CLASS_TEXR);
+
+                        /* Texture offsets need to be aligned to vec4, since
+                         * the swizzle for x is forced to x in hardware, while
+                         * the other components are free. TODO: Relax to 8 for
+                         * half-registers if that ever occurs. */
+
+                        //lcra_restrict_range(l, ins->src[3], 16);
                 }
         }
 
@@ -549,13 +556,6 @@ allocate_registers(compiler_context *ctx, bool *spilled)
         return l;
 }
 
-/* Reverses 2 bits, used to pack swizzles of offsets for some reason */
-
-static unsigned
-mir_reverse2(unsigned in)
-{
-        return (in >> 1) | ((in & 1) << 1);
-}
 
 /* Once registers have been decided via register allocation
  * (allocate_registers), we need to rewrite the MIR to use registers instead of
@@ -694,20 +694,20 @@ install_registers_instr(
 
                 /* If there is an offset register, install it */
                 if (ins->src[3] != ~0) {
-                        ins->texture.offset_x = 
-                                (1)                   | /* full */
-                                (offset.reg & 1) << 1 | /* select */
-                                0 << 2;                 /* upper */
-
                         unsigned x = offset.offset / 4;
                         unsigned y = x + 1;
                         unsigned z = x + 2;
 
-                        ins->texture.offset_y =
-                                mir_reverse2(y) | (mir_reverse2(x) << 2);
+                        /* Check range, TODO: half-registers */
+                        assert(z < 4);
 
-                        ins->texture.offset_z =
-                                mir_reverse2(z);
+                        ins->texture.offset =
+                                (1)                   | /* full */
+                                (offset.reg & 1) << 1 | /* select */
+                                (0 << 2)              | /* upper */
+                                (x << 3)              | /* swizzle */
+                                (y << 5)              | /* swizzle */
+                                (z << 7);               /* swizzle */
                 }
 
                 break;

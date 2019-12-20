@@ -1366,9 +1366,9 @@ print_texture_word(uint32_t *word, unsigned tabs, unsigned in_reg_base, unsigned
         if (texture->offset_register) {
                 printf(" + ");
 
-                bool full = texture->offset_x & 1;
-                bool select = texture->offset_x & 2;
-                bool upper = texture->offset_x & 4;
+                bool full = texture->offset & 1;
+                bool select = texture->offset & 2;
+                bool upper = texture->offset & 4;
 
                 printf("%sr%u", full ? "" : "h", in_reg_base + select);
                 assert(!(texture->out_full && texture->out_upper));
@@ -1377,30 +1377,19 @@ print_texture_word(uint32_t *word, unsigned tabs, unsigned in_reg_base, unsigned
                 if (upper)
                         printf("'");
 
-                /* The less questions you ask, the better. */
-
-                unsigned swizzle_lo, swizzle_hi;
-                unsigned orig_y = texture->offset_y;
-                unsigned orig_z = texture->offset_z;
-
-                memcpy(&swizzle_lo, &orig_y, sizeof(unsigned));
-                memcpy(&swizzle_hi, &orig_z, sizeof(unsigned));
-
-                /* Duplicate hi swizzle over */
-                assert(swizzle_hi < 4);
-                swizzle_hi = (swizzle_hi << 2) | swizzle_hi;
-
-                unsigned swiz = (swizzle_lo << 4) | swizzle_hi;
-                unsigned reversed = util_bitreverse(swiz) >> 24;
-                print_swizzle_vec4(reversed, false, false);
+                print_swizzle_vec4(texture->offset >> 3, false, false);
 
                 printf(", ");
-        } else if (texture->offset_x || texture->offset_y || texture->offset_z) {
+        } else if (texture->offset) {
                 /* Only select ops allow negative immediate offsets, verify */
 
-                bool neg_x = texture->offset_x < 0;
-                bool neg_y = texture->offset_y < 0;
-                bool neg_z = texture->offset_z < 0;
+                signed offset_x = (texture->offset & 0xF);
+                signed offset_y = ((texture->offset >> 4) & 0xF);
+                signed offset_z = ((texture->offset >> 8) & 0xF);
+
+                bool neg_x = offset_x < 0;
+                bool neg_y = offset_y < 0;
+                bool neg_z = offset_z < 0;
                 bool any_neg = neg_x || neg_y || neg_z;
 
                 if (any_neg && texture->op != TEXTURE_OP_TEXEL_FETCH)
@@ -1408,10 +1397,7 @@ print_texture_word(uint32_t *word, unsigned tabs, unsigned in_reg_base, unsigned
 
                 /* Regardless, just print the immediate offset */
 
-                printf(" + <%d, %d, %d>, ",
-                       texture->offset_x,
-                       texture->offset_y,
-                       texture->offset_z);
+                printf(" + <%d, %d, %d>, ", offset_x, offset_y, offset_z);
         } else {
                 printf(", ");
         }

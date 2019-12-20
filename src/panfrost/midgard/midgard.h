@@ -691,16 +691,30 @@ __attribute__((__packed__))
         /* In immediate mode, each offset field is an immediate range [0, 7].
          *
          * In register mode, offset_x becomes a register full / select / upper
-         * triplet and a vec3 swizzle is splattered across offset_y/offset_z in
-         * a genuinely bizarre way.
+         * triplet followed by a vec3 swizzle is splattered across
+         * offset_y/offset_z in a genuinely bizarre way.
          *
          * For texel fetches in immediate mode, the range is the full [-8, 7],
          * but for normal texturing the top bit must be zero and a register
-         * used instead. It's not clear where this limitation is from. */
+         * used instead. It's not clear where this limitation is from.
+         *
+         * union {
+         *      struct {
+         *              signed offset_x  : 4;
+         *              signed offset_y  : 4;
+         *              signed offset_z  : 4;
+         *      } immediate;
+         *      struct {
+         *              bool full        : 1;
+         *              bool select      : 1;
+         *              bool upper       : 1;
+         *              unsigned swizzle : 8;
+         *              unsigned zero    : 1;
+         *      } register;
+         * }
+         */
 
-        signed offset_x : 4;
-        signed offset_y : 4;
-        signed offset_z : 4;
+        unsigned offset : 12;
 
         /* In immediate bias mode, for a normal texture op, this is
          * texture bias, computed as int(2^8 * frac(biasf)), with
