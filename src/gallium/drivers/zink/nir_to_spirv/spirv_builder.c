@@ -566,6 +566,48 @@ spirv_builder_emit_image_sample(struct spirv_builder *b,
 }
 
 SpvId
+spirv_builder_emit_image(struct spirv_builder *b, SpvId result_type,
+                         SpvId sampled_image)
+{
+   SpvId result = spirv_builder_new_id(b);
+   spirv_buffer_prepare(&b->instructions, 4);
+   spirv_buffer_emit_word(&b->instructions, SpvOpImage | (4 << 16));
+   spirv_buffer_emit_word(&b->instructions, result_type);
+   spirv_buffer_emit_word(&b->instructions, result);
+   spirv_buffer_emit_word(&b->instructions, sampled_image);
+   return result;
+}
+
+SpvId
+spirv_builder_emit_image_fetch(struct spirv_builder *b,
+                               SpvId result_type,
+                               SpvId image,
+                               SpvId coordinate,
+                               SpvId lod)
+{
+   SpvId result = spirv_builder_new_id(b);
+
+   SpvId extra_operands[2];
+   int num_extra_operands = 0;
+   if (lod) {
+      extra_operands[0] = SpvImageOperandsLodMask;
+      extra_operands[1] = lod;
+      num_extra_operands = 2;
+   }
+
+   spirv_buffer_prepare(&b->instructions, 5 + num_extra_operands);
+   spirv_buffer_emit_word(&b->instructions, SpvOpImageFetch |
+                          ((5 + num_extra_operands) << 16));
+   spirv_buffer_emit_word(&b->instructions, result_type);
+   spirv_buffer_emit_word(&b->instructions, result);
+   spirv_buffer_emit_word(&b->instructions, image);
+   spirv_buffer_emit_word(&b->instructions, coordinate);
+   for (int i = 0; i < num_extra_operands; ++i)
+      spirv_buffer_emit_word(&b->instructions, extra_operands[i]);
+   return result;
+}
+
+SpvId
 spirv_builder_emit_ext_inst(struct spirv_builder *b, SpvId result_type,
                             SpvId set, uint32_t instruction,
                             const SpvId *args, size_t num_args)

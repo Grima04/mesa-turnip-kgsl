@@ -1319,13 +1319,23 @@ get_src_float(struct ntv_context *ctx, nir_src *src)
    return bitcast_to_fvec(ctx, def, bit_size, num_components);
 }
 
+static SpvId
+get_src_int(struct ntv_context *ctx, nir_src *src)
+{
+   SpvId def = get_src_uint(ctx, src);
+   unsigned num_components = nir_src_num_components(*src);
+   unsigned bit_size = nir_src_bit_size(*src);
+   return bitcast_to_ivec(ctx, def, bit_size, num_components);
+}
+
 static void
 emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
 {
    assert(tex->op == nir_texop_tex ||
           tex->op == nir_texop_txb ||
           tex->op == nir_texop_txl ||
-          tex->op == nir_texop_txd);
+          tex->op == nir_texop_txd ||
+          tex->op == nir_texop_txf);
    assert(nir_alu_type_get_base_type(tex->dest_type) == nir_type_float);
    assert(tex->texture_index == tex->sampler_index);
 
@@ -1334,7 +1344,10 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
    for (unsigned i = 0; i < tex->num_srcs; i++) {
       switch (tex->src[i].src_type) {
       case nir_tex_src_coord:
-         coord = get_src_float(ctx, &tex->src[i].src);
+         if (tex->op == nir_texop_txf)
+            coord = get_src_int(ctx, &tex->src[i].src);
+         else
+            coord = get_src_float(ctx, &tex->src[i].src);
          coord_components = nir_src_num_components(tex->src[i].src);
          break;
 
@@ -1352,7 +1365,10 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
 
       case nir_tex_src_lod:
          assert(nir_src_num_components(tex->src[i].src) == 1);
-         lod = get_src_float(ctx, &tex->src[i].src);
+         if (tex->op == nir_texop_txf)
+            lod = get_src_int(ctx, &tex->src[i].src);
+         else
+            lod = get_src_float(ctx, &tex->src[i].src);
          assert(lod != 0);
          break;
 
@@ -1425,11 +1441,19 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
    if (dref)
       actual_dest_type = float_type;
 
-   SpvId result = spirv_builder_emit_image_sample(&ctx->builder,
-                                                  actual_dest_type, load,
-                                                  coord,
-                                                  proj != 0,
-                                                  lod, bias, dref, dx, dy);
+   SpvId result;
+   if (tex->op == nir_texop_txf) {
+      SpvId image = spirv_builder_emit_image(&ctx->builder, image_type, load);
+      result = spirv_builder_emit_image_fetch(&ctx->builder, dest_type,
+                                              image, coord, lod);
+   } else {
+      result = spirv_builder_emit_image_sample(&ctx->builder,
+                                               actual_dest_type, load,
+                                               coord,
+                                               proj != 0,
+                                               lod, bias, dref, dx, dy);
+   }
+
    spirv_builder_emit_decoration(&ctx->builder, result,
                                  SpvDecorationRelaxedPrecision);
 

@@ -218,6 +218,17 @@ spirv_builder_emit_image_sample(struct spirv_builder *b,
                                 SpvId dy);
 
 SpvId
+spirv_builder_emit_image(struct spirv_builder *b, SpvId result_type,
+                         SpvId sampled_image);
+
+SpvId
+spirv_builder_emit_image_fetch(struct spirv_builder *b,
+                               SpvId result_type,
+                               SpvId image,
+                               SpvId coordinate,
+                               SpvId lod);
+
+SpvId
 spirv_builder_emit_ext_inst(struct spirv_builder *b, SpvId result_type,
                             SpvId set, uint32_t instruction,
                             const SpvId args[], size_t num_args);
