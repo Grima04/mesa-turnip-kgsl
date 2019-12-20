@@ -40,7 +40,7 @@
 
 #include <xf86drm.h>
 #include <libsync.h>
-#include "virtgpu_drm.h"
+#include "drm-uapi/virtgpu_drm.h"
 
 #include "virgl_drm_winsys.h"
 #include "virgl_drm_public.h"
