@@ -1813,6 +1813,12 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
                                         unreachable("Invalid texture 2D components");
                         }
 
+                        if (midgard_texop == TEXTURE_OP_TEXEL_FETCH) {
+                                /* We zeroed */
+                                ins.swizzle[1][2] = COMPONENT_Z;
+                                ins.swizzle[1][3] = COMPONENT_W;
+                        }
+
                         break;
                 }
 
