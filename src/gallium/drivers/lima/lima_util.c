@@ -130,9 +130,11 @@ lima_dump_file_close(void)
 void
 lima_dump_file_next(void)
 {
-   lima_dump_file_close();
-   lima_dump_frame_count++;
-   lima_dump_file_open();
+   if (lima_dump_command_stream) {
+      lima_dump_file_close();
+      lima_dump_frame_count++;
+      lima_dump_file_open();
+   }
 }
 
 void
