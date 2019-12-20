@@ -1352,6 +1352,7 @@ static int gfx9_compute_miptree(ADDR_HANDLE addrlib,
 
 		/* CMASK -- on GFX10 only for FMASK */
 		if (in->swizzleMode != ADDR_SW_LINEAR &&
+		    in->resourceType == ADDR_RSRC_TEX_2D &&
 		    ((info->chip_class <= GFX9 && in->numSamples == 1) ||
 		     (surf->fmask_size && in->numSamples >= 2))) {
 			ADDR2_COMPUTE_CMASK_INFO_INPUT cin = {0};
