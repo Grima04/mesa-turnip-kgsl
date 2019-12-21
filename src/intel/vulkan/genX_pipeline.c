@@ -1978,8 +1978,7 @@ emit_3dstate_ps(struct anv_pipeline *pipeline,
 #if GEN_GEN >= 8
 static void
 emit_3dstate_ps_extra(struct anv_pipeline *pipeline,
-                      struct anv_subpass *subpass,
-                      const VkPipelineColorBlendStateCreateInfo *blend)
+                      struct anv_subpass *subpass)
 {
    const struct brw_wm_prog_data *wm_prog_data = get_wm_prog_data(pipeline);
 
@@ -2160,7 +2159,7 @@ genX(graphics_pipeline_create)(
    emit_3dstate_ps(pipeline, pCreateInfo->pColorBlendState,
                    pCreateInfo->pMultisampleState);
 #if GEN_GEN >= 8
-   emit_3dstate_ps_extra(pipeline, subpass, pCreateInfo->pColorBlendState);
+   emit_3dstate_ps_extra(pipeline, subpass);
    emit_3dstate_vf_topology(pipeline);
 #endif
    emit_3dstate_vf_statistics(pipeline);
