@@ -60,6 +60,83 @@ get_new_program_id(struct iris_screen *screen)
    return p_atomic_inc_return(&screen->program_id);
 }
 
+static struct brw_vs_prog_key
+iris_to_brw_vs_key(const struct gen_device_info *devinfo,
+                   const struct iris_vs_prog_key *key)
+{
+   return (struct brw_vs_prog_key) {
+      BRW_KEY_INIT(devinfo->gen, key->vue.base.program_string_id),
+
+      /* Don't tell the backend about our clip plane constants, we've
+       * already lowered them in NIR and don't want it doing it again.
+       */
+      .nr_userclip_plane_consts = 0,
+   };
+}
+
+static struct brw_tcs_prog_key
+iris_to_brw_tcs_key(const struct gen_device_info *devinfo,
+                    const struct iris_tcs_prog_key *key)
+{
+   return (struct brw_tcs_prog_key) {
+      BRW_KEY_INIT(devinfo->gen, key->vue.base.program_string_id),
+      .tes_primitive_mode = key->tes_primitive_mode,
+      .input_vertices = key->input_vertices,
+      .patch_outputs_written = key->patch_outputs_written,
+      .outputs_written = key->outputs_written,
+      .quads_workaround = key->quads_workaround,
+   };
+}
+
+static struct brw_tes_prog_key
+iris_to_brw_tes_key(const struct gen_device_info *devinfo,
+                    const struct iris_tes_prog_key *key)
+{
+   return (struct brw_tes_prog_key) {
+      BRW_KEY_INIT(devinfo->gen, key->vue.base.program_string_id),
+      .patch_inputs_read = key->patch_inputs_read,
+      .inputs_read = key->inputs_read,
+   };
+}
+
+static struct brw_gs_prog_key
+iris_to_brw_gs_key(const struct gen_device_info *devinfo,
+                   const struct iris_gs_prog_key *key)
+{
+   return (struct brw_gs_prog_key) {
+      BRW_KEY_INIT(devinfo->gen, key->vue.base.program_string_id),
+   };
+}
+
+static struct brw_wm_prog_key
+iris_to_brw_fs_key(const struct gen_device_info *devinfo,
+                   const struct iris_fs_prog_key *key)
+{
+   return (struct brw_wm_prog_key) {
+      BRW_KEY_INIT(devinfo->gen, key->base.program_string_id),
+      .nr_color_regions = key->nr_color_regions,
+      .flat_shade = key->flat_shade,
+      .alpha_test_replicate_alpha = key->alpha_test_replicate_alpha,
+      .alpha_to_coverage = key->alpha_to_coverage,
+      .clamp_fragment_color = key->clamp_fragment_color,
+      .persample_interp = key->persample_interp,
+      .multisample_fbo = key->multisample_fbo,
+      .force_dual_color_blend = key->force_dual_color_blend,
+      .coherent_fb_fetch = key->coherent_fb_fetch,
+      .color_outputs_valid = key->color_outputs_valid,
+      .input_slots_valid = key->input_slots_valid,
+   };
+}
+
+static struct brw_cs_prog_key
+iris_to_brw_cs_key(const struct gen_device_info *devinfo,
+                   const struct iris_cs_prog_key *key)
+{
+   return (struct brw_cs_prog_key) {
+      BRW_KEY_INIT(devinfo->gen, key->base.program_string_id),
+   };
+}
+
 static void *
 upload_state(struct u_upload_mgr *uploader,
              struct iris_state_ref *ref,
@@ -994,14 +1071,7 @@ iris_compile_vs(struct iris_context *ice,
                        &vue_prog_data->vue_map, nir->info.outputs_written,
                        nir->info.separate_shader);
 
-   struct brw_vs_prog_key brw_key = {
-      BRW_KEY_INIT(devinfo->gen, key->vue.base.program_string_id),
-
-      /* Don't tell the backend about our clip plane constants, we've
-       * already lowered them in NIR and don't want it doing it again.
-       */
-      .nr_userclip_plane_consts = 0,
-   };
+   struct brw_vs_prog_key brw_key = iris_to_brw_vs_key(devinfo, key);
 
    char *error_str = NULL;
    const unsigned *program =
@@ -1162,14 +1232,7 @@ iris_compile_tcs(struct iris_context *ice,
 
    struct iris_binding_table bt;
 
-   struct brw_tcs_prog_key brw_key = {
-      BRW_KEY_INIT(devinfo->gen, key->vue.base.program_string_id),
-      .tes_primitive_mode = key->tes_primitive_mode,
-      .input_vertices = key->input_vertices,
-      .patch_outputs_written = key->patch_outputs_written,
-      .outputs_written = key->outputs_written,
-      .quads_workaround = key->quads_workaround,
-   };
+   struct brw_tcs_prog_key brw_key = iris_to_brw_tcs_key(devinfo, key);
 
    if (ish) {
       nir = nir_shader_clone(mem_ctx, ish->nir);
@@ -1341,11 +1404,7 @@ iris_compile_tes(struct iris_context *ice,
    brw_compute_tess_vue_map(&input_vue_map, key->inputs_read,
                             key->patch_inputs_read);
 
-   struct brw_tes_prog_key brw_key = {
-      BRW_KEY_INIT(devinfo->gen, key->vue.base.program_string_id),
-      .patch_inputs_read = key->patch_inputs_read,
-      .inputs_read = key->inputs_read,
-   };
+   struct brw_tes_prog_key brw_key = iris_to_brw_tes_key(devinfo, key);
 
    char *error_str = NULL;
    const unsigned *program =
@@ -1466,9 +1525,7 @@ iris_compile_gs(struct iris_context *ice,
                        &vue_prog_data->vue_map, nir->info.outputs_written,
                        nir->info.separate_shader);
 
-   struct brw_gs_prog_key brw_key = {
-      BRW_KEY_INIT(devinfo->gen, key->vue.base.program_string_id),
-   };
+   struct brw_gs_prog_key brw_key = iris_to_brw_gs_key(devinfo, key);
 
    char *error_str = NULL;
    const unsigned *program =
@@ -1585,20 +1642,7 @@ iris_compile_fs(struct iris_context *ice,
 
    brw_nir_analyze_ubo_ranges(compiler, nir, NULL, prog_data->ubo_ranges);
 
-   struct brw_wm_prog_key brw_key = {
-      BRW_KEY_INIT(devinfo->gen, key->base.program_string_id),
-      .nr_color_regions = key->nr_color_regions,
-      .flat_shade = key->flat_shade,
-      .alpha_test_replicate_alpha = key->alpha_test_replicate_alpha,
-      .alpha_to_coverage = key->alpha_to_coverage,
-      .clamp_fragment_color = key->clamp_fragment_color,
-      .persample_interp = key->persample_interp,
-      .multisample_fbo = key->multisample_fbo,
-      .force_dual_color_blend = key->force_dual_color_blend,
-      .coherent_fb_fetch = key->coherent_fb_fetch,
-      .color_outputs_valid = key->color_outputs_valid,
-      .input_slots_valid = key->input_slots_valid,
-   };
+   struct brw_wm_prog_key brw_key = iris_to_brw_fs_key(devinfo, key);
 
    char *error_str = NULL;
    const unsigned *program =
@@ -1878,9 +1922,7 @@ iris_compile_cs(struct iris_context *ice,
    iris_setup_binding_table(devinfo, nir, &bt, /* num_render_targets */ 0,
                             num_system_values, num_cbufs);
 
-   struct brw_cs_prog_key brw_key = {
-      BRW_KEY_INIT(devinfo->gen, key->base.program_string_id),
-   };
+   struct brw_cs_prog_key brw_key = iris_to_brw_cs_key(devinfo, key);
 
    char *error_str = NULL;
    const unsigned *program =
