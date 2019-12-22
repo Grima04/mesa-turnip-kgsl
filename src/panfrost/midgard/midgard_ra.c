@@ -506,8 +506,12 @@ allocate_registers(compiler_context *ctx, bool *spilled)
                         set_class(l->class, ins->src[1], REG_CLASS_LDST);
                         set_class(l->class, ins->src[2], REG_CLASS_LDST);
 
-                        if (OP_IS_VEC4_ONLY(ins->load_store.op))
+                        if (OP_IS_VEC4_ONLY(ins->load_store.op)) {
                                 lcra_restrict_range(l, ins->dest, 16);
+                                lcra_restrict_range(l, ins->src[0], 16);
+                                lcra_restrict_range(l, ins->src[1], 16);
+                                lcra_restrict_range(l, ins->src[2], 16);
+                        }
                 } else if (ins->type == TAG_TEXTURE_4) {
                         set_class(l->class, ins->dest, REG_CLASS_TEXW);
                         set_class(l->class, ins->src[0], REG_CLASS_TEXR);
