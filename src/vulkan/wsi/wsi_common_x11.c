@@ -1591,6 +1591,8 @@ x11_surface_create_swapchain(VkIcdSurfaceBase *icd_surface,
    if (geometry == NULL)
       return VK_ERROR_SURFACE_LOST_KHR;
    const uint32_t bit_depth = geometry->depth;
+   const uint16_t cur_width = geometry->width;
+   const uint16_t cur_height = geometry->height;
    free(geometry);
 
    size_t size = sizeof(*chain) + num_images * sizeof(chain->images[0]);
@@ -1621,6 +1623,9 @@ x11_surface_create_swapchain(VkIcdSurfaceBase *icd_surface,
    chain->has_present_queue = false;
    chain->status = VK_SUCCESS;
    chain->has_dri3_modifiers = wsi_conn->has_dri3_modifiers;
+
+   if (chain->extent.width != cur_width || chain->extent.height != cur_height)
+       chain->status = VK_SUBOPTIMAL_KHR;
 
    /* If we are reallocating from an old swapchain, then we inherit its
     * last completion mode, to ensure we don't get into reallocation
