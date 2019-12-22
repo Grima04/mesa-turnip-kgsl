@@ -893,7 +893,7 @@ x11_handle_dri3_present_event(struct x11_swapchain *chain,
 
       if (config->width != chain->extent.width ||
           config->height != chain->extent.height)
-         return VK_ERROR_OUT_OF_DATE_KHR;
+         return VK_SUBOPTIMAL_KHR;
 
       break;
    }
