@@ -991,6 +991,7 @@ iris_debug_recompile(struct iris_context *ice,
                      const struct brw_base_prog_key *key)
 {
    struct iris_screen *screen = (struct iris_screen *) ice->ctx.screen;
+   const struct gen_device_info *devinfo = &screen->devinfo;
    const struct brw_compiler *c = screen->compiler;
 
    if (!info)
@@ -1001,10 +1002,35 @@ iris_debug_recompile(struct iris_context *ice,
                       info->name ? info->name : "(no identifier)",
                       info->label ? info->label : "");
 
-   const void *old_key =
+   const void *old_iris_key =
       iris_find_previous_compile(ice, info->stage, key->program_string_id);
 
-   brw_debug_key_recompile(c, &ice->dbg, info->stage, old_key, key);
+   union brw_any_prog_key old_key;
+
+   switch (info->stage) {
+   case MESA_SHADER_VERTEX:
+      old_key.vs = iris_to_brw_vs_key(devinfo, old_iris_key);
+      break;
+   case MESA_SHADER_TESS_CTRL:
+      old_key.tcs = iris_to_brw_tcs_key(devinfo, old_iris_key);
+      break;
+   case MESA_SHADER_TESS_EVAL:
+      old_key.tes = iris_to_brw_tes_key(devinfo, old_iris_key);
+      break;
+   case MESA_SHADER_GEOMETRY:
+      old_key.gs = iris_to_brw_gs_key(devinfo, old_iris_key);
+      break;
+   case MESA_SHADER_FRAGMENT:
+      old_key.wm = iris_to_brw_fs_key(devinfo, old_iris_key);
+      break;
+   case MESA_SHADER_COMPUTE:
+      old_key.cs = iris_to_brw_cs_key(devinfo, old_iris_key);
+      break;
+   default:
+      unreachable("invalid shader stage");
+   }
+
+   brw_debug_key_recompile(c, &ice->dbg, info->stage, &old_key.base, key);
 }
 
 /**
