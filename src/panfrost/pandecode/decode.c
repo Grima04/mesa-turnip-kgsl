@@ -1825,6 +1825,18 @@ pandecode_scratchpad(uintptr_t pscratchpad, int job_no, char *suffix)
         pandecode_log("};\n");
 }
 
+static const char *
+shader_type_for_job(unsigned type)
+{
+        switch (type) {
+        case JOB_TYPE_VERTEX:  return "VERTEX";
+        case JOB_TYPE_TILER:   return "FRAGMENT";
+        case JOB_TYPE_COMPUTE: return "COMPUTE";
+        default:
+                               return "UNKNOWN";
+        }
+}
+
 static unsigned shader_id = 0;
 
 static struct midgard_disasm_stats
@@ -1877,7 +1889,7 @@ pandecode_shader_disassemble(mali_ptr shader_ptr, int shader_no, int type,
                 "%u inst, %u bundles, %u quadwords, "
                 "%u registers, %u threads, 0 loops\n\n\n",
                 shader_id++,
-                (type == JOB_TYPE_TILER) ? "FRAGMENT" : "VERTEX",
+                shader_type_for_job(type),
                 stats.instruction_count, stats.bundle_count, stats.quadword_count,
                 stats.work_count, nr_threads);
 
