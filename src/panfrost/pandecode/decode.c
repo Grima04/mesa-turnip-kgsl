@@ -1891,7 +1891,7 @@ pandecode_shader_disassemble(mali_ptr shader_ptr, int shader_no, int type,
 
                 printf("shader%d - MESA_SHADER_%s shader: "
                         "%u inst, %u bundles, %u quadwords, "
-                        "%u registers, %u threads, 0 loops\n\n\n",
+                        "%u registers, %u threads, 0 loops, 0:0 spills:fills\n\n\n",
                         shader_id++,
                         shader_type_for_job(type),
                         stats.instruction_count, stats.bundle_count, stats.quadword_count,
