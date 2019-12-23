@@ -765,6 +765,11 @@ st_create_context_priv(struct gl_context *ctx, struct pipe_context *pipe,
 
    ctx->Const.ShaderCompilerOptions[MESA_SHADER_VERTEX].PositionAlwaysInvariant = options->vs_position_always_invariant;
 
+   enum pipe_shader_ir preferred_ir = (enum pipe_shader_ir)
+      screen->get_shader_param(screen, PIPE_SHADER_VERTEX,
+                               PIPE_SHADER_CAP_PREFERRED_IR);
+   ctx->Const.UseNIRGLSLLinker = preferred_ir == PIPE_SHADER_IR_NIR;
+
    if (ctx->Const.GLSLVersion < 400) {
       for (i = 0; i < MESA_SHADER_STAGES; i++)
          ctx->Const.ShaderCompilerOptions[i].EmitNoIndirectSampler = true;
