@@ -1543,16 +1543,18 @@ disassemble_midgard(uint8_t *code, size_t size, unsigned gpu_id, gl_shader_stage
                         break;
                 }
 
+                /* We are parsing per bundle anyway. Add before we start
+                 * breaking out so we don't miss the final bundle. */
+
+                midg_stats.bundle_count++;
+                midg_stats.quadword_count += num_quad_words;
+
                 if (prefetch_flag && midgard_word_types[tag] == midgard_word_type_alu)
                         break;
 
                 printf("\n");
 
                 unsigned next = (words[i] & 0xF0) >> 4;
-
-                /* We are parsing per bundle anyway */
-                midg_stats.bundle_count++;
-                midg_stats.quadword_count += num_quad_words;
 
                 /* Break based on instruction prefetch flag */
 
