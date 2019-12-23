@@ -408,7 +408,8 @@ gpu_supports_texture_format(struct etna_screen *screen, uint32_t fmt,
    if (util_format_is_snorm(format))
       supported = VIV_FEATURE(screen, chipMinorFeatures2, HALTI1);
 
-   if (util_format_is_pure_integer(format) || util_format_is_float(format))
+   if (format != PIPE_FORMAT_S8_UINT_Z24_UNORM &&
+       (util_format_is_pure_integer(format) || util_format_is_float(format)))
       supported = VIV_FEATURE(screen, chipMinorFeatures4, HALTI2);
 
 
