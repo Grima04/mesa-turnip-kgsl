@@ -39,6 +39,8 @@ bool gl_nir_link_spirv(struct gl_context *ctx,
                        struct gl_shader_program *prog,
                        const struct gl_nir_linker_options *options);
 
+bool gl_nir_link_glsl(struct gl_context *ctx, struct gl_shader_program *prog);
+
 bool gl_nir_link_uniforms(struct gl_context *ctx,
                           struct gl_shader_program *prog,
                           bool fill_parameters);

@@ -581,3 +581,15 @@ gl_nir_link_spirv(struct gl_context *ctx, struct gl_shader_program *prog,
 
    return true;
 }
+
+bool
+gl_nir_link_glsl(struct gl_context *ctx, struct gl_shader_program *prog)
+{
+   gl_nir_link_assign_atomic_counter_resources(ctx, prog);
+   gl_nir_link_check_atomic_counter_resources(ctx, prog);
+
+   if (prog->data->LinkStatus == LINKING_FAILURE)
+      return false;
+
+   return true;
+}
