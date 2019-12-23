@@ -1878,20 +1878,25 @@ pandecode_shader_disassemble(mali_ptr shader_ptr, int shader_no, int type,
                                 MESA_SHADER_FRAGMENT : MESA_SHADER_VERTEX);
         }
 
-        /* Print shader-db stats */
+        /* Print shader-db stats. Skip COMPUTE jobs since they are used for
+         * driver-internal purposes with the blob and interfere */
 
-        unsigned nr_threads =
-                (stats.work_count <= 4) ? 4 :
-                (stats.work_count <= 8) ? 2 :
-                1;
+        bool should_shaderdb = type != JOB_TYPE_COMPUTE;
 
-        printf("shader%d - %s shader: "
-                "%u inst, %u bundles, %u quadwords, "
-                "%u registers, %u threads, 0 loops\n\n\n",
-                shader_id++,
-                shader_type_for_job(type),
-                stats.instruction_count, stats.bundle_count, stats.quadword_count,
-                stats.work_count, nr_threads);
+        if (should_shaderdb) {
+                unsigned nr_threads =
+                        (stats.work_count <= 4) ? 4 :
+                        (stats.work_count <= 8) ? 2 :
+                        1;
+
+                printf("shader%d - %s shader: "
+                        "%u inst, %u bundles, %u quadwords, "
+                        "%u registers, %u threads, 0 loops\n\n\n",
+                        shader_id++,
+                        shader_type_for_job(type),
+                        stats.instruction_count, stats.bundle_count, stats.quadword_count,
+                        stats.work_count, nr_threads);
+        }
 
 
         return stats;
