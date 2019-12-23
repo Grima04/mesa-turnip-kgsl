@@ -184,8 +184,10 @@ void amdgpu_bo_destroy(struct pb_buffer *_buf)
    }
 
    simple_mtx_lock(&ws->sws_list_lock);
-   for (sws_iter = ws->sws_list; sws_iter; sws_iter = sws_iter->next)
-      _mesa_hash_table_remove_key(sws_iter->kms_handles, bo);
+   for (sws_iter = ws->sws_list; sws_iter; sws_iter = sws_iter->next) {
+      if (sws_iter->kms_handles)
+         _mesa_hash_table_remove_key(sws_iter->kms_handles, bo);
+   }
    simple_mtx_unlock(&ws->sws_list_lock);
 
    simple_mtx_lock(&ws->bo_export_table_lock);
@@ -1551,6 +1553,15 @@ static bool amdgpu_bo_get_handle(struct radeon_winsys *rws,
       type = amdgpu_bo_handle_type_gem_flink_name;
       break;
    case WINSYS_HANDLE_TYPE_KMS:
+      if (sws->fd == ws->fd) {
+         whandle->handle = bo->u.real.kms_handle;
+
+         if (bo->is_shared)
+            return true;
+
+         goto hash_table_set;
+      }
+
       simple_mtx_lock(&ws->sws_list_lock);
       entry = _mesa_hash_table_search(sws->kms_handles, bo);
       simple_mtx_unlock(&ws->sws_list_lock);
@@ -1586,6 +1597,7 @@ static bool amdgpu_bo_get_handle(struct radeon_winsys *rws,
       simple_mtx_unlock(&ws->sws_list_lock);
    }
 
+ hash_table_set:
    simple_mtx_lock(&ws->bo_export_table_lock);
    util_hash_table_set(ws->bo_export_table, bo->bo, bo);
    simple_mtx_unlock(&ws->bo_export_table_lock);

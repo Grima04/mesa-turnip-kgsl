@@ -42,6 +42,10 @@ struct amdgpu_cs;
 
 struct amdgpu_winsys {
    struct pipe_reference reference;
+
+   /* File descriptor which was passed to amdgpu_device_initialize */
+   int fd;
+
    struct pb_cache bo_cache;
 
    /* Each slab buffer can only contain suballocations of equal sizes, so we

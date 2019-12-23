@@ -188,7 +188,11 @@ static void amdgpu_winsys_destroy(struct radeon_winsys *rws)
       simple_mtx_unlock(&ws->sws_list_lock);
    }
 
-   _mesa_hash_table_destroy(sws->kms_handles, NULL);
+   if (sws->kms_handles) {
+      assert(!destroy);
+      _mesa_hash_table_destroy(sws->kms_handles, NULL);
+   }
+
    close(sws->fd);
    FREE(rws);
 }
@@ -336,11 +340,6 @@ amdgpu_winsys_create(int fd, const struct pipe_screen_config *config,
 
    ws->fd = fcntl(fd, F_DUPFD_CLOEXEC, 0);
 
-   ws->kms_handles = _mesa_hash_table_create(NULL, kms_handle_hash,
-                                             kms_handle_equals);
-   if (!ws->kms_handles)
-      goto fail;
-
    /* Look up the winsys from the dev table. */
    simple_mtx_lock(&dev_tab_mutex);
    if (!dev_tab)
@@ -348,7 +347,7 @@ amdgpu_winsys_create(int fd, const struct pipe_screen_config *config,
 
    /* Initialize the amdgpu device. This should always return the same pointer
     * for the same fd. */
-   r = amdgpu_device_initialize(fd, &drm_major, &drm_minor, &dev);
+   r = amdgpu_device_initialize(ws->fd, &drm_major, &drm_minor, &dev);
    if (r) {
       fprintf(stderr, "amdgpu: amdgpu_device_initialize failed.\n");
       goto fail;
@@ -357,13 +356,18 @@ amdgpu_winsys_create(int fd, const struct pipe_screen_config *config,
    /* Lookup a winsys if we have already created one for this device. */
    aws = util_hash_table_get(dev_tab, dev);
    if (aws) {
-      pipe_reference(NULL, &aws->reference);
-
       /* Release the device handle, because we don't need it anymore.
        * This function is returning an existing winsys instance, which
        * has its own device handle.
        */
       amdgpu_device_deinitialize(dev);
+
+      ws->kms_handles = _mesa_hash_table_create(NULL, kms_handle_hash,
+                                                kms_handle_equals);
+      if (!ws->kms_handles)
+         goto fail;
+
+      pipe_reference(NULL, &aws->reference);
    } else {
       /* Create a new winsys. */
       aws = CALLOC_STRUCT(amdgpu_winsys);
@@ -371,6 +375,7 @@ amdgpu_winsys_create(int fd, const struct pipe_screen_config *config,
          goto fail;
 
       aws->dev = dev;
+      aws->fd = ws->fd;
       aws->info.drm_major = drm_major;
       aws->info.drm_minor = drm_minor;
 
