@@ -147,7 +147,7 @@ util_draw_indirect(struct pipe_context *pipe,
       pipe_buffer_map_range(pipe,
                             info_in->indirect->buffer,
                             info_in->indirect->offset,
-                            num_params * sizeof(uint32_t),
+                            (num_params * info_in->indirect->draw_count) * sizeof(uint32_t),
                             PIPE_TRANSFER_READ,
                             &transfer);
    if (!transfer) {
@@ -155,14 +155,18 @@ util_draw_indirect(struct pipe_context *pipe,
       return;
    }
 
-   info.count = params[0];
-   info.instance_count = params[1];
-   info.start = params[2];
-   info.index_bias = info_in->index_size ? params[3] : 0;
-   info.start_instance = info_in->index_size ? params[4] : params[3];
-   info.indirect = NULL;
+   for (unsigned i = 0; i < info_in->indirect->draw_count; i++) {
+      info.count = params[0];
+      info.instance_count = params[1];
+      info.start = params[2];
+      info.index_bias = info_in->index_size ? params[3] : 0;
+      info.start_instance = info_in->index_size ? params[4] : params[3];
+      info.drawid = i;
+      info.indirect = NULL;
 
+      pipe->draw_vbo(pipe, &info);
+
+      params += info_in->indirect->stride / 4;
+   }
    pipe_buffer_unmap(pipe, transfer);
-
-   pipe->draw_vbo(pipe, &info);
 }
