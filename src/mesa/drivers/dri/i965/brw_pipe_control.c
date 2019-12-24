@@ -371,6 +371,27 @@ brw_emit_mi_flush(struct brw_context *brw)
    brw_emit_pipe_control_flush(brw, flags);
 }
 
+static bool
+init_identifier_bo(struct brw_context *brw)
+{
+   void *bo_map;
+
+   if (!can_do_exec_capture(brw->screen))
+      return true;
+
+   bo_map = brw_bo_map(NULL, brw->workaround_bo, MAP_READ | MAP_WRITE);
+   if (!bo_map)
+      return false;
+
+   brw->workaround_bo->kflags |= EXEC_OBJECT_CAPTURE;
+   brw->workaround_bo_offset =
+      ALIGN(intel_debug_write_identifiers(bo_map, 4096, "i965") + 8, 8);
+
+   brw_bo_unmap(brw->workaround_bo);
+
+   return true;
+}
+
 int
 brw_init_pipe_control(struct brw_context *brw,
                       const struct gen_device_info *devinfo)
@@ -417,6 +438,9 @@ brw_init_pipe_control(struct brw_context *brw,
                                      BRW_MEMZONE_OTHER);
    if (brw->workaround_bo == NULL)
       return -ENOMEM;
+
+   if (!init_identifier_bo(brw))
+      return -ENOMEM; /* Couldn't map workaround_bo?? */
 
    brw->workaround_bo_offset = 0;
    brw->pipe_controls_since_last_cs_stall = 0;

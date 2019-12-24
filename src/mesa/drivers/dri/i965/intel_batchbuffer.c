@@ -277,6 +277,13 @@ intel_batchbuffer_reset(struct brw_context *brw)
 
    if (batch->state_batch_sizes)
       _mesa_hash_table_u64_clear(batch->state_batch_sizes, NULL);
+
+   /* Always add workaround_bo which contains a driver identifier to be
+    * recorded in error states.
+    */
+   struct brw_bo *identifier_bo = brw->workaround_bo;
+   if (identifier_bo)
+      add_exec_bo(batch, identifier_bo);
 }
 
 static void
