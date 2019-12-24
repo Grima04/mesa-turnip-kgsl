@@ -963,6 +963,29 @@ static void si_shader_gs(struct si_screen *sscreen, struct si_shader *shader)
 	}
 }
 
+static void gfx10_emit_ge_pc_alloc(struct si_context *sctx, unsigned value)
+{
+	enum si_tracked_reg reg = SI_TRACKED_GE_PC_ALLOC;
+
+	if (((sctx->tracked_regs.reg_saved >> reg) & 0x1) != 0x1 ||
+	    sctx->tracked_regs.reg_value[reg] != value) {
+		struct radeon_cmdbuf *cs = sctx->gfx_cs;
+
+		if (sctx->family == CHIP_NAVI10 ||
+		    sctx->family == CHIP_NAVI12 ||
+		    sctx->family == CHIP_NAVI14) {
+			/* SQ_NON_EVENT must be emitted before GE_PC_ALLOC is written. */
+			radeon_emit(cs, PKT3(PKT3_EVENT_WRITE, 0, 0));
+			radeon_emit(cs, EVENT_TYPE(V_028A90_SQ_NON_EVENT) | EVENT_INDEX(0));
+		}
+
+		radeon_set_uconfig_reg(cs, R_030980_GE_PC_ALLOC, value);
+
+		sctx->tracked_regs.reg_saved |= 0x1ull << reg;
+		sctx->tracked_regs.reg_value[reg] = value;
+	}
+}
+
 /* Common tail code for NGG primitive shaders. */
 static void gfx10_emit_shader_ngg_tail(struct si_context *sctx,
 				       struct si_shader *shader,
@@ -1007,6 +1030,9 @@ static void gfx10_emit_shader_ngg_tail(struct si_context *sctx,
 
 	if (initial_cdw != sctx->gfx_cs->current.cdw)
 		sctx->context_roll = true;
+
+	/* GE_PC_ALLOC is not a context register, so it doesn't cause a context roll. */
+	gfx10_emit_ge_pc_alloc(sctx, shader->ctx_reg.ngg.ge_pc_alloc);
 }
 
 static void gfx10_emit_shader_ngg_notess_nogs(struct si_context *sctx)
@@ -1246,6 +1272,8 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
 	shader->ctx_reg.ngg.pa_cl_ngg_cntl =
 		S_028838_INDEX_BUF_EDGE_FLAG_ENA(gs_type == PIPE_SHADER_VERTEX);
 	shader->pa_cl_vs_out_cntl = si_get_vs_out_cntl(gs_sel, true);
+	shader->ctx_reg.ngg.ge_pc_alloc = S_030980_OVERSUB_EN(1) |
+					  S_030980_NUM_PC_LINES(sscreen->info.pc_lines / 4 - 1);
 
 	shader->ge_cntl =
 		S_03096C_PRIM_GRP_SIZE(shader->ngg.max_gsprims) |
@@ -1344,6 +1372,10 @@ static void si_emit_shader_vs(struct si_context *sctx)
 
 	if (initial_cdw != sctx->gfx_cs->current.cdw)
 		sctx->context_roll = true;
+
+	/* GE_PC_ALLOC is not a context register, so it doesn't cause a context roll. */
+	if (sctx->chip_class >= GFX10)
+		gfx10_emit_ge_pc_alloc(sctx, shader->ctx_reg.vs.ge_pc_alloc);
 }
 
 /**
@@ -1440,6 +1472,8 @@ static void si_shader_vs(struct si_screen *sscreen, struct si_shader *shader,
 			S_02870C_POS3_EXPORT_FORMAT(shader->info.nr_pos_exports > 3 ?
 						    V_02870C_SPI_SHADER_4COMP :
 						    V_02870C_SPI_SHADER_NONE);
+	shader->ctx_reg.vs.ge_pc_alloc = S_030980_OVERSUB_EN(1) |
+					 S_030980_NUM_PC_LINES(sscreen->info.pc_lines / 4 - 1);
 	shader->pa_cl_vs_out_cntl = si_get_vs_out_cntl(shader->selector, false);
 
 	oc_lds_en = shader->selector->type == PIPE_SHADER_TESS_EVAL ? 1 : 0;

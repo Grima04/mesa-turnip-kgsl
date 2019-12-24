@@ -5669,19 +5669,6 @@ static void si_init_config(struct si_context *sctx)
 			       S_00B0C0_SOFT_GROUPING_EN(1) |
 			       S_00B0C0_NUMBER_OF_REQUESTS_PER_CU(4 - 1));
 		si_pm4_set_reg(pm4, R_00B1C0_SPI_SHADER_REQ_CTRL_VS, 0);
-
-		if (sctx->family == CHIP_NAVI10 ||
-		    sctx->family == CHIP_NAVI12 ||
-		    sctx->family == CHIP_NAVI14) {
-			/* SQ_NON_EVENT must be emitted before GE_PC_ALLOC is written. */
-			si_pm4_cmd_begin(pm4, PKT3_EVENT_WRITE);
-			si_pm4_cmd_add(pm4, EVENT_TYPE(V_028A90_SQ_NON_EVENT) | EVENT_INDEX(0));
-			si_pm4_cmd_end(pm4, false);
-		}
-		/* TODO: For culling, replace 128 with 256. */
-		si_pm4_set_reg(pm4, R_030980_GE_PC_ALLOC,
-			       S_030980_OVERSUB_EN(1) |
-			       S_030980_NUM_PC_LINES(sscreen->info.pc_lines / 4 - 1));
 	}
 
 	if (sctx->chip_class >= GFX8) {

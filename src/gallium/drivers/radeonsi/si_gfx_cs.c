@@ -524,10 +524,10 @@ void si_begin_new_gfx_cs(struct si_context *ctx)
 		ctx->tracked_regs.reg_value[SI_TRACKED_VGT_VERTEX_REUSE_BLOCK_CNTL]  = 0x0000001e; /* From GFX8 */
 
 		/* Set all cleared context registers to saved. */
-		ctx->tracked_regs.reg_saved = 0xffffffffffffffff;
+		ctx->tracked_regs.reg_saved = ~(1ull << SI_TRACKED_GE_PC_ALLOC); /* uconfig reg */
 		ctx->last_gs_out_prim = 0; /* cleared by CLEAR_STATE */
 	} else {
-		/* Set all saved registers state to unknown. */
+		/* Set all register values to unknown. */
 		ctx->tracked_regs.reg_saved = 0;
 		ctx->last_gs_out_prim = -1; /* unknown */
 	}

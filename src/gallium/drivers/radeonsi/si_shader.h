@@ -775,6 +775,7 @@ struct si_shader {
 			unsigned	pa_cl_vte_cntl;
 			unsigned	pa_cl_ngg_cntl;
 			unsigned	vgt_gs_max_vert_out; /* for API GS */
+			unsigned	ge_pc_alloc; /* uconfig register */
 		} ngg;
 
 		struct {
@@ -784,6 +785,7 @@ struct si_shader {
 			unsigned	spi_vs_out_config;
 			unsigned	spi_shader_pos_format;
 			unsigned	pa_cl_vte_cntl;
+			unsigned	ge_pc_alloc; /* uconfig register */
 		} vs;
 
 		struct {
