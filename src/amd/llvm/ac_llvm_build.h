@@ -750,6 +750,19 @@ ac_export_mrt_z(struct ac_llvm_context *ctx, LLVMValueRef depth,
 void ac_build_sendmsg_gs_alloc_req(struct ac_llvm_context *ctx, LLVMValueRef wave_id,
 				   LLVMValueRef vtx_cnt, LLVMValueRef prim_cnt);
 
+struct ac_ngg_prim {
+	unsigned num_vertices;
+	LLVMValueRef isnull;
+	LLVMValueRef index[3];
+	LLVMValueRef edgeflag[3];
+	LLVMValueRef passthrough;
+};
+
+LLVMValueRef ac_pack_prim_export(struct ac_llvm_context *ctx,
+				 const struct ac_ngg_prim *prim);
+void ac_build_export_prim(struct ac_llvm_context *ctx,
+			  const struct ac_ngg_prim *prim);
+
 static inline LLVMValueRef
 ac_get_arg(struct ac_llvm_context *ctx, struct ac_arg arg)
 {

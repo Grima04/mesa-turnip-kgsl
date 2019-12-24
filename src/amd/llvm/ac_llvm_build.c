@@ -4748,6 +4748,59 @@ void ac_build_sendmsg_gs_alloc_req(struct ac_llvm_context *ctx, LLVMValueRef wav
 	ac_build_endif(ctx, 5020);
 }
 
+LLVMValueRef ac_pack_prim_export(struct ac_llvm_context *ctx,
+				 const struct ac_ngg_prim *prim)
+{
+	/* The prim export format is:
+	 *  - bits 0..8: index 0
+	 *  - bit 9: edge flag 0
+	 *  - bits 10..18: index 1
+	 *  - bit 19: edge flag 1
+	 *  - bits 20..28: index 2
+	 *  - bit 29: edge flag 2
+	 *  - bit 31: null primitive (skip)
+	 */
+	LLVMBuilderRef builder = ctx->builder;
+	LLVMValueRef tmp = LLVMBuildZExt(builder, prim->isnull, ctx->i32, "");
+	LLVMValueRef result = LLVMBuildShl(builder, tmp, LLVMConstInt(ctx->i32, 31, false), "");
+
+	for (unsigned i = 0; i < prim->num_vertices; ++i) {
+		tmp = LLVMBuildShl(builder, prim->index[i],
+				   LLVMConstInt(ctx->i32, 10 * i, false), "");
+		result = LLVMBuildOr(builder, result, tmp, "");
+		tmp = LLVMBuildZExt(builder, prim->edgeflag[i], ctx->i32, "");
+		tmp = LLVMBuildShl(builder, tmp,
+				   LLVMConstInt(ctx->i32, 10 * i + 9, false), "");
+		result = LLVMBuildOr(builder, result, tmp, "");
+	}
+	return result;
+}
+
+void ac_build_export_prim(struct ac_llvm_context *ctx,
+			  const struct ac_ngg_prim *prim)
+{
+	struct ac_export_args args;
+
+	if (prim->passthrough) {
+		args.out[0] = prim->passthrough;
+	} else {
+		args.out[0] = ac_pack_prim_export(ctx, prim);
+	}
+
+	args.out[0] = LLVMBuildBitCast(ctx->builder, args.out[0], ctx->f32, "");
+	args.out[1] = LLVMGetUndef(ctx->f32);
+	args.out[2] = LLVMGetUndef(ctx->f32);
+	args.out[3] = LLVMGetUndef(ctx->f32);
+
+	args.target = V_008DFC_SQ_EXP_PRIM;
+	args.enabled_channels = 1;
+	args.done = true;
+	args.valid_mask = false;
+	args.compr = false;
+
+	ac_build_export(ctx, &args);
+}
+
 static LLVMTypeRef
 arg_llvm_type(enum ac_arg_type type, unsigned size, struct ac_llvm_context *ctx)
 {

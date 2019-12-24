@@ -71,52 +71,6 @@ static LLVMValueRef ngg_get_query_buf(struct si_shader_context *ctx)
 				     LLVMConstInt(ctx->i32, GFX10_GS_QUERY_BUF, false));
 }
 
-struct ngg_prim {
-	unsigned num_vertices;
-	LLVMValueRef isnull;
-	LLVMValueRef index[3];
-	LLVMValueRef edgeflag[3];
-	LLVMValueRef passthrough;
-};
-
-static void build_export_prim(struct si_shader_context *ctx,
-			      const struct ngg_prim *prim)
-{
-	LLVMBuilderRef builder = ctx->ac.builder;
-	struct ac_export_args args;
-	LLVMValueRef tmp;
-
-	if (prim->passthrough) {
-		args.out[0] = prim->passthrough;
-	} else {
-		tmp = LLVMBuildZExt(builder, prim->isnull, ctx->ac.i32, "");
-		args.out[0] = LLVMBuildShl(builder, tmp, LLVMConstInt(ctx->ac.i32, 31, false), "");
-
-		for (unsigned i = 0; i < prim->num_vertices; ++i) {
-			tmp = LLVMBuildShl(builder, prim->index[i],
-					   LLVMConstInt(ctx->ac.i32, 10 * i, false), "");
-			args.out[0] = LLVMBuildOr(builder, args.out[0], tmp, "");
-			tmp = LLVMBuildZExt(builder, prim->edgeflag[i], ctx->ac.i32, "");
-			tmp = LLVMBuildShl(builder, tmp,
-					   LLVMConstInt(ctx->ac.i32, 10 * i + 9, false), "");
-			args.out[0] = LLVMBuildOr(builder, args.out[0], tmp, "");
-		}
-	}
-
-	args.out[0] = LLVMBuildBitCast(builder, args.out[0], ctx->ac.f32, "");
-	args.out[1] = LLVMGetUndef(ctx->ac.f32);
-	args.out[2] = LLVMGetUndef(ctx->ac.f32);
-	args.out[3] = LLVMGetUndef(ctx->ac.f32);
-
-	args.target = V_008DFC_SQ_EXP_PRIM;
-	args.enabled_channels = 1;
-	args.done = true;
-	args.valid_mask = false;
-	args.compr = false;
-
-	ac_build_export(&ctx->ac, &args);
-}
-
 static void build_streamout_vertex(struct si_shader_context *ctx,
 				   LLVMValueRef *so_buffer, LLVMValueRef *wg_offset_dw,
 				   unsigned stream, LLVMValueRef offset_vtx,
@@ -693,14 +647,7 @@ void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi,
 		ac_build_endif(&ctx->ac, 5029);
 	}
 
-	/* Export primitive data to the index buffer. Format is:
-	 *  - bits 0..8: index 0
-	 *  - bit 9: edge flag 0
-	 *  - bits 10..18: index 1
-	 *  - bit 19: edge flag 1
-	 *  - bits 20..28: index 2
-	 *  - bit 29: edge flag 2
-	 *  - bit 31: null primitive (skip)
+	/* Build the primitive export.
 	 *
 	 * For the first version, we will always build up all three indices
 	 * independent of the primitive type. The additional garbage data
@@ -711,7 +658,7 @@ void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi,
 	 */
 	ac_build_ifcc(&ctx->ac, is_gs_thread, 6001);
 	{
-		struct ngg_prim prim = {};
+		struct ac_ngg_prim prim = {};
 
 		if (gfx10_is_ngg_passthrough(ctx->shader)) {
 			prim.passthrough = ac_get_arg(&ctx->ac, ctx->gs_vtx01_offset);
@@ -739,7 +686,7 @@ void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi,
 			}
 		}
 
-		build_export_prim(ctx, &prim);
+		ac_build_export_prim(&ctx->ac, &prim);
 	}
 	ac_build_endif(&ctx->ac, 6001);
 
@@ -1213,7 +1160,7 @@ void gfx10_ngg_gs_emit_epilogue(struct si_shader_context *ctx)
 	ac_build_ifcc(&ctx->ac, tmp, 5140);
 	{
 		LLVMValueRef flags;
-		struct ngg_prim prim = {};
+		struct ac_ngg_prim prim = {};
 		prim.num_vertices = verts_per_prim;
 
 		tmp = ngg_gs_vertex_ptr(ctx, tid);
@@ -1242,7 +1189,7 @@ void gfx10_ngg_gs_emit_epilogue(struct si_shader_context *ctx)
 					      si_unpack_param(ctx, ctx->vs_state_bits, 4, 2),
 					      ctx->i32_0, "");
 
-			struct ngg_prim in = prim;
+			struct ac_ngg_prim in = prim;
 			prim.index[0] = LLVMBuildSelect(builder, flatshade_first,
 							in.index[0],
 							LLVMBuildSelect(builder, is_odd,
@@ -1258,7 +1205,7 @@ void gfx10_ngg_gs_emit_epilogue(struct si_shader_context *ctx)
 							in.index[2], "");
 		}
 
-		build_export_prim(ctx, &prim);
+		ac_build_export_prim(&ctx->ac, &prim);
 	}
 	ac_build_endif(&ctx->ac, 5140);
 
