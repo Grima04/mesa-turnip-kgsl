@@ -192,8 +192,12 @@ struct iris_screen {
    const struct gen_l3_config *l3_config_cs;
 
    /**
-    * A buffer containing nothing useful, for hardware workarounds that
-    * require scratch writes or reads from some unimportant memory.
+    * A buffer containing a marker + description of the driver. This buffer is
+    * added to all execbufs syscalls so that we can identify the driver that
+    * generated a hang by looking at the content of the buffer in the error
+    * state. It is also used for hardware workarounds that require scratch
+    * writes or reads from some unimportant memory. To avoid overriding the
+    * debug data, use the workaround_address field for workarounds.
     */
    struct iris_bo *workaround_bo;
    struct iris_address workaround_address;

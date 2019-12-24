@@ -398,6 +398,11 @@ iris_batch_reset(struct iris_batch *batch)
 
    iris_cache_sets_clear(batch);
 
+   /* Always add the workaround BO, it contains a driver identifier at the
+    * beginning quite helpful to debug error states.
+    */
+   iris_use_pinned_bo(batch, screen->workaround_bo, false);
+
    iris_batch_maybe_noop(batch);
 }
 

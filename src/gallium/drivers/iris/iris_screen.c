@@ -663,6 +663,27 @@ iris_detect_kernel_features(struct iris_screen *screen)
       screen->kernel_features |= KERNEL_HAS_WAIT_FOR_SUBMIT;
 }
 
+static bool
+iris_init_identifier_bo(struct iris_screen *screen)
+{
+   void *bo_map;
+
+   bo_map = iris_bo_map(NULL, screen->workaround_bo, MAP_READ | MAP_WRITE);
+   if (!bo_map)
+      return false;
+
+   screen->workaround_bo->kflags |= EXEC_OBJECT_CAPTURE;
+   screen->workaround_address = (struct iris_address) {
+      .bo = screen->workaround_bo,
+      .offset = ALIGN(
+         intel_debug_write_identifiers(bo_map, 4096, "Iris") + 8, 8),
+   };
+
+   iris_bo_unmap(screen->workaround_bo);
+
+   return true;
+}
+
 struct pipe_screen *
 iris_screen_create(int fd, const struct pipe_screen_config *config)
 {
@@ -718,10 +739,8 @@ iris_screen_create(int fd, const struct pipe_screen_config *config)
    if (!screen->workaround_bo)
       return NULL;
 
-   screen->workaround_address = (struct iris_address) {
-      .bo = screen->workaround_bo,
-      .offset = 0,
-   };
+   if (!iris_init_identifier_bo(screen))
+      return NULL;
 
    brw_process_intel_debug_variable();
 
