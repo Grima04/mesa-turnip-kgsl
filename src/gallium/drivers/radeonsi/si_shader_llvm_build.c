@@ -177,6 +177,34 @@ void si_llvm_build_ret(struct si_shader_context *ctx, LLVMValueRef ret)
 		LLVMBuildRet(ctx->ac.builder, ret);
 }
 
+LLVMValueRef si_insert_input_ret(struct si_shader_context *ctx, LLVMValueRef ret,
+				 struct ac_arg param, unsigned return_index)
+{
+	return LLVMBuildInsertValue(ctx->ac.builder, ret,
+				    ac_get_arg(&ctx->ac, param),
+				    return_index, "");
+}
+
+LLVMValueRef si_insert_input_ret_float(struct si_shader_context *ctx, LLVMValueRef ret,
+				       struct ac_arg param, unsigned return_index)
+{
+	LLVMBuilderRef builder = ctx->ac.builder;
+	LLVMValueRef p = ac_get_arg(&ctx->ac, param);
+
+	return LLVMBuildInsertValue(builder, ret,
+				    ac_to_float(&ctx->ac, p),
+				    return_index, "");
+}
+
+LLVMValueRef si_insert_input_ptr(struct si_shader_context *ctx, LLVMValueRef ret,
+				 struct ac_arg param, unsigned return_index)
+{
+	LLVMBuilderRef builder = ctx->ac.builder;
+	LLVMValueRef ptr = ac_get_arg(&ctx->ac, param);
+	ptr = LLVMBuildPtrToInt(builder, ptr, ctx->i32, "");
+	return LLVMBuildInsertValue(builder, ret, ptr, return_index, "");
+}
+
 LLVMValueRef si_prolog_get_rw_buffers(struct si_shader_context *ctx)
 {
 	LLVMValueRef ptr[2], list;
