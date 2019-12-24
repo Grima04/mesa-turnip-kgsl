@@ -1315,50 +1315,18 @@ void si_dispatch_prim_discard_cs_and_draw(struct si_context *sctx,
 		  S_008F0C_NUM_FORMAT(V_008F0C_BUF_NUM_FORMAT_UINT) |
 		  S_008F0C_DATA_FORMAT(output_indexbuf_format);
 
-	/* Viewport state.
-	 * This is needed by the small primitive culling, because it's done
-	 * in screen space.
-	 */
-	float scale[2], translate[2];
+	/* Viewport state. */
+	struct si_small_prim_cull_info cull_info;
+	si_get_small_prim_cull_info(sctx, &cull_info);
 
-	scale[0] = sctx->viewports.states[0].scale[0];
-	scale[1] = sctx->viewports.states[0].scale[1];
-	translate[0] = sctx->viewports.states[0].translate[0];
-	translate[1] = sctx->viewports.states[0].translate[1];
-
-	/* The viewport shouldn't flip the X axis for the small prim culling to work. */
-	assert(-scale[0] + translate[0] <= scale[0] + translate[0]);
-
-	/* If the Y axis is inverted (OpenGL default framebuffer), reverse it.
-	 * This is because the viewport transformation inverts the clip space
-	 * bounding box, so min becomes max, which breaks small primitive
-	 * culling.
-	 */
-	if (sctx->viewports.y_inverted) {
-		scale[1] = -scale[1];
-		translate[1] = -translate[1];
-	}
-
-	/* Scale the framebuffer up, so that samples become pixels and small
-	 * primitive culling is the same for all sample counts.
-	 * This only works with the standard DX sample positions, because
-	 * the samples are evenly spaced on both X and Y axes.
-	 */
-	unsigned num_samples = sctx->framebuffer.nr_samples;
-	assert(num_samples >= 1);
-
-	for (unsigned i = 0; i < 2; i++) {
-		scale[i] *= num_samples;
-		translate[i] *= num_samples;
-	}
-
-	desc[8] = fui(scale[0]);
-	desc[9] = fui(scale[1]);
-	desc[10] = fui(translate[0]);
-	desc[11] = fui(translate[1]);
+	desc[8] = fui(cull_info.scale[0]);
+	desc[9] = fui(cull_info.scale[1]);
+	desc[10] = fui(cull_info.translate[0]);
+	desc[11] = fui(cull_info.translate[1]);
 
 	/* Better subpixel precision increases the efficiency of small
 	 * primitive culling. */
+	unsigned num_samples = sctx->framebuffer.nr_samples;
 	unsigned quant_mode = sctx->viewports.as_scissor[0].quant_mode;
 	float small_prim_cull_precision;
 

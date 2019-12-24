@@ -862,6 +862,10 @@ struct si_sdma_upload {
 	unsigned		size;
 };
 
+struct si_small_prim_cull_info {
+	float scale[2], translate[2];
+};
+
 struct si_context {
 	struct pipe_context		b; /* base class */
 
@@ -1491,6 +1495,8 @@ struct pipe_video_buffer *si_video_buffer_create(struct pipe_context *pipe,
 						 const struct pipe_video_buffer *tmpl);
 
 /* si_viewport.c */
+void si_get_small_prim_cull_info(struct si_context *sctx,
+				 struct si_small_prim_cull_info *out);
 void si_update_vs_viewport_state(struct si_context *ctx);
 void si_init_viewport_functions(struct si_context *ctx);
 

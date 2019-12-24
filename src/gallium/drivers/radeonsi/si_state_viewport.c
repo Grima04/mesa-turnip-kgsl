@@ -27,6 +27,46 @@
 
 #define SI_MAX_SCISSOR 16384
 
+void si_get_small_prim_cull_info(struct si_context *sctx,
+				 struct si_small_prim_cull_info *out)
+{
+	/* This is needed by the small primitive culling, because it's done
+	 * in screen space.
+	 */
+	struct si_small_prim_cull_info info;
+	unsigned num_samples = sctx->framebuffer.nr_samples;
+	assert(num_samples >= 1);
+
+	info.scale[0] = sctx->viewports.states[0].scale[0];
+	info.scale[1] = sctx->viewports.states[0].scale[1];
+	info.translate[0] = sctx->viewports.states[0].translate[0];
+	info.translate[1] = sctx->viewports.states[0].translate[1];
+
+	/* The viewport shouldn't flip the X axis for the small prim culling to work. */
+	assert(-info.scale[0] + info.translate[0] <= info.scale[0] + info.translate[0]);
+
+	/* If the Y axis is inverted (OpenGL default framebuffer), reverse it.
+	 * This is because the viewport transformation inverts the clip space
+	 * bounding box, so min becomes max, which breaks small primitive
+	 * culling.
+	 */
+	if (sctx->viewports.y_inverted) {
+		info.scale[1] = -info.scale[1];
+		info.translate[1] = -info.translate[1];
+	}
+
+	/* Scale the framebuffer up, so that samples become pixels and small
+	 * primitive culling is the same for all sample counts.
+	 * This only works with the standard DX sample positions, because
+	 * the samples are evenly spaced on both X and Y axes.
+	 */
+	for (unsigned i = 0; i < 2; i++) {
+		info.scale[i] *= num_samples;
+		info.translate[i] *= num_samples;
+	}
+	*out = info;
+}
+
 static void si_set_scissor_states(struct pipe_context *pctx,
 				  unsigned start_slot,
 				  unsigned num_scissors,
