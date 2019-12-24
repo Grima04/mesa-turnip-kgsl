@@ -640,7 +640,6 @@ void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi,
 				      ngg_get_vtx_cnt(ctx), ngg_get_prim_cnt(ctx));
 
 	/* Update query buffer */
-	/* TODO: this won't catch 96-bit clear_buffer via transform feedback. */
 	if (ctx->screen->use_ngg_streamout &&
 	    !info->properties[TGSI_PROPERTY_VS_BLIT_SGPRS_AMD]) {
 		tmp = si_unpack_param(ctx, ctx->vs_state_bits, 6, 1);
@@ -675,15 +674,7 @@ void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi,
 		ac_build_endif(&ctx->ac, 5029);
 	}
 
-	/* Build the primitive export.
-	 *
-	 * For the first version, we will always build up all three indices
-	 * independent of the primitive type. The additional garbage data
-	 * shouldn't hurt.
-	 *
-	 * TODO: culling depends on the primitive type, so can have some
-	 * interaction here.
-	 */
+	/* Build the primitive export. */
 	ac_build_ifcc(&ctx->ac, is_gs_thread, 6001);
 	{
 		struct ac_ngg_prim prim = {};
@@ -1092,8 +1083,6 @@ void gfx10_ngg_gs_emit_epilogue(struct si_shader_context *ctx)
 		ac_build_endif(&ctx->ac, 5110);
 		ac_build_endif(&ctx->ac, 5109);
 	}
-
-	/* TODO: culling */
 
 	/* Determine vertex liveness. */
 	LLVMValueRef vertliveptr = ac_build_alloca(&ctx->ac, ctx->ac.i1, "vertexlive");
