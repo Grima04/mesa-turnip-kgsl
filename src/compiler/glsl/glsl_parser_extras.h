@@ -824,6 +824,8 @@ struct _mesa_glsl_parse_state {
    bool EXT_demote_to_helper_invocation_warn;
    bool EXT_draw_buffers_enable;
    bool EXT_draw_buffers_warn;
+   bool EXT_draw_instanced_enable;
+   bool EXT_draw_instanced_warn;
    bool EXT_frag_depth_enable;
    bool EXT_frag_depth_warn;
    bool EXT_geometry_point_size_enable;

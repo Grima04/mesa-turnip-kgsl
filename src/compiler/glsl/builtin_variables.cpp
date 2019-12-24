@@ -1084,8 +1084,13 @@ builtin_variable_generator::generate_vs_special_vars()
       add_system_value(SYSTEM_VALUE_BASE_INSTANCE, int_t, "gl_BaseInstance");
       add_system_value(SYSTEM_VALUE_DRAW_ID, int_t, "gl_DrawID");
    }
+   if (state->EXT_draw_instanced_enable && state->is_version(0, 100))
+      add_system_value(SYSTEM_VALUE_INSTANCE_ID, int_t, GLSL_PRECISION_HIGH,
+                       "gl_InstanceIDEXT");
+
    if (state->ARB_draw_instanced_enable)
       add_system_value(SYSTEM_VALUE_INSTANCE_ID, int_t, "gl_InstanceIDARB");
+
    if (state->ARB_draw_instanced_enable || state->is_version(140, 300) ||
        state->EXT_gpu_shader4_enable) {
       add_system_value(SYSTEM_VALUE_INSTANCE_ID, int_t, GLSL_PRECISION_HIGH,
