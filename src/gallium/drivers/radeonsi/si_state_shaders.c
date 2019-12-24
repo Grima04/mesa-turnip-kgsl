@@ -1312,9 +1312,6 @@ static void si_emit_shader_vs(struct si_context *sctx)
 					   SI_TRACKED_VGT_VERTEX_REUSE_BLOCK_CNTL,
 					   shader->vgt_vertex_reuse_block_cntl);
 
-	if (initial_cdw != sctx->gfx_cs->current.cdw)
-		sctx->context_roll = true;
-
 	/* Required programming for tessellation. (legacy pipeline only) */
 	if (sctx->chip_class == GFX10 &&
 	    shader->selector->type == PIPE_SHADER_TESS_EVAL) {
@@ -1331,6 +1328,9 @@ static void si_emit_shader_vs(struct si_context *sctx)
 					       shader->pa_cl_vs_out_cntl,
 					       SI_TRACKED_PA_CL_VS_OUT_CNTL__VS_MASK);
 	}
+
+	if (initial_cdw != sctx->gfx_cs->current.cdw)
+		sctx->context_roll = true;
 }
 
 /**
