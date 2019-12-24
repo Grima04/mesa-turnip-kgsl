@@ -5668,7 +5668,7 @@ static void si_init_config(struct si_context *sctx)
 		/* TODO: For culling, replace 128 with 256. */
 		si_pm4_set_reg(pm4, R_030980_GE_PC_ALLOC,
 			       S_030980_OVERSUB_EN(1) |
-			       S_030980_NUM_PC_LINES(128 * sscreen->info.max_se - 1));
+			       S_030980_NUM_PC_LINES(sscreen->info.pc_lines / 4 - 1));
 	}
 
 	if (sctx->chip_class >= GFX8) {
