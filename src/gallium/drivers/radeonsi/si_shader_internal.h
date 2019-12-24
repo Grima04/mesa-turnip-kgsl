@@ -291,6 +291,12 @@ void si_get_ps_prolog_key(struct si_shader *shader,
 			  bool separate_prolog);
 void si_get_ps_epilog_key(struct si_shader *shader,
 			  union si_shader_part_key *key);
+LLVMValueRef si_insert_input_ret(struct si_shader_context *ctx, LLVMValueRef ret,
+				 struct ac_arg param, unsigned return_index);
+LLVMValueRef si_insert_input_ret_float(struct si_shader_context *ctx, LLVMValueRef ret,
+				       struct ac_arg param, unsigned return_index);
+LLVMValueRef si_insert_input_ptr(struct si_shader_context *ctx, LLVMValueRef ret,
+				 struct ac_arg param, unsigned return_index);
 
 void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi,
 			     unsigned max_outputs,

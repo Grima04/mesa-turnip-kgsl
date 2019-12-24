@@ -2172,18 +2172,16 @@ static void si_write_tess_factors(struct si_shader_context *ctx,
 	ac_build_endif(&ctx->ac, 6503);
 }
 
-static LLVMValueRef
-si_insert_input_ret(struct si_shader_context *ctx, LLVMValueRef ret,
-		    struct ac_arg param, unsigned return_index)
+LLVMValueRef si_insert_input_ret(struct si_shader_context *ctx, LLVMValueRef ret,
+				 struct ac_arg param, unsigned return_index)
 {
 	return LLVMBuildInsertValue(ctx->ac.builder, ret,
 				    ac_get_arg(&ctx->ac, param),
 				    return_index, "");
 }
 
-static LLVMValueRef
-si_insert_input_ret_float(struct si_shader_context *ctx, LLVMValueRef ret,
-			  struct ac_arg param, unsigned return_index)
+LLVMValueRef si_insert_input_ret_float(struct si_shader_context *ctx, LLVMValueRef ret,
+				       struct ac_arg param, unsigned return_index)
 {
 	LLVMBuilderRef builder = ctx->ac.builder;
 	LLVMValueRef p = ac_get_arg(&ctx->ac, param);
@@ -2193,9 +2191,8 @@ si_insert_input_ret_float(struct si_shader_context *ctx, LLVMValueRef ret,
 				    return_index, "");
 }
 
-static LLVMValueRef
-si_insert_input_ptr(struct si_shader_context *ctx, LLVMValueRef ret,
-		    struct ac_arg param, unsigned return_index)
+LLVMValueRef si_insert_input_ptr(struct si_shader_context *ctx, LLVMValueRef ret,
+				 struct ac_arg param, unsigned return_index)
 {
 	LLVMBuilderRef builder = ctx->ac.builder;
 	LLVMValueRef ptr = ac_get_arg(&ctx->ac, param);
