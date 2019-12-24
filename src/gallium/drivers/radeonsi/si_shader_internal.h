@@ -95,8 +95,11 @@ struct si_shader_context {
 	/* VS states and layout of LS outputs / TCS inputs at the end
 	 *   [0] = clamp vertex color
 	 *   [1] = indexed
-	 *   [8:20] = stride between patches in DW = num_inputs * num_vertices * 4
-	 *            max = 32*32*4 + 32*4
+	 *   [2:3] = NGG: output primitive type
+	 *   [4:5] = NGG: provoking vertex index
+	 *   [6]   = NGG: streamout queries enabled
+	 *   [11:23] = stride between patches in DW = num_inputs * num_vertices * 4
+	 *             max = 32*32*4 + 32*4
 	 *   [24:31] = stride between vertices in DW = num_inputs * 4
 	 *             max = 32*4
 	 */
