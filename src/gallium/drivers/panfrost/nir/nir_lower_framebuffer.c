@@ -384,6 +384,11 @@ nir_lower_framebuffer(nir_shader *shader, enum pipe_format format,
                nir_ssa_def *raw = &new->dest.ssa;
                nir_ssa_def *converted = nir_native_to_shader(&b, raw, op, format_desc, bits, homogenous_bits);
 
+               if (util_format_is_float(format))
+                  converted = nir_f2f32(&b, converted);
+               else
+                  converted = nir_i2i32(&b, converted);
+
                /* Rewrite to use the converted value */
                nir_src rewritten = nir_src_for_ssa(converted);
                nir_ssa_def_rewrite_uses_after(&intr->dest.ssa, rewritten, instr);
