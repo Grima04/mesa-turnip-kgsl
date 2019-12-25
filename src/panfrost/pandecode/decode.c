@@ -1665,7 +1665,7 @@ bits(u32 word, u32 lo, u32 hi)
 }
 
 static void
-pandecode_vertex_tiler_prefix(struct mali_vertex_tiler_prefix *p, int job_no, bool noninstanced)
+pandecode_vertex_tiler_prefix(struct mali_vertex_tiler_prefix *p, int job_no, bool graphics)
 {
         pandecode_log_cont("{\n");
         pandecode_indent++;
@@ -1698,7 +1698,7 @@ pandecode_vertex_tiler_prefix(struct mali_vertex_tiler_prefix *p, int job_no, bo
          * decoded, we're good to go. */
 
         struct mali_vertex_tiler_prefix ref;
-        panfrost_pack_work_groups_compute(&ref, groups_x, groups_y, groups_z, size_x, size_y, size_z, noninstanced);
+        panfrost_pack_work_groups_compute(&ref, groups_x, groups_y, groups_z, size_x, size_y, size_z, graphics);
 
         bool canonical =
                 (p->invocation_count == ref.invocation_count) &&
@@ -2708,11 +2708,10 @@ pandecode_vertex_or_tiler_job_mdg(const struct mali_job_descriptor_header *h,
         bool has_primitive_pointer = v->prefix.unknown_draw & MALI_DRAW_VARYING_SIZE;
         pandecode_primitive_size(v->primitive_size, !has_primitive_pointer);
 
-        bool instanced = v->instance_shift || v->instance_odd;
         bool is_graphics = (h->job_type == JOB_TYPE_VERTEX) || (h->job_type == JOB_TYPE_TILER);
 
         pandecode_log(".prefix = ");
-        pandecode_vertex_tiler_prefix(&v->prefix, job_no, !instanced && is_graphics);
+        pandecode_vertex_tiler_prefix(&v->prefix, job_no, is_graphics);
 
         pandecode_gl_enables(v->gl_enables, h->job_type);
 
