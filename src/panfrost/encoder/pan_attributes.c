@@ -156,6 +156,44 @@ panfrost_padded_vertex_count(unsigned vertex_count)
 /* The much, much more irritating case -- instancing is enabled. See
  * panfrost_job.h for notes on how this works */
 
+static unsigned
+panfrost_compute_magic_divisor(unsigned hw_divisor, unsigned *o_shift, unsigned *extra_flags)
+{
+        /* We have a NPOT divisor. Here's the fun one (multipling by
+         * the inverse and shifting) */
+
+        /* floor(log2(d)) */
+        unsigned shift = util_logbase2(hw_divisor);
+
+        /* m = ceil(2^(32 + shift) / d) */
+        uint64_t shift_hi = 32 + shift;
+        uint64_t t = 1ll << shift_hi;
+        double t_f = t;
+        double hw_divisor_d = hw_divisor;
+        double m_f = ceil(t_f / hw_divisor_d);
+        unsigned m = m_f;
+
+        /* Default case */
+        uint32_t magic_divisor = m;
+
+        /* e = 2^(shift + 32) % d */
+        uint64_t e = t % hw_divisor;
+
+        /* Apply round-down algorithm? e <= 2^shift?. XXX: The blob
+         * seems to use a different condition */
+        if (e <= (1ll << shift)) {
+                magic_divisor = m - 1;
+                *extra_flags = 1;
+        }
+
+        /* Top flag implicitly set */
+        assert(magic_divisor & (1u << 31));
+        magic_divisor &= ~(1u << 31);
+        *o_shift = shift;
+
+        return magic_divisor;
+}
+
 unsigned
 panfrost_vertex_instanced(
         unsigned padded_count,
@@ -188,36 +226,10 @@ panfrost_vertex_instanced(
 
                 return 1;
         } else {
-                /* We have a NPOT divisor. Here's the fun one (multipling by
-                 * the inverse and shifting) */
+                unsigned shift = 0, extra_flags = 0;
 
-                /* floor(log2(d)) */
-                unsigned shift = util_logbase2(hw_divisor);
-
-                /* m = ceil(2^(32 + shift) / d) */
-                uint64_t shift_hi = 32 + shift;
-                uint64_t t = 1ll << shift_hi;
-                double t_f = t;
-                double hw_divisor_d = hw_divisor;
-                double m_f = ceil(t_f / hw_divisor_d);
-                unsigned m = m_f;
-
-                /* Default case */
-                uint32_t magic_divisor = m, extra_flags = 0;
-
-                /* e = 2^(shift + 32) % d */
-                uint64_t e = t % hw_divisor;
-
-                /* Apply round-down algorithm? e <= 2^shift?. XXX: The blob
-                 * seems to use a different condition */
-                if (e <= (1ll << shift)) {
-                        magic_divisor = m - 1;
-                        extra_flags = 1;
-                }
-
-                /* Top flag implicitly set */
-                assert(magic_divisor & (1u << 31));
-                magic_divisor &= ~(1u << 31);
+                attrs[1].magic_divisor =
+                        panfrost_compute_magic_divisor(hw_divisor, &shift, &extra_flags);
 
                 /* Upload to two different slots */
 
@@ -226,7 +238,6 @@ panfrost_vertex_instanced(
                 attrs[0].extra_flags = extra_flags;
 
                 attrs[1].unk = 0x20;
-                attrs[1].magic_divisor = magic_divisor;
                 attrs[1].zero = 0;
                 attrs[1].divisor = divisor;
 
