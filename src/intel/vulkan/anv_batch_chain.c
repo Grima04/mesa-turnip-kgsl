@@ -1680,7 +1680,13 @@ anv_queue_execbuf_locked(struct anv_queue *queue,
    execbuf.alloc_scope = submit->alloc_scope;
    execbuf.perf_query_pass = submit->perf_query_pass;
 
-   VkResult result;
+   /* Always add the workaround BO as it includes a driver identifier for the
+    * error_state.
+    */
+   VkResult result =
+      anv_execbuf_add_bo(device, &execbuf, device->workaround_bo, NULL, 0);
+   if (result != VK_SUCCESS)
+      goto error;
 
    for (uint32_t i = 0; i < submit->fence_bo_count; i++) {
       int signaled;

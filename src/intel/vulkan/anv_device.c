@@ -2926,7 +2926,8 @@ VkResult anv_CreateDevice(
          goto fail_binding_table_pool;
    }
 
-   result = anv_device_alloc_bo(device, 4096, 0 /* flags */,
+   result = anv_device_alloc_bo(device, 4096,
+                                ANV_BO_ALLOC_CAPTURE | ANV_BO_ALLOC_MAPPED /* flags */,
                                 0 /* explicit_address */,
                                 &device->workaround_bo);
    if (result != VK_SUCCESS)
@@ -2934,7 +2935,16 @@ VkResult anv_CreateDevice(
 
    device->workaround_address = (struct anv_address) {
       .bo = device->workaround_bo,
+      .offset = align_u32(
+         intel_debug_write_identifiers(device->workaround_bo->map,
+                                       device->workaround_bo->size,
+                                       "Anv") + 8, 8),
    };
+
+   if (!device->info.has_llc) {
+      gen_clflush_range(device->workaround_bo->map,
+                        device->workaround_address.offset);
+   }
 
    result = anv_device_init_trivial_batch(device);
    if (result != VK_SUCCESS)

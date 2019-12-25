@@ -2133,10 +2133,7 @@ genX(cmd_buffer_apply_pipe_flushes)(struct anv_cmd_buffer *cmd_buffer)
          if (bits & ANV_PIPE_END_OF_PIPE_SYNC_BIT) {
             pipe.CommandStreamerStallEnable = true;
             pipe.PostSyncOperation = WriteImmediateData;
-            pipe.Address = (struct anv_address) {
-               .bo = cmd_buffer->device->workaround_bo,
-               .offset = 0
-            };
+            pipe.Address = cmd_buffer->device->workaround_address;
          }
 
          /*
@@ -2206,10 +2203,7 @@ genX(cmd_buffer_apply_pipe_flushes)(struct anv_cmd_buffer *cmd_buffer)
           */
          anv_batch_emit(&cmd_buffer->batch, GENX(MI_LOAD_REGISTER_MEM), lrm) {
             lrm.RegisterAddress  = 0x243C; /* GEN7_3DPRIM_START_INSTANCE */
-            lrm.MemoryAddress = (struct anv_address) {
-               .bo = cmd_buffer->device->workaround_bo,
-               .offset = 0
-            };
+            lrm.MemoryAddress = cmd_buffer->device->workaround_address;
          }
       }
 
