@@ -573,6 +573,15 @@ get_copy_region_aux_settings(const struct gen_device_info *devinfo,
                              bool is_render_target)
 {
    switch (res->aux.usage) {
+   case ISL_AUX_USAGE_HIZ:
+      if (!is_render_target && iris_sample_with_depth_aux(devinfo, res)) {
+         *out_aux_usage = ISL_AUX_USAGE_HIZ;
+         *out_clear_supported = true;
+      } else {
+         *out_aux_usage = ISL_AUX_USAGE_NONE;
+         *out_clear_supported = false;
+      }
+      break;
    case ISL_AUX_USAGE_MCS:
    case ISL_AUX_USAGE_MCS_CCS:
    case ISL_AUX_USAGE_CCS_E:

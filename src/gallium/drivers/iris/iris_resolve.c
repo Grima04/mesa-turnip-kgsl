@@ -559,9 +559,9 @@ format_ccs_e_compat_with_resource(const struct gen_device_info *devinfo,
    return isl_formats_are_ccs_e_compatible(devinfo, isl_format, access_format);
 }
 
-static bool
-sample_with_depth_aux(const struct gen_device_info *devinfo,
-                      const struct iris_resource *res)
+bool
+iris_sample_with_depth_aux(const struct gen_device_info *devinfo,
+                           const struct iris_resource *res)
 {
    switch (res->aux.usage) {
    case ISL_AUX_USAGE_HIZ:
@@ -1339,12 +1339,12 @@ iris_resource_texture_aux_usage(struct iris_context *ice,
 
    switch (res->aux.usage) {
    case ISL_AUX_USAGE_HIZ:
-      if (sample_with_depth_aux(devinfo, res))
+      if (iris_sample_with_depth_aux(devinfo, res))
          return ISL_AUX_USAGE_HIZ;
       break;
 
    case ISL_AUX_USAGE_HIZ_CCS:
-      if (sample_with_depth_aux(devinfo, res))
+      if (iris_sample_with_depth_aux(devinfo, res))
          return ISL_AUX_USAGE_CCS_E;
       break;
 
