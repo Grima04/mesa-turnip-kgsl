@@ -38,7 +38,6 @@
 #include "egldevice.h"
 #include "egldisplay.h"
 #include "egldriver.h"
-#include "egllog.h"
 
 #include "util/macros.h"
 
@@ -173,7 +172,6 @@ _eglPointerIsDereferencable(void *p)
    addr &= ~(page_size - 1);
 
    if (mincore((void *) addr, page_size, &valid) < 0) {
-      _eglLog(_EGL_DEBUG, "mincore failed: %m");
       return EGL_FALSE;
    }
 
