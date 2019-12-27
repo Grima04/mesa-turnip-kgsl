@@ -281,39 +281,6 @@ panfrost_translate_compare_func(enum pipe_compare_func in)
 }
 
 static unsigned
-panfrost_translate_alt_compare_func(enum pipe_compare_func in)
-{
-        switch (in) {
-        case PIPE_FUNC_NEVER:
-                return MALI_ALT_FUNC_NEVER;
-
-        case PIPE_FUNC_LESS:
-                return MALI_ALT_FUNC_LESS;
-
-        case PIPE_FUNC_EQUAL:
-                return MALI_ALT_FUNC_EQUAL;
-
-        case PIPE_FUNC_LEQUAL:
-                return MALI_ALT_FUNC_LEQUAL;
-
-        case PIPE_FUNC_GREATER:
-                return MALI_ALT_FUNC_GREATER;
-
-        case PIPE_FUNC_NOTEQUAL:
-                return MALI_ALT_FUNC_NOTEQUAL;
-
-        case PIPE_FUNC_GEQUAL:
-                return MALI_ALT_FUNC_GEQUAL;
-
-        case PIPE_FUNC_ALWAYS:
-                return MALI_ALT_FUNC_ALWAYS;
-
-        default:
-                unreachable("Invalid alt func");
-        }
-}
-
-static unsigned
 panfrost_translate_stencil_op(enum pipe_stencil_op in)
 {
         switch (in) {
@@ -1781,7 +1748,9 @@ panfrost_create_sampler_state(
                 .wrap_s = translate_tex_wrap(cso->wrap_s),
                 .wrap_t = translate_tex_wrap(cso->wrap_t),
                 .wrap_r = translate_tex_wrap(cso->wrap_r),
-                .compare_func = panfrost_translate_alt_compare_func(cso->compare_func),
+                .compare_func = panfrost_flip_compare_func(
+                                panfrost_translate_compare_func(
+                                        cso->compare_func)),
                 .border_color = {
                         cso->border_color.f[0],
                         cso->border_color.f[1],

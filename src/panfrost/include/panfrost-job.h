@@ -88,19 +88,6 @@ enum mali_func {
         MALI_FUNC_ALWAYS   = 7
 };
 
-/* Same OpenGL, but mixed up. Why? Because forget me, that's why! */
-
-enum mali_alt_func {
-        MALI_ALT_FUNC_NEVER    = 0,
-        MALI_ALT_FUNC_GREATER  = 1,
-        MALI_ALT_FUNC_EQUAL    = 2,
-        MALI_ALT_FUNC_GEQUAL   = 3,
-        MALI_ALT_FUNC_LESS     = 4,
-        MALI_ALT_FUNC_NOTEQUAL = 5,
-        MALI_ALT_FUNC_LEQUAL   = 6,
-        MALI_ALT_FUNC_ALWAYS   = 7
-};
-
 /* Flags apply to unknown2_3? */
 
 #define MALI_HAS_MSAA		(1 << 0)
@@ -1290,12 +1277,13 @@ struct mali_sampler_descriptor {
         uint16_t min_lod;
         uint16_t max_lod;
 
-        /* All one word in reality, but packed a bit */
+        /* All one word in reality, but packed a bit. Comparisons are flipped
+         * from OpenGL. */
 
         enum mali_wrap_mode wrap_s : 4;
         enum mali_wrap_mode wrap_t : 4;
         enum mali_wrap_mode wrap_r : 4;
-        enum mali_alt_func compare_func : 3;
+        enum mali_func compare_func : 3;
 
         /* No effect on 2D textures. For cubemaps, set for ES3 and clear for
          * ES2, controlling seamless cubemapping */

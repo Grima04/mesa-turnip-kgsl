@@ -375,28 +375,6 @@ pandecode_func(enum mali_func mode)
 }
 #undef DEFINE_CASE
 
-/* Why is this duplicated? Who knows... */
-#define DEFINE_CASE(name) case MALI_ALT_FUNC_ ## name: return "MALI_ALT_FUNC_" #name
-static char *
-pandecode_alt_func(enum mali_alt_func mode)
-{
-        switch (mode) {
-                DEFINE_CASE(NEVER);
-                DEFINE_CASE(LESS);
-                DEFINE_CASE(EQUAL);
-                DEFINE_CASE(LEQUAL);
-                DEFINE_CASE(GREATER);
-                DEFINE_CASE(NOTEQUAL);
-                DEFINE_CASE(GEQUAL);
-                DEFINE_CASE(ALWAYS);
-
-        default:
-                pandecode_msg("XXX: invalid alt func %X\n", mode);
-                return "";
-        }
-}
-#undef DEFINE_CASE
-
 #define DEFINE_CASE(name) case MALI_STENCIL_ ## name: return "MALI_STENCIL_" #name
 static char *
 pandecode_stencil_op(enum mali_stencil_op op)
@@ -2468,7 +2446,7 @@ pandecode_vertex_tiler_postfix_pre(
                                 pandecode_prop("wrap_t = %s", pandecode_wrap_mode(s->wrap_t));
                                 pandecode_prop("wrap_r = %s", pandecode_wrap_mode(s->wrap_r));
 
-                                pandecode_prop("compare_func = %s", pandecode_alt_func(s->compare_func));
+                                pandecode_prop("compare_func = %s", pandecode_func(s->compare_func));
 
                                 if (s->zero || s->zero2) {
                                         pandecode_msg("XXX: sampler zero tripped\n");
