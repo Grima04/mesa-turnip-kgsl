@@ -169,6 +169,11 @@ public:
    LoadFromScratch(GPRVector dst, PValue src, int scratch_size);
 };
 
+class FetchGDSOpResult : public FetchInstruction {
+public:
+   FetchGDSOpResult(const GPRVector dst, const PValue src);
+};
+
 }
 
 #endif // SFN_INSTRUCTION_FETCH_H

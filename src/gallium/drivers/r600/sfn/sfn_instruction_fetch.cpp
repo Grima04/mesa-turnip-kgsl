@@ -301,6 +301,33 @@ LoadFromScratch::LoadFromScratch(GPRVector dst, PValue src, int scratch_size):
 {
 }
 
+FetchGDSOpResult::FetchGDSOpResult(const GPRVector dst, const PValue src):
+   FetchInstruction(vc_fetch,
+                    no_index_offset,
+                    fmt_32,
+                    vtx_nf_int,
+                    vtx_es_none,
+                    src,
+                    dst,
+                    0,
+                    false,
+                    0xf,
+                    R600_IMAGE_IMMED_RESOURCE_OFFSET,
+                    0,
+                    bim_none,
+                    false,
+                    false,
+                    0,
+                    0,
+                    0,
+                    PValue(),
+                    {0,7,7,7})
+{
+   set_flag(vtx_srf_mode);
+   set_flag(vtx_vpm);
+}
+
+
 static const char *fmt_descr[64] = {
    "INVALID",
    "8",
