@@ -47,6 +47,7 @@ private:
    bool emit_alu(const AluInstruction& ai, ECFAluOpCode cf_op);
    bool emit_export(const ExportInstruction & exi);
    bool emit_streamout(const StreamOutIntruction& instr);
+   bool emit_memringwrite(const MemRingOutIntruction& instr);
    bool emit_tex(const TexInstruction & tex_instr);
    bool emit_vtx(const FetchInstruction& fetch_instr);
    bool emit_if_start(const IfInstruction & if_instr);
@@ -164,6 +165,8 @@ bool AssemblyFromShaderLegacyImpl::emit(const Instruction::Pointer i)
       return emit_loop_continue(static_cast<const LoopContInstruction&>(*i));
    case Instruction::streamout:
       return emit_streamout(static_cast<const StreamOutIntruction&>(*i));
+   case Instruction::ring:
+      return emit_memringwrite(static_cast<const MemRingOutIntruction&>(*i));
    case Instruction::wait_ack:
       return emit_wait_ack(static_cast<const WaitAck&>(*i));
    case Instruction::mem_wr_scratch:
@@ -576,6 +579,32 @@ bool AssemblyFromShaderLegacyImpl::emit_streamout(const StreamOutIntruction& so_
    }
    return true;
 }
+
+
+bool AssemblyFromShaderLegacyImpl::emit_memringwrite(const MemRingOutIntruction& instr)
+{
+   struct r600_bytecode_output output;
+   memset(&output, 0, sizeof(struct r600_bytecode_output));
+
+   output.gpr = instr.gpr().sel();
+   output.type = instr.type();
+   output.elem_size = instr.ncomp();
+   output.comp_mask = 0xF;
+   output.burst_count = 1;
+   output.op = instr.op();
+   if (instr.type() == mem_write_ind || instr.type() == mem_write_ind_ack) {
+      output.index_gpr = instr.index_reg();
+      output.array_size = 0xfff;
+   }
+   output.array_base = instr.array_base();
+
+   if (r600_bytecode_add_output(m_bc, &output)) {
+      R600_ERR("shader_from_nir: Error creating mem ring write instruction\n");
+      return false;
+   }
+   return true;
+}
+
 
 bool AssemblyFromShaderLegacyImpl::emit_tex(const TexInstruction & tex_instr)
 {

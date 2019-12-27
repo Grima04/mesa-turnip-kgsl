@@ -136,6 +136,34 @@ enum EMemWriteType {
    mem_write_ind_ack = 3,
 };
 
+class MemRingOutIntruction: public WriteoutInstruction {
+public:
+
+   MemRingOutIntruction(ECFOpCode ring, EMemWriteType type,
+                        const GPRVector& value, unsigned base_addr,
+                        unsigned ncomp, PValue m_index);
+
+   unsigned op() const{return m_ring_op;}
+   unsigned ncomp() const;
+   unsigned addr() const {return m_base_address;}
+   EMemWriteType type() const {return m_type;}
+   unsigned index_reg() const {return m_index->sel();}
+   unsigned array_base() const {return m_base_address; }
+   void replace_values_child(const ValueSet& candiates, PValue new_value) override;
+   void remap_registers_child(std::vector<rename_reg_pair>& map,
+                        ValueMap& values) override;
+private:
+   bool is_equal_to(const Instruction& lhs) const override;
+   void do_print(std::ostream& os) const override;
+
+   ECFOpCode m_ring_op;
+   EMemWriteType m_type;
+   unsigned m_base_address;
+   unsigned m_num_comp;
+   PValue m_index;
+
+};
+
 }
 
 

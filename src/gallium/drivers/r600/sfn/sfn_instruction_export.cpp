@@ -244,4 +244,89 @@ void StreamOutIntruction::do_print(std::ostream& os) const
       os << "+" << m_array_size;
 }
 
+MemRingOutIntruction::MemRingOutIntruction(ECFOpCode ring, EMemWriteType type,
+                                           const GPRVector& value,
+                                           unsigned base_addr, unsigned ncomp,
+                                           PValue index):
+   WriteoutInstruction(Instruction::ring, value),
+   m_ring_op(ring),
+   m_type(type),
+   m_base_address(base_addr),
+   m_num_comp(ncomp),
+   m_index(index)
+{
+   add_remappable_src_value(&m_index);
+
+   assert(m_ring_op  == cf_mem_ring || m_ring_op  == cf_mem_ring1||
+          m_ring_op  == cf_mem_ring2 || m_ring_op  == cf_mem_ring3);
+   assert(m_num_comp <= 4);
+}
+
+unsigned MemRingOutIntruction::ncomp() const
+{
+   switch (m_num_comp) {
+   case 1: return 0;
+   case 2: return 1;
+   case 3:
+   case 4: return 3;
+   default:
+      assert(0);
+   }
+   return 3;
+}
+
+bool MemRingOutIntruction::is_equal_to(const Instruction& lhs) const
+{
+   assert(lhs.type() == streamout);
+   const auto& oth = static_cast<const MemRingOutIntruction&>(lhs);
+
+   bool equal = gpr() == oth.gpr() &&
+                m_ring_op == oth.m_ring_op &&
+                m_type == oth.m_type &&
+                m_num_comp == oth.m_num_comp &&
+                m_base_address == oth.m_base_address;
+
+   if (m_type == mem_write_ind || m_type == mem_write_ind_ack)
+      equal &= (*m_index == *oth.m_index);
+   return equal;
+
+}
+
+static const char *write_type_str[4] = {"WRITE", "WRITE_IDX", "WRITE_ACK", "WRITE_IDX_ACK" };
+void MemRingOutIntruction::do_print(std::ostream& os) const
+{
+   os << "MEM_RING" << m_ring_op;
+   os << " " << write_type_str[m_type] << " " << m_base_address;
+   os << " " << gpr();
+   if (m_type == mem_write_ind || m_type == mem_write_ind_ack)
+      os << " @" << *m_index;
+   os << " ES:" << m_num_comp;
+}
+
+
+void MemRingOutIntruction::replace_values_child(const ValueSet& candiates,
+                                                PValue new_value)
+{
+   if (!m_index)
+      return;
+
+   for (auto c: candiates) {
+      if (*c == *m_index)
+         m_index = new_value;
+   }
+}
+
+void MemRingOutIntruction::remap_registers_child(std::vector<rename_reg_pair>& map,
+                                                 ValueMap& values)
+{
+   if (!m_index)
+      return;
+
+   assert(m_index->type() == Value::gpr);
+   auto new_index = map[m_index->sel()];
+   if (new_index.valid)
+      m_index = values.get_or_inject(new_index.new_reg, m_index->chan());
+   map[m_index->sel()].used = true;
+}
+
 }
