@@ -661,7 +661,7 @@ pandecode_sfbd_format(struct mali_sfbd_format format)
         pandecode_log_cont(",\n");
 
         pandecode_prop("nr_channels = MALI_POSITIVE(%d)",
-                       MALI_NEGATIVE(format.nr_channels));
+                       (format.nr_channels + 1));
 
         pandecode_log(".unk2 = ");
         pandecode_log_decoded_flags(sfbd_unk2_info, format.unk2);
@@ -958,7 +958,7 @@ pandecode_rt_format(struct mali_rt_format format)
         pandecode_log_cont(",\n");
 
         pandecode_prop("nr_channels = MALI_POSITIVE(%d)",
-                       MALI_NEGATIVE(format.nr_channels));
+                       (format.nr_channels + 1));
 
         pandecode_log(".flags = ");
         pandecode_log_decoded_flags(mfbd_fmt_flag_info, format.flags);
@@ -988,7 +988,7 @@ pandecode_render_target(uint64_t gpu_va, unsigned job_no, const struct bifrost_f
         pandecode_log("struct bifrost_render_target rts_list_%"PRIx64"_%d[] = {\n", gpu_va, job_no);
         pandecode_indent++;
 
-        for (int i = 0; i < MALI_NEGATIVE(fb->rt_count_1); i++) {
+        for (int i = 0; i < (fb->rt_count_1 + 1); i++) {
                 mali_ptr rt_va = gpu_va + i * sizeof(struct bifrost_render_target);
                 struct pandecode_mapped_memory *mem =
                         pandecode_find_mapped_gpu_mem_containing(rt_va);
@@ -2035,14 +2035,14 @@ pandecode_texture(mali_ptr u,
          * properties, but dump extra
          * possibilities to futureproof */
 
-        int bitmap_count = MALI_NEGATIVE(t->levels);
+        int bitmap_count = t->levels + 1;
 
         /* Miptree for each face */
         if (f.type == MALI_TEX_CUBE)
                 bitmap_count *= 6;
 
         /* Array of textures */
-        bitmap_count *= MALI_NEGATIVE(t->array_size);
+        bitmap_count *= (t->array_size + 1);
 
         /* Stride for each element */
         if (f.manual_stride)

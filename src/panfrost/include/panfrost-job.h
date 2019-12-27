@@ -1151,10 +1151,6 @@ struct bifrost_payload_fused {
 
 #define MALI_POSITIVE(dim) (dim - 1)
 
-/* Opposite of MALI_POSITIVE, found in the depth_units field */
-
-#define MALI_NEGATIVE(dim) (dim + 1)
-
 /* Used with wrapping. Incomplete (this is a 4-bit field...) */
 
 enum mali_wrap_mode {
