@@ -4340,6 +4340,8 @@ lower_fb_write_logical_send(const fs_builder &bld, fs_inst *inst,
    const unsigned components =
       inst->src[FB_WRITE_LOGICAL_SRC_COMPONENTS].ud;
 
+   assert(inst->target != 0 || src0_alpha.file == BAD_FILE);
+
    /* We can potentially have a message length of up to 15, so we have to set
     * base_mrf to either 0 or 1 in order to fit in m0..m15.
     */
@@ -4404,7 +4406,7 @@ lower_fb_write_logical_send(const fs_builder &bld, fs_inst *inst,
       /* Set "Source0 Alpha Present to RenderTarget" bit in message
        * header.
        */
-      if (inst->target > 0 && prog_data->replicate_alpha)
+      if (src0_alpha.file != BAD_FILE)
          g00_bits |= 1 << 11;
 
       /* Set computes stencil to render target */
@@ -4448,8 +4450,6 @@ lower_fb_write_logical_send(const fs_builder &bld, fs_inst *inst,
       length++;
    }
 
-   bool src0_alpha_present = false;
-
    if (src0_alpha.file != BAD_FILE) {
       for (unsigned i = 0; i < bld.dispatch_width() / 8; i++) {
          const fs_builder &ubld = bld.exec_all().group(8, i)
@@ -4459,14 +4459,6 @@ lower_fb_write_logical_send(const fs_builder &bld, fs_inst *inst,
          setup_color_payload(ubld, key, &sources[length], tmp, 1);
          length++;
       }
-      src0_alpha_present = true;
-   } else if (prog_data->replicate_alpha && inst->target != 0) {
-      /* Handle the case when fragment shader doesn't write to draw buffer
-       * zero. No need to call setup_color_payload() for src0_alpha because
-       * alpha value will be undefined.
-       */
-      length += bld.dispatch_width() / 8;
-      src0_alpha_present = true;
    }
 
    if (sample_mask.file != BAD_FILE) {
@@ -4548,7 +4540,7 @@ lower_fb_write_logical_send(const fs_builder &bld, fs_inst *inst,
          /* Set the "Render Target Index" and "Src0 Alpha Present" fields
           * in the extended message descriptor, in lieu of using a header.
           */
-         ex_desc = inst->target << 12 | src0_alpha_present << 15;
+         ex_desc = inst->target << 12 | (src0_alpha.file != BAD_FILE) << 15;
 
          if (key->nr_color_regions == 0)
             ex_desc |= 1 << 20; /* Null Render Target */
