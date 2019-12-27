@@ -31,6 +31,7 @@
 #include "sfn_shader_fragment.h"
 #include "sfn_ir_to_assembly.h"
 #include "sfn_nir.h"
+#include "sfn_instruction_misc.h"
 #include "sfn_instruction_fetch.h"
 
 #include <iostream>

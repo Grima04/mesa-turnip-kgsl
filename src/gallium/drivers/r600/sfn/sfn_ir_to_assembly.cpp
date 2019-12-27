@@ -27,6 +27,7 @@
 #include "sfn_ir_to_assembly.h"
 #include "sfn_conditionaljumptracker.h"
 #include "sfn_callstack.h"
+#include "sfn_instruction_misc.h"
 #include "sfn_instruction_fetch.h"
 
 #include "../r600_shader.h"
@@ -56,6 +57,7 @@ private:
    bool emit_loop_end(const LoopEndInstruction& instr);
    bool emit_loop_break(const LoopBreakInstruction& instr);
    bool emit_loop_continue(const LoopContInstruction& instr);
+   bool emit_wait_ack(const WaitAck& instr);
 
    bool emit_load_addr(PValue addr);
    bool emit_fs_pixel_export(const ExportInstruction & exi);
@@ -161,6 +163,8 @@ bool AssemblyFromShaderLegacyImpl::emit(const Instruction::Pointer i)
       return emit_loop_continue(static_cast<const LoopContInstruction&>(*i));
    case Instruction::streamout:
       return emit_streamout(static_cast<const StreamOutIntruction&>(*i));
+   case Instruction::wait_ack:
+      return emit_wait_ack(static_cast<const WaitAck&>(*i));
    default:
       return false;
    }
@@ -734,6 +738,15 @@ bool AssemblyFromShaderLegacyImpl::emit_vtx(const FetchInstruction& fetch_instr)
    m_bc->cf_last->barrier = 1;
 
    return true;
+}
+
+bool AssemblyFromShaderLegacyImpl::emit_wait_ack(const WaitAck& instr)
+{
+   int r = r600_bytecode_add_cfinst(m_bc, instr.op());
+   if (!r)
+      m_bc->cf_last->cf_addr = instr.n_ack();
+
+   return r == 0;
 }
 
 extern const std::map<ESDOp, int> ds_opcode_map;

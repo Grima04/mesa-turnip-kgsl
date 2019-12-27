@@ -114,6 +114,8 @@ CXX_SOURCES = \
 	sfn/sfn_instruction_export.h \
 	sfn/sfn_instruction_fetch.cpp \
 	sfn/sfn_instruction_fetch.h \
+	sfn/sfn_instruction_misc.cpp \
+	sfn/sfn_instruction_misc.h \
 	sfn/sfn_instruction_tex.cpp \
 	sfn/sfn_instruction_tex.h \
 	sfn/sfn_ir_to_assembly.cpp \
