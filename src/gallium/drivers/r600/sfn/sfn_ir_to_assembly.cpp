@@ -27,6 +27,7 @@
 #include "sfn_ir_to_assembly.h"
 #include "sfn_conditionaljumptracker.h"
 #include "sfn_callstack.h"
+#include "sfn_instruction_gds.h"
 #include "sfn_instruction_misc.h"
 #include "sfn_instruction_fetch.h"
 
@@ -61,6 +62,8 @@ private:
    bool emit_loop_continue(const LoopContInstruction& instr);
    bool emit_wait_ack(const WaitAck& instr);
    bool emit_wr_scratch(const WriteScratchInstruction& instr);
+   bool emit_gds(const GDSInstr& instr);
+   bool emit_rat(const RatInstruction& instr);
 
    bool emit_load_addr(PValue addr);
    bool emit_fs_pixel_export(const ExportInstruction & exi);
@@ -176,6 +179,10 @@ bool AssemblyFromShaderLegacyImpl::emit(const Instruction::Pointer i)
       return emit_wait_ack(static_cast<const WaitAck&>(*i));
    case Instruction::mem_wr_scratch:
       return emit_wr_scratch(static_cast<const WriteScratchInstruction&>(*i));
+   case Instruction::gds:
+      return emit_gds(static_cast<const GDSInstr&>(*i));
+   case Instruction::rat:
+      return emit_rat(static_cast<const RatInstruction&>(*i));
    default:
       return false;
    }
@@ -836,6 +843,161 @@ bool AssemblyFromShaderLegacyImpl::emit_wr_scratch(const WriteScratchInstruction
 }
 
 extern const std::map<ESDOp, int> ds_opcode_map;
+
+bool AssemblyFromShaderLegacyImpl::emit_gds(const GDSInstr& instr)
+{
+   struct r600_bytecode_gds gds;
+
+   int uav_idx = -1;
+   auto addr = instr.uav_id();
+   if (addr->type() != Value::literal) {
+      if (!m_bc->index_loaded[1] || m_loop_nesting ||
+          m_bc->index_reg[1] != addr->sel()) {
+         struct r600_bytecode_alu alu;
+
+         memset(&alu, 0, sizeof(alu));
+         alu.op = opcode_map.at(op2_lshr_int);
+         alu.dst.sel = addr->sel();
+         alu.dst.chan = addr->chan();
+         alu.src[0].sel = addr->sel();
+         alu.src[0].chan = addr->chan();
+         alu.src[1].sel = ALU_SRC_LITERAL;
+         alu.src[1].value = 2;
+         alu.last = 1;
+         alu.dst.write = 1;
+         int r = r600_bytecode_add_alu(m_bc, &alu);
+         if (r)
+            return false;
+
+         memset(&alu, 0, sizeof(alu));
+         alu.op = opcode_map.at(op1_mova_int);
+         alu.dst.chan = 0;
+         alu.src[0].sel = addr->sel();
+         alu.src[0].chan = addr->chan();
+         alu.last = 1;
+         r = r600_bytecode_add_alu(m_bc, &alu);
+         if (r)
+            return false;
+
+         m_bc->ar_loaded = 0;
+
+         alu.op = opcode_map.at(op1_set_cf_idx1);
+         alu.dst.chan = 0;
+         alu.src[0].sel = 0;
+         alu.src[0].chan = 0;
+         alu.last = 1;
+
+         r = r600_bytecode_add_alu(m_bc, &alu);
+         if (r)
+            return false;
+
+         m_bc->index_reg[1] = addr->sel();
+         m_bc->index_loaded[1] = true;
+      }
+   } else {
+      const LiteralValue& addr_reg = dynamic_cast<const LiteralValue&>(*addr);
+      uav_idx = addr_reg.value() >> 2;
+   }
+
+   memset(&gds, 0, sizeof(struct r600_bytecode_gds));
+
+   gds.op = ds_opcode_map.at(instr.op());
+	gds.dst_gpr = instr.dest_sel();
+	gds.uav_id = (uav_idx >= 0 ? uav_idx : 0) + instr.uav_base();
+	gds.uav_index_mode = uav_idx >= 0 ? bim_none : bim_one;
+	gds.src_gpr = instr.src_sel();
+
+   if (instr.op() == DS_OP_CMP_XCHG_RET) {
+      gds.src_sel_z = 1;
+   } else {
+      gds.src_sel_z = 7;
+   }
+
+	gds.src_sel_x = instr.src_swizzle(0);
+	gds.src_sel_y = instr.src_swizzle(1);
+
+	gds.dst_sel_x = 0;
+	gds.dst_sel_y = 7;
+	gds.dst_sel_z = 7;
+	gds.dst_sel_w = 7;
+	gds.src_gpr2 = 0;
+	gds.alloc_consume = 1; // Not Cayman
+
+   int r = r600_bytecode_add_gds(m_bc, &gds);
+	if (r)
+		return false;
+	m_bc->cf_last->vpm = 1;
+   return true;
+}
+
+
+bool AssemblyFromShaderLegacyImpl::emit_rat(const RatInstruction& instr)
+{
+   struct r600_bytecode_gds gds;
+
+   int rat_idx = -1;
+   EBufferIndexMode rat_index_mode = bim_none;
+   auto addr = instr.rat_id_offset();
+
+   if (addr) {
+      if (addr->type() != Value::literal) {
+         rat_index_mode = bim_one;
+         if (!m_bc->index_loaded[1] || m_loop_nesting ||  m_bc->index_reg[1] != addr->sel()) {
+            struct r600_bytecode_alu alu;
+
+            memset(&alu, 0, sizeof(alu));
+            alu.op = opcode_map.at(op1_mova_int);
+            alu.dst.chan = 0;
+            alu.src[0].sel = addr->sel();
+            alu.src[0].chan = addr->chan();
+            alu.last = 1;
+            int r = r600_bytecode_add_alu(m_bc, &alu);
+            if (r)
+               return false;
+
+            m_bc->ar_loaded = 0;
+
+            alu.op = opcode_map.at(op1_set_cf_idx1);
+            alu.dst.chan = 0;
+            alu.src[0].sel = 0;
+            alu.src[0].chan = 0;
+            alu.last = 1;
+
+            r = r600_bytecode_add_alu(m_bc, &alu);
+            if (r)
+               return false;
+
+            m_bc->index_reg[1] = addr->sel();
+            m_bc->index_loaded[1] = true;
+
+         }
+      } else {
+         const LiteralValue& addr_reg = dynamic_cast<const LiteralValue&>(*addr);
+         rat_idx = addr_reg.value();
+      }
+   }
+   memset(&gds, 0, sizeof(struct r600_bytecode_gds));
+
+   r600_bytecode_add_cfinst(m_bc, CF_OP_MEM_RAT);
+   auto cf = m_bc->cf_last;
+   cf->rat.id = rat_idx + m_shader->rat_base;
+   cf->rat.inst = instr.rat_op();
+   cf->rat.index_mode = rat_index_mode;
+   cf->output.type = instr.need_ack() ? 3 : 1;
+   cf->output.gpr = instr.data_gpr();
+   cf->output.index_gpr = instr.index_gpr();
+   cf->output.comp_mask = instr.comp_mask();
+   cf->output.burst_count = instr.burst_count();
+   cf->output.swizzle_x = instr.data_swz(0);
+   cf->output.swizzle_y = instr.data_swz(1);
+   cf->output.swizzle_z = instr.data_swz(2);
+   cf->output.swizzle_w = instr.data_swz(3);
+   cf->vpm = 1;
+   cf->barrier = 1;
+   cf->mark = instr.need_ack();
+   cf->output.elem_size = instr.elm_size();
+   return true;
+}
 
 bool AssemblyFromShaderLegacyImpl::copy_dst(r600_bytecode_alu_dst& dst,
                                             const Value& d)
