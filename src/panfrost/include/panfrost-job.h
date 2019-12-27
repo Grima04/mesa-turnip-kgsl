@@ -807,7 +807,6 @@ enum mali_attr_mode {
 	MALI_ATTR_MODULO = 3,
 	MALI_ATTR_NPOT_DIVIDE = 4,
         MALI_ATTR_IMAGE = 5,
-        MALI_ATTR_INTERNAL = 6
 };
 
 /* Pseudo-address for gl_VertexID, gl_FragCoord, gl_FrontFacing */

@@ -432,8 +432,6 @@ static char *pandecode_attr_mode_short(enum mali_attr_mode mode)
                 return "instanced_npot";
         case MALI_ATTR_IMAGE:
                 return "image";
-        case MALI_ATTR_INTERNAL:
-                return "internal";
         default:
                 pandecode_msg("XXX: invalid attribute mode %X\n", mode);
                 return "";
