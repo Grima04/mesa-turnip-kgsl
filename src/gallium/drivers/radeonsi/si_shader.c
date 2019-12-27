@@ -3716,12 +3716,12 @@ static void create_function(struct si_shader_context *ctx)
 				&ctx->args.frag_pos[2], SI_PARAM_POS_Z_FLOAT);
 		add_arg_checked(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_FLOAT,
 				&ctx->args.frag_pos[3], SI_PARAM_POS_W_FLOAT);
+		shader->info.face_vgpr_index = ctx->args.num_vgprs_used;
 		add_arg_checked(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT,
 				&ctx->args.front_face, SI_PARAM_FRONT_FACE);
-		shader->info.face_vgpr_index = 20;
+		shader->info.ancillary_vgpr_index = ctx->args.num_vgprs_used;
 		add_arg_checked(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT,
 				&ctx->args.ancillary, SI_PARAM_ANCILLARY);
-		shader->info.ancillary_vgpr_index = 21;
 		add_arg_checked(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_FLOAT,
 				&ctx->args.sample_coverage, SI_PARAM_SAMPLE_COVERAGE);
 		add_arg_checked(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT,
