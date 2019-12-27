@@ -2679,6 +2679,7 @@ midgard_compile_shader_nir(nir_shader *nir, midgard_program *program, bool is_bl
                         progress |= midgard_opt_fuse_dest_invert(ctx, block);
                         progress |= midgard_opt_csel_invert(ctx, block);
                         progress |= midgard_opt_drop_cmp_invert(ctx, block);
+                        progress |= midgard_opt_invert_branch(ctx, block);
                 }
         } while (progress);
 

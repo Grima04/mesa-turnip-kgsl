@@ -705,5 +705,6 @@ bool midgard_opt_fuse_dest_invert(compiler_context *ctx, midgard_block *block);
 bool midgard_opt_csel_invert(compiler_context *ctx, midgard_block *block);
 bool midgard_opt_promote_fmov(compiler_context *ctx, midgard_block *block);
 bool midgard_opt_drop_cmp_invert(compiler_context *ctx, midgard_block *block);
+bool midgard_opt_invert_branch(compiler_context *ctx, midgard_block *block);
 
 #endif
