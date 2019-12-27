@@ -796,9 +796,8 @@ struct mali_payload_write_value {
  * let shift=extra_flags=0. Stride is set to the image format's bytes-per-pixel
  * (*NOT the row stride*). Size is set to the size of the image itself.
  *
- * Special internal varyings (including gl_FrontFacing) could be seen as
- * IMAGE/INTERNAL as well as LINEAR, setting all fields set to zero and using a
- * special elements pseudo-pointer.
+ * Special internal attribtues and varyings (gl_VertexID, gl_FrontFacing, etc)
+ * use particular fixed addresses with modified structures.
  */
 
 enum mali_attr_mode {
