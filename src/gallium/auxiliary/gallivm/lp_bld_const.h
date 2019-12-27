@@ -127,7 +127,7 @@ lp_build_const_int32(struct gallivm_state *gallivm, int i)
 }
 
 static inline LLVMValueRef
-lp_build_const_int64(struct gallivm_state *gallivm, int i)
+lp_build_const_int64(struct gallivm_state *gallivm, int64_t i)
 {
    return LLVMConstInt(LLVMInt64TypeInContext(gallivm->context), i, 0);
 }
