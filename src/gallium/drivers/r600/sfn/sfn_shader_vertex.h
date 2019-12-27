@@ -91,6 +91,14 @@ public:
    const r600_shader *m_gs_shader;
 };
 
+class VertexShaderFromNirForES :  public VertexShaderFromNir {
+public:
+   VertexShaderFromNirForES(r600_pipe_shader *sh, const pipe_stream_output_info *so_info, r600_pipe_shader_selector &sel,
+                            const r600_shader_key &key);
+   bool do_emit_store_deref(const nir_variable *out_var, nir_intrinsic_instr* instr) override;
+   void finalize_exports() override;
+};
+
 }
 
 #endif 

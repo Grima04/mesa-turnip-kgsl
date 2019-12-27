@@ -551,4 +551,23 @@ void VertexShaderFromNirForGS::finalize_exports()
 {
 }
 
+
+VertexShaderFromNirForES::VertexShaderFromNirForES(r600_pipe_shader *sh,
+                                                   UNUSED const pipe_stream_output_info *so_info,
+                                                   r600_pipe_shader_selector&  sel,
+                                                   const r600_shader_key &key):
+   VertexShaderFromNir(sh, sel, key)
+{
+}
+
+bool VertexShaderFromNirForES::do_emit_store_deref(UNUSED const nir_variable *out_var,
+                                                   UNUSED nir_intrinsic_instr* instr)
+{
+   return false;
+}
+
+void VertexShaderFromNirForES::finalize_exports()
+{
+}
+
 }
