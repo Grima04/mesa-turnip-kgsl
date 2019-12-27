@@ -669,11 +669,6 @@ struct mali_payload_write_value {
         u64 immediate;
 } __attribute__((packed));
 
-/* Special attributes have a fixed index */
-#define MALI_SPECIAL_ATTRIBUTE_BASE 16
-#define MALI_VERTEX_ID   (MALI_SPECIAL_ATTRIBUTE_BASE + 0)
-#define MALI_INSTANCE_ID (MALI_SPECIAL_ATTRIBUTE_BASE + 1)
-
 /*
  * Mali Attributes
  *
