@@ -27,6 +27,7 @@
 #ifndef __PAN_ENCODER_H
 #define __PAN_ENCODER_H
 
+#include <stdbool.h>
 #include "panfrost-job.h"
 
 /* Invocation packing */
