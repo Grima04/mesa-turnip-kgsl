@@ -58,6 +58,7 @@ private:
    bool emit_loop_break(const LoopBreakInstruction& instr);
    bool emit_loop_continue(const LoopContInstruction& instr);
    bool emit_wait_ack(const WaitAck& instr);
+   bool emit_wr_scratch(const WriteScratchInstruction& instr);
 
    bool emit_load_addr(PValue addr);
    bool emit_fs_pixel_export(const ExportInstruction & exi);
@@ -165,6 +166,8 @@ bool AssemblyFromShaderLegacyImpl::emit(const Instruction::Pointer i)
       return emit_streamout(static_cast<const StreamOutIntruction&>(*i));
    case Instruction::wait_ack:
       return emit_wait_ack(static_cast<const WaitAck&>(*i));
+   case Instruction::mem_wr_scratch:
+      return emit_wr_scratch(static_cast<const WriteScratchInstruction&>(*i));
    default:
       return false;
    }
@@ -747,6 +750,45 @@ bool AssemblyFromShaderLegacyImpl::emit_wait_ack(const WaitAck& instr)
       m_bc->cf_last->cf_addr = instr.n_ack();
 
    return r == 0;
+}
+
+bool AssemblyFromShaderLegacyImpl::emit_wr_scratch(const WriteScratchInstruction& instr)
+{
+   struct r600_bytecode_output cf;
+
+   memset(&cf, 0, sizeof(struct r600_bytecode_output));
+
+   cf.op = CF_OP_MEM_SCRATCH;
+   cf.elem_size = 3;
+   cf.gpr = instr.gpr().sel();
+   cf.mark = 1;
+   cf.comp_mask = instr.write_mask();
+   cf.swizzle_x = 0;
+   cf.swizzle_y = 1;
+   cf.swizzle_z = 2;
+   cf.swizzle_w = 3;
+   cf.burst_count = 1;
+
+   if (instr.indirect()) {
+      cf.type = 3;
+      cf.index_gpr = instr.address();
+
+      /* The docu seems to be wrong here: In indirect addressing the
+       * address_base seems to be the array_size */
+      cf.array_size = instr.array_size();
+   } else {
+      cf.type = 2;
+      cf.array_base = instr.location();
+   }
+   /* This should be 0, but the address calculation is apparently wrong */
+
+
+   if (r600_bytecode_add_output(m_bc, &cf)){
+      R600_ERR("shader_from_nir: Error creating SCRATCH_WR assembly instruction\n");
+      return false;
+   }
+
+   return true;
 }
 
 extern const std::map<ESDOp, int> ds_opcode_map;

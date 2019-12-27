@@ -73,6 +73,37 @@ private:
    bool m_is_last;
 };
 
+class WriteScratchInstruction : public WriteoutInstruction {
+public:
+
+   WriteScratchInstruction(unsigned loc, const GPRVector& value, int align,
+                           int align_offset, int writemask);
+   WriteScratchInstruction(const PValue& address, const GPRVector& value,
+                           int align, int align_offset, int writemask, int array_size);
+   unsigned location() const {return m_loc;}
+
+   int write_mask() const { return m_writemask;}
+   int address() const { assert(m_address); return m_address->sel();}
+   bool indirect() const { return !!m_address;}
+   int array_size() const { return m_array_size;}
+
+private:
+   bool is_equal_to(const Instruction& lhs) const override;
+   void do_print(std::ostream& os) const override;
+
+   void replace_values_child(const ValueSet& candiates, PValue new_value) override;
+   void remap_registers_child(std::vector<rename_reg_pair>& map,
+                              ValueMap& values)override;
+
+   unsigned m_loc;
+   PValue m_address;
+   unsigned m_align;
+   unsigned m_align_offset;
+   unsigned m_writemask;
+   int m_array_size;
+};
+
+
 class StreamOutIntruction: public WriteoutInstruction {
 public:
    StreamOutIntruction(const GPRVector& value, int num_components,

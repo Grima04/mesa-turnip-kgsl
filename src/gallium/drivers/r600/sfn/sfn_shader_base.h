@@ -54,7 +54,7 @@ extern SfnLog sfn_log;
 class ShaderFromNirProcessor : public ValuePool {
 public:
    ShaderFromNirProcessor(pipe_shader_type ptype, r600_pipe_shader_selector& sel,
-                          r600_shader& sh_info);
+                          r600_shader& sh_info, int scratch_size);
    virtual ~ShaderFromNirProcessor();
 
    void emit_instruction(Instruction *ir);
@@ -147,6 +147,8 @@ private:
    virtual bool do_emit_load_deref(const nir_variable *in_var, nir_intrinsic_instr* instr) = 0;
    virtual bool do_emit_store_deref(const nir_variable *out_var, nir_intrinsic_instr* instr) = 0;
 
+   bool emit_store_scratch(nir_intrinsic_instr* instr);
+   bool emit_load_scratch(nir_intrinsic_instr* instr);
    virtual void do_finalize() = 0;
 
    void finalize();
@@ -175,6 +177,7 @@ private:
    OutputRegisterMap m_output_register_map;
 
    IfElseInstruction *m_pending_else;
+   int m_scratch_size;
    int m_next_hwatomic_loc;
 
    r600_pipe_shader_selector& m_sel;

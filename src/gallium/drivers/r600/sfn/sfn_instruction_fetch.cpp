@@ -296,6 +296,11 @@ const std::vector<PInstruction>& FetchInstruction::prelude() const
    return m_prelude;
 }
 
+LoadFromScratch::LoadFromScratch(GPRVector dst, PValue src, int scratch_size):
+   FetchInstruction(dst, src, scratch_size)
+{
+}
+
 static const char *fmt_descr[64] = {
    "INVALID",
    "8",

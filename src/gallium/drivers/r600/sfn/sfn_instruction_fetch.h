@@ -164,6 +164,11 @@ private:
    std::vector<PInstruction> m_prelude;
 };
 
+class LoadFromScratch: public FetchInstruction {
+public:
+   LoadFromScratch(GPRVector dst, PValue src, int scratch_size);
+};
+
 }
 
 #endif // SFN_INSTRUCTION_FETCH_H

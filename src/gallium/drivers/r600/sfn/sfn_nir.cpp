@@ -330,10 +330,56 @@ bool r600_nir_lower_pack_unpack_2x16(nir_shader *shader)
                                         nullptr);
 };
 
+static void
+r600_nir_lower_scratch_address_impl(nir_builder *b, nir_intrinsic_instr *instr)
+{
+   b->cursor = nir_before_instr(&instr->instr);
+
+   int address_index = 0;
+   int align;
+
+   if (instr->intrinsic == nir_intrinsic_store_scratch) {
+      align  = instr->src[0].ssa->num_components;
+      address_index = 1;
+   } else{
+      align = instr->dest.ssa.num_components;
+   }
+
+   nir_ssa_def *address = instr->src[address_index].ssa;
+   nir_ssa_def *new_address = nir_ishr(b, address,  nir_imm_int(b, 4 * align));
+
+   nir_instr_rewrite_src(&instr->instr, &instr->src[address_index],
+                         nir_src_for_ssa(new_address));
+}
+
+bool r600_lower_scratch_addresses(nir_shader *shader)
+{
+   bool progress = false;
+   nir_foreach_function(function, shader) {
+      nir_builder build;
+      nir_builder_init(&build, function->impl);
+
+      nir_foreach_block(block, function->impl) {
+         nir_foreach_instr(instr, block) {
+            if (instr->type != nir_instr_type_intrinsic)
+               continue;
+            nir_intrinsic_instr *op = nir_instr_as_intrinsic(instr);
+            if (op->intrinsic != nir_intrinsic_load_scratch &&
+                op->intrinsic != nir_intrinsic_store_scratch)
+               continue;
+            r600_nir_lower_scratch_address_impl(&build, op);
+            progress = true;
+         }
+      }
+   }
+   return progress;
+}
+
 }
 
 using r600::r600_nir_lower_int_tg4;
 using r600::r600_nir_lower_pack_unpack_2x16;
+using r600::r600_lower_scratch_addresses;
 using r600::r600_lower_fs_out_to_vector;
 
 int
@@ -463,6 +509,11 @@ int r600_shader_from_nir(struct r600_context *rctx,
    if (optimize)
       while(optimize_once(sel->nir));
 
+   NIR_PASS_V(sel->nir, nir_lower_vars_to_scratch,
+              nir_var_function_temp,
+              100,
+              r600_get_natural_size_align_bytes);
+
    while (optimize && optimize_once(sel->nir));
 
    NIR_PASS_V(sel->nir, nir_lower_locals_to_regs);
@@ -482,6 +533,7 @@ int r600_shader_from_nir(struct r600_context *rctx,
    }
 
    memset(&pipeshader->shader, 0, sizeof(r600_shader));
+   pipeshader->scratch_space_needed = sel->nir->scratch_size;
 
    if (sel->nir->info.stage == MESA_SHADER_TESS_EVAL ||
        sel->nir->info.stage == MESA_SHADER_VERTEX ||

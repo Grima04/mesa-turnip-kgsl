@@ -55,12 +55,13 @@ using namespace std;
 
 ShaderFromNirProcessor::ShaderFromNirProcessor(pipe_shader_type ptype,
                                                r600_pipe_shader_selector& sel,
-                                               r600_shader &sh_info):
+                                               r600_shader &sh_info, int scratch_size):
    m_processor_type(ptype),
    m_sh_info(sh_info),
    m_tex_instr(*this),
    m_alu_instr(*this),
    m_pending_else(nullptr),
+   m_scratch_size(scratch_size),
    m_next_hwatomic_loc(0),
    m_sel(sel)
 {
@@ -433,6 +434,10 @@ bool ShaderFromNirProcessor::emit_intrinsic_instruction(nir_intrinsic_instr* ins
          return false;
       }
    }
+   case nir_intrinsic_store_scratch:
+      return emit_store_scratch(instr);
+   case nir_intrinsic_load_scratch:
+      return emit_load_scratch(instr);
    case nir_intrinsic_store_deref:
       return emit_store_deref(instr);
    case nir_intrinsic_load_uniform:
@@ -474,6 +479,47 @@ bool ShaderFromNirProcessor::load_preloaded_value(const nir_dest& dest, int chan
    } else {
       inject_register(dest.ssa.index, chan, value, true);
    }
+   return true;
+}
+
+bool ShaderFromNirProcessor::emit_store_scratch(nir_intrinsic_instr* instr)
+{
+   PValue address = from_nir(instr->src[1], 0, 0);
+
+   std::unique_ptr<GPRVector> vec(vec_from_nir_with_fetch_constant(instr->src[0], (1 << instr->num_components) - 1,
+                                  swizzle_from_mask(instr->num_components)));
+   GPRVector value(*vec);
+
+   int writemask = nir_intrinsic_write_mask(instr);
+   int align = nir_intrinsic_align_mul(instr);
+   int align_offset = nir_intrinsic_align_offset(instr);
+
+   WriteScratchInstruction *ir = nullptr;
+   if (address->type() == Value::literal) {
+      const auto& lv = dynamic_cast<const LiteralValue&>(*address);
+      ir = new WriteScratchInstruction(lv.value(), value, align, align_offset, writemask);
+   } else {
+      address = from_nir_with_fetch_constant(instr->src[1], 0);
+      ir = new WriteScratchInstruction(address, value, align, align_offset,
+                                       writemask, m_scratch_size);
+   }
+   emit_instruction(ir);
+   sh_info().needs_scratch_space = 1;
+   return true;
+}
+
+bool ShaderFromNirProcessor::emit_load_scratch(nir_intrinsic_instr* instr)
+{
+   PValue address = from_nir_with_fetch_constant(instr->src[0], 0);
+   std::array<PValue, 4> dst_val;
+   for (int i = 0; i < 4; ++i)
+      dst_val[i] = from_nir(instr->dest, i < instr->num_components ? i : 7);
+
+   GPRVector dst(dst_val);
+   auto ir = new LoadFromScratch(dst, address, m_scratch_size);
+   ir->prelude_append(new WaitAck(0));
+   emit_instruction(ir);
+   sh_info().needs_scratch_space = 1;
    return true;
 }
 

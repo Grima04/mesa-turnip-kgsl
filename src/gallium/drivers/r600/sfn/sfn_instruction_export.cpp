@@ -100,6 +100,98 @@ void ExportInstruction::set_last()
    m_is_last = true;
 }
 
+WriteScratchInstruction::WriteScratchInstruction(unsigned loc, const GPRVector& value,
+                                                 int align, int align_offset, int writemask):
+   WriteoutInstruction (Instruction::mem_wr_scratch, value),
+   m_loc(loc),
+   m_align(align),
+   m_align_offset(align_offset),
+   m_writemask(writemask),
+   m_array_size(0)
+{
+}
+
+WriteScratchInstruction::WriteScratchInstruction(const PValue& address, const GPRVector& value,
+                                                 int align, int align_offset, int writemask, int array_size):
+   WriteoutInstruction (Instruction::mem_wr_scratch, value),
+   m_loc(0),
+   m_address(address),
+   m_align(align),
+   m_align_offset(align_offset),
+   m_writemask(writemask),
+   m_array_size(array_size - 1)
+{
+   add_remappable_src_value(&m_address);
+}
+
+bool WriteScratchInstruction::is_equal_to(const Instruction& lhs) const
+{
+   if (lhs.type() != Instruction::mem_wr_scratch)
+      return false;
+   const auto& other = dynamic_cast<const WriteScratchInstruction&>(lhs);
+
+   if (m_address) {
+      if (!other.m_address)
+         return false;
+      if (*m_address != *other.m_address)
+         return false;
+   } else {
+      if (other.m_address)
+         return false;
+   }
+
+   return gpr() == other.gpr() &&
+         m_loc == other.m_loc &&
+         m_align == other.m_align &&
+         m_align_offset == other.m_align_offset &&
+         m_writemask == other.m_writemask;
+}
+
+static char *writemask_to_swizzle(int writemask, char *buf)
+{
+   const char *swz = "xyzw";
+   for (int i = 0; i < 4; ++i) {
+      buf[i] = (writemask & (1 << i)) ? swz[i] : '_';
+   }
+   return buf;
+}
+
+void WriteScratchInstruction::do_print(std::ostream& os) const
+{
+   char buf[5];
+
+   os << "MEM_SCRATCH_WRITE ";
+   if (m_address)
+      os << "@" << *m_address << "+";
+
+   os << m_loc  << "." << writemask_to_swizzle(m_writemask, buf)
+      << " " <<  gpr()  << " AL:" << m_align << " ALO:" << m_align_offset;
+}
+
+void WriteScratchInstruction::replace_values_child(const ValueSet& candiates, PValue new_value)
+{
+   if (!m_address)
+      return;
+
+   for (auto c: candiates) {
+      if (*c == *m_address)
+         m_address = new_value;
+   }
+}
+
+void WriteScratchInstruction::remap_registers_child(std::vector<rename_reg_pair>& map,
+                           ValueMap& values)
+{
+   if (!m_address)
+      return;
+   sfn_log << SfnLog::merge << "Remap " << *m_address <<  " of type " << m_address->type() << "\n";
+   assert(m_address->type() == Value::gpr);
+   auto new_index = map[m_address->sel()];
+   if (new_index.valid)
+      m_address = values.get_or_inject(new_index.new_reg, m_address->chan());
+   map[m_address->sel()].used = true;
+}
+
 StreamOutIntruction::StreamOutIntruction(const GPRVector& value, int num_components,
                                          int array_base, int comp_mask, int out_buffer,
                                          int stream):
