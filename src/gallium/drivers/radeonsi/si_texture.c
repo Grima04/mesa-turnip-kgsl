@@ -310,7 +310,7 @@ static int si_init_surface(struct si_screen *sscreen,
 	if (!is_imported && (sscreen->debug_flags & DBG(NO_DCC)))
 		flags |= RADEON_SURF_DISABLE_DCC;
 
-	if (ptex->bind & PIPE_BIND_SCANOUT || is_scanout) {
+	if (is_scanout) {
 		/* This should catch bugs in gallium users setting incorrect flags. */
 		assert(ptex->nr_samples <= 1 &&
 		       ptex->array_size == 1 &&
@@ -1695,7 +1695,8 @@ struct pipe_resource *si_texture_create(struct pipe_screen *screen,
 			plane_templ[i].bind |= PIPE_BIND_SHARED;
 
 		if (si_init_surface(sscreen, &surface[i], &plane_templ[i],
-				    tile_mode, 0, false, false,
+				    tile_mode, 0, false,
+				    plane_templ[i].bind & PIPE_BIND_SCANOUT,
 				    is_flushed_depth, tc_compatible_htile))
 			return NULL;
 
