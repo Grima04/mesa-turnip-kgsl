@@ -35,6 +35,7 @@
 #include "sfn_shader_vertex.h"
 #include "sfn_shader_fragment.h"
 #include "sfn_shader_geometry.h"
+#include "sfn_shader_compute.h"
 #include "sfn_nir_lower_fs_out_to_vector.h"
 #include "sfn_ir_to_assembly.h"
 
@@ -77,6 +78,10 @@ bool ShaderFromNir::lower(const nir_shader *shader, r600_pipe_shader *pipe_shade
    case MESA_SHADER_FRAGMENT:
       sfn_log << SfnLog::trans << "Start FS\n";
       impl.reset(new FragmentShaderFromNir(*shader, pipe_shader->shader, *sel, key));
+      break;
+   case MESA_SHADER_COMPUTE:
+      sfn_log << SfnLog::trans << "Start CS\n";
+      impl.reset(new ComputeShaderFromNir(pipe_shader, *sel, key));
       break;
    default:
       return false;

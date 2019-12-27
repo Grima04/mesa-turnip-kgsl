@@ -146,6 +146,8 @@ files_r600 = files(
   'sfn/sfn_nir_vectorize_vs_inputs.c',
   'sfn/sfn_shader_base.cpp',
   'sfn/sfn_shader_base.h',
+  'sfn/sfn_shader_compute.cpp',
+  'sfn/sfn_shader_compute.h',
   'sfn/sfn_shader_fragment.cpp',
   'sfn/sfn_shader_fragment.h',
   'sfn/sfn_shader_geometry.cpp',

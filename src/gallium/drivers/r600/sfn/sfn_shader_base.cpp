@@ -28,6 +28,7 @@
 #include "../r600_shader.h"
 #include "sfn_shader_vertex.h"
 
+#include "sfn_shader_compute.h"
 #include "sfn_shader_fragment.h"
 #include "sfn_shader_geometry.h"
 #include "sfn_liverange.h"

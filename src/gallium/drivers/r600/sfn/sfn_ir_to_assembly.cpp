@@ -69,6 +69,8 @@ private:
    bool copy_dst(r600_bytecode_alu_dst& dst, const Value& src);
    bool copy_src(r600_bytecode_alu_src& src, const Value& s);
 
+
+
    ConditionalJumpTracker m_jump_tracker;
    CallStack m_callstack;
 
