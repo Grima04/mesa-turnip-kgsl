@@ -1589,6 +1589,22 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                         st.load_store.arg_1 = 0x9E;
                         st.load_store.arg_2 = 0x1E;
 
+                        switch (nir_alu_type_get_base_type(nir_intrinsic_type(instr))) {
+                        case nir_type_uint:
+                        case nir_type_bool:
+                                st.load_store.op = midgard_op_st_vary_32u;
+                                break;
+                        case nir_type_int:
+                                st.load_store.op = midgard_op_st_vary_32i;
+                                break;
+                        case nir_type_float:
+                                st.load_store.op = midgard_op_st_vary_32;
+                                break;
+                        default:
+                                unreachable("Attempted to store unknown type");
+                                break;
+                        }
+
                         for (unsigned i = 0; i < ARRAY_SIZE(st.swizzle[0]); ++i)
                                 st.swizzle[0][i] = MIN2(i + component, nr_comp);
 
