@@ -1112,6 +1112,41 @@ emit_scissor(struct v3dv_cmd_buffer *cmd_buffer)
 }
 
 static void
+emit_viewport(struct v3dv_cmd_buffer *cmd_buffer)
+{
+   struct v3dv_dynamic_state *dynamic = &cmd_buffer->state.dynamic;
+   float vptranslate[3];
+   float vpscale[3];
+
+   /* FIXME: right now we only support one viewport. viewporst[0] would work
+    * now, would need to change if we allow multiple viewports
+    */
+   get_viewport_xform(&dynamic->viewport.viewports[0],
+                      vpscale, vptranslate);
+
+   cl_emit(&cmd_buffer->bcl, CLIPPER_XY_SCALING, clip) {
+      clip.viewport_half_width_in_1_256th_of_pixel = vpscale[0] * 256.0f;
+      clip.viewport_half_height_in_1_256th_of_pixel = vpscale[1] * 256.0f;
+   }
+
+   cl_emit(&cmd_buffer->bcl, CLIPPER_Z_SCALE_AND_OFFSET, clip) {
+      clip.viewport_z_offset_zc_to_zs = vptranslate[2];
+      clip.viewport_z_scale_zc_to_zs = vpscale[2];
+   }
+   cl_emit(&cmd_buffer->bcl, CLIPPER_Z_MIN_MAX_CLIPPING_PLANES, clip) {
+      float z1 = (vptranslate[2] - vpscale[2]);
+      float z2 = (vptranslate[2] + vpscale[2]);
+      clip.minimum_zw = MIN2(z1, z2);
+      clip.maximum_zw = MAX2(z1, z2);
+   }
+
+   cl_emit(&cmd_buffer->bcl, VIEWPORT_OFFSET, vp) {
+      vp.viewport_centre_x_coordinate = vptranslate[0];
+      vp.viewport_centre_y_coordinate = vptranslate[1];
+   }
+}
+
+static void
 cmd_buffer_emit_state(struct v3dv_cmd_buffer *cmd_buffer)
 {
    /* FIXME: likely to be filtered by really needed states */
@@ -1123,6 +1158,10 @@ cmd_buffer_emit_state(struct v3dv_cmd_buffer *cmd_buffer)
       assert(dynamic->scissor.count > 0 || dynamic->viewport.count > 0);
 
       emit_scissor(cmd_buffer);
+   }
+
+   if (states & (V3DV_CMD_DIRTY_DYNAMIC_VIEWPORT)) {
+      emit_viewport(cmd_buffer);
    }
 
    cmd_buffer->state.dirty &= ~states;
