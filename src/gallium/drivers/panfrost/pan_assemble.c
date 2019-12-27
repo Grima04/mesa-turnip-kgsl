@@ -148,7 +148,7 @@ panfrost_shader_compile(
 
                 /* Default to a vec4 varying */
                 struct mali_attr_meta v = {
-                        .format = MALI_RGBA32F,
+                        .format = program.varying_type[i],
                         .swizzle = default_vec4_swizzle,
                         .unknown1 = 0x2,
                 };

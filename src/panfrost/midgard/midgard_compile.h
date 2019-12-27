@@ -78,6 +78,7 @@ typedef struct {
         unsigned sysvals[MAX_SYSVAL_COUNT];
 
         unsigned varyings[32];
+        enum mali_format varying_type[32];
 
         /* Boolean properties of the program */
         bool writes_point_size;
