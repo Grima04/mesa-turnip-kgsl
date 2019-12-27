@@ -252,6 +252,9 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
                 return 16;
 
         case PIPE_CAP_ALPHA_TEST:
+        case PIPE_CAP_FLATSHADE:
+        case PIPE_CAP_TWO_SIDED_COLOR:
+        case PIPE_CAP_CLIP_PLANES:
                 return 0;
 
         default:
