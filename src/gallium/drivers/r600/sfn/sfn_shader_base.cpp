@@ -447,7 +447,7 @@ bool ShaderFromNirProcessor::emit_intrinsic_instruction(nir_intrinsic_instr* ins
    case nir_intrinsic_discard:
    case nir_intrinsic_discard_if:
       return emit_discard_if(instr);
-   case nir_intrinsic_load_ubo:
+   case nir_intrinsic_load_ubo_r600:
       return emit_load_ubo(instr);
    case nir_intrinsic_copy_deref:
    case nir_intrinsic_load_constant:

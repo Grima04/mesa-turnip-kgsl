@@ -866,6 +866,14 @@ load("output_u8_as_fp16_pan", 0, [], [CAN_ELIMINATE, CAN_REORDER])
 # src[] = { sampler_index }
 load("sampler_lod_parameters_pan", 1, [CAN_ELIMINATE, CAN_REORDER])
 
+# R600 specific instrincs
+#
+# R600 can only fetch 16 byte aligned data from an UBO, and the actual offset
+# is given in vec4 units, so we have to fetch the a vec4 and get the component
+# later
+# src[] = { buffer_index, offset }.
+load("ubo_r600", 2, [ACCESS, ALIGN_MUL, ALIGN_OFFSET], flags=[CAN_ELIMINATE, CAN_REORDER])
+
 # V3D-specific instrinc for tile buffer color reads.
 #
 # The hardware requires that we read the samples and components of a pixel

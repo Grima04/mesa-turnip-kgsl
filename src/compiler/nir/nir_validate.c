@@ -531,6 +531,7 @@ validate_intrinsic_instr(nir_intrinsic_instr *instr, validate_state *state)
 
    case nir_intrinsic_load_deref: {
       nir_deref_instr *src = nir_src_as_deref(instr->src[0]);
+      assert(src);
       validate_assert(state, glsl_type_is_vector_or_scalar(src->type) ||
                       (src->mode == nir_var_uniform &&
                        glsl_get_base_type(src->type) == GLSL_TYPE_SUBROUTINE));
@@ -545,6 +546,7 @@ validate_intrinsic_instr(nir_intrinsic_instr *instr, validate_state *state)
 
    case nir_intrinsic_store_deref: {
       nir_deref_instr *dst = nir_src_as_deref(instr->src[0]);
+      assert(dst);
       validate_assert(state, glsl_type_is_vector_or_scalar(dst->type));
       validate_assert(state, instr->num_components ==
                              glsl_get_vector_elements(dst->type));
