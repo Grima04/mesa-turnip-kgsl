@@ -25,6 +25,7 @@
  */
 
 #include "sfn_instruction_cf.h"
+#include "sfn_liverange.h"
 
 namespace  r600 {
 
@@ -46,6 +47,11 @@ IfInstruction::IfInstruction(AluInstruction *pred):
    PValue *v = m_pred->psrc(0);
 }
 
+void IfInstruction::do_evalue_liveness(LiverangeEvaluator& eval) const
+{
+   eval.scope_if();
+}
+
 bool IfInstruction::is_equal_to(const Instruction& lhs) const
 {
    assert(lhs.type() == cond_if);
@@ -63,6 +69,11 @@ ElseInstruction::ElseInstruction(IfInstruction *jump_src):
    IfElseInstruction(cond_else),
    m_jump_src(jump_src)
 {
+}
+
+void ElseInstruction::do_evalue_liveness(LiverangeEvaluator& eval) const
+{
+   eval.scope_else();
 }
 
 
@@ -84,6 +95,11 @@ IfElseEndInstruction::IfElseEndInstruction():
 {
 }
 
+void IfElseEndInstruction::do_evalue_liveness(LiverangeEvaluator& eval) const
+{
+   eval.scope_endif();
+}
+
 bool IfElseEndInstruction::is_equal_to(const Instruction& lhs) const
 {
    if (lhs.type() != cond_endif)
@@ -99,6 +115,11 @@ void IfElseEndInstruction::do_print(std::ostream& os) const
 LoopBeginInstruction::LoopBeginInstruction():
    CFInstruction(loop_begin)
 {
+}
+
+void LoopBeginInstruction::do_evalue_liveness(LiverangeEvaluator& eval) const
+{
+   eval.scope_loop_begin();
 }
 
 bool LoopBeginInstruction::is_equal_to(const Instruction& lhs) const
@@ -118,6 +139,11 @@ LoopEndInstruction::LoopEndInstruction(LoopBeginInstruction *start):
 {
 }
 
+void LoopEndInstruction::do_evalue_liveness(LiverangeEvaluator& eval) const
+{
+   eval.scope_loop_end();
+}
+
 bool LoopEndInstruction::is_equal_to(const Instruction& lhs) const
 {
    assert(lhs.type() == loop_end);
@@ -133,6 +159,11 @@ void LoopEndInstruction::do_print(std::ostream& os) const
 LoopBreakInstruction::LoopBreakInstruction():
    CFInstruction (loop_break)
 {
+}
+
+void LoopBreakInstruction::do_evalue_liveness(LiverangeEvaluator& eval) const
+{
+   eval.scope_loop_break();
 }
 
 bool LoopBreakInstruction::is_equal_to(UNUSED const Instruction& lhs) const

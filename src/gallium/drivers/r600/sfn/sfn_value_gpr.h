@@ -34,6 +34,7 @@ namespace r600 {
 
 class ValuePool;
 class ValueMap;
+class LiverangeEvaluator;
 
 class GPRValue : public Value {
 public:
@@ -121,6 +122,9 @@ public:
 
    PValue get_indirect(unsigned index, PValue indirect, unsigned component);
 
+   void record_read(LiverangeEvaluator& ev, int chan)const;
+   void record_write(LiverangeEvaluator& ev, int chan)const;
+
    void collect_registers(ValueMap& output) const;
 
 private:
@@ -141,6 +145,9 @@ class GPRArrayValue :public Value {
 public:
    GPRArrayValue(PValue value, GPRArray *array);
    GPRArrayValue(PValue value, PValue index, GPRArray *array);
+
+   void record_read(LiverangeEvaluator& ev) const;
+   void record_write(LiverangeEvaluator& ev) const;
 
    size_t array_size() const;
    uint32_t sel() const override;

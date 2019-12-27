@@ -120,6 +120,8 @@ CXX_SOURCES = \
 	sfn/sfn_instruction_tex.h \
 	sfn/sfn_ir_to_assembly.cpp \
 	sfn/sfn_ir_to_assembly.h \
+	sfn/sfn_liverange.cpp \
+	sfn/sfn_liverange.h \
 	sfn/sfn_nir.cpp \
 	sfn/sfn_nir.h \
 	sfn/sfn_nir_lower_fs_out_to_vector.cpp \

@@ -26,6 +26,7 @@
 
 
 #include "sfn_instruction_export.h"
+#include "sfn_liverange.h"
 #include "sfn_valuepool.h"
 
 namespace r600 {

@@ -46,6 +46,7 @@ public:
    IfInstruction(AluInstruction *pred);
    const AluInstruction& pred() const {return *m_pred;}
 private:
+   void do_evalue_liveness(LiverangeEvaluator& eval) const override;
    bool is_equal_to(const Instruction& lhs) const override;
    void do_print(std::ostream& os) const override;
    std::shared_ptr<AluInstruction> m_pred;
@@ -55,6 +56,7 @@ class ElseInstruction : public IfElseInstruction {
 public:
    ElseInstruction(IfInstruction *jump_src);
 private:
+   void do_evalue_liveness(LiverangeEvaluator& eval) const override;
    bool is_equal_to(const Instruction& lhs) const override;
    void do_print(std::ostream& os) const override;
 
@@ -65,6 +67,7 @@ class IfElseEndInstruction : public IfElseInstruction {
 public:
    IfElseEndInstruction();
 private:
+   void do_evalue_liveness(LiverangeEvaluator& eval) const override;
    bool is_equal_to(const Instruction& lhs) const override;
    void do_print(std::ostream& os) const override;
 };
@@ -73,6 +76,7 @@ class LoopBeginInstruction: public CFInstruction {
 public:
    LoopBeginInstruction();
 private:
+   void do_evalue_liveness(LiverangeEvaluator& eval) const override;
    bool is_equal_to(const Instruction& lhs) const override;
    void do_print(std::ostream& os) const override;
 };
@@ -81,6 +85,7 @@ class LoopEndInstruction: public CFInstruction {
 public:
    LoopEndInstruction(LoopBeginInstruction *start);
 private:
+   void do_evalue_liveness(LiverangeEvaluator& eval) const override;
    bool is_equal_to(const Instruction& lhs) const override;
    void do_print(std::ostream& os) const override;
    LoopBeginInstruction *m_start;
@@ -90,6 +95,7 @@ class LoopBreakInstruction: public CFInstruction {
 public:
    LoopBreakInstruction();
 private:
+   void do_evalue_liveness(LiverangeEvaluator& eval) const override;
    bool is_equal_to(const Instruction& lhs) const override;
    void do_print(std::ostream& os) const override;
 };

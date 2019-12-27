@@ -39,6 +39,8 @@
 namespace r600 {
 
 
+
+class LiverangeEvaluator;
 using OutputRegisterMap = std::map<unsigned, const GPRVector *>;
 
 class Instruction {
@@ -78,7 +80,12 @@ public:
 
    void print(std::ostream& os) const;
 
+   void evalue_liveness(LiverangeEvaluator& eval) const;
+
 private:
+
+   virtual void do_evalue_liveness(LiverangeEvaluator& eval) const;
+
    virtual bool is_equal_to(const Instruction& lhs) const = 0;
 
    instr_type m_type;

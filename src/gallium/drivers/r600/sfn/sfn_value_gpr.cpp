@@ -27,6 +27,7 @@
 #include "sfn_value_gpr.h"
 #include "sfn_valuepool.h"
 #include "sfn_debug.h"
+#include "sfn_liverange.h"
 
 namespace r600 {
 
@@ -218,6 +219,28 @@ bool GPRArrayValue::is_equal_to(const Value& other) const
          *m_array == *v.m_array;
 }
 
+void GPRArrayValue::record_read(LiverangeEvaluator& ev) const
+{
+   if (m_addr) {
+      ev.record_read(*m_addr);
+      unsigned chan = m_value->chan();
+      assert(m_array);
+      m_array->record_read(ev, chan);
+   } else
+      ev.record_read(*m_value);
+}
+
+void GPRArrayValue::record_write(LiverangeEvaluator& ev) const
+{
+   if (m_addr) {
+      ev.record_read(*m_addr);
+      unsigned chan = m_value->chan();
+      assert(m_array);
+      m_array->record_write(ev, chan);
+   } else
+      ev.record_write(*m_value);
+}
+
 void GPRArrayValue::reset_value(PValue new_value)
 {
    m_value = new_value;
@@ -303,6 +326,18 @@ PValue GPRArray::get_indirect(unsigned index, PValue indirect, unsigned componen
    }
    sfn_log << SfnLog::reg <<"  -> " << *v << "\n";
    return v;
+}
+
+void GPRArray::record_read(LiverangeEvaluator& ev, int chan) const
+{
+   for (auto& v: m_values)
+      ev.record_read(*v.reg_i(chan), true);
+}
+
+void GPRArray::record_write(LiverangeEvaluator& ev, int chan) const
+{
+   for (auto& v: m_values)
+      ev.record_write(*v.reg_i(chan), true);
 }
 
 void GPRArray::collect_registers(ValueMap& output) const

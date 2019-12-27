@@ -29,6 +29,7 @@
 #include "sfn_shader_vertex.h"
 
 #include "sfn_shader_fragment.h"
+#include "sfn_liverange.h"
 #include "sfn_ir_to_assembly.h"
 #include "sfn_nir.h"
 #include "sfn_instruction_misc.h"
@@ -84,6 +85,80 @@ bool ShaderFromNirProcessor::scan_instruction(nir_instr *instr)
    }
 
    return scan_sysvalue_access(instr);
+}
+
+static void remap_shader_info(r600_shader& sh_info,
+                              std::vector<rename_reg_pair>& map,
+                              UNUSED ValueMap& values)
+{
+   for (unsigned i = 0; i < sh_info.ninput; ++i) {
+      sfn_log << SfnLog::merge << "Input " << i << " gpr:" << sh_info.input[i].gpr
+              << " of map.size()\n";
+
+      assert(sh_info.input[i].gpr < map.size());
+      auto new_index = map[sh_info.input[i].gpr];
+      if (new_index.valid)
+         sh_info.input[i].gpr = new_index.new_reg;
+      map[sh_info.input[i].gpr].used = true;
+   }
+
+   for (unsigned i = 0; i < sh_info.noutput; ++i) {
+      assert(sh_info.output[i].gpr < map.size());
+      auto new_index = map[sh_info.output[i].gpr];
+      if (new_index.valid)
+         sh_info.output[i].gpr = new_index.new_reg;
+      map[sh_info.output[i].gpr].used = true;
+   }
+}
+
+void ShaderFromNirProcessor::remap_registers()
+{
+   // register renumbering
+   auto rc = register_count();
+   if (!rc)
+      return;
+
+   std::vector<register_live_range> register_live_ranges(rc);
+
+   auto temp_register_map = get_temp_registers();
+
+   Shader sh{m_output, temp_register_map};
+   LiverangeEvaluator().run(sh, register_live_ranges);
+   auto register_map = get_temp_registers_remapping(register_live_ranges);
+
+   sfn_log << SfnLog::merge << "=========Mapping===========\n";
+   for (size_t  i = 0; i < register_map.size(); ++i)
+      if (register_map[i].valid)
+         sfn_log << SfnLog::merge << "Map:" << i << " -> " << register_map[i].new_reg << "\n";
+
+
+   ValueRemapper vmap0(register_map, temp_register_map);
+   for (auto ir: m_output)
+      ir->remap_registers(vmap0);
+
+   remap_shader_info(m_sh_info, register_map, temp_register_map);
+
+   /* Mark inputs as used registers, these registers should no be remapped */
+   for (auto& v: sh.m_temp) {
+      if (v.second->type() == Value::gpr) {
+         const auto& g = static_cast<const GPRValue&>(*v.second);
+         if (g.is_input())
+            register_map[g.sel()].used = true;
+      }
+   }
+
+   int new_index = 0;
+   for (auto& i : register_map) {
+      i.valid = i.used;
+      if (i.used)
+         i.new_reg = new_index++;
+   }
+
+   ValueRemapper vmap1(register_map, temp_register_map);
+   for (auto ir: m_output)
+      ir->remap_registers(vmap1);
+
+   remap_shader_info(m_sh_info, register_map, temp_register_map);
 }
 
 bool ShaderFromNirProcessor::process_uniforms(nir_variable *uniform)
