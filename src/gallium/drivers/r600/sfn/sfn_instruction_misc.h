@@ -31,6 +31,19 @@
 
 namespace r600 {
 
+class EmitVertex : public Instruction {
+public:
+   EmitVertex(int stream, bool cut);
+   ECFOpCode op() const {return m_cut ? cf_cut_vertex: cf_emit_vertex;}
+   int stream() const { return m_stream;}
+private:
+
+   bool is_equal_to(const Instruction& lhs) const override;
+   void do_print(std::ostream& os) const override;
+   int m_stream;
+   bool m_cut;
+};
+
 class WaitAck : public Instruction {
 public:
    WaitAck(int nack);

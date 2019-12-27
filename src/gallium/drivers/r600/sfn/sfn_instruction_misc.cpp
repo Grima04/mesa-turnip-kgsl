@@ -27,6 +27,25 @@
 #include "sfn_instruction_misc.h"
 
 namespace r600 {
+EmitVertex::EmitVertex(int stream, bool cut):
+   Instruction (emit_vtx),
+   m_stream(stream),
+   m_cut(cut)
+{
+
+}
+
+bool EmitVertex::is_equal_to(const Instruction& lhs) const
+{
+   auto& oth = static_cast<const EmitVertex&>(lhs);
+   return oth.m_stream == m_stream &&
+         oth.m_cut == m_cut;
+}
+
+void EmitVertex::do_print(std::ostream& os) const
+{
+   os << (m_cut ? "EMIT_CUT_VERTEX @" : "EMIT_VERTEX @") << m_stream;
+}
 
 WaitAck::WaitAck(int nack):
    Instruction (wait_ack),

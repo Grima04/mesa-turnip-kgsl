@@ -53,6 +53,7 @@ private:
    bool emit_if_start(const IfInstruction & if_instr);
    bool emit_else(const ElseInstruction & else_instr);
    bool emit_endif(const IfElseEndInstruction & endif_instr);
+   bool emit_emit_vertex(const EmitVertex &instr);
 
    bool emit_loop_begin(const LoopBeginInstruction& instr);
    bool emit_loop_end(const LoopEndInstruction& instr);
@@ -167,6 +168,8 @@ bool AssemblyFromShaderLegacyImpl::emit(const Instruction::Pointer i)
       return emit_streamout(static_cast<const StreamOutIntruction&>(*i));
    case Instruction::ring:
       return emit_memringwrite(static_cast<const MemRingOutIntruction&>(*i));
+   case Instruction::emit_vtx:
+      return emit_emit_vertex(static_cast<const EmitVertex&>(*i));
    case Instruction::wait_ack:
       return emit_wait_ack(static_cast<const WaitAck&>(*i));
    case Instruction::mem_wr_scratch:
@@ -770,6 +773,16 @@ bool AssemblyFromShaderLegacyImpl::emit_vtx(const FetchInstruction& fetch_instr)
    m_bc->cf_last->barrier = 1;
 
    return true;
+}
+
+bool AssemblyFromShaderLegacyImpl::emit_emit_vertex(const EmitVertex &instr)
+{
+   int r = r600_bytecode_add_cfinst(m_bc, instr.op());
+   if (!r)
+      m_bc->cf_last->count = instr.stream();
+   assert(m_bc->cf_last->count < 4);
+
+   return r == 0;
 }
 
 bool AssemblyFromShaderLegacyImpl::emit_wait_ack(const WaitAck& instr)
