@@ -337,4 +337,10 @@ midgard_ldst_reg(unsigned reg, unsigned component)
         return packed;
 }
 
+static inline bool
+midgard_is_branch_unit(unsigned unit)
+{
+        return (unit == ALU_ENAB_BRANCH) || (unit == ALU_ENAB_BR_COMPACT);
+}
+
 #endif

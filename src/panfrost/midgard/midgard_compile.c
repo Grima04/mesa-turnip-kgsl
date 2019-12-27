@@ -69,13 +69,6 @@ int midgard_debug = 0;
 		do { if (midgard_debug & MIDGARD_DBG_MSGS) \
 			fprintf(stderr, "%s:%d: "fmt, \
 				__FUNCTION__, __LINE__, ##__VA_ARGS__); } while (0)
-
-static bool
-midgard_is_branch_unit(unsigned unit)
-{
-        return (unit == ALU_ENAB_BRANCH) || (unit == ALU_ENAB_BR_COMPACT);
-}
-
 static midgard_block *
 create_empty_block(compiler_context *ctx)
 {
