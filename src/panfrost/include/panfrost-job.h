@@ -1151,13 +1151,17 @@ struct bifrost_payload_fused {
 
 #define MALI_POSITIVE(dim) (dim - 1)
 
-/* Used with wrapping. Incomplete (this is a 4-bit field...) */
+/* Used with wrapping. Unclear what top bit conveys */
 
 enum mali_wrap_mode {
-        MALI_WRAP_REPEAT = 0x8,
-        MALI_WRAP_CLAMP_TO_EDGE = 0x9,
-        MALI_WRAP_CLAMP_TO_BORDER = 0xB,
-        MALI_WRAP_MIRRORED_REPEAT = 0xC
+        MALI_WRAP_REPEAT                   = 0x8 |       0x0,
+        MALI_WRAP_CLAMP_TO_EDGE            = 0x8 |       0x1,
+        MALI_WRAP_CLAMP                    = 0x8 |       0x2,
+        MALI_WRAP_CLAMP_TO_BORDER          = 0x8 |       0x3,
+        MALI_WRAP_MIRRORED_REPEAT          = 0x8 | 0x4 | 0x0,
+        MALI_WRAP_MIRRORED_CLAMP_TO_EDGE   = 0x8 | 0x4 | 0x1,
+        MALI_WRAP_MIRRORED_CLAMP           = 0x8 | 0x4 | 0x2,
+        MALI_WRAP_MIRRORED_CLAMP_TO_BORDER = 0x8 | 0x4 | 0x3,
 };
 
 /* Shared across both command stream and Midgard, and even with Bifrost */

@@ -119,6 +119,10 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
         case PIPE_CAP_TEXTURE_SWIZZLE:
                 return 1;
 
+        case PIPE_CAP_TEXTURE_MIRROR_CLAMP:
+        case PIPE_CAP_TEXTURE_MIRROR_CLAMP_TO_EDGE:
+                return 1;
+
         case PIPE_CAP_TGSI_INSTANCEID:
         case PIPE_CAP_VERTEX_ELEMENT_INSTANCE_DIVISOR:
                 return is_deqp ? 1 : 0;
