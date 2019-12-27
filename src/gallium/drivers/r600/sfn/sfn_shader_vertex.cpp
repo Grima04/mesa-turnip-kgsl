@@ -489,4 +489,66 @@ void VertexShaderFromNirForFS::finalize_exports()
 
 }
 
+VertexShaderFromNirForGS::VertexShaderFromNirForGS(r600_pipe_shader *sh,
+                                                   r600_pipe_shader_selector& sel,
+                                                   const r600_shader_key &key,
+                                                   const r600_shader *gs_shader):
+   VertexShaderFromNir(sh, sel, key),
+   m_gs_shader(gs_shader)
+{
+   sh->shader.vs_as_es = true;
+}
+
+bool VertexShaderFromNirForGS::do_emit_store_deref(const nir_variable *out_var, nir_intrinsic_instr* instr)
+{
+
+   assert(m_gs_shader);
+
+   int ring_offset = -1;
+   const r600_shader_io& out_io = sh_info().output[out_var->data.driver_location];
+
+   sfn_log << SfnLog::io << "check output " << out_var->data.driver_location
+           << " name=" << out_io.name<< " sid=" << out_io.sid << "\n";
+   for (unsigned k = 0; k < m_gs_shader->ninput; ++k) {
+      auto& in_io = m_gs_shader->input[k];
+      sfn_log << SfnLog::io << "  against  " <<  k << " name=" << in_io.name<< " sid=" << in_io.sid << "\n";
+
+      if (in_io.name == out_io.name &&
+          in_io.sid == out_io.sid) {
+         ring_offset = in_io.ring_offset;
+         break;
+      }
+   }
+
+   if (out_var->data.location == VARYING_SLOT_VIEWPORT)
+      return true;
+
+   if (ring_offset == -1) {
+      sfn_log << SfnLog::err << "VS defines output at "
+              << out_var->data.driver_location << "name=" << out_io.name
+              << " sid=" << out_io.sid << " that is not consumed as GS input\n";
+      return true;
+   }
+
+   uint32_t write_mask =  (1 << instr->num_components) - 1;
+
+   std::unique_ptr<GPRVector> value(vec_from_nir_with_fetch_constant(instr->src[1], write_mask,
+                                    swizzle_from_mask(instr->num_components)));
+
+   auto ir = new MemRingOutIntruction(cf_mem_ring, mem_write, *value,
+                                      ring_offset >> 2, 4, PValue());
+   emit_export_instruction(ir);
+
+   sh_info().output[out_var->data.driver_location].write_mask |= write_mask;
+   if (out_var->data.location == VARYING_SLOT_CLIP_DIST0 ||
+       out_var->data.location == VARYING_SLOT_CLIP_DIST1)
+      m_num_clip_dist += 4;
+
+   return true;
+}
+
+void VertexShaderFromNirForGS::finalize_exports()
+{
+}
+
 }

@@ -34,6 +34,7 @@
 
 #include "sfn_shader_vertex.h"
 #include "sfn_shader_fragment.h"
+#include "sfn_shader_geometry.h"
 #include "sfn_nir_lower_fs_out_to_vector.h"
 #include "sfn_ir_to_assembly.h"
 
@@ -59,7 +60,8 @@ bool ShaderFromNir::lower(const nir_shader *shader, r600_pipe_shader *pipe_shade
    switch (shader->info.stage) {
    case MESA_SHADER_VERTEX:
       if (key.vs.as_es) {
-         sfn_log << SfnLog::trans << "VS; next type GS not yet supported\n";
+         sfn_log << SfnLog::trans << "Start VS for GS\n";
+         impl.reset(new VertexShaderFromNirForGS(pipe_shader, *sel, key, gs_shader));
       } else if (key.vs.as_ls) {
          sfn_log << "VS: next type TCS and TES not yet supported\n";
          return false;
@@ -67,6 +69,10 @@ bool ShaderFromNir::lower(const nir_shader *shader, r600_pipe_shader *pipe_shade
          sfn_log << SfnLog::trans << "Start VS for FS\n";
          impl.reset(new VertexShaderFromNirForFS(pipe_shader, *sel, key));
       }
+      break;
+   case MESA_SHADER_GEOMETRY:
+      sfn_log << SfnLog::trans << "Start GS\n";
+      impl.reset(new GeometryShaderFromNir(pipe_shader, *sel, key));
       break;
    case MESA_SHADER_FRAGMENT:
       sfn_log << SfnLog::trans << "Start FS\n";

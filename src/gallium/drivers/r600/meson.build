@@ -148,6 +148,8 @@ files_r600 = files(
   'sfn/sfn_shader_base.h',
   'sfn/sfn_shader_fragment.cpp',
   'sfn/sfn_shader_fragment.h',
+  'sfn/sfn_shader_geometry.cpp',
+  'sfn/sfn_shader_geometry.h',
   'sfn/sfn_shader_vertex.cpp',
   'sfn/sfn_shader_vertex.h',
   'sfn/sfn_shaderio.cpp',

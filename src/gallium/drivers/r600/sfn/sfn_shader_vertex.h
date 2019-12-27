@@ -81,6 +81,16 @@ private:
    void finalize_exports() override;
 };
 
+class VertexShaderFromNirForGS :  public VertexShaderFromNir {
+public:
+   VertexShaderFromNirForGS(r600_pipe_shader *sh, r600_pipe_shader_selector &sel,
+                            const r600_shader_key &key, const r600_shader *gs_shader);
+   bool do_emit_store_deref(const nir_variable *out_var, nir_intrinsic_instr* instr) override;
+   void finalize_exports() override;
+
+   const r600_shader *m_gs_shader;
+};
+
 }
 
 #endif 

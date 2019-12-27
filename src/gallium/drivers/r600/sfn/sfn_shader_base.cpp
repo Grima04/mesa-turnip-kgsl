@@ -29,6 +29,7 @@
 #include "sfn_shader_vertex.h"
 
 #include "sfn_shader_fragment.h"
+#include "sfn_shader_geometry.h"
 #include "sfn_liverange.h"
 #include "sfn_ir_to_assembly.h"
 #include "sfn_nir.h"
