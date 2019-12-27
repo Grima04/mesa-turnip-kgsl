@@ -100,17 +100,6 @@
  *
  */
 
-/* Accessor to set the next job field */
-
-static void
-panfrost_set_job_next(struct mali_job_descriptor_header *first, mali_ptr next)
-{
-        if (first->job_descriptor_size)
-                first->next_job_64 = (u64) (uintptr_t) next;
-        else
-                first->next_job_32 = (u32) (uintptr_t) next;
-}
-
 /* Coerce a panfrost_transfer to a header */
 
 static inline struct mali_job_descriptor_header *
@@ -452,7 +441,7 @@ panfrost_scoreboard_link_batch(struct panfrost_batch *batch)
 
                 if (tail) {
                         /* Link us to the last node */
-                        panfrost_set_job_next(tail, addr);
+                        tail->next_job = addr;
                 } else {
                         /* We are the first/last node */
                         batch->first_job.cpu = (uint8_t *) n;

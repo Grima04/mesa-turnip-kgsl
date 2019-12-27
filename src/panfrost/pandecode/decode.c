@@ -2962,16 +2962,12 @@ pandecode_jc(mali_ptr jc_gpu_va, bool bifrost, unsigned gpu_id)
 
                 if (!first) {
                         pandecode_log("((struct mali_job_descriptor_header *) (uintptr_t) job_%d_p)->", job_no - 1);
-
-                        if (last_size)
-                                pandecode_log_cont("next_job_64 = job_%d_p;\n\n", job_no);
-                        else
-                                pandecode_log_cont("next_job_32 = (u32) (uintptr_t) job_%d_p;\n\n", job_no);
+                        pandecode_log_cont("next_job = job_%d_p;\n\n", job_no);
                 }
 
                 first = false;
 
-        } while ((jc_gpu_va = h->job_descriptor_size ? h->next_job_64 : h->next_job_32));
+        } while ((jc_gpu_va = h->next_job));
 
         return start_number;
 }
