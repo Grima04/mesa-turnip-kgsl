@@ -522,9 +522,7 @@ struct mali_shader_meta {
                         unsigned uniform_buffer_count : 4;
                         unsigned flags : 12;
 
-                        /* Whole number of uniform registers used, times two;
-                         * whole number of work registers used (no scale).
-                         */
+                        /* vec4 units */
                         unsigned work_count : 5;
                         unsigned uniform_count : 5;
                         unsigned unknown2 : 6;
