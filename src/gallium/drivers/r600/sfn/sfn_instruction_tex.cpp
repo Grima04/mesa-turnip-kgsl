@@ -45,11 +45,26 @@ TexInstruction::TexInstruction(Opcode op, const GPRVector &dest, const GPRVector
 
 {
    memset(m_offset, 0, sizeof (m_offset));
+
+   add_remappable_src_value(&m_src);
+   add_remappable_src_value(&m_sampler_offset);
+   add_remappable_dst_value(&m_dst);
 }
 
 void TexInstruction::set_gather_comp(int cmp)
 {
    m_inst_mode = cmp;
+}
+
+void TexInstruction::replace_values(const ValueSet& candiates, PValue new_value)
+{
+   // I wonder whether we can actually end up here ...
+   for (auto c: candiates) {
+      if (*c == *m_src.reg_i(c->chan()))
+         m_src.set_reg_i(c->chan(), new_value);
+      if (*c == *m_dst.reg_i(c->chan()))
+         m_dst.set_reg_i(c->chan(), new_value);
+   }
 }
 
 void TexInstruction::set_offset(unsigned index, int32_t val)

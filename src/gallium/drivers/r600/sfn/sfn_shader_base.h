@@ -71,6 +71,8 @@ public:
    void split_constants(nir_alu_instr* instr);
    void load_uniform(const nir_alu_src& src);
 
+   void remap_registers();
+
    const nir_variable *get_deref_location(const nir_src& src) const;
 protected:
 

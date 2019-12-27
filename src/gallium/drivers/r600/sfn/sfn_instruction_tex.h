@@ -81,6 +81,8 @@ public:
    unsigned sampler_id() const {return m_sampler_id;}
    unsigned resource_id() const {return m_resource_id;}
 
+   void replace_values(const ValueSet& candiates, PValue new_value) override;
+
    void set_offset(unsigned index, int32_t val);
    int get_offset(unsigned index) const;
 

@@ -39,8 +39,31 @@
 namespace r600 {
 
 
+struct rename_reg_pair {
+   bool valid;
+   bool used;
+   int new_reg;
+};
 
 class LiverangeEvaluator;
+class ValueMap;
+
+
+class ValueRemapper {
+public:
+   ValueRemapper(std::vector<rename_reg_pair>& m,
+                 ValueMap& values);
+
+   void remap(PValue& v);
+   void remap(GPRVector& v);
+private:
+   PValue remap_one_registers(PValue& reg);
+
+   std::vector<rename_reg_pair>& m_map;
+   ValueMap& m_values;
+};
+
+
 using OutputRegisterMap = std::map<unsigned, const GPRVector *>;
 
 class Instruction {
@@ -80,7 +103,18 @@ public:
 
    void print(std::ostream& os) const;
 
+   virtual void replace_values(const ValueSet& candiates, PValue new_value);
+
    void evalue_liveness(LiverangeEvaluator& eval) const;
+
+   void remap_registers(ValueRemapper& map);
+
+protected:
+
+   void add_remappable_src_value(PValue *v);
+   void add_remappable_src_value(GPRVector *v);
+   void add_remappable_dst_value(PValue *v);
+   void add_remappable_dst_value(GPRVector *v);
 
 private:
 
@@ -92,6 +126,10 @@ private:
 
    virtual void do_print(std::ostream& os) const = 0;
 
+   std::vector<PValue*> m_mappable_src_registers;
+   std::vector<GPRVector*> m_mappable_src_vectors;
+   std::vector<PValue*> m_mappable_dst_registers;
+   std::vector<GPRVector*> m_mappable_dst_vectors;
 };
 
 using PInstruction=Instruction::Pointer;

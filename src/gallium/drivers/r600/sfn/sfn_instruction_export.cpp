@@ -35,6 +35,28 @@ WriteoutInstruction::WriteoutInstruction(instr_type t, const GPRVector& value):
    Instruction(t),
    m_value(value)
 {
+   add_remappable_src_value(&m_value);
+}
+
+void WriteoutInstruction::replace_values(const ValueSet& candiates, PValue new_value)
+{
+   // I wonder whether we can actually end up here ...
+   for (auto c: candiates) {
+      if (*c == *m_value.reg_i(c->chan()))
+         m_value.set_reg_i(c->chan(), new_value);
+   }
+
+   replace_values_child(candiates, new_value);
+}
+
+void WriteoutInstruction::replace_values_child(UNUSED const ValueSet& candiates,
+                                               UNUSED PValue new_value)
+{
+}
+
+void WriteoutInstruction::remap_registers_child(UNUSED std::vector<rename_reg_pair>& map,
+                                                UNUSED ValueMap& values)
+{
 }
 
 ExportInstruction::ExportInstruction(unsigned loc, const GPRVector &value, ExportType type):

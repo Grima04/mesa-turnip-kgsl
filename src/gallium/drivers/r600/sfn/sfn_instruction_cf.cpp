@@ -45,6 +45,7 @@ IfInstruction::IfInstruction(AluInstruction *pred):
    m_pred(pred)
 {
    PValue *v = m_pred->psrc(0);
+   add_remappable_src_value(v);
 }
 
 void IfInstruction::do_evalue_liveness(LiverangeEvaluator& eval) const

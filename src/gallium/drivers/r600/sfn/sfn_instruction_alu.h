@@ -117,10 +117,14 @@ public:
    ECFAluOpCode cf_type() const {return m_cf_type;}
    void set_cf_type(ECFAluOpCode cf_type){ m_cf_type = cf_type; }
 
+   void replace_values(const ValueSet& candiates, PValue new_value) override;
+
 private:
 
    bool is_equal_to(const Instruction& lhs) const override;
    void do_print(std::ostream& os) const override;
+   PValue remap_one_registers(PValue reg, std::vector<rename_reg_pair>& map,
+                              ValueMap &values);
 
 
    EAluOp m_opcode;

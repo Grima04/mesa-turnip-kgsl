@@ -118,6 +118,26 @@ void Instruction::remap_registers(ValueRemapper& map)
    sfn_log << SfnLog::merge << "TO    " << *this << "\n\n";
 }
 
+void Instruction::add_remappable_src_value(PValue *v)
+{
+   m_mappable_src_registers.push_back(v);
+}
+
+void Instruction::add_remappable_src_value(GPRVector *v)
+{
+   m_mappable_src_vectors.push_back(v);
+}
+
+void Instruction::add_remappable_dst_value(PValue *v)
+{
+   m_mappable_dst_registers.push_back(v);
+}
+
+void Instruction::add_remappable_dst_value(GPRVector *v)
+{
+   m_mappable_dst_vectors.push_back(v);
+}
+
 void Instruction::replace_values(UNUSED const ValueSet& candiates, UNUSED PValue new_value)
 {
 

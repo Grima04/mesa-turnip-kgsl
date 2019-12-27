@@ -62,6 +62,11 @@ AluInstruction::AluInstruction(EAluOp opcode, PValue dest,
 
    if (alu_ops.at(opcode).nsrc == 3)
       m_flags.set(alu_op3);
+
+   for (auto &s: m_src)
+      add_remappable_src_value(&s);
+
+   add_remappable_dst_value(&m_dest);
 }
 
 AluInstruction::AluInstruction(EAluOp opcode, PValue dest, PValue src0,
@@ -105,6 +110,30 @@ bool AluInstruction::is_equal_to(const Instruction& lhs) const
      }
    return (m_flags == oth.m_flags && m_cf_type == oth.m_cf_type);
 }
+
+void AluInstruction::replace_values(const ValueSet& candiates, PValue new_value)
+{
+   for (auto c: candiates) {
+      if (*c == *m_dest)
+         m_dest = new_value;
+
+      for (auto& s: m_src) {
+         if (*c == *s)
+            s = new_value;
+      }
+   }
+}
+
+PValue AluInstruction::remap_one_registers(PValue reg, std::vector<rename_reg_pair>& map,
+                                           ValueMap &values)
+{
+   auto new_index = map[reg->sel()];
+   if (new_index.valid)
+      reg = values.get_or_inject(new_index.new_reg, reg->chan());
+   map[reg->sel()].used = true;
+   return reg;
+}
+
 
 void AluInstruction::set_flag(AluModifiers flag)
 {

@@ -78,6 +78,7 @@ public:
 
    FetchInstruction(GPRVector dst, PValue src, int scratch_size);
 
+   void replace_values(const ValueSet& candiates, PValue new_value) override;
    EVFetchInstr vc_opcode() const { return m_vc_opcode;}
    EVFetchType fetch_type() const { return m_fetch_type;}
 
@@ -111,6 +112,7 @@ public:
 
    void set_buffer_offset(PValue buffer_offset) {
       m_buffer_offset = buffer_offset;
+      add_remappable_src_value(&m_buffer_offset);
    }
    PValue buffer_offset() const { return m_buffer_offset; }
 

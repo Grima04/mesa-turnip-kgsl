@@ -69,6 +69,10 @@ FetchInstruction::FetchInstruction(EVFetchInstr op,
       m_num_format = vtx_nf_scaled;
    }
 
+   add_remappable_src_value(&m_src);
+   add_remappable_src_value(&m_buffer_offset);
+
+   add_remappable_dst_value(&m_dst);
 }
 
 /* Resource query */
@@ -115,6 +119,9 @@ FetchInstruction::FetchInstruction(EVFetchInstr vc_opcode,
    m_buffer_offset(buffer_offset),
    m_dest_swizzle(dest_swizzle)
 {
+   add_remappable_src_value(&m_src);
+   add_remappable_dst_value(&m_dst);
+   add_remappable_src_value(&m_buffer_offset);
 }
 
 FetchInstruction::FetchInstruction(GPRVector dst,
@@ -146,6 +153,10 @@ FetchInstruction::FetchInstruction(GPRVector dst,
    m_dest_swizzle({0,1,2,3})
 {
    m_flags.set(vtx_format_comp_signed);
+
+   add_remappable_src_value(&m_src);
+   add_remappable_dst_value(&m_dst);
+   add_remappable_src_value(&m_buffer_offset);
 }
 
 
@@ -177,6 +188,9 @@ FetchInstruction::FetchInstruction(GPRVector dst,
    m_dest_swizzle({0,1,2,3})
 {
    m_flags.set(vtx_format_comp_signed);
+   add_remappable_src_value(&m_src);
+   add_remappable_dst_value(&m_dst);
+   add_remappable_src_value(&m_buffer_offset);
 }
 
 FetchInstruction::FetchInstruction(GPRVector dst, PValue src, int scratch_size):
@@ -211,6 +225,23 @@ FetchInstruction::FetchInstruction(GPRVector dst, PValue src, int scratch_size):
       m_src = src;
       m_indexed = true;
       m_array_size = scratch_size - 1;
+   }
+   add_remappable_src_value(&m_src);
+   add_remappable_dst_value(&m_dst);
+   add_remappable_src_value(&m_buffer_offset);
+}
+
+void FetchInstruction::replace_values(const ValueSet& candiates, PValue new_value)
+{
+   if (!m_src)
+      return;
+   for (auto c: candiates) {
+      for (int i = 0; i < 4; ++i) {
+         if (*c == *m_dst.reg_i(i))
+            m_dst.set_reg_i(i, new_value);
+      }
+      if (*m_src == *c)
+         m_src = new_value;
    }
 }
 
