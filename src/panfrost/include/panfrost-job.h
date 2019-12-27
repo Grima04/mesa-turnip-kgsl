@@ -884,6 +884,12 @@ struct mali_uniform_buffer_meta {
 #define MALI_DRAW_INDEXED_SHIFT  (4)
 
 #define MALI_DRAW_VARYING_SIZE   (0x100)
+
+/* Set to use first vertex as the provoking vertex for flatshading. Clear to
+ * use the last vertex. This is the default in DX and VK, but not in GL. */
+
+#define MALI_DRAW_FLATSHADE_FIRST (0x800)
+
 #define MALI_DRAW_PRIMITIVE_RESTART_FIXED_INDEX (0x10000)
 
 struct mali_vertex_tiler_prefix {

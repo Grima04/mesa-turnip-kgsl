@@ -1476,9 +1476,8 @@ panfrost_draw_vbo(
 
         draw_flags |= 0x3000;
 
-        if (mode == PIPE_PRIM_LINE_STRIP) {
-                draw_flags |= 0x800;
-        }
+        if (ctx->rasterizer && ctx->rasterizer->base.flatshade_first)
+                draw_flags |= MALI_DRAW_FLATSHADE_FIRST;
 
         panfrost_statistics_record(ctx, info);
 
