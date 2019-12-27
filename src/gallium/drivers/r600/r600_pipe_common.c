@@ -39,6 +39,7 @@
 #include "radeon_video.h"
 #include <inttypes.h>
 #include <sys/utsname.h>
+#include <stdlib.h>
 
 #ifdef LLVM_AVAILABLE
 #include <llvm-c/TargetMachine.h>
@@ -1260,6 +1261,10 @@ bool r600_common_screen_init(struct r600_common_screen *rscreen,
 	rscreen->family = rscreen->info.family;
 	rscreen->chip_class = rscreen->info.chip_class;
 	rscreen->debug_flags |= debug_get_flags_option("R600_DEBUG", common_debug_options, 0);
+	int has_draw_use_llvm = debug_get_bool_option("DRAW_USE_LLVM", FALSE);
+	if (!has_draw_use_llvm)
+	   setenv("DRAW_USE_LLVM", "no", 0);
+
 
 	r600_disk_cache_create(rscreen);
 
