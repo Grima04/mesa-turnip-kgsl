@@ -57,7 +57,7 @@ enum {
 #define PAN_SYSVAL_ID_TO_TXS_DIM(id)            (((id) >> 7) & 0x3)
 #define PAN_SYSVAL_ID_TO_TXS_IS_ARRAY(id)       !!((id) & (1 << 9))
 
-/* Special attribute slots for vertex builtings. Sort of arbitrary but let's be
+/* Special attribute slots for vertex builtins. Sort of arbitrary but let's be
  * consistent with the blob so we can compare traces easier. */
 
 enum {
