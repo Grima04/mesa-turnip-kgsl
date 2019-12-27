@@ -34,6 +34,7 @@
 
 #include "sfn_shader_vertex.h"
 #include "sfn_shader_fragment.h"
+#include "sfn_nir_lower_fs_out_to_vector.h"
 #include "sfn_ir_to_assembly.h"
 
 #include <vector>
@@ -329,6 +330,7 @@ bool r600_nir_lower_pack_unpack_2x16(nir_shader *shader)
 
 using r600::r600_nir_lower_int_tg4;
 using r600::r600_nir_lower_pack_unpack_2x16;
+using r600::r600_lower_fs_out_to_vector;
 
 int
 r600_glsl_type_size(const struct glsl_type *type, bool is_bindless)
@@ -430,6 +432,12 @@ int r600_shader_from_nir(struct r600_context *rctx,
 
    NIR_PASS_V(sel->nir, nir_lower_io, nir_var_uniform, r600_glsl_type_size,
               nir_lower_io_lower_64bit_to_32);
+
+   if (sel->nir->info.stage == MESA_SHADER_VERTEX)
+      NIR_PASS_V(sel->nir, r600_vectorize_vs_inputs);
+
+   if (sel->nir->info.stage == MESA_SHADER_FRAGMENT)
+      NIR_PASS_V(sel->nir, r600_lower_fs_out_to_vector);
 
    if (sel->nir->info.stage == MESA_SHADER_TESS_CTRL ||
        sel->nir->info.stage == MESA_SHADER_TESS_EVAL)

@@ -528,6 +528,20 @@ glsl_array_type(const glsl_type *base, unsigned elements,
 }
 
 const glsl_type *
+glsl_replace_vector_type(const glsl_type *t, unsigned components)
+{
+   if (glsl_type_is_array(t)) {
+      return glsl_array_type(
+         glsl_replace_vector_type(t->fields.array, components), t->length,
+                                  t->explicit_stride);
+   } else if (glsl_type_is_vector_or_scalar(t)) {
+      return glsl_vector_type(t->base_type, components);
+   } else {
+      unreachable("Unhandled base type glsl_replace_vector_type()");
+   }
+}
+
+const glsl_type *
 glsl_struct_type(const glsl_struct_field *fields,
                  unsigned num_fields, const char *name,
                  bool packed)

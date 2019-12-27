@@ -163,6 +163,8 @@ const struct glsl_type *glsl_bool_type(void);
 const struct glsl_type *glsl_scalar_type(enum glsl_base_type base_type);
 const struct glsl_type *glsl_vector_type(enum glsl_base_type base_type,
                                          unsigned components);
+const struct glsl_type * glsl_replace_vector_type(const struct glsl_type *t,
+                                                  unsigned components);
 const struct glsl_type *glsl_matrix_type(enum glsl_base_type base_type,
                                          unsigned rows, unsigned columns);
 const struct glsl_type *glsl_explicit_matrix_type(const struct glsl_type *mat,
