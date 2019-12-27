@@ -220,6 +220,8 @@ struct radeon_bo_metadata {
             unsigned dcc_offset_256B:24;
             unsigned dcc_pitch_max:14;   /* (mip chain pitch - 1) for DCN */
             unsigned dcc_independent_64B:1;
+
+            bool scanout;
         } gfx9;
     } u;
 
