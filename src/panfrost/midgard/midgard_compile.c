@@ -1252,7 +1252,7 @@ emit_varying_read(
         compiler_context *ctx,
         unsigned dest, unsigned offset,
         unsigned nr_comp, unsigned component,
-        nir_src *indirect_offset, nir_alu_type type)
+        nir_src *indirect_offset, nir_alu_type type, bool flat)
 {
         /* XXX: Half-floats? */
         /* TODO: swizzle, mask */
@@ -1266,7 +1266,7 @@ emit_varying_read(
         midgard_varying_parameter p = {
                 .is_varying = 1,
                 .interpolation = midgard_interp_default,
-                .flat = /*var->data.interpolation == INTERP_MODE_FLAT*/ 0
+                .flat = flat,
         };
 
         unsigned u;
@@ -1445,15 +1445,21 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
         case nir_intrinsic_load_uniform:
         case nir_intrinsic_load_ubo:
         case nir_intrinsic_load_ssbo:
-        case nir_intrinsic_load_input: {
+        case nir_intrinsic_load_input:
+        case nir_intrinsic_load_interpolated_input: {
                 bool is_uniform = instr->intrinsic == nir_intrinsic_load_uniform;
                 bool is_ubo = instr->intrinsic == nir_intrinsic_load_ubo;
                 bool is_ssbo = instr->intrinsic == nir_intrinsic_load_ssbo;
+                bool is_flat = instr->intrinsic == nir_intrinsic_load_input;
+                bool is_interp = instr->intrinsic == nir_intrinsic_load_interpolated_input;
 
                 /* Get the base type of the intrinsic */
                 /* TODO: Infer type? Does it matter? */
                 nir_alu_type t =
-                        (is_ubo || is_ssbo) ? nir_type_uint : nir_intrinsic_type(instr);
+                        (is_ubo || is_ssbo) ? nir_type_uint :
+                        (is_interp) ? nir_type_float :
+                        nir_intrinsic_type(instr);
+
                 t = nir_alu_type_get_base_type(t);
 
                 if (!(is_ubo || is_ssbo)) {
@@ -1471,7 +1477,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                         offset += nir_src_as_uint(*src_offset);
 
                 /* We may need to apply a fractional offset */
-                int component = instr->intrinsic == nir_intrinsic_load_input ?
+                int component = (is_flat || is_interp) ?
                                 nir_intrinsic_component(instr) : 0;
                 reg = nir_dest_index(ctx, &instr->dest);
 
@@ -1499,7 +1505,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
 
                         emit_ssbo_access(ctx, &instr->instr, true, reg, offset, indirect_offset, uindex);
                 } else if (ctx->stage == MESA_SHADER_FRAGMENT && !ctx->is_blend) {
-                        emit_varying_read(ctx, reg, offset, nr_comp, component, !direct ? &instr->src[0] : NULL, t);
+                        emit_varying_read(ctx, reg, offset, nr_comp, component, indirect_offset, t, is_flat);
                 } else if (ctx->is_blend) {
                         /* For blend shaders, load the input color, which is
                          * preloaded to r0 */
@@ -1516,6 +1522,10 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
 
                 break;
         }
+
+        /* Artefact of load_interpolated_input. TODO: other barycentric modes */
+        case nir_intrinsic_load_barycentric_pixel:
+                break;
 
         /* Reads 128-bit value raw off the tilebuffer during blending, tasty */
 
