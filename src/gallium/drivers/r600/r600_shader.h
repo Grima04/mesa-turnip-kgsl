@@ -72,8 +72,8 @@ struct r600_shader {
 	unsigned                nhwatomic;
 	unsigned		nlds;
 	unsigned		nsys_inputs;
-	struct r600_shader_io	input[64];
-	struct r600_shader_io	output[64];
+	struct r600_shader_io	input[PIPE_MAX_SHADER_INPUTS];
+	struct r600_shader_io	output[PIPE_MAX_SHADER_OUTPUTS];
 	struct r600_shader_atomic atomics[8];
 	unsigned                nhwatomic_ranges;
 	boolean			uses_kill;
