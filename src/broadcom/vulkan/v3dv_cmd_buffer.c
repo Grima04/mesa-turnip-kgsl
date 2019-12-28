@@ -413,13 +413,25 @@ v3dv_CmdBeginRenderPass(VkCommandBuffer commandBuffer,
     */
    cl_emit(&cmd_buffer->bcl, START_TILE_BINNING, bin);
 
-   /* FIXME: might want to merge actual scissor rect here if possible */
    /* FIXME: probably need to align the render area to tile boundaries since
     *        the tile clears will render full tiles anyway.
     *        See vkGetRenderAreaGranularity().
     */
    state->render_area = pRenderPassBegin->renderArea;
-   emit_clip_window(cmd_buffer, &state->render_area);
+
+   /* If we don't have a scissor or viewport defined let's just use the render
+    * area as clip_window, as that would be required for a clear in any
+    * case. If we have that, it would be emitted as part of the pipeline
+    * dynamic state flush
+    *
+    * FIXME: this is mostly just needed for clear. radv has dedicated paths
+    * for them, so we could get that idea. In any case, need to revisit if
+    * this is the place to emit the clip window.
+    */
+   if (cmd_buffer->state.dynamic.scissor.count == 0 &&
+       cmd_buffer->state.dynamic.viewport.count == 0) {
+      emit_clip_window(cmd_buffer, &state->render_area);
+   }
 
    /* Setup for first subpass */
    state->subpass_idx = 0;
@@ -1019,4 +1031,111 @@ v3dv_CmdSetScissor(VkCommandBuffer commandBuffer,
           scissorCount * sizeof(*pScissors));
 
    cmd_buffer->state.dirty |= V3DV_CMD_DIRTY_DYNAMIC_SCISSOR;
+}
+
+
+/* FIXME: C&P from radv. tu has similar code. Perhaps common place? */
+static void
+get_viewport_xform(const VkViewport *viewport,
+                   float scale[3],
+                   float translate[3])
+{
+   float x = viewport->x;
+   float y = viewport->y;
+   float half_width = 0.5f * viewport->width;
+   float half_height = 0.5f * viewport->height;
+   double n = viewport->minDepth;
+   double f = viewport->maxDepth;
+
+   scale[0] = half_width;
+   translate[0] = half_width + x;
+   scale[1] = half_height;
+   translate[1] = half_height + y;
+
+   scale[2] = (f - n);
+   translate[2] = n;
+}
+
+static void
+emit_scissor(struct v3dv_cmd_buffer *cmd_buffer)
+{
+   struct v3dv_dynamic_state *dynamic = &cmd_buffer->state.dynamic;
+   float vptranslate[3];
+   float vpscale[3];
+
+   /* FIXME: right now we only support one viewport. viewporst[0] would work
+    * now, but would need to change if we allow multiple viewports.
+    */
+   get_viewport_xform(&dynamic->viewport.viewports[0],
+                      vpscale, vptranslate);
+
+   float vp_minx = -fabsf(vpscale[0]) + vptranslate[0];
+   float vp_maxx = fabsf(vpscale[0]) + vptranslate[0];
+   float vp_miny = -fabsf(vpscale[1]) + vptranslate[1];
+   float vp_maxy = fabsf(vpscale[1]) + vptranslate[1];
+
+   /* Quoting from v3dx_emit:
+    * "Clip to the scissor if it's enabled, but still clip to the
+    * drawable regardless since that controls where the binner
+    * tries to put things.
+    *
+    * Additionally, always clip the rendering to the viewport,
+    * since the hardware does guardband clipping, meaning
+    * primitives would rasterize outside of the view volume."
+    */
+
+   VkRect2D clip_window;
+   uint32_t minx, miny, maxx, maxy;
+   if (dynamic->scissor.count == 0) {
+      minx = MAX2(vp_minx, 0);
+      miny = MAX2(vp_miny, 0);
+      maxx = MIN2(vp_maxx, cmd_buffer->state.render_area.extent.width);
+      maxy = MIN2(vp_maxy, cmd_buffer->state.render_area.extent.height);
+   } else {
+      /* FIXME: right now we only allow one scissor. Below would need to be
+       * updated if we support more
+       */
+      VkRect2D *scissor = &dynamic->scissor.scissors[0];
+
+      minx = MAX2(vp_minx, scissor->offset.x);
+      miny = MAX2(vp_miny, scissor->offset.y);
+      maxx = MIN2(vp_maxx, scissor->offset.x + scissor->extent.width);
+      maxy = MIN2(vp_maxy, scissor->offset.y + scissor->extent.height);
+   }
+
+   clip_window.offset.x = minx;
+   clip_window.offset.y = miny;
+   clip_window.extent.width = maxx - minx;
+   clip_window.extent.height = maxy - miny;
+
+   emit_clip_window(cmd_buffer, &clip_window);
+}
+
+static void
+cmd_buffer_emit_state(struct v3dv_cmd_buffer *cmd_buffer)
+{
+   /* FIXME: likely to be filtered by really needed states */
+   uint32_t states = cmd_buffer->state.dirty;
+   struct v3dv_dynamic_state *dynamic = &cmd_buffer->state.dynamic;
+
+   /* Emit(flush) dynamic state */
+   if (states & (V3DV_CMD_DIRTY_DYNAMIC_VIEWPORT | V3DV_CMD_DIRTY_DYNAMIC_SCISSOR)) {
+      assert(dynamic->scissor.count > 0 || dynamic->viewport.count > 0);
+
+      emit_scissor(cmd_buffer);
+   }
+
+   cmd_buffer->state.dirty &= ~states;
+}
+
+void
+v3dv_CmdDraw(VkCommandBuffer commandBuffer,
+             uint32_t vertexCount,
+             uint32_t instanceCount,
+             uint32_t firstVertex,
+             uint32_t firstInstance)
+{
+   V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
+
+   cmd_buffer_emit_state(cmd_buffer);
 }
