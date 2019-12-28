@@ -462,7 +462,10 @@ bool ShaderFromNirProcessor::emit_intrinsic_instruction(nir_intrinsic_instr* ins
    case nir_intrinsic_atomic_counter_post_dec:
    case nir_intrinsic_atomic_counter_inc:
    case nir_intrinsic_atomic_counter_pre_dec:
+   case nir_intrinsic_store_ssbo:
       m_sel.info.writes_memory = true;
+      /* fallthrough */
+   case nir_intrinsic_load_ssbo:
       return m_ssbo_instr.emit(&instr->instr);
       break;
    case nir_intrinsic_copy_deref:

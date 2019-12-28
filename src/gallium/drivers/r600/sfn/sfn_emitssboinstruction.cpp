@@ -27,6 +27,10 @@ bool EmitSSBOInstruction::do_emit(nir_instr* instr)
       return emit_atomic_inc(intr);
    case nir_intrinsic_atomic_counter_pre_dec:
       return emit_atomic_pre_dec(intr);
+   case nir_intrinsic_load_ssbo:
+       return emit_load_ssbo(intr);
+    case nir_intrinsic_store_ssbo:
+      return emit_store_ssbo(intr);
    default:
       return false;
    }
@@ -162,6 +166,96 @@ bool EmitSSBOInstruction::emit_atomic_pre_dec(const nir_intrinsic_instr *instr)
    ir = new GDSInstr(DS_OP_READ_RET, dest, uav_id, nir_intrinsic_base(instr));
    emit_instruction(ir);
 
+   return true;
+}
+
+bool EmitSSBOInstruction::emit_load_ssbo(const nir_intrinsic_instr* instr)
+{
+   GPRVector dest = make_dest(instr);
+
+   /** src0 not used, should be some offset */
+   auto addr = from_nir_with_fetch_constant(instr->src[1], 0);
+   PValue addr_temp = create_register_from_nir_src(instr->src[1], 1);
+
+   /** Should be lowered in nir */
+   emit_instruction(new AluInstruction(op2_lshr_int, addr_temp, {addr, PValue(new LiteralValue(2))},
+                    {alu_write, alu_last_instr}));
+
+   const EVTXDataFormat formats[4] = {
+      fmt_32,
+      fmt_32_32,
+      fmt_32_32_32,
+      fmt_32_32_32_32
+   };
+
+   const std::array<int,4> dest_swt[4] = {
+      {0,7,7,7},
+      {0,1,7,7},
+      {0,1,2,7},
+      {0,1,2,3}
+   };
+
+   /* TODO fix resource index */
+   auto ir = new FetchInstruction(dest, addr_temp,
+                                  R600_IMAGE_REAL_RESOURCE_OFFSET, from_nir(instr->src[0], 0),
+                                  formats[instr->num_components-1], vtx_nf_int);
+   ir->set_dest_swizzle(dest_swt[instr->num_components - 1]);
+   ir->set_flag(vtx_use_tc);
+
+   emit_instruction(ir);
+   return true;
+}
+
+bool EmitSSBOInstruction::emit_store_ssbo(const nir_intrinsic_instr* instr)
+{
+
+   GPRVector::Swizzle swz = {7,7,7,7};
+   for (int i = 0; i <  instr->src[0].ssa->num_components; ++i)
+      swz[i] = i;
+
+   auto orig_addr = from_nir(instr->src[2], 0);
+
+   int temp1 = allocate_temp_register();
+   GPRVector addr_vec(temp1, {0,1,2,7});
+
+   auto rat_id = from_nir(instr->src[1], 0);
+
+   emit_instruction(new AluInstruction(op2_lshr_int, addr_vec.reg_i(0), orig_addr,
+                                       PValue(new LiteralValue(2)), write));
+   emit_instruction(new AluInstruction(op1_mov, addr_vec.reg_i(1), Value::zero, write));
+   emit_instruction(new AluInstruction(op1_mov, addr_vec.reg_i(2), Value::zero, last_write));
+
+
+//#define WRITE_AS_VECTOR
+#ifdef WRITE_AS_VECTOR
+   std::unique_ptr<GPRVector> value(vec_from_nir_with_fetch_constant(instr->src[0],
+                                    (1 << instr->src[0].ssa->num_components) - 1, swz));
+
+   /* TODO fix resource index */
+   int nelements = instr->src[0].ssa->num_components - 1;
+   if (nelements == 2)
+      nelements = 3;
+   auto ir = new RatInstruction(cf_mem_rat, RatInstruction::STORE_TYPED,
+                                *value, addr_vec, 0, rat_id, 11,
+                                (1 << instr->src[0].ssa->num_components) - 1,
+                                0, false);
+   emit_instruction(ir);
+#else
+
+   PValue value(from_nir_with_fetch_constant(instr->src[0], 0));
+   GPRVector out_vec({value, value, value, value});
+   emit_instruction(new RatInstruction(cf_mem_rat, RatInstruction::STORE_TYPED,
+                                       out_vec, addr_vec, 0, rat_id, 1,
+                                       1, 0, false));
+   for (int i = 1; i < instr->src[0].ssa->num_components; ++i) {
+      emit_instruction(new AluInstruction(op1_mov, out_vec.reg_i(0), from_nir(instr->src[0], i), write));
+      emit_instruction(new AluInstruction(op2_add_int, addr_vec.reg_i(0),
+                                          {addr_vec.reg_i(0), Value::one_i}, last_write));
+      emit_instruction(new RatInstruction(cf_mem_rat, RatInstruction::STORE_TYPED,
+                                          out_vec, addr_vec, 0, rat_id, 1,
+                                          1, 0, false));
+   }
+#endif
    return true;
 }
 

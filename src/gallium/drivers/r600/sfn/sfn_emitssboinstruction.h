@@ -17,6 +17,8 @@ private:
    bool emit_atomic_inc(const nir_intrinsic_instr* instr);
    bool emit_atomic_pre_dec(const nir_intrinsic_instr* instr);
 
+   bool emit_load_ssbo(const nir_intrinsic_instr* instr);
+   bool emit_store_ssbo(const nir_intrinsic_instr* instr);
    ESDOp get_opcode(nir_intrinsic_op opcode);
 
    GPRVector make_dest(const nir_intrinsic_instr* instr);
