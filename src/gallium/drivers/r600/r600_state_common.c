@@ -546,7 +546,8 @@ static void r600_bind_vertex_elements(struct pipe_context *ctx, void *state)
 static void r600_delete_vertex_elements(struct pipe_context *ctx, void *state)
 {
 	struct r600_fetch_shader *shader = (struct r600_fetch_shader*)state;
-	r600_resource_reference(&shader->buffer, NULL);
+	if (shader)
+		r600_resource_reference(&shader->buffer, NULL);
 	FREE(shader);
 }
 
