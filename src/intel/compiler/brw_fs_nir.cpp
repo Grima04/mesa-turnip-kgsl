@@ -3597,7 +3597,7 @@ fs_visitor::nir_emit_fs_intrinsic(const fs_builder &bld,
                                          FS_OPCODE_INTERPOLATE_AT_SAMPLE,
                                          tmp,
                                          fs_reg(), /* src */
-                                         msg_data,
+                                         component(msg_data, 0),
                                          interpolation);
          } else {
             /* Make a loop that sends a message to the pixel interpolater
