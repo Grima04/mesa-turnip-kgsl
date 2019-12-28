@@ -84,7 +84,7 @@ static inline void u_thread_setname( const char *name )
 #elif DETECT_OS_HAIKU
    rename_thread(find_thread(NULL), name);
 #else
-#error Not sure how to call pthread_setname_np
+#warning Not sure how to call pthread_setname_np
 #endif
 #endif
    (void)name;
