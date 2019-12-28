@@ -894,6 +894,42 @@ v3dv_EndCommandBuffer(VkCommandBuffer commandBuffer)
    return VK_SUCCESS;
 }
 
+static void
+bind_dynamic_state(struct v3dv_cmd_buffer *cmd_buffer,
+                   const struct v3dv_dynamic_state *src)
+{
+   struct v3dv_dynamic_state *dest = &cmd_buffer->state.dynamic;
+   uint32_t copy_mask = src->mask;
+   uint32_t dest_mask = 0;
+
+   /* See note on SetViewport. We follow radv approach to only allow to set
+    * the number of viewports/scissors at pipeline creation time.
+    */
+   dest->viewport.count = src->viewport.count;
+   dest->scissor.count = src->scissor.count;
+
+   if (copy_mask & V3DV_DYNAMIC_VIEWPORT) {
+      if (memcmp(&dest->viewport.viewports, &src->viewport.viewports,
+                 src->viewport.count * sizeof(VkViewport))) {
+         typed_memcpy(dest->viewport.viewports,
+                      src->viewport.viewports,
+                      src->viewport.count);
+         dest_mask |= V3DV_DYNAMIC_VIEWPORT;
+      }
+   }
+
+   if (copy_mask & V3DV_DYNAMIC_SCISSOR) {
+      if (memcmp(&dest->scissor.scissors, &src->scissor.scissors,
+                 src->scissor.count * sizeof(VkRect2D))) {
+         typed_memcpy(dest->scissor.scissors,
+                      src->scissor.scissors, src->scissor.count);
+         dest_mask |= V3DV_DYNAMIC_SCISSOR;
+      }
+   }
+
+   cmd_buffer->state.dirty |= dest_mask;
+}
+
 
 void
 v3dv_CmdBindPipeline(VkCommandBuffer commandBuffer,
@@ -913,6 +949,7 @@ v3dv_CmdBindPipeline(VkCommandBuffer commandBuffer,
          return;
 
       cmd_buffer->state.pipeline = pipeline;
+      bind_dynamic_state(cmd_buffer, &pipeline->dynamic_state);
 
       cmd_buffer->state.dirty |= V3DV_CMD_DIRTY_PIPELINE;
       break;
