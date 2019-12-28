@@ -94,6 +94,11 @@ pack_emit_reloc(void *cl, const void *reloc) {}
 #define v3dv_assert(x)
 #endif
 
+#define typed_memcpy(dest, src, count) ({				\
+			STATIC_ASSERT(sizeof(*src) == sizeof(*dest)); \
+			memcpy((dest), (src), (count) * sizeof(*(src))); \
+		})
+
 /* From vulkan spec "If the multiple viewports feature is not enabled,
  * scissorCount must be 1", ditto for viewportCount. For now we don't support
  * that feature.
@@ -428,6 +433,8 @@ struct v3dv_dynamic_state {
    struct v3dv_scissor_state scissor;
 };
 
+extern const struct v3dv_dynamic_state default_dynamic_state;
+
 struct v3dv_cmd_buffer_state {
    const struct v3dv_render_pass *pass;
    const struct v3dv_framebuffer *framebuffer;
@@ -553,6 +560,8 @@ struct v3dv_pipeline {
    struct v3dv_pipeline_stage *vs;
    struct v3dv_pipeline_stage *vs_bin;
    struct v3dv_pipeline_stage *fs;
+
+   struct v3dv_dynamic_state dynamic_state;
 };
 
 uint32_t v3dv_physical_device_api_version(struct v3dv_physical_device *dev);

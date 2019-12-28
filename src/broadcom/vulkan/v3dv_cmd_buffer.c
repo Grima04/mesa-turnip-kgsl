@@ -25,6 +25,15 @@
 #include "broadcom/cle/v3dx_pack.h"
 #include "util/u_pack_color.h"
 
+const struct v3dv_dynamic_state default_dynamic_state = {
+   .viewport = {
+      .count = 0,
+   },
+   .scissor = {
+      .count = 0,
+   },
+};
+
 void
 v3dv_cmd_buffer_add_bo(struct v3dv_cmd_buffer *cmd_buffer, struct v3dv_bo *bo)
 {

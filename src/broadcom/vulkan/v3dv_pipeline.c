@@ -677,6 +677,76 @@ pipeline_compile_graphics(struct v3dv_pipeline *pipeline,
    return VK_SUCCESS;
 }
 
+static unsigned
+v3dv_dynamic_state_mask(VkDynamicState state)
+{
+   switch(state) {
+   case VK_DYNAMIC_STATE_VIEWPORT:
+      return V3DV_DYNAMIC_VIEWPORT;
+   case VK_DYNAMIC_STATE_SCISSOR:
+      return V3DV_DYNAMIC_SCISSOR;
+   default:
+      unreachable("Unhandled dynamic state");
+   }
+}
+
+static uint32_t
+pipeline_needed_dynamic_state(const VkGraphicsPipelineCreateInfo *pCreateInfo)
+{
+   uint32_t states = V3DV_DYNAMIC_ALL;
+
+   /* FIXME: stub. Based on other values at pCreateInfo, we would need to
+    * remove flags from states
+    */
+
+   return states;
+}
+
+static void
+pipeline_init_dynamic_state(struct v3dv_pipeline *pipeline,
+                            const VkGraphicsPipelineCreateInfo *pCreateInfo)
+{
+   uint32_t needed_states = pipeline_needed_dynamic_state(pCreateInfo);
+   uint32_t states = needed_states;
+
+   pipeline->dynamic_state = default_dynamic_state;
+
+   if (pCreateInfo->pDynamicState) {
+      uint32_t count = pCreateInfo->pDynamicState->dynamicStateCount;
+
+      for (uint32_t s = 0; s < count; s++) {
+         /* Remove all of the states that are marked as dynamic */
+         states &= ~v3dv_dynamic_state_mask(pCreateInfo->pDynamicState->pDynamicStates[s]);
+      }
+   }
+
+   struct v3dv_dynamic_state *dynamic = &pipeline->dynamic_state;
+   /* Note, as this can be counter-intuitive: although we are checking against
+    * _DYNAMIC flags, here we are copying the data from the pipeline that was
+    * not defined as dynamic.
+    */
+   if (needed_states & V3DV_DYNAMIC_VIEWPORT) {
+      assert(pCreateInfo->pViewportState);
+
+      dynamic->viewport.count = pCreateInfo->pViewportState->viewportCount;
+      if (states & V3DV_DYNAMIC_VIEWPORT) {
+         typed_memcpy(dynamic->viewport.viewports,
+                      pCreateInfo->pViewportState->pViewports,
+                      pCreateInfo->pViewportState->viewportCount);
+      }
+   }
+
+   if (needed_states & V3DV_DYNAMIC_SCISSOR) {
+      dynamic->scissor.count = pCreateInfo->pViewportState->scissorCount;
+      if (states & V3DV_DYNAMIC_SCISSOR) {
+         typed_memcpy(dynamic->scissor.scissors,
+                      pCreateInfo->pViewportState->pScissors,
+                      pCreateInfo->pViewportState->scissorCount);
+      }
+   }
+
+   pipeline->dynamic_state.mask = states;
+}
 
 static VkResult
 pipeline_init(struct v3dv_pipeline *pipeline,
@@ -691,6 +761,8 @@ pipeline_init(struct v3dv_pipeline *pipeline,
    V3DV_FROM_HANDLE(v3dv_render_pass, render_pass, pCreateInfo->renderPass);
    assert(pCreateInfo->subpass < render_pass->subpass_count);
    pipeline->subpass = &render_pass->subpasses[pCreateInfo->subpass];
+
+   pipeline_init_dynamic_state(pipeline, pCreateInfo);
 
    result = pipeline_compile_graphics(pipeline, pCreateInfo, alloc);
 
