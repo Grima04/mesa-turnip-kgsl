@@ -357,6 +357,7 @@ public:
    bool can_do_cmod();
    bool can_change_types() const;
    bool has_source_and_destination_hazard() const;
+   unsigned implied_mrf_writes() const;
 
    /**
     * Return whether \p arg is a control source of a virtual instruction which

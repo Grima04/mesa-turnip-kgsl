@@ -494,7 +494,7 @@ get_used_mrfs(fs_visitor *v, bool *mrf_used)
       }
 
       if (inst->mlen > 0) {
-	 for (int i = 0; i < v->implied_mrf_writes(inst); i++) {
+	 for (unsigned i = 0; i < inst->implied_mrf_writes(); i++) {
             mrf_used[inst->base_mrf + i] = true;
          }
       }

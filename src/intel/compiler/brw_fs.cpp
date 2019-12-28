@@ -1164,16 +1164,16 @@ fs_inst::flags_written() const
  * Note that this is not the 0 or 1 implied writes in an actual gen
  * instruction -- the FS opcodes often generate MOVs in addition.
  */
-int
-fs_visitor::implied_mrf_writes(const fs_inst *inst) const
+unsigned
+fs_inst::implied_mrf_writes() const
 {
-   if (inst->mlen == 0)
+   if (mlen == 0)
       return 0;
 
-   if (inst->base_mrf == -1)
+   if (base_mrf == -1)
       return 0;
 
-   switch (inst->opcode) {
+   switch (opcode) {
    case SHADER_OPCODE_RCP:
    case SHADER_OPCODE_RSQ:
    case SHADER_OPCODE_SQRT:
@@ -1181,11 +1181,11 @@ fs_visitor::implied_mrf_writes(const fs_inst *inst) const
    case SHADER_OPCODE_LOG2:
    case SHADER_OPCODE_SIN:
    case SHADER_OPCODE_COS:
-      return 1 * dispatch_width / 8;
+      return 1 * exec_size / 8;
    case SHADER_OPCODE_POW:
    case SHADER_OPCODE_INT_QUOTIENT:
    case SHADER_OPCODE_INT_REMAINDER:
-      return 2 * dispatch_width / 8;
+      return 2 * exec_size / 8;
    case SHADER_OPCODE_TEX:
    case FS_OPCODE_TXB:
    case SHADER_OPCODE_TXD:
@@ -1201,14 +1201,14 @@ fs_visitor::implied_mrf_writes(const fs_inst *inst) const
       return 1;
    case FS_OPCODE_FB_WRITE:
    case FS_OPCODE_REP_FB_WRITE:
-      return inst->src[0].file == BAD_FILE ? 0 : 2;
+      return src[0].file == BAD_FILE ? 0 : 2;
    case FS_OPCODE_UNIFORM_PULL_CONSTANT_LOAD:
    case SHADER_OPCODE_GEN4_SCRATCH_READ:
       return 1;
    case FS_OPCODE_VARYING_PULL_CONSTANT_LOAD_GEN4:
-      return inst->mlen;
+      return mlen;
    case SHADER_OPCODE_GEN4_SCRATCH_WRITE:
-      return inst->mlen;
+      return mlen;
    default:
       unreachable("not reached");
    }
@@ -3494,7 +3494,7 @@ fs_visitor::remove_duplicate_mrf_writes()
 	 /* Found a SEND instruction, which will include two or fewer
 	  * implied MRF writes.  We could do better here.
 	  */
-	 for (int i = 0; i < implied_mrf_writes(inst); i++) {
+	 for (unsigned i = 0; i < inst->implied_mrf_writes(); i++) {
 	    last_mrf_move[inst->base_mrf + i] = NULL;
 	 }
       }

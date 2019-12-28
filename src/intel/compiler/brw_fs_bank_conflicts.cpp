@@ -573,7 +573,7 @@ namespace {
          if (v->devinfo->gen >= 7) {
             assert(inst->dst.file != MRF);
 
-            for (int i = 0; i < v->implied_mrf_writes(inst); i++) {
+            for (unsigned i = 0; i < inst->implied_mrf_writes(); i++) {
                const unsigned reg = GEN7_MRF_HACK_START + inst->base_mrf + i;
                constrained[p.atom_of_reg(reg)] = true;
             }
