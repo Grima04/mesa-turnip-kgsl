@@ -27,6 +27,7 @@
 #include "r600_pipe_common.h"
 #include "r600_cs.h"
 #include "tgsi/tgsi_parse.h"
+#include "compiler/nir/nir.h"
 #include "util/list.h"
 #include "util/u_draw_quad.h"
 #include "util/u_memory.h"
@@ -1177,6 +1178,33 @@ struct pipe_resource *r600_resource_create_common(struct pipe_screen *screen,
 	}
 }
 
+const struct nir_shader_compiler_options r600_nir_options = {
+	.fuse_ffma = true,
+	.lower_scmp = true,
+	.lower_flrp32 = true,
+	.lower_flrp64 = true,
+	.lower_fpow = true,
+	.lower_fdiv = true,
+	.lower_idiv = true,
+	.lower_fmod = true,
+	.lower_doubles_options = nir_lower_fp64_full_software,
+	.lower_int64_options = 0,
+	.lower_extract_byte = true,
+	.lower_extract_word = true,
+	.max_unroll_iterations = 32,
+	.lower_all_io_to_temps = true,
+	.vectorize_io = true
+};
+
+static const void *
+r600_get_compiler_options(struct pipe_screen *screen,
+			  enum pipe_shader_ir ir,
+			  enum pipe_shader_type shader)
+{
+	assert(ir == PIPE_SHADER_IR_NIR);
+	return &r600_nir_options;
+}
+
 bool r600_common_screen_init(struct r600_common_screen *rscreen,
 			     struct radeon_winsys *ws)
 {
@@ -1210,6 +1238,7 @@ bool r600_common_screen_init(struct r600_common_screen *rscreen,
 	rscreen->b.get_compute_param = r600_get_compute_param;
 	rscreen->b.get_paramf = r600_get_paramf;
 	rscreen->b.get_timestamp = r600_get_timestamp;
+	rscreen->b.get_compiler_options = r600_get_compiler_options;
 	rscreen->b.fence_finish = r600_fence_finish;
 	rscreen->b.fence_reference = r600_fence_reference;
 	rscreen->b.resource_destroy = u_resource_destroy_vtbl;
