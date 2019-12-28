@@ -191,6 +191,10 @@ int eg_get_interpolator_index(unsigned interpolate, unsigned location);
 
 int r600_get_lds_unique_index(unsigned semantic_name, unsigned index);
 
+int generate_gs_copy_shader(struct r600_context *rctx,
+                            struct r600_pipe_shader *gs,
+                            struct pipe_stream_output_info *so);
+
 #ifdef __cplusplus
 }  // extern "C"
 #endif
