@@ -62,6 +62,7 @@ ShaderFromNirProcessor::ShaderFromNirProcessor(pipe_shader_type ptype,
    m_sh_info(sh_info),
    m_tex_instr(*this),
    m_alu_instr(*this),
+   m_ssbo_instr(*this),
    m_pending_else(nullptr),
    m_scratch_size(scratch_size),
    m_next_hwatomic_loc(0),
@@ -449,6 +450,21 @@ bool ShaderFromNirProcessor::emit_intrinsic_instruction(nir_intrinsic_instr* ins
       return emit_discard_if(instr);
    case nir_intrinsic_load_ubo_r600:
       return emit_load_ubo(instr);
+   case nir_intrinsic_atomic_counter_add:
+   case nir_intrinsic_atomic_counter_and:
+   case nir_intrinsic_atomic_counter_exchange:
+   case nir_intrinsic_atomic_counter_max:
+   case nir_intrinsic_atomic_counter_min:
+   case nir_intrinsic_atomic_counter_or:
+   case nir_intrinsic_atomic_counter_xor:
+   case nir_intrinsic_atomic_counter_comp_swap:
+   case nir_intrinsic_atomic_counter_read:
+   case nir_intrinsic_atomic_counter_post_dec:
+   case nir_intrinsic_atomic_counter_inc:
+   case nir_intrinsic_atomic_counter_pre_dec:
+      m_sel.info.writes_memory = true;
+      return m_ssbo_instr.emit(&instr->instr);
+      break;
    case nir_intrinsic_copy_deref:
    case nir_intrinsic_load_constant:
    case nir_intrinsic_load_input:

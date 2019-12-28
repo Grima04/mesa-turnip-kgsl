@@ -118,6 +118,8 @@ files_r600 = files(
   'sfn/sfn_emitaluinstruction.h',
   'sfn/sfn_emitinstruction.cpp',
   'sfn/sfn_emitinstruction.h',
+  'sfn/sfn_emitssboinstruction.cpp',
+  'sfn/sfn_emitssboinstruction.h',
   'sfn/sfn_emittexinstruction.cpp',
   'sfn/sfn_emittexinstruction.h',
   'sfn/sfn_emitinstruction.h',

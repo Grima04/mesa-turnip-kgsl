@@ -40,6 +40,7 @@
 #include "sfn_instruction_cf.h"
 #include "sfn_emittexinstruction.h"
 #include "sfn_emitaluinstruction.h"
+#include "sfn_emitssboinstruction.h"
 
 #include <vector>
 #include <set>
@@ -174,6 +175,7 @@ private:
 
    EmitTexInstruction m_tex_instr;
    EmitAluInstruction m_alu_instr;
+   EmitSSBOInstruction m_ssbo_instr;
    OutputRegisterMap m_output_register_map;
 
    IfElseInstruction *m_pending_else;
