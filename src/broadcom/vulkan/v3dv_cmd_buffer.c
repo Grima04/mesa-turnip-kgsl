@@ -904,10 +904,73 @@ v3dv_CmdBindPipeline(VkCommandBuffer commandBuffer,
          return;
 
       cmd_buffer->state.pipeline = pipeline;
+
+      cmd_buffer->state.dirty |= V3DV_CMD_DIRTY_PIPELINE;
       break;
 
    default:
       assert(!"invalid bind point");
       break;
    }
+}
+
+
+void
+v3dv_CmdSetViewport(VkCommandBuffer commandBuffer,
+                    uint32_t firstViewport,
+                    uint32_t viewportCount,
+                    const VkViewport *pViewports)
+{
+   V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
+   struct v3dv_cmd_buffer_state *state = &cmd_buffer->state;
+   const uint32_t total_count = firstViewport + viewportCount;
+
+   assert(firstViewport < MAX_VIEWPORTS);
+   assert(total_count >= 1 && total_count <= MAX_VIEWPORTS);
+
+   /* anv allows CmdSetViewPort to change how many viewports are being used,
+    * while radv not, using the value set on the pipeline creation. spec
+    * doesn't specify, but radv approach makes more sense, as CmdSetViewport
+    * is intended to set dynamically a specific viewport, increasing the
+    * number of viewport used seems like a non-defined collateral
+    * effect. Would make sense to open a spec issue to clarify. For now, as we
+    * only support one, it is not really important, but we follow radv
+    * approach.
+    */
+   if (!memcmp(state->dynamic.viewport.viewports + firstViewport,
+               pViewports, viewportCount * sizeof(*pViewports))) {
+      return;
+   }
+
+   memcpy(state->dynamic.viewport.viewports + firstViewport, pViewports,
+          viewportCount * sizeof(*pViewports));
+
+   cmd_buffer->state.dirty |= V3DV_CMD_DIRTY_DYNAMIC_VIEWPORT;
+}
+
+void
+v3dv_CmdSetScissor(VkCommandBuffer commandBuffer,
+                   uint32_t firstScissor,
+                   uint32_t scissorCount,
+                   const VkRect2D *pScissors)
+{
+   V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
+   struct v3dv_cmd_buffer_state *state = &cmd_buffer->state;
+   const uint32_t total_count = firstScissor + scissorCount;
+
+   assert(firstScissor < MAX_SCISSORS);
+   assert(total_count >= 1 && total_count <= MAX_SCISSORS);
+
+   /* See note on CmdSetViewport related to anv/radv differences about setting
+    * total viewports used. Also applies to scissor.
+    */
+   if (!memcmp(state->dynamic.scissor.scissors + firstScissor,
+               pScissors, scissorCount * sizeof(*pScissors))) {
+      return;
+   }
+
+   memcpy(state->dynamic.scissor.scissors + firstScissor, pScissors,
+          scissorCount * sizeof(*pScissors));
+
+   cmd_buffer->state.dirty |= V3DV_CMD_DIRTY_DYNAMIC_SCISSOR;
 }

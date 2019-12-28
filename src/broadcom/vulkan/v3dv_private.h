@@ -94,6 +94,13 @@ pack_emit_reloc(void *cl, const void *reloc) {}
 #define v3dv_assert(x)
 #endif
 
+/* From vulkan spec "If the multiple viewports feature is not enabled,
+ * scissorCount must be 1", ditto for viewportCount. For now we don't support
+ * that feature.
+ */
+#define MAX_VIEWPORTS 1
+#define MAX_SCISSORS  1
+
 struct v3dv_instance;
 
 #ifdef USE_V3D_SIMULATOR
@@ -378,6 +385,49 @@ struct v3dv_cmd_buffer_attachment_state {
    union v3dv_clear_value clear_value;
 };
 
+struct v3dv_viewport_state {
+   uint32_t count;
+   VkViewport viewports[MAX_VIEWPORTS];
+};
+
+struct v3dv_scissor_state {
+   uint32_t count;
+   VkRect2D scissors[MAX_SCISSORS];
+};
+
+/* Mostly a v3dv mapping of VkDynamicState, used to track which data as
+ * defined as dynamic
+ */
+enum v3dv_dynamic_state_bits {
+   V3DV_DYNAMIC_VIEWPORT                  = 1 << 0,
+   V3DV_DYNAMIC_SCISSOR                   = 1 << 1,
+   V3DV_DYNAMIC_ALL                       = (1 << 2) - 1,
+};
+
+/* To track which cmd buffer elements are "dirty" so would need an
+ * update. This includes viewport, scissor (so vk dynamic info), plus any
+ * other more high level resource, like pipeline, etc.
+ */
+enum v3dv_cmd_dirty_bits {
+   V3DV_CMD_DIRTY_DYNAMIC_VIEWPORT                  = 1 << 0,
+   V3DV_CMD_DIRTY_DYNAMIC_SCISSOR                   = 1 << 1,
+   V3DV_CMD_DIRTY_DYNAMIC_ALL                       = (1 << 2) - 1,
+   V3DV_CMD_DIRTY_PIPELINE                          = 1 << 2,
+};
+
+
+struct v3dv_dynamic_state {
+   /**
+    * Bitmask of (1 << VK_DYNAMIC_STATE_*).
+    * Defines the set of saved dynamic state.
+    */
+   uint32_t mask;
+
+   struct v3dv_viewport_state viewport;
+
+   struct v3dv_scissor_state scissor;
+};
+
 struct v3dv_cmd_buffer_state {
    const struct v3dv_render_pass *pass;
    const struct v3dv_framebuffer *framebuffer;
@@ -391,6 +441,9 @@ struct v3dv_cmd_buffer_state {
    struct v3dv_cmd_buffer_attachment_state attachments[6]; /* 4 color + D + S */
 
    struct v3dv_pipeline *pipeline;
+
+   struct v3dv_dynamic_state dynamic;
+   uint32_t dirty;
 };
 
 struct v3dv_cmd_buffer {
