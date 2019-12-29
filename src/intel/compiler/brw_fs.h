@@ -131,7 +131,7 @@ public:
    bool opt_algebraic();
    bool opt_redundant_discard_jumps();
    bool opt_cse();
-   bool opt_cse_local(bblock_t *block);
+   bool opt_cse_local(bblock_t *block, int &ip);
    bool opt_copy_propagation();
    bool try_copy_propagate(fs_inst *inst, int arg, acp_entry *entry);
    bool try_constant_propagate(fs_inst *inst, acp_entry *entry);
