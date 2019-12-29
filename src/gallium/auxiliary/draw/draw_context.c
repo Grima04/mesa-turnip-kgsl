@@ -95,6 +95,7 @@ draw_create_context(struct pipe_context *pipe, void *context,
 #endif
 
    draw->pipe = pipe;
+   draw->constant_buffer_stride = (sizeof(float) * 4);
 
    if (!draw_init(draw))
       goto err_destroy;
@@ -1350,5 +1351,9 @@ draw_set_disk_cache_callbacks(struct draw_context *draw,
    draw->disk_cache_find_shader = find_shader;
    draw->disk_cache_insert_shader = insert_shader;
    draw->disk_cache_cookie = data_cookie;
+}
 
+void draw_set_constant_buffer_stride(struct draw_context *draw, unsigned num_bytes)
+{
+   draw->constant_buffer_stride = num_bytes;
 }

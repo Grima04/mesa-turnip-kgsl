@@ -367,7 +367,7 @@ struct draw_context
    unsigned instance_id;
    unsigned start_instance;
    unsigned start_index;
-
+   unsigned constant_buffer_stride;
    struct draw_llvm *llvm;
 
    /** Texture sampler and sampler view state.

@@ -47,6 +47,7 @@
 #include "lp_query.h"
 #include "lp_setup.h"
 #include "lp_screen.h"
+
 /* This is only safe if there's just one concurrent context */
 #ifdef EMBEDDED_DEVICE
 #define USE_GLOBAL_LLVM_CONTEXT
@@ -222,6 +223,9 @@ llvmpipe_create_context(struct pipe_screen *screen, void *priv,
                                  llvmpipe_screen(screen),
                                  lp_draw_disk_cache_find_shader,
                                  lp_draw_disk_cache_insert_shader);
+
+   draw_set_constant_buffer_stride(llvmpipe->draw, lp_get_constant_buffer_stride(screen));
+
    /* FIXME: devise alternative to draw_texture_samplers */
 
    llvmpipe->setup = lp_setup_create( &llvmpipe->pipe,

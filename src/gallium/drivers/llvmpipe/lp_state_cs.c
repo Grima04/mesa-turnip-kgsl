@@ -1161,7 +1161,7 @@ update_csctx_consts(struct llvmpipe_context *llvmpipe)
    for (i = 0; i < ARRAY_SIZE(csctx->constants); ++i) {
       struct pipe_resource *buffer = csctx->constants[i].current.buffer;
       const ubyte *current_data = NULL;
-
+      unsigned current_size = csctx->constants[i].current.buffer_size;
       if (buffer) {
          /* resource buffer */
          current_data = (ubyte *) llvmpipe_resource_data(buffer);
@@ -1171,13 +1171,15 @@ update_csctx_consts(struct llvmpipe_context *llvmpipe)
          current_data = (ubyte *) csctx->constants[i].current.user_buffer;
       }
 
-      if (current_data) {
+      if (current_data && current_size >= sizeof(float)) {
          current_data += csctx->constants[i].current.buffer_offset;
-
          csctx->cs.current.jit_context.constants[i] = (const float *)current_data;
-         csctx->cs.current.jit_context.num_constants[i] = csctx->constants[i].current.buffer_size;
+         csctx->cs.current.jit_context.num_constants[i] =
+            DIV_ROUND_UP(csctx->constants[i].current.buffer_size,
+                         lp_get_constant_buffer_stride(llvmpipe->pipe.screen));
       } else {
-         csctx->cs.current.jit_context.constants[i] = NULL;
+         static const float fake_const_buf[4];
+         csctx->cs.current.jit_context.constants[i] = fake_const_buf;
          csctx->cs.current.jit_context.num_constants[i] = 0;
       }
    }

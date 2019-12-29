@@ -122,6 +122,9 @@ void draw_enable_point_sprites(struct draw_context *draw, boolean enable);
 
 void draw_set_zs_format(struct draw_context *draw, enum pipe_format format);
 
+/* for TGSI constants are 4 * sizeof(float), but for NIR they need to be sizeof(float); */
+void draw_set_constant_buffer_stride(struct draw_context *draw, unsigned num_bytes);
+
 boolean
 draw_install_aaline_stage(struct draw_context *draw, struct pipe_context *pipe);
 
