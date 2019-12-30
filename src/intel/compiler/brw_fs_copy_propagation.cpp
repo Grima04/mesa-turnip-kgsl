@@ -48,8 +48,8 @@ struct acp_entry : public exec_node {
    fs_reg dst;
    fs_reg src;
    unsigned global_idx;
-   uint8_t size_written;
-   uint8_t size_read;
+   unsigned size_written;
+   unsigned size_read;
    enum opcode opcode;
    bool saturate;
 };
@@ -895,7 +895,8 @@ can_propagate_from(fs_inst *inst)
             (inst->src[0].file == FIXED_GRF &&
              inst->src[0].is_contiguous())) &&
            inst->src[0].type == inst->dst.type &&
-           !inst->is_partial_write());
+           !inst->is_partial_write()) ||
+          is_identity_payload(FIXED_GRF, inst);
 }
 
 /* Walks a basic block and does copy propagation on it using the acp
@@ -948,11 +949,12 @@ fs_visitor::opt_copy_propagation_local(void *copy_prop_ctx, bblock_t *block,
        * operand of another instruction, add it to the ACP.
        */
       if (can_propagate_from(inst)) {
-         acp_entry *entry = ralloc(copy_prop_ctx, acp_entry);
+         acp_entry *entry = rzalloc(copy_prop_ctx, acp_entry);
          entry->dst = inst->dst;
          entry->src = inst->src[0];
          entry->size_written = inst->size_written;
-         entry->size_read = inst->size_read(0);
+         for (unsigned i = 0; i < inst->sources; i++)
+            entry->size_read += inst->size_read(i);
          entry->opcode = inst->opcode;
          entry->saturate = inst->saturate;
          acp[entry->dst.nr % ACP_HASH_SIZE].push_tail(entry);
