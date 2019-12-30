@@ -454,8 +454,22 @@ fs_visitor::try_copy_propagate(fs_inst *inst, int arg, acp_entry *entry)
    assert(entry->src.file == VGRF || entry->src.file == UNIFORM ||
           entry->src.file == ATTR || entry->src.file == FIXED_GRF);
 
+   /* Avoid propagating a LOAD_PAYLOAD instruction into another if there is a
+    * good chance that we'll be able to eliminate the latter through register
+    * coalescing.  If only part of the sources of the second LOAD_PAYLOAD can
+    * be simplified through copy propagation we would be making register
+    * coalescing impossible, ending up with unnecessary copies in the program.
+    * This is also the case for is_multi_copy_payload() copies that can only
+    * be coalesced when the instruction is lowered into a sequence of MOVs.
+    *
+    * Worse -- In cases where the ACP entry was the result of CSE combining
+    * multiple LOAD_PAYLOAD subexpressions, propagating the first LOAD_PAYLOAD
+    * into the second would undo the work of CSE, leading to an infinite
+    * optimization loop.  Avoid this by detecting LOAD_PAYLOAD copies from CSE
+    * temporaries which should match is_coalescing_payload().
+    */
    if (entry->opcode == SHADER_OPCODE_LOAD_PAYLOAD &&
-       inst->opcode == SHADER_OPCODE_LOAD_PAYLOAD)
+       (is_coalescing_payload(alloc, inst) || is_multi_copy_payload(inst)))
       return false;
 
    assert(entry->dst.file == VGRF);
