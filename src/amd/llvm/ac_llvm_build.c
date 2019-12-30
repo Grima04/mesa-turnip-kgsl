@@ -85,6 +85,7 @@ ac_llvm_context_init(struct ac_llvm_context *ctx,
 	ctx->i16 = LLVMIntTypeInContext(ctx->context, 16);
 	ctx->i32 = LLVMIntTypeInContext(ctx->context, 32);
 	ctx->i64 = LLVMIntTypeInContext(ctx->context, 64);
+	ctx->i128 = LLVMIntTypeInContext(ctx->context, 128);
 	ctx->intptr = ctx->i32;
 	ctx->f16 = LLVMHalfTypeInContext(ctx->context);
 	ctx->f32 = LLVMFloatTypeInContext(ctx->context);
@@ -108,6 +109,8 @@ ac_llvm_context_init(struct ac_llvm_context *ctx,
 	ctx->i32_1 = LLVMConstInt(ctx->i32, 1, false);
 	ctx->i64_0 = LLVMConstInt(ctx->i64, 0, false);
 	ctx->i64_1 = LLVMConstInt(ctx->i64, 1, false);
+	ctx->i128_0 = LLVMConstInt(ctx->i128, 0, false);
+	ctx->i128_1 = LLVMConstInt(ctx->i128, 1, false);
 	ctx->f16_0 = LLVMConstReal(ctx->f16, 0.0);
 	ctx->f16_1 = LLVMConstReal(ctx->f16, 1.0);
 	ctx->f32_0 = LLVMConstReal(ctx->f32, 0.0);
@@ -2817,6 +2820,12 @@ LLVMValueRef ac_build_bit_count(struct ac_llvm_context *ctx, LLVMValueRef src0)
 	bitsize = ac_get_elem_bits(ctx, LLVMTypeOf(src0));
 
 	switch (bitsize) {
+	case 128:
+		result = ac_build_intrinsic(ctx, "llvm.ctpop.i128", ctx->i128,
+					    (LLVMValueRef []) { src0 }, 1,
+					    AC_FUNC_ATTR_READNONE);
+		result = LLVMBuildTrunc(ctx->builder, result, ctx->i32, "");
+		break;
 	case 64:
 		result = ac_build_intrinsic(ctx, "llvm.ctpop.i64", ctx->i64,
 					    (LLVMValueRef []) { src0 }, 1,
