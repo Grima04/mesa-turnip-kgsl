@@ -881,7 +881,11 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                          * don't touch primitive_size (since we would clobber
                          * the pointer there) */
 
-                        ctx->payloads[PIPE_SHADER_FRAGMENT].primitive_size.constant = ctx->rasterizer->base.line_width;
+                        bool points = ctx->payloads[PIPE_SHADER_FRAGMENT].prefix.draw_mode == MALI_POINTS;
+
+                        ctx->payloads[PIPE_SHADER_FRAGMENT].primitive_size.constant = points ?
+                                ctx->rasterizer->base.point_size :
+                                ctx->rasterizer->base.line_width;
                 }
         }
 
