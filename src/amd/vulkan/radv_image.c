@@ -1889,7 +1889,7 @@ void radv_GetImageSubresourceLayout(
 			pLayout->rowPitch = surface->u.gfx9.surf_pitch * surface->bpe / 3;
 		} else {
 			assert(util_is_power_of_two_nonzero(surface->bpe));
-			pLayout->rowPitch = surface->u.gfx9.surf_pitch * surface->bpe;
+			pLayout->rowPitch = surface->u.gfx9.pitch[level] * surface->bpe;
 		}
 
 		pLayout->arrayPitch = surface->u.gfx9.surf_slice_size;
