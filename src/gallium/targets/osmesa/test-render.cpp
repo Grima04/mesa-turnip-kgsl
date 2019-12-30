@@ -56,16 +56,26 @@ name_params(const testing::TestParamInfo<Params> params) {
 TEST_P(OSMesaRenderTestFixture, Render)
 {
    auto params = GetParam();
-   uint32_t pixel = 0;
+   const int w = 2, h = 2;
+   uint8_t pixels[w * h * 4] = { 0 };
    uint32_t expected;  // This should be green for the given color model
-   int w = 1, h = 1;
 
    std::unique_ptr<osmesa_context, decltype(&OSMesaDestroyContext)> ctx{
       OSMesaCreateContext(params[0], NULL), &OSMesaDestroyContext};
    ASSERT_TRUE(ctx);
 
-   auto ret = OSMesaMakeCurrent(ctx.get(), &pixel, params[1], w, h);
+   auto ret = OSMesaMakeCurrent(ctx.get(), &pixels, params[1], w, h);
    ASSERT_EQ(ret, GL_TRUE);
+
+   int bpp = 4;
+   switch (params[0]) {
+   case OSMESA_RGB:
+      bpp = 3;
+      break;
+   case OSMESA_RGB_565:
+      bpp = 2;
+      break;
+   }
 
    switch (params[0]) {
    case OSMESA_RGBA:
@@ -86,7 +96,12 @@ TEST_P(OSMesaRenderTestFixture, Render)
    glClear(GL_COLOR_BUFFER_BIT);
    glFinish();
 
-   ASSERT_EQ(expected, pixel);
+   for (unsigned i = 0; i < w * h; i++) {
+      uint32_t color = 0;
+      memcpy(&color, &pixels[i * bpp], bpp);
+
+      ASSERT_EQ(expected, color);
+   }
 }
 
 INSTANTIATE_TEST_CASE_P(
@@ -95,7 +110,8 @@ INSTANTIATE_TEST_CASE_P(
    testing::Values(
       Params{ OSMESA_RGBA, GL_UNSIGNED_BYTE },
       Params{ OSMESA_BGRA, GL_UNSIGNED_BYTE },
-      Params{ OSMESA_ARGB, GL_UNSIGNED_BYTE }
+      Params{ OSMESA_ARGB, GL_UNSIGNED_BYTE },
+      Params{ OSMESA_RGB, GL_UNSIGNED_BYTE }
    ),
    name_params
 );
