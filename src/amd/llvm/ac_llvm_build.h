@@ -788,6 +788,11 @@ LLVMValueRef ac_build_main(const struct ac_shader_args *args,
 			   LLVMModuleRef module);
 void ac_build_s_endpgm(struct ac_llvm_context *ctx);
 
+LLVMValueRef ac_prefix_bitcount(struct ac_llvm_context *ctx,
+				LLVMValueRef mask, LLVMValueRef index);
+LLVMValueRef ac_prefix_bitcount_2x64(struct ac_llvm_context *ctx,
+				     LLVMValueRef mask[2], LLVMValueRef index);
+
 #ifdef __cplusplus
 }
 #endif

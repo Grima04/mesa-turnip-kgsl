@@ -4898,3 +4898,62 @@ void ac_build_s_endpgm(struct ac_llvm_context *ctx)
 	LLVMValueRef code = LLVMConstInlineAsm(calltype, "s_endpgm", "", true, false);
 	LLVMBuildCall(ctx->builder, code, NULL, 0, "");
 }
+
+LLVMValueRef ac_prefix_bitcount(struct ac_llvm_context *ctx,
+				LLVMValueRef mask, LLVMValueRef index)
+{
+	LLVMBuilderRef builder = ctx->builder;
+	LLVMTypeRef type = LLVMTypeOf(mask);
+
+	LLVMValueRef bit = LLVMBuildShl(builder, LLVMConstInt(type, 1, 0),
+					LLVMBuildZExt(builder, index, type, ""), "");
+	LLVMValueRef prefix_bits = LLVMBuildSub(builder, bit, LLVMConstInt(type, 1, 0), "");
+	LLVMValueRef prefix_mask = LLVMBuildAnd(builder, mask, prefix_bits, "");
+	return ac_build_bit_count(ctx, prefix_mask);
+}
+
+/* Compute the prefix sum of the "mask" bit array with 128 elements (bits). */
+LLVMValueRef ac_prefix_bitcount_2x64(struct ac_llvm_context *ctx,
+				     LLVMValueRef mask[2], LLVMValueRef index)
+{
+	LLVMBuilderRef builder = ctx->builder;
+#if 0
+	/* Reference version using i128. */
+	LLVMValueRef input_mask =
+		LLVMBuildBitCast(builder, ac_build_gather_values(ctx, mask, 2), ctx->i128, "");
+
+	return ac_prefix_bitcount(ctx, input_mask, index);
+#else
+	/* Optimized version using 2 64-bit masks. */
+	LLVMValueRef is_hi, is_0, c64, c128, all_bits;
+	LLVMValueRef prefix_mask[2], shift[2], mask_bcnt0, prefix_bcnt[2];
+
+	/* Compute the 128-bit prefix mask. */
+	c64 = LLVMConstInt(ctx->i32, 64, 0);
+	c128 = LLVMConstInt(ctx->i32, 128, 0);
+	all_bits = LLVMConstInt(ctx->i64, UINT64_MAX, 0);
+	/* The first index that can have non-zero high bits in the prefix mask is 65. */
+	is_hi = LLVMBuildICmp(builder, LLVMIntUGT, index, c64, "");
+	is_0 = LLVMBuildICmp(builder, LLVMIntEQ, index, ctx->i32_0, "");
+	mask_bcnt0 = ac_build_bit_count(ctx, mask[0]);
+
+	for (unsigned i = 0; i < 2; i++) {
+		shift[i] = LLVMBuildSub(builder, i ? c128 : c64, index, "");
+		/* For i==0, index==0, the right shift by 64 doesn't give the desired result,
+		 * so we handle it by the is_0 select.
+		 * For i==1, index==64, same story, so we handle it by the last is_hi select.
+		 * For i==0, index==64, we shift by 0, which is what we want.
+		 */
+		prefix_mask[i] = LLVMBuildLShr(builder, all_bits,
+					LLVMBuildZExt(builder, shift[i], ctx->i64, ""), "");
+		prefix_mask[i] = LLVMBuildAnd(builder, mask[i], prefix_mask[i], "");
+		prefix_bcnt[i] = ac_build_bit_count(ctx, prefix_mask[i]);
+	}
+
+	prefix_bcnt[0] = LLVMBuildSelect(builder, is_0, ctx->i32_0, prefix_bcnt[0], "");
+	prefix_bcnt[0] = LLVMBuildSelect(builder, is_hi, mask_bcnt0, prefix_bcnt[0], "");
+	prefix_bcnt[1] = LLVMBuildSelect(builder, is_hi, prefix_bcnt[1], ctx->i32_0, "");
+
+	return LLVMBuildAdd(builder, prefix_bcnt[0], prefix_bcnt[1], "");
+#endif
+}
