@@ -1054,21 +1054,15 @@ void cso_delete_compute_shader(struct cso_context *ctx, void *handle)
    ctx->pipe->delete_compute_state(ctx->pipe, handle);
 }
 
-enum pipe_error
-cso_set_vertex_elements(struct cso_context *ctx,
-                        unsigned count,
-                        const struct pipe_vertex_element *states)
+static void
+cso_set_vertex_elements_direct(struct cso_context *ctx,
+                               unsigned count,
+                               const struct pipe_vertex_element *states)
 {
-   struct u_vbuf *vbuf = ctx->vbuf;
    unsigned key_size, hash_key;
    struct cso_hash_iter iter;
    void *handle;
    struct cso_velems_state velems_state;
-
-   if (vbuf) {
-      u_vbuf_set_vertex_elements(vbuf, count, states);
-      return PIPE_OK;
-   }
 
    /* Need to include the count into the stored state data too.
     * Otherwise first few count pipe_vertex_elements could be identical
@@ -1086,7 +1080,7 @@ cso_set_vertex_elements(struct cso_context *ctx,
    if (cso_hash_iter_is_null(iter)) {
       struct cso_velements *cso = MALLOC(sizeof(struct cso_velements));
       if (!cso)
-         return PIPE_ERROR_OUT_OF_MEMORY;
+         return;
 
       memcpy(&cso->state, &velems_state, key_size);
       cso->data = ctx->pipe->create_vertex_elements_state(ctx->pipe, count,
@@ -1098,7 +1092,7 @@ cso_set_vertex_elements(struct cso_context *ctx,
       iter = cso_insert_state(ctx->cache, hash_key, CSO_VELEMENTS, cso);
       if (cso_hash_iter_is_null(iter)) {
          FREE(cso);
-         return PIPE_ERROR_OUT_OF_MEMORY;
+         return;
       }
 
       handle = cso->data;
@@ -1111,6 +1105,21 @@ cso_set_vertex_elements(struct cso_context *ctx,
       ctx->velements = handle;
       ctx->pipe->bind_vertex_elements_state(ctx->pipe, handle);
    }
+}
+
+enum pipe_error
+cso_set_vertex_elements(struct cso_context *ctx,
+                        unsigned count,
+                        const struct pipe_vertex_element *states)
+{
+   struct u_vbuf *vbuf = ctx->vbuf;
+
+   if (vbuf) {
+      u_vbuf_set_vertex_elements(vbuf, count, states);
+      return PIPE_OK;
+   }
+
+   cso_set_vertex_elements_direct(ctx, count, states);
    return PIPE_OK;
 }
 
@@ -1147,6 +1156,27 @@ cso_restore_vertex_elements(struct cso_context *ctx)
 
 /* vertex buffers */
 
+static void
+cso_set_vertex_buffers_direct(struct cso_context *ctx,
+                              unsigned start_slot, unsigned count,
+                              const struct pipe_vertex_buffer *buffers)
+{
+   /* Save what's in the auxiliary slot, so that we can save and restore it
+    * for meta ops.
+    */
+   if (start_slot == 0) {
+      if (buffers) {
+         pipe_vertex_buffer_reference(&ctx->vertex_buffer0_current,
+                                      buffers);
+      } else {
+         pipe_vertex_buffer_unreference(&ctx->vertex_buffer0_current);
+      }
+   }
+
+   ctx->pipe->set_vertex_buffers(ctx->pipe, start_slot, count, buffers);
+}
+
+
 void cso_set_vertex_buffers(struct cso_context *ctx,
                             unsigned start_slot, unsigned count,
                             const struct pipe_vertex_buffer *buffers)
@@ -1161,18 +1191,7 @@ void cso_set_vertex_buffers(struct cso_context *ctx,
       return;
    }
 
-   /* Save what's in the auxiliary slot, so that we can save and restore it
-    * for meta ops. */
-   if (start_slot == 0) {
-      if (buffers) {
-         pipe_vertex_buffer_reference(&ctx->vertex_buffer0_current,
-                                      buffers);
-      } else {
-         pipe_vertex_buffer_unreference(&ctx->vertex_buffer0_current);
-      }
-   }
-
-   ctx->pipe->set_vertex_buffers(ctx->pipe, start_slot, count, buffers);
+   cso_set_vertex_buffers_direct(ctx, start_slot, count, buffers);
 }
 
 static void
