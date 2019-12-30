@@ -1454,6 +1454,7 @@ disassemble_midgard(uint8_t *code, size_t size, unsigned gpu_id, gl_shader_stage
         uint32_t *words = (uint32_t *) code;
         unsigned num_words = size / 4;
         int tabs = 0;
+        num_words = MIN2(num_words, 100);
 
         bool prefetch_flag = false;
 
@@ -1470,6 +1471,7 @@ disassemble_midgard(uint8_t *code, size_t size, unsigned gpu_id, gl_shader_stage
         while (i < num_words) {
                 unsigned tag = words[i] & 0xF;
                 unsigned next_tag = (words[i] >> 4) & 0xF;
+                printf("\t%X -> %X\n", tag, next_tag);
                 unsigned num_quad_words = midgard_word_size[tag];
 
                 if (midg_tags[i] && midg_tags[i] != tag) {
@@ -1544,12 +1546,14 @@ disassemble_midgard(uint8_t *code, size_t size, unsigned gpu_id, gl_shader_stage
 
                 /* Break based on instruction prefetch flag */
 
+#if 0
                 if (i < num_words && next == 1) {
                         prefetch_flag = true;
 
                         if (midgard_word_types[words[i] & 0xF] != midgard_word_type_alu)
                                 break;
                 }
+#endif
 
                 i += 4 * num_quad_words;
         }

@@ -175,7 +175,7 @@ nir_blend(
    for (unsigned c = 0; c < 4; ++c) {
       /* Decide properties based on channel */
       nir_lower_blend_channel chan =
-         (c < 3) ? options.rt[0].rgb : options.rt[0].alpha;
+         (c < 3) ? options.rgb : options.alpha;
 
       nir_ssa_def *psrc = nir_channel(b, src, c);
       nir_ssa_def *pdst = nir_channel(b, dst, c);
@@ -197,7 +197,7 @@ nir_blend(
 
    /* Then just recombine with an applied colormask */
    nir_ssa_def *blended = nir_vec(b, channels, 4);
-   return nir_color_mask(b, options.rt[0].colormask, blended, dst);
+   return nir_color_mask(b, options.colormask, blended, dst);
 }
 
 static bool
@@ -214,8 +214,8 @@ static bool
 nir_is_blend_replace(nir_lower_blend_options options)
 {
    return
-      nir_is_blend_channel_replace(options.rt[0].rgb) &&
-      nir_is_blend_channel_replace(options.rt[0].alpha);
+      nir_is_blend_channel_replace(options.rgb) &&
+      nir_is_blend_channel_replace(options.alpha);
 }
 
 void
