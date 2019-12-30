@@ -41,8 +41,10 @@ extern "C" {
 struct cso_context;
 struct u_vbuf;
 
+#define CSO_NO_USER_VERTEX_BUFFERS (1 << 0)
+
 struct cso_context *cso_create_context(struct pipe_context *pipe,
-                                       unsigned u_vbuf_flags);
+                                       unsigned flags);
 void cso_destroy_context( struct cso_context *cso );
 struct pipe_context *cso_get_pipe_context(struct cso_context *cso);
 

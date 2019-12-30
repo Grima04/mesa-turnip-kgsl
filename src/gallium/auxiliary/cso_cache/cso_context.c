@@ -287,15 +287,20 @@ sanitize_hash(struct cso_hash *hash, enum cso_cache_type type,
 static void cso_init_vbuf(struct cso_context *cso, unsigned flags)
 {
    struct u_vbuf_caps caps;
+   bool uses_user_vertex_buffers = !(flags & CSO_NO_USER_VERTEX_BUFFERS);
 
-   /* Install u_vbuf if there is anything unsupported. */
-   if (u_vbuf_get_caps(cso->pipe->screen, &caps, flags)) {
+   u_vbuf_get_caps(cso->pipe->screen, &caps);
+
+   /* Enable u_vbuf if needed. */
+   if (caps.fallback_always ||
+       (uses_user_vertex_buffers &&
+        caps.fallback_only_for_user_vbuffers)) {
       cso->vbuf = u_vbuf_create(cso->pipe, &caps);
    }
 }
 
 struct cso_context *
-cso_create_context(struct pipe_context *pipe, unsigned u_vbuf_flags)
+cso_create_context(struct pipe_context *pipe, unsigned flags)
 {
    struct cso_context *ctx = CALLOC_STRUCT(cso_context);
    if (!ctx)
@@ -311,7 +316,7 @@ cso_create_context(struct pipe_context *pipe, unsigned u_vbuf_flags)
    ctx->pipe = pipe;
    ctx->sample_mask = ~0;
 
-   cso_init_vbuf(ctx, u_vbuf_flags);
+   cso_init_vbuf(ctx, flags);
 
    /* Enable for testing: */
    if (0) cso_set_maximum_cache_size( ctx->cache, 4 );
