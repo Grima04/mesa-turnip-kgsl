@@ -71,6 +71,7 @@ void u_vbuf_destroy(struct u_vbuf *mgr);
 /* State and draw functions. */
 void u_vbuf_set_vertex_elements(struct u_vbuf *mgr, unsigned count,
                                 const struct pipe_vertex_element *states);
+void u_vbuf_unset_vertex_elements(struct u_vbuf *mgr);
 void u_vbuf_set_vertex_buffers(struct u_vbuf *mgr,
                                unsigned start_slot, unsigned count,
                                const struct pipe_vertex_buffer *bufs);

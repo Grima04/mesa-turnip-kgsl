@@ -219,6 +219,15 @@ void cso_save_constant_buffer_slot0(struct cso_context *cso,
 void cso_restore_constant_buffer_slot0(struct cso_context *cso,
                                        enum pipe_shader_type shader_stage);
 
+/* Optimized version. */
+void
+cso_set_vertex_buffers_and_elements(struct cso_context *ctx,
+                                    unsigned velem_count,
+                                    const struct pipe_vertex_element *velems,
+                                    unsigned vb_count,
+                                    unsigned unbind_trailing_vb_count,
+                                    const struct pipe_vertex_buffer *vbuffers,
+                                    bool uses_user_vertex_buffers);
 
 /* drawing */
 

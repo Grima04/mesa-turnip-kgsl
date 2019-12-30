@@ -373,6 +373,11 @@ void u_vbuf_set_vertex_elements(struct u_vbuf *mgr, unsigned count,
    mgr->ve = u_vbuf_set_vertex_elements_internal(mgr, count, states);
 }
 
+void u_vbuf_unset_vertex_elements(struct u_vbuf *mgr)
+{
+   mgr->ve = NULL;
+}
+
 void u_vbuf_destroy(struct u_vbuf *mgr)
 {
    struct pipe_screen *screen = mgr->pipe->screen;
