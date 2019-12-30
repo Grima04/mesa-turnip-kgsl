@@ -786,6 +786,7 @@ LLVMValueRef ac_build_main(const struct ac_shader_args *args,
 			   enum ac_llvm_calling_convention convention,
 			   const char *name, LLVMTypeRef ret_type,
 			   LLVMModuleRef module);
+void ac_build_s_endpgm(struct ac_llvm_context *ctx);
 
 #ifdef __cplusplus
 }

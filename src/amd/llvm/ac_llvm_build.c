@@ -4889,3 +4889,9 @@ ac_build_main(const struct ac_shader_args *args,
 	return main_function;
 }
 
+void ac_build_s_endpgm(struct ac_llvm_context *ctx)
+{
+	LLVMTypeRef calltype = LLVMFunctionType(ctx->voidt, NULL, 0, false);
+	LLVMValueRef code = LLVMConstInlineAsm(calltype, "s_endpgm", "", true, false);
+	LLVMBuildCall(ctx->builder, code, NULL, 0, "");
+}
