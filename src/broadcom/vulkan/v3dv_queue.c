@@ -54,7 +54,12 @@ queue_submit(struct v3dv_queue *queue,
    submit.rcl_start = cmd_buffer->rcl.bo->offset;
    submit.rcl_end = cmd_buffer->rcl.bo->offset + v3dv_cl_offset(&cmd_buffer->rcl);
 
-   submit.flags = 0; /* FIXME */
+   submit.flags = 0;
+   /* FIXME: we already know that we support cache flush, as we only support
+    * hw that supports that, but would be better to just DRM-ask it
+    */
+   if (cmd_buffer->state.tmu_dirty_rcl)
+      submit.flags |= DRM_V3D_SUBMIT_CL_FLUSH_CACHE;
 
    submit.qma = cmd_buffer->tile_alloc->offset;
    submit.qms = cmd_buffer->tile_alloc->size;

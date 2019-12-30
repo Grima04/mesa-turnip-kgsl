@@ -451,6 +451,9 @@ struct v3dv_cmd_buffer_state {
 
    struct v3dv_dynamic_state dynamic;
    uint32_t dirty;
+
+   /* FIXME: here? */
+   bool tmu_dirty_rcl;
 };
 
 struct v3dv_cmd_buffer {
@@ -502,8 +505,8 @@ vk_to_mesa_shader_stage(VkShaderStageFlagBits vk_stage)
 }
 
 /*
- * Utility struct so shader_module_compile_to_nir and other methods doesn't
- * have so many parameters.
+ * Per-stage info for each stage, useful so shader_module_compile_to_nir and
+ * other methods doesn't have so many parameters.
  *
  * FIXME: for the case of the coordinate shader and the vertex shader, module,
  * entrypoint, spec_info and nir are the same. There are also info only
