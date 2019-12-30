@@ -1378,15 +1378,18 @@ emit_fragment_store(compiler_context *ctx, unsigned src, unsigned rt)
         emit_explicit_constant(ctx, src, src);
 
         struct midgard_instruction ins =
-                v_alu_br_compact_cond(midgard_jmp_writeout_op_writeout, TAG_ALU_8, 0, midgard_condition_always);
+                v_branch(false, false);
+
+        ins.writeout = true;
 
         /* Add dependencies */
         ins.src[0] = src;
         ins.constants[0] = rt * 0x100;
 
         /* Emit the branch */
-        emit_mir_instruction(ctx, ins);
+        midgard_instruction *br = emit_mir_instruction(ctx, ins);
         schedule_barrier(ctx);
+        br->branch.target_block = ctx->block_count - 1;
 
         emit_fragment_epilogue(ctx, rt);
 }
@@ -2330,7 +2333,13 @@ emit_fragment_epilogue(compiler_context *ctx, unsigned rt)
                 emit_mir_instruction(ctx, rt_move);
         }
 
-        EMIT(alu_br_compact_cond, midgard_jmp_writeout_op_writeout, TAG_ALU_8, -2, midgard_condition_always);
+        /* Loop to ourselves */
+
+        struct midgard_instruction ins = v_branch(false, false);
+        ins.writeout = true;
+        ins.branch.target_block = ctx->block_count - 1;
+        emit_mir_instruction(ctx, ins);
+
         ctx->current_block->epilogue = true;
         schedule_barrier(ctx);
 }
@@ -2750,6 +2759,7 @@ midgard_compile_shader_nir(nir_shader *nir, midgard_program *program, bool is_bl
                                 bool is_conditional = ins->branch.conditional;
                                 bool is_inverted = ins->branch.invert_conditional;
                                 bool is_discard = ins->branch.target_type == TARGET_DISCARD;
+                                bool is_writeout = ins->writeout;
 
                                 /* Determine the block we're jumping to */
                                 int target_number = ins->branch.target_block;
@@ -2799,6 +2809,7 @@ midgard_compile_shader_nir(nir_shader *nir, midgard_program *program, bool is_bl
 
                                 midgard_jmp_writeout_op op =
                                         is_discard ? midgard_jmp_writeout_op_discard :
+                                        is_writeout ? midgard_jmp_writeout_op_writeout :
                                         (is_compact && !is_conditional) ? midgard_jmp_writeout_op_branch_uncond :
                                         midgard_jmp_writeout_op_branch_cond;
 
