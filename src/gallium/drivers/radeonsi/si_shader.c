@@ -1192,7 +1192,8 @@ static void declare_vb_descriptor_input_sgprs(struct si_shader_context *ctx)
 }
 
 static void declare_vs_input_vgprs(struct si_shader_context *ctx,
-				   unsigned *num_prolog_vgprs)
+				   unsigned *num_prolog_vgprs,
+				   bool ngg_cull_shader)
 {
 	struct si_shader *shader = ctx->shader;
 
@@ -1218,6 +1219,11 @@ static void declare_vs_input_vgprs(struct si_shader_context *ctx,
 	}
 
 	if (!shader->is_gs_copy_shader) {
+		if (shader->key.opt.ngg_culling && !ngg_cull_shader) {
+			ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT,
+				   &ctx->ngg_old_thread_id);
+		}
+
 		/* Vertex load indices. */
 		if (shader->selector->info.num_inputs) {
 			ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT,
@@ -1252,12 +1258,17 @@ static void declare_vs_blit_inputs(struct si_shader_context *ctx,
 	}
 }
 
-static void declare_tes_input_vgprs(struct si_shader_context *ctx)
+static void declare_tes_input_vgprs(struct si_shader_context *ctx, bool ngg_cull_shader)
 {
 	ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_FLOAT, &ctx->tes_u);
 	ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_FLOAT, &ctx->tes_v);
 	ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT, &ctx->tes_rel_patch_id);
 	ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT, &ctx->args.tes_patch_id);
+
+	if (ctx->shader->key.opt.ngg_culling && !ngg_cull_shader) {
+		ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT,
+			   &ctx->ngg_old_thread_id);
+	}
 }
 
 enum {
@@ -1276,7 +1287,7 @@ void si_add_arg_checked(struct ac_shader_args *args,
 	ac_add_arg(args, file, registers, type, arg);
 }
 
-void si_create_function(struct si_shader_context *ctx)
+void si_create_function(struct si_shader_context *ctx, bool ngg_cull_shader)
 {
 	struct si_shader *shader = ctx->shader;
 	LLVMTypeRef returns[AC_MAX_ARGS];
@@ -1305,7 +1316,7 @@ void si_create_function(struct si_shader_context *ctx)
 			declare_vs_blit_inputs(ctx, vs_blit_property);
 
 			/* VGPRs */
-			declare_vs_input_vgprs(ctx, &num_prolog_vgprs);
+			declare_vs_input_vgprs(ctx, &num_prolog_vgprs, ngg_cull_shader);
 			break;
 		}
 
@@ -1325,7 +1336,7 @@ void si_create_function(struct si_shader_context *ctx)
 		}
 
 		/* VGPRs */
-		declare_vs_input_vgprs(ctx, &num_prolog_vgprs);
+		declare_vs_input_vgprs(ctx, &num_prolog_vgprs, ngg_cull_shader);
 
 		/* Return values */
 		if (shader->key.opt.vs_as_prim_discard_cs) {
@@ -1384,7 +1395,7 @@ void si_create_function(struct si_shader_context *ctx)
 		ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT, &ctx->args.tcs_rel_ids);
 
 		if (ctx->type == PIPE_SHADER_VERTEX) {
-			declare_vs_input_vgprs(ctx, &num_prolog_vgprs);
+			declare_vs_input_vgprs(ctx, &num_prolog_vgprs, ngg_cull_shader);
 
 			/* LS return values are inputs to the TCS main shader part. */
 			for (i = 0; i < 8 + GFX9_TCS_NUM_USER_SGPR; i++)
@@ -1419,7 +1430,8 @@ void si_create_function(struct si_shader_context *ctx)
 		ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->merged_wave_info);
 		ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->tcs_offchip_offset);
 		ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->merged_scratch_offset);
-		ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, NULL); /* unused (SPI_SHADER_PGM_LO/HI_GS << 8) */
+		ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_CONST_DESC_PTR,
+			   &ctx->small_prim_cull_info); /* SPI_SHADER_PGM_LO_GS << 8 */
 		ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, NULL); /* unused (SPI_SHADER_PGM_LO/HI_GS >> 24) */
 
 		declare_global_desc_pointers(ctx);
@@ -1452,25 +1464,33 @@ void si_create_function(struct si_shader_context *ctx)
 		ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT, &ctx->gs_vtx45_offset);
 
 		if (ctx->type == PIPE_SHADER_VERTEX) {
-			declare_vs_input_vgprs(ctx, &num_prolog_vgprs);
+			declare_vs_input_vgprs(ctx, &num_prolog_vgprs, ngg_cull_shader);
 		} else if (ctx->type == PIPE_SHADER_TESS_EVAL) {
-			declare_tes_input_vgprs(ctx);
+			declare_tes_input_vgprs(ctx, ngg_cull_shader);
 		}
 
-		if (ctx->shader->key.as_es &&
+		if ((ctx->shader->key.as_es || ngg_cull_shader) &&
 		    (ctx->type == PIPE_SHADER_VERTEX ||
 		     ctx->type == PIPE_SHADER_TESS_EVAL)) {
-			unsigned num_user_sgprs;
+			unsigned num_user_sgprs, num_vgprs;
 
+			/* For the NGG cull shader, add 1 SGPR to hold the vertex buffer pointer. */
 			if (ctx->type == PIPE_SHADER_VERTEX)
-				num_user_sgprs = GFX9_VSGS_NUM_USER_SGPR;
+				num_user_sgprs = GFX9_VSGS_NUM_USER_SGPR + ngg_cull_shader;
 			else
 				num_user_sgprs = GFX9_TESGS_NUM_USER_SGPR;
+
+			/* The NGG cull shader has to return all 9 VGPRs + the old thread ID.
+			 *
+			 * The normal merged ESGS shader only has to return the 5 VGPRs
+			 * for the GS stage.
+			 */
+			num_vgprs = ngg_cull_shader ? 10 : 5;
 
 			/* ES return values are inputs to GS. */
 			for (i = 0; i < 8 + num_user_sgprs; i++)
 				returns[num_returns++] = ctx->i32; /* SGPRs */
-			for (i = 0; i < 5; i++)
+			for (i = 0; i < num_vgprs; i++)
 				returns[num_returns++] = ctx->f32; /* VGPRs */
 		}
 		break;
@@ -1492,7 +1512,7 @@ void si_create_function(struct si_shader_context *ctx)
 		}
 
 		/* VGPRs */
-		declare_tes_input_vgprs(ctx);
+		declare_tes_input_vgprs(ctx, ngg_cull_shader);
 		break;
 
 	case PIPE_SHADER_GEOMETRY:
@@ -1622,8 +1642,8 @@ void si_create_function(struct si_shader_context *ctx)
 		return;
 	}
 
-	si_llvm_create_func(ctx, "main", returns, num_returns,
-			    si_get_max_workgroup_size(shader));
+	si_llvm_create_func(ctx, ngg_cull_shader ? "ngg_cull_main" : "main",
+			    returns, num_returns, si_get_max_workgroup_size(shader));
 
 	/* Reserve register locations for VGPR inputs the PS prolog may need. */
 	if (ctx->type == PIPE_SHADER_FRAGMENT && !ctx->shader->is_monolithic) {
@@ -2222,6 +2242,8 @@ static void si_dump_shader_key(const struct si_shader *shader, FILE *f)
 	    !key->as_es && !key->as_ls) {
 		fprintf(f, "  opt.kill_outputs = 0x%"PRIx64"\n", key->opt.kill_outputs);
 		fprintf(f, "  opt.clip_disable = %u\n", key->opt.clip_disable);
+		if (shader_type != PIPE_SHADER_GEOMETRY)
+			fprintf(f, "  opt.ngg_culling = 0x%x\n", key->opt.ngg_culling);
 	}
 }
 
@@ -2266,7 +2288,8 @@ static bool si_vs_needs_prolog(const struct si_shader_selector *sel,
 }
 
 static bool si_build_main_function(struct si_shader_context *ctx,
-				   struct nir_shader *nir, bool free_nir)
+				   struct nir_shader *nir, bool free_nir,
+				   bool ngg_cull_shader)
 {
 	struct si_shader *shader = ctx->shader;
 	struct si_shader_selector *sel = shader->selector;
@@ -2281,6 +2304,8 @@ static bool si_build_main_function(struct si_shader_context *ctx,
 			ctx->abi.emit_outputs = si_llvm_emit_es_epilogue;
 		else if (shader->key.opt.vs_as_prim_discard_cs)
 			ctx->abi.emit_outputs = si_llvm_emit_prim_discard_cs_epilogue;
+		else if (ngg_cull_shader)
+			ctx->abi.emit_outputs = gfx10_emit_ngg_culling_epilogue_4x_wave32;
 		else if (shader->key.as_ngg)
 			ctx->abi.emit_outputs = gfx10_emit_ngg_epilogue;
 		else
@@ -2295,6 +2320,8 @@ static bool si_build_main_function(struct si_shader_context *ctx,
 
 		if (shader->key.as_es)
 			ctx->abi.emit_outputs = si_llvm_emit_es_epilogue;
+		else if (ngg_cull_shader)
+			ctx->abi.emit_outputs = gfx10_emit_ngg_culling_epilogue_4x_wave32;
 		else if (shader->key.as_ngg)
 			ctx->abi.emit_outputs = gfx10_emit_ngg_epilogue;
 		else
@@ -2314,7 +2341,7 @@ static bool si_build_main_function(struct si_shader_context *ctx,
 		return false;
 	}
 
-	si_create_function(ctx);
+	si_create_function(ctx, ngg_cull_shader);
 
 	if (ctx->shader->key.as_es || ctx->type == PIPE_SHADER_GEOMETRY)
 		si_preload_esgs_ring(ctx);
@@ -2349,6 +2376,7 @@ static bool si_build_main_function(struct si_shader_context *ctx,
 			if (sel->so.num_outputs)
 				scratch_size = 44;
 
+			assert(!ctx->gs_ngg_scratch);
 			LLVMTypeRef ai32 = LLVMArrayType(ctx->i32, scratch_size);
 			ctx->gs_ngg_scratch = LLVMAddGlobalInAddressSpace(ctx->ac.module,
 				ai32, "ngg_scratch", AC_ADDR_SPACE_LDS);
@@ -2377,7 +2405,8 @@ static bool si_build_main_function(struct si_shader_context *ctx,
 		/* This is really only needed when streamout and / or vertex
 		 * compaction is enabled.
 		 */
-		if (sel->so.num_outputs && !ctx->gs_ngg_scratch) {
+		if (!ctx->gs_ngg_scratch &&
+		    (sel->so.num_outputs || shader->key.opt.ngg_culling)) {
 			LLVMTypeRef asi32 = LLVMArrayType(ctx->i32, 8);
 			ctx->gs_ngg_scratch = LLVMAddGlobalInAddressSpace(ctx->ac.module,
 				asi32, "ngg_scratch", AC_ADDR_SPACE_LDS);
@@ -2418,19 +2447,21 @@ static bool si_build_main_function(struct si_shader_context *ctx,
 
 			if (!shader->is_monolithic ||
 			    (ctx->type == PIPE_SHADER_TESS_EVAL &&
-			     (shader->key.as_ngg && !shader->key.as_es)))
+			     shader->key.as_ngg && !shader->key.as_es &&
+			     !shader->key.opt.ngg_culling))
 				ac_init_exec_full_mask(&ctx->ac);
 
 			if ((ctx->type == PIPE_SHADER_VERTEX ||
 			     ctx->type == PIPE_SHADER_TESS_EVAL) &&
-			    shader->key.as_ngg && !shader->key.as_es) {
+			    shader->key.as_ngg && !shader->key.as_es &&
+			    !shader->key.opt.ngg_culling) {
 				gfx10_ngg_build_sendmsg_gs_alloc_req(ctx);
 
 				/* Build the primitive export at the beginning
 				 * of the shader if possible.
 				 */
 				if (gfx10_ngg_export_prim_early(shader))
-					gfx10_ngg_build_export_prim(ctx, NULL);
+					gfx10_ngg_build_export_prim(ctx, NULL, NULL);
 			}
 
 			if (ctx->type == PIPE_SHADER_TESS_CTRL ||
@@ -2500,12 +2531,14 @@ static bool si_build_main_function(struct si_shader_context *ctx,
  *
  * \param info             Shader info of the vertex shader.
  * \param num_input_sgprs  Number of input SGPRs for the vertex shader.
+ * \param has_old_  Whether the preceding shader part is the NGG cull shader.
  * \param prolog_key       Key of the VS prolog
  * \param shader_out       The vertex shader, or the next shader if merging LS+HS or ES+GS.
  * \param key              Output shader part key.
  */
 static void si_get_vs_prolog_key(const struct si_shader_info *info,
 				 unsigned num_input_sgprs,
+				 bool ngg_cull_shader,
 				 const struct si_vs_prolog_bits *prolog_key,
 				 struct si_shader *shader_out,
 				 union si_shader_part_key *key)
@@ -2517,6 +2550,9 @@ static void si_get_vs_prolog_key(const struct si_shader_info *info,
 	key->vs_prolog.as_ls = shader_out->key.as_ls;
 	key->vs_prolog.as_es = shader_out->key.as_es;
 	key->vs_prolog.as_ngg = shader_out->key.as_ngg;
+
+	if (!ngg_cull_shader)
+		key->vs_prolog.has_ngg_cull_inputs = !!shader_out->key.opt.ngg_culling;
 
 	if (shader_out->selector->type == PIPE_SHADER_TESS_CTRL) {
 		key->vs_prolog.as_ls = 1;
@@ -2881,33 +2917,70 @@ int si_compile_shader(struct si_screen *sscreen,
 
 	shader->info.uses_instanceid = sel->info.uses_instanceid;
 
-	if (!si_build_main_function(&ctx, nir, free_nir)) {
+	LLVMValueRef ngg_cull_main_fn = NULL;
+	if (ctx.shader->key.opt.ngg_culling) {
+		if (!si_build_main_function(&ctx, nir, false, true)) {
+			si_llvm_dispose(&ctx);
+			return -1;
+		}
+		ngg_cull_main_fn = ctx.main_fn;
+		ctx.main_fn = NULL;
+		/* Re-set the IR. */
+		si_llvm_context_set_ir(&ctx, shader);
+	}
+
+	if (!si_build_main_function(&ctx, nir, free_nir, false)) {
 		si_llvm_dispose(&ctx);
 		return -1;
 	}
 
 	if (shader->is_monolithic && ctx.type == PIPE_SHADER_VERTEX) {
-		LLVMValueRef parts[2];
+		LLVMValueRef parts[4];
+		unsigned num_parts = 0;
 		bool need_prolog = si_vs_needs_prolog(sel, &shader->key.part.vs.prolog);
+		LLVMValueRef main_fn = ctx.main_fn;
 
-		parts[1] = ctx.main_fn;
+		if (ngg_cull_main_fn) {
+			if (need_prolog) {
+				union si_shader_part_key prolog_key;
+				si_get_vs_prolog_key(&sel->info,
+						     shader->info.num_input_sgprs,
+						     true,
+						     &shader->key.part.vs.prolog,
+						     shader, &prolog_key);
+				prolog_key.vs_prolog.is_monolithic = true;
+				si_build_vs_prolog_function(&ctx, &prolog_key);
+				parts[num_parts++] = ctx.main_fn;
+			}
+			parts[num_parts++] = ngg_cull_main_fn;
+		}
 
 		if (need_prolog) {
 			union si_shader_part_key prolog_key;
 			si_get_vs_prolog_key(&sel->info,
 					     shader->info.num_input_sgprs,
+					     false,
 					     &shader->key.part.vs.prolog,
 					     shader, &prolog_key);
 			prolog_key.vs_prolog.is_monolithic = true;
 			si_build_vs_prolog_function(&ctx, &prolog_key);
-			parts[0] = ctx.main_fn;
+			parts[num_parts++] = ctx.main_fn;
 		}
+		parts[num_parts++] = main_fn;
 
-		si_build_wrapper_function(&ctx, parts + !need_prolog,
-					  1 + need_prolog, need_prolog, 0);
+		si_build_wrapper_function(&ctx, parts, num_parts,
+					  need_prolog ? 1 : 0, 0);
 
 		if (ctx.shader->key.opt.vs_as_prim_discard_cs)
 			si_build_prim_discard_compute_shader(&ctx);
+	} else if (shader->is_monolithic && ctx.type == PIPE_SHADER_TESS_EVAL &&
+		   ngg_cull_main_fn) {
+		LLVMValueRef parts[2];
+
+		parts[0] = ngg_cull_main_fn;
+		parts[1] = ctx.main_fn;
+
+		si_build_wrapper_function(&ctx, parts, 2, 0, 0);
 	} else if (shader->is_monolithic && ctx.type == PIPE_SHADER_TESS_CTRL) {
 		if (sscreen->info.chip_class >= GFX9) {
 			struct si_shader_selector *ls = shader->key.part.tcs.ls;
@@ -2935,7 +3008,7 @@ int si_compile_shader(struct si_screen *sscreen,
 			shader_ls.is_monolithic = true;
 			si_llvm_context_set_ir(&ctx, &shader_ls);
 
-			if (!si_build_main_function(&ctx, nir, free_nir)) {
+			if (!si_build_main_function(&ctx, nir, free_nir, false)) {
 				si_llvm_dispose(&ctx);
 				return -1;
 			}
@@ -2947,6 +3020,7 @@ int si_compile_shader(struct si_screen *sscreen,
 				union si_shader_part_key vs_prolog_key;
 				si_get_vs_prolog_key(&ls->info,
 						     shader_ls.info.num_input_sgprs,
+						     false,
 						     &shader->key.part.tcs.ls_prolog,
 						     shader, &vs_prolog_key);
 				vs_prolog_key.vs_prolog.is_monolithic = true;
@@ -3003,7 +3077,7 @@ int si_compile_shader(struct si_screen *sscreen,
 			shader_es.is_monolithic = true;
 			si_llvm_context_set_ir(&ctx, &shader_es);
 
-			if (!si_build_main_function(&ctx, nir, free_nir)) {
+			if (!si_build_main_function(&ctx, nir, free_nir, false)) {
 				si_llvm_dispose(&ctx);
 				return -1;
 			}
@@ -3016,6 +3090,7 @@ int si_compile_shader(struct si_screen *sscreen,
 				union si_shader_part_key vs_prolog_key;
 				si_get_vs_prolog_key(&es->info,
 						     shader_es.info.num_input_sgprs,
+						     false,
 						     &shader->key.part.gs.vs_prolog,
 						     shader, &vs_prolog_key);
 				vs_prolog_key.vs_prolog.is_monolithic = true;
@@ -3249,10 +3324,11 @@ static void si_build_vs_prolog_function(struct si_shader_context *ctx,
 	LLVMValueRef ret, func;
 	int num_returns, i;
 	unsigned first_vs_vgpr = key->vs_prolog.num_merged_next_stage_vgprs;
-	unsigned num_input_vgprs = key->vs_prolog.num_merged_next_stage_vgprs + 4;
+	unsigned num_input_vgprs = key->vs_prolog.num_merged_next_stage_vgprs + 4 +
+				   (key->vs_prolog.has_ngg_cull_inputs ? 1 : 0);
 	struct ac_arg input_sgpr_param[key->vs_prolog.num_input_sgprs];
-	struct ac_arg input_vgpr_param[9];
-	LLVMValueRef input_vgprs[9];
+	struct ac_arg input_vgpr_param[13];
+	LLVMValueRef input_vgprs[13];
 	unsigned num_all_input_regs = key->vs_prolog.num_input_sgprs +
 				      num_input_vgprs;
 	unsigned user_sgpr_base = key->vs_prolog.num_merged_next_stage_vgprs ? 8 : 0;
@@ -3427,7 +3503,7 @@ static bool si_get_vs_prolog(struct si_screen *sscreen,
 
 	/* Get the prolog. */
 	union si_shader_part_key prolog_key;
-	si_get_vs_prolog_key(&vs->info, main_part->info.num_input_sgprs,
+	si_get_vs_prolog_key(&vs->info, main_part->info.num_input_sgprs, false,
 			     key, shader, &prolog_key);
 
 	shader->prolog =

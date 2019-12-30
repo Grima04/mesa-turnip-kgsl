@@ -1272,8 +1272,23 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
 	shader->ctx_reg.ngg.pa_cl_ngg_cntl =
 		S_028838_INDEX_BUF_EDGE_FLAG_ENA(gs_type == PIPE_SHADER_VERTEX);
 	shader->pa_cl_vs_out_cntl = si_get_vs_out_cntl(gs_sel, true);
+
+	/* Oversubscribe PC. This improves performance when there are too many varyings. */
+	float oversub_pc_factor = 0.25;
+
+	if (shader->key.opt.ngg_culling) {
+		/* Be more aggressive with NGG culling. */
+		if (shader->info.nr_param_exports > 4)
+			oversub_pc_factor = 1;
+		else if (shader->info.nr_param_exports > 2)
+			oversub_pc_factor = 0.75;
+		else
+			oversub_pc_factor = 0.5;
+	}
+
+	unsigned oversub_pc_lines = sscreen->info.pc_lines * oversub_pc_factor;
 	shader->ctx_reg.ngg.ge_pc_alloc = S_030980_OVERSUB_EN(1) |
-					  S_030980_NUM_PC_LINES(sscreen->info.pc_lines / 4 - 1);
+					  S_030980_NUM_PC_LINES(oversub_pc_lines - 1);
 
 	shader->ge_cntl =
 		S_03096C_PRIM_GRP_SIZE(shader->ngg.max_gsprims) |
@@ -1874,6 +1889,7 @@ static void si_shader_selector_key_hw_vs(struct si_context *sctx,
 	uint64_t linked = outputs_written & inputs_read;
 
 	key->opt.kill_outputs = ~linked & outputs_written;
+	key->opt.ngg_culling = sctx->ngg_culling;
 }
 
 /* Compute the key for the hw shader variant */
@@ -2917,6 +2933,20 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
 		break;
 	default:;
 	}
+
+	sel->ngg_culling_allowed =
+		sscreen->info.chip_class == GFX10 &&
+		sscreen->info.has_dedicated_vram &&
+		sscreen->use_ngg_culling &&
+		/* Disallow TES by default, because TessMark results are mixed. */
+		(sel->type == PIPE_SHADER_VERTEX ||
+		 (sscreen->always_use_ngg_culling && sel->type == PIPE_SHADER_TESS_EVAL)) &&
+		sel->info.writes_position &&
+		!sel->info.writes_viewport_index && /* cull only against viewport 0 */
+		!sel->info.writes_memory &&
+		!sel->so.num_outputs &&
+		!sel->info.properties[TGSI_PROPERTY_VS_BLIT_SGPRS_AMD] &&
+		!sel->info.properties[TGSI_PROPERTY_VS_WINDOW_SPACE_POSITION];
 
 	/* PA_CL_VS_OUT_CNTL */
 	if (sctx->chip_class <= GFX9)

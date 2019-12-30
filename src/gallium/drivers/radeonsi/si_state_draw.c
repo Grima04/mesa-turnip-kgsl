@@ -2038,6 +2038,45 @@ static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *i
 		sctx->do_update_shaders = true;
 	}
 
+	/* Update NGG culling settings. */
+	if (sctx->ngg &&
+	    rast_prim == PIPE_PRIM_TRIANGLES &&
+	    (sctx->screen->always_use_ngg_culling ||
+	     /* At least 1500 non-indexed triangles (4500 vertices) are needed
+	      * per draw call (no TES/GS) to enable NGG culling. Triangle strips
+	      * don't need this, because they have good reuse and therefore
+	      * perform the same as indexed triangles.
+	      */
+	     (!index_size && prim == PIPE_PRIM_TRIANGLES && direct_count > 4500 &&
+	      !sctx->tes_shader.cso && !sctx->gs_shader.cso)) &&
+	    si_get_vs(sctx)->cso->ngg_culling_allowed) {
+		unsigned ngg_culling = 0;
+
+		if (rs->rasterizer_discard) {
+			ngg_culling |= SI_NGG_CULL_FRONT_FACE |
+				       SI_NGG_CULL_BACK_FACE;
+		} else {
+			/* Polygon mode can't use view and small primitive culling,
+			 * because it draws points or lines where the culling depends
+			 * on the point or line width.
+			 */
+			if (!rs->polygon_mode_enabled)
+				ngg_culling |= SI_NGG_CULL_VIEW_SMALLPRIMS;
+
+			if (sctx->viewports.y_inverted ? rs->cull_back : rs->cull_front)
+				ngg_culling |= SI_NGG_CULL_FRONT_FACE;
+			if (sctx->viewports.y_inverted ? rs->cull_front : rs->cull_back)
+				ngg_culling |= SI_NGG_CULL_BACK_FACE;
+		}
+		if (ngg_culling != sctx->ngg_culling) {
+			sctx->ngg_culling = ngg_culling;
+			sctx->do_update_shaders = true;
+		}
+	} else if (sctx->ngg_culling) {
+		sctx->ngg_culling = false;
+		sctx->do_update_shaders = true;
+	}
+
 	if (sctx->do_update_shaders && !si_update_shaders(sctx))
 		goto return_cleanup;
 

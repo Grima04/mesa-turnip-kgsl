@@ -3101,6 +3101,7 @@ static void si_set_framebuffer_state(struct pipe_context *ctx,
 
 	si_update_ps_colorbuf0_slot(sctx);
 	si_update_poly_offset_state(sctx);
+	si_update_ngg_small_prim_precision(sctx);
 	si_mark_atom_dirty(sctx, &sctx->atoms.s.cb_render_state);
 	si_mark_atom_dirty(sctx, &sctx->atoms.s.framebuffer);
 

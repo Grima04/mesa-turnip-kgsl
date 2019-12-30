@@ -529,7 +529,7 @@ si_generate_gs_copy_shader(struct si_screen *sscreen,
 
 	builder = ctx.ac.builder;
 
-	si_create_function(&ctx);
+	si_create_function(&ctx, false);
 
 	LLVMValueRef buf_ptr = ac_get_arg(&ctx.ac, ctx.rw_buffers);
 	ctx.gsvs_ring[0] = ac_build_load_to_sgpr(&ctx.ac, buf_ptr,

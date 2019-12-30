@@ -445,6 +445,7 @@ void si_begin_new_gfx_cs(struct si_context *ctx)
 	ctx->last_num_tcs_input_cp = -1;
 	ctx->last_ls_hs_config = -1; /* impossible value */
 	ctx->last_binning_enabled = -1;
+	ctx->small_prim_cull_info_dirty = ctx->small_prim_cull_info_buf != NULL;
 
 	ctx->prim_discard_compute_ib_initialized = false;
 

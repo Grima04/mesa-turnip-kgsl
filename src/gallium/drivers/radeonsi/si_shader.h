@@ -157,6 +157,8 @@ struct si_context;
  */
 #define SI_MAX_IO_GENERIC       32
 
+#define SI_NGG_PRIM_EDGE_FLAG_BITS ((1 << 9) | (1 << 19) | (1 << 29))
+
 /* SGPR user data indices */
 enum {
 	SI_SGPR_RW_BUFFERS,  /* rings (& stream-out, VS only) */
@@ -254,6 +256,8 @@ enum {
 #define C_VS_STATE_PROVOKING_VTX_INDEX		0xFFFFFFCF
 #define S_VS_STATE_STREAMOUT_QUERY_ENABLED(x)	(((unsigned)(x) & 0x1) << 6)
 #define C_VS_STATE_STREAMOUT_QUERY_ENABLED	0xFFFFFFBF
+#define S_VS_STATE_SMALL_PRIM_PRECISION(x)	(((unsigned)(x) & 0xF) << 7)
+#define C_VS_STATE_SMALL_PRIM_PRECISION		0xFFFFF87F
 #define S_VS_STATE_LS_OUT_PATCH_SIZE(x)		(((unsigned)(x) & 0x1FFF) << 11)
 #define C_VS_STATE_LS_OUT_PATCH_SIZE		0xFF0007FF
 #define S_VS_STATE_LS_OUT_VERTEX_SIZE(x)	(((unsigned)(x) & 0xFF) << 24)
@@ -268,6 +272,10 @@ enum {
 	SI_VS_BLIT_SGPRS_POS_COLOR = 7,
 	SI_VS_BLIT_SGPRS_POS_TEXCOORD = 9,
 };
+
+#define SI_NGG_CULL_VIEW_SMALLPRIMS	(1 << 0) /* view.xy + small prims */
+#define SI_NGG_CULL_BACK_FACE		(1 << 1) /* back faces */
+#define SI_NGG_CULL_FRONT_FACE		(1 << 2) /* front faces */
 
 /**
  * For VS shader keys, describe any fixups required for vertex fetch.
@@ -425,6 +433,7 @@ struct si_shader_selector {
 	bool		vs_needs_prolog;
 	bool		force_correct_derivs_after_kill;
 	bool		prim_discard_cs_allowed;
+	bool		ngg_culling_allowed;
 	unsigned	num_vs_inputs;
 	unsigned	num_vbos_in_user_sgprs;
 	unsigned	pa_cl_vs_out_cntl;
@@ -554,6 +563,7 @@ union si_shader_part_key {
 		unsigned	as_ls:1;
 		unsigned	as_es:1;
 		unsigned	as_ngg:1;
+		unsigned	has_ngg_cull_inputs:1; /* from the NGG cull shader */
 		/* Prologs for monolithic shaders shouldn't set EXEC. */
 		unsigned	is_monolithic:1;
 	} vs_prolog;
@@ -643,6 +653,9 @@ struct si_shader_key {
 		/* For HW VS (it can be VS, TES, GS) */
 		uint64_t	kill_outputs; /* "get_unique_index" bits */
 		unsigned	clip_disable:1;
+
+		/* For NGG VS and TES. */
+		unsigned	ngg_culling:3; /* SI_NGG_CULL_* */
 
 		/* For shaders where monolithic variants have better code.
 		 *
@@ -883,6 +896,7 @@ gfx10_is_ngg_passthrough(struct si_shader *shader)
 	return sel->type != PIPE_SHADER_GEOMETRY &&
 	       !sel->so.num_outputs &&
 	       !sel->info.writes_edgeflag &&
+	       !shader->key.opt.ngg_culling &&
 	       (sel->type != PIPE_SHADER_VERTEX ||
 		!shader->key.mono.u.vs_export_prim_id);
 }

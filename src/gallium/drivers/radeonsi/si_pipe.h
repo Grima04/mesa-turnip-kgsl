@@ -183,6 +183,8 @@ enum {
 	/* 3D engine options: */
 	DBG_NO_GFX,
 	DBG_NO_NGG,
+	DBG_ALWAYS_NGG_CULLING,
+	DBG_NO_NGG_CULLING,
 	DBG_ALWAYS_PD,
 	DBG_PD,
 	DBG_NO_PD,
@@ -506,6 +508,8 @@ struct si_screen {
 	bool				dfsm_allowed;
 	bool				llvm_has_working_vgpr_indexing;
 	bool				use_ngg;
+	bool				use_ngg_culling;
+	bool				always_use_ngg_culling;
 	bool				use_ngg_streamout;
 
 	struct {
@@ -1072,6 +1076,7 @@ struct si_context {
 	bool			ls_vgpr_fix:1;
 	bool			prim_discard_cs_instancing:1;
 	bool			ngg:1;
+	uint8_t			ngg_culling;
 	int			last_index_size;
 	int			last_base_vertex;
 	int			last_start_instance;
@@ -1087,6 +1092,11 @@ struct si_context {
 	unsigned		current_vs_state;
 	unsigned		last_vs_state;
 	enum pipe_prim_type	current_rast_prim; /* primitive type after TES, GS */
+
+	struct si_small_prim_cull_info last_small_prim_cull_info;
+	struct si_resource	*small_prim_cull_info_buf;
+	uint64_t		small_prim_cull_info_address;
+	bool			small_prim_cull_info_dirty;
 
 	/* Scratch buffer */
 	struct si_resource	*scratch_buffer;
@@ -1499,6 +1509,7 @@ struct pipe_video_buffer *si_video_buffer_create(struct pipe_context *pipe,
 						 const struct pipe_video_buffer *tmpl);
 
 /* si_viewport.c */
+void si_update_ngg_small_prim_precision(struct si_context *ctx);
 void si_get_small_prim_cull_info(struct si_context *sctx,
 				 struct si_small_prim_cull_info *out);
 void si_update_vs_viewport_state(struct si_context *ctx);

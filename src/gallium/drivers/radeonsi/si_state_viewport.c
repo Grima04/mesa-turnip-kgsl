@@ -23,9 +23,31 @@
  */
 
 #include "si_build_pm4.h"
+#include "util/u_upload_mgr.h"
 #include "util/u_viewport.h"
 
 #define SI_MAX_SCISSOR 16384
+
+void si_update_ngg_small_prim_precision(struct si_context *ctx)
+{
+	if (!ctx->screen->use_ngg_culling)
+		return;
+
+	/* Set VS_STATE.SMALL_PRIM_PRECISION for NGG culling. */
+	unsigned num_samples = ctx->framebuffer.nr_samples;
+	unsigned quant_mode = ctx->viewports.as_scissor[0].quant_mode;
+	float precision;
+
+	if (quant_mode == SI_QUANT_MODE_12_12_FIXED_POINT_1_4096TH)
+		precision = num_samples / 4096.0;
+	else if (quant_mode == SI_QUANT_MODE_14_10_FIXED_POINT_1_1024TH)
+		precision = num_samples / 1024.0;
+	else
+		precision = num_samples / 256.0;
+
+	ctx->current_vs_state &= C_VS_STATE_SMALL_PRIM_PRECISION;
+	ctx->current_vs_state |= S_VS_STATE_SMALL_PRIM_PRECISION(fui(precision) >> 23);
+}
 
 void si_get_small_prim_cull_info(struct si_context *sctx,
 				 struct si_small_prim_cull_info *out)
@@ -321,6 +343,8 @@ static void si_emit_guardband(struct si_context *ctx)
 						       vp_as_scissor.quant_mode));
 	if (initial_cdw != ctx->gfx_cs->current.cdw)
 		ctx->context_roll = true;
+
+	si_update_ngg_small_prim_precision(ctx);
 }
 
 static void si_emit_scissors(struct si_context *ctx)
@@ -447,6 +471,35 @@ static void si_emit_viewports(struct si_context *ctx)
 {
 	struct radeon_cmdbuf *cs = ctx->gfx_cs;
 	struct pipe_viewport_state *states = ctx->viewports.states;
+
+	if (ctx->screen->use_ngg_culling) {
+		/* Set the viewport info for small primitive culling. */
+		struct si_small_prim_cull_info info;
+		si_get_small_prim_cull_info(ctx, &info);
+
+		if (memcmp(&info, &ctx->last_small_prim_cull_info, sizeof(info))) {
+			unsigned offset = 0;
+
+			/* Align to 256, because the address is shifted by 8 bits. */
+			u_upload_data(ctx->b.const_uploader, 0, sizeof(info), 256,
+				      &info, &offset,
+				      (struct pipe_resource**)&ctx->small_prim_cull_info_buf);
+
+			ctx->small_prim_cull_info_address =
+				ctx->small_prim_cull_info_buf->gpu_address + offset;
+			ctx->last_small_prim_cull_info = info;
+			ctx->small_prim_cull_info_dirty = true;
+		}
+
+		if (ctx->small_prim_cull_info_dirty) {
+			/* This will end up in SGPR6 as (value << 8), shifted by the hw. */
+			radeon_add_to_buffer_list(ctx, ctx->gfx_cs, ctx->small_prim_cull_info_buf,
+						  RADEON_USAGE_READ, RADEON_PRIO_CONST_BUFFER);
+			radeon_set_sh_reg(ctx->gfx_cs, R_00B220_SPI_SHADER_PGM_LO_GS,
+					  ctx->small_prim_cull_info_address >> 8);
+			ctx->small_prim_cull_info_dirty = false;
+		}
+	}
 
 	/* The simple case: Only 1 viewport is active. */
 	if (!ctx->vs_writes_viewport_index) {
