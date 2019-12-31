@@ -1061,11 +1061,9 @@ static int gfx9_compute_miptree(ADDR_HANDLE addrlib,
 	surf->surf_size = out.surfSize;
 	surf->surf_alignment = out.baseAlign;
 
-	if (in->swizzleMode == ADDR_SW_LINEAR) {
-		for (unsigned i = 0; i < in->numMipLevels; i++) {
-			surf->u.gfx9.offset[i] = mip_info[i].offset;
-			surf->u.gfx9.pitch[i] = mip_info[i].pitch;
-		}
+	for (unsigned i = 0; i < in->numMipLevels; i++) {
+		surf->u.gfx9.offset[i] = mip_info[i].offset;
+		surf->u.gfx9.pitch[i] = mip_info[i].pitch;
 	}
 
 	if (in->flags.depth) {
