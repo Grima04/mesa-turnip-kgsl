@@ -736,10 +736,11 @@ print_branch_cond(int cond)
         }
 }
 
-static void
+static bool
 print_compact_branch_writeout_field(uint16_t word)
 {
         midgard_jmp_writeout_op op = word & 0x7;
+        midg_stats.instruction_count++;
 
         switch (op) {
         case midgard_jmp_writeout_op_branch_uncond: {
@@ -757,7 +758,7 @@ print_compact_branch_writeout_field(uint16_t word)
                 print_tag_short(br_uncond.dest_tag);
                 printf("\n");
 
-                break;
+                return br_uncond.offset >= 0;
         }
 
         case midgard_jmp_writeout_op_branch_cond:
@@ -781,14 +782,14 @@ print_compact_branch_writeout_field(uint16_t word)
                 print_tag_short(br_cond.dest_tag);
                 printf("\n");
 
-                break;
+                return br_cond.offset >= 0;
         }
         }
 
-        midg_stats.instruction_count++;
+        return false;
 }
 
-static void
+static bool
 print_extended_branch_writeout_field(uint8_t *words, unsigned next)
 {
         midgard_branch_extended br;
@@ -836,6 +837,7 @@ print_extended_branch_writeout_field(uint8_t *words, unsigned next)
         midg_tags[I] = br.dest_tag;
 
         midg_stats.instruction_count++;
+        return br.offset >= 0;
 }
 
 static unsigned
@@ -873,7 +875,7 @@ float_bitcast(uint32_t integer)
         return v.f;
 }
 
-static void
+static bool
 print_alu_word(uint32_t *words, unsigned num_quad_words,
                unsigned tabs, unsigned next)
 {
@@ -882,6 +884,7 @@ print_alu_word(uint32_t *words, unsigned num_quad_words,
         unsigned num_fields = num_alu_fields_enabled(control_word);
         uint16_t *word_ptr = beginning_ptr + num_fields;
         unsigned num_words = 2 + num_fields;
+        bool branch_forward = false;
 
         if ((control_word >> 16) & 1)
                 printf("unknown bit 16 enabled\n");
@@ -933,13 +936,13 @@ print_alu_word(uint32_t *words, unsigned num_quad_words,
         }
 
         if ((control_word >> 26) & 1) {
-                print_compact_branch_writeout_field(*word_ptr);
+                branch_forward |= print_compact_branch_writeout_field(*word_ptr);
                 word_ptr += 1;
                 num_words += 1;
         }
 
         if ((control_word >> 27) & 1) {
-                print_extended_branch_writeout_field((uint8_t *) word_ptr, next);
+                branch_forward |= print_extended_branch_writeout_field((uint8_t *) word_ptr, next);
                 word_ptr += 3;
                 num_words += 3;
         }
@@ -984,6 +987,8 @@ print_alu_word(uint32_t *words, unsigned num_quad_words,
 
                 }
         }
+
+        return branch_forward;
 }
 
 static void
@@ -1454,9 +1459,8 @@ disassemble_midgard(uint8_t *code, size_t size, unsigned gpu_id, gl_shader_stage
         uint32_t *words = (uint32_t *) code;
         unsigned num_words = size / 4;
         int tabs = 0;
-        num_words = MIN2(num_words, 100);
 
-        bool prefetch_flag = false;
+        bool branch_forward = false;
 
         int last_next_tag = -1;
 
@@ -1515,7 +1519,7 @@ disassemble_midgard(uint8_t *code, size_t size, unsigned gpu_id, gl_shader_stage
                         break;
 
                 case midgard_word_type_alu:
-                        print_alu_word(&words[i], num_quad_words, tabs, i + 4*num_quad_words);
+                        branch_forward = print_alu_word(&words[i], num_quad_words, tabs, i + 4*num_quad_words);
 
                         /* Reset word static analysis state */
                         is_embedded_constant_half = false;
@@ -1537,23 +1541,12 @@ disassemble_midgard(uint8_t *code, size_t size, unsigned gpu_id, gl_shader_stage
                 midg_stats.bundle_count++;
                 midg_stats.quadword_count += num_quad_words;
 
-                if (prefetch_flag && midgard_word_types[tag] == midgard_word_type_alu)
-                        break;
-
                 printf("\n");
 
                 unsigned next = (words[i] & 0xF0) >> 4;
 
-                /* Break based on instruction prefetch flag */
-
-#if 0
-                if (i < num_words && next == 1) {
-                        prefetch_flag = true;
-
-                        if (midgard_word_types[words[i] & 0xF] != midgard_word_type_alu)
-                                break;
-                }
-#endif
+                if (i < num_words && next == 1 && !branch_forward)
+                        break;
 
                 i += 4 * num_quad_words;
         }
