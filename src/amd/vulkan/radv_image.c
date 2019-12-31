@@ -129,17 +129,14 @@ radv_use_tc_compat_htile_for_image(struct radv_device *device,
 static bool
 radv_surface_has_scanout(struct radv_device *device, const struct radv_image_create_info *info)
 {
-	if (info->scanout)
-		return true;
-
-	if (!info->bo_metadata)
-		return false;
-
-	if (device->physical_device->rad_info.chip_class >= GFX9) {
-		return info->bo_metadata->u.gfx9.swizzle_mode == 0 || info->bo_metadata->u.gfx9.swizzle_mode % 4 == 2;
-	} else {
-		return info->bo_metadata->u.legacy.scanout;
+	if (info->bo_metadata) {
+		if (device->physical_device->rad_info.chip_class >= GFX9)
+			return info->bo_metadata->u.gfx9.scanout;
+		else
+			return info->bo_metadata->u.legacy.scanout;
 	}
+
+	return info->scanout;
 }
 
 static bool
@@ -1152,6 +1149,7 @@ radv_init_metadata(struct radv_device *device,
 
 	if (device->physical_device->rad_info.chip_class >= GFX9) {
 		metadata->u.gfx9.swizzle_mode = surface->u.gfx9.surf.swizzle_mode;
+		metadata->u.gfx9.scanout = (surface->flags & RADEON_SURF_SCANOUT) != 0;
 	} else {
 		metadata->u.legacy.microtile = surface->u.legacy.level[0].mode >= RADEON_SURF_MODE_1D ?
 			RADEON_LAYOUT_TILED : RADEON_LAYOUT_LINEAR;
