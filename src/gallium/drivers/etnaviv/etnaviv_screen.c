@@ -188,6 +188,8 @@ etna_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return 128;
    case PIPE_CAP_MAX_VERTEX_ELEMENT_SRC_OFFSET:
       return 255;
+   case PIPE_CAP_MAX_VERTEX_BUFFERS:
+      return screen->specs.stream_count;
 
    /* Texturing. */
    case PIPE_CAP_TEXTURE_SHADOW_MAP:
