@@ -428,34 +428,6 @@ fs_inst::has_source_and_destination_hazard() const
 }
 
 bool
-fs_inst::is_copy_payload(const brw::simple_allocator &grf_alloc) const
-{
-   if (this->opcode != SHADER_OPCODE_LOAD_PAYLOAD)
-      return false;
-
-   fs_reg reg = this->src[0];
-   if (reg.file != VGRF || reg.offset != 0 || reg.stride != 1)
-      return false;
-
-   if (grf_alloc.sizes[reg.nr] * REG_SIZE != this->size_written)
-      return false;
-
-   for (int i = 0; i < this->sources; i++) {
-      reg.type = this->src[i].type;
-      if (!this->src[i].equals(reg))
-         return false;
-
-      if (i < this->header_size) {
-         reg.offset += REG_SIZE;
-      } else {
-         reg = horiz_offset(reg, this->exec_size);
-      }
-   }
-
-   return true;
-}
-
-bool
 fs_inst::can_do_source_mods(const struct gen_device_info *devinfo) const
 {
    if (devinfo->gen == 6 && is_math())

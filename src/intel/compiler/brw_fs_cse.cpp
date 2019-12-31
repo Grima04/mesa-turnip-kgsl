@@ -105,7 +105,7 @@ is_expression(const fs_visitor *v, const fs_inst *const inst)
    case SHADER_OPCODE_COS:
       return inst->mlen < 2;
    case SHADER_OPCODE_LOAD_PAYLOAD:
-      return !inst->is_copy_payload(v->alloc);
+      return !is_coalescing_payload(v->alloc, inst);
    default:
       return inst->is_send_from_grf() && !inst->has_side_effects() &&
          !inst->is_volatile();
