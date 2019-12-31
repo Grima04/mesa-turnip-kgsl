@@ -219,35 +219,6 @@ M_LOAD(ld_cubemap_coords);
 M_LOAD(ld_compute_id);
 
 static midgard_instruction
-v_alu_br_compact_cond(midgard_jmp_writeout_op op, unsigned tag, signed offset, unsigned cond)
-{
-        midgard_branch_cond branch = {
-                .op = op,
-                .dest_tag = tag,
-                .offset = offset,
-                .cond = cond
-        };
-
-        uint16_t compact;
-        memcpy(&compact, &branch, sizeof(branch));
-
-        midgard_instruction ins = {
-                .type = TAG_ALU_4,
-                .unit = ALU_ENAB_BR_COMPACT,
-                .prepacked_branch = true,
-                .compact_branch = true,
-                .br_compact = compact,
-                .dest = ~0,
-                .src = { ~0, ~0, ~0, ~0 },
-        };
-
-        if (op == midgard_jmp_writeout_op_writeout)
-                ins.writeout = true;
-
-        return ins;
-}
-
-static midgard_instruction
 v_branch(bool conditional, bool invert)
 {
         midgard_instruction ins = {
@@ -2459,7 +2430,6 @@ emit_loop(struct compiler_context *ctx, nir_loop *nloop)
                 mir_foreach_instr_in_block(block, ins) {
                         if (ins->type != TAG_ALU_4) continue;
                         if (!ins->compact_branch) continue;
-                        if (ins->prepacked_branch) continue;
 
                         /* We found a branch -- check the type to see if we need to do anything */
                         if (ins->branch.target_type != TARGET_BREAK) continue;
@@ -2751,8 +2721,6 @@ midgard_compile_shader_nir(nir_shader *nir, midgard_program *program, bool is_bl
                                 midgard_instruction *ins = bundle->instructions[c];
 
                                 if (!midgard_is_branch_unit(ins->unit)) continue;
-
-                                if (ins->prepacked_branch) continue;
 
                                 /* Parse some basic branch info */
                                 bool is_compact = ins->unit == ALU_ENAB_BR_COMPACT;

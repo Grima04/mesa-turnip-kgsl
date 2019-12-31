@@ -551,7 +551,7 @@ mir_choose_instruction(
                         continue;
 
                 bool conditional = alu && !branch && OP_IS_CSEL(instructions[i]->alu.op);
-                conditional |= (branch && !instructions[i]->prepacked_branch && instructions[i]->branch.conditional);
+                conditional |= (branch && instructions[i]->branch.conditional);
 
                 if (conditional && no_cond)
                         continue;
@@ -873,7 +873,7 @@ mir_schedule_alu(
         mir_update_worklist(worklist, len, instructions, branch);
         bool writeout = branch && branch->writeout;
 
-        if (branch && !branch->prepacked_branch && branch->branch.conditional) {
+        if (branch && branch->branch.conditional) {
                 midgard_instruction *cond = mir_schedule_condition(ctx, &predicate, worklist, len, instructions, branch);
 
                 if (cond->unit == UNIT_VADD)

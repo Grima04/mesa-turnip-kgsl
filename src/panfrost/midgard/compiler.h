@@ -109,7 +109,6 @@ typedef struct midgard_instruction {
 
         bool compact_branch;
         bool writeout;
-        bool prepacked_branch;
 
         /* Kind of a hack, but hint against aggressive DCE */
         bool dont_eliminate;

@@ -325,7 +325,7 @@ emit_alu_bundle(compiler_context *ctx,
                 midgard_instruction *ins = bundle->instructions[i];
 
                 /* Check if this instruction has registers */
-                if (ins->compact_branch || ins->prepacked_branch) continue;
+                if (ins->compact_branch) continue;
 
                 /* Otherwise, just emit the registers */
                 uint16_t reg_word = 0;

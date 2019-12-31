@@ -482,7 +482,7 @@ mir_bytemask_of_read_components(midgard_instruction *ins, unsigned node)
                         return 0xFFFF;
 
                 /* Conditional branches read one 32-bit component = 4 bytes (TODO: multi branch??) */
-                if (ins->compact_branch && !ins->prepacked_branch && ins->branch.conditional && (i == 0))
+                if (ins->compact_branch && ins->branch.conditional && (i == 0))
                         return 0xF;
 
                 /* ALU ops act componentwise so we need to pay attention to
