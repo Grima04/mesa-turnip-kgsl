@@ -4239,24 +4239,31 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
          l3_fence = modes & (nir_var_shader_out |
                              nir_var_mem_ssbo |
                              nir_var_mem_global);
-         /* Prior to gen11, we only have one kind of fence. */
-         slm_fence = devinfo->gen >= 11 && (modes & nir_var_mem_shared);
-         l3_fence |= devinfo->gen < 11 && (modes & nir_var_mem_shared);
+         slm_fence = modes & nir_var_mem_shared;
       } else {
-         if (devinfo->gen >= 11) {
-            l3_fence = instr->intrinsic != nir_intrinsic_memory_barrier_shared;
-            slm_fence = instr->intrinsic == nir_intrinsic_group_memory_barrier ||
-                        instr->intrinsic == nir_intrinsic_memory_barrier ||
-                        instr->intrinsic == nir_intrinsic_memory_barrier_shared;
-         } else {
-            /* Prior to gen11, we only have one kind of fence. */
-            l3_fence = true;
-            slm_fence = false;
-         }
+         l3_fence = instr->intrinsic != nir_intrinsic_memory_barrier_shared;
+         slm_fence = instr->intrinsic == nir_intrinsic_group_memory_barrier ||
+                     instr->intrinsic == nir_intrinsic_memory_barrier ||
+                     instr->intrinsic == nir_intrinsic_memory_barrier_shared;
       }
 
       if (stage != MESA_SHADER_COMPUTE)
          slm_fence = false;
+
+      /* If the workgroup fits in a single HW thread, the messages for SLM are
+       * processed in-order and the shader itself is already synchronized so
+       * the memory fence is not necessary.
+       *
+       * TODO: Check if applies for many HW threads sharing same Data Port.
+       */
+      if (slm_fence && workgroup_size() <= dispatch_width)
+         slm_fence = false;
+
+      /* Prior to Gen11, there's only L3 fence, so emit that instead. */
+      if (slm_fence && devinfo->gen < 11) {
+         slm_fence = false;
+         l3_fence = true;
+      }
 
       /* Be conservative in Gen11+ and always stall in a fence.  Since there
        * are two different fences, and shader might want to synchronize
@@ -4286,6 +4293,9 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
                    brw_imm_ud(GEN7_BTI_SLM))
             ->size_written = 2 * REG_SIZE;
       }
+
+      if (!l3_fence && !slm_fence)
+         ubld.emit(FS_OPCODE_SCHEDULING_FENCE);
 
       break;
    }
