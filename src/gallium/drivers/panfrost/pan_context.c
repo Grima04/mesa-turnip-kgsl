@@ -936,9 +936,12 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                 unsigned rt_count = MAX2(ctx->pipe_framebuffer.nr_cbufs, 1);
 
                 struct panfrost_blend_final blend[PIPE_MAX_COLOR_BUFS];
+                unsigned shader_offset = 0;
+                struct panfrost_bo *shader_bo = NULL;
 
-                for (unsigned c = 0; c < rt_count; ++c)
-                        blend[c] = panfrost_get_blend_for_context(ctx, c);
+                for (unsigned c = 0; c < rt_count; ++c) {
+                        blend[c] = panfrost_get_blend_for_context(ctx, c, &shader_bo, &shader_offset);
+                }
 
                 /* If there is a blend shader, work registers are shared. XXX: opt */
 
@@ -979,13 +982,17 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                 /* Even on MFBD, the shader descriptor gets blend shaders. It's
                  * *also* copied to the blend_meta appended (by convention),
                  * but this is the field actually read by the hardware. (Or
-                 * maybe both are read...?) */
+                 * maybe both are read...?). Specify the last RTi with a blend
+                 * shader. */
 
-                if (blend[0].is_shader) {
-                        ctx->fragment_shader_core.blend.shader =
-                                blend[0].shader.bo->gpu | blend[0].shader.first_tag;
-                } else {
-                        ctx->fragment_shader_core.blend.shader = 0;
+                ctx->fragment_shader_core.blend.shader = 0;
+
+                for (signed rt = (rt_count - 1); rt >= 0; --rt) {
+                        if (blend[rt].is_shader) {
+                                ctx->fragment_shader_core.blend.shader =
+                                        blend[rt].shader.gpu | blend[rt].shader.first_tag;
+                                break;
+                        }
                 }
 
                 if (screen->quirks & MIDGARD_SFBD) {
@@ -1039,7 +1046,7 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                                 assert(!(is_srgb && blend[i].is_shader));
 
                                 if (blend[i].is_shader) {
-                                        rts[i].blend.shader = blend[i].shader.bo->gpu | blend[i].shader.first_tag;
+                                        rts[i].blend.shader = blend[i].shader.gpu | blend[i].shader.first_tag;
                                 } else {
                                         rts[i].blend.equation = *blend[i].equation.equation;
                                         rts[i].blend.constant = blend[i].equation.constant;
