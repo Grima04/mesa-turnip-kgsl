@@ -32,7 +32,6 @@
 #include <ctype.h>
 #include <string.h>
 #include "midgard.h"
-#include "midgard-parse.h"
 #include "midgard_ops.h"
 #include "midgard_quirks.h"
 #include "disassemble.h"

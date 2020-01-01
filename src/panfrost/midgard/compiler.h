@@ -27,6 +27,7 @@
 #include "midgard.h"
 #include "helpers.h"
 #include "midgard_compile.h"
+#include "midgard_ops.h"
 #include "lcra.h"
 
 #include "util/hash_table.h"
@@ -462,7 +463,7 @@ mir_exit_block(struct compiler_context *ctx)
 static inline bool
 mir_is_alu_bundle(midgard_bundle *bundle)
 {
-        return IS_ALU(bundle->tag);
+        return midgard_word_types[bundle->tag] == midgard_word_type_alu;
 }
 
 /* Registers/SSA are distinguish in the backend by the bottom-most bit */
