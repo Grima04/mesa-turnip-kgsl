@@ -388,6 +388,15 @@ lima_screen_set_plb_max_blk(struct lima_screen *screen)
 static bool
 lima_screen_query_info(struct lima_screen *screen)
 {
+   drmVersionPtr version = drmGetVersion(screen->fd);
+   if (!version)
+      return false;
+
+   if (version->version_major > 1 || version->version_minor > 0)
+      screen->has_growable_heap_buffer = true;
+
+   drmFreeVersion(version);
+
    struct drm_lima_get_param param;
 
    memset(&param, 0, sizeof(param));
