@@ -114,6 +114,21 @@ softpipe_find_fs_variant(struct softpipe_context *sp,
    return create_fs_variant(sp, fs, key);
 }
 
+static void
+softpipe_create_shader_state(struct pipe_shader_state *shader,
+                             const struct pipe_shader_state *templ,
+                             bool debug)
+{
+   assert(templ->type == PIPE_SHADER_IR_TGSI);
+   shader->type = PIPE_SHADER_IR_TGSI;
+   /* we need to keep a local copy of the tokens */
+   shader->tokens = tgsi_dup_tokens(templ->tokens);
+
+   shader->stream_output = templ->stream_output;
+
+   if (debug)
+      tgsi_dump(shader->tokens, 0);
+}
 
 static void *
 softpipe_create_fs_state(struct pipe_context *pipe,
@@ -122,12 +137,7 @@ softpipe_create_fs_state(struct pipe_context *pipe,
    struct softpipe_context *softpipe = softpipe_context(pipe);
    struct sp_fragment_shader *state = CALLOC_STRUCT(sp_fragment_shader);
 
-   /* debug */
-   if (softpipe->dump_fs) 
-      tgsi_dump(templ->tokens, 0);
-
-   /* we need to keep a local copy of the tokens */
-   state->shader.tokens = tgsi_dup_tokens(templ->tokens);
+   softpipe_create_shader_state(&state->shader, templ, softpipe->dump_fs);
 
    /* draw's fs state */
    state->draw_shader = draw_create_fragment_shader(softpipe->draw,
@@ -211,13 +221,11 @@ softpipe_create_vs_state(struct pipe_context *pipe,
    if (!state)
       goto fail;
 
-   /* copy shader tokens, the ones passed in will go away.
-    */
-   state->shader.tokens = tgsi_dup_tokens(templ->tokens);
-   if (state->shader.tokens == NULL)
+   softpipe_create_shader_state(&state->shader, templ, false);
+   if (!state->shader.tokens)
       goto fail;
 
-   state->draw_data = draw_create_vertex_shader(softpipe->draw, templ);
+   state->draw_data = draw_create_vertex_shader(softpipe->draw, &state->shader);
    if (state->draw_data == NULL) 
       goto fail;
 
@@ -273,19 +281,9 @@ softpipe_create_gs_state(struct pipe_context *pipe,
    if (!state)
       goto fail;
 
-   state->shader = *templ;
+   softpipe_create_shader_state(&state->shader, templ, softpipe->dump_gs);
 
    if (templ->tokens) {
-      /* debug */
-      if (softpipe->dump_gs)
-         tgsi_dump(templ->tokens, 0);
-
-      /* copy shader tokens, the ones passed in will go away.
-       */
-      state->shader.tokens = tgsi_dup_tokens(templ->tokens);
-      if (state->shader.tokens == NULL)
-         goto fail;
-
       state->draw_data = draw_create_geometry_shader(softpipe->draw, templ);
       if (state->draw_data == NULL)
          goto fail;
