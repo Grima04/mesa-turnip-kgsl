@@ -1135,6 +1135,14 @@ print_tex_instr(nir_tex_instr *instr, print_state *state)
          fprintf(fp, ", %u (sampler)", instr->sampler_index);
       }
    }
+
+   if (instr->texture_non_uniform) {
+      fprintf(fp, ", texture non-uniform");
+   }
+
+   if (instr->sampler_non_uniform) {
+      fprintf(fp, ", sampler non-uniform");
+   }
 }
 
 static void
