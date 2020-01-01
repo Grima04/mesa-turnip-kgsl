@@ -434,6 +434,8 @@ gpu_supports_render_format(struct etna_screen *screen, enum pipe_format format,
    /* Validate MSAA; number of samples must be allowed, and render target
     * must have MSAA'able format. */
    if (sample_count > 1) {
+      if (!VIV_FEATURE(screen, chipFeatures, MSAA))
+         return false;
       if (!translate_samples_to_xyscale(sample_count, NULL, NULL))
          return false;
       if (translate_ts_format(format) == ETNA_NO_MATCH)
