@@ -33,6 +33,20 @@
 
 #include "nir/nir_builder.h"
 
+/* It seems like sample counts need to be copied over to 16-byte aligned
+ * memory. */
+struct PACKED slot_value {
+   uint64_t value;
+   uint64_t __padding;
+};
+
+struct PACKED occlusion_query_slot {
+   struct slot_value available; /* 0 when unavailable, 1 when available */
+   struct slot_value begin;
+   struct slot_value end;
+   struct slot_value result;
+};
+
 VkResult
 tu_CreateQueryPool(VkDevice _device,
                    const VkQueryPoolCreateInfo *pCreateInfo,
@@ -40,6 +54,21 @@ tu_CreateQueryPool(VkDevice _device,
                    VkQueryPool *pQueryPool)
 {
    TU_FROM_HANDLE(tu_device, device, _device);
+   assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO);
+   assert(pCreateInfo->queryCount > 0);
+
+   uint32_t slot_size;
+   switch (pCreateInfo->queryType) {
+   case VK_QUERY_TYPE_OCCLUSION:
+      slot_size = sizeof(struct occlusion_query_slot);
+      break;
+   case VK_QUERY_TYPE_PIPELINE_STATISTICS:
+   case VK_QUERY_TYPE_TIMESTAMP:
+      unreachable("Unimplemented query type");
+   default:
+      assert(!"Invalid query type");
+   }
+
    struct tu_query_pool *pool =
       vk_alloc2(&device->alloc, pAllocator, sizeof(*pool), 8,
                 VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
@@ -47,7 +76,29 @@ tu_CreateQueryPool(VkDevice _device,
    if (!pool)
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
+   VkResult result = tu_bo_init_new(device, &pool->bo,
+         pCreateInfo->queryCount * slot_size);
+   if (result != VK_SUCCESS) {
+      vk_free2(&device->alloc, pAllocator, pool);
+      return result;
+   }
+
+   result = tu_bo_map(device, &pool->bo);
+   if (result != VK_SUCCESS) {
+      tu_bo_finish(device, &pool->bo);
+      vk_free2(&device->alloc, pAllocator, pool);
+      return result;
+   }
+
+   /* Initialize all query statuses to unavailable */
+   memset(pool->bo.map, 0, pool->bo.size);
+
+   pool->type = pCreateInfo->queryType;
+   pool->stride = slot_size;
+   pool->size = pCreateInfo->queryCount;
+   pool->pipeline_statistics = pCreateInfo->pipelineStatistics;
    *pQueryPool = tu_query_pool_to_handle(pool);
+
    return VK_SUCCESS;
 }
 
@@ -62,6 +113,7 @@ tu_DestroyQueryPool(VkDevice _device,
    if (!pool)
       return;
 
+   tu_bo_finish(device, &pool->bo);
    vk_free2(&device->alloc, pAllocator, pool);
 }
 
