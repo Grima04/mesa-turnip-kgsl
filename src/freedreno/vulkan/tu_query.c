@@ -226,11 +226,93 @@ tu_CmdBeginQuery(VkCommandBuffer commandBuffer,
    tu_bo_list_add(&cmdbuf->bo_list, &pool->bo, MSM_SUBMIT_BO_WRITE);
 }
 
+static void
+emit_end_occlusion_query(struct tu_cmd_buffer *cmdbuf,
+                         struct tu_query_pool *pool,
+                         uint32_t query)
+{
+   /* Ending an occlusion query happens in a few steps:
+    *    1) Set the slot->end to UINT64_MAX.
+    *    2) Set up the SAMPLE_COUNT registers and trigger a CP_EVENT_WRITE to
+    *       write the current sample count value into slot->end.
+    *    3) Since (2) is asynchronous, wait until slot->end is not equal to
+    *       UINT64_MAX before continuing via CP_WAIT_REG_MEM.
+    *    4) Accumulate the results of the query (slot->end - slot->begin) into
+    *       slot->result.
+    *    5) If vkCmdEndQuery is *not* called from within the scope of a render
+    *       pass, set the slot's available bit since the query is now done.
+    *    6) If vkCmdEndQuery *is* called from within the scope of a render
+    *       pass, we cannot mark as available yet since the commands in
+    *       draw_cs are not run until vkCmdEndRenderPass.
+    */
+   struct tu_cs *cs = cmdbuf->state.pass ? &cmdbuf->draw_cs : &cmdbuf->cs;
+
+   uint64_t begin_iova = occlusion_query_iova(pool, query, begin);
+   uint64_t end_iova = occlusion_query_iova(pool, query, end);
+   uint64_t result_iova = occlusion_query_iova(pool, query, result);
+   tu_cs_reserve_space(cmdbuf->device, cs, 31);
+   tu_cs_emit_pkt7(cs, CP_MEM_WRITE, 4);
+   tu_cs_emit_qw(cs, end_iova);
+   tu_cs_emit_qw(cs, 0xffffffffffffffffull);
+
+   tu_cs_emit_pkt7(cs, CP_WAIT_MEM_WRITES, 0);
+
+   tu_cs_emit_regs(cs,
+                   A6XX_RB_SAMPLE_COUNT_CONTROL(.copy = true));
+
+   tu_cs_emit_regs(cs,
+                   A6XX_RB_SAMPLE_COUNT_ADDR_LO(end_iova));
+
+   tu_cs_emit_pkt7(cs, CP_EVENT_WRITE, 1);
+   tu_cs_emit(cs, ZPASS_DONE);
+
+   tu_cs_emit_pkt7(cs, CP_WAIT_REG_MEM, 6);
+   tu_cs_emit(cs, CP_WAIT_REG_MEM_0_FUNCTION(WRITE_NE) |
+                  CP_WAIT_REG_MEM_0_POLL_MEMORY);
+   tu_cs_emit_qw(cs, end_iova);
+   tu_cs_emit(cs, CP_WAIT_REG_MEM_3_REF(0xffffffff));
+   tu_cs_emit(cs, CP_WAIT_REG_MEM_4_MASK(~0));
+   tu_cs_emit(cs, CP_WAIT_REG_MEM_5_DELAY_LOOP_CYCLES(16));
+
+   /* result (dst) = result (srcA) + end (srcB) - begin (srcC) */
+   tu_cs_emit_pkt7(cs, CP_MEM_TO_MEM, 9);
+   tu_cs_emit(cs, CP_MEM_TO_MEM_0_DOUBLE | CP_MEM_TO_MEM_0_NEG_C);
+   tu_cs_emit_qw(cs, result_iova);
+   tu_cs_emit_qw(cs, result_iova);
+   tu_cs_emit_qw(cs, end_iova);
+   tu_cs_emit_qw(cs, begin_iova);
+
+   tu_cs_emit_pkt7(cs, CP_WAIT_MEM_WRITES, 0);
+
+   if (!cmdbuf->state.pass) {
+      tu_cs_reserve_space(cmdbuf->device, cs, 5);
+      tu_cs_emit_pkt7(cs, CP_MEM_WRITE, 4);
+      tu_cs_emit_qw(cs, occlusion_query_iova(pool, query, available));
+      tu_cs_emit_qw(cs, 0x1);
+   }
+}
+
 void
 tu_CmdEndQuery(VkCommandBuffer commandBuffer,
                VkQueryPool queryPool,
                uint32_t query)
 {
+   TU_FROM_HANDLE(tu_cmd_buffer, cmdbuf, commandBuffer);
+   TU_FROM_HANDLE(tu_query_pool, pool, queryPool);
+   assert(query < pool->size);
+
+   switch (pool->type) {
+   case VK_QUERY_TYPE_OCCLUSION:
+      emit_end_occlusion_query(cmdbuf, pool, query);
+      break;
+   case VK_QUERY_TYPE_PIPELINE_STATISTICS:
+   case VK_QUERY_TYPE_TIMESTAMP:
+      unreachable("Unimplemented query type");
+   default:
+      assert(!"Invalid query type");
+   }
+
+   tu_bo_list_add(&cmdbuf->bo_list, &pool->bo, MSM_SUBMIT_BO_WRITE);
 }
 
 void
