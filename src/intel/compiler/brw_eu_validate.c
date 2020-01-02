@@ -475,6 +475,10 @@ execution_type(const struct gen_device_info *devinfo, const brw_inst *inst)
    if (src0_exec_type == src1_exec_type)
       return src0_exec_type;
 
+   if (src0_exec_type == BRW_REGISTER_TYPE_NF ||
+       src1_exec_type == BRW_REGISTER_TYPE_NF)
+      return BRW_REGISTER_TYPE_NF;
+
    /* Mixed operand types where one is float is float on Gen < 6
     * (and not allowed on later platforms)
     */
