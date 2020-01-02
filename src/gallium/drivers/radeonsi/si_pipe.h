@@ -166,8 +166,8 @@ enum {
 	DBG_VM,
 
 	/* Driver options: */
-	DBG_FORCE_DMA,
-	DBG_NO_ASYNC_DMA,
+	DBG_FORCE_SDMA,
+	DBG_NO_SDMA,
 	DBG_NO_WC,
 	DBG_CHECK_VM,
 	DBG_RESERVE_VMID,

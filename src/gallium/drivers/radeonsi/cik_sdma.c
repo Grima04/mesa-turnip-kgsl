@@ -697,7 +697,7 @@ static void cik_sdma_copy(struct pipe_context *ctx,
 	 *
 	 * Keep SDMA enabled on APUs.
 	 */
-	if (sctx->screen->debug_flags & DBG(FORCE_DMA) ||
+	if (sctx->screen->debug_flags & DBG(FORCE_SDMA) ||
 	    !sctx->screen->info.has_dedicated_vram) {
 		if ((sctx->chip_class == GFX7 || sctx->chip_class == GFX8) &&
 		    cik_sdma_copy_texture(sctx, dst, dst_level, dstx, dsty, dstz,

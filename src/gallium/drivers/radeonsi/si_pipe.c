@@ -85,8 +85,8 @@ static const struct debug_named_value debug_options[] = {
 	{ "vm", DBG(VM), "Print virtual addresses when creating resources" },
 
 	/* Driver options: */
-	{ "forcedma", DBG(FORCE_DMA), "Use asynchronous DMA for all operations when possible." },
-	{ "nodma", DBG(NO_ASYNC_DMA), "Disable asynchronous DMA" },
+	{ "forcedma", DBG(FORCE_SDMA), "Use SDMA for all operations when possible." },
+	{ "nodma", DBG(NO_SDMA), "Disable SDMA" },
 	{ "nowc", DBG(NO_WC), "Disable GTT write combining" },
 	{ "check_vm", DBG(CHECK_VM), "Check VM faults and dump debug info." },
 	{ "reserve_vmid", DBG(RESERVE_VMID), "Force VMID reservation per context." },
@@ -486,12 +486,12 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen,
 		goto fail;
 
 	if (sscreen->info.num_rings[RING_DMA] &&
-	    !(sscreen->debug_flags & DBG(NO_ASYNC_DMA)) &&
+	    !(sscreen->debug_flags & DBG(NO_SDMA)) &&
 	    /* SDMA timeouts sometimes on gfx10 so disable it for now. See:
 	     *    https://bugs.freedesktop.org/show_bug.cgi?id=111481
 	     *    https://gitlab.freedesktop.org/mesa/mesa/issues/1907
 	     */
-	    (sctx->chip_class != GFX10 || sscreen->debug_flags & DBG(FORCE_DMA))) {
+	    (sctx->chip_class != GFX10 || sscreen->debug_flags & DBG(FORCE_SDMA))) {
 		sctx->dma_cs = sctx->ws->cs_create(sctx->ctx, RING_DMA,
 						   (void*)si_flush_dma_cs,
 						   sctx, stop_exec_on_failure);
@@ -595,7 +595,7 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen,
 	else
 		si_init_dma_functions(sctx);
 
-	if (sscreen->debug_flags & DBG(FORCE_DMA))
+	if (sscreen->debug_flags & DBG(FORCE_SDMA))
 		sctx->b.resource_copy_region = sctx->dma_copy;
 
 	sctx->sample_mask = 0xffff;
