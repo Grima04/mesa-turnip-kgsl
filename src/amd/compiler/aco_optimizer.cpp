@@ -86,7 +86,7 @@ enum Label {
 };
 
 static constexpr uint32_t instr_labels = label_vec | label_mul | label_mad | label_omod_success | label_clamp_success | label_add_sub | label_bitwise | label_minmax | label_fcmp;
-static constexpr uint32_t temp_labels = label_abs | label_neg | label_temp | label_vcc | label_b2f | label_uniform_bool;
+static constexpr uint32_t temp_labels = label_abs | label_neg | label_temp | label_vcc | label_b2f | label_uniform_bool | label_omod2 | label_omod4 | label_omod5 | label_clamp;
 static constexpr uint32_t val_labels = label_constant | label_literal | label_mad;
 
 struct ssa_info {
@@ -211,9 +211,10 @@ struct ssa_info {
       return label & label_mad;
    }
 
-   void set_omod2()
+   void set_omod2(Temp def)
    {
       add_label(label_omod2);
+      temp = def;
    }
 
    bool is_omod2()
@@ -221,9 +222,10 @@ struct ssa_info {
       return label & label_omod2;
    }
 
-   void set_omod4()
+   void set_omod4(Temp def)
    {
       add_label(label_omod4);
+      temp = def;
    }
 
    bool is_omod4()
@@ -231,9 +233,10 @@ struct ssa_info {
       return label & label_omod4;
    }
 
-   void set_omod5()
+   void set_omod5(Temp def)
    {
       add_label(label_omod5);
+      temp = def;
    }
 
    bool is_omod5()
@@ -252,9 +255,10 @@ struct ssa_info {
       return label & label_omod_success;
    }
 
-   void set_clamp()
+   void set_clamp(Temp def)
    {
       add_label(label_clamp);
+      temp = def;
    }
 
    bool is_clamp()
@@ -907,11 +911,11 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
       for (unsigned i = 0; i < 2; i++) {
          if (instr->operands[!i].isConstant() && instr->operands[i].isTemp()) {
             if (instr->operands[!i].constantValue() == 0x40000000) { /* 2.0 */
-               ctx.info[instr->operands[i].tempId()].set_omod2();
+               ctx.info[instr->operands[i].tempId()].set_omod2(instr->definitions[0].getTemp());
             } else if (instr->operands[!i].constantValue() == 0x40800000) { /* 4.0 */
-               ctx.info[instr->operands[i].tempId()].set_omod4();
+               ctx.info[instr->operands[i].tempId()].set_omod4(instr->definitions[0].getTemp());
             } else if (instr->operands[!i].constantValue() == 0x3f000000) { /* 0.5 */
-               ctx.info[instr->operands[i].tempId()].set_omod5();
+               ctx.info[instr->operands[i].tempId()].set_omod5(instr->definitions[0].getTemp());
             } else if (instr->operands[!i].constantValue() == 0x3f800000 &&
                        !block.fp_mode.must_flush_denorms32) { /* 1.0 */
                ctx.info[instr->definitions[0].tempId()].set_temp(instr->operands[i].getTemp());
@@ -967,7 +971,7 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
             idx = i;
       }
       if (found_zero && found_one && instr->operands[idx].isTemp()) {
-         ctx.info[instr->operands[idx].tempId()].set_clamp();
+         ctx.info[instr->operands[idx].tempId()].set_clamp(instr->definitions[0].getTemp());
       }
       break;
    }
@@ -1944,7 +1948,8 @@ bool apply_omod_clamp(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
 
          Instruction* omod_instr = ctx.info[instr->operands[idx].tempId()].instr;
          /* check if we have an additional clamp modifier */
-         if (ctx.info[instr->definitions[0].tempId()].is_clamp() && ctx.uses[instr->definitions[0].tempId()] == 1) {
+         if (ctx.info[instr->definitions[0].tempId()].is_clamp() && ctx.uses[instr->definitions[0].tempId()] == 1 &&
+             ctx.uses[ctx.info[instr->definitions[0].tempId()].temp.id()]) {
             static_cast<VOP3A_instruction*>(omod_instr)->clamp = true;
             ctx.info[instr->definitions[0].tempId()].set_clamp_success(omod_instr);
          }
@@ -2000,22 +2005,23 @@ bool apply_omod_clamp(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
    /* apply omod / clamp modifiers if the def is used only once and the instruction can have modifiers */
    if (!instr->definitions.empty() && ctx.uses[instr->definitions[0].tempId()] == 1 &&
        can_use_VOP3(instr) && instr_info.can_use_output_modifiers[(int)instr->opcode]) {
-      if (can_use_omod && ctx.info[instr->definitions[0].tempId()].is_omod2()) {
+      ssa_info& def_info = ctx.info[instr->definitions[0].tempId()];
+      if (can_use_omod && def_info.is_omod2() && ctx.uses[def_info.temp.id()]) {
          to_VOP3(ctx, instr);
          static_cast<VOP3A_instruction*>(instr.get())->omod = 1;
-         ctx.info[instr->definitions[0].tempId()].set_omod_success(instr.get());
-      } else if (can_use_omod && ctx.info[instr->definitions[0].tempId()].is_omod4()) {
+         def_info.set_omod_success(instr.get());
+      } else if (can_use_omod && def_info.is_omod4() && ctx.uses[def_info.temp.id()]) {
          to_VOP3(ctx, instr);
          static_cast<VOP3A_instruction*>(instr.get())->omod = 2;
-         ctx.info[instr->definitions[0].tempId()].set_omod_success(instr.get());
-      } else if (can_use_omod && ctx.info[instr->definitions[0].tempId()].is_omod5()) {
+         def_info.set_omod_success(instr.get());
+      } else if (can_use_omod && def_info.is_omod5() && ctx.uses[def_info.temp.id()]) {
          to_VOP3(ctx, instr);
          static_cast<VOP3A_instruction*>(instr.get())->omod = 3;
-         ctx.info[instr->definitions[0].tempId()].set_omod_success(instr.get());
-      } else if (ctx.info[instr->definitions[0].tempId()].is_clamp()) {
+         def_info.set_omod_success(instr.get());
+      } else if (def_info.is_clamp() && ctx.uses[def_info.temp.id()]) {
          to_VOP3(ctx, instr);
          static_cast<VOP3A_instruction*>(instr.get())->clamp = true;
-         ctx.info[instr->definitions[0].tempId()].set_clamp_success(instr.get());
+         def_info.set_clamp_success(instr.get());
       }
    }
 
