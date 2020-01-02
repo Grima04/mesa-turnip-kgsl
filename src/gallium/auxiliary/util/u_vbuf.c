@@ -849,7 +849,8 @@ static void u_vbuf_delete_vertex_elements(struct u_vbuf *mgr, void *cso)
    struct pipe_context *pipe = mgr->pipe;
    struct u_vbuf_elements *ve = cso;
 
-   pipe->delete_vertex_elements_state(pipe, ve->driver_cso);
+   if (ve->driver_cso)
+      pipe->delete_vertex_elements_state(pipe, ve->driver_cso);
    FREE(ve);
 }
 
