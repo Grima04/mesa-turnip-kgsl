@@ -415,7 +415,7 @@ mir_adjust_constants(midgard_instruction *ins,
 
                         /* If the constant is new, check ourselves */
                         for (unsigned j = 0; j < i; ++j) {
-                                if (constants[j] == constants[i]) {
+                                if (constants[j] == constants[i] && (mask & (1 << j))) {
                                         ok = true;
                                         break;
                                 }
