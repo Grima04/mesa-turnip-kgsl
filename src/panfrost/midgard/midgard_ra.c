@@ -380,6 +380,27 @@ mir_compute_interference(
         /* First, we need liveness information to be computed per block */
         mir_compute_liveness(ctx);
 
+        /* We need to force r1.w live throughout a blend shader */
+
+        if (ctx->is_blend) {
+                unsigned r1w = ~0;
+
+                mir_foreach_block(ctx, block) {
+                        mir_foreach_instr_in_block_rev(block, ins) {
+                                if (ins->writeout)
+                                        r1w = ins->src[2];
+                        }
+
+                        if (r1w != ~0)
+                                break;
+                }
+
+                mir_foreach_instr_global(ctx, ins) {
+                        if (ins->dest < ctx->temp_count)
+                                lcra_add_node_interference(l, ins->dest, mir_bytemask(ins), r1w, 0xF);
+                }
+        }
+
         /* Now that every block has live_in/live_out computed, we can determine
          * interference by walking each block linearly. Take live_out at the
          * end of each block and walk the block backwards. */

@@ -890,6 +890,9 @@ mir_schedule_alu(
                 mir_choose_alu(&vlut, instructions, worklist, len, &predicate, UNIT_VLUT);
 
         if (writeout) {
+                /* Propagate up */
+                bundle.last_writeout = branch->last_writeout;
+
                 midgard_instruction add = v_mov(~0, make_compiler_temp(ctx));
 
                 if (!ctx->is_blend) {
@@ -938,7 +941,7 @@ mir_schedule_alu(
 
         /* If we have a render target reference, schedule a move for it */
 
-        if (branch && branch->writeout && branch->constants[0]) {
+        if (branch && branch->writeout && (branch->constants[0] || ctx->is_blend)) {
                 midgard_instruction mov = v_mov(~0, make_compiler_temp(ctx));
                 sadd = mem_dup(&mov, sizeof(midgard_instruction));
                 sadd->unit = UNIT_SADD;

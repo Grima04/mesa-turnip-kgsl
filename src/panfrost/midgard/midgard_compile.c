@@ -1331,11 +1331,6 @@ compute_builtin_arg(nir_op op)
         }
 }
 
-/* Emit store for a fragment shader, which is encoded via a fancy branch. TODO:
- * Handle MRT here */
-static void
-emit_fragment_epilogue(compiler_context *ctx, unsigned rt);
-
 static void
 emit_fragment_store(compiler_context *ctx, unsigned src, unsigned rt)
 {
@@ -1353,9 +1348,15 @@ emit_fragment_store(compiler_context *ctx, unsigned src, unsigned rt)
         /* Emit the branch */
         midgard_instruction *br = emit_mir_instruction(ctx, ins);
         schedule_barrier(ctx);
-        br->branch.target_block = ctx->block_count - 1;
 
-        emit_fragment_epilogue(ctx, rt);
+        assert(rt < ARRAY_SIZE(ctx->writeout_branch));
+        assert(!ctx->writeout_branch[rt]);
+        ctx->writeout_branch[rt] = br;
+
+        /* Push our current location = current block count - 1 = where we'll
+         * jump to. Maybe a bit too clever for my own good */
+
+        br->branch.target_block = ctx->block_count - 1;
 }
 
 static void
@@ -2284,28 +2285,20 @@ midgard_opt_pos_propagate(compiler_context *ctx, midgard_block *block)
         return progress;
 }
 
-static void
+static unsigned
 emit_fragment_epilogue(compiler_context *ctx, unsigned rt)
 {
-        /* Include a move to specify the render target */
-
-        if (rt > 0) {
-                midgard_instruction rt_move = v_mov(SSA_FIXED_REGISTER(1),
-                                SSA_FIXED_REGISTER(1));
-                rt_move.mask = 1 << COMPONENT_Z;
-                rt_move.unit = UNIT_SADD;
-                emit_mir_instruction(ctx, rt_move);
-        }
-
         /* Loop to ourselves */
 
         struct midgard_instruction ins = v_branch(false, false);
         ins.writeout = true;
         ins.branch.target_block = ctx->block_count - 1;
+        ins.constants[0] = rt * 0x100;
         emit_mir_instruction(ctx, ins);
 
         ctx->current_block->epilogue = true;
         schedule_barrier(ctx);
+        return ins.branch.target_block;
 }
 
 static midgard_block *
@@ -2557,6 +2550,36 @@ pan_format_from_glsl(const struct glsl_type *type)
                 MALI_NR_CHANNELS(4);
 }
 
+/* For each fragment writeout instruction, generate a writeout loop to
+ * associate with it */
+
+static void
+mir_add_writeout_loops(compiler_context *ctx)
+{
+        for (unsigned rt = 0; rt < ARRAY_SIZE(ctx->writeout_branch); ++rt) {
+                midgard_instruction *br = ctx->writeout_branch[rt];
+                if (!br) continue;
+
+                unsigned popped = br->branch.target_block;
+                midgard_block_add_successor(mir_get_block(ctx, popped - 1), ctx->current_block);
+                br->branch.target_block = emit_fragment_epilogue(ctx, rt);
+
+                /* If we have more RTs, we'll need to restore back after our
+                 * loop terminates */
+
+                if ((rt + 1) < ARRAY_SIZE(ctx->writeout_branch) && ctx->writeout_branch[rt + 1]) {
+                        midgard_instruction uncond = v_branch(false, false);
+                        uncond.branch.target_block = popped;
+                        emit_mir_instruction(ctx, uncond);
+                        midgard_block_add_successor(ctx->current_block, mir_get_block(ctx, popped));
+                        schedule_barrier(ctx);
+                } else {
+                        /* We're last, so we can terminate here */
+                        br->last_writeout = true;
+                }
+        }
+}
+
 int
 midgard_compile_shader_nir(nir_shader *nir, midgard_program *program, bool is_blend, unsigned blend_rt, unsigned gpu_id, bool shaderdb)
 {
@@ -2700,6 +2723,9 @@ midgard_compile_shader_nir(nir_shader *nir, midgard_program *program, bool is_bl
                 assert(!ins->invert);
         }
 
+        if (ctx->stage == MESA_SHADER_FRAGMENT)
+                mir_add_writeout_loops(ctx);
+
         /* Schedule! */
         schedule_program(ctx);
         mir_ra(ctx);
@@ -2836,22 +2862,14 @@ midgard_compile_shader_nir(nir_shader *nir, midgard_program *program, bool is_bl
 
         /* Midgard prefetches instruction types, so during emission we
          * need to lookahead. Unless this is the last instruction, in
-         * which we return 1. Or if this is the second to last and the
-         * last is an ALU, then it's also 1... */
+         * which we return 1. */
 
         mir_foreach_block(ctx, block) {
                 mir_foreach_bundle_in_block(block, bundle) {
                         int lookahead = 1;
 
-                        if (current_bundle + 1 < bundle_count) {
-                                uint8_t next = source_order_bundles[current_bundle + 1]->tag;
-
-                                if (!(current_bundle + 2 < bundle_count) && IS_ALU(next)) {
-                                        lookahead = 1;
-                                } else {
-                                        lookahead = next;
-                                }
-                        }
+                        if (!bundle->last_writeout && (current_bundle + 1 < bundle_count))
+                                lookahead = source_order_bundles[current_bundle + 1]->tag;
 
                         emit_binary_bundle(ctx, bundle, compiled, lookahead);
                         ++current_bundle;

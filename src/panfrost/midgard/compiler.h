@@ -110,6 +110,7 @@ typedef struct midgard_instruction {
 
         bool compact_branch;
         bool writeout;
+        bool last_writeout;
 
         /* Kind of a hack, but hint against aggressive DCE */
         bool dont_eliminate;
@@ -218,6 +219,7 @@ typedef struct midgard_bundle {
         bool has_embedded_constants;
         float constants[4];
         bool has_blend_constant;
+        bool last_writeout;
 } midgard_bundle;
 
 typedef struct compiler_context {
@@ -303,6 +305,9 @@ typedef struct compiler_context {
 
         /* Model-specific quirk set */
         uint32_t quirks;
+
+        /* Writeout instructions for each render target */
+        midgard_instruction *writeout_branch[4];
 } compiler_context;
 
 /* Per-block live_in/live_out */
