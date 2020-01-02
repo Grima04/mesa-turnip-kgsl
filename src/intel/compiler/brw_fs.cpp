@@ -564,7 +564,22 @@ fs_reg::negative_equals(const fs_reg &r) const
 bool
 fs_reg::is_contiguous() const
 {
-   return stride == 1;
+   switch (file) {
+   case ARF:
+   case FIXED_GRF:
+      return hstride == BRW_HORIZONTAL_STRIDE_1 &&
+             vstride == width + hstride;
+   case MRF:
+   case VGRF:
+   case ATTR:
+      return stride == 1;
+   case UNIFORM:
+   case IMM:
+   case BAD_FILE:
+      return true;
+   }
+
+   unreachable("Invalid register file");
 }
 
 unsigned
