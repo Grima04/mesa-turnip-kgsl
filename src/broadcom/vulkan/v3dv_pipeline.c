@@ -646,6 +646,13 @@ pipeline_compile_graphics(struct v3dv_pipeline *pipeline,
 
          pipeline->vs_bin = pipeline_stage_create_vs_bin(pipeline->vs, alloc);
 
+         /* FIXME: likely this to be moved to a gather info method to a full
+          * struct inside pipeline_stage
+          */
+         const VkPipelineInputAssemblyStateCreateInfo *ia_info =
+            pCreateInfo->pInputAssemblyState;
+         pipeline->vs->topology = vk_to_pipe_prim_type[ia_info->topology];
+
          /* Note that at this point we would compile twice, one for vs and
           * other for vs_bin. For now we are maintaining two pipeline_stage
           * and two keys. Eventually we could reuse the key.

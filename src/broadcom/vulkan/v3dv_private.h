@@ -543,6 +543,11 @@ struct v3dv_pipeline_stage {
       struct v3d_fs_prog_data *fs;
    } prog_data;
 
+   /* FIXME: only make sense on vs, so perhaps a v3dv key like radv? or a kind
+    * of pipe_draw_info
+    */
+   enum pipe_prim_type topology;
+
    /* FIXME: using one bo per shader. Eventually we would be interested on
     * reusing the same bo for all the shaders, like a bo per v3dv_pipeline for
     * shaders.

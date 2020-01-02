@@ -1417,9 +1417,63 @@ cmd_buffer_emit_graphics_pipeline(struct v3dv_cmd_buffer *cmd_buffer)
 
 }
 
+/* FIXME: C&P from v3dx_draw. Refactor to common place? */
+static uint32_t
+v3d_hw_prim_type(enum pipe_prim_type prim_type)
+{
+   switch (prim_type) {
+   case PIPE_PRIM_POINTS:
+   case PIPE_PRIM_LINES:
+   case PIPE_PRIM_LINE_LOOP:
+   case PIPE_PRIM_LINE_STRIP:
+   case PIPE_PRIM_TRIANGLES:
+   case PIPE_PRIM_TRIANGLE_STRIP:
+   case PIPE_PRIM_TRIANGLE_FAN:
+      return prim_type;
+
+   case PIPE_PRIM_LINES_ADJACENCY:
+   case PIPE_PRIM_LINE_STRIP_ADJACENCY:
+   case PIPE_PRIM_TRIANGLES_ADJACENCY:
+   case PIPE_PRIM_TRIANGLE_STRIP_ADJACENCY:
+      return 8 + (prim_type - PIPE_PRIM_LINES_ADJACENCY);
+
+   default:
+      unreachable("Unsupported primitive type");
+   }
+}
+
+struct v3dv_draw_info {
+   uint32_t vertex_count;
+   uint32_t instance_count;
+   uint32_t first_vertex;
+   uint32_t first_instance;
+};
 
 static void
-cmd_buffer_emit_state(struct v3dv_cmd_buffer *cmd_buffer)
+cmd_buffer_emit_draw_packets(struct v3dv_cmd_buffer *cmd_buffer,
+                             struct v3dv_draw_info *info)
+{
+   struct v3dv_cmd_buffer_state *state = &cmd_buffer->state;
+   struct v3dv_pipeline *pipeline = state->pipeline;
+
+   assert(pipeline);
+
+   uint32_t prim_tf_enable = 0;
+   uint32_t hw_prim_type = v3d_hw_prim_type(pipeline->vs->topology);
+
+   /* FIXME: using VERTEX_ARRAY_PRIMS always as it fits our test caselist
+    * right now. Need to be choosen based on the current case.
+    */
+   cl_emit(&cmd_buffer->bcl, VERTEX_ARRAY_PRIMS, prim) {
+      prim.mode = hw_prim_type | prim_tf_enable;
+      prim.length = info->vertex_count;
+      prim.index_of_first_vertex = info->first_vertex;
+   }
+}
+
+static void
+cmd_buffer_draw(struct v3dv_cmd_buffer *cmd_buffer,
+                struct v3dv_draw_info *info)
 {
    /* FIXME: likely to be filtered by really needed states */
    uint32_t states = cmd_buffer->state.dirty;
@@ -1439,6 +1493,9 @@ cmd_buffer_emit_state(struct v3dv_cmd_buffer *cmd_buffer)
       emit_viewport(cmd_buffer);
    }
 
+   /* FIXME: any dirty flag to filter ? */
+   cmd_buffer_emit_draw_packets(cmd_buffer, info);
+
    cmd_buffer->state.dirty &= ~states;
 }
 
@@ -1450,6 +1507,12 @@ v3dv_CmdDraw(VkCommandBuffer commandBuffer,
              uint32_t firstInstance)
 {
    V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
+   struct v3dv_draw_info info = {};
 
-   cmd_buffer_emit_state(cmd_buffer);
+   info.vertex_count = vertexCount;
+   info.instance_count = instanceCount;
+   info.first_instance = firstInstance;
+   info.first_vertex = firstVertex;
+
+   cmd_buffer_draw(cmd_buffer, &info);
 }
