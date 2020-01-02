@@ -1372,7 +1372,8 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
           nir_alu_type_get_base_type(tex->dest_type) == nir_type_float);
    assert(tex->texture_index == tex->sampler_index);
 
-   SpvId coord = 0, proj = 0, bias = 0, lod = 0, dref = 0, dx = 0, dy = 0;
+   SpvId coord = 0, proj = 0, bias = 0, lod = 0, dref = 0, dx = 0, dy = 0,
+         offset = 0;
    unsigned coord_components = 0;
    for (unsigned i = 0; i < tex->num_srcs; i++) {
       switch (tex->src[i].src_type) {
@@ -1388,6 +1389,10 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
          assert(nir_src_num_components(tex->src[i].src) == 1);
          proj = get_src_float(ctx, &tex->src[i].src);
          assert(proj != 0);
+         break;
+
+      case nir_tex_src_offset:
+         offset = get_src_int(ctx, &tex->src[i].src);
          break;
 
       case nir_tex_src_bias:
@@ -1494,7 +1499,8 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
                                                actual_dest_type, load,
                                                coord,
                                                proj != 0,
-                                               lod, bias, dref, dx, dy);
+                                               lod, bias, dref, dx, dy,
+                                               offset);
    }
 
    spirv_builder_emit_decoration(&ctx->builder, result,

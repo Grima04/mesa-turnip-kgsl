@@ -215,7 +215,8 @@ spirv_builder_emit_image_sample(struct spirv_builder *b,
                                 SpvId bias,
                                 SpvId dref,
                                 SpvId dx,
-                                SpvId dy);
+                                SpvId dy,
+                                SpvId offset);
 
 SpvId
 spirv_builder_emit_image(struct spirv_builder *b, SpvId result_type,
