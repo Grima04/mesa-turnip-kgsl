@@ -465,11 +465,68 @@ setup_render_target(struct v3dv_cmd_buffer *cmd_buffer, int rt,
 }
 
 static void
+load_general(struct v3dv_cmd_buffer *cmd_buffer,
+             struct v3dv_cl *cl,
+             struct v3dv_image_view *iview,
+             uint32_t layer,
+             uint32_t buffer)
+{
+   const struct v3dv_image *image = iview->image;
+   uint32_t layer_offset = v3dv_layer_offset(image,
+                                             iview->base_level,
+                                             iview->first_layer + layer);
+
+   cl_emit(cl, LOAD_TILE_BUFFER_GENERAL, load) {
+      load.buffer_to_load = buffer;
+      load.address = v3dv_cl_address(image->mem->bo, layer_offset);
+
+      load.input_image_format = iview->format->rt_type;
+      load.r_b_swap = iview->swap_rb;
+      load.memory_format = iview->tiling;
+
+      const struct v3d_resource_slice *slice = &image->slices[iview->base_level];
+      if (slice->tiling == VC5_TILING_UIF_NO_XOR ||
+          slice->tiling == VC5_TILING_UIF_XOR) {
+         load.height_in_ub_or_stride =
+            slice->padded_height_of_output_image_in_uif_blocks;
+      } else if (slice->tiling == VC5_TILING_RASTER) {
+         load.height_in_ub_or_stride = slice->stride;
+      }
+
+      if (image->samples > VK_SAMPLE_COUNT_1_BIT)
+         load.decimate_mode = V3D_DECIMATE_MODE_ALL_SAMPLES;
+      else
+         load.decimate_mode = V3D_DECIMATE_MODE_SAMPLE_0;
+   }
+}
+
+static void
 emit_loads(struct v3dv_cmd_buffer *cmd_buffer,
            struct v3dv_cl *cl,
            uint32_t layer)
 {
-   /* FIXME: implement tile loads */
+   const struct v3dv_cmd_buffer_state *state = &cmd_buffer->state;
+   const struct v3dv_framebuffer *framebuffer = state->framebuffer;
+   const struct v3dv_subpass *subpass =
+      &state->pass->subpasses[state->subpass_idx];
+
+   for (uint32_t i = 0; i < subpass->color_count; i++) {
+      uint32_t attachment_idx = subpass->color_attachments[i].attachment;
+
+      if (attachment_idx == VK_ATTACHMENT_UNUSED)
+         continue;
+
+      const struct v3dv_render_pass_attachment *attachment =
+         &state->pass->attachments[attachment_idx];
+
+      if (attachment->desc.loadOp != VK_ATTACHMENT_LOAD_OP_LOAD)
+         continue;
+
+      struct v3dv_image_view *iview = framebuffer->attachments[attachment_idx];
+
+      load_general(cmd_buffer, cl, iview, layer, RENDER_TARGET_0 + i);
+   }
+
    cl_emit(cl, END_OF_LOADS, end);
 }
 
