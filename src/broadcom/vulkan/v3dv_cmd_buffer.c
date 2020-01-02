@@ -1026,6 +1026,14 @@ v3dv_CmdBindPipeline(VkCommandBuffer commandBuffer,
       cmd_buffer->state.pipeline = pipeline;
       bind_dynamic_state(cmd_buffer, &pipeline->dynamic_state);
 
+      /* FIXME: is here the best moment to do that? or when drawing? */
+      if (pipeline->vs->assembly_bo)
+         v3dv_cmd_buffer_add_bo(cmd_buffer, pipeline->vs->assembly_bo);
+      if (pipeline->vs_bin->assembly_bo)
+         v3dv_cmd_buffer_add_bo(cmd_buffer, pipeline->vs_bin->assembly_bo);
+      if (pipeline->fs->assembly_bo)
+         v3dv_cmd_buffer_add_bo(cmd_buffer, pipeline->fs->assembly_bo);
+
       cmd_buffer->state.dirty |= V3DV_CMD_DIRTY_PIPELINE;
       break;
 
