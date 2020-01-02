@@ -323,6 +323,8 @@ brw_instruction_name(const struct gen_device_info *devinfo, enum opcode op)
       return "typed_surface_write_logical";
    case SHADER_OPCODE_MEMORY_FENCE:
       return "memory_fence";
+   case FS_OPCODE_SCHEDULING_FENCE:
+      return "scheduling_fence";
    case SHADER_OPCODE_INTERLOCK:
       /* For an interlock we actually issue a memory fence via sendc. */
       return "interlock";
@@ -1076,6 +1078,7 @@ backend_instruction::has_side_effects() const
    case TCS_OPCODE_RELEASE_INPUT:
    case SHADER_OPCODE_RND_MODE:
    case SHADER_OPCODE_FLOAT_CONTROL_MODE:
+   case FS_OPCODE_SCHEDULING_FENCE:
       return true;
    default:
       return eot;
