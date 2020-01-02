@@ -34,7 +34,6 @@ files_libradeonsi = files(
   'si_cp_dma.c',
   'si_debug.c',
   'si_descriptors.c',
-  'si_dma.c',
   'si_dma_cs.c',
   'si_fence.c',
   'si_get.c',

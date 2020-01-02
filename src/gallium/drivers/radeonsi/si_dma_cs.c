@@ -125,6 +125,95 @@ void si_sdma_clear_buffer(struct si_context *sctx, struct pipe_resource *dst,
 	}
 }
 
+void si_sdma_copy_buffer(struct si_context *sctx, struct pipe_resource *dst,
+			 struct pipe_resource *src, uint64_t dst_offset,
+			 uint64_t src_offset, uint64_t size)
+{
+	struct radeon_cmdbuf *cs = sctx->sdma_cs;
+	unsigned i, ncopy, csize;
+	struct si_resource *sdst = si_resource(dst);
+	struct si_resource *ssrc = si_resource(src);
+
+	if (!cs ||
+	    dst->flags & PIPE_RESOURCE_FLAG_SPARSE ||
+	    src->flags & PIPE_RESOURCE_FLAG_SPARSE) {
+		si_copy_buffer(sctx, dst, src, dst_offset, src_offset, size);
+		return;
+	}
+
+	/* Mark the buffer range of destination as valid (initialized),
+	 * so that transfer_map knows it should wait for the GPU when mapping
+	 * that range. */
+	util_range_add(dst, &sdst->valid_buffer_range, dst_offset,
+		       dst_offset + size);
+
+	dst_offset += sdst->gpu_address;
+	src_offset += ssrc->gpu_address;
+
+	if (sctx->chip_class == GFX6) {
+		unsigned max_size, sub_cmd, shift;
+
+		/* see whether we should use the dword-aligned or byte-aligned copy */
+		if (!(dst_offset % 4) && !(src_offset % 4) && !(size % 4)) {
+			sub_cmd = SI_DMA_COPY_DWORD_ALIGNED;
+			shift = 2;
+			max_size = SI_DMA_COPY_MAX_DWORD_ALIGNED_SIZE;
+		} else {
+			sub_cmd = SI_DMA_COPY_BYTE_ALIGNED;
+			shift = 0;
+			max_size = SI_DMA_COPY_MAX_BYTE_ALIGNED_SIZE;
+		}
+
+		ncopy = DIV_ROUND_UP(size, max_size);
+		si_need_dma_space(sctx, ncopy * 5, sdst, ssrc);
+
+		for (i = 0; i < ncopy; i++) {
+			csize = MIN2(size, max_size);
+			radeon_emit(cs, SI_DMA_PACKET(SI_DMA_PACKET_COPY, sub_cmd,
+						      csize >> shift));
+			radeon_emit(cs, dst_offset);
+			radeon_emit(cs, src_offset);
+			radeon_emit(cs, (dst_offset >> 32UL) & 0xff);
+			radeon_emit(cs, (src_offset >> 32UL) & 0xff);
+			dst_offset += csize;
+			src_offset += csize;
+			size -= csize;
+		}
+		return;
+	}
+
+	/* The following code is for CI and later. */
+	unsigned align = ~0u;
+	ncopy = DIV_ROUND_UP(size, CIK_SDMA_COPY_MAX_SIZE);
+
+	/* Align copy size to dw if src/dst address are dw aligned */
+	if ((src_offset & 0x3) == 0 &&
+	    (dst_offset & 0x3) == 0 &&
+	    size > 4 &&
+	    (size & 3) != 0) {
+		align = ~0x3u;
+		ncopy++;
+	}
+
+	si_need_dma_space(sctx, ncopy * 7, sdst, ssrc);
+
+	for (i = 0; i < ncopy; i++) {
+		csize = size >= 4 ? MIN2(size & align, CIK_SDMA_COPY_MAX_SIZE) : size;
+		radeon_emit(cs, CIK_SDMA_PACKET(CIK_SDMA_OPCODE_COPY,
+						CIK_SDMA_COPY_SUB_OPCODE_LINEAR,
+						0));
+		radeon_emit(cs, sctx->chip_class >= GFX9 ? csize - 1 : csize);
+		radeon_emit(cs, 0); /* src/dst endian swap */
+		radeon_emit(cs, src_offset);
+		radeon_emit(cs, src_offset >> 32);
+		radeon_emit(cs, dst_offset);
+		radeon_emit(cs, dst_offset >> 32);
+		dst_offset += csize;
+		src_offset += csize;
+		size -= csize;
+	}
+}
+
 void si_need_dma_space(struct si_context *ctx, unsigned num_dw,
 		       struct si_resource *dst, struct si_resource *src)
 {

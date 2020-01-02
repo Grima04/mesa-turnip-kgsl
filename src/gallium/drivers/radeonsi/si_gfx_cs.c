@@ -119,14 +119,12 @@ void si_flush_gfx_cs(struct si_context *ctx, unsigned flags,
 	ctx->sdma_uploads_in_progress = true;
 	for (unsigned i = 0; i < ctx->num_sdma_uploads; i++) {
 		struct si_sdma_upload *up = &ctx->sdma_uploads[i];
-		struct pipe_box box;
 
 		assert(up->src_offset % 4 == 0 && up->dst_offset % 4 == 0 &&
 		       up->size % 4 == 0);
 
-		u_box_1d(up->src_offset, up->size, &box);
-		ctx->dma_copy(&ctx->b, &up->dst->b.b, 0, up->dst_offset, 0, 0,
-			      &up->src->b.b, 0, &box);
+		si_sdma_copy_buffer(ctx, &up->dst->b.b, &up->src->b.b,
+				    up->dst_offset, up->src_offset, up->size);
 	}
 	ctx->sdma_uploads_in_progress = false;
 	si_unref_sdma_uploads(ctx);

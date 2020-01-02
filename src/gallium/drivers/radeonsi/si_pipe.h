@@ -1363,14 +1363,14 @@ void si_check_vm_faults(struct si_context *sctx,
 			struct radeon_saved_cs *saved, enum ring_type ring);
 bool si_replace_shader(unsigned num, struct si_shader_binary *binary);
 
-/* si_dma.c */
-void si_init_dma_functions(struct si_context *sctx);
-
 /* si_dma_cs.c */
 void si_dma_emit_timestamp(struct si_context *sctx, struct si_resource *dst,
 			   uint64_t offset);
 void si_sdma_clear_buffer(struct si_context *sctx, struct pipe_resource *dst,
 			  uint64_t offset, uint64_t size, unsigned clear_value);
+void si_sdma_copy_buffer(struct si_context *sctx, struct pipe_resource *dst,
+			 struct pipe_resource *src, uint64_t dst_offset,
+			 uint64_t src_offset, uint64_t size);
 void si_need_dma_space(struct si_context *ctx, unsigned num_dw,
 		       struct si_resource *dst, struct si_resource *src);
 void si_flush_dma_cs(struct si_context *ctx, unsigned flags,

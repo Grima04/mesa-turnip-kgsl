@@ -1212,7 +1212,6 @@ static void si_blit(struct pipe_context *ctx,
 	 * on failure (recursion).
 	 */
 	if (dst->surface.is_linear &&
-	    sctx->dma_copy &&
 	    util_can_blit_via_copy_region(info, false)) {
 		sctx->dma_copy(ctx, info->dst.resource, info->dst.level,
 				 info->dst.box.x, info->dst.box.y,

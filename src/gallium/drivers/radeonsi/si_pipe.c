@@ -595,7 +595,7 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen,
 	if (sctx->chip_class >= GFX7)
 		cik_init_sdma_functions(sctx);
 	else
-		si_init_dma_functions(sctx);
+		sctx->dma_copy = si_resource_copy_region;
 
 	if (sscreen->debug_flags & DBG(FORCE_SDMA))
 		sctx->b.resource_copy_region = sctx->dma_copy;

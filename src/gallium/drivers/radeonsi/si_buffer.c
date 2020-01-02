@@ -503,9 +503,9 @@ static void *si_buffer_transfer_map(struct pipe_context *ctx,
 				box->width + (box->x % SI_MAP_BUFFER_ALIGNMENT)));
 		if (staging) {
 			/* Copy the VRAM buffer to the staging buffer. */
-			sctx->dma_copy(ctx, &staging->b.b, 0,
-				       box->x % SI_MAP_BUFFER_ALIGNMENT,
-				       0, 0, resource, 0, box);
+			si_sdma_copy_buffer(sctx, &staging->b.b, resource,
+					    box->x % SI_MAP_BUFFER_ALIGNMENT,
+					    box->x, box->width);
 
 			data = si_buffer_map_sync_with_rings(sctx, staging,
 							     usage & ~PIPE_TRANSFER_UNSYNCHRONIZED);

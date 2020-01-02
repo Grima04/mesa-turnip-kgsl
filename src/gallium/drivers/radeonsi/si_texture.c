@@ -1513,14 +1513,12 @@ si_texture_create_object(struct pipe_screen *screen,
 
 			/* Copy the staging buffer to the buffer backing the texture. */
 			struct si_context *sctx = (struct si_context*)sscreen->aux_context;
-			struct pipe_box box;
-			u_box_1d(0, buf->b.b.width0, &box);
 
 			assert(tex->surface.dcc_retile_map_offset <= UINT_MAX);
 			simple_mtx_lock(&sscreen->aux_context_lock);
-			sctx->dma_copy(&sctx->b, &tex->buffer.b.b, 0,
-				       tex->surface.dcc_retile_map_offset, 0, 0,
-				       &buf->b.b, 0, &box);
+			si_sdma_copy_buffer(sctx, &tex->buffer.b.b, &buf->b.b,
+					    tex->surface.dcc_retile_map_offset,
+					    0, buf->b.b.width0);
 			sscreen->aux_context->flush(sscreen->aux_context, NULL, 0);
 			simple_mtx_unlock(&sscreen->aux_context_lock);
 

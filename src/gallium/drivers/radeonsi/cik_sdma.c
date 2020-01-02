@@ -26,58 +26,6 @@
 #include "sid.h"
 #include "si_pipe.h"
 
-static void cik_sdma_copy_buffer(struct si_context *ctx,
-				 struct pipe_resource *dst,
-				 struct pipe_resource *src,
-				 uint64_t dst_offset,
-				 uint64_t src_offset,
-				 uint64_t size)
-{
-	struct radeon_cmdbuf *cs = ctx->sdma_cs;
-	unsigned i, ncopy, csize;
-	unsigned align = ~0u;
-	struct si_resource *sdst = si_resource(dst);
-	struct si_resource *ssrc = si_resource(src);
-
-	/* Mark the buffer range of destination as valid (initialized),
-	 * so that transfer_map knows it should wait for the GPU when mapping
-	 * that range. */
-	util_range_add(dst, &sdst->valid_buffer_range, dst_offset,
-		       dst_offset + size);
-
-	dst_offset += sdst->gpu_address;
-	src_offset += ssrc->gpu_address;
-
-	ncopy = DIV_ROUND_UP(size, CIK_SDMA_COPY_MAX_SIZE);
-
-	/* Align copy size to dw if src/dst address are dw aligned */
-	if ((src_offset & 0x3) == 0 &&
-	    (dst_offset & 0x3) == 0 &&
-	    size > 4 &&
-	    (size & 3) != 0) {
-		align = ~0x3u;
-		ncopy++;
-	}
-
-	si_need_dma_space(ctx, ncopy * 7, sdst, ssrc);
-
-	for (i = 0; i < ncopy; i++) {
-		csize = size >= 4 ? MIN2(size & align, CIK_SDMA_COPY_MAX_SIZE) : size;
-		radeon_emit(cs, CIK_SDMA_PACKET(CIK_SDMA_OPCODE_COPY,
-						CIK_SDMA_COPY_SUB_OPCODE_LINEAR,
-						0));
-		radeon_emit(cs, ctx->chip_class >= GFX9 ? csize - 1 : csize);
-		radeon_emit(cs, 0); /* src/dst endian swap */
-		radeon_emit(cs, src_offset);
-		radeon_emit(cs, src_offset >> 32);
-		radeon_emit(cs, dst_offset);
-		radeon_emit(cs, dst_offset >> 32);
-		dst_offset += csize;
-		src_offset += csize;
-		size -= csize;
-	}
-}
-
 static unsigned minify_as_blocks(unsigned width, unsigned level, unsigned blk_w)
 {
 	width = u_minify(width, level);
@@ -680,16 +628,12 @@ static void cik_sdma_copy(struct pipe_context *ctx,
 {
 	struct si_context *sctx = (struct si_context *)ctx;
 
+	assert(src->target != PIPE_BUFFER);
+
 	if (!sctx->sdma_cs ||
 	    src->flags & PIPE_RESOURCE_FLAG_SPARSE ||
 	    dst->flags & PIPE_RESOURCE_FLAG_SPARSE)
 		goto fallback;
-
-	/* If src is a buffer and dst is a texture, we are uploading metadata. */
-	if (src->target == PIPE_BUFFER) {
-		cik_sdma_copy_buffer(sctx, dst, src, dstx, src_box->x, src_box->width);
-		return;
-	}
 
 	/* SDMA causes corruption. See:
 	 *   https://bugs.freedesktop.org/show_bug.cgi?id=110575
