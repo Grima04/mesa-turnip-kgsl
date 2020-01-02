@@ -31,7 +31,13 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "registers/adreno_pm4.xml.h"
+#include "registers/adreno_common.xml.h"
+#include "registers/a6xx.xml.h"
+
 #include "nir/nir_builder.h"
+
+#include "tu_cs.h"
 
 /* It seems like sample counts need to be copied over to 16-byte aligned
  * memory. */
@@ -46,6 +52,15 @@ struct PACKED occlusion_query_slot {
    struct slot_value end;
    struct slot_value result;
 };
+
+/* Returns the IOVA of a given uint64_t field in a given slot of a query
+ * pool. */
+#define query_iova(type, pool, query, field)                         \
+   pool->bo.iova + pool->stride * query + offsetof(type, field) +    \
+         offsetof(struct slot_value, value)
+
+#define occlusion_query_iova(pool, query, field)                     \
+   query_iova(struct occlusion_query_slot, pool, query, field)
 
 VkResult
 tu_CreateQueryPool(VkDevice _device,
@@ -150,12 +165,65 @@ tu_CmdResetQueryPool(VkCommandBuffer commandBuffer,
 {
 }
 
+static void
+emit_begin_occlusion_query(struct tu_cmd_buffer *cmdbuf,
+                           struct tu_query_pool *pool,
+                           uint32_t query)
+{
+   /* From the Vulkan 1.1.130 spec:
+    *
+    *    A query must begin and end inside the same subpass of a render pass
+    *    instance, or must both begin and end outside of a render pass
+    *    instance.
+    *
+    * Unlike on an immediate-mode renderer, Turnip renders all tiles on
+    * vkCmdEndRenderPass, not individually on each vkCmdDraw*. As such, if a
+    * query begins/ends inside the same subpass of a render pass, we need to
+    * record the packets on the secondary draw command stream. cmdbuf->draw_cs
+    * is then run on every tile during render, so we just need to accumulate
+    * sample counts in slot->result to compute the query result.
+    */
+   struct tu_cs *cs = cmdbuf->state.pass ? &cmdbuf->draw_cs : &cmdbuf->cs;
+
+   uint64_t begin_iova = occlusion_query_iova(pool, query, begin);
+
+   tu_cs_reserve_space(cmdbuf->device, cs, 7);
+   tu_cs_emit_regs(cs,
+                   A6XX_RB_SAMPLE_COUNT_CONTROL(.copy = true));
+
+   tu_cs_emit_regs(cs,
+                   A6XX_RB_SAMPLE_COUNT_ADDR_LO(begin_iova));
+
+   tu_cs_emit_pkt7(cs, CP_EVENT_WRITE, 1);
+   tu_cs_emit(cs, ZPASS_DONE);
+}
+
 void
 tu_CmdBeginQuery(VkCommandBuffer commandBuffer,
                  VkQueryPool queryPool,
                  uint32_t query,
                  VkQueryControlFlags flags)
 {
+   TU_FROM_HANDLE(tu_cmd_buffer, cmdbuf, commandBuffer);
+   TU_FROM_HANDLE(tu_query_pool, pool, queryPool);
+   assert(query < pool->size);
+
+   switch (pool->type) {
+   case VK_QUERY_TYPE_OCCLUSION:
+      /* In freedreno, there is no implementation difference between
+       * GL_SAMPLES_PASSED and GL_ANY_SAMPLES_PASSED, so we can similarly
+       * ignore the VK_QUERY_CONTROL_PRECISE_BIT flag here.
+       */
+      emit_begin_occlusion_query(cmdbuf, pool, query);
+      break;
+   case VK_QUERY_TYPE_PIPELINE_STATISTICS:
+   case VK_QUERY_TYPE_TIMESTAMP:
+      unreachable("Unimplemented query type");
+   default:
+      assert(!"Invalid query type");
+   }
+
+   tu_bo_list_add(&cmdbuf->bo_list, &pool->bo, MSM_SUBMIT_BO_WRITE);
 }
 
 void
