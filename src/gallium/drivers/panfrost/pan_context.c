@@ -531,6 +531,8 @@ panfrost_upload_tex(
 
         struct pipe_sampler_view *pview = &view->base;
         struct panfrost_resource *rsrc = pan_resource(pview->texture);
+        mali_ptr descriptor_gpu;
+        void *descriptor;
 
         /* Do we interleave an explicit stride with every element? */
 
@@ -565,22 +567,38 @@ panfrost_upload_tex(
          * strides in that order */
 
         unsigned idx = 0;
+        unsigned levels = 1 + last_level - first_level;
+        unsigned layers = 1 + last_layer - first_layer;
+        unsigned num_elements = levels * layers;
+        if (has_manual_stride)
+                num_elements *= 2;
+
+        descriptor = malloc(sizeof(struct mali_texture_descriptor) +
+                            sizeof(mali_ptr) * num_elements);
+        memcpy(descriptor, &view->hw, sizeof(struct mali_texture_descriptor));
+
+        mali_ptr *pointers_and_strides = descriptor +
+                                         sizeof(struct mali_texture_descriptor);
 
         for (unsigned l = first_level; l <= last_level; ++l) {
                 for (unsigned f = first_layer; f <= last_layer; ++f) {
 
-                        view->hw.payload[idx++] =
+                        pointers_and_strides[idx++] =
                                 panfrost_get_texture_address(rsrc, l, f) + afbc_bit;
 
                         if (has_manual_stride) {
-                                view->hw.payload[idx++] =
+                                pointers_and_strides[idx++] =
                                         rsrc->slices[l].stride;
                         }
                 }
         }
 
-        return panfrost_upload_transient(batch, &view->hw,
-                                         sizeof(struct mali_texture_descriptor));
+        descriptor_gpu = panfrost_upload_transient(batch, descriptor,
+                                  sizeof(struct mali_texture_descriptor) +
+                                          num_elements * sizeof(*pointers_and_strides));
+        free(descriptor);
+
+        return descriptor_gpu;
 }
 
 static void

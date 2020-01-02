@@ -1231,8 +1231,6 @@ struct mali_texture_descriptor {
         uint32_t unknown5;
         uint32_t unknown6;
         uint32_t unknown7;
-
-        mali_ptr payload[MAX_MIP_LEVELS * MAX_CUBE_FACES * MAX_ELEMENTS];
 } __attribute__((packed));
 
 /* filter_mode */
