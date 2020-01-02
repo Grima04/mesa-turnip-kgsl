@@ -989,8 +989,11 @@ void add_coupling_code(spill_ctx& ctx, Block* block, unsigned block_idx)
       idx++;
    }
 
-   ctx.register_demand[block->index].erase(ctx.register_demand[block->index].begin(), ctx.register_demand[block->index].begin() + idx);
-   ctx.register_demand[block->index].insert(ctx.register_demand[block->index].begin(), instructions.size(), RegisterDemand());
+   if (!ctx.processed[block_idx]) {
+      assert(!(block->kind & block_kind_loop_header));
+      ctx.register_demand[block->index].erase(ctx.register_demand[block->index].begin(), ctx.register_demand[block->index].begin() + idx);
+      ctx.register_demand[block->index].insert(ctx.register_demand[block->index].begin(), instructions.size(), RegisterDemand());
+   }
 
    std::vector<aco_ptr<Instruction>>::iterator start = std::next(block->instructions.begin(), idx);
    instructions.insert(instructions.end(), std::move_iterator<std::vector<aco_ptr<Instruction>>::iterator>(start),
@@ -1001,6 +1004,8 @@ void add_coupling_code(spill_ctx& ctx, Block* block, unsigned block_idx)
 void process_block(spill_ctx& ctx, unsigned block_idx, Block* block,
                    std::map<Temp, uint32_t> &current_spills, RegisterDemand spilled_registers)
 {
+   assert(!ctx.processed[block_idx]);
+
    std::vector<std::map<Temp, uint32_t>> local_next_use_distance;
    std::vector<aco_ptr<Instruction>> instructions;
    unsigned idx = 0;
@@ -1145,7 +1150,6 @@ void process_block(spill_ctx& ctx, unsigned block_idx, Block* block,
 void spill_block(spill_ctx& ctx, unsigned block_idx)
 {
    Block* block = &ctx.program->blocks[block_idx];
-   ctx.processed[block_idx] = true;
 
    /* determine set of variables which are spilled at the beginning of the block */
    RegisterDemand spilled_registers = init_live_in_vars(ctx, block, block_idx);
@@ -1181,6 +1185,8 @@ void spill_block(spill_ctx& ctx, unsigned block_idx)
       process_block(ctx, block_idx, block, current_spills, spilled_registers);
    else
       ctx.spills_exit[block_idx].insert(current_spills.begin(), current_spills.end());
+
+   ctx.processed[block_idx] = true;
 
    /* check if the next block leaves the current loop */
    if (block->loop_nest_depth == 0 || ctx.program->blocks[block_idx + 1].loop_nest_depth >= block->loop_nest_depth)
