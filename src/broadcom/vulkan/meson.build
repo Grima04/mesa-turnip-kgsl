@@ -96,6 +96,7 @@ libvulkan_broadcom = shared_library(
     inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux, inc_broadcom, inc_compiler, inc_util,
   ],
   link_with : [
+    libbroadcom_cle,
     libbroadcom_v3d,
     # For glsl_type_singleton_init_or_ref:
     libglsl,

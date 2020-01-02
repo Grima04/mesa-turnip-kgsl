@@ -24,7 +24,37 @@
 #include "v3dv_private.h"
 #include "drm-uapi/v3d_drm.h"
 
+#include "broadcom/clif/clif_dump.h"
+
 #include <errno.h>
+
+static void
+v3dv_clif_dump(struct v3dv_queue *queue,
+               struct v3dv_cmd_buffer *cmd_buffer,
+               struct drm_v3d_submit_cl *submit)
+{
+   if (!(V3D_DEBUG & (V3D_DEBUG_CL | V3D_DEBUG_CLIF)))
+      return;
+
+   struct clif_dump *clif = clif_dump_init(&queue->device->devinfo,
+                                           stderr,
+                                           V3D_DEBUG & V3D_DEBUG_CL);
+
+   set_foreach(cmd_buffer->bos, entry) {
+      struct v3dv_bo *bo = (void *)entry->key;
+      char *name = ralloc_asprintf(NULL, "%s_0x%x",
+                                   "" /* bo->name */ , bo->offset);
+
+      v3dv_bo_map(queue->device, bo, bo->size);
+      clif_dump_add_bo(clif, name, bo->offset, bo->size, bo->map);
+
+      ralloc_free(name);
+   }
+
+   clif_dump(clif, submit);
+
+   clif_dump_destroy(clif);
+}
 
 static VkResult
 queue_submit(struct v3dv_queue *queue,
@@ -75,6 +105,8 @@ queue_submit(struct v3dv_queue *queue,
    }
    assert(bo_idx == submit.bo_handle_count);
    submit.bo_handles = (uintptr_t)(void *)bo_handles;
+
+   v3dv_clif_dump(queue, cmd_buffer, &submit);
 
    int ret = v3dv_ioctl(queue->device->fd, DRM_IOCTL_V3D_SUBMIT_CL, &submit);
    static bool warned = false;
