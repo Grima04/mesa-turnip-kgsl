@@ -168,6 +168,7 @@ enum {
 	/* Driver options: */
 	DBG_FORCE_SDMA,
 	DBG_NO_SDMA,
+	DBG_NO_SDMA_CLEARS,
 	DBG_NO_WC,
 	DBG_CHECK_VM,
 	DBG_RESERVE_VMID,

@@ -75,7 +75,8 @@ void si_sdma_clear_buffer(struct si_context *sctx, struct pipe_resource *dst,
 	assert(size);
 	assert(size % 4 == 0);
 
-	if (!cs || dst->flags & PIPE_RESOURCE_FLAG_SPARSE) {
+	if (!cs || dst->flags & PIPE_RESOURCE_FLAG_SPARSE ||
+	    sctx->screen->debug_flags & DBG(NO_SDMA_CLEARS)) {
 		sctx->b.clear_buffer(&sctx->b, dst, offset, size, &clear_value, 4);
 		return;
 	}

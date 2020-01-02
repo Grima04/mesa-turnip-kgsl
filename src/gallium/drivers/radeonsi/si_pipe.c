@@ -87,6 +87,7 @@ static const struct debug_named_value debug_options[] = {
 	/* Driver options: */
 	{ "forcedma", DBG(FORCE_SDMA), "Use SDMA for all operations when possible." },
 	{ "nodma", DBG(NO_SDMA), "Disable SDMA" },
+	{ "nodmaclear", DBG(NO_SDMA_CLEARS), "Disable SDMA clears" },
 	{ "nowc", DBG(NO_WC), "Disable GTT write combining" },
 	{ "check_vm", DBG(CHECK_VM), "Check VM faults and dump debug info." },
 	{ "reserve_vmid", DBG(RESERVE_VMID), "Force VMID reservation per context." },
