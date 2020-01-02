@@ -84,6 +84,7 @@ struct block_info {
    std::vector<WQMState> instr_needs;
    uint8_t block_needs;
    uint8_t ever_again_needs;
+   bool logical_end_wqm;
    /* more... */
 };
 
@@ -238,8 +239,16 @@ void get_block_needs(wqm_ctx &ctx, exec_ctx &exec_ctx, Block* block)
 
       /* ensure the condition controlling the control flow for this phi is in WQM */
       if (needs == WQM && instr->opcode == aco_opcode::p_phi) {
-         for (unsigned pred_idx : block->logical_preds)
+         for (unsigned pred_idx : block->logical_preds) {
             mark_block_wqm(ctx, pred_idx);
+            exec_ctx.info[pred_idx].logical_end_wqm = true;
+            ctx.worklist.insert(pred_idx);
+         }
+      }
+
+      if (instr->opcode == aco_opcode::p_logical_end && info.logical_end_wqm) {
+         assert(needs == Unspecified);
+         needs = WQM;
       }
 
       instr_needs[i] = needs;
