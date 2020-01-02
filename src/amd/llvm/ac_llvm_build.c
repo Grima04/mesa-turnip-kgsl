@@ -3595,8 +3595,6 @@ _ac_build_readlane(struct ac_llvm_context *ctx, LLVMValueRef src, LLVMValueRef l
 	LLVMTypeRef type = LLVMTypeOf(src);
 	LLVMValueRef result;
 
-	ac_build_optimization_barrier(ctx, &src);
-
 	src = LLVMBuildZExt(ctx->builder, src, ctx->i32, "");
 	if (lane)
 		lane = LLVMBuildZExt(ctx->builder, lane, ctx->i32, "");
@@ -3613,13 +3611,17 @@ _ac_build_readlane(struct ac_llvm_context *ctx, LLVMValueRef src, LLVMValueRef l
 
 /**
  * Builds the "llvm.amdgcn.readlane" or "llvm.amdgcn.readfirstlane" intrinsic.
+ *
+ * The optimization barrier is not needed if the value is the same in all lanes
+ * or if this is called in the outermost block.
+ *
  * @param ctx
  * @param src
  * @param lane - id of the lane or NULL for the first active lane
  * @return value of the lane
  */
-LLVMValueRef
-ac_build_readlane(struct ac_llvm_context *ctx, LLVMValueRef src, LLVMValueRef lane)
+LLVMValueRef ac_build_readlane_no_opt_barrier(struct ac_llvm_context *ctx,
+					      LLVMValueRef src, LLVMValueRef lane)
 {
 	LLVMTypeRef src_type = LLVMTypeOf(src);
 	src = ac_to_integer(ctx, src);
@@ -3646,6 +3648,14 @@ ac_build_readlane(struct ac_llvm_context *ctx, LLVMValueRef src, LLVMValueRef la
 	if (LLVMGetTypeKind(src_type) == LLVMPointerTypeKind)
 		return LLVMBuildIntToPtr(ctx->builder, ret, src_type, "");
 	return LLVMBuildBitCast(ctx->builder, ret, src_type, "");
+}
+
+LLVMValueRef
+ac_build_readlane(struct ac_llvm_context *ctx, LLVMValueRef src, LLVMValueRef lane)
+{
+	ac_build_optimization_barrier(ctx, &src);
+
+	return ac_build_readlane_no_opt_barrier(ctx, src, lane);
 }
 
 LLVMValueRef
