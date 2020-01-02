@@ -462,10 +462,8 @@ static void si_texture_zero_dcc_fields(struct si_texture *tex)
 static bool si_texture_discard_dcc(struct si_screen *sscreen,
 				   struct si_texture *tex)
 {
-	if (!si_can_disable_dcc(tex)) {
-		assert(tex->surface.display_dcc_offset == 0);
+	if (!si_can_disable_dcc(tex))
 		return false;
-	}
 
 	assert(tex->dcc_separate_buffer == NULL);
 
