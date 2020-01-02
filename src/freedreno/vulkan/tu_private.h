@@ -1549,12 +1549,11 @@ tu_device_finish_meta(struct tu_device *device);
 
 struct tu_query_pool
 {
-   uint32_t stride;
-   uint32_t availability_offset;
-   uint64_t size;
-   char *ptr;
    VkQueryType type;
-   uint32_t pipeline_stats_mask;
+   uint32_t stride;
+   uint64_t size;
+   uint32_t pipeline_statistics;
+   struct tu_bo bo;
 };
 
 struct tu_semaphore
