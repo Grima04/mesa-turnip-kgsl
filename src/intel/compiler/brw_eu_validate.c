@@ -268,6 +268,76 @@ num_sources_from_inst(const struct gen_device_info *devinfo,
 }
 
 static struct string
+invalid_values(const struct gen_device_info *devinfo, const brw_inst *inst)
+{
+   unsigned num_sources = num_sources_from_inst(devinfo, inst);
+   struct string error_msg = { .str = NULL, .len = 0 };
+
+   switch ((enum brw_execution_size) brw_inst_exec_size(devinfo, inst)) {
+   case BRW_EXECUTE_1:
+   case BRW_EXECUTE_2:
+   case BRW_EXECUTE_4:
+   case BRW_EXECUTE_8:
+   case BRW_EXECUTE_16:
+   case BRW_EXECUTE_32:
+      break;
+   default:
+      ERROR("invalid execution size");
+      break;
+   }
+
+   if (inst_is_send(devinfo, inst))
+      return error_msg;
+
+   if (num_sources == 3) {
+      /* Nothing to test:
+       *    No 3-src instructions on Gen4-5
+       *    No reg file bits on Gen6-10 (align16)
+       *    No invalid encodings on Gen10-12 (align1)
+       */
+   } else {
+      if (devinfo->gen > 6) {
+         ERROR_IF(brw_inst_dst_reg_file(devinfo, inst) == MRF ||
+                  (num_sources > 0 &&
+                   brw_inst_src0_reg_file(devinfo, inst) == MRF) ||
+                  (num_sources > 1 &&
+                   brw_inst_src1_reg_file(devinfo, inst) == MRF),
+                  "invalid register file encoding");
+      }
+   }
+
+   if (error_msg.str)
+      return error_msg;
+
+   if (num_sources == 3) {
+      if (brw_inst_access_mode(devinfo, inst) == BRW_ALIGN_1) {
+         if (devinfo->gen >= 10) {
+            ERROR_IF(brw_inst_3src_a1_dst_type (devinfo, inst) == INVALID_REG_TYPE ||
+                     brw_inst_3src_a1_src0_type(devinfo, inst) == INVALID_REG_TYPE ||
+                     brw_inst_3src_a1_src1_type(devinfo, inst) == INVALID_REG_TYPE ||
+                     brw_inst_3src_a1_src2_type(devinfo, inst) == INVALID_REG_TYPE,
+                     "invalid register type encoding");
+         } else {
+            ERROR("Align1 mode not allowed on Gen < 10");
+         }
+      } else {
+         ERROR_IF(brw_inst_3src_a16_dst_type(devinfo, inst) == INVALID_REG_TYPE ||
+                  brw_inst_3src_a16_src_type(devinfo, inst) == INVALID_REG_TYPE,
+                  "invalid register type encoding");
+      }
+   } else {
+      ERROR_IF(brw_inst_dst_type (devinfo, inst) == INVALID_REG_TYPE ||
+               (num_sources > 0 &&
+                brw_inst_src0_type(devinfo, inst) == INVALID_REG_TYPE) ||
+               (num_sources > 1 &&
+                brw_inst_src1_type(devinfo, inst) == INVALID_REG_TYPE),
+               "invalid register type encoding");
+   }
+
+   return error_msg;
+}
+
+static struct string
 sources_not_null(const struct gen_device_info *devinfo,
                  const brw_inst *inst)
 {
@@ -1877,16 +1947,20 @@ brw_validate_instruction(const struct gen_device_info *devinfo,
    if (is_unsupported_inst(devinfo, inst)) {
       ERROR("Instruction not supported on this Gen");
    } else {
-      CHECK(sources_not_null);
-      CHECK(send_restrictions);
-      CHECK(alignment_supported);
-      CHECK(general_restrictions_based_on_operand_types);
-      CHECK(general_restrictions_on_region_parameters);
-      CHECK(special_restrictions_for_mixed_float_mode);
-      CHECK(region_alignment_rules);
-      CHECK(vector_immediate_restrictions);
-      CHECK(special_requirements_for_handling_double_precision_data_types);
-      CHECK(instruction_restrictions);
+      CHECK(invalid_values);
+
+      if (error_msg.str == NULL) {
+         CHECK(sources_not_null);
+         CHECK(send_restrictions);
+         CHECK(alignment_supported);
+         CHECK(general_restrictions_based_on_operand_types);
+         CHECK(general_restrictions_on_region_parameters);
+         CHECK(special_restrictions_for_mixed_float_mode);
+         CHECK(region_alignment_rules);
+         CHECK(vector_immediate_restrictions);
+         CHECK(special_requirements_for_handling_double_precision_data_types);
+         CHECK(instruction_restrictions);
+      }
    }
 
    if (error_msg.str && disasm) {
