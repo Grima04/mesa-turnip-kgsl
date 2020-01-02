@@ -479,6 +479,9 @@ brw_reg_type_to_size(enum brw_reg_type type)
       [BRW_REGISTER_TYPE_V]  = 2,
       [BRW_REGISTER_TYPE_UV] = 2,
    };
+   if (type >= ARRAY_SIZE(type_size))
+      return -1;
+
    return type_size[type];
 }
 
@@ -509,6 +512,9 @@ brw_reg_type_to_letters(enum brw_reg_type type)
       [BRW_REGISTER_TYPE_V]  = "V",
       [BRW_REGISTER_TYPE_UV] = "UV",
    };
+   if (type >= ARRAY_SIZE(letters))
+      return "INVALID";
+
    assert(type < ARRAY_SIZE(letters));
    return letters[type];
 }
