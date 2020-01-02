@@ -322,6 +322,8 @@ panfrost_setup_slices(struct panfrost_resource *pres, size_t *bo_size)
                 unsigned slice_one_size = slice->stride * effective_height;
                 unsigned slice_full_size = slice_one_size * effective_depth;
 
+                slice->size0 = slice_one_size;
+
                 /* Report 2D size for 3D texturing */
 
                 if (l == 0)
@@ -665,7 +667,10 @@ panfrost_transfer_map(struct pipe_context *pctx,
                 return transfer->map;
         } else {
                 transfer->base.stride = rsrc->slices[level].stride;
-                transfer->base.layer_stride = rsrc->cubemap_stride;
+                if (resource->target == PIPE_TEXTURE_3D)
+                        transfer->base.layer_stride = rsrc->slices[level].size0;
+                else
+                        transfer->base.layer_stride = rsrc->cubemap_stride;
 
                 /* By mapping direct-write, we're implicitly already
                  * initialized (maybe), so be conservative */
@@ -675,7 +680,7 @@ panfrost_transfer_map(struct pipe_context *pctx,
 
                 return bo->cpu
                        + rsrc->slices[level].offset
-                       + transfer->base.box.z * rsrc->cubemap_stride
+                       + transfer->base.box.z * transfer->base.layer_stride
                        + transfer->base.box.y * rsrc->slices[level].stride
                        + transfer->base.box.x * bytes_per_pixel;
         }
