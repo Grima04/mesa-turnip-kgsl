@@ -665,7 +665,7 @@ void add_coupling_code(spill_ctx& ctx, Block* block, unsigned block_idx)
 
    std::vector<aco_ptr<Instruction>> instructions;
    /* branch block: TODO take other branch into consideration */
-   if (block->linear_preds.size() == 1 && !(block->kind & block_kind_loop_exit)) {
+   if (block->linear_preds.size() == 1 && !(block->kind & (block_kind_loop_exit | block_kind_loop_header))) {
       assert(ctx.processed[block->linear_preds[0]]);
       assert(ctx.register_demand[block_idx].size() == block->instructions.size());
       std::vector<RegisterDemand> reg_demand;
