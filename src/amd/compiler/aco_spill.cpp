@@ -1750,9 +1750,8 @@ void spill(Program* program, live& live_vars, const struct radv_nir_compiler_opt
 
    if (register_target.vgpr > program->vgpr_limit)
       register_target.sgpr = program->sgpr_limit - 5;
-   register_target.vgpr = program->vgpr_limit - (register_target.vgpr - program->max_reg_demand.vgpr);
-
    int spills_to_vgpr = (program->max_reg_demand.sgpr - register_target.sgpr + program->wave_size - 1 + 32) / program->wave_size;
+   register_target.vgpr = program->vgpr_limit - spills_to_vgpr;
 
    /* initialize ctx */
    spill_ctx ctx(register_target, program, live_vars.register_demand);
