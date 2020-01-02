@@ -23,6 +23,7 @@
 
 #include "compiler.h"
 #include "midgard_ops.h"
+#include "midgard_quirks.h"
 #include "util/u_memory.h"
 
 /* Scheduling for Midgard is complicated, to say the least. ALU instructions
@@ -1051,6 +1052,11 @@ mir_schedule_alu(
 
         /* Size ALU instruction for tag */
         bundle.tag = (TAG_ALU_4) + (bytes_emitted / 16) - 1;
+
+        /* MRT capable GPUs use a special writeout procedure */
+        if (writeout && !(ctx->quirks & MIDGARD_NO_UPPER_ALU))
+                bundle.tag += 4;
+
         bundle.padding = padding;
         bundle.control |= bundle.tag;
 
