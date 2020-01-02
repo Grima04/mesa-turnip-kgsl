@@ -83,6 +83,8 @@ struct panfrost_resource {
 
         /* Is transaciton elimination enabled? */
         bool checksummed;
+
+        enum pipe_format internal_format;
 };
 
 static inline struct panfrost_resource *
