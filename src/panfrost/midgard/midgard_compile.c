@@ -205,7 +205,7 @@ M_LOAD(ld_vary_32);
 M_LOAD(ld_ubo_int4);
 M_LOAD(ld_int4);
 M_STORE(st_int4);
-M_LOAD(ld_color_buffer_8);
+M_LOAD(ld_color_buffer_32u);
 //M_STORE(st_vary_16);
 M_STORE(st_vary_32);
 M_LOAD(ld_cubemap_coords);
@@ -1505,7 +1505,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                 /* T720 and below use different blend opcodes with slightly
                  * different semantics than T760 and up */
 
-                midgard_instruction ld = m_ld_color_buffer_8(reg, 0);
+                midgard_instruction ld = m_ld_color_buffer_32u(reg, 0);
                 bool old_blend = ctx->quirks & MIDGARD_OLD_BLEND;
 
                 if (instr->intrinsic == nir_intrinsic_load_output_u8_as_fp16_pan) {
