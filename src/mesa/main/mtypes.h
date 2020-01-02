@@ -4141,6 +4141,9 @@ struct gl_constants
    /** Is the drivers uniform storage packed or padded to 16 bytes. */
    bool PackedDriverUniformStorage;
 
+   /** Does the driver make use of the NIR based GLSL linker */
+   bool UseNIRGLSLLinker;
+
    /** Wether or not glBitmap uses red textures rather than alpha */
    bool BitmapUsesRed;
 
