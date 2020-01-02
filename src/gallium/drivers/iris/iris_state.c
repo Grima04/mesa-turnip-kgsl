@@ -4111,17 +4111,9 @@ KSP(const struct iris_compiled_shader *shader)
    return iris_bo_offset_from_base_address(res->bo) + shader->assembly.offset;
 }
 
-/* Gen11 workaround table #2056 WABTPPrefetchDisable suggests to disable
- * prefetching of binding tables in A0 and B0 steppings.  XXX: Revisit
- * this WA on C0 stepping.
- *
- * TODO: Fill out SamplerCount for prefetching?
- */
-
 #define INIT_THREAD_DISPATCH_FIELDS(pkt, prefix, stage)                   \
    pkt.KernelStartPointer = KSP(shader);                                  \
-   pkt.BindingTableEntryCount = GEN_GEN == 11 ? 0 :                       \
-      shader->bt.size_bytes / 4;                                          \
+   pkt.BindingTableEntryCount = shader->bt.size_bytes / 4;                \
    pkt.FloatingPointMode = prog_data->use_alt_mode;                       \
                                                                           \
    pkt.DispatchGRFStartRegisterForURBData =                               \
@@ -4288,9 +4280,7 @@ iris_store_fs_state(struct iris_context *ice,
 
    iris_pack_command(GENX(3DSTATE_PS), ps_state, ps) {
       ps.VectorMaskEnable = true;
-      // XXX: WABTPPrefetchDisable, see above, drop at C0
-      ps.BindingTableEntryCount = GEN_GEN == 11 ? 0 :
-         shader->bt.size_bytes / 4;
+      ps.BindingTableEntryCount = shader->bt.size_bytes / 4;
       ps.FloatingPointMode = prog_data->use_alt_mode;
       ps.MaximumNumberofThreadsPerPSD = 64 - (GEN_GEN == 8 ? 2 : 1);
 

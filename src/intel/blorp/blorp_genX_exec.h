@@ -772,13 +772,6 @@ blorp_emit_ps_config(struct blorp_batch *batch,
          ps.BindingTableEntryCount = 1;
       }
 
-     /* Gen 11 workarounds table #2056 WABTPPrefetchDisable suggests to
-      * disable prefetching of binding tables on A0 and B0 steppings.
-      * TODO: Revisit this WA on C0 stepping.
-      */
-      if (GEN_GEN == 11)
-         ps.BindingTableEntryCount = 0;
-
       /* SAMPLER_STATE prefetching is broken on Gen11 - WA_1606682166 */
       if (GEN_GEN == 11)
          ps.SamplerCount = 0;
