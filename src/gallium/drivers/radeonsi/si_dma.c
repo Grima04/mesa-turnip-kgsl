@@ -35,7 +35,7 @@ static void si_dma_copy_buffer(struct si_context *ctx,
 				uint64_t src_offset,
 				uint64_t size)
 {
-	struct radeon_cmdbuf *cs = ctx->dma_cs;
+	struct radeon_cmdbuf *cs = ctx->sdma_cs;
 	unsigned i, ncopy, count, max_size, sub_cmd, shift;
 	struct si_resource *sdst = si_resource(dst);
 	struct si_resource *ssrc = si_resource(src);
@@ -87,7 +87,7 @@ static void si_dma_copy(struct pipe_context *ctx,
 {
 	struct si_context *sctx = (struct si_context *)ctx;
 
-	if (sctx->dma_cs == NULL ||
+	if (sctx->sdma_cs == NULL ||
 	    src->flags & PIPE_RESOURCE_FLAG_SPARSE ||
 	    dst->flags & PIPE_RESOURCE_FLAG_SPARSE) {
 		goto fallback;

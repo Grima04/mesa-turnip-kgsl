@@ -865,7 +865,7 @@ struct si_context {
 	struct radeon_winsys		*ws;
 	struct radeon_winsys_ctx	*ctx;
 	struct radeon_cmdbuf		*gfx_cs; /* compute IB if graphics is disabled */
-	struct radeon_cmdbuf		*dma_cs;
+	struct radeon_cmdbuf		*sdma_cs;
 	struct pipe_fence_handle	*last_gfx_fence;
 	struct pipe_fence_handle	*last_sdma_fence;
 	struct si_resource		*eop_bug_scratch;

@@ -53,7 +53,7 @@ bool si_prepare_for_dma_blit(struct si_context *sctx,
 			     unsigned src_level,
 			     const struct pipe_box *src_box)
 {
-	if (!sctx->dma_cs)
+	if (!sctx->sdma_cs)
 		return false;
 
 	if (dst->surface.bpe != src->surface.bpe)

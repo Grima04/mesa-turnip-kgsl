@@ -110,7 +110,7 @@ void si_flush_gfx_cs(struct si_context *ctx, unsigned flags,
 	 * If the driver flushes the GFX IB internally, and it should never ask
 	 * for a fence handle.
 	 */
-	assert(!radeon_emitted(ctx->dma_cs, 0) || fence == NULL);
+	assert(!radeon_emitted(ctx->sdma_cs, 0) || fence == NULL);
 
 	/* Update the sdma_uploads list by flushing the uploader. */
 	u_upload_unmap(ctx->b.const_uploader);
@@ -132,7 +132,7 @@ void si_flush_gfx_cs(struct si_context *ctx, unsigned flags,
 	si_unref_sdma_uploads(ctx);
 
 	/* Flush SDMA (preamble IB). */
-	if (radeon_emitted(ctx->dma_cs, 0))
+	if (radeon_emitted(ctx->sdma_cs, 0))
 		si_flush_dma_cs(ctx, flags, NULL);
 
 	if (radeon_emitted(ctx->prim_discard_compute_cs, 0)) {

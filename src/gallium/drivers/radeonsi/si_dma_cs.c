@@ -27,7 +27,7 @@
 
 static void si_dma_emit_wait_idle(struct si_context *sctx)
 {
-	struct radeon_cmdbuf *cs = sctx->dma_cs;
+	struct radeon_cmdbuf *cs = sctx->sdma_cs;
 
 	/* NOP waits for idle. */
 	if (sctx->chip_class >= GFX7)
@@ -39,7 +39,7 @@ static void si_dma_emit_wait_idle(struct si_context *sctx)
 void si_dma_emit_timestamp(struct si_context *sctx, struct si_resource *dst,
 			   uint64_t offset)
 {
-	struct radeon_cmdbuf *cs = sctx->dma_cs;
+	struct radeon_cmdbuf *cs = sctx->sdma_cs;
 	uint64_t va = dst->gpu_address + offset;
 
 	if (sctx->chip_class == GFX6) {
@@ -67,7 +67,7 @@ void si_dma_emit_timestamp(struct si_context *sctx, struct si_resource *dst,
 void si_sdma_clear_buffer(struct si_context *sctx, struct pipe_resource *dst,
 			  uint64_t offset, uint64_t size, unsigned clear_value)
 {
-	struct radeon_cmdbuf *cs = sctx->dma_cs;
+	struct radeon_cmdbuf *cs = sctx->sdma_cs;
 	unsigned i, ncopy, csize;
 	struct si_resource *sdst = si_resource(dst);
 
@@ -129,8 +129,8 @@ void si_need_dma_space(struct si_context *ctx, unsigned num_dw,
 		       struct si_resource *dst, struct si_resource *src)
 {
 	struct radeon_winsys *ws = ctx->ws;
-	uint64_t vram = ctx->dma_cs->used_vram;
-	uint64_t gtt = ctx->dma_cs->used_gart;
+	uint64_t vram = ctx->sdma_cs->used_vram;
+	uint64_t gtt = ctx->sdma_cs->used_gart;
 
 	if (dst) {
 		vram += dst->vram_usage;
@@ -166,31 +166,31 @@ void si_need_dma_space(struct si_context *ctx, unsigned num_dw,
 	 */
 	num_dw++; /* for emit_wait_idle below */
 	if (!ctx->sdma_uploads_in_progress &&
-	    (!ws->cs_check_space(ctx->dma_cs, num_dw, false) ||
-	     ctx->dma_cs->used_vram + ctx->dma_cs->used_gart > 64 * 1024 * 1024 ||
-	     !radeon_cs_memory_below_limit(ctx->screen, ctx->dma_cs, vram, gtt))) {
+	    (!ws->cs_check_space(ctx->sdma_cs, num_dw, false) ||
+	     ctx->sdma_cs->used_vram + ctx->sdma_cs->used_gart > 64 * 1024 * 1024 ||
+	     !radeon_cs_memory_below_limit(ctx->screen, ctx->sdma_cs, vram, gtt))) {
 		si_flush_dma_cs(ctx, PIPE_FLUSH_ASYNC, NULL);
-		assert((num_dw + ctx->dma_cs->current.cdw) <= ctx->dma_cs->current.max_dw);
+		assert((num_dw + ctx->sdma_cs->current.cdw) <= ctx->sdma_cs->current.max_dw);
 	}
 
 	/* Wait for idle if either buffer has been used in the IB before to
 	 * prevent read-after-write hazards.
 	 */
 	if ((dst &&
-	     ws->cs_is_buffer_referenced(ctx->dma_cs, dst->buf,
+	     ws->cs_is_buffer_referenced(ctx->sdma_cs, dst->buf,
 					 RADEON_USAGE_READWRITE)) ||
 	    (src &&
-	     ws->cs_is_buffer_referenced(ctx->dma_cs, src->buf,
+	     ws->cs_is_buffer_referenced(ctx->sdma_cs, src->buf,
 					 RADEON_USAGE_WRITE)))
 		si_dma_emit_wait_idle(ctx);
 
 	unsigned sync = ctx->sdma_uploads_in_progress ? 0 : RADEON_USAGE_SYNCHRONIZED;
 	if (dst) {
-		ws->cs_add_buffer(ctx->dma_cs, dst->buf, RADEON_USAGE_WRITE | sync,
+		ws->cs_add_buffer(ctx->sdma_cs, dst->buf, RADEON_USAGE_WRITE | sync,
 				  dst->domains, 0);
 	}
 	if (src) {
-		ws->cs_add_buffer(ctx->dma_cs, src->buf, RADEON_USAGE_READ | sync,
+		ws->cs_add_buffer(ctx->sdma_cs, src->buf, RADEON_USAGE_READ | sync,
 				  src->domains, 0);
 	}
 
@@ -201,7 +201,7 @@ void si_need_dma_space(struct si_context *ctx, unsigned num_dw,
 void si_flush_dma_cs(struct si_context *ctx, unsigned flags,
 		     struct pipe_fence_handle **fence)
 {
-	struct radeon_cmdbuf *cs = ctx->dma_cs;
+	struct radeon_cmdbuf *cs = ctx->sdma_cs;
 	struct radeon_saved_cs saved;
 	bool check_vm = (ctx->screen->debug_flags & DBG(CHECK_VM)) != 0;
 

@@ -33,7 +33,7 @@ static void cik_sdma_copy_buffer(struct si_context *ctx,
 				 uint64_t src_offset,
 				 uint64_t size)
 {
-	struct radeon_cmdbuf *cs = ctx->dma_cs;
+	struct radeon_cmdbuf *cs = ctx->sdma_cs;
 	unsigned i, ncopy, csize;
 	unsigned align = ~0u;
 	struct si_resource *sdst = si_resource(dst);
@@ -162,7 +162,7 @@ static bool si_sdma_v4_copy_texture(struct si_context *sctx,
 	/* Linear -> linear sub-window copy. */
 	if (ssrc->surface.is_linear &&
 	    sdst->surface.is_linear) {
-		struct radeon_cmdbuf *cs = sctx->dma_cs;
+		struct radeon_cmdbuf *cs = sctx->sdma_cs;
 
 		/* Check if everything fits into the bitfields */
 		if (!(src_pitch <= (1 << 19) &&
@@ -228,7 +228,7 @@ static bool si_sdma_v4_copy_texture(struct si_context *sctx,
 		unsigned linear_slice_pitch = linear == ssrc ? src_slice_pitch : dst_slice_pitch;
 		uint64_t tiled_address =  tiled  == ssrc ? src_address : dst_address;
 		uint64_t linear_address = linear == ssrc ? src_address : dst_address;
-		struct radeon_cmdbuf *cs = sctx->dma_cs;
+		struct radeon_cmdbuf *cs = sctx->sdma_cs;
 
 		linear_address += linear->surface.u.gfx9.offset[linear_level];
 
@@ -381,7 +381,7 @@ static bool cik_sdma_copy_texture(struct si_context *sctx,
 	      sctx->family != CHIP_KAVERI) ||
 	     (srcx + copy_width != (1 << 14) &&
 	      srcy + copy_height != (1 << 14)))) {
-		struct radeon_cmdbuf *cs = sctx->dma_cs;
+		struct radeon_cmdbuf *cs = sctx->sdma_cs;
 
 		si_need_dma_space(sctx, 13, &sdst->buffer, &ssrc->buffer);
 
@@ -542,7 +542,7 @@ static bool cik_sdma_copy_texture(struct si_context *sctx,
 		    copy_width_aligned <= (1 << 14) &&
 		    copy_height <= (1 << 14) &&
 		    copy_depth <= (1 << 11)) {
-			struct radeon_cmdbuf *cs = sctx->dma_cs;
+			struct radeon_cmdbuf *cs = sctx->sdma_cs;
 			uint32_t direction = linear == sdst ? 1u << 31 : 0;
 
 			si_need_dma_space(sctx, 14, &sdst->buffer, &ssrc->buffer);
@@ -636,7 +636,7 @@ static bool cik_sdma_copy_texture(struct si_context *sctx,
 		     (srcx + copy_width_aligned != (1 << 14) &&
 		      srcy + copy_height_aligned != (1 << 14) &&
 		      dstx + copy_width != (1 << 14)))) {
-			struct radeon_cmdbuf *cs = sctx->dma_cs;
+			struct radeon_cmdbuf *cs = sctx->sdma_cs;
 
 			si_need_dma_space(sctx, 15, &sdst->buffer, &ssrc->buffer);
 
@@ -680,7 +680,7 @@ static void cik_sdma_copy(struct pipe_context *ctx,
 {
 	struct si_context *sctx = (struct si_context *)ctx;
 
-	if (!sctx->dma_cs ||
+	if (!sctx->sdma_cs ||
 	    src->flags & PIPE_RESOURCE_FLAG_SPARSE ||
 	    dst->flags & PIPE_RESOURCE_FLAG_SPARSE)
 		goto fallback;

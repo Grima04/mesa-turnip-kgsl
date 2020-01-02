@@ -270,8 +270,8 @@ static void si_destroy_context(struct pipe_context *context)
 
 	if (sctx->gfx_cs)
 		sctx->ws->cs_destroy(sctx->gfx_cs);
-	if (sctx->dma_cs)
-		sctx->ws->cs_destroy(sctx->dma_cs);
+	if (sctx->sdma_cs)
+		sctx->ws->cs_destroy(sctx->sdma_cs);
 	if (sctx->ctx)
 		sctx->ws->ctx_destroy(sctx->ctx);
 
@@ -494,12 +494,12 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen,
 	     *    https://gitlab.freedesktop.org/mesa/mesa/issues/1907
 	     */
 	    (sctx->chip_class != GFX10 || sscreen->debug_flags & DBG(FORCE_SDMA))) {
-		sctx->dma_cs = sctx->ws->cs_create(sctx->ctx, RING_DMA,
+		sctx->sdma_cs = sctx->ws->cs_create(sctx->ctx, RING_DMA,
 						   (void*)si_flush_dma_cs,
 						   sctx, stop_exec_on_failure);
 	}
 
-	bool use_sdma_upload = sscreen->info.has_dedicated_vram && sctx->dma_cs;
+	bool use_sdma_upload = sscreen->info.has_dedicated_vram && sctx->sdma_cs;
 	sctx->b.const_uploader = u_upload_create(&sctx->b, 256 * 1024,
 						 0, PIPE_USAGE_DEFAULT,
 						 SI_RESOURCE_FLAG_32BIT |
