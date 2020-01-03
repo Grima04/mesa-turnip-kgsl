@@ -1043,6 +1043,27 @@ v3dv_CmdBindPipeline(VkCommandBuffer commandBuffer,
    }
 }
 
+/* FIXME: C&P from radv. tu has similar code. Perhaps common place? */
+static void
+get_viewport_xform(const VkViewport *viewport,
+                   float scale[3],
+                   float translate[3])
+{
+   float x = viewport->x;
+   float y = viewport->y;
+   float half_width = 0.5f * viewport->width;
+   float half_height = 0.5f * viewport->height;
+   double n = viewport->minDepth;
+   double f = viewport->maxDepth;
+
+   scale[0] = half_width;
+   translate[0] = half_width + x;
+   scale[1] = half_height;
+   translate[1] = half_height + y;
+
+   scale[2] = (f - n);
+   translate[2] = n;
+}
 
 void
 v3dv_CmdSetViewport(VkCommandBuffer commandBuffer,
@@ -1074,6 +1095,12 @@ v3dv_CmdSetViewport(VkCommandBuffer commandBuffer,
    memcpy(state->dynamic.viewport.viewports + firstViewport, pViewports,
           viewportCount * sizeof(*pViewports));
 
+   for (uint32_t i = firstViewport; i < firstViewport + viewportCount; i++) {
+      get_viewport_xform(&state->dynamic.viewport.viewports[i],
+                         state->dynamic.viewport.scale[i],
+                         state->dynamic.viewport.translate[i]);
+   }
+
    cmd_buffer->state.dirty |= V3DV_CMD_DIRTY_DYNAMIC_VIEWPORT;
 }
 
@@ -1104,41 +1131,16 @@ v3dv_CmdSetScissor(VkCommandBuffer commandBuffer,
    cmd_buffer->state.dirty |= V3DV_CMD_DIRTY_DYNAMIC_SCISSOR;
 }
 
-
-/* FIXME: C&P from radv. tu has similar code. Perhaps common place? */
-static void
-get_viewport_xform(const VkViewport *viewport,
-                   float scale[3],
-                   float translate[3])
-{
-   float x = viewport->x;
-   float y = viewport->y;
-   float half_width = 0.5f * viewport->width;
-   float half_height = 0.5f * viewport->height;
-   double n = viewport->minDepth;
-   double f = viewport->maxDepth;
-
-   scale[0] = half_width;
-   translate[0] = half_width + x;
-   scale[1] = half_height;
-   translate[1] = half_height + y;
-
-   scale[2] = (f - n);
-   translate[2] = n;
-}
-
 static void
 emit_scissor(struct v3dv_cmd_buffer *cmd_buffer)
 {
    struct v3dv_dynamic_state *dynamic = &cmd_buffer->state.dynamic;
-   float vptranslate[3];
-   float vpscale[3];
 
    /* FIXME: right now we only support one viewport. viewporst[0] would work
     * now, but would need to change if we allow multiple viewports.
     */
-   get_viewport_xform(&dynamic->viewport.viewports[0],
-                      vpscale, vptranslate);
+   float *vptranslate = dynamic->viewport.translate[0];
+   float *vpscale = dynamic->viewport.scale[0];
 
    float vp_minx = -fabsf(vpscale[0]) + vptranslate[0];
    float vp_maxx = fabsf(vpscale[0]) + vptranslate[0];
@@ -1186,14 +1188,11 @@ static void
 emit_viewport(struct v3dv_cmd_buffer *cmd_buffer)
 {
    struct v3dv_dynamic_state *dynamic = &cmd_buffer->state.dynamic;
-   float vptranslate[3];
-   float vpscale[3];
-
    /* FIXME: right now we only support one viewport. viewporst[0] would work
     * now, would need to change if we allow multiple viewports
     */
-   get_viewport_xform(&dynamic->viewport.viewports[0],
-                      vpscale, vptranslate);
+   float *vptranslate = dynamic->viewport.translate[0];
+   float *vpscale = dynamic->viewport.scale[0];
 
    cl_emit(&cmd_buffer->bcl, CLIPPER_XY_SCALING, clip) {
       clip.viewport_half_width_in_1_256th_of_pixel = vpscale[0] * 256.0f;

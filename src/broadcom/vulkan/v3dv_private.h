@@ -393,6 +393,8 @@ struct v3dv_cmd_buffer_attachment_state {
 struct v3dv_viewport_state {
    uint32_t count;
    VkViewport viewports[MAX_VIEWPORTS];
+   float translate[MAX_VIEWPORTS][3];
+   float scale[MAX_VIEWPORTS][3];
 };
 
 struct v3dv_scissor_state {
