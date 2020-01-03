@@ -152,9 +152,9 @@ struct gfx9_surf_layout {
     uint64_t                    surf_offset; /* 0 unless imported with an offset */
     /* The size of the 2D plane containing all mipmap levels. */
     uint64_t                    surf_slice_size;
-    /* Mipmap level offset within the slice in bytes. */
+    /* Mipmap level offset within the slice in bytes. Only valid for LINEAR. */
     uint32_t                    offset[RADEON_SURF_MAX_LEVELS];
-    /* Mipmap level pitch in elements. */
+    /* Mipmap level pitch in elements. Only valid for LINEAR. */
     uint32_t                    pitch[RADEON_SURF_MAX_LEVELS];
 
     uint64_t                    stencil_offset; /* separate stencil */
