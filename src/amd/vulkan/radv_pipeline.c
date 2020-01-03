@@ -2836,20 +2836,6 @@ void radv_create_shaders(struct radv_pipeline *pipeline,
 
 			radv_stop_feedback(stage_feedbacks[MESA_SHADER_FRAGMENT], false);
 		}
-
-		/* TODO: These are no longer used as keys we should refactor this */
-		keys[MESA_SHADER_VERTEX].vs_common_out.export_prim_id =
-		        pipeline->shaders[MESA_SHADER_FRAGMENT]->info.ps.prim_id_input;
-		keys[MESA_SHADER_VERTEX].vs_common_out.export_layer_id =
-		        pipeline->shaders[MESA_SHADER_FRAGMENT]->info.ps.layer_input;
-		keys[MESA_SHADER_VERTEX].vs_common_out.export_clip_dists =
-		        !!pipeline->shaders[MESA_SHADER_FRAGMENT]->info.ps.num_input_clips_culls;
-		keys[MESA_SHADER_TESS_EVAL].vs_common_out.export_prim_id =
-		        pipeline->shaders[MESA_SHADER_FRAGMENT]->info.ps.prim_id_input;
-		keys[MESA_SHADER_TESS_EVAL].vs_common_out.export_layer_id =
-		        pipeline->shaders[MESA_SHADER_FRAGMENT]->info.ps.layer_input;
-		keys[MESA_SHADER_TESS_EVAL].vs_common_out.export_clip_dists =
-		        !!pipeline->shaders[MESA_SHADER_FRAGMENT]->info.ps.num_input_clips_culls;
 	}
 
 	if (device->physical_device->rad_info.chip_class >= GFX9 && modules[MESA_SHADER_TESS_CTRL]) {
