@@ -83,9 +83,11 @@ enum Label {
    label_fcmp = 1 << 20,
    label_uniform_bool = 1 << 21,
    label_constant_64bit = 1 << 22,
+   label_uniform_bitwise = 1 << 23,
 };
 
-static constexpr uint32_t instr_labels = label_vec | label_mul | label_mad | label_omod_success | label_clamp_success | label_add_sub | label_bitwise | label_minmax | label_fcmp;
+static constexpr uint32_t instr_labels = label_vec | label_mul | label_mad | label_omod_success | label_clamp_success |
+                                         label_add_sub | label_bitwise | label_uniform_bitwise | label_minmax | label_fcmp;
 static constexpr uint32_t temp_labels = label_abs | label_neg | label_temp | label_vcc | label_b2f | label_uniform_bool | label_omod2 | label_omod4 | label_omod5 | label_clamp;
 static constexpr uint32_t val_labels = label_constant | label_constant_64bit | label_literal | label_mad;
 
@@ -345,6 +347,16 @@ struct ssa_info {
    bool is_bitwise()
    {
       return label & label_bitwise;
+   }
+
+   void set_uniform_bitwise()
+   {
+      add_label(label_uniform_bitwise);
+   }
+
+   bool is_uniform_bitwise()
+   {
+      return label & label_uniform_bitwise;
    }
 
    void set_minmax(Instruction *minmax_instr)
@@ -1087,9 +1099,18 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
       break;
    case aco_opcode::s_and_b32:
    case aco_opcode::s_and_b64:
-      if (instr->operands[1].isFixed() && instr->operands[1].physReg() == exec &&
-          instr->operands[0].isTemp() && ctx.info[instr->operands[0].tempId()].is_uniform_bool()) {
-         ctx.info[instr->definitions[1].tempId()].set_temp(ctx.info[instr->operands[0].tempId()].temp);
+      if (instr->operands[1].isFixed() && instr->operands[1].physReg() == exec && instr->operands[0].isTemp()) {
+         if (ctx.info[instr->operands[0].tempId()].is_uniform_bool()) {
+            /* Try to get rid of the superfluous s_cselect + s_and_b64 that comes from turning a uniform bool into divergent */
+            ctx.info[instr->definitions[1].tempId()].set_temp(ctx.info[instr->operands[0].tempId()].temp);
+            ctx.info[instr->definitions[0].tempId()].set_uniform_bool(ctx.info[instr->operands[0].tempId()].temp);
+            break;
+         } else if (ctx.info[instr->operands[0].tempId()].is_uniform_bitwise()) {
+            /* Try to get rid of the superfluous s_and_b64, since the uniform bitwise instruction already produces the same SCC */
+            ctx.info[instr->definitions[1].tempId()].set_temp(ctx.info[instr->operands[0].tempId()].instr->definitions[1].getTemp());
+            ctx.info[instr->definitions[0].tempId()].set_uniform_bool(ctx.info[instr->operands[0].tempId()].instr->definitions[1].getTemp());
+            break;
+         }
       }
       /* fallthrough */
    case aco_opcode::s_not_b32:
@@ -1098,6 +1119,12 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
    case aco_opcode::s_or_b64:
    case aco_opcode::s_xor_b32:
    case aco_opcode::s_xor_b64:
+      if (std::all_of(instr->operands.begin(), instr->operands.end(), [&ctx](const Operand& op) {
+                         return op.isTemp() && (ctx.info[op.tempId()].is_uniform_bool() || ctx.info[op.tempId()].is_uniform_bitwise());
+                      })) {
+         ctx.info[instr->definitions[0].tempId()].set_uniform_bitwise();
+      }
+      /* fallthrough */
    case aco_opcode::s_lshl_b32:
    case aco_opcode::v_or_b32:
    case aco_opcode::v_lshlrev_b32:
