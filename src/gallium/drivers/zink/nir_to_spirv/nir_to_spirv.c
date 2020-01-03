@@ -388,10 +388,13 @@ emit_sampler(struct ntv_context *ctx, struct nir_variable *var)
 {
    bool is_ms;
    SpvDim dimension = type_to_dim(glsl_get_sampler_dim(var->type), &is_ms);
-   SpvId float_type = spirv_builder_type_float(&ctx->builder, 32);
-   SpvId image_type = spirv_builder_type_image(&ctx->builder, float_type,
-                            dimension, false, glsl_sampler_type_is_array(var->type), is_ms, 1,
-                            SpvImageFormatUnknown);
+
+   SpvId result_type = get_glsl_basetype(ctx, glsl_get_sampler_result_type(var->type));
+   SpvId image_type = spirv_builder_type_image(&ctx->builder, result_type,
+                                               dimension, false,
+                                               glsl_sampler_type_is_array(var->type),
+                                               is_ms, 1,
+                                               SpvImageFormatUnknown);
 
    SpvId sampled_type = spirv_builder_type_sampled_image(&ctx->builder,
                                                          image_type);
@@ -1372,8 +1375,6 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
           tex->op == nir_texop_txd ||
           tex->op == nir_texop_txf ||
           tex->op == nir_texop_txs);
-   assert(tex->op == nir_texop_txs ||
-          nir_alu_type_get_base_type(tex->dest_type) == nir_type_float);
    assert(tex->texture_index == tex->sampler_index);
 
    SpvId coord = 0, proj = 0, bias = 0, lod = 0, dref = 0, dx = 0, dy = 0,
