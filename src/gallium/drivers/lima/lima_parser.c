@@ -71,8 +71,8 @@ parse_vs_draw(FILE *fp, uint32_t *value1, uint32_t *value2)
 static void
 parse_vs_shader_info(FILE *fp, uint32_t *value1, uint32_t *value2)
 {
-   fprintf(fp, "\t/* SHADER_INFO: prefetch: %s, size: %d */\n",
-           (*value1 & 0x00100000) ? "enabled" : "disabled",
+   fprintf(fp, "\t/* SHADER_INFO: prefetch: %d, size: %d */\n",
+           (*value1 & 0xfff00000) >> 20,
            (((*value1 & 0x000fffff) >> 10) + 1) << 4);
 }
 
