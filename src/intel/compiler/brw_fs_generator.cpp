@@ -2216,12 +2216,15 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
          generate_shader_time_add(inst, src[0], src[1], src[2]);
          break;
 
-      case SHADER_OPCODE_MEMORY_FENCE:
+      case SHADER_OPCODE_MEMORY_FENCE: {
          assert(src[1].file == BRW_IMMEDIATE_VALUE);
          assert(src[2].file == BRW_IMMEDIATE_VALUE);
-         brw_memory_fence(p, dst, src[0], BRW_OPCODE_SEND, src[1].ud, src[2].ud);
-         send_count++;
+         const unsigned sends =
+            brw_memory_fence(p, dst, src[0], BRW_OPCODE_SEND, src[1].ud,
+                             src[2].ud);
+         send_count += sends;
          break;
+      }
 
       case FS_OPCODE_SCHEDULING_FENCE:
          if (unlikely(debug_flag))

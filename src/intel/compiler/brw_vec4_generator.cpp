@@ -1910,10 +1910,13 @@ generate_code(struct brw_codegen *p,
          send_count++;
          break;
 
-      case SHADER_OPCODE_MEMORY_FENCE:
-         brw_memory_fence(p, dst, src[0], BRW_OPCODE_SEND, false, /* bti */ 0);
-         send_count++;
+      case SHADER_OPCODE_MEMORY_FENCE: {
+         const unsigned sends =
+            brw_memory_fence(p, dst, src[0], BRW_OPCODE_SEND, false,
+                             /* bti */ 0);
+         send_count += sends;
          break;
+      }
 
       case SHADER_OPCODE_FIND_LIVE_CHANNEL: {
          const struct brw_reg mask =

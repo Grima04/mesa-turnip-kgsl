@@ -3145,7 +3145,7 @@ brw_set_memory_fence_message(struct brw_codegen *p,
    brw_inst_set_binding_table_index(devinfo, insn, bti);
 }
 
-void
+unsigned
 brw_memory_fence(struct brw_codegen *p,
                  struct brw_reg dst,
                  struct brw_reg src,
@@ -3158,6 +3158,8 @@ brw_memory_fence(struct brw_codegen *p,
       devinfo->gen >= 10 || /* HSD ES # 1404612949 */
       (devinfo->gen == 7 && !devinfo->is_haswell);
    struct brw_inst *insn;
+
+   unsigned fences = 0;
 
    brw_push_insn_state(p);
    brw_set_default_mask_control(p, BRW_MASK_DISABLE);
@@ -3173,6 +3175,7 @@ brw_memory_fence(struct brw_codegen *p,
    brw_set_src0(p, insn, src);
    brw_set_memory_fence_message(p, insn, GEN7_SFID_DATAPORT_DATA_CACHE,
                                 commit_enable, bti);
+   fences++;
 
    if (devinfo->gen == 7 && !devinfo->is_haswell) {
       /* IVB does typed surface access through the render cache, so we need to
@@ -3184,6 +3187,7 @@ brw_memory_fence(struct brw_codegen *p,
       brw_set_src0(p, insn, src);
       brw_set_memory_fence_message(p, insn, GEN6_SFID_DATAPORT_RENDER_CACHE,
                                    commit_enable, bti);
+      fences++;
 
       /* Now write the response of the second message into the response of the
        * first to trigger a pipeline stall -- This way future render and data
@@ -3201,6 +3205,8 @@ brw_memory_fence(struct brw_codegen *p,
    }
 
    brw_pop_insn_state(p);
+
+   return fences;
 }
 
 void
