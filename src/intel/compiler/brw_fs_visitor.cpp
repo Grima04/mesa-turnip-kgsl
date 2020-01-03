@@ -328,8 +328,8 @@ fs_visitor::emit_interpolation_setup_gen6()
    struct brw_wm_prog_data *wm_prog_data = brw_wm_prog_data(prog_data);
 
    for (int i = 0; i < BRW_BARYCENTRIC_MODE_COUNT; ++i) {
-      this->delta_xy[i] = fetch_payload_reg(
-         bld, payload.barycentric_coord_reg[i], BRW_REGISTER_TYPE_F, 2);
+      this->delta_xy[i] = fetch_barycentric_reg(
+         bld, payload.barycentric_coord_reg[i]);
    }
 
    uint32_t centroid_modes = wm_prog_data->barycentric_interp_modes &
