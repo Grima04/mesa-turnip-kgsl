@@ -233,7 +233,7 @@ struct compiled_vertex_elements_state {
 /* Compiled context->set_vertex_buffer result */
 struct compiled_set_vertex_buffer {
    uint32_t FE_VERTEX_STREAM_CONTROL;
-   uint32_t FE_VERTEX_STREAM_UNK14680;
+   uint32_t FE_VERTEX_STREAM_VERTEX_DIVISOR;
    struct etna_reloc FE_VERTEX_STREAM_BASE_ADDR;
 };
 

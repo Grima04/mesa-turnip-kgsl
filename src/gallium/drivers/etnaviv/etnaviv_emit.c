@@ -329,7 +329,7 @@ etna_emit_state(struct etna_context *ctx)
          }
          for (int x = 0; x < ctx->vertex_buffer.count; ++x) {
             if (ctx->vertex_buffer.cvb[x].FE_VERTEX_STREAM_BASE_ADDR.bo) {
-               /*14680*/ EMIT_STATE(NFE_VERTEX_STREAMS_VERTEX_DIVISOR(x), ctx->vertex_buffer.cvb[x].FE_VERTEX_STREAM_UNK14680);
+               /*14680*/ EMIT_STATE(NFE_VERTEX_STREAMS_VERTEX_DIVISOR(x), ctx->vertex_buffer.cvb[x].FE_VERTEX_STREAM_VERTEX_DIVISOR);
             }
          }
       } else if(ctx->specs.stream_count > 1) { /* hw w/ multiple vertex streams */
