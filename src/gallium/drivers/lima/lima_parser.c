@@ -24,7 +24,6 @@
 
 #include "util/u_math.h"
 
-#include <assert.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
@@ -522,7 +521,6 @@ parse_rsw(FILE *fp, uint32_t *value, int i, uint32_t *helper)
               *value & 0xffffffe0, *value & 0x0000001f);
       break;
    case 10: /* VARYING TYPES */
-      assert(*helper);
       fprintf(fp, "(1): ");
       int val, j;
       /* 0 - 5 */
