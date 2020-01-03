@@ -769,32 +769,33 @@ fs_reg_alloc::build_interference_graph(bool allow_spilling)
    if (grf127_send_hack_node >= 0)
       ra_set_node_reg(g, grf127_send_hack_node, 127);
 
+   /* Specify the classes of each virtual register. */
    for (unsigned i = 0; i < fs->alloc.count; i++) {
       unsigned size = fs->alloc.sizes[i];
-      int c;
 
       assert(size <= ARRAY_SIZE(compiler->fs_reg_sets[rsi].classes) &&
              "Register allocation relies on split_virtual_grfs()");
-      c = compiler->fs_reg_sets[rsi].classes[size - 1];
 
-      /* Special case: on pre-GEN6 hardware that supports PLN, the
-       * second operand of a PLN instruction needs to be an
-       * even-numbered register, so we have a special register class
-       * wm_aligned_pairs_class to handle this case.  pre-GEN6 always
-       * uses fs->delta_xy[BRW_BARYCENTRIC_PERSPECTIVE_PIXEL] as the
-       * second operand of a PLN instruction (since it doesn't support
-       * any other interpolation modes).  So all we need to do is find
-       * that register and set it to the appropriate class.
-       */
-      if (compiler->fs_reg_sets[rsi].aligned_pairs_class >= 0 &&
-          fs->delta_xy[BRW_BARYCENTRIC_PERSPECTIVE_PIXEL].file == VGRF &&
-          fs->delta_xy[BRW_BARYCENTRIC_PERSPECTIVE_PIXEL].nr == i) {
-         c = compiler->fs_reg_sets[rsi].aligned_pairs_class;
+      ra_set_node_class(g, first_vgrf_node + i,
+                        compiler->fs_reg_sets[rsi].classes[size - 1]);
+   }
+
+   /* Special case: on pre-Gen7 hardware that supports PLN, the second operand
+    * of a PLN instruction needs to be an even-numbered register, so we have a
+    * special register class aligned_pairs_class to handle this case.
+    */
+   if (compiler->fs_reg_sets[rsi].aligned_pairs_class >= 0) {
+      foreach_block_and_inst(block, fs_inst, inst, fs->cfg) {
+         if (inst->opcode == FS_OPCODE_LINTERP && inst->src[0].file == VGRF &&
+             fs->alloc.sizes[inst->src[0].nr] == 2) {
+            ra_set_node_class(g, first_vgrf_node + inst->src[0].nr,
+                              compiler->fs_reg_sets[rsi].aligned_pairs_class);
+         }
       }
+   }
 
-      ra_set_node_class(g, first_vgrf_node + i, c);
-
-      /* Add interference based on the live range of the register */
+   /* Add interference based on the live range of the register */
+   for (unsigned i = 0; i < fs->alloc.count; i++) {
       setup_live_interference(first_vgrf_node + i,
                               fs->virtual_grf_start[i],
                               fs->virtual_grf_end[i]);
