@@ -7428,5 +7428,7 @@ st_link_tgsi(struct gl_context *ctx, struct gl_shader_program *prog)
       }
    }
 
+   _mesa_create_program_resource_hash(prog);
+
    return GL_TRUE;
 }

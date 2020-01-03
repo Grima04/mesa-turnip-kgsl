@@ -388,6 +388,8 @@ brw_link_shader(struct gl_context *ctx, struct gl_shader_program *shProg)
    else
       nir_build_program_resource_list(ctx, shProg, true);
 
+   _mesa_create_program_resource_hash(shProg);
+
    for (stage = 0; stage < ARRAY_SIZE(shProg->_LinkedShaders); stage++) {
       struct gl_linked_shader *shader = shProg->_LinkedShaders[stage];
       if (!shader)
