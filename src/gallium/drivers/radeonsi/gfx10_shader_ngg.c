@@ -83,6 +83,46 @@ static LLVMValueRef ngg_get_initial_edgeflag(struct si_shader_context *ctx, unsi
 	return ctx->i1false;
 }
 
+/**
+ * Return the number of vertices as a constant in \p num_vertices,
+ * and return a more precise value as LLVMValueRef from the function.
+ */
+static LLVMValueRef ngg_get_vertices_per_prim(struct si_shader_context *ctx,
+					      unsigned *num_vertices)
+{
+	const struct si_shader_info *info = &ctx->shader->selector->info;
+
+	if (ctx->type == PIPE_SHADER_VERTEX) {
+		if (info->properties[TGSI_PROPERTY_VS_BLIT_SGPRS_AMD]) {
+			/* Blits always use axis-aligned rectangles with 3 vertices. */
+			*num_vertices = 3;
+			return LLVMConstInt(ctx->i32, 3, 0);
+		} else {
+			/* We always build up all three indices for the prim export
+			 * independent of the primitive type. The additional garbage
+			 * data shouldn't hurt. This number doesn't matter with
+			 * NGG passthrough.
+			 */
+			*num_vertices = 3;
+
+			/* Extract OUTPRIM field. */
+			LLVMValueRef num = si_unpack_param(ctx, ctx->vs_state_bits, 2, 2);
+			return LLVMBuildAdd(ctx->ac.builder, num, ctx->i32_1, "");
+		}
+	} else {
+		assert(ctx->type == PIPE_SHADER_TESS_EVAL);
+
+		if (info->properties[TGSI_PROPERTY_TES_POINT_MODE])
+			*num_vertices = 1;
+		else if (info->properties[TGSI_PROPERTY_TES_PRIM_MODE] == PIPE_PRIM_LINES)
+			*num_vertices = 2;
+		else
+			*num_vertices = 3;
+
+		return LLVMConstInt(ctx->i32, *num_vertices, false);
+	}
+}
+
 static void build_streamout_vertex(struct si_shader_context *ctx,
 				   LLVMValueRef *so_buffer, LLVMValueRef *wg_offset_dw,
 				   unsigned stream, LLVMValueRef offset_vtx,
@@ -532,31 +572,7 @@ void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi,
 
 	/* Determine the number of vertices per primitive. */
 	unsigned num_vertices;
-	LLVMValueRef num_vertices_val;
-
-	if (ctx->type == PIPE_SHADER_VERTEX) {
-		if (info->properties[TGSI_PROPERTY_VS_BLIT_SGPRS_AMD]) {
-			/* Blits always use axis-aligned rectangles with 3 vertices. */
-			num_vertices = 3;
-			num_vertices_val = LLVMConstInt(ctx->i32, 3, 0);
-		} else {
-			/* Extract OUTPRIM field. */
-			tmp = si_unpack_param(ctx, ctx->vs_state_bits, 2, 2);
-			num_vertices_val = LLVMBuildAdd(builder, tmp, ctx->i32_1, "");
-			num_vertices = 3; /* TODO: optimize for points & lines */
-		}
-	} else {
-		assert(ctx->type == PIPE_SHADER_TESS_EVAL);
-
-		if (info->properties[TGSI_PROPERTY_TES_POINT_MODE])
-			num_vertices = 1;
-		else if (info->properties[TGSI_PROPERTY_TES_PRIM_MODE] == PIPE_PRIM_LINES)
-			num_vertices = 2;
-		else
-			num_vertices = 3;
-
-		num_vertices_val = LLVMConstInt(ctx->i32, num_vertices, false);
-	}
+	LLVMValueRef num_vertices_val = ngg_get_vertices_per_prim(ctx, &num_vertices);
 
 	/* Streamout */
 	LLVMValueRef emitted_prims = NULL;
