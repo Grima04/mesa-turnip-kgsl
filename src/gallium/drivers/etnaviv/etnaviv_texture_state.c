@@ -39,6 +39,48 @@
 
 #include "drm-uapi/drm_fourcc.h"
 
+struct etna_sampler_state {
+   struct pipe_sampler_state base;
+
+   /* sampler offset +4*sampler, interleave when committing state */
+   uint32_t TE_SAMPLER_CONFIG0;
+   uint32_t TE_SAMPLER_CONFIG1;
+   uint32_t TE_SAMPLER_LOD_CONFIG;
+   uint32_t TE_SAMPLER_3D_CONFIG;
+   uint32_t NTE_SAMPLER_BASELOD;
+   unsigned min_lod, max_lod, max_lod_min;
+};
+
+static inline struct etna_sampler_state *
+etna_sampler_state(struct pipe_sampler_state *samp)
+{
+   return (struct etna_sampler_state *)samp;
+}
+
+struct etna_sampler_view {
+   struct pipe_sampler_view base;
+
+   /* sampler offset +4*sampler, interleave when committing state */
+   uint32_t TE_SAMPLER_CONFIG0;
+   uint32_t TE_SAMPLER_CONFIG0_MASK;
+   uint32_t TE_SAMPLER_CONFIG1;
+   uint32_t TE_SAMPLER_3D_CONFIG;
+   uint32_t TE_SAMPLER_SIZE;
+   uint32_t TE_SAMPLER_LOG_SIZE;
+   uint32_t TE_SAMPLER_ASTC0;
+   uint32_t TE_SAMPLER_LINEAR_STRIDE[VIVS_TE_SAMPLER_LINEAR_STRIDE__LEN];
+   struct etna_reloc TE_SAMPLER_LOD_ADDR[VIVS_TE_SAMPLER_LOD_ADDR__LEN];
+   unsigned min_lod, max_lod; /* 5.5 fixp */
+
+   struct etna_sampler_ts ts;
+};
+
+static inline struct etna_sampler_view *
+etna_sampler_view(struct pipe_sampler_view *view)
+{
+   return (struct etna_sampler_view *)view;
+}
+
 static void *
 etna_create_sampler_state_state(struct pipe_context *pipe,
                           const struct pipe_sampler_state *ss)
