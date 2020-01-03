@@ -629,7 +629,14 @@ void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi,
 		}
 	}
 
-	ac_build_endif(&ctx->ac, ctx->merged_wrap_if_label);
+	bool unterminated_es_if_block =
+		gfx10_is_ngg_passthrough(ctx->shader) &&
+		!ctx->screen->use_ngg_streamout && /* no query buffer */
+		(ctx->type != PIPE_SHADER_VERTEX ||
+		 !ctx->shader->key.mono.u.vs_export_prim_id);
+
+	if (!unterminated_es_if_block)
+		ac_build_endif(&ctx->ac, ctx->merged_wrap_if_label);
 
 	LLVMValueRef is_gs_thread = si_is_gs_thread(ctx);
 	LLVMValueRef is_es_thread = si_is_es_thread(ctx);
@@ -647,8 +654,9 @@ void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi,
 	LLVMValueRef emitted_prims = NULL;
 
 	if (sel->so.num_outputs) {
-		struct ngg_streamout nggso = {};
+		assert(!unterminated_es_if_block);
 
+		struct ngg_streamout nggso = {};
 		nggso.num_vertices = num_vertices_val;
 		nggso.prim_enable[0] = is_gs_thread;
 
@@ -662,6 +670,8 @@ void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi,
 	LLVMValueRef user_edgeflags[3] = {};
 
 	if (sel->info.writes_edgeflag) {
+		assert(!unterminated_es_if_block);
+
 		/* Streamout already inserted the barrier, so don't insert it again. */
 		if (!sel->so.num_outputs)
 			ac_build_s_barrier(&ctx->ac);
@@ -686,6 +696,8 @@ void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi,
 	 */
 	if (ctx->type == PIPE_SHADER_VERTEX &&
 	    ctx->shader->key.mono.u.vs_export_prim_id) {
+		assert(!unterminated_es_if_block);
+
 		/* Streamout and edge flags use LDS. Make it idle, so that we can reuse it. */
 		if (sel->so.num_outputs || sel->info.writes_edgeflag)
 			ac_build_s_barrier(&ctx->ac);
@@ -709,6 +721,8 @@ void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi,
 	/* Update query buffer */
 	if (ctx->screen->use_ngg_streamout &&
 	    !info->properties[TGSI_PROPERTY_VS_BLIT_SGPRS_AMD]) {
+		assert(!unterminated_es_if_block);
+
 		tmp = si_unpack_param(ctx, ctx->vs_state_bits, 6, 1);
 		tmp = LLVMBuildTrunc(builder, tmp, ctx->i1, "");
 		ac_build_ifcc(&ctx->ac, tmp, 5029); /* if (STREAMOUT_QUERY_ENABLED) */
@@ -742,11 +756,14 @@ void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi,
 	}
 
 	/* Build the primitive export. */
-	if (!gfx10_ngg_export_prim_early(ctx->shader))
+	if (!gfx10_ngg_export_prim_early(ctx->shader)) {
+		assert(!unterminated_es_if_block);
 		gfx10_ngg_build_export_prim(ctx, user_edgeflags);
+	}
 
 	/* Export per-vertex data (positions and parameters). */
-	ac_build_ifcc(&ctx->ac, is_es_thread, 6002);
+	if (!unterminated_es_if_block)
+		ac_build_ifcc(&ctx->ac, is_es_thread, 6002);
 	{
 		unsigned i;
 
