@@ -1248,7 +1248,7 @@ emit_store_deref(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 static void
 emit_load_front_face(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 {
-   SpvId var_type = get_glsl_type(ctx, glsl_bool_type());
+   SpvId var_type = spirv_builder_type_bool(&ctx->builder);
    if (!ctx->front_face_var) {
       SpvId pointer_type = spirv_builder_type_pointer(&ctx->builder,
                                                       SpvStorageClassInput,
