@@ -1245,25 +1245,33 @@ emit_store_deref(struct ntv_context *ctx, nir_intrinsic_instr *intr)
    spirv_builder_emit_store(&ctx->builder, ptr, result);
 }
 
+static SpvId
+create_builtin_var(struct ntv_context *ctx, SpvId var_type,
+                   SpvStorageClass storage_class,
+                   const char *name, SpvBuiltIn builtin)
+{
+   SpvId pointer_type = spirv_builder_type_pointer(&ctx->builder,
+                                                   storage_class,
+                                                   var_type);
+   SpvId var = spirv_builder_emit_var(&ctx->builder, pointer_type,
+                                      storage_class);
+   spirv_builder_emit_name(&ctx->builder, var, name);
+   spirv_builder_emit_builtin(&ctx->builder, var, builtin);
+
+   assert(ctx->num_entry_ifaces < ARRAY_SIZE(ctx->entry_ifaces));
+   ctx->entry_ifaces[ctx->num_entry_ifaces++] = var;
+   return var;
+}
+
 static void
 emit_load_front_face(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 {
    SpvId var_type = spirv_builder_type_bool(&ctx->builder);
-   if (!ctx->front_face_var) {
-      SpvId pointer_type = spirv_builder_type_pointer(&ctx->builder,
-                                                      SpvStorageClassInput,
-                                                      var_type);
-      ctx->front_face_var = spirv_builder_emit_var(&ctx->builder,
-                                                   pointer_type,
-                                                   SpvStorageClassInput);
-      spirv_builder_emit_name(&ctx->builder, ctx->front_face_var,
-                              "gl_FrontFacing");
-      spirv_builder_emit_builtin(&ctx->builder, ctx->front_face_var,
-                                 SpvBuiltInFrontFacing);
-
-      assert(ctx->num_entry_ifaces < ARRAY_SIZE(ctx->entry_ifaces));
-      ctx->entry_ifaces[ctx->num_entry_ifaces++] = ctx->front_face_var;
-   }
+   if (!ctx->front_face_var)
+      ctx->front_face_var = create_builtin_var(ctx, var_type,
+                                               SpvStorageClassInput,
+                                               "gl_FrontFacing",
+                                               SpvBuiltInFrontFacing);
 
    SpvId result = spirv_builder_emit_load(&ctx->builder, var_type,
                                           ctx->front_face_var);
