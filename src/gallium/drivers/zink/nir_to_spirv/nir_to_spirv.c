@@ -1462,7 +1462,7 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
       return;
    }
 
-   if (proj) {
+   if (proj && coord_components > 0) {
       SpvId constituents[coord_components + 1];
       if (coord_components == 1)
          constituents[0] = coord;
@@ -1506,7 +1506,7 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
    spirv_builder_emit_decoration(&ctx->builder, result,
                                  SpvDecorationRelaxedPrecision);
 
-   if (dref) {
+   if (dref && nir_dest_num_components(tex->dest) > 1) {
       SpvId components[4] = { result, result, result, result };
       result = spirv_builder_emit_composite_construct(&ctx->builder,
                                                       dest_type,
