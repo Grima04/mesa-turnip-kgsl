@@ -3228,7 +3228,16 @@ void visit_load_input(isel_context *ctx, nir_intrinsic_instr *instr)
       while (channel_start < num_channels) {
          unsigned fetch_size = num_channels - channel_start;
          unsigned fetch_offset = attrib_offset + channel_start * vtx_info->chan_byte_size;
-         unsigned fetch_dfmt = get_fetch_data_format(ctx, vtx_info, fetch_offset, attrib_stride, &fetch_size);
+
+         /* use MUBUF when possible to avoid possible alignment issues */
+         /* TODO: we could use SDWA to unpack 8/16-bit attributes without extra instructions */
+         bool use_mubuf = (nfmt == V_008F0C_BUF_NUM_FORMAT_FLOAT ||
+                           nfmt == V_008F0C_BUF_NUM_FORMAT_UINT ||
+                           nfmt == V_008F0C_BUF_NUM_FORMAT_SINT) &&
+                          vtx_info->chan_byte_size == 4;
+         unsigned fetch_dfmt = V_008F0C_BUF_DATA_FORMAT_INVALID;
+         if (!use_mubuf)
+            fetch_dfmt = get_fetch_data_format(ctx, vtx_info, fetch_offset, attrib_stride, &fetch_size);
 
          Temp fetch_index = index;
          if (attrib_stride != 0 && fetch_offset > attrib_stride) {
@@ -3245,16 +3254,16 @@ void visit_load_input(isel_context *ctx, nir_intrinsic_instr *instr)
          aco_opcode opcode;
          switch (fetch_size) {
          case 1:
-            opcode = aco_opcode::tbuffer_load_format_x;
+            opcode = use_mubuf ? aco_opcode::buffer_load_dword : aco_opcode::tbuffer_load_format_x;
             break;
          case 2:
-            opcode = aco_opcode::tbuffer_load_format_xy;
+            opcode = use_mubuf ? aco_opcode::buffer_load_dwordx2 : aco_opcode::tbuffer_load_format_xy;
             break;
          case 3:
-            opcode = aco_opcode::tbuffer_load_format_xyz;
+            opcode = use_mubuf ? aco_opcode::buffer_load_dwordx3 : aco_opcode::tbuffer_load_format_xyz;
             break;
          case 4:
-            opcode = aco_opcode::tbuffer_load_format_xyzw;
+            opcode = use_mubuf ? aco_opcode::buffer_load_dwordx4 : aco_opcode::tbuffer_load_format_xyzw;
             break;
          default:
             unreachable("Unimplemented load_input vector size");
@@ -3269,11 +3278,17 @@ void visit_load_input(isel_context *ctx, nir_intrinsic_instr *instr)
             fetch_dst = bld.tmp(RegType::vgpr, fetch_size);
          }
 
-         Instruction *mtbuf = bld.mtbuf(opcode,
-                                        Definition(fetch_dst), fetch_index, list, soffset,
-                                        fetch_dfmt, nfmt, fetch_offset,
-                                        false, true).instr;
-         static_cast<MTBUF_instruction*>(mtbuf)->can_reorder = true;
+         if (use_mubuf) {
+            Instruction *mubuf = bld.mubuf(opcode,
+                                           Definition(fetch_dst), fetch_index, list, soffset,
+                                           fetch_offset, false, true).instr;
+            static_cast<MUBUF_instruction*>(mubuf)->can_reorder = true;
+         } else {
+            Instruction *mtbuf = bld.mtbuf(opcode,
+                                           Definition(fetch_dst), fetch_index, list, soffset,
+                                           fetch_dfmt, nfmt, fetch_offset, false, true).instr;
+            static_cast<MTBUF_instruction*>(mtbuf)->can_reorder = true;
+         }
 
          emit_split_vector(ctx, fetch_dst, fetch_dst.size());
 
