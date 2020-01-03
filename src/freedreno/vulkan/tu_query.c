@@ -282,12 +282,50 @@ tu_CmdCopyQueryPoolResults(VkCommandBuffer commandBuffer,
 {
 }
 
+static void
+emit_reset_occlusion_query_pool(struct tu_cmd_buffer *cmdbuf,
+                                struct tu_query_pool *pool,
+                                uint32_t firstQuery,
+                                uint32_t queryCount)
+{
+   struct tu_cs *cs = &cmdbuf->cs;
+
+   for (uint32_t i = 0; i < queryCount; i++) {
+      uint32_t query = firstQuery + i;
+      uint64_t available_iova = occlusion_query_iova(pool, query, available);
+      uint64_t result_iova = occlusion_query_iova(pool, query, result);
+      tu_cs_reserve_space(cmdbuf->device, cs, 11);
+      tu_cs_emit_pkt7(cs, CP_MEM_WRITE, 4);
+      tu_cs_emit_qw(cs, available_iova);
+      tu_cs_emit_qw(cs, 0x0);
+
+      tu_cs_emit_pkt7(cs, CP_MEM_WRITE, 4);
+      tu_cs_emit_qw(cs, result_iova);
+      tu_cs_emit_qw(cs, 0x0);
+   }
+}
+
 void
 tu_CmdResetQueryPool(VkCommandBuffer commandBuffer,
                      VkQueryPool queryPool,
                      uint32_t firstQuery,
                      uint32_t queryCount)
 {
+   TU_FROM_HANDLE(tu_cmd_buffer, cmdbuf, commandBuffer);
+   TU_FROM_HANDLE(tu_query_pool, pool, queryPool);
+
+   switch (pool->type) {
+   case VK_QUERY_TYPE_OCCLUSION:
+      emit_reset_occlusion_query_pool(cmdbuf, pool, firstQuery, queryCount);
+      break;
+   case VK_QUERY_TYPE_PIPELINE_STATISTICS:
+   case VK_QUERY_TYPE_TIMESTAMP:
+      unreachable("Unimplemented query type");
+   default:
+      assert(!"Invalid query type");
+   }
+
+   tu_bo_list_add(&cmdbuf->bo_list, &pool->bo, MSM_SUBMIT_BO_WRITE);
 }
 
 static void
