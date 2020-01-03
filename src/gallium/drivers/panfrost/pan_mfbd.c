@@ -235,16 +235,16 @@ panfrost_mfbd_set_zsbuf(
         struct panfrost_resource *rsrc = pan_resource(surf->texture);
 
         unsigned level = surf->u.tex.level;
-        assert(surf->u.tex.first_layer == 0);
+        unsigned first_layer = surf->u.tex.first_layer;
+        assert(surf->u.tex.last_layer == first_layer);
 
-        unsigned offset = rsrc->slices[level].offset;
+        mali_ptr base = panfrost_get_texture_address(rsrc, level, first_layer);
 
         if (rsrc->layout == PAN_AFBC) {
                 /* The only Z/S format we can compress is Z24S8 or variants
                  * thereof (handled by the state tracker) */
                 assert(panfrost_is_z24s8_variant(surf->format));
 
-                mali_ptr base = rsrc->bo->gpu + offset;
                 unsigned header_size = rsrc->slices[level].header_size;
 
                 fb->mfbd_flags |= MALI_MFBD_EXTRA;
@@ -270,7 +270,7 @@ panfrost_mfbd_set_zsbuf(
                 fb->mfbd_flags |= MALI_MFBD_EXTRA;
                 fbx->flags |= MALI_EXTRA_PRESENT | MALI_EXTRA_ZS;
 
-                fbx->ds_linear.depth = rsrc->bo->gpu + offset;
+                fbx->ds_linear.depth = base;
                 fbx->ds_linear.depth_stride = stride;
 
                 if (panfrost_is_z24s8_variant(surf->format)) {
@@ -289,7 +289,7 @@ panfrost_mfbd_set_zsbuf(
                         struct panfrost_resource *stencil = rsrc->separate_stencil;
                         struct panfrost_slice stencil_slice = stencil->slices[level];
 
-                        fbx->ds_linear.stencil = stencil->bo->gpu + stencil_slice.offset;
+                        fbx->ds_linear.stencil = panfrost_get_texture_address(stencil, level, first_layer);
                         fbx->ds_linear.stencil_stride = stencil_slice.stride;
                 }
 
