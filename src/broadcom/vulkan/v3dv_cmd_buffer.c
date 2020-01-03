@@ -879,7 +879,7 @@ emit_rcl(struct v3dv_cmd_buffer *cmd_buffer)
 }
 
 static void
-setup_subpass(struct v3dv_cmd_buffer *cmd_buffer)
+subpass_start(struct v3dv_cmd_buffer *cmd_buffer)
 {
    const struct v3dv_cmd_buffer_state *state = &cmd_buffer->state;
 
@@ -920,10 +920,25 @@ setup_subpass(struct v3dv_cmd_buffer *cmd_buffer)
 }
 
 static void
+subpass_finish(struct v3dv_cmd_buffer *cmd_buffer)
+{
+   v3dv_cl_ensure_space_with_branch(&cmd_buffer->bcl, cl_packet_length(FLUSH));
+
+   /* We need to emit a flush between binning jobs, so do this before we start
+    * recording the next subpass.
+    *
+    * FIXME: if the next subpass draws to the same RTs, we could skip this
+    * and the binning setup for the next subpass.
+    */
+   cl_emit(&cmd_buffer->bcl, FLUSH, flush);
+}
+
+static void
 execute_subpass(struct v3dv_cmd_buffer *cmd_buffer)
 {
-   setup_subpass(cmd_buffer);
+   subpass_start(cmd_buffer);
    emit_rcl(cmd_buffer);
+   subpass_finish(cmd_buffer);
 }
 
 void
@@ -948,15 +963,6 @@ v3dv_EndCommandBuffer(VkCommandBuffer commandBuffer)
 
    if (v3dv_cl_offset(&cmd_buffer->bcl) == 0)
       return VK_SUCCESS; /* FIXME? */
-
-   v3dv_cl_ensure_space_with_branch(&cmd_buffer->bcl, cl_packet_length(FLUSH));
-
-   /* We just FLUSH here to tell the HW to cap the bin CLs with a
-    * return. Any remaining state changes won't be flushed to
-    * the bins first -- you would need FLUSH_ALL for that, but
-    * the HW for it hasn't been validated.
-    */
-   cl_emit(&cmd_buffer->bcl, FLUSH, flush);
 
    cmd_buffer->status = V3DV_CMD_BUFFER_STATUS_EXECUTABLE;
 
