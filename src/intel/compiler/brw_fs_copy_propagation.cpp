@@ -194,7 +194,7 @@ fs_copy_prop_dataflow::setup_initial_values()
        * destinations.
        */
       for (int i = 0; i < num_acp; i++) {
-         unsigned idx = acp[i]->dst.nr & (acp_table_size - 1);
+         unsigned idx = reg_space(acp[i]->dst) & (acp_table_size - 1);
          acp_table[idx].push_tail(acp[i]);
       }
 
@@ -203,7 +203,7 @@ fs_copy_prop_dataflow::setup_initial_values()
             if (inst->dst.file != VGRF)
                continue;
 
-            unsigned idx = inst->dst.nr & (acp_table_size - 1);
+            unsigned idx = reg_space(inst->dst) & (acp_table_size - 1);
             foreach_in_list(acp_entry, entry, &acp_table[idx]) {
                if (regions_overlap(inst->dst, inst->size_written,
                                    entry->dst, entry->size_written))
@@ -220,16 +220,17 @@ fs_copy_prop_dataflow::setup_initial_values()
        * sources.
        */
       for (int i = 0; i < num_acp; i++) {
-         unsigned idx = acp[i]->src.nr & (acp_table_size - 1);
+         unsigned idx = reg_space(acp[i]->src) & (acp_table_size - 1);
          acp_table[idx].push_tail(acp[i]);
       }
 
       foreach_block (block, cfg) {
          foreach_inst_in_block(fs_inst, inst, block) {
-            if (inst->dst.file != VGRF)
+            if (inst->dst.file != VGRF &&
+                inst->dst.file != FIXED_GRF)
                continue;
 
-            unsigned idx = inst->dst.nr & (acp_table_size - 1);
+            unsigned idx = reg_space(inst->dst) & (acp_table_size - 1);
             foreach_in_list(acp_entry, entry, &acp_table[idx]) {
                if (regions_overlap(inst->dst, inst->size_written,
                                    entry->src, entry->size_read))
