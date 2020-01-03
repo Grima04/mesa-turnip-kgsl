@@ -1239,6 +1239,7 @@ lima_update_varying(struct lima_context *ctx, const struct pipe_draw_info *info)
    struct lima_screen *screen = lima_screen(ctx->base.screen);
    struct lima_vs_shader_state *vs = ctx->vs;
    uint32_t gp_output_size;
+   unsigned num = info->index_size ? (ctx->max_index - ctx->min_index + 1) : info->count;
 
    uint32_t *varying =
       lima_ctx_buff_alloc(ctx, lima_ctx_buff_gp_varying_info,
@@ -1267,18 +1268,18 @@ lima_update_varying(struct lima_context *ctx, const struct pipe_draw_info *info)
    vs->varying_stride = align(offset, 16);
 
    /* gl_Position is always present, allocate space for it */
-   gp_output_size = align(4 * 4 * info->count, 0x40);
+   gp_output_size = align(4 * 4 * num, 0x40);
 
    /* Allocate space for varyings if there're any */
    if (vs->num_varyings) {
       ctx->gp_output_varyings_offt = gp_output_size;
-      gp_output_size += align(vs->varying_stride * info->count, 0x40);
+      gp_output_size += align(vs->varying_stride * num, 0x40);
    }
 
    /* Allocate space for gl_PointSize if it's there */
    if (vs->point_size_idx != -1) {
       ctx->gp_output_point_size_offt = gp_output_size;
-      gp_output_size += 4 * info->count;
+      gp_output_size += 4 * num;
    }
 
    /* gp_output can be too large for the suballocator, so create a
