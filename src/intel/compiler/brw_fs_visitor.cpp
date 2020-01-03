@@ -351,14 +351,17 @@ fs_visitor::emit_interpolation_setup_gen6()
          if (!(centroid_modes & (1 << i)))
             continue;
 
+         const fs_reg centroid_delta_xy = delta_xy[i];
          const fs_reg &pixel_delta_xy = delta_xy[i - 1];
 
-         for (unsigned q = 0; q < dispatch_width / 8; q++) {
-            for (unsigned c = 0; c < 2; c++) {
+         delta_xy[i] = bld.vgrf(BRW_REGISTER_TYPE_F, 2);
+
+         for (unsigned c = 0; c < 2; c++) {
+            for (unsigned q = 0; q < dispatch_width / 8; q++) {
                const unsigned idx = c + (q & 2) + (q & 1) * dispatch_width / 8;
-               set_predicate_inv(
-                  BRW_PREDICATE_NORMAL, true,
-                  bld.half(q).MOV(horiz_offset(delta_xy[i], idx * 8),
+               set_predicate(BRW_PREDICATE_NORMAL,
+                  bld.half(q).SEL(horiz_offset(delta_xy[i], idx * 8),
+                                  horiz_offset(centroid_delta_xy, idx * 8),
                                   horiz_offset(pixel_delta_xy, idx * 8)));
             }
          }
