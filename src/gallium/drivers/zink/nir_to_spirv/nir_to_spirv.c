@@ -38,6 +38,7 @@ struct ntv_context {
 
    SpvId ubos[128];
    size_t num_ubos;
+   SpvId image_types[PIPE_MAX_SAMPLERS];
    SpvId samplers[PIPE_MAX_SAMPLERS];
    size_t num_samplers;
    SpvId entry_ifaces[PIPE_MAX_SHADER_INPUTS * 4 + PIPE_MAX_SHADER_OUTPUTS * 4];
@@ -402,6 +403,9 @@ emit_sampler(struct ntv_context *ctx, struct nir_variable *var)
 
    if (var->name)
       spirv_builder_emit_name(&ctx->builder, var_id, var->name);
+
+   assert(ctx->num_samplers < ARRAY_SIZE(ctx->image_types));
+   ctx->image_types[ctx->num_samplers] = image_type;
 
    assert(ctx->num_samplers < ARRAY_SIZE(ctx->samplers));
    ctx->samplers[ctx->num_samplers++] = var_id;
@@ -1438,12 +1442,7 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
       assert(lod != 0);
    }
 
-   bool is_ms;
-   SpvDim dimension = type_to_dim(tex->sampler_dim, &is_ms);
-   SpvId float_type = spirv_builder_type_float(&ctx->builder, 32);
-   SpvId image_type = spirv_builder_type_image(&ctx->builder, float_type,
-                            dimension, false, tex->is_array, is_ms, 1,
-                            SpvImageFormatUnknown);
+   SpvId image_type = ctx->image_types[tex->texture_index];
    SpvId sampled_type = spirv_builder_type_sampled_image(&ctx->builder,
                                                          image_type);
 
@@ -1487,7 +1486,7 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
 
    SpvId actual_dest_type = dest_type;
    if (dref)
-      actual_dest_type = float_type;
+      actual_dest_type = spirv_builder_type_float(&ctx->builder, 32);
 
    SpvId result;
    if (tex->op == nir_texop_txf) {
