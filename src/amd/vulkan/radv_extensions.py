@@ -157,6 +157,7 @@ EXTENSIONS = [
     Extension('VK_AMD_shader_ballot',                     1, 'device->use_shader_ballot'),
     Extension('VK_AMD_shader_core_properties',            1, True),
     Extension('VK_AMD_shader_core_properties2',           1, True),
+    Extension('VK_AMD_shader_image_load_store_lod',       1, True),
     Extension('VK_AMD_shader_info',                       1, True),
     Extension('VK_AMD_shader_trinary_minmax',             1, True),
     Extension('VK_GOOGLE_decorate_string',                1, True),
