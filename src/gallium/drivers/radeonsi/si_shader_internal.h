@@ -299,7 +299,10 @@ void si_llvm_emit_streamout(struct si_shader_context *ctx,
 			    unsigned noutput, unsigned stream);
 void si_create_function(struct si_shader_context *ctx);
 
+bool gfx10_ngg_export_prim_early(struct si_shader *shader);
 void gfx10_ngg_build_sendmsg_gs_alloc_req(struct si_shader_context *ctx);
+void gfx10_ngg_build_export_prim(struct si_shader_context *ctx,
+				 LLVMValueRef user_edgeflags[3]);
 void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi,
 			     unsigned max_outputs,
 			     LLVMValueRef *addrs);

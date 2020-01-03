@@ -2423,8 +2423,15 @@ static bool si_build_main_function(struct si_shader_context *ctx,
 
 			if ((ctx->type == PIPE_SHADER_VERTEX ||
 			     ctx->type == PIPE_SHADER_TESS_EVAL) &&
-			    shader->key.as_ngg && !shader->key.as_es)
+			    shader->key.as_ngg && !shader->key.as_es) {
 				gfx10_ngg_build_sendmsg_gs_alloc_req(ctx);
+
+				/* Build the primitive export at the beginning
+				 * of the shader if possible.
+				 */
+				if (gfx10_ngg_export_prim_early(shader))
+					gfx10_ngg_build_export_prim(ctx, NULL);
+			}
 
 			if (ctx->type == PIPE_SHADER_TESS_CTRL ||
 			    ctx->type == PIPE_SHADER_GEOMETRY) {

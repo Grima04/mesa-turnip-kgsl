@@ -123,11 +123,64 @@ static LLVMValueRef ngg_get_vertices_per_prim(struct si_shader_context *ctx,
 	}
 }
 
+bool gfx10_ngg_export_prim_early(struct si_shader *shader)
+{
+	struct si_shader_selector *sel = shader->selector;
+
+	assert(shader->key.as_ngg && !shader->key.as_es);
+
+	return sel->type != PIPE_SHADER_GEOMETRY &&
+	       !sel->info.writes_edgeflag;
+}
+
 void gfx10_ngg_build_sendmsg_gs_alloc_req(struct si_shader_context *ctx)
 {
 	ac_build_sendmsg_gs_alloc_req(&ctx->ac, get_wave_id_in_tg(ctx),
 				      ngg_get_vtx_cnt(ctx),
 				      ngg_get_prim_cnt(ctx));
+}
+
+void gfx10_ngg_build_export_prim(struct si_shader_context *ctx,
+				 LLVMValueRef user_edgeflags[3])
+{
+	if (gfx10_is_ngg_passthrough(ctx->shader)) {
+		ac_build_ifcc(&ctx->ac, si_is_gs_thread(ctx), 6001);
+		{
+			struct ac_ngg_prim prim = {};
+
+			prim.passthrough = ac_get_arg(&ctx->ac, ctx->gs_vtx01_offset);
+			ac_build_export_prim(&ctx->ac, &prim);
+		}
+		ac_build_endif(&ctx->ac, 6001);
+		return;
+	}
+
+	ac_build_ifcc(&ctx->ac, si_is_gs_thread(ctx), 6001);
+	{
+		struct ac_ngg_prim prim = {};
+
+		ngg_get_vertices_per_prim(ctx, &prim.num_vertices);
+
+		prim.isnull = ctx->ac.i1false;
+		prim.index[0] = si_unpack_param(ctx, ctx->gs_vtx01_offset, 0, 16);
+		prim.index[1] = si_unpack_param(ctx, ctx->gs_vtx01_offset, 16, 16);
+		prim.index[2] = si_unpack_param(ctx, ctx->gs_vtx23_offset, 0, 16);
+
+		for (unsigned i = 0; i < prim.num_vertices; ++i) {
+			prim.edgeflag[i] = ngg_get_initial_edgeflag(ctx, i);
+
+			if (ctx->shader->selector->info.writes_edgeflag) {
+				LLVMValueRef edge;
+
+				edge = LLVMBuildLoad(ctx->ac.builder, user_edgeflags[i], "");
+				edge = LLVMBuildAnd(ctx->ac.builder, prim.edgeflag[i], edge, "");
+				prim.edgeflag[i] = edge;
+			}
+		}
+
+		ac_build_export_prim(&ctx->ac, &prim);
+	}
+	ac_build_endif(&ctx->ac, 6001);
 }
 
 static void build_streamout_vertex(struct si_shader_context *ctx,
@@ -689,31 +742,8 @@ void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi,
 	}
 
 	/* Build the primitive export. */
-	ac_build_ifcc(&ctx->ac, is_gs_thread, 6001);
-	{
-		struct ac_ngg_prim prim = {};
-
-		if (gfx10_is_ngg_passthrough(ctx->shader)) {
-			prim.passthrough = ac_get_arg(&ctx->ac, ctx->gs_vtx01_offset);
-		} else {
-			prim.num_vertices = num_vertices;
-			prim.isnull = ctx->ac.i1false;
-			memcpy(prim.index, vtxindex, sizeof(vtxindex[0]) * 3);
-
-			for (unsigned i = 0; i < num_vertices; ++i) {
-				prim.edgeflag[i] = ngg_get_initial_edgeflag(ctx, i);
-
-				if (sel->info.writes_edgeflag) {
-					tmp2 = LLVMBuildLoad(builder, user_edgeflags[i], "");
-					prim.edgeflag[i] = LLVMBuildAnd(builder, prim.edgeflag[i],
-									tmp2, "");
-				}
-			}
-		}
-
-		ac_build_export_prim(&ctx->ac, &prim);
-	}
-	ac_build_endif(&ctx->ac, 6001);
+	if (!gfx10_ngg_export_prim_early(ctx->shader))
+		gfx10_ngg_build_export_prim(ctx, user_edgeflags);
 
 	/* Export per-vertex data (positions and parameters). */
 	ac_build_ifcc(&ctx->ac, is_es_thread, 6002);
