@@ -36,8 +36,12 @@
 #include "registers/a6xx.xml.h"
 
 #include "nir/nir_builder.h"
+#include "util/os_time.h"
 
 #include "tu_cs.h"
+
+#define NSEC_PER_SEC 1000000000ull
+#define WAIT_TIMEOUT 5
 
 /* It seems like sample counts need to be copied over to 16-byte aligned
  * memory. */
@@ -61,6 +65,20 @@ struct PACKED occlusion_query_slot {
 
 #define occlusion_query_iova(pool, query, field)                     \
    query_iova(struct occlusion_query_slot, pool, query, field)
+
+#define query_is_available(type, slot)                               \
+   ((type*)slot)->available.value
+
+#define occlusion_query_is_available(slot)                           \
+   query_is_available(struct occlusion_query_slot, slot)
+
+/*
+ * Returns a pointer to a given slot in a query pool.
+ */
+static void* slot_address(struct tu_query_pool *pool, uint32_t query)
+{
+   return (char*)pool->bo.map + query * pool->stride;
+}
 
 VkResult
 tu_CreateQueryPool(VkDevice _device,
@@ -132,6 +150,98 @@ tu_DestroyQueryPool(VkDevice _device,
    vk_free2(&device->alloc, pAllocator, pool);
 }
 
+/* Wait on the the availability status of a query up until a timeout. */
+static VkResult
+wait_for_available(struct tu_device *device, struct tu_query_pool *pool,
+                   uint32_t query)
+{
+   /* TODO: Use the MSM_IOVA_WAIT ioctl to wait on the available bit in a
+    * scheduler friendly way instead of busy polling once the patch has landed
+    * upstream. */
+   struct occlusion_query_slot *slot = slot_address(pool, query);
+   uint64_t abs_timeout = os_time_get_absolute_timeout(
+         WAIT_TIMEOUT * NSEC_PER_SEC);
+   while(os_time_get_nano() < abs_timeout) {
+      if (occlusion_query_is_available(slot))
+         return VK_SUCCESS;
+   }
+   return vk_error(device->instance, VK_TIMEOUT);
+}
+
+static VkResult
+get_occlusion_query_pool_results(struct tu_device *device,
+                                 struct tu_query_pool *pool,
+                                 uint32_t firstQuery,
+                                 uint32_t queryCount,
+                                 size_t dataSize,
+                                 void *pData,
+                                 VkDeviceSize stride,
+                                 VkQueryResultFlags flags)
+{
+   assert(dataSize >= stride * queryCount);
+
+   char *query_result = pData;
+   VkResult result = VK_SUCCESS;
+   for (uint32_t i = 0; i < queryCount; i++) {
+      uint32_t query = firstQuery + i;
+      struct occlusion_query_slot *slot = slot_address(pool, query);
+      bool available = occlusion_query_is_available(slot);
+      if ((flags & VK_QUERY_RESULT_WAIT_BIT) && !available) {
+         VkResult wait_result = wait_for_available(device, pool, query);
+         if (wait_result != VK_SUCCESS)
+            return wait_result;
+         available = true;
+      } else if (!(flags & VK_QUERY_RESULT_PARTIAL_BIT) && !available) {
+         /* From the Vulkan 1.1.130 spec:
+          *
+          *    If VK_QUERY_RESULT_WAIT_BIT and VK_QUERY_RESULT_PARTIAL_BIT are
+          *    both not set then no result values are written to pData for
+          *    queries that are in the unavailable state at the time of the
+          *    call, and vkGetQueryPoolResults returns VK_NOT_READY. However,
+          *    availability state is still written to pData for those queries
+          *    if VK_QUERY_RESULT_WITH_AVAILABILITY_BIT is set.
+          */
+         result = VK_NOT_READY;
+         if (!(flags & VK_QUERY_RESULT_WITH_AVAILABILITY_BIT)) {
+            query_result += stride;
+            continue;
+         }
+      }
+
+      uint64_t value;
+      if (available) {
+         value = slot->result.value;
+      } else if (flags & VK_QUERY_RESULT_WITH_AVAILABILITY_BIT) {
+         /* From the Vulkan 1.1.130 spec:
+          *
+          *    If VK_QUERY_RESULT_WITH_AVAILABILITY_BIT is set, the final
+          *    integer value written for each query is non-zero if the query’s
+          *    status was available or zero if the status was unavailable.
+          */
+         value = 0;
+      } else if (flags & VK_QUERY_RESULT_PARTIAL_BIT) {
+          /* From the Vulkan 1.1.130 spec:
+           *
+           *   If VK_QUERY_RESULT_PARTIAL_BIT is set, VK_QUERY_RESULT_WAIT_BIT
+           *   is not set, and the query’s status is unavailable, an
+           *   intermediate result value between zero and the final result
+           *   value is written to pData for that query.
+           *
+           * Just return 0 here for simplicity since it's a valid result.
+           */
+         value = 0;
+      }
+
+      if (flags & VK_QUERY_RESULT_64_BIT) {
+         *(uint64_t*)query_result = value;
+      } else {
+         *(uint32_t*)query_result = value;
+      }
+      query_result += stride;
+   }
+   return result;
+}
+
 VkResult
 tu_GetQueryPoolResults(VkDevice _device,
                        VkQueryPool queryPool,
@@ -142,6 +252,21 @@ tu_GetQueryPoolResults(VkDevice _device,
                        VkDeviceSize stride,
                        VkQueryResultFlags flags)
 {
+   TU_FROM_HANDLE(tu_device, device, _device);
+   TU_FROM_HANDLE(tu_query_pool, pool, queryPool);
+   assert(firstQuery + queryCount <= pool->size);
+
+   switch (pool->type) {
+   case VK_QUERY_TYPE_OCCLUSION: {
+      return get_occlusion_query_pool_results(device, pool, firstQuery,
+            queryCount, dataSize, pData, stride, flags);
+   }
+   case VK_QUERY_TYPE_PIPELINE_STATISTICS:
+   case VK_QUERY_TYPE_TIMESTAMP:
+      unreachable("Unimplemented query type");
+   default:
+      assert(!"Invalid query type");
+   }
    return VK_SUCCESS;
 }
 
