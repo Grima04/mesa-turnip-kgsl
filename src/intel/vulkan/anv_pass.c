@@ -338,7 +338,7 @@ VkResult anv_CreateRenderPass(
 
    for (uint32_t i = 0; i < pCreateInfo->dependencyCount; i++) {
       /* Convert to a Dependency2KHR */
-      struct VkSubpassDependency2KHR dep2 = {
+      VkSubpassDependency2KHR dep2 = {
          .srcSubpass       = pCreateInfo->pDependencies[i].srcSubpass,
          .dstSubpass       = pCreateInfo->pDependencies[i].dstSubpass,
          .srcStageMask     = pCreateInfo->pDependencies[i].srcStageMask,

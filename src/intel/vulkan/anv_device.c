@@ -3186,7 +3186,7 @@ VkResult anv_AllocateMemory(
       if (result != VK_SUCCESS)
          goto fail;
 
-      const struct VkImportAndroidHardwareBufferInfoANDROID import_info = {
+      const VkImportAndroidHardwareBufferInfoANDROID import_info = {
          .buffer = mem->ahw,
       };
       result = anv_import_ahw_memory(_device, mem, &import_info);

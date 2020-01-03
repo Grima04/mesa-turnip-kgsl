@@ -985,7 +985,7 @@ anv_descriptor_set_create(struct anv_device *device,
              * will always write in the immutable sampler regardless of what
              * is in the sampler parameter.
              */
-            struct VkDescriptorImageInfo info = { };
+            VkDescriptorImageInfo info = { };
             anv_descriptor_set_write_image_view(device, set, &info,
                                                 VK_DESCRIPTOR_TYPE_SAMPLER,
                                                 b, i);

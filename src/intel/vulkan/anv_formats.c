@@ -1026,7 +1026,7 @@ VkResult anv_GetPhysicalDeviceImageFormatProperties2(
    const VkPhysicalDeviceExternalImageFormatInfo *external_info = NULL;
    VkExternalImageFormatProperties *external_props = NULL;
    VkSamplerYcbcrConversionImageFormatProperties *ycbcr_props = NULL;
-   struct VkAndroidHardwareBufferUsageANDROID *android_usage = NULL;
+   VkAndroidHardwareBufferUsageANDROID *android_usage = NULL;
    VkResult result;
 
    /* Extract input structs */
@@ -1221,7 +1221,7 @@ VkResult anv_CreateSamplerYcbcrConversion(
 
    /* Search for VkExternalFormatANDROID and resolve the format. */
    struct anv_format *ext_format = NULL;
-   const struct VkExternalFormatANDROID *ext_info =
+   const VkExternalFormatANDROID *ext_info =
       vk_find_struct_const(pCreateInfo->pNext, EXTERNAL_FORMAT_ANDROID);
 
    uint64_t format = ext_info ? ext_info->externalFormat : 0;

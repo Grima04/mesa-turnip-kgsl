@@ -389,14 +389,14 @@ VkResult
 anv_image_from_external(
    VkDevice device_h,
    const VkImageCreateInfo *base_info,
-   const struct VkExternalMemoryImageCreateInfo *create_info,
+   const VkExternalMemoryImageCreateInfo *create_info,
    const VkAllocationCallbacks *alloc,
    VkImage *out_image_h)
 {
 #if ANDROID_API_LEVEL >= 26
    ANV_FROM_HANDLE(anv_device, device, device_h);
 
-   const struct VkExternalFormatANDROID *ext_info =
+   const VkExternalFormatANDROID *ext_info =
       vk_find_struct_const(base_info->pNext, EXTERNAL_FORMAT_ANDROID);
 
    if (ext_info && ext_info->externalFormat != 0) {

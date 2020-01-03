@@ -745,7 +745,7 @@ anv_CreateImage(VkDevice device,
                 const VkAllocationCallbacks *pAllocator,
                 VkImage *pImage)
 {
-   const struct VkExternalMemoryImageCreateInfo *create_info =
+   const VkExternalMemoryImageCreateInfo *create_info =
       vk_find_struct_const(pCreateInfo->pNext, EXTERNAL_MEMORY_IMAGE_CREATE_INFO);
 
    if (create_info && (create_info->handleTypes &
@@ -754,7 +754,7 @@ anv_CreateImage(VkDevice device,
                                      pAllocator, pImage);
 
    bool use_external_format = false;
-   const struct VkExternalFormatANDROID *ext_format =
+   const VkExternalFormatANDROID *ext_format =
       vk_find_struct_const(pCreateInfo->pNext, EXTERNAL_FORMAT_ANDROID);
 
    /* "If externalFormat is zero, the effect is as if the
@@ -1590,7 +1590,7 @@ anv_CreateImageView(VkDevice _device,
 
    /* Check if a conversion info was passed. */
    const struct anv_format *conv_format = NULL;
-   const struct VkSamplerYcbcrConversionInfo *conv_info =
+   const VkSamplerYcbcrConversionInfo *conv_info =
       vk_find_struct_const(pCreateInfo->pNext, SAMPLER_YCBCR_CONVERSION_INFO);
 
    /* If image has an external format, the pNext chain must contain an instance of

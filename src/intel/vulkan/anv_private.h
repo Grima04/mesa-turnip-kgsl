@@ -3812,9 +3812,9 @@ anv_image_get_surface_for_aspect_mask(const struct anv_image *image,
 enum isl_format
 anv_isl_format_for_descriptor_type(VkDescriptorType type);
 
-static inline struct VkExtent3D
+static inline VkExtent3D
 anv_sanitize_image_extent(const VkImageType imageType,
-                          const struct VkExtent3D imageExtent)
+                          const VkExtent3D imageExtent)
 {
    switch (imageType) {
    case VK_IMAGE_TYPE_1D:
@@ -3828,9 +3828,9 @@ anv_sanitize_image_extent(const VkImageType imageType,
    }
 }
 
-static inline struct VkOffset3D
+static inline VkOffset3D
 anv_sanitize_image_offset(const VkImageType imageType,
-                          const struct VkOffset3D imageOffset)
+                          const VkOffset3D imageOffset)
 {
    switch (imageType) {
    case VK_IMAGE_TYPE_1D:
