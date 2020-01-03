@@ -123,6 +123,13 @@ static LLVMValueRef ngg_get_vertices_per_prim(struct si_shader_context *ctx,
 	}
 }
 
+void gfx10_ngg_build_sendmsg_gs_alloc_req(struct si_shader_context *ctx)
+{
+	ac_build_sendmsg_gs_alloc_req(&ctx->ac, get_wave_id_in_tg(ctx),
+				      ngg_get_vtx_cnt(ctx),
+				      ngg_get_prim_cnt(ctx));
+}
+
 static void build_streamout_vertex(struct si_shader_context *ctx,
 				   LLVMValueRef *so_buffer, LLVMValueRef *wg_offset_dw,
 				   unsigned stream, LLVMValueRef offset_vtx,
@@ -645,9 +652,6 @@ void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi,
 			       ac_build_gep0(&ctx->ac, vertex_ptr, ctx->i32_0));
 		ac_build_endif(&ctx->ac, 5400);
 	}
-
-	ac_build_sendmsg_gs_alloc_req(&ctx->ac, get_wave_id_in_tg(ctx),
-				      ngg_get_vtx_cnt(ctx), ngg_get_prim_cnt(ctx));
 
 	/* Update query buffer */
 	if (ctx->screen->use_ngg_streamout &&
