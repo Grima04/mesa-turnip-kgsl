@@ -41,6 +41,37 @@
 
 #include <drm_fourcc.h>
 
+struct etna_sampler_state_desc {
+   struct pipe_sampler_state base;
+   uint32_t SAMP_CTRL0;
+   uint32_t SAMP_CTRL1;
+   uint32_t SAMP_LOD_MINMAX;
+   uint32_t SAMP_LOD_BIAS;
+};
+
+static inline struct etna_sampler_state_desc *
+etna_sampler_state_desc(struct pipe_sampler_state *samp)
+{
+   return (struct etna_sampler_state_desc *)samp;
+}
+
+struct etna_sampler_view_desc {
+   struct pipe_sampler_view base;
+   /* format-dependent merged with sampler state */
+   uint32_t SAMP_CTRL0;
+   uint32_t SAMP_CTRL1;
+
+   struct etna_bo *bo;
+   struct etna_reloc DESC_ADDR;
+   struct etna_sampler_ts ts;
+};
+
+static inline struct etna_sampler_view_desc *
+etna_sampler_view_desc(struct pipe_sampler_view *view)
+{
+   return (struct etna_sampler_view_desc *)view;
+}
+
 static void *
 etna_create_sampler_state_desc(struct pipe_context *pipe,
                           const struct pipe_sampler_state *ss)
