@@ -629,6 +629,9 @@ void v3d_store_tiled_image(void *dst, uint32_t dst_stride,
                            int cpp, uint32_t image_h,
                            const struct pipe_box *box);
 
+struct v3dv_cl_reloc v3dv_write_uniforms(struct v3dv_cmd_buffer *cmd_buffer,
+                                         struct v3dv_pipeline_stage *p_stage);
+
 #define V3DV_DEFINE_HANDLE_CASTS(__v3dv_type, __VkType)   \
                                                         \
    static inline struct __v3dv_type *                    \

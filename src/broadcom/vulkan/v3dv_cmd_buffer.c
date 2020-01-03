@@ -1239,12 +1239,14 @@ cmd_buffer_emit_graphics_pipeline(struct v3dv_cmd_buffer *cmd_buffer)
    assert(pipeline);
 
    /* Upload the uniforms to the indirect CL first */
+   struct v3dv_cl_reloc fs_uniforms =
+      v3dv_write_uniforms(cmd_buffer, pipeline->fs);
 
-   /* FIXME: uniforms not supported yet */
+   struct v3dv_cl_reloc vs_uniforms =
+      v3dv_write_uniforms(cmd_buffer, pipeline->vs);
 
-   struct v3dv_cl_reloc vs_uniforms = { NULL, 0 };
-   struct v3dv_cl_reloc vs_bin_uniforms = { NULL, 0 };
-   struct v3dv_cl_reloc fs_uniforms = { NULL, 0 };
+   struct v3dv_cl_reloc vs_bin_uniforms =
+      v3dv_write_uniforms(cmd_buffer, pipeline->vs_bin);
 
    /* Update the cache dirty flag based on the shader progs data */
    state->tmu_dirty_rcl |= pipeline->vs_bin->prog_data.vs->base.tmu_dirty_rcl;

@@ -106,6 +106,19 @@ cl_advance(struct v3dv_cl_out **cl, uint32_t n)
    (*cl) = (struct v3dv_cl_out *)((char *)(*cl) + n);
 }
 
+static inline void
+cl_aligned_u32(struct v3dv_cl_out **cl, uint32_t n)
+{
+   *(uint32_t *)(*cl) = n;
+   cl_advance(cl, 4);
+}
+
+static inline void
+cl_aligned_f(struct v3dv_cl_out **cl, float f)
+{
+   cl_aligned_u32(cl, fui(f));
+}
+
 uint32_t v3dv_cl_ensure_space(struct v3dv_cl *cl, uint32_t space, uint32_t alignment);
 void v3dv_cl_ensure_space_with_branch(struct v3dv_cl *cl, uint32_t space);
 
