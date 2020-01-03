@@ -4728,6 +4728,26 @@ ac_export_mrt_z(struct ac_llvm_context *ctx, LLVMValueRef depth,
 	args->enabled_channels = mask;
 }
 
+/* Send GS Alloc Req message from the first wave of the group to SPI.
+ * Message payload is:
+ * - bits 0..10: vertices in group
+ * - bits 12..22: primitives in group
+ */
+void ac_build_sendmsg_gs_alloc_req(struct ac_llvm_context *ctx, LLVMValueRef wave_id,
+				   LLVMValueRef vtx_cnt, LLVMValueRef prim_cnt)
+{
+	LLVMBuilderRef builder = ctx->builder;
+	LLVMValueRef tmp;
+
+	ac_build_ifcc(ctx, LLVMBuildICmp(builder, LLVMIntEQ, wave_id, ctx->i32_0, ""), 5020);
+
+	tmp = LLVMBuildShl(builder, prim_cnt, LLVMConstInt(ctx->i32, 12, false),"");
+	tmp = LLVMBuildOr(builder, tmp, vtx_cnt, "");
+	ac_build_sendmsg(ctx, AC_SENDMSG_GS_ALLOC_REQ, tmp);
+
+	ac_build_endif(ctx, 5020);
+}
+
 static LLVMTypeRef
 arg_llvm_type(enum ac_arg_type type, unsigned size, struct ac_llvm_context *ctx)
 {

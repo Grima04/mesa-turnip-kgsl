@@ -71,28 +71,6 @@ static LLVMValueRef ngg_get_query_buf(struct si_shader_context *ctx)
 				     LLVMConstInt(ctx->i32, GFX10_GS_QUERY_BUF, false));
 }
 
-/* Send GS Alloc Req message from the first wave of the group to SPI.
- * Message payload is:
- * - bits 0..10: vertices in group
- * - bits 12..22: primitives in group
- */
-static void build_sendmsg_gs_alloc_req(struct si_shader_context *ctx,
-				       LLVMValueRef vtx_cnt,
-				       LLVMValueRef prim_cnt)
-{
-	LLVMBuilderRef builder = ctx->ac.builder;
-	LLVMValueRef tmp;
-
-	tmp = LLVMBuildICmp(builder, LLVMIntEQ, get_wave_id_in_tg(ctx), ctx->ac.i32_0, "");
-	ac_build_ifcc(&ctx->ac, tmp, 5020);
-
-	tmp = LLVMBuildShl(builder, prim_cnt, LLVMConstInt(ctx->ac.i32, 12, false),"");
-	tmp = LLVMBuildOr(builder, tmp, vtx_cnt, "");
-	ac_build_sendmsg(&ctx->ac, AC_SENDMSG_GS_ALLOC_REQ, tmp);
-
-	ac_build_endif(&ctx->ac, 5020);
-}
-
 struct ngg_prim {
 	unsigned num_vertices;
 	LLVMValueRef isnull;
@@ -676,7 +654,8 @@ void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi,
 		ac_build_endif(&ctx->ac, 5400);
 	}
 
-	build_sendmsg_gs_alloc_req(ctx, ngg_get_vtx_cnt(ctx), ngg_get_prim_cnt(ctx));
+	ac_build_sendmsg_gs_alloc_req(&ctx->ac, get_wave_id_in_tg(ctx),
+				      ngg_get_vtx_cnt(ctx), ngg_get_prim_cnt(ctx));
 
 	/* Update query buffer */
 	/* TODO: this won't catch 96-bit clear_buffer via transform feedback. */
@@ -1213,7 +1192,8 @@ void gfx10_ngg_gs_emit_epilogue(struct si_shader_context *ctx)
 	 *       there are 4 or more contiguous null primitives in the export
 	 *       (in the common case of single-dword prim exports).
 	 */
-	build_sendmsg_gs_alloc_req(ctx, vertlive_scan.result_reduce, num_emit_threads);
+	ac_build_sendmsg_gs_alloc_req(&ctx->ac, get_wave_id_in_tg(ctx),
+				      vertlive_scan.result_reduce, num_emit_threads);
 
 	/* Setup the reverse vertex compaction permutation. We re-use stream 1
 	 * of the primitive liveness flags, relying on the fact that each

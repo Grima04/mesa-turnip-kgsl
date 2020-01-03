@@ -747,6 +747,9 @@ ac_export_mrt_z(struct ac_llvm_context *ctx, LLVMValueRef depth,
 		LLVMValueRef stencil, LLVMValueRef samplemask,
 		struct ac_export_args *args);
 
+void ac_build_sendmsg_gs_alloc_req(struct ac_llvm_context *ctx, LLVMValueRef wave_id,
+				   LLVMValueRef vtx_cnt, LLVMValueRef prim_cnt);
+
 static inline LLVMValueRef
 ac_get_arg(struct ac_llvm_context *ctx, struct ac_arg arg)
 {
