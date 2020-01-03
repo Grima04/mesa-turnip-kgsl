@@ -71,6 +71,18 @@ static LLVMValueRef ngg_get_query_buf(struct si_shader_context *ctx)
 				     LLVMConstInt(ctx->i32, GFX10_GS_QUERY_BUF, false));
 }
 
+static LLVMValueRef ngg_get_initial_edgeflag(struct si_shader_context *ctx, unsigned index)
+{
+	if (ctx->type == PIPE_SHADER_VERTEX) {
+		LLVMValueRef tmp;
+		tmp = LLVMBuildLShr(ctx->ac.builder,
+				    ac_get_arg(&ctx->ac, ctx->args.gs_invocation_id),
+				    LLVMConstInt(ctx->ac.i32, 8 + index, false), "");
+		return LLVMBuildTrunc(ctx->ac.builder, tmp, ctx->ac.i1, "");
+	}
+	return ctx->i1false;
+}
+
 static void build_streamout_vertex(struct si_shader_context *ctx,
 				   LLVMValueRef *so_buffer, LLVMValueRef *wg_offset_dw,
 				   unsigned stream, LLVMValueRef offset_vtx,
@@ -668,15 +680,7 @@ void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi,
 			memcpy(prim.index, vtxindex, sizeof(vtxindex[0]) * 3);
 
 			for (unsigned i = 0; i < num_vertices; ++i) {
-				if (ctx->type != PIPE_SHADER_VERTEX) {
-					prim.edgeflag[i] = ctx->i1false;
-					continue;
-				}
-
-				tmp = LLVMBuildLShr(builder,
-						    ac_get_arg(&ctx->ac, ctx->args.gs_invocation_id),
-						    LLVMConstInt(ctx->ac.i32, 8 + i, false), "");
-				prim.edgeflag[i] = LLVMBuildTrunc(builder, tmp, ctx->ac.i1, "");
+				prim.edgeflag[i] = ngg_get_initial_edgeflag(ctx, i);
 
 				if (sel->info.writes_edgeflag) {
 					tmp2 = LLVMBuildLoad(builder, user_edgeflags[i], "");
