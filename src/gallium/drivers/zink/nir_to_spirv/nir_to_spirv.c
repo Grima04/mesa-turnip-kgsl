@@ -386,13 +386,15 @@ type_to_dim(enum glsl_sampler_dim gdim, bool *is_ms)
 static void
 emit_sampler(struct ntv_context *ctx, struct nir_variable *var)
 {
-   bool is_ms;
-   SpvDim dimension = type_to_dim(glsl_get_sampler_dim(var->type), &is_ms);
+   const struct glsl_type *type = glsl_without_array(var->type);
 
-   SpvId result_type = get_glsl_basetype(ctx, glsl_get_sampler_result_type(var->type));
+   bool is_ms;
+   SpvDim dimension = type_to_dim(glsl_get_sampler_dim(type), &is_ms);
+
+   SpvId result_type = get_glsl_basetype(ctx, glsl_get_sampler_result_type(type));
    SpvId image_type = spirv_builder_type_image(&ctx->builder, result_type,
                                                dimension, false,
-                                               glsl_sampler_type_is_array(var->type),
+                                               glsl_sampler_type_is_array(type),
                                                is_ms, 1,
                                                SpvImageFormatUnknown);
 
@@ -401,21 +403,45 @@ emit_sampler(struct ntv_context *ctx, struct nir_variable *var)
    SpvId pointer_type = spirv_builder_type_pointer(&ctx->builder,
                                                    SpvStorageClassUniformConstant,
                                                    sampled_type);
-   SpvId var_id = spirv_builder_emit_var(&ctx->builder, pointer_type,
-                                         SpvStorageClassUniformConstant);
 
-   if (var->name)
-      spirv_builder_emit_name(&ctx->builder, var_id, var->name);
+   if (glsl_type_is_array(var->type)) {
+      for (int i = 0; i < glsl_get_length(var->type); ++i) {
+         SpvId var_id = spirv_builder_emit_var(&ctx->builder, pointer_type,
+                                               SpvStorageClassUniformConstant);
 
-   assert(ctx->num_samplers < ARRAY_SIZE(ctx->image_types));
-   ctx->image_types[ctx->num_samplers] = image_type;
+         if (var->name) {
+            char element_name[100];
+            snprintf(element_name, sizeof(element_name), "%s_%d", var->name, i);
+            spirv_builder_emit_name(&ctx->builder, var_id, var->name);
+         }
 
-   assert(ctx->num_samplers < ARRAY_SIZE(ctx->samplers));
-   ctx->samplers[ctx->num_samplers++] = var_id;
+         assert(ctx->num_samplers < ARRAY_SIZE(ctx->image_types));
+         ctx->image_types[ctx->num_samplers] = image_type;
 
-   spirv_builder_emit_descriptor_set(&ctx->builder, var_id,
-                                     var->data.descriptor_set);
-   spirv_builder_emit_binding(&ctx->builder, var_id, var->data.binding);
+         assert(ctx->num_samplers < ARRAY_SIZE(ctx->samplers));
+         ctx->samplers[ctx->num_samplers++] = var_id;
+
+         spirv_builder_emit_descriptor_set(&ctx->builder, var_id,
+                                           var->data.descriptor_set);
+         spirv_builder_emit_binding(&ctx->builder, var_id, var->data.binding);
+      }
+   } else {
+      SpvId var_id = spirv_builder_emit_var(&ctx->builder, pointer_type,
+                                            SpvStorageClassUniformConstant);
+
+      if (var->name)
+         spirv_builder_emit_name(&ctx->builder, var_id, var->name);
+
+      assert(ctx->num_samplers < ARRAY_SIZE(ctx->image_types));
+      ctx->image_types[ctx->num_samplers] = image_type;
+
+      assert(ctx->num_samplers < ARRAY_SIZE(ctx->samplers));
+      ctx->samplers[ctx->num_samplers++] = var_id;
+
+      spirv_builder_emit_descriptor_set(&ctx->builder, var_id,
+                                        var->data.descriptor_set);
+      spirv_builder_emit_binding(&ctx->builder, var_id, var->data.binding);
+   }
 }
 
 static void
@@ -465,7 +491,7 @@ emit_uniform(struct ntv_context *ctx, struct nir_variable *var)
       emit_ubo(ctx, var);
    else {
       assert(var->data.mode == nir_var_uniform);
-      if (glsl_type_is_sampler(var->type))
+      if (glsl_type_is_sampler(glsl_without_array(var->type)))
          emit_sampler(ctx, var);
    }
 }
