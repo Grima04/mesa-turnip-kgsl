@@ -753,6 +753,23 @@ optimizations.extend([
    (('fany_nequal2', a, b), ('fmax', ('sne', 'a.x', 'b.x'), ('sne', 'a.y', 'b.y')), 'options->lower_vector_cmp'),
    (('fany_nequal3', a, b), ('fsat', ('fdot3', ('sne', a, b), ('sne', a, b))), 'options->lower_vector_cmp'),
    (('fany_nequal4', a, b), ('fsat', ('fdot4', ('sne', a, b), ('sne', a, b))), 'options->lower_vector_cmp'),
+
+   (('ball_iequal2', a, b), ('iand', ('ieq', 'a.x', 'b.x'), ('ieq', 'a.y', 'b.y')), 'options->lower_vector_cmp'),
+   (('ball_iequal3', a, b), ('iand', ('iand', ('ieq', 'a.x', 'b.x'), ('ieq', 'a.y', 'b.y')), ('ieq', 'a.z', 'b.z')), 'options->lower_vector_cmp'),
+   (('ball_iequal4', a, b), ('iand', ('iand', ('ieq', 'a.x', 'b.x'), ('ieq', 'a.y', 'b.y')), ('iand', ('ieq', 'a.z', 'b.z'), ('ieq', 'a.w', 'b.w'))), 'options->lower_vector_cmp'),
+
+   (('bany_inequal2', a, b), ('ior', ('ine', 'a.x', 'b.x'), ('ine', 'a.y', 'b.y')), 'options->lower_vector_cmp'),
+   (('bany_inequal3', a, b), ('ior', ('ior', ('ine', 'a.x', 'b.x'), ('ine', 'a.y', 'b.y')), ('ine', 'a.z', 'b.z')), 'options->lower_vector_cmp'),
+   (('bany_inequal4', a, b), ('ior', ('ior', ('ine', 'a.x', 'b.x'), ('ine', 'a.y', 'b.y')), ('ior', ('ine', 'a.z', 'b.z'), ('ine', 'a.w', 'b.w'))), 'options->lower_vector_cmp'),
+
+   (('ball_fequal2', a, b), ('iand', ('feq', 'a.x', 'b.x'), ('feq', 'a.y', 'b.y')), 'options->lower_vector_cmp'),
+   (('ball_fequal3', a, b), ('iand', ('iand', ('feq', 'a.x', 'b.x'), ('feq', 'a.y', 'b.y')), ('feq', 'a.z', 'b.z')), 'options->lower_vector_cmp'),
+   (('ball_fequal4', a, b), ('iand', ('iand', ('feq', 'a.x', 'b.x'), ('feq', 'a.y', 'b.y')), ('iand', ('feq', 'a.z', 'b.z'), ('feq', 'a.w', 'b.w'))), 'options->lower_vector_cmp'),
+
+   (('bany_fnequal2', a, b), ('ior', ('fneu', 'a.x', 'b.x'), ('fneu', 'a.y', 'b.y')), 'options->lower_vector_cmp'),
+   (('bany_fnequal3', a, b), ('ior', ('ior', ('fneu', 'a.x', 'b.x'), ('fneu', 'a.y', 'b.y')), ('fneu', 'a.z', 'b.z')), 'options->lower_vector_cmp'),
+   (('bany_fnequal4', a, b), ('ior', ('ior', ('fneu', 'a.x', 'b.x'), ('fneu', 'a.y', 'b.y')), ('ior', ('fneu', 'a.z', 'b.z'), ('fneu', 'a.w', 'b.w'))), 'options->lower_vector_cmp'),
+
    (('fneu', ('fneg', a), a), ('fneu', a, 0.0)),
    (('feq', ('fneg', a), a), ('feq', a, 0.0)),
    # Emulating booleans
