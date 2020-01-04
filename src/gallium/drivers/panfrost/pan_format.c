@@ -174,6 +174,8 @@ panfrost_find_format(const struct util_format_description *desc) {
 
         case PIPE_FORMAT_R10G10B10A2_UINT:
         case PIPE_FORMAT_B10G10R10A2_UINT:
+        case PIPE_FORMAT_R10G10B10A2_USCALED:
+        case PIPE_FORMAT_B10G10R10A2_USCALED:
                 return MALI_RGB10_A2UI;
 
         case PIPE_FORMAT_R10G10B10A2_SSCALED:
