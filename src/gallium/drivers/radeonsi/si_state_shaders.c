@@ -27,7 +27,6 @@
 
 #include "compiler/nir/nir_serialize.h"
 #include "nir/tgsi_to_nir.h"
-#include "tgsi/tgsi_parse.h"
 #include "util/hash_table.h"
 #include "util/crc32.h"
 #include "util/u_async_debug.h"
@@ -51,11 +50,7 @@ void si_get_ir_cache_key(struct si_shader_selector *sel, bool ngg, bool es,
 	unsigned ir_size;
 	void *ir_binary;
 
-	if (sel->tokens) {
-		ir_binary = sel->tokens;
-		ir_size = tgsi_num_tokens(sel->tokens) *
-			  sizeof(struct tgsi_token);
-	} else if (sel->nir_binary) {
+	if (sel->nir_binary) {
 		ir_binary = sel->nir_binary;
 		ir_size = sel->nir_size;
 	} else {
@@ -2153,7 +2148,7 @@ static bool si_check_missing_main_part(struct si_screen *sscreen,
 		main_part->key.as_ngg = key->as_ngg;
 		main_part->is_monolithic = false;
 
-		if (si_compile_tgsi_shader(sscreen, compiler_state->compiler,
+		if (si_compile_shader(sscreen, compiler_state->compiler,
 					   main_part, &compiler_state->debug) != 0) {
 			FREE(main_part);
 			return false;
@@ -2516,7 +2511,7 @@ static void si_init_shader_selector_async(void *job, int thread_index)
 		     sel->type == PIPE_SHADER_GEOMETRY))
 			shader->key.as_ngg = 1;
 
-		if (sel->tokens || sel->nir) {
+		if (sel->nir) {
 			si_get_ir_cache_key(sel, shader->key.as_ngg,
 					    shader->key.as_es, ir_sha1_cache_key);
 		}
@@ -2531,7 +2526,7 @@ static void si_init_shader_selector_async(void *job, int thread_index)
 			simple_mtx_unlock(&sscreen->shader_cache_mutex);
 
 			/* Compile the shader if it hasn't been loaded from the cache. */
-			if (si_compile_tgsi_shader(sscreen, compiler, shader,
+			if (si_compile_shader(sscreen, compiler, shader,
 						   debug) != 0) {
 				FREE(shader);
 				fprintf(stderr, "radeonsi: can't compile a main shader part\n");
@@ -2695,43 +2690,16 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
 
 	sel->so = state->stream_output;
 
-	if (state->type == PIPE_SHADER_IR_TGSI &&
-	    !sscreen->options.enable_nir) {
-		sel->tokens = tgsi_dup_tokens(state->tokens);
-		if (!sel->tokens) {
-			FREE(sel);
-			return NULL;
-		}
-
-		tgsi_scan_shader(state->tokens, &sel->info);
-		tgsi_scan_tess_ctrl(state->tokens, &sel->info, &sel->tcs_info);
-
-		/* Fixup for TGSI: Set which opcode uses which (i,j) pair. */
-		if (sel->info.uses_persp_opcode_interp_centroid)
-			sel->info.uses_persp_centroid = true;
-
-		if (sel->info.uses_linear_opcode_interp_centroid)
-			sel->info.uses_linear_centroid = true;
-
-		if (sel->info.uses_persp_opcode_interp_offset ||
-		    sel->info.uses_persp_opcode_interp_sample)
-			sel->info.uses_persp_center = true;
-
-		if (sel->info.uses_linear_opcode_interp_offset ||
-		    sel->info.uses_linear_opcode_interp_sample)
-			sel->info.uses_linear_center = true;
+	if (state->type == PIPE_SHADER_IR_TGSI) {
+		sel->nir = tgsi_to_nir(state->tokens, ctx->screen);
 	} else {
-		if (state->type == PIPE_SHADER_IR_TGSI) {
-			sel->nir = tgsi_to_nir(state->tokens, ctx->screen);
-		} else {
-			assert(state->type == PIPE_SHADER_IR_NIR);
-			sel->nir = state->ir.nir;
-		}
-
-		si_nir_scan_shader(sel->nir, &sel->info);
-		si_nir_scan_tess_ctrl(sel->nir, &sel->tcs_info);
-		si_nir_adjust_driver_locations(sel->nir);
+		assert(state->type == PIPE_SHADER_IR_NIR);
+		sel->nir = state->ir.nir;
 	}
+
+	si_nir_scan_shader(sel->nir, &sel->info);
+	si_nir_scan_tess_ctrl(sel->nir, &sel->tcs_info);
+	si_nir_adjust_driver_locations(sel->nir);
 
 	sel->type = sel->info.processor;
 	p_atomic_inc(&sscreen->num_shaders_created);
@@ -3304,7 +3272,6 @@ void si_destroy_shader_selector(struct si_context *sctx,
 
 	util_queue_fence_destroy(&sel->ready);
 	simple_mtx_destroy(&sel->mutex);
-	free(sel->tokens);
 	ralloc_free(sel->nir);
 	free(sel->nir_binary);
 	free(sel);

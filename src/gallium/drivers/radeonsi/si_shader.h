@@ -326,7 +326,6 @@ struct si_shader_selector {
 
 	struct si_shader	*gs_copy_shader;
 
-	struct tgsi_token       *tokens;
 	struct nir_shader       *nir;
 	void			*nir_binary;
 	unsigned		nir_size;
@@ -730,10 +729,10 @@ si_generate_gs_copy_shader(struct si_screen *sscreen,
 			   struct ac_llvm_compiler *compiler,
 			   struct si_shader_selector *gs_selector,
 			   struct pipe_debug_callback *debug);
-int si_compile_tgsi_shader(struct si_screen *sscreen,
-			   struct ac_llvm_compiler *compiler,
-			   struct si_shader *shader,
-			   struct pipe_debug_callback *debug);
+int si_compile_shader(struct si_screen *sscreen,
+		      struct ac_llvm_compiler *compiler,
+		      struct si_shader *shader,
+		      struct pipe_debug_callback *debug);
 bool si_shader_create(struct si_screen *sscreen, struct ac_llvm_compiler *compiler,
 		     struct si_shader *shader,
 		     struct pipe_debug_callback *debug);

@@ -660,7 +660,7 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen,
 	}
 
 	uint64_t max_threads_per_block;
-	screen->get_compute_param(screen, PIPE_SHADER_IR_TGSI,
+	screen->get_compute_param(screen, PIPE_SHADER_IR_NIR,
 				  PIPE_COMPUTE_CAP_MAX_THREADS_PER_BLOCK,
 				  &max_threads_per_block);
 
@@ -910,10 +910,6 @@ static void si_disk_cache_create(struct si_screen *sscreen)
 	/* These flags affect shader compilation. */
 	#define ALL_FLAGS (DBG(SI_SCHED) | DBG(GISEL))
 	uint64_t shader_debug_flags = sscreen->debug_flags & ALL_FLAGS;
-	/* Reserve left-most bit for tgsi/nir selector */
-	assert(!(shader_debug_flags & (1u << 31)));
-	shader_debug_flags |= (uint32_t)
-		((sscreen->options.enable_nir & 0x1) << 31);
 
 	/* Add the high bits of 32-bit addresses, which affects
 	 * how 32-bit addresses are expanded to 64 bits.

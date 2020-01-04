@@ -24,7 +24,6 @@
  */
 
 #include "nir/tgsi_to_nir.h"
-#include "tgsi/tgsi_parse.h"
 #include "util/u_async_debug.h"
 #include "util/u_memory.h"
 #include "util/u_upload_mgr.h"
@@ -124,13 +123,8 @@ static void si_create_compute_state_async(void *job, int thread_index)
 	if (!compiler->passes)
 		si_init_compiler(sscreen, compiler);
 
-	if (program->ir_type == PIPE_SHADER_IR_TGSI) {
-		tgsi_scan_shader(sel->tokens, &sel->info);
-	} else {
-		assert(program->ir_type == PIPE_SHADER_IR_NIR);
-
-		si_nir_scan_shader(sel->nir, &sel->info);
-	}
+	assert(program->ir_type == PIPE_SHADER_IR_NIR);
+	si_nir_scan_shader(sel->nir, &sel->info);
 
 	/* Store the declared LDS size into tgsi_shader_info for the shader
 	 * cache to include it.
@@ -167,9 +161,6 @@ static void si_create_compute_state_async(void *job, int thread_index)
 
 		if (!si_shader_create(sscreen, compiler, &program->shader, debug)) {
 			program->shader.compilation_failed = true;
-
-			if (program->ir_type == PIPE_SHADER_IR_TGSI)
-				FREE(sel->tokens);
 			return;
 		}
 
@@ -209,8 +200,6 @@ static void si_create_compute_state_async(void *job, int thread_index)
 		simple_mtx_unlock(&sscreen->shader_cache_mutex);
 	}
 
-	FREE(sel->tokens);
-	sel->tokens = NULL;
 	ralloc_free(sel->nir);
 	sel->nir = NULL;
 }
@@ -234,16 +223,9 @@ static void *si_create_compute_state(
 	program->input_size = cso->req_input_mem;
 
 	if (cso->ir_type != PIPE_SHADER_IR_NATIVE) {
-		if (sscreen->options.enable_nir &&
-		    cso->ir_type == PIPE_SHADER_IR_TGSI) {
+		if (cso->ir_type == PIPE_SHADER_IR_TGSI) {
 			program->ir_type = PIPE_SHADER_IR_NIR;
 			sel->nir = tgsi_to_nir(cso->prog, ctx->screen);
-		} else if (cso->ir_type == PIPE_SHADER_IR_TGSI) {
-			sel->tokens = tgsi_dup_tokens(cso->prog);
-			if (!sel->tokens) {
-				FREE(program);
-				return NULL;
-			}
 		} else {
 			assert(cso->ir_type == PIPE_SHADER_IR_NIR);
 			sel->nir = (struct nir_shader *) cso->prog;
@@ -719,8 +701,8 @@ static bool si_upload_compute_input(struct si_context *sctx,
 	return true;
 }
 
-static void si_setup_tgsi_user_data(struct si_context *sctx,
-                                const struct pipe_grid_info *info)
+static void si_setup_nir_user_data(struct si_context *sctx,
+				   const struct pipe_grid_info *info)
 {
 	struct si_compute *program = sctx->cs_shader_state.program;
 	struct si_shader_selector *sel = &program->sel;
@@ -944,7 +926,7 @@ static void si_launch_grid(
 	}
 
 	if (program->ir_type != PIPE_SHADER_IR_NATIVE)
-		si_setup_tgsi_user_data(sctx, info);
+		si_setup_nir_user_data(sctx, info);
 
 	si_emit_dispatch_packets(sctx, info);
 
@@ -977,7 +959,6 @@ void si_destroy_compute(struct si_compute *program)
 	FREE(program->global_buffers);
 
 	si_shader_destroy(&program->shader);
-	FREE(program->sel.tokens);
 	ralloc_free(program->sel.nir);
 	FREE(program);
 }
