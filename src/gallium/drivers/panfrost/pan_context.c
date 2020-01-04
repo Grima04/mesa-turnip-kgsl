@@ -1037,14 +1037,6 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                                 SET_BIT(rts[i].flags, MALI_BLEND_SRGB, is_srgb);
                                 SET_BIT(rts[i].flags, MALI_BLEND_NO_DITHER, !ctx->blend->base.dither);
 
-                                /* TODO: sRGB in blend shaders is currently
-                                 * unimplemented. Contact me (Alyssa) if you're
-                                 * interested in working on this. We have
-                                 * native Midgard ops for helping here, but
-                                 * they're not well-understood yet. */
-
-                                assert(!(is_srgb && blend[i].is_shader));
-
                                 if (blend[i].is_shader) {
                                         rts[i].blend.shader = blend[i].shader.gpu | blend[i].shader.first_tag;
                                 } else {
