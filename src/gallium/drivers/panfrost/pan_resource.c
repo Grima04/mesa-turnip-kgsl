@@ -389,28 +389,29 @@ panfrost_resource_create_bo(struct panfrost_screen *screen, struct panfrost_reso
          * AFBC: Compressed and renderable (so always desirable for non-scanout
          * rendertargets). Cheap to sample from. The format is black box, so we
          * can't read/write from software.
-         */
+         *
+         * Tiling textures is almost always faster, unless we only use it once.
+         * Only a few types of resources can be tiled, ensure the bind is only
+         * (a combination of) one of the following */
 
-        /* Tiling textures is almost always faster, unless we only use it once */
+        const unsigned valid_binding =
+                PIPE_BIND_RENDER_TARGET |
+                PIPE_BIND_BLENDABLE |
+                PIPE_BIND_SAMPLER_VIEW |
+                PIPE_BIND_DISPLAY_TARGET;
 
-        bool is_texture = (res->bind & PIPE_BIND_SAMPLER_VIEW);
-        bool is_2d = res->depth0 == 1 && res->array_size == 1;
-        bool is_streaming = (res->usage != PIPE_USAGE_STREAM);
-        bool is_global = res->bind & PIPE_BIND_GLOBAL;
-
-        bool should_tile = is_streaming && is_texture && is_2d && !is_global;
-
-        /* Depth/stencil can't be tiled, only linear or AFBC */
-        should_tile &= !(res->bind & PIPE_BIND_DEPTH_STENCIL);
+        bool is_2d = (res->target == PIPE_TEXTURE_2D);
+        bool should_tile = (res->usage != PIPE_USAGE_STREAM);
+        bool can_tile = is_2d && ((res->bind & ~valid_binding) == 0);
 
         /* FBOs we would like to checksum, if at all possible */
-        bool can_checksum = !(res->bind & (PIPE_BIND_SCANOUT | PIPE_BIND_SHARED));
+        bool can_checksum = !(res->bind & ~valid_binding);
         bool should_checksum = res->bind & PIPE_BIND_RENDER_TARGET;
 
         pres->checksummed = can_checksum && should_checksum;
 
         /* Set the layout appropriately */
-        pres->layout = should_tile ? PAN_TILED : PAN_LINEAR;
+        pres->layout = (can_tile && should_tile) ? PAN_TILED : PAN_LINEAR;
 
         size_t bo_size;
 
