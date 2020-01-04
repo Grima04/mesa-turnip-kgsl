@@ -3435,7 +3435,7 @@ fs_visitor::nir_emit_fs_intrinsic(const fs_builder &bld,
       fs_inst *mov = bld.MOV(dest, brw_imm_ud(~0));
       mov->predicate = BRW_PREDICATE_NORMAL;
       mov->predicate_inverse = true;
-      mov->flag_subreg = 1;
+      mov->flag_subreg = sample_mask_flag_subreg(this);
       break;
    }
 
@@ -3552,7 +3552,7 @@ fs_visitor::nir_emit_fs_intrinsic(const fs_builder &bld,
       }
 
       cmp->predicate = BRW_PREDICATE_NORMAL;
-      cmp->flag_subreg = 1;
+      cmp->flag_subreg = sample_mask_flag_subreg(this);
 
       if (devinfo->gen >= 6) {
          /* Due to the way we implement discard, the jump will only happen

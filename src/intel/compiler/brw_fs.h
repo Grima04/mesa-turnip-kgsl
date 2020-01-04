@@ -418,6 +418,17 @@ private:
 };
 
 /**
+ * Return the flag register used in fragment shaders to keep track of live
+ * samples.
+ */
+static inline unsigned
+sample_mask_flag_subreg(const fs_visitor *shader)
+{
+   assert(shader->stage == MESA_SHADER_FRAGMENT);
+   return 1;
+}
+
+/**
  * The fragment shader code generator.
  *
  * Translates FS IR to actual i965 assembly code.

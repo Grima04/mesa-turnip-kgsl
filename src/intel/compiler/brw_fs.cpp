@@ -1532,7 +1532,7 @@ fs_visitor::emit_discard_jump()
     * shader if all relevant channels have been discarded.
     */
    fs_inst *discard_jump = bld.emit(FS_OPCODE_DISCARD_JUMP);
-   discard_jump->flag_subreg = 1;
+   discard_jump->flag_subreg = sample_mask_flag_subreg(this);
 
    discard_jump->predicate = BRW_PREDICATE_ALIGN1_ANY4H;
    discard_jump->predicate_inverse = true;
@@ -4286,7 +4286,7 @@ sample_mask_reg(const fs_builder &bld)
       return brw_imm_ud(0xffffffff);
    } else if (brw_wm_prog_data(v->stage_prog_data)->uses_kill) {
       assert(bld.group() < 16 && bld.dispatch_width() <= 16);
-      return brw_flag_reg(0, 1);
+      return brw_flag_subreg(sample_mask_flag_subreg(v));
    } else {
       assert(v->devinfo->gen >= 6 && bld.dispatch_width() <= 16);
       return retype(brw_vec1_grf((bld.group() >= 16 ? 2 : 1), 7),
