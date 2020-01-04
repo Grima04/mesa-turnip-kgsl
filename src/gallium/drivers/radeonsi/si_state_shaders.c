@@ -1160,11 +1160,13 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
 	 * pass edge flags for decomposed primitives (such as quads) to the PA
 	 * for the GL_LINE polygon mode to skip rendering lines on inner edges.
 	 */
-	if (gs_info->uses_invocationid || gs_type == PIPE_SHADER_VERTEX)
+	if (gs_info->uses_invocationid ||
+	    (gs_type == PIPE_SHADER_VERTEX && !gfx10_is_ngg_passthrough(shader)))
 		gs_vgpr_comp_cnt = 3; /* VGPR3 contains InvocationID, edge flags. */
-	else if (gs_info->uses_primid)
+	else if ((gs_type == PIPE_SHADER_GEOMETRY && gs_info->uses_primid) ||
+		 (gs_type == PIPE_SHADER_VERTEX && shader->key.mono.u.vs_export_prim_id))
 		gs_vgpr_comp_cnt = 2; /* VGPR2 contains PrimitiveID. */
-	else if (input_prim >= PIPE_PRIM_TRIANGLES)
+	else if (input_prim >= PIPE_PRIM_TRIANGLES && !gfx10_is_ngg_passthrough(shader))
 		gs_vgpr_comp_cnt = 1; /* VGPR1 contains offsets 2, 3 */
 	else
 		gs_vgpr_comp_cnt = 0; /* VGPR0 contains offsets 0, 1 */
