@@ -419,13 +419,15 @@ private:
 
 /**
  * Return the flag register used in fragment shaders to keep track of live
- * samples.
+ * samples.  On Gen7+ we use f1.0-f1.1 to allow discard jumps in SIMD32
+ * dispatch mode, while earlier generations are constrained to f0.1, which
+ * limits the dispatch width to SIMD16 for fragment shaders that use discard.
  */
 static inline unsigned
 sample_mask_flag_subreg(const fs_visitor *shader)
 {
    assert(shader->stage == MESA_SHADER_FRAGMENT);
-   return 1;
+   return shader->devinfo->gen >= 7 ? 2 : 1;
 }
 
 /**

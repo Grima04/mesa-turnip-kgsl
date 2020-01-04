@@ -5458,15 +5458,17 @@ lower_surface_logical_send(const fs_builder &bld, fs_inst *inst)
           * vertical predication mode.
           */
          inst->predicate = BRW_PREDICATE_ALIGN1_ALLV;
-         ubld.MOV(retype(brw_flag_subreg(inst->flag_subreg + 2),
-                         sample_mask.type),
-                  sample_mask);
+         if (sample_mask.file != ARF || sample_mask.nr != BRW_ARF_FLAG + 1)
+            ubld.MOV(retype(brw_flag_subreg(inst->flag_subreg + 2),
+                            sample_mask.type),
+                     sample_mask);
       } else {
          inst->flag_subreg = 2;
          inst->predicate = BRW_PREDICATE_NORMAL;
          inst->predicate_inverse = false;
-         ubld.MOV(retype(brw_flag_subreg(inst->flag_subreg), sample_mask.type),
-                  sample_mask);
+         if (sample_mask.file != ARF || sample_mask.nr != BRW_ARF_FLAG + 1)
+            ubld.MOV(retype(brw_flag_subreg(inst->flag_subreg), sample_mask.type),
+                     sample_mask);
       }
    }
 
@@ -5646,8 +5648,9 @@ lower_a64_logical_send(const fs_builder &bld, fs_inst *inst)
 
       fs_reg sample_mask = sample_mask_reg(bld);
       const fs_builder ubld = bld.group(1, 0).exec_all();
-      ubld.MOV(retype(brw_flag_subreg(inst->flag_subreg), sample_mask.type),
-               sample_mask);
+      if (sample_mask.file != ARF || sample_mask.nr != BRW_ARF_FLAG + 1)
+         ubld.MOV(retype(brw_flag_subreg(inst->flag_subreg), sample_mask.type),
+                  sample_mask);
    }
 
    fs_reg payload, payload2;

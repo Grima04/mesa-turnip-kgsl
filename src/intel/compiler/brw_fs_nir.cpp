@@ -3490,9 +3490,9 @@ fs_visitor::nir_emit_fs_intrinsic(const fs_builder &bld,
    case nir_intrinsic_discard:
    case nir_intrinsic_demote_if:
    case nir_intrinsic_discard_if: {
-      /* We track our discarded pixels in f0.1.  By predicating on it, we can
-       * update just the flag bits that aren't yet discarded.  If there's no
-       * condition, we emit a CMP of g0 != g0, so all currently executing
+      /* We track our discarded pixels in f0.1/f1.0.  By predicating on it, we
+       * can update just the flag bits that aren't yet discarded.  If there's
+       * no condition, we emit a CMP of g0 != g0, so all currently executing
        * channels will get turned off.
        */
       fs_inst *cmp = NULL;
