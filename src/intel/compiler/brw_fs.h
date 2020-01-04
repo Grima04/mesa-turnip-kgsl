@@ -167,6 +167,7 @@ public:
    bool lower_integer_multiplication();
    bool lower_minmax();
    bool lower_simd_width();
+   bool lower_barycentrics();
    bool lower_scoreboard();
    bool opt_combine_constants();
 

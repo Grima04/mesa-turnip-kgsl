@@ -6733,6 +6733,72 @@ fs_visitor::lower_simd_width()
    return progress;
 }
 
+/**
+ * Transform barycentric vectors into the interleaved form expected by the PLN
+ * instruction and returned by the Gen7+ PI shared function.
+ *
+ * For channels 0-15 in SIMD16 mode they are expected to be laid out as
+ * follows in the register file:
+ *
+ *    rN+0: X[0-7]
+ *    rN+1: Y[0-7]
+ *    rN+2: X[8-15]
+ *    rN+3: Y[8-15]
+ *
+ * There is no need to handle SIMD32 here -- This is expected to be run after
+ * SIMD lowering, since SIMD lowering relies on vectors having the standard
+ * component layout.
+ */
+bool
+fs_visitor::lower_barycentrics()
+{
+   const bool has_interleaved_layout = devinfo->has_pln || devinfo->gen >= 7;
+   bool progress = false;
+
+   if (stage != MESA_SHADER_FRAGMENT || !has_interleaved_layout)
+      return false;
+
+   foreach_block_and_inst_safe(block, fs_inst, inst, cfg) {
+      if (inst->exec_size < 16)
+         continue;
+
+      const fs_builder ibld(this, block, inst);
+      const fs_builder ubld = ibld.exec_all().group(8, 0);
+
+      switch (inst->opcode) {
+      case FS_OPCODE_INTERPOLATE_AT_SAMPLE:
+      case FS_OPCODE_INTERPOLATE_AT_SHARED_OFFSET:
+      case FS_OPCODE_INTERPOLATE_AT_PER_SLOT_OFFSET: {
+         assert(inst->exec_size == 16);
+         const fs_reg tmp = ibld.vgrf(inst->dst.type, 2);
+
+         for (unsigned i = 0; i < 2; i++) {
+            for (unsigned g = 0; g < inst->exec_size / 8; g++) {
+               fs_inst *mov = ibld.at(block, inst->next).group(8, g)
+                                  .MOV(horiz_offset(offset(inst->dst, ibld, i),
+                                                    8 * g),
+                                       offset(tmp, ubld, 2 * g + i));
+               mov->predicate = inst->predicate;
+               mov->predicate_inverse = inst->predicate_inverse;
+               mov->flag_subreg = inst->flag_subreg;
+            }
+         }
+
+         inst->dst = tmp;
+         progress = true;
+         break;
+      }
+      default:
+         break;
+      }
+   }
+
+   if (progress)
+      invalidate_live_intervals();
+
+   return progress;
+}
+
 void
 fs_visitor::dump_instructions()
 {
@@ -7252,6 +7318,7 @@ fs_visitor::optimize()
    }
 
    OPT(lower_simd_width);
+   OPT(lower_barycentrics);
 
    /* After SIMD lowering just in case we had to unroll the EOT send. */
    OPT(opt_sampler_eot);
