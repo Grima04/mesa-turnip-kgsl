@@ -176,11 +176,11 @@ fs_visitor::emit_interpolation_setup_gen4()
    const fs_reg xstart(negate(brw_vec1_grf(1, 0)));
    const fs_reg ystart(negate(brw_vec1_grf(1, 1)));
 
-   if (devinfo->has_pln && dispatch_width == 16) {
-      for (unsigned i = 0; i < 2; i++) {
-         abld.half(i).ADD(half(offset(delta_xy, abld, i), 0),
+   if (devinfo->has_pln) {
+      for (unsigned i = 0; i < dispatch_width / 8; i++) {
+         abld.half(i).ADD(half(offset(delta_xy, abld, 0), i),
                           half(this->pixel_x, i), xstart);
-         abld.half(i).ADD(half(offset(delta_xy, abld, i), 1),
+         abld.half(i).ADD(half(offset(delta_xy, abld, 1), i),
                           half(this->pixel_y, i), ystart);
       }
    } else {
@@ -358,11 +358,10 @@ fs_visitor::emit_interpolation_setup_gen6()
 
          for (unsigned c = 0; c < 2; c++) {
             for (unsigned q = 0; q < dispatch_width / 8; q++) {
-               const unsigned idx = c + (q & 2) + (q & 1) * dispatch_width / 8;
                set_predicate(BRW_PREDICATE_NORMAL,
-                  bld.half(q).SEL(horiz_offset(delta_xy[i], idx * 8),
-                                  horiz_offset(centroid_delta_xy, idx * 8),
-                                  horiz_offset(pixel_delta_xy, idx * 8)));
+                  bld.half(q).SEL(half(offset(delta_xy[i], bld, c), q),
+                                  half(offset(centroid_delta_xy, bld, c), q),
+                                  half(offset(pixel_delta_xy, bld, c), q)));
             }
          }
       }

@@ -571,13 +571,14 @@ namespace brw {
          return fs_reg();
 
       const fs_reg tmp = bld.vgrf(BRW_REGISTER_TYPE_F, 2);
-      const brw::fs_builder hbld = bld.exec_all().group(16, 0);
+      const brw::fs_builder hbld = bld.exec_all().group(8, 0);
       const unsigned m = bld.dispatch_width() / hbld.dispatch_width();
       fs_reg *const components = new fs_reg[2 * m];
 
       for (unsigned c = 0; c < 2; c++) {
          for (unsigned g = 0; g < m; g++)
-            components[c * m + g] = offset(brw_vec8_grf(regs[g], 0), hbld, c);
+            components[c * m + g] = offset(brw_vec8_grf(regs[g / 2], 0),
+                                           hbld, c + 2 * (g % 2));
       }
 
       hbld.LOAD_PAYLOAD(tmp, components, 2 * m, 0);

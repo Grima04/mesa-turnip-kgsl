@@ -6766,6 +6766,21 @@ fs_visitor::lower_barycentrics()
       const fs_builder ubld = ibld.exec_all().group(8, 0);
 
       switch (inst->opcode) {
+      case FS_OPCODE_LINTERP : {
+         assert(inst->exec_size == 16);
+         const fs_reg tmp = ibld.vgrf(inst->src[0].type, 2);
+         fs_reg srcs[4];
+
+         for (unsigned i = 0; i < ARRAY_SIZE(srcs); i++)
+            srcs[i] = horiz_offset(offset(inst->src[0], ibld, i % 2),
+                                   8 * (i / 2));
+
+         ubld.LOAD_PAYLOAD(tmp, srcs, ARRAY_SIZE(srcs), ARRAY_SIZE(srcs));
+
+         inst->src[0] = tmp;
+         progress = true;
+         break;
+      }
       case FS_OPCODE_INTERPOLATE_AT_SAMPLE:
       case FS_OPCODE_INTERPOLATE_AT_SHARED_OFFSET:
       case FS_OPCODE_INTERPOLATE_AT_PER_SLOT_OFFSET: {
