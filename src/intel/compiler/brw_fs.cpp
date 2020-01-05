@@ -4290,7 +4290,7 @@ sample_mask_reg(const fs_builder &bld)
    } else {
       assert(v->devinfo->gen >= 6 && bld.dispatch_width() <= 16);
       return retype(brw_vec1_grf((bld.group() >= 16 ? 2 : 1), 7),
-                    BRW_REGISTER_TYPE_UD);
+                    BRW_REGISTER_TYPE_UW);
    }
 }
 
@@ -5337,8 +5337,7 @@ emit_predicate_on_sample_mask(const fs_builder &bld, fs_inst *inst)
                 subreg + inst->group / 16).subnr);
    } else {
       bld.group(1, 0).exec_all()
-         .MOV(brw_flag_subreg(subreg + inst->group / 16),
-              retype(sample_mask, BRW_REGISTER_TYPE_UW));
+         .MOV(brw_flag_subreg(subreg + inst->group / 16), sample_mask);
    }
 
    if (inst->predicate) {
