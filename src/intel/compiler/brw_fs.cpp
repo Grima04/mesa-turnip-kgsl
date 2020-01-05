@@ -5316,6 +5316,46 @@ lower_sampler_logical_send(const fs_builder &bld, fs_inst *inst, opcode op)
    }
 }
 
+/**
+ * Predicate the specified instruction on the sample mask.
+ */
+static void
+emit_predicate_on_sample_mask(const fs_builder &bld, fs_inst *inst)
+{
+   assert(bld.shader->stage == MESA_SHADER_FRAGMENT &&
+          bld.group() == inst->group &&
+          bld.dispatch_width() == inst->exec_size);
+
+   const fs_visitor *v = static_cast<const fs_visitor *>(bld.shader);
+   const fs_reg sample_mask = sample_mask_reg(bld);
+   const unsigned subreg = sample_mask_flag_subreg(v);
+
+   if (brw_wm_prog_data(v->stage_prog_data)->uses_kill) {
+      assert(sample_mask.file == ARF &&
+             sample_mask.nr == brw_flag_subreg(subreg).nr &&
+             sample_mask.subnr == brw_flag_subreg(
+                subreg + inst->group / 16).subnr);
+   } else {
+      bld.group(1, 0).exec_all()
+         .MOV(brw_flag_subreg(subreg + inst->group / 16),
+              retype(sample_mask, BRW_REGISTER_TYPE_UW));
+   }
+
+   if (inst->predicate) {
+      assert(inst->predicate == BRW_PREDICATE_NORMAL);
+      assert(!inst->predicate_inverse);
+      assert(inst->flag_subreg == 0);
+      /* Combine the sample mask with the existing predicate by using a
+       * vertical predication mode.
+       */
+      inst->predicate = BRW_PREDICATE_ALIGN1_ALLV;
+   } else {
+      inst->flag_subreg = subreg;
+      inst->predicate = BRW_PREDICATE_NORMAL;
+      inst->predicate_inverse = false;
+   }
+}
+
 static void
 lower_surface_logical_send(const fs_builder &bld, fs_inst *inst)
 {
@@ -5448,29 +5488,8 @@ lower_surface_logical_send(const fs_builder &bld, fs_inst *inst)
     * provided.
     */
    if ((header.file == BAD_FILE || !is_surface_access) &&
-       sample_mask.file != BAD_FILE && sample_mask.file != IMM) {
-      const fs_builder ubld = bld.group(1, 0).exec_all();
-      if (inst->predicate) {
-         assert(inst->predicate == BRW_PREDICATE_NORMAL);
-         assert(!inst->predicate_inverse);
-         assert(inst->flag_subreg < 2);
-         /* Combine the sample mask with the existing predicate by using a
-          * vertical predication mode.
-          */
-         inst->predicate = BRW_PREDICATE_ALIGN1_ALLV;
-         if (sample_mask.file != ARF || sample_mask.nr != BRW_ARF_FLAG + 1)
-            ubld.MOV(retype(brw_flag_subreg(inst->flag_subreg + 2),
-                            sample_mask.type),
-                     sample_mask);
-      } else {
-         inst->flag_subreg = 2;
-         inst->predicate = BRW_PREDICATE_NORMAL;
-         inst->predicate_inverse = false;
-         if (sample_mask.file != ARF || sample_mask.nr != BRW_ARF_FLAG + 1)
-            ubld.MOV(retype(brw_flag_subreg(inst->flag_subreg), sample_mask.type),
-                     sample_mask);
-      }
-   }
+       sample_mask.file != BAD_FILE && sample_mask.file != IMM)
+      emit_predicate_on_sample_mask(bld, inst);
 
    uint32_t sfid;
    switch (inst->opcode) {
@@ -5641,17 +5660,8 @@ lower_a64_logical_send(const fs_builder &bld, fs_inst *inst)
    /* If the surface message has side effects and we're a fragment shader, we
     * have to predicate with the sample mask to avoid helper invocations.
     */
-   if (has_side_effects && bld.shader->stage == MESA_SHADER_FRAGMENT) {
-      inst->flag_subreg = 2;
-      inst->predicate = BRW_PREDICATE_NORMAL;
-      inst->predicate_inverse = false;
-
-      fs_reg sample_mask = sample_mask_reg(bld);
-      const fs_builder ubld = bld.group(1, 0).exec_all();
-      if (sample_mask.file != ARF || sample_mask.nr != BRW_ARF_FLAG + 1)
-         ubld.MOV(retype(brw_flag_subreg(inst->flag_subreg), sample_mask.type),
-                  sample_mask);
-   }
+   if (has_side_effects && bld.shader->stage == MESA_SHADER_FRAGMENT)
+      emit_predicate_on_sample_mask(bld, inst);
 
    fs_reg payload, payload2;
    unsigned mlen, ex_mlen = 0;
