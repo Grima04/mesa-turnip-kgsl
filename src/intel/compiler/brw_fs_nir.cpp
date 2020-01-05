@@ -3562,7 +3562,9 @@ fs_visitor::nir_emit_fs_intrinsic(const fs_builder &bld,
          emit_discard_jump();
       }
 
-      limit_dispatch_width(16, "Fragment discard/demote not implemented in SIMD32 mode.\n");
+      if (devinfo->gen < 7)
+         limit_dispatch_width(
+            16, "Fragment discard/demote not implemented in SIMD32 mode.\n");
       break;
    }
 

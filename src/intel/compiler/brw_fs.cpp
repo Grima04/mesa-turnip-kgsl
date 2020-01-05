@@ -4285,8 +4285,8 @@ sample_mask_reg(const fs_builder &bld)
    if (v->stage != MESA_SHADER_FRAGMENT) {
       return brw_imm_ud(0xffffffff);
    } else if (brw_wm_prog_data(v->stage_prog_data)->uses_kill) {
-      assert(bld.group() < 16 && bld.dispatch_width() <= 16);
-      return brw_flag_subreg(sample_mask_flag_subreg(v));
+      assert(bld.dispatch_width() <= 16);
+      return brw_flag_subreg(sample_mask_flag_subreg(v) + bld.group() / 16);
    } else {
       assert(v->devinfo->gen >= 6 && bld.dispatch_width() <= 16);
       return retype(brw_vec1_grf((bld.group() >= 16 ? 2 : 1), 7),
@@ -8171,11 +8171,15 @@ fs_visitor::run_fs(bool allow_spilling, bool do_rep_send)
        * Initialize it with the dispatched pixels.
        */
       if (wm_prog_data->uses_kill) {
-         const fs_reg dispatch_mask =
-            devinfo->gen >= 6 ? brw_vec1_grf(1, 7) : brw_vec1_grf(0, 0);
-         bld.exec_all().group(1, 0)
-            .MOV(sample_mask_reg(bld),
-                 retype(dispatch_mask, BRW_REGISTER_TYPE_UW));
+         const unsigned lower_width = MIN2(dispatch_width, 16);
+         for (unsigned i = 0; i < dispatch_width / lower_width; i++) {
+            const fs_reg dispatch_mask =
+               devinfo->gen >= 6 ? brw_vec1_grf((i ? 2 : 1), 7) :
+               brw_vec1_grf(0, 0);
+            bld.exec_all().group(1, 0)
+               .MOV(sample_mask_reg(bld.group(lower_width, i)),
+                    retype(dispatch_mask, BRW_REGISTER_TYPE_UW));
+         }
       }
 
       emit_nir_code();
