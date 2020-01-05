@@ -1711,6 +1711,7 @@ cmd_buffer_emit_graphics_pipeline(struct v3dv_cmd_buffer *cmd_buffer)
       state.number_of_attribute_arrays = num_elements_to_emit;
    }
 
+   cl_emit_prepacked(&job->bcl, &pipeline->cfg_bits);
 }
 
 /* FIXME: C&P from v3dx_draw. Refactor to common place? */

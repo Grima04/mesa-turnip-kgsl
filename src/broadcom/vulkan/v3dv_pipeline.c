@@ -32,6 +32,8 @@
 
 #include "vulkan/util/vk_format.h"
 
+#include "broadcom/cle/v3dx_pack.h"
+
 VkResult
 v3dv_CreateShaderModule(VkDevice _device,
                         const VkShaderModuleCreateInfo *pCreateInfo,
@@ -755,6 +757,63 @@ pipeline_init_dynamic_state(struct v3dv_pipeline *pipeline,
    pipeline->dynamic_state.mask = states;
 }
 
+static void
+pack_cfg_bits(struct v3dv_pipeline *pipeline,
+              const VkPipelineDepthStencilStateCreateInfo *ds_info,
+              const VkPipelineRasterizationStateCreateInfo *rs_info,
+              const VkPipelineColorBlendStateCreateInfo *cb_info)
+{
+   assert(sizeof(pipeline->cfg_bits) == cl_packet_length(CFG_BITS));
+
+   /* CFG_BITS allow to set a overall blend_enable that it is anded with the
+    * per-target blend enable. v3d so far creates a mask with each target, so
+    * we just set to true if any attachment has blending enabled
+    */
+   bool overall_blend_enable = false;
+   if (cb_info) {
+      for (uint32_t i = 0; i < cb_info->attachmentCount; i++) {
+         const VkPipelineColorBlendAttachmentState *b_state =
+            &cb_info->pAttachments[i];
+
+         overall_blend_enable |= b_state->blendEnable;
+      }
+   }
+
+   v3dv_pack(pipeline->cfg_bits, CFG_BITS, config) {
+      config.enable_forward_facing_primitive =
+         rs_info ? !(rs_info->cullMode & VK_CULL_MODE_FRONT_BIT) : false;
+
+      config.enable_reverse_facing_primitive =
+         rs_info ? !(rs_info->cullMode & VK_CULL_MODE_BACK_BIT) : false;
+
+      config.clockwise_primitives =
+         rs_info ? rs_info->frontFace == VK_FRONT_FACE_CLOCKWISE : false;
+
+      config.enable_depth_offset = rs_info ? rs_info->depthBiasEnable: false;
+
+      /* FIXME: oversample_mode postponed until msaa gets supported */
+      config.rasterizer_oversample_mode = false;
+
+      config.direct3d_provoking_vertex = false; /* FIXME */
+
+      config.blend_enable = overall_blend_enable;
+
+      /* Note: ez state may update based on the compiled FS, along with zsa
+       * (FIXME: not done)
+       */
+      config.early_z_updates_enable = true;
+      if (ds_info && ds_info->depthTestEnable) {
+         config.z_updates_enable = false;
+         config.early_z_enable = config.early_z_enable;
+         config.depth_test_function = ds_info->depthCompareOp;
+      } else {
+         config.depth_test_function = VK_COMPARE_OP_ALWAYS;
+      }
+
+      config.stencil_enable = ds_info ? ds_info->stencilTestEnable : false;
+   };
+}
+
 static VkResult
 pipeline_init(struct v3dv_pipeline *pipeline,
               struct v3dv_device *device,
@@ -770,6 +829,23 @@ pipeline_init(struct v3dv_pipeline *pipeline,
    pipeline->subpass = &render_pass->subpasses[pCreateInfo->subpass];
 
    pipeline_init_dynamic_state(pipeline, pCreateInfo);
+
+   /* If rasterization is not enabled, various CreateInfo structs must be
+    * ignored.
+    */
+   const bool raster_enabled =
+      !pCreateInfo->pRasterizationState->rasterizerDiscardEnable;
+
+   const VkPipelineDepthStencilStateCreateInfo *ds_info =
+      raster_enabled ? pCreateInfo->pDepthStencilState : NULL;
+
+   const VkPipelineRasterizationStateCreateInfo *rs_info =
+      raster_enabled ? pCreateInfo->pRasterizationState : NULL;
+
+   const VkPipelineColorBlendStateCreateInfo *cb_info =
+      raster_enabled ? pCreateInfo->pColorBlendState : NULL;
+
+   pack_cfg_bits(pipeline, ds_info, rs_info, cb_info);
 
    result = pipeline_compile_graphics(pipeline, pCreateInfo, alloc);
 

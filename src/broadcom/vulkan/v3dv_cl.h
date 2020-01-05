@@ -170,4 +170,25 @@ cl_pack_emit_reloc(struct v3dv_cl *cl, const struct v3dv_cl_reloc *reloc)
                 v3dv_job_add_bo(cl->job, reloc->bo);
 }
 
+#define cl_emit_prepacked_sized(cl, packet, size) do {                \
+        memcpy((cl)->next, packet, size);             \
+        cl_advance(&(cl)->next, size);                \
+} while (0)
+
+#define cl_emit_prepacked(cl, packet) \
+        cl_emit_prepacked_sized(cl, packet, sizeof(*(packet)))
+
+#define v3dv_pack(packed, packet, name)                          \
+        for (struct cl_packet_struct(packet) name = {            \
+                cl_packet_header(packet)                         \
+        },                                                       \
+        *_loop_terminate = &name;                                \
+        __builtin_expect(_loop_terminate != NULL, 1);            \
+        ({                                                       \
+                cl_packet_pack(packet)(NULL, (uint8_t *)packed, &name); \
+                VG(VALGRIND_CHECK_MEM_IS_DEFINED((uint8_t *)packed, \
+                                                 cl_packet_length(packet))); \
+                _loop_terminate = NULL;                          \
+        }))                                                      \
+
 #endif /* V3DV_CL_H */

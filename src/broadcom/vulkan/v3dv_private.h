@@ -84,6 +84,8 @@ pack_emit_reloc(void *cl, const void *reloc) {}
  */
 #include "util/u_box.h"
 
+#include "broadcom/cle/v3dx_pack.h"
+
 /* A non-fatal assert.  Useful for debugging. */
 #ifdef DEBUG
 #define v3dv_assert(x) ({ \
@@ -596,6 +598,10 @@ struct v3dv_pipeline {
    struct v3dv_pipeline_stage *fs;
 
    struct v3dv_dynamic_state dynamic_state;
+
+   /* Packets prepacked during pipeline creation
+    */
+   uint8_t cfg_bits[cl_packet_length(CFG_BITS)];
 };
 
 uint32_t v3dv_physical_device_api_version(struct v3dv_physical_device *dev);
