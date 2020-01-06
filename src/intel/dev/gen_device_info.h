@@ -273,8 +273,17 @@ struct gen_device_info
    /** @} */
 };
 
+#ifdef GEN_GEN
+
+#define gen_device_info_is_9lp(devinfo) \
+   (GEN_GEN == 9 && ((devinfo)->is_broxton || (devinfo)->is_geminilake))
+
+#else
+
 #define gen_device_info_is_9lp(devinfo) \
    ((devinfo)->is_broxton || (devinfo)->is_geminilake)
+
+#endif
 
 static inline bool
 gen_device_info_subslice_available(const struct gen_device_info *devinfo,
