@@ -357,7 +357,7 @@ panfrost_get_shader_param(struct pipe_screen *screen,
                 return 0;
 
         default:
-                fprintf(stderr, "unknown shader param %d\n", param);
+                DBG("unknown shader param %d\n", param);
                 return 0;
         }
 
@@ -734,7 +734,7 @@ panfrost_create_screen(int fd, struct renderonly *ro)
         if (ro) {
                 screen->ro = renderonly_dup(ro);
                 if (!screen->ro) {
-                        fprintf(stderr, "Failed to dup renderonly object\n");
+                        DBG("Failed to dup renderonly object\n");
                         free(screen);
                         return NULL;
                 }

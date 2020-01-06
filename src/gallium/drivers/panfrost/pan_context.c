@@ -2506,7 +2506,7 @@ panfrost_begin_query(struct pipe_context *pipe, struct pipe_query *q)
                 break;
 
         default:
-                fprintf(stderr, "Skipping query %u\n", query->type);
+                DBG("Skipping query %u\n", query->type);
                 break;
         }
 

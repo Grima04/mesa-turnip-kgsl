@@ -73,7 +73,7 @@ panfrost_bo_alloc(struct panfrost_screen *screen, size_t size,
 
         ret = drmIoctl(screen->fd, DRM_IOCTL_PANFROST_CREATE_BO, &create_bo);
         if (ret) {
-                fprintf(stderr, "DRM_IOCTL_PANFROST_CREATE_BO failed: %m\n");
+                DBG("DRM_IOCTL_PANFROST_CREATE_BO failed: %m\n");
                 return NULL;
         }
 

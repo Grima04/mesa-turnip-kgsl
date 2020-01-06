@@ -99,7 +99,7 @@ panfrost_translate_channel_width(unsigned size)
         case 32:
                 return MALI_CHANNEL_32;
         default: {
-                printf ("Invalid width: %d\n", size);
+                fprintf(stderr, "Invalid width: %d\n", size);
                 assert(0);
         }
         }
