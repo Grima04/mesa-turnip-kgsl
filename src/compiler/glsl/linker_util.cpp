@@ -23,6 +23,7 @@
  */
 #include "main/mtypes.h"
 #include "linker_util.h"
+#include "util/bitscan.h"
 #include "util/set.h"
 #include "ir_uniform.h" /* for gl_uniform_storage */
 
@@ -151,6 +152,21 @@ link_util_update_empty_uniform_locations(struct gl_shader_program *prog)
 
          /* The current block continues, so we simply increment its slots */
          current_block->slots++;
+      }
+   }
+}
+
+void
+link_util_check_subroutine_resources(struct gl_shader_program *prog)
+{
+   unsigned mask = prog->data->linked_stages;
+   while (mask) {
+      const int i = u_bit_scan(&mask);
+      struct gl_program *p = prog->_LinkedShaders[i]->Program;
+
+      if (p->sh.NumSubroutineUniformRemapTable > MAX_SUBROUTINE_UNIFORM_LOCATIONS) {
+         linker_error(prog, "Too many %s shader subroutine uniforms\n",
+                      _mesa_shader_stage_to_string(i));
       }
    }
 }

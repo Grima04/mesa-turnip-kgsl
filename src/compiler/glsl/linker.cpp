@@ -3436,20 +3436,6 @@ link_calculate_subroutine_compat(struct gl_shader_program *prog)
    }
 }
 
-static void
-check_subroutine_resources(struct gl_shader_program *prog)
-{
-   unsigned mask = prog->data->linked_stages;
-   while (mask) {
-      const int i = u_bit_scan(&mask);
-      struct gl_program *p = prog->_LinkedShaders[i]->Program;
-
-      if (p->sh.NumSubroutineUniformRemapTable > MAX_SUBROUTINE_UNIFORM_LOCATIONS) {
-         linker_error(prog, "Too many %s shader subroutine uniforms\n",
-                      _mesa_shader_stage_to_string(i));
-      }
-   }
-}
 /**
  * Validate shader image resources.
  */
@@ -4535,7 +4521,7 @@ link_and_validate_uniforms(struct gl_context *ctx,
 
    link_calculate_subroutine_compat(prog);
    check_resources(ctx, prog);
-   check_subroutine_resources(prog);
+   link_util_check_subroutine_resources(prog);
 
    if (!ctx->Const.UseNIRGLSLLinker) {
       check_image_resources(ctx, prog);

@@ -70,6 +70,9 @@ link_util_find_empty_block(struct gl_shader_program *prog,
 void
 link_util_update_empty_uniform_locations(struct gl_shader_program *prog);
 
+void
+link_util_check_subroutine_resources(struct gl_shader_program *prog);
+
 #ifdef __cplusplus
 }
 #endif
