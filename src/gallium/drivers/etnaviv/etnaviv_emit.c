@@ -327,11 +327,6 @@ etna_emit_state(struct etna_context *ctx)
                /*14640*/ EMIT_STATE(NFE_VERTEX_STREAMS_CONTROL(x), ctx->vertex_buffer.cvb[x].FE_VERTEX_STREAM_CONTROL);
             }
          }
-         for (int x = 0; x < ctx->vertex_buffer.count; ++x) {
-            if (ctx->vertex_buffer.cvb[x].FE_VERTEX_STREAM_BASE_ADDR.bo) {
-               /*14680*/ EMIT_STATE(NFE_VERTEX_STREAMS_VERTEX_DIVISOR(x), ctx->vertex_buffer.cvb[x].FE_VERTEX_STREAM_VERTEX_DIVISOR);
-            }
-         }
       } else if(ctx->specs.stream_count > 1) { /* hw w/ multiple vertex streams */
          for (int x = 0; x < ctx->vertex_buffer.count; ++x) {
             /*00680*/ EMIT_STATE_RELOC(FE_VERTEX_STREAMS_BASE_ADDR(x), &ctx->vertex_buffer.cvb[x].FE_VERTEX_STREAM_BASE_ADDR);
@@ -346,6 +341,13 @@ etna_emit_state(struct etna_context *ctx)
          /*00650*/ EMIT_STATE(FE_VERTEX_STREAM_CONTROL, ctx->vertex_buffer.cvb[0].FE_VERTEX_STREAM_CONTROL);
       }
    }
+   /* gallium has instance divisor as part of elements state */
+   if ((dirty & (ETNA_DIRTY_VERTEX_ELEMENTS)) && ctx->specs.halti >= 2) {
+      for (int x = 0; x < ctx->vertex_elements->num_buffers; ++x) {
+         /*14680*/ EMIT_STATE(NFE_VERTEX_STREAMS_VERTEX_DIVISOR(x), ctx->vertex_elements->NFE_VERTEX_STREAMS_VERTEX_DIVISOR[x]);
+      }
+   }
+
    if (unlikely(dirty & (ETNA_DIRTY_SHADER | ETNA_DIRTY_RASTERIZER))) {
 
       /*00804*/ EMIT_STATE(VS_OUTPUT_COUNT, vs_output_count);

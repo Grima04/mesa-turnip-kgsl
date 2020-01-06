@@ -327,7 +327,7 @@ etna_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info)
 
    if (ctx->specs.halti >= 2) {
       /* On HALTI2+ (GC3000 and higher) only use instanced drawing commands, as the blob does */
-      etna_draw_instanced(ctx->stream, info->index_size, draw_mode, 1,
+      etna_draw_instanced(ctx->stream, info->index_size, draw_mode, info->instance_count,
          info->count, info->index_size ? info->index_bias : info->start);
    } else {
       if (info->index_size)

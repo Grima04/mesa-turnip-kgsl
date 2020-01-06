@@ -190,6 +190,9 @@ etna_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return 255;
    case PIPE_CAP_MAX_VERTEX_BUFFERS:
       return screen->specs.stream_count;
+   case PIPE_CAP_VERTEX_ELEMENT_INSTANCE_DIVISOR:
+      return VIV_FEATURE(screen, chipMinorFeatures4, HALTI2);
+
 
    /* Texturing. */
    case PIPE_CAP_TEXTURE_SHADOW_MAP:
