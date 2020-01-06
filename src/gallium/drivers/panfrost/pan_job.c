@@ -380,8 +380,10 @@ panfrost_gc_fences(struct panfrost_context *ctx)
                 panfrost_bo_access_gc_fences(ctx, access, entry->key);
                 if (!util_dynarray_num_elements(&access->readers,
                                                 struct panfrost_batch_fence *) &&
-                    !access->writer)
+                    !access->writer) {
+                        ralloc_free(access);
                         _mesa_hash_table_remove(ctx->accessed_bos, entry);
+                }
         }
 }
 
