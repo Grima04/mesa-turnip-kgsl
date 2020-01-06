@@ -120,6 +120,11 @@ etna_lower_io(nir_shader *shader, struct etna_shader_variant *v)
                   nir_ssa_def *ssa = nir_imul(&b, intr->src[0].ssa, nir_imm_int(&b, 16));
                   nir_instr_rewrite_src(instr, &intr->src[0], nir_src_for_ssa(ssa));
                } break;
+               case nir_intrinsic_load_vertex_id:
+               case nir_intrinsic_load_instance_id:
+                  /* detect use of vertex_id/instance_id */
+                  v->vs_id_in_reg = v->infile.num_reg;
+                  break;
                default:
                   break;
                }

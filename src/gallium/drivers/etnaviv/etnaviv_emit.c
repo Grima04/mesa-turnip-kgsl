@@ -132,6 +132,7 @@ emit_halti5_only_state(struct etna_context *ctx, int vs_output_count)
    etna_coalesce_start(stream, &coalesce);
    if (unlikely(dirty & (ETNA_DIRTY_SHADER))) {
       /* Magic states (load balancing, inter-unit sync, buffers) */
+      /*007C4*/ EMIT_STATE(FE_HALTI5_ID_CONFIG, ctx->shader_state.FE_HALTI5_ID_CONFIG);
       /*00870*/ EMIT_STATE(VS_HALTI5_OUTPUT_COUNT, vs_output_count | ((vs_output_count * 0x10) << 8));
       /*008A0*/ EMIT_STATE(VS_HALTI5_UNK008A0, 0x0001000e | ((0x110/vs_output_count) << 20));
       for (int x = 0; x < 4; ++x) {

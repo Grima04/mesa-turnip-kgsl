@@ -284,6 +284,20 @@ etna_shader_update_vs_inputs(struct compiled_shader_state *cs,
          etna_bitarray_set(vs_input, 8, idx, cur_temp++);
    }
 
+   if (vs->vs_id_in_reg >= 0) {
+      cs->VS_INPUT_COUNT = VIVS_VS_INPUT_COUNT_COUNT(num_vs_inputs + 1) |
+                           VIVS_VS_INPUT_COUNT_UNK8(vs->input_count_unk8) |
+                           VIVS_VS_INPUT_COUNT_ID_ENABLE;
+
+      etna_bitarray_set(vs_input, 8, num_vs_inputs, vs->vs_id_in_reg);
+
+      cs->FE_HALTI5_ID_CONFIG =
+         VIVS_FE_HALTI5_ID_CONFIG_VERTEX_ID_ENABLE |
+         VIVS_FE_HALTI5_ID_CONFIG_INSTANCE_ID_ENABLE |
+         VIVS_FE_HALTI5_ID_CONFIG_VERTEX_ID_REG(vs->vs_id_in_reg * 4) |
+         VIVS_FE_HALTI5_ID_CONFIG_INSTANCE_ID_REG(vs->vs_id_in_reg * 4 + 1);
+   }
+
    for (int idx = 0; idx < ARRAY_SIZE(cs->VS_INPUT); ++idx)
       cs->VS_INPUT[idx] = vs_input[idx];
 
