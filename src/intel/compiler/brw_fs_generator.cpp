@@ -889,9 +889,14 @@ fs_generator::generate_cs_terminate(fs_inst *inst, struct brw_reg payload)
    if (devinfo->ver < 12)
       brw_set_src1(p, insn, brw_imm_ud(0u));
 
-   /* Terminate a compute shader by sending a message to the thread spawner.
+   /* For XeHP and newer send a message to the message gateway to terminate a
+    * compute shader. For older devices, a message is sent to the thread
+    * spawner.
     */
-   brw_inst_set_sfid(devinfo, insn, BRW_SFID_THREAD_SPAWNER);
+   if (devinfo->verx10 >= 125)
+      brw_inst_set_sfid(devinfo, insn, BRW_SFID_MESSAGE_GATEWAY);
+   else
+      brw_inst_set_sfid(devinfo, insn, BRW_SFID_THREAD_SPAWNER);
    brw_inst_set_mlen(devinfo, insn, 1);
    brw_inst_set_rlen(devinfo, insn, 0);
    brw_inst_set_eot(devinfo, insn, inst->eot);
