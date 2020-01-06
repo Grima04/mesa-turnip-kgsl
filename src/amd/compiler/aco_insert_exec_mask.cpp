@@ -487,6 +487,7 @@ unsigned add_coupling_code(exec_ctx& ctx, Block* block,
       assert(!(block->kind & block_kind_top_level) || info.num_exec_masks <= 2);
 
       /* create the loop exit phis if not trivial */
+      bool need_parallelcopy = false;
       for (unsigned k = 0; k < info.num_exec_masks; k++) {
          Temp same = ctx.info[preds[0]].exec[k].first;
          uint8_t type = ctx.info[header_preds[0]].exec[k].second;
@@ -497,12 +498,31 @@ unsigned add_coupling_code(exec_ctx& ctx, Block* block,
                trivial = false;
          }
 
+         if (k == info.num_exec_masks - 1u) {
+            bool all_liveout_exec = true;
+            bool all_not_liveout_exec = true;
+            for (unsigned pred : preds) {
+               all_liveout_exec = all_liveout_exec && same == ctx.program->blocks[pred].live_out_exec;
+               all_not_liveout_exec = all_not_liveout_exec && same != ctx.program->blocks[pred].live_out_exec;
+            }
+            if (!all_liveout_exec && !all_not_liveout_exec)
+               trivial = false;
+            else if (all_not_liveout_exec)
+               need_parallelcopy = true;
+
+            need_parallelcopy |= !trivial;
+         }
+
          if (trivial) {
             ctx.info[idx].exec.emplace_back(same, type);
          } else {
             /* create phi for loop footer */
             aco_ptr<Pseudo_instruction> phi{create_instruction<Pseudo_instruction>(aco_opcode::p_linear_phi, Format::PSEUDO, preds.size(), 1)};
             phi->definitions[0] = bld.def(bld.lm);
+            if (k == info.num_exec_masks - 1) {
+               phi->definitions[0].setFixed(exec);
+               need_parallelcopy = false;
+            }
             for (unsigned i = 0; i < phi->operands.size(); i++)
                phi->operands[i] = Operand(ctx.info[preds[i]].exec[k].first);
             ctx.info[idx].exec.emplace_back(bld.insert(std::move(phi)), type);
@@ -533,8 +553,15 @@ unsigned add_coupling_code(exec_ctx& ctx, Block* block,
       }
 
       assert(ctx.info[idx].exec.back().first.size() == bld.lm.size());
-      ctx.info[idx].exec.back().first = bld.pseudo(aco_opcode::p_parallelcopy, bld.def(bld.lm, exec),
-                                                   ctx.info[idx].exec.back().first);
+      if (need_parallelcopy) {
+         /* only create this parallelcopy is needed, since the operand isn't
+          * fixed to exec which causes the spiller to miscalculate register demand */
+         /* TODO: Fix register_demand calculation for spilling on loop exits.
+          * The problem is only mitigated because the register demand could be
+          * higher if the exec phi doesn't get assigned to exec. */
+         ctx.info[idx].exec.back().first = bld.pseudo(aco_opcode::p_parallelcopy, bld.def(bld.lm, exec),
+                                                      ctx.info[idx].exec.back().first);
+      }
 
       ctx.loop.pop_back();
       return i;
