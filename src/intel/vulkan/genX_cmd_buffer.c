@@ -5026,12 +5026,12 @@ cmd_buffer_end_subpass(struct anv_cmd_buffer *cmd_buffer)
           */
          transition_depth_buffer(cmd_buffer, src_iview->image,
                                  src_state->current_layout,
-                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+                                 VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
          src_state->aux_usage =
             anv_layout_to_aux_usage(&cmd_buffer->device->info, src_iview->image,
                                     VK_IMAGE_ASPECT_DEPTH_BIT,
-                                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-         src_state->current_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+                                    VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+         src_state->current_layout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
 
          /* MSAA resolves write to the resolve attachment as if it were any
           * other transfer op.  Transition the resolve attachment accordingly.
@@ -5078,7 +5078,7 @@ cmd_buffer_end_subpass(struct anv_cmd_buffer *cmd_buffer)
       if ((src_iview->image->aspects & VK_IMAGE_ASPECT_STENCIL_BIT) &&
           subpass->stencil_resolve_mode != VK_RESOLVE_MODE_NONE_KHR) {
 
-         src_state->current_stencil_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+         src_state->current_stencil_layout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
          dst_state->current_stencil_layout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 
          enum isl_aux_usage src_aux_usage = ISL_AUX_USAGE_NONE;
