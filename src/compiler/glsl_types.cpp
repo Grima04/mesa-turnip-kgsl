@@ -2546,6 +2546,7 @@ glsl_type::count_dword_slots(bool is_bindless) const
       return this->fields.array->count_dword_slots(is_bindless) *
              this->length;
 
+   case GLSL_TYPE_INTERFACE:
    case GLSL_TYPE_STRUCT: {
       unsigned size = 0;
       for (unsigned i = 0; i < this->length; i++) {
@@ -2560,7 +2561,6 @@ glsl_type::count_dword_slots(bool is_bindless) const
       return 1;
    case GLSL_TYPE_VOID:
    case GLSL_TYPE_ERROR:
-   case GLSL_TYPE_INTERFACE:
    case GLSL_TYPE_FUNCTION:
    default:
       unreachable("invalid type in st_glsl_type_dword_size()");

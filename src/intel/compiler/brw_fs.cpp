@@ -576,57 +576,6 @@ fs_reg::component_size(unsigned width) const
    return MAX2(width * stride, 1) * type_sz(type);
 }
 
-extern "C" int
-type_size_scalar(const struct glsl_type *type, bool bindless)
-{
-   unsigned int size, i;
-
-   switch (type->base_type) {
-   case GLSL_TYPE_UINT:
-   case GLSL_TYPE_INT:
-   case GLSL_TYPE_FLOAT:
-   case GLSL_TYPE_BOOL:
-      return type->components();
-   case GLSL_TYPE_UINT16:
-   case GLSL_TYPE_INT16:
-   case GLSL_TYPE_FLOAT16:
-      return DIV_ROUND_UP(type->components(), 2);
-   case GLSL_TYPE_UINT8:
-   case GLSL_TYPE_INT8:
-      return DIV_ROUND_UP(type->components(), 4);
-   case GLSL_TYPE_DOUBLE:
-   case GLSL_TYPE_UINT64:
-   case GLSL_TYPE_INT64:
-      return type->components() * 2;
-   case GLSL_TYPE_ARRAY:
-      return type_size_scalar(type->fields.array, bindless) * type->length;
-   case GLSL_TYPE_STRUCT:
-   case GLSL_TYPE_INTERFACE:
-      size = 0;
-      for (i = 0; i < type->length; i++) {
-	 size += type_size_scalar(type->fields.structure[i].type, bindless);
-      }
-      return size;
-   case GLSL_TYPE_SAMPLER:
-   case GLSL_TYPE_IMAGE:
-      if (bindless)
-         return type->components() * 2;
-   case GLSL_TYPE_ATOMIC_UINT:
-      /* Samplers, atomics, and images take up no register space, since
-       * they're baked in at link time.
-       */
-      return 0;
-   case GLSL_TYPE_SUBROUTINE:
-      return 1;
-   case GLSL_TYPE_VOID:
-   case GLSL_TYPE_ERROR:
-   case GLSL_TYPE_FUNCTION:
-      unreachable("not reached");
-   }
-
-   return 0;
-}
-
 /**
  * Create a MOV to read the timestamp register.
  */
@@ -1219,7 +1168,7 @@ fs_visitor::vgrf(const glsl_type *const type)
 {
    int reg_width = dispatch_width / 8;
    return fs_reg(VGRF,
-                 alloc.allocate(type_size_scalar(type, false) * reg_width),
+                 alloc.allocate(glsl_count_dword_slots(type, false) * reg_width),
                  brw_type_for_base_type(type));
 }
 

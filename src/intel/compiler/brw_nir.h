@@ -32,14 +32,13 @@
 extern "C" {
 #endif
 
-int type_size_scalar(const struct glsl_type *type, bool bindless);
 int type_size_vec4(const struct glsl_type *type, bool bindless);
 int type_size_dvec4(const struct glsl_type *type, bool bindless);
 
 static inline int
 type_size_scalar_bytes(const struct glsl_type *type, bool bindless)
 {
-   return type_size_scalar(type, bindless) * 4;
+   return glsl_count_dword_slots(type, bindless) * 4;
 }
 
 static inline int
