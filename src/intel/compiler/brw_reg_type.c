@@ -289,7 +289,7 @@ brw_hw_type_to_reg_type(const struct gen_device_info *devinfo,
          }
       }
    }
-   return (enum brw_reg_type)-1;
+   return INVALID_REG_TYPE;
 }
 
 /**
@@ -339,7 +339,7 @@ brw_a16_hw_3src_type_to_reg_type(const struct gen_device_info *devinfo,
          return i;
       }
    }
-   return (enum brw_reg_type)-1;
+   return INVALID_REG_TYPE;
 }
 
 /**
@@ -359,7 +359,7 @@ brw_a1_hw_3src_type_to_reg_type(const struct gen_device_info *devinfo,
          return i;
       }
    }
-   return (enum brw_reg_type)-1;
+   return INVALID_REG_TYPE;
 }
 
 /**
