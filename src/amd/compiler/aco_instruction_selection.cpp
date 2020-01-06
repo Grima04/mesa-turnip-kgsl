@@ -8953,13 +8953,19 @@ void visit_tex(isel_context *ctx, nir_tex_instr *instr)
 }
 
 
-Operand get_phi_operand(isel_context *ctx, nir_ssa_def *ssa, RegClass rc)
+Operand get_phi_operand(isel_context *ctx, nir_ssa_def *ssa, RegClass rc, bool logical)
 {
    Temp tmp = get_ssa_temp(ctx, ssa);
-   if (ssa->parent_instr->type == nir_instr_type_ssa_undef)
+   if (ssa->parent_instr->type == nir_instr_type_ssa_undef) {
       return Operand(rc);
-   else
+   } else if (logical && ssa->bit_size == 1 && ssa->parent_instr->type == nir_instr_type_load_const) {
+      if (ctx->program->wave_size == 64)
+         return Operand(nir_instr_as_load_const(ssa->parent_instr)->value[0].b ? UINT64_MAX : 0u);
+      else
+         return Operand(nir_instr_as_load_const(ssa->parent_instr)->value[0].b ? UINT32_MAX : 0u);
+   } else {
       return Operand(tmp);
+   }
 }
 
 void visit_phi(isel_context *ctx, nir_phi_instr *instr)
@@ -9002,7 +9008,7 @@ void visit_phi(isel_context *ctx, nir_phi_instr *instr)
       if (!(ctx->block->kind & block_kind_loop_header) && cur_pred_idx >= preds.size())
          continue;
       cur_pred_idx++;
-      Operand op = get_phi_operand(ctx, src.second, dst.regClass());
+      Operand op = get_phi_operand(ctx, src.second, dst.regClass(), logical);
       operands[num_operands++] = op;
       num_defined += !op.isUndefined();
    }
