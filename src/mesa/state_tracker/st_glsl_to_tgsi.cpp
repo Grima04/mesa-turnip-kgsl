@@ -49,7 +49,6 @@
 #include "tgsi/tgsi_info.h"
 #include "util/u_math.h"
 #include "util/u_memory.h"
-#include "st_glsl_types.h"
 #include "st_program.h"
 #include "st_mesa_to_tgsi.h"
 #include "st_format.h"

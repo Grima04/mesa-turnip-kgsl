@@ -40,7 +40,6 @@
 
 #include "main/shaderobj.h"
 #include "st_context.h"
-#include "st_glsl_types.h"
 #include "st_program.h"
 #include "st_shader_cache.h"
 
@@ -898,6 +897,12 @@ st_nir_lower_samplers(struct pipe_screen *screen, nir_shader *nir,
 }
 
 static int
+st_packed_uniforms_type_size(const struct glsl_type *type, bool bindless)
+{
+   return glsl_count_dword_slots(type, bindless);
+}
+
+static int
 st_unpacked_uniforms_type_size(const struct glsl_type *type, bool bindless)
 {
    return glsl_count_vec4_slots(type, false, bindless);
@@ -907,7 +912,8 @@ void
 st_nir_lower_uniforms(struct st_context *st, nir_shader *nir)
 {
    if (st->ctx->Const.PackedDriverUniformStorage) {
-      NIR_PASS_V(nir, nir_lower_io, nir_var_uniform, st_glsl_type_dword_size,
+      NIR_PASS_V(nir, nir_lower_io, nir_var_uniform,
+                 st_packed_uniforms_type_size,
                  (nir_lower_io_options)0);
       NIR_PASS_V(nir, nir_lower_uniforms_to_ubo, 4);
    } else {

@@ -482,6 +482,14 @@ public:
    unsigned count_vec4_slots(bool is_gl_vertex_input, bool bindless) const;
 
    /**
+    * Calculate the number of vec4 slots required to hold this type.
+    *
+    * This is the underlying recursive type_size function for
+    * gallium's PIPE_CAP_PACKED_UNIFORMS case.
+    */
+   unsigned count_dword_slots(bool bindless) const;
+
+   /**
     * Calculate the number of attribute slots required to hold this type
     *
     * This implements the language rules of GLSL 1.50 for counting the number

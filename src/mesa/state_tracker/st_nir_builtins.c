@@ -21,7 +21,6 @@
  */
 
 #include "tgsi/tgsi_from_mesa.h"
-#include "st_glsl_types.h"
 #include "st_nir.h"
 
 #include "compiler/nir/nir_builder.h"

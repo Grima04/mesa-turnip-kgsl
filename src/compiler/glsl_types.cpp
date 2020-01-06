@@ -2517,6 +2517,58 @@ glsl_type::count_vec4_slots(bool is_gl_vertex_input, bool is_bindless) const
    return 0;
 }
 
+unsigned
+glsl_type::count_dword_slots(bool is_bindless) const
+{
+   switch (this->base_type) {
+   case GLSL_TYPE_UINT:
+   case GLSL_TYPE_INT:
+   case GLSL_TYPE_FLOAT:
+   case GLSL_TYPE_BOOL:
+      return this->components();
+   case GLSL_TYPE_UINT16:
+   case GLSL_TYPE_INT16:
+   case GLSL_TYPE_FLOAT16:
+      return DIV_ROUND_UP(this->components(), 2);
+   case GLSL_TYPE_UINT8:
+   case GLSL_TYPE_INT8:
+      return DIV_ROUND_UP(this->components(), 4);
+   case GLSL_TYPE_IMAGE:
+   case GLSL_TYPE_SAMPLER:
+      if (!is_bindless)
+         return 0;
+      /* FALLTHROUGH */
+   case GLSL_TYPE_DOUBLE:
+   case GLSL_TYPE_UINT64:
+   case GLSL_TYPE_INT64:
+      return this->components() * 2;
+   case GLSL_TYPE_ARRAY:
+      return this->fields.array->count_dword_slots(is_bindless) *
+             this->length;
+
+   case GLSL_TYPE_STRUCT: {
+      unsigned size = 0;
+      for (unsigned i = 0; i < this->length; i++) {
+         size += this->fields.structure[i].type->count_dword_slots(is_bindless);
+      }
+      return size;
+   }
+
+   case GLSL_TYPE_ATOMIC_UINT:
+      return 0;
+   case GLSL_TYPE_SUBROUTINE:
+      return 1;
+   case GLSL_TYPE_VOID:
+   case GLSL_TYPE_ERROR:
+   case GLSL_TYPE_INTERFACE:
+   case GLSL_TYPE_FUNCTION:
+   default:
+      unreachable("invalid type in st_glsl_type_dword_size()");
+   }
+
+   return 0;
+}
+
 int
 glsl_type::coordinate_components() const
 {
