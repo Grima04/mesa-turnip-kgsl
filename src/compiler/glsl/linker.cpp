@@ -4441,9 +4441,9 @@ link_and_validate_uniforms(struct gl_context *ctx,
       return;
 
    link_calculate_subroutine_compat(prog);
-   link_util_check_uniform_resources(ctx, prog);
 
    if (!ctx->Const.UseNIRGLSLLinker) {
+      link_util_check_uniform_resources(ctx, prog);
       link_util_check_subroutine_resources(prog);
       check_image_resources(ctx, prog);
       link_assign_atomic_counter_resources(ctx, prog);
