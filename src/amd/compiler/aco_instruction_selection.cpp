@@ -4078,6 +4078,15 @@ static Temp get_image_coords(isel_context *ctx, const nir_intrinsic_instr *instr
          coords[i] = Operand(emit_extract_vector(ctx, src0, i, v1));
    }
 
+   if (instr->intrinsic == nir_intrinsic_image_deref_load ||
+       instr->intrinsic == nir_intrinsic_image_deref_store) {
+      int lod_index = instr->intrinsic == nir_intrinsic_image_deref_load ? 3 : 4;
+      bool level_zero = nir_src_is_const(instr->src[lod_index]) && nir_src_as_uint(instr->src[lod_index]) == 0;
+
+      if (!level_zero)
+         coords.emplace_back(Operand(get_ssa_temp(ctx, instr->src[lod_index].ssa)));
+   }
+
    aco_ptr<Pseudo_instruction> vec{create_instruction<Pseudo_instruction>(aco_opcode::p_create_vector, Format::PSEUDO, coords.size(), 1)};
    for (unsigned i = 0; i < coords.size(); i++)
       vec->operands[i] = coords[i];
@@ -4151,7 +4160,10 @@ void visit_image_load(isel_context *ctx, nir_intrinsic_instr *instr)
    else
       tmp = {ctx->program->allocateId(), RegClass(RegType::vgpr, num_components)};
 
-   aco_ptr<MIMG_instruction> load{create_instruction<MIMG_instruction>(aco_opcode::image_load, Format::MIMG, 2, 1)};
+   bool level_zero = nir_src_is_const(instr->src[3]) && nir_src_as_uint(instr->src[3]) == 0;
+   aco_opcode opcode = level_zero ? aco_opcode::image_load : aco_opcode::image_load_mip;
+
+   aco_ptr<MIMG_instruction> load{create_instruction<MIMG_instruction>(opcode, Format::MIMG, 2, 1)};
    load->operands[0] = Operand(coords);
    load->operands[1] = Operand(resource);
    load->definitions[0] = Definition(tmp);
@@ -4217,7 +4229,10 @@ void visit_image_store(isel_context *ctx, nir_intrinsic_instr *instr)
    Temp coords = get_image_coords(ctx, instr, type);
    Temp resource = get_sampler_desc(ctx, nir_instr_as_deref(instr->src[0].ssa->parent_instr), ACO_DESC_IMAGE, nullptr, true, true);
 
-   aco_ptr<MIMG_instruction> store{create_instruction<MIMG_instruction>(aco_opcode::image_store, Format::MIMG, 4, 0)};
+   bool level_zero = nir_src_is_const(instr->src[4]) && nir_src_as_uint(instr->src[4]) == 0;
+   aco_opcode opcode = level_zero ? aco_opcode::image_store : aco_opcode::image_store_mip;
+
+   aco_ptr<MIMG_instruction> store{create_instruction<MIMG_instruction>(opcode, Format::MIMG, 4, 0)};
    store->operands[0] = Operand(coords);
    store->operands[1] = Operand(resource);
    store->operands[2] = Operand(s4);
