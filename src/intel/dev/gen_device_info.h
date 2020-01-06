@@ -278,10 +278,14 @@ struct gen_device_info
 #define gen_device_info_is_9lp(devinfo) \
    (GEN_GEN == 9 && ((devinfo)->is_broxton || (devinfo)->is_geminilake))
 
+#define gen_device_info_is_12hp(devinfo) false
+
 #else
 
 #define gen_device_info_is_9lp(devinfo) \
    ((devinfo)->is_broxton || (devinfo)->is_geminilake)
+
+#define gen_device_info_is_12hp(devinfo) false
 
 #endif
 
