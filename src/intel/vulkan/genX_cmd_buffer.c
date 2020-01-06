@@ -518,27 +518,44 @@ transition_depth_buffer(struct anv_cmd_buffer *cmd_buffer,
                         VkImageLayout initial_layout,
                         VkImageLayout final_layout)
 {
-   const bool hiz_enabled = ISL_AUX_USAGE_HIZ ==
-      anv_layout_to_aux_usage(&cmd_buffer->device->info, image,
-                              VK_IMAGE_ASPECT_DEPTH_BIT, initial_layout);
-   const bool enable_hiz = ISL_AUX_USAGE_HIZ ==
-      anv_layout_to_aux_usage(&cmd_buffer->device->info, image,
-                              VK_IMAGE_ASPECT_DEPTH_BIT, final_layout);
+   uint32_t depth_plane =
+      anv_image_aspect_to_plane(image->aspects, VK_IMAGE_ASPECT_DEPTH_BIT);
+   if (image->planes[depth_plane].aux_surface.isl.size_B == 0)
+      return;
 
-   enum isl_aux_op hiz_op;
-   if (hiz_enabled && !enable_hiz) {
-      hiz_op = ISL_AUX_OP_FULL_RESOLVE;
-   } else if (!hiz_enabled && enable_hiz) {
-      hiz_op = ISL_AUX_OP_AMBIGUATE;
-   } else {
-      assert(hiz_enabled == enable_hiz);
-      /* If the same buffer will be used, no resolves are necessary. */
-      hiz_op = ISL_AUX_OP_NONE;
-   }
+   const enum isl_aux_state initial_state =
+      anv_layout_to_aux_state(&cmd_buffer->device->info, image,
+                              VK_IMAGE_ASPECT_DEPTH_BIT,
+                              initial_layout);
+   const enum isl_aux_state final_state =
+      anv_layout_to_aux_state(&cmd_buffer->device->info, image,
+                              VK_IMAGE_ASPECT_DEPTH_BIT,
+                              final_layout);
 
-   if (hiz_op != ISL_AUX_OP_NONE)
+   const bool initial_depth_valid =
+      isl_aux_state_has_valid_primary(initial_state);
+   const bool initial_hiz_valid =
+      isl_aux_state_has_valid_aux(initial_state);
+   const bool final_needs_depth =
+      isl_aux_state_has_valid_primary(final_state);
+   const bool final_needs_hiz =
+      isl_aux_state_has_valid_aux(final_state);
+
+   /* Getting into the pass-through state for Depth is tricky and involves
+    * both a resolve and an ambiguate.  We don't handle that state right now
+    * as anv_layout_to_aux_state never returns it.
+    */
+   assert(final_state != ISL_AUX_STATE_PASS_THROUGH);
+
+   if (final_needs_depth && !initial_depth_valid) {
+      assert(initial_hiz_valid);
       anv_image_hiz_op(cmd_buffer, image, VK_IMAGE_ASPECT_DEPTH_BIT,
-                       0, 0, 1, hiz_op);
+                       0, 0, 1, ISL_AUX_OP_FULL_RESOLVE);
+   } else if (final_needs_hiz && !initial_hiz_valid) {
+      assert(initial_depth_valid);
+      anv_image_hiz_op(cmd_buffer, image, VK_IMAGE_ASPECT_DEPTH_BIT,
+                       0, 0, 1, ISL_AUX_OP_AMBIGUATE);
+   }
 }
 
 static inline bool

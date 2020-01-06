@@ -1702,6 +1702,20 @@ isl_aux_usage_has_ccs(enum isl_aux_usage usage)
           usage == ISL_AUX_USAGE_MCS_CCS;
 }
 
+static inline bool
+isl_aux_state_has_valid_primary(enum isl_aux_state state)
+{
+   return state == ISL_AUX_STATE_RESOLVED ||
+          state == ISL_AUX_STATE_PASS_THROUGH ||
+          state == ISL_AUX_STATE_AUX_INVALID;
+}
+
+static inline bool
+isl_aux_state_has_valid_aux(enum isl_aux_state state)
+{
+   return state != ISL_AUX_STATE_AUX_INVALID;
+}
+
 const struct isl_drm_modifier_info * ATTRIBUTE_CONST
 isl_drm_modifier_get_info(uint64_t modifier);
 
