@@ -22,7 +22,6 @@ glx/glx-swap-event_event: skip
 glx/glx-swap-event_interval: skip
 glx/glx-swap-exchange: skip
 glx/glx-swap-pixmap-bad: fail
-glx/glx-swap-singlebuffer: fail
 glx/glx-visuals-depth: fail
 glx/glx-visuals-depth -pixmap: fail
 glx/glx-visuals-stencil: fail
@@ -2206,8 +2205,8 @@ wgl/wgl-sanity: skip
 summary:
        name:  results
        ----  --------
-       pass:    19319
-       fail:      235
+       pass:    19320
+       fail:      234
       crash:        2
        skip:     1948
     timeout:        0
