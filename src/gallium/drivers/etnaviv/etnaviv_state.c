@@ -543,24 +543,7 @@ etna_vertex_elements_state_create(struct pipe_context *pctx,
    /* XXX could minimize number of consecutive stretches here by sorting, and
     * permuting the inputs in shader or does Mesa do this already? */
 
-   /* Check that vertex element binding is compatible with hardware; thus
-    * elements[idx].vertex_buffer_index are < stream_count. If not, the binding
-    * uses more streams than is supported, and u_vbuf should have done some
-    * reorganization for compatibility. */
-
-   /* TODO: does mesa this for us? */
-   bool incompatible = false;
-   for (unsigned idx = 0; idx < num_elements; ++idx) {
-      if (elements[idx].vertex_buffer_index >= ctx->specs.stream_count)
-         incompatible = true;
-   }
-
    cs->num_elements = num_elements;
-   if (incompatible || num_elements == 0) {
-      DBG("Error: zero vertex elements, or more vertex buffers used than supported");
-      FREE(cs);
-      return NULL;
-   }
 
    unsigned start_offset = 0; /* start of current consecutive stretch */
    bool nonconsecutive = true; /* previous value of nonconsecutive */
@@ -574,6 +557,9 @@ etna_vertex_elements_state_create(struct pipe_context *pctx,
 
       if (nonconsecutive)
          start_offset = elements[idx].src_offset;
+
+      /* guaranteed by PIPE_CAP_MAX_VERTEX_BUFFERS */
+      assert(buffer_idx < ctx->specs.stream_count);
 
       /* maximum vertex size is 256 bytes */
       assert(element_size != 0 && (end_offset - start_offset) < 256);
