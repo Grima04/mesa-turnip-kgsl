@@ -28,15 +28,12 @@
 #define __ST_GLSL_TYPES_H__
 
 #include "compiler/glsl_types.h"
+#include "compiler/nir/nir.h"
+#include "compiler/nir_types.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-int st_glsl_storage_type_size(const struct glsl_type *type,
-                              bool is_bindless);
-
-int st_glsl_uniforms_type_size(const struct glsl_type *type, bool bindless);
 
 int st_glsl_type_dword_size(const struct glsl_type *type, bool bindless);
 

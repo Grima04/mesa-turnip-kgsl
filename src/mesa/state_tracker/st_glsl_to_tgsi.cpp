@@ -2766,12 +2766,12 @@ glsl_to_tgsi_visitor::visit(ir_dereference_array *ir)
    if (handle_bound_deref(ir->as_dereference()))
       return;
 
-   /* We only need the logic provided by st_glsl_storage_type_size()
+   /* We only need the logic provided by count_vec4_slots()
     * for arrays of structs. Indirect sampler and image indexing is handled
     * elsewhere.
     */
    int element_size = ir->type->without_array()->is_struct() ?
-      st_glsl_storage_type_size(ir->type, var->data.bindless) :
+      ir->type->count_vec4_slots(false, var->data.bindless) :
       type_size(ir->type);
 
    index = ir->array_index->constant_expression_value(ralloc_parent(ir));
@@ -2876,7 +2876,7 @@ glsl_to_tgsi_visitor::visit(ir_dereference_record *ir)
       if (i == (unsigned) ir->field_idx)
          break;
       const glsl_type *member_type = struct_type->fields.structure[i].type;
-      offset += st_glsl_storage_type_size(member_type, var->data.bindless);
+      offset += member_type->count_vec4_slots(false, var->data.bindless);
    }
 
    /* If the type is smaller than a vec4, replicate the last channel out. */

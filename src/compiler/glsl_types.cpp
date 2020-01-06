@@ -2432,7 +2432,7 @@ glsl_type::get_explicit_type_for_size_align(glsl_type_size_align_func type_info,
 }
 
 unsigned
-glsl_type::count_attribute_slots(bool is_gl_vertex_input) const
+glsl_type::count_vec4_slots(bool is_gl_vertex_input, bool is_bindless) const
 {
    /* From page 31 (page 37 of the PDF) of the GLSL 1.50 spec:
     *
@@ -2469,8 +2469,6 @@ glsl_type::count_attribute_slots(bool is_gl_vertex_input) const
    case GLSL_TYPE_FLOAT:
    case GLSL_TYPE_FLOAT16:
    case GLSL_TYPE_BOOL:
-   case GLSL_TYPE_SAMPLER:
-   case GLSL_TYPE_IMAGE:
       return this->matrix_columns;
    case GLSL_TYPE_DOUBLE:
    case GLSL_TYPE_UINT64:
@@ -2485,7 +2483,7 @@ glsl_type::count_attribute_slots(bool is_gl_vertex_input) const
 
       for (unsigned i = 0; i < this->length; i++) {
          const glsl_type *member_type = this->fields.structure[i].type;
-         size += member_type->count_attribute_slots(is_gl_vertex_input);
+         size += member_type->count_vec4_slots(is_gl_vertex_input, is_bindless);
       }
 
       return size;
@@ -2493,8 +2491,16 @@ glsl_type::count_attribute_slots(bool is_gl_vertex_input) const
 
    case GLSL_TYPE_ARRAY: {
       const glsl_type *element = this->fields.array;
-      return this->length * element->count_attribute_slots(is_gl_vertex_input);
+      return this->length * element->count_vec4_slots(is_gl_vertex_input,
+                                                      is_bindless);
    }
+
+   case GLSL_TYPE_SAMPLER:
+   case GLSL_TYPE_IMAGE:
+      if (!is_bindless)
+         return 0;
+      else
+         return 1;
 
    case GLSL_TYPE_SUBROUTINE:
       return 1;

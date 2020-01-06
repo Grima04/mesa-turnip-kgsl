@@ -26,89 +26,6 @@
 
 #include "st_glsl_types.h"
 
-/**
- * Returns the number of places to offset the uniform index, given the type of
- * a struct member. We use this because samplers and images have backing
- * storeage only when they are bindless.
- */
-int
-st_glsl_storage_type_size(const struct glsl_type *type, bool is_bindless)
-{
-   unsigned int i;
-   int size;
-
-   switch (type->base_type) {
-   case GLSL_TYPE_UINT:
-   case GLSL_TYPE_INT:
-   case GLSL_TYPE_FLOAT:
-   case GLSL_TYPE_BOOL:
-      if (type->is_matrix()) {
-         return type->matrix_columns;
-      } else {
-         /* Regardless of size of vector, it gets a vec4. This is bad
-          * packing for things like floats, but otherwise arrays become a
-          * mess.  Hopefully a later pass over the code can pack scalars
-          * down if appropriate.
-          */
-         return 1;
-      }
-      break;
-   case GLSL_TYPE_DOUBLE:
-      if (type->is_matrix()) {
-         if (type->vector_elements <= 2)
-            return type->matrix_columns;
-         else
-            return type->matrix_columns * 2;
-      } else {
-         /* For doubles if we have a double or dvec2 they fit in one
-          * vec4, else they need 2 vec4s.
-          */
-         if (type->vector_elements <= 2)
-            return 1;
-         else
-            return 2;
-      }
-      break;
-   case GLSL_TYPE_UINT64:
-   case GLSL_TYPE_INT64:
-      if (type->vector_elements <= 2)
-         return 1;
-      else
-         return 2;
-   case GLSL_TYPE_ARRAY:
-      assert(type->length > 0);
-      return st_glsl_storage_type_size(type->fields.array, is_bindless) *
-         type->length;
-   case GLSL_TYPE_STRUCT:
-      size = 0;
-      for (i = 0; i < type->length; i++) {
-         size += st_glsl_storage_type_size(type->fields.structure[i].type,
-                                               is_bindless);
-      }
-      return size;
-   case GLSL_TYPE_SAMPLER:
-   case GLSL_TYPE_IMAGE:
-      if (!is_bindless)
-         return 0;
-      /* fall through */
-   case GLSL_TYPE_SUBROUTINE:
-      return 1;
-   case GLSL_TYPE_ATOMIC_UINT:
-   case GLSL_TYPE_INTERFACE:
-   case GLSL_TYPE_VOID:
-   case GLSL_TYPE_ERROR:
-   case GLSL_TYPE_FUNCTION:
-   case GLSL_TYPE_FLOAT16:
-   case GLSL_TYPE_UINT16:
-   case GLSL_TYPE_INT16:
-   case GLSL_TYPE_UINT8:
-   case GLSL_TYPE_INT8:
-      assert(!"Invalid type in type_size");
-      break;
-   }
-   return 0;
-}
-
 int
 st_glsl_type_dword_size(const struct glsl_type *type, bool bindless)
 {
@@ -158,15 +75,4 @@ st_glsl_type_dword_size(const struct glsl_type *type, bool bindless)
    }
 
    return 0;
-}
-
-/**
- * Returns the type size of uniforms when !PIPE_CAP_PACKED_UNIFORMS -- each
- * value or array element is aligned to a vec4 offset and expanded out to a
- * vec4.
- */
-int
-st_glsl_uniforms_type_size(const struct glsl_type *type, bool bindless)
-{
-   return st_glsl_storage_type_size(type, bindless);
 }

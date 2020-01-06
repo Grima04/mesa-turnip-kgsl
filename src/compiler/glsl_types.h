@@ -473,6 +473,15 @@ public:
    unsigned varying_count() const;
 
    /**
+    * Calculate the number of vec4 slots required to hold this type.
+    *
+    * This is the underlying recursive type_size function for
+    * count_attribute_slots() (vertex inputs and varyings) but also for
+    * gallium's !PIPE_CAP_PACKED_UNIFORMS case.
+    */
+   unsigned count_vec4_slots(bool is_gl_vertex_input, bool bindless) const;
+
+   /**
     * Calculate the number of attribute slots required to hold this type
     *
     * This implements the language rules of GLSL 1.50 for counting the number
@@ -487,7 +496,9 @@ public:
     * Vulkan doesn’t make this distinction so the argument should always be
     * false.
     */
-   unsigned count_attribute_slots(bool is_gl_vertex_input) const;
+   unsigned count_attribute_slots(bool is_gl_vertex_input) const {
+      return count_vec4_slots(is_gl_vertex_input, true);
+   }
 
    /**
     * Alignment in bytes of the start of this type in a std140 uniform
