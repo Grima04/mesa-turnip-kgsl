@@ -270,6 +270,100 @@ tu_GetQueryPoolResults(VkDevice _device,
    return VK_SUCCESS;
 }
 
+static void
+emit_copy_occlusion_query_pool_results(struct tu_cmd_buffer *cmdbuf,
+                                       struct tu_cs *cs,
+                                       struct tu_query_pool *pool,
+                                       uint32_t firstQuery,
+                                       uint32_t queryCount,
+                                       struct tu_buffer *buffer,
+                                       VkDeviceSize dstOffset,
+                                       VkDeviceSize stride,
+                                       VkQueryResultFlags flags)
+{
+   /* From the Vulkan 1.1.130 spec:
+    *
+    *    vkCmdCopyQueryPoolResults is guaranteed to see the effect of previous
+    *    uses of vkCmdResetQueryPool in the same queue, without any additional
+    *    synchronization.
+    *
+    * To ensure that previous writes to the available bit are coherent, first
+    * wait for all writes to complete.
+    */
+   tu_cs_reserve_space(cmdbuf->device, cs, 1);
+   tu_cs_emit_pkt7(cs, CP_WAIT_MEM_WRITES, 0);
+
+   for (uint32_t i = 0; i < queryCount; i++) {
+      uint32_t query = firstQuery + i;
+      uint64_t available_iova = occlusion_query_iova(pool, query, available);
+      uint64_t result_iova = occlusion_query_iova(pool, query, result);
+      uint64_t buffer_iova = tu_buffer_iova(buffer) + dstOffset + i * stride;
+      /* Wait for the available bit to be set if executed with the
+       * VK_QUERY_RESULT_WAIT_BIT flag. */
+      if (flags & VK_QUERY_RESULT_WAIT_BIT) {
+         tu_cs_reserve_space(cmdbuf->device, cs, 7);
+         tu_cs_emit_pkt7(cs, CP_WAIT_REG_MEM, 6);
+         tu_cs_emit(cs, CP_WAIT_REG_MEM_0_FUNCTION(WRITE_EQ) |
+                        CP_WAIT_REG_MEM_0_POLL_MEMORY);
+         tu_cs_emit_qw(cs, available_iova);
+         tu_cs_emit(cs, CP_WAIT_REG_MEM_3_REF(0x1));
+         tu_cs_emit(cs, CP_WAIT_REG_MEM_4_MASK(~0));
+         tu_cs_emit(cs, CP_WAIT_REG_MEM_5_DELAY_LOOP_CYCLES(16));
+      }
+
+      /* If the query result is available, conditionally emit a packet to copy
+       * the result (bo->result) into the buffer.
+       *
+       * NOTE: For the conditional packet to be executed, CP_COND_EXEC tests
+       * that ADDR0 != 0 and ADDR1 < REF. The packet here simply tests that
+       * 0 < available < 2, aka available == 1.
+       */
+      tu_cs_reserve_space(cmdbuf->device, cs, 13);
+      tu_cs_emit_pkt7(cs, CP_COND_EXEC, 6);
+      tu_cs_emit_qw(cs, available_iova);
+      tu_cs_emit_qw(cs, available_iova);
+      tu_cs_emit(cs, CP_COND_EXEC_4_REF(0x2));
+      tu_cs_emit(cs, 6); /* Conditionally execute the next 6 DWORDS */
+
+      /* Start of conditional execution */
+      tu_cs_emit_pkt7(cs, CP_MEM_TO_MEM, 5);
+      uint32_t mem_to_mem_flags = flags & VK_QUERY_RESULT_64_BIT ?
+            CP_MEM_TO_MEM_0_DOUBLE : 0;
+      tu_cs_emit(cs, mem_to_mem_flags);
+      tu_cs_emit_qw(cs, buffer_iova);
+      tu_cs_emit_qw(cs, result_iova);
+      /* End of conditional execution */
+
+      /* Like in the case of vkGetQueryPoolResults, copying the results of an
+       * unavailable query with the VK_QUERY_RESULT_WITH_AVAILABILITY_BIT or
+       * VK_QUERY_RESULT_PARTIAL_BIT flags will return 0. */
+      if (flags & (VK_QUERY_RESULT_WITH_AVAILABILITY_BIT |
+                   VK_QUERY_RESULT_PARTIAL_BIT)) {
+         if (flags & VK_QUERY_RESULT_64_BIT) {
+            tu_cs_reserve_space(cmdbuf->device, cs, 10);
+            tu_cs_emit_pkt7(cs, CP_COND_WRITE5, 9);
+         } else {
+            tu_cs_reserve_space(cmdbuf->device, cs, 9);
+            tu_cs_emit_pkt7(cs, CP_COND_WRITE5, 8);
+         }
+         tu_cs_emit(cs, CP_COND_WRITE5_0_FUNCTION(WRITE_EQ) |
+                        CP_COND_WRITE5_0_POLL_MEMORY |
+                        CP_COND_WRITE5_0_WRITE_MEMORY);
+         tu_cs_emit_qw(cs, available_iova);
+         tu_cs_emit(cs, CP_COND_WRITE5_3_REF(0));
+         tu_cs_emit(cs, CP_COND_WRITE5_4_MASK(~0));
+         tu_cs_emit_qw(cs, buffer_iova);
+         if (flags & VK_QUERY_RESULT_64_BIT) {
+            tu_cs_emit_qw(cs, 0);
+         } else {
+            tu_cs_emit(cs, 0);
+         }
+      }
+   }
+
+   tu_bo_list_add(&cmdbuf->bo_list, buffer->bo, MSM_SUBMIT_BO_WRITE);
+}
+
 void
 tu_CmdCopyQueryPoolResults(VkCommandBuffer commandBuffer,
                            VkQueryPool queryPool,
@@ -280,6 +374,23 @@ tu_CmdCopyQueryPoolResults(VkCommandBuffer commandBuffer,
                            VkDeviceSize stride,
                            VkQueryResultFlags flags)
 {
+   TU_FROM_HANDLE(tu_cmd_buffer, cmdbuf, commandBuffer);
+   TU_FROM_HANDLE(tu_query_pool, pool, queryPool);
+   TU_FROM_HANDLE(tu_buffer, buffer, dstBuffer);
+   struct tu_cs *cs = &cmdbuf->cs;
+   assert(firstQuery + queryCount <= pool->size);
+
+   switch (pool->type) {
+   case VK_QUERY_TYPE_OCCLUSION: {
+      return emit_copy_occlusion_query_pool_results(cmdbuf, cs, pool,
+            firstQuery, queryCount, buffer, dstOffset, stride, flags);
+   }
+   case VK_QUERY_TYPE_PIPELINE_STATISTICS:
+   case VK_QUERY_TYPE_TIMESTAMP:
+      unreachable("Unimplemented query type");
+   default:
+      assert(!"Invalid query type");
+   }
 }
 
 static void
