@@ -4404,9 +4404,8 @@ link_and_validate_uniforms(struct gl_context *ctx,
    if (prog->data->LinkStatus == LINKING_FAILURE)
       return;
 
-   link_util_calculate_subroutine_compat(prog);
-
    if (!ctx->Const.UseNIRGLSLLinker) {
+      link_util_calculate_subroutine_compat(prog);
       link_util_check_uniform_resources(ctx, prog);
       link_util_check_subroutine_resources(prog);
       check_image_resources(ctx, prog);
