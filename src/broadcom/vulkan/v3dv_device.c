@@ -1303,6 +1303,19 @@ v3dv_DestroyBuffer(VkDevice _device,
 }
 
 static void
+compute_internal_bpp_from_attachments(struct v3dv_framebuffer *framebuffer)
+{
+   STATIC_ASSERT(RENDER_TARGET_MAXIMUM_32BPP == 0);
+   uint8_t max_bpp = RENDER_TARGET_MAXIMUM_32BPP;
+   for (uint32_t i = 0; i < framebuffer->attachment_count; i++) {
+      const struct v3dv_image_view *att = framebuffer->attachments[i];
+      if (att)
+         max_bpp = MAX2(max_bpp, att->internal_bpp);
+   }
+   framebuffer->internal_bpp = max_bpp;
+}
+
+static void
 compute_tile_size_for_framebuffer(struct v3dv_framebuffer *framebuffer)
 {
    static const uint8_t tile_sizes[] = {
@@ -1321,15 +1334,6 @@ compute_tile_size_for_framebuffer(struct v3dv_framebuffer *framebuffer)
       tile_size_index += 2;
    else if (framebuffer->attachment_count > 1)
       tile_size_index += 1;
-
-   STATIC_ASSERT(RENDER_TARGET_MAXIMUM_32BPP == 0);
-   uint8_t max_bpp = RENDER_TARGET_MAXIMUM_32BPP;
-   for (uint32_t i = 0; i < framebuffer->attachment_count; i++) {
-      const struct v3dv_image_view *att = framebuffer->attachments[i];
-      if (att)
-         max_bpp = MAX2(max_bpp, att->internal_bpp);
-   }
-   framebuffer->internal_bpp = max_bpp;
 
    tile_size_index += framebuffer->internal_bpp;
    assert(tile_size_index < ARRAY_SIZE(tile_sizes));
@@ -1390,6 +1394,7 @@ v3dv_CreateFramebuffer(VkDevice _device,
          v3dv_image_view_from_handle(pCreateInfo->pAttachments[i]);
    }
 
+   compute_internal_bpp_from_attachments(framebuffer);
    compute_tile_size_for_framebuffer(framebuffer);
 
    *pFramebuffer = v3dv_framebuffer_to_handle(framebuffer);
