@@ -2436,10 +2436,9 @@ emit_samplers(struct anv_cmd_buffer *cmd_buffer,
 }
 
 static uint32_t
-flush_descriptor_sets(struct anv_cmd_buffer *cmd_buffer)
+flush_descriptor_sets(struct anv_cmd_buffer *cmd_buffer,
+                      struct anv_pipeline *pipeline)
 {
-   struct anv_pipeline *pipeline = cmd_buffer->state.gfx.base.pipeline;
-
    VkShaderStageFlags dirty = cmd_buffer->state.descriptors_dirty &
                               pipeline->active_stages;
 
@@ -2950,7 +2949,7 @@ genX(cmd_buffer_flush_state)(struct anv_cmd_buffer *cmd_buffer)
     */
    uint32_t dirty = 0;
    if (cmd_buffer->state.descriptors_dirty)
-      dirty = flush_descriptor_sets(cmd_buffer);
+      dirty = flush_descriptor_sets(cmd_buffer, pipeline);
 
    if (dirty || cmd_buffer->state.push_constants_dirty) {
       /* Because we're pushing UBOs, we have to push whenever either
@@ -3707,62 +3706,6 @@ void genX(CmdEndTransformFeedbackEXT)(
    cmd_buffer->state.gfx.dirty |= ANV_CMD_DIRTY_XFB_ENABLE;
 }
 
-static VkResult
-flush_compute_descriptor_set(struct anv_cmd_buffer *cmd_buffer)
-{
-   struct anv_pipeline *pipeline = cmd_buffer->state.compute.base.pipeline;
-   struct anv_state surfaces = { 0, }, samplers = { 0, };
-   VkResult result;
-
-   result = emit_binding_table(cmd_buffer, MESA_SHADER_COMPUTE, &surfaces);
-   if (result != VK_SUCCESS) {
-      assert(result == VK_ERROR_OUT_OF_DEVICE_MEMORY);
-
-      result = anv_cmd_buffer_new_binding_table_block(cmd_buffer);
-      if (result != VK_SUCCESS)
-         return result;
-
-      /* Re-emit state base addresses so we get the new surface state base
-       * address before we start emitting binding tables etc.
-       */
-      genX(cmd_buffer_emit_state_base_address)(cmd_buffer);
-
-      result = emit_binding_table(cmd_buffer, MESA_SHADER_COMPUTE, &surfaces);
-      if (result != VK_SUCCESS) {
-         anv_batch_set_error(&cmd_buffer->batch, result);
-         return result;
-      }
-   }
-
-   result = emit_samplers(cmd_buffer, MESA_SHADER_COMPUTE, &samplers);
-   if (result != VK_SUCCESS) {
-      anv_batch_set_error(&cmd_buffer->batch, result);
-      return result;
-   }
-
-   uint32_t iface_desc_data_dw[GENX(INTERFACE_DESCRIPTOR_DATA_length)];
-   struct GENX(INTERFACE_DESCRIPTOR_DATA) desc = {
-      .BindingTablePointer = surfaces.offset,
-      .SamplerStatePointer = samplers.offset,
-   };
-   GENX(INTERFACE_DESCRIPTOR_DATA_pack)(NULL, iface_desc_data_dw, &desc);
-
-   struct anv_state state =
-      anv_cmd_buffer_merge_dynamic(cmd_buffer, iface_desc_data_dw,
-                                   pipeline->interface_descriptor_data,
-                                   GENX(INTERFACE_DESCRIPTOR_DATA_length),
-                                   64);
-
-   uint32_t size = GENX(INTERFACE_DESCRIPTOR_DATA_length) * sizeof(uint32_t);
-   anv_batch_emit(&cmd_buffer->batch,
-                  GENX(MEDIA_INTERFACE_DESCRIPTOR_LOAD), mid) {
-      mid.InterfaceDescriptorTotalLength        = size;
-      mid.InterfaceDescriptorDataStartAddress   = state.offset;
-   }
-
-   return VK_SUCCESS;
-}
-
 void
 genX(cmd_buffer_flush_compute_state)(struct anv_cmd_buffer *cmd_buffer)
 {
@@ -3801,12 +3744,29 @@ genX(cmd_buffer_flush_compute_state)(struct anv_cmd_buffer *cmd_buffer)
 
    if ((cmd_buffer->state.descriptors_dirty & VK_SHADER_STAGE_COMPUTE_BIT) ||
        cmd_buffer->state.compute.pipeline_dirty) {
-      /* FIXME: figure out descriptors for gen7 */
-      result = flush_compute_descriptor_set(cmd_buffer);
-      if (result != VK_SUCCESS)
-         return;
+      flush_descriptor_sets(cmd_buffer, pipeline);
 
-      cmd_buffer->state.descriptors_dirty &= ~VK_SHADER_STAGE_COMPUTE_BIT;
+      uint32_t iface_desc_data_dw[GENX(INTERFACE_DESCRIPTOR_DATA_length)];
+      struct GENX(INTERFACE_DESCRIPTOR_DATA) desc = {
+         .BindingTablePointer =
+            cmd_buffer->state.binding_tables[MESA_SHADER_COMPUTE].offset,
+         .SamplerStatePointer =
+            cmd_buffer->state.samplers[MESA_SHADER_COMPUTE].offset,
+      };
+      GENX(INTERFACE_DESCRIPTOR_DATA_pack)(NULL, iface_desc_data_dw, &desc);
+
+      struct anv_state state =
+         anv_cmd_buffer_merge_dynamic(cmd_buffer, iface_desc_data_dw,
+                                      pipeline->interface_descriptor_data,
+                                      GENX(INTERFACE_DESCRIPTOR_DATA_length),
+                                      64);
+
+      uint32_t size = GENX(INTERFACE_DESCRIPTOR_DATA_length) * sizeof(uint32_t);
+      anv_batch_emit(&cmd_buffer->batch,
+                     GENX(MEDIA_INTERFACE_DESCRIPTOR_LOAD), mid) {
+         mid.InterfaceDescriptorTotalLength        = size;
+         mid.InterfaceDescriptorDataStartAddress   = state.offset;
+      }
    }
 
    if (cmd_buffer->state.push_constants_dirty & VK_SHADER_STAGE_COMPUTE_BIT) {
