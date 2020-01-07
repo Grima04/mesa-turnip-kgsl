@@ -2106,9 +2106,6 @@ vtn_emit_scoped_memory_barrier(struct vtn_builder *b, SpvScope scope,
    if (semantics & SpvMemorySemanticsWorkgroupMemoryMask)
       modes |= nir_var_mem_shared;
    if (semantics & SpvMemorySemanticsOutputMemoryMask) {
-      vtn_fail_if(!b->options->caps.vk_memory_model,
-                  "To use Output memory semantics, the VulkanMemoryModel "
-                  "capability must be declared.");
       modes |= nir_var_shader_out;
    }
 
@@ -3619,6 +3616,10 @@ vtn_emit_memory_barrier(struct vtn_builder *b, SpvScope scope,
       case SpvMemorySemanticsImageMemoryMask:
          vtn_emit_barrier(b, nir_intrinsic_memory_barrier_image);
          break;
+      case SpvMemorySemanticsOutputMemoryMask:
+         if (b->nb.shader->info.stage == MESA_SHADER_TESS_CTRL)
+            vtn_emit_barrier(b, nir_intrinsic_memory_barrier_tcs_patch);
+         break;
       default:
          break;;
       }
@@ -3689,6 +3690,23 @@ vtn_handle_barrier(struct vtn_builder *b, SpvOp opcode,
          memory_scope = SpvScopeWorkgroup;
          memory_semantics = SpvMemorySemanticsAcquireReleaseMask |
                             SpvMemorySemanticsWorkgroupMemoryMask;
+      }
+
+      /* From the SPIR-V spec:
+       *
+       *    "When used with the TessellationControl execution model, it also
+       *    implicitly synchronizes the Output Storage Class: Writes to Output
+       *    variables performed by any invocation executed prior to a
+       *    OpControlBarrier will be visible to any other invocation after
+       *    return from that OpControlBarrier."
+       */
+      if (b->nb.shader->info.stage == MESA_SHADER_TESS_CTRL) {
+         memory_semantics &= ~(SpvMemorySemanticsAcquireMask |
+                               SpvMemorySemanticsReleaseMask |
+                               SpvMemorySemanticsAcquireReleaseMask |
+                               SpvMemorySemanticsSequentiallyConsistentMask);
+         memory_semantics |= SpvMemorySemanticsAcquireReleaseMask |
+                             SpvMemorySemanticsOutputMemoryMask;
       }
 
       vtn_emit_memory_barrier(b, memory_scope, memory_semantics);
