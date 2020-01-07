@@ -7998,7 +7998,8 @@ static void visit_loop(isel_context *ctx, nir_loop *loop)
          add_linear_edge(block_idx, continue_block);
          add_linear_edge(continue_block->index, &ctx->program->blocks[loop_header_idx]);
 
-         add_logical_edge(block_idx, &ctx->program->blocks[loop_header_idx]);
+         if (!ctx->cf_info.parent_loop.has_divergent_branch)
+            add_logical_edge(block_idx, &ctx->program->blocks[loop_header_idx]);
          ctx->block = &ctx->program->blocks[block_idx];
       } else {
          ctx->block->kind |= (block_kind_continue | block_kind_uniform);
