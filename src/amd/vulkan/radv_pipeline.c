@@ -3986,7 +3986,7 @@ radv_pipeline_generate_hw_ngg(struct radeon_cmdbuf *ctx_cs,
 			                                        !radv_pipeline_has_gs(pipeline)));
 
 	ge_cntl = S_03096C_PRIM_GRP_SIZE(ngg_state->max_gsprims) |
-		  S_03096C_VERT_GRP_SIZE(ngg_state->hw_max_esverts) |
+		  S_03096C_VERT_GRP_SIZE(256) | /* 256 = disable vertex grouping */
 		  S_03096C_BREAK_WAVE_AT_EOI(break_wave_at_eoi);
 
 	/* Bug workaround for a possible hang with non-tessellation cases.
@@ -4506,20 +4506,17 @@ gfx10_pipeline_generate_ge_cntl(struct radeon_cmdbuf *ctx_cs,
 {
 	bool break_wave_at_eoi = false;
 	unsigned primgroup_size;
-	unsigned vertgroup_size;
+	unsigned vertgroup_size = 256; /* 256 = disable vertex grouping */
 
 	if (radv_pipeline_has_tess(pipeline)) {
 		primgroup_size = tess->num_patches; /* must be a multiple of NUM_PATCHES */
-		vertgroup_size = 0;
 	} else if (radv_pipeline_has_gs(pipeline)) {
 		const struct gfx9_gs_info *gs_state =
 			&pipeline->shaders[MESA_SHADER_GEOMETRY]->info.gs_ring_info;
 		unsigned vgt_gs_onchip_cntl = gs_state->vgt_gs_onchip_cntl;
 		primgroup_size = G_028A44_GS_PRIMS_PER_SUBGRP(vgt_gs_onchip_cntl);
-		vertgroup_size = G_028A44_ES_VERTS_PER_SUBGRP(vgt_gs_onchip_cntl);
 	} else {
 		primgroup_size = 128; /* recommended without a GS and tess */
-		vertgroup_size = 0;
 	}
 
 	if (radv_pipeline_has_tess(pipeline)) {
