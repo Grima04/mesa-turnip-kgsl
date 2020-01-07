@@ -1000,6 +1000,7 @@ struct si_context {
 
 	/* shader information */
 	struct si_vertex_elements	*vertex_elements;
+	unsigned			num_vertex_elements;
 	unsigned			sprite_coord_enable;
 	unsigned			cs_max_waves_per_sh;
 	bool				flatshade;

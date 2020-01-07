@@ -1070,7 +1070,7 @@ static void si_get_buffer_from_descriptors(struct si_buffer_resources *buffers,
 
 static void si_vertex_buffers_begin_new_cs(struct si_context *sctx)
 {
-	int count = sctx->vertex_elements ? sctx->vertex_elements->count : 0;
+	int count = sctx->num_vertex_elements;
 	int i;
 
 	for (i = 0; i < count; i++) {
@@ -1095,18 +1095,13 @@ static void si_vertex_buffers_begin_new_cs(struct si_context *sctx)
 
 bool si_upload_vertex_buffer_descriptors(struct si_context *sctx)
 {
-	struct si_vertex_elements *velems = sctx->vertex_elements;
-	unsigned i, count;
+	unsigned i, count = sctx->num_vertex_elements;
 	uint32_t *ptr;
 
-	if (!sctx->vertex_buffers_dirty || !velems)
+	if (!sctx->vertex_buffers_dirty || !count)
 		return true;
 
-	count = velems->count;
-
-	if (!count)
-		return true;
-
+	struct si_vertex_elements *velems = sctx->vertex_elements;
 	unsigned alloc_size = velems->vb_desc_list_alloc_size;
 	unsigned first_vb_use_mask = velems->first_vb_use_mask;
 
@@ -1667,8 +1662,7 @@ void si_rebind_buffer(struct si_context *sctx, struct pipe_resource *buf)
 {
 	struct si_resource *buffer = si_resource(buf);
 	unsigned i, shader;
-	unsigned num_elems = sctx->vertex_elements ?
-				       sctx->vertex_elements->count : 0;
+	unsigned num_elems = sctx->num_vertex_elements;
 
 	/* We changed the buffer, now we need to bind it where the old one
 	 * was bound. This consists of 2 things:

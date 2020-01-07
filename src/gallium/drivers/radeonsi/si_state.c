@@ -5074,6 +5074,7 @@ static void si_bind_vertex_elements(struct pipe_context *ctx, void *state)
 	struct si_vertex_elements *v = (struct si_vertex_elements*)state;
 
 	sctx->vertex_elements = v;
+	sctx->num_vertex_elements = v ? v->count : 0;
 	sctx->vertex_buffers_dirty = true;
 
 	if (v &&
