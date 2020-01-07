@@ -545,6 +545,25 @@ panfrost_upload_tex(
         unsigned last_level  = is_buffer ? 0 : pview->u.tex.last_level;
         unsigned first_layer = is_buffer ? 0 : pview->u.tex.first_layer;
         unsigned last_layer  = is_buffer ? 0 : pview->u.tex.last_layer;
+        unsigned first_face  = 0;
+        unsigned last_face   = 0;
+        unsigned face_mult   = 1;
+
+        /* Cubemaps have 6 faces as layers in between each actual layer.
+         * There's a bit of an impedence mismatch between Gallium and the
+         * hardware, let's fixup for it */
+
+        if (pview->target == PIPE_TEXTURE_CUBE || pview->target == PIPE_TEXTURE_CUBE_ARRAY) {
+                /* TODO: logic wrong in the asserted out cases ... can they happen? */
+
+                first_face = first_layer % 6;
+                last_face = last_layer % 6;
+                first_layer /= 6;
+                last_layer /= 6;
+
+                assert((first_layer == last_layer) || (first_face == 0 && last_face == 5));
+                face_mult = 6;
+        }
 
         /* Lower-bit is set when sampling from colour AFBC */
         bool is_afbc = rsrc->layout == PAN_AFBC;
@@ -563,13 +582,14 @@ panfrost_upload_tex(
         view->hw.format.layout = panfrost_layout_for_texture(rsrc);
         view->hw.format.manual_stride = has_manual_stride;
 
-        /* Inject the addresses in, interleaving mip levels, cube faces, and
-         * strides in that order */
+        /* Inject the addresses in, interleaving array indices, mip levels,
+         * cube faces, and strides in that order */
 
         unsigned idx = 0;
         unsigned levels = 1 + last_level - first_level;
         unsigned layers = 1 + last_layer - first_layer;
-        unsigned num_elements = levels * layers;
+        unsigned faces  = 1 + last_face  - first_face;
+        unsigned num_elements = levels * layers * faces;
         if (has_manual_stride)
                 num_elements *= 2;
 
@@ -580,15 +600,17 @@ panfrost_upload_tex(
         mali_ptr *pointers_and_strides = descriptor +
                                          sizeof(struct mali_texture_descriptor);
 
-        for (unsigned l = first_level; l <= last_level; ++l) {
-                for (unsigned f = first_layer; f <= last_layer; ++f) {
-
-                        pointers_and_strides[idx++] =
-                                panfrost_get_texture_address(rsrc, l, f) + afbc_bit;
-
-                        if (has_manual_stride) {
+        for (unsigned w = first_layer; w <= last_layer; ++w) {
+                for (unsigned l = first_level; l <= last_level; ++l) {
+                        for (unsigned f = first_face; f <= last_face; ++f) {
                                 pointers_and_strides[idx++] =
-                                        rsrc->slices[l].stride;
+                                        panfrost_get_texture_address(rsrc, l, w*face_mult + f)
+                                                + afbc_bit;
+
+                                if (has_manual_stride) {
+                                        pointers_and_strides[idx++] =
+                                                rsrc->slices[l].stride;
+                                }
                         }
                 }
         }
