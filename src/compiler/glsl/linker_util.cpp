@@ -22,6 +22,7 @@
  *
  */
 #include "main/mtypes.h"
+#include "glsl_types.h"
 #include "linker_util.h"
 #include "util/bitscan.h"
 #include "util/set.h"
@@ -247,6 +248,42 @@ link_util_check_uniform_resources(struct gl_context *ctx,
                       prog->data->ShaderStorageBlocks[i].Name,
                       prog->data->ShaderStorageBlocks[i].UniformBufferSize,
                       ctx->Const.MaxShaderStorageBlockSize);
+      }
+   }
+}
+
+void
+link_util_calculate_subroutine_compat(struct gl_shader_program *prog)
+{
+   unsigned mask = prog->data->linked_stages;
+   while (mask) {
+      const int i = u_bit_scan(&mask);
+      struct gl_program *p = prog->_LinkedShaders[i]->Program;
+
+      for (unsigned j = 0; j < p->sh.NumSubroutineUniformRemapTable; j++) {
+         if (p->sh.SubroutineUniformRemapTable[j] == INACTIVE_UNIFORM_EXPLICIT_LOCATION)
+            continue;
+
+         struct gl_uniform_storage *uni = p->sh.SubroutineUniformRemapTable[j];
+
+         if (!uni)
+            continue;
+
+         int count = 0;
+         if (p->sh.NumSubroutineFunctions == 0) {
+            linker_error(prog, "subroutine uniform %s defined but no valid functions found\n", uni->type->name);
+            continue;
+         }
+         for (unsigned f = 0; f < p->sh.NumSubroutineFunctions; f++) {
+            struct gl_subroutine_function *fn = &p->sh.SubroutineFunctions[f];
+            for (int k = 0; k < fn->num_compat_types; k++) {
+               if (fn->types[k] == uni->type) {
+                  count++;
+                  break;
+               }
+            }
+         }
+         uni->num_compatible_subroutines = count;
       }
    }
 }

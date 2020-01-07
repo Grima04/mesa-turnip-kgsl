@@ -78,6 +78,9 @@ void
 link_util_check_uniform_resources(struct gl_context *ctx,
                                   struct gl_shader_program *prog);
 
+void
+link_util_calculate_subroutine_compat(struct gl_shader_program *prog);
+
 #ifdef __cplusplus
 }
 #endif

@@ -3321,42 +3321,6 @@ store_fragdepth_layout(struct gl_shader_program *prog)
    }
 }
 
-static void
-link_calculate_subroutine_compat(struct gl_shader_program *prog)
-{
-   unsigned mask = prog->data->linked_stages;
-   while (mask) {
-      const int i = u_bit_scan(&mask);
-      struct gl_program *p = prog->_LinkedShaders[i]->Program;
-
-      for (unsigned j = 0; j < p->sh.NumSubroutineUniformRemapTable; j++) {
-         if (p->sh.SubroutineUniformRemapTable[j] == INACTIVE_UNIFORM_EXPLICIT_LOCATION)
-            continue;
-
-         struct gl_uniform_storage *uni = p->sh.SubroutineUniformRemapTable[j];
-
-         if (!uni)
-            continue;
-
-         int count = 0;
-         if (p->sh.NumSubroutineFunctions == 0) {
-            linker_error(prog, "subroutine uniform %s defined but no valid functions found\n", uni->type->name);
-            continue;
-         }
-         for (unsigned f = 0; f < p->sh.NumSubroutineFunctions; f++) {
-            struct gl_subroutine_function *fn = &p->sh.SubroutineFunctions[f];
-            for (int k = 0; k < fn->num_compat_types; k++) {
-               if (fn->types[k] == uni->type) {
-                  count++;
-                  break;
-               }
-            }
-         }
-         uni->num_compatible_subroutines = count;
-      }
-   }
-}
-
 /**
  * Validate shader image resources.
  */
@@ -4440,7 +4404,7 @@ link_and_validate_uniforms(struct gl_context *ctx,
    if (prog->data->LinkStatus == LINKING_FAILURE)
       return;
 
-   link_calculate_subroutine_compat(prog);
+   link_util_calculate_subroutine_compat(prog);
 
    if (!ctx->Const.UseNIRGLSLLinker) {
       link_util_check_uniform_resources(ctx, prog);
