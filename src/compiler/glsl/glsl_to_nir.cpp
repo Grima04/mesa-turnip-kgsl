@@ -2701,6 +2701,18 @@ nir_visitor::visit(ir_dereference_array *ir)
 void
 nir_visitor::visit(ir_barrier *)
 {
+   if (shader->info.stage == MESA_SHADER_COMPUTE) {
+      nir_intrinsic_instr *shared_barrier =
+         nir_intrinsic_instr_create(this->shader,
+                                    nir_intrinsic_memory_barrier_shared);
+      nir_builder_instr_insert(&b, &shared_barrier->instr);
+   } else if (shader->info.stage == MESA_SHADER_TESS_CTRL) {
+      nir_intrinsic_instr *patch_barrier =
+         nir_intrinsic_instr_create(this->shader,
+                                    nir_intrinsic_memory_barrier_tcs_patch);
+      nir_builder_instr_insert(&b, &patch_barrier->instr);
+   }
+
    nir_intrinsic_instr *instr =
       nir_intrinsic_instr_create(this->shader, nir_intrinsic_barrier);
    nir_builder_instr_insert(&b, &instr->instr);
