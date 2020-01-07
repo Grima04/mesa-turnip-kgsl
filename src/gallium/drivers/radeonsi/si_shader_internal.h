@@ -83,6 +83,7 @@ struct si_shader_context {
 	struct ac_arg merged_scratch_offset;
 	/* API VS */
 	struct ac_arg vertex_buffers;
+	struct ac_arg vb_descriptors[5];
 	struct ac_arg rel_auto_id;
 	struct ac_arg vs_prim_id;
 	struct ac_arg vertex_index0;

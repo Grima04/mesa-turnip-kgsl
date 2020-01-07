@@ -2234,6 +2234,7 @@ si_draw_rectangle(struct blitter_context *blitter,
 	/* Don't set per-stage shader pointers for VS. */
 	sctx->shader_pointers_dirty &= ~SI_DESCS_SHADER_MASK(VERTEX);
 	sctx->vertex_buffer_pointer_dirty = false;
+	sctx->vertex_buffer_user_sgprs_dirty = false;
 
 	si_draw_vbo(pipe, &info);
 }

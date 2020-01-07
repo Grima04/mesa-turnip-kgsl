@@ -457,8 +457,19 @@ static struct si_pm4_state *si_get_shader_pm4_state(struct si_shader *shader)
 	}
 }
 
-static unsigned si_get_num_vs_user_sgprs(unsigned num_always_on_user_sgprs)
+static unsigned si_get_num_vs_user_sgprs(struct si_shader *shader,
+					 unsigned num_always_on_user_sgprs)
 {
+	struct si_shader_selector *vs = shader->previous_stage_sel ?
+			shader->previous_stage_sel : shader->selector;
+	unsigned num_vbos_in_user_sgprs = vs->num_vbos_in_user_sgprs;
+
+	/* 1 SGPR is reserved for the vertex buffer pointer. */
+	assert(num_always_on_user_sgprs <= SI_SGPR_VS_VB_DESCRIPTOR_FIRST - 1);
+
+	if (num_vbos_in_user_sgprs)
+		return SI_SGPR_VS_VB_DESCRIPTOR_FIRST + num_vbos_in_user_sgprs * 4;
+
 	/* Add the pointer to VBO descriptors. */
 	return num_always_on_user_sgprs + 1;
 }
@@ -510,7 +521,7 @@ static void si_shader_ls(struct si_screen *sscreen, struct si_shader *shader)
 		           S_00B528_VGPR_COMP_CNT(si_get_vs_vgpr_comp_cnt(sscreen, shader, false)) |
 			   S_00B528_DX10_CLAMP(1) |
 			   S_00B528_FLOAT_MODE(shader->config.float_mode);
-	shader->config.rsrc2 = S_00B52C_USER_SGPR(si_get_num_vs_user_sgprs(SI_VS_NUM_USER_SGPR)) |
+	shader->config.rsrc2 = S_00B52C_USER_SGPR(si_get_num_vs_user_sgprs(shader, SI_VS_NUM_USER_SGPR)) |
 			   S_00B52C_SCRATCH_EN(shader->config.scratch_bytes_per_wave > 0);
 }
 
@@ -536,7 +547,7 @@ static void si_shader_hs(struct si_screen *sscreen, struct si_shader *shader)
 		}
 
 		unsigned num_user_sgprs =
-			si_get_num_vs_user_sgprs(GFX9_TCS_NUM_USER_SGPR);
+			si_get_num_vs_user_sgprs(shader, GFX9_TCS_NUM_USER_SGPR);
 
 		shader->config.rsrc2 =
 			S_00B42C_USER_SGPR(num_user_sgprs) |
@@ -620,7 +631,7 @@ static void si_shader_es(struct si_screen *sscreen, struct si_shader *shader)
 
 	if (shader->selector->type == PIPE_SHADER_VERTEX) {
 		vgpr_comp_cnt = si_get_vs_vgpr_comp_cnt(sscreen, shader, false);
-		num_user_sgprs = si_get_num_vs_user_sgprs(SI_VS_NUM_USER_SGPR);
+		num_user_sgprs = si_get_num_vs_user_sgprs(shader, SI_VS_NUM_USER_SGPR);
 	} else if (shader->selector->type == PIPE_SHADER_TESS_EVAL) {
 		vgpr_comp_cnt = shader->selector->info.uses_primid ? 3 : 2;
 		num_user_sgprs = SI_TES_NUM_USER_SGPR;
@@ -887,7 +898,7 @@ static void si_shader_gs(struct si_screen *sscreen, struct si_shader *shader)
 
 		unsigned num_user_sgprs;
 		if (es_type == PIPE_SHADER_VERTEX)
-			num_user_sgprs = si_get_num_vs_user_sgprs(GFX9_VSGS_NUM_USER_SGPR);
+			num_user_sgprs = si_get_num_vs_user_sgprs(shader, GFX9_VSGS_NUM_USER_SGPR);
 		else
 			num_user_sgprs = GFX9_TESGS_NUM_USER_SGPR;
 
@@ -1131,7 +1142,7 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
 			num_user_sgprs = SI_SGPR_VS_BLIT_DATA +
 					 es_info->properties[TGSI_PROPERTY_VS_BLIT_SGPRS_AMD];
 		} else {
-			num_user_sgprs = si_get_num_vs_user_sgprs(GFX9_VSGS_NUM_USER_SGPR);
+			num_user_sgprs = si_get_num_vs_user_sgprs(shader, GFX9_VSGS_NUM_USER_SGPR);
 		}
 	} else {
 		assert(es_type == PIPE_SHADER_TESS_EVAL);
@@ -1399,7 +1410,7 @@ static void si_shader_vs(struct si_screen *sscreen, struct si_shader *shader,
 			num_user_sgprs = SI_SGPR_VS_BLIT_DATA +
 					 info->properties[TGSI_PROPERTY_VS_BLIT_SGPRS_AMD];
 		} else {
-			num_user_sgprs = si_get_num_vs_user_sgprs(SI_VS_NUM_USER_SGPR);
+			num_user_sgprs = si_get_num_vs_user_sgprs(shader, SI_VS_NUM_USER_SGPR);
 		}
 	} else if (shader->selector->type == PIPE_SHADER_TESS_EVAL) {
 		vgpr_comp_cnt = enable_prim_id ? 3 : 2;
@@ -1443,6 +1454,11 @@ static void si_shader_vs(struct si_screen *sscreen, struct si_shader *shader,
 	uint32_t rsrc2 = S_00B12C_USER_SGPR(num_user_sgprs) |
 			 S_00B12C_OC_LDS_EN(oc_lds_en) |
 			 S_00B12C_SCRATCH_EN(shader->config.scratch_bytes_per_wave > 0);
+
+	if (sscreen->info.chip_class >= GFX10)
+		rsrc2 |= S_00B12C_USER_SGPR_MSB_GFX10(num_user_sgprs >> 5);
+	else if (sscreen->info.chip_class == GFX9)
+		rsrc2 |= S_00B12C_USER_SGPR_MSB_GFX9(num_user_sgprs >> 5);
 
 	if (sscreen->info.chip_class <= GFX9)
 		rsrc1 |= S_00B128_SGPRS((shader->config.num_sgprs - 1) / 8);
@@ -2717,6 +2733,8 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
 	sel->num_vs_inputs = sel->type == PIPE_SHADER_VERTEX &&
 			     !sel->info.properties[TGSI_PROPERTY_VS_BLIT_SGPRS_AMD] ?
 				     sel->info.num_inputs : 0;
+	sel->num_vbos_in_user_sgprs =
+		MIN2(sel->num_vs_inputs, sscreen->num_vbos_in_user_sgprs);
 
 	/* The prolog is a no-op if there are no inputs. */
 	sel->vs_needs_prolog = sel->type == PIPE_SHADER_VERTEX &&

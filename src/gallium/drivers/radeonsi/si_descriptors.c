@@ -1103,36 +1103,48 @@ bool si_upload_vertex_buffer_descriptors(struct si_context *sctx)
 
 	struct si_vertex_elements *velems = sctx->vertex_elements;
 	unsigned alloc_size = velems->vb_desc_list_alloc_size;
-	unsigned first_vb_use_mask = velems->first_vb_use_mask;
 
-	/* Vertex buffer descriptors are the only ones which are uploaded
-	 * directly through a staging buffer and don't go through
-	 * the fine-grained upload path.
-	 */
-	u_upload_alloc(sctx->b.const_uploader, 0,
-		       alloc_size,
-		       si_optimal_tcc_alignment(sctx, alloc_size),
-		       &sctx->vb_descriptors_offset,
-		       (struct pipe_resource**)&sctx->vb_descriptors_buffer,
-		       (void**)&ptr);
-	if (!sctx->vb_descriptors_buffer) {
-		sctx->vb_descriptors_offset = 0;
-		sctx->vb_descriptors_gpu_list = NULL;
-		return false;
+	if (alloc_size) {
+		/* Vertex buffer descriptors are the only ones which are uploaded
+		 * directly through a staging buffer and don't go through
+		 * the fine-grained upload path.
+		 */
+		u_upload_alloc(sctx->b.const_uploader, 0,
+			       alloc_size,
+			       si_optimal_tcc_alignment(sctx, alloc_size),
+			       &sctx->vb_descriptors_offset,
+			       (struct pipe_resource**)&sctx->vb_descriptors_buffer,
+			       (void**)&ptr);
+		if (!sctx->vb_descriptors_buffer) {
+			sctx->vb_descriptors_offset = 0;
+			sctx->vb_descriptors_gpu_list = NULL;
+			return false;
+		}
+
+		sctx->vb_descriptors_gpu_list = ptr;
+		radeon_add_to_buffer_list(sctx, sctx->gfx_cs,
+					  sctx->vb_descriptors_buffer, RADEON_USAGE_READ,
+					  RADEON_PRIO_DESCRIPTORS);
+		sctx->vertex_buffer_pointer_dirty = true;
+		sctx->prefetch_L2_mask |= SI_PREFETCH_VBO_DESCRIPTORS;
+	} else {
+		si_resource_reference(&sctx->vb_descriptors_buffer, NULL);
+		sctx->vertex_buffer_pointer_dirty = false;
+		sctx->prefetch_L2_mask &= ~SI_PREFETCH_VBO_DESCRIPTORS;
 	}
 
-	sctx->vb_descriptors_gpu_list = ptr;
-	radeon_add_to_buffer_list(sctx, sctx->gfx_cs,
-				  sctx->vb_descriptors_buffer, RADEON_USAGE_READ,
-				  RADEON_PRIO_DESCRIPTORS);
-
 	assert(count <= SI_MAX_ATTRIBS);
+
+	unsigned first_vb_use_mask = velems->first_vb_use_mask;
+	unsigned num_vbos_in_user_sgprs = sctx->screen->num_vbos_in_user_sgprs;
 
 	for (i = 0; i < count; i++) {
 		struct pipe_vertex_buffer *vb;
 		struct si_resource *buf;
 		unsigned vbo_index = velems->vertex_buffer_index[i];
-		uint32_t *desc = &ptr[i*4];
+		uint32_t *desc = i < num_vbos_in_user_sgprs ?
+					&sctx->vb_descriptor_user_sgprs[i * 4] :
+					&ptr[(i - num_vbos_in_user_sgprs) * 4];
 
 		vb = &sctx->vertex_buffer[vbo_index];
 		buf = si_resource(vb->buffer.resource);
@@ -1187,9 +1199,8 @@ bool si_upload_vertex_buffer_descriptors(struct si_context *sctx)
 	 * uploaded to a fresh new buffer, so I don't think flushing the const
 	 * cache is needed. */
 	si_mark_atom_dirty(sctx, &sctx->atoms.s.shader_pointers);
+	sctx->vertex_buffer_user_sgprs_dirty = num_vbos_in_user_sgprs > 0;
 	sctx->vertex_buffers_dirty = false;
-	sctx->vertex_buffer_pointer_dirty = true;
-	sctx->prefetch_L2_mask |= SI_PREFETCH_VBO_DESCRIPTORS;
 	return true;
 }
 
@@ -2050,8 +2061,11 @@ static void si_mark_shader_pointers_dirty(struct si_context *sctx,
 		u_bit_consecutive(SI_DESCS_FIRST_SHADER + shader * SI_NUM_SHADER_DESCS,
 				  SI_NUM_SHADER_DESCS);
 
-	if (shader == PIPE_SHADER_VERTEX)
+	if (shader == PIPE_SHADER_VERTEX) {
 		sctx->vertex_buffer_pointer_dirty = sctx->vb_descriptors_buffer != NULL;
+		sctx->vertex_buffer_user_sgprs_dirty = sctx->num_vertex_elements > 0 &&
+						       sctx->screen->num_vbos_in_user_sgprs;
+	}
 
 	si_mark_atom_dirty(sctx, &sctx->atoms.s.shader_pointers);
 }
@@ -2060,6 +2074,8 @@ static void si_shader_pointers_begin_new_cs(struct si_context *sctx)
 {
 	sctx->shader_pointers_dirty = u_bit_consecutive(0, SI_NUM_DESCS);
 	sctx->vertex_buffer_pointer_dirty = sctx->vb_descriptors_buffer != NULL;
+	sctx->vertex_buffer_user_sgprs_dirty = sctx->num_vertex_elements > 0 &&
+					       sctx->screen->num_vbos_in_user_sgprs;
 	si_mark_atom_dirty(sctx, &sctx->atoms.s.shader_pointers);
 	sctx->graphics_bindless_pointer_dirty = sctx->bindless_descriptors.buffer != NULL;
 	sctx->compute_bindless_pointer_dirty = sctx->bindless_descriptors.buffer != NULL;
@@ -2258,8 +2274,6 @@ void si_emit_graphics_shader_pointers(struct si_context *sctx)
 		struct radeon_cmdbuf *cs = sctx->gfx_cs;
 
 		/* Find the location of the VB descriptor pointer. */
-		/* TODO: In the future, the pointer will be packed in unused
-		 *       bits of the first 2 VB descriptors. */
 		unsigned sh_dw_offset = SI_VS_NUM_USER_SGPR;
 		if (sctx->chip_class >= GFX9) {
 			if (sctx->tes_shader.cso)
@@ -2274,6 +2288,18 @@ void si_emit_graphics_shader_pointers(struct si_context *sctx)
 					    sctx->vb_descriptors_buffer->gpu_address +
 					    sctx->vb_descriptors_offset);
 		sctx->vertex_buffer_pointer_dirty = false;
+	}
+
+	if (sctx->vertex_buffer_user_sgprs_dirty) {
+		struct radeon_cmdbuf *cs = sctx->gfx_cs;
+		unsigned num_desc = MIN2(sctx->num_vertex_elements,
+					 sctx->screen->num_vbos_in_user_sgprs);
+		unsigned sh_offset = sh_base[PIPE_SHADER_VERTEX] + SI_SGPR_VS_VB_DESCRIPTOR_FIRST * 4;
+
+		assert(num_desc);
+		si_emit_shader_pointer_head(cs, sh_offset, num_desc * 4);
+		radeon_emit_array(cs, sctx->vb_descriptor_user_sgprs, num_desc * 4);
+		sctx->vertex_buffer_user_sgprs_dirty = false;
 	}
 
 	if (sctx->graphics_bindless_pointer_dirty) {

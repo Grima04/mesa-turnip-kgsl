@@ -455,19 +455,20 @@ void si_llvm_load_input_vs(
 		return;
 	}
 
+	unsigned num_vbos_in_user_sgprs = ctx->shader->selector->num_vbos_in_user_sgprs;
 	union si_vs_fix_fetch fix_fetch;
-	LLVMValueRef t_list_ptr;
-	LLVMValueRef t_offset;
-	LLVMValueRef t_list;
+	LLVMValueRef vb_desc;
 	LLVMValueRef vertex_index;
 	LLVMValueRef tmp;
 
-	/* Load the T list */
-	t_list_ptr = ac_get_arg(&ctx->ac, ctx->vertex_buffers);
-
-	t_offset = LLVMConstInt(ctx->i32, input_index, 0);
-
-	t_list = ac_build_load_to_sgpr(&ctx->ac, t_list_ptr, t_offset);
+	if (input_index < num_vbos_in_user_sgprs) {
+		vb_desc = ac_get_arg(&ctx->ac, ctx->vb_descriptors[input_index]);
+	} else {
+		unsigned index= input_index - num_vbos_in_user_sgprs;
+		vb_desc = ac_build_load_to_sgpr(&ctx->ac,
+						ac_get_arg(&ctx->ac, ctx->vertex_buffers),
+						LLVMConstInt(ctx->i32, index, 0));
+	}
 
 	vertex_index = LLVMGetParam(ctx->main_fn,
 				    ctx->vertex_index0.arg_index +
@@ -488,7 +489,7 @@ void si_llvm_load_input_vs(
 		tmp = ac_build_opencoded_load_format(
 				&ctx->ac, fix_fetch.u.log_size, fix_fetch.u.num_channels_m1 + 1,
 				fix_fetch.u.format, fix_fetch.u.reverse, !opencode,
-				t_list, vertex_index, ctx->ac.i32_0, ctx->ac.i32_0, 0, true);
+				vb_desc, vertex_index, ctx->ac.i32_0, ctx->ac.i32_0, 0, true);
 		for (unsigned i = 0; i < 4; ++i)
 			out[i] = LLVMBuildExtractElement(ctx->ac.builder, tmp, LLVMConstInt(ctx->i32, i, false), "");
 		return;
@@ -513,7 +514,7 @@ void si_llvm_load_input_vs(
 
 	for (unsigned i = 0; i < num_fetches; ++i) {
 		LLVMValueRef voffset = LLVMConstInt(ctx->i32, fetch_stride * i, 0);
-		fetches[i] = ac_build_buffer_load_format(&ctx->ac, t_list, vertex_index, voffset,
+		fetches[i] = ac_build_buffer_load_format(&ctx->ac, vb_desc, vertex_index, voffset,
 							 channels_per_fetch, 0, true);
 	}
 
@@ -3359,6 +3360,28 @@ static void declare_vs_specific_input_sgprs(struct si_shader_context *ctx)
 	}
 }
 
+static void declare_vb_descriptor_input_sgprs(struct si_shader_context *ctx)
+{
+	ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_CONST_DESC_PTR, &ctx->vertex_buffers);
+
+	unsigned num_vbos_in_user_sgprs = ctx->shader->selector->num_vbos_in_user_sgprs;
+	if (num_vbos_in_user_sgprs) {
+		unsigned user_sgprs = ctx->args.num_sgprs_used;
+
+		if (is_merged_shader(ctx))
+			user_sgprs -= 8;
+		assert(user_sgprs <= SI_SGPR_VS_VB_DESCRIPTOR_FIRST);
+
+		/* Declare unused SGPRs to align VB descriptors to 4 SGPRs (hw requirement). */
+		for (unsigned i = user_sgprs; i < SI_SGPR_VS_VB_DESCRIPTOR_FIRST; i++)
+			ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, NULL); /* unused */
+
+		assert(num_vbos_in_user_sgprs <= ARRAY_SIZE(ctx->vb_descriptors));
+		for (unsigned i = 0; i < num_vbos_in_user_sgprs; i++)
+			ac_add_arg(&ctx->args, AC_ARG_SGPR, 4, AC_ARG_INT, &ctx->vb_descriptors[i]);
+	}
+}
+
 static void declare_vs_input_vgprs(struct si_shader_context *ctx,
 				   unsigned *num_prolog_vgprs)
 {
@@ -3479,10 +3502,8 @@ static void create_function(struct si_shader_context *ctx)
 
 		declare_per_stage_desc_pointers(ctx, true);
 		declare_vs_specific_input_sgprs(ctx); 
-		if (!shader->is_gs_copy_shader) {
-			ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_CONST_DESC_PTR,
-				   &ctx->vertex_buffers);
-		}
+		if (!shader->is_gs_copy_shader)
+			declare_vb_descriptor_input_sgprs(ctx);
 
 		if (shader->key.as_es) {
 			ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT,
@@ -3547,7 +3568,7 @@ static void create_function(struct si_shader_context *ctx)
 		ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->tcs_offchip_layout);
 		ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->tcs_out_lds_offsets);
 		ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->tcs_out_lds_layout);
-		ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_CONST_DESC_PTR, &ctx->vertex_buffers);
+		declare_vb_descriptor_input_sgprs(ctx);
 
 		/* VGPRs (first TCS, then VS) */
 		ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT, &ctx->args.tcs_patch_id);
@@ -3611,10 +3632,8 @@ static void create_function(struct si_shader_context *ctx)
 			/* Declare as many input SGPRs as the VS has. */
 		}
 
-		if (ctx->type == PIPE_SHADER_VERTEX) {
-			ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_CONST_DESC_PTR,
-				   &ctx->vertex_buffers);
-		}
+		if (ctx->type == PIPE_SHADER_VERTEX)
+			declare_vb_descriptor_input_sgprs(ctx);
 
 		/* VGPRs (first GS, then VS/TES) */
 		ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT, &ctx->gs_vtx01_offset);

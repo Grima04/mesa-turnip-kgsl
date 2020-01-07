@@ -1092,6 +1092,8 @@ radeonsi_screen_create_impl(struct radeon_winsys *ws,
 	if (!debug_get_bool_option("RADEON_DISABLE_PERFCOUNTERS", false))
 		si_init_perfcounters(sscreen);
 
+	sscreen->num_vbos_in_user_sgprs = sscreen->info.chip_class >= GFX9 ? 5 : 1;
+
 	/* Determine tessellation ring info. */
 	bool double_offchip_buffers = sscreen->info.chip_class >= GFX7 &&
 				      sscreen->info.family != CHIP_CARRIZO &&

@@ -212,6 +212,11 @@ enum {
 	/* PS only */
 	SI_SGPR_ALPHA_REF	= SI_NUM_RESOURCE_SGPRS,
 	SI_PS_NUM_USER_SGPR,
+
+	/* The value has to be 12, because the hw requires that descriptors
+	 * are aligned to 4 SGPRs.
+	 */
+	SI_SGPR_VS_VB_DESCRIPTOR_FIRST = 12,
 };
 
 /* LLVM function parameter indices */
@@ -340,6 +345,7 @@ struct si_shader_selector {
 	bool		force_correct_derivs_after_kill;
 	bool		prim_discard_cs_allowed;
 	unsigned	num_vs_inputs;
+	unsigned	num_vbos_in_user_sgprs;
 	unsigned	pa_cl_vs_out_cntl;
 	ubyte		clipdist_mask;
 	ubyte		culldist_mask;

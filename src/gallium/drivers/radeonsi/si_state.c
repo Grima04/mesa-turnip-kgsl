@@ -4873,7 +4873,10 @@ static void *si_create_vertex_elements(struct pipe_context *ctx,
 		return NULL;
 
 	v->count = count;
-	v->vb_desc_list_alloc_size = align(count * 16, SI_CPDMA_ALIGNMENT);
+
+	unsigned alloc_count = count > sscreen->num_vbos_in_user_sgprs ?
+			       count - sscreen->num_vbos_in_user_sgprs : 0;
+	v->vb_desc_list_alloc_size = align(alloc_count * 16, SI_CPDMA_ALIGNMENT);
 
 	for (i = 0; i < count; ++i) {
 		const struct util_format_description *desc;
@@ -5075,7 +5078,13 @@ static void si_bind_vertex_elements(struct pipe_context *ctx, void *state)
 
 	sctx->vertex_elements = v;
 	sctx->num_vertex_elements = v ? v->count : 0;
-	sctx->vertex_buffers_dirty = true;
+
+	if (sctx->num_vertex_elements) {
+		sctx->vertex_buffers_dirty = true;
+	} else {
+		sctx->vertex_buffer_pointer_dirty = false;
+		sctx->vertex_buffer_user_sgprs_dirty = false;
+	}
 
 	if (v &&
 	    (!old ||
@@ -5111,8 +5120,10 @@ static void si_delete_vertex_element(struct pipe_context *ctx, void *state)
 	struct si_context *sctx = (struct si_context *)ctx;
 	struct si_vertex_elements *v = (struct si_vertex_elements*)state;
 
-	if (sctx->vertex_elements == state)
+	if (sctx->vertex_elements == state) {
 		sctx->vertex_elements = NULL;
+		sctx->num_vertex_elements = 0;
+	}
 	si_resource_reference(&v->instance_divisor_factor_buffer, NULL);
 	FREE(state);
 }

@@ -486,6 +486,7 @@ struct si_screen {
 			uint32_t *state,
 			uint32_t *fmask_state);
 
+	unsigned			num_vbos_in_user_sgprs;
 	unsigned			pa_sc_raster_config;
 	unsigned			pa_sc_raster_config_1;
 	unsigned			se_tile_repeat;
@@ -1006,11 +1007,6 @@ struct si_context {
 	bool				flatshade;
 	bool				do_update_shaders;
 
-	/* vertex buffer descriptors */
-	uint32_t *vb_descriptors_gpu_list;
-	struct si_resource *vb_descriptors_buffer;
-	unsigned vb_descriptors_offset;
-
 	/* shader descriptors */
 	struct si_descriptors		descriptors[SI_NUM_DESCS];
 	unsigned			descriptors_dirty;
@@ -1037,11 +1033,16 @@ struct si_context {
 	uint32_t			vs_blit_sh_data[SI_VS_BLIT_SGPRS_POS_TEXCOORD];
 	uint32_t			cs_user_data[4];
 
-	/* Vertex and index buffers. */
+	/* Vertex buffers. */
 	bool				vertex_buffers_dirty;
 	bool				vertex_buffer_pointer_dirty;
+	bool				vertex_buffer_user_sgprs_dirty;
 	struct pipe_vertex_buffer	vertex_buffer[SI_NUM_VERTEX_BUFFERS];
 	uint16_t			vertex_buffer_unaligned; /* bitmask of not dword-aligned buffers */
+	uint32_t			*vb_descriptors_gpu_list;
+	struct si_resource		*vb_descriptors_buffer;
+	unsigned			vb_descriptors_offset;
+	unsigned			vb_descriptor_user_sgprs[5*4];
 
 	/* MSAA config state. */
 	int				ps_iter_samples;
