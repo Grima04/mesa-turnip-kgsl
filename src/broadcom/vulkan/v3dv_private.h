@@ -368,6 +368,8 @@ struct v3dv_framebuffer {
    struct v3dv_image_view *attachments[0];
 };
 
+void v3dv_framebuffer_compute_tiling_params(struct v3dv_framebuffer *framebuffer);
+
 struct v3dv_cmd_pool {
    VkAllocationCallbacks alloc;
    struct list_head cmd_buffers;

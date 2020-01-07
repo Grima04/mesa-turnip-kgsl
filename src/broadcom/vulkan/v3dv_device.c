@@ -1315,8 +1315,8 @@ compute_internal_bpp_from_attachments(struct v3dv_framebuffer *framebuffer)
    framebuffer->internal_bpp = max_bpp;
 }
 
-static void
-compute_tile_size_for_framebuffer(struct v3dv_framebuffer *framebuffer)
+void
+v3dv_framebuffer_compute_tiling_params(struct v3dv_framebuffer *framebuffer)
 {
    static const uint8_t tile_sizes[] = {
       64, 64,
@@ -1395,7 +1395,7 @@ v3dv_CreateFramebuffer(VkDevice _device,
    }
 
    compute_internal_bpp_from_attachments(framebuffer);
-   compute_tile_size_for_framebuffer(framebuffer);
+   v3dv_framebuffer_compute_tiling_params(framebuffer);
 
    *pFramebuffer = v3dv_framebuffer_to_handle(framebuffer);
 
