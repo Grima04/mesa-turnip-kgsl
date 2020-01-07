@@ -349,6 +349,7 @@ lower_tess_ctrl_block(nir_block *block, nir_builder *b, struct state *state)
 			break;
 
 		case nir_intrinsic_barrier:
+		case nir_intrinsic_memory_barrier_tcs_patch:
 			/* Hull shaders dispatch 32 wide so an entire patch will always
 			 * fit in a single warp and execute in lock-step.  Consequently,
 			 * we don't need to do anything for TCS barriers so just remove

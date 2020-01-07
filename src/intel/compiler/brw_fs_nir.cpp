@@ -4332,6 +4332,9 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
       break;
    }
 
+   case nir_intrinsic_memory_barrier_tcs_patch:
+      break;
+
    case nir_intrinsic_shader_clock: {
       /* We cannot do anything if there is an event, so ignore it for now */
       const fs_reg shader_clock = get_timestamp(bld);

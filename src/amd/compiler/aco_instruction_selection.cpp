@@ -5729,6 +5729,8 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
    case nir_intrinsic_memory_barrier_shared:
       emit_memory_barrier(ctx, instr);
       break;
+   case nir_intrinsic_memory_barrier_tcs_patch:
+      break;
    case nir_intrinsic_load_num_work_groups: {
       Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
       bld.copy(Definition(dst), Operand(get_arg(ctx, ctx->args->ac.num_work_groups)));

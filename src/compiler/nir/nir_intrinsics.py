@@ -255,6 +255,9 @@ barrier("memory_barrier_shared")
 barrier("begin_invocation_interlock")
 barrier("end_invocation_interlock")
 
+# Memory barrier for synchronizing TCS patch outputs
+barrier("memory_barrier_tcs_patch")
+
 # A conditional discard/demote, with a single boolean source.
 intrinsic("discard_if", src_comp=[1])
 intrinsic("demote_if", src_comp=[1])

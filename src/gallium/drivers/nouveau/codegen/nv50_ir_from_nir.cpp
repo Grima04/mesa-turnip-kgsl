@@ -2663,6 +2663,8 @@ Converter::visit(nir_intrinsic_instr *insn)
       bar->subOp = getSubOp(op);
       break;
    }
+   case nir_intrinsic_memory_barrier_tcs_patch:
+      break;
    case nir_intrinsic_shader_clock: {
       const DataType dType = getDType(insn);
       LValues &newDefs = convert(&insn->dest);

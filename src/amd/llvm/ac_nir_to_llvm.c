@@ -3553,6 +3553,8 @@ static void visit_intrinsic(struct ac_nir_context *ctx,
 	case nir_intrinsic_memory_barrier_shared:
 		emit_membar(&ctx->ac, instr);
 		break;
+	case nir_intrinsic_memory_barrier_tcs_patch:
+		break;
 	case nir_intrinsic_barrier:
 		ac_emit_barrier(&ctx->ac, ctx->stage);
 		break;

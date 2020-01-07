@@ -320,6 +320,10 @@ combine_stores_block(struct combine_stores_state *state, nir_block *block)
          combine_stores_with_modes(state, nir_var_mem_shared);
          break;
 
+      case nir_intrinsic_memory_barrier_tcs_patch:
+         combine_stores_with_modes(state, nir_var_shader_out);
+         break;
+
       case nir_intrinsic_scoped_memory_barrier:
          if (nir_intrinsic_memory_semantics(intrin) & NIR_MEMORY_RELEASE) {
             combine_stores_with_modes(state,

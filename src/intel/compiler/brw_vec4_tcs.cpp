@@ -315,6 +315,9 @@ vec4_tcs_visitor::nir_emit_intrinsic(nir_intrinsic_instr *instr)
       break;
    }
 
+   case nir_intrinsic_memory_barrier_tcs_patch:
+      break;
+
    default:
       vec4_visitor::nir_emit_intrinsic(instr);
    }
