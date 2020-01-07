@@ -843,8 +843,6 @@ st_link_nir(struct gl_context *ctx,
       prev_info = info;
    }
 
-   _mesa_create_program_resource_hash(shader_program);
-
    return true;
 }
 
