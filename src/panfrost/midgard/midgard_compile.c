@@ -1784,6 +1784,11 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
 
                         unsigned coord_mask = mask_of(instr->coord_components);
 
+                        bool flip_zw = (instr->sampler_dim == GLSL_SAMPLER_DIM_2D) && (coord_mask & (1 << COMPONENT_Z));
+
+                        if (flip_zw)
+                                coord_mask ^= ((1 << COMPONENT_Z) | (1 << COMPONENT_W));
+
                         if (instr->sampler_dim == GLSL_SAMPLER_DIM_CUBE) {
                                 /* texelFetch is undefined on samplerCube */
                                 assert(midgard_texop != TEXTURE_OP_TEXEL_FETCH);
@@ -1806,6 +1811,10 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
                                 /* mov coord_temp, coords */
                                 midgard_instruction mov = v_mov(index, coords);
                                 mov.mask = coord_mask;
+
+                                if (flip_zw)
+                                        mov.swizzle[1][COMPONENT_W] = COMPONENT_Z;
+
                                 emit_mir_instruction(ctx, mov);
                         } else {
                                 coords = index;
