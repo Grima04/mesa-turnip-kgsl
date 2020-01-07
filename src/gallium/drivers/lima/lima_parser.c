@@ -481,13 +481,39 @@ parse_rsw(FILE *fp, uint32_t *value, int i, uint32_t *helper)
               (float)(ushort_to_float(*value & 0x0000ffff)));
       break;
    case 5: /* STENCIL FRONT */
-      fprintf(fp, " (to investigate) */\n");
+      fprintf(fp, "(1): valuemask 0x%02x, ref value %d (0x%02x), stencil_func %d */\n",
+              (*value & 0xff000000) >> 24, /* valuemask */
+              (*value & 0x00ff0000) >> 16, (*value & 0x00ff0000) >> 16, /* ref value */
+              (*value & 0x00000007)); /* stencil_func */
+      /* add a few tabs for alignment */
+      fprintf(fp, "\t\t\t\t\t\t/* %s(2)", render_state_infos[i].info);
+      fprintf(fp, ": fail_op %d, zfail_op %d, zpass_op %d, unknown (12-15) 0x%02x */\n",
+              (*value & 0x00000038) >> 3, /* fail_op */
+              (*value & 0x000001c0) >> 6, /* zfail_op */
+              (*value & 0x00000e00) >> 9, /* zpass_op */
+              (*value & 0x0000f000) >> 12); /* unknown */
       break;
    case 6: /* STENCIL BACK */
-      fprintf(fp, " (to investigate) */\n");
+      fprintf(fp, "(1): valuemask 0x%02x, ref value %d (0x%02x), stencil_func %d */\n",
+              (*value & 0xff000000) >> 24, /* valuemask */
+              (*value & 0x00ff0000) >> 16, (*value & 0x00ff0000) >> 16, /* ref value */
+              (*value & 0x00000007)); /* stencil_func */
+      /* add a few tabs for alignment */
+      fprintf(fp, "\t\t\t\t\t\t/* %s(2)", render_state_infos[i].info);
+      fprintf(fp, ": fail_op %d, zfail_op %d, zpass_op %d, unknown (12-15) 0x%02x */\n",
+              (*value & 0x00000038) >> 3, /* fail_op */
+              (*value & 0x000001c0) >> 6, /* zfail_op */
+              (*value & 0x00000e00) >> 9, /* zpass_op */
+              (*value & 0x0000f000) >> 12); /* unknown */
       break;
    case 7: /* STENCIL TEST */
-      fprintf(fp, " (to investigate) */\n");
+      fprintf(fp, "(1): stencil_front writemask 0x%02x, stencil_back writemask 0x%02x */\n",
+              (*value & 0x000000ff), /* front writemask */
+              (*value & 0x0000ff00) >> 8); /* back writemask */
+      /* add a few tabs for alignment */
+      fprintf(fp, "\t\t\t\t\t\t/* %s(2)", render_state_infos[i].info);
+      fprintf(fp, ": unknown (bits 16-31) 0x%04x */\n",
+              (*value & 0xffff0000) >> 16); /* unknown, alpha ref_value? */
       break;
    case 8: /* MULTI SAMPLE */
       if ((*value & 0x00000f00) == 0x00000000)

@@ -1004,7 +1004,6 @@ lima_calculate_alpha_blend(enum pipe_blend_func rgb_func, enum pipe_blend_func a
       0x0C000000; /* need check if this GLESv1 glAlphaFunc */
 }
 
-#if 0
 static int
 lima_stencil_op(enum pipe_stencil_op pipe)
 {
@@ -1028,7 +1027,6 @@ lima_stencil_op(enum pipe_stencil_op pipe)
    }
    return -1;
 }
-#endif
 
 static unsigned
 lima_calculate_depth_test(struct pipe_depth_state *depth, struct pipe_rasterizer_state *rst)
@@ -1096,30 +1094,43 @@ lima_pack_render_state(struct lima_context *ctx, const struct pipe_draw_info *in
    render->depth_range = float_to_ushort(ctx->viewport.near) |
       (float_to_ushort(ctx->viewport.far) << 16);
 
-#if 0
    struct pipe_stencil_state *stencil = ctx->zsa->base.stencil;
    struct pipe_stencil_ref *ref = &ctx->stencil_ref;
-   render->stencil_front = stencil[0].func |
-      (lima_stencil_op(stencil[0].fail_op) << 3) |
-      (lima_stencil_op(stencil[0].zfail_op) << 6) |
-      (lima_stencil_op(stencil[0].zpass_op) << 9) |
-      (ref->ref_value[0] << 16) |
-      (stencil[0].valuemask << 24);
-   render->stencil_back = stencil[1].func |
-      (lima_stencil_op(stencil[1].fail_op) << 3) |
-      (lima_stencil_op(stencil[1].zfail_op) << 6) |
-      (lima_stencil_op(stencil[1].zpass_op) << 9) |
-      (ref->ref_value[1] << 16) |
-      (stencil[1].valuemask << 24);
-#else
-   render->stencil_front = 0xff000007;
-   render->stencil_back = 0xff000007;
-#endif
 
-   /* seems not correct? */
-   //struct pipe_alpha_state *alpha = &ctx->zsa->base.alpha;
-   render->stencil_test = 0;
-   //(stencil->enabled ? 0xFF : 0x00) | (float_to_ubyte(alpha->ref_value) << 16)
+   if (stencil[0].enabled) { /* stencil is enabled */
+      render->stencil_front = stencil[0].func |
+         (lima_stencil_op(stencil[0].fail_op) << 3) |
+         (lima_stencil_op(stencil[0].zfail_op) << 6) |
+         (lima_stencil_op(stencil[0].zpass_op) << 9) |
+         (ref->ref_value[0] << 16) |
+         (stencil[0].valuemask << 24);
+      render->stencil_back = render->stencil_front;
+      render->stencil_test = (stencil[0].writemask & 0xff) | (stencil[0].writemask & 0xff) << 8;
+      if (stencil[1].enabled) { /* two-side is enabled */
+         render->stencil_back = stencil[1].func |
+            (lima_stencil_op(stencil[1].fail_op) << 3) |
+            (lima_stencil_op(stencil[1].zfail_op) << 6) |
+            (lima_stencil_op(stencil[1].zpass_op) << 9) |
+            (ref->ref_value[1] << 16) |
+            (stencil[1].valuemask << 24);
+         render->stencil_test = (stencil[0].writemask & 0xff) | (stencil[1].writemask & 0xff) << 8;
+      }
+      /* TODO: Find out, what (render->stecil_test & 0xffff0000) is.
+       * 0x00ff0000 is probably (float_to_ubyte(alpha->ref_value) << 16)
+       * (render->multi_sample & 0x00000007 is probably the compare function
+       * of glAlphaFunc then.
+       */
+   }
+   else {
+      /* Default values, when stencil is disabled:
+       * stencil[0|1].valuemask = 0xff
+       * stencil[0|1].func = PIPE_FUNC_ALWAYS
+       * stencil[0|1].writemask = 0xff
+       */
+      render->stencil_front = 0xff000007;
+      render->stencil_back = 0xff000007;
+      render->stencil_test = 0x0000ffff;
+   }
 
    /* need more investigation */
    if (info->mode == PIPE_PRIM_POINTS)
