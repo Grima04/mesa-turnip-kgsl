@@ -2714,6 +2714,10 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
 			(sel->so.output[i].stream * 4);
 	}
 
+	sel->num_vs_inputs = sel->type == PIPE_SHADER_VERTEX &&
+			     !sel->info.properties[TGSI_PROPERTY_VS_BLIT_SGPRS_AMD] ?
+				     sel->info.num_inputs : 0;
+
 	/* The prolog is a no-op if there are no inputs. */
 	sel->vs_needs_prolog = sel->type == PIPE_SHADER_VERTEX &&
 			       sel->info.num_inputs &&
