@@ -2346,6 +2346,14 @@ vtn_handle_texture(struct vtn_builder *b, SpvOp opcode,
       dest_type = nir_type_int;
       break;
 
+   case SpvOpFragmentFetchAMD:
+      texop = nir_texop_fragment_fetch;
+      break;
+
+   case SpvOpFragmentMaskFetchAMD:
+      texop = nir_texop_fragment_mask_fetch;
+      break;
+
    default:
       vtn_fail_with_opcode("Unhandled opcode", opcode);
    }
@@ -2377,6 +2385,8 @@ vtn_handle_texture(struct vtn_builder *b, SpvOp opcode,
    case nir_texop_query_levels:
    case nir_texop_texture_samples:
    case nir_texop_samples_identical:
+   case nir_texop_fragment_fetch:
+   case nir_texop_fragment_mask_fetch:
       /* These don't */
       break;
    case nir_texop_txf_ms_fb:
@@ -2404,7 +2414,9 @@ vtn_handle_texture(struct vtn_builder *b, SpvOp opcode,
    case SpvOpImageFetch:
    case SpvOpImageGather:
    case SpvOpImageDrefGather:
-   case SpvOpImageQueryLod: {
+   case SpvOpImageQueryLod:
+   case SpvOpFragmentFetchAMD:
+   case SpvOpFragmentMaskFetchAMD: {
       /* All these types have the coordinate as their first real argument */
       switch (sampler_dim) {
       case GLSL_SAMPLER_DIM_1D:
@@ -2414,6 +2426,7 @@ vtn_handle_texture(struct vtn_builder *b, SpvOp opcode,
       case GLSL_SAMPLER_DIM_2D:
       case GLSL_SAMPLER_DIM_RECT:
       case GLSL_SAMPLER_DIM_MS:
+      case GLSL_SAMPLER_DIM_SUBPASS_MS:
          coord_components = 2;
          break;
       case GLSL_SAMPLER_DIM_3D:
@@ -2481,6 +2494,10 @@ vtn_handle_texture(struct vtn_builder *b, SpvOp opcode,
    /* For OpImageQuerySizeLod, we always have an LOD */
    if (opcode == SpvOpImageQuerySizeLod)
       (*p++) = vtn_tex_src(b, w[idx++], nir_tex_src_lod);
+
+   /* For OpFragmentFetchAMD, we always have a multisample index */
+   if (opcode == SpvOpFragmentFetchAMD)
+      (*p++) = vtn_tex_src(b, w[idx++], nir_tex_src_ms_index);
 
    /* Now we need to handle some number of optional arguments */
    struct vtn_value *gather_offsets = NULL;
@@ -4796,6 +4813,11 @@ vtn_handle_body_instruction(struct vtn_builder *b, SpvOp opcode,
       }
       break;
    }
+
+   case SpvOpFragmentMaskFetchAMD:
+   case SpvOpFragmentFetchAMD:
+      vtn_handle_texture(b, opcode, w, count);
+      break;
 
    case SpvOpAtomicLoad:
    case SpvOpAtomicExchange:
