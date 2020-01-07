@@ -3712,7 +3712,7 @@ vtn_handle_barrier(struct vtn_builder *b, SpvOp opcode,
       vtn_emit_memory_barrier(b, memory_scope, memory_semantics);
 
       if (execution_scope == SpvScopeWorkgroup)
-         vtn_emit_barrier(b, nir_intrinsic_barrier);
+         vtn_emit_barrier(b, nir_intrinsic_control_barrier);
       break;
    }
 

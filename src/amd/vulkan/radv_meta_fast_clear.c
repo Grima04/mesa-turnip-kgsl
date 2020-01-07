@@ -87,7 +87,7 @@ build_dcc_decompress_compute_shader(struct radv_device *dev)
 	nir_intrinsic_instr *membar = nir_intrinsic_instr_create(b.shader, nir_intrinsic_memory_barrier);
 	nir_builder_instr_insert(&b, &membar->instr);
 
-	nir_intrinsic_instr *bar = nir_intrinsic_instr_create(b.shader, nir_intrinsic_barrier);
+	nir_intrinsic_instr *bar = nir_intrinsic_instr_create(b.shader, nir_intrinsic_control_barrier);
 	nir_builder_instr_insert(&b, &bar->instr);
 
 	nir_ssa_def *outval = &tex->dest.ssa;

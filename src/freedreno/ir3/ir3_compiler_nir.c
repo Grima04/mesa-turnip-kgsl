@@ -1155,7 +1155,7 @@ emit_intrinsic_barrier(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 	struct ir3_instruction *barrier;
 
 	switch (intr->intrinsic) {
-	case nir_intrinsic_barrier:
+	case nir_intrinsic_control_barrier:
 		barrier = ir3_BAR(b);
 		barrier->cat7.g = true;
 		barrier->cat7.l = true;
@@ -1641,7 +1641,7 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 			ctx->so->no_earlyz = true;
 		dst[0] = ctx->funcs->emit_intrinsic_atomic_image(ctx, intr);
 		break;
-	case nir_intrinsic_barrier:
+	case nir_intrinsic_control_barrier:
 	case nir_intrinsic_memory_barrier:
 	case nir_intrinsic_group_memory_barrier:
 	case nir_intrinsic_memory_barrier_atomic_counter:

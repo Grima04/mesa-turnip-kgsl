@@ -2751,7 +2751,7 @@ fs_visitor::nir_emit_tcs_intrinsic(const fs_builder &bld,
               brw_imm_d(tcs_key->input_vertices));
       break;
 
-   case nir_intrinsic_barrier: {
+   case nir_intrinsic_control_barrier: {
       if (tcs_prog_data->instances == 1)
          break;
 
@@ -3766,7 +3766,7 @@ fs_visitor::nir_emit_cs_intrinsic(const fs_builder &bld,
       dest = get_nir_dest(instr->dest);
 
    switch (instr->intrinsic) {
-   case nir_intrinsic_barrier:
+   case nir_intrinsic_control_barrier:
       emit_barrier();
       cs_prog_data->uses_barrier = true;
       break;

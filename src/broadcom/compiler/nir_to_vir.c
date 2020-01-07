@@ -2258,7 +2258,7 @@ ntq_emit_intrinsic(struct v3d_compile *c, nir_intrinsic_instr *instr)
                  */
                 break;
 
-        case nir_intrinsic_barrier:
+        case nir_intrinsic_control_barrier:
                 /* Emit a TSY op to get all invocations in the workgroup
                  * (actually supergroup) to block until the last invocation
                  * reaches the TSY op.

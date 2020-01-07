@@ -5714,7 +5714,7 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
    case nir_intrinsic_get_buffer_size:
       visit_get_buffer_size(ctx, instr);
       break;
-   case nir_intrinsic_barrier: {
+   case nir_intrinsic_control_barrier: {
       unsigned* bsize = ctx->program->info->cs.block_size;
       unsigned workgroup_size = bsize[0] * bsize[1] * bsize[2];
       if (workgroup_size > ctx->program->wave_size)

@@ -3555,7 +3555,7 @@ static void visit_intrinsic(struct ac_nir_context *ctx,
 		break;
 	case nir_intrinsic_memory_barrier_tcs_patch:
 		break;
-	case nir_intrinsic_barrier:
+	case nir_intrinsic_control_barrier:
 		ac_emit_barrier(&ctx->ac, ctx->stage);
 		break;
 	case nir_intrinsic_shared_atomic_add:
@@ -4919,7 +4919,7 @@ scan_tess_ctrl(nir_cf_node *cf_node, unsigned *upper_block_tf_writemask,
 				continue;
 
 			nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
-			if (intrin->intrinsic == nir_intrinsic_barrier) {
+			if (intrin->intrinsic == nir_intrinsic_control_barrier) {
 
 				/* If we find a barrier in nested control flow put this in the
 				 * too hard basket. In GLSL this is not possible but it is in

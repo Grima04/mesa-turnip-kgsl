@@ -773,12 +773,13 @@ TEST_F(nir_load_store_vectorize_test, ssbo_load_adjacent_memory_barrier)
    ASSERT_EQ(count_intrinsics(nir_intrinsic_load_ssbo), 2);
 }
 
-/* nir_intrinsic_barrier only syncs invocations in a workgroup, it doesn't
- * require that loads/stores complete. */
+/* nir_intrinsic_control_barrier only syncs invocations in a workgroup, it
+ * doesn't require that loads/stores complete.
+ */
 TEST_F(nir_load_store_vectorize_test, ssbo_load_adjacent_barrier)
 {
    create_load(nir_var_mem_ssbo, 0, 0, 0x1);
-   nir_builder_instr_insert(b, &nir_intrinsic_instr_create(b->shader, nir_intrinsic_barrier)->instr);
+   nir_builder_instr_insert(b, &nir_intrinsic_instr_create(b->shader, nir_intrinsic_control_barrier)->instr);
    create_load(nir_var_mem_ssbo, 0, 4, 0x2);
 
    nir_validate_shader(b->shader, NULL);

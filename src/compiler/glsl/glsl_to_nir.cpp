@@ -2714,7 +2714,7 @@ nir_visitor::visit(ir_barrier *)
    }
 
    nir_intrinsic_instr *instr =
-      nir_intrinsic_instr_create(this->shader, nir_intrinsic_barrier);
+      nir_intrinsic_instr_create(this->shader, nir_intrinsic_control_barrier);
    nir_builder_instr_insert(&b, &instr->instr);
 }
 

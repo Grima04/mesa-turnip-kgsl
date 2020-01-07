@@ -2644,7 +2644,7 @@ Converter::visit(nir_intrinsic_instr *insn)
 
       break;
    }
-   case nir_intrinsic_barrier: {
+   case nir_intrinsic_control_barrier: {
       // TODO: add flag to shader_info
       info->numBarriers = 1;
       Instruction *bar = mkOp2(OP_BAR, TYPE_U32, NULL, mkImm(0), mkImm(0));

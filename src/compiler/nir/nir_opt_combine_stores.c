@@ -303,7 +303,7 @@ combine_stores_block(struct combine_stores_state *state, nir_block *block)
          update_combined_store(state, intrin);
          break;
 
-      case nir_intrinsic_barrier:
+      case nir_intrinsic_control_barrier:
       case nir_intrinsic_group_memory_barrier:
       case nir_intrinsic_memory_barrier:
          combine_stores_with_modes(state, nir_var_shader_out |
