@@ -85,6 +85,7 @@ enum Label {
    label_constant_64bit = 1 << 22,
    label_uniform_bitwise = 1 << 23,
    label_scc_invert = 1 << 24,
+   label_vcc_hint = 1 << 25,
 };
 
 static constexpr uint32_t instr_labels = label_vec | label_mul | label_mad | label_omod_success | label_clamp_success |
@@ -405,6 +406,15 @@ struct ssa_info {
       return label & label_uniform_bool;
    }
 
+   void set_vcc_hint()
+   {
+      add_label(label_vcc_hint);
+   }
+
+   bool is_vcc_hint()
+   {
+      return label & label_vcc_hint;
+   }
 };
 
 struct opt_ctx {
@@ -1087,6 +1097,8 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
                instr->operands[1].constantEquals(0x3f800000u) &&
                instr->operands[2].isTemp())
          ctx.info[instr->definitions[0].tempId()].set_b2f(instr->operands[2].getTemp());
+
+      ctx.info[instr->operands[2].tempId()].set_vcc_hint();
       break;
    case aco_opcode::v_cmp_lg_u32:
       if (instr->format == Format::VOPC && /* don't optimize VOP3 / SDWA / DPP */
@@ -2233,6 +2245,10 @@ void combine_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr
          apply_sgprs(ctx, instr);
       if (apply_omod_clamp(ctx, block, instr))
          return;
+   }
+
+   if (ctx.info[instr->definitions[0].tempId()].is_vcc_hint()) {
+      instr->definitions[0].setHint(vcc);
    }
 
    /* TODO: There are still some peephole optimizations that could be done:

@@ -356,7 +356,7 @@ Temp bool_to_vector_condition(isel_context *ctx, Temp val, Temp dst = Temp(0, s2
    assert(val.regClass() == s1);
    assert(dst.regClass() == bld.lm);
 
-   return bld.sop2(Builder::s_cselect, bld.hint_vcc(Definition(dst)), Operand((uint32_t) -1), Operand(0u), bld.scc(val));
+   return bld.sop2(Builder::s_cselect, Definition(dst), Operand((uint32_t) -1), Operand(0u), bld.scc(val));
 }
 
 Temp bool_to_scalar_condition(isel_context *ctx, Temp val, Temp dst = Temp(0, s1))
