@@ -6341,6 +6341,8 @@ void tex_fetch_ptrs(isel_context *ctx, nir_tex_instr *instr,
       *res_ptr = get_sampler_desc(ctx, texture_deref_instr, (aco_descriptor_type)(ACO_DESC_PLANE_0 + plane), instr, false, false);
    } else if (instr->sampler_dim  == GLSL_SAMPLER_DIM_BUF) {
       *res_ptr = get_sampler_desc(ctx, texture_deref_instr, ACO_DESC_BUFFER, instr, false, false);
+   } else if (instr->op == nir_texop_fragment_mask_fetch) {
+      *res_ptr = get_sampler_desc(ctx, texture_deref_instr, ACO_DESC_FMASK, instr, false, false);
    } else {
       *res_ptr = get_sampler_desc(ctx, texture_deref_instr, ACO_DESC_IMAGE, instr, false, false);
    }
@@ -6689,7 +6691,10 @@ void visit_tex(isel_context *ctx, nir_tex_instr *instr)
        instr->sampler_dim == GLSL_SAMPLER_DIM_SUBPASS ||
        instr->sampler_dim == GLSL_SAMPLER_DIM_SUBPASS_MS) &&
        instr->is_array &&
-       instr->op != nir_texop_txf && instr->op != nir_texop_txf_ms)
+       instr->op != nir_texop_txf &&
+       instr->op != nir_texop_txf_ms &&
+       instr->op != nir_texop_fragment_fetch &&
+       instr->op != nir_texop_fragment_mask_fetch)
       coords = apply_round_slice(ctx, coords, 2);
 
    if (ctx->options->chip_class == GFX9 &&
@@ -6714,7 +6719,9 @@ void visit_tex(isel_context *ctx, nir_tex_instr *instr)
 
    else if ((instr->sampler_dim == GLSL_SAMPLER_DIM_MS ||
              instr->sampler_dim == GLSL_SAMPLER_DIM_SUBPASS_MS) &&
-            instr->op != nir_texop_txs) {
+            instr->op != nir_texop_txs &&
+	    instr->op != nir_texop_fragment_fetch &&
+	    instr->op != nir_texop_fragment_mask_fetch) {
       assert(has_sample_index);
       Operand op(sample_index);
       if (sample_index_cv)
@@ -6991,8 +6998,10 @@ void visit_tex(isel_context *ctx, nir_tex_instr *instr)
 
    if (instr->op == nir_texop_txf ||
        instr->op == nir_texop_txf_ms ||
-       instr->op == nir_texop_samples_identical) {
-      aco_opcode op = level_zero || instr->sampler_dim == GLSL_SAMPLER_DIM_MS ? aco_opcode::image_load : aco_opcode::image_load_mip;
+       instr->op == nir_texop_samples_identical ||
+       instr->op == nir_texop_fragment_fetch ||
+       instr->op == nir_texop_fragment_mask_fetch) {
+      aco_opcode op = level_zero || instr->sampler_dim == GLSL_SAMPLER_DIM_MS || instr->sampler_dim == GLSL_SAMPLER_DIM_SUBPASS_MS ? aco_opcode::image_load : aco_opcode::image_load_mip;
       tex.reset(create_instruction<MIMG_instruction>(op, Format::MIMG, 2, 1));
       tex->operands[0] = Operand(arg);
       tex->operands[1] = Operand(resource);
