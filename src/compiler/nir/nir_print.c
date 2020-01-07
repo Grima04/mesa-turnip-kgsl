@@ -1040,6 +1040,12 @@ print_tex_instr(nir_tex_instr *instr, print_state *state)
    case nir_texop_tex_prefetch:
       fprintf(fp, "tex (pre-dispatchable) ");
       break;
+   case nir_texop_fragment_fetch:
+      fprintf(fp, "fragment_fetch ");
+      break;
+   case nir_texop_fragment_mask_fetch:
+      fprintf(fp, "fragment_mask_fetch ");
+      break;
    default:
       unreachable("Invalid texture operation");
       break;

@@ -1830,6 +1830,8 @@ typedef enum {
                                   * identical.
                                   */
    nir_texop_tex_prefetch,       /**< Regular texture look-up, eligible for pre-dispatch */
+   nir_texop_fragment_fetch,     /**< Multisample fragment color texture fetch */
+   nir_texop_fragment_mask_fetch,/**< Multisample fragment mask texture fetch */
 } nir_texop;
 
 typedef struct {
@@ -1926,6 +1928,7 @@ nir_tex_instr_dest_size(const nir_tex_instr *instr)
    case nir_texop_texture_samples:
    case nir_texop_query_levels:
    case nir_texop_samples_identical:
+   case nir_texop_fragment_mask_fetch:
       return 1;
 
    default:
