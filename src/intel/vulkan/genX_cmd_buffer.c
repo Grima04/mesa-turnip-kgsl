@@ -2532,12 +2532,12 @@ cmd_buffer_emit_descriptor_pointers(struct anv_cmd_buffer *cmd_buffer,
    }
 }
 
+#if GEN_GEN >= 8 || GEN_IS_HASWELL
 static struct anv_address
 get_push_range_address(struct anv_cmd_buffer *cmd_buffer,
                        gl_shader_stage stage,
                        const struct anv_push_range *range)
 {
-#if GEN_GEN >= 8 || GEN_IS_HASWELL
    const struct anv_cmd_graphics_state *gfx_state = &cmd_buffer->state.gfx;
    switch (range->set) {
    case ANV_DESCRIPTOR_SET_DESCRIPTORS: {
@@ -2581,20 +2581,8 @@ get_push_range_address(struct anv_cmd_buffer *cmd_buffer,
       }
    }
    }
-#else
-   /* For Ivy Bridge, push constants are relative to dynamic state
-    * base address and we only ever push actual push constants.
-    */
-   assert(range->length > 0);
-   assert(range->set == ANV_DESCRIPTOR_SET_PUSH_CONSTANTS);
-   struct anv_state state =
-      anv_cmd_buffer_push_constants(cmd_buffer, stage);
-   return (struct anv_address) {
-      .bo = cmd_buffer->device->dynamic_state_pool.block_pool.bo,
-      .offset = state.offset,
-   };
-#endif
 }
+#endif
 
 static void
 cmd_buffer_emit_push_constant(struct anv_cmd_buffer *cmd_buffer,
@@ -2622,6 +2610,7 @@ cmd_buffer_emit_push_constant(struct anv_cmd_buffer *cmd_buffer,
          const struct anv_pipeline_bind_map *bind_map =
             &pipeline->shaders[stage]->bind_map;
 
+#if GEN_GEN >= 8 || GEN_IS_HASWELL
          /* The Skylake PRM contains the following restriction:
           *
           *    "The driver must ensure The following case does not occur
@@ -2652,6 +2641,23 @@ cmd_buffer_emit_push_constant(struct anv_cmd_buffer *cmd_buffer,
             c.ConstantBody.Buffer[i + shift] =
                anv_address_add(addr, range->start * 32);
          }
+#else
+         /* For Ivy Bridge, push constants are relative to dynamic state
+          * base address and we only ever push actual push constants.
+          */
+         if (bind_map->push_ranges[0].length > 0) {
+            assert(bind_map->push_ranges[0].set ==
+                   ANV_DESCRIPTOR_SET_PUSH_CONSTANTS);
+            struct anv_state state =
+               anv_cmd_buffer_push_constants(cmd_buffer, stage);
+            c.ConstantBody.ReadLength[0] = bind_map->push_ranges[0].length;
+            c.ConstantBody.Buffer[0].bo = NULL;
+            c.ConstantBody.Buffer[0].offset = state.offset;
+         }
+         assert(bind_map->push_ranges[1].length == 0);
+         assert(bind_map->push_ranges[2].length == 0);
+         assert(bind_map->push_ranges[3].length == 0);
+#endif
       }
    }
 }
