@@ -1446,7 +1446,7 @@ src0(FILE *file, const struct gen_device_info *devinfo, const brw_inst *inst)
          return src_sends_da(file,
                              devinfo,
                              BRW_REGISTER_TYPE_UD,
-                             brw_inst_send_src0_reg_file(devinfo, inst),
+                             BRW_GENERAL_REGISTER_FILE,
                              brw_inst_src0_da_reg_nr(devinfo, inst),
                              brw_inst_src0_da16_subreg_nr(devinfo, inst));
       } else {
