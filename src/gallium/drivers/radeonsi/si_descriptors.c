@@ -1097,8 +1097,6 @@ bool si_upload_vertex_buffer_descriptors(struct si_context *sctx)
 {
 	struct si_vertex_elements *velems = sctx->vertex_elements;
 	unsigned i, count;
-	unsigned desc_list_byte_size;
-	unsigned first_vb_use_mask;
 	uint32_t *ptr;
 
 	if (!sctx->vertex_buffers_dirty || !velems)
@@ -1109,16 +1107,16 @@ bool si_upload_vertex_buffer_descriptors(struct si_context *sctx)
 	if (!count)
 		return true;
 
-	desc_list_byte_size = velems->desc_list_byte_size;
-	first_vb_use_mask = velems->first_vb_use_mask;
+	unsigned alloc_size = velems->vb_desc_list_alloc_size;
+	unsigned first_vb_use_mask = velems->first_vb_use_mask;
 
 	/* Vertex buffer descriptors are the only ones which are uploaded
 	 * directly through a staging buffer and don't go through
 	 * the fine-grained upload path.
 	 */
 	u_upload_alloc(sctx->b.const_uploader, 0,
-		       desc_list_byte_size,
-		       si_optimal_tcc_alignment(sctx, desc_list_byte_size),
+		       alloc_size,
+		       si_optimal_tcc_alignment(sctx, alloc_size),
 		       &sctx->vb_descriptors_offset,
 		       (struct pipe_resource**)&sctx->vb_descriptors_buffer,
 		       (void**)&ptr);

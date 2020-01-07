@@ -4873,7 +4873,7 @@ static void *si_create_vertex_elements(struct pipe_context *ctx,
 		return NULL;
 
 	v->count = count;
-	v->desc_list_byte_size = align(count * 16, SI_CPDMA_ALIGNMENT);
+	v->vb_desc_list_alloc_size = align(count * 16, SI_CPDMA_ALIGNMENT);
 
 	for (i = 0; i < count; ++i) {
 		const struct util_format_description *desc;

@@ -173,7 +173,7 @@ struct si_vertex_elements
 
 	uint16_t			first_vb_use_mask;
 	/* Vertex buffer descriptor list size aligned for optimal prefetch. */
-	uint16_t			desc_list_byte_size;
+	uint16_t			vb_desc_list_alloc_size;
 	uint16_t			instance_divisor_is_one; /* bitmask of inputs */
 	uint16_t			instance_divisor_is_fetched;  /* bitmask of inputs */
 };
