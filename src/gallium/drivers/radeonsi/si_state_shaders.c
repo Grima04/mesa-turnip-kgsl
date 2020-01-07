@@ -3050,7 +3050,7 @@ bool si_update_ngg(struct si_context *sctx)
 			sctx->flags |= SI_CONTEXT_VGT_FLUSH;
 
 		sctx->ngg = new_ngg;
-		sctx->last_rast_prim = -1; /* reset this so that it gets updated */
+		sctx->last_gs_out_prim = -1; /* reset this so that it gets updated */
 		return true;
 	}
 	return false;
@@ -3073,7 +3073,7 @@ static void si_bind_gs_shader(struct pipe_context *ctx, void *state)
 	sctx->ia_multi_vgt_param_key.u.uses_gs = sel != NULL;
 
 	si_update_common_shader_state(sctx);
-	sctx->last_rast_prim = -1; /* reset this so that it gets updated */
+	sctx->last_gs_out_prim = -1; /* reset this so that it gets updated */
 
 	ngg_changed = si_update_ngg(sctx);
 	if (ngg_changed || enable_changed)
@@ -3127,7 +3127,7 @@ static void si_bind_tes_shader(struct pipe_context *ctx, void *state)
 	si_update_tess_uses_prim_id(sctx);
 
 	si_update_common_shader_state(sctx);
-	sctx->last_rast_prim = -1; /* reset this so that it gets updated */
+	sctx->last_gs_out_prim = -1; /* reset this so that it gets updated */
 
 	bool ngg_changed = si_update_ngg(sctx);
 	if (ngg_changed || enable_changed)

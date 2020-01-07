@@ -597,46 +597,37 @@ static void si_emit_rasterizer_prim_state(struct si_context *sctx)
 	struct radeon_cmdbuf *cs = sctx->gfx_cs;
 	enum pipe_prim_type rast_prim = sctx->current_rast_prim;
 	struct si_state_rasterizer *rs = sctx->queued.named.rasterizer;
-	bool use_ngg = sctx->screen->use_ngg;
+	unsigned initial_cdw = cs->current.cdw;
 
-	if (likely(rast_prim == sctx->last_rast_prim &&
-		   rs->pa_sc_line_stipple == sctx->last_sc_line_stipple &&
-		   (!use_ngg ||
-		    rs->flatshade_first == sctx->last_flatshade_first)))
-		return;
-
-	if (util_prim_is_lines(rast_prim)) {
+	if (unlikely(si_is_line_stipple_enabled(sctx))) {
 		/* For lines, reset the stipple pattern at each primitive. Otherwise,
 		 * reset the stipple pattern at each packet (line strips, line loops).
 		 */
-		radeon_set_context_reg(cs, R_028A0C_PA_SC_LINE_STIPPLE,
-			rs->pa_sc_line_stipple |
-			S_028A0C_AUTO_RESET_CNTL(rast_prim == PIPE_PRIM_LINES ? 1 : 2));
+		unsigned value = rs->pa_sc_line_stipple |
+				 S_028A0C_AUTO_RESET_CNTL(rast_prim == PIPE_PRIM_LINES ? 1 : 2);
+
+		radeon_opt_set_context_reg(sctx, R_028A0C_PA_SC_LINE_STIPPLE,
+					   SI_TRACKED_PA_SC_LINE_STIPPLE, value);
+	}
+
+	unsigned gs_out_prim = si_conv_prim_to_gs_out(rast_prim);
+	if (unlikely(gs_out_prim != sctx->last_gs_out_prim &&
+		     (sctx->ngg || sctx->gs_shader.cso))) {
+		radeon_set_context_reg(cs, R_028A6C_VGT_GS_OUT_PRIM_TYPE, gs_out_prim);
+		sctx->last_gs_out_prim = gs_out_prim;
+	}
+
+	if (initial_cdw != cs->current.cdw)
 		sctx->context_roll = true;
+
+	if (sctx->ngg) {
+		unsigned vtx_index = rs->flatshade_first ? 0 : gs_out_prim;
+
+		sctx->current_vs_state &= C_VS_STATE_OUTPRIM &
+					  C_VS_STATE_PROVOKING_VTX_INDEX;
+		sctx->current_vs_state |= S_VS_STATE_OUTPRIM(gs_out_prim) |
+					  S_VS_STATE_PROVOKING_VTX_INDEX(vtx_index);
 	}
-
-	unsigned gs_out = si_conv_prim_to_gs_out(sctx->current_rast_prim);
-
-	if (rast_prim != sctx->last_rast_prim &&
-	    (sctx->ngg || sctx->gs_shader.cso)) {
-		radeon_set_context_reg(cs, R_028A6C_VGT_GS_OUT_PRIM_TYPE, gs_out);
-		sctx->context_roll = true;
-
-		if (use_ngg) {
-			sctx->current_vs_state &= C_VS_STATE_OUTPRIM;
-			sctx->current_vs_state |= S_VS_STATE_OUTPRIM(gs_out);
-		}
-	}
-
-	if (use_ngg) {
-		unsigned vtx_index = rs->flatshade_first ? 0 : gs_out;
-		sctx->current_vs_state &= C_VS_STATE_PROVOKING_VTX_INDEX;
-		sctx->current_vs_state |= S_VS_STATE_PROVOKING_VTX_INDEX(vtx_index);
-	}
-
-	sctx->last_rast_prim = rast_prim;
-	sctx->last_sc_line_stipple = rs->pa_sc_line_stipple;
-	sctx->last_flatshade_first = rs->flatshade_first;
 }
 
 static void si_emit_vs_state(struct si_context *sctx,

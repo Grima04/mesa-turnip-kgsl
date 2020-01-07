@@ -438,9 +438,6 @@ void si_begin_new_gfx_cs(struct si_context *ctx)
 	ctx->last_restart_index = SI_RESTART_INDEX_UNKNOWN;
 	ctx->last_prim = -1;
 	ctx->last_multi_vgt_param = -1;
-	ctx->last_rast_prim = -1;
-	ctx->last_flatshade_first = -1;
-	ctx->last_sc_line_stipple = ~0;
 	ctx->last_vs_state = ~0;
 	ctx->last_ls = NULL;
 	ctx->last_tcs = NULL;
@@ -492,6 +489,7 @@ void si_begin_new_gfx_cs(struct si_context *ctx)
 		ctx->tracked_regs.reg_value[SI_TRACKED_PA_SU_HARDWARE_SCREEN_OFFSET] = 0;
 		ctx->tracked_regs.reg_value[SI_TRACKED_PA_SU_VTX_CNTL] = 0x00000005;
 		ctx->tracked_regs.reg_value[SI_TRACKED_PA_SC_CLIPRECT_RULE]	= 0xffff;
+		ctx->tracked_regs.reg_value[SI_TRACKED_PA_SC_LINE_STIPPLE]	= 0;
 		ctx->tracked_regs.reg_value[SI_TRACKED_VGT_ESGS_RING_ITEMSIZE]  = 0x00000000;
 		ctx->tracked_regs.reg_value[SI_TRACKED_VGT_GSVS_RING_OFFSET_1]  = 0x00000000;
 		ctx->tracked_regs.reg_value[SI_TRACKED_VGT_GSVS_RING_OFFSET_2]  = 0x00000000;
@@ -525,11 +523,13 @@ void si_begin_new_gfx_cs(struct si_context *ctx)
 		ctx->tracked_regs.reg_value[SI_TRACKED_VGT_TF_PARAM]  = 0x00000000;
 		ctx->tracked_regs.reg_value[SI_TRACKED_VGT_VERTEX_REUSE_BLOCK_CNTL]  = 0x0000001e; /* From GFX8 */
 
-		/* Set all saved registers state to saved. */
+		/* Set all cleared context registers to saved. */
 		ctx->tracked_regs.reg_saved = 0xffffffffffffffff;
+		ctx->last_gs_out_prim = 0; /* cleared by CLEAR_STATE */
 	} else {
 		/* Set all saved registers state to unknown. */
 		ctx->tracked_regs.reg_saved = 0;
+		ctx->last_gs_out_prim = -1; /* unknown */
 	}
 
 	/* 0xffffffff is a impossible value to register SPI_PS_INPUT_CNTL_n */
