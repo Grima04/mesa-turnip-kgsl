@@ -68,7 +68,12 @@ struct isel_context {
       struct {
          bool is_divergent = false;
       } parent_if;
-      bool exec_potentially_empty = false;
+      bool exec_potentially_empty_discard = false; /* set to false when loop_nest_depth==0 && parent_if.is_divergent==false */
+      uint16_t exec_potentially_empty_break_depth = UINT16_MAX;
+      /* Set to false when loop_nest_depth==exec_potentially_empty_break_depth
+       * and parent_if.is_divergent==false. Called _break but it's also used for
+       * loop continues. */
+      bool exec_potentially_empty_break = false;
       std::unique_ptr<unsigned[]> nir_to_aco; /* NIR block index to ACO block index */
    } cf_info;
 

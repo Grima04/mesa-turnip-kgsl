@@ -71,7 +71,7 @@ public:
       ctx->cf_info.parent_if.is_divergent = divergent_if_old;
       ctx->cf_info.loop_nest_depth = ctx->cf_info.loop_nest_depth - 1;
       if (!ctx->cf_info.loop_nest_depth && !ctx->cf_info.parent_if.is_divergent)
-         ctx->cf_info.exec_potentially_empty = false;
+         ctx->cf_info.exec_potentially_empty_discard = false;
    }
 };
 
@@ -79,7 +79,9 @@ struct if_context {
    Temp cond;
 
    bool divergent_old;
-   bool exec_potentially_empty_old;
+   bool exec_potentially_empty_discard_old;
+   bool exec_potentially_empty_break_old;
+   uint16_t exec_potentially_empty_break_depth_old;
 
    unsigned BB_if_idx;
    unsigned invert_idx;
@@ -3902,7 +3904,7 @@ void visit_load_constant(isel_context *ctx, nir_intrinsic_instr *instr)
 void visit_discard_if(isel_context *ctx, nir_intrinsic_instr *instr)
 {
    if (ctx->cf_info.loop_nest_depth || ctx->cf_info.parent_if.is_divergent)
-      ctx->cf_info.exec_potentially_empty = true;
+      ctx->cf_info.exec_potentially_empty_discard = true;
 
    ctx->program->needs_exact = true;
 
@@ -3921,7 +3923,7 @@ void visit_discard(isel_context* ctx, nir_intrinsic_instr *instr)
    Builder bld(ctx->program, ctx->block);
 
    if (ctx->cf_info.loop_nest_depth || ctx->cf_info.parent_if.is_divergent)
-      ctx->cf_info.exec_potentially_empty = true;
+      ctx->cf_info.exec_potentially_empty_discard = true;
 
    bool divergent = ctx->cf_info.parent_if.is_divergent ||
                     ctx->cf_info.parent_loop.has_divergent_continue;
@@ -6768,7 +6770,7 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
       bld.pseudo(aco_opcode::p_demote_to_helper, Operand(-1u));
 
       if (ctx->cf_info.loop_nest_depth || ctx->cf_info.parent_if.is_divergent)
-         ctx->cf_info.exec_potentially_empty = true;
+         ctx->cf_info.exec_potentially_empty_discard = true;
       ctx->block->kind |= block_kind_uses_demote;
       ctx->program->needs_exact = true;
       break;
@@ -6779,7 +6781,7 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
       bld.pseudo(aco_opcode::p_demote_to_helper, cond);
 
       if (ctx->cf_info.loop_nest_depth || ctx->cf_info.parent_if.is_divergent)
-         ctx->cf_info.exec_potentially_empty = true;
+         ctx->cf_info.exec_potentially_empty_discard = true;
       ctx->block->kind |= block_kind_uses_demote;
       ctx->program->needs_exact = true;
       break;
@@ -7884,6 +7886,11 @@ void visit_jump(isel_context *ctx, nir_jump_instr *instr)
       abort();
    }
 
+   if (ctx->cf_info.parent_if.is_divergent && !ctx->cf_info.exec_potentially_empty_break) {
+      ctx->cf_info.exec_potentially_empty_break = true;
+      ctx->cf_info.exec_potentially_empty_break_depth = ctx->cf_info.loop_nest_depth;
+   }
+
    /* remove critical edges from linear CFG */
    bld.branch(aco_opcode::p_branch);
    Block* break_block = ctx->program->create_and_insert_block();
@@ -7948,6 +7955,7 @@ void visit_block(isel_context *ctx, nir_block *block)
 
 static void visit_loop(isel_context *ctx, nir_loop *loop)
 {
+   //TODO: we might want to wrap the loop around a branch if exec_potentially_empty=true
    append_logical_end(ctx->block);
    ctx->block->kind |= block_kind_loop_preheader | block_kind_uniform;
    Builder bld(ctx->program, ctx->block);
@@ -7973,7 +7981,7 @@ static void visit_loop(isel_context *ctx, nir_loop *loop)
    //TODO: what if a loop ends with a unconditional or uniformly branched continue and this branch is never taken?
    if (!ctx->cf_info.has_branch) {
       append_logical_end(ctx->block);
-      if (ctx->cf_info.exec_potentially_empty) {
+      if (ctx->cf_info.exec_potentially_empty_discard || ctx->cf_info.exec_potentially_empty_break) {
          /* Discards can result in code running with an empty exec mask.
           * This would result in divergent breaks not ever being taken. As a
           * workaround, break the loop when the loop mask is empty instead of
@@ -8081,10 +8089,16 @@ static void begin_divergent_if_then(isel_context *ctx, if_context *ic, Temp cond
    ic->BB_endif.loop_nest_depth = ctx->cf_info.loop_nest_depth;
    ic->BB_endif.kind |= (block_kind_merge | (ctx->block->kind & block_kind_top_level));
 
-   ic->exec_potentially_empty_old = ctx->cf_info.exec_potentially_empty;
+   ic->exec_potentially_empty_discard_old = ctx->cf_info.exec_potentially_empty_discard;
+   ic->exec_potentially_empty_break_old = ctx->cf_info.exec_potentially_empty_break;
+   ic->exec_potentially_empty_break_depth_old = ctx->cf_info.exec_potentially_empty_break_depth;
    ic->divergent_old = ctx->cf_info.parent_if.is_divergent;
    ctx->cf_info.parent_if.is_divergent = true;
-   ctx->cf_info.exec_potentially_empty = false; /* divergent branches use cbranch_execz */
+
+   /* divergent branches use cbranch_execz */
+   ctx->cf_info.exec_potentially_empty_discard = false;
+   ctx->cf_info.exec_potentially_empty_break = false;
+   ctx->cf_info.exec_potentially_empty_break_depth = UINT16_MAX;
 
    /** emit logical then block */
    Block* BB_then_logical = ctx->program->create_and_insert_block();
@@ -8129,8 +8143,14 @@ static void begin_divergent_if_else(isel_context *ctx, if_context *ic)
    branch->operands[0] = Operand(ic->cond);
    ctx->block->instructions.push_back(std::move(branch));
 
-   ic->exec_potentially_empty_old |= ctx->cf_info.exec_potentially_empty;
-   ctx->cf_info.exec_potentially_empty = false; /* divergent branches use cbranch_execz */
+   ic->exec_potentially_empty_discard_old |= ctx->cf_info.exec_potentially_empty_discard;
+   ic->exec_potentially_empty_break_old |= ctx->cf_info.exec_potentially_empty_break;
+   ic->exec_potentially_empty_break_depth_old =
+      std::min(ic->exec_potentially_empty_break_depth_old, ctx->cf_info.exec_potentially_empty_break_depth);
+   /* divergent branches use cbranch_execz */
+   ctx->cf_info.exec_potentially_empty_discard = false;
+   ctx->cf_info.exec_potentially_empty_break = false;
+   ctx->cf_info.exec_potentially_empty_break_depth = UINT16_MAX;
 
    /** emit logical else block */
    Block* BB_else_logical = ctx->program->create_and_insert_block();
@@ -8177,10 +8197,21 @@ static void end_divergent_if(isel_context *ctx, if_context *ic)
 
 
    ctx->cf_info.parent_if.is_divergent = ic->divergent_old;
-   ctx->cf_info.exec_potentially_empty |= ic->exec_potentially_empty_old;
+   ctx->cf_info.exec_potentially_empty_discard |= ic->exec_potentially_empty_discard_old;
+   ctx->cf_info.exec_potentially_empty_break |= ic->exec_potentially_empty_break_old;
+   ctx->cf_info.exec_potentially_empty_break_depth =
+      std::min(ic->exec_potentially_empty_break_depth_old, ctx->cf_info.exec_potentially_empty_break_depth);
+   if (ctx->cf_info.loop_nest_depth == ctx->cf_info.exec_potentially_empty_break_depth &&
+       !ctx->cf_info.parent_if.is_divergent) {
+      ctx->cf_info.exec_potentially_empty_break = false;
+      ctx->cf_info.exec_potentially_empty_break_depth = UINT16_MAX;
+   }
    /* uniform control flow never has an empty exec-mask */
-   if (!ctx->cf_info.loop_nest_depth && !ctx->cf_info.parent_if.is_divergent)
-      ctx->cf_info.exec_potentially_empty = false;
+   if (!ctx->cf_info.loop_nest_depth && !ctx->cf_info.parent_if.is_divergent) {
+      ctx->cf_info.exec_potentially_empty_discard = false;
+      ctx->cf_info.exec_potentially_empty_break = false;
+      ctx->cf_info.exec_potentially_empty_break_depth = UINT16_MAX;
+   }
 }
 
 static void visit_if(isel_context *ctx, nir_if *if_stmt)
