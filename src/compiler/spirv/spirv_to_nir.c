@@ -3675,11 +3675,24 @@ vtn_handle_barrier(struct vtn_builder *b, SpvOp opcode,
    }
 
    case SpvOpControlBarrier: {
+      SpvScope execution_scope = vtn_constant_uint(b, w[1]);
       SpvScope memory_scope = vtn_constant_uint(b, w[2]);
       SpvMemorySemanticsMask memory_semantics = vtn_constant_uint(b, w[3]);
+
+      /* GLSLang, prior to commit 8297936dd6eb3, emitted OpControlBarrier with
+       * memory semantics of None for GLSL barrier().
+       */
+      if (b->wa_glslang_cs_barrier &&
+          b->nb.shader->info.stage == MESA_SHADER_COMPUTE &&
+          execution_scope == SpvScopeWorkgroup &&
+          memory_semantics == SpvMemorySemanticsMaskNone) {
+         memory_scope = SpvScopeWorkgroup;
+         memory_semantics = SpvMemorySemanticsAcquireReleaseMask |
+                            SpvMemorySemanticsWorkgroupMemoryMask;
+      }
+
       vtn_emit_memory_barrier(b, memory_scope, memory_semantics);
 
-      SpvScope execution_scope = vtn_constant_uint(b, w[1]);
       if (execution_scope == SpvScopeWorkgroup)
          vtn_emit_barrier(b, nir_intrinsic_barrier);
       break;
@@ -5102,6 +5115,13 @@ vtn_create_builder(const uint32_t *words, size_t word_count,
     * versions of GLSLang.
     */
    b->wa_glslang_179 = (generator_id == 8 && generator_version == 1);
+
+   /* In GLSLang commit 8297936dd6eb3, their handling of barrier() was fixed
+    * to provide correct memory semantics on compute shader barrier()
+    * commands.  Prior to that, we need to fix them up ourselves.  This
+    * GLSLang fix caused them to bump to generator version 3.
+    */
+   b->wa_glslang_cs_barrier = (generator_id == 8 && generator_version < 3);
 
    /* words[2] == generator magic */
    unsigned value_id_bound = words[3];
