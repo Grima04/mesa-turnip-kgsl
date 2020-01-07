@@ -797,9 +797,11 @@ panfrost_map_constant_buffer_gpu(
                                       PAN_BO_ACCESS_SHARED |
                                       PAN_BO_ACCESS_READ |
                                       panfrost_bo_access_for_stage(st));
-                return rsrc->bo->gpu;
+
+                /* Alignment gauranteed by PIPE_CAP_CONSTANT_BUFFER_OFFSET_ALIGNMENT */
+                return rsrc->bo->gpu + cb->buffer_offset;
 	} else if (cb->user_buffer) {
-                return panfrost_upload_transient(batch, cb->user_buffer, cb->buffer_size);
+                return panfrost_upload_transient(batch, cb->user_buffer + cb->buffer_offset, cb->buffer_size);
 	} else {
                 unreachable("No constant buffer");
         }
