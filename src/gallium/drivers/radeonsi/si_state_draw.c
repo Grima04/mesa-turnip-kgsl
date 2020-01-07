@@ -501,6 +501,16 @@ static void si_init_ia_multi_vgt_param_table(struct si_context *sctx)
 	}
 }
 
+static bool si_is_line_stipple_enabled(struct si_context *sctx)
+{
+	struct si_state_rasterizer *rs = sctx->queued.named.rasterizer;
+
+	return rs->line_stipple_enable &&
+	       sctx->current_rast_prim != PIPE_PRIM_POINTS &&
+	       (rs->polygon_mode_is_lines ||
+		util_prim_is_lines(sctx->current_rast_prim));
+}
+
 static unsigned si_get_ia_multi_vgt_param(struct si_context *sctx,
 					  const struct pipe_draw_info *info,
 					  enum pipe_prim_type prim,
@@ -529,6 +539,7 @@ static unsigned si_get_ia_multi_vgt_param(struct si_context *sctx,
 		  si_num_prims_for_vertices(info, prim) < primgroup_size));
 	key.u.primitive_restart = primitive_restart;
 	key.u.count_from_stream_output = info->count_from_stream_output != NULL;
+	key.u.line_stipple_enabled = si_is_line_stipple_enabled(sctx);
 
 	ia_multi_vgt_param = sctx->ia_multi_vgt_param[key.index] |
 			     S_028AA8_PRIMGROUP_SIZE(primgroup_size - 1);
@@ -747,7 +758,7 @@ static void gfx10_emit_ge_cntl(struct si_context *sctx, unsigned num_patches)
 			  S_03096C_BREAK_WAVE_AT_EOI(key.u.uses_tess && key.u.tess_uses_prim_id);
 	}
 
-	ge_cntl |= S_03096C_PACKET_TO_ONE_PA(key.u.line_stipple_enabled);
+	ge_cntl |= S_03096C_PACKET_TO_ONE_PA(si_is_line_stipple_enabled(sctx));
 
 	if (ge_cntl != sctx->last_multi_vgt_param) {
 		radeon_set_uconfig_reg(sctx->gfx_cs, R_03096C_GE_CNTL, ge_cntl);

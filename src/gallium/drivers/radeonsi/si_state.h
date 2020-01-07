@@ -95,6 +95,7 @@ struct si_state_rasterizer {
 	unsigned		depth_clamp_any:1;
 	unsigned		provoking_vertex_first:1;
 	unsigned		polygon_mode_enabled:1;
+	unsigned		polygon_mode_is_lines:1;
 };
 
 struct si_dsa_stencil_ref_part {

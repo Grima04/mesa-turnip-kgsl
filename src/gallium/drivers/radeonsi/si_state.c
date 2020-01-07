@@ -923,6 +923,10 @@ static void *si_create_rs_state(struct pipe_context *ctx,
 				    !(state->cull_face & PIPE_FACE_FRONT)) ||
 				   (state->fill_back != PIPE_POLYGON_MODE_FILL &&
 				    !(state->cull_face & PIPE_FACE_BACK));
+	rs->polygon_mode_is_lines = (state->fill_front == PIPE_POLYGON_MODE_LINE &&
+				     !(state->cull_face & PIPE_FACE_FRONT)) ||
+				    (state->fill_back == PIPE_POLYGON_MODE_LINE &&
+				     !(state->cull_face & PIPE_FACE_BACK));
 	rs->pa_sc_line_stipple = state->line_stipple_enable ?
 				S_028A0C_LINE_PATTERN(state->line_stipple_pattern) |
 				S_028A0C_REPEAT_COUNT(state->line_stipple_factor) : 0;
@@ -1074,9 +1078,6 @@ static void si_bind_rs_state(struct pipe_context *ctx, void *state)
 	if (old_rs->clip_plane_enable != rs->clip_plane_enable ||
 	    old_rs->pa_cl_clip_cntl != rs->pa_cl_clip_cntl)
 		si_mark_atom_dirty(sctx, &sctx->atoms.s.clip_regs);
-
-	sctx->ia_multi_vgt_param_key.u.line_stipple_enabled =
-		rs->line_stipple_enable;
 
 	if (old_rs->clip_plane_enable != rs->clip_plane_enable ||
 	    old_rs->rasterizer_discard != rs->rasterizer_discard ||
