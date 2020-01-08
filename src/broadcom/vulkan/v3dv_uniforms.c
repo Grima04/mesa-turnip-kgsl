@@ -34,6 +34,9 @@ v3dv_write_uniforms(struct v3dv_cmd_buffer *cmd_buffer,
    struct v3d_uniform_list *uinfo = &p_stage->prog_data.base->uniforms;
    struct v3dv_dynamic_state *dynamic = &cmd_buffer->state.dynamic;
 
+   struct v3dv_job *job = cmd_buffer->state.job;
+   assert(job);
+
    /* The hardware always pre-fetches the next uniform (also when there
     * aren't any), so we always allocate space for an extra slot. This
     * fixes MMU exceptions reported since Linux kernel 5.4 when the
@@ -42,13 +45,11 @@ v3dv_write_uniforms(struct v3dv_cmd_buffer *cmd_buffer,
     * the last uniform it will read beyond the end of the page and trigger
     * the MMU exception.
     */
-   v3dv_cl_ensure_space(&cmd_buffer->indirect, (uinfo->count + 1) * 4, 4);
+   v3dv_cl_ensure_space(&job->indirect, (uinfo->count + 1) * 4, 4);
 
-   struct v3dv_cl_reloc uniform_stream =
-      v3dv_cl_get_address(&cmd_buffer->indirect);
+   struct v3dv_cl_reloc uniform_stream = v3dv_cl_get_address(&job->indirect);
 
-   struct v3dv_cl_out *uniforms =
-      cl_start(&cmd_buffer->indirect);
+   struct v3dv_cl_out *uniforms = cl_start(&job->indirect);
 
    for (int i = 0; i < uinfo->count; i++) {
       uint32_t data = uinfo->data[i];
@@ -79,7 +80,7 @@ v3dv_write_uniforms(struct v3dv_cmd_buffer *cmd_buffer,
       }
    }
 
-   cl_end(&cmd_buffer->indirect, uniforms);
+   cl_end(&job->indirect, uniforms);
 
    return uniform_stream;
 }

@@ -27,10 +27,10 @@
 #include "broadcom/cle/v3d_packet_helpers.h"
 
 struct v3dv_bo;
-struct v3dv_cmd_buffer;
+struct v3dv_job;
 struct v3dv_cl;
 
-void v3dv_cmd_buffer_add_bo(struct v3dv_cmd_buffer *cmd_buffer, struct v3dv_bo *bo);
+void v3dv_job_add_bo(struct v3dv_job *job, struct v3dv_bo *bo);
 
 /**
  * Undefined structure, used for typechecking that you're passing the pointers
@@ -46,7 +46,7 @@ struct v3dv_cl_reloc {
 
 struct v3dv_cl {
    void *base;
-   struct v3dv_cmd_buffer *cmd_buffer;
+   struct v3dv_job *job;
    struct v3dv_cl_out *next;
    struct v3dv_bo *bo;
    uint32_t size;
@@ -82,7 +82,7 @@ v3dv_cl_get_address(struct v3dv_cl *cl)
    return (struct v3dv_cl_reloc){ .bo = cl->bo, .offset = v3dv_cl_offset(cl) };
 }
 
-void v3dv_cl_init(struct v3dv_cmd_buffer *cmd_buffer, struct v3dv_cl *cl);
+void v3dv_cl_init(struct v3dv_job *job, struct v3dv_cl *cl);
 void v3dv_cl_begin(struct v3dv_cl *cl);
 void v3dv_cl_reset(struct v3dv_cl *cl);
 void v3dv_cl_destroy(struct v3dv_cl *cl);
@@ -167,7 +167,7 @@ static inline void
 cl_pack_emit_reloc(struct v3dv_cl *cl, const struct v3dv_cl_reloc *reloc)
 {
         if (reloc->bo)
-                v3dv_cmd_buffer_add_bo(cl->cmd_buffer, reloc->bo);
+                v3dv_job_add_bo(cl->job, reloc->bo);
 }
 
 #endif /* V3DV_CL_H */

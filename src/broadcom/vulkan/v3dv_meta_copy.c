@@ -27,8 +27,7 @@
 #include "vk_format_info.h"
 
 static void
-emit_image_loads(struct v3dv_cmd_buffer *cmd_buffer,
-                 struct v3dv_cl *cl,
+emit_image_loads(struct v3dv_cl *cl,
                  struct v3dv_image *image,
                  uint32_t layer,
                  uint32_t mip_level)
@@ -67,8 +66,7 @@ emit_image_loads(struct v3dv_cmd_buffer *cmd_buffer,
 }
 
 static void
-emit_buffer_stores(struct v3dv_cmd_buffer *cmd_buffer,
-                   struct v3dv_cl *cl,
+emit_buffer_stores(struct v3dv_cl *cl,
                    struct v3dv_buffer *buffer,
                    struct v3dv_image *image,
                    uint32_t buffer_offset,
@@ -92,13 +90,13 @@ emit_buffer_stores(struct v3dv_cmd_buffer *cmd_buffer,
 }
 
 static void
-emit_copy_layer_to_buffer_per_tile_list(struct v3dv_cmd_buffer *cmd_buffer,
+emit_copy_layer_to_buffer_per_tile_list(struct v3dv_job *job,
                                         struct v3dv_buffer *buffer,
                                         struct v3dv_image *image,
                                         uint32_t layer,
                                         const VkBufferImageCopy *region)
 {
-   struct v3dv_cl *cl = &cmd_buffer->indirect;
+   struct v3dv_cl *cl = &job->indirect;
    v3dv_cl_ensure_space(cl, 200, 1);
    struct v3dv_cl_reloc tile_list_start = v3dv_cl_get_address(cl);
 
@@ -108,8 +106,7 @@ emit_copy_layer_to_buffer_per_tile_list(struct v3dv_cmd_buffer *cmd_buffer,
    assert(layer < imgrsc->layerCount);
 
    /* Load image to TLB */
-   emit_image_loads(cmd_buffer, cl, image,
-                    imgrsc->baseArrayLayer + layer, imgrsc->mipLevel);
+   emit_image_loads(cl, image, imgrsc->baseArrayLayer + layer, imgrsc->mipLevel);
 
    cl_emit(cl, PRIM_LIST_FORMAT, fmt) {
       fmt.primitive_type = LIST_TRIANGLES;
@@ -130,21 +127,20 @@ emit_copy_layer_to_buffer_per_tile_list(struct v3dv_cmd_buffer *cmd_buffer,
    uint32_t buffer_stride = width * image->cpp;
    uint32_t buffer_offset =
       region->bufferOffset + height * buffer_stride * layer;
-   emit_buffer_stores(cmd_buffer, cl, buffer, image,
-                      buffer_offset, buffer_stride);
+   emit_buffer_stores(cl, buffer, image, buffer_offset, buffer_stride);
 
    cl_emit(cl, END_OF_TILE_MARKER, end);
 
    cl_emit(cl, RETURN_FROM_SUB_LIST, ret);
 
-   cl_emit(&cmd_buffer->rcl, START_ADDRESS_OF_GENERIC_TILE_LIST, branch) {
+   cl_emit(&job->rcl, START_ADDRESS_OF_GENERIC_TILE_LIST, branch) {
       branch.start = tile_list_start;
       branch.end = v3dv_cl_get_address(cl);
    }
 }
 
 static void
-emit_copy_layer_to_buffer(struct v3dv_cmd_buffer *cmd_buffer,
+emit_copy_layer_to_buffer(struct v3dv_job *job,
                           uint32_t min_x_supertile,
                           uint32_t min_y_supertile,
                           uint32_t max_x_supertile,
@@ -155,12 +151,12 @@ emit_copy_layer_to_buffer(struct v3dv_cmd_buffer *cmd_buffer,
                           uint32_t layer,
                           const VkBufferImageCopy *region)
 {
-   struct v3dv_cl *rcl = &cmd_buffer->rcl;
+   struct v3dv_cl *rcl = &job->rcl;
 
    const uint32_t tile_alloc_offset =
       64 * layer * framebuffer->draw_tiles_x * framebuffer->draw_tiles_y;
    cl_emit(rcl, MULTICORE_RENDERING_TILE_LIST_SET_BASE, list) {
-      list.address = v3dv_cl_address(cmd_buffer->tile_alloc, tile_alloc_offset);
+      list.address = v3dv_cl_address(job->tile_alloc, tile_alloc_offset);
    }
 
    cl_emit(rcl, MULTICORE_RENDERING_SUPERTILE_CFG, config) {
@@ -189,8 +185,7 @@ emit_copy_layer_to_buffer(struct v3dv_cmd_buffer *cmd_buffer,
 
    cl_emit(rcl, FLUSH_VCD_CACHE, flush);
 
-   emit_copy_layer_to_buffer_per_tile_list(cmd_buffer, buffer, image,
-                                           layer, region);
+   emit_copy_layer_to_buffer_per_tile_list(job, buffer, image, layer, region);
 
    for (int y = min_y_supertile; y <= max_y_supertile; y++) {
       for (int x = min_x_supertile; x <= max_x_supertile; x++) {
@@ -203,7 +198,7 @@ emit_copy_layer_to_buffer(struct v3dv_cmd_buffer *cmd_buffer,
 }
 
 static void
-emit_copy_image_to_buffer_rcl(struct v3dv_cmd_buffer *cmd_buffer,
+emit_copy_image_to_buffer_rcl(struct v3dv_job *job,
                               struct v3dv_buffer *buffer,
                               struct v3dv_image *image,
                               struct v3dv_framebuffer *framebuffer,
@@ -212,7 +207,7 @@ emit_copy_image_to_buffer_rcl(struct v3dv_cmd_buffer *cmd_buffer,
 {
    const VkImageSubresourceLayers *imgrsc = &region->imageSubresource;
 
-   struct v3dv_cl *rcl = &cmd_buffer->rcl;
+   struct v3dv_cl *rcl = &job->rcl;
    v3dv_cl_ensure_space_with_branch(rcl, 200 +
                                     imgrsc->layerCount * 256 *
                                     cl_packet_length(SUPERTILE_COORDINATES));
@@ -263,7 +258,7 @@ emit_copy_image_to_buffer_rcl(struct v3dv_cmd_buffer *cmd_buffer,
    const uint32_t max_y_supertile = max_render_y / supertile_h_in_pixels;
 
    for (int layer = 0; layer < imgrsc->layerCount; layer++) {
-      emit_copy_layer_to_buffer(cmd_buffer,
+      emit_copy_layer_to_buffer(job,
                                 min_x_supertile, min_y_supertile,
                                 max_x_supertile, max_y_supertile,
                                 buffer, image, framebuffer,
@@ -275,17 +270,17 @@ emit_copy_image_to_buffer_rcl(struct v3dv_cmd_buffer *cmd_buffer,
 }
 
 static void
-emit_copy_image_to_buffer_bcl(struct v3dv_cmd_buffer *cmd_buffer,
+emit_copy_image_to_buffer_bcl(struct v3dv_job *job,
                               struct v3dv_framebuffer *framebuffer,
                               const VkBufferImageCopy *region)
 {
-   v3dv_cl_ensure_space_with_branch(&cmd_buffer->bcl, 256);
+   v3dv_cl_ensure_space_with_branch(&job->bcl, 256);
 
-   cl_emit(&cmd_buffer->bcl, NUMBER_OF_LAYERS, config) {
+   cl_emit(&job->bcl, NUMBER_OF_LAYERS, config) {
       config.number_of_layers = framebuffer->layers;
    }
 
-   cl_emit(&cmd_buffer->bcl, TILE_BINNING_MODE_CFG, config) {
+   cl_emit(&job->bcl, TILE_BINNING_MODE_CFG, config) {
       config.width_in_pixels = framebuffer->width;
       config.height_in_pixels = framebuffer->height;
       config.number_of_render_targets = 1;
@@ -293,20 +288,20 @@ emit_copy_image_to_buffer_bcl(struct v3dv_cmd_buffer *cmd_buffer,
       config.maximum_bpp_of_all_render_targets = framebuffer->internal_bpp;
    }
 
-   cl_emit(&cmd_buffer->bcl, FLUSH_VCD_CACHE, bin);
+   cl_emit(&job->bcl, FLUSH_VCD_CACHE, bin);
 
-   cl_emit(&cmd_buffer->bcl, OCCLUSION_QUERY_COUNTER, counter);
+   cl_emit(&job->bcl, OCCLUSION_QUERY_COUNTER, counter);
 
-   cl_emit(&cmd_buffer->bcl, START_TILE_BINNING, bin);
+   cl_emit(&job->bcl, START_TILE_BINNING, bin);
 
-   cl_emit(&cmd_buffer->bcl, CLIP_WINDOW, clip) {
+   cl_emit(&job->bcl, CLIP_WINDOW, clip) {
       clip.clip_window_left_pixel_coordinate = region->imageOffset.x;
       clip.clip_window_bottom_pixel_coordinate = region->imageOffset.y;
       clip.clip_window_width_in_pixels = region->imageExtent.width;
       clip.clip_window_height_in_pixels = region->imageExtent.height;
    }
 
-   cl_emit(&cmd_buffer->bcl, FLUSH, flush);
+   cl_emit(&job->bcl, FLUSH, flush);
 }
 
 /* Sets framebuffer dimensions and computes tile size parameters based on the
@@ -365,35 +360,30 @@ copy_image_to_buffer_tlb(struct v3dv_cmd_buffer *cmd_buffer,
       struct v3dv_framebuffer framebuffer;
       setup_framebuffer_params(&framebuffer, image, num_layers, internal_bpp);
 
-      /* FIXME: here we assume that we have a valid tile alloc/state setup,
-       *        which is usually the case for copy after render scenarios. The
-       *        code below simply checks and asserts this requirement,
-       *        however, a proper implementation should allocate new tile
-       *        alloc/state if we don't have one (for example if we haven't
-       *        recorded a render pass yet) or the one we have isn't large
-       *        enough. We still need to figure out how we want to handle
-       *        varying tile alloc/state requirements in a command buffer.
-       */
+      struct v3dv_job *job = v3dv_cmd_buffer_start_job(cmd_buffer);
+
       uint32_t tile_alloc_size = 64 * num_layers *
                                  framebuffer.draw_tiles_x *
                                  framebuffer.draw_tiles_y;
       tile_alloc_size = align(tile_alloc_size, 4096);
       tile_alloc_size += 8192;
       tile_alloc_size += 512 * 1024;
-      assert(cmd_buffer->tile_alloc &&
-             cmd_buffer->tile_alloc->size >= tile_alloc_size);
+      job->tile_alloc = v3dv_bo_alloc(cmd_buffer->device, tile_alloc_size);
+      v3dv_job_add_bo(job, job->tile_alloc);
 
       const uint32_t tsda_per_tile_size = 256;
       const uint32_t tile_state_size = num_layers *
                                        framebuffer.draw_tiles_x *
                                        framebuffer.draw_tiles_y *
                                        tsda_per_tile_size;
-      assert(cmd_buffer->tile_state &&
-             cmd_buffer->tile_state->size >= tile_state_size);
+      job->tile_state = v3dv_bo_alloc(cmd_buffer->device, tile_state_size);
+      v3dv_job_add_bo(job, job->tile_state);
 
-      emit_copy_image_to_buffer_bcl(cmd_buffer, &framebuffer, region);
-      emit_copy_image_to_buffer_rcl(cmd_buffer, buffer, image,
+      emit_copy_image_to_buffer_bcl(job, &framebuffer, region);
+      emit_copy_image_to_buffer_rcl(job, buffer, image,
                                     &framebuffer, internal_type, region);
+
+      v3dv_cmd_buffer_finish_job(cmd_buffer);
 }
 
 void

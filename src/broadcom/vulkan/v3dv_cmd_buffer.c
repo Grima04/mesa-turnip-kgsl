@@ -35,16 +35,16 @@ const struct v3dv_dynamic_state default_dynamic_state = {
 };
 
 void
-v3dv_cmd_buffer_add_bo(struct v3dv_cmd_buffer *cmd_buffer, struct v3dv_bo *bo)
+v3dv_job_add_bo(struct v3dv_job *job, struct v3dv_bo *bo)
 {
    if (!bo)
       return;
 
-   if (_mesa_set_search(cmd_buffer->bos, bo))
+   if (_mesa_set_search(job->bos, bo))
       return;
 
-   _mesa_set_add(cmd_buffer->bos, bo);
-   cmd_buffer->bo_count++;
+   _mesa_set_add(job->bos, bo);
+   job->bo_count++;
 }
 
 VkResult
@@ -94,13 +94,7 @@ cmd_buffer_create(struct v3dv_device *device,
    cmd_buffer->level = level;
    cmd_buffer->usage_flags = 0;
 
-   cmd_buffer->bos =
-      _mesa_set_create(NULL, _mesa_hash_pointer, _mesa_key_pointer_equal);
-   cmd_buffer->bo_count = 0;
-
-   v3dv_cl_init(cmd_buffer, &cmd_buffer->bcl);
-   v3dv_cl_init(cmd_buffer, &cmd_buffer->rcl);
-   v3dv_cl_init(cmd_buffer, &cmd_buffer->indirect);
+   list_inithead(&cmd_buffer->submit_jobs);
 
    cmd_buffer->status = V3DV_CMD_BUFFER_STATUS_NEW;
 
@@ -113,48 +107,114 @@ cmd_buffer_create(struct v3dv_device *device,
 }
 
 static void
-cmd_buffer_destroy(struct v3dv_cmd_buffer *cmd_buffer)
+job_destroy(struct v3dv_job *job)
 {
-   list_del(&cmd_buffer->pool_link);
+   assert(job);
 
-   v3dv_cl_destroy(&cmd_buffer->bcl);
-   v3dv_cl_destroy(&cmd_buffer->rcl);
-   v3dv_cl_destroy(&cmd_buffer->indirect);
+   list_del(&job->list_link);
+
+   v3dv_cl_destroy(&job->bcl);
+   v3dv_cl_destroy(&job->rcl);
+   v3dv_cl_destroy(&job->indirect);
 
    /* Since we don't ref BOs, when we add them to the command buffer, don't
     * unref them here either.
     */
 #if 0
-   set_foreach(cmd_buffer->bos, entry) {
+   set_foreach(job->bos, entry) {
       struct v3dv_bo *bo = (struct v3dv_bo *)entry->key;
       v3dv_bo_free(cmd_buffer->device, bo);
    }
 #endif
-   _mesa_set_destroy(cmd_buffer->bos, NULL);
+   _mesa_set_destroy(job->bos, NULL);
 
-   v3dv_bo_free(cmd_buffer->device, cmd_buffer->tile_alloc);
-   v3dv_bo_free(cmd_buffer->device, cmd_buffer->tile_state);
+   v3dv_bo_free(job->cmd_buffer->device, job->tile_alloc);
+   v3dv_bo_free(job->cmd_buffer->device, job->tile_state);
+}
+
+static void
+cmd_buffer_destroy(struct v3dv_cmd_buffer *cmd_buffer)
+{
+   list_del(&cmd_buffer->pool_link);
+
+   list_for_each_entry_safe(struct v3dv_job, job,
+                            &cmd_buffer->submit_jobs, list_link) {
+      job_destroy(job);
+   }
+
+   if (cmd_buffer->state.job)
+      job_destroy(cmd_buffer->state.job);
 
    vk_free(&cmd_buffer->pool->alloc, cmd_buffer);
+}
+
+static void
+emit_binning_flush(struct v3dv_job *job)
+{
+   assert(job);
+   v3dv_cl_ensure_space_with_branch(&job->bcl, cl_packet_length(FLUSH));
+   cl_emit(&job->bcl, FLUSH, flush);
+}
+
+void
+v3dv_cmd_buffer_finish_job(struct v3dv_cmd_buffer *cmd_buffer)
+{
+   struct v3dv_job *job = cmd_buffer->state.job;
+   assert(job);
+   assert(v3dv_cl_offset(&job->bcl) != 0);
+
+   list_addtail(&job->list_link, &cmd_buffer->submit_jobs);
+   cmd_buffer->state.job = NULL;
+}
+
+struct v3dv_job *
+v3dv_cmd_buffer_start_job(struct v3dv_cmd_buffer *cmd_buffer)
+{
+   /* Ensure we are not starting a new job without finishing a previous one */
+   if (cmd_buffer->state.job != NULL) {
+      emit_binning_flush(cmd_buffer->state.job);
+      v3dv_cmd_buffer_finish_job(cmd_buffer);
+   }
+
+   assert(cmd_buffer->state.job == NULL);
+   struct v3dv_job *job = vk_zalloc(&cmd_buffer->device->alloc,
+                                    sizeof(struct v3dv_job), 8,
+                                    VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   assert(job);
+
+   job->cmd_buffer = cmd_buffer;
+
+   job->bos =
+      _mesa_set_create(NULL, _mesa_hash_pointer, _mesa_key_pointer_equal);
+   job->bo_count = 0;
+
+   v3dv_cl_init(job, &job->bcl);
+   v3dv_cl_begin(&job->bcl);
+
+   v3dv_cl_init(job, &job->rcl);
+   v3dv_cl_begin(&job->rcl);
+
+   v3dv_cl_init(job, &job->indirect);
+   v3dv_cl_begin(&job->indirect);
+
+   cmd_buffer->state.job = job;
+   return job;
 }
 
 static VkResult
 cmd_buffer_reset(struct v3dv_cmd_buffer *cmd_buffer)
 {
    if (cmd_buffer->status != V3DV_CMD_BUFFER_STATUS_INITIALIZED) {
+      /* FIXME */
+      assert(cmd_buffer->status == V3DV_CMD_BUFFER_STATUS_NEW);
+
       cmd_buffer->usage_flags = 0;
-
-      _mesa_set_clear(cmd_buffer->bos, NULL);
-      cmd_buffer->bo_count = 0;
-
-      v3dv_cl_reset(&cmd_buffer->bcl);
-      v3dv_cl_reset(&cmd_buffer->rcl);
-      v3dv_cl_reset(&cmd_buffer->indirect);
 
       struct v3dv_cmd_buffer_state *state = &cmd_buffer->state;
       state->pass = NULL;
       state->framebuffer = NULL;
       state->subpass_idx = 0;
+      state->job = NULL;
 
       cmd_buffer->status = V3DV_CMD_BUFFER_STATUS_INITIALIZED;
    }
@@ -248,19 +308,16 @@ v3dv_BeginCommandBuffer(VkCommandBuffer commandBuffer,
 
    cmd_buffer->usage_flags = pBeginInfo->flags;
 
-   v3dv_cl_begin(&cmd_buffer->bcl);
-   v3dv_cl_begin(&cmd_buffer->rcl);
-   v3dv_cl_begin(&cmd_buffer->indirect);
-
    cmd_buffer->status = V3DV_CMD_BUFFER_STATUS_RECORDING;
 
    return VK_SUCCESS;
 }
 
 static void
-emit_clip_window(struct v3dv_cmd_buffer *cmd_buffer, VkRect2D *rect)
+emit_clip_window(struct v3dv_job *job, const VkRect2D *rect)
 {
-   cl_emit(&cmd_buffer->bcl, CLIP_WINDOW, clip) {
+   assert(job);
+   cl_emit(&job->bcl, CLIP_WINDOW, clip) {
       clip.clip_window_left_pixel_coordinate = rect->offset.x;
       clip.clip_window_bottom_pixel_coordinate = rect->offset.y;
       clip.clip_window_width_in_pixels = rect->extent.width;
@@ -349,89 +406,11 @@ v3dv_CmdBeginRenderPass(VkCommandBuffer commandBuffer,
                                      pRenderPassBegin->clearValueCount,
                                      pRenderPassBegin->pClearValues);
 
-   v3dv_cl_ensure_space_with_branch(&cmd_buffer->bcl, 256);
-
-   /* The PTB will request the tile alloc initial size per tile at start
-    * of tile binning.
-    */
-   const uint32_t fb_layers = 1; /* FIXME */
-   uint32_t tile_alloc_size = 64 * MAX2(fb_layers, 1) *
-                              framebuffer->draw_tiles_x *
-                              framebuffer->draw_tiles_y;
-
-   /* The PTB allocates in aligned 4k chunks after the initial setup. */
-   tile_alloc_size = align(tile_alloc_size, 4096);
-
-   /* Include the first two chunk allocations that the PTB does so that
-    * we definitely clear the OOM condition before triggering one (the HW
-    * won't trigger OOM during the first allocations).
-    */
-   tile_alloc_size += 8192;
-
-   /* For performance, allocate some extra initial memory after the PTB's
-    * minimal allocations, so that we hopefully don't have to block the
-    * GPU on the kernel handling an OOM signal.
-    */
-   tile_alloc_size += 512 * 1024;
-
-   cmd_buffer->tile_alloc = v3dv_bo_alloc(cmd_buffer->device, tile_alloc_size);
-   v3dv_cmd_buffer_add_bo(cmd_buffer, cmd_buffer->tile_alloc);
-
-   const uint32_t tsda_per_tile_size = 256;
-   const uint32_t tile_state_size = MAX2(fb_layers, 1) *
-                                    framebuffer->draw_tiles_x *
-                                    framebuffer->draw_tiles_y *
-                                    tsda_per_tile_size;
-   cmd_buffer->tile_state = v3dv_bo_alloc(cmd_buffer->device, tile_state_size);
-   v3dv_cmd_buffer_add_bo(cmd_buffer, cmd_buffer->tile_state);
-
-   /* This must go before the binning mode configuration. It is
-    * required for layered framebuffers to work.
-    */
-   if (fb_layers > 0) {
-      cl_emit(&cmd_buffer->bcl, NUMBER_OF_LAYERS, config) {
-         config.number_of_layers = fb_layers;
-      }
-   }
-
-   cl_emit(&cmd_buffer->bcl, TILE_BINNING_MODE_CFG, config) {
-      config.width_in_pixels = framebuffer->width;
-      config.height_in_pixels = framebuffer->height;
-      config.number_of_render_targets = MAX2(framebuffer->attachment_count, 1);
-      config.multisample_mode_4x = false; /* FIXME */
-      config.maximum_bpp_of_all_render_targets = framebuffer->internal_bpp;
-   }
-
-   /* There's definitely nothing in the VCD cache we want. */
-   cl_emit(&cmd_buffer->bcl, FLUSH_VCD_CACHE, bin);
-
-   /* Disable any leftover OQ state from another job. */
-   cl_emit(&cmd_buffer->bcl, OCCLUSION_QUERY_COUNTER, counter);
-
-   /* "Binning mode lists must have a Start Tile Binning item (6) after
-    *  any prefix state data before the binning list proper starts."
-    */
-   cl_emit(&cmd_buffer->bcl, START_TILE_BINNING, bin);
-
    /* FIXME: probably need to align the render area to tile boundaries since
     *        the tile clears will render full tiles anyway.
     *        See vkGetRenderAreaGranularity().
     */
    state->render_area = pRenderPassBegin->renderArea;
-
-   /* If we don't have a scissor or viewport defined let's just use the render
-    * area as clip_window, as that would be required for a clear in any
-    * case. If we have that, it would be emitted as part of the pipeline
-    * dynamic state flush
-    *
-    * FIXME: this is mostly just needed for clear. radv has dedicated paths
-    * for them, so we could get that idea. In any case, need to revisit if
-    * this is the place to emit the clip window.
-    */
-   if (cmd_buffer->state.dynamic.scissor.count == 0 &&
-       cmd_buffer->state.dynamic.viewport.count == 0) {
-      emit_clip_window(cmd_buffer, &state->render_area);
-   }
 
    /* Setup for first subpass */
    state->subpass_idx = 0;
@@ -627,10 +606,13 @@ emit_stores(struct v3dv_cmd_buffer *cmd_buffer,
 static void
 emit_generic_per_tile_list(struct v3dv_cmd_buffer *cmd_buffer, uint32_t layer)
 {
+   struct v3dv_job *job = cmd_buffer->state.job;
+   assert(job);
+
    /* Emit the generic list in our indirect state -- the rcl will just
     * have pointers into it.
     */
-   struct v3dv_cl *cl = &cmd_buffer->indirect;
+   struct v3dv_cl *cl = &job->indirect;
    v3dv_cl_ensure_space(cl, 200, 1);
    struct v3dv_cl_reloc tile_list_start = v3dv_cl_get_address(cl);
 
@@ -653,7 +635,7 @@ emit_generic_per_tile_list(struct v3dv_cmd_buffer *cmd_buffer, uint32_t layer)
 
    cl_emit(cl, RETURN_FROM_SUB_LIST, ret);
 
-   cl_emit(&cmd_buffer->rcl, START_ADDRESS_OF_GENERIC_TILE_LIST, branch) {
+   cl_emit(&job->rcl, START_ADDRESS_OF_GENERIC_TILE_LIST, branch) {
       branch.start = tile_list_start;
       branch.end = v3dv_cl_get_address(cl);
    }
@@ -665,7 +647,8 @@ emit_render_layer(struct v3dv_cmd_buffer *cmd_buffer, uint32_t layer)
    const struct v3dv_cmd_buffer_state *state = &cmd_buffer->state;
    const struct v3dv_framebuffer *framebuffer = state->framebuffer;
 
-   struct v3dv_cl *rcl = &cmd_buffer->rcl;
+   struct v3dv_job *job = cmd_buffer->state.job;
+   struct v3dv_cl *rcl = &job->rcl;
 
    /* If doing multicore binning, we would need to initialize each
     * core's tile list here.
@@ -673,7 +656,7 @@ emit_render_layer(struct v3dv_cmd_buffer *cmd_buffer, uint32_t layer)
    const uint32_t tile_alloc_offset =
       64 * layer * framebuffer->draw_tiles_x * framebuffer->draw_tiles_y;
    cl_emit(rcl, MULTICORE_RENDERING_TILE_LIST_SET_BASE, list) {
-      list.address = v3dv_cl_address(cmd_buffer->tile_alloc, tile_alloc_offset);
+      list.address = v3dv_cl_address(job->tile_alloc, tile_alloc_offset);
    }
 
    cl_emit(rcl, MULTICORE_RENDERING_SUPERTILE_CFG, config) {
@@ -758,10 +741,13 @@ emit_render_layer(struct v3dv_cmd_buffer *cmd_buffer, uint32_t layer)
 static void
 emit_rcl(struct v3dv_cmd_buffer *cmd_buffer)
 {
+   struct v3dv_job *job = cmd_buffer->state.job;
+   assert(job);
+
    /* FIXME */
    const uint32_t fb_layers = 1;
 
-   v3dv_cl_ensure_space_with_branch(&cmd_buffer->rcl, 200 +
+   v3dv_cl_ensure_space_with_branch(&job->rcl, 200 +
                                     MAX2(fb_layers, 1) * 256 *
                                     cl_packet_length(SUPERTILE_COORDINATES));
 
@@ -772,7 +758,7 @@ emit_rcl(struct v3dv_cmd_buffer *cmd_buffer)
    const struct v3dv_subpass *subpass =
       &state->pass->subpasses[state->subpass_idx];
 
-   struct v3dv_cl *rcl = &cmd_buffer->rcl;
+   struct v3dv_cl *rcl = &job->rcl;
 
    /* Comon config must be the first TILE_RENDERING_MODE_CFG and
     * Z_STENCIL_CLEAR_VALUES must be last. The ones in between are optional
@@ -892,7 +878,7 @@ subpass_start(struct v3dv_cmd_buffer *cmd_buffer)
    for (uint32_t i = 0; i < subpass->color_count; i++) {
       uint32_t rp_attachment_idx = subpass->color_attachments[i].attachment;
       const struct v3dv_render_pass_attachment *attachment =
-         &cmd_buffer->state.pass->attachments[rp_attachment_idx];
+         &state->pass->attachments[rp_attachment_idx];
 
       /* FIXME: if a previous subpass has alredy computed the hw clear color
        *        for this attachment we could skip this. We can just flag this
@@ -904,7 +890,7 @@ subpass_start(struct v3dv_cmd_buffer *cmd_buffer)
 
       const uint32_t sp_attachment_idx = i;
       const struct v3dv_image_view *iview =
-         cmd_buffer->state.framebuffer->attachments[sp_attachment_idx];
+         state->framebuffer->attachments[sp_attachment_idx];
 
       assert((iview->aspects &
               (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) == 0);
@@ -917,20 +903,113 @@ subpass_start(struct v3dv_cmd_buffer *cmd_buffer)
                                                      clear_color);
       }
    }
+
+   /* FIXME: for now, each subpass goes into a separate job. In the future we
+    * might be able to merge subpasses that render to the same render targets
+    * so long as they don't render to more than 4 color attachments and there
+    * aren't other subpass dependencies preveting this.
+    */
+   struct v3dv_job *job = v3dv_cmd_buffer_start_job(cmd_buffer);
+
+   const struct v3dv_framebuffer *framebuffer = cmd_buffer->state.framebuffer;
+
+   /* Setup binning for this subpass.
+    *
+    * FIXME: For now we do this at the start each subpass but if we implement
+    * subpass merges in the future we would only want to emit this once per job.
+    */
+   v3dv_cl_ensure_space_with_branch(&job->bcl, 256);
+
+   /* The PTB will request the tile alloc initial size per tile at start
+    * of tile binning.
+    */
+   const uint32_t fb_layers = 1; /* FIXME */
+   uint32_t tile_alloc_size = 64 * MAX2(fb_layers, 1) *
+                              framebuffer->draw_tiles_x *
+                              framebuffer->draw_tiles_y;
+
+   /* The PTB allocates in aligned 4k chunks after the initial setup. */
+   tile_alloc_size = align(tile_alloc_size, 4096);
+
+   /* Include the first two chunk allocations that the PTB does so that
+    * we definitely clear the OOM condition before triggering one (the HW
+    * won't trigger OOM during the first allocations).
+    */
+   tile_alloc_size += 8192;
+
+   /* For performance, allocate some extra initial memory after the PTB's
+    * minimal allocations, so that we hopefully don't have to block the
+    * GPU on the kernel handling an OOM signal.
+    */
+   tile_alloc_size += 512 * 1024;
+
+   job->tile_alloc = v3dv_bo_alloc(cmd_buffer->device, tile_alloc_size);
+   v3dv_job_add_bo(job, job->tile_alloc);
+
+   const uint32_t tsda_per_tile_size = 256;
+   const uint32_t tile_state_size = MAX2(fb_layers, 1) *
+                                    framebuffer->draw_tiles_x *
+                                    framebuffer->draw_tiles_y *
+                                    tsda_per_tile_size;
+   job->tile_state = v3dv_bo_alloc(cmd_buffer->device, tile_state_size);
+   v3dv_job_add_bo(job, job->tile_state);
+
+   /* This must go before the binning mode configuration. It is
+    * required for layered framebuffers to work.
+    */
+   if (fb_layers > 0) {
+      cl_emit(&job->bcl, NUMBER_OF_LAYERS, config) {
+         config.number_of_layers = fb_layers;
+      }
+   }
+
+   cl_emit(&job->bcl, TILE_BINNING_MODE_CFG, config) {
+      config.width_in_pixels = framebuffer->width;
+      config.height_in_pixels = framebuffer->height;
+      config.number_of_render_targets = MAX2(framebuffer->attachment_count, 1);
+      config.multisample_mode_4x = false; /* FIXME */
+      config.maximum_bpp_of_all_render_targets = framebuffer->internal_bpp;
+   }
+
+   /* There's definitely nothing in the VCD cache we want. */
+   cl_emit(&job->bcl, FLUSH_VCD_CACHE, bin);
+
+   /* Disable any leftover OQ state from another job. */
+   cl_emit(&job->bcl, OCCLUSION_QUERY_COUNTER, counter);
+
+   /* "Binning mode lists must have a Start Tile Binning item (6) after
+    *  any prefix state data before the binning list proper starts."
+    */
+   cl_emit(&job->bcl, START_TILE_BINNING, bin);
+
+   /* If we don't have a scissor or viewport defined let's just use the render
+    * area as clip_window, as that would be required for a clear in any
+    * case. If we have that, it would be emitted as part of the pipeline
+    * dynamic state flush
+    *
+    * FIXME: this is mostly just needed for clear. radv has dedicated paths
+    * for them, so we could get that idea. In any case, need to revisit if
+    * this is the place to emit the clip window.
+    */
+   if (cmd_buffer->state.dynamic.scissor.count == 0 &&
+       cmd_buffer->state.dynamic.viewport.count == 0) {
+      emit_clip_window(job, &state->render_area);
+   }
 }
 
 static void
 subpass_finish(struct v3dv_cmd_buffer *cmd_buffer)
 {
-   v3dv_cl_ensure_space_with_branch(&cmd_buffer->bcl, cl_packet_length(FLUSH));
+   struct v3dv_job *job = cmd_buffer->state.job;
+   assert(job);
 
-   /* We need to emit a flush between binning jobs, so do this before we start
-    * recording the next subpass.
+   /* This finishes the a binning job.
     *
     * FIXME: if the next subpass draws to the same RTs, we could skip this
     * and the binning setup for the next subpass.
     */
-   cl_emit(&cmd_buffer->bcl, FLUSH, flush);
+   emit_binning_flush(job);
+   v3dv_cmd_buffer_finish_job(cmd_buffer);
 }
 
 static void
@@ -961,10 +1040,17 @@ v3dv_EndCommandBuffer(VkCommandBuffer commandBuffer)
 {
    V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
 
-   if (v3dv_cl_offset(&cmd_buffer->bcl) == 0)
-      return VK_SUCCESS; /* FIXME? */
-
    cmd_buffer->status = V3DV_CMD_BUFFER_STATUS_EXECUTABLE;
+
+   struct v3dv_job *job = cmd_buffer->state.job;
+   if (!job)
+      return VK_SUCCESS;
+
+   /* We get here if we recorded commands after the last render pass in the
+    * command buffer. Make sure we finish this last job. */
+   assert(v3dv_cl_offset(&job->bcl) != 0);
+   emit_binning_flush(job);
+   v3dv_cmd_buffer_finish_job(cmd_buffer);
 
    return VK_SUCCESS;
 }
@@ -1028,11 +1114,11 @@ v3dv_CmdBindPipeline(VkCommandBuffer commandBuffer,
 
       /* FIXME: is here the best moment to do that? or when drawing? */
       if (pipeline->vs->assembly_bo)
-         v3dv_cmd_buffer_add_bo(cmd_buffer, pipeline->vs->assembly_bo);
+         v3dv_job_add_bo(cmd_buffer->state.job, pipeline->vs->assembly_bo);
       if (pipeline->vs_bin->assembly_bo)
-         v3dv_cmd_buffer_add_bo(cmd_buffer, pipeline->vs_bin->assembly_bo);
+         v3dv_job_add_bo(cmd_buffer->state.job, pipeline->vs_bin->assembly_bo);
       if (pipeline->fs->assembly_bo)
-         v3dv_cmd_buffer_add_bo(cmd_buffer, pipeline->fs->assembly_bo);
+         v3dv_job_add_bo(cmd_buffer->state.job, pipeline->fs->assembly_bo);
 
       cmd_buffer->state.dirty |= V3DV_CMD_DIRTY_PIPELINE;
       break;
@@ -1181,7 +1267,7 @@ emit_scissor(struct v3dv_cmd_buffer *cmd_buffer)
    clip_window.extent.width = maxx - minx;
    clip_window.extent.height = maxy - miny;
 
-   emit_clip_window(cmd_buffer, &clip_window);
+   emit_clip_window(cmd_buffer->state.job, &clip_window);
 }
 
 static void
@@ -1194,23 +1280,26 @@ emit_viewport(struct v3dv_cmd_buffer *cmd_buffer)
    float *vptranslate = dynamic->viewport.translate[0];
    float *vpscale = dynamic->viewport.scale[0];
 
-   cl_emit(&cmd_buffer->bcl, CLIPPER_XY_SCALING, clip) {
+   struct v3dv_job *job = cmd_buffer->state.job;
+   assert(job);
+
+   cl_emit(&job->bcl, CLIPPER_XY_SCALING, clip) {
       clip.viewport_half_width_in_1_256th_of_pixel = vpscale[0] * 256.0f;
       clip.viewport_half_height_in_1_256th_of_pixel = vpscale[1] * 256.0f;
    }
 
-   cl_emit(&cmd_buffer->bcl, CLIPPER_Z_SCALE_AND_OFFSET, clip) {
+   cl_emit(&job->bcl, CLIPPER_Z_SCALE_AND_OFFSET, clip) {
       clip.viewport_z_offset_zc_to_zs = vptranslate[2];
       clip.viewport_z_scale_zc_to_zs = vpscale[2];
    }
-   cl_emit(&cmd_buffer->bcl, CLIPPER_Z_MIN_MAX_CLIPPING_PLANES, clip) {
+   cl_emit(&job->bcl, CLIPPER_Z_MIN_MAX_CLIPPING_PLANES, clip) {
       float z1 = (vptranslate[2] - vpscale[2]);
       float z2 = (vptranslate[2] + vpscale[2]);
       clip.minimum_zw = MIN2(z1, z2);
       clip.maximum_zw = MAX2(z1, z2);
    }
 
-   cl_emit(&cmd_buffer->bcl, VIEWPORT_OFFSET, vp) {
+   cl_emit(&job->bcl, VIEWPORT_OFFSET, vp) {
       vp.viewport_centre_x_coordinate = vptranslate[0];
       vp.viewport_centre_y_coordinate = vptranslate[1];
    }
@@ -1233,9 +1322,11 @@ struct vpm_config {
 static void
 cmd_buffer_emit_graphics_pipeline(struct v3dv_cmd_buffer *cmd_buffer)
 {
+   struct v3dv_job *job = cmd_buffer->state.job;
+   assert(job);
+
    struct v3dv_cmd_buffer_state *state = &cmd_buffer->state;
    struct v3dv_pipeline *pipeline = state->pipeline;
-
    assert(pipeline);
 
    /* Upload the uniforms to the indirect CL first */
@@ -1249,9 +1340,9 @@ cmd_buffer_emit_graphics_pipeline(struct v3dv_cmd_buffer *cmd_buffer)
       v3dv_write_uniforms(cmd_buffer, pipeline->vs_bin);
 
    /* Update the cache dirty flag based on the shader progs data */
-   state->tmu_dirty_rcl |= pipeline->vs_bin->prog_data.vs->base.tmu_dirty_rcl;
-   state->tmu_dirty_rcl |= pipeline->vs->prog_data.vs->base.tmu_dirty_rcl;
-   state->tmu_dirty_rcl |= pipeline->fs->prog_data.fs->base.tmu_dirty_rcl;
+   job->tmu_dirty_rcl |= pipeline->vs_bin->prog_data.vs->base.tmu_dirty_rcl;
+   job->tmu_dirty_rcl |= pipeline->vs->prog_data.vs->base.tmu_dirty_rcl;
+   job->tmu_dirty_rcl |= pipeline->fs->prog_data.fs->base.tmu_dirty_rcl;
 
    /* FIXME: fake vtx->num_elements, that is the vertex state that includes
     * data from the buffers used on the vertex. Such info is still not
@@ -1267,7 +1358,7 @@ cmd_buffer_emit_graphics_pipeline(struct v3dv_cmd_buffer *cmd_buffer)
    uint32_t num_elements_to_emit = MAX2(vtx_num_elements, 1);
 
    uint32_t shader_rec_offset =
-      v3dv_cl_ensure_space(&cmd_buffer->indirect,
+      v3dv_cl_ensure_space(&job->indirect,
                            cl_packet_length(GL_SHADER_STATE_RECORD) +
                            num_elements_to_emit *
                            cl_packet_length(GL_SHADER_STATE_ATTRIBUTE_RECORD),
@@ -1286,7 +1377,7 @@ cmd_buffer_emit_graphics_pipeline(struct v3dv_cmd_buffer *cmd_buffer)
    vpm_cfg.Ve = 0;
    vpm_cfg.Vc = pipeline->vs->prog_data.vs->vcm_cache_size;
 
-   cl_emit(&cmd_buffer->indirect, GL_SHADER_STATE_RECORD, shader) {
+   cl_emit(&job->indirect, GL_SHADER_STATE_RECORD, shader) {
       shader.enable_clipping = true;
 
       shader.point_size_in_shaded_vertex_data =
@@ -1400,9 +1491,9 @@ cmd_buffer_emit_graphics_pipeline(struct v3dv_cmd_buffer *cmd_buffer)
        * by CS and VS.  If we have no attributes being consumed by
        * the shader, set up a dummy to be loaded into the VPM.
        */
-      cl_emit(&cmd_buffer->indirect, GL_SHADER_STATE_ATTRIBUTE_RECORD, attr) {
+      cl_emit(&job->indirect, GL_SHADER_STATE_ATTRIBUTE_RECORD, attr) {
          /* Valid address of data whose value will be unused. */
-         attr.address = v3dv_cl_address(cmd_buffer->indirect.bo, 0);
+         attr.address = v3dv_cl_address(job->indirect.bo, 0);
 
          attr.type = ATTRIBUTE_FLOAT;
          attr.stride = 0;
@@ -1413,13 +1504,13 @@ cmd_buffer_emit_graphics_pipeline(struct v3dv_cmd_buffer *cmd_buffer)
       }
    }
 
-   cl_emit(&cmd_buffer->bcl, VCM_CACHE_SIZE, vcm) {
+   cl_emit(&job->bcl, VCM_CACHE_SIZE, vcm) {
       vcm.number_of_16_vertex_batches_for_binning = vpm_cfg_bin.Vc;
       vcm.number_of_16_vertex_batches_for_rendering = vpm_cfg.Vc;
    }
 
-   cl_emit(&cmd_buffer->bcl, GL_SHADER_STATE, state) {
-      state.address = v3dv_cl_address(cmd_buffer->indirect.bo,
+   cl_emit(&job->bcl, GL_SHADER_STATE, state) {
+      state.address = v3dv_cl_address(job->indirect.bo,
                                       shader_rec_offset);
       state.number_of_attribute_arrays = num_elements_to_emit;
    }
@@ -1462,6 +1553,9 @@ static void
 cmd_buffer_emit_draw_packets(struct v3dv_cmd_buffer *cmd_buffer,
                              struct v3dv_draw_info *info)
 {
+   struct v3dv_job *job = cmd_buffer->state.job;
+   assert(job);
+
    struct v3dv_cmd_buffer_state *state = &cmd_buffer->state;
    struct v3dv_pipeline *pipeline = state->pipeline;
 
@@ -1473,7 +1567,7 @@ cmd_buffer_emit_draw_packets(struct v3dv_cmd_buffer *cmd_buffer,
    /* FIXME: using VERTEX_ARRAY_PRIMS always as it fits our test caselist
     * right now. Need to be choosen based on the current case.
     */
-   cl_emit(&cmd_buffer->bcl, VERTEX_ARRAY_PRIMS, prim) {
+   cl_emit(&job->bcl, VERTEX_ARRAY_PRIMS, prim) {
       prim.mode = hw_prim_type | prim_tf_enable;
       prim.length = info->vertex_count;
       prim.index_of_first_vertex = info->first_vertex;

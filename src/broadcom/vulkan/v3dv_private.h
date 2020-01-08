@@ -439,6 +439,30 @@ struct v3dv_dynamic_state {
 
 extern const struct v3dv_dynamic_state default_dynamic_state;
 
+struct v3dv_job {
+   struct list_head list_link;
+
+   struct v3dv_cmd_buffer *cmd_buffer;
+
+   struct v3dv_cl bcl;
+   struct v3dv_cl rcl;
+   struct v3dv_cl indirect;
+
+   /* Set of all BOs referenced by the job. This will be used for making
+    * the list of BOs that the kernel will need to have paged in to
+    * execute our job.
+    */
+   struct set *bos;
+   uint32_t bo_count;
+
+   struct v3dv_bo *tile_alloc;
+   struct v3dv_bo *tile_state;
+
+   bool tmu_dirty_rcl;
+};
+
+void v3dv_job_add_bo(struct v3dv_job *job, struct v3dv_bo *bo);
+
 struct v3dv_cmd_buffer_state {
    const struct v3dv_render_pass *pass;
    const struct v3dv_framebuffer *framebuffer;
@@ -456,8 +480,8 @@ struct v3dv_cmd_buffer_state {
    struct v3dv_dynamic_state dynamic;
    uint32_t dirty;
 
-   /* FIXME: here? */
-   bool tmu_dirty_rcl;
+   /* Current job being recorded */
+   struct v3dv_job *job;
 };
 
 struct v3dv_cmd_buffer {
@@ -471,26 +495,16 @@ struct v3dv_cmd_buffer {
    VkCommandBufferUsageFlags usage_flags;
    VkCommandBufferLevel level;
 
-   struct v3dv_cl bcl;
-   struct v3dv_cl rcl;
-   struct v3dv_cl indirect;
-
    enum v3dv_cmd_buffer_status status;
 
    struct v3dv_cmd_buffer_state state;
 
-   /* Set of all BOs referenced by the job. This will be used for making
-    * the list of BOs that the kernel will need to have paged in to
-    * execute our job.
-    */
-   struct set *bos;
-   uint32_t bo_count;
-
-   struct v3dv_bo *tile_alloc;
-   struct v3dv_bo *tile_state;
+   /* List of jobs to submit to the kernel */
+   struct list_head submit_jobs;
 };
 
-void v3dv_cmd_buffer_add_bo(struct v3dv_cmd_buffer *cmd_buffer, struct v3dv_bo *bo);
+struct v3dv_job *v3dv_cmd_buffer_start_job(struct v3dv_cmd_buffer *cmd_buffer);
+void v3dv_cmd_buffer_finish_job(struct v3dv_cmd_buffer *cmd_buffer);
 
 struct v3dv_shader_module {
    unsigned char sha1[20];

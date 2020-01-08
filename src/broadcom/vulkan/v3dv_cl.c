@@ -25,20 +25,18 @@
 #include "broadcom/cle/v3dx_pack.h"
 
 void
-v3dv_cl_init(struct v3dv_cmd_buffer *cmd_buffer, struct v3dv_cl *cl)
+v3dv_cl_init(struct v3dv_job *job, struct v3dv_cl *cl)
 {
    cl->base = NULL;
    cl->next = cl->base;
    cl->bo = NULL;
    cl->size = 0;
-   cl->cmd_buffer = cmd_buffer;
+   cl->job = job;
 }
 
 void
 v3dv_cl_begin(struct v3dv_cl *cl)
 {
-   assert(!cl->cmd_buffer ||
-          cl->cmd_buffer->status == V3DV_CMD_BUFFER_STATUS_INITIALIZED);
    assert(v3dv_cl_offset(cl) == 0);
 }
 
@@ -48,15 +46,15 @@ v3dv_cl_reset(struct v3dv_cl *cl)
    /* FIXME: consider keeping the BO when the command buffer is reset with
     * flag VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT.
     */
-   v3dv_cl_init(cl->cmd_buffer, cl);
+   v3dv_cl_init(cl->job, cl);
 }
 
 void
 v3dv_cl_destroy(struct v3dv_cl *cl)
 {
    if (cl->bo) {
-      assert(cl->cmd_buffer);
-      v3dv_bo_free(cl->cmd_buffer->device, cl->bo);
+      assert(cl->job);
+      v3dv_bo_free(cl->job->cmd_buffer->device, cl->bo);
    }
 
    /* Leave the CL in a reset state to catch use after destroy instances */
@@ -73,15 +71,15 @@ v3dv_cl_ensure_space(struct v3dv_cl *cl, uint32_t space, uint32_t alignment)
       return offset;
    }
 
-   struct v3dv_bo *bo = v3dv_bo_alloc(cl->cmd_buffer->device, space);
+   struct v3dv_bo *bo = v3dv_bo_alloc(cl->job->cmd_buffer->device, space);
    if (!bo) {
       fprintf(stderr, "failed to allocate memory for command list");
       abort();
    }
 
-   v3dv_cmd_buffer_add_bo(cl->cmd_buffer, bo);
+   v3dv_job_add_bo(cl->job, bo);
 
-   bool ok = v3dv_bo_map(cl->cmd_buffer->device, bo, bo->size);
+   bool ok = v3dv_bo_map(cl->job->cmd_buffer->device, bo, bo->size);
    if (!ok) {
       fprintf(stderr, "failed to map command list buffer");
       abort();
@@ -102,7 +100,7 @@ v3dv_cl_ensure_space_with_branch(struct v3dv_cl *cl, uint32_t space)
    if (v3dv_cl_offset(cl) + space + cl_packet_length(BRANCH) <= cl->size)
       return;
 
-   struct v3dv_bo *bo = v3dv_bo_alloc(cl->cmd_buffer->device, space);
+   struct v3dv_bo *bo = v3dv_bo_alloc(cl->job->cmd_buffer->device, space);
    if (!bo) {
       fprintf(stderr, "failed to allocate memory for command list");
       abort();
@@ -115,9 +113,9 @@ v3dv_cl_ensure_space_with_branch(struct v3dv_cl *cl, uint32_t space)
       }
    }
 
-   v3dv_cmd_buffer_add_bo(cl->cmd_buffer, bo);
+   v3dv_job_add_bo(cl->job, bo);
 
-   bool ok = v3dv_bo_map(cl->cmd_buffer->device, bo, bo->size);
+   bool ok = v3dv_bo_map(cl->job->cmd_buffer->device, bo, bo->size);
    if (!ok) {
       fprintf(stderr, "failed to map command list buffer");
       abort();
