@@ -576,12 +576,7 @@ st_translate_vertex_program(struct st_context *st,
    if (ureg == NULL)
       return false;
 
-   if (stp->Base.info.clip_distance_array_size)
-      ureg_property(ureg, TGSI_PROPERTY_NUM_CLIPDIST_ENABLED,
-                    stp->Base.info.clip_distance_array_size);
-   if (stp->Base.info.cull_distance_array_size)
-      ureg_property(ureg, TGSI_PROPERTY_NUM_CULLDIST_ENABLED,
-                    stp->Base.info.cull_distance_array_size);
+   ureg_setup_shader_info(ureg, &stp->Base.info);
 
    if (ST_DEBUG & DEBUG_MESA) {
       _mesa_print_program(&stp->Base);
@@ -1158,6 +1153,8 @@ st_translate_fragment_program(struct st_context *st,
    if (ureg == NULL)
       return false;
 
+   ureg_setup_shader_info(ureg, &stfp->Base.info);
+
    if (ST_DEBUG & DEBUG_MESA) {
       _mesa_print_program(&stfp->Base);
       _mesa_print_program_parameters(st->ctx, &stfp->Base);
@@ -1165,29 +1162,6 @@ st_translate_fragment_program(struct st_context *st,
    }
    if (write_all == GL_TRUE)
       ureg_property(ureg, TGSI_PROPERTY_FS_COLOR0_WRITES_ALL_CBUFS, 1);
-
-   if (stfp->Base.info.fs.depth_layout != FRAG_DEPTH_LAYOUT_NONE) {
-      switch (stfp->Base.info.fs.depth_layout) {
-      case FRAG_DEPTH_LAYOUT_ANY:
-         ureg_property(ureg, TGSI_PROPERTY_FS_DEPTH_LAYOUT,
-                       TGSI_FS_DEPTH_LAYOUT_ANY);
-         break;
-      case FRAG_DEPTH_LAYOUT_GREATER:
-         ureg_property(ureg, TGSI_PROPERTY_FS_DEPTH_LAYOUT,
-                       TGSI_FS_DEPTH_LAYOUT_GREATER);
-         break;
-      case FRAG_DEPTH_LAYOUT_LESS:
-         ureg_property(ureg, TGSI_PROPERTY_FS_DEPTH_LAYOUT,
-                       TGSI_FS_DEPTH_LAYOUT_LESS);
-         break;
-      case FRAG_DEPTH_LAYOUT_UNCHANGED:
-         ureg_property(ureg, TGSI_PROPERTY_FS_DEPTH_LAYOUT,
-                       TGSI_FS_DEPTH_LAYOUT_UNCHANGED);
-         break;
-      default:
-         assert(0);
-      }
-   }
 
    if (stfp->glsl_to_tgsi) {
       st_translate_program(st->ctx,
@@ -1610,48 +1584,7 @@ st_translate_common_program(struct st_context *st,
    if (ureg == NULL)
       return false;
 
-   switch (stage) {
-   case PIPE_SHADER_TESS_CTRL:
-      ureg_property(ureg, TGSI_PROPERTY_TCS_VERTICES_OUT,
-                    stp->Base.info.tess.tcs_vertices_out);
-      break;
-
-   case PIPE_SHADER_TESS_EVAL:
-      if (stp->Base.info.tess.primitive_mode == GL_ISOLINES)
-         ureg_property(ureg, TGSI_PROPERTY_TES_PRIM_MODE, GL_LINES);
-      else
-         ureg_property(ureg, TGSI_PROPERTY_TES_PRIM_MODE,
-                       stp->Base.info.tess.primitive_mode);
-
-      STATIC_ASSERT((TESS_SPACING_EQUAL + 1) % 3 == PIPE_TESS_SPACING_EQUAL);
-      STATIC_ASSERT((TESS_SPACING_FRACTIONAL_ODD + 1) % 3 ==
-                    PIPE_TESS_SPACING_FRACTIONAL_ODD);
-      STATIC_ASSERT((TESS_SPACING_FRACTIONAL_EVEN + 1) % 3 ==
-                    PIPE_TESS_SPACING_FRACTIONAL_EVEN);
-
-      ureg_property(ureg, TGSI_PROPERTY_TES_SPACING,
-                    (stp->Base.info.tess.spacing + 1) % 3);
-
-      ureg_property(ureg, TGSI_PROPERTY_TES_VERTEX_ORDER_CW,
-                    !stp->Base.info.tess.ccw);
-      ureg_property(ureg, TGSI_PROPERTY_TES_POINT_MODE,
-                    stp->Base.info.tess.point_mode);
-      break;
-
-   case PIPE_SHADER_GEOMETRY:
-      ureg_property(ureg, TGSI_PROPERTY_GS_INPUT_PRIM,
-                    stp->Base.info.gs.input_primitive);
-      ureg_property(ureg, TGSI_PROPERTY_GS_OUTPUT_PRIM,
-                    stp->Base.info.gs.output_primitive);
-      ureg_property(ureg, TGSI_PROPERTY_GS_MAX_OUTPUT_VERTICES,
-                    stp->Base.info.gs.vertices_out);
-      ureg_property(ureg, TGSI_PROPERTY_GS_INVOCATIONS,
-                    stp->Base.info.gs.invocations);
-      break;
-
-   default:
-      break;
-   }
+   ureg_setup_shader_info(ureg, &stp->Base.info);
 
    ubyte inputSlotToAttr[VARYING_SLOT_TESS_MAX];
    ubyte inputMapping[VARYING_SLOT_TESS_MAX];
@@ -1672,13 +1605,6 @@ st_translate_common_program(struct st_context *st,
    memset(inputMapping, 0, sizeof(inputMapping));
    memset(outputMapping, 0, sizeof(outputMapping));
    memset(&stp->state, 0, sizeof(stp->state));
-
-   if (prog->info.clip_distance_array_size)
-      ureg_property(ureg, TGSI_PROPERTY_NUM_CLIPDIST_ENABLED,
-                    prog->info.clip_distance_array_size);
-   if (prog->info.cull_distance_array_size)
-      ureg_property(ureg, TGSI_PROPERTY_NUM_CULLDIST_ENABLED,
-                    prog->info.cull_distance_array_size);
 
    /*
     * Convert Mesa program inputs to TGSI input register semantics.

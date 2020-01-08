@@ -6520,17 +6520,6 @@ emit_face_var(struct gl_context *ctx, struct st_translate *t)
    t->inputs[t->inputMapping[VARYING_SLOT_FACE]] = ureg_src(face_temp);
 }
 
-static void
-emit_compute_block_size(const struct gl_program *prog,
-                        struct ureg_program *ureg) {
-   ureg_property(ureg, TGSI_PROPERTY_CS_FIXED_BLOCK_WIDTH,
-                 prog->info.cs.local_size[0]);
-   ureg_property(ureg, TGSI_PROPERTY_CS_FIXED_BLOCK_HEIGHT,
-                 prog->info.cs.local_size[1]);
-   ureg_property(ureg, TGSI_PROPERTY_CS_FIXED_BLOCK_DEPTH,
-                 prog->info.cs.local_size[2]);
-}
-
 struct sort_inout_decls {
    bool operator()(const struct inout_decl &a, const struct inout_decl &b) const {
       return mapping[a.mesa_index] < mapping[b.mesa_index];
@@ -6746,14 +6735,6 @@ st_translate_program(
    }
 
    if (procType == PIPE_SHADER_FRAGMENT) {
-      if (program->shader->Program->info.fs.early_fragment_tests ||
-          program->shader->Program->info.fs.post_depth_coverage) {
-         ureg_property(ureg, TGSI_PROPERTY_FS_EARLY_DEPTH_STENCIL, 1);
-
-         if (program->shader->Program->info.fs.post_depth_coverage)
-            ureg_property(ureg, TGSI_PROPERTY_FS_POST_DEPTH_COVERAGE, 1);
-      }
-
       if (proginfo->info.inputs_read & VARYING_BIT_POS) {
           /* Must do this after setting up t->inputs. */
           emit_wpos(st_context(ctx), t, proginfo, ureg,
@@ -6815,13 +6796,6 @@ st_translate_program(
          }
       }
    }
-
-   if (procType == PIPE_SHADER_COMPUTE) {
-      emit_compute_block_size(proginfo, ureg);
-   }
-
-   if (program->shader->Program->info.layer_viewport_relative)
-      ureg_property(ureg, TGSI_PROPERTY_LAYER_VIEWPORT_RELATIVE, 1);
 
    /* Declare address register.
     */

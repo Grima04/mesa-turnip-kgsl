@@ -41,6 +41,7 @@ extern "C" {
 struct pipe_screen;
 struct ureg_program;
 struct pipe_stream_output_info;
+struct shader_info;
 
 /* Almost a tgsi_src_register, but we need to pull in the Absolute
  * flag from the _ext token.  Indirect flag always implies ADDR[0].
@@ -1216,6 +1217,9 @@ ureg_dst_is_undef( struct ureg_dst dst )
    return dst.File == TGSI_FILE_NULL;
 }
 
+void
+ureg_setup_shader_info(struct ureg_program *ureg,
+                       const struct shader_info *info);
 
 #ifdef __cplusplus
 }
