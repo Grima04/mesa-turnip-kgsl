@@ -3991,7 +3991,7 @@ radv_pipeline_generate_hw_ngg(struct radeon_cmdbuf *ctx_cs,
 
 	radeon_set_context_reg(ctx_cs, R_028A84_VGT_PRIMITIVEID_EN,
 			       S_028A84_PRIMITIVEID_EN(es_enable_prim_id) |
-			       S_028A84_NGG_DISABLE_PROVOK_REUSE(es_enable_prim_id));
+			       S_028A84_NGG_DISABLE_PROVOK_REUSE(outinfo->export_prim_id));
 
 	radeon_set_context_reg(ctx_cs, R_028AAC_VGT_ESGS_RING_ITEMSIZE,
 			       ngg_state->vgt_esgs_ring_itemsize);
