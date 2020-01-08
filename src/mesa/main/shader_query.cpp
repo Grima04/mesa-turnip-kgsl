@@ -581,8 +581,11 @@ _mesa_program_resource_find_name(struct gl_shader_program *shProg,
 {
    struct gl_program_resource *res = NULL;
 
+   if (name == NULL)
+      return NULL;
+
    /* If we have a name, try the ProgramResourceHash first. */
-   if (name && shProg->data->ProgramResourceHash)
+   if (shProg->data->ProgramResourceHash)
       res = search_resource_hash(shProg, programInterface, name, array_index);
 
    if (res)
