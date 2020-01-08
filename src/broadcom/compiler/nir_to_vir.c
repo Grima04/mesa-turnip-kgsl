@@ -1534,9 +1534,11 @@ ntq_setup_vs_inputs(struct v3d_compile *c)
         unsigned num_components = 0;
         uint32_t vpm_components_queued = 0;
         bool uses_iid = c->s->info.system_values_read &
-                (1ull << SYSTEM_VALUE_INSTANCE_ID);
+                (1ull << SYSTEM_VALUE_INSTANCE_ID |
+                 1ull << SYSTEM_VALUE_INSTANCE_INDEX);
         bool uses_vid = c->s->info.system_values_read &
-                (1ull << SYSTEM_VALUE_VERTEX_ID);
+                (1ull << SYSTEM_VALUE_VERTEX_ID |
+                 1ull << SYSTEM_VALUE_VERTEX_ID_ZERO_BASE);
         num_components += uses_iid;
         num_components += uses_vid;
 

@@ -625,9 +625,12 @@ v3d_vs_set_prog_data(struct v3d_compile *c,
         }
 
         prog_data->uses_vid = (c->s->info.system_values_read &
-                               (1ull << SYSTEM_VALUE_VERTEX_ID));
+                               (1ull << SYSTEM_VALUE_VERTEX_ID |
+                                1ull << SYSTEM_VALUE_VERTEX_ID_ZERO_BASE));
+
         prog_data->uses_iid = (c->s->info.system_values_read &
-                               (1ull << SYSTEM_VALUE_INSTANCE_ID));
+                               (1ull << SYSTEM_VALUE_INSTANCE_ID |
+                                1ull << SYSTEM_VALUE_INSTANCE_INDEX));
 
         if (prog_data->uses_vid)
                 prog_data->vpm_input_size++;
