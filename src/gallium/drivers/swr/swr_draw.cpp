@@ -236,10 +236,10 @@ swr_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info)
                                    info->start,
                                    info->start_instance);
 
-   /* On large client-buffer draw, we used client buffer directly, without
+   /* On client-buffer draw, we used client buffer directly, without
     * copy.  Block until draw is finished.
     * VMD is an example application that benefits from this. */
-   if (ctx->dirty & SWR_LARGE_CLIENT_DRAW) {
+   if (ctx->dirty & SWR_BLOCK_CLIENT_DRAW) {
       struct swr_screen *screen = swr_screen(pipe->screen);
       swr_fence_submit(ctx, screen->flush_fence);
       swr_fence_finish(pipe->screen, NULL, screen->flush_fence, 0);
