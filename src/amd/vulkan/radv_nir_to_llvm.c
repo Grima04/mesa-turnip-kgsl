@@ -4084,16 +4084,19 @@ LLVMModuleRef ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm,
 		 * Add an extra dword per vertex to ensure an odd stride, which
 		 * avoids bank conflicts for SoA accesses.
 		 */
-		declare_esgs_ring(&ctx);
+		if (!args->options->key.vs_common_out.as_ngg_passthrough)
+			declare_esgs_ring(&ctx);
 
 		/* This is really only needed when streamout and / or vertex
 		 * compaction is enabled.
 		 */
-		LLVMTypeRef asi32 = LLVMArrayType(ctx.ac.i32, 8);
-		ctx.gs_ngg_scratch = LLVMAddGlobalInAddressSpace(ctx.ac.module,
-			asi32, "ngg_scratch", AC_ADDR_SPACE_LDS);
-		LLVMSetInitializer(ctx.gs_ngg_scratch, LLVMGetUndef(asi32));
-		LLVMSetAlignment(ctx.gs_ngg_scratch, 4);
+		if (args->shader_info->so.num_outputs) {
+			LLVMTypeRef asi32 = LLVMArrayType(ctx.ac.i32, 8);
+			ctx.gs_ngg_scratch = LLVMAddGlobalInAddressSpace(ctx.ac.module,
+				asi32, "ngg_scratch", AC_ADDR_SPACE_LDS);
+			LLVMSetInitializer(ctx.gs_ngg_scratch, LLVMGetUndef(asi32));
+			LLVMSetAlignment(ctx.gs_ngg_scratch, 4);
+		}
 	}
 
 	for(int i = 0; i < shader_count; ++i) {
