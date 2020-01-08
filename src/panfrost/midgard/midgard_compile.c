@@ -210,6 +210,7 @@ M_LOAD(ld_color_buffer_32u);
 M_STORE(st_vary_32);
 M_LOAD(ld_cubemap_coords);
 M_LOAD(ld_compute_id);
+M_LOAD(pack_colour);
 
 static midgard_instruction
 v_branch(bool conditional, bool invert)

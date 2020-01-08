@@ -391,6 +391,12 @@ midgard_writeout;
 typedef enum {
         midgard_op_ld_st_noop   = 0x03,
 
+        /* Unpack a colour from a native format to fp16 */
+        midgard_op_unpack_colour = 0x05,
+
+        /* Packs a colour from fp16 to a native format */
+        midgard_op_pack_colour   = 0x09,
+
         /* Unclear why this is on the L/S unit, but moves fp32 cube map
          * coordinates in r27 to its cube map texture coordinate destination
          * (e.g r29). */
