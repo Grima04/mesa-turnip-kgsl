@@ -50,6 +50,9 @@ v3dv_job_add_bo(struct v3dv_job *job, struct v3dv_bo *bo)
 static void
 subpass_start(struct v3dv_cmd_buffer *cmd_buffer);
 
+static void
+subpass_finish(struct v3dv_cmd_buffer *cmd_buffer);
+
 VkResult
 v3dv_CreateCommandPool(VkDevice _device,
                        const VkCommandPoolCreateInfo *pCreateInfo,
@@ -417,7 +420,22 @@ v3dv_CmdBeginRenderPass(VkCommandBuffer commandBuffer,
 
    /* Setup for first subpass */
    state->subpass_idx = 0;
+   subpass_start(cmd_buffer);
+}
 
+void
+v3dv_CmdNextSubpass(VkCommandBuffer commandBuffer, VkSubpassContents contents)
+{
+   V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
+
+   struct v3dv_cmd_buffer_state *state = &cmd_buffer->state;
+   assert(state->subpass_idx < state->pass->subpass_count - 1);
+
+   /* Finish the previous subpass */
+   subpass_finish(cmd_buffer);
+
+   /* Start the next subpass */
+   state->subpass_idx++;
    subpass_start(cmd_buffer);
 }
 
