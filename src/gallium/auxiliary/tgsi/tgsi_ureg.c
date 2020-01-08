@@ -31,6 +31,7 @@
 #include "pipe/p_state.h"
 #include "tgsi/tgsi_ureg.h"
 #include "tgsi/tgsi_build.h"
+#include "tgsi/tgsi_from_mesa.h"
 #include "tgsi/tgsi_info.h"
 #include "tgsi/tgsi_dump.h"
 #include "tgsi/tgsi_sanity.h"
@@ -2373,6 +2374,7 @@ ureg_setup_shader_info(struct ureg_program *ureg,
    switch (info->stage) {
    case MESA_SHADER_VERTEX:
       ureg_setup_clipdist_info(ureg, info);
+      ureg_set_next_shader_processor(ureg, pipe_shader_type_from_mesa(info->next_stage));
       break;
    case MESA_SHADER_TESS_CTRL:
       ureg_setup_tess_ctrl_shader(ureg, info);

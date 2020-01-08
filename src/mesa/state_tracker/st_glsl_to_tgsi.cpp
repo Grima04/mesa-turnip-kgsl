@@ -6986,25 +6986,6 @@ st_translate_program(
    foreach_in_list(glsl_to_tgsi_instruction, inst, &program->instructions)
       compile_tgsi_instruction(t, inst);
 
-   /* Set the next shader stage hint for VS and TES. */
-   switch (procType) {
-   case PIPE_SHADER_VERTEX:
-   case PIPE_SHADER_TESS_EVAL:
-      if (program->shader_program->SeparateShader)
-         break;
-
-      for (i = program->shader->Stage+1; i <= MESA_SHADER_FRAGMENT; i++) {
-         if (program->shader_program->_LinkedShaders[i]) {
-            ureg_set_next_shader_processor(
-                  ureg, pipe_shader_type_from_mesa((gl_shader_stage)i));
-            break;
-         }
-      }
-      break;
-   default:
-      ; /* nothing - silence compiler warning */
-   }
-
 out:
    if (t) {
       free(t->arrays);
