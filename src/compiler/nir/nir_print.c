@@ -572,7 +572,7 @@ print_var_decl(nir_variable *var, print_state *state)
       unsigned int num_components =
          glsl_get_components(glsl_without_array(var->type));
       const char *components = NULL;
-      char components_local[6] = {'.' /* the rest is 0-filled */};
+      char components_local[18] = {'.' /* the rest is 0-filled */};
       switch (var->data.mode) {
       case nir_var_shader_in:
       case nir_var_shader_out:
