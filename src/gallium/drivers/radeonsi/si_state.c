@@ -5123,8 +5123,9 @@ static void si_set_vertex_buffers(struct pipe_context *ctx,
 {
 	struct si_context *sctx = (struct si_context *)ctx;
 	struct pipe_vertex_buffer *dst = sctx->vertex_buffer + start_slot;
+	unsigned updated_mask = u_bit_consecutive(start_slot, count);
 	uint32_t orig_unaligned = sctx->vertex_buffer_unaligned;
-	uint32_t unaligned = orig_unaligned;
+	uint32_t unaligned = 0;
 	int i;
 
 	assert(start_slot + count <= ARRAY_SIZE(sctx->vertex_buffer));
@@ -5134,14 +5135,14 @@ static void si_set_vertex_buffers(struct pipe_context *ctx,
 			const struct pipe_vertex_buffer *src = buffers + i;
 			struct pipe_vertex_buffer *dsti = dst + i;
 			struct pipe_resource *buf = src->buffer.resource;
+			unsigned slot_bit = 1 << (start_slot + i);
 
 			pipe_resource_reference(&dsti->buffer.resource, buf);
 			dsti->buffer_offset = src->buffer_offset;
 			dsti->stride = src->stride;
+
 			if (dsti->buffer_offset & 3 || dsti->stride & 3)
-				unaligned |= 1 << (start_slot + i);
-			else
-				unaligned &= ~(1 << (start_slot + i));
+				unaligned |= slot_bit;
 
 			si_context_add_resource_size(sctx, buf);
 			if (buf)
@@ -5151,10 +5152,10 @@ static void si_set_vertex_buffers(struct pipe_context *ctx,
 		for (i = 0; i < count; i++) {
 			pipe_resource_reference(&dst[i].buffer.resource, NULL);
 		}
-		unaligned &= ~u_bit_consecutive(start_slot, count);
+		unaligned &= ~updated_mask;
 	}
 	sctx->vertex_buffers_dirty = true;
-	sctx->vertex_buffer_unaligned = unaligned;
+	sctx->vertex_buffer_unaligned = (orig_unaligned & ~updated_mask) | unaligned;
 
 	/* Check whether alignment may have changed in a way that requires
 	 * shader changes. This check is conservative: a vertex buffer can only
@@ -5165,7 +5166,7 @@ static void si_set_vertex_buffers(struct pipe_context *ctx,
 	 */
 	if (sctx->vertex_elements &&
 	    (sctx->vertex_elements->vb_alignment_check_mask &
-	     (unaligned | orig_unaligned) & u_bit_consecutive(start_slot, count)))
+	     (unaligned | orig_unaligned) & updated_mask))
 		sctx->do_update_shaders = true;
 }
 
