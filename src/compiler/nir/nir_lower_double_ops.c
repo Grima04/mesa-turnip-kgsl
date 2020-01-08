@@ -427,6 +427,10 @@ lower_mod(nir_builder *b, nir_ssa_def *src0, nir_ssa_def *src1)
     * If the division is lowered, it could add some rounding errors that make
     * floor() to return the quotient minus one when x = N * y. If this is the
     * case, we return zero because mod(x, y) output value is [0, y).
+    *
+    * Worth to note that Vulkan allows the output value to be in range [0, y],
+    * so mod(x, y) could return y; but as OpenGL does not allow this, we add
+    * the extra instruction to ensure the value is always in [0, y).
     */
    nir_ssa_def *floor = nir_ffloor(b, nir_fdiv(b, src0, src1));
    nir_ssa_def *mod = nir_fsub(b, src0, nir_fmul(b, src1, floor));
