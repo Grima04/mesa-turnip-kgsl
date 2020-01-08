@@ -4424,7 +4424,7 @@ void visit_image_size(isel_context *ctx, nir_intrinsic_instr *instr)
    aco_ptr<MIMG_instruction> mimg{create_instruction<MIMG_instruction>(aco_opcode::image_get_resinfo, Format::MIMG, 2, 1)};
    mimg->operands[0] = Operand(lod);
    mimg->operands[1] = Operand(resource);
-   unsigned& dmask = mimg->dmask;
+   uint8_t& dmask = mimg->dmask;
    mimg->dim = ac_get_image_dim(ctx->options->chip_class, dim, is_array);
    mimg->dmask = (1 << instr->dest.ssa.num_components) - 1;
    mimg->da = glsl_sampler_type_is_array(type);
