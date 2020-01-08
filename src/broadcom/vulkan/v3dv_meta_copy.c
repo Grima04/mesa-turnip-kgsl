@@ -39,15 +39,15 @@ emit_image_loads(struct v3dv_cl *cl,
    bool swap_rb = desc->swizzle[0] == PIPE_SWIZZLE_Z &&
                   image->vk_format != VK_FORMAT_B5G6R5_UNORM_PACK16;
 
+   const struct v3d_resource_slice *slice = &image->slices[mip_level];
    cl_emit(cl, LOAD_TILE_BUFFER_GENERAL, load) {
       load.buffer_to_load = RENDER_TARGET_0;
       load.address = v3dv_cl_address(image->mem->bo, layer_offset);
 
       load.input_image_format = image->format->rt_type;
       load.r_b_swap = swap_rb;
-      load.memory_format = image->slices[0].tiling;
+      load.memory_format = slice->tiling;
 
-      const struct v3d_resource_slice *slice = &image->slices[0];
       if (slice->tiling == VC5_TILING_UIF_NO_XOR ||
           slice->tiling == VC5_TILING_UIF_XOR) {
          load.height_in_ub_or_stride =
