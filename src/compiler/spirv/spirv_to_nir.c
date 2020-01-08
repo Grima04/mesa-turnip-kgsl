@@ -2101,8 +2101,12 @@ vtn_emit_scoped_memory_barrier(struct vtn_builder *b, SpvScope scope,
 
    nir_variable_mode modes = 0;
    if (semantics & (SpvMemorySemanticsUniformMemoryMask |
-                    SpvMemorySemanticsImageMemoryMask))
-      modes |= nir_var_mem_ubo | nir_var_mem_ssbo | nir_var_uniform;
+                    SpvMemorySemanticsImageMemoryMask)) {
+      modes |= nir_var_uniform |
+               nir_var_mem_ubo |
+               nir_var_mem_ssbo |
+               nir_var_mem_global;
+   }
    if (semantics & SpvMemorySemanticsWorkgroupMemoryMask)
       modes |= nir_var_mem_shared;
    if (semantics & SpvMemorySemanticsOutputMemoryMask) {
