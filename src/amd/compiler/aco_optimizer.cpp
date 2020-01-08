@@ -829,7 +829,8 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
          Format format = is_vgpr ? Format::VOP1 : Format::SOP1;
          instr->opcode = opcode;
          instr->format = format;
-         instr->operands = {instr->operands.begin(), 1 };
+         while (instr->operands.size() > 1)
+            instr->operands.pop_back();
          instr->operands[0] = vec_op;
 
          if (vec_op.isConstant()) {

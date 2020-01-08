@@ -929,8 +929,10 @@ T* create_instruction(aco_opcode opcode, Format format, uint32_t num_operands, u
    inst->opcode = opcode;
    inst->format = format;
 
-   inst->operands = aco::span<Operand>((Operand*)(data + sizeof(T)), num_operands);
-   inst->definitions = aco::span<Definition>((Definition*)inst->operands.end(), num_definitions);
+   uint16_t operands_offset = data + sizeof(T) - (char*)&inst->operands;
+   inst->operands = aco::span<Operand>(operands_offset, num_operands);
+   uint16_t definitions_offset = (char*)inst->operands.end() - (char*)&inst->definitions;
+   inst->definitions = aco::span<Definition>(definitions_offset, num_definitions);
 
    return inst;
 }
