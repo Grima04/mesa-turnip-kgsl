@@ -3908,6 +3908,9 @@ void genX(CmdDispatchBase)(
          .bo = cmd_buffer->device->dynamic_state_pool.block_pool.bo,
          .offset = state.offset,
       };
+
+      /* The num_workgroups buffer goes in the binding table */
+      cmd_buffer->state.descriptors_dirty |= VK_SHADER_STAGE_COMPUTE_BIT;
    }
 
    genX(cmd_buffer_flush_compute_state)(cmd_buffer);
@@ -3958,8 +3961,12 @@ void genX(CmdDispatchIndirect)(
       return;
 #endif
 
-   if (prog_data->uses_num_work_groups)
+   if (prog_data->uses_num_work_groups) {
       cmd_buffer->state.compute.num_workgroups = addr;
+
+      /* The num_workgroups buffer goes in the binding table */
+      cmd_buffer->state.descriptors_dirty |= VK_SHADER_STAGE_COMPUTE_BIT;
+   }
 
    genX(cmd_buffer_flush_compute_state)(cmd_buffer);
 
