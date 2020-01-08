@@ -330,6 +330,12 @@ static int si_init_surface(struct si_screen *sscreen,
 	if (sscreen->debug_flags & DBG(NO_FMASK))
 		flags |= RADEON_SURF_NO_FMASK;
 
+	if (sscreen->info.chip_class == GFX9 &&
+	    (ptex->flags & SI_RESOURCE_FLAG_FORCE_MICRO_TILE_MODE)) {
+		flags |= RADEON_SURF_FORCE_MICRO_TILE_MODE;
+		surface->micro_tile_mode = SI_RESOURCE_FLAG_MICRO_TILE_MODE_GET(ptex->flags);
+	}
+
 	if (sscreen->info.chip_class >= GFX10 &&
 	    (ptex->flags & SI_RESOURCE_FLAG_FORCE_MSAA_TILING)) {
 		flags |= RADEON_SURF_FORCE_SWIZZLE_MODE;

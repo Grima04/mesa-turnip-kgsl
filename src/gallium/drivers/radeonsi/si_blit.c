@@ -1162,10 +1162,13 @@ resolve_to_temp:
 	templ.array_size = 1;
 	templ.usage = PIPE_USAGE_DEFAULT;
 	templ.flags = SI_RESOURCE_FLAG_FORCE_MSAA_TILING |
+		      SI_RESOURCE_FLAG_FORCE_MICRO_TILE_MODE |
+		      SI_RESOURCE_FLAG_MICRO_TILE_MODE_SET(src->surface.micro_tile_mode) |
 		      SI_RESOURCE_FLAG_DISABLE_DCC;
 
 	/* The src and dst microtile modes must be the same. */
-	if (src->surface.micro_tile_mode == RADEON_MICRO_MODE_DISPLAY)
+	if (sctx->chip_class <= GFX8 &&
+	    src->surface.micro_tile_mode == RADEON_MICRO_MODE_DISPLAY)
 		templ.bind = PIPE_BIND_SCANOUT;
 	else
 		templ.bind = 0;
