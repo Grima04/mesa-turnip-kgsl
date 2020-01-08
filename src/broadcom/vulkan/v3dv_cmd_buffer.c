@@ -47,6 +47,9 @@ v3dv_job_add_bo(struct v3dv_job *job, struct v3dv_bo *bo)
    job->bo_count++;
 }
 
+static void
+subpass_start(struct v3dv_cmd_buffer *cmd_buffer);
+
 VkResult
 v3dv_CreateCommandPool(VkDevice _device,
                        const VkCommandPoolCreateInfo *pCreateInfo,
@@ -414,6 +417,8 @@ v3dv_CmdBeginRenderPass(VkCommandBuffer commandBuffer,
 
    /* Setup for first subpass */
    state->subpass_idx = 0;
+
+   subpass_start(cmd_buffer);
 }
 
 static void
@@ -995,6 +1000,19 @@ subpass_start(struct v3dv_cmd_buffer *cmd_buffer)
        cmd_buffer->state.dynamic.viewport.count == 0) {
       emit_clip_window(job, &state->render_area);
    }
+
+   /* FIXME: is here the best moment to do that? or when drawing? */
+   if (cmd_buffer->state.pipeline) {
+      struct v3dv_pipeline *pipeline = cmd_buffer->state.pipeline;
+
+      if (pipeline->vs->assembly_bo)
+         v3dv_job_add_bo(cmd_buffer->state.job, pipeline->vs->assembly_bo);
+      if (pipeline->vs_bin->assembly_bo)
+         v3dv_job_add_bo(cmd_buffer->state.job, pipeline->vs_bin->assembly_bo);
+      if (pipeline->fs->assembly_bo)
+         v3dv_job_add_bo(cmd_buffer->state.job, pipeline->fs->assembly_bo);
+   }
+
 }
 
 static void
@@ -1002,6 +1020,8 @@ subpass_finish(struct v3dv_cmd_buffer *cmd_buffer)
 {
    struct v3dv_job *job = cmd_buffer->state.job;
    assert(job);
+
+   emit_rcl(cmd_buffer);
 
    /* This finishes the a binning job.
     *
@@ -1012,14 +1032,6 @@ subpass_finish(struct v3dv_cmd_buffer *cmd_buffer)
    v3dv_cmd_buffer_finish_job(cmd_buffer);
 }
 
-static void
-execute_subpass(struct v3dv_cmd_buffer *cmd_buffer)
-{
-   subpass_start(cmd_buffer);
-   emit_rcl(cmd_buffer);
-   subpass_finish(cmd_buffer);
-}
-
 void
 v3dv_CmdEndRenderPass(VkCommandBuffer commandBuffer)
 {
@@ -1028,7 +1040,7 @@ v3dv_CmdEndRenderPass(VkCommandBuffer commandBuffer)
    /* Emit last subpass */
    struct v3dv_cmd_buffer_state *state = &cmd_buffer->state;
    assert(state->subpass_idx == state->pass->subpass_count - 1);
-   execute_subpass(cmd_buffer);
+   subpass_finish(cmd_buffer);
 
    /* We are no longer inside a render pass */
    state->pass = NULL;
@@ -1111,14 +1123,6 @@ v3dv_CmdBindPipeline(VkCommandBuffer commandBuffer,
 
       cmd_buffer->state.pipeline = pipeline;
       bind_dynamic_state(cmd_buffer, &pipeline->dynamic_state);
-
-      /* FIXME: is here the best moment to do that? or when drawing? */
-      if (pipeline->vs->assembly_bo)
-         v3dv_job_add_bo(cmd_buffer->state.job, pipeline->vs->assembly_bo);
-      if (pipeline->vs_bin->assembly_bo)
-         v3dv_job_add_bo(cmd_buffer->state.job, pipeline->vs_bin->assembly_bo);
-      if (pipeline->fs->assembly_bo)
-         v3dv_job_add_bo(cmd_buffer->state.job, pipeline->fs->assembly_bo);
 
       cmd_buffer->state.dirty |= V3DV_CMD_DIRTY_PIPELINE;
       break;
