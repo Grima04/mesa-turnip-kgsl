@@ -3447,7 +3447,7 @@ static void add_arg_checked(struct ac_shader_args *args,
 static void create_function(struct si_shader_context *ctx)
 {
 	struct si_shader *shader = ctx->shader;
-	LLVMTypeRef returns[16+32*4];
+	LLVMTypeRef returns[AC_MAX_ARGS];
 	unsigned i, num_return_sgprs;
 	unsigned num_returns = 0;
 	unsigned num_prolog_vgprs = 0;
@@ -5307,7 +5307,7 @@ static void si_build_gs_prolog_function(struct si_shader_context *ctx,
 {
 	unsigned num_sgprs, num_vgprs;
 	LLVMBuilderRef builder = ctx->ac.builder;
-	LLVMTypeRef returns[48];
+	LLVMTypeRef returns[AC_MAX_ARGS];
 	LLVMValueRef func, ret;
 
 	memset(&ctx->args, 0, sizeof(ctx->args));
@@ -5434,9 +5434,9 @@ static void si_build_wrapper_function(struct si_shader_context *ctx,
 {
 	LLVMBuilderRef builder = ctx->ac.builder;
 	/* PS epilog has one arg per color component; gfx9 merged shader
-	 * prologs need to forward 32 user SGPRs.
+	 * prologs need to forward 40 SGPRs.
 	 */
-	LLVMValueRef initial[64], out[64];
+	LLVMValueRef initial[AC_MAX_ARGS], out[AC_MAX_ARGS];
 	LLVMTypeRef function_type;
 	unsigned num_first_params;
 	unsigned num_out, initial_num_out;
@@ -5502,7 +5502,7 @@ static void si_build_wrapper_function(struct si_shader_context *ctx,
 
 	/* Prepare the return type. */
 	unsigned num_returns = 0;
-	LLVMTypeRef returns[32], last_func_type, return_type;
+	LLVMTypeRef returns[AC_MAX_ARGS], last_func_type, return_type;
 
 	last_func_type = LLVMGetElementType(LLVMTypeOf(parts[num_parts - 1]));
 	return_type = LLVMGetReturnType(last_func_type);
@@ -5573,7 +5573,7 @@ static void si_build_wrapper_function(struct si_shader_context *ctx,
 	/* Now chain the parts. */
 	LLVMValueRef ret = NULL;
 	for (unsigned part = 0; part < num_parts; ++part) {
-		LLVMValueRef in[48];
+		LLVMValueRef in[AC_MAX_ARGS];
 		LLVMTypeRef ret_type;
 		unsigned out_idx = 0;
 		unsigned num_params = LLVMCountParams(parts[part]);
