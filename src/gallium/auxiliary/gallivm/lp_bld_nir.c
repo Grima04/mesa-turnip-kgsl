@@ -1356,6 +1356,9 @@ static void visit_intrinsic(struct lp_build_nir_context *bld_base,
       visit_barrier(bld_base);
       break;
    case nir_intrinsic_memory_barrier:
+   case nir_intrinsic_memory_barrier_shared:
+   case nir_intrinsic_memory_barrier_buffer:
+   case nir_intrinsic_memory_barrier_image:
       break;
    case nir_intrinsic_load_kernel_input:
       visit_load_kernel_input(bld_base, instr, result);
