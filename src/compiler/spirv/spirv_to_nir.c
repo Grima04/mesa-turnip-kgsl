@@ -1348,7 +1348,7 @@ vtn_handle_type(struct vtn_builder *b, SpvOp opcode,
          case SpvStorageClassUniform:
          case SpvStorageClassPushConstant:
          case SpvStorageClassStorageBuffer:
-         case SpvStorageClassPhysicalStorageBufferEXT:
+         case SpvStorageClassPhysicalStorageBuffer:
             vtn_foreach_decoration(b, val, array_stride_decoration_cb, NULL);
             break;
          default:
@@ -1937,7 +1937,7 @@ vtn_storage_class_to_memory_semantics(SpvStorageClass sc)
 {
    switch (sc) {
    case SpvStorageClassStorageBuffer:
-   case SpvStorageClassPhysicalStorageBufferEXT:
+   case SpvStorageClassPhysicalStorageBuffer:
       return SpvMemorySemanticsUniformMemoryMask;
    case SpvStorageClassWorkgroup:
       return SpvMemorySemanticsWorkgroupMemoryMask;
@@ -4074,7 +4074,7 @@ vtn_handle_preamble_instruction(struct vtn_builder *b, SpvOp opcode,
          spv_check_supported(float_controls, cap);
          break;
 
-      case SpvCapabilityPhysicalStorageBufferAddressesEXT:
+      case SpvCapabilityPhysicalStorageBufferAddresses:
          spv_check_supported(physical_storage_buffer_address, cap);
          break;
 
@@ -4151,10 +4151,10 @@ vtn_handle_preamble_instruction(struct vtn_builder *b, SpvOp opcode,
                      "AddressingModelLogical only supported for shaders");
          b->physical_ptrs = false;
          break;
-      case SpvAddressingModelPhysicalStorageBuffer64EXT:
+      case SpvAddressingModelPhysicalStorageBuffer64:
          vtn_fail_if(!b->options ||
                      !b->options->caps.physical_storage_buffer_address,
-                     "AddressingModelPhysicalStorageBuffer64EXT not supported");
+                     "AddressingModelPhysicalStorageBuffer64 not supported");
          break;
       default:
          vtn_fail("Unknown addressing model: %s (%u)",
