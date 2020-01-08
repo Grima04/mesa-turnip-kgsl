@@ -125,7 +125,7 @@ x86_build:
 x86_test-gl:
   extends: x86_build
   variables:
-    DEBIAN_TAG: &x86_test-gl "2020-01-30"
+    DEBIAN_TAG: &x86_test-gl "2020-02-14"
 
 # Debian 10 based x86 test image for VK
 x86_test-vk:
@@ -705,3 +705,20 @@ radv_polaris10_vkcts:
     DEQP_SKIPS: deqp-radv-polaris10-skips.txt
   tags:
     - polaris10
+
+.traces-test:
+  extends:
+    - .test-gl
+  cache:
+    key: ${CI_JOB_NAME}
+    paths:
+      - .git-lfs-storage/
+  script:
+    - ./artifacts/tracie-runner.sh
+
+llvmpipe-traces:
+  variables:
+    LIBGL_ALWAYS_SOFTWARE: "true"
+    GALLIUM_DRIVER: "llvmpipe"
+    DEVICE_NAME: "vmware-llvmpipe"
+  extends: .traces-test

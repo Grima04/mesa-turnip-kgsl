@@ -26,6 +26,9 @@ mkdir -p artifacts/
 cp VERSION artifacts/
 cp -Rp .gitlab-ci/deqp* artifacts/
 cp -Rp .gitlab-ci/piglit artifacts/
+cp -Rp .gitlab-ci/traces.yml artifacts/
+cp -Rp .gitlab-ci/tracie artifacts/
+cp -Rp .gitlab-ci/tracie-runner.sh artifacts/
 
 # Tar up the install dir so that symlinks and hardlinks aren't each
 # packed separately in the zip file.
