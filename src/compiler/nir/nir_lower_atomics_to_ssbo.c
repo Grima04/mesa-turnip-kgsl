@@ -47,6 +47,13 @@ lower_instr(nir_intrinsic_instr *instr, unsigned ssbo_offset, nir_builder *b)
    b->cursor = nir_before_instr(&instr->instr);
 
    switch (instr->intrinsic) {
+   case nir_intrinsic_memory_barrier_atomic_counter:
+      /* Atomic counters are now SSBOs so memoryBarrierAtomicCounter() is now
+       * memoryBarrierBuffer().
+       */
+      instr->intrinsic = nir_intrinsic_memory_barrier_buffer;
+      return true;
+
    case nir_intrinsic_ssbo_atomic_add:
    case nir_intrinsic_ssbo_atomic_imin:
    case nir_intrinsic_ssbo_atomic_umin:

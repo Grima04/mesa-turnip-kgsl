@@ -311,7 +311,6 @@ combine_stores_block(struct combine_stores_state *state, nir_block *block)
                                               nir_var_mem_shared);
          break;
 
-      case nir_intrinsic_memory_barrier_atomic_counter:
       case nir_intrinsic_memory_barrier_buffer:
          combine_stores_with_modes(state, nir_var_mem_ssbo);
          break;

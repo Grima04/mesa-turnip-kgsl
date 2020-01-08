@@ -4949,9 +4949,6 @@ void emit_memory_barrier(isel_context *ctx, nir_intrinsic_instr *instr) {
       case nir_intrinsic_memory_barrier:
          bld.barrier(aco_opcode::p_memory_barrier_all);
          break;
-      case nir_intrinsic_memory_barrier_atomic_counter:
-         bld.barrier(aco_opcode::p_memory_barrier_atomic);
-         break;
       case nir_intrinsic_memory_barrier_buffer:
          bld.barrier(aco_opcode::p_memory_barrier_buffer);
          break;
@@ -5723,7 +5720,6 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
    }
    case nir_intrinsic_group_memory_barrier:
    case nir_intrinsic_memory_barrier:
-   case nir_intrinsic_memory_barrier_atomic_counter:
    case nir_intrinsic_memory_barrier_buffer:
    case nir_intrinsic_memory_barrier_image:
    case nir_intrinsic_memory_barrier_shared:

@@ -808,7 +808,6 @@ copy_prop_vars_block(struct copy_prop_var_state *state,
          break;
 
       case nir_intrinsic_memory_barrier_buffer:
-      case nir_intrinsic_memory_barrier_atomic_counter:
          if (debug) dump_instr(instr);
 
          apply_barrier_for_modes(copies, nir_var_mem_ssbo);

@@ -1174,7 +1174,6 @@ emit_intrinsic_barrier(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 				IR3_BARRIER_IMAGE_R | IR3_BARRIER_IMAGE_W |
 				IR3_BARRIER_BUFFER_R | IR3_BARRIER_BUFFER_W;
 		break;
-	case nir_intrinsic_memory_barrier_atomic_counter:
 	case nir_intrinsic_memory_barrier_buffer:
 		barrier = ir3_FENCE(b);
 		barrier->cat7.g = true;
@@ -1644,7 +1643,6 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 	case nir_intrinsic_control_barrier:
 	case nir_intrinsic_memory_barrier:
 	case nir_intrinsic_group_memory_barrier:
-	case nir_intrinsic_memory_barrier_atomic_counter:
 	case nir_intrinsic_memory_barrier_buffer:
 	case nir_intrinsic_memory_barrier_image:
 	case nir_intrinsic_memory_barrier_shared:

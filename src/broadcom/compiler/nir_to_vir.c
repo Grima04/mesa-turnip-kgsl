@@ -2243,7 +2243,6 @@ ntq_emit_intrinsic(struct v3d_compile *c, nir_intrinsic_instr *instr)
         }
 
         case nir_intrinsic_memory_barrier:
-        case nir_intrinsic_memory_barrier_atomic_counter:
         case nir_intrinsic_memory_barrier_buffer:
         case nir_intrinsic_memory_barrier_image:
         case nir_intrinsic_memory_barrier_shared:

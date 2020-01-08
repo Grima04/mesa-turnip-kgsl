@@ -652,7 +652,6 @@ Converter::getSubOp(nir_intrinsic_op op)
 
    case nir_intrinsic_group_memory_barrier:
    case nir_intrinsic_memory_barrier:
-   case nir_intrinsic_memory_barrier_atomic_counter:
    case nir_intrinsic_memory_barrier_buffer:
    case nir_intrinsic_memory_barrier_image:
       return NV50_IR_SUBOP_MEMBAR(M, GL);
@@ -2654,7 +2653,6 @@ Converter::visit(nir_intrinsic_instr *insn)
    }
    case nir_intrinsic_group_memory_barrier:
    case nir_intrinsic_memory_barrier:
-   case nir_intrinsic_memory_barrier_atomic_counter:
    case nir_intrinsic_memory_barrier_buffer:
    case nir_intrinsic_memory_barrier_image:
    case nir_intrinsic_memory_barrier_shared: {

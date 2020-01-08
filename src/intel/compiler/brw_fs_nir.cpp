@@ -4274,7 +4274,6 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
    case nir_intrinsic_scoped_memory_barrier:
    case nir_intrinsic_group_memory_barrier:
    case nir_intrinsic_memory_barrier_shared:
-   case nir_intrinsic_memory_barrier_atomic_counter:
    case nir_intrinsic_memory_barrier_buffer:
    case nir_intrinsic_memory_barrier_image:
    case nir_intrinsic_memory_barrier: {

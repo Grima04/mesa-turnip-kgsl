@@ -140,7 +140,6 @@ remove_dead_write_vars_local(void *mem_ctx, nir_block *block)
       }
 
       case nir_intrinsic_memory_barrier_buffer:
-      case nir_intrinsic_memory_barrier_atomic_counter:
          clear_unused_for_modes(&unused_writes, nir_var_mem_ssbo);
          break;
 
