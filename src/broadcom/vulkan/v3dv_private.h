@@ -390,6 +390,7 @@ union v3dv_clear_value {
 
 struct v3dv_cmd_buffer_attachment_state {
    union v3dv_clear_value clear_value;
+   bool cleared;
 };
 
 struct v3dv_viewport_state {
@@ -468,20 +469,18 @@ struct v3dv_cmd_buffer_state {
    const struct v3dv_framebuffer *framebuffer;
    VkRect2D render_area;
 
-   uint32_t clear_value_count;
-   VkClearValue *clear_values;
+   /* Current job being recorded */
+   struct v3dv_job *job;
 
-   /* Subpass state */
    uint32_t subpass_idx;
-   struct v3dv_cmd_buffer_attachment_state attachments[6]; /* 4 color + D + S */
 
    struct v3dv_pipeline *pipeline;
 
    struct v3dv_dynamic_state dynamic;
    uint32_t dirty;
 
-   /* Current job being recorded */
-   struct v3dv_job *job;
+   uint32_t attachment_count;
+   struct v3dv_cmd_buffer_attachment_state *attachments;
 };
 
 struct v3dv_cmd_buffer {

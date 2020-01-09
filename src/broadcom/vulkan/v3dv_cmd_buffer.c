@@ -151,6 +151,11 @@ cmd_buffer_destroy(struct v3dv_cmd_buffer *cmd_buffer)
    if (cmd_buffer->state.job)
       job_destroy(cmd_buffer->state.job);
 
+   if (cmd_buffer->state.attachments) {
+      assert(cmd_buffer->state.attachment_count > 0);
+      vk_free(&cmd_buffer->pool->alloc, cmd_buffer->state.attachments);
+   }
+
    vk_free(&cmd_buffer->pool->alloc, cmd_buffer);
 }
 
@@ -334,18 +339,26 @@ cmd_buffer_state_set_attachment_clear_color(struct v3dv_cmd_buffer *cmd_buffer,
                                             uint32_t attachment_idx,
                                             const VkClearColorValue *color)
 {
-   assert(attachment_idx < cmd_buffer->state.framebuffer->attachment_count);
+   assert(attachment_idx < cmd_buffer->state.pass->attachment_count);
 
-   struct v3dv_image_view *iview =
-      cmd_buffer->state.framebuffer->attachments[attachment_idx];
-   uint32_t internal_size = 4 << iview->internal_bpp;
+   const struct v3dv_render_pass_attachment *attachment =
+      &cmd_buffer->state.pass->attachments[attachment_idx];
 
-   struct v3dv_cmd_buffer_attachment_state *attachment =
+   uint32_t internal_type, internal_bpp;
+   const struct v3dv_format *format = v3dv_get_format(attachment->desc.format);
+   v3dv_get_internal_type_bpp_for_output_format(format->rt_type,
+                                                &internal_type,
+                                                &internal_bpp);
+
+   uint32_t internal_size = 4 << internal_bpp;
+
+   struct v3dv_cmd_buffer_attachment_state *attachment_state =
       &cmd_buffer->state.attachments[attachment_idx];
-   uint32_t *hw_color =  &attachment->clear_value.color[0];
+
+   uint32_t *hw_color =  &attachment_state->clear_value.color[0];
 
    union util_color uc;
-   switch (iview->internal_type) {
+   switch (internal_type) {
    case V3D_INTERNAL_TYPE_8:
       util_pack_color(color->float32, PIPE_FORMAT_R8G8B8A8_UNORM, &uc);
       memcpy(hw_color, uc.ui, internal_size);
@@ -379,16 +392,45 @@ cmd_buffer_state_set_clear_values(struct v3dv_cmd_buffer *cmd_buffer,
                                   uint32_t count, const VkClearValue *values)
 {
    struct v3dv_cmd_buffer_state *state = &cmd_buffer->state;
+   const struct v3dv_render_pass *pass = state->pass;
+   assert(count <= pass->attachment_count);
 
-   const uint32_t bytes = sizeof(VkClearValue) * count;
-   if (state->clear_value_count < count) {
-      vk_free(&cmd_buffer->device->alloc, state->clear_values);
-      state->clear_value_count = count;
-      state->clear_values = vk_alloc(&cmd_buffer->device->alloc, bytes, 8,
-                                     VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   for (uint32_t i = 0; i < pass->attachment_count; i++) {
+      state->attachments[i].cleared = false;
+
+      if (i >= count)
+         continue;
+
+      const struct v3dv_render_pass_attachment *attachment =
+         &pass->attachments[i];
+
+      if (attachment->desc.loadOp != VK_ATTACHMENT_LOAD_OP_CLEAR)
+         continue;
+
+      /* FIXME: support depth/stencil */
+      cmd_buffer_state_set_attachment_clear_color(cmd_buffer, i,
+                                                  &values[i].color);
+   }
+}
+
+static void
+cmd_buffer_ensure_render_pass_attachment_state(struct v3dv_cmd_buffer *cmd_buffer)
+{
+   struct v3dv_cmd_buffer_state *state = &cmd_buffer->state;
+   const struct v3dv_render_pass *pass = state->pass;
+
+   if (state->attachment_count < pass->attachment_count) {
+      if (state->attachment_count > 0)
+         vk_free(&cmd_buffer->device->alloc, state->attachments);
+
+      uint32_t size = sizeof(struct v3dv_cmd_buffer_attachment_state) *
+                      pass->attachment_count;
+      state->attachments = vk_zalloc(&cmd_buffer->device->alloc, size, 8,
+                                     VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
+      state->attachment_count = pass->attachment_count;
    }
 
-   memcpy(state->clear_values, values, bytes);
+   assert(state->attachment_count >= pass->attachment_count);
 }
 
 void
@@ -404,8 +446,8 @@ v3dv_CmdBeginRenderPass(VkCommandBuffer commandBuffer,
    state->pass = pass;
    state->framebuffer = framebuffer;
 
-   /* Store clear values in the command buffer state for later reference */
-   assert(pRenderPassBegin->clearValueCount <= pass->attachment_count);
+   cmd_buffer_ensure_render_pass_attachment_state(cmd_buffer);
+
    cmd_buffer_state_set_clear_values(cmd_buffer,
                                      pRenderPassBegin->clearValueCount,
                                      pRenderPassBegin->pClearValues);
@@ -897,39 +939,6 @@ subpass_start(struct v3dv_cmd_buffer *cmd_buffer)
    const struct v3dv_cmd_buffer_state *state = &cmd_buffer->state;
 
    assert(state->subpass_idx < state->pass->subpass_count);
-   const struct v3dv_subpass *subpass =
-      &state->pass->subpasses[state->subpass_idx];
-
-   /* Compute hardware color clear values for each subpass attachment */
-   /* FIXME: support depth/stencil */
-   for (uint32_t i = 0; i < subpass->color_count; i++) {
-      uint32_t rp_attachment_idx = subpass->color_attachments[i].attachment;
-      const struct v3dv_render_pass_attachment *attachment =
-         &state->pass->attachments[rp_attachment_idx];
-
-      /* FIXME: if a previous subpass has alredy computed the hw clear color
-       *        for this attachment we could skip this. We can just flag this
-       *        in the command buffer state.
-       */
-
-      if (attachment->desc.loadOp != VK_ATTACHMENT_LOAD_OP_CLEAR)
-         continue;
-
-      const uint32_t sp_attachment_idx = i;
-      const struct v3dv_image_view *iview =
-         state->framebuffer->attachments[sp_attachment_idx];
-
-      assert((iview->aspects &
-              (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) == 0);
-
-      if (iview->aspects & VK_IMAGE_ASPECT_COLOR_BIT) {
-         const VkClearColorValue *clear_color =
-            &state->clear_values[rp_attachment_idx].color;
-         cmd_buffer_state_set_attachment_clear_color(cmd_buffer,
-                                                     sp_attachment_idx,
-                                                     clear_color);
-      }
-   }
 
    /* FIXME: for now, each subpass goes into a separate job. In the future we
     * might be able to merge subpasses that render to the same render targets
