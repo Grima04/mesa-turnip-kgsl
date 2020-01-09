@@ -1801,9 +1801,9 @@ panfrost_create_sampler_state(
                         cso->border_color.f[2],
                         cso->border_color.f[3]
                 },
-                .min_lod = FIXED_16(cso->min_lod),
-                .max_lod = FIXED_16(cso->max_lod),
-                .lod_bias = FIXED_16(cso->lod_bias),
+                .min_lod = FIXED_16(cso->min_lod, false), /* clamp at 0 */
+                .max_lod = FIXED_16(cso->max_lod, false),
+                .lod_bias = FIXED_16(cso->lod_bias, true), /* can be negative */
                 .seamless_cube_map = cso->seamless_cube_map,
         };
 

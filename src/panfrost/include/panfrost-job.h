@@ -29,6 +29,7 @@
 #define __PANFROST_JOB_H__
 
 #include <stdint.h>
+#include <stdbool.h>
 #include <panfrost-misc.h>
 
 enum mali_job_type {
@@ -1253,13 +1254,14 @@ struct mali_texture_descriptor {
 
 #define DECODE_FIXED_16(x) ((float) (x / 256.0))
 
-static inline uint16_t
-FIXED_16(float x)
+static inline int16_t
+FIXED_16(float x, bool allow_negative)
 {
         /* Clamp inputs, accounting for float error */
         float max_lod = (32.0 - (1.0 / 512.0));
+        float min_lod = allow_negative ? -max_lod : 0.0;
 
-        x = ((x > max_lod) ? max_lod : ((x < 0.0) ? 0.0 : x));
+        x = ((x > max_lod) ? max_lod : ((x < min_lod) ? min_lod : x));
 
         return (int) (x * 256.0);
 }
@@ -1267,13 +1269,13 @@ FIXED_16(float x)
 struct mali_sampler_descriptor {
         uint16_t filter_mode;
 
-        /* Fixed point. Upper 8-bits is before the decimal point, although it
-         * caps [0-31]. Lower 8-bits is after the decimal point: int(round(x *
-         * 256)) */
+        /* Fixed point, signed.
+         * Upper 7 bits before the decimal point, although it caps [0-31].
+         * Lower 8 bits after the decimal point: int(round(x * 256)) */
 
-        uint16_t lod_bias;
-        uint16_t min_lod;
-        uint16_t max_lod;
+        int16_t lod_bias;
+        int16_t min_lod;
+        int16_t max_lod;
 
         /* All one word in reality, but packed a bit. Comparisons are flipped
          * from OpenGL. */
