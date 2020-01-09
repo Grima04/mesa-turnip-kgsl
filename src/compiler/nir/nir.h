@@ -1448,6 +1448,7 @@ typedef enum {
    /* Memory ordering. */
    NIR_MEMORY_ACQUIRE        = 1 << 0,
    NIR_MEMORY_RELEASE        = 1 << 1,
+   NIR_MEMORY_ACQ_REL        = NIR_MEMORY_ACQUIRE | NIR_MEMORY_RELEASE,
 
    /* Memory visibility operations. */
    NIR_MEMORY_MAKE_AVAILABLE = 1 << 3,
