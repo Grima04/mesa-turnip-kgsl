@@ -755,4 +755,6 @@ void si_compute_clear_render_target(struct pipe_context *ctx,
 	ctx->set_shader_images(ctx, PIPE_SHADER_COMPUTE, 0, 1, &saved_image);
 	ctx->set_constant_buffer(ctx, PIPE_SHADER_COMPUTE, 0, &saved_cb);
 	si_compute_internal_end(sctx);
+	pipe_resource_reference(&saved_image.resource, NULL);
+	pipe_resource_reference(&saved_cb.buffer, NULL);
 }
