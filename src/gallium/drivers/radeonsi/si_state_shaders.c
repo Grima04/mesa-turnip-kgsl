@@ -934,6 +934,12 @@ static void si_shader_gs(struct si_screen *sscreen, struct si_shader *shader)
 		si_pm4_set_reg(pm4, R_00B228_SPI_SHADER_PGM_RSRC1_GS, rsrc1);
 		si_pm4_set_reg(pm4, R_00B22C_SPI_SHADER_PGM_RSRC2_GS, rsrc2);
 
+		if (sscreen->info.chip_class >= GFX10) {
+			si_pm4_set_reg(pm4, R_00B204_SPI_SHADER_PGM_RSRC4_GS,
+				       S_00B204_CU_EN(0xffff) |
+				       S_00B204_SPI_SHADER_LATE_ALLOC_GS_GFX10(0));
+		}
+
 		shader->ctx_reg.gs.vgt_gs_onchip_cntl =
 			S_028A44_ES_VERTS_PER_SUBGRP(shader->gs_info.es_verts_per_subgroup) |
 			S_028A44_GS_PRIMS_PER_SUBGRP(shader->gs_info.gs_prims_per_subgroup) |
@@ -1214,6 +1220,26 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
 		       S_00B22C_USER_SGPR_MSB_GFX10(num_user_sgprs >> 5) |
 		       S_00B22C_OC_LDS_EN(es_type == PIPE_SHADER_TESS_EVAL) |
 		       S_00B22C_LDS_SIZE(shader->config.lds_size));
+
+	/* Determine LATE_ALLOC_GS. */
+	unsigned num_cu_per_sh = sscreen->info.num_good_cu_per_sh;
+	unsigned late_alloc_wave64; /* The limit is per SH. */
+
+	/* For Wave32, the hw will launch twice the number of late
+	 * alloc waves, so 1 == 2x wave32.
+	 *
+	 * Don't use late alloc for NGG on Navi14 due to a hw bug.
+	 */
+	if (sscreen->info.family == CHIP_NAVI14)
+		late_alloc_wave64 = 0;
+	else if (num_cu_per_sh <= 6)
+		late_alloc_wave64 = num_cu_per_sh - 2; /* All CUs enabled */
+	else
+		late_alloc_wave64 = (num_cu_per_sh - 2) * 4;
+
+	si_pm4_set_reg(pm4, R_00B204_SPI_SHADER_PGM_RSRC4_GS,
+		       S_00B204_CU_EN(0xffff) |
+		       S_00B204_SPI_SHADER_LATE_ALLOC_GS_GFX10(late_alloc_wave64));
 
 	nparams = MAX2(shader->info.nr_param_exports, 1);
 	shader->ctx_reg.ngg.spi_vs_out_config =
