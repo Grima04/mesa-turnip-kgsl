@@ -35,6 +35,9 @@
 namespace aco {
 
 struct ssa_state {
+   bool checked_preds_for_uniform;
+   bool all_preds_uniform;
+
    bool needs_init;
    uint64_t cur_undef_operands;
 
@@ -152,6 +155,19 @@ void lower_divergent_bool_phi(Program *program, ssa_state *state, Block *block, 
 {
    Builder bld(program);
 
+   if (!state->checked_preds_for_uniform) {
+      state->all_preds_uniform = !(block->kind & block_kind_merge);
+      for (unsigned pred : block->logical_preds)
+         state->all_preds_uniform = state->all_preds_uniform && (program->blocks[pred].kind & block_kind_uniform);
+      state->checked_preds_for_uniform = true;
+   }
+
+   if (state->all_preds_uniform) {
+      assert(block->logical_preds.size() == block->linear_preds.size());
+      phi->opcode = aco_opcode::p_linear_phi;
+      return;
+   }
+
    state->latest.resize(program->blocks.size());
 
    uint64_t undef_operands = 0;
@@ -180,14 +196,23 @@ void lower_divergent_bool_phi(Program *program, ssa_state *state, Block *block, 
       state->writes[block->logical_preds[i]] = program->allocateId();
    }
 
+   bool uniform_merge = block->kind & block_kind_loop_header;
+
    for (unsigned i = 0; i < phi->operands.size(); i++) {
       Block *pred = &program->blocks[block->logical_preds[i]];
+
+      bool need_get_ssa = !uniform_merge;
+      if (block->kind & block_kind_loop_header && !(pred->kind & block_kind_uniform))
+         uniform_merge = false;
 
       if (phi->operands[i].isUndefined())
          continue;
 
-      Operand cur = get_ssa(program, pred->index, state, true);
+      Operand cur(bld.lm);
+      if (need_get_ssa)
+         cur = get_ssa(program, pred->index, state, true);
       assert(cur.regClass() == bld.lm);
+
       Temp new_cur = {state->writes.at(pred->index), program->lane_mask};
       assert(new_cur.regClass() == bld.lm);
 
@@ -241,6 +266,7 @@ void lower_phis(Program* program)
    ssa_state state;
 
    for (Block& block : program->blocks) {
+      state.checked_preds_for_uniform = false;
       state.needs_init = true;
       for (aco_ptr<Instruction>& phi : block.instructions) {
          if (phi->opcode == aco_opcode::p_phi) {
