@@ -474,9 +474,13 @@ static LLVMValueRef do_alu_action(struct lp_build_nir_context *bld_base,
       result = lp_build_cos(&bld_base->base, src[0]);
       break;
    case nir_op_fddx:
+   case nir_op_fddx_coarse:
+   case nir_op_fddx_fine:
       result = lp_build_ddx(&bld_base->base, src[0]);
       break;
    case nir_op_fddy:
+   case nir_op_fddy_coarse:
+   case nir_op_fddy_fine:
       result = lp_build_ddy(&bld_base->base, src[0]);
       break;
    case nir_op_fdiv:
