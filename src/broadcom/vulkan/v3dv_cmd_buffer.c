@@ -1641,3 +1641,24 @@ v3dv_CmdDraw(VkCommandBuffer commandBuffer,
 
    cmd_buffer_draw(cmd_buffer, &info);
 }
+
+void
+v3dv_CmdPipelineBarrier(VkCommandBuffer commandBuffer,
+                        VkPipelineStageFlags srcStageMask,
+                        VkPipelineStageFlags dstStageMask,
+                        VkDependencyFlags dependencyFlags,
+                        uint32_t memoryBarrierCount,
+                        const VkMemoryBarrier *pMemoryBarriers,
+                        uint32_t bufferMemoryBarrierCount,
+                        const VkBufferMemoryBarrier *pBufferMemoryBarriers,
+                        uint32_t imageMemoryBarrierCount,
+                        const VkImageMemoryBarrier *pImageMemoryBarriers)
+{
+   V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
+
+   struct v3dv_job *job = cmd_buffer->state.job;
+   if (!job)
+      return;
+
+   v3dv_cmd_buffer_finish_job(cmd_buffer);
+}
