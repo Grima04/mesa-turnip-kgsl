@@ -486,6 +486,9 @@ void si_compute_copy_image(struct si_context *sctx,
 	ctx->set_shader_images(ctx, PIPE_SHADER_COMPUTE, 0, 2, saved_image);
 	ctx->set_constant_buffer(ctx, PIPE_SHADER_COMPUTE, 0, &saved_cb);
 	si_compute_internal_end(sctx);
+	for (int i = 0; i < 2; i++)
+		pipe_resource_reference(&saved_image[i].resource, NULL);
+	pipe_resource_reference(&saved_cb.buffer, NULL);
 }
 
 void si_retile_dcc(struct si_context *sctx, struct si_texture *tex)
