@@ -141,6 +141,8 @@ static void si_compute_clear_12bytes_buffer(struct si_context *sctx,
 	ctx->set_constant_buffer(ctx, PIPE_SHADER_COMPUTE, 0, &saved_cb);
 
 	si_compute_internal_end(sctx);
+	pipe_resource_reference(&saved_sb.buffer, NULL);
+	pipe_resource_reference(&saved_cb.buffer, NULL);
 }
 
 static void si_compute_do_clear_or_copy(struct si_context *sctx,
