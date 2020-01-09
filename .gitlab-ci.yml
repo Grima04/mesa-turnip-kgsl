@@ -222,7 +222,7 @@ x86_build:
   extends:
     - .use-x86_build-base
   variables:
-    FDO_DISTRIBUTION_TAG: &x86_build "2020-07-28-x86-2"
+    FDO_DISTRIBUTION_TAG: &x86_build "2020-08-08-glvnd"
 
 .use-x86_build:
   variables:

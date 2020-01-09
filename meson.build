@@ -1553,7 +1553,7 @@ endif
 
 dep_glvnd = null_dep
 if with_glvnd
-  dep_glvnd = dependency('libglvnd', version : '>= 1.2.0')
+  dep_glvnd = dependency('libglvnd', version : '>= 1.3.2')
   pre_args += '-DUSE_LIBGLVND=1'
 endif
 
