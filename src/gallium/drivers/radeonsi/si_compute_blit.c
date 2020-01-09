@@ -636,6 +636,7 @@ void si_compute_expand_fmask(struct pipe_context *ctx, struct pipe_resource *tex
 	ctx->bind_compute_state(ctx, saved_cs);
 	ctx->set_shader_images(ctx, PIPE_SHADER_COMPUTE, 0, 1, &saved_image);
 	si_compute_internal_end(sctx);
+	pipe_resource_reference(&saved_image.resource, NULL);
 
 	/* Array of fully expanded FMASK values, arranged by [log2(fragments)][log2(samples)-1]. */
 #define INVALID 0 /* never used */
