@@ -1264,21 +1264,34 @@ emit_scissor(struct v3dv_cmd_buffer *cmd_buffer)
 
    VkRect2D clip_window;
    uint32_t minx, miny, maxx, maxy;
-   if (dynamic->scissor.count == 0) {
-      minx = MAX2(vp_minx, 0);
-      miny = MAX2(vp_miny, 0);
-      maxx = MIN2(vp_maxx, cmd_buffer->state.render_area.extent.width);
-      maxy = MIN2(vp_maxy, cmd_buffer->state.render_area.extent.height);
-   } else {
-      /* FIXME: right now we only allow one scissor. Below would need to be
-       * updated if we support more
-       */
-      VkRect2D *scissor = &dynamic->scissor.scissors[0];
 
-      minx = MAX2(vp_minx, scissor->offset.x);
-      miny = MAX2(vp_miny, scissor->offset.y);
-      maxx = MIN2(vp_maxx, scissor->offset.x + scissor->extent.width);
-      maxy = MIN2(vp_maxy, scissor->offset.y + scissor->extent.height);
+   /* From the Vulkan spec:
+    *
+    * "The application must ensure (using scissor if necessary) that all
+    *  rendering is contained within the render area. The render area must be
+    *  contained within the framebuffer dimensions."
+    *
+    * So it is the application's responsibility to ensure this. Still, we can
+    * help by automatically restricting the scissor rect to the render area.
+    */
+   minx = MAX2(vp_minx, cmd_buffer->state.render_area.offset.x);
+   miny = MAX2(vp_miny, cmd_buffer->state.render_area.offset.y);
+   maxx = MIN2(vp_maxx, cmd_buffer->state.render_area.offset.x +
+                        cmd_buffer->state.render_area.extent.width);
+   maxy = MIN2(vp_maxy, cmd_buffer->state.render_area.offset.y +
+                        cmd_buffer->state.render_area.extent.height);
+
+   /* Clip against user provided scissor if needed.
+    *
+    * FIXME: right now we only allow one scissor. Below would need to be
+    * updated if we support more
+    */
+   if (dynamic->scissor.count > 0) {
+      VkRect2D *scissor = &dynamic->scissor.scissors[0];
+      minx = MAX2(minx, scissor->offset.x);
+      miny = MAX2(miny, scissor->offset.y);
+      maxx = MIN2(maxx, scissor->offset.x + scissor->extent.width);
+      maxy = MIN2(maxy, scissor->offset.y + scissor->extent.height);
    }
 
    clip_window.offset.x = minx;
