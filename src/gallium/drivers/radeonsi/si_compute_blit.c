@@ -255,6 +255,8 @@ static void si_compute_do_clear_or_copy(struct si_context *sctx,
 	ctx->set_shader_buffers(ctx, PIPE_SHADER_COMPUTE, 0, src ? 2 : 1, saved_sb,
 				saved_writable_mask);
 	si_compute_internal_end(sctx);
+	for (int i = 0; i < 2; i++)
+		pipe_resource_reference(&saved_sb[i].buffer, NULL);
 }
 
 void si_clear_buffer(struct si_context *sctx, struct pipe_resource *dst,
