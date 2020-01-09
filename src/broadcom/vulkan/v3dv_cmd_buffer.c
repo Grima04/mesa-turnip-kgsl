@@ -177,10 +177,8 @@ struct v3dv_job *
 v3dv_cmd_buffer_start_job(struct v3dv_cmd_buffer *cmd_buffer)
 {
    /* Ensure we are not starting a new job without finishing a previous one */
-   if (cmd_buffer->state.job != NULL) {
-      emit_binning_flush(cmd_buffer->state.job);
+   if (cmd_buffer->state.job != NULL)
       v3dv_cmd_buffer_finish_job(cmd_buffer);
-   }
 
    assert(cmd_buffer->state.job == NULL);
    struct v3dv_job *job = vk_zalloc(&cmd_buffer->device->alloc,
@@ -1079,7 +1077,6 @@ v3dv_EndCommandBuffer(VkCommandBuffer commandBuffer)
    /* We get here if we recorded commands after the last render pass in the
     * command buffer. Make sure we finish this last job. */
    assert(v3dv_cl_offset(&job->bcl) != 0);
-   emit_binning_flush(job);
    v3dv_cmd_buffer_finish_job(cmd_buffer);
 
    return VK_SUCCESS;
