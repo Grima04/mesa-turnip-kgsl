@@ -395,12 +395,7 @@ cmd_buffer_state_set_clear_values(struct v3dv_cmd_buffer *cmd_buffer,
    const struct v3dv_render_pass *pass = state->pass;
    assert(count <= pass->attachment_count);
 
-   for (uint32_t i = 0; i < pass->attachment_count; i++) {
-      state->attachments[i].cleared = false;
-
-      if (i >= count)
-         continue;
-
+   for (uint32_t i = 0; i < count; i++) {
       const struct v3dv_render_pass_attachment *attachment =
          &pass->attachments[i];
 
@@ -411,6 +406,37 @@ cmd_buffer_state_set_clear_values(struct v3dv_cmd_buffer *cmd_buffer,
       cmd_buffer_state_set_attachment_clear_color(cmd_buffer, i,
                                                   &values[i].color);
    }
+}
+
+/* Identifies the first subpass that uses each attachment in the render pass */
+static void
+cmd_buffer_find_first_subpass_for_attachments(struct v3dv_cmd_buffer *cmd_buffer)
+{
+   struct v3dv_cmd_buffer_state *state = &cmd_buffer->state;
+   const struct v3dv_render_pass *pass = state->pass;
+
+   for (uint32_t i = 0; i < pass->attachment_count; i++)
+      state->attachments[i].first_subpass = pass->subpass_count - 1;
+
+   for (uint32_t i = 0; i < pass->subpass_count - 1; i++) {
+      const struct v3dv_subpass *subpass = &pass->subpasses[i];
+      for (uint32_t j = 0; j < subpass->color_count; j++) {
+         uint32_t attachment_idx = subpass->color_attachments[j].attachment;
+         if (j < state->attachments[attachment_idx].first_subpass)
+            state->attachments[attachment_idx].first_subpass = j;
+      }
+   }
+}
+
+static void
+cmd_buffer_init_render_pass_attachment_state(struct v3dv_cmd_buffer *cmd_buffer,
+                                             const VkRenderPassBeginInfo *pRenderPassBegin)
+{
+   cmd_buffer_find_first_subpass_for_attachments(cmd_buffer);
+
+   cmd_buffer_state_set_clear_values(cmd_buffer,
+                                     pRenderPassBegin->clearValueCount,
+                                     pRenderPassBegin->pClearValues);
 }
 
 static void
@@ -447,10 +473,7 @@ v3dv_CmdBeginRenderPass(VkCommandBuffer commandBuffer,
    state->framebuffer = framebuffer;
 
    cmd_buffer_ensure_render_pass_attachment_state(cmd_buffer);
-
-   cmd_buffer_state_set_clear_values(cmd_buffer,
-                                     pRenderPassBegin->clearValueCount,
-                                     pRenderPassBegin->pClearValues);
+   cmd_buffer_init_render_pass_attachment_state(cmd_buffer, pRenderPassBegin);
 
    /* FIXME: probably need to align the render area to tile boundaries since
     *        the tile clears will render full tiles anyway.
@@ -561,12 +584,29 @@ emit_loads(struct v3dv_cmd_buffer *cmd_buffer,
       const struct v3dv_render_pass_attachment *attachment =
          &state->pass->attachments[attachment_idx];
 
-      if (attachment->desc.loadOp != VK_ATTACHMENT_LOAD_OP_LOAD)
-         continue;
+      const struct v3dv_cmd_buffer_attachment_state *attachment_state =
+         &state->attachments[attachment_idx];
 
-      struct v3dv_image_view *iview = framebuffer->attachments[attachment_idx];
+      /* According to the Vulkan spec:
+       *
+       *    "The load operation for each sample in an attachment happens before
+       *     any recorded command which accesses the sample in the first subpass
+       *     where the attachment is used."
+       *
+       * If the load operation is CLEAR, we must only clear once on the first
+       * subpass that uses the attachment (and in that case we don't LOAD).
+       * After that, we always want to load so we don't lose any rendering done
+       * by a previous subpass to the same attachment.
+       */
+      bool needs_load =
+         attachment->desc.loadOp == VK_ATTACHMENT_LOAD_OP_LOAD ||
+         (attachment->desc.loadOp == VK_ATTACHMENT_LOAD_OP_CLEAR &&
+          state->subpass_idx > attachment_state->first_subpass);
 
-      load_general(cmd_buffer, cl, iview, layer, RENDER_TARGET_0 + i);
+      if (needs_load) {
+         struct v3dv_image_view *iview = framebuffer->attachments[attachment_idx];
+         load_general(cmd_buffer, cl, iview, layer, RENDER_TARGET_0 + i);
+      }
    }
 
    cl_emit(cl, END_OF_LOADS, end);
@@ -575,10 +615,13 @@ emit_loads(struct v3dv_cmd_buffer *cmd_buffer,
 static void
 store_general(struct v3dv_cmd_buffer *cmd_buffer,
               struct v3dv_cl *cl,
-              struct v3dv_image_view *iview,
+              uint32_t attachment_idx,
               uint32_t layer,
-              uint32_t buffer)
+              uint32_t buffer,
+              bool clear)
 {
+   const struct v3dv_image_view *iview =
+      cmd_buffer->state.framebuffer->attachments[attachment_idx];
    const struct v3dv_image *image = iview->image;
    uint32_t layer_offset = v3dv_layer_offset(image,
                                              iview->base_level,
@@ -587,7 +630,7 @@ store_general(struct v3dv_cmd_buffer *cmd_buffer,
    cl_emit(cl, STORE_TILE_BUFFER_GENERAL, store) {
       store.buffer_to_store = buffer;
       store.address = v3dv_cl_address(image->mem->bo, layer_offset);
-      store.clear_buffer_being_stored = false;
+      store.clear_buffer_being_stored = clear;
 
       store.output_image_format = iview->format->rt_type;
       store.r_b_swap = iview->swap_rb;
@@ -614,13 +657,11 @@ emit_stores(struct v3dv_cmd_buffer *cmd_buffer,
             struct v3dv_cl *cl,
             uint32_t layer)
 {
-   const struct v3dv_cmd_buffer_state *state = &cmd_buffer->state;
-   const struct v3dv_framebuffer *framebuffer = state->framebuffer;
+   struct v3dv_cmd_buffer_state *state = &cmd_buffer->state;
    const struct v3dv_subpass *subpass =
       &state->pass->subpasses[state->subpass_idx];
 
    bool has_stores = false;
-   bool has_clears = false;
    for (uint32_t i = 0; i < subpass->color_count; i++) {
       uint32_t attachment_idx = subpass->color_attachments[i].attachment;
 
@@ -630,38 +671,36 @@ emit_stores(struct v3dv_cmd_buffer *cmd_buffer,
       const struct v3dv_render_pass_attachment *attachment =
          &state->pass->attachments[attachment_idx];
 
-      /* FIXME: we should probbably precompute this somehwere in the state */
-      if (attachment->desc.loadOp == VK_ATTACHMENT_LOAD_OP_CLEAR)
-         has_clears = true;
-
       if (attachment->desc.storeOp != VK_ATTACHMENT_STORE_OP_STORE)
          continue;
 
-      struct v3dv_image_view *iview = framebuffer->attachments[attachment_idx];
-
-      store_general(cmd_buffer, cl, iview, layer, RENDER_TARGET_0 + i);
-
+      /* Only clear once on the first subpass that uses the attachment */
+      bool needs_clear =
+         attachment->desc.loadOp == VK_ATTACHMENT_LOAD_OP_CLEAR &&
+         state->attachments[attachment_idx].first_subpass == state->subpass_idx;
+      store_general(cmd_buffer, cl,
+                    attachment_idx, layer, RENDER_TARGET_0 + i, needs_clear);
       has_stores = true;
    }
 
-   /* FIXME: depth/stencil store */
+   /* FIXME: depth/stencil store
+    *
+    * GFXH-1461/GFXH-1689: The per-buffer store command's clear
+    * buffer bit is broken for depth/stencil.  In addition, the
+    * clear packet's Z/S bit is broken, but the RTs bit ends up
+    * clearing Z/S.
+    *
+    * This means that when we implement depth/stencil clearing we
+    * need to emit a separate clear before we start the render pass,
+    * since the RTs bit is for clearing all render targets, and we might
+    * not want to do that. We might want to consider emitting clears for
+    * all RTs needing clearing just once ahead of the first subpass.
+    */
 
    /* We always need to emit at least one dummy store */
    if (!has_stores) {
       cl_emit(cl, STORE_TILE_BUFFER_GENERAL, store) {
          store.buffer_to_store = NONE;
-      }
-   }
-
-   /* GFXH-1461/GFXH-1689: The per-buffer store command's clear
-    * buffer bit is broken for depth/stencil.  In addition, the
-    * clear packet's Z/S bit is broken, but the RTs bit ends up
-    * clearing Z/S.
-    */
-   if (has_clears) {
-      cl_emit(cl, CLEAR_TILE_BUFFERS, clear) {
-         clear.clear_z_stencil_buffer = true;
-         clear.clear_all_render_targets = true;
       }
    }
 }

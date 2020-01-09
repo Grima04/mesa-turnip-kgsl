@@ -390,7 +390,7 @@ union v3dv_clear_value {
 
 struct v3dv_cmd_buffer_attachment_state {
    union v3dv_clear_value clear_value;
-   bool cleared;
+   uint32_t first_subpass;
 };
 
 struct v3dv_viewport_state {
