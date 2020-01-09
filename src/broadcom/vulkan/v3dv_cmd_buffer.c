@@ -1597,10 +1597,7 @@ cmd_buffer_emit_graphics_pipeline(struct v3dv_cmd_buffer *cmd_buffer)
       }
    }
 
-   cl_emit(&job->bcl, VCM_CACHE_SIZE, vcm) {
-      vcm.number_of_16_vertex_batches_for_binning = pipeline->vpm_cfg_bin.Vc;
-      vcm.number_of_16_vertex_batches_for_rendering = pipeline->vpm_cfg.Vc;
-   }
+   cl_emit_prepacked(&job->bcl, &pipeline->vcm_cache_size);
 
    cl_emit(&job->bcl, GL_SHADER_STATE, state) {
       state.address = v3dv_cl_address(job->indirect.bo,

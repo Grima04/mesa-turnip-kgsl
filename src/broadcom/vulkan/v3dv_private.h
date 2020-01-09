@@ -619,6 +619,7 @@ struct v3dv_pipeline {
     */
    uint8_t cfg_bits[cl_packet_length(CFG_BITS)];
    uint8_t shader_state_record[cl_packet_length(GL_SHADER_STATE_RECORD)];
+   uint8_t vcm_cache_size[cl_packet_length(VCM_CACHE_SIZE)];
 };
 
 uint32_t v3dv_physical_device_api_version(struct v3dv_physical_device *dev);

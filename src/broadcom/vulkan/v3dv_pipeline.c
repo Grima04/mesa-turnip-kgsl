@@ -941,6 +941,18 @@ pack_shader_state_record(struct v3dv_pipeline *pipeline)
    }
 }
 
+static void
+pack_vcm_cache_size(struct v3dv_pipeline *pipeline)
+{
+   assert(sizeof(pipeline->vcm_cache_size) ==
+          cl_packet_length(VCM_CACHE_SIZE));
+
+   v3dv_pack(pipeline->vcm_cache_size, VCM_CACHE_SIZE, vcm) {
+      vcm.number_of_16_vertex_batches_for_binning = pipeline->vpm_cfg_bin.Vc;
+      vcm.number_of_16_vertex_batches_for_rendering = pipeline->vpm_cfg.Vc;
+   }
+}
+
 static VkResult
 pipeline_init(struct v3dv_pipeline *pipeline,
               struct v3dv_device *device,
@@ -984,6 +996,7 @@ pipeline_init(struct v3dv_pipeline *pipeline,
    }
 
    pack_shader_state_record(pipeline);
+   pack_vcm_cache_size(pipeline);
 
    return result;
 }
