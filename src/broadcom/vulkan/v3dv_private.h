@@ -583,6 +583,20 @@ struct v3dv_pipeline_stage {
    struct v3dv_bo *assembly_bo;
 };
 
+/* FIXME: although the full vpm_config is not required at this point, as we
+ * don't plan to initially support GS, it is more readable and serves as a
+ * placeholder, to have the struct and fill it with default values.
+ */
+struct vpm_config {
+   uint32_t As;
+   uint32_t Vc;
+   uint32_t Gs;
+   uint32_t Gd;
+   uint32_t Gv;
+   uint32_t Ve;
+   uint32_t gs_width;
+};
+
 struct v3dv_pipeline {
    struct v3dv_device *device;
 
@@ -599,9 +613,12 @@ struct v3dv_pipeline {
 
    struct v3dv_dynamic_state dynamic_state;
 
+   struct vpm_config vpm_cfg;
+   struct vpm_config vpm_cfg_bin;
    /* Packets prepacked during pipeline creation
     */
    uint8_t cfg_bits[cl_packet_length(CFG_BITS)];
+   uint8_t shader_state_record[cl_packet_length(GL_SHADER_STATE_RECORD)];
 };
 
 uint32_t v3dv_physical_device_api_version(struct v3dv_physical_device *dev);

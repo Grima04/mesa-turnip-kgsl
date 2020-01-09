@@ -155,6 +155,23 @@ void v3dv_cl_ensure_space_with_branch(struct v3dv_cl *cl, uint32_t space);
                 _loop_terminate = NULL;                          \
         }))                                                      \
 
+#define cl_emit_with_prepacked(cl, packet, prepacked, name)      \
+        for (struct cl_packet_struct(packet) name = {            \
+                cl_packet_header(packet)                         \
+        },                                                       \
+        *_loop_terminate = &name;                                \
+        __builtin_expect(_loop_terminate != NULL, 1);            \
+        ({                                                       \
+                struct v3dv_cl_out *cl_out = cl_start(cl);        \
+                uint8_t packed[cl_packet_length(packet)];         \
+                cl_packet_pack(packet)(cl, packed, &name);       \
+                for (int _i = 0; _i < cl_packet_length(packet); _i++) \
+                        ((uint8_t *)cl_out)[_i] = packed[_i] | (prepacked)[_i]; \
+                cl_advance(&cl_out, cl_packet_length(packet));   \
+                cl_end(cl, cl_out);                              \
+                _loop_terminate = NULL;                          \
+        }))                                                      \
+
 /**
  * Helper function called by the XML-generated pack functions for filling in
  * an address field in shader records.

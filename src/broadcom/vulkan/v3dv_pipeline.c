@@ -683,6 +683,17 @@ pipeline_compile_graphics(struct v3dv_pipeline *pipeline,
       }
    }
 
+   /* FIXME: values below are default when non-GS is available. Would need to
+    * provide real values if GS gets supported
+    */
+   pipeline->vpm_cfg_bin.As = 1;
+   pipeline->vpm_cfg_bin.Ve = 0;
+   pipeline->vpm_cfg_bin.Vc = pipeline->vs_bin->prog_data.vs->vcm_cache_size;
+
+   pipeline->vpm_cfg.As = 1;
+   pipeline->vpm_cfg.Ve = 0;
+   pipeline->vpm_cfg.Vc = pipeline->vs->prog_data.vs->vcm_cache_size;
+
    return VK_SUCCESS;
 }
 
@@ -814,6 +825,122 @@ pack_cfg_bits(struct v3dv_pipeline *pipeline,
    };
 }
 
+static void
+pack_shader_state_record(struct v3dv_pipeline *pipeline)
+{
+   assert(sizeof(pipeline->shader_state_record) ==
+          cl_packet_length(GL_SHADER_STATE_RECORD));
+
+   /* Note: we are not packing addresses, as we need the job (see
+    * cl_pack_emit_reloc). Additionally uniforms can't be filled up at this
+    * point as they depend on dynamic info that can be set after create the
+    * pipeline (like viewport), . Would need to be filled later, so we are
+    * doing a partial prepacking.
+    */
+   v3dv_pack(pipeline->shader_state_record, GL_SHADER_STATE_RECORD, shader) {
+      shader.enable_clipping = true;
+
+      shader.point_size_in_shaded_vertex_data =
+         pipeline->vs->key.vs.per_vertex_point_size;
+
+      /* Must be set if the shader modifies Z, discards, or modifies
+       * the sample mask.  For any of these cases, the fragment
+       * shader needs to write the Z value (even just discards).
+       */
+      shader.fragment_shader_does_z_writes =
+         pipeline->fs->prog_data.fs->writes_z;
+      /* Set if the EZ test must be disabled (due to shader side
+       * effects and the early_z flag not being present in the
+       * shader).
+       */
+      shader.turn_off_early_z_test =
+         pipeline->fs->prog_data.fs->disable_ez;
+
+      shader.fragment_shader_uses_real_pixel_centre_w_in_addition_to_centroid_w2 =
+         pipeline->fs->prog_data.fs->uses_center_w;
+
+      shader.any_shader_reads_hardware_written_primitive_id = false;
+
+      shader.do_scoreboard_wait_on_first_thread_switch =
+         pipeline->fs->prog_data.fs->lock_scoreboard_on_first_thrsw;
+      shader.disable_implicit_point_line_varyings =
+         !pipeline->fs->prog_data.fs->uses_implicit_point_line_varyings;
+
+      shader.number_of_varyings_in_fragment_shader =
+         pipeline->fs->prog_data.fs->num_inputs;
+
+      shader.coordinate_shader_propagate_nans = true;
+      shader.vertex_shader_propagate_nans = true;
+      shader.fragment_shader_propagate_nans = true;
+
+      /* Note: see previous note about adresses */
+      /* shader.coordinate_shader_code_address */
+      /* shader.vertex_shader_code_address */
+      /* shader.fragment_shader_code_address */
+
+      /* FIXME: Use combined input/output size flag in the common case (also
+       * on v3d, see v3dx_draw).
+       */
+      shader.coordinate_shader_has_separate_input_and_output_vpm_blocks =
+         pipeline->vs_bin->prog_data.vs->separate_segments;
+      shader.vertex_shader_has_separate_input_and_output_vpm_blocks =
+         pipeline->vs->prog_data.vs->separate_segments;
+
+      shader.coordinate_shader_input_vpm_segment_size =
+         pipeline->vs_bin->prog_data.vs->separate_segments ?
+         pipeline->vs_bin->prog_data.vs->vpm_input_size : 1;
+      shader.vertex_shader_input_vpm_segment_size =
+         pipeline->vs->prog_data.vs->separate_segments ?
+         pipeline->vs->prog_data.vs->vpm_input_size : 1;
+
+      shader.coordinate_shader_output_vpm_segment_size =
+         pipeline->vs_bin->prog_data.vs->vpm_output_size;
+      shader.vertex_shader_output_vpm_segment_size =
+         pipeline->vs->prog_data.vs->vpm_output_size;
+
+      /* Note: see previous note about adresses */
+      /* shader.coordinate_shader_uniforms_address */
+      /* shader.vertex_shader_uniforms_address */
+      /* shader.fragment_shader_uniforms_address */
+
+      shader.min_coord_shader_input_segments_required_in_play =
+         pipeline->vpm_cfg_bin.As;
+      shader.min_vertex_shader_input_segments_required_in_play =
+         pipeline->vpm_cfg.As;
+
+      shader.min_coord_shader_output_segments_required_in_play_in_addition_to_vcm_cache_size =
+         pipeline->vpm_cfg_bin.Ve;
+      shader.min_vertex_shader_output_segments_required_in_play_in_addition_to_vcm_cache_size =
+         pipeline->vpm_cfg.Ve;
+
+      shader.coordinate_shader_4_way_threadable =
+         pipeline->vs_bin->prog_data.vs->base.threads == 4;
+      shader.vertex_shader_4_way_threadable =
+         pipeline->vs->prog_data.vs->base.threads == 4;
+      shader.fragment_shader_4_way_threadable =
+         pipeline->fs->prog_data.fs->base.threads == 4;
+
+      shader.coordinate_shader_start_in_final_thread_section =
+         pipeline->vs_bin->prog_data.vs->base.single_seg;
+      shader.vertex_shader_start_in_final_thread_section =
+         pipeline->vs->prog_data.vs->base.single_seg;
+      shader.fragment_shader_start_in_final_thread_section =
+         pipeline->fs->prog_data.fs->base.single_seg;
+
+      shader.vertex_id_read_by_coordinate_shader =
+         pipeline->vs_bin->prog_data.vs->uses_vid;
+      shader.instance_id_read_by_coordinate_shader =
+         pipeline->vs_bin->prog_data.vs->uses_iid;
+      shader.vertex_id_read_by_vertex_shader =
+         pipeline->vs->prog_data.vs->uses_vid;
+      shader.instance_id_read_by_vertex_shader =
+         pipeline->vs->prog_data.vs->uses_iid;
+
+      /* Note: see previous note about adresses */
+      /* shader.address_of_default_attribute_values */
+   }
+}
+
 static VkResult
 pipeline_init(struct v3dv_pipeline *pipeline,
               struct v3dv_device *device,
@@ -855,6 +982,8 @@ pipeline_init(struct v3dv_pipeline *pipeline,
        */
       return result;
    }
+
+   pack_shader_state_record(pipeline);
 
    return result;
 }
