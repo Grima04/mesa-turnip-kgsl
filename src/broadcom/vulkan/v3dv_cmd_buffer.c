@@ -820,6 +820,12 @@ emit_rcl(struct v3dv_cmd_buffer *cmd_buffer)
          }
       }
 
+      /* FIXME: the tile buffer clears don't seem to honor the scissor rect
+       * so if the current combination of scissor + renderArea doesn't cover
+       * the full extent of the render target we won't get correct behavior.
+       * We probably need to detect these cases, implement the clearing by
+       * drawing a rect and skip clearing here.
+       */
       cl_emit(rcl, TILE_RENDERING_MODE_CFG_CLEAR_COLORS_PART1, clear) {
          clear.clear_color_low_32_bits = clear_color[0];
          clear.clear_color_next_24_bits = clear_color[1] & 0xffffff;
