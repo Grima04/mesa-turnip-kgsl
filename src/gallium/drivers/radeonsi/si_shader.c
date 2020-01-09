@@ -4739,7 +4739,20 @@ void si_build_wrapper_function(struct si_shader_context *ctx, LLVMValueRef *part
 		 */
 		enum ac_arg_type arg_type = AC_ARG_INT;
 		if (LLVMGetTypeKind(type) == LLVMPointerTypeKind) {
-			arg_type = AC_ARG_CONST_PTR;
+			type = LLVMGetElementType(type);
+
+			if (LLVMGetTypeKind(type) == LLVMVectorTypeKind) {
+				if (LLVMGetVectorSize(type) == 4)
+					arg_type = AC_ARG_CONST_DESC_PTR;
+				else if (LLVMGetVectorSize(type) == 8)
+					arg_type = AC_ARG_CONST_IMAGE_PTR;
+				else
+					assert(0);
+			} else if (type == ctx->f32) {
+				arg_type = AC_ARG_CONST_FLOAT_PTR;
+			} else {
+				assert(0);
+			}
 		}
 
 		ac_add_arg(&ctx->args, gprs < num_sgprs ? AC_ARG_SGPR : AC_ARG_VGPR,
