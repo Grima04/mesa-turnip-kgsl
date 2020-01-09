@@ -667,6 +667,20 @@ static LLVMValueRef ngg_nogs_vertex_ptr(struct si_shader_context *ctx,
 	return LLVMBuildGEP(ctx->ac.builder, tmp, &vtxid, 1, "");
 }
 
+static LLVMValueRef si_insert_input_v4i32(struct si_shader_context *ctx,
+					  LLVMValueRef ret, struct ac_arg param,
+					  unsigned return_index)
+{
+	LLVMValueRef v = ac_get_arg(&ctx->ac, param);
+
+	for (unsigned i = 0; i < 4; i++) {
+		ret = LLVMBuildInsertValue(ctx->ac.builder, ret,
+					   ac_llvm_extract_elem(&ctx->ac, v, i),
+					   return_index + i, "");
+	}
+	return ret;
+}
+
 static void load_bitmasks_2x64(struct si_shader_context *ctx,
 			       LLVMValueRef lds_ptr, unsigned dw_offset,
 			       LLVMValueRef mask[2], LLVMValueRef *total_bitcount)
@@ -874,10 +888,18 @@ void gfx10_emit_ngg_culling_epilogue_4x_wave32(struct ac_shader_abi *abi,
 	 * - In ES threads, update the ES input VGPRs (VertexID, InstanceID, TES inputs).
 	 */
 
-	LLVMValueRef vtxindex[] = {
-		si_unpack_param(ctx, ctx->gs_vtx01_offset, 0, 16),
-		si_unpack_param(ctx, ctx->gs_vtx01_offset, 16, 16),
-		si_unpack_param(ctx, ctx->gs_vtx23_offset, 0, 16),
+	LLVMValueRef vtxindex[3];
+	if (shader->key.opt.ngg_culling & SI_NGG_CULL_GS_FAST_LAUNCH_ALL) {
+		/* For the GS fast launch, the VS prologs simply puts the Vertex IDs
+		 * into these VGPRs.
+		 */
+		vtxindex[0] = ac_get_arg(&ctx->ac, ctx->gs_vtx01_offset);
+		vtxindex[1] = ac_get_arg(&ctx->ac, ctx->gs_vtx23_offset);
+		vtxindex[2] = ac_get_arg(&ctx->ac, ctx->gs_vtx45_offset);
+	} else {
+		vtxindex[0] = si_unpack_param(ctx, ctx->gs_vtx01_offset, 0, 16);
+		vtxindex[1] = si_unpack_param(ctx, ctx->gs_vtx01_offset, 16, 16);
+		vtxindex[2] = si_unpack_param(ctx, ctx->gs_vtx23_offset, 0, 16);
 	};
 	LLVMValueRef gs_vtxptr[] = {
 		ngg_nogs_vertex_ptr(ctx, vtxindex[0]),
@@ -1143,6 +1165,11 @@ void gfx10_emit_ngg_culling_epilogue_4x_wave32(struct ac_shader_abi *abi,
 					  8 + SI_SGPR_DRAWID);
 		ret = si_insert_input_ptr(ctx, ret, ctx->vertex_buffers,
 					  8 + SI_VS_NUM_USER_SGPR);
+
+		for (unsigned i = 0; i < shader->selector->num_vbos_in_user_sgprs; i++) {
+			ret = si_insert_input_v4i32(ctx, ret, ctx->vb_descriptors[i],
+						    8 + SI_SGPR_VS_VB_DESCRIPTOR_FIRST + i * 4);
+		}
 	} else {
 		assert(ctx->type == PIPE_SHADER_TESS_EVAL);
 		ret = si_insert_input_ptr(ctx, ret, ctx->tcs_offchip_layout,
@@ -1152,10 +1179,16 @@ void gfx10_emit_ngg_culling_epilogue_4x_wave32(struct ac_shader_abi *abi,
 	}
 
 	unsigned vgpr;
-	if (ctx->type == PIPE_SHADER_VERTEX)
-		vgpr = 8 + GFX9_VSGS_NUM_USER_SGPR + 1;
-	else
+	if (ctx->type == PIPE_SHADER_VERTEX) {
+		if (shader->selector->num_vbos_in_user_sgprs) {
+			vgpr = 8 + SI_SGPR_VS_VB_DESCRIPTOR_FIRST +
+			       shader->selector->num_vbos_in_user_sgprs * 4;
+		} else {
+			vgpr = 8 + GFX9_VSGS_NUM_USER_SGPR + 1;
+		}
+	} else {
 		vgpr = 8 + GFX9_TESGS_NUM_USER_SGPR;
+	}
 
 	val = LLVMBuildLoad(builder, new_vgpr0, "");
 	ret = LLVMBuildInsertValue(builder, ret, ac_to_float(&ctx->ac, val),
@@ -1986,8 +2019,16 @@ void gfx10_ngg_calculate_subgroup_info(struct si_shader *shader)
 
 	/* All these are per subgroup: */
 	bool max_vert_out_per_gs_instance = false;
-	unsigned max_esverts_base = 128;
 	unsigned max_gsprims_base = 128; /* default prim group size clamp */
+	unsigned max_esverts_base = 128;
+
+	if (shader->key.opt.ngg_culling & SI_NGG_CULL_GS_FAST_LAUNCH_TRI_LIST) {
+		max_gsprims_base = 128 / 3;
+		max_esverts_base = max_gsprims_base * 3;
+	} else if (shader->key.opt.ngg_culling & SI_NGG_CULL_GS_FAST_LAUNCH_TRI_STRIP) {
+		max_gsprims_base = 126;
+		max_esverts_base = 128;
+	}
 
 	/* Hardware has the following non-natural restrictions on the value
 	 * of GE_CNTL.VERT_GRP_SIZE based on based on the primitive type of

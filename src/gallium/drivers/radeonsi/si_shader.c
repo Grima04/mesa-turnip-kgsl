@@ -1474,11 +1474,20 @@ void si_create_function(struct si_shader_context *ctx, bool ngg_cull_shader)
 		     ctx->type == PIPE_SHADER_TESS_EVAL)) {
 			unsigned num_user_sgprs, num_vgprs;
 
-			/* For the NGG cull shader, add 1 SGPR to hold the vertex buffer pointer. */
-			if (ctx->type == PIPE_SHADER_VERTEX)
+			if (ctx->type == PIPE_SHADER_VERTEX) {
+				/* For the NGG cull shader, add 1 SGPR to hold
+				 * the vertex buffer pointer.
+				 */
 				num_user_sgprs = GFX9_VSGS_NUM_USER_SGPR + ngg_cull_shader;
-			else
+
+				if (ngg_cull_shader && shader->selector->num_vbos_in_user_sgprs) {
+					assert(num_user_sgprs <= 8 + SI_SGPR_VS_VB_DESCRIPTOR_FIRST);
+					num_user_sgprs = SI_SGPR_VS_VB_DESCRIPTOR_FIRST +
+							 shader->selector->num_vbos_in_user_sgprs * 4;
+				}
+			} else {
 				num_user_sgprs = GFX9_TESGS_NUM_USER_SGPR;
+			}
 
 			/* The NGG cull shader has to return all 9 VGPRs + the old thread ID.
 			 *
@@ -2278,13 +2287,16 @@ static void si_init_exec_from_input(struct si_shader_context *ctx,
 }
 
 static bool si_vs_needs_prolog(const struct si_shader_selector *sel,
-			       const struct si_vs_prolog_bits *key)
+			       const struct si_vs_prolog_bits *prolog_key,
+			       const struct si_shader_key *key,
+			       bool ngg_cull_shader)
 {
 	/* VGPR initialization fixup for Vega10 and Raven is always done in the
 	 * VS prolog. */
 	return sel->vs_needs_prolog ||
-	       key->ls_vgpr_fix ||
-	       key->unpack_instance_id_from_vertex_id;
+	       prolog_key->ls_vgpr_fix ||
+	       prolog_key->unpack_instance_id_from_vertex_id ||
+	       (ngg_cull_shader && key->opt.ngg_culling & SI_NGG_CULL_GS_FAST_LAUNCH_ALL);
 }
 
 static bool si_build_main_function(struct si_shader_context *ctx,
@@ -2436,7 +2448,8 @@ static bool si_build_main_function(struct si_shader_context *ctx,
 		    (shader->key.as_es || shader->key.as_ls) &&
 		    (ctx->type == PIPE_SHADER_TESS_EVAL ||
 		     (ctx->type == PIPE_SHADER_VERTEX &&
-		      !si_vs_needs_prolog(sel, &shader->key.part.vs.prolog)))) {
+		      !si_vs_needs_prolog(sel, &shader->key.part.vs.prolog,
+					  &shader->key, ngg_cull_shader)))) {
 			si_init_exec_from_input(ctx,
 						ctx->merged_wave_info, 0);
 		} else if (ctx->type == PIPE_SHADER_TESS_CTRL ||
@@ -2551,8 +2564,14 @@ static void si_get_vs_prolog_key(const struct si_shader_info *info,
 	key->vs_prolog.as_es = shader_out->key.as_es;
 	key->vs_prolog.as_ngg = shader_out->key.as_ngg;
 
-	if (!ngg_cull_shader)
+	if (ngg_cull_shader) {
+		key->vs_prolog.gs_fast_launch_tri_list = !!(shader_out->key.opt.ngg_culling &
+							    SI_NGG_CULL_GS_FAST_LAUNCH_TRI_LIST);
+		key->vs_prolog.gs_fast_launch_tri_strip = !!(shader_out->key.opt.ngg_culling &
+							     SI_NGG_CULL_GS_FAST_LAUNCH_TRI_STRIP);
+	} else {
 		key->vs_prolog.has_ngg_cull_inputs = !!shader_out->key.opt.ngg_culling;
+	}
 
 	if (shader_out->selector->type == PIPE_SHADER_TESS_CTRL) {
 		key->vs_prolog.as_ls = 1;
@@ -2937,11 +2956,12 @@ int si_compile_shader(struct si_screen *sscreen,
 	if (shader->is_monolithic && ctx.type == PIPE_SHADER_VERTEX) {
 		LLVMValueRef parts[4];
 		unsigned num_parts = 0;
-		bool need_prolog = si_vs_needs_prolog(sel, &shader->key.part.vs.prolog);
+		bool has_prolog = false;
 		LLVMValueRef main_fn = ctx.main_fn;
 
 		if (ngg_cull_main_fn) {
-			if (need_prolog) {
+			if (si_vs_needs_prolog(sel, &shader->key.part.vs.prolog,
+					       &shader->key, true)) {
 				union si_shader_part_key prolog_key;
 				si_get_vs_prolog_key(&sel->info,
 						     shader->info.num_input_sgprs,
@@ -2951,11 +2971,13 @@ int si_compile_shader(struct si_screen *sscreen,
 				prolog_key.vs_prolog.is_monolithic = true;
 				si_build_vs_prolog_function(&ctx, &prolog_key);
 				parts[num_parts++] = ctx.main_fn;
+				has_prolog = true;
 			}
 			parts[num_parts++] = ngg_cull_main_fn;
 		}
 
-		if (need_prolog) {
+		if (si_vs_needs_prolog(sel, &shader->key.part.vs.prolog,
+				       &shader->key, false)) {
 			union si_shader_part_key prolog_key;
 			si_get_vs_prolog_key(&sel->info,
 					     shader->info.num_input_sgprs,
@@ -2965,11 +2987,12 @@ int si_compile_shader(struct si_screen *sscreen,
 			prolog_key.vs_prolog.is_monolithic = true;
 			si_build_vs_prolog_function(&ctx, &prolog_key);
 			parts[num_parts++] = ctx.main_fn;
+			has_prolog = true;
 		}
 		parts[num_parts++] = main_fn;
 
 		si_build_wrapper_function(&ctx, parts, num_parts,
-					  need_prolog ? 1 : 0, 0);
+					  has_prolog ? 1 : 0, 0);
 
 		if (ctx.shader->key.opt.vs_as_prim_discard_cs)
 			si_build_prim_discard_compute_shader(&ctx);
@@ -2986,7 +3009,8 @@ int si_compile_shader(struct si_screen *sscreen,
 			struct si_shader_selector *ls = shader->key.part.tcs.ls;
 			LLVMValueRef parts[4];
 			bool vs_needs_prolog =
-				si_vs_needs_prolog(ls, &shader->key.part.tcs.ls_prolog);
+				si_vs_needs_prolog(ls, &shader->key.part.tcs.ls_prolog,
+						   &shader->key, false);
 
 			/* TCS main part */
 			parts[2] = ctx.main_fn;
@@ -3086,7 +3110,8 @@ int si_compile_shader(struct si_screen *sscreen,
 
 			/* ES prolog */
 			if (es->type == PIPE_SHADER_VERTEX &&
-			    si_vs_needs_prolog(es, &shader->key.part.gs.vs_prolog)) {
+			    si_vs_needs_prolog(es, &shader->key.part.gs.vs_prolog,
+					       &shader->key, false)) {
 				union si_shader_part_key vs_prolog_key;
 				si_get_vs_prolog_key(&es->info,
 						     shader_es.info.num_input_sgprs,
@@ -3391,6 +3416,72 @@ static void si_build_vs_prolog_function(struct si_shader_context *ctx,
 		}
 	}
 
+	if (key->vs_prolog.gs_fast_launch_tri_list ||
+	    key->vs_prolog.gs_fast_launch_tri_strip) {
+		LLVMValueRef wave_id, thread_id_in_tg;
+
+		wave_id = si_unpack_param(ctx, input_sgpr_param[3], 24, 4);
+		thread_id_in_tg = ac_build_imad(&ctx->ac, wave_id,
+						LLVMConstInt(ctx->ac.i32, ctx->ac.wave_size, false),
+						ac_get_thread_id(&ctx->ac));
+
+		/* The GS fast launch initializes all VGPRs to the value of
+		 * the first thread, so we have to add the thread ID.
+		 *
+		 * Only these are initialized by the hw:
+		 *   VGPR2: Base Primitive ID
+		 *   VGPR5: Base Vertex ID
+		 *   VGPR6: Instance ID
+		 */
+
+		/* Put the vertex thread IDs into VGPRs as-is instead of packing them.
+		 * The NGG cull shader will read them from there.
+		 */
+		if (key->vs_prolog.gs_fast_launch_tri_list) {
+			input_vgprs[0] = ac_build_imad(&ctx->ac, thread_id_in_tg, /* gs_vtx01_offset */
+						       LLVMConstInt(ctx->i32, 3, 0), /* Vertex 0 */
+						       LLVMConstInt(ctx->i32, 0, 0));
+			input_vgprs[1] = ac_build_imad(&ctx->ac, thread_id_in_tg, /* gs_vtx23_offset */
+						       LLVMConstInt(ctx->i32, 3, 0), /* Vertex 1 */
+						       LLVMConstInt(ctx->i32, 1, 0));
+			input_vgprs[4] = ac_build_imad(&ctx->ac, thread_id_in_tg, /* gs_vtx45_offset */
+						       LLVMConstInt(ctx->i32, 3, 0), /* Vertex 2 */
+						       LLVMConstInt(ctx->i32, 2, 0));
+		} else {
+			assert(key->vs_prolog.gs_fast_launch_tri_strip);
+			LLVMBuilderRef builder = ctx->ac.builder;
+			/* Triangle indices: */
+			LLVMValueRef index[3] = {
+				thread_id_in_tg,
+				LLVMBuildAdd(builder, thread_id_in_tg,
+					     LLVMConstInt(ctx->i32, 1, 0), ""),
+				LLVMBuildAdd(builder, thread_id_in_tg,
+					     LLVMConstInt(ctx->i32, 2, 0), ""),
+			};
+			LLVMValueRef is_odd = LLVMBuildTrunc(ctx->ac.builder,
+							     thread_id_in_tg, ctx->i1, "");
+			LLVMValueRef flatshade_first =
+				LLVMBuildICmp(builder, LLVMIntEQ,
+					      si_unpack_param(ctx, ctx->vs_state_bits, 4, 2),
+					      ctx->i32_0, "");
+
+			ac_build_triangle_strip_indices_to_triangle(&ctx->ac, is_odd,
+								    flatshade_first, index);
+			input_vgprs[0] = index[0];
+			input_vgprs[1] = index[1];
+			input_vgprs[4] = index[2];
+		}
+
+		/* Triangles always have all edge flags set initially. */
+		input_vgprs[3] = LLVMConstInt(ctx->i32, 0x7 << 8, 0);
+
+		input_vgprs[2] = LLVMBuildAdd(ctx->ac.builder, input_vgprs[2],
+					      thread_id_in_tg, ""); /* PrimID */
+		input_vgprs[5] = LLVMBuildAdd(ctx->ac.builder, input_vgprs[5],
+					      thread_id_in_tg, ""); /* VertexID */
+		input_vgprs[8] = input_vgprs[6]; /* InstanceID */
+	}
+
 	unsigned vertex_id_vgpr = first_vs_vgpr;
 	unsigned instance_id_vgpr =
 		ctx->screen->info.chip_class >= GFX10 ?
@@ -3498,7 +3589,7 @@ static bool si_get_vs_prolog(struct si_screen *sscreen,
 {
 	struct si_shader_selector *vs = main_part->selector;
 
-	if (!si_vs_needs_prolog(vs, key))
+	if (!si_vs_needs_prolog(vs, key, &shader->key, false))
 		return true;
 
 	/* Get the prolog. */

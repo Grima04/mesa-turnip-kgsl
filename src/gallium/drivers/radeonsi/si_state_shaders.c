@@ -1234,6 +1234,8 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
 		late_alloc_wave64 = 0;
 	else if (num_cu_per_sh <= 6)
 		late_alloc_wave64 = num_cu_per_sh - 2; /* All CUs enabled */
+	else if (shader->key.opt.ngg_culling & SI_NGG_CULL_GS_FAST_LAUNCH_ALL)
+		late_alloc_wave64 = (num_cu_per_sh - 2) * 6;
 	else
 		late_alloc_wave64 = (num_cu_per_sh - 2) * 4;
 
@@ -1316,26 +1318,36 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
 	shader->ctx_reg.ngg.ge_pc_alloc = S_030980_OVERSUB_EN(1) |
 					  S_030980_NUM_PC_LINES(oversub_pc_lines - 1);
 
-	shader->ge_cntl =
-		S_03096C_PRIM_GRP_SIZE(shader->ngg.max_gsprims) |
-		S_03096C_VERT_GRP_SIZE(256) | /* 256 = disable vertex grouping */
-		S_03096C_BREAK_WAVE_AT_EOI(break_wave_at_eoi);
+	if (shader->key.opt.ngg_culling & SI_NGG_CULL_GS_FAST_LAUNCH_TRI_LIST) {
+		shader->ge_cntl =
+			S_03096C_PRIM_GRP_SIZE(shader->ngg.max_gsprims) |
+			S_03096C_VERT_GRP_SIZE(shader->ngg.max_gsprims * 3);
+	} else if (shader->key.opt.ngg_culling & SI_NGG_CULL_GS_FAST_LAUNCH_TRI_STRIP) {
+		shader->ge_cntl =
+			S_03096C_PRIM_GRP_SIZE(shader->ngg.max_gsprims) |
+			S_03096C_VERT_GRP_SIZE(shader->ngg.max_gsprims + 2);
+	} else {
+		shader->ge_cntl =
+			S_03096C_PRIM_GRP_SIZE(shader->ngg.max_gsprims) |
+			S_03096C_VERT_GRP_SIZE(256) | /* 256 = disable vertex grouping */
+			S_03096C_BREAK_WAVE_AT_EOI(break_wave_at_eoi);
 
-	/* Bug workaround for a possible hang with non-tessellation cases.
-	 * Tessellation always sets GE_CNTL.VERT_GRP_SIZE = 0
-	 *
-	 * Requirement: GE_CNTL.VERT_GRP_SIZE = VGT_GS_ONCHIP_CNTL.ES_VERTS_PER_SUBGRP - 5
-	 */
-	if ((sscreen->info.family == CHIP_NAVI10 ||
-	     sscreen->info.family == CHIP_NAVI12 ||
-	     sscreen->info.family == CHIP_NAVI14) &&
-	    (es_type == PIPE_SHADER_VERTEX || gs_type == PIPE_SHADER_VERTEX) && /* = no tess */
-	    shader->ngg.hw_max_esverts != 256) {
-		shader->ge_cntl &= C_03096C_VERT_GRP_SIZE;
+		/* Bug workaround for a possible hang with non-tessellation cases.
+		 * Tessellation always sets GE_CNTL.VERT_GRP_SIZE = 0
+		 *
+		 * Requirement: GE_CNTL.VERT_GRP_SIZE = VGT_GS_ONCHIP_CNTL.ES_VERTS_PER_SUBGRP - 5
+		 */
+		if ((sscreen->info.family == CHIP_NAVI10 ||
+		     sscreen->info.family == CHIP_NAVI12 ||
+		     sscreen->info.family == CHIP_NAVI14) &&
+		    (es_type == PIPE_SHADER_VERTEX || gs_type == PIPE_SHADER_VERTEX) && /* = no tess */
+		    shader->ngg.hw_max_esverts != 256) {
+			shader->ge_cntl &= C_03096C_VERT_GRP_SIZE;
 
-		if (shader->ngg.hw_max_esverts > 5) {
-			shader->ge_cntl |=
-				S_03096C_VERT_GRP_SIZE(shader->ngg.hw_max_esverts - 5);
+			if (shader->ngg.hw_max_esverts > 5) {
+				shader->ge_cntl |=
+					S_03096C_VERT_GRP_SIZE(shader->ngg.hw_max_esverts - 5);
+			}
 		}
 	}
 
@@ -3954,6 +3966,7 @@ static struct si_pm4_state *si_build_vgt_shader_config(struct si_screen *screen,
 
 	if (key.u.ngg) {
 		stages |= S_028B54_PRIMGEN_EN(1) |
+			  S_028B54_GS_FAST_LAUNCH(key.u.ngg_gs_fast_launch) |
 			  S_028B54_NGG_WAVE_ID_EN(key.u.streamout) |
 			  S_028B54_PRIMGEN_PASSTHRU_EN(key.u.ngg_passthrough);
 	} else if (key.u.gs)
@@ -4109,8 +4122,13 @@ bool si_update_shaders(struct si_context *sctx)
 	}
 
 	/* This must be done after the shader variant is selected. */
-	if (sctx->ngg)
-		key.u.ngg_passthrough = gfx10_is_ngg_passthrough(si_get_vs(sctx)->current);
+	if (sctx->ngg) {
+		struct si_shader *vs = si_get_vs(sctx)->current;
+
+		key.u.ngg_passthrough = gfx10_is_ngg_passthrough(vs);
+		key.u.ngg_gs_fast_launch = !!(vs->key.opt.ngg_culling &
+					      SI_NGG_CULL_GS_FAST_LAUNCH_ALL);
+	}
 
 	si_update_vgt_shader_config(sctx, key);
 
