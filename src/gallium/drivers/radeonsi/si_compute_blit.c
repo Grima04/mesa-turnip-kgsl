@@ -564,6 +564,10 @@ void si_retile_dcc(struct si_context *sctx, struct si_texture *tex)
 	/* Restore states. */
 	ctx->bind_compute_state(ctx, saved_cs);
 	ctx->set_shader_images(ctx, PIPE_SHADER_COMPUTE, 0, 3, saved_img);
+
+	for (unsigned i = 0; i < 3; i++) {
+		pipe_resource_reference(&saved_img[i].resource, NULL);
+	}
 }
 
 /* Expand FMASK to make it identity, so that image stores can ignore it. */
