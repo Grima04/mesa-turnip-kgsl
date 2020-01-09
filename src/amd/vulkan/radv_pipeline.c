@@ -149,6 +149,22 @@ bool radv_pipeline_has_ngg(const struct radv_pipeline *pipeline)
 	return variant->info.is_ngg;
 }
 
+bool radv_pipeline_has_ngg_passthrough(const struct radv_pipeline *pipeline)
+{
+	assert(radv_pipeline_has_ngg(pipeline));
+
+	struct radv_shader_variant *variant = NULL;
+	if (pipeline->shaders[MESA_SHADER_GEOMETRY])
+		variant = pipeline->shaders[MESA_SHADER_GEOMETRY];
+	else if (pipeline->shaders[MESA_SHADER_TESS_EVAL])
+		variant = pipeline->shaders[MESA_SHADER_TESS_EVAL];
+	else if (pipeline->shaders[MESA_SHADER_VERTEX])
+		variant = pipeline->shaders[MESA_SHADER_VERTEX];
+	else
+		return false;
+	return variant->info.is_ngg_passthrough;
+}
+
 bool radv_pipeline_has_gs_copy_shader(const struct radv_pipeline *pipeline)
 {
 	if (!radv_pipeline_has_gs(pipeline))
@@ -2434,20 +2450,35 @@ radv_fill_shader_keys(struct radv_device *device,
 				keys[MESA_SHADER_VERTEX].vs_common_out.as_ngg = false;
 		}
 
-		if (!device->physical_device->use_ngg_streamout) {
-			gl_shader_stage last_xfb_stage = MESA_SHADER_VERTEX;
+		gl_shader_stage last_xfb_stage = MESA_SHADER_VERTEX;
 
-			for (int i = MESA_SHADER_VERTEX; i <= MESA_SHADER_GEOMETRY; i++) {
-				if (nir[i])
-					last_xfb_stage = i;
-			}
+		for (int i = MESA_SHADER_VERTEX; i <= MESA_SHADER_GEOMETRY; i++) {
+			if (nir[i])
+				last_xfb_stage = i;
+		}
 
-			if (nir[last_xfb_stage] &&
-			    radv_nir_stage_uses_xfb(nir[last_xfb_stage])) {
-				if (nir[MESA_SHADER_TESS_CTRL])
-					keys[MESA_SHADER_TESS_EVAL].vs_common_out.as_ngg = false;
-				else
-					keys[MESA_SHADER_VERTEX].vs_common_out.as_ngg = false;
+		bool uses_xfb = nir[last_xfb_stage] &&
+				radv_nir_stage_uses_xfb(nir[last_xfb_stage]);
+
+		if (!device->physical_device->use_ngg_streamout && uses_xfb) {
+			if (nir[MESA_SHADER_TESS_CTRL])
+				keys[MESA_SHADER_TESS_EVAL].vs_common_out.as_ngg = false;
+			else
+				keys[MESA_SHADER_VERTEX].vs_common_out.as_ngg = false;
+		}
+
+		/* Determine if the pipeline is eligible for the NGG passthrough
+		 * mode. It can't be enabled for geometry shaders, for NGG
+		 * streamout or for vertex shaders that export the primitive ID
+		 * (this is checked later because we don't have the info here.)
+		 */
+		if (!nir[MESA_SHADER_GEOMETRY] && !uses_xfb) {
+			if (nir[MESA_SHADER_TESS_CTRL] &&
+			    keys[MESA_SHADER_TESS_EVAL].vs_common_out.as_ngg) {
+				keys[MESA_SHADER_TESS_EVAL].vs_common_out.as_ngg_passthrough = true;
+			} else if (nir[MESA_SHADER_VERTEX] &&
+				   keys[MESA_SHADER_VERTEX].vs_common_out.as_ngg) {
+				keys[MESA_SHADER_VERTEX].vs_common_out.as_ngg_passthrough = true;
 			}
 		}
 	}
@@ -2522,6 +2553,16 @@ radv_fill_shader_info(struct radv_pipeline *pipeline,
 		        infos[MESA_SHADER_FRAGMENT].ps.layer_input;
 		keys[MESA_SHADER_TESS_EVAL].vs_common_out.export_clip_dists =
 		        !!infos[MESA_SHADER_FRAGMENT].ps.num_input_clips_culls;
+
+		/* NGG passthrough mode can't be enabled for vertex shaders
+		 * that export the primitive ID.
+		 *
+		 * TODO: I should really refactor the keys logic.
+		 */
+		if (nir[MESA_SHADER_VERTEX] &&
+		    keys[MESA_SHADER_VERTEX].vs_common_out.export_prim_id) {
+			keys[MESA_SHADER_VERTEX].vs_common_out.as_ngg_passthrough = false;
+		}
 
 		filled_stages |= (1 << MESA_SHADER_FRAGMENT);
 	}

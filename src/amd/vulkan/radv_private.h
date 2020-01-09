@@ -1656,6 +1656,8 @@ static inline bool radv_pipeline_has_tess(const struct radv_pipeline *pipeline)
 
 bool radv_pipeline_has_ngg(const struct radv_pipeline *pipeline);
 
+bool radv_pipeline_has_ngg_passthrough(const struct radv_pipeline *pipeline);
+
 bool radv_pipeline_has_gs_copy_shader(const struct radv_pipeline *pipeline);
 
 struct radv_userdata_info *radv_lookup_user_sgpr(struct radv_pipeline *pipeline,
