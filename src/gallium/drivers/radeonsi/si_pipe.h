@@ -1437,7 +1437,10 @@ void si_dispatch_prim_discard_cs_and_draw(struct si_context *sctx,
 					  unsigned base_vertex,
 					  uint64_t input_indexbuf_va,
 					  unsigned input_indexbuf_max_elements);
-void si_initialize_prim_discard_tunables(struct si_context *sctx);
+void si_initialize_prim_discard_tunables(struct si_screen *sscreen,
+					 bool is_aux_context,
+					 unsigned *prim_discard_vertex_count_threshold,
+					 unsigned *index_ring_size_per_ib);
 
 /* si_pipe.c */
 void si_init_compiler(struct si_screen *sscreen, struct ac_llvm_compiler *compiler);

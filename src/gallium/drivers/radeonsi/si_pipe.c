@@ -593,7 +593,12 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen,
 		sctx->queued.named.rasterizer = sctx->discard_rasterizer_state;
 
 		si_init_draw_functions(sctx);
-		si_initialize_prim_discard_tunables(sctx);
+
+		/* If aux_context == NULL, we are initializing aux_context right now. */
+		bool is_aux_context = !sscreen->aux_context;
+		si_initialize_prim_discard_tunables(sscreen, is_aux_context,
+						    &sctx->prim_discard_vertex_count_threshold,
+						    &sctx->index_ring_size_per_ib);
 	}
 
 	/* Initialize SDMA functions. */
@@ -1092,7 +1097,13 @@ radeonsi_screen_create_impl(struct radeon_winsys *ws,
 	if (!debug_get_bool_option("RADEON_DISABLE_PERFCOUNTERS", false))
 		si_init_perfcounters(sscreen);
 
-	sscreen->num_vbos_in_user_sgprs = sscreen->info.chip_class >= GFX9 ? 5 : 1;
+	unsigned prim_discard_vertex_count_threshold, tmp;
+	si_initialize_prim_discard_tunables(sscreen, false,
+					    &prim_discard_vertex_count_threshold,
+					    &tmp);
+	/* Compute-shader-based culling doesn't support VBOs in user SGPRs. */
+	if (prim_discard_vertex_count_threshold != UINT_MAX)
+		sscreen->num_vbos_in_user_sgprs = sscreen->info.chip_class >= GFX9 ? 5 : 1;
 
 	/* Determine tessellation ring info. */
 	bool double_offchip_buffers = sscreen->info.chip_class >= GFX7 &&

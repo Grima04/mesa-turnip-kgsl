@@ -187,36 +187,38 @@
 /* For emulating the rewind packet on CI. */
 #define FORCE_REWIND_EMULATION		0
 
-void si_initialize_prim_discard_tunables(struct si_context *sctx)
+void si_initialize_prim_discard_tunables(struct si_screen *sscreen,
+					 bool is_aux_context,
+					 unsigned *prim_discard_vertex_count_threshold,
+					 unsigned *index_ring_size_per_ib)
 {
-	sctx->prim_discard_vertex_count_threshold = UINT_MAX; /* disable */
+	*prim_discard_vertex_count_threshold = UINT_MAX; /* disable */
 
-	if (sctx->chip_class == GFX6 || /* SI support is not implemented */
-	    !sctx->screen->info.has_gds_ordered_append ||
-	    sctx->screen->debug_flags & DBG(NO_PD) ||
-	    /* If aux_context == NULL, we are initializing aux_context right now. */
-	    !sctx->screen->aux_context)
+	if (sscreen->info.chip_class == GFX6 || /* SI support is not implemented */
+	    !sscreen->info.has_gds_ordered_append ||
+	    sscreen->debug_flags & DBG(NO_PD) ||
+	    is_aux_context)
 		return;
 
 	/* TODO: enable this after the GDS kernel memory management is fixed */
 	bool enable_on_pro_graphics_by_default = false;
 
-	if (sctx->screen->debug_flags & DBG(ALWAYS_PD) ||
-	    sctx->screen->debug_flags & DBG(PD) ||
+	if (sscreen->debug_flags & DBG(ALWAYS_PD) ||
+	    sscreen->debug_flags & DBG(PD) ||
 	    (enable_on_pro_graphics_by_default &&
-	     sctx->screen->info.is_pro_graphics &&
-	     (sctx->family == CHIP_BONAIRE ||
-	      sctx->family == CHIP_HAWAII ||
-	      sctx->family == CHIP_TONGA ||
-	      sctx->family == CHIP_FIJI ||
-	      sctx->family == CHIP_POLARIS10 ||
-	      sctx->family == CHIP_POLARIS11 ||
-	      sctx->family == CHIP_VEGA10 ||
-	      sctx->family == CHIP_VEGA20))) {
-		sctx->prim_discard_vertex_count_threshold = 6000 * 3; /* 6K triangles */
+	     sscreen->info.is_pro_graphics &&
+	     (sscreen->info.family == CHIP_BONAIRE ||
+	      sscreen->info.family == CHIP_HAWAII ||
+	      sscreen->info.family == CHIP_TONGA ||
+	      sscreen->info.family == CHIP_FIJI ||
+	      sscreen->info.family == CHIP_POLARIS10 ||
+	      sscreen->info.family == CHIP_POLARIS11 ||
+	      sscreen->info.family == CHIP_VEGA10 ||
+	      sscreen->info.family == CHIP_VEGA20))) {
+		*prim_discard_vertex_count_threshold = 6000 * 3; /* 6K triangles */
 
-		if (sctx->screen->debug_flags & DBG(ALWAYS_PD))
-			sctx->prim_discard_vertex_count_threshold = 0; /* always enable */
+		if (sscreen->debug_flags & DBG(ALWAYS_PD))
+			*prim_discard_vertex_count_threshold = 0; /* always enable */
 
 		const uint32_t MB = 1024 * 1024;
 		const uint64_t GB = 1024 * 1024 * 1024;
@@ -224,12 +226,12 @@ void si_initialize_prim_discard_tunables(struct si_context *sctx)
 		/* The total size is double this per context.
 		 * Greater numbers allow bigger gfx IBs.
 		 */
-		if (sctx->screen->info.vram_size <= 2 * GB)
-			sctx->index_ring_size_per_ib = 64 * MB;
-		else if (sctx->screen->info.vram_size <= 4 * GB)
-			sctx->index_ring_size_per_ib = 128 * MB;
+		if (sscreen->info.vram_size <= 2 * GB)
+			*index_ring_size_per_ib = 64 * MB;
+		else if (sscreen->info.vram_size <= 4 * GB)
+			*index_ring_size_per_ib = 128 * MB;
 		else
-			sctx->index_ring_size_per_ib = 256 * MB;
+			*index_ring_size_per_ib = 256 * MB;
 	}
 }
 
