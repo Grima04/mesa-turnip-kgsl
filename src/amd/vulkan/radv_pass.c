@@ -60,6 +60,90 @@ radv_render_pass_add_subpass_dep(struct radv_render_pass *pass,
 }
 
 static void
+radv_render_pass_add_implicit_deps(struct radv_render_pass *pass,
+				   bool has_ingoing_dep, bool has_outgoing_dep)
+{
+	/* From the Vulkan 1.0.39 spec:
+	*
+	*    If there is no subpass dependency from VK_SUBPASS_EXTERNAL to the
+	*    first subpass that uses an attachment, then an implicit subpass
+	*    dependency exists from VK_SUBPASS_EXTERNAL to the first subpass it is
+	*    used in. The subpass dependency operates as if defined with the
+	*    following parameters:
+	*
+	*    VkSubpassDependency implicitDependency = {
+	*        .srcSubpass = VK_SUBPASS_EXTERNAL;
+	*        .dstSubpass = firstSubpass; // First subpass attachment is used in
+	*        .srcStageMask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+	*        .dstStageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
+	*        .srcAccessMask = 0;
+	*        .dstAccessMask = VK_ACCESS_INPUT_ATTACHMENT_READ_BIT |
+	*                         VK_ACCESS_COLOR_ATTACHMENT_READ_BIT |
+	*                         VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
+	*                         VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT |
+	*                         VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+	*        .dependencyFlags = 0;
+	*    };
+	*
+	*    Similarly, if there is no subpass dependency from the last subpass
+	*    that uses an attachment to VK_SUBPASS_EXTERNAL, then an implicit
+	*    subpass dependency exists from the last subpass it is used in to
+	*    VK_SUBPASS_EXTERNAL. The subpass dependency operates as if defined
+	*    with the following parameters:
+	*
+	*    VkSubpassDependency implicitDependency = {
+	*        .srcSubpass = lastSubpass; // Last subpass attachment is used in
+	*        .dstSubpass = VK_SUBPASS_EXTERNAL;
+	*        .srcStageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
+	*        .dstStageMask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+	*        .srcAccessMask = VK_ACCESS_INPUT_ATTACHMENT_READ_BIT |
+	*                         VK_ACCESS_COLOR_ATTACHMENT_READ_BIT |
+	*                         VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
+	*                         VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT |
+	*                         VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+	*        .dstAccessMask = 0;
+	*        .dependencyFlags = 0;
+	*    };
+	*/
+
+	if (!has_ingoing_dep) {
+		const VkSubpassDependency2KHR implicit_ingoing_dep = {
+			.srcSubpass = VK_SUBPASS_EXTERNAL,
+			.dstSubpass = 0,
+			.srcStageMask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+			.dstStageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+			.srcAccessMask = 0,
+			.dstAccessMask = VK_ACCESS_INPUT_ATTACHMENT_READ_BIT |
+					 VK_ACCESS_COLOR_ATTACHMENT_READ_BIT |
+					 VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
+					 VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT |
+					 VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+			.dependencyFlags = 0,
+		};
+
+		radv_render_pass_add_subpass_dep(pass, &implicit_ingoing_dep);
+	}
+
+	if (!has_outgoing_dep) {
+		const VkSubpassDependency2KHR implicit_outgoing_dep = {
+			.srcSubpass = 0,
+			.dstSubpass = VK_SUBPASS_EXTERNAL,
+			.srcStageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+			.dstStageMask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+			.srcAccessMask = VK_ACCESS_INPUT_ATTACHMENT_READ_BIT |
+					 VK_ACCESS_COLOR_ATTACHMENT_READ_BIT |
+					 VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
+					 VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT |
+					 VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+			.dstAccessMask = 0,
+			.dependencyFlags = 0,
+		};
+
+		radv_render_pass_add_subpass_dep(pass, &implicit_outgoing_dep);
+	}
+}
+
+static void
 radv_render_pass_compile(struct radv_render_pass *pass)
 {
 	for (uint32_t i = 0; i < pass->subpass_count; i++) {
@@ -314,6 +398,9 @@ VkResult radv_CreateRenderPass(
 		}
 	}
 
+	bool has_ingoing_dep = false;
+	bool has_outgoing_dep = false;
+
 	for (unsigned i = 0; i < pCreateInfo->dependencyCount; ++i) {
 		/* Convert to a Dependency2 */
 		struct VkSubpassDependency2 dep2 = {
@@ -326,7 +413,18 @@ VkResult radv_CreateRenderPass(
 			.dependencyFlags  = pCreateInfo->pDependencies[i].dependencyFlags,
 		};
 		radv_render_pass_add_subpass_dep(pass, &dep2);
+
+		/* Determine if the subpass has explicit dependencies from/to
+		 * VK_SUBPASS_EXTERNAL.
+		 */
+		if (pCreateInfo->pDependencies[i].srcSubpass == VK_SUBPASS_EXTERNAL)
+			has_ingoing_dep = true;
+		if (pCreateInfo->pDependencies[i].dstSubpass == VK_SUBPASS_EXTERNAL)
+			has_outgoing_dep = true;
 	}
+
+	radv_render_pass_add_implicit_deps(pass,
+					   has_ingoing_dep, has_outgoing_dep);
 
 	radv_render_pass_compile(pass);
 
@@ -511,10 +609,24 @@ VkResult radv_CreateRenderPass2(
 		}
 	}
 
+	bool has_ingoing_dep = false;
+	bool has_outgoing_dep = false;
+
 	for (unsigned i = 0; i < pCreateInfo->dependencyCount; ++i) {
 		radv_render_pass_add_subpass_dep(pass,
 						 &pCreateInfo->pDependencies[i]);
+
+		/* Determine if the subpass has explicit dependencies from/to
+		 * VK_SUBPASS_EXTERNAL.
+		 */
+		if (pCreateInfo->pDependencies[i].srcSubpass == VK_SUBPASS_EXTERNAL)
+			has_ingoing_dep = true;
+		if (pCreateInfo->pDependencies[i].dstSubpass == VK_SUBPASS_EXTERNAL)
+			has_outgoing_dep = true;
 	}
+
+	radv_render_pass_add_implicit_deps(pass,
+					   has_ingoing_dep, has_outgoing_dep);
 
 	radv_render_pass_compile(pass);
 
