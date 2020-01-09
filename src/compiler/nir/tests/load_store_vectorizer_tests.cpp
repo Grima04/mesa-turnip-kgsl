@@ -748,7 +748,10 @@ TEST_F(nir_load_store_vectorize_test, ssbo_store_large)
 TEST_F(nir_load_store_vectorize_test, ubo_load_adjacent_memory_barrier)
 {
    create_load(nir_var_mem_ubo, 0, 0, 0x1);
-   nir_builder_instr_insert(b, &nir_intrinsic_instr_create(b->shader, nir_intrinsic_memory_barrier)->instr);
+
+   nir_scoped_memory_barrier(b, NIR_SCOPE_DEVICE, NIR_MEMORY_ACQ_REL,
+                             nir_var_mem_ssbo);
+
    create_load(nir_var_mem_ubo, 0, 4, 0x2);
 
    nir_validate_shader(b->shader, NULL);
@@ -762,7 +765,10 @@ TEST_F(nir_load_store_vectorize_test, ubo_load_adjacent_memory_barrier)
 TEST_F(nir_load_store_vectorize_test, ssbo_load_adjacent_memory_barrier)
 {
    create_load(nir_var_mem_ssbo, 0, 0, 0x1);
-   nir_builder_instr_insert(b, &nir_intrinsic_instr_create(b->shader, nir_intrinsic_memory_barrier)->instr);
+
+   nir_scoped_memory_barrier(b, NIR_SCOPE_DEVICE, NIR_MEMORY_ACQ_REL,
+                             nir_var_mem_ssbo);
+
    create_load(nir_var_mem_ssbo, 0, 4, 0x2);
 
    nir_validate_shader(b->shader, NULL);
@@ -793,7 +799,10 @@ TEST_F(nir_load_store_vectorize_test, ssbo_load_adjacent_barrier)
 TEST_F(nir_load_store_vectorize_test, ssbo_load_adjacent_memory_barrier_shared)
 {
    create_load(nir_var_mem_ssbo, 0, 0, 0x1);
-   nir_builder_instr_insert(b, &nir_intrinsic_instr_create(b->shader, nir_intrinsic_memory_barrier_shared)->instr);
+
+   nir_scoped_memory_barrier(b, NIR_SCOPE_WORKGROUP, NIR_MEMORY_ACQ_REL,
+                             nir_var_mem_shared);
+
    create_load(nir_var_mem_ssbo, 0, 4, 0x2);
 
    nir_validate_shader(b->shader, NULL);
