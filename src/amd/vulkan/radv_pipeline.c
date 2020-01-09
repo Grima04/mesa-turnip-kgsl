@@ -4475,6 +4475,8 @@ radv_compute_vgt_shader_stages_en(const struct radv_pipeline *pipeline)
 		stages |= S_028B54_PRIMGEN_EN(1);
 		if (pipeline->streamout_shader)
 			stages |= S_028B54_NGG_WAVE_ID_EN(1);
+		if (radv_pipeline_has_ngg_passthrough(pipeline))
+			stages |= S_028B54_PRIMGEN_PASSTHRU_EN(1);
 	} else if (radv_pipeline_has_gs(pipeline)) {
 		stages |= S_028B54_VS_EN(V_028B54_VS_STAGE_COPY_SHADER);
 	}

@@ -2974,15 +2974,19 @@ handle_ngg_outputs_post_2(struct radv_shader_context *ctx)
 	{
 		struct ac_ngg_prim prim = {};
 
-		prim.num_vertices = num_vertices;
-		prim.isnull = ctx->ac.i1false;
-		memcpy(prim.index, vtxindex, sizeof(vtxindex[0]) * 3);
+		if (ctx->args->options->key.vs_common_out.as_ngg_passthrough) {
+			prim.passthrough = ac_get_arg(&ctx->ac, ctx->args->gs_vtx_offset[0]);
+		} else {
+			prim.num_vertices = num_vertices;
+			prim.isnull = ctx->ac.i1false;
+			memcpy(prim.index, vtxindex, sizeof(vtxindex[0]) * 3);
 
-		for (unsigned i = 0; i < num_vertices; ++i) {
-			tmp = LLVMBuildLShr(builder,
-					    ac_get_arg(&ctx->ac, ctx->args->ac.gs_invocation_id),
-					    LLVMConstInt(ctx->ac.i32, 8 + i, false), "");
-			prim.edgeflag[i] = LLVMBuildTrunc(builder, tmp, ctx->ac.i1, "");
+			for (unsigned i = 0; i < num_vertices; ++i) {
+				tmp = LLVMBuildLShr(builder,
+						    ac_get_arg(&ctx->ac, ctx->args->ac.gs_invocation_id),
+						    LLVMConstInt(ctx->ac.i32, 8 + i, false), "");
+				prim.edgeflag[i] = LLVMBuildTrunc(builder, tmp, ctx->ac.i1, "");
+			}
 		}
 
 		ac_build_export_prim(&ctx->ac, &prim);
