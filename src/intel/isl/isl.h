@@ -44,6 +44,7 @@
 
 #include "c99_compat.h"
 #include "util/macros.h"
+#include "util/format/u_format.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -1482,6 +1483,8 @@ isl_format_get_name(enum isl_format fmt)
 {
    return isl_format_get_layout(fmt)->name;
 }
+
+enum isl_format isl_format_for_pipe_format(enum pipe_format pf);
 
 bool isl_format_supports_rendering(const struct gen_device_info *devinfo,
                                    enum isl_format format);
