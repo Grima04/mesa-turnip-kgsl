@@ -3042,6 +3042,9 @@ typedef struct nir_shader_compiler_options {
    /** enables rules to lower fsign to fsub and flt */
    bool lower_fsign;
 
+   /** enables rules to lower iabs to ineg+imax */
+   bool lower_iabs;
+
    /* lower fdph to fdot4 */
    bool lower_fdph;
 

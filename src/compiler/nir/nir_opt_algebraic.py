@@ -543,7 +543,7 @@ optimizations.extend([
    (('fmax', a, ('fabs', a)), ('fabs', a)),
    (('imax', a, ('iabs', a)), ('iabs', a)),
    (('fmax', a, ('fneg', a)), ('fabs', a)),
-   (('imax', a, ('ineg', a)), ('iabs', a)),
+   (('imax', a, ('ineg', a)), ('iabs', a), '!options->lower_iabs'),
    (('~fmax', ('fabs', a), 0.0), ('fabs', a)),
    (('fmin', ('fmax', a, 0.0), 1.0), ('fsat', a), '!options->lower_fsat'),
    # fmax(fmin(a, 1.0), 0.0) is inexact because it returns 1.0 on NaN, while
@@ -1902,6 +1902,7 @@ late_optimizations = [
    (('iadd', 'a', ('ineg', 'b')), ('isub', 'a', 'b'), '!options->lower_sub'),
    (('fneg', a), ('fsub', 0.0, a), 'options->lower_negate'),
    (('ineg', a), ('isub', 0, a), 'options->lower_negate'),
+   (('iabs', a), ('imax', a, ('ineg', a)), 'options->lower_iabs'),
 
    # These are duplicated from the main optimizations table.  The late
    # patterns that rearrange expressions like x - .5 < 0 to x < .5 can create
