@@ -4344,12 +4344,15 @@ ac_build_reduce(struct ac_llvm_context *ctx, LLVMValueRef src, nir_op op, unsign
 	if (cluster_size == 32) return ac_build_wwm(ctx, result);
 
 	if (ctx->chip_class >= GFX8) {
-		if (ctx->chip_class >= GFX10)
-			swap = ac_build_readlane(ctx, result, LLVMConstInt(ctx->i32, 31, false));
-		else
-			swap = ac_build_dpp(ctx, identity, result, dpp_row_bcast31, 0xc, 0xf, false);
-		result = ac_build_alu_op(ctx, result, swap, op);
-		result = ac_build_readlane(ctx, result, LLVMConstInt(ctx->i32, 63, 0));
+		if (ctx->wave_size == 64) {
+			if (ctx->chip_class >= GFX10)
+				swap = ac_build_readlane(ctx, result, LLVMConstInt(ctx->i32, 31, false));
+			else
+				swap = ac_build_dpp(ctx, identity, result, dpp_row_bcast31, 0xc, 0xf, false);
+			result = ac_build_alu_op(ctx, result, swap, op);
+			result = ac_build_readlane(ctx, result, LLVMConstInt(ctx->i32, 63, 0));
+		}
+
 		return ac_build_wwm(ctx, result);
 	} else {
 		swap = ac_build_readlane(ctx, result, ctx->i32_0);
