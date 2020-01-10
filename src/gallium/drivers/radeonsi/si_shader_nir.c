@@ -430,18 +430,6 @@ static void scan_instruction(const struct nir_shader *nir,
 	}
 }
 
-void si_nir_scan_tess_ctrl(const struct nir_shader *nir,
-			   struct si_tessctrl_info *out)
-{
-	memset(out, 0, sizeof(*out));
-
-	if (nir->info.stage != MESA_SHADER_TESS_CTRL)
-		return;
-
-	out->tessfactors_are_def_in_all_invocs =
-		ac_are_tessfactors_def_in_all_invocs(nir);
-}
-
 static void scan_output_slot(const nir_variable *var,
 			     unsigned var_idx,
 			     unsigned component, unsigned num_components,
@@ -798,6 +786,11 @@ void si_nir_scan_shader(const struct nir_shader *nir,
 
 	if (info->processor == PIPE_SHADER_FRAGMENT)
 		info->uses_kill = nir->info.fs.uses_discard;
+
+	if (nir->info.stage == MESA_SHADER_TESS_CTRL) {
+		info->tessfactors_are_def_in_all_invocs =
+			ac_are_tessfactors_def_in_all_invocs(nir);
+	}
 
 	func = (struct nir_function *)exec_list_get_head_const(&nir->functions);
 	nir_foreach_block(block, func->impl) {

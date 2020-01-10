@@ -1053,7 +1053,7 @@ static void si_nir_store_output_tcs(struct ac_shader_abi *abi,
 			    name == TGSI_SEMANTIC_TESSOUTER) {
 				/* The epilog doesn't read LDS if invocation 0 defines tess factors. */
 				skip_lds_store = !info->reads_tessfactor_outputs &&
-						 ctx->shader->selector->tcs_info.tessfactors_are_def_in_all_invocs;
+						 ctx->shader->selector->info.tessfactors_are_def_in_all_invocs;
 				is_tess_factor = true;
 				is_tess_inner = name == TGSI_SEMANTIC_TESSINNER;
 			}
@@ -1098,7 +1098,7 @@ static void si_nir_store_output_tcs(struct ac_shader_abi *abi,
 
 		/* Write tess factors into VGPRs for the epilog. */
 		if (is_tess_factor &&
-		    ctx->shader->selector->tcs_info.tessfactors_are_def_in_all_invocs) {
+		    ctx->shader->selector->info.tessfactors_are_def_in_all_invocs) {
 			if (!is_tess_inner) {
 				LLVMBuildStore(ctx->ac.builder, value, /* outer */
 					       ctx->invoc0_tess_factors[chan]);
@@ -2604,7 +2604,7 @@ static void si_llvm_emit_tcs_epilogue(struct ac_shader_abi *abi,
 	ret = LLVMBuildInsertValue(builder, ret, rel_patch_id, vgpr++, "");
 	ret = LLVMBuildInsertValue(builder, ret, invocation_id, vgpr++, "");
 
-	if (ctx->shader->selector->tcs_info.tessfactors_are_def_in_all_invocs) {
+	if (ctx->shader->selector->info.tessfactors_are_def_in_all_invocs) {
 		vgpr++; /* skip the tess factor LDS offset */
 		for (unsigned i = 0; i < 6; i++) {
 			LLVMValueRef value =
@@ -4949,7 +4949,7 @@ static bool si_compile_tgsi_main(struct si_shader_context *ctx,
 	preload_ring_buffers(ctx);
 
 	if (ctx->type == PIPE_SHADER_TESS_CTRL &&
-	    sel->tcs_info.tessfactors_are_def_in_all_invocs) {
+	    sel->info.tessfactors_are_def_in_all_invocs) {
 		for (unsigned i = 0; i < 6; i++) {
 			ctx->invoc0_tess_factors[i] =
 				ac_build_alloca_undef(&ctx->ac, ctx->i32, "");

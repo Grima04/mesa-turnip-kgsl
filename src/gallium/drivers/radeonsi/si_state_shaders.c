@@ -1891,7 +1891,7 @@ static inline void si_shader_selector_key(struct pipe_context *ctx,
 		key->part.tcs.epilog.prim_mode =
 			sctx->tes_shader.cso->info.properties[TGSI_PROPERTY_TES_PRIM_MODE];
 		key->part.tcs.epilog.invoc0_tess_factors_are_def =
-			sel->tcs_info.tessfactors_are_def_in_all_invocs;
+			sel->info.tessfactors_are_def_in_all_invocs;
 		key->part.tcs.epilog.tes_reads_tess_factors =
 			sctx->tes_shader.cso->info.reads_tess_factors;
 
@@ -2714,7 +2714,6 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
 	}
 
 	si_nir_scan_shader(sel->nir, &sel->info);
-	si_nir_scan_tess_ctrl(sel->nir, &sel->tcs_info);
 	si_nir_adjust_driver_locations(sel->nir);
 
 	sel->type = sel->info.processor;

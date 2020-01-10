@@ -450,9 +450,7 @@ struct si_shader_info {
 	 * Max nesting limit of loops/if's
 	 */
 	unsigned max_depth;
-};
 
-struct si_tessctrl_info {
 	/** Whether all codepaths write tess factors in all invocations. */
 	bool tessfactors_are_def_in_all_invocs;
 };
@@ -487,7 +485,6 @@ struct si_shader_selector {
 
 	struct pipe_stream_output_info  so;
 	struct si_shader_info		info;
-	struct si_tessctrl_info		tcs_info;
 
 	/* PIPE_SHADER_[VERTEX|FRAGMENT|...] */
 	enum pipe_shader_type type;
@@ -913,8 +910,6 @@ void si_shader_binary_clean(struct si_shader_binary *binary);
 /* si_shader_nir.c */
 void si_nir_scan_shader(const struct nir_shader *nir,
 			struct si_shader_info *info);
-void si_nir_scan_tess_ctrl(const struct nir_shader *nir,
-			   struct si_tessctrl_info *out);
 void si_nir_adjust_driver_locations(struct nir_shader *nir);
 void si_finalize_nir(struct pipe_screen *screen, void *nirptr, bool optimize);
 
