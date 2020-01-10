@@ -37,6 +37,7 @@
 #include "util/bitscan.h"
 #include "util/bitset.h"
 #include "util/macros.h"
+#include "util/format/u_format.h"
 #include "compiler/nir_types.h"
 #include "compiler/shader_enums.h"
 #include "compiler/shader_info.h"
@@ -525,8 +526,8 @@ typedef struct nir_variable {
 
       union {
          struct {
-            /** Image internal format if specified explicitly, otherwise GL_NONE. */
-            uint16_t format; /* GLenum */
+            /** Image internal format if specified explicitly, otherwise PIPE_FORMAT_NONE. */
+            enum pipe_format format;
          } image;
 
          struct {
@@ -1719,7 +1720,7 @@ INTRINSIC_IDX_ACCESSORS(image_array, IMAGE_ARRAY, bool)
 INTRINSIC_IDX_ACCESSORS(access, ACCESS, enum gl_access_qualifier)
 INTRINSIC_IDX_ACCESSORS(src_access, SRC_ACCESS, enum gl_access_qualifier)
 INTRINSIC_IDX_ACCESSORS(dst_access, DST_ACCESS, enum gl_access_qualifier)
-INTRINSIC_IDX_ACCESSORS(format, FORMAT, unsigned)
+INTRINSIC_IDX_ACCESSORS(format, FORMAT, enum pipe_format)
 INTRINSIC_IDX_ACCESSORS(align_mul, ALIGN_MUL, unsigned)
 INTRINSIC_IDX_ACCESSORS(align_offset, ALIGN_OFFSET, unsigned)
 INTRINSIC_IDX_ACCESSORS(desc_type, DESC_TYPE, unsigned)

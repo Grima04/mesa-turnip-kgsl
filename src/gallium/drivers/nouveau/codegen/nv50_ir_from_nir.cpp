@@ -81,8 +81,6 @@ private:
    LValues& convert(nir_register *);
    LValues& convert(nir_ssa_def *);
 
-   ImgFormat convertGLImgFormat(GLuint);
-
    Value* getSrc(nir_alu_src *, uint8_t component = 0);
    Value* getSrc(nir_register *, uint8_t);
    Value* getSrc(nir_src *, uint8_t, bool indirect = false);
@@ -1860,68 +1858,6 @@ Converter::convert(nir_intrinsic_op intr)
    }
 }
 
-ImgFormat
-Converter::convertGLImgFormat(GLuint format)
-{
-#define FMT_CASE(a, b) \
-  case GL_ ## a: return nv50_ir::FMT_ ## b
-
-   switch (format) {
-   FMT_CASE(NONE, NONE);
-
-   FMT_CASE(RGBA32F, RGBA32F);
-   FMT_CASE(RGBA16F, RGBA16F);
-   FMT_CASE(RG32F, RG32F);
-   FMT_CASE(RG16F, RG16F);
-   FMT_CASE(R11F_G11F_B10F, R11G11B10F);
-   FMT_CASE(R32F, R32F);
-   FMT_CASE(R16F, R16F);
-
-   FMT_CASE(RGBA32UI, RGBA32UI);
-   FMT_CASE(RGBA16UI, RGBA16UI);
-   FMT_CASE(RGB10_A2UI, RGB10A2UI);
-   FMT_CASE(RGBA8UI, RGBA8UI);
-   FMT_CASE(RG32UI, RG32UI);
-   FMT_CASE(RG16UI, RG16UI);
-   FMT_CASE(RG8UI, RG8UI);
-   FMT_CASE(R32UI, R32UI);
-   FMT_CASE(R16UI, R16UI);
-   FMT_CASE(R8UI, R8UI);
-
-   FMT_CASE(RGBA32I, RGBA32I);
-   FMT_CASE(RGBA16I, RGBA16I);
-   FMT_CASE(RGBA8I, RGBA8I);
-   FMT_CASE(RG32I, RG32I);
-   FMT_CASE(RG16I, RG16I);
-   FMT_CASE(RG8I, RG8I);
-   FMT_CASE(R32I, R32I);
-   FMT_CASE(R16I, R16I);
-   FMT_CASE(R8I, R8I);
-
-   FMT_CASE(RGBA16, RGBA16);
-   FMT_CASE(RGB10_A2, RGB10A2);
-   FMT_CASE(RGBA8, RGBA8);
-   FMT_CASE(RG16, RG16);
-   FMT_CASE(RG8, RG8);
-   FMT_CASE(R16, R16);
-   FMT_CASE(R8, R8);
-
-   FMT_CASE(RGBA16_SNORM, RGBA16_SNORM);
-   FMT_CASE(RGBA8_SNORM, RGBA8_SNORM);
-   FMT_CASE(RG16_SNORM, RG16_SNORM);
-   FMT_CASE(RG8_SNORM, RG8_SNORM);
-   FMT_CASE(R16_SNORM, R16_SNORM);
-   FMT_CASE(R8_SNORM, R8_SNORM);
-
-   FMT_CASE(BGRA_INTEGER, BGRA8);
-   default:
-      ERROR("unknown format %x\n", format);
-      assert(false);
-      return nv50_ir::FMT_NONE;
-   }
-#undef FMT_CASE
-}
-
 bool
 Converter::visit(nir_intrinsic_instr *insn)
 {
@@ -2502,7 +2438,7 @@ Converter::visit(nir_intrinsic_instr *insn)
 
       TexInstruction *texi = mkTex(getOperation(op), target.getEnum(), location, 0, defs, srcs);
       texi->tex.bindless = false;
-      texi->tex.format = &nv50_ir::TexInstruction::formatTable[convertGLImgFormat(nir_intrinsic_format(insn))];
+      texi->tex.format = nv50_ir::TexInstruction::translateImgFormat(nir_intrinsic_format(insn));
       texi->tex.mask = mask;
       texi->tex.bindless = true;
       texi->cache = convert(nir_intrinsic_access(insn));
@@ -2608,7 +2544,7 @@ Converter::visit(nir_intrinsic_instr *insn)
 
       TexInstruction *texi = mkTex(getOperation(op), target.getEnum(), location, 0, defs, srcs);
       texi->tex.bindless = false;
-      texi->tex.format = &nv50_ir::TexInstruction::formatTable[convertGLImgFormat(tex->data.image.format)];
+      texi->tex.format = nv50_ir::TexInstruction::translateImgFormat(tex->data.image.format);
       texi->tex.mask = mask;
       texi->cache = getCacheModeFromVar(tex);
       texi->setType(ty);

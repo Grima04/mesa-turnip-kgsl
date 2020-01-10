@@ -151,69 +151,10 @@ ir3_get_image_type(const nir_variable *var)
  * GL_NV_image_formats extension.
  */
 unsigned
-ir3_get_num_components_for_glformat(GLuint format)
+ir3_get_num_components_for_image_format(GLuint format)
 {
-	switch (format) {
-	case GL_R32F:
-	case GL_R32I:
-	case GL_R32UI:
-	case GL_R16F:
-	case GL_R16I:
-	case GL_R16UI:
-	case GL_R16:
-	case GL_R16_SNORM:
-	case GL_R8I:
-	case GL_R8UI:
-	case GL_R8:
-	case GL_R8_SNORM:
-		return 1;
-
-	case GL_RG32F:
-	case GL_RG32I:
-	case GL_RG32UI:
-	case GL_RG16F:
-	case GL_RG16I:
-	case GL_RG16UI:
-	case GL_RG16:
-	case GL_RG16_SNORM:
-	case GL_RG8I:
-	case GL_RG8UI:
-	case GL_RG8:
-	case GL_RG8_SNORM:
-		return 2;
-
-	case GL_R11F_G11F_B10F:
-		return 3;
-
-	case GL_RGBA32F:
-	case GL_RGBA32I:
-	case GL_RGBA32UI:
-	case GL_RGBA16F:
-	case GL_RGBA16I:
-	case GL_RGBA16UI:
-	case GL_RGBA16:
-	case GL_RGBA16_SNORM:
-	case GL_RGBA8I:
-	case GL_RGBA8UI:
-	case GL_RGBA8:
-	case GL_RGBA8_SNORM:
-	case GL_RGB10_A2UI:
-	case GL_RGB10_A2:
+	if (format == PIPE_FORMAT_NONE)
 		return 4;
-
-	case GL_NONE:
-		/* Omitting the image format qualifier is allowed on desktop GL
-		 * profiles. Assuming 4 components is always safe.
-		 */
-		return 4;
-
-	default:
-		/* Return 4 components also for all other formats we don't know
-		 * about. The format should have been validated already by
-		 * the higher level API, but drop a debug message just in case.
-		 */
-		debug_printf("Unhandled GL format %u while emitting imageStore()\n",
-					 format);
-		return 4;
-	}
+	else
+		return util_format_get_nr_components(format);
 }

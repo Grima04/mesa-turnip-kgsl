@@ -3497,7 +3497,7 @@ apply_image_qualifier_to_variable(const struct ast_type_qualifier *qual,
                              "`writeonly' must have a format layout qualifier");
          }
       }
-      var->data.image_format = GL_NONE;
+      var->data.image_format = PIPE_FORMAT_NONE;
    }
 
    /* From page 70 of the GLSL ES 3.1 specification:
@@ -3507,9 +3507,9 @@ apply_image_qualifier_to_variable(const struct ast_type_qualifier *qual,
     *  readonly or the memory qualifier writeonly."
     */
    if (state->es_shader &&
-       var->data.image_format != GL_R32F &&
-       var->data.image_format != GL_R32I &&
-       var->data.image_format != GL_R32UI &&
+       var->data.image_format != PIPE_FORMAT_R32_FLOAT &&
+       var->data.image_format != PIPE_FORMAT_R32_SINT &&
+       var->data.image_format != PIPE_FORMAT_R32_UINT &&
        !var->data.memory_read_only &&
        !var->data.memory_write_only) {
       _mesa_glsl_error(loc, state, "image variables of format other than r32f, "
@@ -4947,12 +4947,50 @@ ast_declarator_list::hir(exec_list *instructions,
        *       size4x32      rgba32f   rgba32i   rgba32ui"
        */
       if (strncmp(this->type->specifier->type_name, "image", strlen("image")) == 0) {
-         this->type->qualifier.image_format = GL_R8 +
-                                         this->type->qualifier.image_format - GL_R8I;
+         switch (this->type->qualifier.image_format) {
+         case PIPE_FORMAT_R8_SINT:
+            /* No valid qualifier in this case, driver will need to look at
+             * the underlying image's format (just like no qualifier being
+             * present).
+             */
+            this->type->qualifier.image_format = PIPE_FORMAT_NONE;
+            break;
+         case PIPE_FORMAT_R16_SINT:
+            this->type->qualifier.image_format = PIPE_FORMAT_R16_FLOAT;
+            break;
+         case PIPE_FORMAT_R32_SINT:
+            this->type->qualifier.image_format = PIPE_FORMAT_R32_FLOAT;
+            break;
+         case PIPE_FORMAT_R32G32_SINT:
+            this->type->qualifier.image_format = PIPE_FORMAT_R32G32_FLOAT;
+            break;
+         case PIPE_FORMAT_R32G32B32A32_SINT:
+            this->type->qualifier.image_format = PIPE_FORMAT_R32G32B32A32_FLOAT;
+            break;
+         default:
+            unreachable("Unknown image format");
+         }
          this->type->qualifier.image_base_type = GLSL_TYPE_FLOAT;
       } else if (strncmp(this->type->specifier->type_name, "uimage", strlen("uimage")) == 0) {
-         this->type->qualifier.image_format = GL_R8UI +
-                                         this->type->qualifier.image_format - GL_R8I;
+         switch (this->type->qualifier.image_format) {
+         case PIPE_FORMAT_R8_SINT:
+            this->type->qualifier.image_format = PIPE_FORMAT_R8_UINT;
+            break;
+         case PIPE_FORMAT_R16_SINT:
+            this->type->qualifier.image_format = PIPE_FORMAT_R16_UINT;
+            break;
+         case PIPE_FORMAT_R32_SINT:
+            this->type->qualifier.image_format = PIPE_FORMAT_R32_UINT;
+            break;
+         case PIPE_FORMAT_R32G32_SINT:
+            this->type->qualifier.image_format = PIPE_FORMAT_R32G32_UINT;
+            break;
+         case PIPE_FORMAT_R32G32B32A32_SINT:
+            this->type->qualifier.image_format = PIPE_FORMAT_R32G32B32A32_UINT;
+            break;
+         default:
+            unreachable("Unknown image format");
+         }
          this->type->qualifier.image_base_type = GLSL_TYPE_UINT;
       } else if (strncmp(this->type->specifier->type_name, "iimage", strlen("iimage")) == 0) {
          this->type->qualifier.image_base_type = GLSL_TYPE_INT;
@@ -7630,7 +7668,7 @@ ast_process_struct_or_iface_block_members(exec_list *instructions,
                                       "qualifier");
                   }
 
-                  fields[i].image_format = GL_NONE;
+                  fields[i].image_format = PIPE_FORMAT_NONE;
                }
             }
          }

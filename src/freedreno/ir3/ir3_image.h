@@ -39,6 +39,6 @@ unsigned ir3_image_to_tex(struct ir3_ibo_mapping *mapping, unsigned image);
 unsigned ir3_get_image_slot(nir_deref_instr *deref);
 unsigned ir3_get_image_coords(const nir_variable *var, unsigned *flagsp);
 type_t ir3_get_image_type(const nir_variable *var);
-unsigned ir3_get_num_components_for_glformat(GLuint format);
+unsigned ir3_get_num_components_for_image_format(GLuint format);
 
 #endif /* IR3_IMAGE_H_ */

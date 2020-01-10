@@ -1806,7 +1806,7 @@ ir_variable::ir_variable(const struct glsl_type *type, const char *name,
    this->data.fb_fetch_output = false;
    this->data.bindless = false;
    this->data.bound = false;
-   this->data.image_format = GL_NONE;
+   this->data.image_format = PIPE_FORMAT_NONE;
    this->data._num_state_slots = 0;
    this->data.param_index = 0;
    this->data.stream = 0;

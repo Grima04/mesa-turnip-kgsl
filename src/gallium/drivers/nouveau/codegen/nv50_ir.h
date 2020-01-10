@@ -1016,6 +1016,8 @@ public:
    };
 
    static const struct ImgFormatDesc formatTable[IMG_FORMAT_COUNT];
+   static const struct ImgFormatDesc *translateImgFormat(
+         enum pipe_format format);
 
 public:
    TexInstruction(Function *, operation);

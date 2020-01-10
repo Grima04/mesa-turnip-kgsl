@@ -31,6 +31,7 @@
 #include "shader_enums.h"
 #include "c11/threads.h"
 #include "util/blob.h"
+#include "util/format/u_format.h"
 #include "util/macros.h"
 
 #ifdef __cplusplus
@@ -1297,7 +1298,7 @@ struct glsl_struct_field {
    /**
     * Layout format, applicable to image variables only.
     */
-   unsigned image_format:16;
+   enum pipe_format image_format;
 
    /**
     * Any of the xfb_* qualifiers trigger the shader to be in transform
@@ -1314,7 +1315,8 @@ struct glsl_struct_field {
    sample(0), matrix_layout(GLSL_MATRIX_LAYOUT_INHERITED), patch(0),    \
    precision(_precision), memory_read_only(0),                          \
    memory_write_only(0), memory_coherent(0), memory_volatile(0),        \
-   memory_restrict(0), image_format(0), explicit_xfb_buffer(0),         \
+   memory_restrict(0), image_format(PIPE_FORMAT_NONE),                  \
+   explicit_xfb_buffer(0),                                              \
    implicit_sized_array(0)
 
    glsl_struct_field(const struct glsl_type *_type,

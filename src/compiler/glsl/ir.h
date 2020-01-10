@@ -29,6 +29,7 @@
 #include <stdlib.h>
 
 #include "util/ralloc.h"
+#include "util/format/u_format.h"
 #include "compiler/glsl_types.h"
 #include "list.h"
 #include "ir_visitor.h"
@@ -885,8 +886,11 @@ public:
       uint8_t warn_extension_index;
 
    public:
-      /** Image internal format if specified explicitly, otherwise GL_NONE. */
-      uint16_t image_format;
+      /**
+       * Image internal format if specified explicitly, otherwise
+       * PIPE_FORMAT_NONE.
+       */
+      enum pipe_format image_format;
 
    private:
       /**

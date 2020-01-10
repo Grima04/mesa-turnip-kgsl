@@ -3768,7 +3768,7 @@ static void
 get_image_qualifiers(ir_dereference *ir, const glsl_type **type,
                      bool *memory_coherent, bool *memory_volatile,
                      bool *memory_restrict, bool *memory_read_only,
-                     unsigned *image_format)
+                     enum pipe_format *image_format)
 {
 
    switch (ir->ir_type) {
@@ -3826,7 +3826,7 @@ glsl_to_tgsi_visitor::visit_image_intrinsic(ir_call *ir)
    unsigned sampler_array_size = 1, sampler_base = 0;
    bool memory_coherent = false, memory_volatile = false,
         memory_restrict = false, memory_read_only = false;
-   unsigned image_format = 0;
+   enum pipe_format image_format = PIPE_FORMAT_NONE;
    const glsl_type *type = NULL;
 
    get_image_qualifiers(img, &type, &memory_coherent, &memory_volatile,
@@ -3982,8 +3982,7 @@ glsl_to_tgsi_visitor::visit_image_intrinsic(ir_call *ir)
    }
 
    inst->tex_target = type->sampler_index();
-   inst->image_format = st_mesa_format_to_pipe_format(st_context(ctx),
-         _mesa_get_shader_image_format(image_format));
+   inst->image_format = image_format;
    inst->read_only = memory_read_only;
 
    if (memory_coherent)

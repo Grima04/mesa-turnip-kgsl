@@ -263,7 +263,7 @@ emit_intrinsic_store_image(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 	unsigned ncoords = ir3_get_image_coords(var, NULL);
 	unsigned slot = ir3_get_image_slot(nir_src_as_deref(intr->src[0]));
 	unsigned ibo_idx = ir3_image_to_ibo(ctx->so->shader, slot);
-	unsigned ncomp = ir3_get_num_components_for_glformat(var->data.image.format);
+	unsigned ncomp = ir3_get_num_components_for_image_format(var->data.image.format);
 
 	/* src0 is value
 	 * src1 is coords

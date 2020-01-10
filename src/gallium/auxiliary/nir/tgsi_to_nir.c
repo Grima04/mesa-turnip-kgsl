@@ -1345,7 +1345,7 @@ get_image_var(struct ttn_compile *c, int binding,
               bool is_array,
               enum glsl_base_type base_type,
               enum gl_access_qualifier access,
-              GLenum format)
+              enum pipe_format format)
 {
    nir_variable *var = c->images[binding];
 
@@ -1741,102 +1741,6 @@ get_mem_qualifier(struct tgsi_full_instruction *tgsi_inst)
    return access;
 }
 
-static GLenum
-get_image_format(struct tgsi_full_instruction *tgsi_inst)
-{
-   switch (tgsi_inst->Memory.Format) {
-   case PIPE_FORMAT_NONE:
-      return GL_NONE;
-
-   case PIPE_FORMAT_R8_UNORM:
-      return GL_R8;
-   case PIPE_FORMAT_R8G8_UNORM:
-      return GL_RG8;
-   case PIPE_FORMAT_R8G8B8A8_UNORM:
-      return GL_RGBA8;
-   case PIPE_FORMAT_R16_UNORM:
-      return GL_R16;
-   case PIPE_FORMAT_R16G16_UNORM:
-      return GL_RG16;
-   case PIPE_FORMAT_R16G16B16A16_UNORM:
-      return GL_RGBA16;
-
-   case PIPE_FORMAT_R8_SNORM:
-      return GL_R8_SNORM;
-   case PIPE_FORMAT_R8G8_SNORM:
-      return GL_RG8_SNORM;
-   case PIPE_FORMAT_R8G8B8A8_SNORM:
-      return GL_RGBA8_SNORM;
-   case PIPE_FORMAT_R16_SNORM:
-      return GL_R16_SNORM;
-   case PIPE_FORMAT_R16G16_SNORM:
-      return GL_RG16_SNORM;
-   case PIPE_FORMAT_R16G16B16A16_SNORM:
-      return GL_RGBA16_SNORM;
-
-   case PIPE_FORMAT_R8_UINT:
-      return GL_R8UI;
-   case PIPE_FORMAT_R8G8_UINT:
-      return GL_RG8UI;
-   case PIPE_FORMAT_R8G8B8A8_UINT:
-      return GL_RGBA8UI;
-   case PIPE_FORMAT_R16_UINT:
-      return GL_R16UI;
-   case PIPE_FORMAT_R16G16_UINT:
-      return GL_RG16UI;
-   case PIPE_FORMAT_R16G16B16A16_UINT:
-      return GL_RGBA16UI;
-   case PIPE_FORMAT_R32_UINT:
-      return GL_R32UI;
-   case PIPE_FORMAT_R32G32_UINT:
-      return GL_RG32UI;
-   case PIPE_FORMAT_R32G32B32A32_UINT:
-      return GL_RGBA32UI;
-
-   case PIPE_FORMAT_R8_SINT:
-      return GL_R8I;
-   case PIPE_FORMAT_R8G8_SINT:
-      return GL_RG8I;
-   case PIPE_FORMAT_R8G8B8A8_SINT:
-      return GL_RGBA8I;
-   case PIPE_FORMAT_R16_SINT:
-      return GL_R16I;
-   case PIPE_FORMAT_R16G16_SINT:
-      return GL_RG16I;
-   case PIPE_FORMAT_R16G16B16A16_SINT:
-      return GL_RGBA16I;
-   case PIPE_FORMAT_R32_SINT:
-      return GL_R32I;
-   case PIPE_FORMAT_R32G32_SINT:
-      return GL_RG32I;
-   case PIPE_FORMAT_R32G32B32A32_SINT:
-      return GL_RGBA32I;
-
-   case PIPE_FORMAT_R16_FLOAT:
-      return GL_R16F;
-   case PIPE_FORMAT_R16G16_FLOAT:
-      return GL_RG16F;
-   case PIPE_FORMAT_R16G16B16A16_FLOAT:
-      return GL_RGBA16F;
-   case PIPE_FORMAT_R32_FLOAT:
-      return GL_R32F;
-   case PIPE_FORMAT_R32G32_FLOAT:
-      return GL_RG32F;
-   case PIPE_FORMAT_R32G32B32A32_FLOAT:
-      return GL_RGBA32F;
-
-   case PIPE_FORMAT_R11G11B10_FLOAT:
-      return GL_R11F_G11F_B10F;
-   case PIPE_FORMAT_R10G10B10A2_UINT:
-      return GL_RGB10_A2UI;
-   case PIPE_FORMAT_R10G10B10A2_UNORM:
-      return GL_RGB10_A2;
-
-   default:
-      unreachable("unhandled image format");
-   }
-}
-
 static void
 ttn_mem(struct ttn_compile *c, nir_alu_dest dest, nir_ssa_def **src)
 {
@@ -1912,11 +1816,11 @@ ttn_mem(struct ttn_compile *c, nir_alu_dest dest, nir_ssa_def **src)
 
       enum glsl_base_type base_type = get_image_base_type(tgsi_inst);
       enum gl_access_qualifier access = get_mem_qualifier(tgsi_inst);
-      GLenum format = get_image_format(tgsi_inst);
 
       nir_variable *image =
          get_image_var(c, resource_index,
-                       dim, is_array, base_type, access, format);
+                       dim, is_array, base_type, access,
+                       tgsi_inst->Memory.Format);
       nir_deref_instr *image_deref = nir_build_deref_var(b, image);
       const struct glsl_type *type = image_deref->type;
 
