@@ -698,10 +698,10 @@ emit_loads(struct v3dv_cmd_buffer *cmd_buffer,
        * After that, we always want to load so we don't lose any rendering done
        * by a previous subpass to the same attachment.
        */
+      assert(state->job->first_subpass >= attachment_state->first_subpass);
       bool needs_load =
-         attachment->desc.loadOp == VK_ATTACHMENT_LOAD_OP_LOAD ||
-         (attachment->desc.loadOp == VK_ATTACHMENT_LOAD_OP_CLEAR &&
-          state->job->first_subpass > attachment_state->first_subpass);
+         state->job->first_subpass > attachment_state->first_subpass ||
+         attachment->desc.loadOp == VK_ATTACHMENT_LOAD_OP_LOAD;
 
       if (needs_load) {
          struct v3dv_image_view *iview = framebuffer->attachments[attachment_idx];
