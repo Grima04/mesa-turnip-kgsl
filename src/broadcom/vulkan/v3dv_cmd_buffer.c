@@ -597,6 +597,9 @@ cmd_buffer_find_first_subpass_for_attachments(struct v3dv_cmd_buffer *cmd_buffer
       const struct v3dv_subpass *subpass = &pass->subpasses[i];
       for (uint32_t j = 0; j < subpass->color_count; j++) {
          uint32_t attachment_idx = subpass->color_attachments[j].attachment;
+         if (attachment_idx == VK_ATTACHMENT_UNUSED)
+            continue;
+
          if (j < state->attachments[attachment_idx].first_subpass)
             state->attachments[attachment_idx].first_subpass = j;
       }
@@ -1062,6 +1065,9 @@ cmd_buffer_emit_render_pass_rcl(struct v3dv_cmd_buffer *cmd_buffer)
 
    for (uint32_t i = 0; i < subpass->color_count; i++) {
       uint32_t attachment_idx = subpass->color_attachments[i].attachment;
+      if (attachment_idx == VK_ATTACHMENT_UNUSED)
+         continue;
+
       struct v3dv_image_view *iview =
          state->framebuffer->attachments[attachment_idx];
 
