@@ -719,7 +719,6 @@
       <value name="180DEG" value="2"/>
       <value name="270DEG" value="3"/>
     </field>
-    <field name="Force Non-Comparison Reduction Type" start="159" end="159" type="bool"/>
     <field name="MIP Count / LOD" start="160" end="163" type="uint"/>
     <field name="Surface Min LOD" start="164" end="167" type="uint"/>
     <field name="Mip Tail Start LOD" start="168" end="171" type="uint"/>
