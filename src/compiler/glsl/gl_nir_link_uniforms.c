@@ -189,6 +189,60 @@ struct nir_link_uniforms_state {
    struct type_tree_entry *current_type;
 };
 
+static void
+add_parameter(struct gl_uniform_storage *uniform,
+              struct gl_context *ctx,
+              struct gl_shader_program *prog,
+              const struct glsl_type *type,
+              struct nir_link_uniforms_state *state)
+{
+   if (!state->params || uniform->is_shader_storage || glsl_contains_opaque(type))
+      return;
+
+   unsigned num_params = glsl_get_aoa_size(type);
+   num_params = MAX2(num_params, 1);
+   num_params *= glsl_get_matrix_columns(glsl_without_array(type));
+
+   bool is_dual_slot = glsl_type_is_dual_slot(glsl_without_array(type));
+   if (is_dual_slot)
+      num_params *= 2;
+
+   struct gl_program_parameter_list *params = state->params;
+   int base_index = params->NumParameters;
+   _mesa_reserve_parameter_storage(params, num_params);
+
+   if (ctx->Const.PackedDriverUniformStorage) {
+      for (unsigned i = 0; i < num_params; i++) {
+         unsigned dmul = glsl_type_is_64bit(glsl_without_array(type)) ? 2 : 1;
+         unsigned comps = glsl_get_vector_elements(glsl_without_array(type)) * dmul;
+         if (is_dual_slot) {
+            if (i & 0x1)
+               comps -= 4;
+            else
+               comps = 4;
+         }
+
+         _mesa_add_parameter(params, PROGRAM_UNIFORM, NULL, comps,
+                             glsl_get_gl_type(type), NULL, NULL, false);
+      }
+   } else {
+      for (unsigned i = 0; i < num_params; i++) {
+         _mesa_add_parameter(params, PROGRAM_UNIFORM, NULL, 4,
+                             glsl_get_gl_type(type), NULL, NULL, true);
+      }
+   }
+
+   /* Each Parameter will hold the index to the backing uniform storage.
+    * This avoids relying on names to match parameters and uniform
+    * storages.
+    */
+   for (unsigned i = 0; i < num_params; i++) {
+      struct gl_program_parameter *param = &params->Parameters[base_index + i];
+      param->UniformStorageIndex = uniform - prog->data->UniformStorage;
+      param->MainUniformStorageIndex = state->current_var->data.location;
+   }
+}
+
 /**
  * Finds, returns, and updates the stage info for any uniform in UniformStorage
  * defined by @var. In general this is done using the explicit location,
@@ -344,60 +398,6 @@ get_next_index(struct nir_link_uniforms_state *state,
    state->current_type->next_index += MAX2(1, uniform->array_elements);
 
    return index;
-}
-
-static void
-add_parameter(struct gl_uniform_storage *uniform,
-              struct gl_context *ctx,
-              struct gl_shader_program *prog,
-              const struct glsl_type *type,
-              struct nir_link_uniforms_state *state)
-{
-   if (!state->params || uniform->is_shader_storage || glsl_contains_opaque(type))
-      return;
-
-   unsigned num_params = glsl_get_aoa_size(type);
-   num_params = MAX2(num_params, 1);
-   num_params *= glsl_get_matrix_columns(glsl_without_array(type));
-
-   bool is_dual_slot = glsl_type_is_dual_slot(glsl_without_array(type));
-   if (is_dual_slot)
-      num_params *= 2;
-
-   struct gl_program_parameter_list *params = state->params;
-   int base_index = params->NumParameters;
-   _mesa_reserve_parameter_storage(params, num_params);
-
-   if (ctx->Const.PackedDriverUniformStorage) {
-      for (unsigned i = 0; i < num_params; i++) {
-         unsigned dmul = glsl_type_is_64bit(glsl_without_array(type)) ? 2 : 1;
-         unsigned comps = glsl_get_vector_elements(glsl_without_array(type)) * dmul;
-         if (is_dual_slot) {
-            if (i & 0x1)
-               comps -= 4;
-            else
-               comps = 4;
-         }
-
-         _mesa_add_parameter(params, PROGRAM_UNIFORM, NULL, comps,
-                             glsl_get_gl_type(type), NULL, NULL, false);
-      }
-   } else {
-      for (unsigned i = 0; i < num_params; i++) {
-         _mesa_add_parameter(params, PROGRAM_UNIFORM, NULL, 4,
-                             glsl_get_gl_type(type), NULL, NULL, true);
-      }
-   }
-
-   /* Each Parameter will hold the index to the backing uniform storage.
-    * This avoids relying on names to match parameters and uniform
-    * storages.
-    */
-   for (unsigned i = 0; i < num_params; i++) {
-      struct gl_program_parameter *param = &params->Parameters[base_index + i];
-      param->UniformStorageIndex = uniform - prog->data->UniformStorage;
-      param->MainUniformStorageIndex = state->current_var->data.location;
-   }
 }
 
 /**
