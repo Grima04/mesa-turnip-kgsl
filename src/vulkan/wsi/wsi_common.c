@@ -135,6 +135,11 @@ wsi_device_init(struct wsi_device *wsi,
       if (driCheckOption(dri_options, "adaptive_sync", DRI_BOOL))
          wsi->enable_adaptive_sync = driQueryOptionb(dri_options,
                                                      "adaptive_sync");
+
+      if (driCheckOption(dri_options, "vk_wsi_force_bgra8_unorm_first",  DRI_BOOL)) {
+         wsi->force_bgra8_unorm_first =
+            driQueryOptionb(dri_options, "vk_wsi_force_bgra8_unorm_first");
+      }
    }
 
    return VK_SUCCESS;

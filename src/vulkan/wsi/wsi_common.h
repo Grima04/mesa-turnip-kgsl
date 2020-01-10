@@ -112,6 +112,7 @@ struct wsi_device {
    bool supports_modifiers;
    uint32_t maxImageDimension2D;
    VkPresentModeKHR override_present_mode;
+   bool force_bgra8_unorm_first;
 
    /* Whether to enable adaptive sync for a swapchain if implemented and
     * available. Not all window systems might support this. */
