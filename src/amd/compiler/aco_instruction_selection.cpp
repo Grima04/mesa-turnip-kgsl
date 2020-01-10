@@ -6192,7 +6192,7 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
       break;
    }
    case nir_intrinsic_demote:
-      bld.pseudo(aco_opcode::p_demote_to_helper);
+      bld.pseudo(aco_opcode::p_demote_to_helper, Operand(-1u));
 
       if (ctx->cf_info.loop_nest_depth || ctx->cf_info.parent_if.is_divergent)
          ctx->cf_info.exec_potentially_empty = true;
