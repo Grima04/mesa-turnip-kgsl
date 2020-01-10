@@ -774,10 +774,15 @@ emit_stores(struct v3dv_cmd_buffer *cmd_buffer,
       if (attachment->desc.storeOp != VK_ATTACHMENT_STORE_OP_STORE)
          continue;
 
+      const struct v3dv_cmd_buffer_attachment_state *attachment_state =
+         &state->attachments[attachment_idx];
+
       /* Only clear once on the first subpass that uses the attachment */
+      assert(state->job->first_subpass >= attachment_state->first_subpass);
       bool needs_clear =
-         attachment->desc.loadOp == VK_ATTACHMENT_LOAD_OP_CLEAR &&
-         state->attachments[attachment_idx].first_subpass == state->job->first_subpass;
+         state->job->first_subpass == attachment_state->first_subpass &&
+         attachment->desc.loadOp == VK_ATTACHMENT_LOAD_OP_CLEAR;
+
       store_general(cmd_buffer, cl,
                     attachment_idx, layer, RENDER_TARGET_0 + i, needs_clear);
       has_stores = true;
