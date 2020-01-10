@@ -555,7 +555,6 @@ nir_link_uniform(struct gl_context *ctx,
             glsl_get_explicit_stride(type) : 0;
 
          if (glsl_type_is_matrix(type)) {
-            assert(parent_type);
             uniform->matrix_stride = glsl_get_explicit_stride(type);
 
             uniform->row_major = glsl_matrix_type_is_row_major(type);
