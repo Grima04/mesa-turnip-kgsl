@@ -3406,10 +3406,6 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 		goto out;
 	}
 
-	if (compiler->gpu_id >= 600) {
-		ir3_a6xx_fixup_atomic_dests(ir, so);
-	}
-
 	ir3_debug_print(ir, "AFTER SCHED");
 
 	/* Pre-assign VS inputs on a6xx+ binning pass shader, to align
@@ -3483,6 +3479,12 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 	}
 
 	ir3_debug_print(ir, "AFTER RA");
+
+	if (compiler->gpu_id >= 600) {
+		if (ir3_a6xx_fixup_atomic_dests(ir, so)) {
+			ir3_debug_print(ir, "AFTER ATOMIC FIXUP");
+		}
+	}
 
 	if (so->type == MESA_SHADER_FRAGMENT)
 		pack_inlocs(ctx);
