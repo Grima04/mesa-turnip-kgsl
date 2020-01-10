@@ -1646,7 +1646,7 @@ static inline struct si_shader_ctx_state *si_get_vs(struct si_context *sctx)
 	return &sctx->vs_shader;
 }
 
-static inline struct tgsi_shader_info *si_get_vs_info(struct si_context *sctx)
+static inline struct si_shader_info *si_get_vs_info(struct si_context *sctx)
 {
 	struct si_shader_ctx_state *vs = si_get_vs(sctx);
 

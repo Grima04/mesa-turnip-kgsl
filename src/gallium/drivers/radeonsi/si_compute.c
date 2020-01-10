@@ -126,7 +126,7 @@ static void si_create_compute_state_async(void *job, int thread_index)
 	assert(program->ir_type == PIPE_SHADER_IR_NIR);
 	si_nir_scan_shader(sel->nir, &sel->info);
 
-	/* Store the declared LDS size into tgsi_shader_info for the shader
+	/* Store the declared LDS size into si_shader_info for the shader
 	 * cache to include it.
 	 */
 	sel->info.properties[TGSI_PROPERTY_CS_LOCAL_SIZE] = program->local_size;

@@ -76,7 +76,7 @@ static void build_streamout_vertex(struct si_shader_context *ctx,
 				   unsigned stream, LLVMValueRef offset_vtx,
 				   LLVMValueRef vertexptr)
 {
-	struct tgsi_shader_info *info = &ctx->shader->selector->info;
+	struct si_shader_info *info = &ctx->shader->selector->info;
 	struct pipe_stream_output_info *so = &ctx->shader->selector->so;
 	LLVMBuilderRef builder = ctx->ac.builder;
 	LLVMValueRef offset[4] = {};
@@ -136,7 +136,7 @@ struct ngg_streamout {
 static void build_streamout(struct si_shader_context *ctx,
 			    struct ngg_streamout *nggso)
 {
-	struct tgsi_shader_info *info = &ctx->shader->selector->info;
+	struct si_shader_info *info = &ctx->shader->selector->info;
 	struct pipe_stream_output_info *so = &ctx->shader->selector->so;
 	LLVMBuilderRef builder = ctx->ac.builder;
 	LLVMValueRef buf_ptr = ac_get_arg(&ctx->ac, ctx->rw_buffers);
@@ -461,7 +461,7 @@ void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi,
 {
 	struct si_shader_context *ctx = si_shader_context_from_abi(abi);
 	struct si_shader_selector *sel = ctx->shader->selector;
-	struct tgsi_shader_info *info = &sel->info;
+	struct si_shader_info *info = &sel->info;
 	struct si_shader_output_values outputs[PIPE_MAX_SHADER_OUTPUTS];
 	LLVMBuilderRef builder = ctx->ac.builder;
 	LLVMValueRef tmp, tmp2;
@@ -739,7 +739,7 @@ static LLVMValueRef
 ngg_gs_get_vertex_storage(struct si_shader_context *ctx)
 {
 	const struct si_shader_selector *sel = ctx->shader->selector;
-	const struct tgsi_shader_info *info = &sel->info;
+	const struct si_shader_info *info = &sel->info;
 
 	LLVMTypeRef elements[2] = {
 		LLVMArrayType(ctx->ac.i32, 4 * info->num_outputs),
@@ -846,7 +846,7 @@ void gfx10_ngg_gs_emit_vertex(struct si_shader_context *ctx,
 			      LLVMValueRef *addrs)
 {
 	const struct si_shader_selector *sel = ctx->shader->selector;
-	const struct tgsi_shader_info *info = &sel->info;
+	const struct si_shader_info *info = &sel->info;
 	LLVMBuilderRef builder = ctx->ac.builder;
 	LLVMValueRef tmp;
 	const LLVMValueRef vertexidx =
@@ -945,7 +945,7 @@ void gfx10_ngg_gs_emit_prologue(struct si_shader_context *ctx)
 void gfx10_ngg_gs_emit_epilogue(struct si_shader_context *ctx)
 {
 	const struct si_shader_selector *sel = ctx->shader->selector;
-	const struct tgsi_shader_info *info = &sel->info;
+	const struct si_shader_info *info = &sel->info;
 	const unsigned verts_per_prim = u_vertices_per_prim(sel->gs_output_prim);
 	LLVMBuilderRef builder = ctx->ac.builder;
 	LLVMValueRef i8_0 = LLVMConstInt(ctx->ac.i8, 0, false);

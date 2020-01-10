@@ -155,7 +155,7 @@ void si_llvm_context_set_ir(struct si_shader_context *ctx,
 			    struct si_shader *shader)
 {
 	struct si_shader_selector *sel = shader->selector;
-	const struct tgsi_shader_info *info = &sel->info;
+	const struct si_shader_info *info = &sel->info;
 
 	ctx->shader = shader;
 	ctx->type = sel->type;

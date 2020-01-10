@@ -128,7 +128,7 @@ static void gather_usage(const nir_deref_instr *deref,
 static void gather_intrinsic_load_deref_input_info(const nir_shader *nir,
 						   const nir_intrinsic_instr *instr,
 						   const nir_deref_instr *deref,
-						   struct tgsi_shader_info *info)
+						   struct si_shader_info *info)
 {
 	switch (nir->info.stage) {
 	case MESA_SHADER_VERTEX:
@@ -141,7 +141,7 @@ static void gather_intrinsic_load_deref_input_info(const nir_shader *nir,
 static void gather_intrinsic_load_deref_output_info(const nir_shader *nir,
 						    const nir_intrinsic_instr *instr,
 						    nir_variable *var,
-						    struct tgsi_shader_info *info)
+						    struct si_shader_info *info)
 {
 	assert(var && var->data.mode == nir_var_shader_out);
 
@@ -167,7 +167,7 @@ static void gather_intrinsic_load_deref_output_info(const nir_shader *nir,
 static void gather_intrinsic_store_deref_output_info(const nir_shader *nir,
 						     const nir_intrinsic_instr *instr,
 						     const nir_deref_instr *deref,
-						     struct tgsi_shader_info *info)
+						     struct si_shader_info *info)
 {
 	switch (nir->info.stage) {
 	case MESA_SHADER_VERTEX: /* needed by LS, ES */
@@ -181,7 +181,7 @@ static void gather_intrinsic_store_deref_output_info(const nir_shader *nir,
 }
 
 static void scan_instruction(const struct nir_shader *nir,
-			     struct tgsi_shader_info *info,
+			     struct si_shader_info *info,
 			     nir_instr *instr)
 {
 	if (instr->type == nir_instr_type_alu) {
@@ -431,7 +431,7 @@ static void scan_instruction(const struct nir_shader *nir,
 }
 
 void si_nir_scan_tess_ctrl(const struct nir_shader *nir,
-			   struct tgsi_tessctrl_info *out)
+			   struct si_tessctrl_info *out)
 {
 	memset(out, 0, sizeof(*out));
 
@@ -445,7 +445,7 @@ void si_nir_scan_tess_ctrl(const struct nir_shader *nir,
 static void scan_output_slot(const nir_variable *var,
 			     unsigned var_idx,
 			     unsigned component, unsigned num_components,
-			     struct tgsi_shader_info *info)
+			     struct si_shader_info *info)
 {
 	assert(component + num_components <= 4);
 	assert(component < 4);
@@ -545,7 +545,7 @@ static void scan_output_slot(const nir_variable *var,
 static void scan_output_helper(const nir_variable *var,
 			       unsigned location,
 			       const struct glsl_type *type,
-			       struct tgsi_shader_info *info)
+			       struct si_shader_info *info)
 {
 	if (glsl_type_is_struct(type) || glsl_type_is_interface(type)) {
 		for (unsigned i = 0; i < glsl_get_length(type); i++) {
@@ -591,7 +591,7 @@ static void scan_output_helper(const nir_variable *var,
 }
 
 void si_nir_scan_shader(const struct nir_shader *nir,
-			struct tgsi_shader_info *info)
+			struct si_shader_info *info)
 {
 	nir_function *func;
 	unsigned i;
@@ -1158,7 +1158,7 @@ static void bitcast_inputs(struct si_shader_context *ctx,
 
 bool si_nir_build_llvm(struct si_shader_context *ctx, struct nir_shader *nir)
 {
-	struct tgsi_shader_info *info = &ctx->shader->selector->info;
+	struct si_shader_info *info = &ctx->shader->selector->info;
 
 	if (nir->info.stage == MESA_SHADER_VERTEX) {
 		uint64_t processed_inputs = 0;

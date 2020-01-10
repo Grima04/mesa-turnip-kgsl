@@ -272,7 +272,7 @@ static LLVMValueRef get_tcs_out_patch_stride(struct si_shader_context *ctx)
 	if (ctx->shader->key.mono.u.ff_tcs_inputs_to_copy)
 		return si_unpack_param(ctx, ctx->tcs_out_lds_layout, 0, 13);
 
-	const struct tgsi_shader_info *info = &ctx->shader->selector->info;
+	const struct si_shader_info *info = &ctx->shader->selector->info;
 	unsigned tcs_out_vertices = info->properties[TGSI_PROPERTY_TCS_VERTICES_OUT];
 	unsigned vertex_dw_stride = get_tcs_out_vertex_dw_stride_constant(ctx);
 	unsigned num_patch_outputs = util_last_bit64(ctx->shader->selector->patch_outputs_written);
@@ -383,7 +383,7 @@ void si_llvm_load_input_vs(
 	unsigned input_index,
 	LLVMValueRef out[4])
 {
-	const struct tgsi_shader_info *info = &ctx->shader->selector->info;
+	const struct si_shader_info *info = &ctx->shader->selector->info;
 	unsigned vs_blit_property = info->properties[TGSI_PROPERTY_VS_BLIT_SGPRS_AMD];
 
 	if (vs_blit_property) {
@@ -879,7 +879,7 @@ static LLVMValueRef si_nir_load_tcs_varyings(struct ac_shader_abi *abi,
 					     bool load_input)
 {
 	struct si_shader_context *ctx = si_shader_context_from_abi(abi);
-	struct tgsi_shader_info *info = &ctx->shader->selector->info;
+	struct si_shader_info *info = &ctx->shader->selector->info;
 	LLVMValueRef dw_addr, stride;
 	ubyte name, index;
 
@@ -945,7 +945,7 @@ LLVMValueRef si_nir_load_input_tes(struct ac_shader_abi *abi,
 				   bool load_input)
 {
 	struct si_shader_context *ctx = si_shader_context_from_abi(abi);
-	struct tgsi_shader_info *info = &ctx->shader->selector->info;
+	struct si_shader_info *info = &ctx->shader->selector->info;
 	LLVMValueRef base, addr;
 
 	driver_location = driver_location / 4;
@@ -1004,7 +1004,7 @@ static void si_nir_store_output_tcs(struct ac_shader_abi *abi,
 				    unsigned writemask)
 {
 	struct si_shader_context *ctx = si_shader_context_from_abi(abi);
-	struct tgsi_shader_info *info = &ctx->shader->selector->info;
+	struct si_shader_info *info = &ctx->shader->selector->info;
 	const unsigned component = var->data.location_frac;
 	unsigned driver_location = var->data.driver_location;
 	LLVMValueRef dw_addr, stride;
@@ -1126,7 +1126,7 @@ static LLVMValueRef si_llvm_load_input_gs(struct ac_shader_abi *abi,
 	struct si_shader_context *ctx = si_shader_context_from_abi(abi);
 	struct si_shader *shader = ctx->shader;
 	LLVMValueRef vtx_offset, soffset;
-	struct tgsi_shader_info *info = &shader->selector->info;
+	struct si_shader_info *info = &shader->selector->info;
 	unsigned semantic_name = info->input_semantic_name[input_index];
 	unsigned semantic_index = info->input_semantic_index[input_index];
 	unsigned param;
@@ -2702,7 +2702,7 @@ static void si_llvm_emit_ls_epilogue(struct ac_shader_abi *abi,
 {
 	struct si_shader_context *ctx = si_shader_context_from_abi(abi);
 	struct si_shader *shader = ctx->shader;
-	struct tgsi_shader_info *info = &shader->selector->info;
+	struct si_shader_info *info = &shader->selector->info;
 	unsigned i, chan;
 	LLVMValueRef vertex_id = ac_get_arg(&ctx->ac, ctx->rel_auto_id);
 	LLVMValueRef vertex_dw_stride = get_tcs_in_vertex_dw_stride(ctx);
@@ -2757,7 +2757,7 @@ static void si_llvm_emit_es_epilogue(struct ac_shader_abi *abi,
 {
 	struct si_shader_context *ctx = si_shader_context_from_abi(abi);
 	struct si_shader *es = ctx->shader;
-	struct tgsi_shader_info *info = &es->selector->info;
+	struct si_shader_info *info = &es->selector->info;
 	LLVMValueRef lds_base = NULL;
 	unsigned chan;
 	int i;
@@ -2841,7 +2841,7 @@ static void si_llvm_emit_gs_epilogue(struct ac_shader_abi *abi,
 				     LLVMValueRef *addrs)
 {
 	struct si_shader_context *ctx = si_shader_context_from_abi(abi);
-	struct tgsi_shader_info UNUSED *info = &ctx->shader->selector->info;
+	struct si_shader_info UNUSED *info = &ctx->shader->selector->info;
 
 	assert(info->num_outputs <= max_outputs);
 
@@ -2853,7 +2853,7 @@ static void si_llvm_emit_vs_epilogue(struct ac_shader_abi *abi,
 				     LLVMValueRef *addrs)
 {
 	struct si_shader_context *ctx = si_shader_context_from_abi(abi);
-	struct tgsi_shader_info *info = &ctx->shader->selector->info;
+	struct si_shader_info *info = &ctx->shader->selector->info;
 	struct si_shader_output_values *outputs = NULL;
 	int i,j;
 
@@ -2902,7 +2902,7 @@ static void si_llvm_emit_prim_discard_cs_epilogue(struct ac_shader_abi *abi,
 						  LLVMValueRef *addrs)
 {
 	struct si_shader_context *ctx = si_shader_context_from_abi(abi);
-	struct tgsi_shader_info *info = &ctx->shader->selector->info;
+	struct si_shader_info *info = &ctx->shader->selector->info;
 	LLVMValueRef pos[4] = {};
 
 	assert(info->num_outputs <= max_outputs);
@@ -3031,7 +3031,7 @@ static void si_llvm_return_fs_outputs(struct ac_shader_abi *abi,
 {
 	struct si_shader_context *ctx = si_shader_context_from_abi(abi);
 	struct si_shader *shader = ctx->shader;
-	struct tgsi_shader_info *info = &shader->selector->info;
+	struct si_shader_info *info = &shader->selector->info;
 	LLVMBuilderRef builder = ctx->ac.builder;
 	unsigned i, j, first_vgpr, vgpr;
 
@@ -3122,7 +3122,7 @@ static void si_llvm_emit_vertex(struct ac_shader_abi *abi,
 		return;
 	}
 
-	struct tgsi_shader_info *info = &ctx->shader->selector->info;
+	struct si_shader_info *info = &ctx->shader->selector->info;
 	struct si_shader *shader = ctx->shader;
 	LLVMValueRef soffset = ac_get_arg(&ctx->ac, ctx->gs2vs_offset);
 	LLVMValueRef gs_next_vertex;
@@ -4528,7 +4528,7 @@ si_generate_gs_copy_shader(struct si_screen *sscreen,
 	struct si_shader *shader;
 	LLVMBuilderRef builder;
 	struct si_shader_output_values outputs[SI_MAX_VS_OUTPUTS];
-	struct tgsi_shader_info *gsinfo = &gs_selector->info;
+	struct si_shader_info *gsinfo = &gs_selector->info;
 	int i;
 
 
@@ -4809,7 +4809,7 @@ static void si_dump_shader_key(const struct si_shader *shader, FILE *f)
 static void si_optimize_vs_outputs(struct si_shader_context *ctx)
 {
 	struct si_shader *shader = ctx->shader;
-	struct tgsi_shader_info *info = &shader->selector->info;
+	struct si_shader_info *info = &shader->selector->info;
 
 	if ((ctx->type != PIPE_SHADER_VERTEX &&
 	     ctx->type != PIPE_SHADER_TESS_EVAL) ||
@@ -5117,7 +5117,7 @@ static bool si_compile_tgsi_main(struct si_shader_context *ctx,
  * \param shader_out       The vertex shader, or the next shader if merging LS+HS or ES+GS.
  * \param key              Output shader part key.
  */
-static void si_get_vs_prolog_key(const struct tgsi_shader_info *info,
+static void si_get_vs_prolog_key(const struct si_shader_info *info,
 				 unsigned num_input_sgprs,
 				 const struct si_vs_prolog_bits *prolog_key,
 				 struct si_shader *shader_out,
@@ -5157,7 +5157,7 @@ static void si_get_ps_prolog_key(struct si_shader *shader,
 				 union si_shader_part_key *key,
 				 bool separate_prolog)
 {
-	struct tgsi_shader_info *info = &shader->selector->info;
+	struct si_shader_info *info = &shader->selector->info;
 
 	memset(key, 0, sizeof(*key));
 	key->ps_prolog.states = shader->key.part.ps.prolog;
@@ -5306,7 +5306,7 @@ static bool si_need_ps_prolog(const union si_shader_part_key *key)
 static void si_get_ps_epilog_key(struct si_shader *shader,
 				 union si_shader_part_key *key)
 {
-	struct tgsi_shader_info *info = &shader->selector->info;
+	struct si_shader_info *info = &shader->selector->info;
 	memset(key, 0, sizeof(*key));
 	key->ps_epilog.colors_written = info->colors_written;
 	key->ps_epilog.writes_z = info->writes_z;

@@ -604,7 +604,7 @@ void si_schedule_initial_compile(struct si_context *sctx, unsigned processor,
 				 struct util_queue_fence *ready_fence,
 				 struct si_compiler_ctx_state *compiler_ctx_state,
 				 void *job, util_queue_execute_func execute);
-void si_get_active_slot_masks(const struct tgsi_shader_info *info,
+void si_get_active_slot_masks(const struct si_shader_info *info,
 			      uint32_t *const_and_shader_buffers,
 			      uint64_t *samplers_and_images);
 int si_shader_select_with_key(struct si_screen *sscreen,

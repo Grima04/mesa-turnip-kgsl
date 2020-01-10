@@ -779,7 +779,7 @@ static void si_emit_clip_regs(struct si_context *sctx)
 {
 	struct si_shader *vs = si_get_vs_state(sctx);
 	struct si_shader_selector *vs_sel = vs->selector;
-	struct tgsi_shader_info *info = &vs_sel->info;
+	struct si_shader_info *info = &vs_sel->info;
 	struct si_state_rasterizer *rs = sctx->queued.named.rasterizer;
 	unsigned window_space =
 	   info->properties[TGSI_PROPERTY_VS_WINDOW_SPACE_POSITION];

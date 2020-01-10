@@ -24,7 +24,6 @@
 
 #include "si_build_pm4.h"
 #include "util/u_viewport.h"
-#include "tgsi/tgsi_scan.h"
 
 #define SI_MAX_SCISSOR 16384
 
@@ -487,7 +486,7 @@ static void si_emit_viewport_states(struct si_context *ctx)
  */
 void si_update_vs_viewport_state(struct si_context *ctx)
 {
-	struct tgsi_shader_info *info = si_get_vs_info(ctx);
+	struct si_shader_info *info = si_get_vs_info(ctx);
 	bool vs_window_space;
 
 	if (!info)

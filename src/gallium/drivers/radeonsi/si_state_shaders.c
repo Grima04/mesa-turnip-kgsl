@@ -335,7 +335,7 @@ static void si_set_tesseval_regs(struct si_screen *sscreen,
 				 const struct si_shader_selector *tes,
 				 struct si_pm4_state *pm4)
 {
-	const struct tgsi_shader_info *info = &tes->info;
+	const struct si_shader_info *info = &tes->info;
 	unsigned tes_prim_mode = info->properties[TGSI_PROPERTY_TES_PRIM_MODE];
 	unsigned tes_spacing = info->properties[TGSI_PROPERTY_TES_SPACING];
 	bool tes_vertex_order_cw = info->properties[TGSI_PROPERTY_TES_VERTEX_ORDER_CW];
@@ -1105,11 +1105,11 @@ static unsigned si_get_vs_out_cntl(const struct si_shader_selector *sel, bool ng
 static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader)
 {
 	const struct si_shader_selector *gs_sel = shader->selector;
-	const struct tgsi_shader_info *gs_info = &gs_sel->info;
+	const struct si_shader_info *gs_info = &gs_sel->info;
 	enum pipe_shader_type gs_type = shader->selector->type;
 	const struct si_shader_selector *es_sel =
 		shader->previous_stage_sel ? shader->previous_stage_sel : shader->selector;
-	const struct tgsi_shader_info *es_info = &es_sel->info;
+	const struct si_shader_info *es_info = &es_sel->info;
 	enum pipe_shader_type es_type = es_sel->type;
 	unsigned num_user_sgprs;
 	unsigned nparams, es_vgpr_comp_cnt, gs_vgpr_comp_cnt;
@@ -1354,7 +1354,7 @@ static void si_emit_shader_vs(struct si_context *sctx)
 static void si_shader_vs(struct si_screen *sscreen, struct si_shader *shader,
                          struct si_shader_selector *gs)
 {
-	const struct tgsi_shader_info *info = &shader->selector->info;
+	const struct si_shader_info *info = &shader->selector->info;
 	struct si_pm4_state *pm4;
 	unsigned num_user_sgprs, vgpr_comp_cnt;
 	uint64_t va;
@@ -1492,7 +1492,7 @@ static void si_shader_vs(struct si_screen *sscreen, struct si_shader *shader,
 
 static unsigned si_get_ps_num_interp(struct si_shader *ps)
 {
-	struct tgsi_shader_info *info = &ps->selector->info;
+	struct si_shader_info *info = &ps->selector->info;
 	unsigned num_colors = !!(info->colors_read & 0x0f) +
 			      !!(info->colors_read & 0xf0);
 	unsigned num_interp = ps->selector->info.num_inputs +
@@ -1554,7 +1554,7 @@ static void si_emit_shader_ps(struct si_context *sctx)
 
 static void si_shader_ps(struct si_screen *sscreen, struct si_shader *shader)
 {
-	struct tgsi_shader_info *info = &shader->selector->info;
+	struct si_shader_info *info = &shader->selector->info;
 	struct si_pm4_state *pm4;
 	unsigned spi_ps_in_control, spi_shader_col_format, cb_shader_mask;
 	unsigned spi_baryc_cntl = S_0286E0_FRONT_FACE_ALL_BITS(1);
@@ -2425,7 +2425,7 @@ static int si_shader_select(struct pipe_context *ctx,
 					 &key, -1, false);
 }
 
-static void si_parse_next_shader_property(const struct tgsi_shader_info *info,
+static void si_parse_next_shader_property(const struct si_shader_info *info,
 					  bool streamout,
 					  struct si_shader_key *key)
 {
@@ -2653,7 +2653,7 @@ void si_schedule_initial_compile(struct si_context *sctx, unsigned processor,
 }
 
 /* Return descriptor slot usage masks from the given shader info. */
-void si_get_active_slot_masks(const struct tgsi_shader_info *info,
+void si_get_active_slot_masks(const struct si_shader_info *info,
 			      uint32_t *const_and_shader_buffers,
 			      uint64_t *samplers_and_images)
 {
@@ -3311,7 +3311,7 @@ static unsigned si_get_ps_input_cntl(struct si_context *sctx,
 				     struct si_shader *vs, unsigned name,
 				     unsigned index, unsigned interpolate)
 {
-	struct tgsi_shader_info *vsinfo = &vs->selector->info;
+	struct si_shader_info *vsinfo = &vs->selector->info;
 	unsigned j, offset, ps_input_cntl = 0;
 
 	if (interpolate == TGSI_INTERPOLATE_CONSTANT ||
@@ -3370,7 +3370,7 @@ static void si_emit_spi_map(struct si_context *sctx)
 {
 	struct si_shader *ps = sctx->ps_shader.current;
 	struct si_shader *vs = si_get_vs_state(sctx);
-	struct tgsi_shader_info *psinfo = ps ? &ps->selector->info : NULL;
+	struct si_shader_info *psinfo = ps ? &ps->selector->info : NULL;
 	unsigned i, num_interp, num_written = 0, bcol_interp[2];
 	unsigned spi_ps_input_cntl[32];
 

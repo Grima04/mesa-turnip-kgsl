@@ -830,7 +830,7 @@ static unsigned si_identity(unsigned slot)
 
 static void si_dump_descriptors(struct si_context *sctx,
 				enum pipe_shader_type processor,
-				const struct tgsi_shader_info *info,
+				const struct si_shader_info *info,
 				struct u_log_context *log)
 {
 	struct si_descriptors *descs =
