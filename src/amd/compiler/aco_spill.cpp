@@ -1774,7 +1774,7 @@ void spill(Program* program, live& live_vars, const struct radv_nir_compiler_opt
    /* update live variable information */
    live_vars = live_var_analysis(program, options);
 
-   assert(program->num_waves >= 0);
+   assert(program->num_waves > 0);
 }
 
 }
