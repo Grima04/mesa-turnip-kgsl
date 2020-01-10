@@ -142,6 +142,53 @@ mark_stage_as_active(struct gl_uniform_storage *uniform,
    uniform->active_shader_mask |= 1 << stage;
 }
 
+/* Used to build a tree representing the glsl_type so that we can have a place
+ * to store the next index for opaque types. Array types are expanded so that
+ * they have a single child which is used for all elements of the array.
+ * Struct types have a child for each member. The tree is walked while
+ * processing a uniform so that we can recognise when an opaque type is
+ * encountered a second time in order to reuse the same range of indices that
+ * was reserved the first time. That way the sampler indices can be arranged
+ * so that members of an array are placed sequentially even if the array is an
+ * array of structs containing other opaque members.
+ */
+struct type_tree_entry {
+   /* For opaque types, this will be the next index to use. If we haven’t
+    * encountered this member yet, it will be UINT_MAX.
+    */
+   unsigned next_index;
+   unsigned array_size;
+   struct type_tree_entry *parent;
+   struct type_tree_entry *next_sibling;
+   struct type_tree_entry *children;
+};
+
+struct nir_link_uniforms_state {
+   /* per-whole program */
+   unsigned num_hidden_uniforms;
+   unsigned num_values;
+   unsigned max_uniform_location;
+
+   /* per-shader stage */
+   unsigned next_image_index;
+   unsigned next_sampler_index;
+   unsigned num_shader_samplers;
+   unsigned num_shader_images;
+   unsigned num_shader_uniform_components;
+   unsigned shader_samplers_used;
+   unsigned shader_shadow_samplers;
+   struct gl_program_parameter_list *params;
+
+   /* per-variable */
+   nir_variable *current_var;
+   int offset;
+   bool var_is_in_block;
+   int top_level_array_size;
+   int top_level_array_stride;
+
+   struct type_tree_entry *current_type;
+};
+
 /**
  * Finds, returns, and updates the stage info for any uniform in UniformStorage
  * defined by @var. In general this is done using the explicit location,
@@ -214,53 +261,6 @@ find_and_update_previous_uniform_storage(struct gl_shader_program *prog,
 
    return NULL;
 }
-
-/* Used to build a tree representing the glsl_type so that we can have a place
- * to store the next index for opaque types. Array types are expanded so that
- * they have a single child which is used for all elements of the array.
- * Struct types have a child for each member. The tree is walked while
- * processing a uniform so that we can recognise when an opaque type is
- * encountered a second time in order to reuse the same range of indices that
- * was reserved the first time. That way the sampler indices can be arranged
- * so that members of an array are placed sequentially even if the array is an
- * array of structs containing other opaque members.
- */
-struct type_tree_entry {
-   /* For opaque types, this will be the next index to use. If we haven’t
-    * encountered this member yet, it will be UINT_MAX.
-    */
-   unsigned next_index;
-   unsigned array_size;
-   struct type_tree_entry *parent;
-   struct type_tree_entry *next_sibling;
-   struct type_tree_entry *children;
-};
-
-struct nir_link_uniforms_state {
-   /* per-whole program */
-   unsigned num_hidden_uniforms;
-   unsigned num_values;
-   unsigned max_uniform_location;
-
-   /* per-shader stage */
-   unsigned next_image_index;
-   unsigned next_sampler_index;
-   unsigned num_shader_samplers;
-   unsigned num_shader_images;
-   unsigned num_shader_uniform_components;
-   unsigned shader_samplers_used;
-   unsigned shader_shadow_samplers;
-   struct gl_program_parameter_list *params;
-
-   /* per-variable */
-   nir_variable *current_var;
-   int offset;
-   bool var_is_in_block;
-   int top_level_array_size;
-   int top_level_array_stride;
-
-   struct type_tree_entry *current_type;
-};
 
 static struct type_tree_entry *
 build_type_tree_for_type(const struct glsl_type *type)
