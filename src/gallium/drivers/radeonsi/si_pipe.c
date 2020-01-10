@@ -59,7 +59,7 @@ static const struct debug_named_value debug_options[] = {
 	{ "tes", DBG(TES), "Print tessellation evaluation shaders" },
 	{ "cs", DBG(CS), "Print compute shaders" },
 	{ "noir", DBG(NO_IR), "Don't print the LLVM IR"},
-	{ "notgsi", DBG(NO_TGSI), "Don't print the TGSI"},
+	{ "nonir", DBG(NO_NIR), "Don't print NIR when printing shaders"},
 	{ "noasm", DBG(NO_ASM), "Don't print disassembled shaders"},
 	{ "preoptir", DBG(PREOPT_IR), "Print the LLVM IR before initial optimizations" },
 

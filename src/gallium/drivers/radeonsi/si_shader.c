@@ -5762,7 +5762,7 @@ int si_compile_shader(struct si_screen *sscreen,
 	/* Dump TGSI code before doing TGSI->LLVM conversion in case the
 	 * conversion fails. */
 	if (si_can_dump_shader(sscreen, sel->type) &&
-	    !(sscreen->debug_flags & DBG(NO_TGSI))) {
+	    !(sscreen->debug_flags & DBG(NO_NIR))) {
 		nir_print_shader(nir, stderr);
 		si_dump_streamout(&sel->so);
 	}
