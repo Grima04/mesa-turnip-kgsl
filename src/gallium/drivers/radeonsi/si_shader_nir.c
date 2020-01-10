@@ -282,25 +282,12 @@ static void scan_instruction(const struct nir_shader *nir,
 			info->reads_tess_factors = true;
 			break;
 		case nir_intrinsic_bindless_image_load:
-			info->uses_bindless_images = true;
-
-			if (nir_intrinsic_image_dim(intr) == GLSL_SAMPLER_DIM_BUF)
-				info->uses_bindless_buffer_load = true;
-			else
-				info->uses_bindless_image_load = true;
-			break;
 		case nir_intrinsic_bindless_image_size:
 		case nir_intrinsic_bindless_image_samples:
 			info->uses_bindless_images = true;
 			break;
 		case nir_intrinsic_bindless_image_store:
 			info->uses_bindless_images = true;
-
-			if (nir_intrinsic_image_dim(intr) == GLSL_SAMPLER_DIM_BUF)
-				info->uses_bindless_buffer_store = true;
-			else
-				info->uses_bindless_image_store = true;
-
 			info->writes_memory = true;
 			info->num_memory_instructions++; /* we only care about stores */
 			break;
@@ -319,12 +306,6 @@ static void scan_instruction(const struct nir_shader *nir,
 		case nir_intrinsic_bindless_image_atomic_exchange:
 		case nir_intrinsic_bindless_image_atomic_comp_swap:
 			info->uses_bindless_images = true;
-
-			if (nir_intrinsic_image_dim(intr) == GLSL_SAMPLER_DIM_BUF)
-				info->uses_bindless_buffer_atomic = true;
-			else
-				info->uses_bindless_image_atomic = true;
-
 			info->writes_memory = true;
 			info->num_memory_instructions++; /* we only care about stores */
 			break;
@@ -585,8 +566,6 @@ void si_nir_scan_shader(const struct nir_shader *nir,
 	unsigned i;
 
 	info->processor = pipe_shader_type_from_mesa(nir->info.stage);
-	info->num_tokens = 2; /* indicate that the shader is non-empty */
-	info->num_instructions = 2;
 
 	info->properties[TGSI_PROPERTY_NEXT_SHADER] =
 		pipe_shader_type_from_mesa(nir->info.next_stage);
@@ -770,7 +749,7 @@ void si_nir_scan_shader(const struct nir_shader *nir,
 	info->num_inputs = nir->num_inputs;
 	info->num_outputs = nir->num_outputs;
 
-	info->const_file_max[0] = nir->num_uniforms - 1;
+	info->constbuf0_num_slots = nir->num_uniforms;
 	info->shader_buffers_declared = u_bit_consecutive(0, nir->info.num_ssbos);
 	info->const_buffers_declared = u_bit_consecutive(1, nir->info.num_ubos);
 	if (nir->num_uniforms > 0)

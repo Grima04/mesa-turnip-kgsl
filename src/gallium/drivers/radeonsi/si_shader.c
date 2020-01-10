@@ -1584,7 +1584,7 @@ static LLVMValueRef load_const_buffer_desc_fast_path(struct si_shader_context *c
 	LLVMValueRef desc_elems[] = {
 		desc0,
 		desc1,
-		LLVMConstInt(ctx->i32, (sel->info.const_file_max[0] + 1) * 16, 0),
+		LLVMConstInt(ctx->i32, sel->info.constbuf0_num_slots * 16, 0),
 		LLVMConstInt(ctx->i32, rsrc3, false)
 	};
 
@@ -5028,7 +5028,6 @@ static bool si_compile_tgsi_main(struct si_shader_context *ctx,
 	 */
 	if (ctx->screen->info.chip_class >= GFX9) {
 		if (!shader->is_monolithic &&
-		    sel->info.num_instructions > 1 && /* not empty shader */
 		    (shader->key.as_es || shader->key.as_ls) &&
 		    (ctx->type == PIPE_SHADER_TESS_EVAL ||
 		     (ctx->type == PIPE_SHADER_VERTEX &&
