@@ -73,6 +73,7 @@ static const struct debug_named_value debug_options[] = {
    {"shaderdb",       ETNA_DBG_SHADERDB, "Enable shaderdb output"},
    {"no_singlebuffer",ETNA_DBG_NO_SINGLEBUF, "Disable single buffer feature"},
    {"nir",            ETNA_DBG_NIR, "use new NIR compiler"},
+   {"deqp",           ETNA_DBG_DEQP, "Hacks to run dEQP GLES3 tests"}, /* needs MESA_GLES_VERSION_OVERRIDE=3.0 */
    DEBUG_NAMED_VALUE_END
 };
 
@@ -180,6 +181,8 @@ etna_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return 0;
 
    /* Stream output. */
+   case PIPE_CAP_MAX_STREAM_OUTPUT_BUFFERS:
+      return DBG_ENABLED(ETNA_DBG_DEQP) ? 4 : 0;
    case PIPE_CAP_MAX_STREAM_OUTPUT_SEPARATE_COMPONENTS:
    case PIPE_CAP_MAX_STREAM_OUTPUT_INTERLEAVED_COMPONENTS:
       return 0;
@@ -312,7 +315,7 @@ etna_screen_get_shader_param(struct pipe_screen *pscreen,
    case PIPE_SHADER_CAP_MAX_TEMPS:
       return 64; /* Max native temporaries. */
    case PIPE_SHADER_CAP_MAX_CONST_BUFFERS:
-      return 1;
+      return DBG_ENABLED(ETNA_DBG_DEQP) ? 16 : 1;
    case PIPE_SHADER_CAP_TGSI_CONT_SUPPORTED:
       return 1;
    case PIPE_SHADER_CAP_INDIRECT_INPUT_ADDR:
@@ -614,6 +617,9 @@ etna_determine_uniform_limits(struct etna_screen *screen)
       screen->specs.max_vs_uniforms = 168;
       screen->specs.max_ps_uniforms = 64;
    }
+
+   if (DBG_ENABLED(ETNA_DBG_DEQP))
+      screen->specs.max_ps_uniforms = 1024;
 }
 
 static bool
