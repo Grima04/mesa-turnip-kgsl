@@ -3060,11 +3060,11 @@ static void si_llvm_return_fs_outputs(struct ac_shader_abi *abi,
 			break;
 		case TGSI_SEMANTIC_POSITION:
 			depth = LLVMBuildLoad(builder,
-					      addrs[4 * i + 2], "");
+					      addrs[4 * i + 0], "");
 			break;
 		case TGSI_SEMANTIC_STENCIL:
 			stencil = LLVMBuildLoad(builder,
-						addrs[4 * i + 1], "");
+						addrs[4 * i + 0], "");
 			break;
 		case TGSI_SEMANTIC_SAMPLEMASK:
 			samplemask = LLVMBuildLoad(builder,

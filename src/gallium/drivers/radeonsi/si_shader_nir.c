@@ -955,16 +955,8 @@ void si_nir_adjust_driver_locations(struct nir_shader *nir)
 			variable->data.driver_location *= 4;
 	}
 
-	nir_foreach_variable(variable, &nir->outputs) {
+	nir_foreach_variable(variable, &nir->outputs)
 		variable->data.driver_location *= 4;
-
-		if (nir->info.stage == MESA_SHADER_FRAGMENT) {
-			if (variable->data.location == FRAG_RESULT_DEPTH)
-				variable->data.driver_location += 2;
-			else if (variable->data.location == FRAG_RESULT_STENCIL)
-				variable->data.driver_location += 1;
-		}
-	}
 }
 
 /**
