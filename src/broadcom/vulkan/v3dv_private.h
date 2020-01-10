@@ -138,6 +138,10 @@ struct v3dv_physical_device {
 
    const struct v3d_compiler *compiler;
    uint32_t next_program_id;
+
+   struct {
+      bool merge_jobs;
+   } options;
 };
 
 struct v3dv_app_info {
@@ -460,6 +464,8 @@ struct v3dv_job {
    struct v3dv_bo *tile_state;
 
    bool tmu_dirty_rcl;
+
+   uint32_t first_subpass;
 };
 
 void v3dv_job_add_bo(struct v3dv_job *job, struct v3dv_bo *bo);

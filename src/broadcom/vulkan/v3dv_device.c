@@ -340,6 +340,8 @@ physical_device_init(struct v3dv_physical_device *device,
       VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
    mem->memoryTypes[1].heapIndex = 0;
 
+   device->options.merge_jobs = getenv("V3DV_NO_MERGE_JOBS") == NULL;
+
 fail:
    close(fd);
    if (master_fd != -1)

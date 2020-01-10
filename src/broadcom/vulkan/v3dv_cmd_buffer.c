@@ -53,6 +53,9 @@ subpass_start(struct v3dv_cmd_buffer *cmd_buffer);
 static void
 subpass_finish(struct v3dv_cmd_buffer *cmd_buffer);
 
+static void
+emit_rcl(struct v3dv_cmd_buffer *cmd_buffer);
+
 VkResult
 v3dv_CreateCommandPool(VkDevice _device,
                        const VkCommandPoolCreateInfo *pCreateInfo,
@@ -167,12 +170,96 @@ emit_binning_flush(struct v3dv_job *job)
    cl_emit(&job->bcl, FLUSH, flush);
 }
 
+static bool
+attachment_list_is_subset(struct v3dv_subpass_attachment *l1, uint32_t l1_count,
+                          struct v3dv_subpass_attachment *l2, uint32_t l2_count)
+{
+   for (uint32_t i = 0; i < l1_count; i++) {
+      uint32_t attachment_idx = l1[i].attachment;
+      if (attachment_idx == VK_ATTACHMENT_UNUSED)
+         continue;
+
+      uint32_t j;
+      for (j = 0; j < l2_count; j++) {
+         if (l2[j].attachment == attachment_idx)
+            break;
+      }
+      if (j == l2_count)
+         return false;
+   }
+
+   return true;
+ }
+
+static bool
+cmd_buffer_can_merge_subpass(struct v3dv_cmd_buffer *cmd_buffer)
+{
+   const struct v3dv_cmd_buffer_state *state = &cmd_buffer->state;
+   assert(state->pass);
+
+   const struct v3dv_physical_device *physical_device =
+      &cmd_buffer->device->instance->physicalDevice;
+
+   if (!physical_device->options.merge_jobs)
+      return false;
+
+   /* Each render pass starts a new job */
+   if (state->subpass_idx == 0)
+      return false;
+
+   /* Two subpasses can be merged in the same job if we can emit a single RCL
+    * for them (since the RCL includes the END_OF_RENDERING command that
+    * triggers the "render job finished" interrupt). We can do this so long
+    * as both subpasses render against the same attachments.
+    */
+   uint32_t prev_subpass_idx = state->subpass_idx - 1;
+   struct v3dv_subpass *prev_subpass = &state->pass->subpasses[prev_subpass_idx];
+   struct v3dv_subpass *subpass = &state->pass->subpasses[state->subpass_idx];
+
+   /* Because the list of subpass attachments can include VK_ATTACHMENT_UNUSED,
+    * we need to check that for each subpass all its used attachments are
+    * used by the other subpass.
+    */
+   bool compatible =
+      attachment_list_is_subset(prev_subpass->color_attachments,
+                                prev_subpass->color_count,
+                                subpass->color_attachments,
+                                subpass->color_count);
+   if (!compatible)
+      return false;
+
+   compatible =
+      attachment_list_is_subset(subpass->color_attachments,
+                                subpass->color_count,
+                                prev_subpass->color_attachments,
+                                prev_subpass->color_count);
+   if (!compatible)
+      return false;
+
+   /* FIXME: resolve attachments */
+
+   /* FIXME: also check depth/stencil attachment */
+
+   return true;
+}
+
 void
 v3dv_cmd_buffer_finish_job(struct v3dv_cmd_buffer *cmd_buffer)
 {
    struct v3dv_job *job = cmd_buffer->state.job;
    assert(job);
    assert(v3dv_cl_offset(&job->bcl) != 0);
+
+   /* When we merge multiple subpasses into the same job we must only emit one
+    * RCL, so we do that here, when we decided that we need to finish the job.
+    * Any rendering that happens outside a render pass is never merged, so
+    * the RCL should have been emitted by the time we got here.
+    */
+   assert(v3dv_cl_offset(&job->rcl) != 0 || cmd_buffer->state.pass);
+   if (cmd_buffer->state.pass) {
+      emit_rcl(cmd_buffer);
+      emit_binning_flush(job);
+   }
 
    list_addtail(&job->list_link, &cmd_buffer->submit_jobs);
    cmd_buffer->state.job = NULL;
@@ -181,6 +268,12 @@ v3dv_cmd_buffer_finish_job(struct v3dv_cmd_buffer *cmd_buffer)
 struct v3dv_job *
 v3dv_cmd_buffer_start_job(struct v3dv_cmd_buffer *cmd_buffer)
 {
+   /* Don't create a new job if we can merge the current subpass into
+    * the current job.
+    */
+   if (cmd_buffer->state.pass && cmd_buffer_can_merge_subpass(cmd_buffer))
+      return cmd_buffer->state.job;
+
    /* Ensure we are not starting a new job without finishing a previous one */
    if (cmd_buffer->state.job != NULL)
       v3dv_cmd_buffer_finish_job(cmd_buffer);
@@ -205,6 +298,13 @@ v3dv_cmd_buffer_start_job(struct v3dv_cmd_buffer *cmd_buffer)
 
    v3dv_cl_init(job, &job->indirect);
    v3dv_cl_begin(&job->indirect);
+
+   /* Keep track of the first subpass that we are recording in this new job.
+    * We will use this when we emit the RCL to decide how to emit our loads
+    * and stores.
+    */
+   if (cmd_buffer->state.pass)
+      job->first_subpass = cmd_buffer->state.subpass_idx;
 
    cmd_buffer->state.job = job;
    return job;
@@ -601,7 +701,7 @@ emit_loads(struct v3dv_cmd_buffer *cmd_buffer,
       bool needs_load =
          attachment->desc.loadOp == VK_ATTACHMENT_LOAD_OP_LOAD ||
          (attachment->desc.loadOp == VK_ATTACHMENT_LOAD_OP_CLEAR &&
-          state->subpass_idx > attachment_state->first_subpass);
+          state->job->first_subpass > attachment_state->first_subpass);
 
       if (needs_load) {
          struct v3dv_image_view *iview = framebuffer->attachments[attachment_idx];
@@ -677,7 +777,7 @@ emit_stores(struct v3dv_cmd_buffer *cmd_buffer,
       /* Only clear once on the first subpass that uses the attachment */
       bool needs_clear =
          attachment->desc.loadOp == VK_ATTACHMENT_LOAD_OP_CLEAR &&
-         state->attachments[attachment_idx].first_subpass == state->subpass_idx;
+         state->attachments[attachment_idx].first_subpass == state->job->first_subpass;
       store_general(cmd_buffer, cl,
                     attachment_idx, layer, RENDER_TARGET_0 + i, needs_clear);
       has_stores = true;
@@ -979,83 +1079,77 @@ subpass_start(struct v3dv_cmd_buffer *cmd_buffer)
 
    assert(state->subpass_idx < state->pass->subpass_count);
 
-   /* FIXME: for now, each subpass goes into a separate job. In the future we
-    * might be able to merge subpasses that render to the same render targets
-    * so long as they don't render to more than 4 color attachments and there
-    * aren't other subpass dependencies preveting this.
-    */
    struct v3dv_job *job = v3dv_cmd_buffer_start_job(cmd_buffer);
 
-   const struct v3dv_framebuffer *framebuffer = cmd_buffer->state.framebuffer;
+   /* If we are starting a new job we need to setup binning. */
+   if (job->first_subpass == state->subpass_idx) {
+      const struct v3dv_framebuffer *framebuffer =
+         cmd_buffer->state.framebuffer;
 
-   /* Setup binning for this subpass.
-    *
-    * FIXME: For now we do this at the start each subpass but if we implement
-    * subpass merges in the future we would only want to emit this once per job.
-    */
-   v3dv_cl_ensure_space_with_branch(&job->bcl, 256);
+      v3dv_cl_ensure_space_with_branch(&job->bcl, 256);
 
-   /* The PTB will request the tile alloc initial size per tile at start
-    * of tile binning.
-    */
-   const uint32_t fb_layers = 1; /* FIXME */
-   uint32_t tile_alloc_size = 64 * MAX2(fb_layers, 1) *
-                              framebuffer->draw_tiles_x *
-                              framebuffer->draw_tiles_y;
+      /* The PTB will request the tile alloc initial size per tile at start
+       * of tile binning.
+       */
+      const uint32_t fb_layers = 1; /* FIXME */
+      uint32_t tile_alloc_size = 64 * MAX2(fb_layers, 1) *
+                                 framebuffer->draw_tiles_x *
+                                 framebuffer->draw_tiles_y;
 
-   /* The PTB allocates in aligned 4k chunks after the initial setup. */
-   tile_alloc_size = align(tile_alloc_size, 4096);
+      /* The PTB allocates in aligned 4k chunks after the initial setup. */
+      tile_alloc_size = align(tile_alloc_size, 4096);
 
-   /* Include the first two chunk allocations that the PTB does so that
-    * we definitely clear the OOM condition before triggering one (the HW
-    * won't trigger OOM during the first allocations).
-    */
-   tile_alloc_size += 8192;
+      /* Include the first two chunk allocations that the PTB does so that
+       * we definitely clear the OOM condition before triggering one (the HW
+       * won't trigger OOM during the first allocations).
+       */
+      tile_alloc_size += 8192;
 
-   /* For performance, allocate some extra initial memory after the PTB's
-    * minimal allocations, so that we hopefully don't have to block the
-    * GPU on the kernel handling an OOM signal.
-    */
-   tile_alloc_size += 512 * 1024;
+      /* For performance, allocate some extra initial memory after the PTB's
+       * minimal allocations, so that we hopefully don't have to block the
+       * GPU on the kernel handling an OOM signal.
+       */
+      tile_alloc_size += 512 * 1024;
 
-   job->tile_alloc = v3dv_bo_alloc(cmd_buffer->device, tile_alloc_size);
-   v3dv_job_add_bo(job, job->tile_alloc);
+      job->tile_alloc = v3dv_bo_alloc(cmd_buffer->device, tile_alloc_size);
+      v3dv_job_add_bo(job, job->tile_alloc);
 
-   const uint32_t tsda_per_tile_size = 256;
-   const uint32_t tile_state_size = MAX2(fb_layers, 1) *
-                                    framebuffer->draw_tiles_x *
-                                    framebuffer->draw_tiles_y *
-                                    tsda_per_tile_size;
-   job->tile_state = v3dv_bo_alloc(cmd_buffer->device, tile_state_size);
-   v3dv_job_add_bo(job, job->tile_state);
+      const uint32_t tsda_per_tile_size = 256;
+      const uint32_t tile_state_size = MAX2(fb_layers, 1) *
+                                       framebuffer->draw_tiles_x *
+                                       framebuffer->draw_tiles_y *
+                                       tsda_per_tile_size;
+      job->tile_state = v3dv_bo_alloc(cmd_buffer->device, tile_state_size);
+      v3dv_job_add_bo(job, job->tile_state);
 
-   /* This must go before the binning mode configuration. It is
-    * required for layered framebuffers to work.
-    */
-   if (fb_layers > 0) {
-      cl_emit(&job->bcl, NUMBER_OF_LAYERS, config) {
-         config.number_of_layers = fb_layers;
+      /* This must go before the binning mode configuration. It is
+       * required for layered framebuffers to work.
+       */
+      if (fb_layers > 0) {
+         cl_emit(&job->bcl, NUMBER_OF_LAYERS, config) {
+            config.number_of_layers = fb_layers;
+         }
       }
+
+      cl_emit(&job->bcl, TILE_BINNING_MODE_CFG, config) {
+         config.width_in_pixels = framebuffer->width;
+         config.height_in_pixels = framebuffer->height;
+         config.number_of_render_targets = MAX2(framebuffer->attachment_count, 1);
+         config.multisample_mode_4x = false; /* FIXME */
+         config.maximum_bpp_of_all_render_targets = framebuffer->internal_bpp;
+      }
+
+      /* There's definitely nothing in the VCD cache we want. */
+      cl_emit(&job->bcl, FLUSH_VCD_CACHE, bin);
+
+      /* Disable any leftover OQ state from another job. */
+      cl_emit(&job->bcl, OCCLUSION_QUERY_COUNTER, counter);
+
+      /* "Binning mode lists must have a Start Tile Binning item (6) after
+       *  any prefix state data before the binning list proper starts."
+       */
+      cl_emit(&job->bcl, START_TILE_BINNING, bin);
    }
-
-   cl_emit(&job->bcl, TILE_BINNING_MODE_CFG, config) {
-      config.width_in_pixels = framebuffer->width;
-      config.height_in_pixels = framebuffer->height;
-      config.number_of_render_targets = MAX2(framebuffer->attachment_count, 1);
-      config.multisample_mode_4x = false; /* FIXME */
-      config.maximum_bpp_of_all_render_targets = framebuffer->internal_bpp;
-   }
-
-   /* There's definitely nothing in the VCD cache we want. */
-   cl_emit(&job->bcl, FLUSH_VCD_CACHE, bin);
-
-   /* Disable any leftover OQ state from another job. */
-   cl_emit(&job->bcl, OCCLUSION_QUERY_COUNTER, counter);
-
-   /* "Binning mode lists must have a Start Tile Binning item (6) after
-    *  any prefix state data before the binning list proper starts."
-    */
-   cl_emit(&job->bcl, START_TILE_BINNING, bin);
 
    /* If we don't have a scissor or viewport defined let's just use the render
     * area as clip_window, as that would be required for a clear in any
@@ -1090,16 +1184,6 @@ subpass_finish(struct v3dv_cmd_buffer *cmd_buffer)
 {
    struct v3dv_job *job = cmd_buffer->state.job;
    assert(job);
-
-   emit_rcl(cmd_buffer);
-
-   /* This finishes the a binning job.
-    *
-    * FIXME: if the next subpass draws to the same RTs, we could skip this
-    * and the binning setup for the next subpass.
-    */
-   emit_binning_flush(job);
-   v3dv_cmd_buffer_finish_job(cmd_buffer);
 }
 
 void
@@ -1111,6 +1195,7 @@ v3dv_CmdEndRenderPass(VkCommandBuffer commandBuffer)
    struct v3dv_cmd_buffer_state *state = &cmd_buffer->state;
    assert(state->subpass_idx == state->pass->subpass_count - 1);
    subpass_finish(cmd_buffer);
+   v3dv_cmd_buffer_finish_job(cmd_buffer);
 
    /* We are no longer inside a render pass */
    state->pass = NULL;
