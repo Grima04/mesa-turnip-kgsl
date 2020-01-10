@@ -188,7 +188,7 @@ static Temp emit_bpermute(isel_context *ctx, Builder &bld, Temp index, Temp data
    Temp lane_id = emit_mbcnt(ctx, bld.def(v1));
    Temp lane_is_hi = bld.vop2(aco_opcode::v_and_b32, bld.def(v1), Operand(0x20u), lane_id);
    Temp index_is_hi = bld.vop2(aco_opcode::v_and_b32, bld.def(v1), Operand(0x20u), index);
-   Temp cmp = bld.vopc(aco_opcode::v_cmp_eq_u32, bld.def(s2, vcc), lane_is_hi, index_is_hi);
+   Temp cmp = bld.vopc(aco_opcode::v_cmp_eq_u32, bld.def(bld.lm, vcc), lane_is_hi, index_is_hi);
 
    return bld.reduction(aco_opcode::p_wave64_bpermute, bld.def(v1), bld.def(s2), bld.def(s1, scc),
                         bld.vcc(cmp), Operand(v2.as_linear()), index_x4, data, gfx10_wave64_bpermute);
@@ -591,6 +591,7 @@ void emit_comparison(isel_context *ctx, nir_alu_instr *instr, Temp dst,
                    ctx->allocated[instr->src[1].src.ssa->index].type() == RegType::vgpr;
    aco_opcode op = use_valu ? v_op : s_op;
    assert(op != aco_opcode::num_opcodes);
+   assert(dst.regClass() == ctx->program->lane_mask);
 
    if (use_valu)
       emit_vopc_instruction(ctx, instr, op, dst);
@@ -2142,6 +2143,7 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
 
       if (src.type() == RegType::vgpr) {
          assert(src.regClass() == v1 || src.regClass() == v2);
+         assert(dst.regClass() == bld.lm);
          bld.vopc(src.size() == 2 ? aco_opcode::v_cmp_lg_u64 : aco_opcode::v_cmp_lg_u32,
                   Definition(dst), Operand(0u), src).def(0).setHint(vcc);
       } else {
@@ -2229,7 +2231,7 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
           */
          f32 = bld.vop1(aco_opcode::v_cvt_f32_f16, bld.def(v1), f16);
          Temp smallest = bld.copy(bld.def(s1), Operand(0x38800000u));
-         Instruction* vop3 = bld.vopc_e64(aco_opcode::v_cmp_nlt_f32, bld.hint_vcc(bld.def(s2)), f32, smallest);
+         Instruction* vop3 = bld.vopc_e64(aco_opcode::v_cmp_nlt_f32, bld.hint_vcc(bld.def(bld.lm)), f32, smallest);
          static_cast<VOP3A_instruction*>(vop3)->abs[0] = true;
          cmp_res = vop3->definitions[0].getTemp();
       }
@@ -6342,7 +6344,7 @@ void build_cube_select(isel_context *ctx, Temp ma, Temp id, Temp deriv,
    Temp neg_sgn_ma = bld.vop2(aco_opcode::v_sub_f32, bld.def(v1), Operand(0u), sgn_ma);
 
    Temp is_ma_z = bld.vopc(aco_opcode::v_cmp_le_f32, bld.hint_vcc(bld.def(bld.lm)), four, id);
-   Temp is_ma_y = bld.vopc(aco_opcode::v_cmp_le_f32, bld.def(s2), two, id);
+   Temp is_ma_y = bld.vopc(aco_opcode::v_cmp_le_f32, bld.def(bld.lm), two, id);
    is_ma_y = bld.sop2(Builder::s_andn2, bld.hint_vcc(bld.def(bld.lm)), is_ma_y, is_ma_z);
    Temp is_not_ma_x = bld.sop2(aco_opcode::s_or_b64, bld.hint_vcc(bld.def(bld.lm)), bld.def(s1, scc), is_ma_z, is_ma_y);
 
@@ -7913,7 +7915,7 @@ static void emit_streamout(isel_context *ctx, unsigned stream)
 
    Temp tid = emit_mbcnt(ctx, bld.def(v1));
 
-   Temp can_emit = bld.vopc(aco_opcode::v_cmp_gt_i32, bld.def(s2), so_vtx_count, tid);
+   Temp can_emit = bld.vopc(aco_opcode::v_cmp_gt_i32, bld.def(bld.lm), so_vtx_count, tid);
 
    if_context ic;
    begin_divergent_if_then(ctx, &ic, can_emit);
