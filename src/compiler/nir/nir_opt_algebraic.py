@@ -299,6 +299,10 @@ for size, mask in ((8, 0xff), (16, 0xffff), (32, 0xffffffff), (64, 0xfffffffffff
     optimizations.extend([
        # 'a >> #b << #b' -> 'a & ~((1 << #b) - 1)'
        (('ishl', ('ushr', a_sz, '#b'), b), ('iand', a, ('ishl', mask, b))),
+       (('ishl', ('ishr', a_sz, '#b'), b), ('iand', a, ('ishl', mask, b))),
+
+       # This does not trivially work with ishr.
+       (('ushr', ('ishl', a_sz, '#b'), b), ('iand', a, ('ushr', mask, b))),
     ])
 
 for log2 in range(1, 7): # powers of two from 2 to 64
