@@ -163,7 +163,7 @@ panfrost_sfbd_set_zsbuf(
         unsigned level = surf->u.tex.level;
         assert(surf->u.tex.first_layer == 0);
 
-        if (rsrc->layout != PAN_LINEAR)
+        if (rsrc->layout != PAN_TILED)
                 unreachable("Invalid render layout.");
 
         fb->depth_buffer = rsrc->bo->gpu + rsrc->slices[level].offset;

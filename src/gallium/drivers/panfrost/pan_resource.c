@@ -47,6 +47,7 @@
 #include "pan_resource.h"
 #include "pan_util.h"
 #include "pan_tiling.h"
+#include "panfrost-quirks.h"
 
 void
 panfrost_resource_reset_damage(struct panfrost_resource *pres)
@@ -395,6 +396,7 @@ panfrost_resource_create_bo(struct panfrost_screen *screen, struct panfrost_reso
          * (a combination of) one of the following */
 
         const unsigned valid_binding =
+                PIPE_BIND_DEPTH_STENCIL |
                 PIPE_BIND_RENDER_TARGET |
                 PIPE_BIND_BLENDABLE |
                 PIPE_BIND_SAMPLER_VIEW |
@@ -402,6 +404,7 @@ panfrost_resource_create_bo(struct panfrost_screen *screen, struct panfrost_reso
 
         bool is_2d = (res->target == PIPE_TEXTURE_2D);
         bool should_tile = (res->usage != PIPE_USAGE_STREAM);
+        bool must_tile = (res->bind & PIPE_BIND_DEPTH_STENCIL) && (screen->quirks & MIDGARD_SFBD);
         bool can_tile = is_2d && ((res->bind & ~valid_binding) == 0);
 
         /* FBOs we would like to checksum, if at all possible */
@@ -411,7 +414,8 @@ panfrost_resource_create_bo(struct panfrost_screen *screen, struct panfrost_reso
         pres->checksummed = can_checksum && should_checksum;
 
         /* Set the layout appropriately */
-        pres->layout = (can_tile && should_tile) ? PAN_TILED : PAN_LINEAR;
+        assert(!(must_tile && !can_tile)); /* must_tile => can_tile */
+        pres->layout = ((can_tile && should_tile) || must_tile) ? PAN_TILED : PAN_LINEAR;
 
         size_t bo_size;
 

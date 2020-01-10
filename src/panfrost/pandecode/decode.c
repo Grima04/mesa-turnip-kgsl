@@ -247,9 +247,14 @@ static const struct pandecode_flag_info mfbd_fmt_flag_info[] = {
 #undef FLAG_INFO
 
 #define FLAG_INFO(flag) { MALI_EXTRA_##flag, "MALI_EXTRA_" #flag }
-static const struct pandecode_flag_info mfbd_extra_flag_info[] = {
+static const struct pandecode_flag_info mfbd_extra_flag_hi_info[] = {
         FLAG_INFO(PRESENT),
-        FLAG_INFO(AFBC),
+        {}
+};
+#undef FLAG_INFO
+
+#define FLAG_INFO(flag) { MALI_EXTRA_##flag, "MALI_EXTRA_" #flag }
+static const struct pandecode_flag_info mfbd_extra_flag_lo_info[] = {
         FLAG_INFO(ZS),
         {}
 };
@@ -1128,11 +1133,17 @@ pandecode_mfbd_bfr(uint64_t gpu_va, int job_no, bool is_fragment)
                 if (fbx->checksum_stride)
                         pandecode_prop("checksum_stride = %d", fbx->checksum_stride);
 
-                pandecode_log(".flags = ");
-                pandecode_log_decoded_flags(mfbd_extra_flag_info, fbx->flags);
+                pandecode_log(".flags_hi = ");
+                pandecode_log_decoded_flags(mfbd_extra_flag_hi_info, fbx->flags_lo);
                 pandecode_log_cont(",\n");
 
-                if (fbx->flags & MALI_EXTRA_AFBC_ZS) {
+                pandecode_log(".flags_lo = ");
+                pandecode_log_decoded_flags(mfbd_extra_flag_lo_info, fbx->flags_lo);
+                pandecode_log_cont(",\n");
+
+                pandecode_prop("zs_block = %s\n", pandecode_block_format(fbx->zs_block));
+
+                if (fbx->zs_block == MALI_BLOCK_AFBC) {
                         pandecode_log(".ds_afbc = {\n");
                         pandecode_indent++;
 
@@ -1159,12 +1170,16 @@ pandecode_mfbd_bfr(uint64_t gpu_va, int job_no, bool is_fragment)
                                 MEMORY_PROP_DIR(fbx->ds_linear, depth);
                                 pandecode_prop("depth_stride = %d",
                                                fbx->ds_linear.depth_stride);
+                        } else if (fbx->ds_linear.depth_stride) {
+                                pandecode_msg("XXX: depth stride zero tripped %d\n", fbx->ds_linear.depth_stride);
                         }
 
                         if (fbx->ds_linear.stencil) {
                                 MEMORY_PROP_DIR(fbx->ds_linear, stencil);
                                 pandecode_prop("stencil_stride = %d",
                                                fbx->ds_linear.stencil_stride);
+                        } else if (fbx->ds_linear.stencil_stride) {
+                                pandecode_msg("XXX: stencil stride zero tripped %d\n", fbx->ds_linear.stencil_stride);
                         }
 
                         if (fbx->ds_linear.depth_stride_zero ||
@@ -1933,7 +1948,7 @@ pandecode_texture(mali_ptr u,
         if (f.layout == MALI_TEXTURE_AFBC)
                 pandecode_log_cont("afbc");
         else if (f.layout == MALI_TEXTURE_TILED)
-                pandecode_log_cont(is_zs ? "linear" : "tiled");
+                pandecode_log_cont("tiled");
         else if (f.layout == MALI_TEXTURE_LINEAR)
                 pandecode_log_cont("linear");
         else

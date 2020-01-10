@@ -504,17 +504,13 @@ panfrost_upload_sampler_descriptors(struct panfrost_context *ctx)
 static enum mali_texture_layout
 panfrost_layout_for_texture(struct panfrost_resource *rsrc)
 {
-        /* TODO: other linear depth textures */
-        bool is_depth = rsrc->base.format == PIPE_FORMAT_Z32_UNORM;
-
         switch (rsrc->layout) {
         case PAN_AFBC:
                 return MALI_TEXTURE_AFBC;
         case PAN_TILED:
-                assert(!is_depth);
                 return MALI_TEXTURE_TILED;
         case PAN_LINEAR:
-                return is_depth ? MALI_TEXTURE_TILED : MALI_TEXTURE_LINEAR;
+                return MALI_TEXTURE_LINEAR;
         default:
                 unreachable("Invalid texture layout");
         }
