@@ -537,7 +537,7 @@ midgard_reg_mode mir_mode_for_destsize(unsigned size);
 uint16_t mir_from_bytemask(uint16_t bytemask, midgard_reg_mode mode);
 uint16_t mir_to_bytemask(midgard_reg_mode mode, unsigned mask);
 uint16_t mir_bytemask(midgard_instruction *ins);
-uint16_t mir_round_bytemask_down(uint16_t mask, midgard_reg_mode mode);
+uint16_t mir_round_bytemask_up(uint16_t mask, midgard_reg_mode mode);
 void mir_set_bytemask(midgard_instruction *ins, uint16_t bytemask);
 unsigned mir_upper_override(midgard_instruction *ins);
 
