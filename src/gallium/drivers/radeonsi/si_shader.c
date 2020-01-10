@@ -687,7 +687,6 @@ static LLVMValueRef get_tcs_tes_buffer_address(struct si_shader_context *ctx,
 	return base_addr;
 }
 
-/* This is a generic helper that can be shared by the NIR and TGSI backends */
 static LLVMValueRef get_tcs_tes_buffer_address_from_generic_indices(
 					struct si_shader_context *ctx,
 					LLVMValueRef vertex_index,
@@ -969,8 +968,7 @@ LLVMValueRef si_nir_load_input_tes(struct ac_shader_abi *abi,
 
 	/* TODO: This will generate rather ordinary llvm code, although it
 	 * should be easy for the optimiser to fix up. In future we might want
-	 * to refactor buffer_load(), but for now this maximises code sharing
-	 * between the NIR and TGSI backends.
+	 * to refactor buffer_load().
 	 */
 	LLVMValueRef value[4];
 	for (unsigned i = 0; i < num_components; i++) {
@@ -2410,7 +2408,7 @@ static void si_write_tess_factors(struct si_shader_context *ctx,
 
 	if (shader->key.part.tcs.epilog.prim_mode == PIPE_PRIM_LINES) {
 		/* For isolines, the hardware expects tess factors in the
-		 * reverse order from what GLSL / TGSI specify.
+		 * reverse order from what NIR specifies.
 		 */
 		LLVMValueRef tmp = out[0];
 		out[0] = out[1];
@@ -5759,7 +5757,7 @@ int si_compile_shader(struct si_screen *sscreen,
 	struct nir_shader *nir = get_nir_shader(sel, &free_nir);
 	int r = -1;
 
-	/* Dump TGSI code before doing TGSI->LLVM conversion in case the
+	/* Dump NIR before doing NIR->LLVM conversion in case the
 	 * conversion fails. */
 	if (si_can_dump_shader(sscreen, sel->type) &&
 	    !(sscreen->debug_flags & DBG(NO_NIR))) {
@@ -7103,7 +7101,7 @@ bool si_shader_create(struct si_screen *sscreen, struct ac_llvm_compiler *compil
 		if (!mainp)
 			return false;
 
-		/* Copy the compiled TGSI shader data over. */
+		/* Copy the compiled shader data over. */
 		shader->is_binary_shared = true;
 		shader->binary = mainp->binary;
 		shader->config = mainp->config;

@@ -586,7 +586,7 @@ struct si_screen {
 	 *
 	 * Design & limitations:
 	 * - The shader cache is per screen (= per process), never saved to
-	 *   disk, and skips redundant shader compilations from TGSI to bytecode.
+	 *   disk, and skips redundant shader compilations from NIR to bytecode.
 	 * - It can only be used with one-variant-per-shader support, in which
 	 *   case only the main (typically middle) part of shaders is cached.
 	 * - Only VS, TCS, TES, PS are cached, out of which only the hw VS

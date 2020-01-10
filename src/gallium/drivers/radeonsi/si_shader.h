@@ -308,7 +308,7 @@ struct si_compiler_ctx_state {
 };
 
 /* A shader selector is a gallium CSO and contains shader variants and
- * binaries for one TGSI program. This can be shared by multiple contexts.
+ * binaries for one NIR program. This can be shared by multiple contexts.
  */
 struct si_shader_selector {
 	struct pipe_reference	reference;
@@ -320,8 +320,8 @@ struct si_shader_selector {
 	struct si_shader	*first_variant; /* immutable after the first variant */
 	struct si_shader	*last_variant; /* mutable */
 
-	/* The compiled TGSI shader expecting a prolog and/or epilog (not
-	 * uploaded to a buffer).
+	/* The compiled NIR shader without a prolog and/or epilog (not
+	 * uploaded to a buffer object).
 	 */
 	struct si_shader	*main_shader_part;
 	struct si_shader	*main_shader_part_ls; /* as_ls is set in the key */
