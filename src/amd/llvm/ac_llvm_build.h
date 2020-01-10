@@ -795,6 +795,10 @@ LLVMValueRef ac_prefix_bitcount(struct ac_llvm_context *ctx,
 				LLVMValueRef mask, LLVMValueRef index);
 LLVMValueRef ac_prefix_bitcount_2x64(struct ac_llvm_context *ctx,
 				     LLVMValueRef mask[2], LLVMValueRef index);
+void ac_build_triangle_strip_indices_to_triangle(struct ac_llvm_context *ctx,
+						 LLVMValueRef is_odd,
+						 LLVMValueRef flatshade_first,
+						 LLVMValueRef index[3]);
 
 #ifdef __cplusplus
 }

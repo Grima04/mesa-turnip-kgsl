@@ -656,21 +656,10 @@ void si_build_prim_discard_compute_shader(struct si_shader_context *ctx)
 			LLVMBuildXor(builder, first_is_odd,
 				     LLVMBuildTrunc(builder, thread_id, ctx->i1, ""), "");
 
-		/* Determine the primitive orientation.
-		 * Only swap the vertices that are not the provoking vertex. We need to keep
-		 * the provoking vertex in place.
-		 */
-		if (key->opt.cs_provoking_vertex_first) {
-			LLVMValueRef index1 = index[1];
-			LLVMValueRef index2 = index[2];
-			index[1] = LLVMBuildSelect(builder, prim_is_odd, index2, index1, "");
-			index[2] = LLVMBuildSelect(builder, prim_is_odd, index1, index2, "");
-		} else {
-			LLVMValueRef index0 = index[0];
-			LLVMValueRef index1 = index[1];
-			index[0] = LLVMBuildSelect(builder, prim_is_odd, index1, index0, "");
-			index[1] = LLVMBuildSelect(builder, prim_is_odd, index0, index1, "");
-		}
+		/* Convert triangle strip indices to triangle indices. */
+		ac_build_triangle_strip_indices_to_triangle(&ctx->ac, prim_is_odd,
+							    LLVMConstInt(ctx->i1, key->opt.cs_provoking_vertex_first, 0),
+							    index);
 	}
 
 	/* Execute the vertex shader for each vertex to get vertex positions. */

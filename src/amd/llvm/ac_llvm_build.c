@@ -4967,3 +4967,38 @@ LLVMValueRef ac_prefix_bitcount_2x64(struct ac_llvm_context *ctx,
 	return LLVMBuildAdd(builder, prefix_bcnt[0], prefix_bcnt[1], "");
 #endif
 }
+
+/**
+ * Convert triangle strip indices to triangle indices. This is used to decompose
+ * triangle strips into triangles.
+ */
+void ac_build_triangle_strip_indices_to_triangle(struct ac_llvm_context *ctx,
+						 LLVMValueRef is_odd,
+						 LLVMValueRef flatshade_first,
+						 LLVMValueRef index[3])
+{
+	LLVMBuilderRef builder = ctx->builder;
+	LLVMValueRef out[3];
+
+	/* We need to change the vertex order for odd triangles to get correct
+	 * front/back facing by swapping 2 vertex indices, but we also have to
+	 * keep the provoking vertex in the same place.
+	 *
+	 * If the first vertex is provoking, swap index 1 and 2.
+	 * If the last vertex is provoking, swap index 0 and 1.
+	 */
+	out[0] = LLVMBuildSelect(builder, flatshade_first,
+				 index[0],
+				 LLVMBuildSelect(builder, is_odd,
+						 index[1], index[0], ""), "");
+	out[1] = LLVMBuildSelect(builder, flatshade_first,
+				 LLVMBuildSelect(builder, is_odd,
+						 index[2], index[1], ""),
+				 LLVMBuildSelect(builder, is_odd,
+						 index[0], index[1], ""), "");
+	out[2] = LLVMBuildSelect(builder, flatshade_first,
+				 LLVMBuildSelect(builder, is_odd,
+						 index[1], index[2], ""),
+				 index[2], "");
+	memcpy(index, out, sizeof(out));
+}
