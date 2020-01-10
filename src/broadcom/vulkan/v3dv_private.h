@@ -469,6 +469,7 @@ struct v3dv_job {
 };
 
 void v3dv_job_add_bo(struct v3dv_job *job, struct v3dv_bo *bo);
+void v3dv_job_emit_binning_flush(struct v3dv_job *job);
 
 struct v3dv_cmd_buffer_state {
    const struct v3dv_render_pass *pass;
@@ -510,6 +511,8 @@ struct v3dv_cmd_buffer {
 
 struct v3dv_job *v3dv_cmd_buffer_start_job(struct v3dv_cmd_buffer *cmd_buffer);
 void v3dv_cmd_buffer_finish_job(struct v3dv_cmd_buffer *cmd_buffer);
+void v3dv_cmd_buffer_start_frame(struct v3dv_cmd_buffer *cmd_buffer,
+                                 const struct v3dv_framebuffer *framebuffer);
 
 struct v3dv_shader_module {
    unsigned char sha1[20];

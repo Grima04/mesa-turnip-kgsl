@@ -269,41 +269,6 @@ emit_copy_image_to_buffer_rcl(struct v3dv_job *job,
    cl_emit(rcl, END_OF_RENDERING, end);
 }
 
-static void
-emit_copy_image_to_buffer_bcl(struct v3dv_job *job,
-                              struct v3dv_framebuffer *framebuffer,
-                              const VkBufferImageCopy *region)
-{
-   v3dv_cl_ensure_space_with_branch(&job->bcl, 256);
-
-   cl_emit(&job->bcl, NUMBER_OF_LAYERS, config) {
-      config.number_of_layers = framebuffer->layers;
-   }
-
-   cl_emit(&job->bcl, TILE_BINNING_MODE_CFG, config) {
-      config.width_in_pixels = framebuffer->width;
-      config.height_in_pixels = framebuffer->height;
-      config.number_of_render_targets = 1;
-      config.multisample_mode_4x = false; /* FIXME */
-      config.maximum_bpp_of_all_render_targets = framebuffer->internal_bpp;
-   }
-
-   cl_emit(&job->bcl, FLUSH_VCD_CACHE, bin);
-
-   cl_emit(&job->bcl, OCCLUSION_QUERY_COUNTER, counter);
-
-   cl_emit(&job->bcl, START_TILE_BINNING, bin);
-
-   cl_emit(&job->bcl, CLIP_WINDOW, clip) {
-      clip.clip_window_left_pixel_coordinate = region->imageOffset.x;
-      clip.clip_window_bottom_pixel_coordinate = region->imageOffset.y;
-      clip.clip_window_width_in_pixels = region->imageExtent.width;
-      clip.clip_window_height_in_pixels = region->imageExtent.height;
-   }
-
-   cl_emit(&job->bcl, FLUSH, flush);
-}
-
 /* Sets framebuffer dimensions and computes tile size parameters based on the
  * maximum internal bpp provided.
  */
@@ -361,25 +326,9 @@ copy_image_to_buffer_tlb(struct v3dv_cmd_buffer *cmd_buffer,
       setup_framebuffer_params(&framebuffer, image, num_layers, internal_bpp);
 
       struct v3dv_job *job = v3dv_cmd_buffer_start_job(cmd_buffer);
+      v3dv_cmd_buffer_start_frame(cmd_buffer, &framebuffer);
 
-      uint32_t tile_alloc_size = 64 * num_layers *
-                                 framebuffer.draw_tiles_x *
-                                 framebuffer.draw_tiles_y;
-      tile_alloc_size = align(tile_alloc_size, 4096);
-      tile_alloc_size += 8192;
-      tile_alloc_size += 512 * 1024;
-      job->tile_alloc = v3dv_bo_alloc(cmd_buffer->device, tile_alloc_size);
-      v3dv_job_add_bo(job, job->tile_alloc);
-
-      const uint32_t tsda_per_tile_size = 256;
-      const uint32_t tile_state_size = num_layers *
-                                       framebuffer.draw_tiles_x *
-                                       framebuffer.draw_tiles_y *
-                                       tsda_per_tile_size;
-      job->tile_state = v3dv_bo_alloc(cmd_buffer->device, tile_state_size);
-      v3dv_job_add_bo(job, job->tile_state);
-
-      emit_copy_image_to_buffer_bcl(job, &framebuffer, region);
+      v3dv_job_emit_binning_flush(job);
       emit_copy_image_to_buffer_rcl(job, buffer, image,
                                     &framebuffer, internal_type, region);
 
