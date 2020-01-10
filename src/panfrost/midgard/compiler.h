@@ -663,15 +663,6 @@ bool mir_is_live_after(compiler_context *ctx, midgard_block *block, midgard_inst
 void mir_create_pipeline_registers(compiler_context *ctx);
 void midgard_promote_uniforms(compiler_context *ctx);
 
-midgard_instruction *
-emit_ubo_read(
-        compiler_context *ctx,
-        nir_instr *instr,
-        unsigned dest,
-        unsigned offset,
-        nir_src *indirect_offset,
-        unsigned index);
-
 void
 emit_sysval_read(compiler_context *ctx, nir_instr *instr, signed dest_override, unsigned nr_components);
 
