@@ -590,7 +590,7 @@ struct si_shader_key {
 #pragma pack(pop)
 
 /* GCN-specific shader info. */
-struct si_shader_info {
+struct si_shader_binary_info {
 	ubyte			vs_output_param_offset[SI_MAX_VS_OUTPUTS];
 	ubyte			num_input_sgprs;
 	ubyte			num_input_vgprs;
@@ -644,7 +644,7 @@ struct si_shader {
 	/* The following data is all that's needed for binary shaders. */
 	struct si_shader_binary		binary;
 	struct ac_shader_config		config;
-	struct si_shader_info		info;
+	struct si_shader_binary_info	info;
 
 	struct {
 		uint16_t ngg_emit_size; /* in dwords */
