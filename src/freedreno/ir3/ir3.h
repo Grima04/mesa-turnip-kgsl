@@ -1188,7 +1188,7 @@ create_immed_typed(struct ir3_block *block, uint32_t val, type_t type)
 	mov->cat1.src_type = type;
 	mov->cat1.dst_type = type;
 	__ssa_dst(mov)->flags |= flags;
-	ir3_reg_create(mov, 0, IR3_REG_IMMED)->uim_val = val;
+	ir3_reg_create(mov, 0, IR3_REG_IMMED | flags)->uim_val = val;
 
 	return mov;
 }
