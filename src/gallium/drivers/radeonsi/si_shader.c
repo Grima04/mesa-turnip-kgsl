@@ -4881,8 +4881,8 @@ static void si_llvm_emit_kill(struct ac_shader_abi *abi, LLVMValueRef visible)
 	ac_build_kill_if_false(&ctx->ac, visible);
 }
 
-static bool si_compile_tgsi_main(struct si_shader_context *ctx,
-				 struct nir_shader *nir, bool free_nir)
+static bool si_build_main_function(struct si_shader_context *ctx,
+				   struct nir_shader *nir, bool free_nir)
 {
 	struct si_shader *shader = ctx->shader;
 	struct si_shader_selector *sel = shader->selector;
@@ -5772,7 +5772,7 @@ int si_compile_shader(struct si_screen *sscreen,
 
 	shader->info.uses_instanceid = sel->info.uses_instanceid;
 
-	if (!si_compile_tgsi_main(&ctx, nir, free_nir)) {
+	if (!si_build_main_function(&ctx, nir, free_nir)) {
 		si_llvm_dispose(&ctx);
 		return -1;
 	}
@@ -5826,7 +5826,7 @@ int si_compile_shader(struct si_screen *sscreen,
 			shader_ls.is_monolithic = true;
 			si_llvm_context_set_ir(&ctx, &shader_ls);
 
-			if (!si_compile_tgsi_main(&ctx, nir, free_nir)) {
+			if (!si_build_main_function(&ctx, nir, free_nir)) {
 				si_llvm_dispose(&ctx);
 				return -1;
 			}
@@ -5894,7 +5894,7 @@ int si_compile_shader(struct si_screen *sscreen,
 			shader_es.is_monolithic = true;
 			si_llvm_context_set_ir(&ctx, &shader_es);
 
-			if (!si_compile_tgsi_main(&ctx, nir, free_nir)) {
+			if (!si_build_main_function(&ctx, nir, free_nir)) {
 				si_llvm_dispose(&ctx);
 				return -1;
 			}
