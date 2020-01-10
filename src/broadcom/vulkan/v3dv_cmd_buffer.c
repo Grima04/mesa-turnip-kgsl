@@ -54,7 +54,7 @@ static void
 subpass_finish(struct v3dv_cmd_buffer *cmd_buffer);
 
 static void
-emit_rcl(struct v3dv_cmd_buffer *cmd_buffer);
+cmd_buffer_emit_render_pass_rcl(struct v3dv_cmd_buffer *cmd_buffer);
 
 VkResult
 v3dv_CreateCommandPool(VkDevice _device,
@@ -316,7 +316,7 @@ static void
 cmd_buffer_end_render_pass_frame(struct v3dv_cmd_buffer *cmd_buffer)
 {
    assert(cmd_buffer->state.job);
-   emit_rcl(cmd_buffer);
+   cmd_buffer_emit_render_pass_rcl(cmd_buffer);
    v3dv_job_emit_binning_flush(cmd_buffer->state.job);
 }
 
@@ -705,11 +705,11 @@ setup_render_target(struct v3dv_cmd_buffer *cmd_buffer, int rt,
 }
 
 static void
-load_general(struct v3dv_cmd_buffer *cmd_buffer,
-             struct v3dv_cl *cl,
-             struct v3dv_image_view *iview,
-             uint32_t layer,
-             uint32_t buffer)
+cmd_buffer_render_pass_emit_load(struct v3dv_cmd_buffer *cmd_buffer,
+                                 struct v3dv_cl *cl,
+                                 struct v3dv_image_view *iview,
+                                 uint32_t layer,
+                                 uint32_t buffer)
 {
    const struct v3dv_image *image = iview->image;
    uint32_t layer_offset = v3dv_layer_offset(image,
@@ -741,9 +741,9 @@ load_general(struct v3dv_cmd_buffer *cmd_buffer,
 }
 
 static void
-emit_loads(struct v3dv_cmd_buffer *cmd_buffer,
-           struct v3dv_cl *cl,
-           uint32_t layer)
+cmd_buffer_render_pass_emit_loads(struct v3dv_cmd_buffer *cmd_buffer,
+                                  struct v3dv_cl *cl,
+                                  uint32_t layer)
 {
    const struct v3dv_cmd_buffer_state *state = &cmd_buffer->state;
    const struct v3dv_framebuffer *framebuffer = state->framebuffer;
@@ -780,7 +780,8 @@ emit_loads(struct v3dv_cmd_buffer *cmd_buffer,
 
       if (needs_load) {
          struct v3dv_image_view *iview = framebuffer->attachments[attachment_idx];
-         load_general(cmd_buffer, cl, iview, layer, RENDER_TARGET_0 + i);
+         cmd_buffer_render_pass_emit_load(cmd_buffer, cl, iview,
+                                          layer, RENDER_TARGET_0 + i);
       }
    }
 
@@ -788,12 +789,12 @@ emit_loads(struct v3dv_cmd_buffer *cmd_buffer,
 }
 
 static void
-store_general(struct v3dv_cmd_buffer *cmd_buffer,
-              struct v3dv_cl *cl,
-              uint32_t attachment_idx,
-              uint32_t layer,
-              uint32_t buffer,
-              bool clear)
+cmd_buffer_render_pass_emit_store(struct v3dv_cmd_buffer *cmd_buffer,
+                                  struct v3dv_cl *cl,
+                                  uint32_t attachment_idx,
+                                  uint32_t layer,
+                                  uint32_t buffer,
+                                  bool clear)
 {
    const struct v3dv_image_view *iview =
       cmd_buffer->state.framebuffer->attachments[attachment_idx];
@@ -828,9 +829,9 @@ store_general(struct v3dv_cmd_buffer *cmd_buffer,
 }
 
 static void
-emit_stores(struct v3dv_cmd_buffer *cmd_buffer,
-            struct v3dv_cl *cl,
-            uint32_t layer)
+cmd_buffer_render_pass_emit_stores(struct v3dv_cmd_buffer *cmd_buffer,
+                                   struct v3dv_cl *cl,
+                                   uint32_t layer)
 {
    struct v3dv_cmd_buffer_state *state = &cmd_buffer->state;
    const struct v3dv_subpass *subpass =
@@ -858,8 +859,10 @@ emit_stores(struct v3dv_cmd_buffer *cmd_buffer,
          state->job->first_subpass == attachment_state->first_subpass &&
          attachment->desc.loadOp == VK_ATTACHMENT_LOAD_OP_CLEAR;
 
-      store_general(cmd_buffer, cl,
-                    attachment_idx, layer, RENDER_TARGET_0 + i, needs_clear);
+      cmd_buffer_render_pass_emit_store(cmd_buffer, cl,
+                                        attachment_idx, layer,
+                                        RENDER_TARGET_0 + i,
+                                        needs_clear);
       has_stores = true;
    }
 
@@ -886,7 +889,8 @@ emit_stores(struct v3dv_cmd_buffer *cmd_buffer,
 }
 
 static void
-emit_generic_per_tile_list(struct v3dv_cmd_buffer *cmd_buffer, uint32_t layer)
+cmd_buffer_render_pass_emit_per_tile_rcl(struct v3dv_cmd_buffer *cmd_buffer,
+                                         uint32_t layer)
 {
    struct v3dv_job *job = cmd_buffer->state.job;
    assert(job);
@@ -900,7 +904,7 @@ emit_generic_per_tile_list(struct v3dv_cmd_buffer *cmd_buffer, uint32_t layer)
 
    cl_emit(cl, TILE_COORDINATES_IMPLICIT, coords);
 
-   emit_loads(cmd_buffer, cl, layer);
+   cmd_buffer_render_pass_emit_loads(cmd_buffer, cl, layer);
 
    /* The binner starts out writing tiles assuming that the initial mode
     * is triangles, so make sure that's the case.
@@ -911,7 +915,7 @@ emit_generic_per_tile_list(struct v3dv_cmd_buffer *cmd_buffer, uint32_t layer)
 
    cl_emit(cl, BRANCH_TO_IMPLICIT_TILE_LIST, branch);
 
-   emit_stores(cmd_buffer, cl, layer);
+   cmd_buffer_render_pass_emit_stores(cmd_buffer, cl, layer);
 
    cl_emit(cl, END_OF_TILE_MARKER, end);
 
@@ -924,7 +928,8 @@ emit_generic_per_tile_list(struct v3dv_cmd_buffer *cmd_buffer, uint32_t layer)
 }
 
 static void
-emit_render_layer(struct v3dv_cmd_buffer *cmd_buffer, uint32_t layer)
+cmd_buffer_emit_render_pass_layer_rcl(struct v3dv_cmd_buffer *cmd_buffer,
+                                      uint32_t layer)
 {
    const struct v3dv_cmd_buffer_state *state = &cmd_buffer->state;
    const struct v3dv_framebuffer *framebuffer = state->framebuffer;
@@ -992,7 +997,7 @@ emit_render_layer(struct v3dv_cmd_buffer *cmd_buffer, uint32_t layer)
 
    cl_emit(rcl, FLUSH_VCD_CACHE, flush);
 
-   emit_generic_per_tile_list(cmd_buffer, layer);
+   cmd_buffer_render_pass_emit_per_tile_rcl(cmd_buffer, layer);
 
    uint32_t supertile_w_in_pixels =
       framebuffer->tile_width * framebuffer->supertile_width;
@@ -1021,7 +1026,7 @@ emit_render_layer(struct v3dv_cmd_buffer *cmd_buffer, uint32_t layer)
 }
 
 static void
-emit_rcl(struct v3dv_cmd_buffer *cmd_buffer)
+cmd_buffer_emit_render_pass_rcl(struct v3dv_cmd_buffer *cmd_buffer)
 {
    struct v3dv_job *job = cmd_buffer->state.job;
    assert(job);
@@ -1147,7 +1152,7 @@ emit_rcl(struct v3dv_cmd_buffer *cmd_buffer)
    }
 
    for (int layer = 0; layer < MAX2(1, fb_layers); layer++)
-      emit_render_layer(cmd_buffer, layer);
+      cmd_buffer_emit_render_pass_layer_rcl(cmd_buffer, layer);
 
    cl_emit(rcl, END_OF_RENDERING, end);
 }
