@@ -159,61 +159,31 @@ LLVMValueRef si_load_sampler_desc(struct si_shader_context *ctx,
 	return ac_build_load_to_sgpr(&ctx->ac, list, index);
 }
 
-LLVMValueRef si_nir_emit_fbfetch(struct ac_shader_abi *abi)
+/**
+ * Load a dword from a constant buffer.
+ */
+LLVMValueRef si_buffer_load_const(struct si_shader_context *ctx,
+				  LLVMValueRef resource, LLVMValueRef offset)
 {
-	struct si_shader_context *ctx = si_shader_context_from_abi(abi);
-	struct ac_image_args args = {};
-	LLVMValueRef ptr, image, fmask;
+	return ac_build_buffer_load(&ctx->ac, resource, 1, NULL, offset, NULL,
+				    0, 0, true, true);
+}
 
-	/* Ignore src0, because KHR_blend_func_extended disallows multiple render
-	 * targets.
-	 */
-
-	/* Load the image descriptor. */
-	STATIC_ASSERT(SI_PS_IMAGE_COLORBUF0 % 2 == 0);
-	ptr = ac_get_arg(&ctx->ac, ctx->rw_buffers);
-	ptr = LLVMBuildPointerCast(ctx->ac.builder, ptr,
-				   ac_array_in_const32_addr_space(ctx->v8i32), "");
-	image = ac_build_load_to_sgpr(&ctx->ac, ptr,
-			LLVMConstInt(ctx->i32, SI_PS_IMAGE_COLORBUF0 / 2, 0));
-
-	unsigned chan = 0;
-
-	args.coords[chan++] = si_unpack_param(ctx, ctx->pos_fixed_pt, 0, 16);
-
-	if (!ctx->shader->key.mono.u.ps.fbfetch_is_1D)
-		args.coords[chan++] = si_unpack_param(ctx, ctx->pos_fixed_pt, 16, 16);
-
-	/* Get the current render target layer index. */
-	if (ctx->shader->key.mono.u.ps.fbfetch_layered)
-		args.coords[chan++] = si_unpack_param(ctx, ctx->args.ancillary, 16, 11);
-
-	if (ctx->shader->key.mono.u.ps.fbfetch_msaa)
-		args.coords[chan++] = si_get_sample_id(ctx);
-
-	if (ctx->shader->key.mono.u.ps.fbfetch_msaa &&
-	    !(ctx->screen->debug_flags & DBG(NO_FMASK))) {
-		fmask = ac_build_load_to_sgpr(&ctx->ac, ptr,
-			LLVMConstInt(ctx->i32, SI_PS_IMAGE_COLORBUF0_FMASK / 2, 0));
-
-		ac_apply_fmask_to_sample(&ctx->ac, fmask, args.coords,
-					 ctx->shader->key.mono.u.ps.fbfetch_layered);
-	}
-
-	args.opcode = ac_image_load;
-	args.resource = image;
-	args.dmask = 0xf;
-	args.attributes = AC_FUNC_ATTR_READNONE;
-
-	if (ctx->shader->key.mono.u.ps.fbfetch_msaa)
-		args.dim = ctx->shader->key.mono.u.ps.fbfetch_layered ?
-			ac_image_2darraymsaa : ac_image_2dmsaa;
-	else if (ctx->shader->key.mono.u.ps.fbfetch_is_1D)
-		args.dim = ctx->shader->key.mono.u.ps.fbfetch_layered ?
-			ac_image_1darray : ac_image_1d;
+void si_llvm_build_ret(struct si_shader_context *ctx, LLVMValueRef ret)
+{
+	if (LLVMGetTypeKind(LLVMTypeOf(ret)) == LLVMVoidTypeKind)
+		LLVMBuildRetVoid(ctx->ac.builder);
 	else
-		args.dim = ctx->shader->key.mono.u.ps.fbfetch_layered ?
-			ac_image_2darray : ac_image_2d;
+		LLVMBuildRet(ctx->ac.builder, ret);
+}
 
-	return ac_build_image_opcode(&ctx->ac, &args);
+LLVMValueRef si_prolog_get_rw_buffers(struct si_shader_context *ctx)
+{
+	LLVMValueRef ptr[2], list;
+	bool merged_shader = si_is_merged_shader(ctx);
+
+	ptr[0] = LLVMGetParam(ctx->main_fn, (merged_shader ? 8 : 0) + SI_SGPR_RW_BUFFERS);
+	list = LLVMBuildIntToPtr(ctx->ac.builder, ptr[0],
+				 ac_array_in_const32_addr_space(ctx->v4i32), "");
+	return list;
 }

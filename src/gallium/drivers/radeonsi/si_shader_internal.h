@@ -35,6 +35,11 @@ struct pipe_debug_callback;
 
 #define RADEON_LLVM_MAX_INPUTS 32 * 4
 
+/* Ideally pass the sample mask input to the PS epilog as v14, which
+ * is its usual location, so that the shader doesn't have to add v_mov.
+ */
+#define PS_EPILOG_SAMPLEMASK_MIN_LOC 14
+
 struct si_shader_output_values {
 	LLVMValueRef values[4];
 	unsigned semantic_name;
@@ -235,9 +240,7 @@ LLVMValueRef si_nir_load_input_tes(struct ac_shader_abi *abi,
 				   bool is_patch,
 				   bool is_compact,
 				   bool load_input);
-LLVMValueRef si_nir_lookup_interp_param(struct ac_shader_abi *abi,
-					enum glsl_interp_mode interp,
-					unsigned location);
+bool si_is_merged_shader(struct si_shader_context *ctx);
 LLVMValueRef si_get_sample_id(struct si_shader_context *ctx);
 LLVMValueRef si_load_sampler_desc(struct si_shader_context *ctx,
 				  LLVMValueRef list, LLVMValueRef index,
@@ -246,7 +249,10 @@ LLVMValueRef si_load_image_desc(struct si_shader_context *ctx,
 				LLVMValueRef list, LLVMValueRef index,
 				enum ac_descriptor_type desc_type,
 				bool uses_store, bool bindless);
-LLVMValueRef si_nir_emit_fbfetch(struct ac_shader_abi *abi);
+LLVMValueRef si_buffer_load_const(struct si_shader_context *ctx,
+				  LLVMValueRef resource, LLVMValueRef offset);
+void si_llvm_build_ret(struct si_shader_context *ctx, LLVMValueRef ret);
+LLVMValueRef si_prolog_get_rw_buffers(struct si_shader_context *ctx);
 void si_declare_compute_memory(struct si_shader_context *ctx);
 LLVMValueRef si_get_primitive_id(struct si_shader_context *ctx,
 				 unsigned swizzle);
@@ -258,6 +264,11 @@ void si_emit_streamout_output(struct si_shader_context *ctx,
 			      LLVMValueRef const *so_write_offsets,
 			      struct pipe_stream_output *stream_out,
 			      struct si_shader_output_values *shader_out);
+void si_add_arg_checked(struct ac_shader_args *args,
+			enum ac_arg_regfile file,
+			unsigned registers, enum ac_arg_type type,
+			struct ac_arg *arg,
+			unsigned idx);
 
 void si_llvm_load_input_vs(
 	struct si_shader_context *ctx,
@@ -271,6 +282,15 @@ LLVMValueRef si_unpack_param(struct si_shader_context *ctx,
 			     unsigned bitwidth);
 LLVMValueRef si_is_es_thread(struct si_shader_context *ctx);
 LLVMValueRef si_is_gs_thread(struct si_shader_context *ctx);
+void si_build_wrapper_function(struct si_shader_context *ctx, LLVMValueRef *parts,
+			       unsigned num_parts, unsigned main_part,
+			       unsigned next_shader_first_part);
+bool si_need_ps_prolog(const union si_shader_part_key *key);
+void si_get_ps_prolog_key(struct si_shader *shader,
+			  union si_shader_part_key *key,
+			  bool separate_prolog);
+void si_get_ps_epilog_key(struct si_shader *shader,
+			  union si_shader_part_key *key);
 
 void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi,
 			     unsigned max_outputs,
@@ -281,5 +301,14 @@ void gfx10_ngg_gs_emit_vertex(struct si_shader_context *ctx,
 void gfx10_ngg_gs_emit_prologue(struct si_shader_context *ctx);
 void gfx10_ngg_gs_emit_epilogue(struct si_shader_context *ctx);
 void gfx10_ngg_calculate_subgroup_info(struct si_shader *shader);
+
+/* si_shader_llvm_ps.c */
+void si_llvm_build_ps_prolog(struct si_shader_context *ctx,
+			     union si_shader_part_key *key);
+void si_llvm_build_ps_epilog(struct si_shader_context *ctx,
+			     union si_shader_part_key *key);
+void si_llvm_build_monolithic_ps(struct si_shader_context *ctx,
+				 struct si_shader *shader);
+void si_llvm_init_ps_callbacks(struct si_shader_context *ctx);
 
 #endif

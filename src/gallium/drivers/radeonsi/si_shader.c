@@ -53,17 +53,8 @@ static void si_build_vs_prolog_function(struct si_shader_context *ctx,
 					union si_shader_part_key *key);
 static void si_build_tcs_epilog_function(struct si_shader_context *ctx,
 					 union si_shader_part_key *key);
-static void si_build_ps_prolog_function(struct si_shader_context *ctx,
-					union si_shader_part_key *key);
-static void si_build_ps_epilog_function(struct si_shader_context *ctx,
-					union si_shader_part_key *key);
 static void si_fix_resource_usage(struct si_screen *sscreen,
 				  struct si_shader *shader);
-
-/* Ideally pass the sample mask input to the PS epilog as v14, which
- * is its usual location, so that the shader doesn't have to add v_mov.
- */
-#define PS_EPILOG_SAMPLEMASK_MIN_LOC 14
 
 static bool llvm_type_is_64bit(struct si_shader_context *ctx,
 			       LLVMTypeRef type)
@@ -87,7 +78,7 @@ static bool is_multi_part_shader(struct si_shader_context *ctx)
 }
 
 /** Whether the shader runs on a merged HW stage (LSHS or ESGS) */
-static bool is_merged_shader(struct si_shader_context *ctx)
+bool si_is_merged_shader(struct si_shader_context *ctx)
 {
 	return ctx->shader->key.as_ngg || is_multi_part_shader(ctx);
 }
@@ -1233,119 +1224,6 @@ static LLVMValueRef si_nir_load_input_gs(struct ac_shader_abi *abi,
 	return ac_build_varying_gather_values(&ctx->ac, value, num_components, component);
 }
 
-static LLVMValueRef si_build_fs_interp(struct si_shader_context *ctx,
-				       unsigned attr_index, unsigned chan,
-				       LLVMValueRef prim_mask,
-				       LLVMValueRef i, LLVMValueRef j)
-{
-	if (i || j) {
-		return ac_build_fs_interp(&ctx->ac,
-					  LLVMConstInt(ctx->i32, chan, 0),
-					  LLVMConstInt(ctx->i32, attr_index, 0),
-					  prim_mask, i, j);
-	}
-	return ac_build_fs_interp_mov(&ctx->ac,
-				      LLVMConstInt(ctx->i32, 2, 0), /* P0 */
-				      LLVMConstInt(ctx->i32, chan, 0),
-				      LLVMConstInt(ctx->i32, attr_index, 0),
-				      prim_mask);
-}
-
-/**
- * Interpolate a fragment shader input.
- *
- * @param ctx		context
- * @param input_index		index of the input in hardware
- * @param semantic_name		TGSI_SEMANTIC_*
- * @param semantic_index	semantic index
- * @param num_interp_inputs	number of all interpolated inputs (= BCOLOR offset)
- * @param colors_read_mask	color components read (4 bits for each color, 8 bits in total)
- * @param interp_param		interpolation weights (i,j)
- * @param prim_mask		SI_PARAM_PRIM_MASK
- * @param face			SI_PARAM_FRONT_FACE
- * @param result		the return value (4 components)
- */
-static void interp_fs_color(struct si_shader_context *ctx,
-			    unsigned input_index,
-			    unsigned semantic_index,
-			    unsigned num_interp_inputs,
-			    unsigned colors_read_mask,
-			    LLVMValueRef interp_param,
-			    LLVMValueRef prim_mask,
-			    LLVMValueRef face,
-			    LLVMValueRef result[4])
-{
-	LLVMValueRef i = NULL, j = NULL;
-	unsigned chan;
-
-	/* fs.constant returns the param from the middle vertex, so it's not
-	 * really useful for flat shading. It's meant to be used for custom
-	 * interpolation (but the intrinsic can't fetch from the other two
-	 * vertices).
-	 *
-	 * Luckily, it doesn't matter, because we rely on the FLAT_SHADE state
-	 * to do the right thing. The only reason we use fs.constant is that
-	 * fs.interp cannot be used on integers, because they can be equal
-	 * to NaN.
-	 *
-	 * When interp is false we will use fs.constant or for newer llvm,
-         * amdgcn.interp.mov.
-	 */
-	bool interp = interp_param != NULL;
-
-	if (interp) {
-		interp_param = LLVMBuildBitCast(ctx->ac.builder, interp_param,
-						LLVMVectorType(ctx->f32, 2), "");
-
-		i = LLVMBuildExtractElement(ctx->ac.builder, interp_param,
-						ctx->i32_0, "");
-		j = LLVMBuildExtractElement(ctx->ac.builder, interp_param,
-						ctx->i32_1, "");
-	}
-
-	if (ctx->shader->key.part.ps.prolog.color_two_side) {
-		LLVMValueRef is_face_positive;
-
-		/* If BCOLOR0 is used, BCOLOR1 is at offset "num_inputs + 1",
-		 * otherwise it's at offset "num_inputs".
-		 */
-		unsigned back_attr_offset = num_interp_inputs;
-		if (semantic_index == 1 && colors_read_mask & 0xf)
-			back_attr_offset += 1;
-
-		is_face_positive = LLVMBuildICmp(ctx->ac.builder, LLVMIntNE,
-						 face, ctx->i32_0, "");
-
-		for (chan = 0; chan < 4; chan++) {
-			LLVMValueRef front, back;
-
-			front = si_build_fs_interp(ctx,
-						   input_index, chan,
-						   prim_mask, i, j);
-			back = si_build_fs_interp(ctx,
-						  back_attr_offset, chan,
-						  prim_mask, i, j);
-
-			result[chan] = LLVMBuildSelect(ctx->ac.builder,
-						is_face_positive,
-						front,
-						back,
-						"");
-		}
-	} else {
-		for (chan = 0; chan < 4; chan++) {
-			result[chan] = si_build_fs_interp(ctx,
-							  input_index, chan,
-							  prim_mask, i, j);
-		}
-	}
-}
-
-LLVMValueRef si_get_sample_id(struct si_shader_context *ctx)
-{
-	return si_unpack_param(ctx, ctx->args.ancillary, 8, 4);
-}
-
 static LLVMValueRef get_base_vertex(struct ac_shader_abi *abi)
 {
 	struct si_shader_context *ctx = si_shader_context_from_abi(abi);
@@ -1391,44 +1269,6 @@ static LLVMValueRef get_block_size(struct ac_shader_abi *abi)
 	}
 
 	return result;
-}
-
-/**
- * Load a dword from a constant buffer.
- */
-static LLVMValueRef buffer_load_const(struct si_shader_context *ctx,
-				      LLVMValueRef resource,
-				      LLVMValueRef offset)
-{
-	return ac_build_buffer_load(&ctx->ac, resource, 1, NULL, offset, NULL,
-				    0, 0, true, true);
-}
-
-static LLVMValueRef load_sample_position(struct ac_shader_abi *abi, LLVMValueRef sample_id)
-{
-	struct si_shader_context *ctx = si_shader_context_from_abi(abi);
-	LLVMValueRef desc = ac_get_arg(&ctx->ac, ctx->rw_buffers);
-	LLVMValueRef buf_index = LLVMConstInt(ctx->i32, SI_PS_CONST_SAMPLE_POSITIONS, 0);
-	LLVMValueRef resource = ac_build_load_to_sgpr(&ctx->ac, desc, buf_index);
-
-	/* offset = sample_id * 8  (8 = 2 floats containing samplepos.xy) */
-	LLVMValueRef offset0 = LLVMBuildMul(ctx->ac.builder, sample_id, LLVMConstInt(ctx->i32, 8, 0), "");
-	LLVMValueRef offset1 = LLVMBuildAdd(ctx->ac.builder, offset0, LLVMConstInt(ctx->i32, 4, 0), "");
-
-	LLVMValueRef pos[4] = {
-		buffer_load_const(ctx, resource, offset0),
-		buffer_load_const(ctx, resource, offset1),
-		LLVMConstReal(ctx->f32, 0),
-		LLVMConstReal(ctx->f32, 0)
-	};
-
-	return ac_build_gather_values(&ctx->ac, pos, 4);
-}
-
-static LLVMValueRef load_sample_mask_in(struct ac_shader_abi *abi)
-{
-	struct si_shader_context *ctx = si_shader_context_from_abi(abi);
-	return ac_to_integer(&ctx->ac, ac_get_arg(&ctx->ac, ctx->args.sample_coverage));
 }
 
 static LLVMValueRef si_load_tess_coord(struct ac_shader_abi *abi)
@@ -1479,8 +1319,8 @@ static LLVMValueRef load_tess_level_default(struct si_shader_context *ctx,
 	offset = semantic_name == TGSI_SEMANTIC_TESS_DEFAULT_INNER_LEVEL ? 4 : 0;
 
 	for (i = 0; i < 4; i++)
-		val[i] = buffer_load_const(ctx, buf,
-					   LLVMConstInt(ctx->i32, (offset + i) * 4, 0));
+		val[i] = si_buffer_load_const(ctx, buf,
+					      LLVMConstInt(ctx->i32, (offset + i) * 4, 0));
 	return ac_build_gather_values(&ctx->ac, val, 4);
 }
 
@@ -1626,182 +1466,18 @@ load_ssbo(struct ac_shader_abi *abi, LLVMValueRef index, bool write)
 }
 
 /* Initialize arguments for the shader export intrinsic */
-static void si_llvm_init_export_args(struct si_shader_context *ctx,
-				     LLVMValueRef *values,
-				     unsigned target,
-				     struct ac_export_args *args)
+static void si_llvm_init_vs_export_args(struct si_shader_context *ctx,
+					LLVMValueRef *values,
+					unsigned target,
+					struct ac_export_args *args)
 {
-	LLVMValueRef f32undef = LLVMGetUndef(ctx->ac.f32);
-	unsigned spi_shader_col_format = V_028714_SPI_SHADER_32_ABGR;
-	unsigned chan;
-	bool is_int8, is_int10;
-
-	/* Default is 0xf. Adjusted below depending on the format. */
-	args->enabled_channels = 0xf; /* writemask */
-
-	/* Specify whether the EXEC mask represents the valid mask */
-	args->valid_mask = 0;
-
-	/* Specify whether this is the last export */
-	args->done = 0;
-
-	/* Specify the target we are exporting */
-	args->target = target;
-
-	if (ctx->type == PIPE_SHADER_FRAGMENT) {
-		const struct si_shader_key *key = &ctx->shader->key;
-		unsigned col_formats = key->part.ps.epilog.spi_shader_col_format;
-		int cbuf = target - V_008DFC_SQ_EXP_MRT;
-
-		assert(cbuf >= 0 && cbuf < 8);
-		spi_shader_col_format = (col_formats >> (cbuf * 4)) & 0xf;
-		is_int8 = (key->part.ps.epilog.color_is_int8 >> cbuf) & 0x1;
-		is_int10 = (key->part.ps.epilog.color_is_int10 >> cbuf) & 0x1;
-	}
-
+	args->enabled_channels = 0xf; /* writemask - default is 0xf */
+	args->valid_mask = 0; /* Specify whether the EXEC mask represents the valid mask */
+	args->done = 0; /* Specify whether this is the last export */
+	args->target = target; /* Specify the target we are exporting */
 	args->compr = false;
-	args->out[0] = f32undef;
-	args->out[1] = f32undef;
-	args->out[2] = f32undef;
-	args->out[3] = f32undef;
 
-	LLVMValueRef (*packf)(struct ac_llvm_context *ctx, LLVMValueRef args[2]) = NULL;
-	LLVMValueRef (*packi)(struct ac_llvm_context *ctx, LLVMValueRef args[2],
-			      unsigned bits, bool hi) = NULL;
-
-	switch (spi_shader_col_format) {
-	case V_028714_SPI_SHADER_ZERO:
-		args->enabled_channels = 0; /* writemask */
-		args->target = V_008DFC_SQ_EXP_NULL;
-		break;
-
-	case V_028714_SPI_SHADER_32_R:
-		args->enabled_channels = 1; /* writemask */
-		args->out[0] = values[0];
-		break;
-
-	case V_028714_SPI_SHADER_32_GR:
-		args->enabled_channels = 0x3; /* writemask */
-		args->out[0] = values[0];
-		args->out[1] = values[1];
-		break;
-
-	case V_028714_SPI_SHADER_32_AR:
-		if (ctx->screen->info.chip_class >= GFX10) {
-			args->enabled_channels = 0x3; /* writemask */
-			args->out[0] = values[0];
-			args->out[1] = values[3];
-		} else {
-			args->enabled_channels = 0x9; /* writemask */
-			args->out[0] = values[0];
-			args->out[3] = values[3];
-		}
-		break;
-
-	case V_028714_SPI_SHADER_FP16_ABGR:
-		packf = ac_build_cvt_pkrtz_f16;
-		break;
-
-	case V_028714_SPI_SHADER_UNORM16_ABGR:
-		packf = ac_build_cvt_pknorm_u16;
-		break;
-
-	case V_028714_SPI_SHADER_SNORM16_ABGR:
-		packf = ac_build_cvt_pknorm_i16;
-		break;
-
-	case V_028714_SPI_SHADER_UINT16_ABGR:
-		packi = ac_build_cvt_pk_u16;
-		break;
-
-	case V_028714_SPI_SHADER_SINT16_ABGR:
-		packi = ac_build_cvt_pk_i16;
-		break;
-
-	case V_028714_SPI_SHADER_32_ABGR:
-		memcpy(&args->out[0], values, sizeof(values[0]) * 4);
-		break;
-	}
-
-	/* Pack f16 or norm_i16/u16. */
-	if (packf) {
-		for (chan = 0; chan < 2; chan++) {
-			LLVMValueRef pack_args[2] = {
-				values[2 * chan],
-				values[2 * chan + 1]
-			};
-			LLVMValueRef packed;
-
-			packed = packf(&ctx->ac, pack_args);
-			args->out[chan] = ac_to_float(&ctx->ac, packed);
-		}
-		args->compr = 1; /* COMPR flag */
-	}
-	/* Pack i16/u16. */
-	if (packi) {
-		for (chan = 0; chan < 2; chan++) {
-			LLVMValueRef pack_args[2] = {
-				ac_to_integer(&ctx->ac, values[2 * chan]),
-				ac_to_integer(&ctx->ac, values[2 * chan + 1])
-			};
-			LLVMValueRef packed;
-
-			packed = packi(&ctx->ac, pack_args,
-				       is_int8 ? 8 : is_int10 ? 10 : 16,
-				       chan == 1);
-			args->out[chan] = ac_to_float(&ctx->ac, packed);
-		}
-		args->compr = 1; /* COMPR flag */
-	}
-}
-
-static void si_alpha_test(struct si_shader_context *ctx, LLVMValueRef alpha)
-{
-	if (ctx->shader->key.part.ps.epilog.alpha_func != PIPE_FUNC_NEVER) {
-		static LLVMRealPredicate cond_map[PIPE_FUNC_ALWAYS + 1] = {
-			[PIPE_FUNC_LESS] = LLVMRealOLT,
-			[PIPE_FUNC_EQUAL] = LLVMRealOEQ,
-			[PIPE_FUNC_LEQUAL] = LLVMRealOLE,
-			[PIPE_FUNC_GREATER] = LLVMRealOGT,
-			[PIPE_FUNC_NOTEQUAL] = LLVMRealONE,
-			[PIPE_FUNC_GEQUAL] = LLVMRealOGE,
-		};
-		LLVMRealPredicate cond = cond_map[ctx->shader->key.part.ps.epilog.alpha_func];
-		assert(cond);
-
-		LLVMValueRef alpha_ref = LLVMGetParam(ctx->main_fn,
-				SI_PARAM_ALPHA_REF);
-		LLVMValueRef alpha_pass =
-			LLVMBuildFCmp(ctx->ac.builder, cond, alpha, alpha_ref, "");
-		ac_build_kill_if_false(&ctx->ac, alpha_pass);
-	} else {
-		ac_build_kill_if_false(&ctx->ac, ctx->i1false);
-	}
-}
-
-static LLVMValueRef si_scale_alpha_by_sample_mask(struct si_shader_context *ctx,
-						  LLVMValueRef alpha,
-						  unsigned samplemask_param)
-{
-	LLVMValueRef coverage;
-
-	/* alpha = alpha * popcount(coverage) / SI_NUM_SMOOTH_AA_SAMPLES */
-	coverage = LLVMGetParam(ctx->main_fn,
-				samplemask_param);
-	coverage = ac_to_integer(&ctx->ac, coverage);
-
-	coverage = ac_build_intrinsic(&ctx->ac, "llvm.ctpop.i32",
-				   ctx->i32,
-				   &coverage, 1, AC_FUNC_ATTR_READNONE);
-
-	coverage = LLVMBuildUIToFP(ctx->ac.builder, coverage,
-				   ctx->f32, "");
-
-	coverage = LLVMBuildFMul(ctx->ac.builder, coverage,
-				 LLVMConstReal(ctx->f32,
-					1.0 / SI_NUM_SMOOTH_AA_SAMPLES), "");
-
-	return LLVMBuildFMul(ctx->ac.builder, alpha, coverage, "");
+	memcpy(&args->out[0], values, sizeof(values[0]) * 4);
 }
 
 static void si_llvm_emit_clipvertex(struct si_shader_context *ctx,
@@ -1830,8 +1506,8 @@ static void si_llvm_emit_clipvertex(struct si_shader_context *ctx,
 				LLVMValueRef addr =
 					LLVMConstInt(ctx->i32, ((reg_index * 4 + chan) * 4 +
 								const_chan) * 4, 0);
-				base_elt = buffer_load_const(ctx, const_resource,
-							     addr);
+				base_elt = si_buffer_load_const(ctx, const_resource,
+								addr);
 				args->out[chan] = ac_build_fmad(&ctx->ac, base_elt,
 								out_elts[const_chan], args->out[chan]);
 			}
@@ -2004,8 +1680,8 @@ static void si_export_param(struct si_shader_context *ctx, unsigned index,
 {
 	struct ac_export_args args;
 
-	si_llvm_init_export_args(ctx, values,
-				 V_008DFC_SQ_EXP_PARAM + index, &args);
+	si_llvm_init_vs_export_args(ctx, values,
+				    V_008DFC_SQ_EXP_PARAM + index, &args);
 	ac_build_export(&ctx->ac, &args);
 }
 
@@ -2139,8 +1815,8 @@ void si_llvm_export_vs(struct si_shader_context *ctx,
 	for (i = 0; i < noutput; i++) {
 		switch (outputs[i].semantic_name) {
 		case TGSI_SEMANTIC_POSITION:
-			si_llvm_init_export_args(ctx, outputs[i].values,
-						 V_008DFC_SQ_EXP_POS, &pos_args[0]);
+			si_llvm_init_vs_export_args(ctx, outputs[i].values,
+						    V_008DFC_SQ_EXP_POS, &pos_args[0]);
 			break;
 		case TGSI_SEMANTIC_PSIZE:
 			psize_value = outputs[i].values[0];
@@ -2157,9 +1833,9 @@ void si_llvm_export_vs(struct si_shader_context *ctx,
 		case TGSI_SEMANTIC_CLIPDIST:
 			if (!shader->key.opt.clip_disable) {
 				unsigned index = 2 + outputs[i].semantic_index;
-				si_llvm_init_export_args(ctx, outputs[i].values,
-							 V_008DFC_SQ_EXP_POS + index,
-							 &pos_args[index]);
+				si_llvm_init_vs_export_args(ctx, outputs[i].values,
+							    V_008DFC_SQ_EXP_POS + index,
+							    &pos_args[index]);
 			}
 			break;
 		case TGSI_SEMANTIC_CLIPVERTEX:
@@ -2924,192 +2600,6 @@ static void si_llvm_emit_prim_discard_cs_epilogue(struct ac_shader_abi *abi,
 	ctx->return_value = ret;
 }
 
-struct si_ps_exports {
-	unsigned num;
-	struct ac_export_args args[10];
-};
-
-static void si_export_mrt_z(struct si_shader_context *ctx,
-			    LLVMValueRef depth, LLVMValueRef stencil,
-			    LLVMValueRef samplemask, struct si_ps_exports *exp)
-{
-	struct ac_export_args args;
-
-	ac_export_mrt_z(&ctx->ac, depth, stencil, samplemask, &args);
-
-	memcpy(&exp->args[exp->num++], &args, sizeof(args));
-}
-
-static void si_export_mrt_color(struct si_shader_context *ctx,
-				LLVMValueRef *color, unsigned index,
-				unsigned samplemask_param,
-				bool is_last, struct si_ps_exports *exp)
-{
-	int i;
-
-	/* Clamp color */
-	if (ctx->shader->key.part.ps.epilog.clamp_color)
-		for (i = 0; i < 4; i++)
-			color[i] = ac_build_clamp(&ctx->ac, color[i]);
-
-	/* Alpha to one */
-	if (ctx->shader->key.part.ps.epilog.alpha_to_one)
-		color[3] = ctx->ac.f32_1;
-
-	/* Alpha test */
-	if (index == 0 &&
-	    ctx->shader->key.part.ps.epilog.alpha_func != PIPE_FUNC_ALWAYS)
-		si_alpha_test(ctx, color[3]);
-
-	/* Line & polygon smoothing */
-	if (ctx->shader->key.part.ps.epilog.poly_line_smoothing)
-		color[3] = si_scale_alpha_by_sample_mask(ctx, color[3],
-							 samplemask_param);
-
-	/* If last_cbuf > 0, FS_COLOR0_WRITES_ALL_CBUFS is true. */
-	if (ctx->shader->key.part.ps.epilog.last_cbuf > 0) {
-		struct ac_export_args args[8];
-		int c, last = -1;
-
-		/* Get the export arguments, also find out what the last one is. */
-		for (c = 0; c <= ctx->shader->key.part.ps.epilog.last_cbuf; c++) {
-			si_llvm_init_export_args(ctx, color,
-						 V_008DFC_SQ_EXP_MRT + c, &args[c]);
-			if (args[c].enabled_channels)
-				last = c;
-		}
-
-		/* Emit all exports. */
-		for (c = 0; c <= ctx->shader->key.part.ps.epilog.last_cbuf; c++) {
-			if (is_last && last == c) {
-				args[c].valid_mask = 1; /* whether the EXEC mask is valid */
-				args[c].done = 1; /* DONE bit */
-			} else if (!args[c].enabled_channels)
-				continue; /* unnecessary NULL export */
-
-			memcpy(&exp->args[exp->num++], &args[c], sizeof(args[c]));
-		}
-	} else {
-		struct ac_export_args args;
-
-		/* Export */
-		si_llvm_init_export_args(ctx, color, V_008DFC_SQ_EXP_MRT + index,
-					 &args);
-		if (is_last) {
-			args.valid_mask = 1; /* whether the EXEC mask is valid */
-			args.done = 1; /* DONE bit */
-		} else if (!args.enabled_channels)
-			return; /* unnecessary NULL export */
-
-		memcpy(&exp->args[exp->num++], &args, sizeof(args));
-	}
-}
-
-static void si_emit_ps_exports(struct si_shader_context *ctx,
-			       struct si_ps_exports *exp)
-{
-	for (unsigned i = 0; i < exp->num; i++)
-		ac_build_export(&ctx->ac, &exp->args[i]);
-}
-
-/**
- * Return PS outputs in this order:
- *
- * v[0:3] = color0.xyzw
- * v[4:7] = color1.xyzw
- * ...
- * vN+0 = Depth
- * vN+1 = Stencil
- * vN+2 = SampleMask
- * vN+3 = SampleMaskIn (used for OpenGL smoothing)
- *
- * The alpha-ref SGPR is returned via its original location.
- */
-static void si_llvm_return_fs_outputs(struct ac_shader_abi *abi,
-				      unsigned max_outputs,
-				      LLVMValueRef *addrs)
-{
-	struct si_shader_context *ctx = si_shader_context_from_abi(abi);
-	struct si_shader *shader = ctx->shader;
-	struct si_shader_info *info = &shader->selector->info;
-	LLVMBuilderRef builder = ctx->ac.builder;
-	unsigned i, j, first_vgpr, vgpr;
-
-	LLVMValueRef color[8][4] = {};
-	LLVMValueRef depth = NULL, stencil = NULL, samplemask = NULL;
-	LLVMValueRef ret;
-
-	if (ctx->postponed_kill)
-		ac_build_kill_if_false(&ctx->ac, LLVMBuildLoad(builder, ctx->postponed_kill, ""));
-
-	/* Read the output values. */
-	for (i = 0; i < info->num_outputs; i++) {
-		unsigned semantic_name = info->output_semantic_name[i];
-		unsigned semantic_index = info->output_semantic_index[i];
-
-		switch (semantic_name) {
-		case TGSI_SEMANTIC_COLOR:
-			assert(semantic_index < 8);
-			for (j = 0; j < 4; j++) {
-				LLVMValueRef ptr = addrs[4 * i + j];
-				LLVMValueRef result = LLVMBuildLoad(builder, ptr, "");
-				color[semantic_index][j] = result;
-			}
-			break;
-		case TGSI_SEMANTIC_POSITION:
-			depth = LLVMBuildLoad(builder,
-					      addrs[4 * i + 0], "");
-			break;
-		case TGSI_SEMANTIC_STENCIL:
-			stencil = LLVMBuildLoad(builder,
-						addrs[4 * i + 0], "");
-			break;
-		case TGSI_SEMANTIC_SAMPLEMASK:
-			samplemask = LLVMBuildLoad(builder,
-						   addrs[4 * i + 0], "");
-			break;
-		default:
-			fprintf(stderr, "Warning: GFX6 unhandled fs output type:%d\n",
-				semantic_name);
-		}
-	}
-
-	/* Fill the return structure. */
-	ret = ctx->return_value;
-
-	/* Set SGPRs. */
-	ret = LLVMBuildInsertValue(builder, ret,
-				   ac_to_integer(&ctx->ac,
-                                                 LLVMGetParam(ctx->main_fn,
-                                                              SI_PARAM_ALPHA_REF)),
-				   SI_SGPR_ALPHA_REF, "");
-
-	/* Set VGPRs */
-	first_vgpr = vgpr = SI_SGPR_ALPHA_REF + 1;
-	for (i = 0; i < ARRAY_SIZE(color); i++) {
-		if (!color[i][0])
-			continue;
-
-		for (j = 0; j < 4; j++)
-			ret = LLVMBuildInsertValue(builder, ret, color[i][j], vgpr++, "");
-	}
-	if (depth)
-		ret = LLVMBuildInsertValue(builder, ret, depth, vgpr++, "");
-	if (stencil)
-		ret = LLVMBuildInsertValue(builder, ret, stencil, vgpr++, "");
-	if (samplemask)
-		ret = LLVMBuildInsertValue(builder, ret, samplemask, vgpr++, "");
-
-	/* Add the input sample mask for smoothing at the end. */
-	if (vgpr < first_vgpr + PS_EPILOG_SAMPLEMASK_MIN_LOC)
-		vgpr = first_vgpr + PS_EPILOG_SAMPLEMASK_MIN_LOC;
-	ret = LLVMBuildInsertValue(builder, ret,
-				   LLVMGetParam(ctx->main_fn,
-						SI_PARAM_SAMPLE_COVERAGE), vgpr++, "");
-
-	ctx->return_value = ret;
-}
-
 /* Emit one vertex from the geometry shader */
 static void si_llvm_emit_vertex(struct ac_shader_abi *abi,
 				unsigned stream,
@@ -3345,7 +2835,7 @@ static void declare_vb_descriptor_input_sgprs(struct si_shader_context *ctx)
 	if (num_vbos_in_user_sgprs) {
 		unsigned user_sgprs = ctx->args.num_sgprs_used;
 
-		if (is_merged_shader(ctx))
+		if (si_is_merged_shader(ctx))
 			user_sgprs -= 8;
 		assert(user_sgprs <= SI_SGPR_VS_VB_DESCRIPTOR_FIRST);
 
@@ -3434,11 +2924,11 @@ enum {
 	SI_SHADER_MERGED_VERTEX_OR_TESSEVAL_GEOMETRY,
 };
 
-static void add_arg_checked(struct ac_shader_args *args,
-			    enum ac_arg_regfile file,
-			    unsigned registers, enum ac_arg_type type,
-			    struct ac_arg *arg,
-			    unsigned idx)
+void si_add_arg_checked(struct ac_shader_args *args,
+			enum ac_arg_regfile file,
+			unsigned registers, enum ac_arg_type type,
+			struct ac_arg *arg,
+			unsigned idx)
 {
 	assert(args->arg_count == idx);
 	ac_add_arg(args, file, registers, type, arg);
@@ -3683,44 +3173,44 @@ static void create_function(struct si_shader_context *ctx)
 	case PIPE_SHADER_FRAGMENT:
 		declare_global_desc_pointers(ctx);
 		declare_per_stage_desc_pointers(ctx, true);
-		add_arg_checked(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, NULL,
+		si_add_arg_checked(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, NULL,
 				SI_PARAM_ALPHA_REF);
-		add_arg_checked(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT,
+		si_add_arg_checked(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT,
 				&ctx->args.prim_mask, SI_PARAM_PRIM_MASK);
 
-		add_arg_checked(&ctx->args, AC_ARG_VGPR, 2, AC_ARG_INT, &ctx->args.persp_sample,
+		si_add_arg_checked(&ctx->args, AC_ARG_VGPR, 2, AC_ARG_INT, &ctx->args.persp_sample,
 				SI_PARAM_PERSP_SAMPLE);
-		add_arg_checked(&ctx->args, AC_ARG_VGPR, 2, AC_ARG_INT,
+		si_add_arg_checked(&ctx->args, AC_ARG_VGPR, 2, AC_ARG_INT,
 				&ctx->args.persp_center, SI_PARAM_PERSP_CENTER);
-		add_arg_checked(&ctx->args, AC_ARG_VGPR, 2, AC_ARG_INT,
+		si_add_arg_checked(&ctx->args, AC_ARG_VGPR, 2, AC_ARG_INT,
 				&ctx->args.persp_centroid, SI_PARAM_PERSP_CENTROID);
-		add_arg_checked(&ctx->args, AC_ARG_VGPR, 3, AC_ARG_INT,
+		si_add_arg_checked(&ctx->args, AC_ARG_VGPR, 3, AC_ARG_INT,
 				NULL, SI_PARAM_PERSP_PULL_MODEL);
-		add_arg_checked(&ctx->args, AC_ARG_VGPR, 2, AC_ARG_INT, 
+		si_add_arg_checked(&ctx->args, AC_ARG_VGPR, 2, AC_ARG_INT,
 				&ctx->args.linear_sample, SI_PARAM_LINEAR_SAMPLE);
-		add_arg_checked(&ctx->args, AC_ARG_VGPR, 2, AC_ARG_INT,
+		si_add_arg_checked(&ctx->args, AC_ARG_VGPR, 2, AC_ARG_INT,
 				&ctx->args.linear_center, SI_PARAM_LINEAR_CENTER);
-		add_arg_checked(&ctx->args, AC_ARG_VGPR, 2, AC_ARG_INT,
+		si_add_arg_checked(&ctx->args, AC_ARG_VGPR, 2, AC_ARG_INT,
 				&ctx->args.linear_centroid, SI_PARAM_LINEAR_CENTROID);
-		add_arg_checked(&ctx->args, AC_ARG_VGPR, 3, AC_ARG_FLOAT,
+		si_add_arg_checked(&ctx->args, AC_ARG_VGPR, 3, AC_ARG_FLOAT,
 				NULL, SI_PARAM_LINE_STIPPLE_TEX);
-		add_arg_checked(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_FLOAT,
+		si_add_arg_checked(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_FLOAT,
 				&ctx->args.frag_pos[0], SI_PARAM_POS_X_FLOAT);
-		add_arg_checked(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_FLOAT,
+		si_add_arg_checked(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_FLOAT,
 				&ctx->args.frag_pos[1], SI_PARAM_POS_Y_FLOAT);
-		add_arg_checked(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_FLOAT,
+		si_add_arg_checked(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_FLOAT,
 				&ctx->args.frag_pos[2], SI_PARAM_POS_Z_FLOAT);
-		add_arg_checked(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_FLOAT,
+		si_add_arg_checked(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_FLOAT,
 				&ctx->args.frag_pos[3], SI_PARAM_POS_W_FLOAT);
 		shader->info.face_vgpr_index = ctx->args.num_vgprs_used;
-		add_arg_checked(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT,
+		si_add_arg_checked(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT,
 				&ctx->args.front_face, SI_PARAM_FRONT_FACE);
 		shader->info.ancillary_vgpr_index = ctx->args.num_vgprs_used;
-		add_arg_checked(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT,
+		si_add_arg_checked(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT,
 				&ctx->args.ancillary, SI_PARAM_ANCILLARY);
-		add_arg_checked(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_FLOAT,
+		si_add_arg_checked(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_FLOAT,
 				&ctx->args.sample_coverage, SI_PARAM_SAMPLE_COVERAGE);
-		add_arg_checked(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT,
+		si_add_arg_checked(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT,
 				&ctx->pos_fixed_pt, SI_PARAM_POS_FIXED_PT);
 
 		/* Color inputs from the prolog. */
@@ -3978,34 +3468,6 @@ static void preload_ring_buffers(struct si_shader_context *ctx)
 	} else if (ctx->type == PIPE_SHADER_TESS_EVAL) {
 		ctx->tess_offchip_ring = get_tess_ring_descriptor(ctx, TESS_OFFCHIP_RING_TES);
 	}
-}
-
-static void si_llvm_emit_polygon_stipple(struct si_shader_context *ctx,
-					 LLVMValueRef param_rw_buffers,
-					 struct ac_arg param_pos_fixed_pt)
-{
-	LLVMBuilderRef builder = ctx->ac.builder;
-	LLVMValueRef slot, desc, offset, row, bit, address[2];
-
-	/* Use the fixed-point gl_FragCoord input.
-	 * Since the stipple pattern is 32x32 and it repeats, just get 5 bits
-	 * per coordinate to get the repeating effect.
-	 */
-	address[0] = si_unpack_param(ctx, param_pos_fixed_pt, 0, 5);
-	address[1] = si_unpack_param(ctx, param_pos_fixed_pt, 16, 5);
-
-	/* Load the buffer descriptor. */
-	slot = LLVMConstInt(ctx->i32, SI_PS_CONST_POLY_STIPPLE, 0);
-	desc = ac_build_load_to_sgpr(&ctx->ac, param_rw_buffers, slot);
-
-	/* The stipple pattern is 32x32, each row has 32 bits. */
-	offset = LLVMBuildMul(builder, address[1],
-			      LLVMConstInt(ctx->i32, 4, 0), "");
-	row = buffer_load_const(ctx, desc, offset);
-	row = ac_to_integer(&ctx->ac, row);
-	bit = LLVMBuildLShr(builder, row, address[0], "");
-	bit = LLVMBuildTrunc(builder, bit, ctx->i1, "");
-	ac_build_kill_if_false(&ctx->ac, bit);
 }
 
 /* For the UMR disassembler. */
@@ -4488,14 +3950,6 @@ static int si_compile_llvm(struct si_screen *sscreen,
 	return 0;
 }
 
-static void si_llvm_build_ret(struct si_shader_context *ctx, LLVMValueRef ret)
-{
-	if (LLVMGetTypeKind(LLVMTypeOf(ret)) == LLVMVoidTypeKind)
-		LLVMBuildRetVoid(ctx->ac.builder);
-	else
-		LLVMBuildRet(ctx->ac.builder, ret);
-}
-
 /* Generate code for the hardware VS shader stage to go with a geometry shader */
 struct si_shader *
 si_generate_gs_copy_shader(struct si_screen *sscreen,
@@ -4840,32 +4294,12 @@ LLVMValueRef si_is_gs_thread(struct si_shader_context *ctx)
 			     si_unpack_param(ctx, ctx->merged_wave_info, 8, 8), "");
 }
 
-static void si_llvm_emit_kill(struct ac_shader_abi *abi, LLVMValueRef visible)
-{
-	struct si_shader_context *ctx = si_shader_context_from_abi(abi);
-	LLVMBuilderRef builder = ctx->ac.builder;
-
-	if (ctx->shader->selector->force_correct_derivs_after_kill) {
-		/* Kill immediately while maintaining WQM. */
-		ac_build_kill_if_false(&ctx->ac,
-				       ac_build_wqm_vote(&ctx->ac, visible));
-
-		LLVMValueRef mask = LLVMBuildLoad(builder, ctx->postponed_kill, "");
-		mask = LLVMBuildAnd(builder, mask, visible, "");
-		LLVMBuildStore(builder, mask, ctx->postponed_kill);
-		return;
-	}
-
-	ac_build_kill_if_false(&ctx->ac, visible);
-}
-
 static bool si_build_main_function(struct si_shader_context *ctx,
 				   struct nir_shader *nir, bool free_nir)
 {
 	struct si_shader *shader = ctx->shader;
 	struct si_shader_selector *sel = shader->selector;
 
-	// TODO clean all this up!
 	switch (ctx->type) {
 	case PIPE_SHADER_VERTEX:
 		if (shader->key.as_ls)
@@ -4906,11 +4340,7 @@ static bool si_build_main_function(struct si_shader_context *ctx,
 		ctx->abi.emit_outputs = si_llvm_emit_gs_epilogue;
 		break;
 	case PIPE_SHADER_FRAGMENT:
-		ctx->abi.emit_outputs = si_llvm_return_fs_outputs;
-		ctx->abi.load_sample_position = load_sample_position;
-		ctx->abi.load_sample_mask_in = load_sample_mask_in;
-		ctx->abi.emit_fbfetch = si_nir_emit_fbfetch;
-		ctx->abi.emit_kill = si_llvm_emit_kill;
+		si_llvm_init_ps_callbacks(ctx);
 		break;
 	case PIPE_SHADER_COMPUTE:
 		ctx->abi.load_local_group_size = get_block_size;
@@ -5127,172 +4557,6 @@ static void si_get_vs_prolog_key(const struct si_shader_info *info,
 }
 
 /**
- * Compute the PS prolog key, which contains all the information needed to
- * build the PS prolog function, and set related bits in shader->config.
- */
-static void si_get_ps_prolog_key(struct si_shader *shader,
-				 union si_shader_part_key *key,
-				 bool separate_prolog)
-{
-	struct si_shader_info *info = &shader->selector->info;
-
-	memset(key, 0, sizeof(*key));
-	key->ps_prolog.states = shader->key.part.ps.prolog;
-	key->ps_prolog.colors_read = info->colors_read;
-	key->ps_prolog.num_input_sgprs = shader->info.num_input_sgprs;
-	key->ps_prolog.num_input_vgprs = shader->info.num_input_vgprs;
-	key->ps_prolog.wqm = info->uses_derivatives &&
-		(key->ps_prolog.colors_read ||
-		 key->ps_prolog.states.force_persp_sample_interp ||
-		 key->ps_prolog.states.force_linear_sample_interp ||
-		 key->ps_prolog.states.force_persp_center_interp ||
-		 key->ps_prolog.states.force_linear_center_interp ||
-		 key->ps_prolog.states.bc_optimize_for_persp ||
-		 key->ps_prolog.states.bc_optimize_for_linear);
-	key->ps_prolog.ancillary_vgpr_index = shader->info.ancillary_vgpr_index;
-
-	if (info->colors_read) {
-		unsigned *color = shader->selector->color_attr_index;
-
-		if (shader->key.part.ps.prolog.color_two_side) {
-			/* BCOLORs are stored after the last input. */
-			key->ps_prolog.num_interp_inputs = info->num_inputs;
-			key->ps_prolog.face_vgpr_index = shader->info.face_vgpr_index;
-			if (separate_prolog)
-				shader->config.spi_ps_input_ena |= S_0286CC_FRONT_FACE_ENA(1);
-		}
-
-		for (unsigned i = 0; i < 2; i++) {
-			unsigned interp = info->input_interpolate[color[i]];
-			unsigned location = info->input_interpolate_loc[color[i]];
-
-			if (!(info->colors_read & (0xf << i*4)))
-				continue;
-
-			key->ps_prolog.color_attr_index[i] = color[i];
-
-			if (shader->key.part.ps.prolog.flatshade_colors &&
-			    interp == TGSI_INTERPOLATE_COLOR)
-				interp = TGSI_INTERPOLATE_CONSTANT;
-
-			switch (interp) {
-			case TGSI_INTERPOLATE_CONSTANT:
-				key->ps_prolog.color_interp_vgpr_index[i] = -1;
-				break;
-			case TGSI_INTERPOLATE_PERSPECTIVE:
-			case TGSI_INTERPOLATE_COLOR:
-				/* Force the interpolation location for colors here. */
-				if (shader->key.part.ps.prolog.force_persp_sample_interp)
-					location = TGSI_INTERPOLATE_LOC_SAMPLE;
-				if (shader->key.part.ps.prolog.force_persp_center_interp)
-					location = TGSI_INTERPOLATE_LOC_CENTER;
-
-				switch (location) {
-				case TGSI_INTERPOLATE_LOC_SAMPLE:
-					key->ps_prolog.color_interp_vgpr_index[i] = 0;
-					if (separate_prolog) {
-						shader->config.spi_ps_input_ena |=
-							S_0286CC_PERSP_SAMPLE_ENA(1);
-					}
-					break;
-				case TGSI_INTERPOLATE_LOC_CENTER:
-					key->ps_prolog.color_interp_vgpr_index[i] = 2;
-					if (separate_prolog) {
-						shader->config.spi_ps_input_ena |=
-							S_0286CC_PERSP_CENTER_ENA(1);
-					}
-					break;
-				case TGSI_INTERPOLATE_LOC_CENTROID:
-					key->ps_prolog.color_interp_vgpr_index[i] = 4;
-					if (separate_prolog) {
-						shader->config.spi_ps_input_ena |=
-							S_0286CC_PERSP_CENTROID_ENA(1);
-					}
-					break;
-				default:
-					assert(0);
-				}
-				break;
-			case TGSI_INTERPOLATE_LINEAR:
-				/* Force the interpolation location for colors here. */
-				if (shader->key.part.ps.prolog.force_linear_sample_interp)
-					location = TGSI_INTERPOLATE_LOC_SAMPLE;
-				if (shader->key.part.ps.prolog.force_linear_center_interp)
-					location = TGSI_INTERPOLATE_LOC_CENTER;
-
-				/* The VGPR assignment for non-monolithic shaders
-				 * works because InitialPSInputAddr is set on the
-				 * main shader and PERSP_PULL_MODEL is never used.
-				 */
-				switch (location) {
-				case TGSI_INTERPOLATE_LOC_SAMPLE:
-					key->ps_prolog.color_interp_vgpr_index[i] =
-						separate_prolog ? 6 : 9;
-					if (separate_prolog) {
-						shader->config.spi_ps_input_ena |=
-							S_0286CC_LINEAR_SAMPLE_ENA(1);
-					}
-					break;
-				case TGSI_INTERPOLATE_LOC_CENTER:
-					key->ps_prolog.color_interp_vgpr_index[i] =
-						separate_prolog ? 8 : 11;
-					if (separate_prolog) {
-						shader->config.spi_ps_input_ena |=
-							S_0286CC_LINEAR_CENTER_ENA(1);
-					}
-					break;
-				case TGSI_INTERPOLATE_LOC_CENTROID:
-					key->ps_prolog.color_interp_vgpr_index[i] =
-						separate_prolog ? 10 : 13;
-					if (separate_prolog) {
-						shader->config.spi_ps_input_ena |=
-							S_0286CC_LINEAR_CENTROID_ENA(1);
-					}
-					break;
-				default:
-					assert(0);
-				}
-				break;
-			default:
-				assert(0);
-			}
-		}
-	}
-}
-
-/**
- * Check whether a PS prolog is required based on the key.
- */
-static bool si_need_ps_prolog(const union si_shader_part_key *key)
-{
-	return key->ps_prolog.colors_read ||
-	       key->ps_prolog.states.force_persp_sample_interp ||
-	       key->ps_prolog.states.force_linear_sample_interp ||
-	       key->ps_prolog.states.force_persp_center_interp ||
-	       key->ps_prolog.states.force_linear_center_interp ||
-	       key->ps_prolog.states.bc_optimize_for_persp ||
-	       key->ps_prolog.states.bc_optimize_for_linear ||
-	       key->ps_prolog.states.poly_stipple ||
-	       key->ps_prolog.states.samplemask_log_ps_iter;
-}
-
-/**
- * Compute the PS epilog key, which contains all the information needed to
- * build the PS epilog function.
- */
-static void si_get_ps_epilog_key(struct si_shader *shader,
-				 union si_shader_part_key *key)
-{
-	struct si_shader_info *info = &shader->selector->info;
-	memset(key, 0, sizeof(*key));
-	key->ps_epilog.colors_written = info->colors_written;
-	key->ps_epilog.writes_z = info->writes_z;
-	key->ps_epilog.writes_stencil = info->writes_stencil;
-	key->ps_epilog.writes_samplemask = info->writes_samplemask;
-	key->ps_epilog.states = shader->key.part.ps.epilog;
-}
-
-/**
  * Build the GS prolog function. Rotate the input vertices for triangle strips
  * with adjacency.
  */
@@ -5419,11 +4683,9 @@ static void si_build_gs_prolog_function(struct si_shader_context *ctx,
  * Given a list of shader part functions, build a wrapper function that
  * runs them in sequence to form a monolithic shader.
  */
-static void si_build_wrapper_function(struct si_shader_context *ctx,
-				      LLVMValueRef *parts,
-				      unsigned num_parts,
-				      unsigned main_part,
-				      unsigned next_shader_first_part)
+void si_build_wrapper_function(struct si_shader_context *ctx, LLVMValueRef *parts,
+			       unsigned num_parts, unsigned main_part,
+			       unsigned next_shader_first_part)
 {
 	LLVMBuilderRef builder = ctx->ac.builder;
 	/* PS epilog has one arg per color component; gfx9 merged shader
@@ -5515,7 +4777,7 @@ static void si_build_wrapper_function(struct si_shader_context *ctx,
 	si_llvm_create_func(ctx, "wrapper", returns, num_returns,
 			    si_get_max_workgroup_size(ctx->shader));
 
-	if (is_merged_shader(ctx))
+	if (si_is_merged_shader(ctx))
 		ac_init_exec_full_mask(&ctx->ac);
 
 	/* Record the arguments of the function as if they were an output of
@@ -5922,27 +5184,7 @@ int si_compile_shader(struct si_screen *sscreen,
 			si_build_wrapper_function(&ctx, parts, 2, 1, 0);
 		}
 	} else if (shader->is_monolithic && ctx.type == PIPE_SHADER_FRAGMENT) {
-		LLVMValueRef parts[3];
-		union si_shader_part_key prolog_key;
-		union si_shader_part_key epilog_key;
-		bool need_prolog;
-
-		si_get_ps_prolog_key(shader, &prolog_key, false);
-		need_prolog = si_need_ps_prolog(&prolog_key);
-
-		parts[need_prolog ? 1 : 0] = ctx.main_fn;
-
-		if (need_prolog) {
-			si_build_ps_prolog_function(&ctx, &prolog_key);
-			parts[0] = ctx.main_fn;
-		}
-
-		si_get_ps_epilog_key(shader, &epilog_key);
-		si_build_ps_epilog_function(&ctx, &epilog_key);
-		parts[need_prolog ? 2 : 1] = ctx.main_fn;
-
-		si_build_wrapper_function(&ctx, parts, need_prolog ? 3 : 2,
-					  need_prolog ? 1 : 0, 0);
+		si_llvm_build_monolithic_ps(&ctx, shader);
 	}
 
 	si_llvm_optimize_module(&ctx);
@@ -6005,7 +5247,7 @@ int si_compile_shader(struct si_screen *sscreen,
 	}
 
 	/* Add the scratch offset to input SGPRs. */
-	if (shader->config.scratch_bytes_per_wave && !is_merged_shader(&ctx))
+	if (shader->config.scratch_bytes_per_wave && !si_is_merged_shader(&ctx))
 		shader->info.num_input_sgprs += 1; /* scratch byte offset */
 
 	/* Calculate the number of fragment input VGPRs. */
@@ -6114,17 +5356,6 @@ out:
 	si_llvm_dispose(&ctx);
 	simple_mtx_unlock(&sscreen->shader_parts_mutex);
 	return result;
-}
-
-static LLVMValueRef si_prolog_get_rw_buffers(struct si_shader_context *ctx)
-{
-	LLVMValueRef ptr[2], list;
-	bool merged_shader = is_merged_shader(ctx);
-
-	ptr[0] = LLVMGetParam(ctx->main_fn, (merged_shader ? 8 : 0) + SI_SGPR_RW_BUFFERS);
-	list = LLVMBuildIntToPtr(ctx->ac.builder, ptr[0],
-				 ac_array_in_const32_addr_space(ctx->v4i32), "");
-	return list;
 }
 
 /**
@@ -6281,8 +5512,8 @@ static void si_build_vs_prolog_function(struct si_shader_context *ctx,
 
 			for (unsigned j = 0; j < 4; j++) {
 				udiv_factors[j] =
-					buffer_load_const(ctx, instance_divisor_constbuf,
-							  LLVMConstInt(ctx->i32, i*16 + j*4, 0));
+					si_buffer_load_const(ctx, instance_divisor_constbuf,
+							     LLVMConstInt(ctx->i32, i*16 + j*4, 0));
 				udiv_factors[j] = ac_to_integer(&ctx->ac, udiv_factors[j]);
 			}
 			/* The faster NUW version doesn't work when InstanceID == UINT_MAX.
@@ -6507,396 +5738,169 @@ static bool si_shader_select_gs_parts(struct si_screen *sscreen,
 }
 
 /**
- * Build the pixel shader prolog function. This handles:
- * - two-side color selection and interpolation
- * - overriding interpolation parameters for the API PS
- * - polygon stippling
- *
- * All preloaded SGPRs and VGPRs are passed through unmodified unless they are
- * overriden by other states. (e.g. per-sample interpolation)
- * Interpolated colors are stored after the preloaded VGPRs.
+ * Compute the PS prolog key, which contains all the information needed to
+ * build the PS prolog function, and set related bits in shader->config.
  */
-static void si_build_ps_prolog_function(struct si_shader_context *ctx,
-					union si_shader_part_key *key)
+void si_get_ps_prolog_key(struct si_shader *shader,
+			  union si_shader_part_key *key,
+			  bool separate_prolog)
 {
-	LLVMValueRef ret, func;
-	int num_returns, i, num_color_channels;
+	struct si_shader_info *info = &shader->selector->info;
 
-	assert(si_need_ps_prolog(key));
+	memset(key, 0, sizeof(*key));
+	key->ps_prolog.states = shader->key.part.ps.prolog;
+	key->ps_prolog.colors_read = info->colors_read;
+	key->ps_prolog.num_input_sgprs = shader->info.num_input_sgprs;
+	key->ps_prolog.num_input_vgprs = shader->info.num_input_vgprs;
+	key->ps_prolog.wqm = info->uses_derivatives &&
+		(key->ps_prolog.colors_read ||
+		 key->ps_prolog.states.force_persp_sample_interp ||
+		 key->ps_prolog.states.force_linear_sample_interp ||
+		 key->ps_prolog.states.force_persp_center_interp ||
+		 key->ps_prolog.states.force_linear_center_interp ||
+		 key->ps_prolog.states.bc_optimize_for_persp ||
+		 key->ps_prolog.states.bc_optimize_for_linear);
+	key->ps_prolog.ancillary_vgpr_index = shader->info.ancillary_vgpr_index;
 
-	memset(&ctx->args, 0, sizeof(ctx->args));
+	if (info->colors_read) {
+		unsigned *color = shader->selector->color_attr_index;
 
-	/* Declare inputs. */
-	LLVMTypeRef return_types[AC_MAX_ARGS];
-	num_returns = 0;
-	num_color_channels = util_bitcount(key->ps_prolog.colors_read);
-	assert(key->ps_prolog.num_input_sgprs +
-	       key->ps_prolog.num_input_vgprs +
-	       num_color_channels <= AC_MAX_ARGS);
-	for (i = 0; i < key->ps_prolog.num_input_sgprs; i++) {
-		ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, NULL);
-		return_types[num_returns++] = ctx->i32;
-
-	}
-
-	struct ac_arg pos_fixed_pt;
-	struct ac_arg ancillary;
-	struct ac_arg param_sample_mask;
-	for (i = 0; i < key->ps_prolog.num_input_vgprs; i++) {
-		struct ac_arg *arg = NULL;
-		if (i == key->ps_prolog.ancillary_vgpr_index) {
-			arg = &ancillary;
-		} else if (i == key->ps_prolog.ancillary_vgpr_index + 1) {
-			arg = &param_sample_mask;
-		} else if (i == key->ps_prolog.num_input_vgprs - 1) {
-			/* POS_FIXED_PT is always last. */
-			arg = &pos_fixed_pt;
+		if (shader->key.part.ps.prolog.color_two_side) {
+			/* BCOLORs are stored after the last input. */
+			key->ps_prolog.num_interp_inputs = info->num_inputs;
+			key->ps_prolog.face_vgpr_index = shader->info.face_vgpr_index;
+			if (separate_prolog)
+				shader->config.spi_ps_input_ena |= S_0286CC_FRONT_FACE_ENA(1);
 		}
-		ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_FLOAT, arg);
-		return_types[num_returns++] = ctx->f32;
-	}
 
-	/* Declare outputs (same as inputs + add colors if needed) */
-	for (i = 0; i < num_color_channels; i++)
-		return_types[num_returns++] = ctx->f32;
+		for (unsigned i = 0; i < 2; i++) {
+			unsigned interp = info->input_interpolate[color[i]];
+			unsigned location = info->input_interpolate_loc[color[i]];
 
-	/* Create the function. */
-	si_llvm_create_func(ctx, "ps_prolog", return_types, num_returns, 0);
-	func = ctx->main_fn;
+			if (!(info->colors_read & (0xf << i*4)))
+				continue;
 
-	/* Copy inputs to outputs. This should be no-op, as the registers match,
-	 * but it will prevent the compiler from overwriting them unintentionally.
-	 */
-	ret = ctx->return_value;
-	for (i = 0; i < ctx->args.arg_count; i++) {
-		LLVMValueRef p = LLVMGetParam(func, i);
-		ret = LLVMBuildInsertValue(ctx->ac.builder, ret, p, i, "");
-	}
+			key->ps_prolog.color_attr_index[i] = color[i];
 
-	/* Polygon stippling. */
-	if (key->ps_prolog.states.poly_stipple) {
-		LLVMValueRef list = si_prolog_get_rw_buffers(ctx);
+			if (shader->key.part.ps.prolog.flatshade_colors &&
+			    interp == TGSI_INTERPOLATE_COLOR)
+				interp = TGSI_INTERPOLATE_CONSTANT;
 
-		si_llvm_emit_polygon_stipple(ctx, list, pos_fixed_pt);
-	}
+			switch (interp) {
+			case TGSI_INTERPOLATE_CONSTANT:
+				key->ps_prolog.color_interp_vgpr_index[i] = -1;
+				break;
+			case TGSI_INTERPOLATE_PERSPECTIVE:
+			case TGSI_INTERPOLATE_COLOR:
+				/* Force the interpolation location for colors here. */
+				if (shader->key.part.ps.prolog.force_persp_sample_interp)
+					location = TGSI_INTERPOLATE_LOC_SAMPLE;
+				if (shader->key.part.ps.prolog.force_persp_center_interp)
+					location = TGSI_INTERPOLATE_LOC_CENTER;
 
-	if (key->ps_prolog.states.bc_optimize_for_persp ||
-	    key->ps_prolog.states.bc_optimize_for_linear) {
-		unsigned i, base = key->ps_prolog.num_input_sgprs;
-		LLVMValueRef center[2], centroid[2], tmp, bc_optimize;
+				switch (location) {
+				case TGSI_INTERPOLATE_LOC_SAMPLE:
+					key->ps_prolog.color_interp_vgpr_index[i] = 0;
+					if (separate_prolog) {
+						shader->config.spi_ps_input_ena |=
+							S_0286CC_PERSP_SAMPLE_ENA(1);
+					}
+					break;
+				case TGSI_INTERPOLATE_LOC_CENTER:
+					key->ps_prolog.color_interp_vgpr_index[i] = 2;
+					if (separate_prolog) {
+						shader->config.spi_ps_input_ena |=
+							S_0286CC_PERSP_CENTER_ENA(1);
+					}
+					break;
+				case TGSI_INTERPOLATE_LOC_CENTROID:
+					key->ps_prolog.color_interp_vgpr_index[i] = 4;
+					if (separate_prolog) {
+						shader->config.spi_ps_input_ena |=
+							S_0286CC_PERSP_CENTROID_ENA(1);
+					}
+					break;
+				default:
+					assert(0);
+				}
+				break;
+			case TGSI_INTERPOLATE_LINEAR:
+				/* Force the interpolation location for colors here. */
+				if (shader->key.part.ps.prolog.force_linear_sample_interp)
+					location = TGSI_INTERPOLATE_LOC_SAMPLE;
+				if (shader->key.part.ps.prolog.force_linear_center_interp)
+					location = TGSI_INTERPOLATE_LOC_CENTER;
 
-		/* The shader should do: if (PRIM_MASK[31]) CENTROID = CENTER;
-		 * The hw doesn't compute CENTROID if the whole wave only
-		 * contains fully-covered quads.
-		 *
-		 * PRIM_MASK is after user SGPRs.
-		 */
-		bc_optimize = LLVMGetParam(func, SI_PS_NUM_USER_SGPR);
-		bc_optimize = LLVMBuildLShr(ctx->ac.builder, bc_optimize,
-					    LLVMConstInt(ctx->i32, 31, 0), "");
-		bc_optimize = LLVMBuildTrunc(ctx->ac.builder, bc_optimize,
-					     ctx->i1, "");
-
-		if (key->ps_prolog.states.bc_optimize_for_persp) {
-			/* Read PERSP_CENTER. */
-			for (i = 0; i < 2; i++)
-				center[i] = LLVMGetParam(func, base + 2 + i);
-			/* Read PERSP_CENTROID. */
-			for (i = 0; i < 2; i++)
-				centroid[i] = LLVMGetParam(func, base + 4 + i);
-			/* Select PERSP_CENTROID. */
-			for (i = 0; i < 2; i++) {
-				tmp = LLVMBuildSelect(ctx->ac.builder, bc_optimize,
-						      center[i], centroid[i], "");
-				ret = LLVMBuildInsertValue(ctx->ac.builder, ret,
-							   tmp, base + 4 + i, "");
+				/* The VGPR assignment for non-monolithic shaders
+				 * works because InitialPSInputAddr is set on the
+				 * main shader and PERSP_PULL_MODEL is never used.
+				 */
+				switch (location) {
+				case TGSI_INTERPOLATE_LOC_SAMPLE:
+					key->ps_prolog.color_interp_vgpr_index[i] =
+						separate_prolog ? 6 : 9;
+					if (separate_prolog) {
+						shader->config.spi_ps_input_ena |=
+							S_0286CC_LINEAR_SAMPLE_ENA(1);
+					}
+					break;
+				case TGSI_INTERPOLATE_LOC_CENTER:
+					key->ps_prolog.color_interp_vgpr_index[i] =
+						separate_prolog ? 8 : 11;
+					if (separate_prolog) {
+						shader->config.spi_ps_input_ena |=
+							S_0286CC_LINEAR_CENTER_ENA(1);
+					}
+					break;
+				case TGSI_INTERPOLATE_LOC_CENTROID:
+					key->ps_prolog.color_interp_vgpr_index[i] =
+						separate_prolog ? 10 : 13;
+					if (separate_prolog) {
+						shader->config.spi_ps_input_ena |=
+							S_0286CC_LINEAR_CENTROID_ENA(1);
+					}
+					break;
+				default:
+					assert(0);
+				}
+				break;
+			default:
+				assert(0);
 			}
 		}
-		if (key->ps_prolog.states.bc_optimize_for_linear) {
-			/* Read LINEAR_CENTER. */
-			for (i = 0; i < 2; i++)
-				center[i] = LLVMGetParam(func, base + 8 + i);
-			/* Read LINEAR_CENTROID. */
-			for (i = 0; i < 2; i++)
-				centroid[i] = LLVMGetParam(func, base + 10 + i);
-			/* Select LINEAR_CENTROID. */
-			for (i = 0; i < 2; i++) {
-				tmp = LLVMBuildSelect(ctx->ac.builder, bc_optimize,
-						      center[i], centroid[i], "");
-				ret = LLVMBuildInsertValue(ctx->ac.builder, ret,
-							   tmp, base + 10 + i, "");
-			}
-		}
 	}
-
-	/* Force per-sample interpolation. */
-	if (key->ps_prolog.states.force_persp_sample_interp) {
-		unsigned i, base = key->ps_prolog.num_input_sgprs;
-		LLVMValueRef persp_sample[2];
-
-		/* Read PERSP_SAMPLE. */
-		for (i = 0; i < 2; i++)
-			persp_sample[i] = LLVMGetParam(func, base + i);
-		/* Overwrite PERSP_CENTER. */
-		for (i = 0; i < 2; i++)
-			ret = LLVMBuildInsertValue(ctx->ac.builder, ret,
-						   persp_sample[i], base + 2 + i, "");
-		/* Overwrite PERSP_CENTROID. */
-		for (i = 0; i < 2; i++)
-			ret = LLVMBuildInsertValue(ctx->ac.builder, ret,
-						   persp_sample[i], base + 4 + i, "");
-	}
-	if (key->ps_prolog.states.force_linear_sample_interp) {
-		unsigned i, base = key->ps_prolog.num_input_sgprs;
-		LLVMValueRef linear_sample[2];
-
-		/* Read LINEAR_SAMPLE. */
-		for (i = 0; i < 2; i++)
-			linear_sample[i] = LLVMGetParam(func, base + 6 + i);
-		/* Overwrite LINEAR_CENTER. */
-		for (i = 0; i < 2; i++)
-			ret = LLVMBuildInsertValue(ctx->ac.builder, ret,
-						   linear_sample[i], base + 8 + i, "");
-		/* Overwrite LINEAR_CENTROID. */
-		for (i = 0; i < 2; i++)
-			ret = LLVMBuildInsertValue(ctx->ac.builder, ret,
-						   linear_sample[i], base + 10 + i, "");
-	}
-
-	/* Force center interpolation. */
-	if (key->ps_prolog.states.force_persp_center_interp) {
-		unsigned i, base = key->ps_prolog.num_input_sgprs;
-		LLVMValueRef persp_center[2];
-
-		/* Read PERSP_CENTER. */
-		for (i = 0; i < 2; i++)
-			persp_center[i] = LLVMGetParam(func, base + 2 + i);
-		/* Overwrite PERSP_SAMPLE. */
-		for (i = 0; i < 2; i++)
-			ret = LLVMBuildInsertValue(ctx->ac.builder, ret,
-						   persp_center[i], base + i, "");
-		/* Overwrite PERSP_CENTROID. */
-		for (i = 0; i < 2; i++)
-			ret = LLVMBuildInsertValue(ctx->ac.builder, ret,
-						   persp_center[i], base + 4 + i, "");
-	}
-	if (key->ps_prolog.states.force_linear_center_interp) {
-		unsigned i, base = key->ps_prolog.num_input_sgprs;
-		LLVMValueRef linear_center[2];
-
-		/* Read LINEAR_CENTER. */
-		for (i = 0; i < 2; i++)
-			linear_center[i] = LLVMGetParam(func, base + 8 + i);
-		/* Overwrite LINEAR_SAMPLE. */
-		for (i = 0; i < 2; i++)
-			ret = LLVMBuildInsertValue(ctx->ac.builder, ret,
-						   linear_center[i], base + 6 + i, "");
-		/* Overwrite LINEAR_CENTROID. */
-		for (i = 0; i < 2; i++)
-			ret = LLVMBuildInsertValue(ctx->ac.builder, ret,
-						   linear_center[i], base + 10 + i, "");
-	}
-
-	/* Interpolate colors. */
-	unsigned color_out_idx = 0;
-	for (i = 0; i < 2; i++) {
-		unsigned writemask = (key->ps_prolog.colors_read >> (i * 4)) & 0xf;
-		unsigned face_vgpr = key->ps_prolog.num_input_sgprs +
-				     key->ps_prolog.face_vgpr_index;
-		LLVMValueRef interp[2], color[4];
-		LLVMValueRef interp_ij = NULL, prim_mask = NULL, face = NULL;
-
-		if (!writemask)
-			continue;
-
-		/* If the interpolation qualifier is not CONSTANT (-1). */
-		if (key->ps_prolog.color_interp_vgpr_index[i] != -1) {
-			unsigned interp_vgpr = key->ps_prolog.num_input_sgprs +
-					       key->ps_prolog.color_interp_vgpr_index[i];
-
-			/* Get the (i,j) updated by bc_optimize handling. */
-			interp[0] = LLVMBuildExtractValue(ctx->ac.builder, ret,
-							  interp_vgpr, "");
-			interp[1] = LLVMBuildExtractValue(ctx->ac.builder, ret,
-							  interp_vgpr + 1, "");
-			interp_ij = ac_build_gather_values(&ctx->ac, interp, 2);
-		}
-
-		/* Use the absolute location of the input. */
-		prim_mask = LLVMGetParam(func, SI_PS_NUM_USER_SGPR);
-
-		if (key->ps_prolog.states.color_two_side) {
-			face = LLVMGetParam(func, face_vgpr);
-			face = ac_to_integer(&ctx->ac, face);
-		}
-
-		interp_fs_color(ctx,
-				key->ps_prolog.color_attr_index[i], i,
-				key->ps_prolog.num_interp_inputs,
-				key->ps_prolog.colors_read, interp_ij,
-				prim_mask, face, color);
-
-		while (writemask) {
-			unsigned chan = u_bit_scan(&writemask);
-			ret = LLVMBuildInsertValue(ctx->ac.builder, ret, color[chan],
-						   ctx->args.arg_count + color_out_idx++, "");
-		}
-	}
-
-	/* Section 15.2.2 (Shader Inputs) of the OpenGL 4.5 (Core Profile) spec
-	 * says:
-	 *
-	 *    "When per-sample shading is active due to the use of a fragment
-	 *     input qualified by sample or due to the use of the gl_SampleID
-	 *     or gl_SamplePosition variables, only the bit for the current
-	 *     sample is set in gl_SampleMaskIn. When state specifies multiple
-	 *     fragment shader invocations for a given fragment, the sample
-	 *     mask for any single fragment shader invocation may specify a
-	 *     subset of the covered samples for the fragment. In this case,
-	 *     the bit corresponding to each covered sample will be set in
-	 *     exactly one fragment shader invocation."
-	 *
-	 * The samplemask loaded by hardware is always the coverage of the
-	 * entire pixel/fragment, so mask bits out based on the sample ID.
-	 */
-	if (key->ps_prolog.states.samplemask_log_ps_iter) {
-		/* The bit pattern matches that used by fixed function fragment
-		 * processing. */
-		static const uint16_t ps_iter_masks[] = {
-			0xffff, /* not used */
-			0x5555,
-			0x1111,
-			0x0101,
-			0x0001,
-		};
-		assert(key->ps_prolog.states.samplemask_log_ps_iter < ARRAY_SIZE(ps_iter_masks));
-
-		uint32_t ps_iter_mask = ps_iter_masks[key->ps_prolog.states.samplemask_log_ps_iter];
-		LLVMValueRef sampleid = si_unpack_param(ctx, ancillary, 8, 4);
-		LLVMValueRef samplemask = ac_get_arg(&ctx->ac, param_sample_mask);
-
-		samplemask = ac_to_integer(&ctx->ac, samplemask);
-		samplemask = LLVMBuildAnd(
-			ctx->ac.builder,
-			samplemask,
-			LLVMBuildShl(ctx->ac.builder,
-				     LLVMConstInt(ctx->i32, ps_iter_mask, false),
-				     sampleid, ""),
-			"");
-		samplemask = ac_to_float(&ctx->ac, samplemask);
-
-		ret = LLVMBuildInsertValue(ctx->ac.builder, ret, samplemask,
-					   param_sample_mask.arg_index, "");
-	}
-
-	/* Tell LLVM to insert WQM instruction sequence when needed. */
-	if (key->ps_prolog.wqm) {
-		LLVMAddTargetDependentFunctionAttr(func,
-						   "amdgpu-ps-wqm-outputs", "");
-	}
-
-	si_llvm_build_ret(ctx, ret);
 }
 
 /**
- * Build the pixel shader epilog function. This handles everything that must be
- * emulated for pixel shader exports. (alpha-test, format conversions, etc)
+ * Check whether a PS prolog is required based on the key.
  */
-static void si_build_ps_epilog_function(struct si_shader_context *ctx,
-					union si_shader_part_key *key)
+bool si_need_ps_prolog(const union si_shader_part_key *key)
 {
-	LLVMValueRef depth = NULL, stencil = NULL, samplemask = NULL;
-	int i;
-	struct si_ps_exports exp = {};
+	return key->ps_prolog.colors_read ||
+	       key->ps_prolog.states.force_persp_sample_interp ||
+	       key->ps_prolog.states.force_linear_sample_interp ||
+	       key->ps_prolog.states.force_persp_center_interp ||
+	       key->ps_prolog.states.force_linear_center_interp ||
+	       key->ps_prolog.states.bc_optimize_for_persp ||
+	       key->ps_prolog.states.bc_optimize_for_linear ||
+	       key->ps_prolog.states.poly_stipple ||
+	       key->ps_prolog.states.samplemask_log_ps_iter;
+}
 
-	memset(&ctx->args, 0, sizeof(ctx->args));
-
-	/* Declare input SGPRs. */
-	ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->rw_buffers);
-	ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT,
-		   &ctx->bindless_samplers_and_images);
-	ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT,
-		   &ctx->const_and_shader_buffers);
-	ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT,
-		   &ctx->samplers_and_images);
-	add_arg_checked(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_FLOAT,
-			NULL, SI_PARAM_ALPHA_REF);
-
-	/* Declare input VGPRs. */
-	unsigned required_num_params =
-		     ctx->args.num_sgprs_used +
-		     util_bitcount(key->ps_epilog.colors_written) * 4 +
-		     key->ps_epilog.writes_z +
-		     key->ps_epilog.writes_stencil +
-		     key->ps_epilog.writes_samplemask;
-
-	required_num_params = MAX2(required_num_params,
-				   ctx->args.num_sgprs_used + PS_EPILOG_SAMPLEMASK_MIN_LOC + 1);
-
-	while (ctx->args.arg_count < required_num_params)
-		ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_FLOAT, NULL);
-
-	/* Create the function. */
-	si_llvm_create_func(ctx, "ps_epilog", NULL, 0, 0);
-	/* Disable elimination of unused inputs. */
-	ac_llvm_add_target_dep_function_attr(ctx->main_fn,
-					     "InitialPSInputAddr", 0xffffff);
-
-	/* Process colors. */
-	unsigned vgpr = ctx->args.num_sgprs_used;
-	unsigned colors_written = key->ps_epilog.colors_written;
-	int last_color_export = -1;
-
-	/* Find the last color export. */
-	if (!key->ps_epilog.writes_z &&
-	    !key->ps_epilog.writes_stencil &&
-	    !key->ps_epilog.writes_samplemask) {
-		unsigned spi_format = key->ps_epilog.states.spi_shader_col_format;
-
-		/* If last_cbuf > 0, FS_COLOR0_WRITES_ALL_CBUFS is true. */
-		if (colors_written == 0x1 && key->ps_epilog.states.last_cbuf > 0) {
-			/* Just set this if any of the colorbuffers are enabled. */
-			if (spi_format &
-			    ((1ull << (4 * (key->ps_epilog.states.last_cbuf + 1))) - 1))
-				last_color_export = 0;
-		} else {
-			for (i = 0; i < 8; i++)
-				if (colors_written & (1 << i) &&
-				    (spi_format >> (i * 4)) & 0xf)
-					last_color_export = i;
-		}
-	}
-
-	while (colors_written) {
-		LLVMValueRef color[4];
-		int mrt = u_bit_scan(&colors_written);
-
-		for (i = 0; i < 4; i++)
-			color[i] = LLVMGetParam(ctx->main_fn, vgpr++);
-
-		si_export_mrt_color(ctx, color, mrt,
-				    ctx->args.arg_count - 1,
-				    mrt == last_color_export, &exp);
-	}
-
-	/* Process depth, stencil, samplemask. */
-	if (key->ps_epilog.writes_z)
-		depth = LLVMGetParam(ctx->main_fn, vgpr++);
-	if (key->ps_epilog.writes_stencil)
-		stencil = LLVMGetParam(ctx->main_fn, vgpr++);
-	if (key->ps_epilog.writes_samplemask)
-		samplemask = LLVMGetParam(ctx->main_fn, vgpr++);
-
-	if (depth || stencil || samplemask)
-		si_export_mrt_z(ctx, depth, stencil, samplemask, &exp);
-	else if (last_color_export == -1)
-		ac_build_export_null(&ctx->ac);
-
-	if (exp.num)
-		si_emit_ps_exports(ctx, &exp);
-
-	/* Compile. */
-	LLVMBuildRetVoid(ctx->ac.builder);
+/**
+ * Compute the PS epilog key, which contains all the information needed to
+ * build the PS epilog function.
+ */
+void si_get_ps_epilog_key(struct si_shader *shader,
+			  union si_shader_part_key *key)
+{
+	struct si_shader_info *info = &shader->selector->info;
+	memset(key, 0, sizeof(*key));
+	key->ps_epilog.colors_written = info->colors_written;
+	key->ps_epilog.writes_z = info->writes_z;
+	key->ps_epilog.writes_stencil = info->writes_stencil;
+	key->ps_epilog.writes_samplemask = info->writes_samplemask;
+	key->ps_epilog.states = shader->key.part.ps.epilog;
 }
 
 /**
@@ -6919,7 +5923,7 @@ static bool si_shader_select_ps_parts(struct si_screen *sscreen,
 			si_get_shader_part(sscreen, &sscreen->ps_prologs,
 					   PIPE_SHADER_FRAGMENT, true,
 					   &prolog_key, compiler, debug,
-					   si_build_ps_prolog_function,
+					   si_llvm_build_ps_prolog,
 					   "Fragment Shader Prolog");
 		if (!shader->prolog)
 			return false;
@@ -6932,7 +5936,7 @@ static bool si_shader_select_ps_parts(struct si_screen *sscreen,
 		si_get_shader_part(sscreen, &sscreen->ps_epilogs,
 				   PIPE_SHADER_FRAGMENT, false,
 				   &epilog_key, compiler, debug,
-				   si_build_ps_epilog_function,
+				   si_llvm_build_ps_epilog,
 				   "Fragment Shader Epilog");
 	if (!shader->epilog)
 		return false;

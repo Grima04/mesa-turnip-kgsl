@@ -1005,38 +1005,6 @@ static void declare_nir_input_vs(struct si_shader_context *ctx,
 	si_llvm_load_input_vs(ctx, input_index, out);
 }
 
-LLVMValueRef
-si_nir_lookup_interp_param(struct ac_shader_abi *abi,
-			   enum glsl_interp_mode interp, unsigned location)
-{
-	struct si_shader_context *ctx = si_shader_context_from_abi(abi);
-
-	switch (interp) {
-	case INTERP_MODE_FLAT:
-		return NULL;
-	case INTERP_MODE_SMOOTH:
-	case INTERP_MODE_NONE:
-		if (location == INTERP_CENTER)
-			return ac_get_arg(&ctx->ac, ctx->args.persp_center);
-		else if (location == INTERP_CENTROID)
-			return ctx->abi.persp_centroid;
-		else if (location == INTERP_SAMPLE)
-			return ac_get_arg(&ctx->ac, ctx->args.persp_sample);
-		break;
-	case INTERP_MODE_NOPERSPECTIVE:
-		if (location == INTERP_CENTER)
-			return ac_get_arg(&ctx->ac, ctx->args.linear_center);
-		else if (location == INTERP_CENTROID)
-			return ac_get_arg(&ctx->ac, ctx->args.linear_centroid);
-		else if (location == INTERP_SAMPLE)
-			return ac_get_arg(&ctx->ac, ctx->args.linear_sample);
-		break;
-	default:
-		assert(!"Unhandled interpolation mode.");
-	}
-	return NULL;
-}
-
 static LLVMValueRef
 si_nir_load_sampler_desc(struct ac_shader_abi *abi,
 		         unsigned descriptor_set, unsigned base_index,
