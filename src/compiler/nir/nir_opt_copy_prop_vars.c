@@ -155,7 +155,8 @@ gather_vars_written(struct copy_prop_var_state *state,
                               nir_var_shader_temp |
                               nir_var_function_temp |
                               nir_var_mem_ssbo |
-                              nir_var_mem_shared;
+                              nir_var_mem_shared |
+                              nir_var_mem_global;
             continue;
          }
 
@@ -168,7 +169,8 @@ gather_vars_written(struct copy_prop_var_state *state,
          case nir_intrinsic_memory_barrier:
             written->modes |= nir_var_shader_out |
                               nir_var_mem_ssbo |
-                              nir_var_mem_shared;
+                              nir_var_mem_shared |
+                              nir_var_mem_global;
             break;
 
          case nir_intrinsic_scoped_memory_barrier:
@@ -788,7 +790,8 @@ copy_prop_vars_block(struct copy_prop_var_state *state,
                                          nir_var_shader_temp |
                                          nir_var_function_temp |
                                          nir_var_mem_ssbo |
-                                         nir_var_mem_shared);
+                                         nir_var_mem_shared |
+                                         nir_var_mem_global);
          if (debug) dump_copy_entries(copies);
          continue;
       }
@@ -804,13 +807,15 @@ copy_prop_vars_block(struct copy_prop_var_state *state,
 
          apply_barrier_for_modes(copies, nir_var_shader_out |
                                          nir_var_mem_ssbo |
-                                         nir_var_mem_shared);
+                                         nir_var_mem_shared |
+                                         nir_var_mem_global);
          break;
 
       case nir_intrinsic_memory_barrier_buffer:
          if (debug) dump_instr(instr);
 
-         apply_barrier_for_modes(copies, nir_var_mem_ssbo);
+         apply_barrier_for_modes(copies, nir_var_mem_ssbo |
+                                         nir_var_mem_global);
          break;
 
       case nir_intrinsic_memory_barrier_shared:

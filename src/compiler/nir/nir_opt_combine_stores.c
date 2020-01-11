@@ -287,10 +287,11 @@ combine_stores_block(struct combine_stores_state *state, nir_block *block)
    nir_foreach_instr_safe(instr, block) {
       if (instr->type == nir_instr_type_call) {
          combine_stores_with_modes(state, nir_var_shader_out |
-                                              nir_var_shader_temp |
-                                              nir_var_function_temp |
-                                              nir_var_mem_ssbo |
-                                              nir_var_mem_shared);
+                                          nir_var_shader_temp |
+                                          nir_var_function_temp |
+                                          nir_var_mem_ssbo |
+                                          nir_var_mem_shared |
+                                          nir_var_mem_global);
          continue;
       }
 
@@ -307,12 +308,14 @@ combine_stores_block(struct combine_stores_state *state, nir_block *block)
       case nir_intrinsic_group_memory_barrier:
       case nir_intrinsic_memory_barrier:
          combine_stores_with_modes(state, nir_var_shader_out |
-                                              nir_var_mem_ssbo |
-                                              nir_var_mem_shared);
+                                          nir_var_mem_ssbo |
+                                          nir_var_mem_shared |
+                                          nir_var_mem_global);
          break;
 
       case nir_intrinsic_memory_barrier_buffer:
-         combine_stores_with_modes(state, nir_var_mem_ssbo);
+         combine_stores_with_modes(state, nir_var_mem_ssbo |
+                                          nir_var_mem_global);
          break;
 
       case nir_intrinsic_memory_barrier_shared:
