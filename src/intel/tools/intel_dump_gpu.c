@@ -113,7 +113,7 @@ align_u32(uint32_t v, uint32_t a)
 }
 
 static struct gen_device_info devinfo = {0};
-static uint32_t device = 0;
+static int device = 0;
 static struct aub_file aub_file;
 
 static void *
@@ -338,23 +338,6 @@ remove_bo(int fd, int handle)
    bo->map = NULL;
 }
 
-static uint32_t
-dump_create_context(int fd, uint32_t *ctx_id)
-{
-   if (!aub_file.file) {
-      aub_file_init(&aub_file, output_file,
-                    verbose == 2 ? stdout : NULL,
-                    device, program_invocation_short_name);
-      aub_write_default_setup(&aub_file);
-
-      if (verbose)
-         printf("[running, output file %s, chipset id 0x%04x, gen %d]\n",
-                output_filename, device, devinfo.gen);
-   }
-
-   return aub_write_context_create(&aub_file, ctx_id);
-}
-
 __attribute__ ((visibility ("default"))) int
 close(int fd)
 {
@@ -364,8 +347,23 @@ close(int fd)
    return libc_close(fd);
 }
 
+static int
+get_pci_id(int fd, int *pci_id)
+{
+   struct drm_i915_getparam gparam;
+
+   if (device_override) {
+      *pci_id = device;
+      return 0;
+   }
+
+   gparam.param = I915_PARAM_CHIPSET_ID;
+   gparam.value = pci_id;
+   return libc_ioctl(fd, DRM_IOCTL_I915_GETPARAM, &gparam);
+}
+
 static void
-maybe_init(void)
+maybe_init(int fd)
 {
    static bool initialized = false;
    FILE *config;
@@ -412,6 +410,18 @@ maybe_init(void)
 
    bos = calloc(MAX_FD_COUNT * MAX_BO_COUNT, sizeof(bos[0]));
    fail_if(bos == NULL, "out of memory\n");
+
+   int ret = get_pci_id(fd, &device);
+   assert(ret == 0);
+
+   aub_file_init(&aub_file, output_file,
+                 verbose == 2 ? stdout : NULL,
+                 device, program_invocation_short_name);
+   aub_write_default_setup(&aub_file);
+
+   if (verbose)
+      printf("[running, output file %s, chipset id 0x%04x, gen %d]\n",
+             output_filename, device, devinfo.gen);
 }
 
 __attribute__ ((visibility ("default"))) int
@@ -435,27 +445,12 @@ ioctl(int fd, unsigned long request, ...)
    }
 
    if (fd == drm_fd) {
-      maybe_init();
+      maybe_init(fd);
 
       switch (request) {
       case DRM_IOCTL_I915_GETPARAM: {
          struct drm_i915_getparam *getparam = argp;
-
-         if (device_override && getparam->param == I915_PARAM_CHIPSET_ID) {
-            *getparam->value = device;
-            return 0;
-         }
-
-         ret = libc_ioctl(fd, request, argp);
-
-         /* If the application looks up chipset_id
-          * (they typically do), we'll piggy-back on
-          * their ioctl and store the id for later
-          * use. */
-         if (ret == 0 && getparam->param == I915_PARAM_CHIPSET_ID)
-            device = *getparam->value;
-
-         return ret;
+         return get_pci_id(fd, getparam->value);
       }
 
       case DRM_IOCTL_I915_GEM_EXECBUFFER: {
@@ -487,7 +482,7 @@ ioctl(int fd, unsigned long request, ...)
          }
 
          if (ret == 0)
-            create->ctx_id = dump_create_context(fd, ctx_id);
+            create->ctx_id = aub_write_context_create(&aub_file, ctx_id);
 
          return ret;
       }
@@ -502,7 +497,7 @@ ioctl(int fd, unsigned long request, ...)
          }
 
          if (ret == 0)
-            create->ctx_id = dump_create_context(fd, ctx_id);
+            create->ctx_id = aub_write_context_create(&aub_file, ctx_id);
 
          return ret;
       }
