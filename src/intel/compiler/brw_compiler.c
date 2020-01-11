@@ -47,7 +47,8 @@
    .vectorize_io = true,                                                      \
    .use_interpolated_input_intrinsics = true,                                 \
    .vertex_id_zero_based = true,                                              \
-   .lower_base_vertex = true
+   .lower_base_vertex = true,                                                 \
+   .use_scoped_memory_barrier = true
 
 #define COMMON_SCALAR_OPTIONS                                                 \
    .lower_to_scalar = true,                                                   \

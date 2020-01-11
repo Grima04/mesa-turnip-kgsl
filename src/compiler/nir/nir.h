@@ -2921,6 +2921,11 @@ typedef struct nir_shader_compiler_options {
     */
    bool has_imul24;
 
+   /* Whether to generate only scoped_memory_barrier intrinsics instead of the
+    * set of memory barrier intrinsics based on GLSL.
+    */
+   bool use_scoped_memory_barrier;
+
    /**
     * Is this the Intel vec4 backend?
     *

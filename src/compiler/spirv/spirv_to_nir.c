@@ -3576,7 +3576,7 @@ void
 vtn_emit_memory_barrier(struct vtn_builder *b, SpvScope scope,
                         SpvMemorySemanticsMask semantics)
 {
-   if (b->options->use_scoped_memory_barrier) {
+   if (b->shader->options->use_scoped_memory_barrier) {
       vtn_emit_scoped_memory_barrier(b, scope, semantics);
       return;
    }
