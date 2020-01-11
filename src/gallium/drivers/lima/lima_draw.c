@@ -1030,29 +1030,24 @@ lima_stencil_op(enum pipe_stencil_op pipe)
 }
 #endif
 
-static int
+static unsigned
 lima_calculate_depth_test(struct pipe_depth_state *depth, struct pipe_rasterizer_state *rst)
 {
+   int offset_scale = 0, offset_units = 0;
    enum pipe_compare_func func = (depth->enabled ? depth->func : PIPE_FUNC_ALWAYS);
 
-   int offset_scale = 0;
-
-   //TODO: implement polygon offset
-#if 0
-   if (rst->offset_scale < -32)
-      offset_scale = -32;
-   else if (rst->offset_scale > 31)
-      offset_scale = 31;
-   else
-      offset_scale = rst->offset_scale * 4;
-
+   offset_scale = CLAMP(rst->offset_scale * 4, -128, 127);
    if (offset_scale < 0)
-      offset_scale = 0x100 + offset_scale;
-#endif
+      offset_scale += 0x100;
+
+   offset_units = CLAMP(rst->offset_units * 2, -128, 127);
+   if (offset_units < 0)
+      offset_units += 0x100;
 
    return (depth->enabled && depth->writemask) |
       ((int)func << 1) |
       (offset_scale << 16) |
+      (offset_units << 24) |
       0x30; /* find out what is this */
 }
 
