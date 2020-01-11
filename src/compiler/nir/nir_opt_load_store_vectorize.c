@@ -1229,7 +1229,9 @@ handle_barrier(struct vectorize_ctx *ctx, bool *progress, nir_function_impl *imp
 	 if (nir_intrinsic_memory_scope(intrin) == NIR_SCOPE_NONE)
             break;
 
-         modes = nir_intrinsic_memory_modes(intrin);
+         modes = nir_intrinsic_memory_modes(intrin) & (nir_var_mem_ssbo |
+                                                       nir_var_mem_shared |
+                                                       nir_var_mem_global);
          acquire = nir_intrinsic_memory_semantics(intrin) & NIR_MEMORY_ACQUIRE;
          release = nir_intrinsic_memory_semantics(intrin) & NIR_MEMORY_RELEASE;
          switch (nir_intrinsic_memory_scope(intrin)) {
