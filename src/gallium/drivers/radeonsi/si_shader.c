@@ -4523,8 +4523,7 @@ si_generate_gs_copy_shader(struct si_screen *sscreen,
 	shader->is_gs_copy_shader = true;
 
 	si_llvm_context_init(&ctx, sscreen, compiler,
-			     si_get_wave_size(sscreen, PIPE_SHADER_VERTEX, false, false),
-			     64);
+			     si_get_wave_size(sscreen, PIPE_SHADER_VERTEX, false, false));
 	ctx.shader = shader;
 	ctx.type = PIPE_SHADER_VERTEX;
 
@@ -5742,7 +5741,7 @@ int si_compile_shader(struct si_screen *sscreen,
 		si_dump_streamout(&sel->so);
 	}
 
-	si_llvm_context_init(&ctx, sscreen, compiler, si_get_shader_wave_size(shader), 64);
+	si_llvm_context_init(&ctx, sscreen, compiler, si_get_shader_wave_size(shader));
 	si_llvm_context_set_ir(&ctx, shader);
 
 	memset(shader->info.vs_output_param_offset, AC_EXP_PARAM_UNDEFINED,
@@ -6091,8 +6090,7 @@ si_get_shader_part(struct si_screen *sscreen,
 	struct si_shader_context ctx;
 	si_llvm_context_init(&ctx, sscreen, compiler,
 			     si_get_wave_size(sscreen, type, shader.key.as_ngg,
-					      shader.key.as_es),
-			     64);
+					      shader.key.as_es));
 	ctx.shader = &shader;
 	ctx.type = type;
 

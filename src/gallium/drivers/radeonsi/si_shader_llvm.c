@@ -114,8 +114,7 @@ void si_shader_binary_clean(struct si_shader_binary *binary)
 void si_llvm_context_init(struct si_shader_context *ctx,
 			  struct si_screen *sscreen,
 			  struct ac_llvm_compiler *compiler,
-			  unsigned wave_size,
-			  unsigned ballot_mask_bits)
+			  unsigned wave_size)
 {
 	/* Initialize the gallivm object:
 	 * We are only using the module, context, and builder fields of this struct.
@@ -129,7 +128,7 @@ void si_llvm_context_init(struct si_shader_context *ctx,
 	ac_llvm_context_init(&ctx->ac, compiler, sscreen->info.chip_class,
 			     sscreen->info.family,
 			     AC_FLOAT_MODE_NO_SIGNED_ZEROS_FP_MATH,
-			     wave_size, ballot_mask_bits);
+			     wave_size, 64);
 
 	ctx->voidt = LLVMVoidTypeInContext(ctx->ac.context);
 	ctx->i1 = LLVMInt1TypeInContext(ctx->ac.context);
