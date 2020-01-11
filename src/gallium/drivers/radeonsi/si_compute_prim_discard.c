@@ -364,7 +364,7 @@ void si_build_prim_discard_compute_shader(struct si_shader_context *ctx)
 	/* Create the compute shader function. */
 	unsigned old_type = ctx->type;
 	ctx->type = PIPE_SHADER_COMPUTE;
-	si_create_function(ctx, "prim_discard_cs", NULL, 0, THREADGROUP_SIZE);
+	si_llvm_create_func(ctx, "prim_discard_cs", NULL, 0, THREADGROUP_SIZE);
 	ctx->type = old_type;
 
 	if (VERTEX_COUNTER_GDS_MODE == 1) {

@@ -199,10 +199,6 @@ si_shader_context_from_abi(struct ac_shader_abi *abi)
 	return container_of(abi, ctx, abi);
 }
 
-void si_create_function(struct si_shader_context *ctx,
-			const char *name,
-			LLVMTypeRef *returns, unsigned num_returns,
-			unsigned max_workgroup_size);
 unsigned si_llvm_compile(LLVMModuleRef M, struct si_shader_binary *binary,
 			 struct ac_llvm_compiler *compiler,
 			 struct pipe_debug_callback *debug,
@@ -220,9 +216,9 @@ void si_llvm_context_init(struct si_shader_context *ctx,
 void si_llvm_context_set_ir(struct si_shader_context *ctx,
 			    struct si_shader *shader);
 
-void si_llvm_create_func(struct si_shader_context *ctx,
-			 const char *name,
-			 LLVMTypeRef *return_types, unsigned num_return_elems);
+void si_llvm_create_func(struct si_shader_context *ctx, const char *name,
+			 LLVMTypeRef *return_types, unsigned num_return_elems,
+			 unsigned max_workgroup_size);
 
 void si_llvm_dispose(struct si_shader_context *ctx);
 

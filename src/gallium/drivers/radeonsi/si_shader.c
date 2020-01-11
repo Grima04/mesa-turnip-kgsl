@@ -3225,27 +3225,6 @@ static void si_llvm_emit_barrier(struct si_shader_context *ctx)
 	ac_build_s_barrier(&ctx->ac);
 }
 
-void si_create_function(struct si_shader_context *ctx,
-			const char *name,
-			LLVMTypeRef *returns, unsigned num_returns,
-			unsigned max_workgroup_size)
-{
-	si_llvm_create_func(ctx, name, returns, num_returns);
-	ctx->return_value = LLVMGetUndef(ctx->return_type);
-
-	if (ctx->screen->info.address32_hi) {
-		ac_llvm_add_target_dep_function_attr(ctx->main_fn,
-						     "amdgpu-32bit-address-high-bits",
-						     ctx->screen->info.address32_hi);
-	}
-
-	LLVMAddTargetDependentFunctionAttr(ctx->main_fn,
-					   "no-signed-zeros-fp-math",
-					   "true");
-
-	ac_llvm_set_workgroup_size(ctx->main_fn, max_workgroup_size);
-}
-
 static void declare_streamout_params(struct si_shader_context *ctx,
 				     struct pipe_stream_output_info *so)
 {
@@ -3811,8 +3790,8 @@ static void create_function(struct si_shader_context *ctx)
 		return;
 	}
 
-	si_create_function(ctx, "main", returns, num_returns,
-			   si_get_max_workgroup_size(shader));
+	si_llvm_create_func(ctx, "main", returns, num_returns,
+			    si_get_max_workgroup_size(shader));
 
 	/* Reserve register locations for VGPR inputs the PS prolog may need. */
 	if (ctx->type == PIPE_SHADER_FRAGMENT && !ctx->shader->is_monolithic) {
@@ -5350,8 +5329,7 @@ static void si_build_gs_prolog_function(struct si_shader_context *ctx,
 	}
 
 	/* Create the function. */
-	si_create_function(ctx, "gs_prolog", returns, num_sgprs + num_vgprs,
-			   0);
+	si_llvm_create_func(ctx, "gs_prolog", returns, num_sgprs + num_vgprs, 0);
 	func = ctx->main_fn;
 
 	/* Set the full EXEC mask for the prolog, because we are only fiddling
@@ -5535,8 +5513,8 @@ static void si_build_wrapper_function(struct si_shader_context *ctx,
 		unreachable("unexpected type");
 	}
 
-	si_create_function(ctx, "wrapper", returns, num_returns,
-			   si_get_max_workgroup_size(ctx->shader));
+	si_llvm_create_func(ctx, "wrapper", returns, num_returns,
+			    si_get_max_workgroup_size(ctx->shader));
 
 	if (is_merged_shader(ctx))
 		ac_init_exec_full_mask(&ctx->ac);
@@ -6209,7 +6187,7 @@ static void si_build_vs_prolog_function(struct si_shader_context *ctx,
 		returns[num_returns++] = ctx->f32;
 
 	/* Create the function. */
-	si_create_function(ctx, "vs_prolog", returns, num_returns, 0);
+	si_llvm_create_func(ctx, "vs_prolog", returns, num_returns, 0);
 	func = ctx->main_fn;
 
 	for (i = 0; i < num_input_vgprs; i++) {
@@ -6440,8 +6418,8 @@ static void si_build_tcs_epilog_function(struct si_shader_context *ctx,
 		ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT, &tess_factors[i]);
 
 	/* Create the function. */
-	si_create_function(ctx, "tcs_epilog", NULL, 0,
-			   ctx->screen->info.chip_class >= GFX7 ? 128 : 0);
+	si_llvm_create_func(ctx, "tcs_epilog", NULL, 0,
+			    ctx->screen->info.chip_class >= GFX7 ? 128 : 0);
 	ac_declare_lds_as_pointer(&ctx->ac);
 
 	LLVMValueRef invoc0_tess_factors[6];
@@ -6585,7 +6563,7 @@ static void si_build_ps_prolog_function(struct si_shader_context *ctx,
 		return_types[num_returns++] = ctx->f32;
 
 	/* Create the function. */
-	si_create_function(ctx, "ps_prolog", return_types, num_returns, 0);
+	si_llvm_create_func(ctx, "ps_prolog", return_types, num_returns, 0);
 	func = ctx->main_fn;
 
 	/* Copy inputs to outputs. This should be no-op, as the registers match,
@@ -6861,7 +6839,7 @@ static void si_build_ps_epilog_function(struct si_shader_context *ctx,
 		ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_FLOAT, NULL);
 
 	/* Create the function. */
-	si_create_function(ctx, "ps_epilog", NULL, 0, 0);
+	si_llvm_create_func(ctx, "ps_epilog", NULL, 0, 0);
 	/* Disable elimination of unused inputs. */
 	ac_llvm_add_target_dep_function_attr(ctx->main_fn,
 					     "InitialPSInputAddr", 0xffffff);

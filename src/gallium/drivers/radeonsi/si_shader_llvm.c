@@ -167,9 +167,9 @@ void si_llvm_context_set_ir(struct si_shader_context *ctx,
 	ctx->num_images = util_last_bit(info->images_declared);
 }
 
-void si_llvm_create_func(struct si_shader_context *ctx,
-			 const char *name,
-			 LLVMTypeRef *return_types, unsigned num_return_elems)
+void si_llvm_create_func(struct si_shader_context *ctx, const char *name,
+			 LLVMTypeRef *return_types, unsigned num_return_elems,
+			 unsigned max_workgroup_size)
 {
 	LLVMTypeRef ret_type;
 	enum ac_llvm_calling_convention call_conv;
@@ -217,6 +217,19 @@ void si_llvm_create_func(struct si_shader_context *ctx,
 	ctx->return_type = ret_type;
 	ctx->main_fn = ac_build_main(&ctx->args, &ctx->ac, call_conv, name,
 				     ret_type, ctx->ac.module);
+	ctx->return_value = LLVMGetUndef(ctx->return_type);
+
+	if (ctx->screen->info.address32_hi) {
+		ac_llvm_add_target_dep_function_attr(ctx->main_fn,
+						     "amdgpu-32bit-address-high-bits",
+						     ctx->screen->info.address32_hi);
+	}
+
+	LLVMAddTargetDependentFunctionAttr(ctx->main_fn,
+					   "no-signed-zeros-fp-math",
+					   "true");
+
+	ac_llvm_set_workgroup_size(ctx->main_fn, max_workgroup_size);
 }
 
 void si_llvm_optimize_module(struct si_shader_context *ctx)
