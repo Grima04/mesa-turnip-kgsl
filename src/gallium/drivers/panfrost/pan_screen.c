@@ -459,10 +459,14 @@ panfrost_is_format_supported( struct pipe_screen *screen,
         if (scanout && renderable && !util_format_is_rgba8_variant(format_desc))
                 return false;
 
-        if (format_desc->layout != UTIL_FORMAT_LAYOUT_PLAIN &&
-            format_desc->layout != UTIL_FORMAT_LAYOUT_OTHER) {
-                /* Compressed formats not yet hooked up. */
-                return false;
+        switch (format_desc->layout) {
+                case UTIL_FORMAT_LAYOUT_PLAIN:
+                case UTIL_FORMAT_LAYOUT_OTHER:
+                        break;
+                case UTIL_FORMAT_LAYOUT_ETC:
+                        return true;
+                default:
+                        return false;
         }
 
         /* Internally, formats that are depth/stencil renderable are limited.

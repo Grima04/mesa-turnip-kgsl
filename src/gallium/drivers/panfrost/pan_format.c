@@ -217,6 +217,29 @@ panfrost_find_format(const struct util_format_description *desc) {
         case PIPE_FORMAT_R9G9B9E5_FLOAT:
                 return MALI_R9F_G9F_B9F_E5F;
 
+        case PIPE_FORMAT_ETC1_RGB8:
+        case PIPE_FORMAT_ETC2_RGB8:
+        case PIPE_FORMAT_ETC2_SRGB8:
+                return MALI_ETC2_RGB8;
+
+        case PIPE_FORMAT_ETC2_RGB8A1:
+        case PIPE_FORMAT_ETC2_SRGB8A1:
+                return MALI_ETC2_RGB8A1;
+
+        case PIPE_FORMAT_ETC2_RGBA8:
+        case PIPE_FORMAT_ETC2_SRGBA8:
+                return MALI_ETC2_RGBA8;
+
+        case PIPE_FORMAT_ETC2_R11_UNORM:
+                return MALI_ETC2_R11_UNORM;
+        case PIPE_FORMAT_ETC2_R11_SNORM:
+                return MALI_ETC2_R11_SNORM;
+
+        case PIPE_FORMAT_ETC2_RG11_UNORM:
+                return MALI_ETC2_RG11_UNORM;
+        case PIPE_FORMAT_ETC2_RG11_SNORM:
+                return MALI_ETC2_RG11_SNORM;
+
         default:
                 /* Fallthrough to default */
                 break;

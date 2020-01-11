@@ -315,6 +315,9 @@ panfrost_setup_slices(struct panfrost_resource *pres, size_t *bo_size)
                 /* Compute the would-be stride */
                 unsigned stride = bytes_per_pixel * effective_width;
 
+                if (util_format_is_compressed(res->format))
+                        stride /= 4;
+
                 /* ..but cache-line align it for performance */
                 if (can_align_stride && pres->layout == PAN_LINEAR)
                         stride = ALIGN_POT(stride, 64);
