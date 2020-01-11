@@ -257,22 +257,11 @@ parse_plbu_semaphore(FILE *fp, uint32_t *value1, uint32_t *value2)
 static void
 parse_plbu_primitive_setup(FILE *fp, uint32_t *value1, uint32_t *value2)
 {
-   char prim[10];
-
-   if ((*value1 & 0x0000f000) == 0x00000000)
-       strcpy(prim, "POINTS");
-   else if ((*value1 & 0x0000f000) == 0x00003000)
-       strcpy(prim, "LINES");
-   else if ((*value1 & 0x0000f000) == 0x00002000)
-       strcpy(prim, "TRIANGLES");
-   else
-       strcpy(prim, "UNKNOWN");
-
    if (*value1 == 0x00000200)
       fprintf(fp, "\t/* UNKNOWN_2 (PRIMITIVE_SETUP INIT?) */\n");
    else
-      fprintf(fp, "\t/* PRIMITIVE_SETUP: prim: %s, cull: %d (0x%x), index_size: %d */\n",
-              prim,
+      fprintf(fp, "\t/* PRIMITIVE_SETUP: %scull: %d (0x%x), index_size: %d */\n",
+              (*value1 & 0x1000) ? "force point size, " : "",
               (*value1 & 0x000f0000) >> 16, (*value1 & 0x000f0000) >> 16,
               (*value1 & 0x00000e00) >> 9);
 }

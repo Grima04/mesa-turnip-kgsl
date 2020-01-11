@@ -148,8 +148,9 @@ struct lima_render_state {
 #define PLBU_CMD_VIEWPORT_TOP(v) PLBU_CMD(v, 0x10000106)
 #define PLBU_CMD_ARRAYS_SEMAPHORE_BEGIN() PLBU_CMD(0x00010002, 0x60000000)
 #define PLBU_CMD_ARRAYS_SEMAPHORE_END() PLBU_CMD(0x00010001, 0x60000000)
-#define PLBU_CMD_PRIMITIVE_SETUP(prim, cull, index_size) \
-   PLBU_CMD(0x200 | (prim) | (cull) | ((index_size) << 9), 0x1000010B)
+#define PLBU_CMD_PRIMITIVE_SETUP(force_point_size, cull, index_size) \
+   PLBU_CMD(0x2200 | ((force_point_size) ? 0x1000 : 0) | \
+            (cull) | ((index_size) << 9), 0x1000010B)
 #define PLBU_CMD_RSW_VERTEX_ARRAY(rsw, gl_pos) \
    PLBU_CMD(rsw, 0x80000000 | ((gl_pos) >> 4))
 #define PLBU_CMD_SCISSORS(minx, maxx, miny, maxy) \
@@ -846,6 +847,8 @@ lima_pack_plbu_cmd(struct lima_context *ctx, const struct pipe_draw_info *info)
    int cf = ctx->rasterizer->base.cull_face;
    int ccw = ctx->rasterizer->base.front_ccw;
    uint32_t cull = 0;
+   bool force_point_size = false;
+
    if (cf != PIPE_FACE_NONE) {
       if (cf & PIPE_FACE_FRONT)
          cull |= ccw ? 0x00040000 : 0x00020000;
@@ -853,12 +856,15 @@ lima_pack_plbu_cmd(struct lima_context *ctx, const struct pipe_draw_info *info)
          cull |= ccw ? 0x00020000 : 0x00040000;
    }
 
-   if (info->mode == PIPE_PRIM_POINTS && ctx->vs->point_size_idx != -1)
-      PLBU_CMD_PRIMITIVE_SETUP(0x0000, cull, info->index_size);
-   else if (info->mode < PIPE_PRIM_TRIANGLES)
-      PLBU_CMD_PRIMITIVE_SETUP(0x3000, cull, info->index_size);
-   else
-      PLBU_CMD_PRIMITIVE_SETUP(0x2000, cull, info->index_size);
+   /* Specify point size with PLBU command if shader doesn't write */
+   if (info->mode == PIPE_PRIM_POINTS && ctx->vs->point_size_idx == -1)
+      force_point_size = true;
+
+   /* Specify line width with PLBU command for lines */
+   if (info->mode > PIPE_PRIM_POINTS && info->mode < PIPE_PRIM_TRIANGLES)
+      force_point_size = true;
+
+   PLBU_CMD_PRIMITIVE_SETUP(force_point_size, cull, info->index_size);
 
    PLBU_CMD_RSW_VERTEX_ARRAY(
       lima_ctx_buff_va(ctx, lima_ctx_buff_pp_plb_rsw, LIMA_CTX_BUFF_SUBMIT_PP),
