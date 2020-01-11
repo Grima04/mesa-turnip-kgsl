@@ -827,6 +827,7 @@ lima_pack_plbu_cmd(struct lima_context *ctx, const struct pipe_draw_info *info)
 {
    struct lima_context_framebuffer *fb = &ctx->framebuffer;
    struct lima_vs_shader_state *vs = ctx->vs;
+   unsigned minx, maxx, miny, maxy;
 
    lima_pack_head_plbu_cmd(ctx);
 
@@ -876,13 +877,24 @@ lima_pack_plbu_cmd(struct lima_context *ctx, const struct pipe_draw_info *info)
     */
    if (ctx->rasterizer->base.scissor) {
       struct pipe_scissor_state *scissor = &ctx->scissor;
-      PLBU_CMD_SCISSORS(scissor->minx, scissor->maxx, scissor->miny, scissor->maxy);
-      lima_damage_rect_union(ctx, scissor->minx, scissor->maxx,
-                                  scissor->miny, scissor->maxy);
+      minx = scissor->minx;
+      maxx = scissor->maxx;
+      miny = scissor->miny;
+      maxy = scissor->maxy;
    } else {
-      PLBU_CMD_SCISSORS(0, fb->base.width, 0, fb->base.height);
-      lima_damage_rect_union(ctx, 0, fb->base.width, 0, fb->base.height);
+      minx = 0;
+      maxx = fb->base.width;
+      miny = 0;
+      maxy = fb->base.height;
    }
+
+   minx = MAX2(minx, ctx->viewport.left);
+   maxx = MIN2(maxx, ctx->viewport.right);
+   miny = MAX2(miny, ctx->viewport.bottom);
+   maxy = MIN2(maxy, ctx->viewport.top);
+
+   PLBU_CMD_SCISSORS(minx, maxx, miny, maxy);
+   lima_damage_rect_union(ctx, minx, maxx, miny, maxy);
 
    PLBU_CMD_UNKNOWN1();
 
