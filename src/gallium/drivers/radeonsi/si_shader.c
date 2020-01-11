@@ -7057,9 +7057,10 @@ static void si_fix_resource_usage(struct si_screen *sscreen,
 	}
 }
 
-bool si_shader_create(struct si_screen *sscreen, struct ac_llvm_compiler *compiler,
-		     struct si_shader *shader,
-		     struct pipe_debug_callback *debug)
+bool si_create_shader_variant(struct si_screen *sscreen,
+			      struct ac_llvm_compiler *compiler,
+			      struct si_shader *shader,
+			      struct pipe_debug_callback *debug)
 {
 	struct si_shader_selector *sel = shader->selector;
 	struct si_shader *mainp = *si_get_main_shader_part(sel, &shader->key);

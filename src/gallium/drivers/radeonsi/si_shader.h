@@ -823,9 +823,10 @@ int si_compile_shader(struct si_screen *sscreen,
 		      struct ac_llvm_compiler *compiler,
 		      struct si_shader *shader,
 		      struct pipe_debug_callback *debug);
-bool si_shader_create(struct si_screen *sscreen, struct ac_llvm_compiler *compiler,
-		     struct si_shader *shader,
-		     struct pipe_debug_callback *debug);
+bool si_create_shader_variant(struct si_screen *sscreen,
+			      struct ac_llvm_compiler *compiler,
+			      struct si_shader *shader,
+			      struct pipe_debug_callback *debug);
 void si_shader_destroy(struct si_shader *shader);
 unsigned si_shader_io_get_unique_index_patch(unsigned semantic_name, unsigned index);
 unsigned si_shader_io_get_unique_index(unsigned semantic_name, unsigned index,

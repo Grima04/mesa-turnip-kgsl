@@ -159,7 +159,7 @@ static void si_create_compute_state_async(void *job, int thread_index)
 	} else {
 		simple_mtx_unlock(&sscreen->shader_cache_mutex);
 
-		if (!si_shader_create(sscreen, compiler, &program->shader, debug)) {
+		if (!si_create_shader_variant(sscreen, compiler, &program->shader, debug)) {
 			program->shader.compilation_failed = true;
 			return;
 		}
