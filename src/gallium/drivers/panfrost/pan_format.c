@@ -245,6 +245,13 @@ panfrost_find_format(const struct util_format_description *desc) {
                 break;
         }
 
+        if (desc->layout == UTIL_FORMAT_LAYOUT_ASTC) {
+                if (desc->colorspace == UTIL_FORMAT_COLORSPACE_SRGB)
+                        return MALI_ASTC_SRGB_SUPP;
+                else
+                        return MALI_ASTC_HDR_SUPP;
+        }
+
         /* Formats must match in channel count */
         assert(desc->nr_channels >= 1 && desc->nr_channels <= 4);
         unsigned format = MALI_NR_CHANNELS(desc->nr_channels);

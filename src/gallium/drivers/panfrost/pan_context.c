@@ -601,7 +601,7 @@ panfrost_upload_tex(
                         for (unsigned f = first_face; f <= last_face; ++f) {
                                 pointers_and_strides[idx++] =
                                         panfrost_get_texture_address(rsrc, l, w*face_mult + f)
-                                                + afbc_bit;
+                                                + afbc_bit + view->astc_stretch;
 
                                 if (has_manual_stride) {
                                         pointers_and_strides[idx++] =
@@ -2124,6 +2124,21 @@ panfrost_translate_texture_type(enum pipe_texture_target t) {
         }
 }
 
+static uint8_t
+panfrost_compute_astc_stretch(
+        const struct util_format_description *desc)
+{
+        unsigned width = desc->block.width;
+        unsigned height = desc->block.height;
+        assert(width >= 4 && width <= 12);
+        assert(height >= 4 && height <= 12);
+        if (width == 12)
+                width = 11;
+        if (height == 12)
+                height = 11;
+        return ((height - 4) * 8) + (width - 4);
+}
+
 static struct pipe_sampler_view *
 panfrost_create_sampler_view(
         struct pipe_context *pctx,
@@ -2157,6 +2172,9 @@ panfrost_create_sampler_view(
         };
 
         enum mali_format format = panfrost_find_format(desc);
+
+        if (format == MALI_ASTC_HDR_SUPP || format == MALI_ASTC_SRGB_SUPP)
+                so->astc_stretch = panfrost_compute_astc_stretch(desc);
 
         /* Check if we need to set a custom stride by computing the "expected"
          * stride and comparing it to what the BO actually wants. Only applies

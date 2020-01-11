@@ -273,6 +273,7 @@ struct panfrost_sampler_state {
 struct panfrost_sampler_view {
         struct pipe_sampler_view base;
         struct mali_texture_descriptor hw;
+        uint8_t astc_stretch;
         bool manual_stride;
 };
 

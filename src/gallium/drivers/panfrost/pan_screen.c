@@ -464,6 +464,7 @@ panfrost_is_format_supported( struct pipe_screen *screen,
                 case UTIL_FORMAT_LAYOUT_OTHER:
                         break;
                 case UTIL_FORMAT_LAYOUT_ETC:
+                case UTIL_FORMAT_LAYOUT_ASTC:
                         return true;
                 default:
                         return false;
