@@ -337,8 +337,6 @@ static bool ppir_lower_branch(ppir_block *block, ppir_node *node)
    zero->dest.type = ppir_target_pipeline;
    zero->dest.pipeline = ppir_pipeline_reg_const0;
    zero->dest.ssa.num_components = 1;
-   zero->dest.ssa.live_in = INT_MAX;
-   zero->dest.ssa.live_out = 0;
    zero->dest.write_mask = 0x01;
 
    /* For now we're just comparing branch condition with 0,

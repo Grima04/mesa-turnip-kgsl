@@ -42,8 +42,6 @@ static void *ppir_node_create_ssa(ppir_block *block, ppir_op op, nir_ssa_def *ss
    ppir_dest *dest = ppir_node_get_dest(node);
    dest->type = ppir_target_ssa;
    dest->ssa.num_components = ssa->num_components;
-   dest->ssa.live_in = INT_MAX;
-   dest->ssa.live_out = 0;
    dest->write_mask = u_bit_consecutive(0, ssa->num_components);
 
    if (node->type == ppir_node_type_load ||
@@ -389,8 +387,6 @@ static ppir_node *ppir_emit_intrinsic(ppir_block *block, nir_instr *ni)
       ppir_dest *dest = ppir_node_get_dest(&alu_node->node);
       dest->type = ppir_target_ssa;
       dest->ssa.num_components = instr->num_components;
-      dest->ssa.live_in = INT_MAX;
-      dest->ssa.live_out = 0;
       dest->ssa.index = 0;
       dest->write_mask = u_bit_consecutive(0, instr->num_components);
 
@@ -898,8 +894,6 @@ bool ppir_compile_nir(struct lima_fs_shader_state *prog, struct nir_shader *nir,
 
       r->index = reg->index;
       r->num_components = reg->num_components;
-      r->live_in = INT_MAX;
-      r->live_out = 0;
       r->is_head = false;
       list_addtail(&r->list, &comp->reg_list);
    }

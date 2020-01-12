@@ -27,6 +27,7 @@
 
 #include "util/u_math.h"
 #include "util/list.h"
+#include "util/set.h"
 
 #include "ir/lima_ir.h"
 
@@ -181,13 +182,11 @@ typedef struct ppir_reg {
    int index;
    int regalloc_index;
    int num_components;
+
    /* whether this reg has to start from the x component
     * of a full physical reg, this is true for reg used
-    * in load/store instr which has no swizzle field
-    */
+    * in load/store instr which has no swizzle field */
    bool is_head;
-   /* instr live range */
-   int live_in, live_out;
    bool spilled;
    bool undef;
 } ppir_reg;
@@ -300,6 +299,11 @@ enum ppir_instr_slot {
    PPIR_INSTR_SLOT_ALU_END = PPIR_INSTR_SLOT_ALU_COMBINE,
 };
 
+struct ppir_liveness {
+   ppir_reg *reg;
+   unsigned mask : 4;
+};
+
 typedef struct ppir_instr {
    struct list_head list;
    int index;
@@ -319,6 +323,12 @@ typedef struct ppir_instr {
    bool scheduled;
    int offset;
    int encode_size;
+
+   /* for liveness analysis */
+   struct ppir_liveness *live_in;
+   struct ppir_liveness *live_out;
+   struct set *live_in_set;
+   struct set *live_out_set;
 } ppir_instr;
 
 typedef struct ppir_block {
@@ -335,11 +345,11 @@ typedef struct ppir_block {
    int sched_instr_base;
    int index;
 
-   /*  for liveness analysis */
-   BITSET_WORD *def;
-   BITSET_WORD *use;
-   BITSET_WORD *live_in;
-   BITSET_WORD *live_out;
+   /* for liveness analysis */
+   struct ppir_liveness *live_in;
+   struct ppir_liveness *live_out;
+   struct set *live_in_set;
+   struct set *live_out_set;
 } ppir_block;
 
 typedef struct {
@@ -465,6 +475,15 @@ static inline ppir_dest *ppir_node_get_dest(ppir_node *node)
    default:
       return NULL;
    }
+}
+
+static inline int ppir_src_get_mask(ppir_node *node)
+{
+   ppir_dest *dest = ppir_node_get_dest(node);
+   if (dest)
+      return dest->write_mask;
+
+   return 0x01;
 }
 
 static inline int ppir_node_get_src_num(ppir_node *node)
