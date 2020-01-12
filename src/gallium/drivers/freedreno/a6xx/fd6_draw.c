@@ -350,16 +350,11 @@ fd6_clear_lrz(struct fd_batch *batch, struct fd_resource *zsbuf, double depth)
 	struct fd_ringbuffer *ring;
 	struct fd6_context *fd6_ctx = fd6_context(batch->ctx);
 
-	// TODO mid-frame clears (ie. app doing crazy stuff)??  Maybe worth
-	// splitting both clear and lrz clear out into their own rb's.  And
-	// just throw away any draws prior to clear.  (Anything not fullscreen
-	// clear, just fallback to generic path that treats it as a normal
-	// draw
-
-	if (!batch->lrz_clear) {
-		batch->lrz_clear = fd_submit_new_ringbuffer(batch->submit, 0x1000, 0);
+	if (batch->lrz_clear) {
+		fd_ringbuffer_del(batch->lrz_clear);
 	}
 
+	batch->lrz_clear = fd_submit_new_ringbuffer(batch->submit, 0x1000, 0);
 	ring = batch->lrz_clear;
 
 	emit_marker6(ring, 7);
