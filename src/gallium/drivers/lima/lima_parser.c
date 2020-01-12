@@ -631,9 +631,9 @@ parse_texture(FILE *fp, uint32_t *data, uint32_t start, uint32_t offset)
    fprintf(fp, "\t unnorm_coords: 0x%x (%d)\n", desc->unnorm_coords, desc->unnorm_coords);
    fprintf(fp, "\t unknown_1_2: 0x%x (%d)\n", desc->unknown_1_2, desc->unknown_1_2);
    fprintf(fp, "\t texture_type: 0x%x (%d)\n", desc->texture_type, desc->texture_type);
-   fprintf(fp, "\t unknown_1_3: 0x%x (%d)\n", desc->unknown_1_3, desc->unknown_1_3);
-   fprintf(fp, "\t miplevels: 0x%x (%d)\n", desc->miplevels, desc->miplevels);
-   fprintf(fp, "\t min_mipfilter_1: 0x%x (%d)\n", desc->min_mipfilter_1, desc->min_mipfilter_1);
+   fprintf(fp, "\t min_lod: 0x%x (%d) (%f)\n", desc->min_lod, desc->min_lod, lima_fixed8_to_float(desc->min_lod));
+   fprintf(fp, "\t max_lod: 0x%x (%d) (%f)\n", desc->max_lod, desc->max_lod, lima_fixed8_to_float(desc->max_lod));
+   fprintf(fp, "\t lod_bias: 0x%x (%d) (%f)\n", desc->lod_bias, desc->lod_bias, lima_fixed8_to_float(desc->lod_bias));
    fprintf(fp, "\t unknown_2_1: 0x%x (%d)\n", desc->unknown_2_1, desc->unknown_2_1);
    fprintf(fp, "\t has_stride: 0x%x (%d)\n", desc->has_stride, desc->has_stride);
    fprintf(fp, "\t min_mipfilter_2: 0x%x (%d)\n", desc->min_mipfilter_2, desc->min_mipfilter_2);
@@ -667,7 +667,9 @@ parse_texture(FILE *fp, uint32_t *data, uint32_t start, uint32_t offset)
    fprintf(fp, "/* 0x%08x (0x%08x) */",
            start + i * 4, i * 4);
    fprintf(fp, "\t");
-   for (int k = 0; k < ((((desc->miplevels + 1) * 26) + 64) / 32); k++)
+
+   int miplevels = (int)lima_fixed8_to_float(desc->max_lod);
+   for (int k = 0; k < ((((miplevels + 1) * 26) + 64) / 32); k++)
       fprintf(fp, "0x%08x ", *(&data[i + offset + k]));
    fprintf(fp, "\n");
 
@@ -687,7 +689,7 @@ parse_texture(FILE *fp, uint32_t *data, uint32_t start, uint32_t offset)
    uint32_t va;
    uint32_t va_1;
    uint32_t va_2;
-   for (j = 1; j <= desc->miplevels; j++) {
+   for (j = 1; j <= miplevels; j++) {
       va = 0;
       va_1 = 0;
       va_2 = 0;

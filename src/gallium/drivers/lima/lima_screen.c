@@ -166,7 +166,7 @@ lima_screen_get_paramf(struct pipe_screen *pscreen, enum pipe_capf param)
    case PIPE_CAPF_MAX_TEXTURE_ANISOTROPY:
       return 16.0f;
    case PIPE_CAPF_MAX_TEXTURE_LOD_BIAS:
-      return 16.0f;
+      return 15.0f;
 
    default:
       return 0.0f;

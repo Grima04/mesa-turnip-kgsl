@@ -118,9 +118,12 @@ lima_update_tex_desc(struct lima_context *ctx, struct lima_sampler_state *sample
                      struct lima_sampler_view *texture, void *pdesc,
                      unsigned desc_size)
 {
+   /* unit is 1/16 since lod_bias is in fixed format */
+   int lod_bias_delta = 0;
    lima_tex_desc *desc = pdesc;
    unsigned first_level;
    unsigned last_level;
+   float max_lod;
 
    memset(desc, 0, desc_size);
 
@@ -144,18 +147,22 @@ lima_update_tex_desc(struct lima_context *ctx, struct lima_sampler_state *sample
    if (last_level - first_level >= LIMA_MAX_MIP_LEVELS)
       last_level = first_level + LIMA_MAX_MIP_LEVELS - 1;
 
-   desc->miplevels = (last_level - first_level);
+   desc->min_lod = lima_float_to_fixed8(sampler->base.min_lod);
+   max_lod = MIN2(sampler->base.max_lod, sampler->base.min_lod +
+                                         (last_level - first_level));
+   desc->max_lod = lima_float_to_fixed8(max_lod);
+   desc->lod_bias = lima_float_to_fixed8(sampler->base.lod_bias);
 
    switch (sampler->base.min_mip_filter) {
       case PIPE_TEX_MIPFILTER_LINEAR:
-         desc->min_mipfilter_1 = 0;
          desc->min_mipfilter_2 = 3;
          break;
       case PIPE_TEX_MIPFILTER_NEAREST:
-         desc->min_mipfilter_1 = 0x1ff;
          desc->min_mipfilter_2 = 0;
          break;
       case PIPE_TEX_MIPFILTER_NONE:
+         desc->max_lod = desc->min_lod;
+         break;
       default:
          break;
    }
@@ -177,6 +184,7 @@ lima_update_tex_desc(struct lima_context *ctx, struct lima_sampler_state *sample
       break;
    case PIPE_TEX_FILTER_NEAREST:
    default:
+      lod_bias_delta = 8;
       desc->min_img_filter_nearest = 1;
       break;
    }
@@ -214,6 +222,13 @@ lima_update_tex_desc(struct lima_context *ctx, struct lima_sampler_state *sample
    default:
       break;
    }
+
+   if (desc->min_img_filter_nearest && desc->mag_img_filter_nearest &&
+       desc->min_mipfilter_2 == 0 &&
+       (desc->min_lod != desc->max_lod))
+     lod_bias_delta = -1;
+
+   desc->lod_bias += lod_bias_delta;
 
    lima_texture_desc_set_res(ctx, desc, texture->base.texture,
                              first_level, last_level);
