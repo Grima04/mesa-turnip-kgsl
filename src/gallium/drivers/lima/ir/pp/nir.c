@@ -117,7 +117,11 @@ static void ppir_node_add_src(ppir_compiler *comp, ppir_node *node,
          if (!is_load_coords) {
             /* Clone varying loads for each block */
             if (child->block != node->block) {
-               child = ppir_node_clone(node->block, child);
+               ppir_node *new = ppir_node_clone(node->block, child);
+               /* If we clone it for every block and there is no user of
+                * the original load left, delete the original one. */
+               ppir_delete_if_orphan(node->block, child);
+               child = new;
                comp->var_nodes[ns->ssa->index] = child;
             }
             break;

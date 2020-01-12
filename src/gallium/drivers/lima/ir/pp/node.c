@@ -669,6 +669,27 @@ ppir_node_clone_load(ppir_block *block, ppir_node *node)
    return &new_lnode->node;
 }
 
+void
+ppir_delete_if_orphan(ppir_block *block, ppir_node *node)
+{
+   ppir_dest *dest = ppir_node_get_dest(node);
+   if (!dest)
+      return;
+
+   ppir_node_foreach_succ_safe(node, dep) {
+      ppir_node *succ = dep->succ;
+      for (int i = 0; i < ppir_node_get_src_num(succ); i++) {
+         ppir_src *src = ppir_node_get_src(succ, i);
+         if (!src)
+            continue;
+         if (ppir_node_target_equal(src, dest))
+            return;
+      }
+   }
+
+   ppir_node_delete(node);
+}
+
 ppir_node *ppir_node_clone(ppir_block *block, ppir_node *node)
 {
    switch (node->op) {
