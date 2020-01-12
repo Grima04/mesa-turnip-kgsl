@@ -1759,6 +1759,7 @@ panfrost_delete_shader_state(
                 panfrost_bo_unreference(shader_state->bo);
                 shader_state->bo = NULL;
         }
+        free(cso->variants);
 
         free(so);
 }
@@ -1958,7 +1959,25 @@ panfrost_bind_shader_state(
         if (variant == -1) {
                 /* No variant matched, so create a new one */
                 variant = variants->variant_count++;
-                assert(variants->variant_count < MAX_SHADER_VARIANTS);
+
+                if (variants->variant_count > variants->variant_space) {
+                        unsigned old_space = variants->variant_space;
+
+                        variants->variant_space *= 2;
+                        if (variants->variant_space == 0)
+                                variants->variant_space = 1;
+
+                        /* Arbitrary limit to stop runaway programs from
+                         * creating an unbounded number of shader variants. */
+                        assert(variants->variant_space < 1024);
+
+                        unsigned msize = sizeof(struct panfrost_shader_state);
+                        variants->variants = realloc(variants->variants,
+                                                     variants->variant_space * msize);
+
+                        memset(&variants->variants[old_space], 0,
+                               (variants->variant_space - old_space) * msize);
+                }
 
                 struct panfrost_shader_state *v =
                                 &variants->variants[variant];
