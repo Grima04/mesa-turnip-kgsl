@@ -81,7 +81,7 @@ mv /deqp /artifacts/rootfs/.
 
 
 ############### Cross-build kernel
-KERNEL_URL="https://gitlab.freedesktop.org/tomeu/linux/-/archive/v5.5-rc1-panfrost-fixes/linux-v5.5-rc1-panfrost-fixes.tar.gz"
+KERNEL_URL="https://gitlab.freedesktop.org/tomeu/linux/-/archive/v5.5-rc5-panfrost-fixes/linux-v5.5-rc5-panfrost-fixes.tar.gz"
 export ARCH=${KERNEL_ARCH}
 export CROSS_COMPILE="${GCC_ARCH}-"
 
