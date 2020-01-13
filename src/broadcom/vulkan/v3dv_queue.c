@@ -157,3 +157,45 @@ v3dv_QueueSubmit(VkQueue _queue,
 
    return result;
 }
+
+VkResult
+v3dv_CreateSemaphore(VkDevice _device,
+                     const VkSemaphoreCreateInfo *pCreateInfo,
+                     const VkAllocationCallbacks *pAllocator,
+                     VkSemaphore *pSemaphore)
+{
+   V3DV_FROM_HANDLE(v3dv_device, device, _device);
+
+   assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO);
+
+   struct v3dv_semaphore *sem =
+      vk_alloc2(&device->alloc, pAllocator, sizeof(struct v3dv_semaphore), 8,
+               VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   if (sem == NULL)
+      return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+
+   int ret = drmSyncobjCreate(device->fd, 0, &sem->sync);
+   if (ret) {
+      vk_free2(&device->alloc, pAllocator, sem);
+      return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+   }
+
+   *pSemaphore = v3dv_semaphore_to_handle(sem);
+
+   return VK_SUCCESS;
+}
+
+void
+v3dv_DestroySemaphore(VkDevice _device,
+                      VkSemaphore semaphore,
+                      const VkAllocationCallbacks *pAllocator)
+{
+   V3DV_FROM_HANDLE(v3dv_device, device, _device);
+   V3DV_FROM_HANDLE(v3dv_semaphore, sem, semaphore);
+
+   if (sem == NULL)
+      return;
+
+   drmSyncobjDestroy(device->fd, sem->sync);
+   vk_free2(&device->alloc, pAllocator, sem);
+}

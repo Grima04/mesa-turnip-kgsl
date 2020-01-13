@@ -519,6 +519,11 @@ void v3dv_cmd_buffer_finish_job(struct v3dv_cmd_buffer *cmd_buffer);
 void v3dv_cmd_buffer_start_frame(struct v3dv_cmd_buffer *cmd_buffer,
                                  const struct v3dv_framebuffer *framebuffer);
 
+struct v3dv_semaphore {
+   /* A syncobject handle associated with this semaphore */
+   uint32_t sync;
+};
+
 struct v3dv_shader_module {
    unsigned char sha1[20];
    uint32_t size;
@@ -728,6 +733,7 @@ V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_image, VkImage)
 V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_image_view, VkImageView)
 V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_pipeline, VkPipeline)
 V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_render_pass, VkRenderPass)
+V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_semaphore, VkSemaphore)
 V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_shader_module, VkShaderModule)
 
 /* This is defined as a macro so that it works for both
