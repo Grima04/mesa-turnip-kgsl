@@ -1260,6 +1260,7 @@ struct radv_cmd_state {
 	unsigned                                     active_occlusion_queries;
 	bool                                         perfect_occlusion_queries_enabled;
 	unsigned                                     active_pipeline_queries;
+	unsigned                                     active_pipeline_gds_queries;
 	float					     offset_scale;
 	uint32_t                                      trace_id;
 	uint32_t                                      last_ia_multi_vgt_param;
@@ -1274,6 +1275,9 @@ struct radv_cmd_state {
 	/* Conditional rendering info. */
 	int predication_type; /* -1: disabled, 0: normal, 1: inverted */
 	uint64_t predication_va;
+
+	/* Inheritance info. */
+	VkQueryPipelineStatisticFlags inherited_pipeline_statistics;
 
 	bool context_roll_without_scissor_emitted;
 };
@@ -1333,7 +1337,7 @@ struct radv_cmd_buffer {
 	uint32_t esgs_ring_size_needed;
 	uint32_t gsvs_ring_size_needed;
 	bool tess_rings_needed;
-	bool gds_needed; /* for GFX10 streamout */
+	bool gds_needed; /* for GFX10 streamout and NGG GS queries */
 	bool gds_oa_needed; /* for GFX10 streamout */
 	bool sample_positions_needed;
 
