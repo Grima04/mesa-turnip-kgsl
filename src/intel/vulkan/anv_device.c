@@ -1538,9 +1538,13 @@ void anv_GetPhysicalDeviceProperties2(
             (VkPhysicalDeviceDriverPropertiesKHR *) ext;
 
          driver_props->driverID = VK_DRIVER_ID_INTEL_OPEN_SOURCE_MESA_KHR;
+         memset(driver_props->driverName, 0,
+                sizeof(driver_props->driverName));
          snprintf(driver_props->driverName, VK_MAX_DRIVER_NAME_SIZE_KHR,
                   "Intel open-source Mesa driver");
 
+         memset(driver_props->driverInfo, 0,
+                sizeof(driver_props->driverInfo));
          snprintf(driver_props->driverInfo, VK_MAX_DRIVER_INFO_SIZE_KHR,
                   "Mesa " PACKAGE_VERSION MESA_GIT_SHA1);
 
@@ -1567,6 +1571,7 @@ void anv_GetPhysicalDeviceProperties2(
          memcpy(id_props->deviceUUID, pdevice->device_uuid, VK_UUID_SIZE);
          memcpy(id_props->driverUUID, pdevice->driver_uuid, VK_UUID_SIZE);
          /* The LUID is for Windows. */
+         memset(id_props->deviceLUID, 0, VK_UUID_SIZE);
          id_props->deviceLUIDValid = false;
          break;
       }
