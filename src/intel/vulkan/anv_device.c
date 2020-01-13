@@ -1058,26 +1058,28 @@ void anv_GetPhysicalDeviceFeatures2(
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES_EXT: {
          VkPhysicalDeviceDescriptorIndexingFeaturesEXT *features =
             (VkPhysicalDeviceDescriptorIndexingFeaturesEXT *)ext;
+         bool descIndexing = pdevice->has_a64_buffer_access &&
+                             pdevice->has_bindless_images;
          features->shaderInputAttachmentArrayDynamicIndexing = false;
-         features->shaderUniformTexelBufferArrayDynamicIndexing = true;
-         features->shaderStorageTexelBufferArrayDynamicIndexing = true;
+         features->shaderUniformTexelBufferArrayDynamicIndexing = descIndexing;
+         features->shaderStorageTexelBufferArrayDynamicIndexing = descIndexing;
          features->shaderUniformBufferArrayNonUniformIndexing = false;
-         features->shaderSampledImageArrayNonUniformIndexing = true;
-         features->shaderStorageBufferArrayNonUniformIndexing = true;
-         features->shaderStorageImageArrayNonUniformIndexing = true;
+         features->shaderSampledImageArrayNonUniformIndexing = descIndexing;
+         features->shaderStorageBufferArrayNonUniformIndexing = descIndexing;
+         features->shaderStorageImageArrayNonUniformIndexing = descIndexing;
          features->shaderInputAttachmentArrayNonUniformIndexing = false;
-         features->shaderUniformTexelBufferArrayNonUniformIndexing = true;
-         features->shaderStorageTexelBufferArrayNonUniformIndexing = true;
+         features->shaderUniformTexelBufferArrayNonUniformIndexing = descIndexing;
+         features->shaderStorageTexelBufferArrayNonUniformIndexing = descIndexing;
          features->descriptorBindingUniformBufferUpdateAfterBind = false;
-         features->descriptorBindingSampledImageUpdateAfterBind = true;
-         features->descriptorBindingStorageImageUpdateAfterBind = true;
-         features->descriptorBindingStorageBufferUpdateAfterBind = true;
-         features->descriptorBindingUniformTexelBufferUpdateAfterBind = true;
-         features->descriptorBindingStorageTexelBufferUpdateAfterBind = true;
-         features->descriptorBindingUpdateUnusedWhilePending = true;
-         features->descriptorBindingPartiallyBound = true;
+         features->descriptorBindingSampledImageUpdateAfterBind = descIndexing;
+         features->descriptorBindingStorageImageUpdateAfterBind = descIndexing;
+         features->descriptorBindingStorageBufferUpdateAfterBind = descIndexing;
+         features->descriptorBindingUniformTexelBufferUpdateAfterBind = descIndexing;
+         features->descriptorBindingStorageTexelBufferUpdateAfterBind = descIndexing;
+         features->descriptorBindingUpdateUnusedWhilePending = descIndexing;
+         features->descriptorBindingPartiallyBound = descIndexing;
          features->descriptorBindingVariableDescriptorCount = false;
-         features->runtimeDescriptorArray = true;
+         features->runtimeDescriptorArray = descIndexing;
          break;
       }
 
