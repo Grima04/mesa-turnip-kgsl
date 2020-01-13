@@ -963,6 +963,86 @@ void anv_GetPhysicalDeviceFeatures(
       pFeatures->depthBounds = true;
 }
 
+static void
+anv_get_physical_device_features_1_1(struct anv_physical_device *pdevice,
+                                     VkPhysicalDeviceVulkan11Features *f)
+{
+   assert(f->sType == VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES);
+
+   f->storageBuffer16BitAccess            = pdevice->info.gen >= 8;
+   f->uniformAndStorageBuffer16BitAccess  = pdevice->info.gen >= 8;
+   f->storagePushConstant16               = pdevice->info.gen >= 8;
+   f->storageInputOutput16                = false;
+   f->multiview                           = true;
+   f->multiviewGeometryShader             = true;
+   f->multiviewTessellationShader         = true;
+   f->variablePointersStorageBuffer       = true;
+   f->variablePointers                    = true;
+   f->protectedMemory                     = false;
+   f->samplerYcbcrConversion              = true;
+   f->shaderDrawParameters                = true;
+}
+
+static void
+anv_get_physical_device_features_1_2(struct anv_physical_device *pdevice,
+                                     VkPhysicalDeviceVulkan12Features *f)
+{
+   assert(f->sType == VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES);
+
+   f->samplerMirrorClampToEdge            = true;
+   f->drawIndirectCount                   = true;
+   f->storageBuffer8BitAccess             = pdevice->info.gen >= 8;
+   f->uniformAndStorageBuffer8BitAccess   = pdevice->info.gen >= 8;
+   f->storagePushConstant8                = pdevice->info.gen >= 8;
+   f->shaderBufferInt64Atomics            = pdevice->info.gen >= 9 &&
+                                            pdevice->use_softpin;
+   f->shaderSharedInt64Atomics            = false;
+   f->shaderFloat16                       = pdevice->info.gen >= 8;
+   f->shaderInt8                          = pdevice->info.gen >= 8;
+
+   bool descIndexing = pdevice->has_a64_buffer_access &&
+                       pdevice->has_bindless_images;
+   f->descriptorIndexing                                 = descIndexing;
+   f->shaderInputAttachmentArrayDynamicIndexing          = false;
+   f->shaderUniformTexelBufferArrayDynamicIndexing       = descIndexing;
+   f->shaderStorageTexelBufferArrayDynamicIndexing       = descIndexing;
+   f->shaderUniformBufferArrayNonUniformIndexing         = false;
+   f->shaderSampledImageArrayNonUniformIndexing          = descIndexing;
+   f->shaderStorageBufferArrayNonUniformIndexing         = descIndexing;
+   f->shaderStorageImageArrayNonUniformIndexing          = descIndexing;
+   f->shaderInputAttachmentArrayNonUniformIndexing       = false;
+   f->shaderUniformTexelBufferArrayNonUniformIndexing    = descIndexing;
+   f->shaderStorageTexelBufferArrayNonUniformIndexing    = descIndexing;
+   f->descriptorBindingUniformBufferUpdateAfterBind      = false;
+   f->descriptorBindingSampledImageUpdateAfterBind       = descIndexing;
+   f->descriptorBindingStorageImageUpdateAfterBind       = descIndexing;
+   f->descriptorBindingStorageBufferUpdateAfterBind      = descIndexing;
+   f->descriptorBindingUniformTexelBufferUpdateAfterBind = descIndexing;
+   f->descriptorBindingStorageTexelBufferUpdateAfterBind = descIndexing;
+   f->descriptorBindingUpdateUnusedWhilePending          = descIndexing;
+   f->descriptorBindingPartiallyBound                    = descIndexing;
+   f->descriptorBindingVariableDescriptorCount           = false;
+   f->runtimeDescriptorArray                             = descIndexing;
+
+   f->samplerFilterMinmax                 = pdevice->info.gen >= 9;
+   f->scalarBlockLayout                   = true;
+   f->imagelessFramebuffer                = true;
+   f->uniformBufferStandardLayout         = true;
+   f->shaderSubgroupExtendedTypes         = true;
+   f->separateDepthStencilLayouts         = true;
+   f->hostQueryReset                      = true;
+   f->timelineSemaphore                   = true;
+   f->bufferDeviceAddress                 = pdevice->has_a64_buffer_access;
+   f->bufferDeviceAddressCaptureReplay    = pdevice->has_a64_buffer_access;
+   f->bufferDeviceAddressMultiDevice      = false;
+   f->vulkanMemoryModel                   = true;
+   f->vulkanMemoryModelDeviceScope        = true;
+   f->vulkanMemoryModelAvailabilityVisibilityChains = true;
+   f->shaderOutputViewportIndex           = true;
+   f->shaderOutputLayer                   = true;
+   f->subgroupBroadcastDynamicId          = true;
+}
+
 void anv_GetPhysicalDeviceFeatures2(
     VkPhysicalDevice                            physicalDevice,
     VkPhysicalDeviceFeatures2*                  pFeatures)
@@ -970,24 +1050,38 @@ void anv_GetPhysicalDeviceFeatures2(
    ANV_FROM_HANDLE(anv_physical_device, pdevice, physicalDevice);
    anv_GetPhysicalDeviceFeatures(physicalDevice, &pFeatures->features);
 
+   VkPhysicalDeviceVulkan11Features core_1_1 = {
+      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES,
+   };
+   anv_get_physical_device_features_1_1(pdevice, &core_1_1);
+
+   VkPhysicalDeviceVulkan12Features core_1_2 = {
+      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
+   };
+   anv_get_physical_device_features_1_2(pdevice, &core_1_2);
+
+#define CORE_FEATURE(major, minor, feature) \
+   features->feature = core_##major##_##minor.feature
+
+
    vk_foreach_struct(ext, pFeatures->pNext) {
       switch (ext->sType) {
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_8BIT_STORAGE_FEATURES_KHR: {
          VkPhysicalDevice8BitStorageFeaturesKHR *features =
             (VkPhysicalDevice8BitStorageFeaturesKHR *)ext;
-         features->storageBuffer8BitAccess = pdevice->info.gen >= 8;
-         features->uniformAndStorageBuffer8BitAccess = pdevice->info.gen >= 8;
-         features->storagePushConstant8 = pdevice->info.gen >= 8;
+         CORE_FEATURE(1, 2, storageBuffer8BitAccess);
+         CORE_FEATURE(1, 2, uniformAndStorageBuffer8BitAccess);
+         CORE_FEATURE(1, 2, storagePushConstant8);
          break;
       }
 
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES: {
          VkPhysicalDevice16BitStorageFeatures *features =
             (VkPhysicalDevice16BitStorageFeatures *)ext;
-         features->storageBuffer16BitAccess = pdevice->info.gen >= 8;
-         features->uniformAndStorageBuffer16BitAccess = pdevice->info.gen >= 8;
-         features->storagePushConstant16 = pdevice->info.gen >= 8;
-         features->storageInputOutput16 = false;
+         CORE_FEATURE(1, 1, storageBuffer16BitAccess);
+         CORE_FEATURE(1, 1, uniformAndStorageBuffer16BitAccess);
+         CORE_FEATURE(1, 1, storagePushConstant16);
+         CORE_FEATURE(1, 1, storageInputOutput16);
          break;
       }
 
@@ -1001,10 +1095,9 @@ void anv_GetPhysicalDeviceFeatures2(
 
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES_KHR: {
          VkPhysicalDeviceBufferDeviceAddressFeaturesKHR *features = (void *)ext;
-         features->bufferDeviceAddress = pdevice->has_a64_buffer_access;
-         features->bufferDeviceAddressCaptureReplay =
-            pdevice->has_a64_buffer_access;
-         features->bufferDeviceAddressMultiDevice = false;
+         CORE_FEATURE(1, 2, bufferDeviceAddress);
+         CORE_FEATURE(1, 2, bufferDeviceAddressCaptureReplay);
+         CORE_FEATURE(1, 2, bufferDeviceAddressMultiDevice);
          break;
       }
 
@@ -1035,8 +1128,8 @@ void anv_GetPhysicalDeviceFeatures2(
 
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FLOAT16_INT8_FEATURES_KHR: {
          VkPhysicalDeviceFloat16Int8FeaturesKHR *features = (void *)ext;
-         features->shaderFloat16 = pdevice->info.gen >= 8;
-         features->shaderInt8 = pdevice->info.gen >= 8;
+         CORE_FEATURE(1, 2, shaderFloat16);
+         CORE_FEATURE(1, 2, shaderInt8);
          break;
       }
 
@@ -1052,35 +1145,33 @@ void anv_GetPhysicalDeviceFeatures2(
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES_EXT: {
          VkPhysicalDeviceHostQueryResetFeaturesEXT *features =
             (VkPhysicalDeviceHostQueryResetFeaturesEXT *)ext;
-         features->hostQueryReset = true;
+         CORE_FEATURE(1, 2, hostQueryReset);
          break;
       }
 
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES_EXT: {
          VkPhysicalDeviceDescriptorIndexingFeaturesEXT *features =
             (VkPhysicalDeviceDescriptorIndexingFeaturesEXT *)ext;
-         bool descIndexing = pdevice->has_a64_buffer_access &&
-                             pdevice->has_bindless_images;
-         features->shaderInputAttachmentArrayDynamicIndexing = false;
-         features->shaderUniformTexelBufferArrayDynamicIndexing = descIndexing;
-         features->shaderStorageTexelBufferArrayDynamicIndexing = descIndexing;
-         features->shaderUniformBufferArrayNonUniformIndexing = false;
-         features->shaderSampledImageArrayNonUniformIndexing = descIndexing;
-         features->shaderStorageBufferArrayNonUniformIndexing = descIndexing;
-         features->shaderStorageImageArrayNonUniformIndexing = descIndexing;
-         features->shaderInputAttachmentArrayNonUniformIndexing = false;
-         features->shaderUniformTexelBufferArrayNonUniformIndexing = descIndexing;
-         features->shaderStorageTexelBufferArrayNonUniformIndexing = descIndexing;
-         features->descriptorBindingUniformBufferUpdateAfterBind = false;
-         features->descriptorBindingSampledImageUpdateAfterBind = descIndexing;
-         features->descriptorBindingStorageImageUpdateAfterBind = descIndexing;
-         features->descriptorBindingStorageBufferUpdateAfterBind = descIndexing;
-         features->descriptorBindingUniformTexelBufferUpdateAfterBind = descIndexing;
-         features->descriptorBindingStorageTexelBufferUpdateAfterBind = descIndexing;
-         features->descriptorBindingUpdateUnusedWhilePending = descIndexing;
-         features->descriptorBindingPartiallyBound = descIndexing;
-         features->descriptorBindingVariableDescriptorCount = false;
-         features->runtimeDescriptorArray = descIndexing;
+         CORE_FEATURE(1, 2, shaderInputAttachmentArrayDynamicIndexing);
+         CORE_FEATURE(1, 2, shaderUniformTexelBufferArrayDynamicIndexing);
+         CORE_FEATURE(1, 2, shaderStorageTexelBufferArrayDynamicIndexing);
+         CORE_FEATURE(1, 2, shaderUniformBufferArrayNonUniformIndexing);
+         CORE_FEATURE(1, 2, shaderSampledImageArrayNonUniformIndexing);
+         CORE_FEATURE(1, 2, shaderStorageBufferArrayNonUniformIndexing);
+         CORE_FEATURE(1, 2, shaderStorageImageArrayNonUniformIndexing);
+         CORE_FEATURE(1, 2, shaderInputAttachmentArrayNonUniformIndexing);
+         CORE_FEATURE(1, 2, shaderUniformTexelBufferArrayNonUniformIndexing);
+         CORE_FEATURE(1, 2, shaderStorageTexelBufferArrayNonUniformIndexing);
+         CORE_FEATURE(1, 2, descriptorBindingUniformBufferUpdateAfterBind);
+         CORE_FEATURE(1, 2, descriptorBindingSampledImageUpdateAfterBind);
+         CORE_FEATURE(1, 2, descriptorBindingStorageImageUpdateAfterBind);
+         CORE_FEATURE(1, 2, descriptorBindingStorageBufferUpdateAfterBind);
+         CORE_FEATURE(1, 2, descriptorBindingUniformTexelBufferUpdateAfterBind);
+         CORE_FEATURE(1, 2, descriptorBindingStorageTexelBufferUpdateAfterBind);
+         CORE_FEATURE(1, 2, descriptorBindingUpdateUnusedWhilePending);
+         CORE_FEATURE(1, 2, descriptorBindingPartiallyBound);
+         CORE_FEATURE(1, 2, descriptorBindingVariableDescriptorCount);
+         CORE_FEATURE(1, 2, runtimeDescriptorArray);
          break;
       }
 
@@ -1122,16 +1213,16 @@ void anv_GetPhysicalDeviceFeatures2(
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES: {
          VkPhysicalDeviceMultiviewFeatures *features =
             (VkPhysicalDeviceMultiviewFeatures *)ext;
-         features->multiview = true;
-         features->multiviewGeometryShader = true;
-         features->multiviewTessellationShader = true;
+         CORE_FEATURE(1, 1, multiview);
+         CORE_FEATURE(1, 1, multiviewGeometryShader);
+         CORE_FEATURE(1, 1, multiviewTessellationShader);
          break;
       }
 
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGELESS_FRAMEBUFFER_FEATURES_KHR: {
          VkPhysicalDeviceImagelessFramebufferFeaturesKHR *features =
             (VkPhysicalDeviceImagelessFramebufferFeaturesKHR *)ext;
-         features->imagelessFramebuffer = true;
+         CORE_FEATURE(1, 2, imagelessFramebuffer);
          break;
       }
 
@@ -1144,36 +1235,35 @@ void anv_GetPhysicalDeviceFeatures2(
 
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROTECTED_MEMORY_FEATURES: {
          VkPhysicalDeviceProtectedMemoryFeatures *features = (void *)ext;
-         features->protectedMemory = false;
+         CORE_FEATURE(1, 1, protectedMemory);
          break;
       }
 
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLER_YCBCR_CONVERSION_FEATURES: {
          VkPhysicalDeviceSamplerYcbcrConversionFeatures *features =
             (VkPhysicalDeviceSamplerYcbcrConversionFeatures *) ext;
-         features->samplerYcbcrConversion = true;
+         CORE_FEATURE(1, 1, samplerYcbcrConversion);
          break;
       }
 
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCALAR_BLOCK_LAYOUT_FEATURES_EXT: {
          VkPhysicalDeviceScalarBlockLayoutFeaturesEXT *features =
             (VkPhysicalDeviceScalarBlockLayoutFeaturesEXT *)ext;
-         features->scalarBlockLayout = true;
+         CORE_FEATURE(1, 2, scalarBlockLayout);
          break;
       }
 
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SEPARATE_DEPTH_STENCIL_LAYOUTS_FEATURES_KHR: {
          VkPhysicalDeviceSeparateDepthStencilLayoutsFeaturesKHR *features =
             (VkPhysicalDeviceSeparateDepthStencilLayoutsFeaturesKHR *)ext;
-         features->separateDepthStencilLayouts = true;
+         CORE_FEATURE(1, 2, separateDepthStencilLayouts);
          break;
       }
 
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_INT64_FEATURES_KHR: {
          VkPhysicalDeviceShaderAtomicInt64FeaturesKHR *features = (void *)ext;
-         features->shaderBufferInt64Atomics =
-            pdevice->info.gen >= 9 && pdevice->use_softpin;
-         features->shaderSharedInt64Atomics = VK_FALSE;
+         CORE_FEATURE(1, 2, shaderBufferInt64Atomics);
+         CORE_FEATURE(1, 2, shaderSharedInt64Atomics);
          break;
       }
 
@@ -1193,14 +1283,14 @@ void anv_GetPhysicalDeviceFeatures2(
 
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DRAW_PARAMETERS_FEATURES: {
          VkPhysicalDeviceShaderDrawParametersFeatures *features = (void *)ext;
-         features->shaderDrawParameters = true;
+         CORE_FEATURE(1, 1, shaderDrawParameters);
          break;
       }
 
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SUBGROUP_EXTENDED_TYPES_FEATURES_KHR: {
          VkPhysicalDeviceShaderSubgroupExtendedTypesFeaturesKHR *features =
             (VkPhysicalDeviceShaderSubgroupExtendedTypesFeaturesKHR *)ext;
-         features->shaderSubgroupExtendedTypes = true;
+         CORE_FEATURE(1, 2, shaderSubgroupExtendedTypes);
          break;
       }
 
@@ -1222,14 +1312,14 @@ void anv_GetPhysicalDeviceFeatures2(
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES_KHR: {
          VkPhysicalDeviceTimelineSemaphoreFeaturesKHR *features =
             (VkPhysicalDeviceTimelineSemaphoreFeaturesKHR *) ext;
-         features->timelineSemaphore = true;
+         CORE_FEATURE(1, 2, timelineSemaphore);
          break;
       }
 
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VARIABLE_POINTERS_FEATURES: {
          VkPhysicalDeviceVariablePointersFeatures *features = (void *)ext;
-         features->variablePointersStorageBuffer = true;
-         features->variablePointers = true;
+         CORE_FEATURE(1, 1, variablePointersStorageBuffer);
+         CORE_FEATURE(1, 1, variablePointers);
          break;
       }
 
@@ -1244,7 +1334,7 @@ void anv_GetPhysicalDeviceFeatures2(
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_UNIFORM_BUFFER_STANDARD_LAYOUT_FEATURES_KHR: {
          VkPhysicalDeviceUniformBufferStandardLayoutFeaturesKHR *features =
             (VkPhysicalDeviceUniformBufferStandardLayoutFeaturesKHR *)ext;
-         features->uniformBufferStandardLayout = true;
+         CORE_FEATURE(1, 2, uniformBufferStandardLayout);
          break;
       }
 
@@ -1256,11 +1346,19 @@ void anv_GetPhysicalDeviceFeatures2(
          break;
       }
 
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES:
+         anv_get_physical_device_features_1_1(pdevice, (void *)ext);
+         break;
+
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES:
+         anv_get_physical_device_features_1_2(pdevice, (void *)ext);
+         break;
+
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_MEMORY_MODEL_FEATURES_KHR: {
          VkPhysicalDeviceVulkanMemoryModelFeaturesKHR *features = (void *)ext;
-         features->vulkanMemoryModel = true;
-         features->vulkanMemoryModelDeviceScope = true;
-         features->vulkanMemoryModelAvailabilityVisibilityChains = true;
+         CORE_FEATURE(1, 2, vulkanMemoryModel);
+         CORE_FEATURE(1, 2, vulkanMemoryModelDeviceScope);
+         CORE_FEATURE(1, 2, vulkanMemoryModelAvailabilityVisibilityChains);
          break;
       }
 
@@ -1276,6 +1374,8 @@ void anv_GetPhysicalDeviceFeatures2(
          break;
       }
    }
+
+#undef CORE_FEATURE
 }
 
 #define MAX_PER_STAGE_DESCRIPTOR_UNIFORM_BUFFERS   64
