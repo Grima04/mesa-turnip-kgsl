@@ -188,13 +188,17 @@ lower_system_value_instr(nir_builder *b, nir_instr *instr, void *_state)
       }
 
    case nir_intrinsic_load_global_invocation_id: {
-      nir_ssa_def *group_size = nir_load_local_group_size(b);
-      nir_ssa_def *group_id = nir_load_work_group_id(b, bit_size);
-      nir_ssa_def *local_id = nir_load_local_invocation_id(b);
+      if (!b->shader->options->has_cs_global_id) {
+         nir_ssa_def *group_size = nir_load_local_group_size(b);
+         nir_ssa_def *group_id = nir_load_work_group_id(b, bit_size);
+         nir_ssa_def *local_id = nir_load_local_invocation_id(b);
 
-      return nir_iadd(b, nir_imul(b, group_id,
-                                     nir_u2u(b, group_size, bit_size)),
-                         nir_u2u(b, local_id, bit_size));
+         return nir_iadd(b, nir_imul(b, group_id,
+                                        nir_u2u(b, group_size, bit_size)),
+                            nir_u2u(b, local_id, bit_size));
+      } else {
+         return NULL;
+      }
    }
 
    case nir_intrinsic_load_global_invocation_index: {

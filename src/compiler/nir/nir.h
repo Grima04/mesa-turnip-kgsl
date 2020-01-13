@@ -3124,6 +3124,9 @@ typedef struct nir_shader_compiler_options {
    bool lower_cs_local_index_from_id;
    bool lower_cs_local_id_from_index;
 
+   /* Prevents lowering global_invocation_id to be in terms of work_group_id */
+   bool has_cs_global_id;
+
    bool lower_device_index_to_zero;
 
    /* Set if nir_lower_wpos_ytransform() should also invert gl_PointCoord. */
