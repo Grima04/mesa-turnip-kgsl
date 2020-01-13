@@ -1014,11 +1014,23 @@ iris_init_compute_context(struct iris_batch *batch)
 {
    UNUSED const struct gen_device_info *devinfo = &batch->screen->devinfo;
 
+   /* GEN:BUG:1607854226:
+    *
+    *  Start with pipeline in 3D mode to set the STATE_BASE_ADDRESS.
+    */
+#if GEN_GEN == 12
+   emit_pipeline_select(batch, _3D);
+#else
    emit_pipeline_select(batch, GPGPU);
+#endif
 
    iris_emit_default_l3_config(batch, devinfo, true);
 
    init_state_base_address(batch);
+
+#if GEN_GEN == 12
+   emit_pipeline_select(batch, GPGPU);
+#endif
 
 #if GEN_GEN == 9
    if (devinfo->is_geminilake)
@@ -5030,6 +5042,20 @@ iris_update_surface_base_address(struct iris_batch *batch,
 
    flush_before_state_base_change(batch);
 
+#if GEN_GEN == 12
+   /* GEN:BUG:1607854226:
+    *
+    *  Workaround the non pipelined state not applying in MEDIA/GPGPU pipeline
+    *  mode by putting the pipeline temporarily in 3D mode..
+    */
+   if (batch->name == IRIS_BATCH_COMPUTE) {
+      iris_emit_cmd(batch, GENX(PIPELINE_SELECT), sel) {
+         sel.MaskBits = 3;
+         sel.PipelineSelection = _3D;
+      }
+   }
+#endif
+
    iris_emit_cmd(batch, GENX(STATE_BASE_ADDRESS), sba) {
       sba.SurfaceStateBaseAddressModifyEnable = true;
       sba.SurfaceStateBaseAddress = ro_bo(binder->bo, 0);
@@ -5047,6 +5073,19 @@ iris_update_surface_base_address(struct iris_batch *batch,
       sba.BindlessSurfaceStateMOCS    = mocs;
 #endif
    }
+
+#if GEN_GEN == 12
+   /* GEN:BUG:1607854226:
+    *
+    *  Put the pipeline back into compute mode.
+    */
+   if (batch->name == IRIS_BATCH_COMPUTE) {
+      iris_emit_cmd(batch, GENX(PIPELINE_SELECT), sel) {
+         sel.MaskBits = 3;
+         sel.PipelineSelection = GPGPU;
+      }
+   }
+#endif
 
    flush_after_state_base_change(batch);
 
