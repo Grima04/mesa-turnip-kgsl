@@ -68,8 +68,8 @@ job_submit(struct v3dv_job *job)
     */
    submit.in_sync_rcl = 0; /* FIXME */
 
-   /* Update the sync object for the last rendering by our context. */
-   submit.out_sync = 0; /* FIXME */
+   /* Update the sync object for the last rendering by this device. */
+   submit.out_sync = job->cmd_buffer->device->last_job_sync;
 
    submit.bcl_start = job->bcl.bo->offset;
    submit.bcl_end = job->bcl.bo->offset + v3dv_cl_offset(&job->bcl);

@@ -954,6 +954,14 @@ v3dv_CreateDevice(VkPhysicalDevice physicalDevice,
    device->devinfo = physical_device->devinfo;
    device->enabled_extensions = enabled_extensions;
 
+   int ret = drmSyncobjCreate(device->fd,
+                              DRM_SYNCOBJ_CREATE_SIGNALED,
+                              &device->last_job_sync);
+   if (ret) {
+      result = VK_ERROR_INITIALIZATION_FAILED;
+      goto fail_fd;
+   }
+
    init_device_dispatch(device);
 
    *pDevice = v3dv_device_to_handle(device);
@@ -973,6 +981,8 @@ v3dv_DestroyDevice(VkDevice _device,
                    const VkAllocationCallbacks *pAllocator)
 {
    V3DV_FROM_HANDLE(v3dv_device, device, _device);
+
+   drmSyncobjDestroy(device->fd, device->last_job_sync);
    queue_finish(&device->queue);
    vk_free2(&default_alloc, pAllocator, device);
 }
@@ -994,7 +1004,13 @@ v3dv_GetDeviceQueue(VkDevice _device,
 VkResult
 v3dv_DeviceWaitIdle(VkDevice _device)
 {
-   /* FIXME: stub */
+   V3DV_FROM_HANDLE(v3dv_device, device, _device);
+
+   int ret =
+      drmSyncobjWait(device->fd, &device->last_job_sync, 1, INT64_MAX, 0, NULL);
+   if (ret)
+      return VK_ERROR_DEVICE_LOST;
+
    return VK_SUCCESS;
 }
 

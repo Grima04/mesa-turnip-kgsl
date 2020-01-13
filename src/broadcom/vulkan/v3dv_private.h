@@ -195,7 +195,10 @@ struct v3dv_device {
    struct v3d_device_info devinfo;
    struct v3dv_queue queue;
 
-   /* FIXME: stub */
+   /* Last command buffer submitted on this device. We use this to check if
+    * the GPU is idle.
+    */
+   uint32_t last_job_sync;
 };
 
 struct v3dv_device_memory {
