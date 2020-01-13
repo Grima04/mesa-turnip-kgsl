@@ -155,6 +155,7 @@ EXTENSIONS = [
     Extension('VK_EXT_pipeline_creation_feedback',        1, True),
     Extension('VK_EXT_post_depth_coverage',               1, 'device->info.gen >= 9'),
     Extension('VK_EXT_queue_family_foreign',              1, 'ANDROID'),
+    Extension('VK_EXT_robustness2',                       1, True),
     Extension('VK_EXT_sampler_filter_minmax',             1, 'device->info.gen >= 9'),
     Extension('VK_EXT_scalar_block_layout',               1, True),
     Extension('VK_EXT_separate_stencil_usage',            1, True),

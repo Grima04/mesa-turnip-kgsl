@@ -1241,6 +1241,14 @@ void anv_GetPhysicalDeviceFeatures2(
          break;
       }
 
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT: {
+         VkPhysicalDeviceRobustness2FeaturesEXT *features = (void *)ext;
+         features->robustBufferAccess2 = true;
+         features->robustImageAccess2 = true;
+         features->nullDescriptor = true;
+         break;
+      }
+
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLER_YCBCR_CONVERSION_FEATURES: {
          VkPhysicalDeviceSamplerYcbcrConversionFeatures *features =
             (VkPhysicalDeviceSamplerYcbcrConversionFeatures *) ext;
@@ -1899,6 +1907,15 @@ void anv_GetPhysicalDeviceProperties2(
          VkPhysicalDevicePushDescriptorPropertiesKHR *properties =
             (VkPhysicalDevicePushDescriptorPropertiesKHR *) ext;
          properties->maxPushDescriptors = MAX_PUSH_DESCRIPTORS;
+         break;
+      }
+
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_PROPERTIES_EXT: {
+         VkPhysicalDeviceRobustness2PropertiesEXT *properties = (void *)ext;
+         properties->robustStorageBufferAccessSizeAlignment =
+            ANV_SSBO_BOUNDS_CHECK_ALIGNMENT;
+         properties->robustUniformBufferAccessSizeAlignment =
+            ANV_UBO_BOUNDS_CHECK_ALIGNMENT;
          break;
       }
 
