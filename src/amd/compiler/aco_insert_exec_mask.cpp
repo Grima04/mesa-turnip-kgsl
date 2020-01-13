@@ -246,8 +246,9 @@ void get_block_needs(wqm_ctx &ctx, exec_ctx &exec_ctx, Block* block)
          }
       }
 
-      if (instr->opcode == aco_opcode::p_logical_end && info.logical_end_wqm) {
-         assert(needs == Unspecified);
+      if ((instr->opcode == aco_opcode::p_logical_end && info.logical_end_wqm) ||
+          instr->opcode == aco_opcode::p_wqm) {
+         assert(needs != Exact);
          needs = WQM;
       }
 
