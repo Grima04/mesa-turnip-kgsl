@@ -243,8 +243,10 @@ brw_reg_type_to_hw_type(const struct gen_device_info *devinfo,
       table = gen4_hw_type;
    }
 
-   assert(devinfo->has_64bit_types || brw_reg_type_to_size(type) < 8 ||
-          type == BRW_REGISTER_TYPE_NF);
+   assert(devinfo->gen == 11 || type != BRW_REGISTER_TYPE_NF); 
+   assert(devinfo->has_64bit_float || type != BRW_REGISTER_TYPE_DF);
+   assert(devinfo->has_64bit_int ||
+          (type != BRW_REGISTER_TYPE_Q && type != BRW_REGISTER_TYPE_UQ));
 
    if (file == BRW_IMMEDIATE_VALUE) {
       assert(table[type].imm_type != (enum hw_imm_type)INVALID);

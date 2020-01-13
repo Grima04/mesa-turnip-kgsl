@@ -219,7 +219,7 @@ static const struct gen_device_info gen_device_info_snb_gt2 = {
    .must_use_separate_stencil = true,               \
    .has_llc = true,                                 \
    .has_pln = true,                                 \
-   .has_64bit_types = true,                         \
+   .has_64bit_float = true,                         \
    .has_surface_tile_offset = true,                 \
    .timestamp_frequency = 12500000
 
@@ -417,7 +417,8 @@ static const struct gen_device_info gen_device_info_hsw_gt3 = {
    .has_sample_with_hiz = false,                    \
    .has_pln = true,                                 \
    .has_integer_dword_mul = true,                   \
-   .has_64bit_types = true,                         \
+   .has_64bit_float = true,                         \
+   .has_64bit_int = true,                           \
    .supports_simd16_3src = true,                    \
    .has_surface_tile_offset = true,                 \
    .num_thread_per_eu = 7,                          \
@@ -894,7 +895,8 @@ static const struct gen_device_info gen_device_info_cnl_gt2 = {
 #define GEN11_FEATURES(_gt, _slices, _subslices, _l3) \
    GEN8_FEATURES,                                     \
    GEN11_HW_INFO,                                     \
-   .has_64bit_types = false,                          \
+   .has_64bit_float = false,                          \
+   .has_64bit_int = false,                            \
    .has_integer_dword_mul = false,                    \
    .has_sample_with_hiz = false,                      \
    .gt = _gt, .num_slices = _slices, .l3_banks = _l3, \
@@ -1061,7 +1063,8 @@ static const struct gen_device_info gen_device_info_ehl_4 = {
 #define GEN12_FEATURES(_gt, _slices, _dual_subslices, _l3)      \
    GEN8_FEATURES,                                               \
    GEN12_HW_INFO,                                               \
-   .has_64bit_types = false,                                    \
+   .has_64bit_float = false,                                    \
+   .has_64bit_int = false,                                      \
    .has_integer_dword_mul = false,                              \
    .gt = _gt, .num_slices = _slices, .l3_banks = _l3,           \
    .simulator_id = 22,                                          \

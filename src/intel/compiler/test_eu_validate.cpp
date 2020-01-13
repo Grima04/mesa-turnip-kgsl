@@ -893,7 +893,13 @@ TEST_P(validation_test, byte_64bit_conversion)
       return;
 
    for (unsigned i = 0; i < ARRAY_SIZE(inst); i++) {
-      if (!devinfo.has_64bit_types && type_sz(inst[i].src_type) == 8)
+      if (!devinfo.has_64bit_float &&
+          inst[i].src_type == BRW_REGISTER_TYPE_DF)
+         continue;
+
+      if (!devinfo.has_64bit_int &&
+          (inst[i].src_type == BRW_REGISTER_TYPE_Q ||
+           inst[i].src_type == BRW_REGISTER_TYPE_UQ))
          continue;
 
       brw_MOV(p, retype(g0, inst[i].dst_type), retype(g0, inst[i].src_type));
@@ -989,10 +995,17 @@ TEST_P(validation_test, half_float_conversion)
       return;
 
    for (unsigned i = 0; i < ARRAY_SIZE(inst); i++) {
-      if (!devinfo.has_64bit_types &&
-          (type_sz(inst[i].src_type) == 8 || type_sz(inst[i].dst_type) == 8)) {
+      if (!devinfo.has_64bit_float &&
+          (inst[i].dst_type == BRW_REGISTER_TYPE_DF ||
+           inst[i].src_type == BRW_REGISTER_TYPE_DF))
          continue;
-      }
+
+      if (!devinfo.has_64bit_int &&
+          (inst[i].dst_type == BRW_REGISTER_TYPE_Q ||
+           inst[i].dst_type == BRW_REGISTER_TYPE_UQ ||
+           inst[i].src_type == BRW_REGISTER_TYPE_Q ||
+           inst[i].src_type == BRW_REGISTER_TYPE_UQ))
+         continue;
 
       brw_MOV(p, retype(g0, inst[i].dst_type), retype(g0, inst[i].src_type));
 
@@ -1875,8 +1888,16 @@ TEST_P(validation_test, qword_low_power_align1_regioning_restrictions)
       return;
 
    for (unsigned i = 0; i < ARRAY_SIZE(inst); i++) {
-      if (!devinfo.has_64bit_types &&
-          (type_sz(inst[i].dst_type) == 8 || type_sz(inst[i].src_type) == 8))
+      if (!devinfo.has_64bit_float &&
+          (inst[i].dst_type == BRW_REGISTER_TYPE_DF ||
+           inst[i].src_type == BRW_REGISTER_TYPE_DF))
+         continue;
+
+      if (!devinfo.has_64bit_int &&
+          (inst[i].dst_type == BRW_REGISTER_TYPE_Q ||
+           inst[i].dst_type == BRW_REGISTER_TYPE_UQ ||
+           inst[i].src_type == BRW_REGISTER_TYPE_Q ||
+           inst[i].src_type == BRW_REGISTER_TYPE_UQ))
          continue;
 
       if (inst[i].opcode == BRW_OPCODE_MOV) {
@@ -1999,8 +2020,16 @@ TEST_P(validation_test, qword_low_power_no_indirect_addressing)
       return;
 
    for (unsigned i = 0; i < ARRAY_SIZE(inst); i++) {
-      if (!devinfo.has_64bit_types &&
-          (type_sz(inst[i].dst_type) == 8 || type_sz(inst[i].src_type) == 8))
+      if (!devinfo.has_64bit_float &&
+          (inst[i].dst_type == BRW_REGISTER_TYPE_DF ||
+           inst[i].src_type == BRW_REGISTER_TYPE_DF))
+         continue;
+
+      if (!devinfo.has_64bit_int &&
+          (inst[i].dst_type == BRW_REGISTER_TYPE_Q ||
+           inst[i].dst_type == BRW_REGISTER_TYPE_UQ ||
+           inst[i].src_type == BRW_REGISTER_TYPE_Q ||
+           inst[i].src_type == BRW_REGISTER_TYPE_UQ))
          continue;
 
       if (inst[i].opcode == BRW_OPCODE_MOV) {
@@ -2139,8 +2168,16 @@ TEST_P(validation_test, qword_low_power_no_64bit_arf)
       return;
 
    for (unsigned i = 0; i < ARRAY_SIZE(inst); i++) {
-      if (!devinfo.has_64bit_types &&
-          (type_sz(inst[i].dst_type) == 8 || type_sz(inst[i].src_type) == 8))
+      if (!devinfo.has_64bit_float &&
+          (inst[i].dst_type == BRW_REGISTER_TYPE_DF ||
+           inst[i].src_type == BRW_REGISTER_TYPE_DF))
+         continue;
+
+      if (!devinfo.has_64bit_int &&
+          (inst[i].dst_type == BRW_REGISTER_TYPE_Q ||
+           inst[i].dst_type == BRW_REGISTER_TYPE_UQ ||
+           inst[i].src_type == BRW_REGISTER_TYPE_Q ||
+           inst[i].src_type == BRW_REGISTER_TYPE_UQ))
          continue;
 
       if (inst[i].opcode == BRW_OPCODE_MOV) {
@@ -2171,7 +2208,7 @@ TEST_P(validation_test, qword_low_power_no_64bit_arf)
       clear_instructions(p);
    }
 
-   if (!devinfo.has_64bit_types)
+   if (!devinfo.has_64bit_float)
       return;
 
    /* MAC implicitly reads the accumulator */
@@ -2348,8 +2385,16 @@ TEST_P(validation_test, qword_low_power_no_depctrl)
       return;
 
    for (unsigned i = 0; i < ARRAY_SIZE(inst); i++) {
-      if (!devinfo.has_64bit_types &&
-          (type_sz(inst[i].dst_type) == 8 || type_sz(inst[i].src_type) == 8))
+      if (!devinfo.has_64bit_float &&
+          (inst[i].dst_type == BRW_REGISTER_TYPE_DF ||
+           inst[i].src_type == BRW_REGISTER_TYPE_DF))
+         continue;
+
+      if (!devinfo.has_64bit_int &&
+          (inst[i].dst_type == BRW_REGISTER_TYPE_Q ||
+           inst[i].dst_type == BRW_REGISTER_TYPE_UQ ||
+           inst[i].src_type == BRW_REGISTER_TYPE_Q ||
+           inst[i].src_type == BRW_REGISTER_TYPE_UQ))
          continue;
 
       if (inst[i].opcode == BRW_OPCODE_MOV) {
