@@ -402,7 +402,11 @@ isl_genX(surf_fill_state_s)(const struct isl_device *dev, void *state,
       unreachable("bad SurfaceType");
    }
 
-#if GEN_GEN >= 7
+#if GEN_GEN >= 12
+   /* GEN:BUG:1806565034: Only set SurfaceArray if arrayed surface is > 1. */
+   s.SurfaceArray = info->surf->dim != ISL_SURF_DIM_3D &&
+      info->view->array_len > 1;
+#elif GEN_GEN >= 7
    s.SurfaceArray = info->surf->dim != ISL_SURF_DIM_3D;
 #endif
 

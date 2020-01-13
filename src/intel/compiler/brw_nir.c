@@ -665,6 +665,9 @@ brw_preprocess_nir(const struct brw_compiler *compiler, nir_shader *nir,
        !(devinfo->gen >= 10 || devinfo->is_kabylake))
       OPT(brw_nir_apply_trig_workarounds);
 
+   if (devinfo->gen >= 12)
+      OPT(brw_nir_clamp_image_1d_2d_array_sizes);
+
    static const nir_lower_tex_options tex_options = {
       .lower_txp = ~0,
       .lower_txf_offset = true,
