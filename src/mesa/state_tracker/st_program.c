@@ -1227,6 +1227,10 @@ st_create_fp_variant(struct st_context *st,
       if (unlikely(key->external.lower_nv12 || key->external.lower_iyuv ||
                    key->external.lower_xy_uxvx || key->external.lower_yx_xuxv ||
                    key->external.lower_ayuv || key->external.lower_xyuv)) {
+
+         st_nir_lower_samplers(pipe->screen, state.ir.nir,
+                               stfp->shader_program, &stfp->Base);
+
          nir_lower_tex_options options = {0};
          options.lower_y_uv_external = key->external.lower_nv12;
          options.lower_y_u_v_external = key->external.lower_iyuv;
