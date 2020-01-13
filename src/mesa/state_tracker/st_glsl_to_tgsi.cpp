@@ -5797,97 +5797,6 @@ struct st_translate {
    bool tg4_component_in_swizzle;
 };
 
-/** Map Mesa's SYSTEM_VALUE_x to TGSI_SEMANTIC_x */
-enum tgsi_semantic
-_mesa_sysval_to_semantic(unsigned sysval)
-{
-   switch (sysval) {
-   /* Vertex shader */
-   case SYSTEM_VALUE_VERTEX_ID:
-      return TGSI_SEMANTIC_VERTEXID;
-   case SYSTEM_VALUE_INSTANCE_ID:
-      return TGSI_SEMANTIC_INSTANCEID;
-   case SYSTEM_VALUE_VERTEX_ID_ZERO_BASE:
-      return TGSI_SEMANTIC_VERTEXID_NOBASE;
-   case SYSTEM_VALUE_BASE_VERTEX:
-      return TGSI_SEMANTIC_BASEVERTEX;
-   case SYSTEM_VALUE_BASE_INSTANCE:
-      return TGSI_SEMANTIC_BASEINSTANCE;
-   case SYSTEM_VALUE_DRAW_ID:
-      return TGSI_SEMANTIC_DRAWID;
-
-   /* Geometry shader */
-   case SYSTEM_VALUE_INVOCATION_ID:
-      return TGSI_SEMANTIC_INVOCATIONID;
-
-   /* Fragment shader */
-   case SYSTEM_VALUE_FRAG_COORD:
-      return TGSI_SEMANTIC_POSITION;
-   case SYSTEM_VALUE_POINT_COORD:
-      return TGSI_SEMANTIC_PCOORD;
-   case SYSTEM_VALUE_FRONT_FACE:
-      return TGSI_SEMANTIC_FACE;
-   case SYSTEM_VALUE_SAMPLE_ID:
-      return TGSI_SEMANTIC_SAMPLEID;
-   case SYSTEM_VALUE_SAMPLE_POS:
-      return TGSI_SEMANTIC_SAMPLEPOS;
-   case SYSTEM_VALUE_SAMPLE_MASK_IN:
-      return TGSI_SEMANTIC_SAMPLEMASK;
-   case SYSTEM_VALUE_HELPER_INVOCATION:
-      return TGSI_SEMANTIC_HELPER_INVOCATION;
-
-   /* Tessellation shader */
-   case SYSTEM_VALUE_TESS_COORD:
-      return TGSI_SEMANTIC_TESSCOORD;
-   case SYSTEM_VALUE_VERTICES_IN:
-      return TGSI_SEMANTIC_VERTICESIN;
-   case SYSTEM_VALUE_PRIMITIVE_ID:
-      return TGSI_SEMANTIC_PRIMID;
-   case SYSTEM_VALUE_TESS_LEVEL_OUTER:
-      return TGSI_SEMANTIC_TESSOUTER;
-   case SYSTEM_VALUE_TESS_LEVEL_INNER:
-      return TGSI_SEMANTIC_TESSINNER;
-
-   /* Compute shader */
-   case SYSTEM_VALUE_LOCAL_INVOCATION_ID:
-      return TGSI_SEMANTIC_THREAD_ID;
-   case SYSTEM_VALUE_WORK_GROUP_ID:
-      return TGSI_SEMANTIC_BLOCK_ID;
-   case SYSTEM_VALUE_NUM_WORK_GROUPS:
-      return TGSI_SEMANTIC_GRID_SIZE;
-   case SYSTEM_VALUE_LOCAL_GROUP_SIZE:
-      return TGSI_SEMANTIC_BLOCK_SIZE;
-
-   /* ARB_shader_ballot */
-   case SYSTEM_VALUE_SUBGROUP_SIZE:
-      return TGSI_SEMANTIC_SUBGROUP_SIZE;
-   case SYSTEM_VALUE_SUBGROUP_INVOCATION:
-      return TGSI_SEMANTIC_SUBGROUP_INVOCATION;
-   case SYSTEM_VALUE_SUBGROUP_EQ_MASK:
-      return TGSI_SEMANTIC_SUBGROUP_EQ_MASK;
-   case SYSTEM_VALUE_SUBGROUP_GE_MASK:
-      return TGSI_SEMANTIC_SUBGROUP_GE_MASK;
-   case SYSTEM_VALUE_SUBGROUP_GT_MASK:
-      return TGSI_SEMANTIC_SUBGROUP_GT_MASK;
-   case SYSTEM_VALUE_SUBGROUP_LE_MASK:
-      return TGSI_SEMANTIC_SUBGROUP_LE_MASK;
-   case SYSTEM_VALUE_SUBGROUP_LT_MASK:
-      return TGSI_SEMANTIC_SUBGROUP_LT_MASK;
-
-   /* Unhandled */
-   case SYSTEM_VALUE_LOCAL_INVOCATION_INDEX:
-   case SYSTEM_VALUE_GLOBAL_INVOCATION_ID:
-   case SYSTEM_VALUE_VERTEX_CNT:
-   case SYSTEM_VALUE_BARYCENTRIC_PERSP_PIXEL:
-   case SYSTEM_VALUE_BARYCENTRIC_PERSP_SAMPLE:
-   case SYSTEM_VALUE_BARYCENTRIC_PERSP_CENTROID:
-   case SYSTEM_VALUE_BARYCENTRIC_PERSP_SIZE:
-   default:
-      assert(!"Unexpected SYSTEM_VALUE_ enum");
-      return TGSI_SEMANTIC_COUNT;
-   }
-}
-
 /**
  * Map a glsl_to_tgsi constant/immediate to a TGSI immediate.
  */
@@ -6923,7 +6832,7 @@ st_translate_program(
 
       for (i = 0; sysInputs; i++) {
          if (sysInputs & (1ull << i)) {
-            enum tgsi_semantic semName = _mesa_sysval_to_semantic(i);
+            enum tgsi_semantic semName = tgsi_get_sysval_semantic(i);
 
             t->systemValues[i] = ureg_DECL_system_value(ureg, semName, 0);
 
