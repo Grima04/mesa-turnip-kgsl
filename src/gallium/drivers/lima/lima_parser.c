@@ -456,11 +456,12 @@ parse_rsw(FILE *fp, uint32_t *value, int i, uint32_t *helper)
               (*value & 0x00000038) >> 3); /* alpha_func */
       /* add a few tabs for alignment */
       fprintf(fp, "\t\t\t\t\t\t/* %s(2)", render_state_infos[i].info);
-      fprintf(fp, ": rgb_src_factor %d, rbg_dst_factor %d, alpha_src_factor %d",
+      fprintf(fp, ": rgb_src_factor %d, rbg_dst_factor %d */\n",
               (*value & 0x000007c0) >> 6, /* rgb_src_factor */
-              (*value & 0x0000f800) >> 11, /* rgb_dst_factor */
-              (*value & 0x000f0000) >> 16); /* alpha_src_factor */
-      fprintf(fp, ", alpha_dst_factor %d, bits 24-27 0x%02x */\n",
+              (*value & 0x0000f800) >> 11); /* rgb_dst_factor */
+      fprintf(fp, "\t\t\t\t\t\t/* %s(3)", render_state_infos[i].info);
+      fprintf(fp, ": alpha_src_factor %d, alpha_dst_factor %d, bits 24-27 0x%02x */\n",
+              (*value & 0x000f0000) >> 16, /* alpha_src_factor */
               (*value & 0x00f00000) >> 20, /* alpha_dst_factor */
               (*value & 0x0f000000) >> 24); /* bits 24-27 */
       break;
