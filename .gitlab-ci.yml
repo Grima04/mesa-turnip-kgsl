@@ -12,18 +12,62 @@ stages:
   - container
   - build
   - test
+  - success
 
 
 # When to automatically run the CI
 .ci-run-policy:
   rules:
-    - when: on_success
+    # Run pipeline by default for merge requests changing files affecting it
+    - if: '$CI_MERGE_REQUEST_SOURCE_BRANCH_NAME == $CI_COMMIT_REF_NAME'
+      changes: &paths
+      - VERSION
+      - bin/**/*
+      # GitLab CI
+      - .gitlab-ci.yml
+      - .gitlab-ci/**/*
+      # Meson
+      - meson*
+      - build-support/**/*
+      - subprojects/**/*
+      # SCons
+      - SConstruct
+      - scons/**/*
+      - common.py
+      # Source code
+      - include/**/*
+      - src/**/*
+      when: on_success
+    # Run pipeline by default in the main project if files affecting it were
+    # changed
+    - if: '$CI_PROJECT_PATH == "mesa/mesa"'
+      changes:
+        *paths
+      when: on_success
+    # Allow triggering jobs manually on branches of forked projects
+    - if: '$CI_PROJECT_PATH != "mesa/mesa"'
+      if: '$CI_MERGE_REQUEST_SOURCE_BRANCH_NAME != $CI_COMMIT_REF_NAME'
+      when: manual
+    # Otherwise, most jobs won't run
+    - when: never
   retry:
     max: 2
     when:
       - runner_system_failure
   # Cancel CI run if a newer commit is pushed to the same branch
   interruptible: true
+
+success:
+  stage: success
+  image: debian:stable-slim
+  only:
+    - merge_requests
+  except:
+    changes:
+      *paths
+  script:
+    - echo "Dummy job to make sure every merge request pipeline runs at least one job"
+
 
 .ci-deqp-artifacts:
   artifacts:
@@ -55,32 +99,6 @@ stages:
   stage: container
   extends:
     - .ci-run-policy
-  rules:
-    # Run pipeline by default for merge requests changing files affecting it
-    - if: '$CI_MERGE_REQUEST_SOURCE_BRANCH_NAME == $CI_COMMIT_REF_NAME'
-      changes:
-      - VERSION
-      - bin/**/*
-      # GitLab CI
-      - .gitlab-ci.yml
-      - .gitlab-ci/**/*
-      # Meson
-      - meson*
-      - build-support/**/*
-      - subprojects/**/*
-      # SCons
-      - SConstruct
-      - scons/**/*
-      - common.py
-      # Source code
-      - include/**/*
-      - src/**/*
-      when: on_success
-    # Always run pipeline by default in the main project
-    - if: '$CI_PROJECT_PATH == "mesa/mesa"'
-      when: on_success
-    # Otherwise, allow triggering jobs manually
-    - when: manual
   variables:
     DEBIAN_VERSION: buster-slim
     REPO_SUFFIX: $CI_JOB_NAME
