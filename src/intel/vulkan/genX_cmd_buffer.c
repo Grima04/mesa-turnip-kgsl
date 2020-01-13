@@ -76,6 +76,20 @@ genX(cmd_buffer_emit_state_base_address)(struct anv_cmd_buffer *cmd_buffer)
 #endif
    }
 
+#if GEN_GEN == 12
+   /* GEN:BUG:1607854226:
+    *
+    *  Workaround the non pipelined state not applying in MEDIA/GPGPU pipeline
+    *  mode by putting the pipeline temporarily in 3D mode.
+    */
+   if (cmd_buffer->state.current_pipeline != _3D) {
+      anv_batch_emit(&cmd_buffer->batch, GENX(PIPELINE_SELECT), ps) {
+         ps.MaskBits = 3;
+         ps.PipelineSelection = _3D;
+      }
+   }
+#endif
+
    anv_batch_emit(&cmd_buffer->batch, GENX(STATE_BASE_ADDRESS), sba) {
       sba.GeneralStateBaseAddress = (struct anv_address) { NULL, 0 };
       sba.GeneralStateMOCS = mocs;
@@ -154,6 +168,19 @@ genX(cmd_buffer_emit_state_base_address)(struct anv_cmd_buffer *cmd_buffer)
       sba.BindlessSamplerStateBufferSize = 0;
 #  endif
    }
+
+#if GEN_GEN == 12
+   /* GEN:BUG:1607854226:
+    *
+    *  Put the pipeline back into compute mode.
+    */
+   if (cmd_buffer->state.current_pipeline != _3D) {
+      anv_batch_emit(&cmd_buffer->batch, GENX(PIPELINE_SELECT), ps) {
+         ps.MaskBits = 3;
+         ps.PipelineSelection = cmd_buffer->state.current_pipeline;
+      }
+   }
+#endif
 
    /* After re-setting the surface state base address, we have to do some
     * cache flusing so that the sampler engine will pick up the new
