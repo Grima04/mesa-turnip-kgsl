@@ -4299,6 +4299,9 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
          }
       }
 
+      if (stage != MESA_SHADER_COMPUTE)
+         slm_fence = false;
+
       /* Be conservative in Gen11+ and always stall in a fence.  Since there
        * are two different fences, and shader might want to synchronize
        * between them.
