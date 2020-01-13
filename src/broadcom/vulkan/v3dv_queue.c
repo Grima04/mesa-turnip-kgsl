@@ -57,16 +57,53 @@ v3dv_clif_dump(struct v3dv_device *device,
 }
 
 static VkResult
-job_submit(struct v3dv_job *job)
+process_semaphores_to_signal(struct v3dv_device *device,
+                             uint32_t count, const VkSemaphore *sems)
+{
+   if (count == 0)
+      return VK_SUCCESS;
+
+   for (uint32_t i = 0; i < count; i++) {
+      struct v3dv_semaphore *sem = v3dv_semaphore_from_handle(sems[i]);
+
+      if (sem->fd >= 0)
+         close(sem->fd);
+      sem->fd = -1;
+
+      int fd;
+      drmSyncobjExportSyncFile(device->fd, device->last_job_sync, &fd);
+      if (fd == -1)
+         return VK_ERROR_DEVICE_LOST;
+
+      int ret = drmSyncobjImportSyncFile(device->fd, sem->sync, fd);
+      if (ret)
+         return VK_ERROR_DEVICE_LOST;
+
+      sem->fd = fd;
+   }
+
+   return VK_SUCCESS;
+}
+
+static VkResult
+job_submit(struct v3dv_job *job, bool do_wait)
 {
    assert(job);
 
    struct drm_v3d_submit_cl submit;
 
-   /* While the RCL will implicitly depend on the last RCL to have finished, we
-    * also need to block on any previous TFU job we may have dispatched.
+   /* RCL jobs don't start until the previous RCL job has finished so we don't
+    * really need to add a fence for those, however, we might need to wait on a
+    * CSD or TFU job, which are not serialized.
+    *
+    * FIXME: for now, if we are asked to wait on any semaphores, we just wait
+    * on the last job we submitted. In the future we might want to pass the
+    * actual syncobj of the wait semaphores so we don't block on the last RCL
+    * if we only need to wait for a previous CSD or TFU, for example, but
+    * we would have to extend our kernel interface to support the case where
+    * we have more than one semaphore to wait on.
     */
-   submit.in_sync_rcl = 0; /* FIXME */
+   submit.in_sync_rcl = do_wait ? job->cmd_buffer->device->last_job_sync : 0;
 
    /* Update the sync object for the last rendering by this device. */
    submit.out_sync = job->cmd_buffer->device->last_job_sync;
@@ -124,15 +161,19 @@ queue_submit(struct v3dv_queue *queue,
 {
    /* FIXME */
    assert(fence == 0);
-   assert(pSubmit->waitSemaphoreCount == 0);
-   assert(pSubmit->signalSemaphoreCount == 0);
    assert(pSubmit->commandBufferCount == 1);
 
    V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, pSubmit->pCommandBuffers[0]);
 
    list_for_each_entry_safe(struct v3dv_job, job,
                             &cmd_buffer->submit_jobs, list_link) {
-      VkResult result = job_submit(job);
+      VkResult result = job_submit(job, pSubmit->waitSemaphoreCount > 0);
+      if (result != VK_SUCCESS)
+         return result;
+
+      result = process_semaphores_to_signal(cmd_buffer->device,
+                                            pSubmit->signalSemaphoreCount,
+                                            pSubmit->pSignalSemaphores);
       if (result != VK_SUCCESS)
          return result;
    }
@@ -174,6 +215,8 @@ v3dv_CreateSemaphore(VkDevice _device,
    if (sem == NULL)
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
+   sem->fd = -1;
+
    int ret = drmSyncobjCreate(device->fd, 0, &sem->sync);
    if (ret) {
       vk_free2(&device->alloc, pAllocator, sem);
@@ -197,5 +240,9 @@ v3dv_DestroySemaphore(VkDevice _device,
       return;
 
    drmSyncobjDestroy(device->fd, sem->sync);
+
+   if (sem->fd != -1)
+      close(sem->fd);
+
    vk_free2(&device->alloc, pAllocator, sem);
 }

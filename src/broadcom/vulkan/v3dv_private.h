@@ -522,6 +522,9 @@ void v3dv_cmd_buffer_start_frame(struct v3dv_cmd_buffer *cmd_buffer,
 struct v3dv_semaphore {
    /* A syncobject handle associated with this semaphore */
    uint32_t sync;
+
+   /* The file handle of a fence that we imported into our syncobject */
+   int32_t fd;
 };
 
 struct v3dv_shader_module {
