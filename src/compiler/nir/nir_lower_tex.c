@@ -934,12 +934,6 @@ nir_lower_tex_block(nir_block *block, nir_builder *b,
       nir_tex_instr *tex = nir_instr_as_tex(instr);
       bool lower_txp = !!(options->lower_txp & (1 << tex->sampler_dim));
 
-      /* we aren't really going to do the right thing if we haven't
-       * lowered tex/samp derefs yet:
-       */
-      assume(nir_tex_instr_src_index(tex, nir_tex_src_texture_deref) < 0);
-      assume(nir_tex_instr_src_index(tex, nir_tex_src_sampler_deref) < 0);
-
       /* mask of src coords to saturate (clamp): */
       unsigned sat_mask = 0;
 
