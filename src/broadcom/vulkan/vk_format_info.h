@@ -88,6 +88,13 @@ vk_format_is_color(VkFormat format)
    return vk_format_aspects(format) == VK_IMAGE_ASPECT_COLOR_BIT;
 }
 
+/* FIXME: from freedreno vk_format.h, common place?*/
+static inline bool
+vk_format_is_int(VkFormat format)
+{
+   return util_format_is_pure_integer(vk_format_to_pipe_format(format));
+}
+
 static inline bool
 vk_format_is_depth_or_stencil(VkFormat format)
 {

@@ -668,8 +668,14 @@ struct v3dv_pipeline {
        * are indexed by driver_location
        */
       uint32_t driver_location;
+      VkFormat vk_format;
    } va[MAX_VERTEX_ATTRIBS];
    uint32_t va_count;
+
+   /* FIXME: this bo is another candidate to data to be uploaded using a
+    * resource manager, instead of a individual bo
+    */
+   struct v3dv_bo *default_attribute_values;
 
    struct vpm_config vpm_cfg;
    struct vpm_config vpm_cfg_bin;

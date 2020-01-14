@@ -104,6 +104,11 @@ v3dv_DestroyPipeline(VkDevice _device,
    destroy_pipeline_stage(device, pipeline->vs_bin, pAllocator);
    destroy_pipeline_stage(device, pipeline->fs, pAllocator);
 
+   if (pipeline->default_attribute_values) {
+      v3dv_bo_free(device, pipeline->default_attribute_values);
+      pipeline->default_attribute_values = NULL;
+   }
+
    vk_free2(&device->alloc, pAllocator, pipeline);
 }
 
@@ -1035,6 +1040,44 @@ get_attr_type(const struct util_format_description *desc)
 }
 
 static void
+create_default_attribute_values(struct v3dv_pipeline *pipeline,
+                                const VkPipelineVertexInputStateCreateInfo *vi_info)
+{
+   uint32_t size = MAX_VERTEX_ATTRIBS * sizeof(float) * 4;
+
+   if (pipeline->default_attribute_values == NULL) {
+      pipeline->default_attribute_values = v3dv_bo_alloc(pipeline->device, size);
+
+      if (!pipeline->default_attribute_values) {
+         fprintf(stderr, "failed to allocate memory for the default "
+                 "attribute values\n");
+      }
+   }
+
+   bool ok = v3dv_bo_map(pipeline->device,
+                         pipeline->default_attribute_values, size);
+   if (!ok) {
+      fprintf(stderr, "failed to map default attribute values buffer\n");
+      abort();
+   }
+
+   uint32_t *attrs = pipeline->default_attribute_values->map;
+
+   for (int i = 0; i < MAX_VERTEX_ATTRIBS; i++) {
+      attrs[i * 4 + 0] = 0;
+      attrs[i * 4 + 1] = 0;
+      attrs[i * 4 + 2] = 0;
+      if (i < pipeline->va_count && vk_format_is_int(pipeline->va[i].vk_format)) {
+         attrs[i * 4 + 3] = 1;
+      } else {
+         attrs[i * 4 + 3] = fui(1.0);
+      }
+   }
+
+   v3dv_bo_unmap(pipeline->device, pipeline->default_attribute_values);
+}
+
+static void
 pack_shader_state_attribute_record(struct v3dv_pipeline *pipeline,
                                    uint32_t index,
                                    const VkVertexInputAttributeDescription *vi_desc)
@@ -1137,12 +1180,14 @@ pipeline_init(struct v3dv_pipeline *pipeline,
          pipeline->va[pipeline->va_count].offset = desc->offset;
          pipeline->va[pipeline->va_count].binding = desc->binding;
          pipeline->va[pipeline->va_count].driver_location = driver_location;
+         pipeline->va[pipeline->va_count].vk_format = desc->format;
 
          pack_shader_state_attribute_record(pipeline, pipeline->va_count, desc);
 
          pipeline->va_count++;
       }
    }
+   create_default_attribute_values(pipeline, vi_info);
 
    return result;
 }

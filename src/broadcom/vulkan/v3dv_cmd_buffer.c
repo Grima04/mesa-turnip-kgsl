@@ -1560,8 +1560,8 @@ cmd_buffer_emit_graphics_pipeline(struct v3dv_cmd_buffer *cmd_buffer)
       shader.vertex_shader_uniforms_address = vs_uniforms;
       shader.fragment_shader_uniforms_address = fs_uniforms;
 
-      /* FIXME: pending */
-      /* shader.address_of_default_attribute_values = */
+      shader.address_of_default_attribute_values =
+         v3dv_cl_address(pipeline->default_attribute_values, 0);
    }
 
    /* Upload vertex element attributes (SHADER_STATE_ATTRIBUTE_RECORD) */
