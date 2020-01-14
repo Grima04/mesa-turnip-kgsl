@@ -473,6 +473,14 @@ dri_get_egl_image(struct st_manager *smapi,
    stimg->level = img->level;
    stimg->layer = img->layer;
 
+   if (img->imported_dmabuf && map) {
+      /* Guess sized internal format for dma-bufs. Could be used
+       * by EXT_EGL_image_storage.
+       */
+      mesa_format mesa_format = driImageFormatToGLFormat(map->dri_format);
+      stimg->internalformat = driGLFormatToSizedInternalGLFormat(mesa_format);
+   }
+
    return TRUE;
 }
 

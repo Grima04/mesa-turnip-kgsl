@@ -938,6 +938,7 @@ dri2_create_image_from_fd(__DRIscreen *_screen,
    img->dri_components = map->dri_components;
    img->dri_fourcc = fourcc;
    img->dri_format = map->dri_format;
+   img->imported_dmabuf = TRUE;
 
 exit:
    if (error)
