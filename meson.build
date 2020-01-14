@@ -933,7 +933,9 @@ if cc.get_id() == 'msvc'
                '/wd4756',  # overflow in constant arithmetic
                '/wd4800',  # forcing value to bool 'true' or 'false' (performance warning)
                '/wd4996',  # disabled deprecated POSIX name warnings
-               '/wd4291']  # no matching operator delete found
+               '/wd4291',  # no matching operator delete found
+               '/wd4146',  # unary minus operator applied to unsigned type, result still unsigned
+               '/wd4200']  # nonstandard extension used: zero-sized array in struct/union
     if cc.has_argument(a)
       c_args += a
     endif
