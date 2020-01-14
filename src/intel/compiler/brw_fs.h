@@ -411,6 +411,8 @@ private:
    void lower_mul_dword_inst(fs_inst *inst, bblock_t *block);
    void lower_mul_qword_inst(fs_inst *inst, bblock_t *block);
    void lower_mulh_inst(fs_inst *inst, bblock_t *block);
+
+   unsigned workgroup_size() const;
 };
 
 /**
