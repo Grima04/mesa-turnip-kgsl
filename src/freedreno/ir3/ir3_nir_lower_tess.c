@@ -531,8 +531,9 @@ emit_tess_epilouge(nir_builder *b, struct state *state)
 		nir_intrinsic_set_write_mask(store, (1 << levels[1]->num_components) - 1);
 	}
 
-	/* Finally, Insert endpatch instruction, maybe signalling the tess engine
-	 * that another primitive is ready?
+	/* Finally, Insert endpatch instruction:
+	 *
+	 * TODO we should re-work this to use normal flow control.
 	 */
 
 	nir_intrinsic_instr *end_patch =

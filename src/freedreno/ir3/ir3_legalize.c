@@ -139,7 +139,7 @@ legalize_block(struct ir3_legalize_ctx *ctx, struct ir3_block *block)
 			regmask_init(&state->needs_sy);
 		}
 
-		if (last_n && (last_n->opc == OPC_CONDEND)) {
+		if (last_n && (last_n->opc == OPC_IF)) {
 			n->flags |= IR3_INSTR_SS;
 			regmask_init(&state->needs_ss_war);
 			regmask_init(&state->needs_ss);
