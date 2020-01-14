@@ -132,7 +132,7 @@ process_fence_to_signal(struct v3dv_device *device, VkFence _fence)
 }
 
 static VkResult
-job_submit(struct v3dv_job *job, bool do_wait)
+queue_submit_job(struct v3dv_job *job, bool do_wait)
 {
    assert(job);
 
@@ -201,31 +201,38 @@ job_submit(struct v3dv_job *job, bool do_wait)
 }
 
 static VkResult
-queue_submit(struct v3dv_queue *queue,
-             const VkSubmitInfo *pSubmit,
-             VkFence fence)
+queue_submit_cmd_buffer(struct v3dv_cmd_buffer *cmd_buffer,
+                        const VkSubmitInfo *pSubmit)
 {
-   /* FIXME */
-   assert(pSubmit->commandBufferCount == 1);
-
-   V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, pSubmit->pCommandBuffers[0]);
-
    list_for_each_entry_safe(struct v3dv_job, job,
                             &cmd_buffer->submit_jobs, list_link) {
-      VkResult result = job_submit(job, pSubmit->waitSemaphoreCount > 0);
-      if (result != VK_SUCCESS)
-         return result;
-
-      result = process_semaphores_to_signal(cmd_buffer->device,
-                                            pSubmit->signalSemaphoreCount,
-                                            pSubmit->pSignalSemaphores);
-      if (result != VK_SUCCESS)
-         return result;
-
-      result = process_fence_to_signal(cmd_buffer->device, fence);
+      VkResult result = queue_submit_job(job, pSubmit->waitSemaphoreCount > 0);
       if (result != VK_SUCCESS)
          return result;
    }
+
+   return VK_SUCCESS;
+}
+
+static VkResult
+queue_submit_cmd_buffer_batch(struct v3dv_queue *queue,
+                              const VkSubmitInfo *pSubmit,
+                              VkFence fence)
+{
+   VkResult result = VK_SUCCESS;
+   for (uint32_t i = 0; i < pSubmit->commandBufferCount; i++) {
+      struct v3dv_cmd_buffer *cmd_buffer =
+         v3dv_cmd_buffer_from_handle(pSubmit->pCommandBuffers[i]);
+      result = queue_submit_cmd_buffer(cmd_buffer, pSubmit);
+      if (result != VK_SUCCESS)
+         return result;
+   }
+
+   result = process_semaphores_to_signal(queue->device,
+                                         pSubmit->signalSemaphoreCount,
+                                         pSubmit->pSignalSemaphores);
+   if (result != VK_SUCCESS)
+      return result;
 
    return VK_SUCCESS;
 }
@@ -240,12 +247,16 @@ v3dv_QueueSubmit(VkQueue _queue,
 
    VkResult result = VK_SUCCESS;
    for (uint32_t i = 0; i < submitCount; i++) {
-      result = queue_submit(queue, &pSubmits[i], fence);
+      result = queue_submit_cmd_buffer_batch(queue, &pSubmits[i], fence);
       if (result != VK_SUCCESS)
-         break;
+         return result;
    }
 
-   return result;
+   result = process_fence_to_signal(queue->device, fence);
+   if (result != VK_SUCCESS)
+      return result;
+
+   return VK_SUCCESS;
 }
 
 VkResult
