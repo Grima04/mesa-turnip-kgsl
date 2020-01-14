@@ -40,6 +40,9 @@
 #define __gen_address_offset anv_address_add
 #include "common/gen_mi_builder.h"
 
+static void genX(flush_pipeline_select)(struct anv_cmd_buffer *cmd_buffer,
+                                        uint32_t pipeline);
+
 static void
 emit_lri(struct anv_batch *batch, uint32_t reg, uint32_t imm)
 {
@@ -82,12 +85,8 @@ genX(cmd_buffer_emit_state_base_address)(struct anv_cmd_buffer *cmd_buffer)
     *  Workaround the non pipelined state not applying in MEDIA/GPGPU pipeline
     *  mode by putting the pipeline temporarily in 3D mode.
     */
-   if (cmd_buffer->state.current_pipeline != _3D) {
-      anv_batch_emit(&cmd_buffer->batch, GENX(PIPELINE_SELECT), ps) {
-         ps.MaskBits = 3;
-         ps.PipelineSelection = _3D;
-      }
-   }
+   uint32_t gen12_wa_pipeline = cmd_buffer->state.current_pipeline;
+   genX(flush_pipeline_select_3d)(cmd_buffer);
 #endif
 
    anv_batch_emit(&cmd_buffer->batch, GENX(STATE_BASE_ADDRESS), sba) {
@@ -172,14 +171,10 @@ genX(cmd_buffer_emit_state_base_address)(struct anv_cmd_buffer *cmd_buffer)
 #if GEN_GEN == 12
    /* GEN:BUG:1607854226:
     *
-    *  Put the pipeline back into compute mode.
+    *  Put the pipeline back into its current mode.
     */
-   if (cmd_buffer->state.current_pipeline != _3D) {
-      anv_batch_emit(&cmd_buffer->batch, GENX(PIPELINE_SELECT), ps) {
-         ps.MaskBits = 3;
-         ps.PipelineSelection = cmd_buffer->state.current_pipeline;
-      }
-   }
+   if (gen12_wa_pipeline != UINT32_MAX)
+      genX(flush_pipeline_select)(cmd_buffer, gen12_wa_pipeline);
 #endif
 
    /* After re-setting the surface state base address, we have to do some
