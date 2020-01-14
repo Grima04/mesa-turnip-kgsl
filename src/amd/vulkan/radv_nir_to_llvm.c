@@ -1280,29 +1280,6 @@ adjust_vertex_fetch_alpha(struct radv_shader_context *ctx,
 	return LLVMBuildBitCast(ctx->ac.builder, alpha, ctx->ac.i32, "");
 }
 
-static const struct vertex_format_info {
-	uint8_t vertex_byte_size;
-	uint8_t num_channels;
-	uint8_t chan_byte_size;
-	uint8_t chan_format;
-} vertex_format_table[] = {
-	{  0, 4, 0, V_008F0C_BUF_DATA_FORMAT_INVALID	},	/* BUF_DATA_FORMAT_INVALID	*/
-	{  1, 1, 1, V_008F0C_BUF_DATA_FORMAT_8		},	/* BUF_DATA_FORMAT_8		*/
-	{  2, 1, 2, V_008F0C_BUF_DATA_FORMAT_16		},	/* BUF_DATA_FORMAT_16		*/
-	{  2, 2, 1, V_008F0C_BUF_DATA_FORMAT_8		},	/* BUF_DATA_FORMAT_8_8		*/
-	{  4, 1, 4, V_008F0C_BUF_DATA_FORMAT_32		},	/* BUF_DATA_FORMAT_32		*/
-	{  4, 2, 2, V_008F0C_BUF_DATA_FORMAT_16		},	/* BUF_DATA_FORMAT_16_16	*/
-	{  4, 3, 0, V_008F0C_BUF_DATA_FORMAT_10_11_11	},	/* BUF_DATA_FORMAT_10_11_11	*/
-	{  4, 3, 0, V_008F0C_BUF_DATA_FORMAT_11_11_10	},	/* BUF_DATA_FORMAT_11_11_10	*/
-	{  4, 4, 0, V_008F0C_BUF_DATA_FORMAT_10_10_10_2	},	/* BUF_DATA_FORMAT_10_10_10_2	*/
-	{  4, 4, 0, V_008F0C_BUF_DATA_FORMAT_2_10_10_10	},	/* BUF_DATA_FORMAT_2_10_10_10	*/
-	{  4, 4, 1, V_008F0C_BUF_DATA_FORMAT_8		},	/* BUF_DATA_FORMAT_8_8_8_8	*/
-	{  8, 2, 4, V_008F0C_BUF_DATA_FORMAT_32		},	/* BUF_DATA_FORMAT_32_32	*/
-	{  8, 4, 2, V_008F0C_BUF_DATA_FORMAT_16		},	/* BUF_DATA_FORMAT_16_16_16_16	*/
-	{ 12, 3, 4, V_008F0C_BUF_DATA_FORMAT_32		},	/* BUF_DATA_FORMAT_32_32_32	*/
-	{ 16, 4, 4, V_008F0C_BUF_DATA_FORMAT_32		},	/* BUF_DATA_FORMAT_32_32_32_32	*/
-};
-
 static LLVMValueRef
 radv_fixup_vertex_input_fetches(struct radv_shader_context *ctx,
 				LLVMValueRef value,
@@ -1387,8 +1364,7 @@ handle_vs_input_decl(struct radv_shader_context *ctx,
 							       ctx->args->ac.base_vertex), "");
 		}
 
-		assert(data_format < ARRAY_SIZE(vertex_format_table));
-		const struct vertex_format_info *vtx_info = &vertex_format_table[data_format];
+		const struct ac_data_format_info *vtx_info = ac_get_data_format_info(data_format);
 
 		/* Adjust the number of channels to load based on the vertex
 		 * attribute format.
@@ -1414,8 +1390,8 @@ handle_vs_input_decl(struct radv_shader_context *ctx,
 		bool unaligned_vertex_fetches = false;
 		if ((ctx->ac.chip_class == GFX6 || ctx->ac.chip_class == GFX10) &&
 		    vtx_info->chan_format != data_format &&
-		    ((attrib_offset % vtx_info->vertex_byte_size) ||
-		     (attrib_stride % vtx_info->vertex_byte_size)))
+		    ((attrib_offset % vtx_info->element_size) ||
+		     (attrib_stride % vtx_info->element_size)))
 			unaligned_vertex_fetches = true;
 
 		if (unaligned_vertex_fetches) {
