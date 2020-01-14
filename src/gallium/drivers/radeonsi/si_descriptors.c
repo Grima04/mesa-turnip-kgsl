@@ -2270,7 +2270,7 @@ void si_emit_graphics_shader_pointers(struct si_context *sctx)
 	sctx->shader_pointers_dirty &=
 		~u_bit_consecutive(SI_DESCS_RW_BUFFERS, SI_DESCS_FIRST_COMPUTE);
 
-	if (sctx->vertex_buffer_pointer_dirty) {
+	if (sctx->vertex_buffer_pointer_dirty && sctx->num_vertex_elements) {
 		struct radeon_cmdbuf *cs = sctx->gfx_cs;
 
 		/* Find the location of the VB descriptor pointer. */
@@ -2290,13 +2290,14 @@ void si_emit_graphics_shader_pointers(struct si_context *sctx)
 		sctx->vertex_buffer_pointer_dirty = false;
 	}
 
-	if (sctx->vertex_buffer_user_sgprs_dirty) {
+	if (sctx->vertex_buffer_user_sgprs_dirty &&
+	    sctx->num_vertex_elements &&
+	    sctx->screen->num_vbos_in_user_sgprs) {
 		struct radeon_cmdbuf *cs = sctx->gfx_cs;
 		unsigned num_desc = MIN2(sctx->num_vertex_elements,
 					 sctx->screen->num_vbos_in_user_sgprs);
 		unsigned sh_offset = sh_base[PIPE_SHADER_VERTEX] + SI_SGPR_VS_VB_DESCRIPTOR_FIRST * 4;
 
-		assert(num_desc);
 		si_emit_shader_pointer_head(cs, sh_offset, num_desc * 4);
 		radeon_emit_array(cs, sctx->vb_descriptor_user_sgprs, num_desc * 4);
 		sctx->vertex_buffer_user_sgprs_dirty = false;
