@@ -243,6 +243,40 @@ add_parameter(struct gl_uniform_storage *uniform,
    }
 }
 
+static unsigned
+get_next_index(struct nir_link_uniforms_state *state,
+               const struct gl_uniform_storage *uniform,
+               unsigned *next_index, bool *initialised)
+{
+   /* If we’ve already calculated an index for this member then we can just
+    * offset from there.
+    */
+   if (state->current_type->next_index == UINT_MAX) {
+      /* Otherwise we need to reserve enough indices for all of the arrays
+       * enclosing this member.
+       */
+
+      unsigned array_size = 1;
+
+      for (const struct type_tree_entry *p = state->current_type;
+           p;
+           p = p->parent) {
+         array_size *= p->array_size;
+      }
+
+      state->current_type->next_index = *next_index;
+      *next_index += array_size;
+      *initialised = true;
+   } else
+      *initialised = false;
+
+   unsigned index = state->current_type->next_index;
+
+   state->current_type->next_index += MAX2(1, uniform->array_elements);
+
+   return index;
+}
+
 /**
  * Finds, returns, and updates the stage info for any uniform in UniformStorage
  * defined by @var. In general this is done using the explicit location,
@@ -364,40 +398,6 @@ free_type_tree(struct type_tree_entry *entry)
    }
 
    free(entry);
-}
-
-static unsigned
-get_next_index(struct nir_link_uniforms_state *state,
-               const struct gl_uniform_storage *uniform,
-               unsigned *next_index, bool *initialised)
-{
-   /* If we’ve already calculated an index for this member then we can just
-    * offset from there.
-    */
-   if (state->current_type->next_index == UINT_MAX) {
-      /* Otherwise we need to reserve enough indices for all of the arrays
-       * enclosing this member.
-       */
-
-      unsigned array_size = 1;
-
-      for (const struct type_tree_entry *p = state->current_type;
-           p;
-           p = p->parent) {
-         array_size *= p->array_size;
-      }
-
-      state->current_type->next_index = *next_index;
-      *next_index += array_size;
-      *initialised = true;
-   } else
-      *initialised = false;
-
-   unsigned index = state->current_type->next_index;
-
-   state->current_type->next_index += MAX2(1, uniform->array_elements);
-
-   return index;
 }
 
 /**
