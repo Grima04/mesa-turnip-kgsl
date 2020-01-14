@@ -721,6 +721,7 @@ struct radv_queue {
 	uint32_t gsvs_ring_size;
 	bool has_tess_rings;
 	bool has_gds;
+	bool has_gds_oa;
 	bool has_sample_positions;
 
 	struct radeon_winsys_bo *scratch_bo;
@@ -1333,6 +1334,7 @@ struct radv_cmd_buffer {
 	uint32_t gsvs_ring_size_needed;
 	bool tess_rings_needed;
 	bool gds_needed; /* for GFX10 streamout */
+	bool gds_oa_needed; /* for GFX10 streamout */
 	bool sample_positions_needed;
 
 	VkResult record_result;

@@ -340,6 +340,7 @@ radv_reset_cmd_buffer(struct radv_cmd_buffer *cmd_buffer)
 	cmd_buffer->gsvs_ring_size_needed = 0;
 	cmd_buffer->tess_rings_needed = false;
 	cmd_buffer->gds_needed = false;
+	cmd_buffer->gds_oa_needed = false;
 	cmd_buffer->sample_positions_needed = false;
 
 	if (cmd_buffer->upload.upload_bo)
@@ -5919,8 +5920,10 @@ radv_set_streamout_enable(struct radv_cmd_buffer *cmd_buffer, bool enable)
 	     (old_hw_enabled_mask != so->hw_enabled_mask)))
 		radv_emit_streamout_enable(cmd_buffer);
 
-	if (cmd_buffer->device->physical_device->use_ngg_streamout)
+	if (cmd_buffer->device->physical_device->use_ngg_streamout) {
 		cmd_buffer->gds_needed = true;
+		cmd_buffer->gds_oa_needed = true;
+	}
 }
 
 static void radv_flush_vgt_streamout(struct radv_cmd_buffer *cmd_buffer)

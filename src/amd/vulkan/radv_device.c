@@ -3635,6 +3635,7 @@ radv_get_preamble_cs(struct radv_queue *queue,
 		     uint32_t gsvs_ring_size,
 		     bool needs_tess_rings,
 		     bool needs_gds,
+		     bool needs_gds_oa,
 		     bool needs_sample_positions,
 		     struct radeon_cmdbuf **initial_full_flush_preamble_cs,
                      struct radeon_cmdbuf **initial_preamble_cs,
@@ -3649,7 +3650,7 @@ radv_get_preamble_cs(struct radv_queue *queue,
 	struct radeon_winsys_bo *gds_bo = NULL;
 	struct radeon_winsys_bo *gds_oa_bo = NULL;
 	struct radeon_cmdbuf *dest_cs[3] = {0};
-	bool add_tess_rings = false, add_gds = false, add_sample_positions = false;
+	bool add_tess_rings = false, add_gds = false, add_gds_oa = false, add_sample_positions = false;
 	unsigned tess_factor_ring_size = 0, tess_offchip_ring_size = 0;
 	unsigned max_offchip_buffers;
 	unsigned hs_offchip_param = 0;
@@ -3662,6 +3663,10 @@ radv_get_preamble_cs(struct radv_queue *queue,
 	if (!queue->has_gds) {
 		if (needs_gds)
 			add_gds = true;
+	}
+	if (!queue->has_gds_oa) {
+		if (needs_gds_oa)
+			add_gds_oa = true;
 	}
 	if (!queue->has_sample_positions) {
 		if (needs_sample_positions)
@@ -3692,14 +3697,14 @@ radv_get_preamble_cs(struct radv_queue *queue,
 	    compute_scratch_waves <= queue->compute_scratch_waves &&
 	    esgs_ring_size <= queue->esgs_ring_size &&
 	    gsvs_ring_size <= queue->gsvs_ring_size &&
-	    !add_tess_rings && !add_gds && !add_sample_positions &&
+	    !add_tess_rings && !add_gds && !add_gds_oa && !add_sample_positions &&
 	    queue->initial_preamble_cs) {
 		*initial_full_flush_preamble_cs = queue->initial_full_flush_preamble_cs;
 		*initial_preamble_cs = queue->initial_preamble_cs;
 		*continue_preamble_cs = queue->continue_preamble_cs;
 		if (!scratch_size_per_wave && !compute_scratch_size_per_wave &&
 		    !esgs_ring_size && !gsvs_ring_size && !needs_tess_rings &&
-		    !needs_gds && !needs_sample_positions)
+		    !needs_gds && !needs_gds_oa && !needs_sample_positions)
 			*continue_preamble_cs = NULL;
 		return VK_SUCCESS;
 	}
@@ -3787,6 +3792,12 @@ radv_get_preamble_cs(struct radv_queue *queue,
 							  RADV_BO_PRIORITY_SCRATCH);
 		if (!gds_bo)
 			goto fail;
+	} else {
+		gds_bo = queue->gds_bo;
+	}
+
+	if (add_gds_oa) {
+		assert(queue->device->physical_device->rad_info.chip_class >= GFX10);
 
 		gds_oa_bo = queue->device->ws->buffer_create(queue->device->ws,
 							     4, 1,
@@ -3796,7 +3807,6 @@ radv_get_preamble_cs(struct radv_queue *queue,
 		if (!gds_oa_bo)
 			goto fail;
 	} else {
-		gds_bo = queue->gds_bo;
 		gds_oa_bo = queue->gds_oa_bo;
 	}
 
@@ -3980,8 +3990,10 @@ radv_get_preamble_cs(struct radv_queue *queue,
 		queue->has_gds = true;
 	}
 
-	if (gds_oa_bo != queue->gds_oa_bo)
+	if (gds_oa_bo != queue->gds_oa_bo) {
 		queue->gds_oa_bo = gds_oa_bo;
+		queue->has_gds_oa = true;
+	}
 
 	if (descriptor_bo != queue->descriptor_bo) {
 		if (queue->descriptor_bo)
@@ -4252,6 +4264,7 @@ radv_get_preambles(struct radv_queue *queue,
 	uint32_t esgs_ring_size = 0, gsvs_ring_size = 0;
 	bool tess_rings_needed = false;
 	bool gds_needed = false;
+	bool gds_oa_needed = false;
 	bool sample_positions_needed = false;
 
 	for (uint32_t j = 0; j < cmd_buffer_count; j++) {
@@ -4268,13 +4281,14 @@ radv_get_preambles(struct radv_queue *queue,
 		gsvs_ring_size = MAX2(gsvs_ring_size, cmd_buffer->gsvs_ring_size_needed);
 		tess_rings_needed |= cmd_buffer->tess_rings_needed;
 		gds_needed |= cmd_buffer->gds_needed;
+		gds_oa_needed |= cmd_buffer->gds_oa_needed;
 		sample_positions_needed |= cmd_buffer->sample_positions_needed;
 	}
 
 	return radv_get_preamble_cs(queue, scratch_size_per_wave, waves_wanted,
 	                            compute_scratch_size_per_wave, compute_waves_wanted,
 	                            esgs_ring_size, gsvs_ring_size, tess_rings_needed,
-	                            gds_needed, sample_positions_needed,
+	                            gds_needed, gds_oa_needed, sample_positions_needed,
 	                            initial_full_flush_preamble_cs,
 	                            initial_preamble_cs, continue_preamble_cs);
 }
