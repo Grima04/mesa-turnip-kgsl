@@ -2759,6 +2759,7 @@ void load_lds(isel_context *ctx, unsigned elem_size_bytes, Temp dst,
    unsigned result_size = 0;
    unsigned total_bytes = num_components * elem_size_bytes;
    std::array<Temp, NIR_MAX_VEC_COMPONENTS> result;
+   bool large_ds_read = ctx->options->chip_class >= GFX7;
 
    while (bytes_read < total_bytes) {
       unsigned todo = total_bytes - bytes_read;
@@ -2767,14 +2768,14 @@ void load_lds(isel_context *ctx, unsigned elem_size_bytes, Temp dst,
 
       aco_opcode op = aco_opcode::last_opcode;
       bool read2 = false;
-      if (todo >= 16 && aligned16) {
+      if (todo >= 16 && aligned16 && large_ds_read) {
          op = aco_opcode::ds_read_b128;
          todo = 16;
       } else if (todo >= 16 && aligned8) {
          op = aco_opcode::ds_read2_b64;
          read2 = true;
          todo = 16;
-      } else if (todo >= 12 && aligned16) {
+      } else if (todo >= 12 && aligned16 && large_ds_read) {
          op = aco_opcode::ds_read_b96;
          todo = 12;
       } else if (todo >= 8 && aligned8) {
@@ -2884,6 +2885,8 @@ void ds_write_helper(isel_context *ctx, Operand m, Temp address, Temp data, unsi
 {
    Builder bld(ctx->program, ctx->block);
    unsigned bytes_written = 0;
+   bool large_ds_write = ctx->options->chip_class >= GFX7;
+
    while (bytes_written < total_size * 4) {
       unsigned todo = total_size * 4 - bytes_written;
       bool aligned8 = bytes_written % 8 == 0 && align % 8 == 0;
@@ -2892,14 +2895,14 @@ void ds_write_helper(isel_context *ctx, Operand m, Temp address, Temp data, unsi
       aco_opcode op = aco_opcode::last_opcode;
       bool write2 = false;
       unsigned size = 0;
-      if (todo >= 16 && aligned16) {
+      if (todo >= 16 && aligned16 && large_ds_write) {
          op = aco_opcode::ds_write_b128;
          size = 4;
       } else if (todo >= 16 && aligned8) {
          op = aco_opcode::ds_write2_b64;
          write2 = true;
          size = 4;
-      } else if (todo >= 12 && aligned16) {
+      } else if (todo >= 12 && aligned16 && large_ds_write) {
          op = aco_opcode::ds_write_b96;
          size = 3;
       } else if (todo >= 8 && aligned8) {
