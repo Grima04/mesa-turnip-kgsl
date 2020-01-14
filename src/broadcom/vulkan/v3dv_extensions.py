@@ -53,10 +53,7 @@ API_PATCH_VERSION = 155
 # available.
 API_VERSIONS = [
     ApiVersion('1.0',   True),
-
-    # FIXME: for now we only support 1.0. We maintain this support from anv just in case in
-    # the future we support more that one version supported.
-    # ApiVersion('1.1',   <condition> ),
+    ApiVersion('1.1',   False),
 ]
 
 MAX_API_VERSION = None # Computed later
