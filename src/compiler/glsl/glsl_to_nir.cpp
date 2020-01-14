@@ -539,10 +539,14 @@ nir_visitor::visit(ir_variable *ir)
    if (ir->data.memory_restrict)
       mem_access |= ACCESS_RESTRICT;
 
+   var->interface_type = ir->get_interface_type();
+
    /* For UBO and SSBO variables, we need explicit types */
    if (var->data.mode & (nir_var_mem_ubo | nir_var_mem_ssbo)) {
       const glsl_type *explicit_ifc_type =
          ir->get_interface_type()->get_explicit_interface_type(supports_std430);
+
+      var->interface_type = explicit_ifc_type;
 
       if (ir->type->without_array()->is_interface()) {
          /* If the type contains the interface, wrap the explicit type in the
@@ -635,8 +639,6 @@ nir_visitor::visit(ir_variable *ir)
    }
 
    var->constant_initializer = constant_copy(ir->constant_initializer, var);
-
-   var->interface_type = ir->get_interface_type();
 
    if (var->data.mode == nir_var_function_temp)
       nir_function_impl_add_variable(impl, var);
