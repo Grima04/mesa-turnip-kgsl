@@ -7161,6 +7161,15 @@ iris_emit_raw_pipe_control(struct iris_batch *batch,
          flags |= PIPE_CONTROL_STALL_AT_SCOREBOARD;
    }
 
+   if (GEN_GEN >= 12 && (flags & PIPE_CONTROL_DEPTH_CACHE_FLUSH)) {
+      /* GEN:BUG:1409600907:
+       *
+       * "PIPE_CONTROL with Depth Stall Enable bit must be set
+       * with any PIPE_CONTROL with Depth Flush Enable bit set.
+       */
+      flags |= PIPE_CONTROL_DEPTH_STALL;
+   }
+
    /* Emit --------------------------------------------------------------- */
 
    if (INTEL_DEBUG & DEBUG_PIPE_CONTROL) {
