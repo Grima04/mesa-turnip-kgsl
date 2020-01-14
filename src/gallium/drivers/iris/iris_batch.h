@@ -67,8 +67,12 @@ struct iris_batch {
    struct iris_bo *bo;
    void *map;
    void *map_next;
-   /** Size of the primary batch if we've moved on to a secondary. */
+
+   /** Size of the primary batch being submitted to execbuf (in bytes). */
    unsigned primary_batch_size;
+
+   /** Total size of all chained batches (in bytes). */
+   unsigned total_chained_batch_size;
 
    /** Last Surface State Base Address set in this hardware context. */
    uint64_t last_surface_base_address;
