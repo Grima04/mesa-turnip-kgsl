@@ -101,6 +101,8 @@ pack_emit_reloc(void *cl, const void *reloc) {}
 			memcpy((dest), (src), (count) * sizeof(*(src))); \
 		})
 
+#define NSEC_PER_SEC 1000000000ull
+
 /* From vulkan spec "If the multiple viewports feature is not enabled,
  * scissorCount must be 1", ditto for viewportCount. For now we don't support
  * that feature.
@@ -527,6 +529,14 @@ struct v3dv_semaphore {
    int32_t fd;
 };
 
+struct v3dv_fence {
+   /* A syncobject handle associated with this fence */
+   uint32_t sync;
+
+   /* The file handle of a fence that we imported into our syncobject */
+   int32_t fd;
+};
+
 struct v3dv_shader_module {
    unsigned char sha1[20];
    uint32_t size;
@@ -731,6 +741,7 @@ V3DV_DEFINE_HANDLE_CASTS(v3dv_queue, VkQueue)
 V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_cmd_pool, VkCommandPool)
 V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_buffer, VkBuffer)
 V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_device_memory, VkDeviceMemory)
+V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_fence, VkFence)
 V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_framebuffer, VkFramebuffer)
 V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_image, VkImage)
 V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_image_view, VkImageView)

@@ -27,6 +27,7 @@
 #include "broadcom/clif/clif_dump.h"
 
 #include <errno.h>
+#include <time.h>
 
 static void
 v3dv_clif_dump(struct v3dv_device *device,
@@ -56,6 +57,25 @@ v3dv_clif_dump(struct v3dv_device *device,
    clif_dump_destroy(clif);
 }
 
+static uint64_t
+gettime_ns()
+{
+   struct timespec current;
+   clock_gettime(CLOCK_MONOTONIC, &current);
+   return (uint64_t)current.tv_sec * NSEC_PER_SEC + current.tv_nsec;
+}
+
+static uint64_t
+get_absolute_timeout(uint64_t timeout)
+{
+   uint64_t current_time = gettime_ns();
+   uint64_t max_timeout = (uint64_t) INT64_MAX - current_time;
+
+   timeout = MIN2(max_timeout, timeout);
+
+   return (current_time + timeout);
+}
+
 static VkResult
 process_semaphores_to_signal(struct v3dv_device *device,
                              uint32_t count, const VkSemaphore *sems)
@@ -81,6 +101,32 @@ process_semaphores_to_signal(struct v3dv_device *device,
 
       sem->fd = fd;
    }
+
+   return VK_SUCCESS;
+}
+
+static VkResult
+process_fence_to_signal(struct v3dv_device *device, VkFence _fence)
+{
+   if (_fence == VK_NULL_HANDLE)
+      return VK_SUCCESS;
+
+   struct v3dv_fence *fence = v3dv_fence_from_handle(_fence);
+
+   if (fence->fd >= 0)
+      close(fence->fd);
+   fence->fd = -1;
+
+   int fd;
+   drmSyncobjExportSyncFile(device->fd, device->last_job_sync, &fd);
+   if (fd == -1)
+      return VK_ERROR_DEVICE_LOST;
+
+   int ret = drmSyncobjImportSyncFile(device->fd, fence->sync, fd);
+   if (ret)
+      return VK_ERROR_DEVICE_LOST;
+
+   fence->fd = fd;
 
    return VK_SUCCESS;
 }
@@ -160,7 +206,6 @@ queue_submit(struct v3dv_queue *queue,
              VkFence fence)
 {
    /* FIXME */
-   assert(fence == 0);
    assert(pSubmit->commandBufferCount == 1);
 
    V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, pSubmit->pCommandBuffers[0]);
@@ -174,6 +219,10 @@ queue_submit(struct v3dv_queue *queue,
       result = process_semaphores_to_signal(cmd_buffer->device,
                                             pSubmit->signalSemaphoreCount,
                                             pSubmit->pSignalSemaphores);
+      if (result != VK_SUCCESS)
+         return result;
+
+      result = process_fence_to_signal(cmd_buffer->device, fence);
       if (result != VK_SUCCESS)
          return result;
    }
@@ -245,4 +294,134 @@ v3dv_DestroySemaphore(VkDevice _device,
       close(sem->fd);
 
    vk_free2(&device->alloc, pAllocator, sem);
+}
+
+VkResult
+v3dv_CreateFence(VkDevice _device,
+                 const VkFenceCreateInfo *pCreateInfo,
+                 const VkAllocationCallbacks *pAllocator,
+                 VkFence *pFence)
+{
+   V3DV_FROM_HANDLE(v3dv_device, device, _device);
+
+   assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_FENCE_CREATE_INFO);
+
+   struct v3dv_fence *fence =
+      vk_alloc2(&device->alloc, pAllocator, sizeof(struct v3dv_fence), 8,
+               VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   if (fence == NULL)
+      return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+
+   unsigned flags = 0;
+   if (pCreateInfo->flags & VK_FENCE_CREATE_SIGNALED_BIT)
+      flags |= DRM_SYNCOBJ_CREATE_SIGNALED;
+   int ret = drmSyncobjCreate(device->fd, flags, &fence->sync);
+   if (ret) {
+      vk_free2(&device->alloc, pAllocator, fence);
+      return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+   }
+
+   fence->fd = -1;
+
+   *pFence = v3dv_fence_to_handle(fence);
+
+   return VK_SUCCESS;
+}
+
+void
+v3dv_DestroyFence(VkDevice _device,
+                  VkFence _fence,
+                  const VkAllocationCallbacks *pAllocator)
+{
+   V3DV_FROM_HANDLE(v3dv_device, device, _device);
+   V3DV_FROM_HANDLE(v3dv_fence, fence, _fence);
+
+   if (fence == NULL)
+      return;
+
+   drmSyncobjDestroy(device->fd, fence->sync);
+
+   if (fence->fd != -1)
+      close(fence->fd);
+
+   vk_free2(&device->alloc, pAllocator, fence);
+}
+
+VkResult
+v3dv_GetFenceStatus(VkDevice _device, VkFence _fence)
+{
+   V3DV_FROM_HANDLE(v3dv_device, device, _device);
+   V3DV_FROM_HANDLE(v3dv_fence, fence, _fence);
+
+   int ret = drmSyncobjWait(device->fd, &fence->sync, 1,
+                            0, DRM_SYNCOBJ_WAIT_FLAGS_WAIT_FOR_SUBMIT, NULL);
+   if (ret == -ETIME)
+      return VK_NOT_READY;
+   else if (ret)
+      return vk_error(device->instance, VK_ERROR_DEVICE_LOST);
+   return VK_SUCCESS;
+}
+
+VkResult
+v3dv_ResetFences(VkDevice _device, uint32_t fenceCount, const VkFence *pFences)
+{
+   V3DV_FROM_HANDLE(v3dv_device, device, _device);
+
+   uint32_t *syncobjs = vk_alloc(&device->alloc,
+                                 sizeof(*syncobjs) * fenceCount, 8,
+                                 VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
+   if (!syncobjs)
+      return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+
+   for (uint32_t i = 0; i < fenceCount; i++) {
+      struct v3dv_fence *fence = v3dv_fence_from_handle(pFences[i]);
+      syncobjs[i] = fence->sync;
+   }
+
+   int ret = drmSyncobjReset(device->fd, syncobjs, fenceCount);
+
+   vk_free(&device->alloc, syncobjs);
+
+   return ret ? VK_ERROR_OUT_OF_HOST_MEMORY : VK_SUCCESS;
+}
+
+VkResult
+v3dv_WaitForFences(VkDevice _device,
+                   uint32_t fenceCount,
+                   const VkFence *pFences,
+                   VkBool32 waitAll,
+                   uint64_t timeout)
+{
+   V3DV_FROM_HANDLE(v3dv_device, device, _device);
+
+   const uint64_t abs_timeout = get_absolute_timeout(timeout);
+
+   uint32_t *syncobjs = vk_alloc(&device->alloc,
+                                 sizeof(*syncobjs) * fenceCount, 8,
+                                 VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
+   if (!syncobjs)
+      return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+
+   for (uint32_t i = 0; i < fenceCount; i++) {
+      struct v3dv_fence *fence = v3dv_fence_from_handle(pFences[i]);
+      syncobjs[i] = fence->sync;
+   }
+
+   unsigned flags = DRM_SYNCOBJ_WAIT_FLAGS_WAIT_FOR_SUBMIT;
+   if (waitAll)
+      flags |= DRM_SYNCOBJ_WAIT_FLAGS_WAIT_ALL;
+
+   int ret;
+   do {
+      ret = drmSyncobjWait(device->fd, syncobjs, fenceCount,
+                           timeout, flags, NULL);
+   } while (ret == -ETIME && gettime_ns() < abs_timeout);
+
+   vk_free(&device->alloc, syncobjs);
+
+   if (ret == -ETIME)
+      return VK_TIMEOUT;
+   else if (ret)
+      return vk_error(device->instance, VK_ERROR_DEVICE_LOST);
+   return VK_SUCCESS;
 }
