@@ -888,7 +888,8 @@ setup_nir(isel_context *ctx, nir_shader *nir)
    nir_lower_load_const_to_scalar(nir);
    nir_opt_shrink_load(nir);
    nir_move_options move_opts = (nir_move_options)(
-      nir_move_const_undef | nir_move_load_ubo | nir_move_load_input | nir_move_comparisons);
+      nir_move_const_undef | nir_move_load_ubo | nir_move_load_input |
+      nir_move_comparisons | nir_move_copies);
    nir_opt_sink(nir, move_opts);
    nir_opt_move(nir, move_opts);
    nir_convert_to_lcssa(nir, true, false);
