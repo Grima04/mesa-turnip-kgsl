@@ -241,12 +241,6 @@ shader_module_compile_to_nir(struct v3dv_device *device,
    return nir;
 }
 
-static void
-v3dv_nir_lower_fs_inputs(nir_shader *nir)
-{
-   /* FIXME: stub */
-}
-
 static int
 type_size_vec4(const struct glsl_type *type, bool bindless)
 {
@@ -254,9 +248,42 @@ type_size_vec4(const struct glsl_type *type, bool bindless)
 }
 
 static void
-v3dv_nir_lower_fs_outputs(nir_shader *nir)
+lower_fs_inputs(nir_shader *nir)
+{
+   nir_assign_io_var_locations(nir, nir_var_shader_in, &nir->num_inputs,
+                               MESA_SHADER_FRAGMENT);
+
+   NIR_PASS_V(nir, nir_lower_io, nir_var_shader_in, type_size_vec4, 0);
+}
+
+static void
+lower_vs_inputs(struct nir_shader *nir)
+{
+   nir_assign_io_var_locations(nir, nir_var_shader_in, &nir->num_inputs,
+                               MESA_SHADER_VERTEX);
+
+   /* FIXME: if we call the following pass, we get a crash later. Likely
+    * because it overlaps with v3d_nir_lower_io. Need further research though.
+    */
+   /* NIR_PASS_V(nir, nir_lower_io, nir_var_shader_in, type_size_vec4, 0); */
+}
+
+static void
+lower_fs_outputs(nir_shader *nir)
 {
    NIR_PASS_V(nir, nir_lower_io, nir_var_shader_out, type_size_vec4, 0);
+}
+
+static void
+lower_vs_outputs(nir_shader *nir)
+{
+   nir_assign_io_var_locations(nir, nir_var_shader_out, &nir->num_outputs,
+                               MESA_SHADER_FRAGMENT);
+
+   /* FIXME: if we call nir_lower_io, we get a crash later. Likely because it
+    * overlaps with v3d_nir_lower_io. Need further research though.
+    */
+   /* NIR_PASS_V(nir, nir_lower_io, nir_var_shader_out, type_size_vec4, 0); */
 }
 
 static void
@@ -655,6 +682,9 @@ pipeline_compile_graphics(struct v3dv_pipeline *pipeline,
             pCreateInfo->pInputAssemblyState;
          pipeline->vs->topology = vk_to_pipe_prim_type[ia_info->topology];
 
+         lower_vs_inputs(p_stage->nir);
+         lower_vs_outputs(p_stage->nir);
+
          /* Note that at this point we would compile twice, one for vs and
           * other for vs_bin. For now we are maintaining two pipeline_stage
           * and two keys. Eventually we could reuse the key.
@@ -673,8 +703,8 @@ pipeline_compile_graphics(struct v3dv_pipeline *pipeline,
 
          /* FIXME: create a per-build method with all the lowering
           * needed. perhaps move to shader_compile_module_to_nir? */
-         v3dv_nir_lower_fs_inputs(p_stage->nir);
-         v3dv_nir_lower_fs_outputs(p_stage->nir);
+         lower_fs_inputs(p_stage->nir);
+         lower_fs_outputs(p_stage->nir);
 
          compile_pipeline_stage(pipeline->fs);
          break;
