@@ -211,7 +211,8 @@ static void
 st_bind_egl_image(struct gl_context *ctx,
                   struct gl_texture_object *texObj,
                   struct gl_texture_image *texImage,
-                  struct st_egl_image *stimg)
+                  struct st_egl_image *stimg,
+                  bool tex_storage)
 {
    struct st_context *st = st_context(ctx);
    struct st_texture_object *stObj;
@@ -303,7 +304,7 @@ st_egl_image_target_texture_2d(struct gl_context *ctx, GLenum target,
                          "glEGLImageTargetTexture2D", &stimg))
       return;
 
-   st_bind_egl_image(ctx, texObj, texImage, &stimg);
+   st_bind_egl_image(ctx, texObj, texImage, &stimg, false);
    pipe_resource_reference(&stimg.texture, NULL);
 }
 
