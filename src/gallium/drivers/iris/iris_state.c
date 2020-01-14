@@ -945,39 +945,39 @@ iris_init_render_context(struct iris_batch *batch)
 #endif
 
 #if GEN_GEN == 11
-      iris_pack_state(GENX(TCCNTLREG), &reg_val, reg) {
-         reg.L3DataPartialWriteMergingEnable = true;
-         reg.ColorZPartialWriteMergingEnable = true;
-         reg.URBPartialWriteMergingEnable = true;
-         reg.TCDisable = true;
-      }
-      iris_emit_lri(batch, TCCNTLREG, reg_val);
+   iris_pack_state(GENX(TCCNTLREG), &reg_val, reg) {
+      reg.L3DataPartialWriteMergingEnable = true;
+      reg.ColorZPartialWriteMergingEnable = true;
+      reg.URBPartialWriteMergingEnable = true;
+      reg.TCDisable = true;
+   }
+   iris_emit_lri(batch, TCCNTLREG, reg_val);
 
-      iris_pack_state(GENX(SAMPLER_MODE), &reg_val, reg) {
-         reg.HeaderlessMessageforPreemptableContexts = 1;
-         reg.HeaderlessMessageforPreemptableContextsMask = 1;
-      }
-      iris_emit_lri(batch, SAMPLER_MODE, reg_val);
+   iris_pack_state(GENX(SAMPLER_MODE), &reg_val, reg) {
+      reg.HeaderlessMessageforPreemptableContexts = 1;
+      reg.HeaderlessMessageforPreemptableContextsMask = 1;
+   }
+   iris_emit_lri(batch, SAMPLER_MODE, reg_val);
 
-      /* Bit 1 must be set in HALF_SLICE_CHICKEN7. */
-      iris_pack_state(GENX(HALF_SLICE_CHICKEN7), &reg_val, reg) {
-         reg.EnabledTexelOffsetPrecisionFix = 1;
-         reg.EnabledTexelOffsetPrecisionFixMask = 1;
-      }
-      iris_emit_lri(batch, HALF_SLICE_CHICKEN7, reg_val);
+   /* Bit 1 must be set in HALF_SLICE_CHICKEN7. */
+   iris_pack_state(GENX(HALF_SLICE_CHICKEN7), &reg_val, reg) {
+      reg.EnabledTexelOffsetPrecisionFix = 1;
+      reg.EnabledTexelOffsetPrecisionFixMask = 1;
+   }
+   iris_emit_lri(batch, HALF_SLICE_CHICKEN7, reg_val);
 
-      /* Hardware specification recommends disabling repacking for the
-       * compatibility with decompression mechanism in display controller.
-       */
-      if (devinfo->disable_ccs_repack) {
-         iris_pack_state(GENX(CACHE_MODE_0), &reg_val, reg) {
-            reg.DisableRepackingforCompression = true;
-            reg.DisableRepackingforCompressionMask = true;
-         }
-         iris_emit_lri(batch, CACHE_MODE_0, reg_val);
+   /* Hardware specification recommends disabling repacking for the
+    * compatibility with decompression mechanism in display controller.
+    */
+   if (devinfo->disable_ccs_repack) {
+      iris_pack_state(GENX(CACHE_MODE_0), &reg_val, reg) {
+         reg.DisableRepackingforCompression = true;
+         reg.DisableRepackingforCompressionMask = true;
       }
+      iris_emit_lri(batch, CACHE_MODE_0, reg_val);
+   }
 
-      iris_upload_slice_hashing_state(batch);
+   iris_upload_slice_hashing_state(batch);
 #endif
 
    /* 3DSTATE_DRAWING_RECTANGLE is non-pipelined, so we want to avoid
