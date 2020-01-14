@@ -268,9 +268,21 @@ st_bind_egl_image(struct gl_context *ctx,
       break;
    default:
       texFormat = st_pipe_format_to_mesa_format(stimg->format);
+      /* Use previously derived internalformat as specified by
+       * EXT_EGL_image_storage.
+       */
+      if (tex_storage && texObj->Target == GL_TEXTURE_2D
+          && stimg->internalformat) {
+         internalFormat = stimg->internalformat;
+         if (internalFormat == GL_NONE) {
+            _mesa_error(ctx, GL_INVALID_OPERATION, __func__);
+            return;
+         }
+      }
       break;
    }
    assert(texFormat != MESA_FORMAT_NONE);
+
 
    /* Minify texture size based on level set on the EGLImage. */
    uint32_t width = u_minify(stimg->texture->width0, stimg->level);
@@ -308,9 +320,26 @@ st_egl_image_target_texture_2d(struct gl_context *ctx, GLenum target,
    pipe_resource_reference(&stimg.texture, NULL);
 }
 
+static void
+st_egl_image_target_tex_storage(struct gl_context *ctx, GLenum target,
+                                struct gl_texture_object *texObj,
+                                struct gl_texture_image *texImage,
+                                GLeglImageOES image_handle)
+{
+   struct st_egl_image stimg;
+
+   if (!st_get_egl_image(ctx, image_handle, PIPE_BIND_SAMPLER_VIEW,
+                         "glEGLImageTargetTexture2D", &stimg))
+      return;
+
+   st_bind_egl_image(ctx, texObj, texImage, &stimg, true);
+   pipe_resource_reference(&stimg.texture, NULL);
+}
+
 void
 st_init_eglimage_functions(struct dd_function_table *functions)
 {
    functions->EGLImageTargetTexture2D = st_egl_image_target_texture_2d;
+   functions->EGLImageTargetTexStorage = st_egl_image_target_tex_storage;
    functions->EGLImageTargetRenderbufferStorage = st_egl_image_target_renderbuffer_storage;
 }
