@@ -3720,6 +3720,15 @@ fs_visitor::nir_emit_cs_intrinsic(const fs_builder &bld,
 
    switch (instr->intrinsic) {
    case nir_intrinsic_control_barrier:
+      /* The whole workgroup fits in a single HW thread, so all the
+       * invocations are already executed lock-step.  Instead of an actual
+       * barrier just emit a scheduling fence, that will generate no code.
+       */
+      if (workgroup_size() <= dispatch_width) {
+         bld.exec_all().group(1, 0).emit(FS_OPCODE_SCHEDULING_FENCE);
+         break;
+      }
+
       emit_barrier();
       cs_prog_data->uses_barrier = true;
       break;
