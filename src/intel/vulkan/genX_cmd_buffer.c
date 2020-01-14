@@ -1904,7 +1904,16 @@ genX(cmd_buffer_apply_pipe_flushes)(struct anv_cmd_buffer *cmd_buffer)
          pipe.RenderTargetCacheFlushEnable =
             bits & ANV_PIPE_RENDER_TARGET_CACHE_FLUSH_BIT;
 
+         /* GEN:BUG:1409600907: "PIPE_CONTROL with Depth Stall Enable bit must
+          * be set with any PIPE_CONTROL with Depth Flush Enable bit set.
+          */
+#if GEN_GEN >= 12
+         pipe.DepthStallEnable =
+            pipe.DepthCacheFlushEnable || (bits & ANV_PIPE_DEPTH_STALL_BIT);
+#else
          pipe.DepthStallEnable = bits & ANV_PIPE_DEPTH_STALL_BIT;
+#endif
+
          pipe.CommandStreamerStallEnable = bits & ANV_PIPE_CS_STALL_BIT;
          pipe.StallAtPixelScoreboard = bits & ANV_PIPE_STALL_AT_SCOREBOARD_BIT;
 
@@ -4107,6 +4116,11 @@ genX(flush_pipeline_select)(struct anv_cmd_buffer *cmd_buffer,
       pc.CommandStreamerStallEnable    = true;
 #if GEN_GEN >= 12
       pc.TileCacheFlushEnable = true;
+
+      /* GEN:BUG:1409600907: "PIPE_CONTROL with Depth Stall Enable bit must be
+       * set with any PIPE_CONTROL with Depth Flush Enable bit set.
+       */
+      pc.DepthStallEnable = true;
 #endif
    }
 
