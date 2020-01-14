@@ -632,7 +632,8 @@ lima_transfer_map(struct pipe_context *pctx,
             panfrost_load_tiled_image(
                trans->staging + i * ptrans->stride * ptrans->box.height,
                bo->map + res->levels[level].offset + (i + box->z) * res->levels[level].layer_stride,
-               &ptrans->box,
+               ptrans->box.x, ptrans->box.y,
+               ptrans->box.width, ptrans->box.height,
                ptrans->stride,
                res->levels[level].stride,
                util_format_get_blocksize(pres->format));
@@ -677,7 +678,8 @@ lima_transfer_unmap(struct pipe_context *pctx,
             panfrost_store_tiled_image(
                bo->map + res->levels[ptrans->level].offset + (i + ptrans->box.z) * res->levels[ptrans->level].layer_stride,
                trans->staging + i * ptrans->stride * ptrans->box.height,
-               &ptrans->box,
+               ptrans->box.x, ptrans->box.y,
+               ptrans->box.width, ptrans->box.height,
                res->levels[ptrans->level].stride,
                ptrans->stride,
                util_format_get_blocksize(pres->format));

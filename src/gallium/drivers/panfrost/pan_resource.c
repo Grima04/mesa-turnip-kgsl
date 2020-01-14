@@ -664,7 +664,7 @@ panfrost_transfer_map(struct pipe_context *pctx,
                                 panfrost_load_tiled_image(
                                         transfer->map,
                                         bo->cpu + rsrc->slices[level].offset,
-                                        box,
+                                        box->x, box->y, box->width, box->height,
                                         transfer->base.stride,
                                         rsrc->slices[level].stride,
                                         util_format_get_blocksize(resource->format));
@@ -718,7 +718,8 @@ panfrost_transfer_unmap(struct pipe_context *pctx,
                                 panfrost_store_tiled_image(
                                         bo->cpu + prsrc->slices[transfer->level].offset,
                                         trans->map,
-                                        &transfer->box,
+                                        transfer->box.x, transfer->box.y,
+                                        transfer->box.width, transfer->box.height,
                                         prsrc->slices[transfer->level].stride,
                                         transfer->stride,
                                         util_format_get_blocksize(prsrc->base.format));
