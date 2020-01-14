@@ -1102,7 +1102,7 @@ radeonsi_screen_create_impl(struct radeon_winsys *ws,
 					    &prim_discard_vertex_count_threshold,
 					    &tmp);
 	/* Compute-shader-based culling doesn't support VBOs in user SGPRs. */
-	if (prim_discard_vertex_count_threshold != UINT_MAX)
+	if (prim_discard_vertex_count_threshold == UINT_MAX)
 		sscreen->num_vbos_in_user_sgprs = sscreen->info.chip_class >= GFX9 ? 5 : 1;
 
 	/* Determine tessellation ring info. */
