@@ -196,18 +196,6 @@ si_shader_context_from_abi(struct ac_shader_abi *abi)
 	return container_of(abi, ctx, abi);
 }
 
-void si_llvm_context_init(struct si_shader_context *ctx,
-			  struct si_screen *sscreen,
-			  struct ac_llvm_compiler *compiler,
-			  unsigned wave_size);
-void si_llvm_create_func(struct si_shader_context *ctx, const char *name,
-			 LLVMTypeRef *return_types, unsigned num_return_elems,
-			 unsigned max_workgroup_size);
-
-void si_llvm_dispose(struct si_shader_context *ctx);
-
-void si_llvm_optimize_module(struct si_shader_context *ctx);
-
 LLVMValueRef si_nir_load_input_tes(struct ac_shader_abi *abi,
 				   LLVMTypeRef type,
 				   LLVMValueRef vertex_index,
@@ -222,17 +210,6 @@ LLVMValueRef si_nir_load_input_tes(struct ac_shader_abi *abi,
 				   bool load_input);
 bool si_is_merged_shader(struct si_shader_context *ctx);
 LLVMValueRef si_get_sample_id(struct si_shader_context *ctx);
-LLVMValueRef si_buffer_load_const(struct si_shader_context *ctx,
-				  LLVMValueRef resource, LLVMValueRef offset);
-void si_llvm_build_ret(struct si_shader_context *ctx, LLVMValueRef ret);
-LLVMValueRef si_prolog_get_rw_buffers(struct si_shader_context *ctx);
-LLVMValueRef si_build_gather_64bit(struct si_shader_context *ctx,
-				   LLVMTypeRef type, LLVMValueRef val1,
-				   LLVMValueRef val2);
-void si_llvm_emit_barrier(struct si_shader_context *ctx);
-void si_llvm_declare_esgs_ring(struct si_shader_context *ctx);
-void si_init_exec_from_input(struct si_shader_context *ctx, struct ac_arg param,
-			     unsigned bitoffset);
 void si_declare_compute_memory(struct si_shader_context *ctx);
 LLVMValueRef si_get_primitive_id(struct si_shader_context *ctx,
 				 unsigned swizzle);
@@ -255,21 +232,6 @@ void si_get_ps_prolog_key(struct si_shader *shader,
 			  bool separate_prolog);
 void si_get_ps_epilog_key(struct si_shader *shader,
 			  union si_shader_part_key *key);
-LLVMValueRef si_insert_input_ret(struct si_shader_context *ctx, LLVMValueRef ret,
-				 struct ac_arg param, unsigned return_index);
-LLVMValueRef si_insert_input_ret_float(struct si_shader_context *ctx, LLVMValueRef ret,
-				       struct ac_arg param, unsigned return_index);
-LLVMValueRef si_insert_input_ptr(struct si_shader_context *ctx, LLVMValueRef ret,
-				 struct ac_arg param, unsigned return_index);
-int si_compile_llvm(struct si_screen *sscreen,
-		    struct si_shader_binary *binary,
-		    struct ac_shader_config *conf,
-		    struct ac_llvm_compiler *compiler,
-		    struct ac_llvm_context *ac,
-		    struct pipe_debug_callback *debug,
-		    enum pipe_shader_type shader_type,
-		    const char *name,
-		    bool less_optimized);
 void si_fix_resource_usage(struct si_screen *sscreen, struct si_shader *shader);
 void si_create_function(struct si_shader_context *ctx, bool ngg_cull_shader);
 
@@ -290,6 +252,43 @@ void gfx10_ngg_gs_emit_vertex(struct si_shader_context *ctx,
 void gfx10_ngg_gs_emit_prologue(struct si_shader_context *ctx);
 void gfx10_ngg_gs_emit_epilogue(struct si_shader_context *ctx);
 void gfx10_ngg_calculate_subgroup_info(struct si_shader *shader);
+
+/* si_shader_llvm.c */
+int si_compile_llvm(struct si_screen *sscreen,
+		    struct si_shader_binary *binary,
+		    struct ac_shader_config *conf,
+		    struct ac_llvm_compiler *compiler,
+		    struct ac_llvm_context *ac,
+		    struct pipe_debug_callback *debug,
+		    enum pipe_shader_type shader_type,
+		    const char *name,
+		    bool less_optimized);
+void si_llvm_context_init(struct si_shader_context *ctx,
+			  struct si_screen *sscreen,
+			  struct ac_llvm_compiler *compiler,
+			  unsigned wave_size);
+void si_llvm_create_func(struct si_shader_context *ctx, const char *name,
+			 LLVMTypeRef *return_types, unsigned num_return_elems,
+			 unsigned max_workgroup_size);
+void si_llvm_optimize_module(struct si_shader_context *ctx);
+void si_llvm_dispose(struct si_shader_context *ctx);
+LLVMValueRef si_buffer_load_const(struct si_shader_context *ctx,
+				  LLVMValueRef resource, LLVMValueRef offset);
+void si_llvm_build_ret(struct si_shader_context *ctx, LLVMValueRef ret);
+LLVMValueRef si_insert_input_ret(struct si_shader_context *ctx, LLVMValueRef ret,
+				 struct ac_arg param, unsigned return_index);
+LLVMValueRef si_insert_input_ret_float(struct si_shader_context *ctx, LLVMValueRef ret,
+				       struct ac_arg param, unsigned return_index);
+LLVMValueRef si_insert_input_ptr(struct si_shader_context *ctx, LLVMValueRef ret,
+				 struct ac_arg param, unsigned return_index);
+LLVMValueRef si_prolog_get_rw_buffers(struct si_shader_context *ctx);
+LLVMValueRef si_build_gather_64bit(struct si_shader_context *ctx,
+				   LLVMTypeRef type, LLVMValueRef val1,
+				   LLVMValueRef val2);
+void si_llvm_emit_barrier(struct si_shader_context *ctx);
+void si_llvm_declare_esgs_ring(struct si_shader_context *ctx);
+void si_init_exec_from_input(struct si_shader_context *ctx, struct ac_arg param,
+			     unsigned bitoffset);
 
 /* si_shader_llvm_gs.c */
 LLVMValueRef si_is_es_thread(struct si_shader_context *ctx);
