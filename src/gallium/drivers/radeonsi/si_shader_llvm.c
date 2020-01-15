@@ -149,15 +149,6 @@ int si_compile_llvm(struct si_screen *sscreen,
 	return 0;
 }
 
-void si_shader_binary_clean(struct si_shader_binary *binary)
-{
-	free((void *)binary->elf_buffer);
-	binary->elf_buffer = NULL;
-
-	free(binary->llvm_ir_string);
-	binary->llvm_ir_string = NULL;
-}
-
 void si_llvm_context_init(struct si_shader_context *ctx,
 			  struct si_screen *sscreen,
 			  struct ac_llvm_compiler *compiler,
@@ -171,24 +162,6 @@ void si_llvm_context_init(struct si_shader_context *ctx,
 			     sscreen->info.family,
 			     AC_FLOAT_MODE_NO_SIGNED_ZEROS_FP_MATH,
 			     wave_size, 64);
-}
-
-/* Set the context to a certain shader. Can be called repeatedly
- * to change the shader. */
-void si_llvm_context_set_ir(struct si_shader_context *ctx,
-			    struct si_shader *shader)
-{
-	struct si_shader_selector *sel = shader->selector;
-	const struct si_shader_info *info = &sel->info;
-
-	ctx->shader = shader;
-	ctx->type = sel->type;
-
-	ctx->num_const_buffers = util_last_bit(info->const_buffers_declared);
-	ctx->num_shader_buffers = util_last_bit(info->shader_buffers_declared);
-
-	ctx->num_samplers = util_last_bit(info->samplers_declared);
-	ctx->num_images = util_last_bit(info->images_declared);
 }
 
 void si_llvm_create_func(struct si_shader_context *ctx, const char *name,

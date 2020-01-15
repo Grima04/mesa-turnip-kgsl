@@ -1096,9 +1096,6 @@ bool si_nir_build_llvm(struct si_shader_context *ctx, struct nir_shader *nir)
 	ctx->abi.clamp_shadow_reference = true;
 	ctx->abi.robust_buffer_access = true;
 
-	ctx->num_samplers = util_last_bit(info->samplers_declared);
-	ctx->num_images = util_last_bit(info->images_declared);
-
 	if (ctx->shader->selector->info.properties[TGSI_PROPERTY_CS_LOCAL_SIZE]) {
 		assert(gl_shader_stage_is_compute(nir->info.stage));
 		si_declare_compute_memory(ctx);

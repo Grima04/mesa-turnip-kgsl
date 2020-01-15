@@ -200,9 +200,6 @@ void si_llvm_context_init(struct si_shader_context *ctx,
 			  struct si_screen *sscreen,
 			  struct ac_llvm_compiler *compiler,
 			  unsigned wave_size);
-void si_llvm_context_set_ir(struct si_shader_context *ctx,
-			    struct si_shader *shader);
-
 void si_llvm_create_func(struct si_shader_context *ctx, const char *name,
 			 LLVMTypeRef *return_types, unsigned num_return_elems,
 			 unsigned max_workgroup_size);
