@@ -2351,9 +2351,9 @@ tu_CmdBeginRenderPass(VkCommandBuffer commandBuffer,
 }
 
 void
-tu_CmdBeginRenderPass2KHR(VkCommandBuffer commandBuffer,
-                          const VkRenderPassBeginInfo *pRenderPassBeginInfo,
-                          const VkSubpassBeginInfoKHR *pSubpassBeginInfo)
+tu_CmdBeginRenderPass2(VkCommandBuffer commandBuffer,
+                       const VkRenderPassBeginInfo *pRenderPassBeginInfo,
+                       const VkSubpassBeginInfoKHR *pSubpassBeginInfo)
 {
    tu_CmdBeginRenderPass(commandBuffer, pRenderPassBeginInfo,
                          pSubpassBeginInfo->contents);
@@ -2419,9 +2419,9 @@ tu_CmdNextSubpass(VkCommandBuffer commandBuffer, VkSubpassContents contents)
 }
 
 void
-tu_CmdNextSubpass2KHR(VkCommandBuffer commandBuffer,
-                      const VkSubpassBeginInfoKHR *pSubpassBeginInfo,
-                      const VkSubpassEndInfoKHR *pSubpassEndInfo)
+tu_CmdNextSubpass2(VkCommandBuffer commandBuffer,
+                   const VkSubpassBeginInfoKHR *pSubpassBeginInfo,
+                   const VkSubpassEndInfoKHR *pSubpassEndInfo)
 {
    tu_CmdNextSubpass(commandBuffer, pSubpassBeginInfo->contents);
 }
@@ -3792,8 +3792,8 @@ tu_CmdEndRenderPass(VkCommandBuffer commandBuffer)
 }
 
 void
-tu_CmdEndRenderPass2KHR(VkCommandBuffer commandBuffer,
-                        const VkSubpassEndInfoKHR *pSubpassEndInfo)
+tu_CmdEndRenderPass2(VkCommandBuffer commandBuffer,
+                     const VkSubpassEndInfoKHR *pSubpassEndInfo)
 {
    tu_CmdEndRenderPass(commandBuffer);
 }
