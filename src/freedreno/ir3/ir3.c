@@ -1105,7 +1105,7 @@ ir3_clear_mark(struct ir3 *ir)
 unsigned
 ir3_count_instructions(struct ir3 *ir)
 {
-	unsigned cnt = 0;
+	unsigned cnt = 1;
 	foreach_block (block, &ir->block_list) {
 		block->start_ip = cnt;
 		block->end_ip = cnt;
