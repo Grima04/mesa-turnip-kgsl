@@ -46,7 +46,7 @@ name_params(const testing::TestParamInfo<Params> params) {
       second = "float";
       break;
    case GL_UNSIGNED_SHORT_5_6_5:
-      second = "unisgned_short_565";
+      second = "unsigned_short_565";
       break;
    }
 
