@@ -60,6 +60,7 @@
 static const struct v3dv_format format_table[] = {
    FORMAT(R8G8B8A8_UNORM,          RGBA8,       RGBA8,       SWIZ_XYZW, 16),
    FORMAT(B8G8R8A8_UNORM,          RGBA8,       RGBA8,       SWIZ_ZYXW, 16),
+   FORMAT(R32G32B32A32_SFLOAT,     RGBA32F,     RGBA32F,     SWIZ_XYZW, 32),
 };
 
 const struct v3dv_format *
