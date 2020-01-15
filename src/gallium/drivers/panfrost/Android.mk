@@ -40,7 +40,7 @@ LOCAL_SHARED_LIBRARIES := libdrm
 
 LOCAL_STATIC_LIBRARIES := \
 	libmesa_nir \
-    libmesa_winsys_panfrost \
+	libmesa_winsys_panfrost \
 	libpanfrost_bifrost \
 	libpanfrost_decode \
 	libpanfrost_encoder \
