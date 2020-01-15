@@ -1441,6 +1441,31 @@ ra_alloc(struct ir3_ra_ctx *ctx)
 	return 0;
 }
 
+/* if we end up with split/collect instructions with non-matching src
+ * and dest regs, that means something has gone wrong.  Which makes it
+ * a pretty good sanity check.
+ */
+static void
+ra_sanity_check(struct ir3 *ir)
+{
+	foreach_block (block, &ir->block_list) {
+		foreach_instr (instr, &block->instr_list) {
+			if (instr->opc == OPC_META_SPLIT) {
+				struct ir3_register *dst = instr->regs[0];
+				struct ir3_register *src = instr->regs[1];
+				debug_assert(dst->num == (src->num + instr->split.off));
+			} else if (instr->opc == OPC_META_COLLECT) {
+				struct ir3_register *dst = instr->regs[0];
+				struct ir3_register *src;
+
+				foreach_src_n (src, n, instr) {
+					debug_assert(dst->num == (src->num - n));
+				}
+			}
+		}
+	}
+}
+
 static int
 ir3_ra_pass(struct ir3_shader_variant *v, struct ir3_instruction **precolor,
 		unsigned nprecolor, bool scalar_pass)
@@ -1489,6 +1514,14 @@ ir3_ra(struct ir3_shader_variant *v, struct ir3_instruction **precolor,
 		printf("AFTER RA (2nd pass):\n");
 		ir3_print(v->ir);
 	}
+
+#ifdef DEBUG
+#  define SANITY_CHECK DEBUG
+#else
+#  define SANITY_CHECK 0
+#endif
+	if (SANITY_CHECK)
+		ra_sanity_check(v->ir);
 
 	return ret;
 }
