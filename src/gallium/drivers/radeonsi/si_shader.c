@@ -1496,11 +1496,21 @@ static bool si_vs_needs_prolog(const struct si_shader_selector *sel,
 }
 
 static bool si_build_main_function(struct si_shader_context *ctx,
+				   struct si_shader *shader,
 				   struct nir_shader *nir, bool free_nir,
 				   bool ngg_cull_shader)
 {
-	struct si_shader *shader = ctx->shader;
 	struct si_shader_selector *sel = shader->selector;
+	const struct si_shader_info *info = &sel->info;
+
+	ctx->shader = shader;
+	ctx->type = sel->type;
+
+	ctx->num_const_buffers = util_last_bit(info->const_buffers_declared);
+	ctx->num_shader_buffers = util_last_bit(info->shader_buffers_declared);
+
+	ctx->num_samplers = util_last_bit(info->samplers_declared);
+	ctx->num_images = util_last_bit(info->images_declared);
 
 	si_llvm_init_resource_callbacks(ctx);
 
@@ -2084,24 +2094,6 @@ static struct nir_shader *get_nir_shader(struct si_shader_selector *sel,
 	return NULL;
 }
 
-/* Set the context to a certain shader. Can be called repeatedly
- * to change the shader. */
-static void si_shader_context_set_ir(struct si_shader_context *ctx,
-				     struct si_shader *shader)
-{
-	struct si_shader_selector *sel = shader->selector;
-	const struct si_shader_info *info = &sel->info;
-
-	ctx->shader = shader;
-	ctx->type = sel->type;
-
-	ctx->num_const_buffers = util_last_bit(info->const_buffers_declared);
-	ctx->num_shader_buffers = util_last_bit(info->shader_buffers_declared);
-
-	ctx->num_samplers = util_last_bit(info->samplers_declared);
-	ctx->num_images = util_last_bit(info->images_declared);
-}
-
 int si_compile_shader(struct si_screen *sscreen,
 		      struct ac_llvm_compiler *compiler,
 		      struct si_shader *shader,
@@ -2122,7 +2114,6 @@ int si_compile_shader(struct si_screen *sscreen,
 	}
 
 	si_llvm_context_init(&ctx, sscreen, compiler, si_get_shader_wave_size(shader));
-	si_shader_context_set_ir(&ctx, shader);
 
 	memset(shader->info.vs_output_param_offset, AC_EXP_PARAM_UNDEFINED,
 	       sizeof(shader->info.vs_output_param_offset));
@@ -2130,18 +2121,16 @@ int si_compile_shader(struct si_screen *sscreen,
 	shader->info.uses_instanceid = sel->info.uses_instanceid;
 
 	LLVMValueRef ngg_cull_main_fn = NULL;
-	if (ctx.shader->key.opt.ngg_culling) {
-		if (!si_build_main_function(&ctx, nir, false, true)) {
+	if (shader->key.opt.ngg_culling) {
+		if (!si_build_main_function(&ctx, shader, nir, false, true)) {
 			si_llvm_dispose(&ctx);
 			return -1;
 		}
 		ngg_cull_main_fn = ctx.main_fn;
 		ctx.main_fn = NULL;
-		/* Re-set the IR. */
-		si_shader_context_set_ir(&ctx, shader);
 	}
 
-	if (!si_build_main_function(&ctx, nir, free_nir, false)) {
+	if (!si_build_main_function(&ctx, shader, nir, free_nir, false)) {
 		si_llvm_dispose(&ctx);
 		return -1;
 	}
@@ -2223,9 +2212,8 @@ int si_compile_shader(struct si_screen *sscreen,
 			shader_ls.key.mono = shader->key.mono;
 			shader_ls.key.opt = shader->key.opt;
 			shader_ls.is_monolithic = true;
-			si_shader_context_set_ir(&ctx, &shader_ls);
 
-			if (!si_build_main_function(&ctx, nir, free_nir, false)) {
+			if (!si_build_main_function(&ctx, &shader_ls, nir, free_nir, false)) {
 				si_llvm_dispose(&ctx);
 				return -1;
 			}
@@ -2292,9 +2280,8 @@ int si_compile_shader(struct si_screen *sscreen,
 			shader_es.key.mono = shader->key.mono;
 			shader_es.key.opt = shader->key.opt;
 			shader_es.is_monolithic = true;
-			si_shader_context_set_ir(&ctx, &shader_es);
 
-			if (!si_build_main_function(&ctx, nir, free_nir, false)) {
+			if (!si_build_main_function(&ctx, &shader_es, nir, free_nir, false)) {
 				si_llvm_dispose(&ctx);
 				return -1;
 			}
