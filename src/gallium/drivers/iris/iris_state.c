@@ -7152,7 +7152,7 @@ iris_emit_raw_pipe_control(struct iris_batch *batch,
 
    if (INTEL_DEBUG & DEBUG_PIPE_CONTROL) {
       fprintf(stderr,
-              "  PC [%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%"PRIx64"]: %s\n",
+              "  PC [%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%"PRIx64"]: %s\n",
               (flags & PIPE_CONTROL_FLUSH_ENABLE) ? "PipeCon " : "",
               (flags & PIPE_CONTROL_CS_STALL) ? "CS " : "",
               (flags & PIPE_CONTROL_STALL_AT_SCOREBOARD) ? "Scoreboard " : "",
@@ -7175,12 +7175,16 @@ iris_emit_raw_pipe_control(struct iris_batch *batch,
               (flags & PIPE_CONTROL_WRITE_IMMEDIATE) ? "WriteImm " : "",
               (flags & PIPE_CONTROL_WRITE_DEPTH_COUNT) ? "WriteZCount " : "",
               (flags & PIPE_CONTROL_WRITE_TIMESTAMP) ? "WriteTimestamp " : "",
+              (flags & PIPE_CONTROL_FLUSH_HDC) ? "HDC " : "",
               imm, reason);
    }
 
    iris_emit_cmd(batch, GENX(PIPE_CONTROL), pc) {
 #if GEN_GEN >= 12
       pc.TileCacheFlushEnable = flags & PIPE_CONTROL_TILE_CACHE_FLUSH;
+#endif
+#if GEN_GEN >= 11
+      pc.HDCPipelineFlushEnable = flags & PIPE_CONTROL_FLUSH_HDC;
 #endif
       pc.LRIPostSyncOperation = NoLRIOperation;
       pc.PipeControlFlushEnable = flags & PIPE_CONTROL_FLUSH_ENABLE;
