@@ -6864,7 +6864,8 @@ iris_emit_raw_pipe_control(struct iris_batch *batch,
                                  imm);
    }
 
-   if (GEN_GEN == 9 && IS_COMPUTE_PIPELINE(batch) && post_sync_flags) {
+   if ((GEN_GEN == 9 || (GEN_GEN == 12 && devinfo->revision == 0 /* A0*/)) &&
+        IS_COMPUTE_PIPELINE(batch) && post_sync_flags) {
       /* Project: SKL / Argument: LRI Post Sync Operation [23]
        *
        * "PIPECONTROL command with “Command Streamer Stall Enable” must be
@@ -6873,6 +6874,8 @@ iris_emit_raw_pipe_control(struct iris_batch *batch,
        *  PIPELINE_SELECT command is set to GPGPU mode of operation)."
        *
        * The same text exists a few rows below for Post Sync Op.
+       *
+       * On Gen12 this is GEN:BUG:1607156449.
        */
       iris_emit_raw_pipe_control(batch,
                                  "workaround: CS stall before gpgpu post-sync",
