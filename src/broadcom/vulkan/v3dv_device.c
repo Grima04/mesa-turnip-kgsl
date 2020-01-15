@@ -485,6 +485,21 @@ v3dv_GetPhysicalDeviceFeatures(VkPhysicalDevice physicalDevice,
 }
 
 void
+v3dv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
+                                VkPhysicalDeviceFeatures2 *pFeatures)
+{
+   v3dv_GetPhysicalDeviceFeatures(physicalDevice, &pFeatures->features);
+
+   vk_foreach_struct(ext, pFeatures->pNext) {
+      switch (ext->sType) {
+      default:
+         v3dv_debug_ignored_stype(ext->sType);
+         break;
+      }
+   }
+}
+
+void
 v3dv_GetPhysicalDeviceProperties(VkPhysicalDevice physicalDevice,
                                  VkPhysicalDeviceProperties *pProperties)
 {
@@ -661,6 +676,21 @@ v3dv_GetPhysicalDeviceProperties(VkPhysicalDevice physicalDevice,
           pdevice->pipeline_cache_uuid, VK_UUID_SIZE);
 }
 
+void
+v3dv_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
+                                  VkPhysicalDeviceProperties2 *pProperties)
+{
+   v3dv_GetPhysicalDeviceProperties(physicalDevice, &pProperties->properties);
+
+   vk_foreach_struct(ext, pProperties->pNext) {
+      switch (ext->sType) {
+      default:
+         v3dv_debug_ignored_stype(ext->sType);
+         break;
+      }
+   }
+}
+
 /* We support exactly one queue family. */
 static const VkQueueFamilyProperties
 v3dv_queue_family_properties = {
@@ -685,6 +715,22 @@ v3dv_GetPhysicalDeviceQueueFamilyProperties(VkPhysicalDevice physicalDevice,
 }
 
 void
+v3dv_GetPhysicalDeviceQueueFamilyProperties2(VkPhysicalDevice physicalDevice,
+                                             uint32_t *pQueueFamilyPropertyCount,
+                                             VkQueueFamilyProperties2 *pQueueFamilyProperties)
+{
+   VK_OUTARRAY_MAKE(out, pQueueFamilyProperties, pQueueFamilyPropertyCount);
+
+   vk_outarray_append(&out, p) {
+      p->queueFamilyProperties = v3dv_queue_family_properties;
+
+      vk_foreach_struct(s, p->pNext) {
+         v3dv_debug_ignored_stype(s->sType);
+      }
+   }
+}
+
+void
 v3dv_GetPhysicalDeviceMemoryProperties(VkPhysicalDevice physicalDevice,
                                        VkPhysicalDeviceMemoryProperties *pMemoryProperties)
 {
@@ -692,6 +738,21 @@ v3dv_GetPhysicalDeviceMemoryProperties(VkPhysicalDevice physicalDevice,
    *pMemoryProperties = device->memory;
 }
 
+void
+v3dv_GetPhysicalDeviceMemoryProperties2(VkPhysicalDevice physicalDevice,
+                                        VkPhysicalDeviceMemoryProperties2 *pMemoryProperties)
+{
+   v3dv_GetPhysicalDeviceMemoryProperties(physicalDevice,
+                                          &pMemoryProperties->memoryProperties);
+
+   vk_foreach_struct(ext, pMemoryProperties->pNext) {
+      switch (ext->sType) {
+      default:
+         v3dv_debug_ignored_stype(ext->sType);
+         break;
+      }
+   }
+}
 
 PFN_vkVoidFunction
 v3dv_GetInstanceProcAddr(VkInstance _instance,

@@ -281,41 +281,55 @@ v3dv_GetPhysicalDeviceFormatProperties(VkPhysicalDevice physicalDevice,
    };
 }
 
-VkResult
-v3dv_GetPhysicalDeviceImageFormatProperties(
-   VkPhysicalDevice physicalDevice,
-   VkFormat format,
-   VkImageType type,
-   VkImageTiling tiling,
-   VkImageUsageFlags usage,
-   VkImageCreateFlags createFlags,
-   VkImageFormatProperties *pImageFormatProperties)
+void
+v3dv_GetPhysicalDeviceFormatProperties2(VkPhysicalDevice physicalDevice,
+                                        VkFormat format,
+                                        VkFormatProperties2 *pFormatProperties)
 {
-   const struct v3dv_format *v3dv_format = v3dv_get_format(format);
+   v3dv_GetPhysicalDeviceFormatProperties(physicalDevice, format,
+                                          &pFormatProperties->formatProperties);
+
+   vk_foreach_struct(ext, pFormatProperties->pNext) {
+      switch (ext->sType) {
+      default:
+         v3dv_debug_ignored_stype(ext->sType);
+         break;
+      }
+   }
+}
+
+static VkResult
+get_image_format_properties(
+   struct v3dv_physical_device *physical_device,
+   const VkPhysicalDeviceImageFormatInfo2 *info,
+   VkImageFormatProperties *pImageFormatProperties,
+   VkSamplerYcbcrConversionImageFormatProperties *pYcbcrImageFormatProperties)
+{
+   const struct v3dv_format *v3dv_format = v3dv_get_format(info->format);
    VkFormatFeatureFlags format_feature_flags =
-      image_format_features(format, v3dv_format, tiling);
+      image_format_features(info->format, v3dv_format, info->tiling);
    if (!format_feature_flags)
       goto unsupported;
 
-   if (usage & VK_IMAGE_USAGE_SAMPLED_BIT) {
+   if (info->usage & VK_IMAGE_USAGE_SAMPLED_BIT) {
       if (!(format_feature_flags & VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT)) {
          goto unsupported;
       }
    }
 
-   if (usage & VK_IMAGE_USAGE_STORAGE_BIT) {
+   if (info->usage & VK_IMAGE_USAGE_STORAGE_BIT) {
       if (!(format_feature_flags & VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT)) {
          goto unsupported;
       }
    }
 
-   if (usage & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) {
+   if (info->usage & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) {
       if (!(format_feature_flags & VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT)) {
          goto unsupported;
       }
    }
 
-   if (usage & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) {
+   if (info->usage & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) {
       if (!(format_feature_flags &
             VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)) {
          goto unsupported;
@@ -326,7 +340,7 @@ v3dv_GetPhysicalDeviceImageFormatProperties(
     * these limits available in the physical device and read them from there
     * wherever we need them.
     */
-   switch (type) {
+   switch (info->type) {
    case VK_IMAGE_TYPE_1D:
       pImageFormatProperties->maxExtent.width = 4096;
       pImageFormatProperties->maxExtent.height = 1;
@@ -354,7 +368,7 @@ v3dv_GetPhysicalDeviceImageFormatProperties(
 
    pImageFormatProperties->sampleCounts = VK_SAMPLE_COUNT_1_BIT;
 
-   if (tiling == VK_IMAGE_TILING_LINEAR)
+   if (info->tiling == VK_IMAGE_TILING_LINEAR)
       pImageFormatProperties->maxMipLevels = 1;
 
    pImageFormatProperties->maxResourceSize = 0xffffffff; /* 32-bit allocation */
@@ -373,6 +387,64 @@ unsupported:
    return VK_ERROR_FORMAT_NOT_SUPPORTED;
 }
 
+VkResult
+v3dv_GetPhysicalDeviceImageFormatProperties(
+   VkPhysicalDevice physicalDevice,
+   VkFormat format,
+   VkImageType type,
+   VkImageTiling tiling,
+   VkImageUsageFlags usage,
+   VkImageCreateFlags createFlags,
+   VkImageFormatProperties *pImageFormatProperties)
+{
+   V3DV_FROM_HANDLE(v3dv_physical_device, physical_device, physicalDevice);
+
+   const VkPhysicalDeviceImageFormatInfo2 info = {
+      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_FORMAT_INFO_2,
+      .pNext = NULL,
+      .format = format,
+      .type = type,
+      .tiling = tiling,
+      .usage = usage,
+      .flags = createFlags,
+   };
+
+   return get_image_format_properties(physical_device, &info,
+                                      pImageFormatProperties, NULL);
+}
+
+VkResult
+v3dv_GetPhysicalDeviceImageFormatProperties2(VkPhysicalDevice physicalDevice,
+                                             const VkPhysicalDeviceImageFormatInfo2 *base_info,
+                                             VkImageFormatProperties2 *base_props)
+{
+   V3DV_FROM_HANDLE(v3dv_physical_device, physical_device, physicalDevice);
+
+   /* Extract input structs */
+   vk_foreach_struct_const(s, base_info->pNext) {
+      switch (s->sType) {
+      default:
+         v3dv_debug_ignored_stype(s->sType);
+         break;
+      }
+   }
+
+   /* Extract output structs */
+   vk_foreach_struct(s, base_props->pNext) {
+      switch (s->sType) {
+      default:
+         v3dv_debug_ignored_stype(s->sType);
+         break;
+      }
+   }
+
+   VkResult result =
+      get_image_format_properties(physical_device, base_info,
+                                  &base_props->imageFormatProperties, NULL);
+
+   return result;
+}
+
 void
 v3dv_GetPhysicalDeviceSparseImageFormatProperties(
    VkPhysicalDevice physicalDevice,
@@ -383,6 +455,16 @@ v3dv_GetPhysicalDeviceSparseImageFormatProperties(
    VkImageTiling tiling,
    uint32_t *pPropertyCount,
    VkSparseImageFormatProperties *pProperties)
+{
+   *pPropertyCount = 0;
+}
+
+void
+v3dv_GetPhysicalDeviceSparseImageFormatProperties2(
+   VkPhysicalDevice physicalDevice,
+   const VkPhysicalDeviceSparseImageFormatInfo2 *pFormatInfo,
+   uint32_t *pPropertyCount,
+   VkSparseImageFormatProperties2 *pProperties)
 {
    *pPropertyCount = 0;
 }
