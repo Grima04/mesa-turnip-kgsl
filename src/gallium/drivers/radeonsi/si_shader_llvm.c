@@ -68,15 +68,15 @@ static void si_diagnostic_handler(LLVMDiagnosticInfoRef di, void *context)
 	LLVMDisposeMessage(description);
 }
 
-int si_compile_llvm(struct si_screen *sscreen,
-		    struct si_shader_binary *binary,
-		    struct ac_shader_config *conf,
-		    struct ac_llvm_compiler *compiler,
-		    struct ac_llvm_context *ac,
-		    struct pipe_debug_callback *debug,
-		    enum pipe_shader_type shader_type,
-		    const char *name,
-		    bool less_optimized)
+bool si_compile_llvm(struct si_screen *sscreen,
+		     struct si_shader_binary *binary,
+		     struct ac_shader_config *conf,
+		     struct ac_llvm_compiler *compiler,
+		     struct ac_llvm_context *ac,
+		     struct pipe_debug_callback *debug,
+		     enum pipe_shader_type shader_type,
+		     const char *name,
+		     bool less_optimized)
 {
 	unsigned count = p_atomic_inc_return(&sscreen->num_compilations);
 
@@ -114,7 +114,7 @@ int si_compile_llvm(struct si_screen *sscreen,
 
 		if (diag.retval != 0) {
 			pipe_debug_message(debug, SHADER_INFO, "LLVM compilation failed");
-			return diag.retval;
+			return false;
 		}
 	}
 
@@ -126,12 +126,12 @@ int si_compile_llvm(struct si_screen *sscreen,
 			.num_parts = 1,
 			.elf_ptrs = &binary->elf_buffer,
 			.elf_sizes = &binary->elf_size }))
-		return -1;
+		return false;
 
 	bool ok = ac_rtld_read_config(&rtld, conf);
 	ac_rtld_close(&rtld);
 	if (!ok)
-		return -1;
+		return false;
 
 	/* Enable 64-bit and 16-bit denormals, because there is no performance
 	 * cost.
@@ -147,7 +147,7 @@ int si_compile_llvm(struct si_screen *sscreen,
 	 */
 	conf->float_mode |= V_00B028_FP_64_DENORMS;
 
-	return 0;
+	return true;
 }
 
 void si_llvm_context_init(struct si_shader_context *ctx,

@@ -232,15 +232,15 @@ void gfx10_ngg_gs_emit_epilogue(struct si_shader_context *ctx);
 void gfx10_ngg_calculate_subgroup_info(struct si_shader *shader);
 
 /* si_shader_llvm.c */
-int si_compile_llvm(struct si_screen *sscreen,
-		    struct si_shader_binary *binary,
-		    struct ac_shader_config *conf,
-		    struct ac_llvm_compiler *compiler,
-		    struct ac_llvm_context *ac,
-		    struct pipe_debug_callback *debug,
-		    enum pipe_shader_type shader_type,
-		    const char *name,
-		    bool less_optimized);
+bool si_compile_llvm(struct si_screen *sscreen,
+		     struct si_shader_binary *binary,
+		     struct ac_shader_config *conf,
+		     struct ac_llvm_compiler *compiler,
+		     struct ac_llvm_context *ac,
+		     struct pipe_debug_callback *debug,
+		     enum pipe_shader_type shader_type,
+		     const char *name,
+		     bool less_optimized);
 void si_llvm_context_init(struct si_shader_context *ctx,
 			  struct si_screen *sscreen,
 			  struct ac_llvm_compiler *compiler,

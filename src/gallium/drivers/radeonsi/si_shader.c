@@ -1723,7 +1723,6 @@ int si_compile_shader(struct si_screen *sscreen,
 	struct si_shader_context ctx;
 	bool free_nir;
 	struct nir_shader *nir = get_nir_shader(sel, &free_nir);
-	int r = -1;
 
 	/* Dump NIR before doing NIR->LLVM conversion in case the
 	 * conversion fails. */
@@ -1973,14 +1972,15 @@ int si_compile_shader(struct si_screen *sscreen,
 	       LLVMPointerTypeKind);
 
 	/* Compile to bytecode. */
-	r = si_compile_llvm(sscreen, &shader->binary, &shader->config, compiler,
-			    &ctx.ac, debug, ctx.type, si_get_shader_name(shader),
-			    si_should_optimize_less(compiler, shader->selector));
-	si_llvm_dispose(&ctx);
-	if (r) {
+	if (!si_compile_llvm(sscreen, &shader->binary, &shader->config, compiler,
+			     &ctx.ac, debug, ctx.type, si_get_shader_name(shader),
+			     si_should_optimize_less(compiler, shader->selector))) {
+		si_llvm_dispose(&ctx);
 		fprintf(stderr, "LLVM failed to compile shader\n");
-		return r;
+		return -1;
 	}
+
+	si_llvm_dispose(&ctx);
 
 	/* Validate SGPR and VGPR usage for compute to detect compiler bugs.
 	 * LLVM 3.9svn has this bug.
@@ -2110,8 +2110,8 @@ si_get_shader_part(struct si_screen *sscreen,
 	/* Compile. */
 	si_llvm_optimize_module(&ctx);
 
-	if (si_compile_llvm(sscreen, &result->binary, &result->config, compiler,
-			    &ctx.ac, debug, ctx.type, name, false)) {
+	if (!si_compile_llvm(sscreen, &result->binary, &result->config, compiler,
+			     &ctx.ac, debug, ctx.type, name, false)) {
 		FREE(result);
 		result = NULL;
 		goto out;
