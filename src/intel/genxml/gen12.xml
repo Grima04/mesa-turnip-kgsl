@@ -6354,6 +6354,7 @@
     <field name="3D Command Opcode" start="24" end="26" type="uint" default="2"/>
     <field name="Command SubType" start="27" end="28" type="uint" default="3"/>
     <field name="Command Type" start="29" end="31" type="uint" default="3"/>
+    <field name="HDC Pipeline Flush Enable" start="9" end="9" type="bool"/>
     <field name="Depth Cache Flush Enable" start="32" end="32" type="bool"/>
     <field name="Stall At Pixel Scoreboard" start="33" end="33" type="bool"/>
     <field name="State Cache Invalidation Enable" start="34" end="34" type="bool"/>
