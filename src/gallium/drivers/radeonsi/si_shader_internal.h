@@ -204,10 +204,6 @@ si_shader_context_from_abi(struct ac_shader_abi *abi)
 	return container_of(abi, ctx, abi);
 }
 
-unsigned si_llvm_compile(LLVMModuleRef M, struct si_shader_binary *binary,
-			 struct ac_llvm_compiler *compiler,
-			 struct pipe_debug_callback *debug,
-			 bool less_optimized, unsigned wave_size);
 void si_llvm_context_init(struct si_shader_context *ctx,
 			  struct si_screen *sscreen,
 			  struct ac_llvm_compiler *compiler,
@@ -292,10 +288,9 @@ int si_compile_llvm(struct si_screen *sscreen,
 		    struct si_shader_binary *binary,
 		    struct ac_shader_config *conf,
 		    struct ac_llvm_compiler *compiler,
-		    LLVMModuleRef mod,
+		    struct ac_llvm_context *ac,
 		    struct pipe_debug_callback *debug,
 		    enum pipe_shader_type shader_type,
-		    unsigned wave_size,
 		    const char *name,
 		    bool less_optimized);
 void si_fix_resource_usage(struct si_screen *sscreen, struct si_shader *shader);

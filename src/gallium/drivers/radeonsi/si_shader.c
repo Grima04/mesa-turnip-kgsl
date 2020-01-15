@@ -2086,74 +2086,6 @@ void si_shader_dump(struct si_screen *sscreen, struct si_shader *shader,
 	si_shader_dump_stats(sscreen, shader, file, check_debug_option);
 }
 
-int si_compile_llvm(struct si_screen *sscreen,
-		    struct si_shader_binary *binary,
-		    struct ac_shader_config *conf,
-		    struct ac_llvm_compiler *compiler,
-		    LLVMModuleRef mod,
-		    struct pipe_debug_callback *debug,
-		    enum pipe_shader_type shader_type,
-		    unsigned wave_size,
-		    const char *name,
-		    bool less_optimized)
-{
-	unsigned count = p_atomic_inc_return(&sscreen->num_compilations);
-
-	if (si_can_dump_shader(sscreen, shader_type)) {
-		fprintf(stderr, "radeonsi: Compiling shader %d\n", count);
-
-		if (!(sscreen->debug_flags & (DBG(NO_IR) | DBG(PREOPT_IR)))) {
-			fprintf(stderr, "%s LLVM IR:\n\n", name);
-			ac_dump_module(mod);
-			fprintf(stderr, "\n");
-		}
-	}
-
-	if (sscreen->record_llvm_ir) {
-		char *ir = LLVMPrintModuleToString(mod);
-		binary->llvm_ir_string = strdup(ir);
-		LLVMDisposeMessage(ir);
-	}
-
-	if (!si_replace_shader(count, binary)) {
-		unsigned r = si_llvm_compile(mod, binary, compiler, debug,
-					     less_optimized, wave_size);
-		if (r)
-			return r;
-	}
-
-	struct ac_rtld_binary rtld;
-	if (!ac_rtld_open(&rtld, (struct ac_rtld_open_info){
-			.info = &sscreen->info,
-			.shader_type = tgsi_processor_to_shader_stage(shader_type),
-			.wave_size = wave_size,
-			.num_parts = 1,
-			.elf_ptrs = &binary->elf_buffer,
-			.elf_sizes = &binary->elf_size }))
-		return -1;
-
-	bool ok = ac_rtld_read_config(&rtld, conf);
-	ac_rtld_close(&rtld);
-	if (!ok)
-		return -1;
-
-	/* Enable 64-bit and 16-bit denormals, because there is no performance
-	 * cost.
-	 *
-	 * If denormals are enabled, all floating-point output modifiers are
-	 * ignored.
-	 *
-	 * Don't enable denormals for 32-bit floats, because:
-	 * - Floating-point output modifiers would be ignored by the hw.
-	 * - Some opcodes don't support denormals, such as v_mad_f32. We would
-	 *   have to stop using those.
-	 * - GFX6 & GFX7 would be very slow.
-	 */
-	conf->float_mode |= V_00B028_FP_64_DENORMS;
-
-	return 0;
-}
-
 static void si_dump_shader_key_vs(const struct si_shader_key *key,
 				  const struct si_vs_prolog_bits *prolog,
 				  const char *prefix, FILE *f)
@@ -3130,8 +3062,7 @@ int si_compile_shader(struct si_screen *sscreen,
 
 	/* Compile to bytecode. */
 	r = si_compile_llvm(sscreen, &shader->binary, &shader->config, compiler,
-			    ctx.ac.module, debug, ctx.type, ctx.ac.wave_size,
-			    si_get_shader_name(shader),
+			    &ctx.ac, debug, ctx.type, si_get_shader_name(shader),
 			    si_should_optimize_less(compiler, shader->selector));
 	si_llvm_dispose(&ctx);
 	if (r) {
@@ -3268,8 +3199,7 @@ si_get_shader_part(struct si_screen *sscreen,
 	si_llvm_optimize_module(&ctx);
 
 	if (si_compile_llvm(sscreen, &result->binary, &result->config, compiler,
-			    ctx.ac.module, debug, ctx.type, ctx.ac.wave_size,
-			    name, false)) {
+			    &ctx.ac, debug, ctx.type, name, false)) {
 		FREE(result);
 		result = NULL;
 		goto out;

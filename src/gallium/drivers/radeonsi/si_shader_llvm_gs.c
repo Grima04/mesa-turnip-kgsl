@@ -623,9 +623,8 @@ si_generate_gs_copy_shader(struct si_screen *sscreen,
 
 	bool ok = false;
 	if (si_compile_llvm(sscreen, &ctx.shader->binary,
-			    &ctx.shader->config, ctx.compiler,
-			    ctx.ac.module,
-			    debug, PIPE_SHADER_GEOMETRY, ctx.ac.wave_size,
+			    &ctx.shader->config, ctx.compiler, &ctx.ac,
+			    debug, PIPE_SHADER_GEOMETRY,
 			    "GS Copy Shader", false) == 0) {
 		if (si_can_dump_shader(sscreen, PIPE_SHADER_GEOMETRY))
 			fprintf(stderr, "GS Copy Shader:\n");

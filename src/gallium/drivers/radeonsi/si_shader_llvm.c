@@ -24,6 +24,10 @@
 
 #include "si_shader_internal.h"
 #include "si_pipe.h"
+#include "ac_rtld.h"
+#include "sid.h"
+
+#include "tgsi/tgsi_from_mesa.h"
 #include "util/u_memory.h"
 
 struct si_llvm_diagnostics {
@@ -63,42 +67,86 @@ static void si_diagnostic_handler(LLVMDiagnosticInfoRef di, void *context)
 	LLVMDisposeMessage(description);
 }
 
-/**
- * Compile an LLVM module to machine code.
- *
- * @returns 0 for success, 1 for failure
- */
-unsigned si_llvm_compile(LLVMModuleRef M, struct si_shader_binary *binary,
-			 struct ac_llvm_compiler *compiler,
-			 struct pipe_debug_callback *debug,
-			 bool less_optimized, unsigned wave_size)
+int si_compile_llvm(struct si_screen *sscreen,
+		    struct si_shader_binary *binary,
+		    struct ac_shader_config *conf,
+		    struct ac_llvm_compiler *compiler,
+		    struct ac_llvm_context *ac,
+		    struct pipe_debug_callback *debug,
+		    enum pipe_shader_type shader_type,
+		    const char *name,
+		    bool less_optimized)
 {
-	struct ac_compiler_passes *passes = compiler->passes;
+	unsigned count = p_atomic_inc_return(&sscreen->num_compilations);
 
-	if (wave_size == 32)
-		passes = compiler->passes_wave32;
-	else if (less_optimized && compiler->low_opt_passes)
-		passes = compiler->low_opt_passes;
+	if (si_can_dump_shader(sscreen, shader_type)) {
+		fprintf(stderr, "radeonsi: Compiling shader %d\n", count);
 
-	struct si_llvm_diagnostics diag;
-	LLVMContextRef llvm_ctx;
+		if (!(sscreen->debug_flags & (DBG(NO_IR) | DBG(PREOPT_IR)))) {
+			fprintf(stderr, "%s LLVM IR:\n\n", name);
+			ac_dump_module(ac->module);
+			fprintf(stderr, "\n");
+		}
+	}
 
-	diag.debug = debug;
-	diag.retval = 0;
+	if (sscreen->record_llvm_ir) {
+		char *ir = LLVMPrintModuleToString(ac->module);
+		binary->llvm_ir_string = strdup(ir);
+		LLVMDisposeMessage(ir);
+	}
 
-	/* Setup Diagnostic Handler*/
-	llvm_ctx = LLVMGetModuleContext(M);
+	if (!si_replace_shader(count, binary)) {
+		struct ac_compiler_passes *passes = compiler->passes;
 
-	LLVMContextSetDiagnosticHandler(llvm_ctx, si_diagnostic_handler, &diag);
+		if (ac->wave_size == 32)
+			passes = compiler->passes_wave32;
+		else if (less_optimized && compiler->low_opt_passes)
+			passes = compiler->low_opt_passes;
 
-	/* Compile IR. */
-	if (!ac_compile_module_to_elf(passes, M, (char **)&binary->elf_buffer,
-				      &binary->elf_size))
-		diag.retval = 1;
+		struct si_llvm_diagnostics diag = {debug};
+		LLVMContextSetDiagnosticHandler(ac->context, si_diagnostic_handler, &diag);
 
-	if (diag.retval != 0)
-		pipe_debug_message(debug, SHADER_INFO, "LLVM compile failed");
-	return diag.retval;
+		if (!ac_compile_module_to_elf(passes, ac->module,
+					      (char **)&binary->elf_buffer,
+					      &binary->elf_size))
+			diag.retval = 1;
+
+		if (diag.retval != 0) {
+			pipe_debug_message(debug, SHADER_INFO, "LLVM compilation failed");
+			return diag.retval;
+		}
+	}
+
+	struct ac_rtld_binary rtld;
+	if (!ac_rtld_open(&rtld, (struct ac_rtld_open_info){
+			.info = &sscreen->info,
+			.shader_type = tgsi_processor_to_shader_stage(shader_type),
+			.wave_size = ac->wave_size,
+			.num_parts = 1,
+			.elf_ptrs = &binary->elf_buffer,
+			.elf_sizes = &binary->elf_size }))
+		return -1;
+
+	bool ok = ac_rtld_read_config(&rtld, conf);
+	ac_rtld_close(&rtld);
+	if (!ok)
+		return -1;
+
+	/* Enable 64-bit and 16-bit denormals, because there is no performance
+	 * cost.
+	 *
+	 * If denormals are enabled, all floating-point output modifiers are
+	 * ignored.
+	 *
+	 * Don't enable denormals for 32-bit floats, because:
+	 * - Floating-point output modifiers would be ignored by the hw.
+	 * - Some opcodes don't support denormals, such as v_mad_f32. We would
+	 *   have to stop using those.
+	 * - GFX6 & GFX7 would be very slow.
+	 */
+	conf->float_mode |= V_00B028_FP_64_DENORMS;
+
+	return 0;
 }
 
 void si_shader_binary_clean(struct si_shader_binary *binary)
