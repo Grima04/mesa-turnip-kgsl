@@ -69,7 +69,7 @@ static LLVMValueRef ngg_get_query_buf(struct si_shader_context *ctx)
 	LLVMValueRef buf_ptr = ac_get_arg(&ctx->ac, ctx->rw_buffers);
 
 	return ac_build_load_to_sgpr(&ctx->ac, buf_ptr,
-				     LLVMConstInt(ctx->i32, GFX10_GS_QUERY_BUF, false));
+				     LLVMConstInt(ctx->ac.i32, GFX10_GS_QUERY_BUF, false));
 }
 
 static LLVMValueRef ngg_get_initial_edgeflag(struct si_shader_context *ctx, unsigned index)
@@ -81,7 +81,7 @@ static LLVMValueRef ngg_get_initial_edgeflag(struct si_shader_context *ctx, unsi
 				    LLVMConstInt(ctx->ac.i32, 8 + index, false), "");
 		return LLVMBuildTrunc(ctx->ac.builder, tmp, ctx->ac.i1, "");
 	}
-	return ctx->i1false;
+	return ctx->ac.i1false;
 }
 
 /**
@@ -97,7 +97,7 @@ static LLVMValueRef ngg_get_vertices_per_prim(struct si_shader_context *ctx,
 		if (info->properties[TGSI_PROPERTY_VS_BLIT_SGPRS_AMD]) {
 			/* Blits always use axis-aligned rectangles with 3 vertices. */
 			*num_vertices = 3;
-			return LLVMConstInt(ctx->i32, 3, 0);
+			return LLVMConstInt(ctx->ac.i32, 3, 0);
 		} else {
 			/* We always build up all three indices for the prim export
 			 * independent of the primitive type. The additional garbage
@@ -108,7 +108,7 @@ static LLVMValueRef ngg_get_vertices_per_prim(struct si_shader_context *ctx,
 
 			/* Extract OUTPRIM field. */
 			LLVMValueRef num = si_unpack_param(ctx, ctx->vs_state_bits, 2, 2);
-			return LLVMBuildAdd(ctx->ac.builder, num, ctx->i32_1, "");
+			return LLVMBuildAdd(ctx->ac.builder, num, ctx->ac.i32_1, "");
 		}
 	} else {
 		assert(ctx->type == PIPE_SHADER_TESS_EVAL);
@@ -120,7 +120,7 @@ static LLVMValueRef ngg_get_vertices_per_prim(struct si_shader_context *ctx,
 		else
 			*num_vertices = 3;
 
-		return LLVMConstInt(ctx->i32, *num_vertices, false);
+		return LLVMConstInt(ctx->ac.i32, *num_vertices, false);
 	}
 }
 
@@ -163,7 +163,7 @@ void gfx10_ngg_build_export_prim(struct si_shader_context *ctx,
 			 */
 			if (ctx->shader->selector->info.writes_edgeflag) {
 				unsigned all_bits_no_edgeflags = ~SI_NGG_PRIM_EDGE_FLAG_BITS;
-				LLVMValueRef edgeflags = LLVMConstInt(ctx->i32, all_bits_no_edgeflags, 0);
+				LLVMValueRef edgeflags = LLVMConstInt(ctx->ac.i32, all_bits_no_edgeflags, 0);
 
 				unsigned num_vertices;
 				ngg_get_vertices_per_prim(ctx, &num_vertices);
@@ -173,8 +173,8 @@ void gfx10_ngg_build_export_prim(struct si_shader_context *ctx,
 					LLVMValueRef edge;
 
 					edge = LLVMBuildLoad(builder, user_edgeflags[i], "");
-					edge = LLVMBuildZExt(builder, edge, ctx->i32, "");
-					edge = LLVMBuildShl(builder, edge, LLVMConstInt(ctx->i32, shift, 0), "");
+					edge = LLVMBuildZExt(builder, edge, ctx->ac.i32, "");
+					edge = LLVMBuildShl(builder, edge, LLVMConstInt(ctx->ac.i32, shift, 0), "");
 					edgeflags = LLVMBuildOr(builder, edgeflags, edge, "");
 				}
 				prim.passthrough = LLVMBuildAnd(builder, prim.passthrough, edgeflags, "");
@@ -230,9 +230,9 @@ static void build_streamout_vertex(struct si_shader_context *ctx,
 			continue;
 
 		tmp = LLVMBuildMul(builder, offset_vtx,
-				   LLVMConstInt(ctx->i32, so->stride[buffer], false), "");
+				   LLVMConstInt(ctx->ac.i32, so->stride[buffer], false), "");
 		tmp = LLVMBuildAdd(builder, wg_offset_dw[buffer], tmp, "");
-		offset[buffer] = LLVMBuildShl(builder, tmp, LLVMConstInt(ctx->i32, 2, false), "");
+		offset[buffer] = LLVMBuildShl(builder, tmp, LLVMConstInt(ctx->ac.i32, 2, false), "");
 	}
 
 	for (unsigned i = 0; i < so->num_outputs; ++i) {
@@ -246,7 +246,7 @@ static void build_streamout_vertex(struct si_shader_context *ctx,
 
 		for (unsigned comp = 0; comp < 4; comp++) {
 			tmp = ac_build_gep0(&ctx->ac, vertexptr,
-					    LLVMConstInt(ctx->i32, 4 * reg + comp, false));
+					    LLVMConstInt(ctx->ac.i32, 4 * reg + comp, false));
 			out.values[comp] = LLVMBuildLoad(builder, tmp, "");
 			out.vertex_stream[comp] =
 				(info->output_streams[reg] >> (2 * comp)) & 3;
@@ -285,19 +285,19 @@ static void build_streamout(struct si_shader_context *ctx,
 	LLVMValueRef buf_ptr = ac_get_arg(&ctx->ac, ctx->rw_buffers);
 	LLVMValueRef tid = get_thread_id_in_tg(ctx);
 	LLVMValueRef tmp, tmp2;
-	LLVMValueRef i32_2 = LLVMConstInt(ctx->i32, 2, false);
-	LLVMValueRef i32_4 = LLVMConstInt(ctx->i32, 4, false);
-	LLVMValueRef i32_8 = LLVMConstInt(ctx->i32, 8, false);
+	LLVMValueRef i32_2 = LLVMConstInt(ctx->ac.i32, 2, false);
+	LLVMValueRef i32_4 = LLVMConstInt(ctx->ac.i32, 4, false);
+	LLVMValueRef i32_8 = LLVMConstInt(ctx->ac.i32, 8, false);
 	LLVMValueRef so_buffer[4] = {};
 	unsigned max_num_vertices = 1 + (nggso->vertices[1] ? 1 : 0) +
 					(nggso->vertices[2] ? 1 : 0);
 	LLVMValueRef prim_stride_dw[4] = {};
-	LLVMValueRef prim_stride_dw_vgpr = LLVMGetUndef(ctx->i32);
+	LLVMValueRef prim_stride_dw_vgpr = LLVMGetUndef(ctx->ac.i32);
 	int stream_for_buffer[4] = { -1, -1, -1, -1 };
 	unsigned bufmask_for_stream[4] = {};
 	bool isgs = ctx->type == PIPE_SHADER_GEOMETRY;
 	unsigned scratch_emit_base = isgs ? 4 : 0;
-	LLVMValueRef scratch_emit_basev = isgs ? i32_4 : ctx->i32_0;
+	LLVMValueRef scratch_emit_basev = isgs ? i32_4 : ctx->ac.i32_0;
 	unsigned scratch_offset_base = isgs ? 8 : 4;
 	LLVMValueRef scratch_offset_basev = isgs ? i32_8 : i32_4;
 
@@ -318,26 +318,26 @@ static void build_streamout(struct si_shader_context *ctx,
 
 		assert(so->stride[buffer]);
 
-		tmp = LLVMConstInt(ctx->i32, so->stride[buffer], false);
+		tmp = LLVMConstInt(ctx->ac.i32, so->stride[buffer], false);
 		prim_stride_dw[buffer] = LLVMBuildMul(builder, tmp, nggso->num_vertices, "");
 		prim_stride_dw_vgpr = ac_build_writelane(
 			&ctx->ac, prim_stride_dw_vgpr, prim_stride_dw[buffer],
-			LLVMConstInt(ctx->i32, buffer, false));
+			LLVMConstInt(ctx->ac.i32, buffer, false));
 
 		so_buffer[buffer] = ac_build_load_to_sgpr(
 			&ctx->ac, buf_ptr,
-			LLVMConstInt(ctx->i32, SI_VS_STREAMOUT_BUF0 + buffer, false));
+			LLVMConstInt(ctx->ac.i32, SI_VS_STREAMOUT_BUF0 + buffer, false));
 	}
 
-	tmp = LLVMBuildICmp(builder, LLVMIntEQ, get_wave_id_in_tg(ctx), ctx->i32_0, "");
+	tmp = LLVMBuildICmp(builder, LLVMIntEQ, get_wave_id_in_tg(ctx), ctx->ac.i32_0, "");
 	ac_build_ifcc(&ctx->ac, tmp, 5200);
 	{
-		LLVMTypeRef gdsptr = LLVMPointerType(ctx->i32, AC_ADDR_SPACE_GDS);
-		LLVMValueRef gdsbase = LLVMBuildIntToPtr(builder, ctx->i32_0, gdsptr, "");
+		LLVMTypeRef gdsptr = LLVMPointerType(ctx->ac.i32, AC_ADDR_SPACE_GDS);
+		LLVMValueRef gdsbase = LLVMBuildIntToPtr(builder, ctx->ac.i32_0, gdsptr, "");
 
 		/* Advance the streamout offsets in GDS. */
-		LLVMValueRef offsets_vgpr = ac_build_alloca_undef(&ctx->ac, ctx->i32, "");
-		LLVMValueRef generated_by_stream_vgpr = ac_build_alloca_undef(&ctx->ac, ctx->i32, "");
+		LLVMValueRef offsets_vgpr = ac_build_alloca_undef(&ctx->ac, ctx->ac.i32, "");
+		LLVMValueRef generated_by_stream_vgpr = ac_build_alloca_undef(&ctx->ac, ctx->ac.i32, "");
 
 		tmp = LLVMBuildICmp(builder, LLVMIntULT, ac_get_thread_id(&ctx->ac), i32_4, "");
 		ac_build_ifcc(&ctx->ac, tmp, 5210);
@@ -346,8 +346,8 @@ static void build_streamout(struct si_shader_context *ctx,
 				tmp = ac_build_gep0(&ctx->ac, ctx->gs_ngg_scratch, tid);
 				tmp = LLVMBuildLoad(builder, tmp, "");
 			} else {
-				tmp = ac_build_writelane(&ctx->ac, ctx->i32_0,
-						ngg_get_prim_cnt(ctx), ctx->i32_0);
+				tmp = ac_build_writelane(&ctx->ac, ctx->ac.i32_0,
+						ngg_get_prim_cnt(ctx), ctx->ac.i32_0);
 			}
 			LLVMBuildStore(builder, tmp, generated_by_stream_vgpr);
 
@@ -375,15 +375,15 @@ static void build_streamout(struct si_shader_context *ctx,
 			LLVMValueRef args[] = {
 				LLVMBuildIntToPtr(builder, ngg_get_ordered_id(ctx), gdsptr, ""),
 				tmp,
-				ctx->i32_0, // ordering
-				ctx->i32_0, // scope
+				ctx->ac.i32_0, // ordering
+				ctx->ac.i32_0, // scope
 				ctx->ac.i1false, // isVolatile
-				LLVMConstInt(ctx->i32, 4 << 24, false), // OA index
+				LLVMConstInt(ctx->ac.i32, 4 << 24, false), // OA index
 				ctx->ac.i1true, // wave release
 				ctx->ac.i1true, // wave done
 			};
 			tmp = ac_build_intrinsic(&ctx->ac, "llvm.amdgcn.ds.ordered.add",
-						 ctx->i32, args, ARRAY_SIZE(args), 0);
+						 ctx->ac.i32, args, ARRAY_SIZE(args), 0);
 
 			/* Keep offsets in a VGPR for quick retrieval via readlane by
 			 * the first wave for bounds checking, and also store in LDS
@@ -414,13 +414,13 @@ static void build_streamout(struct si_shader_context *ctx,
 			tmp = LLVMBuildLoad(builder, offsets_vgpr, "");
 			LLVMValueRef offset_dw =
 				ac_build_readlane(&ctx->ac, tmp,
-						LLVMConstInt(ctx->i32, buffer, false));
+						LLVMConstInt(ctx->ac.i32, buffer, false));
 
 			tmp = LLVMBuildSub(builder, bufsize_dw, offset_dw, "");
 			tmp = LLVMBuildUDiv(builder, tmp, prim_stride_dw[buffer], "");
 
 			tmp2 = LLVMBuildICmp(builder, LLVMIntULT, bufsize_dw, offset_dw, "");
-			max_emit[buffer] = LLVMBuildSelect(builder, tmp2, ctx->i32_0, tmp, "");
+			max_emit[buffer] = LLVMBuildSelect(builder, tmp2, ctx->ac.i32_0, tmp, "");
 		}
 
 		/* Determine the number of emitted primitives per stream and fixup the
@@ -429,7 +429,7 @@ static void build_streamout(struct si_shader_context *ctx,
 		 * This is complicated by the fact that a single stream can emit to
 		 * multiple buffers (but luckily not vice versa).
 		 */
-		LLVMValueRef emit_vgpr = ctx->i32_0;
+		LLVMValueRef emit_vgpr = ctx->ac.i32_0;
 
 		for (unsigned stream = 0; stream < 4; ++stream) {
 			if (!info->num_stream_output_components[stream])
@@ -438,7 +438,7 @@ static void build_streamout(struct si_shader_context *ctx,
 			tmp = LLVMBuildLoad(builder, generated_by_stream_vgpr, "");
 			LLVMValueRef generated =
 				ac_build_readlane(&ctx->ac, tmp,
-						  LLVMConstInt(ctx->i32, stream, false));
+						  LLVMConstInt(ctx->ac.i32, stream, false));
 
 			LLVMValueRef emit = generated;
 			for (unsigned buffer = 0; buffer < 4; ++buffer) {
@@ -447,15 +447,15 @@ static void build_streamout(struct si_shader_context *ctx,
 			}
 
 			emit_vgpr = ac_build_writelane(&ctx->ac, emit_vgpr, emit,
-						       LLVMConstInt(ctx->i32, stream, false));
+						       LLVMConstInt(ctx->ac.i32, stream, false));
 
 			/* Fixup the offset using a plain GDS atomic if we overflowed. */
 			tmp = LLVMBuildICmp(builder, LLVMIntULT, emit, generated, "");
 			ac_build_ifcc(&ctx->ac, tmp, 5221); /* scalar branch */
 			tmp = LLVMBuildLShr(builder,
-					    LLVMConstInt(ctx->i32, bufmask_for_stream[stream], false),
+					    LLVMConstInt(ctx->ac.i32, bufmask_for_stream[stream], false),
 					    ac_get_thread_id(&ctx->ac), "");
-			tmp = LLVMBuildTrunc(builder, tmp, ctx->i1, "");
+			tmp = LLVMBuildTrunc(builder, tmp, ctx->ac.i1, "");
 			ac_build_ifcc(&ctx->ac, tmp, 5222);
 			{
 				tmp = LLVMBuildSub(builder, generated, emit, "");
@@ -494,7 +494,7 @@ static void build_streamout(struct si_shader_context *ctx,
 			primemit_scan[stream].src = nggso->prim_enable[stream];
 			primemit_scan[stream].scratch =
 				ac_build_gep0(&ctx->ac, ctx->gs_ngg_scratch,
-					LLVMConstInt(ctx->i32, 12 + 8 * stream, false));
+					LLVMConstInt(ctx->ac.i32, 12 + 8 * stream, false));
 			primemit_scan[stream].waveidx = get_wave_id_in_tg(ctx);
 			primemit_scan[stream].numwaves = get_tgsize(ctx);
 			primemit_scan[stream].maxwaves = 8;
@@ -517,7 +517,7 @@ static void build_streamout(struct si_shader_context *ctx,
 			if (stream_for_buffer[buffer] >= 0) {
 				wgoffset_dw[buffer] = ac_build_readlane(
 					&ctx->ac, scratch_vgpr,
-					LLVMConstInt(ctx->i32, scratch_offset_base + buffer, false));
+					LLVMConstInt(ctx->ac.i32, scratch_offset_base + buffer, false));
 			}
 		}
 
@@ -525,7 +525,7 @@ static void build_streamout(struct si_shader_context *ctx,
 			if (info->num_stream_output_components[stream]) {
 				nggso->emit[stream] = ac_build_readlane(
 					&ctx->ac, scratch_vgpr,
-					LLVMConstInt(ctx->i32, scratch_emit_base + stream, false));
+					LLVMConstInt(ctx->ac.i32, scratch_emit_base + stream, false));
 			}
 		}
 	}
@@ -553,13 +553,13 @@ static void build_streamout(struct si_shader_context *ctx,
 
 			for (unsigned i = 0; i < max_num_vertices; ++i) {
 				tmp = LLVMBuildICmp(builder, LLVMIntULT,
-						    LLVMConstInt(ctx->i32, i, false),
+						    LLVMConstInt(ctx->ac.i32, i, false),
 						    nggso->num_vertices, "");
 				ac_build_ifcc(&ctx->ac, tmp, 5241);
 				build_streamout_vertex(ctx, so_buffer, wgoffset_dw,
 						       stream, offset_vtx, nggso->vertices[i]);
 				ac_build_endif(&ctx->ac, 5241);
-				offset_vtx = LLVMBuildAdd(builder, offset_vtx, ctx->i32_1, "");
+				offset_vtx = LLVMBuildAdd(builder, offset_vtx, ctx->ac.i32_1, "");
 			}
 		}
 		ac_build_endif(&ctx->ac, 5240);
@@ -603,8 +603,8 @@ static LLVMValueRef si_build_gep_i8(struct si_shader_context *ctx,
 				    LLVMValueRef ptr, unsigned byte_index)
 {
 	assert(byte_index < 4);
-	LLVMTypeRef pi8 = LLVMPointerType(ctx->i8, AC_ADDR_SPACE_LDS);
-	LLVMValueRef index = LLVMConstInt(ctx->i32, byte_index, 0);
+	LLVMTypeRef pi8 = LLVMPointerType(ctx->ac.i8, AC_ADDR_SPACE_LDS);
+	LLVMValueRef index = LLVMConstInt(ctx->ac.i32, byte_index, 0);
 
 	return LLVMBuildGEP(ctx->ac.builder,
 			    LLVMBuildPointerCast(ctx->ac.builder, ptr, pi8, ""),
@@ -661,7 +661,7 @@ static LLVMValueRef ngg_nogs_vertex_ptr(struct si_shader_context *ctx,
 {
 	/* The extra dword is used to avoid LDS bank conflicts. */
 	unsigned vertex_size = ngg_nogs_vertex_size(ctx->shader);
-	LLVMTypeRef ai32 = LLVMArrayType(ctx->i32, vertex_size);
+	LLVMTypeRef ai32 = LLVMArrayType(ctx->ac.i32, vertex_size);
 	LLVMTypeRef pai32 = LLVMPointerType(ai32, AC_ADDR_SPACE_LDS);
 	LLVMValueRef tmp = LLVMBuildBitCast(ctx->ac.builder, ctx->esgs_ring, pai32, "");
 	return LLVMBuildGEP(ctx->ac.builder, tmp, &vtxid, 1, "");
@@ -687,10 +687,10 @@ static void load_bitmasks_2x64(struct si_shader_context *ctx,
 {
 	LLVMBuilderRef builder = ctx->ac.builder;
 	LLVMValueRef ptr64 = LLVMBuildPointerCast(builder, lds_ptr,
-						  LLVMPointerType(LLVMArrayType(ctx->i64, 2),
+						  LLVMPointerType(LLVMArrayType(ctx->ac.i64, 2),
 								  AC_ADDR_SPACE_LDS), "");
 	for (unsigned i = 0; i < 2; i++) {
-		LLVMValueRef index = LLVMConstInt(ctx->i32, dw_offset / 2 + i, 0);
+		LLVMValueRef index = LLVMConstInt(ctx->ac.i32, dw_offset / 2 + i, 0);
 		mask[i] = LLVMBuildLoad(builder, ac_build_gep0(&ctx->ac, ptr64, index), "");
 	}
 
@@ -725,24 +725,24 @@ static void update_thread_counts(struct si_shader_context *ctx,
 	/* Update the total thread count. */
 	unsigned tg_info_mask = ~(u_bit_consecutive(0, tg_info_num_bits) << tg_info_shift);
 	*tg_info = LLVMBuildAnd(builder, *tg_info,
-				LLVMConstInt(ctx->i32, tg_info_mask, 0), "");
+				LLVMConstInt(ctx->ac.i32, tg_info_mask, 0), "");
 	*tg_info = LLVMBuildOr(builder, *tg_info,
 			       LLVMBuildShl(builder, *new_num_threads,
-					    LLVMConstInt(ctx->i32, tg_info_shift, 0), ""), "");
+					    LLVMConstInt(ctx->ac.i32, tg_info_shift, 0), ""), "");
 
 	/* Update the per-wave thread count. */
 	LLVMValueRef prev_threads = LLVMBuildMul(builder, get_wave_id_in_tg(ctx),
-						 LLVMConstInt(ctx->i32, ctx->ac.wave_size, 0), "");
+						 LLVMConstInt(ctx->ac.i32, ctx->ac.wave_size, 0), "");
 	*new_num_threads = LLVMBuildSub(builder, *new_num_threads, prev_threads, "");
-	*new_num_threads = ac_build_imax(&ctx->ac, *new_num_threads, ctx->i32_0);
+	*new_num_threads = ac_build_imax(&ctx->ac, *new_num_threads, ctx->ac.i32_0);
 	*new_num_threads = ac_build_imin(&ctx->ac, *new_num_threads,
-					LLVMConstInt(ctx->i32, ctx->ac.wave_size, 0));
+					LLVMConstInt(ctx->ac.i32, ctx->ac.wave_size, 0));
 	unsigned wave_info_mask = ~(u_bit_consecutive(0, wave_info_num_bits) << wave_info_shift);
 	*wave_info = LLVMBuildAnd(builder, *wave_info,
-				  LLVMConstInt(ctx->i32, wave_info_mask, 0), "");
+				  LLVMConstInt(ctx->ac.i32, wave_info_mask, 0), "");
 	*wave_info = LLVMBuildOr(builder, *wave_info,
 				 LLVMBuildShl(builder, *new_num_threads,
-					      LLVMConstInt(ctx->i32, wave_info_shift, 0), ""), "");
+					      LLVMConstInt(ctx->ac.i32, wave_info_shift, 0), ""), "");
 }
 
 /**
@@ -784,14 +784,14 @@ void gfx10_emit_ngg_culling_epilogue_4x_wave32(struct ac_shader_abi *abi,
 	for (unsigned chan = 0; chan < 4; chan++) {
 		LLVMBuildStore(builder, ac_to_integer(&ctx->ac, position[chan]),
 				ac_build_gep0(&ctx->ac, es_vtxptr,
-					      LLVMConstInt(ctx->i32, lds_pos_x + chan, 0)));
+					      LLVMConstInt(ctx->ac.i32, lds_pos_x + chan, 0)));
 	}
 	/* Store Position.XY / W into LDS. */
 	for (unsigned chan = 0; chan < 2; chan++) {
 		LLVMValueRef val = ac_build_fdiv(&ctx->ac, position[chan], position[3]);
 		LLVMBuildStore(builder, ac_to_integer(&ctx->ac, val),
 				ac_build_gep0(&ctx->ac, es_vtxptr,
-					      LLVMConstInt(ctx->i32, lds_pos_x_div_w + chan, 0)));
+					      LLVMConstInt(ctx->ac.i32, lds_pos_x_div_w + chan, 0)));
 	}
 
 	/* Store VertexID and InstanceID. ES threads will have to load them
@@ -800,7 +800,7 @@ void gfx10_emit_ngg_culling_epilogue_4x_wave32(struct ac_shader_abi *abi,
 	 */
 	bool uses_instance_id = false;
 	bool uses_tes_prim_id = false;
-	LLVMValueRef packed_data = ctx->i32_0;
+	LLVMValueRef packed_data = ctx->ac.i32_0;
 
 	if (ctx->type == PIPE_SHADER_VERTEX) {
 		uses_instance_id = sel->info.uses_instanceid ||
@@ -809,11 +809,11 @@ void gfx10_emit_ngg_culling_epilogue_4x_wave32(struct ac_shader_abi *abi,
 
 		LLVMBuildStore(builder, ctx->abi.vertex_id,
 			       ac_build_gep0(&ctx->ac, es_vtxptr,
-					     LLVMConstInt(ctx->i32, lds_vertex_id, 0)));
+					     LLVMConstInt(ctx->ac.i32, lds_vertex_id, 0)));
 		if (uses_instance_id) {
 			LLVMBuildStore(builder, ctx->abi.instance_id,
 				       ac_build_gep0(&ctx->ac, es_vtxptr,
-						     LLVMConstInt(ctx->i32, lds_instance_id, 0)));
+						     LLVMConstInt(ctx->ac.i32, lds_instance_id, 0)));
 		}
 	} else {
 		uses_tes_prim_id = sel->info.uses_primid ||
@@ -822,22 +822,22 @@ void gfx10_emit_ngg_culling_epilogue_4x_wave32(struct ac_shader_abi *abi,
 		assert(ctx->type == PIPE_SHADER_TESS_EVAL);
 		LLVMBuildStore(builder, ac_to_integer(&ctx->ac, ac_get_arg(&ctx->ac, ctx->tes_u)),
 			       ac_build_gep0(&ctx->ac, es_vtxptr,
-					     LLVMConstInt(ctx->i32, lds_tes_u, 0)));
+					     LLVMConstInt(ctx->ac.i32, lds_tes_u, 0)));
 		LLVMBuildStore(builder, ac_to_integer(&ctx->ac, ac_get_arg(&ctx->ac, ctx->tes_v)),
 			       ac_build_gep0(&ctx->ac, es_vtxptr,
-					     LLVMConstInt(ctx->i32, lds_tes_v, 0)));
+					     LLVMConstInt(ctx->ac.i32, lds_tes_v, 0)));
 		packed_data = LLVMBuildShl(builder, ac_get_arg(&ctx->ac, ctx->tes_rel_patch_id),
-					   LLVMConstInt(ctx->i32, lds_byte2_tes_rel_patch_id * 8, 0), "");
+					   LLVMConstInt(ctx->ac.i32, lds_byte2_tes_rel_patch_id * 8, 0), "");
 		if (uses_tes_prim_id) {
 			LLVMBuildStore(builder, ac_get_arg(&ctx->ac, ctx->args.tes_patch_id),
 				       ac_build_gep0(&ctx->ac, es_vtxptr,
-						     LLVMConstInt(ctx->i32, lds_tes_patch_id, 0)));
+						     LLVMConstInt(ctx->ac.i32, lds_tes_patch_id, 0)));
 		}
 	}
 	/* Initialize the packed data. */
 	LLVMBuildStore(builder, packed_data,
 		       ac_build_gep0(&ctx->ac, es_vtxptr,
-				     LLVMConstInt(ctx->i32, lds_packed_data, 0)));
+				     LLVMConstInt(ctx->ac.i32, lds_packed_data, 0)));
 	ac_build_endif(&ctx->ac, ctx->merged_wrap_if_label);
 
 	LLVMValueRef tid = ac_get_thread_id(&ctx->ac);
@@ -850,10 +850,10 @@ void gfx10_emit_ngg_culling_epilogue_4x_wave32(struct ac_shader_abi *abi,
 	 */
 	ac_build_ifcc(&ctx->ac,
 		      LLVMBuildICmp(builder, LLVMIntULT, get_thread_id_in_tg(ctx),
-				    LLVMConstInt(ctx->i32, 3, 0), ""), 16101);
+				    LLVMConstInt(ctx->ac.i32, 3, 0), ""), 16101);
 	{
-		LLVMValueRef index = LLVMBuildAdd(builder, tid, ctx->i32_1, "");
-		LLVMBuildStore(builder, ctx->i32_0,
+		LLVMValueRef index = LLVMBuildAdd(builder, tid, ctx->ac.i32_1, "");
+		LLVMBuildStore(builder, ctx->ac.i32_0,
 			       ac_build_gep0(&ctx->ac, ctx->gs_ngg_scratch, index));
 	}
 	ac_build_endif(&ctx->ac, 16101);
@@ -908,7 +908,7 @@ void gfx10_emit_ngg_culling_epilogue_4x_wave32(struct ac_shader_abi *abi,
 	};
 	es_vtxptr = ngg_nogs_vertex_ptr(ctx, get_thread_id_in_tg(ctx));
 
-	LLVMValueRef gs_accepted = ac_build_alloca(&ctx->ac, ctx->i32, "");
+	LLVMValueRef gs_accepted = ac_build_alloca(&ctx->ac, ctx->ac.i32, "");
 
 	/* Do culling in GS threads. */
 	ac_build_ifcc(&ctx->ac, si_is_gs_thread(ctx), 16002);
@@ -926,7 +926,7 @@ void gfx10_emit_ngg_culling_epilogue_4x_wave32(struct ac_shader_abi *abi,
 					continue;
 
 				LLVMValueRef addr = ac_build_gep0(&ctx->ac, gs_vtxptr[vtx],
-								  LLVMConstInt(ctx->i32, index, 0));
+								  LLVMConstInt(ctx->ac.i32, index, 0));
 				pos[vtx][chan] = LLVMBuildLoad(builder, addr, "");
 				pos[vtx][chan] = ac_to_float(&ctx->ac, pos[vtx][chan]);
 			}
@@ -935,8 +935,8 @@ void gfx10_emit_ngg_culling_epilogue_4x_wave32(struct ac_shader_abi *abi,
 		/* Load the viewport state for small prim culling. */
 		LLVMValueRef vp = ac_build_load_invariant(&ctx->ac,
 							  ac_get_arg(&ctx->ac, ctx->small_prim_cull_info),
-							  ctx->i32_0);
-		vp = LLVMBuildBitCast(builder, vp, ctx->v4f32, "");
+							  ctx->ac.i32_0);
+		vp = LLVMBuildBitCast(builder, vp, ctx->ac.v4f32, "");
 		LLVMValueRef vp_scale[2], vp_translate[2];
 		vp_scale[0] = ac_llvm_extract_elem(&ctx->ac, vp, 0);
 		vp_scale[1] = ac_llvm_extract_elem(&ctx->ac, vp, 1);
@@ -946,10 +946,10 @@ void gfx10_emit_ngg_culling_epilogue_4x_wave32(struct ac_shader_abi *abi,
 		/* Get the small prim filter precision. */
 		LLVMValueRef small_prim_precision = si_unpack_param(ctx, ctx->vs_state_bits, 7, 4);
 		small_prim_precision = LLVMBuildOr(builder, small_prim_precision,
-						   LLVMConstInt(ctx->i32, 0x70, 0), "");
+						   LLVMConstInt(ctx->ac.i32, 0x70, 0), "");
 		small_prim_precision = LLVMBuildShl(builder, small_prim_precision,
-						    LLVMConstInt(ctx->i32, 23, 0), "");
-		small_prim_precision = LLVMBuildBitCast(builder, small_prim_precision, ctx->f32, "");
+						    LLVMConstInt(ctx->ac.i32, 23, 0), "");
+		small_prim_precision = LLVMBuildBitCast(builder, small_prim_precision, ctx->ac.f32, "");
 
 		/* Execute culling code. */
 		struct ac_cull_options options = {};
@@ -961,7 +961,7 @@ void gfx10_emit_ngg_culling_epilogue_4x_wave32(struct ac_shader_abi *abi,
 		options.cull_w = true;
 
 		/* Tell ES threads whether their vertex survived. */
-		ac_build_ifcc(&ctx->ac, ac_cull_triangle(&ctx->ac, pos, ctx->i1true,
+		ac_build_ifcc(&ctx->ac, ac_cull_triangle(&ctx->ac, pos, ctx->ac.i1true,
 							 vp_scale, vp_translate,
 							 small_prim_precision, &options), 16003);
 		{
@@ -978,7 +978,7 @@ void gfx10_emit_ngg_culling_epilogue_4x_wave32(struct ac_shader_abi *abi,
 
 	gs_accepted = LLVMBuildLoad(builder, gs_accepted, "");
 
-	LLVMValueRef es_accepted = ac_build_alloca(&ctx->ac, ctx->i1, "");
+	LLVMValueRef es_accepted = ac_build_alloca(&ctx->ac, ctx->ac.i1, "");
 
 	/* Convert the per-vertex flag to a thread bitmask in ES threads and store it in LDS. */
 	ac_build_ifcc(&ctx->ac, si_is_es_thread(ctx), 16007);
@@ -994,7 +994,7 @@ void gfx10_emit_ngg_culling_epilogue_4x_wave32(struct ac_shader_abi *abi,
 		LLVMBuildStore(builder, es_accepted_bool, es_accepted);
 
 		ac_build_ifcc(&ctx->ac, LLVMBuildICmp(builder, LLVMIntEQ,
-						      tid, ctx->i32_0, ""), 16008);
+						      tid, ctx->ac.i32_0, ""), 16008);
 		{
 			LLVMBuildStore(builder, es_mask,
 				       ac_build_gep0(&ctx->ac, ctx->gs_ngg_scratch,
@@ -1020,10 +1020,10 @@ void gfx10_emit_ngg_culling_epilogue_4x_wave32(struct ac_shader_abi *abi,
 		LLVMValueRef old_id = get_thread_id_in_tg(ctx);
 		LLVMValueRef new_id = ac_prefix_bitcount_2x64(&ctx->ac, es_mask, old_id);
 
-		LLVMBuildStore(builder, LLVMBuildTrunc(builder, old_id, ctx->i8, ""),
+		LLVMBuildStore(builder, LLVMBuildTrunc(builder, old_id, ctx->ac.i8, ""),
 			       si_build_gep_i8(ctx, ngg_nogs_vertex_ptr(ctx, new_id),
 					       lds_byte0_old_thread_id));
-		LLVMBuildStore(builder, LLVMBuildTrunc(builder, new_id, ctx->i8, ""),
+		LLVMBuildStore(builder, LLVMBuildTrunc(builder, new_id, ctx->ac.i8, ""),
 			       si_build_gep_i8(ctx, es_vtxptr, lds_byte1_new_thread_id));
 	}
 	ac_build_endif(&ctx->ac, 16009);
@@ -1032,14 +1032,14 @@ void gfx10_emit_ngg_culling_epilogue_4x_wave32(struct ac_shader_abi *abi,
 	kill_wave = LLVMBuildICmp(builder, LLVMIntULE,
 				  ac_build_imax(&ctx->ac, new_num_es_threads, ngg_get_prim_cnt(ctx)),
 				  LLVMBuildMul(builder, get_wave_id_in_tg(ctx),
-					       LLVMConstInt(ctx->i32, ctx->ac.wave_size, 0), ""), "");
+					       LLVMConstInt(ctx->ac.i32, ctx->ac.wave_size, 0), ""), "");
 	ac_build_ifcc(&ctx->ac, kill_wave, 19202);
 	{
 		/* If we are killing wave 0, send that there are no primitives
 		 * in this threadgroup.
 		 */
 		ac_build_sendmsg_gs_alloc_req(&ctx->ac, get_wave_id_in_tg(ctx),
-					      ctx->i32_0, ctx->i32_0);
+					      ctx->ac.i32_0, ctx->ac.i32_0);
 		ac_build_s_endpgm(&ctx->ac);
 	}
 	ac_build_endif(&ctx->ac, 19202);
@@ -1058,26 +1058,26 @@ void gfx10_emit_ngg_culling_epilogue_4x_wave32(struct ac_shader_abi *abi,
 			     &new_merged_wave_info, 8, 0);
 
 	/* Update vertex indices in VGPR0 (same format as NGG passthrough). */
-	LLVMValueRef new_vgpr0 = ac_build_alloca_undef(&ctx->ac, ctx->i32, "");
+	LLVMValueRef new_vgpr0 = ac_build_alloca_undef(&ctx->ac, ctx->ac.i32, "");
 
 	/* Set the null flag at the beginning (culled), and then
 	 * overwrite it for accepted primitives.
 	 */
-	LLVMBuildStore(builder, LLVMConstInt(ctx->i32, 1u << 31, 0), new_vgpr0);
+	LLVMBuildStore(builder, LLVMConstInt(ctx->ac.i32, 1u << 31, 0), new_vgpr0);
 
 	/* Get vertex indices after vertex compaction. */
-	ac_build_ifcc(&ctx->ac, LLVMBuildTrunc(builder, gs_accepted, ctx->i1, ""), 16011);
+	ac_build_ifcc(&ctx->ac, LLVMBuildTrunc(builder, gs_accepted, ctx->ac.i1, ""), 16011);
 	{
 		struct ac_ngg_prim prim = {};
 		prim.num_vertices = 3;
-		prim.isnull = ctx->i1false;
+		prim.isnull = ctx->ac.i1false;
 
 		for (unsigned vtx = 0; vtx < 3; vtx++) {
 			prim.index[vtx] =
 				LLVMBuildLoad(builder,
 					      si_build_gep_i8(ctx, gs_vtxptr[vtx],
 							      lds_byte1_new_thread_id), "");
-			prim.index[vtx] = LLVMBuildZExt(builder, prim.index[vtx], ctx->i32, "");
+			prim.index[vtx] = LLVMBuildZExt(builder, prim.index[vtx], ctx->ac.i32, "");
 			prim.edgeflag[vtx] = ngg_get_initial_edgeflag(ctx, vtx);
 		}
 
@@ -1091,10 +1091,10 @@ void gfx10_emit_ngg_culling_epilogue_4x_wave32(struct ac_shader_abi *abi,
 
 	/* Set the new ES input VGPRs. */
 	LLVMValueRef es_data[4];
-	LLVMValueRef old_thread_id = ac_build_alloca_undef(&ctx->ac, ctx->i32, "");
+	LLVMValueRef old_thread_id = ac_build_alloca_undef(&ctx->ac, ctx->ac.i32, "");
 
 	for (unsigned i = 0; i < 4; i++)
-		es_data[i] = ac_build_alloca_undef(&ctx->ac, ctx->i32, "");
+		es_data[i] = ac_build_alloca_undef(&ctx->ac, ctx->ac.i32, "");
 
 	ac_build_ifcc(&ctx->ac, LLVMBuildICmp(ctx->ac.builder, LLVMIntULT, tid,
 					      new_num_es_threads, ""), 16012);
@@ -1104,7 +1104,7 @@ void gfx10_emit_ngg_culling_epilogue_4x_wave32(struct ac_shader_abi *abi,
 		/* Load ES input VGPRs from the ES thread before compaction. */
 		old_id = LLVMBuildLoad(builder,
 				       si_build_gep_i8(ctx, es_vtxptr, lds_byte0_old_thread_id), "");
-		old_id = LLVMBuildZExt(builder, old_id, ctx->i32, "");
+		old_id = LLVMBuildZExt(builder, old_id, ctx->ac.i32, "");
 
 		LLVMBuildStore(builder, old_id, old_thread_id);
 		old_es_vtxptr = ngg_nogs_vertex_ptr(ctx, old_id);
@@ -1112,7 +1112,7 @@ void gfx10_emit_ngg_culling_epilogue_4x_wave32(struct ac_shader_abi *abi,
 		for (unsigned i = 0; i < 2; i++) {
 			tmp = LLVMBuildLoad(builder,
 					    ac_build_gep0(&ctx->ac, old_es_vtxptr,
-							  LLVMConstInt(ctx->i32, lds_vertex_id + i, 0)), "");
+							  LLVMConstInt(ctx->ac.i32, lds_vertex_id + i, 0)), "");
 			LLVMBuildStore(builder, tmp, es_data[i]);
 		}
 
@@ -1120,13 +1120,13 @@ void gfx10_emit_ngg_culling_epilogue_4x_wave32(struct ac_shader_abi *abi,
 			tmp = LLVMBuildLoad(builder,
 					    si_build_gep_i8(ctx, old_es_vtxptr,
 							    lds_byte2_tes_rel_patch_id), "");
-			tmp = LLVMBuildZExt(builder, tmp, ctx->i32, "");
+			tmp = LLVMBuildZExt(builder, tmp, ctx->ac.i32, "");
 			LLVMBuildStore(builder, tmp, es_data[2]);
 
 			if (uses_tes_prim_id) {
 				tmp = LLVMBuildLoad(builder,
 						    ac_build_gep0(&ctx->ac, old_es_vtxptr,
-								  LLVMConstInt(ctx->i32, lds_tes_patch_id, 0)), "");
+								  LLVMConstInt(ctx->ac.i32, lds_tes_patch_id, 0)), "");
 				LLVMBuildStore(builder, tmp, es_data[3]);
 			}
 		}
@@ -1269,7 +1269,7 @@ void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi,
 			 */
 			if (sel->so.num_outputs) {
 				tmp = ac_build_gep0(&ctx->ac, vertex_ptr,
-					LLVMConstInt(ctx->i32, 4 * i + j, false));
+					LLVMConstInt(ctx->ac.i32, 4 * i + j, false));
 				tmp2 = LLVMBuildLoad(builder, addrs[4 * i + j], "");
 				tmp2 = ac_to_integer(&ctx->ac, tmp2);
 				LLVMBuildStore(builder, tmp2, tmp);
@@ -1281,10 +1281,10 @@ void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi,
 		    sel->info.writes_edgeflag) {
 			LLVMValueRef edgeflag = LLVMBuildLoad(builder, addrs[4 * i], "");
 			/* The output is a float, but the hw expects a 1-bit integer. */
-			edgeflag = LLVMBuildFPToUI(ctx->ac.builder, edgeflag, ctx->i32, "");
-			edgeflag = ac_build_umin(&ctx->ac, edgeflag, ctx->i32_1);
+			edgeflag = LLVMBuildFPToUI(ctx->ac.builder, edgeflag, ctx->ac.i32, "");
+			edgeflag = ac_build_umin(&ctx->ac, edgeflag, ctx->ac.i32_1);
 
-			tmp = LLVMConstInt(ctx->i32, ngg_nogs_vertex_size(ctx->shader) - 1, 0);
+			tmp = LLVMConstInt(ctx->ac.i32, ngg_nogs_vertex_size(ctx->shader) - 1, 0);
 			tmp = ac_build_gep0(&ctx->ac, vertex_ptr, tmp);
 			LLVMBuildStore(builder, edgeflag, tmp);
 		}
@@ -1348,12 +1348,12 @@ void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi,
 		/* Load edge flags from ES threads and store them into VGPRs in GS threads. */
 		for (unsigned i = 0; i < num_vertices; i++) {
 			tmp = ngg_nogs_vertex_ptr(ctx, vtxindex[i]);
-			tmp2 = LLVMConstInt(ctx->i32, ngg_nogs_vertex_size(ctx->shader) - 1, 0);
+			tmp2 = LLVMConstInt(ctx->ac.i32, ngg_nogs_vertex_size(ctx->shader) - 1, 0);
 			tmp = ac_build_gep0(&ctx->ac, tmp, tmp2);
 			tmp = LLVMBuildLoad(builder, tmp, "");
-			tmp = LLVMBuildTrunc(builder, tmp, ctx->i1, "");
+			tmp = LLVMBuildTrunc(builder, tmp, ctx->ac.i1, "");
 
-			user_edgeflags[i] = ac_build_alloca_undef(&ctx->ac, ctx->i1, "");
+			user_edgeflags[i] = ac_build_alloca_undef(&ctx->ac, ctx->ac.i1, "");
 			LLVMBuildStore(builder, tmp, user_edgeflags[i]);
 		}
 		ac_build_endif(&ctx->ac, 5400);
@@ -1382,7 +1382,7 @@ void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi,
 		LLVMValueRef vertex_ptr = ngg_nogs_vertex_ptr(ctx, provoking_vtx_index);
 
 		LLVMBuildStore(builder, ac_get_arg(&ctx->ac, ctx->args.gs_prim_id),
-			       ac_build_gep0(&ctx->ac, vertex_ptr, ctx->i32_0));
+			       ac_build_gep0(&ctx->ac, vertex_ptr, ctx->ac.i32_0));
 		ac_build_endif(&ctx->ac, 5400);
 	}
 
@@ -1392,7 +1392,7 @@ void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi,
 		assert(!unterminated_es_if_block);
 
 		tmp = si_unpack_param(ctx, ctx->vs_state_bits, 6, 1);
-		tmp = LLVMBuildTrunc(builder, tmp, ctx->i1, "");
+		tmp = LLVMBuildTrunc(builder, tmp, ctx->ac.i1, "");
 		ac_build_ifcc(&ctx->ac, tmp, 5029); /* if (STREAMOUT_QUERY_ENABLED) */
 		tmp = LLVMBuildICmp(builder, LLVMIntEQ, get_wave_id_in_tg(ctx), ctx->ac.i32_0, "");
 		ac_build_ifcc(&ctx->ac, tmp, 5030);
@@ -1403,20 +1403,20 @@ void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi,
 			LLVMValueRef args[] = {
 				ngg_get_prim_cnt(ctx),
 				ngg_get_query_buf(ctx),
-				LLVMConstInt(ctx->i32, 16, false), /* offset of stream[0].generated_primitives */
-				ctx->i32_0, /* soffset */
-				ctx->i32_0, /* cachepolicy */
+				LLVMConstInt(ctx->ac.i32, 16, false), /* offset of stream[0].generated_primitives */
+				ctx->ac.i32_0, /* soffset */
+				ctx->ac.i32_0, /* cachepolicy */
 			};
 
 			if (sel->so.num_outputs) {
-				args[0] = ac_build_writelane(&ctx->ac, args[0], emitted_prims, ctx->i32_1);
+				args[0] = ac_build_writelane(&ctx->ac, args[0], emitted_prims, ctx->ac.i32_1);
 				args[2] = ac_build_writelane(&ctx->ac, args[2],
-						LLVMConstInt(ctx->i32, 24, false), ctx->i32_1);
+						LLVMConstInt(ctx->ac.i32, 24, false), ctx->ac.i32_1);
 			}
 
 			/* TODO: should this be 64-bit atomics? */
 			ac_build_intrinsic(&ctx->ac, "llvm.amdgcn.raw.buffer.atomic.add.i32",
-					   ctx->i32, args, 5, 0);
+					   ctx->ac.i32, args, 5, 0);
 		}
 		ac_build_endif(&ctx->ac, 5031);
 		ac_build_endif(&ctx->ac, 5030);
@@ -1447,7 +1447,7 @@ void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi,
 						ac_get_arg(&ctx->ac, ctx->ngg_old_thread_id));
 
 				for (unsigned j = 0; j < 4; j++) {
-					tmp = LLVMConstInt(ctx->i32, lds_pos_x + j, 0);
+					tmp = LLVMConstInt(ctx->ac.i32, lds_pos_x + j, 0);
 					tmp = ac_build_gep0(&ctx->ac, vertex_ptr, tmp);
 					tmp = LLVMBuildLoad(builder, tmp, "");
 					outputs[i].values[j] = ac_to_float(&ctx->ac, tmp);
@@ -1470,7 +1470,7 @@ void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi,
 				ac_build_s_barrier(&ctx->ac);
 
 				tmp = ngg_nogs_vertex_ptr(ctx, get_thread_id_in_tg(ctx));
-				tmp = ac_build_gep0(&ctx->ac, tmp, ctx->i32_0);
+				tmp = ac_build_gep0(&ctx->ac, tmp, ctx->ac.i32_0);
 				outputs[i].values[0] = LLVMBuildLoad(builder, tmp, "");
 			} else {
 				assert(ctx->type == PIPE_SHADER_TESS_EVAL);
@@ -1479,7 +1479,7 @@ void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi,
 
 			outputs[i].values[0] = ac_to_float(&ctx->ac, outputs[i].values[0]);
 			for (unsigned j = 1; j < 4; j++)
-				outputs[i].values[j] = LLVMGetUndef(ctx->f32);
+				outputs[i].values[j] = LLVMGetUndef(ctx->ac.f32);
 
 			memset(outputs[i].vertex_stream, 0,
 			       sizeof(outputs[i].vertex_stream));
@@ -1614,7 +1614,7 @@ void gfx10_ngg_gs_emit_vertex(struct si_shader_context *ctx,
 	 */
 	const LLVMValueRef can_emit =
 		LLVMBuildICmp(builder, LLVMIntULT, vertexidx,
-			      LLVMConstInt(ctx->i32, sel->gs_max_out_vertices, false), "");
+			      LLVMConstInt(ctx->ac.i32, sel->gs_max_out_vertices, false), "");
 
 	tmp = LLVMBuildAdd(builder, vertexidx, ctx->ac.i32_1, "");
 	tmp = LLVMBuildSelect(builder, can_emit, tmp, vertexidx, "");
@@ -1650,10 +1650,10 @@ void gfx10_ngg_gs_emit_vertex(struct si_shader_context *ctx,
 	 * track which primitive is odd and swap vertex indices to get
 	 * the correct vertex order.
 	 */
-	LLVMValueRef is_odd = ctx->i1false;
+	LLVMValueRef is_odd = ctx->ac.i1false;
 	if (stream == 0 && u_vertices_per_prim(sel->gs_output_prim) == 3) {
-		tmp = LLVMBuildAnd(builder, curverts, ctx->i32_1, "");
-		is_odd = LLVMBuildICmp(builder, LLVMIntEQ, tmp, ctx->i32_1, "");
+		tmp = LLVMBuildAnd(builder, curverts, ctx->ac.i32_1, "");
+		is_odd = LLVMBuildICmp(builder, LLVMIntEQ, tmp, ctx->ac.i32_1, "");
 	}
 
 	tmp = LLVMBuildAdd(builder, curverts, ctx->ac.i32_1, "");
@@ -1687,11 +1687,11 @@ void gfx10_ngg_gs_emit_prologue(struct si_shader_context *ctx)
 	LLVMValueRef tid = get_thread_id_in_tg(ctx);
 	LLVMValueRef tmp;
 
-	tmp = LLVMBuildICmp(builder, LLVMIntULT, tid, LLVMConstInt(ctx->i32, 4, false), "");
+	tmp = LLVMBuildICmp(builder, LLVMIntULT, tid, LLVMConstInt(ctx->ac.i32, 4, false), "");
 	ac_build_ifcc(&ctx->ac, tmp, 5090);
 	{
 		LLVMValueRef ptr = ac_build_gep0(&ctx->ac, scratchptr, tid);
-		LLVMBuildStore(builder, ctx->i32_0, ptr);
+		LLVMBuildStore(builder, ctx->ac.i32_0, ptr);
 	}
 	ac_build_endif(&ctx->ac, 5090);
 
@@ -1748,12 +1748,12 @@ void gfx10_ngg_gs_emit_epilogue(struct si_shader_context *ctx)
 			LLVMBuildLoad(builder, ctx->gs_generated_prims[stream], "");
 		numprims = ac_build_reduce(&ctx->ac, numprims, nir_op_iadd, ctx->ac.wave_size);
 
-		tmp = LLVMBuildICmp(builder, LLVMIntEQ, ac_get_thread_id(&ctx->ac), ctx->i32_0, "");
+		tmp = LLVMBuildICmp(builder, LLVMIntEQ, ac_get_thread_id(&ctx->ac), ctx->ac.i32_0, "");
 		ac_build_ifcc(&ctx->ac, tmp, 5105);
 		{
 			LLVMBuildAtomicRMW(builder, LLVMAtomicRMWBinOpAdd,
 					   ac_build_gep0(&ctx->ac, ctx->gs_ngg_scratch,
-							 LLVMConstInt(ctx->i32, stream, false)),
+							 LLVMConstInt(ctx->ac.i32, stream, false)),
 					   numprims, LLVMAtomicOrderingMonotonic, false);
 		}
 		ac_build_endif(&ctx->ac, 5105);
@@ -1770,7 +1770,7 @@ void gfx10_ngg_gs_emit_epilogue(struct si_shader_context *ctx)
 	if (sel->so.num_outputs) {
 		struct ngg_streamout nggso = {};
 
-		nggso.num_vertices = LLVMConstInt(ctx->i32, verts_per_prim, false);
+		nggso.num_vertices = LLVMConstInt(ctx->ac.i32, verts_per_prim, false);
 
 		LLVMValueRef vertexptr = ngg_gs_vertex_ptr(ctx, tid);
 		for (unsigned stream = 0; stream < 4; ++stream) {
@@ -1778,16 +1778,16 @@ void gfx10_ngg_gs_emit_epilogue(struct si_shader_context *ctx)
 				continue;
 
 			tmp = LLVMBuildLoad(builder, ngg_gs_get_emit_primflag_ptr(ctx, vertexptr, stream), "");
-			tmp = LLVMBuildTrunc(builder, tmp, ctx->i1, "");
+			tmp = LLVMBuildTrunc(builder, tmp, ctx->ac.i1, "");
 			tmp2 = LLVMBuildICmp(builder, LLVMIntULT, tid, num_emit_threads, "");
 			nggso.prim_enable[stream] = LLVMBuildAnd(builder, tmp, tmp2, "");
 		}
 
 		for (unsigned i = 0; i < verts_per_prim; ++i) {
 			tmp = LLVMBuildSub(builder, tid,
-					   LLVMConstInt(ctx->i32, verts_per_prim - i - 1, false), "");
+					   LLVMConstInt(ctx->ac.i32, verts_per_prim - i - 1, false), "");
 			tmp = ngg_gs_vertex_ptr(ctx, tmp);
-			nggso.vertices[i] = ac_build_gep0(&ctx->ac, tmp, ctx->i32_0);
+			nggso.vertices[i] = ac_build_gep0(&ctx->ac, tmp, ctx->ac.i32_0);
 		}
 
 		build_streamout(ctx, &nggso);
@@ -1796,21 +1796,21 @@ void gfx10_ngg_gs_emit_epilogue(struct si_shader_context *ctx)
 	/* Write shader query data. */
 	if (ctx->screen->use_ngg_streamout) {
 		tmp = si_unpack_param(ctx, ctx->vs_state_bits, 6, 1);
-		tmp = LLVMBuildTrunc(builder, tmp, ctx->i1, "");
+		tmp = LLVMBuildTrunc(builder, tmp, ctx->ac.i1, "");
 		ac_build_ifcc(&ctx->ac, tmp, 5109); /* if (STREAMOUT_QUERY_ENABLED) */
 		unsigned num_query_comps = sel->so.num_outputs ? 8 : 4;
 		tmp = LLVMBuildICmp(builder, LLVMIntULT, tid,
-				    LLVMConstInt(ctx->i32, num_query_comps, false), "");
+				    LLVMConstInt(ctx->ac.i32, num_query_comps, false), "");
 		ac_build_ifcc(&ctx->ac, tmp, 5110);
 		{
 			LLVMValueRef offset;
 			tmp = tid;
 			if (sel->so.num_outputs)
-				tmp = LLVMBuildAnd(builder, tmp, LLVMConstInt(ctx->i32, 3, false), "");
-			offset = LLVMBuildNUWMul(builder, tmp, LLVMConstInt(ctx->i32, 32, false), "");
+				tmp = LLVMBuildAnd(builder, tmp, LLVMConstInt(ctx->ac.i32, 3, false), "");
+			offset = LLVMBuildNUWMul(builder, tmp, LLVMConstInt(ctx->ac.i32, 32, false), "");
 			if (sel->so.num_outputs) {
-				tmp = LLVMBuildLShr(builder, tid, LLVMConstInt(ctx->i32, 2, false), "");
-				tmp = LLVMBuildNUWMul(builder, tmp, LLVMConstInt(ctx->i32, 8, false), "");
+				tmp = LLVMBuildLShr(builder, tid, LLVMConstInt(ctx->ac.i32, 2, false), "");
+				tmp = LLVMBuildNUWMul(builder, tmp, LLVMConstInt(ctx->ac.i32, 8, false), "");
 				offset = LLVMBuildAdd(builder, offset, tmp, "");
 			}
 
@@ -1819,11 +1819,11 @@ void gfx10_ngg_gs_emit_epilogue(struct si_shader_context *ctx)
 				tmp,
 				ngg_get_query_buf(ctx),
 				offset,
-				LLVMConstInt(ctx->i32, 16, false), /* soffset */
-				ctx->i32_0, /* cachepolicy */
+				LLVMConstInt(ctx->ac.i32, 16, false), /* soffset */
+				ctx->ac.i32_0, /* cachepolicy */
 			};
 			ac_build_intrinsic(&ctx->ac, "llvm.amdgcn.raw.buffer.atomic.add.i32",
-					   ctx->i32, args, 5, 0);
+					   ctx->ac.i32, args, 5, 0);
 		}
 		ac_build_endif(&ctx->ac, 5110);
 		ac_build_endif(&ctx->ac, 5109);
@@ -1868,7 +1868,7 @@ void gfx10_ngg_gs_emit_epilogue(struct si_shader_context *ctx)
 	vertlive_scan.enable_reduce = true;
 	vertlive_scan.enable_exclusive = true;
 	vertlive_scan.src = vertlive;
-	vertlive_scan.scratch = ac_build_gep0(&ctx->ac, ctx->gs_ngg_scratch, ctx->i32_0);
+	vertlive_scan.scratch = ac_build_gep0(&ctx->ac, ctx->gs_ngg_scratch, ctx->ac.i32_0);
 	vertlive_scan.waveidx = get_wave_id_in_tg(ctx);
 	vertlive_scan.numwaves = get_tgsize(ctx);
 	vertlive_scan.maxwaves = 8;
@@ -1919,7 +1919,7 @@ void gfx10_ngg_gs_emit_epilogue(struct si_shader_context *ctx)
 
 		tmp = ngg_gs_vertex_ptr(ctx, tid);
 		flags = LLVMBuildLoad(builder, ngg_gs_get_emit_primflag_ptr(ctx, tmp, 0), "");
-		prim.isnull = LLVMBuildNot(builder, LLVMBuildTrunc(builder, flags, ctx->i1, ""), "");
+		prim.isnull = LLVMBuildNot(builder, LLVMBuildTrunc(builder, flags, ctx->ac.i1, ""), "");
 
 		for (unsigned i = 0; i < verts_per_prim; ++i) {
 			prim.index[i] = LLVMBuildSub(builder, vertlive_scan.result_exclusive,
@@ -1930,11 +1930,11 @@ void gfx10_ngg_gs_emit_epilogue(struct si_shader_context *ctx)
 		/* Geometry shaders output triangle strips, but NGG expects triangles. */
 		if (verts_per_prim == 3) {
 			LLVMValueRef is_odd = LLVMBuildLShr(builder, flags, ctx->ac.i8_1, "");
-			is_odd = LLVMBuildTrunc(builder, is_odd, ctx->i1, "");
+			is_odd = LLVMBuildTrunc(builder, is_odd, ctx->ac.i1, "");
 			LLVMValueRef flatshade_first =
 				LLVMBuildICmp(builder, LLVMIntEQ,
 					      si_unpack_param(ctx, ctx->vs_state_bits, 4, 2),
-					      ctx->i32_0, "");
+					      ctx->ac.i32_0, "");
 
 			ac_build_triangle_strip_indices_to_triangle(&ctx->ac, is_odd,
 								    flatshade_first,

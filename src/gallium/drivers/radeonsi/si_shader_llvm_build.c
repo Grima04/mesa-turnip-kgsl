@@ -68,7 +68,7 @@ LLVMValueRef si_insert_input_ptr(struct si_shader_context *ctx, LLVMValueRef ret
 {
 	LLVMBuilderRef builder = ctx->ac.builder;
 	LLVMValueRef ptr = ac_get_arg(&ctx->ac, param);
-	ptr = LLVMBuildPtrToInt(builder, ptr, ctx->i32, "");
+	ptr = LLVMBuildPtrToInt(builder, ptr, ctx->ac.i32, "");
 	return LLVMBuildInsertValue(builder, ret, ptr, return_index, "");
 }
 
@@ -79,7 +79,7 @@ LLVMValueRef si_prolog_get_rw_buffers(struct si_shader_context *ctx)
 
 	ptr[0] = LLVMGetParam(ctx->main_fn, (merged_shader ? 8 : 0) + SI_SGPR_RW_BUFFERS);
 	list = LLVMBuildIntToPtr(ctx->ac.builder, ptr[0],
-				 ac_array_in_const32_addr_space(ctx->v4i32), "");
+				 ac_array_in_const32_addr_space(ctx->ac.v4i32), "");
 	return list;
 }
 
@@ -123,7 +123,7 @@ void si_llvm_declare_esgs_ring(struct si_shader_context *ctx)
 	assert(!LLVMGetNamedGlobal(ctx->ac.module, "esgs_ring"));
 
 	ctx->esgs_ring = LLVMAddGlobalInAddressSpace(
-		ctx->ac.module, LLVMArrayType(ctx->i32, 0),
+		ctx->ac.module, LLVMArrayType(ctx->ac.i32, 0),
 		"esgs_ring",
 		AC_ADDR_SPACE_LDS);
 	LLVMSetLinkage(ctx->esgs_ring, LLVMExternalLinkage);

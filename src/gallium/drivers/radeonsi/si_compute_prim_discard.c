@@ -243,28 +243,28 @@ si_build_ds_ordered_op(struct si_shader_context *ctx, const char *opcode,
 {
 	LLVMValueRef args[] = {
 		LLVMBuildIntToPtr(ctx->ac.builder, m0,
-				  LLVMPointerType(ctx->i32, AC_ADDR_SPACE_GDS), ""),
+				  LLVMPointerType(ctx->ac.i32, AC_ADDR_SPACE_GDS), ""),
 		value,
-		LLVMConstInt(ctx->i32, LLVMAtomicOrderingMonotonic, 0), /* ordering */
-		ctx->i32_0, /* scope */
-		ctx->i1false, /* volatile */
-		LLVMConstInt(ctx->i32, ordered_count_index, 0),
-		LLVMConstInt(ctx->i1, release, 0),
-		LLVMConstInt(ctx->i1, done, 0),
+		LLVMConstInt(ctx->ac.i32, LLVMAtomicOrderingMonotonic, 0), /* ordering */
+		ctx->ac.i32_0, /* scope */
+		ctx->ac.i1false, /* volatile */
+		LLVMConstInt(ctx->ac.i32, ordered_count_index, 0),
+		LLVMConstInt(ctx->ac.i1, release, 0),
+		LLVMConstInt(ctx->ac.i1, done, 0),
 	};
 
 	char intrinsic[64];
 	snprintf(intrinsic, sizeof(intrinsic), "llvm.amdgcn.ds.ordered.%s", opcode);
-	return ac_build_intrinsic(&ctx->ac, intrinsic, ctx->i32, args, ARRAY_SIZE(args), 0);
+	return ac_build_intrinsic(&ctx->ac, intrinsic, ctx->ac.i32, args, ARRAY_SIZE(args), 0);
 }
 
 static LLVMValueRef si_expand_32bit_pointer(struct si_shader_context *ctx, LLVMValueRef ptr)
 {
 	uint64_t hi = (uint64_t)ctx->screen->info.address32_hi << 32;
-	ptr = LLVMBuildZExt(ctx->ac.builder, ptr, ctx->i64, "");
-	ptr = LLVMBuildOr(ctx->ac.builder, ptr, LLVMConstInt(ctx->i64, hi, 0), "");
+	ptr = LLVMBuildZExt(ctx->ac.builder, ptr, ctx->ac.i64, "");
+	ptr = LLVMBuildOr(ctx->ac.builder, ptr, LLVMConstInt(ctx->ac.i64, hi, 0), "");
 	return LLVMBuildIntToPtr(ctx->ac.builder, ptr,
-				 LLVMPointerType(ctx->i32, AC_ADDR_SPACE_GLOBAL), "");
+				 LLVMPointerType(ctx->ac.i32, AC_ADDR_SPACE_GLOBAL), "");
 }
 
 struct si_thread0_section {
@@ -279,7 +279,7 @@ static void si_enter_thread0_section(struct si_shader_context *ctx,
 				     LLVMValueRef thread_id)
 {
 	section->ctx = ctx;
-	section->vgpr_result = ac_build_alloca_undef(&ctx->ac, ctx->i32, "result0");
+	section->vgpr_result = ac_build_alloca_undef(&ctx->ac, ctx->ac.i32, "result0");
 
 	/* This IF has 4 instructions:
 	 *   v_and_b32_e32 v, 63, v         ; get the thread ID
@@ -291,7 +291,7 @@ static void si_enter_thread0_section(struct si_shader_context *ctx,
 	 */
 	ac_build_ifcc(&ctx->ac,
 		      LLVMBuildICmp(ctx->ac.builder, LLVMIntEQ, thread_id,
-				    ctx->i32_0, ""), 12601);
+				    ctx->ac.i32_0, ""), 12601);
 }
 
 /* Exit a section that only executes on thread 0 and broadcast the result
@@ -381,17 +381,17 @@ void si_build_prim_discard_compute_shader(struct si_shader_context *ctx)
 	vs_params[num_vs_params++] = LLVMGetUndef(LLVMTypeOf(LLVMGetParam(vs, 1))); /* BINDLESS */
 	vs_params[num_vs_params++] = ac_get_arg(&ctx->ac, param_const_desc);
 	vs_params[num_vs_params++] = ac_get_arg(&ctx->ac, param_sampler_desc);
-	vs_params[num_vs_params++] = LLVMConstInt(ctx->i32,
+	vs_params[num_vs_params++] = LLVMConstInt(ctx->ac.i32,
 					S_VS_STATE_INDEXED(key->opt.cs_indexed), 0);
 	vs_params[num_vs_params++] = ac_get_arg(&ctx->ac, param_base_vertex);
 	vs_params[num_vs_params++] = ac_get_arg(&ctx->ac, param_start_instance);
-	vs_params[num_vs_params++] = ctx->i32_0; /* DrawID */
+	vs_params[num_vs_params++] = ctx->ac.i32_0; /* DrawID */
 	vs_params[num_vs_params++] = ac_get_arg(&ctx->ac, param_vb_desc);
 
 	vs_params[(param_vertex_id = num_vs_params++)] = NULL; /* VertexID */
 	vs_params[(param_instance_id = num_vs_params++)] = NULL; /* InstanceID */
-	vs_params[num_vs_params++] = ctx->i32_0; /* unused (PrimID) */
-	vs_params[num_vs_params++] = ctx->i32_0; /* unused */
+	vs_params[num_vs_params++] = ctx->ac.i32_0; /* unused (PrimID) */
+	vs_params[num_vs_params++] = ctx->ac.i32_0; /* unused */
 
 	assert(num_vs_params <= ARRAY_SIZE(vs_params));
 	assert(num_vs_params == LLVMCountParamTypes(LLVMGetElementType(LLVMTypeOf(vs))));
@@ -401,8 +401,8 @@ void si_build_prim_discard_compute_shader(struct si_shader_context *ctx)
 
 	LLVMValueRef index_buffers_and_constants = ac_get_arg(&ctx->ac, param_index_buffers_and_constants);
 	tmp = LLVMBuildPointerCast(builder, index_buffers_and_constants,
-				   ac_array_in_const32_addr_space(ctx->v8i32), "");
-	tmp = ac_build_load_to_sgpr(&ctx->ac, tmp, ctx->i32_0);
+				   ac_array_in_const32_addr_space(ctx->ac.v8i32), "");
+	tmp = ac_build_load_to_sgpr(&ctx->ac, tmp, ctx->ac.i32_0);
 
 	for (unsigned i = 0; i < 8; i++)
 		desc[i] = ac_llvm_extract_elem(&ctx->ac, tmp, i);
@@ -413,10 +413,10 @@ void si_build_prim_discard_compute_shader(struct si_shader_context *ctx)
 	/* Compute PrimID and InstanceID. */
 	LLVMValueRef global_thread_id =
 		ac_build_imad(&ctx->ac, ac_get_arg(&ctx->ac, param_block_id),
-			      LLVMConstInt(ctx->i32, THREADGROUP_SIZE, 0),
+			      LLVMConstInt(ctx->ac.i32, THREADGROUP_SIZE, 0),
 			      ac_get_arg(&ctx->ac, param_local_id));
 	LLVMValueRef prim_id = global_thread_id; /* PrimID within an instance */
-	LLVMValueRef instance_id = ctx->i32_0;
+	LLVMValueRef instance_id = ctx->ac.i32_0;
 
 	if (key->opt.cs_instancing) {
 		LLVMValueRef num_prims_udiv_terms =
@@ -425,9 +425,9 @@ void si_build_prim_discard_compute_shader(struct si_shader_context *ctx)
 			ac_get_arg(&ctx->ac, param_num_prims_udiv_multiplier);
 		/* Unpack num_prims_udiv_terms. */
 		LLVMValueRef post_shift = LLVMBuildAnd(builder, num_prims_udiv_terms,
-						       LLVMConstInt(ctx->i32, 0x1f, 0), "");
+						       LLVMConstInt(ctx->ac.i32, 0x1f, 0), "");
 		LLVMValueRef prims_per_instance = LLVMBuildLShr(builder, num_prims_udiv_terms,
-								LLVMConstInt(ctx->i32, 5, 0), "");
+								LLVMConstInt(ctx->ac.i32, 5, 0), "");
 		/* Divide the total prim_id by the number of prims per instance. */
 		instance_id = ac_build_fast_udiv_u31_d_not_one(&ctx->ac, prim_id,
 							       num_prims_udiv_multiplier,
@@ -439,21 +439,21 @@ void si_build_prim_discard_compute_shader(struct si_shader_context *ctx)
 	}
 
 	/* Generate indices (like a non-indexed draw call). */
-	LLVMValueRef index[4] = {NULL, NULL, NULL, LLVMGetUndef(ctx->i32)};
+	LLVMValueRef index[4] = {NULL, NULL, NULL, LLVMGetUndef(ctx->ac.i32)};
 	unsigned vertices_per_prim = 3;
 
 	switch (key->opt.cs_prim_type) {
 	case PIPE_PRIM_TRIANGLES:
 		for (unsigned i = 0; i < 3; i++) {
 			index[i] = ac_build_imad(&ctx->ac, prim_id,
-						 LLVMConstInt(ctx->i32, 3, 0),
-						 LLVMConstInt(ctx->i32, i, 0));
+						 LLVMConstInt(ctx->ac.i32, 3, 0),
+						 LLVMConstInt(ctx->ac.i32, i, 0));
 		}
 		break;
 	case PIPE_PRIM_TRIANGLE_STRIP:
 		for (unsigned i = 0; i < 3; i++) {
 			index[i] = LLVMBuildAdd(builder, prim_id,
-						LLVMConstInt(ctx->i32, i, 0), "");
+						LLVMConstInt(ctx->ac.i32, i, 0), "");
 		}
 		break;
 	case PIPE_PRIM_TRIANGLE_FAN:
@@ -463,13 +463,13 @@ void si_build_prim_discard_compute_shader(struct si_shader_context *ctx)
 		 * gl_VertexID is preserved, because it's equal to the index.
 		 */
 		if (key->opt.cs_provoking_vertex_first) {
-			index[0] = LLVMBuildAdd(builder, prim_id, LLVMConstInt(ctx->i32, 1, 0), "");
-			index[1] = LLVMBuildAdd(builder, prim_id, LLVMConstInt(ctx->i32, 2, 0), "");
-			index[2] = ctx->i32_0;
+			index[0] = LLVMBuildAdd(builder, prim_id, LLVMConstInt(ctx->ac.i32, 1, 0), "");
+			index[1] = LLVMBuildAdd(builder, prim_id, LLVMConstInt(ctx->ac.i32, 2, 0), "");
+			index[2] = ctx->ac.i32_0;
 		} else {
-			index[0] = ctx->i32_0;
-			index[1] = LLVMBuildAdd(builder, prim_id, LLVMConstInt(ctx->i32, 1, 0), "");
-			index[2] = LLVMBuildAdd(builder, prim_id, LLVMConstInt(ctx->i32, 2, 0), "");
+			index[0] = ctx->ac.i32_0;
+			index[1] = LLVMBuildAdd(builder, prim_id, LLVMConstInt(ctx->ac.i32, 1, 0), "");
+			index[2] = LLVMBuildAdd(builder, prim_id, LLVMConstInt(ctx->ac.i32, 2, 0), "");
 		}
 		break;
 	default:
@@ -480,7 +480,7 @@ void si_build_prim_discard_compute_shader(struct si_shader_context *ctx)
 	if (key->opt.cs_indexed) {
 		for (unsigned i = 0; i < 3; i++) {
 			index[i] = ac_build_buffer_load_format(&ctx->ac, input_indexbuf,
-							       index[i], ctx->i32_0, 1,
+							       index[i], ctx->ac.i32_0, 1,
 							       0, true);
 			index[i] = ac_to_integer(&ctx->ac, index[i]);
 		}
@@ -491,20 +491,20 @@ void si_build_prim_discard_compute_shader(struct si_shader_context *ctx)
 	/* Extract the ordered wave ID. */
 	if (VERTEX_COUNTER_GDS_MODE == 2) {
 		ordered_wave_id = LLVMBuildLShr(builder, ordered_wave_id,
-						LLVMConstInt(ctx->i32, 6, 0), "");
+						LLVMConstInt(ctx->ac.i32, 6, 0), "");
 		ordered_wave_id = LLVMBuildAnd(builder, ordered_wave_id,
-					       LLVMConstInt(ctx->i32, 0xfff, 0), "");
+					       LLVMConstInt(ctx->ac.i32, 0xfff, 0), "");
 	}
 	LLVMValueRef thread_id =
 		LLVMBuildAnd(builder, ac_get_arg(&ctx->ac, param_local_id),
-			     LLVMConstInt(ctx->i32, 63, 0), "");
+			     LLVMConstInt(ctx->ac.i32, 63, 0), "");
 
 	/* Every other triangle in a strip has a reversed vertex order, so we
 	 * need to swap vertices of odd primitives to get the correct primitive
 	 * orientation when converting triangle strips to triangles. Primitive
 	 * restart complicates it, because a strip can start anywhere.
 	 */
-	LLVMValueRef prim_restart_accepted = ctx->i1true;
+	LLVMValueRef prim_restart_accepted = ctx->ac.i1true;
 	LLVMValueRef vertex_counter = ac_get_arg(&ctx->ac, param_vertex_counter);
 
 	if (key->opt.cs_prim_type == PIPE_PRIM_TRIANGLE_STRIP) {
@@ -512,7 +512,7 @@ void si_build_prim_discard_compute_shader(struct si_shader_context *ctx)
 		 * Only primitive restart can flip it with respect to the first vertex
 		 * of the draw call.
 		 */
-		LLVMValueRef first_is_odd = ctx->i1false;
+		LLVMValueRef first_is_odd = ctx->ac.i1false;
 
 		/* Handle primitive restart. */
 		if (key->opt.cs_primitive_restart) {
@@ -523,11 +523,11 @@ void si_build_prim_discard_compute_shader(struct si_shader_context *ctx)
 			 */
 			LLVMValueRef gds_prim_restart_continue =
 				LLVMBuildLShr(builder, vertex_counter,
-					      LLVMConstInt(ctx->i32, 31, 0), "");
+					      LLVMConstInt(ctx->ac.i32, 31, 0), "");
 			gds_prim_restart_continue =
-				LLVMBuildTrunc(builder, gds_prim_restart_continue, ctx->i1, "");
+				LLVMBuildTrunc(builder, gds_prim_restart_continue, ctx->ac.i1, "");
 			vertex_counter = LLVMBuildAnd(builder, vertex_counter,
-						      LLVMConstInt(ctx->i32, 0x7fffffff, 0), "");
+						      LLVMConstInt(ctx->ac.i32, 0x7fffffff, 0), "");
 
 			LLVMValueRef index0_is_reset;
 
@@ -554,7 +554,7 @@ void si_build_prim_discard_compute_shader(struct si_shader_context *ctx)
 				LLVMValueRef preceding_threads_mask =
 					LLVMBuildSub(builder,
 						     LLVMBuildShl(builder, ctx->ac.i64_1,
-								  LLVMBuildZExt(builder, thread_id, ctx->i64, ""), ""),
+								  LLVMBuildZExt(builder, thread_id, ctx->ac.i64, ""), ""),
 						     ctx->ac.i64_1, "");
 
 				LLVMValueRef reset_threadmask = ac_get_i1_sgpr_mask(&ctx->ac, index0_is_reset);
@@ -562,10 +562,10 @@ void si_build_prim_discard_compute_shader(struct si_shader_context *ctx)
 					LLVMBuildAnd(builder, reset_threadmask, preceding_threads_mask, "");
 				LLVMValueRef strip_start =
 					ac_build_umsb(&ctx->ac, preceding_reset_threadmask, NULL);
-				strip_start = LLVMBuildAdd(builder, strip_start, ctx->i32_1, "");
+				strip_start = LLVMBuildAdd(builder, strip_start, ctx->ac.i32_1, "");
 
 				/* This flips the orientatino based on reset indices within this wave only. */
-				first_is_odd = LLVMBuildTrunc(builder, strip_start, ctx->i1, "");
+				first_is_odd = LLVMBuildTrunc(builder, strip_start, ctx->ac.i1, "");
 
 				LLVMValueRef last_strip_start, prev_wave_state, ret, tmp;
 				LLVMValueRef is_first_wave, current_wave_resets_index;
@@ -579,7 +579,7 @@ void si_build_prim_discard_compute_shader(struct si_shader_context *ctx)
 				 * be 64.
 				 */
 				last_strip_start = ac_build_umsb(&ctx->ac, reset_threadmask, NULL);
-				last_strip_start = LLVMBuildAdd(builder, last_strip_start, ctx->i32_1, "");
+				last_strip_start = LLVMBuildAdd(builder, last_strip_start, ctx->ac.i32_1, "");
 
 				struct si_thread0_section section;
 				si_enter_thread0_section(ctx, &section, thread_id);
@@ -591,14 +591,14 @@ void si_build_prim_discard_compute_shader(struct si_shader_context *ctx)
 				 * NOTE: This will need to be different if we wanna support
 				 * instancing with primitive restart.
 				 */
-				is_first_wave = LLVMBuildICmp(builder, LLVMIntEQ, prim_id, ctx->i32_0, "");
+				is_first_wave = LLVMBuildICmp(builder, LLVMIntEQ, prim_id, ctx->ac.i32_0, "");
 				is_first_wave = LLVMBuildAnd(builder, is_first_wave,
 							     LLVMBuildNot(builder,
 									  gds_prim_restart_continue, ""), "");
 				current_wave_resets_index = LLVMBuildICmp(builder, LLVMIntNE,
-									  last_strip_start, ctx->i32_0, "");
+									  last_strip_start, ctx->ac.i32_0, "");
 
-				ret = ac_build_alloca_undef(&ctx->ac, ctx->i32, "prev_state");
+				ret = ac_build_alloca_undef(&ctx->ac, ctx->ac.i32, "prev_state");
 
 				/* Save the last strip start primitive index in GDS and read
 				 * the value that previous waves stored.
@@ -624,7 +624,7 @@ void si_build_prim_discard_compute_shader(struct si_shader_context *ctx)
 				{
 					/* Just read the value from GDS. */
 					tmp = si_build_ds_ordered_op(ctx, "add",
-								     ordered_wave_id, ctx->i32_0,
+								     ordered_wave_id, ctx->ac.i32_0,
 								     1, true, false);
 					LLVMBuildStore(builder, tmp, ret);
 				}
@@ -633,9 +633,9 @@ void si_build_prim_discard_compute_shader(struct si_shader_context *ctx)
 				prev_wave_state = LLVMBuildLoad(builder, ret, "");
 				/* Ignore the return value if this is the first wave. */
 				prev_wave_state = LLVMBuildSelect(builder, is_first_wave,
-								  ctx->i32_0, prev_wave_state, "");
+								  ctx->ac.i32_0, prev_wave_state, "");
 				si_exit_thread0_section(&section, &prev_wave_state);
-				prev_wave_state = LLVMBuildTrunc(builder, prev_wave_state, ctx->i1, "");
+				prev_wave_state = LLVMBuildTrunc(builder, prev_wave_state, ctx->ac.i1, "");
 
 				/* If the strip start appears to be on thread 0 for the current primitive
 				 * (meaning the reset index is not present in this wave and might have
@@ -646,7 +646,7 @@ void si_build_prim_discard_compute_shader(struct si_shader_context *ctx)
 				 * the value from the current wave to determine primitive orientation.
 				 */
 				LLVMValueRef strip_start_is0 = LLVMBuildICmp(builder, LLVMIntEQ,
-									     strip_start, ctx->i32_0, "");
+									     strip_start, ctx->ac.i32_0, "");
 				first_is_odd = LLVMBuildSelect(builder, strip_start_is0, prev_wave_state,
 							       first_is_odd, "");
 			}
@@ -654,11 +654,11 @@ void si_build_prim_discard_compute_shader(struct si_shader_context *ctx)
 		/* prim_is_odd = (first_is_odd + current_is_odd) % 2. */
 		LLVMValueRef prim_is_odd =
 			LLVMBuildXor(builder, first_is_odd,
-				     LLVMBuildTrunc(builder, thread_id, ctx->i1, ""), "");
+				     LLVMBuildTrunc(builder, thread_id, ctx->ac.i1, ""), "");
 
 		/* Convert triangle strip indices to triangle indices. */
 		ac_build_triangle_strip_indices_to_triangle(&ctx->ac, prim_is_odd,
-							    LLVMConstInt(ctx->i1, key->opt.cs_provoking_vertex_first, 0),
+							    LLVMConstInt(ctx->ac.i1, key->opt.cs_provoking_vertex_first, 0),
 							    index);
 	}
 
@@ -681,8 +681,8 @@ void si_build_prim_discard_compute_shader(struct si_shader_context *ctx)
 
 	/* Load the viewport state. */
 	LLVMValueRef vp = ac_build_load_invariant(&ctx->ac, index_buffers_and_constants,
-						  LLVMConstInt(ctx->i32, 2, 0));
-	vp = LLVMBuildBitCast(builder, vp, ctx->v4f32, "");
+						  LLVMConstInt(ctx->ac.i32, 2, 0));
+	vp = LLVMBuildBitCast(builder, vp, ctx->ac.v4f32, "");
 	LLVMValueRef vp_scale[2], vp_translate[2];
 	vp_scale[0] = ac_llvm_extract_elem(&ctx->ac, vp, 0);
 	vp_scale[1] = ac_llvm_extract_elem(&ctx->ac, vp, 1);
@@ -712,9 +712,9 @@ void si_build_prim_discard_compute_shader(struct si_shader_context *ctx)
 
 	/* Count the number of active threads by doing bitcount(accepted). */
 	LLVMValueRef num_prims_accepted =
-		ac_build_intrinsic(&ctx->ac, "llvm.ctpop.i64", ctx->i64,
+		ac_build_intrinsic(&ctx->ac, "llvm.ctpop.i64", ctx->ac.i64,
 				   &accepted_threadmask, 1, AC_FUNC_ATTR_READNONE);
-	num_prims_accepted = LLVMBuildTrunc(builder, num_prims_accepted, ctx->i32, "");
+	num_prims_accepted = LLVMBuildTrunc(builder, num_prims_accepted, ctx->ac.i32, "");
 
 	LLVMValueRef start;
 
@@ -724,21 +724,21 @@ void si_build_prim_discard_compute_shader(struct si_shader_context *ctx)
 	{
 		if (VERTEX_COUNTER_GDS_MODE == 0) {
 			LLVMValueRef num_indices = LLVMBuildMul(builder, num_prims_accepted,
-						LLVMConstInt(ctx->i32, vertices_per_prim, 0), "");
+						LLVMConstInt(ctx->ac.i32, vertices_per_prim, 0), "");
 			vertex_counter = si_expand_32bit_pointer(ctx, vertex_counter);
 			start = LLVMBuildAtomicRMW(builder, LLVMAtomicRMWBinOpAdd,
 						   vertex_counter, num_indices,
 						   LLVMAtomicOrderingMonotonic, false);
 		} else if (VERTEX_COUNTER_GDS_MODE == 1) {
 			LLVMValueRef num_indices = LLVMBuildMul(builder, num_prims_accepted,
-						LLVMConstInt(ctx->i32, vertices_per_prim, 0), "");
+						LLVMConstInt(ctx->ac.i32, vertices_per_prim, 0), "");
 			vertex_counter = LLVMBuildIntToPtr(builder, vertex_counter,
-							   LLVMPointerType(ctx->i32, AC_ADDR_SPACE_GDS), "");
+							   LLVMPointerType(ctx->ac.i32, AC_ADDR_SPACE_GDS), "");
 			start = LLVMBuildAtomicRMW(builder, LLVMAtomicRMWBinOpAdd,
 						   vertex_counter, num_indices,
 						   LLVMAtomicOrderingMonotonic, false);
 		} else if (VERTEX_COUNTER_GDS_MODE == 2) {
-			LLVMValueRef tmp_store = ac_build_alloca_undef(&ctx->ac, ctx->i32, "");
+			LLVMValueRef tmp_store = ac_build_alloca_undef(&ctx->ac, ctx->ac.i32, "");
 
 			/* If the draw call was split into multiple subdraws, each using
 			 * a separate draw packet, we need to start counting from 0 for
@@ -769,7 +769,7 @@ void si_build_prim_discard_compute_shader(struct si_shader_context *ctx)
 				/* The GDS address is always 0 with ordered append. */
 				si_build_ds_ordered_op(ctx, "swap", ordered_wave_id,
 						       num_prims_accepted, 0, true, true);
-				LLVMBuildStore(builder, ctx->i32_0, tmp_store);
+				LLVMBuildStore(builder, ctx->ac.i32_0, tmp_store);
 			}
 			ac_build_else(&ctx->ac, 12605);
 			{
@@ -798,7 +798,7 @@ void si_build_prim_discard_compute_shader(struct si_shader_context *ctx)
 			      12606);
 		LLVMValueRef count = LLVMBuildAdd(builder, start, num_prims_accepted, "");
 		count = LLVMBuildMul(builder, count,
-				     LLVMConstInt(ctx->i32, vertices_per_prim, 0), "");
+				     LLVMConstInt(ctx->ac.i32, vertices_per_prim, 0), "");
 
 		/* GFX8 needs to disable caching, so that the CP can see the stored value.
 		 * MTYPE=3 bypasses TC L2.
@@ -806,15 +806,15 @@ void si_build_prim_discard_compute_shader(struct si_shader_context *ctx)
 		if (ctx->screen->info.chip_class <= GFX8) {
 			LLVMValueRef desc[] = {
 				ac_get_arg(&ctx->ac, param_vertex_count_addr),
-				LLVMConstInt(ctx->i32,
+				LLVMConstInt(ctx->ac.i32,
 					S_008F04_BASE_ADDRESS_HI(ctx->screen->info.address32_hi), 0),
-				LLVMConstInt(ctx->i32, 4, 0),
-				LLVMConstInt(ctx->i32, S_008F0C_DATA_FORMAT(V_008F0C_BUF_DATA_FORMAT_32) |
+				LLVMConstInt(ctx->ac.i32, 4, 0),
+				LLVMConstInt(ctx->ac.i32, S_008F0C_DATA_FORMAT(V_008F0C_BUF_DATA_FORMAT_32) |
 						       S_008F0C_MTYPE(3 /* uncached */), 0),
 			};
 			LLVMValueRef rsrc = ac_build_gather_values(&ctx->ac, desc, 4);
-			ac_build_buffer_store_dword(&ctx->ac, rsrc, count, 1, ctx->i32_0,
-						    ctx->i32_0, 0, ac_glc | ac_slc);
+			ac_build_buffer_store_dword(&ctx->ac, rsrc, count, 1, ctx->ac.i32_0,
+						    ctx->ac.i32_0, 0, ac_glc | ac_slc);
 		} else {
 			LLVMBuildStore(builder, count,
 				       si_expand_32bit_pointer(ctx,
@@ -827,7 +827,7 @@ void si_build_prim_discard_compute_shader(struct si_shader_context *ctx)
 		 * primitive count, convert it into the primitive index.
 		 */
 		start = LLVMBuildUDiv(builder, start,
-				      LLVMConstInt(ctx->i32, vertices_per_prim, 0), "");
+				      LLVMConstInt(ctx->ac.i32, vertices_per_prim, 0), "");
 	}
 
 	/* Now we need to store the indices of accepted primitives into
@@ -841,7 +841,7 @@ void si_build_prim_discard_compute_shader(struct si_shader_context *ctx)
 		/* We have lowered instancing. Pack the instance ID into vertex ID. */
 		if (key->opt.cs_instancing) {
 			instance_id = LLVMBuildShl(builder, instance_id,
-						   LLVMConstInt(ctx->i32, 16, 0), "");
+						   LLVMConstInt(ctx->ac.i32, 16, 0), "");
 
 			for (unsigned i = 0; i < vertices_per_prim; i++)
 				index[i] = LLVMBuildOr(builder, index[i], instance_id, "");
@@ -867,7 +867,7 @@ void si_build_prim_discard_compute_shader(struct si_shader_context *ctx)
 			vdata = ac_build_expand_to_vec4(&ctx->ac, vdata, 3);
 
 		ac_build_buffer_store_format(&ctx->ac, output_indexbuf, vdata,
-					     vindex, ctx->i32_0, 3,
+					     vindex, ctx->ac.i32_0, 3,
 					     ac_glc | (INDEX_STORES_USE_SLC ? ac_slc : 0));
 	}
 	ac_build_endif(&ctx->ac, 16607);

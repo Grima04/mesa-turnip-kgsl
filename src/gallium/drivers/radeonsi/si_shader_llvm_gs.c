@@ -84,7 +84,7 @@ static LLVMValueRef si_llvm_load_input_gs(struct ac_shader_abi *abi,
 
 		unsigned offset = param * 4 + swizzle;
 		vtx_offset = LLVMBuildAdd(ctx->ac.builder, vtx_offset,
-					  LLVMConstInt(ctx->i32, offset, false), "");
+					  LLVMConstInt(ctx->ac.i32, offset, false), "");
 
 		LLVMValueRef ptr = ac_build_gep0(&ctx->ac, ctx->esgs_ring, vtx_offset);
 		LLVMValueRef value = LLVMBuildLoad(ctx->ac.builder, ptr, "");
@@ -116,18 +116,18 @@ static LLVMValueRef si_llvm_load_input_gs(struct ac_shader_abi *abi,
 						ctx->gs_vtx_offset[vtx_offset_param]);
 
 	vtx_offset = LLVMBuildMul(ctx->ac.builder, gs_vtx_offset,
-				  LLVMConstInt(ctx->i32, 4, 0), "");
+				  LLVMConstInt(ctx->ac.i32, 4, 0), "");
 
-	soffset = LLVMConstInt(ctx->i32, (param * 4 + swizzle) * 256, 0);
+	soffset = LLVMConstInt(ctx->ac.i32, (param * 4 + swizzle) * 256, 0);
 
-	value = ac_build_buffer_load(&ctx->ac, ctx->esgs_ring, 1, ctx->i32_0,
+	value = ac_build_buffer_load(&ctx->ac, ctx->esgs_ring, 1, ctx->ac.i32_0,
 				     vtx_offset, soffset, 0, ac_glc, true, false);
 	if (ac_get_type_size(type) == 8) {
 		LLVMValueRef value2;
-		soffset = LLVMConstInt(ctx->i32, (param * 4 + swizzle + 1) * 256, 0);
+		soffset = LLVMConstInt(ctx->ac.i32, (param * 4 + swizzle + 1) * 256, 0);
 
 		value2 = ac_build_buffer_load(&ctx->ac, ctx->esgs_ring, 1,
-					      ctx->i32_0, vtx_offset, soffset,
+					      ctx->ac.i32_0, vtx_offset, soffset,
 					      0, ac_glc, true, false);
 		return si_build_gather_64bit(ctx, type, value, value2);
 	}
@@ -213,9 +213,9 @@ void si_llvm_emit_es_epilogue(struct ac_shader_abi *abi, unsigned max_outputs,
 		LLVMValueRef wave_idx = si_unpack_param(ctx, ctx->merged_wave_info, 24, 4);
 		vertex_idx = LLVMBuildOr(ctx->ac.builder, vertex_idx,
 					 LLVMBuildMul(ctx->ac.builder, wave_idx,
-						      LLVMConstInt(ctx->i32, ctx->ac.wave_size, false), ""), "");
+						      LLVMConstInt(ctx->ac.i32, ctx->ac.wave_size, false), ""), "");
 		lds_base = LLVMBuildMul(ctx->ac.builder, vertex_idx,
-					LLVMConstInt(ctx->i32, itemsize_dw, 0), "");
+					LLVMConstInt(ctx->ac.i32, itemsize_dw, 0), "");
 	}
 
 	for (i = 0; i < info->num_outputs; i++) {
@@ -237,7 +237,7 @@ void si_llvm_emit_es_epilogue(struct ac_shader_abi *abi, unsigned max_outputs,
 
 			/* GFX9 has the ESGS ring in LDS. */
 			if (ctx->screen->info.chip_class >= GFX9) {
-				LLVMValueRef idx = LLVMConstInt(ctx->i32, param * 4 + chan, false);
+				LLVMValueRef idx = LLVMConstInt(ctx->ac.i32, param * 4 + chan, false);
 				idx = LLVMBuildAdd(ctx->ac.builder, lds_base, idx, "");
 				ac_build_indexed_store(&ctx->ac, ctx->esgs_ring, idx, out_val);
 				continue;
@@ -327,7 +327,7 @@ static void si_llvm_emit_vertex(struct ac_shader_abi *abi,
 	 * altogether.
 	 */
 	can_emit = LLVMBuildICmp(ctx->ac.builder, LLVMIntULT, gs_next_vertex,
-				 LLVMConstInt(ctx->i32,
+				 LLVMConstInt(ctx->ac.i32,
 					      shader->selector->gs_max_out_vertices, 0), "");
 
 	bool use_kill = !info->writes_memory;
@@ -346,13 +346,13 @@ static void si_llvm_emit_vertex(struct ac_shader_abi *abi,
 
 			LLVMValueRef out_val = LLVMBuildLoad(ctx->ac.builder, addrs[4 * i + chan], "");
 			LLVMValueRef voffset =
-				LLVMConstInt(ctx->i32, offset *
+				LLVMConstInt(ctx->ac.i32, offset *
 					     shader->selector->gs_max_out_vertices, 0);
 			offset++;
 
 			voffset = LLVMBuildAdd(ctx->ac.builder, voffset, gs_next_vertex, "");
 			voffset = LLVMBuildMul(ctx->ac.builder, voffset,
-					       LLVMConstInt(ctx->i32, 4, 0), "");
+					       LLVMConstInt(ctx->ac.i32, 4, 0), "");
 
 			out_val = ac_to_integer(&ctx->ac, out_val);
 
@@ -364,7 +364,7 @@ static void si_llvm_emit_vertex(struct ac_shader_abi *abi,
 		}
 	}
 
-	gs_next_vertex = LLVMBuildAdd(ctx->ac.builder, gs_next_vertex, ctx->i32_1, "");
+	gs_next_vertex = LLVMBuildAdd(ctx->ac.builder, gs_next_vertex, ctx->ac.i32_1, "");
 	LLVMBuildStore(ctx->ac.builder, gs_next_vertex, ctx->gs_next_vertex[stream]);
 
 	/* Signal vertex emission if vertex data was written. */
@@ -399,7 +399,7 @@ void si_preload_esgs_ring(struct si_shader_context *ctx)
 		unsigned ring =
 			ctx->type == PIPE_SHADER_GEOMETRY ? SI_GS_RING_ESGS
 							  : SI_ES_RING_ESGS;
-		LLVMValueRef offset = LLVMConstInt(ctx->i32, ring, 0);
+		LLVMValueRef offset = LLVMConstInt(ctx->ac.i32, ring, 0);
 		LLVMValueRef buf_ptr = ac_get_arg(&ctx->ac, ctx->rw_buffers);
 
 		ctx->esgs_ring =
@@ -419,7 +419,7 @@ void si_preload_gs_rings(struct si_shader_context *ctx)
 {
 	const struct si_shader_selector *sel = ctx->shader->selector;
 	LLVMBuilderRef builder = ctx->ac.builder;
-	LLVMValueRef offset = LLVMConstInt(ctx->i32, SI_RING_GSVS, 0);
+	LLVMValueRef offset = LLVMConstInt(ctx->ac.i32, SI_RING_GSVS, 0);
 	LLVMValueRef buf_ptr = ac_get_arg(&ctx->ac, ctx->rw_buffers);
 	LLVMValueRef base_ring = ac_build_load_to_sgpr(&ctx->ac, buf_ptr, offset);
 
@@ -431,7 +431,7 @@ void si_preload_gs_rings(struct si_shader_context *ctx)
 	 *   t16v0c0 ..
 	 * Override the buffer descriptor accordingly.
 	 */
-	LLVMTypeRef v2i64 = LLVMVectorType(ctx->i64, 2);
+	LLVMTypeRef v2i64 = LLVMVectorType(ctx->ac.i64, 2);
 	uint64_t stream_offset = 0;
 
 	for (unsigned stream = 0; stream < 4; ++stream) {
@@ -452,23 +452,23 @@ void si_preload_gs_rings(struct si_shader_context *ctx)
 		num_records = ctx->ac.wave_size;
 
 		ring = LLVMBuildBitCast(builder, base_ring, v2i64, "");
-		tmp = LLVMBuildExtractElement(builder, ring, ctx->i32_0, "");
+		tmp = LLVMBuildExtractElement(builder, ring, ctx->ac.i32_0, "");
 		tmp = LLVMBuildAdd(builder, tmp,
-				   LLVMConstInt(ctx->i64,
+				   LLVMConstInt(ctx->ac.i64,
 						stream_offset, 0), "");
 		stream_offset += stride * ctx->ac.wave_size;
 
-		ring = LLVMBuildInsertElement(builder, ring, tmp, ctx->i32_0, "");
-		ring = LLVMBuildBitCast(builder, ring, ctx->v4i32, "");
-		tmp = LLVMBuildExtractElement(builder, ring, ctx->i32_1, "");
+		ring = LLVMBuildInsertElement(builder, ring, tmp, ctx->ac.i32_0, "");
+		ring = LLVMBuildBitCast(builder, ring, ctx->ac.v4i32, "");
+		tmp = LLVMBuildExtractElement(builder, ring, ctx->ac.i32_1, "");
 		tmp = LLVMBuildOr(builder, tmp,
-			LLVMConstInt(ctx->i32,
+			LLVMConstInt(ctx->ac.i32,
 				     S_008F04_STRIDE(stride) |
 				     S_008F04_SWIZZLE_ENABLE(1), 0), "");
-		ring = LLVMBuildInsertElement(builder, ring, tmp, ctx->i32_1, "");
+		ring = LLVMBuildInsertElement(builder, ring, tmp, ctx->ac.i32_1, "");
 		ring = LLVMBuildInsertElement(builder, ring,
-				LLVMConstInt(ctx->i32, num_records, 0),
-				LLVMConstInt(ctx->i32, 2, 0), "");
+				LLVMConstInt(ctx->ac.i32, num_records, 0),
+				LLVMConstInt(ctx->ac.i32, 2, 0), "");
 
 		uint32_t rsrc3 =
 				S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) |
@@ -489,8 +489,8 @@ void si_preload_gs_rings(struct si_shader_context *ctx)
 		}
 
 		ring = LLVMBuildInsertElement(builder, ring,
-			LLVMConstInt(ctx->i32, rsrc3, false),
-			LLVMConstInt(ctx->i32, 3, 0), "");
+			LLVMConstInt(ctx->ac.i32, rsrc3, false),
+			LLVMConstInt(ctx->ac.i32, 3, 0), "");
 
 		ctx->gsvs_ring[stream] = ring;
 	}
@@ -533,11 +533,11 @@ si_generate_gs_copy_shader(struct si_screen *sscreen,
 
 	LLVMValueRef buf_ptr = ac_get_arg(&ctx.ac, ctx.rw_buffers);
 	ctx.gsvs_ring[0] = ac_build_load_to_sgpr(&ctx.ac, buf_ptr,
-						 LLVMConstInt(ctx.i32, SI_RING_GSVS, 0));
+						 LLVMConstInt(ctx.ac.i32, SI_RING_GSVS, 0));
 
 	LLVMValueRef voffset =
 		LLVMBuildMul(ctx.ac.builder, ctx.abi.vertex_id,
-			     LLVMConstInt(ctx.i32, 4, 0), "");
+			     LLVMConstInt(ctx.ac.i32, 4, 0), "");
 
 	/* Fetch the vertex stream ID.*/
 	LLVMValueRef stream_id;
@@ -545,7 +545,7 @@ si_generate_gs_copy_shader(struct si_screen *sscreen,
 	if (!sscreen->use_ngg_streamout && gs_selector->so.num_outputs)
 		stream_id = si_unpack_param(&ctx, ctx.streamout_config, 24, 2);
 	else
-		stream_id = ctx.i32_0;
+		stream_id = ctx.ac.i32_0;
 
 	/* Fill in output information. */
 	for (i = 0; i < gsinfo->num_outputs; ++i) {
@@ -575,7 +575,7 @@ si_generate_gs_copy_shader(struct si_screen *sscreen,
 			continue;
 
 		bb = LLVMInsertBasicBlockInContext(ctx.ac.context, end_bb, "out");
-		LLVMAddCase(switch_inst, LLVMConstInt(ctx.i32, stream, 0), bb);
+		LLVMAddCase(switch_inst, LLVMConstInt(ctx.ac.i32, stream, 0), bb);
 		LLVMPositionBuilderAtEnd(builder, bb);
 
 		/* Fetch vertex data from GSVS ring */
@@ -584,18 +584,18 @@ si_generate_gs_copy_shader(struct si_screen *sscreen,
 			for (unsigned chan = 0; chan < 4; chan++) {
 				if (!(gsinfo->output_usagemask[i] & (1 << chan)) ||
 				    outputs[i].vertex_stream[chan] != stream) {
-					outputs[i].values[chan] = LLVMGetUndef(ctx.f32);
+					outputs[i].values[chan] = LLVMGetUndef(ctx.ac.f32);
 					continue;
 				}
 
-				LLVMValueRef soffset = LLVMConstInt(ctx.i32,
+				LLVMValueRef soffset = LLVMConstInt(ctx.ac.i32,
 					offset * gs_selector->gs_max_out_vertices * 16 * 4, 0);
 				offset++;
 
 				outputs[i].values[chan] =
 					ac_build_buffer_load(&ctx.ac,
 							     ctx.gsvs_ring[0], 1,
-							     ctx.i32_0, voffset,
+							     ctx.ac.i32_0, voffset,
 							     soffset, 0, ac_glc | ac_slc,
 							     true, false);
 			}
@@ -674,12 +674,12 @@ void si_llvm_build_gs_prolog(struct si_shader_context *ctx,
 
 	for (unsigned i = 0; i < num_sgprs; ++i) {
 		ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, NULL);
-		returns[i] = ctx->i32;
+		returns[i] = ctx->ac.i32;
 	}
 
 	for (unsigned i = 0; i < num_vgprs; ++i) {
 		ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT, NULL);
-		returns[num_sgprs + i] = ctx->f32;
+		returns[num_sgprs + i] = ctx->ac.f32;
 	}
 
 	/* Create the function. */
@@ -736,7 +736,7 @@ void si_llvm_build_gs_prolog(struct si_shader_context *ctx,
 		}
 
 		prim_id = LLVMGetParam(func, num_sgprs + 2);
-		rotate = LLVMBuildTrunc(builder, prim_id, ctx->i1, "");
+		rotate = LLVMBuildTrunc(builder, prim_id, ctx->ac.i1, "");
 
 		for (unsigned i = 0; i < 6; ++i) {
 			LLVMValueRef base, rotated;
@@ -750,7 +750,7 @@ void si_llvm_build_gs_prolog(struct si_shader_context *ctx,
 				LLVMValueRef hi, out;
 
 				hi = LLVMBuildShl(builder, vtx_out[i*2+1],
-						  LLVMConstInt(ctx->i32, 16, 0), "");
+						  LLVMConstInt(ctx->ac.i32, 16, 0), "");
 				out = LLVMBuildOr(builder, vtx_out[i*2], hi, "");
 				out = ac_to_float(&ctx->ac, out);
 				ret = LLVMBuildInsertValue(builder, ret, out,

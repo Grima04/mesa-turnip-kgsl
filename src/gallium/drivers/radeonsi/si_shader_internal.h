@@ -187,23 +187,6 @@ struct si_shader_context {
 	LLVMValueRef gs_ngg_scratch;
 	LLVMValueRef postponed_kill;
 	LLVMValueRef return_value;
-
-	LLVMTypeRef voidt;
-	LLVMTypeRef i1;
-	LLVMTypeRef i8;
-	LLVMTypeRef i32;
-	LLVMTypeRef i64;
-	LLVMTypeRef i128;
-	LLVMTypeRef f32;
-	LLVMTypeRef v2i32;
-	LLVMTypeRef v4i32;
-	LLVMTypeRef v4f32;
-	LLVMTypeRef v8i32;
-
-	LLVMValueRef i32_0;
-	LLVMValueRef i32_1;
-	LLVMValueRef i1false;
-	LLVMValueRef i1true;
 };
 
 static inline struct si_shader_context *

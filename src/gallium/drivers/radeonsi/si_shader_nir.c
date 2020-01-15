@@ -1055,7 +1055,7 @@ bool si_nir_build_llvm(struct si_shader_context *ctx, struct nir_shader *nir)
                         ctx->shader->selector->info.colors_read;
                 LLVMValueRef main_fn = ctx->main_fn;
 
-                LLVMValueRef undef = LLVMGetUndef(ctx->f32);
+                LLVMValueRef undef = LLVMGetUndef(ctx->ac.f32);
 
                 unsigned offset = SI_PARAM_POS_FIXED_PT + 1;
 

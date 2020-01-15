@@ -163,11 +163,6 @@ void si_llvm_context_init(struct si_shader_context *ctx,
 			  struct ac_llvm_compiler *compiler,
 			  unsigned wave_size)
 {
-	/* Initialize the gallivm object:
-	 * We are only using the module, context, and builder fields of this struct.
-	 * This should be enough for us to be able to pass our gallivm struct to the
-	 * helper functions in the gallivm module.
-	 */
 	memset(ctx, 0, sizeof(*ctx));
 	ctx->screen = sscreen;
 	ctx->compiler = compiler;
@@ -176,23 +171,6 @@ void si_llvm_context_init(struct si_shader_context *ctx,
 			     sscreen->info.family,
 			     AC_FLOAT_MODE_NO_SIGNED_ZEROS_FP_MATH,
 			     wave_size, 64);
-
-	ctx->voidt = LLVMVoidTypeInContext(ctx->ac.context);
-	ctx->i1 = LLVMInt1TypeInContext(ctx->ac.context);
-	ctx->i8 = LLVMInt8TypeInContext(ctx->ac.context);
-	ctx->i32 = LLVMInt32TypeInContext(ctx->ac.context);
-	ctx->i64 = LLVMInt64TypeInContext(ctx->ac.context);
-	ctx->i128 = LLVMIntTypeInContext(ctx->ac.context, 128);
-	ctx->f32 = LLVMFloatTypeInContext(ctx->ac.context);
-	ctx->v2i32 = LLVMVectorType(ctx->i32, 2);
-	ctx->v4i32 = LLVMVectorType(ctx->i32, 4);
-	ctx->v4f32 = LLVMVectorType(ctx->f32, 4);
-	ctx->v8i32 = LLVMVectorType(ctx->i32, 8);
-
-	ctx->i32_0 = LLVMConstInt(ctx->i32, 0, 0);
-	ctx->i32_1 = LLVMConstInt(ctx->i32, 1, 0);
-	ctx->i1false = LLVMConstInt(ctx->i1, 0, 0);
-	ctx->i1true = LLVMConstInt(ctx->i1, 1, 0);
 }
 
 /* Set the context to a certain shader. Can be called repeatedly
@@ -226,7 +204,7 @@ void si_llvm_create_func(struct si_shader_context *ctx, const char *name,
 						   return_types,
 						   num_return_elems, true);
 	else
-		ret_type = ctx->voidt;
+		ret_type = ctx->ac.voidt;
 
 	real_shader_type = ctx->type;
 

@@ -35,7 +35,7 @@ static LLVMValueRef si_llvm_bound_index(struct si_shader_context *ctx,
 				 unsigned num)
 {
 	LLVMBuilderRef builder = ctx->ac.builder;
-	LLVMValueRef c_max = LLVMConstInt(ctx->i32, num - 1, 0);
+	LLVMValueRef c_max = LLVMConstInt(ctx->ac.i32, num - 1, 0);
 	LLVMValueRef cc;
 
 	if (util_is_power_of_two_or_zero(num)) {
@@ -69,7 +69,7 @@ static LLVMValueRef load_const_buffer_desc_fast_path(struct si_shader_context *c
 
 	LLVMValueRef desc0, desc1;
 	desc0 = ptr;
-	desc1 = LLVMConstInt(ctx->i32,
+	desc1 = LLVMConstInt(ctx->ac.i32,
 			     S_008F04_BASE_ADDRESS_HI(ctx->screen->info.address32_hi), 0);
 
 	uint32_t rsrc3 = S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) |
@@ -88,8 +88,8 @@ static LLVMValueRef load_const_buffer_desc_fast_path(struct si_shader_context *c
 	LLVMValueRef desc_elems[] = {
 		desc0,
 		desc1,
-		LLVMConstInt(ctx->i32, sel->info.constbuf0_num_slots * 16, 0),
-		LLVMConstInt(ctx->i32, rsrc3, false)
+		LLVMConstInt(ctx->ac.i32, sel->info.constbuf0_num_slots * 16, 0),
+		LLVMConstInt(ctx->ac.i32, rsrc3, false)
 	};
 
 	return ac_build_gather_values(&ctx->ac, desc_elems, 4);
@@ -109,7 +109,7 @@ static LLVMValueRef load_ubo(struct ac_shader_abi *abi, LLVMValueRef index)
 
 	index = si_llvm_bound_index(ctx, index, ctx->num_const_buffers);
 	index = LLVMBuildAdd(ctx->ac.builder, index,
-			     LLVMConstInt(ctx->i32, SI_NUM_SHADER_BUFFERS, 0), "");
+			     LLVMConstInt(ctx->ac.i32, SI_NUM_SHADER_BUFFERS, 0), "");
 
 	return ac_build_load_to_sgpr(&ctx->ac, ptr, index);
 }
@@ -123,7 +123,7 @@ load_ssbo(struct ac_shader_abi *abi, LLVMValueRef index, bool write)
 
 	index = si_llvm_bound_index(ctx, index, ctx->num_shader_buffers);
 	index = LLVMBuildSub(ctx->ac.builder,
-			     LLVMConstInt(ctx->i32, SI_NUM_SHADER_BUFFERS - 1, 0),
+			     LLVMConstInt(ctx->ac.i32, SI_NUM_SHADER_BUFFERS - 1, 0),
 			     index, "");
 
 	return ac_build_load_to_sgpr(&ctx->ac, rsrc_ptr, index);
@@ -146,8 +146,8 @@ static LLVMValueRef force_dcc_off(struct si_shader_context *ctx,
 	if (ctx->screen->info.chip_class <= GFX7) {
 		return rsrc;
 	} else {
-		LLVMValueRef i32_6 = LLVMConstInt(ctx->i32, 6, 0);
-		LLVMValueRef i32_C = LLVMConstInt(ctx->i32, C_008F28_COMPRESSION_EN, 0);
+		LLVMValueRef i32_6 = LLVMConstInt(ctx->ac.i32, 6, 0);
+		LLVMValueRef i32_C = LLVMConstInt(ctx->ac.i32, C_008F28_COMPRESSION_EN, 0);
 		LLVMValueRef tmp;
 
 		tmp = LLVMBuildExtractElement(ctx->ac.builder, rsrc, i32_6, "");
@@ -167,10 +167,10 @@ static LLVMValueRef si_load_image_desc(struct si_shader_context *ctx,
 	LLVMValueRef rsrc;
 
 	if (desc_type == AC_DESC_BUFFER) {
-		index = ac_build_imad(&ctx->ac, index, LLVMConstInt(ctx->i32, 2, 0),
-				      ctx->i32_1);
+		index = ac_build_imad(&ctx->ac, index, LLVMConstInt(ctx->ac.i32, 2, 0),
+				      ctx->ac.i32_1);
 		list = LLVMBuildPointerCast(builder, list,
-					    ac_array_in_const32_addr_space(ctx->v4i32), "");
+					    ac_array_in_const32_addr_space(ctx->ac.v4i32), "");
 	} else {
 		assert(desc_type == AC_DESC_IMAGE ||
 		       desc_type == AC_DESC_FMASK);
@@ -198,26 +198,26 @@ static LLVMValueRef si_load_sampler_desc(struct si_shader_context *ctx,
 	switch (type) {
 	case AC_DESC_IMAGE:
 		/* The image is at [0:7]. */
-		index = LLVMBuildMul(builder, index, LLVMConstInt(ctx->i32, 2, 0), "");
+		index = LLVMBuildMul(builder, index, LLVMConstInt(ctx->ac.i32, 2, 0), "");
 		break;
 	case AC_DESC_BUFFER:
 		/* The buffer is in [4:7]. */
-		index = ac_build_imad(&ctx->ac, index, LLVMConstInt(ctx->i32, 4, 0),
-				      ctx->i32_1);
+		index = ac_build_imad(&ctx->ac, index, LLVMConstInt(ctx->ac.i32, 4, 0),
+				      ctx->ac.i32_1);
 		list = LLVMBuildPointerCast(builder, list,
-					    ac_array_in_const32_addr_space(ctx->v4i32), "");
+					    ac_array_in_const32_addr_space(ctx->ac.v4i32), "");
 		break;
 	case AC_DESC_FMASK:
 		/* The FMASK is at [8:15]. */
-		index = ac_build_imad(&ctx->ac, index, LLVMConstInt(ctx->i32, 2, 0),
-				      ctx->i32_1);
+		index = ac_build_imad(&ctx->ac, index, LLVMConstInt(ctx->ac.i32, 2, 0),
+				      ctx->ac.i32_1);
 		break;
 	case AC_DESC_SAMPLER:
 		/* The sampler state is at [12:15]. */
-		index = ac_build_imad(&ctx->ac, index, LLVMConstInt(ctx->i32, 4, 0),
-				      LLVMConstInt(ctx->i32, 3, 0));
+		index = ac_build_imad(&ctx->ac, index, LLVMConstInt(ctx->ac.i32, 4, 0),
+				      LLVMConstInt(ctx->ac.i32, 3, 0));
 		list = LLVMBuildPointerCast(builder, list,
-					    ac_array_in_const32_addr_space(ctx->v4i32), "");
+					    ac_array_in_const32_addr_space(ctx->ac.v4i32), "");
 		break;
 	case AC_DESC_PLANE_0:
 	case AC_DESC_PLANE_1:
@@ -252,11 +252,11 @@ si_nir_load_sampler_desc(struct ac_shader_abi *abi,
 		if (image) {
 			/* Bindless image descriptors use 16-dword slots. */
 			dynamic_index = LLVMBuildMul(ctx->ac.builder, dynamic_index,
-					     LLVMConstInt(ctx->i64, 2, 0), "");
+					     LLVMConstInt(ctx->ac.i64, 2, 0), "");
 			/* FMASK is right after the image. */
 			if (desc_type == AC_DESC_FMASK) {
 				dynamic_index = LLVMBuildAdd(ctx->ac.builder, dynamic_index,
-							     ctx->i32_1, "");
+							     ctx->ac.i32_1, "");
 			}
 
 			return si_load_image_desc(ctx, list, dynamic_index, desc_type,
@@ -269,9 +269,9 @@ si_nir_load_sampler_desc(struct ac_shader_abi *abi,
 		 * to prevent incorrect code generation and hangs.
 		 */
 		dynamic_index = LLVMBuildMul(ctx->ac.builder, dynamic_index,
-					     LLVMConstInt(ctx->i64, 2, 0), "");
+					     LLVMConstInt(ctx->ac.i64, 2, 0), "");
 		list = ac_build_pointer_add(&ctx->ac, list, dynamic_index);
-		return si_load_sampler_desc(ctx, list, ctx->i32_0, desc_type);
+		return si_load_sampler_desc(ctx, list, ctx->ac.i32_0, desc_type);
 	}
 
 	unsigned num_slots = image ? ctx->num_images : ctx->num_samplers;
@@ -299,16 +299,16 @@ si_nir_load_sampler_desc(struct ac_shader_abi *abi,
 		/* FMASKs are separate from images. */
 		if (desc_type == AC_DESC_FMASK) {
 			index = LLVMBuildAdd(ctx->ac.builder, index,
-					     LLVMConstInt(ctx->i32, SI_NUM_IMAGES, 0), "");
+					     LLVMConstInt(ctx->ac.i32, SI_NUM_IMAGES, 0), "");
 		}
 		index = LLVMBuildSub(ctx->ac.builder,
-				     LLVMConstInt(ctx->i32, SI_NUM_IMAGE_SLOTS - 1, 0),
+				     LLVMConstInt(ctx->ac.i32, SI_NUM_IMAGE_SLOTS - 1, 0),
 				     index, "");
 		return si_load_image_desc(ctx, list, index, desc_type, write, false);
 	}
 
 	index = LLVMBuildAdd(ctx->ac.builder, index,
-			     LLVMConstInt(ctx->i32, SI_NUM_IMAGE_SLOTS / 2, 0), "");
+			     LLVMConstInt(ctx->ac.i32, SI_NUM_IMAGE_SLOTS / 2, 0), "");
 	return si_load_sampler_desc(ctx, list, index, desc_type);
 }
 
