@@ -392,9 +392,11 @@ static const VkExternalMemoryProperties prime_fd_props = {
    .externalMemoryFeatures = VK_EXTERNAL_MEMORY_FEATURE_EXPORTABLE_BIT |
                              VK_EXTERNAL_MEMORY_FEATURE_IMPORTABLE_BIT,
    .exportFromImportedHandleTypes =
-      VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT,
+      VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT |
+      VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT,
    .compatibleHandleTypes =
-      VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT,
+      VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT |
+      VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT,
 };
 
 VkResult
@@ -465,6 +467,7 @@ v3dv_GetPhysicalDeviceImageFormatProperties2(VkPhysicalDevice physicalDevice,
    if (external_info && external_info->handleType != 0) {
       switch (external_info->handleType) {
       case VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT:
+      case VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT:
          if (external_props)
             external_props->externalMemoryProperties = prime_fd_props;
          break;
@@ -510,6 +513,7 @@ v3dv_GetPhysicalDeviceExternalBufferProperties(
 {
    switch (pExternalBufferInfo->handleType) {
    case VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT:
+   case VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT:
       pExternalBufferProperties->externalMemoryProperties = prime_fd_props;
       return;
    default: /* Unsupported */

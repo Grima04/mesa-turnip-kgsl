@@ -1152,6 +1152,62 @@ device_unmap(struct v3dv_device *device, struct v3dv_device_memory *mem)
    v3dv_bo_unmap(device, mem->bo);
 }
 
+static VkResult
+device_import_bo(struct v3dv_device *device,
+                 const VkAllocationCallbacks *pAllocator,
+                 int fd, uint64_t size,
+                 struct v3dv_bo **bo)
+{
+   VkResult result;
+
+   *bo = vk_alloc2(&device->alloc, pAllocator, sizeof(struct v3dv_bo), 8,
+                   VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   if (*bo == NULL) {
+      result = VK_ERROR_OUT_OF_HOST_MEMORY;
+      goto fail;
+   }
+
+   off_t real_size = lseek(fd, 0, SEEK_END);
+   lseek(fd, 0, SEEK_SET);
+   if (real_size < 0 || (uint64_t) real_size < size) {
+      result = VK_ERROR_INVALID_EXTERNAL_HANDLE;
+      goto fail;
+   }
+
+   int ret;
+   uint32_t handle;
+   ret = drmPrimeFDToHandle(device->fd, fd, &handle);
+   if (ret) {
+      result = VK_ERROR_INVALID_EXTERNAL_HANDLE;
+      goto fail;
+   }
+
+   struct drm_v3d_get_bo_offset get_offset = {
+      .handle = handle,
+   };
+   ret = v3dv_ioctl(device->fd, DRM_IOCTL_V3D_GET_BO_OFFSET, &get_offset);
+   if (ret) {
+      result = VK_ERROR_INVALID_EXTERNAL_HANDLE;
+      goto fail;
+   }
+   assert(get_offset.offset != 0);
+
+   (*bo)->handle = handle;
+   (*bo)->size = size;
+   (*bo)->offset = get_offset.offset;
+   (*bo)->map = NULL;
+   (*bo)->map_size = 0;
+
+   return VK_SUCCESS;
+
+fail:
+   if (*bo) {
+      vk_free2(&device->alloc, pAllocator, *bo);
+      *bo = NULL;
+   }
+   return result;
+}
+
 VkResult
 v3dv_AllocateMemory(VkDevice _device,
                     const VkMemoryAllocateInfo *pAllocateInfo,
@@ -1175,7 +1231,35 @@ v3dv_AllocateMemory(VkDevice _device,
    assert(pAllocateInfo->memoryTypeIndex < pdevice->memory.memoryTypeCount);
    mem->type = &pdevice->memory.memoryTypes[pAllocateInfo->memoryTypeIndex];
 
-   VkResult result = device_alloc(device, mem, pAllocateInfo->allocationSize);
+   const VkImportMemoryFdInfoKHR *fd_info = NULL;
+   vk_foreach_struct_const(ext, pAllocateInfo->pNext) {
+      switch (ext->sType) {
+      case VK_STRUCTURE_TYPE_IMPORT_MEMORY_FD_INFO_KHR:
+         fd_info = (void *)ext;
+         break;
+      default:
+         v3dv_debug_ignored_stype(ext->sType);
+         break;
+      }
+   }
+
+   VkResult result = VK_SUCCESS;
+   if (fd_info && fd_info->handleType) {
+      assert(fd_info->handleType == VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT ||
+             fd_info->handleType == VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT);
+      result = device_import_bo(device, pAllocator,
+                                fd_info->fd, pAllocateInfo->allocationSize,
+                                &mem->bo);
+      if (result == VK_SUCCESS)
+         close(fd_info->fd);
+   } else {
+      result = device_alloc(device, mem, pAllocateInfo->allocationSize);
+   }
+
+   if (result != VK_SUCCESS) {
+      vk_free2(&device->alloc, pAllocator, mem);
+      return vk_error(device->instance, result);
+   }
 
    *pMem = v3dv_device_memory_to_handle(mem);
    return result;
@@ -1502,4 +1586,45 @@ v3dv_DestroyFramebuffer(VkDevice _device,
       return;
 
    vk_free2(&device->alloc, pAllocator, fb);
+}
+
+VkResult
+v3dv_GetMemoryFdPropertiesKHR(VkDevice _device,
+                              VkExternalMemoryHandleTypeFlagBits handleType,
+                              int fd,
+                              VkMemoryFdPropertiesKHR *pMemoryFdProperties)
+{
+   V3DV_FROM_HANDLE(v3dv_device, device, _device);
+   struct v3dv_physical_device *pdevice = &device->instance->physicalDevice;
+
+   switch (handleType) {
+   case VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT:
+      pMemoryFdProperties->memoryTypeBits =
+         (1 << pdevice->memory.memoryTypeCount) - 1;
+      return VK_SUCCESS;
+   default:
+      return vk_error(device->instance, VK_ERROR_INVALID_EXTERNAL_HANDLE);
+   }
+}
+
+VkResult
+v3dv_GetMemoryFdKHR(VkDevice _device,
+                    const VkMemoryGetFdInfoKHR *pGetFdInfo,
+                    int *pFd)
+{
+   V3DV_FROM_HANDLE(v3dv_device, device, _device);
+   V3DV_FROM_HANDLE(v3dv_device_memory, mem, pGetFdInfo->memory);
+
+   assert(pGetFdInfo->sType == VK_STRUCTURE_TYPE_MEMORY_GET_FD_INFO_KHR);
+   assert(pGetFdInfo->handleType == VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT ||
+          pGetFdInfo->handleType == VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT);
+
+   int fd, ret;
+   ret = drmPrimeHandleToFD(device->fd, mem->bo->handle, DRM_CLOEXEC, &fd);
+   if (ret)
+      return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+
+   *pFd = fd;
+
+   return VK_SUCCESS;
 }

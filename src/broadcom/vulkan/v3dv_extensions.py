@@ -59,9 +59,12 @@ API_VERSIONS = [
 MAX_API_VERSION = None # Computed later
 
 EXTENSIONS = [
+    Extension('VK_KHR_external_memory',                   1, True),
     Extension('VK_KHR_external_memory_capabilities',      1, True),
+    Extension('VK_KHR_external_memory_fd',                1, True),
     Extension('VK_KHR_get_physical_device_properties2',   1, True),
     Extension('VK_EXT_debug_report',                      9, True),
+    Extension('VK_EXT_external_memory_dma_buf',           1, True),
 ]
 
 # Sort the extension list the way we expect: KHR, then EXT, then vendors
