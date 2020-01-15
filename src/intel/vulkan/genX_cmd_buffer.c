@@ -56,6 +56,7 @@ void
 genX(cmd_buffer_emit_state_base_address)(struct anv_cmd_buffer *cmd_buffer)
 {
    struct anv_device *device = cmd_buffer->device;
+   UNUSED const struct gen_device_info *devinfo = &device->info;
    uint32_t mocs = device->isl_dev.mocs.internal;
 
    /* If we are emitting a new state base address we probably need to re-emit
@@ -76,6 +77,17 @@ genX(cmd_buffer_emit_state_base_address)(struct anv_cmd_buffer *cmd_buffer)
       pc.CommandStreamerStallEnable = true;
 #if GEN_GEN >= 12
       pc.TileCacheFlushEnable = true;
+#endif
+#if GEN_GEN == 12
+      /* GEN:BUG:1606662791:
+       *
+       *   Software must program PIPE_CONTROL command with "HDC Pipeline
+       *   Flush" prior to programming of the below two non-pipeline state :
+       *      * STATE_BASE_ADDRESS
+       *      * 3DSTATE_BINDING_TABLE_POOL_ALLOC
+       */
+      if (devinfo->revision == 0 /* A0 */)
+         pc.HDCPipelineFlushEnable = true;
 #endif
    }
 
