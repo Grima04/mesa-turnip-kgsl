@@ -372,3 +372,17 @@ unsupported:
 
    return VK_ERROR_FORMAT_NOT_SUPPORTED;
 }
+
+void
+v3dv_GetPhysicalDeviceSparseImageFormatProperties(
+   VkPhysicalDevice physicalDevice,
+   VkFormat format,
+   VkImageType type,
+   VkSampleCountFlagBits samples,
+   VkImageUsageFlags usage,
+   VkImageTiling tiling,
+   uint32_t *pPropertyCount,
+   VkSparseImageFormatProperties *pProperties)
+{
+   *pPropertyCount = 0;
+}
