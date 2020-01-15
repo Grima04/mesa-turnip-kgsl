@@ -211,11 +211,6 @@ unsigned si_llvm_compile(LLVMModuleRef M, struct si_shader_binary *binary,
 			 struct ac_llvm_compiler *compiler,
 			 struct pipe_debug_callback *debug,
 			 bool less_optimized, unsigned wave_size);
-
-LLVMValueRef si_llvm_bound_index(struct si_shader_context *ctx,
-				 LLVMValueRef index,
-				 unsigned num);
-
 void si_llvm_context_init(struct si_shader_context *ctx,
 			  struct si_screen *sscreen,
 			  struct ac_llvm_compiler *compiler,
@@ -245,13 +240,6 @@ LLVMValueRef si_nir_load_input_tes(struct ac_shader_abi *abi,
 				   bool load_input);
 bool si_is_merged_shader(struct si_shader_context *ctx);
 LLVMValueRef si_get_sample_id(struct si_shader_context *ctx);
-LLVMValueRef si_load_sampler_desc(struct si_shader_context *ctx,
-				  LLVMValueRef list, LLVMValueRef index,
-				  enum ac_descriptor_type type);
-LLVMValueRef si_load_image_desc(struct si_shader_context *ctx,
-				LLVMValueRef list, LLVMValueRef index,
-				enum ac_descriptor_type desc_type,
-				bool uses_store, bool bindless);
 LLVMValueRef si_buffer_load_const(struct si_shader_context *ctx,
 				  LLVMValueRef resource, LLVMValueRef offset);
 void si_llvm_build_ret(struct si_shader_context *ctx, LLVMValueRef ret);
@@ -357,5 +345,8 @@ void si_llvm_build_ps_epilog(struct si_shader_context *ctx,
 void si_llvm_build_monolithic_ps(struct si_shader_context *ctx,
 				 struct si_shader *shader);
 void si_llvm_init_ps_callbacks(struct si_shader_context *ctx);
+
+/* si_shader_llvm_resources.c */
+void si_llvm_init_resource_callbacks(struct si_shader_context *ctx);
 
 #endif

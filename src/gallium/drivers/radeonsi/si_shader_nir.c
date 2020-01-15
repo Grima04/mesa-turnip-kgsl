@@ -1005,87 +1005,6 @@ static void declare_nir_input_vs(struct si_shader_context *ctx,
 	si_llvm_load_input_vs(ctx, input_index, out);
 }
 
-static LLVMValueRef
-si_nir_load_sampler_desc(struct ac_shader_abi *abi,
-		         unsigned descriptor_set, unsigned base_index,
-		         unsigned constant_index, LLVMValueRef dynamic_index,
-		         enum ac_descriptor_type desc_type, bool image,
-			 bool write, bool bindless)
-{
-	struct si_shader_context *ctx = si_shader_context_from_abi(abi);
-	LLVMBuilderRef builder = ctx->ac.builder;
-	unsigned const_index = base_index + constant_index;
-
-	assert(!descriptor_set);
-	assert(desc_type <= AC_DESC_BUFFER);
-
-	if (bindless) {
-		LLVMValueRef list = ac_get_arg(&ctx->ac, ctx->bindless_samplers_and_images);
-
-		/* dynamic_index is the bindless handle */
-		if (image) {
-			/* Bindless image descriptors use 16-dword slots. */
-			dynamic_index = LLVMBuildMul(ctx->ac.builder, dynamic_index,
-					     LLVMConstInt(ctx->i64, 2, 0), "");
-			/* FMASK is right after the image. */
-			if (desc_type == AC_DESC_FMASK) {
-				dynamic_index = LLVMBuildAdd(ctx->ac.builder, dynamic_index,
-							     ctx->i32_1, "");
-			}
-
-			return si_load_image_desc(ctx, list, dynamic_index, desc_type,
-						  write, true);
-		}
-
-		/* Since bindless handle arithmetic can contain an unsigned integer
-		 * wraparound and si_load_sampler_desc assumes there isn't any,
-		 * use GEP without "inbounds" (inside ac_build_pointer_add)
-		 * to prevent incorrect code generation and hangs.
-		 */
-		dynamic_index = LLVMBuildMul(ctx->ac.builder, dynamic_index,
-					     LLVMConstInt(ctx->i64, 2, 0), "");
-		list = ac_build_pointer_add(&ctx->ac, list, dynamic_index);
-		return si_load_sampler_desc(ctx, list, ctx->i32_0, desc_type);
-	}
-
-	unsigned num_slots = image ? ctx->num_images : ctx->num_samplers;
-	assert(const_index < num_slots || dynamic_index);
-
-	LLVMValueRef list = ac_get_arg(&ctx->ac, ctx->samplers_and_images);
-	LLVMValueRef index = LLVMConstInt(ctx->ac.i32, const_index, false);
-
-	if (dynamic_index) {
-		index = LLVMBuildAdd(builder, index, dynamic_index, "");
-
-		/* From the GL_ARB_shader_image_load_store extension spec:
-		 *
-		 *    If a shader performs an image load, store, or atomic
-		 *    operation using an image variable declared as an array,
-		 *    and if the index used to select an individual element is
-		 *    negative or greater than or equal to the size of the
-		 *    array, the results of the operation are undefined but may
-		 *    not lead to termination.
-		 */
-		index = si_llvm_bound_index(ctx, index, num_slots);
-	}
-
-	if (image) {
-		/* FMASKs are separate from images. */
-		if (desc_type == AC_DESC_FMASK) {
-			index = LLVMBuildAdd(ctx->ac.builder, index,
-					     LLVMConstInt(ctx->i32, SI_NUM_IMAGES, 0), "");
-		}
-		index = LLVMBuildSub(ctx->ac.builder,
-				     LLVMConstInt(ctx->i32, SI_NUM_IMAGE_SLOTS - 1, 0),
-				     index, "");
-		return si_load_image_desc(ctx, list, index, desc_type, write, false);
-	}
-
-	index = LLVMBuildAdd(ctx->ac.builder, index,
-			     LLVMConstInt(ctx->i32, SI_NUM_IMAGE_SLOTS / 2, 0), "");
-	return si_load_sampler_desc(ctx, list, index, desc_type);
-}
-
 static void bitcast_inputs(struct si_shader_context *ctx,
 			   LLVMValueRef data[4],
 			   unsigned input_idx)
@@ -1174,7 +1093,6 @@ bool si_nir_build_llvm(struct si_shader_context *ctx, struct nir_shader *nir)
 	}
 
 	ctx->abi.inputs = &ctx->inputs[0];
-	ctx->abi.load_sampler_desc = si_nir_load_sampler_desc;
 	ctx->abi.clamp_shadow_reference = true;
 	ctx->abi.robust_buffer_access = true;
 

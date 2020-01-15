@@ -492,81 +492,6 @@ void si_declare_compute_memory(struct si_shader_context *ctx)
 	ctx->ac.lds = LLVMBuildBitCast(ctx->ac.builder, var, i8p, "");
 }
 
-static LLVMValueRef load_const_buffer_desc_fast_path(struct si_shader_context *ctx)
-{
-	LLVMValueRef ptr =
-		ac_get_arg(&ctx->ac, ctx->const_and_shader_buffers);
-	struct si_shader_selector *sel = ctx->shader->selector;
-
-	/* Do the bounds checking with a descriptor, because
-	 * doing computation and manual bounds checking of 64-bit
-	 * addresses generates horrible VALU code with very high
-	 * VGPR usage and very low SIMD occupancy.
-	 */
-	ptr = LLVMBuildPtrToInt(ctx->ac.builder, ptr, ctx->ac.intptr, "");
-
-	LLVMValueRef desc0, desc1;
-	desc0 = ptr;
-	desc1 = LLVMConstInt(ctx->i32,
-			     S_008F04_BASE_ADDRESS_HI(ctx->screen->info.address32_hi), 0);
-
-	uint32_t rsrc3 = S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) |
-			 S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
-			 S_008F0C_DST_SEL_Z(V_008F0C_SQ_SEL_Z) |
-			 S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_W);
-
-	if (ctx->screen->info.chip_class >= GFX10)
-		rsrc3 |= S_008F0C_FORMAT(V_008F0C_IMG_FORMAT_32_FLOAT) |
-			 S_008F0C_OOB_SELECT(V_008F0C_OOB_SELECT_RAW) |
-			 S_008F0C_RESOURCE_LEVEL(1);
-	else
-		rsrc3 |= S_008F0C_NUM_FORMAT(V_008F0C_BUF_NUM_FORMAT_FLOAT) |
-			 S_008F0C_DATA_FORMAT(V_008F0C_BUF_DATA_FORMAT_32);
-
-	LLVMValueRef desc_elems[] = {
-		desc0,
-		desc1,
-		LLVMConstInt(ctx->i32, sel->info.constbuf0_num_slots * 16, 0),
-		LLVMConstInt(ctx->i32, rsrc3, false)
-	};
-
-	return ac_build_gather_values(&ctx->ac, desc_elems, 4);
-}
-
-static LLVMValueRef load_ubo(struct ac_shader_abi *abi, LLVMValueRef index)
-{
-	struct si_shader_context *ctx = si_shader_context_from_abi(abi);
-	struct si_shader_selector *sel = ctx->shader->selector;
-
-	LLVMValueRef ptr = ac_get_arg(&ctx->ac, ctx->const_and_shader_buffers);
-
-	if (sel->info.const_buffers_declared == 1 &&
-	    sel->info.shader_buffers_declared == 0) {
-		return load_const_buffer_desc_fast_path(ctx);
-	}
-
-	index = si_llvm_bound_index(ctx, index, ctx->num_const_buffers);
-	index = LLVMBuildAdd(ctx->ac.builder, index,
-			     LLVMConstInt(ctx->i32, SI_NUM_SHADER_BUFFERS, 0), "");
-
-	return ac_build_load_to_sgpr(&ctx->ac, ptr, index);
-}
-
-static LLVMValueRef
-load_ssbo(struct ac_shader_abi *abi, LLVMValueRef index, bool write)
-{
-	struct si_shader_context *ctx = si_shader_context_from_abi(abi);
-	LLVMValueRef rsrc_ptr = ac_get_arg(&ctx->ac,
-					   ctx->const_and_shader_buffers);
-
-	index = si_llvm_bound_index(ctx, index, ctx->num_shader_buffers);
-	index = LLVMBuildSub(ctx->ac.builder,
-			     LLVMConstInt(ctx->i32, SI_NUM_SHADER_BUFFERS - 1, 0),
-			     index, "");
-
-	return ac_build_load_to_sgpr(&ctx->ac, rsrc_ptr, index);
-}
-
 /* Initialize arguments for the shader export intrinsic */
 static void si_llvm_init_vs_export_args(struct si_shader_context *ctx,
 					LLVMValueRef *values,
@@ -2418,6 +2343,8 @@ static bool si_build_main_function(struct si_shader_context *ctx,
 	struct si_shader *shader = ctx->shader;
 	struct si_shader_selector *sel = shader->selector;
 
+	si_llvm_init_resource_callbacks(ctx);
+
 	switch (ctx->type) {
 	case PIPE_SHADER_VERTEX:
 		if (shader->key.as_ls)
@@ -2458,9 +2385,6 @@ static bool si_build_main_function(struct si_shader_context *ctx,
 		assert(!"Unsupported shader type");
 		return false;
 	}
-
-	ctx->abi.load_ubo = load_ubo;
-	ctx->abi.load_ssbo = load_ssbo;
 
 	si_create_function(ctx);
 
