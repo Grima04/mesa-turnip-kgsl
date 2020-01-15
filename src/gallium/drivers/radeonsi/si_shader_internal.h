@@ -256,6 +256,10 @@ LLVMValueRef si_buffer_load_const(struct si_shader_context *ctx,
 				  LLVMValueRef resource, LLVMValueRef offset);
 void si_llvm_build_ret(struct si_shader_context *ctx, LLVMValueRef ret);
 LLVMValueRef si_prolog_get_rw_buffers(struct si_shader_context *ctx);
+LLVMValueRef si_build_gather_64bit(struct si_shader_context *ctx,
+				   LLVMTypeRef type, LLVMValueRef val1,
+				   LLVMValueRef val2);
+void si_llvm_emit_barrier(struct si_shader_context *ctx);
 void si_declare_compute_memory(struct si_shader_context *ctx);
 LLVMValueRef si_get_primitive_id(struct si_shader_context *ctx,
 				 unsigned swizzle);
@@ -311,6 +315,15 @@ void gfx10_ngg_gs_emit_prologue(struct si_shader_context *ctx);
 void gfx10_ngg_gs_emit_epilogue(struct si_shader_context *ctx);
 void gfx10_ngg_calculate_subgroup_info(struct si_shader *shader);
 
+/* si_shader_llvm_tess.c */
+void si_llvm_preload_tes_rings(struct si_shader_context *ctx);
+void si_llvm_emit_ls_epilogue(struct ac_shader_abi *abi, unsigned max_outputs,
+			      LLVMValueRef *addrs);
+void si_llvm_build_tcs_epilog(struct si_shader_context *ctx,
+			      union si_shader_part_key *key);
+void si_llvm_init_tcs_callbacks(struct si_shader_context *ctx);
+void si_llvm_init_tes_callbacks(struct si_shader_context *ctx);
+
 /* si_shader_llvm_ps.c */
 void si_llvm_build_ps_prolog(struct si_shader_context *ctx,
 			     union si_shader_part_key *key);
@@ -319,5 +332,15 @@ void si_llvm_build_ps_epilog(struct si_shader_context *ctx,
 void si_llvm_build_monolithic_ps(struct si_shader_context *ctx,
 				 struct si_shader *shader);
 void si_llvm_init_ps_callbacks(struct si_shader_context *ctx);
+
+/* TODO: remove */
+static inline bool llvm_type_is_64bit(struct si_shader_context *ctx,
+				      LLVMTypeRef type)
+{
+	if (type == ctx->ac.i64 || type == ctx->ac.f64)
+		return true;
+
+	return false;
+}
 
 #endif

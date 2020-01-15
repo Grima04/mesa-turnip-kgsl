@@ -215,3 +215,30 @@ LLVMValueRef si_prolog_get_rw_buffers(struct si_shader_context *ctx)
 				 ac_array_in_const32_addr_space(ctx->v4i32), "");
 	return list;
 }
+
+LLVMValueRef si_build_gather_64bit(struct si_shader_context *ctx,
+				   LLVMTypeRef type, LLVMValueRef val1,
+				   LLVMValueRef val2)
+{
+	LLVMValueRef values[2] = {
+		ac_to_integer(&ctx->ac, val1),
+		ac_to_integer(&ctx->ac, val2),
+	};
+	LLVMValueRef result = ac_build_gather_values(&ctx->ac, values, 2);
+	return LLVMBuildBitCast(ctx->ac.builder, result, type, "");
+}
+
+void si_llvm_emit_barrier(struct si_shader_context *ctx)
+{
+	/* GFX6 only (thanks to a hw bug workaround):
+	 * The real barrier instruction isn’t needed, because an entire patch
+	 * always fits into a single wave.
+	 */
+	if (ctx->screen->info.chip_class == GFX6 &&
+	    ctx->type == PIPE_SHADER_TESS_CTRL) {
+		ac_build_waitcnt(&ctx->ac, AC_WAIT_LGKM | AC_WAIT_VLOAD | AC_WAIT_VSTORE);
+		return;
+	}
+
+	ac_build_s_barrier(&ctx->ac);
+}
