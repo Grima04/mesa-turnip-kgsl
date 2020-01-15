@@ -1688,20 +1688,12 @@ can_shrink_surface(const struct brw_blorp_surface_info *surf)
    return true;
 }
 
-static bool
-can_shrink_surfaces(const struct blorp_params *params)
-{
-   return
-      can_shrink_surface(&params->src) &&
-      can_shrink_surface(&params->dst);
-}
-
 static unsigned
 get_max_surface_size(const struct gen_device_info *devinfo,
-                     const struct blorp_params *params)
+                     const struct brw_blorp_surface_info *surf)
 {
    const unsigned max = devinfo->gen >= 7 ? 16384 : 8192;
-   if (split_blorp_blit_debug && can_shrink_surfaces(params))
+   if (split_blorp_blit_debug && can_shrink_surface(surf))
       return max >> 4; /* A smaller restriction when debug is enabled */
    else
       return max;
@@ -1789,8 +1781,10 @@ surf_fake_rgb_with_red(const struct isl_device *isl_dev,
 
 enum blit_shrink_status {
    BLIT_NO_SHRINK = 0,
-   BLIT_WIDTH_SHRINK = 1,
-   BLIT_HEIGHT_SHRINK = 2,
+   BLIT_SRC_WIDTH_SHRINK   = (1 << 0),
+   BLIT_DST_WIDTH_SHRINK   = (1 << 1),
+   BLIT_SRC_HEIGHT_SHRINK  = (1 << 2),
+   BLIT_DST_HEIGHT_SHRINK  = (1 << 3),
 };
 
 /* Try to blit. If the surface parameters exceed the size allowed by hardware,
@@ -2090,13 +2084,17 @@ try_blorp_blit(struct blorp_batch *batch,
       return 0;
 
    unsigned result = 0;
-   unsigned max_surface_size = get_max_surface_size(devinfo, params);
-   if (params->src.surf.logical_level0_px.width > max_surface_size ||
-       params->dst.surf.logical_level0_px.width > max_surface_size)
-      result |= BLIT_WIDTH_SHRINK;
-   if (params->src.surf.logical_level0_px.height > max_surface_size ||
-       params->dst.surf.logical_level0_px.height > max_surface_size)
-      result |= BLIT_HEIGHT_SHRINK;
+   unsigned max_src_surface_size = get_max_surface_size(devinfo, &params->src);
+   if (params->src.surf.logical_level0_px.width > max_src_surface_size)
+      result |= BLIT_SRC_WIDTH_SHRINK;
+   if (params->src.surf.logical_level0_px.height > max_src_surface_size)
+      result |= BLIT_SRC_HEIGHT_SHRINK;
+
+   unsigned max_dst_surface_size = get_max_surface_size(devinfo, &params->dst);
+   if (params->dst.surf.logical_level0_px.width > max_dst_surface_size)
+      result |= BLIT_DST_WIDTH_SHRINK;
+   if (params->dst.surf.logical_level0_px.height > max_dst_surface_size)
+      result |= BLIT_DST_HEIGHT_SHRINK;
 
    if (result == 0) {
       batch->blorp->exec(batch, params);
@@ -2182,23 +2180,6 @@ shrink_surface_params(const struct isl_device *dev,
 }
 
 static void
-shrink_surfaces(const struct isl_device *dev,
-                struct blorp_params *params,
-                struct brw_blorp_blit_prog_key *wm_prog_key,
-                struct blt_coords *coords)
-{
-   /* Shrink source surface */
-   shrink_surface_params(dev, &params->src, &coords->x.src0, &coords->x.src1,
-                         &coords->y.src0, &coords->y.src1);
-   wm_prog_key->need_src_offset = false;
-
-   /* Shrink destination surface */
-   shrink_surface_params(dev, &params->dst, &coords->x.dst0, &coords->x.dst1,
-                         &coords->y.dst0, &coords->y.dst1);
-   wm_prog_key->need_dst_offset = false;
-}
-
-static void
 do_blorp_blit(struct blorp_batch *batch,
               const struct blorp_params *orig_params,
               struct brw_blorp_blit_prog_key *wm_prog_key,
@@ -2216,33 +2197,60 @@ do_blorp_blit(struct blorp_batch *batch,
    if (orig->y.mirror)
       y_scale = -y_scale;
 
+   enum blit_shrink_status shrink = BLIT_NO_SHRINK;
+   if (split_blorp_blit_debug) {
+      if (can_shrink_surface(&orig_params->src))
+         shrink |= BLIT_SRC_WIDTH_SHRINK | BLIT_SRC_HEIGHT_SHRINK;
+      if (can_shrink_surface(&orig_params->dst))
+         shrink |= BLIT_DST_WIDTH_SHRINK | BLIT_DST_HEIGHT_SHRINK;
+   }
+
    bool x_done, y_done;
-   bool shrink = split_blorp_blit_debug && can_shrink_surfaces(orig_params);
    do {
       params = *orig_params;
       blit_coords = split_coords;
-      if (shrink)
-         shrink_surfaces(batch->blorp->isl_dev, &params, wm_prog_key,
-                         &blit_coords);
+
+      if (shrink & (BLIT_SRC_WIDTH_SHRINK | BLIT_SRC_HEIGHT_SHRINK)) {
+         shrink_surface_params(batch->blorp->isl_dev, &params.src,
+                               &blit_coords.x.src0, &blit_coords.x.src1,
+                               &blit_coords.y.src0, &blit_coords.y.src1);
+         wm_prog_key->need_src_offset = false;
+      }
+
+      if (shrink & (BLIT_DST_WIDTH_SHRINK | BLIT_DST_HEIGHT_SHRINK)) {
+         shrink_surface_params(batch->blorp->isl_dev, &params.dst,
+                               &blit_coords.x.dst0, &blit_coords.x.dst1,
+                               &blit_coords.y.dst0, &blit_coords.y.dst1);
+         wm_prog_key->need_dst_offset = false;
+      }
+
       enum blit_shrink_status result =
          try_blorp_blit(batch, &params, wm_prog_key, &blit_coords);
 
-      if (result & BLIT_WIDTH_SHRINK) {
+      if (result & (BLIT_SRC_WIDTH_SHRINK | BLIT_SRC_HEIGHT_SHRINK))
+         assert(can_shrink_surface(&orig_params->src));
+
+      if (result & (BLIT_DST_WIDTH_SHRINK | BLIT_DST_HEIGHT_SHRINK))
+         assert(can_shrink_surface(&orig_params->dst));
+
+      if (result & (BLIT_SRC_WIDTH_SHRINK | BLIT_DST_WIDTH_SHRINK)) {
          w /= 2.0;
          assert(w >= 1.0);
          split_coords.x.dst1 = MIN2(split_coords.x.dst0 + w, orig->x.dst1);
          adjust_split_source_coords(&orig->x, &split_coords.x, x_scale);
       }
-      if (result & BLIT_HEIGHT_SHRINK) {
+      if (result & (BLIT_SRC_HEIGHT_SHRINK | BLIT_DST_HEIGHT_SHRINK)) {
          h /= 2.0;
          assert(h >= 1.0);
          split_coords.y.dst1 = MIN2(split_coords.y.dst0 + h, orig->y.dst1);
          adjust_split_source_coords(&orig->y, &split_coords.y, y_scale);
       }
 
-      if (result != 0) {
-         assert(can_shrink_surfaces(orig_params));
-         shrink = true;
+      if (result) {
+         /* We may get less bits set on result than we had already, so make
+          * sure we remember all the ways in which a resize is required.
+          */
+         shrink |= result;
          continue;
       }
 
