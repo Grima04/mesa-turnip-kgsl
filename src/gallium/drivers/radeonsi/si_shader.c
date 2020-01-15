@@ -1714,10 +1714,10 @@ static struct nir_shader *get_nir_shader(struct si_shader_selector *sel,
 	return NULL;
 }
 
-int si_compile_shader(struct si_screen *sscreen,
-		      struct ac_llvm_compiler *compiler,
-		      struct si_shader *shader,
-		      struct pipe_debug_callback *debug)
+bool si_compile_shader(struct si_screen *sscreen,
+		       struct ac_llvm_compiler *compiler,
+		       struct si_shader *shader,
+		       struct pipe_debug_callback *debug)
 {
 	struct si_shader_selector *sel = shader->selector;
 	struct si_shader_context ctx;
@@ -1743,7 +1743,7 @@ int si_compile_shader(struct si_screen *sscreen,
 	if (shader->key.opt.ngg_culling) {
 		if (!si_build_main_function(&ctx, shader, nir, false, true)) {
 			si_llvm_dispose(&ctx);
-			return -1;
+			return false;
 		}
 		ngg_cull_main_fn = ctx.main_fn;
 		ctx.main_fn = NULL;
@@ -1751,7 +1751,7 @@ int si_compile_shader(struct si_screen *sscreen,
 
 	if (!si_build_main_function(&ctx, shader, nir, free_nir, false)) {
 		si_llvm_dispose(&ctx);
-		return -1;
+		return false;
 	}
 
 	if (shader->is_monolithic && ctx.type == PIPE_SHADER_VERTEX) {
@@ -1834,7 +1834,7 @@ int si_compile_shader(struct si_screen *sscreen,
 
 			if (!si_build_main_function(&ctx, &shader_ls, nir, free_nir, false)) {
 				si_llvm_dispose(&ctx);
-				return -1;
+				return false;
 			}
 			shader->info.uses_instanceid |= ls->info.uses_instanceid;
 			parts[1] = ctx.main_fn;
@@ -1902,7 +1902,7 @@ int si_compile_shader(struct si_screen *sscreen,
 
 			if (!si_build_main_function(&ctx, &shader_es, nir, free_nir, false)) {
 				si_llvm_dispose(&ctx);
-				return -1;
+				return false;
 			}
 			shader->info.uses_instanceid |= es->info.uses_instanceid;
 			es_main = ctx.main_fn;
@@ -1977,7 +1977,7 @@ int si_compile_shader(struct si_screen *sscreen,
 			     si_should_optimize_less(compiler, shader->selector))) {
 		si_llvm_dispose(&ctx);
 		fprintf(stderr, "LLVM failed to compile shader\n");
-		return -1;
+		return false;
 	}
 
 	si_llvm_dispose(&ctx);
@@ -2028,7 +2028,7 @@ int si_compile_shader(struct si_screen *sscreen,
 
 	si_calculate_max_simd_waves(shader);
 	si_shader_dump_stats_for_shader_db(sscreen, shader, debug);
-	return 0;
+	return true;
 }
 
 /**
@@ -2542,7 +2542,6 @@ bool si_create_shader_variant(struct si_screen *sscreen,
 {
 	struct si_shader_selector *sel = shader->selector;
 	struct si_shader *mainp = *si_get_main_shader_part(sel, &shader->key);
-	int r;
 
 	/* LS, ES, VS are compiled on demand if the main part hasn't been
 	 * compiled for that stage.
@@ -2557,8 +2556,7 @@ bool si_create_shader_variant(struct si_screen *sscreen,
 		/* Monolithic shader (compiled as a whole, has many variants,
 		 * may take a long time to compile).
 		 */
-		r = si_compile_shader(sscreen, compiler, shader, debug);
-		if (r)
+		if (!si_compile_shader(sscreen, compiler, shader, debug))
 			return false;
 	} else {
 		/* The shader consists of several parts:

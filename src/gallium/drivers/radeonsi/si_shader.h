@@ -832,10 +832,10 @@ struct si_shader_part {
 };
 
 /* si_shader.c */
-int si_compile_shader(struct si_screen *sscreen,
-		      struct ac_llvm_compiler *compiler,
-		      struct si_shader *shader,
-		      struct pipe_debug_callback *debug);
+bool si_compile_shader(struct si_screen *sscreen,
+		       struct ac_llvm_compiler *compiler,
+		       struct si_shader *shader,
+		       struct pipe_debug_callback *debug);
 bool si_create_shader_variant(struct si_screen *sscreen,
 			      struct ac_llvm_compiler *compiler,
 			      struct si_shader *shader,

@@ -2254,8 +2254,8 @@ static bool si_check_missing_main_part(struct si_screen *sscreen,
 		main_part->key.as_ngg = key->as_ngg;
 		main_part->is_monolithic = false;
 
-		if (si_compile_shader(sscreen, compiler_state->compiler,
-					   main_part, &compiler_state->debug) != 0) {
+		if (!si_compile_shader(sscreen, compiler_state->compiler,
+				       main_part, &compiler_state->debug)) {
 			FREE(main_part);
 			return false;
 		}
@@ -2632,8 +2632,7 @@ static void si_init_shader_selector_async(void *job, int thread_index)
 			simple_mtx_unlock(&sscreen->shader_cache_mutex);
 
 			/* Compile the shader if it hasn't been loaded from the cache. */
-			if (si_compile_shader(sscreen, compiler, shader,
-						   debug) != 0) {
+			if (!si_compile_shader(sscreen, compiler, shader, debug)) {
 				FREE(shader);
 				fprintf(stderr, "radeonsi: can't compile a main shader part\n");
 				return;
