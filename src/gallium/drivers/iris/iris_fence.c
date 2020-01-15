@@ -343,7 +343,12 @@ iris_fence_create_fd(struct pipe_context *ctx,
       .flags = DRM_SYNCOBJ_FD_TO_HANDLE_FLAGS_IMPORT_SYNC_FILE,
       .fd = fd,
    };
-   gen_ioctl(screen->fd, DRM_IOCTL_SYNCOBJ_FD_TO_HANDLE, &args);
+   if (gen_ioctl(screen->fd, DRM_IOCTL_SYNCOBJ_FD_TO_HANDLE, &args) == -1) {
+      fprintf(stderr, "DRM_IOCTL_SYNCOBJ_FD_TO_HANDLE failed: %s\n",
+              strerror(errno));
+      *out = NULL;
+      return;
+   }
 
    struct iris_syncpt *syncpt = malloc(sizeof(*syncpt));
    syncpt->handle = args.handle;
