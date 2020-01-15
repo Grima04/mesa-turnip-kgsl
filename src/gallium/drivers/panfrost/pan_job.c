@@ -346,7 +346,9 @@ panfrost_bo_access_gc_fences(struct panfrost_context *ctx,
                 access->writer = NULL;
         }
 
-        unsigned nreaders = 0;
+        struct panfrost_batch_fence **readers_array = util_dynarray_begin(&access->readers);
+        struct panfrost_batch_fence **new_readers = readers_array;
+
         util_dynarray_foreach(&access->readers, struct panfrost_batch_fence *,
                               reader) {
                 if (!(*reader))
@@ -356,12 +358,15 @@ panfrost_bo_access_gc_fences(struct panfrost_context *ctx,
                         panfrost_batch_fence_unreference(*reader);
                         *reader = NULL;
                 } else {
-                        nreaders++;
+                        /* Build a new array of only unsignaled fences in-place */
+                        *(new_readers++) = *reader;
                 }
         }
 
-        if (!nreaders)
-                util_dynarray_clear(&access->readers);
+        if (!util_dynarray_resize(&access->readers, struct panfrost_batch_fence *,
+                                  new_readers - readers_array) &&
+            new_readers != readers_array)
+                unreachable("Invalid dynarray access->readers");
 }
 
 /* Collect signaled fences to keep the kernel-side syncobj-map small. The
