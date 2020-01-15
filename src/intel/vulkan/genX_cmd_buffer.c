@@ -1993,6 +1993,7 @@ genX(cmd_buffer_config_l3)(struct anv_cmd_buffer *cmd_buffer,
 void
 genX(cmd_buffer_apply_pipe_flushes)(struct anv_cmd_buffer *cmd_buffer)
 {
+   UNUSED const struct gen_device_info *devinfo = &cmd_buffer->device->info;
    enum anv_pipe_bits bits = cmd_buffer->state.pending_pipe_bits;
 
    if (cmd_buffer->device->physical->always_flush_cache)
@@ -2058,9 +2059,12 @@ genX(cmd_buffer_apply_pipe_flushes)(struct anv_cmd_buffer *cmd_buffer)
     *  PIPELINE_SELECT command is set to GPGPU mode of operation)."
     *
     * The same text exists a few rows below for Post Sync Op.
+    *
+    * On Gen12 this is GEN:BUG:1607156449.
     */
    if (bits & ANV_PIPE_POST_SYNC_BIT) {
-      if (GEN_GEN == 9 && cmd_buffer->state.current_pipeline == GPGPU)
+      if ((GEN_GEN == 9 || (GEN_GEN == 12 && devinfo->revision == 0 /* A0 */)) &&
+          cmd_buffer->state.current_pipeline == GPGPU)
          bits |= ANV_PIPE_CS_STALL_BIT;
       bits &= ~ANV_PIPE_POST_SYNC_BIT;
    }
