@@ -402,10 +402,12 @@ panfrost_resource_create_bo(struct panfrost_screen *screen, struct panfrost_reso
                 PIPE_BIND_SAMPLER_VIEW |
                 PIPE_BIND_DISPLAY_TARGET;
 
+        unsigned bpp = util_format_get_blocksizebits(res->format);
         bool is_2d = (res->target == PIPE_TEXTURE_2D);
+        bool is_sane_bpp = bpp == 8 || bpp == 16 || bpp == 32 || bpp == 64 || bpp == 128;
         bool should_tile = (res->usage != PIPE_USAGE_STREAM);
         bool must_tile = (res->bind & PIPE_BIND_DEPTH_STENCIL) && (screen->quirks & MIDGARD_SFBD);
-        bool can_tile = is_2d && ((res->bind & ~valid_binding) == 0);
+        bool can_tile = is_2d && is_sane_bpp && ((res->bind & ~valid_binding) == 0);
 
         /* FBOs we would like to checksum, if at all possible */
         bool can_checksum = !(res->bind & ~valid_binding);
@@ -667,7 +669,7 @@ panfrost_transfer_map(struct pipe_context *pctx,
                                         box->x, box->y, box->width, box->height,
                                         transfer->base.stride,
                                         rsrc->slices[level].stride,
-                                        util_format_get_blocksize(resource->format));
+                                        resource->format);
                         }
                 }
 
@@ -722,7 +724,7 @@ panfrost_transfer_unmap(struct pipe_context *pctx,
                                         transfer->box.width, transfer->box.height,
                                         prsrc->slices[transfer->level].stride,
                                         transfer->stride,
-                                        util_format_get_blocksize(prsrc->base.format));
+                                        prsrc->base.format);
                         }
                 }
         }

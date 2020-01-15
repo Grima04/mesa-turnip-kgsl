@@ -636,7 +636,7 @@ lima_transfer_map(struct pipe_context *pctx,
                ptrans->box.width, ptrans->box.height,
                ptrans->stride,
                res->levels[level].stride,
-               util_format_get_blocksize(pres->format));
+               pres->format);
       }
 
       return trans->staging;
@@ -682,7 +682,7 @@ lima_transfer_unmap(struct pipe_context *pctx,
                ptrans->box.width, ptrans->box.height,
                res->levels[ptrans->level].stride,
                ptrans->stride,
-               util_format_get_blocksize(pres->format));
+               pres->format);
       }
       free(trans->staging);
    }
