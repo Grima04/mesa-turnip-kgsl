@@ -196,23 +196,14 @@ si_shader_context_from_abi(struct ac_shader_abi *abi)
 	return container_of(abi, ctx, abi);
 }
 
+bool si_is_multi_part_shader(struct si_shader_context *ctx);
 bool si_is_merged_shader(struct si_shader_context *ctx);
-void si_declare_compute_memory(struct si_shader_context *ctx);
-LLVMValueRef si_get_primitive_id(struct si_shader_context *ctx,
-				 unsigned swizzle);
 void si_add_arg_checked(struct ac_shader_args *args,
 			enum ac_arg_regfile file,
 			unsigned registers, enum ac_arg_type type,
 			struct ac_arg *arg,
 			unsigned idx);
-bool si_nir_build_llvm(struct si_shader_context *ctx, struct nir_shader *nir);
-
-LLVMValueRef si_unpack_param(struct si_shader_context *ctx,
-			     struct ac_arg param, unsigned rshift,
-			     unsigned bitwidth);
-void si_build_wrapper_function(struct si_shader_context *ctx, LLVMValueRef *parts,
-			       unsigned num_parts, unsigned main_part,
-			       unsigned next_shader_first_part);
+unsigned si_get_max_workgroup_size(const struct si_shader *shader);
 bool si_need_ps_prolog(const union si_shader_part_key *key);
 void si_get_ps_prolog_key(struct si_shader *shader,
 			  union si_shader_part_key *key,
@@ -276,6 +267,17 @@ void si_llvm_emit_barrier(struct si_shader_context *ctx);
 void si_llvm_declare_esgs_ring(struct si_shader_context *ctx);
 void si_init_exec_from_input(struct si_shader_context *ctx, struct ac_arg param,
 			     unsigned bitoffset);
+LLVMValueRef si_unpack_param(struct si_shader_context *ctx,
+			     struct ac_arg param, unsigned rshift,
+			     unsigned bitwidth);
+LLVMValueRef si_get_primitive_id(struct si_shader_context *ctx,
+				 unsigned swizzle);
+LLVMValueRef si_llvm_get_block_size(struct ac_shader_abi *abi);
+void si_llvm_declare_compute_memory(struct si_shader_context *ctx);
+bool si_nir_build_llvm(struct si_shader_context *ctx, struct nir_shader *nir);
+void si_build_wrapper_function(struct si_shader_context *ctx, LLVMValueRef *parts,
+			       unsigned num_parts, unsigned main_part,
+			       unsigned next_shader_first_part);
 
 /* si_shader_llvm_gs.c */
 LLVMValueRef si_is_es_thread(struct si_shader_context *ctx);
