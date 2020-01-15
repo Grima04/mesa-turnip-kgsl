@@ -8,6 +8,8 @@
 
 #include "GL/osmesa.h"
 #include "util/macros.h"
+#include "util/u_endian.h"
+#include "util/u_math.h"
 
 typedef struct {
    unsigned format;
@@ -74,6 +76,25 @@ TEST_P(OSMesaRenderTestFixture, Render)
    glClearColor(0.25, 1.0, 0.5, 0.75);
 
    uint64_t expected = p.expected;
+
+   /* All the formats other than 565 and RGB/byte are array formats, but our
+    * expected values are packed, so byte swap appropriately.
+    */
+   if (UTIL_ARCH_BIG_ENDIAN) {
+      switch (p.bpp) {
+      case 8:
+         expected = util_bswap64(expected);
+         break;
+
+      case 4:
+         expected = util_bswap32(expected);
+         break;
+
+      case 3:
+      case 2:
+         break;
+      }
+   }
 
    glClear(GL_COLOR_BUFFER_BIT);
    glFinish();
