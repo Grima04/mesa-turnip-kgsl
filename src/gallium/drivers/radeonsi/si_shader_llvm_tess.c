@@ -304,7 +304,7 @@ static LLVMValueRef buffer_load(struct si_shader_context *ctx,
 		return LLVMBuildBitCast(ctx->ac.builder, value, vec_type, "");
 	}
 
-	if (!llvm_type_is_64bit(ctx, type)) {
+	if (ac_get_type_size(type) != 64) {
 		value = ac_build_buffer_load(&ctx->ac, buffer, 4, NULL, base, offset,
 					     0, ac_glc, can_speculate, false);
 
@@ -345,7 +345,7 @@ static LLVMValueRef lshs_lds_load(struct si_shader_context *ctx,
 	}
 
 	/* Split 64-bit loads. */
-	if (llvm_type_is_64bit(ctx, type)) {
+	if (ac_get_type_size(type) == 64) {
 		LLVMValueRef lo, hi;
 
 		lo = lshs_lds_load(ctx, ctx->i32, swizzle, dw_addr);
@@ -489,7 +489,7 @@ static LLVMValueRef si_nir_load_tcs_varyings(struct ac_shader_abi *abi,
 	LLVMValueRef value[4];
 	for (unsigned i = 0; i < num_components; i++) {
 		unsigned offset = i;
-		if (llvm_type_is_64bit(ctx, type))
+		if (ac_get_type_size(type) == 64)
 			offset *= 2;
 
 		offset += component;
@@ -541,7 +541,7 @@ LLVMValueRef si_nir_load_input_tes(struct ac_shader_abi *abi,
 	LLVMValueRef value[4];
 	for (unsigned i = 0; i < num_components; i++) {
 		unsigned offset = i;
-		if (llvm_type_is_64bit(ctx, type)) {
+		if (ac_get_type_size(type) == 64) {
 			offset *= 2;
 			if (offset == 4) {
 				ubyte name = info->input_semantic_name[driver_location + 1];

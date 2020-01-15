@@ -333,14 +333,4 @@ void si_llvm_build_monolithic_ps(struct si_shader_context *ctx,
 				 struct si_shader *shader);
 void si_llvm_init_ps_callbacks(struct si_shader_context *ctx);
 
-/* TODO: remove */
-static inline bool llvm_type_is_64bit(struct si_shader_context *ctx,
-				      LLVMTypeRef type)
-{
-	if (type == ctx->ac.i64 || type == ctx->ac.f64)
-		return true;
-
-	return false;
-}
-
 #endif
