@@ -29,7 +29,6 @@
 #include "si_compute.h"
 #include "sid.h"
 
-#include "ac_llvm_util.h"
 #include "radeon/radeon_uvd.h"
 #include "util/disk_cache.h"
 #include "util/u_log.h"
@@ -44,8 +43,6 @@
 #include "gallium/winsys/radeon/drm/radeon_drm_public.h"
 #include "gallium/winsys/amdgpu/drm/amdgpu_public.h"
 #include <xf86drm.h>
-
-#include <llvm/Config/llvm-config.h>
 
 static struct pipe_context *si_create_context(struct pipe_screen *screen,
                                               unsigned flags);

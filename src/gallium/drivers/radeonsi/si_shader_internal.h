@@ -28,9 +28,6 @@
 #include "si_shader.h"
 #include "ac_shader_abi.h"
 
-#include <llvm-c/Core.h>
-#include <llvm-c/TargetMachine.h>
-
 struct pipe_debug_callback;
 
 #define RADEON_LLVM_MAX_INPUTS 32 * 4

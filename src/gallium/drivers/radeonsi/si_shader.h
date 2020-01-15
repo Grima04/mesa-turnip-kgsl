@@ -131,8 +131,6 @@
 #ifndef SI_SHADER_H
 #define SI_SHADER_H
 
-#include <llvm-c/Core.h> /* LLVMModuleRef */
-#include <llvm-c/TargetMachine.h>
 #include "util/u_inlines.h"
 #include "util/u_queue.h"
 #include "util/simple_mtx.h"

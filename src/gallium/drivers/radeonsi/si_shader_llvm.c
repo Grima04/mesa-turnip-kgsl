@@ -24,7 +24,6 @@
 
 #include "si_shader_internal.h"
 #include "si_pipe.h"
-#include "ac_llvm_util.h"
 #include "util/u_memory.h"
 
 struct si_llvm_diagnostics {

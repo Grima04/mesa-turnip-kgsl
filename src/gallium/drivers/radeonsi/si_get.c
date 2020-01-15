@@ -26,14 +26,12 @@
 #include "radeon/radeon_video.h"
 #include "radeon/radeon_vce.h"
 #include "radeon/radeon_uvd_enc.h"
-#include "ac_llvm_util.h"
 #include "vl/vl_decoder.h"
 #include "vl/vl_video_buffer.h"
 #include "util/u_screen.h"
 #include "util/u_video.h"
 #include "compiler/nir/nir.h"
 
-#include <llvm/Config/llvm-config.h>
 #include <sys/utsname.h>
 
 static const char *si_get_vendor(struct pipe_screen *pscreen)

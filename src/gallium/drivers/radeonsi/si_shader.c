@@ -22,16 +22,12 @@
  * USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <llvm/Config/llvm-config.h>
-
 #include "util/u_memory.h"
 #include "tgsi/tgsi_strings.h"
 #include "tgsi/tgsi_from_mesa.h"
 
 #include "ac_exp_param.h"
-#include "ac_shader_util.h"
 #include "ac_rtld.h"
-#include "ac_llvm_util.h"
 #include "si_shader_internal.h"
 #include "si_pipe.h"
 #include "sid.h"
