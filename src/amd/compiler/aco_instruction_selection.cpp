@@ -7844,9 +7844,9 @@ static void emit_stream_output(isel_context *ctx,
                                const struct radv_stream_output *output)
 {
    unsigned num_comps = util_bitcount(output->component_mask);
+   unsigned writemask = (1 << num_comps) - 1;
    unsigned loc = output->location;
    unsigned buf = output->buffer;
-   unsigned offset = output->offset;
 
    assert(num_comps && num_comps <= 4);
    if (!num_comps || num_comps > 4)
@@ -7864,47 +7864,59 @@ static void emit_stream_output(isel_context *ctx,
    if (all_undef)
       return;
 
-   Temp write_data = {ctx->program->allocateId(), RegClass(RegType::vgpr, num_comps)};
-   aco_ptr<Pseudo_instruction> vec{create_instruction<Pseudo_instruction>(aco_opcode::p_create_vector, Format::PSEUDO, num_comps, 1)};
-   for (unsigned i = 0; i < num_comps; ++i)
-      vec->operands[i] = (ctx->vs_output.mask[loc] & 1 << i) ? Operand(out[i]) : Operand(0u);
-   vec->definitions[0] = Definition(write_data);
-   ctx->block->instructions.emplace_back(std::move(vec));
+   while (writemask) {
+      int start, count;
+      u_bit_scan_consecutive_range(&writemask, &start, &count);
+      if (count == 3 && ctx->options->chip_class == GFX6) {
+         /* GFX6 doesn't support storing vec3, split it. */
+         writemask |= 1u << (start + 2);
+         count = 2;
+      }
 
-   aco_opcode opcode;
-   switch (num_comps) {
-   case 1:
-      opcode = aco_opcode::buffer_store_dword;
-      break;
-   case 2:
-      opcode = aco_opcode::buffer_store_dwordx2;
-      break;
-   case 3:
-      opcode = aco_opcode::buffer_store_dwordx3;
-      break;
-   case 4:
-      opcode = aco_opcode::buffer_store_dwordx4;
-      break;
-   }
+      unsigned offset = output->offset + start * 4;
 
-   aco_ptr<MUBUF_instruction> store{create_instruction<MUBUF_instruction>(opcode, Format::MUBUF, 4, 0)};
-   store->operands[0] = Operand(so_write_offset[buf]);
-   store->operands[1] = Operand(so_buffers[buf]);
-   store->operands[2] = Operand((uint32_t) 0);
-   store->operands[3] = Operand(write_data);
-   if (offset > 4095) {
-      /* Don't think this can happen in RADV, but maybe GL? It's easy to do this anyway. */
-      Builder bld(ctx->program, ctx->block);
-      store->operands[0] = bld.vadd32(bld.def(v1), Operand(offset), Operand(so_write_offset[buf]));
-   } else {
-      store->offset = offset;
+      Temp write_data = {ctx->program->allocateId(), RegClass(RegType::vgpr, count)};
+      aco_ptr<Pseudo_instruction> vec{create_instruction<Pseudo_instruction>(aco_opcode::p_create_vector, Format::PSEUDO, count, 1)};
+      for (int i = 0; i < count; ++i)
+         vec->operands[i] = (ctx->vs_output.mask[loc] & 1 << (start + i)) ? Operand(out[start + i]) : Operand(0u);
+      vec->definitions[0] = Definition(write_data);
+      ctx->block->instructions.emplace_back(std::move(vec));
+
+      aco_opcode opcode;
+      switch (count) {
+      case 1:
+         opcode = aco_opcode::buffer_store_dword;
+         break;
+      case 2:
+         opcode = aco_opcode::buffer_store_dwordx2;
+         break;
+      case 3:
+         opcode = aco_opcode::buffer_store_dwordx3;
+         break;
+      case 4:
+         opcode = aco_opcode::buffer_store_dwordx4;
+         break;
+      }
+
+      aco_ptr<MUBUF_instruction> store{create_instruction<MUBUF_instruction>(opcode, Format::MUBUF, 4, 0)};
+      store->operands[0] = Operand(so_write_offset[buf]);
+      store->operands[1] = Operand(so_buffers[buf]);
+      store->operands[2] = Operand((uint32_t) 0);
+      store->operands[3] = Operand(write_data);
+      if (offset > 4095) {
+         /* Don't think this can happen in RADV, but maybe GL? It's easy to do this anyway. */
+         Builder bld(ctx->program, ctx->block);
+         store->operands[0] = bld.vadd32(bld.def(v1), Operand(offset), Operand(so_write_offset[buf]));
+      } else {
+         store->offset = offset;
+      }
+      store->offen = true;
+      store->glc = true;
+      store->dlc = false;
+      store->slc = true;
+      store->can_reorder = true;
+      ctx->block->instructions.emplace_back(std::move(store));
    }
-   store->offen = true;
-   store->glc = true;
-   store->dlc = false;
-   store->slc = true;
-   store->can_reorder = true;
-   ctx->block->instructions.emplace_back(std::move(store));
 }
 
 static void emit_streamout(isel_context *ctx, unsigned stream)
