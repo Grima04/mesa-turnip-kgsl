@@ -1148,7 +1148,7 @@ schedule_block(compiler_context *ctx, midgard_block *block)
 }
 
 void
-schedule_program(compiler_context *ctx)
+midgard_schedule_program(compiler_context *ctx)
 {
         midgard_promote_uniforms(ctx);
 

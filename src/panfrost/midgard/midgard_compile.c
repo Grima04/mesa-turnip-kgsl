@@ -2733,7 +2733,7 @@ midgard_compile_shader_nir(nir_shader *nir, midgard_program *program, bool is_bl
                 mir_add_writeout_loops(ctx);
 
         /* Schedule! */
-        schedule_program(ctx);
+        midgard_schedule_program(ctx);
         mir_ra(ctx);
 
         /* Now that all the bundles are scheduled and we can calculate block

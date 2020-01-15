@@ -650,7 +650,7 @@ mir_has_arg(midgard_instruction *ins, unsigned arg)
 
 /* Scheduling */
 
-void schedule_program(compiler_context *ctx);
+void midgard_schedule_program(compiler_context *ctx);
 
 void mir_ra(compiler_context *ctx);
 void mir_squeeze_index(compiler_context *ctx);

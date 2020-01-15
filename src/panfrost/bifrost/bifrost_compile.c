@@ -1041,7 +1041,7 @@ bifrost_compile_shader_nir(nir_shader *nir, struct bifrost_program *program)
                 }
         } while (progress);
 
-        schedule_program(ctx);
+        bifrost_schedule_program(ctx);
 
 #ifdef BI_DEBUG
         nir_print_shader(nir, stdout);
