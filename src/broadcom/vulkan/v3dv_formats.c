@@ -388,6 +388,15 @@ unsupported:
    return VK_ERROR_FORMAT_NOT_SUPPORTED;
 }
 
+static const VkExternalMemoryProperties prime_fd_props = {
+   .externalMemoryFeatures = VK_EXTERNAL_MEMORY_FEATURE_EXPORTABLE_BIT |
+                             VK_EXTERNAL_MEMORY_FEATURE_IMPORTABLE_BIT,
+   .exportFromImportedHandleTypes =
+      VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT,
+   .compatibleHandleTypes =
+      VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT,
+};
+
 VkResult
 v3dv_GetPhysicalDeviceImageFormatProperties(
    VkPhysicalDevice physicalDevice,
@@ -420,10 +429,15 @@ v3dv_GetPhysicalDeviceImageFormatProperties2(VkPhysicalDevice physicalDevice,
                                              VkImageFormatProperties2 *base_props)
 {
    V3DV_FROM_HANDLE(v3dv_physical_device, physical_device, physicalDevice);
+   const VkPhysicalDeviceExternalImageFormatInfo *external_info = NULL;
+   VkExternalImageFormatProperties *external_props = NULL;
 
    /* Extract input structs */
    vk_foreach_struct_const(s, base_info->pNext) {
       switch (s->sType) {
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_IMAGE_FORMAT_INFO:
+         external_info = (const void *) s;
+         break;
       default:
          v3dv_debug_ignored_stype(s->sType);
          break;
@@ -433,6 +447,9 @@ v3dv_GetPhysicalDeviceImageFormatProperties2(VkPhysicalDevice physicalDevice,
    /* Extract output structs */
    vk_foreach_struct(s, base_props->pNext) {
       switch (s->sType) {
+      case VK_STRUCTURE_TYPE_EXTERNAL_IMAGE_FORMAT_PROPERTIES:
+         external_props = (void *) s;
+         break;
       default:
          v3dv_debug_ignored_stype(s->sType);
          break;
@@ -442,7 +459,22 @@ v3dv_GetPhysicalDeviceImageFormatProperties2(VkPhysicalDevice physicalDevice,
    VkResult result =
       get_image_format_properties(physical_device, base_info,
                                   &base_props->imageFormatProperties, NULL);
+   if (result != VK_SUCCESS)
+      goto done;
 
+   if (external_info && external_info->handleType != 0) {
+      switch (external_info->handleType) {
+      case VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT:
+         if (external_props)
+            external_props->externalMemoryProperties = prime_fd_props;
+         break;
+      default:
+         result = VK_ERROR_FORMAT_NOT_SUPPORTED;
+         break;
+      }
+   }
+
+done:
    return result;
 }
 
@@ -468,4 +500,23 @@ v3dv_GetPhysicalDeviceSparseImageFormatProperties2(
    VkSparseImageFormatProperties2 *pProperties)
 {
    *pPropertyCount = 0;
+}
+
+void
+v3dv_GetPhysicalDeviceExternalBufferProperties(
+   VkPhysicalDevice physicalDevice,
+   const VkPhysicalDeviceExternalBufferInfo *pExternalBufferInfo,
+   VkExternalBufferProperties *pExternalBufferProperties)
+{
+   switch (pExternalBufferInfo->handleType) {
+   case VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT:
+      pExternalBufferProperties->externalMemoryProperties = prime_fd_props;
+      return;
+   default: /* Unsupported */
+      pExternalBufferProperties->externalMemoryProperties =
+         (VkExternalMemoryProperties) {
+            .compatibleHandleTypes = pExternalBufferInfo->handleType,
+         };
+      break;
+   }
 }

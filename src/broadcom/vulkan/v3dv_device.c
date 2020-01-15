@@ -684,6 +684,16 @@ v3dv_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
 
    vk_foreach_struct(ext, pProperties->pNext) {
       switch (ext->sType) {
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES: {
+         VkPhysicalDeviceIDProperties *id_props =
+            (VkPhysicalDeviceIDProperties *)ext;
+         /* FIXME */
+         memset(id_props->deviceUUID, 0, VK_UUID_SIZE);
+         memset(id_props->driverUUID, 0, VK_UUID_SIZE);
+         /* The LUID is for Windows. */
+         id_props->deviceLUIDValid = false;
+         break;
+      }
       default:
          v3dv_debug_ignored_stype(ext->sType);
          break;

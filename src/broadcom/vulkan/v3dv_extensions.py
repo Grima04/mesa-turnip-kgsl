@@ -59,6 +59,7 @@ API_VERSIONS = [
 MAX_API_VERSION = None # Computed later
 
 EXTENSIONS = [
+    Extension('VK_KHR_external_memory_capabilities',      1, True),
     Extension('VK_KHR_get_physical_device_properties2',   1, True),
     Extension('VK_EXT_debug_report',                      9, True),
 ]
