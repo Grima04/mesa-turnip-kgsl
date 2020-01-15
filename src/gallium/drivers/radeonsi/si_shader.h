@@ -814,11 +814,6 @@ struct si_shader_part {
 };
 
 /* si_shader.c */
-struct si_shader *
-si_generate_gs_copy_shader(struct si_screen *sscreen,
-			   struct ac_llvm_compiler *compiler,
-			   struct si_shader_selector *gs_selector,
-			   struct pipe_debug_callback *debug);
 int si_compile_shader(struct si_screen *sscreen,
 		      struct ac_llvm_compiler *compiler,
 		      struct si_shader *shader,
@@ -843,6 +838,13 @@ void si_multiwave_lds_size_workaround(struct si_screen *sscreen,
 				      unsigned *lds_size);
 const char *si_get_shader_name(const struct si_shader *shader);
 void si_shader_binary_clean(struct si_shader_binary *binary);
+
+/* si_shader_llvm_gs.c */
+struct si_shader *
+si_generate_gs_copy_shader(struct si_screen *sscreen,
+			   struct ac_llvm_compiler *compiler,
+			   struct si_shader_selector *gs_selector,
+			   struct pipe_debug_callback *debug);
 
 /* si_shader_nir.c */
 void si_nir_scan_shader(const struct nir_shader *nir,

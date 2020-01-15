@@ -242,3 +242,23 @@ void si_llvm_emit_barrier(struct si_shader_context *ctx)
 
 	ac_build_s_barrier(&ctx->ac);
 }
+
+/* Ensure that the esgs ring is declared.
+ *
+ * We declare it with 64KB alignment as a hint that the
+ * pointer value will always be 0.
+ */
+void si_llvm_declare_esgs_ring(struct si_shader_context *ctx)
+{
+	if (ctx->esgs_ring)
+		return;
+
+	assert(!LLVMGetNamedGlobal(ctx->ac.module, "esgs_ring"));
+
+	ctx->esgs_ring = LLVMAddGlobalInAddressSpace(
+		ctx->ac.module, LLVMArrayType(ctx->i32, 0),
+		"esgs_ring",
+		AC_ADDR_SPACE_LDS);
+	LLVMSetLinkage(ctx->esgs_ring, LLVMExternalLinkage);
+	LLVMSetAlignment(ctx->esgs_ring, 64 * 1024);
+}

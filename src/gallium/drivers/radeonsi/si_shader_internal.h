@@ -260,6 +260,7 @@ LLVMValueRef si_build_gather_64bit(struct si_shader_context *ctx,
 				   LLVMTypeRef type, LLVMValueRef val1,
 				   LLVMValueRef val2);
 void si_llvm_emit_barrier(struct si_shader_context *ctx);
+void si_llvm_declare_esgs_ring(struct si_shader_context *ctx);
 void si_declare_compute_memory(struct si_shader_context *ctx);
 LLVMValueRef si_get_primitive_id(struct si_shader_context *ctx,
 				 unsigned swizzle);
@@ -287,8 +288,6 @@ bool si_nir_build_llvm(struct si_shader_context *ctx, struct nir_shader *nir);
 LLVMValueRef si_unpack_param(struct si_shader_context *ctx,
 			     struct ac_arg param, unsigned rshift,
 			     unsigned bitwidth);
-LLVMValueRef si_is_es_thread(struct si_shader_context *ctx);
-LLVMValueRef si_is_gs_thread(struct si_shader_context *ctx);
 void si_build_wrapper_function(struct si_shader_context *ctx, LLVMValueRef *parts,
 			       unsigned num_parts, unsigned main_part,
 			       unsigned next_shader_first_part);
@@ -304,6 +303,21 @@ LLVMValueRef si_insert_input_ret_float(struct si_shader_context *ctx, LLVMValueR
 				       struct ac_arg param, unsigned return_index);
 LLVMValueRef si_insert_input_ptr(struct si_shader_context *ctx, LLVMValueRef ret,
 				 struct ac_arg param, unsigned return_index);
+int si_compile_llvm(struct si_screen *sscreen,
+		    struct si_shader_binary *binary,
+		    struct ac_shader_config *conf,
+		    struct ac_llvm_compiler *compiler,
+		    LLVMModuleRef mod,
+		    struct pipe_debug_callback *debug,
+		    enum pipe_shader_type shader_type,
+		    unsigned wave_size,
+		    const char *name,
+		    bool less_optimized);
+void si_fix_resource_usage(struct si_screen *sscreen, struct si_shader *shader);
+void si_llvm_emit_streamout(struct si_shader_context *ctx,
+			    struct si_shader_output_values *outputs,
+			    unsigned noutput, unsigned stream);
+void si_create_function(struct si_shader_context *ctx);
 
 void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi,
 			     unsigned max_outputs,
@@ -314,6 +328,17 @@ void gfx10_ngg_gs_emit_vertex(struct si_shader_context *ctx,
 void gfx10_ngg_gs_emit_prologue(struct si_shader_context *ctx);
 void gfx10_ngg_gs_emit_epilogue(struct si_shader_context *ctx);
 void gfx10_ngg_calculate_subgroup_info(struct si_shader *shader);
+
+/* si_shader_llvm_gs.c */
+LLVMValueRef si_is_es_thread(struct si_shader_context *ctx);
+LLVMValueRef si_is_gs_thread(struct si_shader_context *ctx);
+void si_llvm_emit_es_epilogue(struct ac_shader_abi *abi, unsigned max_outputs,
+			      LLVMValueRef *addrs);
+void si_preload_esgs_ring(struct si_shader_context *ctx);
+void si_preload_gs_rings(struct si_shader_context *ctx);
+void si_llvm_build_gs_prolog(struct si_shader_context *ctx,
+			     union si_shader_part_key *key);
+void si_llvm_init_gs_callbacks(struct si_shader_context *ctx);
 
 /* si_shader_llvm_tess.c */
 void si_llvm_preload_tes_rings(struct si_shader_context *ctx);
