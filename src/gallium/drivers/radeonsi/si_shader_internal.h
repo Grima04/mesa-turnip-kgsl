@@ -196,20 +196,7 @@ si_shader_context_from_abi(struct ac_shader_abi *abi)
 	return container_of(abi, ctx, abi);
 }
 
-LLVMValueRef si_nir_load_input_tes(struct ac_shader_abi *abi,
-				   LLVMTypeRef type,
-				   LLVMValueRef vertex_index,
-				   LLVMValueRef param_index,
-				   unsigned const_index,
-				   unsigned location,
-				   unsigned driver_location,
-				   unsigned component,
-				   unsigned num_components,
-				   bool is_patch,
-				   bool is_compact,
-				   bool load_input);
 bool si_is_merged_shader(struct si_shader_context *ctx);
-LLVMValueRef si_get_sample_id(struct si_shader_context *ctx);
 void si_declare_compute_memory(struct si_shader_context *ctx);
 LLVMValueRef si_get_primitive_id(struct si_shader_context *ctx,
 				 unsigned swizzle);
@@ -311,6 +298,7 @@ void si_llvm_init_tcs_callbacks(struct si_shader_context *ctx);
 void si_llvm_init_tes_callbacks(struct si_shader_context *ctx, bool ngg_cull_shader);
 
 /* si_shader_llvm_ps.c */
+LLVMValueRef si_get_sample_id(struct si_shader_context *ctx);
 void si_llvm_build_ps_prolog(struct si_shader_context *ctx,
 			     union si_shader_part_key *key);
 void si_llvm_build_ps_epilog(struct si_shader_context *ctx,

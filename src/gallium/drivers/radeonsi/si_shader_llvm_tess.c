@@ -499,18 +499,18 @@ static LLVMValueRef si_nir_load_tcs_varyings(struct ac_shader_abi *abi,
 	return ac_build_varying_gather_values(&ctx->ac, value, num_components, component);
 }
 
-LLVMValueRef si_nir_load_input_tes(struct ac_shader_abi *abi,
-				   LLVMTypeRef type,
-				   LLVMValueRef vertex_index,
-				   LLVMValueRef param_index,
-				   unsigned const_index,
-				   unsigned location,
-				   unsigned driver_location,
-				   unsigned component,
-				   unsigned num_components,
-				   bool is_patch,
-				   bool is_compact,
-				   bool load_input)
+static LLVMValueRef si_nir_load_input_tes(struct ac_shader_abi *abi,
+					  LLVMTypeRef type,
+					  LLVMValueRef vertex_index,
+					  LLVMValueRef param_index,
+					  unsigned const_index,
+					  unsigned location,
+					  unsigned driver_location,
+					  unsigned component,
+					  unsigned num_components,
+					  bool is_patch,
+					  bool is_compact,
+					  bool load_input)
 {
 	struct si_shader_context *ctx = si_shader_context_from_abi(abi);
 	struct si_shader_info *info = &ctx->shader->selector->info;
