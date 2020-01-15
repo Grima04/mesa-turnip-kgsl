@@ -751,14 +751,19 @@ dri2_create_image_from_winsys(__DRIscreen *_screen,
       /* YUV format sampling can be emulated by the Mesa state tracker by
        * using multiple samplers of varying formats.
        * If no tex_usage is set and we detect a YUV format,
-       * test for support of the first plane's sampler format and
+       * test for support of all planes' sampler formats and
        * add sampler view usage.
        */
       use_lowered = true;
-      if (pscreen->is_format_supported(pscreen,
-                                       dri2_get_pipe_format_for_dri_format(map->planes[0].dri_format),
-                                       screen->target, 0, 0,
-                                       PIPE_BIND_SAMPLER_VIEW))
+      for (i = 0; i < map->nplanes; i++) {
+          if (!pscreen->is_format_supported(pscreen,
+                                            dri2_get_pipe_format_for_dri_format(map->planes[i].dri_format),
+                                            screen->target, 0, 0,
+                                            PIPE_BIND_SAMPLER_VIEW))
+             break;
+      }
+
+      if (i == map->nplanes)
          tex_usage |= PIPE_BIND_SAMPLER_VIEW;
    }
 
