@@ -948,44 +948,106 @@ lima_blend_func(enum pipe_blend_func pipe)
 }
 
 static int
-lima_blend_factor(enum pipe_blendfactor pipe)
+lima_blend_factor_has_alpha(enum pipe_blendfactor pipe)
 {
+   /* Bit 4 is set if the blendfactor uses alpha */
    switch (pipe) {
-   case PIPE_BLENDFACTOR_ONE:
-      return 11;
-   case PIPE_BLENDFACTOR_SRC_COLOR:
-      return 0;
    case PIPE_BLENDFACTOR_SRC_ALPHA:
-      return 16;
    case PIPE_BLENDFACTOR_DST_ALPHA:
-      return 17;
-   case PIPE_BLENDFACTOR_DST_COLOR:
-      return 1;
-   case PIPE_BLENDFACTOR_SRC_ALPHA_SATURATE:
-      return 7;
-   case PIPE_BLENDFACTOR_CONST_COLOR:
-      return 2;
    case PIPE_BLENDFACTOR_CONST_ALPHA:
-      return 18;
-   case PIPE_BLENDFACTOR_ZERO:
-      return 3;
-   case PIPE_BLENDFACTOR_INV_SRC_COLOR:
-      return 8;
    case PIPE_BLENDFACTOR_INV_SRC_ALPHA:
-      return 24;
    case PIPE_BLENDFACTOR_INV_DST_ALPHA:
-      return 25;
-   case PIPE_BLENDFACTOR_INV_DST_COLOR:
-      return 9;
-   case PIPE_BLENDFACTOR_INV_CONST_COLOR:
-      return 10;
    case PIPE_BLENDFACTOR_INV_CONST_ALPHA:
-      return 26;
+      return 1;
+
+   case PIPE_BLENDFACTOR_SRC_COLOR:
+   case PIPE_BLENDFACTOR_INV_SRC_COLOR:
+   case PIPE_BLENDFACTOR_DST_COLOR:
+   case PIPE_BLENDFACTOR_INV_DST_COLOR:
+   case PIPE_BLENDFACTOR_CONST_COLOR:
+   case PIPE_BLENDFACTOR_INV_CONST_COLOR:
+   case PIPE_BLENDFACTOR_ZERO:
+   case PIPE_BLENDFACTOR_ONE:
+   case PIPE_BLENDFACTOR_SRC_ALPHA_SATURATE:
+      return 0;
+
    case PIPE_BLENDFACTOR_SRC1_COLOR:
    case PIPE_BLENDFACTOR_SRC1_ALPHA:
    case PIPE_BLENDFACTOR_INV_SRC1_COLOR:
    case PIPE_BLENDFACTOR_INV_SRC1_ALPHA:
-      return -1; /* not support */
+      return -1; /* not supported */
+   }
+   return -1;
+}
+
+static int
+lima_blend_factor_is_inv(enum pipe_blendfactor pipe)
+{
+   /* Bit 3 is set if the blendfactor type is inverted */
+   switch (pipe) {
+   case PIPE_BLENDFACTOR_INV_SRC_COLOR:
+   case PIPE_BLENDFACTOR_INV_SRC_ALPHA:
+   case PIPE_BLENDFACTOR_INV_DST_COLOR:
+   case PIPE_BLENDFACTOR_INV_DST_ALPHA:
+   case PIPE_BLENDFACTOR_INV_CONST_COLOR:
+   case PIPE_BLENDFACTOR_INV_CONST_ALPHA:
+   case PIPE_BLENDFACTOR_ONE:
+      return 1;
+
+   case PIPE_BLENDFACTOR_SRC_COLOR:
+   case PIPE_BLENDFACTOR_SRC_ALPHA:
+   case PIPE_BLENDFACTOR_DST_COLOR:
+   case PIPE_BLENDFACTOR_DST_ALPHA:
+   case PIPE_BLENDFACTOR_CONST_COLOR:
+   case PIPE_BLENDFACTOR_CONST_ALPHA:
+   case PIPE_BLENDFACTOR_ZERO:
+   case PIPE_BLENDFACTOR_SRC_ALPHA_SATURATE:
+      return 0;
+
+   case PIPE_BLENDFACTOR_SRC1_COLOR:
+   case PIPE_BLENDFACTOR_SRC1_ALPHA:
+   case PIPE_BLENDFACTOR_INV_SRC1_COLOR:
+   case PIPE_BLENDFACTOR_INV_SRC1_ALPHA:
+      return -1; /* not supported */
+   }
+   return -1;
+}
+
+static int
+lima_blend_factor(enum pipe_blendfactor pipe)
+{
+   /* Bits 0-2 indicate the blendfactor type */
+   switch (pipe) {
+   case PIPE_BLENDFACTOR_SRC_COLOR:
+   case PIPE_BLENDFACTOR_SRC_ALPHA:
+   case PIPE_BLENDFACTOR_INV_SRC_COLOR:
+   case PIPE_BLENDFACTOR_INV_SRC_ALPHA:
+      return 0;
+
+   case PIPE_BLENDFACTOR_DST_COLOR:
+   case PIPE_BLENDFACTOR_DST_ALPHA:
+   case PIPE_BLENDFACTOR_INV_DST_COLOR:
+   case PIPE_BLENDFACTOR_INV_DST_ALPHA:
+      return 1;
+
+   case PIPE_BLENDFACTOR_CONST_COLOR:
+   case PIPE_BLENDFACTOR_CONST_ALPHA:
+   case PIPE_BLENDFACTOR_INV_CONST_COLOR:
+   case PIPE_BLENDFACTOR_INV_CONST_ALPHA:
+      return 2;
+
+   case PIPE_BLENDFACTOR_ZERO:
+   case PIPE_BLENDFACTOR_ONE:
+      return 3;
+
+   case PIPE_BLENDFACTOR_SRC_ALPHA_SATURATE:
+      return 4;
+
+   case PIPE_BLENDFACTOR_SRC1_COLOR:
+   case PIPE_BLENDFACTOR_SRC1_ALPHA:
+   case PIPE_BLENDFACTOR_INV_SRC1_COLOR:
+   case PIPE_BLENDFACTOR_INV_SRC1_ALPHA:
+      return -1; /* not supported */
    }
    return -1;
 }
@@ -995,13 +1057,29 @@ lima_calculate_alpha_blend(enum pipe_blend_func rgb_func, enum pipe_blend_func a
                            enum pipe_blendfactor rgb_src_factor, enum pipe_blendfactor rgb_dst_factor,
                            enum pipe_blendfactor alpha_src_factor, enum pipe_blendfactor alpha_dst_factor)
 {
+   /* PIPE_BLENDFACTOR_SRC_ALPHA_SATURATE has to be changed to PIPE_BLENDFACTOR_ONE
+    * if it is set for alpha_src.
+    */
+   if (alpha_src_factor == PIPE_BLENDFACTOR_SRC_ALPHA_SATURATE)
+      alpha_src_factor = PIPE_BLENDFACTOR_ONE;
+
    return lima_blend_func(rgb_func) |
       (lima_blend_func(alpha_func) << 3) |
+
       (lima_blend_factor(rgb_src_factor) << 6) |
+      (lima_blend_factor_is_inv(rgb_src_factor) << 9) |
+      (lima_blend_factor_has_alpha(rgb_src_factor) << 10) |
+
       (lima_blend_factor(rgb_dst_factor) << 11) |
-      ((lima_blend_factor(alpha_src_factor) & 0xF) << 16) |
-      ((lima_blend_factor(alpha_dst_factor) & 0xF) << 20) |
-      0x0C000000; /* need check if this GLESv1 glAlphaFunc */
+      (lima_blend_factor_is_inv(rgb_dst_factor) << 14) |
+      (lima_blend_factor_has_alpha(rgb_dst_factor) << 15) |
+
+      (lima_blend_factor(alpha_src_factor) << 16) |
+      (lima_blend_factor_is_inv(alpha_src_factor) << 19) |
+
+      (lima_blend_factor(alpha_dst_factor) << 20) |
+      (lima_blend_factor_is_inv(alpha_dst_factor) << 23) |
+      0x0C000000; /* need to check if this is GLESv1 glAlphaFunc */
 }
 
 static int
