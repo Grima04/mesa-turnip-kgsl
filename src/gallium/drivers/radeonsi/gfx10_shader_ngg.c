@@ -252,7 +252,7 @@ static void build_streamout_vertex(struct si_shader_context *ctx,
 				(info->output_streams[reg] >> (2 * comp)) & 3;
 		}
 
-		si_emit_streamout_output(ctx, so_buffer, offset, &so->output[i], &out);
+		si_llvm_streamout_store_output(ctx, so_buffer, offset, &so->output[i], &out);
 	}
 }
 
@@ -1486,7 +1486,7 @@ void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi,
 			i++;
 		}
 
-		si_llvm_export_vs(ctx, outputs, i);
+		si_llvm_build_vs_exports(ctx, outputs, i);
 	}
 	ac_build_endif(&ctx->ac, 6002);
 }
@@ -1970,7 +1970,7 @@ void gfx10_ngg_gs_emit_epilogue(struct si_shader_context *ctx)
 			}
 		}
 
-		si_llvm_export_vs(ctx, outputs, info->num_outputs);
+		si_llvm_build_vs_exports(ctx, outputs, info->num_outputs);
 	}
 	ac_build_endif(&ctx->ac, 5145);
 }

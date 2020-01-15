@@ -997,59 +997,10 @@ void si_finalize_nir(struct pipe_screen *screen, void *nirptr, bool optimize)
 	si_lower_nir(sscreen, nir);
 }
 
-static void declare_nir_input_vs(struct si_shader_context *ctx,
-				 struct nir_variable *variable,
-				 unsigned input_index,
-				 LLVMValueRef out[4])
-{
-	si_llvm_load_input_vs(ctx, input_index, out);
-}
-
-static void bitcast_inputs(struct si_shader_context *ctx,
-			   LLVMValueRef data[4],
-			   unsigned input_idx)
-{
-	for (unsigned chan = 0; chan < 4; chan++) {
-		ctx->inputs[input_idx + chan] =
-			LLVMBuildBitCast(ctx->ac.builder, data[chan], ctx->ac.i32, "");
-	}
-}
-
 bool si_nir_build_llvm(struct si_shader_context *ctx, struct nir_shader *nir)
 {
-	struct si_shader_info *info = &ctx->shader->selector->info;
-
 	if (nir->info.stage == MESA_SHADER_VERTEX) {
-		uint64_t processed_inputs = 0;
-		nir_foreach_variable(variable, &nir->inputs) {
-			unsigned attrib_count = glsl_count_attribute_slots(variable->type,
-									   true);
-			unsigned input_idx = variable->data.driver_location;
-
-			LLVMValueRef data[4];
-			unsigned loc = variable->data.location;
-
-			for (unsigned i = 0; i < attrib_count; i++) {
-				/* Packed components share the same location so skip
-				 * them if we have already processed the location.
-				 */
-				if (processed_inputs & ((uint64_t)1 << (loc + i))) {
-					input_idx += 4;
-					continue;
-				}
-
-				declare_nir_input_vs(ctx, variable, input_idx / 4, data);
-				bitcast_inputs(ctx, data, input_idx);
-				if (glsl_type_is_dual_slot(variable->type)) {
-					input_idx += 4;
-					declare_nir_input_vs(ctx, variable, input_idx / 4, data);
-					bitcast_inputs(ctx, data, input_idx);
-				}
-
-				processed_inputs |= ((uint64_t)1 << (loc + i));
-				input_idx += 4;
-			}
-		}
+		si_llvm_load_vs_inputs(ctx, nir);
 	} else if (nir->info.stage == MESA_SHADER_FRAGMENT) {
                 unsigned colors_read =
                         ctx->shader->selector->info.colors_read;

@@ -1277,10 +1277,19 @@ void si_llvm_init_tcs_callbacks(struct si_shader_context *ctx)
 	ctx->abi.load_patch_vertices_in = si_load_patch_vertices_in;
 }
 
-void si_llvm_init_tes_callbacks(struct si_shader_context *ctx)
+void si_llvm_init_tes_callbacks(struct si_shader_context *ctx, bool ngg_cull_shader)
 {
 	ctx->abi.load_tess_varyings = si_nir_load_input_tes;
 	ctx->abi.load_tess_coord = si_load_tess_coord;
 	ctx->abi.load_tess_level = si_load_tess_level;
 	ctx->abi.load_patch_vertices_in = si_load_patch_vertices_in;
+
+	if (ctx->shader->key.as_es)
+		ctx->abi.emit_outputs = si_llvm_emit_es_epilogue;
+	else if (ngg_cull_shader)
+		ctx->abi.emit_outputs = gfx10_emit_ngg_culling_epilogue_4x_wave32;
+	else if (ctx->shader->key.as_ngg)
+		ctx->abi.emit_outputs = gfx10_emit_ngg_epilogue;
+	else
+		ctx->abi.emit_outputs = si_llvm_emit_vs_epilogue;
 }
