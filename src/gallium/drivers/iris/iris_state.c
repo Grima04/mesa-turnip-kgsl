@@ -387,6 +387,8 @@ emit_state(struct iris_batch *batch,
 static void
 flush_before_state_base_change(struct iris_batch *batch)
 {
+   const struct gen_device_info *devinfo = &batch->screen->devinfo;
+
    /* Flush before emitting STATE_BASE_ADDRESS.
     *
     * This isn't documented anywhere in the PRM.  However, it seems to be
@@ -412,7 +414,18 @@ flush_before_state_base_change(struct iris_batch *batch)
                               "change STATE_BASE_ADDRESS (flushes)",
                               PIPE_CONTROL_RENDER_TARGET_FLUSH |
                               PIPE_CONTROL_DEPTH_CACHE_FLUSH |
-                              PIPE_CONTROL_DATA_CACHE_FLUSH);
+                              PIPE_CONTROL_DATA_CACHE_FLUSH |
+                              /* GEN:BUG:1606662791:
+                               *
+                               *   Software must program PIPE_CONTROL command
+                               *   with "HDC Pipeline Flush" prior to
+                               *   programming of the below two non-pipeline
+                               *   state :
+                               *      * STATE_BASE_ADDRESS
+                               *      * 3DSTATE_BINDING_TABLE_POOL_ALLOC
+                               */
+                              ((GEN_GEN == 12 && devinfo->revision == 0 /* A0 */ ?
+                                PIPE_CONTROL_FLUSH_HDC : 0)));
 }
 
 static void
