@@ -2272,6 +2272,12 @@ enum anv_pipe_bits {
     * done by writing the AUX-TT register.
     */
    ANV_PIPE_AUX_TABLE_INVALIDATE_BIT         = (1 << 23),
+
+   /* This bit does not exist directly in PIPE_CONTROL. It means that a
+    * PIPE_CONTROL with a post-sync operation will follow. This is used to
+    * implement a workaround for Gen9.
+    */
+   ANV_PIPE_POST_SYNC_BIT                    = (1 << 24),
 };
 
 #define ANV_PIPE_FLUSH_BITS ( \

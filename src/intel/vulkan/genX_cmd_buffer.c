@@ -2050,6 +2050,21 @@ genX(cmd_buffer_apply_pipe_flushes)(struct anv_cmd_buffer *cmd_buffer)
              sizeof(cmd_buffer->state.gfx.ib_dirty_range));
    }
 
+   /* Project: SKL / Argument: LRI Post Sync Operation [23]
+    *
+    * "PIPECONTROL command with “Command Streamer Stall Enable” must be
+    *  programmed prior to programming a PIPECONTROL command with "LRI
+    *  Post Sync Operation" in GPGPU mode of operation (i.e when
+    *  PIPELINE_SELECT command is set to GPGPU mode of operation)."
+    *
+    * The same text exists a few rows below for Post Sync Op.
+    */
+   if (bits & ANV_PIPE_POST_SYNC_BIT) {
+      if (GEN_GEN == 9 && cmd_buffer->state.current_pipeline == GPGPU)
+         bits |= ANV_PIPE_CS_STALL_BIT;
+      bits &= ~ANV_PIPE_POST_SYNC_BIT;
+   }
+
    if (bits & (ANV_PIPE_FLUSH_BITS | ANV_PIPE_CS_STALL_BIT)) {
       anv_batch_emit(&cmd_buffer->batch, GENX(PIPE_CONTROL), pipe) {
 #if GEN_GEN >= 12
@@ -4619,6 +4634,9 @@ cmd_buffer_emit_depth_stencil(struct anv_cmd_buffer *cmd_buffer)
    isl_emit_depth_stencil_hiz_s(&device->isl_dev, dw, &info);
 
    if (GEN_GEN >= 12) {
+      cmd_buffer->state.pending_pipe_bits |= ANV_PIPE_POST_SYNC_BIT;
+      genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
+
       /* GEN:BUG:1408224581
        *
        * Workaround: Gen12LP Astep only An additional pipe control with
@@ -5570,6 +5588,9 @@ void genX(CmdSetEvent)(
    ANV_FROM_HANDLE(anv_cmd_buffer, cmd_buffer, commandBuffer);
    ANV_FROM_HANDLE(anv_event, event, _event);
 
+   cmd_buffer->state.pending_pipe_bits |= ANV_PIPE_POST_SYNC_BIT;
+   genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
+
    anv_batch_emit(&cmd_buffer->batch, GENX(PIPE_CONTROL), pc) {
       if (stageMask & ANV_PIPELINE_STAGE_PIPELINED_BITS) {
          pc.StallAtPixelScoreboard = true;
@@ -5593,6 +5614,9 @@ void genX(CmdResetEvent)(
 {
    ANV_FROM_HANDLE(anv_cmd_buffer, cmd_buffer, commandBuffer);
    ANV_FROM_HANDLE(anv_event, event, _event);
+
+   cmd_buffer->state.pending_pipe_bits |= ANV_PIPE_POST_SYNC_BIT;
+   genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
 
    anv_batch_emit(&cmd_buffer->batch, GENX(PIPE_CONTROL), pc) {
       if (stageMask & ANV_PIPELINE_STAGE_PIPELINED_BITS) {
