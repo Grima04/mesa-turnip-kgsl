@@ -1090,9 +1090,17 @@ lima_pack_render_state(struct lima_context *ctx, const struct pipe_draw_info *in
    struct pipe_depth_state *depth = &ctx->zsa->base.depth;
    render->depth_test = lima_calculate_depth_test(depth, rst);
 
+   ushort far, near;
+
+   near = float_to_ushort(ctx->viewport.near);
+   far = float_to_ushort(ctx->viewport.far);
+
+   /* Subtract epsilon from 'near' if far == near. Make sure we don't get overflow */
+   if ((far == near) && (near != 0))
+         near--;
+
    /* overlap with plbu? any place can remove one? */
-   render->depth_range = float_to_ushort(ctx->viewport.near) |
-      (float_to_ushort(ctx->viewport.far) << 16);
+   render->depth_range = near | (far << 16);
 
    struct pipe_stencil_state *stencil = ctx->zsa->base.stencil;
    struct pipe_stencil_ref *ref = &ctx->stencil_ref;
