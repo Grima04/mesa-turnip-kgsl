@@ -25,6 +25,7 @@
 #include "si_shader_internal.h"
 #include "si_pipe.h"
 #include "ac_rtld.h"
+#include "ac_nir_to_llvm.h"
 #include "sid.h"
 
 #include "tgsi/tgsi_from_mesa.h"
@@ -362,4 +363,63 @@ void si_init_exec_from_input(struct si_shader_context *ctx, struct ac_arg param,
 	ac_build_intrinsic(&ctx->ac,
 			   "llvm.amdgcn.init.exec.from.input",
 			   ctx->ac.voidt, args, 2, AC_FUNC_ATTR_CONVERGENT);
+}
+
+bool si_nir_build_llvm(struct si_shader_context *ctx, struct nir_shader *nir)
+{
+	if (nir->info.stage == MESA_SHADER_VERTEX) {
+		si_llvm_load_vs_inputs(ctx, nir);
+	} else if (nir->info.stage == MESA_SHADER_FRAGMENT) {
+                unsigned colors_read =
+                        ctx->shader->selector->info.colors_read;
+                LLVMValueRef main_fn = ctx->main_fn;
+
+                LLVMValueRef undef = LLVMGetUndef(ctx->ac.f32);
+
+                unsigned offset = SI_PARAM_POS_FIXED_PT + 1;
+
+                if (colors_read & 0x0f) {
+                        unsigned mask = colors_read & 0x0f;
+                        LLVMValueRef values[4];
+                        values[0] = mask & 0x1 ? LLVMGetParam(main_fn, offset++) : undef;
+                        values[1] = mask & 0x2 ? LLVMGetParam(main_fn, offset++) : undef;
+                        values[2] = mask & 0x4 ? LLVMGetParam(main_fn, offset++) : undef;
+                        values[3] = mask & 0x8 ? LLVMGetParam(main_fn, offset++) : undef;
+                        ctx->abi.color0 =
+                                ac_to_integer(&ctx->ac,
+                                              ac_build_gather_values(&ctx->ac, values, 4));
+                }
+                if (colors_read & 0xf0) {
+                        unsigned mask = (colors_read & 0xf0) >> 4;
+                        LLVMValueRef values[4];
+                        values[0] = mask & 0x1 ? LLVMGetParam(main_fn, offset++) : undef;
+                        values[1] = mask & 0x2 ? LLVMGetParam(main_fn, offset++) : undef;
+                        values[2] = mask & 0x4 ? LLVMGetParam(main_fn, offset++) : undef;
+                        values[3] = mask & 0x8 ? LLVMGetParam(main_fn, offset++) : undef;
+                        ctx->abi.color1 =
+                                ac_to_integer(&ctx->ac,
+                                              ac_build_gather_values(&ctx->ac, values, 4));
+                }
+
+		ctx->abi.interp_at_sample_force_center =
+			ctx->shader->key.mono.u.ps.interpolate_at_sample_force_center;
+	} else if (nir->info.stage == MESA_SHADER_COMPUTE) {
+		if (nir->info.cs.user_data_components_amd) {
+			ctx->abi.user_data = ac_get_arg(&ctx->ac, ctx->cs_user_data);
+			ctx->abi.user_data = ac_build_expand_to_vec4(&ctx->ac, ctx->abi.user_data,
+								     nir->info.cs.user_data_components_amd);
+		}
+	}
+
+	ctx->abi.inputs = &ctx->inputs[0];
+	ctx->abi.clamp_shadow_reference = true;
+	ctx->abi.robust_buffer_access = true;
+
+	if (ctx->shader->selector->info.properties[TGSI_PROPERTY_CS_LOCAL_SIZE]) {
+		assert(gl_shader_stage_is_compute(nir->info.stage));
+		si_declare_compute_memory(ctx);
+	}
+	ac_nir_translate(&ctx->ac, &ctx->abi, &ctx->args, nir);
+
+	return true;
 }
