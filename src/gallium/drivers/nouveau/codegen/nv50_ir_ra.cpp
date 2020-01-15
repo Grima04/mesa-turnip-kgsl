@@ -954,9 +954,8 @@ GCRA::coalesceValues(Value *dst, Value *src, bool force)
             rep->id, rep->reg.data.id, val->id);
 
    // set join pointer of all values joined with val
-   for (Value::DefIterator def = val->defs.begin(); def != val->defs.end();
-        ++def)
-      (*def)->get()->join = rep;
+   for (ValueDef *def : val->defs)
+      def->get()->join = rep;
    assert(rep->join == rep && val->join == rep);
 
    // add val's definitions to rep and extend the live interval of its RIG node
@@ -1261,10 +1260,8 @@ GCRA::calculateSpillWeights()
 
       if (!val->noSpill) {
          int rc = 0;
-         for (Value::DefIterator it = val->defs.begin();
-              it != val->defs.end();
-              ++it)
-            rc += (*it)->get()->refCount();
+         for (ValueDef *def : val->defs)
+            rc += def->get()->refCount();
 
          nodes[i].weight =
             (float)rc * (float)rc / (float)nodes[i].livei.extent();
@@ -1372,10 +1369,10 @@ GCRA::checkInterference(const RIG_Node *node, Graph::EdgeIterator& ei)
 
    if (vA->compound | vB->compound) {
       // NOTE: this only works for >aligned< register tuples !
-      for (Value::DefCIterator D = vA->defs.begin(); D != vA->defs.end(); ++D) {
-      for (Value::DefCIterator d = vB->defs.begin(); d != vB->defs.end(); ++d) {
-         const LValue *vD = (*D)->get()->asLValue();
-         const LValue *vd = (*d)->get()->asLValue();
+      for (const ValueDef *D : vA->defs) {
+      for (const ValueDef *d : vB->defs) {
+         const LValue *vD = D->get()->asLValue();
+         const LValue *vd = d->get()->asLValue();
 
          if (!vD->livei.overlaps(vd->livei)) {
             INFO_DBG(prog->dbgFlags, REG_ALLOC, "(%%%i) X (%%%i): no overlap\n",
