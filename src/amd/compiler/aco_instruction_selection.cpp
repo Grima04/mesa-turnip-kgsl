@@ -5557,7 +5557,7 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
       } else if (ctx->options->chip_class >= GFX9) {
          addr = bld.vop2(aco_opcode::v_lshlrev_b32, bld.def(v1), Operand(3u), addr);
          sample_pos = bld.global(aco_opcode::global_load_dwordx2, bld.def(v2), addr, private_segment_buffer, sample_pos_offset);
-      } else {
+      } else if (ctx->options->chip_class >= GFX7) {
          /* addr += private_segment_buffer + sample_pos_offset */
          Temp tmp0 = bld.tmp(s1);
          Temp tmp1 = bld.tmp(s1);
@@ -5574,6 +5574,32 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
 
          /* sample_pos = flat_load_dwordx2 addr */
          sample_pos = bld.flat(aco_opcode::flat_load_dwordx2, bld.def(v2), addr, Operand(s1));
+      } else {
+         assert(ctx->options->chip_class == GFX6);
+
+         uint32_t rsrc_conf = S_008F0C_NUM_FORMAT(V_008F0C_BUF_NUM_FORMAT_FLOAT) |
+                              S_008F0C_DATA_FORMAT(V_008F0C_BUF_DATA_FORMAT_32);
+         Temp rsrc = bld.pseudo(aco_opcode::p_create_vector, bld.def(s4), private_segment_buffer, Operand(rsrc_conf));
+
+         addr = bld.vop2(aco_opcode::v_lshlrev_b32, bld.def(v1), Operand(3u), addr);
+         addr = bld.pseudo(aco_opcode::p_create_vector, bld.def(v2), addr, Operand(0u));
+
+         sample_pos = bld.tmp(v2);
+
+         aco_ptr<MUBUF_instruction> load{create_instruction<MUBUF_instruction>(aco_opcode::buffer_load_dwordx2, Format::MUBUF, 3, 1)};
+         load->definitions[0] = Definition(sample_pos);
+         load->operands[0] = Operand(addr);
+         load->operands[1] = Operand(rsrc);
+         load->operands[2] = Operand(0u);
+         load->offset = sample_pos_offset;
+         load->offen = 0;
+         load->addr64 = true;
+         load->glc = false;
+         load->dlc = false;
+         load->disable_wqm = false;
+         load->barrier = barrier_none;
+         load->can_reorder = true;
+         ctx->block->instructions.emplace_back(std::move(load));
       }
 
       /* sample_pos -= 0.5 */
