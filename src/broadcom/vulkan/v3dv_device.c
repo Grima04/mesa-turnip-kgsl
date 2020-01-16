@@ -342,6 +342,15 @@ physical_device_init(struct v3dv_physical_device *device,
 
    device->options.merge_jobs = getenv("V3DV_NO_MERGE_JOBS") == NULL;
 
+   result = v3dv_wsi_init(device);
+   if (result != VK_SUCCESS) {
+      vk_error(instance, result);
+      goto fail;
+   }
+
+   v3dv_physical_device_get_supported_extensions(device,
+                                                 &device->supported_extensions);
+
 fail:
    close(fd);
    if (master_fd != -1)

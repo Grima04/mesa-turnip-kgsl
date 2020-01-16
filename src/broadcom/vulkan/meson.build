@@ -68,6 +68,7 @@ libv3dv_files = files(
   'v3dv_queue.c',
   'v3dv_uniforms.c',
   'v3dv_util.c',
+  'v3dv_wsi.c',
   'v3d_tiling.c',
 )
 
@@ -90,17 +91,27 @@ v3dv_deps = [
   idep_vulkan_util,
 ]
 
+if with_platform_x11
+  v3dv_deps += dep_xcb_dri3
+  v3dv_flags += [
+    '-DVK_USE_PLATFORM_XCB_KHR',
+    '-DVK_USE_PLATFORM_XLIB_KHR',
+  ]
+  libv3dv_files += files('v3dv_wsi_x11.c')
+endif
+
 libvulkan_broadcom = shared_library(
   'vulkan_broadcom',
   [libv3dv_files, v3dv_entrypoints, v3dv_extensions_c, v3dv_extensions_h, sha1_h],
   include_directories : [
-    inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux, inc_broadcom, inc_compiler, inc_util,
+    inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux, inc_broadcom, inc_compiler, inc_util, inc_vulkan_wsi,
   ],
   link_with : [
     libbroadcom_cle,
     libbroadcom_v3d,
     # For glsl_type_singleton_init_or_ref:
     libglsl,
+    libvulkan_wsi,
   ],
   dependencies : v3dv_deps,
   c_args : v3dv_flags,

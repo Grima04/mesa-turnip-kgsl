@@ -84,6 +84,7 @@ pack_emit_reloc(void *cl, const void *reloc) {}
  * good enough.
  */
 #include "util/u_box.h"
+#include "wsi_common.h"
 
 #include "broadcom/cle/v3dx_pack.h"
 
@@ -138,6 +139,8 @@ struct v3dv_physical_device {
    int32_t master_fd;
    uint8_t pipeline_cache_uuid[VK_UUID_SIZE];
 
+   struct wsi_device wsi_device;
+
    VkPhysicalDeviceMemoryProperties memory;
 
    struct v3d_device_info devinfo;
@@ -151,6 +154,9 @@ struct v3dv_physical_device {
       bool merge_jobs;
    } options;
 };
+
+VkResult v3dv_wsi_init(struct v3dv_physical_device *physical_device);
+void v3dv_wsi_finish(struct v3dv_physical_device *physical_device);
 
 struct v3dv_app_info {
    const char *app_name;
