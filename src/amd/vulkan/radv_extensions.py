@@ -99,6 +99,7 @@ EXTENSIONS = [
     Extension('VK_KHR_surface',                          25, 'RADV_HAS_SURFACE'),
     Extension('VK_KHR_surface_protected_capabilities',    1, 'RADV_HAS_SURFACE'),
     Extension('VK_KHR_swapchain',                        68, 'RADV_HAS_SURFACE'),
+    Extension('VK_KHR_swapchain_mutable_format',          1, 'RADV_HAS_SURFACE'),
     Extension('VK_KHR_timeline_semaphore',                2, 'device->rad_info.has_syncobj_wait_for_submit'),
     Extension('VK_KHR_uniform_buffer_standard_layout',    1, True),
     Extension('VK_KHR_variable_pointers',                 1, True),
