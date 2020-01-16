@@ -591,6 +591,10 @@ emit_rs_state(struct anv_pipeline *pipeline,
    sf.LineStippleEnable = line_info && line_info->stippledLineEnable;
 #endif
 
+#if GEN_GEN >= 12
+   sf.DerefBlockSize = PerPolyDerefMode;
+#endif
+
    const struct brw_vue_prog_data *last_vue_prog_data =
       anv_pipeline_get_last_vue_prog_data(pipeline);
 

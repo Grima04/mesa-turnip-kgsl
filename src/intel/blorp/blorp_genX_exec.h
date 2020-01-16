@@ -671,7 +671,11 @@ blorp_emit_sf_config(struct blorp_batch *batch,
 
 #if GEN_GEN >= 8
 
-   blorp_emit(batch, GENX(3DSTATE_SF), sf);
+   blorp_emit(batch, GENX(3DSTATE_SF), sf) {
+#if GEN_GEN >= 12
+      sf.DerefBlockSize = PerPolyDerefMode;
+#endif
+   }
 
    blorp_emit(batch, GENX(3DSTATE_RASTER), raster) {
       raster.CullMode = CULLMODE_NONE;

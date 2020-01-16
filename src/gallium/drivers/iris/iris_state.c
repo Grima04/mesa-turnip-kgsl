@@ -1706,6 +1706,10 @@ iris_create_rasterizer_state(struct pipe_context *ctx,
       sf.PointWidthSource = state->point_size_per_vertex ? Vertex : State;
       sf.PointWidth = state->point_size;
 
+#if GEN_GEN >= 12
+      sf.DerefBlockSize = PerPolyDerefMode;
+#endif
+
       if (state->flatshade_first) {
          sf.TriangleFanProvokingVertexSelect = 1;
       } else {
