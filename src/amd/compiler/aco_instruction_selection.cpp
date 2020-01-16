@@ -4501,7 +4501,8 @@ void visit_store_ssbo(isel_context *ctx, nir_intrinsic_instr *instr)
    while (writemask) {
       int start, count;
       u_bit_scan_consecutive_range(&writemask, &start, &count);
-      if (count == 3 && smem) {
+      if (count == 3 && (smem || ctx->options->chip_class == GFX6)) {
+         /* GFX6 doesn't support storing vec3, split it. */
          writemask |= 1u << (start + 2);
          count = 2;
       }
@@ -4551,7 +4552,7 @@ void visit_store_ssbo(isel_context *ctx, nir_intrinsic_instr *instr)
          case 12:
             vmem_op = aco_opcode::buffer_store_dwordx3;
             smem_op = aco_opcode::last_opcode;
-            assert(!smem);
+            assert(!smem && ctx->options->chip_class > GFX6);
             break;
          case 16:
             vmem_op = aco_opcode::buffer_store_dwordx4;
