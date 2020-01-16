@@ -790,31 +790,6 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_screen *screen,
 	OUT_PKT4(ring, REG_A6XX_VPC_UNKNOWN_9107, 1);
 	OUT_RING(ring, 0);
 
-
-	if (!binning_pass) {
-		/* figure out VARYING_INTERP / VARYING_PS_REPL register values: */
-		for (j = -1; (j = ir3_next_varying(fs, j)) < (int)fs->inputs_count; ) {
-			/* NOTE: varyings are packed, so if compmask is 0xb
-			 * then first, third, and fourth component occupy
-			 * three consecutive varying slots:
-			 */
-			unsigned compmask = fs->inputs[j].compmask;
-
-			uint32_t inloc = fs->inputs[j].inloc;
-
-			if (fs->inputs[j].interpolate == INTERP_MODE_FLAT) {
-				uint32_t loc = inloc;
-
-				for (i = 0; i < 4; i++) {
-					if (compmask & (1 << i)) {
-						state->vinterp[loc / 16] |= 1 << ((loc % 16) * 2);
-						loc++;
-					}
-				}
-			}
-		}
-	}
-
 	if (fs->instrlen)
 		fd6_emit_shader(ring, fs);
 
@@ -846,24 +821,62 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_screen *screen,
 		ir3_emit_immediates(screen, fs, ring);
 }
 
-/* emits the program state which is not part of the stateobj because of
- * dependency on other gl state (rasterflat or sprite-coord-replacement)
+static struct fd_ringbuffer *
+create_interp_stateobj(struct fd_context *ctx, struct fd6_program_state *state)
+{
+	const struct ir3_shader_variant *fs = state->fs;
+	struct fd_ringbuffer *ring = fd_ringbuffer_new_object(ctx->pipe, 18 * 4);
+	uint32_t vinterp[8] = {0};
+
+	/* figure out VARYING_INTERP / VARYING_PS_REPL register values: */
+	for (int j = -1; (j = ir3_next_varying(fs, j)) < (int)fs->inputs_count; ) {
+		/* NOTE: varyings are packed, so if compmask is 0xb
+		 * then first, third, and fourth component occupy
+		 * three consecutive varying slots:
+		 */
+		unsigned compmask = fs->inputs[j].compmask;
+
+		uint32_t inloc = fs->inputs[j].inloc;
+
+		if (fs->inputs[j].interpolate == INTERP_MODE_FLAT) {
+			uint32_t loc = inloc;
+
+			for (int i = 0; i < 4; i++) {
+				if (compmask & (1 << i)) {
+					vinterp[loc / 16] |= 1 << ((loc % 16) * 2);
+					loc++;
+				}
+			}
+		}
+	}
+
+	OUT_PKT4(ring, REG_A6XX_VPC_VARYING_INTERP_MODE(0), 8);
+	for (int i = 0; i < 8; i++)
+		OUT_RING(ring, vinterp[i]);    /* VPC_VARYING_INTERP[i].MODE */
+
+	OUT_PKT4(ring, REG_A6XX_VPC_VARYING_PS_REPL_MODE(0), 8);
+	for (int i = 0; i < 8; i++)
+		OUT_RING(ring, 0x00000000);    /* VPC_VARYING_PS_REPL[i] */
+
+	return ring;
+}
+
+/* build the program streaming state which is not part of the pre-
+ * baked stateobj because of dependency on other gl state (rasterflat
+ * or sprite-coord-replacement)
  */
-void
-fd6_program_emit(struct fd_ringbuffer *ring, struct fd6_emit *emit)
+struct fd_ringbuffer *
+fd6_program_interp_state(struct fd6_emit *emit)
 {
 	const struct fd6_program_state *state = fd6_emit_get_prog(emit);
 
 	if (!unlikely(emit->rasterflat || emit->sprite_coord_enable)) {
 		/* fastpath: */
-		OUT_PKT4(ring, REG_A6XX_VPC_VARYING_INTERP_MODE(0), 8);
-		for (int i = 0; i < 8; i++)
-			OUT_RING(ring, state->vinterp[i]);   /* VPC_VARYING_INTERP[i].MODE */
-
-		OUT_PKT4(ring, REG_A6XX_VPC_VARYING_PS_REPL_MODE(0), 8);
-		for (int i = 0; i < 8; i++)
-			OUT_RING(ring, 0x00000000);          /* VPC_VARYING_PS_REPL[i] */
+		return fd_ringbuffer_ref(state->interp_stateobj);
 	} else {
+		struct fd_ringbuffer *ring = fd_submit_new_ringbuffer(
+				emit->ctx->batch->submit, 18 * 4, FD_RINGBUFFER_STREAMING);
+
 		/* slow-path: */
 		struct ir3_shader_variant *fs = state->fs;
 		uint32_t vinterp[8], vpsrepl[8];
@@ -938,6 +951,8 @@ fd6_program_emit(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 		OUT_PKT4(ring, REG_A6XX_VPC_VARYING_PS_REPL_MODE(0), 8);
 		for (int i = 0; i < 8; i++)
 			OUT_RING(ring, vpsrepl[i]);     /* VPC_VARYING_PS_REPL[i] */
+
+		return ring;
 	}
 }
 
@@ -980,6 +995,7 @@ fd6_program_create(void *data, struct ir3_shader_variant *bs,
 	setup_config_stateobj(state->config_stateobj, state);
 	setup_stateobj(state->binning_stateobj, ctx->screen, state, key, true);
 	setup_stateobj(state->stateobj, ctx->screen, state, key, false);
+	state->interp_stateobj = create_interp_stateobj(ctx, state);
 
 	return &state->base;
 }
@@ -991,6 +1007,7 @@ fd6_program_destroy(void *data, struct ir3_program_state *state)
 	fd_ringbuffer_del(so->stateobj);
 	fd_ringbuffer_del(so->binning_stateobj);
 	fd_ringbuffer_del(so->config_stateobj);
+	fd_ringbuffer_del(so->interp_stateobj);
 	free(so);
 }
 

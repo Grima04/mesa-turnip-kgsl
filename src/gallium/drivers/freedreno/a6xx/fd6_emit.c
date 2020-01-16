@@ -1014,12 +1014,12 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 		fd6_emit_add_group(emit, prog->binning_stateobj,
 				FD6_GROUP_PROG_BINNING, CP_SET_DRAW_STATE__0_BINNING);
 
-		/* emit remaining non-stateobj program state, ie. what depends
-		 * on other emit state, so cannot be pre-baked.  This could
-		 * be moved to a separate stateobj which is dynamically
-		 * created.
+		/* emit remaining streaming program state, ie. what depends on
+		 * other emit state, so cannot be pre-baked.
 		 */
-		fd6_program_emit(ring, emit);
+		struct fd_ringbuffer *streaming = fd6_program_interp_state(emit);
+
+		fd6_emit_take_group(emit, streaming, FD6_GROUP_PROG_INTERP, ENABLE_DRAW);
 	}
 
 	if (dirty & FD_DIRTY_RASTERIZER) {
