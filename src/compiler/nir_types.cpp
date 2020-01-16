@@ -772,6 +772,13 @@ glsl_type_get_image_count(const struct glsl_type *type)
    return 0;
 }
 
+const enum glsl_interface_packing
+glsl_get_internal_ifc_packing(const struct glsl_type *type,
+                              bool std430_supported)
+{
+   return type->get_internal_ifc_packing(std430_supported);
+}
+
 unsigned
 glsl_get_explicit_size(const struct glsl_type *type, bool align_to_stride)
 {
