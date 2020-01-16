@@ -243,53 +243,45 @@ bool si_shader_cache_load_shader(struct si_screen *sscreen,
 {
 	struct hash_entry *entry =
 		_mesa_hash_table_search(sscreen->shader_cache, ir_sha1_cache_key);
-	if (!entry) {
-		if (sscreen->disk_shader_cache) {
-			unsigned char sha1[CACHE_KEY_SIZE];
 
-			disk_cache_compute_key(sscreen->disk_shader_cache,
-					       ir_sha1_cache_key, 20, sha1);
-
-			size_t binary_size;
-			uint8_t *buffer =
-				disk_cache_get(sscreen->disk_shader_cache,
-					       sha1, &binary_size);
-			if (!buffer)
-				return false;
-
-			if (binary_size < sizeof(uint32_t) ||
-			    *((uint32_t*)buffer) != binary_size) {
-				 /* Something has gone wrong discard the item
-				  * from the cache and rebuild/link from
-				  * source.
-				  */
-				assert(!"Invalid radeonsi shader disk cache "
-				       "item!");
-
-				disk_cache_remove(sscreen->disk_shader_cache,
-						  sha1);
-				free(buffer);
-
-				return false;
-			}
-
-			if (!si_load_shader_binary(shader, buffer)) {
-				free(buffer);
-				return false;
-			}
-			free(buffer);
-
-			si_shader_cache_insert_shader(sscreen, ir_sha1_cache_key,
-						      shader, false);
-		} else {
-			return false;
+	if (entry) {
+		if (si_load_shader_binary(shader, entry->data)) {
+			p_atomic_inc(&sscreen->num_shader_cache_hits);
+			return true;
 		}
-	} else {
-		if (!si_load_shader_binary(shader, entry->data))
-			return false;
 	}
-	p_atomic_inc(&sscreen->num_shader_cache_hits);
-	return true;
+
+	if (!sscreen->disk_shader_cache)
+		return false;
+
+	unsigned char sha1[CACHE_KEY_SIZE];
+	disk_cache_compute_key(sscreen->disk_shader_cache, ir_sha1_cache_key,
+			       20, sha1);
+
+	size_t binary_size;
+	uint8_t *buffer = disk_cache_get(sscreen->disk_shader_cache, sha1,
+					 &binary_size);
+	if (buffer) {
+		if (binary_size >= sizeof(uint32_t) &&
+		    *((uint32_t*)buffer) == binary_size) {
+			if (si_load_shader_binary(shader, buffer)) {
+				free(buffer);
+				si_shader_cache_insert_shader(sscreen, ir_sha1_cache_key,
+							      shader, false);
+				p_atomic_inc(&sscreen->num_shader_cache_hits);
+				return true;
+			}
+		} else {
+			/* Something has gone wrong discard the item from the cache and
+			 * rebuild/link from source.
+			 */
+			assert(!"Invalid radeonsi shader disk cache item!");
+			disk_cache_remove(sscreen->disk_shader_cache, sha1);
+		}
+	}
+
+	free(buffer);
+	return false;
 }
 
 static uint32_t si_shader_cache_key_hash(const void *key)
