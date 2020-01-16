@@ -1371,11 +1371,14 @@ tu6_render_tile(struct tu_cmd_buffer *cmd,
 static void
 tu6_render_end(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 {
-   VkResult result = tu_cs_reserve_space(cmd->device, cs, 16);
+   const uint32_t space = 16 + tu_cs_get_call_size(&cmd->draw_epilogue_cs);
+   VkResult result = tu_cs_reserve_space(cmd->device, cs, space);
    if (result != VK_SUCCESS) {
       cmd->record_result = result;
       return;
    }
+
+   tu_cs_emit_call(cs, &cmd->draw_epilogue_cs);
 
    tu_cs_emit_regs(cs,
                    A6XX_GRAS_LRZ_CNTL(0));
@@ -1652,6 +1655,7 @@ tu_create_cmd_buffer(struct tu_device *device,
    tu_bo_list_init(&cmd_buffer->bo_list);
    tu_cs_init(&cmd_buffer->cs, TU_CS_MODE_GROW, 4096);
    tu_cs_init(&cmd_buffer->draw_cs, TU_CS_MODE_GROW, 4096);
+   tu_cs_init(&cmd_buffer->draw_epilogue_cs, TU_CS_MODE_GROW, 4096);
    tu_cs_init(&cmd_buffer->sub_cs, TU_CS_MODE_SUB_STREAM, 2048);
 
    *pCommandBuffer = tu_cmd_buffer_to_handle(cmd_buffer);
@@ -1703,6 +1707,7 @@ tu_cmd_buffer_destroy(struct tu_cmd_buffer *cmd_buffer)
 
    tu_cs_finish(cmd_buffer->device, &cmd_buffer->cs);
    tu_cs_finish(cmd_buffer->device, &cmd_buffer->draw_cs);
+   tu_cs_finish(cmd_buffer->device, &cmd_buffer->draw_epilogue_cs);
    tu_cs_finish(cmd_buffer->device, &cmd_buffer->sub_cs);
 
    tu_bo_list_destroy(&cmd_buffer->bo_list);
@@ -1719,6 +1724,7 @@ tu_reset_cmd_buffer(struct tu_cmd_buffer *cmd_buffer)
    tu_bo_list_reset(&cmd_buffer->bo_list);
    tu_cs_reset(cmd_buffer->device, &cmd_buffer->cs);
    tu_cs_reset(cmd_buffer->device, &cmd_buffer->draw_cs);
+   tu_cs_reset(cmd_buffer->device, &cmd_buffer->draw_epilogue_cs);
    tu_cs_reset(cmd_buffer->device, &cmd_buffer->sub_cs);
 
    for (unsigned i = 0; i < VK_PIPELINE_BIND_POINT_RANGE_SIZE; i++) {
@@ -1834,6 +1840,7 @@ tu_BeginCommandBuffer(VkCommandBuffer commandBuffer,
 
    tu_cs_begin(&cmd_buffer->cs);
    tu_cs_begin(&cmd_buffer->draw_cs);
+   tu_cs_begin(&cmd_buffer->draw_epilogue_cs);
 
    cmd_buffer->marker_seqno = 0;
    cmd_buffer->scratch_seqno = 0;
@@ -1984,6 +1991,11 @@ tu_EndCommandBuffer(VkCommandBuffer commandBuffer)
                      MSM_SUBMIT_BO_READ | MSM_SUBMIT_BO_DUMP);
    }
 
+   for (uint32_t i = 0; i < cmd_buffer->draw_epilogue_cs.bo_count; i++) {
+      tu_bo_list_add(&cmd_buffer->bo_list, cmd_buffer->draw_epilogue_cs.bos[i],
+                     MSM_SUBMIT_BO_READ | MSM_SUBMIT_BO_DUMP);
+   }
+
    for (uint32_t i = 0; i < cmd_buffer->sub_cs.bo_count; i++) {
       tu_bo_list_add(&cmd_buffer->bo_list, cmd_buffer->sub_cs.bos[i],
                      MSM_SUBMIT_BO_READ | MSM_SUBMIT_BO_DUMP);
@@ -1991,6 +2003,7 @@ tu_EndCommandBuffer(VkCommandBuffer commandBuffer)
 
    tu_cs_end(&cmd_buffer->cs);
    tu_cs_end(&cmd_buffer->draw_cs);
+   tu_cs_end(&cmd_buffer->draw_epilogue_cs);
 
    cmd_buffer->status = TU_CMD_BUFFER_STATUS_EXECUTABLE;
 
@@ -2194,6 +2207,13 @@ tu_CmdExecuteCommands(VkCommandBuffer commandBuffer,
       }
 
       result = tu_cs_add_entries(&cmd->draw_cs, &secondary->draw_cs);
+      if (result != VK_SUCCESS) {
+         cmd->record_result = result;
+         break;
+      }
+
+      result = tu_cs_add_entries(&cmd->draw_epilogue_cs,
+            &secondary->draw_epilogue_cs);
       if (result != VK_SUCCESS) {
          cmd->record_result = result;
          break;
@@ -3780,12 +3800,16 @@ tu_CmdEndRenderPass(VkCommandBuffer commandBuffer)
    TU_FROM_HANDLE(tu_cmd_buffer, cmd_buffer, commandBuffer);
 
    tu_cs_end(&cmd_buffer->draw_cs);
+   tu_cs_end(&cmd_buffer->draw_epilogue_cs);
 
    tu_cmd_render_tiles(cmd_buffer);
 
-   /* discard draw_cs entries now that the tiles are rendered */
+   /* discard draw_cs and draw_epilogue_cs entries now that the tiles are
+      rendered */
    tu_cs_discard_entries(&cmd_buffer->draw_cs);
    tu_cs_begin(&cmd_buffer->draw_cs);
+   tu_cs_discard_entries(&cmd_buffer->draw_epilogue_cs);
+   tu_cs_begin(&cmd_buffer->draw_epilogue_cs);
 
    cmd_buffer->state.pass = NULL;
    cmd_buffer->state.subpass = NULL;

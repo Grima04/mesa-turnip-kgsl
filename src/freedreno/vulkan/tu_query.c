@@ -245,8 +245,10 @@ emit_end_occlusion_query(struct tu_cmd_buffer *cmdbuf,
     *       pass, we cannot mark as available yet since the commands in
     *       draw_cs are not run until vkCmdEndRenderPass.
     */
-   struct tu_cs *cs = cmdbuf->state.pass ? &cmdbuf->draw_cs : &cmdbuf->cs;
+   const struct tu_render_pass *pass = cmdbuf->state.pass;
+   struct tu_cs *cs = pass ? &cmdbuf->draw_cs : &cmdbuf->cs;
 
+   uint64_t available_iova = occlusion_query_iova(pool, query, available);
    uint64_t begin_iova = occlusion_query_iova(pool, query, begin);
    uint64_t end_iova = occlusion_query_iova(pool, query, end);
    uint64_t result_iova = occlusion_query_iova(pool, query, result);
@@ -284,12 +286,19 @@ emit_end_occlusion_query(struct tu_cmd_buffer *cmdbuf,
 
    tu_cs_emit_pkt7(cs, CP_WAIT_MEM_WRITES, 0);
 
-   if (!cmdbuf->state.pass) {
-      tu_cs_reserve_space(cmdbuf->device, cs, 5);
-      tu_cs_emit_pkt7(cs, CP_MEM_WRITE, 4);
-      tu_cs_emit_qw(cs, occlusion_query_iova(pool, query, available));
-      tu_cs_emit_qw(cs, 0x1);
-   }
+   if (pass)
+      /* Technically, queries should be tracked per-subpass, but here we track
+       * at the render pass level to simply the code a bit. This is safe
+       * because the only commands that use the available bit are
+       * vkCmdCopyQueryPoolResults and vkCmdResetQueryPool, both of which
+       * cannot be invoked from inside a render pass scope.
+       */
+      cs = &cmdbuf->draw_epilogue_cs;
+
+   tu_cs_reserve_space(cmdbuf->device, cs, 5);
+   tu_cs_emit_pkt7(cs, CP_MEM_WRITE, 4);
+   tu_cs_emit_qw(cs, available_iova);
+   tu_cs_emit_qw(cs, 0x1);
 }
 
 void

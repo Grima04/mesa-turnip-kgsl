@@ -351,6 +351,7 @@ tu_DestroyRenderPass(VkDevice _device,
 
    if (!_pass)
       return;
+
    vk_free2(&device->alloc, pAllocator, pass->subpass_attachments);
    vk_free2(&device->alloc, pAllocator, pass);
 }
