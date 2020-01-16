@@ -6848,6 +6848,18 @@ iris_emit_raw_pipe_control(struct iris_batch *batch,
                                  0, NULL, 0, 0);
    }
 
+   /* GEN:BUG:1409226450, Wait for EU to be idle before pipe control which
+    * invalidates the instruction cache
+    */
+   if (GEN_GEN == 12 && (flags & PIPE_CONTROL_INSTRUCTION_INVALIDATE)) {
+      iris_emit_raw_pipe_control(batch,
+                                 "workaround: CS stall before instruction "
+                                 "cache invalidate",
+                                 PIPE_CONTROL_CS_STALL |
+                                 PIPE_CONTROL_STALL_AT_SCOREBOARD, bo, offset,
+                                 imm);
+   }
+
    if (GEN_GEN == 9 && IS_COMPUTE_PIPELINE(batch) && post_sync_flags) {
       /* Project: SKL / Argument: LRI Post Sync Operation [23]
        *
