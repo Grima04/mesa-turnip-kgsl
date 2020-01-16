@@ -262,18 +262,10 @@ genX(emit_urb_setup)(struct anv_device *device, struct anv_batch *batch,
                      const unsigned entry_size[4])
 {
    const struct gen_device_info *devinfo = &device->info;
-#if GEN_IS_HASWELL
-   const unsigned push_constant_kb = devinfo->gt == 3 ? 32 : 16;
-#else
-   const unsigned push_constant_kb = GEN_GEN >= 8 ? 32 : 16;
-#endif
-
-   const unsigned urb_size_kb = gen_get_l3_config_urb_size(devinfo, l3_config);
 
    unsigned entries[4];
    unsigned start[4];
-   gen_get_urb_config(devinfo,
-                      1024 * push_constant_kb, 1024 * urb_size_kb,
+   gen_get_urb_config(devinfo, l3_config,
                       active_stages &
                          VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT,
                       active_stages & VK_SHADER_STAGE_GEOMETRY_BIT,

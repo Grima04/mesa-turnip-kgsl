@@ -7225,15 +7225,12 @@ genX(emit_urb_setup)(struct iris_context *ice,
                      bool tess_present, bool gs_present)
 {
    const struct gen_device_info *devinfo = &batch->screen->devinfo;
-   const struct gen_l3_config *l3_config = batch->screen->l3_config_3d;
-   const unsigned push_size_kB = 32;
    unsigned entries[4];
    unsigned start[4];
 
    ice->shaders.last_vs_entry_size = size[MESA_SHADER_VERTEX];
 
-   gen_get_urb_config(devinfo, 1024 * push_size_kB,
-                      1024 * gen_get_l3_config_urb_size(devinfo, l3_config),
+   gen_get_urb_config(devinfo, batch->screen->l3_config_3d,
                       tess_present, gs_present,
                       size, entries, start);
 

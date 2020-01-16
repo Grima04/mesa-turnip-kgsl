@@ -59,19 +59,23 @@
  */
 void
 gen_get_urb_config(const struct gen_device_info *devinfo,
-                   unsigned push_constant_bytes, unsigned urb_size_bytes,
+                   const struct gen_l3_config *l3_cfg,
                    bool tess_present, bool gs_present,
                    const unsigned entry_size[4],
                    unsigned entries[4], unsigned start[4])
 {
+   const unsigned urb_size_kB = gen_get_l3_config_urb_size(devinfo, l3_cfg);
+   const unsigned push_constant_kB =
+      (devinfo->gen >= 8 || (devinfo->is_haswell && devinfo->gt == 3)) ? 32 : 16;
+
    const bool active[4] = { true, tess_present, tess_present, gs_present };
 
    /* URB allocations must be done in 8k chunks. */
-   const unsigned chunk_size_bytes = 8192;
+   const unsigned chunk_size_kB = 8;
+   const unsigned chunk_size_bytes = chunk_size_kB * 1024;
 
-   const unsigned push_constant_chunks =
-      push_constant_bytes / chunk_size_bytes;
-   const unsigned urb_chunks = urb_size_bytes / chunk_size_bytes;
+   const unsigned push_constant_chunks = push_constant_kB / chunk_size_kB;
+   const unsigned urb_chunks = urb_size_kB / chunk_size_kB;
 
    /* From p35 of the Ivy Bridge PRM (section 1.7.1: 3DSTATE_URB_GS):
     *
