@@ -310,6 +310,23 @@ v3dv_CreateImage(VkDevice _device,
 }
 
 void
+v3dv_GetImageSubresourceLayout(VkDevice device,
+                               VkImage _image,
+                               const VkImageSubresource *subresource,
+                               VkSubresourceLayout *layout)
+{
+   V3DV_FROM_HANDLE(v3dv_image, image, _image);
+
+   const struct v3d_resource_slice *slice =
+      &image->slices[subresource->mipLevel];
+   layout->offset = slice->offset;
+   layout->rowPitch = slice->stride;
+   layout->depthPitch = image->cube_map_stride;
+   layout->arrayPitch = image->cube_map_stride;
+   layout->size = slice->size;
+}
+
+void
 v3dv_DestroyImage(VkDevice _device,
                   VkImage _image,
                   const VkAllocationCallbacks* pAllocator)
