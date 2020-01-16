@@ -116,13 +116,15 @@ emit_copy_layer_to_buffer_per_tile_list(struct v3dv_job *job,
 
    /* Store TLB to buffer */
    uint32_t width, height;
-   if (region->bufferRowLength == 0 || region->bufferImageHeight == 0) {
+   if (region->bufferRowLength == 0)
       width = image->extent.width;
-      height = image->extent.height;
-   } else {
+   else
       width = region->bufferRowLength;
+
+   if (region->bufferImageHeight == 0)
+      height = image->extent.height;
+   else
       height = region->bufferImageHeight;
-   }
 
    uint32_t buffer_stride = width * image->cpp;
    uint32_t buffer_offset =
