@@ -475,6 +475,18 @@ anv_get_format_plane(const struct gen_device_info *devinfo, VkFormat vk_format,
        (isl_layout->bpb == 24 || isl_layout->bpb == 48))
       return unsupported;
 
+   if (tiling == VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT) {
+      /* No non-power-of-two fourcc formats exist */
+      if (!util_is_power_of_two_or_zero(isl_layout->bpb))
+         return unsupported;
+
+      if (vk_format_is_depth_or_stencil(vk_format))
+         return unsupported;
+
+      if (isl_format_is_compressed(plane_format.isl_format))
+         return unsupported;
+   }
+
    if (tiling == VK_IMAGE_TILING_OPTIMAL &&
        !util_is_power_of_two_or_zero(isl_layout->bpb)) {
       /* Tiled formats *must* be power-of-two because we need up upload
@@ -908,6 +920,40 @@ anv_get_image_format_properties(
        */
    }
 
+   if (info->tiling == VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT) {
+      const VkPhysicalDeviceImageDrmFormatModifierInfoEXT *modifier_info =
+         vk_find_struct_const(info->pNext,
+                              PHYSICAL_DEVICE_IMAGE_DRM_FORMAT_MODIFIER_INFO_EXT);
+
+      /* Modifiers are only supported on simple 2D images */
+      if (info->type != VK_IMAGE_TYPE_2D)
+         goto unsupported;
+      maxArraySize = 1;
+      maxMipLevels = 1;
+      assert(sampleCounts == VK_SAMPLE_COUNT_1_BIT);
+
+      /* Modifiers are not yet supported for YCbCr */
+      const struct anv_format *format = anv_get_format(info->format);
+      if (format->n_planes > 1)
+         goto unsupported;
+
+      const struct isl_drm_modifier_info *isl_mod_info =
+         isl_drm_modifier_get_info(modifier_info->drmFormatModifier);
+      if (isl_mod_info->aux_usage == ISL_AUX_USAGE_CCS_E) {
+         /* If we have a CCS modifier, ensure that the format supports CCS
+          * and, if VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT is set, all of the
+          * formats in the format list are CCS compatible.
+          */
+         const VkImageFormatListCreateInfoKHR *fmt_list =
+            vk_find_struct_const(info->pNext,
+                                 IMAGE_FORMAT_LIST_CREATE_INFO_KHR);
+         if (!anv_formats_ccs_e_compatible(devinfo, info->flags,
+                                           info->format, info->tiling,
+                                           fmt_list))
+            goto unsupported;
+      }
+   }
+
    /* From the bspec section entitled "Surface Layout and Tiling",
     * pre-gen9 has a 2 GB limitation of the size in bytes,
     * gen9 and gen10 have a 256 GB limitation and gen11+
@@ -1034,6 +1080,9 @@ VkResult anv_GetPhysicalDeviceImageFormatProperties2(
       switch (s->sType) {
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_IMAGE_FORMAT_INFO:
          external_info = (const void *) s;
+         break;
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_DRM_FORMAT_MODIFIER_INFO_EXT:
+         /* anv_get_image_format_properties will handle this */
          break;
       case VK_STRUCTURE_TYPE_IMAGE_STENCIL_USAGE_CREATE_INFO_EXT:
          /* Ignore but don't warn */

@@ -159,19 +159,21 @@ add_surface(struct anv_image *image, struct anv_surface *surf, uint32_t plane)
 }
 
 
-static bool
-all_formats_ccs_e_compatible(const struct gen_device_info *devinfo,
-                             const VkImageFormatListCreateInfoKHR *fmt_list,
-                             struct anv_image *image)
+bool
+anv_formats_ccs_e_compatible(const struct gen_device_info *devinfo,
+                             VkImageCreateFlags create_flags,
+                             VkFormat vk_format,
+                             VkImageTiling vk_tiling,
+                             const VkImageFormatListCreateInfoKHR *fmt_list)
 {
    enum isl_format format =
-      anv_get_isl_format(devinfo, image->vk_format,
-                         VK_IMAGE_ASPECT_COLOR_BIT, image->tiling);
+      anv_get_isl_format(devinfo, vk_format,
+                         VK_IMAGE_ASPECT_COLOR_BIT, vk_tiling);
 
    if (!isl_format_supports_ccs_e(devinfo, format))
       return false;
 
-   if (!(image->create_flags & VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT))
+   if (!(create_flags & VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT))
       return true;
 
    if (!fmt_list || fmt_list->viewFormatCount == 0)
@@ -180,7 +182,7 @@ all_formats_ccs_e_compatible(const struct gen_device_info *devinfo,
    for (uint32_t i = 0; i < fmt_list->viewFormatCount; i++) {
       enum isl_format view_format =
          anv_get_isl_format(devinfo, fmt_list->pViewFormats[i],
-                            VK_IMAGE_ASPECT_COLOR_BIT, image->tiling);
+                            VK_IMAGE_ASPECT_COLOR_BIT, vk_tiling);
 
       if (!isl_formats_are_ccs_e_compatible(devinfo, format, view_format))
          return false;
@@ -654,7 +656,8 @@ anv_image_create(VkDevice _device,
                            IMAGE_FORMAT_LIST_CREATE_INFO_KHR);
 
    image->ccs_e_compatible =
-      all_formats_ccs_e_compatible(&device->info, fmt_list, image);
+      anv_formats_ccs_e_compatible(&device->info, image->create_flags,
+                                   image->vk_format, image->tiling, fmt_list);
 
    uint32_t b;
    for_each_bit(b, image->aspects) {
