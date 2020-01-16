@@ -246,10 +246,11 @@ bool si_shader_cache_load_shader(struct si_screen *sscreen,
 
 	if (entry) {
 		if (si_load_shader_binary(shader, entry->data)) {
-			p_atomic_inc(&sscreen->num_shader_cache_hits);
+			p_atomic_inc(&sscreen->num_memory_shader_cache_hits);
 			return true;
 		}
 	}
+	p_atomic_inc(&sscreen->num_memory_shader_cache_misses);
 
 	if (!sscreen->disk_shader_cache)
 		return false;
@@ -268,7 +269,7 @@ bool si_shader_cache_load_shader(struct si_screen *sscreen,
 				free(buffer);
 				si_shader_cache_insert_shader(sscreen, ir_sha1_cache_key,
 							      shader, false);
-				p_atomic_inc(&sscreen->num_shader_cache_hits);
+				p_atomic_inc(&sscreen->num_disk_shader_cache_hits);
 				return true;
 			}
 		} else {
@@ -281,6 +282,7 @@ bool si_shader_cache_load_shader(struct si_screen *sscreen,
 	}
 
 	free(buffer);
+	p_atomic_inc(&sscreen->num_disk_shader_cache_misses);
 	return false;
 }
 

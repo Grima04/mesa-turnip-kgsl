@@ -80,6 +80,7 @@ static const struct debug_named_value debug_options[] = {
 	{ "tex", DBG(TEX), "Print texture info" },
 	{ "compute", DBG(COMPUTE), "Print compute info" },
 	{ "vm", DBG(VM), "Print virtual addresses when creating resources" },
+	{ "cache_stats", DBG(CACHE_STATS), "Print shader cache statistics." },
 
 	/* Driver options: */
 	{ "forcedma", DBG(FORCE_SDMA), "Use SDMA for all operations when possible." },
@@ -770,6 +771,18 @@ static void si_destroy_screen(struct pipe_screen* pscreen)
 
 	if (!sscreen->ws->unref(sscreen->ws))
 		return;
+
+	if (sscreen->debug_flags & DBG(CACHE_STATS)) {
+		printf("live shader cache:   hits = %u, misses = %u\n",
+		       sscreen->live_shader_cache.hits,
+		       sscreen->live_shader_cache.misses);
+		printf("memory shader cache: hits = %u, misses = %u\n",
+		       sscreen->num_memory_shader_cache_hits,
+		       sscreen->num_memory_shader_cache_misses);
+		printf("disk shader cache:   hits = %u, misses = %u\n",
+		       sscreen->num_disk_shader_cache_hits,
+		       sscreen->num_disk_shader_cache_misses);
+	}
 
 	simple_mtx_destroy(&sscreen->aux_context_lock);
 

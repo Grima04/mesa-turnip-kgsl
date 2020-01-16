@@ -169,6 +169,7 @@ enum {
 	DBG_TEX,
 	DBG_COMPUTE,
 	DBG_VM,
+	DBG_CACHE_STATS,
 
 	/* Driver options: */
 	DBG_FORCE_SDMA,
@@ -540,7 +541,10 @@ struct si_screen {
 	 * are loading shaders on demand. This is a monotonic counter.
 	 */
 	unsigned			num_shaders_created;
-	unsigned			num_shader_cache_hits;
+	unsigned			num_memory_shader_cache_hits;
+	unsigned			num_memory_shader_cache_misses;
+	unsigned			num_disk_shader_cache_hits;
+	unsigned			num_disk_shader_cache_misses;
 
 	/* GPU load thread. */
 	simple_mtx_t			gpu_load_mutex;

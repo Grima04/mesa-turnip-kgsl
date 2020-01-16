@@ -251,7 +251,7 @@ static bool si_query_sw_begin(struct si_context *sctx,
 		break;
 	case SI_QUERY_NUM_SHADER_CACHE_HITS:
 		query->begin_result =
-			p_atomic_read(&sctx->screen->num_shader_cache_hits);
+			p_atomic_read(&sctx->screen->num_memory_shader_cache_hits);
 		break;
 	case SI_QUERY_PD_NUM_PRIMS_ACCEPTED:
 		query->begin_result = sctx->compute_num_verts_accepted;
@@ -425,7 +425,7 @@ static bool si_query_sw_end(struct si_context *sctx,
 		break;
 	case SI_QUERY_NUM_SHADER_CACHE_HITS:
 		query->end_result =
-			p_atomic_read(&sctx->screen->num_shader_cache_hits);
+			p_atomic_read(&sctx->screen->num_memory_shader_cache_hits);
 		break;
 	case SI_QUERY_PD_NUM_PRIMS_ACCEPTED:
 		query->end_result = sctx->compute_num_verts_accepted;

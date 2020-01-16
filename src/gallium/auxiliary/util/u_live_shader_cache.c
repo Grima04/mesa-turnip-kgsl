@@ -118,8 +118,10 @@ util_live_shader_cache_get(struct pipe_context *ctx,
    struct util_live_shader *shader = entry ? entry->data : NULL;
 
    /* Increase the refcount. */
-   if (shader)
+   if (shader) {
       pipe_reference(NULL, &shader->reference);
+      cache->hits++;
+   }
    simple_mtx_unlock(&cache->lock);
 
    /* Return if the shader already exists. */
@@ -148,6 +150,7 @@ util_live_shader_cache_get(struct pipe_context *ctx,
    } else {
       _mesa_hash_table_insert(cache->hashtable, shader->sha1, shader);
    }
+   cache->misses++;
    simple_mtx_unlock(&cache->lock);
 
    return shader;

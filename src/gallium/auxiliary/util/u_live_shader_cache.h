@@ -59,6 +59,8 @@ struct util_live_shader_cache {
    void *(*create_shader)(struct pipe_context *,
                           const struct pipe_shader_state *state);
    void (*destroy_shader)(struct pipe_context *, void *);
+
+   unsigned hits, misses;
 };
 
 struct util_live_shader {
