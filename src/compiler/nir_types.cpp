@@ -786,6 +786,12 @@ glsl_get_std140_base_alignment(const struct glsl_type *type, bool row_major)
 }
 
 unsigned
+glsl_get_std140_size(const struct glsl_type *type, bool row_major)
+{
+   return type->std140_size(row_major);
+}
+
+unsigned
 glsl_get_explicit_size(const struct glsl_type *type, bool align_to_stride)
 {
    return type->explicit_size(align_to_stride);
