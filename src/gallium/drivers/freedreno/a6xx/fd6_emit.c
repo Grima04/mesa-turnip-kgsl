@@ -1030,6 +1030,9 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 	}
 
 	if (dirty & (FD_DIRTY_FRAMEBUFFER | FD_DIRTY_RASTERIZER | FD_DIRTY_PROG)) {
+		struct fd_ringbuffer *ring = fd_submit_new_ringbuffer(
+				emit->ctx->batch->submit, 5 * 4, FD_RINGBUFFER_STREAMING);
+
 		unsigned nr = pfb->nr_cbufs;
 
 		if (ctx->rasterizer->rasterizer_discard)
@@ -1043,6 +1046,8 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 
 		OUT_PKT4(ring, REG_A6XX_SP_FS_OUTPUT_CNTL1, 1);
 		OUT_RING(ring, A6XX_SP_FS_OUTPUT_CNTL1_MRT(nr));
+
+		fd6_emit_take_group(emit, ring, FD6_GROUP_PROG_FB_RAST, ENABLE_DRAW);
 	}
 
 	fd6_emit_consts(emit, vs, PIPE_SHADER_VERTEX, FD6_GROUP_VS_CONST, ENABLE_ALL);
