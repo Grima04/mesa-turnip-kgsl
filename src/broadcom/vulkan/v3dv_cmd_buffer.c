@@ -1633,6 +1633,11 @@ cmd_buffer_emit_graphics_pipeline(struct v3dv_cmd_buffer *cmd_buffer)
    }
 
    cl_emit_prepacked(&job->bcl, &pipeline->cfg_bits);
+
+   /* FIXME: hardcoded values */
+   cl_emit(&job->bcl, ZERO_ALL_FLAT_SHADE_FLAGS, flags);
+   cl_emit(&job->bcl, ZERO_ALL_NON_PERSPECTIVE_FLAGS, flags);
+   cl_emit(&job->bcl, ZERO_ALL_CENTROID_FLAGS, flags);
 }
 
 /* FIXME: C&P from v3dx_draw. Refactor to common place? */
