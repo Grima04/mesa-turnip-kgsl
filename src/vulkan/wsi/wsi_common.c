@@ -373,6 +373,29 @@ wsi_create_native_image(const struct wsi_swapchain *chain,
       .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
    };
 
+   VkImageFormatListCreateInfoKHR image_format_list;
+   if (pCreateInfo->flags & VK_SWAPCHAIN_CREATE_MUTABLE_FORMAT_BIT_KHR) {
+      image_info.flags |= VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT |
+                          VK_IMAGE_CREATE_EXTENDED_USAGE_BIT_KHR;
+
+      const VkImageFormatListCreateInfoKHR *format_list =
+         vk_find_struct_const(pCreateInfo->pNext,
+                              IMAGE_FORMAT_LIST_CREATE_INFO_KHR);
+
+#ifndef NDEBUG
+      assume(format_list && format_list->viewFormatCount > 0);
+      bool format_found = false;
+      for (int i = 0; i < format_list->viewFormatCount; i++)
+         if (pCreateInfo->imageFormat == format_list->pViewFormats[i])
+            format_found = true;
+      assert(format_found);
+#endif
+
+      image_format_list = *format_list;
+      image_format_list.pNext = NULL;
+      __vk_append_struct(&image_info, &image_format_list);
+   }
+
    struct wsi_image_create_info image_wsi_info;
    VkImageDrmFormatModifierListCreateInfoEXT image_modifier_list;
 
@@ -433,8 +456,16 @@ wsi_create_native_image(const struct wsi_swapchain *chain,
             .type = VK_IMAGE_TYPE_2D,
             .tiling = VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT,
             .usage = pCreateInfo->imageUsage,
-            .flags = 0,
+            .flags = image_info.flags,
          };
+
+         VkImageFormatListCreateInfoKHR format_list;
+         if (image_info.flags & VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT) {
+            format_list = image_format_list;
+            format_list.pNext = NULL;
+            __vk_append_struct(&format_info, &format_list);
+         }
+
          VkImageFormatProperties2 format_props = {
             .sType = VK_STRUCTURE_TYPE_IMAGE_FORMAT_PROPERTIES_2,
             .pNext = NULL,
