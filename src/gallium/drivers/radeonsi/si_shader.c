@@ -1714,30 +1714,17 @@ static struct nir_shader *get_nir_shader(struct si_shader_selector *sel,
 	return NULL;
 }
 
-bool si_compile_shader(struct si_screen *sscreen,
-		       struct ac_llvm_compiler *compiler,
-		       struct si_shader *shader,
-		       struct pipe_debug_callback *debug)
+static bool si_llvm_compile_shader(struct si_screen *sscreen,
+				   struct ac_llvm_compiler *compiler,
+				   struct si_shader *shader,
+				   struct pipe_debug_callback *debug,
+				   struct nir_shader *nir,
+				   bool free_nir)
 {
 	struct si_shader_selector *sel = shader->selector;
 	struct si_shader_context ctx;
-	bool free_nir;
-	struct nir_shader *nir = get_nir_shader(sel, &free_nir);
-
-	/* Dump NIR before doing NIR->LLVM conversion in case the
-	 * conversion fails. */
-	if (si_can_dump_shader(sscreen, sel->type) &&
-	    !(sscreen->debug_flags & DBG(NO_NIR))) {
-		nir_print_shader(nir, stderr);
-		si_dump_streamout(&sel->so);
-	}
 
 	si_llvm_context_init(&ctx, sscreen, compiler, si_get_shader_wave_size(shader));
-
-	memset(shader->info.vs_output_param_offset, AC_EXP_PARAM_UNDEFINED,
-	       sizeof(shader->info.vs_output_param_offset));
-
-	shader->info.uses_instanceid = sel->info.uses_instanceid;
 
 	LLVMValueRef ngg_cull_main_fn = NULL;
 	if (shader->key.opt.ngg_culling) {
@@ -1981,6 +1968,37 @@ bool si_compile_shader(struct si_screen *sscreen,
 	}
 
 	si_llvm_dispose(&ctx);
+	return true;
+}
+
+bool si_compile_shader(struct si_screen *sscreen,
+		       struct ac_llvm_compiler *compiler,
+		       struct si_shader *shader,
+		       struct pipe_debug_callback *debug)
+{
+	struct si_shader_selector *sel = shader->selector;
+	bool free_nir;
+	struct nir_shader *nir = get_nir_shader(sel, &free_nir);
+
+	/* Dump NIR before doing NIR->LLVM conversion in case the
+	 * conversion fails. */
+	if (si_can_dump_shader(sscreen, sel->type) &&
+	    !(sscreen->debug_flags & DBG(NO_NIR))) {
+		nir_print_shader(nir, stderr);
+		si_dump_streamout(&sel->so);
+	}
+
+	memset(shader->info.vs_output_param_offset, AC_EXP_PARAM_UNDEFINED,
+	       sizeof(shader->info.vs_output_param_offset));
+
+	shader->info.uses_instanceid = sel->info.uses_instanceid;
+
+	/* TODO: ACO could compile non-monolithic shaders here (starting
+	 * with PS and NGG VS), but monolithic shaders should be compiled
+	 * by LLVM due to more complicated compilation.
+	 */
+	if (!si_llvm_compile_shader(sscreen, compiler, shader, debug, nir, free_nir))
+		return false;
 
 	/* Validate SGPR and VGPR usage for compute to detect compiler bugs.
 	 * LLVM 3.9svn has this bug.
@@ -2020,7 +2038,7 @@ bool si_compile_shader(struct si_screen *sscreen,
 		shader->info.num_input_sgprs += 1; /* scratch byte offset */
 
 	/* Calculate the number of fragment input VGPRs. */
-	if (ctx.type == PIPE_SHADER_FRAGMENT) {
+	if (sel->type == PIPE_SHADER_FRAGMENT) {
 		shader->info.num_input_vgprs = ac_get_fs_input_vgpr_cnt(&shader->config,
 						&shader->info.face_vgpr_index,
 						&shader->info.ancillary_vgpr_index);
