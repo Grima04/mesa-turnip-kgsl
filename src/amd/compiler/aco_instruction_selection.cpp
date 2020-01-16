@@ -2929,8 +2929,8 @@ void visit_store_vsgs_output(isel_context *ctx, nir_intrinsic_instr *instr)
          }
 
          aco_ptr<MTBUF_instruction> mtbuf{create_instruction<MTBUF_instruction>(aco_opcode::tbuffer_store_format_x, Format::MTBUF, 4, 0)};
-         mtbuf->operands[0] = vaddr_offset;
-         mtbuf->operands[1] = Operand(esgs_ring);
+         mtbuf->operands[0] = Operand(esgs_ring);
+         mtbuf->operands[1] = vaddr_offset;
          mtbuf->operands[2] = Operand(get_arg(ctx, ctx->args->es2gs_offset));
          mtbuf->operands[3] = Operand(elem);
          mtbuf->offen = !vaddr_offset.isUndefined();
@@ -3288,12 +3288,12 @@ void visit_load_input(isel_context *ctx, nir_intrinsic_instr *instr)
 
          if (use_mubuf) {
             Instruction *mubuf = bld.mubuf(opcode,
-                                           Definition(fetch_dst), fetch_index, list, soffset,
+                                           Definition(fetch_dst), list, fetch_index, soffset,
                                            fetch_offset, false, true).instr;
             static_cast<MUBUF_instruction*>(mubuf)->can_reorder = true;
          } else {
             Instruction *mtbuf = bld.mtbuf(opcode,
-                                           Definition(fetch_dst), fetch_index, list, soffset,
+                                           Definition(fetch_dst), list, fetch_index, soffset,
                                            fetch_dfmt, nfmt, fetch_offset, false, true).instr;
             static_cast<MTBUF_instruction*>(mtbuf)->can_reorder = true;
          }
@@ -3487,8 +3487,8 @@ void visit_load_per_vertex_input(isel_context *ctx, nir_intrinsic_instr *instr)
             aco_ptr<MUBUF_instruction> mubuf{create_instruction<MUBUF_instruction>(aco_opcode::buffer_load_dword, Format::MUBUF, 3, 1)};
             mubuf->definitions[0] = bld.def(v1);
             subelems[j] = mubuf->definitions[0].getTemp();
-            mubuf->operands[0] = Operand(offset);
-            mubuf->operands[1] = Operand(esgs_ring);
+            mubuf->operands[0] = Operand(esgs_ring);
+            mubuf->operands[1] = Operand(offset);
             mubuf->operands[2] = Operand(soffset);
             mubuf->offen = true;
             mubuf->offset = const_offset % 4096u;
@@ -3616,8 +3616,8 @@ void load_buffer(isel_context *ctx, unsigned num_components, Temp dst,
          lower = bld.tmp(v4);
          aco_ptr<MUBUF_instruction> mubuf{create_instruction<MUBUF_instruction>(op, Format::MUBUF, 3, 1)};
          mubuf->definitions[0] = Definition(lower);
-         mubuf->operands[0] = vaddr;
-         mubuf->operands[1] = Operand(rsrc);
+         mubuf->operands[0] = Operand(rsrc);
+         mubuf->operands[1] = vaddr;
          mubuf->operands[2] = soffset;
          mubuf->offen = (offset.type() == RegType::vgpr);
          mubuf->glc = glc;
@@ -3651,8 +3651,8 @@ void load_buffer(isel_context *ctx, unsigned num_components, Temp dst,
             unreachable("Load SSBO not implemented for this size.");
       }
       aco_ptr<MUBUF_instruction> mubuf{create_instruction<MUBUF_instruction>(op, Format::MUBUF, 3, 1)};
-      mubuf->operands[0] = vaddr;
-      mubuf->operands[1] = Operand(rsrc);
+      mubuf->operands[0] = Operand(rsrc);
+      mubuf->operands[1] = vaddr;
       mubuf->operands[2] = soffset;
       mubuf->offen = (offset.type() == RegType::vgpr);
       mubuf->glc = glc;
@@ -4228,9 +4228,10 @@ static Temp adjust_sample_index_using_fmask(isel_context *ctx, bool da, Temp coo
                   ? ac_get_sampler_dim(ctx->options->chip_class, GLSL_SAMPLER_DIM_2D, da)
                   : 0;
 
-   aco_ptr<MIMG_instruction> load{create_instruction<MIMG_instruction>(aco_opcode::image_load, Format::MIMG, 2, 1)};
-   load->operands[0] = Operand(coords);
-   load->operands[1] = Operand(fmask_desc_ptr);
+   aco_ptr<MIMG_instruction> load{create_instruction<MIMG_instruction>(aco_opcode::image_load, Format::MIMG, 3, 1)};
+   load->operands[0] = Operand(fmask_desc_ptr);
+   load->operands[1] = Operand(s4); /* no sampler */
+   load->operands[2] = Operand(coords);
    load->definitions[0] = Definition(fmask);
    load->glc = false;
    load->dlc = false;
@@ -4374,8 +4375,8 @@ void visit_image_load(isel_context *ctx, nir_intrinsic_instr *instr)
          unreachable(">4 channel buffer image load");
       }
       aco_ptr<MUBUF_instruction> load{create_instruction<MUBUF_instruction>(opcode, Format::MUBUF, 3, 1)};
-      load->operands[0] = Operand(vindex);
-      load->operands[1] = Operand(rsrc);
+      load->operands[0] = Operand(rsrc);
+      load->operands[1] = Operand(vindex);
       load->operands[2] = Operand((uint32_t) 0);
       Temp tmp;
       if (num_channels == instr->dest.ssa.num_components && dst.type() == RegType::vgpr)
@@ -4407,9 +4408,10 @@ void visit_image_load(isel_context *ctx, nir_intrinsic_instr *instr)
    bool level_zero = nir_src_is_const(instr->src[3]) && nir_src_as_uint(instr->src[3]) == 0;
    aco_opcode opcode = level_zero ? aco_opcode::image_load : aco_opcode::image_load_mip;
 
-   aco_ptr<MIMG_instruction> load{create_instruction<MIMG_instruction>(opcode, Format::MIMG, 2, 1)};
-   load->operands[0] = Operand(coords);
-   load->operands[1] = Operand(resource);
+   aco_ptr<MIMG_instruction> load{create_instruction<MIMG_instruction>(opcode, Format::MIMG, 3, 1)};
+   load->operands[0] = Operand(resource);
+   load->operands[1] = Operand(s4); /* no sampler */
+   load->operands[2] = Operand(coords);
    load->definitions[0] = Definition(tmp);
    load->glc = var->data.access & (ACCESS_VOLATILE | ACCESS_COHERENT) ? 1 : 0;
    load->dlc = load->glc && ctx->options->chip_class >= GFX10;
@@ -4455,8 +4457,8 @@ void visit_image_store(isel_context *ctx, nir_intrinsic_instr *instr)
          unreachable(">4 channel buffer image store");
       }
       aco_ptr<MUBUF_instruction> store{create_instruction<MUBUF_instruction>(opcode, Format::MUBUF, 4, 0)};
-      store->operands[0] = Operand(vindex);
-      store->operands[1] = Operand(rsrc);
+      store->operands[0] = Operand(rsrc);
+      store->operands[1] = Operand(vindex);
       store->operands[2] = Operand((uint32_t) 0);
       store->operands[3] = Operand(data);
       store->idxen = true;
@@ -4476,11 +4478,10 @@ void visit_image_store(isel_context *ctx, nir_intrinsic_instr *instr)
    bool level_zero = nir_src_is_const(instr->src[4]) && nir_src_as_uint(instr->src[4]) == 0;
    aco_opcode opcode = level_zero ? aco_opcode::image_store : aco_opcode::image_store_mip;
 
-   aco_ptr<MIMG_instruction> store{create_instruction<MIMG_instruction>(opcode, Format::MIMG, 4, 0)};
-   store->operands[0] = Operand(coords);
-   store->operands[1] = Operand(resource);
-   store->operands[2] = Operand(s4);
-   store->operands[3] = Operand(data);
+   aco_ptr<MIMG_instruction> store{create_instruction<MIMG_instruction>(opcode, Format::MIMG, 3, 0)};
+   store->operands[0] = Operand(resource);
+   store->operands[1] = Operand(data);
+   store->operands[2] = Operand(coords);
    store->glc = glc;
    store->dlc = false;
    store->dim = ac_get_image_dim(ctx->options->chip_class, dim, is_array);
@@ -4572,8 +4573,8 @@ void visit_image_atomic(isel_context *ctx, nir_intrinsic_instr *instr)
       Temp resource = get_sampler_desc(ctx, nir_instr_as_deref(instr->src[0].ssa->parent_instr), ACO_DESC_BUFFER, nullptr, true, true);
       //assert(ctx->options->chip_class < GFX9 && "GFX9 stride size workaround not yet implemented.");
       aco_ptr<MUBUF_instruction> mubuf{create_instruction<MUBUF_instruction>(buf_op, Format::MUBUF, 4, return_previous ? 1 : 0)};
-      mubuf->operands[0] = Operand(vindex);
-      mubuf->operands[1] = Operand(resource);
+      mubuf->operands[0] = Operand(resource);
+      mubuf->operands[1] = Operand(vindex);
       mubuf->operands[2] = Operand((uint32_t)0);
       mubuf->operands[3] = Operand(data);
       if (return_previous)
@@ -4591,11 +4592,10 @@ void visit_image_atomic(isel_context *ctx, nir_intrinsic_instr *instr)
 
    Temp coords = get_image_coords(ctx, instr, type);
    Temp resource = get_sampler_desc(ctx, nir_instr_as_deref(instr->src[0].ssa->parent_instr), ACO_DESC_IMAGE, nullptr, true, true);
-   aco_ptr<MIMG_instruction> mimg{create_instruction<MIMG_instruction>(image_op, Format::MIMG, 4, return_previous ? 1 : 0)};
-   mimg->operands[0] = Operand(coords);
-   mimg->operands[1] = Operand(resource);
-   mimg->operands[2] = Operand(s4); /* no sampler */
-   mimg->operands[3] = Operand(data);
+   aco_ptr<MIMG_instruction> mimg{create_instruction<MIMG_instruction>(image_op, Format::MIMG, 3, return_previous ? 1 : 0)};
+   mimg->operands[0] = Operand(resource);
+   mimg->operands[1] = Operand(data);
+   mimg->operands[2] = Operand(coords);
    if (return_previous)
       mimg->definitions[0] = Definition(dst);
    mimg->glc = return_previous;
@@ -4661,9 +4661,10 @@ void visit_image_size(isel_context *ctx, nir_intrinsic_instr *instr)
 
    Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
 
-   aco_ptr<MIMG_instruction> mimg{create_instruction<MIMG_instruction>(aco_opcode::image_get_resinfo, Format::MIMG, 2, 1)};
-   mimg->operands[0] = Operand(lod);
-   mimg->operands[1] = Operand(resource);
+   aco_ptr<MIMG_instruction> mimg{create_instruction<MIMG_instruction>(aco_opcode::image_get_resinfo, Format::MIMG, 3, 1)};
+   mimg->operands[0] = Operand(resource);
+   mimg->operands[1] = Operand(s4); /* no sampler */
+   mimg->operands[2] = Operand(lod);
    uint8_t& dmask = mimg->dmask;
    mimg->dim = ac_get_image_dim(ctx->options->chip_class, dim, is_array);
    mimg->dmask = (1 << instr->dest.ssa.num_components) - 1;
@@ -4823,8 +4824,8 @@ void visit_store_ssbo(isel_context *ctx, nir_intrinsic_instr *instr)
          }
       } else {
          aco_ptr<MUBUF_instruction> store{create_instruction<MUBUF_instruction>(vmem_op, Format::MUBUF, 4, 0)};
-         store->operands[0] = offset.type() == RegType::vgpr ? Operand(offset) : Operand(v1);
-         store->operands[1] = Operand(rsrc);
+         store->operands[0] = Operand(rsrc);
+         store->operands[1] = offset.type() == RegType::vgpr ? Operand(offset) : Operand(v1);
          store->operands[2] = offset.type() == RegType::sgpr ? Operand(offset) : Operand((uint32_t) 0);
          store->operands[3] = Operand(write_data);
          store->offset = start * elem_size_bytes;
@@ -4912,8 +4913,8 @@ void visit_atomic_ssbo(isel_context *ctx, nir_intrinsic_instr *instr)
    }
    aco_opcode op = instr->dest.ssa.bit_size == 32 ? op32 : op64;
    aco_ptr<MUBUF_instruction> mubuf{create_instruction<MUBUF_instruction>(op, Format::MUBUF, 4, return_previous ? 1 : 0)};
-   mubuf->operands[0] = offset.type() == RegType::vgpr ? Operand(offset) : Operand(v1);
-   mubuf->operands[1] = Operand(rsrc);
+   mubuf->operands[0] = Operand(rsrc);
+   mubuf->operands[1] = offset.type() == RegType::vgpr ? Operand(offset) : Operand(v1);
    mubuf->operands[2] = offset.type() == RegType::sgpr ? Operand(offset) : Operand((uint32_t) 0);
    mubuf->operands[3] = Operand(data);
    if (return_previous)
@@ -5021,8 +5022,8 @@ void visit_load_global(isel_context *ctx, nir_intrinsic_instr *instr)
          Temp rsrc = get_gfx6_global_rsrc(bld, addr);
 
          aco_ptr<MUBUF_instruction> mubuf{create_instruction<MUBUF_instruction>(op, Format::MUBUF, 3, 1)};
-         mubuf->operands[0] = addr.type() == RegType::vgpr ? Operand(addr) : Operand(v1);
-         mubuf->operands[1] = Operand(rsrc);
+         mubuf->operands[0] = Operand(rsrc);
+         mubuf->operands[1] = addr.type() == RegType::vgpr ? Operand(addr) : Operand(v1);
          mubuf->operands[2] = Operand(0u);
          mubuf->glc = glc;
          mubuf->dlc = false;
@@ -5202,8 +5203,8 @@ void visit_store_global(isel_context *ctx, nir_intrinsic_instr *instr)
          Temp rsrc = get_gfx6_global_rsrc(bld, addr);
 
          aco_ptr<MUBUF_instruction> mubuf{create_instruction<MUBUF_instruction>(op, Format::MUBUF, 4, 0)};
-         mubuf->operands[0] = addr.type() == RegType::vgpr ? Operand(addr) : Operand(v1);
-         mubuf->operands[1] = Operand(rsrc);
+         mubuf->operands[0] = Operand(rsrc);
+         mubuf->operands[1] = addr.type() == RegType::vgpr ? Operand(addr) : Operand(v1);
          mubuf->operands[2] = Operand(0u);
          mubuf->operands[3] = Operand(write_data);
          mubuf->glc = glc;
@@ -5360,8 +5361,8 @@ void visit_global_atomic(isel_context *ctx, nir_intrinsic_instr *instr)
       aco_opcode op = instr->dest.ssa.bit_size == 32 ? op32 : op64;
 
       aco_ptr<MUBUF_instruction> mubuf{create_instruction<MUBUF_instruction>(op, Format::MUBUF, 4, return_previous ? 1 : 0)};
-      mubuf->operands[0] = addr.type() == RegType::vgpr ? Operand(addr) : Operand(v1);
-      mubuf->operands[1] = Operand(rsrc);
+      mubuf->operands[0] = Operand(rsrc);
+      mubuf->operands[1] = addr.type() == RegType::vgpr ? Operand(addr) : Operand(v1);
       mubuf->operands[2] = Operand(0u);
       mubuf->operands[3] = Operand(data);
       if (return_previous)
@@ -5589,12 +5590,12 @@ void visit_load_scratch(isel_context *ctx, nir_intrinsic_instr *instr) {
       case 8: {
          std::array<Temp,NIR_MAX_VEC_COMPONENTS> elems;
          Temp lower = bld.mubuf(aco_opcode::buffer_load_dwordx4,
-                                bld.def(v4), offset, rsrc,
+                                bld.def(v4), rsrc, offset,
                                 ctx->program->scratch_offset, 0, true);
          Temp upper = bld.mubuf(dst.size() == 6 ? aco_opcode::buffer_load_dwordx2 :
                                                   aco_opcode::buffer_load_dwordx4,
                                 dst.size() == 6 ? bld.def(v2) : bld.def(v4),
-                                offset, rsrc, ctx->program->scratch_offset, 16, true);
+                                rsrc, offset, ctx->program->scratch_offset, 16, true);
          emit_split_vector(ctx, lower, 2);
          elems[0] = emit_extract_vector(ctx, lower, 0, v2);
          elems[1] = emit_extract_vector(ctx, lower, 1, v2);
@@ -5619,7 +5620,7 @@ void visit_load_scratch(isel_context *ctx, nir_intrinsic_instr *instr) {
          unreachable("Wrong dst size for nir_intrinsic_load_scratch");
    }
 
-   bld.mubuf(op, Definition(dst), offset, rsrc, ctx->program->scratch_offset, 0, true);
+   bld.mubuf(op, Definition(dst), rsrc, offset, ctx->program->scratch_offset, 0, true);
    emit_split_vector(ctx, dst, instr->num_components);
 }
 
@@ -5680,7 +5681,7 @@ void visit_store_scratch(isel_context *ctx, nir_intrinsic_instr *instr) {
             unreachable("Invalid data size for nir_intrinsic_store_scratch.");
       }
 
-      bld.mubuf(op, offset, rsrc, ctx->program->scratch_offset, write_data, start * elem_size_bytes, true);
+      bld.mubuf(op, rsrc, offset, ctx->program->scratch_offset, write_data, start * elem_size_bytes, true);
    }
 }
 
@@ -5784,8 +5785,8 @@ void visit_emit_vertex_with_counter(isel_context *ctx, nir_intrinsic_instr *inst
             }
 
             aco_ptr<MTBUF_instruction> mtbuf{create_instruction<MTBUF_instruction>(aco_opcode::tbuffer_store_format_x, Format::MTBUF, 4, 0)};
-            mtbuf->operands[0] = vaddr_offset;
-            mtbuf->operands[1] = Operand(gsvs_ring);
+            mtbuf->operands[0] = Operand(gsvs_ring);
+            mtbuf->operands[1] = vaddr_offset;
             mtbuf->operands[2] = Operand(get_arg(ctx, ctx->args->gs2vs_offset));
             mtbuf->operands[3] = Operand(ctx->outputs.outputs[i][j]);
             mtbuf->offen = !vaddr_offset.isUndefined();
@@ -6110,8 +6111,8 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
 
          aco_ptr<MUBUF_instruction> load{create_instruction<MUBUF_instruction>(aco_opcode::buffer_load_dwordx2, Format::MUBUF, 3, 1)};
          load->definitions[0] = Definition(sample_pos);
-         load->operands[0] = Operand(addr);
-         load->operands[1] = Operand(rsrc);
+         load->operands[0] = Operand(rsrc);
+         load->operands[1] = Operand(addr);
          load->operands[2] = Operand(0u);
          load->offset = sample_pos_offset;
          load->offen = 0;
@@ -7340,9 +7341,10 @@ void visit_tex(isel_context *ctx, nir_tex_instr *instr)
       if (tmp_dst.id() == dst.id() && div_by_6)
          tmp_dst = bld.tmp(tmp_dst.regClass());
 
-      tex.reset(create_instruction<MIMG_instruction>(aco_opcode::image_get_resinfo, Format::MIMG, 2, 1));
-      tex->operands[0] = Operand(as_vgpr(ctx,lod));
-      tex->operands[1] = Operand(resource);
+      tex.reset(create_instruction<MIMG_instruction>(aco_opcode::image_get_resinfo, Format::MIMG, 3, 1));
+      tex->operands[0] = Operand(resource);
+      tex->operands[1] = Operand(s4); /* no sampler */
+      tex->operands[2] = Operand(as_vgpr(ctx,lod));
       if (ctx->options->chip_class == GFX9 &&
           instr->op == nir_texop_txs &&
           instr->sampler_dim == GLSL_SAMPLER_DIM_1D &&
@@ -7380,9 +7382,10 @@ void visit_tex(isel_context *ctx, nir_tex_instr *instr)
    Temp tg4_compare_cube_wa64 = Temp();
 
    if (tg4_integer_workarounds) {
-      tex.reset(create_instruction<MIMG_instruction>(aco_opcode::image_get_resinfo, Format::MIMG, 2, 1));
-      tex->operands[0] = bld.vop1(aco_opcode::v_mov_b32, bld.def(v1), Operand(0u));
-      tex->operands[1] = Operand(resource);
+      tex.reset(create_instruction<MIMG_instruction>(aco_opcode::image_get_resinfo, Format::MIMG, 3, 1));
+      tex->operands[0] = Operand(resource);
+      tex->operands[1] = Operand(s4); /* no sampler */
+      tex->operands[2] = bld.vop1(aco_opcode::v_mov_b32, bld.def(v1), Operand(0u));
       tex->dim = dim;
       tex->dmask = 0x3;
       tex->da = da;
@@ -7537,8 +7540,8 @@ void visit_tex(isel_context *ctx, nir_tex_instr *instr)
          tmp_dst = bld.tmp(RegType::vgpr, last_bit);
 
       aco_ptr<MUBUF_instruction> mubuf{create_instruction<MUBUF_instruction>(op, Format::MUBUF, 3, 1)};
-      mubuf->operands[0] = Operand(coords);
-      mubuf->operands[1] = Operand(resource);
+      mubuf->operands[0] = Operand(resource);
+      mubuf->operands[1] = Operand(coords);
       mubuf->operands[2] = Operand((uint32_t) 0);
       mubuf->definitions[0] = Definition(tmp_dst);
       mubuf->idxen = true;
@@ -7556,9 +7559,10 @@ void visit_tex(isel_context *ctx, nir_tex_instr *instr)
        instr->op == nir_texop_fragment_fetch ||
        instr->op == nir_texop_fragment_mask_fetch) {
       aco_opcode op = level_zero || instr->sampler_dim == GLSL_SAMPLER_DIM_MS || instr->sampler_dim == GLSL_SAMPLER_DIM_SUBPASS_MS ? aco_opcode::image_load : aco_opcode::image_load_mip;
-      tex.reset(create_instruction<MIMG_instruction>(op, Format::MIMG, 2, 1));
-      tex->operands[0] = Operand(arg);
-      tex->operands[1] = Operand(resource);
+      tex.reset(create_instruction<MIMG_instruction>(op, Format::MIMG, 3, 1));
+      tex->operands[0] = Operand(resource);
+      tex->operands[1] = Operand(s4); /* no sampler */
+      tex->operands[2] = Operand(arg);
       tex->dim = dim;
       tex->dmask = dmask;
       tex->unrm = true;
@@ -7644,9 +7648,9 @@ void visit_tex(isel_context *ctx, nir_tex_instr *instr)
    }
 
    tex.reset(create_instruction<MIMG_instruction>(opcode, Format::MIMG, 3, 1));
-   tex->operands[0] = Operand(arg);
-   tex->operands[1] = Operand(resource);
-   tex->operands[2] = Operand(sampler);
+   tex->operands[0] = Operand(resource);
+   tex->operands[1] = Operand(sampler);
+   tex->operands[2] = Operand(arg);
    tex->dim = dim;
    tex->dmask = dmask;
    tex->da = da;
@@ -8753,8 +8757,8 @@ static void emit_stream_output(isel_context *ctx,
       }
 
       aco_ptr<MUBUF_instruction> store{create_instruction<MUBUF_instruction>(opcode, Format::MUBUF, 4, 0)};
-      store->operands[0] = Operand(so_write_offset[buf]);
-      store->operands[1] = Operand(so_buffers[buf]);
+      store->operands[0] = Operand(so_buffers[buf]);
+      store->operands[1] = Operand(so_write_offset[buf]);
       store->operands[2] = Operand((uint32_t) 0);
       store->operands[3] = Operand(write_data);
       if (offset > 4095) {
@@ -9118,8 +9122,8 @@ void select_gs_copy_shader(Program *program, struct nir_shader *gs_shader,
 
             aco_ptr<MUBUF_instruction> mubuf{create_instruction<MUBUF_instruction>(aco_opcode::buffer_load_dword, Format::MUBUF, 3, 1)};
             mubuf->definitions[0] = bld.def(v1);
-            mubuf->operands[0] = Operand(voffset);
-            mubuf->operands[1] = Operand(gsvs_ring);
+            mubuf->operands[0] = Operand(gsvs_ring);
+            mubuf->operands[1] = Operand(voffset);
             mubuf->operands[2] = Operand(0u);
             mubuf->offen = true;
             mubuf->offset = const_offset;
