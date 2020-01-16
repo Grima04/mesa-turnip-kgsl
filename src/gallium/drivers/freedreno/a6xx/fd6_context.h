@@ -143,8 +143,16 @@ emit_marker6(struct fd_ringbuffer *ring, int scratch_idx)
 {
 	extern unsigned marker_cnt;
 	unsigned reg = REG_A6XX_CP_SCRATCH_REG(scratch_idx);
-	OUT_PKT4(ring, reg, 1);
-	OUT_RING(ring, ++marker_cnt);
+#ifdef DEBUG
+#  define __EMIT_MARKER 1
+#else
+#  define __EMIT_MARKER 0
+#endif
+	if (__EMIT_MARKER) {
+		OUT_WFI5(ring);
+		OUT_PKT4(ring, reg, 1);
+		OUT_RING(ring, ++marker_cnt);
+	}
 }
 
 #endif /* FD6_CONTEXT_H_ */
