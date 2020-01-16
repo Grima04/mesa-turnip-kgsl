@@ -451,7 +451,7 @@ TEST_P(validation_test, vstride_on_align16_must_be_0_or_4)
 
    brw_set_default_access_mode(p, BRW_ALIGN_16);
 
-   for (unsigned i = 0; i < sizeof(vstride) / sizeof(vstride[0]); i++) {
+   for (unsigned i = 0; i < ARRAY_SIZE(vstride); i++) {
       brw_ADD(p, g0, g0, g0);
       brw_inst_set_src0_vstride(&devinfo, last_inst, vstride[i].vstride);
 
@@ -460,7 +460,7 @@ TEST_P(validation_test, vstride_on_align16_must_be_0_or_4)
       clear_instructions(p);
    }
 
-   for (unsigned i = 0; i < sizeof(vstride) / sizeof(vstride[0]); i++) {
+   for (unsigned i = 0; i < ARRAY_SIZE(vstride); i++) {
       brw_ADD(p, g0, g0, g0);
       brw_inst_set_src1_vstride(&devinfo, last_inst, vstride[i].vstride);
 
@@ -795,7 +795,7 @@ TEST_P(validation_test, packed_byte_destination)
       { BRW_REGISTER_TYPE_B , BRW_REGISTER_TYPE_D , 0, 0, 0, false },
    };
 
-   for (unsigned i = 0; i < sizeof(move) / sizeof(move[0]); i++) {
+   for (unsigned i = 0; i < ARRAY_SIZE(move); i++) {
       brw_MOV(p, retype(g0, move[i].dst_type), retype(g0, move[i].src_type));
       brw_inst_set_src0_negate(&devinfo, last_inst, move[i].neg);
       brw_inst_set_src0_abs(&devinfo, last_inst, move[i].abs);
@@ -892,7 +892,7 @@ TEST_P(validation_test, byte_64bit_conversion)
    if (devinfo.gen < 8)
       return;
 
-   for (unsigned i = 0; i < sizeof(inst) / sizeof(inst[0]); i++) {
+   for (unsigned i = 0; i < ARRAY_SIZE(inst); i++) {
       if (!devinfo.has_64bit_types && type_sz(inst[i].src_type) == 8)
          continue;
 
@@ -988,7 +988,7 @@ TEST_P(validation_test, half_float_conversion)
    if (devinfo.gen < 8)
       return;
 
-   for (unsigned i = 0; i < sizeof(inst) / sizeof(inst[0]); i++) {
+   for (unsigned i = 0; i < ARRAY_SIZE(inst); i++) {
       if (!devinfo.has_64bit_types &&
           (type_sz(inst[i].src_type) == 8 || type_sz(inst[i].dst_type) == 8)) {
          continue;
@@ -1068,7 +1068,7 @@ TEST_P(validation_test, mixed_float_source_indirect_addressing)
    if (devinfo.gen < 8)
       return;
 
-   for (unsigned i = 0; i < sizeof(inst) / sizeof(inst[0]); i++) {
+   for (unsigned i = 0; i < ARRAY_SIZE(inst); i++) {
       brw_ADD(p, retype(g0, inst[i].dst_type),
                  retype(g0, inst[i].src0_type),
                  retype(g0, inst[i].src1_type));
@@ -1122,7 +1122,7 @@ TEST_P(validation_test, mixed_float_align1_simd16)
    if (devinfo.gen < 8)
       return;
 
-   for (unsigned i = 0; i < sizeof(inst) / sizeof(inst[0]); i++) {
+   for (unsigned i = 0; i < ARRAY_SIZE(inst); i++) {
       brw_ADD(p, retype(g0, inst[i].dst_type),
                  retype(g0, inst[i].src0_type),
                  retype(g0, inst[i].src1_type));
@@ -1189,7 +1189,7 @@ TEST_P(validation_test, mixed_float_align1_packed_fp16_dst_acc_read_offset_0)
    if (devinfo.gen < 8)
       return;
 
-   for (unsigned i = 0; i < sizeof(inst) / sizeof(inst[0]); i++) {
+   for (unsigned i = 0; i < ARRAY_SIZE(inst); i++) {
       brw_ADD(p, retype(g0, inst[i].dst_type),
                  retype(inst[i].read_acc ? acc0 : g0, inst[i].src0_type),
                  retype(g0, inst[i].src1_type));
@@ -1265,7 +1265,7 @@ TEST_P(validation_test, mixed_float_fp16_dest_with_acc)
    if (devinfo.gen < 8)
       return;
 
-   for (unsigned i = 0; i < sizeof(inst) / sizeof(inst[0]); i++) {
+   for (unsigned i = 0; i < ARRAY_SIZE(inst); i++) {
       if (inst[i].opcode == BRW_OPCODE_MAC) {
          brw_MAC(p, retype(g0, inst[i].dst_type),
                     retype(g0, inst[i].src0_type),
@@ -1332,7 +1332,7 @@ TEST_P(validation_test, mixed_float_align1_math_strided_fp16_inputs)
    if (devinfo.gen < 9)
       return;
 
-   for (unsigned i = 0; i < sizeof(inst) / sizeof(inst[0]); i++) {
+   for (unsigned i = 0; i < ARRAY_SIZE(inst); i++) {
       gen6_math(p, retype(g0, inst[i].dst_type),
                    BRW_MATH_FUNCTION_POW,
                    retype(g0, inst[i].src0_type),
@@ -1407,7 +1407,7 @@ TEST_P(validation_test, mixed_float_align1_packed_fp16_dst)
    if (devinfo.gen < 8)
       return;
 
-   for (unsigned i = 0; i < sizeof(inst) / sizeof(inst[0]); i++) {
+   for (unsigned i = 0; i < ARRAY_SIZE(inst); i++) {
       brw_ADD(p, retype(g0, inst[i].dst_type),
                  retype(g0, inst[i].src0_type),
                  retype(g0, inst[i].src1_type));
@@ -1478,7 +1478,7 @@ TEST_P(validation_test, mixed_float_align16_packed_data)
 
    brw_set_default_access_mode(p, BRW_ALIGN_16);
 
-   for (unsigned i = 0; i < sizeof(inst) / sizeof(inst[0]); i++) {
+   for (unsigned i = 0; i < ARRAY_SIZE(inst); i++) {
       brw_ADD(p, retype(g0, inst[i].dst_type),
                  retype(g0, inst[i].src0_type),
                  retype(g0, inst[i].src1_type));
@@ -1529,7 +1529,7 @@ TEST_P(validation_test, mixed_float_align16_no_simd16)
 
    brw_set_default_access_mode(p, BRW_ALIGN_16);
 
-   for (unsigned i = 0; i < sizeof(inst) / sizeof(inst[0]); i++) {
+   for (unsigned i = 0; i < ARRAY_SIZE(inst); i++) {
       brw_ADD(p, retype(g0, inst[i].dst_type),
                  retype(g0, inst[i].src0_type),
                  retype(g0, inst[i].src1_type));
@@ -1580,7 +1580,7 @@ TEST_P(validation_test, mixed_float_align16_no_acc_read)
 
    brw_set_default_access_mode(p, BRW_ALIGN_16);
 
-   for (unsigned i = 0; i < sizeof(inst) / sizeof(inst[0]); i++) {
+   for (unsigned i = 0; i < ARRAY_SIZE(inst); i++) {
       brw_ADD(p, retype(g0, inst[i].dst_type),
                  retype(inst[i].read_acc ? acc0 : g0, inst[i].src0_type),
                  retype(g0, inst[i].src1_type));
@@ -1635,7 +1635,7 @@ TEST_P(validation_test, mixed_float_align16_math_packed_format)
 
    brw_set_default_access_mode(p, BRW_ALIGN_16);
 
-   for (unsigned i = 0; i < sizeof(inst) / sizeof(inst[0]); i++) {
+   for (unsigned i = 0; i < ARRAY_SIZE(inst); i++) {
       gen6_math(p, retype(g0, inst[i].dst_type),
                    BRW_MATH_FUNCTION_POW,
                    retype(g0, inst[i].src0_type),
@@ -1672,7 +1672,7 @@ TEST_P(validation_test, vector_immediate_destination_alignment)
       { BRW_REGISTER_TYPE_W, BRW_REGISTER_TYPE_UV,  1, BRW_EXECUTE_8, false },
    };
 
-   for (unsigned i = 0; i < sizeof(move) / sizeof(move[0]); i++) {
+   for (unsigned i = 0; i < ARRAY_SIZE(move); i++) {
       /* UV type is Gen6+ */
       if (devinfo.gen < 6 &&
           move[i].src_type == BRW_REGISTER_TYPE_UV)
@@ -1714,7 +1714,7 @@ TEST_P(validation_test, vector_immediate_destination_stride)
       { BRW_REGISTER_TYPE_B, BRW_REGISTER_TYPE_UV, BRW_HORIZONTAL_STRIDE_2, true  },
    };
 
-   for (unsigned i = 0; i < sizeof(move) / sizeof(move[0]); i++) {
+   for (unsigned i = 0; i < ARRAY_SIZE(move); i++) {
       /* UV type is Gen6+ */
       if (devinfo.gen < 6 &&
           move[i].src_type == BRW_REGISTER_TYPE_UV)
@@ -1874,7 +1874,7 @@ TEST_P(validation_test, qword_low_power_align1_regioning_restrictions)
    if (devinfo.gen >= 12)
       return;
 
-   for (unsigned i = 0; i < sizeof(inst) / sizeof(inst[0]); i++) {
+   for (unsigned i = 0; i < ARRAY_SIZE(inst); i++) {
       if (!devinfo.has_64bit_types &&
           (type_sz(inst[i].dst_type) == 8 || type_sz(inst[i].src_type) == 8))
          continue;
@@ -1998,7 +1998,7 @@ TEST_P(validation_test, qword_low_power_no_indirect_addressing)
    if (devinfo.gen < 8)
       return;
 
-   for (unsigned i = 0; i < sizeof(inst) / sizeof(inst[0]); i++) {
+   for (unsigned i = 0; i < ARRAY_SIZE(inst); i++) {
       if (!devinfo.has_64bit_types &&
           (type_sz(inst[i].dst_type) == 8 || type_sz(inst[i].src_type) == 8))
          continue;
@@ -2138,7 +2138,7 @@ TEST_P(validation_test, qword_low_power_no_64bit_arf)
    if (devinfo.gen < 8)
       return;
 
-   for (unsigned i = 0; i < sizeof(inst) / sizeof(inst[0]); i++) {
+   for (unsigned i = 0; i < ARRAY_SIZE(inst); i++) {
       if (!devinfo.has_64bit_types &&
           (type_sz(inst[i].dst_type) == 8 || type_sz(inst[i].src_type) == 8))
          continue;
@@ -2241,7 +2241,7 @@ TEST_P(validation_test, align16_64_bit_integer)
 
    brw_set_default_access_mode(p, BRW_ALIGN_16);
 
-   for (unsigned i = 0; i < sizeof(inst) / sizeof(inst[0]); i++) {
+   for (unsigned i = 0; i < ARRAY_SIZE(inst); i++) {
       if (inst[i].opcode == BRW_OPCODE_MOV) {
          brw_MOV(p, retype(g0, inst[i].dst_type),
                     retype(g0, inst[i].src_type));
@@ -2347,7 +2347,7 @@ TEST_P(validation_test, qword_low_power_no_depctrl)
    if (devinfo.gen >= 12)
       return;
 
-   for (unsigned i = 0; i < sizeof(inst) / sizeof(inst[0]); i++) {
+   for (unsigned i = 0; i < ARRAY_SIZE(inst); i++) {
       if (!devinfo.has_64bit_types &&
           (type_sz(inst[i].dst_type) == 8 || type_sz(inst[i].src_type) == 8))
          continue;
