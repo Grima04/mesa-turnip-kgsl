@@ -955,6 +955,19 @@ struct tu_cmd_buffer
    bool wait_for_idle;
 };
 
+/* Temporary struct for tracking a register state to be written, used by
+ * a6xx-pack.h and tu_cs_emit_regs()
+ */
+struct tu_reg_value {
+   uint32_t reg;
+   uint64_t value;
+   bool is_address;
+   struct tu_bo *bo;
+   bool bo_write;
+   uint32_t bo_offset;
+   uint32_t bo_shift;
+};
+
 unsigned
 tu6_emit_event_write(struct tu_cmd_buffer *cmd,
                      struct tu_cs *cs,

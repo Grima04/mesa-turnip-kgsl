@@ -29,7 +29,6 @@
 
 #include "registers/adreno_pm4.xml.h"
 #include "registers/adreno_common.xml.h"
-#include "registers/a6xx.xml.h"
 
 #include "vk_format.h"
 
@@ -405,8 +404,8 @@ tu6_emit_zs(struct tu_cmd_buffer *cmd,
 
    tu_cs_emit_pkt4(cs, REG_A6XX_RB_DEPTH_BUFFER_INFO, 6);
    tu_cs_emit(cs, A6XX_RB_DEPTH_BUFFER_INFO_DEPTH_FORMAT(fmt));
-   tu_cs_emit(cs, A6XX_RB_DEPTH_BUFFER_PITCH(tu_image_stride(iview->image, iview->base_mip)));
-   tu_cs_emit(cs, A6XX_RB_DEPTH_BUFFER_ARRAY_PITCH(iview->image->layout.layer_size));
+   tu_cs_emit(cs, A6XX_RB_DEPTH_BUFFER_PITCH(tu_image_stride(iview->image, iview->base_mip)).value);
+   tu_cs_emit(cs, A6XX_RB_DEPTH_BUFFER_ARRAY_PITCH(iview->image->layout.layer_size).value);
    tu_cs_emit_qw(cs, tu_image_base(iview->image, iview->base_mip, iview->base_layer));
    tu_cs_emit(cs, cmd->state.pass->attachments[a].gmem_offset);
 
@@ -460,8 +459,8 @@ tu6_emit_mrt(struct tu_cmd_buffer *cmd,
       tu_cs_emit(cs, A6XX_RB_MRT_BUF_INFO_COLOR_FORMAT(format->rb) |
                         A6XX_RB_MRT_BUF_INFO_COLOR_TILE_MODE(tile_mode) |
                         A6XX_RB_MRT_BUF_INFO_COLOR_SWAP(format->swap));
-      tu_cs_emit(cs, A6XX_RB_MRT_PITCH(tu_image_stride(iview->image, iview->base_mip)));
-      tu_cs_emit(cs, A6XX_RB_MRT_ARRAY_PITCH(iview->image->layout.layer_size));
+      tu_cs_emit(cs, A6XX_RB_MRT_PITCH(i, tu_image_stride(iview->image, iview->base_mip)).value);
+      tu_cs_emit(cs, A6XX_RB_MRT_ARRAY_PITCH(i, iview->image->layout.layer_size).value);
       tu_cs_emit_qw(cs, tu_image_base(iview->image, iview->base_mip, iview->base_layer));
       tu_cs_emit(cs, cmd->state.pass->attachments[a].gmem_offset);
 
@@ -612,8 +611,8 @@ tu6_emit_blit_info(struct tu_cmd_buffer *cmd,
                      COND(iview->image->layout.ubwc_size,
                           A6XX_RB_BLIT_DST_INFO_FLAGS));
    tu_cs_emit_qw(cs, tu_image_base(iview->image, iview->base_mip, iview->base_layer));
-   tu_cs_emit(cs, A6XX_RB_BLIT_DST_PITCH(tu_image_stride(iview->image, iview->base_mip)));
-   tu_cs_emit(cs, A6XX_RB_BLIT_DST_ARRAY_PITCH(iview->image->layout.layer_size));
+   tu_cs_emit(cs, A6XX_RB_BLIT_DST_PITCH(tu_image_stride(iview->image, iview->base_mip)).value);
+   tu_cs_emit(cs, A6XX_RB_BLIT_DST_ARRAY_PITCH(iview->image->layout.layer_size).value);
 
    if (iview->image->layout.ubwc_size) {
       tu_cs_emit_pkt4(cs, REG_A6XX_RB_BLIT_FLAG_DST_LO, 3);
