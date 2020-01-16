@@ -126,6 +126,18 @@ tu_image_create(VkDevice _device,
       ubwc_enabled = false;
    }
 
+   /* Disable UBWC for storage images.
+    *
+    * The closed GL driver skips UBWC for storage images (and additionally
+    * uses linear for writeonly images).  We seem to have image tiling working
+    * in freedreno in general, so turnip matches that.  freedreno also enables
+    * UBWC on images, but it's not really tested due to the lack of
+    * UBWC-enabled mipmaps in freedreno currently.  Just match the closed GL
+    * behavior of no UBWC.
+   */
+   if (image->usage & VK_IMAGE_USAGE_STORAGE_BIT)
+      ubwc_enabled = false;
+
    uint32_t ubwc_blockwidth, ubwc_blockheight;
    fdl6_get_ubwc_blockwidth(&image->layout,
                             &ubwc_blockwidth, &ubwc_blockheight);
