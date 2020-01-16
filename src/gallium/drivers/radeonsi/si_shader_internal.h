@@ -196,8 +196,8 @@ si_shader_context_from_abi(struct ac_shader_abi *abi)
 	return container_of(abi, ctx, abi);
 }
 
-bool si_is_multi_part_shader(struct si_shader_context *ctx);
-bool si_is_merged_shader(struct si_shader_context *ctx);
+bool si_is_multi_part_shader(struct si_shader *shader);
+bool si_is_merged_shader(struct si_shader *shader);
 void si_add_arg_checked(struct ac_shader_args *args,
 			enum ac_arg_regfile file,
 			unsigned registers, enum ac_arg_type type,

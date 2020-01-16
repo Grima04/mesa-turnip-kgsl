@@ -44,21 +44,21 @@ static const char scratch_rsrc_dword1_symbol[] =
 static void si_dump_shader_key(const struct si_shader *shader, FILE *f);
 
 /** Whether the shader runs as a combination of multiple API shaders */
-bool si_is_multi_part_shader(struct si_shader_context *ctx)
+bool si_is_multi_part_shader(struct si_shader *shader)
 {
-	if (ctx->screen->info.chip_class <= GFX8)
+	if (shader->selector->screen->info.chip_class <= GFX8)
 		return false;
 
-	return ctx->shader->key.as_ls ||
-	       ctx->shader->key.as_es ||
-	       ctx->type == PIPE_SHADER_TESS_CTRL ||
-	       ctx->type == PIPE_SHADER_GEOMETRY;
+	return shader->key.as_ls ||
+	       shader->key.as_es ||
+	       shader->selector->type == PIPE_SHADER_TESS_CTRL ||
+	       shader->selector->type == PIPE_SHADER_GEOMETRY;
 }
 
 /** Whether the shader runs on a merged HW stage (LSHS or ESGS) */
-bool si_is_merged_shader(struct si_shader_context *ctx)
+bool si_is_merged_shader(struct si_shader *shader)
 {
-	return ctx->shader->key.as_ngg || si_is_multi_part_shader(ctx);
+	return shader->key.as_ngg || si_is_multi_part_shader(shader);
 }
 
 /**
@@ -286,7 +286,7 @@ static void declare_vb_descriptor_input_sgprs(struct si_shader_context *ctx)
 	if (num_vbos_in_user_sgprs) {
 		unsigned user_sgprs = ctx->args.num_sgprs_used;
 
-		if (si_is_merged_shader(ctx))
+		if (si_is_merged_shader(ctx->shader))
 			user_sgprs -= 8;
 		assert(user_sgprs <= SI_SGPR_VS_VB_DESCRIPTOR_FIRST);
 
@@ -2016,7 +2016,7 @@ bool si_compile_shader(struct si_screen *sscreen,
 	}
 
 	/* Add the scratch offset to input SGPRs. */
-	if (shader->config.scratch_bytes_per_wave && !si_is_merged_shader(&ctx))
+	if (shader->config.scratch_bytes_per_wave && !si_is_merged_shader(shader))
 		shader->info.num_input_sgprs += 1; /* scratch byte offset */
 
 	/* Calculate the number of fragment input VGPRs. */

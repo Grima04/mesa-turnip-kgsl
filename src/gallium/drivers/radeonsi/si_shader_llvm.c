@@ -298,7 +298,7 @@ LLVMValueRef si_insert_input_ptr(struct si_shader_context *ctx, LLVMValueRef ret
 LLVMValueRef si_prolog_get_rw_buffers(struct si_shader_context *ctx)
 {
 	LLVMValueRef ptr[2], list;
-	bool merged_shader = si_is_merged_shader(ctx);
+	bool merged_shader = si_is_merged_shader(ctx->shader);
 
 	ptr[0] = LLVMGetParam(ctx->main_fn, (merged_shader ? 8 : 0) + SI_SGPR_RW_BUFFERS);
 	list = LLVMBuildIntToPtr(ctx->ac.builder, ptr[0],
@@ -634,7 +634,7 @@ void si_build_wrapper_function(struct si_shader_context *ctx, LLVMValueRef *part
 	si_llvm_create_func(ctx, "wrapper", returns, num_returns,
 			    si_get_max_workgroup_size(ctx->shader));
 
-	if (si_is_merged_shader(ctx))
+	if (si_is_merged_shader(ctx->shader))
 		ac_init_exec_full_mask(&ctx->ac);
 
 	/* Record the arguments of the function as if they were an output of
@@ -692,7 +692,7 @@ void si_build_wrapper_function(struct si_shader_context *ctx, LLVMValueRef *part
 
 		/* Merged shaders are executed conditionally depending
 		 * on the number of enabled threads passed in the input SGPRs. */
-		if (si_is_multi_part_shader(ctx) && part == 0) {
+		if (si_is_multi_part_shader(ctx->shader) && part == 0) {
 			LLVMValueRef ena, count = initial[3];
 
 			count = LLVMBuildAnd(builder, count,
@@ -754,7 +754,7 @@ void si_build_wrapper_function(struct si_shader_context *ctx, LLVMValueRef *part
 
 		ret = ac_build_call(&ctx->ac, parts[part], in, num_params);
 
-		if (si_is_multi_part_shader(ctx) &&
+		if (si_is_multi_part_shader(ctx->shader) &&
 		    part + 1 == next_shader_first_part) {
 			ac_build_endif(&ctx->ac, 6506);
 
