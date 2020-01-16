@@ -34,16 +34,7 @@
 struct fd6_rasterizer_stateobj {
 	struct pipe_rasterizer_state base;
 
-	uint32_t gras_su_point_minmax;
-	uint32_t gras_su_point_size;
-	uint32_t gras_su_poly_offset_scale;
-	uint32_t gras_su_poly_offset_offset;
-	uint32_t gras_su_poly_offset_clamp;
-
-	uint32_t gras_su_cntl;
-	uint32_t gras_cl_clip_cntl;
 	uint32_t pc_primitive_cntl;
-	uint32_t pc_raster_cntl;
 
 	struct fd_ringbuffer *stateobj;
 };
