@@ -1020,33 +1020,6 @@ brw_inst *brw_##OP(struct brw_codegen *p,         \
    return brw_alu3(p, BRW_OPCODE_##OP, dest, src0, src1, src2); \
 }
 
-/* Rounding operations (other than RNDD) require two instructions - the first
- * stores a rounded value (possibly the wrong way) in the dest register, but
- * also sets a per-channel "increment bit" in the flag register.  A predicated
- * add of 1.0 fixes dest to contain the desired result.
- *
- * Sandybridge and later appear to round correctly without an ADD.
- */
-#define ROUND(OP)							      \
-void brw_##OP(struct brw_codegen *p,					      \
-	      struct brw_reg dest,					      \
-	      struct brw_reg src)					      \
-{									      \
-   const struct gen_device_info *devinfo = p->devinfo;					      \
-   brw_inst *rnd, *add;							      \
-   rnd = next_insn(p, BRW_OPCODE_##OP);					      \
-   brw_set_dest(p, rnd, dest);						      \
-   brw_set_src0(p, rnd, src);						      \
-									      \
-   if (devinfo->gen < 6) {							      \
-      /* turn on round-increments */					      \
-      brw_inst_set_cond_modifier(devinfo, rnd, BRW_CONDITIONAL_R);            \
-      add = brw_ADD(p, dest, dest, brw_imm_f(1.0f));			      \
-      brw_inst_set_pred_control(devinfo, add, BRW_PREDICATE_NORMAL);          \
-   }									      \
-}
-
-
 ALU2(SEL)
 ALU1(NOT)
 ALU2(AND)
@@ -1061,6 +1034,8 @@ ALU2(ROR)
 ALU3(CSEL)
 ALU1(FRC)
 ALU1(RNDD)
+ALU1(RNDE)
+ALU1(RNDZ)
 ALU2(MAC)
 ALU2(MACH)
 ALU1(LZD)
@@ -1079,9 +1054,6 @@ ALU1(FBL)
 ALU1(CBIT)
 ALU2(ADDC)
 ALU2(SUBB)
-
-ROUND(RNDZ)
-ROUND(RNDE)
 
 brw_inst *
 brw_MOV(struct brw_codegen *p, struct brw_reg dest, struct brw_reg src0)

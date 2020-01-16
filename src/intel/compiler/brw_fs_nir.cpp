@@ -1593,6 +1593,12 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
 
    case nir_op_ftrunc:
       inst = bld.RNDZ(result, op[0]);
+      if (devinfo->gen < 6) {
+         set_condmod(BRW_CONDITIONAL_R, inst);
+         set_predicate(BRW_PREDICATE_NORMAL,
+                       bld.ADD(result, result, brw_imm_f(1.0f)));
+         inst = bld.MOV(result, result); /* for potential saturation */
+      }
       inst->saturate = instr->dest.saturate;
       break;
 
@@ -1615,6 +1621,12 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
       break;
    case nir_op_fround_even:
       inst = bld.RNDE(result, op[0]);
+      if (devinfo->gen < 6) {
+         set_condmod(BRW_CONDITIONAL_R, inst);
+         set_predicate(BRW_PREDICATE_NORMAL,
+                       bld.ADD(result, result, brw_imm_f(1.0f)));
+         inst = bld.MOV(result, result); /* for potential saturation */
+      }
       inst->saturate = instr->dest.saturate;
       break;
 

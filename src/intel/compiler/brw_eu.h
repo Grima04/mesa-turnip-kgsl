@@ -199,9 +199,6 @@ brw_inst *brw_##OP(struct brw_codegen *p,	\
 	      struct brw_reg src1,		\
 	      struct brw_reg src2);
 
-#define ROUND(OP) \
-void brw_##OP(struct brw_codegen *p, struct brw_reg dest, struct brw_reg src0);
-
 ALU1(MOV)
 ALU2(SEL)
 ALU1(NOT)
@@ -222,6 +219,8 @@ ALU2(AVG)
 ALU2(MUL)
 ALU1(FRC)
 ALU1(RNDD)
+ALU1(RNDE)
+ALU1(RNDZ)
 ALU2(MAC)
 ALU2(MACH)
 ALU1(LZD)
@@ -244,13 +243,9 @@ ALU2(ADDC)
 ALU2(SUBB)
 ALU2(MAC)
 
-ROUND(RNDZ)
-ROUND(RNDE)
-
 #undef ALU1
 #undef ALU2
 #undef ALU3
-#undef ROUND
 
 
 /* Helpers for SEND instruction:
