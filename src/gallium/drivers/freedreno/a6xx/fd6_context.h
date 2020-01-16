@@ -101,7 +101,6 @@ struct fd6_context {
 		uint32_t RB_CCU_CNTL_gmem;        /* for GMEM rendering */
 		uint32_t PC_UNKNOWN_9805;
 		uint32_t SP_UNKNOWN_A0F8;
-
 	} magic;
 };
 

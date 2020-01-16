@@ -1023,29 +1023,10 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 	}
 
 	if (dirty & FD_DIRTY_RASTERIZER) {
-		struct fd6_rasterizer_stateobj *rasterizer =
-				fd6_rasterizer_stateobj(ctx->rasterizer);
-		fd6_emit_add_group(emit, rasterizer->stateobj,
+		struct fd_ringbuffer *stateobj =
+			fd6_rasterizer_state(ctx, emit->primitive_restart);
+		fd6_emit_add_group(emit, stateobj,
 						   FD6_GROUP_RASTERIZER, ENABLE_ALL);
-	}
-
-	/* Since the primitive restart state is not part of a tracked object, we
-	 * re-emit this register every time.
-	 */
-	if (emit->info && ctx->rasterizer) {
-		struct fd6_rasterizer_stateobj *rasterizer =
-				fd6_rasterizer_stateobj(ctx->rasterizer);
-		OUT_PKT4(ring, REG_A6XX_PC_UNKNOWN_9806, 1);
-		OUT_RING(ring, 0);
-		OUT_PKT4(ring, REG_A6XX_PC_UNKNOWN_9990, 1);
-		OUT_RING(ring, 0);
-		OUT_PKT4(ring, REG_A6XX_VFD_UNKNOWN_A008, 1);
-		OUT_RING(ring, 0);
-
-		OUT_PKT4(ring, REG_A6XX_PC_PRIMITIVE_CNTL_0, 1);
-		OUT_RING(ring, rasterizer->pc_primitive_cntl |
-				 COND(emit->info->primitive_restart && emit->info->index_size,
-					  A6XX_PC_PRIMITIVE_CNTL_0_PRIMITIVE_RESTART));
 	}
 
 	if (dirty & (FD_DIRTY_FRAMEBUFFER | FD_DIRTY_RASTERIZER | FD_DIRTY_PROG)) {
@@ -1347,6 +1328,7 @@ fd6_emit_restore(struct fd_batch *batch, struct fd_ringbuffer *ring)
 	WRITE(REG_A6XX_VPC_SO_OVERRIDE, A6XX_VPC_SO_OVERRIDE_SO_DISABLE);
 
 	WRITE(REG_A6XX_PC_UNKNOWN_9806, 0);
+	WRITE(REG_A6XX_PC_UNKNOWN_9990, 0);
 	WRITE(REG_A6XX_PC_UNKNOWN_9980, 0);
 
 	WRITE(REG_A6XX_PC_UNKNOWN_9B07, 0);

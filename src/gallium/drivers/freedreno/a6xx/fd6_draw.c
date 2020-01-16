@@ -118,6 +118,19 @@ fixup_shader_state(struct fd_context *ctx, struct ir3_shader_key *key)
 	}
 }
 
+static void
+fixup_draw_state(struct fd_context *ctx, struct fd6_emit *emit)
+{
+	if (ctx->last.dirty ||
+			(ctx->last.primitive_restart != emit->primitive_restart)) {
+		/* rasterizer state is effected by primitive-restart: */
+		ctx->dirty |= FD_DIRTY_RASTERIZER;
+		ctx->last.primitive_restart = emit->primitive_restart;
+	}
+
+	ctx->last.dirty = false;
+}
+
 static bool
 fd6_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
              unsigned index_offset)
@@ -153,6 +166,7 @@ fd6_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
 		.rasterflat = ctx->rasterizer->flatshade,
 		.sprite_coord_enable = ctx->rasterizer->sprite_coord_enable,
 		.sprite_coord_mode = ctx->rasterizer->sprite_coord_mode,
+		.primitive_restart = info->primitive_restart && info->index_size,
 	};
 
 	if (info->mode == PIPE_PRIM_PATCHES) {
@@ -258,6 +272,8 @@ fd6_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
 			ctx->batch->tess_addrs_constobj->cur += size;
 		}
 	}
+
+	fixup_draw_state(ctx, &emit);
 
 	fd6_emit_state(ring, &emit);
 
