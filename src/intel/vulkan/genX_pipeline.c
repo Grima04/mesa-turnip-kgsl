@@ -2144,6 +2144,8 @@ genX(graphics_pipeline_create)(
       vk_find_struct_const(pCreateInfo->pRasterizationState->pNext,
                            PIPELINE_RASTERIZATION_LINE_STATE_CREATE_INFO_EXT);
 
+   emit_urb_setup(pipeline);
+
    assert(pCreateInfo->pVertexInputState);
    emit_vertex_input(pipeline, pCreateInfo->pVertexInputState);
    assert(pCreateInfo->pRasterizationState);
@@ -2154,8 +2156,6 @@ genX(graphics_pipeline_create)(
    emit_ds_state(pipeline, ds_info, pass, subpass);
    emit_cb_state(pipeline, cb_info, ms_info);
    compute_kill_pixel(pipeline, ms_info, subpass);
-
-   emit_urb_setup(pipeline);
 
    emit_3dstate_clip(pipeline,
                      pCreateInfo->pInputAssemblyState,
