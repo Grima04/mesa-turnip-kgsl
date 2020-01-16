@@ -288,4 +288,5 @@ if with_tests
   subdir('tests/set')
   subdir('tests/sparse_array')
   subdir('tests/format')
+  subdir('tests/vector')
 endif
