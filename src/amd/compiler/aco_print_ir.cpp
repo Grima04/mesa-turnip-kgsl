@@ -236,6 +236,8 @@ static void print_instr_format_specific(struct Instruction *instr, FILE *output)
          fprintf(output, " offen");
       if (mubuf->idxen)
          fprintf(output, " idxen");
+      if (mubuf->addr64)
+         fprintf(output, " addr64");
       if (mubuf->glc)
          fprintf(output, " glc");
       if (mubuf->dlc)

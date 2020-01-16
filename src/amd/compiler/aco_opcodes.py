@@ -91,6 +91,7 @@ class Format(Enum):
          return [('unsigned', 'offset', None),
                  ('bool', 'offen', None),
                  ('bool', 'idxen', 'false'),
+                 ('bool', 'addr64', 'false'),
                  ('bool', 'disable_wqm', 'false'),
                  ('bool', 'glc', 'false'),
                  ('bool', 'dlc', 'false'),

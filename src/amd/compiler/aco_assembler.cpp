@@ -311,6 +311,9 @@ void emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction*
       encoding |= (mubuf->lds ? 1 : 0) << 16;
       encoding |= (mubuf->glc ? 1 : 0) << 14;
       encoding |= (mubuf->idxen ? 1 : 0) << 13;
+      assert(!mubuf->addr64 || ctx.chip_class <= GFX7);
+      if (ctx.chip_class == GFX6 || ctx.chip_class == GFX7)
+         encoding |= (mubuf->addr64 ? 1 : 0) << 15;
       encoding |= (mubuf->offen ? 1 : 0) << 12;
       if (ctx.chip_class == GFX8 || ctx.chip_class == GFX9) {
          assert(!mubuf->dlc); /* Device-level coherent is not supported on GFX9 and lower */

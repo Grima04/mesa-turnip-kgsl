@@ -786,6 +786,7 @@ struct MUBUF_instruction : public Instruction {
    uint16_t offset : 12; /* Unsigned byte offset - 12 bit */
    bool offen : 1; /* Supply an offset from VGPR (VADDR) */
    bool idxen : 1; /* Supply an index from VGPR (VADDR) */
+   bool addr64 : 1; /* SI, CIK: Address size is 64-bit */
    bool glc : 1; /* globally coherent */
    bool dlc : 1; /* NAVI: device level coherent */
    bool slc : 1; /* system level coherent */
