@@ -373,6 +373,9 @@ struct fd_context {
 	struct {
 		bool dirty;               /* last draw state unknown */
 		bool primitive_restart;
+		uint32_t index_start;
+		uint32_t instance_start;
+		uint32_t restart_index;
 	} last;
 };
 
