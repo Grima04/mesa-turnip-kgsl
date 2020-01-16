@@ -68,15 +68,15 @@ The easiest way to install everything you need is with <a
 href="https://chocolatey.org/">chocolatey</a>.
 </p>
 <pre>
-  choco install python3 winflexbison pkgconfiglite
+choco install python3 winflexbison pkgconfiglite
 </pre>
 <p>You can even use chocolatey to install mingw and ninja (ninja can be used with MSVC as well)</p>
 <pre>
-  choco install ninja mingw
+choco install ninja mingw
 </pre>
 <p>Then install meson using pip</p>
 <pre>
-  py -3 -m pip install meson mako
+py -3 -m pip install meson mako
 </pre>
 
 You may need to add the python3 scripts directory to your path for meson.
@@ -283,7 +283,7 @@ which points to the root of an alternative installation (the prefix). For
 example:
 </p>
 <pre>
-        meson builddir -Dcmake_module_path=/home/user/mycmake/prefix
+meson builddir -Dcmake_module_path=/home/user/mycmake/prefix
 </pre>
 
 <p>
@@ -296,14 +296,14 @@ find llvm-config:
 
 custom-llvm.ini
 <pre>
-    [binaries]
-    llvm-config = '/usr/local/bin/llvm/llvm-config'
+[binaries]
+llvm-config = '/usr/local/bin/llvm/llvm-config'
 </pre>
 
 Then configure meson:
 
 <pre>
-    meson builddir/ --native-file custom-llvm.ini
+meson builddir/ --native-file custom-llvm.ini
 </pre>
 
 <p>
@@ -325,17 +325,17 @@ should be used. It uses the same format as the native file above:
 
 <p>cross-llvm.ini</p>
 <pre>
-    [binaries]
-    ...
-    llvm-config = '/usr/lib/llvm-config-32'
-    cmake = '/usr/bin/cmake-for-my-arch'
+[binaries]
+...
+llvm-config = '/usr/lib/llvm-config-32'
+cmake = '/usr/bin/cmake-for-my-arch'
 </pre>
 
 <p>Obviously, only cmake or llvm-config is required.</p>
 
 <p>Then configure meson:</p>
 <pre>
-    meson builddir/ --cross-file cross-llvm.ini
+meson builddir/ --cross-file cross-llvm.ini
 </pre>
 
 See the <a href="#cross-compilation">Cross Compilation</a> section for more information.
