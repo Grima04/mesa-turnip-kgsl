@@ -755,15 +755,7 @@ dri2_create_image_from_winsys(__DRIscreen *_screen,
        * add sampler view usage.
        */
       use_lowered = true;
-      for (i = 0; i < map->nplanes; i++) {
-          if (!pscreen->is_format_supported(pscreen,
-                                            dri2_get_pipe_format_for_dri_format(map->planes[i].dri_format),
-                                            screen->target, 0, 0,
-                                            PIPE_BIND_SAMPLER_VIEW))
-             break;
-      }
-
-      if (i == map->nplanes)
+      if (dri2_yuv_dma_buf_supported(screen, map))
          tex_usage |= PIPE_BIND_SAMPLER_VIEW;
    }
 
@@ -1406,6 +1398,11 @@ dri2_query_dma_buf_modifiers(__DRIscreen *_screen, int fourcc, int max,
                                      PIPE_BIND_SAMPLER_VIEW))) {
       pscreen->query_dmabuf_modifiers(pscreen, format, max, modifiers,
                                       external_only, count);
+      return true;
+   } else if (dri2_yuv_dma_buf_supported(screen, map)) {
+      *count = 1;
+      if (modifiers)
+         modifiers[0] = DRM_FORMAT_MOD_NONE;
       return true;
    }
    return false;
