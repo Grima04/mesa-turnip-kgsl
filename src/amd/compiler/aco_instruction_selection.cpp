@@ -3408,6 +3408,9 @@ void load_buffer(isel_context *ctx, unsigned num_components, Temp dst,
          emit_split_vector(ctx, lower, 2);
          num_bytes -= 16;
          const_offset = 16;
+      } else if (num_bytes == 12 && ctx->options->chip_class == GFX6) {
+         /* GFX6 doesn't support loading vec3, expand to vec4. */
+         num_bytes = 16;
       }
 
       switch (num_bytes) {
@@ -3418,6 +3421,7 @@ void load_buffer(isel_context *ctx, unsigned num_components, Temp dst,
             op = aco_opcode::buffer_load_dwordx2;
             break;
          case 12:
+            assert(ctx->options->chip_class > GFX6);
             op = aco_opcode::buffer_load_dwordx3;
             break;
          case 16:
@@ -3451,6 +3455,16 @@ void load_buffer(isel_context *ctx, unsigned num_components, Temp dst,
          instr->operands[2] = Operand(emit_extract_vector(ctx, upper, 0, v2));
          if (dst.size() == 8)
             instr->operands[3] = Operand(emit_extract_vector(ctx, upper, 1, v2));
+      } else if (dst.size() == 3 && ctx->options->chip_class == GFX6) {
+         Temp vec = bld.tmp(v4);
+         instr->definitions[0] = Definition(vec);
+         bld.insert(std::move(instr));
+         emit_split_vector(ctx, vec, 4);
+
+         instr.reset(create_instruction<Pseudo_instruction>(aco_opcode::p_create_vector, Format::PSEUDO, 3, 1));
+         instr->operands[0] = Operand(emit_extract_vector(ctx, vec, 0, v1));
+         instr->operands[1] = Operand(emit_extract_vector(ctx, vec, 1, v1));
+         instr->operands[2] = Operand(emit_extract_vector(ctx, vec, 2, v1));
       }
 
       if (dst.type() == RegType::sgpr) {
