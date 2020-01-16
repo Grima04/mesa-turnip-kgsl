@@ -26,7 +26,9 @@
 #include "vk_format_info.h"
 
 #include "broadcom/cle/v3dx_pack.h"
+#include "drm-uapi/drm_fourcc.h"
 #include "util/format/u_format.h"
+#include "vulkan/wsi/wsi_common.h"
 
 #define SWIZ(x,y,z,w) {   \
    PIPE_SWIZZLE_##x,      \
@@ -291,7 +293,28 @@ v3dv_GetPhysicalDeviceFormatProperties2(VkPhysicalDevice physicalDevice,
                                           &pFormatProperties->formatProperties);
 
    vk_foreach_struct(ext, pFormatProperties->pNext) {
-      switch (ext->sType) {
+      switch ((unsigned)ext->sType) {
+      case VK_STRUCTURE_TYPE_DRM_FORMAT_MODIFIER_PROPERTIES_LIST_EXT: {
+         struct VkDrmFormatModifierPropertiesListEXT *list = (void *)ext;
+         VK_OUTARRAY_MAKE(out, list->pDrmFormatModifierProperties,
+                          &list->drmFormatModifierCount);
+         /* Only expose LINEAR for winsys formats.
+          * FIXME: is this correct?
+          */
+         if (format == VK_FORMAT_B8G8R8A8_SRGB ||
+             format == VK_FORMAT_B8G8R8A8_UNORM) {
+            vk_outarray_append(&out, mod_props) {
+               mod_props->drmFormatModifier = DRM_FORMAT_MOD_LINEAR;
+               mod_props->drmFormatModifierPlaneCount = 1;
+            }
+         } else {
+            vk_outarray_append(&out, mod_props) {
+               mod_props->drmFormatModifier = DRM_FORMAT_MOD_BROADCOM_UIF;
+               mod_props->drmFormatModifierPlaneCount = 1;
+            }
+         }
+         break;
+      }
       default:
          v3dv_debug_ignored_stype(ext->sType);
          break;

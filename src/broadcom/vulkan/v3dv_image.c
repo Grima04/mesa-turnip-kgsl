@@ -27,6 +27,8 @@
 #include "util/format/u_format.h"
 #include "util/u_math.h"
 #include "vk_format_info.h"
+#include "vk_util.h"
+#include "vulkan/wsi/wsi_common.h"
 
 /* These are tunable parameters in the HW design, but all the V3D
  * implementations agree.
@@ -273,6 +275,47 @@ v3dv_CreateImage(VkDevice _device,
    v3dv_assert(pCreateInfo->extent.height > 0);
    v3dv_assert(pCreateInfo->extent.depth > 0);
 
+   /* When using the simulator the WSI common code will see that our
+    * driver wsi device doesn't match the display device and because of that
+    * it will not attempt to present directly from the swapchain images,
+    * instead it will use the prime blit path (use_prime_blit flag in
+    * struct wsi_swapchain), where it copies the contents of the swapchain
+    * images to a linear buffer with appropriate row stride for presentation.
+    * As a result, on that path, swapchain images do not have any special
+    * requirements and are not created with the pNext structs below.
+    */
+   uint64_t modifier = DRM_FORMAT_MOD_INVALID;
+   if (pCreateInfo->tiling == VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT) {
+      const VkImageDrmFormatModifierListCreateInfoEXT *mod_info =
+         vk_find_struct_const(pCreateInfo->pNext,
+                              IMAGE_DRM_FORMAT_MODIFIER_LIST_CREATE_INFO_EXT);
+      assert(mod_info);
+      for (uint32_t i = 0; i < mod_info->drmFormatModifierCount; i++) {
+         switch (mod_info->pDrmFormatModifiers[i]) {
+         case DRM_FORMAT_MOD_LINEAR:
+            if (modifier == DRM_FORMAT_MOD_INVALID)
+               modifier = DRM_FORMAT_MOD_LINEAR;
+            break;
+         case DRM_FORMAT_MOD_BROADCOM_UIF:
+            modifier = DRM_FORMAT_MOD_BROADCOM_UIF;
+            break;
+         }
+      }
+   } else {
+      const struct wsi_image_create_info *wsi_info =
+         vk_find_struct_const(pCreateInfo->pNext, WSI_IMAGE_CREATE_INFO_MESA);
+      if (wsi_info)
+         modifier = DRM_FORMAT_MOD_LINEAR;
+      else
+         modifier = DRM_FORMAT_MOD_BROADCOM_UIF;
+   }
+
+   /* 1D and 1D_ARRAY textures are always raster-order */
+   if (pCreateInfo->imageType == VK_IMAGE_TYPE_1D)
+      modifier = DRM_FORMAT_MOD_LINEAR;
+
+   assert(modifier != DRM_FORMAT_MOD_INVALID);
+
    const struct v3dv_format *format = v3dv_get_format(pCreateInfo->format);
    v3dv_assert(format != NULL && format->supported);
 
@@ -293,12 +336,8 @@ v3dv_CreateImage(VkDevice _device,
    image->create_flags = pCreateInfo->flags;
    image->tiling = pCreateInfo->tiling;
 
-   image->drm_format_mod = DRM_FORMAT_MOD_INVALID;
-   image->tiled = true;
-
-   /* 1D and 1D_ARRAY textures are always raster-order */
-   if (image->type == VK_IMAGE_TYPE_1D)
-      image->tiled = false;
+   image->drm_format_mod = modifier;
+   image->tiled = image->drm_format_mod != DRM_FORMAT_MOD_LINEAR;
 
    image->cpp = vk_format_get_blocksize(image->vk_format);
 
@@ -324,6 +363,22 @@ v3dv_GetImageSubresourceLayout(VkDevice device,
    layout->depthPitch = image->cube_map_stride;
    layout->arrayPitch = image->cube_map_stride;
    layout->size = slice->size;
+}
+
+VkResult
+v3dv_GetImageDrmFormatModifierPropertiesEXT(
+   VkDevice device,
+   VkImage _image,
+   VkImageDrmFormatModifierPropertiesEXT *pProperties)
+{
+   V3DV_FROM_HANDLE(v3dv_image, image, _image);
+
+   assert(pProperties->sType =
+          VK_STRUCTURE_TYPE_IMAGE_DRM_FORMAT_MODIFIER_PROPERTIES_EXT);
+
+   pProperties->drmFormatModifier = image->drm_format_mod;
+
+   return VK_SUCCESS;
 }
 
 void
