@@ -519,8 +519,9 @@ etna_emit_state(struct etna_context *ctx)
          abort();
       }
    }
-   if (unlikely(dirty & (ETNA_DIRTY_STENCIL_REF | ETNA_DIRTY_RASTERIZER))) {
-      /*014A0*/ EMIT_STATE(PE_STENCIL_CONFIG_EXT, ctx->stencil_ref.PE_STENCIL_CONFIG_EXT[ccw]);
+   if (unlikely(dirty & (ETNA_DIRTY_STENCIL_REF | ETNA_DIRTY_RASTERIZER | ETNA_DIRTY_ZSA))) {
+      uint32_t val = etna_zsa_state(ctx->zsa)->PE_STENCIL_CONFIG_EXT;
+      /*014A0*/ EMIT_STATE(PE_STENCIL_CONFIG_EXT, val | ctx->stencil_ref.PE_STENCIL_CONFIG_EXT[ccw]);
    }
    if (unlikely(dirty & (ETNA_DIRTY_BLEND | ETNA_DIRTY_FRAMEBUFFER))) {
       struct etna_blend_state *blend = etna_blend_state(ctx->blend);

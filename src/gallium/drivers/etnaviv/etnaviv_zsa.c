@@ -29,6 +29,7 @@
 #include "etnaviv_context.h"
 #include "etnaviv_screen.h"
 #include "etnaviv_translate.h"
+#include "util/u_half.h"
 #include "util/u_memory.h"
 
 #include "hw/common.xml.h"
@@ -38,6 +39,7 @@ etna_zsa_state_create(struct pipe_context *pctx,
                       const struct pipe_depth_stencil_alpha_state *so)
 {
    struct etna_context *ctx = etna_context(pctx);
+   struct etna_screen *screen = ctx->screen;
    struct etna_zsa_state *cs = CALLOC_STRUCT(etna_zsa_state);
 
    if (!cs)
@@ -91,6 +93,15 @@ etna_zsa_state_create(struct pipe_context *pctx,
     * succeed. */
    if (so->depth.enabled == false || so->depth.func == PIPE_FUNC_ALWAYS)
       early_z = false;
+
+   /* calculate extra_reference value */
+   uint32_t extra_reference = 0;
+
+   if (VIV_FEATURE(screen, chipMinorFeatures1, HALF_FLOAT))
+      extra_reference = util_float_to_half(CLAMP(so->alpha.ref_value, 0.0f, 1.0f));
+
+   cs->PE_STENCIL_CONFIG_EXT =
+      VIVS_PE_STENCIL_CONFIG_EXT_EXTRA_ALPHA_REF(extra_reference);
 
    /* compare funcs have 1 to 1 mapping */
    cs->PE_DEPTH_CONFIG =
