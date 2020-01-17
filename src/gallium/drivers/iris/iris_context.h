@@ -670,9 +670,6 @@ struct iris_context {
       /** Is a GS or TES outputting points or lines? */
       bool output_topology_is_points_or_lines;
 
-      /* Track last VS URB entry size */
-      unsigned last_vs_entry_size;
-
       /**
        * Scratch buffers for various sizes and stages.
        *
