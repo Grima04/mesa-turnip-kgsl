@@ -625,6 +625,100 @@ compile_pipeline_stage(struct v3dv_pipeline_stage *p_stage)
    free(qpu_insts);
 }
 
+/* FIXME: C&P from st, common place? */
+static void
+st_nir_opts(nir_shader *nir)
+{
+   bool progress;
+
+   do {
+      progress = false;
+
+      NIR_PASS_V(nir, nir_lower_vars_to_ssa);
+
+      /* Linking deals with unused inputs/outputs, but here we can remove
+       * things local to the shader in the hopes that we can cleanup other
+       * things. This pass will also remove variables with only stores, so we
+       * might be able to make progress after it.
+       */
+      NIR_PASS(progress, nir, nir_remove_dead_variables,
+               (nir_variable_mode)(nir_var_function_temp |
+                                   nir_var_shader_temp |
+                                   nir_var_mem_shared),
+               NULL);
+
+      NIR_PASS(progress, nir, nir_opt_copy_prop_vars);
+      NIR_PASS(progress, nir, nir_opt_dead_write_vars);
+
+      if (nir->options->lower_to_scalar) {
+         NIR_PASS_V(nir, nir_lower_alu_to_scalar, NULL, NULL);
+         NIR_PASS_V(nir, nir_lower_phis_to_scalar);
+      }
+
+      NIR_PASS_V(nir, nir_lower_alu);
+      NIR_PASS_V(nir, nir_lower_pack);
+      NIR_PASS(progress, nir, nir_copy_prop);
+      NIR_PASS(progress, nir, nir_opt_remove_phis);
+      NIR_PASS(progress, nir, nir_opt_dce);
+      if (nir_opt_trivial_continues(nir)) {
+         progress = true;
+         NIR_PASS(progress, nir, nir_copy_prop);
+         NIR_PASS(progress, nir, nir_opt_dce);
+      }
+      NIR_PASS(progress, nir, nir_opt_if, false);
+      NIR_PASS(progress, nir, nir_opt_dead_cf);
+      NIR_PASS(progress, nir, nir_opt_cse);
+      NIR_PASS(progress, nir, nir_opt_peephole_select, 8, true, true);
+
+      NIR_PASS(progress, nir, nir_opt_algebraic);
+      NIR_PASS(progress, nir, nir_opt_constant_folding);
+
+      NIR_PASS(progress, nir, nir_opt_undef);
+      NIR_PASS(progress, nir, nir_opt_conditional_discard);
+      if (nir->options->max_unroll_iterations) {
+         NIR_PASS(progress, nir, nir_opt_loop_unroll, (nir_variable_mode)0);
+      }
+   } while (progress);
+}
+
+static void
+link_shaders(nir_shader *producer, nir_shader *consumer)
+{
+   assert(producer);
+   assert(consumer);
+
+   if (producer->options->lower_to_scalar) {
+      NIR_PASS_V(producer, nir_lower_io_to_scalar_early, nir_var_shader_out);
+      NIR_PASS_V(consumer, nir_lower_io_to_scalar_early, nir_var_shader_in);
+   }
+
+   nir_lower_io_arrays_to_elements(producer, consumer);
+
+   st_nir_opts(producer);
+   st_nir_opts(consumer);
+
+   if (nir_link_opt_varyings(producer, consumer))
+      st_nir_opts(consumer);
+
+   NIR_PASS_V(producer, nir_remove_dead_variables, nir_var_shader_out, NULL);
+   NIR_PASS_V(consumer, nir_remove_dead_variables, nir_var_shader_in, NULL);
+
+   if (nir_remove_unused_varyings(producer, consumer)) {
+      NIR_PASS_V(producer, nir_lower_global_vars_to_local);
+      NIR_PASS_V(consumer, nir_lower_global_vars_to_local);
+
+      st_nir_opts(producer);
+      st_nir_opts(consumer);
+
+      /* Optimizations can cause varyings to become unused.
+       * nir_compact_varyings() depends on all dead varyings being removed so
+       * we need to call nir_remove_dead_variables() again here.
+       */
+      NIR_PASS_V(producer, nir_remove_dead_variables, nir_var_shader_out, NULL);
+      NIR_PASS_V(consumer, nir_remove_dead_variables, nir_var_shader_in, NULL);
+   }
+}
+
 static VkResult
 pipeline_compile_graphics(struct v3dv_pipeline *pipeline,
                           const VkGraphicsPipelineCreateInfo *pCreateInfo,
@@ -662,7 +756,29 @@ pipeline_compile_graphics(struct v3dv_pipeline *pipeline,
    }
 
 
+   /* Linking */
+   struct v3dv_pipeline_stage *next_stage = NULL;
+   for (int stage = MESA_SHADER_STAGES - 1; stage >= 0; stage--) {
+      if (stages[stage] == NULL || stages[stage]->entrypoint == NULL)
+         continue;
 
+      struct v3dv_pipeline_stage *p_stage = stages[stage];
+
+      switch(stage) {
+      case MESA_SHADER_VERTEX:
+         link_shaders(p_stage->nir, next_stage->nir);
+         break;
+      case MESA_SHADER_FRAGMENT:
+         /* FIXME: not doing any specific linking stuff here yet */
+         break;
+      default:
+         unreachable("not supported shader stage");
+      }
+
+      next_stage = stages[stage];
+   }
+
+   /* Compiling to vir */
    for (int stage = MESA_SHADER_STAGES - 1; stage >= 0; stage--) {
       if (stages[stage] == NULL || stages[stage]->entrypoint == NULL)
          continue;
