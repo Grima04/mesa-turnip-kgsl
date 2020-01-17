@@ -30,6 +30,7 @@ struct fd_reg_pair {
 	uint32_t reg;
 	uint64_t value;
 	struct fd_bo *bo;
+	bool is_address;
 	bool bo_write;
 	uint32_t bo_offset;
 	uint32_t bo_shift;
@@ -68,6 +69,8 @@ struct fd_reg_pair {
 				fd_ringbuffer_reloc(ring, &reloc);					\
 			} else {												\
 				*p++ = regs[i].value;								\
+				if (regs[i].is_address)								\
+					*p++ = regs[i].value >> 32;						\
 			}														\
 		}															\
 	} while (0)
