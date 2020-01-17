@@ -1694,10 +1694,6 @@ iris_create_rasterizer_state(struct pipe_context *ctx,
       sf.PointWidthSource = state->point_size_per_vertex ? Vertex : State;
       sf.PointWidth = state->point_size;
 
-#if GEN_GEN >= 12
-      sf.DerefBlockSize = PerPolyDerefMode;
-#endif
-
       if (state->flatshade_first) {
          sf.TriangleFanProvokingVertexSelect = 1;
       } else {
@@ -5386,7 +5382,8 @@ iris_upload_dirty_render_state(struct iris_context *ice,
                          batch->screen->l3_config_3d,
                          ice->shaders.prog[MESA_SHADER_TESS_EVAL] != NULL,
                          ice->shaders.prog[MESA_SHADER_GEOMETRY] != NULL,
-                         size, entries, start, NULL);
+                         size, entries, start,
+                         &ice->state.urb_deref_block_size);
 
       for (int i = MESA_SHADER_VERTEX; i <= MESA_SHADER_GEOMETRY; i++) {
          iris_emit_cmd(batch, GENX(3DSTATE_URB_VS), urb) {
@@ -5768,13 +5765,17 @@ iris_upload_dirty_render_state(struct iris_context *ice,
                       ARRAY_SIZE(cso_rast->clip));
    }
 
-   if (dirty & IRIS_DIRTY_RASTER) {
+   if (dirty & (IRIS_DIRTY_RASTER | IRIS_DIRTY_URB)) {
       struct iris_rasterizer_state *cso = ice->state.cso_rast;
       iris_batch_emit(batch, cso->raster, sizeof(cso->raster));
 
       uint32_t dynamic_sf[GENX(3DSTATE_SF_length)];
       iris_pack_command(GENX(3DSTATE_SF), &dynamic_sf, sf) {
          sf.ViewportTransformEnable = !ice->state.window_space_position;
+
+#if GEN_GEN >= 12
+         sf.DerefBlockSize = ice->state.urb_deref_block_size;
+#endif
       }
       iris_emit_merge(batch, cso->sf, dynamic_sf,
                       ARRAY_SIZE(dynamic_sf));
