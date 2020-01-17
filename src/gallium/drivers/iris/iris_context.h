@@ -667,8 +667,6 @@ struct iris_context {
       struct u_upload_mgr *uploader;
       struct hash_table *cache;
 
-      unsigned urb_size;
-
       /** Is a GS or TES outputting points or lines? */
       bool output_topology_is_points_or_lines;
 
