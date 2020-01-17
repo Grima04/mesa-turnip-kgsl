@@ -317,6 +317,7 @@ genX(blorp_exec)(struct blorp_batch *batch,
       brw_cache_flush_for_depth(brw, params->stencil.addr.buffer);
 
    brw_select_pipeline(brw, BRW_RENDER_PIPELINE);
+   brw_emit_l3_state(brw);
 
 retry:
    intel_batchbuffer_require_space(brw, 1400);

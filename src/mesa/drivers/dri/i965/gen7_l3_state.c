@@ -212,8 +212,8 @@ update_urb_size(struct brw_context *brw, const struct gen_l3_config *cfg)
    }
 }
 
-static void
-emit_l3_state(struct brw_context *brw)
+void
+brw_emit_l3_state(struct brw_context *brw)
 {
    const struct gen_l3_weights w = get_pipeline_state_l3_weights(brw);
    const float dw = gen_diff_l3_weights(w, gen_get_l3_config_weights(brw->l3.config));
@@ -261,7 +261,7 @@ const struct brw_tracked_state gen7_l3_state = {
              BRW_NEW_TES_PROG_DATA |
              BRW_NEW_VS_PROG_DATA,
    },
-   .emit = emit_l3_state
+   .emit = brw_emit_l3_state
 };
 
 /**
