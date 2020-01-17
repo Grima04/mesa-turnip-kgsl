@@ -189,7 +189,8 @@ _blorp_combine_address(struct blorp_batch *batch, void *location,
  */
 static void
 emit_urb_config(struct blorp_batch *batch,
-                const struct blorp_params *params)
+                const struct blorp_params *params,
+                enum gen_urb_deref_block_size *deref_block_size)
 {
    /* Once vertex fetcher has written full VUE entries with complete
     * header the space requirement is as follows per vertex (in bytes):
@@ -218,7 +219,8 @@ emit_urb_config(struct blorp_batch *batch,
    unsigned entries[4], start[4];
    gen_get_urb_config(batch->blorp->compiler->devinfo,
                       blorp_get_l3_config(batch),
-                      false, false, entry_size, entries, start, NULL);
+                      false, false, entry_size,
+                      entries, start, deref_block_size);
 
 #if GEN_GEN == 7 && !GEN_IS_HASWELL
    /* From the IVB PRM Vol. 2, Part 1, Section 3.2.1:
@@ -685,7 +687,8 @@ blorp_emit_vs_config(struct blorp_batch *batch,
 
 static void
 blorp_emit_sf_config(struct blorp_batch *batch,
-                     const struct blorp_params *params)
+                     const struct blorp_params *params,
+                     enum gen_urb_deref_block_size urb_deref_block_size)
 {
    const struct brw_wm_prog_data *prog_data = params->wm_prog_data;
 
@@ -712,7 +715,7 @@ blorp_emit_sf_config(struct blorp_batch *batch,
 
    blorp_emit(batch, GENX(3DSTATE_SF), sf) {
 #if GEN_GEN >= 12
-      sf.DerefBlockSize = PerPolyDerefMode;
+      sf.DerefBlockSize = urb_deref_block_size;
 #endif
    }
 
@@ -1255,7 +1258,8 @@ blorp_emit_pipeline(struct blorp_batch *batch,
    uint32_t color_calc_state_offset;
    uint32_t depth_stencil_state_offset;
 
-   emit_urb_config(batch, params);
+   enum gen_urb_deref_block_size urb_deref_block_size;
+   emit_urb_config(batch, params, &urb_deref_block_size);
 
    if (params->wm_prog_data) {
       blend_state_offset = blorp_emit_blend_state(batch, params);
@@ -1336,7 +1340,7 @@ blorp_emit_pipeline(struct blorp_batch *batch,
       clip.PerspectiveDivideDisable = true;
    }
 
-   blorp_emit_sf_config(batch, params);
+   blorp_emit_sf_config(batch, params, urb_deref_block_size);
    blorp_emit_ps_config(batch, params);
 
    blorp_emit_cc_viewport(batch);
