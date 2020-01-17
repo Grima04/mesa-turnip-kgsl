@@ -1,4 +1,6 @@
-# Copyright (C) 2016 Linaro, Ltd, Rob Herring <robh@kernel.org>
+# Mesa 3-D graphics library
+#
+# Copyright (C)
 #
 # Permission is hereby granted, free of charge, to any person obtaining a
 # copy of this software and associated documentation files (the "Software"),
@@ -18,16 +20,27 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
+# Android.mk for libetnaviv_drm.a
+
+# ---------------------------------------
+# Build libetnaviv_drm
+# ---------------------------------------
+
 LOCAL_PATH := $(call my-dir)
-include $(LOCAL_PATH)/Makefile.sources
 
 include $(CLEAR_VARS)
 
-LOCAL_SRC_FILES := $(C_SOURCES)
+# get C_SOURCES
+include $(LOCAL_PATH)/Makefile.sources
 
-LOCAL_STATIC_LIBRARIES := libmesa_nir libetnaviv_drm
+LOCAL_SRC_FILES := \
+	$(C_SOURCES)
 
-LOCAL_MODULE := libmesa_winsys_etnaviv
+LOCAL_C_INCLUDES := \
+	$(MESA_TOP)/src/gallium/include \
+	$(MESA_TOP)/src/gallium/auxiliary
 
-include $(GALLIUM_COMMON_MK)
+LOCAL_MODULE := libetnaviv_drm
+
+include $(MESA_COMMON_MK)
 include $(BUILD_STATIC_LIBRARY)
