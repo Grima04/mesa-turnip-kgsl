@@ -8,13 +8,51 @@
 
 namespace aco {
 
+/* LLVM disassembler only supports GFX8+, try to disassemble with CLRXdisasm
+ * for GFX6-GFX7 if found on the system, this is better than nothing.
+*/
+void print_asm_gfx6_gfx7(Program *program, std::vector<uint32_t>& binary,
+                         std::ostream& out)
+{
+   char path[] = "/tmp/fileXXXXXX";
+   char line[2048], command[128];
+   FILE *p;
+   int fd;
+
+   /* Dump the binary into a temporary file. */
+   fd = mkstemp(path);
+   if (fd < 0)
+      return;
+
+   for (uint32_t w : binary)
+   {
+      if (write(fd, &w, sizeof(w)) == -1)
+         goto fail;
+   }
+
+   sprintf(command, "clrxdisasm --gpuType=%s -r %s",
+           program->chip_class == GFX6 ? "gfx600" : "gfx700", path);
+
+   p = popen(command, "r");
+   if (p) {
+      while (fgets(line, sizeof(line), p))
+         out << line;
+      pclose(p);
+   }
+
+fail:
+   close(fd);
+   unlink(path);
+}
+
 void print_asm(Program *program, std::vector<uint32_t>& binary,
                unsigned exec_size, std::ostream& out)
 {
    if (program->chip_class <= GFX7) {
-      out << "Disassembly for this GPU currently not supported." << std::endl;
+      print_asm_gfx6_gfx7(program, binary, out);
       return;
    }
+
    std::vector<bool> referenced_blocks(program->blocks.size());
    referenced_blocks[0] = true;
    for (Block& block : program->blocks) {
