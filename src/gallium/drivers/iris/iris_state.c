@@ -779,7 +779,7 @@ iris_emit_default_l3_config(struct iris_batch *batch,
    iris_emit_l3_config(batch, cfg, has_slm, wants_dc_cache);
 }
 
-#if GEN_GEN == 9 || GEN_GEN == 10
+#if GEN_GEN == 9
 static void
 iris_enable_obj_preemption(struct iris_batch *batch, bool enable)
 {
@@ -1015,11 +1015,6 @@ iris_init_render_context(struct iris_batch *batch)
    iris_emit_cmd(batch, GENX(3DSTATE_POLY_STIPPLE_OFFSET), foo);
 
    iris_alloc_push_constants(batch);
-
-#if GEN_GEN == 10
-   /* Gen11+ is enabled for us by the kernel. */
-   iris_enable_obj_preemption(batch, true);
-#endif
 }
 
 static void
@@ -6858,17 +6853,6 @@ iris_emit_raw_pipe_control(struct iris_batch *batch,
                                  PIPE_CONTROL_CS_STALL, bo, offset, imm);
    }
 
-   if (GEN_GEN == 10 && (flags & PIPE_CONTROL_RENDER_TARGET_FLUSH)) {
-      /* Cannonlake:
-       * "Before sending a PIPE_CONTROL command with bit 12 set, SW must issue
-       *  another PIPE_CONTROL with Render Target Cache Flush Enable (bit 12)
-       *  = 0 and Pipe Control Flush Enable (bit 7) = 1"
-       */
-      iris_emit_raw_pipe_control(batch,
-                                 "workaround: PC flush before RT flush",
-                                 PIPE_CONTROL_FLUSH_ENABLE, bo, offset, imm);
-   }
-
    /* "Flush Types" workarounds ---------------------------------------------
     * We do these now because they may add post-sync operations or CS stalls.
     */
@@ -6884,25 +6868,6 @@ iris_emit_raw_pipe_control(struct iris_batch *batch,
          post_sync_flags |= PIPE_CONTROL_WRITE_IMMEDIATE;
          non_lri_post_sync_flags |= PIPE_CONTROL_WRITE_IMMEDIATE;
          bo = batch->screen->workaround_bo;
-      }
-   }
-
-   /* #1130 from Gen10 workarounds page:
-    *
-    *    "Enable Depth Stall on every Post Sync Op if Render target Cache
-    *     Flush is not enabled in same PIPE CONTROL and Enable Pixel score
-    *     board stall if Render target cache flush is enabled."
-    *
-    * Applicable to CNL B0 and C0 steppings only.
-    *
-    * The wording here is unclear, and this workaround doesn't look anything
-    * like the internal bug report recommendations, but leave it be for now...
-    */
-   if (GEN_GEN == 10) {
-      if (flags & PIPE_CONTROL_RENDER_TARGET_FLUSH) {
-         flags |= PIPE_CONTROL_STALL_AT_SCOREBOARD;
-      } else if (flags & non_lri_post_sync_flags) {
-         flags |= PIPE_CONTROL_DEPTH_STALL;
       }
    }
 
