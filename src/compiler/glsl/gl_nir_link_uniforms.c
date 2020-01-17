@@ -637,7 +637,7 @@ nir_link_uniform(struct gl_context *ctx,
              * a buffer object. For variables not backed by a buffer object,
              * offset is -1.
              */
-            if (state->var_is_in_block) {
+            if (state->var_is_in_block && prog->data->spirv) {
                state->offset =
                   struct_base_offset + glsl_get_struct_field_offset(type, i);
             }
@@ -753,6 +753,21 @@ nir_link_uniform(struct gl_context *ctx,
          } else {
             uniform->matrix_stride = 0;
          }
+
+         if (!prog->data->spirv) {
+            bool use_std430 = ctx->Const.UseSTD430AsDefaultPacking;
+            const enum glsl_interface_packing packing =
+               glsl_get_internal_ifc_packing(state->current_var->interface_type,
+                                             use_std430);
+
+            unsigned alignment =
+               glsl_get_std140_base_alignment(type, uniform->row_major);
+            if (packing == GLSL_INTERFACE_PACKING_STD430) {
+               alignment =
+                  glsl_get_std430_base_alignment(type, uniform->row_major);
+            }
+            state->offset = glsl_align(state->offset, alignment);
+         }
       }
 
       uniform->offset = state->var_is_in_block ? state->offset : -1;
@@ -792,6 +807,16 @@ nir_link_uniform(struct gl_context *ctx,
                   }
                }
             }
+
+            /* Compute the next offset. */
+            bool use_std430 = ctx->Const.UseSTD430AsDefaultPacking;
+            const enum glsl_interface_packing packing =
+               glsl_get_internal_ifc_packing(state->current_var->interface_type,
+                                             use_std430);
+            if (packing == GLSL_INTERFACE_PACKING_STD430)
+               state->offset += glsl_get_std430_size(type, uniform->row_major);
+            else
+               state->offset += glsl_get_std140_size(type, uniform->row_major);
          } else {
             for (unsigned i = 0; i < num_blocks; i++) {
                if (state->current_var->data.binding == blocks[i].Binding) {
@@ -799,11 +824,11 @@ nir_link_uniform(struct gl_context *ctx,
                   break;
                }
             }
+
+            /* Compute the next offset. */
+            state->offset += glsl_get_explicit_size(type, true);
          }
          assert(buffer_block_index >= 0);
-
-         /* Compute the next offset. */
-         state->offset += glsl_get_explicit_size(type, true);
       }
 
       uniform->block_index = buffer_block_index;
