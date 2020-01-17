@@ -118,7 +118,8 @@ setup_l3_config(struct brw_context *brw, const struct gen_l3_config *cfg)
    if (devinfo->gen >= 8) {
       assert(!cfg->n[GEN_L3P_IS] && !cfg->n[GEN_L3P_C] && !cfg->n[GEN_L3P_T]);
 
-      const unsigned imm_data = ((has_slm ? GEN8_L3CNTLREG_SLM_ENABLE : 0) |
+      const unsigned imm_data = (
+         (devinfo->gen < 11 && has_slm ? GEN8_L3CNTLREG_SLM_ENABLE : 0) |
          (devinfo->gen == 11 ? GEN11_L3CNTLREG_USE_FULL_WAYS : 0) |
          SET_FIELD(cfg->n[GEN_L3P_URB], GEN8_L3CNTLREG_URB_ALLOC) |
          SET_FIELD(cfg->n[GEN_L3P_RO], GEN8_L3CNTLREG_RO_ALLOC) |

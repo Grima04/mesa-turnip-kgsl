@@ -747,7 +747,7 @@ iris_emit_l3_config(struct iris_batch *batch, const struct gen_l3_config *cfg,
 #endif
 
    iris_pack_state(L3_ALLOCATION_REG, &reg_val, reg) {
-#if GEN_GEN < 12
+#if GEN_GEN < 11
       reg.SLMEnable = has_slm;
 #endif
 #if GEN_GEN == 11

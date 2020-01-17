@@ -1889,7 +1889,7 @@ genX(cmd_buffer_config_l3)(struct anv_cmd_buffer *cmd_buffer,
 
    uint32_t l3cr;
    anv_pack_struct(&l3cr, L3_ALLOCATION_REG,
-#if GEN_GEN < 12
+#if GEN_GEN < 11
                    .SLMEnable = has_slm,
 #endif
 #if GEN_GEN == 11
