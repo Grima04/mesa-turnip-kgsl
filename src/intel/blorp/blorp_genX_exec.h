@@ -27,6 +27,7 @@
 #include "blorp_priv.h"
 #include "dev/gen_device_info.h"
 #include "common/gen_sample_positions.h"
+#include "common/gen_l3_config.h"
 #include "genxml/gen_macros.h"
 
 /**
@@ -65,10 +66,8 @@ blorp_vf_invalidate_for_vb_48b_transitions(struct blorp_batch *batch,
                                            uint32_t *sizes,
                                            unsigned num_vbs);
 
-#if GEN_GEN >= 8
-static struct blorp_address
+UNUSED static struct blorp_address
 blorp_get_workaround_page(struct blorp_batch *batch);
-#endif
 
 static void
 blorp_alloc_binding_table(struct blorp_batch *batch, unsigned num_entries,
@@ -92,9 +91,14 @@ static struct blorp_address
 blorp_get_surface_base_address(struct blorp_batch *batch);
 #endif
 
+#if GEN_GEN >= 7
+static const struct gen_l3_config *
+blorp_get_l3_config(struct blorp_batch *batch);
+# else
 static void
 blorp_emit_urb_config(struct blorp_batch *batch,
                       unsigned vs_entry_size, unsigned sf_entry_size);
+#endif
 
 static void
 blorp_emit_pipeline(struct blorp_batch *batch,
@@ -207,7 +211,42 @@ emit_urb_config(struct blorp_batch *batch,
    const unsigned sf_entry_size =
       params->sf_prog_data ? params->sf_prog_data->urb_entry_size : 0;
 
+#if GEN_GEN >= 7
+   assert(sf_entry_size == 0);
+   const unsigned entry_size[4] = { vs_entry_size, 1, 1, 1 };
+
+   unsigned entries[4], start[4];
+   gen_get_urb_config(batch->blorp->compiler->devinfo,
+                      blorp_get_l3_config(batch),
+                      false, false, entry_size, entries, start);
+
+#if GEN_GEN == 7 && !GEN_IS_HASWELL
+   /* From the IVB PRM Vol. 2, Part 1, Section 3.2.1:
+    *
+    *    "A PIPE_CONTROL with Post-Sync Operation set to 1h and a depth stall
+    *    needs to be sent just prior to any 3DSTATE_VS, 3DSTATE_URB_VS,
+    *    3DSTATE_CONSTANT_VS, 3DSTATE_BINDING_TABLE_POINTER_VS,
+    *    3DSTATE_SAMPLER_STATE_POINTER_VS command.  Only one PIPE_CONTROL
+    *    needs to be sent before any combination of VS associated 3DSTATE."
+    */
+   blorp_emit(batch, GENX(PIPE_CONTROL), pc) {
+      pc.DepthStallEnable  = true;
+      pc.PostSyncOperation = WriteImmediateData;
+      pc.Address           = blorp_get_workaround_page(batch);
+   }
+#endif
+
+   for (int i = 0; i <= MESA_SHADER_GEOMETRY; i++) {
+      blorp_emit(batch, GENX(3DSTATE_URB_VS), urb) {
+         urb._3DCommandSubOpcode      += i;
+         urb.VSURBStartingAddress      = start[i];
+         urb.VSURBEntryAllocationSize  = entry_size[i] - 1;
+         urb.VSNumberofURBEntries      = entries[i];
+      }
+   }
+#else /* GEN_GEN < 7 */
    blorp_emit_urb_config(batch, vs_entry_size, sf_entry_size);
+#endif
 }
 
 #if GEN_GEN >= 7
