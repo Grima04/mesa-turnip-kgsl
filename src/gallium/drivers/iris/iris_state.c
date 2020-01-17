@@ -733,8 +733,8 @@ init_state_base_address(struct iris_batch *batch)
 }
 
 static void
-iris_emit_l3_config(struct iris_batch *batch, const struct gen_l3_config *cfg,
-                    bool has_slm, bool wants_dc_cache)
+iris_emit_l3_config(struct iris_batch *batch,
+                    const struct gen_l3_config *cfg)
 {
    uint32_t reg_val;
 
@@ -748,7 +748,7 @@ iris_emit_l3_config(struct iris_batch *batch, const struct gen_l3_config *cfg,
 
    iris_pack_state(L3_ALLOCATION_REG, &reg_val, reg) {
 #if GEN_GEN < 11
-      reg.SLMEnable = has_slm;
+      reg.SLMEnable = cfg->n[GEN_L3P_SLM] > 0;
 #endif
 #if GEN_GEN == 11
       /* WA_1406697149: Bit 9 "Error Detection Behavior Control" must be set
@@ -775,7 +775,7 @@ iris_emit_default_l3_config(struct iris_batch *batch, bool compute)
    const struct gen_l3_weights w =
       gen_get_default_l3_weights(devinfo, wants_dc_cache, has_slm);
    const struct gen_l3_config *cfg = gen_get_l3_config(devinfo, w);
-   iris_emit_l3_config(batch, cfg, has_slm, wants_dc_cache);
+   iris_emit_l3_config(batch, cfg);
 }
 
 #if GEN_GEN == 9
