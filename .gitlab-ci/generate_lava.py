@@ -16,6 +16,8 @@ parser.add_argument("--lava-tags", nargs='?', default="")
 parser.add_argument("--env-vars", nargs='?', default="")
 parser.add_argument("--deqp-version")
 parser.add_argument("--arch")
+parser.add_argument("--ci-node-index")
+parser.add_argument("--ci-node-total")
 args = parser.parse_args()
 
 env = Environment(loader = FileSystemLoader(os.path.dirname(args.template)), trim_blocks=True, lstrip_blocks=True)
@@ -32,6 +34,8 @@ values['tags'] = args.lava_tags
 values['env_vars'] = args.env_vars
 values['deqp_version'] = args.deqp_version
 values['arch'] = args.arch
+values['ci_node_index'] = args.ci_node_index
+values['ci_node_total'] = args.ci_node_total
 
 f = open('lava-deqp.yml', "w")
 f.write(template.render(values))

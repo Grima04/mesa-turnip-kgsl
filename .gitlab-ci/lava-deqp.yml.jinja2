@@ -70,6 +70,8 @@ actions:
           - export DEQP_SKIPS=deqp-{{ gpu_version }}-skips.txt
           - export DEQP_VER={{ deqp_version }}
           - export LIBGL_DRIVERS_PATH=`pwd`/install/lib/dri
+          - export CI_NODE_INDEX={{ ci_node_index }}
+          - export CI_NODE_TOTAL={{ ci_node_total }}
 
           # Put stuff where the runner script expects it
           - mkdir artifacts

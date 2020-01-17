@@ -19,7 +19,9 @@
         --kernel-image-type "${KERNEL_IMAGE_TYPE}" \
         --gpu-version ${GPU_VERSION} \
         --boot-method ${BOOT_METHOD} \
-        --lava-tags "${LAVA_TAGS}"
+        --lava-tags "${LAVA_TAGS}" \
+        --ci-node-index "${CI_NODE_INDEX}" \
+        --ci-node-total "${CI_NODE_TOTAL}"
     - lava_job_id=`lavacli jobs submit lava-deqp.yml`
     - echo $lava_job_id
     - rm -rf artifacts/*
