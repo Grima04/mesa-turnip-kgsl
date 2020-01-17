@@ -401,6 +401,8 @@ struct pipe_video_codec *radeon_create_encoder(struct pipe_context *context,
 	enc->si = &si;
 
 	templat.buffer_format = PIPE_FORMAT_NV12;
+	if (enc->base.profile == PIPE_VIDEO_PROFILE_HEVC_MAIN_10)
+		templat.buffer_format = PIPE_FORMAT_P010;
 	templat.width = enc->base.width;
 	templat.height = enc->base.height;
 	templat.interlaced = false;

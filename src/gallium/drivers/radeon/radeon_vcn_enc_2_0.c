@@ -66,6 +66,16 @@
 #define RENCODE_H264_IB_PARAM_ENCODE_PARAMS			0x00200003
 #define RENCODE_H264_IB_PARAM_DEBLOCKING_FILTER 		0x00200004
 
+#define RENCODE_COLOR_VOLUME_G22_BT709  			0
+#define RENCODE_COLOR_VOLUME_G10_BT2020 			3
+
+#define RENCODE_COLOR_BIT_DEPTH_8_BIT				0
+#define RENCODE_COLOR_BIT_DEPTH_10_BIT				1
+
+#define RENCODE_COLOR_PACKING_FORMAT_NV12			0
+#define RENCODE_COLOR_PACKING_FORMAT_P010			1
+
+
 static void radeon_enc_quality_params(struct radeon_encoder *enc)
 {
 	enc->enc_pic.quality_params.vbaq_mode = 0;
@@ -233,31 +243,89 @@ static void radeon_enc_nalu_pps_hevc(struct radeon_encoder *enc)
 	RADEON_ENC_END();
 }
 
+
 static void radeon_enc_input_format(struct radeon_encoder *enc)
 {
 	RADEON_ENC_BEGIN(enc->cmd.input_format);
-	RADEON_ENC_CS(0);
-	RADEON_ENC_CS(0);
-	RADEON_ENC_CS(0);
-	RADEON_ENC_CS(0);
-	RADEON_ENC_CS(0);
-	RADEON_ENC_CS(0);
-	RADEON_ENC_CS(0);
+	if (enc->base.profile == PIPE_VIDEO_PROFILE_HEVC_MAIN_10) {
+		RADEON_ENC_CS(RENCODE_COLOR_VOLUME_G10_BT2020);
+		RADEON_ENC_CS(0);
+		RADEON_ENC_CS(0);
+		RADEON_ENC_CS(0);
+		RADEON_ENC_CS(0);
+		RADEON_ENC_CS(RENCODE_COLOR_BIT_DEPTH_10_BIT);
+		RADEON_ENC_CS(RENCODE_COLOR_PACKING_FORMAT_P010);
+	} else {
+		RADEON_ENC_CS(RENCODE_COLOR_VOLUME_G22_BT709);
+		RADEON_ENC_CS(0);
+		RADEON_ENC_CS(0);
+		RADEON_ENC_CS(0);
+		RADEON_ENC_CS(0);
+		RADEON_ENC_CS(RENCODE_COLOR_BIT_DEPTH_8_BIT);
+		RADEON_ENC_CS(RENCODE_COLOR_PACKING_FORMAT_NV12);
+	}
 	RADEON_ENC_END();
 }
 
 static void radeon_enc_output_format(struct radeon_encoder *enc)
 {
 	RADEON_ENC_BEGIN(enc->cmd.output_format);
-	RADEON_ENC_CS(0);
-	RADEON_ENC_CS(0);
-	RADEON_ENC_CS(0);
-	RADEON_ENC_CS(0);
-	RADEON_ENC_CS(0);
-	RADEON_ENC_CS(0);
-	RADEON_ENC_CS(0);
+	if (enc->base.profile == PIPE_VIDEO_PROFILE_HEVC_MAIN_10) {
+		RADEON_ENC_CS(RENCODE_COLOR_VOLUME_G10_BT2020);
+		RADEON_ENC_CS(0);
+		RADEON_ENC_CS(0);
+		RADEON_ENC_CS(RENCODE_COLOR_BIT_DEPTH_10_BIT);
+	} else {
+		RADEON_ENC_CS(RENCODE_COLOR_VOLUME_G22_BT709);
+		RADEON_ENC_CS(0);
+		RADEON_ENC_CS(0);
+		RADEON_ENC_CS(RENCODE_COLOR_BIT_DEPTH_8_BIT);
+	}
 	RADEON_ENC_END();
 }
+
+static void radeon_enc_ctx(struct radeon_encoder *enc)
+{
+	enc->enc_pic.ctx_buf.swizzle_mode = 0;
+
+	uint32_t aligned_width = enc->enc_pic.session_init.aligned_picture_width;
+	uint32_t aligned_height = enc->enc_pic.session_init.aligned_picture_height;
+
+	enc->enc_pic.ctx_buf.rec_luma_pitch = align(aligned_width, enc->alignment);
+	enc->enc_pic.ctx_buf.rec_chroma_pitch = align(aligned_width, enc->alignment);
+
+	int luma_size = enc->enc_pic.ctx_buf.rec_luma_pitch * align(aligned_height, enc->alignment);
+	if (enc->enc_pic.bit_depth_luma_minus8 == 2)
+		luma_size *= 2;
+	int chroma_size = align(luma_size / 2, enc->alignment);
+	int offset = 0;
+
+	enc->enc_pic.ctx_buf.num_reconstructed_pictures = 2;
+	for (int i = 0; i < enc->enc_pic.ctx_buf.num_reconstructed_pictures; i++) {
+		enc->enc_pic.ctx_buf.reconstructed_pictures[i].luma_offset = offset;
+		offset += luma_size;
+		enc->enc_pic.ctx_buf.reconstructed_pictures[i].chroma_offset = offset;
+		offset += chroma_size;
+	}
+
+	RADEON_ENC_BEGIN(enc->cmd.ctx);
+	RADEON_ENC_READWRITE(enc->cpb.res->buf, enc->cpb.res->domains, 0);
+	RADEON_ENC_CS(enc->enc_pic.ctx_buf.swizzle_mode);
+	RADEON_ENC_CS(enc->enc_pic.ctx_buf.rec_luma_pitch);
+	RADEON_ENC_CS(enc->enc_pic.ctx_buf.rec_chroma_pitch);
+	RADEON_ENC_CS(enc->enc_pic.ctx_buf.num_reconstructed_pictures);
+
+	for (int i = 0; i < enc->enc_pic.ctx_buf.num_reconstructed_pictures; i++) {
+		RADEON_ENC_CS(enc->enc_pic.ctx_buf.reconstructed_pictures[i].luma_offset);
+		RADEON_ENC_CS(enc->enc_pic.ctx_buf.reconstructed_pictures[i].chroma_offset);
+	}
+
+	for (int i = 0; i < 136 ; i++)
+		RADEON_ENC_CS(0x00000000);
+
+	RADEON_ENC_END();
+}
+
 
 static void encode(struct radeon_encoder *enc)
 {
@@ -282,6 +350,7 @@ void radeon_enc_2_0_init(struct radeon_encoder *enc)
 {
 	radeon_enc_1_2_init(enc);
 	enc->encode = encode;
+	enc->ctx = radeon_enc_ctx;
 	enc->quality_params = radeon_enc_quality_params;
 	enc->input_format = radeon_enc_input_format;
 	enc->output_format = radeon_enc_output_format;
