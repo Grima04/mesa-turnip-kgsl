@@ -4740,40 +4740,103 @@ void visit_load_global(isel_context *ctx, nir_intrinsic_instr *instr)
    aco_opcode op;
    if (dst.type() == RegType::vgpr || (glc && ctx->options->chip_class < GFX8)) {
       bool global = ctx->options->chip_class >= GFX9;
-      aco_opcode op;
-      switch (num_bytes) {
-      case 4:
-         op = global ? aco_opcode::global_load_dword : aco_opcode::flat_load_dword;
-         break;
-      case 8:
-         op = global ? aco_opcode::global_load_dwordx2 : aco_opcode::flat_load_dwordx2;
-         break;
-      case 12:
-         op = global ? aco_opcode::global_load_dwordx3 : aco_opcode::flat_load_dwordx3;
-         break;
-      case 16:
-         op = global ? aco_opcode::global_load_dwordx4 : aco_opcode::flat_load_dwordx4;
-         break;
-      default:
-         unreachable("load_global not implemented for this size.");
-      }
-      aco_ptr<FLAT_instruction> flat{create_instruction<FLAT_instruction>(op, global ? Format::GLOBAL : Format::FLAT, 2, 1)};
-      flat->operands[0] = Operand(addr);
-      flat->operands[1] = Operand(s1);
-      flat->glc = glc;
-      flat->dlc = dlc;
-      flat->barrier = barrier_buffer;
 
-      if (dst.type() == RegType::sgpr) {
-         Temp vec = bld.tmp(RegType::vgpr, dst.size());
-         flat->definitions[0] = Definition(vec);
-         ctx->block->instructions.emplace_back(std::move(flat));
-         bld.pseudo(aco_opcode::p_as_uniform, Definition(dst), vec);
+      if (ctx->options->chip_class >= GFX7) {
+         aco_opcode op;
+         switch (num_bytes) {
+         case 4:
+            op = global ? aco_opcode::global_load_dword : aco_opcode::flat_load_dword;
+            break;
+         case 8:
+            op = global ? aco_opcode::global_load_dwordx2 : aco_opcode::flat_load_dwordx2;
+            break;
+         case 12:
+            op = global ? aco_opcode::global_load_dwordx3 : aco_opcode::flat_load_dwordx3;
+            break;
+         case 16:
+            op = global ? aco_opcode::global_load_dwordx4 : aco_opcode::flat_load_dwordx4;
+            break;
+         default:
+            unreachable("load_global not implemented for this size.");
+         }
+
+         aco_ptr<FLAT_instruction> flat{create_instruction<FLAT_instruction>(op, global ? Format::GLOBAL : Format::FLAT, 2, 1)};
+         flat->operands[0] = Operand(addr);
+         flat->operands[1] = Operand(s1);
+         flat->glc = glc;
+         flat->dlc = dlc;
+         flat->barrier = barrier_buffer;
+
+         if (dst.type() == RegType::sgpr) {
+            Temp vec = bld.tmp(RegType::vgpr, dst.size());
+            flat->definitions[0] = Definition(vec);
+            ctx->block->instructions.emplace_back(std::move(flat));
+            bld.pseudo(aco_opcode::p_as_uniform, Definition(dst), vec);
+         } else {
+            flat->definitions[0] = Definition(dst);
+            ctx->block->instructions.emplace_back(std::move(flat));
+         }
+         emit_split_vector(ctx, dst, num_components);
       } else {
-         flat->definitions[0] = Definition(dst);
-         ctx->block->instructions.emplace_back(std::move(flat));
+         assert(ctx->options->chip_class == GFX6);
+
+         /* GFX6 doesn't support loading vec3, expand to vec4. */
+         num_bytes = num_bytes == 12 ? 16 : num_bytes;
+
+         aco_opcode op;
+         switch (num_bytes) {
+         case 4:
+            op = aco_opcode::buffer_load_dword;
+            break;
+         case 8:
+            op = aco_opcode::buffer_load_dwordx2;
+            break;
+         case 16:
+            op = aco_opcode::buffer_load_dwordx4;
+            break;
+         default:
+            unreachable("load_global not implemented for this size.");
+         }
+
+         Temp rsrc = get_gfx6_global_rsrc(bld, addr);
+
+         aco_ptr<MUBUF_instruction> mubuf{create_instruction<MUBUF_instruction>(op, Format::MUBUF, 3, 1)};
+         mubuf->operands[0] = addr.type() == RegType::vgpr ? Operand(addr) : Operand(v1);
+         mubuf->operands[1] = Operand(rsrc);
+         mubuf->operands[2] = Operand(0u);
+         mubuf->glc = glc;
+         mubuf->dlc = false;
+         mubuf->offset = 0;
+         mubuf->addr64 = addr.type() == RegType::vgpr;
+         mubuf->disable_wqm = false;
+         mubuf->barrier = barrier_buffer;
+         aco_ptr<Instruction> instr = std::move(mubuf);
+
+         /* expand vector */
+         if (dst.size() == 3) {
+            Temp vec = bld.tmp(v4);
+            instr->definitions[0] = Definition(vec);
+            bld.insert(std::move(instr));
+            emit_split_vector(ctx, vec, 4);
+
+            instr.reset(create_instruction<Pseudo_instruction>(aco_opcode::p_create_vector, Format::PSEUDO, 3, 1));
+            instr->operands[0] = Operand(emit_extract_vector(ctx, vec, 0, v1));
+            instr->operands[1] = Operand(emit_extract_vector(ctx, vec, 1, v1));
+            instr->operands[2] = Operand(emit_extract_vector(ctx, vec, 2, v1));
+         }
+
+         if (dst.type() == RegType::sgpr) {
+            Temp vec = bld.tmp(RegType::vgpr, dst.size());
+            instr->definitions[0] = Definition(vec);
+            bld.insert(std::move(instr));
+            expand_vector(ctx, vec, dst, num_components, (1 << num_components) - 1);
+            bld.pseudo(aco_opcode::p_as_uniform, Definition(dst), vec);
+         } else {
+            instr->definitions[0] = Definition(dst);
+            bld.insert(std::move(instr));
+            emit_split_vector(ctx, dst, num_components);
+         }
       }
-      emit_split_vector(ctx, dst, num_components);
    } else {
       switch (num_bytes) {
          case 4:
