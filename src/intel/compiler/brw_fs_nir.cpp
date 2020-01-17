@@ -4309,17 +4309,17 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
        * are two different fences, and shader might want to synchronize
        * between them.
        *
-       * TODO: Improve NIR so that scope and visibility information for the
-       * barriers is available here to make a better decision.
-       *
-       * TODO: When emitting more than one fence, it might help emit all
-       * the fences first and then generate the stall moves.
+       * TODO: Use scope and visibility information for the barriers from NIR
+       * to make a better decision on whether we need to stall.
        */
       const bool stall = devinfo->gen >= 11 || needs_render_fence ||
          instr->intrinsic == nir_intrinsic_end_invocation_interlock;
 
       const bool commit_enable = stall ||
          devinfo->gen >= 10; /* HSD ES # 1404612949 */
+
+      unsigned fence_regs_count = 0;
+      fs_reg fence_regs[2] = {};
 
       const fs_builder ubld = bld.group(8, 0);
 
@@ -4332,6 +4332,8 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
                       brw_imm_ud(/* bti */ 0));
          fence->sfid = GEN7_SFID_DATAPORT_DATA_CACHE;
 
+         fence_regs[fence_regs_count++] = fence->dst;
+
          if (needs_render_fence) {
             fs_inst *render_fence =
                ubld.emit(opcode,
@@ -4341,13 +4343,7 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
                          brw_imm_ud(/* bti */ 0));
             render_fence->sfid = GEN6_SFID_DATAPORT_RENDER_CACHE;
 
-            ubld.exec_all().group(1, 0).emit(
-               FS_OPCODE_SCHEDULING_FENCE, ubld.null_reg_ud(),
-               fence->dst, render_fence->dst);
-         } else if (stall) {
-            ubld.exec_all().group(1, 0).emit(
-               FS_OPCODE_SCHEDULING_FENCE, ubld.null_reg_ud(),
-               fence->dst);
+            fence_regs[fence_regs_count++] = render_fence->dst;
          }
       }
 
@@ -4361,15 +4357,16 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
                       brw_imm_ud(GEN7_BTI_SLM));
          fence->sfid = GEN7_SFID_DATAPORT_DATA_CACHE;
 
-         if (stall) {
-            ubld.exec_all().group(1, 0).emit(
-               FS_OPCODE_SCHEDULING_FENCE, ubld.null_reg_ud(),
-               fence->dst);
-         }
+         fence_regs[fence_regs_count++] = fence->dst;
       }
 
-      if (!l3_fence && !slm_fence)
-         ubld.emit(FS_OPCODE_SCHEDULING_FENCE);
+      assert(fence_regs_count <= 2);
+
+      if (stall || fence_regs_count == 0) {
+         ubld.exec_all().group(1, 0).emit(
+            FS_OPCODE_SCHEDULING_FENCE, ubld.null_reg_ud(),
+            fence_regs, fence_regs_count);
+      }
 
       break;
    }
