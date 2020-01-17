@@ -466,7 +466,7 @@ optimizations.extend([
    (('ine', ('iadd', a, b), a), ('ine', b, 0)),
 
    (('feq', ('b2f', 'a@1'), 0.0), ('inot', a)),
-   (('~fneu', ('b2f', 'a@1'), 0.0), a),
+   (('fneu', ('b2f', 'a@1'), 0.0), a),
    (('ieq', ('b2i', 'a@1'), 0),   ('inot', a)),
    (('ine', ('b2i', 'a@1'), 0),   a),
 
