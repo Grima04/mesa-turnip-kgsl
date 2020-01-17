@@ -2112,7 +2112,8 @@ void apply_sgprs(opt_ctx &ctx, aco_ptr<Instruction>& instr)
          continue;
       }
 
-      sgpr_ids[num_sgprs++] = sgpr.id();
+      if (new_sgpr)
+         sgpr_ids[num_sgprs++] = sgpr.id();
       ctx.uses[sgpr_info_id]--;
       ctx.uses[sgpr.id()]++;
    }
