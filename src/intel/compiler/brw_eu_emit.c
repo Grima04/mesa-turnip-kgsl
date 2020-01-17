@@ -3145,68 +3145,29 @@ brw_set_memory_fence_message(struct brw_codegen *p,
    brw_inst_set_binding_table_index(devinfo, insn, bti);
 }
 
-unsigned
+void
 brw_memory_fence(struct brw_codegen *p,
                  struct brw_reg dst,
                  struct brw_reg src,
                  enum opcode send_op,
-                 bool stall,
+                 enum brw_message_target sfid,
+                 bool commit_enable,
                  unsigned bti)
 {
    const struct gen_device_info *devinfo = p->devinfo;
-   const bool commit_enable = stall ||
-      devinfo->gen >= 10 || /* HSD ES # 1404612949 */
-      (devinfo->gen == 7 && !devinfo->is_haswell);
-   struct brw_inst *insn;
 
-   unsigned fences = 0;
-
-   brw_push_insn_state(p);
-   brw_set_default_mask_control(p, BRW_MASK_DISABLE);
-   brw_set_default_exec_size(p, BRW_EXECUTE_1);
    dst = retype(vec1(dst), BRW_REGISTER_TYPE_UW);
    src = retype(vec1(src), BRW_REGISTER_TYPE_UD);
 
    /* Set dst as destination for dependency tracking, the MEMORY_FENCE
     * message doesn't write anything back.
     */
-   insn = next_insn(p, send_op);
+   struct brw_inst *insn = next_insn(p, send_op);
+   brw_inst_set_mask_control(devinfo, insn, BRW_MASK_DISABLE);
+   brw_inst_set_exec_size(devinfo, insn, BRW_EXECUTE_1);
    brw_set_dest(p, insn, dst);
    brw_set_src0(p, insn, src);
-   brw_set_memory_fence_message(p, insn, GEN7_SFID_DATAPORT_DATA_CACHE,
-                                commit_enable, bti);
-   fences++;
-
-   if (devinfo->gen == 7 && !devinfo->is_haswell) {
-      /* IVB does typed surface access through the render cache, so we need to
-       * flush it too.  Use a different register so both flushes can be
-       * pipelined by the hardware.
-       */
-      insn = next_insn(p, send_op);
-      brw_set_dest(p, insn, offset(dst, 1));
-      brw_set_src0(p, insn, src);
-      brw_set_memory_fence_message(p, insn, GEN6_SFID_DATAPORT_RENDER_CACHE,
-                                   commit_enable, bti);
-      fences++;
-
-      /* Now write the response of the second message into the response of the
-       * first to trigger a pipeline stall -- This way future render and data
-       * cache messages will be properly ordered with respect to past data and
-       * render cache messages.
-       */
-      brw_MOV(p, dst, offset(dst, 1));
-   }
-
-   if (stall) {
-      brw_set_default_swsb(p, tgl_swsb_sbid(TGL_SBID_DST,
-                                            brw_get_default_swsb(p).sbid));
-
-      brw_MOV(p, retype(brw_null_reg(), BRW_REGISTER_TYPE_UW), dst);
-   }
-
-   brw_pop_insn_state(p);
-
-   return fences;
+   brw_set_memory_fence_message(p, insn, sfid, commit_enable, bti);
 }
 
 void

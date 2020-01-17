@@ -4232,19 +4232,52 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
    case nir_intrinsic_memory_barrier_shared:
    case nir_intrinsic_memory_barrier_buffer:
    case nir_intrinsic_memory_barrier_image:
-   case nir_intrinsic_memory_barrier: {
+   case nir_intrinsic_memory_barrier:
+   case nir_intrinsic_begin_invocation_interlock:
+   case nir_intrinsic_end_invocation_interlock: {
       bool l3_fence, slm_fence;
-      if (instr->intrinsic == nir_intrinsic_scoped_memory_barrier) {
+      const enum opcode opcode =
+         instr->intrinsic == nir_intrinsic_begin_invocation_interlock ?
+         SHADER_OPCODE_INTERLOCK : SHADER_OPCODE_MEMORY_FENCE;
+
+      switch (instr->intrinsic) {
+      case nir_intrinsic_scoped_memory_barrier: {
          nir_variable_mode modes = nir_intrinsic_memory_modes(instr);
          l3_fence = modes & (nir_var_shader_out |
                              nir_var_mem_ssbo |
                              nir_var_mem_global);
          slm_fence = modes & nir_var_mem_shared;
-      } else {
+         break;
+      }
+
+      case nir_intrinsic_begin_invocation_interlock:
+      case nir_intrinsic_end_invocation_interlock:
+         /* For beginInvocationInterlockARB(), we will generate a memory fence
+          * but with a different opcode so that generator can pick SENDC
+          * instead of SEND.
+          *
+          * For endInvocationInterlockARB(), we need to insert a memory fence which
+          * stalls in the shader until the memory transactions prior to that
+          * fence are complete.  This ensures that the shader does not end before
+          * any writes from its critical section have landed.  Otherwise, you can
+          * end up with a case where the next invocation on that pixel properly
+          * stalls for previous FS invocation on its pixel to complete but
+          * doesn't actually wait for the dataport memory transactions from that
+          * thread to land before submitting its own.
+          *
+          * Handling them here will allow the logic for IVB render cache (see
+          * below) to be reused.
+          */
+         l3_fence = true;
+         slm_fence = false;
+         break;
+
+      default:
          l3_fence = instr->intrinsic != nir_intrinsic_memory_barrier_shared;
          slm_fence = instr->intrinsic == nir_intrinsic_group_memory_barrier ||
                      instr->intrinsic == nir_intrinsic_memory_barrier ||
                      instr->intrinsic == nir_intrinsic_memory_barrier_shared;
+         break;
       }
 
       if (stage != MESA_SHADER_COMPUTE)
@@ -4266,6 +4299,12 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
          l3_fence = true;
       }
 
+      /* IVB does typed surface access through the render cache, so we need
+       * to flush it too.
+       */
+      const bool needs_render_fence =
+         devinfo->gen == 7 && !devinfo->is_haswell;
+
       /* Be conservative in Gen11+ and always stall in a fence.  Since there
        * are two different fences, and shader might want to synchronize
        * between them.
@@ -4276,23 +4315,57 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
        * TODO: When emitting more than one fence, it might help emit all
        * the fences first and then generate the stall moves.
        */
-      const bool stall = devinfo->gen >= 11;
+      const bool stall = devinfo->gen >= 11 || needs_render_fence ||
+         instr->intrinsic == nir_intrinsic_end_invocation_interlock;
+
+      const bool commit_enable = stall ||
+         devinfo->gen >= 10; /* HSD ES # 1404612949 */
 
       const fs_builder ubld = bld.group(8, 0);
-      const fs_reg tmp = ubld.vgrf(BRW_REGISTER_TYPE_UD, 2);
 
       if (l3_fence) {
-         ubld.emit(SHADER_OPCODE_MEMORY_FENCE, tmp,
-                   brw_vec8_grf(0, 0), brw_imm_ud(stall),
-                   /* bti */ brw_imm_ud(0))
-            ->size_written = 2 * REG_SIZE;
+         fs_inst *fence =
+            ubld.emit(opcode,
+                      ubld.vgrf(BRW_REGISTER_TYPE_UD),
+                      brw_vec8_grf(0, 0),
+                      brw_imm_ud(commit_enable),
+                      brw_imm_ud(/* bti */ 0));
+         fence->sfid = GEN7_SFID_DATAPORT_DATA_CACHE;
+
+         if (needs_render_fence) {
+            fs_inst *render_fence =
+               ubld.emit(opcode,
+                         ubld.vgrf(BRW_REGISTER_TYPE_UD),
+                         brw_vec8_grf(0, 0),
+                         brw_imm_ud(commit_enable),
+                         brw_imm_ud(/* bti */ 0));
+            render_fence->sfid = GEN6_SFID_DATAPORT_RENDER_CACHE;
+
+            ubld.exec_all().group(1, 0).emit(
+               FS_OPCODE_SCHEDULING_FENCE, ubld.null_reg_ud(),
+               fence->dst, render_fence->dst);
+         } else if (stall) {
+            ubld.exec_all().group(1, 0).emit(
+               FS_OPCODE_SCHEDULING_FENCE, ubld.null_reg_ud(),
+               fence->dst);
+         }
       }
 
       if (slm_fence) {
-         ubld.emit(SHADER_OPCODE_MEMORY_FENCE, tmp,
-                   brw_vec8_grf(0, 0), brw_imm_ud(stall),
-                   brw_imm_ud(GEN7_BTI_SLM))
-            ->size_written = 2 * REG_SIZE;
+         assert(opcode == SHADER_OPCODE_MEMORY_FENCE);
+         fs_inst *fence =
+            ubld.emit(opcode,
+                      ubld.vgrf(BRW_REGISTER_TYPE_UD),
+                      brw_vec8_grf(0, 0),
+                      brw_imm_ud(commit_enable),
+                      brw_imm_ud(GEN7_BTI_SLM));
+         fence->sfid = GEN7_SFID_DATAPORT_DATA_CACHE;
+
+         if (stall) {
+            ubld.exec_all().group(1, 0).emit(
+               FS_OPCODE_SCHEDULING_FENCE, ubld.null_reg_ud(),
+               fence->dst);
+         }
       }
 
       if (!l3_fence && !slm_fence)
@@ -5207,33 +5280,6 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
       bld.emit_scan(brw_op, scan, dispatch_width, cond_mod);
 
       bld.MOV(retype(dest, src.type), scan);
-      break;
-   }
-
-   case nir_intrinsic_begin_invocation_interlock: {
-      const fs_builder ubld = bld.group(8, 0);
-      const fs_reg tmp = ubld.vgrf(BRW_REGISTER_TYPE_UD, 2);
-
-      ubld.emit(SHADER_OPCODE_INTERLOCK, tmp, brw_vec8_grf(0, 0))
-         ->size_written = 2 * REG_SIZE;
-      break;
-   }
-
-   case nir_intrinsic_end_invocation_interlock: {
-      /* For endInvocationInterlock(), we need to insert a memory fence which
-       * stalls in the shader until the memory transactions prior to that
-       * fence are complete.  This ensures that the shader does not end before
-       * any writes from its critical section have landed.  Otherwise, you can
-       * end up with a case where the next invocation on that pixel properly
-       * stalls for previous FS invocation on its pixel to complete but
-       * doesn't actually wait for the dataport memory transactions from that
-       * thread to land before submitting its own.
-       */
-      const fs_builder ubld = bld.group(8, 0);
-      const fs_reg tmp = ubld.vgrf(BRW_REGISTER_TYPE_UD, 2);
-      ubld.emit(SHADER_OPCODE_MEMORY_FENCE, tmp,
-                brw_vec8_grf(0, 0), brw_imm_ud(1), brw_imm_ud(0))
-         ->size_written = 2 * REG_SIZE;
       break;
    }
 

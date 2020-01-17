@@ -454,8 +454,8 @@ enum opcode {
     * Memory fence messages.
     *
     * Source 0: Must be register g0, used as header.
-    * Source 1: Immediate bool to indicate whether or not we need to stall
-    *           until memory transactions prior to the fence are completed.
+    * Source 1: Immediate bool to indicate whether control is returned to the
+    *           thread only after the fence has been honored.
     * Source 2: Immediate byte indicating which memory to fence.  Zero means
     *           global memory; GEN7_BTI_SLM means SLM (for Gen11+ only).
     *

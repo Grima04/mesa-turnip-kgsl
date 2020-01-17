@@ -2217,13 +2217,19 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
          generate_shader_time_add(inst, src[0], src[1], src[2]);
          break;
 
+      case SHADER_OPCODE_INTERLOCK:
       case SHADER_OPCODE_MEMORY_FENCE: {
          assert(src[1].file == BRW_IMMEDIATE_VALUE);
          assert(src[2].file == BRW_IMMEDIATE_VALUE);
-         const unsigned sends =
-            brw_memory_fence(p, dst, src[0], BRW_OPCODE_SEND, src[1].ud,
-                             src[2].ud);
-         send_count += sends;
+
+         const enum opcode send_op = inst->opcode == SHADER_OPCODE_INTERLOCK ?
+            BRW_OPCODE_SENDC : BRW_OPCODE_SEND;
+
+         brw_memory_fence(p, dst, src[0], send_op,
+                          brw_message_target(inst->sfid),
+                          /* commit_enable */ src[1].ud,
+                          /* bti */ src[2].ud);
+         send_count++;
          break;
       }
 
@@ -2255,12 +2261,6 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
                multiple_instructions_emitted = true;
          }
 
-         break;
-
-      case SHADER_OPCODE_INTERLOCK:
-         assert(devinfo->gen >= 9);
-         /* The interlock is basically a memory fence issued via sendc */
-         brw_memory_fence(p, dst, src[0], BRW_OPCODE_SENDC, false, /* bti */ 0);
          break;
 
       case SHADER_OPCODE_FIND_LIVE_CHANNEL: {
