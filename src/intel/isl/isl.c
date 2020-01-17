@@ -1980,6 +1980,19 @@ isl_surf_get_ccs_surf(const struct isl_device *dev,
       return false;
    }
 
+   /* GEN:BUG:1207137018
+    *
+    * TODO: implement following workaround currently covered by the restriction
+    * above. If following conditions are met:
+    *
+    *    - RENDER_SURFACE_STATE.Surface Type == 3D
+    *    - RENDER_SURFACE_STATE.Auxiliary Surface Mode != AUX_NONE
+    *    - RENDER_SURFACE_STATE.Tiled ResourceMode is TYF or TYS
+    *
+    * Set the value of RENDER_SURFACE_STATE.Mip Tail Start LOD to a mip that
+    * larger than those present in the surface (i.e. 15)
+    */
+
    /* TODO: More conditions where it can fail. */
 
    /* From the Ivy Bridge PRM, Vol2 Part1 11.7 "MCS Buffer for Render
