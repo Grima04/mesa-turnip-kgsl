@@ -207,7 +207,7 @@ void try_remove_simple_block(ssa_elimination_ctx& ctx, Block* block)
       branch->opcode = aco_opcode::p_branch;
    } else if (branch->target[1] == block->index) {
       /* check if there is a fall-through path from block to succ */
-      bool falls_through = true;
+      bool falls_through = block->index < succ.index;
       for (unsigned j = block->index + 1; falls_through && j < succ.index; j++) {
          assert(ctx.program->blocks[j].index == j);
          if (!ctx.program->blocks[j].instructions.empty())
@@ -217,6 +217,8 @@ void try_remove_simple_block(ssa_elimination_ctx& ctx, Block* block)
          branch->target[1] = succ.index;
       } else {
          /* check if there is a fall-through path for the alternative target */
+         if (block->index >= branch->target[0])
+            return;
          for (unsigned j = block->index + 1; j < branch->target[0]; j++) {
             if (!ctx.program->blocks[j].instructions.empty())
                return;
