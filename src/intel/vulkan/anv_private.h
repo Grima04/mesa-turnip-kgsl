@@ -46,6 +46,7 @@
 #include "common/gen_clflush.h"
 #include "common/gen_decoder.h"
 #include "common/gen_gem.h"
+#include "common/gen_l3_config.h"
 #include "dev/gen_device_info.h"
 #include "blorp/blorp.h"
 #include "compiler/brw_compiler.h"
@@ -76,7 +77,6 @@ struct anv_image_view;
 struct anv_instance;
 
 struct gen_aux_map_context;
-struct gen_l3_config;
 struct gen_perf_config;
 
 #include <vulkan/vulkan.h>
