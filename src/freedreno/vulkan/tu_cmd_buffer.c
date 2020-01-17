@@ -894,8 +894,8 @@ tu6_emit_tile_store(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 static void
 tu6_emit_restart_index(struct tu_cs *cs, uint32_t restart_index)
 {
-   tu_cs_emit_pkt4(cs, REG_A6XX_PC_RESTART_INDEX, 1);
-   tu_cs_emit(cs, restart_index);
+   tu_cs_emit_regs(cs,
+                   A6XX_PC_RESTART_INDEX(restart_index));
 }
 
 static void
@@ -1013,58 +1013,50 @@ tu6_init_hw(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
    tu_cs_emit(cs, CP_SET_DRAW_STATE__1_ADDR_LO(0));
    tu_cs_emit(cs, CP_SET_DRAW_STATE__2_ADDR_HI(0));
 
-   tu_cs_emit_pkt4(cs, REG_A6XX_VPC_SO_BUFFER_BASE_LO(0), 3);
-   tu_cs_emit(cs, 0x00000000); /* VPC_SO_BUFFER_BASE_LO_0 */
-   tu_cs_emit(cs, 0x00000000); /* VPC_SO_BUFFER_BASE_HI_0 */
-   tu_cs_emit(cs, 0x00000000); /* VPC_SO_BUFFER_SIZE_0 */
+   tu_cs_emit_regs(cs,
+                   A6XX_VPC_SO_BUFFER_BASE(0),
+                   A6XX_VPC_SO_BUFFER_SIZE(0));
 
-   tu_cs_emit_pkt4(cs, REG_A6XX_VPC_SO_FLUSH_BASE_LO(0), 2);
-   tu_cs_emit(cs, 0x00000000); /* VPC_SO_FLUSH_BASE_LO_0 */
-   tu_cs_emit(cs, 0x00000000); /* VPC_SO_FLUSH_BASE_HI_0 */
+   tu_cs_emit_regs(cs,
+                   A6XX_VPC_SO_FLUSH_BASE(0));
 
-   tu_cs_emit_pkt4(cs, REG_A6XX_VPC_SO_BUF_CNTL, 1);
-   tu_cs_emit(cs, 0x00000000); /* VPC_SO_BUF_CNTL */
+   tu_cs_emit_regs(cs,
+                   A6XX_VPC_SO_BUF_CNTL(0));
 
-   tu_cs_emit_pkt4(cs, REG_A6XX_VPC_SO_BUFFER_OFFSET(0), 1);
-   tu_cs_emit(cs, 0x00000000); /* UNKNOWN_E2AB */
+   tu_cs_emit_regs(cs,
+                   A6XX_VPC_SO_BUFFER_OFFSET(0, 0));
 
-   tu_cs_emit_pkt4(cs, REG_A6XX_VPC_SO_BUFFER_BASE_LO(1), 3);
-   tu_cs_emit(cs, 0x00000000);
-   tu_cs_emit(cs, 0x00000000);
-   tu_cs_emit(cs, 0x00000000);
+   tu_cs_emit_regs(cs,
+                   A6XX_VPC_SO_BUFFER_BASE(1, 0),
+                   A6XX_VPC_SO_BUFFER_SIZE(1, 0));
 
-   tu_cs_emit_pkt4(cs, REG_A6XX_VPC_SO_BUFFER_OFFSET(1), 6);
-   tu_cs_emit(cs, 0x00000000);
-   tu_cs_emit(cs, 0x00000000);
-   tu_cs_emit(cs, 0x00000000);
-   tu_cs_emit(cs, 0x00000000);
-   tu_cs_emit(cs, 0x00000000);
-   tu_cs_emit(cs, 0x00000000);
+   tu_cs_emit_regs(cs,
+                   A6XX_VPC_SO_BUFFER_OFFSET(1, 0),
+                   A6XX_VPC_SO_FLUSH_BASE(1, 0),
+                   A6XX_VPC_SO_BUFFER_BASE(2, 0),
+                   A6XX_VPC_SO_BUFFER_SIZE(2, 0));
 
-   tu_cs_emit_pkt4(cs, REG_A6XX_VPC_SO_BUFFER_OFFSET(2), 6);
-   tu_cs_emit(cs, 0x00000000);
-   tu_cs_emit(cs, 0x00000000);
-   tu_cs_emit(cs, 0x00000000);
-   tu_cs_emit(cs, 0x00000000);
-   tu_cs_emit(cs, 0x00000000);
-   tu_cs_emit(cs, 0x00000000);
+   tu_cs_emit_regs(cs,
+                   A6XX_VPC_SO_BUFFER_OFFSET(2, 0),
+                   A6XX_VPC_SO_FLUSH_BASE(2, 0),
+                   A6XX_VPC_SO_BUFFER_BASE(3, 0),
+                   A6XX_VPC_SO_BUFFER_SIZE(3, 0));
 
-   tu_cs_emit_pkt4(cs, REG_A6XX_VPC_SO_BUFFER_OFFSET(3), 3);
-   tu_cs_emit(cs, 0x00000000);
-   tu_cs_emit(cs, 0x00000000);
-   tu_cs_emit(cs, 0x00000000);
+   tu_cs_emit_regs(cs,
+                   A6XX_VPC_SO_BUFFER_OFFSET(3, 0),
+                   A6XX_VPC_SO_FLUSH_BASE(3, 0));
 
-   tu_cs_emit_pkt4(cs, REG_A6XX_SP_HS_CTRL_REG0, 1);
-   tu_cs_emit(cs, 0x00000000);
+   tu_cs_emit_regs(cs,
+                   A6XX_SP_HS_CTRL_REG0(0));
 
-   tu_cs_emit_pkt4(cs, REG_A6XX_SP_GS_CTRL_REG0, 1);
-   tu_cs_emit(cs, 0x00000000);
+   tu_cs_emit_regs(cs,
+                   A6XX_SP_GS_CTRL_REG0(0));
 
-   tu_cs_emit_pkt4(cs, REG_A6XX_GRAS_LRZ_CNTL, 1);
-   tu_cs_emit(cs, 0x00000000);
+   tu_cs_emit_regs(cs,
+                   A6XX_GRAS_LRZ_CNTL(0));
 
-   tu_cs_emit_pkt4(cs, REG_A6XX_RB_LRZ_CNTL, 1);
-   tu_cs_emit(cs, 0x00000000);
+   tu_cs_emit_regs(cs,
+                   A6XX_RB_LRZ_CNTL(0));
 
    tu_cs_sanity_check(cs);
 }
@@ -1097,28 +1089,28 @@ update_vsc_pipe(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 {
    const struct tu_tiling_config *tiling = &cmd->state.tiling_config;
 
-   tu_cs_emit_pkt4(cs, REG_A6XX_VSC_BIN_SIZE, 3);
-   tu_cs_emit(cs, A6XX_VSC_BIN_SIZE_WIDTH(tiling->tile0.extent.width) |
-                  A6XX_VSC_BIN_SIZE_HEIGHT(tiling->tile0.extent.height));
-   tu_cs_emit_qw(cs, cmd->vsc_data.iova + 32 * cmd->vsc_data_pitch); /* VSC_SIZE_ADDRESS_LO/HI */
+   tu_cs_emit_regs(cs,
+                   A6XX_VSC_BIN_SIZE(.width = tiling->tile0.extent.width,
+                                     .height = tiling->tile0.extent.height),
+                   A6XX_VSC_SIZE_ADDRESS(.bo = &cmd->vsc_data, .bo_offset = cmd->vsc_data_pitch));
 
-   tu_cs_emit_pkt4(cs, REG_A6XX_VSC_BIN_COUNT, 1);
-   tu_cs_emit(cs, A6XX_VSC_BIN_COUNT_NX(tiling->tile_count.width) |
-                  A6XX_VSC_BIN_COUNT_NY(tiling->tile_count.height));
+   tu_cs_emit_regs(cs,
+                   A6XX_VSC_BIN_COUNT(.nx = tiling->tile_count.width,
+                                      .ny = tiling->tile_count.height));
 
    tu_cs_emit_pkt4(cs, REG_A6XX_VSC_PIPE_CONFIG_REG(0), 32);
    for (unsigned i = 0; i < 32; i++)
       tu_cs_emit(cs, tiling->pipe_config[i]);
 
-   tu_cs_emit_pkt4(cs, REG_A6XX_VSC_PIPE_DATA2_ADDRESS_LO, 4);
-   tu_cs_emit_qw(cs, cmd->vsc_data2.iova);
-   tu_cs_emit(cs, cmd->vsc_data2_pitch);
-   tu_cs_emit(cs, cmd->vsc_data2.size);
+   tu_cs_emit_regs(cs,
+                   A6XX_VSC_PIPE_DATA2_ADDRESS(.bo = &cmd->vsc_data2),
+                   A6XX_VSC_PIPE_DATA2_PITCH(cmd->vsc_data2_pitch),
+                   A6XX_VSC_PIPE_DATA2_ARRAY_PITCH(cmd->vsc_data2.size));
 
-   tu_cs_emit_pkt4(cs, REG_A6XX_VSC_PIPE_DATA_ADDRESS_LO, 4);
-   tu_cs_emit_qw(cs, cmd->vsc_data.iova);
-   tu_cs_emit(cs, cmd->vsc_data_pitch);
-   tu_cs_emit(cs, cmd->vsc_data.size);
+   tu_cs_emit_regs(cs,
+                   A6XX_VSC_PIPE_DATA_ADDRESS(.bo = &cmd->vsc_data),
+                   A6XX_VSC_PIPE_DATA_PITCH(cmd->vsc_data_pitch),
+                   A6XX_VSC_PIPE_DATA_ARRAY_PITCH(cmd->vsc_data.size));
 }
 
 static void
@@ -1231,27 +1223,25 @@ tu6_emit_binning_pass(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 
    tu_cs_emit_wfi(cs);
 
-   tu_cs_emit_pkt4(cs, REG_A6XX_VFD_MODE_CNTL, 1);
-   tu_cs_emit(cs, A6XX_VFD_MODE_CNTL_BINNING_PASS);
+   tu_cs_emit_regs(cs,
+                   A6XX_VFD_MODE_CNTL(.binning_pass = true));
 
    update_vsc_pipe(cmd, cs);
 
-   tu_cs_emit_pkt4(cs, REG_A6XX_PC_UNKNOWN_9805, 1);
-   tu_cs_emit(cs, 0x1);
+   tu_cs_emit_regs(cs,
+                   A6XX_PC_UNKNOWN_9805(.unknown = 0x1));
 
-   tu_cs_emit_pkt4(cs, REG_A6XX_SP_UNKNOWN_A0F8, 1);
-   tu_cs_emit(cs, 0x1);
+   tu_cs_emit_regs(cs,
+                   A6XX_SP_UNKNOWN_A0F8(.unknown = 0x1));
 
    tu_cs_emit_pkt7(cs, CP_EVENT_WRITE, 1);
    tu_cs_emit(cs, UNK_2C);
 
-   tu_cs_emit_pkt4(cs, REG_A6XX_RB_WINDOW_OFFSET, 1);
-   tu_cs_emit(cs, A6XX_RB_WINDOW_OFFSET_X(0) |
-                  A6XX_RB_WINDOW_OFFSET_Y(0));
+   tu_cs_emit_regs(cs,
+                   A6XX_RB_WINDOW_OFFSET(.x = 0, .y = 0));
 
-   tu_cs_emit_pkt4(cs, REG_A6XX_SP_TP_WINDOW_OFFSET, 1);
-   tu_cs_emit(cs, A6XX_SP_TP_WINDOW_OFFSET_X(0) |
-                  A6XX_SP_TP_WINDOW_OFFSET_Y(0));
+   tu_cs_emit_regs(cs,
+                   A6XX_SP_TP_WINDOW_OFFSET(.x = 0, .y = 0));
 
    /* emit IB to binning drawcmds: */
    tu_cs_emit_call(cs, &cmd->draw_cs);
@@ -1283,8 +1273,8 @@ tu6_emit_binning_pass(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 
    tu_cs_emit_wfi(cs);
 
-   tu_cs_emit_pkt4(cs, REG_A6XX_RB_CCU_CNTL, 1);
-   tu_cs_emit(cs, 0x7c400004);
+   tu_cs_emit_regs(cs,
+                   A6XX_RB_CCU_CNTL(.unknown = 0x7c400004));
 
    cmd->wait_for_idle = false;
 }
@@ -1309,8 +1299,8 @@ tu6_render_begin(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 
    /* 0x10000000 for BYPASS.. 0x7c13c080 for GMEM: */
    tu6_emit_wfi(cmd, cs);
-   tu_cs_emit_pkt4(cs, REG_A6XX_RB_CCU_CNTL, 1);
-   tu_cs_emit(cs, 0x7c400004); /* RB_CCU_CNTL */
+   tu_cs_emit_regs(cs,
+                   A6XX_RB_CCU_CNTL(0x7c400004));
 
    if (use_hw_binning(cmd)) {
       tu6_emit_bin_size(cmd, cs, A6XX_RB_BIN_CONTROL_BINNING_PASS | 0x6000000);
@@ -1321,14 +1311,12 @@ tu6_render_begin(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 
       tu6_emit_bin_size(cmd, cs, A6XX_RB_BIN_CONTROL_USE_VIZ | 0x6000000);
 
-      tu_cs_emit_pkt4(cs, REG_A6XX_VFD_MODE_CNTL, 1);
-      tu_cs_emit(cs, 0x0);
+      tu_cs_emit_regs(cs,
+                      A6XX_VFD_MODE_CNTL(0));
 
-      tu_cs_emit_pkt4(cs, REG_A6XX_PC_UNKNOWN_9805, 1);
-      tu_cs_emit(cs, 0x1);
+      tu_cs_emit_regs(cs, A6XX_PC_UNKNOWN_9805(.unknown = 0x1));
 
-      tu_cs_emit_pkt4(cs, REG_A6XX_SP_UNKNOWN_A0F8, 1);
-      tu_cs_emit(cs, 0x1);
+      tu_cs_emit_regs(cs, A6XX_SP_UNKNOWN_A0F8(.unknown = 0x1));
 
       tu_cs_emit_pkt7(cs, CP_SKIP_IB2_ENABLE_GLOBAL, 1);
       tu_cs_emit(cs, 0x1);
@@ -1389,8 +1377,8 @@ tu6_render_end(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
       return;
    }
 
-   tu_cs_emit_pkt4(cs, REG_A6XX_GRAS_LRZ_CNTL, 1);
-   tu_cs_emit(cs, 0);
+   tu_cs_emit_regs(cs,
+                   A6XX_GRAS_LRZ_CNTL(0));
 
    tu6_emit_lrz_flush(cmd, cs);
 
@@ -3172,16 +3160,13 @@ tu6_bind_draw_states(struct tu_cmd_buffer *cmd,
 
    /* TODO lrz */
 
-   uint32_t pc_primitive_cntl = 0;
-   if (pipeline->ia.primitive_restart && draw->indexed)
-      pc_primitive_cntl |= A6XX_PC_PRIMITIVE_CNTL_0_PRIMITIVE_RESTART;
-
    tu_cs_emit_write_reg(cs, REG_A6XX_PC_UNKNOWN_9806, 0);
    tu_cs_emit_write_reg(cs, REG_A6XX_PC_UNKNOWN_9990, 0);
    tu_cs_emit_write_reg(cs, REG_A6XX_VFD_UNKNOWN_A008, 0);
 
-   tu_cs_emit_pkt4(cs, REG_A6XX_PC_PRIMITIVE_CNTL_0, 1);
-   tu_cs_emit(cs, pc_primitive_cntl);
+   tu_cs_emit_regs(cs,
+                   A6XX_PC_PRIMITIVE_CNTL_0(.primitive_restart =
+                                            pipeline->ia.primitive_restart && draw->indexed));
 
    if (cmd->state.dirty &
           (TU_CMD_DIRTY_PIPELINE | TU_CMD_DIRTY_DYNAMIC_LINE_WIDTH) &&
@@ -3220,10 +3205,10 @@ tu6_bind_draw_states(struct tu_cmd_buffer *cmd,
          const VkDeviceSize size =
             offset < buf->bo->size ? buf->bo->size - offset : 0;
 
-         tu_cs_emit_pkt4(cs, REG_A6XX_VFD_FETCH(i), 4);
-         tu_cs_emit_qw(cs, buf->bo->iova + offset);
-         tu_cs_emit(cs, size);
-         tu_cs_emit(cs, stride);
+         tu_cs_emit_regs(cs,
+                         A6XX_VFD_FETCH_BASE(i, .bo = buf->bo, .bo_offset = offset),
+                         A6XX_VFD_FETCH_SIZE(i, size),
+                         A6XX_VFD_FETCH_STRIDE(i, stride));
       }
    }
 
@@ -3409,9 +3394,9 @@ tu6_emit_draw_direct(struct tu_cmd_buffer *cmd,
 
    const enum pc_di_primtype primtype = cmd->state.pipeline->ia.primtype;
 
-   tu_cs_emit_pkt4(cs, REG_A6XX_VFD_INDEX_OFFSET, 2);
-   tu_cs_emit(cs, draw->vertex_offset);
-   tu_cs_emit(cs, draw->first_instance);
+   tu_cs_emit_regs(cs,
+                   A6XX_VFD_INDEX_OFFSET(draw->vertex_offset),
+                   A6XX_VFD_INSTANCE_START_OFFSET(draw->first_instance));
 
    /* TODO hw binning */
    if (draw->indexed) {
@@ -3700,23 +3685,22 @@ tu_dispatch(struct tu_cmd_buffer *cmd,
 
    const uint32_t *local_size = pipeline->compute.local_size;
    const uint32_t *num_groups = info->blocks;
-   tu_cs_emit_pkt4(cs, REG_A6XX_HLSQ_CS_NDRANGE_0, 7);
-   tu_cs_emit(cs,
-              A6XX_HLSQ_CS_NDRANGE_0_KERNELDIM(3) |
-              A6XX_HLSQ_CS_NDRANGE_0_LOCALSIZEX(local_size[0] - 1) |
-              A6XX_HLSQ_CS_NDRANGE_0_LOCALSIZEY(local_size[1] - 1) |
-              A6XX_HLSQ_CS_NDRANGE_0_LOCALSIZEZ(local_size[2] - 1));
-   tu_cs_emit(cs, A6XX_HLSQ_CS_NDRANGE_1_GLOBALSIZE_X(local_size[0] * num_groups[0]));
-   tu_cs_emit(cs, 0);            /* HLSQ_CS_NDRANGE_2_GLOBALOFF_X */
-   tu_cs_emit(cs, A6XX_HLSQ_CS_NDRANGE_3_GLOBALSIZE_Y(local_size[1] * num_groups[1]));
-   tu_cs_emit(cs, 0);            /* HLSQ_CS_NDRANGE_4_GLOBALOFF_Y */
-   tu_cs_emit(cs, A6XX_HLSQ_CS_NDRANGE_5_GLOBALSIZE_Z(local_size[2] * num_groups[2]));
-   tu_cs_emit(cs, 0);            /* HLSQ_CS_NDRANGE_6_GLOBALOFF_Z */
+   tu_cs_emit_regs(cs,
+                   A6XX_HLSQ_CS_NDRANGE_0(.kerneldim = 3,
+                                          .localsizex = local_size[0] - 1,
+                                          .localsizey = local_size[1] - 1,
+                                          .localsizez = local_size[2] - 1),
+                   A6XX_HLSQ_CS_NDRANGE_1(.globalsize_x = local_size[0] * num_groups[0]),
+                   A6XX_HLSQ_CS_NDRANGE_2(.globaloff_x = 0),
+                   A6XX_HLSQ_CS_NDRANGE_3(.globalsize_y = local_size[1] * num_groups[1]),
+                   A6XX_HLSQ_CS_NDRANGE_4(.globaloff_y = 0),
+                   A6XX_HLSQ_CS_NDRANGE_5(.globalsize_z = local_size[2] * num_groups[2]),
+                   A6XX_HLSQ_CS_NDRANGE_6(.globaloff_z = 0));
 
-   tu_cs_emit_pkt4(cs, REG_A6XX_HLSQ_CS_KERNEL_GROUP_X, 3);
-   tu_cs_emit(cs, 1);            /* HLSQ_CS_KERNEL_GROUP_X */
-   tu_cs_emit(cs, 1);            /* HLSQ_CS_KERNEL_GROUP_Y */
-   tu_cs_emit(cs, 1);            /* HLSQ_CS_KERNEL_GROUP_Z */
+   tu_cs_emit_regs(cs,
+                   A6XX_HLSQ_CS_KERNEL_GROUP_X(1),
+                   A6XX_HLSQ_CS_KERNEL_GROUP_Y(1),
+                   A6XX_HLSQ_CS_KERNEL_GROUP_Z(1));
 
    if (info->indirect) {
       uint64_t iova = tu_buffer_iova(info->indirect) + info->indirect_offset;
