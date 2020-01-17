@@ -4716,6 +4716,16 @@ void visit_get_buffer_size(isel_context *ctx, nir_intrinsic_instr *instr) {
    get_buffer_size(ctx, desc, get_ssa_temp(ctx, &instr->dest.ssa), false);
 }
 
+Temp get_gfx6_global_rsrc(Builder& bld, Temp addr)
+{
+   uint32_t rsrc_conf = S_008F0C_NUM_FORMAT(V_008F0C_BUF_NUM_FORMAT_FLOAT) |
+                        S_008F0C_DATA_FORMAT(V_008F0C_BUF_DATA_FORMAT_32);
+
+   if (addr.type() == RegType::vgpr)
+      return bld.pseudo(aco_opcode::p_create_vector, bld.def(s4), Operand(0u), Operand(0u), Operand(-1u), Operand(rsrc_conf));
+   return bld.pseudo(aco_opcode::p_create_vector, bld.def(s4), addr, Operand(-1u), Operand(rsrc_conf));
+}
+
 void visit_load_global(isel_context *ctx, nir_intrinsic_instr *instr)
 {
    Builder bld(ctx->program, ctx->block);
@@ -4811,12 +4821,20 @@ void visit_store_global(isel_context *ctx, nir_intrinsic_instr *instr)
    unsigned elem_size_bytes = instr->src[0].ssa->bit_size / 8;
 
    Temp data = as_vgpr(ctx, get_ssa_temp(ctx, instr->src[0].ssa));
-   Temp addr = as_vgpr(ctx, get_ssa_temp(ctx, instr->src[1].ssa));
+   Temp addr = get_ssa_temp(ctx, instr->src[1].ssa);
+
+   if (ctx->options->chip_class >= GFX7)
+      addr = as_vgpr(ctx, addr);
 
    unsigned writemask = nir_intrinsic_write_mask(instr);
    while (writemask) {
       int start, count;
       u_bit_scan_consecutive_range(&writemask, &start, &count);
+      if (count == 3 && ctx->options->chip_class == GFX6) {
+         /* GFX6 doesn't support storing vec3, split it. */
+         writemask |= 1u << (start + 2);
+         count = 2;
+      }
       unsigned num_bytes = count * elem_size_bytes;
 
       Temp write_data = data;
@@ -4829,54 +4847,91 @@ void visit_store_global(isel_context *ctx, nir_intrinsic_instr *instr)
          ctx->block->instructions.emplace_back(std::move(vec));
       }
 
-      unsigned offset = start * elem_size_bytes;
-      if (offset > 0 && ctx->options->chip_class < GFX9) {
-         Temp addr0 = bld.tmp(v1), addr1 = bld.tmp(v1);
-         Temp new_addr0 = bld.tmp(v1), new_addr1 = bld.tmp(v1);
-         Temp carry = bld.tmp(bld.lm);
-         bld.pseudo(aco_opcode::p_split_vector, Definition(addr0), Definition(addr1), addr);
-
-         bld.vop2(aco_opcode::v_add_co_u32, Definition(new_addr0), bld.hint_vcc(Definition(carry)),
-                  Operand(offset), addr0);
-         bld.vop2(aco_opcode::v_addc_co_u32, Definition(new_addr1), bld.def(bld.lm),
-                  Operand(0u), addr1,
-                  carry).def(1).setHint(vcc);
-
-         addr = bld.pseudo(aco_opcode::p_create_vector, bld.def(v2), new_addr0, new_addr1);
-
-         offset = 0;
-      }
-
       bool glc = nir_intrinsic_access(instr) & (ACCESS_VOLATILE | ACCESS_COHERENT | ACCESS_NON_READABLE);
-      bool global = ctx->options->chip_class >= GFX9;
-      aco_opcode op;
-      switch (num_bytes) {
-      case 4:
-         op = global ? aco_opcode::global_store_dword : aco_opcode::flat_store_dword;
-         break;
-      case 8:
-         op = global ? aco_opcode::global_store_dwordx2 : aco_opcode::flat_store_dwordx2;
-         break;
-      case 12:
-         op = global ? aco_opcode::global_store_dwordx3 : aco_opcode::flat_store_dwordx3;
-         break;
-      case 16:
-         op = global ? aco_opcode::global_store_dwordx4 : aco_opcode::flat_store_dwordx4;
-         break;
-      default:
-         unreachable("store_global not implemented for this size.");
+      unsigned offset = start * elem_size_bytes;
+
+      if (ctx->options->chip_class >= GFX7) {
+         if (offset > 0 && ctx->options->chip_class < GFX9) {
+            Temp addr0 = bld.tmp(v1), addr1 = bld.tmp(v1);
+            Temp new_addr0 = bld.tmp(v1), new_addr1 = bld.tmp(v1);
+            Temp carry = bld.tmp(bld.lm);
+            bld.pseudo(aco_opcode::p_split_vector, Definition(addr0), Definition(addr1), addr);
+
+            bld.vop2(aco_opcode::v_add_co_u32, Definition(new_addr0), bld.hint_vcc(Definition(carry)),
+                     Operand(offset), addr0);
+            bld.vop2(aco_opcode::v_addc_co_u32, Definition(new_addr1), bld.def(bld.lm),
+                     Operand(0u), addr1,
+                     carry).def(1).setHint(vcc);
+
+            addr = bld.pseudo(aco_opcode::p_create_vector, bld.def(v2), new_addr0, new_addr1);
+
+            offset = 0;
+         }
+
+         bool global = ctx->options->chip_class >= GFX9;
+         aco_opcode op;
+         switch (num_bytes) {
+         case 4:
+            op = global ? aco_opcode::global_store_dword : aco_opcode::flat_store_dword;
+            break;
+         case 8:
+            op = global ? aco_opcode::global_store_dwordx2 : aco_opcode::flat_store_dwordx2;
+            break;
+         case 12:
+            op = global ? aco_opcode::global_store_dwordx3 : aco_opcode::flat_store_dwordx3;
+            break;
+         case 16:
+            op = global ? aco_opcode::global_store_dwordx4 : aco_opcode::flat_store_dwordx4;
+            break;
+         default:
+            unreachable("store_global not implemented for this size.");
+         }
+
+         aco_ptr<FLAT_instruction> flat{create_instruction<FLAT_instruction>(op, global ? Format::GLOBAL : Format::FLAT, 3, 0)};
+         flat->operands[0] = Operand(addr);
+         flat->operands[1] = Operand(s1);
+         flat->operands[2] = Operand(data);
+         flat->glc = glc;
+         flat->dlc = false;
+         flat->offset = offset;
+         flat->disable_wqm = true;
+         flat->barrier = barrier_buffer;
+         ctx->program->needs_exact = true;
+         ctx->block->instructions.emplace_back(std::move(flat));
+      } else {
+         assert(ctx->options->chip_class == GFX6);
+
+         aco_opcode op;
+         switch (num_bytes) {
+         case 4:
+            op = aco_opcode::buffer_store_dword;
+            break;
+         case 8:
+            op = aco_opcode::buffer_store_dwordx2;
+            break;
+         case 16:
+            op = aco_opcode::buffer_store_dwordx4;
+            break;
+         default:
+            unreachable("store_global not implemented for this size.");
+         }
+
+         Temp rsrc = get_gfx6_global_rsrc(bld, addr);
+
+         aco_ptr<MUBUF_instruction> mubuf{create_instruction<MUBUF_instruction>(op, Format::MUBUF, 4, 0)};
+         mubuf->operands[0] = addr.type() == RegType::vgpr ? Operand(addr) : Operand(v1);
+         mubuf->operands[1] = Operand(rsrc);
+         mubuf->operands[2] = Operand(0u);
+         mubuf->operands[3] = Operand(write_data);
+         mubuf->glc = glc;
+         mubuf->dlc = false;
+         mubuf->offset = offset;
+         mubuf->addr64 = addr.type() == RegType::vgpr;
+         mubuf->disable_wqm = true;
+         mubuf->barrier = barrier_buffer;
+         ctx->program->needs_exact = true;
+         ctx->block->instructions.emplace_back(std::move(mubuf));
       }
-      aco_ptr<FLAT_instruction> flat{create_instruction<FLAT_instruction>(op, global ? Format::GLOBAL : Format::FLAT, 3, 0)};
-      flat->operands[0] = Operand(addr);
-      flat->operands[1] = Operand(s1);
-      flat->operands[2] = Operand(data);
-      flat->glc = glc;
-      flat->dlc = false;
-      flat->offset = offset;
-      flat->disable_wqm = true;
-      flat->barrier = barrier_buffer;
-      ctx->program->needs_exact = true;
-      ctx->block->instructions.emplace_back(std::move(flat));
    }
 }
 
