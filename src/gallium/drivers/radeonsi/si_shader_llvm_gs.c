@@ -88,7 +88,7 @@ static LLVMValueRef si_llvm_load_input_gs(struct ac_shader_abi *abi,
 
 		LLVMValueRef ptr = ac_build_gep0(&ctx->ac, ctx->esgs_ring, vtx_offset);
 		LLVMValueRef value = LLVMBuildLoad(ctx->ac.builder, ptr, "");
-		if (ac_get_type_size(type) == 64) {
+		if (ac_get_type_size(type) == 8) {
 			ptr = LLVMBuildGEP(ctx->ac.builder, ptr,
 					   &ctx->ac.i32_1, 1, "");
 			LLVMValueRef values[2] = {
@@ -122,7 +122,7 @@ static LLVMValueRef si_llvm_load_input_gs(struct ac_shader_abi *abi,
 
 	value = ac_build_buffer_load(&ctx->ac, ctx->esgs_ring, 1, ctx->i32_0,
 				     vtx_offset, soffset, 0, ac_glc, true, false);
-	if (ac_get_type_size(type) == 64) {
+	if (ac_get_type_size(type) == 8) {
 		LLVMValueRef value2;
 		soffset = LLVMConstInt(ctx->i32, (param * 4 + swizzle + 1) * 256, 0);
 
@@ -148,7 +148,7 @@ static LLVMValueRef si_nir_load_input_gs(struct ac_shader_abi *abi,
 	LLVMValueRef value[4];
 	for (unsigned i = 0; i < num_components; i++) {
 		unsigned offset = i;
-		if (ac_get_type_size(type) == 64)
+		if (ac_get_type_size(type) == 8)
 			offset *= 2;
 
 		offset += component;
