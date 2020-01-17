@@ -783,7 +783,7 @@ swr_texture_layout(struct swr_screen *screen,
        * surface sample count. */
       if (screen->msaa_force_enable) {
          res->swr.numSamples = screen->msaa_max_count;
-         fprintf(stderr,"swr_texture_layout: forcing sample count: %d\n",
+         swr_print_info("swr_texture_layout: forcing sample count: %d\n",
                  res->swr.numSamples);
       }
    } else {
@@ -1123,7 +1123,7 @@ swr_destroy_screen(struct pipe_screen *p_screen)
    struct swr_screen *screen = swr_screen(p_screen);
    struct sw_winsys *winsys = screen->winsys;
 
-   fprintf(stderr, "SWR destroy screen!\n");
+   swr_print_info("SWR destroy screen!\n");
 
    if (winsys->destroy)
       winsys->destroy(winsys);
@@ -1157,12 +1157,11 @@ swr_validate_env_options(struct swr_screen *screen)
          fprintf(stderr, "must be power of 2 between 1 and %d" \
                          " (or 1 to disable msaa)\n",
                SWR_MAX_NUM_MULTISAMPLES);
+         fprintf(stderr, "(msaa disabled)\n");
          msaa_max_count = 1;
       }
 
-      fprintf(stderr, "SWR_MSAA_MAX_COUNT: %d\n", msaa_max_count);
-      if (msaa_max_count == 1)
-         fprintf(stderr, "(msaa disabled)\n");
+      swr_print_info("SWR_MSAA_MAX_COUNT: %d\n", msaa_max_count);
 
       screen->msaa_max_count = msaa_max_count;
    }
@@ -1170,7 +1169,7 @@ swr_validate_env_options(struct swr_screen *screen)
    screen->msaa_force_enable = debug_get_bool_option(
          "SWR_MSAA_FORCE_ENABLE", false);
    if (screen->msaa_force_enable)
-      fprintf(stderr, "SWR_MSAA_FORCE_ENABLE: true\n");
+      swr_print_info("SWR_MSAA_FORCE_ENABLE: true\n");
 }
 
 
