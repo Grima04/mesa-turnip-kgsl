@@ -1030,6 +1030,101 @@ gl_nir_link_uniforms(struct gl_context *ctx,
             build_type_tree_for_type(type);
          state.current_type = type_tree;
 
+         int location = var->data.location;
+
+         if (!prog->data->spirv && state.var_is_in_block &&
+             glsl_without_array(state.current_var->type) != state.current_var->interface_type) {
+
+            int buffer_block_index = -1;
+            /* If the uniform is inside a uniform block determine its block index by
+             * comparing the bindings, we can not use names.
+             */
+            struct gl_uniform_block *blocks = nir_variable_is_in_ssbo(state.current_var) ?
+               prog->data->ShaderStorageBlocks : prog->data->UniformBlocks;
+            int num_blocks = nir_variable_is_in_ssbo(state.current_var) ?
+               prog->data->NumShaderStorageBlocks : prog->data->NumUniformBlocks;
+
+            bool is_interface_array =
+               glsl_without_array(state.current_var->type) == state.current_var->interface_type &&
+               glsl_type_is_array(state.current_var->type);
+
+            const char *ifc_name =
+               glsl_get_type_name(state.current_var->interface_type);
+
+            if (is_interface_array) {
+               unsigned l = strlen(ifc_name);
+               for (unsigned i = 0; i < num_blocks; i++) {
+                  if (strncmp(ifc_name, blocks[i].Name, l) == 0 &&
+                      blocks[i].Name[l] == '[') {
+                     buffer_block_index = i;
+
+                     blocks[i].stageref |= 1U << shader_type;
+                  }
+               }
+            } else {
+               for (unsigned i = 0; i < num_blocks; i++) {
+                  if (strcmp(ifc_name, blocks[i].Name) == 0) {
+                     buffer_block_index = i;
+
+                     blocks[i].stageref |= 1U << shader_type;
+                     break;
+                  }
+               }
+            }
+
+            bool found = false;
+            char sentinel = '\0';
+
+            if (glsl_type_is_struct(state.current_var->type)) {
+               sentinel = '.';
+            } else if (glsl_type_is_array(state.current_var->type) &&
+                       (glsl_type_is_array(glsl_get_array_element(state.current_var->type))
+                        || glsl_type_is_struct(glsl_without_array(state.current_var->type)))) {
+              sentinel = '[';
+            }
+
+            const unsigned l = strlen(state.current_var->name);
+            for (unsigned i = 0; i < num_blocks; i++) {
+               for (unsigned j = 0; j < blocks[i].NumUniforms; j++) {
+                 if (sentinel) {
+                     const char *begin = blocks[i].Uniforms[j].Name;
+                     const char *end = strchr(begin, sentinel);
+
+                     if (end == NULL)
+                        continue;
+
+                     if ((ptrdiff_t) l != (end - begin))
+                        continue;
+                     found = strncmp(state.current_var->name, begin, l) == 0;
+                  } else {
+                     found = strcmp(state.current_var->name, blocks[i].Uniforms[j].Name) == 0;
+                  }
+
+                  if (found) {
+                     location = j;
+
+                     blocks[i].stageref |= 1U << shader_type;
+
+                     break;
+                  }
+               }
+
+               if (found)
+                  break;
+            }
+            assert(found);
+
+            const struct gl_uniform_block *const block =
+               &blocks[buffer_block_index];
+            assert(location != -1);
+
+            const struct gl_uniform_buffer_variable *const ubo_var =
+               &block->Uniforms[location];
+
+            state.offset = ubo_var->Offset;
+            var->data.location = location;
+         }
+
          /* Check if the uniform has been processed already for
           * other stage. If so, validate they are compatible and update
           * the active stage mask.
@@ -1041,7 +1136,6 @@ gl_nir_link_uniforms(struct gl_context *ctx,
             continue;
          }
 
-         int location = var->data.location;
          /* From now on the variable’s location will be its uniform index */
          if (!state.var_is_in_block)
             var->data.location = prog->data->NumUniformStorage;
