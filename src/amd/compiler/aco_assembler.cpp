@@ -321,7 +321,7 @@ void emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction*
       encoding |= 0x0FFF & mubuf->offset;
       out.push_back(encoding);
       encoding = 0;
-      if (ctx.chip_class >= GFX10) {
+      if (ctx.chip_class <= GFX7 || ctx.chip_class >= GFX10) {
          encoding |= (mubuf->slc ? 1 : 0) << 22;
       }
       encoding |= instr->operands[2].physReg() << 24;
