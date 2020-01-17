@@ -2228,8 +2228,33 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
       }
 
       case FS_OPCODE_SCHEDULING_FENCE:
-         if (unlikely(debug_flag))
-            disasm_info->use_tail = true;
+         if (inst->sources == 0 && inst->sched.regdist == 0 &&
+                                   inst->sched.mode == TGL_SBID_NULL) {
+            if (unlikely(debug_flag))
+               disasm_info->use_tail = true;
+            break;
+         }
+
+         if (devinfo->gen >= 12) {
+            /* Use the available SWSB information to stall.  A single SYNC is
+             * sufficient since if there were multiple dependencies, the
+             * scoreboard algorithm already injected other SYNCs before this
+             * instruction.
+             */
+            brw_SYNC(p, TGL_SYNC_NOP);
+         } else {
+            for (unsigned i = 0; i < inst->sources; i++) {
+               /* Emit a MOV to force a stall until the instruction producing the
+                * registers finishes.
+                */
+               brw_MOV(p, retype(brw_null_reg(), BRW_REGISTER_TYPE_UW),
+                       retype(src[i], BRW_REGISTER_TYPE_UW));
+            }
+
+            if (inst->sources > 1)
+               multiple_instructions_emitted = true;
+         }
+
          break;
 
       case SHADER_OPCODE_INTERLOCK:

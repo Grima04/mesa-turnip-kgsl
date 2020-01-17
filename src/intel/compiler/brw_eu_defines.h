@@ -465,6 +465,9 @@ enum opcode {
 
    /**
     * Scheduling-only fence.
+    *
+    * Sources can be used to force a stall until the registers in those are
+    * available.  This might generate MOVs or SYNC_NOPs (Gen12+).
     */
    FS_OPCODE_SCHEDULING_FENCE,
 
