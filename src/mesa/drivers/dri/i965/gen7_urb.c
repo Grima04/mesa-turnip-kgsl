@@ -248,7 +248,8 @@ gen7_upload_urb(struct brw_context *brw, unsigned vs_size,
    unsigned entries[4];
    unsigned start[4];
    gen_get_urb_config(devinfo, brw->l3.config,
-                      tess_present, gs_present, entry_size, entries, start);
+                      tess_present, gs_present, entry_size,
+                      entries, start, NULL);
 
    if (devinfo->gen == 7 && !devinfo->is_haswell && !devinfo->is_baytrail)
       gen7_emit_vs_workaround_flush(brw);

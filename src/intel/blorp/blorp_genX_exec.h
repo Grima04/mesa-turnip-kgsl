@@ -218,7 +218,7 @@ emit_urb_config(struct blorp_batch *batch,
    unsigned entries[4], start[4];
    gen_get_urb_config(batch->blorp->compiler->devinfo,
                       blorp_get_l3_config(batch),
-                      false, false, entry_size, entries, start);
+                      false, false, entry_size, entries, start, NULL);
 
 #if GEN_GEN == 7 && !GEN_IS_HASWELL
    /* From the IVB PRM Vol. 2, Part 1, Section 3.2.1:

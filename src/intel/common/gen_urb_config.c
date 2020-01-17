@@ -62,7 +62,8 @@ gen_get_urb_config(const struct gen_device_info *devinfo,
                    const struct gen_l3_config *l3_cfg,
                    bool tess_present, bool gs_present,
                    const unsigned entry_size[4],
-                   unsigned entries[4], unsigned start[4])
+                   unsigned entries[4], unsigned start[4],
+                   enum gen_urb_deref_block_size *deref_block_size)
 {
    const unsigned urb_size_kB = gen_get_l3_config_urb_size(devinfo, l3_cfg);
    const unsigned push_constant_kB =
@@ -207,6 +208,45 @@ gen_get_urb_config(const struct gen_device_info *devinfo,
       } else {
          /* Just put disabled stages at the beginning. */
          start[i] = 0;
+      }
+   }
+
+   if (deref_block_size) {
+      if (devinfo->gen >= 12) {
+         /* From the Gen12 BSpec:
+          *
+          *    "Deref Block size depends on the last enabled shader and number
+          *    of handles programmed for that shader
+          *
+          *       1) For GS last shader enabled cases, the deref block is
+          *          always set to a per poly(within hardware)
+          *
+          *    If the last enabled shader is VS or DS.
+          *
+          *       1) If DS is last enabled shader then if the number of DS
+          *          handles is less than 324, need to set per poly deref.
+          *
+          *       2) If VS is last enabled shader then if the number of VS
+          *          handles is less than 192, need to set per poly deref"
+          *
+          * The default is 32 so we assume that's the right choice if we're
+          * not in one of the explicit cases listed above.
+          */
+         if (gs_present) {
+            *deref_block_size = GEN_URB_DEREF_BLOCK_SIZE_PER_POLY;
+         } else if (tess_present) {
+            if (entries[MESA_SHADER_TESS_EVAL] < 324)
+               *deref_block_size = GEN_URB_DEREF_BLOCK_SIZE_PER_POLY;
+            else
+               *deref_block_size = GEN_URB_DEREF_BLOCK_SIZE_32;
+         } else {
+            if (entries[MESA_SHADER_VERTEX] < 192)
+               *deref_block_size = GEN_URB_DEREF_BLOCK_SIZE_PER_POLY;
+            else
+               *deref_block_size = GEN_URB_DEREF_BLOCK_SIZE_32;
+         }
+      } else {
+         *deref_block_size = 0;
       }
    }
 }

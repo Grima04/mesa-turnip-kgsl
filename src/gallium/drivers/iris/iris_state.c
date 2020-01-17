@@ -5386,7 +5386,7 @@ iris_upload_dirty_render_state(struct iris_context *ice,
                          batch->screen->l3_config_3d,
                          ice->shaders.prog[MESA_SHADER_TESS_EVAL] != NULL,
                          ice->shaders.prog[MESA_SHADER_GEOMETRY] != NULL,
-                         size, entries, start);
+                         size, entries, start, NULL);
 
       for (int i = MESA_SHADER_VERTEX; i <= MESA_SHADER_GEOMETRY; i++) {
          iris_emit_cmd(batch, GENX(3DSTATE_URB_VS), urb) {

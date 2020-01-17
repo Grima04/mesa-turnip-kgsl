@@ -269,7 +269,7 @@ genX(emit_urb_setup)(struct anv_device *device, struct anv_batch *batch,
                       active_stages &
                          VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT,
                       active_stages & VK_SHADER_STAGE_GEOMETRY_BIT,
-                      entry_size, entries, start);
+                      entry_size, entries, start, NULL);
 
 #if GEN_GEN == 7 && !GEN_IS_HASWELL
    /* From the IVB PRM Vol. 2, Part 1, Section 3.2.1:
