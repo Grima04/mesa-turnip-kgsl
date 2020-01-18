@@ -329,9 +329,9 @@ get_available_system_memory()
 }
 
 static VkResult
-anv_physical_device_init(struct anv_physical_device *device,
-                         struct anv_instance *instance,
-                         drmDevicePtr drm_device)
+anv_physical_device_try_create(struct anv_instance *instance,
+                               drmDevicePtr drm_device,
+                               struct anv_physical_device **device_out)
 {
    const char *primary_path = drm_device->nodes[DRM_NODE_PRIMARY];
    const char *path = drm_device->nodes[DRM_NODE_RENDER];
@@ -348,7 +348,7 @@ anv_physical_device_init(struct anv_physical_device *device,
    struct gen_device_info devinfo;
    if (!gen_get_device_info_from_fd(fd, &devinfo)) {
       result = vk_error(VK_ERROR_INCOMPATIBLE_DRIVER);
-      goto fail;
+      goto fail_fd;
    }
 
    const char *device_name = gen_get_device_name(devinfo.chipset_id);
@@ -366,7 +366,15 @@ anv_physical_device_init(struct anv_physical_device *device,
    } else {
       result = vk_errorfi(instance, NULL, VK_ERROR_INCOMPATIBLE_DRIVER,
                           "Vulkan not yet supported on %s", device_name);
-      goto fail;
+      goto fail_fd;
+   }
+
+   struct anv_physical_device *device =
+      vk_alloc(&instance->alloc, sizeof(*device), 8,
+               VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE);
+   if (device == NULL) {
+      result = vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
+      goto fail_fd;
    }
 
    device->_loader_data.loaderMagic = ICD_LOADER_MAGIC;
@@ -395,7 +403,7 @@ anv_physical_device_init(struct anv_physical_device *device,
          result = vk_errorfi(device->instance, NULL,
                              VK_ERROR_INITIALIZATION_FAILED,
                              "failed to get command parser version");
-         goto fail;
+         goto fail_alloc;
       }
    }
 
@@ -403,14 +411,14 @@ anv_physical_device_init(struct anv_physical_device *device,
       result = vk_errorfi(device->instance, NULL,
                           VK_ERROR_INITIALIZATION_FAILED,
                           "kernel missing gem wait");
-      goto fail;
+      goto fail_alloc;
    }
 
    if (!anv_gem_get_param(fd, I915_PARAM_HAS_EXECBUF2)) {
       result = vk_errorfi(device->instance, NULL,
                           VK_ERROR_INITIALIZATION_FAILED,
                           "kernel missing execbuf2");
-      goto fail;
+      goto fail_alloc;
    }
 
    if (!device->info.has_llc &&
@@ -418,7 +426,7 @@ anv_physical_device_init(struct anv_physical_device *device,
       result = vk_errorfi(device->instance, NULL,
                           VK_ERROR_INITIALIZATION_FAILED,
                           "kernel missing wc mmap");
-      goto fail;
+      goto fail_alloc;
    }
 
    device->has_softpin = anv_gem_get_param(fd, I915_PARAM_HAS_EXEC_SOFTPIN);
@@ -432,7 +440,7 @@ anv_physical_device_init(struct anv_physical_device *device,
 
    result = anv_physical_device_init_heaps(device, fd);
    if (result != VK_SUCCESS)
-      goto fail;
+      goto fail_alloc;
 
    device->use_softpin = device->has_softpin &&
                          device->supports_48bit_addresses;
@@ -510,7 +518,7 @@ anv_physical_device_init(struct anv_physical_device *device,
    device->compiler = brw_compiler_create(NULL, &device->info);
    if (device->compiler == NULL) {
       result = vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
-      goto fail;
+      goto fail_alloc;
    }
    device->compiler->shader_debug_log = compiler_debug_log;
    device->compiler->shader_perf_log = compiler_perf_log;
@@ -538,7 +546,7 @@ anv_physical_device_init(struct anv_physical_device *device,
 
    result = anv_physical_device_init_uuids(device);
    if (result != VK_SUCCESS)
-      goto fail;
+      goto fail_compiler;
 
    anv_physical_device_init_disk_cache(device);
 
@@ -557,11 +565,8 @@ anv_physical_device_init(struct anv_physical_device *device,
    device->master_fd = master_fd;
 
    result = anv_init_wsi(device);
-   if (result != VK_SUCCESS) {
-      ralloc_free(device->compiler);
-      anv_physical_device_free_disk_cache(device);
-      goto fail;
-   }
+   if (result != VK_SUCCESS)
+      goto fail_disk_cache;
 
    device->perf = anv_get_perf(&device->info, fd);
 
@@ -571,9 +576,17 @@ anv_physical_device_init(struct anv_physical_device *device,
 
    device->local_fd = fd;
 
+   *device_out = device;
+
    return VK_SUCCESS;
 
-fail:
+fail_disk_cache:
+   anv_physical_device_free_disk_cache(device);
+fail_compiler:
+   ralloc_free(device->compiler);
+fail_alloc:
+   vk_free(&instance->alloc, device);
+fail_fd:
    close(fd);
    if (master_fd != -1)
       close(master_fd);
@@ -581,7 +594,7 @@ fail:
 }
 
 static void
-anv_physical_device_finish(struct anv_physical_device *device)
+anv_physical_device_destroy(struct anv_physical_device *device)
 {
    anv_finish_wsi(device);
    anv_physical_device_free_disk_cache(device);
@@ -590,6 +603,7 @@ anv_physical_device_finish(struct anv_physical_device *device)
    close(device->local_fd);
    if (device->master_fd >= 0)
       close(device->master_fd);
+   vk_free(&device->instance->alloc, device);
 }
 
 static void *
@@ -738,7 +752,8 @@ VkResult anv_CreateInstance(
       }
    }
 
-   instance->physicalDeviceCount = -1;
+   instance->physical_devices_enumerated = false;
+   list_inithead(&instance->physical_devices);
 
    result = vk_debug_report_instance_init(&instance->debug_report_callbacks);
    if (result != VK_SUCCESS) {
@@ -773,11 +788,9 @@ void anv_DestroyInstance(
    if (!instance)
       return;
 
-   if (instance->physicalDeviceCount > 0) {
-      /* We support at most one physical device. */
-      assert(instance->physicalDeviceCount == 1);
-      anv_physical_device_finish(&instance->physicalDevice);
-   }
+   list_for_each_entry_safe(struct anv_physical_device, pdevice,
+                            &instance->physical_devices, link)
+      anv_physical_device_destroy(pdevice);
 
    vk_free(&instance->alloc, (char *)instance->app_info.app_name);
    vk_free(&instance->alloc, (char *)instance->app_info.engine_name);
@@ -795,14 +808,17 @@ void anv_DestroyInstance(
 }
 
 static VkResult
-anv_enumerate_devices(struct anv_instance *instance)
+anv_enumerate_physical_devices(struct anv_instance *instance)
 {
+   if (instance->physical_devices_enumerated)
+      return VK_SUCCESS;
+
+   instance->physical_devices_enumerated = true;
+
    /* TODO: Check for more devices ? */
    drmDevicePtr devices[8];
    VkResult result = VK_ERROR_INCOMPATIBLE_DRIVER;
    int max_devices;
-
-   instance->physicalDeviceCount = 0;
 
    max_devices = drmGetDevices2(0, devices, ARRAY_SIZE(devices));
    if (max_devices < 1)
@@ -813,31 +829,19 @@ anv_enumerate_devices(struct anv_instance *instance)
           devices[i]->bustype == DRM_BUS_PCI &&
           devices[i]->deviceinfo.pci->vendor_id == 0x8086) {
 
-         result = anv_physical_device_init(&instance->physicalDevice,
-                                           instance, devices[i]);
-         if (result != VK_ERROR_INCOMPATIBLE_DRIVER)
-            break;
+         struct anv_physical_device *pdevice;
+         result = anv_physical_device_try_create(instance, devices[i],
+                                                 &pdevice);
+         if (result != VK_SUCCESS)
+            continue;
+
+         list_addtail(&pdevice->link, &instance->physical_devices);
       }
    }
    drmFreeDevices(devices, max_devices);
 
-   if (result == VK_SUCCESS)
-      instance->physicalDeviceCount = 1;
-
-   return result;
-}
-
-static VkResult
-anv_instance_ensure_physical_device(struct anv_instance *instance)
-{
-   if (instance->physicalDeviceCount < 0) {
-      VkResult result = anv_enumerate_devices(instance);
-      if (result != VK_SUCCESS &&
-          result != VK_ERROR_INCOMPATIBLE_DRIVER)
-         return result;
-   }
-
-   return VK_SUCCESS;
+   /* If we successfully enumerated any devices, call it success */
+   return !list_is_empty(&instance->physical_devices) ? VK_SUCCESS : result;
 }
 
 VkResult anv_EnumeratePhysicalDevices(
@@ -848,16 +852,15 @@ VkResult anv_EnumeratePhysicalDevices(
    ANV_FROM_HANDLE(anv_instance, instance, _instance);
    VK_OUTARRAY_MAKE(out, pPhysicalDevices, pPhysicalDeviceCount);
 
-   VkResult result = anv_instance_ensure_physical_device(instance);
+   VkResult result = anv_enumerate_physical_devices(instance);
    if (result != VK_SUCCESS)
       return result;
 
-   if (instance->physicalDeviceCount == 0)
-      return VK_SUCCESS;
-
-   assert(instance->physicalDeviceCount == 1);
-   vk_outarray_append(&out, i) {
-      *i = anv_physical_device_to_handle(&instance->physicalDevice);
+   list_for_each_entry(struct anv_physical_device, pdevice,
+                       &instance->physical_devices, link) {
+      vk_outarray_append(&out, i) {
+         *i = anv_physical_device_to_handle(pdevice);
+      }
    }
 
    return vk_outarray_status(&out);
@@ -872,24 +875,21 @@ VkResult anv_EnumeratePhysicalDeviceGroups(
    VK_OUTARRAY_MAKE(out, pPhysicalDeviceGroupProperties,
                          pPhysicalDeviceGroupCount);
 
-   VkResult result = anv_instance_ensure_physical_device(instance);
+   VkResult result = anv_enumerate_physical_devices(instance);
    if (result != VK_SUCCESS)
       return result;
 
-   if (instance->physicalDeviceCount == 0)
-      return VK_SUCCESS;
+   list_for_each_entry(struct anv_physical_device, pdevice,
+                       &instance->physical_devices, link) {
+      vk_outarray_append(&out, p) {
+         p->physicalDeviceCount = 1;
+         memset(p->physicalDevices, 0, sizeof(p->physicalDevices));
+         p->physicalDevices[0] = anv_physical_device_to_handle(pdevice);
+         p->subsetAllocation = false;
 
-   assert(instance->physicalDeviceCount == 1);
-
-   vk_outarray_append(&out, p) {
-      p->physicalDeviceCount = 1;
-      memset(p->physicalDevices, 0, sizeof(p->physicalDevices));
-      p->physicalDevices[0] =
-         anv_physical_device_to_handle(&instance->physicalDevice);
-      p->subsetAllocation = false;
-
-      vk_foreach_struct(ext, p->pNext)
-         anv_debug_ignored_stype(ext->sType);
+         vk_foreach_struct(ext, p->pNext)
+            anv_debug_ignored_stype(ext->sType);
+      }
    }
 
    return vk_outarray_status(&out);

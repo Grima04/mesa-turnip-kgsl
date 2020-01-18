@@ -965,6 +965,9 @@ struct anv_memory_heap {
 struct anv_physical_device {
     VK_LOADER_DATA                              _loader_data;
 
+    /* Link in anv_instance::physical_devices */
+    struct list_head                            link;
+
     struct anv_instance *                       instance;
     bool                                        no_hw;
     char                                        path[20];
@@ -1056,8 +1059,8 @@ struct anv_instance {
     struct anv_physical_device_dispatch_table   physical_device_dispatch;
     struct anv_device_dispatch_table            device_dispatch;
 
-    int                                         physicalDeviceCount;
-    struct anv_physical_device                  physicalDevice;
+    bool                                        physical_devices_enumerated;
+    struct list_head                            physical_devices;
 
     bool                                        pipeline_cache_enabled;
 
