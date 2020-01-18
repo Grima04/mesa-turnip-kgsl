@@ -114,7 +114,7 @@ remove_unused_by_block(struct ir3_block *block)
 				/* tex (cat5) instructions have a writemask, so we can
 				 * mask off unused components.  Other instructions do not.
 				 */
-				if (is_tex(src) && (src->regs[0]->wrmask > 1)) {
+				if (is_tex_or_prefetch(src) && (src->regs[0]->wrmask > 1)) {
 					src->regs[0]->wrmask &= ~(1 << instr->split.off);
 
 					/* prune no-longer needed right-neighbors.  We could

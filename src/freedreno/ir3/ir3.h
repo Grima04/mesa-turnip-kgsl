@@ -710,6 +710,11 @@ static inline bool is_tex(struct ir3_instruction *instr)
 	return (opc_cat(instr->opc) == 5);
 }
 
+static inline bool is_tex_or_prefetch(struct ir3_instruction *instr)
+{
+	return is_tex(instr) || (instr->opc == OPC_META_TEX_PREFETCH);
+}
+
 static inline bool is_mem(struct ir3_instruction *instr)
 {
 	return (opc_cat(instr->opc) == 6);
