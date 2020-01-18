@@ -593,9 +593,11 @@ static void si_nir_store_output_tcs(struct ac_shader_abi *abi,
 			      var->data.location == VARYING_SLOT_TESS_LEVEL_INNER ||
 			      var->data.location == VARYING_SLOT_TESS_LEVEL_OUTER;
 
-	assert((name == TGSI_SEMANTIC_PATCH ||
-		name == TGSI_SEMANTIC_TESSINNER ||
-		name == TGSI_SEMANTIC_TESSOUTER) == is_patch);
+	/* Invalid SPIR-V can cause this. */
+	if ((name == TGSI_SEMANTIC_PATCH ||
+	     name == TGSI_SEMANTIC_TESSINNER ||
+	     name == TGSI_SEMANTIC_TESSOUTER) != is_patch)
+		return;
 
 	if (!is_patch) {
 		stride = get_tcs_out_vertex_dw_stride(ctx);
