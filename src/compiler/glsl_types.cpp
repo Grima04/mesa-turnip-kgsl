@@ -642,7 +642,7 @@ glsl_type::get_instance(unsigned base_type, unsigned rows, unsigned columns,
 
       if (explicit_matrix_types == NULL) {
          explicit_matrix_types =
-            _mesa_hash_table_create(NULL, _mesa_key_hash_string,
+            _mesa_hash_table_create(NULL, _mesa_hash_string,
                                     _mesa_key_string_equal);
       }
 
@@ -1007,7 +1007,7 @@ glsl_type::get_array_instance(const glsl_type *base,
    assert(glsl_type_users > 0);
 
    if (array_types == NULL) {
-      array_types = _mesa_hash_table_create(NULL, _mesa_key_hash_string,
+      array_types = _mesa_hash_table_create(NULL, _mesa_hash_string,
                                             _mesa_key_string_equal);
    }
 

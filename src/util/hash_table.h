@@ -109,20 +109,18 @@ _mesa_hash_table_random_entry(struct hash_table *ht,
                               bool (*predicate)(struct hash_entry *entry));
 
 uint32_t _mesa_hash_data(const void *data, size_t size);
+
+uint32_t _mesa_hash_int(const void *key);
+uint32_t _mesa_hash_uint(const void *key);
+uint32_t _mesa_hash_u32(const void *key);
 uint32_t _mesa_hash_string(const void *key);
+uint32_t _mesa_hash_pointer(const void *pointer);
+
+bool _mesa_key_int_equal(const void *a, const void *b);
+bool _mesa_key_uint_equal(const void *a, const void *b);
+bool _mesa_key_u32_equal(const void *a, const void *b);
 bool _mesa_key_string_equal(const void *a, const void *b);
 bool _mesa_key_pointer_equal(const void *a, const void *b);
-
-static inline uint32_t _mesa_key_hash_string(const void *key)
-{
-   return _mesa_hash_string((const char *)key);
-}
-
-static inline uint32_t _mesa_hash_pointer(const void *pointer)
-{
-   uintptr_t num = (uintptr_t) pointer;
-   return (uint32_t) ((num >> 2) ^ (num >> 6) ^ (num >> 10) ^ (num >> 14));
-}
 
 struct hash_table *
 _mesa_pointer_hash_table_create(void *mem_ctx);

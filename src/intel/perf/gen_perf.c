@@ -967,7 +967,7 @@ load_oa_metrics(struct gen_perf_config *perf, int fd,
       return false;
 
    perf->oa_metrics_table =
-      _mesa_hash_table_create(perf, _mesa_key_hash_string,
+      _mesa_hash_table_create(perf, _mesa_hash_string,
                               _mesa_key_string_equal);
 
    /* Index all the metric sets mesa knows about before looking to see what

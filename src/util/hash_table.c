@@ -555,6 +555,24 @@ _mesa_hash_data(const void *data, size_t size)
    return XXH32(data, size, 0);
 }
 
+uint32_t
+_mesa_hash_int(const void *key)
+{
+   return XXH32(key, sizeof(int), 0);
+}
+
+uint32_t
+_mesa_hash_uint(const void *key)
+{
+   return XXH32(key, sizeof(unsigned), 0);
+}
+
+uint32_t
+_mesa_hash_u32(const void *key)
+{
+   return XXH32(key, 4, 0);
+}
+
 /** FNV-1a string hash implementation */
 uint32_t
 _mesa_hash_string(const void *_key)
@@ -568,6 +586,32 @@ _mesa_hash_string(const void *_key)
    }
 
    return hash;
+}
+
+uint32_t
+_mesa_hash_pointer(const void *pointer)
+{
+   uintptr_t num = (uintptr_t) pointer;
+   return (uint32_t) ((num >> 2) ^ (num >> 6) ^ (num >> 10) ^ (num >> 14));
+}
+
+bool
+_mesa_key_int_equal(const void *a, const void *b)
+{
+   return *((const int *)a) == *((const int *)b);
+}
+
+bool
+_mesa_key_uint_equal(const void *a, const void *b)
+{
+
+   return *((const unsigned *)a) == *((const unsigned *)b);
+}
+
+bool
+_mesa_key_u32_equal(const void *a, const void *b)
+{
+   return *((const uint32_t *)a) == *((const uint32_t *)b);
 }
 
 /**

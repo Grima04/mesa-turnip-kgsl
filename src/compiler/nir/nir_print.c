@@ -1486,7 +1486,7 @@ init_print_state(print_state *state, nir_shader *shader, FILE *fp)
    state->fp = fp;
    state->shader = shader;
    state->ht = _mesa_pointer_hash_table_create(NULL);
-   state->syms = _mesa_set_create(NULL, _mesa_key_hash_string,
+   state->syms = _mesa_set_create(NULL, _mesa_hash_string,
                                   _mesa_key_string_equal);
    state->index = 0;
 }
