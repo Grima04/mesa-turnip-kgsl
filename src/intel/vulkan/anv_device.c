@@ -345,18 +345,40 @@ anv_physical_device_init(struct anv_physical_device *device,
    if (fd < 0)
       return vk_error(VK_ERROR_INCOMPATIBLE_DRIVER);
 
+   struct gen_device_info devinfo;
+   if (!gen_get_device_info_from_fd(fd, &devinfo)) {
+      result = vk_error(VK_ERROR_INCOMPATIBLE_DRIVER);
+      goto fail;
+   }
+
+   const char *device_name = gen_get_device_name(devinfo.chipset_id);
+
+   if (devinfo.is_haswell) {
+      intel_logw("Haswell Vulkan support is incomplete");
+   } else if (devinfo.gen == 7 && !devinfo.is_baytrail) {
+      intel_logw("Ivy Bridge Vulkan support is incomplete");
+   } else if (devinfo.gen == 7 && devinfo.is_baytrail) {
+      intel_logw("Bay Trail Vulkan support is incomplete");
+   } else if (devinfo.gen >= 8 && devinfo.gen <= 11) {
+      /* Gen8-11 fully supported */
+   } else if (devinfo.gen == 12) {
+      intel_logw("Vulkan is not yet fully supported on gen12");
+   } else {
+      result = vk_errorfi(instance, NULL, VK_ERROR_INCOMPATIBLE_DRIVER,
+                          "Vulkan not yet supported on %s", device_name);
+      goto fail;
+   }
+
    device->_loader_data.loaderMagic = ICD_LOADER_MAGIC;
    device->instance = instance;
 
    assert(strlen(path) < ARRAY_SIZE(device->path));
    snprintf(device->path, ARRAY_SIZE(device->path), "%s", path);
 
-   if (!gen_get_device_info_from_fd(fd, &device->info)) {
-      result = vk_error(VK_ERROR_INCOMPATIBLE_DRIVER);
-      goto fail;
-   }
-   device->no_hw = device->info.no_hw;
+   device->info = devinfo;
+   device->name = device_name;
 
+   device->no_hw = device->info.no_hw;
    if (getenv("INTEL_NO_HW") != NULL)
       device->no_hw = true;
 
@@ -364,24 +386,6 @@ anv_physical_device_init(struct anv_physical_device *device,
    device->pci_info.bus = drm_device->businfo.pci->bus;
    device->pci_info.device = drm_device->businfo.pci->dev;
    device->pci_info.function = drm_device->businfo.pci->func;
-
-   device->name = gen_get_device_name(device->info.chipset_id);
-
-   if (device->info.is_haswell) {
-      intel_logw("Haswell Vulkan support is incomplete");
-   } else if (device->info.gen == 7 && !device->info.is_baytrail) {
-      intel_logw("Ivy Bridge Vulkan support is incomplete");
-   } else if (device->info.gen == 7 && device->info.is_baytrail) {
-      intel_logw("Bay Trail Vulkan support is incomplete");
-   } else if (device->info.gen >= 8 && device->info.gen <= 11) {
-      /* Gen8-11 fully supported */
-   } else if (device->info.gen == 12) {
-      intel_logw("Vulkan is not yet fully supported on gen12");
-   } else {
-      result = vk_errorfi(instance, NULL, VK_ERROR_INCOMPATIBLE_DRIVER,
-                          "Vulkan not yet supported on %s", device->name);
-      goto fail;
-   }
 
    device->cmd_parser_version = -1;
    if (device->info.gen == 7) {
