@@ -125,7 +125,7 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
 
         case PIPE_CAP_TGSI_INSTANCEID:
         case PIPE_CAP_VERTEX_ELEMENT_INSTANCE_DIVISOR:
-                return is_deqp ? 1 : 0;
+                return 1;
 
         case PIPE_CAP_MAX_STREAM_OUTPUT_BUFFERS:
                 return is_deqp ? 4 : 0;
@@ -136,7 +136,7 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
                 return 1;
 
         case PIPE_CAP_MAX_TEXTURE_ARRAY_LAYERS:
-                return is_deqp ? 256 : 0; /* for GL3 */
+                return 256;
 
         case PIPE_CAP_GLSL_FEATURE_LEVEL:
         case PIPE_CAP_GLSL_FEATURE_LEVEL_COMPATIBILITY:
@@ -145,7 +145,7 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
                 return is_deqp ? 300 : 120;
 
         case PIPE_CAP_CONSTANT_BUFFER_OFFSET_ALIGNMENT:
-                return is_deqp ? 16 : 0;
+                return 16;
 
         case PIPE_CAP_CUBE_MAP_ARRAY:
                 return is_deqp;
