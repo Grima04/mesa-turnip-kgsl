@@ -237,8 +237,8 @@ anv_physical_device_init_uuids(struct anv_physical_device *device)
     */
    _mesa_sha1_init(&sha1_ctx);
    _mesa_sha1_update(&sha1_ctx, build_id_data(note), build_id_len);
-   _mesa_sha1_update(&sha1_ctx, &device->chipset_id,
-                     sizeof(device->chipset_id));
+   _mesa_sha1_update(&sha1_ctx, &device->info.chipset_id,
+                     sizeof(device->info.chipset_id));
    _mesa_sha1_update(&sha1_ctx, &device->always_use_bindless,
                      sizeof(device->always_use_bindless));
    _mesa_sha1_update(&sha1_ctx, &device->has_a64_buffer_access,
@@ -264,8 +264,8 @@ anv_physical_device_init_uuids(struct anv_physical_device *device)
     * some bits of ISL info to ensure that this is safe.
     */
    _mesa_sha1_init(&sha1_ctx);
-   _mesa_sha1_update(&sha1_ctx, &device->chipset_id,
-                     sizeof(device->chipset_id));
+   _mesa_sha1_update(&sha1_ctx, &device->info.chipset_id,
+                     sizeof(device->info.chipset_id));
    _mesa_sha1_update(&sha1_ctx, &device->isl_dev.has_bit6_swizzling,
                      sizeof(device->isl_dev.has_bit6_swizzling));
    _mesa_sha1_final(&sha1_ctx, sha1);
@@ -280,7 +280,7 @@ anv_physical_device_init_disk_cache(struct anv_physical_device *device)
 #ifdef ENABLE_SHADER_CACHE
    char renderer[10];
    ASSERTED int len = snprintf(renderer, sizeof(renderer), "anv_%04x",
-                                   device->chipset_id);
+                               device->info.chipset_id);
    assert(len == sizeof(renderer) - 2);
 
    char timestamp[41];
@@ -355,7 +355,6 @@ anv_physical_device_init(struct anv_physical_device *device,
       result = vk_error(VK_ERROR_INCOMPATIBLE_DRIVER);
       goto fail;
    }
-   device->chipset_id = device->info.chipset_id;
    device->no_hw = device->info.no_hw;
 
    if (getenv("INTEL_NO_HW") != NULL)
@@ -366,7 +365,7 @@ anv_physical_device_init(struct anv_physical_device *device,
    device->pci_info.device = drm_device->businfo.pci->dev;
    device->pci_info.function = drm_device->businfo.pci->func;
 
-   device->name = gen_get_device_name(device->chipset_id);
+   device->name = gen_get_device_name(device->info.chipset_id);
 
    if (device->info.is_haswell) {
       intel_logw("Haswell Vulkan support is incomplete");
@@ -1541,7 +1540,7 @@ void anv_GetPhysicalDeviceProperties(
       .apiVersion = anv_physical_device_api_version(pdevice),
       .driverVersion = vk_get_driver_version(),
       .vendorID = 0x8086,
-      .deviceID = pdevice->chipset_id,
+      .deviceID = pdevice->info.chipset_id,
       .deviceType = VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU,
       .limits = limits,
       .sparseProperties = {0}, /* Broadwell doesn't do sparse. */
@@ -2700,7 +2699,6 @@ VkResult anv_CreateDevice(
 
    device->_loader_data.loaderMagic = ICD_LOADER_MAGIC;
    device->physical = physical_device;
-   device->chipset_id = physical_device->chipset_id;
    device->no_hw = physical_device->no_hw;
    device->_lost = false;
 
