@@ -202,18 +202,6 @@ panfrost_emit_vertex_payload(struct panfrost_context *ctx)
         memcpy(&ctx->payloads[PIPE_SHADER_COMPUTE], &payload, sizeof(payload));
 }
 
-static void
-panfrost_emit_tiler_payload(struct panfrost_context *ctx)
-{
-        struct midgard_payload_vertex_tiler payload = {
-                .prefix = {
-                        .zero1 = 0xffff, /* Why is this only seen on test-quad-textured? */
-                },
-        };
-
-        memcpy(&ctx->payloads[PIPE_SHADER_FRAGMENT], &payload, sizeof(payload));
-}
-
 static unsigned
 translate_tex_wrap(enum pipe_tex_wrap w)
 {
@@ -2734,7 +2722,6 @@ panfrost_create_context(struct pipe_screen *screen, void *priv, unsigned flags)
 
         panfrost_batch_init(ctx);
         panfrost_emit_vertex_payload(ctx);
-        panfrost_emit_tiler_payload(ctx);
         panfrost_invalidate_frame(ctx);
         panfrost_default_shader_backend(ctx);
 
