@@ -2588,8 +2588,8 @@ gen_aux_map_buffer_alloc(void *driver_ctx, uint32_t size)
       return NULL;
 
    struct anv_device *device = (struct anv_device*)driver_ctx;
-   assert(device->instance->physicalDevice.supports_48bit_addresses &&
-          device->instance->physicalDevice.use_softpin);
+   assert(device->physical->supports_48bit_addresses &&
+          device->physical->use_softpin);
 
    struct anv_state_pool *pool = &device->dynamic_state_pool;
    buf->state = anv_state_pool_alloc(pool, size, size);
@@ -2698,6 +2698,7 @@ VkResult anv_CreateDevice(
 
    device->_loader_data.loaderMagic = ICD_LOADER_MAGIC;
    device->instance = physical_device->instance;
+   device->physical = physical_device;
    device->chipset_id = physical_device->chipset_id;
    device->no_hw = physical_device->no_hw;
    device->_lost = false;
@@ -2947,12 +2948,9 @@ void anv_DestroyDevice(
     const VkAllocationCallbacks*                pAllocator)
 {
    ANV_FROM_HANDLE(anv_device, device, _device);
-   struct anv_physical_device *physical_device;
 
    if (!device)
       return;
-
-   physical_device = &device->instance->physicalDevice;
 
    anv_device_finish_blorp(device);
 
@@ -2980,7 +2978,7 @@ void anv_DestroyDevice(
       device->aux_map_ctx = NULL;
    }
 
-   if (physical_device->use_softpin)
+   if (device->physical->use_softpin)
       anv_state_pool_finish(&device->binding_table_pool);
    anv_state_pool_finish(&device->surface_state_pool);
    anv_state_pool_finish(&device->instruction_state_pool);
@@ -2990,7 +2988,7 @@ void anv_DestroyDevice(
 
    anv_bo_cache_finish(&device->bo_cache);
 
-   if (physical_device->use_softpin) {
+   if (device->physical->use_softpin) {
       util_vma_heap_finish(&device->vma_hi);
       util_vma_heap_finish(&device->vma_cva);
       util_vma_heap_finish(&device->vma_lo);
@@ -3197,8 +3195,7 @@ bool
 anv_vma_alloc(struct anv_device *device, struct anv_bo *bo,
               uint64_t client_address)
 {
-   const struct anv_physical_device *pdevice = &device->instance->physicalDevice;
-   const struct gen_device_info *devinfo = &pdevice->info;
+   const struct gen_device_info *devinfo = &device->info;
    /* Gen12 CCS surface addresses need to be 64K aligned. We have no way of
     * telling what this allocation is for so pick the largest alignment.
     */
@@ -3292,7 +3289,7 @@ VkResult anv_AllocateMemory(
     VkDeviceMemory*                             pMem)
 {
    ANV_FROM_HANDLE(anv_device, device, _device);
-   struct anv_physical_device *pdevice = &device->instance->physicalDevice;
+   struct anv_physical_device *pdevice = device->physical;
    struct anv_device_memory *mem;
    VkResult result = VK_SUCCESS;
 
@@ -3566,13 +3563,12 @@ VkResult anv_GetMemoryFdPropertiesKHR(
     VkMemoryFdPropertiesKHR*                    pMemoryFdProperties)
 {
    ANV_FROM_HANDLE(anv_device, device, _device);
-   struct anv_physical_device *pdevice = &device->instance->physicalDevice;
 
    switch (handleType) {
    case VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT:
       /* dma-buf can be imported as any memory type */
       pMemoryFdProperties->memoryTypeBits =
-         (1 << pdevice->memory.type_count) - 1;
+         (1 << device->physical->memory.type_count) - 1;
       return VK_SUCCESS;
 
    default:
@@ -3599,15 +3595,13 @@ VkResult anv_GetMemoryHostPointerPropertiesEXT(
           VK_STRUCTURE_TYPE_MEMORY_HOST_POINTER_PROPERTIES_EXT);
 
    switch (handleType) {
-   case VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_ALLOCATION_BIT_EXT: {
-      struct anv_physical_device *pdevice = &device->instance->physicalDevice;
-
+   case VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_ALLOCATION_BIT_EXT:
       /* Host memory can be imported as any memory type. */
       pMemoryHostPointerProperties->memoryTypeBits =
-         (1ull << pdevice->memory.type_count) - 1;
+         (1ull << device->physical->memory.type_count) - 1;
 
       return VK_SUCCESS;
-   }
+
    default:
       return VK_ERROR_INVALID_EXTERNAL_HANDLE;
    }
@@ -3620,7 +3614,6 @@ void anv_FreeMemory(
 {
    ANV_FROM_HANDLE(anv_device, device, _device);
    ANV_FROM_HANDLE(anv_device_memory, mem, _mem);
-   struct anv_physical_device *pdevice = &device->instance->physicalDevice;
 
    if (mem == NULL)
       return;
@@ -3632,7 +3625,7 @@ void anv_FreeMemory(
    if (mem->map)
       anv_UnmapMemory(_device, _mem);
 
-   p_atomic_add(&pdevice->memory.heaps[mem->type->heapIndex].used,
+   p_atomic_add(&device->physical->memory.heaps[mem->type->heapIndex].used,
                 -mem->bo->size);
 
    anv_device_release_bo(device, mem->bo);
@@ -3785,7 +3778,6 @@ void anv_GetBufferMemoryRequirements(
 {
    ANV_FROM_HANDLE(anv_buffer, buffer, _buffer);
    ANV_FROM_HANDLE(anv_device, device, _device);
-   struct anv_physical_device *pdevice = &device->instance->physicalDevice;
 
    /* The Vulkan spec (git aaed022) says:
     *
@@ -3794,7 +3786,7 @@ void anv_GetBufferMemoryRequirements(
     *    only if the memory type `i` in the VkPhysicalDeviceMemoryProperties
     *    structure for the physical device is supported.
     */
-   uint32_t memory_types = (1ull << pdevice->memory.type_count) - 1;
+   uint32_t memory_types = (1ull << device->physical->memory.type_count) - 1;
 
    /* Base alignment requirement of a cache line */
    uint32_t alignment = 16;
@@ -3850,7 +3842,6 @@ void anv_GetImageMemoryRequirements(
 {
    ANV_FROM_HANDLE(anv_image, image, _image);
    ANV_FROM_HANDLE(anv_device, device, _device);
-   struct anv_physical_device *pdevice = &device->instance->physicalDevice;
 
    /* The Vulkan spec (git aaed022) says:
     *
@@ -3861,7 +3852,7 @@ void anv_GetImageMemoryRequirements(
     *
     * All types are currently supported for images.
     */
-   uint32_t memory_types = (1ull << pdevice->memory.type_count) - 1;
+   uint32_t memory_types = (1ull << device->physical->memory.type_count) - 1;
 
    /* We must have image allocated or imported at this point. According to the
     * specification, external images must have been bound to memory before
@@ -3888,7 +3879,6 @@ void anv_GetImageMemoryRequirements2(
    vk_foreach_struct_const(ext, pInfo->pNext) {
       switch (ext->sType) {
       case VK_STRUCTURE_TYPE_IMAGE_PLANE_MEMORY_REQUIREMENTS_INFO: {
-         struct anv_physical_device *pdevice = &device->instance->physicalDevice;
          const VkImagePlaneMemoryRequirementsInfo *plane_reqs =
             (const VkImagePlaneMemoryRequirementsInfo *) ext;
          uint32_t plane = anv_image_aspect_to_plane(image->aspects,
@@ -3907,7 +3897,7 @@ void anv_GetImageMemoryRequirements2(
           * All types are currently supported for images.
           */
          pMemoryRequirements->memoryRequirements.memoryTypeBits =
-               (1ull << pdevice->memory.type_count) - 1;
+               (1ull << device->physical->memory.type_count) - 1;
 
          /* We must have image allocated or imported at this point. According to the
           * specification, external images must have been bound to memory before
@@ -4148,7 +4138,6 @@ VkResult anv_CreateBuffer(
     VkBuffer*                                   pBuffer)
 {
    ANV_FROM_HANDLE(anv_device, device, _device);
-   struct anv_physical_device *pdevice = &device->instance->physicalDevice;
    struct anv_buffer *buffer;
 
    /* Don't allow creating buffers bigger than our address space.  The real
@@ -4156,7 +4145,7 @@ VkResult anv_CreateBuffer(
     * doing so to cause roll-over.  However, no one has any business
     * allocating a buffer larger than our GTT size.
     */
-   if (pCreateInfo->size > pdevice->gtt_size)
+   if (pCreateInfo->size > device->physical->gtt_size)
       return vk_error(VK_ERROR_OUT_OF_DEVICE_MEMORY);
 
    assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO);

@@ -465,7 +465,7 @@ anv_pipeline_cache_load(struct anv_pipeline_cache *cache,
                         const void *data, size_t size)
 {
    struct anv_device *device = cache->device;
-   struct anv_physical_device *pdevice = &device->instance->physicalDevice;
+   struct anv_physical_device *pdevice = device->physical;
 
    if (cache->cache == NULL)
       return;
@@ -554,7 +554,6 @@ VkResult anv_GetPipelineCacheData(
 {
    ANV_FROM_HANDLE(anv_device, device, _device);
    ANV_FROM_HANDLE(anv_pipeline_cache, cache, _cache);
-   struct anv_physical_device *pdevice = &device->instance->physicalDevice;
 
    struct blob blob;
    if (pData) {
@@ -569,7 +568,7 @@ VkResult anv_GetPipelineCacheData(
       .vendor_id = 0x8086,
       .device_id = device->chipset_id,
    };
-   memcpy(header.uuid, pdevice->pipeline_cache_uuid, VK_UUID_SIZE);
+   memcpy(header.uuid, device->physical->pipeline_cache_uuid, VK_UUID_SIZE);
    blob_write_bytes(&blob, &header, sizeof(header));
 
    uint32_t count = 0;
@@ -656,7 +655,7 @@ anv_device_search_for_kernel(struct anv_device *device,
    }
 
 #ifdef ENABLE_SHADER_CACHE
-   struct disk_cache *disk_cache = device->instance->physicalDevice.disk_cache;
+   struct disk_cache *disk_cache = device->physical->disk_cache;
    if (disk_cache && device->instance->pipeline_cache_enabled) {
       cache_key cache_key;
       disk_cache_compute_key(disk_cache, key_data, key_size, cache_key);
@@ -717,7 +716,7 @@ anv_device_upload_kernel(struct anv_device *device,
       return NULL;
 
 #ifdef ENABLE_SHADER_CACHE
-   struct disk_cache *disk_cache = device->instance->physicalDevice.disk_cache;
+   struct disk_cache *disk_cache = device->physical->disk_cache;
    if (disk_cache) {
       struct blob binary;
       blob_init(&binary);

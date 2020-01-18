@@ -27,13 +27,11 @@
 
 int main(int argc, char **argv)
 {
-   struct anv_instance instance = {
-      .physicalDevice = {
-         .use_softpin = true,
-      },
+   struct anv_physical_device physical_device = {
+      .use_softpin = true,
    };
    struct anv_device device = {
-      .instance = &instance,
+      .physical = &physical_device,
    };
    struct anv_state_pool state_pool;
 

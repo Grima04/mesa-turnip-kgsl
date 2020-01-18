@@ -569,7 +569,7 @@ anv_queue_submit_simple_batch(struct anv_queue *queue,
    if (!submit)
       return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   bool has_syncobj_wait = device->instance->physicalDevice.has_syncobj_wait;
+   bool has_syncobj_wait = device->physical->has_syncobj_wait;
    VkResult result;
    uint32_t syncobj;
    struct anv_bo *batch_bo, *sync_bo;
@@ -720,7 +720,7 @@ anv_queue_submit(struct anv_queue *queue,
 {
    ANV_FROM_HANDLE(anv_fence, fence, _fence);
    struct anv_device *device = queue->device;
-   UNUSED struct anv_physical_device *pdevice = &device->instance->physicalDevice;
+   UNUSED struct anv_physical_device *pdevice = device->physical;
    struct anv_queue_submit *submit = anv_queue_submit_alloc(device);
    if (!submit)
       return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
@@ -1099,7 +1099,7 @@ VkResult anv_CreateFence(
    if (fence == NULL)
       return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   if (device->instance->physicalDevice.has_syncobj_wait) {
+   if (device->physical->has_syncobj_wait) {
       fence->permanent.type = ANV_FENCE_TYPE_SYNCOBJ;
 
       uint32_t create_flags = 0;
@@ -1728,7 +1728,7 @@ binary_semaphore_create(struct anv_device *device,
                         struct anv_semaphore_impl *impl,
                         bool exportable)
 {
-   if (device->instance->physicalDevice.has_syncobj) {
+   if (device->physical->has_syncobj) {
       impl->type = ANV_SEMAPHORE_TYPE_DRM_SYNCOBJ;
       impl->syncobj = anv_gem_syncobj_create(device, 0);
       if (!impl->syncobj)
@@ -1807,7 +1807,7 @@ VkResult anv_CreateSemaphore(
    } else if (handleTypes & VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT) {
       assert(handleTypes == VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT);
       assert(sem_type == VK_SEMAPHORE_TYPE_BINARY_KHR);
-      if (device->instance->physicalDevice.has_syncobj) {
+      if (device->physical->has_syncobj) {
          semaphore->permanent.type = ANV_SEMAPHORE_TYPE_DRM_SYNCOBJ;
          semaphore->permanent.syncobj = anv_gem_syncobj_create(device, 0);
          if (!semaphore->permanent.syncobj) {
@@ -1970,7 +1970,7 @@ VkResult anv_ImportSemaphoreFdKHR(
 
    switch (pImportSemaphoreFdInfo->handleType) {
    case VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_FD_BIT:
-      if (device->instance->physicalDevice.has_syncobj) {
+      if (device->physical->has_syncobj) {
          new_impl.type = ANV_SEMAPHORE_TYPE_DRM_SYNCOBJ;
 
          new_impl.syncobj = anv_gem_syncobj_fd_to_handle(device, fd);
@@ -2011,7 +2011,7 @@ VkResult anv_ImportSemaphoreFdKHR(
       break;
 
    case VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT:
-      if (device->instance->physicalDevice.has_syncobj) {
+      if (device->physical->has_syncobj) {
          new_impl = (struct anv_semaphore_impl) {
             .type = ANV_SEMAPHORE_TYPE_DRM_SYNCOBJ,
             .syncobj = anv_gem_syncobj_create(device, 0),

@@ -594,7 +594,7 @@ anv_image_create(VkDevice _device,
       const VkImageDrmFormatModifierListCreateInfoEXT *mod_info =
          vk_find_struct_const(pCreateInfo->pNext,
                               IMAGE_DRM_FORMAT_MODIFIER_LIST_CREATE_INFO_EXT);
-      isl_mod_info = choose_drm_format_mod(&device->instance->physicalDevice,
+      isl_mod_info = choose_drm_format_mod(device->physical,
                                            mod_info->drmFormatModifierCount,
                                            mod_info->pDrmFormatModifiers);
       assert(isl_mod_info);

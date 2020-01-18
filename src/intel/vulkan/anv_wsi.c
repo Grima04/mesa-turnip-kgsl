@@ -213,7 +213,7 @@ VkResult anv_CreateSwapchainKHR(
     VkSwapchainKHR*                              pSwapchain)
 {
    ANV_FROM_HANDLE(anv_device, device, _device);
-   struct wsi_device *wsi_device = &device->instance->physicalDevice.wsi_device;
+   struct wsi_device *wsi_device = &device->physical->wsi_device;
    const VkAllocationCallbacks *alloc;
 
    if (pAllocator)
@@ -278,10 +278,9 @@ VkResult anv_AcquireNextImage2KHR(
     uint32_t*                                    pImageIndex)
 {
    ANV_FROM_HANDLE(anv_device, device, _device);
-   struct anv_physical_device *pdevice = &device->instance->physicalDevice;
 
-   return wsi_common_acquire_next_image2(&pdevice->wsi_device, _device,
-                                         pAcquireInfo, pImageIndex);
+   return wsi_common_acquire_next_image2(&device->physical->wsi_device,
+                                         _device, pAcquireInfo, pImageIndex);
 }
 
 VkResult anv_QueuePresentKHR(
@@ -289,10 +288,8 @@ VkResult anv_QueuePresentKHR(
     const VkPresentInfoKHR*                  pPresentInfo)
 {
    ANV_FROM_HANDLE(anv_queue, queue, _queue);
-   struct anv_physical_device *pdevice =
-      &queue->device->instance->physicalDevice;
 
-   return wsi_common_queue_present(&pdevice->wsi_device,
+   return wsi_common_queue_present(&queue->device->physical->wsi_device,
                                    anv_device_to_handle(queue->device),
                                    _queue, 0,
                                    pPresentInfo);

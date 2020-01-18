@@ -2192,9 +2192,7 @@ compute_pipeline_create(
     VkPipeline*                                 pPipeline)
 {
    ANV_FROM_HANDLE(anv_device, device, _device);
-   const struct anv_physical_device *physical_device =
-      &device->instance->physicalDevice;
-   const struct gen_device_info *devinfo = &physical_device->info;
+   const struct gen_device_info *devinfo = &device->info;
    struct anv_pipeline *pipeline;
    VkResult result;
 
@@ -2267,7 +2265,7 @@ compute_pipeline_create(
       ALIGN(cs_prog_data->push.per_thread.regs * cs_prog_data->threads +
             cs_prog_data->push.cross_thread.regs, 2);
 
-   const uint32_t subslices = MAX2(physical_device->subslice_total, 1);
+   const uint32_t subslices = MAX2(device->physical->subslice_total, 1);
 
    const struct anv_shader_bin *cs_bin =
       pipeline->shaders[MESA_SHADER_COMPUTE];

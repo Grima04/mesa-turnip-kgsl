@@ -1209,6 +1209,7 @@ struct anv_device {
     VkAllocationCallbacks                       alloc;
 
     struct anv_instance *                       instance;
+    struct anv_physical_device *                physical;
     uint32_t                                    chipset_id;
     bool                                        no_hw;
     struct gen_device_info                      info;
@@ -1272,7 +1273,7 @@ struct anv_device {
 static inline struct anv_state_pool *
 anv_binding_table_pool(struct anv_device *device)
 {
-   if (device->instance->physicalDevice.use_softpin)
+   if (device->physical->use_softpin)
       return &device->binding_table_pool;
    else
       return &device->surface_state_pool;
@@ -1280,7 +1281,7 @@ anv_binding_table_pool(struct anv_device *device)
 
 static inline struct anv_state
 anv_binding_table_pool_alloc(struct anv_device *device) {
-   if (device->instance->physicalDevice.use_softpin)
+   if (device->physical->use_softpin)
       return anv_state_pool_alloc(&device->binding_table_pool,
                                   device->binding_table_pool.block_size, 0);
    else

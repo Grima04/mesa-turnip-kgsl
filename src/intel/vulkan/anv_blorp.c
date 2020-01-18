@@ -94,7 +94,7 @@ void
 anv_device_init_blorp(struct anv_device *device)
 {
    blorp_init(&device->blorp, device, &device->isl_dev);
-   device->blorp.compiler = device->instance->physicalDevice.compiler;
+   device->blorp.compiler = device->physical->compiler;
    device->blorp.lookup_shader = lookup_blorp_shader;
    device->blorp.upload_shader = upload_blorp_shader;
    switch (device->info.gen) {

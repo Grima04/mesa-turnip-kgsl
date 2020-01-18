@@ -192,7 +192,6 @@ anv_GetAndroidHardwareBufferPropertiesANDROID(
    VkAndroidHardwareBufferPropertiesANDROID *pProperties)
 {
    ANV_FROM_HANDLE(anv_device, dev, device_h);
-   struct anv_physical_device *pdevice = &dev->instance->physicalDevice;
 
    VkAndroidHardwareBufferFormatPropertiesANDROID *format_prop =
       vk_find_struct(pProperties->pNext,
@@ -214,7 +213,7 @@ anv_GetAndroidHardwareBufferPropertiesANDROID(
       return VK_ERROR_INVALID_EXTERNAL_HANDLE;
 
    /* All memory types. */
-   uint32_t memory_types = (1ull << pdevice->memory.type_count) - 1;
+   uint32_t memory_types = (1ull << dev->physical->memory.type_count) - 1;
 
    pProperties->allocationSize = lseek(dma_buf, 0, SEEK_END);
    pProperties->memoryTypeBits = memory_types;
@@ -550,8 +549,7 @@ format_supported_with_usage(VkDevice device_h, VkFormat format,
                             VkImageUsageFlags imageUsage)
 {
    ANV_FROM_HANDLE(anv_device, device, device_h);
-   struct anv_physical_device *phys_dev = &device->instance->physicalDevice;
-   VkPhysicalDevice phys_dev_h = anv_physical_device_to_handle(phys_dev);
+   VkPhysicalDevice phys_dev_h = anv_physical_device_to_handle(device->physical);
    VkResult result;
 
    const VkPhysicalDeviceImageFormatInfo2 image_format_info = {
@@ -679,9 +677,6 @@ VkResult anv_GetSwapchainGrallocUsageANDROID(
     VkImageUsageFlags   imageUsage,
     int*                grallocUsage)
 {
-   ANV_FROM_HANDLE(anv_device, device, device_h);
-   struct anv_physical_device *phys_dev = &device->instance->physicalDevice;
-   VkPhysicalDevice phys_dev_h = anv_physical_device_to_handle(phys_dev);
    VkResult result;
 
    *grallocUsage = 0;

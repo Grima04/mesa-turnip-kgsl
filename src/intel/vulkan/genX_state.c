@@ -304,8 +304,7 @@ genX(init_device_state)(struct anv_device *device)
     *
     * This is only safe on kernels with context isolation support.
     */
-   if (GEN_GEN >= 8 &&
-       device->instance->physicalDevice.has_context_isolation) {
+   if (GEN_GEN >= 8 && device->physical->has_context_isolation) {
       UNUSED uint32_t tmp_reg;
 #if GEN_GEN >= 9
       anv_pack_struct(&tmp_reg, GENX(CS_DEBUG_MODE2),
@@ -402,8 +401,6 @@ VkResult genX(CreateSampler)(
     VkSampler*                                  pSampler)
 {
    ANV_FROM_HANDLE(anv_device, device, _device);
-   const struct anv_physical_device *pdevice =
-      &device->instance->physicalDevice;
    struct anv_sampler *sampler;
 
    assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO);
@@ -461,7 +458,7 @@ VkResult genX(CreateSampler)(
       }
    }
 
-   if (pdevice->has_bindless_samplers) {
+   if (device->physical->has_bindless_samplers) {
       /* If we have bindless, allocate enough samplers.  We allocate 32 bytes
        * for each sampler instead of 16 bytes because we want all bindless
        * samplers to be 32-byte aligned so we don't have to use indirect

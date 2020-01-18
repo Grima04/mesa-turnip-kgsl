@@ -134,8 +134,7 @@ anv_shader_compile_to_nir(struct anv_device *device,
                           gl_shader_stage stage,
                           const VkSpecializationInfo *spec_info)
 {
-   const struct anv_physical_device *pdevice =
-      &device->instance->physicalDevice;
+   const struct anv_physical_device *pdevice = device->physical;
    const struct brw_compiler *compiler = pdevice->compiler;
    const nir_shader_compiler_options *nir_options =
       compiler->glsl_compiler_options[stage].NirOptions;
@@ -624,7 +623,7 @@ anv_pipeline_stage_get_nir(struct anv_pipeline *pipeline,
                            struct anv_pipeline_stage *stage)
 {
    const struct brw_compiler *compiler =
-      pipeline->device->instance->physicalDevice.compiler;
+      pipeline->device->physical->compiler;
    const nir_shader_compiler_options *nir_options =
       compiler->glsl_compiler_options[stage->stage].NirOptions;
    nir_shader *nir;
@@ -658,8 +657,7 @@ anv_pipeline_lower_nir(struct anv_pipeline *pipeline,
                        struct anv_pipeline_stage *stage,
                        struct anv_pipeline_layout *layout)
 {
-   const struct anv_physical_device *pdevice =
-      &pipeline->device->instance->physicalDevice;
+   const struct anv_physical_device *pdevice = pipeline->device->physical;
    const struct brw_compiler *compiler = pdevice->compiler;
 
    struct brw_stage_prog_data *prog_data = &stage->prog_data.base;
@@ -1114,8 +1112,7 @@ anv_pipeline_compile_graphics(struct anv_pipeline *pipeline,
    };
    int64_t pipeline_start = os_time_get_nano();
 
-   const struct brw_compiler *compiler =
-      pipeline->device->instance->physicalDevice.compiler;
+   const struct brw_compiler *compiler = pipeline->device->physical->compiler;
    struct anv_pipeline_stage stages[MESA_SHADER_STAGES] = {};
 
    pipeline->active_stages = 0;
@@ -1466,8 +1463,7 @@ anv_pipeline_compile_cs(struct anv_pipeline *pipeline,
    };
    int64_t pipeline_start = os_time_get_nano();
 
-   const struct brw_compiler *compiler =
-      pipeline->device->instance->physicalDevice.compiler;
+   const struct brw_compiler *compiler = pipeline->device->physical->compiler;
 
    struct anv_pipeline_stage stage = {
       .stage = MESA_SHADER_COMPUTE,

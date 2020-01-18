@@ -369,7 +369,7 @@ anv_block_pool_init(struct anv_block_pool *pool,
    VkResult result;
 
    pool->device = device;
-   pool->use_softpin = device->instance->physicalDevice.use_softpin;
+   pool->use_softpin = device->physical->use_softpin;
    pool->nbos = 0;
    pool->size = 0;
    pool->center_bo_offset = 0;
@@ -1376,11 +1376,9 @@ anv_scratch_pool_alloc(struct anv_device *device, struct anv_scratch_pool *pool,
    if (bo != NULL)
       return bo;
 
-   const struct anv_physical_device *physical_device =
-      &device->instance->physicalDevice;
-   const struct gen_device_info *devinfo = &physical_device->info;
+   const struct gen_device_info *devinfo = &device->info;
 
-   const unsigned subslices = MAX2(physical_device->subslice_total, 1);
+   const unsigned subslices = MAX2(device->physical->subslice_total, 1);
 
    unsigned scratch_ids_per_subslice;
    if (devinfo->gen >= 11) {
@@ -1499,7 +1497,7 @@ static uint32_t
 anv_bo_alloc_flags_to_bo_flags(struct anv_device *device,
                                enum anv_bo_alloc_flags alloc_flags)
 {
-   struct anv_physical_device *pdevice = &device->instance->physicalDevice;
+   struct anv_physical_device *pdevice = device->physical;
 
    uint64_t bo_flags = 0;
    if (!(alloc_flags & ANV_BO_ALLOC_32BIT_ADDRESS) &&
