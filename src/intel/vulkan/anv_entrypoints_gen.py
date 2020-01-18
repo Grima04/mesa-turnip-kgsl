@@ -302,45 +302,30 @@ const struct anv_instance_dispatch_table anv_instance_dispatch_table = {
 % endfor
 };
 
-% for layer in LAYERS:
-  % for e in physical_device_entrypoints:
-    % if e.alias:
-      <% continue %>
-    % endif
-    % if e.guard is not None:
+% for e in physical_device_entrypoints:
+  % if e.alias and e.alias.enabled:
+    <% continue %>
+  % endif
+  % if e.guard is not None:
 #ifdef ${e.guard}
-    % endif
-    % if layer == 'anv':
-      ${e.return_type} __attribute__ ((weak))
-      ${e.prefixed_name('anv')}(${e.decl_params()})
-      {
-        % if e.params[0].type == 'VkPhysicalDevice':
-          ANV_FROM_HANDLE(anv_physical_device, anv_physical_device, ${e.params[0].name});
-          return anv_physical_device->dispatch.${e.name}(${e.call_params()});
-        % else:
-          assert(!"Unhandled device child trampoline case: ${e.params[0].type}");
-        % endif
-      }
-    % else:
-      ${e.return_type} ${e.prefixed_name(layer)}(${e.decl_params()}) __attribute__ ((weak));
-    % endif
-    % if e.guard is not None:
+  % endif
+  ${e.return_type} ${e.prefixed_name('anv')}(${e.decl_params()}) __attribute__ ((weak));
+  % if e.guard is not None:
 #endif // ${e.guard}
-    % endif
-  % endfor
-
-  const struct anv_physical_device_dispatch_table ${layer}_physical_device_dispatch_table = {
-  % for e in physical_device_entrypoints:
-    % if e.guard is not None:
-#ifdef ${e.guard}
-    % endif
-    .${e.name} = ${e.prefixed_name(layer)},
-    % if e.guard is not None:
-#endif // ${e.guard}
-    % endif
-  % endfor
-  };
+  % endif
 % endfor
+
+const struct anv_physical_device_dispatch_table anv_physical_device_dispatch_table = {
+% for e in physical_device_entrypoints:
+  % if e.guard is not None:
+#ifdef ${e.guard}
+  % endif
+  .${e.name} = ${e.prefixed_name('anv')},
+  % if e.guard is not None:
+#endif // ${e.guard}
+  % endif
+% endfor
+};
 
 
 % for layer in LAYERS:

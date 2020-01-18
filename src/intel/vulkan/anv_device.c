@@ -709,16 +709,15 @@ VkResult anv_CreateInstance(
       }
    }
 
-   struct anv_physical_device *pdevice = &instance->physicalDevice;
-   for (unsigned i = 0; i < ARRAY_SIZE(pdevice->dispatch.entrypoints); i++) {
+   for (unsigned i = 0; i < ARRAY_SIZE(instance->physical_device_dispatch.entrypoints); i++) {
       /* Vulkan requires that entrypoints for extensions which have not been
        * enabled must not be advertised.
        */
       if (!anv_physical_device_entrypoint_is_enabled(i, instance->app_info.api_version,
                                                      &instance->enabled_extensions)) {
-         pdevice->dispatch.entrypoints[i] = NULL;
+         instance->physical_device_dispatch.entrypoints[i] = NULL;
       } else {
-         pdevice->dispatch.entrypoints[i] =
+         instance->physical_device_dispatch.entrypoints[i] =
             anv_physical_device_dispatch_table.entrypoints[i];
       }
    }
@@ -2214,7 +2213,7 @@ PFN_vkVoidFunction anv_GetInstanceProcAddr(
 
    idx = anv_get_physical_device_entrypoint_index(pName);
    if (idx >= 0)
-      return instance->physicalDevice.dispatch.entrypoints[idx];
+      return instance->physical_device_dispatch.entrypoints[idx];
 
    idx = anv_get_device_entrypoint_index(pName);
    if (idx >= 0)
@@ -2276,7 +2275,7 @@ PFN_vkVoidFunction vk_icdGetPhysicalDeviceProcAddr(
    if (idx < 0)
       return NULL;
 
-   return instance->physicalDevice.dispatch.entrypoints[idx];
+   return instance->physical_device_dispatch.entrypoints[idx];
 }
 
 

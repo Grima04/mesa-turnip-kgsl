@@ -1014,7 +1014,6 @@ struct anv_physical_device {
     bool                                        always_flush_cache;
 
     struct anv_device_extension_table           supported_extensions;
-    struct anv_physical_device_dispatch_table   dispatch;
 
     uint32_t                                    eu_total;
     uint32_t                                    subslice_total;
@@ -1055,6 +1054,7 @@ struct anv_instance {
 
     struct anv_instance_extension_table         enabled_extensions;
     struct anv_instance_dispatch_table          dispatch;
+    struct anv_physical_device_dispatch_table   physical_device_dispatch;
     struct anv_device_dispatch_table            device_dispatch;
 
     int                                         physicalDeviceCount;
