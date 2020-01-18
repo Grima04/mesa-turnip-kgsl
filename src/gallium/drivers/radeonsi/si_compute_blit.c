@@ -173,10 +173,6 @@ static void si_compute_do_clear_or_copy(struct si_context *sctx,
 	void *saved_cs = sctx->cs_shader_state.program;
 	struct pipe_shader_buffer saved_sb[2] = {};
 	si_get_shader_buffers(sctx, PIPE_SHADER_COMPUTE, 0, src ? 2 : 1, saved_sb);
-	struct pipe_image_view saved_image = {0};
-	util_copy_image_view(&saved_image, &sctx->images[PIPE_SHADER_COMPUTE].views[0]);
-	struct pipe_image_view image = {0};
-	ctx->set_shader_images(ctx, PIPE_SHADER_COMPUTE, 0, 1, &image);
 
 	unsigned saved_writable_mask = 0;
 	for (unsigned i = 0; i < (src ? 2 : 1); i++) {
@@ -258,7 +254,6 @@ static void si_compute_do_clear_or_copy(struct si_context *sctx,
 	ctx->bind_compute_state(ctx, saved_cs);
 	ctx->set_shader_buffers(ctx, PIPE_SHADER_COMPUTE, 0, src ? 2 : 1, saved_sb,
 				saved_writable_mask);
-	ctx->set_shader_images(ctx, PIPE_SHADER_COMPUTE, 0, 1, &saved_image);
 	si_compute_internal_end(sctx);
 	for (int i = 0; i < 2; i++)
 		pipe_resource_reference(&saved_sb[i].buffer, NULL);
