@@ -45,6 +45,7 @@ files_mesa_util = files(
   'double.h',
   'fast_idiv_by_const.c',
   'fast_idiv_by_const.h',
+  'fnv1a.h',
   'format_r11g11b10f.h',
   'format_rgb9e5.h',
   'format_srgb.h',

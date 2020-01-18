@@ -546,15 +546,6 @@ _mesa_hash_table_random_entry(struct hash_table *ht,
 }
 
 
-/**
- * Quick FNV-1a hash implementation based on:
- * http://www.isthe.com/chongo/tech/comp/fnv/
- *
- * FNV-1a is not be the best hash out there -- Jenkins's lookup3 is supposed
- * to be quite good, and it probably beats FNV.  But FNV has the advantage
- * that it involves almost no code.  For an improvement on both, see Paul
- * Hsieh's http://www.azillionmonkeys.com/qed/hash.html
- */
 uint32_t
 _mesa_hash_data(const void *data, size_t size)
 {
