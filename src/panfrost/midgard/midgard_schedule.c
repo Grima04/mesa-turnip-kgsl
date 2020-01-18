@@ -669,6 +669,10 @@ mir_comparison_mobile(
                 if (instructions[i]->type != TAG_ALU_4)
                         return ~0;
 
+                /* If it would itself require a condition, that's recursive */
+                if (OP_IS_CSEL(instructions[i]->alu.op))
+                        return ~0;
+
                 /* We'll need to rewrite to .w but that doesn't work for vector
                  * ops that don't replicate (ball/bany), so bail there */
 
