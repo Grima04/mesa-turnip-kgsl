@@ -116,6 +116,7 @@ files_mesa_util = files(
   'u_cpu_detect.h',
   'vma.c',
   'vma.h',
+  'xxhash.h',
 )
 
 files_drirc = files('00-mesa-defaults.conf')

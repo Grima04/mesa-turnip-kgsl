@@ -117,7 +117,9 @@ MESA_UTIL_FILES := \
 	u_mm.h \
 	u_mm.c \
 	vma.c \
-	vma.h
+	vma.h \
+	xxhash.h
+
 
 MESA_UTIL_GENERATED_FILES = \
 	format_srgb.c \
