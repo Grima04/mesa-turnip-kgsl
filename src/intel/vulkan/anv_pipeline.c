@@ -107,6 +107,8 @@ static void anv_spirv_nir_debug(void *private_data,
                                 const char *message)
 {
    struct anv_spirv_debug_data *debug_data = private_data;
+   struct anv_instance *instance = debug_data->device->physical->instance;
+
    static const VkDebugReportFlagsEXT vk_flags[] = {
       [NIR_SPIRV_DEBUG_LEVEL_INFO] = VK_DEBUG_REPORT_INFORMATION_BIT_EXT,
       [NIR_SPIRV_DEBUG_LEVEL_WARNING] = VK_DEBUG_REPORT_WARNING_BIT_EXT,
@@ -116,7 +118,7 @@ static void anv_spirv_nir_debug(void *private_data,
 
    snprintf(buffer, sizeof(buffer), "SPIR-V offset %lu: %s", (unsigned long) spirv_offset, message);
 
-   vk_debug_report(&debug_data->device->instance->debug_report_callbacks,
+   vk_debug_report(&instance->debug_report_callbacks,
                    vk_flags[level],
                    VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT,
                    (uint64_t) (uintptr_t) debug_data->module,
@@ -1238,7 +1240,7 @@ anv_pipeline_compile_graphics(struct anv_pipeline *pipeline,
           */
          assert(found < __builtin_popcount(pipeline->active_stages));
 
-         vk_debug_report(&pipeline->device->instance->debug_report_callbacks,
+         vk_debug_report(&pipeline->device->physical->instance->debug_report_callbacks,
                          VK_DEBUG_REPORT_WARNING_BIT_EXT |
                          VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT,
                          VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_CACHE_EXT,

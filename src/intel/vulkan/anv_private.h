@@ -1209,7 +1209,6 @@ struct anv_device {
 
     VkAllocationCallbacks                       alloc;
 
-    struct anv_instance *                       instance;
     struct anv_physical_device *                physical;
     uint32_t                                    chipset_id;
     bool                                        no_hw;

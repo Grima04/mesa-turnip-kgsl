@@ -518,7 +518,7 @@ VkResult anv_CreatePipelineCache(
       return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
 
    anv_pipeline_cache_init(cache, device,
-                           device->instance->pipeline_cache_enabled);
+                           device->physical->instance->pipeline_cache_enabled);
 
    if (pCreateInfo->initialDataSize > 0)
       anv_pipeline_cache_load(cache,
@@ -656,7 +656,7 @@ anv_device_search_for_kernel(struct anv_device *device,
 
 #ifdef ENABLE_SHADER_CACHE
    struct disk_cache *disk_cache = device->physical->disk_cache;
-   if (disk_cache && device->instance->pipeline_cache_enabled) {
+   if (disk_cache && device->physical->instance->pipeline_cache_enabled) {
       cache_key cache_key;
       disk_cache_compute_key(disk_cache, key_data, key_size, cache_key);
 

@@ -71,8 +71,9 @@ compiler_debug_log(void *data, const char *fmt, ...)
 {
    char str[MAX_DEBUG_MESSAGE_LENGTH];
    struct anv_device *device = (struct anv_device *)data;
+   struct anv_instance *instance = device->physical->instance;
 
-   if (list_is_empty(&device->instance->debug_report_callbacks.callbacks))
+   if (list_is_empty(&instance->debug_report_callbacks.callbacks))
       return;
 
    va_list args;
@@ -80,7 +81,7 @@ compiler_debug_log(void *data, const char *fmt, ...)
    (void) vsnprintf(str, MAX_DEBUG_MESSAGE_LENGTH, fmt, args);
    va_end(args);
 
-   vk_debug_report(&device->instance->debug_report_callbacks,
+   vk_debug_report(&instance->debug_report_callbacks,
                    VK_DEBUG_REPORT_DEBUG_BIT_EXT,
                    VK_DEBUG_REPORT_OBJECT_TYPE_UNKNOWN_EXT,
                    0, 0, 0, "anv", str);
@@ -2435,6 +2436,8 @@ VkResult anv_EnumerateDeviceExtensionProperties(
 static void
 anv_device_init_dispatch(struct anv_device *device)
 {
+   const struct anv_instance *instance = device->physical->instance;
+
    const struct anv_device_dispatch_table *genX_table;
    switch (device->info.gen) {
    case 12:
@@ -2466,8 +2469,8 @@ anv_device_init_dispatch(struct anv_device *device)
       /* Vulkan requires that entrypoints for extensions which have not been
        * enabled must not be advertised.
        */
-      if (!anv_device_entrypoint_is_enabled(i, device->instance->app_info.api_version,
-                                            &device->instance->enabled_extensions,
+      if (!anv_device_entrypoint_is_enabled(i, instance->app_info.api_version,
+                                            &instance->enabled_extensions,
                                             &device->enabled_extensions)) {
          device->dispatch.entrypoints[i] = NULL;
       } else if (genX_table->entrypoints[i]) {
@@ -2697,7 +2700,6 @@ VkResult anv_CreateDevice(
    }
 
    device->_loader_data.loaderMagic = ICD_LOADER_MAGIC;
-   device->instance = physical_device->instance;
    device->physical = physical_device;
    device->chipset_id = physical_device->chipset_id;
    device->no_hw = physical_device->no_hw;
