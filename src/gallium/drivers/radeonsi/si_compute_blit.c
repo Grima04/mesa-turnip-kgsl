@@ -66,6 +66,8 @@ static void si_launch_grid_internal(struct si_context *sctx,
 	sctx->flags &= ~SI_CONTEXT_START_PIPELINE_STATS;
 	sctx->flags |= SI_CONTEXT_STOP_PIPELINE_STATS;
 	sctx->render_cond_force_off = true;
+	/* Skip decompression to prevent infinite recursion. */
+	sctx->blitter->running = true;
 
 	/* Dispatch compute. */
 	sctx->b.launch_grid(&sctx->b, info);
@@ -74,6 +76,7 @@ static void si_launch_grid_internal(struct si_context *sctx,
 	sctx->flags &= ~SI_CONTEXT_STOP_PIPELINE_STATS;
 	sctx->flags |= SI_CONTEXT_START_PIPELINE_STATS;
 	sctx->render_cond_force_off = false;
+	sctx->blitter->running = false;
 }
 
 static void si_compute_clear_12bytes_buffer(struct si_context *sctx,
@@ -398,6 +401,12 @@ void si_compute_copy_image(struct si_context *sctx,
 	sctx->flags |= SI_CONTEXT_CS_PARTIAL_FLUSH |
 		       si_get_flush_flags(sctx, SI_COHERENCY_SHADER, L2_STREAM);
 
+	/* The driver doesn't decompress resources automatically here. */
+	si_decompress_subresource(ctx, dst, PIPE_MASK_RGBAZS, dst_level,
+				  dstz, dstz + src_box->depth - 1);
+	si_decompress_subresource(ctx, src, PIPE_MASK_RGBAZS, src_level,
+				  src_box->z, src_box->z + src_box->depth - 1);
+
 	/* src and dst have the same number of samples. */
 	si_make_CB_shader_coherent(sctx, src->nr_samples, true,
 				   /* Only src can have DCC.*/
@@ -675,6 +684,11 @@ void si_compute_clear_render_target(struct pipe_context *ctx,
 
 	if (width == 0 || height == 0)
 		return;
+
+	/* The driver doesn't decompress resources automatically here. */
+	si_decompress_subresource(ctx, dstsurf->texture, PIPE_MASK_RGBA,
+				  dstsurf->u.tex.level, dstsurf->u.tex.first_layer,
+				  dstsurf->u.tex.last_layer);
 
 	if (util_format_is_srgb(dstsurf->format)) {
 		union pipe_color_union color_srgb;
