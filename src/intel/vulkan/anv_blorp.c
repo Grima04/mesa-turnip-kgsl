@@ -461,22 +461,23 @@ copy_buffer_to_image(struct anv_cmd_buffer *cmd_buffer,
          anv_get_isl_format(&cmd_buffer->device->info, anv_image->vk_format,
                             aspect, VK_IMAGE_TILING_LINEAR);
 
-      const VkExtent3D bufferImageExtent = {
-         .width  = pRegions[r].bufferRowLength ?
-                   pRegions[r].bufferRowLength : extent.width,
-         .height = pRegions[r].bufferImageHeight ?
-                   pRegions[r].bufferImageHeight : extent.height,
-      };
-
       const struct isl_format_layout *buffer_fmtl =
          isl_format_get_layout(buffer_format);
 
+      const uint32_t buffer_row_length =
+         pRegions[r].bufferRowLength ?
+         pRegions[r].bufferRowLength : extent.width;
+
+      const uint32_t buffer_image_height =
+         pRegions[r].bufferImageHeight ?
+         pRegions[r].bufferImageHeight : extent.height;
+
       const uint32_t buffer_row_pitch =
-         DIV_ROUND_UP(bufferImageExtent.width, buffer_fmtl->bw) *
+         DIV_ROUND_UP(buffer_row_length, buffer_fmtl->bw) *
          (buffer_fmtl->bpb / 8);
 
       const uint32_t buffer_layer_stride =
-         DIV_ROUND_UP(bufferImageExtent.height, buffer_fmtl->bh) *
+         DIV_ROUND_UP(buffer_image_height, buffer_fmtl->bh) *
          buffer_row_pitch;
 
       struct isl_surf buffer_isl_surf;
