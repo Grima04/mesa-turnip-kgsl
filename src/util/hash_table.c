@@ -50,6 +50,9 @@
 #include "main/hash.h"
 #include "fast_urem_by_const.h"
 
+#define XXH_INLINE_ALL
+#include "xxhash.h"
+
 static const uint32_t deleted_key_value;
 
 /**
@@ -549,8 +552,7 @@ _mesa_hash_table_random_entry(struct hash_table *ht,
 uint32_t
 _mesa_hash_data(const void *data, size_t size)
 {
-   return _mesa_fnv32_1a_accumulate_block(_mesa_fnv32_1a_offset_bias,
-                                          data, size);
+   return XXH32(data, size, 0);
 }
 
 /** FNV-1a string hash implementation */
