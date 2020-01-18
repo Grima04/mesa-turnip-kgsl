@@ -2063,7 +2063,7 @@ radv_emit_framebuffer_state(struct radv_cmd_buffer *cmd_buffer)
 }
 
 static void
-radv_emit_index_buffer(struct radv_cmd_buffer *cmd_buffer)
+radv_emit_index_buffer(struct radv_cmd_buffer *cmd_buffer, bool indirect)
 {
 	struct radeon_cmdbuf *cs = cmd_buffer->cs;
 	struct radv_cmd_state *state = &cmd_buffer->state;
@@ -2080,6 +2080,11 @@ radv_emit_index_buffer(struct radv_cmd_buffer *cmd_buffer)
 
 		state->last_index_type = state->index_type;
 	}
+
+	/* For the direct indexed draws we use DRAW_INDEX_2, which includes
+	 * the index_va and max_index_count already. */
+	if (!indirect)
+		return;
 
 	radeon_emit(cs, PKT3(PKT3_INDEX_BASE, 1, 0));
 	radeon_emit(cs, state->index_va);
@@ -4665,7 +4670,7 @@ radv_emit_all_graphics_states(struct radv_cmd_buffer *cmd_buffer,
 
 	if (info->indexed) {
 		if (cmd_buffer->state.dirty & RADV_CMD_DIRTY_INDEX_BUFFER)
-			radv_emit_index_buffer(cmd_buffer);
+			radv_emit_index_buffer(cmd_buffer, info->indirect);
 	} else {
 		/* On GFX7 and later, non-indexed draws overwrite VGT_INDEX_TYPE,
 		 * so the state must be re-emitted before the next indexed
