@@ -445,8 +445,7 @@ anv_image_from_gralloc(VkDevice device_h,
    };
 
    if (gralloc_info->handle->numFds != 1) {
-      return vk_errorf(device->instance, device,
-                       VK_ERROR_INVALID_EXTERNAL_HANDLE,
+      return vk_errorf(device, device, VK_ERROR_INVALID_EXTERNAL_HANDLE,
                        "VkNativeBufferANDROID::handle::numFds is %d, "
                        "expected 1", gralloc_info->handle->numFds);
    }
@@ -472,7 +471,7 @@ anv_image_from_gralloc(VkDevice device_h,
                                  0 /* client_address */,
                                  &bo);
    if (result != VK_SUCCESS) {
-      return vk_errorf(device->instance, device, result,
+      return vk_errorf(device, device, result,
                        "failed to import dma-buf from VkNativeBufferANDROID");
    }
 
@@ -488,14 +487,12 @@ anv_image_from_gralloc(VkDevice device_h,
       anv_info.isl_tiling_flags = ISL_TILING_Y0_BIT;
       break;
    case -1:
-      result = vk_errorf(device->instance, device,
-                         VK_ERROR_INVALID_EXTERNAL_HANDLE,
+      result = vk_errorf(device, device, VK_ERROR_INVALID_EXTERNAL_HANDLE,
                          "DRM_IOCTL_I915_GEM_GET_TILING failed for "
                          "VkNativeBufferANDROID");
       goto fail_tiling;
    default:
-      result = vk_errorf(device->instance, device,
-                         VK_ERROR_INVALID_EXTERNAL_HANDLE,
+      result = vk_errorf(device, device, VK_ERROR_INVALID_EXTERNAL_HANDLE,
                          "DRM_IOCTL_I915_GEM_GET_TILING returned unknown "
                          "tiling %d for VkNativeBufferANDROID", i915_tiling);
       goto fail_tiling;
@@ -516,8 +513,7 @@ anv_image_from_gralloc(VkDevice device_h,
       goto fail_create;
 
    if (bo->size < image->size) {
-      result = vk_errorf(device->instance, device,
-                         VK_ERROR_INVALID_EXTERNAL_HANDLE,
+      result = vk_errorf(device, device, VK_ERROR_INVALID_EXTERNAL_HANDLE,
                          "dma-buf from VkNativeBufferANDROID is too small for "
                          "VkImage: %"PRIu64"B < %"PRIu64"B",
                          bo->size, image->size);
@@ -568,7 +564,7 @@ format_supported_with_usage(VkDevice device_h, VkFormat format,
    result = anv_GetPhysicalDeviceImageFormatProperties2(phys_dev_h,
                &image_format_info, &image_format_props);
    if (result != VK_SUCCESS) {
-      return vk_errorf(device->instance, device, result,
+      return vk_errorf(device, device, result,
                        "anv_GetPhysicalDeviceImageFormatProperties2 failed "
                        "inside %s", __func__);
    }
@@ -607,7 +603,7 @@ setup_gralloc0_usage(VkFormat format, VkImageUsageFlags imageUsage,
     * gralloc swapchains.
     */
    if (imageUsage != 0) {
-      return vk_errorf(device->instance, device, VK_ERROR_FORMAT_NOT_SUPPORTED,
+      return vk_errorf(device, device, VK_ERROR_FORMAT_NOT_SUPPORTED,
                        "unsupported VkImageUsageFlags(0x%x) for gralloc "
                        "swapchain", imageUsage);
    }
@@ -709,7 +705,7 @@ anv_AcquireImageANDROID(
        * VkFence.
        */
       if (sync_wait(nativeFenceFd, /*timeout*/ -1) < 0) {
-         result = vk_errorf(device->instance, device, VK_ERROR_DEVICE_LOST,
+         result = vk_errorf(device, device, VK_ERROR_DEVICE_LOST,
                             "%s: failed to wait on nativeFenceFd=%d",
                             __func__, nativeFenceFd);
       }
@@ -755,7 +751,7 @@ anv_AcquireImageANDROID(
       result = anv_QueueSubmit(anv_queue_to_handle(&device->queue), 1,
                                &submit, fence_h);
       if (result != VK_SUCCESS) {
-         return vk_errorf(device->instance, device, result,
+         return vk_errorf(device, device, result,
                           "anv_QueueSubmit failed inside %s", __func__);
       }
    }

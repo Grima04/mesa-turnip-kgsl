@@ -1160,10 +1160,10 @@ VkResult anv_GetPhysicalDeviceImageFormatProperties2(
           *    vkGetPhysicalDeviceImageFormatProperties2 returns
           *    VK_ERROR_FORMAT_NOT_SUPPORTED.
           */
-         result = vk_errorf(physical_device->instance, physical_device,
-                            VK_ERROR_FORMAT_NOT_SUPPORTED,
-                            "unsupported VkExternalMemoryTypeFlagBits 0x%x",
-                            external_info->handleType);
+         result = vk_errorfi(physical_device->instance, physical_device,
+                             VK_ERROR_FORMAT_NOT_SUPPORTED,
+                             "unsupported VkExternalMemoryTypeFlagBits 0x%x",
+                             external_info->handleType);
          goto fail;
       }
    }

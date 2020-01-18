@@ -136,8 +136,9 @@ anv_physical_device_init_heaps(struct anv_physical_device *device, int fd)
                     "Failed to get I915_CONTEXT_PARAM_GTT_SIZE: %m");
 
       if (anv_gem_get_aperture(fd, &device->gtt_size) == -1) {
-         return vk_errorf(NULL, NULL, VK_ERROR_INITIALIZATION_FAILED,
-                          "failed to get aperture size: %m");
+         return vk_errorfi(device->instance, NULL,
+                           VK_ERROR_INITIALIZATION_FAILED,
+                           "failed to get aperture size: %m");
       }
    }
 
@@ -212,16 +213,16 @@ anv_physical_device_init_uuids(struct anv_physical_device *device)
    const struct build_id_note *note =
       build_id_find_nhdr_for_addr(anv_physical_device_init_uuids);
    if (!note) {
-      return vk_errorf(device->instance, device,
-                       VK_ERROR_INITIALIZATION_FAILED,
-                       "Failed to find build-id");
+      return vk_errorfi(device->instance, NULL,
+                        VK_ERROR_INITIALIZATION_FAILED,
+                        "Failed to find build-id");
    }
 
    unsigned build_id_len = build_id_length(note);
    if (build_id_len < 20) {
-      return vk_errorf(device->instance, device,
-                       VK_ERROR_INITIALIZATION_FAILED,
-                       "build-id too short.  It needs to be a SHA");
+      return vk_errorfi(device->instance, NULL,
+                        VK_ERROR_INITIALIZATION_FAILED,
+                        "build-id too short.  It needs to be a SHA");
    }
 
    memcpy(device->driver_build_sha1, build_id_data(note), 20);
@@ -377,9 +378,8 @@ anv_physical_device_init(struct anv_physical_device *device,
    } else if (device->info.gen == 12) {
       intel_logw("Vulkan is not yet fully supported on gen12");
    } else {
-      result = vk_errorf(device->instance, device,
-                         VK_ERROR_INCOMPATIBLE_DRIVER,
-                         "Vulkan not yet supported on %s", device->name);
+      result = vk_errorfi(instance, NULL, VK_ERROR_INCOMPATIBLE_DRIVER,
+                          "Vulkan not yet supported on %s", device->name);
       goto fail;
    }
 
@@ -388,32 +388,32 @@ anv_physical_device_init(struct anv_physical_device *device,
       device->cmd_parser_version =
          anv_gem_get_param(fd, I915_PARAM_CMD_PARSER_VERSION);
       if (device->cmd_parser_version == -1) {
-         result = vk_errorf(device->instance, device,
-                            VK_ERROR_INITIALIZATION_FAILED,
-                            "failed to get command parser version");
+         result = vk_errorfi(device->instance, NULL,
+                             VK_ERROR_INITIALIZATION_FAILED,
+                             "failed to get command parser version");
          goto fail;
       }
    }
 
    if (!anv_gem_get_param(fd, I915_PARAM_HAS_WAIT_TIMEOUT)) {
-      result = vk_errorf(device->instance, device,
-                         VK_ERROR_INITIALIZATION_FAILED,
-                         "kernel missing gem wait");
+      result = vk_errorfi(device->instance, NULL,
+                          VK_ERROR_INITIALIZATION_FAILED,
+                          "kernel missing gem wait");
       goto fail;
    }
 
    if (!anv_gem_get_param(fd, I915_PARAM_HAS_EXECBUF2)) {
-      result = vk_errorf(device->instance, device,
-                         VK_ERROR_INITIALIZATION_FAILED,
-                         "kernel missing execbuf2");
+      result = vk_errorfi(device->instance, NULL,
+                          VK_ERROR_INITIALIZATION_FAILED,
+                          "kernel missing execbuf2");
       goto fail;
    }
 
    if (!device->info.has_llc &&
        anv_gem_get_param(fd, I915_PARAM_MMAP_VERSION) < 1) {
-      result = vk_errorf(device->instance, device,
-                         VK_ERROR_INITIALIZATION_FAILED,
-                         "kernel missing wc mmap");
+      result = vk_errorfi(device->instance, NULL,
+                          VK_ERROR_INITIALIZATION_FAILED,
+                          "kernel missing wc mmap");
       goto fail;
    }
 
@@ -3077,7 +3077,7 @@ _anv_device_set_lost(struct anv_device *device,
    p_atomic_inc(&device->_lost);
 
    va_start(ap, msg);
-   err = __vk_errorv(device->instance, device,
+   err = __vk_errorv(device->physical->instance, device,
                      VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_EXT,
                      VK_ERROR_DEVICE_LOST, file, line, msg, ap);
    va_end(ap);
@@ -3099,7 +3099,7 @@ _anv_queue_set_lost(struct anv_queue *queue,
    p_atomic_inc(&queue->device->_lost);
 
    va_start(ap, msg);
-   err = __vk_errorv(queue->device->instance, queue->device,
+   err = __vk_errorv(queue->device->physical->instance, queue->device,
                      VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_EXT,
                      VK_ERROR_DEVICE_LOST, file, line, msg, ap);
    va_end(ap);
@@ -3437,8 +3437,7 @@ VkResult anv_AllocateMemory(
        * this sort of attack but only if it can trust the buffer size.
        */
       if (mem->bo->size < aligned_alloc_size) {
-         result = vk_errorf(device->instance, device,
-                            VK_ERROR_INVALID_EXTERNAL_HANDLE,
+         result = vk_errorf(device, device, VK_ERROR_INVALID_EXTERNAL_HANDLE,
                             "aligned allocationSize too large for "
                             "VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT: "
                             "%"PRIu64"B > %"PRIu64"B",
@@ -3507,8 +3506,7 @@ VkResult anv_AllocateMemory(
                                       i915_tiling);
          if (ret) {
             anv_device_release_bo(device, mem->bo);
-            result = vk_errorf(device->instance, NULL,
-                               VK_ERROR_OUT_OF_DEVICE_MEMORY,
+            result = vk_errorf(device, device, VK_ERROR_OUT_OF_DEVICE_MEMORY,
                                "failed to set BO tiling: %m");
             goto fail;
          }
@@ -3520,8 +3518,7 @@ VkResult anv_AllocateMemory(
    if (mem_heap_used > mem_heap->size) {
       p_atomic_add(&mem_heap->used, -mem->bo->size);
       anv_device_release_bo(device, mem->bo);
-      result = vk_errorf(device->instance, NULL,
-                         VK_ERROR_OUT_OF_DEVICE_MEMORY,
+      result = vk_errorf(device, device, VK_ERROR_OUT_OF_DEVICE_MEMORY,
                          "Out of heap memory");
       goto fail;
    }

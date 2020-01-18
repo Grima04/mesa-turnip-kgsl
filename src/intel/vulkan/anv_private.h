@@ -448,15 +448,16 @@ VkResult __vk_errorf(struct anv_instance *instance, const void *object,
 #define vk_error(error) __vk_errorf(NULL, NULL,\
                                     VK_DEBUG_REPORT_OBJECT_TYPE_UNKNOWN_EXT,\
                                     error, __FILE__, __LINE__, NULL)
-#define vk_errorv(instance, obj, error, format, args)\
-    __vk_errorv(instance, obj, REPORT_OBJECT_TYPE(obj), error,\
-                __FILE__, __LINE__, format, args)
-#define vk_errorf(instance, obj, error, format, ...)\
+#define vk_errorfi(instance, obj, error, format, ...)\
     __vk_errorf(instance, obj, REPORT_OBJECT_TYPE(obj), error,\
                 __FILE__, __LINE__, format, ## __VA_ARGS__)
+#define vk_errorf(device, obj, error, format, ...)\
+   vk_errorfi(anv_device_instance_or_null(device),\
+              obj, error, format, ## __VA_ARGS__)
 #else
 #define vk_error(error) error
-#define vk_errorf(instance, obj, error, format, ...) error
+#define vk_errorfi(instance, obj, error, format, ...) error
+#define vk_errorf(device, obj, error, format, ...) error
 #endif
 
 /**
@@ -1269,6 +1270,12 @@ struct anv_device {
 
     struct gen_aux_map_context                  *aux_map_ctx;
 };
+
+static inline struct anv_instance *
+anv_device_instance_or_null(const struct anv_device *device)
+{
+   return device ? device->physical->instance : NULL;
+}
 
 static inline struct anv_state_pool *
 anv_binding_table_pool(struct anv_device *device)

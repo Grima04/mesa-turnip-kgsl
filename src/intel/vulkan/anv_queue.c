@@ -1624,8 +1624,7 @@ VkResult anv_ImportFenceFdKHR(
 
       if (anv_gem_syncobj_import_sync_file(device, new_impl.syncobj, fd)) {
          anv_gem_syncobj_destroy(device, new_impl.syncobj);
-         return vk_errorf(device->instance, NULL,
-                          VK_ERROR_INVALID_EXTERNAL_HANDLE,
+         return vk_errorf(device, NULL, VK_ERROR_INVALID_EXTERNAL_HANDLE,
                           "syncobj sync file import failed: %m");
       }
       break;
@@ -2020,8 +2019,7 @@ VkResult anv_ImportSemaphoreFdKHR(
             return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
          if (anv_gem_syncobj_import_sync_file(device, new_impl.syncobj, fd)) {
             anv_gem_syncobj_destroy(device, new_impl.syncobj);
-            return vk_errorf(device->instance, NULL,
-                             VK_ERROR_INVALID_EXTERNAL_HANDLE,
+            return vk_errorf(device, NULL, VK_ERROR_INVALID_EXTERNAL_HANDLE,
                              "syncobj sync file import failed: %m");
          }
          /* Ownership of the FD is transfered to Anv. Since we don't need it
