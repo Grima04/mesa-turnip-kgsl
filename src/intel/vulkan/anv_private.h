@@ -478,7 +478,7 @@ VkResult __vk_errorf(struct anv_instance *instance, const void *object,
 #define anv_debug_ignored_stype(sType) \
    intel_logd("%s: ignored VkStructureType %u\n", __func__, (sType))
 
-void __anv_perf_warn(struct anv_instance *instance, const void *object,
+void __anv_perf_warn(struct anv_device *device, const void *object,
                      VkDebugReportObjectTypeEXT type, const char *file,
                      int line, const char *format, ...)
    anv_printflike(6, 7);

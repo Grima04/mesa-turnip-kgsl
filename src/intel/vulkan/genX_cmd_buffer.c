@@ -342,7 +342,7 @@ color_attachment_compute_aux_usage(struct anv_device * device,
           */
          if (cmd_state->pass->attachments[att].first_subpass_layout ==
              VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL) {
-            anv_perf_warn(device->instance, iview->image,
+            anv_perf_warn(device, iview->image,
                           "Not temporarily enabling CCS_E.");
          }
       } else {
@@ -406,13 +406,13 @@ color_attachment_compute_aux_usage(struct anv_device * device,
       if (att_state->fast_clear &&
           (iview->planes[0].isl.base_level > 0 ||
            iview->planes[0].isl.base_array_layer > 0)) {
-         anv_perf_warn(device->instance, iview->image,
+         anv_perf_warn(device, iview->image,
                        "Rendering with multi-lod or multi-layer framebuffer "
                        "with LOAD_OP_LOAD and baseMipLevel > 0 or "
                        "baseArrayLayer > 0.  Not fast clearing.");
          att_state->fast_clear = false;
       } else if (att_state->fast_clear && cmd_state->framebuffer->layers > 1) {
-         anv_perf_warn(device->instance, iview->image,
+         anv_perf_warn(device, iview->image,
                        "Rendering to a multi-layer framebuffer with "
                        "LOAD_OP_CLEAR.  Only fast-clearing the first slice");
       }
@@ -1102,7 +1102,7 @@ transition_color_buffer(struct anv_cmd_buffer *cmd_buffer,
          }
       } else {
          if (image->samples == 4 || image->samples == 16) {
-            anv_perf_warn(cmd_buffer->device->instance, image,
+            anv_perf_warn(cmd_buffer->device, image,
                           "Doing a potentially unnecessary fast-clear to "
                           "define an MCS buffer.");
          }
@@ -5166,7 +5166,7 @@ cmd_buffer_end_subpass(struct anv_cmd_buffer *cmd_buffer)
           * SRGB view & a UNORM image).
           */
          if (fast_clear_type != ANV_FAST_CLEAR_NONE) {
-            anv_perf_warn(cmd_buffer->device->instance, iview,
+            anv_perf_warn(cmd_buffer->device, iview,
                           "Doing a partial resolve to get rid of clear color at the "
                           "end of a renderpass due to an image/view format mismatch");
 
