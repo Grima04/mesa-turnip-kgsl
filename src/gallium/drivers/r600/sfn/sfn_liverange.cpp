@@ -754,14 +754,16 @@ void LiverangeEvaluator::run(const Shader& shader,
 
    sfn_log << SfnLog::merge << "have " << temp_acc.size() << " temps\n";
 
-   for (const auto& ir: shader.m_ir) {
-      switch (ir->type()) {
-      case Instruction::cond_if:
-      case Instruction::cond_else:
-      case Instruction::loop_begin:
-         ++n_scopes;
-      default:
-         ;
+   for (const auto& block: shader.m_ir) {
+      for (const auto& ir: block) {
+         switch (ir->type()) {
+         case Instruction::cond_if:
+         case Instruction::cond_else:
+         case Instruction::loop_begin:
+            ++n_scopes;
+         default:
+            ;
+         }
       }
    }
 
@@ -783,12 +785,13 @@ void LiverangeEvaluator::run(const Shader& shader,
       }
    }
 
-   for (const auto& ir: shader.m_ir) {
-      ir->evalue_liveness(*this);
-      if (ir->type() != Instruction::alu ||
-          static_cast<const AluInstruction&>(*ir).flag(alu_last_instr))
-         ++line;
-   }
+   for (const auto& block: shader.m_ir)
+      for (const auto& ir: block)  {
+         ir->evalue_liveness(*this);
+         if (ir->type() != Instruction::alu ||
+             static_cast<const AluInstruction&>(*ir).flag(alu_last_instr))
+            ++line;
+      }
 
    assert(cur_scope->type() == outer_scope);
    cur_scope->set_end(line);

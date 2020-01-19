@@ -43,7 +43,7 @@ bool r600_lower_ubo_to_align16(nir_shader *shader);
 
 class Shader {
 public:
-   std::vector<PInstruction>& m_ir;
+   std::vector<InstructionBlock>& m_ir;
    ValueMap m_temp;
 };
 
@@ -64,7 +64,7 @@ public:
 
    bool emit_instruction(nir_instr *instr);
 
-   const std::vector<Instruction::Pointer>& shader_ir() const;
+   const std::vector<InstructionBlock> &shader_ir() const;
 
    Shader shader() const;
 private:
@@ -87,9 +87,9 @@ private:
 class AssemblyFromShader {
 public:
    virtual ~AssemblyFromShader();
-   bool lower(const std::vector<Instruction::Pointer>& ir);
+   bool lower(const std::vector<InstructionBlock> &ir);
 private:
-   virtual bool do_lower(const std::vector<Instruction::Pointer>& ir)  = 0 ;
+   virtual bool do_lower(const std::vector<InstructionBlock>& ir)  = 0 ;
 };
 
 }

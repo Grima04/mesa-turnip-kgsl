@@ -88,6 +88,7 @@ public:
       mem_wr_scratch,
       gds,
       rat,
+      block,
       unknown
    };
 

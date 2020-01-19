@@ -290,7 +290,7 @@ bool ShaderFromNir::process_declaration()
    return true;
 }
 
-const std::vector<Instruction::Pointer>& ShaderFromNir::shader_ir() const
+const std::vector<InstructionBlock>& ShaderFromNir::shader_ir() const
 {
    assert(impl);
    return impl->m_output;
@@ -301,7 +301,7 @@ AssemblyFromShader::~AssemblyFromShader()
 {
 }
 
-bool AssemblyFromShader::lower(const std::vector<Instruction::Pointer>& ir)
+bool AssemblyFromShader::lower(const std::vector<InstructionBlock>& ir)
 {
    return do_lower(ir);
 }

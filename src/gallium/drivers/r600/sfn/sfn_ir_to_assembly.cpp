@@ -102,7 +102,7 @@ AssemblyFromShaderLegacy::~AssemblyFromShaderLegacy()
    delete impl;
 }
 
-bool AssemblyFromShaderLegacy::do_lower(const std::vector<Instruction::Pointer>& ir)
+bool AssemblyFromShaderLegacy::do_lower(const std::vector<InstructionBlock>& ir)
 {
    if (impl->m_shader->processor_type == PIPE_SHADER_VERTEX &&
        impl->m_shader->ninput > 0)
@@ -111,11 +111,13 @@ bool AssemblyFromShaderLegacy::do_lower(const std::vector<Instruction::Pointer>&
 
    std::vector<Instruction::Pointer> exports;
 
-   for (const auto& i : ir) {
-      if (!impl->emit(i))
+   for (const auto& block : ir) {
+      for (const auto& i : block) {
+         if (!impl->emit(i))
          return false;
       if (i->type() != Instruction::alu)
          impl->reset_addr_register();
+      }
    }
    /*
    for (const auto& i : exports) {

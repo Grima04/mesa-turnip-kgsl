@@ -59,6 +59,9 @@ ShaderFromNirProcessor::ShaderFromNirProcessor(pipe_shader_type ptype,
                                                r600_pipe_shader_selector& sel,
                                                r600_shader &sh_info, int scratch_size):
    m_processor_type(ptype),
+   m_nesting_depth(0),
+   m_block_number(0),
+   m_export_output(0, -1),
    m_sh_info(sh_info),
    m_tex_instr(*this),
    m_alu_instr(*this),
@@ -135,10 +138,9 @@ void ShaderFromNirProcessor::remap_registers()
       if (register_map[i].valid)
          sfn_log << SfnLog::merge << "Map:" << i << " -> " << register_map[i].new_reg << "\n";
 
-
    ValueRemapper vmap0(register_map, temp_register_map);
-   for (auto ir: m_output)
-      ir->remap_registers(vmap0);
+   for (auto& block: m_output)
+      block.remap_registers(vmap0);
 
    remap_shader_info(m_sh_info, register_map, temp_register_map);
 
@@ -159,8 +161,8 @@ void ShaderFromNirProcessor::remap_registers()
    }
 
    ValueRemapper vmap1(register_map, temp_register_map);
-   for (auto ir: m_output)
-      ir->remap_registers(vmap1);
+   for (auto& ir: m_output)
+      ir.remap_registers(vmap1);
 
    remap_shader_info(m_sh_info, register_map, temp_register_map);
 }
@@ -280,12 +282,17 @@ bool ShaderFromNirProcessor::emit_tex_instruction(nir_instr* instr)
 void ShaderFromNirProcessor::emit_instruction(Instruction *ir)
 {
    if (m_pending_else) {
-      m_output.push_back(PInstruction(m_pending_else));
+      append_block(-1);
+      m_output.back().emit(PInstruction(m_pending_else));
+      append_block(1);
       m_pending_else = nullptr;
    }
 
    r600::sfn_log << SfnLog::instr << "     as '" << *ir << "'\n";
-   m_output.push_back(Instruction::Pointer(ir));
+   if (m_output.empty())
+      append_block(0);
+
+   m_output.back().emit(Instruction::Pointer(ir));
 }
 
 void ShaderFromNirProcessor::emit_shader_start()
@@ -330,6 +337,7 @@ bool ShaderFromNirProcessor::emit_loop_start(int loop_id)
    LoopBeginInstruction *loop = new LoopBeginInstruction();
    emit_instruction(loop);
    m_loop_begin_block_map[loop_id] = loop;
+   append_block(1);
    return true;
 }
 bool ShaderFromNirProcessor::emit_loop_end(int loop_id)
@@ -340,6 +348,9 @@ bool ShaderFromNirProcessor::emit_loop_end(int loop_id)
               << loop_id << "  not found\n";
       return false;
    }
+   m_nesting_depth--;
+   m_block_number++;
+   m_output.push_back(InstructionBlock(m_nesting_depth, m_block_number));
    LoopEndInstruction *loop = new LoopEndInstruction(start->second);
    emit_instruction(loop);
 
@@ -356,6 +367,8 @@ bool ShaderFromNirProcessor::emit_if_start(int if_id, nir_if *if_stmt)
    pred->set_flag(alu_update_exec);
    pred->set_flag(alu_update_pred);
    pred->set_cf_type(cf_alu_push_before);
+
+   append_block(1);
 
    IfInstruction *ir = new IfInstruction(pred);
    emit_instruction(ir);
@@ -401,6 +414,7 @@ bool ShaderFromNirProcessor::emit_ifelse_end(int if_id)
 
    m_pending_else = nullptr;
 
+   append_block(-1);
    IfElseEndInstruction *ir = new IfElseEndInstruction();
    emit_instruction(ir);
 
@@ -860,7 +874,7 @@ void ShaderFromNirProcessor::add_param_output_reg(int loc, const GPRVector *gpr)
 void ShaderFromNirProcessor::emit_export_instruction(WriteoutInstruction *ir)
 {
    r600::sfn_log << SfnLog::instr << "     as '" << *ir << "'\n";
-   m_export_output.push_back(PInstruction(ir));
+   m_export_output.emit(PInstruction(ir));
 }
 
 const GPRVector * ShaderFromNirProcessor::output_register(unsigned location) const
@@ -884,6 +898,12 @@ void ShaderFromNirProcessor::set_output(unsigned pos, PValue var)
    m_outputs[pos] = var;
 }
 
+void ShaderFromNirProcessor::append_block(int nesting_change)
+{
+   m_nesting_depth += nesting_change;
+   m_output.push_back(InstructionBlock(m_nesting_depth, m_block_number++));
+}
+
 void ShaderFromNirProcessor::finalize()
 {
    do_finalize();
@@ -894,8 +914,7 @@ void ShaderFromNirProcessor::finalize()
    for (auto& i : m_outputs)
       m_sh_info.output[i.first].gpr = i.second->sel();
 
-   m_output.insert(m_output.end(), m_export_output.begin(), m_export_output.end());
-   m_export_output.clear();
+   m_output.push_back(m_export_output);
 }
 
 }

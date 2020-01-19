@@ -25,21 +25,53 @@
  */
 
 
-#include "sfn_nir.h"
+#ifndef sfn_instruction_block_h
+#define sfn_instruction_block_h
 
-struct r600_shader;
-union r600_shader_key;
+#include "sfn_instruction_base.h"
 
 namespace r600 {
 
-class AssemblyFromShaderLegacy : public AssemblyFromShader {
+class InstructionBlock : public Instruction
+{
 public:
-   AssemblyFromShaderLegacy(struct r600_shader *sh, r600_shader_key *key);
-   ~AssemblyFromShaderLegacy() override;
-private:
-   bool do_lower(const std::vector<InstructionBlock> &ir)  override ;
+	InstructionBlock(unsigned nesting_depth, unsigned block_number);
 
-   struct AssemblyFromShaderLegacyImpl *impl;
+        void emit(PInstruction instr);
+
+
+        std::vector<PInstruction>::const_iterator begin() const  {
+           return m_block.begin();
+        }
+        std::vector<PInstruction>::const_iterator end() const {
+           return m_block.end();
+        }
+
+        void remap_registers(ValueRemapper& map);
+
+        size_t size() const {
+           return m_block.size();
+        }
+
+        const PInstruction& operator [] (int i) const {
+           return m_block[i];
+        }
+
+        unsigned number() const  {
+           return m_block_number;
+        }
+
+private:
+        void do_evalue_liveness(LiverangeEvaluator& eval) const override;
+        bool is_equal_to(const Instruction& lhs) const override;
+        void do_print(std::ostream& os) const override;
+
+        std::vector<PInstruction> m_block;
+
+        unsigned m_block_number;
+        unsigned m_nesting_depth;
 };
 
 }
+
+#endif // INSTRUCTIONBLOCK_H

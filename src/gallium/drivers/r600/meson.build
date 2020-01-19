@@ -127,6 +127,8 @@ files_r600 = files(
   'sfn/sfn_instruction_alu.h',
   'sfn/sfn_instruction_base.cpp',
   'sfn/sfn_instruction_base.h',
+  'sfn/sfn_instruction_block.cpp',
+  'sfn/sfn_instruction_block.h',
   'sfn/sfn_instruction_cf.cpp',
   'sfn/sfn_instruction_cf.h',
   'sfn/sfn_instruction_export.cpp',

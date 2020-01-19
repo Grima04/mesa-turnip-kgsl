@@ -33,6 +33,7 @@
 #include "compiler/nir/nir.h"
 #include "compiler/nir_types.h"
 
+#include "sfn_instruction_block.h"
 #include "sfn_instruction_export.h"
 #include "sfn_alu_defines.h"
 #include "sfn_valuepool.h"
@@ -141,6 +142,8 @@ private:
 
    void add_array_deref(nir_deref_instr* instr);
 
+   void append_block(int nesting_change);
+
    virtual void emit_shader_start();
    virtual bool emit_deref_instruction_override(nir_deref_instr* instr);
    virtual bool do_process_inputs(nir_variable *input) = 0;
@@ -169,8 +172,10 @@ private:
 
    pipe_shader_type m_processor_type;
 
-   std::vector<PInstruction> m_output;
-   std::vector<PInstruction> m_export_output;
+   std::vector<InstructionBlock> m_output;
+   unsigned m_nesting_depth;
+   unsigned m_block_number;
+   InstructionBlock m_export_output;
    r600_shader& m_sh_info;
 
    EmitTexInstruction m_tex_instr;
