@@ -333,7 +333,7 @@ struct midgard_predicate {
          * will be adjusted to index into the constants array */
 
         midgard_constants *constants;
-        unsigned constant_count;
+        unsigned constant_mask;
         bool blend_constant;
 
         /* Exclude this destination (if not ~0) */
@@ -360,11 +360,11 @@ mir_adjust_constants(midgard_instruction *ins,
 {
         /* Blend constants dominate */
         if (ins->has_blend_constant) {
-                if (pred->constant_count)
+                if (pred->constant_mask)
                         return false;
                 else if (destructive) {
                         pred->blend_constant = true;
-                        pred->constant_count = 16;
+                        pred->constant_mask = 0xffff;
                         return true;
                 }
         }
@@ -373,115 +373,90 @@ mir_adjust_constants(midgard_instruction *ins,
         if (!ins->has_constants)
                 return true;
 
-        if (ins->alu.reg_mode != midgard_reg_mode_32) {
-                /* TODO: 16-bit constant combining */
-                if (pred->constant_count)
-                        return false;
+        unsigned r_constant = SSA_FIXED_REGISTER(REGISTER_CONSTANT);
+        midgard_reg_mode reg_mode = ins->alu.reg_mode;
 
-                uint16_t *bundles = pred->constants->u16;
-                const uint16_t *constants = ins->constants.u16;
+        midgard_vector_alu_src const_src = { };
 
-                /* Copy them wholesale */
-                for (unsigned i = 0; i < 4; ++i)
-                        bundles[i] = constants[i];
+        if (ins->src[0] == r_constant)
+                const_src = vector_alu_from_unsigned(ins->alu.src1);
+        else if (ins->src[1] == r_constant)
+                const_src = vector_alu_from_unsigned(ins->alu.src2);
 
-                pred->constant_count = 16;
-        } else {
-                /* Pack 32-bit constants */
-                uint32_t *bundles = pred->constants->u32;
-                const uint32_t *constants = ins->constants.u32;
-                unsigned r_constant = SSA_FIXED_REGISTER(REGISTER_CONSTANT);
-                unsigned mask = mir_from_bytemask(mir_bytemask_of_read_components(ins, r_constant), midgard_reg_mode_32);
+        unsigned type_size = mir_bytes_for_mode(reg_mode);
 
-                /* First, check if it fits */
-                unsigned count = DIV_ROUND_UP(pred->constant_count, sizeof(uint32_t));
-                unsigned existing_count = count;
+        /* If the ALU is converting up we need to divide type_size by 2 */
+        if (const_src.half)
+                type_size /= 2;
 
-                for (unsigned i = 0; i < 4; ++i) {
-                        if (!(mask & (1 << i)))
-                                continue;
+        unsigned max_comp = 16 / type_size;
+        unsigned comp_mask = mir_from_bytemask(mir_bytemask_of_read_components(ins, r_constant),
+                                               reg_mode);
+        unsigned type_mask = (1 << type_size) - 1;
+        unsigned bundle_constant_mask = pred->constant_mask;
+        unsigned comp_mapping[16] = { };
+        uint8_t bundle_constants[16];
 
-                        bool ok = false;
+        memcpy(bundle_constants, pred->constants, 16);
 
-                        /* Look for existing constant */
-                        for (unsigned j = 0; j < existing_count; ++j) {
-                                if (bundles[j] == constants[i]) {
-                                        ok = true;
-                                        break;
-                                }
-                        }
+        /* Let's try to find a place for each active component of the constant
+         * register.
+         */
+        for (unsigned comp = 0; comp < max_comp; comp++) {
+                if (!(comp_mask & (1 << comp)))
+                        continue;
 
-                        if (ok)
-                                continue;
+                uint8_t *constantp = ins->constants.u8 + (type_size * comp);
+                unsigned best_reuse_bytes = 0;
+                signed best_place = -1;
+                unsigned i, j;
 
-                        /* If the constant is new, check ourselves */
-                        for (unsigned j = 0; j < i; ++j) {
-                                if (constants[j] == constants[i] && (mask & (1 << j))) {
-                                        ok = true;
-                                        break;
-                                }
-                        }
+                for (i = 0; i < 16; i += type_size) {
+                        unsigned reuse_bytes = 0;
 
-                        if (ok)
-                                continue;
-
-                        /* Otherwise, this is a new constant */
-                        count++;
-                }
-
-                /* Check if we have space */
-                if (count > 4)
-                        return false;
-
-                /* If non-destructive, we're done */
-                if (!destructive)
-                        return true;
-
-                /* If destructive, let's copy in the new constants and adjust
-                 * swizzles to pack it in. */
-
-                unsigned indices[16] = { 0 };
-
-                /* Reset count */
-                count = existing_count;
-
-                for (unsigned i = 0; i < 4; ++i) {
-                        if (!(mask & (1 << i)))
-                                continue;
-
-                        uint32_t cons = constants[i];
-                        bool constant_found = false;
-
-                        /* Search for the constant */
-                        for (unsigned j = 0; j < count; ++j) {
-                                if (bundles[j] != cons)
+                        for (j = 0; j < type_size; j++) {
+                                if (!(bundle_constant_mask & (1 << (i + j))))
                                         continue;
+                                if (constantp[j] != bundle_constants[i + j])
+                                        break;
 
-                                /* We found it, reuse */
-                                indices[i] = j;
-                                constant_found = true;
+                                reuse_bytes++;
+                        }
+
+                        /* Select the place where existing bytes can be
+                         * reused so we leave empty slots to others
+                         */
+                        if (j == type_size &&
+                            (reuse_bytes > best_reuse_bytes || best_place < 0)) {
+                                best_reuse_bytes = reuse_bytes;
+                                best_place = i;
                                 break;
                         }
-
-                        if (constant_found)
-                                continue;
-
-                        /* We didn't find it, so allocate it */
-                        unsigned idx = count++;
-
-                        /* We have space, copy it in! */
-                        bundles[idx] = cons;
-                        indices[i] = idx;
                 }
 
-                pred->constant_count = count * sizeof(uint32_t);
+                /* This component couldn't fit in the remaining constant slot,
+                 * no need check the remaining components, bail out now
+                 */
+                if (best_place < 0)
+                        return false;
 
-                /* Use indices as a swizzle */
+                memcpy(&bundle_constants[i], constantp, type_size);
+                bundle_constant_mask |= type_mask << best_place;
+                comp_mapping[comp] = best_place / type_size;
+        }
 
-                mir_foreach_src(ins, s) {
-                        if (ins->src[s] == r_constant)
-                                mir_compose_swizzle(ins->swizzle[s], indices, ins->swizzle[s]);
-                }
+        /* If non-destructive, we're done */
+        if (!destructive)
+                return true;
+
+	/* Otherwise update the constant_mask and constant values */
+        pred->constant_mask = bundle_constant_mask;
+        memcpy(pred->constants, bundle_constants, 16);
+
+        /* Use comp_mapping as a swizzle */
+        mir_foreach_src(ins, s) {
+                if (ins->src[s] == r_constant)
+                        mir_compose_swizzle(ins->swizzle[s], comp_mapping, ins->swizzle[s]);
         }
 
         return true;
@@ -1028,7 +1003,7 @@ mir_schedule_alu(
         mir_update_worklist(worklist, len, instructions, sadd);
 
         bundle.has_blend_constant = predicate.blend_constant;
-        bundle.has_embedded_constants = predicate.constant_count > 0;
+        bundle.has_embedded_constants = predicate.constant_mask != 0;
 
         unsigned padding = 0;
 
