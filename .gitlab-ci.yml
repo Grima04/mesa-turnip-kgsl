@@ -65,6 +65,8 @@ success:
   except:
     changes:
       *paths
+  variables:
+    GIT_STRATEGY: none
   script:
     - echo "Dummy job to make sure every merge request pipeline runs at least one job"
 
