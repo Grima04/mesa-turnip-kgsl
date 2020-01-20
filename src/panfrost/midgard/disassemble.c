@@ -36,6 +36,7 @@
 #include "midgard_quirks.h"
 #include "disassemble.h"
 #include "helpers.h"
+#include "util/bitscan.h"
 #include "util/half_float.h"
 #include "util/u_math.h"
 
@@ -329,6 +330,69 @@ bits_for_mode_halved(midgard_reg_mode mode, bool half)
 }
 
 static void
+print_scalar_constant(FILE *fp, unsigned src_binary,
+                      const midgard_constants *consts,
+                      midgard_scalar_alu *alu)
+{
+        midgard_scalar_alu_src *src = (midgard_scalar_alu_src *)&src_binary;
+        unsigned mod = 0;
+
+        if (!midgard_is_integer_op(alu->op)) {
+                if (src->abs)
+                        mod |= MIDGARD_FLOAT_MOD_ABS;
+                if (src->negate)
+                        mod |= MIDGARD_FLOAT_MOD_NEG;
+        } else {
+                mod = midgard_int_normal;
+        }
+
+        fprintf(fp, "#");
+        mir_print_constant_component(fp, consts, src->component,
+                                     src->full ?
+                                     midgard_reg_mode_32 : midgard_reg_mode_16,
+                                     false, mod, alu->op);
+}
+
+static void
+print_vector_constants(FILE *fp, unsigned src_binary,
+                       const midgard_constants *consts,
+                       midgard_vector_alu *alu)
+{
+        midgard_vector_alu_src *src = (midgard_vector_alu_src *)&src_binary;
+        unsigned bits = bits_for_mode_halved(alu->reg_mode, src->half);
+        unsigned max_comp = MIN2((sizeof(*consts) * 8) / bits, 8);
+        unsigned comp_mask, num_comp = 0;
+
+        assert(consts);
+
+        comp_mask = effective_writemask(alu, condense_writemask(alu->mask, bits));
+        num_comp = util_bitcount(comp_mask);
+
+        fprintf(fp, "#");
+        if (num_comp > 1)
+                fprintf(fp, "vec%d(", num_comp);
+
+        bool first = true;
+
+	for (unsigned i = 0; i < max_comp; ++i) {
+                if (!(comp_mask & (1 << i))) continue;
+
+                unsigned c = (src->swizzle >> (i * 2)) & 3;
+
+                if (first)
+                        first = false;
+                else
+                        fprintf(fp, ", ");
+
+                mir_print_constant_component(fp, consts, c, alu->reg_mode,
+                                             src->half, src->mod, alu->op);
+        }
+
+        if (num_comp > 1)
+                fprintf(fp, ")");
+}
+
+static void
 print_vector_src(FILE *fp, unsigned src_binary,
                  midgard_reg_mode mode, unsigned reg,
                  midgard_dest_override override, bool is_int)
@@ -536,7 +600,7 @@ print_mask_4(FILE *fp, unsigned mask, bool upper)
 
 static void
 print_vector_field(FILE *fp, const char *name, uint16_t *words, uint16_t reg_word,
-                   unsigned tabs)
+                   const midgard_constants *consts, unsigned tabs)
 {
         midgard_reg_info *reg_info = (midgard_reg_info *)&reg_word;
         midgard_vector_alu *alu_field = (midgard_vector_alu *) words;
@@ -581,13 +645,19 @@ print_vector_field(FILE *fp, const char *name, uint16_t *words, uint16_t reg_wor
         fprintf(fp, ", ");
 
         bool is_int = midgard_is_integer_op(alu_field->op);
-        print_vector_src(fp, alu_field->src1, mode, reg_info->src1_reg, override, is_int);
+
+        if (reg_info->src1_reg == 26)
+                print_vector_constants(fp, alu_field->src1, consts, alu_field);
+        else
+                print_vector_src(fp, alu_field->src1, mode, reg_info->src1_reg, override, is_int);
 
         fprintf(fp, ", ");
 
         if (reg_info->src2_imm) {
                 uint16_t imm = decode_vector_imm(reg_info->src2_reg, alu_field->src2 >> 2);
                 print_immediate(fp, imm);
+        } else if (reg_info->src2_reg == 26) {
+                print_vector_constants(fp, alu_field->src2, consts, alu_field);
         } else {
                 print_vector_src(fp, alu_field->src2, mode,
                                  reg_info->src2_reg, override, is_int);
@@ -638,7 +708,7 @@ decode_scalar_imm(unsigned src2_reg, unsigned imm)
 
 static void
 print_scalar_field(FILE *fp, const char *name, uint16_t *words, uint16_t reg_word,
-                   unsigned tabs)
+                   const midgard_constants *consts, unsigned tabs)
 {
         midgard_reg_info *reg_info = (midgard_reg_info *)&reg_word;
         midgard_scalar_alu *alu_field = (midgard_scalar_alu *) words;
@@ -664,7 +734,10 @@ print_scalar_field(FILE *fp, const char *name, uint16_t *words, uint16_t reg_wor
 
         fprintf(fp, ".%c, ", components[c]);
 
-        print_scalar_src(fp, alu_field->src1, reg_info->src1_reg);
+        if (reg_info->src1_reg == 26)
+                print_scalar_constant(fp, alu_field->src1, consts, alu_field);
+        else
+                print_scalar_src(fp, alu_field->src1, reg_info->src1_reg);
 
         fprintf(fp, ", ");
 
@@ -672,6 +745,8 @@ print_scalar_field(FILE *fp, const char *name, uint16_t *words, uint16_t reg_wor
                 uint16_t imm = decode_scalar_imm(reg_info->src2_reg,
                                                  alu_field->src2);
                 print_immediate(fp, imm);
+	} else if (reg_info->src2_reg == 26) {
+                print_scalar_constant(fp, alu_field->src2, consts, alu_field);
         } else
                 print_scalar_src(fp, alu_field->src2, reg_info->src2_reg);
 
@@ -883,109 +958,94 @@ print_alu_word(FILE *fp, uint32_t *words, unsigned num_quad_words,
         unsigned num_fields = num_alu_fields_enabled(control_word);
         uint16_t *word_ptr = beginning_ptr + num_fields;
         unsigned num_words = 2 + num_fields;
+        const midgard_constants *consts = NULL;
         bool branch_forward = false;
+
+        if ((control_word >> 17) & 1)
+                num_words += 3;
+
+        if ((control_word >> 19) & 1)
+                num_words += 2;
+
+        if ((control_word >> 21) & 1)
+                num_words += 3;
+
+        if ((control_word >> 23) & 1)
+                num_words += 2;
+
+        if ((control_word >> 25) & 1)
+                num_words += 3;
+
+        if ((control_word >> 26) & 1)
+                num_words += 1;
+
+        if ((control_word >> 27) & 1)
+                num_words += 3;
+
+        if (num_quad_words > (num_words + 7) / 8) {
+                assert(num_quad_words == (num_words + 15) / 8);
+                //Assume that the extra quadword is constants
+                consts = (midgard_constants *)(words + (4 * num_quad_words - 4));
+        }
 
         if ((control_word >> 16) & 1)
                 fprintf(fp, "unknown bit 16 enabled\n");
 
         if ((control_word >> 17) & 1) {
-                print_vector_field(fp, "vmul", word_ptr, *beginning_ptr, tabs);
+                print_vector_field(fp, "vmul", word_ptr, *beginning_ptr, consts, tabs);
                 beginning_ptr += 1;
                 word_ptr += 3;
-                num_words += 3;
         }
 
         if ((control_word >> 18) & 1)
                 fprintf(fp, "unknown bit 18 enabled\n");
 
         if ((control_word >> 19) & 1) {
-                print_scalar_field(fp, "sadd", word_ptr, *beginning_ptr, tabs);
+                print_scalar_field(fp, "sadd", word_ptr, *beginning_ptr, consts, tabs);
                 beginning_ptr += 1;
                 word_ptr += 2;
-                num_words += 2;
         }
 
         if ((control_word >> 20) & 1)
                 fprintf(fp, "unknown bit 20 enabled\n");
 
         if ((control_word >> 21) & 1) {
-                print_vector_field(fp, "vadd", word_ptr, *beginning_ptr, tabs);
+                print_vector_field(fp, "vadd", word_ptr, *beginning_ptr, consts, tabs);
                 beginning_ptr += 1;
                 word_ptr += 3;
-                num_words += 3;
         }
 
         if ((control_word >> 22) & 1)
                 fprintf(fp, "unknown bit 22 enabled\n");
 
         if ((control_word >> 23) & 1) {
-                print_scalar_field(fp, "smul", word_ptr, *beginning_ptr, tabs);
+                print_scalar_field(fp, "smul", word_ptr, *beginning_ptr, consts, tabs);
                 beginning_ptr += 1;
                 word_ptr += 2;
-                num_words += 2;
         }
 
         if ((control_word >> 24) & 1)
                 fprintf(fp, "unknown bit 24 enabled\n");
 
         if ((control_word >> 25) & 1) {
-                print_vector_field(fp, "lut", word_ptr, *beginning_ptr, tabs);
+                print_vector_field(fp, "lut", word_ptr, *beginning_ptr, consts, tabs);
                 word_ptr += 3;
-                num_words += 3;
         }
 
         if ((control_word >> 26) & 1) {
                 branch_forward |= print_compact_branch_writeout_field(fp, *word_ptr);
                 word_ptr += 1;
-                num_words += 1;
         }
 
         if ((control_word >> 27) & 1) {
                 branch_forward |= print_extended_branch_writeout_field(fp, (uint8_t *) word_ptr, next);
                 word_ptr += 3;
-                num_words += 3;
         }
 
-        if (num_quad_words > (num_words + 7) / 8) {
-                assert(num_quad_words == (num_words + 15) / 8);
-                //Assume that the extra quadword is constants
-                void *consts = words + (4 * num_quad_words - 4);
-
-                if (is_embedded_constant_int) {
-                        if (is_embedded_constant_half) {
-                                int16_t *sconsts = (int16_t *) consts;
-                                fprintf(fp, "sconstants %d, %d, %d, %d\n",
-                                       sconsts[0],
-                                       sconsts[1],
-                                       sconsts[2],
-                                       sconsts[3]);
-                        } else {
-                                uint32_t *iconsts = (uint32_t *) consts;
-                                fprintf(fp, "iconstants 0x%X, 0x%X, 0x%X, 0x%X\n",
-                                       iconsts[0],
-                                       iconsts[1],
-                                       iconsts[2],
-                                       iconsts[3]);
-                        }
-                } else {
-                        if (is_embedded_constant_half) {
-                                uint16_t *hconsts = (uint16_t *) consts;
-                                fprintf(fp, "hconstants %g, %g, %g, %g\n",
-                                       _mesa_half_to_float(hconsts[0]),
-                                       _mesa_half_to_float(hconsts[1]),
-                                       _mesa_half_to_float(hconsts[2]),
-                                       _mesa_half_to_float(hconsts[3]));
-                        } else {
-                                uint32_t *fconsts = (uint32_t *) consts;
-                                fprintf(fp, "fconstants %g, %g, %g, %g\n",
-                                       float_bitcast(fconsts[0]),
-                                       float_bitcast(fconsts[1]),
-                                       float_bitcast(fconsts[2]),
-                                       float_bitcast(fconsts[3]));
-                        }
-
-                }
-        }
+        if (consts)
+                fprintf(fp, "uconstants 0x%X, 0x%X, 0x%X, 0x%X\n",
+                        consts->u32[0], consts->u32[1],
+                        consts->u32[2], consts->u32[3]);
 
         return branch_forward;
 }

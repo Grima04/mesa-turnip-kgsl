@@ -23,6 +23,7 @@
 #define __MDG_HELPERS_H
 
 #include "util/macros.h"
+#include <stdio.h>
 #include <string.h>
 
 #define OP_IS_LOAD_VARY_F(op) (\
@@ -343,5 +344,10 @@ midgard_is_branch_unit(unsigned unit)
 {
         return (unit == ALU_ENAB_BRANCH) || (unit == ALU_ENAB_BR_COMPACT);
 }
+
+void
+mir_print_constant_component(FILE *fp, const midgard_constants *consts,
+                             unsigned c, midgard_reg_mode reg_mode, bool half,
+                             unsigned mod, midgard_alu_op op);
 
 #endif
