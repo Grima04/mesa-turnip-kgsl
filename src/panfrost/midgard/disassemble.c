@@ -1121,7 +1121,7 @@ print_load_store_instr(uint64_t data,
                         midg_stats.attribute_count = -16;
         }
 
-        printf(" r%u", word->reg);
+        printf(" r%u", word->reg + (OP_IS_STORE(word->op) ? 26 : 0));
         print_mask_4(word->mask, false);
 
         if (!OP_IS_STORE(word->op))
