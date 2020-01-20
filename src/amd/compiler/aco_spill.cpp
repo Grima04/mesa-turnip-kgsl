@@ -657,6 +657,23 @@ RegisterDemand init_live_in_vars(spill_ctx& ctx, Block* block, unsigned block_id
 }
 
 
+RegisterDemand get_demand_before(spill_ctx& ctx, unsigned block_idx, unsigned idx)
+{
+   if (idx == 0) {
+      RegisterDemand demand_before = ctx.register_demand[block_idx][idx];
+      aco_ptr<Instruction>& instr = ctx.program->blocks[block_idx].instructions[idx];
+      for (const Definition& def : instr->definitions)
+         demand_before -= def.getTemp();
+      for (const Operand& op : instr->operands) {
+         if (op.isFirstKill())
+            demand_before += op.getTemp();
+      }
+      return demand_before;
+   } else {
+      return ctx.register_demand[block_idx][idx - 1];
+   }
+}
+
 void add_coupling_code(spill_ctx& ctx, Block* block, unsigned block_idx)
 {
    /* no coupling code necessary */
@@ -671,6 +688,7 @@ void add_coupling_code(spill_ctx& ctx, Block* block, unsigned block_idx)
       std::vector<RegisterDemand> reg_demand;
       unsigned insert_idx = 0;
       unsigned pred_idx = block->linear_preds[0];
+      RegisterDemand demand_before = get_demand_before(ctx, block_idx, 0);
 
       for (std::pair<Temp, std::pair<uint32_t, uint32_t>> live : ctx.next_use_distances_start[block_idx]) {
          if (!live.first.is_linear())
@@ -691,7 +709,7 @@ void add_coupling_code(spill_ctx& ctx, Block* block, unsigned block_idx)
          Temp new_name = {ctx.program->allocateId(), live.first.regClass()};
          aco_ptr<Instruction> reload = do_reload(ctx, live.first, new_name, ctx.spills_exit[pred_idx][live.first]);
          instructions.emplace_back(std::move(reload));
-         reg_demand.push_back(RegisterDemand());
+         reg_demand.push_back(demand_before);
          ctx.renames[block_idx][live.first] = new_name;
       }
 
@@ -991,8 +1009,9 @@ void add_coupling_code(spill_ctx& ctx, Block* block, unsigned block_idx)
 
    if (!ctx.processed[block_idx]) {
       assert(!(block->kind & block_kind_loop_header));
+      RegisterDemand demand_before = get_demand_before(ctx, block_idx, idx);
       ctx.register_demand[block->index].erase(ctx.register_demand[block->index].begin(), ctx.register_demand[block->index].begin() + idx);
-      ctx.register_demand[block->index].insert(ctx.register_demand[block->index].begin(), instructions.size(), RegisterDemand());
+      ctx.register_demand[block->index].insert(ctx.register_demand[block->index].begin(), instructions.size(), demand_before);
    }
 
    std::vector<aco_ptr<Instruction>>::iterator start = std::next(block->instructions.begin(), idx);
@@ -1057,18 +1076,7 @@ void process_block(spill_ctx& ctx, unsigned block_idx, Block* block,
       if (block->register_demand.exceeds(ctx.target_pressure)) {
 
          RegisterDemand new_demand = ctx.register_demand[block_idx][idx];
-         if (idx == 0) {
-            RegisterDemand demand_before = new_demand;
-            for (const Definition& def : instr->definitions)
-               demand_before -= def.getTemp();
-            for (const Operand& op : instr->operands) {
-               if (op.isFirstKill())
-                  demand_before += op.getTemp();
-            }
-            new_demand.update(demand_before);
-         } else {
-            new_demand.update(ctx.register_demand[block_idx][idx - 1]);
-         }
+         new_demand.update(get_demand_before(ctx, block_idx, idx));
 
          assert(!local_next_use_distance.empty());
 
