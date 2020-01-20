@@ -45,8 +45,7 @@ stages:
         *paths
       when: on_success
     # Allow triggering jobs manually on branches of forked projects
-    - if: '$CI_PROJECT_PATH != "mesa/mesa"'
-      if: '$CI_MERGE_REQUEST_SOURCE_BRANCH_NAME != $CI_COMMIT_REF_NAME'
+    - if: '$CI_PROJECT_PATH != "mesa/mesa" && $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME != $CI_COMMIT_REF_NAME'
       when: manual
     # Otherwise, most jobs won't run
     - when: never
