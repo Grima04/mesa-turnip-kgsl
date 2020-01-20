@@ -276,7 +276,8 @@ lp_build_cttz(struct lp_build_context *bld, LLVMValueRef a)
 
    LLVMValueRef undef_val = LLVMConstNull(LLVMInt1TypeInContext(bld->gallivm->context));
    result = lp_build_intrinsic_binary(builder, intr_str, bld->vec_type, a, undef_val);
-   return result;
+   return LLVMBuildSelect(builder, LLVMBuildICmp(builder, LLVMIntEQ, a, bld->zero, ""),
+			  lp_build_const_int_vec(bld->gallivm, bld->type, -1), result, "");
 }
 
 LLVMValueRef
