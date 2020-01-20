@@ -194,9 +194,17 @@ ppir_liveness_instr_dest(ppir_compiler *comp, ppir_instr *instr)
 
       struct set_entry *live = _mesa_set_search(instr->live_in_set,
                                                 &instr->live_in[reg->regalloc_index]);
+
+      /* If a register is written but wasn't read in a later instruction, it is
+       * either dead code or a bug. For now, assign an interference to it to
+       * ensure it doesn't get assigned a live register and overwrites it. */
+      if (!live) {
+         instr->live_out[reg->regalloc_index].reg = reg;
+         _mesa_set_add(instr->live_out_set, &instr->live_out[reg->regalloc_index]);
+         continue;
+      }
+
       if (dest->type == ppir_target_ssa) {
-         if (!live)
-            continue;
          /* reg is written and ssa, is not live before instr */
          _mesa_set_remove_key(instr->live_in_set, &instr->live_in[reg->regalloc_index]);
       }
@@ -204,9 +212,8 @@ ppir_liveness_instr_dest(ppir_compiler *comp, ppir_instr *instr)
          unsigned int mask = ppir_src_get_mask(node);
          /* written reg is type register, need to check if this clears
           * the remaining mask to remove it from the live set */
-         if (!live ||
-               instr->live_in[reg->regalloc_index].mask ==
-               (instr->live_in[reg->regalloc_index].mask & ~mask))
+         if (instr->live_in[reg->regalloc_index].mask ==
+             (instr->live_in[reg->regalloc_index].mask & ~mask))
             continue;
 
          instr->live_in[reg->regalloc_index].mask &= ~mask;

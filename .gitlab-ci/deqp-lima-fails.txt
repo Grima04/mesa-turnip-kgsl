@@ -184,7 +184,6 @@ dEQP-GLES2.functional.shaders.random.exponential.fragment.37
 dEQP-GLES2.functional.shaders.random.exponential.fragment.5
 dEQP-GLES2.functional.shaders.random.exponential.fragment.74
 dEQP-GLES2.functional.shaders.random.texture.fragment.28
-dEQP-GLES2.functional.shaders.random.texture.fragment.106
 dEQP-GLES2.functional.shaders.random.trigonometric.fragment.1
 dEQP-GLES2.functional.shaders.random.trigonometric.fragment.65
 dEQP-GLES2.functional.shaders.random.trigonometric.fragment.69
