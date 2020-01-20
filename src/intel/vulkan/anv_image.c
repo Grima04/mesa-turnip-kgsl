@@ -112,6 +112,7 @@ choose_isl_tiling_flags(const struct anv_image_create_info *anv_info,
       flags = ISL_TILING_LINEAR_BIT;
       break;
    case VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT:
+      assert(isl_mod_info);
       flags = 1 << isl_mod_info->tiling;
    }
 
