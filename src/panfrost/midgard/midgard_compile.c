@@ -849,8 +849,13 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
         case nir_op_u2u8:
         case nir_op_u2u16:
         case nir_op_u2u32:
-        case nir_op_u2u64: {
-                op = midgard_alu_op_imov;
+        case nir_op_u2u64:
+        case nir_op_f2f16:
+        case nir_op_f2f32: {
+                if (instr->op == nir_op_f2f16 || instr->op == nir_op_f2f32)
+                        op = midgard_alu_op_fmov;
+                else
+                        op = midgard_alu_op_imov;
 
                 if (dst_bitsize == (src_bitsize * 2)) {
                         /* Converting up */
@@ -865,24 +870,6 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
 
                 break;
         }
-
-        case nir_op_f2f16: {
-                assert(src_bitsize == 32);
-
-                op = midgard_alu_op_fmov;
-                dest_override = midgard_dest_override_lower;
-                break;
-        }
-
-        case nir_op_f2f32: {
-                assert(src_bitsize == 16);
-
-                op = midgard_alu_op_fmov;
-                half_2 = true;
-                reg_mode++;
-                break;
-        }
-
 
         /* For greater-or-equal, we lower to less-or-equal and flip the
          * arguments */
