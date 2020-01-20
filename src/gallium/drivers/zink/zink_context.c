@@ -140,8 +140,10 @@ zink_create_sampler_state(struct pipe_context *pctx,
 
    if (state->compare_mode == PIPE_TEX_COMPARE_NONE)
       sci.compareOp = VK_COMPARE_OP_NEVER;
-   else
+   else {
       sci.compareOp = compare_op(state->compare_func);
+      sci.compareEnable = VK_TRUE;
+   }
 
    sci.borderColor = VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK; // TODO
    sci.unnormalizedCoordinates = !state->normalized_coords;
