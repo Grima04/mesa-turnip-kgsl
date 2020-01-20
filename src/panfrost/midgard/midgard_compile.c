@@ -851,8 +851,10 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
         case nir_op_u2u32:
         case nir_op_u2u64:
         case nir_op_f2f16:
-        case nir_op_f2f32: {
-                if (instr->op == nir_op_f2f16 || instr->op == nir_op_f2f32)
+        case nir_op_f2f32:
+        case nir_op_f2f64: {
+                if (instr->op == nir_op_f2f16 || instr->op == nir_op_f2f32 ||
+                    instr->op == nir_op_f2f64)
                         op = midgard_alu_op_fmov;
                 else
                         op = midgard_alu_op_imov;
