@@ -1466,9 +1466,10 @@ static void visit_tex(struct lp_build_nir_context *bld_base, nir_tex_instr *inst
    }
    if (instr->op == nir_texop_txf || instr->op == nir_texop_txf_ms)
       sample_key |= LP_SAMPLER_OP_FETCH << LP_SAMPLER_OP_TYPE_SHIFT;
-   else if (instr->op == nir_texop_tg4)
+   else if (instr->op == nir_texop_tg4) {
       sample_key |= LP_SAMPLER_OP_GATHER << LP_SAMPLER_OP_TYPE_SHIFT;
-   else if (instr->op == nir_texop_lod)
+      sample_key |= (instr->component << LP_SAMPLER_GATHER_COMP_SHIFT);
+   } else if (instr->op == nir_texop_lod)
       sample_key |= LP_SAMPLER_OP_LODQ << LP_SAMPLER_OP_TYPE_SHIFT;
    for (unsigned i = 0; i < instr->num_srcs; i++) {
       switch (instr->src[i].src_type) {
