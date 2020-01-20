@@ -780,6 +780,37 @@ Temp emit_trunc_f64(isel_context *ctx, Builder& bld, Definition dst, Temp val)
    return bld.pseudo(aco_opcode::p_create_vector, Definition(dst), dst_lo, dst_hi);
 }
 
+Temp emit_floor_f64(isel_context *ctx, Builder& bld, Definition dst, Temp val)
+{
+   if (ctx->options->chip_class >= GFX7)
+      return bld.vop1(aco_opcode::v_floor_f64, Definition(dst), val);
+
+   /* GFX6 doesn't support V_FLOOR_F64, lower it. */
+   Temp src0 = as_vgpr(ctx, val);
+
+   Temp mask = bld.copy(bld.def(s1), Operand(3u)); /* isnan */
+   Temp min_val = bld.pseudo(aco_opcode::p_create_vector, bld.def(s2), Operand(-1u), Operand(0x3fefffffu));
+
+   Temp isnan = bld.vopc_e64(aco_opcode::v_cmp_class_f64, bld.hint_vcc(bld.def(bld.lm)), src0, mask);
+   Temp fract = bld.vop1(aco_opcode::v_fract_f64, bld.def(v2), src0);
+   Temp min = bld.vop3(aco_opcode::v_min_f64, bld.def(v2), fract, min_val);
+
+   Temp then_lo = bld.tmp(v1), then_hi = bld.tmp(v1);
+   bld.pseudo(aco_opcode::p_split_vector, Definition(then_lo), Definition(then_hi), src0);
+   Temp else_lo = bld.tmp(v1), else_hi = bld.tmp(v1);
+   bld.pseudo(aco_opcode::p_split_vector, Definition(else_lo), Definition(else_hi), min);
+
+   Temp dst0 = bld.vop2(aco_opcode::v_cndmask_b32, bld.def(v1), else_lo, then_lo, isnan);
+   Temp dst1 = bld.vop2(aco_opcode::v_cndmask_b32, bld.def(v1), else_hi, then_hi, isnan);
+
+   Temp v = bld.pseudo(aco_opcode::p_create_vector, bld.def(v2), dst0, dst1);
+
+   Instruction* add = bld.vop3(aco_opcode::v_add_f64, Definition(dst), src0, v);
+   static_cast<VOP3A_instruction*>(add)->neg[1] = true;
+
+   return add->definitions[0].getTemp();
+}
+
 void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
 {
    if (!instr->dest.dest.is_ssa) {
@@ -1689,7 +1720,7 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
       if (dst.size() == 1) {
          emit_vop1_instruction(ctx, instr, aco_opcode::v_floor_f32, dst);
       } else if (dst.size() == 2) {
-         emit_vop1_instruction(ctx, instr, aco_opcode::v_floor_f64, dst);
+         emit_floor_f64(ctx, bld, Definition(dst), get_alu_src(ctx, instr->src[0]));
       } else {
          fprintf(stderr, "Unimplemented NIR instr bit size: ");
          nir_print_instr(&instr->instr, stderr);
