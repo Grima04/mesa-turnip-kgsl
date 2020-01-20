@@ -1551,11 +1551,13 @@ static void visit_tex(struct lp_build_nir_context *bld_base, nir_tex_instr *inst
          LLVMValueRef offset_val = get_src(bld_base, instr->src[i].src);
          sample_key |= LP_SAMPLER_OFFSETS;
          if (offset_cnt == 1)
-            offsets[0] = offset_val;
+            offsets[0] = cast_type(bld_base, offset_val, nir_type_int, 32);
          else {
-            for (unsigned chan = 0; chan < offset_cnt; ++chan)
+            for (unsigned chan = 0; chan < offset_cnt; ++chan) {
                offsets[chan] = LLVMBuildExtractValue(builder, offset_val,
                                                      chan, "");
+               offsets[chan] = cast_type(bld_base, offsets[chan], nir_type_int, 32);
+            }
          }
          break;
       }
