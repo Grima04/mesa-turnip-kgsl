@@ -136,6 +136,7 @@ struct v3dv_physical_device {
    char path[20];
    char *name;
    int32_t local_fd;
+   int32_t display_fd;
    int32_t master_fd;
    uint8_t pipeline_cache_uuid[VK_UUID_SIZE];
 
@@ -204,6 +205,7 @@ struct v3dv_device {
    struct v3dv_device_dispatch_table dispatch;
 
    int32_t fd;
+   int32_t display_fd;
    struct v3d_device_info devinfo;
    struct v3dv_queue queue;
 

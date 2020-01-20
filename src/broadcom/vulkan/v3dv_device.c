@@ -42,6 +42,11 @@
 #include "drm-uapi/v3d_drm.h"
 #include "vk_util.h"
 
+#ifdef VK_USE_PLATFORM_XCB_KHR
+#include <xcb/xcb.h>
+#include <xcb/dri3.h>
+#endif
+
 static void *
 default_alloc_func(void *pUserData, size_t size, size_t align,
                    VkSystemAllocationScope allocationScope)
@@ -222,6 +227,8 @@ physical_device_finish(struct v3dv_physical_device *device)
    close(device->local_fd);
    if (device->master_fd >= 0)
       close(device->master_fd);
+   if (device->display_fd >= 0)
+      close(device->display_fd);
 
    free(device->name);
 
@@ -278,28 +285,77 @@ compute_heap_size()
    return available_ram;
 }
 
+/* When running on the simulator we do everything on a single render node so
+ * we don't need to get an authenticated display fd from the display server.
+ */
+#if !using_v3d_simulator
+#ifdef VK_USE_PLATFORM_XCB_KHR
+static int
+create_display_fd_xcb()
+{
+   xcb_connection_t *conn = xcb_connect(NULL, NULL);
+   const xcb_setup_t *setup = xcb_get_setup(conn);
+   xcb_screen_iterator_t iter = xcb_setup_roots_iterator(setup);
+   xcb_screen_t *screen = iter.data;
+
+   xcb_dri3_open_cookie_t cookie;
+   xcb_dri3_open_reply_t *reply;
+   cookie = xcb_dri3_open(conn, screen->root, None);
+   reply = xcb_dri3_open_reply(conn, cookie, NULL);
+   if (!reply)
+      return -1;
+
+   if (reply->nfd != 1) {
+      free(reply);
+      return -1;
+   }
+
+   int fd = xcb_dri3_open_reply_fds(conn, reply)[0];
+   free(reply);
+   fcntl(fd, F_SETFD, fcntl(fd, F_GETFD) | FD_CLOEXEC);
+
+   return fd;
+}
+#endif
+#endif
+
 static VkResult
 physical_device_init(struct v3dv_physical_device *device,
                      struct v3dv_instance *instance,
                      drmDevicePtr drm_device)
 {
    VkResult result = VK_SUCCESS;
+   int32_t display_fd = -1;
    int32_t master_fd = -1;
-
-   const char *path = drm_device->nodes[DRM_NODE_RENDER];
-   int32_t fd = open(path, O_RDWR | O_CLOEXEC);
-   if (fd < 0)
-      return vk_error(instance, VK_ERROR_INCOMPATIBLE_DRIVER);
 
    device->_loader_data.loaderMagic = ICD_LOADER_MAGIC;
    device->instance = instance;
 
+   const char *path = drm_device->nodes[DRM_NODE_RENDER];
+   int32_t render_fd = open(path, O_RDWR | O_CLOEXEC);
+   if (render_fd < 0)
+      return vk_error(instance, VK_ERROR_INCOMPATIBLE_DRIVER);
+
    assert(strlen(path) < ARRAY_SIZE(device->path));
    snprintf(device->path, ARRAY_SIZE(device->path), "%s", path);
 
-   /* FIXME: we will have to do plenty more here */
-   device->local_fd = fd;
-   device->master_fd = master_fd;
+   /* If we are running on real hardware we need to open the vc4 display
+    * device so we can allocate winsys BOs for the v3d core to render into.
+    */
+#if !using_v3d_simulator
+#ifdef VK_USE_PLATFORM_XCB_KHR
+   display_fd = create_display_fd_xcb();
+#endif
+
+   if (display_fd == -1) {
+      result = VK_ERROR_INCOMPATIBLE_DRIVER;
+      goto fail;
+   }
+#endif
+
+   device->local_fd = render_fd;       /* The v3d render node  */
+   device->display_fd = display_fd;    /* The vc4 primary node */
+   device->master_fd = master_fd;      /* For VK_KHR_display */
 
    uint8_t zeroes[VK_UUID_SIZE] = { 0 };
    memcpy(device->pipeline_cache_uuid, zeroes, VK_UUID_SIZE);
@@ -350,10 +406,14 @@ physical_device_init(struct v3dv_physical_device *device,
 
    v3dv_physical_device_get_supported_extensions(device,
                                                  &device->supported_extensions);
+   return VK_SUCCESS;
 
 fail:
-   close(fd);
-   if (master_fd != -1)
+   if (render_fd >= 0)
+      close(render_fd);
+   if (display_fd >= 0)
+      close(display_fd);
+   if (master_fd >= 0)
       close(master_fd);
 
    return result;
@@ -373,17 +433,64 @@ enumerate_devices(struct v3dv_instance *instance)
    if (max_devices < 1)
       return VK_ERROR_INCOMPATIBLE_DRIVER;
 
+#if !using_v3d_simulator
+   int32_t v3d_idx = -1;
+   int32_t vc4_idx = -1;
+#endif
    for (unsigned i = 0; i < (unsigned)max_devices; i++) {
+#if using_v3d_simulator
+      /* In the simulator, we look for an Intel render node */
       if (devices[i]->available_nodes & 1 << DRM_NODE_RENDER &&
           devices[i]->bustype == DRM_BUS_PCI &&
-          /* FIXME: so we can run past this point for now */
-          (true || devices[i]->deviceinfo.pci->vendor_id == 0x14E4)) {
-         result = physical_device_init(&instance->physicalDevice,
-                                       instance, devices[i]);
+          devices[i]->deviceinfo.pci->vendor_id == 0x8086) {
+         result = physical_device_init(&instance->physicalDevice, instance,
+                                       devices[i]);
          if (result != VK_ERROR_INCOMPATIBLE_DRIVER)
             break;
       }
+#else
+      /* On actual hardware, we should have a render node (v3d)
+       * and a primary node (vc4). We will need to use the primary
+       * to allocate WSI buffers and share them with the render node
+       * via prime, but that is a privileged operation so we need the
+       * primary node to be authenticated, and for that we need the
+       * display server to provide the device fd (with DRI3), so we
+       * here we only check that the device is present but we don't
+       * try to open it.
+       */
+      if (devices[i]->bustype != DRM_BUS_PLATFORM)
+         continue;
+
+      if (devices[i]->available_nodes & 1 << DRM_NODE_RENDER) {
+         char **compat = devices[i]->deviceinfo.platform->compatible;
+         while (*compat) {
+            if (strncmp(*compat, "brcm,2711-v3d", 13) == 0) {
+               v3d_idx = i;
+               break;
+            }
+            compat++;
+         }
+      } else if (devices[i]->available_nodes & 1 << DRM_NODE_PRIMARY) {
+         char **compat = devices[i]->deviceinfo.platform->compatible;
+         while (*compat) {
+            if (strncmp(*compat, "brcm,bcm2835-vc4", 16) == 0) {
+               vc4_idx = i;
+               break;
+            }
+            compat++;
+         }
+      }
+#endif
    }
+
+#if !using_v3d_simulator
+   if (v3d_idx == -1 || vc4_idx == -1)
+      result = VK_ERROR_INCOMPATIBLE_DRIVER;
+   else
+      result = physical_device_init(&instance->physicalDevice, instance,
+                                    devices[v3d_idx]);
+#endif
+
    drmFreeDevices(devices, max_devices);
 
    if (result == VK_SUCCESS)
@@ -1020,15 +1127,25 @@ v3dv_CreateDevice(VkPhysicalDevice physicalDevice,
    else
       device->alloc = physical_device->instance->alloc;
 
-   device->fd = open(physical_device->path, O_RDWR | O_CLOEXEC);
+   device->fd = physical_device->local_fd;
    if (device->fd == -1) {
-      result = vk_error(instance, VK_ERROR_INITIALIZATION_FAILED);
-      goto fail_device;
+      result = VK_ERROR_INITIALIZATION_FAILED;
+      goto fail;
+   }
+
+   if (physical_device->display_fd != -1) {
+      device->display_fd = physical_device->display_fd;
+      if (device->display_fd == -1) {
+         result = VK_ERROR_INITIALIZATION_FAILED;
+         goto fail;
+      }
+   } else {
+      device->display_fd = -1;
    }
 
    result = queue_init(device, &device->queue);
    if (result != VK_SUCCESS)
-      goto fail_fd;
+      goto fail;
 
    device->devinfo = physical_device->devinfo;
    device->enabled_extensions = enabled_extensions;
@@ -1038,7 +1155,7 @@ v3dv_CreateDevice(VkPhysicalDevice physicalDevice,
                               &device->last_job_sync);
    if (ret) {
       result = VK_ERROR_INITIALIZATION_FAILED;
-      goto fail_fd;
+      goto fail;
    }
 
    init_device_dispatch(device);
@@ -1047,9 +1164,7 @@ v3dv_CreateDevice(VkPhysicalDevice physicalDevice,
 
    return VK_SUCCESS;
 
- fail_fd:
-   close(device->fd);
- fail_device:
+fail:
    vk_free(&device->alloc, device);
 
    return result;
@@ -1063,6 +1178,7 @@ v3dv_DestroyDevice(VkDevice _device,
 
    drmSyncobjDestroy(device->fd, device->last_job_sync);
    queue_finish(&device->queue);
+
    vk_free2(&default_alloc, pAllocator, device);
 }
 
