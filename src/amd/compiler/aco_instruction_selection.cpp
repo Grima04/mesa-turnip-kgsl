@@ -736,6 +736,50 @@ void emit_log2(isel_context *ctx, Builder& bld, Definition dst, Temp val)
    emit_scaled_op(ctx, bld, dst, val, aco_opcode::v_log_f32, 0xc1c00000u);
 }
 
+Temp emit_trunc_f64(isel_context *ctx, Builder& bld, Definition dst, Temp val)
+{
+   if (ctx->options->chip_class >= GFX7)
+      return bld.vop1(aco_opcode::v_trunc_f64, Definition(dst), val);
+
+   /* GFX6 doesn't support V_TRUNC_F64, lower it. */
+   /* TODO: create more efficient code! */
+   if (val.type() == RegType::sgpr)
+      val = as_vgpr(ctx, val);
+
+   /* Split the input value. */
+   Temp val_lo = bld.tmp(v1), val_hi = bld.tmp(v1);
+   bld.pseudo(aco_opcode::p_split_vector, Definition(val_lo), Definition(val_hi), val);
+
+   /* Extract the exponent and compute the unbiased value. */
+   Temp exponent = bld.vop1(aco_opcode::v_frexp_exp_i32_f64, bld.def(v1), val);
+
+   /* Extract the fractional part. */
+   Temp fract_mask = bld.pseudo(aco_opcode::p_create_vector, bld.def(v2), Operand(-1u), Operand(0x000fffffu));
+   fract_mask = bld.vop3(aco_opcode::v_lshr_b64, bld.def(v2), fract_mask, exponent);
+
+   Temp fract_mask_lo = bld.tmp(v1), fract_mask_hi = bld.tmp(v1);
+   bld.pseudo(aco_opcode::p_split_vector, Definition(fract_mask_lo), Definition(fract_mask_hi), fract_mask);
+
+   Temp fract_lo = bld.tmp(v1), fract_hi = bld.tmp(v1);
+   Temp tmp = bld.vop1(aco_opcode::v_not_b32, bld.def(v1), fract_mask_lo);
+   fract_lo = bld.vop2(aco_opcode::v_and_b32, bld.def(v1), val_lo, tmp);
+   tmp = bld.vop1(aco_opcode::v_not_b32, bld.def(v1), fract_mask_hi);
+   fract_hi = bld.vop2(aco_opcode::v_and_b32, bld.def(v1), val_hi, tmp);
+
+   /* Get the sign bit. */
+   Temp sign = bld.vop2(aco_opcode::v_ashr_i32, bld.def(v1), Operand(31u), val_hi);
+
+   /* Decide the operation to apply depending on the unbiased exponent. */
+   Temp exp_lt0 = bld.vopc_e64(aco_opcode::v_cmp_lt_i32, bld.hint_vcc(bld.def(bld.lm)), exponent, Operand(0u));
+   Temp dst_lo = bld.vop2(aco_opcode::v_cndmask_b32, bld.def(v1), fract_lo, bld.copy(bld.def(v1), Operand(0u)), exp_lt0);
+   Temp dst_hi = bld.vop2(aco_opcode::v_cndmask_b32, bld.def(v1), fract_hi, sign, exp_lt0);
+   Temp exp_gt51 = bld.vopc_e64(aco_opcode::v_cmp_gt_i32, bld.def(s2), exponent, Operand(51u));
+   dst_lo = bld.vop2(aco_opcode::v_cndmask_b32, bld.def(v1), dst_lo, val_lo, exp_gt51);
+   dst_hi = bld.vop2(aco_opcode::v_cndmask_b32, bld.def(v1), dst_hi, val_hi, exp_gt51);
+
+   return bld.pseudo(aco_opcode::p_create_vector, Definition(dst), dst_lo, dst_hi);
+}
+
 void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
 {
    if (!instr->dest.dest.is_ssa) {
@@ -1669,7 +1713,7 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
       if (dst.size() == 1) {
          emit_vop1_instruction(ctx, instr, aco_opcode::v_trunc_f32, dst);
       } else if (dst.size() == 2) {
-         emit_vop1_instruction(ctx, instr, aco_opcode::v_trunc_f64, dst);
+         emit_trunc_f64(ctx, bld, Definition(dst), get_alu_src(ctx, instr->src[0]));
       } else {
          fprintf(stderr, "Unimplemented NIR instr bit size: ");
          nir_print_instr(&instr->instr, stderr);
