@@ -98,6 +98,10 @@ pack_emit_reloc(void *cl, const void *reloc) {}
 #define v3dv_assert(x)
 #endif
 
+#define for_each_bit(b, dword)                                               \
+   for (uint32_t __dword = (dword);                                          \
+        (b) = __builtin_ffs(__dword) - 1, __dword; __dword &= ~(1 << (b)))
+
 #define typed_memcpy(dest, src, count) ({				\
 			STATIC_ASSERT(sizeof(*src) == sizeof(*dest)); \
 			memcpy((dest), (src), (count) * sizeof(*(src))); \
@@ -114,6 +118,8 @@ pack_emit_reloc(void *cl, const void *reloc) {}
 
 #define MAX_VBS 16
 #define MAX_VERTEX_ATTRIBS 16
+
+#define MAX_SETS 16
 
 struct v3dv_instance;
 
@@ -450,7 +456,9 @@ enum v3dv_cmd_dirty_bits {
    V3DV_CMD_DIRTY_STENCIL_REFERENCE         = 1 << 4,
    V3DV_CMD_DIRTY_PIPELINE                  = 1 << 5,
    V3DV_CMD_DIRTY_VERTEX_BUFFER             = 1 << 6,
+   V3DV_CMD_DIRTY_DESCRIPTOR_SETS           = 1 << 7,
 };
+
 
 struct v3dv_dynamic_state {
    /**
@@ -527,6 +535,11 @@ struct v3dv_vertex_binding {
    VkDeviceSize offset;
 };
 
+struct v3dv_descriptor_state {
+   struct v3dv_descriptor_set *descriptors[MAX_SETS];
+   uint32_t valid;
+};
+
 struct v3dv_cmd_buffer_state {
    const struct v3dv_render_pass *pass;
    const struct v3dv_framebuffer *framebuffer;
@@ -538,6 +551,7 @@ struct v3dv_cmd_buffer_state {
    uint32_t subpass_idx;
 
    struct v3dv_pipeline *pipeline;
+   struct v3dv_descriptor_state descriptor_state;
 
    struct v3dv_dynamic_state dynamic;
    uint32_t dirty;
@@ -669,6 +683,80 @@ struct vpm_config {
    uint32_t gs_width;
 };
 
+struct v3dv_descriptor_pool_entry
+{
+   struct v3dv_descriptor_set *set;
+};
+
+struct v3dv_descriptor_pool {
+   uint8_t *host_memory_base;
+   uint8_t *host_memory_ptr;
+   uint8_t *host_memory_end;
+
+   uint32_t entry_count;
+   uint32_t max_entry_count;
+   struct v3dv_descriptor_pool_entry entries[0];
+};
+
+struct v3dv_descriptor {
+   struct v3dv_bo *bo;
+   uint32_t offset;
+};
+
+struct v3dv_descriptor_set {
+   struct v3dv_descriptor_pool *pool;
+
+   const struct v3dv_descriptor_set_layout *layout;
+
+   /* The descriptors below can be indexed (set/binding) using the set_layout
+    */
+   struct v3dv_descriptor descriptors[0];
+};
+
+struct v3dv_descriptor_set_binding_layout {
+   VkDescriptorType type;
+
+   /* Number of array elements in this binding */
+   uint32_t array_size;
+
+   uint32_t descriptor_index;
+};
+
+struct v3dv_descriptor_set_layout {
+   VkDescriptorSetLayoutCreateFlags flags;
+
+   /* Number of bindings in this descriptor set */
+   uint32_t binding_count;
+
+   /* Shader stages affected by this descriptor set */
+   uint16_t shader_stages;
+
+   /* Number of descriptors in this descriptor set */
+   uint32_t descriptor_count;
+
+   /* Bindings in this descriptor set */
+   struct v3dv_descriptor_set_binding_layout binding[0];
+};
+
+struct v3dv_pipeline_layout {
+   struct {
+      struct v3dv_descriptor_set_layout *layout;
+      uint32_t dynamic_offset_start;
+   } set[MAX_SETS];
+
+   uint32_t num_sets;
+};
+
+struct v3dv_descriptor_map {
+   /* TODO: avoid fixed size array/justify the size */
+   unsigned num; /* number of array entries */
+   unsigned num_desc; /* Number of descriptors (sum of array_size[]) */
+   int set[64];
+   int binding[64];
+   int value[64];
+   int array_size[64];
+};
+
 struct v3dv_pipeline {
    struct v3dv_device *device;
 
@@ -713,6 +801,9 @@ struct v3dv_pipeline {
       VkFormat vk_format;
    } va[MAX_VERTEX_ATTRIBS];
    uint32_t va_count;
+
+   struct v3dv_descriptor_map ubo_map;
+   struct v3dv_descriptor_map ssbo_map;
 
    /* FIXME: this bo is another candidate to data to be uploaded using a
     * resource manager, instead of a individual bo
@@ -836,11 +927,15 @@ V3DV_DEFINE_HANDLE_CASTS(v3dv_queue, VkQueue)
 V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_cmd_pool, VkCommandPool)
 V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_buffer, VkBuffer)
 V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_device_memory, VkDeviceMemory)
+V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_descriptor_pool, VkDescriptorPool)
+V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_descriptor_set, VkDescriptorSet)
+V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_descriptor_set_layout, VkDescriptorSetLayout)
 V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_fence, VkFence)
 V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_framebuffer, VkFramebuffer)
 V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_image, VkImage)
 V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_image_view, VkImageView)
 V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_pipeline, VkPipeline)
+V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_pipeline_layout, VkPipelineLayout)
 V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_render_pass, VkRenderPass)
 V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_semaphore, VkSemaphore)
 V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_shader_module, VkShaderModule)

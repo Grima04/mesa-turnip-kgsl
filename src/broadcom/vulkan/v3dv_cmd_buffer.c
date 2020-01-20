@@ -422,6 +422,7 @@ cmd_buffer_reset(struct v3dv_cmd_buffer *cmd_buffer)
       state->framebuffer = NULL;
       state->subpass_idx = 0;
       state->job = NULL;
+      state->descriptor_state.valid = 0;
 
       cmd_buffer->status = V3DV_CMD_BUFFER_STATUS_INITIALIZED;
    }
@@ -1985,8 +1986,9 @@ cmd_buffer_draw(struct v3dv_cmd_buffer *cmd_buffer,
    uint32_t *dirty = &cmd_buffer->state.dirty;
    struct v3dv_dynamic_state *dynamic = &cmd_buffer->state.dynamic;
 
-   /* vertex buffer state is emitted as part of the shader state record */
-   if (*dirty & (V3DV_CMD_DIRTY_PIPELINE | V3DV_CMD_DIRTY_VERTEX_BUFFER)) {
+   if (*dirty & (V3DV_CMD_DIRTY_PIPELINE |
+                 V3DV_CMD_DIRTY_VERTEX_BUFFER |
+                 V3DV_CMD_DIRTY_DESCRIPTOR_SETS)) {
       emit_graphics_pipeline(cmd_buffer);
    }
 
@@ -2117,4 +2119,30 @@ v3dv_CmdSetStencilReference(VkCommandBuffer commandBuffer,
       cmd_buffer->state.dynamic.stencil_reference.back = reference & 0xff;
 
    cmd_buffer->state.dirty |= V3DV_CMD_DIRTY_STENCIL_REFERENCE;
+}
+
+void
+v3dv_CmdBindDescriptorSets(VkCommandBuffer commandBuffer,
+                           VkPipelineBindPoint pipelineBindPoint,
+                           VkPipelineLayout _layout,
+                           uint32_t firstSet,
+                           uint32_t descriptorSetCount,
+                           const VkDescriptorSet *pDescriptorSets,
+                           uint32_t dynamicOffsetCount,
+                           const uint32_t *pDynamicOffsets)
+{
+   V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
+
+   assert(pipelineBindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS);
+   assert(firstSet + descriptorSetCount <= MAX_SETS);
+
+   for (uint32_t i = 0; i < descriptorSetCount; i++) {
+      V3DV_FROM_HANDLE(v3dv_descriptor_set, set, pDescriptorSets[i]);
+      uint32_t index = firstSet + i;
+
+      cmd_buffer->state.descriptor_state.descriptors[index] = set;
+      cmd_buffer->state.descriptor_state.valid |= (1u << index);
+   }
+
+   cmd_buffer->state.dirty |= V3DV_CMD_DIRTY_DESCRIPTOR_SETS;
 }

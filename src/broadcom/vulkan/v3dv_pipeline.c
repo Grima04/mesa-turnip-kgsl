@@ -30,6 +30,8 @@
 
 #include "common/v3d_debug.h"
 
+#include "compiler/nir/nir_builder.h"
+
 #include "vulkan/util/vk_format.h"
 
 #include "broadcom/cle/v3dx_pack.h"
@@ -260,6 +262,130 @@ type_size_vec4(const struct glsl_type *type, bool bindless)
 {
    return glsl_count_attribute_slots(type, false);
 }
+
+static unsigned
+descriptor_map_add(struct v3dv_descriptor_map *map,
+                   int set,
+                   int binding,
+                   int value,
+                   int array_size)
+{
+   unsigned index = 0;
+   for (unsigned i = 0; i < map->num; i++) {
+      if (set == map->set[i] && binding == map->binding[i]) {
+         assert(value == map->value[i]);
+         assert(array_size == map->array_size[i]);
+         return index;
+      }
+      index += map->array_size[i];
+   }
+
+   assert(index == map->num_desc);
+
+   map->set[map->num] = set;
+   map->binding[map->num] = binding;
+   map->value[map->num] = value;
+   map->array_size[map->num] = array_size;
+   map->num++;
+   map->num_desc += array_size;
+
+   return index;
+}
+
+/* Gathers info from the intrinsic (set and binding) and then lowers it so it
+ * could be used by the v3d_compiler */
+static bool
+lower_vulkan_resource_index(nir_builder *b,
+                            nir_intrinsic_instr *instr,
+                            struct v3dv_pipeline *pipeline,
+                            const struct v3dv_pipeline_layout *layout)
+{
+   if (instr->intrinsic != nir_intrinsic_vulkan_resource_index)
+      return false;
+
+   nir_const_value *const_val = nir_src_as_const_value(instr->src[0]);
+
+   unsigned set = nir_intrinsic_desc_set(instr);
+   unsigned binding = nir_intrinsic_binding(instr);
+   struct v3dv_descriptor_set_layout *set_layout = layout->set[set].layout;
+   struct v3dv_descriptor_set_binding_layout *binding_layout =
+      &set_layout->binding[binding];
+   unsigned index = 0;
+
+   switch (nir_intrinsic_desc_type(instr)) {
+   case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+   case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER: {
+      struct v3dv_descriptor_map *descriptor_map =
+         nir_intrinsic_desc_type(instr) == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER ?
+         &pipeline->ubo_map : &pipeline->ssbo_map;
+
+      if (!const_val)
+         unreachable("non-constant vulkan_resource_index array index");
+
+      /* Note: although for ubos we should skip index 0 which is used for push
+       * constants, that is already took into account when loading the ubo at
+       * nir_to_vir, so we don't need to do it here again.
+       */
+      index = descriptor_map_add(descriptor_map, set, binding, 0,
+                                 binding_layout->array_size);
+      index += const_val->u32;
+      break;
+   }
+
+   default:
+      unreachable("unsupported desc_type for vulkan_resource_index");
+      break;
+   }
+
+   nir_ssa_def_rewrite_uses(&instr->dest.ssa,
+                            nir_src_for_ssa(nir_imm_int(b, index)));
+   nir_instr_remove(&instr->instr);
+
+   return true;
+}
+
+static bool
+lower_impl(nir_function_impl *impl,
+           struct v3dv_pipeline *pipeline,
+           const struct v3dv_pipeline_layout *layout)
+{
+   nir_builder b;
+   nir_builder_init(&b, impl);
+   bool progress = false;
+
+   nir_foreach_block(block, impl) {
+      nir_foreach_instr_safe(instr, block) {
+         b.cursor = nir_before_instr(instr);
+         switch (instr->type) {
+         case nir_instr_type_intrinsic:
+            progress |=
+               lower_vulkan_resource_index(&b, nir_instr_as_intrinsic(instr),
+                                           pipeline, layout);
+            break;
+         default:
+            break;
+         }
+      }
+   }
+
+   return progress;
+}
+
+static bool
+lower_pipeline_layout_info(nir_shader *shader,
+                           struct v3dv_pipeline *pipeline,
+                           const struct v3dv_pipeline_layout *layout)
+{
+   bool progress = false;
+
+   nir_foreach_function(function, shader) {
+      if (function->impl)
+         progress |= lower_impl(function->impl, pipeline, layout);
+   }
+
+   return progress;
+}
+
 
 static void
 lower_fs_inputs(nir_shader *nir)
@@ -742,6 +868,17 @@ link_shaders(nir_shader *producer, nir_shader *consumer)
    }
 }
 
+static void
+pipeline_lower_nir(struct v3dv_pipeline *pipeline,
+                   struct v3dv_pipeline_stage *p_stage,
+                   struct v3dv_pipeline_layout *layout)
+{
+   nir_shader_gather_info(p_stage->nir, nir_shader_get_entrypoint(p_stage->nir));
+
+   /* Apply the actual pipeline layout to UBOs, SSBOs, and textures */
+   NIR_PASS_V(p_stage->nir, lower_pipeline_layout_info, pipeline, layout);
+}
+
 static VkResult
 pipeline_compile_graphics(struct v3dv_pipeline *pipeline,
                           const VkGraphicsPipelineCreateInfo *pCreateInfo,
@@ -801,12 +938,16 @@ pipeline_compile_graphics(struct v3dv_pipeline *pipeline,
       next_stage = stages[stage];
    }
 
+   V3DV_FROM_HANDLE(v3dv_pipeline_layout, layout, pCreateInfo->layout);
+
    /* Compiling to vir */
    for (int stage = MESA_SHADER_STAGES - 1; stage >= 0; stage--) {
       if (stages[stage] == NULL || stages[stage]->entrypoint == NULL)
          continue;
 
       struct v3dv_pipeline_stage *p_stage = stages[stage];
+
+      pipeline_lower_nir(pipeline, p_stage, layout);
 
       switch(stage) {
       case MESA_SHADER_VERTEX:

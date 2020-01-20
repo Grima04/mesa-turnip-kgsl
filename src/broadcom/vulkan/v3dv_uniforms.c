@@ -27,12 +27,38 @@
 
 #include "v3dv_private.h"
 
+static struct v3dv_descriptor *
+get_descriptor(struct v3dv_descriptor_state *descriptor_state,
+               struct v3dv_descriptor_map *map,
+               uint32_t index)
+{
+   assert(index >= 0 && index < map->num );
+
+   uint32_t set_number = map->set[index];
+   assert(descriptor_state->valid & 1 << set_number);
+
+   struct v3dv_descriptor_set *set =
+      descriptor_state->descriptors[set_number];
+   assert(set);
+
+   uint32_t binding_number = map->binding[index];
+   assert(binding_number < set->layout->binding_count);
+
+   const struct v3dv_descriptor_set_binding_layout *binding_layout =
+      &set->layout->binding[binding_number];
+
+   return &set->descriptors[binding_layout->descriptor_index];
+}
+
 struct v3dv_cl_reloc
 v3dv_write_uniforms(struct v3dv_cmd_buffer *cmd_buffer,
                     struct v3dv_pipeline_stage *p_stage)
 {
    struct v3d_uniform_list *uinfo = &p_stage->prog_data.base->uniforms;
    struct v3dv_dynamic_state *dynamic = &cmd_buffer->state.dynamic;
+   struct v3dv_descriptor_state *descriptor_state =
+      &cmd_buffer->state.descriptor_state;
+   struct v3dv_pipeline *pipeline = p_stage->pipeline;
 
    struct v3dv_job *job = cmd_buffer->state.job;
    assert(job);
@@ -74,6 +100,36 @@ v3dv_write_uniforms(struct v3dv_cmd_buffer *cmd_buffer,
       case QUNIFORM_VIEWPORT_Z_SCALE:
          cl_aligned_f(&uniforms, dynamic->viewport.scale[0][2]);
          break;
+
+      case QUNIFORM_SSBO_OFFSET:
+      case QUNIFORM_UBO_ADDR: {
+         struct v3dv_descriptor_map *map =
+            uinfo->contents[i] == QUNIFORM_UBO_ADDR ?
+            &pipeline->ubo_map : &pipeline->ssbo_map;
+
+         uint32_t offset =
+            uinfo->contents[i] == QUNIFORM_UBO_ADDR ?
+            v3d_unit_data_get_offset(data) :
+            0; /* FIXME */
+
+         /* UBO index is shift up by 1, to follow gallium (0 is gallium's
+          * constant buffer 0), that is what nir_to_vir expects. But for the
+          * ubo_map below, we start from 0.
+          */
+         uint32_t index =
+            uinfo->contents[i] == QUNIFORM_UBO_ADDR ?
+            v3d_unit_data_get_unit(data) - 1 :
+            data;
+
+         struct v3dv_descriptor *descriptor =
+            get_descriptor(descriptor_state, map, index);
+         assert(descriptor);
+
+         cl_aligned_reloc(&job->indirect, &uniforms,
+                          descriptor->bo,
+                          descriptor->offset + offset);
+         break;
+      }
 
       default:
          unreachable("unsupported quniform_contents uniform type\n");

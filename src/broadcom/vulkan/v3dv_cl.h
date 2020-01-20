@@ -119,6 +119,16 @@ cl_aligned_f(struct v3dv_cl_out **cl, float f)
    cl_aligned_u32(cl, fui(f));
 }
 
+static inline void
+cl_aligned_reloc(struct v3dv_cl *cl,
+                 struct v3dv_cl_out **cl_out,
+                 struct v3dv_bo *bo,
+                 uint32_t offset)
+{
+   cl_aligned_u32(cl_out, bo->offset + offset);
+   v3dv_job_add_bo(cl->job, bo);
+}
+
 uint32_t v3dv_cl_ensure_space(struct v3dv_cl *cl, uint32_t space, uint32_t alignment);
 void v3dv_cl_ensure_space_with_branch(struct v3dv_cl *cl, uint32_t space);
 
