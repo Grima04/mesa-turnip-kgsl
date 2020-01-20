@@ -688,19 +688,6 @@ st_context_flush(struct st_context_iface *stctxi, unsigned flags,
       st->gfx_shaders_may_be_dirty = true;
 }
 
-static void
-st_context_flush_resource(struct st_context_iface *stctxi,
-                          struct pipe_resource *resource)
-{
-   struct st_context *st = (struct st_context *) stctxi;
-   struct pipe_context *pipe = st->pipe;
-
-   FLUSH_VERTICES(st->ctx, 0);
-   FLUSH_CURRENT(st->ctx, 0);
-
-   pipe->flush_resource(pipe, resource);
-}
-
 static bool
 st_context_teximage(struct st_context_iface *stctxi,
                     enum st_texture_type tex_type,
@@ -995,7 +982,6 @@ st_api_create_context(struct st_api *stapi, struct st_manager *smapi,
 
    st->iface.destroy = st_context_destroy;
    st->iface.flush = st_context_flush;
-   st->iface.flush_resource = st_context_flush_resource;
    st->iface.teximage = st_context_teximage;
    st->iface.copy = st_context_copy;
    st->iface.share = st_context_share;

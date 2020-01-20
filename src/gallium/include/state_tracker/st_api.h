@@ -396,13 +396,6 @@ struct st_context_iface
                  void* notify_before_flush_cb_args);
 
    /**
-    * Flush all enqueued vertices (e.g. vbo module) and call
-    * pipe_context::flush_resource.
-    */
-   void (*flush_resource)(struct st_context_iface *stctxi,
-                          struct pipe_resource *resource);
-
-   /**
     * Replace the texture image of a texture object at the specified level.
     *
     * This function is optional.
