@@ -148,7 +148,7 @@ ppir_liveness_instr_srcs(ppir_compiler *comp, ppir_instr *instr)
             _mesa_set_add(instr->live_in_set, &instr->live_in[reg->regalloc_index]);
          }
          else {
-            unsigned int mask = ppir_src_get_mask(node);
+            unsigned int mask = ppir_src_get_mask(src);
 
             /* read reg is type register, need to check if this sets
              * any additional bits in the current mask */
@@ -209,7 +209,7 @@ ppir_liveness_instr_dest(ppir_compiler *comp, ppir_instr *instr)
          _mesa_set_remove_key(instr->live_in_set, &instr->live_in[reg->regalloc_index]);
       }
       else {
-         unsigned int mask = ppir_src_get_mask(node);
+         unsigned int mask = dest->write_mask;
          /* written reg is type register, need to check if this clears
           * the remaining mask to remove it from the live set */
          if (instr->live_in[reg->regalloc_index].mask ==
