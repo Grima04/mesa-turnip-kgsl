@@ -787,6 +787,11 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                 ALU_CASE(fexp2, fexp2);
                 ALU_CASE(flog2, flog2);
 
+                ALU_CASE(f2i64, f2i_rtz);
+                ALU_CASE(f2u64, f2u_rtz);
+                ALU_CASE(i2f64, i2f_rtz);
+                ALU_CASE(u2f64, u2f_rtz);
+
                 ALU_CASE(f2i32, f2i_rtz);
                 ALU_CASE(f2u32, f2u_rtz);
                 ALU_CASE(i2f32, i2f_rtz);
