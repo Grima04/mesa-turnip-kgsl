@@ -46,7 +46,8 @@ panfrost_create_compute_state(
         so->cbase = *cso;
         so->is_compute = true;
 
-        struct panfrost_shader_state *v = &so->variants[0];
+        struct panfrost_shader_state *v = calloc(1, sizeof(*v));
+        so->variants = v;
 
         so->variant_count = 1;
         so->active_variant = 0;
