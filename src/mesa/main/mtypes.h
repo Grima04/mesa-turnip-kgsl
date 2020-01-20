@@ -4394,6 +4394,7 @@ struct gl_extensions
    GLboolean MESA_ycbcr_texture;
    GLboolean NV_compute_shader_derivatives;
    GLboolean NV_conditional_render;
+   GLboolean NV_copy_image;
    GLboolean NV_fill_rectangle;
    GLboolean NV_fog_distance;
    GLboolean NV_point_sprite;

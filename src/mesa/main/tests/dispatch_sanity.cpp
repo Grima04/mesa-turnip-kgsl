@@ -563,6 +563,9 @@ const struct function common_desktop_functions_possible[] = {
    { "glEGLImageTargetTexStorageEXT", 31, -1 },
    { "glEGLImageTargetTextureStorageEXT", 31, -1 },
 
+   /* GL_NV_copy_image */
+   { "glCopyImageSubDataNV", 31, -1 },
+
    /* GL 3.2 */
    { "glGetInteger64i_v", 32, -1 },
    { "glGetBufferParameteri64v", 32, -1 },
