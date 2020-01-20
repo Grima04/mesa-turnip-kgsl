@@ -16,6 +16,7 @@ void print_asm_gfx6_gfx7(Program *program, std::vector<uint32_t>& binary,
 {
    char path[] = "/tmp/fileXXXXXX";
    char line[2048], command[128];
+   const char *gpu_type;
    FILE *p;
    int fd;
 
@@ -30,8 +31,39 @@ void print_asm_gfx6_gfx7(Program *program, std::vector<uint32_t>& binary,
          goto fail;
    }
 
-   sprintf(command, "clrxdisasm --gpuType=%s -r %s",
-           program->chip_class == GFX6 ? "gfx600" : "gfx700", path);
+   /* Determine the GPU type for CLRXdisasm. Use the family for GFX6 chips
+    * because it doesn't allow to use gfx600 directly.
+    */
+   switch (program->chip_class) {
+   case GFX6:
+      switch (program->family) {
+      case CHIP_TAHITI:
+         gpu_type = "tahiti";
+         break;
+      case CHIP_PITCAIRN:
+         gpu_type = "pitcairn";
+         break;
+      case CHIP_VERDE:
+         gpu_type = "capeverde";
+         break;
+      case CHIP_OLAND:
+         gpu_type = "oland";
+         break;
+      case CHIP_HAINAN:
+         gpu_type = "hainan";
+         break;
+      default:
+         unreachable("Invalid GFX6 family!");
+      }
+      break;
+   case GFX7:
+      gpu_type = "gfx700";
+      break;
+   default:
+      unreachable("Invalid chip class!");
+   }
+
+   sprintf(command, "clrxdisasm --gpuType=%s -r %s", gpu_type, path);
 
    p = popen(command, "r");
    if (p) {
