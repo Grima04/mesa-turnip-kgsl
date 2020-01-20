@@ -968,10 +968,14 @@ void add_branch_code(exec_ctx& ctx, Block* block)
       assert(block->instructions.back()->opcode == aco_opcode::p_branch);
       block->instructions.pop_back();
 
-      while (!(ctx.info[idx].exec.back().second & mask_type_loop))
+      bool need_parallelcopy = false;
+      while (!(ctx.info[idx].exec.back().second & mask_type_loop)) {
          ctx.info[idx].exec.pop_back();
+         need_parallelcopy = true;
+      }
 
-      ctx.info[idx].exec.back().first = bld.pseudo(aco_opcode::p_parallelcopy, bld.def(bld.lm, exec), ctx.info[idx].exec.back().first);
+      if (need_parallelcopy)
+         ctx.info[idx].exec.back().first = bld.pseudo(aco_opcode::p_parallelcopy, bld.def(bld.lm, exec), ctx.info[idx].exec.back().first);
       bld.branch(aco_opcode::p_cbranch_nz, bld.exec(ctx.info[idx].exec.back().first), block->linear_succs[1], block->linear_succs[0]);
       return;
    }
@@ -1052,7 +1056,7 @@ void add_branch_code(exec_ctx& ctx, Block* block)
          cond = bld.tmp(s1);
          Temp exec_mask = ctx.info[idx].exec[exec_idx].first;
          exec_mask = bld.sop2(Builder::s_andn2, bld.def(bld.lm), bld.scc(Definition(cond)),
-                              exec_mask, current_exec);
+                              exec_mask, bld.exec(current_exec));
          ctx.info[idx].exec[exec_idx].first = exec_mask;
          if (ctx.info[idx].exec[exec_idx].second & mask_type_loop)
             break;
