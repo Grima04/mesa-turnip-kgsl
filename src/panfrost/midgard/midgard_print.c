@@ -171,8 +171,8 @@ mir_print_instruction(midgard_instruction *ins)
         mir_print_swizzle(ins->swizzle[3]);
 
         if (ins->has_constants) {
-                uint32_t *uc = ins->constants;
-                float *fc = (float *) uc;
+                uint32_t *uc = ins->constants.u32;
+                float *fc = ins->constants.f32;
 
                 if (midgard_is_integer_op(ins->alu.op))
                         printf(" <0x%X, 0x%X, 0x%X, 0x%x>", uc[0], uc[1], uc[2], uc[3]);

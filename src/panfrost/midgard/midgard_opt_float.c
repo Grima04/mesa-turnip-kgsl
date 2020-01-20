@@ -60,8 +60,8 @@ midgard_opt_promote_fmov(compiler_context *ctx, midgard_block *block)
                 /* We found an imov with a constant. Check the constants */
                 bool ok = true;
 
-                for (unsigned i = 0; i < ARRAY_SIZE(ins->constants); ++i)
-                        ok &= mir_constant_float(ins->constants[i]);
+                for (unsigned i = 0; i < ARRAY_SIZE(ins->constants.u32); ++i)
+                        ok &= mir_constant_float(ins->constants.u32[i]);
 
                 if (!ok)
                         continue;

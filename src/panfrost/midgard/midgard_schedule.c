@@ -332,7 +332,7 @@ struct midgard_predicate {
          * mode, the constants array will be updated, and the instruction
          * will be adjusted to index into the constants array */
 
-        uint8_t *constants;
+        midgard_constants *constants;
         unsigned constant_count;
         bool blend_constant;
 
@@ -378,8 +378,8 @@ mir_adjust_constants(midgard_instruction *ins,
                 if (pred->constant_count)
                         return false;
 
-                uint16_t *bundles = (uint16_t *) pred->constants;
-                uint32_t *constants = (uint32_t *) ins->constants;
+                uint16_t *bundles = pred->constants->u16;
+                const uint16_t *constants = ins->constants.u16;
 
                 /* Copy them wholesale */
                 for (unsigned i = 0; i < 4; ++i)
@@ -388,8 +388,8 @@ mir_adjust_constants(midgard_instruction *ins,
                 pred->constant_count = 16;
         } else {
                 /* Pack 32-bit constants */
-                uint32_t *bundles = (uint32_t *) pred->constants;
-                uint32_t *constants = (uint32_t *) ins->constants;
+                uint32_t *bundles = pred->constants->u32;
+                const uint32_t *constants = ins->constants.u32;
                 unsigned r_constant = SSA_FIXED_REGISTER(REGISTER_CONSTANT);
                 unsigned mask = mir_from_bytemask(mir_bytemask_of_read_components(ins, r_constant), midgard_reg_mode_32);
 
@@ -864,7 +864,7 @@ mir_schedule_alu(
                 .tag = TAG_ALU_4,
                 .destructive = true,
                 .exclude = ~0,
-                .constants = (uint8_t *) bundle.constants
+                .constants = &bundle.constants
         };
 
         midgard_instruction *vmul = NULL;
@@ -946,13 +946,13 @@ mir_schedule_alu(
 
         /* If we have a render target reference, schedule a move for it */
 
-        if (branch && branch->writeout && (branch->constants[0] || ctx->is_blend)) {
+        if (branch && branch->writeout && (branch->constants.u32[0] || ctx->is_blend)) {
                 midgard_instruction mov = v_mov(~0, make_compiler_temp(ctx));
                 sadd = mem_dup(&mov, sizeof(midgard_instruction));
                 sadd->unit = UNIT_SADD;
                 sadd->mask = 0x1;
                 sadd->has_inline_constant = true;
-                sadd->inline_constant = branch->constants[0];
+                sadd->inline_constant = branch->constants.u32[0];
                 branch->src[1] = mov.dest;
                 /* TODO: Don't leak */
         }
