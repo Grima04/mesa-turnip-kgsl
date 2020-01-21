@@ -145,6 +145,15 @@ void update_renames(ra_ctx& ctx, std::array<uint32_t, 512>& reg_file,
       if (copy.second.isTemp())
          continue;
 
+      /* check if we we moved another parallelcopy definition */
+      for (std::pair<Operand, Definition>& other : parallelcopies) {
+         if (!other.second.isTemp())
+            continue;
+         if (copy.first.getTemp() == other.second.getTemp()) {
+            copy.first.setTemp(other.first.getTemp());
+            copy.first.setFixed(other.first.physReg());
+         }
+      }
       // FIXME: if a definition got moved, change the target location and remove the parallelcopy
       copy.second.setTemp(Temp(ctx.program->allocateId(), copy.second.regClass()));
       ctx.assignments[copy.second.tempId()] = {copy.second.physReg(), copy.second.regClass()};
@@ -1744,14 +1753,11 @@ void register_allocation(Program *program, std::vector<std::set<Temp>> live_out_
 
                /* it might happen that the operand is already renamed. we have to restore the original name. */
                std::map<unsigned, Temp>::iterator it = ctx.orig_names.find(pc->operands[i].tempId());
-               if (it != ctx.orig_names.end())
-                  pc->operands[i].setTemp(it->second);
-               unsigned orig_id = pc->operands[i].tempId();
-               ctx.orig_names[pc->definitions[i].tempId()] = pc->operands[i].getTemp();
-
-               pc->operands[i].setTemp(read_variable(pc->operands[i].getTemp(), block.index));
-               renames[block.index][orig_id] = pc->definitions[i].getTemp();
+               Temp orig = it != ctx.orig_names.end() ? it->second : pc->operands[i].getTemp();
+               ctx.orig_names[pc->definitions[i].tempId()] = orig;
+               renames[block.index][orig.id()] = pc->definitions[i].getTemp();
                renames[block.index][pc->definitions[i].tempId()] = pc->definitions[i].getTemp();
+
                std::map<unsigned, phi_info>::iterator phi = phi_map.find(pc->operands[i].tempId());
                if (phi != phi_map.end())
                   phi->second.uses.emplace(pc.get());
