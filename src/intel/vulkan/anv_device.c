@@ -3435,9 +3435,6 @@ VkResult anv_AllocateMemory(
       if (result != VK_SUCCESS)
          goto fail;
 
-      VkDeviceSize aligned_alloc_size =
-         align_u64(pAllocateInfo->allocationSize, 4096);
-
       /* For security purposes, we reject importing the bo if it's smaller
        * than the requested allocation size.  This prevents a malicious client
        * from passing a buffer to a trusted client, lying about the size, and
