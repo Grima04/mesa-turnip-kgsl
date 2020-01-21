@@ -233,8 +233,8 @@ static bool valid_flags(struct ir3_instruction *instr, unsigned n,
 			if (instr->opc == OPC_LDLW && n == 0)
 				return false;
 
-			/* disallow CP into anything but the SSBO slot argument for
-			 * atomics:
+			/* disallow immediates in anything but the SSBO slot argument for
+			 * cat6 instructions:
 			 */
 			if (is_atomic(instr->opc) && (n != 0))
 				return false;
@@ -245,11 +245,19 @@ static bool valid_flags(struct ir3_instruction *instr, unsigned n,
 			if (instr->opc == OPC_STG && (instr->flags & IR3_INSTR_G) && (n != 2))
 				return false;
 
-			/* as with atomics, ldib and ldc on a6xx can only have immediate
-			 * for SSBO slot argument
+			/* as with atomics, these cat6 instrs can only have an immediate
+			 * for SSBO/IBO slot argument
 			 */
-			if ((instr->opc == OPC_LDIB || instr->opc == OPC_LDC) && (n != 0))
-				return false;
+			switch (instr->opc) {
+			case OPC_LDIB:
+			case OPC_LDC:
+			case OPC_RESINFO:
+				if (n != 0)
+					return false;
+				break;
+			default:
+				break;
+			}
 		}
 
 		break;

@@ -1175,8 +1175,9 @@ emit_intrinsic_load_image(struct ir3_context *ctx, nir_intrinsic_instr *intr,
 	ir3_split_dest(b, dst, sam, 0, 4);
 }
 
-static void
-emit_intrinsic_image_size(struct ir3_context *ctx, nir_intrinsic_instr *intr,
+/* A4xx version of image_size, see ir3_a6xx.c for newer resinfo version. */
+void
+emit_intrinsic_image_size_tex(struct ir3_context *ctx, nir_intrinsic_instr *intr,
 		struct ir3_instruction **dst)
 {
 	struct ir3_block *b = ctx->block;
@@ -1726,7 +1727,7 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 		break;
 	case nir_intrinsic_image_size:
 	case nir_intrinsic_bindless_image_size:
-		emit_intrinsic_image_size(ctx, intr, dst);
+		ctx->funcs->emit_intrinsic_image_size(ctx, intr, dst);
 		break;
 	case nir_intrinsic_image_atomic_add:
 	case nir_intrinsic_bindless_image_atomic_add:

@@ -340,6 +340,23 @@ emit_intrinsic_atomic_image(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 	return atomic;
 }
 
+static void
+emit_intrinsic_image_size(struct ir3_context *ctx, nir_intrinsic_instr *intr,
+		struct ir3_instruction **dst)
+{
+	struct ir3_block *b = ctx->block;
+	struct ir3_instruction *ibo = ir3_image_to_ibo(ctx, intr->src[0]);
+	struct ir3_instruction *resinfo = ir3_RESINFO(b, ibo, 0);
+	resinfo->cat6.iim_val = 1;
+	resinfo->cat6.d = intr->num_components;
+	resinfo->cat6.type = TYPE_U32;
+	resinfo->cat6.typed = false;
+	resinfo->regs[0]->wrmask = MASK(intr->num_components);
+	ir3_handle_bindless_cat6(resinfo, intr->src[0]);
+
+	ir3_split_dest(b, dst, resinfo, 0, intr->num_components);
+}
+
 const struct ir3_context_funcs ir3_a6xx_funcs = {
 		.emit_intrinsic_load_ssbo = emit_intrinsic_load_ssbo,
 		.emit_intrinsic_store_ssbo = emit_intrinsic_store_ssbo,
@@ -347,6 +364,7 @@ const struct ir3_context_funcs ir3_a6xx_funcs = {
 		.emit_intrinsic_load_image = emit_intrinsic_load_image,
 		.emit_intrinsic_store_image = emit_intrinsic_store_image,
 		.emit_intrinsic_atomic_image = emit_intrinsic_atomic_image,
+		.emit_intrinsic_image_size = emit_intrinsic_image_size,
 };
 
 /*
