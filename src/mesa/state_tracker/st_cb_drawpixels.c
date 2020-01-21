@@ -896,7 +896,8 @@ draw_textured_quad(struct gl_context *ctx, GLint x, GLint y, GLfloat z,
    /* viewport state: viewport matching window dims */
    cso_set_viewport_dims(cso, fb_width, fb_height, TRUE);
 
-   cso_set_vertex_elements(cso, 3, st->util_velems);
+   st->util_velems.count = 3;
+   cso_set_vertex_elements(cso, &st->util_velems);
    cso_set_stream_outputs(cso, 0, NULL, NULL);
 
    /* Compute Gallium window coords (y=0=top) with pixel zoom.

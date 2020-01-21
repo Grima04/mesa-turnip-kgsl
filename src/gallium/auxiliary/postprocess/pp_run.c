@@ -277,7 +277,7 @@ pp_filter_misc_state(struct pp_program *p)
    cso_set_rasterizer(p->cso, &p->rasterizer);
    cso_set_viewport(p->cso, &p->viewport);
 
-   cso_set_vertex_elements(p->cso, 2, p->velem);
+   cso_set_vertex_elements(p->cso, &p->velem);
 }
 
 /** Draw with the filter to the set output. */

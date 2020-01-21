@@ -41,6 +41,7 @@ struct st_vertex_program;
 struct st_common_variant;
 struct pipe_vertex_buffer;
 struct pipe_vertex_element;
+struct cso_velems_state;
 
 /**
  * Enumeration of state tracker pipelines.
@@ -62,7 +63,7 @@ void
 st_setup_arrays(struct st_context *st,
                 const struct st_vertex_program *vp,
                 const struct st_common_variant *vp_variant,
-                struct pipe_vertex_element *velements,
+                struct cso_velems_state *velements,
                 struct pipe_vertex_buffer *vbuffer, unsigned *num_vbuffers,
                 bool *has_user_vertex_buffers);
 
@@ -70,7 +71,7 @@ void
 st_setup_current_user(struct st_context *st,
                       const struct st_vertex_program *vp,
                       const struct st_common_variant *vp_variant,
-                      struct pipe_vertex_element *velements,
+                      struct cso_velems_state *velements,
                       struct pipe_vertex_buffer *vbuffer, unsigned *num_vbuffers);
 
 /* Define ST_NEW_xxx_INDEX */

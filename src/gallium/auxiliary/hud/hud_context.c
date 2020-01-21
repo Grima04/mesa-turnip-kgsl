@@ -539,7 +539,7 @@ hud_draw_results(struct hud_context *hud, struct pipe_resource *tex)
    cso_set_tesseval_shader_handle(cso, NULL);
    cso_set_geometry_shader_handle(cso, NULL);
    cso_set_vertex_shader_handle(cso, hud->vs);
-   cso_set_vertex_elements(cso, 2, hud->velems);
+   cso_set_vertex_elements(cso, &hud->velems);
    cso_set_render_condition(cso, NULL, FALSE, 0);
    cso_set_sampler_views(cso, PIPE_SHADER_FRAGMENT, 1,
                          &hud->font_sampler_view);
@@ -1872,10 +1872,11 @@ hud_create(struct cso_context *cso, struct hud_context *share)
    hud->rasterizer_aa_lines.line_smooth = 1;
 
    /* vertex elements */
+   hud->velems.count = 2;
    for (i = 0; i < 2; i++) {
-      hud->velems[i].src_offset = i * 2 * sizeof(float);
-      hud->velems[i].src_format = PIPE_FORMAT_R32G32_FLOAT;
-      hud->velems[i].vertex_buffer_index = 0;
+      hud->velems.velems[i].src_offset = i * 2 * sizeof(float);
+      hud->velems.velems[i].src_format = PIPE_FORMAT_R32G32_FLOAT;
+      hud->velems.velems[i].vertex_buffer_index = 0;
    }
 
    /* sampler state (for font drawing) */

@@ -134,17 +134,17 @@ static void
 util_set_interleaved_vertex_elements(struct cso_context *cso,
                                      unsigned num_elements)
 {
+   struct cso_velems_state velem;
    unsigned i;
-   struct pipe_vertex_element *velem =
-      calloc(1, num_elements * sizeof(struct pipe_vertex_element));
 
+   memset(&velem, 0, sizeof(velem));
+   velem.count = num_elements;
    for (i = 0; i < num_elements; i++) {
-      velem[i].src_format = PIPE_FORMAT_R32G32B32A32_FLOAT;
-      velem[i].src_offset = i * 16;
+      velem.velems[i].src_format = PIPE_FORMAT_R32G32B32A32_FLOAT;
+      velem.velems[i].src_offset = i * 16;
    }
 
-   cso_set_vertex_elements(cso, num_elements, velem);
-   free(velem);
+   cso_set_vertex_elements(cso, &velem);
 }
 
 static void *

@@ -110,7 +110,7 @@ st_feedback_draw_vbo(struct gl_context *ctx,
    struct st_common_variant *vp_variant;
    struct pipe_vertex_buffer vbuffers[PIPE_MAX_SHADER_INPUTS];
    unsigned num_vbuffers = 0;
-   struct pipe_vertex_element velements[PIPE_MAX_ATTRIBS];
+   struct cso_velems_state velements;
    struct pipe_transfer *vb_transfer[PIPE_MAX_ATTRIBS] = {NULL};
    struct pipe_transfer *ib_transfer = NULL;
    GLuint i;
@@ -160,10 +160,10 @@ st_feedback_draw_vbo(struct gl_context *ctx,
    /* Must setup these after state validation! */
    /* Setup arrays */
    bool uses_user_vertex_buffers;
-   st_setup_arrays(st, vp, vp_variant, velements, vbuffers, &num_vbuffers,
+   st_setup_arrays(st, vp, vp_variant, &velements, vbuffers, &num_vbuffers,
                    &uses_user_vertex_buffers);
    /* Setup current values as userspace arrays */
-   st_setup_current_user(st, vp, vp_variant, velements, vbuffers, &num_vbuffers);
+   st_setup_current_user(st, vp, vp_variant, &velements, vbuffers, &num_vbuffers);
 
    /* Map all buffers and tell draw about their mapping */
    for (unsigned buf = 0; buf < num_vbuffers; ++buf) {
@@ -180,7 +180,7 @@ st_feedback_draw_vbo(struct gl_context *ctx,
    }
 
    draw_set_vertex_buffers(draw, 0, num_vbuffers, vbuffers);
-   draw_set_vertex_elements(draw, vp->num_inputs, velements);
+   draw_set_vertex_elements(draw, vp->num_inputs, velements.velems);
 
    unsigned start = 0;
 

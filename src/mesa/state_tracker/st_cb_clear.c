@@ -321,7 +321,9 @@ clear_with_quad(struct gl_context *ctx, unsigned clear_buffers)
       cso_set_depth_stencil_alpha(cso, &depth_stencil);
    }
 
-   cso_set_vertex_elements(cso, 2, st->util_velems);
+   st->util_velems.count = 2;
+   cso_set_vertex_elements(cso, &st->util_velems);
+
    cso_set_stream_outputs(cso, 0, NULL, NULL);
    cso_set_sample_mask(cso, ~0);
    cso_set_min_samples(cso, 1);
