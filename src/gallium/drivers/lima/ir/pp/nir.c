@@ -440,9 +440,6 @@ static ppir_node *ppir_emit_ssa_undef(ppir_block *block, nir_instr *ni)
 
    ppir_dest *dest = &alu->dest;
    dest->ssa.undef = true;
-   ppir_reg *ssa = &dest->ssa;
-
-   list_add(&ssa->list, &block->comp->reg_list);
 
    return node;
 }
