@@ -22,17 +22,17 @@
  *
  * Authors:
  *    Rob Clark <robclark@freedesktop.org>
+ *    Jonathan Marek <jonathan@marek.ca>
  */
 
 #include "fd4_resource.h"
 
-static uint32_t
-setup_slices(struct fd_resource *rsc, uint32_t alignment, enum pipe_format format)
+uint32_t
+fd4_setup_slices(struct fd_resource *rsc)
 {
 	struct pipe_resource *prsc = &rsc->base;
-	struct fd_screen *screen = fd_screen(prsc->screen);
+	enum pipe_format format = prsc->format;
 	enum util_format_layout layout = util_format_description(format)->layout;
-	uint32_t pitchalign = screen->gmem_alignw;
 	uint32_t level, size = 0;
 	uint32_t width = prsc->width0;
 	uint32_t height = prsc->height0;
@@ -40,33 +40,39 @@ setup_slices(struct fd_resource *rsc, uint32_t alignment, enum pipe_format forma
 	/* in layer_first layout, the level (slice) contains just one
 	 * layer (since in fact the layer contains the slices)
 	 */
-	uint32_t layers_in_level = rsc->layout.layer_first ? 1 : prsc->array_size;
+	uint32_t layers_in_level, alignment;
+
+	if (prsc->target == PIPE_TEXTURE_3D) {
+		rsc->layout.layer_first = false;
+		layers_in_level = prsc->array_size;
+		alignment = 4096;
+	} else {
+		rsc->layout.layer_first = true;
+		layers_in_level = 1;
+		alignment = 1;
+	}
 
 	for (level = 0; level <= prsc->last_level; level++) {
 		struct fdl_slice *slice = fd_resource_slice(rsc, level);
 		uint32_t blocks;
 
 		if (layout == UTIL_FORMAT_LAYOUT_ASTC)
-			width = util_align_npot(width, pitchalign * util_format_get_blockwidth(format));
+			width = util_align_npot(width, 32 * util_format_get_blockwidth(format));
 		else
-			width = align(width, pitchalign);
+			width = align(width, 32);
 		slice->pitch = util_format_get_nblocksx(format, width) * rsc->layout.cpp;
 		slice->offset = size;
 		blocks = util_format_get_nblocks(format, width, height);
-		/* 1d array and 2d array textures must all have the same layer size
-		 * for each miplevel on a3xx. 3d textures can have different layer
-		 * sizes for high levels, but the hw auto-sizer is buggy (or at least
-		 * different than what this code does), so as soon as the layer size
-		 * range gets into range, we stop reducing it.
+		/* 3d textures can have different layer sizes for high levels, but the
+		 * hw auto-sizer is buggy (or at least different than what this code
+		 * does), so as soon as the layer size range gets into range, we stop
+		 * reducing it.
 		 */
-		if (prsc->target == PIPE_TEXTURE_3D && (
-					level == 1 ||
-					(level > 1 && fd_resource_slice(rsc, level - 1)->size0 > 0xf000)))
-			slice->size0 = align(blocks * rsc->layout.cpp, alignment);
-		else if (level == 0 || rsc->layout.layer_first || alignment == 1)
-			slice->size0 = align(blocks * rsc->layout.cpp, alignment);
-		else
+		if (prsc->target == PIPE_TEXTURE_3D &&
+			(level > 1 && fd_resource_slice(rsc, level - 1)->size0 <= 0xf000))
 			slice->size0 = fd_resource_slice(rsc, level - 1)->size0;
+		else
+			slice->size0 = align(blocks * rsc->layout.cpp, alignment);
 
 		size += slice->size0 * depth * layers_in_level;
 
@@ -76,50 +82,4 @@ setup_slices(struct fd_resource *rsc, uint32_t alignment, enum pipe_format forma
 	}
 
 	return size;
-}
-
-static uint32_t
-slice_alignment(enum pipe_texture_target target)
-{
-	/* on a3xx, 2d array and 3d textures seem to want their
-	 * layers aligned to page boundaries:
-	 */
-	switch (target) {
-	case PIPE_TEXTURE_3D:
-	case PIPE_TEXTURE_1D_ARRAY:
-	case PIPE_TEXTURE_2D_ARRAY:
-		return 4096;
-	default:
-		return 1;
-	}
-}
-
-/* cross generation texture layout to plug in to screen->setup_slices()..
- * replace with generation specific one as-needed.
- *
- * TODO for a4xx probably can extract out the a4xx specific logic int
- * a small fd4_setup_slices() wrapper that sets up layer_first, and then
- * calls this.
- */
-uint32_t
-fd4_setup_slices(struct fd_resource *rsc)
-{
-	uint32_t alignment;
-
-	alignment = slice_alignment(rsc->base.target);
-
-	struct fd_screen *screen = fd_screen(rsc->base.screen);
-	if (is_a4xx(screen)) {
-		switch (rsc->base.target) {
-		case PIPE_TEXTURE_3D:
-			rsc->layout.layer_first = false;
-			break;
-		default:
-			rsc->layout.layer_first = true;
-			alignment = 1;
-			break;
-		}
-	}
-
-	return setup_slices(rsc, alignment, rsc->base.format);
 }
