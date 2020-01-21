@@ -353,8 +353,7 @@ TEST_P(validation_test, invalid_type_encoding)
        * encodings are rejected by the validator.
        */
       int e;
-      BITSET_WORD tmp;
-      BITSET_FOREACH_SET(e, tmp, invalid_encodings, num_encodings) {
+      BITSET_FOREACH_SET(e, invalid_encodings, num_encodings) {
          if (file == FIXED_GRF) {
             brw_MOV(p, g0, g0);
             brw_inst_set_src0_vstride(&devinfo, last_inst, BRW_VERTICAL_STRIDE_4);
@@ -432,8 +431,7 @@ TEST_P(validation_test, invalid_type_encoding_3src_a16)
     * encodings are rejected by the validator.
     */
    int e;
-   BITSET_WORD tmp;
-   BITSET_FOREACH_SET(e, tmp, invalid_encodings, num_encodings) {
+   BITSET_FOREACH_SET(e, invalid_encodings, num_encodings) {
       for (unsigned i = 0; i < 2; i++) {
          if (i == 0) {
             brw_MAD(p, g0, g0, g0, g0);
@@ -525,8 +523,7 @@ TEST_P(validation_test, invalid_type_encoding_3src_a1)
     * encodings are rejected by the validator.
     */
    int e;
-   BITSET_WORD tmp;
-   BITSET_FOREACH_SET(e, tmp, invalid_encodings, num_encodings) {
+   BITSET_FOREACH_SET(e, invalid_encodings, num_encodings) {
       const unsigned hw_type = e & 0x7;
       const unsigned exec_type = e >> 3;
 

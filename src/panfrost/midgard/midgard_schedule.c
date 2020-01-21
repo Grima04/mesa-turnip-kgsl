@@ -300,8 +300,7 @@ mir_update_worklist(
          * where possible. */
 
         unsigned i;
-        BITSET_WORD tmp;
-        BITSET_FOREACH_SET(i, tmp, done->dependents, count) {
+        BITSET_FOREACH_SET(i, done->dependents, count) {
                 assert(instructions[i]->nr_dependencies);
 
                 if (!(--instructions[i]->nr_dependencies))
@@ -482,7 +481,6 @@ mir_choose_instruction(
 
         /* Iterate to find the best instruction satisfying the predicate */
         unsigned i;
-        BITSET_WORD tmp;
 
         signed best_index = -1;
         bool best_conditional = false;
@@ -494,11 +492,11 @@ mir_choose_instruction(
         unsigned max_active = 0;
         unsigned max_distance = 6;
 
-        BITSET_FOREACH_SET(i, tmp, worklist, count) {
+        BITSET_FOREACH_SET(i, worklist, count) {
                 max_active = MAX2(max_active, i);
         }
 
-        BITSET_FOREACH_SET(i, tmp, worklist, count) {
+        BITSET_FOREACH_SET(i, worklist, count) {
                 if ((max_active - i) >= max_distance)
                         continue;
 
