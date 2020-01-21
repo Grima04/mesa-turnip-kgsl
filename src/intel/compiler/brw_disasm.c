@@ -829,6 +829,9 @@ dest_3src(FILE *file, const struct gen_device_info *devinfo, const brw_inst *ins
    unsigned subreg_nr;
    enum brw_reg_type type;
 
+   if (devinfo->gen < 10 && is_align1)
+      return 0;
+
    if (devinfo->gen == 6 && brw_inst_3src_a16_dst_reg_file(devinfo, inst))
       reg_file = BRW_MESSAGE_REGISTER_FILE;
    else if (devinfo->gen >= 12)
@@ -1101,6 +1104,9 @@ src0_3src(FILE *file, const struct gen_device_info *devinfo, const brw_inst *ins
    bool is_scalar_region;
    bool is_align1 = brw_inst_3src_access_mode(devinfo, inst) == BRW_ALIGN_1;
 
+   if (devinfo->gen < 10 && is_align1)
+      return 0;
+
    if (is_align1) {
       if (devinfo->gen >= 12 && !brw_inst_3src_a1_src0_is_imm(devinfo, inst)) {
          _file = brw_inst_3src_a1_src0_reg_file(devinfo, inst);
@@ -1184,6 +1190,9 @@ src1_3src(FILE *file, const struct gen_device_info *devinfo, const brw_inst *ins
    bool is_scalar_region;
    bool is_align1 = brw_inst_3src_access_mode(devinfo, inst) == BRW_ALIGN_1;
 
+   if (devinfo->gen < 10 && is_align1)
+      return 0;
+
    if (is_align1) {
       if (devinfo->gen >= 12) {
          _file = brw_inst_3src_a1_src1_reg_file(devinfo, inst);
@@ -1253,6 +1262,9 @@ src2_3src(FILE *file, const struct gen_device_info *devinfo, const brw_inst *ins
    enum brw_horizontal_stride _horiz_stride;
    bool is_scalar_region;
    bool is_align1 = brw_inst_3src_access_mode(devinfo, inst) == BRW_ALIGN_1;
+
+   if (devinfo->gen < 10 && is_align1)
+      return 0;
 
    if (is_align1) {
       if (devinfo->gen >= 12 && !brw_inst_3src_a1_src2_is_imm(devinfo, inst)) {
