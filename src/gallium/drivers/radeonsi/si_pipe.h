@@ -205,6 +205,10 @@ enum {
 	DBG_NO_DCC_MSAA,
 	DBG_NO_FMASK,
 
+	DBG_COUNT
+};
+
+enum {
 	/* Tests: */
 	DBG_TEST_DMA,
 	DBG_TEST_VMFAULT_CP,

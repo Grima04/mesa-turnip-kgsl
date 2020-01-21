@@ -116,6 +116,10 @@ static const struct debug_named_value debug_options[] = {
 	{ "nodccmsaa", DBG(NO_DCC_MSAA), "Disable DCC for MSAA" },
 	{ "nofmask", DBG(NO_FMASK), "Disable MSAA compression" },
 
+	DEBUG_NAMED_VALUE_END /* must be last */
+};
+
+static const struct debug_named_value test_options[] = {
 	/* Tests: */
 	{ "testdma", DBG(TEST_DMA), "Invoke SDMA tests and exit." },
 	{ "testvmfaultcp", DBG(TEST_VMFAULT_CP), "Invoke a CP VM fault test and exit." },
@@ -421,6 +425,7 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen,
                                               unsigned flags)
 {
 	struct si_screen* sscreen = (struct si_screen *)screen;
+	STATIC_ASSERT(DBG_COUNT <= 64);
 
 	/* Don't create a context if it's not compute-only and hw is compute-only. */
 	if (!sscreen->info.has_graphics &&
@@ -839,7 +844,7 @@ static void si_init_gs_info(struct si_screen *sscreen)
 							sscreen->info.family);
 }
 
-static void si_test_vmfault(struct si_screen *sscreen)
+static void si_test_vmfault(struct si_screen *sscreen, uint64_t test_flags)
 {
 	struct pipe_context *ctx = sscreen->aux_context;
 	struct si_context *sctx = (struct si_context *)ctx;
@@ -853,18 +858,18 @@ static void si_test_vmfault(struct si_screen *sscreen)
 
 	si_resource(buf)->gpu_address = 0; /* cause a VM fault */
 
-	if (sscreen->debug_flags & DBG(TEST_VMFAULT_CP)) {
+	if (test_flags & DBG(TEST_VMFAULT_CP)) {
 		si_cp_dma_copy_buffer(sctx, buf, buf, 0, 4, 4, 0,
 				      SI_COHERENCY_NONE, L2_BYPASS);
 		ctx->flush(ctx, NULL, 0);
 		puts("VM fault test: CP - done.");
 	}
-	if (sscreen->debug_flags & DBG(TEST_VMFAULT_SDMA)) {
+	if (test_flags & DBG(TEST_VMFAULT_SDMA)) {
 		si_sdma_clear_buffer(sctx, buf, 0, 4, 0);
 		ctx->flush(ctx, NULL, 0);
 		puts("VM fault test: SDMA - done.");
 	}
-	if (sscreen->debug_flags & DBG(TEST_VMFAULT_SHADER)) {
+	if (test_flags & DBG(TEST_VMFAULT_SHADER)) {
 		util_test_constant_buffer(ctx, buf);
 		puts("VM fault test: Shader - done.");
 	}
@@ -970,6 +975,7 @@ radeonsi_screen_create_impl(struct radeon_winsys *ws,
 {
 	struct si_screen *sscreen = CALLOC_STRUCT(si_screen);
 	unsigned hw_threads, num_comp_hi_threads, num_comp_lo_threads;
+	uint64_t test_flags;
 
 	if (!sscreen) {
 		return NULL;
@@ -997,6 +1003,8 @@ radeonsi_screen_create_impl(struct radeon_winsys *ws,
 						      debug_options, 0);
 	sscreen->debug_flags |= debug_get_flags_option("AMD_DEBUG",
 						       debug_options, 0);
+	test_flags = debug_get_flags_option("AMD_TEST",
+					    test_options, 0);
 
 	if (sscreen->debug_flags & DBG(NO_GFX))
 		sscreen->info.has_graphics = false;
@@ -1303,26 +1311,26 @@ radeonsi_screen_create_impl(struct radeon_winsys *ws,
 		sscreen->aux_context->set_log_context(sscreen->aux_context, log);
 	}
 
-	if (sscreen->debug_flags & DBG(TEST_DMA))
+	if (test_flags & DBG(TEST_DMA))
 		si_test_dma(sscreen);
 
-	if (sscreen->debug_flags & DBG(TEST_DMA_PERF)) {
+	if (test_flags & DBG(TEST_DMA_PERF)) {
 		si_test_dma_perf(sscreen);
 	}
 
-	if (sscreen->debug_flags & (DBG(TEST_VMFAULT_CP) |
+	if (test_flags & (DBG(TEST_VMFAULT_CP) |
 				      DBG(TEST_VMFAULT_SDMA) |
 				      DBG(TEST_VMFAULT_SHADER)))
-		si_test_vmfault(sscreen);
+		si_test_vmfault(sscreen, test_flags);
 
-	if (sscreen->debug_flags & DBG(TEST_GDS))
+	if (test_flags & DBG(TEST_GDS))
 		si_test_gds((struct si_context*)sscreen->aux_context);
 
-	if (sscreen->debug_flags & DBG(TEST_GDS_MM)) {
+	if (test_flags & DBG(TEST_GDS_MM)) {
 		si_test_gds_memory_management((struct si_context*)sscreen->aux_context,
 					      32 * 1024, 4, RADEON_DOMAIN_GDS);
 	}
-	if (sscreen->debug_flags & DBG(TEST_GDS_OA_MM)) {
+	if (test_flags & DBG(TEST_GDS_OA_MM)) {
 		si_test_gds_memory_management((struct si_context*)sscreen->aux_context,
 					      4, 1, RADEON_DOMAIN_OA);
 	}
