@@ -353,6 +353,24 @@ int handle_instruction_gfx8_9(NOP_ctx_gfx8_9& ctx, aco_ptr<Instruction>& instr,
                ctx.VALU_wrsgpr = NOPs ? new_idx : new_idx + 1;
          }
       }
+
+      /* It's required to insert 1 wait state if the dst VGPR of any v_interp_*
+       * is followed by a read with v_readfirstlane or v_readlane to fix GPU
+       * hangs on GFX6. Note that v_writelane_* is apparently not affected.
+       * This hazard isn't documented anywhere but AMD confirmed that hazard.
+       */
+      if (ctx.chip_class == GFX6 &&
+          !new_instructions.empty() &&
+          (instr->opcode == aco_opcode::v_readfirstlane_b32 ||
+           instr->opcode == aco_opcode::v_readlane_b32)) {
+         aco_ptr<Instruction>& pred = new_instructions.back();
+         if (pred->format == Format::VINTRP) {
+            Definition pred_def = pred->definitions[0];
+            Operand& op = instr->operands[0];
+            if (regs_intersect(pred_def.physReg(), pred_def.size(), op.physReg(), op.size()))
+               NOPs = std::max(NOPs, 1);
+         }
+      }
       return NOPs;
    } else if (instr->isVMEM() && ctx.VALU_wrsgpr + 5 >= new_idx) {
       /* If the VALU writes the SGPR that is used by a VMEM, the user must add five wait states. */
