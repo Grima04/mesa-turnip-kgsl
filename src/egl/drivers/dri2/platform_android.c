@@ -375,7 +375,10 @@ droid_create_surface(_EGLDriver *drv, _EGLDisplay *disp, EGLint type,
    if (type == EGL_WINDOW_BIT) {
       int format;
       int buffer_count;
-      const int min_buffers = 3;
+      int min_buffer_count, max_buffer_count;
+
+      /* Prefer triple buffering for performance reasons. */
+      const int preferred_buffer_count = 3;
 
       if (window->common.magic != ANDROID_NATIVE_WINDOW_MAGIC) {
          _eglError(EGL_BAD_NATIVE_WINDOW, "droid_create_surface");
@@ -386,17 +389,30 @@ droid_create_surface(_EGLDriver *drv, _EGLDisplay *disp, EGLint type,
          goto cleanup_surface;
       }
 
-      /* Query ANativeWindow for MIN_UNDEQUEUED_BUFFER, set buffer count
-       * and allocate color_buffers.
+      /* Query ANativeWindow for MIN_UNDEQUEUED_BUFFER, minimum amount
+       * of undequeued buffers.
        */
       if (window->query(window, NATIVE_WINDOW_MIN_UNDEQUEUED_BUFFERS,
-                        &buffer_count)) {
+                        &min_buffer_count)) {
          _eglError(EGL_BAD_NATIVE_WINDOW, "droid_create_surface");
          goto cleanup_surface;
       }
 
-      if (buffer_count < min_buffers)
-         buffer_count = min_buffers;
+      /* Query for maximum buffer count, application can set this
+       * to limit the total amount of buffers.
+       */
+      if (window->query(window, NATIVE_WINDOW_MAX_BUFFER_COUNT,
+                        &max_buffer_count)) {
+         _eglError(EGL_BAD_NATIVE_WINDOW, "droid_create_surface");
+         goto cleanup_surface;
+      }
+
+      /* Clamp preferred between minimum (min undequeued + 1 dequeued)
+       * and maximum.
+       */
+      buffer_count = CLAMP(preferred_buffer_count, min_buffer_count + 1,
+                           max_buffer_count);
+
       if (native_window_set_buffer_count(window, buffer_count)) {
          _eglError(EGL_BAD_NATIVE_WINDOW, "droid_create_surface");
          goto cleanup_surface;
