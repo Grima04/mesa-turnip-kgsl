@@ -129,7 +129,7 @@ emit_mrt(struct fd_ringbuffer *ring, unsigned nr_bufs,
 static bool
 use_hw_binning(struct fd_batch *batch)
 {
-	const struct fd_gmem_stateobj *gmem = &batch->ctx->gmem;
+	const struct fd_gmem_stateobj *gmem = batch->gmem_state;
 
 	/* workaround: combining scissor optimization and hw binning
 	 * seems problematic.  Seems like we end up with a mismatch
@@ -163,7 +163,7 @@ static void
 emit_binning_workaround(struct fd_batch *batch)
 {
 	struct fd_context *ctx = batch->ctx;
-	const struct fd_gmem_stateobj *gmem = &ctx->gmem;
+	const struct fd_gmem_stateobj *gmem = batch->gmem_state;
 	struct fd_ringbuffer *ring = batch->gmem;
 	struct fd3_emit emit = {
 			.debug = &ctx->debug,
@@ -361,6 +361,7 @@ fd3_emit_tile_gmem2mem(struct fd_batch *batch, const struct fd_tile *tile)
 {
 	struct fd_context *ctx = batch->ctx;
 	struct fd_ringbuffer *ring = batch->gmem;
+	const struct fd_gmem_stateobj *gmem = batch->gmem_state;
 	struct pipe_framebuffer_state *pfb = &batch->framebuffer;
 	struct fd3_emit emit = {
 			.debug = &ctx->debug,
@@ -419,7 +420,7 @@ fd3_emit_tile_gmem2mem(struct fd_batch *batch, const struct fd_tile *tile)
 	OUT_RING(ring, A3XX_RB_RENDER_CONTROL_DISABLE_COLOR_PIPE |
 			A3XX_RB_RENDER_CONTROL_ENABLE_GMEM |
 			A3XX_RB_RENDER_CONTROL_ALPHA_TEST_FUNC(FUNC_NEVER) |
-			A3XX_RB_RENDER_CONTROL_BIN_WIDTH(ctx->gmem.bin_w));
+			A3XX_RB_RENDER_CONTROL_BIN_WIDTH(batch->gmem_state->bin_w));
 
 	OUT_PKT0(ring, REG_A3XX_GRAS_SC_CONTROL, 1);
 	OUT_RING(ring, A3XX_GRAS_SC_CONTROL_RENDER_MODE(RB_RESOLVE_PASS) |
@@ -451,10 +452,10 @@ fd3_emit_tile_gmem2mem(struct fd_batch *batch, const struct fd_tile *tile)
 		struct fd_resource *rsc = fd_resource(pfb->zsbuf->texture);
 		if (!rsc->stencil || batch->resolve & FD_BUFFER_DEPTH)
 			emit_gmem2mem_surf(batch, RB_COPY_DEPTH_STENCIL, false,
-							   ctx->gmem.zsbuf_base[0], pfb->zsbuf);
+							   gmem->zsbuf_base[0], pfb->zsbuf);
 		if (rsc->stencil && batch->resolve & FD_BUFFER_STENCIL)
 			emit_gmem2mem_surf(batch, RB_COPY_DEPTH_STENCIL, true,
-							   ctx->gmem.zsbuf_base[1], pfb->zsbuf);
+							   gmem->zsbuf_base[1], pfb->zsbuf);
 	}
 
 	if (batch->resolve & FD_BUFFER_COLOR) {
@@ -464,7 +465,7 @@ fd3_emit_tile_gmem2mem(struct fd_batch *batch, const struct fd_tile *tile)
 			if (!(batch->resolve & (PIPE_CLEAR_COLOR0 << i)))
 				continue;
 			emit_gmem2mem_surf(batch, RB_COPY_RESOLVE, false,
-							   ctx->gmem.cbuf_base[i], pfb->cbufs[i]);
+							   gmem->cbuf_base[i], pfb->cbufs[i]);
 		}
 	}
 
@@ -512,7 +513,7 @@ emit_mem2gmem_surf(struct fd_batch *batch, const uint32_t bases[],
 		OUT_PKT0(ring, REG_A3XX_RB_DEPTH_INFO, 2);
 		OUT_RING(ring, A3XX_RB_DEPTH_INFO_DEPTH_BASE(bases[0]) |
 				 A3XX_RB_DEPTH_INFO_DEPTH_FORMAT(DEPTHX_32));
-		OUT_RING(ring, A3XX_RB_DEPTH_PITCH(4 * batch->ctx->gmem.bin_w));
+		OUT_RING(ring, A3XX_RB_DEPTH_PITCH(4 * batch->gmem_state->bin_w));
 
 		if (psurf[0]->format == PIPE_FORMAT_Z32_FLOAT) {
 			OUT_PKT0(ring, REG_A3XX_RB_MRT_CONTROL(0), 1);
@@ -541,7 +542,7 @@ static void
 fd3_emit_tile_mem2gmem(struct fd_batch *batch, const struct fd_tile *tile)
 {
 	struct fd_context *ctx = batch->ctx;
-	const struct fd_gmem_stateobj *gmem = &ctx->gmem;
+	const struct fd_gmem_stateobj *gmem = batch->gmem_state;
 	struct fd_ringbuffer *ring = batch->gmem;
 	struct pipe_framebuffer_state *pfb = &batch->framebuffer;
 	struct fd3_emit emit = {
@@ -777,7 +778,7 @@ static void
 update_vsc_pipe(struct fd_batch *batch)
 {
 	struct fd_context *ctx = batch->ctx;
-	const struct fd_gmem_stateobj *gmem = &ctx->gmem;
+	const struct fd_gmem_stateobj *gmem = batch->gmem_state;
 	struct fd3_context *fd3_ctx = fd3_context(ctx);
 	struct fd_ringbuffer *ring = batch->gmem;
 	int i;
@@ -807,7 +808,7 @@ static void
 emit_binning_pass(struct fd_batch *batch)
 {
 	struct fd_context *ctx = batch->ctx;
-	const struct fd_gmem_stateobj *gmem = &ctx->gmem;
+	const struct fd_gmem_stateobj *gmem = batch->gmem_state;
 	struct pipe_framebuffer_state *pfb = &batch->framebuffer;
 	struct fd_ringbuffer *ring = batch->gmem;
 	int i;
@@ -936,7 +937,7 @@ fd3_emit_tile_init(struct fd_batch *batch)
 {
 	struct fd_ringbuffer *ring = batch->gmem;
 	struct pipe_framebuffer_state *pfb = &batch->framebuffer;
-	const struct fd_gmem_stateobj *gmem = &batch->ctx->gmem;
+	const struct fd_gmem_stateobj *gmem = batch->gmem_state;
 	uint32_t rb_render_control;
 
 	fd3_emit_restore(batch, ring);
@@ -990,7 +991,7 @@ fd3_emit_tile_renderprep(struct fd_batch *batch, const struct fd_tile *tile)
 	struct fd_context *ctx = batch->ctx;
 	struct fd3_context *fd3_ctx = fd3_context(ctx);
 	struct fd_ringbuffer *ring = batch->gmem;
-	const struct fd_gmem_stateobj *gmem = &ctx->gmem;
+	const struct fd_gmem_stateobj *gmem = batch->gmem_state;
 	struct pipe_framebuffer_state *pfb = &batch->framebuffer;
 
 	uint32_t x1 = tile->xoff;

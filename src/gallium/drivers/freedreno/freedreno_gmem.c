@@ -347,10 +347,9 @@ calculate_tiles(struct fd_batch *batch)
 }
 
 static void
-render_tiles(struct fd_batch *batch)
+render_tiles(struct fd_batch *batch, struct fd_gmem_stateobj *gmem)
 {
 	struct fd_context *ctx = batch->ctx;
-	struct fd_gmem_stateobj *gmem = &ctx->gmem;
 	int i;
 
 	ctx->emit_tile_init(batch);
@@ -485,6 +484,7 @@ fd_gmem_render_tiles(struct fd_batch *batch)
 		ctx->stats.batch_sysmem++;
 	} else {
 		struct fd_gmem_stateobj *gmem = &ctx->gmem;
+		batch->gmem_state = gmem;
 		calculate_tiles(batch);
 		DBG("%p: rendering %dx%d tiles %ux%u (%s/%s)",
 			batch, pfb->width, pfb->height, gmem->nbins_x, gmem->nbins_y,
@@ -492,7 +492,7 @@ fd_gmem_render_tiles(struct fd_batch *batch)
 			util_format_short_name(pipe_surface_format(pfb->zsbuf)));
 		if (ctx->query_prepare)
 			ctx->query_prepare(batch, gmem->nbins_x * gmem->nbins_y);
-		render_tiles(batch);
+		render_tiles(batch, gmem);
 		ctx->stats.batch_gmem++;
 	}
 

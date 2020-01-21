@@ -125,6 +125,12 @@ struct fd_batch {
 		FD_GMEM_LOGICOP_ENABLED      = 0x20,
 		FD_GMEM_FB_READ              = 0x40,
 	} gmem_reason;
+
+	/* At submit time, once we've decided that this batch will use GMEM
+	 * rendering, the appropriate gmem state is looked up:
+	 */
+	const struct fd_gmem_stateobj *gmem_state;
+
 	unsigned num_draws;   /* number of draws in current batch */
 	unsigned num_vertices;   /* number of vertices in current batch */
 
