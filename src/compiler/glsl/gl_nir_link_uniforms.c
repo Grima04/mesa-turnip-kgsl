@@ -181,6 +181,7 @@ struct nir_link_uniforms_state {
 
    /* per-variable */
    nir_variable *current_var;
+   const struct glsl_type *current_ifc_type;
    int offset;
    bool var_is_in_block;
    int top_level_array_size;
@@ -637,9 +638,14 @@ nir_link_uniform(struct gl_context *ctx,
              * a buffer object. For variables not backed by a buffer object,
              * offset is -1.
              */
-            if (state->var_is_in_block && prog->data->spirv) {
-               state->offset =
-                  struct_base_offset + glsl_get_struct_field_offset(type, i);
+            if (state->var_is_in_block) {
+               if (prog->data->spirv) {
+                  state->offset =
+                     struct_base_offset + glsl_get_struct_field_offset(type, i);
+               } else if (glsl_get_struct_field_offset(type, i) != -1 &&
+                          type == state->current_ifc_type) {
+                  state->offset = glsl_get_struct_field_offset(type, i);
+               }
             }
 
             /* Append '.field' to the current variable name. */
@@ -968,6 +974,7 @@ gl_nir_link_uniforms(struct gl_context *ctx,
 
       nir_foreach_variable(var, &nir->uniforms) {
          state.current_var = var;
+         state.current_ifc_type = NULL;
          state.offset = 0;
          state.var_is_in_block = nir_variable_is_in_block(var);
          state.top_level_array_size = 0;
@@ -1013,6 +1020,7 @@ gl_nir_link_uniforms(struct gl_context *ctx,
              ((!prog->data->spirv && glsl_without_array(type) == var->interface_type) ||
               (prog->data->spirv && type == var->interface_type))) {
             type = glsl_without_array(var->type);
+            state.current_ifc_type = type;
             name = ralloc_strdup(NULL, glsl_get_type_name(type));
          } else {
             name = ralloc_strdup(NULL, var->name);
