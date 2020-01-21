@@ -156,12 +156,12 @@ static void ppir_node_add_src(ppir_compiler *comp, ppir_node *node,
          child = comp->var_nodes[(reg->index << 2) + comp->reg_base + swizzle];
          /* Reg is read before it was written, create a dummy node for it */
          if (!child) {
-            child = ppir_node_create_reg(node->block, ppir_op_undef, reg,
+            child = ppir_node_create_reg(node->block, ppir_op_dummy, reg,
                u_bit_consecutive(0, 4));
             comp->var_nodes[(reg->index << 2) + comp->reg_base + swizzle] = child;
          }
          /* Don't add dummies or recursive deps for ops like r1 = r1 + ssa1 */
-         if (child && node != child && child->op != ppir_op_undef)
+         if (child && node != child && child->op != ppir_op_dummy)
             ppir_node_add_dep(node, child, ppir_dep_src);
       }
    }
