@@ -438,6 +438,11 @@ depth_stencil_attachment_compute_aux_usage(struct anv_device *device,
    att_state->aux_usage = ISL_AUX_USAGE_NONE;
    att_state->input_aux_usage = ISL_AUX_USAGE_NONE;
 
+   /* This is unused for depth/stencil but valgrind complains if it
+    * isn't initialized
+    */
+   att_state->clear_color_is_zero_one = false;
+
    if (GEN_GEN == 7) {
       /* We don't do any HiZ or depth fast-clears on gen7 yet */
       att_state->fast_clear = false;
