@@ -4150,6 +4150,9 @@ struct gl_constants
    /** Wether or not glBitmap uses red textures rather than alpha */
    bool BitmapUsesRed;
 
+   /** Whether the vertex buffer offset is a signed 32-bit integer. */
+   bool VertexBufferOffsetIsInt32;
+
    /** GL_ARB_gl_spirv */
    struct spirv_supported_capabilities SpirVCapabilities;
 

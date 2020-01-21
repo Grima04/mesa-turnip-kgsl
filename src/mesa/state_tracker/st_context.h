@@ -147,7 +147,6 @@ struct st_context
    boolean has_indep_blend_func;
    boolean needs_rgb_dst_alpha_override;
    boolean can_bind_const_buffer_as_vertex;
-   boolean has_signed_vertex_buffer_offset;
    boolean lower_flatshade;
    boolean lower_alpha_test;
    boolean lower_point_size;

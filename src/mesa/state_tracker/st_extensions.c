@@ -559,6 +559,9 @@ void st_init_limits(struct pipe_screen *screen,
    temp = screen->get_param(screen, PIPE_CAP_MAX_COMBINED_SHADER_OUTPUT_RESOURCES);
    if (temp > 0 && c->MaxCombinedShaderOutputResources > temp)
       c->MaxCombinedShaderOutputResources = temp;
+
+   c->VertexBufferOffsetIsInt32 =
+      screen->get_param(screen, PIPE_CAP_SIGNED_VERTEX_BUFFER_OFFSET);
 }
 
 

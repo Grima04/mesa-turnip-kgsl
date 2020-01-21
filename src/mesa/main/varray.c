@@ -199,6 +199,20 @@ _mesa_bind_vertex_buffer(struct gl_context *ctx,
    assert(!vao->SharedAndImmutable);
    struct gl_vertex_buffer_binding *binding = &vao->BufferBinding[index];
 
+   if (ctx->Const.VertexBufferOffsetIsInt32 && (int)offset < 0 &&
+       _mesa_is_bufferobj(vbo)) {
+      /* The offset will be interpreted as a signed int, so make sure
+       * the user supplied offset is not negative (driver limitation).
+       */
+      _mesa_warning(ctx, "Received negative int32 vertex buffer offset. "
+			 "(driver limitation)\n");
+
+      /* We can't disable this binding, so use a non-negative offset value
+       * instead.
+       */
+      offset = 0;
+   }
+
    if (binding->BufferObj != vbo ||
        binding->Offset != offset ||
        binding->Stride != stride) {
