@@ -111,8 +111,6 @@ struct wsi_device {
       bool strict_imageCount;
    } x11;
 
-   uint64_t (*image_get_modifier)(VkImage image);
-
    /* Signals the semaphore such that any wait on the semaphore will wait on
     * any reads or writes on the give memory object.  This is used to
     * implement the semaphore signal operation in vkAcquireNextImage.
