@@ -89,7 +89,7 @@ static void translate_image(struct fd6_image *img, const struct pipe_image_view 
 		/* size is encoded with low 15b in WIDTH and high bits in
 		 * HEIGHT, in units of elements:
 		 */
-		unsigned sz = prsc->width0;
+		unsigned sz = pimg->u.buf.size / util_format_get_blocksize(format);
 		img->width  = sz & MASK(15);
 		img->height = sz >> 15;
 		img->depth  = 0;
