@@ -3438,11 +3438,9 @@ struct anv_image {
       struct anv_surface shadow_surface;
 
       /**
-       * For color images, this is the aux usage for this image when not used
-       * as a color attachment.
-       *
-       * For depth/stencil images, this is set to ISL_AUX_USAGE_HIZ if the
-       * image has a HiZ buffer.
+       * The base aux usage for this image.  For color images, this can be
+       * either CCS_E or CCS_D depending on whether or not we can reliably
+       * leave CCS on all the time.
        */
       enum isl_aux_usage aux_usage;
 

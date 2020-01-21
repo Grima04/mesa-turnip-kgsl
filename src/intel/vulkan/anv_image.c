@@ -438,8 +438,8 @@ make_surface(struct anv_device *dev,
                                     &image->planes[plane].surface.isl,
                                     &image->planes[plane].aux_surface.isl);
          assert(ok);
-         add_surface(image, &image->planes[plane].aux_surface, plane);
          image->planes[plane].aux_usage = ISL_AUX_USAGE_HIZ;
+         add_surface(image, &image->planes[plane].aux_surface, plane);
       }
    } else if ((aspect & VK_IMAGE_ASPECT_ANY_COLOR_BIT_ANV) && image->samples == 1) {
       /* TODO: Disallow compression with :
@@ -499,6 +499,8 @@ make_surface(struct anv_device *dev,
                              "Gen12+. Not allocating a CCS buffer.");
                image->planes[plane].aux_surface.isl.size_B = 0;
                return VK_SUCCESS;
+            } else {
+               image->planes[plane].aux_usage = ISL_AUX_USAGE_CCS_D;
             }
 
             add_surface(image, &image->planes[plane].aux_surface, plane);
@@ -512,9 +514,9 @@ make_surface(struct anv_device *dev,
                                  &image->planes[plane].surface.isl,
                                  &image->planes[plane].aux_surface.isl);
       if (ok) {
+         image->planes[plane].aux_usage = ISL_AUX_USAGE_MCS;
          add_surface(image, &image->planes[plane].aux_surface, plane);
          add_aux_state_tracking_buffer(image, plane, dev);
-         image->planes[plane].aux_usage = ISL_AUX_USAGE_MCS;
       }
    }
 
@@ -1153,10 +1155,9 @@ anv_layout_to_aux_state(const struct gen_device_info * const devinfo,
           */
          assert(image->planes[plane].aux_usage == ISL_AUX_USAGE_HIZ);
          return ISL_AUX_STATE_AUX_INVALID;
-      } else if (image->planes[plane].aux_usage == ISL_AUX_USAGE_NONE) {
+      } else if (image->planes[plane].aux_usage == ISL_AUX_USAGE_CCS_D) {
          return ISL_AUX_STATE_PASS_THROUGH;
       } else {
-         assert(image->planes[plane].aux_usage != ISL_AUX_USAGE_CCS_D);
          return ISL_AUX_STATE_COMPRESSED_CLEAR;
       }
 
@@ -1173,7 +1174,7 @@ anv_layout_to_aux_state(const struct gen_device_info * const devinfo,
             return ISL_AUX_STATE_COMPRESSED_CLEAR;
          else
             return ISL_AUX_STATE_RESOLVED;
-      } else if (image->planes[plane].aux_usage == ISL_AUX_USAGE_NONE) {
+      } else if (image->planes[plane].aux_usage == ISL_AUX_USAGE_CCS_D) {
          return ISL_AUX_STATE_PASS_THROUGH;
       } else {
          return ISL_AUX_STATE_COMPRESSED_CLEAR;
@@ -1213,11 +1214,9 @@ anv_layout_to_aux_state(const struct gen_device_info * const devinfo,
       assert(aspect & VK_IMAGE_ASPECT_ANY_COLOR_BIT_ANV);
       /* fall-through */
    case VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL_KHR:
-      if (image->planes[plane].aux_usage == ISL_AUX_USAGE_NONE) {
-         assert(image->samples == 1);
+      if (image->planes[plane].aux_usage == ISL_AUX_USAGE_CCS_D) {
          return ISL_AUX_STATE_PARTIAL_CLEAR;
       } else {
-         assert(image->planes[plane].aux_usage != ISL_AUX_USAGE_CCS_D);
          return ISL_AUX_STATE_COMPRESSED_CLEAR;
       }
 
@@ -1322,7 +1321,7 @@ anv_layout_to_aux_usage(const struct gen_device_info * const devinfo,
 
    case ISL_AUX_STATE_PARTIAL_CLEAR:
       assert(image->aspects & VK_IMAGE_ASPECT_ANY_COLOR_BIT_ANV);
-      assert(image->planes[plane].aux_usage == ISL_AUX_USAGE_NONE);
+      assert(image->planes[plane].aux_usage == ISL_AUX_USAGE_CCS_D);
       assert(image->samples == 1);
       return ISL_AUX_USAGE_CCS_D;
 

@@ -1441,17 +1441,6 @@ void anv_CmdResolveImage(
    }
 }
 
-static enum isl_aux_usage
-fast_clear_aux_usage(const struct anv_image *image,
-                     VkImageAspectFlagBits aspect)
-{
-   uint32_t plane = anv_image_aspect_to_plane(image->aspects, aspect);
-   if (image->planes[plane].aux_usage == ISL_AUX_USAGE_NONE)
-      return ISL_AUX_USAGE_CCS_D;
-   else
-      return image->planes[plane].aux_usage;
-}
-
 void
 anv_image_copy_to_shadow(struct anv_cmd_buffer *cmd_buffer,
                          const struct anv_image *image,
@@ -1836,7 +1825,7 @@ anv_image_ccs_op(struct anv_cmd_buffer *cmd_buffer,
    struct blorp_surf surf;
    get_blorp_surf_for_anv_image(cmd_buffer->device, image, aspect,
                                 0, ANV_IMAGE_LAYOUT_EXPLICIT_AUX,
-                                fast_clear_aux_usage(image, aspect),
+                                image->planes[plane].aux_usage,
                                 &surf);
 
    /* Blorp will store the clear color for us if we provide the clear color
