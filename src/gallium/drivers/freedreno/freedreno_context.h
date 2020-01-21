@@ -159,6 +159,16 @@ enum fd_dirty_shader_state {
 struct fd_context {
 	struct pipe_context base;
 
+	/* We currently need to serialize emitting GMEM batches, because of
+	 * VSC state access in the context.
+	 *
+	 * In practice this lock should not be contended, since pipe_context
+	 * use should be single threaded.  But it is needed to protect the
+	 * case, with batch reordering where a ctxB batch triggers flushing
+	 * a ctxA batch
+	 */
+	mtx_t gmem_lock;
+
 	struct fd_device *dev;
 	struct fd_screen *screen;
 	struct fd_pipe *pipe;
