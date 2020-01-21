@@ -561,6 +561,7 @@ static void
 update_vsc_pipe(struct fd_batch *batch)
 {
 	struct fd_context *ctx = batch->ctx;
+	struct fd_gmem_stateobj *gmem = &ctx->gmem;
 	struct fd4_context *fd4_ctx = fd4_context(ctx);
 	struct fd_ringbuffer *ring = batch->gmem;
 	int i;
@@ -570,7 +571,7 @@ update_vsc_pipe(struct fd_batch *batch)
 
 	OUT_PKT0(ring, REG_A4XX_VSC_PIPE_CONFIG_REG(0), 8);
 	for (i = 0; i < 8; i++) {
-		struct fd_vsc_pipe *pipe = &ctx->vsc_pipe[i];
+		struct fd_vsc_pipe *pipe = &gmem->vsc_pipe[i];
 		OUT_RING(ring, A4XX_VSC_PIPE_CONFIG_REG_X(pipe->x) |
 				A4XX_VSC_PIPE_CONFIG_REG_Y(pipe->y) |
 				A4XX_VSC_PIPE_CONFIG_REG_W(pipe->w) |
@@ -766,7 +767,7 @@ fd4_emit_tile_renderprep(struct fd_batch *batch, struct fd_tile *tile)
 	uint32_t y2 = tile->yoff + tile->bin_h - 1;
 
 	if (use_hw_binning(batch)) {
-		struct fd_vsc_pipe *pipe = &ctx->vsc_pipe[tile->p];
+		struct fd_vsc_pipe *pipe = &gmem->vsc_pipe[tile->p];
 		struct fd_bo *pipe_bo = ctx->vsc_pipe_bo[tile->p];
 
 		assert(pipe->w && pipe->h);

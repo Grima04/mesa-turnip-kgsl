@@ -777,6 +777,7 @@ static void
 update_vsc_pipe(struct fd_batch *batch)
 {
 	struct fd_context *ctx = batch->ctx;
+	struct fd_gmem_stateobj *gmem = &ctx->gmem;
 	struct fd3_context *fd3_ctx = fd3_context(ctx);
 	struct fd_ringbuffer *ring = batch->gmem;
 	int i;
@@ -785,7 +786,7 @@ update_vsc_pipe(struct fd_batch *batch)
 	OUT_RELOCW(ring, fd3_ctx->vsc_size_mem, 0, 0, 0); /* VSC_SIZE_ADDRESS */
 
 	for (i = 0; i < 8; i++) {
-		struct fd_vsc_pipe *pipe = &ctx->vsc_pipe[i];
+		struct fd_vsc_pipe *pipe = &gmem->vsc_pipe[i];
 
 		if (!ctx->vsc_pipe_bo[i]) {
 			ctx->vsc_pipe_bo[i] = fd_bo_new(ctx->dev, 0x40000,
@@ -1018,7 +1019,7 @@ fd3_emit_tile_renderprep(struct fd_batch *batch, struct fd_tile *tile)
 	}
 
 	if (use_hw_binning(batch)) {
-		struct fd_vsc_pipe *pipe = &ctx->vsc_pipe[tile->p];
+		struct fd_vsc_pipe *pipe = &gmem->vsc_pipe[tile->p];
 		struct fd_bo *pipe_bo = ctx->vsc_pipe_bo[tile->p];
 
 		assert(pipe->w && pipe->h);

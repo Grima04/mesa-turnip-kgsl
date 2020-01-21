@@ -266,8 +266,6 @@ struct fd_context {
 	 * means we'd always have to recalc tiles ever batch)
 	 */
 	struct fd_gmem_stateobj gmem;
-	struct fd_vsc_pipe      vsc_pipe[32];
-	struct fd_tile          tile[512];
 
 	/* Per vsc pipe bo's (a2xx-a5xx): */
 	struct fd_bo *vsc_pipe_bo[32];

@@ -253,7 +253,7 @@ calculate_tiles(struct fd_batch *batch)
 	/* configure pipes: */
 	xoff = yoff = 0;
 	for (i = 0; i < npipes; i++) {
-		struct fd_vsc_pipe *pipe = &ctx->vsc_pipe[i];
+		struct fd_vsc_pipe *pipe = &gmem->vsc_pipe[i];
 
 		if (xoff >= nbins_x) {
 			xoff = 0;
@@ -276,14 +276,14 @@ calculate_tiles(struct fd_batch *batch)
 	gmem->num_vsc_pipes = MAX2(1, i);
 
 	for (; i < npipes; i++) {
-		struct fd_vsc_pipe *pipe = &ctx->vsc_pipe[i];
+		struct fd_vsc_pipe *pipe = &gmem->vsc_pipe[i];
 		pipe->x = pipe->y = pipe->w = pipe->h = 0;
 	}
 
 	if (BIN_DEBUG) {
 		printf("%dx%d ... tpp=%dx%d\n", nbins_x, nbins_y, tpp_x, tpp_y);
-		for (i = 0; i < ARRAY_SIZE(ctx->vsc_pipe); i++) {
-			struct fd_vsc_pipe *pipe = &ctx->vsc_pipe[i];
+		for (i = 0; i < ARRAY_SIZE(gmem->vsc_pipe); i++) {
+			struct fd_vsc_pipe *pipe = &gmem->vsc_pipe[i];
 			printf("pipe[%d]: %ux%u @ %u,%u\n", i,
 					pipe->w, pipe->h, pipe->x, pipe->y);
 		}
@@ -302,10 +302,10 @@ calculate_tiles(struct fd_batch *batch)
 		bh = MIN2(bin_h, miny + height - yoff);
 
 		for (j = 0; j < nbins_x; j++) {
-			struct fd_tile *tile = &ctx->tile[t];
+			struct fd_tile *tile = &gmem->tile[t];
 			uint32_t p;
 
-			assert(t < ARRAY_SIZE(ctx->tile));
+			assert(t < ARRAY_SIZE(gmem->tile));
 
 			/* pipe number: */
 			p = ((i / tpp_y) * div_round_up(nbins_x, tpp_x)) + (j / tpp_x);
@@ -338,7 +338,7 @@ calculate_tiles(struct fd_batch *batch)
 		t = 0;
 		for (i = 0; i < nbins_y; i++) {
 			for (j = 0; j < nbins_x; j++) {
-				struct fd_tile *tile = &ctx->tile[t++];
+				struct fd_tile *tile = &gmem->tile[t++];
 				printf("|p:%u n:%u|", tile->p, tile->n);
 			}
 			printf("\n");
@@ -359,7 +359,7 @@ render_tiles(struct fd_batch *batch)
 		ctx->stats.batch_restore++;
 
 	for (i = 0; i < (gmem->nbins_x * gmem->nbins_y); i++) {
-		struct fd_tile *tile = &ctx->tile[i];
+		struct fd_tile *tile = &gmem->tile[i];
 
 		DBG("bin_h=%d, yoff=%d, bin_w=%d, xoff=%d",
 			tile->bin_h, tile->yoff, tile->bin_w, tile->xoff);
