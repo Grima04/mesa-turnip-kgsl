@@ -3487,15 +3487,13 @@ anv_image_aux_levels(const struct anv_image * const image,
                      VkImageAspectFlagBits aspect)
 {
    uint32_t plane = anv_image_aspect_to_plane(image->aspects, aspect);
+   if (image->planes[plane].aux_usage == ISL_AUX_USAGE_NONE)
+      return 0;
 
    /* The Gen12 CCS aux surface is represented with only one level. */
-   const uint8_t aux_logical_levels =
-      image->planes[plane].aux_surface.isl.tiling == ISL_TILING_GEN12_CCS ?
-      image->planes[plane].surface.isl.levels :
-      image->planes[plane].aux_surface.isl.levels;
-
-   return image->planes[plane].aux_surface.isl.size_B > 0 ?
-          aux_logical_levels : 0;
+   return image->planes[plane].aux_surface.isl.tiling == ISL_TILING_GEN12_CCS ?
+          image->planes[plane].surface.isl.levels :
+          image->planes[plane].aux_surface.isl.levels;
 }
 
 /* Returns the number of auxiliary buffer layers attached to an image. */

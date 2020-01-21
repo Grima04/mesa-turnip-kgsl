@@ -251,7 +251,7 @@ add_aux_state_tracking_buffer(struct anv_image *image,
                               const struct anv_device *device)
 {
    assert(image && device);
-   assert(image->planes[plane].aux_surface.isl.size_B > 0 &&
+   assert(image->planes[plane].aux_usage != ISL_AUX_USAGE_NONE &&
           image->aspects & VK_IMAGE_ASPECT_ANY_COLOR_BIT_ANV);
 
    /* Compressed images must be tiled and therefore everything should be 4K
@@ -532,7 +532,7 @@ make_surface(struct anv_device *dev,
             image->planes[plane].surface.isl.size_B)) <=
           (image->planes[plane].offset + image->planes[plane].size));
 
-   if (image->planes[plane].aux_surface.isl.size_B) {
+   if (image->planes[plane].aux_usage != ISL_AUX_USAGE_NONE) {
       /* assert(image->planes[plane].fast_clear_state_offset == */
       /*        (image->planes[plane].aux_surface.offset + image->planes[plane].aux_surface.isl.size_B)); */
       assert(image->planes[plane].fast_clear_state_offset <
@@ -1121,7 +1121,7 @@ anv_layout_to_aux_state(const struct gen_device_info * const devinfo,
    uint32_t plane = anv_image_aspect_to_plane(image->aspects, aspect);
 
    /* If we don't have an aux buffer then aux state makes no sense */
-   assert(image->planes[plane].aux_surface.isl.size_B > 0);
+   assert(image->planes[plane].aux_usage != ISL_AUX_USAGE_NONE);
 
    /* All images that use an auxiliary surface are required to be tiled. */
    assert(image->planes[plane].surface.isl.tiling != ISL_TILING_LINEAR);
@@ -1309,7 +1309,7 @@ anv_layout_to_aux_usage(const struct gen_device_info * const devinfo,
    /* If there is no auxiliary surface allocated, we must use the one and only
     * main buffer.
     */
-   if (image->planes[plane].aux_surface.isl.size_B == 0)
+   if (image->planes[plane].aux_usage == ISL_AUX_USAGE_NONE)
       return ISL_AUX_USAGE_NONE;
 
    enum isl_aux_state aux_state =
@@ -1381,7 +1381,7 @@ anv_layout_to_fast_clear_type(const struct gen_device_info * const devinfo,
    uint32_t plane = anv_image_aspect_to_plane(image->aspects, aspect);
 
    /* If there is no auxiliary surface allocated, there are no fast-clears */
-   if (image->planes[plane].aux_surface.isl.size_B == 0)
+   if (image->planes[plane].aux_usage == ISL_AUX_USAGE_NONE)
       return ANV_FAST_CLEAR_NONE;
 
    /* We don't support MSAA fast-clears on Ivybridge or Bay Trail because they
