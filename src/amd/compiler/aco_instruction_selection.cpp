@@ -1701,7 +1701,24 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
       if (dst.size() == 1) {
          emit_vop1_instruction(ctx, instr, aco_opcode::v_ceil_f32, dst);
       } else if (dst.size() == 2) {
-         emit_vop1_instruction(ctx, instr, aco_opcode::v_ceil_f64, dst);
+         if (ctx->options->chip_class >= GFX7) {
+            emit_vop1_instruction(ctx, instr, aco_opcode::v_ceil_f64, dst);
+         } else {
+            /* GFX6 doesn't support V_CEIL_F64, lower it. */
+            Temp src0 = get_alu_src(ctx, instr->src[0]);
+
+            /* trunc = trunc(src0)
+             * if (src0 > 0.0 && src0 != trunc)
+             *    trunc += 1.0
+             */
+            Temp trunc = emit_trunc_f64(ctx, bld, bld.def(v2), src0);
+            Temp tmp0 = bld.vopc_e64(aco_opcode::v_cmp_gt_f64, bld.def(bld.lm), src0, Operand(0u));
+            Temp tmp1 = bld.vopc(aco_opcode::v_cmp_lg_f64, bld.hint_vcc(bld.def(bld.lm)), src0, trunc);
+            Temp cond = bld.sop2(aco_opcode::s_and_b64, bld.hint_vcc(bld.def(s2)), bld.def(s1, scc), tmp0, tmp1);
+            Temp add = bld.vop2(aco_opcode::v_cndmask_b32, bld.def(v1), bld.copy(bld.def(v1), Operand(0u)), bld.copy(bld.def(v1), Operand(0x3ff00000u)), cond);
+            add = bld.pseudo(aco_opcode::p_create_vector, bld.def(v2), bld.copy(bld.def(v1), Operand(0u)), add);
+            bld.vop3(aco_opcode::v_add_f64, Definition(dst), trunc, add);
+         }
       } else {
          fprintf(stderr, "Unimplemented NIR instr bit size: ");
          nir_print_instr(&instr->instr, stderr);
