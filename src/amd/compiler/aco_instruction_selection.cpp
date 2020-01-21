@@ -1742,7 +1742,34 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
       if (dst.size() == 1) {
          emit_vop1_instruction(ctx, instr, aco_opcode::v_rndne_f32, dst);
       } else if (dst.size() == 2) {
-         emit_vop1_instruction(ctx, instr, aco_opcode::v_rndne_f64, dst);
+         if (ctx->options->chip_class >= GFX7) {
+            emit_vop1_instruction(ctx, instr, aco_opcode::v_rndne_f64, dst);
+         } else {
+            /* GFX6 doesn't support V_RNDNE_F64, lower it. */
+            Temp src0 = get_alu_src(ctx, instr->src[0]);
+
+            Temp src0_lo = bld.tmp(v1), src0_hi = bld.tmp(v1);
+            bld.pseudo(aco_opcode::p_split_vector, Definition(src0_lo), Definition(src0_hi), src0);
+
+            Temp bitmask = bld.sop1(aco_opcode::s_brev_b32, bld.def(s1), bld.copy(bld.def(s1), Operand(-2u)));
+            Temp bfi = bld.vop3(aco_opcode::v_bfi_b32, bld.def(v1), bitmask, bld.copy(bld.def(v1), Operand(0x43300000u)), as_vgpr(ctx, src0_hi));
+            Temp tmp = bld.vop3(aco_opcode::v_add_f64, bld.def(v2), src0, bld.pseudo(aco_opcode::p_create_vector, bld.def(v2), Operand(0u), bfi));
+            Instruction *sub = bld.vop3(aco_opcode::v_add_f64, bld.def(v2), tmp, bld.pseudo(aco_opcode::p_create_vector, bld.def(v2), Operand(0u), bfi));
+            static_cast<VOP3A_instruction*>(sub)->neg[1] = true;
+            tmp = sub->definitions[0].getTemp();
+
+            Temp v = bld.pseudo(aco_opcode::p_create_vector, bld.def(v2), Operand(-1u), Operand(0x432fffffu));
+            Instruction* vop3 = bld.vopc_e64(aco_opcode::v_cmp_gt_f64, bld.hint_vcc(bld.def(bld.lm)), src0, v);
+            static_cast<VOP3A_instruction*>(vop3)->abs[0] = true;
+            Temp cond = vop3->definitions[0].getTemp();
+
+            Temp tmp_lo = bld.tmp(v1), tmp_hi = bld.tmp(v1);
+            bld.pseudo(aco_opcode::p_split_vector, Definition(tmp_lo), Definition(tmp_hi), tmp);
+            Temp dst0 = bld.vop2_e64(aco_opcode::v_cndmask_b32, bld.def(v1), tmp_lo, as_vgpr(ctx, src0_lo), cond);
+            Temp dst1 = bld.vop2_e64(aco_opcode::v_cndmask_b32, bld.def(v1), tmp_hi, as_vgpr(ctx, src0_hi), cond);
+
+            bld.pseudo(aco_opcode::p_create_vector, Definition(dst), dst0, dst1);
+         }
       } else {
          fprintf(stderr, "Unimplemented NIR instr bit size: ");
          nir_print_instr(&instr->instr, stderr);
