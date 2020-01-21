@@ -555,6 +555,7 @@ piglit-quick_gl:
       -x arb_gpu_shader5
       -x egl_ext_device_
       -x egl_ext_platform_device
+      -x ext_timer_query@time-elapsed
       -x glx-multithread-clearbuffer
       -x glx-multithread-shader-compile
       -x max-texture-size
