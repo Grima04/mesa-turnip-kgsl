@@ -286,18 +286,16 @@ update_vsc_pipe(struct fd_batch *batch)
 
 	OUT_PKT4(ring, REG_A5XX_VSC_PIPE_DATA_ADDRESS_LO(0), 32);
 	for (i = 0; i < 16; i++) {
-		struct fd_vsc_pipe *pipe = &ctx->vsc_pipe[i];
-		if (!pipe->bo) {
-			pipe->bo = fd_bo_new(ctx->dev, 0x20000,
+		if (!ctx->vsc_pipe_bo[i]) {
+			ctx->vsc_pipe_bo[i] = fd_bo_new(ctx->dev, 0x20000,
 					DRM_FREEDRENO_GEM_TYPE_KMEM, "vsc_pipe[%u]", i);
 		}
-		OUT_RELOCW(ring, pipe->bo, 0, 0, 0);     /* VSC_PIPE_DATA_ADDRESS[i].LO/HI */
+		OUT_RELOCW(ring, ctx->vsc_pipe_bo[i], 0, 0, 0);     /* VSC_PIPE_DATA_ADDRESS[i].LO/HI */
 	}
 
 	OUT_PKT4(ring, REG_A5XX_VSC_PIPE_DATA_LENGTH_REG(0), 16);
 	for (i = 0; i < 16; i++) {
-		struct fd_vsc_pipe *pipe = &ctx->vsc_pipe[i];
-		OUT_RING(ring, fd_bo_size(pipe->bo) - 32); /* VSC_PIPE_DATA_LENGTH[i] */
+		OUT_RING(ring, fd_bo_size(ctx->vsc_pipe_bo[i]) - 32); /* VSC_PIPE_DATA_LENGTH[i] */
 	}
 }
 
@@ -437,6 +435,7 @@ fd5_emit_tile_prep(struct fd_batch *batch, struct fd_tile *tile)
 
 	if (use_hw_binning(batch)) {
 		struct fd_vsc_pipe *pipe = &ctx->vsc_pipe[tile->p];
+		struct fd_bo *pipe_bo = ctx->vsc_pipe_bo[tile->p];
 
 		OUT_PKT7(ring, CP_WAIT_FOR_ME, 0);
 
@@ -446,7 +445,7 @@ fd5_emit_tile_prep(struct fd_batch *batch, struct fd_tile *tile)
 		OUT_PKT7(ring, CP_SET_BIN_DATA5, 5);
 		OUT_RING(ring, CP_SET_BIN_DATA5_0_VSC_SIZE(pipe->w * pipe->h) |
 				CP_SET_BIN_DATA5_0_VSC_N(tile->n));
-		OUT_RELOC(ring, pipe->bo, 0, 0, 0);      /* VSC_PIPE[p].DATA_ADDRESS */
+		OUT_RELOC(ring, pipe_bo, 0, 0, 0);       /* VSC_PIPE[p].DATA_ADDRESS */
 		OUT_RELOC(ring, fd5_ctx->vsc_size_mem,   /* VSC_SIZE_ADDRESS + (p * 4) */
 				(tile->p * 4), 0, 0);
 	} else {

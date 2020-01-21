@@ -583,16 +583,14 @@ fd2_emit_tile_init(struct fd_batch *batch)
 		OUT_RING(ring, 0x0000000C);
 
 		for (int i = 0; i < gmem->num_vsc_pipes; i++) {
-			struct fd_vsc_pipe *pipe = &ctx->vsc_pipe[i];
-
 			/* allocate in 64k increments to avoid reallocs */
 			uint32_t bo_size = align(batch->num_vertices, 0x10000);
-			if (!pipe->bo || fd_bo_size(pipe->bo) < bo_size) {
-				if (pipe->bo)
-					fd_bo_del(pipe->bo);
-				pipe->bo = fd_bo_new(ctx->dev, bo_size,
+			if (!ctx->vsc_pipe_bo[i] || fd_bo_size(ctx->vsc_pipe_bo[i]) < bo_size) {
+				if (ctx->vsc_pipe_bo[i])
+					fd_bo_del(ctx->vsc_pipe_bo[i]);
+				ctx->vsc_pipe_bo[i] = fd_bo_new(ctx->dev, bo_size,
 						DRM_FREEDRENO_GEM_TYPE_KMEM, "vsc_pipe[%u]", i);
-				assert(pipe->bo);
+				assert(ctx->vsc_pipe_bo[i]);
 			}
 
 			/* memory export address (export32):
@@ -601,7 +599,7 @@ fd2_emit_tile_init(struct fd_batch *batch)
 			 * .z: 0x4B00D000 (?)
 			 * .w: 0x4B000000 (?) | max_index (?)
 			*/
-			OUT_RELOCW(ring, pipe->bo, 0, 0x40000000, -2);
+			OUT_RELOCW(ring, ctx->vsc_pipe_bo[i], 0, 0x40000000, -2);
 			OUT_RING(ring, 0x00000000);
 			OUT_RING(ring, 0x4B00D000);
 			OUT_RING(ring, 0x4B000000 | bo_size);
@@ -723,7 +721,7 @@ fd2_emit_tile_renderprep(struct fd_batch *batch, struct fd_tile *tile)
 	}
 
 	if (use_hw_binning(batch)) {
-		struct fd_vsc_pipe *pipe = &ctx->vsc_pipe[tile->p];
+		struct fd_bo *pipe_bo = ctx->vsc_pipe_bo[tile->p];
 
 		OUT_PKT3(ring, CP_SET_CONSTANT, 2);
 		OUT_RING(ring, CP_REG(REG_A2XX_VGT_CURRENT_BIN_ID_MIN));
@@ -735,7 +733,7 @@ fd2_emit_tile_renderprep(struct fd_batch *batch, struct fd_tile *tile)
 
 		/* TODO only emit this when tile->p changes */
 		OUT_PKT3(ring, CP_SET_DRAW_INIT_FLAGS, 1);
-		OUT_RELOC(ring, pipe->bo, 0, 0, 0);
+		OUT_RELOC(ring, pipe_bo, 0, 0, 0);
 	}
 }
 

@@ -269,6 +269,9 @@ struct fd_context {
 	struct fd_vsc_pipe      vsc_pipe[32];
 	struct fd_tile          tile[512];
 
+	/* Per vsc pipe bo's (a2xx-a5xx): */
+	struct fd_bo *vsc_pipe_bo[32];
+
 	/* which state objects need to be re-emit'd: */
 	enum fd_dirty_3d_state dirty;
 
