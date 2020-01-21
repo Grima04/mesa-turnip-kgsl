@@ -694,6 +694,7 @@ vmw_ioctl_region_map(struct vmw_region *region)
 	 return NULL;
       }
 
+      (void) madvise(map, region->size, MADV_HUGEPAGE);
       region->data = map;
    }
 
