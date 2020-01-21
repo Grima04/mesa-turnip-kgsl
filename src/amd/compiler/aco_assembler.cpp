@@ -512,6 +512,8 @@ void emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction*
             encoding = (0b110100 << 26);
          } else if (ctx.chip_class == GFX10) {
             encoding = (0b110101 << 26);
+         } else {
+            unreachable("Unknown chip_class.");
          }
 
          if (ctx.chip_class <= GFX7) {

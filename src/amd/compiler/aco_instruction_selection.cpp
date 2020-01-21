@@ -7937,6 +7937,8 @@ static void emit_stream_output(isel_context *ctx,
       case 4:
          opcode = aco_opcode::buffer_store_dwordx4;
          break;
+      default:
+         unreachable("Unsupported dword count.");
       }
 
       aco_ptr<MUBUF_instruction> store{create_instruction<MUBUF_instruction>(opcode, Format::MUBUF, 4, 0)};
