@@ -185,6 +185,15 @@ shader_module_compile_to_nir(struct v3dv_device *device,
    assert(nir->info.stage == stage->stage);
    nir_validate_shader(nir, "after spirv_to_nir");
 
+   if (V3D_DEBUG & (V3D_DEBUG_NIR |
+                    v3d_debug_flag_for_shader_stage(stage->stage))) {
+      fprintf(stderr, "Initial form: %s prog %d NIR:\n",
+              gl_shader_stage_name(stage->stage),
+              stage->program_id);
+      nir_print_shader(nir, stderr);
+      fprintf(stderr, "\n");
+   }
+
    free(spec_entries);
 
    /* We have to lower away local variable initializers right before we
