@@ -1092,10 +1092,11 @@ schedule_block(compiler_context *ctx, midgard_block *block)
 
         /* We emitted bundles backwards; copy into the block in reverse-order */
 
-        util_dynarray_init(&block->bundles, NULL);
+        util_dynarray_init(&block->bundles, block);
         util_dynarray_foreach_reverse(&bundles, midgard_bundle, bundle) {
                 util_dynarray_append(&block->bundles, midgard_bundle, *bundle);
         }
+        util_dynarray_fini(&bundles);
 
         /* Blend constant was backwards as well. blend_offset if set is
          * strictly positive, as an offset of zero would imply constants before
