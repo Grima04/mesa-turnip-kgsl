@@ -254,6 +254,259 @@ vertex_binding_divisor(struct gl_context *ctx,
    }
 }
 
+/* vertex_formats[gltype - GL_BYTE][integer*2 + normalized][size - 1] */
+static const uint16_t vertex_formats[][4][4] = {
+   { /* GL_BYTE */
+      {
+         PIPE_FORMAT_R8_SSCALED,
+         PIPE_FORMAT_R8G8_SSCALED,
+         PIPE_FORMAT_R8G8B8_SSCALED,
+         PIPE_FORMAT_R8G8B8A8_SSCALED
+      },
+      {
+         PIPE_FORMAT_R8_SNORM,
+         PIPE_FORMAT_R8G8_SNORM,
+         PIPE_FORMAT_R8G8B8_SNORM,
+         PIPE_FORMAT_R8G8B8A8_SNORM
+      },
+      {
+         PIPE_FORMAT_R8_SINT,
+         PIPE_FORMAT_R8G8_SINT,
+         PIPE_FORMAT_R8G8B8_SINT,
+         PIPE_FORMAT_R8G8B8A8_SINT
+      },
+   },
+   { /* GL_UNSIGNED_BYTE */
+      {
+         PIPE_FORMAT_R8_USCALED,
+         PIPE_FORMAT_R8G8_USCALED,
+         PIPE_FORMAT_R8G8B8_USCALED,
+         PIPE_FORMAT_R8G8B8A8_USCALED
+      },
+      {
+         PIPE_FORMAT_R8_UNORM,
+         PIPE_FORMAT_R8G8_UNORM,
+         PIPE_FORMAT_R8G8B8_UNORM,
+         PIPE_FORMAT_R8G8B8A8_UNORM
+      },
+      {
+         PIPE_FORMAT_R8_UINT,
+         PIPE_FORMAT_R8G8_UINT,
+         PIPE_FORMAT_R8G8B8_UINT,
+         PIPE_FORMAT_R8G8B8A8_UINT
+      },
+   },
+   { /* GL_SHORT */
+      {
+         PIPE_FORMAT_R16_SSCALED,
+         PIPE_FORMAT_R16G16_SSCALED,
+         PIPE_FORMAT_R16G16B16_SSCALED,
+         PIPE_FORMAT_R16G16B16A16_SSCALED
+      },
+      {
+         PIPE_FORMAT_R16_SNORM,
+         PIPE_FORMAT_R16G16_SNORM,
+         PIPE_FORMAT_R16G16B16_SNORM,
+         PIPE_FORMAT_R16G16B16A16_SNORM
+      },
+      {
+         PIPE_FORMAT_R16_SINT,
+         PIPE_FORMAT_R16G16_SINT,
+         PIPE_FORMAT_R16G16B16_SINT,
+         PIPE_FORMAT_R16G16B16A16_SINT
+      },
+   },
+   { /* GL_UNSIGNED_SHORT */
+      {
+         PIPE_FORMAT_R16_USCALED,
+         PIPE_FORMAT_R16G16_USCALED,
+         PIPE_FORMAT_R16G16B16_USCALED,
+         PIPE_FORMAT_R16G16B16A16_USCALED
+      },
+      {
+         PIPE_FORMAT_R16_UNORM,
+         PIPE_FORMAT_R16G16_UNORM,
+         PIPE_FORMAT_R16G16B16_UNORM,
+         PIPE_FORMAT_R16G16B16A16_UNORM
+      },
+      {
+         PIPE_FORMAT_R16_UINT,
+         PIPE_FORMAT_R16G16_UINT,
+         PIPE_FORMAT_R16G16B16_UINT,
+         PIPE_FORMAT_R16G16B16A16_UINT
+      },
+   },
+   { /* GL_INT */
+      {
+         PIPE_FORMAT_R32_SSCALED,
+         PIPE_FORMAT_R32G32_SSCALED,
+         PIPE_FORMAT_R32G32B32_SSCALED,
+         PIPE_FORMAT_R32G32B32A32_SSCALED
+      },
+      {
+         PIPE_FORMAT_R32_SNORM,
+         PIPE_FORMAT_R32G32_SNORM,
+         PIPE_FORMAT_R32G32B32_SNORM,
+         PIPE_FORMAT_R32G32B32A32_SNORM
+      },
+      {
+         PIPE_FORMAT_R32_SINT,
+         PIPE_FORMAT_R32G32_SINT,
+         PIPE_FORMAT_R32G32B32_SINT,
+         PIPE_FORMAT_R32G32B32A32_SINT
+      },
+   },
+   { /* GL_UNSIGNED_INT */
+      {
+         PIPE_FORMAT_R32_USCALED,
+         PIPE_FORMAT_R32G32_USCALED,
+         PIPE_FORMAT_R32G32B32_USCALED,
+         PIPE_FORMAT_R32G32B32A32_USCALED
+      },
+      {
+         PIPE_FORMAT_R32_UNORM,
+         PIPE_FORMAT_R32G32_UNORM,
+         PIPE_FORMAT_R32G32B32_UNORM,
+         PIPE_FORMAT_R32G32B32A32_UNORM
+      },
+      {
+         PIPE_FORMAT_R32_UINT,
+         PIPE_FORMAT_R32G32_UINT,
+         PIPE_FORMAT_R32G32B32_UINT,
+         PIPE_FORMAT_R32G32B32A32_UINT
+      },
+   },
+   { /* GL_FLOAT */
+      {
+         PIPE_FORMAT_R32_FLOAT,
+         PIPE_FORMAT_R32G32_FLOAT,
+         PIPE_FORMAT_R32G32B32_FLOAT,
+         PIPE_FORMAT_R32G32B32A32_FLOAT
+      },
+      {
+         PIPE_FORMAT_R32_FLOAT,
+         PIPE_FORMAT_R32G32_FLOAT,
+         PIPE_FORMAT_R32G32B32_FLOAT,
+         PIPE_FORMAT_R32G32B32A32_FLOAT
+      },
+   },
+   {{0}}, /* GL_2_BYTES */
+   {{0}}, /* GL_3_BYTES */
+   {{0}}, /* GL_4_BYTES */
+   { /* GL_DOUBLE */
+      {
+         PIPE_FORMAT_R64_FLOAT,
+         PIPE_FORMAT_R64G64_FLOAT,
+         PIPE_FORMAT_R64G64B64_FLOAT,
+         PIPE_FORMAT_R64G64B64A64_FLOAT
+      },
+      {
+         PIPE_FORMAT_R64_FLOAT,
+         PIPE_FORMAT_R64G64_FLOAT,
+         PIPE_FORMAT_R64G64B64_FLOAT,
+         PIPE_FORMAT_R64G64B64A64_FLOAT
+      },
+   },
+   { /* GL_HALF_FLOAT */
+      {
+         PIPE_FORMAT_R16_FLOAT,
+         PIPE_FORMAT_R16G16_FLOAT,
+         PIPE_FORMAT_R16G16B16_FLOAT,
+         PIPE_FORMAT_R16G16B16A16_FLOAT
+      },
+      {
+         PIPE_FORMAT_R16_FLOAT,
+         PIPE_FORMAT_R16G16_FLOAT,
+         PIPE_FORMAT_R16G16B16_FLOAT,
+         PIPE_FORMAT_R16G16B16A16_FLOAT
+      },
+   },
+   { /* GL_FIXED */
+      {
+         PIPE_FORMAT_R32_FIXED,
+         PIPE_FORMAT_R32G32_FIXED,
+         PIPE_FORMAT_R32G32B32_FIXED,
+         PIPE_FORMAT_R32G32B32A32_FIXED
+      },
+      {
+         PIPE_FORMAT_R32_FIXED,
+         PIPE_FORMAT_R32G32_FIXED,
+         PIPE_FORMAT_R32G32B32_FIXED,
+         PIPE_FORMAT_R32G32B32A32_FIXED
+      },
+   },
+};
+
+/**
+ * Return a PIPE_FORMAT_x for the given GL datatype and size.
+ */
+static enum pipe_format
+vertex_format_to_pipe_format(GLubyte size, GLenum16 type, GLenum16 format,
+                             GLboolean normalized, GLboolean integer,
+                             GLboolean doubles)
+{
+   assert(size >= 1 && size <= 4);
+   assert(format == GL_RGBA || format == GL_BGRA);
+
+   /* 64-bit attributes are translated by drivers. */
+   if (doubles)
+      return PIPE_FORMAT_NONE;
+
+   switch (type) {
+   case GL_HALF_FLOAT_OES:
+      type = GL_HALF_FLOAT;
+      break;
+
+   case GL_INT_2_10_10_10_REV:
+      assert(size == 4 && !integer);
+
+      if (format == GL_BGRA) {
+         if (normalized)
+            return PIPE_FORMAT_B10G10R10A2_SNORM;
+         else
+            return PIPE_FORMAT_B10G10R10A2_SSCALED;
+      } else {
+         if (normalized)
+            return PIPE_FORMAT_R10G10B10A2_SNORM;
+         else
+            return PIPE_FORMAT_R10G10B10A2_SSCALED;
+      }
+      break;
+
+   case GL_UNSIGNED_INT_2_10_10_10_REV:
+      assert(size == 4 && !integer);
+
+      if (format == GL_BGRA) {
+         if (normalized)
+            return PIPE_FORMAT_B10G10R10A2_UNORM;
+         else
+            return PIPE_FORMAT_B10G10R10A2_USCALED;
+      } else {
+         if (normalized)
+            return PIPE_FORMAT_R10G10B10A2_UNORM;
+         else
+            return PIPE_FORMAT_R10G10B10A2_USCALED;
+      }
+      break;
+
+   case GL_UNSIGNED_INT_10F_11F_11F_REV:
+      assert(size == 3 && !integer && format == GL_RGBA);
+      return PIPE_FORMAT_R11G11B10_FLOAT;
+
+   case GL_UNSIGNED_BYTE:
+      if (format == GL_BGRA) {
+         /* this is an odd-ball case */
+         assert(normalized);
+         return PIPE_FORMAT_B8G8R8A8_UNORM;
+      }
+      break;
+   }
+
+   unsigned index = integer*2 + normalized;
+   assert(index <= 2);
+   assert(type >= GL_BYTE && type <= GL_FIXED);
+   return vertex_formats[type - GL_BYTE][index][size-1];
+}
 
 void
 _mesa_set_vertex_format(struct gl_vertex_format *vertex_format,
@@ -270,6 +523,9 @@ _mesa_set_vertex_format(struct gl_vertex_format *vertex_format,
    vertex_format->Doubles = doubles;
    vertex_format->_ElementSize = _mesa_bytes_per_vertex_attrib(size, type);
    assert(vertex_format->_ElementSize <= 4*sizeof(double));
+   vertex_format->_PipeFormat =
+      vertex_format_to_pipe_format(size, type, format, normalized, integer,
+                                   doubles);
 }
 
 
