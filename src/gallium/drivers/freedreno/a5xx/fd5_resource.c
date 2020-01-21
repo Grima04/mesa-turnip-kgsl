@@ -47,9 +47,8 @@ static uint32_t
 setup_slices(struct fd_resource *rsc, uint32_t alignment, enum pipe_format format)
 {
 	struct pipe_resource *prsc = &rsc->base;
-	struct fd_screen *screen = fd_screen(prsc->screen);
 	enum util_format_layout layout = util_format_description(format)->layout;
-	uint32_t pitchalign = screen->gmem_alignw;
+	uint32_t pitchalign;
 	uint32_t heightalign;
 	uint32_t level, size = 0;
 	uint32_t width = prsc->width0;
