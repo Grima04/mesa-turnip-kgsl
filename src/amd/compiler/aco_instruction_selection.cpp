@@ -2068,10 +2068,10 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
 
       } else if (instr->src[0].src.ssa->bit_size == 64) {
          Temp vec = bld.pseudo(aco_opcode::p_create_vector, bld.def(s2), Operand(0u), Operand(0x3df00000u));
-         Temp trunc = bld.vop1(aco_opcode::v_trunc_f64, bld.def(v2), src);
+         Temp trunc = emit_trunc_f64(ctx, bld, bld.def(v2), src);
          Temp mul = bld.vop3(aco_opcode::v_mul_f64, bld.def(v2), trunc, vec);
          vec = bld.pseudo(aco_opcode::p_create_vector, bld.def(s2), Operand(0u), Operand(0xc1f00000u));
-         Temp floor  = bld.vop1(aco_opcode::v_floor_f64, bld.def(v2), mul);
+         Temp floor = emit_floor_f64(ctx, bld, bld.def(v2), mul);
          Temp fma = bld.vop3(aco_opcode::v_fma_f64, bld.def(v2), floor, vec, trunc);
          Temp lower = bld.vop1(aco_opcode::v_cvt_u32_f64, bld.def(v1), fma);
          Temp upper = bld.vop1(aco_opcode::v_cvt_i32_f64, bld.def(v1), floor);
@@ -2137,10 +2137,10 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
 
       } else if (instr->src[0].src.ssa->bit_size == 64) {
          Temp vec = bld.pseudo(aco_opcode::p_create_vector, bld.def(s2), Operand(0u), Operand(0x3df00000u));
-         Temp trunc = bld.vop1(aco_opcode::v_trunc_f64, bld.def(v2), src);
+         Temp trunc = emit_trunc_f64(ctx, bld, bld.def(v2), src);
          Temp mul = bld.vop3(aco_opcode::v_mul_f64, bld.def(v2), trunc, vec);
          vec = bld.pseudo(aco_opcode::p_create_vector, bld.def(s2), Operand(0u), Operand(0xc1f00000u));
-         Temp floor  = bld.vop1(aco_opcode::v_floor_f64, bld.def(v2), mul);
+         Temp floor = emit_floor_f64(ctx, bld, bld.def(v2), mul);
          Temp fma = bld.vop3(aco_opcode::v_fma_f64, bld.def(v2), floor, vec, trunc);
          Temp lower = bld.vop1(aco_opcode::v_cvt_u32_f64, bld.def(v1), fma);
          Temp upper = bld.vop1(aco_opcode::v_cvt_u32_f64, bld.def(v1), floor);
