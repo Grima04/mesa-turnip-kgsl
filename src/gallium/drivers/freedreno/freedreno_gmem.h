@@ -27,7 +27,8 @@
 #ifndef FREEDRENO_GMEM_H_
 #define FREEDRENO_GMEM_H_
 
-#include "pipe/p_context.h"
+#include "pipe/p_state.h"
+#include "util/list.h"
 
 #include "freedreno_util.h"
 
@@ -45,7 +46,10 @@ struct fd_tile {
 };
 
 struct fd_gmem_stateobj {
-	struct pipe_scissor_state scissor;
+	struct pipe_reference reference;
+	struct fd_screen *screen;
+	void *key;
+
 	uint32_t cbuf_base[MAX_RENDER_TARGETS];
 	uint32_t zsbuf_base[2];
 	uint8_t cbuf_cpp[MAX_RENDER_TARGETS];
@@ -59,6 +63,26 @@ struct fd_gmem_stateobj {
 
 	struct fd_vsc_pipe vsc_pipe[32];
 	struct fd_tile     tile[512];
+
+	struct list_head node;
+};
+
+void __fd_gmem_destroy(struct fd_gmem_stateobj *gmem);
+
+static inline void
+fd_gmem_reference(struct fd_gmem_stateobj **ptr, struct fd_gmem_stateobj *gmem)
+{
+	struct fd_gmem_stateobj *old_gmem = *ptr;
+
+	if (pipe_reference(&(*ptr)->reference, &gmem->reference))
+		__fd_gmem_destroy(old_gmem);
+
+	*ptr = gmem;
+}
+
+struct fd_gmem_cache {
+	struct hash_table *ht;
+	struct list_head lru;
 };
 
 struct fd_batch;
@@ -67,5 +91,9 @@ void fd_gmem_render_tiles(struct fd_batch *batch);
 
 bool fd_gmem_needs_restore(struct fd_batch *batch, const struct fd_tile *tile,
 		uint32_t buffers);
+
+struct pipe_screen;
+void fd_gmem_screen_init(struct pipe_screen *pscreen);
+void fd_gmem_screen_fini(struct pipe_screen *pscreen);
 
 #endif /* FREEDRENO_GMEM_H_ */

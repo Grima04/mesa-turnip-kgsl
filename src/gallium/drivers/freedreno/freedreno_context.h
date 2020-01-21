@@ -259,14 +259,6 @@ struct fd_context {
 	 */
 	struct pipe_scissor_state disabled_scissor;
 
-	/* Current gmem/tiling configuration.. gets updated on render_tiles()
-	 * if out of date with current maximal-scissor/cpp:
-	 *
-	 * (NOTE: this is kind of related to the batch, but moving it there
-	 * means we'd always have to recalc tiles ever batch)
-	 */
-	struct fd_gmem_stateobj gmem;
-
 	/* Per vsc pipe bo's (a2xx-a5xx): */
 	struct fd_bo *vsc_pipe_bo[32];
 
