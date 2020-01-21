@@ -369,6 +369,9 @@ get_bpp_encoding(uint16_t bpp)
    }
 }
 
+#define GEN_AUX_MAP_ENTRY_Y_TILED_BIT  (0x1ull << 52)
+#define GEN_AUX_MAP_ENTRY_VALID_BIT    0x1ull
+
 static void
 add_mapping(struct gen_aux_map_context *ctx, uint64_t address,
             uint64_t aux_address, const struct isl_surf *isl_surf,
@@ -382,7 +385,7 @@ add_mapping(struct gen_aux_map_context *ctx, uint64_t address,
    uint64_t *l3_entry = &ctx->level3_map[l3_index];
 
    uint64_t *l2_map;
-   if ((*l3_entry & 1) == 0) {
+   if ((*l3_entry & GEN_AUX_MAP_ENTRY_VALID_BIT) == 0) {
       uint64_t l2_gpu;
       if (add_sub_table(ctx, 32 * 1024, 32 * 1024, &l2_gpu, &l2_map)) {
          if (aux_map_debug)
@@ -400,7 +403,7 @@ add_mapping(struct gen_aux_map_context *ctx, uint64_t address,
    uint64_t *l2_entry = &l2_map[l2_index];
 
    uint64_t *l1_map;
-   if ((*l2_entry & 1) == 0) {
+   if ((*l2_entry & GEN_AUX_MAP_ENTRY_VALID_BIT) == 0) {
       uint64_t l1_gpu;
       if (add_sub_table(ctx, 8 * 1024, 8 * 1024, &l1_gpu, &l1_map)) {
          if (aux_map_debug)
@@ -429,11 +432,11 @@ add_mapping(struct gen_aux_map_context *ctx, uint64_t address,
       (aux_address & 0xffffffffff00ULL) |
       ((uint64_t)get_format_encoding(isl_surf) << 58) |
       ((uint64_t)get_bpp_encoding(bpp) << 54) |
-      (1ULL /* Y tiling */ << 52) |
-      1 /* Valid entry */;
+      GEN_AUX_MAP_ENTRY_Y_TILED_BIT |
+      GEN_AUX_MAP_ENTRY_VALID_BIT;
 
    const uint64_t current_l1_data = *l1_entry;
-   if ((current_l1_data & 1) == 0) {
+   if ((current_l1_data & GEN_AUX_MAP_ENTRY_VALID_BIT) == 0) {
       assert((aux_address & 0xffULL) == 0);
       if (aux_map_debug)
          fprintf(stderr, "AUX-MAP L1[0x%x] 0x%"PRIx64" -> 0x%"PRIx64"\n",
@@ -444,7 +447,8 @@ add_mapping(struct gen_aux_map_context *ctx, uint64_t address,
        * what we want to program into the entry, then we must force the
        * aux-map tables to be flushed.
        */
-      if (current_l1_data != 0 && (current_l1_data | 1) != l1_data)
+      if (current_l1_data != 0 && \
+          (current_l1_data | GEN_AUX_MAP_ENTRY_VALID_BIT) != l1_data)
          *state_changed = true;
       *l1_entry = l1_data;
    } else {
@@ -464,12 +468,12 @@ gen_aux_map_add_image(struct gen_aux_map_context *ctx,
    pthread_mutex_lock(&ctx->mutex);
    uint64_t map_addr = address;
    uint64_t dest_aux_addr = aux_address;
-   assert(align64(address, 64 * 1024) == address);
-   assert(align64(aux_address, 4 * 64) == aux_address);
+   assert(align64(address, GEN_AUX_MAP_MAIN_PAGE_SIZE) == address);
+   assert(align64(aux_address, GEN_AUX_MAP_AUX_PAGE_SIZE) == aux_address);
    while (map_addr - address < isl_surf->size_B) {
       add_mapping(ctx, map_addr, dest_aux_addr, isl_surf, &state_changed);
-      map_addr += 64 * 1024;
-      dest_aux_addr += 4 * 64;
+      map_addr += GEN_AUX_MAP_MAIN_PAGE_SIZE;
+      dest_aux_addr += GEN_AUX_MAP_AUX_PAGE_SIZE;
    }
    pthread_mutex_unlock(&ctx->mutex);
    if (state_changed)
@@ -490,7 +494,7 @@ remove_mapping(struct gen_aux_map_context *ctx, uint64_t address,
    uint64_t *l3_entry = &ctx->level3_map[l3_index];
 
    uint64_t *l2_map;
-   if ((*l3_entry & 1) == 0) {
+   if ((*l3_entry & GEN_AUX_MAP_ENTRY_VALID_BIT) == 0) {
       return;
    } else {
       uint64_t l2_addr = gen_canonical_address(*l3_entry & ~0x7fffULL);
@@ -500,7 +504,7 @@ remove_mapping(struct gen_aux_map_context *ctx, uint64_t address,
    uint64_t *l2_entry = &l2_map[l2_index];
 
    uint64_t *l1_map;
-   if ((*l2_entry & 1) == 0) {
+   if ((*l2_entry & GEN_AUX_MAP_ENTRY_VALID_BIT) == 0) {
       return;
    } else {
       uint64_t l1_addr = gen_canonical_address(*l2_entry & ~0x1fffULL);
@@ -512,7 +516,7 @@ remove_mapping(struct gen_aux_map_context *ctx, uint64_t address,
    const uint64_t current_l1_data = *l1_entry;
    const uint64_t l1_data = current_l1_data & ~1ull;
 
-   if ((current_l1_data & 1) == 0) {
+   if ((current_l1_data & GEN_AUX_MAP_ENTRY_VALID_BIT) == 0) {
       return;
    } else {
       if (aux_map_debug)
@@ -540,7 +544,7 @@ gen_aux_map_unmap_range(struct gen_aux_map_context *ctx, uint64_t address,
               address + size);
 
    uint64_t map_addr = address;
-   assert(align64(address, 64 * 1024) == address);
+   assert(align64(address, GEN_AUX_MAP_MAIN_PAGE_SIZE) == address);
    while (map_addr - address < size) {
       remove_mapping(ctx, map_addr, &state_changed);
       map_addr += 64 * 1024;
