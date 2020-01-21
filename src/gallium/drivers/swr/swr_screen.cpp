@@ -421,10 +421,13 @@ swr_get_shader_param(struct pipe_screen *screen,
 {
    if (shader == PIPE_SHADER_VERTEX ||
        shader == PIPE_SHADER_FRAGMENT ||
-       shader == PIPE_SHADER_GEOMETRY)
+       shader == PIPE_SHADER_GEOMETRY
+       || shader == PIPE_SHADER_TESS_CTRL ||
+       shader == PIPE_SHADER_TESS_EVAL
+   )
       return gallivm_get_shader_param(param);
 
-   // Todo: tesselation, compute
+   // Todo: compute
    return 0;
 }
 

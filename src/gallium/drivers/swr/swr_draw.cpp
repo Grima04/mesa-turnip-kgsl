@@ -31,6 +31,8 @@
 #include "util/u_draw.h"
 #include "util/u_prim.h"
 
+#include <algorithm>
+#include <iostream>
 /*
  * Draw vertex arrays, with optional indexing, optional instancing.
  */
@@ -154,16 +156,22 @@ swr_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info)
    // between all the shader stages, so it has to be large enough to
    // incorporate all interfaces between stages
 
-   // max of gs and vs num_outputs
+   // max of frontend shaders num_outputs
    feState.vsVertexSize = ctx->vs->info.base.num_outputs;
-   if (ctx->gs &&
-       ctx->gs->info.base.num_outputs > feState.vsVertexSize) {
-      feState.vsVertexSize = ctx->gs->info.base.num_outputs;
+   if (ctx->gs) {
+      feState.vsVertexSize = std::max(feState.vsVertexSize, (uint32_t)ctx->gs->info.base.num_outputs);
    }
+   if (ctx->tcs) {
+      feState.vsVertexSize = std::max(feState.vsVertexSize, (uint32_t)ctx->tcs->info.base.num_outputs);
+   }
+   if (ctx->tes) {
+      feState.vsVertexSize = std::max(feState.vsVertexSize, (uint32_t)ctx->tes->info.base.num_outputs);
+   }
+
 
    if (ctx->vs->info.base.num_outputs) {
       // gs does not adjust for position in SGV slot at input from vs
-      if (!ctx->gs)
+      if (!ctx->gs && !ctx->tcs && !ctx->tes)
          feState.vsVertexSize--;
    }
 
@@ -179,7 +187,6 @@ swr_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info)
    // sprite coord enable
    if (ctx->rasterizer->sprite_coord_enable)
       feState.vsVertexSize++;
-
 
    if (ctx->rasterizer->flatshade_first) {
       feState.provokingVertex = {1, 0, 0};
@@ -222,7 +229,7 @@ swr_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info)
 
    if (info->index_size)
       ctx->api.pfnSwrDrawIndexedInstanced(ctx->swrContext,
-                                          swr_convert_prim_topology(info->mode),
+                                          swr_convert_prim_topology(info->mode, info->vertices_per_patch),
                                           info->count,
                                           info->instance_count,
                                           info->start,
@@ -230,7 +237,7 @@ swr_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info)
                                           info->start_instance);
    else
       ctx->api.pfnSwrDrawInstanced(ctx->swrContext,
-                                   swr_convert_prim_topology(info->mode),
+                                   swr_convert_prim_topology(info->mode, info->vertices_per_patch),
                                    info->count,
                                    info->instance_count,
                                    info->start,

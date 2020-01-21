@@ -54,6 +54,10 @@
 #define SWR_NEW_CLIP (1 << 16)
 #define SWR_NEW_SO (1 << 17)
 #define SWR_BLOCK_CLIENT_DRAW ( 1 << 18) // Indicates client draw will block
+#define SWR_NEW_TCS (1 << 19)
+#define SWR_NEW_TES (1 << 20)
+#define SWR_NEW_TCSCONSTANTS (1 << 21)
+#define SWR_NEW_TESCONSTANTS (1 << 22)
 
 namespace std
 {
@@ -91,6 +95,10 @@ struct swr_draw_context {
    uint32_t num_constantsFS[PIPE_MAX_CONSTANT_BUFFERS];
    const float *constantGS[PIPE_MAX_CONSTANT_BUFFERS];
    uint32_t num_constantsGS[PIPE_MAX_CONSTANT_BUFFERS];
+   const float *constantTCS[PIPE_MAX_CONSTANT_BUFFERS];
+   uint32_t num_constantsTCS[PIPE_MAX_CONSTANT_BUFFERS];
+   const float *constantTES[PIPE_MAX_CONSTANT_BUFFERS];
+   uint32_t num_constantsTES[PIPE_MAX_CONSTANT_BUFFERS];
 
    swr_jit_texture texturesVS[PIPE_MAX_SHADER_SAMPLER_VIEWS];
    swr_jit_sampler samplersVS[PIPE_MAX_SAMPLERS];
@@ -98,6 +106,10 @@ struct swr_draw_context {
    swr_jit_sampler samplersFS[PIPE_MAX_SAMPLERS];
    swr_jit_texture texturesGS[PIPE_MAX_SHADER_SAMPLER_VIEWS];
    swr_jit_sampler samplersGS[PIPE_MAX_SAMPLERS];
+   swr_jit_texture texturesTCS[PIPE_MAX_SHADER_SAMPLER_VIEWS];
+   swr_jit_sampler samplersTCS[PIPE_MAX_SAMPLERS];
+   swr_jit_texture texturesTES[PIPE_MAX_SHADER_SAMPLER_VIEWS];
+   swr_jit_sampler samplersTES[PIPE_MAX_SAMPLERS];
 
    float userClipPlanes[PIPE_MAX_CLIP_PLANES][4];
 
@@ -118,6 +130,8 @@ struct swr_context {
 
    HANDLE swrContext;
 
+   SWR_TS_STATE tsState;
+
    /** Constant state objects */
    struct swr_blend_state *blend;
    struct pipe_sampler_state *samplers[PIPE_SHADER_TYPES][PIPE_MAX_SAMPLERS];
@@ -127,6 +141,8 @@ struct swr_context {
    struct swr_vertex_shader *vs;
    struct swr_fragment_shader *fs;
    struct swr_geometry_shader *gs;
+   struct swr_tess_control_shader *tcs;
+   struct swr_tess_evaluation_shader *tes;
    struct swr_vertex_element_state *velems;
 
    /** Other rendering state */
