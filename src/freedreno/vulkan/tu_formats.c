@@ -725,7 +725,7 @@ tu_physical_device_get_format_properties(
    VkFormat format,
    VkFormatProperties *out_properties)
 {
-   VkFormatFeatureFlags linear = 0, tiled = 0, buffer = 0;
+   VkFormatFeatureFlags image = 0, buffer = 0;
    const struct util_format_description *desc = vk_format_description(format);
    const struct tu_native_format *native_fmt = tu6_get_native_format(format);
    if (!desc || !native_fmt) {
@@ -737,30 +737,23 @@ tu_physical_device_get_format_properties(
       buffer |= VK_FORMAT_FEATURE_VERTEX_BUFFER_BIT;
    }
 
-   if (native_fmt->tex >= 0 || native_fmt->rb >= 0) {
-      linear |= VK_FORMAT_FEATURE_TRANSFER_SRC_BIT | VK_FORMAT_FEATURE_TRANSFER_DST_BIT;
-      tiled |= VK_FORMAT_FEATURE_TRANSFER_SRC_BIT | VK_FORMAT_FEATURE_TRANSFER_DST_BIT;
-   }
+   if (native_fmt->tex >= 0 || native_fmt->rb >= 0)
+      image |= VK_FORMAT_FEATURE_TRANSFER_SRC_BIT | VK_FORMAT_FEATURE_TRANSFER_DST_BIT;
 
    if (native_fmt->tex >= 0) {
-      linear |= VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT | VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT;
-      tiled |= VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT | VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT;
+      image |= VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT | VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT;
       buffer |= VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT;
    }
 
-   if (native_fmt->rb >= 0) {
-      linear |= VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT | VK_FORMAT_FEATURE_BLIT_SRC_BIT | VK_FORMAT_FEATURE_BLIT_DST_BIT;
-      tiled |= VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT | VK_FORMAT_FEATURE_BLIT_SRC_BIT | VK_FORMAT_FEATURE_BLIT_DST_BIT;
-   }
+   if (native_fmt->rb >= 0)
+      image |= VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT | VK_FORMAT_FEATURE_BLIT_SRC_BIT | VK_FORMAT_FEATURE_BLIT_DST_BIT;
 
-   if (tu6_pipe2depth(format) != (enum a6xx_depth_format)~0) {
-      linear |= VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
-      tiled |= VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
-   }
+   if (tu6_pipe2depth(format) != (enum a6xx_depth_format)~0)
+      image |= VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
 
 end:
-   out_properties->linearTilingFeatures = linear;
-   out_properties->optimalTilingFeatures = tiled;
+   out_properties->linearTilingFeatures = image;
+   out_properties->optimalTilingFeatures = image;
    out_properties->bufferFeatures = buffer;
 }
 
@@ -821,13 +814,8 @@ tu_get_image_format_properties(
 
    tu_physical_device_get_format_properties(physical_device, info->format,
                                             &format_props);
-   if (info->tiling == VK_IMAGE_TILING_LINEAR) {
-      format_feature_flags = format_props.linearTilingFeatures;
-   } else if (info->tiling == VK_IMAGE_TILING_OPTIMAL) {
-      format_feature_flags = format_props.optimalTilingFeatures;
-   } else {
-      unreachable("bad VkImageTiling");
-   }
+   assert(format_props.optimalTilingFeatures == format_props.linearTilingFeatures);
+   format_feature_flags = format_props.optimalTilingFeatures;
 
    if (format_feature_flags == 0)
       goto unsupported;
