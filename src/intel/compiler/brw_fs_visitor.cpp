@@ -537,6 +537,18 @@ fs_visitor::emit_fb_writes()
 
    inst->last_rt = true;
    inst->eot = true;
+
+   if (devinfo->gen == 11 && prog_data->dual_src_blend) {
+      /* The dual-source RT write messages fail to release the thread
+       * dependency on ICL with SIMD32 dispatch, leading to hangs.
+       *
+       * XXX - Emit an extra single-source NULL RT-write marked LastRT in
+       *       order to release the thread dependency without disabling
+       *       SIMD32.
+       */
+      limit_dispatch_width(16, "Dual source blending unsupported "
+                           "in SIMD32 mode.\n");
+   }
 }
 
 void
