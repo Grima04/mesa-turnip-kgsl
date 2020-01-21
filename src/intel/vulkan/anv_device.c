@@ -817,13 +817,13 @@ anv_enumerate_physical_devices(struct anv_instance *instance)
 
    /* TODO: Check for more devices ? */
    drmDevicePtr devices[8];
-   VkResult result = VK_ERROR_INCOMPATIBLE_DRIVER;
    int max_devices;
 
    max_devices = drmGetDevices2(0, devices, ARRAY_SIZE(devices));
    if (max_devices < 1)
-      return VK_ERROR_INCOMPATIBLE_DRIVER;
+      return VK_SUCCESS;
 
+   VkResult result = VK_SUCCESS;
    for (unsigned i = 0; i < (unsigned)max_devices; i++) {
       if (devices[i]->available_nodes & 1 << DRM_NODE_RENDER &&
           devices[i]->bustype == DRM_BUS_PCI &&
@@ -832,8 +832,15 @@ anv_enumerate_physical_devices(struct anv_instance *instance)
          struct anv_physical_device *pdevice;
          result = anv_physical_device_try_create(instance, devices[i],
                                                  &pdevice);
-         if (result != VK_SUCCESS)
+         /* Incompatible DRM device, skip. */
+         if (result == VK_ERROR_INCOMPATIBLE_DRIVER) {
+            result = VK_SUCCESS;
             continue;
+         }
+
+         /* Error creating the physical device, report the error. */
+         if (result != VK_SUCCESS)
+            break;
 
          list_addtail(&pdevice->link, &instance->physical_devices);
       }
@@ -841,7 +848,7 @@ anv_enumerate_physical_devices(struct anv_instance *instance)
    drmFreeDevices(devices, max_devices);
 
    /* If we successfully enumerated any devices, call it success */
-   return !list_is_empty(&instance->physical_devices) ? VK_SUCCESS : result;
+   return result;
 }
 
 VkResult anv_EnumeratePhysicalDevices(
