@@ -732,7 +732,7 @@ void process_instructions(exec_ctx& ctx, Block* block,
          int num;
          Temp cond, exit_cond;
          if (instr->operands[0].isConstant()) {
-            assert(instr->operands[0].constantValue() == -1);
+            assert(instr->operands[0].constantValue() == -1u);
             /* transition to exact and set exec to zero */
             Temp old_exec = ctx.info[block->index].exec.back().first;
             Temp new_exec = bld.tmp(bld.lm);
