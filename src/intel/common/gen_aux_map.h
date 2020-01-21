@@ -83,6 +83,19 @@ gen_aux_map_fill_bos(struct gen_aux_map_context *ctx, void **driver_bos,
 uint64_t
 gen_aux_map_get_base(struct gen_aux_map_context *ctx);
 
+uint64_t
+gen_aux_map_format_bits_for_isl_surf(const struct isl_surf *isl_surf);
+
+uint64_t *
+gen_aux_map_get_entry(struct gen_aux_map_context *ctx,
+                      uint64_t address,
+                      uint64_t *entry_address);
+
+void
+gen_aux_map_add_mapping(struct gen_aux_map_context *ctx, uint64_t address,
+                        uint64_t aux_address, uint64_t main_size_B,
+                        uint64_t format_bits);
+
 void
 gen_aux_map_add_image(struct gen_aux_map_context *ctx,
                       const struct isl_surf *isl_surf, uint64_t address,
