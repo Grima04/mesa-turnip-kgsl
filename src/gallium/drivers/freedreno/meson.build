@@ -137,6 +137,8 @@ files_libfreedreno = files(
   'a4xx/fd4_query.h',
   'a4xx/fd4_rasterizer.c',
   'a4xx/fd4_rasterizer.h',
+  'a4xx/fd4_resource.c',
+  'a4xx/fd4_resource.h',
   'a4xx/fd4_screen.c',
   'a4xx/fd4_screen.h',
   'a4xx/fd4_texture.c',
