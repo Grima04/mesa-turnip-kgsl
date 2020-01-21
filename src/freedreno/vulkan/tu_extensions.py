@@ -76,6 +76,7 @@ EXTENSIONS = [
     Extension('VK_KHR_external_memory',                   1, True),
     Extension('VK_KHR_external_memory_fd',                1, True),
     Extension('VK_EXT_external_memory_dma_buf',           1, True),
+    Extension('VK_EXT_image_drm_format_modifier',         1, False),
 ]
 
 class VkVersion:

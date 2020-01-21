@@ -444,6 +444,29 @@ tu_GetImageSubresourceLayout(VkDevice _device,
    }
 }
 
+VkResult tu_GetImageDrmFormatModifierPropertiesEXT(
+    VkDevice                                    device,
+    VkImage                                     _image,
+    VkImageDrmFormatModifierPropertiesEXT*      pProperties)
+{
+   TU_FROM_HANDLE(tu_image, image, _image);
+
+   assert(pProperties->sType ==
+          VK_STRUCTURE_TYPE_IMAGE_DRM_FORMAT_MODIFIER_PROPERTIES_EXT);
+
+   /* TODO invent a modifier for tiled but not UBWC buffers */
+
+   if (!image->layout.tile_mode)
+      pProperties->drmFormatModifier = DRM_FORMAT_MOD_LINEAR;
+   else if (image->layout.ubwc_size)
+      pProperties->drmFormatModifier = DRM_FORMAT_MOD_QCOM_COMPRESSED;
+   else
+      pProperties->drmFormatModifier = DRM_FORMAT_MOD_INVALID;
+
+   return VK_SUCCESS;
+}
+
+
 VkResult
 tu_CreateImageView(VkDevice _device,
                    const VkImageViewCreateInfo *pCreateInfo,
