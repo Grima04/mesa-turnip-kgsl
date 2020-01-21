@@ -395,6 +395,11 @@ tu_CreateImage(VkDevice device,
          if (mod_info->pDrmFormatModifiers[i] == DRM_FORMAT_MOD_QCOM_COMPRESSED)
             modifier = DRM_FORMAT_MOD_QCOM_COMPRESSED;
       }
+   } else {
+      const struct wsi_image_create_info *wsi_info =
+         vk_find_struct_const(pCreateInfo->pNext, WSI_IMAGE_CREATE_INFO_MESA);
+      if (wsi_info && wsi_info->scanout)
+         modifier = DRM_FORMAT_MOD_LINEAR;
    }
 
    return tu_image_create(device, pCreateInfo, pAllocator, pImage, modifier);
