@@ -467,11 +467,19 @@ emit_alu(struct ir3_context *ctx, nir_alu_instr *alu)
 		dst[0] = ir3_DSX(b, src[0], 0);
 		dst[0]->cat5.type = TYPE_F32;
 		break;
+	case nir_op_fddx_fine:
+		dst[0] = ir3_DSXPP_1(b, src[0], 0);
+		dst[0]->cat5.type = TYPE_F32;
+		break;
 	case nir_op_fddy:
 	case nir_op_fddy_coarse:
 		dst[0] = ir3_DSY(b, src[0], 0);
 		dst[0]->cat5.type = TYPE_F32;
 		break;
+		break;
+	case nir_op_fddy_fine:
+		dst[0] = ir3_DSYPP_1(b, src[0], 0);
+		dst[0]->cat5.type = TYPE_F32;
 		break;
 	case nir_op_flt16:
 	case nir_op_flt32:

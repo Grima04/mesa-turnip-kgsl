@@ -246,6 +246,13 @@ legalize_block(struct ir3_legalize_ctx *ctx, struct ir3_block *block)
 			list_addtail(&n->node, &block->instr_list);
 		}
 
+		if (n->opc == OPC_DSXPP_1 || n->opc == OPC_DSYPP_1) {
+			struct ir3_instruction *op_p = ir3_instr_clone(n);
+			op_p->flags = IR3_INSTR_P;
+
+			ctx->so->need_fine_derivatives = true;
+		}
+
 		if (is_sfu(n))
 			regmask_set(&state->needs_ss, n->regs[0]);
 

@@ -378,6 +378,8 @@ tu6_emit_vs_config(struct tu_cs *cs, struct tu_shader *shader,
       A6XX_SP_VS_CTRL_REG0_BRANCHSTACK(vs->branchstack);
    if (vs->need_pixlod)
       sp_vs_ctrl |= A6XX_SP_VS_CTRL_REG0_PIXLODENABLE;
+   if (vs->need_fine_derivatives)
+      sp_vs_ctrl |= A6XX_SP_VS_CTRL_REG0_DIFF_FINE;
 
    uint32_t sp_vs_config = A6XX_SP_VS_CONFIG_NTEX(shader->texture_map.num_desc) |
                            A6XX_SP_VS_CONFIG_NSAMP(shader->sampler_map.num_desc);
@@ -463,6 +465,8 @@ tu6_emit_fs_config(struct tu_cs *cs, struct tu_shader *shader,
       sp_fs_ctrl |= A6XX_SP_FS_CTRL_REG0_VARYING;
    if (fs->need_pixlod)
       sp_fs_ctrl |= A6XX_SP_FS_CTRL_REG0_PIXLODENABLE;
+   if (fs->need_fine_derivatives)
+      sp_fs_ctrl |= A6XX_SP_FS_CTRL_REG0_DIFF_FINE;
 
    uint32_t sp_fs_config = A6XX_SP_FS_CONFIG_NTEX(shader->texture_map.num_desc) |
                            A6XX_SP_FS_CONFIG_NSAMP(shader->sampler_map.num_desc) |
@@ -515,7 +519,8 @@ tu6_emit_cs_config(struct tu_cs *cs, const struct tu_shader *shader,
               A6XX_SP_CS_CTRL_REG0_FULLREGFOOTPRINT(v->info.max_reg + 1) |
               A6XX_SP_CS_CTRL_REG0_MERGEDREGS |
               A6XX_SP_CS_CTRL_REG0_BRANCHSTACK(v->branchstack) |
-              COND(v->need_pixlod, A6XX_SP_CS_CTRL_REG0_PIXLODENABLE));
+              COND(v->need_pixlod, A6XX_SP_CS_CTRL_REG0_PIXLODENABLE) |
+              COND(v->need_fine_derivatives, A6XX_SP_CS_CTRL_REG0_DIFF_FINE));
 
    tu_cs_emit_pkt4(cs, REG_A6XX_SP_CS_UNKNOWN_A9B1, 1);
    tu_cs_emit(cs, 0x41);
