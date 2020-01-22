@@ -53,8 +53,8 @@ extern "C" {
 
 struct cso_node {
    struct cso_node *next;
-   unsigned key;
    void *value;
+   unsigned key;
 };
 
 struct cso_hash_iter {
