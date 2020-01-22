@@ -99,7 +99,7 @@ vbo_exec_wrap_buffers(struct vbo_exec_context *exec)
       /* Execute the buffer and save copied vertices.
        */
       if (exec->vtx.vert_count)
-         vbo_exec_vtx_flush(exec, GL_FALSE);
+         vbo_exec_vtx_flush(exec);
       else {
          exec->vtx.prim_count = 0;
          exec->vtx.copied.nr = 0;
@@ -490,11 +490,6 @@ do {                                                                    \
       /* This is a glVertex call */                                     \
       GLuint i;                                                         \
                                                                         \
-      if (unlikely(!exec->vtx.buffer_ptr)) {                            \
-         vbo_exec_vtx_map(exec);                                        \
-      }                                                                 \
-      assert(exec->vtx.buffer_ptr);                                     \
-                                                                        \
       /* copy 32-bit words */                                           \
       for (i = 0; i < exec->vtx.vertex_size; i++)                       \
          exec->vtx.buffer_ptr[i] = exec->vtx.vertex[i];                 \
@@ -623,13 +618,12 @@ vbo_exec_Materialfv(GLenum face, GLenum pname, const GLfloat *params)
 
 /**
  * Flush (draw) vertices.
- * \param  unmap - leave VBO unmapped after flushing?
  */
 static void
-vbo_exec_FlushVertices_internal(struct vbo_exec_context *exec, GLboolean unmap)
+vbo_exec_FlushVertices_internal(struct vbo_exec_context *exec)
 {
-   if (exec->vtx.vert_count || unmap) {
-      vbo_exec_vtx_flush(exec, unmap);
+   if (exec->vtx.vert_count) {
+      vbo_exec_vtx_flush(exec);
    }
 
    if (exec->vtx.vertex_size) {
@@ -768,7 +762,7 @@ vbo_exec_Begin(GLenum mode)
     * begin/end pairs.
     */
    if (exec->vtx.vertex_size && !exec->vtx.attr[VBO_ATTRIB_POS].size)
-      vbo_exec_FlushVertices_internal(exec, GL_FALSE);
+      vbo_exec_FlushVertices_internal(exec);
 
    i = exec->vtx.prim_count++;
    exec->vtx.prim[i].mode = mode;
@@ -888,7 +882,7 @@ vbo_exec_End(void)
    ctx->Driver.CurrentExecPrimitive = PRIM_OUTSIDE_BEGIN_END;
 
    if (exec->vtx.prim_count == VBO_MAX_PRIM)
-      vbo_exec_vtx_flush(exec, GL_FALSE);
+      vbo_exec_vtx_flush(exec);
 
    if (MESA_DEBUG_FLAGS & DEBUG_ALWAYS_FLUSH) {
       _mesa_flush(ctx);
@@ -957,6 +951,10 @@ vbo_use_buffer_objects(struct gl_context *ctx)
    /* Allocate a real buffer object now */
    _mesa_reference_buffer_object(ctx, &exec->vtx.bufferobj, NULL);
    exec->vtx.bufferobj = ctx->Driver.NewBufferObject(ctx, bufName);
+
+   /* Map the buffer. */
+   vbo_exec_vtx_map(exec);
+   assert(exec->vtx.buffer_ptr);
 }
 
 
@@ -1050,8 +1048,8 @@ vbo_exec_FlushVertices(struct gl_context *ctx, GLuint flags)
       return;
    }
 
-   /* Flush (draw), and make sure VBO is left unmapped when done */
-   vbo_exec_FlushVertices_internal(exec, GL_TRUE);
+   /* Flush (draw). */
+   vbo_exec_FlushVertices_internal(exec);
 
    /* Clear the dirty flush flags, because the flush is finished. */
    ctx->Driver.NeedFlush &= ~(FLUSH_UPDATE_CURRENT | flags);

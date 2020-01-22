@@ -133,7 +133,7 @@ void
 vbo_exec_vtx_destroy(struct vbo_exec_context *exec);
 
 void
-vbo_exec_vtx_flush(struct vbo_exec_context *exec, GLboolean unmap);
+vbo_exec_vtx_flush(struct vbo_exec_context *exec);
 
 void
 vbo_exec_vtx_map(struct vbo_exec_context *exec);
