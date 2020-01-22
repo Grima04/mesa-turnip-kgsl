@@ -85,10 +85,7 @@ util_hash_table_create(unsigned (*hash)(void *key),
    if (!ht)
       return NULL;
    
-   if (!cso_hash_init(&ht->cso)) {
-      FREE(ht);
-      return NULL;
-   }
+   cso_hash_init(&ht->cso);
    
    ht->hash = hash;
    ht->compare = compare;

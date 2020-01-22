@@ -39,7 +39,7 @@ util_surfaces_do_get(struct util_surfaces *us, unsigned surface_struct_size,
 
    if(pt->target == PIPE_TEXTURE_3D || pt->target == PIPE_TEXTURE_CUBE)
    {    /* or 2D array */
-      if (!us->u.hash.data.d)
+      if (!us->u.hash.end)
          cso_hash_init(&us->u.hash);
 
       ps = cso_hash_iter_data(cso_hash_find(&us->u.hash, (layer << 8) | level));

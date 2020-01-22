@@ -57,13 +57,6 @@ struct cso_node {
    void *value;
 };
 
-struct cso_hash {
-   union {
-      struct cso_hash_data *d;
-      struct cso_node      *e;
-   } data;
-};
-
 struct cso_hash_iter {
    struct cso_hash *hash;
    struct cso_node  *node;
@@ -78,7 +71,12 @@ struct cso_hash_data {
    int numBuckets;
 };
 
-bool cso_hash_init(struct cso_hash *hash);
+struct cso_hash {
+   struct cso_hash_data data;
+   struct cso_node      *end;
+};
+
+void cso_hash_init(struct cso_hash *hash);
 void cso_hash_deinit(struct cso_hash *hash);
 
 
@@ -135,13 +133,13 @@ struct cso_node *cso_hash_data_next(struct cso_node *node);
 static inline bool
 cso_hash_iter_is_null(struct cso_hash_iter iter)
 {
-   return !iter.node || iter.node == iter.hash->data.e;
+   return !iter.node || iter.node == iter.hash->end;
 }
 
 static inline void *
 cso_hash_iter_data(struct cso_hash_iter iter)
 {
-   if (!iter.node || iter.hash->data.e == iter.node)
+   if (!iter.node || iter.hash->end == iter.node)
       return NULL;
    return iter.node->value;
 }
@@ -151,13 +149,13 @@ cso_hash_find_node(struct cso_hash *hash, unsigned akey)
 {
    struct cso_node **node;
 
-   if (hash->data.d->numBuckets) {
-      node = &hash->data.d->buckets[akey % hash->data.d->numBuckets];
-      assert(*node == hash->data.e || (*node)->next);
-      while (*node != hash->data.e && (*node)->key != akey)
+   if (hash->data.numBuckets) {
+      node = &hash->data.buckets[akey % hash->data.numBuckets];
+      assert(*node == hash->end || (*node)->next);
+      while (*node != hash->end && (*node)->key != akey)
          node = &(*node)->next;
    } else {
-      node = &hash->data.e;
+      node = &hash->end;
    }
    return node;
 }
