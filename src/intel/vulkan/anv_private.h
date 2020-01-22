@@ -3122,7 +3122,7 @@ anv_shader_bin_create(struct anv_device *device,
                       const void *kernel, uint32_t kernel_size,
                       const void *constant_data, uint32_t constant_data_size,
                       const struct brw_stage_prog_data *prog_data,
-                      uint32_t prog_data_size, const void *prog_data_param,
+                      uint32_t prog_data_size,
                       const struct brw_compile_stats *stats, uint32_t num_stats,
                       const struct nir_xfb_info *xfb_info,
                       const struct anv_pipeline_bind_map *bind_map);
