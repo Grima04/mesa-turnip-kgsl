@@ -983,35 +983,6 @@ varying_slot_to_tgsi_semantic(gl_varying_slot slot, unsigned *name, unsigned *in
    }
 }
 
-static void
-frag_result_to_tgsi_semantic(unsigned slot, unsigned *name, unsigned *index)
-{
-   if (slot >= FRAG_RESULT_DATA0) {
-      *name = TGSI_SEMANTIC_COLOR;
-      *index = slot - FRAG_RESULT_COLOR - 2; // intentional
-      return;
-   }
-
-   switch (slot) {
-   case FRAG_RESULT_COLOR:
-      *name = TGSI_SEMANTIC_COLOR;
-      *index = 0;
-      break;
-   case FRAG_RESULT_DEPTH:
-      *name = TGSI_SEMANTIC_POSITION;
-      *index = 0;
-      break;
-   case FRAG_RESULT_SAMPLE_MASK:
-      *name = TGSI_SEMANTIC_SAMPLEMASK;
-      *index = 0;
-      break;
-   default:
-      ERROR("unknown frag result slot %u\n", slot);
-      assert(false);
-      break;
-   }
-}
-
 void
 Converter::setInterpolate(nv50_ir_varying *var,
                           uint8_t mode,
@@ -1197,7 +1168,7 @@ bool Converter::assignSlots() {
 
       switch(prog->getType()) {
       case Program::TYPE_FRAGMENT:
-         frag_result_to_tgsi_semantic((gl_frag_result)slot, &name, &index);
+         tgsi_get_gl_frag_result_semantic((gl_frag_result)slot, &name, &index);
          switch (name) {
          case TGSI_SEMANTIC_COLOR:
             if (!var->data.fb_fetch_output)
