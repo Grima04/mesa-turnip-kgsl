@@ -173,8 +173,6 @@ struct fd_context {
 	struct fd_screen *screen;
 	struct fd_pipe *pipe;
 
-	struct util_queue flush_queue;
-
 	struct blitter_context *blitter;
 	void *clear_rs_state;
 	struct primconvert_context *primconvert;

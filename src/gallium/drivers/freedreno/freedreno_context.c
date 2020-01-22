@@ -75,7 +75,7 @@ fd_context_flush(struct pipe_context *pctx, struct pipe_fence_handle **fencep,
 		batch->needs_out_fence_fd = true;
 
 	if (!ctx->screen->reorder) {
-		fd_batch_flush(batch, true);
+		fd_batch_flush(batch);
 	} else if (flags & PIPE_FLUSH_DEFERRED) {
 		fd_bc_flush_deferred(&ctx->screen->batch_cache, ctx);
 	} else {
@@ -169,9 +169,6 @@ fd_context_destroy(struct pipe_context *pctx)
 	DBG("");
 
 	fd_fence_ref(&ctx->last_fence, NULL);
-
-	if (ctx->screen->reorder && util_queue_is_initialized(&ctx->flush_queue))
-		util_queue_destroy(&ctx->flush_queue);
 
 	util_copy_framebuffer_state(&ctx->framebuffer, NULL);
 	fd_batch_reference(&ctx->batch, NULL);  /* unref current batch */

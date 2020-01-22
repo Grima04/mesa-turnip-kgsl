@@ -1432,7 +1432,7 @@ emit_sysmem_clears(struct fd_batch *batch, struct fd_ringbuffer *ring)
 		}
 	}
 
-	fd6_event_write(batch, ring, 0x1d, true);
+	fd6_event_write(batch, ring, UNK_1D, true);
 }
 
 static void
