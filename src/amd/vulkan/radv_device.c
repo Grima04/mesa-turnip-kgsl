@@ -5063,7 +5063,6 @@ static VkResult radv_alloc_memory(struct radv_device *device,
 
 fail:
 	radv_free_memory(device, pAllocator,mem);
-	vk_free2(&device->alloc, pAllocator, mem);
 
 	return result;
 }
