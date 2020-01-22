@@ -324,6 +324,10 @@ struct tu_physical_device
    uint64_t gmem_base;
    uint32_t ccu_offset_gmem;
    uint32_t ccu_offset_bypass;
+   /* alignment for size of tiles */
+   uint32_t tile_align_w;
+#define TILE_ALIGN_H 16
+   /* gmem store/load granularity */
 #define GMEM_ALIGN_W 16
 #define GMEM_ALIGN_H 4
 
@@ -1607,6 +1611,7 @@ struct tu_render_pass
    uint32_t attachment_count;
    uint32_t subpass_count;
    uint32_t gmem_pixels;
+   uint32_t tile_align_w;
    struct tu_subpass_attachment *subpass_attachments;
    struct tu_render_pass_attachment *attachments;
    struct tu_subpass subpasses[0];

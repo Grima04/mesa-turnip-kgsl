@@ -36,19 +36,31 @@ static void update_samples(struct tu_subpass *subpass,
    subpass->samples = samples;
 }
 
-#define GMEM_ALIGN 0x4000
-
 static void
 create_render_pass_common(struct tu_render_pass *pass,
                           const struct tu_physical_device *phys_dev)
 {
+   uint32_t block_align_shift = 4; /* log2(gmem_align/(tile_align_w*tile_align_h)) */
+   uint32_t tile_align_w = phys_dev->tile_align_w;
+   uint32_t gmem_align = (1 << block_align_shift) * tile_align_w * TILE_ALIGN_H;
+
    /* calculate total bytes per pixel */
    uint32_t cpp_total = 0;
    for (uint32_t i = 0; i < pass->attachment_count; i++) {
       struct tu_render_pass_attachment *att = &pass->attachments[i];
-      if (att->gmem_offset >= 0)
+      if (att->gmem_offset >= 0) {
          cpp_total += att->cpp;
+         /* texture pitch must be aligned to 64, use a tile_align_w that is
+          * a multiple of 64 for cpp==1 attachment to work as input attachment
+          */
+         if (att->cpp == 1 && tile_align_w % 64 != 0) {
+            tile_align_w *= 2;
+            block_align_shift -= 1;
+         }
+      }
    }
+
+   pass->tile_align_w = tile_align_w;
 
    /* no gmem attachments */
    if (cpp_total == 0) {
@@ -64,7 +76,7 @@ create_render_pass_common(struct tu_render_pass *pass,
     * result:  nblocks = {12, 52}, pixels = 196608
     * optimal: nblocks = {13, 51}, pixels = 208896
     */
-   uint32_t gmem_blocks = phys_dev->ccu_offset_gmem / GMEM_ALIGN;
+   uint32_t gmem_blocks = phys_dev->ccu_offset_gmem / gmem_align;
    uint32_t offset = 0, pixels = ~0u;
    for (uint32_t i = 0; i < pass->attachment_count; i++) {
       struct tu_render_pass_attachment *att = &pass->attachments[i];
@@ -73,14 +85,13 @@ create_render_pass_common(struct tu_render_pass *pass,
 
       att->gmem_offset = offset;
 
-      /* Note: divide by 16 is for GMEM_ALIGN=16k, tile align w=64/h=16 */
-      uint32_t align = MAX2(1, att->cpp / 16);
+      uint32_t align = MAX2(1, att->cpp >> block_align_shift);
       uint32_t nblocks = MAX2((gmem_blocks * att->cpp / cpp_total) & ~(align - 1), align);
 
       gmem_blocks -= nblocks;
       cpp_total -= att->cpp;
-      offset += nblocks * GMEM_ALIGN;
-      pixels = MIN2(pixels, nblocks * GMEM_ALIGN / att->cpp);
+      offset += nblocks * gmem_align;
+      pixels = MIN2(pixels, nblocks * gmem_align / att->cpp);
    }
 
    pass->gmem_pixels = pixels;

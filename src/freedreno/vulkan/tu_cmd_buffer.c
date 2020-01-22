@@ -113,10 +113,9 @@ tu_bo_list_merge(struct tu_bo_list *list, const struct tu_bo_list *other)
 static void
 tu_tiling_config_update_tile_layout(struct tu_tiling_config *tiling,
                                     const struct tu_device *dev,
-                                    uint32_t pixels)
+                                    const struct tu_render_pass *pass)
 {
-   const uint32_t tile_align_w = 64; /* note: 32 when no input attachments */
-   const uint32_t tile_align_h = 16;
+   const uint32_t tile_align_w = pass->tile_align_w;
    const uint32_t max_tile_width = 1024;
 
    /* note: don't offset the tiling config by render_area.offset,
@@ -139,43 +138,43 @@ tu_tiling_config_update_tile_layout(struct tu_tiling_config *tiling,
       .height = 1,
    };
    tiling->tile0.extent = (VkExtent2D) {
-      .width = align(ra_width, tile_align_w),
-      .height = align(ra_height, tile_align_h),
+      .width = util_align_npot(ra_width, tile_align_w),
+      .height = align(ra_height, TILE_ALIGN_H),
    };
 
    if (unlikely(dev->physical_device->instance->debug_flags & TU_DEBUG_FORCEBIN)) {
       /* start with 2x2 tiles */
       tiling->tile_count.width = 2;
       tiling->tile_count.height = 2;
-      tiling->tile0.extent.width = align(DIV_ROUND_UP(ra_width, 2), tile_align_w);
-      tiling->tile0.extent.height = align(DIV_ROUND_UP(ra_height, 2), tile_align_h);
+      tiling->tile0.extent.width = util_align_npot(DIV_ROUND_UP(ra_width, 2), tile_align_w);
+      tiling->tile0.extent.height = align(DIV_ROUND_UP(ra_height, 2), TILE_ALIGN_H);
    }
 
    /* do not exceed max tile width */
    while (tiling->tile0.extent.width > max_tile_width) {
       tiling->tile_count.width++;
       tiling->tile0.extent.width =
-         align(DIV_ROUND_UP(ra_width, tiling->tile_count.width), tile_align_w);
+         util_align_npot(DIV_ROUND_UP(ra_width, tiling->tile_count.width), tile_align_w);
    }
 
    /* will force to sysmem, don't bother trying to have a valid tile config
     * TODO: just skip all GMEM stuff when sysmem is forced?
     */
-   if (!pixels)
+   if (!pass->gmem_pixels)
       return;
 
    /* do not exceed gmem size */
-   while (tiling->tile0.extent.width * tiling->tile0.extent.height > pixels) {
+   while (tiling->tile0.extent.width * tiling->tile0.extent.height > pass->gmem_pixels) {
       if (tiling->tile0.extent.width > MAX2(tile_align_w, tiling->tile0.extent.height)) {
          tiling->tile_count.width++;
          tiling->tile0.extent.width =
-            align(DIV_ROUND_UP(ra_width, tiling->tile_count.width), tile_align_w);
+            util_align_npot(DIV_ROUND_UP(ra_width, tiling->tile_count.width), tile_align_w);
       } else {
          /* if this assert fails then layout is impossible.. */
-         assert(tiling->tile0.extent.height > tile_align_h);
+         assert(tiling->tile0.extent.height > TILE_ALIGN_H);
          tiling->tile_count.height++;
          tiling->tile0.extent.height =
-            align(DIV_ROUND_UP(ra_height, tiling->tile_count.height), tile_align_h);
+            align(DIV_ROUND_UP(ra_height, tiling->tile_count.height), TILE_ALIGN_H);
       }
    }
 }
@@ -1378,7 +1377,7 @@ tu_cmd_update_tiling_config(struct tu_cmd_buffer *cmd,
    tiling->render_area = *render_area;
    tiling->force_sysmem = false;
 
-   tu_tiling_config_update_tile_layout(tiling, dev, cmd->state.pass->gmem_pixels);
+   tu_tiling_config_update_tile_layout(tiling, dev, cmd->state.pass);
    tu_tiling_config_update_pipe_layout(tiling, dev);
    tu_tiling_config_update_pipes(tiling, dev);
 }
