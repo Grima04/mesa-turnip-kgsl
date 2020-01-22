@@ -1413,9 +1413,9 @@ tu_image_view_init(struct tu_image_view *view,
 
 struct tu_buffer_view
 {
-   VkFormat vk_format;
-   uint64_t range; /**< VkBufferViewCreateInfo::range */
-   uint32_t state[4];
+   uint32_t descriptor[A6XX_TEX_CONST_DWORDS];
+
+   struct tu_buffer *buffer;
 };
 void
 tu_buffer_view_init(struct tu_buffer_view *view,

@@ -29,6 +29,7 @@
 
 #include "util/debug.h"
 #include "util/u_atomic.h"
+#include "util/format/u_format.h"
 #include "vk_format.h"
 #include "vk_util.h"
 #include "drm-uapi/drm_fourcc.h"
@@ -484,10 +485,45 @@ tu_buffer_view_init(struct tu_buffer_view *view,
 {
    TU_FROM_HANDLE(tu_buffer, buffer, pCreateInfo->buffer);
 
-   view->range = pCreateInfo->range == VK_WHOLE_SIZE
-                    ? buffer->size - pCreateInfo->offset
-                    : pCreateInfo->range;
-   view->vk_format = pCreateInfo->format;
+   view->buffer = buffer;
+
+   enum VkFormat vfmt = pCreateInfo->format;
+   enum pipe_format pfmt = vk_format_to_pipe_format(vfmt);
+   const struct tu_native_format *fmt = tu6_get_native_format(vfmt);
+
+   uint32_t range;
+   if (pCreateInfo->range == VK_WHOLE_SIZE)
+      range = buffer->size - pCreateInfo->offset;
+   else
+      range = pCreateInfo->range;
+   uint32_t elements = range / util_format_get_blocksize(pfmt);
+
+   static const VkComponentMapping components = {
+      .r = VK_COMPONENT_SWIZZLE_R,
+      .g = VK_COMPONENT_SWIZZLE_G,
+      .b = VK_COMPONENT_SWIZZLE_B,
+      .a = VK_COMPONENT_SWIZZLE_A,
+   };
+
+   uint64_t iova = tu_buffer_iova(buffer) + pCreateInfo->offset;
+
+   memset(&view->descriptor, 0, sizeof(view->descriptor));
+
+   view->descriptor[0] =
+      A6XX_TEX_CONST_0_TILE_MODE(TILE6_LINEAR) |
+      A6XX_TEX_CONST_0_SWAP(fmt->swap) |
+      A6XX_TEX_CONST_0_FMT(fmt->tex) |
+      A6XX_TEX_CONST_0_MIPLVLS(0) |
+      tu6_texswiz(&components, vfmt, VK_IMAGE_ASPECT_COLOR_BIT);
+      COND(vk_format_is_srgb(vfmt), A6XX_TEX_CONST_0_SRGB);
+   view->descriptor[1] =
+      A6XX_TEX_CONST_1_WIDTH(elements & MASK(15)) |
+      A6XX_TEX_CONST_1_HEIGHT(elements >> 15);
+   view->descriptor[2] =
+      A6XX_TEX_CONST_2_UNK4 |
+      A6XX_TEX_CONST_2_UNK31;
+   view->descriptor[4] = iova;
+   view->descriptor[5] = iova >> 32;
 }
 
 VkResult
