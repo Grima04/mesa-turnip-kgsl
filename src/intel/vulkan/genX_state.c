@@ -29,6 +29,7 @@
 
 #include "anv_private.h"
 
+#include "common/gen_aux_map.h"
 #include "common/gen_sample_positions.h"
 #include "genxml/gen_macros.h"
 #include "genxml/genX_pack.h"
@@ -235,6 +236,19 @@ genX(init_device_state)(struct anv_device *device)
          lri.RegisterOffset = GENX(CACHE_MODE_0_num);
          lri.DataDWord      = cache_mode_0;
       }
+   }
+#endif
+
+#if GEN_GEN == 12
+   uint64_t aux_base_addr = gen_aux_map_get_base(device->aux_map_ctx);
+   assert(aux_base_addr % (32 * 1024) == 0);
+   anv_batch_emit(&batch, GENX(MI_LOAD_REGISTER_IMM), lri) {
+      lri.RegisterOffset = GENX(GFX_AUX_TABLE_BASE_ADDR_num);
+      lri.DataDWord = aux_base_addr & 0xffffffff;
+   }
+   anv_batch_emit(&batch, GENX(MI_LOAD_REGISTER_IMM), lri) {
+      lri.RegisterOffset = GENX(GFX_AUX_TABLE_BASE_ADDR_num) + 4;
+      lri.DataDWord = aux_base_addr >> 32;
    }
 #endif
 

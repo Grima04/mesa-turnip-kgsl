@@ -2224,6 +2224,12 @@ enum anv_pipe_bits {
     * before they can proceed with the copy.
     */
    ANV_PIPE_RENDER_TARGET_BUFFER_WRITES      = (1 << 22),
+
+   /* This bit does not exist directly in PIPE_CONTROL. It means that Gen12
+    * AUX-TT data has changed and we need to invalidate AUX-TT data.  This is
+    * done by writing the AUX-TT register.
+    */
+   ANV_PIPE_AUX_TABLE_INVALIDATE_BIT         = (1 << 23),
 };
 
 #define ANV_PIPE_FLUSH_BITS ( \
@@ -2243,7 +2249,8 @@ enum anv_pipe_bits {
    ANV_PIPE_VF_CACHE_INVALIDATE_BIT | \
    ANV_PIPE_DATA_CACHE_FLUSH_BIT | \
    ANV_PIPE_TEXTURE_CACHE_INVALIDATE_BIT | \
-   ANV_PIPE_INSTRUCTION_CACHE_INVALIDATE_BIT)
+   ANV_PIPE_INSTRUCTION_CACHE_INVALIDATE_BIT | \
+   ANV_PIPE_AUX_TABLE_INVALIDATE_BIT)
 
 static inline enum anv_pipe_bits
 anv_pipe_flush_bits_for_access_flags(VkAccessFlags flags)

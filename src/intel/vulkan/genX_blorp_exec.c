@@ -260,7 +260,7 @@ genX(blorp_exec)(struct blorp_batch *batch,
    genX(flush_pipeline_select_3d)(cmd_buffer);
 
 #if GEN_GEN >= 12
-   genX(cmd_buffer_aux_map_state)(cmd_buffer);
+   cmd_buffer->state.pending_pipe_bits |= ANV_PIPE_AUX_TABLE_INVALIDATE_BIT;
 #endif
 
    genX(cmd_buffer_emit_gen7_depth_flush)(cmd_buffer);

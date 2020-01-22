@@ -1457,6 +1457,12 @@ genX(BeginCommandBuffer)(
     */
    cmd_buffer->state.pending_pipe_bits |= ANV_PIPE_VF_CACHE_INVALIDATE_BIT;
 
+   /* Re-emit the aux table register in every command buffer.  This way we're
+    * ensured that we have the table even if this command buffer doesn't
+    * initialize any images.
+    */
+   cmd_buffer->state.pending_pipe_bits |= ANV_PIPE_AUX_TABLE_INVALIDATE_BIT;
+
    /* We send an "Indirect State Pointers Disable" packet at
     * EndCommandBuffer, so all push contant packets are ignored during a
     * context restore. Documentation says after that command, we need to
@@ -2011,6 +2017,16 @@ genX(cmd_buffer_apply_pipe_flushes)(struct anv_cmd_buffer *cmd_buffer)
                (struct anv_address) { cmd_buffer->device->workaround_bo, 0 };
          }
       }
+
+#if GEN_GEN == 12
+      if ((bits & ANV_PIPE_AUX_TABLE_INVALIDATE_BIT) &&
+          cmd_buffer->device->info.has_aux_map) {
+         anv_batch_emit(&cmd_buffer->batch, GENX(MI_LOAD_REGISTER_IMM), lri) {
+            lri.RegisterOffset = GENX(GFX_CCS_AUX_INV_num);
+            lri.DataDWord = 1;
+         }
+      }
+#endif
 
       bits &= ~ANV_PIPE_INVALIDATE_BITS;
    }
@@ -2847,34 +2863,6 @@ cmd_buffer_flush_push_constants(struct anv_cmd_buffer *cmd_buffer,
    cmd_buffer->state.push_constants_dirty &= ~flushed;
 }
 
-#if GEN_GEN >= 12
-void
-genX(cmd_buffer_aux_map_state)(struct anv_cmd_buffer *cmd_buffer)
-{
-   void *aux_map_ctx = cmd_buffer->device->aux_map_ctx;
-   if (!aux_map_ctx)
-      return;
-   uint32_t aux_map_state_num = gen_aux_map_get_state_num(aux_map_ctx);
-   if (cmd_buffer->state.last_aux_map_state != aux_map_state_num) {
-      /* If the aux-map state number increased, then we need to rewrite the
-       * register. Rewriting the register is used to both set the aux-map
-       * translation table address, and also to invalidate any previously
-       * cached translations.
-       */
-      uint64_t base_addr = gen_aux_map_get_base(aux_map_ctx);
-      anv_batch_emit(&cmd_buffer->batch, GENX(MI_LOAD_REGISTER_IMM), lri) {
-         lri.RegisterOffset = GENX(GFX_AUX_TABLE_BASE_ADDR_num);
-         lri.DataDWord = base_addr & 0xffffffff;
-      }
-      anv_batch_emit(&cmd_buffer->batch, GENX(MI_LOAD_REGISTER_IMM), lri) {
-         lri.RegisterOffset = GENX(GFX_AUX_TABLE_BASE_ADDR_num) + 4;
-         lri.DataDWord = base_addr >> 32;
-      }
-      cmd_buffer->state.last_aux_map_state = aux_map_state_num;
-   }
-}
-#endif
-
 void
 genX(cmd_buffer_flush_state)(struct anv_cmd_buffer *cmd_buffer)
 {
@@ -2894,7 +2882,7 @@ genX(cmd_buffer_flush_state)(struct anv_cmd_buffer *cmd_buffer)
    genX(flush_pipeline_select_3d)(cmd_buffer);
 
 #if GEN_GEN >= 12
-   genX(cmd_buffer_aux_map_state)(cmd_buffer);
+   cmd_buffer->state.pending_pipe_bits |= ANV_PIPE_AUX_TABLE_INVALIDATE_BIT;
 #endif
 
    if (vb_emit) {
@@ -3787,7 +3775,7 @@ genX(cmd_buffer_flush_compute_state)(struct anv_cmd_buffer *cmd_buffer)
    genX(flush_pipeline_select_gpgpu)(cmd_buffer);
 
 #if GEN_GEN >= 12
-   genX(cmd_buffer_aux_map_state)(cmd_buffer);
+   cmd_buffer->state.pending_pipe_bits |= ANV_PIPE_AUX_TABLE_INVALIDATE_BIT;
 #endif
 
    if (cmd_buffer->state.compute.pipeline_dirty) {
