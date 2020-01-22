@@ -1021,7 +1021,7 @@ pandecode_render_target(uint64_t gpu_va, unsigned job_no, const struct bifrost_f
 }
 
 static struct pandecode_fbd
-pandecode_mfbd_bfr(uint64_t gpu_va, int job_no, bool is_fragment)
+pandecode_mfbd_bfr(uint64_t gpu_va, int job_no, bool is_fragment, bool is_compute)
 {
         struct pandecode_mapped_memory *mem = pandecode_find_mapped_gpu_mem_containing(gpu_va);
         const struct bifrost_framebuffer *PANDECODE_PTR_VAR(fb, mem, (mali_ptr) gpu_va);
@@ -1099,7 +1099,10 @@ pandecode_mfbd_bfr(uint64_t gpu_va, int job_no, bool is_fragment)
         pandecode_prop("unknown2 = 0x%x", fb->unknown2);
         MEMORY_PROP(fb, scratchpad);
         const struct midgard_tiler_descriptor t = fb->tiler;
-        pandecode_midgard_tiler_descriptor(&t, fb->width1 + 1, fb->height1 + 1, is_fragment, true);
+        if (!is_compute)
+                pandecode_midgard_tiler_descriptor(&t, fb->width1 + 1, fb->height1 + 1, is_fragment, true);
+        else
+                pandecode_msg("XXX: skipping compute MFBD, fixme\n");
 
         if (fb->zero3 || fb->zero4) {
                 pandecode_msg("XXX: framebuffer zeros tripped\n");
@@ -2140,7 +2143,7 @@ pandecode_vertex_tiler_postfix_pre(
         if (is_bifrost)
                 pandecode_scratchpad(p->framebuffer & ~1, job_no, suffix);
         else if (p->framebuffer & MALI_MFBD)
-                fbd_info = pandecode_mfbd_bfr((u64) ((uintptr_t) p->framebuffer) & FBD_MASK, job_no, false);
+                fbd_info = pandecode_mfbd_bfr((u64) ((uintptr_t) p->framebuffer) & FBD_MASK, job_no, false, job_type == JOB_TYPE_COMPUTE);
         else if (job_type == JOB_TYPE_COMPUTE)
                 pandecode_compute_fbd((u64) (uintptr_t) p->framebuffer, job_no);
         else
@@ -2766,7 +2769,7 @@ pandecode_fragment_job(const struct pandecode_mapped_memory *mem,
         struct pandecode_fbd info;
 
         if (is_mfbd)
-                info = pandecode_mfbd_bfr(s->framebuffer & FBD_MASK, job_no, true);
+                info = pandecode_mfbd_bfr(s->framebuffer & FBD_MASK, job_no, true, false);
         else
                 info = pandecode_sfbd(s->framebuffer & FBD_MASK, job_no, true, gpu_id);
 
