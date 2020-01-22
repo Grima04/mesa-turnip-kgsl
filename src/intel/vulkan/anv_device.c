@@ -3201,40 +3201,24 @@ VkResult anv_DeviceWaitIdle(
    return anv_queue_submit_simple_batch(&device->queue, NULL);
 }
 
-bool
-anv_vma_alloc(struct anv_device *device, struct anv_bo *bo,
+uint64_t
+anv_vma_alloc(struct anv_device *device,
+              uint64_t size, uint64_t align,
+              enum anv_bo_alloc_flags alloc_flags,
               uint64_t client_address)
 {
-   const struct gen_device_info *devinfo = &device->info;
-   /* Gen12 CCS surface addresses need to be 64K aligned. We have no way of
-    * telling what this allocation is for so pick the largest alignment.
-    */
-   const uint32_t vma_alignment =
-      devinfo->gen >= 12 ? (64 * 1024) : (4 * 1024);
-
-   if (!(bo->flags & EXEC_OBJECT_PINNED)) {
-      assert(!(bo->has_client_visible_address));
-      return true;
-   }
-
    pthread_mutex_lock(&device->vma_mutex);
 
-   bo->offset = 0;
+   uint64_t addr = 0;
 
-   if (bo->has_client_visible_address) {
-      assert(bo->flags & EXEC_OBJECT_SUPPORTS_48B_ADDRESS);
+   if (alloc_flags & ANV_BO_ALLOC_CLIENT_VISIBLE_ADDRESS) {
       if (client_address) {
          if (util_vma_heap_alloc_addr(&device->vma_cva,
-                                      client_address, bo->size)) {
-            bo->offset = gen_canonical_address(client_address);
+                                      client_address, size)) {
+            addr = client_address;
          }
       } else {
-         uint64_t addr =
-            util_vma_heap_alloc(&device->vma_cva, bo->size, vma_alignment);
-         if (addr) {
-            bo->offset = gen_canonical_address(addr);
-            assert(addr == gen_48b_address(bo->offset));
-         }
+         addr = util_vma_heap_alloc(&device->vma_cva, size, align);
       }
       /* We don't want to fall back to other heaps */
       goto done;
@@ -3242,54 +3226,39 @@ anv_vma_alloc(struct anv_device *device, struct anv_bo *bo,
 
    assert(client_address == 0);
 
-   if (bo->flags & EXEC_OBJECT_SUPPORTS_48B_ADDRESS) {
-      uint64_t addr =
-         util_vma_heap_alloc(&device->vma_hi, bo->size, vma_alignment);
-      if (addr) {
-         bo->offset = gen_canonical_address(addr);
-         assert(addr == gen_48b_address(bo->offset));
-      }
-   }
+   if (!(alloc_flags & ANV_BO_ALLOC_32BIT_ADDRESS))
+      addr = util_vma_heap_alloc(&device->vma_hi, size, align);
 
-   if (bo->offset == 0) {
-      uint64_t addr =
-         util_vma_heap_alloc(&device->vma_lo, bo->size, vma_alignment);
-      if (addr) {
-         bo->offset = gen_canonical_address(addr);
-         assert(addr == gen_48b_address(bo->offset));
-      }
-   }
+   if (addr == 0)
+      addr = util_vma_heap_alloc(&device->vma_lo, size, align);
 
 done:
    pthread_mutex_unlock(&device->vma_mutex);
 
-   return bo->offset != 0;
+   assert(addr == gen_48b_address(addr));
+   return gen_canonical_address(addr);
 }
 
 void
-anv_vma_free(struct anv_device *device, struct anv_bo *bo)
+anv_vma_free(struct anv_device *device,
+             uint64_t address, uint64_t size)
 {
-   if (!(bo->flags & EXEC_OBJECT_PINNED))
-      return;
-
-   const uint64_t addr_48b = gen_48b_address(bo->offset);
+   const uint64_t addr_48b = gen_48b_address(address);
 
    pthread_mutex_lock(&device->vma_mutex);
 
    if (addr_48b >= LOW_HEAP_MIN_ADDRESS &&
        addr_48b <= LOW_HEAP_MAX_ADDRESS) {
-      util_vma_heap_free(&device->vma_lo, addr_48b, bo->size);
+      util_vma_heap_free(&device->vma_lo, addr_48b, size);
    } else if (addr_48b >= CLIENT_VISIBLE_HEAP_MIN_ADDRESS &&
               addr_48b <= CLIENT_VISIBLE_HEAP_MAX_ADDRESS) {
-      util_vma_heap_free(&device->vma_cva, addr_48b, bo->size);
+      util_vma_heap_free(&device->vma_cva, addr_48b, size);
    } else {
       assert(addr_48b >= HIGH_HEAP_MIN_ADDRESS);
-      util_vma_heap_free(&device->vma_hi, addr_48b, bo->size);
+      util_vma_heap_free(&device->vma_hi, addr_48b, size);
    }
 
    pthread_mutex_unlock(&device->vma_mutex);
-
-   bo->offset = 0;
 }
 
 VkResult anv_AllocateMemory(

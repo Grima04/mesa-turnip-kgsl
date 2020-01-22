@@ -1521,6 +1521,18 @@ anv_bo_alloc_flags_to_bo_flags(struct anv_device *device,
    return bo_flags;
 }
 
+static uint32_t
+anv_device_get_bo_align(struct anv_device *device)
+{
+   /* Gen12 CCS surface addresses need to be 64K aligned. We have no way of
+    * telling what this allocation is for so pick the largest alignment.
+    */
+   if (device->info.gen >= 12)
+      return 64 * 1024;
+
+   return 4096;
+}
+
 VkResult
 anv_device_alloc_bo(struct anv_device *device,
                     uint64_t size,
@@ -1534,6 +1546,8 @@ anv_device_alloc_bo(struct anv_device *device,
 
    /* The kernel is going to give us whole pages anyway */
    size = align_u64(size, 4096);
+
+   const uint32_t align = anv_device_get_bo_align(device);
 
    uint32_t gem_handle = anv_gem_create(device, size);
    if (gem_handle == 0)
@@ -1581,14 +1595,18 @@ anv_device_alloc_bo(struct anv_device *device,
    if (alloc_flags & ANV_BO_ALLOC_FIXED_ADDRESS) {
       new_bo.has_fixed_address = true;
       new_bo.offset = explicit_address;
-   } else {
-      if (!anv_vma_alloc(device, &new_bo, explicit_address)) {
+   } else if (new_bo.flags & EXEC_OBJECT_PINNED) {
+      new_bo.offset = anv_vma_alloc(device, new_bo.size, align,
+                                    alloc_flags, explicit_address);
+      if (new_bo.offset == 0) {
          if (new_bo.map)
             anv_gem_munmap(new_bo.map, size);
          anv_gem_close(device, new_bo.gem_handle);
          return vk_errorf(device, NULL, VK_ERROR_OUT_OF_DEVICE_MEMORY,
                           "failed to allocate virtual address for BO");
       }
+   } else {
+      assert(!new_bo.has_client_visible_address);
    }
 
    assert(new_bo.gem_handle);
@@ -1670,11 +1688,25 @@ anv_device_import_bo_from_host_ptr(struct anv_device *device,
       };
 
       assert(client_address == gen_48b_address(client_address));
-      if (!anv_vma_alloc(device, &new_bo, client_address)) {
-         anv_gem_close(device, new_bo.gem_handle);
-         pthread_mutex_unlock(&cache->mutex);
-         return vk_errorf(device, NULL, VK_ERROR_OUT_OF_DEVICE_MEMORY,
-                          "failed to allocate virtual address for BO");
+      if (new_bo.flags & EXEC_OBJECT_PINNED) {
+         /* Gen12 CCS surface addresses need to be 64K aligned. We have no way
+          * of telling what this allocation is for so pick the largest
+          * alignment.
+          */
+         const uint32_t align = device->info.gen >= 12 ? (64 * 1024) :
+                                                         (4 * 1024);
+
+         new_bo.offset = anv_vma_alloc(device, new_bo.size,
+                                       anv_device_get_bo_align(device),
+                                       alloc_flags, client_address);
+         if (new_bo.offset == 0) {
+            anv_gem_close(device, new_bo.gem_handle);
+            pthread_mutex_unlock(&cache->mutex);
+            return vk_errorf(device, NULL, VK_ERROR_OUT_OF_DEVICE_MEMORY,
+                             "failed to allocate virtual address for BO");
+         }
+      } else {
+         assert(!new_bo.has_client_visible_address);
       }
 
       *bo = new_bo;
@@ -1789,11 +1821,18 @@ anv_device_import_bo(struct anv_device *device,
       };
 
       assert(client_address == gen_48b_address(client_address));
-      if (!anv_vma_alloc(device, &new_bo, client_address)) {
-         anv_gem_close(device, new_bo.gem_handle);
-         pthread_mutex_unlock(&cache->mutex);
-         return vk_errorf(device, NULL, VK_ERROR_OUT_OF_DEVICE_MEMORY,
-                          "failed to allocate virtual address for BO");
+      if (new_bo.flags & EXEC_OBJECT_PINNED) {
+         new_bo.offset = anv_vma_alloc(device, new_bo.size,
+                                       anv_device_get_bo_align(device),
+                                       alloc_flags, client_address);
+         if (new_bo.offset == 0) {
+            anv_gem_close(device, new_bo.gem_handle);
+            pthread_mutex_unlock(&cache->mutex);
+            return vk_errorf(device, NULL, VK_ERROR_OUT_OF_DEVICE_MEMORY,
+                             "failed to allocate virtual address for BO");
+         }
+      } else {
+         assert(!new_bo.has_client_visible_address);
       }
 
       *bo = new_bo;
@@ -1875,8 +1914,8 @@ anv_device_release_bo(struct anv_device *device,
    if (bo->map && !bo->from_host_ptr)
       anv_gem_munmap(bo->map, bo->size);
 
-   if (!bo->has_fixed_address)
-      anv_vma_free(device, bo);
+   if ((bo->flags & EXEC_OBJECT_PINNED) && !bo->has_fixed_address)
+      anv_vma_free(device, bo->offset, bo->size);
 
    uint32_t gem_handle = bo->gem_handle;
 

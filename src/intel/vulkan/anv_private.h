@@ -1467,9 +1467,12 @@ int anv_gem_syncobj_wait(struct anv_device *device,
                          uint32_t *handles, uint32_t num_handles,
                          int64_t abs_timeout_ns, bool wait_all);
 
-bool anv_vma_alloc(struct anv_device *device, struct anv_bo *bo,
-                   uint64_t client_address);
-void anv_vma_free(struct anv_device *device, struct anv_bo *bo);
+uint64_t anv_vma_alloc(struct anv_device *device,
+                       uint64_t size, uint64_t align,
+                       enum anv_bo_alloc_flags alloc_flags,
+                       uint64_t client_address);
+void anv_vma_free(struct anv_device *device,
+                  uint64_t address, uint64_t size);
 
 struct anv_reloc_list {
    uint32_t                                     num_relocs;
