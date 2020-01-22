@@ -73,7 +73,6 @@ struct cso_hash_data {
    struct cso_node *fakeNext;
    struct cso_node **buckets;
    int size;
-   int nodeSize;
    short userNumBits;
    short numBits;
    int numBuckets;

@@ -75,7 +75,7 @@ static int countBits(int hint)
 
 static void *cso_data_allocate_node(struct cso_hash_data *hash)
 {
-   return MALLOC(hash->nodeSize);
+   return MALLOC(sizeof(struct cso_node));
 }
 
 static void cso_free_node(struct cso_node *node)
@@ -208,7 +208,6 @@ bool cso_hash_init(struct cso_hash *hash)
    hash->data.d->fakeNext = 0;
    hash->data.d->buckets = 0;
    hash->data.d->size = 0;
-   hash->data.d->nodeSize = sizeof(struct cso_node);
    hash->data.d->userNumBits = (short)MinNumBits;
    hash->data.d->numBits = 0;
    hash->data.d->numBuckets = 0;
