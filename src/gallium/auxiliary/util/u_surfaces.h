@@ -36,7 +36,7 @@ struct util_surfaces
 {
    union
    {
-      struct cso_hash *hash;
+      struct cso_hash hash;
       struct pipe_surface **array;
       void* pv;
    } u;
@@ -77,7 +77,7 @@ util_surfaces_peek(struct util_surfaces *us, struct pipe_resource *pt, unsigned 
       return 0;
 
    if(unlikely(pt->target == PIPE_TEXTURE_3D || pt->target == PIPE_TEXTURE_CUBE))
-      return cso_hash_iter_data(cso_hash_find(us->u.hash, (layer << 8) | level));
+      return cso_hash_iter_data(cso_hash_find(&us->u.hash, (layer << 8) | level));
    else
       return us->u.array[level];
 }

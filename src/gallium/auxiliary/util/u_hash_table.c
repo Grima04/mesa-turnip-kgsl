@@ -49,7 +49,7 @@
 
 struct util_hash_table
 {
-   struct cso_hash *cso;   
+   struct cso_hash cso;
    
    /** Hash function */
    unsigned (*hash)(void *key);
@@ -85,8 +85,7 @@ util_hash_table_create(unsigned (*hash)(void *key),
    if (!ht)
       return NULL;
    
-   ht->cso = cso_hash_create();
-   if(!ht->cso) {
+   if (!cso_hash_init(&ht->cso)) {
       FREE(ht);
       return NULL;
    }
@@ -106,7 +105,7 @@ util_hash_table_find_iter(struct util_hash_table *ht,
    struct cso_hash_iter iter;
    struct util_hash_table_item *item;
    
-   iter = cso_hash_find(ht->cso, key_hash);
+   iter = cso_hash_find(&ht->cso, key_hash);
    while (!cso_hash_iter_is_null(iter)) {
       item = (struct util_hash_table_item *)cso_hash_iter_data(iter);
       if (!ht->compare(item->key, key))
@@ -126,7 +125,7 @@ util_hash_table_find_item(struct util_hash_table *ht,
    struct cso_hash_iter iter;
    struct util_hash_table_item *item;
    
-   iter = cso_hash_find(ht->cso, key_hash);
+   iter = cso_hash_find(&ht->cso, key_hash);
    while (!cso_hash_iter_is_null(iter)) {
       item = (struct util_hash_table_item *)cso_hash_iter_data(iter);
       if (!ht->compare(item->key, key))
@@ -167,7 +166,7 @@ util_hash_table_set(struct util_hash_table *ht,
    item->key = key;
    item->value = value;
    
-   iter = cso_hash_insert(ht->cso, key_hash, item);
+   iter = cso_hash_insert(&ht->cso, key_hash, item);
    if(cso_hash_iter_is_null(iter)) {
       FREE(item);
       return PIPE_ERROR_OUT_OF_MEMORY;
@@ -220,7 +219,7 @@ util_hash_table_remove(struct util_hash_table *ht,
    assert(item);
    FREE(item);
    
-   cso_hash_erase(ht->cso, iter);
+   cso_hash_erase(&ht->cso, iter);
 }
 
 
@@ -234,11 +233,11 @@ util_hash_table_clear(struct util_hash_table *ht)
    if (!ht)
       return;
 
-   iter = cso_hash_first_node(ht->cso);
+   iter = cso_hash_first_node(&ht->cso);
    while (!cso_hash_iter_is_null(iter)) {
-      item = (struct util_hash_table_item *)cso_hash_take(ht->cso, cso_hash_iter_key(iter));
+      item = (struct util_hash_table_item *)cso_hash_take(&ht->cso, cso_hash_iter_key(iter));
       FREE(item);
-      iter = cso_hash_first_node(ht->cso);
+      iter = cso_hash_first_node(&ht->cso);
    }
 }
 
@@ -257,7 +256,7 @@ util_hash_table_foreach(struct util_hash_table *ht,
    if (!ht)
       return PIPE_ERROR_BAD_INPUT;
 
-   iter = cso_hash_first_node(ht->cso);
+   iter = cso_hash_first_node(&ht->cso);
    while (!cso_hash_iter_is_null(iter)) {
       item = (struct util_hash_table_item *)cso_hash_iter_data(iter);
       result = callback(item->key, item->value, data);
@@ -297,14 +296,14 @@ util_hash_table_destroy(struct util_hash_table *ht)
    if (!ht)
       return;
 
-   iter = cso_hash_first_node(ht->cso);
+   iter = cso_hash_first_node(&ht->cso);
    while (!cso_hash_iter_is_null(iter)) {
       item = (struct util_hash_table_item *)cso_hash_iter_data(iter);
       FREE(item);
       iter = cso_hash_iter_next(iter);
    }
 
-   cso_hash_delete(ht->cso);
+   cso_hash_deinit(&ht->cso);
    
    FREE(ht);
 }

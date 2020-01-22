@@ -39,10 +39,10 @@ util_surfaces_do_get(struct util_surfaces *us, unsigned surface_struct_size,
 
    if(pt->target == PIPE_TEXTURE_3D || pt->target == PIPE_TEXTURE_CUBE)
    {    /* or 2D array */
-      if(!us->u.hash)
-         us->u.hash = cso_hash_create();
+      if (!us->u.hash.data.d)
+         cso_hash_init(&us->u.hash);
 
-      ps = cso_hash_iter_data(cso_hash_find(us->u.hash, (layer << 8) | level));
+      ps = cso_hash_iter_data(cso_hash_find(&us->u.hash, (layer << 8) | level));
    }
    else
    {
@@ -68,7 +68,7 @@ util_surfaces_do_get(struct util_surfaces *us, unsigned surface_struct_size,
    pipe_surface_init(ctx, ps, pt, level, layer);
 
    if(pt->target == PIPE_TEXTURE_3D || pt->target == PIPE_TEXTURE_CUBE)
-      cso_hash_insert(us->u.hash, (layer << 8) | level, ps);
+      cso_hash_insert(&us->u.hash, (layer << 8) | level, ps);
    else
       us->u.array[level] = ps;
 
@@ -82,7 +82,7 @@ util_surfaces_do_detach(struct util_surfaces *us, struct pipe_surface *ps)
    struct pipe_resource *pt = ps->texture;
    if(pt->target == PIPE_TEXTURE_3D || pt->target == PIPE_TEXTURE_CUBE)
    {    /* or 2D array */
-      cso_hash_erase(us->u.hash, cso_hash_find(us->u.hash, (ps->u.tex.first_layer << 8) | ps->u.tex.level));
+      cso_hash_erase(&us->u.hash, cso_hash_find(&us->u.hash, (ps->u.tex.first_layer << 8) | ps->u.tex.level));
    }
    else
       us->u.array[ps->u.tex.level] = 0;
@@ -93,17 +93,16 @@ util_surfaces_destroy(struct util_surfaces *us, struct pipe_resource *pt, void (
 {
    if(pt->target == PIPE_TEXTURE_3D || pt->target == PIPE_TEXTURE_CUBE)
    {    /* or 2D array */
-      if(us->u.hash)
+      if (&us->u.hash)
       {
          struct cso_hash_iter iter;
-         iter = cso_hash_first_node(us->u.hash);
+         iter = cso_hash_first_node(&us->u.hash);
          while (!cso_hash_iter_is_null(iter)) {
             destroy_surface(cso_hash_iter_data(iter));
             iter = cso_hash_iter_next(iter);
          }
 
-         cso_hash_delete(us->u.hash);
-         us->u.hash = NULL;
+         cso_hash_deinit(&us->u.hash);
       }
    }
    else

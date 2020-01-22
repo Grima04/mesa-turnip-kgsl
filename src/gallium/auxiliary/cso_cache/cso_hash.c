@@ -199,17 +199,11 @@ struct cso_hash_iter cso_hash_insert(struct cso_hash *hash,
    }
 }
 
-struct cso_hash * cso_hash_create(void)
+bool cso_hash_init(struct cso_hash *hash)
 {
-   struct cso_hash *hash = MALLOC_STRUCT(cso_hash);
-   if (!hash)
-      return NULL;
-
    hash->data.d = MALLOC_STRUCT(cso_hash_data);
-   if (!hash->data.d) {
-      FREE(hash);
-      return NULL;
-   }
+   if (!hash->data.d)
+      return false;
 
    hash->data.d->fakeNext = 0;
    hash->data.d->buckets = 0;
@@ -218,11 +212,10 @@ struct cso_hash * cso_hash_create(void)
    hash->data.d->userNumBits = (short)MinNumBits;
    hash->data.d->numBits = 0;
    hash->data.d->numBuckets = 0;
-
-   return hash;
+   return true;
 }
 
-void cso_hash_delete(struct cso_hash *hash)
+void cso_hash_deinit(struct cso_hash *hash)
 {
    struct cso_node *e_for_x = (struct cso_node *)(hash->data.d);
    struct cso_node **bucket = (struct cso_node **)(hash->data.d->buckets);
@@ -237,7 +230,7 @@ void cso_hash_delete(struct cso_hash *hash)
    }
    FREE(hash->data.d->buckets);
    FREE(hash->data.d);
-   FREE(hash);
+   hash->data.d = NULL;
 }
 
 unsigned cso_hash_iter_key(struct cso_hash_iter iter)

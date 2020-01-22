@@ -79,8 +79,8 @@ struct cso_hash_data {
    int numBuckets;
 };
 
-struct cso_hash *cso_hash_create(void);
-void             cso_hash_delete(struct cso_hash *hash);
+bool cso_hash_init(struct cso_hash *hash);
+void cso_hash_deinit(struct cso_hash *hash);
 
 
 int              cso_hash_size(struct cso_hash *hash);
