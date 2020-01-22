@@ -1045,7 +1045,7 @@ bifrost_compile_shader_nir(nir_shader *nir, struct bifrost_program *program)
 
 #ifdef BI_DEBUG
         nir_print_shader(nir, stdout);
-        disassemble_bifrost(program->compiled.data, program->compiled.size, false);
+        disassemble_bifrost(stdout, program->compiled.data, program->compiled.size, false);
 #endif
         return 0;
 }

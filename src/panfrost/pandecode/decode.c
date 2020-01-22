@@ -1871,7 +1871,7 @@ pandecode_shader_disassemble(mali_ptr shader_ptr, int shader_no, int type,
         struct midgard_disasm_stats stats;
 
         if (is_bifrost) {
-                disassemble_bifrost(code, sz, false);
+                disassemble_bifrost(stdout, code, sz, false);
 
                 /* TODO: Extend stats to Bifrost */
                 stats.texture_count = -128;
