@@ -243,11 +243,12 @@ lower_vulkan_resource_index(nir_builder *b, nir_intrinsic_instr *instr,
    switch (nir_intrinsic_desc_type(instr)) {
    case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
    case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
-      if (!const_val || const_val->u32 != 0)
-         tu_finishme("non-zero vulkan_resource_index array index");
+      if (!const_val)
+         tu_finishme("non-constant vulkan_resource_index array index");
       /* skip index 0 which is used for push constants */
       index = map_add(&shader->ubo_map, set, binding, 0,
                       binding_layout->array_size) + 1;
+      index += const_val->u32;
       break;
    case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
    case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
