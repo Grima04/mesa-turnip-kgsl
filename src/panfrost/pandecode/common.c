@@ -119,5 +119,5 @@ void
 pandecode_initialize(void)
 {
         list_inithead(&mmaps.node);
-
+        pandecode_dump_stream = stdout;
 }

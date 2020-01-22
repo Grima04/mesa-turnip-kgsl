@@ -58,6 +58,8 @@ static void pandecode_swizzle(unsigned swizzle, enum mali_format format);
         } \
 }
 
+FILE *pandecode_dump_stream;
+
 /* Semantic logging type.
  *
  * Raw: for raw messages to be printed as is.
@@ -83,7 +85,7 @@ static void
 pandecode_make_indent(void)
 {
         for (unsigned i = 0; i < pandecode_indent; ++i)
-                printf("    ");
+                fprintf(pandecode_dump_stream, "    ");
 }
 
 static void
@@ -94,16 +96,16 @@ pandecode_log_typed(enum pandecode_log_type type, const char *format, ...)
         pandecode_make_indent();
 
         if (type == PANDECODE_MESSAGE)
-                printf("// ");
+                fprintf(pandecode_dump_stream, "// ");
         else if (type == PANDECODE_PROPERTY)
-                printf(".");
+                fprintf(pandecode_dump_stream, ".");
 
         va_start(ap, format);
-        vprintf(format, ap);
+        vfprintf(pandecode_dump_stream, format, ap);
         va_end(ap);
 
         if (type == PANDECODE_PROPERTY)
-                printf(",\n");
+                fprintf(pandecode_dump_stream, ",\n");
 }
 
 static void
@@ -112,7 +114,7 @@ pandecode_log_cont(const char *format, ...)
         va_list ap;
 
         va_start(ap, format);
-        vprintf(format, ap);
+        vfprintf(pandecode_dump_stream, format, ap);
         va_end(ap);
 }
 
@@ -755,19 +757,19 @@ pandecode_sfbd(uint64_t gpu_va, int job_no, bool is_fragment, unsigned gpu_id)
         pandecode_prop("zero4 = 0x%" PRIx32, s->zero4);
         pandecode_prop("zero5 = 0x%" PRIx32, s->zero5);
 
-        printf(".zero3 = {");
+        pandecode_log_cont(".zero3 = {");
 
         for (int i = 0; i < sizeof(s->zero3) / sizeof(s->zero3[0]); ++i)
-                printf("%X, ", s->zero3[i]);
+                pandecode_log_cont("%X, ", s->zero3[i]);
 
-        printf("},\n");
+        pandecode_log_cont("},\n");
 
-        printf(".zero6 = {");
+        pandecode_log_cont(".zero6 = {");
 
         for (int i = 0; i < sizeof(s->zero6) / sizeof(s->zero6[0]); ++i)
-                printf("%X, ", s->zero6[i]);
+                pandecode_log_cont("%X, ", s->zero6[i]);
 
-        printf("},\n");
+        pandecode_log_cont("},\n");
 
         return info;
 }
@@ -778,7 +780,7 @@ pandecode_u32_slide(unsigned name, const u32 *slide, unsigned count)
         pandecode_log(".unknown%d = {", name);
 
         for (int i = 0; i < count; ++i)
-                printf("%X, ", slide[i]);
+                pandecode_log_cont("%X, ", slide[i]);
 
         pandecode_log("},\n");
 }
@@ -798,7 +800,7 @@ pandecode_compute_fbd(uint64_t gpu_va, int job_no)
         SHORT_SLIDE(1);
 
         pandecode_indent--;
-        printf("},\n");
+        pandecode_log_cont("},\n");
 }
 
 /* Extracts the number of components associated with a Mali format */
@@ -1866,12 +1868,12 @@ pandecode_shader_disassemble(mali_ptr shader_ptr, int shader_no, int type,
         /* Print some boilerplate to clearly denote the assembly (which doesn't
          * obey indentation rules), and actually do the disassembly! */
 
-        printf("\n\n");
+        pandecode_log_cont("\n\n");
 
         struct midgard_disasm_stats stats;
 
         if (is_bifrost) {
-                disassemble_bifrost(stdout, code, sz, false);
+                disassemble_bifrost(pandecode_dump_stream, code, sz, false);
 
                 /* TODO: Extend stats to Bifrost */
                 stats.texture_count = -128;
@@ -1887,7 +1889,8 @@ pandecode_shader_disassemble(mali_ptr shader_ptr, int shader_no, int type,
                 stats.quadword_count = 0;
                 stats.helper_invocations = false;
         } else {
-                stats = disassemble_midgard(stdout, code, sz, gpu_id,
+                stats = disassemble_midgard(pandecode_dump_stream,
+                                code, sz, gpu_id,
                                 type == JOB_TYPE_TILER ?
                                 MESA_SHADER_FRAGMENT : MESA_SHADER_VERTEX);
         }
@@ -1903,7 +1906,7 @@ pandecode_shader_disassemble(mali_ptr shader_ptr, int shader_no, int type,
                         (stats.work_count <= 8) ? 2 :
                         1;
 
-                printf("shader%d - MESA_SHADER_%s shader: "
+                pandecode_log_cont("shader%d - MESA_SHADER_%s shader: "
                         "%u inst, %u bundles, %u quadwords, "
                         "%u registers, %u threads, 0 loops, 0:0 spills:fills\n\n\n",
                         shader_id++,
