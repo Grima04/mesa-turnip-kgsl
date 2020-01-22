@@ -31,6 +31,7 @@
 
 #include "decode.h"
 #include "util/macros.h"
+#include "util/u_debug.h"
 
 /* Memory handling */
 
@@ -115,9 +116,40 @@ pointer_as_memory_reference(uint64_t ptr)
 
 }
 
+static void
+pandecode_dump_file_open(void)
+{
+        if (pandecode_dump_stream)
+                return;
+
+        const char *dump_file = debug_get_option("PANDECODE_DUMP_FILE", "pandecode.dump");
+
+        printf("pandecode: dump command stream to file %s\n", dump_file);
+        pandecode_dump_stream = fopen(dump_file, "w");
+
+        if (!pandecode_dump_stream)
+                fprintf(stderr,"pandecode: failed to open command stream log file %s\n",
+                        dump_file);
+}
+
+static void
+pandecode_dump_file_close(void)
+{
+        if (pandecode_dump_stream) {
+                fclose(pandecode_dump_stream);
+                pandecode_dump_stream = NULL;
+        }
+}
+
 void
 pandecode_initialize(void)
 {
         list_inithead(&mmaps.node);
-        pandecode_dump_stream = stdout;
+        pandecode_dump_file_open();
+}
+
+void
+pandecode_close(void)
+{
+        pandecode_dump_file_close();
 }

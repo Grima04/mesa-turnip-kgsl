@@ -44,6 +44,8 @@
 
 void pandecode_initialize(void);
 
+void pandecode_close(void);
+
 void
 pandecode_inject_mmap(uint64_t gpu_va, void *cpu, unsigned sz, const char *name);
 
