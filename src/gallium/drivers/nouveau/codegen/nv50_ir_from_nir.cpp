@@ -30,6 +30,7 @@
 #include "codegen/nv50_ir_from_common.h"
 #include "codegen/nv50_ir_lowering_helper.h"
 #include "codegen/nv50_ir_util.h"
+#include "tgsi/tgsi_from_mesa.h"
 
 #if __cplusplus >= 201103L
 #include <unordered_map>
@@ -1011,118 +1012,6 @@ frag_result_to_tgsi_semantic(unsigned slot, unsigned *name, unsigned *index)
    }
 }
 
-// copy of _mesa_sysval_to_semantic
-static void
-system_val_to_tgsi_semantic(unsigned val, unsigned *name, unsigned *index)
-{
-   *index = 0;
-   switch (val) {
-   // Vertex shader
-   case SYSTEM_VALUE_VERTEX_ID:
-      *name = TGSI_SEMANTIC_VERTEXID;
-      break;
-   case SYSTEM_VALUE_INSTANCE_ID:
-      *name = TGSI_SEMANTIC_INSTANCEID;
-      break;
-   case SYSTEM_VALUE_VERTEX_ID_ZERO_BASE:
-      *name = TGSI_SEMANTIC_VERTEXID_NOBASE;
-      break;
-   case SYSTEM_VALUE_BASE_VERTEX:
-      *name = TGSI_SEMANTIC_BASEVERTEX;
-      break;
-   case SYSTEM_VALUE_BASE_INSTANCE:
-      *name = TGSI_SEMANTIC_BASEINSTANCE;
-      break;
-   case SYSTEM_VALUE_DRAW_ID:
-      *name = TGSI_SEMANTIC_DRAWID;
-      break;
-
-   // Geometry shader
-   case SYSTEM_VALUE_INVOCATION_ID:
-      *name = TGSI_SEMANTIC_INVOCATIONID;
-      break;
-
-   // Fragment shader
-   case SYSTEM_VALUE_FRAG_COORD:
-      *name = TGSI_SEMANTIC_POSITION;
-      break;
-   case SYSTEM_VALUE_FRONT_FACE:
-      *name = TGSI_SEMANTIC_FACE;
-      break;
-   case SYSTEM_VALUE_SAMPLE_ID:
-      *name = TGSI_SEMANTIC_SAMPLEID;
-      break;
-   case SYSTEM_VALUE_SAMPLE_POS:
-      *name = TGSI_SEMANTIC_SAMPLEPOS;
-      break;
-   case SYSTEM_VALUE_SAMPLE_MASK_IN:
-      *name = TGSI_SEMANTIC_SAMPLEMASK;
-      break;
-   case SYSTEM_VALUE_HELPER_INVOCATION:
-      *name = TGSI_SEMANTIC_HELPER_INVOCATION;
-      break;
-
-   // Tessellation shader
-   case SYSTEM_VALUE_TESS_COORD:
-      *name = TGSI_SEMANTIC_TESSCOORD;
-      break;
-   case SYSTEM_VALUE_VERTICES_IN:
-      *name = TGSI_SEMANTIC_VERTICESIN;
-      break;
-   case SYSTEM_VALUE_PRIMITIVE_ID:
-      *name = TGSI_SEMANTIC_PRIMID;
-      break;
-   case SYSTEM_VALUE_TESS_LEVEL_OUTER:
-      *name = TGSI_SEMANTIC_TESSOUTER;
-      break;
-   case SYSTEM_VALUE_TESS_LEVEL_INNER:
-      *name = TGSI_SEMANTIC_TESSINNER;
-      break;
-
-   // Compute shader
-   case SYSTEM_VALUE_LOCAL_INVOCATION_ID:
-      *name = TGSI_SEMANTIC_THREAD_ID;
-      break;
-   case SYSTEM_VALUE_WORK_GROUP_ID:
-      *name = TGSI_SEMANTIC_BLOCK_ID;
-      break;
-   case SYSTEM_VALUE_NUM_WORK_GROUPS:
-      *name = TGSI_SEMANTIC_GRID_SIZE;
-      break;
-   case SYSTEM_VALUE_LOCAL_GROUP_SIZE:
-      *name = TGSI_SEMANTIC_BLOCK_SIZE;
-      break;
-
-   // ARB_shader_ballot
-   case SYSTEM_VALUE_SUBGROUP_SIZE:
-      *name = TGSI_SEMANTIC_SUBGROUP_SIZE;
-      break;
-   case SYSTEM_VALUE_SUBGROUP_INVOCATION:
-      *name = TGSI_SEMANTIC_SUBGROUP_INVOCATION;
-      break;
-   case SYSTEM_VALUE_SUBGROUP_EQ_MASK:
-      *name = TGSI_SEMANTIC_SUBGROUP_EQ_MASK;
-      break;
-   case SYSTEM_VALUE_SUBGROUP_GE_MASK:
-      *name = TGSI_SEMANTIC_SUBGROUP_GE_MASK;
-      break;
-   case SYSTEM_VALUE_SUBGROUP_GT_MASK:
-      *name = TGSI_SEMANTIC_SUBGROUP_GT_MASK;
-      break;
-   case SYSTEM_VALUE_SUBGROUP_LE_MASK:
-      *name = TGSI_SEMANTIC_SUBGROUP_LE_MASK;
-      break;
-   case SYSTEM_VALUE_SUBGROUP_LT_MASK:
-      *name = TGSI_SEMANTIC_SUBGROUP_LT_MASK;
-      break;
-
-   default:
-      ERROR("unknown system value %u\n", val);
-      assert(false);
-      break;
-   }
-}
-
 void
 Converter::setInterpolate(nv50_ir_varying *var,
                           uint8_t mode,
@@ -1201,9 +1090,8 @@ bool Converter::assignSlots() {
       if (!(nir->info.system_values_read & 1ull << i))
          continue;
 
-      system_val_to_tgsi_semantic(i, &name, &index);
-      info->sv[info->numSysVals].sn = name;
-      info->sv[info->numSysVals].si = index;
+      info->sv[info->numSysVals].sn = tgsi_get_sysval_semantic(i);
+      info->sv[info->numSysVals].si = 0;
       info->sv[info->numSysVals].input = 0; // TODO inferSysValDirection(sn);
 
       switch (i) {
