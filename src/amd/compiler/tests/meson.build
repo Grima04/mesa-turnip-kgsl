@@ -22,6 +22,8 @@ aco_tests_files = files(
   'helpers.cpp',
   'helpers.h',
   'main.cpp',
+  'test_assembler.cpp',
+  'test_optimizer.cpp',
   'test_tests.cpp',
 )
 
