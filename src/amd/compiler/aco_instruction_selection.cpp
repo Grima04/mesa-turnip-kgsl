@@ -3158,7 +3158,8 @@ void visit_load_input(isel_context *ctx, nir_intrinsic_instr *instr)
       if (post_shuffle)
          num_channels = MAX2(num_channels, 3);
 
-      Temp list = bld.smem(aco_opcode::s_load_dwordx4, bld.def(s4), vertex_buffers, Operand(attrib_binding * 16u));
+      Operand off = bld.copy(bld.def(s1), Operand(attrib_binding * 16u));
+      Temp list = bld.smem(aco_opcode::s_load_dwordx4, bld.def(s4), vertex_buffers, off);
 
       Temp index;
       if (ctx->options->key.vs.instance_rate_inputs & (1u << location)) {
@@ -3417,7 +3418,8 @@ Temp load_desc_ptr(isel_context *ctx, unsigned desc_set)
    if (ctx->program->info->need_indirect_descriptor_sets) {
       Builder bld(ctx->program, ctx->block);
       Temp ptr64 = convert_pointer_to_64_bit(ctx, get_arg(ctx, ctx->args->descriptor_sets[0]));
-      return bld.smem(aco_opcode::s_load_dword, bld.def(s1), ptr64, Operand(desc_set << 2));//, false, false, false);
+      Operand off = bld.copy(bld.def(s1), Operand(desc_set << 2));
+      return bld.smem(aco_opcode::s_load_dword, bld.def(s1), ptr64, off);//, false, false, false);
    }
 
    return get_arg(ctx, ctx->args->descriptor_sets[desc_set]);
@@ -4035,7 +4037,7 @@ Temp get_sampler_desc(isel_context *ctx, nir_deref_instr *deref_instr,
 
    Operand off;
    if (!index_set) {
-      off = Operand(offset);
+      off = bld.copy(bld.def(s1), Operand(offset));
    } else {
       off = Operand((Temp)bld.sop2(aco_opcode::s_add_i32, bld.def(s1), bld.def(s1, scc), Operand(offset),
                                    bld.sop2(aco_opcode::s_mul_i32, bld.def(s1), Operand(stride), index)));
@@ -5951,7 +5953,9 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
             offset = bld.sop2(aco_opcode::s_lshl_b32, bld.def(s1), bld.def(s1, scc), addr, Operand(3u));
             offset = bld.sop2(aco_opcode::s_add_u32, bld.def(s1), bld.def(s1, scc), addr, Operand(sample_pos_offset));
          }
-         sample_pos = bld.smem(aco_opcode::s_load_dwordx2, bld.def(s2), private_segment_buffer, Operand(offset));
+
+         Operand off = bld.copy(bld.def(s1), Operand(offset));
+         sample_pos = bld.smem(aco_opcode::s_load_dwordx2, bld.def(s2), private_segment_buffer, off);
 
       } else if (ctx->options->chip_class >= GFX9) {
          addr = bld.vop2(aco_opcode::v_lshlrev_b32, bld.def(v1), Operand(3u), addr);
@@ -8630,7 +8634,8 @@ static void emit_streamout(isel_context *ctx, unsigned stream)
       if (!stride)
          continue;
 
-      so_buffers[i] = bld.smem(aco_opcode::s_load_dwordx4, bld.def(s4), buf_ptr, Operand(i * 16u));
+      Operand off = bld.copy(bld.def(s1), Operand(i * 16u));
+      so_buffers[i] = bld.smem(aco_opcode::s_load_dwordx4, bld.def(s4), buf_ptr, off);
    }
 
    Temp so_vtx_count = bld.sop2(aco_opcode::s_bfe_u32, bld.def(s1), bld.def(s1, scc),
