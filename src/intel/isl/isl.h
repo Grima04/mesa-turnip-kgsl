@@ -2105,6 +2105,27 @@ isl_surf_get_image_offset_B_tile_sa(const struct isl_surf *surf,
                                     uint32_t *y_offset_sa);
 
 /**
+ * Calculate the range in bytes occupied by a subimage, to the nearest tile.
+ *
+ * The range returned will be the smallest memory range in which the give
+ * subimage fits, rounded to even tiles.  Intel images do not usually have a
+ * direct subimage -> range mapping so the range returned may contain data
+ * from other sub-images.  The returned range is a half-open interval where
+ * all of the addresses within the subimage are < end_tile_B.
+ *
+ * @invariant level < surface levels
+ * @invariant logical_array_layer < logical array length of surface
+ * @invariant logical_z_offset_px < logical depth of surface at level
+ */
+void
+isl_surf_get_image_range_B_tile(const struct isl_surf *surf,
+                                uint32_t level,
+                                uint32_t logical_array_layer,
+                                uint32_t logical_z_offset_px,
+                                uint32_t *start_tile_B,
+                                uint32_t *end_tile_B);
+
+/**
  * Create an isl_surf that represents a particular subimage in the surface.
  *
  * The newly created surface will have a single miplevel and array slice.  The

@@ -2514,6 +2514,56 @@ isl_surf_get_image_offset_B_tile_sa(const struct isl_surf *surf,
 }
 
 void
+isl_surf_get_image_range_B_tile(const struct isl_surf *surf,
+                                uint32_t level,
+                                uint32_t logical_array_layer,
+                                uint32_t logical_z_offset_px,
+                                uint32_t *start_tile_B,
+                                uint32_t *end_tile_B)
+{
+   uint32_t start_x_offset_el, start_y_offset_el;
+   isl_surf_get_image_offset_el(surf, level, logical_array_layer,
+                                logical_z_offset_px,
+                                &start_x_offset_el,
+                                &start_y_offset_el);
+
+   /* Compute the size of the subimage in surface elements */
+   const uint32_t subimage_w_sa = isl_minify(surf->phys_level0_sa.w, level);
+   const uint32_t subimage_h_sa = isl_minify(surf->phys_level0_sa.h, level);
+   const struct isl_format_layout *fmtl = isl_format_get_layout(surf->format);
+   const uint32_t subimage_w_el = isl_align_div_npot(subimage_w_sa, fmtl->bw);
+   const uint32_t subimage_h_el = isl_align_div_npot(subimage_h_sa, fmtl->bh);
+
+   /* Find the last pixel */
+   uint32_t end_x_offset_el = start_x_offset_el + subimage_w_el - 1;
+   uint32_t end_y_offset_el = start_y_offset_el + subimage_h_el - 1;
+
+   UNUSED uint32_t x_offset_el, y_offset_el;
+   isl_tiling_get_intratile_offset_el(surf->tiling, fmtl->bpb,
+                                      surf->row_pitch_B,
+                                      start_x_offset_el,
+                                      start_y_offset_el,
+                                      start_tile_B,
+                                      &x_offset_el,
+                                      &y_offset_el);
+
+   isl_tiling_get_intratile_offset_el(surf->tiling, fmtl->bpb,
+                                      surf->row_pitch_B,
+                                      end_x_offset_el,
+                                      end_y_offset_el,
+                                      end_tile_B,
+                                      &x_offset_el,
+                                      &y_offset_el);
+
+   /* We want the range we return to be exclusive but the tile containing the
+    * last pixel (what we just calculated) is inclusive.  Add one.
+    */
+   (*end_tile_B)++;
+
+   assert(*end_tile_B <= surf->size_B);
+}
+
+void
 isl_surf_get_image_surf(const struct isl_device *dev,
                         const struct isl_surf *surf,
                         uint32_t level,
