@@ -990,6 +990,102 @@ genX(copy_fast_clear_dwords)(struct anv_cmd_buffer *cmd_buffer,
    }
 }
 
+#define READ_ONCE(x) (*(volatile __typeof__(x) *)&(x))
+
+#if GEN_GEN == 12
+static void
+anv_image_init_aux_tt(struct anv_cmd_buffer *cmd_buffer,
+                      const struct anv_image *image,
+                      VkImageAspectFlagBits aspect,
+                      uint32_t base_level, uint32_t level_count,
+                      uint32_t base_layer, uint32_t layer_count)
+{
+   uint32_t plane = anv_image_aspect_to_plane(image->aspects, aspect);
+   assert(isl_aux_usage_has_ccs(image->planes[plane].aux_usage));
+
+   uint64_t base_address =
+      anv_address_physical(image->planes[plane].address);
+
+   const struct isl_surf *isl_surf = &image->planes[plane].surface.isl;
+   uint64_t format_bits = gen_aux_map_format_bits_for_isl_surf(isl_surf);
+
+   /* We're about to live-update the AUX-TT.  We really don't want anyone else
+    * trying to read it while we're doing this.  We could probably get away
+    * with not having this stall in some cases if we were really careful but
+    * it's better to play it safe.  Full stall the GPU.
+    */
+   cmd_buffer->state.pending_pipe_bits |= ANV_PIPE_CS_STALL_BIT;
+   genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
+
+   for (uint32_t a = 0; a < layer_count; a++) {
+      const uint32_t layer = base_layer + a;
+
+      uint64_t start_offset_B = UINT64_MAX, end_offset_B = 0;
+      for (uint32_t l = 0; l < level_count; l++) {
+         const uint32_t level = base_level + l;
+
+         uint32_t logical_array_layer, logical_z_offset_px;
+         if (image->type == VK_IMAGE_TYPE_3D) {
+            logical_array_layer = 0;
+
+            /* If the given miplevel does not have this layer, then any higher
+             * miplevels won't either because miplevels only get smaller the
+             * higher the LOD.
+             */
+            assert(layer < image->extent.depth);
+            if (layer >= anv_minify(image->extent.depth, level))
+               break;
+            logical_z_offset_px = layer;
+         } else {
+            assert(layer < image->array_size);
+            logical_array_layer = layer;
+            logical_z_offset_px = 0;
+         }
+
+         uint32_t slice_start_offset_B, slice_end_offset_B;
+         isl_surf_get_image_range_B_tile(isl_surf, level,
+                                         logical_array_layer,
+                                         logical_z_offset_px,
+                                         &slice_start_offset_B,
+                                         &slice_end_offset_B);
+
+         start_offset_B = MIN2(start_offset_B, slice_start_offset_B);
+         end_offset_B = MAX2(end_offset_B, slice_end_offset_B);
+      }
+
+      /* Aux operates 64K at a time */
+      start_offset_B = align_down_u64(start_offset_B, 64 * 1024);
+      end_offset_B = align_u64(end_offset_B, 64 * 1024);
+
+      for (uint64_t offset = start_offset_B;
+           offset < end_offset_B; offset += 64 * 1024) {
+         uint64_t address = base_address + offset;
+
+         uint64_t aux_entry_address, *aux_entry_map;
+         aux_entry_map = gen_aux_map_get_entry(cmd_buffer->device->aux_map_ctx,
+                                               address, &aux_entry_address);
+
+         const uint64_t old_aux_entry = READ_ONCE(*aux_entry_map);
+         uint64_t new_aux_entry =
+            (old_aux_entry & ~GEN_AUX_MAP_FORMAT_BITS_MASK) | format_bits;
+
+         /* We're only going to update the top 32 bits */
+         assert((uint32_t)old_aux_entry == (uint32_t)new_aux_entry);
+
+         anv_batch_emit(&cmd_buffer->batch, GENX(MI_STORE_DATA_IMM), sdi) {
+            sdi.Address = (struct anv_address) {
+               .bo = NULL,
+               .offset = aux_entry_address + 4,
+            };
+            sdi.ImmediateData = new_aux_entry >> 32;
+         }
+      }
+   }
+
+   cmd_buffer->state.pending_pipe_bits |= ANV_PIPE_AUX_TABLE_INVALIDATE_BIT;
+}
+#endif /* GEN_GEN == 12 */
+
 /**
  * @brief Transitions a color buffer from one layout to another.
  *
@@ -1010,7 +1106,8 @@ transition_color_buffer(struct anv_cmd_buffer *cmd_buffer,
                         VkImageLayout initial_layout,
                         VkImageLayout final_layout)
 {
-   const struct gen_device_info *devinfo = &cmd_buffer->device->info;
+   struct anv_device *device = cmd_buffer->device;
+   const struct gen_device_info *devinfo = &device->info;
    /* Validate the inputs. */
    assert(cmd_buffer);
    assert(image && image->aspects & VK_IMAGE_ASPECT_ANY_COLOR_BIT_ANV);
@@ -1059,6 +1156,17 @@ transition_color_buffer(struct anv_cmd_buffer *cmd_buffer,
 
    if (initial_layout == VK_IMAGE_LAYOUT_UNDEFINED ||
        initial_layout == VK_IMAGE_LAYOUT_PREINITIALIZED) {
+#if GEN_GEN == 12
+      if (isl_aux_usage_has_ccs(image->planes[plane].aux_usage) &&
+          device->physical->has_implicit_ccs && devinfo->has_aux_map) {
+         anv_image_init_aux_tt(cmd_buffer, image, aspect,
+                               base_level, level_count,
+                               base_layer, layer_count);
+      }
+#else
+      assert(!(device->physical->has_implicit_ccs && devinfo->has_aux_map));
+#endif
+
       /* A subresource in the undefined layout may have been aliased and
        * populated with any arrangement of bits. Therefore, we must initialize
        * the related aux buffer and clear buffer entry with desirable values.
@@ -2881,10 +2989,6 @@ genX(cmd_buffer_flush_state)(struct anv_cmd_buffer *cmd_buffer)
 
    genX(flush_pipeline_select_3d)(cmd_buffer);
 
-#if GEN_GEN >= 12
-   cmd_buffer->state.pending_pipe_bits |= ANV_PIPE_AUX_TABLE_INVALIDATE_BIT;
-#endif
-
    if (vb_emit) {
       const uint32_t num_buffers = __builtin_popcount(vb_emit);
       const uint32_t num_dwords = 1 + num_buffers * 4;
@@ -3773,10 +3877,6 @@ genX(cmd_buffer_flush_compute_state)(struct anv_cmd_buffer *cmd_buffer)
    genX(cmd_buffer_config_l3)(cmd_buffer, pipeline->urb.l3_config);
 
    genX(flush_pipeline_select_gpgpu)(cmd_buffer);
-
-#if GEN_GEN >= 12
-   cmd_buffer->state.pending_pipe_bits |= ANV_PIPE_AUX_TABLE_INVALIDATE_BIT;
-#endif
 
    if (cmd_buffer->state.compute.pipeline_dirty) {
       /* From the Sky Lake PRM Vol 2a, MEDIA_VFE_STATE:

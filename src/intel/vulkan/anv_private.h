@@ -645,6 +645,7 @@ struct anv_bo {
     */
    uint64_t offset;
 
+   /** Size of the buffer not including implicit aux */
    uint64_t size;
 
    /* Map for internally mapped BOs.
@@ -652,6 +653,30 @@ struct anv_bo {
     * If ANV_BO_WRAPPER is set in flags, map points to the wrapped BO.
     */
    void *map;
+
+   /** Size of the implicit CCS range at the end of the buffer
+    *
+    * On Gen12, CCS data is always a direct 1/256 scale-down.  A single 64K
+    * page of main surface data maps to a 256B chunk of CCS data and that
+    * mapping is provided on TGL-LP by the AUX table which maps virtual memory
+    * addresses in the main surface to virtual memory addresses for CCS data.
+    *
+    * Because we can't change these maps around easily and because Vulkan
+    * allows two VkImages to be bound to overlapping memory regions (as long
+    * as the app is careful), it's not feasible to make this mapping part of
+    * the image.  (On Gen11 and earlier, the mapping was provided via
+    * RENDER_SURFACE_STATE so each image had its own main -> CCS mapping.)
+    * Instead, we attach the CCS data directly to the buffer object and setup
+    * the AUX table mapping at BO creation time.
+    *
+    * This field is for internal tracking use by the BO allocator only and
+    * should not be touched by other parts of the code.  If something wants to
+    * know if a BO has implicit CCS data, it should instead look at the
+    * has_implicit_ccs boolean below.
+    *
+    * This data is not included in maps of this buffer.
+    */
+   uint32_t _ccs_size;
 
    /** Flags to pass to the kernel through drm_i915_exec_object2::flags */
    uint32_t flags;
@@ -676,6 +701,9 @@ struct anv_bo {
 
    /** See also ANV_BO_ALLOC_CLIENT_VISIBLE_ADDRESS */
    bool has_client_visible_address:1;
+
+   /** True if this BO has implicit CCS data attached to it */
+   bool has_implicit_ccs:1;
 };
 
 static inline struct anv_bo *
@@ -1018,6 +1046,13 @@ struct anv_physical_device {
     bool                                        has_bindless_images;
     /** True if we can use bindless access for samplers */
     bool                                        has_bindless_samplers;
+
+    /** True if this device has implicit AUX
+     *
+     * If true, CCS is handled as an implicit attachment to the BO rather than
+     * as an explicitly bound surface.
+     */
+    bool                                        has_implicit_ccs;
 
     bool                                        always_flush_cache;
 
@@ -1380,6 +1415,9 @@ enum anv_bo_alloc_flags {
 
    /** Has an address which is visible to the client */
    ANV_BO_ALLOC_CLIENT_VISIBLE_ADDRESS = (1 << 8),
+
+   /** This buffer has implicit CCS data attached to it */
+   ANV_BO_ALLOC_IMPLICIT_CCS = (1 << 9),
 };
 
 VkResult anv_device_alloc_bo(struct anv_device *device, uint64_t size,
@@ -3472,13 +3510,6 @@ struct anv_image {
        * BO associated with this plane, set when bound.
        */
       struct anv_address address;
-
-      /**
-       * Address of the main surface used to fill the aux map table. This is
-       * used at destruction of the image since the Vulkan spec does not
-       * guarantee that the address.bo field we still be valid at destruction.
-       */
-      uint64_t aux_map_surface_address;
 
       /**
        * When destroying the image, also free the bo.

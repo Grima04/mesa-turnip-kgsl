@@ -34,8 +34,6 @@
 #include "vk_util.h"
 #include "util/u_math.h"
 
-#include "common/gen_aux_map.h"
-
 #include "vk_format_info.h"
 
 static isl_surf_usage_flags_t
@@ -503,7 +501,9 @@ make_surface(struct anv_device *dev,
                image->planes[plane].aux_usage = ISL_AUX_USAGE_CCS_D;
             }
 
-            add_surface(image, &image->planes[plane].aux_surface, plane);
+            if (!dev->physical->has_implicit_ccs)
+               add_surface(image, &image->planes[plane].aux_surface, plane);
+
             add_aux_state_tracking_buffer(image, plane, dev);
          }
       }
@@ -805,12 +805,6 @@ anv_DestroyImage(VkDevice _device, VkImage _image,
       return;
 
    for (uint32_t p = 0; p < image->n_planes; ++p) {
-      if (anv_image_plane_uses_aux_map(device, image, p) &&
-          image->planes[p].address.bo) {
-         gen_aux_map_unmap_range(device->aux_map_ctx,
-                                 image->planes[p].aux_map_surface_address,
-                                 image->planes[p].surface.isl.size_B);
-      }
       if (image->planes[p].bo_is_owned) {
          assert(image->planes[p].address.bo != NULL);
          anv_device_release_bo(device, image->planes[p].address.bo);
@@ -829,12 +823,6 @@ static void anv_image_bind_memory_plane(struct anv_device *device,
    assert(!image->planes[plane].bo_is_owned);
 
    if (!memory) {
-      if (anv_image_plane_uses_aux_map(device, image, plane) &&
-          image->planes[plane].address.bo) {
-         gen_aux_map_unmap_range(device->aux_map_ctx,
-                                 image->planes[plane].aux_map_surface_address,
-                                 image->planes[plane].surface.isl.size_B);
-      }
       image->planes[plane].address = ANV_NULL_ADDRESS;
       return;
    }
@@ -844,19 +832,11 @@ static void anv_image_bind_memory_plane(struct anv_device *device,
       .offset = memory_offset,
    };
 
-   if (anv_image_plane_uses_aux_map(device, image, plane)) {
-      image->planes[plane].aux_map_surface_address =
-         anv_address_physical(
-            anv_address_add(image->planes[plane].address,
-                            image->planes[plane].surface.offset));
-
-      gen_aux_map_add_image(device->aux_map_ctx,
-                            &image->planes[plane].surface.isl,
-                            image->planes[plane].aux_map_surface_address,
-                            anv_address_physical(
-                               anv_address_add(image->planes[plane].address,
-                                               image->planes[plane].aux_surface.offset)));
-   }
+   /* If we're on a platform that uses implicit CCS and our buffer does not
+    * have any implicit CCS data, disable compression on that image.
+    */
+   if (device->physical->has_implicit_ccs && !memory->bo->has_implicit_ccs)
+      image->planes[plane].aux_usage = ISL_AUX_USAGE_NONE;
 }
 
 /* We are binding AHardwareBuffer. Get a description, resolve the

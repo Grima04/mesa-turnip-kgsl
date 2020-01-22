@@ -470,6 +470,8 @@ anv_physical_device_try_create(struct anv_instance *instance,
     */
    device->has_bindless_samplers = device->info.gen >= 8;
 
+   device->has_implicit_ccs = device->info.has_aux_map;
+
    device->has_mem_available = get_available_system_memory() != 0;
 
    device->always_flush_cache =
@@ -3357,8 +3359,26 @@ VkResult anv_AllocateMemory(
       }
    }
 
+   /* By default, we want all VkDeviceMemory objects to support CCS */
+   if (device->physical->has_implicit_ccs)
+      alloc_flags |= ANV_BO_ALLOC_IMPLICIT_CCS;
+
    if (vk_flags & VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT_KHR)
       alloc_flags |= ANV_BO_ALLOC_CLIENT_VISIBLE_ADDRESS;
+
+   if ((export_info && export_info->handleTypes) ||
+       (fd_info && fd_info->handleType) ||
+       (host_ptr_info && host_ptr_info->handleType)) {
+      /* Anything imported or exported is EXTERNAL */
+      alloc_flags |= ANV_BO_ALLOC_EXTERNAL;
+
+      /* We can't have implicit CCS on external memory with an AUX-table.
+       * Doing so would require us to sync the aux tables across processes
+       * which is impractical.
+       */
+      if (device->info.has_aux_map)
+         alloc_flags &= ~ANV_BO_ALLOC_IMPLICIT_CCS;
+   }
 
    /* Check if we need to support Android HW buffer export. If so,
     * create AHardwareBuffer and import memory from it.
@@ -3459,9 +3479,6 @@ VkResult anv_AllocateMemory(
    }
 
    /* Regular allocate (not importing memory). */
-
-   if (export_info && export_info->handleTypes)
-      alloc_flags |= ANV_BO_ALLOC_EXTERNAL;
 
    result = anv_device_alloc_bo(device, pAllocateInfo->allocationSize,
                                 alloc_flags, client_address, &mem->bo);
