@@ -52,6 +52,7 @@
 #include "pan_blending.h"
 #include "pan_blend_shaders.h"
 #include "pan_util.h"
+#include "pandecode/decode.h"
 
 struct midgard_tiler_descriptor
 panfrost_emit_midg_tiler(struct panfrost_batch *batch, unsigned vertex_count)
@@ -1327,6 +1328,9 @@ panfrost_flush(
 
                 util_dynarray_fini(&fences);
         }
+
+        if (pan_debug & PAN_DBG_TRACE)
+                pandecode_next_frame();
 }
 
 #define DEFINE_CASE(c) case PIPE_PRIM_##c: return MALI_##c;

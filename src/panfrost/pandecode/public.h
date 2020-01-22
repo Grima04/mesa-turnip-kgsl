@@ -44,6 +44,8 @@
 
 void pandecode_initialize(void);
 
+void pandecode_next_frame(void);
+
 void pandecode_close(void);
 
 void
