@@ -31,29 +31,6 @@
 #include <iostream>
 #include <sstream>
 
-namespace aco {
-uint64_t debug_flags = 0;
-
-static const struct debug_control aco_debug_options[] = {
-   {"validateir", DEBUG_VALIDATE},
-   {"validatera", DEBUG_VALIDATE_RA},
-   {"perfwarn", DEBUG_PERFWARN},
-   {NULL, 0}
-};
-
-static once_flag init_once_flag = ONCE_FLAG_INIT;
-
-static void init()
-{
-   debug_flags = parse_debug_string(getenv("ACO_DEBUG"), aco_debug_options);
-
-   #ifndef NDEBUG
-   /* enable some flags by default on debug builds */
-   debug_flags |= aco::DEBUG_VALIDATE;
-   #endif
-}
-}
-
 static radv_compiler_statistic_info statistic_infos[] = {
    [aco::statistic_hash] = {"Hash", "CRC32 hash of code and constant data"},
    [aco::statistic_instructions] = {"Instructions", "Instruction count"},
@@ -73,7 +50,7 @@ void aco_compile_shader(unsigned shader_count,
                         struct radv_shader_binary **binary,
                         struct radv_shader_args *args)
 {
-   call_once(&aco::init_once_flag, aco::init);
+   aco::init();
 
    ac_shader_config config = {0};
    std::unique_ptr<aco::Program> program{new aco::Program};

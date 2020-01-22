@@ -22,8 +22,108 @@
  *
  */
 #include "aco_ir.h"
+#include "vulkan/radv_shader.h"
 
 namespace aco {
+
+uint64_t debug_flags = 0;
+
+static const struct debug_control aco_debug_options[] = {
+   {"validateir", DEBUG_VALIDATE},
+   {"validatera", DEBUG_VALIDATE_RA},
+   {"perfwarn", DEBUG_PERFWARN},
+   {NULL, 0}
+};
+
+static once_flag init_once_flag = ONCE_FLAG_INIT;
+
+static void init_once()
+{
+   debug_flags = parse_debug_string(getenv("ACO_DEBUG"), aco_debug_options);
+
+   #ifndef NDEBUG
+   /* enable some flags by default on debug builds */
+   debug_flags |= aco::DEBUG_VALIDATE;
+   #endif
+}
+
+void init()
+{
+   call_once(&init_once_flag, init_once);
+}
+
+void init_program(Program *program, Stage stage, struct radv_shader_info *info,
+                  enum chip_class chip_class, enum radeon_family family,
+                  ac_shader_config *config)
+{
+   program->stage = stage;
+   program->config = config;
+   program->info = info;
+   program->chip_class = chip_class;
+   if (family == CHIP_UNKNOWN) {
+      switch (chip_class) {
+      case GFX6:
+         program->family = CHIP_TAHITI;
+         break;
+      case GFX7:
+         program->family = CHIP_BONAIRE;
+         break;
+      case GFX8:
+         program->family = CHIP_POLARIS10;
+         break;
+      case GFX9:
+         program->family = CHIP_VEGA10;
+         break;
+      case GFX10:
+         program->family = CHIP_NAVI10;
+         break;
+      default:
+         program->family = CHIP_UNKNOWN;
+         break;
+      }
+   } else {
+      program->family = family;
+   }
+   program->wave_size = info->wave_size;
+   program->lane_mask = program->wave_size == 32 ? s1 : s2;
+
+   program->lds_alloc_granule = chip_class >= GFX7 ? 512 : 256;
+   program->lds_limit = chip_class >= GFX7 ? 65536 : 32768;
+   /* apparently gfx702 also has 16-bank LDS but I can't find a family for that */
+   program->has_16bank_lds = family == CHIP_KABINI || family == CHIP_STONEY;
+
+   program->vgpr_limit = 256;
+   program->vgpr_alloc_granule = 3;
+
+   if (chip_class >= GFX10) {
+      program->physical_sgprs = 2560; /* doesn't matter as long as it's at least 128 * 20 */
+      program->sgpr_alloc_granule = 127;
+      program->sgpr_limit = 106;
+      program->vgpr_alloc_granule = program->wave_size == 32 ? 7 : 3;
+   } else if (program->chip_class >= GFX8) {
+      program->physical_sgprs = 800;
+      program->sgpr_alloc_granule = 15;
+      if (family == CHIP_TONGA || family == CHIP_ICELAND)
+         program->sgpr_limit = 94; /* workaround hardware bug */
+      else
+         program->sgpr_limit = 102;
+   } else {
+      program->physical_sgprs = 512;
+      program->sgpr_alloc_granule = 7;
+      program->sgpr_limit = 104;
+   }
+
+   program->next_fp_mode.preserve_signed_zero_inf_nan32 = false;
+   program->next_fp_mode.preserve_signed_zero_inf_nan16_64 = false;
+   program->next_fp_mode.must_flush_denorms32 = false;
+   program->next_fp_mode.must_flush_denorms16_64 = false;
+   program->next_fp_mode.care_about_round32 = false;
+   program->next_fp_mode.care_about_round16_64 = false;
+   program->next_fp_mode.denorm16_64 = fp_denorm_keep;
+   program->next_fp_mode.denorm32 = 0;
+   program->next_fp_mode.round16_64 = fp_round_ne;
+   program->next_fp_mode.round32 = fp_round_ne;
+}
 
 bool can_use_SDWA(chip_class chip, const aco_ptr<Instruction>& instr)
 {

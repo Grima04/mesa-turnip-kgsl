@@ -1422,26 +1422,26 @@ setup_isel_context(Program* program,
                    struct radv_shader_args *args,
                    bool is_gs_copy_shader)
 {
-   program->stage = 0;
+   Stage stage = 0;
    for (unsigned i = 0; i < shader_count; i++) {
       switch (shaders[i]->info.stage) {
       case MESA_SHADER_VERTEX:
-         program->stage |= sw_vs;
+         stage |= sw_vs;
          break;
       case MESA_SHADER_TESS_CTRL:
-         program->stage |= sw_tcs;
+         stage |= sw_tcs;
          break;
       case MESA_SHADER_TESS_EVAL:
-         program->stage |= sw_tes;
+         stage |= sw_tes;
          break;
       case MESA_SHADER_GEOMETRY:
-         program->stage |= is_gs_copy_shader ? sw_gs_copy : sw_gs;
+         stage |= is_gs_copy_shader ? sw_gs_copy : sw_gs;
          break;
       case MESA_SHADER_FRAGMENT:
-         program->stage |= sw_fs;
+         stage |= sw_fs;
          break;
       case MESA_SHADER_COMPUTE:
-         program->stage |= sw_cs;
+         stage |= sw_cs;
          break;
       default:
          unreachable("Shader stage not implemented");
@@ -1449,71 +1449,41 @@ setup_isel_context(Program* program,
    }
    bool gfx9_plus = args->options->chip_class >= GFX9;
    bool ngg = args->shader_info->is_ngg && args->options->chip_class >= GFX10;
-   if (program->stage == sw_vs && args->shader_info->vs.as_es && !ngg)
-      program->stage |= hw_es;
-   else if (program->stage == sw_vs && !args->shader_info->vs.as_ls && !ngg)
-      program->stage |= hw_vs;
-   else if (program->stage == sw_vs && ngg)
-      program->stage |= hw_ngg_gs; /* GFX10/NGG: VS without GS uses the HW GS stage */
-   else if (program->stage == sw_gs)
-      program->stage |= hw_gs;
-   else if (program->stage == sw_fs)
-      program->stage |= hw_fs;
-   else if (program->stage == sw_cs)
-      program->stage |= hw_cs;
-   else if (program->stage == sw_gs_copy)
-      program->stage |= hw_vs;
-   else if (program->stage == (sw_vs | sw_gs) && gfx9_plus && !ngg)
-      program->stage |= hw_gs;
-   else if (program->stage == sw_vs && args->shader_info->vs.as_ls)
-      program->stage |= hw_ls; /* GFX6-8: VS is a Local Shader, when tessellation is used */
-   else if (program->stage == sw_tcs)
-      program->stage |= hw_hs; /* GFX6-8: TCS is a Hull Shader */
-   else if (program->stage == (sw_vs | sw_tcs))
-      program->stage |= hw_hs; /* GFX9-10: VS+TCS merged into a Hull Shader */
-   else if (program->stage == sw_tes && !args->shader_info->tes.as_es && !ngg)
-      program->stage |= hw_vs; /* GFX6-9: TES without GS uses the HW VS stage (and GFX10/legacy) */
-   else if (program->stage == sw_tes && !args->shader_info->tes.as_es && ngg)
-      program->stage |= hw_ngg_gs; /* GFX10/NGG: TES without GS uses the HW GS stage */
-   else if (program->stage == sw_tes && args->shader_info->tes.as_es && !ngg)
-      program->stage |= hw_es; /* GFX6-8: TES is an Export Shader */
-   else if (program->stage == (sw_tes | sw_gs) && gfx9_plus && !ngg)
-      program->stage |= hw_gs; /* GFX9: TES+GS merged into a GS (and GFX10/legacy) */
+   if (stage == sw_vs && args->shader_info->vs.as_es && !ngg)
+      stage |= hw_es;
+   else if (stage == sw_vs && !args->shader_info->vs.as_ls && !ngg)
+      stage |= hw_vs;
+   else if (stage == sw_vs && ngg)
+      stage |= hw_ngg_gs; /* GFX10/NGG: VS without GS uses the HW GS stage */
+   else if (stage == sw_gs)
+      stage |= hw_gs;
+   else if (stage == sw_fs)
+      stage |= hw_fs;
+   else if (stage == sw_cs)
+      stage |= hw_cs;
+   else if (stage == sw_gs_copy)
+      stage |= hw_vs;
+   else if (stage == (sw_vs | sw_gs) && gfx9_plus && !ngg)
+      stage |= hw_gs;
+   else if (stage == sw_vs && args->shader_info->vs.as_ls)
+      stage |= hw_ls; /* GFX6-8: VS is a Local Shader, when tessellation is used */
+   else if (stage == sw_tcs)
+      stage |= hw_hs; /* GFX6-8: TCS is a Hull Shader */
+   else if (stage == (sw_vs | sw_tcs))
+      stage |= hw_hs; /* GFX9-10: VS+TCS merged into a Hull Shader */
+   else if (stage == sw_tes && !args->shader_info->tes.as_es && !ngg)
+      stage |= hw_vs; /* GFX6-9: TES without GS uses the HW VS stage (and GFX10/legacy) */
+   else if (stage == sw_tes && !args->shader_info->tes.as_es && ngg)
+      stage |= hw_ngg_gs; /* GFX10/NGG: TES without GS uses the HW GS stage */
+   else if (stage == sw_tes && args->shader_info->tes.as_es && !ngg)
+      stage |= hw_es; /* GFX6-8: TES is an Export Shader */
+   else if (stage == (sw_tes | sw_gs) && gfx9_plus && !ngg)
+      stage |= hw_gs; /* GFX9: TES+GS merged into a GS (and GFX10/legacy) */
    else
       unreachable("Shader stage not implemented");
 
-   program->config = config;
-   program->info = args->shader_info;
-   program->chip_class = args->options->chip_class;
-   program->family = args->options->family;
-   program->wave_size = args->shader_info->wave_size;
-   program->lane_mask = program->wave_size == 32 ? s1 : s2;
-
-   program->lds_alloc_granule = args->options->chip_class >= GFX7 ? 512 : 256;
-   program->lds_limit = args->options->chip_class >= GFX7 ? 65536 : 32768;
-   /* apparently gfx702 also has 16-bank LDS but I can't find a family for that */
-   program->has_16bank_lds = args->options->family == CHIP_KABINI || args->options->family == CHIP_STONEY;
-
-   program->vgpr_limit = 256;
-   program->vgpr_alloc_granule = 3;
-
-   if (args->options->chip_class >= GFX10) {
-      program->physical_sgprs = 2560; /* doesn't matter as long as it's at least 128 * 20 */
-      program->sgpr_alloc_granule = 127;
-      program->sgpr_limit = 106;
-      program->vgpr_alloc_granule = program->wave_size == 32 ? 7 : 3;
-   } else if (program->chip_class >= GFX8) {
-      program->physical_sgprs = 800;
-      program->sgpr_alloc_granule = 15;
-      if (args->options->family == CHIP_TONGA || args->options->family == CHIP_ICELAND)
-         program->sgpr_limit = 94; /* workaround hardware bug */
-      else
-         program->sgpr_limit = 102;
-   } else {
-      program->physical_sgprs = 512;
-      program->sgpr_alloc_granule = 7;
-      program->sgpr_limit = 104;
-   }
+   init_program(program, stage, args->shader_info,
+                args->options->chip_class, args->options->family, config);
 
    isel_context ctx = {};
    ctx.program = program;

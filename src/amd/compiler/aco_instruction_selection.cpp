@@ -11029,16 +11029,6 @@ void select_gs_copy_shader(Program *program, struct nir_shader *gs_shader,
 {
    isel_context ctx = setup_isel_context(program, 1, &gs_shader, config, args, true);
 
-   program->next_fp_mode.preserve_signed_zero_inf_nan32 = false;
-   program->next_fp_mode.preserve_signed_zero_inf_nan16_64 = false;
-   program->next_fp_mode.must_flush_denorms32 = false;
-   program->next_fp_mode.must_flush_denorms16_64 = false;
-   program->next_fp_mode.care_about_round32 = false;
-   program->next_fp_mode.care_about_round16_64 = false;
-   program->next_fp_mode.denorm16_64 = fp_denorm_keep;
-   program->next_fp_mode.denorm32 = 0;
-   program->next_fp_mode.round32 = fp_round_ne;
-   program->next_fp_mode.round16_64 = fp_round_ne;
    ctx.block->fp_mode = program->next_fp_mode;
 
    add_startpgm(&ctx);
