@@ -30,98 +30,98 @@
 
 #include "radeon_video.h"
 
-#define RENCODE_IB_OP_INITIALIZE                0x01000001
-#define RENCODE_IB_OP_CLOSE_SESSION             0x01000002
-#define RENCODE_IB_OP_ENCODE                    0x01000003
-#define RENCODE_IB_OP_INIT_RC                   0x01000004
-#define RENCODE_IB_OP_INIT_RC_VBV_BUFFER_LEVEL  0x01000005
-#define RENCODE_IB_OP_SET_SPEED_ENCODING_MODE   0x01000006
-#define RENCODE_IB_OP_SET_BALANCE_ENCODING_MODE 0x01000007
-#define RENCODE_IB_OP_SET_QUALITY_ENCODING_MODE 0x01000008
+#define RENCODE_IB_OP_INITIALIZE                                                    0x01000001
+#define RENCODE_IB_OP_CLOSE_SESSION                                                 0x01000002
+#define RENCODE_IB_OP_ENCODE                                                        0x01000003
+#define RENCODE_IB_OP_INIT_RC                                                       0x01000004
+#define RENCODE_IB_OP_INIT_RC_VBV_BUFFER_LEVEL                                      0x01000005
+#define RENCODE_IB_OP_SET_SPEED_ENCODING_MODE                                       0x01000006
+#define RENCODE_IB_OP_SET_BALANCE_ENCODING_MODE                                     0x01000007
+#define RENCODE_IB_OP_SET_QUALITY_ENCODING_MODE                                     0x01000008
 
-#define RENCODE_IF_MAJOR_VERSION_MASK  0xFFFF0000
-#define RENCODE_IF_MAJOR_VERSION_SHIFT 16
-#define RENCODE_IF_MINOR_VERSION_MASK  0x0000FFFF
-#define RENCODE_IF_MINOR_VERSION_SHIFT 0
+#define RENCODE_IF_MAJOR_VERSION_MASK                                               0xFFFF0000
+#define RENCODE_IF_MAJOR_VERSION_SHIFT                                              16
+#define RENCODE_IF_MINOR_VERSION_MASK                                               0x0000FFFF
+#define RENCODE_IF_MINOR_VERSION_SHIFT                                              0
 
-#define RENCODE_ENGINE_TYPE_ENCODE 1
+#define RENCODE_ENGINE_TYPE_ENCODE                                                  1
 
-#define RENCODE_ENCODE_STANDARD_HEVC 0
-#define RENCODE_ENCODE_STANDARD_H264 1
+#define RENCODE_ENCODE_STANDARD_HEVC                                                0
+#define RENCODE_ENCODE_STANDARD_H264                                                1
 
-#define RENCODE_PREENCODE_MODE_NONE 0x00000000
-#define RENCODE_PREENCODE_MODE_1X   0x00000001
-#define RENCODE_PREENCODE_MODE_2X   0x00000002
-#define RENCODE_PREENCODE_MODE_4X   0x00000004
+#define RENCODE_PREENCODE_MODE_NONE                                                 0x00000000
+#define RENCODE_PREENCODE_MODE_1X                                                   0x00000001
+#define RENCODE_PREENCODE_MODE_2X                                                   0x00000002
+#define RENCODE_PREENCODE_MODE_4X                                                   0x00000004
 
-#define RENCODE_H264_SLICE_CONTROL_MODE_FIXED_MBS  0x00000000
-#define RENCODE_H264_SLICE_CONTROL_MODE_FIXED_BITS 0x00000001
+#define RENCODE_H264_SLICE_CONTROL_MODE_FIXED_MBS                                   0x00000000
+#define RENCODE_H264_SLICE_CONTROL_MODE_FIXED_BITS                                  0x00000001
 
-#define RENCODE_HEVC_SLICE_CONTROL_MODE_FIXED_CTBS 0x00000000
-#define RENCODE_HEVC_SLICE_CONTROL_MODE_FIXED_BITS 0x00000001
+#define RENCODE_HEVC_SLICE_CONTROL_MODE_FIXED_CTBS                                  0x00000000
+#define RENCODE_HEVC_SLICE_CONTROL_MODE_FIXED_BITS                                  0x00000001
 
-#define RENCODE_RATE_CONTROL_METHOD_NONE                    0x00000000
-#define RENCODE_RATE_CONTROL_METHOD_LATENCY_CONSTRAINED_VBR 0x00000001
-#define RENCODE_RATE_CONTROL_METHOD_PEAK_CONSTRAINED_VBR    0x00000002
-#define RENCODE_RATE_CONTROL_METHOD_CBR                     0x00000003
+#define RENCODE_RATE_CONTROL_METHOD_NONE                                            0x00000000
+#define RENCODE_RATE_CONTROL_METHOD_LATENCY_CONSTRAINED_VBR                         0x00000001
+#define RENCODE_RATE_CONTROL_METHOD_PEAK_CONSTRAINED_VBR                            0x00000002
+#define RENCODE_RATE_CONTROL_METHOD_CBR                                             0x00000003
 
-#define RENCODE_DIRECT_OUTPUT_NALU_TYPE_AUD             0x00000000
-#define RENCODE_DIRECT_OUTPUT_NALU_TYPE_VPS             0x00000001
-#define RENCODE_DIRECT_OUTPUT_NALU_TYPE_SPS             0x00000002
-#define RENCODE_DIRECT_OUTPUT_NALU_TYPE_PPS             0x00000003
-#define RENCODE_DIRECT_OUTPUT_NALU_TYPE_PREFIX          0x00000004
-#define RENCODE_DIRECT_OUTPUT_NALU_TYPE_END_OF_SEQUENCE 0x00000005
+#define RENCODE_DIRECT_OUTPUT_NALU_TYPE_AUD                                         0x00000000
+#define RENCODE_DIRECT_OUTPUT_NALU_TYPE_VPS                                         0x00000001
+#define RENCODE_DIRECT_OUTPUT_NALU_TYPE_SPS                                         0x00000002
+#define RENCODE_DIRECT_OUTPUT_NALU_TYPE_PPS                                         0x00000003
+#define RENCODE_DIRECT_OUTPUT_NALU_TYPE_PREFIX                                      0x00000004
+#define RENCODE_DIRECT_OUTPUT_NALU_TYPE_END_OF_SEQUENCE                             0x00000005
 
-#define RENCODE_SLICE_HEADER_TEMPLATE_MAX_TEMPLATE_SIZE_IN_DWORDS 16
-#define RENCODE_SLICE_HEADER_TEMPLATE_MAX_NUM_INSTRUCTIONS        16
+#define RENCODE_SLICE_HEADER_TEMPLATE_MAX_TEMPLATE_SIZE_IN_DWORDS                   16
+#define RENCODE_SLICE_HEADER_TEMPLATE_MAX_NUM_INSTRUCTIONS                          16
 
-#define RENCODE_HEADER_INSTRUCTION_END  0x00000000
-#define RENCODE_HEADER_INSTRUCTION_COPY 0x00000001
+#define RENCODE_HEADER_INSTRUCTION_END                                              0x00000000
+#define RENCODE_HEADER_INSTRUCTION_COPY                                             0x00000001
 
-#define RENCODE_HEVC_HEADER_INSTRUCTION_DEPENDENT_SLICE_END 0x00010000
-#define RENCODE_HEVC_HEADER_INSTRUCTION_FIRST_SLICE         0x00010001
-#define RENCODE_HEVC_HEADER_INSTRUCTION_SLICE_SEGMENT       0x00010002
-#define RENCODE_HEVC_HEADER_INSTRUCTION_SLICE_QP_DELTA      0x00010003
+#define RENCODE_HEVC_HEADER_INSTRUCTION_DEPENDENT_SLICE_END                         0x00010000
+#define RENCODE_HEVC_HEADER_INSTRUCTION_FIRST_SLICE                                 0x00010001
+#define RENCODE_HEVC_HEADER_INSTRUCTION_SLICE_SEGMENT                               0x00010002
+#define RENCODE_HEVC_HEADER_INSTRUCTION_SLICE_QP_DELTA                              0x00010003
 
-#define RENCODE_H264_HEADER_INSTRUCTION_FIRST_MB       0x00020000
-#define RENCODE_H264_HEADER_INSTRUCTION_SLICE_QP_DELTA 0x00020001
+#define RENCODE_H264_HEADER_INSTRUCTION_FIRST_MB                                    0x00020000
+#define RENCODE_H264_HEADER_INSTRUCTION_SLICE_QP_DELTA                              0x00020001
 
-#define RENCODE_PICTURE_TYPE_B      0
-#define RENCODE_PICTURE_TYPE_P      1
-#define RENCODE_PICTURE_TYPE_I      2
-#define RENCODE_PICTURE_TYPE_P_SKIP 3
+#define RENCODE_PICTURE_TYPE_B                                                      0
+#define RENCODE_PICTURE_TYPE_P                                                      1
+#define RENCODE_PICTURE_TYPE_I                                                      2
+#define RENCODE_PICTURE_TYPE_P_SKIP                                                 3
 
-#define RENCODE_INPUT_SWIZZLE_MODE_LINEAR 0
-#define RENCODE_INPUT_SWIZZLE_MODE_256B_S 1
-#define RENCODE_INPUT_SWIZZLE_MODE_4kB_S  5
-#define RENCODE_INPUT_SWIZZLE_MODE_64kB_S 9
+#define RENCODE_INPUT_SWIZZLE_MODE_LINEAR                                           0
+#define RENCODE_INPUT_SWIZZLE_MODE_256B_S                                           1
+#define RENCODE_INPUT_SWIZZLE_MODE_4kB_S                                            5
+#define RENCODE_INPUT_SWIZZLE_MODE_64kB_S                                           9
 
-#define RENCODE_H264_PICTURE_STRUCTURE_FRAME        0
-#define RENCODE_H264_PICTURE_STRUCTURE_TOP_FIELD    1
-#define RENCODE_H264_PICTURE_STRUCTURE_BOTTOM_FIELD 2
+#define RENCODE_H264_PICTURE_STRUCTURE_FRAME                                        0
+#define RENCODE_H264_PICTURE_STRUCTURE_TOP_FIELD                                    1
+#define RENCODE_H264_PICTURE_STRUCTURE_BOTTOM_FIELD                                 2
 
-#define RENCODE_H264_INTERLACING_MODE_PROGRESSIVE            0
-#define RENCODE_H264_INTERLACING_MODE_INTERLACED_STACKED     1
-#define RENCODE_H264_INTERLACING_MODE_INTERLACED_INTERLEAVED 2
+#define RENCODE_H264_INTERLACING_MODE_PROGRESSIVE                                   0
+#define RENCODE_H264_INTERLACING_MODE_INTERLACED_STACKED                            1
+#define RENCODE_H264_INTERLACING_MODE_INTERLACED_INTERLEAVED                        2
 
-#define RENCODE_H264_DISABLE_DEBLOCKING_FILTER_IDC_ENABLE                        0
-#define RENCODE_H264_DISABLE_DEBLOCKING_FILTER_IDC_DISABLE                       1
-#define RENCODE_H264_DISABLE_DEBLOCKING_FILTER_IDC_DISALBE_ACROSS_SLICE_BOUNDARY 2
+#define RENCODE_H264_DISABLE_DEBLOCKING_FILTER_IDC_ENABLE                           0
+#define RENCODE_H264_DISABLE_DEBLOCKING_FILTER_IDC_DISABLE                          1
+#define RENCODE_H264_DISABLE_DEBLOCKING_FILTER_IDC_DISALBE_ACROSS_SLICE_BOUNDARY    2
 
-#define RENCODE_INTRA_REFRESH_MODE_NONE           0
-#define RENCODE_INTRA_REFRESH_MODE_CTB_MB_ROWS    1
-#define RENCODE_INTRA_REFRESH_MODE_CTB_MB_COLUMNS 2
+#define RENCODE_INTRA_REFRESH_MODE_NONE                                             0
+#define RENCODE_INTRA_REFRESH_MODE_CTB_MB_ROWS                                      1
+#define RENCODE_INTRA_REFRESH_MODE_CTB_MB_COLUMNS                                   2
 
-#define RENCODE_MAX_NUM_RECONSTRUCTED_PICTURES 34
+#define RENCODE_MAX_NUM_RECONSTRUCTED_PICTURES                                      34
 
-#define RENCODE_REC_SWIZZLE_MODE_LINEAR 0
-#define RENCODE_REC_SWIZZLE_MODE_256B_S 1
+#define RENCODE_REC_SWIZZLE_MODE_LINEAR                                             0
+#define RENCODE_REC_SWIZZLE_MODE_256B_S                                             1
 
-#define RENCODE_VIDEO_BITSTREAM_BUFFER_MODE_LINEAR   0
-#define RENCODE_VIDEO_BITSTREAM_BUFFER_MODE_CIRCULAR 1
+#define RENCODE_VIDEO_BITSTREAM_BUFFER_MODE_LINEAR                                  0
+#define RENCODE_VIDEO_BITSTREAM_BUFFER_MODE_CIRCULAR                                1
 
-#define RENCODE_FEEDBACK_BUFFER_MODE_LINEAR   0
-#define RENCODE_FEEDBACK_BUFFER_MODE_CIRCULAR 1
+#define RENCODE_FEEDBACK_BUFFER_MODE_LINEAR                                         0
+#define RENCODE_FEEDBACK_BUFFER_MODE_CIRCULAR                                       1
 
 #define RADEON_ENC_CS(value) (enc->cs->current.buf[enc->cs->current.cdw++] = (value))
 #define RADEON_ENC_BEGIN(cmd)                                                                      \

@@ -44,7 +44,7 @@
 #define FW_52_0_3  ((52 << 24) | (0 << 16) | (3 << 8))
 #define FW_52_4_3  ((52 << 24) | (4 << 16) | (3 << 8))
 #define FW_52_8_3  ((52 << 24) | (8 << 16) | (3 << 8))
-#define FW_53      (53 << 24)
+#define FW_53       (53 << 24)
 
 /**
  * flush commands to the hardware
