@@ -96,9 +96,6 @@ void
 vbo_use_buffer_objects(struct gl_context *ctx);
 
 void
-vbo_always_unmap_buffers(struct gl_context *ctx);
-
-void
 vbo_sw_primitive_restart(struct gl_context *ctx,
                          const struct _mesa_prim *prim,
                          GLuint nr_prims,

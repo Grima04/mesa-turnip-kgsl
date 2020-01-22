@@ -1135,7 +1135,6 @@ brwCreateContext(gl_api api,
       brw_init_performance_queries(brw);
 
    vbo_use_buffer_objects(ctx);
-   vbo_always_unmap_buffers(ctx);
 
    brw->ctx.Cache = brw->screen->disk_cache;
 

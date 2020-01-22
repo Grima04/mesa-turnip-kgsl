@@ -441,24 +441,6 @@ vbo_exec_fixup_vertex(struct gl_context *ctx, GLuint attr,
 
 
 /**
- * Called upon first glVertex, glColor, glTexCoord, etc.
- */
-static void
-vbo_exec_begin_vertices(struct gl_context *ctx)
-{
-   struct vbo_exec_context *exec = &vbo_context(ctx)->exec;
-
-   if (unlikely(!exec->vtx.buffer_ptr))
-      vbo_exec_vtx_map(exec);
-
-   assert((ctx->Driver.NeedFlush & FLUSH_UPDATE_CURRENT) == 0);
-   assert(exec->begin_vertices_flags);
-
-   ctx->Driver.NeedFlush |= exec->begin_vertices_flags;
-}
-
-
-/**
  * If index=0, does glVertexAttrib*() alias glVertex() to emit a vertex?
  * It depends on a few things, including whether we're inside or outside
  * of glBegin/glEnd.
@@ -508,10 +490,6 @@ do {                                                                    \
       /* This is a glVertex call */                                     \
       GLuint i;                                                         \
                                                                         \
-      if (unlikely((ctx->Driver.NeedFlush & FLUSH_UPDATE_CURRENT) == 0)) { \
-         vbo_exec_begin_vertices(ctx);                                  \
-      }                                                                 \
-                                                                        \
       if (unlikely(!exec->vtx.buffer_ptr)) {                            \
          vbo_exec_vtx_map(exec);                                        \
       }                                                                 \
@@ -525,7 +503,8 @@ do {                                                                    \
                                                                         \
       /* Set FLUSH_STORED_VERTICES to indicate that there's now */      \
       /* something to draw (not just updating a color or texcoord).*/   \
-      ctx->Driver.NeedFlush |= FLUSH_STORED_VERTICES;                   \
+      ctx->Driver.NeedFlush |= FLUSH_UPDATE_CURRENT |                   \
+                               FLUSH_STORED_VERTICES;                   \
                                                                         \
       if (++exec->vtx.vert_count >= exec->vtx.max_vert)                 \
          vbo_exec_vtx_wrap(exec);                                       \
@@ -988,20 +967,6 @@ vbo_use_buffer_objects(struct gl_context *ctx)
 }
 
 
-/**
- * If this function is called, all VBO buffers will be unmapped when
- * we flush.
- * Otherwise, if a simple command like glColor3f() is called and we flush,
- * the current VBO may be left mapped.
- */
-void
-vbo_always_unmap_buffers(struct gl_context *ctx)
-{
-   struct vbo_exec_context *exec = &vbo_context(ctx)->exec;
-   exec->begin_vertices_flags |= FLUSH_STORED_VERTICES;
-}
-
-
 void
 vbo_exec_vtx_init(struct vbo_exec_context *exec)
 {
@@ -1034,8 +999,6 @@ vbo_exec_vtx_init(struct vbo_exec_context *exec)
    }
 
    exec->vtx.vertex_size = 0;
-
-   exec->begin_vertices_flags = FLUSH_UPDATE_CURRENT;
 }
 
 
@@ -1100,8 +1063,7 @@ vbo_exec_FlushVertices(struct gl_context *ctx, GLuint flags)
    /* Flush (draw), and make sure VBO is left unmapped when done */
    vbo_exec_FlushVertices_internal(exec, GL_TRUE);
 
-   /* Need to do this to ensure vbo_exec_begin_vertices gets called again:
-    */
+   /* Clear the dirty flush flags, because the flush is finished. */
    ctx->Driver.NeedFlush &= ~(FLUSH_UPDATE_CURRENT | flags);
 
 #ifndef NDEBUG
