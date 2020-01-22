@@ -87,6 +87,7 @@ struct vbo_exec_context
       fi_type *buffer_map;
       fi_type *buffer_ptr;              /* cursor, points into buffer */
       GLuint   buffer_used;             /* in bytes */
+      unsigned buffer_offset;           /* only for persistent mappings */
       fi_type vertex[VBO_ATTRIB_MAX*4]; /* current vertex */
 
       GLuint vert_count;   /**< Number of vertices currently in buffer */

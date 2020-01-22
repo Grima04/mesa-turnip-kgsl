@@ -448,7 +448,8 @@ vbo_exec_begin_vertices(struct gl_context *ctx)
 {
    struct vbo_exec_context *exec = &vbo_context(ctx)->exec;
 
-   vbo_exec_vtx_map(exec);
+   if (unlikely(!exec->vtx.buffer_ptr))
+      vbo_exec_vtx_map(exec);
 
    assert((ctx->Driver.NeedFlush & FLUSH_UPDATE_CURRENT) == 0);
    assert(exec->begin_vertices_flags);
