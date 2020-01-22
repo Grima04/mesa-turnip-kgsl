@@ -237,10 +237,16 @@ align_u32(uint32_t v, uint32_t a)
 }
 
 static inline uint64_t
-align_u64(uint64_t v, uint64_t a)
+align_down_u64(uint64_t v, uint64_t a)
 {
    assert(a != 0 && a == (a & -a));
-   return (v + a - 1) & ~(a - 1);
+   return v & ~(a - 1);
+}
+
+static inline uint64_t
+align_u64(uint64_t v, uint64_t a)
+{
+   return align_down_u64(v + a - 1, a);
 }
 
 static inline int32_t
