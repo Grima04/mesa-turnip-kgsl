@@ -82,7 +82,7 @@ bool cso_hash_init(struct cso_hash *hash);
 void cso_hash_deinit(struct cso_hash *hash);
 
 
-int              cso_hash_size(struct cso_hash *hash);
+int cso_hash_size(struct cso_hash *hash);
 
 
 /**
@@ -102,7 +102,7 @@ struct cso_hash_iter cso_hash_insert(struct cso_hash *hash, unsigned key,
  */
 struct cso_hash_iter cso_hash_erase(struct cso_hash *hash, struct cso_hash_iter iter);
 
-void  *cso_hash_take(struct cso_hash *hash, unsigned key);
+void *cso_hash_take(struct cso_hash *hash, unsigned key);
 
 
 
@@ -111,10 +111,10 @@ struct cso_hash_iter cso_hash_first_node(struct cso_hash *hash);
 /**
  * Returns true if a value with the given key exists in the hash
  */
-boolean   cso_hash_contains(struct cso_hash *hash, unsigned key);
+bool cso_hash_contains(struct cso_hash *hash, unsigned key);
 
 
-unsigned  cso_hash_iter_key(struct cso_hash_iter iter);
+unsigned cso_hash_iter_key(struct cso_hash_iter iter);
 
 
 struct cso_hash_iter cso_hash_iter_prev(struct cso_hash_iter iter);
@@ -125,26 +125,24 @@ struct cso_hash_iter cso_hash_iter_prev(struct cso_hash_iter iter);
  * comparison to see which entry in the list is a direct copy of our template
  * and returns that entry.
  */
-void *cso_hash_find_data_from_template( struct cso_hash *hash,
-				        unsigned hash_key,
-				        void *templ,
-				        int size );
+void *cso_hash_find_data_from_template(struct cso_hash *hash,
+				       unsigned hash_key,
+				       void *templ,
+				       int size);
 
 struct cso_node *cso_hash_data_next(struct cso_node *node);
 
-static inline int
+static inline bool
 cso_hash_iter_is_null(struct cso_hash_iter iter)
 {
-   if (!iter.node || iter.node == iter.hash->data.e)
-      return 1;
-   return 0;
+   return !iter.node || iter.node == iter.hash->data.e;
 }
 
 static inline void *
 cso_hash_iter_data(struct cso_hash_iter iter)
 {
    if (!iter.node || iter.hash->data.e == iter.node)
-      return 0;
+      return NULL;
    return iter.node->value;
 }
 
@@ -154,12 +152,12 @@ cso_hash_find_node(struct cso_hash *hash, unsigned akey)
    struct cso_node **node;
 
    if (hash->data.d->numBuckets) {
-      node = (struct cso_node **)(&hash->data.d->buckets[akey % hash->data.d->numBuckets]);
+      node = &hash->data.d->buckets[akey % hash->data.d->numBuckets];
       assert(*node == hash->data.e || (*node)->next);
       while (*node != hash->data.e && (*node)->key != akey)
          node = &(*node)->next;
    } else {
-      node = (struct cso_node **)((const struct cso_node * const *)(&hash->data.e));
+      node = &hash->data.e;
    }
    return node;
 }
