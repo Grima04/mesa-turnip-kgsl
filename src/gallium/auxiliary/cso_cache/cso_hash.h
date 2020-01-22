@@ -69,6 +69,15 @@ struct cso_hash_iter {
    struct cso_node  *node;
 };
 
+struct cso_hash_data {
+   struct cso_node *fakeNext;
+   struct cso_node **buckets;
+   int size;
+   int nodeSize;
+   short userNumBits;
+   short numBits;
+   int numBuckets;
+};
 
 struct cso_hash *cso_hash_create(void);
 void             cso_hash_delete(struct cso_hash *hash);
@@ -101,11 +110,6 @@ void  *cso_hash_take(struct cso_hash *hash, unsigned key);
 struct cso_hash_iter cso_hash_first_node(struct cso_hash *hash);
 
 /**
- * Return an iterator pointing to the first entry in the collision list.
- */
-struct cso_hash_iter cso_hash_find(struct cso_hash *hash, unsigned key);
-
-/**
  * Returns true if a value with the given key exists in the hash
  */
 boolean   cso_hash_contains(struct cso_hash *hash, unsigned key);
@@ -114,7 +118,6 @@ boolean   cso_hash_contains(struct cso_hash *hash, unsigned key);
 unsigned  cso_hash_iter_key(struct cso_hash_iter iter);
 
 
-struct cso_hash_iter cso_hash_iter_next(struct cso_hash_iter iter);
 struct cso_hash_iter cso_hash_iter_prev(struct cso_hash_iter iter);
 
 
@@ -127,6 +130,8 @@ void *cso_hash_find_data_from_template( struct cso_hash *hash,
 				        unsigned hash_key,
 				        void *templ,
 				        int size );
+
+struct cso_node *cso_hash_data_next(struct cso_node *node);
 
 static inline int
 cso_hash_iter_is_null(struct cso_hash_iter iter)
@@ -142,6 +147,40 @@ cso_hash_iter_data(struct cso_hash_iter iter)
    if (!iter.node || iter.hash->data.e == iter.node)
       return 0;
    return iter.node->value;
+}
+
+static inline struct cso_node **
+cso_hash_find_node(struct cso_hash *hash, unsigned akey)
+{
+   struct cso_node **node;
+
+   if (hash->data.d->numBuckets) {
+      node = (struct cso_node **)(&hash->data.d->buckets[akey % hash->data.d->numBuckets]);
+      assert(*node == hash->data.e || (*node)->next);
+      while (*node != hash->data.e && (*node)->key != akey)
+         node = &(*node)->next;
+   } else {
+      node = (struct cso_node **)((const struct cso_node * const *)(&hash->data.e));
+   }
+   return node;
+}
+
+/**
+ * Return an iterator pointing to the first entry in the collision list.
+ */
+static inline struct cso_hash_iter
+cso_hash_find(struct cso_hash *hash, unsigned key)
+{
+   struct cso_node **nextNode = cso_hash_find_node(hash, key);
+   struct cso_hash_iter iter = {hash, *nextNode};
+   return iter;
+}
+
+static inline struct cso_hash_iter
+cso_hash_iter_next(struct cso_hash_iter iter)
+{
+   struct cso_hash_iter next = {iter.hash, cso_hash_data_next(iter.node)};
+   return next;
 }
 
 #ifdef	__cplusplus

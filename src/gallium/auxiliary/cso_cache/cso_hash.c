@@ -73,16 +73,6 @@ static int countBits(int hint)
    return numBits;
 }
 
-struct cso_hash_data {
-   struct cso_node *fakeNext;
-   struct cso_node **buckets;
-   int size;
-   int nodeSize;
-   short userNumBits;
-   short numBits;
-   int numBuckets;
-};
-
 static void *cso_data_allocate_node(struct cso_hash_data *hash)
 {
    return MALLOC(hash->nodeSize);
@@ -189,21 +179,6 @@ static struct cso_node *cso_data_first_node(struct cso_hash_data *hash)
    return e;
 }
 
-static struct cso_node **cso_hash_find_node(struct cso_hash *hash, unsigned akey)
-{
-   struct cso_node **node;
-
-   if (hash->data.d->numBuckets) {
-      node = (struct cso_node **)(&hash->data.d->buckets[akey % hash->data.d->numBuckets]);
-      assert(*node == hash->data.e || (*node)->next);
-      while (*node != hash->data.e && (*node)->key != akey)
-         node = &(*node)->next;
-   } else {
-      node = (struct cso_node **)((const struct cso_node * const *)(&hash->data.e));
-   }
-   return node;
-}
-
 struct cso_hash_iter cso_hash_insert(struct cso_hash *hash,
                                        unsigned key, void *data)
 {
@@ -265,14 +240,6 @@ void cso_hash_delete(struct cso_hash *hash)
    FREE(hash);
 }
 
-struct cso_hash_iter cso_hash_find(struct cso_hash *hash,
-                                     unsigned key)
-{
-   struct cso_node **nextNode = cso_hash_find_node(hash, key);
-   struct cso_hash_iter iter = {hash, *nextNode};
-   return iter;
-}
-
 unsigned cso_hash_iter_key(struct cso_hash_iter iter)
 {
    if (!iter.node || iter.hash->data.e == iter.node)
@@ -280,7 +247,7 @@ unsigned cso_hash_iter_key(struct cso_hash_iter iter)
    return iter.node->key;
 }
 
-static struct cso_node *cso_hash_data_next(struct cso_node *node)
+struct cso_node *cso_hash_data_next(struct cso_node *node)
 {
    union {
       struct cso_node *next;
@@ -346,12 +313,6 @@ static struct cso_node *cso_hash_data_prev(struct cso_node *node)
    }
    debug_printf("iterating backward beyond first element\n");
    return a.e;
-}
-
-struct cso_hash_iter cso_hash_iter_next(struct cso_hash_iter iter)
-{
-   struct cso_hash_iter next = {iter.hash, cso_hash_data_next(iter.node)};
-   return next;
 }
 
 void * cso_hash_take(struct cso_hash *hash,
