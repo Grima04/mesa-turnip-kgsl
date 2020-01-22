@@ -874,115 +874,6 @@ vert_attrib_to_tgsi_semantic(gl_vert_attrib slot, unsigned *name, unsigned *inde
    }
 }
 
-static void
-varying_slot_to_tgsi_semantic(gl_varying_slot slot, unsigned *name, unsigned *index)
-{
-   assert(name && index);
-
-   if (slot >= VARYING_SLOT_TESS_MAX) {
-      ERROR("invalid varying slot %u\n", slot);
-      assert(false);
-      return;
-   }
-
-   if (slot >= VARYING_SLOT_PATCH0) {
-      *name = TGSI_SEMANTIC_PATCH;
-      *index = slot - VARYING_SLOT_PATCH0;
-      return;
-   }
-
-   if (slot >= VARYING_SLOT_VAR0) {
-      *name = TGSI_SEMANTIC_GENERIC;
-      *index = slot - VARYING_SLOT_VAR0;
-      return;
-   }
-
-   if (slot >= VARYING_SLOT_TEX0 && slot <= VARYING_SLOT_TEX7) {
-      *name = TGSI_SEMANTIC_TEXCOORD;
-      *index = slot - VARYING_SLOT_TEX0;
-      return;
-   }
-
-   switch (slot) {
-   case VARYING_SLOT_BFC0:
-      *name = TGSI_SEMANTIC_BCOLOR;
-      *index = 0;
-      break;
-   case VARYING_SLOT_BFC1:
-      *name = TGSI_SEMANTIC_BCOLOR;
-      *index = 1;
-      break;
-   case VARYING_SLOT_CLIP_DIST0:
-      *name = TGSI_SEMANTIC_CLIPDIST;
-      *index = 0;
-      break;
-   case VARYING_SLOT_CLIP_DIST1:
-      *name = TGSI_SEMANTIC_CLIPDIST;
-      *index = 1;
-      break;
-   case VARYING_SLOT_CLIP_VERTEX:
-      *name = TGSI_SEMANTIC_CLIPVERTEX;
-      *index = 0;
-      break;
-   case VARYING_SLOT_COL0:
-      *name = TGSI_SEMANTIC_COLOR;
-      *index = 0;
-      break;
-   case VARYING_SLOT_COL1:
-      *name = TGSI_SEMANTIC_COLOR;
-      *index = 1;
-      break;
-   case VARYING_SLOT_EDGE:
-      *name = TGSI_SEMANTIC_EDGEFLAG;
-      *index = 0;
-      break;
-   case VARYING_SLOT_FACE:
-      *name = TGSI_SEMANTIC_FACE;
-      *index = 0;
-      break;
-   case VARYING_SLOT_FOGC:
-      *name = TGSI_SEMANTIC_FOG;
-      *index = 0;
-      break;
-   case VARYING_SLOT_LAYER:
-      *name = TGSI_SEMANTIC_LAYER;
-      *index = 0;
-      break;
-   case VARYING_SLOT_PNTC:
-      *name = TGSI_SEMANTIC_PCOORD;
-      *index = 0;
-      break;
-   case VARYING_SLOT_POS:
-      *name = TGSI_SEMANTIC_POSITION;
-      *index = 0;
-      break;
-   case VARYING_SLOT_PRIMITIVE_ID:
-      *name = TGSI_SEMANTIC_PRIMID;
-      *index = 0;
-      break;
-   case VARYING_SLOT_PSIZ:
-      *name = TGSI_SEMANTIC_PSIZE;
-      *index = 0;
-      break;
-   case VARYING_SLOT_TESS_LEVEL_INNER:
-      *name = TGSI_SEMANTIC_TESSINNER;
-      *index = 0;
-      break;
-   case VARYING_SLOT_TESS_LEVEL_OUTER:
-      *name = TGSI_SEMANTIC_TESSOUTER;
-      *index = 0;
-      break;
-   case VARYING_SLOT_VIEWPORT:
-      *name = TGSI_SEMANTIC_VIEWPORT_INDEX;
-      *index = 0;
-      break;
-   default:
-      ERROR("unknown varying slot %u\n", slot);
-      assert(false);
-      break;
-   }
-}
-
 void
 Converter::setInterpolate(nv50_ir_varying *var,
                           uint8_t mode,
@@ -1104,18 +995,21 @@ bool Converter::assignSlots() {
 
       switch(prog->getType()) {
       case Program::TYPE_FRAGMENT:
-         varying_slot_to_tgsi_semantic((gl_varying_slot)slot, &name, &index);
+         tgsi_get_gl_varying_semantic((gl_varying_slot)slot, true,
+                                      &name, &index);
          for (uint16_t i = 0; i < slots; ++i) {
             setInterpolate(&info->in[vary + i], var->data.interpolation,
                            var->data.centroid | var->data.sample, name);
          }
          break;
       case Program::TYPE_GEOMETRY:
-         varying_slot_to_tgsi_semantic((gl_varying_slot)slot, &name, &index);
+         tgsi_get_gl_varying_semantic((gl_varying_slot)slot, true,
+                                      &name, &index);
          break;
       case Program::TYPE_TESSELLATION_CONTROL:
       case Program::TYPE_TESSELLATION_EVAL:
-         varying_slot_to_tgsi_semantic((gl_varying_slot)slot, &name, &index);
+         tgsi_get_gl_varying_semantic((gl_varying_slot)slot, true,
+                                      &name, &index);
          if (var->data.patch && name == TGSI_SEMANTIC_PATCH)
             info->numPatchConstants = MAX2(info->numPatchConstants, index + slots);
          break;
@@ -1193,7 +1087,8 @@ bool Converter::assignSlots() {
       case Program::TYPE_TESSELLATION_CONTROL:
       case Program::TYPE_TESSELLATION_EVAL:
       case Program::TYPE_VERTEX:
-         varying_slot_to_tgsi_semantic((gl_varying_slot)slot, &name, &index);
+         tgsi_get_gl_varying_semantic((gl_varying_slot)slot, true,
+                                      &name, &index);
 
          if (var->data.patch && name != TGSI_SEMANTIC_TESSINNER &&
              name != TGSI_SEMANTIC_TESSOUTER)
