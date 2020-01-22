@@ -246,6 +246,7 @@ opcode("p_startpgm")
 opcode("p_phi")
 opcode("p_linear_phi")
 opcode("p_as_uniform")
+opcode("p_unit_test")
 
 opcode("p_create_vector")
 opcode("p_extract_vector")

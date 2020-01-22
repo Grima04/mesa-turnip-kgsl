@@ -286,7 +286,13 @@ option(
   'build-tests',
   type : 'boolean',
   value : false,
-  description : 'Build unit tests. Currently this will build *all* unit tests, which may build more than expected.'
+  description : 'Build unit tests. Currently this will build *all* unit tests except the ACO tests, which may build more than expected.'
+)
+option(
+  'build-aco-tests',
+  type : 'boolean',
+  value : false,
+  description : 'Build ACO tests. These do not require an AMD GPU.'
 )
 option(
   'install-intel-gpu-tests',

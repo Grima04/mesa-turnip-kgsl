@@ -1,4 +1,4 @@
-# Copyright © 2017 Intel Corporation
+# Copyright © 2020 Valve Corporation
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -17,16 +17,33 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
+aco_tests_files = files(
+  'framework.h',
+  'helpers.cpp',
+  'helpers.h',
+  'main.cpp',
+  'test_tests.cpp',
+)
 
-inc_amd = include_directories('.')
-
-subdir('addrlib')
-subdir('common')
-subdir('llvm')
-if with_amd_vk
-  subdir('compiler')
-  subdir('vulkan')
-  if with_aco_tests
-    subdir('compiler/tests')
-  endif
-endif
+test(
+  'aco_tests',
+  executable(
+    'aco_tests',
+    aco_tests_files,
+    cpp_args : ['-DACO_TEST_SOURCE_DIR="@0@"'.format(meson.current_source_dir()),
+                '-DACO_TEST_BUILD_ROOT="@0@"'.format(meson.build_root()),
+                '-DACO_TEST_PYTHON_BIN="@0@"'.format(prog_python.path())],
+    include_directories : [
+      inc_include, inc_src, inc_gallium, inc_compiler, inc_mesa, inc_mapi, inc_amd, inc_amd_common, inc_amd_common_llvm,
+    ],
+    link_with : [
+      libamd_common, libamd_common_llvm
+    ],
+    dependencies : [
+      dep_llvm, dep_thread, idep_aco, idep_nir, idep_mesautil
+    ],
+    gnu_symbol_visibility : 'hidden',
+    build_by_default : true,
+  ),
+  suite : ['amd', 'compiler'],
+)

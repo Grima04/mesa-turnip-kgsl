@@ -1684,7 +1684,7 @@ void lower_to_hw_instr(Program* program)
       for (size_t j = 0; j < block->instructions.size(); j++) {
          aco_ptr<Instruction>& instr = block->instructions[j];
          aco_ptr<Instruction> mov;
-         if (instr->format == Format::PSEUDO) {
+         if (instr->format == Format::PSEUDO && instr->opcode != aco_opcode::p_unit_test) {
             Pseudo_instruction *pi = (Pseudo_instruction*)instr.get();
 
             switch (instr->opcode)

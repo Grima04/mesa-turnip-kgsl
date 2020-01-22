@@ -51,6 +51,7 @@ pre_args = [
 
 with_vulkan_icd_dir = get_option('vulkan-icd-dir')
 with_tests = get_option('build-tests')
+with_aco_tests = get_option('build-aco-tests')
 with_glx_read_only_text = get_option('glx-read-only-text')
 with_glx_direct = get_option('glx-direct')
 with_osmesa = get_option('osmesa')
@@ -274,6 +275,9 @@ if with_gallium_kmsro and not (with_gallium_v3d or with_gallium_vc4 or with_gall
 endif
 if with_gallium_tegra and not with_gallium_nouveau
   error('tegra driver requires nouveau driver')
+endif
+if with_aco_tests and not with_amd_vk
+  error('ACO tests require Radv')
 endif
 
 if host_machine.system() == 'darwin'
