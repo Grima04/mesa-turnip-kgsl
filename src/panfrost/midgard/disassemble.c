@@ -1550,6 +1550,8 @@ disassemble_midgard(uint8_t *code, size_t size, unsigned gpu_id, gl_shader_stage
                 i += 4 * num_quad_words;
         }
 
+        free(midg_tags);
+
         /* We computed work_count as max_work_registers, so add one to get the
          * count. If no work registers are written, you still have one work
          * reported, which is exactly what the hardware expects */
