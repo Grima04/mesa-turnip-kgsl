@@ -315,6 +315,13 @@ option(
   description : 'Architectures to build SWR support for.',
 )
 option(
+  'shared-swr',
+  type : 'boolean',
+  value : true,
+  description : 'Whether to link SWR shared or statically.',
+)
+
+option(
   'tools',
   type : 'array',
   value : [],

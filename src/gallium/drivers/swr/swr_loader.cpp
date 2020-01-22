@@ -36,7 +36,7 @@ swr_initialize_screen_interface(struct swr_screen *screen, const char arch[])
 #ifdef HAVE_SWR_BUILTIN
    screen->pLibrary = NULL;
    screen->pfnSwrGetInterface = SwrGetInterface;
-   screen->pfnSwrGetInterface = SwrGetTileInterface;
+   screen->pfnSwrGetTileInterface = SwrGetTileIterface;
    InitTilesTable();
    swr_print_info("(using: builtin).\n");
 #else
