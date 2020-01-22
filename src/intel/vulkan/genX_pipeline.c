@@ -1408,11 +1408,23 @@ emit_3dstate_streamout(struct anv_pipeline *pipeline,
          next_offset[buffer] = output->offset +
                                __builtin_popcount(component_mask) * 4;
 
-         so_decl[stream][decls[stream]++] = (struct GENX(SO_DECL)) {
-            .OutputBufferSlot = buffer,
-            .RegisterIndex = vue_map->varying_to_slot[varying],
-            .ComponentMask = component_mask,
-         };
+         const int slot = vue_map->varying_to_slot[varying];
+         if (slot < 0) {
+            /* This can happen if the shader never writes to the varying.
+             * Insert a hole instead of actual varying data.
+             */
+            so_decl[stream][decls[stream]++] = (struct GENX(SO_DECL)) {
+               .HoleFlag = true,
+               .OutputBufferSlot = buffer,
+               .ComponentMask = component_mask,
+            };
+         } else {
+            so_decl[stream][decls[stream]++] = (struct GENX(SO_DECL)) {
+               .OutputBufferSlot = buffer,
+               .RegisterIndex = slot,
+               .ComponentMask = component_mask,
+            };
+         }
       }
 
       int max_decls = 0;
