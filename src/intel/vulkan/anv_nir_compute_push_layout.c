@@ -106,7 +106,7 @@ anv_nir_compute_push_layout(const struct anv_physical_device *pdevice,
       pdevice->compiler->scalar_stage[nir->info.stage] ? 4 : 16;
    nir->num_uniforms = ALIGN(push_end - push_start, align);
    prog_data->nr_params = nir->num_uniforms / 4;
-   prog_data->param = ralloc_array(mem_ctx, uint32_t, prog_data->nr_params);
+   prog_data->param = rzalloc_array(mem_ctx, uint32_t, prog_data->nr_params);
 
    struct anv_push_range push_constant_range = {
       .set = ANV_DESCRIPTOR_SET_PUSH_CONSTANTS,
