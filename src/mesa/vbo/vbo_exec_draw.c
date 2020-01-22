@@ -240,7 +240,8 @@ vbo_exec_vtx_unmap(struct vbo_exec_context *exec)
    if (_mesa_is_bufferobj(exec->vtx.bufferobj)) {
       struct gl_context *ctx = exec->ctx;
 
-      if (ctx->Driver.FlushMappedBufferRange) {
+      if (ctx->Driver.FlushMappedBufferRange &&
+          !ctx->Extensions.ARB_buffer_storage) {
          GLintptr offset = exec->vtx.buffer_used -
                            exec->vtx.bufferobj->Mappings[MAP_INTERNAL].Offset;
          GLsizeiptr length = (exec->vtx.buffer_ptr - exec->vtx.buffer_map) *
@@ -273,12 +274,18 @@ void
 vbo_exec_vtx_map(struct vbo_exec_context *exec)
 {
    struct gl_context *ctx = exec->ctx;
-   const GLenum accessRange = GL_MAP_WRITE_BIT |  /* for MapBufferRange */
-                              GL_MAP_INVALIDATE_RANGE_BIT |
-                              GL_MAP_UNSYNCHRONIZED_BIT |
-                              GL_MAP_FLUSH_EXPLICIT_BIT |
-                              MESA_MAP_NOWAIT_BIT;
    const GLenum usage = GL_STREAM_DRAW_ARB;
+   GLenum accessRange = GL_MAP_WRITE_BIT |  /* for MapBufferRange */
+                        GL_MAP_UNSYNCHRONIZED_BIT;
+
+   if (ctx->Extensions.ARB_buffer_storage) {
+      accessRange |= GL_MAP_PERSISTENT_BIT |
+                     GL_MAP_COHERENT_BIT;
+   } else {
+      accessRange |= GL_MAP_INVALIDATE_RANGE_BIT |
+                     GL_MAP_FLUSH_EXPLICIT_BIT |
+                     MESA_MAP_NOWAIT_BIT;
+   }
 
    if (!_mesa_is_bufferobj(exec->vtx.bufferobj))
       return;
@@ -312,6 +319,9 @@ vbo_exec_vtx_map(struct vbo_exec_context *exec)
                                  VBO_VERT_BUFFER_SIZE,
                                  NULL, usage,
                                  GL_MAP_WRITE_BIT |
+                                 (ctx->Extensions.ARB_buffer_storage ?
+                                    GL_MAP_PERSISTENT_BIT |
+                                    GL_MAP_COHERENT_BIT : 0) |
                                  GL_DYNAMIC_STORAGE_BIT |
                                  GL_CLIENT_STORAGE_BIT,
                                  exec->vtx.bufferobj)) {
