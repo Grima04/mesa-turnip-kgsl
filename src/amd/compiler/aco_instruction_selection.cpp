@@ -85,6 +85,7 @@ struct if_context {
 
    unsigned BB_if_idx;
    unsigned invert_idx;
+   bool uniform_has_then_branch;
    bool then_branch_divergent;
    Block BB_invert;
    Block BB_endif;
@@ -9305,11 +9306,98 @@ static void end_divergent_if(isel_context *ctx, if_context *ic)
    }
 }
 
+static void begin_uniform_if_then(isel_context *ctx, if_context *ic, Temp cond)
+{
+   assert(cond.regClass() == s1);
+
+   append_logical_end(ctx->block);
+   ctx->block->kind |= block_kind_uniform;
+
+   aco_ptr<Pseudo_branch_instruction> branch;
+   aco_opcode branch_opcode = aco_opcode::p_cbranch_z;
+   branch.reset(create_instruction<Pseudo_branch_instruction>(branch_opcode, Format::PSEUDO_BRANCH, 1, 0));
+   branch->operands[0] = Operand(cond);
+   branch->operands[0].setFixed(scc);
+   ctx->block->instructions.emplace_back(std::move(branch));
+
+   ic->BB_if_idx = ctx->block->index;
+   ic->BB_endif = Block();
+   ic->BB_endif.loop_nest_depth = ctx->cf_info.loop_nest_depth;
+   ic->BB_endif.kind |= ctx->block->kind & block_kind_top_level;
+
+   ctx->cf_info.has_branch = false;
+   ctx->cf_info.parent_loop.has_divergent_branch = false;
+
+   /** emit then block */
+   Block* BB_then = ctx->program->create_and_insert_block();
+   BB_then->loop_nest_depth = ctx->cf_info.loop_nest_depth;
+   add_edge(ic->BB_if_idx, BB_then);
+   append_logical_start(BB_then);
+   ctx->block = BB_then;
+}
+
+static void begin_uniform_if_else(isel_context *ctx, if_context *ic)
+{
+   Block *BB_then = ctx->block;
+
+   ic->uniform_has_then_branch = ctx->cf_info.has_branch;
+   ic->then_branch_divergent = ctx->cf_info.parent_loop.has_divergent_branch;
+
+   if (!ic->uniform_has_then_branch) {
+      append_logical_end(BB_then);
+      /* branch from then block to endif block */
+      aco_ptr<Pseudo_branch_instruction> branch;
+      branch.reset(create_instruction<Pseudo_branch_instruction>(aco_opcode::p_branch, Format::PSEUDO_BRANCH, 0, 0));
+      BB_then->instructions.emplace_back(std::move(branch));
+      add_linear_edge(BB_then->index, &ic->BB_endif);
+      if (!ic->then_branch_divergent)
+         add_logical_edge(BB_then->index, &ic->BB_endif);
+      BB_then->kind |= block_kind_uniform;
+   }
+
+   ctx->cf_info.has_branch = false;
+   ctx->cf_info.parent_loop.has_divergent_branch = false;
+
+   /** emit else block */
+   Block* BB_else = ctx->program->create_and_insert_block();
+   BB_else->loop_nest_depth = ctx->cf_info.loop_nest_depth;
+   add_edge(ic->BB_if_idx, BB_else);
+   append_logical_start(BB_else);
+   ctx->block = BB_else;
+}
+
+static void end_uniform_if(isel_context *ctx, if_context *ic)
+{
+   Block *BB_else = ctx->block;
+
+   if (!ctx->cf_info.has_branch) {
+      append_logical_end(BB_else);
+      /* branch from then block to endif block */
+      aco_ptr<Pseudo_branch_instruction> branch;
+      branch.reset(create_instruction<Pseudo_branch_instruction>(aco_opcode::p_branch, Format::PSEUDO_BRANCH, 0, 0));
+      BB_else->instructions.emplace_back(std::move(branch));
+      add_linear_edge(BB_else->index, &ic->BB_endif);
+      if (!ctx->cf_info.parent_loop.has_divergent_branch)
+         add_logical_edge(BB_else->index, &ic->BB_endif);
+      BB_else->kind |= block_kind_uniform;
+   }
+
+   ctx->cf_info.has_branch &= ic->uniform_has_then_branch;
+   ctx->cf_info.parent_loop.has_divergent_branch &= ic->then_branch_divergent;
+
+   /** emit endif merge block */
+   if (!ctx->cf_info.has_branch) {
+      ctx->block = ctx->program->insert_block(std::move(ic->BB_endif));
+      append_logical_start(ctx->block);
+   }
+}
+
 static bool visit_if(isel_context *ctx, nir_if *if_stmt)
 {
    Temp cond = get_ssa_temp(ctx, if_stmt->condition.ssa);
    Builder bld(ctx->program, ctx->block);
    aco_ptr<Pseudo_branch_instruction> branch;
+   if_context ic;
 
    if (!ctx->divergent_vals[if_stmt->condition.ssa->index]) { /* uniform condition */
       /**
@@ -9327,77 +9415,19 @@ static bool visit_if(isel_context *ctx, nir_if *if_stmt)
        *    to the loop exit/entry block. Otherwise, it branches to the next
        *    merge block.
        **/
-      append_logical_end(ctx->block);
-      ctx->block->kind |= block_kind_uniform;
 
-      /* emit branch */
-      assert(cond.regClass() == bld.lm);
       // TODO: in a post-RA optimizer, we could check if the condition is in VCC and omit this instruction
+      assert(cond.regClass() == ctx->program->lane_mask);
       cond = bool_to_scalar_condition(ctx, cond);
 
-      branch.reset(create_instruction<Pseudo_branch_instruction>(aco_opcode::p_cbranch_z, Format::PSEUDO_BRANCH, 1, 0));
-      branch->operands[0] = Operand(cond);
-      branch->operands[0].setFixed(scc);
-      ctx->block->instructions.emplace_back(std::move(branch));
-
-      unsigned BB_if_idx = ctx->block->index;
-      Block BB_endif = Block();
-      BB_endif.loop_nest_depth = ctx->cf_info.loop_nest_depth;
-      BB_endif.kind |= ctx->block->kind & block_kind_top_level;
-
-      /** emit then block */
-      Block* BB_then = ctx->program->create_and_insert_block();
-      BB_then->loop_nest_depth = ctx->cf_info.loop_nest_depth;
-      add_edge(BB_if_idx, BB_then);
-      append_logical_start(BB_then);
-      ctx->block = BB_then;
+      begin_uniform_if_then(ctx, &ic, cond);
       visit_cf_list(ctx, &if_stmt->then_list);
-      BB_then = ctx->block;
-      bool then_branch = ctx->cf_info.has_branch;
-      bool then_branch_divergent = ctx->cf_info.parent_loop.has_divergent_branch;
 
-      if (!then_branch) {
-         append_logical_end(BB_then);
-         /* branch from then block to endif block */
-         branch.reset(create_instruction<Pseudo_branch_instruction>(aco_opcode::p_branch, Format::PSEUDO_BRANCH, 0, 0));
-         BB_then->instructions.emplace_back(std::move(branch));
-         add_linear_edge(BB_then->index, &BB_endif);
-         if (!then_branch_divergent)
-            add_logical_edge(BB_then->index, &BB_endif);
-         BB_then->kind |= block_kind_uniform;
-      }
-
-      ctx->cf_info.has_branch = false;
-      ctx->cf_info.parent_loop.has_divergent_branch = false;
-
-      /** emit else block */
-      Block* BB_else = ctx->program->create_and_insert_block();
-      BB_else->loop_nest_depth = ctx->cf_info.loop_nest_depth;
-      add_edge(BB_if_idx, BB_else);
-      append_logical_start(BB_else);
-      ctx->block = BB_else;
+      begin_uniform_if_else(ctx, &ic);
       visit_cf_list(ctx, &if_stmt->else_list);
-      BB_else = ctx->block;
 
-      if (!ctx->cf_info.has_branch) {
-         append_logical_end(BB_else);
-         /* branch from then block to endif block */
-         branch.reset(create_instruction<Pseudo_branch_instruction>(aco_opcode::p_branch, Format::PSEUDO_BRANCH, 0, 0));
-         BB_else->instructions.emplace_back(std::move(branch));
-         add_linear_edge(BB_else->index, &BB_endif);
-         if (!ctx->cf_info.parent_loop.has_divergent_branch)
-            add_logical_edge(BB_else->index, &BB_endif);
-         BB_else->kind |= block_kind_uniform;
-      }
+      end_uniform_if(ctx, &ic);
 
-      ctx->cf_info.has_branch &= then_branch;
-      ctx->cf_info.parent_loop.has_divergent_branch &= then_branch_divergent;
-
-      /** emit endif merge block */
-      if (!ctx->cf_info.has_branch) {
-         ctx->block = ctx->program->insert_block(std::move(BB_endif));
-         append_logical_start(ctx->block);
-      }
       return !ctx->cf_info.has_branch;
    } else { /* non-uniform condition */
       /**
@@ -9424,8 +9454,6 @@ static bool visit_if(isel_context *ctx, nir_if *if_stmt)
        *
        * *) Exceptions may be due to break and continue statements within loops
        **/
-
-      if_context ic;
 
       begin_divergent_if_then(ctx, &ic, cond);
       visit_cf_list(ctx, &if_stmt->then_list);
