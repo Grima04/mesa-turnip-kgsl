@@ -661,6 +661,10 @@ st_context_flush(struct st_context_iface *stctxi, unsigned flags,
    if (flags & ST_FLUSH_FENCE_FD)
       pipe_flags |= PIPE_FLUSH_FENCE_FD;
 
+   /* If both the bitmap cache is dirty and there are unflushed vertices,
+    * it means that glBitmap was called first and then glBegin.
+    */
+   st_flush_bitmap_cache(st);
    FLUSH_VERTICES(st->ctx, 0);
 
    /* Notify the caller that we're ready to flush */
