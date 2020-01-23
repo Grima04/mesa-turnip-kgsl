@@ -243,24 +243,6 @@ namespace brw {
       }
 
       /**
-       * Get the mask of SIMD channels enabled by dispatch and not yet
-       * disabled by discard.
-       */
-      src_reg
-      sample_mask_reg() const
-      {
-         if (shader->stage != MESA_SHADER_FRAGMENT) {
-            return brw_imm_d(0xffffffff);
-         } else if (brw_wm_prog_data(shader->stage_prog_data)->uses_kill) {
-            return brw_flag_reg(0, 1);
-         } else {
-            assert(shader->devinfo->gen >= 6 && dispatch_width() <= 16);
-            return retype(brw_vec1_grf((_group >= 16 ? 2 : 1), 7),
-                          BRW_REGISTER_TYPE_UD);
-         }
-      }
-
-      /**
        * Insert an instruction into the program.
        */
       instruction *

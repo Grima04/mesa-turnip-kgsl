@@ -4271,6 +4271,29 @@ fs_visitor::lower_sub_sat()
    return progress;
 }
 
+/**
+ * Get the mask of SIMD channels enabled during dispatch and not yet disabled
+ * by discard.  Due to the layout of the sample mask in the fragment shader
+ * thread payload, \p bld is required to have a dispatch_width() not greater
+ * than 16 for fragment shaders.
+ */
+static fs_reg
+sample_mask_reg(const fs_builder &bld)
+{
+   const fs_visitor *v = static_cast<const fs_visitor *>(bld.shader);
+
+   if (v->stage != MESA_SHADER_FRAGMENT) {
+      return brw_imm_ud(0xffffffff);
+   } else if (brw_wm_prog_data(v->stage_prog_data)->uses_kill) {
+      assert(bld.group() < 16 && bld.dispatch_width() <= 16);
+      return brw_flag_reg(0, 1);
+   } else {
+      assert(v->devinfo->gen >= 6 && bld.dispatch_width() <= 16);
+      return retype(brw_vec1_grf((bld.group() >= 16 ? 2 : 1), 7),
+                    BRW_REGISTER_TYPE_UD);
+   }
+}
+
 static void
 setup_color_payload(const fs_builder &bld, const brw_wm_prog_key *key,
                     fs_reg *dst, fs_reg color, unsigned components)
@@ -4368,7 +4391,7 @@ lower_fb_write_logical_send(const fs_builder &bld, fs_inst *inst,
       if (prog_data->uses_kill) {
          bld.exec_all().group(1, 0)
             .MOV(retype(brw_vec1_grf(0, 0), BRW_REGISTER_TYPE_UW),
-                 brw_flag_reg(0, 1));
+                 sample_mask_reg(bld));
       }
 
       assert(length == 0);
@@ -4427,10 +4450,9 @@ lower_fb_write_logical_send(const fs_builder &bld, fs_inst *inst,
       }
 
       if (prog_data->uses_kill) {
-         assert(bld.group() < 16);
          ubld.group(1, 0).MOV(retype(component(header, 15),
                                      BRW_REGISTER_TYPE_UW),
-                              brw_flag_reg(0, 1));
+                              sample_mask_reg(bld));
       }
 
       assert(length == 0);
@@ -5330,7 +5352,7 @@ lower_surface_logical_send(const fs_builder &bld, fs_inst *inst)
                               surface.ud == GEN8_BTI_STATELESS_NON_COHERENT);
 
    const bool has_side_effects = inst->has_side_effects();
-   fs_reg sample_mask = has_side_effects ? bld.sample_mask_reg() :
+   fs_reg sample_mask = has_side_effects ? sample_mask_reg(bld) :
                                            fs_reg(brw_imm_d(0xffff));
 
    /* From the BDW PRM Volume 7, page 147:
@@ -5622,7 +5644,7 @@ lower_a64_logical_send(const fs_builder &bld, fs_inst *inst)
       inst->predicate = BRW_PREDICATE_NORMAL;
       inst->predicate_inverse = false;
 
-      fs_reg sample_mask = bld.sample_mask_reg();
+      fs_reg sample_mask = sample_mask_reg(bld);
       const fs_builder ubld = bld.group(1, 0).exec_all();
       ubld.MOV(retype(brw_flag_subreg(inst->flag_subreg), sample_mask.type),
                sample_mask);
@@ -8140,7 +8162,7 @@ fs_visitor::run_fs(bool allow_spilling, bool do_rep_send)
          const fs_reg dispatch_mask =
             devinfo->gen >= 6 ? brw_vec1_grf(1, 7) : brw_vec1_grf(0, 0);
          bld.exec_all().group(1, 0)
-            .MOV(retype(brw_flag_reg(0, 1), BRW_REGISTER_TYPE_UW),
+            .MOV(sample_mask_reg(bld),
                  retype(dispatch_mask, BRW_REGISTER_TYPE_UW));
       }
 
