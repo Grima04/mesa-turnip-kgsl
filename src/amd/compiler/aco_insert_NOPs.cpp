@@ -333,8 +333,8 @@ int handle_instruction_gfx8_9(NOP_ctx_gfx8_9& ctx, aco_ptr<Instruction>& instr,
                               pred->operands.size() == 3 &&
                               pred->operands[2].size() > 2;
          if (consider_buf || consider_mimg || consider_flat) {
-            PhysReg wrdata = pred->operands[3].physReg();
-            unsigned size = pred->operands[3].size();
+            PhysReg wrdata = pred->operands[consider_flat ? 2 : 3].physReg();
+            unsigned size = pred->operands[consider_flat ? 2 : 3].size();
             assert(wrdata >= 256);
             for (const Definition& def : instr->definitions) {
                if (regs_intersect(def.physReg(), def.size(), wrdata, size))
