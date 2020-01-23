@@ -483,7 +483,7 @@ llvm_pipeline_generic(struct draw_pt_middle_end *middle,
    }
 
    /* stream output needs to be done before clipping */
-   draw_pt_so_emit( fpme->so_emit, 1, vert_info, prim_info );
+   draw_pt_so_emit( fpme->so_emit, gshader ? gshader->num_vertex_streams : 1, vert_info, prim_info );
 
    draw_stats_clipper_primitives(draw, prim_info);
 
