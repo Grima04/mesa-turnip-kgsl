@@ -80,6 +80,7 @@ struct vbo_exec_context
       struct gl_buffer_object *bufferobj;
 
       GLuint vertex_size;       /* in dwords */
+      GLuint vertex_size_no_pos;
 
       struct _mesa_prim prim[VBO_MAX_PRIM];
       GLuint prim_count;

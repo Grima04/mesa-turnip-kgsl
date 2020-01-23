@@ -294,7 +294,9 @@ vbo_exec_wrap_upgrade_vertex(struct vbo_exec_context *exec,
       memcpy(old_attrptr, exec->vtx.attrptr, sizeof(old_attrptr));
    }
 
-   if (unlikely(oldSize)) {
+   bool repopulate = unlikely(oldSize) || (attr != 0 && exec->vtx.attr[0].size);
+
+   if (repopulate) {
       /* Do a COPY_TO_CURRENT to ensure back-copying works for the
        * case when the attribute already exists in the vertex and is
        * having its size increased.
@@ -315,17 +317,21 @@ vbo_exec_wrap_upgrade_vertex(struct vbo_exec_context *exec,
     */
    exec->vtx.attr[attr].size = newSize;
    exec->vtx.vertex_size += newSize - oldSize;
+   exec->vtx.vertex_size_no_pos = exec->vtx.vertex_size - exec->vtx.attr[0].size;
    exec->vtx.max_vert = vbo_compute_max_verts(exec);
    exec->vtx.vert_count = 0;
    exec->vtx.buffer_ptr = exec->vtx.buffer_map;
    exec->vtx.enabled |= BITFIELD64_BIT(attr);
 
-   if (unlikely(oldSize)) {
+   if (repopulate) {
       /* Size changed, recalculate all the attrptr[] values
        */
       fi_type *tmp = exec->vtx.vertex;
 
-      for (i = 0 ; i < VBO_ATTRIB_MAX ; i++) {
+      /* Iterate backwards to make the position last, because glVertex
+       * expects that.
+       */
+      for (int i = VBO_ATTRIB_MAX - 1; i >= 0; i--) {
          if (exec->vtx.attr[i].size) {
             exec->vtx.attrptr[i] = tmp;
             tmp += exec->vtx.attr[i].size;
@@ -453,6 +459,19 @@ is_vertex_position(const struct gl_context *ctx, GLuint index)
            _mesa_inside_begin_end(ctx));
 }
 
+/* Write a 64-bit value into a 32-bit pointer by preserving endianness. */
+#if UTIL_ARCH_LITTLE_ENDIAN
+   #define SET_64BIT(dst32, u64) do { \
+         *(dst32)++ = (u64); \
+         *(dst32)++ = (uint64_t)(u64) >> 32; \
+      } while (0)
+#else
+   #define SET_64BIT(dst32, u64) do { \
+         *(dst32)++ = (uint64_t)(u64) >> 32; \
+         *(dst32)++ = (u64); \
+      } while (0)
+#endif
+
 
 /**
  * This macro is used to implement all the glVertex, glColor, glTexCoord,
@@ -476,8 +495,8 @@ do {                                                                    \
       vbo_exec_fixup_vertex(ctx, A, N * sz, T);                         \
    }                                                                    \
                                                                         \
-   /* store vertex attribute in vertex buffer */                        \
-   {                                                                    \
+   /* store a copy of the attribute in exec except for glVertex */      \
+   if ((A) != 0) {                                                      \
       C *dest = (C *)exec->vtx.attrptr[A];                              \
       if (N>0) dest[0] = V0;                                            \
       if (N>1) dest[1] = V1;                                            \
@@ -488,13 +507,32 @@ do {                                                                    \
                                                                         \
    if ((A) == 0) {                                                      \
       /* This is a glVertex call */                                     \
-      GLuint i;                                                         \
+      uint32_t *dst = (uint32_t *)exec->vtx.buffer_ptr;                 \
+      uint32_t *src = (uint32_t *)exec->vtx.vertex;                     \
+      unsigned vertex_size_no_pos = exec->vtx.vertex_size_no_pos;       \
                                                                         \
-      /* copy 32-bit words */                                           \
-      for (i = 0; i < exec->vtx.vertex_size; i++)                       \
-         exec->vtx.buffer_ptr[i] = exec->vtx.vertex[i];                 \
+      /* Copy over attributes from exec. */                             \
+      for (unsigned i = 0; i < vertex_size_no_pos; i++)                 \
+         *dst++ = *src++;                                               \
                                                                         \
-      exec->vtx.buffer_ptr += exec->vtx.vertex_size;                    \
+      /* Store the position, which is always last and can have 32 or */ \
+      /* 64 bits per channel. */                                        \
+      if (sizeof(C) == 4) {                                             \
+         if (N > 0) *dst++ = V0;                                        \
+         if (N > 1) *dst++ = V1;                                        \
+         if (N > 2) *dst++ = V2;                                        \
+         if (N > 3) *dst++ = V3;                                        \
+      } else {                                                          \
+         /* 64 bits: dst can be unaligned, so copy each 4-byte word */  \
+         /* separately */                                               \
+         if (N > 0) SET_64BIT(dst, V0);                                 \
+         if (N > 1) SET_64BIT(dst, V1);                                 \
+         if (N > 2) SET_64BIT(dst, V2);                                 \
+         if (N > 3) SET_64BIT(dst, V3);                                 \
+      }                                                                 \
+                                                                        \
+      /* dst now points at the beginning of the next vertex */          \
+      exec->vtx.buffer_ptr = (fi_type*)dst;                             \
                                                                         \
       /* Set FLUSH_STORED_VERTICES to indicate that there's now */      \
       /* something to draw (not just updating a color or texcoord).*/   \
