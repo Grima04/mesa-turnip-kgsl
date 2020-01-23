@@ -174,6 +174,11 @@ _mesa_vertex_attrib_binding(struct gl_context *ctx,
       else
          vao->VertexAttribBufferMask &= ~array_bit;
 
+      if (vao->BufferBinding[bindingIndex].InstanceDivisor)
+         vao->NonZeroDivisorMask |= array_bit;
+      else
+         vao->NonZeroDivisorMask &= ~array_bit;
+
       vao->BufferBinding[array->BufferBindingIndex]._BoundArrays &= ~array_bit;
       vao->BufferBinding[bindingIndex]._BoundArrays |= array_bit;
 
@@ -250,6 +255,12 @@ vertex_binding_divisor(struct gl_context *ctx,
 
    if (binding->InstanceDivisor != divisor) {
       binding->InstanceDivisor = divisor;
+
+      if (divisor)
+         vao->NonZeroDivisorMask |= binding->_BoundArrays;
+      else
+         vao->NonZeroDivisorMask &= ~binding->_BoundArrays;
+
       vao->NewArrays |= vao->Enabled & binding->_BoundArrays;
    }
 }

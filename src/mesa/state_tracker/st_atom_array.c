@@ -143,6 +143,8 @@ st_setup_arrays(struct st_context *st,
    GLbitfield userbuf_attribs = inputs_read & _mesa_draw_user_array_bits(ctx);
 
    *has_user_vertex_buffers = userbuf_attribs != 0;
+   st->draw_needs_minmax_index =
+      (userbuf_attribs & ~_mesa_draw_nonzero_divisor_bits(ctx)) != 0;
 
    while (mask) {
       /* The attribute index to start pulling a binding */
@@ -164,9 +166,6 @@ st_setup_arrays(struct st_context *st,
          vbuffer[bufidx].buffer.user = ptr;
          vbuffer[bufidx].is_user_buffer = true;
          vbuffer[bufidx].buffer_offset = 0;
-
-         if (!binding->InstanceDivisor)
-            st->draw_needs_minmax_index = true;
       }
       vbuffer[bufidx].stride = binding->Stride; /* in bytes */
 
@@ -295,8 +294,6 @@ st_update_array(struct st_context *st)
    struct pipe_vertex_element velements[PIPE_MAX_ATTRIBS];
    unsigned num_velements;
    bool uses_user_vertex_buffers;
-
-   st->draw_needs_minmax_index = false;
 
    /* ST_NEW_VERTEX_ARRAYS alias ctx->DriverFlags.NewArray */
    /* Setup arrays */

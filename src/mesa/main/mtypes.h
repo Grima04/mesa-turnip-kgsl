@@ -1547,6 +1547,9 @@ struct gl_vertex_array_object
    /** Mask indicating which vertex arrays have vertex buffer associated. */
    GLbitfield VertexAttribBufferMask;
 
+   /** Mask indicating which vertex arrays have a non-zero instance divisor. */
+   GLbitfield NonZeroDivisorMask;
+
    /** Mask of VERT_BIT_* values indicating which arrays are enabled */
    GLbitfield Enabled;
 
@@ -1558,6 +1561,9 @@ struct gl_vertex_array_object
     * the VAO to Array._DrawVAO.
     */
    GLbitfield _EffEnabledVBO;
+
+   /** Same as _EffEnabledVBO, but for instance divisors. */
+   GLbitfield _EffEnabledNonZeroDivisor;
 
    /** Denotes the way the position/generic0 attribute is mapped */
    gl_attribute_map_mode _AttributeMapMode;

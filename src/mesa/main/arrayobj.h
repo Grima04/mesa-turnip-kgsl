@@ -212,6 +212,20 @@ _mesa_draw_user_array_bits(const struct gl_context *ctx)
 
 
 /**
+ * Return which enabled vertex attributes have a non-zero instance divisor.
+ *
+ * Needs the a fully updated VAO ready for draw.
+ */
+static inline GLbitfield
+_mesa_draw_nonzero_divisor_bits(const struct gl_context *ctx)
+{
+   const struct gl_vertex_array_object *const vao = ctx->Array._DrawVAO;
+   assert(vao->NewArrays == 0);
+   return ~vao->_EffEnabledNonZeroDivisor & ctx->Array._DrawVAOEnabledAttribs;
+}
+
+
+/**
  * Return enabled current values attribute bits for draw.
  */
 static inline GLbitfield
