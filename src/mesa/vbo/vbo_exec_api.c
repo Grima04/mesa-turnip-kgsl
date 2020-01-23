@@ -498,8 +498,9 @@ do {                                                                    \
                                                                         \
       /* Set FLUSH_STORED_VERTICES to indicate that there's now */      \
       /* something to draw (not just updating a color or texcoord).*/   \
-      ctx->Driver.NeedFlush |= FLUSH_UPDATE_CURRENT |                   \
-                               FLUSH_STORED_VERTICES;                   \
+      /* Don't set FLUSH_UPDATE_CURRENT because */                      \
+      /* Current.Attrib[VBO_ATTRIB_POS] is never used. */               \
+      ctx->Driver.NeedFlush |= FLUSH_STORED_VERTICES;                   \
                                                                         \
       if (++exec->vtx.vert_count >= exec->vtx.max_vert)                 \
          vbo_exec_vtx_wrap(exec);                                       \
