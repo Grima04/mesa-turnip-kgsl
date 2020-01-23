@@ -4220,7 +4220,7 @@ static int image_type_to_components_count(enum glsl_sampler_dim dim, bool array)
  * The sample index should be adjusted as follows:
  *   sample_index = (fmask >> (sample_index * 4)) & 0xF;
  */
-static Temp adjust_sample_index_using_fmask(isel_context *ctx, bool da, Temp coords, Operand sample_index, Temp fmask_desc_ptr)
+static Temp adjust_sample_index_using_fmask(isel_context *ctx, bool da, std::vector<Temp>& coords, Operand sample_index, Temp fmask_desc_ptr)
 {
    Builder bld(ctx->program, ctx->block);
    Temp fmask = bld.tmp(v1);
@@ -4228,10 +4228,12 @@ static Temp adjust_sample_index_using_fmask(isel_context *ctx, bool da, Temp coo
                   ? ac_get_sampler_dim(ctx->options->chip_class, GLSL_SAMPLER_DIM_2D, da)
                   : 0;
 
+   Temp coord = da ? bld.pseudo(aco_opcode::p_create_vector, bld.def(v3), coords[0], coords[1], coords[2]) :
+                     bld.pseudo(aco_opcode::p_create_vector, bld.def(v2), coords[0], coords[1]);
    aco_ptr<MIMG_instruction> load{create_instruction<MIMG_instruction>(aco_opcode::image_load, Format::MIMG, 3, 1)};
    load->operands[0] = Operand(fmask_desc_ptr);
    load->operands[1] = Operand(s4); /* no sampler */
-   load->operands[2] = Operand(coords);
+   load->operands[2] = Operand(coord);
    load->definitions[0] = Definition(fmask);
    load->glc = false;
    load->dlc = false;
@@ -4284,43 +4286,39 @@ static Temp get_image_coords(isel_context *ctx, const nir_intrinsic_instr *instr
    bool is_ms = (dim == GLSL_SAMPLER_DIM_MS || dim == GLSL_SAMPLER_DIM_SUBPASS_MS);
    bool gfx9_1d = ctx->options->chip_class == GFX9 && dim == GLSL_SAMPLER_DIM_1D;
    int count = image_type_to_components_count(dim, is_array);
-   std::vector<Operand> coords(count);
+   std::vector<Temp> coords(count);
+   Builder bld(ctx->program, ctx->block);
 
    if (is_ms) {
-      Operand sample_index;
-      nir_const_value *sample_cv = nir_src_as_const_value(instr->src[2]);
-      if (sample_cv)
-         sample_index = Operand(sample_cv->u32);
-      else
-         sample_index = Operand(emit_extract_vector(ctx, get_ssa_temp(ctx, instr->src[2].ssa), 0, v1));
-
+      count--;
+      Temp src2 = get_ssa_temp(ctx, instr->src[2].ssa);
+      /* get sample index */
       if (instr->intrinsic == nir_intrinsic_image_deref_load) {
-         aco_ptr<Pseudo_instruction> vec{create_instruction<Pseudo_instruction>(aco_opcode::p_create_vector, Format::PSEUDO, is_array ? 3 : 2, 1)};
-         for (unsigned i = 0; i < vec->operands.size(); i++)
-            vec->operands[i] = Operand(emit_extract_vector(ctx, src0, i, v1));
-         Temp fmask_load_address = {ctx->program->allocateId(), is_array ? v3 : v2};
-         vec->definitions[0] = Definition(fmask_load_address);
-         ctx->block->instructions.emplace_back(std::move(vec));
+         nir_const_value *sample_cv = nir_src_as_const_value(instr->src[2]);
+         Operand sample_index = sample_cv ? Operand(sample_cv->u32) : Operand(emit_extract_vector(ctx, src2, 0, v1));
+         std::vector<Temp> fmask_load_address;
+         for (unsigned i = 0; i < (is_array ? 3 : 2); i++)
+            fmask_load_address.emplace_back(emit_extract_vector(ctx, src0, i, v1));
 
          Temp fmask_desc_ptr = get_sampler_desc(ctx, nir_instr_as_deref(instr->src[0].ssa->parent_instr), ACO_DESC_FMASK, nullptr, false, false);
-         sample_index = Operand(adjust_sample_index_using_fmask(ctx, is_array, fmask_load_address, sample_index, fmask_desc_ptr));
+         coords[count] = adjust_sample_index_using_fmask(ctx, is_array, fmask_load_address, sample_index, fmask_desc_ptr);
+      } else {
+         coords[count] = emit_extract_vector(ctx, src2, 0, v1);
       }
-      count--;
-      coords[count] = sample_index;
    }
 
    if (count == 1 && !gfx9_1d)
       return emit_extract_vector(ctx, src0, 0, v1);
 
    if (gfx9_1d) {
-      coords[0] = Operand(emit_extract_vector(ctx, src0, 0, v1));
+      coords[0] = emit_extract_vector(ctx, src0, 0, v1);
       coords.resize(coords.size() + 1);
-      coords[1] = Operand((uint32_t) 0);
+      coords[1] = bld.copy(bld.def(v1), Operand(0u));
       if (is_array)
-         coords[2] = Operand(emit_extract_vector(ctx, src0, 1, v1));
+         coords[2] = emit_extract_vector(ctx, src0, 1, v1);
    } else {
       for (int i = 0; i < count; i++)
-         coords[i] = Operand(emit_extract_vector(ctx, src0, i, v1));
+         coords[i] = emit_extract_vector(ctx, src0, i, v1);
    }
 
    if (instr->intrinsic == nir_intrinsic_image_deref_load ||
@@ -4329,12 +4327,12 @@ static Temp get_image_coords(isel_context *ctx, const nir_intrinsic_instr *instr
       bool level_zero = nir_src_is_const(instr->src[lod_index]) && nir_src_as_uint(instr->src[lod_index]) == 0;
 
       if (!level_zero)
-         coords.emplace_back(Operand(get_ssa_temp(ctx, instr->src[lod_index].ssa)));
+         coords.emplace_back(get_ssa_temp(ctx, instr->src[lod_index].ssa));
    }
 
    aco_ptr<Pseudo_instruction> vec{create_instruction<Pseudo_instruction>(aco_opcode::p_create_vector, Format::PSEUDO, coords.size(), 1)};
    for (unsigned i = 0; i < coords.size(); i++)
-      vec->operands[i] = coords[i];
+      vec->operands[i] = Operand(coords[i]);
    Temp res = {ctx->program->allocateId(), RegClass(RegType::vgpr, coords.size())};
    vec->definitions[0] = Definition(res);
    ctx->block->instructions.emplace_back(std::move(vec));
@@ -7281,7 +7279,10 @@ void visit_tex(isel_context *ctx, nir_tex_instr *instr)
       Operand op(sample_index);
       if (sample_index_cv)
          op = Operand(sample_index_cv->u32);
-      sample_index = adjust_sample_index_using_fmask(ctx, da, coords, op, fmask_ptr);
+      std::vector<Temp> fmask_load_address;
+      for (unsigned i = 0; i < coords.size(); i++)
+         fmask_load_address.emplace_back(emit_extract_vector(ctx, coords, i, v1));
+      sample_index = adjust_sample_index_using_fmask(ctx, da, fmask_load_address, op, fmask_ptr);
    }
 
    if (has_offset && (instr->op == nir_texop_txf || instr->op == nir_texop_txf_ms)) {
