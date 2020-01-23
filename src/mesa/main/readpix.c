@@ -1035,7 +1035,6 @@ read_pixels(GLint x, GLint y, GLsizei width, GLsizei height, GLenum format,
    GET_CURRENT_CONTEXT(ctx);
 
    FLUSH_VERTICES(ctx, 0);
-   FLUSH_CURRENT(ctx, 0);
 
    if (MESA_VERBOSE & VERBOSE_API)
       _mesa_debug(ctx, "glReadPixels(%d, %d, %s, %s, %p)\n",

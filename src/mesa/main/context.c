@@ -1874,7 +1874,6 @@ void
 _mesa_flush(struct gl_context *ctx)
 {
    FLUSH_VERTICES( ctx, 0 );
-   FLUSH_CURRENT( ctx, 0 );
    if (ctx->Driver.Flush) {
       ctx->Driver.Flush(ctx);
    }
@@ -1895,7 +1894,6 @@ _mesa_Finish(void)
    ASSERT_OUTSIDE_BEGIN_END(ctx);
 
    FLUSH_VERTICES(ctx, 0);
-   FLUSH_CURRENT(ctx, 0);
 
    if (ctx->Driver.Finish) {
       ctx->Driver.Finish(ctx);
