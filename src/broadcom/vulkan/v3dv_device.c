@@ -40,6 +40,7 @@
 #include "compiler/glsl_types.h"
 
 #include "drm-uapi/v3d_drm.h"
+#include "format/u_format.h"
 #include "vk_util.h"
 
 #ifdef VK_USE_PLATFORM_XCB_KHR
@@ -1333,6 +1334,60 @@ fail:
    return result;
 }
 
+static VkResult
+device_alloc_for_wsi(struct v3dv_device *device,
+                     const VkAllocationCallbacks *pAllocator,
+                     struct v3dv_device_memory *mem,
+                     VkDeviceSize size)
+{
+   /* In the simulator we can get away with a regular allocation since both
+    * allocation and rendering happen in the same DRM render node. On actual
+    * hardware we need to allocate our winsys BOs on the vc4 display device
+    * and import them into v3d.
+    */
+#if using_v3d_simulator
+      return device_alloc(device, mem, size);
+#else
+   assert(device->display_fd != -1);
+   int display_fd = device->instance->physicalDevice.display_fd;
+   struct drm_mode_create_dumb create_dumb = {
+      .width = 1024, /* one page */
+      .height = align(size, 4096) / 4096,
+      .bpp = util_format_get_blocksizebits(PIPE_FORMAT_RGBA8888_UNORM),
+   };
+
+   int err;
+   err = v3dv_ioctl(display_fd, DRM_IOCTL_MODE_CREATE_DUMB, &create_dumb);
+   if (err < 0)
+      goto fail_create;
+
+   int fd;
+   err =
+      drmPrimeHandleToFD(display_fd, create_dumb.handle, O_CLOEXEC, &fd);
+   if (err < 0)
+      goto fail_export;
+
+   VkResult result = device_import_bo(device, pAllocator, fd, size, &mem->bo);
+   close(fd);
+   if (result != VK_SUCCESS)
+      goto fail_import;
+
+
+   return VK_SUCCESS;
+
+fail_import:
+fail_export: {
+      struct drm_mode_destroy_dumb destroy_dumb = {
+         .handle = create_dumb.handle,
+      };
+      v3dv_ioctl(display_fd, DRM_IOCTL_MODE_DESTROY_DUMB, &destroy_dumb);
+   }
+
+fail_create:
+   return VK_ERROR_OUT_OF_DEVICE_MEMORY;
+#endif
+}
+
 VkResult
 v3dv_AllocateMemory(VkDevice _device,
                     const VkMemoryAllocateInfo *pAllocateInfo,
@@ -1356,9 +1411,13 @@ v3dv_AllocateMemory(VkDevice _device,
    assert(pAllocateInfo->memoryTypeIndex < pdevice->memory.memoryTypeCount);
    mem->type = &pdevice->memory.memoryTypes[pAllocateInfo->memoryTypeIndex];
 
+   const struct wsi_memory_allocate_info *wsi_info = NULL;
    const VkImportMemoryFdInfoKHR *fd_info = NULL;
    vk_foreach_struct_const(ext, pAllocateInfo->pNext) {
-      switch (ext->sType) {
+      switch ((unsigned)ext->sType) {
+      case VK_STRUCTURE_TYPE_WSI_MEMORY_ALLOCATE_INFO_MESA:
+         wsi_info = (void *)ext;
+         break;
       case VK_STRUCTURE_TYPE_IMPORT_MEMORY_FD_INFO_KHR:
          fd_info = (void *)ext;
          break;
@@ -1369,7 +1428,10 @@ v3dv_AllocateMemory(VkDevice _device,
    }
 
    VkResult result = VK_SUCCESS;
-   if (fd_info && fd_info->handleType) {
+   if (wsi_info) {
+      result = device_alloc_for_wsi(device, pAllocator, mem,
+                                    pAllocateInfo->allocationSize);
+   } else if (fd_info && fd_info->handleType) {
       assert(fd_info->handleType == VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT ||
              fd_info->handleType == VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT);
       result = device_import_bo(device, pAllocator,
