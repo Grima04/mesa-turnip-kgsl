@@ -25,7 +25,6 @@
 
 #if ANDROID_API_LEVEL >= 26
 #include <hardware/gralloc1.h>
-#include <grallocusage/GrallocUsageConversion.h>
 #endif
 
 #include <hardware/hardware.h>
@@ -634,7 +633,6 @@ setup_gralloc0_usage(VkFormat format, VkImageUsageFlags imageUsage,
    return VK_SUCCESS;
 }
 
-
 #if ANDROID_API_LEVEL >= 26
 VkResult anv_GetSwapchainGrallocUsage2ANDROID(
     VkDevice            device_h,
@@ -660,8 +658,23 @@ VkResult anv_GetSwapchainGrallocUsage2ANDROID(
    if (result != VK_SUCCESS)
       return result;
 
-   android_convertGralloc0To1Usage(grallocUsage, grallocProducerUsage,
-                                   grallocConsumerUsage);
+   /* Setup gralloc1 usage flags from gralloc0 flags. */
+
+   if (grallocUsage & GRALLOC_USAGE_HW_RENDER) {
+      *grallocProducerUsage |= GRALLOC1_PRODUCER_USAGE_GPU_RENDER_TARGET;
+      *grallocConsumerUsage |= GRALLOC1_CONSUMER_USAGE_CLIENT_TARGET;
+   }
+
+   if (grallocUsage & GRALLOC_USAGE_HW_TEXTURE) {
+      *grallocConsumerUsage |= GRALLOC1_CONSUMER_USAGE_GPU_TEXTURE;
+   }
+
+   if (grallocUsage & (GRALLOC_USAGE_HW_FB |
+                       GRALLOC_USAGE_HW_COMPOSER |
+                       GRALLOC_USAGE_EXTERNAL_DISP)) {
+      *grallocProducerUsage |= GRALLOC1_PRODUCER_USAGE_GPU_RENDER_TARGET;
+      *grallocConsumerUsage |= GRALLOC1_CONSUMER_USAGE_HWCOMPOSER;
+   }
 
    return VK_SUCCESS;
 }
