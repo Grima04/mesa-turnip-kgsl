@@ -407,6 +407,8 @@ u_pipe_screen_get_param_defaults(struct pipe_screen *pscreen,
    case PIPE_CAP_OPENCL_INTEGER_FUNCTIONS:
    case PIPE_CAP_INTEGER_MULTIPLY_32X16:
       return 0;
+   case PIPE_CAP_NIR_IMAGES_AS_DEREF:
+      return 1;
 
    case PIPE_CAP_FRONTEND_NOOP:
       /* Enables INTEL_blackhole_render */

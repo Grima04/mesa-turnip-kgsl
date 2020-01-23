@@ -914,6 +914,7 @@ enum pipe_cap
    PIPE_CAP_INTEGER_MULTIPLY_32X16,
    /* Turn draw, dispatch, blit into NOOP */
    PIPE_CAP_FRONTEND_NOOP,
+   PIPE_CAP_NIR_IMAGES_AS_DEREF,
 };
 
 /**
