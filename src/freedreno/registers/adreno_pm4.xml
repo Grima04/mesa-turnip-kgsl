@@ -157,6 +157,12 @@ xsi:schemaLocation="http://nouveau.freedesktop.org/ rules-ng.xsd">
 	<value name="CP_PREEMPT_ENABLE" value="0x1c"/>
 	<value name="CP_PREEMPT_TOKEN" value="0x1e"/>
 	<value name="CP_INDIRECT_BUFFER" value="0x3f"/>
+	<doc>
+		Takes the same arguments as CP_INDIRECT_BUFFER, but jumps to
+		another buffer at the same level. Must be at the end of IB, and
+		doesn't work with draw state IB's.
+	</doc>
+	<value name="CP_INDIRECT_BUFFER_CHAIN" value="0x57" variants="A5XX-"/>
 	<doc>indirect buffer dispatch.  same as IB, but init is pipelined</doc>
 	<value name="CP_INDIRECT_BUFFER_PFD" value="0x37"/>
 	<doc>wait for the IDLE state of the engine</doc>
