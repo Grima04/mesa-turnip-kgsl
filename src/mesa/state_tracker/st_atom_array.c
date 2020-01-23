@@ -137,10 +137,13 @@ st_setup_arrays(struct st_context *st,
    const struct gl_vertex_array_object *vao = ctx->Array._DrawVAO;
    const GLbitfield inputs_read = vp_variant->vert_attrib_mask;
    const ubyte *input_to_index = vp->input_to_index;
-   bool uses_user_vertex_buffers = false;
 
    /* Process attribute array data. */
    GLbitfield mask = inputs_read & _mesa_draw_array_bits(ctx);
+   GLbitfield userbuf_attribs = inputs_read & _mesa_draw_user_array_bits(ctx);
+
+   *has_user_vertex_buffers = userbuf_attribs != 0;
+
    while (mask) {
       /* The attribute index to start pulling a binding */
       const gl_vert_attrib i = ffs(mask) - 1;
@@ -162,7 +165,6 @@ st_setup_arrays(struct st_context *st,
          vbuffer[bufidx].is_user_buffer = true;
          vbuffer[bufidx].buffer_offset = 0;
 
-         uses_user_vertex_buffers = true;
          if (!binding->InstanceDivisor)
             st->draw_needs_minmax_index = true;
       }
@@ -185,7 +187,6 @@ st_setup_arrays(struct st_context *st,
                        input_to_index[attr]);
       }
    }
-   *has_user_vertex_buffers = uses_user_vertex_buffers;
 }
 
 /* ALWAYS_INLINE helps the compiler realize that most of the parameters are
