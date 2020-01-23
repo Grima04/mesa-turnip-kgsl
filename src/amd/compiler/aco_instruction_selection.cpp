@@ -2633,231 +2633,6 @@ uint32_t widen_mask(uint32_t mask, unsigned multiplier)
    return new_mask;
 }
 
-void visit_store_vs_output(isel_context *ctx, nir_intrinsic_instr *instr)
-{
-   /* This wouldn't work inside control flow or with indirect offsets but
-    * that doesn't happen because of nir_lower_io_to_temporaries(). */
-
-   unsigned write_mask = nir_intrinsic_write_mask(instr);
-   unsigned component = nir_intrinsic_component(instr);
-   Temp src = get_ssa_temp(ctx, instr->src[0].ssa);
-   unsigned idx = nir_intrinsic_base(instr) + component;
-
-   nir_instr *off_instr = instr->src[1].ssa->parent_instr;
-   if (off_instr->type != nir_instr_type_load_const) {
-      fprintf(stderr, "Unimplemented nir_intrinsic_load_input offset\n");
-      nir_print_instr(off_instr, stderr);
-      fprintf(stderr, "\n");
-   }
-   idx += nir_instr_as_load_const(off_instr)->value[0].u32 * 4u;
-
-   if (instr->src[0].ssa->bit_size == 64)
-      write_mask = widen_mask(write_mask, 2);
-
-   for (unsigned i = 0; i < 8; ++i) {
-      if (write_mask & (1 << i)) {
-         ctx->vsgs_output.mask[idx / 4u] |= 1 << (idx % 4u);
-         ctx->vsgs_output.outputs[idx / 4u][idx % 4u] = emit_extract_vector(ctx, src, i, v1);
-      }
-      idx++;
-   }
-}
-
-void visit_store_fs_output(isel_context *ctx, nir_intrinsic_instr *instr)
-{
-   Builder bld(ctx->program, ctx->block);
-   unsigned write_mask = nir_intrinsic_write_mask(instr);
-   Operand values[4];
-   Temp src = get_ssa_temp(ctx, instr->src[0].ssa);
-   for (unsigned i = 0; i < 4; ++i) {
-      if (write_mask & (1 << i)) {
-         Temp tmp = emit_extract_vector(ctx, src, i, v1);
-         values[i] = Operand(tmp);
-      } else {
-         values[i] = Operand(v1);
-      }
-   }
-
-   unsigned index = nir_intrinsic_base(instr) / 4;
-   unsigned target, col_format;
-   unsigned enabled_channels = 0xF;
-   aco_opcode compr_op = (aco_opcode)0;
-
-   nir_const_value* offset = nir_src_as_const_value(instr->src[1]);
-   assert(offset && "Non-const offsets on exports not yet supported");
-   index += offset->u32;
-
-   assert(index != FRAG_RESULT_COLOR);
-
-   /* Unlike vertex shader exports, it's fine to use multiple exports to
-    * export separate channels of one target. So shaders which export both
-    * FRAG_RESULT_SAMPLE_MASK and FRAG_RESULT_DEPTH should work fine.
-    * TODO: combine the exports in those cases and create better code
-    */
-
-   if (index == FRAG_RESULT_SAMPLE_MASK) {
-
-      if (ctx->program->info->ps.writes_z) {
-         target = V_008DFC_SQ_EXP_MRTZ;
-         enabled_channels = 0x4;
-         col_format = (unsigned) -1;
-
-         values[2] = values[0];
-         values[0] = Operand(v1);
-      } else {
-         bld.exp(aco_opcode::exp, Operand(v1), Operand(values[0]), Operand(v1), Operand(v1),
-                 0xc, V_008DFC_SQ_EXP_MRTZ, true);
-         return;
-      }
-
-   } else if (index == FRAG_RESULT_DEPTH) {
-
-      target = V_008DFC_SQ_EXP_MRTZ;
-      enabled_channels = 0x1;
-      col_format = (unsigned) -1;
-
-   } else if (index == FRAG_RESULT_STENCIL) {
-
-      if (ctx->program->info->ps.writes_z) {
-         target = V_008DFC_SQ_EXP_MRTZ;
-         enabled_channels = 0x2;
-         col_format = (unsigned) -1;
-
-         values[1] = values[0];
-         values[0] = Operand(v1);
-      } else {
-         values[0] = bld.vop2(aco_opcode::v_lshlrev_b32, bld.def(v1), Operand(16u), values[0]);
-         bld.exp(aco_opcode::exp, values[0], Operand(v1), Operand(v1), Operand(v1),
-                 0x3, V_008DFC_SQ_EXP_MRTZ, true);
-         return;
-      }
-
-   } else {
-      index -= FRAG_RESULT_DATA0;
-      target = V_008DFC_SQ_EXP_MRT + index;
-      col_format = (ctx->options->key.fs.col_format >> (4 * index)) & 0xf;
-   }
-   bool is_int8 = (ctx->options->key.fs.is_int8 >> index) & 1;
-   bool is_int10 = (ctx->options->key.fs.is_int10 >> index) & 1;
-
-   switch (col_format)
-   {
-   case V_028714_SPI_SHADER_ZERO:
-      enabled_channels = 0; /* writemask */
-      target = V_008DFC_SQ_EXP_NULL;
-      break;
-
-   case V_028714_SPI_SHADER_32_R:
-      enabled_channels = 1;
-      break;
-
-   case V_028714_SPI_SHADER_32_GR:
-      enabled_channels = 0x3;
-      break;
-
-   case V_028714_SPI_SHADER_32_AR:
-      if (ctx->options->chip_class >= GFX10) {
-         /* Special case: on GFX10, the outputs are different for 32_AR */
-         enabled_channels = 0x3;
-         values[1] = values[3];
-         values[3] = Operand(v1);
-      } else {
-         enabled_channels = 0x9;
-      }
-      break;
-
-   case V_028714_SPI_SHADER_FP16_ABGR:
-      enabled_channels = 0x5;
-      compr_op = aco_opcode::v_cvt_pkrtz_f16_f32;
-      break;
-
-   case V_028714_SPI_SHADER_UNORM16_ABGR:
-      enabled_channels = 0x5;
-      compr_op = aco_opcode::v_cvt_pknorm_u16_f32;
-      break;
-
-   case V_028714_SPI_SHADER_SNORM16_ABGR:
-      enabled_channels = 0x5;
-      compr_op = aco_opcode::v_cvt_pknorm_i16_f32;
-      break;
-
-   case V_028714_SPI_SHADER_UINT16_ABGR: {
-      enabled_channels = 0x5;
-      compr_op = aco_opcode::v_cvt_pk_u16_u32;
-      if (is_int8 || is_int10) {
-         /* clamp */
-         uint32_t max_rgb = is_int8 ? 255 : is_int10 ? 1023 : 0;
-         Temp max_rgb_val = bld.copy(bld.def(s1), Operand(max_rgb));
-
-         for (unsigned i = 0; i < 4; i++) {
-            if ((write_mask >> i) & 1) {
-               values[i] = bld.vop2(aco_opcode::v_min_u32, bld.def(v1),
-                                    i == 3 && is_int10 ? Operand(3u) : Operand(max_rgb_val),
-                                    values[i]);
-            }
-         }
-      }
-      break;
-   }
-
-   case V_028714_SPI_SHADER_SINT16_ABGR:
-      enabled_channels = 0x5;
-      compr_op = aco_opcode::v_cvt_pk_i16_i32;
-      if (is_int8 || is_int10) {
-         /* clamp */
-         uint32_t max_rgb = is_int8 ? 127 : is_int10 ? 511 : 0;
-         uint32_t min_rgb = is_int8 ? -128 :is_int10 ? -512 : 0;
-         Temp max_rgb_val = bld.copy(bld.def(s1), Operand(max_rgb));
-         Temp min_rgb_val = bld.copy(bld.def(s1), Operand(min_rgb));
-
-         for (unsigned i = 0; i < 4; i++) {
-            if ((write_mask >> i) & 1) {
-               values[i] = bld.vop2(aco_opcode::v_min_i32, bld.def(v1),
-                                    i == 3 && is_int10 ? Operand(1u) : Operand(max_rgb_val),
-                                    values[i]);
-               values[i] = bld.vop2(aco_opcode::v_max_i32, bld.def(v1),
-                                    i == 3 && is_int10 ? Operand(-2u) : Operand(min_rgb_val),
-                                    values[i]);
-            }
-         }
-      }
-      break;
-
-   case V_028714_SPI_SHADER_32_ABGR:
-      enabled_channels = 0xF;
-      break;
-
-   default:
-      break;
-   }
-
-   if (target == V_008DFC_SQ_EXP_NULL)
-      return;
-
-   if ((bool) compr_op) {
-      for (int i = 0; i < 2; i++) {
-         /* check if at least one of the values to be compressed is enabled */
-         unsigned enabled = (write_mask >> (i*2) | write_mask >> (i*2+1)) & 0x1;
-         if (enabled) {
-            enabled_channels |= enabled << (i*2);
-            values[i] = bld.vop3(compr_op, bld.def(v1),
-                                 values[i*2].isUndefined() ? Operand(0u) : values[i*2],
-                                 values[i*2+1].isUndefined() ? Operand(0u): values[i*2+1]);
-         } else {
-            values[i] = Operand(v1);
-         }
-      }
-      values[2] = Operand(v1);
-      values[3] = Operand(v1);
-   } else {
-      for (int i = 0; i < 4; i++)
-         values[i] = enabled_channels & (1 << i) ? values[i] : Operand(v1);
-   }
-
-   bld.exp(aco_opcode::exp, values[0], values[1], values[2], values[3],
-           enabled_channels, target, (bool) compr_op);
-}
-
 Operand load_lds_size_m0(isel_context *ctx)
 {
    /* TODO: m0 does not need to be initialized on GFX9+ */
@@ -3186,45 +2961,37 @@ void visit_store_vsgs_output(isel_context *ctx, nir_intrinsic_instr *instr)
    }
 }
 
-void visit_store_gs_output(isel_context *ctx, nir_intrinsic_instr *instr)
-{
-   /* This wouldn't work if it wasn't in the same block as the
-    * emit_vertex_with_counter intrinsic but that doesn't happen because of
-    * nir_lower_io_to_temporaries(). */
-
-   unsigned write_mask = nir_intrinsic_write_mask(instr);
-   unsigned component = nir_intrinsic_component(instr);
-   Temp src = get_ssa_temp(ctx, instr->src[0].ssa);
-   unsigned idx = nir_intrinsic_base(instr) + component;
-
-   nir_instr *off_instr = instr->src[1].ssa->parent_instr;
-   if (off_instr->type != nir_instr_type_load_const)
-      unreachable("Indirect GS output stores should have been lowered");
-   idx += nir_instr_as_load_const(off_instr)->value[0].u32 * 4u;
-
-   if (instr->src[0].ssa->bit_size == 64)
-      write_mask = widen_mask(write_mask, 2);
-
-   for (unsigned i = 0; i < 8; ++i) {
-      if (write_mask & (1 << i)) {
-         ctx->vsgs_output.mask[idx / 4u] |= 1 << (idx % 4u);
-         ctx->vsgs_output.outputs[idx / 4u][idx % 4u] = emit_extract_vector(ctx, src, i, v1);
-      }
-      idx++;
-   }
-}
-
 void visit_store_output(isel_context *ctx, nir_intrinsic_instr *instr)
 {
-   if (ctx->stage == vertex_vs) {
-      visit_store_vs_output(ctx, instr);
-   } else if (ctx->stage == fragment_fs) {
-      visit_store_fs_output(ctx, instr);
+   if (ctx->stage == vertex_vs ||
+       ctx->stage == fragment_fs ||
+       ctx->shader->info.stage == MESA_SHADER_GEOMETRY) {
+      unsigned write_mask = nir_intrinsic_write_mask(instr);
+      unsigned component = nir_intrinsic_component(instr);
+      Temp src = get_ssa_temp(ctx, instr->src[0].ssa);
+      unsigned idx = nir_intrinsic_base(instr) + component;
+
+      nir_instr *off_instr = instr->src[1].ssa->parent_instr;
+      if (off_instr->type != nir_instr_type_load_const) {
+         fprintf(stderr, "Unimplemented nir_intrinsic_load_input offset\n");
+         nir_print_instr(off_instr, stderr);
+         fprintf(stderr, "\n");
+      }
+      idx += nir_instr_as_load_const(off_instr)->value[0].u32 * 4u;
+
+      if (instr->src[0].ssa->bit_size == 64)
+         write_mask = widen_mask(write_mask, 2);
+
+      for (unsigned i = 0; i < 8; ++i) {
+         if (write_mask & (1 << i)) {
+            ctx->outputs.mask[idx / 4u] |= 1 << (idx % 4u);
+            ctx->outputs.outputs[idx / 4u][idx % 4u] = emit_extract_vector(ctx, src, i, v1);
+         }
+         idx++;
+      }
    } else if (ctx->stage == vertex_es ||
               (ctx->stage == vertex_geometry_gs && ctx->shader->info.stage == MESA_SHADER_VERTEX)) {
       visit_store_vsgs_output(ctx, instr);
-   } else if (ctx->shader->info.stage == MESA_SHADER_GEOMETRY) {
-      visit_store_gs_output(ctx, instr);
    } else {
       unreachable("Shader stage not implemented");
    }
@@ -5896,7 +5663,7 @@ void visit_emit_vertex_with_counter(isel_context *ctx, nir_intrinsic_instr *inst
          if (!(ctx->program->info->gs.output_usage_mask[i] & (1 << j)))
             continue;
 
-         if (ctx->vsgs_output.mask[i] & (1 << j)) {
+         if (ctx->outputs.mask[i] & (1 << j)) {
             Operand vaddr_offset = next_vertex_cv ? Operand(v1) : Operand(next_vertex);
             unsigned const_offset = (offset + (next_vertex_cv ? next_vertex_cv->u32 : 0u)) * 4u;
             if (const_offset >= 4096u) {
@@ -5911,7 +5678,7 @@ void visit_emit_vertex_with_counter(isel_context *ctx, nir_intrinsic_instr *inst
             mtbuf->operands[0] = vaddr_offset;
             mtbuf->operands[1] = Operand(gsvs_ring);
             mtbuf->operands[2] = Operand(get_arg(ctx, ctx->args->gs2vs_offset));
-            mtbuf->operands[3] = Operand(ctx->vsgs_output.outputs[i][j]);
+            mtbuf->operands[3] = Operand(ctx->outputs.outputs[i][j]);
             mtbuf->offen = !vaddr_offset.isUndefined();
             mtbuf->dfmt = V_008F0C_BUF_DATA_FORMAT_32;
             mtbuf->nfmt = V_008F0C_BUF_NUM_FORMAT_UINT;
@@ -5928,7 +5695,7 @@ void visit_emit_vertex_with_counter(isel_context *ctx, nir_intrinsic_instr *inst
 
       /* outputs for the next vertex are undefined and keeping them around can
        * create invalid IR with control flow */
-      ctx->vsgs_output.mask[i] = 0;
+      ctx->outputs.mask[i] = 0;
    }
 
    bld.sopp(aco_opcode::s_sendmsg, bld.m0(ctx->gs_wave_id), -1, sendmsg_gs(false, true, stream));
@@ -8447,7 +8214,7 @@ static void visit_cf_list(isel_context *ctx,
 static void export_vs_varying(isel_context *ctx, int slot, bool is_pos, int *next_pos)
 {
    int offset = ctx->program->info->vs.outinfo.vs_output_param_offset[slot];
-   uint64_t mask = ctx->vsgs_output.mask[slot];
+   uint64_t mask = ctx->outputs.mask[slot];
    if (!is_pos && !mask)
       return;
    if (!is_pos && offset == AC_EXP_PARAM_UNDEFINED)
@@ -8456,7 +8223,7 @@ static void export_vs_varying(isel_context *ctx, int slot, bool is_pos, int *nex
    exp->enabled_mask = mask;
    for (unsigned i = 0; i < 4; ++i) {
       if (mask & (1 << i))
-         exp->operands[i] = Operand(ctx->vsgs_output.outputs[slot][i]);
+         exp->operands[i] = Operand(ctx->outputs.outputs[slot][i]);
       else
          exp->operands[i] = Operand(v1);
    }
@@ -8479,23 +8246,23 @@ static void export_vs_psiz_layer_viewport(isel_context *ctx, int *next_pos)
    exp->enabled_mask = 0;
    for (unsigned i = 0; i < 4; ++i)
       exp->operands[i] = Operand(v1);
-   if (ctx->vsgs_output.mask[VARYING_SLOT_PSIZ]) {
-      exp->operands[0] = Operand(ctx->vsgs_output.outputs[VARYING_SLOT_PSIZ][0]);
+   if (ctx->outputs.mask[VARYING_SLOT_PSIZ]) {
+      exp->operands[0] = Operand(ctx->outputs.outputs[VARYING_SLOT_PSIZ][0]);
       exp->enabled_mask |= 0x1;
    }
-   if (ctx->vsgs_output.mask[VARYING_SLOT_LAYER]) {
-      exp->operands[2] = Operand(ctx->vsgs_output.outputs[VARYING_SLOT_LAYER][0]);
+   if (ctx->outputs.mask[VARYING_SLOT_LAYER]) {
+      exp->operands[2] = Operand(ctx->outputs.outputs[VARYING_SLOT_LAYER][0]);
       exp->enabled_mask |= 0x4;
    }
-   if (ctx->vsgs_output.mask[VARYING_SLOT_VIEWPORT]) {
+   if (ctx->outputs.mask[VARYING_SLOT_VIEWPORT]) {
       if (ctx->options->chip_class < GFX9) {
-         exp->operands[3] = Operand(ctx->vsgs_output.outputs[VARYING_SLOT_VIEWPORT][0]);
+         exp->operands[3] = Operand(ctx->outputs.outputs[VARYING_SLOT_VIEWPORT][0]);
          exp->enabled_mask |= 0x8;
       } else {
          Builder bld(ctx->program, ctx->block);
 
          Temp out = bld.vop2(aco_opcode::v_lshlrev_b32, bld.def(v1), Operand(16u),
-                             Operand(ctx->vsgs_output.outputs[VARYING_SLOT_VIEWPORT][0]));
+                             Operand(ctx->outputs.outputs[VARYING_SLOT_VIEWPORT][0]));
          if (exp->operands[2].isTemp())
             out = bld.vop2(aco_opcode::v_or_b32, bld.def(v1), Operand(out), exp->operands[2]);
 
@@ -8515,13 +8282,13 @@ static void create_vs_exports(isel_context *ctx)
    radv_vs_output_info *outinfo = &ctx->program->info->vs.outinfo;
 
    if (outinfo->export_prim_id) {
-      ctx->vsgs_output.mask[VARYING_SLOT_PRIMITIVE_ID] |= 0x1;
-      ctx->vsgs_output.outputs[VARYING_SLOT_PRIMITIVE_ID][0] = get_arg(ctx, ctx->args->vs_prim_id);
+      ctx->outputs.mask[VARYING_SLOT_PRIMITIVE_ID] |= 0x1;
+      ctx->outputs.outputs[VARYING_SLOT_PRIMITIVE_ID][0] = get_arg(ctx, ctx->args->vs_prim_id);
    }
 
    if (ctx->options->key.has_multiview_view_index) {
-      ctx->vsgs_output.mask[VARYING_SLOT_LAYER] |= 0x1;
-      ctx->vsgs_output.outputs[VARYING_SLOT_LAYER][0] = as_vgpr(ctx, get_arg(ctx, ctx->args->ac.view_index));
+      ctx->outputs.mask[VARYING_SLOT_LAYER] |= 0x1;
+      ctx->outputs.outputs[VARYING_SLOT_LAYER][0] = as_vgpr(ctx, get_arg(ctx, ctx->args->ac.view_index));
    }
 
    /* the order these position exports are created is important */
@@ -8551,6 +8318,215 @@ static void create_vs_exports(isel_context *ctx)
    }
 }
 
+static void export_fs_mrt_z(isel_context *ctx)
+{
+   Builder bld(ctx->program, ctx->block);
+   unsigned enabled_channels = 0;
+   bool compr = false;
+   Operand values[4];
+
+   for (unsigned i = 0; i < 4; ++i) {
+      values[i] = Operand(v1);
+   }
+
+   /* Both stencil and sample mask only need 16-bits. */
+   if (!ctx->program->info->ps.writes_z &&
+       (ctx->program->info->ps.writes_stencil ||
+        ctx->program->info->ps.writes_sample_mask)) {
+      compr = true; /* COMPR flag */
+
+      if (ctx->program->info->ps.writes_stencil) {
+         /* Stencil should be in X[23:16]. */
+         values[0] = Operand(ctx->outputs.outputs[FRAG_RESULT_STENCIL][0]);
+         values[0] = bld.vop2(aco_opcode::v_lshlrev_b32, bld.def(v1), Operand(16u), values[0]);
+         enabled_channels |= 0x3;
+      }
+
+      if (ctx->program->info->ps.writes_sample_mask) {
+         /* SampleMask should be in Y[15:0]. */
+         values[1] = Operand(ctx->outputs.outputs[FRAG_RESULT_SAMPLE_MASK][0]);
+         enabled_channels |= 0xc;
+     }
+   } else {
+      if (ctx->program->info->ps.writes_z) {
+         values[0] = Operand(ctx->outputs.outputs[FRAG_RESULT_DEPTH][0]);
+         enabled_channels |= 0x1;
+      }
+
+      if (ctx->program->info->ps.writes_stencil) {
+         values[1] = Operand(ctx->outputs.outputs[FRAG_RESULT_STENCIL][0]);
+         enabled_channels |= 0x2;
+      }
+
+      if (ctx->program->info->ps.writes_sample_mask) {
+         values[2] = Operand(ctx->outputs.outputs[FRAG_RESULT_SAMPLE_MASK][0]);
+         enabled_channels |= 0x4;
+      }
+   }
+
+   bld.exp(aco_opcode::exp, values[0], values[1], values[2], values[3],
+           enabled_channels, V_008DFC_SQ_EXP_MRTZ, compr);
+}
+
+static void export_fs_mrt_color(isel_context *ctx, int slot)
+{
+   Builder bld(ctx->program, ctx->block);
+   unsigned write_mask = ctx->outputs.mask[slot];
+   Operand values[4];
+
+   for (unsigned i = 0; i < 4; ++i) {
+      if (write_mask & (1 << i)) {
+         values[i] = Operand(ctx->outputs.outputs[slot][i]);
+      } else {
+         values[i] = Operand(v1);
+      }
+   }
+
+   unsigned target, col_format;
+   unsigned enabled_channels = 0;
+   aco_opcode compr_op = (aco_opcode)0;
+
+   slot -= FRAG_RESULT_DATA0;
+   target = V_008DFC_SQ_EXP_MRT + slot;
+   col_format = (ctx->options->key.fs.col_format >> (4 * slot)) & 0xf;
+
+   bool is_int8 = (ctx->options->key.fs.is_int8 >> slot) & 1;
+   bool is_int10 = (ctx->options->key.fs.is_int10 >> slot) & 1;
+
+   switch (col_format)
+   {
+   case V_028714_SPI_SHADER_ZERO:
+      enabled_channels = 0; /* writemask */
+      target = V_008DFC_SQ_EXP_NULL;
+      break;
+
+   case V_028714_SPI_SHADER_32_R:
+      enabled_channels = 1;
+      break;
+
+   case V_028714_SPI_SHADER_32_GR:
+      enabled_channels = 0x3;
+      break;
+
+   case V_028714_SPI_SHADER_32_AR:
+      if (ctx->options->chip_class >= GFX10) {
+         /* Special case: on GFX10, the outputs are different for 32_AR */
+         enabled_channels = 0x3;
+         values[1] = values[3];
+         values[3] = Operand(v1);
+      } else {
+         enabled_channels = 0x9;
+      }
+      break;
+
+   case V_028714_SPI_SHADER_FP16_ABGR:
+      enabled_channels = 0x5;
+      compr_op = aco_opcode::v_cvt_pkrtz_f16_f32;
+      break;
+
+   case V_028714_SPI_SHADER_UNORM16_ABGR:
+      enabled_channels = 0x5;
+      compr_op = aco_opcode::v_cvt_pknorm_u16_f32;
+      break;
+
+   case V_028714_SPI_SHADER_SNORM16_ABGR:
+      enabled_channels = 0x5;
+      compr_op = aco_opcode::v_cvt_pknorm_i16_f32;
+      break;
+
+   case V_028714_SPI_SHADER_UINT16_ABGR: {
+      enabled_channels = 0x5;
+      compr_op = aco_opcode::v_cvt_pk_u16_u32;
+      if (is_int8 || is_int10) {
+         /* clamp */
+         uint32_t max_rgb = is_int8 ? 255 : is_int10 ? 1023 : 0;
+         Temp max_rgb_val = bld.copy(bld.def(s1), Operand(max_rgb));
+
+         for (unsigned i = 0; i < 4; i++) {
+            if ((write_mask >> i) & 1) {
+               values[i] = bld.vop2(aco_opcode::v_min_u32, bld.def(v1),
+                                    i == 3 && is_int10 ? Operand(3u) : Operand(max_rgb_val),
+                                    values[i]);
+            }
+         }
+      }
+      break;
+   }
+
+   case V_028714_SPI_SHADER_SINT16_ABGR:
+      enabled_channels = 0x5;
+      compr_op = aco_opcode::v_cvt_pk_i16_i32;
+      if (is_int8 || is_int10) {
+         /* clamp */
+         uint32_t max_rgb = is_int8 ? 127 : is_int10 ? 511 : 0;
+         uint32_t min_rgb = is_int8 ? -128 :is_int10 ? -512 : 0;
+         Temp max_rgb_val = bld.copy(bld.def(s1), Operand(max_rgb));
+         Temp min_rgb_val = bld.copy(bld.def(s1), Operand(min_rgb));
+
+         for (unsigned i = 0; i < 4; i++) {
+            if ((write_mask >> i) & 1) {
+               values[i] = bld.vop2(aco_opcode::v_min_i32, bld.def(v1),
+                                    i == 3 && is_int10 ? Operand(1u) : Operand(max_rgb_val),
+                                    values[i]);
+               values[i] = bld.vop2(aco_opcode::v_max_i32, bld.def(v1),
+                                    i == 3 && is_int10 ? Operand(-2u) : Operand(min_rgb_val),
+                                    values[i]);
+            }
+         }
+      }
+      break;
+
+   case V_028714_SPI_SHADER_32_ABGR:
+      enabled_channels = 0xF;
+      break;
+
+   default:
+      break;
+   }
+
+   if (target == V_008DFC_SQ_EXP_NULL)
+      return;
+
+   if ((bool) compr_op) {
+      for (int i = 0; i < 2; i++) {
+         /* check if at least one of the values to be compressed is enabled */
+         unsigned enabled = (write_mask >> (i*2) | write_mask >> (i*2+1)) & 0x1;
+         if (enabled) {
+            enabled_channels |= enabled << (i*2);
+            values[i] = bld.vop3(compr_op, bld.def(v1),
+                                 values[i*2].isUndefined() ? Operand(0u) : values[i*2],
+                                 values[i*2+1].isUndefined() ? Operand(0u): values[i*2+1]);
+         } else {
+            values[i] = Operand(v1);
+         }
+      }
+      values[2] = Operand(v1);
+      values[3] = Operand(v1);
+   } else {
+      for (int i = 0; i < 4; i++)
+         values[i] = enabled_channels & (1 << i) ? values[i] : Operand(v1);
+   }
+
+   bld.exp(aco_opcode::exp, values[0], values[1], values[2], values[3],
+           enabled_channels, target, (bool) compr_op);
+}
+
+static void create_fs_exports(isel_context *ctx)
+{
+   /* Export depth, stencil and sample mask. */
+   if (ctx->outputs.mask[FRAG_RESULT_DEPTH] ||
+       ctx->outputs.mask[FRAG_RESULT_STENCIL] ||
+       ctx->outputs.mask[FRAG_RESULT_SAMPLE_MASK]) {
+      export_fs_mrt_z(ctx);
+   }
+
+   /* Export all color render targets. */
+   for (unsigned i = FRAG_RESULT_DATA0; i < FRAG_RESULT_DATA7 + 1; ++i) {
+      if (ctx->outputs.mask[i])
+         export_fs_mrt_color(ctx, i);
+   }
+}
+
 static void emit_stream_output(isel_context *ctx,
                                Temp const *so_buffers,
                                Temp const *so_write_offset,
@@ -8571,7 +8547,7 @@ static void emit_stream_output(isel_context *ctx,
    bool all_undef = true;
    assert(ctx->stage == vertex_vs || ctx->stage == gs_copy_vs);
    for (unsigned i = 0; i < num_comps; i++) {
-      out[i] = ctx->vsgs_output.outputs[loc][start + i];
+      out[i] = ctx->outputs.outputs[loc][start + i];
       all_undef = all_undef && !out[i].id();
    }
    if (all_undef)
@@ -8591,7 +8567,7 @@ static void emit_stream_output(isel_context *ctx,
       Temp write_data = {ctx->program->allocateId(), RegClass(RegType::vgpr, count)};
       aco_ptr<Pseudo_instruction> vec{create_instruction<Pseudo_instruction>(aco_opcode::p_create_vector, Format::PSEUDO, count, 1)};
       for (int i = 0; i < count; ++i)
-         vec->operands[i] = (ctx->vsgs_output.mask[loc] & 1 << (start + i)) ? Operand(out[start + i]) : Operand(0u);
+         vec->operands[i] = (ctx->outputs.mask[loc] & 1 << (start + i)) ? Operand(out[start + i]) : Operand(0u);
       vec->definitions[0] = Definition(write_data);
       ctx->block->instructions.emplace_back(std::move(vec));
 
@@ -8874,6 +8850,9 @@ void select_program(Program *program,
          bld.sopp(aco_opcode::s_sendmsg, bld.m0(ctx.gs_wave_id), -1, sendmsg_gs_done(false, false, 0));
       }
 
+      if (ctx.stage == fragment_fs)
+         create_fs_exports(&ctx);
+
       if (shader_count >= 2) {
          begin_divergent_if_else(&ctx, &ic);
          end_divergent_if(&ctx, &ic);
@@ -8936,7 +8915,7 @@ void select_gs_copy_shader(Program *program, struct nir_shader *gs_shader,
       if (stream > 0 && (!num_components || !args->shader_info->so.num_outputs))
          continue;
 
-      memset(ctx.vsgs_output.mask, 0, sizeof(ctx.vsgs_output.mask));
+      memset(ctx.outputs.mask, 0, sizeof(ctx.outputs.mask));
 
       unsigned BB_if_idx = ctx.block->index;
       Block BB_endif = Block();
@@ -8986,8 +8965,8 @@ void select_gs_copy_shader(Program *program, struct nir_shader *gs_shader,
             mubuf->barrier = barrier_none;
             mubuf->can_reorder = true;
 
-            ctx.vsgs_output.mask[i] |= 1 << j;
-            ctx.vsgs_output.outputs[i][j] = mubuf->definitions[0].getTemp();
+            ctx.outputs.mask[i] |= 1 << j;
+            ctx.outputs.outputs[i][j] = mubuf->definitions[0].getTemp();
 
             bld.insert(std::move(mubuf));
 

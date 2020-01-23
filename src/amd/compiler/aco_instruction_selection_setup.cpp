@@ -39,7 +39,7 @@
 
 namespace aco {
 
-struct ge_output_state {
+struct output_state {
    uint8_t mask[VARYING_SLOT_VAR31 + 1];
    Temp outputs[VARYING_SLOT_VAR31 + 1][4];
 };
@@ -89,8 +89,8 @@ struct isel_context {
    unsigned num_clip_distances;
    unsigned num_cull_distances;
 
-   /* VS or GS output information */
-   ge_output_state vsgs_output;
+   /* VS, FS or GS output information */
+   output_state outputs;
 };
 
 Temp get_arg(isel_context *ctx, struct ac_arg arg)
