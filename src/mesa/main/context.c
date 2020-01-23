@@ -181,7 +181,7 @@ _mesa_notifySwapBuffers(struct gl_context *ctx)
 {
    if (MESA_VERBOSE & VERBOSE_SWAPBUFFERS)
       _mesa_debug(ctx, "SwapBuffers\n");
-   FLUSH_CURRENT( ctx, 0 );
+   FLUSH_VERTICES(ctx, 0);
    if (ctx->Driver.Flush) {
       ctx->Driver.Flush(ctx);
    }

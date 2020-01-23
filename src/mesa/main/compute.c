@@ -250,7 +250,7 @@ dispatch_compute(GLuint num_groups_x, GLuint num_groups_y,
    GET_CURRENT_CONTEXT(ctx);
    const GLuint num_groups[3] = { num_groups_x, num_groups_y, num_groups_z };
 
-   FLUSH_CURRENT(ctx, 0);
+   FLUSH_VERTICES(ctx, 0);
 
    if (MESA_VERBOSE & VERBOSE_API)
       _mesa_debug(ctx, "glDispatchCompute(%d, %d, %d)\n",
@@ -285,7 +285,7 @@ dispatch_compute_indirect(GLintptr indirect, bool no_error)
 {
    GET_CURRENT_CONTEXT(ctx);
 
-   FLUSH_CURRENT(ctx, 0);
+   FLUSH_VERTICES(ctx, 0);
 
    if (MESA_VERBOSE & VERBOSE_API)
       _mesa_debug(ctx, "glDispatchComputeIndirect(%ld)\n", (long) indirect);
@@ -318,7 +318,7 @@ dispatch_compute_group_size(GLuint num_groups_x, GLuint num_groups_y,
    const GLuint num_groups[3] = { num_groups_x, num_groups_y, num_groups_z };
    const GLuint group_size[3] = { group_size_x, group_size_y, group_size_z };
 
-   FLUSH_CURRENT(ctx, 0);
+   FLUSH_VERTICES(ctx, 0);
 
    if (MESA_VERBOSE & VERBOSE_API)
       _mesa_debug(ctx,
