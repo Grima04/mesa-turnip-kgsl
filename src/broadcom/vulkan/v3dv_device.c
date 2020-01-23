@@ -225,9 +225,7 @@ v3dv_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
 static void
 physical_device_finish(struct v3dv_physical_device *device)
 {
-   close(device->local_fd);
-   if (device->master_fd >= 0)
-      close(device->master_fd);
+   close(device->render_fd);
    if (device->display_fd >= 0)
       close(device->display_fd);
 
@@ -327,7 +325,6 @@ physical_device_init(struct v3dv_physical_device *device,
 {
    VkResult result = VK_SUCCESS;
    int32_t display_fd = -1;
-   int32_t master_fd = -1;
 
    device->_loader_data.loaderMagic = ICD_LOADER_MAGIC;
    device->instance = instance;
@@ -336,9 +333,6 @@ physical_device_init(struct v3dv_physical_device *device,
    int32_t render_fd = open(path, O_RDWR | O_CLOEXEC);
    if (render_fd < 0)
       return vk_error(instance, VK_ERROR_INCOMPATIBLE_DRIVER);
-
-   assert(strlen(path) < ARRAY_SIZE(device->path));
-   snprintf(device->path, ARRAY_SIZE(device->path), "%s", path);
 
    /* If we are running on real hardware we need to open the vc4 display
     * device so we can allocate winsys BOs for the v3d core to render into.
@@ -354,18 +348,17 @@ physical_device_init(struct v3dv_physical_device *device,
    }
 #endif
 
-   device->local_fd = render_fd;       /* The v3d render node  */
+   device->render_fd = render_fd;       /* The v3d render node  */
    device->display_fd = display_fd;    /* The vc4 primary node */
-   device->master_fd = master_fd;      /* For VK_KHR_display */
 
    uint8_t zeroes[VK_UUID_SIZE] = { 0 };
    memcpy(device->pipeline_cache_uuid, zeroes, VK_UUID_SIZE);
 
 #if using_v3d_simulator
-   device->sim_file = v3d_simulator_init(device->local_fd);
+   device->sim_file = v3d_simulator_init(device->render_fd);
 #endif
 
-   if (!v3d_get_device_info(device->local_fd, &device->devinfo, &v3dv_ioctl)) {
+   if (!v3d_get_device_info(device->render_fd, &device->devinfo, &v3dv_ioctl)) {
       result = VK_ERROR_INCOMPATIBLE_DRIVER;
       goto fail;
    }
@@ -414,8 +407,6 @@ fail:
       close(render_fd);
    if (display_fd >= 0)
       close(display_fd);
-   if (master_fd >= 0)
-      close(master_fd);
 
    return result;
 }
@@ -1128,8 +1119,8 @@ v3dv_CreateDevice(VkPhysicalDevice physicalDevice,
    else
       device->alloc = physical_device->instance->alloc;
 
-   device->fd = physical_device->local_fd;
-   if (device->fd == -1) {
+   device->render_fd = physical_device->render_fd;
+   if (device->render_fd == -1) {
       result = VK_ERROR_INITIALIZATION_FAILED;
       goto fail;
    }
@@ -1151,7 +1142,7 @@ v3dv_CreateDevice(VkPhysicalDevice physicalDevice,
    device->devinfo = physical_device->devinfo;
    device->enabled_extensions = enabled_extensions;
 
-   int ret = drmSyncobjCreate(device->fd,
+   int ret = drmSyncobjCreate(device->render_fd,
                               DRM_SYNCOBJ_CREATE_SIGNALED,
                               &device->last_job_sync);
    if (ret) {
@@ -1177,7 +1168,7 @@ v3dv_DestroyDevice(VkDevice _device,
 {
    V3DV_FROM_HANDLE(v3dv_device, device, _device);
 
-   drmSyncobjDestroy(device->fd, device->last_job_sync);
+   drmSyncobjDestroy(device->render_fd, device->last_job_sync);
    queue_finish(&device->queue);
 
    vk_free2(&default_alloc, pAllocator, device);
@@ -1202,8 +1193,8 @@ v3dv_DeviceWaitIdle(VkDevice _device)
 {
    V3DV_FROM_HANDLE(v3dv_device, device, _device);
 
-   int ret =
-      drmSyncobjWait(device->fd, &device->last_job_sync, 1, INT64_MAX, 0, NULL);
+   int ret = drmSyncobjWait(device->render_fd,
+                            &device->last_job_sync, 1, INT64_MAX, 0, NULL);
    if (ret)
       return VK_ERROR_DEVICE_LOST;
 
@@ -1302,7 +1293,7 @@ device_import_bo(struct v3dv_device *device,
 
    int ret;
    uint32_t handle;
-   ret = drmPrimeFDToHandle(device->fd, fd, &handle);
+   ret = drmPrimeFDToHandle(device->render_fd, fd, &handle);
    if (ret) {
       result = VK_ERROR_INVALID_EXTERNAL_HANDLE;
       goto fail;
@@ -1311,7 +1302,7 @@ device_import_bo(struct v3dv_device *device,
    struct drm_v3d_get_bo_offset get_offset = {
       .handle = handle,
    };
-   ret = v3dv_ioctl(device->fd, DRM_IOCTL_V3D_GET_BO_OFFSET, &get_offset);
+   ret = v3dv_ioctl(device->render_fd, DRM_IOCTL_V3D_GET_BO_OFFSET, &get_offset);
    if (ret) {
       result = VK_ERROR_INVALID_EXTERNAL_HANDLE;
       goto fail;
@@ -1807,7 +1798,8 @@ v3dv_GetMemoryFdKHR(VkDevice _device,
           pGetFdInfo->handleType == VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT);
 
    int fd, ret;
-   ret = drmPrimeHandleToFD(device->fd, mem->bo->handle, DRM_CLOEXEC, &fd);
+   ret =
+      drmPrimeHandleToFD(device->render_fd, mem->bo->handle, DRM_CLOEXEC, &fd);
    if (ret)
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 

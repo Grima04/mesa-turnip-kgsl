@@ -45,8 +45,7 @@ v3dv_wsi_init(struct v3dv_physical_device *physical_device)
                             v3dv_physical_device_to_handle(physical_device),
                             v3dv_wsi_proc_addr,
                             &physical_device->instance->alloc,
-                            physical_device->master_fd,
-                            NULL, false);
+                            -1, NULL, false);
    if (result != VK_SUCCESS)
       return result;
 
