@@ -2677,7 +2677,7 @@ brw_send_indirect_split_message(struct brw_codegen *p,
    }
 
    if (ex_desc.file == BRW_IMMEDIATE_VALUE &&
-       (ex_desc.ud & INTEL_MASK(15, 12)) == 0) {
+       (devinfo->gen >= 12 || (ex_desc.ud & INTEL_MASK(15, 12)) == 0)) {
       ex_desc.ud |= ex_desc_imm;
    } else {
       const struct tgl_swsb swsb = brw_get_default_swsb(p);
@@ -2703,8 +2703,9 @@ brw_send_indirect_split_message(struct brw_codegen *p,
       unsigned imm_part = ex_desc_imm | sfid | eot << 5;
 
       if (ex_desc.file == BRW_IMMEDIATE_VALUE) {
-         /* ex_desc bits 15:12 don't exist in the instruction encoding, so
-          * we may have fallen back to an indirect extended descriptor.
+         /* ex_desc bits 15:12 don't exist in the instruction encoding prior
+          * to Gen12, so we may have fallen back to an indirect extended
+          * descriptor.
           */
          brw_MOV(p, addr, brw_imm_ud(ex_desc.ud | imm_part));
       } else {
