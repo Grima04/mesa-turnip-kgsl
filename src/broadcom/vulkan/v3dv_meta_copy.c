@@ -34,18 +34,13 @@ emit_image_loads(struct v3dv_cl *cl,
 {
    uint32_t layer_offset = v3dv_layer_offset(image, mip_level, layer);
 
-   const struct util_format_description *desc =
-      vk_format_description(image->vk_format);
-   bool swap_rb = desc->swizzle[0] == PIPE_SWIZZLE_Z &&
-                  image->vk_format != VK_FORMAT_B5G6R5_UNORM_PACK16;
-
    const struct v3d_resource_slice *slice = &image->slices[mip_level];
    cl_emit(cl, LOAD_TILE_BUFFER_GENERAL, load) {
       load.buffer_to_load = RENDER_TARGET_0;
       load.address = v3dv_cl_address(image->mem->bo, layer_offset);
 
       load.input_image_format = image->format->rt_type;
-      load.r_b_swap = swap_rb;
+      load.r_b_swap = false;
       load.memory_format = slice->tiling;
 
       if (slice->tiling == VC5_TILING_UIF_NO_XOR ||
