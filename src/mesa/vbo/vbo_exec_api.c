@@ -760,12 +760,8 @@ vbo_exec_Begin(GLenum mode)
       return;
    }
 
-   if (ctx->NewState) {
+   if (ctx->NewState)
       _mesa_update_state(ctx);
-
-      CALL_Begin(ctx->Exec, (mode));
-      return;
-   }
 
    if (!_mesa_valid_to_render(ctx, "glBegin")) {
       return;
