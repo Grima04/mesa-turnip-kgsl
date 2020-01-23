@@ -401,7 +401,7 @@ st_nir_preprocess(struct st_context *st, struct gl_program *prog,
    }
 
    /* before buffers and vars_to_ssa */
-   NIR_PASS_V(nir, gl_nir_lower_bindless_images);
+   NIR_PASS_V(nir, gl_nir_lower_images, true);
 
    /* TODO: Change GLSL to not lower shared memory. */
    if (prog->nir->info.stage == MESA_SHADER_COMPUTE &&

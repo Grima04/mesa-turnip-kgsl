@@ -62,7 +62,7 @@ compile_shader(char **argv)
                 NIR_PASS_V(nir[i], nir_lower_alu_to_scalar, NULL, NULL);
 
                 /* before buffers and vars_to_ssa */
-                NIR_PASS_V(nir[i], gl_nir_lower_bindless_images);
+                NIR_PASS_V(nir[i], gl_nir_lower_images, true);
 
                 NIR_PASS_V(nir[i], gl_nir_lower_buffers, prog);
                 NIR_PASS_V(nir[i], nir_opt_constant_folding);

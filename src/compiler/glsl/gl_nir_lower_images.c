@@ -24,10 +24,10 @@
 /**
  * \file
  *
- * Lower bindless image operations by turning the image_deref_* into a
- * bindless_image_* intrinsic and adding a load_deref on the previous deref
- * source. All applicable indicies are also set so that fetching the variable
- * in the backend wouldn't be needed anymore.
+ * Lower image operations by turning the image_deref_* into a image_* on an
+ * index number or bindless_image_* intrinsic on a load_deref of the previous
+ * deref source. All applicable indicies are also set so that fetching the
+ * variable in the backend wouldn't be needed anymore.
  */
 
 #include "compiler/nir/nir.h"
@@ -36,8 +36,16 @@
 
 #include "compiler/glsl/gl_nir.h"
 
+static void
+type_size_align_1(const struct glsl_type *type, unsigned *size, unsigned *align)
+{
+   *size = 1;
+   *align = 1;
+}
+
 static bool
-lower_impl(nir_builder *b, nir_instr *instr) {
+lower_impl(nir_builder *b, nir_instr *instr, bool bindless_only)
+{
    if (instr->type != nir_instr_type_intrinsic)
       return false;
 
@@ -70,17 +78,28 @@ lower_impl(nir_builder *b, nir_instr *instr) {
       return false;
    }
 
-   if (deref->mode == nir_var_uniform && !var->data.bindless)
-      return false;
+   if (bindless_only) {
+      if (deref->mode == nir_var_uniform && !var->data.bindless)
+         return false;
+   }
 
    b->cursor = nir_before_instr(instr);
-   nir_ssa_def *handle = nir_load_deref(b, deref);
-   nir_rewrite_image_intrinsic(intrinsic, handle, true);
+
+   nir_ssa_def *src;
+   if (var->data.bindless) {
+      src = nir_load_deref(b, deref);
+   } else {
+      src = nir_iadd_imm(b,
+                         nir_build_deref_offset(b, deref, type_size_align_1),
+                         var->data.driver_location);
+   }
+   nir_rewrite_image_intrinsic(intrinsic, src, var->data.bindless);
+
    return true;
 }
 
 bool
-gl_nir_lower_bindless_images(nir_shader *shader)
+gl_nir_lower_images(nir_shader *shader, bool bindless_only)
 {
    bool progress = false;
 
@@ -91,7 +110,7 @@ gl_nir_lower_bindless_images(nir_shader *shader)
 
          nir_foreach_block(block, function->impl)
             nir_foreach_instr(instr, block)
-               progress |= lower_impl(&b, instr);
+               progress |= lower_impl(&b, instr, bindless_only);
       }
    }
 
