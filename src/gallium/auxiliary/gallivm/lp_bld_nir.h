@@ -203,9 +203,9 @@ struct lp_build_nir_soa_context
    const struct lp_build_image_soa *image;
 
    const struct lp_build_gs_iface *gs_iface;
-   LLVMValueRef emitted_prims_vec_ptr;
-   LLVMValueRef total_emitted_vertices_vec_ptr;
-   LLVMValueRef emitted_vertices_vec_ptr;
+   LLVMValueRef emitted_prims_vec_ptr[PIPE_MAX_VERTEX_STREAMS];
+   LLVMValueRef total_emitted_vertices_vec_ptr[PIPE_MAX_VERTEX_STREAMS];
+   LLVMValueRef emitted_vertices_vec_ptr[PIPE_MAX_VERTEX_STREAMS];
    LLVMValueRef max_output_vertices_vec;
    struct lp_bld_tgsi_system_values system_values;
 
