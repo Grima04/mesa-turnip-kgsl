@@ -6972,22 +6972,20 @@ void build_cube_select(isel_context *ctx, Temp ma, Temp id, Temp deriv,
    *out_ma = bld.vop2(aco_opcode::v_mul_f32, bld.def(v1), two, tmp);
 }
 
-void prepare_cube_coords(isel_context *ctx, Temp* coords, Temp* ddx, Temp* ddy, bool is_deriv, bool is_array)
+void prepare_cube_coords(isel_context *ctx, std::vector<Temp>& coords, Temp* ddx, Temp* ddy, bool is_deriv, bool is_array)
 {
    Builder bld(ctx->program, ctx->block);
-   Temp coord_args[4], ma, tc, sc, id;
-   for (unsigned i = 0; i < (is_array ? 4 : 3); i++)
-      coord_args[i] = emit_extract_vector(ctx, *coords, i, v1);
+   Temp ma, tc, sc, id;
 
    if (is_array) {
-      coord_args[3] = bld.vop1(aco_opcode::v_rndne_f32, bld.def(v1), coord_args[3]);
+      coords[3] = bld.vop1(aco_opcode::v_rndne_f32, bld.def(v1), coords[3]);
 
       // see comment in ac_prepare_cube_coords()
       if (ctx->options->chip_class <= GFX8)
-         coord_args[3] = bld.vop2(aco_opcode::v_max_f32, bld.def(v1), Operand(0u), coord_args[3]);
+         coords[3] = bld.vop2(aco_opcode::v_max_f32, bld.def(v1), Operand(0u), coords[3]);
    }
 
-   ma = bld.vop3(aco_opcode::v_cubema_f32, bld.def(v1), coord_args[0], coord_args[1], coord_args[2]);
+   ma = bld.vop3(aco_opcode::v_cubema_f32, bld.def(v1), coords[0], coords[1], coords[2]);
 
    aco_ptr<VOP3A_instruction> vop3a{create_instruction<VOP3A_instruction>(aco_opcode::v_rcp_f32, asVOP3(Format::VOP1), 1, 1)};
    vop3a->operands[0] = Operand(ma);
@@ -6996,15 +6994,15 @@ void prepare_cube_coords(isel_context *ctx, Temp* coords, Temp* ddx, Temp* ddy, 
    vop3a->definitions[0] = Definition(invma);
    ctx->block->instructions.emplace_back(std::move(vop3a));
 
-   sc = bld.vop3(aco_opcode::v_cubesc_f32, bld.def(v1), coord_args[0], coord_args[1], coord_args[2]);
+   sc = bld.vop3(aco_opcode::v_cubesc_f32, bld.def(v1), coords[0], coords[1], coords[2]);
    if (!is_deriv)
       sc = bld.vop2(aco_opcode::v_madak_f32, bld.def(v1), sc, invma, Operand(0x3fc00000u/*1.5*/));
 
-   tc = bld.vop3(aco_opcode::v_cubetc_f32, bld.def(v1), coord_args[0], coord_args[1], coord_args[2]);
+   tc = bld.vop3(aco_opcode::v_cubetc_f32, bld.def(v1), coords[0], coords[1], coords[2]);
    if (!is_deriv)
       tc = bld.vop2(aco_opcode::v_madak_f32, bld.def(v1), tc, invma, Operand(0x3fc00000u/*1.5*/));
 
-   id = bld.vop3(aco_opcode::v_cubeid_f32, bld.def(v1), coord_args[0], coord_args[1], coord_args[2]);
+   id = bld.vop3(aco_opcode::v_cubeid_f32, bld.def(v1), coords[0], coords[1], coords[2]);
 
    if (is_deriv) {
       sc = bld.vop2(aco_opcode::v_mul_f32, bld.def(v1), sc, invma);
@@ -7033,27 +7031,11 @@ void prepare_cube_coords(isel_context *ctx, Temp* coords, Temp* ddx, Temp* ddy, 
    }
 
    if (is_array)
-      id = bld.vop2(aco_opcode::v_madmk_f32, bld.def(v1), coord_args[3], id, Operand(0x41000000u/*8.0*/));
-   *coords = bld.pseudo(aco_opcode::p_create_vector, bld.def(v3), sc, tc, id);
-
-}
-
-Temp apply_round_slice(isel_context *ctx, Temp coords, unsigned idx)
-{
-   Temp coord_vec[3];
-   for (unsigned i = 0; i < coords.size(); i++)
-      coord_vec[i] = emit_extract_vector(ctx, coords, i, v1);
-
-   Builder bld(ctx->program, ctx->block);
-   coord_vec[idx] = bld.vop1(aco_opcode::v_rndne_f32, bld.def(v1), coord_vec[idx]);
-
-   aco_ptr<Pseudo_instruction> vec{create_instruction<Pseudo_instruction>(aco_opcode::p_create_vector, Format::PSEUDO, coords.size(), 1)};
-   for (unsigned i = 0; i < coords.size(); i++)
-      vec->operands[i] = Operand(coord_vec[i]);
-   Temp res = bld.tmp(RegType::vgpr, coords.size());
-   vec->definitions[0] = Definition(res);
-   ctx->block->instructions.emplace_back(std::move(vec));
-   return res;
+      id = bld.vop2(aco_opcode::v_madmk_f32, bld.def(v1), coords[3], id, Operand(0x41000000u/*8.0*/));
+   coords.resize(3);
+   coords[0] = sc;
+   coords[1] = tc;
+   coords[2] = id;
 }
 
 void get_const_vec(nir_ssa_def *vec, nir_const_value *cv[4])
@@ -7075,8 +7057,10 @@ void visit_tex(isel_context *ctx, nir_tex_instr *instr)
    Builder bld(ctx->program, ctx->block);
    bool has_bias = false, has_lod = false, level_zero = false, has_compare = false,
         has_offset = false, has_ddx = false, has_ddy = false, has_derivs = false, has_sample_index = false;
-   Temp resource, sampler, fmask_ptr, bias = Temp(), coords, compare = Temp(), sample_index = Temp(),
-        lod = Temp(), offset = Temp(), ddx = Temp(), ddy = Temp(), derivs = Temp();
+   Temp resource, sampler, fmask_ptr, bias = Temp(), compare = Temp(), sample_index = Temp(),
+        lod = Temp(), offset = Temp(), ddx = Temp(), ddy = Temp();
+   std::vector<Temp> coords;
+   std::vector<Temp> derivs;
    nir_const_value *sample_index_cv = NULL;
    nir_const_value *const_offset[4] = {NULL, NULL, NULL, NULL};
    enum glsl_base_type stype;
@@ -7089,9 +7073,12 @@ void visit_tex(isel_context *ctx, nir_tex_instr *instr)
 
    for (unsigned i = 0; i < instr->num_srcs; i++) {
       switch (instr->src[i].src_type) {
-      case nir_tex_src_coord:
-         coords = as_vgpr(ctx, get_ssa_temp(ctx, instr->src[i].src.ssa));
+      case nir_tex_src_coord: {
+         Temp coord = get_ssa_temp(ctx, instr->src[i].src.ssa);
+         for (unsigned i = 0; i < coord.size(); i++)
+            coords.emplace_back(emit_extract_vector(ctx, coord, i, v1));
          break;
+      }
       case nir_tex_src_bias:
          if (instr->op == nir_texop_txb) {
             bias = get_ssa_temp(ctx, instr->src[i].src.ssa);
@@ -7139,7 +7126,7 @@ void visit_tex(isel_context *ctx, nir_tex_instr *instr)
          break;
       }
    }
-// TODO: all other cases: structure taken from ac_nir_to_llvm.c
+
    if (instr->op == nir_texop_txs && instr->sampler_dim == GLSL_SAMPLER_DIM_BUF)
       return get_buffer_size(ctx, resource, get_ssa_temp(ctx, &instr->dest.ssa), true);
 
@@ -7219,15 +7206,19 @@ void visit_tex(isel_context *ctx, nir_tex_instr *instr)
    }
 
    if (instr->sampler_dim == GLSL_SAMPLER_DIM_CUBE && instr->coord_components)
-      prepare_cube_coords(ctx, &coords, &ddx, &ddy, instr->op == nir_texop_txd, instr->is_array && instr->op != nir_texop_lod);
+      prepare_cube_coords(ctx, coords, &ddx, &ddy, instr->op == nir_texop_txd, instr->is_array && instr->op != nir_texop_lod);
 
    /* pack derivatives */
    if (has_ddx || has_ddy) {
       if (instr->sampler_dim == GLSL_SAMPLER_DIM_1D && ctx->options->chip_class == GFX9) {
-         derivs = bld.pseudo(aco_opcode::p_create_vector, bld.def(v4),
-                             ddx, Operand(0u), ddy, Operand(0u));
+         assert(has_ddx && has_ddy && ddy.size() == 1 && ddy.size() == 1);
+         Temp zero = bld.copy(bld.def(v1), Operand(0u));
+         derivs = {ddy, zero, ddy, zero};
       } else {
-         derivs = bld.pseudo(aco_opcode::p_create_vector, bld.def(RegType::vgpr, ddx.size() + ddy.size()), ddx, ddy);
+         for (unsigned i = 0; has_ddx && i < ddx.size(); i++)
+            derivs.emplace_back(emit_extract_vector(ctx, ddx, i, v1));
+         for (unsigned i = 0; has_ddy && i < ddy.size(); i++)
+            derivs.emplace_back(emit_extract_vector(ctx, ddy, i, v1));
       }
       has_derivs = true;
    }
@@ -7236,7 +7227,7 @@ void visit_tex(isel_context *ctx, nir_tex_instr *instr)
        instr->sampler_dim == GLSL_SAMPLER_DIM_1D &&
        instr->is_array &&
        instr->op != nir_texop_txf)
-      coords = apply_round_slice(ctx, coords, 1);
+      coords[1] = bld.vop1(aco_opcode::v_rndne_f32, bld.def(v1), coords[1]);
 
    if (instr->coord_components > 2 &&
       (instr->sampler_dim == GLSL_SAMPLER_DIM_2D ||
@@ -7248,21 +7239,16 @@ void visit_tex(isel_context *ctx, nir_tex_instr *instr)
        instr->op != nir_texop_txf_ms &&
        instr->op != nir_texop_fragment_fetch &&
        instr->op != nir_texop_fragment_mask_fetch)
-      coords = apply_round_slice(ctx, coords, 2);
+      coords[2] = bld.vop1(aco_opcode::v_rndne_f32, bld.def(v1), coords[2]);
 
    if (ctx->options->chip_class == GFX9 &&
        instr->sampler_dim == GLSL_SAMPLER_DIM_1D &&
        instr->op != nir_texop_lod && instr->coord_components) {
       assert(coords.size() > 0 && coords.size() < 3);
 
-      aco_ptr<Pseudo_instruction> vec{create_instruction<Pseudo_instruction>(aco_opcode::p_create_vector, Format::PSEUDO, coords.size() + 1, 1)};
-      vec->operands[0] = Operand(emit_extract_vector(ctx, coords, 0, v1));
-      vec->operands[1] = instr->op == nir_texop_txf ? Operand((uint32_t) 0) : Operand((uint32_t) 0x3f000000);
-      if (coords.size() > 1)
-         vec->operands[2] = Operand(emit_extract_vector(ctx, coords, 1, v1));
-      coords = bld.tmp(RegType::vgpr, coords.size() + 1);
-      vec->definitions[0] = Definition(coords);
-      ctx->block->instructions.emplace_back(std::move(vec));
+      coords.insert(std::next(coords.begin()), bld.copy(bld.def(v1), instr->op == nir_texop_txf ?
+                                                                     Operand((uint32_t) 0) :
+                                                                     Operand((uint32_t) 0x3f000000)));
    }
 
    bool da = should_declare_array(ctx, instr->sampler_dim, instr->is_array);
@@ -7279,31 +7265,14 @@ void visit_tex(isel_context *ctx, nir_tex_instr *instr)
       Operand op(sample_index);
       if (sample_index_cv)
          op = Operand(sample_index_cv->u32);
-      std::vector<Temp> fmask_load_address;
-      for (unsigned i = 0; i < coords.size(); i++)
-         fmask_load_address.emplace_back(emit_extract_vector(ctx, coords, i, v1));
-      sample_index = adjust_sample_index_using_fmask(ctx, da, fmask_load_address, op, fmask_ptr);
+      sample_index = adjust_sample_index_using_fmask(ctx, da, coords, op, fmask_ptr);
    }
 
    if (has_offset && (instr->op == nir_texop_txf || instr->op == nir_texop_txf_ms)) {
-      Temp split_coords[coords.size()];
-      emit_split_vector(ctx, coords, coords.size());
-      for (unsigned i = 0; i < coords.size(); i++)
-         split_coords[i] = emit_extract_vector(ctx, coords, i, v1);
-
-      unsigned i = 0;
-      for (; i < std::min(offset.size(), instr->coord_components); i++) {
+      for (unsigned i = 0; i < std::min(offset.size(), instr->coord_components); i++) {
          Temp off = emit_extract_vector(ctx, offset, i, v1);
-         split_coords[i] = bld.vadd32(bld.def(v1), split_coords[i], off);
+         coords[i] = bld.vadd32(bld.def(v1), coords[i], off);
       }
-
-      aco_ptr<Pseudo_instruction> vec{create_instruction<Pseudo_instruction>(aco_opcode::p_create_vector, Format::PSEUDO, coords.size(), 1)};
-      for (unsigned i = 0; i < coords.size(); i++)
-         vec->operands[i] = Operand(split_coords[i]);
-      coords = bld.tmp(coords.regClass());
-      vec->definitions[0] = Definition(coords);
-      ctx->block->instructions.emplace_back(std::move(vec));
-
       has_offset = false;
    }
 
@@ -7404,12 +7373,9 @@ void visit_tex(isel_context *ctx, nir_tex_instr *instr)
          half_texel[i] = bld.vop2(aco_opcode::v_mul_f32, bld.def(v1), Operand(0xbf000000/*-0.5*/), half_texel[i]);
       }
 
-      Temp orig_coords[2] = {
-         emit_extract_vector(ctx, coords, 0, v1),
-         emit_extract_vector(ctx, coords, 1, v1)};
       Temp new_coords[2] = {
-         bld.vop2(aco_opcode::v_add_f32, bld.def(v1), orig_coords[0], half_texel[0]),
-         bld.vop2(aco_opcode::v_add_f32, bld.def(v1), orig_coords[1], half_texel[1])
+         bld.vop2(aco_opcode::v_add_f32, bld.def(v1), coords[0], half_texel[0]),
+         bld.vop2(aco_opcode::v_add_f32, bld.def(v1), coords[1], half_texel[1])
       };
 
       if (tg4_integer_cube_workaround) {
@@ -7458,62 +7424,13 @@ void visit_tex(isel_context *ctx, nir_tex_instr *instr)
          ctx->block->instructions.emplace_back(std::move(vec));
 
          new_coords[0] = bld.vop2(aco_opcode::v_cndmask_b32, bld.def(v1),
-                                  new_coords[0], orig_coords[0], tg4_compare_cube_wa64);
+                                  new_coords[0], coords[0], tg4_compare_cube_wa64);
          new_coords[1] = bld.vop2(aco_opcode::v_cndmask_b32, bld.def(v1),
-                                  new_coords[1], orig_coords[1], tg4_compare_cube_wa64);
+                                  new_coords[1], coords[1], tg4_compare_cube_wa64);
       }
-
-      if (coords.size() == 3) {
-         coords = bld.pseudo(aco_opcode::p_create_vector, bld.def(v3),
-                             new_coords[0], new_coords[1],
-                             emit_extract_vector(ctx, coords, 2, v1));
-      } else {
-         assert(coords.size() == 2);
-         coords = bld.pseudo(aco_opcode::p_create_vector, bld.def(v2),
-                             new_coords[0], new_coords[1]);
-      }
+      coords[0] = new_coords[0];
+      coords[1] = new_coords[1];
    }
-
-   std::vector<Operand> args;
-   if (has_offset)
-      args.emplace_back(Operand(offset));
-   if (has_bias)
-      args.emplace_back(Operand(bias));
-   if (has_compare)
-      args.emplace_back(Operand(compare));
-   if (has_derivs)
-      args.emplace_back(Operand(derivs));
-   args.emplace_back(Operand(coords));
-   if (has_sample_index)
-      args.emplace_back(Operand(sample_index));
-   if (has_lod)
-      args.emplace_back(lod);
-
-   Temp arg;
-   if (args.size() > 1) {
-      aco_ptr<Pseudo_instruction> vec{create_instruction<Pseudo_instruction>(aco_opcode::p_create_vector, Format::PSEUDO, args.size(), 1)};
-      unsigned size = 0;
-      for (unsigned i = 0; i < args.size(); i++) {
-         size += args[i].size();
-         vec->operands[i] = args[i];
-      }
-      RegClass rc = RegClass(RegType::vgpr, size);
-      Temp tmp = bld.tmp(rc);
-      vec->definitions[0] = Definition(tmp);
-      ctx->block->instructions.emplace_back(std::move(vec));
-      arg = tmp;
-   } else {
-      assert(args[0].isTemp());
-      arg = as_vgpr(ctx, args[0].getTemp());
-   }
-
-   /* we don't need the bias, sample index, compare value or offset to be
-    * computed in WQM but if the p_create_vector copies the coordinates, then it
-    * needs to be in WQM */
-   if (!(has_ddx && has_ddy) && !has_lod && !level_zero &&
-       instr->sampler_dim != GLSL_SAMPLER_DIM_MS &&
-       instr->sampler_dim != GLSL_SAMPLER_DIM_SUBPASS_MS)
-      arg = emit_wqm(ctx, arg, bld.tmp(arg.regClass()), true);
 
    if (instr->sampler_dim == GLSL_SAMPLER_DIM_BUF) {
       //FIXME: if (ctx->abi->gfx9_stride_size_workaround) return ac_build_buffer_load_format_gfx9_safe()
@@ -7542,7 +7459,7 @@ void visit_tex(isel_context *ctx, nir_tex_instr *instr)
 
       aco_ptr<MUBUF_instruction> mubuf{create_instruction<MUBUF_instruction>(op, Format::MUBUF, 3, 1)};
       mubuf->operands[0] = Operand(resource);
-      mubuf->operands[1] = Operand(coords);
+      mubuf->operands[1] = Operand(coords[0]);
       mubuf->operands[2] = Operand((uint32_t) 0);
       mubuf->definitions[0] = Definition(tmp_dst);
       mubuf->idxen = true;
@@ -7552,6 +7469,30 @@ void visit_tex(isel_context *ctx, nir_tex_instr *instr)
       expand_vector(ctx, tmp_dst, dst, instr->dest.ssa.num_components, (1 << last_bit) - 1);
       return;
    }
+
+   /* gather MIMG address components */
+   std::vector<Temp> args;
+   if (has_offset)
+      args.emplace_back(offset);
+   if (has_bias)
+      args.emplace_back(bias);
+   if (has_compare)
+      args.emplace_back(compare);
+   if (has_derivs)
+      args.insert(args.end(), derivs.begin(), derivs.end());
+
+   args.insert(args.end(), coords.begin(), coords.end());
+   if (has_sample_index)
+      args.emplace_back(sample_index);
+   if (has_lod)
+      args.emplace_back(lod);
+
+   Temp arg = bld.tmp(RegClass(RegType::vgpr, args.size()));
+   aco_ptr<Instruction> vec{create_instruction<Pseudo_instruction>(aco_opcode::p_create_vector, Format::PSEUDO, args.size(), 1)};
+   vec->definitions[0] = Definition(arg);
+   for (unsigned i = 0; i < args.size(); i++)
+      vec->operands[i] = Operand(args[i]);
+   ctx->block->instructions.emplace_back(std::move(vec));
 
 
    if (instr->op == nir_texop_txf ||
@@ -7647,6 +7588,15 @@ void visit_tex(isel_context *ctx, nir_tex_instr *instr)
    } else if (instr->op == nir_texop_lod) {
       opcode = aco_opcode::image_get_lod;
    }
+
+   /* we don't need the bias, sample index, compare value or offset to be
+    * computed in WQM but if the p_create_vector copies the coordinates, then it
+    * needs to be in WQM */
+   if (ctx->stage == fragment_fs &&
+       !has_derivs && !has_lod && !level_zero &&
+       instr->sampler_dim != GLSL_SAMPLER_DIM_MS &&
+       instr->sampler_dim != GLSL_SAMPLER_DIM_SUBPASS_MS)
+      arg = emit_wqm(ctx, arg, bld.tmp(arg.regClass()), true);
 
    tex.reset(create_instruction<MIMG_instruction>(opcode, Format::MIMG, 3, 1));
    tex->operands[0] = Operand(resource);
