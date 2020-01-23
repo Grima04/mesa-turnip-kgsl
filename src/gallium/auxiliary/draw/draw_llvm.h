@@ -335,7 +335,7 @@ typedef boolean
 typedef int
 (*draw_gs_jit_func)(struct draw_gs_jit_context *context,
                     float inputs[6][PIPE_MAX_SHADER_INPUTS][TGSI_NUM_CHANNELS][TGSI_NUM_CHANNELS],
-                    struct vertex_header *output,
+                    struct vertex_header **output,
                     unsigned num_prims,
                     unsigned instance_id,
                     int *prim_ids,

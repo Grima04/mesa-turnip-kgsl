@@ -1557,6 +1557,8 @@ draw_gs_llvm_emit_vertex(const struct lp_build_gs_iface *gs_base,
       indices[i] = LLVMBuildAdd(builder, indices[i], currently_emitted, "");
    }
 
+   io = lp_build_pointer_get(builder, io, LLVMBuildExtractElement(builder, stream_id, lp_build_const_int32(gallivm, 0), ""));
+
    convert_to_aos(gallivm, io, indices,
                   outputs, clipmask,
                   gs_info->num_outputs, gs_type,
@@ -2432,7 +2434,7 @@ draw_gs_llvm_generate(struct draw_llvm *llvm,
 
    arg_types[0] = get_gs_context_ptr_type(variant);    /* context */
    arg_types[1] = variant->input_array_type;           /* input */
-   arg_types[2] = variant->vertex_header_ptr_type;     /* vertex_header */
+   arg_types[2] = LLVMPointerType(variant->vertex_header_ptr_type, 0);     /* vertex_header */
    arg_types[3] = int32_type;                          /* num_prims */
    arg_types[4] = int32_type;                          /* instance_id */
    arg_types[5] = LLVMPointerType(

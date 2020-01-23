@@ -321,7 +321,7 @@ llvm_fetch_gs_outputs(struct draw_geometry_shader *shader,
    int vertex_count = 0;
    int total_prims = 0;
    int max_prims_per_invocation = 0;
-   char *output_ptr = (char*)shader->gs_output;
+   char *output_ptr = (char*)shader->gs_output[stream];
    int i, j, prim_idx;
    unsigned next_prim_boundary = shader->primitive_boundary;
 
@@ -402,20 +402,24 @@ static void
 llvm_gs_run(struct draw_geometry_shader *shader,
             unsigned input_primitives, unsigned *out_prims)
 {
-   unsigned ret;
-   char *input = (char*)shader->gs_output;
+   struct vertex_header *input[PIPE_MAX_VERTEX_STREAMS];
+   for (unsigned i = 0; i < shader->num_vertex_streams; i++) {
+      char *tmp = (char *)shader->gs_output[i];
+      tmp += shader->stream[i].emitted_vertices * shader->vertex_size;
+      input[i] = (struct vertex_header *)tmp;
+   }
 
-   input += (shader->stream[0].emitted_vertices * shader->vertex_size);
-
-   ret = shader->current_variant->jit_func(
+   shader->current_variant->jit_func(
       shader->jit_context, shader->gs_input->data,
-      (struct vertex_header*)input,
+      input,
       input_primitives,
       shader->draw->instance_id,
       shader->llvm_prim_ids,
       shader->invocation_id);
 
-   *out_prims = ret;
+   for (unsigned i = 0; i < shader->num_vertex_streams; i++) {
+      out_prims[i] = shader->jit_context->emitted_prims[i];
+   }
 }
 
 #endif
@@ -634,7 +638,9 @@ int draw_geometry_shader_run(struct draw_geometry_shader *shader,
 
 #ifdef LLVM_AVAILABLE
    if (shader->draw->llvm) {
-      shader->gs_output = output_verts[0].verts;
+      for (i = 0; i < shader->num_vertex_streams; i++) {
+         shader->gs_output[i] = output_verts[i].verts;
+      }
       if (max_out_prims > shader->max_out_prims) {
          unsigned i;
          if (shader->llvm_prim_lengths) {
