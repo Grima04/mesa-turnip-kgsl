@@ -2859,7 +2859,6 @@ pandecode_jc(mali_ptr jc_gpu_va, bool bifrost, unsigned gpu_id)
         int start_number = 0;
 
         bool first = true;
-        bool last_size;
 
         do {
                 struct pandecode_mapped_memory *mem =
@@ -2888,9 +2887,6 @@ pandecode_jc(mali_ptr jc_gpu_va, bool bifrost, unsigned gpu_id)
                 pandecode_indent++;
 
                 pandecode_prop("job_type = %s", pandecode_job_type(h->job_type));
-
-                /* Save for next job fixing */
-                last_size = h->job_descriptor_size;
 
                 if (h->job_descriptor_size)
                         pandecode_prop("job_descriptor_size = %d", h->job_descriptor_size);
