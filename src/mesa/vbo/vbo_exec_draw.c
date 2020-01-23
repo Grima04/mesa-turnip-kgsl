@@ -210,8 +210,8 @@ vbo_exec_bind_arrays(struct gl_context *ctx)
       const int vao_attr = u_bit_scan(&mask);
       const GLubyte vbo_attr = vao_to_vbo_map[vao_attr];
 
-      const GLubyte size = exec->vtx.attrsz[vbo_attr];
-      const GLenum16 type = exec->vtx.attrtype[vbo_attr];
+      const GLubyte size = exec->vtx.attr[vbo_attr].size;
+      const GLenum16 type = exec->vtx.attr[vbo_attr].type;
       const GLuint offset = (GLuint)((GLbyte *)exec->vtx.attrptr[vbo_attr] -
                                      (GLbyte *)exec->vtx.vertex);
       assert(offset <= ctx->Const.MaxVertexAttribRelativeOffset);
