@@ -1597,7 +1597,7 @@ draw_gs_llvm_end_primitive(const struct lp_build_gs_iface *gs_base,
 static void
 draw_gs_llvm_epilogue(const struct lp_build_gs_iface *gs_base,
                       LLVMValueRef total_emitted_vertices_vec,
-                      LLVMValueRef emitted_prims_vec)
+                      LLVMValueRef emitted_prims_vec, unsigned stream)
 {
    const struct draw_gs_llvm_iface *gs_iface = draw_gs_llvm_iface(gs_base);
    struct draw_gs_llvm_variant *variant = gs_iface->variant;
@@ -1608,7 +1608,10 @@ draw_gs_llvm_epilogue(const struct lp_build_gs_iface *gs_base,
    LLVMValueRef emitted_prims_ptr =
       draw_gs_jit_emitted_prims(gallivm, variant->context_ptr);
    LLVMValueRef zero = lp_build_const_int32(gallivm, 0);
-   
+
+   if (stream > 0)
+      return;
+
    emitted_verts_ptr = LLVMBuildGEP(builder, emitted_verts_ptr, &zero, 0, "");
    emitted_prims_ptr = LLVMBuildGEP(builder, emitted_prims_ptr, &zero, 0, "");
 

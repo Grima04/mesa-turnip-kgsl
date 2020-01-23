@@ -1607,7 +1607,7 @@ void lp_build_nir_soa(struct gallivm_state *gallivm,
 
       bld.gs_iface->gs_epilogue(bld.gs_iface,
                                  total_emitted_vertices_vec,
-                                 emitted_prims_vec);
+                                 emitted_prims_vec, 0);
    }
    lp_exec_mask_fini(&bld.exec_mask);
 }

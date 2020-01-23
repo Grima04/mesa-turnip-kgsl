@@ -424,7 +424,7 @@ struct lp_build_gs_iface
                          LLVMValueRef mask_vec);
    void (*gs_epilogue)(const struct lp_build_gs_iface *gs_iface,
                        LLVMValueRef total_emitted_vertices_vec,
-                       LLVMValueRef emitted_prims_vec);
+                       LLVMValueRef emitted_prims_vec, unsigned stream);
 };
 
 struct lp_build_tcs_iface

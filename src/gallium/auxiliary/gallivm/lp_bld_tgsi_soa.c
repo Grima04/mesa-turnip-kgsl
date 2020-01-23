@@ -4371,7 +4371,7 @@ static void emit_epilogue(struct lp_build_tgsi_context * bld_base)
 
       bld->gs_iface->gs_epilogue(bld->gs_iface,
                                  total_emitted_vertices_vec,
-                                 emitted_prims_vec);
+                                 emitted_prims_vec, 0);
    } else {
       gather_outputs(bld);
    }

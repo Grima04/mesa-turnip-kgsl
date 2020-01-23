@@ -363,7 +363,7 @@ struct BuilderSWR : public Builder {
    void
    swr_gs_llvm_epilogue(const struct lp_build_gs_iface *gs_base,
                         LLVMValueRef total_emitted_vertices_vec,
-                        LLVMValueRef emitted_prims_vec);
+                        LLVMValueRef emitted_prims_vec, unsigned stream);
 
    // TCS-specific emit functions
    void swr_tcs_llvm_emit_prologue(struct lp_build_tgsi_soa_context* bld);
@@ -524,13 +524,13 @@ swr_gs_llvm_end_primitive(const struct lp_build_gs_iface *gs_base,
 static void
 swr_gs_llvm_epilogue(const struct lp_build_gs_iface *gs_base,
                         LLVMValueRef total_emitted_vertices_vec,
-                        LLVMValueRef emitted_prims_vec)
+                        LLVMValueRef emitted_prims_vec, unsigned stream)
 {
     swr_gs_llvm_iface *iface = (swr_gs_llvm_iface*)gs_base;
 
     iface->pBuilder->swr_gs_llvm_epilogue(gs_base,
                                          total_emitted_vertices_vec,
-                                         emitted_prims_vec);
+                                         emitted_prims_vec, stream);
 }
 
 static LLVMValueRef
@@ -909,7 +909,7 @@ BuilderSWR::swr_gs_llvm_end_primitive(const struct lp_build_gs_iface *gs_base,
 void
 BuilderSWR::swr_gs_llvm_epilogue(const struct lp_build_gs_iface *gs_base,
                         LLVMValueRef total_emitted_vertices_vec,
-                        LLVMValueRef emitted_prims_vec)
+                        LLVMValueRef emitted_prims_vec, unsigned stream)
 {
    swr_gs_llvm_iface *iface = (swr_gs_llvm_iface*)gs_base;
 
