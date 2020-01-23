@@ -549,8 +549,8 @@ lp_setup_so_info(struct vbuf_render *vbr, uint stream, uint primitives, uint pri
    struct lp_setup_context *setup = lp_setup_context(vbr);
    struct llvmpipe_context *lp = llvmpipe_context(setup->pipe);
 
-   lp->so_stats.num_primitives_written += primitives;
-   lp->so_stats.primitives_storage_needed += prim_generated;
+   lp->so_stats[stream].num_primitives_written += primitives;
+   lp->so_stats[stream].primitives_storage_needed += prim_generated;
 }
 
 static void

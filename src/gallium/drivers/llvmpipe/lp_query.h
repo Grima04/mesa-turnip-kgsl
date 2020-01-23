@@ -46,6 +46,7 @@ struct llvmpipe_query {
    uint64_t end[LP_MAX_THREADS];    /* end count value for each thread */
    struct lp_fence *fence;          /* fence from last scene this was binned in */
    unsigned type;                   /* PIPE_QUERY_* */
+   unsigned index;
    unsigned num_primitives_generated;
    unsigned num_primitives_written;
 
