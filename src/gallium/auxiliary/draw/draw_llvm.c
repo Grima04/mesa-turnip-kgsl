@@ -1609,13 +1609,10 @@ draw_gs_llvm_epilogue(const struct lp_build_gs_iface *gs_base,
       draw_gs_jit_emitted_vertices(gallivm, variant->context_ptr);
    LLVMValueRef emitted_prims_ptr =
       draw_gs_jit_emitted_prims(gallivm, variant->context_ptr);
-   LLVMValueRef zero = lp_build_const_int32(gallivm, 0);
-
-   if (stream > 0)
-      return;
-
-   emitted_verts_ptr = LLVMBuildGEP(builder, emitted_verts_ptr, &zero, 0, "");
-   emitted_prims_ptr = LLVMBuildGEP(builder, emitted_prims_ptr, &zero, 0, "");
+   LLVMValueRef stream_val = lp_build_const_int32(gallivm, stream);
+   
+   emitted_verts_ptr = LLVMBuildGEP(builder, emitted_verts_ptr, &stream_val, 1, "");
+   emitted_prims_ptr = LLVMBuildGEP(builder, emitted_prims_ptr, &stream_val, 1, "");
 
    LLVMBuildStore(builder, total_emitted_vertices_vec, emitted_verts_ptr);
    LLVMBuildStore(builder, emitted_prims_vec, emitted_prims_ptr);
