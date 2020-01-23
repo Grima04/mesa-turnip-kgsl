@@ -3623,8 +3623,6 @@ _ac_build_readlane(struct ac_llvm_context *ctx, LLVMValueRef src, LLVMValueRef l
 LLVMValueRef ac_build_readlane_no_opt_barrier(struct ac_llvm_context *ctx,
 					      LLVMValueRef src, LLVMValueRef lane)
 {
-	LLVMTypeRef src_type = LLVMTypeOf(src);
-	src = ac_to_integer(ctx, src);
 	unsigned bits = LLVMGetIntTypeWidth(LLVMTypeOf(src));
 	LLVMValueRef ret;
 
@@ -3645,17 +3643,22 @@ LLVMValueRef ac_build_readlane_no_opt_barrier(struct ac_llvm_context *ctx,
 		ret = _ac_build_readlane(ctx, src, lane);
 	}
 
-	if (LLVMGetTypeKind(src_type) == LLVMPointerTypeKind)
-		return LLVMBuildIntToPtr(ctx->builder, ret, src_type, "");
-	return LLVMBuildBitCast(ctx->builder, ret, src_type, "");
+	return ret;
 }
 
 LLVMValueRef
 ac_build_readlane(struct ac_llvm_context *ctx, LLVMValueRef src, LLVMValueRef lane)
 {
+	LLVMTypeRef src_type = LLVMTypeOf(src);
+	src = ac_to_integer(ctx, src);
+	LLVMValueRef ret;
+
 	ac_build_optimization_barrier(ctx, &src);
 
-	return ac_build_readlane_no_opt_barrier(ctx, src, lane);
+	ret = ac_build_readlane_no_opt_barrier(ctx, src, lane);
+	if (LLVMGetTypeKind(src_type) == LLVMPointerTypeKind)
+		return LLVMBuildIntToPtr(ctx->builder, ret, src_type, "");
+	return LLVMBuildBitCast(ctx->builder, ret, src_type, "");
 }
 
 LLVMValueRef
