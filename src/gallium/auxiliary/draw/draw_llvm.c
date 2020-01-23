@@ -1557,12 +1557,17 @@ draw_gs_llvm_emit_vertex(const struct lp_build_gs_iface *gs_base,
       indices[i] = LLVMBuildAdd(builder, indices[i], currently_emitted, "");
    }
 
+   LLVMValueRef stream_idx = LLVMBuildExtractElement(builder, stream_id, lp_build_const_int32(gallivm, 0), "");
+   LLVMValueRef cnd = LLVMBuildICmp(builder, LLVMIntULT, stream_idx, lp_build_const_int32(gallivm, variant->shader->base.num_vertex_streams), "");
+   struct lp_build_if_state if_ctx;
+   lp_build_if(&if_ctx, gallivm, cnd);
    io = lp_build_pointer_get(builder, io, LLVMBuildExtractElement(builder, stream_id, lp_build_const_int32(gallivm, 0), ""));
 
    convert_to_aos(gallivm, io, indices,
                   outputs, clipmask,
                   gs_info->num_outputs, gs_type,
                   FALSE);
+   lp_build_endif(&if_ctx);
 }
 
 static void
