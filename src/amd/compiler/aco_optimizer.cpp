@@ -2682,13 +2682,15 @@ void select_instruction(opt_ctx &ctx, aco_ptr<Instruction>& instr)
    /* choose a literal to apply */
    for (unsigned i = 0; i < num_operands; i++) {
       Operand op = instr->operands[i];
+
+      if (instr->isVALU() && op.isTemp() && op.getTemp().type() == RegType::sgpr &&
+          op.tempId() != sgpr_ids[0])
+         sgpr_ids[!!sgpr_ids[0]] = op.tempId();
+
       if (op.isLiteral()) {
          current_literal = op;
          continue;
       } else if (!op.isTemp() || !ctx.info[op.tempId()].is_literal()) {
-         if (instr->isVALU() && op.isTemp() && op.getTemp().type() == RegType::sgpr &&
-             op.tempId() != sgpr_ids[0])
-            sgpr_ids[!!sgpr_ids[0]] = op.tempId();
          continue;
       }
 
