@@ -794,7 +794,7 @@ static inline bool is_meta(struct ir3_instruction *instr)
 
 static inline unsigned dest_regs(struct ir3_instruction *instr)
 {
-	if ((instr->regs_count == 0) || is_store(instr))
+	if ((instr->regs_count == 0) || is_store(instr) || is_flow(instr))
 		return 0;
 
 	return util_last_bit(instr->regs[0]->wrmask);

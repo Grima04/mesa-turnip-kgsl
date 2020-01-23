@@ -1780,6 +1780,7 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 		cond->regs[0]->flags &= ~IR3_REG_SSA;
 
 		kill = ir3_KILL(b, cond, 0);
+		kill->regs[1]->num = regid(REG_P0, 0);
 		array_insert(ctx->ir, ctx->ir->predicates, kill);
 
 		array_insert(b, b->keeps, kill);
