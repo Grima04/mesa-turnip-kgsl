@@ -539,7 +539,7 @@ anv_image_from_gralloc(VkDevice device_h,
    return result;
 }
 
-VkResult
+static VkResult
 format_supported_with_usage(VkDevice device_h, VkFormat format,
                             VkImageUsageFlags imageUsage)
 {
