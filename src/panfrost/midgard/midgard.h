@@ -612,6 +612,9 @@ midgard_tex_register_select;
 #define TEXTURE_OP_LOD 0x12             /* textureLod */
 #define TEXTURE_OP_TEXEL_FETCH 0x14     /* texelFetch */
 
+/* Implements barrier() */
+#define TEXTURE_OP_BARRIER 0x0B
+
 /* Computes horizontal and vertical derivatives respectively. Use with a float
  * sampler and a "2D" texture.  Leave texture/sampler IDs as zero; they ought
  * to be ignored. Only works for fp32 on 64-bit at a time, so derivatives of a
