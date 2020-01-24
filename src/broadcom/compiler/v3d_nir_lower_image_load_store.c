@@ -87,8 +87,7 @@ pack_bits(nir_builder *b, nir_ssa_def *color, const unsigned *bits,
 static void
 v3d_nir_lower_image_store(nir_builder *b, nir_intrinsic_instr *instr)
 {
-        nir_variable *var = nir_intrinsic_get_var(instr, 0);
-        enum pipe_format format = var->data.image.format;
+        enum pipe_format format = nir_intrinsic_format(instr);
         const struct util_format_description *desc =
                 util_format_description(format);
         const struct util_format_channel_description *r_chan = &desc->channel[0];
@@ -164,19 +163,20 @@ static void
 v3d_nir_lower_image_load(nir_builder *b, nir_intrinsic_instr *instr)
 {
         static const unsigned bits16[] = {16, 16, 16, 16};
-        nir_variable *var = nir_intrinsic_get_var(instr, 0);
-        const struct glsl_type *sampler_type = glsl_without_array(var->type);
-        enum glsl_base_type base_type =
-                glsl_get_sampler_result_type(sampler_type);
+        enum pipe_format format = nir_intrinsic_format(instr);
 
-        if (v3d_gl_format_is_return_32(var->data.image.format))
+        if (v3d_gl_format_is_return_32(format))
                 return;
 
         b->cursor = nir_after_instr(&instr->instr);
 
         assert(instr->dest.is_ssa);
         nir_ssa_def *result = &instr->dest.ssa;
-        if (base_type == GLSL_TYPE_FLOAT) {
+        if (util_format_is_pure_uint(format)) {
+                result = nir_format_unpack_uint(b, result, bits16, 4);
+        } else if (util_format_is_pure_sint(format)) {
+                result = nir_format_unpack_sint(b, result, bits16, 4);
+        } else {
             nir_ssa_def *rg = nir_channel(b, result, 0);
             nir_ssa_def *ba = nir_channel(b, result, 1);
             result = nir_vec4(b,
@@ -184,11 +184,6 @@ v3d_nir_lower_image_load(nir_builder *b, nir_intrinsic_instr *instr)
                               nir_unpack_half_2x16_split_y(b, rg),
                               nir_unpack_half_2x16_split_x(b, ba),
                               nir_unpack_half_2x16_split_y(b, ba));
-        } else if (base_type == GLSL_TYPE_INT) {
-                result = nir_format_unpack_sint(b, result, bits16, 4);
-        } else {
-                assert(base_type == GLSL_TYPE_UINT);
-                result = nir_format_unpack_uint(b, result, bits16, 4);
         }
 
         nir_ssa_def_rewrite_uses_after(&instr->dest.ssa, nir_src_for_ssa(result),
@@ -214,10 +209,10 @@ v3d_nir_lower_image_load_store(nir_shader *s)
                                         nir_instr_as_intrinsic(instr);
 
                                 switch (intr->intrinsic) {
-                                case nir_intrinsic_image_deref_load:
+                                case nir_intrinsic_image_load:
                                         v3d_nir_lower_image_load(&b, intr);
                                         break;
-                                case nir_intrinsic_image_deref_store:
+                                case nir_intrinsic_image_store:
                                         v3d_nir_lower_image_store(&b, intr);
                                         break;
                                 default:

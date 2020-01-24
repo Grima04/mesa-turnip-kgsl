@@ -146,6 +146,9 @@ v3d_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
                  */
                 return 0;
 
+        case PIPE_CAP_NIR_IMAGES_AS_DEREF:
+                return 0;
+
         case PIPE_CAP_PREFER_BLIT_BASED_TEXTURE_TRANSFER:
                 /* XXX perf: we don't want to emit these extra blits for
                  * glReadPixels(), since we still have to do an uncached read
