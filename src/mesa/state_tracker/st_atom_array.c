@@ -190,8 +190,11 @@ st_setup_arrays(struct st_context *st,
 
 /* ALWAYS_INLINE helps the compiler realize that most of the parameters are
  * on the stack.
+ *
+ * Return the index of the vertex buffer where current attribs have been
+ * uploaded.
  */
-static void ALWAYS_INLINE
+static int ALWAYS_INLINE
 st_setup_current(struct st_context *st,
                  const struct st_vertex_program *vp,
                  const struct st_common_variant *vp_variant,
@@ -248,7 +251,9 @@ st_setup_current(struct st_context *st,
                     &vbuffer[bufidx].buffer.resource);
       /* Always unmap. The uploader might use explicit flushes. */
       u_upload_unmap(uploader);
+      return bufidx;
    }
+   return -1;
 }
 
 void
@@ -290,7 +295,7 @@ st_update_array(struct st_context *st)
    const struct st_common_variant *vp_variant = st->vp_variant;
 
    struct pipe_vertex_buffer vbuffer[PIPE_MAX_ATTRIBS];
-   unsigned num_vbuffers = 0, first_upload_vbuffer;
+   unsigned num_vbuffers = 0;
    struct pipe_vertex_element velements[PIPE_MAX_ATTRIBS];
    unsigned num_velements;
    bool uses_user_vertex_buffers;
@@ -301,9 +306,9 @@ st_update_array(struct st_context *st)
                    &uses_user_vertex_buffers);
 
    /* _NEW_CURRENT_ATTRIB */
-   /* Setup current uploads */
-   first_upload_vbuffer = num_vbuffers;
-   st_setup_current(st, vp, vp_variant, velements, vbuffer, &num_vbuffers);
+   /* Setup zero-stride attribs. */
+   int current_attrib_buffer =
+      st_setup_current(st, vp, vp_variant, velements, vbuffer, &num_vbuffers);
 
    /* Set the array into cso */
    num_velements = vp->num_inputs + vp_variant->key.passthrough_edgeflags;
@@ -319,8 +324,7 @@ st_update_array(struct st_context *st)
                                        vbuffer, uses_user_vertex_buffers);
    st->last_num_vbuffers = num_vbuffers;
 
-   /* Unreference uploaded buffer resources. */
-   for (unsigned i = first_upload_vbuffer; i < num_vbuffers; ++i) {
-      pipe_resource_reference(&vbuffer[i].buffer.resource, NULL);
-   }
+   /* Unreference uploaded current attrib buffer. */
+   if (current_attrib_buffer >= 0)
+      pipe_resource_reference(&vbuffer[current_attrib_buffer].buffer.resource, NULL);
 }
