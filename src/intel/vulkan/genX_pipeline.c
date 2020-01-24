@@ -1623,6 +1623,13 @@ emit_3dstate_hs_te_ds(struct anv_graphics_pipeline *pipeline,
       hs.ScratchSpaceBasePointer =
          get_scratch_address(&pipeline->base, MESA_SHADER_TESS_CTRL, tcs_bin);
 
+#if GEN_GEN == 12
+      /*  Patch Count threshold specifies the maximum number of patches that
+       *  will be accumulated before a thread dispatch is forced.
+       */
+      hs.PatchCountThreshold = tcs_prog_data->patch_count_threshold;
+#endif
+
 #if GEN_GEN >= 9
       hs.DispatchMode = tcs_prog_data->base.dispatch_mode;
       hs.IncludePrimitiveID = tcs_prog_data->include_primitive_id;
