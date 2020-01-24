@@ -1972,6 +1972,7 @@
     <field name="Per-Thread Scratch Space" start="160" end="163" type="uint"/>
     <field name="Scratch Space Base Pointer" start="170" end="223" type="address"/>
     <field name="Include Primitive ID" start="224" end="224" type="bool"/>
+    <field name="Patch Count Threshold" start="225" end="227" type="uint"/>
     <field name="Vertex URB Entry Read Offset" start="228" end="233" type="uint"/>
     <field name="Vertex URB Entry Read Length" start="235" end="240" type="uint"/>
     <field name="Dispatch Mode" start="241" end="242" type="uint" prefix="DISPATCH_MODE">
