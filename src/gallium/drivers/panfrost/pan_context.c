@@ -1548,7 +1548,7 @@ panfrost_draw_vbo(
                 ctx->payloads[PIPE_SHADER_FRAGMENT].prefix.index_count = MALI_POSITIVE(ctx->vertex_count);
 
                 /* Reverse index state */
-                ctx->payloads[PIPE_SHADER_FRAGMENT].prefix.indices = (u64) NULL;
+                ctx->payloads[PIPE_SHADER_FRAGMENT].prefix.indices = (mali_ptr) 0;
         }
 
         /* Dispatch "compute jobs" for the vertex/tiler pair as (1,
