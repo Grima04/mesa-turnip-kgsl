@@ -244,18 +244,17 @@ u_upload_alloc(struct u_upload_mgr *upload,
                void **ptr)
 {
    unsigned buffer_size = upload->buffer_size;
-   unsigned offset;
+   unsigned offset = MAX2(min_out_offset, upload->offset);
 
-   min_out_offset = align(min_out_offset, alignment);
-
-   offset = align(upload->offset, alignment);
-   offset = MAX2(offset, min_out_offset);
+   offset = align(offset, alignment);
 
    /* Make sure we have enough space in the upload buffer
     * for the sub-allocation.
     */
    if (unlikely(offset + size > buffer_size)) {
-      buffer_size = u_upload_alloc_buffer(upload, min_out_offset + size);
+      /* Allocate a new buffer and set the offset to the smallest one. */
+      offset = align(min_out_offset, alignment);
+      buffer_size = u_upload_alloc_buffer(upload, offset + size);
 
       if (unlikely(!buffer_size)) {
          *out_offset = ~0;
@@ -263,8 +262,6 @@ u_upload_alloc(struct u_upload_mgr *upload,
          *ptr = NULL;
          return;
       }
-
-      offset = min_out_offset;
    }
 
    if (unlikely(!upload->map)) {
