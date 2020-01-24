@@ -168,6 +168,20 @@ wait_for_available(struct tu_device *device, struct tu_query_pool *pool,
    return vk_error(device->instance, VK_TIMEOUT);
 }
 
+/* Writes a query value to a buffer from the CPU. */
+static void
+write_query_value_cpu(char* base,
+                      uint32_t offset,
+                      uint64_t value,
+                      VkQueryResultFlags flags)
+{
+   if (flags & VK_QUERY_RESULT_64_BIT) {
+      *(uint64_t*)(base + (offset * sizeof(uint64_t))) = value;
+   } else {
+      *(uint32_t*)(base + (offset * sizeof(uint32_t))) = value;
+   }
+}
+
 static VkResult
 get_occlusion_query_pool_results(struct tu_device *device,
                                  struct tu_query_pool *pool,
@@ -180,7 +194,7 @@ get_occlusion_query_pool_results(struct tu_device *device,
 {
    assert(dataSize >= stride * queryCount);
 
-   char *query_result = pData;
+   char *result_base = pData;
    VkResult result = VK_SUCCESS;
    for (uint32_t i = 0; i < queryCount; i++) {
       uint32_t query = firstQuery + i;
@@ -203,23 +217,14 @@ get_occlusion_query_pool_results(struct tu_device *device,
           */
          result = VK_NOT_READY;
          if (!(flags & VK_QUERY_RESULT_WITH_AVAILABILITY_BIT)) {
-            query_result += stride;
+            result_base += stride;
             continue;
          }
       }
 
-      uint64_t value;
-      if (available) {
-         value = slot->result.value;
-      } else if (flags & VK_QUERY_RESULT_WITH_AVAILABILITY_BIT) {
-         /* From the Vulkan 1.1.130 spec:
-          *
-          *    If VK_QUERY_RESULT_WITH_AVAILABILITY_BIT is set, the final
-          *    integer value written for each query is non-zero if the query’s
-          *    status was available or zero if the status was unavailable.
-          */
-         value = 0;
-      } else if (flags & VK_QUERY_RESULT_PARTIAL_BIT) {
+      if (available)
+         write_query_value_cpu(result_base, 0, slot->result.value, flags);
+      else if (flags & VK_QUERY_RESULT_PARTIAL_BIT)
           /* From the Vulkan 1.1.130 spec:
            *
            *   If VK_QUERY_RESULT_PARTIAL_BIT is set, VK_QUERY_RESULT_WAIT_BIT
@@ -229,15 +234,18 @@ get_occlusion_query_pool_results(struct tu_device *device,
            *
            * Just return 0 here for simplicity since it's a valid result.
            */
-         value = 0;
-      }
+         write_query_value_cpu(result_base, 0, 0, flags);
 
-      if (flags & VK_QUERY_RESULT_64_BIT) {
-         *(uint64_t*)query_result = value;
-      } else {
-         *(uint32_t*)query_result = value;
-      }
-      query_result += stride;
+      if (flags & VK_QUERY_RESULT_WITH_AVAILABILITY_BIT)
+         /* From the Vulkan 1.1.130 spec:
+          *
+          *    If VK_QUERY_RESULT_WITH_AVAILABILITY_BIT is set, the final
+          *    integer value written for each query is non-zero if the query’s
+          *    status was available or zero if the status was unavailable.
+          */
+         write_query_value_cpu(result_base, 1, available, flags);
+
+      result_base += stride;
    }
    return result;
 }
