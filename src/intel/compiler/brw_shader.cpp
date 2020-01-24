@@ -493,6 +493,10 @@ brw_instruction_name(const struct gen_device_info *devinfo, enum opcode op)
       return "barrier";
    case SHADER_OPCODE_MULH:
       return "mulh";
+   case SHADER_OPCODE_ISUB_SAT:
+      return "isub_sat";
+   case SHADER_OPCODE_USUB_SAT:
+      return "usub_sat";
    case SHADER_OPCODE_MOV_INDIRECT:
       return "mov_indirect";
 
