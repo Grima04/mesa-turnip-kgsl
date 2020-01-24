@@ -4625,7 +4625,7 @@ cmd_buffer_begin_subpass(struct anv_cmd_buffer *cmd_buffer,
             (att_state->fast_clear && !att_state->clear_color_is_zero_one) ||
             att_state->input_aux_usage != att_state->aux_usage;
 
-      VkImageLayout target_layout, target_stencil_layout;
+      VkImageLayout target_layout;
       if (iview->aspect_mask & VK_IMAGE_ASPECT_ANY_COLOR_BIT_ANV &&
           !input_needs_resolve) {
          /* Layout transitions before the final only help to enable sampling
@@ -4636,8 +4636,10 @@ cmd_buffer_begin_subpass(struct anv_cmd_buffer *cmd_buffer,
          target_layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
       } else {
          target_layout = subpass->attachments[i].layout;
-         target_stencil_layout = subpass->attachments[i].stencil_layout;
       }
+
+      VkImageLayout target_stencil_layout =
+         subpass->attachments[i].stencil_layout;
 
       uint32_t base_layer, layer_count;
       if (image->type == VK_IMAGE_TYPE_3D) {
