@@ -2090,7 +2090,11 @@ si_get_shader_part(struct si_screen *sscreen,
 	result = CALLOC_STRUCT(si_shader_part);
 	result->key = *key;
 
+	struct si_shader_selector sel = {};
+	sel.screen = sscreen;
+
 	struct si_shader shader = {};
+	shader.selector = &sel;
 
 	switch (type) {
 	case PIPE_SHADER_VERTEX:
