@@ -1530,6 +1530,9 @@ apply_var_decoration(struct vtn_builder *b,
    case SpvDecorationFlat:
       var_data->interpolation = INTERP_MODE_FLAT;
       break;
+   case SpvDecorationExplicitInterpAMD:
+      var_data->interpolation = INTERP_MODE_EXPLICIT;
+      break;
    case SpvDecorationCentroid:
       var_data->centroid = true;
       break;

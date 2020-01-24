@@ -779,6 +779,9 @@ struct_member_decoration_cb(struct vtn_builder *b,
    case SpvDecorationFlat:
       ctx->fields[member].interpolation = INTERP_MODE_FLAT;
       break;
+   case SpvDecorationExplicitInterpAMD:
+      ctx->fields[member].interpolation = INTERP_MODE_EXPLICIT;
+      break;
    case SpvDecorationCentroid:
       ctx->fields[member].centroid = true;
       break;
@@ -984,6 +987,7 @@ type_decoration_cb(struct vtn_builder *b,
    case SpvDecorationPatch:
    case SpvDecorationCentroid:
    case SpvDecorationSample:
+   case SpvDecorationExplicitInterpAMD:
    case SpvDecorationVolatile:
    case SpvDecorationCoherent:
    case SpvDecorationNonWritable:
