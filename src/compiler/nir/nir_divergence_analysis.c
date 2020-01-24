@@ -269,6 +269,7 @@ visit_intrinsic(bool *divergent, nir_intrinsic_instr *instr,
    case nir_intrinsic_interp_deref_at_offset:
    case nir_intrinsic_interp_deref_at_sample:
    case nir_intrinsic_interp_deref_at_centroid:
+   case nir_intrinsic_interp_deref_at_vertex:
    case nir_intrinsic_load_tess_coord:
    case nir_intrinsic_load_point_coord:
    case nir_intrinsic_load_frag_coord:

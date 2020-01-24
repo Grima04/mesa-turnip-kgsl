@@ -520,7 +520,8 @@ lower_interpolate_at(nir_intrinsic_instr *intrin, struct lower_io_state *state,
    nir_intrinsic_set_interp_mode(bary_setup, var->data.interpolation);
 
    if (intrin->intrinsic == nir_intrinsic_interp_deref_at_sample ||
-       intrin->intrinsic == nir_intrinsic_interp_deref_at_offset)
+       intrin->intrinsic == nir_intrinsic_interp_deref_at_offset ||
+       intrin->intrinsic == nir_intrinsic_interp_deref_at_vertex)
       nir_src_copy(&bary_setup->src[0], &intrin->src[1], bary_setup);
 
    nir_builder_instr_insert(b, &bary_setup->instr);
@@ -581,6 +582,7 @@ nir_lower_io_block(nir_block *block,
       case nir_intrinsic_interp_deref_at_centroid:
       case nir_intrinsic_interp_deref_at_sample:
       case nir_intrinsic_interp_deref_at_offset:
+      case nir_intrinsic_interp_deref_at_vertex:
          /* We can optionally lower these to load_interpolated_input */
          if (options->use_interpolated_input_intrinsics)
             break;
@@ -653,6 +655,7 @@ nir_lower_io_block(nir_block *block,
       case nir_intrinsic_interp_deref_at_centroid:
       case nir_intrinsic_interp_deref_at_sample:
       case nir_intrinsic_interp_deref_at_offset:
+      case nir_intrinsic_interp_deref_at_vertex:
          assert(vertex_index == NULL);
          replacement = lower_interpolate_at(intrin, state, var, offset,
                                             component_offset, deref->type);

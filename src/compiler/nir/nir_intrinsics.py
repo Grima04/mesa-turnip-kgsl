@@ -170,15 +170,17 @@ intrinsic("copy_deref", src_comp=[-1, -1], indices=[DST_ACCESS, SRC_ACCESS])
 
 # Interpolation of input.  The interp_deref_at* intrinsics are similar to the
 # load_var intrinsic acting on a shader input except that they interpolate the
-# input differently.  The at_sample and at_offset intrinsics take an
-# additional source that is an integer sample id or a vec2 position offset
-# respectively.
+# input differently.  The at_sample, at_offset and at_vertex intrinsics take an
+# additional source that is an integer sample id, a vec2 position offset, or a
+# vertex ID respectively.
 
 intrinsic("interp_deref_at_centroid", dest_comp=0, src_comp=[1],
           flags=[ CAN_ELIMINATE, CAN_REORDER])
 intrinsic("interp_deref_at_sample", src_comp=[1, 1], dest_comp=0,
           flags=[CAN_ELIMINATE, CAN_REORDER])
 intrinsic("interp_deref_at_offset", src_comp=[1, 2], dest_comp=0,
+          flags=[CAN_ELIMINATE, CAN_REORDER])
+intrinsic("interp_deref_at_vertex", src_comp=[1, 1], dest_comp=0,
           flags=[CAN_ELIMINATE, CAN_REORDER])
 
 # Gets the length of an unsized array at the end of a buffer
