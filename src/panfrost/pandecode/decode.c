@@ -775,20 +775,6 @@ pandecode_sfbd(uint64_t gpu_va, int job_no, bool is_fragment, unsigned gpu_id)
 }
 
 static void
-pandecode_u32_slide(unsigned name, const u32 *slide, unsigned count)
-{
-        pandecode_log(".unknown%d = {", name);
-
-        for (int i = 0; i < count; ++i)
-                pandecode_log_cont("%X, ", slide[i]);
-
-        pandecode_log("},\n");
-}
-
-#define SHORT_SLIDE(num) \
-        pandecode_u32_slide(num, s->unknown ## num, ARRAY_SIZE(s->unknown ## num))
-
-static void
 pandecode_compute_fbd(uint64_t gpu_va, int job_no)
 {
         struct pandecode_mapped_memory *mem = pandecode_find_mapped_gpu_mem_containing(gpu_va);
@@ -797,7 +783,12 @@ pandecode_compute_fbd(uint64_t gpu_va, int job_no)
         pandecode_log("struct mali_compute_fbd framebuffer_%"PRIx64"_%d = {\n", gpu_va, job_no);
         pandecode_indent++;
 
-        SHORT_SLIDE(1);
+        pandecode_log(".unknown1 = {");
+
+        for (int i = 0; i < ARRAY_SIZE(s->unknown1); ++i)
+                pandecode_log_cont("%X, ", s->unknown1[i]);
+
+        pandecode_log("},\n");
 
         pandecode_indent--;
         pandecode_log_cont("},\n");
