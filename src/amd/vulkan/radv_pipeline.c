@@ -2830,13 +2830,15 @@ void radv_create_shaders(struct radv_pipeline *pipeline,
 			if (!aco)
 				NIR_PASS_V(nir[i], nir_lower_bool_to_int32);
 		}
-
-		if (radv_can_dump_shader(device, modules[i], false))
-			nir_print_shader(nir[i], stderr);
 	}
 
 	if (nir[MESA_SHADER_FRAGMENT])
 		radv_lower_fs_io(nir[MESA_SHADER_FRAGMENT]);
+
+	for (int i = 0; i < MESA_SHADER_STAGES; ++i) {
+		if (radv_can_dump_shader(device, modules[i], false))
+			nir_print_shader(nir[i], stderr);
+	}
 
 	radv_fill_shader_keys(device, keys, key, nir);
 
