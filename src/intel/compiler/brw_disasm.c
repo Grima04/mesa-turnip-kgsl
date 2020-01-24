@@ -1444,6 +1444,19 @@ src_sends_ia(FILE *file,
 }
 
 static int
+src_send_desc_ia(FILE *file,
+                 const struct gen_device_info *devinfo,
+                 unsigned _addr_subreg_nr)
+{
+   string(file, "a0");
+   if (_addr_subreg_nr)
+      format(file, ".%d", _addr_subreg_nr);
+   format(file, "<0>UD");
+
+   return 0;
+}
+
+static int
 src0(FILE *file, const struct gen_device_info *devinfo, const brw_inst *inst)
 {
    if (is_split_send(devinfo, brw_inst_opcode(devinfo, inst))) {
@@ -1786,7 +1799,7 @@ brw_disassemble_inst(FILE *file, const struct gen_device_info *devinfo,
          pad(file, 64);
          if (brw_inst_send_sel_reg32_desc(devinfo, inst)) {
             /* show the indirect descriptor source */
-            err |= src_sends_ia(file, devinfo, BRW_REGISTER_TYPE_UD, 0, 0);
+            err |= src_send_desc_ia(file, devinfo, 0);
          } else {
             has_imm_desc = true;
             imm_desc = brw_inst_send_desc(devinfo, inst);
@@ -1796,8 +1809,8 @@ brw_disassemble_inst(FILE *file, const struct gen_device_info *devinfo,
          pad(file, 80);
          if (brw_inst_send_sel_reg32_ex_desc(devinfo, inst)) {
             /* show the indirect descriptor source */
-            err |= src_sends_ia(file, devinfo, BRW_REGISTER_TYPE_UD, 0,
-                                brw_inst_send_ex_desc_ia_subreg_nr(devinfo, inst));
+            err |= src_send_desc_ia(file, devinfo,
+                                    brw_inst_send_ex_desc_ia_subreg_nr(devinfo, inst));
          } else {
             has_imm_ex_desc = true;
             imm_ex_desc = brw_inst_sends_ex_desc(devinfo, inst);
