@@ -176,7 +176,7 @@ st_setup_arrays(struct st_context *st,
       /* We can assume that we have array for the binding */
       assert(attrmask);
       /* Walk attributes belonging to the binding */
-      while (attrmask) {
+      do {
          const gl_vert_attrib attr = u_bit_scan(&attrmask);
          const struct gl_array_attributes *const attrib
             = _mesa_draw_array_attrib(vao, attr);
@@ -184,7 +184,7 @@ st_setup_arrays(struct st_context *st,
          init_velement(vp, velements, &attrib->Format, off,
                        binding->InstanceDivisor, bufidx,
                        input_to_index[attr]);
-      }
+      } while (attrmask);
    }
 }
 
@@ -211,7 +211,7 @@ st_setup_current(struct st_context *st,
       const unsigned bufidx = (*num_vbuffers)++;
       unsigned max_alignment = 1;
 
-      while (curmask) {
+      do {
          const gl_vert_attrib attr = u_bit_scan(&curmask);
          const struct gl_array_attributes *const attrib
             = _mesa_draw_current_attrib(ctx, attr);
@@ -226,7 +226,7 @@ st_setup_current(struct st_context *st,
                        bufidx, input_to_index[attr]);
 
          cursor += alignment;
-      }
+      } while (curmask);
 
       vbuffer[bufidx].is_user_buffer = false;
       vbuffer[bufidx].buffer.resource = NULL;
