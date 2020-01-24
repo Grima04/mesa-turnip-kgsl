@@ -1136,6 +1136,9 @@ struct brw_tcs_prog_data
 
    /** Number vertices in output patch */
    int instances;
+
+   /** Track patch count threshold */
+   int patch_count_threshold;
 };
 
 

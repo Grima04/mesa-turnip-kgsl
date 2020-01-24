@@ -323,6 +323,34 @@ vec4_tcs_visitor::nir_emit_intrinsic(nir_intrinsic_instr *instr)
    }
 }
 
+/**
+ * Return the number of patches to accumulate before an 8_PATCH mode thread is
+ * launched.  In cases with a large number of input control points and a large
+ * amount of VS outputs, the VS URB space needed to store an entire 8 patches
+ * worth of data can be prohibitive, so it can be beneficial to launch threads
+ * early.
+ *
+ * See the 3DSTATE_HS::Patch Count Threshold documentation for the recommended
+ * values.  Note that 0 means to "disable" early dispatch, meaning to wait for
+ * a full 8 patches as normal.
+ */
+static int
+get_patch_count_threshold(int input_control_points)
+{
+   if (input_control_points <= 4)
+      return 0;
+   else if (input_control_points <= 6)
+      return 5;
+   else if (input_control_points <= 8)
+      return 4;
+   else if (input_control_points <= 10)
+      return 3;
+   else if (input_control_points <= 14)
+      return 2;
+
+   /* Return patch count 1 for PATCHLIST_15 - PATCHLIST_32 */
+   return 1;
+}
 
 extern "C" const unsigned *
 brw_compile_tcs(const struct brw_compiler *compiler,
@@ -361,6 +389,8 @@ brw_compile_tcs(const struct brw_compiler *compiler,
 
    bool has_primitive_id =
       nir->info.system_values_read & (1 << SYSTEM_VALUE_PRIMITIVE_ID);
+
+   prog_data->patch_count_threshold = get_patch_count_threshold(key->input_vertices);
 
    if (compiler->use_tcs_8_patch &&
        nir->info.tess.tcs_vertices_out <= (devinfo->gen >= 12 ? 32 : 16) &&
