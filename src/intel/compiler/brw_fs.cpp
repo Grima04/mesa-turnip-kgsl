@@ -1088,7 +1088,8 @@ fs_inst::flags_written() const
                             opcode != BRW_OPCODE_WHILE)) ||
        opcode == FS_OPCODE_FB_WRITE) {
       return flag_mask(this, 1);
-   } else if (opcode == SHADER_OPCODE_FIND_LIVE_CHANNEL) {
+   } else if (opcode == SHADER_OPCODE_FIND_LIVE_CHANNEL ||
+              opcode == FS_OPCODE_LOAD_LIVE_CHANNELS) {
       return flag_mask(this, 32);
    } else {
       return flag_mask(dst, size_written);

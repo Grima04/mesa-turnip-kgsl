@@ -2224,7 +2224,16 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
          brw_find_live_channel(p, dst, mask);
          break;
       }
-
+      case FS_OPCODE_LOAD_LIVE_CHANNELS: {
+         assert(devinfo->gen >= 8);
+         assert(inst->force_writemask_all && inst->group == 0);
+         assert(inst->dst.file == BAD_FILE);
+         brw_set_default_exec_size(p, BRW_EXECUTE_1);
+         brw_MOV(p, retype(brw_flag_subreg(inst->flag_subreg),
+                           BRW_REGISTER_TYPE_UD),
+                 retype(brw_mask_reg(0), BRW_REGISTER_TYPE_UD));
+         break;
+      }
       case SHADER_OPCODE_BROADCAST:
          assert(inst->force_writemask_all);
          brw_broadcast(p, dst, src[0], src[1]);
