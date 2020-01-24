@@ -317,6 +317,16 @@ fs_visitor::opt_cse_local(bblock_t *block, int &ip)
          }
       }
 
+      /* Discard jumps aren't represented in the CFG unfortunately, so we need
+       * to make sure that they behave as a CSE barrier, since we lack global
+       * dataflow information.  This is particularly likely to cause problems
+       * with instructions dependent on the current execution mask like
+       * SHADER_OPCODE_FIND_LIVE_CHANNEL.
+       */
+      if (inst->opcode == FS_OPCODE_DISCARD_JUMP ||
+          inst->opcode == FS_OPCODE_PLACEHOLDER_HALT)
+         aeb.make_empty();
+
       foreach_in_list_safe(aeb_entry, entry, &aeb) {
          /* Kill all AEB entries that write a different value to or read from
           * the flag register if we just wrote it.
