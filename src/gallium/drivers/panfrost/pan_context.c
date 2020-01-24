@@ -1093,7 +1093,7 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                 panfrost_upload_sysvals(ctx, transfer.cpu, ss, i);
 
                 /* Upload uniforms */
-                if (has_uniforms) {
+                if (has_uniforms && uniform_size) {
                         const void *cpu = panfrost_map_constant_buffer_cpu(buf, 0);
                         memcpy(transfer.cpu + sys_size, cpu, uniform_size);
                 }
