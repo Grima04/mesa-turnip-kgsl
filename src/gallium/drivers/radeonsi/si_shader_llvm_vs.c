@@ -859,10 +859,11 @@ void si_llvm_build_vs_prolog(struct si_shader_context *ctx,
 	LLVMValueRef ret, func;
 	int num_returns, i;
 	unsigned first_vs_vgpr = key->vs_prolog.num_merged_next_stage_vgprs;
-	unsigned num_input_vgprs = key->vs_prolog.num_merged_next_stage_vgprs + 4;
+	unsigned num_input_vgprs = key->vs_prolog.num_merged_next_stage_vgprs + 4 +
+				   (key->vs_prolog.has_ngg_cull_inputs ? 1 : 0);
 	struct ac_arg input_sgpr_param[key->vs_prolog.num_input_sgprs];
-	struct ac_arg input_vgpr_param[9];
-	LLVMValueRef input_vgprs[9];
+	struct ac_arg input_vgpr_param[10];
+	LLVMValueRef input_vgprs[10];
 	unsigned num_all_input_regs = key->vs_prolog.num_input_sgprs +
 				      num_input_vgprs;
 	unsigned user_sgpr_base = key->vs_prolog.num_merged_next_stage_vgprs ? 8 : 0;
