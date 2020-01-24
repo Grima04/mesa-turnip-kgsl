@@ -1283,6 +1283,35 @@ sampler_type_name(enum mali_sampler_type t)
 
 }
 
+static void
+print_texture_barrier(FILE *fp, uint32_t *word)
+{
+        midgard_texture_barrier_word *barrier = (midgard_texture_barrier_word *) word;
+
+        if (!barrier->cont)
+                fprintf(fp, "/* cont missing? */");
+
+        if (!barrier->last)
+                fprintf(fp, "/* last missing? */");
+
+        if (barrier->zero1)
+                fprintf(fp, "/* zero1 = 0x%X */ ", barrier->zero1);
+
+        if (barrier->zero2)
+                fprintf(fp, "/* zero2 = 0x%X */ ", barrier->zero2);
+
+        if (barrier->zero3)
+                fprintf(fp, "/* zero3 = 0x%X */ ", barrier->zero3);
+
+        if (barrier->zero4)
+                fprintf(fp, "/* zero4 = 0x%X */ ", barrier->zero4);
+
+        if (barrier->zero5)
+                fprintf(fp, "/* zero4 = 0x%" PRIx64 " */ ", barrier->zero5);
+
+        fprintf(fp, " 0x%X\n", barrier->unknown4);
+}
+
 #undef DEFINE_CASE
 
 static void
@@ -1295,6 +1324,12 @@ print_texture_word(FILE *fp, uint32_t *word, unsigned tabs, unsigned in_reg_base
 
         /* Broad category of texture operation in question */
         print_texture_op(fp, texture->op, texture->is_gather);
+
+        /* Barriers use a dramatically different code path */
+        if (texture->op == TEXTURE_OP_BARRIER) {
+                print_texture_barrier(fp, word);
+                return;
+        }
 
         /* Specific format in question */
         print_texture_format(fp, texture->format);
