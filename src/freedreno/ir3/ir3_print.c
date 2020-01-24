@@ -206,10 +206,6 @@ print_instr(struct ir3_instruction *instr, int lvl)
 	for (i = 0; i < instr->regs_count; i++) {
 		struct ir3_register *reg = instr->regs[i];
 
-		/* skip the samp/tex src if it has been lowered to immed: */
-		if ((i == 1) && is_tex(instr) && !(instr->flags & IR3_INSTR_S2EN))
-			continue;
-
 		printf(i ? ", " : "");
 		print_reg_name(reg);
 	}

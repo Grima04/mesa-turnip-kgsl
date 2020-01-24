@@ -723,7 +723,12 @@ instr_cp(struct ir3_cp_ctx *ctx, struct ir3_instruction *instr)
 			instr->flags &= ~IR3_INSTR_S2EN;
 			instr->cat5.samp = samp->regs[1]->iim_val;
 			instr->cat5.tex  = tex->regs[1]->iim_val;
-			instr->regs[1]->instr = NULL;
+
+			/* shuffle around the regs to remove the first src: */
+			instr->regs_count--;
+			for (unsigned i = 1; i < instr->regs_count; i++) {
+				instr->regs[i] = instr->regs[i + 1];
+			}
 		}
 	}
 }
