@@ -4183,6 +4183,13 @@ iris_store_tcs_state(struct iris_context *ice,
       hs.MaximumNumberofThreads = devinfo->max_tcs_threads - 1;
       hs.IncludeVertexHandles = true;
 
+#if GEN_GEN == 12
+      /* Patch Count threshold specifies the maximum number of patches that
+       * will be accumulated before a thread dispatch is forced.
+       */
+      hs.PatchCountThreshold = tcs_prog_data->patch_count_threshold;
+#endif
+
 #if GEN_GEN >= 9
       hs.DispatchMode = vue_prog_data->dispatch_mode;
       hs.IncludePrimitiveID = tcs_prog_data->include_primitive_id;
