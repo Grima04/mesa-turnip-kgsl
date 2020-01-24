@@ -1667,7 +1667,7 @@ tu_create_cmd_buffer(struct tu_device *device,
 
    VkResult result = tu_bo_init_new(device, &cmd_buffer->scratch_bo, 0x1000);
    if (result != VK_SUCCESS)
-      return result;
+      goto fail_scratch_bo;
 
 #define VSC_DATA_SIZE(pitch)  ((pitch) * 32 + 0x100)  /* extra size to store VSC_SIZE */
 #define VSC_DATA2_SIZE(pitch) ((pitch) * 32)
@@ -1690,6 +1690,8 @@ fail_vsc_data2:
    tu_bo_finish(cmd_buffer->device, &cmd_buffer->vsc_data);
 fail_vsc_data:
    tu_bo_finish(cmd_buffer->device, &cmd_buffer->scratch_bo);
+fail_scratch_bo:
+   list_del(&cmd_buffer->pool_link);
    return result;
 }
 
