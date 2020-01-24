@@ -1288,6 +1288,9 @@ print_texture_barrier(FILE *fp, uint32_t *word)
 {
         midgard_texture_barrier_word *barrier = (midgard_texture_barrier_word *) word;
 
+        if (barrier->type != 0x4)
+                fprintf(fp, "/* barrier tag %X != 0x4 */ ", barrier->type);
+
         if (!barrier->cont)
                 fprintf(fp, "/* cont missing? */");
 
@@ -1329,7 +1332,8 @@ print_texture_word(FILE *fp, uint32_t *word, unsigned tabs, unsigned in_reg_base
         if (texture->op == TEXTURE_OP_BARRIER) {
                 print_texture_barrier(fp, word);
                 return;
-        }
+        } else  if (texture->type == 0x4)
+                fprintf (fp, "/* nonbarrier had tag 0x4 */ ");
 
         /* Specific format in question */
         print_texture_format(fp, texture->format);
