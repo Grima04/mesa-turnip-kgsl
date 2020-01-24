@@ -1328,6 +1328,8 @@ anv_nir_apply_pipeline_layout(const struct anv_physical_device *pdevice,
       if (!function->impl)
          continue;
 
+      nir_builder_init(&state.builder, function->impl);
+
       /* Before we do the normal lowering, we look for any SSBO operations
        * that we can lower to the BTI model and lower them up-front.  The BTI
        * model can perform better than the A64 model for a couple reasons:
@@ -1360,7 +1362,6 @@ anv_nir_apply_pipeline_layout(const struct anv_physical_device *pdevice,
        */
       lower_direct_buffer_access(function->impl, &state);
 
-      nir_builder_init(&state.builder, function->impl);
       nir_foreach_block(block, function->impl)
          apply_pipeline_layout_block(block, &state);
       nir_metadata_preserve(function->impl, nir_metadata_block_index |
