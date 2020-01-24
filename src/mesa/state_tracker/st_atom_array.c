@@ -191,7 +191,7 @@ st_setup_arrays(struct st_context *st,
 /* ALWAYS_INLINE helps the compiler realize that most of the parameters are
  * on the stack.
  */
-void ALWAYS_INLINE
+static void ALWAYS_INLINE
 st_setup_current(struct st_context *st,
                  const struct st_vertex_program *vp,
                  const struct st_common_variant *vp_variant,
