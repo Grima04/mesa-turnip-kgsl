@@ -2674,6 +2674,9 @@ void select_instruction(opt_ctx &ctx, aco_ptr<Instruction>& instr)
    unsigned num_operands = 1;
    if (instr->isSALU() || (ctx.program->chip_class >= GFX10 && can_use_VOP3(ctx, instr)))
       num_operands = instr->operands.size();
+   /* catch VOP2 with a 3rd SGPR operand (e.g. v_cndmask_b32, v_addc_co_u32) */
+   else if (instr->isVALU() && instr->operands.size() >= 3)
+      return;
 
    unsigned sgpr_ids[2] = {0, 0};
    bool is_literal_sgpr = false;
