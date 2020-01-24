@@ -2163,7 +2163,7 @@ void
 isl_buffer_fill_state_s(const struct isl_device *dev, void *state,
                         const struct isl_buffer_fill_state_info *restrict info)
 {
-   isl_genX_call(dev, buffer_fill_state_s, state, info);
+   isl_genX_call(dev, buffer_fill_state_s, dev, state, info);
 }
 
 void
