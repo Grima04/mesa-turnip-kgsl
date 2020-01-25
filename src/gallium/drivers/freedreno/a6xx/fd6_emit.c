@@ -1075,21 +1075,7 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 
 	if (dirty & FD_DIRTY_BLEND) {
 		struct fd6_blend_stateobj *blend = fd6_blend_stateobj(ctx->blend);
-		uint32_t i;
-
-		for (i = 0; i < pfb->nr_cbufs; i++) {
-			OUT_PKT4(ring, REG_A6XX_RB_MRT_CONTROL(i), 1);
-			OUT_RING(ring, blend->rb_mrt[i].control);
-
-			OUT_PKT4(ring, REG_A6XX_RB_MRT_BLEND_CONTROL(i), 1);
-			OUT_RING(ring, blend->rb_mrt[i].blend_control);
-		}
-
-		OUT_PKT4(ring, REG_A6XX_RB_DITHER_CNTL, 1);
-		OUT_RING(ring, blend->rb_dither_cntl);
-
-		OUT_PKT4(ring, REG_A6XX_SP_BLEND_CNTL, 1);
-		OUT_RING(ring, blend->sp_blend_cntl);
+		fd6_emit_add_group(emit, blend->stateobj, FD6_GROUP_BLEND, ENABLE_DRAW);
 	}
 
 	if (dirty & (FD_DIRTY_BLEND | FD_DIRTY_SAMPLE_MASK)) {
