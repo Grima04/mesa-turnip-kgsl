@@ -1078,22 +1078,8 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 		uint32_t i;
 
 		for (i = 0; i < pfb->nr_cbufs; i++) {
-			enum pipe_format format = pipe_surface_format(pfb->cbufs[i]);
-			bool is_int = util_format_is_pure_integer(format);
-			bool has_alpha = util_format_has_alpha(format);
-			uint32_t control = blend->rb_mrt[i].control;
-
-			if (is_int) {
-				control &= A6XX_RB_MRT_CONTROL_COMPONENT_ENABLE__MASK;
-				control |= A6XX_RB_MRT_CONTROL_ROP_CODE(ROP_COPY);
-			}
-
-			if (!has_alpha) {
-				control &= ~A6XX_RB_MRT_CONTROL_BLEND2;
-			}
-
 			OUT_PKT4(ring, REG_A6XX_RB_MRT_CONTROL(i), 1);
-			OUT_RING(ring, control);
+			OUT_RING(ring, blend->rb_mrt[i].control);
 
 			OUT_PKT4(ring, REG_A6XX_RB_MRT_BLEND_CONTROL(i), 1);
 			OUT_RING(ring, blend->rb_mrt[i].blend_control);
