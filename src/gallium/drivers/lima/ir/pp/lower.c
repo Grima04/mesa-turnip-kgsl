@@ -150,14 +150,9 @@ static bool ppir_lower_texture(ppir_block *block, ppir_node *node)
 {
    ppir_load_texture_node *load_tex = ppir_node_to_load_texture(node);
    ppir_dest *dest = ppir_node_get_dest(node);
-
-   if (ppir_node_is_root(node) && dest->type == ppir_target_ssa) {
-      ppir_node_delete(node);
-      return true;
-   }
-
    ppir_node *src_coords = ppir_node_get_src(node, 0)->node;
    ppir_load_node *load = NULL;
+
    if (src_coords && ppir_node_has_single_src_succ(src_coords) &&
        (src_coords->op == ppir_op_load_coords))
       load = ppir_node_to_load(src_coords);
