@@ -62,7 +62,7 @@ static uint32_t fmt2swap(enum pipe_format format)
 static bool
 use_hw_binning(struct fd_batch *batch)
 {
-	struct fd_gmem_stateobj *gmem = &batch->ctx->gmem;
+	const struct fd_gmem_stateobj *gmem = &batch->ctx->gmem;
 
 	/* we hardcoded a limit of 8 "pipes", we can increase this limit
 	 * at the cost of a slightly larger command stream
@@ -136,7 +136,7 @@ prepare_tile_fini_ib(struct fd_batch *batch)
 {
 	struct fd_context *ctx = batch->ctx;
 	struct fd2_context *fd2_ctx = fd2_context(ctx);
-	struct fd_gmem_stateobj *gmem = &ctx->gmem;
+	const struct fd_gmem_stateobj *gmem = &ctx->gmem;
 	struct pipe_framebuffer_state *pfb = &batch->framebuffer;
 	struct fd_ringbuffer *ring;
 
@@ -277,7 +277,7 @@ fd2_emit_tile_mem2gmem(struct fd_batch *batch, const struct fd_tile *tile)
 {
 	struct fd_context *ctx = batch->ctx;
 	struct fd2_context *fd2_ctx = fd2_context(ctx);
-	struct fd_gmem_stateobj *gmem = &ctx->gmem;
+	const struct fd_gmem_stateobj *gmem = &ctx->gmem;
 	struct fd_ringbuffer *ring = batch->gmem;
 	struct pipe_framebuffer_state *pfb = &batch->framebuffer;
 	unsigned bin_w = tile->bin_w;
@@ -478,7 +478,7 @@ fd2_emit_tile_init(struct fd_batch *batch)
 	struct fd_context *ctx = batch->ctx;
 	struct fd_ringbuffer *ring = batch->gmem;
 	struct pipe_framebuffer_state *pfb = &batch->framebuffer;
-	struct fd_gmem_stateobj *gmem = &ctx->gmem;
+	const struct fd_gmem_stateobj *gmem = &ctx->gmem;
 	enum pipe_format format = pipe_surface_format(pfb->cbufs[0]);
 	uint32_t reg;
 
