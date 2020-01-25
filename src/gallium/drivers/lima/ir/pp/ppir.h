@@ -412,6 +412,7 @@ ppir_dep *ppir_dep_for_pred(ppir_node *node, ppir_node *pred);
 ppir_node *ppir_node_clone(ppir_block *block, ppir_node *node);
 /* Assumes that node successors are in the same block */
 ppir_node *ppir_node_insert_mov(ppir_node *node);
+ppir_node *ppir_node_insert_mov_all_blocks(ppir_node *node);
 
 static inline bool ppir_node_is_root(ppir_node *node)
 {

@@ -185,29 +185,8 @@ static bool ppir_lower_texture(ppir_block *block, ppir_node *node)
    load_tex->src[0].type = load->dest.type = ppir_target_pipeline;
    load_tex->src[0].pipeline = load->dest.pipeline = ppir_pipeline_reg_discard;
 
-   if (ppir_node_has_single_src_succ(node)) {
-      ppir_node *succ = ppir_node_first_succ(node);
-      switch (succ->type) {
-      case ppir_node_type_alu:
-      case ppir_node_type_branch: {
-         for (int i = 0; i < ppir_node_get_src_num(succ); i++) {
-            ppir_src *src = ppir_node_get_src(succ, i);
-            if (src->node == node) {
-               /* Can consume samplers directly */
-               src->type = dest->type = ppir_target_pipeline;
-               src->pipeline = dest->pipeline = ppir_pipeline_reg_sampler;
-            }
-         }
-         return true;
-      }
-      default:
-         /* Create mov for everyone else */
-         break;
-      }
-   }
-
-   /* Create move node */
-   ppir_node *move = ppir_node_insert_mov(node);
+   /* Always create move node since there can be successors in other blocks */
+   ppir_node *move = ppir_node_insert_mov_all_blocks(node);
    if (unlikely(!move))
       return false;
 
