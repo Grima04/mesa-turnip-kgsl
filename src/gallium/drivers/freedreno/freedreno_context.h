@@ -311,11 +311,11 @@ struct fd_context {
 
 	/* GMEM/tile handling fxns: */
 	void (*emit_tile_init)(struct fd_batch *batch);
-	void (*emit_tile_prep)(struct fd_batch *batch, struct fd_tile *tile);
-	void (*emit_tile_mem2gmem)(struct fd_batch *batch, struct fd_tile *tile);
-	void (*emit_tile_renderprep)(struct fd_batch *batch, struct fd_tile *tile);
-	void (*emit_tile)(struct fd_batch *batch, struct fd_tile *tile);
-	void (*emit_tile_gmem2mem)(struct fd_batch *batch, struct fd_tile *tile);
+	void (*emit_tile_prep)(struct fd_batch *batch, const struct fd_tile *tile);
+	void (*emit_tile_mem2gmem)(struct fd_batch *batch, const struct fd_tile *tile);
+	void (*emit_tile_renderprep)(struct fd_batch *batch, const struct fd_tile *tile);
+	void (*emit_tile)(struct fd_batch *batch, const struct fd_tile *tile);
+	void (*emit_tile_gmem2mem)(struct fd_batch *batch, const struct fd_tile *tile);
 	void (*emit_tile_fini)(struct fd_batch *batch);   /* optional */
 
 	/* optional, for GMEM bypass: */

@@ -549,7 +549,7 @@ check_vsc_overflow(struct fd_context *ctx)
  * is skipped for tiles that have no visible geometry.
  */
 static void
-emit_conditional_ib(struct fd_batch *batch, struct fd_tile *tile,
+emit_conditional_ib(struct fd_batch *batch, const struct fd_tile *tile,
 		struct fd_ringbuffer *target)
 {
 	struct fd_ringbuffer *ring = batch->gmem;
@@ -819,7 +819,7 @@ set_window_offset(struct fd_ringbuffer *ring, uint32_t x1, uint32_t y1)
 
 /* before mem2gmem */
 static void
-fd6_emit_tile_prep(struct fd_batch *batch, struct fd_tile *tile)
+fd6_emit_tile_prep(struct fd_batch *batch, const struct fd_tile *tile)
 {
 	struct fd_context *ctx = batch->ctx;
 	struct fd_gmem_stateobj *gmem = &ctx->gmem;
@@ -1213,13 +1213,13 @@ prepare_tile_setup_ib(struct fd_batch *batch)
  * transfer from system memory to gmem
  */
 static void
-fd6_emit_tile_mem2gmem(struct fd_batch *batch, struct fd_tile *tile)
+fd6_emit_tile_mem2gmem(struct fd_batch *batch, const struct fd_tile *tile)
 {
 }
 
 /* before IB to rendering cmds: */
 static void
-fd6_emit_tile_renderprep(struct fd_batch *batch, struct fd_tile *tile)
+fd6_emit_tile_renderprep(struct fd_batch *batch, const struct fd_tile *tile)
 {
 	if (batch->fast_cleared || !use_hw_binning(batch)) {
 		fd6_emit_ib(batch->gmem, batch->tile_setup);
@@ -1309,7 +1309,7 @@ prepare_tile_fini_ib(struct fd_batch *batch)
 }
 
 static void
-fd6_emit_tile(struct fd_batch *batch, struct fd_tile *tile)
+fd6_emit_tile(struct fd_batch *batch, const struct fd_tile *tile)
 {
 	if (!use_hw_binning(batch)) {
 		fd6_emit_ib(batch->gmem, batch->draw);
@@ -1319,7 +1319,7 @@ fd6_emit_tile(struct fd_batch *batch, struct fd_tile *tile)
 }
 
 static void
-fd6_emit_tile_gmem2mem(struct fd_batch *batch, struct fd_tile *tile)
+fd6_emit_tile_gmem2mem(struct fd_batch *batch, const struct fd_tile *tile)
 {
 	struct fd_ringbuffer *ring = batch->gmem;
 

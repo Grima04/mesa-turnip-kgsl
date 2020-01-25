@@ -410,7 +410,7 @@ fd5_emit_tile_init(struct fd_batch *batch)
 
 /* before mem2gmem */
 static void
-fd5_emit_tile_prep(struct fd_batch *batch, struct fd_tile *tile)
+fd5_emit_tile_prep(struct fd_batch *batch, const struct fd_tile *tile)
 {
 	struct fd_context *ctx = batch->ctx;
 	struct fd_gmem_stateobj *gmem = &ctx->gmem;
@@ -522,7 +522,7 @@ emit_mem2gmem_surf(struct fd_batch *batch, uint32_t base,
 }
 
 static void
-fd5_emit_tile_mem2gmem(struct fd_batch *batch, struct fd_tile *tile)
+fd5_emit_tile_mem2gmem(struct fd_batch *batch, const struct fd_tile *tile)
 {
 	struct fd_ringbuffer *ring = batch->gmem;
 	struct fd_context *ctx = batch->ctx;
@@ -566,7 +566,7 @@ fd5_emit_tile_mem2gmem(struct fd_batch *batch, struct fd_tile *tile)
 
 /* before IB to rendering cmds: */
 static void
-fd5_emit_tile_renderprep(struct fd_batch *batch, struct fd_tile *tile)
+fd5_emit_tile_renderprep(struct fd_batch *batch, const struct fd_tile *tile)
 {
 	struct fd_ringbuffer *ring = batch->gmem;
 	struct fd_gmem_stateobj *gmem = &batch->ctx->gmem;
@@ -652,7 +652,7 @@ emit_gmem2mem_surf(struct fd_batch *batch, uint32_t base,
 }
 
 static void
-fd5_emit_tile_gmem2mem(struct fd_batch *batch, struct fd_tile *tile)
+fd5_emit_tile_gmem2mem(struct fd_batch *batch, const struct fd_tile *tile)
 {
 	struct fd_context *ctx = batch->ctx;
 	struct fd_gmem_stateobj *gmem = &ctx->gmem;

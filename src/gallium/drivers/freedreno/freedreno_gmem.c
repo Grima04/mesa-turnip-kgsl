@@ -505,7 +505,7 @@ fd_gmem_render_tiles(struct fd_batch *batch)
  * case would be a single clear.
  */
 bool
-fd_gmem_needs_restore(struct fd_batch *batch, struct fd_tile *tile,
+fd_gmem_needs_restore(struct fd_batch *batch, const struct fd_tile *tile,
 		uint32_t buffers)
 {
 	if (!(batch->restore & buffers))

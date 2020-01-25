@@ -357,7 +357,7 @@ emit_gmem2mem_surf(struct fd_batch *batch,
 }
 
 static void
-fd3_emit_tile_gmem2mem(struct fd_batch *batch, struct fd_tile *tile)
+fd3_emit_tile_gmem2mem(struct fd_batch *batch, const struct fd_tile *tile)
 {
 	struct fd_context *ctx = batch->ctx;
 	struct fd_ringbuffer *ring = batch->gmem;
@@ -538,7 +538,7 @@ emit_mem2gmem_surf(struct fd_batch *batch, uint32_t bases[],
 }
 
 static void
-fd3_emit_tile_mem2gmem(struct fd_batch *batch, struct fd_tile *tile)
+fd3_emit_tile_mem2gmem(struct fd_batch *batch, const struct fd_tile *tile)
 {
 	struct fd_context *ctx = batch->ctx;
 	struct fd_gmem_stateobj *gmem = &ctx->gmem;
@@ -972,7 +972,7 @@ fd3_emit_tile_init(struct fd_batch *batch)
 
 /* before mem2gmem */
 static void
-fd3_emit_tile_prep(struct fd_batch *batch, struct fd_tile *tile)
+fd3_emit_tile_prep(struct fd_batch *batch, const struct fd_tile *tile)
 {
 	struct fd_ringbuffer *ring = batch->gmem;
 	struct pipe_framebuffer_state *pfb = &batch->framebuffer;
@@ -985,7 +985,7 @@ fd3_emit_tile_prep(struct fd_batch *batch, struct fd_tile *tile)
 
 /* before IB to rendering cmds: */
 static void
-fd3_emit_tile_renderprep(struct fd_batch *batch, struct fd_tile *tile)
+fd3_emit_tile_renderprep(struct fd_batch *batch, const struct fd_tile *tile)
 {
 	struct fd_context *ctx = batch->ctx;
 	struct fd3_context *fd3_ctx = fd3_context(ctx);
