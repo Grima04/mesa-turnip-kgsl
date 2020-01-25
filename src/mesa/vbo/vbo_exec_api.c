@@ -460,7 +460,7 @@ is_vertex_position(const struct gl_context *ctx, GLuint index)
  * \param A  VBO_ATTRIB_x attribute index
  * \param N  attribute size (1..4)
  * \param T  type (GL_FLOAT, GL_DOUBLE, GL_INT, GL_UNSIGNED_INT)
- * \param C  cast type (fi_type or double)
+ * \param C  cast type (uint32_t or uint64_t)
  * \param V0, V1, v2, V3  attribute value
  */
 #define ATTR_UNION(A, N, T, C, V0, V1, V2, V3)                          \

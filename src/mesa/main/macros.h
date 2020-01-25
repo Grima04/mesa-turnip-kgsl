@@ -194,6 +194,20 @@ static inline fi_type FLOAT_AS_UNION(GLfloat f)
    return tmp;
 }
 
+static inline uint64_t DOUBLE_AS_UINT64(double d)
+{
+   union {
+      double d;
+      uint64_t u64;
+   } tmp;
+   tmp.d = d;
+   return tmp.u64;
+}
+
+/* First sign-extend x, then return uint32_t. */
+#define INT_AS_UINT(x) ((uint32_t)((int32_t)(x)))
+#define FLOAT_AS_UINT(x) (FLOAT_AS_UNION(x).u)
+
 /**
  * Convert a floating point value to an unsigned fixed point value.
  *
