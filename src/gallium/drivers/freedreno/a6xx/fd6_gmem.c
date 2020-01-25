@@ -70,7 +70,7 @@ fd6_emit_flag_reference(struct fd_ringbuffer *ring, struct fd_resource *rsc,
 
 static void
 emit_mrt(struct fd_ringbuffer *ring, struct pipe_framebuffer_state *pfb,
-		struct fd_gmem_stateobj *gmem)
+		const struct fd_gmem_stateobj *gmem)
 {
 	unsigned char mrt_comp[A6XX_MAX_RENDER_TARGETS] = {0};
 	unsigned srgb_cntl = 0;
@@ -178,7 +178,7 @@ emit_mrt(struct fd_ringbuffer *ring, struct pipe_framebuffer_state *pfb,
 
 static void
 emit_zs(struct fd_ringbuffer *ring, struct pipe_surface *zsbuf,
-		struct fd_gmem_stateobj *gmem)
+		const struct fd_gmem_stateobj *gmem)
 {
 	if (zsbuf) {
 		struct fd_resource *rsc = fd_resource(zsbuf->texture);
@@ -265,7 +265,7 @@ emit_zs(struct fd_ringbuffer *ring, struct pipe_surface *zsbuf,
 static bool
 use_hw_binning(struct fd_batch *batch)
 {
-	struct fd_gmem_stateobj *gmem = &batch->ctx->gmem;
+	const struct fd_gmem_stateobj *gmem = &batch->ctx->gmem;
 
 	// TODO figure out hw limits for binning
 
@@ -276,7 +276,7 @@ use_hw_binning(struct fd_batch *batch)
 static void
 patch_fb_read(struct fd_batch *batch)
 {
-	struct fd_gmem_stateobj *gmem = &batch->ctx->gmem;
+	const struct fd_gmem_stateobj *gmem = &batch->ctx->gmem;
 
 	for (unsigned i = 0; i < fd_patch_num_elements(&batch->fb_read_patches); i++) {
 		struct fd_cs_patch *patch = fd_patch_element(&batch->fb_read_patches, i);
@@ -332,7 +332,7 @@ update_vsc_pipe(struct fd_batch *batch)
 {
 	struct fd_context *ctx = batch->ctx;
 	struct fd6_context *fd6_ctx = fd6_context(ctx);
-	struct fd_gmem_stateobj *gmem = &ctx->gmem;
+	const struct fd_gmem_stateobj *gmem = &ctx->gmem;
 	struct fd_ringbuffer *ring = batch->gmem;
 	int i;
 
@@ -400,7 +400,7 @@ static void
 emit_vsc_overflow_test(struct fd_batch *batch)
 {
 	struct fd_ringbuffer *ring = batch->gmem;
-	struct fd_gmem_stateobj *gmem = &batch->ctx->gmem;
+	const struct fd_gmem_stateobj *gmem = &batch->ctx->gmem;
 	struct fd6_context *fd6_ctx = fd6_context(batch->ctx);
 
 	debug_assert((fd6_ctx->vsc_data_pitch & 0x3) == 0);
@@ -608,7 +608,7 @@ static void
 emit_binning_pass(struct fd_batch *batch)
 {
 	struct fd_ringbuffer *ring = batch->gmem;
-	struct fd_gmem_stateobj *gmem = &batch->ctx->gmem;
+	const struct fd_gmem_stateobj *gmem = &batch->ctx->gmem;
 	struct fd6_context *fd6_ctx = fd6_context(batch->ctx);
 
 	uint32_t x1 = gmem->minx;
@@ -723,7 +723,7 @@ fd6_emit_tile_init(struct fd_batch *batch)
 	struct fd_context *ctx = batch->ctx;
 	struct fd_ringbuffer *ring = batch->gmem;
 	struct pipe_framebuffer_state *pfb = &batch->framebuffer;
-	struct fd_gmem_stateobj *gmem = &batch->ctx->gmem;
+	const struct fd_gmem_stateobj *gmem = &batch->ctx->gmem;
 
 	fd6_emit_restore(batch, ring);
 
@@ -822,7 +822,7 @@ static void
 fd6_emit_tile_prep(struct fd_batch *batch, const struct fd_tile *tile)
 {
 	struct fd_context *ctx = batch->ctx;
-	struct fd_gmem_stateobj *gmem = &ctx->gmem;
+	const struct fd_gmem_stateobj *gmem = &ctx->gmem;
 	struct fd6_context *fd6_ctx = fd6_context(ctx);
 	struct fd_ringbuffer *ring = batch->gmem;
 
@@ -884,7 +884,7 @@ fd6_emit_tile_prep(struct fd_batch *batch, const struct fd_tile *tile)
 
 		set_window_offset(ring, x1, y1);
 
-		struct fd_gmem_stateobj *gmem = &batch->ctx->gmem;
+		const struct fd_gmem_stateobj *gmem = &batch->ctx->gmem;
 		set_bin_size(ring, gmem->bin_w, gmem->bin_h, 0x6000000);
 
 		OUT_PKT7(ring, CP_SET_MODE, 1);
@@ -1004,7 +1004,7 @@ static void
 emit_clears(struct fd_batch *batch, struct fd_ringbuffer *ring)
 {
 	struct pipe_framebuffer_state *pfb = &batch->framebuffer;
-	struct fd_gmem_stateobj *gmem = &batch->ctx->gmem;
+	const struct fd_gmem_stateobj *gmem = &batch->ctx->gmem;
 	enum a3xx_msaa_samples samples = fd_msaa_samples(pfb->samples);
 
 	uint32_t buffers = batch->fast_cleared;
@@ -1168,7 +1168,7 @@ static void
 emit_restore_blits(struct fd_batch *batch, struct fd_ringbuffer *ring)
 {
 	struct fd_context *ctx = batch->ctx;
-	struct fd_gmem_stateobj *gmem = &ctx->gmem;
+	const struct fd_gmem_stateobj *gmem = &ctx->gmem;
 	struct pipe_framebuffer_state *pfb = &batch->framebuffer;
 
 	if (batch->restore & FD_BUFFER_COLOR) {
@@ -1270,7 +1270,7 @@ static void
 prepare_tile_fini_ib(struct fd_batch *batch)
 {
 	struct fd_context *ctx = batch->ctx;
-	struct fd_gmem_stateobj *gmem = &ctx->gmem;
+	const struct fd_gmem_stateobj *gmem = &ctx->gmem;
 	struct pipe_framebuffer_state *pfb = &batch->framebuffer;
 	struct fd_ringbuffer *ring;
 
