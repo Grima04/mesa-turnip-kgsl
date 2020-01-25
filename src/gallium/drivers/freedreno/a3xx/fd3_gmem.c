@@ -786,7 +786,7 @@ update_vsc_pipe(struct fd_batch *batch)
 	OUT_RELOCW(ring, fd3_ctx->vsc_size_mem, 0, 0, 0); /* VSC_SIZE_ADDRESS */
 
 	for (i = 0; i < 8; i++) {
-		struct fd_vsc_pipe *pipe = &gmem->vsc_pipe[i];
+		const struct fd_vsc_pipe *pipe = &gmem->vsc_pipe[i];
 
 		if (!ctx->vsc_pipe_bo[i]) {
 			ctx->vsc_pipe_bo[i] = fd_bo_new(ctx->dev, 0x40000,
@@ -1019,7 +1019,7 @@ fd3_emit_tile_renderprep(struct fd_batch *batch, const struct fd_tile *tile)
 	}
 
 	if (use_hw_binning(batch)) {
-		struct fd_vsc_pipe *pipe = &gmem->vsc_pipe[tile->p];
+		const struct fd_vsc_pipe *pipe = &gmem->vsc_pipe[tile->p];
 		struct fd_bo *pipe_bo = ctx->vsc_pipe_bo[tile->p];
 
 		assert(pipe->w && pipe->h);

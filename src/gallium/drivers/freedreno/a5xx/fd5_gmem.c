@@ -277,7 +277,7 @@ update_vsc_pipe(struct fd_batch *batch)
 
 	OUT_PKT4(ring, REG_A5XX_VSC_PIPE_CONFIG_REG(0), 16);
 	for (i = 0; i < 16; i++) {
-		struct fd_vsc_pipe *pipe = &gmem->vsc_pipe[i];
+		const struct fd_vsc_pipe *pipe = &gmem->vsc_pipe[i];
 		OUT_RING(ring, A5XX_VSC_PIPE_CONFIG_REG_X(pipe->x) |
 				A5XX_VSC_PIPE_CONFIG_REG_Y(pipe->y) |
 				A5XX_VSC_PIPE_CONFIG_REG_W(pipe->w) |
@@ -435,7 +435,7 @@ fd5_emit_tile_prep(struct fd_batch *batch, const struct fd_tile *tile)
 			A5XX_RB_RESOLVE_CNTL_2_Y(y2));
 
 	if (use_hw_binning(batch)) {
-		struct fd_vsc_pipe *pipe = &gmem->vsc_pipe[tile->p];
+		const struct fd_vsc_pipe *pipe = &gmem->vsc_pipe[tile->p];
 		struct fd_bo *pipe_bo = ctx->vsc_pipe_bo[tile->p];
 
 		OUT_PKT7(ring, CP_WAIT_FOR_ME, 0);

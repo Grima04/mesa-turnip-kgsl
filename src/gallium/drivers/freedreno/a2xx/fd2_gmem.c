@@ -609,7 +609,7 @@ fd2_emit_tile_init(struct fd_batch *batch)
 		OUT_RING(ring, 0x0000018C);
 
 		for (int i = 0; i < gmem->num_vsc_pipes; i++) {
-			struct fd_vsc_pipe *pipe = &gmem->vsc_pipe[i];
+			const struct fd_vsc_pipe *pipe = &gmem->vsc_pipe[i];
 			float off_x, off_y, mul_x, mul_y;
 
 			/* const to tranform from [-1,1] to bin coordinates for this pipe
