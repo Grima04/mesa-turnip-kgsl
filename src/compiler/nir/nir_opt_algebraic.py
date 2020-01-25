@@ -1883,8 +1883,13 @@ for op in ['flt', 'fge', 'feq']:
 # which constant folding will eat for lunch.  The resulting ternary will
 # further get cleaned up by the boolean reductions above and we will be
 # left with just the original variable "a".
-for op in ['flt', 'fge', 'feq', 'fneu',
-           'ilt', 'ige', 'ieq', 'ine', 'ult', 'uge']:
+for op in ['feq', 'fneu', 'ieq', 'ine']:
+   optimizations += [
+      ((op, ('bcsel', 'a', '#b', '#c'), '#d'),
+       ('bcsel', 'a', (op, 'b', 'd'), (op, 'c', 'd'))),
+   ]
+
+for op in ['flt', 'fge', 'ilt', 'ige', 'ult', 'uge']:
    optimizations += [
       ((op, ('bcsel', 'a', '#b', '#c'), '#d'),
        ('bcsel', 'a', (op, 'b', 'd'), (op, 'c', 'd'))),
