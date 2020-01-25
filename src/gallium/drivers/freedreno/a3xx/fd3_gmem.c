@@ -43,7 +43,7 @@
 
 static void
 emit_mrt(struct fd_ringbuffer *ring, unsigned nr_bufs,
-		 struct pipe_surface **bufs, uint32_t *bases, uint32_t bin_w,
+		 struct pipe_surface **bufs, const uint32_t *bases, uint32_t bin_w,
 		 bool decode_srgb)
 {
 	enum a3xx_tile_mode tile_mode;
@@ -129,7 +129,7 @@ emit_mrt(struct fd_ringbuffer *ring, unsigned nr_bufs,
 static bool
 use_hw_binning(struct fd_batch *batch)
 {
-	struct fd_gmem_stateobj *gmem = &batch->ctx->gmem;
+	const struct fd_gmem_stateobj *gmem = &batch->ctx->gmem;
 
 	/* workaround: combining scissor optimization and hw binning
 	 * seems problematic.  Seems like we end up with a mismatch
@@ -163,7 +163,7 @@ static void
 emit_binning_workaround(struct fd_batch *batch)
 {
 	struct fd_context *ctx = batch->ctx;
-	struct fd_gmem_stateobj *gmem = &ctx->gmem;
+	const struct fd_gmem_stateobj *gmem = &ctx->gmem;
 	struct fd_ringbuffer *ring = batch->gmem;
 	struct fd3_emit emit = {
 			.debug = &ctx->debug,
@@ -482,7 +482,7 @@ fd3_emit_tile_gmem2mem(struct fd_batch *batch, const struct fd_tile *tile)
 /* transfer from system memory to gmem */
 
 static void
-emit_mem2gmem_surf(struct fd_batch *batch, uint32_t bases[],
+emit_mem2gmem_surf(struct fd_batch *batch, const uint32_t bases[],
 		struct pipe_surface **psurf, uint32_t bufs, uint32_t bin_w)
 {
 	struct fd_ringbuffer *ring = batch->gmem;
@@ -541,7 +541,7 @@ static void
 fd3_emit_tile_mem2gmem(struct fd_batch *batch, const struct fd_tile *tile)
 {
 	struct fd_context *ctx = batch->ctx;
-	struct fd_gmem_stateobj *gmem = &ctx->gmem;
+	const struct fd_gmem_stateobj *gmem = &ctx->gmem;
 	struct fd_ringbuffer *ring = batch->gmem;
 	struct pipe_framebuffer_state *pfb = &batch->framebuffer;
 	struct fd3_emit emit = {
@@ -777,7 +777,7 @@ static void
 update_vsc_pipe(struct fd_batch *batch)
 {
 	struct fd_context *ctx = batch->ctx;
-	struct fd_gmem_stateobj *gmem = &ctx->gmem;
+	const struct fd_gmem_stateobj *gmem = &ctx->gmem;
 	struct fd3_context *fd3_ctx = fd3_context(ctx);
 	struct fd_ringbuffer *ring = batch->gmem;
 	int i;
@@ -807,7 +807,7 @@ static void
 emit_binning_pass(struct fd_batch *batch)
 {
 	struct fd_context *ctx = batch->ctx;
-	struct fd_gmem_stateobj *gmem = &ctx->gmem;
+	const struct fd_gmem_stateobj *gmem = &ctx->gmem;
 	struct pipe_framebuffer_state *pfb = &batch->framebuffer;
 	struct fd_ringbuffer *ring = batch->gmem;
 	int i;
@@ -936,7 +936,7 @@ fd3_emit_tile_init(struct fd_batch *batch)
 {
 	struct fd_ringbuffer *ring = batch->gmem;
 	struct pipe_framebuffer_state *pfb = &batch->framebuffer;
-	struct fd_gmem_stateobj *gmem = &batch->ctx->gmem;
+	const struct fd_gmem_stateobj *gmem = &batch->ctx->gmem;
 	uint32_t rb_render_control;
 
 	fd3_emit_restore(batch, ring);
@@ -990,7 +990,7 @@ fd3_emit_tile_renderprep(struct fd_batch *batch, const struct fd_tile *tile)
 	struct fd_context *ctx = batch->ctx;
 	struct fd3_context *fd3_ctx = fd3_context(ctx);
 	struct fd_ringbuffer *ring = batch->gmem;
-	struct fd_gmem_stateobj *gmem = &ctx->gmem;
+	const struct fd_gmem_stateobj *gmem = &ctx->gmem;
 	struct pipe_framebuffer_state *pfb = &batch->framebuffer;
 
 	uint32_t x1 = tile->xoff;
