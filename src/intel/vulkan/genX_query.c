@@ -308,8 +308,17 @@ VkResult genX(GetQueryPoolResults)(
       switch (pool->type) {
       case VK_QUERY_TYPE_OCCLUSION: {
          uint64_t *slot = query_slot(pool, firstQuery + i);
-         if (write_results)
-            cpu_write_query_result(pData, flags, idx, slot[2] - slot[1]);
+         if (write_results) {
+            /* From the Vulkan 1.2.132 spec:
+             *
+             *    "If VK_QUERY_RESULT_PARTIAL_BIT is set,
+             *    VK_QUERY_RESULT_WAIT_BIT is not set, and the query’s status
+             *    is unavailable, an intermediate result value between zero and
+             *    the final result value is written to pData for that query."
+             */
+            uint64_t result = available ? slot[2] - slot[1] : 0;
+            cpu_write_query_result(pData, flags, idx, result);
+         }
          idx++;
          break;
       }
