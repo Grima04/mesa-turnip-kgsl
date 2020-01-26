@@ -2082,6 +2082,8 @@ tu_compute_pipeline_create(VkDevice device,
 
    struct tu_pipeline *pipeline;
 
+   *pPipeline = VK_NULL_HANDLE;
+
    result = tu_pipeline_create(dev, pAllocator, &pipeline);
    if (result != VK_SUCCESS)
       return result;
@@ -2100,7 +2102,7 @@ tu_compute_pipeline_create(VkDevice device,
 
    result = tu_shader_compile(dev, shader, NULL, &options, pAllocator);
    if (result != VK_SUCCESS)
-      return result;
+      goto fail;
 
    struct ir3_shader_variant *v = &shader->variants[0];
 
@@ -2109,7 +2111,7 @@ tu_compute_pipeline_create(VkDevice device,
 
    result = tu_compute_upload_shader(device, pipeline, shader);
    if (result != VK_SUCCESS)
-      return result;
+      goto fail;
 
    for (int i = 0; i < 3; i++)
       pipeline->compute.local_size[i] = v->shader->nir->info.cs.local_size[i];
@@ -2123,11 +2125,11 @@ tu_compute_pipeline_create(VkDevice device,
    return VK_SUCCESS;
 
 fail:
-   tu_shader_destroy(dev, shader, pAllocator);
-   if (result != VK_SUCCESS) {
-      tu_pipeline_finish(pipeline, dev, pAllocator);
-      vk_free2(&dev->alloc, pAllocator, pipeline);
-   }
+   if (shader)
+      tu_shader_destroy(dev, shader, pAllocator);
+
+   tu_pipeline_finish(pipeline, dev, pAllocator);
+   vk_free2(&dev->alloc, pAllocator, pipeline);
 
    return result;
 }
