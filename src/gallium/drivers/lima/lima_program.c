@@ -287,6 +287,8 @@ lima_create_fs_state(struct pipe_context *pctx,
       return NULL;
    }
 
+   so->uses_discard = nir->info.fs.uses_discard;
+
    return so;
 }
 

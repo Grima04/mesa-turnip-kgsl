@@ -55,6 +55,7 @@ struct lima_fs_shader_state {
    void *shader;
    int shader_size;
    int stack_size;
+   bool uses_discard;
    struct lima_bo *bo;
 };
 

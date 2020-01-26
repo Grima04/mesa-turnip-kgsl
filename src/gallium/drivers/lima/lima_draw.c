@@ -1132,6 +1132,7 @@ lima_calculate_depth_test(struct pipe_depth_state *depth, struct pipe_rasterizer
 static void
 lima_pack_render_state(struct lima_context *ctx, const struct pipe_draw_info *info)
 {
+   struct lima_fs_shader_state *fs = ctx->fs;
    struct lima_render_state *render =
       lima_ctx_buff_alloc(ctx, lima_ctx_buff_pp_plb_rsw,
                           sizeof(*render));
@@ -1239,10 +1240,14 @@ lima_pack_render_state(struct lima_context *ctx, const struct pipe_draw_info *in
    render->textures_address = 0x00000000;
 
    /* more investigation */
-   render->aux0 = 0x00000300 | (ctx->vs->varying_stride >> 3);
+   render->aux0 = 0x00000100 | (ctx->vs->varying_stride >> 3);
    render->aux1 = 0x00001000;
    if (ctx->blend->base.dither)
       render->aux1 |= 0x00002000;
+
+   /* Enable Early-Z if shader doesn't have discard */
+   if (!fs->uses_discard)
+      render->aux0 |= 0x200;
 
    if (ctx->tex_stateobj.num_samplers) {
       render->textures_address =
