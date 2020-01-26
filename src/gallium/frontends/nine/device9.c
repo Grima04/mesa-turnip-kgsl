@@ -517,6 +517,7 @@ NineDevice9_ctor( struct NineDevice9 *This,
     nine_state_init_sw(This);
 
     ID3DPresentGroup_Release(This->present);
+    nine_context_update_state(This); /* Some drivers needs states to be initialized */
     nine_csmt_process(This);
 
     return D3D_OK;

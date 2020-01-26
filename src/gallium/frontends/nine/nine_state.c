@@ -2936,6 +2936,12 @@ nine_context_clear(struct NineDevice9 *device)
 }
 
 void
+nine_context_update_state(struct NineDevice9 *device)
+{
+    nine_update_state(device);
+}
+
+void
 nine_state_init_sw(struct NineDevice9 *device)
 {
     struct pipe_context *pipe_sw = device->pipe_sw;

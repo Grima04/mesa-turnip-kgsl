@@ -606,6 +606,7 @@ void nine_state_set_defaults(struct NineDevice9 *, const D3DCAPS9 *,
                              boolean is_reset);
 void nine_device_state_clear(struct NineDevice9 *);
 void nine_context_clear(struct NineDevice9 *);
+void nine_context_update_state(struct NineDevice9 *);
 
 void nine_state_init_sw(struct NineDevice9 *device);
 void nine_state_prepare_draw_sw(struct NineDevice9 *device,
