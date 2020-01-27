@@ -260,7 +260,7 @@ midgard_word_type midgard_word_types[16] = {
         midgard_word_type_unknown,    /* 0x1 */
         midgard_word_type_texture,    /* 0x2 */
         midgard_word_type_texture,    /* 0x3 */
-        midgard_word_type_unknown,    /* 0x4 */
+        midgard_word_type_texture,    /* 0x4 */
         midgard_word_type_load_store, /* 0x5 */
         midgard_word_type_unknown,    /* 0x6 */
         midgard_word_type_unknown,    /* 0x7 */
@@ -279,7 +279,7 @@ unsigned midgard_word_size[16] = {
         0, /* 0x1 */
         1, /* 0x2 */
         1, /* 0x3 */
-        0, /* 0x4 */
+        1, /* 0x4 */
         1, /* 0x5 */
         0, /* 0x6 */
         0, /* 0x7 */
