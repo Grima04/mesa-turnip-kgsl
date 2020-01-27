@@ -636,10 +636,10 @@ typedef enum
     * The _SIZE value is "primitive size", used to scale i/j in primitive
     * space to pixel space.
     */
-   SYSTEM_VALUE_BARYCENTRIC_PIXEL,
-   SYSTEM_VALUE_BARYCENTRIC_SAMPLE,
-   SYSTEM_VALUE_BARYCENTRIC_CENTROID,
-   SYSTEM_VALUE_BARYCENTRIC_SIZE,
+   SYSTEM_VALUE_BARYCENTRIC_PERSP_PIXEL,
+   SYSTEM_VALUE_BARYCENTRIC_PERSP_SAMPLE,
+   SYSTEM_VALUE_BARYCENTRIC_PERSP_CENTROID,
+   SYSTEM_VALUE_BARYCENTRIC_PERSP_SIZE,
 
    /**
     * IR3 specific geometry shader and tesselation control shader system
