@@ -304,15 +304,8 @@ static bool amdgpu_winsys_unref(struct radeon_winsys *rws)
 
    simple_mtx_unlock(&aws->sws_list_lock);
 
-   if (ret && sws->kms_handles) {
-      struct drm_gem_close args;
-
-      hash_table_foreach(sws->kms_handles, entry) {
-         args.handle = (uintptr_t)entry->data;
-         drmIoctl(sws->fd, DRM_IOCTL_GEM_CLOSE, &args);
-      }
+   if (ret && sws->kms_handles)
       _mesa_hash_table_destroy(sws->kms_handles, NULL);
-   }
 
    return ret;
 }
