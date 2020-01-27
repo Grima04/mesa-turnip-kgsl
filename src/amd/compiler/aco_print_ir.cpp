@@ -689,6 +689,8 @@ static void print_block_kind(uint16_t kind, FILE *output)
       fprintf(output, "needs_lowering, ");
    if (kind & block_kind_uses_demote)
       fprintf(output, "uses_demote, ");
+   if (kind & block_kind_export_end)
+      fprintf(output, "export_end, ");
 }
 
 void aco_print_block(const struct Block* block, FILE *output)
