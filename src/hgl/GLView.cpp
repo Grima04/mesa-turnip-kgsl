@@ -18,7 +18,7 @@
 #include <string.h>
 
 #include <DirectWindow.h>
-#include <GLRenderer.h>
+#include "GLRenderer.h"
 
 #include "interface/DirectWindowPrivate.h"
 #include "GLDispatcher.h"
