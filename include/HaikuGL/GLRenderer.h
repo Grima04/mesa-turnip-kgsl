@@ -20,7 +20,7 @@ class GLRendererRoster;
 
 typedef unsigned long renderer_id;
 
-class BGLRenderer
+class _EXPORT BGLRenderer
 {
 							// Private unimplemented copy constructors
 							BGLRenderer(const BGLRenderer &);

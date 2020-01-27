@@ -39,7 +39,7 @@ struct glview_direct_info;
 class BGLRenderer;
 class GLRendererRoster;
 
-class BGLView : public BView {
+class _EXPORT BGLView : public BView {
 public:
 							BGLView(BRect rect, const char* name,
 								ulong resizingMode, ulong mode,
