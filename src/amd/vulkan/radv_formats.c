@@ -1248,6 +1248,12 @@ static VkResult radv_get_image_format_properties(struct radv_physical_device *ph
 		}
 	}
 
+	/* Sparse resources with multi-planar formats are unsupported. */
+	if (info->flags & VK_IMAGE_CREATE_SPARSE_BINDING_BIT) {
+		if (desc->plane_count > 1)
+			goto unsupported;
+	}
+
 	*pImageFormatProperties = (VkImageFormatProperties) {
 		.maxExtent = maxExtent,
 		.maxMipLevels = maxMipLevels,
