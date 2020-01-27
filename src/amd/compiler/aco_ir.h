@@ -1287,13 +1287,14 @@ static constexpr Stage sw_mask = 0x7f;
 
 /* hardware stages (can't be OR'd, just a mask for convenience when testing multiple) */
 static constexpr Stage hw_vs = 1 << 7;
-static constexpr Stage hw_es = 1 << 8; /* not on GFX9. combined into GS on GFX9 (and GFX10/legacy). */
-static constexpr Stage hw_gs = 1 << 9;
-static constexpr Stage hw_ls = 1 << 10; /* not on GFX9. combined into HS on GFX9 (and GFX10/legacy). */
-static constexpr Stage hw_hs = 1 << 11;
-static constexpr Stage hw_fs = 1 << 12;
-static constexpr Stage hw_cs = 1 << 13;
-static constexpr Stage hw_mask = 0x7f << 7;
+static constexpr Stage hw_es = 1 << 8; /* Export shader: pre-GS (VS or TES) on GFX6-8. Combined into GS on GFX9 (and GFX10/legacy). */
+static constexpr Stage hw_gs = 1 << 9; /* Geometry shader on GFX10/legacy and GFX6-9. */
+static constexpr Stage hw_ngg_gs = 1 << 10; /* Geometry shader on GFX10/NGG. */
+static constexpr Stage hw_ls = 1 << 11; /* Local shader: pre-TCS (VS) on GFX6-8. Combined into HS on GFX9 (and GFX10/legacy). */
+static constexpr Stage hw_hs = 1 << 12; /* Hull shader: TCS on GFX6-8. Merged VS and TCS on GFX9-10. */
+static constexpr Stage hw_fs = 1 << 13;
+static constexpr Stage hw_cs = 1 << 14;
+static constexpr Stage hw_mask = 0xff << 7;
 
 /* possible settings of Program::stage */
 static constexpr Stage vertex_vs = sw_vs | hw_vs;
@@ -1302,10 +1303,10 @@ static constexpr Stage compute_cs = sw_cs | hw_cs;
 static constexpr Stage tess_eval_vs = sw_tes | hw_vs;
 static constexpr Stage gs_copy_vs = sw_gs_copy | hw_vs;
 /* GFX10/NGG */
-static constexpr Stage ngg_vertex_gs = sw_vs | hw_gs;
-static constexpr Stage ngg_vertex_geometry_gs = sw_vs | sw_gs | hw_gs;
-static constexpr Stage ngg_tess_eval_geometry_gs = sw_tes | sw_gs | hw_gs;
-static constexpr Stage ngg_vertex_tess_control_hs = sw_vs | sw_tcs | hw_hs;
+static constexpr Stage ngg_vertex_gs = sw_vs | hw_ngg_gs;
+static constexpr Stage ngg_vertex_geometry_gs = sw_vs | sw_gs | hw_ngg_gs;
+static constexpr Stage ngg_tess_eval_gs = sw_tes | hw_ngg_gs;
+static constexpr Stage ngg_tess_eval_geometry_gs = sw_tes | sw_gs | hw_ngg_gs;
 /* GFX9 (and GFX10 if NGG isn't used) */
 static constexpr Stage vertex_geometry_gs = sw_vs | sw_gs | hw_gs;
 static constexpr Stage vertex_tess_control_hs = sw_vs | sw_tcs | hw_hs;
