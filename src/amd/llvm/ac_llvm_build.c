@@ -3611,10 +3611,14 @@ void ac_apply_fmask_to_sample(struct ac_llvm_context *ac, LLVMValueRef fmask,
 }
 
 static LLVMValueRef
-_ac_build_readlane(struct ac_llvm_context *ctx, LLVMValueRef src, LLVMValueRef lane)
+_ac_build_readlane(struct ac_llvm_context *ctx, LLVMValueRef src,
+		  LLVMValueRef lane, bool with_opt_barrier)
 {
 	LLVMTypeRef type = LLVMTypeOf(src);
 	LLVMValueRef result;
+
+	if (with_opt_barrier)
+		ac_build_optimization_barrier(ctx, &src);
 
 	src = LLVMBuildZExt(ctx->builder, src, ctx->i32, "");
 	if (lane)
@@ -3630,6 +3634,43 @@ _ac_build_readlane(struct ac_llvm_context *ctx, LLVMValueRef src, LLVMValueRef l
 	return LLVMBuildTrunc(ctx->builder, result, type, "");
 }
 
+static LLVMValueRef
+ac_build_readlane_common(struct ac_llvm_context *ctx,
+			 LLVMValueRef src, LLVMValueRef lane,
+			 bool with_opt_barrier)
+{
+	LLVMTypeRef src_type = LLVMTypeOf(src);
+	src = ac_to_integer(ctx, src);
+	unsigned bits = LLVMGetIntTypeWidth(LLVMTypeOf(src));
+	LLVMValueRef ret;
+
+	if (bits > 32) {
+		assert(bits % 32 == 0);
+		LLVMTypeRef vec_type = LLVMVectorType(ctx->i32, bits / 32);
+		LLVMValueRef src_vector =
+			LLVMBuildBitCast(ctx->builder, src, vec_type, "");
+		ret = LLVMGetUndef(vec_type);
+		for (unsigned i = 0; i < bits / 32; i++) {
+			LLVMValueRef ret_comp;
+
+			src = LLVMBuildExtractElement(ctx->builder, src_vector,
+						LLVMConstInt(ctx->i32, i, 0), "");
+
+			ret_comp = _ac_build_readlane(ctx, src, lane,
+						      with_opt_barrier);
+
+			ret = LLVMBuildInsertElement(ctx->builder, ret, ret_comp,
+						LLVMConstInt(ctx->i32, i, 0), "");
+		}
+	} else {
+		ret = _ac_build_readlane(ctx, src, lane, with_opt_barrier);
+	}
+
+	if (LLVMGetTypeKind(src_type) == LLVMPointerTypeKind)
+		return LLVMBuildIntToPtr(ctx->builder, ret, src_type, "");
+	return LLVMBuildBitCast(ctx->builder, ret, src_type, "");
+}
+
 /**
  * Builds the "llvm.amdgcn.readlane" or "llvm.amdgcn.readfirstlane" intrinsic.
  *
@@ -3642,44 +3683,16 @@ _ac_build_readlane(struct ac_llvm_context *ctx, LLVMValueRef src, LLVMValueRef l
  * @return value of the lane
  */
 LLVMValueRef ac_build_readlane_no_opt_barrier(struct ac_llvm_context *ctx,
-					      LLVMValueRef src, LLVMValueRef lane)
+                                             LLVMValueRef src, LLVMValueRef lane)
 {
-	unsigned bits = LLVMGetIntTypeWidth(LLVMTypeOf(src));
-	LLVMValueRef ret;
-
-	if (bits > 32) {
-		assert(bits % 32 == 0);
-		LLVMTypeRef vec_type = LLVMVectorType(ctx->i32, bits / 32);
-		LLVMValueRef src_vector =
-			LLVMBuildBitCast(ctx->builder, src, vec_type, "");
-		ret = LLVMGetUndef(vec_type);
-		for (unsigned i = 0; i < bits / 32; i++) {
-			src = LLVMBuildExtractElement(ctx->builder, src_vector,
-						LLVMConstInt(ctx->i32, i, 0), "");
-			LLVMValueRef ret_comp = _ac_build_readlane(ctx, src, lane);
-			ret = LLVMBuildInsertElement(ctx->builder, ret, ret_comp,
-						LLVMConstInt(ctx->i32, i, 0), "");
-		}
-	} else {
-		ret = _ac_build_readlane(ctx, src, lane);
-	}
-
-	return ret;
+	return ac_build_readlane_common(ctx, src, lane, false);
 }
+
 
 LLVMValueRef
 ac_build_readlane(struct ac_llvm_context *ctx, LLVMValueRef src, LLVMValueRef lane)
 {
-	LLVMTypeRef src_type = LLVMTypeOf(src);
-	src = ac_to_integer(ctx, src);
-	LLVMValueRef ret;
-
-	ac_build_optimization_barrier(ctx, &src);
-
-	ret = ac_build_readlane_no_opt_barrier(ctx, src, lane);
-	if (LLVMGetTypeKind(src_type) == LLVMPointerTypeKind)
-		return LLVMBuildIntToPtr(ctx->builder, ret, src_type, "");
-	return LLVMBuildBitCast(ctx->builder, ret, src_type, "");
+	return ac_build_readlane_common(ctx, src, lane, true);
 }
 
 LLVMValueRef
