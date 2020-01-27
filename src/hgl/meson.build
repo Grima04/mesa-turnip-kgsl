@@ -30,6 +30,7 @@ libgl = shared_library(
   ],
   link_with : [libglapi_static, libglapi],
   dependencies : cpp.find_library('be'),
+  version : '1.0.0',
   install : true,
 )
 
