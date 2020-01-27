@@ -863,6 +863,45 @@ void genX(CmdWriteTimestamp)(
 
 #if GEN_GEN > 7 || GEN_IS_HASWELL
 
+#if GEN_GEN >= 8 || GEN_IS_HASWELL
+
+#define MI_PREDICATE_SRC0    0x2400
+#define MI_PREDICATE_SRC1    0x2408
+#define MI_PREDICATE_RESULT  0x2418
+
+/**
+ * Writes the results of a query to dst_addr is the value at poll_addr is equal
+ * to the reference value.
+ */
+static void
+gpu_write_query_result_cond(struct anv_cmd_buffer *cmd_buffer,
+                            struct gen_mi_builder *b,
+                            struct anv_address poll_addr,
+                            struct anv_address dst_addr,
+                            uint64_t ref_value,
+                            VkQueryResultFlags flags,
+                            uint32_t value_index,
+                            struct gen_mi_value query_result)
+{
+   gen_mi_store(b, gen_mi_reg64(MI_PREDICATE_SRC0), gen_mi_mem64(poll_addr));
+   gen_mi_store(b, gen_mi_reg64(MI_PREDICATE_SRC1), gen_mi_imm(ref_value));
+   anv_batch_emit(&cmd_buffer->batch, GENX(MI_PREDICATE), mip) {
+      mip.LoadOperation    = LOAD_LOAD;
+      mip.CombineOperation = COMBINE_SET;
+      mip.CompareOperation = COMPARE_SRCS_EQUAL;
+   }
+
+   if (flags & VK_QUERY_RESULT_64_BIT) {
+      struct anv_address res_addr = anv_address_add(dst_addr, value_index * 8);
+      gen_mi_store_if(b, gen_mi_mem64(res_addr), query_result);
+   } else {
+      struct anv_address res_addr = anv_address_add(dst_addr, value_index * 4);
+      gen_mi_store_if(b, gen_mi_mem32(res_addr), query_result);
+   }
+}
+
+#endif /* GEN_GEN >= 8 || GEN_IS_HASWELL */
+
 static void
 gpu_write_query_result(struct gen_mi_builder *b,
                        struct anv_address dst_addr,
@@ -939,7 +978,22 @@ void genX(CmdCopyQueryPoolResults)(
       switch (pool->type) {
       case VK_QUERY_TYPE_OCCLUSION:
          result = compute_query_result(&b, anv_address_add(query_addr, 8));
+#if GEN_GEN >= 8 || GEN_IS_HASWELL
+         /* Like in the case of vkGetQueryPoolResults, if the query is
+          * unavailable and the VK_QUERY_RESULT_PARTIAL_BIT flag is set,
+          * conservatively write 0 as the query result. If the
+          * VK_QUERY_RESULT_PARTIAL_BIT isn't set, don't write any value.
+          */
+         gpu_write_query_result_cond(cmd_buffer, &b, query_addr, dest_addr,
+               1 /* available */, flags, idx, result);
+         if (flags & VK_QUERY_RESULT_PARTIAL_BIT) {
+            gpu_write_query_result_cond(cmd_buffer, &b, query_addr, dest_addr,
+                  0 /* unavailable */, flags, idx, gen_mi_imm(0));
+         }
+         idx++;
+#else /* GEN_GEN < 8 && !GEN_IS_HASWELL */
          gpu_write_query_result(&b, dest_addr, flags, idx++, result);
+#endif
          break;
 
       case VK_QUERY_TYPE_PIPELINE_STATISTICS: {
