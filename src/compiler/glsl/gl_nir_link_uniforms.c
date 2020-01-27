@@ -35,6 +35,15 @@
 
 #define UNMAPPED_UNIFORM_LOC ~0u
 
+/**
+ * Built-in / reserved GL variables names start with "gl_"
+ */
+static inline bool
+is_gl_identifier(const char *s)
+{
+   return s && s[0] == 'g' && s[1] == 'l' && s[2] == '_';
+}
+
 static void
 nir_setup_uniform_remap_tables(struct gl_context *ctx,
                                struct gl_shader_program *prog)
@@ -856,7 +865,7 @@ nir_link_uniform(struct gl_context *ctx,
        * implement support for their specific features, like SSBO, atomics,
        * etc.
        */
-      uniform->builtin = false;
+      uniform->builtin = is_gl_identifier(uniform->name);
       uniform->atomic_buffer_index = -1;
       uniform->is_bindless = false;
 
@@ -930,7 +939,7 @@ nir_link_uniform(struct gl_context *ctx,
             state->num_values += values;
          }
       } else {
-         if (!state->var_is_in_block) {
+         if (!state->var_is_in_block && !is_gl_identifier(uniform->name)) {
             state->num_shader_uniform_components += values;
             state->num_values += values;
          }
