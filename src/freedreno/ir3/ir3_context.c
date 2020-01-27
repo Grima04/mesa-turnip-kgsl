@@ -323,6 +323,16 @@ ir3_split_dest(struct ir3_block *block, struct ir3_instruction **dst,
 		return;
 	}
 
+	if (src->opc == OPC_META_COLLECT) {
+		debug_assert((base + n) < src->regs_count);
+
+		for (int i = 0; i < n; i++) {
+			dst[i] = ssa(src->regs[i + base + 1]);
+		}
+
+		return;
+	}
+
 	unsigned flags = dest_flags(src);
 
 	for (int i = 0, j = 0; i < n; i++) {
