@@ -159,6 +159,7 @@ EXTENSIONS = [
     Extension('VK_AMD_shader_ballot',                     1, 'device->use_shader_ballot'),
     Extension('VK_AMD_shader_core_properties',            1, True),
     Extension('VK_AMD_shader_core_properties2',           1, True),
+    Extension('VK_AMD_shader_explicit_vertex_parameter',  1, True),
     Extension('VK_AMD_shader_image_load_store_lod',       1, True),
     Extension('VK_AMD_shader_fragment_mask',              1, True),
     Extension('VK_AMD_shader_info',                       1, True),
