@@ -302,11 +302,13 @@ void init_context(isel_context *ctx, nir_shader *shader)
                   case nir_intrinsic_load_sample_id:
                   case nir_intrinsic_load_sample_mask_in:
                   case nir_intrinsic_load_input:
+                  case nir_intrinsic_load_input_vertex:
                   case nir_intrinsic_load_per_vertex_input:
                   case nir_intrinsic_load_vertex_id:
                   case nir_intrinsic_load_vertex_id_zero_base:
                   case nir_intrinsic_load_barycentric_sample:
                   case nir_intrinsic_load_barycentric_pixel:
+                  case nir_intrinsic_load_barycentric_model:
                   case nir_intrinsic_load_barycentric_centroid:
                   case nir_intrinsic_load_barycentric_at_sample:
                   case nir_intrinsic_load_barycentric_at_offset:
@@ -435,6 +437,9 @@ void init_context(isel_context *ctx, nir_shader *shader)
                      spi_ps_inputs |= get_interp_input(intrinsic->intrinsic, mode);
                      break;
                   }
+                  case nir_intrinsic_load_barycentric_model:
+                     spi_ps_inputs |= S_0286CC_PERSP_PULL_MODEL_ENA(1);
+                     break;
                   case nir_intrinsic_load_front_face:
                      spi_ps_inputs |= S_0286CC_FRONT_FACE_ENA(1);
                      break;

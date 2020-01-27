@@ -3339,7 +3339,8 @@ void visit_load_input(isel_context *ctx, nir_intrinsic_instr *instr)
             ctx->allocated_vec.emplace(dst.id(), elems);
       }
    } else if (ctx->stage == fragment_fs) {
-      nir_instr *off_instr = instr->src[0].ssa->parent_instr;
+      unsigned offset_idx = instr->intrinsic == nir_intrinsic_load_input ? 0 : 1;
+      nir_instr *off_instr = instr->src[offset_idx].ssa->parent_instr;
       if (off_instr->type != nir_instr_type_load_const ||
           nir_instr_as_load_const(off_instr)->value[0].u32 != 0) {
          fprintf(stderr, "Unimplemented nir_intrinsic_load_input offset\n");
@@ -3348,13 +3349,13 @@ void visit_load_input(isel_context *ctx, nir_intrinsic_instr *instr)
       }
 
       Temp prim_mask = get_arg(ctx, ctx->args->ac.prim_mask);
-      nir_const_value* offset = nir_src_as_const_value(instr->src[0]);
+      nir_const_value* offset = nir_src_as_const_value(instr->src[offset_idx]);
       if (offset) {
          assert(offset->u32 == 0);
       } else {
          /* the lower 15bit of the prim_mask contain the offset into LDS
           * while the upper bits contain the number of prims */
-         Temp offset_src = get_ssa_temp(ctx, instr->src[0].ssa);
+         Temp offset_src = get_ssa_temp(ctx, instr->src[offset_idx].ssa);
          assert(offset_src.regClass() == s1 && "TODO: divergent offsets...");
          Builder bld(ctx->program, ctx->block);
          Temp stride = bld.sop2(aco_opcode::s_lshr_b32, bld.def(s1), bld.def(s1, scc), prim_mask, Operand(16u));
@@ -3366,13 +3367,31 @@ void visit_load_input(isel_context *ctx, nir_intrinsic_instr *instr)
 
       unsigned idx = nir_intrinsic_base(instr);
       unsigned component = nir_intrinsic_component(instr);
+      unsigned vertex_id = 2; /* P0 */
+
+      if (instr->intrinsic == nir_intrinsic_load_input_vertex) {
+         nir_const_value* src0 = nir_src_as_const_value(instr->src[0]);
+         switch (src0->u32) {
+         case 0:
+            vertex_id = 2; /* P0 */
+            break;
+         case 1:
+            vertex_id = 0; /* P10 */
+            break;
+         case 2:
+            vertex_id = 1; /* P20 */
+            break;
+         default:
+            unreachable("invalid vertex index");
+         }
+      }
 
       if (dst.size() == 1) {
-         bld.vintrp(aco_opcode::v_interp_mov_f32, Definition(dst), Operand(2u), bld.m0(prim_mask), idx, component);
+         bld.vintrp(aco_opcode::v_interp_mov_f32, Definition(dst), Operand(vertex_id), bld.m0(prim_mask), idx, component);
       } else {
          aco_ptr<Pseudo_instruction> vec{create_instruction<Pseudo_instruction>(aco_opcode::p_create_vector, Format::PSEUDO, dst.size(), 1)};
          for (unsigned i = 0; i < dst.size(); i++)
-            vec->operands[i] = bld.vintrp(aco_opcode::v_interp_mov_f32, bld.def(v1), Operand(2u), bld.m0(prim_mask), idx, component + i);
+            vec->operands[i] = bld.vintrp(aco_opcode::v_interp_mov_f32, bld.def(v1), Operand(vertex_id), bld.m0(prim_mask), idx, component + i);
          vec->definitions[0] = Definition(dst);
          bld.insert(std::move(vec));
       }
@@ -6010,6 +6029,18 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
       emit_split_vector(ctx, dst, 2);
       break;
    }
+   case nir_intrinsic_load_barycentric_model: {
+      Temp model = get_arg(ctx, ctx->args->ac.pull_model);
+
+      Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
+      Temp p1 = emit_extract_vector(ctx, model, 0, v1);
+      Temp p2 = emit_extract_vector(ctx, model, 1, v1);
+      Temp p3 = emit_extract_vector(ctx, model, 2, v1);
+      bld.pseudo(aco_opcode::p_create_vector, Definition(dst),
+                 Operand(p1), Operand(p2), Operand(p3));
+      emit_split_vector(ctx, dst, 3);
+      break;
+   }
    case nir_intrinsic_load_barycentric_at_sample: {
       uint32_t sample_pos_offset = RING_PS_SAMPLE_POSITIONS * 16;
       switch (ctx->options->key.fs.num_samples) {
@@ -6140,6 +6171,7 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
       visit_store_output(ctx, instr);
       break;
    case nir_intrinsic_load_input:
+   case nir_intrinsic_load_input_vertex:
       visit_load_input(ctx, instr);
       break;
    case nir_intrinsic_load_per_vertex_input:
