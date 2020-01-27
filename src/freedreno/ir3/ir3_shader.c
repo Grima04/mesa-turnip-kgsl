@@ -488,13 +488,10 @@ ir3_shader_disasm(struct ir3_shader_variant *so, uint32_t *bin, FILE *out)
 			dump_output(out, so, FRAG_RESULT_DATA6, "data6");
 			dump_output(out, so, FRAG_RESULT_DATA7, "data7");
 		}
-		/* these two are hard-coded since we don't know how to
-		 * program them to anything but all 0's...
-		 */
-		if (so->frag_coord)
-			fprintf(out, "; fragcoord: r0.x\n");
-		if (so->frag_face)
-			fprintf(out, "; fragface: hr0.x\n");
+		dump_reg(out, "fragcoord",
+			ir3_find_sysval_regid(so, SYSTEM_VALUE_FRAG_COORD));
+		dump_reg(out, "fragface",
+			ir3_find_sysval_regid(so, SYSTEM_VALUE_FRONT_FACE));
 		break;
 	default:
 		/* TODO */
