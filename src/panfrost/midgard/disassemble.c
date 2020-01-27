@@ -937,18 +937,6 @@ num_alu_fields_enabled(uint32_t control_word)
         return ret;
 }
 
-static float
-float_bitcast(uint32_t integer)
-{
-        union {
-                uint32_t i;
-                float f;
-        } v;
-
-        v.i = integer;
-        return v.f;
-}
-
 static bool
 print_alu_word(FILE *fp, uint32_t *words, unsigned num_quad_words,
                unsigned tabs, unsigned next)
