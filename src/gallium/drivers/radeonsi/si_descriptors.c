@@ -903,7 +903,7 @@ void si_update_ps_colorbuf0_slot(struct si_context *sctx)
 
 	if (surf) {
 		struct si_texture *tex = (struct si_texture*)surf->texture;
-		struct pipe_image_view view;
+		struct pipe_image_view view = {0};
 
 		assert(tex);
 		assert(!tex->is_depth);
