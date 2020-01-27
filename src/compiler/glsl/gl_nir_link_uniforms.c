@@ -177,6 +177,7 @@ struct nir_link_uniforms_state {
    unsigned num_shader_uniform_components;
    unsigned shader_samplers_used;
    unsigned shader_shadow_samplers;
+   unsigned shader_storage_blocks_write_access;
    struct gl_program_parameter_list *params;
 
    /* per-variable */
@@ -980,6 +981,7 @@ gl_nir_link_uniforms(struct gl_context *ctx,
       state.num_shader_samplers = 0;
       state.num_shader_images = 0;
       state.num_shader_uniform_components = 0;
+      state.shader_storage_blocks_write_access = 0;
       state.shader_samplers_used = 0;
       state.shader_shadow_samplers = 0;
       state.params = fill_parameters ? sh->Program->Parameters : NULL;
@@ -1046,16 +1048,16 @@ gl_nir_link_uniforms(struct gl_context *ctx,
 
          int location = var->data.location;
 
-         if (!prog->data->spirv && state.var_is_in_block &&
-             glsl_without_array(state.current_var->type) != state.current_var->interface_type) {
-
-            int buffer_block_index = -1;
+         struct gl_uniform_block *blocks;
+         int num_blocks;
+         int buffer_block_index = -1;
+         if (!prog->data->spirv && state.var_is_in_block) {
             /* If the uniform is inside a uniform block determine its block index by
              * comparing the bindings, we can not use names.
              */
-            struct gl_uniform_block *blocks = nir_variable_is_in_ssbo(state.current_var) ?
+            blocks = nir_variable_is_in_ssbo(state.current_var) ?
                prog->data->ShaderStorageBlocks : prog->data->UniformBlocks;
-            int num_blocks = nir_variable_is_in_ssbo(state.current_var) ?
+            num_blocks = nir_variable_is_in_ssbo(state.current_var) ?
                prog->data->NumShaderStorageBlocks : prog->data->NumUniformBlocks;
 
             bool is_interface_array =
@@ -1085,6 +1087,28 @@ gl_nir_link_uniforms(struct gl_context *ctx,
                   }
                }
             }
+
+            if (nir_variable_is_in_ssbo(var) &&
+                !(var->data.access & ACCESS_NON_WRITEABLE)) {
+               unsigned array_size = is_interface_array ?
+                  glsl_get_length(var->type) : 1;
+
+               STATIC_ASSERT(MAX_SHADER_STORAGE_BUFFERS <= 32);
+
+               /* Shaders that use too many SSBOs will fail to compile, which
+                * we don't care about.
+                *
+                * This is true for shaders that do not use too many SSBOs:
+                */
+               if (buffer_block_index + array_size <= 32) {
+                  state.shader_storage_blocks_write_access |=
+                     u_bit_consecutive(buffer_block_index, array_size);
+               }
+            }
+         }
+
+         if (!prog->data->spirv && state.var_is_in_block &&
+             glsl_without_array(state.current_var->type) != state.current_var->interface_type) {
 
             bool found = false;
             char sentinel = '\0';
@@ -1186,6 +1210,8 @@ gl_nir_link_uniforms(struct gl_context *ctx,
       }
 
       sh->Program->SamplersUsed = state.shader_samplers_used;
+      sh->Program->sh.ShaderStorageBlocksWriteAccess =
+         state.shader_storage_blocks_write_access;
       sh->shadow_samplers = state.shader_shadow_samplers;
       sh->Program->info.num_textures = state.num_shader_samplers;
       sh->Program->info.num_images = state.num_shader_images;
