@@ -1548,6 +1548,7 @@ emit_fetch_system_value(
 
    case TGSI_SEMANTIC_FACE:
       res = lp_build_broadcast_scalar(&bld_base->uint_bld, bld->system_values.front_facing);
+      atype = TGSI_TYPE_UNSIGNED;
       break;
 
   case TGSI_SEMANTIC_DRAWID:
