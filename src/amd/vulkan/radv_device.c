@@ -422,8 +422,7 @@ radv_physical_device_init(struct radv_physical_device *device,
 	disk_cache_format_hex_id(buf, device->cache_uuid, VK_UUID_SIZE * 2);
 	device->disk_cache = disk_cache_create(device->name, buf, shader_env_flags);
 
-	if (device->rad_info.chip_class < GFX8 ||
-	    device->rad_info.chip_class > GFX9)
+	if (device->rad_info.chip_class < GFX8)
 		fprintf(stderr, "WARNING: radv is not a conformant vulkan implementation, testing use only.\n");
 
 	radv_get_driver_uuid(&device->driver_uuid);
