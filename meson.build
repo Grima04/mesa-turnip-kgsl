@@ -935,7 +935,9 @@ if cc.get_id() == 'msvc'
                '/wd4996',  # disabled deprecated POSIX name warnings
                '/wd4291',  # no matching operator delete found
                '/wd4146',  # unary minus operator applied to unsigned type, result still unsigned
-               '/wd4200']  # nonstandard extension used: zero-sized array in struct/union
+               '/wd4200',  # nonstandard extension used: zero-sized array in struct/union
+               '/wd4624',  # destructor was implicitly defined as deleted [from LLVM]
+              ]
     if cc.has_argument(a)
       c_args += a
     endif
