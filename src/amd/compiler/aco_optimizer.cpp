@@ -1848,9 +1848,6 @@ bool combine_salu_not_bitwise(opt_ctx& ctx, aco_ptr<Instruction>& instr)
  * s_or_b64(a, s_not_b64(b)) -> s_orn2_b64(a, b) */
 bool combine_salu_n2(opt_ctx& ctx, aco_ptr<Instruction>& instr)
 {
-   if (instr->definitions[1].isTemp() && ctx.uses[instr->definitions[1].tempId()])
-      return false;
-
    if (instr->definitions[0].isTemp() && ctx.info[instr->definitions[0].tempId()].is_uniform_bool())
       return false;
 
@@ -1858,7 +1855,7 @@ bool combine_salu_n2(opt_ctx& ctx, aco_ptr<Instruction>& instr)
       Instruction *op2_instr = follow_operand(ctx, instr->operands[i]);
       if (!op2_instr || (op2_instr->opcode != aco_opcode::s_not_b32 && op2_instr->opcode != aco_opcode::s_not_b64))
          continue;
-      if (fixed_to_exec(op2_instr->operands[0]))
+      if (ctx.uses[op2_instr->definitions[1].tempId()] || fixed_to_exec(op2_instr->operands[0]))
          continue;
 
       if (instr->operands[!i].isLiteral() && op2_instr->operands[0].isLiteral() &&
@@ -1895,12 +1892,13 @@ bool combine_salu_n2(opt_ctx& ctx, aco_ptr<Instruction>& instr)
 /* s_add_{i32,u32}(a, s_lshl_b32(b, <n>)) -> s_lshl<n>_add_u32(a, b) */
 bool combine_salu_lshl_add(opt_ctx& ctx, aco_ptr<Instruction>& instr)
 {
-   if (instr->definitions[1].isTemp() && ctx.uses[instr->definitions[1].tempId()])
+   if (instr->opcode == aco_opcode::s_add_i32 && ctx.uses[instr->definitions[1].tempId()])
       return false;
 
    for (unsigned i = 0; i < 2; i++) {
       Instruction *op2_instr = follow_operand(ctx, instr->operands[i]);
-      if (!op2_instr || op2_instr->opcode != aco_opcode::s_lshl_b32)
+      if (!op2_instr || op2_instr->opcode != aco_opcode::s_lshl_b32 ||
+          ctx.uses[op2_instr->definitions[1].tempId()])
          continue;
       if (!op2_instr->operands[1].isConstant() || fixed_to_exec(op2_instr->operands[0]))
          continue;
