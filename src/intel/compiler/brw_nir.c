@@ -976,7 +976,7 @@ brw_nir_apply_sampler_key(nir_shader *nir,
       if (key_tex->swizzles[s] == SWIZZLE_NOOP)
          continue;
 
-      tex_options.swizzle_result |= (1 << s);
+      tex_options.swizzle_result |= BITFIELD_BIT(s);
       for (unsigned c = 0; c < 4; c++)
          tex_options.swizzles[s][c] = GET_SWZ(key_tex->swizzles[s], c);
    }
