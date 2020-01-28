@@ -889,8 +889,6 @@ static nir_ssa_def *
 bit_cast_color(struct nir_builder *b, nir_ssa_def *color,
                const struct brw_blorp_blit_prog_key *key)
 {
-   assert(key->texture_data_type == nir_type_uint);
-
    if (key->src_format == key->dst_format)
       return color;
 
@@ -902,44 +900,43 @@ bit_cast_color(struct nir_builder *b, nir_ssa_def *color,
    /* They must be formats with the same bit size */
    assert(src_fmtl->bpb == dst_fmtl->bpb);
 
-   /* They must be in regular color formats (no luminance or alpha) */
-   assert(src_fmtl->channels.r.bits > 0);
-   assert(dst_fmtl->channels.r.bits > 0);
-
-   /* They must be in RGBA order (possibly with channels missing) */
-   assert(src_fmtl->channels.r.start_bit == 0);
-   assert(dst_fmtl->channels.r.start_bit == 0);
-
    if (src_fmtl->bpb <= 32) {
-      const unsigned src_channels =
-         isl_format_get_num_channels(key->src_format);
-      const unsigned src_bits[4] = {
-         src_fmtl->channels.r.bits,
-         src_fmtl->channels.g.bits,
-         src_fmtl->channels.b.bits,
-         src_fmtl->channels.a.bits,
-      };
-      const unsigned dst_channels =
-         isl_format_get_num_channels(key->dst_format);
-      const unsigned dst_bits[4] = {
-         dst_fmtl->channels.r.bits,
-         dst_fmtl->channels.g.bits,
-         dst_fmtl->channels.b.bits,
-         dst_fmtl->channels.a.bits,
-      };
-
       assert(src_fmtl->channels.r.type == ISL_UINT ||
              src_fmtl->channels.r.type == ISL_UNORM);
-      if (src_fmtl->channels.r.type == ISL_UNORM)
-         color = nir_format_float_to_unorm(b, color, src_bits);
-      nir_ssa_def *packed =
-         nir_format_pack_uint_unmasked(b, color, src_bits, src_channels);
-
       assert(dst_fmtl->channels.r.type == ISL_UINT ||
              dst_fmtl->channels.r.type == ISL_UNORM);
-      color = nir_format_unpack_uint(b, packed, dst_bits, dst_channels);
-      if (dst_fmtl->channels.r.type == ISL_UNORM)
-         color = nir_format_unorm_to_float(b, color, src_bits);
+
+      nir_ssa_def *packed = nir_imm_int(b, 0);
+      for (unsigned c = 0; c < 4; c++) {
+         if (src_fmtl->channels_array[c].bits == 0)
+            continue;
+
+         const unsigned chan_start_bit = src_fmtl->channels_array[c].start_bit;
+         const unsigned chan_bits = src_fmtl->channels_array[c].bits;
+
+         nir_ssa_def *chan =  nir_channel(b, color, c);
+         if (src_fmtl->channels_array[c].type == ISL_UNORM)
+            chan = nir_format_float_to_unorm(b, chan, &chan_bits);
+
+         packed = nir_ior(b, packed, nir_shift(b, chan, chan_start_bit));
+      }
+
+      nir_ssa_def *chans[4] = { };
+      for (unsigned c = 0; c < 4; c++) {
+         if (dst_fmtl->channels_array[c].bits == 0) {
+            chans[c] = nir_imm_int(b, 0);
+            continue;
+         }
+
+         const unsigned chan_start_bit = dst_fmtl->channels_array[c].start_bit;
+         const unsigned chan_bits = dst_fmtl->channels_array[c].bits;
+         chans[c] = nir_iand(b, nir_shift(b, packed, -(int)chan_start_bit),
+                                nir_imm_int(b, BITFIELD_MASK(chan_bits)));
+
+         if (dst_fmtl->channels_array[c].type == ISL_UNORM)
+            chans[c] = nir_format_unorm_to_float(b, chans[c], &chan_bits);
+      }
+      color = nir_vec(b, chans, 4);
    } else {
       /* This path only supports UINT formats */
       assert(src_fmtl->channels.r.type == ISL_UINT);
@@ -2711,9 +2708,9 @@ blorp_copy(struct blorp_batch *batch,
        * because BLORP likes to treat things as if they have vec4 colors all
        * the time anyway.
        */
-      if (isl_format_is_rgb(src_cast_format))
+      if (isl_format_get_layout(src_cast_format)->bpb % 3 == 0)
          src_cast_format = isl_format_rgb_to_rgba(src_cast_format);
-      if (isl_format_is_rgb(dst_cast_format))
+      if (isl_format_get_layout(dst_cast_format)->bpb % 3 == 0)
          dst_cast_format = isl_format_rgb_to_rgba(dst_cast_format);
 
       if (src_cast_format != dst_cast_format) {
