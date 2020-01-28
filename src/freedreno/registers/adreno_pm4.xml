@@ -1510,7 +1510,7 @@ opcode: CP_LOAD_STATE4 (30) (4 dwords)
 	<reg32 offset="4" name="4">
 		<bitfield name="REF" low="0" high="31"/>
 	</reg32>
-	<reg32 offset="1" name="1">
+	<reg32 offset="5" name="5">
 		<bitfield name="DWORDS" low="0" high="31" type="uint"/>
 	</reg32>
 </domain>
