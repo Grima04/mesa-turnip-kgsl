@@ -453,6 +453,14 @@ struct tu_queue
    struct tu_fence submit_fence;
 };
 
+struct tu_bo
+{
+   uint32_t gem_handle;
+   uint64_t size;
+   uint64_t iova;
+   void *map;
+};
+
 struct tu_device
 {
    VK_LOADER_DATA _loader_data;
@@ -473,18 +481,15 @@ struct tu_device
    /* Backup in-memory cache to be used if the app doesn't provide one */
    struct tu_pipeline_cache *mem_cache;
 
+   struct tu_bo vsc_data;
+   struct tu_bo vsc_data2;
+   uint32_t vsc_data_pitch;
+   uint32_t vsc_data2_pitch;
+
    struct list_head shader_slabs;
    mtx_t shader_slab_mutex;
 
    struct tu_device_extension_table enabled_extensions;
-};
-
-struct tu_bo
-{
-   uint32_t gem_handle;
-   uint64_t size;
-   uint64_t iova;
-   void *map;
 };
 
 VkResult

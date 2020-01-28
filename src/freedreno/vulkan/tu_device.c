@@ -1074,7 +1074,7 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
          8, VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
       if (!device->queues[qfi]) {
          result = VK_ERROR_OUT_OF_HOST_MEMORY;
-         goto fail;
+         goto fail_queues;
       }
 
       memset(device->queues[qfi], 0,
@@ -1086,13 +1086,27 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
          result = tu_queue_init(device, &device->queues[qfi][q], qfi, q,
                                 queue_create->flags);
          if (result != VK_SUCCESS)
-            goto fail;
+            goto fail_queues;
       }
    }
 
    device->compiler = ir3_compiler_create(NULL, physical_device->gpu_id);
    if (!device->compiler)
-      goto fail;
+      goto fail_queues;
+
+#define VSC_DATA_SIZE(pitch)  ((pitch) * 32 + 0x100)  /* extra size to store VSC_SIZE */
+#define VSC_DATA2_SIZE(pitch) ((pitch) * 32)
+
+   device->vsc_data_pitch = 0x440 * 4;
+   device->vsc_data2_pitch = 0x1040 * 4;
+
+   result = tu_bo_init_new(device, &device->vsc_data, VSC_DATA_SIZE(device->vsc_data_pitch));
+   if (result != VK_SUCCESS)
+      goto fail_vsc_data;
+
+   result = tu_bo_init_new(device, &device->vsc_data2, VSC_DATA2_SIZE(device->vsc_data2_pitch));
+   if (result != VK_SUCCESS)
+      goto fail_vsc_data2;
 
    VkPipelineCacheCreateInfo ci;
    ci.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
@@ -1104,23 +1118,29 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
    result =
       tu_CreatePipelineCache(tu_device_to_handle(device), &ci, NULL, &pc);
    if (result != VK_SUCCESS)
-      goto fail;
+      goto fail_pipeline_cache;
 
    device->mem_cache = tu_pipeline_cache_from_handle(pc);
 
    *pDevice = tu_device_to_handle(device);
    return VK_SUCCESS;
 
-fail:
+fail_pipeline_cache:
+   tu_bo_finish(device, &device->vsc_data2);
+
+fail_vsc_data2:
+   tu_bo_finish(device, &device->vsc_data);
+
+fail_vsc_data:
+   ralloc_free(device->compiler);
+
+fail_queues:
    for (unsigned i = 0; i < TU_MAX_QUEUE_FAMILIES; i++) {
       for (unsigned q = 0; q < device->queue_count[i]; q++)
          tu_queue_finish(&device->queues[i][q]);
       if (device->queue_count[i])
          vk_free(&device->alloc, device->queues[i]);
    }
-
-   if (device->compiler)
-      ralloc_free(device->compiler);
 
    vk_free(&device->alloc, device);
    return result;
@@ -1133,6 +1153,9 @@ tu_DestroyDevice(VkDevice _device, const VkAllocationCallbacks *pAllocator)
 
    if (!device)
       return;
+
+   tu_bo_finish(device, &device->vsc_data);
+   tu_bo_finish(device, &device->vsc_data2);
 
    for (unsigned i = 0; i < TU_MAX_QUEUE_FAMILIES; i++) {
       for (unsigned q = 0; q < device->queue_count[i]; q++)
