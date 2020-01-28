@@ -1413,7 +1413,7 @@ static void emit_vote(struct lp_build_nir_context *bld_base, LLVMValueRef src, n
    LLVMValueRef outer_cond = LLVMBuildICmp(builder, LLVMIntNE, exec_mask, bld_base->uint_bld.zero, "");
 
    LLVMValueRef res_store = lp_build_alloca(gallivm, bld_base->int_bld.elem_type, "");
-   LLVMValueRef init_val;
+   LLVMValueRef init_val = NULL;
    if (instr->intrinsic == nir_intrinsic_vote_ieq) {
       /* for equal we unfortunately have to loop and find the first valid one. */
       lp_build_loop_begin(&loop_state, gallivm, lp_build_const_int32(gallivm, 0));
