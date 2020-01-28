@@ -1473,11 +1473,11 @@ opcode: CP_LOAD_STATE4 (30) (4 dwords)
 		-->
 
 		<!-- RM6_BINNING -->
-		<bitfield name="BINNING" pos="20" variants="A6XX-" type="boolean"/>
+		<bitfield name="BINNING" pos="25" variants="A6XX-" type="boolean"/>
 		<!-- all others -->
-		<bitfield name="GMEM" pos="21" variants="A6XX-" type="boolean"/>
+		<bitfield name="GMEM" pos="26" variants="A6XX-" type="boolean"/>
 		<!-- RM6_BYPASS -->
-		<bitfield name="SYSMEM" pos="22" variants="A6XX-" type="boolean"/>
+		<bitfield name="SYSMEM" pos="27" variants="A6XX-" type="boolean"/>
 
 		<bitfield name="MODE" low="28" high="31" type="compare_mode"/>
 	</reg32>
