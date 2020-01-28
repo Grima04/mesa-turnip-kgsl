@@ -522,7 +522,7 @@ transition_depth_buffer(struct anv_cmd_buffer *cmd_buffer,
 {
    uint32_t depth_plane =
       anv_image_aspect_to_plane(image->aspects, VK_IMAGE_ASPECT_DEPTH_BIT);
-   if (image->planes[depth_plane].aux_surface.isl.size_B == 0)
+   if (image->planes[depth_plane].aux_usage == ISL_AUX_USAGE_NONE)
       return;
 
    const enum isl_aux_state initial_state =
