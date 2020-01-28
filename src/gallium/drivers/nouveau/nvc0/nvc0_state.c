@@ -616,6 +616,7 @@ nvc0_sp_state_create(struct pipe_context *pipe,
 
    prog->translated = nvc0_program_translate(
       prog, nvc0_context(pipe)->screen->base.device->chipset,
+      nvc0_context(pipe)->screen->base.disk_shader_cache,
       &nouveau_context(pipe)->debug);
 
    return (void *)prog;
@@ -755,6 +756,7 @@ nvc0_cp_state_create(struct pipe_context *pipe,
 
    prog->translated = nvc0_program_translate(
       prog, nvc0_context(pipe)->screen->base.device->chipset,
+      nvc0_context(pipe)->screen->base.disk_shader_cache,
       &nouveau_context(pipe)->debug);
 
    return (void *)prog;

@@ -24,6 +24,7 @@
 
 #include "compiler/nir/nir.h"
 #include "tgsi/tgsi_ureg.h"
+#include "util/blob.h"
 
 #include "nvc0/nvc0_context.h"
 
@@ -570,11 +571,17 @@ nvc0_program_dump(struct nvc0_program *prog)
 
 bool
 nvc0_program_translate(struct nvc0_program *prog, uint16_t chipset,
+                       struct disk_cache *disk_shader_cache,
                        struct pipe_debug_callback *debug)
 {
+   struct blob blob;
+   size_t cache_size;
    struct nv50_ir_prog_info *info;
    struct nv50_ir_prog_info_out info_out = {};
-   int ret;
+
+   int ret = 0;
+   cache_key key;
+   bool shader_loaded = false;
 
    info = CALLOC_STRUCT(nv50_ir_prog_info);
    if (!info)
@@ -634,11 +641,45 @@ nvc0_program_translate(struct nvc0_program *prog, uint16_t chipset,
 
    info->assignSlots = nvc0_program_assign_varying_slots;
 
-   ret = nv50_ir_generate_code(info, &info_out);
-   if (ret) {
-      NOUVEAU_ERR("shader translation failed: %i\n", ret);
-      goto out;
+   blob_init(&blob);
+
+   if (disk_shader_cache) {
+      if (nv50_ir_prog_info_serialize(&blob, info)) {
+         void *cached_data = NULL;
+
+         disk_cache_compute_key(disk_shader_cache, blob.data, blob.size, key);
+         cached_data = disk_cache_get(disk_shader_cache, key, &cache_size);
+
+         if (cached_data && cache_size >= blob.size) { // blob.size is the size of serialized "info"
+            /* Blob contains only "info". In disk cache, "info_out" comes right after it */
+            size_t offset = blob.size;
+            if (nv50_ir_prog_info_out_deserialize(cached_data, cache_size, offset, &info_out))
+               shader_loaded = true;
+            else
+               debug_printf("WARNING: Couldn't deserialize shaders");
+         }
+         free(cached_data);
+      } else {
+         debug_printf("WARNING: Couldn't serialize input shaders");
+      }
    }
+   if (!shader_loaded) {
+      cache_size = 0;
+      ret = nv50_ir_generate_code(info, &info_out);
+      if (ret) {
+         NOUVEAU_ERR("shader translation failed: %i\n", ret);
+         goto out;
+      }
+      if (disk_shader_cache) {
+         if (nv50_ir_prog_info_out_serialize(&blob, &info_out)) {
+            disk_cache_put(disk_shader_cache, key, blob.data, blob.size, NULL);
+            cache_size = blob.size;
+         } else {
+            debug_printf("WARNING: Couldn't serialize shaders");
+         }
+      }
+   }
+   blob_finish(&blob);
 
    prog->code = info_out.bin.code;
    prog->code_size = info_out.bin.codeSize;
@@ -711,10 +752,10 @@ nvc0_program_translate(struct nvc0_program *prog, uint16_t chipset,
                                                 &prog->pipe.stream_output);
 
    pipe_debug_message(debug, SHADER_INFO,
-                      "type: %d, local: %d, shared: %d, gpr: %d, inst: %d, bytes: %d",
+                      "type: %d, local: %d, shared: %d, gpr: %d, inst: %d, bytes: %d, cached: %zd",
                       prog->type, info_out.bin.tlsSpace, info_out.bin.smemSize,
                       prog->num_gprs, info_out.bin.instructions,
-                      info_out.bin.codeSize);
+                      info_out.bin.codeSize, cache_size);
 
 #ifndef NDEBUG
    if (debug_get_option("NV50_PROG_CHIPSET", NULL) && info->dbgFlags)
