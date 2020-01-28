@@ -8,15 +8,15 @@ http://0x04.net/cgit/index.cgi/rules-ng-ng
 git clone git://0x04.net/rules-ng-ng
 
 The rules-ng-ng source files this header was generated from are:
-- state.xml     (  26666 bytes, from 2019-08-12 13:32:55)
-- common.xml    (  35468 bytes, from 2019-08-09 17:16:20)
-- common_3d.xml (  15058 bytes, from 2019-09-12 20:37:35)
-- state_hi.xml  (  30552 bytes, from 2020-01-06 02:44:00)
-- copyright.xml (   1597 bytes, from 2019-08-09 17:34:08)
-- state_2d.xml  (  51552 bytes, from 2019-08-09 17:34:00)
-- state_3d.xml  (  83644 bytes, from 2020-01-06 02:44:06)
-- state_blt.xml (  14252 bytes, from 2019-09-12 20:21:39)
-- state_vg.xml  (   5975 bytes, from 2019-08-09 17:33:52)
+- state.xml     (  26666 bytes, from 2020-01-10 14:36:29)
+- common.xml    (  35468 bytes, from 2020-01-04 20:02:31)
+- common_3d.xml (  15058 bytes, from 2020-01-24 10:28:28)
+- state_hi.xml  (  34405 bytes, from 2020-01-17 08:52:59)
+- copyright.xml (   1597 bytes, from 2018-02-10 13:09:26)
+- state_2d.xml  (  51552 bytes, from 2018-02-10 13:09:26)
+- state_3d.xml  (  83654 bytes, from 2020-01-28 04:32:26)
+- state_blt.xml (  14252 bytes, from 2020-01-10 14:36:29)
+- state_vg.xml  (   5975 bytes, from 2018-02-10 13:09:26)
 
 Copyright (C) 2012-2020 by the following authors:
 - Wladimir J. van der Laan <laanwj@gmail.com>
@@ -1025,9 +1025,9 @@ DEALINGS IN THE SOFTWARE.
 #define VIVS_PE_STENCIL_CONFIG_EXT_REF_BACK(x)			(((x) << VIVS_PE_STENCIL_CONFIG_EXT_REF_BACK__SHIFT) & VIVS_PE_STENCIL_CONFIG_EXT_REF_BACK__MASK)
 #define VIVS_PE_STENCIL_CONFIG_EXT_REF_BACK_MASK		0x00000100
 #define VIVS_PE_STENCIL_CONFIG_EXT_UNK16_MASK			0x00000200
-#define VIVS_PE_STENCIL_CONFIG_EXT_UNK16__MASK			0xffff0000
-#define VIVS_PE_STENCIL_CONFIG_EXT_UNK16__SHIFT			16
-#define VIVS_PE_STENCIL_CONFIG_EXT_UNK16(x)			(((x) << VIVS_PE_STENCIL_CONFIG_EXT_UNK16__SHIFT) & VIVS_PE_STENCIL_CONFIG_EXT_UNK16__MASK)
+#define VIVS_PE_STENCIL_CONFIG_EXT_EXTRA_ALPHA_REF__MASK	0xffff0000
+#define VIVS_PE_STENCIL_CONFIG_EXT_EXTRA_ALPHA_REF__SHIFT	16
+#define VIVS_PE_STENCIL_CONFIG_EXT_EXTRA_ALPHA_REF(x)		(((x) << VIVS_PE_STENCIL_CONFIG_EXT_EXTRA_ALPHA_REF__SHIFT) & VIVS_PE_STENCIL_CONFIG_EXT_EXTRA_ALPHA_REF__MASK)
 
 #define VIVS_PE_LOGIC_OP					0x000014a4
 #define VIVS_PE_LOGIC_OP_OP__MASK				0x0000000f
