@@ -11,8 +11,16 @@ apt-get -y install --no-install-recommends \
     libexpat1 \
     libdrm2 \
     libdrm-nouveau2 \
+    libx11-6 \
+    libx11-xcb1 \
     firmware-qcom-media \
     netcat-openbsd \
+    python3 \
+    libpython3.7 \
+    python3-pil \
+    python3-pytest \
+    python3-requests \
+    python3-yaml \
     wget \
     xz-utils
 
@@ -72,6 +80,7 @@ rm -rf /var/log/*
 # Dropping documentation, localization, i18n files, etc
 rm -rf /usr/share/doc/*
 rm -rf /usr/share/locale/*
+rm -rf /usr/share/X11/locale/*
 rm -rf /usr/share/man
 rm -rf /usr/share/i18n/*
 rm -rf /usr/share/info/*
@@ -115,10 +124,20 @@ UNNEEDED_PACKAGES="apt libapt-pkg6.0 "\
 "passwd "\
 "libsemanage1 libsemanage-common "\
 "libsepol1 "\
+"gzip "\
 "gpgv "\
 "hostname "\
 "adduser "\
 "debian-archive-keyring "\
+"libegl1-mesa-dev "\
+"libegl-mesa0 "\
+"libgl1-mesa-dev "\
+"libgl1-mesa-dri "\
+"libglapi-mesa "\
+"libgles2-mesa-dev "\
+"libglx-mesa0 "\
+"mesa-common-dev "\
+"libz3-4 "\
 
 # Removing unneeded packages
 for PACKAGE in ${UNNEEDED_PACKAGES}

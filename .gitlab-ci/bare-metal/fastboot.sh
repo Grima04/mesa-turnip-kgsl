@@ -60,7 +60,8 @@ rsync -a --delete $BM_ROOTFS/ rootfs/
 # these devices use it and it would take up space in the initrd.
 pushd rootfs
 find -H | \
-  egrep -v "external/(openglcts|vulkancts|amber|glslang|spirv-tools)" | \
+  egrep -v "external/(openglcts|vulkancts|amber|glslang|spirv-tools)" |
+  egrep -v "traces-db|apitrace|renderdoc|python" | \
   cpio -H newc -o | \
   xz --check=crc32 -T4 - > $CI_PROJECT_DIR/rootfs.cpio.gz
 popd

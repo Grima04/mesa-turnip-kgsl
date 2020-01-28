@@ -43,6 +43,25 @@ fi
 mv /deqp /lava-files/rootfs-${DEBIAN_ARCH}/.
 
 
+############### Build apitrace
+. .gitlab-ci/build-apitrace.sh
+mkdir -p /lava-files/rootfs-${DEBIAN_ARCH}/apitrace
+mv /apitrace/build /lava-files/rootfs-${DEBIAN_ARCH}/apitrace
+rm -rf /apitrace
+
+mkdir -p /lava-files/rootfs-${DEBIAN_ARCH}/waffle
+mv /waffle/build /lava-files/rootfs-${DEBIAN_ARCH}/waffle
+rm -rf /waffle
+
+
+############### Build renderdoc
+EXTRA_CMAKE_ARGS+=" -DENABLE_XCB=false"
+. .gitlab-ci/build-renderdoc.sh
+mkdir -p /lava-files/rootfs-${DEBIAN_ARCH}/renderdoc
+mv /renderdoc/build /lava-files/rootfs-${DEBIAN_ARCH}/renderdoc
+rm -rf /renderdoc
+
+
 ############### Cross-build kernel
 KERNEL_URL="https://gitlab.freedesktop.org/tomeu/linux/-/archive/v5.5-panfrost-fixes/linux-v5.5-panfrost-fixes.tar.gz"
 

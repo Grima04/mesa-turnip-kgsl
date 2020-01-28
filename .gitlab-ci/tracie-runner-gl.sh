@@ -17,6 +17,9 @@ export LD_LIBRARY_PATH="/waffle/build/lib:$LD_LIBRARY_PATH"
 # Set environment for apitrace executable.
 export PATH="/apitrace/build:$PATH"
 
+# Set environment for wflinfo executable.
+export PATH="/waffle/build/bin:$PATH"
+
 # Use the surfaceless EGL platform.
 export EGL_PLATFORM="surfaceless"
 export DISPLAY=

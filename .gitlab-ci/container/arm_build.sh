@@ -12,6 +12,8 @@ apt-get update
 apt-get -y install \
 	abootimg \
 	android-sdk-ext4-utils \
+	autoconf \
+	automake \
 	bc \
 	bison \
 	ccache \
@@ -24,28 +26,45 @@ apt-get -y install \
 	g++ \
 	git \
 	lavacli \
+	libboost-dev:armhf \
+	libboost-dev \
 	libdrm-dev:armhf \
+	libdrm-dev \
 	libegl1-mesa-dev \
 	libegl1-mesa-dev:armhf \
 	libelf-dev \
 	libelf-dev:armhf \
 	libexpat1-dev \
 	libexpat1-dev:armhf \
+	libgbm-dev \
+	libgbm-dev:armhf \
 	libgles2-mesa-dev \
 	libgles2-mesa-dev:armhf \
+	libpcre3-dev \
+	libpcre3-dev:armhf \
 	libpng-dev \
 	libpng-dev:armhf \
+	libpython3-dev \
+	libpython3-dev:armhf \
 	libssl-dev \
 	libvulkan-dev \
+	libvulkan-dev \
 	libvulkan-dev:armhf \
+	libxcb-keysyms1-dev \
+	libxcb-keysyms1-dev:armhf \
 	llvm-7-dev:armhf \
 	llvm-8-dev \
 	pkg-config \
 	python \
+	python3-dev \
 	python3-distutils \
 	python3-setuptools \
 	python3-mako \
 	python3-serial \
+	qt5-default \
+	qt5-qmake \
+	qtbase5-dev \
+	qtbase5-dev:armhf \
 	unzip \
 	wget \
 	xz-utils \
