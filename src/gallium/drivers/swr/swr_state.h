@@ -92,6 +92,7 @@ struct swr_tess_control_shader {
 struct swr_tess_evaluation_shader {
    struct pipe_shader_state pipe;
    struct lp_tgsi_info info;
+   SWR_TS_STATE ts_state;
 
    std::unordered_map<swr_jit_tes_key, std::unique_ptr<VariantTES>> map;
 };

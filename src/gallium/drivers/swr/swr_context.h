@@ -56,8 +56,9 @@
 #define SWR_BLOCK_CLIENT_DRAW ( 1 << 18) // Indicates client draw will block
 #define SWR_NEW_TCS (1 << 19)
 #define SWR_NEW_TES (1 << 20)
-#define SWR_NEW_TCSCONSTANTS (1 << 21)
-#define SWR_NEW_TESCONSTANTS (1 << 22)
+#define SWR_NEW_TS (1 << 21)
+#define SWR_NEW_TCSCONSTANTS (1 << 22)
+#define SWR_NEW_TESCONSTANTS (1 << 23)
 
 namespace std
 {

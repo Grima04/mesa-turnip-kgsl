@@ -485,6 +485,7 @@ swr_bind_tcs_state(struct pipe_context *pipe, void *tcs)
 
    ctx->tcs = (swr_tess_control_shader *)tcs;
    ctx->dirty |= SWR_NEW_TCS;
+   ctx->dirty |= SWR_NEW_TS;
 }
 
 static void
@@ -519,8 +520,15 @@ swr_bind_tes_state(struct pipe_context *pipe, void *tes)
    if (ctx->tes == tes)
       return;
 
+   // Save current tessellator state first
+   if (ctx->tes != nullptr) {
+      ctx->tes->ts_state = ctx->tsState;
+   }
+
    ctx->tes = (swr_tess_evaluation_shader *)tes;
+
    ctx->dirty |= SWR_NEW_TES;
+   ctx->dirty |= SWR_NEW_TS;
 }
 
 static void
@@ -1544,6 +1552,19 @@ swr_update_derived(struct pipe_context *pipe,
       }
    }
 
+   // We may need to restore tessellation state
+   // This restored state may be however overwritten
+   // during shader compilation
+   if (ctx->dirty & SWR_NEW_TS) {
+      if (ctx->tes != nullptr) {
+         ctx->tsState = ctx->tes->ts_state;
+         ctx->api.pfnSwrSetTsState(ctx->swrContext, &ctx->tsState);
+      } else {
+         SWR_TS_STATE state = { 0 };
+         ctx->api.pfnSwrSetTsState(ctx->swrContext, &state);
+      }
+   }
+
    // Tessellation Evaluation Shader
    // Compile TES first, because TCS is optional
    if (ctx->dirty & (SWR_NEW_GS |
@@ -1582,15 +1603,12 @@ swr_update_derived(struct pipe_context *pipe,
                                      ctx->swrDC.texturesTES);
          }
 
+         // Update tessellation state in case it's been updated
          ctx->api.pfnSwrSetTsState(ctx->swrContext, &ctx->tsState);
-
       } else {
-         SWR_TS_STATE state = { 0 };
-         ctx->api.pfnSwrSetTsState(ctx->swrContext, &state);
          ctx->api.pfnSwrSetDsFunc(ctx->swrContext, NULL);
       }
    }
-
 
    /* Tessellation Control Shader */
    if (ctx->dirty & (SWR_NEW_GS |
@@ -1631,11 +1649,9 @@ swr_update_derived(struct pipe_context *pipe,
                                      ctx->swrDC.texturesTCS);
          }
 
+         // Update tessellation state in case it's been updated
          ctx->api.pfnSwrSetTsState(ctx->swrContext, &ctx->tsState);
-
       } else {
-         SWR_TS_STATE state = { 0 };
-         ctx->api.pfnSwrSetTsState(ctx->swrContext, &state);
          ctx->api.pfnSwrSetHsFunc(ctx->swrContext, NULL);
       }
    }
