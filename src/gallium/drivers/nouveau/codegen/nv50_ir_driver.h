@@ -270,6 +270,10 @@ namespace nv50_ir
 extern void
 nv50_ir_prog_info_out_print(struct nv50_ir_prog_info_out *);
 
+/* Serialize a nv50_ir_prog_info structure and save it into blob */
+extern bool
+nv50_ir_prog_info_serialize(struct blob *, struct nv50_ir_prog_info *);
+
 /* Serialize a nv50_ir_prog_info_out structure and save it into blob */
 extern bool MUST_CHECK
 nv50_ir_prog_info_out_serialize(struct blob *, struct nv50_ir_prog_info_out *);
