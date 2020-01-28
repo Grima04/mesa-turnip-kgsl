@@ -1635,8 +1635,8 @@ void radv_GetPhysicalDeviceProperties2(
 
 			driver_props->conformanceVersion = (VkConformanceVersion) {
 				.major = 1,
-				.minor = 1,
-				.subminor = 2,
+				.minor = 2,
+				.subminor = 0,
 				.patch = 0,
 			};
 			break;
