@@ -2247,7 +2247,7 @@ fs_visitor::assign_constant_locations()
    }
 
    if (compiler->compact_params) {
-      struct uniform_slot_info slots[uniforms];
+      struct uniform_slot_info slots[uniforms + 1];
       memset(slots, 0, sizeof(slots));
 
       foreach_block_and_inst_safe(block, fs_inst, inst, cfg) {
