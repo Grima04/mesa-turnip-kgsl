@@ -1030,7 +1030,7 @@ vbo_exec_vtx_init(struct vbo_exec_context *exec)
    exec->vtx.buffer_ptr = exec->vtx.buffer_map;
 
    vbo_exec_vtxfmt_init(exec);
-   _mesa_noop_vtxfmt_init(&exec->vtxfmt_noop);
+   _mesa_noop_vtxfmt_init(ctx, &exec->vtxfmt_noop);
 
    exec->vtx.enabled = 0;
    for (i = 0 ; i < VBO_ATTRIB_MAX ; i++) {

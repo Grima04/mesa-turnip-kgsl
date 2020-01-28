@@ -1930,5 +1930,5 @@ vbo_save_api_init(struct vbo_save_context *save)
 
    vtxfmt_init(ctx);
    current_init(ctx);
-   _mesa_noop_vtxfmt_init(&save->vtxfmt_noop);
+   _mesa_noop_vtxfmt_init(ctx, &save->vtxfmt_noop);
 }
