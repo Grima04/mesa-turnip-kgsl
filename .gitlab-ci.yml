@@ -321,7 +321,7 @@ arm_build:
     - .fdo.container-build@debian@arm64v8
     - .container
   variables:
-    FDO_DISTRIBUTION_TAG: &arm_build "2020-07-20-jflags"
+    FDO_DISTRIBUTION_TAG: &arm_build "2020-07-21-tracie"
 
 .use-arm_build:
   variables:

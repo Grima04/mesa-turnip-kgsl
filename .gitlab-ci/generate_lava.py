@@ -20,6 +20,7 @@ parser.add_argument("--env-vars", nargs='?', default="")
 parser.add_argument("--deqp-version")
 parser.add_argument("--ci-node-index")
 parser.add_argument("--ci-node-total")
+parser.add_argument("--job-type")
 args = parser.parse_args()
 
 env = Environment(loader = FileSystemLoader(os.path.dirname(args.template)), trim_blocks=True, lstrip_blocks=True)
@@ -44,7 +45,7 @@ values['deqp_version'] = args.deqp_version
 # time from the network after boot.
 values['date'] = datetime.datetime.now().strftime("%Y%m%d %H%M")
 
-f = open('lava-deqp.yml', "w")
+f = open(os.path.splitext(os.path.basename(args.template))[0], "w")
 f.write(template.render(values))
 f.close()
 

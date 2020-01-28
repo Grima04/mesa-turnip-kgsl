@@ -51,6 +51,7 @@ if [ -n "$UPLOAD_FOR_LAVA" ]; then
     # Pass needed files to the test stage
     cp $CI_PROJECT_DIR/.gitlab-ci/generate_lava.py artifacts/.
     cp $CI_PROJECT_DIR/.gitlab-ci/lava-deqp.yml.jinja2 artifacts/.
+    cp $CI_PROJECT_DIR/.gitlab-ci/lava-tracie.yml.jinja2 artifacts/.
 
     gzip -c artifacts/install.tar > mesa-${DEBIAN_ARCH}.tar.gz
     ci-fairy minio login $CI_JOB_JWT

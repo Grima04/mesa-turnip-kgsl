@@ -9,18 +9,28 @@ traces:
         checksum: 8867f3a41f180626d0d4b7661ff5c0f4
       - device: gl-virgl
         checksum: 8867f3a41f180626d0d4b7661ff5c0f4
+      - device: gl-panfrost-t860
+        checksum: 95df5e619a36e88fe408e45567a2d149
+      - device: gl-panfrost-t760
+        checksum: 30663eac9a4767d26fbf9b6db9712d9f
   - path: glmark2/jellyfish.rdc
     expectations:
       - device: gl-vmware-llvmpipe
         checksum: e0fe979fee129c0ed42a3059d1a4e1c9
       - device: gl-virgl
         checksum: e0fe979fee129c0ed42a3059d1a4e1c9
+      - device: gl-panfrost-t860
+        checksum: 1d609b089732be5b6e3e78370abcb149
+      - device: gl-panfrost-t760
+        checksum: f98ef9118eeaba660c15065dac46e580
   - path: glxgears/glxgears.trace
     expectations:
       - device: gl-vmware-llvmpipe
         checksum: 02aca9b4b4ad6fd60331df6e4f87f2cd
       - device: gl-virgl
         checksum: 02aca9b4b4ad6fd60331df6e4f87f2cd
+      - device: gl-panfrost-t860
+        checksum: 154039d7bebb366258ddfcc2f196286b
   - path: KhronosGroup-Vulkan-Tools/vkcube.gfxr
     expectations:
       - device: vk-amd-polaris10

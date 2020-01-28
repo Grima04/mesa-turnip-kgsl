@@ -1,5 +1,5 @@
 variables:
-  DISTRIBUTION_TAG: "2020-07-10"
+  DISTRIBUTION_TAG: "2020-07-18"
 
 .kernel+rootfs:
   stage: container-2
@@ -46,7 +46,7 @@ kernel+rootfs_armhf:
       fi
     - >
       artifacts/generate_lava.py \
-        --template artifacts/lava-deqp.yml.jinja2 \
+        --template artifacts/lava-${TEST_SUITE}.yml.jinja2 \
         --pipeline-info "$CI_PIPELINE_URL on $CI_COMMIT_REF_NAME ${CI_NODE_INDEX}/${CI_NODE_TOTAL}" \
         --base-artifacts-url ${ARTIFACTS_URL} \
         --mesa-url ${MESA_URL} \
@@ -60,13 +60,13 @@ kernel+rootfs_armhf:
         --lava-tags "${LAVA_TAGS}" \
         --ci-node-index "${CI_NODE_INDEX}" \
         --ci-node-total "${CI_NODE_TOTAL}"
-    - lava_job_id=`lavacli jobs submit lava-deqp.yml` || lavacli jobs submit lava-deqp.yml
+    - lava_job_id=`lavacli jobs submit lava-${TEST_SUITE}.yml` || lavacli jobs submit lava-${TEST_SUITE}.yml
     - echo $lava_job_id
     - rm -rf artifacts/*
-    - cp lava-deqp.yml artifacts/.
-    - lavacli jobs logs $lava_job_id | tee artifacts/lava-deqp-$lava_job_id.log
+    - cp lava-${TEST_SUITE}.yml artifacts/.
+    - lavacli jobs logs $lava_job_id | tee artifacts/lava-${TEST_SUITE}-$lava_job_id.log
     - lavacli jobs show $lava_job_id
-    - result=`lavacli results $lava_job_id 0_deqp deqp | head -1`
+    - result=`lavacli results $lava_job_id 0_${TEST_SUITE} ${TEST_SUITE} | head -1`
     - echo $result
     - '[[ "$result" == "pass" ]]'
   artifacts:
@@ -81,6 +81,7 @@ kernel+rootfs_armhf:
     KERNEL_IMAGE_NAME: zImage
     KERNEL_IMAGE_TYPE: "type:\ zimage"
     BOOT_METHOD: u-boot
+    TEST_SUITE: "deqp"
   extends:
     - .lava-test
     - .use-arm_build
@@ -94,12 +95,27 @@ kernel+rootfs_armhf:
     KERNEL_IMAGE_NAME: Image
     KERNEL_IMAGE_TYPE: "type:\ image"
     BOOT_METHOD: u-boot
+    TEST_SUITE: "deqp"
   extends:
     - .lava-test
     - .use-arm_build
-  needs:
-    - kernel+rootfs_arm64
+  dependencies:
     - meson-arm64
+  needs:
+    - arm_build
+    - meson-arm64
+
+.lava-traces:armhf:
+  variables:
+    TEST_SUITE: "tracie"
+  extends:
+    - .lava-test:armhf
+
+.lava-traces:arm64:
+  variables:
+    TEST_SUITE: "tracie"
+  extends:
+    - .lava-test:arm64
 
 panfrost-t720-gles2:arm64:
   extends:
@@ -125,33 +141,52 @@ panfrost-t760-gles2:armhf:
   tags:
     - mesa-ci-aarch64-lava-collabora
 
-panfrost-t860-gles2:arm64:
+panfrost-t760-traces:armhf:
   extends:
-    - .lava-test:arm64
+    - .lava-traces:armhf
+    - .panfrost-rules
+  variables:
+    DEVICE_TYPE: rk3288-veyron-jaq
+    GPU_VERSION: panfrost-t760
+    BOOT_METHOD: depthcharge
+    KERNEL_IMAGE_TYPE: ""
+    ENV_VARS: "PAN_MESA_DEBUG=deqp MESA_GLES_VERSION_OVERRIDE=3.1 MESA_GLSL_VERSION_OVERRIDE=310"
+  tags:
+    - mesa-ci-aarch64-lava-collabora
+
+.lava-rk3399-gru-kevin:
+  extends:
     - .panfrost-rules
   variables:
     DEVICE_TYPE: rk3399-gru-kevin
     GPU_VERSION: panfrost-t860
     BOOT_METHOD: depthcharge
     KERNEL_IMAGE_TYPE: ""
-    ENV_VARS: "PAN_MESA_DEBUG=gles3 DEQP_PARALLEL=6 DEQP_EXPECTED_RENDERER=T860"
   tags:
     - mesa-ci-aarch64-lava-collabora
+
+panfrost-t860-gles2:arm64:
+  extends:
+    - .lava-test:arm64
+    - .lava-rk3399-gru-kevin
+  variables:
+    ENV_VARS: "PAN_MESA_DEBUG=gles3 DEQP_PARALLEL=6 DEQP_EXPECTED_RENDERER=T860"
 
 panfrost-t860-gles3:arm64:
   parallel: 2
   extends:
     - .lava-test:arm64
-    - .panfrost-rules
+    - .lava-rk3399-gru-kevin
   variables:
-    DEVICE_TYPE: rk3399-gru-kevin
-    GPU_VERSION: panfrost-t860
-    BOOT_METHOD: depthcharge
-    KERNEL_IMAGE_TYPE: ""
     DEQP_VERSION: gles3
     ENV_VARS: "PAN_MESA_DEBUG=gles3 DEQP_PARALLEL=6 DEQP_EXPECTED_RENDERER=T860"
-  tags:
-    - mesa-ci-aarch64-lava-collabora
+
+panfrost-t860-traces:arm64:
+  extends:
+    - .lava-traces:arm64
+    - .lava-rk3399-gru-kevin
+  variables:
+    ENV_VARS: "PAN_MESA_DEBUG=deqp MESA_GLES_VERSION_OVERRIDE=3.1 MESA_GLSL_VERSION_OVERRIDE=310"
 
 .panfrost-t820-gles2:arm64:
   extends:
