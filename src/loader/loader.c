@@ -114,6 +114,13 @@ static char *loader_get_kernel_driver_name(int fd)
 #endif
 }
 
+bool
+is_kernel_i915(int fd)
+{
+   char *kernel_driver = loader_get_kernel_driver_name(fd);
+   return kernel_driver && strcmp(kernel_driver, "i915") == 0;
+}
+
 #if defined(HAVE_LIBDRM)
 int
 loader_open_render_node(const char *name)
