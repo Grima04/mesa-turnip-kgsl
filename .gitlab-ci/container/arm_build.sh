@@ -10,6 +10,8 @@ echo 'deb https://deb.debian.org/debian buster-backports main' >/etc/apt/sources
 dpkg --add-architecture armhf
 apt-get update
 apt-get -y install \
+	abootimg \
+	android-sdk-ext4-utils \
 	bc \
 	bison \
 	ccache \

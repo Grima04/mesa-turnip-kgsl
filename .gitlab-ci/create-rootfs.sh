@@ -10,6 +10,10 @@ apt-get -y install --no-install-recommends \
     libexpat1 \
     libdrm2 \
     libdrm-nouveau2 \
+    firmware-qcom-media \
+    firmware-realtek \
+    wget \
+    xz-utils
 passwd root -d
 chsh -s /bin/sh
 
@@ -23,6 +27,9 @@ chmod +x  /init
 #######################################################################
 # Strip the image to a small minimal system without removing the debian
 # toolchain.
+
+# xz compress firmware so it doesn't waste RAM at runtime.
+find /lib/firmware -type f -print0 | xargs -0r -P4 -n4 xz -T1 -C crc32
 
 # Copy timezone file and remove tzdata package
 rm -rf /etc/localtime
@@ -91,10 +98,10 @@ UNNEEDED_PACKAGES="apt libapt-pkg5.0 "\
 "init-system-helpers "\
 "bash "\
 "cpio "\
+"xz-utils "\
 "passwd "\
 "libsemanage1 libsemanage-common "\
 "libsepol1 "\
-"gzip "\
 "gpgv "\
 "hostname "\
 "adduser "\
@@ -189,5 +196,3 @@ rm usr/lib/*/libdb-5.3.so
 # remove NSS support for nis, nisplus and hesiod
 rm usr/lib/*/libnss_hesiod*
 rm usr/lib/*/libnss_nis*
-
-rm bin/tar
