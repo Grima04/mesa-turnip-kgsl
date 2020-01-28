@@ -537,7 +537,7 @@ do {                                                                    \
 
 #undef ERROR
 #define ERROR(err) _mesa_error(ctx, err, __func__)
-#define TAG(x) vbo_##x
+#define TAG(x) vbo_exec_##x
 
 #include "vbo_attrib_tmp.h"
 
@@ -548,7 +548,7 @@ do {                                                                    \
  * this may be a (partial) no-op.
  */
 static void GLAPIENTRY
-vbo_Materialfv(GLenum face, GLenum pname, const GLfloat *params)
+vbo_exec_Materialfv(GLenum face, GLenum pname, const GLfloat *params)
 {
    GLbitfield updateMats;
    GET_CURRENT_CONTEXT(ctx);
@@ -950,172 +950,12 @@ vbo_exec_vtxfmt_init(struct vbo_exec_context *exec)
    struct gl_context *ctx = exec->ctx;
    GLvertexformat *vfmt = &exec->vtxfmt;
 
-   vfmt->ArrayElement = _ae_ArrayElement;
+#define NAME_AE(x) _ae_##x
+#define NAME_CALLLIST(x) _mesa_##x
+#define NAME(x) vbo_exec_##x
+#define NAME_ES(x) _es_##x
 
-   vfmt->Begin = vbo_exec_Begin;
-   vfmt->End = vbo_exec_End;
-   vfmt->PrimitiveRestartNV = vbo_exec_PrimitiveRestartNV;
-
-   vfmt->CallList = _mesa_CallList;
-   vfmt->CallLists = _mesa_CallLists;
-
-   vfmt->EvalCoord1f = vbo_exec_EvalCoord1f;
-   vfmt->EvalCoord1fv = vbo_exec_EvalCoord1fv;
-   vfmt->EvalCoord2f = vbo_exec_EvalCoord2f;
-   vfmt->EvalCoord2fv = vbo_exec_EvalCoord2fv;
-   vfmt->EvalPoint1 = vbo_exec_EvalPoint1;
-   vfmt->EvalPoint2 = vbo_exec_EvalPoint2;
-
-   /* from attrib_tmp.h:
-    */
-   vfmt->Color3f = vbo_Color3f;
-   vfmt->Color3fv = vbo_Color3fv;
-   vfmt->Color4f = vbo_Color4f;
-   vfmt->Color4fv = vbo_Color4fv;
-   vfmt->FogCoordfEXT = vbo_FogCoordfEXT;
-   vfmt->FogCoordfvEXT = vbo_FogCoordfvEXT;
-   vfmt->MultiTexCoord1fARB = vbo_MultiTexCoord1f;
-   vfmt->MultiTexCoord1fvARB = vbo_MultiTexCoord1fv;
-   vfmt->MultiTexCoord2fARB = vbo_MultiTexCoord2f;
-   vfmt->MultiTexCoord2fvARB = vbo_MultiTexCoord2fv;
-   vfmt->MultiTexCoord3fARB = vbo_MultiTexCoord3f;
-   vfmt->MultiTexCoord3fvARB = vbo_MultiTexCoord3fv;
-   vfmt->MultiTexCoord4fARB = vbo_MultiTexCoord4f;
-   vfmt->MultiTexCoord4fvARB = vbo_MultiTexCoord4fv;
-   vfmt->Normal3f = vbo_Normal3f;
-   vfmt->Normal3fv = vbo_Normal3fv;
-   vfmt->SecondaryColor3fEXT = vbo_SecondaryColor3fEXT;
-   vfmt->SecondaryColor3fvEXT = vbo_SecondaryColor3fvEXT;
-   vfmt->TexCoord1f = vbo_TexCoord1f;
-   vfmt->TexCoord1fv = vbo_TexCoord1fv;
-   vfmt->TexCoord2f = vbo_TexCoord2f;
-   vfmt->TexCoord2fv = vbo_TexCoord2fv;
-   vfmt->TexCoord3f = vbo_TexCoord3f;
-   vfmt->TexCoord3fv = vbo_TexCoord3fv;
-   vfmt->TexCoord4f = vbo_TexCoord4f;
-   vfmt->TexCoord4fv = vbo_TexCoord4fv;
-   vfmt->Vertex2f = vbo_Vertex2f;
-   vfmt->Vertex2fv = vbo_Vertex2fv;
-   vfmt->Vertex3f = vbo_Vertex3f;
-   vfmt->Vertex3fv = vbo_Vertex3fv;
-   vfmt->Vertex4f = vbo_Vertex4f;
-   vfmt->Vertex4fv = vbo_Vertex4fv;
-
-   if (ctx->API == API_OPENGLES2) {
-      vfmt->VertexAttrib1fARB = _es_VertexAttrib1f;
-      vfmt->VertexAttrib1fvARB = _es_VertexAttrib1fv;
-      vfmt->VertexAttrib2fARB = _es_VertexAttrib2f;
-      vfmt->VertexAttrib2fvARB = _es_VertexAttrib2fv;
-      vfmt->VertexAttrib3fARB = _es_VertexAttrib3f;
-      vfmt->VertexAttrib3fvARB = _es_VertexAttrib3fv;
-      vfmt->VertexAttrib4fARB = _es_VertexAttrib4f;
-      vfmt->VertexAttrib4fvARB = _es_VertexAttrib4fv;
-   } else {
-      vfmt->VertexAttrib1fARB = vbo_VertexAttrib1fARB;
-      vfmt->VertexAttrib1fvARB = vbo_VertexAttrib1fvARB;
-      vfmt->VertexAttrib2fARB = vbo_VertexAttrib2fARB;
-      vfmt->VertexAttrib2fvARB = vbo_VertexAttrib2fvARB;
-      vfmt->VertexAttrib3fARB = vbo_VertexAttrib3fARB;
-      vfmt->VertexAttrib3fvARB = vbo_VertexAttrib3fvARB;
-      vfmt->VertexAttrib4fARB = vbo_VertexAttrib4fARB;
-      vfmt->VertexAttrib4fvARB = vbo_VertexAttrib4fvARB;
-   }
-
-   /* Note that VertexAttrib4fNV is used from dlist.c and api_arrayelt.c so
-    * they can have a single entrypoint for updating any of the legacy
-    * attribs.
-    */
-   vfmt->VertexAttrib1fNV = vbo_VertexAttrib1fNV;
-   vfmt->VertexAttrib1fvNV = vbo_VertexAttrib1fvNV;
-   vfmt->VertexAttrib2fNV = vbo_VertexAttrib2fNV;
-   vfmt->VertexAttrib2fvNV = vbo_VertexAttrib2fvNV;
-   vfmt->VertexAttrib3fNV = vbo_VertexAttrib3fNV;
-   vfmt->VertexAttrib3fvNV = vbo_VertexAttrib3fvNV;
-   vfmt->VertexAttrib4fNV = vbo_VertexAttrib4fNV;
-   vfmt->VertexAttrib4fvNV = vbo_VertexAttrib4fvNV;
-
-   /* integer-valued */
-   vfmt->VertexAttribI1i = vbo_VertexAttribI1i;
-   vfmt->VertexAttribI2i = vbo_VertexAttribI2i;
-   vfmt->VertexAttribI3i = vbo_VertexAttribI3i;
-   vfmt->VertexAttribI4i = vbo_VertexAttribI4i;
-   vfmt->VertexAttribI2iv = vbo_VertexAttribI2iv;
-   vfmt->VertexAttribI3iv = vbo_VertexAttribI3iv;
-   vfmt->VertexAttribI4iv = vbo_VertexAttribI4iv;
-
-   /* unsigned integer-valued */
-   vfmt->VertexAttribI1ui = vbo_VertexAttribI1ui;
-   vfmt->VertexAttribI2ui = vbo_VertexAttribI2ui;
-   vfmt->VertexAttribI3ui = vbo_VertexAttribI3ui;
-   vfmt->VertexAttribI4ui = vbo_VertexAttribI4ui;
-   vfmt->VertexAttribI2uiv = vbo_VertexAttribI2uiv;
-   vfmt->VertexAttribI3uiv = vbo_VertexAttribI3uiv;
-   vfmt->VertexAttribI4uiv = vbo_VertexAttribI4uiv;
-
-   vfmt->Materialfv = vbo_Materialfv;
-
-   vfmt->EdgeFlag = vbo_EdgeFlag;
-   vfmt->Indexf = vbo_Indexf;
-   vfmt->Indexfv = vbo_Indexfv;
-
-   /* ARB_vertex_type_2_10_10_10_rev */
-   vfmt->VertexP2ui = vbo_VertexP2ui;
-   vfmt->VertexP2uiv = vbo_VertexP2uiv;
-   vfmt->VertexP3ui = vbo_VertexP3ui;
-   vfmt->VertexP3uiv = vbo_VertexP3uiv;
-   vfmt->VertexP4ui = vbo_VertexP4ui;
-   vfmt->VertexP4uiv = vbo_VertexP4uiv;
-
-   vfmt->TexCoordP1ui = vbo_TexCoordP1ui;
-   vfmt->TexCoordP1uiv = vbo_TexCoordP1uiv;
-   vfmt->TexCoordP2ui = vbo_TexCoordP2ui;
-   vfmt->TexCoordP2uiv = vbo_TexCoordP2uiv;
-   vfmt->TexCoordP3ui = vbo_TexCoordP3ui;
-   vfmt->TexCoordP3uiv = vbo_TexCoordP3uiv;
-   vfmt->TexCoordP4ui = vbo_TexCoordP4ui;
-   vfmt->TexCoordP4uiv = vbo_TexCoordP4uiv;
-
-   vfmt->MultiTexCoordP1ui = vbo_MultiTexCoordP1ui;
-   vfmt->MultiTexCoordP1uiv = vbo_MultiTexCoordP1uiv;
-   vfmt->MultiTexCoordP2ui = vbo_MultiTexCoordP2ui;
-   vfmt->MultiTexCoordP2uiv = vbo_MultiTexCoordP2uiv;
-   vfmt->MultiTexCoordP3ui = vbo_MultiTexCoordP3ui;
-   vfmt->MultiTexCoordP3uiv = vbo_MultiTexCoordP3uiv;
-   vfmt->MultiTexCoordP4ui = vbo_MultiTexCoordP4ui;
-   vfmt->MultiTexCoordP4uiv = vbo_MultiTexCoordP4uiv;
-
-   vfmt->NormalP3ui = vbo_NormalP3ui;
-   vfmt->NormalP3uiv = vbo_NormalP3uiv;
-
-   vfmt->ColorP3ui = vbo_ColorP3ui;
-   vfmt->ColorP3uiv = vbo_ColorP3uiv;
-   vfmt->ColorP4ui = vbo_ColorP4ui;
-   vfmt->ColorP4uiv = vbo_ColorP4uiv;
-
-   vfmt->SecondaryColorP3ui = vbo_SecondaryColorP3ui;
-   vfmt->SecondaryColorP3uiv = vbo_SecondaryColorP3uiv;
-
-   vfmt->VertexAttribP1ui = vbo_VertexAttribP1ui;
-   vfmt->VertexAttribP1uiv = vbo_VertexAttribP1uiv;
-   vfmt->VertexAttribP2ui = vbo_VertexAttribP2ui;
-   vfmt->VertexAttribP2uiv = vbo_VertexAttribP2uiv;
-   vfmt->VertexAttribP3ui = vbo_VertexAttribP3ui;
-   vfmt->VertexAttribP3uiv = vbo_VertexAttribP3uiv;
-   vfmt->VertexAttribP4ui = vbo_VertexAttribP4ui;
-   vfmt->VertexAttribP4uiv = vbo_VertexAttribP4uiv;
-
-   vfmt->VertexAttribL1d = vbo_VertexAttribL1d;
-   vfmt->VertexAttribL2d = vbo_VertexAttribL2d;
-   vfmt->VertexAttribL3d = vbo_VertexAttribL3d;
-   vfmt->VertexAttribL4d = vbo_VertexAttribL4d;
-
-   vfmt->VertexAttribL1dv = vbo_VertexAttribL1dv;
-   vfmt->VertexAttribL2dv = vbo_VertexAttribL2dv;
-   vfmt->VertexAttribL3dv = vbo_VertexAttribL3dv;
-   vfmt->VertexAttribL4dv = vbo_VertexAttribL4dv;
-
-   vfmt->VertexAttribL1ui64ARB = vbo_VertexAttribL1ui64ARB;
-   vfmt->VertexAttribL1ui64vARB = vbo_VertexAttribL1ui64vARB;
+#include "vbo_init_tmp.h"
 }
 
 
@@ -1307,28 +1147,28 @@ vbo_reset_all_attr(struct vbo_exec_context *exec)
 void GLAPIENTRY
 _es_Color4f(GLfloat r, GLfloat g, GLfloat b, GLfloat a)
 {
-   vbo_Color4f(r, g, b, a);
+   vbo_exec_Color4f(r, g, b, a);
 }
 
 
 void GLAPIENTRY
 _es_Normal3f(GLfloat x, GLfloat y, GLfloat z)
 {
-   vbo_Normal3f(x, y, z);
+   vbo_exec_Normal3f(x, y, z);
 }
 
 
 void GLAPIENTRY
 _es_MultiTexCoord4f(GLenum target, GLfloat s, GLfloat t, GLfloat r, GLfloat q)
 {
-   vbo_MultiTexCoord4f(target, s, t, r, q);
+   vbo_exec_MultiTexCoord4f(target, s, t, r, q);
 }
 
 
 void GLAPIENTRY
 _es_Materialfv(GLenum face, GLenum pname, const GLfloat *params)
 {
-   vbo_Materialfv(face, pname, params);
+   vbo_exec_Materialfv(face, pname, params);
 }
 
 
@@ -1338,7 +1178,7 @@ _es_Materialf(GLenum face, GLenum pname, GLfloat param)
    GLfloat p[4];
    p[0] = param;
    p[1] = p[2] = p[3] = 0.0F;
-   vbo_Materialfv(face, pname, p);
+   vbo_exec_Materialfv(face, pname, p);
 }
 
 
