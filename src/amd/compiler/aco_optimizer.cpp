@@ -1810,6 +1810,7 @@ bool combine_salu_not_bitwise(opt_ctx& ctx, aco_ptr<Instruction>& instr)
 
    /* create instruction */
    std::swap(instr->definitions[0], op2_instr->definitions[0]);
+   std::swap(instr->definitions[1], op2_instr->definitions[1]);
    ctx.uses[instr->operands[0].tempId()]--;
    ctx.info[op2_instr->definitions[0].tempId()].label = 0;
 
