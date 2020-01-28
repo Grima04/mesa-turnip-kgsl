@@ -132,14 +132,16 @@ nir_setup_uniform_remap_tables(struct gl_context *ctx,
 
       unsigned num_slots = glsl_get_component_slots(uniform->type);
 
-      uniform->storage = &data[data_pos];
+      if (uniform->block_index == -1)
+         uniform->storage = &data[data_pos];
 
       /* Set remap table entries point to correct gl_uniform_storage. */
       for (unsigned j = 0; j < entries; j++) {
          unsigned element_loc = uniform->remap_location + j;
          prog->UniformRemapTable[element_loc] = uniform;
 
-         data_pos += num_slots;
+         if (uniform->block_index == -1)
+            data_pos += num_slots;
       }
    }
 }
