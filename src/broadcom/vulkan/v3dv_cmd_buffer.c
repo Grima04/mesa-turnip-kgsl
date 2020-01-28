@@ -613,55 +613,10 @@ cmd_buffer_state_set_clear_values(struct v3dv_cmd_buffer *cmd_buffer,
    }
 }
 
-/* Identifies the first and last subpasses that use each attachment in
- * the current render pass.
- *
- * FIXME: consider doing this at render pass creation time and store it
- * in the render pass data.
- */
-static void
-cmd_buffer_find_subpass_range_for_attachments(struct v3dv_cmd_buffer *cmd_buffer)
-{
-   struct v3dv_cmd_buffer_state *state = &cmd_buffer->state;
-   const struct v3dv_render_pass *pass = state->pass;
-
-   for (uint32_t i = 0; i < pass->attachment_count; i++) {
-      state->attachments[i].first_subpass = pass->subpass_count - 1;
-      state->attachments[i].last_subpass = 0;
-   }
-
-   for (uint32_t i = 0; i < pass->subpass_count; i++) {
-      const struct v3dv_subpass *subpass = &pass->subpasses[i];
-
-      for (uint32_t j = 0; j < subpass->color_count; j++) {
-         uint32_t attachment_idx = subpass->color_attachments[j].attachment;
-         if (attachment_idx == VK_ATTACHMENT_UNUSED)
-            continue;
-
-         if (i < state->attachments[attachment_idx].first_subpass)
-            state->attachments[attachment_idx].first_subpass = i;
-         if (i > state->attachments[attachment_idx].last_subpass)
-            state->attachments[attachment_idx].last_subpass = i;
-      }
-
-      uint32_t ds_attachment_idx = subpass->ds_attachment.attachment;
-      if (ds_attachment_idx != VK_ATTACHMENT_UNUSED) {
-         if (i < state->attachments[ds_attachment_idx].first_subpass)
-            state->attachments[ds_attachment_idx].first_subpass = i;
-         if (i > state->attachments[ds_attachment_idx].last_subpass)
-            state->attachments[ds_attachment_idx].last_subpass = i;
-      }
-
-      /* FIXME: input/resolve attachments */
-   }
-}
-
 static void
 cmd_buffer_init_render_pass_attachment_state(struct v3dv_cmd_buffer *cmd_buffer,
                                              const VkRenderPassBeginInfo *pRenderPassBegin)
 {
-   cmd_buffer_find_subpass_range_for_attachments(cmd_buffer);
-
    cmd_buffer_state_set_clear_values(cmd_buffer,
                                      pRenderPassBegin->clearValueCount,
                                      pRenderPassBegin->pClearValues);
@@ -801,8 +756,8 @@ cmd_buffer_render_pass_emit_loads(struct v3dv_cmd_buffer *cmd_buffer,
 {
    const struct v3dv_cmd_buffer_state *state = &cmd_buffer->state;
    const struct v3dv_framebuffer *framebuffer = state->framebuffer;
-   const struct v3dv_subpass *subpass =
-      &state->pass->subpasses[state->subpass_idx];
+   const struct v3dv_render_pass *pass = state->pass;
+   const struct v3dv_subpass *subpass = &pass->subpasses[state->subpass_idx];
 
    for (uint32_t i = 0; i < subpass->color_count; i++) {
       uint32_t attachment_idx = subpass->color_attachments[i].attachment;
@@ -812,9 +767,6 @@ cmd_buffer_render_pass_emit_loads(struct v3dv_cmd_buffer *cmd_buffer,
 
       const struct v3dv_render_pass_attachment *attachment =
          &state->pass->attachments[attachment_idx];
-
-      const struct v3dv_cmd_buffer_attachment_state *attachment_state =
-         &state->attachments[attachment_idx];
 
       /* According to the Vulkan spec:
        *
@@ -827,9 +779,9 @@ cmd_buffer_render_pass_emit_loads(struct v3dv_cmd_buffer *cmd_buffer,
        * After that, we always want to load so we don't lose any rendering done
        * by a previous subpass to the same attachment.
        */
-      assert(state->job->first_subpass >= attachment_state->first_subpass);
+      assert(state->job->first_subpass >= attachment->first_subpass);
       bool needs_load =
-         state->job->first_subpass > attachment_state->first_subpass ||
+         state->job->first_subpass > attachment->first_subpass ||
          attachment->desc.loadOp == VK_ATTACHMENT_LOAD_OP_LOAD;
 
       if (needs_load) {
@@ -843,12 +795,10 @@ cmd_buffer_render_pass_emit_loads(struct v3dv_cmd_buffer *cmd_buffer,
    if (ds_attachment_idx != VK_ATTACHMENT_UNUSED) {
       const struct v3dv_render_pass_attachment *ds_attachment =
          &state->pass->attachments[ds_attachment_idx];
-      const struct v3dv_cmd_buffer_attachment_state *ds_attachment_state =
-         &state->attachments[ds_attachment_idx];
 
-      assert(state->job->first_subpass >= ds_attachment_state->first_subpass);
+      assert(state->job->first_subpass >= ds_attachment->first_subpass);
       bool needs_load =
-         state->job->first_subpass > ds_attachment_state->first_subpass ||
+         state->job->first_subpass > ds_attachment->first_subpass ||
          ds_attachment->desc.loadOp == VK_ATTACHMENT_LOAD_OP_LOAD;
 
       if (needs_load) {
@@ -920,21 +870,18 @@ cmd_buffer_render_pass_emit_stores(struct v3dv_cmd_buffer *cmd_buffer,
       const struct v3dv_render_pass_attachment *attachment =
          &state->pass->attachments[attachment_idx];
 
-      const struct v3dv_cmd_buffer_attachment_state *attachment_state =
-         &state->attachments[attachment_idx];
-
-      assert(state->job->first_subpass >= attachment_state->first_subpass);
-      assert(state->subpass_idx >= attachment_state->first_subpass);
-      assert(state->subpass_idx <= attachment_state->last_subpass);
+      assert(state->job->first_subpass >= attachment->first_subpass);
+      assert(state->subpass_idx >= attachment->first_subpass);
+      assert(state->subpass_idx <= attachment->last_subpass);
 
       /* Only clear once on the first subpass that uses the attachment */
       bool needs_clear =
-         state->job->first_subpass == attachment_state->first_subpass &&
+         state->job->first_subpass == attachment->first_subpass &&
          attachment->desc.loadOp == VK_ATTACHMENT_LOAD_OP_CLEAR;
 
       /* Skip the last store if it is not required  */
       bool needs_store =
-         state->subpass_idx < attachment_state->last_subpass ||
+         state->subpass_idx < attachment->last_subpass ||
          attachment->desc.storeOp == VK_ATTACHMENT_STORE_OP_STORE ||
          needs_clear;
 
@@ -965,21 +912,19 @@ cmd_buffer_render_pass_emit_stores(struct v3dv_cmd_buffer *cmd_buffer,
    if (ds_attachment_idx != VK_ATTACHMENT_UNUSED) {
       const struct v3dv_render_pass_attachment *ds_attachment =
          &state->pass->attachments[ds_attachment_idx];
-      const struct v3dv_cmd_buffer_attachment_state *ds_attachment_state =
-         &state->attachments[ds_attachment_idx];
 
-      assert(state->job->first_subpass >= ds_attachment_state->first_subpass);
-      assert(state->subpass_idx >= ds_attachment_state->first_subpass);
-      assert(state->subpass_idx <= ds_attachment_state->last_subpass);
+      assert(state->job->first_subpass >= ds_attachment->first_subpass);
+      assert(state->subpass_idx >= ds_attachment->first_subpass);
+      assert(state->subpass_idx <= ds_attachment->last_subpass);
 
       /* Only clear once on the first subpass that uses the attachment */
       needs_ds_clear =
-         state->job->first_subpass == ds_attachment_state->first_subpass &&
+         state->job->first_subpass == ds_attachment->first_subpass &&
          ds_attachment->desc.loadOp == VK_ATTACHMENT_LOAD_OP_CLEAR;
 
       /* Skip the last store if it is not required  */
       bool needs_ds_store =
-         state->subpass_idx < ds_attachment_state->last_subpass ||
+         state->subpass_idx < ds_attachment->last_subpass ||
          ds_attachment->desc.storeOp == VK_ATTACHMENT_STORE_OP_STORE ||
          needs_ds_clear;
 

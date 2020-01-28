@@ -32,6 +32,41 @@ num_subpass_attachments(const VkSubpassDescription *desc)
           (desc->pDepthStencilAttachment != NULL);
 }
 
+static void
+pass_find_subpass_range_for_attachments(struct v3dv_render_pass *pass)
+{
+   for (uint32_t i = 0; i < pass->attachment_count; i++) {
+      pass->attachments[i].first_subpass = pass->subpass_count - 1;
+      pass->attachments[i].last_subpass = 0;
+   }
+
+   for (uint32_t i = 0; i < pass->subpass_count; i++) {
+      const struct v3dv_subpass *subpass = &pass->subpasses[i];
+
+      for (uint32_t j = 0; j < subpass->color_count; j++) {
+         uint32_t attachment_idx = subpass->color_attachments[j].attachment;
+         if (attachment_idx == VK_ATTACHMENT_UNUSED)
+            continue;
+
+         if (i < pass->attachments[attachment_idx].first_subpass)
+            pass->attachments[attachment_idx].first_subpass = i;
+         if (i > pass->attachments[attachment_idx].last_subpass)
+            pass->attachments[attachment_idx].last_subpass = i;
+      }
+
+      uint32_t ds_attachment_idx = subpass->ds_attachment.attachment;
+      if (ds_attachment_idx != VK_ATTACHMENT_UNUSED) {
+         if (i < pass->attachments[ds_attachment_idx].first_subpass)
+            pass->attachments[ds_attachment_idx].first_subpass = i;
+         if (i > pass->attachments[ds_attachment_idx].last_subpass)
+            pass->attachments[ds_attachment_idx].last_subpass = i;
+      }
+
+      /* FIXME: input/resolve attachments */
+   }
+}
+
+
 VkResult
 v3dv_CreateRenderPass(VkDevice _device,
                       const VkRenderPassCreateInfo *pCreateInfo,
@@ -136,6 +171,8 @@ v3dv_CreateRenderPass(VkDevice _device,
          subpass->ds_attachment.attachment = VK_ATTACHMENT_UNUSED;
       }
    }
+
+   pass_find_subpass_range_for_attachments(pass);
 
    /* FIXME: handle subpass dependencies */
 

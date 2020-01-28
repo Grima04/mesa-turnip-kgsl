@@ -358,6 +358,8 @@ struct v3dv_subpass {
 
 struct v3dv_render_pass_attachment {
    VkAttachmentDescription desc;
+   uint32_t first_subpass;
+   uint32_t last_subpass;
 };
 
 struct v3dv_render_pass {
@@ -412,8 +414,6 @@ union v3dv_clear_value {
 
 struct v3dv_cmd_buffer_attachment_state {
    union v3dv_clear_value clear_value;
-   uint32_t first_subpass;
-   uint32_t last_subpass;
 };
 
 struct v3dv_viewport_state {
