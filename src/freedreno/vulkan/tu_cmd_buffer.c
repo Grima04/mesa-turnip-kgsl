@@ -548,7 +548,7 @@ tu6_emit_render_cntl(struct tu_cmd_buffer *cmd,
       cntl |= A6XX_RB_RENDER_CNTL_BINNING;
 
    tu_cs_emit_pkt7(cs, CP_REG_WRITE, 3);
-   tu_cs_emit(cs, 0x2);
+   tu_cs_emit(cs, CP_REG_WRITE_0_TRACKER(TRACK_RENDER_CNTL));
    tu_cs_emit(cs, REG_A6XX_RB_RENDER_CNTL);
    tu_cs_emit(cs, cntl);
 }

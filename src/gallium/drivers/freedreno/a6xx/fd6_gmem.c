@@ -317,7 +317,7 @@ update_render_cntl(struct fd_batch *batch, struct pipe_framebuffer_state *pfb, b
 		cntl |= A6XX_RB_RENDER_CNTL_BINNING;
 
 	OUT_PKT7(ring, CP_REG_WRITE, 3);
-	OUT_RING(ring, 0x2);
+	OUT_RING(ring, CP_REG_WRITE_0_TRACKER(TRACK_RENDER_CNTL));
 	OUT_RING(ring, REG_A6XX_RB_RENDER_CNTL);
 	OUT_RING(ring, cntl |
 		COND(depth_ubwc_enable, A6XX_RB_RENDER_CNTL_FLAG_DEPTH) |

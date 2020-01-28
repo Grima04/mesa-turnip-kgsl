@@ -1564,5 +1564,37 @@ opcode: CP_LOAD_STATE4 (30) (4 dwords)
 	</reg32>
 </domain>
 
+<domain name="CP_REG_WRITE" width="32">
+	<enum name="reg_tracker">
+		<doc>
+			Keep shadow copies of these registers and only set them
+			when drawing, avoiding redundant writes:
+			- VPC_CNTL_0
+			- HLSQ_CONTROL_1_REG
+			- HLSQ_UNKNOWN_B980
+		</doc>
+		<value name="TRACK_CNTL_REG" value="0x1"/>
+		<doc>
+			Track RB_RENDER_CNTL, and insert a WFI in the following
+			situation:
+			- There is a write that disables binning
+			- There was a draw with binning left enabled, but in
+			  BYPASS mode
+			Presumably this is a hang workaround?
+		</doc>
+		<value name="TRACK_RENDER_CNTL" value="0x2"/>
+		<doc>
+			Do a mysterious CP_EVENT_WRITE 0x3f when the low bit of
+			the data to write is 0. Used by the Vulkan blob with
+			PC_UNKNOWN_9B07, but this isn't predicated on particular
+			register(s) like the others.
+		</doc>
+		<value name="UNK_EVENT_WRITE" value="0x4"/>
+	</enum>
+	<reg32 offset="0" name="0">
+		<bitfield name="TRACKER" low="0" high="2" type="reg_tracker"/>
+	</reg32>
+</domain>
+
 </database>
 
