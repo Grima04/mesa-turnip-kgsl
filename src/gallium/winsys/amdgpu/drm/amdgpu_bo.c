@@ -179,10 +179,21 @@ void amdgpu_bo_destroy(struct pb_buffer *_buf)
       simple_mtx_unlock(&ws->global_bo_list_lock);
    }
 
+   /* Close all KMS handles retrieved for other DRM file descriptions */
    simple_mtx_lock(&ws->sws_list_lock);
    for (sws_iter = ws->sws_list; sws_iter; sws_iter = sws_iter->next) {
-      if (sws_iter->kms_handles)
-         _mesa_hash_table_remove_key(sws_iter->kms_handles, bo);
+      struct hash_entry *entry;
+
+      if (!sws_iter->kms_handles)
+         continue;
+
+      entry = _mesa_hash_table_search(sws_iter->kms_handles, bo);
+      if (entry) {
+         struct drm_gem_close args = { .handle = (uintptr_t)entry->data };
+
+         drmIoctl(sws_iter->fd, DRM_IOCTL_GEM_CLOSE, &args);
+         _mesa_hash_table_remove(sws_iter->kms_handles, entry);
+      }
    }
    simple_mtx_unlock(&ws->sws_list_lock);
 
