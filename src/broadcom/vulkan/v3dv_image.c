@@ -411,10 +411,6 @@ v3dv_CreateImageView(VkDevice _device,
    assert(range->layerCount > 0);
    assert(range->baseMipLevel < image->levels);
 
-   /* FIXME: we don't handle depth/stencil yet */
-   assert((range->aspectMask &
-           (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) == 0);
-
 #ifdef DEBUG
    switch (image->type) {
    case VK_IMAGE_TYPE_1D:

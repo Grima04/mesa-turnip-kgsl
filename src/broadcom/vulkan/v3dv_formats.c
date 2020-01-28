@@ -60,11 +60,18 @@
 #define SWIZ_000X	SWIZ(0, 0, 0, X)
 
 static const struct v3dv_format format_table[] = {
-   FORMAT(R8G8B8A8_SRGB,           SRGB8_ALPHA8, RGBA8,       SWIZ_XYZW, 16),
-   FORMAT(B8G8R8A8_SRGB,           SRGB8_ALPHA8, RGBA8,       SWIZ_ZYXW, 16),
-   FORMAT(R8G8B8A8_UNORM,          RGBA8,        RGBA8,       SWIZ_XYZW, 16),
-   FORMAT(B8G8R8A8_UNORM,          RGBA8,        RGBA8,       SWIZ_ZYXW, 16),
-   FORMAT(R32G32B32A32_SFLOAT,     RGBA32F,      RGBA32F,     SWIZ_XYZW, 32),
+   /* Color */
+   FORMAT(R8G8B8A8_SRGB,           SRGB8_ALPHA8, RGBA8,         SWIZ_XYZW, 16),
+   FORMAT(B8G8R8A8_SRGB,           SRGB8_ALPHA8, RGBA8,         SWIZ_ZYXW, 16),
+   FORMAT(R8G8B8A8_UNORM,          RGBA8,        RGBA8,         SWIZ_XYZW, 16),
+   FORMAT(B8G8R8A8_UNORM,          RGBA8,        RGBA8,         SWIZ_ZYXW, 16),
+   FORMAT(R32G32B32A32_SFLOAT,     RGBA32F,      RGBA32F,       SWIZ_XYZW, 32),
+   FORMAT(R32G32B32A32_SFLOAT,     RGBA32F,      RGBA32F,       SWIZ_XYZW, 32),
+
+   /* Depth */
+   FORMAT(D16_UNORM,               D16,          DEPTH_COMP16,  SWIZ_XXXX, 32),
+   FORMAT(D32_SFLOAT,              D32F,         DEPTH_COMP32F, SWIZ_XXXX, 32),
+   FORMAT(X8_D24_UNORM_PACK32,     D24S8,        DEPTH24_X8,    SWIZ_XXXX, 32),
 };
 
 const struct v3dv_format *
@@ -228,7 +235,9 @@ image_format_features(VkFormat vk_format,
 
    const VkImageAspectFlags aspects = vk_format_aspects(vk_format);
 
-   if (aspects != VK_IMAGE_ASPECT_COLOR_BIT)
+   const uint32_t supported_aspects =
+      VK_IMAGE_ASPECT_COLOR_BIT | VK_IMAGE_ASPECT_DEPTH_BIT;
+   if ((aspects & supported_aspects) != aspects)
       return 0;
 
    VkFormatFeatureFlags flags =
@@ -239,9 +248,13 @@ image_format_features(VkFormat vk_format,
       VK_FORMAT_FEATURE_TRANSFER_DST_BIT;
 
    if (v3dv_format->rt_type != V3D_OUTPUT_IMAGE_FORMAT_NO) {
-      flags |= VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT |
-               VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BLEND_BIT |
-               VK_FORMAT_FEATURE_BLIT_DST_BIT;
+      flags |= VK_FORMAT_FEATURE_BLIT_DST_BIT;
+      if (aspects & VK_IMAGE_ASPECT_COLOR_BIT) {
+         flags |= VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT |
+                  VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BLEND_BIT;
+      } else if (aspects & VK_IMAGE_ASPECT_DEPTH_BIT) {
+         flags |= VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
+      }
    }
 
    return flags;

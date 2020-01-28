@@ -1659,7 +1659,9 @@ compute_internal_bpp_from_attachments(struct v3dv_framebuffer *framebuffer)
    uint8_t max_bpp = RENDER_TARGET_MAXIMUM_32BPP;
    for (uint32_t i = 0; i < framebuffer->attachment_count; i++) {
       const struct v3dv_image_view *att = framebuffer->attachments[i];
-      if (att)
+      assert(att);
+
+      if (att->aspects & VK_IMAGE_ASPECT_COLOR_BIT)
          max_bpp = MAX2(max_bpp, att->internal_bpp);
    }
    framebuffer->internal_bpp = max_bpp;
@@ -1680,9 +1682,9 @@ v3dv_framebuffer_compute_tiling_params(struct v3dv_framebuffer *framebuffer)
 
    /* FIXME: MSAA */
 
-   if (framebuffer->attachment_count > 2)
+   if (framebuffer->color_attachment_count > 2)
       tile_size_index += 2;
-   else if (framebuffer->attachment_count > 1)
+   else if (framebuffer->color_attachment_count > 1)
       tile_size_index += 1;
 
    tile_size_index += framebuffer->internal_bpp;
@@ -1739,9 +1741,12 @@ v3dv_CreateFramebuffer(VkDevice _device,
    framebuffer->height = pCreateInfo->height;
    framebuffer->layers = pCreateInfo->layers;
    framebuffer->attachment_count = pCreateInfo->attachmentCount;
+   framebuffer->color_attachment_count = 0;
    for (uint32_t i = 0; i < pCreateInfo->attachmentCount; i++) {
       framebuffer->attachments[i] =
          v3dv_image_view_from_handle(pCreateInfo->pAttachments[i]);
+      if (framebuffer->attachments[i]->aspects & VK_IMAGE_ASPECT_COLOR_BIT)
+         framebuffer->color_attachment_count++;
    }
 
    compute_internal_bpp_from_attachments(framebuffer);

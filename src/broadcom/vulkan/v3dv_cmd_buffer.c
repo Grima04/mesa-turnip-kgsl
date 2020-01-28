@@ -24,6 +24,7 @@
 #include "v3dv_private.h"
 #include "broadcom/cle/v3dx_pack.h"
 #include "util/u_pack_color.h"
+#include "vk_format_info.h"
 
 const struct v3dv_dynamic_state default_dynamic_state = {
    .viewport = {
@@ -238,7 +239,9 @@ cmd_buffer_can_merge_subpass(struct v3dv_cmd_buffer *cmd_buffer)
 
    /* FIXME: resolve attachments */
 
-   /* FIXME: also check depth/stencil attachment */
+   if (subpass->ds_attachment.attachment !=
+       prev_subpass->ds_attachment.attachment)
+      return false;
 
    return true;
 }
@@ -295,7 +298,8 @@ v3dv_cmd_buffer_start_frame(struct v3dv_cmd_buffer *cmd_buffer,
    cl_emit(&job->bcl, TILE_BINNING_MODE_CFG, config) {
       config.width_in_pixels = framebuffer->width;
       config.height_in_pixels = framebuffer->height;
-      config.number_of_render_targets = MAX2(framebuffer->attachment_count, 1);
+      config.number_of_render_targets =
+         MAX2(framebuffer->color_attachment_count, 1);
       config.multisample_mode_4x = false; /* FIXME */
       config.maximum_bpp_of_all_render_targets = framebuffer->internal_bpp;
    }
@@ -563,6 +567,23 @@ cmd_buffer_state_set_attachment_clear_color(struct v3dv_cmd_buffer *cmd_buffer,
 }
 
 static void
+cmd_buffer_state_set_attachment_clear_depth_stencil(
+   struct v3dv_cmd_buffer *cmd_buffer,
+   uint32_t attachment_idx,
+   bool clear_depth, bool clear_stencil,
+   const VkClearDepthStencilValue *ds)
+{
+   struct v3dv_cmd_buffer_attachment_state *attachment_state =
+      &cmd_buffer->state.attachments[attachment_idx];
+
+   if (clear_depth)
+      attachment_state->clear_value.z = ds->depth;
+
+   if (clear_stencil)
+      attachment_state->clear_value.s = ds->stencil;
+}
+
+static void
 cmd_buffer_state_set_clear_values(struct v3dv_cmd_buffer *cmd_buffer,
                                   uint32_t count, const VkClearValue *values)
 {
@@ -577,9 +598,18 @@ cmd_buffer_state_set_clear_values(struct v3dv_cmd_buffer *cmd_buffer,
       if (attachment->desc.loadOp != VK_ATTACHMENT_LOAD_OP_CLEAR)
          continue;
 
-      /* FIXME: support depth/stencil */
-      cmd_buffer_state_set_attachment_clear_color(cmd_buffer, i,
-                                                  &values[i].color);
+      VkImageAspectFlags aspects = vk_format_aspects(attachment->desc.format);
+      if (aspects & VK_IMAGE_ASPECT_COLOR_BIT) {
+         cmd_buffer_state_set_attachment_clear_color(cmd_buffer, i,
+                                                     &values[i].color);
+      } else if (aspects & (VK_IMAGE_ASPECT_DEPTH_BIT |
+                            VK_IMAGE_ASPECT_STENCIL_BIT)) {
+         cmd_buffer_state_set_attachment_clear_depth_stencil(
+            cmd_buffer, i,
+            aspects & VK_IMAGE_ASPECT_DEPTH_BIT,
+            aspects & VK_IMAGE_ASPECT_STENCIL_BIT,
+            &values[i].depthStencil);
+      }
    }
 }
 
@@ -701,6 +731,7 @@ setup_render_target(struct v3dv_cmd_buffer *cmd_buffer, int rt,
    const struct v3dv_framebuffer *framebuffer = state->framebuffer;
    assert(attachment_idx < framebuffer->attachment_count);
    struct v3dv_image_view *iview = framebuffer->attachments[attachment_idx];
+   assert(iview->aspects & VK_IMAGE_ASPECT_COLOR_BIT);
 
    *rt_bpp = iview->internal_bpp;
    *rt_type = iview->internal_type;
@@ -788,6 +819,25 @@ cmd_buffer_render_pass_emit_loads(struct v3dv_cmd_buffer *cmd_buffer,
       }
    }
 
+   uint32_t ds_attachment_idx = subpass->ds_attachment.attachment;
+   if (ds_attachment_idx != VK_ATTACHMENT_UNUSED) {
+      const struct v3dv_render_pass_attachment *ds_attachment =
+         &state->pass->attachments[ds_attachment_idx];
+      const struct v3dv_cmd_buffer_attachment_state *ds_attachment_state =
+         &state->attachments[ds_attachment_idx];
+
+      assert(state->job->first_subpass >= ds_attachment_state->first_subpass);
+      bool needs_load =
+         state->job->first_subpass > ds_attachment_state->first_subpass ||
+         ds_attachment->desc.loadOp == VK_ATTACHMENT_LOAD_OP_LOAD;
+
+      if (needs_load) {
+         struct v3dv_image_view *iview =
+            framebuffer->attachments[ds_attachment_idx];
+         cmd_buffer_render_pass_emit_load(cmd_buffer, cl, iview, layer, Z);
+      }
+   }
+
    cl_emit(cl, END_OF_LOADS, end);
 }
 
@@ -869,7 +919,7 @@ cmd_buffer_render_pass_emit_stores(struct v3dv_cmd_buffer *cmd_buffer,
       has_stores = true;
    }
 
-   /* FIXME: depth/stencil store
+   /* FIXME: separate stencil
     *
     * GFXH-1461/GFXH-1689: The per-buffer store command's clear
     * buffer bit is broken for depth/stencil.  In addition, the
@@ -882,11 +932,38 @@ cmd_buffer_render_pass_emit_stores(struct v3dv_cmd_buffer *cmd_buffer,
     * not want to do that. We might want to consider emitting clears for
     * all RTs needing clearing just once ahead of the first subpass.
     */
+   bool needs_ds_clear = false;
+   uint32_t ds_attachment_idx = subpass->ds_attachment.attachment;
+   if (ds_attachment_idx != VK_ATTACHMENT_UNUSED) {
+      const struct v3dv_render_pass_attachment *ds_attachment =
+         &state->pass->attachments[ds_attachment_idx];
+      const struct v3dv_cmd_buffer_attachment_state *ds_attachment_state =
+         &state->attachments[ds_attachment_idx];
+
+      /* Only clear once on the first subpass that uses the attachment */
+      assert(state->job->first_subpass >= ds_attachment_state->first_subpass);
+      needs_ds_clear =
+         state->job->first_subpass == ds_attachment_state->first_subpass &&
+         ds_attachment->desc.loadOp == VK_ATTACHMENT_LOAD_OP_CLEAR;
+
+      cmd_buffer_render_pass_emit_store(cmd_buffer, cl,
+                                        ds_attachment_idx, layer,
+                                        Z, needs_ds_clear);
+      has_stores = true;
+   }
 
    /* We always need to emit at least one dummy store */
    if (!has_stores) {
       cl_emit(cl, STORE_TILE_BUFFER_GENERAL, store) {
          store.buffer_to_store = NONE;
+      }
+   }
+
+   /* FIXME: see fixme remark for depth/stencil above */
+   if (needs_ds_clear) {
+      cl_emit(cl, CLEAR_TILE_BUFFERS, clear) {
+         clear.clear_z_stencil_buffer = true;
+         clear.clear_all_render_targets = true;
       }
    }
 }
@@ -1054,13 +1131,23 @@ cmd_buffer_emit_render_pass_rcl(struct v3dv_cmd_buffer *cmd_buffer)
     * Z_STENCIL_CLEAR_VALUES must be last. The ones in between are optional
     * updates to the previous HW state.
     */
+   const uint32_t ds_attachment_idx = subpass->ds_attachment.attachment;
+
    cl_emit(rcl, TILE_RENDERING_MODE_CFG_COMMON, config) {
-      config.early_z_disable = true; /* FIXME */
       config.image_width_pixels = framebuffer->width;
       config.image_height_pixels = framebuffer->height;
       config.number_of_render_targets = MAX2(subpass->color_count, 1);
       config.multisample_mode_4x = false; /* FIXME */
       config.maximum_bpp_of_all_render_targets = framebuffer->internal_bpp;
+
+      if (ds_attachment_idx != VK_ATTACHMENT_UNUSED) {
+         const struct v3dv_image_view *iview =
+            framebuffer->attachments[ds_attachment_idx];
+         config.internal_depth_type = iview->internal_type;
+         config.early_z_disable = true; /* FIXME */
+      } else {
+         config.early_z_disable = true;
+      }
    }
 
    for (uint32_t i = 0; i < subpass->color_count; i++) {
@@ -1143,10 +1230,19 @@ cmd_buffer_emit_render_pass_rcl(struct v3dv_cmd_buffer *cmd_buffer)
    }
 
    /* Ends rendering mode config. */
-   cl_emit(rcl, TILE_RENDERING_MODE_CFG_ZS_CLEAR_VALUES, clear) {
-      clear.z_clear_value = 0; /* FIXME */
-      clear.stencil_clear_value = 0; /* FIXME */
-   };
+   if (ds_attachment_idx != VK_ATTACHMENT_UNUSED) {
+      cl_emit(rcl, TILE_RENDERING_MODE_CFG_ZS_CLEAR_VALUES, clear) {
+         clear.z_clear_value =
+            state->attachments[ds_attachment_idx].clear_value.z;
+         clear.stencil_clear_value =
+            state->attachments[ds_attachment_idx].clear_value.s;
+      };
+   } else {
+      cl_emit(rcl, TILE_RENDERING_MODE_CFG_ZS_CLEAR_VALUES, clear) {
+         clear.z_clear_value = 1.0f;
+         clear.stencil_clear_value = 0;
+      };
+   }
 
    /* Always set initial block size before the first branch, which needs
     * to match the value from binning mode config.

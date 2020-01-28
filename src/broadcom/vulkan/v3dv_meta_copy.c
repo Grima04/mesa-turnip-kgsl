@@ -285,6 +285,7 @@ setup_framebuffer_params(struct v3dv_framebuffer *fb,
     * only the framebuffer size and the internal bpp.
     */
    fb->attachment_count = 0;
+   fb->color_attachment_count = 0;
 
    v3dv_framebuffer_compute_tiling_params(fb);
 }

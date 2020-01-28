@@ -386,6 +386,7 @@ struct v3dv_framebuffer {
    uint32_t frame_height_in_supertiles;
 
    uint32_t attachment_count;
+   uint32_t color_attachment_count;
    struct v3dv_image_view *attachments[0];
 };
 

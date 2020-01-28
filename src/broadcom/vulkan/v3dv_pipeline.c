@@ -963,10 +963,10 @@ pack_cfg_bits(struct v3dv_pipeline *pipeline,
       /* Note: ez state may update based on the compiled FS, along with zsa
        * (FIXME: not done)
        */
-      config.early_z_updates_enable = true;
+      config.early_z_updates_enable = false;
       if (ds_info && ds_info->depthTestEnable) {
-         config.z_updates_enable = false;
-         config.early_z_enable = config.early_z_enable;
+         config.z_updates_enable = true;
+         config.early_z_enable = false;
          config.depth_test_function = ds_info->depthCompareOp;
       } else {
          config.depth_test_function = VK_COMPARE_OP_ALWAYS;
