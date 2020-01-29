@@ -20,6 +20,13 @@ actions:
 - deploy:
     timeout:
       minutes: 10
+{% if boot_method == "fastboot" %}
+{# fastboot has just one boot image with the dtb and rootfs packed in #}
+    to: fastboot
+    images:
+      boot:
+        url: {{ base_artifacts_url }}/{{ kernel_image_name }}
+{% else %}
     to: tftp
     kernel:
       url: {{ base_artifacts_url }}/{{ kernel_image_name }}
@@ -31,12 +38,23 @@ actions:
       compression: gz
     dtb:
       url: {{ base_artifacts_url }}/{{ device_type }}.dtb
+{% endif %}
     os: oe
 - boot:
     timeout:
       minutes: 5
     method: {{ boot_method }}
+{% if boot_method == "fastboot" %}
+{#
+   For fastboot, LAVA doesn't know how to unpack the rootfs/apply overlay/repack,
+   so we transfer the overlay over the network after boot.
+#}
+    transfer_overlay:
+      download_command: wget -S --progress=dot:giga
+      unpack_command: tar -C / -xzf
+{% else %}
     commands: ramdisk
+{% endif %}
     prompts:
       - 'lava-shell:'
 - test:
@@ -56,7 +74,7 @@ actions:
           steps:
           - mount -t proc none /proc
           - mount -t sysfs none /sys 
-          - mount -t devtmpfs none /dev
+          - mount -t devtmpfs none /dev || echo possibly already mounted
           - mkdir -p /dev/pts
           - mount -t devpts devpts /dev/pts
 
