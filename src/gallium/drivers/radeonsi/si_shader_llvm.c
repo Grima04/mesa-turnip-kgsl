@@ -121,7 +121,7 @@ bool si_compile_llvm(struct si_screen *sscreen, struct si_shader_binary *binary,
                                .elf_sizes = &binary->elf_size}))
       return false;
 
-   bool ok = ac_rtld_read_config(&rtld, conf);
+   bool ok = ac_rtld_read_config(&sscreen->info, &rtld, conf);
    ac_rtld_close(&rtld);
    return ok;
 }

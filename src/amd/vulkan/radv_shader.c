@@ -982,7 +982,8 @@ radv_shader_variant_create(struct radv_device *device,
 			return NULL;
 		}
 
-		if (!ac_rtld_read_config(&rtld_binary, &config)) {
+		if (!ac_rtld_read_config(&device->physical_device->rad_info,
+					 &rtld_binary, &config)) {
 			ac_rtld_close(&rtld_binary);
 			free(variant);
 			return NULL;
