@@ -23,6 +23,7 @@
 
 #include "v3dv_private.h"
 
+#include "broadcom/cle/v3dx_pack.h"
 #include "drm-uapi/drm_fourcc.h"
 #include "util/format/u_format.h"
 #include "util/u_math.h"
@@ -454,10 +455,30 @@ v3dv_CreateImageView(VkDevice _device,
    iview->swap_rb = desc->swizzle[0] == PIPE_SWIZZLE_Z &&
                     iview->vk_format != VK_FORMAT_B5G6R5_UNORM_PACK16;
 
-   v3dv_get_internal_type_bpp_for_output_format(iview->format->rt_type,
-                                               &iview->internal_type,
-                                               &iview->internal_bpp);
-
+   /* FIXME: should we just move this to
+    * v3dv_get_internal_type_bpp_for_output_format instead?
+    */
+   if (vk_format_is_depth_or_stencil(iview->vk_format)) {
+      switch (iview->vk_format) {
+      case VK_FORMAT_D16_UNORM:
+         iview->internal_type = V3D_INTERNAL_TYPE_DEPTH_16;
+         break;
+      case VK_FORMAT_D32_SFLOAT:
+         iview->internal_type = V3D_INTERNAL_TYPE_DEPTH_32F;
+         break;
+      case VK_FORMAT_X8_D24_UNORM_PACK32:
+      case VK_FORMAT_D24_UNORM_S8_UINT:
+         iview->internal_type = V3D_INTERNAL_TYPE_DEPTH_24;
+         break;
+      default:
+         assert(!"unsupported format");
+         break;
+      }
+   } else {
+      v3dv_get_internal_type_bpp_for_output_format(iview->format->rt_type,
+                                                   &iview->internal_type,
+                                                   &iview->internal_bpp);
+   }
    *pView = v3dv_image_view_to_handle(iview);
 
    return VK_SUCCESS;
