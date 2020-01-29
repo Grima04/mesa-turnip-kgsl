@@ -1103,10 +1103,9 @@ void radv_GetPhysicalDeviceFeatures2(
 		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_8BIT_STORAGE_FEATURES: {
 			VkPhysicalDevice8BitStorageFeatures *features =
 			    (VkPhysicalDevice8BitStorageFeatures *)ext;
-			bool enabled = pdevice->rad_info.chip_class >= GFX8 && !pdevice->use_aco;
-			features->storageBuffer8BitAccess = enabled;
-			features->uniformAndStorageBuffer8BitAccess = enabled;
-			features->storagePushConstant8 = enabled;
+			features->storageBuffer8BitAccess = !pdevice->use_aco;
+			features->uniformAndStorageBuffer8BitAccess = !pdevice->use_aco;
+			features->storagePushConstant8 = !pdevice->use_aco;
 			break;
 		}
 		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT16_INT8_FEATURES: {
@@ -1240,9 +1239,9 @@ void radv_GetPhysicalDeviceFeatures2(
 				(VkPhysicalDeviceVulkan12Features *)ext;
 			features->samplerMirrorClampToEdge = true;
 			features->drawIndirectCount = true;
-			features->storageBuffer8BitAccess = pdevice->rad_info.chip_class >= GFX8 && !pdevice->use_aco;
-			features->uniformAndStorageBuffer8BitAccess = pdevice->rad_info.chip_class >= GFX8 && !pdevice->use_aco;
-			features->storagePushConstant8 = pdevice->rad_info.chip_class >= GFX8 && !pdevice->use_aco;
+			features->storageBuffer8BitAccess = !pdevice->use_aco;
+			features->uniformAndStorageBuffer8BitAccess = !pdevice->use_aco;
+			features->storagePushConstant8 = !pdevice->use_aco;
 			features->shaderBufferInt64Atomics = LLVM_VERSION_MAJOR >= 9;
 			features->shaderSharedInt64Atomics = LLVM_VERSION_MAJOR >= 9;
 			features->shaderFloat16 = pdevice->rad_info.chip_class >= GFX8 && !pdevice->use_aco;
