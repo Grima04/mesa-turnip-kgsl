@@ -72,6 +72,9 @@ static const struct v3dv_format format_table[] = {
    FORMAT(D16_UNORM,               D16,          DEPTH_COMP16,  SWIZ_XXXX, 32),
    FORMAT(D32_SFLOAT,              D32F,         DEPTH_COMP32F, SWIZ_XXXX, 32),
    FORMAT(X8_D24_UNORM_PACK32,     D24S8,        DEPTH24_X8,    SWIZ_XXXX, 32),
+
+   /* Depth + Stencil */
+   FORMAT(D24_UNORM_S8_UINT,       D24S8,        DEPTH24_X8,    SWIZ_XXXX, 32),
 };
 
 const struct v3dv_format *
@@ -235,9 +238,15 @@ image_format_features(VkFormat vk_format,
 
    const VkImageAspectFlags aspects = vk_format_aspects(vk_format);
 
-   const uint32_t supported_aspects =
-      VK_IMAGE_ASPECT_COLOR_BIT | VK_IMAGE_ASPECT_DEPTH_BIT;
+   const VkImageAspectFlags zs_aspects = VK_IMAGE_ASPECT_DEPTH_BIT |
+                                         VK_IMAGE_ASPECT_STENCIL_BIT;
+   const VkImageAspectFlags supported_aspects = VK_IMAGE_ASPECT_COLOR_BIT |
+                                                zs_aspects;
    if ((aspects & supported_aspects) != aspects)
+      return 0;
+
+   /* FIXME: We don't support separate stencil yet */
+   if ((aspects & zs_aspects) == VK_IMAGE_ASPECT_STENCIL_BIT)
       return 0;
 
    VkFormatFeatureFlags flags =
@@ -252,7 +261,7 @@ image_format_features(VkFormat vk_format,
       if (aspects & VK_IMAGE_ASPECT_COLOR_BIT) {
          flags |= VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT |
                   VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BLEND_BIT;
-      } else if (aspects & VK_IMAGE_ASPECT_DEPTH_BIT) {
+      } else if (aspects & zs_aspects) {
          flags |= VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
       }
    }
