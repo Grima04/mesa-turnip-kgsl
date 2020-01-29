@@ -373,7 +373,6 @@ etna_reset_gpu_state(struct etna_context *ctx)
    etna_set_state(stream, VIVS_PA_VIEWPORT_UNK00A84, fui(8192.0));
    etna_set_state(stream, VIVS_PA_ZFARCLIPPING, 0x00000000);
    etna_set_state(stream, VIVS_RA_HDEPTH_CONTROL, 0x00007000);
-   etna_set_state(stream, VIVS_PE_STENCIL_CONFIG_EXT2, 0x00000000);
    etna_set_state(stream, VIVS_PS_CONTROL_EXT, 0x00000000);
 
    /* There is no HALTI0 specific state */
