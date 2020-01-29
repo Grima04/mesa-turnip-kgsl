@@ -1731,7 +1731,6 @@ tu_reset_cmd_buffer(struct tu_cmd_buffer *cmd_buffer)
    tu_cs_reset(cmd_buffer->device, &cmd_buffer->sub_cs);
 
    for (unsigned i = 0; i < VK_PIPELINE_BIND_POINT_RANGE_SIZE; i++) {
-      cmd_buffer->descriptors[i].dirty = 0;
       cmd_buffer->descriptors[i].valid = 0;
       cmd_buffer->descriptors[i].push_dirty = false;
    }
