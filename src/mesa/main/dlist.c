@@ -70,6 +70,8 @@
 #include "main/dispatch.h"
 
 #include "vbo/vbo.h"
+#include "vbo/vbo_util.h"
+#include "util/format_r11g11b10f.h"
 
 
 #define USE_BITMAP_ATLAS 1
@@ -505,10 +507,15 @@ typedef enum
    OPCODE_ATTR_2F_ARB,
    OPCODE_ATTR_3F_ARB,
    OPCODE_ATTR_4F_ARB,
+   OPCODE_ATTR_1I,
+   OPCODE_ATTR_2I,
+   OPCODE_ATTR_3I,
+   OPCODE_ATTR_4I,
    OPCODE_ATTR_1D,
    OPCODE_ATTR_2D,
    OPCODE_ATTR_3D,
    OPCODE_ATTR_4D,
+   OPCODE_ATTR_1UI64,
    OPCODE_MATERIAL,
    OPCODE_BEGIN,
    OPCODE_END,
@@ -6456,6 +6463,425 @@ save_SecondaryColor3fvEXT(const GLfloat * v)
 }
 
 
+/**
+ * Record a GL_INVALID_VALUE error when an invalid vertex attribute
+ * index is found.
+ */
+static void
+index_error(void)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   _mesa_error(ctx, GL_INVALID_VALUE, "VertexAttribf(index)");
+}
+
+#define ATTR1F( A, X )          save_Attr1fNV(A, X)
+#define ATTR2F( A, X, Y )       save_Attr2fNV(A, X, Y)
+#define ATTR3F( A, X, Y, Z )    save_Attr3fNV(A, X, Y, Z)
+#define ATTR4F( A, X, Y, Z, W ) save_Attr4fNV(A, X, Y, Z, W)
+
+#define ATTR1FV( A, V )          save_Attr1fNV(A, V[0])
+#define ATTR2FV( A, V )          save_Attr2fNV(A, V[0], V[1])
+#define ATTR3FV( A, V )          save_Attr3fNV(A, V[0], V[0], V[2])
+#define ATTR4FV( A, V )          save_Attr4fNV(A, V[0], V[1], V[2], V[3])
+
+#define ATTRUI10_1( A, UI ) ATTR1F( A, (UI) & 0x3ff)
+#define ATTRUI10_2( A, UI ) ATTR2F( A, (UI) & 0x3ff, ((UI) >> 10) & 0x3ff)
+#define ATTRUI10_3( A, UI ) ATTR3F( A, (UI) & 0x3ff, ((UI) >> 10) & 0x3ff, ((UI) >> 20) & 0x3ff)
+#define ATTRUI10_4( A, UI ) ATTR4F( A, (UI) & 0x3ff, ((UI) >> 10) & 0x3ff, ((UI) >> 20) & 0x3ff, ((UI) >> 30) & 0x3 )
+
+#define ATTRUI10N_1( A, UI ) ATTR1F( A, conv_ui10_to_norm_float((UI) & 0x3ff))
+#define ATTRUI10N_2( A, UI ) ATTR2F( A, \
+				   conv_ui10_to_norm_float((UI) & 0x3ff), \
+				   conv_ui10_to_norm_float(((UI) >> 10) & 0x3ff))
+#define ATTRUI10N_3( A, UI ) ATTR3F( A, \
+				   conv_ui10_to_norm_float((UI) & 0x3ff), \
+				   conv_ui10_to_norm_float(((UI) >> 10) & 0x3ff), \
+				   conv_ui10_to_norm_float(((UI) >> 20) & 0x3ff))
+#define ATTRUI10N_4( A, UI ) ATTR4F( A, \
+				   conv_ui10_to_norm_float((UI) & 0x3ff), \
+				   conv_ui10_to_norm_float(((UI) >> 10) & 0x3ff), \
+				   conv_ui10_to_norm_float(((UI) >> 20) & 0x3ff), \
+				   conv_ui2_to_norm_float(((UI) >> 30) & 0x3) )
+
+#define ATTRI10_1( A, I10 ) ATTR1F( A, conv_i10_to_i((I10) & 0x3ff))
+#define ATTRI10_2( A, I10 ) ATTR2F( A, \
+				conv_i10_to_i((I10) & 0x3ff),		\
+				conv_i10_to_i(((I10) >> 10) & 0x3ff))
+#define ATTRI10_3( A, I10 ) ATTR3F( A, \
+				conv_i10_to_i((I10) & 0x3ff),	    \
+				conv_i10_to_i(((I10) >> 10) & 0x3ff), \
+				conv_i10_to_i(((I10) >> 20) & 0x3ff))
+#define ATTRI10_4( A, I10 ) ATTR4F( A, \
+				conv_i10_to_i((I10) & 0x3ff),		\
+				conv_i10_to_i(((I10) >> 10) & 0x3ff), \
+				conv_i10_to_i(((I10) >> 20) & 0x3ff), \
+				conv_i2_to_i(((I10) >> 30) & 0x3))
+
+#define ATTRI10N_1(ctx, A, I10) ATTR1F(A, conv_i10_to_norm_float(ctx, (I10) & 0x3ff))
+#define ATTRI10N_2(ctx, A, I10) ATTR2F(A, \
+				conv_i10_to_norm_float(ctx, (I10) & 0x3ff),		\
+				conv_i10_to_norm_float(ctx, ((I10) >> 10) & 0x3ff))
+#define ATTRI10N_3(ctx, A, I10) ATTR3F(A, \
+				conv_i10_to_norm_float(ctx, (I10) & 0x3ff),	    \
+				conv_i10_to_norm_float(ctx, ((I10) >> 10) & 0x3ff), \
+				conv_i10_to_norm_float(ctx, ((I10) >> 20) & 0x3ff))
+#define ATTRI10N_4(ctx, A, I10) ATTR4F(A, \
+				conv_i10_to_norm_float(ctx, (I10) & 0x3ff),		\
+				conv_i10_to_norm_float(ctx, ((I10) >> 10) & 0x3ff), \
+				conv_i10_to_norm_float(ctx, ((I10) >> 20) & 0x3ff), \
+				conv_i2_to_norm_float(ctx, ((I10) >> 30) & 0x3))
+
+#define ATTR_UI(ctx, val, type, normalized, attr, arg) do {	\
+   if ((type) == GL_UNSIGNED_INT_2_10_10_10_REV) {		\
+      if (normalized) {						\
+	 ATTRUI10N_##val((attr), (arg));			\
+      } else {							\
+	 ATTRUI10_##val((attr), (arg));				\
+      }								\
+   } else if ((type) == GL_INT_2_10_10_10_REV) {		\
+      if (normalized) {						\
+	 ATTRI10N_##val(ctx, (attr), (arg));			\
+      } else {							\
+	 ATTRI10_##val((attr), (arg));				\
+      }								\
+   } else if ((type) == GL_UNSIGNED_INT_10F_11F_11F_REV) {	\
+      float res[4];						\
+      res[3] = 1;                                               \
+      r11g11b10f_to_float3((arg), res);				\
+      ATTR##val##FV((attr), res);				\
+   }                                                            \
+} while(0)
+
+#define ATTR_UI_INDEX(ctx, val, type, normalized, index, arg) do {	\
+      if ((index) == 0 && _mesa_attr_zero_aliases_vertex(ctx)) {	\
+	 ATTR_UI(ctx, val, (type), normalized, 0, (arg));		\
+      } else if ((index) < MAX_VERTEX_GENERIC_ATTRIBS) {		\
+	 ATTR_UI(ctx, val, (type), normalized, VERT_ATTRIB_GENERIC0 + (index), (arg)); \
+      } else								\
+	 index_error();                                                 \
+   } while(0)
+
+static void GLAPIENTRY
+save_VertexP2ui(GLenum type, GLuint value)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   ERROR_IF_NOT_PACKED_TYPE(ctx, type, "glVertexP2ui");
+   ATTR_UI(ctx, 2, type, 0, VERT_ATTRIB_POS, value);
+}
+
+static void GLAPIENTRY
+save_VertexP2uiv(GLenum type, const GLuint *value)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   ERROR_IF_NOT_PACKED_TYPE(ctx, type, "glVertexP2uiv");
+   ATTR_UI(ctx, 2, type, 0, VERT_ATTRIB_POS, value[0]);
+}
+
+static void GLAPIENTRY
+save_VertexP3ui(GLenum type, GLuint value)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   ERROR_IF_NOT_PACKED_TYPE(ctx, type, "glVertexP3ui");
+   ATTR_UI(ctx, 3, type, 0, VERT_ATTRIB_POS, value);
+}
+
+static void GLAPIENTRY
+save_VertexP3uiv(GLenum type, const GLuint *value)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   ERROR_IF_NOT_PACKED_TYPE(ctx, type, "glVertexP3uiv");
+   ATTR_UI(ctx, 3, type, 0, VERT_ATTRIB_POS, value[0]);
+}
+
+static void GLAPIENTRY
+save_VertexP4ui(GLenum type, GLuint value)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   ERROR_IF_NOT_PACKED_TYPE(ctx, type, "glVertexP4ui");
+   ATTR_UI(ctx, 4, type, 0, VERT_ATTRIB_POS, value);
+}
+
+static void GLAPIENTRY
+save_VertexP4uiv(GLenum type, const GLuint *value)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   ERROR_IF_NOT_PACKED_TYPE(ctx, type, "glVertexP4uiv");
+   ATTR_UI(ctx, 4, type, 0, VERT_ATTRIB_POS, value[0]);
+}
+
+static void GLAPIENTRY
+save_TexCoordP1ui(GLenum type, GLuint coords)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   ERROR_IF_NOT_PACKED_TYPE(ctx, type, "glTexCoordP1ui");
+   ATTR_UI(ctx, 1, type, 0, VERT_ATTRIB_TEX0, coords);
+}
+
+static void GLAPIENTRY
+save_TexCoordP1uiv(GLenum type, const GLuint *coords)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   ERROR_IF_NOT_PACKED_TYPE(ctx, type, "glTexCoordP1uiv");
+   ATTR_UI(ctx, 1, type, 0, VERT_ATTRIB_TEX0, coords[0]);
+}
+
+static void GLAPIENTRY
+save_TexCoordP2ui(GLenum type, GLuint coords)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   ERROR_IF_NOT_PACKED_TYPE(ctx, type, "glTexCoordP2ui");
+   ATTR_UI(ctx, 2, type, 0, VERT_ATTRIB_TEX0, coords);
+}
+
+static void GLAPIENTRY
+save_TexCoordP2uiv(GLenum type, const GLuint *coords)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   ERROR_IF_NOT_PACKED_TYPE(ctx, type, "glTexCoordP2uiv");
+   ATTR_UI(ctx, 2, type, 0, VERT_ATTRIB_TEX0, coords[0]);
+}
+
+static void GLAPIENTRY
+save_TexCoordP3ui(GLenum type, GLuint coords)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   ERROR_IF_NOT_PACKED_TYPE(ctx, type, "glTexCoordP3ui");
+   ATTR_UI(ctx, 3, type, 0, VERT_ATTRIB_TEX0, coords);
+}
+
+static void GLAPIENTRY
+save_TexCoordP3uiv(GLenum type, const GLuint *coords)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   ERROR_IF_NOT_PACKED_TYPE(ctx, type, "glTexCoordP3uiv");
+   ATTR_UI(ctx, 3, type, 0, VERT_ATTRIB_TEX0, coords[0]);
+}
+
+static void GLAPIENTRY
+save_TexCoordP4ui(GLenum type, GLuint coords)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   ERROR_IF_NOT_PACKED_TYPE(ctx, type, "glTexCoordP4ui");
+   ATTR_UI(ctx, 4, type, 0, VERT_ATTRIB_TEX0, coords);
+}
+
+static void GLAPIENTRY
+save_TexCoordP4uiv(GLenum type, const GLuint *coords)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   ERROR_IF_NOT_PACKED_TYPE(ctx, type, "glTexCoordP4uiv");
+   ATTR_UI(ctx, 4, type, 0, VERT_ATTRIB_TEX0, coords[0]);
+}
+
+static void GLAPIENTRY
+save_MultiTexCoordP1ui(GLenum target, GLenum type, GLuint coords)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   GLuint attr = (target & 0x7) + VERT_ATTRIB_TEX0;
+   ERROR_IF_NOT_PACKED_TYPE(ctx, type, "glMultiTexCoordP1ui");
+   ATTR_UI(ctx, 1, type, 0, attr, coords);
+}
+
+static void GLAPIENTRY
+save_MultiTexCoordP1uiv(GLenum target, GLenum type, const GLuint *coords)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   GLuint attr = (target & 0x7) + VERT_ATTRIB_TEX0;
+   ERROR_IF_NOT_PACKED_TYPE(ctx, type, "glMultiTexCoordP1uiv");
+   ATTR_UI(ctx, 1, type, 0, attr, coords[0]);
+}
+
+static void GLAPIENTRY
+save_MultiTexCoordP2ui(GLenum target, GLenum type, GLuint coords)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   GLuint attr = (target & 0x7) + VERT_ATTRIB_TEX0;
+   ERROR_IF_NOT_PACKED_TYPE(ctx, type, "glMultiTexCoordP2ui");
+   ATTR_UI(ctx, 2, type, 0, attr, coords);
+}
+
+static void GLAPIENTRY
+save_MultiTexCoordP2uiv(GLenum target, GLenum type, const GLuint *coords)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   GLuint attr = (target & 0x7) + VERT_ATTRIB_TEX0;
+   ERROR_IF_NOT_PACKED_TYPE(ctx, type, "glMultiTexCoordP2uiv");
+   ATTR_UI(ctx, 2, type, 0, attr, coords[0]);
+}
+
+static void GLAPIENTRY
+save_MultiTexCoordP3ui(GLenum target, GLenum type, GLuint coords)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   GLuint attr = (target & 0x7) + VERT_ATTRIB_TEX0;
+   ERROR_IF_NOT_PACKED_TYPE(ctx, type, "glMultiTexCoordP3ui");
+   ATTR_UI(ctx, 3, type, 0, attr, coords);
+}
+
+static void GLAPIENTRY
+save_MultiTexCoordP3uiv(GLenum target, GLenum type, const GLuint *coords)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   GLuint attr = (target & 0x7) + VERT_ATTRIB_TEX0;
+   ERROR_IF_NOT_PACKED_TYPE(ctx, type, "glMultiTexCoordP3uiv");
+   ATTR_UI(ctx, 3, type, 0, attr, coords[0]);
+}
+
+static void GLAPIENTRY
+save_MultiTexCoordP4ui(GLenum target, GLenum type, GLuint coords)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   GLuint attr = (target & 0x7) + VERT_ATTRIB_TEX0;
+   ERROR_IF_NOT_PACKED_TYPE(ctx, type, "glMultiTexCoordP4ui");
+   ATTR_UI(ctx, 4, type, 0, attr, coords);
+}
+
+static void GLAPIENTRY
+save_MultiTexCoordP4uiv(GLenum target, GLenum type, const GLuint *coords)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   GLuint attr = (target & 0x7) + VERT_ATTRIB_TEX0;
+   ERROR_IF_NOT_PACKED_TYPE(ctx, type, "glMultiTexCoordP4uiv");
+   ATTR_UI(ctx, 4, type, 0, attr, coords[0]);
+}
+
+static void GLAPIENTRY
+save_NormalP3ui(GLenum type, GLuint coords)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   ERROR_IF_NOT_PACKED_TYPE(ctx, type, "glNormalP3ui");
+   ATTR_UI(ctx, 3, type, 1, VERT_ATTRIB_NORMAL, coords);
+}
+
+static void GLAPIENTRY
+save_NormalP3uiv(GLenum type, const GLuint *coords)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   ERROR_IF_NOT_PACKED_TYPE(ctx, type, "glNormalP3uiv");
+   ATTR_UI(ctx, 3, type, 1, VERT_ATTRIB_NORMAL, coords[0]);
+}
+
+static void GLAPIENTRY
+save_ColorP3ui(GLenum type, GLuint color)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   ERROR_IF_NOT_PACKED_TYPE(ctx, type, "glColorP3ui");
+   ATTR_UI(ctx, 3, type, 1, VERT_ATTRIB_COLOR0, color);
+}
+
+static void GLAPIENTRY
+save_ColorP3uiv(GLenum type, const GLuint *color)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   ERROR_IF_NOT_PACKED_TYPE(ctx, type, "glColorP3uiv");
+   ATTR_UI(ctx, 3, type, 1, VERT_ATTRIB_COLOR0, color[0]);
+}
+
+static void GLAPIENTRY
+save_ColorP4ui(GLenum type, GLuint color)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   ERROR_IF_NOT_PACKED_TYPE(ctx, type, "glColorP4ui");
+   ATTR_UI(ctx, 4, type, 1, VERT_ATTRIB_COLOR0, color);
+}
+
+static void GLAPIENTRY
+save_ColorP4uiv(GLenum type, const GLuint *color)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   ERROR_IF_NOT_PACKED_TYPE(ctx, type, "glColorP4uiv");
+   ATTR_UI(ctx, 4, type, 1, VERT_ATTRIB_COLOR0, color[0]);
+}
+
+static void GLAPIENTRY
+save_SecondaryColorP3ui(GLenum type, GLuint color)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   ERROR_IF_NOT_PACKED_TYPE(ctx, type, "glSecondaryColorP3ui");
+   ATTR_UI(ctx, 3, type, 1, VERT_ATTRIB_COLOR1, color);
+}
+
+static void GLAPIENTRY
+save_SecondaryColorP3uiv(GLenum type, const GLuint *color)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   ERROR_IF_NOT_PACKED_TYPE(ctx, type, "glSecondaryColorP3uiv");
+   ATTR_UI(ctx, 3, type, 1, VERT_ATTRIB_COLOR1, color[0]);
+}
+
+static void GLAPIENTRY
+save_VertexAttribP1ui(GLuint index, GLenum type, GLboolean normalized,
+                      GLuint value)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   ERROR_IF_NOT_PACKED_TYPE_EXT(ctx, type, "glVertexAttribP1ui");
+   ATTR_UI_INDEX(ctx, 1, type, normalized, index, value);
+}
+
+static void GLAPIENTRY
+save_VertexAttribP2ui(GLuint index, GLenum type, GLboolean normalized,
+                      GLuint value)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   ERROR_IF_NOT_PACKED_TYPE_EXT(ctx, type, "glVertexAttribP2ui");
+   ATTR_UI_INDEX(ctx, 2, type, normalized, index, value);
+}
+
+static void GLAPIENTRY
+save_VertexAttribP3ui(GLuint index, GLenum type, GLboolean normalized,
+                      GLuint value)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   ERROR_IF_NOT_PACKED_TYPE_EXT(ctx, type, "glVertexAttribP3ui");
+   ATTR_UI_INDEX(ctx, 3, type, normalized, index, value);
+}
+
+static void GLAPIENTRY
+save_VertexAttribP4ui(GLuint index, GLenum type, GLboolean normalized,
+                      GLuint value)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   ERROR_IF_NOT_PACKED_TYPE(ctx, type, "glVertexAttribP4ui");
+   ATTR_UI_INDEX(ctx, 4, type, normalized, index, value);
+}
+
+static void GLAPIENTRY
+save_VertexAttribP1uiv(GLuint index, GLenum type, GLboolean normalized,
+                       const GLuint *value)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   ERROR_IF_NOT_PACKED_TYPE_EXT(ctx, type, "glVertexAttribP1uiv");
+   ATTR_UI_INDEX(ctx, 1, type, normalized, index, *value);
+}
+
+static void GLAPIENTRY
+save_VertexAttribP2uiv(GLuint index, GLenum type, GLboolean normalized,
+                       const GLuint *value)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   ERROR_IF_NOT_PACKED_TYPE_EXT(ctx, type, "glVertexAttribP2uiv");
+   ATTR_UI_INDEX(ctx, 2, type, normalized, index, *value);
+}
+
+static void GLAPIENTRY
+save_VertexAttribP3uiv(GLuint index, GLenum type, GLboolean normalized,
+                       const GLuint *value)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   ERROR_IF_NOT_PACKED_TYPE_EXT(ctx, type, "glVertexAttribP3uiv");
+   ATTR_UI_INDEX(ctx, 3, type, normalized, index, *value);
+}
+
+static void GLAPIENTRY
+save_VertexAttribP4uiv(GLuint index, GLenum type, GLboolean normalized,
+                       const GLuint *value)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   ERROR_IF_NOT_PACKED_TYPE(ctx, type, "glVertexAttribP4uiv");
+   ATTR_UI_INDEX(ctx, 4, type, normalized, index, *value);
+}
+
+
 /* Just call the respective ATTR for texcoord
  */
 static void GLAPIENTRY
@@ -6515,19 +6941,78 @@ save_MultiTexCoord4fv(GLenum target, const GLfloat * v)
    save_Attr4fNV(attr, v[0], v[1], v[2], v[3]);
 }
 
-
-/**
- * Record a GL_INVALID_VALUE error when an invalid vertex attribute
- * index is found.
- */
-static void
-index_error(void)
+static void GLAPIENTRY
+save_VertexAttrib1fNV(GLuint index, GLfloat x)
 {
-   GET_CURRENT_CONTEXT(ctx);
-   _mesa_error(ctx, GL_INVALID_VALUE, "VertexAttribf(index)");
+   if (index < MAX_VERTEX_GENERIC_ATTRIBS)
+      save_Attr1fNV(index, x);
+   else
+      index_error();
 }
 
+static void GLAPIENTRY
+save_VertexAttrib1fvNV(GLuint index, const GLfloat * v)
+{
+   if (index < MAX_VERTEX_GENERIC_ATTRIBS)
+      save_Attr1fNV(index, v[0]);
+   else
+      index_error();
+}
 
+static void GLAPIENTRY
+save_VertexAttrib2fNV(GLuint index, GLfloat x, GLfloat y)
+{
+   if (index < MAX_VERTEX_GENERIC_ATTRIBS)
+      save_Attr2fNV(index, x, y);
+   else
+      index_error();
+}
+
+static void GLAPIENTRY
+save_VertexAttrib2fvNV(GLuint index, const GLfloat * v)
+{
+   if (index < MAX_VERTEX_GENERIC_ATTRIBS)
+      save_Attr2fNV(index, v[0], v[1]);
+   else
+      index_error();
+}
+
+static void GLAPIENTRY
+save_VertexAttrib3fNV(GLuint index, GLfloat x, GLfloat y, GLfloat z)
+{
+   if (index < MAX_VERTEX_GENERIC_ATTRIBS)
+      save_Attr3fNV(index, x, y, z);
+   else
+      index_error();
+}
+
+static void GLAPIENTRY
+save_VertexAttrib3fvNV(GLuint index, const GLfloat * v)
+{
+   if (index < MAX_VERTEX_GENERIC_ATTRIBS)
+      save_Attr3fNV(index, v[0], v[1], v[2]);
+   else
+      index_error();
+}
+
+static void GLAPIENTRY
+save_VertexAttrib4fNV(GLuint index, GLfloat x, GLfloat y,
+                      GLfloat z, GLfloat w)
+{
+   if (index < MAX_VERTEX_GENERIC_ATTRIBS)
+      save_Attr4fNV(index, x, y, z, w);
+   else
+      index_error();
+}
+
+static void GLAPIENTRY
+save_VertexAttrib4fvNV(GLuint index, const GLfloat * v)
+{
+   if (index < MAX_VERTEX_GENERIC_ATTRIBS)
+      save_Attr4fNV(index, v[0], v[1], v[2], v[3]);
+   else
+      index_error();
+}
 
 static void GLAPIENTRY
 save_VertexAttrib1fARB(GLuint index, GLfloat x)
@@ -6747,6 +7232,206 @@ save_VertexAttribL4dv(GLuint index, const GLdouble *v)
    else
       index_error();
 }
+
+static void GLAPIENTRY
+save_VertexAttribI1i(GLuint index, GLint x)
+{
+   GET_CURRENT_CONTEXT(ctx);
+
+   if (index < MAX_VERTEX_GENERIC_ATTRIBS) {
+      Node *n;
+      SAVE_FLUSH_VERTICES(ctx);
+      n = alloc_instruction(ctx, OPCODE_ATTR_1I, 2);
+      if (n) {
+         n[1].ui = index;
+         n[2].i = x;
+      }
+
+      ctx->ListState.ActiveAttribSize[index] = 1;
+      memcpy(ctx->ListState.CurrentAttrib[index], &n[2], sizeof(GLint));
+
+      if (ctx->ExecuteFlag) {
+         CALL_VertexAttribI1iEXT(ctx->Exec, (index, x));
+      }
+   } else {
+      index_error();
+   }
+}
+
+static void GLAPIENTRY
+save_VertexAttribI2i(GLuint index, GLint x, GLint y)
+{
+   GET_CURRENT_CONTEXT(ctx);
+
+   if (index < MAX_VERTEX_GENERIC_ATTRIBS) {
+      Node *n;
+      SAVE_FLUSH_VERTICES(ctx);
+      n = alloc_instruction(ctx, OPCODE_ATTR_2I, 3);
+      if (n) {
+         n[1].ui = index;
+         n[2].i = x;
+         n[3].i = y;
+      }
+
+      ctx->ListState.ActiveAttribSize[index] = 1;
+      memcpy(ctx->ListState.CurrentAttrib[index], &n[2], sizeof(GLint));
+
+      if (ctx->ExecuteFlag) {
+         CALL_VertexAttribI2iEXT(ctx->Exec, (index, x, y));
+      }
+   } else {
+      index_error();
+   }
+}
+
+static void GLAPIENTRY
+save_VertexAttribI3i(GLuint index, GLint x, GLint y, GLint z)
+{
+   GET_CURRENT_CONTEXT(ctx);
+
+   if (index < MAX_VERTEX_GENERIC_ATTRIBS) {
+      Node *n;
+      SAVE_FLUSH_VERTICES(ctx);
+      n = alloc_instruction(ctx, OPCODE_ATTR_3I, 4);
+      if (n) {
+         n[1].ui = index;
+         n[2].i = x;
+         n[3].i = y;
+         n[4].i = z;
+      }
+
+      ctx->ListState.ActiveAttribSize[index] = 1;
+      memcpy(ctx->ListState.CurrentAttrib[index], &n[2], sizeof(GLint));
+
+      if (ctx->ExecuteFlag) {
+         CALL_VertexAttribI3iEXT(ctx->Exec, (index, x, y, z));
+      }
+   } else {
+      index_error();
+   }
+}
+
+static void GLAPIENTRY
+save_VertexAttribI4i(GLuint index, GLint x, GLint y, GLint z, GLint w)
+{
+   GET_CURRENT_CONTEXT(ctx);
+
+   if (index < MAX_VERTEX_GENERIC_ATTRIBS) {
+      Node *n;
+      SAVE_FLUSH_VERTICES(ctx);
+      n = alloc_instruction(ctx, OPCODE_ATTR_3I, 5);
+      if (n) {
+         n[1].ui = index;
+         n[2].i = x;
+         n[3].i = y;
+         n[4].i = z;
+         n[5].i = w;
+      }
+
+      ctx->ListState.ActiveAttribSize[index] = 1;
+      memcpy(ctx->ListState.CurrentAttrib[index], &n[2], sizeof(GLint));
+
+      if (ctx->ExecuteFlag) {
+         CALL_VertexAttribI4iEXT(ctx->Exec, (index, x, y, z, w));
+      }
+   } else {
+      index_error();
+   }
+}
+
+static void GLAPIENTRY
+save_VertexAttribI2iv(GLuint index, const GLint *v)
+{
+   save_VertexAttribI2i(index, v[0], v[1]);
+}
+
+static void GLAPIENTRY
+save_VertexAttribI3iv(GLuint index, const GLint *v)
+{
+   save_VertexAttribI3i(index, v[0], v[1], v[2]);
+}
+
+static void GLAPIENTRY
+save_VertexAttribI4iv(GLuint index, const GLint *v)
+{
+   save_VertexAttribI4i(index, v[0], v[1], v[2], v[3]);
+}
+
+
+
+static void GLAPIENTRY
+save_VertexAttribI1ui(GLuint index, GLuint x)
+{
+   save_VertexAttribI1i(index, x);
+}
+
+static void GLAPIENTRY
+save_VertexAttribI2ui(GLuint index, GLuint x, GLuint y)
+{
+   save_VertexAttribI2i(index, x, y);
+}
+
+static void GLAPIENTRY
+save_VertexAttribI3ui(GLuint index, GLuint x, GLuint y, GLuint z)
+{
+   save_VertexAttribI3i(index, x, y, z);
+}
+
+static void GLAPIENTRY
+save_VertexAttribI4ui(GLuint index, GLuint x, GLuint y, GLuint z, GLuint w)
+{
+   save_VertexAttribI4i(index, x, y, z, w);
+}
+
+static void GLAPIENTRY
+save_VertexAttribI2uiv(GLuint index, const GLuint *v)
+{
+   save_VertexAttribI2i(index, v[0], v[1]);
+}
+
+static void GLAPIENTRY
+save_VertexAttribI3uiv(GLuint index, const GLuint *v)
+{
+   save_VertexAttribI3i(index, v[0], v[1], v[2]);
+}
+
+static void GLAPIENTRY
+save_VertexAttribI4uiv(GLuint index, const GLuint *v)
+{
+   save_VertexAttribI4i(index, v[0], v[1], v[2], v[3]);
+}
+
+static void GLAPIENTRY
+save_VertexAttribL1ui64ARB(GLuint index, GLuint64EXT x)
+{
+   GET_CURRENT_CONTEXT(ctx);
+
+   if (index < MAX_VERTEX_GENERIC_ATTRIBS) {
+      Node *n;
+      SAVE_FLUSH_VERTICES(ctx);
+      n = alloc_instruction(ctx, OPCODE_ATTR_1UI64, 3);
+      if (n) {
+         n[1].ui = index;
+         ASSIGN_UINT64_TO_NODES(n, 2, x);
+      }
+
+      ctx->ListState.ActiveAttribSize[index] = 1;
+      memcpy(ctx->ListState.CurrentAttrib[index], &n[2], sizeof(GLdouble));
+
+      if (ctx->ExecuteFlag) {
+         CALL_VertexAttribL1ui64ARB(ctx->Exec, (index, x));
+      }
+   } else {
+      index_error();
+   }
+}
+
+static void GLAPIENTRY
+save_VertexAttribL1ui64vARB(GLuint index, const GLuint64EXT *v)
+{
+   save_VertexAttribL1ui64ARB(index, v[0]);
+}
+
 
 static void GLAPIENTRY
 save_PrimitiveRestartNV(void)
@@ -13339,6 +14024,18 @@ execute_list(struct gl_context *ctx, GLuint list)
          case OPCODE_ATTR_4F_ARB:
             CALL_VertexAttrib4fvARB(ctx->Exec, (n[1].e, &n[2].f));
             break;
+         case OPCODE_ATTR_1I:
+            CALL_VertexAttribI1iEXT(ctx->Exec, (n[1].e, n[2].i));
+            break;
+         case OPCODE_ATTR_2I:
+            CALL_VertexAttribI2ivEXT(ctx->Exec, (n[1].e, &n[2].i));
+            break;
+         case OPCODE_ATTR_3I:
+            CALL_VertexAttribI3ivEXT(ctx->Exec, (n[1].e, &n[2].i));
+            break;
+         case OPCODE_ATTR_4I:
+            CALL_VertexAttribI4ivEXT(ctx->Exec, (n[1].e, &n[2].i));
+            break;
          case OPCODE_ATTR_1D: {
             GLdouble *d = (GLdouble *) &n[2];
             CALL_VertexAttribL1d(ctx->Exec, (n[1].ui, *d));
@@ -13357,6 +14054,11 @@ execute_list(struct gl_context *ctx, GLuint list)
          case OPCODE_ATTR_4D: {
             GLdouble *d = (GLdouble *) &n[2];
             CALL_VertexAttribL4dv(ctx->Exec, (n[1].ui, d));
+            break;
+         }
+         case OPCODE_ATTR_1UI64: {
+            uint64_t *ui64 = (uint64_t *) &n[2];
+            CALL_VertexAttribL1ui64ARB(ctx->Exec, (n[1].ui, *ui64));
             break;
          }
          case OPCODE_MATERIAL:
@@ -15415,82 +16117,6 @@ mesa_print_display_list(GLuint list)
 /*****                      Initialization                        *****/
 /**********************************************************************/
 
-static void
-save_vtxfmt_init(GLvertexformat * vfmt)
-{
-   vfmt->ArrayElement = _ae_ArrayElement;
-
-   vfmt->Begin = save_Begin;
-
-   vfmt->CallList = save_CallList;
-   vfmt->CallLists = save_CallLists;
-
-   vfmt->Color3f = save_Color3f;
-   vfmt->Color3fv = save_Color3fv;
-   vfmt->Color4f = save_Color4f;
-   vfmt->Color4fv = save_Color4fv;
-   vfmt->EdgeFlag = save_EdgeFlag;
-   vfmt->End = save_End;
-
-   vfmt->EvalCoord1f = save_EvalCoord1f;
-   vfmt->EvalCoord1fv = save_EvalCoord1fv;
-   vfmt->EvalCoord2f = save_EvalCoord2f;
-   vfmt->EvalCoord2fv = save_EvalCoord2fv;
-   vfmt->EvalPoint1 = save_EvalPoint1;
-   vfmt->EvalPoint2 = save_EvalPoint2;
-
-   vfmt->FogCoordfEXT = save_FogCoordfEXT;
-   vfmt->FogCoordfvEXT = save_FogCoordfvEXT;
-   vfmt->Indexf = save_Indexf;
-   vfmt->Indexfv = save_Indexfv;
-   vfmt->Materialfv = save_Materialfv;
-   vfmt->MultiTexCoord1fARB = save_MultiTexCoord1f;
-   vfmt->MultiTexCoord1fvARB = save_MultiTexCoord1fv;
-   vfmt->MultiTexCoord2fARB = save_MultiTexCoord2f;
-   vfmt->MultiTexCoord2fvARB = save_MultiTexCoord2fv;
-   vfmt->MultiTexCoord3fARB = save_MultiTexCoord3f;
-   vfmt->MultiTexCoord3fvARB = save_MultiTexCoord3fv;
-   vfmt->MultiTexCoord4fARB = save_MultiTexCoord4f;
-   vfmt->MultiTexCoord4fvARB = save_MultiTexCoord4fv;
-   vfmt->Normal3f = save_Normal3f;
-   vfmt->Normal3fv = save_Normal3fv;
-   vfmt->SecondaryColor3fEXT = save_SecondaryColor3fEXT;
-   vfmt->SecondaryColor3fvEXT = save_SecondaryColor3fvEXT;
-   vfmt->TexCoord1f = save_TexCoord1f;
-   vfmt->TexCoord1fv = save_TexCoord1fv;
-   vfmt->TexCoord2f = save_TexCoord2f;
-   vfmt->TexCoord2fv = save_TexCoord2fv;
-   vfmt->TexCoord3f = save_TexCoord3f;
-   vfmt->TexCoord3fv = save_TexCoord3fv;
-   vfmt->TexCoord4f = save_TexCoord4f;
-   vfmt->TexCoord4fv = save_TexCoord4fv;
-   vfmt->Vertex2f = save_Vertex2f;
-   vfmt->Vertex2fv = save_Vertex2fv;
-   vfmt->Vertex3f = save_Vertex3f;
-   vfmt->Vertex3fv = save_Vertex3fv;
-   vfmt->Vertex4f = save_Vertex4f;
-   vfmt->Vertex4fv = save_Vertex4fv;
-   vfmt->VertexAttrib1fARB = save_VertexAttrib1fARB;
-   vfmt->VertexAttrib1fvARB = save_VertexAttrib1fvARB;
-   vfmt->VertexAttrib2fARB = save_VertexAttrib2fARB;
-   vfmt->VertexAttrib2fvARB = save_VertexAttrib2fvARB;
-   vfmt->VertexAttrib3fARB = save_VertexAttrib3fARB;
-   vfmt->VertexAttrib3fvARB = save_VertexAttrib3fvARB;
-   vfmt->VertexAttrib4fARB = save_VertexAttrib4fARB;
-   vfmt->VertexAttrib4fvARB = save_VertexAttrib4fvARB;
-   vfmt->VertexAttribL1d = save_VertexAttribL1d;
-   vfmt->VertexAttribL1dv = save_VertexAttribL1dv;
-   vfmt->VertexAttribL2d = save_VertexAttribL2d;
-   vfmt->VertexAttribL2dv = save_VertexAttribL2dv;
-   vfmt->VertexAttribL3d = save_VertexAttribL3d;
-   vfmt->VertexAttribL3dv = save_VertexAttribL3dv;
-   vfmt->VertexAttribL4d = save_VertexAttribL4d;
-   vfmt->VertexAttribL4dv = save_VertexAttribL4dv;
-
-   vfmt->PrimitiveRestartNV = save_PrimitiveRestartNV;
-}
-
-
 void
 _mesa_install_dlist_vtxfmt(struct _glapi_table *disp,
                            const GLvertexformat *vfmt)
@@ -15507,6 +16133,7 @@ void
 _mesa_init_display_list(struct gl_context *ctx)
 {
    static GLboolean tableInitialized = GL_FALSE;
+   GLvertexformat *vfmt = &ctx->ListState.ListVtxfmt;
 
    /* zero-out the instruction size table, just once */
    if (!tableInitialized) {
@@ -15527,9 +16154,14 @@ _mesa_init_display_list(struct gl_context *ctx)
    /* Display List group */
    ctx->List.ListBase = 0;
 
-   save_vtxfmt_init(&ctx->ListState.ListVtxfmt);
-
    InstSize[OPCODE_NOP] = 1;
+
+#define NAME_AE(x) _ae_##x
+#define NAME_CALLLIST(x) save_##x
+#define NAME(x) save_##x
+#define NAME_ES(x) save_##x##ARB
+
+#include "vbo/vbo_init_tmp.h"
 }
 
 
