@@ -467,12 +467,14 @@ parse_rsw(FILE *fp, uint32_t *value, int i, uint32_t *helper)
       break;
    case 3: /* DEPTH TEST */
       if ((*value & 0x00000001) == 0x00000001)
-         fprintf(fp, ": depth test enabled && writes allowed");
+         fprintf(fp, "(1): depth test enabled && writes allowed");
       else
-         fprintf(fp, ": depth test disabled || writes not allowed");
+         fprintf(fp, "(1): depth test disabled || writes not allowed");
 
-      fprintf(fp, ", PIPE_FUNC_%d", *value & 0x0000000e);
-      fprintf(fp, ", offset_scale: %d", *value & 0xffff0000);
+      fprintf(fp, "\n\t\t\t\t\t\t/* %s(2)", render_state_infos[i].info);
+      fprintf(fp, ": PIPE_FUNC_%d", (*value & 0x0000000e) >> 1);
+      fprintf(fp, ", offset_scale: %d", (*value & 0x00ff0000) >> 16);
+      fprintf(fp, ", offset_units: %d", (*value & 0xff000000) >> 24);
       fprintf(fp, ", unknown bits 4-15: 0x%08x */\n", *value & 0x0000fff0);
       break;
    case 4: /* DEPTH RANGE */
