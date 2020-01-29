@@ -1736,6 +1736,12 @@ cmd_buffer_emit_graphics_pipeline(struct v3dv_cmd_buffer *cmd_buffer)
 
    cl_emit_prepacked(&job->bcl, &pipeline->cfg_bits);
 
+   if (pipeline->emit_stencil_cfg[0]) {
+      cl_emit_prepacked(&job->bcl, &pipeline->stencil_cfg[0]);
+      if (pipeline->emit_stencil_cfg[1])
+         cl_emit_prepacked(&job->bcl, &pipeline->stencil_cfg[1]);
+   }
+
    /* FIXME: hardcoded values */
    cl_emit(&job->bcl, ZERO_ALL_FLAT_SHADE_FLAGS, flags);
    cl_emit(&job->bcl, ZERO_ALL_NON_PERSPECTIVE_FLAGS, flags);

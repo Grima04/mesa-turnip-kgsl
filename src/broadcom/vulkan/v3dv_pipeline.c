@@ -976,6 +976,75 @@ pack_cfg_bits(struct v3dv_pipeline *pipeline,
    };
 }
 
+static uint32_t
+translate_stencil_op(enum pipe_stencil_op op)
+{
+   switch (op) {
+   case VK_STENCIL_OP_KEEP:
+      return V3D_STENCIL_OP_KEEP;
+   case VK_STENCIL_OP_ZERO:
+      return V3D_STENCIL_OP_ZERO;
+   case VK_STENCIL_OP_REPLACE:
+      return V3D_STENCIL_OP_REPLACE;
+   case VK_STENCIL_OP_INCREMENT_AND_CLAMP:
+      return V3D_STENCIL_OP_INCR;
+   case VK_STENCIL_OP_DECREMENT_AND_CLAMP:
+      return V3D_STENCIL_OP_DECR;
+   case VK_STENCIL_OP_INVERT:
+      return V3D_STENCIL_OP_INVERT;
+   case VK_STENCIL_OP_INCREMENT_AND_WRAP:
+      return V3D_STENCIL_OP_INCWRAP;
+   case VK_STENCIL_OP_DECREMENT_AND_WRAP:
+      return V3D_STENCIL_OP_DECWRAP;
+   default:
+      unreachable("bad stencil op");
+   }
+}
+
+static void
+pack_single_stencil_cfg(uint8_t *stencil_cfg,
+                        bool is_front,
+                        bool is_back,
+                        const VkStencilOpState *stencil_state)
+{
+   v3dv_pack(stencil_cfg, STENCIL_CFG, config) {
+      config.front_config = is_front;
+      config.back_config = is_back;
+      config.stencil_write_mask = stencil_state->writeMask;
+      config.stencil_test_mask = stencil_state->compareMask;
+      config.stencil_test_function = stencil_state->compareOp;
+      config.stencil_pass_op = translate_stencil_op(stencil_state->passOp);
+      config.depth_test_fail_op = translate_stencil_op(stencil_state->depthFailOp);
+      config.stencil_test_fail_op = translate_stencil_op(stencil_state->failOp);
+      config.stencil_ref_value = stencil_state->reference;
+   }
+}
+
+static void
+pack_stencil_cfg(struct v3dv_pipeline *pipeline,
+                 const VkPipelineDepthStencilStateCreateInfo *ds_info)
+{
+   assert(sizeof(pipeline->stencil_cfg) == 2 * cl_packet_length(STENCIL_CFG));
+
+   if (!ds_info || !ds_info->stencilTestEnable)
+      return;
+
+   /* If the front and back configurations are the same we can emit both with
+    * a single packet.
+    */
+   pipeline->emit_stencil_cfg[0] = true;
+   if (memcmp(&ds_info->front, &ds_info->back, sizeof(ds_info->front)) == 0) {
+      pack_single_stencil_cfg(pipeline->stencil_cfg[0],
+                              true, true, &ds_info->front);
+   } else {
+      pipeline->emit_stencil_cfg[1] = true;
+      pack_single_stencil_cfg(pipeline->stencil_cfg[0],
+                              true, false, &ds_info->front);
+      pack_single_stencil_cfg(pipeline->stencil_cfg[1],
+                              false, true, &ds_info->back);
+   }
+}
+
 static void
 pack_shader_state_record(struct v3dv_pipeline *pipeline)
 {
@@ -1255,6 +1324,7 @@ pipeline_init(struct v3dv_pipeline *pipeline,
       raster_enabled ? pCreateInfo->pColorBlendState : NULL;
 
    pack_cfg_bits(pipeline, ds_info, rs_info, cb_info);
+   pack_stencil_cfg(pipeline, ds_info);
 
    result = pipeline_compile_graphics(pipeline, pCreateInfo, alloc);
 

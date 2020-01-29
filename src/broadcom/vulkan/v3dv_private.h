@@ -688,6 +688,10 @@ struct v3dv_pipeline {
 
    struct vpm_config vpm_cfg;
    struct vpm_config vpm_cfg_bin;
+
+   /* If the pipeline should emit any of the stencil configuration packets */
+   bool emit_stencil_cfg[2];
+
    /* Packets prepacked during pipeline creation
     */
    uint8_t cfg_bits[cl_packet_length(CFG_BITS)];
@@ -695,6 +699,7 @@ struct v3dv_pipeline {
    uint8_t vcm_cache_size[cl_packet_length(VCM_CACHE_SIZE)];
    uint8_t vertex_attrs[cl_packet_length(GL_SHADER_STATE_ATTRIBUTE_RECORD) *
                         (MAX_VBS / 4)];
+   uint8_t stencil_cfg[2][cl_packet_length(STENCIL_CFG)];
 };
 
 uint32_t v3dv_physical_device_api_version(struct v3dv_physical_device *dev);
