@@ -2328,14 +2328,20 @@ static LLVMValueRef visit_load_var(struct ac_nir_context *ctx,
 		break;
 	case nir_var_mem_global:  {
 		LLVMValueRef address = get_src(ctx, instr->src[0]);
+		LLVMTypeRef result_type = get_def_type(ctx, &instr->dest.ssa);
 		unsigned explicit_stride = glsl_get_explicit_stride(deref->type);
 		unsigned natural_stride = type_scalar_size_bytes(deref->type);
 		unsigned stride = explicit_stride ? explicit_stride : natural_stride;
+		int elem_size_bytes = ac_get_elem_bits(&ctx->ac, result_type) / 8;
+		bool split_loads = ctx->ac.chip_class == GFX6 &&
+				   elem_size_bytes == 1;
 
-		LLVMTypeRef result_type = get_def_type(ctx, &instr->dest.ssa);
-		if (stride != natural_stride) {
-			LLVMTypeRef ptr_type =  LLVMPointerType(LLVMGetElementType(result_type),
-			                                        LLVMGetPointerAddressSpace(LLVMTypeOf(address)));
+		if (stride != natural_stride || split_loads) {
+			if (LLVMGetTypeKind(result_type) == LLVMVectorTypeKind)
+				result_type = LLVMGetElementType(result_type);
+
+			LLVMTypeRef ptr_type = LLVMPointerType(result_type,
+							       LLVMGetPointerAddressSpace(LLVMTypeOf(address)));
 			address = LLVMBuildBitCast(ctx->ac.builder, address, ptr_type , "");
 
 			for (unsigned i = 0; i < instr->dest.ssa.num_components; ++i) {
@@ -2489,23 +2495,30 @@ visit_store_var(struct ac_nir_context *ctx,
 		unsigned explicit_stride = glsl_get_explicit_stride(deref->type);
 		unsigned natural_stride = type_scalar_size_bytes(deref->type);
 		unsigned stride = explicit_stride ? explicit_stride : natural_stride;
+		int elem_size_bytes = ac_get_elem_bits(&ctx->ac, LLVMTypeOf(val)) / 8;
+		bool split_stores = ctx->ac.chip_class == GFX6 &&
+				    elem_size_bytes == 1;
 
 		LLVMTypeRef ptr_type =  LLVMPointerType(LLVMTypeOf(val),
 							LLVMGetPointerAddressSpace(LLVMTypeOf(address)));
 		address = LLVMBuildBitCast(ctx->ac.builder, address, ptr_type , "");
 
 		if (writemask == (1u << ac_get_llvm_num_components(val)) - 1 &&
-		    stride == natural_stride) {
-			LLVMTypeRef ptr_type =  LLVMPointerType(LLVMTypeOf(val),
-			                                        LLVMGetPointerAddressSpace(LLVMTypeOf(address)));
+		    stride == natural_stride && !split_stores) {
+			LLVMTypeRef ptr_type = LLVMPointerType(LLVMTypeOf(val),
+			                                       LLVMGetPointerAddressSpace(LLVMTypeOf(address)));
 			address = LLVMBuildBitCast(ctx->ac.builder, address, ptr_type , "");
 
 			val = LLVMBuildBitCast(ctx->ac.builder, val,
 			                       LLVMGetElementType(LLVMTypeOf(address)), "");
 			LLVMBuildStore(ctx->ac.builder, val, address);
 		} else {
-			LLVMTypeRef ptr_type =  LLVMPointerType(LLVMGetElementType(LLVMTypeOf(val)),
-			                                        LLVMGetPointerAddressSpace(LLVMTypeOf(address)));
+			LLVMTypeRef val_type = LLVMTypeOf(val);
+			if (LLVMGetTypeKind(LLVMTypeOf(val)) == LLVMVectorTypeKind)
+				val_type = LLVMGetElementType(val_type);
+
+			LLVMTypeRef ptr_type = LLVMPointerType(val_type,
+							       LLVMGetPointerAddressSpace(LLVMTypeOf(address)));
 			address = LLVMBuildBitCast(ctx->ac.builder, address, ptr_type , "");
 			for (unsigned chan = 0; chan < 4; chan++) {
 				if (!(writemask & (1 << chan)))
