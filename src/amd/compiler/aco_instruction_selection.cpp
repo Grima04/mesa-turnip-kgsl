@@ -3236,8 +3236,14 @@ void visit_load_input(isel_context *ctx, nir_intrinsic_instr *instr)
                            nfmt == V_008F0C_BUF_NUM_FORMAT_SINT) &&
                           vtx_info->chan_byte_size == 4;
          unsigned fetch_dfmt = V_008F0C_BUF_DATA_FORMAT_INVALID;
-         if (!use_mubuf)
+         if (!use_mubuf) {
             fetch_dfmt = get_fetch_data_format(ctx, vtx_info, fetch_offset, attrib_stride, &fetch_size);
+         } else {
+            if (fetch_size == 3 && ctx->options->chip_class == GFX6) {
+               /* GFX6 only supports loading vec3 with MTBUF, expand to vec4. */
+               fetch_size = 4;
+            }
+         }
 
          Temp fetch_index = index;
          if (attrib_stride != 0 && fetch_offset > attrib_stride) {
