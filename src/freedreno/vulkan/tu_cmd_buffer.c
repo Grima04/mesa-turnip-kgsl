@@ -1092,7 +1092,8 @@ update_vsc_pipe(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
    tu_cs_emit_regs(cs,
                    A6XX_VSC_BIN_SIZE(.width = tiling->tile0.extent.width,
                                      .height = tiling->tile0.extent.height),
-                   A6XX_VSC_SIZE_ADDRESS(.bo = &cmd->vsc_data, .bo_offset = cmd->vsc_data_pitch));
+                   A6XX_VSC_SIZE_ADDRESS(.bo = &cmd->vsc_data,
+                                         .bo_offset = 32 * cmd->vsc_data_pitch));
 
    tu_cs_emit_regs(cs,
                    A6XX_VSC_BIN_COUNT(.nx = tiling->tile_count.width,
