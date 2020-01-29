@@ -1001,11 +1001,10 @@ void radv_GetPhysicalDeviceFeatures2(
 		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES: {
 			VkPhysicalDevice16BitStorageFeatures *features =
 			    (VkPhysicalDevice16BitStorageFeatures*)ext;
-			bool enabled = pdevice->rad_info.chip_class >= GFX8 && !pdevice->use_aco;
-			features->storageBuffer16BitAccess = enabled;
-			features->uniformAndStorageBuffer16BitAccess = enabled;
-			features->storagePushConstant16 = enabled;
-			features->storageInputOutput16 = enabled && LLVM_VERSION_MAJOR >= 9;
+			features->storageBuffer16BitAccess = !pdevice->use_aco;
+			features->uniformAndStorageBuffer16BitAccess = !pdevice->use_aco;
+			features->storagePushConstant16 = !pdevice->use_aco;
+			features->storageInputOutput16 = pdevice->rad_info.chip_class >= GFX8 && !pdevice->use_aco && LLVM_VERSION_MAJOR >= 9;
 			break;
 		}
 		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLER_YCBCR_CONVERSION_FEATURES: {
@@ -1220,9 +1219,9 @@ void radv_GetPhysicalDeviceFeatures2(
 		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES: {
 			VkPhysicalDeviceVulkan11Features *features =
 				(VkPhysicalDeviceVulkan11Features *)ext;
-			features->storageBuffer16BitAccess = pdevice->rad_info.chip_class >= GFX8 && !pdevice->use_aco;
-			features->uniformAndStorageBuffer16BitAccess = pdevice->rad_info.chip_class >= GFX8 && !pdevice->use_aco;
-			features->storagePushConstant16 = pdevice->rad_info.chip_class >= GFX8 && !pdevice->use_aco;
+			features->storageBuffer16BitAccess = !pdevice->use_aco;
+			features->uniformAndStorageBuffer16BitAccess = !pdevice->use_aco;
+			features->storagePushConstant16 = !pdevice->use_aco;
 			features->storageInputOutput16 = pdevice->rad_info.chip_class >= GFX8 && !pdevice->use_aco && LLVM_VERSION_MAJOR >= 9;
 			features->multiview = true;
 			features->multiviewGeometryShader = true;
