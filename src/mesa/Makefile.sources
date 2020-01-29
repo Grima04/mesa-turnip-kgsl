@@ -422,7 +422,8 @@ VBO_FILES = \
 	vbo/vbo_save.c \
 	vbo/vbo_save_draw.c \
 	vbo/vbo_save.h \
-	vbo/vbo_save_loopback.c
+	vbo/vbo_save_loopback.c \
+	vbo/vbo_util.h
 
 STATETRACKER_FILES = \
 	state_tracker/st_atifs_to_tgsi.c \

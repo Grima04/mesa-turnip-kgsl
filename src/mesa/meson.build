@@ -347,6 +347,7 @@ files_libmesa_common = files(
   'vbo/vbo_save_draw.c',
   'vbo/vbo_save.h',
   'vbo/vbo_save_loopback.c',
+  'vbo/vbo_util.h',
   'x86/common_x86.c',
 )
 
