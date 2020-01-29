@@ -695,6 +695,9 @@ general_restrictions_based_on_operand_types(const struct gen_device_info *devinf
    unsigned exec_size = 1 << brw_inst_exec_size(devinfo, inst);
    struct string error_msg = { .str = NULL, .len = 0 };
 
+   if (inst_is_send(devinfo, inst))
+      return error_msg;
+
    if (devinfo->gen >= 11) {
       if (num_sources == 3) {
          ERROR_IF(brw_reg_type_to_size(brw_inst_3src_a1_src1_type(devinfo, inst)) == 1 ||
@@ -710,9 +713,6 @@ general_restrictions_based_on_operand_types(const struct gen_device_info *devinf
    }
 
    if (num_sources == 3)
-      return error_msg;
-
-   if (inst_is_send(devinfo, inst))
       return error_msg;
 
    if (exec_size == 1)
