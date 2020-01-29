@@ -191,6 +191,10 @@ swr_cpp_args = [cpp_vis_args]
 if cpp.has_argument('-fno-strict-aliasing')
   swr_cpp_args += '-fno-strict-aliasing'
 endif
+if cpp.has_argument('-Wno-aligned-new')
+  swr_cpp_args += '-Wno-aligned-new'
+endif
+
 
 swr_arch_libs = []
 swr_defines = []

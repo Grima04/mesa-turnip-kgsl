@@ -1623,10 +1623,10 @@ BuilderSWR::CompileTES(struct swr_context *ctx, swr_jit_tes_key &key)
    unsigned tes_spacing = info->properties[TGSI_PROPERTY_TES_SPACING];
    bool tes_vertex_order_cw = info->properties[TGSI_PROPERTY_TES_VERTEX_ORDER_CW];
    bool tes_point_mode = info->properties[TGSI_PROPERTY_TES_POINT_MODE];
-   SWR_TS_DOMAIN type;
-   SWR_TS_PARTITIONING partitioning;
-   SWR_TS_OUTPUT_TOPOLOGY topology;
-   PRIMITIVE_TOPOLOGY postDSTopology;
+   SWR_TS_DOMAIN type = SWR_TS_ISOLINE;
+   SWR_TS_PARTITIONING partitioning = SWR_TS_EVEN_FRACTIONAL;
+   SWR_TS_OUTPUT_TOPOLOGY topology = SWR_TS_OUTPUT_POINT;
+   PRIMITIVE_TOPOLOGY postDSTopology = TOP_POINT_LIST;
 
    // TESS_TODO: move this to helper functions to improve readability
    switch (tes_prim_mode) {

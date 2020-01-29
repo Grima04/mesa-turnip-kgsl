@@ -507,7 +507,7 @@ namespace SwrJit
         uint32_t numElem  = vSrc->getType()->getVectorNumElements();
         auto     i32Scale = B->Z_EXT(i8Scale, B->mInt32Ty);
         auto     srcTy    = vSrc->getType()->getVectorElementType();
-        Value*   v32Gather;
+        Value*   v32Gather = nullptr;
         if (arch == AVX)
         {
             // Full emulation for AVX
@@ -536,7 +536,7 @@ namespace SwrJit
         }
         else if (arch == AVX2 || (arch == AVX512 && width == W256))
         {
-            Function* pX86IntrinFunc;
+            Function* pX86IntrinFunc = nullptr;
             if (srcTy == B->mFP32Ty)
             {
                 pX86IntrinFunc = Intrinsic::getDeclaration(B->JM()->mpCurrentModule,
@@ -627,8 +627,8 @@ namespace SwrJit
         }
         else if (arch == AVX512)
         {
-            Value*    iMask;
-            Function* pX86IntrinFunc;
+            Value*    iMask = nullptr;
+            Function* pX86IntrinFunc = nullptr;
             if (srcTy == B->mFP32Ty)
             {
                 pX86IntrinFunc = Intrinsic::getDeclaration(B->JM()->mpCurrentModule,
