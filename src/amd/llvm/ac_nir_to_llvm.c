@@ -1925,25 +1925,12 @@ static LLVMValueRef visit_atomic_ssbo(struct ac_nir_context *ctx, nir_intrinsic_
       }
       params[arg_count++] = ac_llvm_extract_elem(&ctx->ac, get_src(ctx, instr->src[2]), 0);
       params[arg_count++] = descriptor;
+      params[arg_count++] = get_src(ctx, instr->src[1]); /* voffset */
+      params[arg_count++] = ctx->ac.i32_0;               /* soffset */
+      params[arg_count++] = ctx->ac.i32_0;               /* slc */
 
-      if (LLVM_VERSION_MAJOR >= 9) {
-         /* XXX: The new raw/struct atomic intrinsics are buggy with
-          * LLVM 8, see r358579.
-          */
-         params[arg_count++] = get_src(ctx, instr->src[1]); /* voffset */
-         params[arg_count++] = ctx->ac.i32_0;               /* soffset */
-         params[arg_count++] = ctx->ac.i32_0;               /* slc */
-
-         ac_build_type_name_for_intr(return_type, type, sizeof(type));
-         snprintf(name, sizeof(name), "llvm.amdgcn.raw.buffer.atomic.%s.%s", op, type);
-      } else {
-         params[arg_count++] = ctx->ac.i32_0;               /* vindex */
-         params[arg_count++] = get_src(ctx, instr->src[1]); /* voffset */
-         params[arg_count++] = ctx->ac.i1false;             /* slc */
-
-         assert(return_type == ctx->ac.i32);
-         snprintf(name, sizeof(name), "llvm.amdgcn.buffer.atomic.%s", op);
-      }
+      ac_build_type_name_for_intr(return_type, type, sizeof(type));
+      snprintf(name, sizeof(name), "llvm.amdgcn.raw.buffer.atomic.%s.%s", op, type);
 
       result = ac_build_intrinsic(&ctx->ac, name, return_type, params, arg_count, 0);
    }
@@ -2086,7 +2073,7 @@ static LLVMValueRef visit_global_atomic(struct ac_nir_context *ctx,
    LLVMValueRef result;
 
    /* use "singlethread" sync scope to implement relaxed ordering */
-   const char *sync_scope = LLVM_VERSION_MAJOR >= 9 ? "singlethread-one-as" : "singlethread";
+   const char *sync_scope = "singlethread-one-as";
 
    LLVMTypeRef ptr_type = LLVMPointerType(LLVMTypeOf(data), AC_ADDR_SPACE_GLOBAL);
 
@@ -2403,28 +2390,6 @@ static void get_image_coords(struct ac_nir_context *ctx, const nir_intrinsic_ins
    }
 }
 
-static LLVMValueRef get_image_buffer_descriptor(struct ac_nir_context *ctx,
-                                                const nir_intrinsic_instr *instr,
-                                                LLVMValueRef dynamic_index, bool write, bool atomic)
-{
-   LLVMValueRef rsrc = get_image_descriptor(ctx, instr, dynamic_index, AC_DESC_BUFFER, write);
-   if (ctx->ac.chip_class == GFX9 && LLVM_VERSION_MAJOR < 9 && atomic) {
-      LLVMValueRef elem_count =
-         LLVMBuildExtractElement(ctx->ac.builder, rsrc, LLVMConstInt(ctx->ac.i32, 2, 0), "");
-      LLVMValueRef stride =
-         LLVMBuildExtractElement(ctx->ac.builder, rsrc, LLVMConstInt(ctx->ac.i32, 1, 0), "");
-      stride = LLVMBuildLShr(ctx->ac.builder, stride, LLVMConstInt(ctx->ac.i32, 16, 0), "");
-
-      LLVMValueRef new_elem_count = LLVMBuildSelect(
-         ctx->ac.builder, LLVMBuildICmp(ctx->ac.builder, LLVMIntUGT, elem_count, stride, ""),
-         elem_count, stride, "");
-
-      rsrc = LLVMBuildInsertElement(ctx->ac.builder, rsrc, new_elem_count,
-                                    LLVMConstInt(ctx->ac.i32, 2, 0), "");
-   }
-   return rsrc;
-}
-
 static LLVMValueRef enter_waterfall_image(struct ac_nir_context *ctx,
                                           struct waterfall_context *wctx,
                                           const nir_intrinsic_instr *instr)
@@ -2472,7 +2437,7 @@ static LLVMValueRef visit_image_load(struct ac_nir_context *ctx, const nir_intri
          num_channels = num_channels < 4 ? 2 : 4;
       LLVMValueRef rsrc, vindex;
 
-      rsrc = get_image_buffer_descriptor(ctx, instr, dynamic_index, false, false);
+      rsrc = get_image_descriptor(ctx, instr, dynamic_index, AC_DESC_BUFFER, false);
       vindex =
          LLVMBuildExtractElement(ctx->ac.builder, get_src(ctx, instr->src[1]), ctx->ac.i32_0, "");
 
@@ -2566,7 +2531,7 @@ static void visit_image_store(struct ac_nir_context *ctx, const nir_intrinsic_in
    }
 
    if (dim == GLSL_SAMPLER_DIM_BUF) {
-      LLVMValueRef rsrc = get_image_buffer_descriptor(ctx, instr, dynamic_index, true, false);
+      LLVMValueRef rsrc = get_image_descriptor(ctx, instr, dynamic_index, AC_DESC_BUFFER, true);
       unsigned src_channels = ac_get_llvm_num_components(src);
       LLVMValueRef vindex;
 
@@ -2702,30 +2667,22 @@ static LLVMValueRef visit_image_atomic(struct ac_nir_context *ctx, const nir_int
 
    LLVMValueRef result;
    if (dim == GLSL_SAMPLER_DIM_BUF) {
-      params[param_count++] = get_image_buffer_descriptor(ctx, instr, dynamic_index, true, true);
+      params[param_count++] = get_image_descriptor(ctx, instr, dynamic_index, AC_DESC_BUFFER, true);
       params[param_count++] = LLVMBuildExtractElement(ctx->ac.builder, get_src(ctx, instr->src[1]),
                                                       ctx->ac.i32_0, ""); /* vindex */
       params[param_count++] = ctx->ac.i32_0;                              /* voffset */
       if (cmpswap && instr->dest.ssa.bit_size == 64) {
          result = emit_ssbo_comp_swap_64(ctx, params[2], params[3], params[1], params[0], true);
       } else {
-         if (LLVM_VERSION_MAJOR >= 9) {
-            /* XXX: The new raw/struct atomic intrinsics are buggy
-             * with LLVM 8, see r358579.
-             */
-            params[param_count++] = ctx->ac.i32_0; /* soffset */
-            params[param_count++] = ctx->ac.i32_0; /* slc */
+         /* XXX: The new raw/struct atomic intrinsics are buggy
+          * with LLVM 8, see r358579.
+          */
+         params[param_count++] = ctx->ac.i32_0; /* soffset */
+         params[param_count++] = ctx->ac.i32_0; /* slc */
 
-            length = snprintf(intrinsic_name, sizeof(intrinsic_name),
-                              "llvm.amdgcn.struct.buffer.atomic.%s.%s", atomic_name,
-                              instr->dest.ssa.bit_size == 64 ? "i64" : "i32");
-         } else {
-            assert(instr->dest.ssa.bit_size == 64);
-            params[param_count++] = ctx->ac.i1false; /* slc */
-
-            length = snprintf(intrinsic_name, sizeof(intrinsic_name), "llvm.amdgcn.buffer.atomic.%s",
-                              atomic_name);
-         }
+         length = snprintf(intrinsic_name, sizeof(intrinsic_name),
+                           "llvm.amdgcn.struct.buffer.atomic.%s.%s", atomic_name,
+                           instr->dest.ssa.bit_size == 64 ? "i64" : "i32");
 
          assert(length < sizeof(intrinsic_name));
          result = ac_build_intrinsic(&ctx->ac, intrinsic_name, LLVMTypeOf(params[0]), params, param_count, 0);
@@ -3020,7 +2977,7 @@ static LLVMValueRef visit_var_atomic(struct ac_nir_context *ctx, const nir_intri
    LLVMValueRef result;
    LLVMValueRef src = get_src(ctx, instr->src[src_idx]);
 
-   const char *sync_scope = LLVM_VERSION_MAJOR >= 9 ? "workgroup-one-as" : "workgroup";
+   const char *sync_scope = "workgroup-one-as";
 
    if (instr->intrinsic == nir_intrinsic_shared_atomic_comp_swap) {
       LLVMValueRef src1 = get_src(ctx, instr->src[src_idx + 1]);

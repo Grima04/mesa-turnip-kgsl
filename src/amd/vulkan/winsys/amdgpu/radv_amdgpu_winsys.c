@@ -55,12 +55,6 @@ do_winsys_init(struct radv_amdgpu_winsys *ws, int fd)
       return false;
    }
 
-   /* LLVM 9.0 is required for GFX10. */
-   if (ws->info.chip_class == GFX10 && ws->use_llvm && LLVM_VERSION_MAJOR < 9) {
-      fprintf(stderr, "radv: Navi family support requires LLVM 9 or higher\n");
-      return false;
-   }
-
    ws->addrlib = ac_addrlib_create(&ws->info, &ws->info.max_alignment);
    if (!ws->addrlib) {
       fprintf(stderr, "amdgpu: Cannot create addrlib.\n");

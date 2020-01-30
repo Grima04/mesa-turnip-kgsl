@@ -403,7 +403,7 @@ radv_physical_device_get_supported_extensions(const struct radv_physical_device 
       .KHR_sampler_mirror_clamp_to_edge = true,
       .KHR_sampler_ycbcr_conversion = true,
       .KHR_separate_depth_stencil_layouts = true,
-      .KHR_shader_atomic_int64 = LLVM_VERSION_MAJOR >= 9 || !device->use_llvm,
+      .KHR_shader_atomic_int64 = true,
       .KHR_shader_clock = true,
       .KHR_shader_draw_parameters = true,
       .KHR_shader_float16_int8 = true,
@@ -460,7 +460,7 @@ radv_physical_device_get_supported_extensions(const struct radv_physical_device 
       .EXT_sampler_filter_minmax = true,
       .EXT_scalar_block_layout = device->rad_info.chip_class >= GFX7,
       .EXT_shader_atomic_float = true,
-      .EXT_shader_demote_to_helper_invocation = LLVM_VERSION_MAJOR >= 9 || !device->use_llvm,
+      .EXT_shader_demote_to_helper_invocation = true,
       .EXT_shader_image_atomic_int64 = LLVM_VERSION_MAJOR >= 11 || !device->use_llvm,
       .EXT_shader_stencil_export = true,
       .EXT_shader_subgroup_ballot = true,
@@ -1165,8 +1165,7 @@ radv_get_physical_device_features_1_1(struct radv_physical_device *pdevice,
    f->storageBuffer16BitAccess = true;
    f->uniformAndStorageBuffer16BitAccess = true;
    f->storagePushConstant16 = true;
-   f->storageInputOutput16 =
-      pdevice->rad_info.has_packed_math_16bit && (LLVM_VERSION_MAJOR >= 9 || !pdevice->use_llvm);
+   f->storageInputOutput16 = pdevice->rad_info.has_packed_math_16bit;
    f->multiview = true;
    f->multiviewGeometryShader = true;
    f->multiviewTessellationShader = true;
@@ -1188,8 +1187,8 @@ radv_get_physical_device_features_1_2(struct radv_physical_device *pdevice,
    f->storageBuffer8BitAccess = true;
    f->uniformAndStorageBuffer8BitAccess = true;
    f->storagePushConstant8 = true;
-   f->shaderBufferInt64Atomics = LLVM_VERSION_MAJOR >= 9 || !pdevice->use_llvm;
-   f->shaderSharedInt64Atomics = LLVM_VERSION_MAJOR >= 9 || !pdevice->use_llvm;
+   f->shaderBufferInt64Atomics = true;
+   f->shaderSharedInt64Atomics = true;
    f->shaderFloat16 = pdevice->rad_info.has_packed_math_16bit;
    f->shaderInt8 = true;
 
@@ -1405,7 +1404,7 @@ radv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DEMOTE_TO_HELPER_INVOCATION_FEATURES_EXT: {
          VkPhysicalDeviceShaderDemoteToHelperInvocationFeaturesEXT *features =
             (VkPhysicalDeviceShaderDemoteToHelperInvocationFeaturesEXT *)ext;
-         features->shaderDemoteToHelperInvocation = LLVM_VERSION_MAJOR >= 9 || !pdevice->use_llvm;
+         features->shaderDemoteToHelperInvocation = true;
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INLINE_UNIFORM_BLOCK_FEATURES_EXT: {

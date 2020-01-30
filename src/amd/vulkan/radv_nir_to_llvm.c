@@ -2345,7 +2345,7 @@ gfx10_ngg_gs_emit_epilogue_2(struct radv_shader_context *ctx)
       LLVMTypeRef gdsptr = LLVMPointerType(ctx->ac.i32, AC_ADDR_SPACE_GDS);
       LLVMValueRef gdsbase = LLVMBuildIntToPtr(builder, ctx->ac.i32_0, gdsptr, "");
 
-      const char *sync_scope = LLVM_VERSION_MAJOR >= 9 ? "workgroup-one-as" : "workgroup";
+      const char *sync_scope = "workgroup-one-as";
 
       /* Use a plain GDS atomic to accumulate the number of generated
        * primitives.

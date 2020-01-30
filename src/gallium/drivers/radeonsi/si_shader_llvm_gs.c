@@ -335,7 +335,7 @@ void si_preload_esgs_ring(struct si_shader_context *ctx)
 
       ctx->esgs_ring = ac_build_load_to_sgpr(&ctx->ac, buf_ptr, offset);
    } else {
-      if (USE_LDS_SYMBOLS && LLVM_VERSION_MAJOR >= 9) {
+      if (USE_LDS_SYMBOLS) {
          /* Declare the ESGS ring as an explicit LDS symbol. */
          si_llvm_declare_esgs_ring(ctx);
       } else {

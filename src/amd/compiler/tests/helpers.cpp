@@ -205,10 +205,8 @@ void finish_assembler_test()
 
    /* we could use CLRX for disassembly but that would require it to be
     * installed */
-   if (program->chip_class == GFX10_3 && LLVM_VERSION_MAJOR < 9) {
+   if (program->chip_class == GFX10_3 && LLVM_VERSION_MAJOR < 11) {
       skip_test("LLVM 11 needed for GFX10_3 disassembly");
-   } else if (program->chip_class == GFX10 && LLVM_VERSION_MAJOR < 9) {
-      skip_test("LLVM 9 needed for GFX10 disassembly");
    } else if (program->chip_class >= GFX8) {
       print_asm(program.get(), binary, exec_size / 4u, output);
    } else {
