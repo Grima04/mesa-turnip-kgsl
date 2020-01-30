@@ -30,6 +30,7 @@ apt-get -y install \
 	pkg-config \
 	procps \
 	python \
+	python3-distutils \
 	waffle-utils \
 	wget \
 	zlib1g
@@ -59,6 +60,7 @@ apt-get purge -y \
         meson \
         pkg-config \
         python \
+        python3-distutils \
         wget
 
 apt-get autoremove -y --purge

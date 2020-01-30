@@ -11,6 +11,7 @@ dEQP-GLES[0-9]*.functional.flush_finish.*
 
 # Random failures
 dEQP-GLES31.functional.shaders.builtin_functions.*geometry
+dEQP-GLES31.functional.geometry_shading.input.basic_primitive.points
 
 dEQP-GLES31.functional.fbo.no_attachments.maximums.all
 dEQP-GLES31.functional.fbo.no_attachments.maximums.size

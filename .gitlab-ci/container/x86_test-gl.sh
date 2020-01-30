@@ -50,6 +50,7 @@ apt-get install -y --no-remove \
       meson \
       patch \
       pkg-config \
+      python3-distutils \
       python3-mako \
       python3-numpy \
       python3-six \
@@ -91,6 +92,7 @@ apt-get purge -y \
       meson \
       patch \
       pkg-config \
-      python
+      python \
+      python3-distutils
 
 apt-get autoremove -y --purge
