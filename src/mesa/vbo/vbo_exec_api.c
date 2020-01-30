@@ -648,17 +648,36 @@ vbo_exec_Materialfv(GLenum face, GLenum pname, const GLfloat *params)
 
 /**
  * Flush (draw) vertices.
+ *
+ * \param flags  bitmask of FLUSH_STORED_VERTICES, FLUSH_UPDATE_CURRENT
  */
 static void
-vbo_exec_FlushVertices_internal(struct vbo_exec_context *exec)
+vbo_exec_FlushVertices_internal(struct vbo_exec_context *exec, unsigned flags)
 {
-   if (exec->vtx.vert_count) {
-      vbo_exec_vtx_flush(exec);
-   }
+   struct gl_context *ctx = exec->ctx;
 
-   if (exec->vtx.vertex_size) {
+   if (flags & FLUSH_STORED_VERTICES) {
+      if (exec->vtx.vert_count) {
+         vbo_exec_vtx_flush(exec);
+      }
+
+      if (exec->vtx.vertex_size) {
+         vbo_exec_copy_to_current(exec);
+         vbo_reset_all_attr(exec);
+      }
+
+      /* All done. */
+      ctx->Driver.NeedFlush = 0;
+   } else {
+      assert(flags == FLUSH_UPDATE_CURRENT);
+
+      /* Note that the vertex size is unchanged.
+       * (vbo_reset_all_attr isn't called)
+       */
       vbo_exec_copy_to_current(exec);
-      vbo_reset_all_attr(exec);
+
+      /* Only FLUSH_UPDATE_CURRENT is done. */
+      ctx->Driver.NeedFlush = ~FLUSH_UPDATE_CURRENT;
    }
 }
 
@@ -790,9 +809,12 @@ vbo_exec_Begin(GLenum mode)
 
    /* Heuristic: attempt to isolate attributes occurring outside
     * begin/end pairs.
+    *
+    * Use FLUSH_STORED_VERTICES, because it updates current attribs and
+    * sets vertex_size to 0. (FLUSH_UPDATE_CURRENT doesn't change vertex_size)
     */
    if (exec->vtx.vertex_size && !exec->vtx.attr[VBO_ATTRIB_POS].size)
-      vbo_exec_FlushVertices_internal(exec);
+      vbo_exec_FlushVertices_internal(exec, FLUSH_STORED_VERTICES);
 
    i = exec->vtx.prim_count++;
    exec->vtx.prim[i].mode = mode;
@@ -1079,10 +1101,7 @@ vbo_exec_FlushVertices(struct gl_context *ctx, GLuint flags)
    }
 
    /* Flush (draw). */
-   vbo_exec_FlushVertices_internal(exec);
-
-   /* Clear the dirty flush flags, because the flush is finished. */
-   ctx->Driver.NeedFlush &= ~(FLUSH_UPDATE_CURRENT | flags);
+   vbo_exec_FlushVertices_internal(exec, flags);
 
 #ifndef NDEBUG
    exec->flush_call_depth--;
