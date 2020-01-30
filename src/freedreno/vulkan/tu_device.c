@@ -1761,6 +1761,8 @@ tu_DestroyEvent(VkDevice _device,
 
    if (!event)
       return;
+
+   tu_bo_finish(device, &event->bo);
    vk_free2(&device->alloc, pAllocator, event);
 }
 
