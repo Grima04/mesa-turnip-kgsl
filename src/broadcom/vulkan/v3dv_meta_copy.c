@@ -308,29 +308,30 @@ copy_image_to_buffer_tlb(struct v3dv_cmd_buffer *cmd_buffer,
                          struct v3dv_image *image,
                          const VkBufferImageCopy *region)
 {
-      assert(can_use_tlb_copy_for_image_region(region));
+   assert(can_use_tlb_copy_for_image_region(region));
 
-      /* FIXME: pre-compute this at image creation time? */
-      uint32_t internal_type;
-      uint32_t internal_bpp;
-      v3dv_get_internal_type_bpp_for_output_format(image->format->rt_type,
-                                                   &internal_type,
-                                                   &internal_bpp);
+   /* FIXME: pre-compute this at image creation time? */
+   uint32_t internal_type;
+   uint32_t internal_bpp;
 
-      uint32_t num_layers = region->imageSubresource.layerCount;
-      assert(num_layers > 0);
+   v3dv_get_internal_type_bpp_for_output_format(image->format->rt_type,
+                                                &internal_type,
+                                                &internal_bpp);
 
-      struct v3dv_framebuffer framebuffer;
-      setup_framebuffer_params(&framebuffer, image, num_layers, internal_bpp);
+   uint32_t num_layers = region->imageSubresource.layerCount;
+   assert(num_layers > 0);
 
-      struct v3dv_job *job = v3dv_cmd_buffer_start_job(cmd_buffer);
-      v3dv_cmd_buffer_start_frame(cmd_buffer, &framebuffer);
+   struct v3dv_framebuffer framebuffer;
+   setup_framebuffer_params(&framebuffer, image, num_layers, internal_bpp);
 
-      v3dv_job_emit_binning_flush(job);
-      emit_copy_image_to_buffer_rcl(job, buffer, image,
-                                    &framebuffer, internal_type, region);
+   struct v3dv_job *job = v3dv_cmd_buffer_start_job(cmd_buffer);
+   v3dv_cmd_buffer_start_frame(cmd_buffer, &framebuffer);
 
-      v3dv_cmd_buffer_finish_job(cmd_buffer);
+   v3dv_job_emit_binning_flush(job);
+   emit_copy_image_to_buffer_rcl(job, buffer, image,
+                                 &framebuffer, internal_type, region);
+
+   v3dv_cmd_buffer_finish_job(cmd_buffer);
 }
 
 void
