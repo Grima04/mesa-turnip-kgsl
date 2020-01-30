@@ -551,13 +551,27 @@ upload_assembly(struct v3dv_pipeline_stage *p_stage,
                 const void *data,
                 uint32_t size)
 {
+   const char *name = NULL;
    /* We are uploading the assembly just once, so at this point we shouldn't
     * have any bo
     */
    assert(p_stage->assembly_bo == NULL);
    struct v3dv_device *device = p_stage->pipeline->device;
 
-   struct v3dv_bo *bo = v3dv_bo_alloc(device, size);
+   switch (p_stage->stage) {
+   case MESA_SHADER_VERTEX:
+      name = (p_stage->is_coord == true) ? "coord_shader_assembly" :
+         "vertex_shader_assembly";
+      break;
+   case MESA_SHADER_FRAGMENT:
+      name = "fragment_shader_assembly";
+      break;
+   default:
+      unreachable("Stage not supported\n");
+      break;
+   };
+
+   struct v3dv_bo *bo = v3dv_bo_alloc(device, size, name);
    if (!bo) {
       fprintf(stderr, "failed to allocate memory for shader\n");
       abort();
@@ -1231,7 +1245,8 @@ create_default_attribute_values(struct v3dv_pipeline *pipeline,
    uint32_t size = MAX_VERTEX_ATTRIBS * sizeof(float) * 4;
 
    if (pipeline->default_attribute_values == NULL) {
-      pipeline->default_attribute_values = v3dv_bo_alloc(pipeline->device, size);
+      pipeline->default_attribute_values = v3dv_bo_alloc(pipeline->device, size,
+                                                         "default_vi_attributes");
 
       if (!pipeline->default_attribute_values) {
          fprintf(stderr, "failed to allocate memory for the default "

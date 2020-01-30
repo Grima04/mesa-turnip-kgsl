@@ -71,7 +71,7 @@ v3dv_cl_ensure_space(struct v3dv_cl *cl, uint32_t space, uint32_t alignment)
       return offset;
    }
 
-   struct v3dv_bo *bo = v3dv_bo_alloc(cl->job->cmd_buffer->device, space);
+   struct v3dv_bo *bo = v3dv_bo_alloc(cl->job->cmd_buffer->device, space, "CL");
    if (!bo) {
       fprintf(stderr, "failed to allocate memory for command list");
       abort();
@@ -100,7 +100,7 @@ v3dv_cl_ensure_space_with_branch(struct v3dv_cl *cl, uint32_t space)
    if (v3dv_cl_offset(cl) + space + cl_packet_length(BRANCH) <= cl->size)
       return;
 
-   struct v3dv_bo *bo = v3dv_bo_alloc(cl->job->cmd_buffer->device, space);
+   struct v3dv_bo *bo = v3dv_bo_alloc(cl->job->cmd_buffer->device, space, "CL");
    if (!bo) {
       fprintf(stderr, "failed to allocate memory for command list");
       abort();

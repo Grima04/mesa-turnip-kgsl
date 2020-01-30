@@ -30,7 +30,7 @@
 #include "util/u_memory.h"
 
 struct v3dv_bo *
-v3dv_bo_alloc(struct v3dv_device *device, uint32_t size)
+v3dv_bo_alloc(struct v3dv_device *device, uint32_t size, const char *name)
 {
    struct v3dv_bo *bo = vk_alloc(&device->alloc, sizeof(struct v3dv_bo), 8,
                                  VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
@@ -56,6 +56,7 @@ v3dv_bo_alloc(struct v3dv_device *device, uint32_t size)
    bo->offset = create.offset;
    bo->map = NULL;
    bo->map_size = 0;
+   bo->name = name;
 
    return bo;
 }

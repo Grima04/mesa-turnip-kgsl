@@ -44,7 +44,7 @@ v3dv_clif_dump(struct v3dv_device *device,
    set_foreach(job->bos, entry) {
       struct v3dv_bo *bo = (void *)entry->key;
       char *name = ralloc_asprintf(NULL, "%s_0x%x",
-                                   "" /* bo->name */ , bo->offset);
+                                   bo->name, bo->offset);
 
       v3dv_bo_map(device, bo, bo->size);
       clif_dump_add_bo(clif, name, bo->offset, bo->size, bo->map);

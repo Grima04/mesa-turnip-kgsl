@@ -277,7 +277,8 @@ v3dv_cmd_buffer_start_frame(struct v3dv_cmd_buffer *cmd_buffer,
     */
    tile_alloc_size += 512 * 1024;
 
-   job->tile_alloc = v3dv_bo_alloc(cmd_buffer->device, tile_alloc_size);
+   job->tile_alloc = v3dv_bo_alloc(cmd_buffer->device, tile_alloc_size,
+                                   "tile_alloc");
    v3dv_job_add_bo(job, job->tile_alloc);
 
    const uint32_t tsda_per_tile_size = 256;
@@ -285,7 +286,7 @@ v3dv_cmd_buffer_start_frame(struct v3dv_cmd_buffer *cmd_buffer,
                                     framebuffer->draw_tiles_x *
                                     framebuffer->draw_tiles_y *
                                     tsda_per_tile_size;
-   job->tile_state = v3dv_bo_alloc(cmd_buffer->device, tile_state_size);
+   job->tile_state = v3dv_bo_alloc(cmd_buffer->device, tile_state_size, "TSDA");
    v3dv_job_add_bo(job, job->tile_state);
 
    /* This must go before the binning mode configuration. It is
