@@ -211,6 +211,9 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_MAX_TEXTURE_GATHER_OFFSET:
       return screen->props.limits.maxTexelGatherOffset;
 
+   case PIPE_CAP_TGSI_FS_FINE_DERIVATIVE:
+      return 1;
+
    case PIPE_CAP_VENDOR_ID:
       return screen->props.vendorID;
    case PIPE_CAP_DEVICE_ID:
