@@ -425,6 +425,7 @@ _mesa_set_enable(struct gl_context *ctx, GLenum cap, GLboolean state)
                _mesa_flush_vertices_for_blend_adv(ctx, newEnabled,
                                                ctx->Color._AdvancedBlendMode);
                ctx->Color.BlendEnabled = newEnabled;
+               _mesa_update_allow_draw_out_of_order(ctx);
             }
          }
          break;
@@ -499,6 +500,7 @@ _mesa_set_enable(struct gl_context *ctx, GLenum cap, GLboolean state)
          FLUSH_VERTICES(ctx, ctx->DriverFlags.NewDepth ? 0 : _NEW_DEPTH);
          ctx->NewDriverState |= ctx->DriverFlags.NewDepth;
          ctx->Depth.Test = state;
+         _mesa_update_allow_draw_out_of_order(ctx);
          break;
       case GL_DEBUG_OUTPUT:
       case GL_DEBUG_OUTPUT_SYNCHRONOUS_ARB:
@@ -604,6 +606,7 @@ _mesa_set_enable(struct gl_context *ctx, GLenum cap, GLboolean state)
          FLUSH_VERTICES(ctx, ctx->DriverFlags.NewLogicOp ? 0 : _NEW_COLOR);
          ctx->NewDriverState |= ctx->DriverFlags.NewLogicOp;
          ctx->Color.ColorLogicOpEnabled = state;
+         _mesa_update_allow_draw_out_of_order(ctx);
          break;
       case GL_MAP1_COLOR_4:
          if (ctx->API != API_OPENGL_COMPAT)
@@ -840,6 +843,7 @@ _mesa_set_enable(struct gl_context *ctx, GLenum cap, GLboolean state)
          FLUSH_VERTICES(ctx, ctx->DriverFlags.NewStencil ? 0 : _NEW_STENCIL);
          ctx->NewDriverState |= ctx->DriverFlags.NewStencil;
          ctx->Stencil.Enabled = state;
+         _mesa_update_allow_draw_out_of_order(ctx);
          break;
       case GL_TEXTURE_1D:
          if (ctx->API != API_OPENGL_COMPAT)
@@ -1349,6 +1353,7 @@ _mesa_set_enablei(struct gl_context *ctx, GLenum cap,
          _mesa_flush_vertices_for_blend_adv(ctx, enabled,
                                             ctx->Color._AdvancedBlendMode);
          ctx->Color.BlendEnabled = enabled;
+         _mesa_update_allow_draw_out_of_order(ctx);
       }
       break;
    case GL_SCISSOR_TEST:

@@ -4182,6 +4182,9 @@ struct gl_constants
    /** Whether the driver can handle MultiDrawElements with non-VBO indices. */
    bool MultiDrawWithUserIndices;
 
+   /** Whether out-of-order draw (Begin/End) optimizations are allowed. */
+   bool AllowDrawOutOfOrder;
+
    /** GL_ARB_gl_spirv */
    struct spirv_supported_capabilities SpirVCapabilities;
 
@@ -5144,6 +5147,7 @@ struct gl_context
    struct gl_driver_flags DriverFlags;
 
    GLboolean ViewportInitialized;  /**< has viewport size been initialized? */
+   GLboolean _AllowDrawOutOfOrder;
 
    GLbitfield varying_vp_inputs;  /**< mask of VERT_BIT_* flags */
 
