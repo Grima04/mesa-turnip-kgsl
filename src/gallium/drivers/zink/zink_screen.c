@@ -270,10 +270,8 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_PCI_FUNCTION:
       return 0; /* TODO: figure these out */
 
-#if 0 /* TODO: Enable me */
    case PIPE_CAP_CULL_DISTANCE:
       return screen->feats.shaderCullDistance;
-#endif
 
    case PIPE_CAP_VIEWPORT_SUBPIXEL_BITS:
       return screen->props.limits.viewportSubPixelBits;
