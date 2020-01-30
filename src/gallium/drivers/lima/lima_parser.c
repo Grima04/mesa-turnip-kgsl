@@ -450,19 +450,25 @@ parse_rsw(FILE *fp, uint32_t *value, int i, uint32_t *helper)
               (float)(ubyte_to_float(*value & 0x0000ffff)));
       break;
    case 2: /* ALPHA BLEND */
-      fprintf(fp, "(1): colormask 0x%02x, rgb_func %d, alpha_func %d */\n",
+      fprintf(fp, "(1): colormask 0x%02x, rgb_func %d (%s), alpha_func %d (%s) */\n",
               (*value & 0xf0000000) >> 28, /* colormask */
-              (*value & 0x00000007), /* rgb_func */
-              (*value & 0x00000038) >> 3); /* alpha_func */
+              (*value & 0x00000007),
+              lima_get_blend_func_string((*value & 0x00000007)), /* rgb_func */
+              (*value & 0x00000038) >> 3,
+              lima_get_blend_func_string((*value & 0x00000038) >> 3)); /* alpha_func */
       /* add a few tabs for alignment */
       fprintf(fp, "\t\t\t\t\t\t/* %s(2)", render_state_infos[i].info);
-      fprintf(fp, ": rgb_src_factor %d, rbg_dst_factor %d */\n",
-              (*value & 0x000007c0) >> 6, /* rgb_src_factor */
-              (*value & 0x0000f800) >> 11); /* rgb_dst_factor */
+      fprintf(fp, ": rgb_src_factor %d (%s), rbg_dst_factor %d (%s) */\n",
+              (*value & 0x000007c0) >> 6,
+              lima_get_blendfactor_string((*value & 0x000007c0) >> 6), /* rgb_src_factor */
+              (*value & 0x0000f800) >> 11,
+              lima_get_blendfactor_string((*value & 0x0000f800) >> 11)); /* rgb_dst_factor */
       fprintf(fp, "\t\t\t\t\t\t/* %s(3)", render_state_infos[i].info);
-      fprintf(fp, ": alpha_src_factor %d, alpha_dst_factor %d, bits 24-27 0x%02x */\n",
-              (*value & 0x000f0000) >> 16, /* alpha_src_factor */
-              (*value & 0x00f00000) >> 20, /* alpha_dst_factor */
+      fprintf(fp, ": alpha_src_factor %d (%s), alpha_dst_factor %d (%s), bits 24-27 0x%02x */\n",
+              (*value & 0x000f0000) >> 16,
+              lima_get_blendfactor_string((*value & 0x000f0000) >> 16), /* alpha_src_factor */
+              (*value & 0x00f00000) >> 20,
+              lima_get_blendfactor_string((*value & 0x00f00000) >> 20), /* alpha_dst_factor */
               (*value & 0x0f000000) >> 24); /* bits 24-27 */
       break;
    case 3: /* DEPTH TEST */
@@ -472,7 +478,8 @@ parse_rsw(FILE *fp, uint32_t *value, int i, uint32_t *helper)
          fprintf(fp, "(1): depth test disabled || writes not allowed");
 
       fprintf(fp, "\n\t\t\t\t\t\t/* %s(2)", render_state_infos[i].info);
-      fprintf(fp, ": PIPE_FUNC_%d", (*value & 0x0000000e) >> 1);
+      fprintf(fp, ": blend_func %d (%s)", ((*value & 0x0000000e) >> 1),
+              lima_get_compare_func_string((*value & 0x0000000e) >> 1));
       fprintf(fp, ", offset_scale: %d", (*value & 0x00ff0000) >> 16);
       fprintf(fp, ", offset_units: %d", (*value & 0xff000000) >> 24);
       fprintf(fp, ", unknown bits 4-15: 0x%08x */\n", *value & 0x0000fff0);
@@ -483,29 +490,37 @@ parse_rsw(FILE *fp, uint32_t *value, int i, uint32_t *helper)
               (float)(ushort_to_float(*value & 0x0000ffff)));
       break;
    case 5: /* STENCIL FRONT */
-      fprintf(fp, "(1): valuemask 0x%02x, ref value %d (0x%02x), stencil_func %d */\n",
+      fprintf(fp, "(1): valuemask 0x%02x, ref value %d (0x%02x), stencil_func %d (%s)*/\n",
               (*value & 0xff000000) >> 24, /* valuemask */
               (*value & 0x00ff0000) >> 16, (*value & 0x00ff0000) >> 16, /* ref value */
-              (*value & 0x00000007)); /* stencil_func */
+              (*value & 0x00000007),
+              lima_get_compare_func_string((*value & 0x00000007))); /* stencil_func */
       /* add a few tabs for alignment */
       fprintf(fp, "\t\t\t\t\t\t/* %s(2)", render_state_infos[i].info);
-      fprintf(fp, ": fail_op %d, zfail_op %d, zpass_op %d, unknown (12-15) 0x%02x */\n",
-              (*value & 0x00000038) >> 3, /* fail_op */
-              (*value & 0x000001c0) >> 6, /* zfail_op */
-              (*value & 0x00000e00) >> 9, /* zpass_op */
+      fprintf(fp, ": fail_op %d (%s), zfail_op %d (%s), zpass_op %d (%s), unknown (12-15) 0x%02x */\n",
+              (*value & 0x00000038) >> 3,
+              lima_get_stencil_op_string((*value & 0x00000038) >> 3), /* fail_op */
+              (*value & 0x000001c0) >> 6,
+              lima_get_stencil_op_string((*value & 0x000001c0) >> 6), /* zfail_op */
+              (*value & 0x00000e00) >> 9,
+              lima_get_stencil_op_string((*value & 0x00000e00) >> 9), /* zpass_op */
               (*value & 0x0000f000) >> 12); /* unknown */
       break;
    case 6: /* STENCIL BACK */
-      fprintf(fp, "(1): valuemask 0x%02x, ref value %d (0x%02x), stencil_func %d */\n",
+      fprintf(fp, "(1): valuemask 0x%02x, ref value %d (0x%02x), stencil_func %d (%s)*/\n",
               (*value & 0xff000000) >> 24, /* valuemask */
               (*value & 0x00ff0000) >> 16, (*value & 0x00ff0000) >> 16, /* ref value */
-              (*value & 0x00000007)); /* stencil_func */
+              (*value & 0x00000007),
+              lima_get_compare_func_string((*value & 0x00000007))); /* stencil_func */
       /* add a few tabs for alignment */
       fprintf(fp, "\t\t\t\t\t\t/* %s(2)", render_state_infos[i].info);
-      fprintf(fp, ": fail_op %d, zfail_op %d, zpass_op %d, unknown (12-15) 0x%02x */\n",
-              (*value & 0x00000038) >> 3, /* fail_op */
-              (*value & 0x000001c0) >> 6, /* zfail_op */
-              (*value & 0x00000e00) >> 9, /* zpass_op */
+      fprintf(fp, ": fail_op %d (%s), zfail_op %d (%s), zpass_op %d (%s), unknown (12-15) 0x%02x */\n",
+              (*value & 0x00000038) >> 3,
+              lima_get_stencil_op_string((*value & 0x00000038) >> 3), /* fail_op */
+              (*value & 0x000001c0) >> 6,
+              lima_get_stencil_op_string((*value & 0x000001c0) >> 6), /* zfail_op */
+              (*value & 0x00000e00) >> 9,
+              lima_get_stencil_op_string((*value & 0x00000e00) >> 9), /* zpass_op */
               (*value & 0x0000f000) >> 12); /* unknown */
       break;
    case 7: /* STENCIL TEST */
