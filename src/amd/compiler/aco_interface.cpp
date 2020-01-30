@@ -45,6 +45,15 @@ static radv_compiler_statistic_info statistic_infos[] = {
    [aco::statistic_vgpr_presched] = {"Pre-Sched VGPRs", "VGPR usage before scheduling"},
 };
 
+static void validate(aco::Program *program)
+{
+   if (!(aco::debug_flags & aco::DEBUG_VALIDATE))
+      return;
+
+   bool is_valid = aco::validate(program, stderr);
+   assert(is_valid);
+}
+
 void aco_compile_shader(unsigned shader_count,
                         struct nir_shader *const *shaders,
                         struct radv_shader_binary **binary,
@@ -72,7 +81,7 @@ void aco_compile_shader(unsigned shader_count,
    /* Phi lowering */
    aco::lower_phis(program.get());
    aco::dominator_tree(program.get());
-   aco::validate(program.get(), stderr);
+   validate(program.get());
 
    /* Optimization */
    aco::value_numbering(program.get());
@@ -81,7 +90,7 @@ void aco_compile_shader(unsigned shader_count,
    /* cleanup and exec mask handling */
    aco::setup_reduce_temp(program.get());
    aco::insert_exec_mask(program.get());
-   aco::validate(program.get(), stderr);
+   validate(program.get());
 
    /* spilling and scheduling */
    aco::live live_vars = aco::live_var_analysis(program.get(), args->options);
@@ -89,7 +98,7 @@ void aco_compile_shader(unsigned shader_count,
    if (program->collect_statistics)
       aco::collect_presched_stats(program.get());
    aco::schedule_program(program.get(), live_vars);
-   aco::validate(program.get(), stderr);
+   validate(program.get());
 
    std::string llvm_ir;
    if (args->options->record_ir) {
@@ -119,7 +128,7 @@ void aco_compile_shader(unsigned shader_count,
       abort();
    }
 
-   aco::validate(program.get(), stderr);
+   validate(program.get());
 
    /* Lower to HW Instructions */
    aco::ssa_elimination(program.get());

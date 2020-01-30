@@ -46,11 +46,8 @@ void perfwarn(bool cond, const char *msg, Instruction *instr)
 }
 #endif
 
-void validate(Program* program, FILE * output)
+bool validate(Program* program, FILE *output)
 {
-   if (!(debug_flags & DEBUG_VALIDATE))
-      return;
-
    bool is_valid = true;
    auto check = [&output, &is_valid](bool check, const char * msg, aco::Instruction * instr) -> void {
       if (!check) {
@@ -439,7 +436,7 @@ void validate(Program* program, FILE * output)
       }
    }
 
-   assert(is_valid);
+   return is_valid;
 }
 
 /* RA validation */
