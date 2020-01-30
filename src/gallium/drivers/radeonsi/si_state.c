@@ -685,7 +685,7 @@ static void si_bind_blend_state(struct pipe_context *ctx, void *state)
 
 	if (old_blend->cb_target_mask != blend->cb_target_mask ||
 	    old_blend->dual_src_blend != blend->dual_src_blend ||
-	    (old_blend->blend_enable_4bit != blend->blend_enable_4bit &&
+	    (old_blend->dcc_msaa_corruption_4bit != blend->dcc_msaa_corruption_4bit &&
 	     sctx->framebuffer.nr_samples >= 2 &&
 	     sctx->screen->dcc_msaa_allowed))
 		si_mark_atom_dirty(sctx, &sctx->atoms.s.cb_render_state);
