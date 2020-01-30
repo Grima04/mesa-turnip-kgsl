@@ -231,35 +231,6 @@ vbo_exec_copy_to_current(struct vbo_exec_context *exec)
 
 
 /**
- * Copy current vertex attribute values into the current vertex.
- */
-static void
-vbo_exec_copy_from_current(struct vbo_exec_context *exec)
-{
-   struct gl_context *ctx = exec->ctx;
-   struct vbo_context *vbo = vbo_context(ctx);
-   GLint i;
-
-   for (i = VBO_ATTRIB_POS + 1; i < VBO_ATTRIB_MAX; i++) {
-      if (exec->vtx.attr[i].type == GL_DOUBLE ||
-          exec->vtx.attr[i].type == GL_UNSIGNED_INT64_ARB) {
-         memcpy(exec->vtx.attrptr[i], vbo->current[i].Ptr,
-                exec->vtx.attr[i].size * sizeof(GLfloat));
-      } else {
-         const fi_type *current = (fi_type *) vbo->current[i].Ptr;
-         switch (exec->vtx.attr[i].size) {
-         case 4: exec->vtx.attrptr[i][3] = current[3];
-         case 3: exec->vtx.attrptr[i][2] = current[2];
-         case 2: exec->vtx.attrptr[i][1] = current[1];
-         case 1: exec->vtx.attrptr[i][0] = current[0];
-            break;
-         }
-      }
-   }
-}
-
-
-/**
  * Flush existing data, set new attrib size, replay copied vertices.
  * This is called when we transition from a small vertex attribute size
  * to a larger one.  Ex: glTexCoord2f -> glTexCoord4f.
@@ -275,6 +246,7 @@ vbo_exec_wrap_upgrade_vertex(struct vbo_exec_context *exec,
    struct vbo_context *vbo = vbo_context(ctx);
    const GLint lastcount = exec->vtx.vert_count;
    fi_type *old_attrptr[VBO_ATTRIB_MAX];
+   const GLuint old_vtx_size_no_pos = exec->vtx.vertex_size_no_pos;
    const GLuint old_vtx_size = exec->vtx.vertex_size; /* floats per vertex */
    const GLuint oldSize = exec->vtx.attr[attr].size;
    GLuint i;
@@ -292,16 +264,6 @@ vbo_exec_wrap_upgrade_vertex(struct vbo_exec_context *exec,
        * the new format.
        */
       memcpy(old_attrptr, exec->vtx.attrptr, sizeof(old_attrptr));
-   }
-
-   bool repopulate = unlikely(oldSize) || (attr != 0 && exec->vtx.attr[0].size);
-
-   if (repopulate) {
-      /* Do a COPY_TO_CURRENT to ensure back-copying works for the
-       * case when the attribute already exists in the vertex and is
-       * having its size increased.
-       */
-      vbo_exec_copy_to_current(exec);
    }
 
    /* Heuristic: Attempt to isolate attributes received outside
@@ -323,33 +285,62 @@ vbo_exec_wrap_upgrade_vertex(struct vbo_exec_context *exec,
    exec->vtx.buffer_ptr = exec->vtx.buffer_map;
    exec->vtx.enabled |= BITFIELD64_BIT(attr);
 
-   if (repopulate) {
-      /* Size changed, recalculate all the attrptr[] values
-       */
-      fi_type *tmp = exec->vtx.vertex;
+   if (attr != 0) {
+      if (unlikely(oldSize)) {
+         unsigned offset = exec->vtx.attrptr[attr] - exec->vtx.vertex;
 
-      /* Iterate backwards to make the position last, because glVertex
-       * expects that.
-       */
-      for (int i = VBO_ATTRIB_MAX - 1; i >= 0; i--) {
-         if (exec->vtx.attr[i].size) {
-            exec->vtx.attrptr[i] = tmp;
-            tmp += exec->vtx.attr[i].size;
+         /* If there are attribs after the resized attrib... */
+         if (offset + oldSize < old_vtx_size_no_pos) {
+            int size_diff = newSize - oldSize;
+            fi_type *old_first = exec->vtx.attrptr[attr] + oldSize;
+            fi_type *new_first = exec->vtx.attrptr[attr] + newSize;
+            fi_type *old_last = exec->vtx.vertex + old_vtx_size_no_pos - 1;
+            fi_type *new_last = exec->vtx.vertex + exec->vtx.vertex_size_no_pos - 1;
+
+            if (size_diff < 0) {
+               /* Decreasing the size: Copy from first to last to move
+                * elements to the left.
+                */
+               fi_type *old_end = old_last + 1;
+               fi_type *old = old_first;
+               fi_type *new = new_first;
+
+               do {
+                  *new++ = *old++;
+               } while (old != old_end);
+            } else {
+               /* Increasing the size: Copy from last to first to move
+                * elements to the right.
+                */
+               fi_type *old_end = old_first - 1;
+               fi_type *old = old_last;
+               fi_type *new = new_last;
+
+               do {
+                  *new-- = *old--;
+               } while (old != old_end);
+            }
+
+            /* Update pointers to attribs, because we moved them. */
+            GLbitfield64 enabled = exec->vtx.enabled &
+                                   ~BITFIELD64_BIT(VBO_ATTRIB_POS) &
+                                   ~BITFIELD64_BIT(attr);
+            while (enabled) {
+               unsigned i = u_bit_scan64(&enabled);
+
+               if (exec->vtx.attrptr[i] > exec->vtx.attrptr[attr])
+                  exec->vtx.attrptr[i] += size_diff;
+            }
          }
-         else
-            exec->vtx.attrptr[i] = NULL; /* will not be dereferenced */
+      } else {
+         /* Just have to append the new attribute at the end */
+         exec->vtx.attrptr[attr] = exec->vtx.vertex +
+           exec->vtx.vertex_size_no_pos - newSize;
       }
+   }
 
-      /* Copy from current to repopulate the vertex with correct
-       * values.
-       */
-      vbo_exec_copy_from_current(exec);
-   }
-   else {
-      /* Just have to append the new attribute at the end */
-      exec->vtx.attrptr[attr] = exec->vtx.vertex +
-        exec->vtx.vertex_size - newSize;
-   }
+   /* The position is always last. */
+   exec->vtx.attrptr[0] = exec->vtx.vertex + exec->vtx.vertex_size_no_pos;
 
    /* Replay stored vertices to translate them
     * to new format here.
