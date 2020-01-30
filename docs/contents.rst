@@ -3,7 +3,6 @@
    :caption: Documentation
    :hidden:
 
-   intro
    self
    developers
    systems
