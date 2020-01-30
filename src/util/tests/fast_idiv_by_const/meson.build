@@ -27,4 +27,5 @@ test(
     include_directories : inc_common,
   ),
   suite : ['util'],
+  timeout: 60,
 )

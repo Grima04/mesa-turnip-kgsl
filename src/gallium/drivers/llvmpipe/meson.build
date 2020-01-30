@@ -125,6 +125,8 @@ if with_tests and with_gallium_softpipe and with_llvm
         link_with : [libllvmpipe, libgallium],
       ),
       suite : ['llvmpipe'],
+      should_fail : meson.get_cross_property('xfail', '').contains(t),
+      timeout: 120,
     )
   endforeach
 endif

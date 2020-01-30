@@ -88,6 +88,7 @@ test(
     ),
   ],
   suite : ['compiler', 'glsl'],
+  timeout: 60,
 )
 
 test(

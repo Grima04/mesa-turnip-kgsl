@@ -248,6 +248,7 @@ if with_tests
       dependencies : [dep_m],
     ),
     suite : ['util'],
+    should_fail : meson.get_cross_property('xfail', '').contains('roundeven'),
   )
 
   # FIXME: this test crashes on windows

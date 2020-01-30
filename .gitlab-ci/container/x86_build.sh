@@ -5,7 +5,7 @@ set -o xtrace
 
 export DEBIAN_FRONTEND=noninteractive
 
-CROSS_ARCHITECTURES="i386"
+CROSS_ARCHITECTURES="i386 ppc64el s390x"
 for arch in $CROSS_ARCHITECTURES; do
     dpkg --add-architecture $arch
 done
@@ -75,13 +75,12 @@ apt-get install -y --no-remove \
       libxvmc-dev \
       libxxf86vm-dev \
       llvm-6.0-dev \
-      llvm-7-dev \
-      llvm-8-dev \
       llvm-9-dev \
       meson \
       pkg-config \
       python-mako \
       python3-mako \
+      qemu-user \
       scons \
       x11proto-dri2-dev \
       x11proto-gl-dev \
@@ -96,7 +95,31 @@ for arch in $CROSS_ARCHITECTURES; do
             libdrm-dev:${arch} \
             libelf-dev:${arch} \
             libexpat1-dev:${arch}
+
+    if [ "$arch" = "s390x" ]; then
+        LLVM_VERSION=7
+    else
+        LLVM_VERSION=8
+    fi
+
+    if [ "$arch" != "i386" ]; then
+        mkdir /var/cache/apt/archives/${arch}
+        apt-get install -y --no-remove \
+                libffi-dev:${arch} \
+                libllvm${LLVM_VERSION}:${arch} \
+                libstdc++6:${arch} \
+                libtinfo-dev:${arch} \
+
+        # Download llvm-* packages, but don't install them yet, since they can
+        # only be installed for one architecture at a time
+        apt-get install -o Dir::Cache::archives=/var/cache/apt/archives/$arch --download-only -y --no-remove \
+            llvm-${LLVM_VERSION}-dev:${arch}
+    fi
 done
+
+apt-get install -y --no-remove \
+      llvm-7-dev \
+      llvm-8-dev \
 
 # for 64bit windows cross-builds
 apt-get install -y --no-remove \
@@ -193,9 +216,10 @@ for arch in $CROSS_ARCHITECTURES; do
   if [ "$arch" = "i386" ]; then
     # Work around a bug in debcrossgen that should be fixed in the next release
     sed -i "s|cpu_family = 'i686'|cpu_family = 'x86'|g" "$cross_file"
-    # Don't need wrapper for i386 executables
-    sed -i -e '/\[properties\]/a\' -e "needs_exe_wrapper = False" "$cross_file"
   fi
+
+  # Rely on qemu-user being configured in binfmt_misc on the host
+  sed -i -e '/\[properties\]/a\' -e "needs_exe_wrapper = False" "$cross_file"
 done
 
 

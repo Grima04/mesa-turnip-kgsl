@@ -112,7 +112,7 @@ x86_build:
     - .debian@container-ifnot-exists
     - .container
   variables:
-    DEBIAN_TAG: &x86_build "2020-01-14"
+    DEBIAN_TAG: &x86_build "2020-02-05"
 
 .use-x86_build:
   variables:
@@ -312,6 +312,7 @@ meson-main:
       -D gallium-va=false
       -D gallium-xa=false
       -D gallium-nine=false
+    LLVM_VERSION: "8"
 
 .meson-arm:
   extends:
@@ -342,7 +343,6 @@ meson-arm64:
     - .meson-arm
     - .ci-deqp-artifacts
   variables:
-    LLVM_VERSION: "8"
     VULKAN_DRIVERS: "freedreno,amd"
   script:
     - .gitlab-ci/meson-build.sh
@@ -466,6 +466,25 @@ meson-i386:
       -D llvm=false
       -D osmesa=classic
       -D werror=true
+
+meson-s390x:
+  extends:
+    - .meson-cross
+  variables:
+    CROSS: s390x
+    GALLIUM_DRIVERS: "swrast"
+    LLVM_VERSION: "7"
+  script:
+    - dpkg -i /var/cache/apt/archives/$CROSS/*.deb
+    - .gitlab-ci/meson-build.sh
+
+meson-ppc64el:
+  extends:
+    - meson-s390x
+  variables:
+    CROSS: ppc64el
+    GALLIUM_DRIVERS: "nouveau,swrast,virgl"
+    LLVM_VERSION: "8"
 
 meson-mingw32-x86_64:
   extends: .meson-build

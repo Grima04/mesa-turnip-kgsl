@@ -83,6 +83,7 @@ if with_any_opengl and with_tests and host_machine.system() != 'windows'
         '--@0@'.format(m),
       ],
       suite : ['compiler', 'glcpp'],
+      timeout: 60,
     )
   endforeach
 endif
