@@ -618,7 +618,7 @@ static void *si_create_blend_state_mode(struct pipe_context *ctx,
 
 		blend->blend_enable_4bit |= 0xfu << (i * 4);
 
-		if (sctx->family <= CHIP_NAVI14)
+		if (sctx->chip_class >= GFX8 && sctx->family <= CHIP_NAVI14)
 			blend->dcc_msaa_corruption_4bit |= 0xfu << (i * 4);
 
 		/* This is only important for formats without alpha. */
@@ -631,7 +631,7 @@ static void *si_create_blend_state_mode(struct pipe_context *ctx,
 			blend->need_src_alpha_4bit |= 0xfu << (i * 4);
 	}
 
-	if (sctx->family <= CHIP_NAVI14 && logicop_enable)
+	if (sctx->chip_class >= GFX8 && sctx->family <= CHIP_NAVI14 && logicop_enable)
 		blend->dcc_msaa_corruption_4bit |= blend->cb_target_enabled_4bit;
 
 	if (blend->cb_target_mask) {
