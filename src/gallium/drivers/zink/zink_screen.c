@@ -139,9 +139,8 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return 0;
 #endif
 
+   case PIPE_CAP_TGSI_INSTANCEID:
    case PIPE_CAP_MIXED_COLORBUFFER_FORMATS:
-      return 1;
-
    case PIPE_CAP_SEAMLESS_CUBE_MAP:
       return 1;
 

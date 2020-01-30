@@ -57,7 +57,7 @@ struct ntv_context {
    bool block_started;
    SpvId loop_break, loop_cont;
 
-   SpvId front_face_var, vertex_id_var;
+   SpvId front_face_var, instance_id_var, vertex_id_var;
 };
 
 static SpvId
@@ -1314,6 +1314,22 @@ emit_load_front_face(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 }
 
 static void
+emit_load_instance_id(struct ntv_context *ctx, nir_intrinsic_instr *intr)
+{
+   SpvId var_type = spirv_builder_type_uint(&ctx->builder, 32);
+   if (!ctx->instance_id_var)
+      ctx->instance_id_var = create_builtin_var(ctx, var_type,
+                                               SpvStorageClassInput,
+                                               "gl_InstanceId",
+                                               SpvBuiltInInstanceIndex);
+
+   SpvId result = spirv_builder_emit_load(&ctx->builder, var_type,
+                                          ctx->instance_id_var);
+   assert(1 == nir_dest_num_components(intr->dest));
+   store_dest_uint(ctx, &intr->dest, result);
+}
+
+static void
 emit_load_vertex_id(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 {
    SpvId var_type = spirv_builder_type_uint(&ctx->builder, 32);
@@ -1351,6 +1367,10 @@ emit_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 
    case nir_intrinsic_load_front_face:
       emit_load_front_face(ctx, intr);
+      break;
+
+   case nir_intrinsic_load_instance_id:
+      emit_load_instance_id(ctx, intr);
       break;
 
    case nir_intrinsic_load_vertex_id:
