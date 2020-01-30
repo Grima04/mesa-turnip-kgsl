@@ -70,6 +70,10 @@ nir_setup_uniform_remap_tables(struct gl_context *ctx,
    for (unsigned i = 0; i < prog->data->NumUniformStorage; i++) {
       struct gl_uniform_storage *uniform = &prog->data->UniformStorage[i];
 
+      if (uniform->is_shader_storage ||
+          glsl_get_base_type(uniform->type) == GLSL_TYPE_SUBROUTINE)
+         continue;
+
       if (prog->data->UniformStorage[i].remap_location == UNMAPPED_UNIFORM_LOC)
          continue;
 
@@ -94,7 +98,8 @@ nir_setup_uniform_remap_tables(struct gl_context *ctx,
    for (unsigned i = 0; i < prog->data->NumUniformStorage; i++) {
       struct gl_uniform_storage *uniform = &prog->data->UniformStorage[i];
 
-      if (uniform->is_shader_storage)
+      if (uniform->is_shader_storage ||
+          glsl_get_base_type(uniform->type) == GLSL_TYPE_SUBROUTINE)
          continue;
 
       /* Built-in uniforms should not get any location. */
@@ -144,6 +149,86 @@ nir_setup_uniform_remap_tables(struct gl_context *ctx,
             data_pos += num_slots;
       }
    }
+
+   /* Reserve all the explicit locations of the active subroutine uniforms. */
+   for (unsigned i = 0; i < prog->data->NumUniformStorage; i++) {
+      struct gl_uniform_storage *uniform = &prog->data->UniformStorage[i];
+
+      if (glsl_get_base_type(uniform->type) != GLSL_TYPE_SUBROUTINE)
+         continue;
+
+      if (prog->data->UniformStorage[i].remap_location == UNMAPPED_UNIFORM_LOC)
+         continue;
+
+      /* How many new entries for this uniform? */
+      const unsigned entries =
+         MAX2(1, prog->data->UniformStorage[i].array_elements);
+
+      uniform->storage = &data[data_pos];
+
+      unsigned num_slots = glsl_get_component_slots(uniform->type);
+      unsigned mask = prog->data->linked_stages;
+      while (mask) {
+         const int j = u_bit_scan(&mask);
+         struct gl_program *p = prog->_LinkedShaders[j]->Program;
+
+         if (!prog->data->UniformStorage[i].opaque[j].active)
+            continue;
+
+         /* Set remap table entries point to correct gl_uniform_storage. */
+         for (unsigned k = 0; k < entries; k++) {
+            unsigned element_loc =
+               prog->data->UniformStorage[i].remap_location + k;
+            p->sh.SubroutineUniformRemapTable[element_loc] =
+               &prog->data->UniformStorage[i];
+
+            data_pos += num_slots;
+         }
+      }
+   }
+
+   /* reserve subroutine locations */
+   for (unsigned i = 0; i < prog->data->NumUniformStorage; i++) {
+      struct gl_uniform_storage *uniform = &prog->data->UniformStorage[i];
+
+      if (glsl_get_base_type(uniform->type) != GLSL_TYPE_SUBROUTINE)
+         continue;
+
+      if (prog->data->UniformStorage[i].remap_location !=
+          UNMAPPED_UNIFORM_LOC)
+         continue;
+
+      const unsigned entries =
+         MAX2(1, prog->data->UniformStorage[i].array_elements);
+
+      uniform->storage = &data[data_pos];
+
+      unsigned num_slots = glsl_get_component_slots(uniform->type);
+      unsigned mask = prog->data->linked_stages;
+      while (mask) {
+         const int j = u_bit_scan(&mask);
+         struct gl_program *p = prog->_LinkedShaders[j]->Program;
+
+         if (!prog->data->UniformStorage[i].opaque[j].active)
+            continue;
+
+         p->sh.SubroutineUniformRemapTable =
+            reralloc(p,
+                     p->sh.SubroutineUniformRemapTable,
+                     struct gl_uniform_storage *,
+                     p->sh.NumSubroutineUniformRemapTable + entries);
+
+         for (unsigned k = 0; k < entries; k++) {
+            p->sh.SubroutineUniformRemapTable[p->sh.NumSubroutineUniformRemapTable + k] =
+               &prog->data->UniformStorage[i];
+
+            data_pos += num_slots;
+         }
+         prog->data->UniformStorage[i].remap_location =
+            p->sh.NumSubroutineUniformRemapTable;
+         p->sh.NumSubroutineUniformRemapTable += entries;
+      }
+   }
 }
 
 static void
@@ -179,6 +264,7 @@ struct nir_link_uniforms_state {
    unsigned num_hidden_uniforms;
    unsigned num_values;
    unsigned max_uniform_location;
+   unsigned next_subroutine;
 
    /* per-shader stage */
    unsigned next_image_index;
@@ -941,6 +1027,18 @@ nir_link_uniform(struct gl_context *ctx,
             state->num_values += values;
          }
       } else {
+         if (glsl_get_base_type(type_no_array) == GLSL_TYPE_SUBROUTINE) {
+            uniform->opaque[stage].index = state->next_subroutine;
+            uniform->opaque[stage].active = true;
+
+            prog->_LinkedShaders[stage]->Program->sh.NumSubroutineUniforms++;
+
+            /* Increment the subroutine index by 1 for non-arrays and by the
+             * number of array elements for arrays.
+             */
+            state->next_subroutine += MAX2(1, uniform->array_elements);
+         }
+
          if (!state->var_is_in_block && !is_gl_identifier(uniform->name)) {
             state->num_shader_uniform_components += values;
             state->num_values += values;
