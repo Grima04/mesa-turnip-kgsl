@@ -137,6 +137,13 @@ void validate(Program* program, FILE * output)
             }
          }
 
+         /* check opsel */
+         if (instr->isVOP3()) {
+            VOP3A_instruction *vop3 = static_cast<VOP3A_instruction*>(instr.get());
+            check(vop3->opsel == 0 || program->chip_class >= GFX9, "Opsel is only supported on GFX9+", instr.get());
+            check((vop3->opsel & ~(0x10 | ((1 << instr->operands.size()) - 1))) == 0, "Unused bits in opsel must be zeroed out", instr.get());
+         }
+
          /* check for undefs */
          for (unsigned i = 0; i < instr->operands.size(); i++) {
             if (instr->operands[i].isUndefined()) {

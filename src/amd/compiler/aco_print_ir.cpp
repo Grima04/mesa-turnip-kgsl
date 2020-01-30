@@ -490,6 +490,8 @@ static void print_instr_format_specific(struct Instruction *instr, FILE *output)
       }
       if (vop3->clamp)
          fprintf(output, " clamp");
+      if (vop3->opsel & (1 << 3))
+         fprintf(output, " opsel_hi");
    } else if (instr->isDPP()) {
       DPP_instruction* dpp = static_cast<DPP_instruction*>(instr);
       if (dpp->dpp_ctrl <= 0xff) {
@@ -577,12 +579,14 @@ void aco_print_instr(struct Instruction *instr, FILE *output)
    if (instr->operands.size()) {
       bool abs[instr->operands.size()];
       bool neg[instr->operands.size()];
+      bool opsel[instr->operands.size()];
       uint8_t sel[instr->operands.size()];
       if ((int)instr->format & (int)Format::VOP3A) {
          VOP3A_instruction* vop3 = static_cast<VOP3A_instruction*>(instr);
          for (unsigned i = 0; i < instr->operands.size(); ++i) {
             abs[i] = vop3->abs[i];
             neg[i] = vop3->neg[i];
+            opsel[i] = vop3->opsel & (1 << i);
             sel[i] = sdwa_udword;
          }
       } else if (instr->isDPP()) {
@@ -590,6 +594,7 @@ void aco_print_instr(struct Instruction *instr, FILE *output)
          for (unsigned i = 0; i < instr->operands.size(); ++i) {
             abs[i] = i < 2 ? dpp->abs[i] : false;
             neg[i] = i < 2 ? dpp->neg[i] : false;
+            opsel[i] = false;
             sel[i] = sdwa_udword;
          }
       } else if (instr->isSDWA()) {
@@ -597,12 +602,14 @@ void aco_print_instr(struct Instruction *instr, FILE *output)
          for (unsigned i = 0; i < instr->operands.size(); ++i) {
             abs[i] = i < 2 ? sdwa->abs[i] : false;
             neg[i] = i < 2 ? sdwa->neg[i] : false;
+            opsel[i] = false;
             sel[i] = i < 2 ? sdwa->sel[i] : sdwa_udword;
          }
       } else {
          for (unsigned i = 0; i < instr->operands.size(); ++i) {
             abs[i] = false;
             neg[i] = false;
+            opsel[i] = false;
             sel[i] = sdwa_udword;
          }
       }
@@ -616,10 +623,12 @@ void aco_print_instr(struct Instruction *instr, FILE *output)
             fprintf(output, "-");
          if (abs[i])
             fprintf(output, "|");
-         if (sel[i] & sdwa_sext)
+         if (opsel[i])
+            fprintf(output, "hi(");
+         else if (sel[i] & sdwa_sext)
             fprintf(output, "sext(");
          print_operand(&instr->operands[i], output);
-         if (sel[i] & sdwa_sext)
+         if (opsel[i] || (sel[i] & sdwa_sext))
             fprintf(output, ")");
          if ((sel[i] & sdwa_asuint) == sdwa_udword) {
             /* print nothing */
