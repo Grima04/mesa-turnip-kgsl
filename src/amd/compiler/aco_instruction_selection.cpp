@@ -4462,6 +4462,9 @@ void visit_discard(isel_context* ctx, nir_intrinsic_instr *instr)
       ctx->block->kind |= block_kind_break;
       unsigned idx = ctx->block->index;
 
+      ctx->cf_info.parent_loop.has_divergent_branch = true;
+      ctx->cf_info.nir_to_aco[instr->instr.block->index] = idx;
+
       /* remove critical edges from linear CFG */
       bld.branch(aco_opcode::p_branch);
       Block* break_block = ctx->program->create_and_insert_block();
