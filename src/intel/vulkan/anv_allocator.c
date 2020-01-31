@@ -1395,7 +1395,12 @@ anv_scratch_pool_alloc(struct anv_device *device, struct anv_scratch_pool *pool,
 
    const struct gen_device_info *devinfo = &device->info;
 
-   const unsigned subslices = MAX2(device->physical->subslice_total, 1);
+   unsigned subslices = MAX2(device->physical->subslice_total, 1);
+
+   /* For, ICL, scratch space allocation is based on the number of threads
+    * in the base configuration. */
+   if (devinfo->gen == 11)
+      subslices = 8;
 
    unsigned scratch_ids_per_subslice;
    if (devinfo->gen >= 11) {

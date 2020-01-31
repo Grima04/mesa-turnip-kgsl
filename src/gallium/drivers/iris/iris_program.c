@@ -2053,9 +2053,14 @@ iris_get_scratch_space(struct iris_context *ice,
     * as well.  This is not currently documented at all.
     *
     * This hack is no longer necessary on Gen11+.
+    *
+    * For, ICL, scratch space allocation is based on the number of threads
+    * in the base configuration.
     */
    unsigned subslice_total = screen->subslice_total;
-   if (devinfo->gen < 11)
+   if (devinfo->gen == 11)
+      subslice_total = 8;
+   else if (devinfo->gen < 11)
       subslice_total = 4 * devinfo->num_slices;
    assert(subslice_total >= screen->subslice_total);
 
