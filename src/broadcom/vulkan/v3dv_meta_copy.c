@@ -26,9 +26,47 @@
 #include "broadcom/cle/v3dx_pack.h"
 #include "vk_format_info.h"
 
+/* This chooses a tile buffer format that is appropriate for the copy operation.
+ * Typically, this is the image render target type, however, for depth/stencil
+ * formats that can't be stored to raster, we need to use a compatible color
+ * format instead.
+ */
+static uint32_t
+choose_tlb_format(struct v3dv_image *image,
+                  VkImageAspectFlags aspect,
+                  bool for_store)
+{
+   switch (image->vk_format) {
+   case VK_FORMAT_D16_UNORM:
+      return V3D_OUTPUT_IMAGE_FORMAT_R16UI;
+   case VK_FORMAT_D32_SFLOAT:
+      return V3D_OUTPUT_IMAGE_FORMAT_R32F;
+   case VK_FORMAT_X8_D24_UNORM_PACK32:
+      return V3D_OUTPUT_IMAGE_FORMAT_RGBA8UI;
+   case VK_FORMAT_D24_UNORM_S8_UINT:
+      /* When storing the stencil aspect of a combined depth/stencil image,
+       * the Vulkan spec states that the output buffer must have packed stencil
+       * values, so we choose an R8UI format for our store outputs. For the
+       * load input we still want RGBA8UI since the source image contains 4
+       * channels (including the 3 channels containing the 24-bit depth value).
+       */
+      if (aspect & VK_IMAGE_ASPECT_DEPTH_BIT) {
+         return V3D_OUTPUT_IMAGE_FORMAT_RGBA8UI;
+      } else {
+         assert(aspect & VK_IMAGE_ASPECT_STENCIL_BIT);
+         return for_store ? V3D_OUTPUT_IMAGE_FORMAT_R8UI :
+                            V3D_OUTPUT_IMAGE_FORMAT_RGBA8UI;
+      }
+   default:
+      return image->format->rt_type;
+      break;
+   }
+}
+
 static void
 emit_image_loads(struct v3dv_cl *cl,
                  struct v3dv_image *image,
+                 VkImageAspectFlags aspect,
                  uint32_t layer,
                  uint32_t mip_level)
 {
@@ -39,9 +77,27 @@ emit_image_loads(struct v3dv_cl *cl,
       load.buffer_to_load = RENDER_TARGET_0;
       load.address = v3dv_cl_address(image->mem->bo, layer_offset);
 
-      load.input_image_format = image->format->rt_type;
-      load.r_b_swap = false;
+      load.input_image_format = choose_tlb_format(image, aspect, false);
       load.memory_format = slice->tiling;
+
+      /* For D24 formats Vulkan expects the depth value in the LSB bits of each
+       * 32-bit pixel. Unfortunately, the hardware seems to put the S8/X8 bits
+       * there and the depth bits on the MSB. To work around that we can reverse
+       * the channel order and then swap the R/B channels to get what we want.
+       *
+       * NOTE: reversing and swapping only gets us the behavior we want if the
+       * operations happen in that exact order, which seems to be the case when
+       * done on the tile buffer load operations. On the store, it seems the
+       * order is not the same. The order on the store is probably reversed so
+       * that reversing and swapping on both the load and the store preserves
+       * the original order of the channels in memory.
+       */
+      if (image->vk_format == VK_FORMAT_X8_D24_UNORM_PACK32 ||
+          (image->vk_format == VK_FORMAT_D24_UNORM_S8_UINT &&
+           (aspect & VK_IMAGE_ASPECT_DEPTH_BIT))) {
+         load.r_b_swap = true;
+         load.channel_reverse = true;
+      }
 
       if (slice->tiling == VC5_TILING_UIF_NO_XOR ||
           slice->tiling == VC5_TILING_UIF_XOR) {
@@ -64,6 +120,7 @@ static void
 emit_buffer_stores(struct v3dv_cl *cl,
                    struct v3dv_buffer *buffer,
                    struct v3dv_image *image,
+                   VkImageAspectFlags aspect,
                    uint32_t buffer_offset,
                    uint32_t buffer_stride)
 {
@@ -72,8 +129,7 @@ emit_buffer_stores(struct v3dv_cl *cl,
       store.address = v3dv_cl_address(buffer->mem->bo, buffer_offset);
       store.clear_buffer_being_stored = false;
 
-      store.output_image_format = image->format->rt_type;
-      store.r_b_swap = false;
+      store.output_image_format = choose_tlb_format(image, aspect, true);
       store.memory_format = VC5_TILING_RASTER;
       store.height_in_ub_or_stride = buffer_stride;
 
@@ -101,7 +157,8 @@ emit_copy_layer_to_buffer_per_tile_list(struct v3dv_job *job,
    assert(layer < imgrsc->layerCount);
 
    /* Load image to TLB */
-   emit_image_loads(cl, image, imgrsc->baseArrayLayer + layer, imgrsc->mipLevel);
+   emit_image_loads(cl, image, imgrsc->aspectMask,
+                    imgrsc->baseArrayLayer + layer, imgrsc->mipLevel);
 
    cl_emit(cl, PRIM_LIST_FORMAT, fmt) {
       fmt.primitive_type = LIST_TRIANGLES;
@@ -121,10 +178,17 @@ emit_copy_layer_to_buffer_per_tile_list(struct v3dv_job *job,
    else
       height = region->bufferImageHeight;
 
-   uint32_t buffer_stride = width * image->cpp;
+   /* If we are storing stencil from a combined depth/stencil format the
+    * Vulkan spec states that the output buffer must have packed stencil
+    * values, where each stencil value is 1 byte.
+    */
+   uint32_t cpp = imgrsc->aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT ?
+                  1 : image->cpp;
+   uint32_t buffer_stride = width * cpp;
    uint32_t buffer_offset =
       region->bufferOffset + height * buffer_stride * layer;
-   emit_buffer_stores(cl, buffer, image, buffer_offset, buffer_stride);
+   emit_buffer_stores(cl, buffer, image, imgrsc->aspectMask,
+                      buffer_offset, buffer_stride);
 
    cl_emit(cl, END_OF_TILE_MARKER, end);
 
@@ -310,13 +374,44 @@ copy_image_to_buffer_tlb(struct v3dv_cmd_buffer *cmd_buffer,
 {
    assert(can_use_tlb_copy_for_image_region(region));
 
+   const VkImageAspectFlags ds_aspects = VK_IMAGE_ASPECT_DEPTH_BIT |
+                                         VK_IMAGE_ASPECT_STENCIL_BIT;
+
+   /* We can't store depth/stencil pixel formats to a raster format, so
+    * so instead we load our depth/stencil aspects to a compatible color
+    * format.
+    */
    /* FIXME: pre-compute this at image creation time? */
    uint32_t internal_type;
    uint32_t internal_bpp;
-
-   v3dv_get_internal_type_bpp_for_output_format(image->format->rt_type,
-                                                &internal_type,
-                                                &internal_bpp);
+   if (region->imageSubresource.aspectMask & ds_aspects) {
+      switch (image->vk_format) {
+      case VK_FORMAT_D16_UNORM:
+         internal_type = V3D_INTERNAL_TYPE_16UI;
+         internal_bpp = V3D_INTERNAL_BPP_64;
+         break;
+      case VK_FORMAT_D32_SFLOAT:
+         internal_type = V3D_INTERNAL_TYPE_32F;
+         internal_bpp = V3D_INTERNAL_BPP_128;
+         break;
+      case VK_FORMAT_X8_D24_UNORM_PACK32:
+      case VK_FORMAT_D24_UNORM_S8_UINT:
+         /* Use RGBA8 format so we can relocate the X/S bits in the appropriate
+          * place to match Vulkan expectations. See the comment on the tile
+          * load command for more details.
+          */
+         internal_type = V3D_INTERNAL_TYPE_8UI;
+         internal_bpp = V3D_INTERNAL_BPP_32;
+         break;
+      default:
+         assert(!"unsupported format");
+         break;
+      }
+   } else {
+      v3dv_get_internal_type_bpp_for_output_format(image->format->rt_type,
+                                                   &internal_type,
+                                                   &internal_bpp);
+   }
 
    uint32_t num_layers = region->imageSubresource.layerCount;
    assert(num_layers > 0);
