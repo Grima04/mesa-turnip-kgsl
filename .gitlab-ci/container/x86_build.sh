@@ -64,6 +64,7 @@ apt-get install -y --no-remove \
       libva-dev \
       libvdpau-dev \
       libvulkan-dev \
+      libvulkan-dev:ppc64el \
       libx11-dev \
       libx11-xcb-dev \
       libxdamage-dev \
@@ -139,6 +140,23 @@ PKG_CONFIG_LIBDIR=/usr/x86_64-w64-mingw32/lib/pkgconfig pkg-config \$@
 EOF
 chmod +x /usr/local/bin/x86_64-w64-mingw32-pkg-config
 
+
+# Generate cross build files for Meson
+for arch in $CROSS_ARCHITECTURES; do
+  cross_file="/cross_file-$arch.txt"
+  /usr/share/meson/debcrossgen --arch "$arch" -o "$cross_file"
+  # Explicitly set ccache path for cross compilers
+  sed -i "s|/usr/bin/\([^-]*\)-linux-gnu\([^-]*\)-g|/usr/lib/ccache/\\1-linux-gnu\\2-g|g" "$cross_file"
+  if [ "$arch" = "i386" ]; then
+    # Work around a bug in debcrossgen that should be fixed in the next release
+    sed -i "s|cpu_family = 'i686'|cpu_family = 'x86'|g" "$cross_file"
+  fi
+
+  # Rely on qemu-user being configured in binfmt_misc on the host
+  sed -i -e '/\[properties\]/a\' -e "needs_exe_wrapper = False" "$cross_file"
+done
+
+
 # for the vulkan overlay layer
 wget https://github.com/KhronosGroup/glslang/releases/download/master-tot/glslang-master-linux-Release.zip
 unzip glslang-master-linux-Release.zip bin/glslangValidator
@@ -175,7 +193,10 @@ rm -rf $LIBXCB_VERSION
 
 wget https://dri.freedesktop.org/libdrm/$LIBDRM_VERSION.tar.bz2
 tar -xvf $LIBDRM_VERSION.tar.bz2 && rm $LIBDRM_VERSION.tar.bz2
-cd $LIBDRM_VERSION; meson build -D vc4=true -D freedreno=true -D etnaviv=true; ninja -j4 -C build install; cd ..
+cd $LIBDRM_VERSION
+meson build -D vc4=true -D freedreno=true -D etnaviv=true -D libdir=lib/x86_64-linux-gnu; ninja -j4 -C build install
+rm -rf build; meson --cross-file=/cross_file-ppc64el.txt build -D libdir=lib/powerpc64le-linux-gnu; ninja -j4 -C build install
+cd ..
 rm -rf $LIBDRM_VERSION
 
 wget $WAYLAND_RELEASES/$LIBWAYLAND_VERSION.tar.xz
@@ -205,22 +226,6 @@ rm -rf shader-db/.git
 cd shader-db
 make -j4
 popd
-
-
-# Generate cross build files for Meson
-for arch in $CROSS_ARCHITECTURES; do
-  cross_file="/cross_file-$arch.txt"
-  /usr/share/meson/debcrossgen --arch "$arch" -o "$cross_file"
-  # Explicitly set ccache path for cross compilers
-  sed -i "s|/usr/bin/\([^-]*\)-linux-gnu\([^-]*\)-g|/usr/lib/ccache/\\1-linux-gnu\\2-g|g" "$cross_file"
-  if [ "$arch" = "i386" ]; then
-    # Work around a bug in debcrossgen that should be fixed in the next release
-    sed -i "s|cpu_family = 'i686'|cpu_family = 'x86'|g" "$cross_file"
-  fi
-
-  # Rely on qemu-user being configured in binfmt_misc on the host
-  sed -i -e '/\[properties\]/a\' -e "needs_exe_wrapper = False" "$cross_file"
-done
 
 
 # Remove ccache directory, useless for the build jobs

@@ -483,8 +483,9 @@ meson-ppc64el:
     - meson-s390x
   variables:
     CROSS: ppc64el
-    GALLIUM_DRIVERS: "nouveau,swrast,virgl"
+    GALLIUM_DRIVERS: "nouveau,radeonsi,swrast,virgl"
     LLVM_VERSION: "8"
+    VULKAN_DRIVERS: "amd"
 
 meson-mingw32-x86_64:
   extends: .meson-build
