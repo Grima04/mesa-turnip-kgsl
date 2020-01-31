@@ -135,6 +135,8 @@ vbo_get_default_vals_as_union(GLenum format)
 {
    static const GLfloat default_float[4] = { 0, 0, 0, 1 };
    static const GLint default_int[4] = { 0, 0, 0, 1 };
+   static const GLdouble default_double[4] = { 0, 0, 0, 1 };
+   static const uint64_t default_uint64[4] = { 0, 0, 0, 1 };
 
    switch (format) {
    case GL_FLOAT:
@@ -142,6 +144,10 @@ vbo_get_default_vals_as_union(GLenum format)
    case GL_INT:
    case GL_UNSIGNED_INT:
       return (fi_type *)default_int;
+   case GL_DOUBLE:
+      return (fi_type *)default_double;
+   case GL_UNSIGNED_INT64_ARB:
+      return (fi_type *)default_uint64;
    default:
       unreachable("Bad vertex format");
       return NULL;
