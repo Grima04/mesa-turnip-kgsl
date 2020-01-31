@@ -1404,6 +1404,17 @@ emit_vertex_builtin(compiler_context *ctx, nir_intrinsic_instr *instr)
         emit_attr_read(ctx, reg, vertex_builtin_arg(instr->intrinsic), 1, nir_type_int);
 }
 
+static const nir_variable *
+search_var(struct exec_list *vars, unsigned driver_loc)
+{
+        nir_foreach_variable(var, vars) {
+                if (var->data.driver_location == driver_loc)
+                        return var;
+        }
+
+        return NULL;
+}
+
 static void
 emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
 {
@@ -1556,7 +1567,21 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                 reg = nir_src_index(ctx, &instr->src[0]);
 
                 if (ctx->stage == MESA_SHADER_FRAGMENT) {
-                        emit_fragment_store(ctx, reg, offset);
+                        const nir_variable *var;
+                        enum midgard_rt_id rt;
+
+                        var = search_var(&ctx->nir->outputs,
+                                         nir_intrinsic_base(instr));
+                        assert(var);
+                        if (var->data.location == FRAG_RESULT_COLOR)
+                                rt = MIDGARD_COLOR_RT0;
+                        else if (var->data.location >= FRAG_RESULT_DATA0)
+                                rt = MIDGARD_COLOR_RT0 + var->data.location -
+                                     FRAG_RESULT_DATA0;
+                        else
+                                assert(0);
+
+                        emit_fragment_store(ctx, reg, rt);
                 } else if (ctx->stage == MESA_SHADER_VERTEX) {
                         /* We should have been vectorized, though we don't
                          * currently check that st_vary is emitted only once
