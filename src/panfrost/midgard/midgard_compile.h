@@ -148,6 +148,7 @@ static const nir_shader_compiler_options midgard_nir_options = {
 
         .lower_doubles_options = nir_lower_dmod,
 
+        .lower_bitfield_extract_to_shifts = true,
         .vectorize_io = true,
         .use_interpolated_input_intrinsics = true
 };
