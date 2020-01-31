@@ -845,6 +845,7 @@ mir_schedule_alu(
         mir_choose_alu(&branch, instructions, worklist, len, &predicate, ALU_ENAB_BR_COMPACT);
         mir_update_worklist(worklist, len, instructions, branch);
         bool writeout = branch && branch->writeout;
+        bool zs_writeout = writeout && (branch->writeout_depth | branch->writeout_stencil);
 
         if (branch && branch->branch.conditional) {
                 midgard_instruction *cond = mir_schedule_condition(ctx, &predicate, worklist, len, instructions, branch);
@@ -859,13 +860,14 @@ mir_schedule_alu(
 
         mir_choose_alu(&smul, instructions, worklist, len, &predicate, UNIT_SMUL);
 
-        if (!writeout)
+        if (!writeout) {
                 mir_choose_alu(&vlut, instructions, worklist, len, &predicate, UNIT_VLUT);
-
-        if (writeout) {
+        } else {
                 /* Propagate up */
                 bundle.last_writeout = branch->last_writeout;
+        }
 
+        if (writeout && !zs_writeout) {
                 vadd = ralloc(ctx, midgard_instruction);
                 *vadd = v_mov(~0, make_compiler_temp(ctx));
 
@@ -928,9 +930,9 @@ mir_schedule_alu(
 
         /* Check if writeout reads its own register */
 
-        if (branch && branch->writeout) {
+        if (writeout) {
                 midgard_instruction *stages[] = { sadd, vadd, smul };
-                unsigned src = (branch->src[0] == ~0) ? SSA_FIXED_REGISTER(0) : branch->src[0];
+                unsigned src = (branch->src[0] == ~0) ? SSA_FIXED_REGISTER(zs_writeout ? 1 : 0) : branch->src[0];
                 unsigned writeout_mask = 0x0;
                 bool bad_writeout = false;
 
@@ -946,13 +948,17 @@ mir_schedule_alu(
                 }
 
                 /* It's possible we'll be able to schedule something into vmul
-                 * to fill r0. Let's peak into the future, trying to schedule
+                 * to fill r0/r1. Let's peak into the future, trying to schedule
                  * vmul specially that way. */
 
-                if (!bad_writeout && writeout_mask != 0xF) {
+                unsigned full_mask = zs_writeout ?
+                        (1 << (branch->writeout_depth + branch->writeout_stencil)) - 1 :
+                        0xF;
+
+                if (!bad_writeout && writeout_mask != full_mask) {
                         predicate.unit = UNIT_VMUL;
                         predicate.dest = src;
-                        predicate.mask = writeout_mask ^ 0xF;
+                        predicate.mask = writeout_mask ^ full_mask;
 
                         struct midgard_instruction *peaked =
                                 mir_choose_instruction(instructions, worklist, len, &predicate);
@@ -961,7 +967,7 @@ mir_schedule_alu(
                                 vmul = peaked;
                                 vmul->unit = UNIT_VMUL;
                                 writeout_mask |= predicate.mask;
-                                assert(writeout_mask == 0xF);
+                                assert(writeout_mask == full_mask);
                         }
 
                         /* Cleanup */
@@ -969,13 +975,13 @@ mir_schedule_alu(
                 }
 
                 /* Finally, add a move if necessary */
-                if (bad_writeout || writeout_mask != 0xF) {
-                        unsigned temp = (branch->src[0] == ~0) ? SSA_FIXED_REGISTER(0) : make_compiler_temp(ctx);
+                if (bad_writeout || writeout_mask != full_mask) {
+                        unsigned temp = (branch->src[0] == ~0) ? SSA_FIXED_REGISTER(zs_writeout ? 1 : 0) : make_compiler_temp(ctx);
 
                         vmul = ralloc(ctx, midgard_instruction);
                         *vmul = v_mov(src, temp);
                         vmul->unit = UNIT_VMUL;
-                        vmul->mask = 0xF ^ writeout_mask;
+                        vmul->mask = full_mask ^ writeout_mask;
 
                         /* Rewrite to use our temp */
 

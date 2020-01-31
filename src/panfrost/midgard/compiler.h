@@ -110,6 +110,8 @@ typedef struct midgard_instruction {
 
         bool compact_branch;
         bool writeout;
+        bool writeout_depth;
+        bool writeout_stencil;
         bool last_writeout;
 
         /* Kind of a hack, but hint against aggressive DCE */
@@ -227,6 +229,7 @@ enum midgard_rt_id {
         MIDGARD_COLOR_RT1,
         MIDGARD_COLOR_RT2,
         MIDGARD_COLOR_RT3,
+        MIDGARD_ZS_RT,
         MIDGARD_NUM_RTS,
 };
 

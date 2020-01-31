@@ -1444,8 +1444,14 @@ compute_builtin_arg(nir_op op)
 }
 
 static void
-emit_fragment_store(compiler_context *ctx, unsigned src, unsigned rt)
+emit_fragment_store(compiler_context *ctx, unsigned src, enum midgard_rt_id rt)
 {
+        assert(rt < ARRAY_SIZE(ctx->writeout_branch));
+
+        midgard_instruction *br = ctx->writeout_branch[rt];
+
+        assert(!br);
+
         emit_explicit_constant(ctx, src, src);
 
         struct midgard_instruction ins =
@@ -1455,14 +1461,12 @@ emit_fragment_store(compiler_context *ctx, unsigned src, unsigned rt)
 
         /* Add dependencies */
         ins.src[0] = src;
-        ins.constants.u32[0] = rt * 0x100;
+        ins.constants.u32[0] = rt == MIDGARD_ZS_RT ?
+                               0xFF : (rt - MIDGARD_COLOR_RT0) * 0x100;
 
         /* Emit the branch */
-        midgard_instruction *br = emit_mir_instruction(ctx, ins);
+        br = emit_mir_instruction(ctx, ins);
         schedule_barrier(ctx);
-
-        assert(rt < ARRAY_SIZE(ctx->writeout_branch));
-        assert(!ctx->writeout_branch[rt]);
         ctx->writeout_branch[rt] = br;
 
         /* Push our current location = current block count - 1 = where we'll
@@ -1653,6 +1657,22 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                 ins.has_constants = true;
                 ins.has_blend_constant = true;
                 emit_mir_instruction(ctx, ins);
+                break;
+        }
+
+        case nir_intrinsic_store_zs_output_pan: {
+                assert(ctx->stage == MESA_SHADER_FRAGMENT);
+                emit_fragment_store(ctx, nir_src_index(ctx, &instr->src[0]),
+                                    MIDGARD_ZS_RT);
+
+                midgard_instruction *br = ctx->writeout_branch[MIDGARD_ZS_RT];
+
+                if (!nir_intrinsic_component(instr))
+                        br->writeout_depth = true;
+                if (nir_intrinsic_component(instr) ||
+                    instr->num_components)
+                        br->writeout_stencil = true;
+                assert(br->writeout_depth | br->writeout_stencil);
                 break;
         }
 
@@ -2449,11 +2469,13 @@ static unsigned
 emit_fragment_epilogue(compiler_context *ctx, unsigned rt)
 {
         /* Loop to ourselves */
-
+        midgard_instruction *br = ctx->writeout_branch[rt];
         struct midgard_instruction ins = v_branch(false, false);
         ins.writeout = true;
+        ins.writeout_depth = br->writeout_depth;
+        ins.writeout_stencil = br->writeout_stencil;
         ins.branch.target_block = ctx->block_count - 1;
-        ins.constants.u32[0] = rt * 0x100;
+        ins.constants.u32[0] = br->constants.u32[0];
         emit_mir_instruction(ctx, ins);
 
         ctx->current_block->epilogue = true;
@@ -2754,7 +2776,7 @@ midgard_compile_shader_nir(nir_shader *nir, midgard_program *program, bool is_bl
         ctx->stage = nir->info.stage;
         ctx->is_blend = is_blend;
         ctx->alpha_ref = program->alpha_ref;
-        ctx->blend_rt = blend_rt;
+        ctx->blend_rt = MIDGARD_COLOR_RT0 + blend_rt;
         ctx->quirks = midgard_get_quirks(gpu_id);
 
         /* Start off with a safe cutoff, allowing usage of all 16 work
