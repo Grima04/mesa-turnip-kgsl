@@ -164,6 +164,7 @@ lower_discard_if(nir_shader *shader)
 static const struct nir_shader_compiler_options nir_options = {
    .lower_all_io_to_temps = true,
    .lower_ffma = true,
+   .lower_fdph = true,
    .lower_flrp32 = true,
    .lower_fpow = true,
    .lower_fsat = true,

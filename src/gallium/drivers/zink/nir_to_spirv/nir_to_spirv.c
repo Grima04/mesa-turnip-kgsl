@@ -1025,6 +1025,9 @@ emit_alu(struct ntv_context *ctx, nir_alu_instr *alu)
       result = emit_binop(ctx, SpvOpDot, dest_type, src[0], src[1]);
       break;
 
+   case nir_op_fdph:
+      unreachable("should already be lowered away");
+
    case nir_op_seq:
    case nir_op_sne:
    case nir_op_slt:
