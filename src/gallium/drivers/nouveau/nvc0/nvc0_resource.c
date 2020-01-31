@@ -9,13 +9,11 @@ static struct pipe_resource *
 nvc0_resource_create(struct pipe_screen *screen,
                      const struct pipe_resource *templ)
 {
-   const uint64_t modifier = DRM_FORMAT_MOD_INVALID;
-
    switch (templ->target) {
    case PIPE_BUFFER:
       return nouveau_buffer_create(screen, templ);
    default:
-      return nvc0_miptree_create(screen, templ, &modifier, 1);
+      return nvc0_miptree_create(screen, templ, NULL, 0);
    }
 }
 
