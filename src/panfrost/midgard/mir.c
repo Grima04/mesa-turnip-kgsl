@@ -466,6 +466,37 @@ mir_bytemask_of_read_components_single(unsigned *swizzle, unsigned inmask, midga
 }
 
 uint16_t
+mir_bytemask_of_read_components_index(midgard_instruction *ins, unsigned i)
+{
+        uint16_t mask = 0;
+
+        /* Branch writeout uses all components */
+        if (ins->compact_branch && ins->writeout && (i == 0))
+                return 0xFFFF;
+
+        /* Conditional branches read one 32-bit component = 4 bytes (TODO: multi branch??) */
+        if (ins->compact_branch && ins->branch.conditional && (i == 0))
+                return 0xF;
+
+        /* ALU ops act componentwise so we need to pay attention to
+         * their mask. Texture/ldst does not so we don't clamp source
+         * readmasks based on the writemask */
+        unsigned qmask = (ins->type == TAG_ALU_4) ? ins->mask : ~0;
+
+        /* Handle dot products and things */
+        if (ins->type == TAG_ALU_4 && !ins->compact_branch) {
+                unsigned props = alu_opcode_props[ins->alu.op].props;
+
+                unsigned channel_override = GET_CHANNEL_COUNT(props);
+
+                if (channel_override)
+                        qmask = mask_of(channel_override);
+        }
+
+        return mir_bytemask_of_read_components_single(ins->swizzle[i], qmask, mir_srcsize(ins, i));
+}
+
+uint16_t
 mir_bytemask_of_read_components(midgard_instruction *ins, unsigned node)
 {
         uint16_t mask = 0;
@@ -475,31 +506,7 @@ mir_bytemask_of_read_components(midgard_instruction *ins, unsigned node)
 
         mir_foreach_src(ins, i) {
                 if (ins->src[i] != node) continue;
-
-                /* Branch writeout uses all components */
-                if (ins->compact_branch && ins->writeout && (i == 0))
-                        return 0xFFFF;
-
-                /* Conditional branches read one 32-bit component = 4 bytes (TODO: multi branch??) */
-                if (ins->compact_branch && ins->branch.conditional && (i == 0))
-                        return 0xF;
-
-                /* ALU ops act componentwise so we need to pay attention to
-                 * their mask. Texture/ldst does not so we don't clamp source
-                 * readmasks based on the writemask */
-                unsigned qmask = (ins->type == TAG_ALU_4) ? ins->mask : ~0;
-
-                /* Handle dot products and things */
-                if (ins->type == TAG_ALU_4 && !ins->compact_branch) {
-                        unsigned props = alu_opcode_props[ins->alu.op].props;
-
-                        unsigned channel_override = GET_CHANNEL_COUNT(props);
-
-                        if (channel_override)
-                                qmask = mask_of(channel_override);
-                }
-
-                mask |= mir_bytemask_of_read_components_single(ins->swizzle[i], qmask, mir_srcsize(ins, i));
+                mask |= mir_bytemask_of_read_components_index(ins, i);
         }
 
         return mask;
