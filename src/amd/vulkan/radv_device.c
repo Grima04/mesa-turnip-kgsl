@@ -300,6 +300,7 @@ radv_handle_env_var_force_family(struct radv_physical_device *device)
 		if (!strcmp(family, ac_get_llvm_processor_name(i))) {
 			/* Override family and chip_class. */
 			device->rad_info.family = i;
+			device->rad_info.name = "OVERRIDDEN";
 
 			if (i >= CHIP_NAVI10)
 				device->rad_info.chip_class = GFX10;
