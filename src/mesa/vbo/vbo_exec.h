@@ -49,7 +49,7 @@ USE OR OTHER DEALINGS IN THE SOFTWARE.
 /**
  * Size (in bytes) of the VBO to use for glBegin/glVertex/glEnd-style rendering.
  */
-#define VBO_VERT_BUFFER_SIZE (1024 * 64)
+#define VBO_VERT_BUFFER_SIZE (1024 * 512)
 
 
 struct vbo_exec_eval1_map {
