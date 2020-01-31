@@ -866,29 +866,28 @@ mir_schedule_alu(
                 /* Propagate up */
                 bundle.last_writeout = branch->last_writeout;
 
-                midgard_instruction add = v_mov(~0, make_compiler_temp(ctx));
+                vadd = ralloc(ctx, midgard_instruction);
+                *vadd = v_mov(~0, make_compiler_temp(ctx));
 
                 if (!ctx->is_blend) {
-                        add.alu.op = midgard_alu_op_iadd;
-                        add.src[0] = SSA_FIXED_REGISTER(31);
+                        vadd->alu.op = midgard_alu_op_iadd;
+                        vadd->src[0] = SSA_FIXED_REGISTER(31);
 
                         for (unsigned c = 0; c < 16; ++c)
-                                add.swizzle[0][c] = COMPONENT_X;
+                                vadd->swizzle[0][c] = COMPONENT_X;
 
-                        add.has_inline_constant = true;
-                        add.inline_constant = 0;
+                        vadd->has_inline_constant = true;
+                        vadd->inline_constant = 0;
                 } else {
-                        add.src[1] = SSA_FIXED_REGISTER(1);
+                        vadd->src[1] = SSA_FIXED_REGISTER(1);
 
                         for (unsigned c = 0; c < 16; ++c)
-                                add.swizzle[1][c] = COMPONENT_W;
+                                vadd->swizzle[1][c] = COMPONENT_W;
                 }
-
-                vadd = mem_dup(&add, sizeof(midgard_instruction));
 
                 vadd->unit = UNIT_VADD;
                 vadd->mask = 0x1;
-                branch->src[2] = add.dest;
+                branch->src[2] = vadd->dest;
         }
 
         mir_choose_alu(&vadd, instructions, worklist, len, &predicate, UNIT_VADD);
@@ -915,14 +914,13 @@ mir_schedule_alu(
         /* If we have a render target reference, schedule a move for it */
 
         if (writeout && (branch->constants.u32[0] || ctx->is_blend)) {
-                midgard_instruction mov = v_mov(~0, make_compiler_temp(ctx));
-                sadd = mem_dup(&mov, sizeof(midgard_instruction));
+                sadd = ralloc(ctx, midgard_instruction);
+                *sadd = v_mov(~0, make_compiler_temp(ctx));
                 sadd->unit = UNIT_SADD;
                 sadd->mask = 0x1;
                 sadd->has_inline_constant = true;
                 sadd->inline_constant = branch->constants.u32[0];
-                branch->src[1] = mov.dest;
-                /* TODO: Don't leak */
+                branch->src[1] = sadd->dest;
         }
 
         /* Stage 2, let's schedule sadd before vmul for writeout */
@@ -973,11 +971,11 @@ mir_schedule_alu(
                 /* Finally, add a move if necessary */
                 if (bad_writeout || writeout_mask != 0xF) {
                         unsigned temp = (branch->src[0] == ~0) ? SSA_FIXED_REGISTER(0) : make_compiler_temp(ctx);
-                        midgard_instruction mov = v_mov(src, temp);
-                        vmul = mem_dup(&mov, sizeof(midgard_instruction));
+
+                        vmul = ralloc(ctx, midgard_instruction);
+                        *vmul = v_mov(src, temp);
                         vmul->unit = UNIT_VMUL;
                         vmul->mask = 0xF ^ writeout_mask;
-                        /* TODO: Don't leak */
 
                         /* Rewrite to use our temp */
 
