@@ -39,6 +39,7 @@ apt-get install -y --no-remove \
       automake \
       autotools-dev \
       bison \
+      ccache \
       clang-9 \
       cmake \
       flex \
@@ -67,6 +68,7 @@ apt-get install -y --no-remove \
       libx11-xcb-dev \
       libxdamage-dev \
       libxext-dev \
+      libxml2-utils \
       libxrandr-dev \
       libxrender-dev \
       libxshmfence-dev \
@@ -181,12 +183,6 @@ cd shader-db
 make -j4
 popd
 
-# Use ccache to speed up builds
-apt-get install -y --no-remove ccache
-
-# We need xmllint to validate the XML files in Mesa
-apt-get install -y --no-remove libxml2-utils
-
 
 # Generate cross build files for Meson
 for arch in $CROSS_ARCHITECTURES; do
@@ -201,6 +197,10 @@ for arch in $CROSS_ARCHITECTURES; do
     sed -i -e '/\[properties\]/a\' -e "needs_exe_wrapper = False" "$cross_file"
   fi
 done
+
+
+# Remove ccache directory, useless for the build jobs
+rm -rf $(ccache --get-config=cache_dir)
 
 
 ############### Uninstall the build software
