@@ -822,6 +822,9 @@ struct tu_tiling_config
    /* pipe register values */
    uint32_t pipe_config[MAX_VSC_PIPES];
    uint32_t pipe_sizes[MAX_VSC_PIPES];
+
+   /* Whether sysmem rendering must be used */
+   bool force_sysmem;
 };
 
 enum tu_cmd_dirty_bits

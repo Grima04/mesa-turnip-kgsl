@@ -111,6 +111,66 @@ tu_bo_list_merge(struct tu_bo_list *list, const struct tu_bo_list *other)
    return VK_SUCCESS;
 }
 
+static bool
+is_linear_mipmapped(const struct tu_image_view *iview)
+{
+   return iview->image->layout.tile_mode == TILE6_LINEAR &&
+          iview->base_mip != iview->image->level_count - 1;
+}
+
+static bool
+force_sysmem(const struct tu_cmd_buffer *cmd,
+             const struct VkRect2D *render_area)
+{
+   const struct tu_framebuffer *fb = cmd->state.framebuffer;
+   const struct tu_physical_device *device = cmd->device->physical_device;
+   bool has_linear_mipmapped_store = false;
+   const struct tu_render_pass *pass = cmd->state.pass;
+
+   /* Iterate over all the places we call tu6_emit_store_attachment() */
+   for (unsigned i = 0; i < pass->subpass_count; i++) {
+      const struct tu_subpass *subpass = &pass->subpasses[i];
+      if (subpass->resolve_attachments) {
+         for (unsigned i = 0; i < subpass->color_count; i++) {
+            uint32_t a = subpass->resolve_attachments[i].attachment;
+            if (a != VK_ATTACHMENT_UNUSED &&
+                cmd->state.pass->attachments[a].store_op == VK_ATTACHMENT_STORE_OP_STORE) {
+               const struct tu_image_view *iview = fb->attachments[a].attachment;
+               if (is_linear_mipmapped(iview)) {
+                  has_linear_mipmapped_store = true;
+                  break;
+               }
+            }
+         }
+      }
+   }
+
+   for (unsigned i = 0; i < pass->attachment_count; i++) {
+      if (pass->attachments[i].gmem_offset >= 0 &&
+          cmd->state.pass->attachments[i].store_op == VK_ATTACHMENT_STORE_OP_STORE) {
+         const struct tu_image_view *iview = fb->attachments[i].attachment;
+         if (is_linear_mipmapped(iview)) {
+            has_linear_mipmapped_store = true;
+            break;
+         }
+      }
+   }
+
+   /* Linear textures cannot have any padding between mipmap levels and their
+    * height isn't padded, while at the same time the GMEM->MEM resolve does
+    * not have per-pixel granularity, so if the image height isn't aligned to
+    * the resolve granularity and the render area is tall enough, we may wind
+    * up writing past the bottom of the image into the next miplevel or even
+    * past the end of the image. For the last miplevel, the layout code should
+    * insert enough padding so that the overdraw writes to the padding.  To
+    * work around this, we force-enable sysmem rendering.
+    */
+   const uint32_t y2 = render_area->offset.y + render_area->extent.height;
+   const uint32_t aligned_y2 = ALIGN_POT(y2, device->tile_align_h);
+
+   return has_linear_mipmapped_store && aligned_y2 > fb->height;
+}
+
 static void
 tu_tiling_config_update_tile_layout(struct tu_tiling_config *tiling,
                                     const struct tu_device *dev,
@@ -703,7 +763,7 @@ use_sysmem_rendering(struct tu_cmd_buffer *cmd)
    if (unlikely(cmd->device->physical_device->instance->debug_flags & TU_DEBUG_SYSMEM))
       return true;
 
-   return false;
+   return cmd->state.tiling_config.force_sysmem;
 }
 
 static void
@@ -1755,6 +1815,7 @@ tu_cmd_update_tiling_config(struct tu_cmd_buffer *cmd,
    struct tu_tiling_config *tiling = &cmd->state.tiling_config;
 
    tiling->render_area = *render_area;
+   tiling->force_sysmem = force_sysmem(cmd, render_area);
 
    tu_tiling_config_update_tile_layout(tiling, dev, cmd->state.pass->gmem_pixels);
    tu_tiling_config_update_pipe_layout(tiling, dev);
