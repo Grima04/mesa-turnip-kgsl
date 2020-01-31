@@ -114,6 +114,10 @@ panfrost_shader_compile(
         case MESA_SHADER_FRAGMENT:
                 meta->attribute_count = 0;
                 meta->varying_count = util_bitcount64(s->info.inputs_read);
+                if (s->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_DEPTH))
+                        state->writes_depth = true;
+                if (s->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_STENCIL))
+                        state->writes_stencil = true;
                 break;
         case MESA_SHADER_COMPUTE:
                 /* TODO: images */

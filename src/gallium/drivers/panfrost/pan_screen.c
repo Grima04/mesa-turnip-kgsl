@@ -245,6 +245,9 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
                 return (int)(system_memory >> 20);
         }
 
+        case PIPE_CAP_SHADER_STENCIL_EXPORT:
+                return 1;
+
         case PIPE_CAP_SHADER_BUFFER_OFFSET_ALIGNMENT:
                 return 4;
 

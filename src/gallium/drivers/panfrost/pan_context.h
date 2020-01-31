@@ -210,6 +210,8 @@ struct panfrost_shader_state {
         int uniform_count;
         bool can_discard;
         bool writes_point_size;
+        bool writes_depth;
+        bool writes_stencil;
         bool reads_point_coord;
         bool reads_face;
         bool reads_frag_coord;

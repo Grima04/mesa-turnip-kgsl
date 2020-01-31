@@ -961,7 +961,14 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                 /* Depending on whether it's legal to in the given shader, we
                  * try to enable early-z testing (or forward-pixel kill?) */
 
-                SET_BIT(ctx->fragment_shader_core.midgard1.flags_lo, MALI_EARLY_Z, !variant->can_discard);
+                SET_BIT(ctx->fragment_shader_core.midgard1.flags_lo, MALI_EARLY_Z,
+                        !variant->can_discard && !variant->writes_depth);
+
+                /* Add the writes Z/S flags if needed. */
+                SET_BIT(ctx->fragment_shader_core.midgard1.flags_lo,
+                        MALI_WRITES_Z, variant->writes_depth);
+                SET_BIT(ctx->fragment_shader_core.midgard1.flags_hi,
+                        MALI_WRITES_S, variant->writes_stencil);
 
                 /* Any time texturing is used, derivatives are implicitly
                  * calculated, so we need to enable helper invocations */
