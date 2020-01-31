@@ -312,6 +312,8 @@ radv_handle_env_var_force_family(struct radv_physical_device *device)
 			else
 				device->rad_info.chip_class = GFX6;
 
+			/* Don't submit any IBs. */
+			device->instance->debug_flags |= RADV_DEBUG_NOOP;
 			return;
 		}
 	}
@@ -560,6 +562,7 @@ static const struct debug_control radv_debug_options[] = {
 	{"allentrypoints", RADV_DEBUG_ALL_ENTRYPOINTS},
 	{"metashaders", RADV_DEBUG_DUMP_META_SHADERS},
 	{"nomemorycache", RADV_DEBUG_NO_MEMORY_CACHE},
+	{"noop", RADV_DEBUG_NOOP},
 	{NULL, 0}
 };
 
