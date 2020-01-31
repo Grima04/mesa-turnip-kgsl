@@ -40,7 +40,7 @@ struct ntv_context {
    size_t num_ubos;
    SpvId image_types[PIPE_MAX_SAMPLERS];
    SpvId samplers[PIPE_MAX_SAMPLERS];
-   size_t num_samplers;
+   unsigned samplers_used : PIPE_MAX_SAMPLERS;
    SpvId entry_ifaces[PIPE_MAX_SHADER_INPUTS * 4 + PIPE_MAX_SHADER_OUTPUTS * 4];
    size_t num_entry_ifaces;
 
@@ -415,11 +415,12 @@ emit_sampler(struct ntv_context *ctx, struct nir_variable *var)
             spirv_builder_emit_name(&ctx->builder, var_id, var->name);
          }
 
-         assert(ctx->num_samplers < ARRAY_SIZE(ctx->image_types));
-         ctx->image_types[ctx->num_samplers] = image_type;
-
-         assert(ctx->num_samplers < ARRAY_SIZE(ctx->samplers));
-         ctx->samplers[ctx->num_samplers++] = var_id;
+         int index = var->data.driver_location + i;
+         assert(!(ctx->samplers_used & (1 << index)));
+         assert(!ctx->image_types[index]);
+         ctx->image_types[index] = image_type;
+         ctx->samplers[index] = var_id;
+         ctx->samplers_used |= 1 << index;
 
          spirv_builder_emit_descriptor_set(&ctx->builder, var_id,
                                            var->data.descriptor_set);
@@ -432,11 +433,12 @@ emit_sampler(struct ntv_context *ctx, struct nir_variable *var)
       if (var->name)
          spirv_builder_emit_name(&ctx->builder, var_id, var->name);
 
-      assert(ctx->num_samplers < ARRAY_SIZE(ctx->image_types));
-      ctx->image_types[ctx->num_samplers] = image_type;
-
-      assert(ctx->num_samplers < ARRAY_SIZE(ctx->samplers));
-      ctx->samplers[ctx->num_samplers++] = var_id;
+      int index = var->data.driver_location;
+      assert(!(ctx->samplers_used & (1 << index)));
+      assert(!ctx->image_types[index]);
+      ctx->image_types[index] = image_type;
+      ctx->samplers[index] = var_id;
+      ctx->samplers_used |= 1 << index;
 
       spirv_builder_emit_descriptor_set(&ctx->builder, var_id,
                                         var->data.descriptor_set);
@@ -1500,7 +1502,7 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
    SpvId sampled_type = spirv_builder_type_sampled_image(&ctx->builder,
                                                          image_type);
 
-   assert(tex->texture_index < ctx->num_samplers);
+   assert(ctx->samplers_used & (1u << tex->texture_index));
    SpvId load = spirv_builder_emit_load(&ctx->builder, sampled_type,
                                         ctx->samplers[tex->texture_index]);
 
