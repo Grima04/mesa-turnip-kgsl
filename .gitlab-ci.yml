@@ -166,7 +166,7 @@ arm_build:
     - .debian@container-ifnot-exists@arm64v8
     - .container
   variables:
-    DEBIAN_TAG: &arm_build "2020-01-14"
+    DEBIAN_TAG: &arm_build "2020-02-03"
 
 .use-arm_build:
   variables:

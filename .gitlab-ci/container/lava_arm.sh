@@ -34,7 +34,7 @@ mv /deqp /lava-files/rootfs-${DEBIAN_ARCH}/.
 
 
 ############### Cross-build kernel
-KERNEL_URL="https://gitlab.freedesktop.org/tomeu/linux/-/archive/v5.5-rc5-panfrost-fixes/linux-v5.5-rc5-panfrost-fixes.tar.gz"
+KERNEL_URL="https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/snapshot/linux-5.5.tar.gz"
 
 if [[ "$DEBIAN_ARCH" = "armhf" ]]; then
     export ARCH=${KERNEL_ARCH}
