@@ -8253,6 +8253,10 @@ void visit_phi(isel_context *ctx, nir_phi_instr *instr)
             continue;
          }
       }
+      /* Handle missing predecessors at the end. This shouldn't happen with loop
+       * headers and we can't ignore these sources for loop header phis. */
+      if (!(ctx->block->kind & block_kind_loop_header) && cur_pred_idx >= preds.size())
+         continue;
       cur_pred_idx++;
       Operand op = get_phi_operand(ctx, src.second);
       operands[num_operands++] = op;
