@@ -858,6 +858,7 @@ intrinsic("load_global_ir3", [2, 1], dest_comp=0, indices=[ACCESS, ALIGN_MUL, AL
 
 # src[] = { value }
 store("raw_output_pan", 1, [])
+store("zs_output_pan", 1, [COMPONENT])
 load("raw_output_pan", 0, [], [CAN_ELIMINATE, CAN_REORDER])
 load("output_u8_as_fp16_pan", 0, [], [CAN_ELIMINATE, CAN_REORDER])
 
