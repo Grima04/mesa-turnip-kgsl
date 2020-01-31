@@ -843,7 +843,7 @@ panfrost_patch_shader_state(struct panfrost_context *ctx,
         ss->tripipe->texture_count = ctx->sampler_view_count[stage];
         ss->tripipe->sampler_count = ctx->sampler_count[stage];
 
-        ss->tripipe->midgard1.flags = 0x220;
+        ss->tripipe->midgard1.flags_lo = 0x220;
 
         unsigned ubo_count = panfrost_ubo_count(ctx, stage);
         ss->tripipe->midgard1.uniform_buffer_count = ubo_count;
@@ -935,8 +935,8 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                 COPY(midgard1.uniform_count);
                 COPY(midgard1.uniform_buffer_count);
                 COPY(midgard1.work_count);
-                COPY(midgard1.flags);
-                COPY(midgard1.unknown2);
+                COPY(midgard1.flags_lo);
+                COPY(midgard1.flags_hi);
 
 #undef COPY
 
@@ -961,12 +961,12 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                 /* Depending on whether it's legal to in the given shader, we
                  * try to enable early-z testing (or forward-pixel kill?) */
 
-                SET_BIT(ctx->fragment_shader_core.midgard1.flags, MALI_EARLY_Z, !variant->can_discard);
+                SET_BIT(ctx->fragment_shader_core.midgard1.flags_lo, MALI_EARLY_Z, !variant->can_discard);
 
                 /* Any time texturing is used, derivatives are implicitly
                  * calculated, so we need to enable helper invocations */
 
-                SET_BIT(ctx->fragment_shader_core.midgard1.flags, MALI_HELPER_INVOCATIONS, variant->helper_invocations);
+                SET_BIT(ctx->fragment_shader_core.midgard1.flags_lo, MALI_HELPER_INVOCATIONS, variant->helper_invocations);
 
                 /* Assign the stencil refs late */
 
@@ -985,7 +985,7 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                  */
 
                 SET_BIT(ctx->fragment_shader_core.unknown2_3, MALI_CAN_DISCARD, variant->can_discard);
-                SET_BIT(ctx->fragment_shader_core.midgard1.flags, 0x400, variant->can_discard);
+                SET_BIT(ctx->fragment_shader_core.midgard1.flags_lo, 0x400, variant->can_discard);
 
                 /* Even on MFBD, the shader descriptor gets blend shaders. It's
                  * *also* copied to the blend_meta appended (by convention),

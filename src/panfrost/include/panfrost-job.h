@@ -384,7 +384,10 @@ enum mali_format {
 #define MALI_ALPHA_COVERAGE(clampf) ((uint16_t) (int) (clampf * 15.0f))
 #define MALI_GET_ALPHA_COVERAGE(nibble) ((float) nibble / 15.0f)
 
-/* Applies to midgard1.flags */
+/* Applies to midgard1.flags_lo */
+
+/* Should be set when the fragment shader updates the depth value. */
+#define MALI_WRITES_Z (1 << 4)
 
 /* Should the hardware perform early-Z testing? Normally should be set
  * for performance reasons. Clear if you use: discard,
@@ -405,6 +408,11 @@ enum mali_format {
 
 #define MALI_READS_ZS (1 << 8)
 #define MALI_READS_TILEBUFFER (1 << 12)
+
+/* Applies to midgard1.flags_hi */
+
+/* Should be set when the fragment shader updates the stencil value. */
+#define MALI_WRITES_S (1 << 2)
 
 /* The raw Midgard blend payload can either be an equation or a shader
  * address, depending on the context */
@@ -534,12 +542,12 @@ struct mali_shader_meta {
                 } bifrost1;
                 struct {
                         unsigned uniform_buffer_count : 4;
-                        unsigned flags : 12;
+                        unsigned flags_lo : 12;
 
                         /* vec4 units */
                         unsigned work_count : 5;
                         unsigned uniform_count : 5;
-                        unsigned unknown2 : 6;
+                        unsigned flags_hi : 6;
                 } midgard1;
         };
 

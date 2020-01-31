@@ -136,7 +136,7 @@ panfrost_shader_compile(
         /* Separate as primary uniform count is truncated */
         state->uniform_count = program.uniform_count;
 
-        meta->midgard1.unknown2 = 8; /* XXX */
+        meta->midgard1.flags_hi = 8; /* XXX */
 
         unsigned default_vec1_swizzle = panfrost_get_default_swizzle(1);
         unsigned default_vec2_swizzle = panfrost_get_default_swizzle(2);
