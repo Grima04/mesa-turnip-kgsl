@@ -178,8 +178,7 @@ struct fd_bo {
 	time_t free_time;        /* time when added to bucket-list */
 };
 
-struct fd_bo *fd_bo_new_ring(struct fd_device *dev,
-		uint32_t size, uint32_t flags);
+struct fd_bo *fd_bo_new_ring(struct fd_device *dev, uint32_t size);
 
 #define enable_debug 0  /* TODO make dynamic */
 
