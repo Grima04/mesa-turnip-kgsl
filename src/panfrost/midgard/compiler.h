@@ -222,6 +222,14 @@ typedef struct midgard_bundle {
         bool last_writeout;
 } midgard_bundle;
 
+enum midgard_rt_id {
+        MIDGARD_COLOR_RT0,
+        MIDGARD_COLOR_RT1,
+        MIDGARD_COLOR_RT2,
+        MIDGARD_COLOR_RT3,
+        MIDGARD_NUM_RTS,
+};
+
 typedef struct compiler_context {
         nir_shader *nir;
         gl_shader_stage stage;
@@ -307,7 +315,7 @@ typedef struct compiler_context {
         uint32_t quirks;
 
         /* Writeout instructions for each render target */
-        midgard_instruction *writeout_branch[4];
+        midgard_instruction *writeout_branch[MIDGARD_NUM_RTS];
 } compiler_context;
 
 /* Per-block live_in/live_out */
