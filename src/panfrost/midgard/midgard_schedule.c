@@ -373,27 +373,10 @@ mir_adjust_constants(midgard_instruction *ins,
                 return true;
 
         unsigned r_constant = SSA_FIXED_REGISTER(REGISTER_CONSTANT);
-        midgard_reg_mode reg_mode = ins->alu.reg_mode;
+        midgard_reg_mode dst_mode = mir_typesize(ins);
 
-        midgard_vector_alu_src const_src = { };
-
-        if (ins->src[0] == r_constant)
-                const_src = vector_alu_from_unsigned(ins->alu.src1);
-        else if (ins->src[1] == r_constant)
-                const_src = vector_alu_from_unsigned(ins->alu.src2);
-
-        unsigned type_size = mir_bytes_for_mode(reg_mode);
-
-        /* If the ALU is converting up we need to divide type_size by 2 */
-        if (const_src.half)
-                type_size /= 2;
-
-        unsigned max_comp = 16 / type_size;
-        unsigned comp_mask = mir_from_bytemask(mir_bytemask_of_read_components(ins, r_constant),
-                                               reg_mode);
-        unsigned type_mask = (1 << type_size) - 1;
         unsigned bundle_constant_mask = pred->constant_mask;
-        unsigned comp_mapping[16] = { };
+        unsigned comp_mapping[2][16] = { };
         uint8_t bundle_constants[16];
 
         memcpy(bundle_constants, pred->constants, 16);
@@ -401,47 +384,59 @@ mir_adjust_constants(midgard_instruction *ins,
         /* Let's try to find a place for each active component of the constant
          * register.
          */
-        for (unsigned comp = 0; comp < max_comp; comp++) {
-                if (!(comp_mask & (1 << comp)))
+        for (unsigned src = 0; src < 2; ++src) {
+                if (ins->src[src] != SSA_FIXED_REGISTER(REGISTER_CONSTANT))
                         continue;
 
-                uint8_t *constantp = ins->constants.u8 + (type_size * comp);
-                unsigned best_reuse_bytes = 0;
-                signed best_place = -1;
-                unsigned i, j;
+                midgard_reg_mode src_mode = mir_srcsize(ins, src);
+                unsigned type_size = mir_bytes_for_mode(src_mode);
+                unsigned max_comp = 16 / type_size;
+                unsigned comp_mask = mir_from_bytemask(mir_bytemask_of_read_components_index(ins, src),
+                                                       dst_mode);
+                unsigned type_mask = (1 << type_size) - 1;
 
-                for (i = 0; i < 16; i += type_size) {
-                        unsigned reuse_bytes = 0;
+                for (unsigned comp = 0; comp < max_comp; comp++) {
+                        if (!(comp_mask & (1 << comp)))
+                                continue;
 
-                        for (j = 0; j < type_size; j++) {
-                                if (!(bundle_constant_mask & (1 << (i + j))))
-                                        continue;
-                                if (constantp[j] != bundle_constants[i + j])
+                        uint8_t *constantp = ins->constants.u8 + (type_size * comp);
+                        unsigned best_reuse_bytes = 0;
+                        signed best_place = -1;
+                        unsigned i, j;
+
+                        for (i = 0; i < 16; i += type_size) {
+                                unsigned reuse_bytes = 0;
+
+                                for (j = 0; j < type_size; j++) {
+                                        if (!(bundle_constant_mask & (1 << (i + j))))
+                                                continue;
+                                        if (constantp[j] != bundle_constants[i + j])
+                                                break;
+
+                                        reuse_bytes++;
+                                }
+
+                                /* Select the place where existing bytes can be
+                                 * reused so we leave empty slots to others
+                                 */
+                                if (j == type_size &&
+                                    (reuse_bytes > best_reuse_bytes || best_place < 0)) {
+                                        best_reuse_bytes = reuse_bytes;
+                                        best_place = i;
                                         break;
-
-                                reuse_bytes++;
+                                }
                         }
 
-                        /* Select the place where existing bytes can be
-                         * reused so we leave empty slots to others
+                        /* This component couldn't fit in the remaining constant slot,
+                         * no need check the remaining components, bail out now
                          */
-                        if (j == type_size &&
-                            (reuse_bytes > best_reuse_bytes || best_place < 0)) {
-                                best_reuse_bytes = reuse_bytes;
-                                best_place = i;
-                                break;
-                        }
+                        if (best_place < 0)
+                                return false;
+
+                        memcpy(&bundle_constants[i], constantp, type_size);
+                        bundle_constant_mask |= type_mask << best_place;
+                        comp_mapping[src][comp] = best_place / type_size;
                 }
-
-                /* This component couldn't fit in the remaining constant slot,
-                 * no need check the remaining components, bail out now
-                 */
-                if (best_place < 0)
-                        return false;
-
-                memcpy(&bundle_constants[i], constantp, type_size);
-                bundle_constant_mask |= type_mask << best_place;
-                comp_mapping[comp] = best_place / type_size;
         }
 
         /* If non-destructive, we're done */
@@ -455,7 +450,7 @@ mir_adjust_constants(midgard_instruction *ins,
         /* Use comp_mapping as a swizzle */
         mir_foreach_src(ins, s) {
                 if (ins->src[s] == r_constant)
-                        mir_compose_swizzle(ins->swizzle[s], comp_mapping, ins->swizzle[s]);
+                        mir_compose_swizzle(ins->swizzle[s], comp_mapping[s], ins->swizzle[s]);
         }
 
         return true;
