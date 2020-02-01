@@ -101,6 +101,7 @@ panfrost_translate_channel_width(unsigned size)
         default: {
                 fprintf(stderr, "Invalid width: %d\n", size);
                 assert(0);
+                return 0;
         }
         }
 }
