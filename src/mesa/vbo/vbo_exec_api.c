@@ -525,11 +525,8 @@ do {                                                                    \
       /* dst now points at the beginning of the next vertex */          \
       exec->vtx.buffer_ptr = (fi_type*)dst;                             \
                                                                         \
-      /* Set FLUSH_STORED_VERTICES to indicate that there's now */      \
-      /* something to draw (not just updating a color or texcoord).*/   \
       /* Don't set FLUSH_UPDATE_CURRENT because */                      \
       /* Current.Attrib[VBO_ATTRIB_POS] is never used. */               \
-      ctx->Driver.NeedFlush |= FLUSH_STORED_VERTICES;                   \
                                                                         \
       if (unlikely(++exec->vtx.vert_count >= exec->vtx.max_vert))       \
          vbo_exec_vtx_wrap(exec);                                       \
@@ -900,9 +897,13 @@ vbo_exec_End(void)
    if (exec->vtx.prim_count > 0) {
       /* close off current primitive */
       struct _mesa_prim *last_prim = &exec->vtx.prim[exec->vtx.prim_count - 1];
+      unsigned count = exec->vtx.vert_count - last_prim->start;
 
       last_prim->end = 1;
-      last_prim->count = exec->vtx.vert_count - last_prim->start;
+      last_prim->count = count;
+
+      if (count)
+         ctx->Driver.NeedFlush |= FLUSH_STORED_VERTICES;
 
       /* Special handling for GL_LINE_LOOP */
       if (last_prim->mode == GL_LINE_LOOP && last_prim->begin == 0) {
