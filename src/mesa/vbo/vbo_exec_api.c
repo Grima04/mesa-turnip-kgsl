@@ -481,8 +481,8 @@ do {                                                                    \
    assert(sz == 1 || sz == 2);                                          \
                                                                         \
    /* check if attribute size or type is changing */                    \
-   if (unlikely(exec->vtx.attr[A].active_size != N * sz) ||             \
-       unlikely(exec->vtx.attr[A].type != T)) {                         \
+   if (unlikely(exec->vtx.attr[A].active_size != N * sz ||              \
+                exec->vtx.attr[A].type != T)) {                         \
       vbo_exec_fixup_vertex(ctx, A, N * sz, T);                         \
    }                                                                    \
                                                                         \
@@ -531,7 +531,7 @@ do {                                                                    \
       /* Current.Attrib[VBO_ATTRIB_POS] is never used. */               \
       ctx->Driver.NeedFlush |= FLUSH_STORED_VERTICES;                   \
                                                                         \
-      if (++exec->vtx.vert_count >= exec->vtx.max_vert)                 \
+      if (unlikely(++exec->vtx.vert_count >= exec->vtx.max_vert))       \
          vbo_exec_vtx_wrap(exec);                                       \
    } else {                                                             \
       /* we now have accumulated per-vertex attributes */               \
