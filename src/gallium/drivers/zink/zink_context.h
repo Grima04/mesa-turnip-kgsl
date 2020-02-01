@@ -110,6 +110,8 @@ struct zink_context {
 
    struct list_head active_queries;
    bool queries_disabled;
+
+   struct pipe_resource *dummy_buffer;
 };
 
 static inline struct zink_context *

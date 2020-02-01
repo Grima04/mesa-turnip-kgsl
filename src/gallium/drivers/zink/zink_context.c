@@ -1172,6 +1172,12 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
        !ctx->framebuffer_cache)
       goto fail;
 
+   const uint8_t data[] = { 0 };
+   ctx->dummy_buffer = pipe_buffer_create_with_data(&ctx->base,
+      PIPE_BIND_VERTEX_BUFFER, PIPE_USAGE_IMMUTABLE, sizeof(data), data);
+   if (!ctx->dummy_buffer)
+      goto fail;
+
    ctx->dirty_program = true;
 
    /* start the first batch */
