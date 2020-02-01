@@ -286,8 +286,13 @@ vbo_exec_vtx_map(struct vbo_exec_context *exec)
                         GL_MAP_UNSYNCHRONIZED_BIT;
 
    if (ctx->Extensions.ARB_buffer_storage) {
+      /* We sometimes read from the buffer, so map it for read too.
+       * Only the persistent mapping can do that, because the non-persistent
+       * mapping uses flags that are incompatible with GL_MAP_READ_BIT.
+       */
       accessRange |= GL_MAP_PERSISTENT_BIT |
-                     GL_MAP_COHERENT_BIT;
+                     GL_MAP_COHERENT_BIT |
+                     GL_MAP_READ_BIT;
    } else {
       accessRange |= GL_MAP_INVALIDATE_RANGE_BIT |
                      GL_MAP_FLUSH_EXPLICIT_BIT |
@@ -328,7 +333,8 @@ vbo_exec_vtx_map(struct vbo_exec_context *exec)
                                  GL_MAP_WRITE_BIT |
                                  (ctx->Extensions.ARB_buffer_storage ?
                                     GL_MAP_PERSISTENT_BIT |
-                                    GL_MAP_COHERENT_BIT : 0) |
+                                    GL_MAP_COHERENT_BIT |
+                                    GL_MAP_READ_BIT : 0) |
                                  GL_DYNAMIC_STORAGE_BIT |
                                  GL_CLIENT_STORAGE_BIT,
                                  exec->vtx.bufferobj)) {
