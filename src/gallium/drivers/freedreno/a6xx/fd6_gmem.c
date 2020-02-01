@@ -1471,6 +1471,9 @@ fd6_emit_sysmem_prep(struct fd_batch *batch)
 
 	fd6_emit_lrz_flush(ring);
 
+	if (batch->lrz_clear)
+		fd6_emit_ib(ring, batch->lrz_clear);
+
 	emit_marker6(ring, 7);
 	OUT_PKT7(ring, CP_SET_MARKER, 1);
 	OUT_RING(ring, A6XX_CP_SET_MARKER_0_MODE(RM6_BYPASS));
