@@ -637,12 +637,25 @@ lima_update_pp_stream(struct lima_context *ctx)
 }
 
 static void
-lima_update_submit_bo(struct lima_context *ctx)
+lima_update_submit_wb(struct lima_context *ctx)
 {
    if (lima_ctx_dirty(ctx))
       return;
 
-   struct lima_screen *screen = lima_screen(ctx->base.screen);
+   if (ctx->framebuffer.base.nr_cbufs) {
+      struct lima_resource *res = lima_resource(ctx->framebuffer.base.cbufs[0]->texture);
+      lima_submit_add_bo(ctx->pp_submit, res->bo, LIMA_SUBMIT_BO_WRITE);
+   }
+
+   if (ctx->framebuffer.base.zsbuf) {
+      struct lima_resource *res = lima_resource(ctx->framebuffer.base.zsbuf->texture);
+      lima_submit_add_bo(ctx->pp_submit, res->bo, LIMA_SUBMIT_BO_WRITE);
+   }
+}
+
+static void
+lima_update_submit_bo(struct lima_context *ctx)
+{
    lima_submit_add_bo(ctx->gp_submit, ctx->plb_gp_stream, LIMA_SUBMIT_BO_READ);
    lima_submit_add_bo(ctx->gp_submit, ctx->plb[ctx->plb_index], LIMA_SUBMIT_BO_WRITE);
    lima_submit_add_bo(ctx->gp_submit, ctx->gp_tile_heap[ctx->plb_index], LIMA_SUBMIT_BO_WRITE);
@@ -652,16 +665,10 @@ lima_update_submit_bo(struct lima_context *ctx)
       ctx->plb_gp_size, false, "gp plb stream at va %x\n",
       ctx->plb_gp_stream->va + ctx->plb_index * ctx->plb_gp_size);
 
-   if (ctx->framebuffer.base.nr_cbufs) {
-      struct lima_resource *res = lima_resource(ctx->framebuffer.base.cbufs[0]->texture);
-      lima_submit_add_bo(ctx->pp_submit, res->bo, LIMA_SUBMIT_BO_WRITE);
-   }
-   if (ctx->framebuffer.base.zsbuf) {
-      struct lima_resource *res = lima_resource(ctx->framebuffer.base.zsbuf->texture);
-      lima_submit_add_bo(ctx->pp_submit, res->bo, LIMA_SUBMIT_BO_WRITE);
-   }
    lima_submit_add_bo(ctx->pp_submit, ctx->plb[ctx->plb_index], LIMA_SUBMIT_BO_READ);
    lima_submit_add_bo(ctx->pp_submit, ctx->gp_tile_heap[ctx->plb_index], LIMA_SUBMIT_BO_READ);
+
+   struct lima_screen *screen = lima_screen(ctx->base.screen);
    lima_submit_add_bo(ctx->pp_submit, screen->pp_buffer, LIMA_SUBMIT_BO_READ);
 }
 
@@ -713,7 +720,7 @@ lima_clear(struct pipe_context *pctx, unsigned buffers,
    if (buffers & PIPE_CLEAR_STENCIL)
       clear->stencil = stencil;
 
-   lima_update_submit_bo(ctx);
+   lima_update_submit_wb(ctx);
 
    lima_pack_head_plbu_cmd(ctx);
 
@@ -1513,7 +1520,7 @@ lima_draw_vbo_update(struct pipe_context *pctx,
 {
    struct lima_context *ctx = lima_context(pctx);
 
-   lima_update_submit_bo(ctx);
+   lima_update_submit_wb(ctx);
 
    lima_update_gp_attribute_info(ctx, info);
 
@@ -1769,6 +1776,8 @@ _lima_flush(struct lima_context *ctx, bool end_of_frame)
    #define pp_stack_pp_size 0x400
 
    lima_finish_plbu_cmd(ctx);
+
+   lima_update_submit_bo(ctx);
 
    int vs_cmd_size = ctx->vs_cmd_array.size;
    int plbu_cmd_size = ctx->plbu_cmd_array.size;
