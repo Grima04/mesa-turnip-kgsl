@@ -22,7 +22,7 @@ project(
   'mesa',
   ['c', 'cpp'],
   version : run_command(
-    [find_program('python', 'python2', 'python3'), 'bin/meson_get_version.py']
+    [find_program('python', 'python3'), 'bin/meson_get_version.py']
   ).stdout(),
   license : 'MIT',
   meson_version : '>= 0.46',
