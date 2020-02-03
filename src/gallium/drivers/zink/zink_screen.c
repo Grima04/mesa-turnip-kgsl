@@ -148,10 +148,8 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_MAX_TEXTURE_ARRAY_LAYERS:
       return screen->props.limits.maxImageArrayLayers;
 
-#if 0 /* TODO: Enable me */
    case PIPE_CAP_DEPTH_CLIP_DISABLE:
-      return 0;
-#endif
+      return screen->feats.depthClamp;
 
    case PIPE_CAP_TGSI_INSTANCEID:
    case PIPE_CAP_MIXED_COLORBUFFER_FORMATS:
