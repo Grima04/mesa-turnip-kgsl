@@ -543,9 +543,17 @@ optimizations.extend([
    (('fmax', a, ('fneg', a)), ('fabs', a)),
    (('imax', a, ('ineg', a)), ('iabs', a)),
    (('~fmax', ('fabs', a), 0.0), ('fabs', a)),
-   (('~fmin', ('fmax', a, 0.0), 1.0), ('fsat', a), '!options->lower_fsat'),
+   (('fmin', ('fmax', a, 0.0), 1.0), ('fsat', a), '!options->lower_fsat'),
+   # fmax(fmin(a, 1.0), 0.0) is inexact because it returns 1.0 on NaN, while
+   # fsat(a) returns 0.0.
    (('~fmax', ('fmin', a, 1.0), 0.0), ('fsat', a), '!options->lower_fsat'),
+   # fmin(fmax(a, -1.0), 0.0) is inexact because it returns -1.0 on NaN, while
+   # fneg(fsat(fneg(a))) returns -0.0 on NaN.
    (('~fmin', ('fmax', a, -1.0),  0.0), ('fneg', ('fsat', ('fneg', a))), '!options->lower_fsat'),
+   # fmax(fmin(a, 0.0), -1.0) is inexact because it returns 0.0 on NaN, while
+   # fneg(fsat(fneg(a))) returns -0.0 on NaN. This only matters if
+   # SignedZeroInfNanPreserve is set, but we don't currently have any way of
+   # representing this in the optimizations other than the usual ~.
    (('~fmax', ('fmin', a,  0.0), -1.0), ('fneg', ('fsat', ('fneg', a))), '!options->lower_fsat'),
    (('fsat', ('fsign', a)), ('b2f', ('flt', 0.0, a))),
    (('fsat', ('b2f', a)), ('b2f', a)),
@@ -557,8 +565,11 @@ optimizations.extend([
    (('fmin', ('fmax', ('fmin', ('fmax', a, b), c), b), c), ('fmin', ('fmax', a, b), c)),
    (('imin', ('imax', ('imin', ('imax', a, b), c), b), c), ('imin', ('imax', a, b), c)),
    (('umin', ('umax', ('umin', ('umax', a, b), c), b), c), ('umin', ('umax', a, b), c)),
+   # Both the left and right patterns are "b" when isnan(a), so this is exact.
    (('fmax', ('fsat', a), '#b@32(is_zero_to_one)'), ('fsat', ('fmax', a, b))),
-   (('fmin', ('fsat', a), '#b@32(is_zero_to_one)'), ('fsat', ('fmin', a, b))),
+   # The left pattern is 0.0 when isnan(a) (because fmin(fsat(NaN), b) ->
+   # fmin(0.0, b)) while the right one is "b", so this optimization is inexact.
+   (('~fmin', ('fsat', a), '#b@32(is_zero_to_one)'), ('fsat', ('fmin', a, b))),
 
    # If a in [0,b] then b-a is also in [0,b].  Since b in [0,1], max(b-a, 0) =
    # fsat(b-a).
