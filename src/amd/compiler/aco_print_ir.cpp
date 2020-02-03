@@ -33,6 +33,7 @@ static const char *reduce_ops[] = {
    [ior64] = "ior64",
    [ixor32] = "ixor32",
    [ixor64] = "ixor64",
+   [gfx10_wave64_bpermute] = "gfx10_wave64_bpermute",
 };
 
 static void print_reg_class(const RegClass rc, FILE *output)
