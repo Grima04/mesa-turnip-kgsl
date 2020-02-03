@@ -597,16 +597,27 @@ spirv_builder_emit_image_fetch(struct spirv_builder *b,
                                SpvId result_type,
                                SpvId image,
                                SpvId coordinate,
-                               SpvId lod)
+                               SpvId lod,
+                               SpvId sample)
 {
    SpvId result = spirv_builder_new_id(b);
 
-   SpvId extra_operands[2];
+   SpvImageOperandsMask operand_mask = SpvImageOperandsMaskNone;
+   SpvId extra_operands[3];
    int num_extra_operands = 0;
    if (lod) {
-      extra_operands[0] = SpvImageOperandsLodMask;
-      extra_operands[1] = lod;
-      num_extra_operands = 2;
+      extra_operands[++num_extra_operands] = lod;
+      operand_mask |= SpvImageOperandsLodMask;
+   }
+   if (sample) {
+      extra_operands[++num_extra_operands] = sample;
+      operand_mask |= SpvImageOperandsSampleMask;
+   }
+
+   /* finalize num_extra_operands / extra_operands */
+   if (num_extra_operands > 0) {
+      extra_operands[0] = operand_mask;
+      num_extra_operands++;
    }
 
    spirv_buffer_prepare(&b->instructions, 5 + num_extra_operands);

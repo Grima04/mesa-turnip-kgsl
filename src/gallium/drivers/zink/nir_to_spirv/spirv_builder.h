@@ -230,7 +230,8 @@ spirv_builder_emit_image_fetch(struct spirv_builder *b,
                                SpvId result_type,
                                SpvId image,
                                SpvId coordinate,
-                               SpvId lod);
+                               SpvId lod,
+                               SpvId sample);
 
 SpvId
 spirv_builder_emit_image_query_size(struct spirv_builder *b,

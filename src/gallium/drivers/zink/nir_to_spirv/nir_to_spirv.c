@@ -1490,16 +1490,18 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
           tex->op == nir_texop_txl ||
           tex->op == nir_texop_txd ||
           tex->op == nir_texop_txf ||
+          tex->op == nir_texop_txf_ms ||
           tex->op == nir_texop_txs);
    assert(tex->texture_index == tex->sampler_index);
 
    SpvId coord = 0, proj = 0, bias = 0, lod = 0, dref = 0, dx = 0, dy = 0,
-         offset = 0;
+         offset = 0, sample = 0;
    unsigned coord_components = 0;
    for (unsigned i = 0; i < tex->num_srcs; i++) {
       switch (tex->src[i].src_type) {
       case nir_tex_src_coord:
-         if (tex->op == nir_texop_txf)
+         if (tex->op == nir_texop_txf ||
+             tex->op == nir_texop_txf_ms)
             coord = get_src_int(ctx, &tex->src[i].src);
          else
             coord = get_src_float(ctx, &tex->src[i].src);
@@ -1525,11 +1527,17 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
       case nir_tex_src_lod:
          assert(nir_src_num_components(tex->src[i].src) == 1);
          if (tex->op == nir_texop_txf ||
+             tex->op == nir_texop_txf_ms ||
              tex->op == nir_texop_txs)
             lod = get_src_int(ctx, &tex->src[i].src);
          else
             lod = get_src_float(ctx, &tex->src[i].src);
          assert(lod != 0);
+         break;
+
+      case nir_tex_src_ms_index:
+         assert(nir_src_num_components(tex->src[i].src) == 1);
+         sample = get_src_int(ctx, &tex->src[i].src);
          break;
 
       case nir_tex_src_comparator:
@@ -1606,10 +1614,11 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
       actual_dest_type = spirv_builder_type_float(&ctx->builder, 32);
 
    SpvId result;
-   if (tex->op == nir_texop_txf) {
+   if (tex->op == nir_texop_txf ||
+       tex->op == nir_texop_txf_ms) {
       SpvId image = spirv_builder_emit_image(&ctx->builder, image_type, load);
       result = spirv_builder_emit_image_fetch(&ctx->builder, dest_type,
-                                              image, coord, lod);
+                                              image, coord, lod, sample);
    } else {
       result = spirv_builder_emit_image_sample(&ctx->builder,
                                                actual_dest_type, load,
