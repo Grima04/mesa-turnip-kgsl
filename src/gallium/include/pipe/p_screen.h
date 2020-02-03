@@ -576,6 +576,27 @@ struct pipe_screen {
    bool (*is_dmabuf_modifier_supported)(struct pipe_screen *screen,
                                         uint64_t modifier, enum pipe_format,
                                         bool *external_only);
+
+   /**
+    * Get the number of planes required for a given modifier/format pair.
+    *
+    * If not NULL, this function returns the number of planes needed to
+    * represent \p format in the layout specified by \p modifier, including
+    * any driver-specific auxiliary data planes.
+    *
+    * Must only be called on a modifier supported by the screen for the
+    * specified format.
+    *
+    * If NULL, no auxiliary planes are required for any modifier+format pairs
+    * supported by \p screen.  Hence, the plane count can be derived directly
+    * from \p format.
+    *
+    * \return Number of planes needed to store image data in the layout defined
+    *         by \p format and \p modifier.
+    */
+   unsigned int (*get_dmabuf_modifier_planes)(struct pipe_screen *screen,
+                                              uint64_t modifier,
+                                              enum pipe_format format);
 };
 
 

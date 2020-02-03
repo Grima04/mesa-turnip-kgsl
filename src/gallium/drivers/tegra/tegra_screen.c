@@ -35,6 +35,7 @@
 #include "loader/loader.h"
 #include "pipe/p_state.h"
 #include "util/u_debug.h"
+#include "util/format/u_format.h"
 #include "util/u_inlines.h"
 
 #include "frontend/drm_driver.h"
@@ -526,6 +527,18 @@ tegra_screen_is_dmabuf_modifier_supported(struct pipe_screen *pscreen,
                                                     format, external_only);
 }
 
+static unsigned int
+tegra_screen_get_dmabuf_modifier_planes(struct pipe_screen *pscreen,
+                                        uint64_t modifier,
+                                        enum pipe_format format)
+{
+   struct tegra_screen *screen = to_tegra_screen(pscreen);
+
+   return screen->gpu->get_dmabuf_modifier_planes ?
+      screen->gpu->get_dmabuf_modifier_planes(screen->gpu, modifier, format) :
+      util_format_get_num_planes(format);
+}
+
 static struct pipe_memory_object *
 tegra_screen_memobj_create_from_handle(struct pipe_screen *pscreen,
                                        struct winsys_handle *handle,
@@ -605,6 +618,7 @@ tegra_screen_create(int fd)
    screen->base.resource_create_with_modifiers = tegra_screen_resource_create_with_modifiers;
    screen->base.query_dmabuf_modifiers = tegra_screen_query_dmabuf_modifiers;
    screen->base.is_dmabuf_modifier_supported = tegra_screen_is_dmabuf_modifier_supported;
+   screen->base.get_dmabuf_modifier_planes = tegra_screen_get_dmabuf_modifier_planes;
    screen->base.memobj_create_from_handle = tegra_screen_memobj_create_from_handle;
 
    return &screen->base;

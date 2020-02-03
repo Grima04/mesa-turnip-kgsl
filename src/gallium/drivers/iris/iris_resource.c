@@ -263,6 +263,22 @@ iris_is_dmabuf_modifier_supported(struct pipe_screen *pscreen,
    return false;
 }
 
+static unsigned int
+iris_get_dmabuf_modifier_planes(struct pipe_screen *pscreen, uint64_t modifier,
+                                enum pipe_format format)
+{
+   unsigned int planes = util_format_get_num_planes(format);
+
+   switch (modifier) {
+   case I915_FORMAT_MOD_Y_TILED_GEN12_MC_CCS:
+   case I915_FORMAT_MOD_Y_TILED_GEN12_RC_CCS:
+   case I915_FORMAT_MOD_Y_TILED_CCS:
+      return 2 * planes;
+   default:
+      return planes;
+   }
+}
+
 enum isl_format
 iris_image_view_get_format(struct iris_context *ice,
                            const struct pipe_image_view *img)
@@ -2250,6 +2266,7 @@ iris_init_screen_resource_functions(struct pipe_screen *pscreen)
 {
    pscreen->query_dmabuf_modifiers = iris_query_dmabuf_modifiers;
    pscreen->is_dmabuf_modifier_supported = iris_is_dmabuf_modifier_supported;
+   pscreen->get_dmabuf_modifier_planes = iris_get_dmabuf_modifier_planes;
    pscreen->resource_create_with_modifiers =
       iris_resource_create_with_modifiers;
    pscreen->resource_create = u_transfer_helper_resource_create;

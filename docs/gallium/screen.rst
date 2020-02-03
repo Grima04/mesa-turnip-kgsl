@@ -1044,6 +1044,17 @@ false if non-external texture targets are supported with the specified modifier+
 format, or true if only external texture targets are supported.
 
 
+get_dmabuf_modifier_planes
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Query the number of planes required by the image layout specified by the
+**modifier** and **format** parameters.  The value returned includes both planes
+dictated by **format** and any additional planes required for driver-specific
+auxiliary data necessary for the layout defined by **modifier**.
+If the proc is NULL, no auxiliary planes are required for any layout supported by
+**screen** and the number of planes can be derived directly from **format**.
+
+
 Thread safety
 -------------
 

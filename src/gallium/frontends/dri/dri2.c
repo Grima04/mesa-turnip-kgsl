@@ -887,48 +887,33 @@ dri2_create_image_from_name(__DRIscreen *_screen,
 }
 
 static unsigned
-dri2_get_modifier_num_planes(uint64_t modifier, int fourcc)
+dri2_get_modifier_num_planes(__DRIscreen *_screen,
+                             uint64_t modifier, int fourcc)
 {
+   struct pipe_screen *pscreen = dri_screen(_screen)->base.screen;
    const struct dri2_format_mapping *map = dri2_get_mapping_by_fourcc(fourcc);
 
    if (!map)
       return 0;
 
    switch (modifier) {
-   case I915_FORMAT_MOD_Y_TILED_GEN12_MC_CCS:
-   case I915_FORMAT_MOD_Y_TILED_GEN12_RC_CCS:
-   case I915_FORMAT_MOD_Y_TILED_CCS:
-      return 2 * util_format_get_num_planes(map->pipe_format);
-   case DRM_FORMAT_MOD_ARM_16X16_BLOCK_U_INTERLEAVED:
-   case DRM_FORMAT_MOD_ARM_AFBC(
-                        AFBC_FORMAT_MOD_BLOCK_SIZE_16x16 |
-                        AFBC_FORMAT_MOD_SPARSE |
-                        AFBC_FORMAT_MOD_YTR):
-   case DRM_FORMAT_MOD_ARM_AFBC(
-                        AFBC_FORMAT_MOD_BLOCK_SIZE_16x16 |
-                        AFBC_FORMAT_MOD_SPARSE):
-   case DRM_FORMAT_MOD_BROADCOM_UIF:
-   case DRM_FORMAT_MOD_BROADCOM_VC4_T_TILED:
    case DRM_FORMAT_MOD_LINEAR:
    /* DRM_FORMAT_MOD_NONE is the same as LINEAR */
-   case DRM_FORMAT_MOD_NVIDIA_16BX2_BLOCK_EIGHT_GOB:
-   case DRM_FORMAT_MOD_NVIDIA_16BX2_BLOCK_FOUR_GOB:
-   case DRM_FORMAT_MOD_NVIDIA_16BX2_BLOCK_ONE_GOB:
-   case DRM_FORMAT_MOD_NVIDIA_16BX2_BLOCK_SIXTEEN_GOB:
-   case DRM_FORMAT_MOD_NVIDIA_16BX2_BLOCK_THIRTYTWO_GOB:
-   case DRM_FORMAT_MOD_NVIDIA_16BX2_BLOCK_TWO_GOB:
-   case DRM_FORMAT_MOD_QCOM_COMPRESSED:
-   case DRM_FORMAT_MOD_VIVANTE_SPLIT_SUPER_TILED:
-   case DRM_FORMAT_MOD_VIVANTE_SPLIT_TILED:
-   case DRM_FORMAT_MOD_VIVANTE_SUPER_TILED:
-   case DRM_FORMAT_MOD_VIVANTE_TILED:
-   /* FD_FORMAT_MOD_QCOM_TILED is not in drm_fourcc.h */
-   case I915_FORMAT_MOD_X_TILED:
-   case I915_FORMAT_MOD_Y_TILED:
    case DRM_FORMAT_MOD_INVALID:
       return util_format_get_num_planes(map->pipe_format);
    default:
-      return 0;
+      if (!pscreen->is_dmabuf_modifier_supported ||
+          !pscreen->is_dmabuf_modifier_supported(pscreen, modifier,
+                                                 map->pipe_format, NULL)) {
+         return 0;
+      }
+
+      if (pscreen->get_dmabuf_modifier_planes) {
+         return pscreen->get_dmabuf_modifier_planes(pscreen, modifier,
+                                                    map->pipe_format);
+      }
+
+      return map->nplanes;
    }
 }
 
@@ -944,7 +929,7 @@ dri2_create_image_from_fd(__DRIscreen *_screen,
    __DRIimage *img = NULL;
    unsigned err = __DRI_IMAGE_ERROR_SUCCESS;
    int i;
-   const int expected_num_fds = dri2_get_modifier_num_planes(modifier, fourcc);
+   const int expected_num_fds = dri2_get_modifier_num_planes(_screen, modifier, fourcc);
 
    if (!map || expected_num_fds == 0) {
       err = __DRI_IMAGE_ERROR_BAD_MATCH;
@@ -1483,7 +1468,8 @@ dri2_query_dma_buf_format_modifier_attribs(__DRIscreen *_screen,
 
    switch (attrib) {
    case __DRI_IMAGE_FORMAT_MODIFIER_ATTRIB_PLANE_COUNT: {
-      uint64_t mod_planes = dri2_get_modifier_num_planes(modifier, fourcc);
+      uint64_t mod_planes = dri2_get_modifier_num_planes(_screen, modifier,
+                                                         fourcc);
       if (mod_planes > 0)
          *value = mod_planes;
       return mod_planes > 0;
