@@ -337,6 +337,7 @@ enum tu_debug_flags
    TU_DEBUG_NIR = 1 << 1,
    TU_DEBUG_IR3 = 1 << 2,
    TU_DEBUG_NOBIN = 1 << 3,
+   TU_DEBUG_SYSMEM = 1 << 4,
 };
 
 struct tu_instance
@@ -868,6 +869,7 @@ struct tu_cmd_state
 
    struct tu_cs_entry tile_load_ib;
    struct tu_cs_entry tile_store_ib;
+   struct tu_cs_entry sysmem_clear_ib;
 };
 
 struct tu_cmd_pool
