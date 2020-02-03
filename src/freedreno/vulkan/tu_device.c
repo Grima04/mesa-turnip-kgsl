@@ -1928,6 +1928,12 @@ tu6_tex_filter(VkFilter filter, unsigned aniso)
    }
 }
 
+static inline enum adreno_compare_func
+tu6_compare_func(VkCompareOp op)
+{
+   return (enum adreno_compare_func) op;
+}
+
 static void
 tu_init_sampler(struct tu_device *device,
                 struct tu_sampler *sampler,
@@ -1952,7 +1958,8 @@ tu_init_sampler(struct tu_device *device,
       COND(pCreateInfo->unnormalizedCoordinates, A6XX_TEX_SAMP_1_UNNORM_COORDS) |
       A6XX_TEX_SAMP_1_MIN_LOD(pCreateInfo->minLod) |
       A6XX_TEX_SAMP_1_MAX_LOD(pCreateInfo->maxLod) |
-      COND(pCreateInfo->compareEnable, A6XX_TEX_SAMP_1_COMPARE_FUNC(pCreateInfo->compareOp));
+      COND(pCreateInfo->compareEnable,
+           A6XX_TEX_SAMP_1_COMPARE_FUNC(tu6_compare_func(pCreateInfo->compareOp)));
    sampler->state[2] = 0;
    sampler->state[3] = 0;
 
