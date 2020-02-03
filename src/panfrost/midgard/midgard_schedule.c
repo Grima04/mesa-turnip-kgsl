@@ -858,6 +858,24 @@ mir_schedule_alu(
                         unreachable("Bad condition");
         }
 
+        /* If we have a render target reference, schedule a move for it. Since
+         * this will be in sadd, we boost this to prevent scheduling csel into
+         * smul */
+
+        if (writeout && (branch->constants.u32[0] || ctx->is_blend)) {
+                sadd = ralloc(ctx, midgard_instruction);
+                *sadd = v_mov(~0, make_compiler_temp(ctx));
+                sadd->unit = UNIT_SADD;
+                sadd->mask = 0x1;
+                sadd->has_inline_constant = true;
+                sadd->inline_constant = branch->constants.u32[0];
+                branch->src[1] = sadd->dest;
+
+                /* Mask off any conditionals. Could be optimized to just scalar
+                 * conditionals TODO */
+                predicate.no_cond = true;
+        }
+
         mir_choose_alu(&smul, instructions, worklist, len, &predicate, UNIT_SMUL);
 
         if (!writeout) {
@@ -911,18 +929,6 @@ mir_schedule_alu(
                         sadd = cond;
                 else
                         unreachable("Bad condition");
-        }
-
-        /* If we have a render target reference, schedule a move for it */
-
-        if (writeout && (branch->constants.u32[0] || ctx->is_blend)) {
-                sadd = ralloc(ctx, midgard_instruction);
-                *sadd = v_mov(~0, make_compiler_temp(ctx));
-                sadd->unit = UNIT_SADD;
-                sadd->mask = 0x1;
-                sadd->has_inline_constant = true;
-                sadd->inline_constant = branch->constants.u32[0];
-                branch->src[1] = sadd->dest;
         }
 
         /* Stage 2, let's schedule sadd before vmul for writeout */
