@@ -337,6 +337,8 @@ print_scalar_constant(FILE *fp, unsigned src_binary,
         midgard_scalar_alu_src *src = (midgard_scalar_alu_src *)&src_binary;
         unsigned mod = 0;
 
+        assert(consts != NULL);
+
         if (!midgard_is_integer_op(alu->op)) {
                 if (src->abs)
                         mod |= MIDGARD_FLOAT_MOD_ABS;
