@@ -184,6 +184,7 @@ struct nir_link_uniforms_state {
    const struct glsl_type *current_ifc_type;
    int offset;
    bool var_is_in_block;
+   bool set_top_level_array;
    int top_level_array_size;
    int top_level_array_stride;
 
@@ -591,7 +592,6 @@ nir_link_uniform(struct gl_context *ctx,
                  struct gl_program *stage_program,
                  gl_shader_stage stage,
                  const struct glsl_type *type,
-                 const struct glsl_type *parent_type,
                  unsigned index_in_parent,
                  int location,
                  struct nir_link_uniforms_state *state,
@@ -599,7 +599,7 @@ nir_link_uniform(struct gl_context *ctx,
 {
    struct gl_uniform_storage *uniform = NULL;
 
-   if (parent_type == state->current_var->type &&
+   if (state->set_top_level_array &&
        nir_variable_is_in_ssbo(state->current_var)) {
       /* Type is the top level SSBO member */
       if (glsl_type_is_array(type) &&
@@ -612,6 +612,8 @@ nir_link_uniform(struct gl_context *ctx,
          state->top_level_array_size = 1;
          state->top_level_array_stride = 0;
       }
+
+      state->set_top_level_array = false;
    }
 
    /* gl_uniform_storage can cope with one level of array, so if the type is a
@@ -628,7 +630,14 @@ nir_link_uniform(struct gl_context *ctx,
 
       state->current_type = old_type->children;
 
-      for (unsigned i = 0; i < glsl_get_length(type); i++) {
+      /* Shader storage block unsized arrays: add subscript [0] to variable
+       * names.
+       */
+      unsigned length = glsl_get_length(type);
+      if (glsl_type_is_unsized_array(type))
+         length = 1;
+
+      for (unsigned i = 0; i < length; i++) {
          const struct glsl_type *field_type;
          size_t new_length = name_length;
 
@@ -646,6 +655,9 @@ nir_link_uniform(struct gl_context *ctx,
                           type == state->current_ifc_type) {
                   state->offset = glsl_get_struct_field_offset(type, i);
                }
+
+               if (glsl_type_is_interface(type))
+                  state->set_top_level_array = true;
             }
 
             /* Append '.field' to the current variable name. */
@@ -662,7 +674,7 @@ nir_link_uniform(struct gl_context *ctx,
          }
 
          int entries = nir_link_uniform(ctx, prog, stage_program, stage,
-                                        field_type, type, i, location,
+                                        field_type, i, location,
                                         state, name, new_length);
          if (entries == -1)
             return -1;
@@ -977,6 +989,7 @@ gl_nir_link_uniforms(struct gl_context *ctx,
          state.current_ifc_type = NULL;
          state.offset = 0;
          state.var_is_in_block = nir_variable_is_in_block(var);
+         state.set_top_level_array = false;
          state.top_level_array_size = 0;
          state.top_level_array_stride = 0;
 
@@ -1023,6 +1036,7 @@ gl_nir_link_uniforms(struct gl_context *ctx,
             state.current_ifc_type = type;
             name = ralloc_strdup(NULL, glsl_get_type_name(type));
          } else {
+            state.set_top_level_array = true;
             name = ralloc_strdup(NULL, var->name);
          }
 
@@ -1143,8 +1157,7 @@ gl_nir_link_uniforms(struct gl_context *ctx,
             location = -1;
 
          int res = nir_link_uniform(ctx, prog, sh->Program, shader_type, type,
-                                    NULL, 0,
-                                    location,
+                                    0, location,
                                     &state,
                                     !prog->data->spirv ? &name : NULL,
                                     !prog->data->spirv ? strlen(name) : 0);
