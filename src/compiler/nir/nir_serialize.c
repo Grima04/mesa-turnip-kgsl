@@ -231,7 +231,6 @@ write_variable(write_ctx *ctx, const nir_variable *var)
    write_add_object(ctx, var);
 
    assert(var->num_state_slots < (1 << 7));
-   assert(var->num_members < (1 << 16));
 
    STATIC_ASSERT(sizeof(union packed_var) == 4);
    union packed_var flags;
