@@ -79,7 +79,11 @@ int main(int argc, char **argv)
    nir_shader *nir = spirv_to_nir(map, word_count, NULL, 0,
                                   MESA_SHADER_FRAGMENT, "main",
                                   &spirv_opts, NULL);
-   nir_print_shader(nir, stderr);
+
+   if (nir)
+      nir_print_shader(nir, stderr);
+   else
+      fprintf(stderr, "SPIRV to NIR compilation failed\n");
 
    glsl_type_singleton_decref();
 
