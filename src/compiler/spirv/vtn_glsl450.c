@@ -219,8 +219,10 @@ build_asin(nir_builder *b, nir_ssa_def *x, float p0, float p1)
 static nir_op
 vtn_nir_alu_op_for_spirv_glsl_opcode(struct vtn_builder *b,
                                      enum GLSLstd450 opcode,
-                                     unsigned execution_mode)
+                                     unsigned execution_mode,
+                                     bool *exact)
 {
+   *exact = false;
    switch (opcode) {
    case GLSLstd450Round:         return nir_op_fround_even;
    case GLSLstd450RoundEven:     return nir_op_fround_even;
@@ -239,11 +241,11 @@ vtn_nir_alu_op_for_spirv_glsl_opcode(struct vtn_builder *b,
    case GLSLstd450Log2:          return nir_op_flog2;
    case GLSLstd450Sqrt:          return nir_op_fsqrt;
    case GLSLstd450InverseSqrt:   return nir_op_frsq;
-   case GLSLstd450NMin:          return nir_op_fmin;
+   case GLSLstd450NMin:          *exact = true; return nir_op_fmin;
    case GLSLstd450FMin:          return nir_op_fmin;
    case GLSLstd450UMin:          return nir_op_umin;
    case GLSLstd450SMin:          return nir_op_imin;
-   case GLSLstd450NMax:          return nir_op_fmax;
+   case GLSLstd450NMax:          *exact = true; return nir_op_fmax;
    case GLSLstd450FMax:          return nir_op_fmax;
    case GLSLstd450UMax:          return nir_op_umax;
    case GLSLstd450SMax:          return nir_op_imax;
@@ -353,8 +355,12 @@ handle_glsl450_alu(struct vtn_builder *b, enum GLSLstd450 entrypoint,
       return;
 
    case GLSLstd450FClamp:
-   case GLSLstd450NClamp:
       val->ssa->def = nir_fclamp(nb, src[0], src[1], src[2]);
+      return;
+   case GLSLstd450NClamp:
+      nb->exact = true;
+      val->ssa->def = nir_fclamp(nb, src[0], src[1], src[2]);
+      nb->exact = false;
       return;
    case GLSLstd450UClamp:
       val->ssa->def = nir_uclamp(nb, src[0], src[1], src[2]);
@@ -515,10 +521,11 @@ handle_glsl450_alu(struct vtn_builder *b, enum GLSLstd450 entrypoint,
    default: {
       unsigned execution_mode =
          b->shader->info.float_controls_execution_mode;
-      val->ssa->def =
-         nir_build_alu(&b->nb,
-                       vtn_nir_alu_op_for_spirv_glsl_opcode(b, entrypoint, execution_mode),
-                       src[0], src[1], src[2], NULL);
+      bool exact;
+      nir_op op = vtn_nir_alu_op_for_spirv_glsl_opcode(b, entrypoint, execution_mode, &exact);
+      b->nb.exact = exact;
+      val->ssa->def = nir_build_alu(&b->nb, op, src[0], src[1], src[2], NULL);
+      b->nb.exact = false;
       return;
    }
    }
