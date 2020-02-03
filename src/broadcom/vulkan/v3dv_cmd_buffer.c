@@ -1369,6 +1369,10 @@ bind_dynamic_state(struct v3dv_cmd_buffer *cmd_buffer,
          typed_memcpy(dest->viewport.viewports,
                       src->viewport.viewports,
                       src->viewport.count);
+         typed_memcpy(dest->viewport.scale, src->viewport.scale,
+                      src->viewport.count);
+         typed_memcpy(dest->viewport.translate, src->viewport.translate,
+                      src->viewport.count);
          dest_mask |= V3DV_DYNAMIC_VIEWPORT;
       }
    }
@@ -1416,10 +1420,10 @@ v3dv_CmdBindPipeline(VkCommandBuffer commandBuffer,
 }
 
 /* FIXME: C&P from radv. tu has similar code. Perhaps common place? */
-static void
-get_viewport_xform(const VkViewport *viewport,
-                   float scale[3],
-                   float translate[3])
+void
+v3dv_viewport_compute_xform(const VkViewport *viewport,
+                            float scale[3],
+                            float translate[3])
 {
    float x = viewport->x;
    float y = viewport->y;
@@ -1468,9 +1472,9 @@ v3dv_CmdSetViewport(VkCommandBuffer commandBuffer,
           viewportCount * sizeof(*pViewports));
 
    for (uint32_t i = firstViewport; i < firstViewport + viewportCount; i++) {
-      get_viewport_xform(&state->dynamic.viewport.viewports[i],
-                         state->dynamic.viewport.scale[i],
-                         state->dynamic.viewport.translate[i]);
+      v3dv_viewport_compute_xform(&state->dynamic.viewport.viewports[i],
+                                  state->dynamic.viewport.scale[i],
+                                  state->dynamic.viewport.translate[i]);
    }
 
    cmd_buffer->state.dirty |= V3DV_CMD_DIRTY_DYNAMIC_VIEWPORT;

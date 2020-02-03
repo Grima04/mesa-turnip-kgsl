@@ -918,6 +918,12 @@ pipeline_init_dynamic_state(struct v3dv_pipeline *pipeline,
          typed_memcpy(dynamic->viewport.viewports,
                       pCreateInfo->pViewportState->pViewports,
                       pCreateInfo->pViewportState->viewportCount);
+
+         for (uint32_t i = 0; i < dynamic->viewport.count; i++) {
+            v3dv_viewport_compute_xform(&dynamic->viewport.viewports[i],
+                                        dynamic->viewport.scale[i],
+                                        dynamic->viewport.translate[i]);
+         }
       }
    }
 

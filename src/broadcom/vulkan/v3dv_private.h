@@ -464,6 +464,10 @@ struct v3dv_dynamic_state {
 
 extern const struct v3dv_dynamic_state default_dynamic_state;
 
+void v3dv_viewport_compute_xform(const VkViewport *viewport,
+                                 float scale[3],
+                                 float translate[3]);
+
 struct v3dv_job {
    struct list_head list_link;
 
