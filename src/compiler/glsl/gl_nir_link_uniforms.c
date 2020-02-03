@@ -768,10 +768,36 @@ nir_link_uniform(struct gl_context *ctx,
          int num_blocks = nir_variable_is_in_ssbo(state->current_var) ?
             prog->data->NumShaderStorageBlocks : prog->data->NumUniformBlocks;
 
-         for (unsigned i = 0; i < num_blocks; i++) {
-            if (state->current_var->data.binding == blocks[i].Binding) {
-               buffer_block_index = i;
-               break;
+         if (!prog->data->spirv) {
+            bool is_interface_array =
+               glsl_without_array(state->current_var->type) == state->current_var->interface_type &&
+               glsl_type_is_array(state->current_var->type);
+
+            const char *ifc_name =
+               glsl_get_type_name(state->current_var->interface_type);
+            if (is_interface_array) {
+               unsigned l = strlen(ifc_name);
+               for (unsigned i = 0; i < num_blocks; i++) {
+                  if (strncmp(ifc_name, blocks[i].Name, l) == 0 &&
+                      blocks[i].Name[l] == '[') {
+                     buffer_block_index = i;
+                     break;
+                  }
+               }
+            } else {
+               for (unsigned i = 0; i < num_blocks; i++) {
+                  if (strcmp(ifc_name, blocks[i].Name) == 0) {
+                     buffer_block_index = i;
+                     break;
+                  }
+               }
+            }
+         } else {
+            for (unsigned i = 0; i < num_blocks; i++) {
+               if (state->current_var->data.binding == blocks[i].Binding) {
+                  buffer_block_index = i;
+                  break;
+               }
             }
          }
          assert(buffer_block_index >= 0);
