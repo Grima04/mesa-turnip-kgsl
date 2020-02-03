@@ -468,8 +468,6 @@ mir_bytemask_of_read_components_single(unsigned *swizzle, unsigned inmask, midga
 uint16_t
 mir_bytemask_of_read_components_index(midgard_instruction *ins, unsigned i)
 {
-        uint16_t mask = 0;
-
         /* Branch writeout uses all components */
         if (ins->compact_branch && ins->writeout && (i == 0))
                 return 0xFFFF;
