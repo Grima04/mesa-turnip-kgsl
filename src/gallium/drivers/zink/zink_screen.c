@@ -113,6 +113,9 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return 1;
 #endif
 
+   case PIPE_CAP_TEXTURE_MULTISAMPLE:
+      return 1;
+
    case PIPE_CAP_TEXTURE_SWIZZLE:
       return 1;
 
