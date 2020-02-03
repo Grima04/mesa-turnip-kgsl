@@ -25,6 +25,7 @@
 #include "midgard_ops.h"
 #include "midgard_quirks.h"
 #include "util/u_memory.h"
+#include "util/u_math.h"
 
 /* Scheduling for Midgard is complicated, to say the least. ALU instructions
  * must be grouped into VLIW bundles according to following model:
@@ -347,6 +348,13 @@ struct midgard_predicate {
 
         unsigned mask;
         unsigned dest;
+
+        /* For load/store: how many pipeline registers are in use? The two
+         * scheduled instructions cannot use more than the 256-bits of pipeline
+         * space available or RA will fail (as it would run out of pipeline
+         * registers and fail to spill without breaking the schedule) */
+
+        unsigned pipeline_count;
 };
 
 /* For an instruction that can fit, adjust it to fit and update the constants
@@ -456,6 +464,26 @@ mir_adjust_constants(midgard_instruction *ins,
         return true;
 }
 
+/* Conservative estimate of the pipeline registers required for load/store */
+
+static unsigned
+mir_pipeline_count(midgard_instruction *ins)
+{
+        unsigned bytecount = 0;
+
+        mir_foreach_src(ins, i) {
+                /* Skip empty source  */
+                if (ins->src[i] == ~0) continue;
+
+                unsigned bytemask = mir_bytemask_of_read_components_index(ins, i);
+
+                unsigned max = util_logbase2(bytemask) + 1;
+                bytecount += max;
+        }
+
+        return DIV_ROUND_UP(bytecount, 16);
+}
+
 static midgard_instruction *
 mir_choose_instruction(
                 midgard_instruction **instructions,
@@ -465,6 +493,7 @@ mir_choose_instruction(
         /* Parse the predicate */
         unsigned tag = predicate->tag;
         bool alu = tag == TAG_ALU_4;
+        bool ldst = tag == TAG_LOAD_STORE_4;
         unsigned unit = predicate->unit;
         bool branch = alu && (unit == ALU_ENAB_BR_COMPACT);
         bool scalar = (unit != ~0) && (unit & UNITS_SCALAR);
@@ -519,6 +548,9 @@ mir_choose_instruction(
                 if (mask && ((~instructions[i]->mask) & mask))
                         continue;
 
+                if (ldst && mir_pipeline_count(instructions[i]) + predicate->pipeline_count > 2)
+                        continue;
+
                 bool conditional = alu && !branch && OP_IS_CSEL(instructions[i]->alu.op);
                 conditional |= (branch && instructions[i]->branch.conditional);
 
@@ -547,6 +579,9 @@ mir_choose_instruction(
 
                 if (alu)
                         mir_adjust_constants(instructions[best_index], predicate, true);
+
+                if (ldst)
+                        predicate->pipeline_count += mir_pipeline_count(instructions[best_index]);
 
                 /* Once we schedule a conditional, we can't again */
                 predicate->no_cond |= best_conditional;
