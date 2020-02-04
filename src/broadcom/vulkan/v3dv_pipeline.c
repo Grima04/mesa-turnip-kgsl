@@ -1027,16 +1027,31 @@ pack_single_stencil_cfg(uint8_t *stencil_cfg,
                         bool is_back,
                         const VkStencilOpState *stencil_state)
 {
+   /* From the Vulkan spec:
+    *
+    *   "Reference is an integer reference value that is used in the unsigned
+    *    stencil comparison. The reference value used by stencil comparison
+    *    must be within the range [0,2^s-1] , where s is the number of bits in
+    *    the stencil framebuffer attachment, otherwise the reference value is
+    *    considered undefined."
+    *
+    * In our case, 's' is always 8, so we clamp to that to prevent our packing
+    * functions to assert in debug mode if they see larger values.
+    */
+   const uint8_t write_mask = stencil_state->writeMask & 0xff;
+   const uint8_t compare_mask = stencil_state->compareMask & 0xff;
+   const uint8_t reference = stencil_state->reference & 0xff;
+
    v3dv_pack(stencil_cfg, STENCIL_CFG, config) {
       config.front_config = is_front;
       config.back_config = is_back;
-      config.stencil_write_mask = stencil_state->writeMask;
-      config.stencil_test_mask = stencil_state->compareMask;
+      config.stencil_write_mask = write_mask;
+      config.stencil_test_mask = compare_mask;
       config.stencil_test_function = stencil_state->compareOp;
       config.stencil_pass_op = translate_stencil_op(stencil_state->passOp);
       config.depth_test_fail_op = translate_stencil_op(stencil_state->depthFailOp);
       config.stencil_test_fail_op = translate_stencil_op(stencil_state->failOp);
-      config.stencil_ref_value = stencil_state->reference;
+      config.stencil_ref_value = reference;
    }
 }
 
