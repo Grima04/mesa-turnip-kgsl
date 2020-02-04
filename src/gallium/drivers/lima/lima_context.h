@@ -26,7 +26,6 @@
 #define H_LIMA_CONTEXT
 
 #include "util/slab.h"
-#include "util/u_dynarray.h"
 
 #include "pipe/p_context.h"
 #include "pipe/p_state.h"
@@ -233,10 +232,6 @@ struct lima_context {
    uint32_t plb_index;
 
    struct lima_ctx_buff_state buffer_state[lima_ctx_buff_num];
-
-   struct util_dynarray vs_cmd_array;
-   struct util_dynarray plbu_cmd_array;
-   struct util_dynarray plbu_cmd_head;
 
    /* current submit */
    struct lima_submit *submit;

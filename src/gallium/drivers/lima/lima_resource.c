@@ -31,6 +31,7 @@
 #include "util/u_transfer.h"
 #include "util/u_surface.h"
 #include "util/hash_table.h"
+#include "util/ralloc.h"
 #include "util/u_drm.h"
 #include "renderonly/renderonly.h"
 

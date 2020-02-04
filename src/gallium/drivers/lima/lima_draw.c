@@ -204,7 +204,9 @@ lima_pipe_format_to_attrib_type(enum pipe_format format)
 static void
 lima_pack_vs_cmd(struct lima_context *ctx, const struct pipe_draw_info *info)
 {
-   VS_CMD_BEGIN(&ctx->vs_cmd_array, 24);
+   struct lima_submit *submit = lima_submit_get(ctx);
+
+   VS_CMD_BEGIN(&submit->vs_cmd_array, 24);
 
    if (!info->index_size) {
       VS_CMD_ARRAYS_SEMAPHORE_BEGIN_1();
@@ -254,7 +256,8 @@ lima_pack_plbu_cmd(struct lima_context *ctx, const struct pipe_draw_info *info)
    if (lima_is_scissor_zero(ctx))
       return;
 
-   PLBU_CMD_BEGIN(&ctx->plbu_cmd_array, 32);
+   struct lima_submit *submit = lima_submit_get(ctx);
+   PLBU_CMD_BEGIN(&submit->plbu_cmd_array, 32);
 
    PLBU_CMD_VIEWPORT_LEFT(fui(ctx->viewport.left));
    PLBU_CMD_VIEWPORT_RIGHT(fui(ctx->viewport.right));

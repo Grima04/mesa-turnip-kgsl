@@ -64,6 +64,10 @@ lima_submit_create(struct lima_context *ctx)
       util_dynarray_init(s->bos + i, s);
    }
 
+   util_dynarray_init(&s->vs_cmd_array, s);
+   util_dynarray_init(&s->plbu_cmd_array, s);
+   util_dynarray_init(&s->plbu_cmd_head, s);
+
    struct lima_context_framebuffer *fb = &ctx->framebuffer;
    pipe_surface_reference(&s->key.cbuf, fb->base.cbufs[0]);
    pipe_surface_reference(&s->key.zsbuf, fb->base.zsbuf);
@@ -339,7 +343,7 @@ lima_pack_reload_plbu_cmd(struct lima_submit *submit)
    memcpy(cpu + lima_reload_varying_offset, reload_varying,
           sizeof(reload_varying));
 
-   PLBU_CMD_BEGIN(&ctx->plbu_cmd_head, 20);
+   PLBU_CMD_BEGIN(&submit->plbu_cmd_head, 20);
 
    PLBU_CMD_VIEWPORT_LEFT(0);
    PLBU_CMD_VIEWPORT_RIGHT(fui(fb->base.width));
@@ -366,7 +370,7 @@ lima_pack_head_plbu_cmd(struct lima_submit *submit)
    struct lima_context *ctx = submit->ctx;
    struct lima_context_framebuffer *fb = &ctx->framebuffer;
 
-   PLBU_CMD_BEGIN(&ctx->plbu_cmd_head, 10);
+   PLBU_CMD_BEGIN(&submit->plbu_cmd_head, 10);
 
    PLBU_CMD_UNKNOWN2();
    PLBU_CMD_BLOCK_STEP(fb->shift_min, fb->shift_h, fb->shift_w);
@@ -774,18 +778,17 @@ lima_do_submit(struct lima_submit *submit)
    struct lima_context *ctx = submit->ctx;
 
    lima_pack_head_plbu_cmd(submit);
-   lima_finish_plbu_cmd(&ctx->plbu_cmd_array);
+   lima_finish_plbu_cmd(&submit->plbu_cmd_array);
 
    lima_update_submit_bo(submit);
 
-   int vs_cmd_size = ctx->vs_cmd_array.size;
+   int vs_cmd_size = submit->vs_cmd_array.size;
    uint32_t vs_cmd_va = 0;
 
    if (vs_cmd_size) {
       void *vs_cmd = lima_submit_create_stream_bo(
          submit, LIMA_PIPE_GP, vs_cmd_size, &vs_cmd_va);
-      memcpy(vs_cmd, util_dynarray_begin(&ctx->vs_cmd_array), vs_cmd_size);
-      util_dynarray_clear(&ctx->vs_cmd_array);
+      memcpy(vs_cmd, util_dynarray_begin(&submit->vs_cmd_array), vs_cmd_size);
 
       lima_dump_command_stream_print(
          vs_cmd, vs_cmd_size, false, "flush vs cmd at va %x\n", vs_cmd_va);
@@ -793,17 +796,15 @@ lima_do_submit(struct lima_submit *submit)
    }
 
    uint32_t plbu_cmd_va;
-   int plbu_cmd_size = ctx->plbu_cmd_array.size + ctx->plbu_cmd_head.size;
+   int plbu_cmd_size = submit->plbu_cmd_array.size + submit->plbu_cmd_head.size;
    void *plbu_cmd = lima_submit_create_stream_bo(
       submit, LIMA_PIPE_GP, plbu_cmd_size, &plbu_cmd_va);
    memcpy(plbu_cmd,
-          util_dynarray_begin(&ctx->plbu_cmd_head),
-          ctx->plbu_cmd_head.size);
-   memcpy(plbu_cmd + ctx->plbu_cmd_head.size,
-          util_dynarray_begin(&ctx->plbu_cmd_array),
-          ctx->plbu_cmd_array.size);
-   util_dynarray_clear(&ctx->plbu_cmd_array);
-   util_dynarray_clear(&ctx->plbu_cmd_head);
+          util_dynarray_begin(&submit->plbu_cmd_head),
+          submit->plbu_cmd_head.size);
+   memcpy(plbu_cmd + submit->plbu_cmd_head.size,
+          util_dynarray_begin(&submit->plbu_cmd_array),
+          submit->plbu_cmd_array.size);
 
    lima_dump_command_stream_print(
       plbu_cmd, plbu_cmd_size, false, "flush plbu cmd at va %x\n", plbu_cmd_va);
