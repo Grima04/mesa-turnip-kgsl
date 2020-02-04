@@ -1000,7 +1000,7 @@ brwCreateContext(gl_api api,
       _swrast_CreateContext(ctx);
    }
 
-   _vbo_CreateContext(ctx);
+   _vbo_CreateContext(ctx, true);
    if (ctx->swrast_context) {
       _tnl_CreateContext(ctx);
       TNL_CONTEXT(ctx)->Driver.RunPipeline = _tnl_run_pipeline;
@@ -1133,8 +1133,6 @@ brwCreateContext(gl_api api,
 
    if (ctx->Extensions.INTEL_performance_query)
       brw_init_performance_queries(brw);
-
-   vbo_use_buffer_objects(ctx);
 
    brw->ctx.Cache = brw->screen->disk_cache;
 

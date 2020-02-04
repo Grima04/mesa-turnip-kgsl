@@ -979,38 +979,6 @@ vbo_exec_vtxfmt_init(struct vbo_exec_context *exec)
 }
 
 
-/**
- * Tell the VBO module to use a real OpenGL vertex buffer object to
- * store accumulated immediate-mode vertex data.
- * This replaces the malloced buffer which was created in
- * vb_exec_vtx_init() below.
- */
-void
-vbo_use_buffer_objects(struct gl_context *ctx)
-{
-   struct vbo_exec_context *exec = &vbo_context(ctx)->exec;
-   /* Any buffer name but 0 can be used here since this bufferobj won't
-    * go into the bufferobj hashtable.
-    */
-   GLuint bufName = IMM_BUFFER_NAME;
-
-   /* Make sure this func is only used once */
-   assert(exec->vtx.bufferobj == ctx->Shared->NullBufferObj);
-
-   _mesa_align_free(exec->vtx.buffer_map);
-   exec->vtx.buffer_map = NULL;
-   exec->vtx.buffer_ptr = NULL;
-
-   /* Allocate a real buffer object now */
-   _mesa_reference_buffer_object(ctx, &exec->vtx.bufferobj, NULL);
-   exec->vtx.bufferobj = ctx->Driver.NewBufferObject(ctx, bufName);
-
-   /* Map the buffer. */
-   vbo_exec_vtx_map(exec);
-   assert(exec->vtx.buffer_ptr);
-}
-
-
 static void
 vbo_reset_all_attr(struct vbo_exec_context *exec)
 {
@@ -1029,21 +997,28 @@ vbo_reset_all_attr(struct vbo_exec_context *exec)
 
 
 void
-vbo_exec_vtx_init(struct vbo_exec_context *exec)
+vbo_exec_vtx_init(struct vbo_exec_context *exec, bool use_buffer_objects)
 {
    struct gl_context *ctx = exec->ctx;
 
-   /* Allocate a buffer object.  Will just reuse this object
-    * continuously, unless vbo_use_buffer_objects() is called to enable
-    * use of real VBOs.
-    */
-   _mesa_reference_buffer_object(ctx,
-                                 &exec->vtx.bufferobj,
-                                 ctx->Shared->NullBufferObj);
+   if (use_buffer_objects) {
+      /* Use buffer objects for immediate mode. */
+      struct vbo_exec_context *exec = &vbo_context(ctx)->exec;
 
-   assert(!exec->vtx.buffer_map);
-   exec->vtx.buffer_map = _mesa_align_malloc(VBO_VERT_BUFFER_SIZE, 64);
-   exec->vtx.buffer_ptr = exec->vtx.buffer_map;
+      exec->vtx.bufferobj = ctx->Driver.NewBufferObject(ctx, IMM_BUFFER_NAME);
+
+      /* Map the buffer. */
+      vbo_exec_vtx_map(exec);
+      assert(exec->vtx.buffer_ptr);
+   } else {
+      /* Use allocated memory for immediate mode. */
+      _mesa_reference_buffer_object(ctx,
+                                    &exec->vtx.bufferobj,
+                                    ctx->Shared->NullBufferObj);
+
+      exec->vtx.buffer_map = _mesa_align_malloc(VBO_VERT_BUFFER_SIZE, 64);
+      exec->vtx.buffer_ptr = exec->vtx.buffer_map;
+   }
 
    vbo_exec_vtxfmt_init(exec);
    _mesa_noop_vtxfmt_init(ctx, &exec->vtxfmt_noop);

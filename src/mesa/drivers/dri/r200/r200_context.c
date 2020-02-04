@@ -253,7 +253,7 @@ GLboolean r200CreateContext( gl_api api,
    /* Initialize the software rasterizer and helper modules.
     */
    _swrast_CreateContext( ctx );
-   _vbo_CreateContext( ctx );
+   _vbo_CreateContext( ctx, false );
    _tnl_CreateContext( ctx );
    _swsetup_CreateContext( ctx );
 

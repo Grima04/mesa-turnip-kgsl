@@ -569,7 +569,6 @@ TAG(vbo_init)(struct gl_context *ctx)
 
 	/* Overwrite our draw function */
 	ctx->Driver.Draw = TAG(vbo_draw);
-	vbo_use_buffer_objects(ctx);
 }
 
 void

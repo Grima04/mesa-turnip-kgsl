@@ -571,10 +571,6 @@ st_create_context_priv(struct gl_context *ctx, struct pipe_context *pipe,
 
    st->ctx = ctx;
    st->pipe = pipe;
-
-   /* state tracker needs the VBO module */
-   _vbo_CreateContext(ctx);
-
    st->dirty = ST_ALL_STATES_MASK;
 
    st->can_bind_const_buffer_as_vertex =
@@ -616,9 +612,6 @@ st_create_context_priv(struct gl_context *ctx, struct pipe_context *pipe,
       st->util_velems[2].vertex_buffer_index = 0;
       st->util_velems[2].src_format = PIPE_FORMAT_R32G32_FLOAT;
    }
-
-   /* we want all vertex data to be placed in buffer objects */
-   vbo_use_buffer_objects(ctx);
 
    /* Need these flags:
     */
@@ -808,6 +801,11 @@ st_create_context_priv(struct gl_context *ctx, struct pipe_context *pipe,
       st_destroy_context_priv(st, false);
       return NULL;
    }
+
+   /* This must be done after extensions are initialized to enable persistent
+    * mappings immediately.
+    */
+   _vbo_CreateContext(ctx, true);
 
    _mesa_initialize_dispatch_tables(ctx);
    _mesa_initialize_vbo_vtxfmt(ctx);

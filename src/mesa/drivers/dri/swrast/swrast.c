@@ -809,7 +809,7 @@ dri_create_context(gl_api api,
 
     /* create module contexts */
     _swrast_CreateContext( mesaCtx );
-    _vbo_CreateContext( mesaCtx );
+    _vbo_CreateContext( mesaCtx, false );
     _tnl_CreateContext( mesaCtx );
     _swsetup_CreateContext( mesaCtx );
     _swsetup_Wakeup( mesaCtx );

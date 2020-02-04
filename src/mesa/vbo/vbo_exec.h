@@ -122,13 +122,13 @@ struct vbo_exec_context
 
 
 void
-vbo_exec_init(struct gl_context *ctx);
+vbo_exec_init(struct gl_context *ctx, bool use_buffer_objects);
 
 void
 vbo_exec_destroy(struct gl_context *ctx);
 
 void
-vbo_exec_vtx_init(struct vbo_exec_context *exec);
+vbo_exec_vtx_init(struct vbo_exec_context *exec, bool use_buffer_objects);
 
 void
 vbo_exec_vtx_destroy(struct vbo_exec_context *exec);
