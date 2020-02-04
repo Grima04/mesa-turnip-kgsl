@@ -1361,6 +1361,9 @@ iris_create_zsa_state(struct pipe_context *ctx,
       wmds.BackfaceStencilTestMask = state->stencil[1].valuemask;
       wmds.BackfaceStencilWriteMask = state->stencil[1].writemask;
       /* wmds.[Backface]StencilReferenceValue are merged later */
+#if GEN_GEN >= 12
+      wmds.StencilReferenceValueModifyDisable = true;
+#endif
    }
 
 #if GEN_GEN >= 12
@@ -2936,10 +2939,12 @@ iris_set_stencil_ref(struct pipe_context *ctx,
 {
    struct iris_context *ice = (struct iris_context *) ctx;
    memcpy(&ice->state.stencil_ref, state, sizeof(*state));
-   if (GEN_GEN == 8)
-      ice->state.dirty |= IRIS_DIRTY_COLOR_CALC_STATE;
-   else
+   if (GEN_GEN >= 12)
+      ice->state.dirty |= IRIS_DIRTY_STENCIL_REF;
+   else if (GEN_GEN >= 9)
       ice->state.dirty |= IRIS_DIRTY_WM_DEPTH_STENCIL;
+   else
+      ice->state.dirty |= IRIS_DIRTY_COLOR_CALC_STATE;
 }
 
 static float
@@ -5880,7 +5885,7 @@ iris_upload_dirty_render_state(struct iris_context *ice,
 
    if (dirty & IRIS_DIRTY_WM_DEPTH_STENCIL) {
       struct iris_depth_stencil_alpha_state *cso = ice->state.cso_zsa;
-#if GEN_GEN >= 9
+#if GEN_GEN >= 9 && GEN_GEN < 12
       struct pipe_stencil_ref *p_stencil_refs = &ice->state.stencil_ref;
       uint32_t stencil_refs[GENX(3DSTATE_WM_DEPTH_STENCIL_length)];
       iris_pack_command(GENX(3DSTATE_WM_DEPTH_STENCIL), &stencil_refs, wmds) {
@@ -5889,11 +5894,33 @@ iris_upload_dirty_render_state(struct iris_context *ice,
       }
       iris_emit_merge(batch, cso->wmds, stencil_refs, ARRAY_SIZE(cso->wmds));
 #else
+      /* Use modify disable fields which allow us to emit packets
+       * directly instead of merging them later.
+       */
       iris_batch_emit(batch, cso->wmds, sizeof(cso->wmds));
 #endif
 
 #if GEN_GEN >= 12
       iris_batch_emit(batch, cso->depth_bounds, sizeof(cso->depth_bounds));
+#endif
+   }
+
+   if (dirty & IRIS_DIRTY_STENCIL_REF) {
+#if GEN_GEN >= 12
+      /* Use modify disable fields which allow us to emit packets
+       * directly instead of merging them later.
+       */
+      struct pipe_stencil_ref *p_stencil_refs = &ice->state.stencil_ref;
+      uint32_t stencil_refs[GENX(3DSTATE_WM_DEPTH_STENCIL_length)];
+      iris_pack_command(GENX(3DSTATE_WM_DEPTH_STENCIL), &stencil_refs, wmds) {
+         wmds.StencilReferenceValue = p_stencil_refs->ref_value[0];
+         wmds.BackfaceStencilReferenceValue = p_stencil_refs->ref_value[1];
+         wmds.StencilTestMaskModifyDisable = true;
+         wmds.StencilWriteMaskModifyDisable = true;
+         wmds.StencilStateModifyDisable = true;
+         wmds.DepthStateModifyDisable = true;
+      }
+      iris_batch_emit(batch, stencil_refs, sizeof(stencil_refs));
 #endif
    }
 

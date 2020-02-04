@@ -139,6 +139,7 @@ enum {
 #define IRIS_DIRTY_PMA_FIX                  (1ull << 58)
 #define IRIS_DIRTY_DEPTH_BOUNDS             (1ull << 59)
 #define IRIS_DIRTY_RENDER_BUFFER            (1ull << 60)
+#define IRIS_DIRTY_STENCIL_REF              (1ull << 61)
 
 #define IRIS_ALL_DIRTY_FOR_COMPUTE (IRIS_DIRTY_CS | \
                                     IRIS_DIRTY_SAMPLER_STATES_CS | \
