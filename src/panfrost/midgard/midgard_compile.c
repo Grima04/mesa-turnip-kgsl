@@ -328,6 +328,7 @@ midgard_nir_sysval_for_intrinsic(nir_intrinsic_instr *instr)
         case nir_intrinsic_load_num_work_groups:
                 return PAN_SYSVAL_NUM_WORK_GROUPS;
         case nir_intrinsic_load_ssbo_address: 
+        case nir_intrinsic_get_buffer_size: 
                 return midgard_sysval_for_ssbo(instr);
         case nir_intrinsic_load_sampler_lod_parameters_pan:
                 return midgard_sysval_for_sampler(instr);
@@ -1376,9 +1377,9 @@ emit_attr_read(
         emit_mir_instruction(ctx, ins);
 }
 
-void
+static void
 emit_sysval_read(compiler_context *ctx, nir_instr *instr, signed dest_override,
-                unsigned nr_components)
+                unsigned nr_components, unsigned offset)
 {
         unsigned dest = 0;
 
@@ -1394,7 +1395,7 @@ emit_sysval_read(compiler_context *ctx, nir_instr *instr, signed dest_override,
 
         /* Emit the read itself -- this is never indirect */
         midgard_instruction *ins =
-                emit_ubo_read(ctx, instr, dest, uniform * 16, NULL, 0, 0);
+                emit_ubo_read(ctx, instr, dest, (uniform * 16) + offset, NULL, 0, 0);
 
         ins->mask = mask_of(nr_components);
 }
@@ -1774,14 +1775,18 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                 break;
 
         case nir_intrinsic_load_ssbo_address:
-                emit_sysval_read(ctx, &instr->instr, ~0, 1);
+                emit_sysval_read(ctx, &instr->instr, ~0, 1, 0);
+                break;
+
+        case nir_intrinsic_get_buffer_size:
+                emit_sysval_read(ctx, &instr->instr, ~0, 1, 8);
                 break;
  
         case nir_intrinsic_load_viewport_scale:
         case nir_intrinsic_load_viewport_offset:
         case nir_intrinsic_load_num_work_groups:
         case nir_intrinsic_load_sampler_lod_parameters_pan:
-                emit_sysval_read(ctx, &instr->instr, ~0, 3);
+                emit_sysval_read(ctx, &instr->instr, ~0, 3, 0);
                 break;
 
         case nir_intrinsic_load_work_group_id:
@@ -2086,7 +2091,7 @@ emit_tex(compiler_context *ctx, nir_tex_instr *instr)
                 emit_texop_native(ctx, instr, TEXTURE_OP_TEXEL_FETCH);
                 break;
         case nir_texop_txs:
-                emit_sysval_read(ctx, &instr->instr, ~0, 4);
+                emit_sysval_read(ctx, &instr->instr, ~0, 4, 0);
                 break;
         default: {
                 printf ("Unhandled texture op: %d\n", instr->op);

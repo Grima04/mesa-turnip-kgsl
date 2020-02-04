@@ -676,9 +676,6 @@ void mir_create_pipeline_registers(compiler_context *ctx);
 void midgard_promote_uniforms(compiler_context *ctx);
 
 void
-emit_sysval_read(compiler_context *ctx, nir_instr *instr, signed dest_override, unsigned nr_components);
-
-void
 midgard_emit_derivatives(compiler_context *ctx, nir_alu_instr *instr);
 
 void
