@@ -1801,16 +1801,17 @@ panfrost_create_sampler_state(
          * essentially -- remember these are fixed point numbers, so
          * epsilon=1/256) */
 
-        if (cso->min_mip_filter == PIPE_TEX_MIPFILTER_NONE)
+        if (cso->min_mip_filter == PIPE_TEX_MIPFILTER_NONE) {
                 sampler_descriptor.max_lod = sampler_descriptor.min_lod;
 
-        /* Enforce that there is something in the middle by adding epsilon*/
+                /* Enforce that there is something in the middle by adding epsilon*/
 
-        if (sampler_descriptor.min_lod == sampler_descriptor.max_lod)
-                sampler_descriptor.max_lod++;
+                if (sampler_descriptor.min_lod == sampler_descriptor.max_lod)
+                        sampler_descriptor.max_lod++;
 
-        /* Sanity check */
-        assert(sampler_descriptor.max_lod > sampler_descriptor.min_lod);
+                /* Sanity check */
+                assert(sampler_descriptor.max_lod > sampler_descriptor.min_lod);
+        }
 
         so->hw = sampler_descriptor;
 
