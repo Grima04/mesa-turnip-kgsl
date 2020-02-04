@@ -133,6 +133,7 @@ enum lima_ctx_buff {
    lima_ctx_buff_pp_tex_desc,
    lima_ctx_buff_pp_stack,
    lima_ctx_buff_num,
+   lima_ctx_buff_num_gp = lima_ctx_buff_pp_plb_rsw,
 };
 
 struct lima_ctx_buff_state {
@@ -278,11 +279,7 @@ lima_sampler_view(struct pipe_sampler_view *psview)
    return (struct lima_sampler_view *)psview;
 }
 
-#define LIMA_CTX_BUFF_SUBMIT_GP (1 << 0)
-#define LIMA_CTX_BUFF_SUBMIT_PP (1 << 1)
-
-uint32_t lima_ctx_buff_va(struct lima_context *ctx, enum lima_ctx_buff buff,
-                          unsigned submit);
+uint32_t lima_ctx_buff_va(struct lima_context *ctx, enum lima_ctx_buff buff);
 void *lima_ctx_buff_map(struct lima_context *ctx, enum lima_ctx_buff buff);
 void *lima_ctx_buff_alloc(struct lima_context *ctx, enum lima_ctx_buff buff,
                           unsigned size);

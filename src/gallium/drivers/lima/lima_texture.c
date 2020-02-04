@@ -287,18 +287,17 @@ lima_update_textures(struct lima_context *ctx)
       struct lima_sampler_view *texture = lima_sampler_view(lima_tex->textures[i]);
       unsigned desc_size = lima_calc_tex_desc_size(texture);
 
-      descs[i] = lima_ctx_buff_va(ctx, lima_ctx_buff_pp_tex_desc,
-                                  LIMA_CTX_BUFF_SUBMIT_PP) + offset;
+      descs[i] = lima_ctx_buff_va(ctx, lima_ctx_buff_pp_tex_desc) + offset;
       lima_update_tex_desc(ctx, sampler, texture, (void *)descs + offset, desc_size);
       offset += desc_size;
    }
 
    lima_dump_command_stream_print(
       descs, size, false, "add textures_desc at va %x\n",
-      lima_ctx_buff_va(ctx, lima_ctx_buff_pp_tex_desc, 0));
+      lima_ctx_buff_va(ctx, lima_ctx_buff_pp_tex_desc));
 
    lima_dump_texture_descriptor(
       descs, size,
-      lima_ctx_buff_va(ctx, lima_ctx_buff_pp_tex_desc, 0) + lima_tex_list_size,
+      lima_ctx_buff_va(ctx, lima_ctx_buff_pp_tex_desc) + lima_tex_list_size,
       lima_tex_list_size);
 }

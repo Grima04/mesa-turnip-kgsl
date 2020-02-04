@@ -794,7 +794,7 @@ lima_pack_vs_cmd(struct lima_context *ctx, const struct pipe_draw_info *info)
 
    int uniform_size = ctx->vs->uniform_pending_offset + ctx->vs->constant_size + 32;
    VS_CMD_UNIFORMS_ADDRESS(
-      lima_ctx_buff_va(ctx, lima_ctx_buff_gp_uniform, LIMA_CTX_BUFF_SUBMIT_GP),
+      lima_ctx_buff_va(ctx, lima_ctx_buff_gp_uniform),
       align(uniform_size, 16));
 
    VS_CMD_SHADER_ADDRESS(ctx->vs->bo->va, ctx->vs->shader_size);
@@ -807,11 +807,11 @@ lima_pack_vs_cmd(struct lima_context *ctx, const struct pipe_draw_info *info)
    VS_CMD_UNKNOWN1();
 
    VS_CMD_ATTRIBUTES_ADDRESS(
-      lima_ctx_buff_va(ctx, lima_ctx_buff_gp_attribute_info, LIMA_CTX_BUFF_SUBMIT_GP),
+      lima_ctx_buff_va(ctx, lima_ctx_buff_gp_attribute_info),
       MAX2(1, num_attributes));
 
    VS_CMD_VARYINGS_ADDRESS(
-      lima_ctx_buff_va(ctx, lima_ctx_buff_gp_varying_info, LIMA_CTX_BUFF_SUBMIT_GP),
+      lima_ctx_buff_va(ctx, lima_ctx_buff_gp_varying_info),
       num_outputs);
 
    unsigned num = info->index_size ? (ctx->max_index - ctx->min_index + 1) : info->count;
@@ -870,7 +870,7 @@ lima_pack_plbu_cmd(struct lima_context *ctx, const struct pipe_draw_info *info)
    PLBU_CMD_PRIMITIVE_SETUP(force_point_size, cull, info->index_size);
 
    PLBU_CMD_RSW_VERTEX_ARRAY(
-      lima_ctx_buff_va(ctx, lima_ctx_buff_pp_plb_rsw, LIMA_CTX_BUFF_SUBMIT_PP),
+      lima_ctx_buff_va(ctx, lima_ctx_buff_pp_plb_rsw),
       ctx->gp_output->va);
 
    /* TODO
@@ -1265,14 +1265,14 @@ lima_pack_render_state(struct lima_context *ctx, const struct pipe_draw_info *in
 
    if (ctx->tex_stateobj.num_samplers) {
       render->textures_address =
-         lima_ctx_buff_va(ctx, lima_ctx_buff_pp_tex_desc, LIMA_CTX_BUFF_SUBMIT_PP);
+         lima_ctx_buff_va(ctx, lima_ctx_buff_pp_tex_desc);
       render->aux0 |= ctx->tex_stateobj.num_samplers << 14;
       render->aux0 |= 0x20;
    }
 
    if (ctx->const_buffer[PIPE_SHADER_FRAGMENT].buffer) {
       render->uniforms_address =
-         lima_ctx_buff_va(ctx, lima_ctx_buff_pp_uniform_array, LIMA_CTX_BUFF_SUBMIT_PP);
+         lima_ctx_buff_va(ctx, lima_ctx_buff_pp_uniform_array);
       uint32_t size = ctx->buffer_state[lima_ctx_buff_pp_uniform].size;
       uint32_t bits = 0;
       if (size >= 8) {
@@ -1321,10 +1321,10 @@ lima_pack_render_state(struct lima_context *ctx, const struct pipe_draw_info *in
 
    lima_dump_command_stream_print(
       render, sizeof(*render), false, "add render state at va %x\n",
-      lima_ctx_buff_va(ctx, lima_ctx_buff_pp_plb_rsw, 0));
+      lima_ctx_buff_va(ctx, lima_ctx_buff_pp_plb_rsw));
 
-   lima_dump_rsw_command_stream_print(render, sizeof(*render),
-                                      lima_ctx_buff_va(ctx, lima_ctx_buff_pp_plb_rsw, 0));
+   lima_dump_rsw_command_stream_print(
+      render, sizeof(*render), lima_ctx_buff_va(ctx, lima_ctx_buff_pp_plb_rsw));
 
 }
 
@@ -1360,7 +1360,7 @@ lima_update_gp_attribute_info(struct lima_context *ctx, const struct pipe_draw_i
 
    lima_dump_command_stream_print(
       attribute, n * 4, false, "update attribute info at va %x\n",
-      lima_ctx_buff_va(ctx, lima_ctx_buff_gp_attribute_info, 0));
+      lima_ctx_buff_va(ctx, lima_ctx_buff_gp_attribute_info));
 }
 
 static void
@@ -1391,7 +1391,7 @@ lima_update_gp_uniform(struct lima_context *ctx)
    lima_dump_command_stream_print(
       vs_const_buff, size, true,
       "update gp uniform at va %x\n",
-      lima_ctx_buff_va(ctx, lima_ctx_buff_gp_uniform, 0));
+      lima_ctx_buff_va(ctx, lima_ctx_buff_gp_uniform));
 }
 
 static void
@@ -1413,14 +1413,14 @@ lima_update_pp_uniform(struct lima_context *ctx)
    for (int i = 0; i < const_buff_size; i++)
        fp16_const_buff[i] = util_float_to_half(const_buff[i]);
 
-   *array = lima_ctx_buff_va(ctx, lima_ctx_buff_pp_uniform, LIMA_CTX_BUFF_SUBMIT_PP);
+   *array = lima_ctx_buff_va(ctx, lima_ctx_buff_pp_uniform);
 
    lima_dump_command_stream_print(
       fp16_const_buff, const_buff_size * 2, false, "add pp uniform data at va %x\n",
-      lima_ctx_buff_va(ctx, lima_ctx_buff_pp_uniform, 0));
+      lima_ctx_buff_va(ctx, lima_ctx_buff_pp_uniform));
    lima_dump_command_stream_print(
       array, 4, false, "add pp uniform info at va %x\n",
-      lima_ctx_buff_va(ctx, lima_ctx_buff_pp_uniform_array, 0));
+      lima_ctx_buff_va(ctx, lima_ctx_buff_pp_uniform_array));
 }
 
 static void
@@ -1502,7 +1502,7 @@ lima_update_varying(struct lima_context *ctx, const struct pipe_draw_info *info)
 
    lima_dump_command_stream_print(
       varying, n * 4, false, "update varying info at va %x\n",
-      lima_ctx_buff_va(ctx, lima_ctx_buff_gp_varying_info, 0));
+      lima_ctx_buff_va(ctx, lima_ctx_buff_gp_varying_info));
 }
 
 static void
@@ -1778,8 +1778,7 @@ _lima_flush(struct lima_context *ctx, bool end_of_frame)
          lima_ctx_buff_alloc(ctx, lima_ctx_buff_gp_vs_cmd, vs_cmd_size);
       memcpy(vs_cmd, util_dynarray_begin(&ctx->vs_cmd_array), vs_cmd_size);
       util_dynarray_clear(&ctx->vs_cmd_array);
-      vs_cmd_va = lima_ctx_buff_va(ctx, lima_ctx_buff_gp_vs_cmd,
-                                   LIMA_CTX_BUFF_SUBMIT_GP);
+      vs_cmd_va = lima_ctx_buff_va(ctx, lima_ctx_buff_gp_vs_cmd);
 
       lima_dump_command_stream_print(
          vs_cmd, vs_cmd_size, false, "flush vs cmd at va %x\n", vs_cmd_va);
@@ -1790,8 +1789,7 @@ _lima_flush(struct lima_context *ctx, bool end_of_frame)
       lima_ctx_buff_alloc(ctx, lima_ctx_buff_gp_plbu_cmd, plbu_cmd_size);
    memcpy(plbu_cmd, util_dynarray_begin(&ctx->plbu_cmd_array), plbu_cmd_size);
    util_dynarray_clear(&ctx->plbu_cmd_array);
-   plbu_cmd_va = lima_ctx_buff_va(ctx, lima_ctx_buff_gp_plbu_cmd,
-                                  LIMA_CTX_BUFF_SUBMIT_GP);
+   plbu_cmd_va = lima_ctx_buff_va(ctx, lima_ctx_buff_gp_plbu_cmd);
 
    lima_dump_command_stream_print(
       plbu_cmd, plbu_cmd_size, false, "flush plbu cmd at va %x\n", plbu_cmd_va);
@@ -1837,8 +1835,7 @@ _lima_flush(struct lima_context *ctx, bool end_of_frame)
    if (ctx->pp_max_stack_size) {
       lima_ctx_buff_alloc(ctx, lima_ctx_buff_pp_stack, screen->num_pp *
                           ctx->pp_max_stack_size * pp_stack_pp_size);
-      pp_stack_va = lima_ctx_buff_va(ctx, lima_ctx_buff_pp_stack,
-                                     LIMA_CTX_BUFF_SUBMIT_PP);
+      pp_stack_va = lima_ctx_buff_va(ctx, lima_ctx_buff_pp_stack);
    }
 
    lima_update_pp_stream(ctx);
