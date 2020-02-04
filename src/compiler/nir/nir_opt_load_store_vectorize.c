@@ -38,6 +38,8 @@
  * - It won't turn four consecutive vec3 loads into 3 vec4 loads.
  * - It doesn't do global vectorization.
  * Handling these cases probably wouldn't provide much benefit though.
+ *
+ * This probably doesn't handle big-endian GPUs correctly.
 */
 
 #include "nir.h"

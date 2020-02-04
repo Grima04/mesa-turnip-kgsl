@@ -961,10 +961,10 @@ TEST_F(nir_load_store_vectorize_test, ssbo_store_adjacent_8_8_16)
    ASSERT_EQ(val->bit_size, 8);
    ASSERT_EQ(val->num_components, 4);
    nir_const_value *cv = nir_instr_as_load_const(val->parent_instr)->value;
-   ASSERT_EQ(nir_const_value_as_uint(cv[0], 32), 0x10);
-   ASSERT_EQ(nir_const_value_as_uint(cv[1], 32), 0x20);
-   ASSERT_EQ(nir_const_value_as_uint(cv[2], 32), 0x30);
-   ASSERT_EQ(nir_const_value_as_uint(cv[3], 32), 0x0);
+   ASSERT_EQ(nir_const_value_as_uint(cv[0], 8), 0x10);
+   ASSERT_EQ(nir_const_value_as_uint(cv[1], 8), 0x20);
+   ASSERT_EQ(nir_const_value_as_uint(cv[2], 8), 0x30);
+   ASSERT_EQ(nir_const_value_as_uint(cv[3], 8), 0x0);
 }
 
 TEST_F(nir_load_store_vectorize_test, ssbo_store_adjacent_32_32_64)
