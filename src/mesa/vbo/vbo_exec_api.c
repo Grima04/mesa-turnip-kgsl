@@ -1011,11 +1011,27 @@ vbo_use_buffer_objects(struct gl_context *ctx)
 }
 
 
+static void
+vbo_reset_all_attr(struct vbo_exec_context *exec)
+{
+   while (exec->vtx.enabled) {
+      const int i = u_bit_scan64(&exec->vtx.enabled);
+
+      /* Reset the vertex attribute by setting its size to zero. */
+      exec->vtx.attr[i].size = 0;
+      exec->vtx.attr[i].type = GL_FLOAT;
+      exec->vtx.attr[i].active_size = 0;
+      exec->vtx.attrptr[i] = NULL;
+   }
+
+   exec->vtx.vertex_size = 0;
+}
+
+
 void
 vbo_exec_vtx_init(struct vbo_exec_context *exec)
 {
    struct gl_context *ctx = exec->ctx;
-   GLuint i;
 
    /* Allocate a buffer object.  Will just reuse this object
     * continuously, unless vbo_use_buffer_objects() is called to enable
@@ -1032,14 +1048,8 @@ vbo_exec_vtx_init(struct vbo_exec_context *exec)
    vbo_exec_vtxfmt_init(exec);
    _mesa_noop_vtxfmt_init(ctx, &exec->vtxfmt_noop);
 
-   exec->vtx.enabled = 0;
-   for (i = 0 ; i < ARRAY_SIZE(exec->vtx.attr); i++) {
-      exec->vtx.attr[i].size = 0;
-      exec->vtx.attr[i].type = GL_FLOAT;
-      exec->vtx.attr[i].active_size = 0;
-   }
-
-   exec->vtx.vertex_size = 0;
+   exec->vtx.enabled = u_bit_consecutive64(0, VBO_ATTRIB_MAX); /* reset all */
+   vbo_reset_all_attr(exec);
 }
 
 
@@ -1108,30 +1118,6 @@ vbo_exec_FlushVertices(struct gl_context *ctx, GLuint flags)
    exec->flush_call_depth--;
    assert(exec->flush_call_depth == 0);
 #endif
-}
-
-
-/**
- * Reset the vertex attribute by setting its size to zero.
- */
-static void
-vbo_reset_attr(struct vbo_exec_context *exec, GLuint attr)
-{
-   exec->vtx.attr[attr].size = 0;
-   exec->vtx.attr[attr].type = GL_FLOAT;
-   exec->vtx.attr[attr].active_size = 0;
-}
-
-
-static void
-vbo_reset_all_attr(struct vbo_exec_context *exec)
-{
-   while (exec->vtx.enabled) {
-      const int i = u_bit_scan64(&exec->vtx.enabled);
-      vbo_reset_attr(exec, i);
-   }
-
-   exec->vtx.vertex_size = 0;
 }
 
 
