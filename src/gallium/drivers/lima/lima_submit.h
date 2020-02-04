@@ -29,6 +29,8 @@
 
 #include <util/u_dynarray.h>
 
+#include <pipe/p_state.h>
+
 struct lima_context;
 struct lima_bo;
 struct pipe_surface;
@@ -54,6 +56,8 @@ struct lima_submit {
    unsigned resolve;
 
    int pp_max_stack_size;
+
+   struct pipe_scissor_state damage_rect;
 };
 
 struct lima_submit *lima_submit_get(struct lima_context *ctx);

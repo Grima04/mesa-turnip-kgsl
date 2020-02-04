@@ -227,9 +227,6 @@ lima_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    ctx->base.stream_uploader = ctx->uploader;
    ctx->base.const_uploader = ctx->uploader;
 
-   ctx->damage_rect.minx = ctx->damage_rect.miny = 0xffff;
-   ctx->damage_rect.maxx = ctx->damage_rect.maxy = 0;
-
    ctx->plb_size = screen->plb_max_blk * LIMA_CTX_PLB_BLK_SIZE;
    ctx->plb_gp_size = screen->plb_max_blk * 4;
 

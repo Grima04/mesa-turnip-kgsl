@@ -87,12 +87,14 @@ lima_update_submit_wb(struct lima_context *ctx, unsigned buffers)
 }
 
 static void
-lima_damage_rect_union(struct lima_context *ctx, unsigned minx, unsigned maxx, unsigned miny, unsigned maxy)
+lima_damage_rect_union(struct pipe_scissor_state *rect,
+                       unsigned minx, unsigned maxx,
+                       unsigned miny, unsigned maxy)
 {
-   ctx->damage_rect.minx = MIN2(ctx->damage_rect.minx, minx);
-   ctx->damage_rect.miny = MIN2(ctx->damage_rect.miny, miny);
-   ctx->damage_rect.maxx = MAX2(ctx->damage_rect.maxx, maxx);
-   ctx->damage_rect.maxy = MAX2(ctx->damage_rect.maxy, maxy);
+   rect->minx = MIN2(rect->minx, minx);
+   rect->miny = MIN2(rect->miny, miny);
+   rect->maxx = MAX2(rect->maxx, maxx);
+   rect->maxy = MAX2(rect->maxy, maxy);
 }
 
 static void
@@ -111,6 +113,7 @@ lima_clear(struct pipe_context *pctx, unsigned buffers,
       surf->reload = false;
    }
 
+   struct lima_submit *submit = lima_submit_get(ctx);
    struct lima_context_clear *clear = &ctx->clear;
    clear->buffers = buffers;
 
@@ -136,8 +139,9 @@ lima_clear(struct pipe_context *pctx, unsigned buffers,
 
    ctx->dirty |= LIMA_CONTEXT_DIRTY_CLEAR;
 
-   lima_damage_rect_union(ctx, 0, ctx->framebuffer.base.width,
-                               0, ctx->framebuffer.base.height);
+   lima_damage_rect_union(&submit->damage_rect,
+                          0, ctx->framebuffer.base.width,
+                          0, ctx->framebuffer.base.height);
 }
 
 enum lima_attrib_type {
@@ -316,7 +320,7 @@ lima_pack_plbu_cmd(struct lima_context *ctx, const struct pipe_draw_info *info)
    maxy = MIN2(maxy, ctx->viewport.top);
 
    PLBU_CMD_SCISSORS(minx, maxx, miny, maxy);
-   lima_damage_rect_union(ctx, minx, maxx, miny, maxy);
+   lima_damage_rect_union(&submit->damage_rect, minx, maxx, miny, maxy);
 
    PLBU_CMD_UNKNOWN1();
 

@@ -59,6 +59,9 @@ lima_submit_create(struct lima_context *ctx)
    s->fd = lima_screen(ctx->base.screen)->fd;
    s->ctx = ctx;
 
+   s->damage_rect.minx = s->damage_rect.miny = 0xffff;
+   s->damage_rect.maxx = s->damage_rect.maxy = 0;
+
    for (int i = 0; i < 2; i++) {
       util_dynarray_init(s->gem_bos + i, s);
       util_dynarray_init(s->bos + i, s);
@@ -544,18 +547,19 @@ lima_update_damage_pp_stream(struct lima_submit *submit)
    struct lima_damage_region *ds = lima_submit_get_damage(submit);
    struct lima_context_framebuffer *fb = &ctx->framebuffer;
    struct pipe_scissor_state bound;
+   struct pipe_scissor_state *dr = &submit->damage_rect;
 
    if (ds && ds->region) {
       struct pipe_scissor_state *dbound = &ds->bound;
-      bound.minx = MAX2(dbound->minx, ctx->damage_rect.minx >> 4);
-      bound.miny = MAX2(dbound->miny, ctx->damage_rect.miny >> 4);
-      bound.maxx = MIN2(dbound->maxx, (ctx->damage_rect.maxx + 0xf) >> 4);
-      bound.maxy = MIN2(dbound->maxy, (ctx->damage_rect.maxy + 0xf) >> 4);
+      bound.minx = MAX2(dbound->minx, dr->minx >> 4);
+      bound.miny = MAX2(dbound->miny, dr->miny >> 4);
+      bound.maxx = MIN2(dbound->maxx, (dr->maxx + 0xf) >> 4);
+      bound.maxy = MIN2(dbound->maxy, (dr->maxy + 0xf) >> 4);
    } else {
-      bound.minx = ctx->damage_rect.minx >> 4;
-      bound.miny = ctx->damage_rect.miny >> 4;
-      bound.maxx = (ctx->damage_rect.maxx + 0xf) >> 4;
-      bound.maxy = (ctx->damage_rect.maxy + 0xf) >> 4;
+      bound.minx = dr->minx >> 4;
+      bound.miny = dr->miny >> 4;
+      bound.maxx = (dr->maxx + 0xf) >> 4;
+      bound.maxy = (dr->maxy + 0xf) >> 4;
    }
 
    /* Clamp to FB size */
@@ -617,11 +621,12 @@ static bool
 lima_damage_fullscreen(struct lima_submit *submit)
 {
    struct lima_context *ctx = submit->ctx;
+   struct pipe_scissor_state *dr = &submit->damage_rect;
 
-   return ctx->damage_rect.minx == 0 &&
-          ctx->damage_rect.miny == 0 &&
-          ctx->damage_rect.maxx == ctx->framebuffer.base.width &&
-          ctx->damage_rect.maxy == ctx->framebuffer.base.height;
+   return dr->minx == 0 &&
+          dr->miny == 0 &&
+          dr->maxx == ctx->framebuffer.base.width &&
+          dr->maxy == ctx->framebuffer.base.height;
 }
 
 static void
@@ -921,9 +926,6 @@ lima_do_submit(struct lima_submit *submit)
       struct lima_surface *surf = lima_surface(ctx->framebuffer.base.cbufs[0]);
       surf->reload = true;
    }
-
-   ctx->damage_rect.minx = ctx->damage_rect.miny = 0xffff;
-   ctx->damage_rect.maxx = ctx->damage_rect.maxy = 0;
 
    lima_dump_file_next();
 
