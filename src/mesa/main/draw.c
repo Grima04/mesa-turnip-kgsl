@@ -770,7 +770,6 @@ _mesa_validated_drawrangeelements(struct gl_context *ctx, GLenum mode,
 
    prim.begin = 1;
    prim.end = 1;
-   prim.pad = 0;
    prim.mode = mode;
    prim.start = 0;
    prim.count = count;
@@ -1228,7 +1227,6 @@ _mesa_validated_multidrawelements(struct gl_context *ctx, GLenum mode,
       for (i = 0; i < primcount; i++) {
          prim[i].begin = (i == 0);
          prim[i].end = (i == primcount - 1);
-         prim[i].pad = 0;
          prim[i].mode = mode;
          prim[i].start =
             ((uintptr_t) indices[i] - min_index_ptr) / index_type_size;
@@ -1258,7 +1256,6 @@ _mesa_validated_multidrawelements(struct gl_context *ctx, GLenum mode,
 
          prim[0].begin = 1;
          prim[0].end = 1;
-         prim[0].pad = 0;
          prim[0].mode = mode;
          prim[0].start = 0;
          prim[0].count = count[i];
