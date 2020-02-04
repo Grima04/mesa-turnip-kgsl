@@ -361,15 +361,10 @@ pipe_put_tile_rgba(struct pipe_transfer *pt,
                    enum pipe_format format, const void *p)
 {
    unsigned src_stride = w * 4;
-   void *packed;
 
    if (u_clip_tile(x, y, &w, &h, &pt->box))
       return;
 
-   packed = MALLOC(util_format_get_nblocks(format, w, h) * util_format_get_blocksize(format));
-
-   if (!packed)
-      return;
    /* softpipe's S8_UINT texture cache fetch needs to take the rgba_format
     * path, not ui (since there's no ui unpack for s8, but it's technically
     * pure integer).
@@ -377,47 +372,42 @@ pipe_put_tile_rgba(struct pipe_transfer *pt,
    if (util_format_is_pure_uint(format)) {
       util_format_write_4ui(format,
                             p, src_stride * sizeof(float),
-                            packed, util_format_get_stride(format, w),
-                            0, 0, w, h);
+                            dst, pt->stride,
+                            x, y, w, h);
    } else if (util_format_is_pure_sint(format)) {
       util_format_write_4i(format,
                            p, src_stride * sizeof(float),
-                           packed, util_format_get_stride(format, w),
-                           0, 0, w, h);
+                           dst, pt->stride,
+                           x, y, w, h);
    } else {
       switch (format) {
       case PIPE_FORMAT_Z16_UNORM:
-         /*z16_put_tile_rgba((ushort *) packed, w, h, p, src_stride);*/
+         /*z16_put_tile_rgba((ushort *) dst, w, h, p, src_stride);*/
          break;
       case PIPE_FORMAT_Z32_UNORM:
-         /*z32_put_tile_rgba((unsigned *) packed, w, h, p, src_stride);*/
+         /*z32_put_tile_rgba((unsigned *) dst, w, h, p, src_stride);*/
          break;
       case PIPE_FORMAT_Z24_UNORM_S8_UINT:
       case PIPE_FORMAT_Z24X8_UNORM:
-         /*s8z24_put_tile_rgba((unsigned *) packed, w, h, p, src_stride);*/
+         /*s8z24_put_tile_rgba((unsigned *) dst, w, h, p, src_stride);*/
          break;
       case PIPE_FORMAT_S8_UINT_Z24_UNORM:
       case PIPE_FORMAT_X8Z24_UNORM:
-         /*z24s8_put_tile_rgba((unsigned *) packed, w, h, p, src_stride);*/
+         /*z24s8_put_tile_rgba((unsigned *) dst, w, h, p, src_stride);*/
          break;
       case PIPE_FORMAT_Z32_FLOAT:
-         /*z32f_put_tile_rgba((unsigned *) packed, w, h, p, src_stride);*/
+         /*z32f_put_tile_rgba((unsigned *) dst, w, h, p, src_stride);*/
          break;
       case PIPE_FORMAT_Z32_FLOAT_S8X24_UINT:
-         /*z32f_s8x24_put_tile_rgba((unsigned *) packed, w, h, p, src_stride);*/
+         /*z32f_s8x24_put_tile_rgba((unsigned *) dst, w, h, p, src_stride);*/
          break;
       default:
          util_format_write_4f(format,
                               p, src_stride * sizeof(float),
-                              packed, util_format_get_stride(format, w),
-                              0, 0, w, h);
+                              dst, pt->stride,
+                              x, y, w, h);
       }
    }
-
-
-   pipe_put_tile_raw(pt, dst, x, y, w, h, packed, 0);
-
-   FREE(packed);
 }
 
 void
