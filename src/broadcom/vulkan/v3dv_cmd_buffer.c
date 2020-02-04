@@ -315,6 +315,9 @@ v3dv_cmd_buffer_start_frame(struct v3dv_cmd_buffer *cmd_buffer,
     *  any prefix state data before the binning list proper starts."
     */
    cl_emit(&job->bcl, START_TILE_BINNING, bin);
+
+   job->ez_state = VC5_EZ_UNDECIDED;
+   job->first_ez_state = VC5_EZ_UNDECIDED;
 }
 
 static void
@@ -1113,6 +1116,27 @@ cmd_buffer_emit_render_pass_layer_rcl(struct v3dv_cmd_buffer *cmd_buffer,
 }
 
 static void
+set_rcl_early_z_config(struct v3dv_job *job,
+                       bool *early_z_disable,
+                       uint32_t *early_z_test_and_update_direction)
+{
+   switch (job->first_ez_state) {
+   case VC5_EZ_UNDECIDED:
+   case VC5_EZ_LT_LE:
+      *early_z_disable = false;
+      *early_z_test_and_update_direction = EARLY_Z_DIRECTION_LT_LE;
+      break;
+   case VC5_EZ_GT_GE:
+      *early_z_disable = false;
+      *early_z_test_and_update_direction = EARLY_Z_DIRECTION_GT_GE;
+      break;
+   case VC5_EZ_DISABLED:
+      *early_z_disable = true;
+      break;
+   }
+}
+
+static void
 cmd_buffer_emit_render_pass_rcl(struct v3dv_cmd_buffer *cmd_buffer)
 {
    struct v3dv_job *job = cmd_buffer->state.job;
@@ -1151,7 +1175,9 @@ cmd_buffer_emit_render_pass_rcl(struct v3dv_cmd_buffer *cmd_buffer)
          const struct v3dv_image_view *iview =
             framebuffer->attachments[ds_attachment_idx];
          config.internal_depth_type = iview->internal_type;
-         config.early_z_disable = true; /* FIXME */
+         set_rcl_early_z_config(job,
+                                &config.early_z_disable,
+                                &config.early_z_test_and_update_direction);
       } else {
          config.early_z_disable = true;
       }
@@ -1389,6 +1415,64 @@ bind_dynamic_state(struct v3dv_cmd_buffer *cmd_buffer,
    cmd_buffer->state.dirty |= dest_mask;
 }
 
+static void
+cmd_buffer_update_ez_state(struct v3dv_cmd_buffer *cmd_buffer,
+                           struct v3dv_pipeline *pipeline)
+{
+   struct v3dv_job *job = cmd_buffer->state.job;
+   assert(job);
+
+   switch (pipeline->ez_state) {
+   case VC5_EZ_UNDECIDED:
+      /* If the pipeline didn't pick a direction but didn't disable, then go
+       * along with the current EZ state. This allows EZ optimization for Z
+       * func == EQUAL or NEVER.
+       */
+      break;
+
+   case VC5_EZ_LT_LE:
+   case VC5_EZ_GT_GE:
+      /* If the pipeline picked a direction, then it needs to match the current
+       * direction if we've decided on one.
+       */
+      if (job->ez_state == VC5_EZ_UNDECIDED)
+         job->ez_state = pipeline->ez_state;
+      else if (job->ez_state != pipeline->ez_state)
+         job->ez_state = VC5_EZ_DISABLED;
+      break;
+
+   case VC5_EZ_DISABLED:
+      /* If the pipeline disables EZ because of a bad Z func or stencil
+       * operation, then we can't do any more EZ in this frame.
+       */
+      job->ez_state = VC5_EZ_DISABLED;
+      break;
+   }
+
+   /* If the FS writes Z, then it may update against the chosen EZ direction */
+   if (pipeline->fs->prog_data.fs->writes_z)
+      job->ez_state = VC5_EZ_DISABLED;
+
+   if (job->first_ez_state == VC5_EZ_UNDECIDED &&
+       job->ez_state != VC5_EZ_DISABLED) {
+      job->first_ez_state = job->ez_state;
+   }
+}
+
+static void
+bind_graphics_pipeline(struct v3dv_cmd_buffer *cmd_buffer,
+                       struct v3dv_pipeline *pipeline)
+{
+   if (cmd_buffer->state.pipeline == pipeline)
+      return;
+
+   cmd_buffer->state.pipeline = pipeline;
+   bind_dynamic_state(cmd_buffer, &pipeline->dynamic_state);
+
+   cmd_buffer_update_ez_state(cmd_buffer, pipeline);
+
+   cmd_buffer->state.dirty |= V3DV_CMD_DIRTY_PIPELINE;
+}
 
 void
 v3dv_CmdBindPipeline(VkCommandBuffer commandBuffer,
@@ -1404,13 +1488,7 @@ v3dv_CmdBindPipeline(VkCommandBuffer commandBuffer,
       break;
 
    case VK_PIPELINE_BIND_POINT_GRAPHICS:
-      if (cmd_buffer->state.pipeline == pipeline)
-         return;
-
-      cmd_buffer->state.pipeline = pipeline;
-      bind_dynamic_state(cmd_buffer, &pipeline->dynamic_state);
-
-      cmd_buffer->state.dirty |= V3DV_CMD_DIRTY_PIPELINE;
+      bind_graphics_pipeline(cmd_buffer, pipeline);
       break;
 
    default:
@@ -1739,7 +1817,9 @@ cmd_buffer_emit_graphics_pipeline(struct v3dv_cmd_buffer *cmd_buffer)
       state.number_of_attribute_arrays = num_elements_to_emit;
    }
 
-   cl_emit_prepacked(&job->bcl, &pipeline->cfg_bits);
+   cl_emit_with_prepacked(&job->bcl, CFG_BITS, pipeline->cfg_bits, config) {
+      config.early_z_updates_enable = job->ez_state != VC5_EZ_DISABLED;
+   }
 
    if (pipeline->emit_stencil_cfg[0]) {
       cl_emit_prepacked(&job->bcl, &pipeline->stencil_cfg[0]);

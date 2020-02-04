@@ -468,6 +468,13 @@ void v3dv_viewport_compute_xform(const VkViewport *viewport,
                                  float scale[3],
                                  float translate[3]);
 
+enum v3dv_ez_state {
+   VC5_EZ_UNDECIDED = 0,
+   VC5_EZ_GT_GE,
+   VC5_EZ_LT_LE,
+   VC5_EZ_DISABLED,
+};
+
 struct v3dv_job {
    struct list_head list_link;
 
@@ -490,6 +497,9 @@ struct v3dv_job {
    bool tmu_dirty_rcl;
 
    uint32_t first_subpass;
+
+   enum v3dv_ez_state ez_state;
+   enum v3dv_ez_state first_ez_state;
 };
 
 void v3dv_job_add_bo(struct v3dv_job *job, struct v3dv_bo *bo);
@@ -657,6 +667,8 @@ struct v3dv_pipeline {
    struct v3dv_pipeline_stage *fs;
 
    struct v3dv_dynamic_state dynamic_state;
+
+   enum v3dv_ez_state ez_state;
 
    /* Accessed by binding. So vb[binding]->stride is the stride of the vertex
     * array with such binding

@@ -1065,6 +1065,48 @@ pack_stencil_cfg(struct v3dv_pipeline *pipeline,
    }
 }
 
+static bool
+stencil_op_is_no_op(const VkStencilOpState *stencil)
+{
+   return stencil->depthFailOp == VK_STENCIL_OP_KEEP &&
+          stencil->compareOp == VK_COMPARE_OP_ALWAYS;
+}
+
+static void
+pipeline_set_ez_state(struct v3dv_pipeline *pipeline,
+                      const VkPipelineDepthStencilStateCreateInfo *ds_info)
+{
+   if (!ds_info || !ds_info->depthTestEnable) {
+      pipeline->ez_state = VC5_EZ_DISABLED;
+      return;
+   }
+
+   switch (ds_info->depthCompareOp) {
+   case VK_COMPARE_OP_LESS:
+   case VK_COMPARE_OP_LESS_OR_EQUAL:
+      pipeline->ez_state = VC5_EZ_LT_LE;
+      break;
+   case VK_COMPARE_OP_GREATER:
+   case VK_COMPARE_OP_GREATER_OR_EQUAL:
+      pipeline->ez_state = VC5_EZ_GT_GE;
+      break;
+   case VK_COMPARE_OP_NEVER:
+   case VK_COMPARE_OP_EQUAL:
+      pipeline->ez_state = VC5_EZ_UNDECIDED;
+      break;
+   default:
+      pipeline->ez_state = VC5_EZ_DISABLED;
+      break;
+   }
+
+   /* If stencil is enabled and is not a no-op, we need to disable EZ */
+   if (ds_info->stencilTestEnable &&
+       (!stencil_op_is_no_op(&ds_info->front) ||
+        !stencil_op_is_no_op(&ds_info->back))) {
+         pipeline->ez_state = VC5_EZ_DISABLED;
+   }
+}
+
 static void
 pack_shader_state_record(struct v3dv_pipeline *pipeline)
 {
@@ -1346,6 +1388,7 @@ pipeline_init(struct v3dv_pipeline *pipeline,
 
    pack_cfg_bits(pipeline, ds_info, rs_info, cb_info);
    pack_stencil_cfg(pipeline, ds_info);
+   pipeline_set_ez_state(pipeline, ds_info);
 
    result = pipeline_compile_graphics(pipeline, pCreateInfo, alloc);
 
