@@ -56,6 +56,10 @@ can_dce(midgard_instruction *ins)
                 if (load_store_opcode_props[ins->load_store.op].props & LDST_SIDE_FX)
                         return false;
 
+        if (ins->type == TAG_TEXTURE_4)
+                if (ins->texture.op == TEXTURE_OP_BARRIER)
+                        return false;
+
         return true;
 }
 

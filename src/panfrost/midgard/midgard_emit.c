@@ -450,7 +450,8 @@ emit_binary_bundle(compiler_context *ctx,
         }
 
         case TAG_TEXTURE_4:
-        case TAG_TEXTURE_4_VTX: {
+        case TAG_TEXTURE_4_VTX:
+        case TAG_TEXTURE_4_BARRIER: {
                 /* Texture instructions are easy, since there is no pipelining
                  * nor VLIW to worry about. We may need to set .cont/.last
                  * flags. */

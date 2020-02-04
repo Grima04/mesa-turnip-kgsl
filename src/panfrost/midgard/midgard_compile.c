@@ -1505,6 +1505,21 @@ emit_vertex_builtin(compiler_context *ctx, nir_intrinsic_instr *instr)
         emit_attr_read(ctx, reg, vertex_builtin_arg(instr->intrinsic), 1, nir_type_int);
 }
 
+static void
+emit_control_barrier(compiler_context *ctx)
+{
+        midgard_instruction ins = {
+                .type = TAG_TEXTURE_4,
+                .src = { ~0, ~0, ~0, ~0 },
+                .texture = {
+                        .op = TEXTURE_OP_BARRIER,
+                        .unknown4 = 3 /* (control |) buffers | shared */
+                }
+        };
+
+        emit_mir_instruction(ctx, ins);
+}
+
 static const nir_variable *
 search_var(struct exec_list *vars, unsigned driver_loc)
 {
@@ -1812,6 +1827,16 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
         case nir_intrinsic_load_vertex_id:
         case nir_intrinsic_load_instance_id:
                 emit_vertex_builtin(ctx, instr);
+                break;
+
+        case nir_intrinsic_memory_barrier_buffer:
+        case nir_intrinsic_memory_barrier_shared:
+                break;
+
+        case nir_intrinsic_control_barrier:
+                schedule_barrier(ctx);
+                emit_control_barrier(ctx);
+                schedule_barrier(ctx);
                 break;
 
         default:

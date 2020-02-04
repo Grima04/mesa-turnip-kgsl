@@ -811,7 +811,8 @@ mir_schedule_texture(
         mir_update_worklist(worklist, len, instructions, ins);
 
         struct midgard_bundle out = {
-                .tag = TAG_TEXTURE_4,
+                .tag = ins->texture.op == TEXTURE_OP_BARRIER ?
+                        TAG_TEXTURE_4_BARRIER : TAG_TEXTURE_4,
                 .instruction_count = 1,
                 .instructions = { ins }
         };

@@ -686,6 +686,9 @@ install_registers_instr(
         }
 
         case TAG_TEXTURE_4: {
+                if (ins->texture.op == TEXTURE_OP_BARRIER)
+                        break;
+
                 /* Grab RA results */
                 struct phys_reg dest = index_to_reg(ctx, l, ins->dest, mir_typesize(ins));
                 struct phys_reg coord = index_to_reg(ctx, l, ins->src[1], mir_srcsize(ins, 1));

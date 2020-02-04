@@ -131,6 +131,7 @@
 
 #define TAG_TEXTURE_4_VTX 0x2
 #define TAG_TEXTURE_4 0x3
+#define TAG_TEXTURE_4_BARRIER 0x4
 #define TAG_LOAD_STORE_4 0x5
 #define TAG_ALU_4 0x8
 #define TAG_ALU_8 0x9
