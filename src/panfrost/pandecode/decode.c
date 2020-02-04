@@ -2030,8 +2030,8 @@ pandecode_texture(mali_ptr u,
         /* Miptree for each face */
         if (f.type == MALI_TEX_CUBE)
                 bitmap_count *= 6;
-        else if (f.type == MALI_TEX_3D)
-                bitmap_count *= t->depth;
+        else if (f.type == MALI_TEX_3D && f.layout == MALI_TEXTURE_LINEAR)
+                bitmap_count *= (t->depth + 1);
 
         /* Array of textures */
         bitmap_count *= (t->array_size + 1);
