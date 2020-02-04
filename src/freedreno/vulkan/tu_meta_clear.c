@@ -43,7 +43,7 @@ clear_image(struct tu_cmd_buffer *cmdbuf,
       if (image->type == VK_IMAGE_TYPE_3D)
          layer_count = u_minify(image->extent.depth, range->baseMipLevel + j);
 
-      tu_blit(cmdbuf, &(struct tu_blit) {
+      tu_blit(cmdbuf, &cmdbuf->cs, &(struct tu_blit) {
          .dst = tu_blit_surf_whole(image, range->baseMipLevel + j, range->baseArrayLayer),
          .layers = layer_count,
          .clear_value = {clear_value[0], clear_value[1], clear_value[2], clear_value[3]},

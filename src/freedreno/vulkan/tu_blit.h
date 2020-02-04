@@ -120,6 +120,7 @@ struct tu_blit {
    enum tu_blit_type type;
 };
 
-void tu_blit(struct tu_cmd_buffer *cmdbuf, struct tu_blit *blt);
+void tu_blit(struct tu_cmd_buffer *cmdbuf, struct tu_cs *cs,
+             struct tu_blit *blt);
 
 #endif /* TU_BLIT_H */

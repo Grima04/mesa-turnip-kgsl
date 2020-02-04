@@ -17,7 +17,7 @@ tu_CmdFillBuffer(VkCommandBuffer commandBuffer,
 
    tu_bo_list_add(&cmd->bo_list, buffer->bo, MSM_SUBMIT_BO_WRITE);
 
-   tu_blit(cmd, &(struct tu_blit) {
+   tu_blit(cmd, &cmd->cs, &(struct tu_blit) {
       .dst = {
          .fmt = VK_FORMAT_R32_UINT,
          .va = tu_buffer_iova(buffer) + dstOffset,
@@ -53,7 +53,7 @@ tu_CmdUpdateBuffer(VkCommandBuffer commandBuffer,
 
    memcpy(tmp.map, pData, dataSize);
 
-   tu_blit(cmd, &(struct tu_blit) {
+   tu_blit(cmd, &cmd->cs, &(struct tu_blit) {
       .dst = {
          .fmt = VK_FORMAT_R32_UINT,
          .va = tu_buffer_iova(buffer) + dstOffset,

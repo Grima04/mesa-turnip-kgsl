@@ -79,10 +79,10 @@ blit_image_info(const struct tu_blit_surf *img, bool src, bool stencil_read)
 }
 
 static void
-emit_blit_step(struct tu_cmd_buffer *cmdbuf, const struct tu_blit *blt)
+emit_blit_step(struct tu_cmd_buffer *cmdbuf, struct tu_cs *cs,
+               const struct tu_blit *blt)
 {
    struct tu_physical_device *phys_dev = cmdbuf->device->physical_device;
-   struct tu_cs *cs = &cmdbuf->cs;
 
    tu_cs_reserve_space(cmdbuf->device, cs, 66);
 
@@ -104,11 +104,11 @@ emit_blit_step(struct tu_cmd_buffer *cmdbuf, const struct tu_blit *blt)
                         A6XX_RB_2D_BLIT_CNTL_MASK(0xf) |
                         A6XX_RB_2D_BLIT_CNTL_IFMT(ifmt);
 
-   tu_cs_emit_pkt4(&cmdbuf->cs, REG_A6XX_RB_2D_BLIT_CNTL, 1);
-   tu_cs_emit(&cmdbuf->cs, blit_cntl);
+   tu_cs_emit_pkt4(cs, REG_A6XX_RB_2D_BLIT_CNTL, 1);
+   tu_cs_emit(cs, blit_cntl);
 
-   tu_cs_emit_pkt4(&cmdbuf->cs, REG_A6XX_GRAS_2D_BLIT_CNTL, 1);
-   tu_cs_emit(&cmdbuf->cs, blit_cntl);
+   tu_cs_emit_pkt4(cs, REG_A6XX_GRAS_2D_BLIT_CNTL, 1);
+   tu_cs_emit(cs, blit_cntl);
 
    /*
     * Emit source:
@@ -213,7 +213,8 @@ emit_blit_step(struct tu_cmd_buffer *cmdbuf, const struct tu_blit *blt)
    tu_cs_emit(cs, 0);
 }
 
-void tu_blit(struct tu_cmd_buffer *cmdbuf, struct tu_blit *blt)
+void tu_blit(struct tu_cmd_buffer *cmdbuf, struct tu_cs *cs,
+             struct tu_blit *blt)
 {
    switch (blt->type) {
    case TU_BLIT_COPY:
@@ -274,17 +275,17 @@ void tu_blit(struct tu_cmd_buffer *cmdbuf, struct tu_blit *blt)
       assert(blt->dst.samples == 1);
    }
 
-   tu_cs_reserve_space(cmdbuf->device, &cmdbuf->cs, 18);
+   tu_cs_reserve_space(cmdbuf->device, cs, 18);
 
-   tu6_emit_event_write(cmdbuf, &cmdbuf->cs, LRZ_FLUSH, false);
-   tu6_emit_event_write(cmdbuf, &cmdbuf->cs, 0x1d, true);
-   tu6_emit_event_write(cmdbuf, &cmdbuf->cs, FACENESS_FLUSH, true);
-   tu6_emit_event_write(cmdbuf, &cmdbuf->cs, PC_CCU_INVALIDATE_COLOR, false);
-   tu6_emit_event_write(cmdbuf, &cmdbuf->cs, PC_CCU_INVALIDATE_DEPTH, false);
+   tu6_emit_event_write(cmdbuf, cs, LRZ_FLUSH, false);
+   tu6_emit_event_write(cmdbuf, cs, 0x1d, true);
+   tu6_emit_event_write(cmdbuf, cs, FACENESS_FLUSH, true);
+   tu6_emit_event_write(cmdbuf, cs, PC_CCU_INVALIDATE_COLOR, false);
+   tu6_emit_event_write(cmdbuf, cs, PC_CCU_INVALIDATE_DEPTH, false);
 
    /* buffer copy setup */
-   tu_cs_emit_pkt7(&cmdbuf->cs, CP_SET_MARKER, 1);
-   tu_cs_emit(&cmdbuf->cs, A6XX_CP_SET_MARKER_0_MODE(RM6_BLIT2DSCALE));
+   tu_cs_emit_pkt7(cs, CP_SET_MARKER, 1);
+   tu_cs_emit(cs, A6XX_CP_SET_MARKER_0_MODE(RM6_BLIT2DSCALE));
 
    for (unsigned layer = 0; layer < blt->layers; layer++) {
       if (blt->buffer) {
@@ -304,7 +305,7 @@ void tu_blit(struct tu_cmd_buffer *cmdbuf, struct tu_blit *blt)
 
             line_blt.src.width = line_blt.dst.width = tmp;
 
-            emit_blit_step(cmdbuf, &line_blt);
+            emit_blit_step(cmdbuf, cs, &line_blt);
 
             src_va += tmp * blocksize;
             dst_va += tmp * blocksize;
@@ -325,7 +326,7 @@ void tu_blit(struct tu_cmd_buffer *cmdbuf, struct tu_blit *blt)
             line_blt.src.x = blt->src.x + (src_va & 63) / vk_format_get_blocksize(blt->src.fmt);
             line_blt.src.va = src_va & ~63;
 
-            emit_blit_step(cmdbuf, &line_blt);
+            emit_blit_step(cmdbuf, cs, &line_blt);
 
             line_blt.dst.y++;
             src_va += blt->src.pitch;
@@ -345,13 +346,13 @@ void tu_blit(struct tu_cmd_buffer *cmdbuf, struct tu_blit *blt)
             line_blt.dst.x = blt->dst.x + (dst_va & 63) / vk_format_get_blocksize(blt->dst.fmt);
             line_blt.dst.va = dst_va & ~63;
 
-            emit_blit_step(cmdbuf, &line_blt);
+            emit_blit_step(cmdbuf, cs, &line_blt);
 
             line_blt.src.y++;
             dst_va += blt->dst.pitch;
          }
       } else {
-         emit_blit_step(cmdbuf, blt);
+         emit_blit_step(cmdbuf, cs, blt);
       }
       blt->dst.va += blt->dst.layer_size;
       blt->src.va += blt->src.layer_size;
@@ -359,10 +360,10 @@ void tu_blit(struct tu_cmd_buffer *cmdbuf, struct tu_blit *blt)
       blt->src.ubwc_va += blt->src.ubwc_size;
    }
 
-   tu_cs_reserve_space(cmdbuf->device, &cmdbuf->cs, 17);
+   tu_cs_reserve_space(cmdbuf->device, cs, 17);
 
-   tu6_emit_event_write(cmdbuf, &cmdbuf->cs, 0x1d, true);
-   tu6_emit_event_write(cmdbuf, &cmdbuf->cs, FACENESS_FLUSH, true);
-   tu6_emit_event_write(cmdbuf, &cmdbuf->cs, CACHE_FLUSH_TS, true);
-   tu6_emit_event_write(cmdbuf, &cmdbuf->cs, CACHE_INVALIDATE, false);
+   tu6_emit_event_write(cmdbuf, cs, 0x1d, true);
+   tu6_emit_event_write(cmdbuf, cs, FACENESS_FLUSH, true);
+   tu6_emit_event_write(cmdbuf, cs, CACHE_FLUSH_TS, true);
+   tu6_emit_event_write(cmdbuf, cs, CACHE_INVALIDATE, false);
 }
