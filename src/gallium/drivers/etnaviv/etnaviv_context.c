@@ -57,6 +57,36 @@
 
 #include "hw/common.xml.h"
 
+static inline void
+etna_emit_nop_with_data(struct etna_cmd_stream *stream, uint32_t value)
+{
+   etna_cmd_stream_emit(stream, VIV_FE_NOP_HEADER_OP_NOP);
+   etna_cmd_stream_emit(stream, value);
+}
+
+static void
+etna_emit_string_marker(struct pipe_context *pctx, const char *string, int len)
+{
+   struct etna_context *ctx = etna_context(pctx);
+   struct etna_cmd_stream *stream = ctx->stream;
+   const uint32_t *buf = (const void *)string;
+
+   etna_cmd_stream_reserve(stream, len * 2);
+
+   while (len >= 4) {
+      etna_emit_nop_with_data(stream, *buf);
+      buf++;
+      len -= 4;
+   }
+
+   /* copy remainder bytes without reading past end of input string */
+   if (len > 0) {
+      uint32_t w = 0;
+      memcpy(&w, buf, len);
+      etna_emit_nop_with_data(stream, w);
+   }
+}
+
 static void
 etna_context_destroy(struct pipe_context *pctx)
 {
@@ -561,6 +591,7 @@ etna_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    pctx->set_debug_callback = etna_set_debug_callback;
    pctx->create_fence_fd = etna_create_fence_fd;
    pctx->fence_server_sync = etna_fence_server_sync;
+   pctx->emit_string_marker = etna_emit_string_marker;
 
    /* creation of compile states */
    pctx->create_blend_state = etna_blend_state_create;
