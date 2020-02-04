@@ -369,7 +369,7 @@ type_to_dim(enum glsl_sampler_dim gdim, bool *is_ms)
    case GLSL_SAMPLER_DIM_CUBE:
       return SpvDimCube;
    case GLSL_SAMPLER_DIM_RECT:
-      return SpvDimRect;
+      return SpvDim2D;
    case GLSL_SAMPLER_DIM_BUF:
       return SpvDimBuffer;
    case GLSL_SAMPLER_DIM_EXTERNAL:
