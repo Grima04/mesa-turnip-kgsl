@@ -120,13 +120,14 @@ struct lima_render_state {
 
 
 /* plbu commands */
-#define PLBU_CMD_BEGIN(max) { \
+#define PLBU_CMD_BEGIN(array, max) { \
    int i = 0, max_n = max; \
-   uint32_t *plbu_cmd = util_dynarray_ensure_cap(&ctx->plbu_cmd_array, ctx->plbu_cmd_array.size + max_n * 4);
+   struct util_dynarray *plbu_cmd_array = array; \
+   uint32_t *plbu_cmd = util_dynarray_ensure_cap(plbu_cmd_array, plbu_cmd_array->size + max_n * 4);
 
 #define PLBU_CMD_END() \
    assert(i <= max_n); \
-   ctx->plbu_cmd_array.size += i * 4; \
+   plbu_cmd_array->size += i * 4; \
 }
 
 #define PLBU_CMD(v1, v2) \
@@ -171,13 +172,14 @@ struct lima_render_state {
             0x00200000 | (((mode) & 0x1F) << 16) | ((count) >> 8))
 
 /* vs commands */
-#define VS_CMD_BEGIN(max) { \
+#define VS_CMD_BEGIN(array, max) { \
    int i = 0, max_n = max; \
-   uint32_t *vs_cmd = util_dynarray_ensure_cap(&ctx->vs_cmd_array, ctx->vs_cmd_array.size + max_n * 4);
+   struct util_dynarray *vs_cmd_array = array; \
+   uint32_t *vs_cmd = util_dynarray_ensure_cap(vs_cmd_array, vs_cmd_array->size + max_n * 4);
 
 #define VS_CMD_END() \
    assert(i <= max_n); \
-   ctx->vs_cmd_array.size += i * 4; \
+   vs_cmd_array->size += i * 4; \
 }
 
 #define VS_CMD(v1, v2) \
@@ -321,7 +323,7 @@ lima_pack_reload_plbu_cmd(struct lima_context *ctx)
    lima_submit_add_bo(ctx->pp_submit, res->bo, LIMA_SUBMIT_BO_READ);
    pipe_resource_reference(&pres, NULL);
 
-   PLBU_CMD_BEGIN(20);
+   PLBU_CMD_BEGIN(&ctx->plbu_cmd_array, 20);
 
    PLBU_CMD_VIEWPORT_LEFT(0);
    PLBU_CMD_VIEWPORT_RIGHT(fui(fb->base.width));
@@ -351,7 +353,7 @@ lima_pack_head_plbu_cmd(struct lima_context *ctx)
 
    struct lima_context_framebuffer *fb = &ctx->framebuffer;
 
-   PLBU_CMD_BEGIN(10);
+   PLBU_CMD_BEGIN(&ctx->plbu_cmd_array, 10);
 
    PLBU_CMD_UNKNOWN2();
    PLBU_CMD_BLOCK_STEP(fb->shift_min, fb->shift_h, fb->shift_w);
@@ -785,7 +787,7 @@ lima_pipe_format_to_attrib_type(enum pipe_format format)
 static void
 lima_pack_vs_cmd(struct lima_context *ctx, const struct pipe_draw_info *info)
 {
-   VS_CMD_BEGIN(24);
+   VS_CMD_BEGIN(&ctx->vs_cmd_array, 24);
 
    if (!info->index_size) {
       VS_CMD_ARRAYS_SEMAPHORE_BEGIN_1();
@@ -837,7 +839,7 @@ lima_pack_plbu_cmd(struct lima_context *ctx, const struct pipe_draw_info *info)
    if (lima_is_scissor_zero(ctx))
       return;
 
-   PLBU_CMD_BEGIN(32);
+   PLBU_CMD_BEGIN(&ctx->plbu_cmd_array, 32);
 
    PLBU_CMD_VIEWPORT_LEFT(fui(ctx->viewport.left));
    PLBU_CMD_VIEWPORT_RIGHT(fui(ctx->viewport.right));
