@@ -870,6 +870,12 @@ v3dv_dynamic_state_mask(VkDynamicState state)
       return V3DV_DYNAMIC_VIEWPORT;
    case VK_DYNAMIC_STATE_SCISSOR:
       return V3DV_DYNAMIC_SCISSOR;
+   case VK_DYNAMIC_STATE_STENCIL_COMPARE_MASK:
+      return V3DV_DYNAMIC_STENCIL_COMPARE_MASK;
+   case VK_DYNAMIC_STATE_STENCIL_WRITE_MASK:
+      return V3DV_DYNAMIC_STENCIL_WRITE_MASK;
+   case VK_DYNAMIC_STATE_STENCIL_REFERENCE:
+      return V3DV_DYNAMIC_STENCIL_REFERENCE;
    default:
       unreachable("Unhandled dynamic state");
    }
@@ -934,6 +940,27 @@ pipeline_init_dynamic_state(struct v3dv_pipeline *pipeline,
                       pCreateInfo->pViewportState->pScissors,
                       pCreateInfo->pViewportState->scissorCount);
       }
+   }
+
+   if (needed_states & V3DV_DYNAMIC_STENCIL_COMPARE_MASK) {
+      dynamic->stencil_compare_mask.front =
+         pCreateInfo->pDepthStencilState->front.compareMask;
+      dynamic->stencil_compare_mask.back =
+         pCreateInfo->pDepthStencilState->back.compareMask;
+   }
+
+   if (needed_states & V3DV_DYNAMIC_STENCIL_WRITE_MASK) {
+      dynamic->stencil_write_mask.front =
+         pCreateInfo->pDepthStencilState->front.writeMask;
+      dynamic->stencil_write_mask.back =
+         pCreateInfo->pDepthStencilState->back.writeMask;
+   }
+
+   if (needed_states & V3DV_DYNAMIC_STENCIL_REFERENCE) {
+      dynamic->stencil_reference.front =
+         pCreateInfo->pDepthStencilState->front.reference;
+      dynamic->stencil_reference.back =
+         pCreateInfo->pDepthStencilState->back.reference;
    }
 
    pipeline->dynamic_state.mask = states;
@@ -1022,7 +1049,8 @@ translate_stencil_op(enum pipe_stencil_op op)
 }
 
 static void
-pack_single_stencil_cfg(uint8_t *stencil_cfg,
+pack_single_stencil_cfg(struct v3dv_pipeline *pipeline,
+                        uint8_t *stencil_cfg,
                         bool is_front,
                         bool is_back,
                         const VkStencilOpState *stencil_state)
@@ -1037,10 +1065,22 @@ pack_single_stencil_cfg(uint8_t *stencil_cfg,
     *
     * In our case, 's' is always 8, so we clamp to that to prevent our packing
     * functions to assert in debug mode if they see larger values.
+    *
+    * If we have dynamic state we need to make sure we set the corresponding
+    * state bits to 0, since cl_emit_with_prepacked ORs the new value with
+    * the old.
     */
-   const uint8_t write_mask = stencil_state->writeMask & 0xff;
-   const uint8_t compare_mask = stencil_state->compareMask & 0xff;
-   const uint8_t reference = stencil_state->reference & 0xff;
+   const uint8_t write_mask =
+      pipeline->dynamic_state.mask & V3DV_DYNAMIC_STENCIL_WRITE_MASK ?
+         stencil_state->writeMask & 0xff : 0;
+
+   const uint8_t compare_mask =
+      pipeline->dynamic_state.mask & V3DV_DYNAMIC_STENCIL_COMPARE_MASK ?
+         stencil_state->compareMask & 0xff : 0;
+
+   const uint8_t reference =
+      pipeline->dynamic_state.mask & V3DV_DYNAMIC_STENCIL_COMPARE_MASK ?
+         stencil_state->reference & 0xff : 0;
 
    v3dv_pack(stencil_cfg, STENCIL_CFG, config) {
       config.front_config = is_front;
@@ -1064,18 +1104,31 @@ pack_stencil_cfg(struct v3dv_pipeline *pipeline,
    if (!ds_info || !ds_info->stencilTestEnable)
       return;
 
+   const uint32_t dynamic_stencil_states = V3DV_DYNAMIC_STENCIL_COMPARE_MASK |
+                                           V3DV_DYNAMIC_STENCIL_WRITE_MASK |
+                                           V3DV_DYNAMIC_STENCIL_REFERENCE;
+
+
+   /* If front != back or we have dynamic stencil state we can't emit a single
+    * packet for both faces.
+    */
+   bool needs_front_and_back = false;
+   if (!(pipeline->dynamic_state.mask & dynamic_stencil_states) ||
+       memcmp(&ds_info->front, &ds_info->back, sizeof(ds_info->front)))
+      needs_front_and_back = true;
+
    /* If the front and back configurations are the same we can emit both with
     * a single packet.
     */
    pipeline->emit_stencil_cfg[0] = true;
-   if (memcmp(&ds_info->front, &ds_info->back, sizeof(ds_info->front)) == 0) {
-      pack_single_stencil_cfg(pipeline->stencil_cfg[0],
+   if (!needs_front_and_back) {
+      pack_single_stencil_cfg(pipeline, pipeline->stencil_cfg[0],
                               true, true, &ds_info->front);
    } else {
       pipeline->emit_stencil_cfg[1] = true;
-      pack_single_stencil_cfg(pipeline->stencil_cfg[0],
+      pack_single_stencil_cfg(pipeline, pipeline->stencil_cfg[0],
                               true, false, &ds_info->front);
-      pack_single_stencil_cfg(pipeline->stencil_cfg[1],
+      pack_single_stencil_cfg(pipeline, pipeline->stencil_cfg[1],
                               false, true, &ds_info->back);
    }
 }

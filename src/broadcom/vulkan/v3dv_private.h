@@ -434,7 +434,10 @@ struct v3dv_scissor_state {
 enum v3dv_dynamic_state_bits {
    V3DV_DYNAMIC_VIEWPORT                  = 1 << 0,
    V3DV_DYNAMIC_SCISSOR                   = 1 << 1,
-   V3DV_DYNAMIC_ALL                       = (1 << 2) - 1,
+   V3DV_DYNAMIC_STENCIL_COMPARE_MASK      = 1 << 2,
+   V3DV_DYNAMIC_STENCIL_WRITE_MASK        = 1 << 3,
+   V3DV_DYNAMIC_STENCIL_REFERENCE         = 1 << 4,
+   V3DV_DYNAMIC_ALL                       = (1 << 5) - 1,
 };
 
 /* To track which cmd buffer elements are "dirty" so would need an
@@ -444,9 +447,13 @@ enum v3dv_dynamic_state_bits {
 enum v3dv_cmd_dirty_bits {
    V3DV_CMD_DIRTY_DYNAMIC_VIEWPORT                  = 1 << 0,
    V3DV_CMD_DIRTY_DYNAMIC_SCISSOR                   = 1 << 1,
-   V3DV_CMD_DIRTY_DYNAMIC_ALL                       = (1 << 2) - 1,
-   V3DV_CMD_DIRTY_PIPELINE                          = 1 << 2,
-   V3DV_CMD_DIRTY_VERTEX_BUFFER                     = 1 << 3,
+   V3DV_CMD_DIRTY_DYNAMIC_STENCIL_COMPARE_MASK      = 1 << 2,
+   V3DV_CMD_DIRTY_DYNAMIC_STENCIL_WRITE_MASK        = 1 << 3,
+   V3DV_CMD_DIRTY_DYNAMIC_STENCIL_REFERENCE         = 1 << 4,
+   V3DV_CMD_DIRTY_DYNAMIC_ALL                       = (1 << 5) - 1,
+
+   V3DV_CMD_DIRTY_PIPELINE                          = 1 << 5,
+   V3DV_CMD_DIRTY_VERTEX_BUFFER                     = 1 << 6,
 };
 
 
@@ -460,6 +467,21 @@ struct v3dv_dynamic_state {
    struct v3dv_viewport_state viewport;
 
    struct v3dv_scissor_state scissor;
+
+   struct {
+      uint32_t front;
+      uint32_t back;
+   } stencil_compare_mask;
+
+   struct {
+      uint32_t front;
+      uint32_t back;
+   } stencil_write_mask;
+
+   struct {
+      uint32_t front;
+      uint32_t back;
+   } stencil_reference;
 };
 
 extern const struct v3dv_dynamic_state default_dynamic_state;

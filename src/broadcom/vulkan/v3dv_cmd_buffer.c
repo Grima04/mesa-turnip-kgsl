@@ -33,6 +33,21 @@ const struct v3dv_dynamic_state default_dynamic_state = {
    .scissor = {
       .count = 0,
    },
+   .stencil_compare_mask =
+   {
+     .front = ~0u,
+     .back = ~0u,
+   },
+   .stencil_write_mask =
+   {
+     .front = ~0u,
+     .back = ~0u,
+   },
+   .stencil_reference =
+   {
+     .front = 0u,
+     .back = 0u,
+   },
 };
 
 void
@@ -1412,6 +1427,30 @@ bind_dynamic_state(struct v3dv_cmd_buffer *cmd_buffer,
       }
    }
 
+   if (copy_mask & V3DV_DYNAMIC_STENCIL_COMPARE_MASK) {
+      if (memcmp(&dest->stencil_compare_mask, &src->stencil_compare_mask,
+                 sizeof(src->stencil_compare_mask))) {
+         dest->stencil_compare_mask = src->stencil_compare_mask;
+         dest_mask |= V3DV_DYNAMIC_STENCIL_COMPARE_MASK;
+      }
+   }
+
+   if (copy_mask & V3DV_DYNAMIC_STENCIL_WRITE_MASK) {
+      if (memcmp(&dest->stencil_write_mask, &src->stencil_write_mask,
+                 sizeof(src->stencil_write_mask))) {
+         dest->stencil_write_mask = src->stencil_write_mask;
+         dest_mask |= V3DV_DYNAMIC_STENCIL_WRITE_MASK;
+      }
+   }
+
+   if (copy_mask & V3DV_DYNAMIC_STENCIL_REFERENCE) {
+      if (memcmp(&dest->stencil_reference, &src->stencil_reference,
+                 sizeof(src->stencil_reference))) {
+         dest->stencil_reference = src->stencil_reference;
+         dest_mask |= V3DV_DYNAMIC_STENCIL_REFERENCE;
+      }
+   }
+
    cmd_buffer->state.dirty |= dest_mask;
 }
 
@@ -1687,6 +1726,51 @@ emit_viewport(struct v3dv_cmd_buffer *cmd_buffer)
 }
 
 static void
+emit_stencil(struct v3dv_cmd_buffer *cmd_buffer)
+{
+   struct v3dv_job *job = cmd_buffer->state.job;
+   assert(job);
+
+   struct v3dv_pipeline *pipeline = cmd_buffer->state.pipeline;
+   struct v3dv_dynamic_state *dynamic_state = &cmd_buffer->state.dynamic;
+
+   const uint32_t dynamic_stencil_states = V3DV_DYNAMIC_STENCIL_COMPARE_MASK |
+                                           V3DV_DYNAMIC_STENCIL_WRITE_MASK |
+                                           V3DV_DYNAMIC_STENCIL_REFERENCE;
+
+   for (uint32_t i = 0; i < 2; i++) {
+      if (pipeline->emit_stencil_cfg[i]) {
+         /* Our dynamic state bits signal whether a particular state is
+          * taken from the static pipeline definition (so it is not dynamic).
+          */
+         if (!(dynamic_state->mask & dynamic_stencil_states)) {
+            /* At least one of the stencil states is dynamic */
+            cl_emit_with_prepacked(&job->bcl, STENCIL_CFG,
+                                   pipeline->stencil_cfg[i], config) {
+               if (!(dynamic_state->mask & V3DV_DYNAMIC_STENCIL_COMPARE_MASK)) {
+                  config.stencil_test_mask =
+                     i == 0 ? dynamic_state->stencil_compare_mask.front :
+                              dynamic_state->stencil_compare_mask.back;
+               }
+               if (!(dynamic_state->mask & V3DV_DYNAMIC_STENCIL_WRITE_MASK)) {
+                  config.stencil_write_mask =
+                     i == 0 ? dynamic_state->stencil_write_mask.front :
+                              dynamic_state->stencil_write_mask.back;
+               }
+               if (!(dynamic_state->mask & V3DV_DYNAMIC_STENCIL_REFERENCE)) {
+                  config.stencil_ref_value =
+                     i == 0 ? dynamic_state->stencil_reference.front :
+                              dynamic_state->stencil_reference.back;
+               }
+            }
+         } else {
+            cl_emit_prepacked(&job->bcl, &pipeline->stencil_cfg[i]);
+         }
+      }
+   }
+}
+
+static void
 cmd_buffer_emit_graphics_pipeline(struct v3dv_cmd_buffer *cmd_buffer)
 {
    struct v3dv_job *job = cmd_buffer->state.job;
@@ -1821,11 +1905,7 @@ cmd_buffer_emit_graphics_pipeline(struct v3dv_cmd_buffer *cmd_buffer)
       config.early_z_updates_enable = job->ez_state != VC5_EZ_DISABLED;
    }
 
-   if (pipeline->emit_stencil_cfg[0]) {
-      cl_emit_prepacked(&job->bcl, &pipeline->stencil_cfg[0]);
-      if (pipeline->emit_stencil_cfg[1])
-         cl_emit_prepacked(&job->bcl, &pipeline->stencil_cfg[1]);
-   }
+   emit_stencil(cmd_buffer);
 
    /* FIXME: hardcoded values */
    cl_emit(&job->bcl, ZERO_ALL_FLAT_SHADE_FLAGS, flags);
@@ -1979,4 +2059,49 @@ v3dv_CmdBindVertexBuffers(VkCommandBuffer commandBuffer,
    }
 
    cmd_buffer->state.dirty |= V3DV_CMD_DIRTY_VERTEX_BUFFER;
+}
+
+void
+v3dv_CmdSetStencilCompareMask(VkCommandBuffer commandBuffer,
+                              VkStencilFaceFlags faceMask,
+                              uint32_t compareMask)
+{
+   V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
+
+   if (faceMask & VK_STENCIL_FACE_FRONT_BIT)
+      cmd_buffer->state.dynamic.stencil_compare_mask.front = compareMask & 0xff;
+   if (faceMask & VK_STENCIL_FACE_BACK_BIT)
+      cmd_buffer->state.dynamic.stencil_compare_mask.back = compareMask & 0xff;
+
+   cmd_buffer->state.dirty |= V3DV_CMD_DIRTY_DYNAMIC_STENCIL_COMPARE_MASK;
+}
+
+void
+v3dv_CmdSetStencilWriteMask(VkCommandBuffer commandBuffer,
+                            VkStencilFaceFlags faceMask,
+                            uint32_t writeMask)
+{
+   V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
+
+   if (faceMask & VK_STENCIL_FACE_FRONT_BIT)
+      cmd_buffer->state.dynamic.stencil_write_mask.front = writeMask & 0xff;
+   if (faceMask & VK_STENCIL_FACE_BACK_BIT)
+      cmd_buffer->state.dynamic.stencil_write_mask.back = writeMask & 0xff;
+
+   cmd_buffer->state.dirty |= V3DV_CMD_DIRTY_DYNAMIC_STENCIL_WRITE_MASK;
+}
+
+void
+v3dv_CmdSetStencilReference(VkCommandBuffer commandBuffer,
+                            VkStencilFaceFlags faceMask,
+                            uint32_t reference)
+{
+   V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
+
+   if (faceMask & VK_STENCIL_FACE_FRONT_BIT)
+      cmd_buffer->state.dynamic.stencil_reference.front = reference & 0xff;
+   if (faceMask & VK_STENCIL_FACE_BACK_BIT)
+      cmd_buffer->state.dynamic.stencil_reference.back = reference & 0xff;
+
+   cmd_buffer->state.dirty |= V3DV_CMD_DIRTY_DYNAMIC_STENCIL_REFERENCE;
 }
