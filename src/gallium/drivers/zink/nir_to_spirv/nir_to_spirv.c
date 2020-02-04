@@ -331,6 +331,7 @@ emit_output(struct ntv_context *ctx, struct nir_variable *var)
          switch (var->data.location) {
          case FRAG_RESULT_COLOR:
             spirv_builder_emit_location(&ctx->builder, var_id, 0);
+            spirv_builder_emit_index(&ctx->builder, var_id, var->data.index);
             break;
 
          case FRAG_RESULT_DEPTH:
