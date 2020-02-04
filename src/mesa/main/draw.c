@@ -367,7 +367,6 @@ _mesa_draw_arrays(struct gl_context *ctx, GLenum mode, GLint start,
    prim.num_instances = numInstances;
    prim.base_instance = baseInstance;
    prim.draw_id = drawID;
-   prim.is_indirect = 0;
    prim.start = start;
    prim.count = count;
 
@@ -776,7 +775,6 @@ _mesa_validated_drawrangeelements(struct gl_context *ctx, GLenum mode,
    prim.start = 0;
    prim.count = count;
    prim.indexed = 1;
-   prim.is_indirect = 0;
    prim.basevertex = basevertex;
    prim.num_instances = numInstances;
    prim.base_instance = baseInstance;
@@ -1239,7 +1237,6 @@ _mesa_validated_multidrawelements(struct gl_context *ctx, GLenum mode,
          prim[i].num_instances = 1;
          prim[i].base_instance = 0;
          prim[i].draw_id = i;
-         prim[i].is_indirect = 0;
          if (basevertex != NULL)
             prim[i].basevertex = basevertex[i];
          else
@@ -1269,7 +1266,6 @@ _mesa_validated_multidrawelements(struct gl_context *ctx, GLenum mode,
          prim[0].num_instances = 1;
          prim[0].base_instance = 0;
          prim[0].draw_id = i;
-         prim[0].is_indirect = 0;
          if (basevertex != NULL)
             prim[0].basevertex = basevertex[i];
          else
@@ -1387,7 +1383,6 @@ _mesa_draw_transform_feedback(struct gl_context *ctx, GLenum mode,
    prim.mode = mode;
    prim.num_instances = numInstances;
    prim.base_instance = 0;
-   prim.is_indirect = 0;
 
    /* Maybe we should do some primitive splitting for primitive restart
     * (like in DrawArrays), but we have no way to know how many vertices
@@ -2093,7 +2088,6 @@ draw_indirect(struct gl_context *ctx, GLuint mode,
       prim[i].mode = mode;
       prim[i].indexed = !!ib;
       prim[i].indirect_offset = indirect_offset;
-      prim[i].is_indirect = 1;
       prim[i].draw_id = i;
    }
 

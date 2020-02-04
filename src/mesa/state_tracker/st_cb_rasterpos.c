@@ -213,7 +213,6 @@ new_draw_rastpos_stage(struct gl_context *ctx, struct draw_context *draw)
    rs->prim.pad = 0;
    rs->prim.num_instances = 1;
    rs->prim.base_instance = 0;
-   rs->prim.is_indirect = 0;
 
    return rs;
 }

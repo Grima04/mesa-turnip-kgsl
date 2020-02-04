@@ -742,7 +742,6 @@ wrap_buffers(struct gl_context *ctx)
    save->prims[0].count = 0;
    save->prims[0].num_instances = 1;
    save->prims[0].base_instance = 0;
-   save->prims[0].is_indirect = 0;
    save->prim_count = 1;
 }
 
@@ -1223,7 +1222,6 @@ vbo_save_NotifyBegin(struct gl_context *ctx, GLenum mode,
    save->prims[i].count = 0;
    save->prims[i].num_instances = 1;
    save->prims[i].base_instance = 0;
-   save->prims[i].is_indirect = 0;
 
    save->no_current_update = no_current_update;
 

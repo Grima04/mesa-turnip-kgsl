@@ -198,7 +198,6 @@ vbo_sw_primitive_restart(struct gl_context *ctx,
                         ADD_POINTERS(indirect->Mappings[MAP_INTERNAL].Pointer,
                                      new_prim.indirect_offset);
 
-      new_prim.is_indirect = 0;
       new_prim.count = indirect_params[0];
       new_prim.num_instances = indirect_params[1];
       new_prim.start = indirect_params[2];
