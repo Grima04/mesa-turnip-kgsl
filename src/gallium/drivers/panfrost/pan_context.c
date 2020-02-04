@@ -589,9 +589,8 @@ panfrost_upload_tex(
                 for (unsigned l = first_level; l <= last_level; ++l) {
                         for (unsigned f = first_face; f <= last_face; ++f) {
                                 pointers_and_strides[idx++] =
-                                        panfrost_get_texture_address(rsrc, l, w*face_mult + f)
+                                        panfrost_get_texture_address(rsrc, l, w * face_mult + f)
                                                 + afbc_bit + view->astc_stretch;
-
                                 if (has_manual_stride) {
                                         pointers_and_strides[idx++] =
                                                 rsrc->slices[l].stride;

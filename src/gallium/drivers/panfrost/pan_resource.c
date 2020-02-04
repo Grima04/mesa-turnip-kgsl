@@ -555,6 +555,15 @@ panfrost_resource_destroy(struct pipe_screen *screen,
         ralloc_free(rsrc);
 }
 
+static unsigned
+panfrost_get_layer_stride(struct panfrost_resource *rsrc, unsigned level)
+{
+        if (rsrc->base.target == PIPE_TEXTURE_3D)
+                return rsrc->slices[level].size0;
+        else
+                return rsrc->cubemap_stride;
+}
+
 static void *
 panfrost_transfer_map(struct pipe_context *pctx,
                       struct pipe_resource *resource,
@@ -679,10 +688,7 @@ panfrost_transfer_map(struct pipe_context *pctx,
                 return transfer->map;
         } else {
                 transfer->base.stride = rsrc->slices[level].stride;
-                if (resource->target == PIPE_TEXTURE_3D)
-                        transfer->base.layer_stride = rsrc->slices[level].size0;
-                else
-                        transfer->base.layer_stride = rsrc->cubemap_stride;
+                transfer->base.layer_stride = panfrost_get_layer_stride(rsrc, level);
 
                 /* By mapping direct-write, we're implicitly already
                  * initialized (maybe), so be conservative */
@@ -830,7 +836,7 @@ panfrost_get_texture_address(
         unsigned level, unsigned face)
 {
         unsigned level_offset = rsrc->slices[level].offset;
-        unsigned face_offset = face * rsrc->cubemap_stride;
+        unsigned face_offset = face * panfrost_get_layer_stride(rsrc, level);
 
         return rsrc->bo->gpu + level_offset + face_offset;
 }
