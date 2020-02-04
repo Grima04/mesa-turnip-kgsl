@@ -398,17 +398,17 @@ void si_compute_copy_image(struct si_context *sctx,
 	assert(util_format_is_subsampled_422(src_format) ==
 	       util_format_is_subsampled_422(dst_format));
 
-	if (util_format_is_subsampled_422(src_format))
+	if (util_format_is_subsampled_422(src_format)) {
 		src_format = dst_format = PIPE_FORMAT_R32_UINT;
-
-	unsigned x_div = util_format_get_blockwidth(src->format) /
-	                 util_format_get_blockwidth(src_format);
-	assert(src_box->x % x_div == 0);
-	assert(width % x_div == 0);
-
-	unsigned data[] = {src_box->x / x_div, src_box->y, src_box->z, 0,
-	                   dstx / x_div, dsty, dstz, 0};
-	width /= x_div;
+		/* Interpreting 422 subsampled format (16 bpp) as 32 bpp
+		 * should force us to divide src_box->x, dstx and width by 2.
+		 * But given that ac_surface allocates this format as 32 bpp
+		 * and that surf_size is then modified to pack the values
+		 * we must keep the original values to get the correct results.
+		 */
+	}
+	unsigned data[] = {src_box->x, src_box->y, src_box->z, 0,
+	                   dstx, dsty, dstz, 0};
 
 	if (width == 0 || height == 0)
 		return;
