@@ -10,10 +10,11 @@
 
 #include <stdio.h>
 #include <stdbool.h>
-#include <unistd.h>
 #ifdef _MSC_VER
 #include <BaseTsd.h>
 typedef SSIZE_T ssize_t;
+#else
+#include <unistd.h>
 #endif
 
 #ifdef __cplusplus
