@@ -2690,19 +2690,19 @@ midgard_get_first_tag_from_block(compiler_context *ctx, unsigned block_idx)
 {
         midgard_block *initial_block = mir_get_block(ctx, block_idx);
 
-        unsigned first_tag = 0;
-
         mir_foreach_block_from(ctx, initial_block, v) {
                 if (v->quadword_count) {
                         midgard_bundle *initial_bundle =
                                 util_dynarray_element(&v->bundles, midgard_bundle, 0);
 
-                        first_tag = initial_bundle->tag;
-                        break;
+                        return initial_bundle->tag;
                 }
         }
 
-        return first_tag;
+        /* Default to a tag 1 which will break from the shader, in case we jump
+         * to the exit block (i.e. `return` in a compute shader) */
+
+        return 1;
 }
 
 static unsigned
