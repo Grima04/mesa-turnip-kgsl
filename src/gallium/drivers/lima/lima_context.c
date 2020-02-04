@@ -49,11 +49,9 @@ lima_ctx_buff_va(struct lima_context *ctx, enum lima_ctx_buff buff)
 {
    struct lima_ctx_buff_state *cbs = ctx->buffer_state + buff;
    struct lima_resource *res = lima_resource(cbs->res);
+   int pipe = buff < lima_ctx_buff_num_gp ? LIMA_PIPE_GP : LIMA_PIPE_PP;
 
-   if (buff < lima_ctx_buff_num_gp)
-      lima_submit_add_bo(ctx->gp_submit, res->bo, LIMA_SUBMIT_BO_READ);
-   else
-      lima_submit_add_bo(ctx->pp_submit, res->bo, LIMA_SUBMIT_BO_READ);
+   lima_submit_add_bo(ctx->submit, pipe, res->bo, LIMA_SUBMIT_BO_READ);
 
    return res->bo->va + cbs->offset;
 }
@@ -125,10 +123,8 @@ lima_context_destroy(struct pipe_context *pctx)
 
    lima_submit_fini(ctx);
 
-   if (ctx->pp_submit)
-      lima_submit_free(ctx->pp_submit);
-   if (ctx->gp_submit)
-      lima_submit_free(ctx->gp_submit);
+   if (ctx->submit)
+      lima_submit_free(ctx->submit);
 
    for (int i = 0; i < lima_ctx_buff_num; i++)
       pipe_resource_reference(&ctx->buffer_state[i].res, NULL);
@@ -283,12 +279,8 @@ lima_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
          goto err_out;
    }
 
-   ctx->gp_submit = lima_submit_create(ctx, LIMA_PIPE_GP);
-   if (!ctx->gp_submit)
-      goto err_out;
-
-   ctx->pp_submit = lima_submit_create(ctx, LIMA_PIPE_PP);
-   if (!ctx->pp_submit)
+   ctx->submit = lima_submit_create(ctx);
+   if (!ctx->submit)
       goto err_out;
 
    if (!lima_submit_init(ctx))
@@ -304,6 +296,5 @@ err_out:
 bool
 lima_need_flush(struct lima_context *ctx, struct lima_bo *bo, bool write)
 {
-   return lima_submit_has_bo(ctx->gp_submit, bo, write) ||
-      lima_submit_has_bo(ctx->pp_submit, bo, write);
+   return lima_submit_has_bo(ctx->submit, bo, write);
 }

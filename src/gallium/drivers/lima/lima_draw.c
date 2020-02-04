@@ -321,7 +321,7 @@ lima_pack_reload_plbu_cmd(struct lima_context *ctx)
    memcpy(cpu + lima_reload_varying_offset, reload_varying,
           sizeof(reload_varying));
 
-   lima_submit_add_bo(ctx->pp_submit, res->bo, LIMA_SUBMIT_BO_READ);
+   lima_submit_add_bo(ctx->submit, LIMA_PIPE_PP, res->bo, LIMA_SUBMIT_BO_READ);
    pipe_resource_reference(&pres, NULL);
 
    PLBU_CMD_BEGIN(&ctx->plbu_cmd_head, 20);
@@ -572,7 +572,7 @@ lima_update_damage_pp_stream(struct lima_context *ctx)
 
    lima_generate_pp_stream(ctx, bound.minx, bound.miny, tiled_w, tiled_h);
 
-   lima_submit_add_bo(ctx->pp_submit, res->bo, LIMA_SUBMIT_BO_READ);
+   lima_submit_add_bo(ctx->submit, LIMA_PIPE_PP, res->bo, LIMA_SUBMIT_BO_READ);
    pipe_resource_reference(&pres, NULL);
 }
 
@@ -609,7 +609,7 @@ lima_update_full_pp_stream(struct lima_context *ctx)
       lima_generate_pp_stream(ctx, 0, 0, fb->tiled_w, fb->tiled_h);
    }
 
-   lima_submit_add_bo(ctx->pp_submit, s->bo, LIMA_SUBMIT_BO_READ);
+   lima_submit_add_bo(ctx->submit, LIMA_PIPE_PP, s->bo, LIMA_SUBMIT_BO_READ);
 }
 
 static bool
@@ -642,14 +642,14 @@ lima_update_submit_wb(struct lima_context *ctx, unsigned buffers)
    if (fb->base.nr_cbufs && (buffers & PIPE_CLEAR_COLOR0) &&
        !(ctx->resolve & PIPE_CLEAR_COLOR0)) {
       struct lima_resource *res = lima_resource(fb->base.cbufs[0]->texture);
-      lima_submit_add_bo(ctx->pp_submit, res->bo, LIMA_SUBMIT_BO_WRITE);
+      lima_submit_add_bo(ctx->submit, LIMA_PIPE_PP, res->bo, LIMA_SUBMIT_BO_WRITE);
    }
 
    /* add to submit when the buffer is dirty and resolve is clear (not added before) */
    if (fb->base.zsbuf && (buffers & (PIPE_CLEAR_DEPTH | PIPE_CLEAR_STENCIL)) &&
        !(ctx->resolve & (PIPE_CLEAR_DEPTH | PIPE_CLEAR_STENCIL))) {
       struct lima_resource *res = lima_resource(fb->base.zsbuf->texture);
-      lima_submit_add_bo(ctx->pp_submit, res->bo, LIMA_SUBMIT_BO_WRITE);
+      lima_submit_add_bo(ctx->submit, LIMA_PIPE_PP, res->bo, LIMA_SUBMIT_BO_WRITE);
    }
 
    ctx->resolve |= buffers;
@@ -658,20 +658,25 @@ lima_update_submit_wb(struct lima_context *ctx, unsigned buffers)
 static void
 lima_update_submit_bo(struct lima_context *ctx)
 {
-   lima_submit_add_bo(ctx->gp_submit, ctx->plb_gp_stream, LIMA_SUBMIT_BO_READ);
-   lima_submit_add_bo(ctx->gp_submit, ctx->plb[ctx->plb_index], LIMA_SUBMIT_BO_WRITE);
-   lima_submit_add_bo(ctx->gp_submit, ctx->gp_tile_heap[ctx->plb_index], LIMA_SUBMIT_BO_WRITE);
+   lima_submit_add_bo(ctx->submit, LIMA_PIPE_GP, ctx->plb_gp_stream,
+                      LIMA_SUBMIT_BO_READ);
+   lima_submit_add_bo(ctx->submit, LIMA_PIPE_GP, ctx->plb[ctx->plb_index],
+                      LIMA_SUBMIT_BO_WRITE);
+   lima_submit_add_bo(ctx->submit, LIMA_PIPE_GP, ctx->gp_tile_heap[ctx->plb_index],
+                      LIMA_SUBMIT_BO_WRITE);
 
    lima_dump_command_stream_print(
       ctx->plb_gp_stream->map + ctx->plb_index * ctx->plb_gp_size,
       ctx->plb_gp_size, false, "gp plb stream at va %x\n",
       ctx->plb_gp_stream->va + ctx->plb_index * ctx->plb_gp_size);
 
-   lima_submit_add_bo(ctx->pp_submit, ctx->plb[ctx->plb_index], LIMA_SUBMIT_BO_READ);
-   lima_submit_add_bo(ctx->pp_submit, ctx->gp_tile_heap[ctx->plb_index], LIMA_SUBMIT_BO_READ);
+   lima_submit_add_bo(ctx->submit, LIMA_PIPE_PP, ctx->plb[ctx->plb_index],
+                      LIMA_SUBMIT_BO_READ);
+   lima_submit_add_bo(ctx->submit, LIMA_PIPE_PP, ctx->gp_tile_heap[ctx->plb_index],
+                      LIMA_SUBMIT_BO_READ);
 
    struct lima_screen *screen = lima_screen(ctx->base.screen);
-   lima_submit_add_bo(ctx->pp_submit, screen->pp_buffer, LIMA_SUBMIT_BO_READ);
+   lima_submit_add_bo(ctx->submit, LIMA_PIPE_PP, screen->pp_buffer, LIMA_SUBMIT_BO_READ);
 }
 
 static void
@@ -1353,7 +1358,7 @@ lima_update_gp_attribute_info(struct lima_context *ctx, const struct pipe_draw_i
       struct pipe_vertex_buffer *pvb = vb->vb + pve->vertex_buffer_index;
       struct lima_resource *res = lima_resource(pvb->buffer.resource);
 
-      lima_submit_add_bo(ctx->gp_submit, res->bo, LIMA_SUBMIT_BO_READ);
+      lima_submit_add_bo(ctx->submit, LIMA_PIPE_GP, res->bo, LIMA_SUBMIT_BO_READ);
 
       unsigned start = info->index_size ? (ctx->min_index + info->index_bias) : info->start;
       attribute[n++] = res->bo->va + pvb->buffer_offset + pve->src_offset
@@ -1482,8 +1487,8 @@ lima_update_varying(struct lima_context *ctx, const struct pipe_draw_info *info)
     */
    ctx->gp_output = lima_bo_create(screen, gp_output_size, 0);
    assert(ctx->gp_output);
-   lima_submit_add_bo(ctx->gp_submit, ctx->gp_output, LIMA_SUBMIT_BO_WRITE);
-   lima_submit_add_bo(ctx->pp_submit, ctx->gp_output, LIMA_SUBMIT_BO_READ);
+   lima_submit_add_bo(ctx->submit, LIMA_PIPE_GP, ctx->gp_output, LIMA_SUBMIT_BO_WRITE);
+   lima_submit_add_bo(ctx->submit, LIMA_PIPE_PP, ctx->gp_output, LIMA_SUBMIT_BO_READ);
 
    for (int i = 0; i < vs->num_outputs; i++) {
       struct lima_varying_info *v = vs->varying + i;
@@ -1591,8 +1596,8 @@ lima_draw_vbo_indexed(struct pipe_context *pctx,
       ctx->index_offset = 0;
    }
 
-   lima_submit_add_bo(ctx->gp_submit, ctx->index_res->bo, LIMA_SUBMIT_BO_READ);
-   lima_submit_add_bo(ctx->pp_submit, ctx->index_res->bo, LIMA_SUBMIT_BO_READ);
+   lima_submit_add_bo(ctx->submit, LIMA_PIPE_GP, ctx->index_res->bo, LIMA_SUBMIT_BO_READ);
+   lima_submit_add_bo(ctx->submit, LIMA_PIPE_PP, ctx->index_res->bo, LIMA_SUBMIT_BO_READ);
    lima_draw_vbo_update(pctx, info);
 
    if (indexbuf)
@@ -1654,8 +1659,8 @@ lima_draw_vbo(struct pipe_context *pctx,
       ctx->fs->bo->map, ctx->fs->shader_size, false,
       "add fs at va %x\n", ctx->fs->bo->va);
 
-   lima_submit_add_bo(ctx->gp_submit, ctx->vs->bo, LIMA_SUBMIT_BO_READ);
-   lima_submit_add_bo(ctx->pp_submit, ctx->fs->bo, LIMA_SUBMIT_BO_READ);
+   lima_submit_add_bo(ctx->submit, LIMA_PIPE_GP, ctx->vs->bo, LIMA_SUBMIT_BO_READ);
+   lima_submit_add_bo(ctx->submit, LIMA_PIPE_PP, ctx->fs->bo, LIMA_SUBMIT_BO_READ);
 
    if (info->index_size)
       lima_draw_vbo_indexed(pctx, info);
@@ -1823,11 +1828,11 @@ _lima_flush(struct lima_context *ctx, bool end_of_frame)
    lima_dump_command_stream_print(
       &gp_frame, sizeof(gp_frame), false, "add gp frame\n");
 
-   if (!lima_submit_start(ctx->gp_submit, &gp_frame, sizeof(gp_frame)))
+   if (!lima_submit_start(ctx->submit, LIMA_PIPE_GP, &gp_frame, sizeof(gp_frame)))
       fprintf(stderr, "gp submit error\n");
 
    if (lima_dump_command_stream) {
-      if (lima_submit_wait(ctx->gp_submit, PIPE_TIMEOUT_INFINITE)) {
+      if (lima_submit_wait(ctx->submit, LIMA_PIPE_GP, PIPE_TIMEOUT_INFINITE)) {
          if (ctx->gp_output) {
             float *pos = lima_bo_map(ctx->gp_output);
             lima_dump_command_stream_print(
@@ -1871,7 +1876,7 @@ _lima_flush(struct lima_context *ctx, bool end_of_frame)
       lima_dump_command_stream_print(
          &pp_frame, sizeof(pp_frame), false, "add pp frame\n");
 
-      if (!lima_submit_start(ctx->pp_submit, &pp_frame, sizeof(pp_frame)))
+      if (!lima_submit_start(ctx->submit, LIMA_PIPE_PP, &pp_frame, sizeof(pp_frame)))
          fprintf(stderr, "pp submit error\n");
    }
    else {
@@ -1902,12 +1907,12 @@ _lima_flush(struct lima_context *ctx, bool end_of_frame)
       lima_dump_command_stream_print(
          &pp_frame, sizeof(pp_frame), false, "add pp frame\n");
 
-      if (!lima_submit_start(ctx->pp_submit, &pp_frame, sizeof(pp_frame)))
+      if (!lima_submit_start(ctx->submit, LIMA_PIPE_PP, &pp_frame, sizeof(pp_frame)))
          fprintf(stderr, "pp submit error\n");
    }
 
    if (lima_dump_command_stream) {
-      if (!lima_submit_wait(ctx->pp_submit, PIPE_TIMEOUT_INFINITE)) {
+      if (!lima_submit_wait(ctx->submit, LIMA_PIPE_PP, PIPE_TIMEOUT_INFINITE)) {
          fprintf(stderr, "pp wait error\n");
          exit(1);
       }

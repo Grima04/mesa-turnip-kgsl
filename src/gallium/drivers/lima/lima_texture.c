@@ -265,7 +265,7 @@ lima_update_textures(struct lima_context *ctx)
    for (int i = 0; i < lima_tex->num_samplers; i++) {
       struct lima_sampler_view *texture = lima_sampler_view(lima_tex->textures[i]);
       struct lima_resource *rsc = lima_resource(texture->base.texture);
-      lima_submit_add_bo(ctx->pp_submit, rsc->bo, LIMA_SUBMIT_BO_READ);
+      lima_submit_add_bo(ctx->submit, LIMA_PIPE_PP, rsc->bo, LIMA_SUBMIT_BO_READ);
    }
 
    /* do not regenerate texture desc if no change */

@@ -39,17 +39,16 @@
 
 struct lima_submit {
    int fd;
-   uint32_t pipe;
    struct lima_context *ctx;
 
-   struct util_dynarray gem_bos;
-   struct util_dynarray bos;
+   struct util_dynarray gem_bos[2];
+   struct util_dynarray bos[2];
 };
 
 
 #define VOID2U64(x) ((uint64_t)(unsigned long)(x))
 
-struct lima_submit *lima_submit_create(struct lima_context *ctx, uint32_t pipe)
+struct lima_submit *lima_submit_create(struct lima_context *ctx)
 {
    struct lima_submit *s;
 
@@ -58,11 +57,12 @@ struct lima_submit *lima_submit_create(struct lima_context *ctx, uint32_t pipe)
       return NULL;
 
    s->fd = lima_screen(ctx->base.screen)->fd;
-   s->pipe = pipe;
    s->ctx = ctx;
 
-   util_dynarray_init(&s->gem_bos, s);
-   util_dynarray_init(&s->bos, s);
+   for (int i = 0; i < 2; i++) {
+      util_dynarray_init(s->gem_bos + i, s);
+      util_dynarray_init(s->bos + i, s);
+   }
 
    return s;
 }
@@ -72,9 +72,10 @@ void lima_submit_free(struct lima_submit *submit)
 
 }
 
-bool lima_submit_add_bo(struct lima_submit *submit, struct lima_bo *bo, uint32_t flags)
+bool lima_submit_add_bo(struct lima_submit *submit, int pipe,
+                        struct lima_bo *bo, uint32_t flags)
 {
-   util_dynarray_foreach(&submit->gem_bos, struct drm_lima_gem_submit_bo, gem_bo) {
+   util_dynarray_foreach(submit->gem_bos + pipe, struct drm_lima_gem_submit_bo, gem_bo) {
       if (bo->handle == gem_bo->handle) {
          gem_bo->flags |= flags;
          return true;
@@ -82,11 +83,11 @@ bool lima_submit_add_bo(struct lima_submit *submit, struct lima_bo *bo, uint32_t
    }
 
    struct drm_lima_gem_submit_bo *submit_bo =
-      util_dynarray_grow(&submit->gem_bos, struct drm_lima_gem_submit_bo, 1);
+      util_dynarray_grow(submit->gem_bos + pipe, struct drm_lima_gem_submit_bo, 1);
    submit_bo->handle = bo->handle;
    submit_bo->flags = flags;
 
-   struct lima_bo **jbo = util_dynarray_grow(&submit->bos, struct lima_bo *, 1);
+   struct lima_bo **jbo = util_dynarray_grow(submit->bos + pipe, struct lima_bo *, 1);
    *jbo = bo;
 
    /* prevent bo from being freed when submit start */
@@ -95,59 +96,61 @@ bool lima_submit_add_bo(struct lima_submit *submit, struct lima_bo *bo, uint32_t
    return true;
 }
 
-bool lima_submit_start(struct lima_submit *submit, void *frame, uint32_t size)
+bool lima_submit_start(struct lima_submit *submit, int pipe, void *frame, uint32_t size)
 {
    struct lima_context *ctx = submit->ctx;
    struct drm_lima_gem_submit req = {
       .ctx = ctx->id,
-      .pipe = submit->pipe,
-      .nr_bos = submit->gem_bos.size / sizeof(struct drm_lima_gem_submit_bo),
-      .bos = VOID2U64(util_dynarray_begin(&submit->gem_bos)),
+      .pipe = pipe,
+      .nr_bos = submit->gem_bos[pipe].size / sizeof(struct drm_lima_gem_submit_bo),
+      .bos = VOID2U64(util_dynarray_begin(submit->gem_bos + pipe)),
       .frame = VOID2U64(frame),
       .frame_size = size,
-      .out_sync = ctx->out_sync[submit->pipe],
+      .out_sync = ctx->out_sync[pipe],
    };
 
    if (ctx->in_sync_fd >= 0) {
-      int err = drmSyncobjImportSyncFile(submit->fd, ctx->in_sync[submit->pipe],
+      int err = drmSyncobjImportSyncFile(submit->fd, ctx->in_sync[pipe],
                                          ctx->in_sync_fd);
       if (err)
          return false;
 
-      req.in_sync[0] = ctx->in_sync[submit->pipe];
+      req.in_sync[0] = ctx->in_sync[pipe];
       close(ctx->in_sync_fd);
       ctx->in_sync_fd = -1;
    }
 
    bool ret = drmIoctl(submit->fd, DRM_IOCTL_LIMA_GEM_SUBMIT, &req) == 0;
 
-   util_dynarray_foreach(&submit->bos, struct lima_bo *, bo) {
+   util_dynarray_foreach(submit->bos + pipe, struct lima_bo *, bo) {
       lima_bo_unreference(*bo);
    }
 
-   util_dynarray_clear(&submit->gem_bos);
-   util_dynarray_clear(&submit->bos);
+   util_dynarray_clear(submit->gem_bos + pipe);
+   util_dynarray_clear(submit->bos + pipe);
    return ret;
 }
 
-bool lima_submit_wait(struct lima_submit *submit, uint64_t timeout_ns)
+bool lima_submit_wait(struct lima_submit *submit, int pipe, uint64_t timeout_ns)
 {
    int64_t abs_timeout = os_time_get_absolute_timeout(timeout_ns);
    if (abs_timeout == OS_TIMEOUT_INFINITE)
       abs_timeout = INT64_MAX;
 
    struct lima_context *ctx = submit->ctx;
-   return !drmSyncobjWait(submit->fd, ctx->out_sync + submit->pipe, 1, abs_timeout, 0, NULL);
+   return !drmSyncobjWait(submit->fd, ctx->out_sync + pipe, 1, abs_timeout, 0, NULL);
 }
 
 bool lima_submit_has_bo(struct lima_submit *submit, struct lima_bo *bo, bool all)
 {
-   util_dynarray_foreach(&submit->gem_bos, struct drm_lima_gem_submit_bo, gem_bo) {
-      if (bo->handle == gem_bo->handle) {
-         if (all)
-            return true;
-         else
-            return gem_bo->flags & LIMA_SUBMIT_BO_WRITE;
+   for (int i = 0; i < 2; i++) {
+      util_dynarray_foreach(submit->gem_bos + i, struct drm_lima_gem_submit_bo, gem_bo) {
+         if (bo->handle == gem_bo->handle) {
+            if (all || gem_bo->flags & LIMA_SUBMIT_BO_WRITE)
+               return true;
+            else
+               break;
+         }
       }
    }
 

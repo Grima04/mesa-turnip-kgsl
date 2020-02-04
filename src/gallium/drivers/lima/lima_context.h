@@ -241,8 +241,7 @@ struct lima_context {
    struct util_dynarray plbu_cmd_array;
    struct util_dynarray plbu_cmd_head;
 
-   struct lima_submit *gp_submit;
-   struct lima_submit *pp_submit;
+   struct lima_submit *submit;
 
    int in_sync_fd;
    uint32_t in_sync[2];
