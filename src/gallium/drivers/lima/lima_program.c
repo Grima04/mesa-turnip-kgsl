@@ -34,6 +34,7 @@
 
 #include "lima_screen.h"
 #include "lima_context.h"
+#include "lima_submit.h"
 #include "lima_program.h"
 #include "lima_bo.h"
 #include "ir/lima_ir.h"
@@ -349,7 +350,8 @@ lima_update_fs_state(struct lima_context *ctx)
       fs->shader = NULL;
    }
 
-   ctx->pp_max_stack_size = MAX2(ctx->pp_max_stack_size, ctx->fs->stack_size);
+   struct lima_submit *submit = lima_submit_get(ctx);
+   submit->pp_max_stack_size = MAX2(submit->pp_max_stack_size, ctx->fs->stack_size);
 
    return true;
 }

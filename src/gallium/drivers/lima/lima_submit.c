@@ -751,7 +751,7 @@ lima_pack_pp_frame_reg(struct lima_submit *submit, uint32_t *frame_reg,
 
    /* These are "stack size" and "stack offset" shifted,
     * here they are assumed to be always the same. */
-   frame->fragment_stack_size = ctx->pp_max_stack_size << 16 | ctx->pp_max_stack_size;
+   frame->fragment_stack_size = submit->pp_max_stack_size << 16 | submit->pp_max_stack_size;
 
    /* related with MSAA and different value when r4p0/r7p0 */
    frame->supersampled_height = fb->base.height * 2 - 1;
@@ -847,10 +847,10 @@ lima_do_submit(struct lima_submit *submit)
    }
 
    uint32_t pp_stack_va = 0;
-   if (ctx->pp_max_stack_size) {
+   if (submit->pp_max_stack_size) {
       lima_submit_create_stream_bo(
          submit, LIMA_PIPE_PP,
-         screen->num_pp * ctx->pp_max_stack_size * pp_stack_pp_size,
+         screen->num_pp * submit->pp_max_stack_size * pp_stack_pp_size,
          &pp_stack_va);
    }
 
@@ -864,9 +864,9 @@ lima_do_submit(struct lima_submit *submit)
 
       for (int i = 0; i < screen->num_pp; i++) {
          pp_frame.plbu_array_address[i] = ps->va + ps->offset[i];
-         if (ctx->pp_max_stack_size)
+         if (submit->pp_max_stack_size)
             pp_frame.fragment_stack_address[i] = pp_stack_va +
-               ctx->pp_max_stack_size * pp_stack_pp_size * i;
+               submit->pp_max_stack_size * pp_stack_pp_size * i;
       }
 
       lima_dump_command_stream_print(
@@ -880,10 +880,10 @@ lima_do_submit(struct lima_submit *submit)
       lima_pack_pp_frame_reg(submit, pp_frame.frame, pp_frame.wb);
       pp_frame.num_pp = screen->num_pp;
 
-      if (ctx->pp_max_stack_size)
+      if (submit->pp_max_stack_size)
          for (int i = 0; i < screen->num_pp; i++)
             pp_frame.fragment_stack_address[i] = pp_stack_va +
-               ctx->pp_max_stack_size * pp_stack_pp_size * i;
+               submit->pp_max_stack_size * pp_stack_pp_size * i;
 
       if (ps->map) {
          for (int i = 0; i < screen->num_pp; i++)
@@ -921,8 +921,6 @@ lima_do_submit(struct lima_submit *submit)
       struct lima_surface *surf = lima_surface(ctx->framebuffer.base.cbufs[0]);
       surf->reload = true;
    }
-
-   ctx->pp_max_stack_size = 0;
 
    ctx->damage_rect.minx = ctx->damage_rect.miny = 0xffff;
    ctx->damage_rect.maxx = ctx->damage_rect.maxy = 0;

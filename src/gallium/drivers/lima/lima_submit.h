@@ -52,6 +52,8 @@ struct lima_submit {
    struct util_dynarray plbu_cmd_head;
 
    unsigned resolve;
+
+   int pp_max_stack_size;
 };
 
 struct lima_submit *lima_submit_get(struct lima_context *ctx);
