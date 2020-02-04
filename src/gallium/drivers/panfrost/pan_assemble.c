@@ -83,8 +83,8 @@ panfrost_shader_compile(
                 memcpy(state->bo->cpu, dst, size);
                 meta->shader = state->bo->gpu | program.first_tag;
         } else {
-                /* no shader */
-                meta->shader = 0x0;
+                /* No shader. Use dummy tag to avoid INSTR_INVALID_ENC */
+                meta->shader = 0x0 | 1;
         }
 
         util_dynarray_fini(&program.compiled);
