@@ -244,6 +244,10 @@ struct lima_context {
    struct lima_submit *gp_submit;
    struct lima_submit *pp_submit;
 
+   int in_sync_fd;
+   uint32_t in_sync[2];
+   uint32_t out_sync[2];
+
    int id;
 
    struct pipe_debug_callback debug;

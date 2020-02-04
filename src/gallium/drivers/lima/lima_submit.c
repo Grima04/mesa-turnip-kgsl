@@ -25,7 +25,6 @@
 #include <string.h>
 
 #include "xf86drm.h"
-#include "libsync.h"
 #include "drm-uapi/lima_drm.h"
 
 #include "util/ralloc.h"
@@ -39,13 +38,9 @@
 #include "lima_util.h"
 
 struct lima_submit {
-   struct lima_screen *screen;
+   int fd;
    uint32_t pipe;
-   uint32_t ctx;
-
-   int in_sync_fd;
-   uint32_t in_sync;
-   uint32_t out_sync;
+   struct lima_context *ctx;
 
    struct util_dynarray gem_bos;
    struct util_dynarray bos;
@@ -62,39 +57,19 @@ struct lima_submit *lima_submit_create(struct lima_context *ctx, uint32_t pipe)
    if (!s)
       return NULL;
 
-   s->screen = lima_screen(ctx->base.screen);
+   s->fd = lima_screen(ctx->base.screen)->fd;
    s->pipe = pipe;
-   s->ctx = ctx->id;
-   s->in_sync_fd = -1;
-
-   int err = drmSyncobjCreate(s->screen->fd, DRM_SYNCOBJ_CREATE_SIGNALED,
-                              &s->out_sync);
-   if (err)
-      goto err_out0;
-
-   err = drmSyncobjCreate(s->screen->fd, DRM_SYNCOBJ_CREATE_SIGNALED,
-                          &s->in_sync);
-   if (err)
-      goto err_out1;
+   s->ctx = ctx;
 
    util_dynarray_init(&s->gem_bos, s);
    util_dynarray_init(&s->bos, s);
 
    return s;
-
-err_out1:
-   drmSyncobjDestroy(s->screen->fd, s->out_sync);
-err_out0:
-   ralloc_free(s);
-   return NULL;
 }
 
 void lima_submit_free(struct lima_submit *submit)
 {
-   if (submit->in_sync_fd >= 0)
-      close(submit->in_sync_fd);
-   drmSyncobjDestroy(submit->screen->fd, submit->in_sync);
-   drmSyncobjDestroy(submit->screen->fd, submit->out_sync);
+
 }
 
 bool lima_submit_add_bo(struct lima_submit *submit, struct lima_bo *bo, uint32_t flags)
@@ -122,28 +97,29 @@ bool lima_submit_add_bo(struct lima_submit *submit, struct lima_bo *bo, uint32_t
 
 bool lima_submit_start(struct lima_submit *submit, void *frame, uint32_t size)
 {
+   struct lima_context *ctx = submit->ctx;
    struct drm_lima_gem_submit req = {
-      .ctx = submit->ctx,
+      .ctx = ctx->id,
       .pipe = submit->pipe,
       .nr_bos = submit->gem_bos.size / sizeof(struct drm_lima_gem_submit_bo),
       .bos = VOID2U64(util_dynarray_begin(&submit->gem_bos)),
       .frame = VOID2U64(frame),
       .frame_size = size,
-      .out_sync = submit->out_sync,
+      .out_sync = ctx->out_sync[submit->pipe],
    };
 
-   if (submit->in_sync_fd >= 0) {
-      int err = drmSyncobjImportSyncFile(submit->screen->fd, submit->in_sync,
-                                         submit->in_sync_fd);
+   if (ctx->in_sync_fd >= 0) {
+      int err = drmSyncobjImportSyncFile(submit->fd, ctx->in_sync[submit->pipe],
+                                         ctx->in_sync_fd);
       if (err)
          return false;
 
-      req.in_sync[0] = submit->in_sync;
-      close(submit->in_sync_fd);
-      submit->in_sync_fd = -1;
+      req.in_sync[0] = ctx->in_sync[submit->pipe];
+      close(ctx->in_sync_fd);
+      ctx->in_sync_fd = -1;
    }
 
-   bool ret = drmIoctl(submit->screen->fd, DRM_IOCTL_LIMA_GEM_SUBMIT, &req) == 0;
+   bool ret = drmIoctl(submit->fd, DRM_IOCTL_LIMA_GEM_SUBMIT, &req) == 0;
 
    util_dynarray_foreach(&submit->bos, struct lima_bo *, bo) {
       lima_bo_unreference(*bo);
@@ -160,7 +136,8 @@ bool lima_submit_wait(struct lima_submit *submit, uint64_t timeout_ns)
    if (abs_timeout == OS_TIMEOUT_INFINITE)
       abs_timeout = INT64_MAX;
 
-   return !drmSyncobjWait(submit->screen->fd, &submit->out_sync, 1, abs_timeout, 0, NULL);
+   struct lima_context *ctx = submit->ctx;
+   return !drmSyncobjWait(submit->fd, ctx->out_sync + submit->pipe, 1, abs_timeout, 0, NULL);
 }
 
 bool lima_submit_has_bo(struct lima_submit *submit, struct lima_bo *bo, bool all)
@@ -177,12 +154,32 @@ bool lima_submit_has_bo(struct lima_submit *submit, struct lima_bo *bo, bool all
    return false;
 }
 
-bool lima_submit_add_in_sync(struct lima_submit *submit, int fd)
+bool lima_submit_init(struct lima_context *ctx)
 {
-   return !sync_accumulate("lima", &submit->in_sync_fd, fd);
+   int fd = lima_screen(ctx->base.screen)->fd;
+
+   ctx->in_sync_fd = -1;
+
+   for (int i = 0; i < 2; i++) {
+      if (drmSyncobjCreate(fd, DRM_SYNCOBJ_CREATE_SIGNALED, ctx->in_sync + i) ||
+          drmSyncobjCreate(fd, DRM_SYNCOBJ_CREATE_SIGNALED, ctx->out_sync + i))
+         return false;
+   }
+
+   return true;
 }
 
-bool lima_submit_get_out_sync(struct lima_submit *submit, int *fd)
+void lima_submit_fini(struct lima_context *ctx)
 {
-   return !drmSyncobjExportSyncFile(submit->screen->fd, submit->out_sync, fd);
+   int fd = lima_screen(ctx->base.screen)->fd;
+
+   for (int i = 0; i < 2; i++) {
+      if (ctx->in_sync[i])
+         drmSyncobjDestroy(fd, ctx->in_sync[i]);
+      if (ctx->out_sync[i])
+         drmSyncobjDestroy(fd, ctx->out_sync[i]);
+   }
+
+   if (ctx->in_sync_fd >= 0)
+      close(ctx->in_sync_fd);
 }

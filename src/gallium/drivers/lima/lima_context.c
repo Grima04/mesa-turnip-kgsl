@@ -123,6 +123,8 @@ lima_context_destroy(struct pipe_context *pctx)
    struct lima_context *ctx = lima_context(pctx);
    struct lima_screen *screen = lima_screen(pctx->screen);
 
+   lima_submit_fini(ctx);
+
    if (ctx->pp_submit)
       lima_submit_free(ctx->pp_submit);
    if (ctx->gp_submit)
@@ -287,6 +289,9 @@ lima_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
 
    ctx->pp_submit = lima_submit_create(ctx, LIMA_PIPE_PP);
    if (!ctx->pp_submit)
+      goto err_out;
+
+   if (!lima_submit_init(ctx))
       goto err_out;
 
    return &ctx->base;

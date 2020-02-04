@@ -47,6 +47,7 @@
 #include "lima_fence.h"
 #include "lima_format.h"
 
+#include <xf86drm.h>
 #include <drm-uapi/lima_drm.h>
 
 struct lima_gp_frame_reg {
@@ -1948,8 +1949,10 @@ lima_pipe_flush(struct pipe_context *pctx, struct pipe_fence_handle **fence,
       _lima_flush(ctx, flags & PIPE_FLUSH_END_OF_FRAME);
 
    if (fence) {
+      int drm_fd = lima_screen(ctx->base.screen)->fd;
       int fd;
-      if (lima_submit_get_out_sync(ctx->pp_submit, &fd))
+
+      if (!drmSyncobjExportSyncFile(drm_fd, ctx->out_sync[LIMA_PIPE_PP], &fd))
          *fence = lima_fence_create(fd);
    }
 }
