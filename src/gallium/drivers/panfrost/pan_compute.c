@@ -52,7 +52,8 @@ panfrost_create_compute_state(
         so->variant_count = 1;
         so->active_variant = 0;
 
-        v->tripipe = malloc(sizeof(struct mali_shader_meta));
+        /* calloc, instead of malloc - to zero unused fields */
+        v->tripipe = CALLOC_STRUCT(mali_shader_meta);
 
         if (cso->ir_type == PIPE_SHADER_IR_NIR_SERIALIZED) {
                 struct blob_reader reader;
