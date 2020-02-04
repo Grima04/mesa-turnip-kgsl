@@ -108,12 +108,17 @@ lima_invalidate_resource(struct pipe_context *pctx, struct pipe_resource *prsc)
 {
    struct lima_context *ctx = lima_context(pctx);
 
+   struct hash_entry *entry = _mesa_hash_table_search(ctx->write_submits, prsc);
+   if (!entry)
+      return;
+
+   struct lima_submit *submit = entry->data;
    if (ctx->framebuffer.base.zsbuf && (ctx->framebuffer.base.zsbuf->texture == prsc))
-      ctx->resolve &= ~(PIPE_CLEAR_DEPTH | PIPE_CLEAR_STENCIL);
+      submit->resolve &= ~(PIPE_CLEAR_DEPTH | PIPE_CLEAR_STENCIL);
 
    if (ctx->framebuffer.base.nr_cbufs &&
        (ctx->framebuffer.base.cbufs[0]->texture == prsc))
-      ctx->resolve &= ~PIPE_CLEAR_COLOR0;
+      submit->resolve &= ~PIPE_CLEAR_COLOR0;
 }
 
 static void

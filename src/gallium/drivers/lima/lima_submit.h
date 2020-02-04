@@ -50,6 +50,8 @@ struct lima_submit {
    struct util_dynarray vs_cmd_array;
    struct util_dynarray plbu_cmd_array;
    struct util_dynarray plbu_cmd_head;
+
+   unsigned resolve;
 };
 
 struct lima_submit *lima_submit_get(struct lima_context *ctx);

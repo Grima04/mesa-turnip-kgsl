@@ -82,9 +82,9 @@ lima_submit_free(struct lima_submit *submit)
 
    _mesa_hash_table_remove_key(ctx->submits, &submit->key);
 
-   if (submit->key.cbuf && (ctx->resolve & PIPE_CLEAR_COLOR0))
+   if (submit->key.cbuf && (submit->resolve & PIPE_CLEAR_COLOR0))
       _mesa_hash_table_remove_key(ctx->write_submits, submit->key.cbuf->texture);
-   if (submit->key.zsbuf && (ctx->resolve & (PIPE_CLEAR_DEPTH | PIPE_CLEAR_STENCIL)))
+   if (submit->key.zsbuf && (submit->resolve & (PIPE_CLEAR_DEPTH | PIPE_CLEAR_STENCIL)))
       _mesa_hash_table_remove_key(ctx->write_submits, submit->key.zsbuf->texture);
 
    pipe_surface_reference(&submit->key.cbuf, NULL);
@@ -242,7 +242,7 @@ lima_submit_get_damage(struct lima_submit *submit)
 {
    struct lima_context *ctx = submit->ctx;
 
-   if (!(ctx->framebuffer.base.nr_cbufs && (ctx->resolve & PIPE_CLEAR_COLOR0)))
+   if (!(ctx->framebuffer.base.nr_cbufs && (submit->resolve & PIPE_CLEAR_COLOR0)))
       return NULL;
 
    struct lima_surface *surf = lima_surface(ctx->framebuffer.base.cbufs[0]);
@@ -256,7 +256,7 @@ lima_fb_need_reload(struct lima_submit *submit)
    struct lima_context *ctx = submit->ctx;
 
    /* Depth buffer is always discarded */
-   if (!(ctx->framebuffer.base.nr_cbufs && (ctx->resolve & PIPE_CLEAR_COLOR0)))
+   if (!(ctx->framebuffer.base.nr_cbufs && (submit->resolve & PIPE_CLEAR_COLOR0)))
       return false;
 
    struct lima_surface *surf = lima_surface(ctx->framebuffer.base.cbufs[0]);
@@ -762,11 +762,11 @@ lima_pack_pp_frame_reg(struct lima_submit *submit, uint32_t *frame_reg,
    frame->blocking = (fb->shift_min << 28) | (fb->shift_h << 16) | fb->shift_w;
    frame->foureight = 0x8888;
 
-   if (fb->base.nr_cbufs && (ctx->resolve & PIPE_CLEAR_COLOR0))
+   if (fb->base.nr_cbufs && (submit->resolve & PIPE_CLEAR_COLOR0))
       lima_pack_wb_cbuf_reg(submit, wb_reg, wb_idx++);
 
    if (fb->base.zsbuf &&
-       (ctx->resolve & (PIPE_CLEAR_DEPTH | PIPE_CLEAR_STENCIL)))
+       (submit->resolve & (PIPE_CLEAR_DEPTH | PIPE_CLEAR_STENCIL)))
       lima_pack_wb_zsbuf_reg(submit, wb_reg, wb_idx++);
 }
 
@@ -916,7 +916,7 @@ lima_do_submit(struct lima_submit *submit)
 
    ctx->plb_index = (ctx->plb_index + 1) % lima_ctx_num_plb;
 
-   if (ctx->framebuffer.base.nr_cbufs && (ctx->resolve & PIPE_CLEAR_COLOR0)) {
+   if (ctx->framebuffer.base.nr_cbufs && (submit->resolve & PIPE_CLEAR_COLOR0)) {
       /* Set reload flag for next draw. It'll be unset if buffer is cleared */
       struct lima_surface *surf = lima_surface(ctx->framebuffer.base.cbufs[0]);
       surf->reload = true;
@@ -933,9 +933,6 @@ lima_do_submit(struct lima_submit *submit)
       ctx->submit = NULL;
 
    lima_submit_free(submit);
-
-   /* lima_submit_free still need this */
-   ctx->resolve = 0;
 }
 
 void

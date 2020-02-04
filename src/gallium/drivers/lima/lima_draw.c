@@ -67,7 +67,7 @@ lima_update_submit_wb(struct lima_context *ctx, unsigned buffers)
 
    /* add to submit when the buffer is dirty and resolve is clear (not added before) */
    if (fb->base.nr_cbufs && (buffers & PIPE_CLEAR_COLOR0) &&
-       !(ctx->resolve & PIPE_CLEAR_COLOR0)) {
+       !(submit->resolve & PIPE_CLEAR_COLOR0)) {
       struct lima_resource *res = lima_resource(fb->base.cbufs[0]->texture);
       lima_flush_submit_accessing_bo(ctx, res->bo, true);
       _mesa_hash_table_insert(ctx->write_submits, &res->base, submit);
@@ -76,14 +76,14 @@ lima_update_submit_wb(struct lima_context *ctx, unsigned buffers)
 
    /* add to submit when the buffer is dirty and resolve is clear (not added before) */
    if (fb->base.zsbuf && (buffers & (PIPE_CLEAR_DEPTH | PIPE_CLEAR_STENCIL)) &&
-       !(ctx->resolve & (PIPE_CLEAR_DEPTH | PIPE_CLEAR_STENCIL))) {
+       !(submit->resolve & (PIPE_CLEAR_DEPTH | PIPE_CLEAR_STENCIL))) {
       struct lima_resource *res = lima_resource(fb->base.zsbuf->texture);
       lima_flush_submit_accessing_bo(ctx, res->bo, true);
       _mesa_hash_table_insert(ctx->write_submits, &res->base, submit);
       lima_submit_add_bo(submit, LIMA_PIPE_PP, res->bo, LIMA_SUBMIT_BO_WRITE);
    }
 
-   ctx->resolve |= buffers;
+   submit->resolve |= buffers;
 }
 
 static void
