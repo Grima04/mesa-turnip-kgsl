@@ -75,16 +75,6 @@ _mesa_initialize_exec_dispatch(const struct gl_context *ctx,
                                struct _glapi_table *exec);
 
 
-void
-_mesa_draw_indirect(struct gl_context *ctx, GLuint mode,
-                    struct gl_buffer_object *indirect_data,
-                    GLsizeiptr indirect_offset, unsigned draw_count,
-                    unsigned stride,
-                    struct gl_buffer_object *indirect_draw_count_buffer,
-                    GLsizeiptr indirect_draw_count_offset,
-                    const struct _mesa_index_buffer *ib);
-
-
 void GLAPIENTRY
 _mesa_DrawArrays(GLenum mode, GLint first, GLsizei count);
 
