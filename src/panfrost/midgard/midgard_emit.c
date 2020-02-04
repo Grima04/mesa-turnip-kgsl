@@ -194,8 +194,13 @@ mir_pack_swizzle_alu(midgard_instruction *ins)
                         packed = mir_pack_swizzle_64(ins->swizzle[i], components);
 
                         if (mode == midgard_reg_mode_32) {
-                                src[i].rep_low |= (ins->swizzle[i][0] >= COMPONENT_Z);
-                                src[i].rep_high |= (ins->swizzle[i][1] >= COMPONENT_Z);
+                                bool lo = ins->swizzle[i][0] >= COMPONENT_Z;
+                                bool hi = ins->swizzle[i][1] >= COMPONENT_Z;
+
+                                /* TODO: can we mix halves? */
+                                assert(lo == hi);
+
+                                src[i].rep_low |= lo;
                         } else if (mode < midgard_reg_mode_32) {
                                 unreachable("Cannot encode 8/16 swizzle in 64-bit");
                         }
