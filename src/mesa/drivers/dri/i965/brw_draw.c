@@ -160,7 +160,8 @@ brw_emit_prim(struct brw_context *brw,
               const struct _mesa_prim *prim,
               uint32_t hw_prim,
               struct brw_transform_feedback_object *xfb_obj,
-              unsigned stream)
+              unsigned stream,
+              bool is_indirect)
 {
    const struct gen_device_info *devinfo = &brw->screen->devinfo;
    int verts_per_instance;
@@ -193,7 +194,7 @@ brw_emit_prim(struct brw_context *brw,
       verts_per_instance = prim->count;
 
    /* If nothing to emit, just return. */
-   if (verts_per_instance == 0 && !prim->is_indirect && !xfb_obj)
+   if (verts_per_instance == 0 && !is_indirect && !xfb_obj)
       return;
 
    /* If we're set to always flush, do it before and after the primitive emit.
@@ -222,7 +223,7 @@ brw_emit_prim(struct brw_context *brw,
       OUT_BATCH(GEN7_3DPRIM_START_INSTANCE);
       OUT_BATCH(0);
       ADVANCE_BATCH();
-   } else if (prim->is_indirect) {
+   } else if (is_indirect) {
       struct gl_buffer_object *indirect_buffer = brw->ctx.DrawIndirectBuffer;
       struct brw_bo *bo = intel_bufferobj_buffer(brw,
             intel_buffer_object(indirect_buffer),
@@ -1002,7 +1003,7 @@ brw_draw_single_prim(struct gl_context *ctx,
          vs_prog_data->uses_firstvertex ||
          vs_prog_data->uses_baseinstance;
 
-      if ((uses_draw_parameters && prim->is_indirect) ||
+      if ((uses_draw_parameters && indirect) ||
           (vs_prog_data->uses_firstvertex &&
            brw->draw.params.firstvertex != new_firstvertex) ||
           (vs_prog_data->uses_baseinstance &&
@@ -1014,7 +1015,7 @@ brw_draw_single_prim(struct gl_context *ctx,
    brw->draw.params.gl_baseinstance = new_baseinstance;
    brw_bo_unreference(brw->draw.draw_params_bo);
 
-   if (prim->is_indirect) {
+   if (indirect) {
       /* Point draw_params_bo at the indirect buffer. */
       brw->draw.draw_params_bo =
          intel_buffer_object(ctx->DrawIndirectBuffer)->buffer;
@@ -1065,7 +1066,7 @@ retry:
    if (devinfo->gen == 9)
       gen9_emit_preempt_wa(brw, prim);
 
-   brw_emit_prim(brw, prim, brw->primitive, xfb_obj, stream);
+   brw_emit_prim(brw, prim, brw->primitive, xfb_obj, stream, !!indirect);
 
    brw->batch.no_wrap = false;
 
@@ -1219,7 +1220,6 @@ brw_draw_indirect_prims(struct gl_context *ctx,
       prim[i].mode = mode;
       prim[i].indexed = ib != NULL;
       prim[i].indirect_offset = indirect_offset;
-      prim[i].is_indirect = 1;
       prim[i].draw_id = i;
    }
 
