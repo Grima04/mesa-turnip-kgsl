@@ -124,7 +124,7 @@ struct nine_ff_ps_key
     };
 };
 
-static unsigned nine_ff_vs_key_hash(void *key)
+static uint32_t nine_ff_vs_key_hash(const void *key)
 {
     struct nine_ff_vs_key *vs = key;
     unsigned i;
@@ -133,14 +133,14 @@ static unsigned nine_ff_vs_key_hash(void *key)
         hash ^= vs->value32[i];
     return hash;
 }
-static int nine_ff_vs_key_comp(void *key1, void *key2)
+static bool nine_ff_vs_key_comp(const void *key1, const void *key2)
 {
     struct nine_ff_vs_key *a = (struct nine_ff_vs_key *)key1;
     struct nine_ff_vs_key *b = (struct nine_ff_vs_key *)key2;
 
-    return memcmp(a->value64, b->value64, sizeof(a->value64));
+    return memcmp(a->value64, b->value64, sizeof(a->value64)) == 0;
 }
-static unsigned nine_ff_ps_key_hash(void *key)
+static uint32_t nine_ff_ps_key_hash(const void *key)
 {
     struct nine_ff_ps_key *ps = key;
     unsigned i;
@@ -149,20 +149,20 @@ static unsigned nine_ff_ps_key_hash(void *key)
         hash ^= ps->value32[i];
     return hash;
 }
-static int nine_ff_ps_key_comp(void *key1, void *key2)
+static bool nine_ff_ps_key_comp(const void *key1, const void *key2)
 {
     struct nine_ff_ps_key *a = (struct nine_ff_ps_key *)key1;
     struct nine_ff_ps_key *b = (struct nine_ff_ps_key *)key2;
 
-    return memcmp(a->value64, b->value64, sizeof(a->value64));
+    return memcmp(a->value64, b->value64, sizeof(a->value64)) == 0;
 }
-static unsigned nine_ff_fvf_key_hash(void *key)
+static uint32_t nine_ff_fvf_key_hash(const void *key)
 {
     return *(DWORD *)key;
 }
-static int nine_ff_fvf_key_comp(void *key1, void *key2)
+static bool nine_ff_fvf_key_comp(const void *key1, const void *key2)
 {
-    return *(DWORD *)key1 != *(DWORD *)key2;
+    return *(DWORD *)key1 == *(DWORD *)key2;
 }
 
 static void nine_ff_prune_vs(struct NineDevice9 *);

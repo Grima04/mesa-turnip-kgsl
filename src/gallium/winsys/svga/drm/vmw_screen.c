@@ -43,13 +43,13 @@
 
 static struct util_hash_table *dev_hash = NULL;
 
-static int vmw_dev_compare(void *key1, void *key2)
+static bool vmw_dev_compare(const void *key1, const void *key2)
 {
    return (major(*(dev_t *)key1) == major(*(dev_t *)key2) &&
-           minor(*(dev_t *)key1) == minor(*(dev_t *)key2)) ? 0 : 1;
+           minor(*(dev_t *)key1) == minor(*(dev_t *)key2));
 }
 
-static unsigned vmw_dev_hash(void *key)
+static uint32_t vmw_dev_hash(const void *key)
 {
    return (major(*(dev_t *) key) << 16) | minor(*(dev_t *) key);
 }

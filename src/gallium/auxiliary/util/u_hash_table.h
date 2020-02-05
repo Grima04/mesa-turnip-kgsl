@@ -53,11 +53,11 @@ struct util_hash_table;
  * Create an hash table.
  * 
  * @param hash hash function
- * @param compare should return 0 for two equal keys.
+ * @param equal should return true for two equal keys.
  */
 struct util_hash_table *
-util_hash_table_create(unsigned (*hash)(void *key),
-                       int (*compare)(void *key1, void *key2));
+util_hash_table_create(uint32_t (*hash)(const void *key),
+                       bool (*equal)(const void *key1, const void *key2));
 
 /**
  * Create a hash table where the keys are generic pointers.

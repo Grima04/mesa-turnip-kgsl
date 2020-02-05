@@ -57,10 +57,10 @@ struct util_hash_table
    struct cso_hash cso;
    
    /** Hash function */
-   unsigned (*hash)(void *key);
+   uint32_t (*hash)(const void *key);
    
    /** Compare two keys */
-   int (*compare)(void *key1, void *key2);
+   bool (*equal)(const void *key1, const void *key2);
    
    /* TODO: key, value destructors? */
 };
@@ -81,8 +81,8 @@ util_hash_table_item(struct cso_hash_iter iter)
 
 
 struct util_hash_table *
-util_hash_table_create(unsigned (*hash)(void *key),
-                       int (*compare)(void *key1, void *key2))
+util_hash_table_create(uint32_t (*hash)(const void *key),
+                       bool (*equal)(const void *key1, const void *key2))
 {
    struct util_hash_table *ht;
    
@@ -93,34 +93,34 @@ util_hash_table_create(unsigned (*hash)(void *key),
    cso_hash_init(&ht->cso);
    
    ht->hash = hash;
-   ht->compare = compare;
+   ht->equal = equal;
    
    return ht;
 }
 
 
-static unsigned
-pointer_hash(void *key)
+static uint32_t
+pointer_hash(const void *key)
 {
    return _mesa_hash_pointer(key);
 }
 
 
-static int
-pointer_compare(void *a, void *b)
+static bool
+pointer_equal(const void *a, const void *b)
 {
-   return a != b;
+   return a == b;
 }
 
 
 struct util_hash_table *
 util_hash_table_create_ptr_keys(void)
 {
-   return util_hash_table_create(pointer_hash, pointer_compare);
+   return util_hash_table_create(pointer_hash, pointer_equal);
 }
 
 
-static unsigned hash_fd(void *key)
+static uint32_t hash_fd(const void *key)
 {
 #if DETECT_OS_UNIX
    int fd = pointer_to_intptr(key);
@@ -135,7 +135,7 @@ static unsigned hash_fd(void *key)
 }
 
 
-static int compare_fd(void *key1, void *key2)
+static bool equal_fd(const void *key1, const void *key2)
 {
 #if DETECT_OS_UNIX
    int fd1 = pointer_to_intptr(key1);
@@ -145,9 +145,9 @@ static int compare_fd(void *key1, void *key2)
    fstat(fd1, &stat1);
    fstat(fd2, &stat2);
 
-   return stat1.st_dev != stat2.st_dev ||
-          stat1.st_ino != stat2.st_ino ||
-          stat1.st_rdev != stat2.st_rdev;
+   return stat1.st_dev == stat2.st_dev &&
+          stat1.st_ino == stat2.st_ino &&
+          stat1.st_rdev == stat2.st_rdev;
 #else
    return 0;
 #endif
@@ -157,7 +157,7 @@ static int compare_fd(void *key1, void *key2)
 struct util_hash_table *
 util_hash_table_create_fd_keys(void)
 {
-   return util_hash_table_create(hash_fd, compare_fd);
+   return util_hash_table_create(hash_fd, equal_fd);
 }
 
 
@@ -172,7 +172,7 @@ util_hash_table_find_iter(struct util_hash_table *ht,
    iter = cso_hash_find(&ht->cso, key_hash);
    while (!cso_hash_iter_is_null(iter)) {
       item = (struct util_hash_table_item *)cso_hash_iter_data(iter);
-      if (!ht->compare(item->key, key))
+      if (ht->equal(item->key, key))
          break;
       iter = cso_hash_iter_next(iter);
    }
@@ -192,7 +192,7 @@ util_hash_table_find_item(struct util_hash_table *ht,
    iter = cso_hash_find(&ht->cso, key_hash);
    while (!cso_hash_iter_is_null(iter)) {
       item = (struct util_hash_table_item *)cso_hash_iter_data(iter);
-      if (!ht->compare(item->key, key))
+      if (ht->equal(item->key, key))
          return item;
       iter = cso_hash_iter_next(iter);
    }
