@@ -32,8 +32,8 @@
 #include "genxml/gen_macros.h"
 #include "genxml/genX_pack.h"
 
-/* We reserve GPR 14 and 15 for conditional rendering */
-#define GEN_MI_BUILDER_NUM_ALLOC_GPRS 14
+/* We reserve GPR 15 for conditional rendering */
+#define GEN_MI_BUILDER_NUM_ALLOC_GPRS 15
 #define __gen_get_batch_dwords anv_batch_emit_dwords
 #define __gen_address_offset anv_address_add
 #include "common/gen_mi_builder.h"

@@ -34,8 +34,8 @@
 #include "genxml/gen_macros.h"
 #include "genxml/genX_pack.h"
 
-/* We reserve GPR 14 and 15 for conditional rendering */
-#define GEN_MI_BUILDER_NUM_ALLOC_GPRS 14
+/* We reserve GPR 15 for conditional rendering */
+#define GEN_MI_BUILDER_NUM_ALLOC_GPRS 15
 #define __gen_get_batch_dwords anv_batch_emit_dwords
 #define __gen_address_offset anv_address_add
 #include "common/gen_mi_builder.h"
@@ -3855,41 +3855,39 @@ void genX(CmdDrawIndexedIndirect)(
    }
 }
 
-#define TMP_DRAW_COUNT_REG 0x2670 /* MI_ALU_REG14 */
-
-static void
+static struct gen_mi_value
 prepare_for_draw_count_predicate(struct anv_cmd_buffer *cmd_buffer,
+                                 struct gen_mi_builder *b,
                                  struct anv_address count_address,
                                  const bool conditional_render_enabled)
 {
-   struct gen_mi_builder b;
-   gen_mi_builder_init(&b, &cmd_buffer->batch);
+   struct gen_mi_value ret = gen_mi_imm(0);
 
    if (conditional_render_enabled) {
 #if GEN_GEN >= 8 || GEN_IS_HASWELL
-      gen_mi_store(&b, gen_mi_reg64(TMP_DRAW_COUNT_REG),
-                       gen_mi_mem32(count_address));
+      ret = gen_mi_new_gpr(b);
+      gen_mi_store(b, gen_mi_value_ref(b, ret), gen_mi_mem32(count_address));
 #endif
    } else {
       /* Upload the current draw count from the draw parameters buffer to
        * MI_PREDICATE_SRC0.
        */
-      gen_mi_store(&b, gen_mi_reg64(MI_PREDICATE_SRC0),
-                       gen_mi_mem32(count_address));
+      gen_mi_store(b, gen_mi_reg64(MI_PREDICATE_SRC0),
+                      gen_mi_mem32(count_address));
 
-      gen_mi_store(&b, gen_mi_reg32(MI_PREDICATE_SRC1 + 4), gen_mi_imm(0));
+      gen_mi_store(b, gen_mi_reg32(MI_PREDICATE_SRC1 + 4), gen_mi_imm(0));
    }
+
+   return ret;
 }
 
 static void
 emit_draw_count_predicate(struct anv_cmd_buffer *cmd_buffer,
+                          struct gen_mi_builder *b,
                           uint32_t draw_index)
 {
-   struct gen_mi_builder b;
-   gen_mi_builder_init(&b, &cmd_buffer->batch);
-
    /* Upload the index of the current primitive to MI_PREDICATE_SRC1. */
-   gen_mi_store(&b, gen_mi_reg32(MI_PREDICATE_SRC1), gen_mi_imm(draw_index));
+   gen_mi_store(b, gen_mi_reg32(MI_PREDICATE_SRC1), gen_mi_imm(draw_index));
 
    if (draw_index == 0) {
       anv_batch_emit(&cmd_buffer->batch, GENX(MI_PREDICATE), mip) {
@@ -3917,24 +3915,22 @@ emit_draw_count_predicate(struct anv_cmd_buffer *cmd_buffer,
 static void
 emit_draw_count_predicate_with_conditional_render(
                           struct anv_cmd_buffer *cmd_buffer,
-                          uint32_t draw_index)
+                          struct gen_mi_builder *b,
+                          uint32_t draw_index,
+                          struct gen_mi_value max)
 {
-   struct gen_mi_builder b;
-   gen_mi_builder_init(&b, &cmd_buffer->batch);
-
-   struct gen_mi_value pred = gen_mi_ult(&b, gen_mi_imm(draw_index),
-                                         gen_mi_reg64(TMP_DRAW_COUNT_REG));
-   pred = gen_mi_iand(&b, pred, gen_mi_reg64(ANV_PREDICATE_RESULT_REG));
+   struct gen_mi_value pred = gen_mi_ult(b, gen_mi_imm(draw_index), max);
+   pred = gen_mi_iand(b, pred, gen_mi_reg64(ANV_PREDICATE_RESULT_REG));
 
 #if GEN_GEN >= 8
-   gen_mi_store(&b, gen_mi_reg64(MI_PREDICATE_RESULT), pred);
+   gen_mi_store(b, gen_mi_reg64(MI_PREDICATE_RESULT), pred);
 #else
    /* MI_PREDICATE_RESULT is not whitelisted in i915 command parser
     * so we emit MI_PREDICATE to set it.
     */
 
-   gen_mi_store(&b, gen_mi_reg64(MI_PREDICATE_SRC0), pred);
-   gen_mi_store(&b, gen_mi_reg64(MI_PREDICATE_SRC1), gen_mi_imm(0));
+   gen_mi_store(b, gen_mi_reg64(MI_PREDICATE_SRC0), pred);
+   gen_mi_store(b, gen_mi_reg64(MI_PREDICATE_SRC1), gen_mi_imm(0));
 
    anv_batch_emit(&cmd_buffer->batch, GENX(MI_PREDICATE), mip) {
       mip.LoadOperation    = LOAD_LOADINV;
@@ -3966,23 +3962,26 @@ void genX(CmdDrawIndirectCount)(
 
    genX(cmd_buffer_flush_state)(cmd_buffer);
 
+   struct gen_mi_builder b;
+   gen_mi_builder_init(&b, &cmd_buffer->batch);
    struct anv_address count_address =
       anv_address_add(count_buffer->address, countBufferOffset);
-
-   prepare_for_draw_count_predicate(cmd_buffer, count_address,
-                                    cmd_state->conditional_render_enabled);
+   struct gen_mi_value max =
+      prepare_for_draw_count_predicate(cmd_buffer, &b, count_address,
+                                       cmd_state->conditional_render_enabled);
 
    for (uint32_t i = 0; i < maxDrawCount; i++) {
       struct anv_address draw = anv_address_add(buffer->address, offset);
 
 #if GEN_GEN >= 8 || GEN_IS_HASWELL
       if (cmd_state->conditional_render_enabled) {
-         emit_draw_count_predicate_with_conditional_render(cmd_buffer, i);
+         emit_draw_count_predicate_with_conditional_render(
+            cmd_buffer, &b, i, gen_mi_value_ref(&b, max));
       } else {
-         emit_draw_count_predicate(cmd_buffer, i);
+         emit_draw_count_predicate(cmd_buffer, &b, i);
       }
 #else
-      emit_draw_count_predicate(cmd_buffer, i);
+      emit_draw_count_predicate(cmd_buffer, &b, i);
 #endif
 
       if (vs_prog_data->uses_firstvertex ||
@@ -4009,6 +4008,8 @@ void genX(CmdDrawIndirectCount)(
 
       offset += stride;
    }
+
+   gen_mi_value_unref(&b, max);
 }
 
 void genX(CmdDrawIndexedIndirectCount)(
@@ -4032,23 +4033,26 @@ void genX(CmdDrawIndexedIndirectCount)(
 
    genX(cmd_buffer_flush_state)(cmd_buffer);
 
+   struct gen_mi_builder b;
+   gen_mi_builder_init(&b, &cmd_buffer->batch);
    struct anv_address count_address =
       anv_address_add(count_buffer->address, countBufferOffset);
-
-   prepare_for_draw_count_predicate(cmd_buffer, count_address,
-                                    cmd_state->conditional_render_enabled);
+   struct gen_mi_value max =
+      prepare_for_draw_count_predicate(cmd_buffer, &b, count_address,
+                                       cmd_state->conditional_render_enabled);
 
    for (uint32_t i = 0; i < maxDrawCount; i++) {
       struct anv_address draw = anv_address_add(buffer->address, offset);
 
 #if GEN_GEN >= 8 || GEN_IS_HASWELL
       if (cmd_state->conditional_render_enabled) {
-         emit_draw_count_predicate_with_conditional_render(cmd_buffer, i);
+         emit_draw_count_predicate_with_conditional_render(
+            cmd_buffer, &b, i, gen_mi_value_ref(&b, max));
       } else {
-         emit_draw_count_predicate(cmd_buffer, i);
+         emit_draw_count_predicate(cmd_buffer, &b, i);
       }
 #else
-      emit_draw_count_predicate(cmd_buffer, i);
+      emit_draw_count_predicate(cmd_buffer, &b, i);
 #endif
 
       /* TODO: We need to stomp base vertex to 0 somehow */
@@ -4076,6 +4080,8 @@ void genX(CmdDrawIndexedIndirectCount)(
 
       offset += stride;
    }
+
+   gen_mi_value_unref(&b, max);
 }
 
 void genX(CmdBeginTransformFeedbackEXT)(
