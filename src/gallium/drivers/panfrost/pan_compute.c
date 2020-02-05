@@ -127,20 +127,12 @@ panfrost_launch_grid(struct pipe_context *pipe,
 
         panfrost_emit_for_draw(ctx, false);
 
-        /* Compute jobs have a "compute FBD". It's not a real framebuffer
-         * descriptor - there is no framebuffer - but it takes the place of
-         * one. As far as I can tell, it's actually the beginning of a
-         * single-render-target framebuffer descriptor with almost everything
-         * zeroed out.
-         */
-        struct mali_compute_fbd compute_fbd = {
-                .unknown1 = {
-                        0, 0x1F, 0, 0, 0, 0, 0, 0
-                }
+        struct mali_shared_memory shared = {
+                .shared_workgroup_count = ~0
         };
 
         payload->postfix.framebuffer =
-                panfrost_upload_transient(batch, &compute_fbd, sizeof(compute_fbd));
+                panfrost_upload_transient(batch, &shared, sizeof(shared));
 
         /* Invoke according to the grid info */
 

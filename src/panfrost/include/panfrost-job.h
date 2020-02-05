@@ -1470,14 +1470,41 @@ struct mali_sfbd_format {
         unsigned unk3 : 4;
 };
 
-struct mali_single_framebuffer {
-        u32 unknown1;
-        u32 unknown2;
+/* Shared structure at the start of framebuffer descriptors, or used bare for
+ * compute jobs, configuring stack and shared memory */
+
+struct mali_shared_memory {
+        u32 stack_shift : 4;
+        u32 unk0 : 28;
+
+        /* Configuration for shared memory for compute shaders.
+         * shared_workgroup_count is logarithmic and may be computed for a
+         * compute shader using shared memory as:
+         *
+         *  shared_workgroup_count = MAX2(ceil(log2(count_x)) + ... + ceil(log2(count_z), 10)
+         *
+         * For compute shaders that don't use shared memory, or non-compute
+         * shaders, this is set to ~0
+         */
+
+        u32 shared_workgroup_count : 5;
+        u32 shared_unk1 : 3;
+        u32 shared_shift : 4;
+        u32 shared_zero : 20;
+
         mali_ptr scratchpad;
 
-        u64 zero1;
-        u64 zero0;
+        /* For compute shaders, the RAM backing of workgroup-shared memory. For
+         * fragment shaders on Bifrost, apparently multisampling locations */
 
+        mali_ptr shared_memory;
+        mali_ptr unknown1;
+} __attribute__((packed));
+
+
+
+struct mali_single_framebuffer {
+        struct mali_shared_memory shared_memory;
         struct mali_sfbd_format format;
 
         u32 clear_flags;
@@ -1538,13 +1565,6 @@ struct mali_single_framebuffer {
         struct midgard_tiler_descriptor tiler;
 
         /* More below this, maybe */
-} __attribute__((packed));
-
-/* On Midgard, this "framebuffer descriptor" is used for the framebuffer field
- * of compute jobs. Superficially resembles a single framebuffer descriptor */
-
-struct mali_compute_fbd {
-        u32 unknown1[8];
 } __attribute__((packed));
 
 /* Format bits for the render target flags */
@@ -1675,15 +1695,8 @@ struct bifrost_fb_extra {
 #define MALI_MFBD_EXTRA (1 << 13)
 
 struct bifrost_framebuffer {
-        u32 stack_shift : 4;
-        u32 unk0 : 28;
+        struct mali_shared_memory shared_memory;
 
-        u32 unknown2; // = 0x1f, same as SFBD
-        mali_ptr scratchpad;
-
-        /* 0x10 */
-        mali_ptr sample_locations;
-        mali_ptr unknown1;
         /* 0x20 */
         u16 width1, height1;
         u32 zero3;

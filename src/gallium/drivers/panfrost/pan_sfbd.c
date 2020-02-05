@@ -213,12 +213,14 @@ panfrost_emit_sfbd(struct panfrost_batch *batch, unsigned vertex_count)
         struct mali_single_framebuffer framebuffer = {
                 .width = MALI_POSITIVE(width),
                 .height = MALI_POSITIVE(height),
-                .unknown2 = 0x1f,
+                .shared_memory = {
+                        .shared_workgroup_count = ~0,
+                        .scratchpad = panfrost_batch_get_scratchpad(batch, shift, screen->thread_tls_alloc, screen->core_count)->gpu,
+                },
                 .format = {
                         .unk3 = 0x3,
                 },
                 .clear_flags = 0x1000,
-                .scratchpad = panfrost_batch_get_scratchpad(batch, shift, screen->thread_tls_alloc, screen->core_count)->gpu,
                 .tiler = panfrost_emit_midg_tiler(batch, vertex_count),
         };
 
