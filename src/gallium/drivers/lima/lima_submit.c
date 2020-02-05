@@ -114,6 +114,8 @@ lima_submit_create(struct lima_context *ctx)
 
    lima_get_fb_info(s);
 
+   s->dump = lima_dump_create();
+
    return s;
 }
 
@@ -131,6 +133,9 @@ lima_submit_free(struct lima_submit *submit)
 
    pipe_surface_reference(&submit->key.cbuf, NULL);
    pipe_surface_reference(&submit->key.zsbuf, NULL);
+
+   lima_dump_free(submit->dump);
+   submit->dump = NULL;
 
    /* TODO: do we need a cache for submit? */
    ralloc_free(submit);
@@ -570,7 +575,8 @@ lima_generate_pp_stream(struct lima_submit *submit, int off_x, int off_y,
       stream[i][si[i]++] = 0;
 
       lima_dump_command_stream_print(
-         stream[i], si[i] * 4, false, "pp plb stream %d at va %x\n",
+         submit->dump, stream[i], si[i] * 4,
+         false, "pp plb stream %d at va %x\n",
          i, ps->va + ps->offset[i]);
    }
 }
@@ -689,7 +695,7 @@ lima_update_submit_bo(struct lima_submit *submit)
                       LIMA_SUBMIT_BO_WRITE);
 
    lima_dump_command_stream_print(
-      ctx->plb_gp_stream->map + ctx->plb_index * ctx->plb_gp_size,
+      submit->dump, ctx->plb_gp_stream->map + ctx->plb_index * ctx->plb_gp_size,
       ctx->plb_gp_size, false, "gp plb stream at va %x\n",
       ctx->plb_gp_stream->va + ctx->plb_index * ctx->plb_gp_size);
 
@@ -830,8 +836,8 @@ lima_do_submit(struct lima_submit *submit)
       memcpy(vs_cmd, util_dynarray_begin(&submit->vs_cmd_array), vs_cmd_size);
 
       lima_dump_command_stream_print(
-         vs_cmd, vs_cmd_size, false, "flush vs cmd at va %x\n", vs_cmd_va);
-      lima_dump_vs_command_stream_print(vs_cmd, vs_cmd_size, vs_cmd_va);
+         submit->dump, vs_cmd, vs_cmd_size, false, "flush vs cmd at va %x\n", vs_cmd_va);
+      lima_dump_vs_command_stream_print(submit->dump, vs_cmd, vs_cmd_size, vs_cmd_va);
    }
 
    uint32_t plbu_cmd_va;
@@ -846,8 +852,8 @@ lima_do_submit(struct lima_submit *submit)
           submit->plbu_cmd_array.size);
 
    lima_dump_command_stream_print(
-      plbu_cmd, plbu_cmd_size, false, "flush plbu cmd at va %x\n", plbu_cmd_va);
-   lima_dump_plbu_command_stream_print(plbu_cmd, plbu_cmd_size, plbu_cmd_va);
+      submit->dump, plbu_cmd, plbu_cmd_size, false, "flush plbu cmd at va %x\n", plbu_cmd_va);
+   lima_dump_plbu_command_stream_print(submit->dump, plbu_cmd, plbu_cmd_size, plbu_cmd_va);
 
    struct lima_screen *screen = lima_screen(ctx->base.screen);
    struct drm_lima_gp_frame gp_frame;
@@ -860,23 +866,23 @@ lima_do_submit(struct lima_submit *submit)
    gp_frame_reg->tile_heap_end = ctx->gp_tile_heap[ctx->plb_index]->va + ctx->gp_tile_heap_size;
 
    lima_dump_command_stream_print(
-      &gp_frame, sizeof(gp_frame), false, "add gp frame\n");
+      submit->dump, &gp_frame, sizeof(gp_frame), false, "add gp frame\n");
 
    if (!lima_submit_start(submit, LIMA_PIPE_GP, &gp_frame, sizeof(gp_frame)))
       fprintf(stderr, "gp submit error\n");
 
-   if (lima_dump_command_stream) {
+   if (submit->dump) {
       if (lima_submit_wait(submit, LIMA_PIPE_GP, PIPE_TIMEOUT_INFINITE)) {
          if (ctx->gp_output) {
             float *pos = lima_bo_map(ctx->gp_output);
             lima_dump_command_stream_print(
-               pos, 4 * 4 * 16, true, "gl_pos dump at va %x\n",
+               submit->dump, pos, 4 * 4 * 16, true, "gl_pos dump at va %x\n",
                ctx->gp_output->va);
          }
 
          uint32_t *plb = lima_bo_map(ctx->plb[ctx->plb_index]);
          lima_dump_command_stream_print(
-            plb, LIMA_CTX_PLB_BLK_SIZE, false, "plb dump at va %x\n",
+            submit->dump, plb, LIMA_CTX_PLB_BLK_SIZE, false, "plb dump at va %x\n",
             ctx->plb[ctx->plb_index]->va);
       }
       else {
@@ -909,7 +915,7 @@ lima_do_submit(struct lima_submit *submit)
       }
 
       lima_dump_command_stream_print(
-         &pp_frame, sizeof(pp_frame), false, "add pp frame\n");
+         submit->dump, &pp_frame, sizeof(pp_frame), false, "add pp frame\n");
 
       if (!lima_submit_start(submit, LIMA_PIPE_PP, &pp_frame, sizeof(pp_frame)))
          fprintf(stderr, "pp submit error\n");
@@ -940,13 +946,13 @@ lima_do_submit(struct lima_submit *submit)
       }
 
       lima_dump_command_stream_print(
-         &pp_frame, sizeof(pp_frame), false, "add pp frame\n");
+         submit->dump, &pp_frame, sizeof(pp_frame), false, "add pp frame\n");
 
       if (!lima_submit_start(submit, LIMA_PIPE_PP, &pp_frame, sizeof(pp_frame)))
          fprintf(stderr, "pp submit error\n");
    }
 
-   if (lima_dump_command_stream) {
+   if (submit->dump) {
       if (!lima_submit_wait(submit, LIMA_PIPE_PP, PIPE_TIMEOUT_INFINITE)) {
          fprintf(stderr, "pp wait error\n");
          exit(1);
@@ -960,8 +966,6 @@ lima_do_submit(struct lima_submit *submit)
       struct lima_surface *surf = lima_surface(submit->key.cbuf);
       surf->reload = true;
    }
-
-   lima_dump_file_next();
 
    if (ctx->submit == submit)
       ctx->submit = NULL;

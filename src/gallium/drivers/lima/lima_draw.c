@@ -743,13 +743,16 @@ lima_pack_render_state(struct lima_context *ctx, const struct pipe_draw_info *in
       render->varyings_address = 0x00000000;
    }
 
+   struct lima_submit *submit = lima_submit_get(ctx);
+
    lima_dump_command_stream_print(
-      render, sizeof(*render), false, "add render state at va %x\n",
+      submit->dump, render, sizeof(*render),
+      false, "add render state at va %x\n",
       lima_ctx_buff_va(ctx, lima_ctx_buff_pp_plb_rsw));
 
    lima_dump_rsw_command_stream_print(
-      render, sizeof(*render), lima_ctx_buff_va(ctx, lima_ctx_buff_pp_plb_rsw));
-
+      submit->dump, render, sizeof(*render),
+      lima_ctx_buff_va(ctx, lima_ctx_buff_pp_plb_rsw));
 }
 
 static void
@@ -784,7 +787,7 @@ lima_update_gp_attribute_info(struct lima_context *ctx, const struct pipe_draw_i
    }
 
    lima_dump_command_stream_print(
-      attribute, n * 4, false, "update attribute info at va %x\n",
+      submit->dump, attribute, n * 4, false, "update attribute info at va %x\n",
       lima_ctx_buff_va(ctx, lima_ctx_buff_gp_attribute_info));
 }
 
@@ -813,8 +816,10 @@ lima_update_gp_uniform(struct lima_context *ctx)
       memcpy(vs_const_buff + vs->uniform_pending_offset + 32,
              vs->constant, vs->constant_size);
 
+   struct lima_submit *submit = lima_submit_get(ctx);
+
    lima_dump_command_stream_print(
-      vs_const_buff, size, true,
+      submit->dump, vs_const_buff, size, true,
       "update gp uniform at va %x\n",
       lima_ctx_buff_va(ctx, lima_ctx_buff_gp_uniform));
 }
@@ -840,11 +845,14 @@ lima_update_pp_uniform(struct lima_context *ctx)
 
    *array = lima_ctx_buff_va(ctx, lima_ctx_buff_pp_uniform);
 
+   struct lima_submit *submit = lima_submit_get(ctx);
+
    lima_dump_command_stream_print(
-      fp16_const_buff, const_buff_size * 2, false, "add pp uniform data at va %x\n",
+      submit->dump, fp16_const_buff, const_buff_size * 2,
+      false, "add pp uniform data at va %x\n",
       lima_ctx_buff_va(ctx, lima_ctx_buff_pp_uniform));
    lima_dump_command_stream_print(
-      array, 4, false, "add pp uniform info at va %x\n",
+      submit->dump, array, 4, false, "add pp uniform info at va %x\n",
       lima_ctx_buff_va(ctx, lima_ctx_buff_pp_uniform_array));
 }
 
@@ -927,7 +935,7 @@ lima_update_varying(struct lima_context *ctx, const struct pipe_draw_info *info)
    }
 
    lima_dump_command_stream_print(
-      varying, n * 4, false, "update varying info at va %x\n",
+      submit->dump, varying, n * 4, false, "update varying info at va %x\n",
       lima_ctx_buff_va(ctx, lima_ctx_buff_gp_varying_info));
 }
 
@@ -1071,11 +1079,11 @@ lima_draw_vbo(struct pipe_context *pctx,
    struct lima_submit *submit = lima_submit_get(ctx);
 
    lima_dump_command_stream_print(
-      ctx->vs->bo->map, ctx->vs->shader_size, false,
+      submit->dump, ctx->vs->bo->map, ctx->vs->shader_size, false,
       "add vs at va %x\n", ctx->vs->bo->va);
 
    lima_dump_command_stream_print(
-      ctx->fs->bo->map, ctx->fs->shader_size, false,
+      submit->dump, ctx->fs->bo->map, ctx->fs->shader_size, false,
       "add fs at va %x\n", ctx->fs->bo->va);
 
    lima_submit_add_bo(submit, LIMA_PIPE_GP, ctx->vs->bo, LIMA_SUBMIT_BO_READ);

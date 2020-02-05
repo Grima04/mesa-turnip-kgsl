@@ -33,6 +33,7 @@
 
 struct lima_context;
 struct lima_bo;
+struct lima_dump;
 struct pipe_surface;
 
 struct lima_submit_key {
@@ -78,6 +79,9 @@ struct lima_submit {
    struct lima_submit_clear clear;
 
    struct lima_submit_fb_info fb;
+
+   /* for dump command stream */
+   struct lima_dump *dump;
 };
 
 struct lima_submit *lima_submit_get(struct lima_context *ctx);
