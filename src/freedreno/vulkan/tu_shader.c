@@ -269,8 +269,9 @@ lower_vulkan_resource_index(nir_builder *b, nir_intrinsic_instr *instr,
 }
 
 static void
-add_image_deref_mapping(nir_intrinsic_instr *instr, struct tu_shader *shader,
-                const struct tu_pipeline_layout *layout)
+lower_image_deref(nir_builder *b,
+                  nir_intrinsic_instr *instr, struct tu_shader *shader,
+                  const struct tu_pipeline_layout *layout)
 {
    nir_deref_instr *deref = nir_src_as_deref(instr->src[0]);
    nir_variable *var = nir_deref_instr_get_variable(deref);
@@ -281,9 +282,15 @@ add_image_deref_mapping(nir_intrinsic_instr *instr, struct tu_shader *shader,
    struct tu_descriptor_set_binding_layout *binding_layout =
       &set_layout->binding[binding];
 
-   var->data.driver_location =
-      map_add(&shader->image_map, set, binding, var->data.index,
-              binding_layout->array_size);
+   nir_ssa_def *index = nir_imm_int(b,
+                                    map_add(&shader->image_map,
+                                            set, binding, var->data.index,
+                                            binding_layout->array_size));
+   if (deref->deref_type != nir_deref_type_var) {
+      assert(deref->deref_type == nir_deref_type_array);
+      index = nir_iadd(b, index, nir_ssa_for_src(b, deref->arr.index, 1));
+   }
+   nir_rewrite_image_intrinsic(instr, index, false);
 }
 
 static bool
@@ -324,7 +331,7 @@ lower_intrinsic(nir_builder *b, nir_intrinsic_instr *instr,
    case nir_intrinsic_image_deref_load_param_intel:
    case nir_intrinsic_image_deref_load_raw_intel:
    case nir_intrinsic_image_deref_store_raw_intel:
-      add_image_deref_mapping(instr, shader, layout);
+      lower_image_deref(b, instr, shader, layout);
       return true;
 
    default:

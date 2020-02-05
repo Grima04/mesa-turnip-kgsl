@@ -208,14 +208,14 @@ static void
 emit_intrinsic_store_image(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 {
 	struct ir3_block *b = ctx->block;
-	const nir_variable *var = nir_intrinsic_get_var(intr, 0);
 	struct ir3_instruction *stib;
 	struct ir3_instruction * const *value = ir3_get_src(ctx, &intr->src[3]);
 	struct ir3_instruction * const *coords = ir3_get_src(ctx, &intr->src[1]);
-	unsigned ncoords = ir3_get_image_coords(var, NULL);
-	unsigned slot = ir3_get_image_slot(nir_src_as_deref(intr->src[0]));
+	unsigned ncoords = ir3_get_image_coords(intr, NULL);
+	unsigned slot = nir_src_as_uint(intr->src[0]);
 	unsigned ibo_idx = ir3_image_to_ibo(ctx->so->shader, slot);
-	unsigned ncomp = ir3_get_num_components_for_image_format(var->data.image.format);
+	enum pipe_format format = nir_intrinsic_format(intr);
+	unsigned ncomp = ir3_get_num_components_for_image_format(format);
 
 	/* src0 is offset, src1 is value:
 	 */
@@ -224,7 +224,7 @@ emit_intrinsic_store_image(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 			ir3_create_collect(ctx, value, ncomp), 0);
 	stib->cat6.iim_val = ncomp;
 	stib->cat6.d = ncoords;
-	stib->cat6.type = ir3_get_image_type(var);
+	stib->cat6.type = ir3_get_type_for_image_intrinsic(intr);
 	stib->cat6.typed = true;
 	stib->barrier_class = IR3_BARRIER_IMAGE_W;
 	stib->barrier_conflict = IR3_BARRIER_IMAGE_R | IR3_BARRIER_IMAGE_W;
@@ -237,12 +237,11 @@ static struct ir3_instruction *
 emit_intrinsic_atomic_image(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 {
 	struct ir3_block *b = ctx->block;
-	const nir_variable *var = nir_intrinsic_get_var(intr, 0);
 	struct ir3_instruction *atomic, *ibo, *src0, *src1, *dummy;
 	struct ir3_instruction * const *coords = ir3_get_src(ctx, &intr->src[1]);
 	struct ir3_instruction *value = ir3_get_src(ctx, &intr->src[3])[0];
-	unsigned ncoords = ir3_get_image_coords(var, NULL);
-	unsigned slot = ir3_get_image_slot(nir_src_as_deref(intr->src[0]));
+	unsigned ncoords = ir3_get_image_coords(intr, NULL);
+	unsigned slot = nir_src_as_uint(intr->src[0]);
 	unsigned ibo_idx = ir3_image_to_ibo(ctx->so->shader, slot);
 
 	ibo = create_immed(b, ibo_idx);
@@ -262,7 +261,7 @@ emit_intrinsic_atomic_image(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 	dummy = create_immed(b, 0);
 	src0 = ir3_create_collect(ctx, coords, ncoords);
 
-	if (intr->intrinsic == nir_intrinsic_image_deref_atomic_comp_swap) {
+	if (intr->intrinsic == nir_intrinsic_image_atomic_comp_swap) {
 		struct ir3_instruction *compare = ir3_get_src(ctx, &intr->src[4])[0];
 		src1 = ir3_create_collect(ctx, (struct ir3_instruction*[]){
 			dummy, compare, value
@@ -274,30 +273,30 @@ emit_intrinsic_atomic_image(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 	}
 
 	switch (intr->intrinsic) {
-	case nir_intrinsic_image_deref_atomic_add:
+	case nir_intrinsic_image_atomic_add:
 		atomic = ir3_ATOMIC_ADD_G(b, ibo, 0, src0, 0, src1, 0);
 		break;
-	case nir_intrinsic_image_deref_atomic_imin:
-	case nir_intrinsic_image_deref_atomic_umin:
+	case nir_intrinsic_image_atomic_imin:
+	case nir_intrinsic_image_atomic_umin:
 		atomic = ir3_ATOMIC_MIN_G(b, ibo, 0, src0, 0, src1, 0);
 		break;
-	case nir_intrinsic_image_deref_atomic_imax:
-	case nir_intrinsic_image_deref_atomic_umax:
+	case nir_intrinsic_image_atomic_imax:
+	case nir_intrinsic_image_atomic_umax:
 		atomic = ir3_ATOMIC_MAX_G(b, ibo, 0, src0, 0, src1, 0);
 		break;
-	case nir_intrinsic_image_deref_atomic_and:
+	case nir_intrinsic_image_atomic_and:
 		atomic = ir3_ATOMIC_AND_G(b, ibo, 0, src0, 0, src1, 0);
 		break;
-	case nir_intrinsic_image_deref_atomic_or:
+	case nir_intrinsic_image_atomic_or:
 		atomic = ir3_ATOMIC_OR_G(b, ibo, 0, src0, 0, src1, 0);
 		break;
-	case nir_intrinsic_image_deref_atomic_xor:
+	case nir_intrinsic_image_atomic_xor:
 		atomic = ir3_ATOMIC_XOR_G(b, ibo, 0, src0, 0, src1, 0);
 		break;
-	case nir_intrinsic_image_deref_atomic_exchange:
+	case nir_intrinsic_image_atomic_exchange:
 		atomic = ir3_ATOMIC_XCHG_G(b, ibo, 0, src0, 0, src1, 0);
 		break;
-	case nir_intrinsic_image_deref_atomic_comp_swap:
+	case nir_intrinsic_image_atomic_comp_swap:
 		atomic = ir3_ATOMIC_CMPXCHG_G(b, ibo, 0, src0, 0, src1, 0);
 		break;
 	default:
@@ -306,7 +305,7 @@ emit_intrinsic_atomic_image(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 
 	atomic->cat6.iim_val = 1;
 	atomic->cat6.d = ncoords;
-	atomic->cat6.type = ir3_get_image_type(var);
+	atomic->cat6.type = ir3_get_type_for_image_intrinsic(intr);
 	atomic->cat6.typed = true;
 	atomic->barrier_class = IR3_BARRIER_IMAGE_W;
 	atomic->barrier_conflict = IR3_BARRIER_IMAGE_R | IR3_BARRIER_IMAGE_W;

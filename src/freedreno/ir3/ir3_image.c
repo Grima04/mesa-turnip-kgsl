@@ -73,49 +73,19 @@ ir3_image_to_tex(struct ir3_ibo_mapping *mapping, unsigned image)
 	return mapping->image_to_tex[image] + mapping->tex_base;
 }
 
-/* Helper to parse the deref for an image to get image slot.  This should be
- * mapped to tex or ibo idx using ir3_image_to_tex() or ir3_image_to_ibo().
- */
-unsigned
-ir3_get_image_slot(nir_deref_instr *deref)
-{
-	unsigned int loc = 0;
-	unsigned inner_size = 1;
-
-	while (deref->deref_type != nir_deref_type_var) {
-		assert(deref->deref_type == nir_deref_type_array);
-		unsigned const_index = nir_src_as_uint(deref->arr.index);
-
-		/* Go to the next instruction */
-		deref = nir_deref_instr_parent(deref);
-
-		assert(glsl_type_is_array(deref->type));
-		const unsigned array_len = glsl_get_length(deref->type);
-		loc += MIN2(const_index, array_len - 1) * inner_size;
-
-		/* Update the inner size */
-		inner_size *= array_len;
-	}
-
-	loc += deref->var->data.driver_location;
-
-	return loc;
-}
-
 /* see tex_info() for equiv logic for texture instructions.. it would be
  * nice if this could be better unified..
  */
 unsigned
-ir3_get_image_coords(const nir_variable *var, unsigned *flagsp)
+ir3_get_image_coords(const nir_intrinsic_instr *instr, unsigned *flagsp)
 {
-	const struct glsl_type *type = glsl_without_array(var->type);
-	unsigned coords = glsl_get_sampler_coordinate_components(type);
+	unsigned coords = nir_image_intrinsic_coord_components(instr);
 	unsigned flags = 0;
 
 	if (coords == 3)
 		flags |= IR3_INSTR_3D;
 
-	if (glsl_sampler_type_is_array(type))
+	if (nir_intrinsic_image_array(instr))
 		flags |= IR3_INSTR_A;
 
 	if (flagsp)
@@ -125,25 +95,18 @@ ir3_get_image_coords(const nir_variable *var, unsigned *flagsp)
 }
 
 type_t
-ir3_get_image_type(const nir_variable *var)
+ir3_get_type_for_image_intrinsic(const nir_intrinsic_instr *instr)
 {
-	switch (glsl_get_sampler_result_type(glsl_without_array(var->type))) {
-	case GLSL_TYPE_UINT:
-		return TYPE_U32;
-	case GLSL_TYPE_INT:
-		return TYPE_S32;
-	case GLSL_TYPE_FLOAT:
-		return TYPE_F32;
-	case GLSL_TYPE_UINT16:
-		return TYPE_U16;
-	case GLSL_TYPE_INT16:
-		return TYPE_S16;
-	case GLSL_TYPE_FLOAT16:
-		return TYPE_F16;
-	default:
-		unreachable("bad sampler type.");
-		return 0;
-	}
+	const nir_intrinsic_info *info = &nir_intrinsic_infos[instr->intrinsic];
+	int bit_size = info->has_dest ? nir_dest_bit_size(instr->dest) : 32;
+	enum pipe_format format = nir_intrinsic_format(instr);
+
+	if (util_format_is_pure_uint(format))
+		return bit_size == 16 ? TYPE_U16 : TYPE_U32;
+	else if (util_format_is_pure_sint(format))
+		return bit_size == 16 ? TYPE_S16 : TYPE_S32;
+	else
+		return bit_size == 16 ? TYPE_F16 : TYPE_F32;
 }
 
 /* Returns the number of components for the different image formats
