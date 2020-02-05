@@ -376,6 +376,8 @@ struct rvce_encoder {
 	void (*task_info)(struct rvce_encoder *enc, uint32_t op,
 			  uint32_t dep, uint32_t fb_idx,
 			  uint32_t ring_idx);
+	void (*si_get_pic_param)(struct rvce_encoder *enc,
+				struct pipe_h264_enc_picture_desc *pic);
 
 	unsigned			stream_handle;
 

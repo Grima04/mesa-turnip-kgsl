@@ -238,4 +238,5 @@ void si_vce_50_init(struct rvce_encoder *enc)
 	/* only the two below are different */
 	enc->rate_control = rate_control;
 	enc->encode = encode;
+	enc->si_get_pic_param = si_vce_50_get_param;
 }

@@ -443,4 +443,5 @@ void si_vce_40_2_2_init(struct rvce_encoder *enc)
 	enc->config = config;
 	enc->encode = encode;
 	enc->destroy = destroy;
+	enc->si_get_pic_param = si_vce_40_2_2_get_param;
 }
