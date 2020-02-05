@@ -1510,6 +1510,7 @@ BuilderSWR::CompileGS(struct swr_context *ctx, swr_jit_gs_key &key)
 
    struct lp_build_sampler_soa *sampler =
       swr_sampler_soa_create(key.sampler, PIPE_SHADER_GEOMETRY);
+   assert(sampler != nullptr);
 
    struct lp_bld_tgsi_system_values system_values;
    memset(&system_values, 0, sizeof(system_values));
@@ -1523,6 +1524,7 @@ BuilderSWR::CompileGS(struct swr_context *ctx, swr_jit_gs_key &key)
       ubyte semantic_idx = info->input_semantic_index[slot];
 
       unsigned vs_slot = locate_linkage(semantic_name, semantic_idx, &ctx->vs->info.base);
+      assert(vs_slot < PIPE_MAX_SHADER_OUTPUTS);
 
       vs_slot += VERTEX_ATTRIB_START_SLOT;
 
@@ -1736,6 +1738,7 @@ BuilderSWR::CompileTES(struct swr_context *ctx, swr_jit_tes_key &key)
 
    struct lp_build_sampler_soa *sampler =
       swr_sampler_soa_create(key.sampler, PIPE_SHADER_TESS_EVAL);
+   assert(sampler != nullptr);
 
    struct lp_bld_tgsi_system_values system_values;
    memset(&system_values, 0, sizeof(system_values));
@@ -1830,6 +1833,7 @@ BuilderSWR::CompileTES(struct swr_context *ctx, swr_jit_tes_key &key)
       // Where in TCS output is my attribute?
       // TESS_TODO: revisit after implement pass-through TCS
       unsigned tcs_slot = locate_linkage(semantic_name, semantic_idx, pPrevShader);
+      assert(tcs_slot < PIPE_MAX_SHADER_OUTPUTS);
 
       // Skip tessellation levels - these go to the tessellator, not TES
       switch (semantic_name) {
@@ -2035,6 +2039,7 @@ BuilderSWR::CompileTCS(struct swr_context *ctx, swr_jit_tcs_key &key)
 
    struct lp_build_sampler_soa *sampler =
       swr_sampler_soa_create(key.sampler, PIPE_SHADER_TESS_CTRL);
+   assert(sampler != nullptr);
 
    struct lp_bld_tgsi_system_values system_values;
    memset(&system_values, 0, sizeof(system_values));
@@ -2069,6 +2074,7 @@ BuilderSWR::CompileTCS(struct swr_context *ctx, swr_jit_tcs_key &key)
 
       unsigned vs_slot =
          locate_linkage(semantic_name, semantic_idx, &ctx->vs->info.base);
+      assert(vs_slot < PIPE_MAX_SHADER_OUTPUTS);
 
       vs_slot += VERTEX_ATTRIB_START_SLOT;
 
@@ -2311,6 +2317,7 @@ BuilderSWR::CompileVS(struct swr_context *ctx, swr_jit_vs_key &key)
 
    struct lp_build_sampler_soa *sampler =
       swr_sampler_soa_create(key.sampler, PIPE_SHADER_VERTEX);
+   assert(sampler != nullptr);
 
    struct lp_bld_tgsi_system_values system_values;
    memset(&system_values, 0, sizeof(system_values));
@@ -2397,6 +2404,7 @@ BuilderSWR::CompileVS(struct swr_context *ctx, swr_jit_vs_key &key)
             }
          }
       }
+      assert(cv < PIPE_MAX_SHADER_OUTPUTS);
       LLVMValueRef cx = LLVMBuildLoad(gallivm->builder, outputs[cv][0], "");
       LLVMValueRef cy = LLVMBuildLoad(gallivm->builder, outputs[cv][1], "");
       LLVMValueRef cz = LLVMBuildLoad(gallivm->builder, outputs[cv][2], "");
@@ -2419,6 +2427,7 @@ BuilderSWR::CompileVS(struct swr_context *ctx, swr_jit_vs_key &key)
          if ((pLastFE->clipdist_writemask & clip_mask & (1 << val)) ||
              ((pLastFE->culldist_writemask << pLastFE->num_written_clipdistance) & (1 << val))) {
             unsigned cv = locate_linkage(TGSI_SEMANTIC_CLIPDIST, val < 4 ? 0 : 1, pLastFE);
+            assert(cv < PIPE_MAX_SHADER_OUTPUTS);
             if (val < 4) {
                LLVMValueRef dist = LLVMBuildLoad(gallivm->builder, outputs[cv][val], "");
                WriteVS(unwrap(dist), pVsCtx, vtxOutput, VERTEX_CLIPCULL_DIST_LO_SLOT, val);
@@ -2711,7 +2720,7 @@ BuilderSWR::CompileFS(struct swr_context *ctx, swr_jit_fs_key &key)
          linkedAttrib = pPrevShader->num_outputs + extraAttribs - 1;
          swr_fs->pointSpriteMask |= (1 << linkedAttrib);
          extraAttribs++;
-      } else if (linkedAttrib == 0xFFFFFFFF) {
+      } else if (linkedAttrib + 1 == 0xFFFFFFFF) {
          inputs[attrib][0] = wrap(VIMMED1(0.0f));
          inputs[attrib][1] = wrap(VIMMED1(0.0f));
          inputs[attrib][2] = wrap(VIMMED1(0.0f));
@@ -2733,15 +2742,16 @@ BuilderSWR::CompileFS(struct swr_context *ctx, swr_jit_fs_key &key)
       Value *offset = NULL;
       if (semantic_name == TGSI_SEMANTIC_COLOR && key.light_twoside) {
          bcolorAttrib = locate_linkage(
-               TGSI_SEMANTIC_BCOLOR, semantic_idx, pPrevShader) - 1;
+               TGSI_SEMANTIC_BCOLOR, semantic_idx, pPrevShader);
          /* Neither front nor back colors were available. Nothing to load. */
          if (bcolorAttrib == 0xFFFFFFFF && linkedAttrib == 0xFFFFFFFF)
             continue;
          /* If there is no front color, just always use the back color. */
-         if (linkedAttrib == 0xFFFFFFFF)
+         if (linkedAttrib + 1 == 0xFFFFFFFF)
             linkedAttrib = bcolorAttrib;
 
          if (bcolorAttrib != 0xFFFFFFFF) {
+            bcolorAttrib -= 1;
             if (interpMode == TGSI_INTERPOLATE_CONSTANT) {
                swr_fs->constantMask |= 1 << bcolorAttrib;
             } else if (interpMode == TGSI_INTERPOLATE_COLOR) {
@@ -2797,6 +2807,7 @@ BuilderSWR::CompileFS(struct swr_context *ctx, swr_jit_fs_key &key)
    }
 
    sampler = swr_sampler_soa_create(key.sampler, PIPE_SHADER_FRAGMENT);
+   assert(sampler != nullptr);
 
    struct lp_bld_tgsi_system_values system_values;
    memset(&system_values, 0, sizeof(system_values));

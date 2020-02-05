@@ -71,6 +71,7 @@ swr_create_blend_state(struct pipe_context *pipe,
                        const struct pipe_blend_state *blend)
 {
    struct swr_blend_state *state = CALLOC_STRUCT(swr_blend_state);
+   assert(state != nullptr);
 
    memcpy(&state->pipe, blend, sizeof(*blend));
 

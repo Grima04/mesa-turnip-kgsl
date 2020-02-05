@@ -632,6 +632,7 @@ namespace SwrJit
                     break;
                 }
 
+                assert(vConstMask && "Invalid info.numComps value");
                 vGatherOutput[swizzleIndex] =
                     BITCAST(PSHUFB(BITCAST(vGatherInput, v32x8Ty), vConstMask), vGatherTy);
                 // after pshufb for x channel
@@ -654,7 +655,7 @@ namespace SwrJit
 //        if (vSrc->getType() != mSimdFP32Ty)
 //        {
 //            vSrc = BITCAST(vSrc, mSimdFP32Ty);
-//        }                                               
+//        }
         SWR_ASSERT(vSrc->getType()->getVectorElementType()->isFloatTy());
         VSCATTERPS(pDst, vMask, vOffsets, vSrc, C(1));
         return;

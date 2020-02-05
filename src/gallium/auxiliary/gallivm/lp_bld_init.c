@@ -450,7 +450,7 @@ lp_build_init(void)
        */
       lp_native_vector_width = 128;
    }
- 
+
    lp_native_vector_width = debug_get_num_option("LP_NATIVE_VECTOR_WIDTH",
                                                  lp_native_vector_width);
 
@@ -513,6 +513,7 @@ gallivm_create(const char *name, LLVMContextRef context)
       }
    }
 
+   assert(gallivm != NULL);
    return gallivm;
 }
 

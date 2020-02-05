@@ -1006,6 +1006,7 @@ void CreateThreadPool(SWR_CONTEXT* pContext, THREAD_POOL* pPool)
     CPUNumaNodes nodes;
     uint32_t     numThreadsPerProcGroup = 0;
     CalculateProcessorTopology(nodes, numThreadsPerProcGroup);
+    assert(numThreadsPerProcGroup > 0);
 
     // Assumption, for asymmetric topologies, multi-threaded cores will appear
     // in the list before single-threaded cores.  This appears to be true for
@@ -1191,7 +1192,7 @@ void CreateThreadPool(SWR_CONTEXT* pContext, THREAD_POOL* pPool)
     pContext->NumWorkerThreads = pPool->numThreads;
 
     pPool->pThreadData = new (std::nothrow) THREAD_DATA[pPool->numThreads];
-    SWR_ASSERT(pPool->pThreadData);
+    assert(pPool->pThreadData);
     memset(pPool->pThreadData, 0, sizeof(THREAD_DATA) * pPool->numThreads);
     pPool->numaMask = 0;
 
@@ -1203,7 +1204,7 @@ void CreateThreadPool(SWR_CONTEXT* pContext, THREAD_POOL* pPool)
         pContext->workerPrivateState.pfnInitWorkerData = nullptr;
         pContext->workerPrivateState.pfnFinishWorkerData = nullptr;
     }
- 
+
     // initialize contents of SWR_WORKER_DATA
     size_t perWorkerSize =
         AlignUpPow2(pContext->workerPrivateState.perWorkerPrivateStateSize, 64);
@@ -1231,7 +1232,7 @@ void CreateThreadPool(SWR_CONTEXT* pContext, THREAD_POOL* pPool)
     }
 
     pPool->pThreads = new (std::nothrow) THREAD_PTR[pPool->numThreads];
-    SWR_ASSERT(pPool->pThreads);
+    assert(pPool->pThreads);
 
     if (pContext->threadInfo.MAX_WORKER_THREADS)
     {
@@ -1300,7 +1301,7 @@ void CreateThreadPool(SWR_CONTEXT* pContext, THREAD_POOL* pPool)
                     if (numRemovedThreads)
                     {
                         --numRemovedThreads;
-                        SWR_REL_ASSERT(numReservedThreads);
+                        assert(numReservedThreads);
                         --numReservedThreads;
                         pPool->pApiThreadData[numReservedThreads].workerId    = 0xFFFFFFFFU;
                         pPool->pApiThreadData[numReservedThreads].procGroupId = core.procGroup;

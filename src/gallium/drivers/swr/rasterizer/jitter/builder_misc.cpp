@@ -553,6 +553,7 @@ namespace SwrJit
         else
         {
             Constant* cB = dyn_cast<Constant>(b);
+            assert(cB != nullptr);
             // number of 8 bit elements in b
             uint32_t numElms = cast<VectorType>(cB->getType())->getNumElements();
             // output vector

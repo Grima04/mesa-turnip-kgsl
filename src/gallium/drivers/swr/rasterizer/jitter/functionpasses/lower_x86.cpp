@@ -224,13 +224,16 @@ namespace SwrJit
                                       TargetWidth*    pWidth,
                                       Type**          pTy)
         {
+            assert(pCallInst);
             Type* pVecTy = pCallInst->getType();
 
             // Check for intrinsic specific types
             // VCVTPD2PS type comes from src, not dst
             if (intrinName.equals("meta.intrinsic.VCVTPD2PS"))
             {
-                pVecTy = pCallInst->getOperand(0)->getType();
+                Value* pOp = pCallInst->getOperand(0);
+                assert(pOp);
+                pVecTy = pOp->getType();
             }
 
             if (!pVecTy->isVectorTy())
@@ -307,7 +310,9 @@ namespace SwrJit
 
         Instruction* ProcessIntrinsicAdvanced(CallInst* pCallInst)
         {
-            Function*   pFunc     = pCallInst->getCalledFunction();
+            Function*   pFunc = pCallInst->getCalledFunction();
+            assert(pFunc);
+
             auto&       intrinsic = intrinsicMap2[mTarget][pFunc->getName()];
             TargetWidth vecWidth;
             Type*       pElemTy;
@@ -367,6 +372,7 @@ namespace SwrJit
         Instruction* ProcessIntrinsic(CallInst* pCallInst)
         {
             Function* pFunc = pCallInst->getCalledFunction();
+            assert(pFunc);
 
             // Forward to the advanced support if found
             if (intrinsicMap2[mTarget].find(pFunc->getName()) != intrinsicMap2[mTarget].end())
@@ -731,7 +737,9 @@ namespace SwrJit
 
         auto B       = pThis->B;
         auto vf32Src = pCallInst->getOperand(0);
+        assert(vf32Src);
         auto i8Round = pCallInst->getOperand(1);
+        assert(i8Round);
         auto pfnFunc =
             Intrinsic::getDeclaration(B->JM()->mpCurrentModule, Intrinsic::x86_avx_round_ps_256);
 

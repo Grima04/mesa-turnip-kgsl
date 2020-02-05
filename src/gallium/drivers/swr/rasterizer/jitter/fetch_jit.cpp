@@ -209,8 +209,8 @@ Function* FetchJit::Create(const FETCH_COMPILE_STATE& fetchState)
             : vIndices = GetSimdValid32bitIndices(indices, pLastIndex);
         break; // incoming type is already 32bit int
     default:
-        SWR_INVALID("Unsupported index type");
         vIndices = nullptr;
+        assert(false && "Unsupported index type");
         break;
     }
 
@@ -1392,11 +1392,11 @@ void FetchJit::Shuffle8bpcGatherd16(Shuffle8bpcArgs& args)
             conversionFactor = VIMMED1((float)(1.0));
             break;
         case CONVERT_USCALED:
-            SWR_INVALID("Type should not be sign extended!");
+            assert(false && "Type should not be sign extended!");
             conversionFactor = nullptr;
             break;
         default:
-            SWR_ASSERT(conversionType == CONVERT_NONE);
+            assert(conversionType == CONVERT_NONE);
             conversionFactor = nullptr;
             break;
         }
@@ -1466,11 +1466,11 @@ void FetchJit::Shuffle8bpcGatherd16(Shuffle8bpcArgs& args)
             conversionFactor = VIMMED1((float)(1.0));
             break;
         case CONVERT_SSCALED:
-            SWR_INVALID("Type should not be zero extended!");
+            assert(false && "Type should not be zero extended!");
             conversionFactor = nullptr;
             break;
         default:
-            SWR_ASSERT(conversionType == CONVERT_NONE);
+            assert(conversionType == CONVERT_NONE);
             conversionFactor = nullptr;
             break;
         }
@@ -1511,6 +1511,7 @@ void FetchJit::Shuffle8bpcGatherd16(Shuffle8bpcArgs& args)
                                      3, -1, -1, -1, 7, -1, -1, -1, 11, -1, -1, -1, 15, -1, -1, -1});
                         break;
                     default:
+                        assert(false && "Invalid component");
                         vConstMask = nullptr;
                         break;
                     }
@@ -1762,11 +1763,11 @@ void FetchJit::Shuffle16bpcGather16(Shuffle16bpcArgs& args)
             conversionFactor = VIMMED1((float)(1.0));
             break;
         case CONVERT_USCALED:
-            SWR_INVALID("Type should not be sign extended!");
+            assert(false && "Type should not be sign extended!");
             conversionFactor = nullptr;
             break;
         default:
-            SWR_ASSERT(conversionType == CONVERT_NONE);
+            assert(conversionType == CONVERT_NONE);
             conversionFactor = nullptr;
             break;
         }
