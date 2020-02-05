@@ -1023,26 +1023,6 @@ fd_resource_create(struct pipe_screen *pscreen,
 	return fd_resource_create_with_modifiers(pscreen, tmpl, &mod, 1);
 }
 
-static bool
-is_supported_modifier(struct pipe_screen *pscreen, enum pipe_format pfmt,
-		uint64_t mod)
-{
-	int count;
-
-	/* Get the count of supported modifiers: */
-	pscreen->query_dmabuf_modifiers(pscreen, pfmt, 0, NULL, NULL, &count);
-
-	/* Get the supported modifiers: */
-	uint64_t modifiers[count];
-	pscreen->query_dmabuf_modifiers(pscreen, pfmt, count, modifiers, NULL, &count);
-
-	for (int i = 0; i < count; i++)
-		if (modifiers[i] == mod)
-			return true;
-
-	return false;
-}
-
 /**
  * Create a texture from a winsys_handle. The handle is often created in
  * another process by first creating a pipe texture and then calling
@@ -1091,19 +1071,10 @@ fd_resource_from_handle(struct pipe_screen *pscreen,
 			(slice->pitch & (pitchalign - 1)))
 		goto fail;
 
-	if (handle->modifier == DRM_FORMAT_MOD_QCOM_COMPRESSED) {
-		if (!is_supported_modifier(pscreen, tmpl->format,
-				DRM_FORMAT_MOD_QCOM_COMPRESSED)) {
-			DBG("bad modifier: %"PRIx64, handle->modifier);
-			goto fail;
-		}
-		/* XXX UBWC setup */
-	} else if (handle->modifier &&
-			(handle->modifier != DRM_FORMAT_MOD_INVALID)) {
-		goto fail;
-	}
-
 	assert(rsc->layout.cpp);
+
+	if (screen->layout_resource_for_modifier(rsc, handle->modifier) < 0)
+		goto fail;
 
 	if (screen->ro) {
 		rsc->scanout =
@@ -1210,6 +1181,17 @@ static const uint64_t supported_modifiers[] = {
 	DRM_FORMAT_MOD_LINEAR,
 };
 
+static int
+fd_layout_resource_for_modifier(struct fd_resource *rsc, uint64_t modifier)
+{
+	switch (modifier) {
+	case DRM_FORMAT_MOD_LINEAR:
+		return 0;
+	default:
+		return -1;
+	}
+}
+
 void
 fd_resource_screen_init(struct pipe_screen *pscreen)
 {
@@ -1230,6 +1212,8 @@ fd_resource_screen_init(struct pipe_screen *pscreen)
 
 	if (!screen->setup_slices)
 		screen->setup_slices = fd_setup_slices;
+	if (!screen->layout_resource_for_modifier)
+		screen->layout_resource_for_modifier = fd_layout_resource_for_modifier;
 	if (!screen->supported_modifiers) {
 		screen->supported_modifiers = supported_modifiers;
 		screen->num_supported_modifiers = ARRAY_SIZE(supported_modifiers);

@@ -93,6 +93,7 @@ struct fd_screen {
 
 	uint32_t (*setup_slices)(struct fd_resource *rsc);
 	unsigned (*tile_mode)(const struct pipe_resource *prsc);
+	int (*layout_resource_for_modifier)(struct fd_resource *rsc, uint64_t modifier);
 
 	/* constant emit:  (note currently not used/needed for a2xx) */
 	void (*emit_const)(struct fd_ringbuffer *ring, gl_shader_stage type,
