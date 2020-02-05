@@ -5155,8 +5155,8 @@ static void si_init_config(struct si_context *sctx)
       return;
 
    si_pm4_cmd_begin(pm4, PKT3_CONTEXT_CONTROL);
-   si_pm4_cmd_add(pm4, CONTEXT_CONTROL_LOAD_ENABLE(1));
-   si_pm4_cmd_add(pm4, CONTEXT_CONTROL_SHADOW_ENABLE(1));
+   si_pm4_cmd_add(pm4, CC0_UPDATE_LOAD_ENABLES(1));
+   si_pm4_cmd_add(pm4, CC1_UPDATE_SHADOW_ENABLES(1));
    si_pm4_cmd_end(pm4, false);
 
    if (has_clear_state) {

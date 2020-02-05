@@ -3222,8 +3222,8 @@ VkResult radv_CreateDevice(
 		switch (family) {
 		case RADV_QUEUE_GENERAL:
 			radeon_emit(device->empty_cs[family], PKT3(PKT3_CONTEXT_CONTROL, 1, 0));
-			radeon_emit(device->empty_cs[family], CONTEXT_CONTROL_LOAD_ENABLE(1));
-			radeon_emit(device->empty_cs[family], CONTEXT_CONTROL_SHADOW_ENABLE(1));
+			radeon_emit(device->empty_cs[family], CC0_UPDATE_LOAD_ENABLES(1));
+			radeon_emit(device->empty_cs[family], CC1_UPDATE_SHADOW_ENABLES(1));
 			break;
 		case RADV_QUEUE_COMPUTE:
 			radeon_emit(device->empty_cs[family], PKT3(PKT3_NOP, 0, 0));
