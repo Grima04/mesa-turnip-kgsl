@@ -151,7 +151,7 @@ ir3_get_image_type(const nir_variable *var)
  * GL_NV_image_formats extension.
  */
 unsigned
-ir3_get_num_components_for_image_format(GLuint format)
+ir3_get_num_components_for_image_format(enum pipe_format format)
 {
 	if (format == PIPE_FORMAT_NONE)
 		return 4;
