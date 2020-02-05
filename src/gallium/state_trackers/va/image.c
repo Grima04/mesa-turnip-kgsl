@@ -65,7 +65,7 @@ vlVaVideoSurfaceSize(vlVaSurface *p_surf, int component,
    *height = p_surf->templat.height;
 
    vl_video_buffer_adjust_size(width, height, component,
-                               p_surf->templat.chroma_format,
+                               pipe_format_to_chroma_format(p_surf->templat.buffer_format),
                                p_surf->templat.interlaced);
 }
 
@@ -453,10 +453,10 @@ vlVaGetImage(VADriverContextP ctx, VASurfaceID surface, int x, int y,
       unsigned box_y = y & ~1;
       if (!views[i]) continue;
       vl_video_buffer_adjust_size(&box_w, &box_h, i,
-                                  surf->templat.chroma_format,
+                                  pipe_format_to_chroma_format(surf->templat.buffer_format),
                                   surf->templat.interlaced);
       vl_video_buffer_adjust_size(&box_x, &box_y, i,
-                                  surf->templat.chroma_format,
+                                  pipe_format_to_chroma_format(surf->templat.buffer_format),
                                   surf->templat.interlaced);
       for (j = 0; j < views[i]->texture->array_size; ++j) {
          struct pipe_box box = {box_x, box_y, j, box_w, box_h, 1};

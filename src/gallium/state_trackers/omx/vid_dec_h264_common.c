@@ -1096,7 +1096,6 @@ void vid_dec_FrameDecoded_common(vid_dec_PrivateType* priv, OMX_BUFFERHEADERTYPE
             port = tiz_krn_get_port(tiz_get_krn(handleOf (priv)), OMX_VID_DEC_AVC_INPUT_PORT_INDEX);
 #endif
             memset(&templat, 0, sizeof(templat));
-            templat.chroma_format = PIPE_VIDEO_CHROMA_FORMAT_420;
 #if ENABLE_ST_OMX_BELLAGIO
             templat.width = port->sPortParam.format.video.nFrameWidth;
             templat.height = port->sPortParam.format.video.nFrameHeight;

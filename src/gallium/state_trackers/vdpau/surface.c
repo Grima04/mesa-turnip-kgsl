@@ -89,7 +89,7 @@ vlVdpVideoSurfaceCreate(VdpDevice device, VdpChromaType chroma_type,
       PIPE_VIDEO_ENTRYPOINT_BITSTREAM,
       PIPE_VIDEO_CAP_PREFERED_FORMAT
    );
-   p_surf->templat.chroma_format = ChromaToPipe(chroma_type);
+   assert(pipe_format_to_chroma_format(p_surf->templat.buffer_format) == ChromaToPipe(chroma_type));
    p_surf->templat.width = width;
    p_surf->templat.height = height;
    p_surf->templat.interlaced = pipe->screen->get_video_param
@@ -168,11 +168,11 @@ vlVdpVideoSurfaceGetParameters(VdpVideoSurface surface,
    if (p_surf->video_buffer) {
       *width = p_surf->video_buffer->width;
       *height = p_surf->video_buffer->height;
-      *chroma_type = PipeToChroma(p_surf->video_buffer->chroma_format);
+      *chroma_type = PipeToChroma(pipe_format_to_chroma_format(p_surf->video_buffer->buffer_format));
    } else {
       *width = p_surf->templat.width;
       *height = p_surf->templat.height;
-      *chroma_type = PipeToChroma(p_surf->templat.chroma_format);
+      *chroma_type = PipeToChroma(pipe_format_to_chroma_format(p_surf->templat.buffer_format));
    }
 
    return VDP_STATUS_OK;
@@ -186,7 +186,7 @@ vlVdpVideoSurfaceSize(vlVdpSurface *p_surf, int component,
    *height = p_surf->templat.height;
 
    vl_video_buffer_adjust_size(width, height, component,
-                               p_surf->templat.chroma_format,
+                               pipe_format_to_chroma_format(p_surf->templat.buffer_format),
                                p_surf->templat.interlaced);
 }
 
