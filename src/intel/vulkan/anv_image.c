@@ -1123,17 +1123,28 @@ anv_layout_to_aux_state(const struct gen_device_info * const devinfo,
    case VK_IMAGE_LAYOUT_PREINITIALIZED:
       return ISL_AUX_STATE_AUX_INVALID;
 
-   /* Transfer layouts */
+   /* General layout */
    case VK_IMAGE_LAYOUT_GENERAL:
-   case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:
       if (aspect == VK_IMAGE_ASPECT_DEPTH_BIT) {
-         /* This buffer could be a depth buffer used in a transfer operation.
-          * BLORP currently doesn't use HiZ for transfer operations so we must
-          * use the main buffer for this layout. TODO: Enable HiZ in BLORP.
-          */
-         assert(image->planes[plane].aux_usage == ISL_AUX_USAGE_HIZ);
-         return ISL_AUX_STATE_AUX_INVALID;
+         if (image->usage & VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) {
+            /* This buffer could be used as both a depth and input attachment
+             * at the same time in which case compression could cause issues.
+             */
+            return ISL_AUX_STATE_AUX_INVALID;
+         } else if (anv_can_sample_with_hiz(devinfo, image)) {
+            return ISL_AUX_STATE_COMPRESSED_CLEAR;
+         } else {
+            return ISL_AUX_STATE_AUX_INVALID;
+         }
       } else if (image->planes[plane].aux_usage == ISL_AUX_USAGE_CCS_D) {
+         return ISL_AUX_STATE_PASS_THROUGH;
+      } else {
+         return ISL_AUX_STATE_COMPRESSED_CLEAR;
+      }
+
+   /* Transfer layouts */
+   case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:
+      if (image->planes[plane].aux_usage == ISL_AUX_USAGE_CCS_D) {
          return ISL_AUX_STATE_PASS_THROUGH;
       } else {
          return ISL_AUX_STATE_COMPRESSED_CLEAR;
