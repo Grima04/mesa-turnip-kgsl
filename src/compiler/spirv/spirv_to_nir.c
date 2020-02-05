@@ -2425,24 +2425,7 @@ vtn_handle_texture(struct vtn_builder *b, SpvOp opcode,
    case SpvOpFragmentFetchAMD:
    case SpvOpFragmentMaskFetchAMD: {
       /* All these types have the coordinate as their first real argument */
-      switch (sampler_dim) {
-      case GLSL_SAMPLER_DIM_1D:
-      case GLSL_SAMPLER_DIM_BUF:
-         coord_components = 1;
-         break;
-      case GLSL_SAMPLER_DIM_2D:
-      case GLSL_SAMPLER_DIM_RECT:
-      case GLSL_SAMPLER_DIM_MS:
-      case GLSL_SAMPLER_DIM_SUBPASS_MS:
-         coord_components = 2;
-         break;
-      case GLSL_SAMPLER_DIM_3D:
-      case GLSL_SAMPLER_DIM_CUBE:
-         coord_components = 3;
-         break;
-      default:
-         vtn_fail("Invalid sampler type");
-      }
+      coord_components = glsl_get_sampler_dim_coordinate_components(sampler_dim);
 
       if (is_array && texop != nir_texop_lod)
          coord_components++;
