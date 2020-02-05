@@ -60,10 +60,6 @@ void encode_type_to_blob(struct blob *blob, const struct glsl_type *type);
 
 const struct glsl_type *decode_type_from_blob(struct blob_reader *blob);
 
-#ifdef __cplusplus
-}
-#endif
-
 typedef void (*glsl_type_size_align_func)(const struct glsl_type *type,
                                           unsigned *size, unsigned *align);
 
@@ -231,6 +227,9 @@ enum glsl_sampler_dim {
    GLSL_SAMPLER_DIM_SUBPASS_MS, /* for multisampled vulkan input attachments */
 };
 
+int
+glsl_get_sampler_dim_coordinate_components(enum glsl_sampler_dim dim);
+
 enum glsl_matrix_layout {
    /**
     * The layout of the matrix is inherited from the object containing the
@@ -260,6 +259,8 @@ enum {
 };
 
 #ifdef __cplusplus
+} /* extern "C" */
+
 #include "GL/gl.h"
 #include "util/ralloc.h"
 #include "main/menums.h" /* for gl_texture_index, C++'s enum rules are broken */
