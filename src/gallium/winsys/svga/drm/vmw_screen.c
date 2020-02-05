@@ -41,7 +41,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 
-static struct util_hash_table *dev_hash = NULL;
+static struct hash_table *dev_hash = NULL;
 
 static bool vmw_dev_compare(const void *key1, const void *key2)
 {

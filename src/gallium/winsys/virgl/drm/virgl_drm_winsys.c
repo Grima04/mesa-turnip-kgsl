@@ -1004,7 +1004,7 @@ virgl_drm_winsys_create(int drmFD)
 
 }
 
-static struct util_hash_table *fd_tab = NULL;
+static struct hash_table *fd_tab = NULL;
 static mtx_t virgl_screen_mutex = _MTX_INITIALIZER_NP;
 
 static void

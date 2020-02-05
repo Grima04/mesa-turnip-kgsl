@@ -67,7 +67,7 @@ screen_create(struct renderonly *ro)
    return etna_screen_create(dev, gpu, ro);
 }
 
-static struct util_hash_table *etna_tab = NULL;
+static struct hash_table *etna_tab = NULL;
 
 static mtx_t etna_screen_mutex = _MTX_INITIALIZER_NP;
 

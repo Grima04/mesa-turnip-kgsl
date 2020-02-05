@@ -17,7 +17,7 @@
 #include <nvif/class.h>
 #include <nvif/cl0080.h>
 
-static struct util_hash_table *fd_tab = NULL;
+static struct hash_table *fd_tab = NULL;
 
 static mtx_t nouveau_screen_mutex = _MTX_INITIALIZER_NP;
 

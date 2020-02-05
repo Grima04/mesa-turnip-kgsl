@@ -41,7 +41,7 @@
 #include <fcntl.h>
 #include <radeon_surface.h>
 
-static struct util_hash_table *fd_tab = NULL;
+static struct hash_table *fd_tab = NULL;
 static mtx_t fd_tab_mutex = _MTX_INITIALIZER_NP;
 
 /* Enable/disable feature access for one command stream.

@@ -95,7 +95,7 @@ struct vmw_svga_winsys_context
    struct svga_winsys_context base;
 
    struct vmw_winsys_screen *vws;
-   struct util_hash_table *hash;
+   struct hash_table *hash;
 
 #ifdef DEBUG
    boolean must_flush;

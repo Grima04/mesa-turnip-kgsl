@@ -38,7 +38,7 @@
 
 #include "freedreno/freedreno_screen.h"
 
-static struct util_hash_table *fd_tab = NULL;
+static struct hash_table *fd_tab = NULL;
 
 static mtx_t fd_screen_mutex = _MTX_INITIALIZER_NP;
 

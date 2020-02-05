@@ -54,7 +54,7 @@ static FILE *stream;
  */
 static mtx_t serials_mutex = _MTX_INITIALIZER_NP;
 
-static struct util_hash_table *serials_hash;
+static struct hash_table *serials_hash;
 static unsigned serials_last;
 
 

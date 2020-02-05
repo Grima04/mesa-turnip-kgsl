@@ -48,7 +48,7 @@
 #define AMDGPU_INFO_NUM_VRAM_CPU_PAGE_FAULTS	0x1E
 #endif
 
-static struct util_hash_table *dev_tab = NULL;
+static struct hash_table *dev_tab = NULL;
 static simple_mtx_t dev_tab_mutex = _SIMPLE_MTX_INITIALIZER_NP;
 
 DEBUG_GET_ONCE_BOOL_OPTION(all_bos, "RADEON_ALL_BOS", false)

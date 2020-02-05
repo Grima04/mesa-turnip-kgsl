@@ -71,8 +71,8 @@ struct lima_screen {
    /* bo table */
    mtx_t bo_table_lock;
    mtx_t bo_cache_lock;
-   struct util_hash_table *bo_handles;
-   struct util_hash_table *bo_flink_names;
+   struct hash_table *bo_handles;
+   struct hash_table *bo_flink_names;
    struct list_head bo_cache_buckets[NR_BO_CACHE_BUCKETS];
    struct list_head bo_cache_time;
 

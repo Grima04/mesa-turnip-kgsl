@@ -77,11 +77,11 @@ struct radeon_drm_winsys {
     uint32_t accel_working2;
 
     /* List of buffer GEM names. Protected by bo_handles_mutex. */
-    struct util_hash_table *bo_names;
+    struct hash_table *bo_names;
     /* List of buffer handles. Protectded by bo_handles_mutex. */
-    struct util_hash_table *bo_handles;
+    struct hash_table *bo_handles;
     /* List of buffer virtual memory ranges. Protectded by bo_handles_mutex. */
-    struct util_hash_table *bo_vas;
+    struct hash_table *bo_vas;
     mtx_t bo_handles_mutex;
     mtx_t bo_fence_lock;
 

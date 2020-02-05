@@ -82,7 +82,7 @@ struct debug_flush_ctx {
    /* Contexts are used by a single thread at a time */
    unsigned bt_depth;
    boolean catch_map_of_referenced;
-   struct util_hash_table *ref_hash;
+   struct hash_table *ref_hash;
    struct list_head head;
 };
 

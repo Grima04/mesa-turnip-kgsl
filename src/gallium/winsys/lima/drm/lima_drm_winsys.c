@@ -34,7 +34,7 @@
 
 #include "lima/lima_screen.h"
 
-static struct util_hash_table *fd_tab = NULL;
+static struct hash_table *fd_tab = NULL;
 static mtx_t lima_screen_mutex = _MTX_INITIALIZER_NP;
 
 static void

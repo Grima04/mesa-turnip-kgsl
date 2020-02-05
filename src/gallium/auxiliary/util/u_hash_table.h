@@ -27,8 +27,6 @@
 
 /**
  * General purpose hash table.
- *  
- * @author José Fonseca <jfonseca@vmware.com>
  */
 
 #ifndef U_HASH_TABLE_H_
@@ -42,11 +40,7 @@
 extern "C" {
 #endif
 
-   
-/**
- * Generic purpose hash table.
- */
-struct util_hash_table;
+struct hash_table;
 
 
 /**
@@ -55,56 +49,56 @@ struct util_hash_table;
  * @param hash hash function
  * @param equal should return true for two equal keys.
  */
-struct util_hash_table *
+struct hash_table *
 util_hash_table_create(uint32_t (*hash)(const void *key),
                        bool (*equal)(const void *key1, const void *key2));
 
 /**
  * Create a hash table where the keys are generic pointers.
  */
-struct util_hash_table *
+struct hash_table *
 util_hash_table_create_ptr_keys(void);
 
 
 /**
  * Create a hash table where the keys are device FDs.
  */
-struct util_hash_table *
+struct hash_table *
 util_hash_table_create_fd_keys(void);
 
 
 enum pipe_error
-util_hash_table_set(struct util_hash_table *ht,
+util_hash_table_set(struct hash_table *ht,
                     void *key,
                     void *value);
 
 void *
-util_hash_table_get(struct util_hash_table *ht,
+util_hash_table_get(struct hash_table *ht,
                     void *key);
 
 
 void
-util_hash_table_remove(struct util_hash_table *ht,
+util_hash_table_remove(struct hash_table *ht,
                        void *key);
 
 
 void
-util_hash_table_clear(struct util_hash_table *ht);
+util_hash_table_clear(struct hash_table *ht);
 
 
 enum pipe_error
-util_hash_table_foreach(struct util_hash_table *ht,
+util_hash_table_foreach(struct hash_table *ht,
                         enum pipe_error (*callback)
                         (void *key, void *value, void *data),
                         void *data);
 
 
 size_t
-util_hash_table_count(struct util_hash_table *ht);
+util_hash_table_count(struct hash_table *ht);
 
 
 void
-util_hash_table_destroy(struct util_hash_table *ht);
+util_hash_table_destroy(struct hash_table *ht);
 
 
 #ifdef __cplusplus
