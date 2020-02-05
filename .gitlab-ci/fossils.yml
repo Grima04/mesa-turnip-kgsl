@@ -1,0 +1,6 @@
+fossils-db:
+  repo: "https://gitlab.freedesktop.org/hakzsam/fossils-db"
+  commit: "49a8278432f7afcb54dd059f667a70561592ecbf"
+
+fossils:
+  - path: sascha-willems/triangle.f93c6e96adcd7946.1.foz

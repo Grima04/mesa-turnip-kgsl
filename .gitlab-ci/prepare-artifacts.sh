@@ -30,6 +30,7 @@ cp -Rp .gitlab-ci/traces.yml artifacts/
 cp -Rp .gitlab-ci/tracie artifacts/
 cp -Rp .gitlab-ci/tracie-runner-gl.sh artifacts/
 cp -Rp .gitlab-ci/tracie-runner-vk.sh artifacts/
+cp -Rp .gitlab-ci/fossils.yml artifacts/
 cp -Rp .gitlab-ci/fossils artifacts/
 cp -Rp .gitlab-ci/fossilize-runner.sh artifacts/
 
