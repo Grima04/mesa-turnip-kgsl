@@ -466,169 +466,6 @@ visit_tex(nir_tex_instr *instr)
 }
 
 static bool
-visit_phi(nir_phi_instr *instr)
-{
-   /* There are 3 types of phi instructions:
-    * (1) gamma: represent the joining point of different paths
-    *     created by an “if-then-else” branch.
-    *     The resulting value is divergent if the branch condition
-    *     or any of the source values is divergent.
-    *
-    * (2) mu: which only exist at loop headers,
-    *     merge initial and loop-carried values.
-    *     The resulting value is divergent if any source value
-    *     is divergent or a divergent loop continue condition
-    *     is associated with a different ssa-def.
-    *
-    * (3) eta: represent values that leave a loop.
-    *     The resulting value is divergent if the source value is divergent
-    *     or any loop exit condition is divergent for a value which is
-    *     not loop-invariant.
-    *     (note: there should be no phi for loop-invariant variables.)
-    */
-
-   if (instr->dest.ssa.divergent)
-      return false;
-
-   nir_foreach_phi_src(src, instr) {
-      /* if any source value is divergent, the resulting value is divergent */
-      if (src->src.ssa->divergent) {
-         instr->dest.ssa.divergent = true;
-         return true;
-      }
-   }
-
-   nir_cf_node *prev = nir_cf_node_prev(&instr->instr.block->cf_node);
-
-   if (!prev) {
-      /* mu: if no predecessor node exists, the phi must be at a loop header */
-      nir_loop *loop = nir_cf_node_as_loop(instr->instr.block->cf_node.parent);
-      prev = nir_cf_node_prev(&loop->cf_node);
-      nir_ssa_def* same = NULL;
-      bool all_same = true;
-
-      /* first, check if all loop-carried values are from the same ssa-def */
-      nir_foreach_phi_src(src, instr) {
-         if (src->pred == nir_cf_node_as_block(prev))
-            continue;
-         if (src->src.ssa->parent_instr->type == nir_instr_type_ssa_undef)
-            continue;
-         if (!same)
-            same = src->src.ssa;
-         else if (same != src->src.ssa)
-            all_same = false;
-      }
-
-      /* if all loop-carried values are the same, the resulting value is uniform */
-      if (all_same)
-         return false;
-
-      /* check if the loop-carried values come from different ssa-defs
-       * and the corresponding condition is divergent. */
-      nir_foreach_phi_src(src, instr) {
-         /* skip the loop preheader */
-         if (src->pred == nir_cf_node_as_block(prev))
-            continue;
-
-         /* skip the unconditional back-edge */
-         if (src->pred == nir_loop_last_block(loop))
-            continue;
-
-         /* if the value is undef, we don't need to check the condition */
-         if (src->src.ssa->parent_instr->type == nir_instr_type_ssa_undef)
-            continue;
-
-         nir_cf_node *current = src->pred->cf_node.parent;
-         /* check recursively the conditions if any is divergent */
-         while (current->type != nir_cf_node_loop) {
-            assert (current->type == nir_cf_node_if);
-            nir_if *if_node = nir_cf_node_as_if(current);
-            if (if_node->condition.ssa->divergent) {
-               instr->dest.ssa.divergent = true;
-               return true;
-            }
-            current = current->parent;
-         }
-         assert(current == &loop->cf_node);
-      }
-
-   } else if (prev->type == nir_cf_node_if) {
-      /* if only one of the incoming values is defined, the resulting value is uniform */
-      unsigned defined_srcs = 0;
-      nir_foreach_phi_src(src, instr) {
-         if (src->src.ssa->parent_instr->type != nir_instr_type_ssa_undef)
-            defined_srcs++;
-      }
-      if (defined_srcs <= 1)
-         return false;
-
-      /* gamma: check if the condition is divergent */
-      nir_if *if_node = nir_cf_node_as_if(prev);
-      if (if_node->condition.ssa->divergent) {
-         instr->dest.ssa.divergent = true;
-         return true;
-      }
-
-   } else {
-      /* eta: the predecessor must be a loop */
-      assert(prev->type == nir_cf_node_loop);
-
-      /* Check if any loop exit condition is divergent:
-       * That is any break happens under divergent condition or
-       * a break is preceeded by a divergent continue
-       */
-      nir_foreach_phi_src(src, instr) {
-         nir_cf_node *current = src->pred->cf_node.parent;
-
-         /* check recursively the conditions if any is divergent */
-         while (current->type != nir_cf_node_loop) {
-            assert(current->type == nir_cf_node_if);
-            nir_if *if_node = nir_cf_node_as_if(current);
-            if (if_node->condition.ssa->divergent) {
-               instr->dest.ssa.divergent = true;
-               return true;
-            }
-            current = current->parent;
-         }
-         assert(current == prev);
-
-         /* check if any divergent continue happened before the break */
-         nir_foreach_block_in_cf_node(block, prev) {
-            if (block == src->pred)
-               break;
-            if (!nir_block_ends_in_jump(block))
-               continue;
-
-            nir_jump_instr *jump = nir_instr_as_jump(nir_block_last_instr(block));
-            if (jump->type != nir_jump_continue)
-               continue;
-
-            current = block->cf_node.parent;
-            bool is_divergent = false;
-            while (current != prev) {
-               /* the continue belongs to an inner loop */
-               if (current->type == nir_cf_node_loop) {
-                  is_divergent = false;
-                  break;
-               }
-               assert(current->type == nir_cf_node_if);
-               nir_if *if_node = nir_cf_node_as_if(current);
-               is_divergent |= if_node->condition.ssa->divergent;
-               current = current->parent;
-            }
-
-            if (is_divergent) {
-               instr->dest.ssa.divergent = true;
-               return true;
-            }
-         }
-      }
-   }
-
-   return false;
-}
-
-static bool
 visit_load_const(nir_load_const_instr *instr)
 {
    return false;
@@ -724,9 +561,6 @@ visit_block(nir_block *block, struct divergence_state *state)
       case nir_instr_type_tex:
          has_changed |= visit_tex(nir_instr_as_tex(instr));
          break;
-      case nir_instr_type_phi:
-         has_changed |= visit_phi(nir_instr_as_phi(instr));
-         break;
       case nir_instr_type_load_const:
          has_changed |= visit_load_const(nir_instr_as_load_const(instr));
          break;
@@ -735,6 +569,9 @@ visit_block(nir_block *block, struct divergence_state *state)
          break;
       case nir_instr_type_deref:
          has_changed |= visit_deref(nir_instr_as_deref(instr), state);
+         break;
+      /* phis are handled when processing the branches */
+      case nir_instr_type_phi:
          break;
       case nir_instr_type_jump:
          break;
@@ -747,26 +584,230 @@ visit_block(nir_block *block, struct divergence_state *state)
    return has_changed;
 }
 
+/* There are 3 types of phi instructions:
+ * (1) gamma: represent the joining point of different paths
+ *     created by an “if-then-else” branch.
+ *     The resulting value is divergent if the branch condition
+ *     or any of the source values is divergent. */
+static bool
+visit_if_merge_phi(nir_phi_instr *phi, bool if_cond_divergent)
+{
+   if (phi->dest.ssa.divergent)
+      return false;
+
+   unsigned defined_srcs = 0;
+   nir_foreach_phi_src(src, phi) {
+      /* if any source value is divergent, the resulting value is divergent */
+      if (src->src.ssa->divergent) {
+         phi->dest.ssa.divergent = true;
+         return true;
+      }
+      if (src->src.ssa->parent_instr->type != nir_instr_type_ssa_undef) {
+         defined_srcs++;
+      }
+   }
+
+   /* if the condition is divergent and two sources defined, the definition is divergent */
+   if (defined_srcs > 1 && if_cond_divergent) {
+      phi->dest.ssa.divergent = true;
+      return true;
+   }
+   return false;
+}
+
+/* There are 3 types of phi instructions:
+ * (2) mu: which only exist at loop headers,
+ *     merge initial and loop-carried values.
+ *     The resulting value is divergent if any source value
+ *     is divergent or a divergent loop continue condition
+ *     is associated with a different ssa-def. */
+static bool
+visit_loop_header_phi(nir_phi_instr *phi, nir_loop *loop)
+{
+   if (phi->dest.ssa.divergent)
+      return false;
+
+   nir_cf_node *prev = nir_cf_node_prev(&loop->cf_node);
+   nir_ssa_def* same = NULL;
+   bool all_same = true;
+
+   /* first, check if all loop-carried values are from the same ssa-def */
+   nir_foreach_phi_src(src, phi) {
+      /* if any source value is divergent, the resulting value is divergent */
+      if (src->src.ssa->divergent) {
+         phi->dest.ssa.divergent = true;
+         return true;
+      }
+      /* skip the loop preheader */
+      if (src->pred == nir_cf_node_as_block(prev))
+         continue;
+      if (src->src.ssa->parent_instr->type == nir_instr_type_ssa_undef)
+         continue;
+      if (!same)
+         same = src->src.ssa;
+      else if (same != src->src.ssa)
+         all_same = false;
+   }
+
+   /* if all loop-carried values are the same, the resulting value is uniform */
+   if (all_same)
+      return false;
+
+   /* check if the loop-carried values come from different ssa-defs
+    * and the corresponding condition is divergent. */
+   nir_foreach_phi_src(src, phi) {
+      /* skip the loop preheader */
+      if (src->pred == nir_cf_node_as_block(prev))
+         continue;
+
+      /* skip the unconditional back-edge */
+      if (src->pred == nir_loop_last_block(loop))
+         continue;
+
+      /* if the value is undef, we don't need to check the condition */
+      if (src->src.ssa->parent_instr->type == nir_instr_type_ssa_undef)
+         continue;
+
+      nir_cf_node *current = src->pred->cf_node.parent;
+      /* check recursively the conditions if any is divergent */
+      while (current->type != nir_cf_node_loop) {
+         assert (current->type == nir_cf_node_if);
+         nir_if *if_node = nir_cf_node_as_if(current);
+         if (if_node->condition.ssa->divergent) {
+            phi->dest.ssa.divergent = true;
+            return true;
+         }
+         current = current->parent;
+      }
+      assert(current == &loop->cf_node);
+   }
+
+   return false;
+}
+
+/* There are 3 types of phi instructions:
+ * (3) eta: represent values that leave a loop.
+ *     The resulting value is divergent if the source value is divergent
+ *     or any loop exit condition is divergent for a value which is
+ *     not loop-invariant.
+ *     (note: there should be no phi for loop-invariant variables.) */
+static bool
+visit_loop_exit_phi(nir_phi_instr *phi, nir_loop *loop)
+{
+   if (phi->dest.ssa.divergent)
+      return false;
+
+   /* Check if any loop exit condition is divergent:
+    * That is any break happens under divergent condition or
+    * a break is preceeded by a divergent continue
+    */
+   nir_foreach_phi_src(src, phi) {
+      /* if any source value is divergent, the resulting value is divergent */
+      if (src->src.ssa->divergent) {
+         phi->dest.ssa.divergent = true;
+         return true;
+      }
+
+      nir_cf_node *current = src->pred->cf_node.parent;
+
+      /* check recursively the conditions if any is divergent */
+      while (current->type != nir_cf_node_loop) {
+         assert(current->type == nir_cf_node_if);
+         nir_if *if_node = nir_cf_node_as_if(current);
+         if (if_node->condition.ssa->divergent) {
+            phi->dest.ssa.divergent = true;
+            return true;
+         }
+         current = current->parent;
+      }
+
+      /* check if any divergent continue happened before the break */
+      nir_foreach_block_in_cf_node(block, &loop->cf_node) {
+         if (block == src->pred)
+            break;
+         if (!nir_block_ends_in_jump(block))
+            continue;
+
+         nir_jump_instr *jump = nir_instr_as_jump(nir_block_last_instr(block));
+         if (jump->type != nir_jump_continue)
+            continue;
+
+         current = block->cf_node.parent;
+         bool is_divergent = false;
+         while (current != &loop->cf_node) {
+            /* the continue belongs to an inner loop */
+            if (current->type == nir_cf_node_loop) {
+               is_divergent = false;
+               break;
+            }
+            assert(current->type == nir_cf_node_if);
+            nir_if *if_node = nir_cf_node_as_if(current);
+            is_divergent |= if_node->condition.ssa->divergent;
+            current = current->parent;
+         }
+
+         if (is_divergent) {
+            phi->dest.ssa.divergent = true;
+            return true;
+         }
+      }
+   }
+   return false;
+}
+
 static bool
 visit_if(nir_if *if_stmt, struct divergence_state *state)
 {
-   return visit_cf_list(&if_stmt->then_list, state) |
-          visit_cf_list(&if_stmt->else_list, state);
+   bool progress = visit_cf_list(&if_stmt->then_list, state) |
+                   visit_cf_list(&if_stmt->else_list, state);
+
+   /* handle phis after the IF */
+   nir_foreach_instr(instr, nir_cf_node_cf_tree_next(&if_stmt->cf_node)) {
+      if (instr->type != nir_instr_type_phi)
+         break;
+      progress |= visit_if_merge_phi(nir_instr_as_phi(instr), if_stmt->condition.ssa->divergent);
+   }
+
+   return progress;
 }
 
 static bool
 visit_loop(nir_loop *loop, struct divergence_state *state)
 {
-   bool has_changed = false;
-   bool repeat = true;
+   bool progress = false;
 
-   /* TODO: restructure this and the phi handling more efficiently */
-   while (repeat) {
-      repeat = visit_cf_list(&loop->body, state);
-      has_changed |= repeat;
+   /* handle loop header phis first */
+   nir_foreach_instr(instr, nir_loop_first_block(loop)) {
+      if (instr->type != nir_instr_type_phi)
+         break;
+      progress |= visit_loop_header_phi(nir_instr_as_phi(instr), loop);
    }
 
-   return has_changed;
+   bool repeat = true;
+   while (repeat) {
+      /* process loop body */
+      repeat = visit_cf_list(&loop->body, state);
+
+      if (repeat) {
+         repeat = false;
+         /* revisit loop header phis to see if something has changed */
+         nir_foreach_instr(instr, nir_loop_first_block(loop)) {
+            if (instr->type != nir_instr_type_phi)
+               break;
+            repeat |= visit_loop_header_phi(nir_instr_as_phi(instr), loop);
+         }
+         progress = true;
+      }
+   }
+
+   /* handle phis after the loop */
+   nir_foreach_instr(instr, nir_cf_node_cf_tree_next(&loop->cf_node)) {
+      if (instr->type != nir_instr_type_phi)
+         break;
+      progress |= visit_loop_exit_phi(nir_instr_as_phi(instr), loop);
+   }
+
+   return progress;
 }
 
 static bool
