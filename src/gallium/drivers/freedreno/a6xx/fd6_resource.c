@@ -136,7 +136,7 @@ setup_lrz(struct fd_resource *rsc)
 	rsc->lrz = fd_bo_new(screen->dev, size, flags, "lrz");
 }
 
-uint32_t
+static uint32_t
 fd6_setup_slices(struct fd_resource *rsc)
 {
 	struct pipe_resource *prsc = &rsc->base;
@@ -153,4 +153,12 @@ fd6_setup_slices(struct fd_resource *rsc)
 			prsc->target == PIPE_TEXTURE_3D);
 
 	return rsc->layout.size;
+}
+
+void
+fd6_resource_screen_init(struct pipe_screen *pscreen)
+{
+	struct fd_screen *screen = fd_screen(pscreen);
+
+	screen->setup_slices = fd6_setup_slices;
 }

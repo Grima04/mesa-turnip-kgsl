@@ -136,7 +136,6 @@ fd6_screen_init(struct pipe_screen *pscreen)
 	pscreen->context_create = fd6_context_create;
 	pscreen->is_format_supported = fd6_screen_is_format_supported;
 
-	screen->setup_slices = fd6_setup_slices;
 	screen->tile_mode = fd6_tile_mode;
 
 	static const uint64_t supported_modifiers[] = {
@@ -147,5 +146,6 @@ fd6_screen_init(struct pipe_screen *pscreen)
 	screen->supported_modifiers = supported_modifiers;
 	screen->num_supported_modifiers = ARRAY_SIZE(supported_modifiers);
 
+	fd6_resource_screen_init(pscreen);
 	fd6_emit_init_screen(pscreen);
 }
