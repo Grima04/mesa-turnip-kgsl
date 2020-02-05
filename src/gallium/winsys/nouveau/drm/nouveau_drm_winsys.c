@@ -36,28 +36,6 @@ bool nouveau_drm_screen_unref(struct nouveau_screen *screen)
 	return ret == 0;
 }
 
-static unsigned hash_fd(void *key)
-{
-    int fd = pointer_to_intptr(key);
-    struct stat stat;
-    fstat(fd, &stat);
-
-    return stat.st_dev ^ stat.st_ino ^ stat.st_rdev;
-}
-
-static int compare_fd(void *key1, void *key2)
-{
-    int fd1 = pointer_to_intptr(key1);
-    int fd2 = pointer_to_intptr(key2);
-    struct stat stat1, stat2;
-    fstat(fd1, &stat1);
-    fstat(fd2, &stat2);
-
-    return stat1.st_dev != stat2.st_dev ||
-           stat1.st_ino != stat2.st_ino ||
-           stat1.st_rdev != stat2.st_rdev;
-}
-
 PUBLIC struct pipe_screen *
 nouveau_drm_screen_create(int fd)
 {
@@ -69,7 +47,7 @@ nouveau_drm_screen_create(int fd)
 
 	mtx_lock(&nouveau_screen_mutex);
 	if (!fd_tab) {
-		fd_tab = util_hash_table_create(hash_fd, compare_fd);
+		fd_tab = util_hash_table_create_fd_keys();
 		if (!fd_tab) {
 			mtx_unlock(&nouveau_screen_mutex);
 			return NULL;

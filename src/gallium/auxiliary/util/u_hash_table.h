@@ -66,6 +66,13 @@ struct util_hash_table *
 util_hash_table_create_ptr_keys(void);
 
 
+/**
+ * Create a hash table where the keys are device FDs.
+ */
+struct util_hash_table *
+util_hash_table_create_fd_keys(void);
+
+
 enum pipe_error
 util_hash_table_set(struct util_hash_table *ht,
                     void *key,

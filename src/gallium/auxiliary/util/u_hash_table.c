@@ -47,6 +47,10 @@
 #include "util/u_hash_table.h"
 #include "util/hash_table.h"
 
+#if DETECT_OS_UNIX
+#include <sys/stat.h>
+#endif
+
 
 struct util_hash_table
 {
@@ -113,6 +117,47 @@ struct util_hash_table *
 util_hash_table_create_ptr_keys(void)
 {
    return util_hash_table_create(pointer_hash, pointer_compare);
+}
+
+
+static unsigned hash_fd(void *key)
+{
+#if DETECT_OS_UNIX
+   int fd = pointer_to_intptr(key);
+   struct stat stat;
+
+   fstat(fd, &stat);
+
+   return stat.st_dev ^ stat.st_ino ^ stat.st_rdev;
+#else
+   return 0;
+#endif
+}
+
+
+static int compare_fd(void *key1, void *key2)
+{
+#if DETECT_OS_UNIX
+   int fd1 = pointer_to_intptr(key1);
+   int fd2 = pointer_to_intptr(key2);
+   struct stat stat1, stat2;
+
+   fstat(fd1, &stat1);
+   fstat(fd2, &stat2);
+
+   return stat1.st_dev != stat2.st_dev ||
+          stat1.st_ino != stat2.st_ino ||
+          stat1.st_rdev != stat2.st_rdev;
+#else
+   return 0;
+#endif
+}
+
+
+struct util_hash_table *
+util_hash_table_create_fd_keys(void)
+{
+   return util_hash_table_create(hash_fd, compare_fd);
 }
 
 

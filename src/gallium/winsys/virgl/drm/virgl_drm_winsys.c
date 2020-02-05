@@ -1028,28 +1028,6 @@ virgl_drm_screen_destroy(struct pipe_screen *pscreen)
    }
 }
 
-static unsigned hash_fd(void *key)
-{
-   int fd = pointer_to_intptr(key);
-   struct stat stat;
-   fstat(fd, &stat);
-
-   return stat.st_dev ^ stat.st_ino ^ stat.st_rdev;
-}
-
-static int compare_fd(void *key1, void *key2)
-{
-   int fd1 = pointer_to_intptr(key1);
-   int fd2 = pointer_to_intptr(key2);
-   struct stat stat1, stat2;
-   fstat(fd1, &stat1);
-   fstat(fd2, &stat2);
-
-   return stat1.st_dev != stat2.st_dev ||
-         stat1.st_ino != stat2.st_ino ||
-         stat1.st_rdev != stat2.st_rdev;
-}
-
 struct pipe_screen *
 virgl_drm_screen_create(int fd, const struct pipe_screen_config *config)
 {
@@ -1057,7 +1035,7 @@ virgl_drm_screen_create(int fd, const struct pipe_screen_config *config)
 
    mtx_lock(&virgl_screen_mutex);
    if (!fd_tab) {
-      fd_tab = util_hash_table_create(hash_fd, compare_fd);
+      fd_tab = util_hash_table_create_fd_keys();
       if (!fd_tab)
          goto unlock;
    }
