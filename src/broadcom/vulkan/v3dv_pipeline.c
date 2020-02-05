@@ -881,89 +881,73 @@ v3dv_dynamic_state_mask(VkDynamicState state)
    }
 }
 
-static uint32_t
-pipeline_needed_dynamic_state(const VkGraphicsPipelineCreateInfo *pCreateInfo)
-{
-   uint32_t states = V3DV_DYNAMIC_ALL;
-
-   /* FIXME: stub. Based on other values at pCreateInfo, we would need to
-    * remove flags from states
-    */
-
-   return states;
-}
-
 static void
 pipeline_init_dynamic_state(struct v3dv_pipeline *pipeline,
                             const VkGraphicsPipelineCreateInfo *pCreateInfo)
 {
-   uint32_t needed_states = pipeline_needed_dynamic_state(pCreateInfo);
-   uint32_t states = needed_states;
-
    pipeline->dynamic_state = default_dynamic_state;
+   struct v3dv_dynamic_state *dynamic = &pipeline->dynamic_state;
 
+   /* Create a mask of enabled dynamic states */
+   uint32_t dynamic_states = 0;
    if (pCreateInfo->pDynamicState) {
       uint32_t count = pCreateInfo->pDynamicState->dynamicStateCount;
-
       for (uint32_t s = 0; s < count; s++) {
-         /* Remove all of the states that are marked as dynamic */
-         states &= ~v3dv_dynamic_state_mask(pCreateInfo->pDynamicState->pDynamicStates[s]);
+         dynamic_states |=
+            v3dv_dynamic_state_mask(pCreateInfo->pDynamicState->pDynamicStates[s]);
       }
    }
 
-   struct v3dv_dynamic_state *dynamic = &pipeline->dynamic_state;
-   /* Note, as this can be counter-intuitive: although we are checking against
-    * _DYNAMIC flags, here we are copying the data from the pipeline that was
-    * not defined as dynamic.
+   /* For any pipeline states that are not dynamic, set the dynamic state
+    * from the static pipeline state.
+    *
+    * Notice that we don't let the number of viewports and scissort rects to
+    * be set dynamically, so these are always copied from the pipeline state.
     */
-   if (needed_states & V3DV_DYNAMIC_VIEWPORT) {
+   dynamic->viewport.count = pCreateInfo->pViewportState->viewportCount;
+   if (!(dynamic_states & V3DV_DYNAMIC_VIEWPORT)) {
       assert(pCreateInfo->pViewportState);
 
-      dynamic->viewport.count = pCreateInfo->pViewportState->viewportCount;
-      if (states & V3DV_DYNAMIC_VIEWPORT) {
-         typed_memcpy(dynamic->viewport.viewports,
-                      pCreateInfo->pViewportState->pViewports,
-                      pCreateInfo->pViewportState->viewportCount);
+      typed_memcpy(dynamic->viewport.viewports,
+                   pCreateInfo->pViewportState->pViewports,
+                   pCreateInfo->pViewportState->viewportCount);
 
-         for (uint32_t i = 0; i < dynamic->viewport.count; i++) {
-            v3dv_viewport_compute_xform(&dynamic->viewport.viewports[i],
-                                        dynamic->viewport.scale[i],
-                                        dynamic->viewport.translate[i]);
-         }
+      for (uint32_t i = 0; i < dynamic->viewport.count; i++) {
+         v3dv_viewport_compute_xform(&dynamic->viewport.viewports[i],
+                                     dynamic->viewport.scale[i],
+                                     dynamic->viewport.translate[i]);
       }
    }
 
-   if (needed_states & V3DV_DYNAMIC_SCISSOR) {
-      dynamic->scissor.count = pCreateInfo->pViewportState->scissorCount;
-      if (states & V3DV_DYNAMIC_SCISSOR) {
-         typed_memcpy(dynamic->scissor.scissors,
-                      pCreateInfo->pViewportState->pScissors,
-                      pCreateInfo->pViewportState->scissorCount);
-      }
+   dynamic->scissor.count = pCreateInfo->pViewportState->scissorCount;
+   if (!(dynamic_states & V3DV_DYNAMIC_SCISSOR)) {
+      typed_memcpy(dynamic->scissor.scissors,
+                   pCreateInfo->pViewportState->pScissors,
+                   pCreateInfo->pViewportState->scissorCount);
    }
 
-   if (needed_states & V3DV_DYNAMIC_STENCIL_COMPARE_MASK) {
+   if (!(dynamic_states & V3DV_DYNAMIC_STENCIL_COMPARE_MASK)) {
       dynamic->stencil_compare_mask.front =
          pCreateInfo->pDepthStencilState->front.compareMask;
       dynamic->stencil_compare_mask.back =
          pCreateInfo->pDepthStencilState->back.compareMask;
    }
 
-   if (needed_states & V3DV_DYNAMIC_STENCIL_WRITE_MASK) {
+   if (!(dynamic_states & V3DV_DYNAMIC_STENCIL_WRITE_MASK)) {
       dynamic->stencil_write_mask.front =
          pCreateInfo->pDepthStencilState->front.writeMask;
       dynamic->stencil_write_mask.back =
          pCreateInfo->pDepthStencilState->back.writeMask;
    }
 
-   if (needed_states & V3DV_DYNAMIC_STENCIL_REFERENCE) {
+   if (!(dynamic_states & V3DV_DYNAMIC_STENCIL_REFERENCE)) {
       dynamic->stencil_reference.front =
          pCreateInfo->pDepthStencilState->front.reference;
       dynamic->stencil_reference.back =
          pCreateInfo->pDepthStencilState->back.reference;
    }
 
-   pipeline->dynamic_state.mask = states;
+   pipeline->dynamic_state.mask = dynamic_states;
 }
 
 static void
@@ -1072,15 +1056,15 @@ pack_single_stencil_cfg(struct v3dv_pipeline *pipeline,
     */
    const uint8_t write_mask =
       pipeline->dynamic_state.mask & V3DV_DYNAMIC_STENCIL_WRITE_MASK ?
-         stencil_state->writeMask & 0xff : 0;
+         0 : stencil_state->writeMask & 0xff;
 
    const uint8_t compare_mask =
       pipeline->dynamic_state.mask & V3DV_DYNAMIC_STENCIL_COMPARE_MASK ?
-         stencil_state->compareMask & 0xff : 0;
+         0 : stencil_state->compareMask & 0xff;
 
    const uint8_t reference =
       pipeline->dynamic_state.mask & V3DV_DYNAMIC_STENCIL_COMPARE_MASK ?
-         stencil_state->reference & 0xff : 0;
+         0 : stencil_state->reference & 0xff;
 
    v3dv_pack(stencil_cfg, STENCIL_CFG, config) {
       config.front_config = is_front;
@@ -1113,7 +1097,7 @@ pack_stencil_cfg(struct v3dv_pipeline *pipeline,
     * packet for both faces.
     */
    bool needs_front_and_back = false;
-   if (!(pipeline->dynamic_state.mask & dynamic_stencil_states) ||
+   if ((pipeline->dynamic_state.mask & dynamic_stencil_states) ||
        memcmp(&ds_info->front, &ds_info->back, sizeof(ds_info->front)))
       needs_front_and_back = true;
 

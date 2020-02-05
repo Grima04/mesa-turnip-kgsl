@@ -440,22 +440,17 @@ enum v3dv_dynamic_state_bits {
    V3DV_DYNAMIC_ALL                       = (1 << 5) - 1,
 };
 
-/* To track which cmd buffer elements are "dirty" so would need an
- * update. This includes viewport, scissor (so vk dynamic info), plus any
- * other more high level resource, like pipeline, etc.
+/* Flags for dirty pipeline state.
  */
 enum v3dv_cmd_dirty_bits {
-   V3DV_CMD_DIRTY_DYNAMIC_VIEWPORT                  = 1 << 0,
-   V3DV_CMD_DIRTY_DYNAMIC_SCISSOR                   = 1 << 1,
-   V3DV_CMD_DIRTY_DYNAMIC_STENCIL_COMPARE_MASK      = 1 << 2,
-   V3DV_CMD_DIRTY_DYNAMIC_STENCIL_WRITE_MASK        = 1 << 3,
-   V3DV_CMD_DIRTY_DYNAMIC_STENCIL_REFERENCE         = 1 << 4,
-   V3DV_CMD_DIRTY_DYNAMIC_ALL                       = (1 << 5) - 1,
-
-   V3DV_CMD_DIRTY_PIPELINE                          = 1 << 5,
-   V3DV_CMD_DIRTY_VERTEX_BUFFER                     = 1 << 6,
+   V3DV_CMD_DIRTY_VIEWPORT                  = 1 << 0,
+   V3DV_CMD_DIRTY_SCISSOR                   = 1 << 1,
+   V3DV_CMD_DIRTY_STENCIL_COMPARE_MASK      = 1 << 2,
+   V3DV_CMD_DIRTY_STENCIL_WRITE_MASK        = 1 << 3,
+   V3DV_CMD_DIRTY_STENCIL_REFERENCE         = 1 << 4,
+   V3DV_CMD_DIRTY_PIPELINE                  = 1 << 5,
+   V3DV_CMD_DIRTY_VERTEX_BUFFER             = 1 << 6,
 };
-
 
 struct v3dv_dynamic_state {
    /**
