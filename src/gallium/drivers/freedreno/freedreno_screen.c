@@ -985,15 +985,6 @@ fd_screen_create(struct fd_device *dev, struct renderonly *ro)
 
 	pscreen->query_dmabuf_modifiers = fd_screen_query_dmabuf_modifiers;
 
-	if (!screen->supported_modifiers) {
-		static const uint64_t supported_modifiers[] = {
-			DRM_FORMAT_MOD_LINEAR,
-		};
-
-		screen->supported_modifiers = supported_modifiers;
-		screen->num_supported_modifiers = ARRAY_SIZE(supported_modifiers);
-	}
-
 	slab_create_parent(&screen->transfer_pool, sizeof(struct fd_transfer), 16);
 
 	return pscreen;

@@ -1206,6 +1206,10 @@ static const struct u_transfer_vtbl transfer_vtbl = {
 		.get_stencil              = fd_resource_get_stencil,
 };
 
+static const uint64_t supported_modifiers[] = {
+	DRM_FORMAT_MOD_LINEAR,
+};
+
 void
 fd_resource_screen_init(struct pipe_screen *pscreen)
 {
@@ -1226,6 +1230,10 @@ fd_resource_screen_init(struct pipe_screen *pscreen)
 
 	if (!screen->setup_slices)
 		screen->setup_slices = fd_setup_slices;
+	if (!screen->supported_modifiers) {
+		screen->supported_modifiers = supported_modifiers;
+		screen->num_supported_modifiers = ARRAY_SIZE(supported_modifiers);
+	}
 }
 
 static void
