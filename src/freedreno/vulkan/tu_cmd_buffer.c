@@ -1419,8 +1419,9 @@ tu_cmd_prepare_tile_load_ib(struct tu_cmd_buffer *cmd,
                             const VkRenderPassBeginInfo *info)
 {
    const uint32_t tile_load_space =
-      8 + (23+19) * cmd->state.pass->attachment_count +
-      21 + (13 * cmd->state.subpass->color_count + 8) + 11;
+      2 * 3 /* blit_scissor */ +
+      (20 /* load */ + 19 /* clear */) * cmd->state.pass->attachment_count +
+      2 /* cache invalidate */;
 
    struct tu_cs sub_cs;
 
@@ -1447,10 +1448,6 @@ tu_cmd_prepare_tile_load_ib(struct tu_cmd_buffer *cmd,
     */
    if (cmd->state.subpass->input_count)
       tu6_emit_event_write(cmd, &sub_cs, CACHE_INVALIDATE, false);
-
-   tu6_emit_zs(cmd, cmd->state.subpass, &sub_cs);
-   tu6_emit_mrt(cmd, cmd->state.subpass, &sub_cs);
-   tu6_emit_msaa(cmd, cmd->state.subpass, &sub_cs);
 
    cmd->state.tile_load_ib = tu_cs_end_sub_stream(&cmd->sub_cs, &sub_cs);
 }
@@ -2321,6 +2318,16 @@ tu_CmdBeginRenderPass(VkCommandBuffer commandBuffer,
    tu_cmd_update_tiling_config(cmd, &pRenderPassBegin->renderArea);
    tu_cmd_prepare_tile_load_ib(cmd, pRenderPassBegin);
    tu_cmd_prepare_tile_store_ib(cmd);
+
+   VkResult result = tu_cs_reserve_space(cmd->device, &cmd->draw_cs, 1024);
+   if (result != VK_SUCCESS) {
+      cmd->record_result = result;
+      return;
+   }
+
+   tu6_emit_zs(cmd, cmd->state.subpass, &cmd->draw_cs);
+   tu6_emit_mrt(cmd, cmd->state.subpass, &cmd->draw_cs);
+   tu6_emit_msaa(cmd, cmd->state.subpass, &cmd->draw_cs);
 
    /* note: use_hw_binning only checks tiling config */
    if (use_hw_binning(cmd))
