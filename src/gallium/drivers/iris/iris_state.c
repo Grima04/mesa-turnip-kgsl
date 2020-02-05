@@ -5193,11 +5193,15 @@ emit_push_constant_packets(struct iris_context *ice,
                            int stage,
                            const struct push_bos *push_bos)
 {
+   UNUSED struct isl_device *isl_dev = &batch->screen->isl_dev;
    struct iris_compiled_shader *shader = ice->shaders.prog[stage];
    struct brw_stage_prog_data *prog_data = (void *) shader->prog_data;
 
    iris_emit_cmd(batch, GENX(3DSTATE_CONSTANT_VS), pkt) {
       pkt._3DCommandSubOpcode = push_constant_opcodes[stage];
+#if GEN_GEN >= 12
+      pkt.MOCS = isl_dev->mocs.internal;
+#endif
       if (prog_data) {
          /* The Skylake PRM contains the following restriction:
           *
@@ -5229,6 +5233,8 @@ emit_push_constant_packet_all(struct iris_context *ice,
                               uint32_t shader_mask,
                               const struct push_bos *push_bos)
 {
+   struct isl_device *isl_dev = &batch->screen->isl_dev;
+
    if (!push_bos) {
       iris_emit_cmd(batch, GENX(3DSTATE_CONSTANT_ALL), pc) {
          pc.ShaderUpdateEnable = shader_mask;
@@ -5245,6 +5251,7 @@ emit_push_constant_packet_all(struct iris_context *ice,
    assert(n <= max_pointers);
    iris_pack_command(GENX(3DSTATE_CONSTANT_ALL), dw, all) {
       all.DWordLength = num_dwords - 2;
+      all.MOCS = isl_dev->mocs.internal;
       all.ShaderUpdateEnable = shader_mask;
       all.PointerBufferMask = (1 << n) - 1;
    }
