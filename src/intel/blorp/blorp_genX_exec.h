@@ -902,6 +902,10 @@ blorp_emit_ps_config(struct blorp_batch *batch,
          psx.PixelShaderValid = true;
          psx.AttributeEnable = prog_data->num_varying_inputs > 0;
          psx.PixelShaderIsPerSample = prog_data->persample_dispatch;
+         psx.PixelShaderComputedDepthMode = prog_data->computed_depth_mode;
+#if GEN_GEN >= 9
+         psx.PixelShaderComputesStencil = prog_data->computed_stencil;
+#endif
       }
 
       if (params->src.enabled)
@@ -927,8 +931,10 @@ blorp_emit_ps_config(struct blorp_batch *batch,
          unreachable("not reached");
       }
 
-      if (prog_data)
+      if (prog_data) {
          wm.ThreadDispatchEnable = true;
+         wm.PixelShaderComputedDepthMode = prog_data->computed_depth_mode;
+      }
 
       if (params->src.enabled)
          wm.PixelShaderKillsPixel = true;
