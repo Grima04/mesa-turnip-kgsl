@@ -47,7 +47,7 @@ lima_drm_screen_destroy(struct pipe_screen *pscreen)
    mtx_lock(&lima_screen_mutex);
    destroy = --screen->refcnt == 0;
    if (destroy)
-      util_hash_table_remove(fd_tab, intptr_to_pointer(fd));
+      _mesa_hash_table_remove_key(fd_tab, intptr_to_pointer(fd));
    mtx_unlock(&lima_screen_mutex);
 
    if (destroy) {
@@ -77,7 +77,7 @@ lima_drm_screen_create(int fd)
 
       pscreen = lima_screen_create(dup_fd, NULL);
       if (pscreen) {
-         util_hash_table_set(fd_tab, intptr_to_pointer(dup_fd), pscreen);
+         _mesa_hash_table_insert(fd_tab, intptr_to_pointer(dup_fd), pscreen);
 
          /* Bit of a hack, to avoid circular linkage dependency,
           * ie. pipe driver having to call in to winsys, we

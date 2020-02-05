@@ -31,7 +31,7 @@ bool nouveau_drm_screen_unref(struct nouveau_screen *screen)
 	ret = --screen->refcount;
 	assert(ret >= 0);
 	if (ret == 0)
-		util_hash_table_remove(fd_tab, intptr_to_pointer(screen->drm->fd));
+		_mesa_hash_table_remove_key(fd_tab, intptr_to_pointer(screen->drm->fd));
 	mtx_unlock(&nouveau_screen_mutex);
 	return ret == 0;
 }
@@ -119,7 +119,7 @@ nouveau_drm_screen_create(int fd)
 	 * closed by its owner. The hash key needs to live at least as long as
 	 * the screen.
 	 */
-	util_hash_table_set(fd_tab, intptr_to_pointer(dupfd), screen);
+	_mesa_hash_table_insert(fd_tab, intptr_to_pointer(dupfd), screen);
 	screen->refcount = 1;
 	mtx_unlock(&nouveau_screen_mutex);
 	return &screen->base;

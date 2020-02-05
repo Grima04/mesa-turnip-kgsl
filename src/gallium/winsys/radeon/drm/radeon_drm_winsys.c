@@ -622,9 +622,9 @@ static void radeon_winsys_destroy(struct radeon_winsys *rws)
         radeon_surface_manager_free(ws->surf_man);
     }
 
-    util_hash_table_destroy(ws->bo_names);
-    util_hash_table_destroy(ws->bo_handles);
-    util_hash_table_destroy(ws->bo_vas);
+    _mesa_hash_table_destroy(ws->bo_names, NULL);
+    _mesa_hash_table_destroy(ws->bo_handles, NULL);
+    _mesa_hash_table_destroy(ws->bo_vas, NULL);
     mtx_destroy(&ws->bo_handles_mutex);
     mtx_destroy(&ws->vm32.mutex);
     mtx_destroy(&ws->vm64.mutex);
@@ -776,9 +776,9 @@ static bool radeon_winsys_unref(struct radeon_winsys *ws)
 
     destroy = pipe_reference(&rws->reference, NULL);
     if (destroy && fd_tab) {
-        util_hash_table_remove(fd_tab, intptr_to_pointer(rws->fd));
-        if (util_hash_table_count(fd_tab) == 0) {
-           util_hash_table_destroy(fd_tab);
+        _mesa_hash_table_remove_key(fd_tab, intptr_to_pointer(rws->fd));
+        if (_mesa_hash_table_num_entries(fd_tab) == 0) {
+           _mesa_hash_table_destroy(fd_tab, NULL);
            fd_tab = NULL;
         }
     }
@@ -929,7 +929,7 @@ radeon_drm_winsys_create(int fd, const struct pipe_screen_config *config,
         return NULL;
     }
 
-    util_hash_table_set(fd_tab, intptr_to_pointer(ws->fd), ws);
+    _mesa_hash_table_insert(fd_tab, intptr_to_pointer(ws->fd), ws);
 
     /* We must unlock the mutex once the winsys is fully initialized, so that
      * other threads attempting to create the winsys from the same fd will

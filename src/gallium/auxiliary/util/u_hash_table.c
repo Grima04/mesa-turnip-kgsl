@@ -26,24 +26,12 @@
  **************************************************************************/
 
 
-#include "pipe/p_compiler.h"
-#include "util/u_debug.h"
-
-#include "util/u_memory.h"
+#include "util/u_pointer.h"
 #include "util/u_hash_table.h"
-#include "util/hash_table.h"
 
 #if DETECT_OS_UNIX
 #include <sys/stat.h>
 #endif
-
-
-struct hash_table *
-util_hash_table_create(uint32_t (*hash)(const void *key),
-                       bool (*equal)(const void *key1, const void *key2))
-{
-   return _mesa_hash_table_create(NULL, hash, equal);
-}
 
 
 static uint32_t
@@ -108,16 +96,6 @@ util_hash_table_create_fd_keys(void)
 }
 
 
-enum pipe_error
-util_hash_table_set(struct hash_table *ht,
-                    void *key,
-                    void *value)
-{
-   _mesa_hash_table_insert(ht, key, value);
-   return PIPE_OK;
-}
-
-
 void *
 util_hash_table_get(struct hash_table *ht,
                     void *key)
@@ -125,21 +103,6 @@ util_hash_table_get(struct hash_table *ht,
    struct hash_entry *entry = _mesa_hash_table_search(ht, key);
 
    return entry ? entry->data : NULL;
-}
-
-
-void
-util_hash_table_remove(struct hash_table *ht,
-                       void *key)
-{
-   _mesa_hash_table_remove_key(ht, key);
-}
-
-
-void 
-util_hash_table_clear(struct hash_table *ht)
-{
-   _mesa_hash_table_clear(ht, NULL);
 }
 
 
@@ -155,18 +118,4 @@ util_hash_table_foreach(struct hash_table *ht,
          return error;
    }
    return PIPE_OK;
-}
-
-
-size_t
-util_hash_table_count(struct hash_table *ht)
-{
-   return _mesa_hash_table_num_entries(ht);
-}
-
-
-void
-util_hash_table_destroy(struct hash_table *ht)
-{
-   _mesa_hash_table_destroy(ht, NULL);
 }

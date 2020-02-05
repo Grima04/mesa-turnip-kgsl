@@ -296,7 +296,7 @@ debug_symbol_name_cached(const void *addr)
       debug_symbol_name(addr, buf, sizeof(buf));
       name = strdup(buf);
 
-      util_hash_table_set(symbols_hash, (void*)addr, (void*)name);
+      _mesa_hash_table_insert(symbols_hash, (void*)addr, (void*)name);
    }
    mtx_unlock(&symbols_mutex);
    return name;

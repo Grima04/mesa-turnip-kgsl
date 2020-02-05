@@ -361,9 +361,9 @@ void radeon_bo_destroy(struct pb_buffer *_buf)
     memset(&args, 0, sizeof(args));
 
     mtx_lock(&rws->bo_handles_mutex);
-    util_hash_table_remove(rws->bo_handles, (void*)(uintptr_t)bo->handle);
+    _mesa_hash_table_remove_key(rws->bo_handles, (void*)(uintptr_t)bo->handle);
     if (bo->flink_name) {
-        util_hash_table_remove(rws->bo_names,
+        _mesa_hash_table_remove_key(rws->bo_names,
                                (void*)(uintptr_t)bo->flink_name);
     }
     mtx_unlock(&rws->bo_handles_mutex);
@@ -725,7 +725,7 @@ static struct radeon_bo *radeon_create_bo(struct radeon_drm_winsys *rws,
             return radeon_bo(b);
         }
 
-        util_hash_table_set(rws->bo_vas, (void*)(uintptr_t)bo->va, bo);
+        _mesa_hash_table_insert(rws->bo_vas, (void*)(uintptr_t)bo->va, bo);
         mtx_unlock(&rws->bo_handles_mutex);
     }
 
@@ -1042,7 +1042,7 @@ no_slab:
     bo->u.real.use_reusable_pool = use_reusable_pool;
 
     mtx_lock(&ws->bo_handles_mutex);
-    util_hash_table_set(ws->bo_handles, (void*)(uintptr_t)bo->handle, bo);
+    _mesa_hash_table_insert(ws->bo_handles, (void*)(uintptr_t)bo->handle, bo);
     mtx_unlock(&ws->bo_handles_mutex);
 
     return &bo->base;
@@ -1089,7 +1089,7 @@ static struct pb_buffer *radeon_winsys_bo_from_ptr(struct radeon_winsys *rws,
     bo->hash = __sync_fetch_and_add(&ws->next_bo_hash, 1);
     (void) mtx_init(&bo->u.real.map_mutex, mtx_plain);
 
-    util_hash_table_set(ws->bo_handles, (void*)(uintptr_t)bo->handle, bo);
+    _mesa_hash_table_insert(ws->bo_handles, (void*)(uintptr_t)bo->handle, bo);
 
     mtx_unlock(&ws->bo_handles_mutex);
 
@@ -1123,7 +1123,7 @@ static struct pb_buffer *radeon_winsys_bo_from_ptr(struct radeon_winsys *rws,
             return b;
         }
 
-        util_hash_table_set(ws->bo_vas, (void*)(uintptr_t)bo->va, bo);
+        _mesa_hash_table_insert(ws->bo_vas, (void*)(uintptr_t)bo->va, bo);
         mtx_unlock(&ws->bo_handles_mutex);
     }
 
@@ -1217,9 +1217,9 @@ static struct pb_buffer *radeon_winsys_bo_from_handle(struct radeon_winsys *rws,
     (void) mtx_init(&bo->u.real.map_mutex, mtx_plain);
 
     if (bo->flink_name)
-        util_hash_table_set(ws->bo_names, (void*)(uintptr_t)bo->flink_name, bo);
+        _mesa_hash_table_insert(ws->bo_names, (void*)(uintptr_t)bo->flink_name, bo);
 
-    util_hash_table_set(ws->bo_handles, (void*)(uintptr_t)bo->handle, bo);
+    _mesa_hash_table_insert(ws->bo_handles, (void*)(uintptr_t)bo->handle, bo);
 
 done:
     mtx_unlock(&ws->bo_handles_mutex);
@@ -1254,7 +1254,7 @@ done:
             return b;
         }
 
-        util_hash_table_set(ws->bo_vas, (void*)(uintptr_t)bo->va, bo);
+        _mesa_hash_table_insert(ws->bo_vas, (void*)(uintptr_t)bo->va, bo);
         mtx_unlock(&ws->bo_handles_mutex);
     }
 
@@ -1299,7 +1299,7 @@ static bool radeon_winsys_bo_get_handle(struct radeon_winsys *rws,
             bo->flink_name = flink.name;
 
             mtx_lock(&ws->bo_handles_mutex);
-            util_hash_table_set(ws->bo_names, (void*)(uintptr_t)bo->flink_name, bo);
+            _mesa_hash_table_insert(ws->bo_names, (void*)(uintptr_t)bo->flink_name, bo);
             mtx_unlock(&ws->bo_handles_mutex);
         }
         whandle->handle = bo->flink_name;

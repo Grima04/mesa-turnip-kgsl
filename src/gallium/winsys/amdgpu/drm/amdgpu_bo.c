@@ -198,7 +198,7 @@ void amdgpu_bo_destroy(struct pb_buffer *_buf)
    simple_mtx_unlock(&ws->sws_list_lock);
 
    simple_mtx_lock(&ws->bo_export_table_lock);
-   util_hash_table_remove(ws->bo_export_table, bo->bo);
+   _mesa_hash_table_remove_key(ws->bo_export_table, bo->bo);
    simple_mtx_unlock(&ws->bo_export_table_lock);
 
    if (bo->initial_domain & RADEON_DOMAIN_VRAM_GTT) {
@@ -1519,7 +1519,7 @@ static struct pb_buffer *amdgpu_bo_from_handle(struct radeon_winsys *rws,
 
    amdgpu_add_buffer_to_global_list(bo);
 
-   util_hash_table_set(ws->bo_export_table, bo->bo, bo);
+   _mesa_hash_table_insert(ws->bo_export_table, bo->bo, bo);
    simple_mtx_unlock(&ws->bo_export_table_lock);
 
    return &bo->base;
@@ -1602,7 +1602,7 @@ static bool amdgpu_bo_get_handle(struct radeon_winsys *rws,
 
  hash_table_set:
    simple_mtx_lock(&ws->bo_export_table_lock);
-   util_hash_table_set(ws->bo_export_table, bo->bo, bo);
+   _mesa_hash_table_insert(ws->bo_export_table, bo->bo, bo);
    simple_mtx_unlock(&ws->bo_export_table_lock);
 
    bo->is_shared = true;

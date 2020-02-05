@@ -260,7 +260,7 @@ vmw_swc_flush(struct svga_winsys_context *swc,
       vmw_svga_winsys_surface_reference(&isurf->vsurf, NULL);
    }
 
-   util_hash_table_clear(vswc->hash);
+   _mesa_hash_table_clear(vswc->hash, NULL);
    vswc->surface.used = 0;
    vswc->surface.reserved = 0;
 
@@ -504,12 +504,8 @@ vmw_swc_surface_only_relocation(struct svga_winsys_context *swc,
       isrf = &vswc->surface.items[vswc->surface.used + vswc->surface.staged];
       vmw_svga_winsys_surface_reference(&isrf->vsurf, vsurf);
       isrf->referenced = FALSE;
-      /*
-       * Note that a failure here may just fall back to unhashed behavior
-       * and potentially cause unnecessary flushing, so ignore the
-       * return code.
-       */
-      (void) util_hash_table_set(vswc->hash, vsurf, isrf);
+
+      _mesa_hash_table_insert(vswc->hash, vsurf, isrf);
       ++vswc->surface.staged;
 
       vswc->seen_surfaces += vsurf->size;
@@ -600,12 +596,8 @@ vmw_swc_shader_relocation(struct svga_winsys_context *swc,
          ishader = &vswc->shader.items[vswc->shader.used + vswc->shader.staged];
          vmw_svga_winsys_shader_reference(&ishader->vshader, vshader);
          ishader->referenced = FALSE;
-         /*
-          * Note that a failure here may just fall back to unhashed behavior
-          * and potentially cause unnecessary flushing, so ignore the
-          * return code.
-          */
-         (void) util_hash_table_set(vswc->hash, vshader, ishader);
+
+         _mesa_hash_table_insert(vswc->hash, vshader, ishader);
          ++vswc->shader.staged;
       }
 
@@ -682,7 +674,7 @@ vmw_swc_destroy(struct svga_winsys_context *swc)
       vmw_svga_winsys_shader_reference(&ishader->vshader, NULL);
    }
 
-   util_hash_table_destroy(vswc->hash);
+   _mesa_hash_table_destroy(vswc->hash, NULL);
    pb_validate_destroy(vswc->validate);
    vmw_ioctl_context_destroy(vswc->vws, swc->cid);
 #ifdef DEBUG

@@ -90,7 +90,7 @@ debug_serial(void *p, unsigned *pserial)
          os_abort();
       }
 
-      util_hash_table_set(serials_hash, p, (void *) (uintptr_t) serial);
+      _mesa_hash_table_insert(serials_hash, p, (void *) (uintptr_t) serial);
       found = FALSE;
    }
    mtx_unlock(&serials_mutex);
@@ -108,7 +108,7 @@ static void
 debug_serial_delete(void *p)
 {
    mtx_lock(&serials_mutex);
-   util_hash_table_remove(serials_hash, p);
+   _mesa_hash_table_remove_key(serials_hash, p);
    mtx_unlock(&serials_mutex);
 }
 

@@ -342,12 +342,12 @@ vlVaDestroyContext(VADriverContextP ctx, VAContextID context_id)
          if (u_reduce_video_profile(context->decoder->profile) ==
              PIPE_VIDEO_FORMAT_MPEG4_AVC) {
             if (context->desc.h264enc.frame_idx)
-               util_hash_table_destroy (context->desc.h264enc.frame_idx);
+               _mesa_hash_table_destroy(context->desc.h264enc.frame_idx, NULL);
          }
          if (u_reduce_video_profile(context->decoder->profile) ==
              PIPE_VIDEO_FORMAT_HEVC) {
             if (context->desc.h265enc.frame_idx)
-               util_hash_table_destroy (context->desc.h265enc.frame_idx);
+               _mesa_hash_table_destroy(context->desc.h265enc.frame_idx, NULL);
          }
       } else {
          if (u_reduce_video_profile(context->decoder->profile) ==

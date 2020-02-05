@@ -81,7 +81,7 @@ etna_drm_screen_destroy(struct pipe_screen *pscreen)
    destroy = --screen->refcnt == 0;
    if (destroy) {
       int fd = etna_device_fd(screen->dev);
-      util_hash_table_remove(etna_tab, intptr_to_pointer(fd));
+      _mesa_hash_table_remove_key(etna_tab, intptr_to_pointer(fd));
    }
    mtx_unlock(&etna_screen_mutex);
 
@@ -110,7 +110,7 @@ etna_drm_screen_create_renderonly(struct renderonly *ro)
       pscreen = screen_create(ro);
       if (pscreen) {
          int fd = etna_device_fd(etna_screen(pscreen)->dev);
-         util_hash_table_set(etna_tab, intptr_to_pointer(fd), pscreen);
+         _mesa_hash_table_insert(etna_tab, intptr_to_pointer(fd), pscreen);
 
          /* Bit of a hack, to avoid circular linkage dependency,
          * ie. pipe driver having to call in to winsys, we

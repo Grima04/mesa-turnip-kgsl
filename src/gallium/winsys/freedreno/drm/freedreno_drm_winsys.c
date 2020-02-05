@@ -52,7 +52,7 @@ fd_drm_screen_destroy(struct pipe_screen *pscreen)
 	destroy = --screen->refcnt == 0;
 	if (destroy) {
 		int fd = fd_device_fd(screen->dev);
-		util_hash_table_remove(fd_tab, intptr_to_pointer(fd));
+		_mesa_hash_table_remove_key(fd_tab, intptr_to_pointer(fd));
 	}
 	mtx_unlock(&fd_screen_mutex);
 
@@ -86,7 +86,7 @@ fd_drm_screen_create(int fd, struct renderonly *ro)
 		if (pscreen) {
 			int fd = fd_device_fd(dev);
 
-			util_hash_table_set(fd_tab, intptr_to_pointer(fd), pscreen);
+			_mesa_hash_table_insert(fd_tab, intptr_to_pointer(fd), pscreen);
 
 			/* Bit of a hack, to avoid circular linkage dependency,
 			 * ie. pipe driver having to call in to winsys, we

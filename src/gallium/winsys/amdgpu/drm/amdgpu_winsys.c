@@ -139,7 +139,7 @@ static void do_winsys_deinit(struct amdgpu_winsys *ws)
          pb_slabs_deinit(&ws->bo_slabs[i]);
    }
    pb_cache_deinit(&ws->bo_cache);
-   util_hash_table_destroy(ws->bo_export_table);
+   _mesa_hash_table_destroy(ws->bo_export_table, NULL);
    simple_mtx_destroy(&ws->sws_list_lock);
    simple_mtx_destroy(&ws->global_bo_list_lock);
    simple_mtx_destroy(&ws->bo_export_table_lock);
@@ -165,9 +165,9 @@ static void amdgpu_winsys_destroy(struct radeon_winsys *rws)
 
    destroy = pipe_reference(&ws->reference, NULL);
    if (destroy && dev_tab) {
-      util_hash_table_remove(dev_tab, ws->dev);
-      if (util_hash_table_count(dev_tab) == 0) {
-         util_hash_table_destroy(dev_tab);
+      _mesa_hash_table_remove_key(dev_tab, ws->dev);
+      if (_mesa_hash_table_num_entries(dev_tab) == 0) {
+         _mesa_hash_table_destroy(dev_tab, NULL);
          dev_tab = NULL;
       }
    }
@@ -467,7 +467,7 @@ amdgpu_winsys_create(int fd, const struct pipe_screen_config *config,
          return NULL;
       }
 
-      util_hash_table_set(dev_tab, dev, aws);
+      _mesa_hash_table_insert(dev_tab, dev, aws);
 
       if (aws->reserve_vmid) {
          r = amdgpu_vm_reserve_vmid(dev, 0);

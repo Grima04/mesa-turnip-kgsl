@@ -69,7 +69,7 @@ vmw_winsys_create( int fd )
    struct stat stat_buf;
 
    if (dev_hash == NULL) {
-      dev_hash = util_hash_table_create(vmw_dev_hash, vmw_dev_compare);
+      dev_hash = _mesa_hash_table_create(NULL, vmw_dev_hash, vmw_dev_compare);
       if (dev_hash == NULL)
          return NULL;
    }
@@ -107,14 +107,12 @@ vmw_winsys_create( int fd )
    if (!vmw_winsys_screen_init_svga(vws))
       goto out_no_svga;
 
-   if (util_hash_table_set(dev_hash, &vws->device, vws) != PIPE_OK)
-      goto out_no_hash_insert;
+   _mesa_hash_table_insert(dev_hash, &vws->device, vws);
 
    cnd_init(&vws->cs_cond);
    mtx_init(&vws->cs_mutex, mtx_plain);
 
    return vws;
-out_no_hash_insert:
 out_no_svga:
    vmw_pools_cleanup(vws);
 out_no_pools:
@@ -132,7 +130,7 @@ void
 vmw_winsys_destroy(struct vmw_winsys_screen *vws)
 {
    if (--vws->open_count == 0) {
-      util_hash_table_remove(dev_hash, &vws->device);
+      _mesa_hash_table_remove_key(dev_hash, &vws->device);
       vmw_pools_cleanup(vws);
       vws->fence_ops->destroy(vws->fence_ops);
       vmw_ioctl_cleanup(vws);

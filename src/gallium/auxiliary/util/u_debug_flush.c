@@ -323,10 +323,7 @@ debug_flush_cb_reference(struct debug_flush_ctx *fctx,
          debug_flush_buf_reference(&item->fbuf, fbuf);
          item->bt_depth = fctx->bt_depth;
          item->ref_frame = debug_flush_capture_frame(2, item->bt_depth);
-         if (util_hash_table_set(fctx->ref_hash, fbuf, item) != PIPE_OK) {
-            debug_flush_item_destroy(item);
-            goto out_no_item;
-         }
+         _mesa_hash_table_insert(fctx->ref_hash, fbuf, item);
          return;
       }
       goto out_no_item;
@@ -409,7 +406,7 @@ debug_flush_flush(struct debug_flush_ctx *fctx)
    util_hash_table_foreach(fctx->ref_hash,
                            debug_flush_flush_cb,
                            NULL);
-   util_hash_table_clear(fctx->ref_hash);
+   _mesa_hash_table_clear(fctx->ref_hash, NULL);
 }
 
 void
@@ -422,8 +419,8 @@ debug_flush_ctx_destroy(struct debug_flush_ctx *fctx)
    util_hash_table_foreach(fctx->ref_hash,
                            debug_flush_flush_cb,
                            NULL);
-   util_hash_table_clear(fctx->ref_hash);
-   util_hash_table_destroy(fctx->ref_hash);
+   _mesa_hash_table_clear(fctx->ref_hash, NULL);
+   _mesa_hash_table_destroy(fctx->ref_hash, NULL);
    FREE(fctx);
 }
 #endif

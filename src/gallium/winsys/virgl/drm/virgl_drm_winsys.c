@@ -68,10 +68,10 @@ static void virgl_hw_res_destroy(struct virgl_drm_winsys *qdws,
       struct drm_gem_close args;
 
       mtx_lock(&qdws->bo_handles_mutex);
-      util_hash_table_remove(qdws->bo_handles,
+      _mesa_hash_table_remove_key(qdws->bo_handles,
                              (void *)(uintptr_t)res->bo_handle);
       if (res->flink_name)
-         util_hash_table_remove(qdws->bo_names,
+         _mesa_hash_table_remove_key(qdws->bo_names,
                                 (void *)(uintptr_t)res->flink_name);
       mtx_unlock(&qdws->bo_handles_mutex);
       if (res->ptr)
@@ -113,8 +113,8 @@ virgl_drm_winsys_destroy(struct virgl_winsys *qws)
 
    virgl_resource_cache_flush(&qdws->cache);
 
-   util_hash_table_destroy(qdws->bo_handles);
-   util_hash_table_destroy(qdws->bo_names);
+   _mesa_hash_table_destroy(qdws->bo_handles, NULL);
+   _mesa_hash_table_destroy(qdws->bo_names, NULL);
    mtx_destroy(&qdws->bo_handles_mutex);
    mtx_destroy(&qdws->mutex);
 
@@ -387,8 +387,8 @@ virgl_drm_winsys_resource_create_handle(struct virgl_winsys *qws,
    res->num_cs_references = 0;
 
    if (res->flink_name)
-      util_hash_table_set(qdws->bo_names, (void *)(uintptr_t)res->flink_name, res);
-   util_hash_table_set(qdws->bo_handles, (void *)(uintptr_t)res->bo_handle, res);
+      _mesa_hash_table_insert(qdws->bo_names, (void *)(uintptr_t)res->flink_name, res);
+   _mesa_hash_table_insert(qdws->bo_handles, (void *)(uintptr_t)res->bo_handle, res);
 
 done:
    mtx_unlock(&qdws->bo_handles_mutex);
@@ -417,7 +417,7 @@ static boolean virgl_drm_winsys_resource_get_handle(struct virgl_winsys *qws,
          res->flink_name = flink.name;
 
          mtx_lock(&qdws->bo_handles_mutex);
-         util_hash_table_set(qdws->bo_names, (void *)(uintptr_t)res->flink_name, res);
+         _mesa_hash_table_insert(qdws->bo_names, (void *)(uintptr_t)res->flink_name, res);
          mtx_unlock(&qdws->bo_handles_mutex);
       }
       whandle->handle = res->flink_name;
@@ -427,7 +427,7 @@ static boolean virgl_drm_winsys_resource_get_handle(struct virgl_winsys *qws,
       if (drmPrimeHandleToFD(qdws->fd, res->bo_handle, DRM_CLOEXEC, (int*)&whandle->handle))
             return FALSE;
       mtx_lock(&qdws->bo_handles_mutex);
-      util_hash_table_set(qdws->bo_handles, (void *)(uintptr_t)res->bo_handle, res);
+      _mesa_hash_table_insert(qdws->bo_handles, (void *)(uintptr_t)res->bo_handle, res);
       mtx_unlock(&qdws->bo_handles_mutex);
    }
 
@@ -1017,7 +1017,7 @@ virgl_drm_screen_destroy(struct pipe_screen *pscreen)
    destroy = --screen->refcnt == 0;
    if (destroy) {
       int fd = virgl_drm_winsys(screen->vws)->fd;
-      util_hash_table_remove(fd_tab, intptr_to_pointer(fd));
+      _mesa_hash_table_remove_key(fd_tab, intptr_to_pointer(fd));
       close(fd);
    }
    mtx_unlock(&virgl_screen_mutex);
@@ -1055,7 +1055,7 @@ virgl_drm_screen_create(int fd, const struct pipe_screen_config *config)
 
       pscreen = virgl_create_screen(vws, config);
       if (pscreen) {
-         util_hash_table_set(fd_tab, intptr_to_pointer(dup_fd), pscreen);
+         _mesa_hash_table_insert(fd_tab, intptr_to_pointer(dup_fd), pscreen);
 
          /* Bit of a hack, to avoid circular linkage dependency,
           * ie. pipe driver having to call in to winsys, we

@@ -34,24 +34,12 @@
 
 
 #include "pipe/p_defines.h"
+#include "util/hash_table.h"
 
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-struct hash_table;
-
-
-/**
- * Create an hash table.
- * 
- * @param hash hash function
- * @param equal should return true for two equal keys.
- */
-struct hash_table *
-util_hash_table_create(uint32_t (*hash)(const void *key),
-                       bool (*equal)(const void *key1, const void *key2));
 
 /**
  * Create a hash table where the keys are generic pointers.
@@ -67,23 +55,9 @@ struct hash_table *
 util_hash_table_create_fd_keys(void);
 
 
-enum pipe_error
-util_hash_table_set(struct hash_table *ht,
-                    void *key,
-                    void *value);
-
 void *
 util_hash_table_get(struct hash_table *ht,
                     void *key);
-
-
-void
-util_hash_table_remove(struct hash_table *ht,
-                       void *key);
-
-
-void
-util_hash_table_clear(struct hash_table *ht);
 
 
 enum pipe_error
@@ -91,15 +65,6 @@ util_hash_table_foreach(struct hash_table *ht,
                         enum pipe_error (*callback)
                         (void *key, void *value, void *data),
                         void *data);
-
-
-size_t
-util_hash_table_count(struct hash_table *ht);
-
-
-void
-util_hash_table_destroy(struct hash_table *ht);
-
 
 #ifdef __cplusplus
 }

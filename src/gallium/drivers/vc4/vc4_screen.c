@@ -102,7 +102,7 @@ vc4_screen_destroy(struct pipe_screen *pscreen)
 {
         struct vc4_screen *screen = vc4_screen(pscreen);
 
-        util_hash_table_destroy(screen->bo_handles);
+        _mesa_hash_table_destroy(screen->bo_handles, NULL);
         vc4_bufmgr_destroy(pscreen);
         slab_destroy_parent(&screen->transfer_pool);
         free(screen->ro);

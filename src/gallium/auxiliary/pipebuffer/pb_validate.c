@@ -118,7 +118,7 @@ pb_validate_add_buffer(struct pb_validate *vl,
    ++vl->used;
 
    if (ht)
-      util_hash_table_set(ht, buf, (void *) (unsigned long) vl->used);
+      _mesa_hash_table_insert(ht, buf, (void *) (unsigned long) vl->used);
 
    return PIPE_OK;
 }

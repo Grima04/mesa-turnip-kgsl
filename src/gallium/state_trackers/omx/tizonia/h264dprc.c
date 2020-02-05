@@ -217,7 +217,7 @@ static void get_eglimage(vid_dec_PrivateType* priv) {
         assert(video_buffer);
         assert(video_buffer->buffer_format == p_res->format);
 
-        util_hash_table_set(priv->video_buffer_map, priv->p_outhdr_, video_buffer);
+        _mesa_hash_table_insert(priv->video_buffer_map, priv->p_outhdr_, video_buffer);
       }
    } else {
       (void) tiz_krn_release_buffer(tiz_get_krn (handleOf (priv)),
@@ -436,7 +436,7 @@ static OMX_ERRORTYPE h264d_prc_deallocate_resources(void *ap_obj)
    util_hash_table_foreach(priv->video_buffer_map,
                             &hash_table_clear_item_callback,
                             NULL);
-   util_hash_table_destroy(priv->video_buffer_map);
+   _mesa_hash_table_destroy(priv->video_buffer_map, NULL);
 
    if (priv->pipe) {
       vl_compositor_cleanup_state(&priv->cstate);
