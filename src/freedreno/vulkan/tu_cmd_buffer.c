@@ -539,13 +539,46 @@ tu6_emit_bin_size(struct tu_cmd_buffer *cmd, struct tu_cs *cs, uint32_t flags)
 
 static void
 tu6_emit_render_cntl(struct tu_cmd_buffer *cmd,
+                     const struct tu_subpass *subpass,
                      struct tu_cs *cs,
                      bool binning)
 {
+   const struct tu_framebuffer *fb = cmd->state.framebuffer;
    uint32_t cntl = 0;
    cntl |= A6XX_RB_RENDER_CNTL_UNK4;
-   if (binning)
+   if (binning) {
       cntl |= A6XX_RB_RENDER_CNTL_BINNING;
+   } else {
+      uint32_t mrts_ubwc_enable = 0;
+      for (uint32_t i = 0; i < subpass->color_count; ++i) {
+         uint32_t a = subpass->color_attachments[i].attachment;
+         if (a == VK_ATTACHMENT_UNUSED)
+            continue;
+
+         const struct tu_image_view *iview = fb->attachments[a].attachment;
+         if (iview->image->layout.ubwc_layer_size != 0)
+            mrts_ubwc_enable |= 1 << i;
+      }
+
+      cntl |= A6XX_RB_RENDER_CNTL_FLAG_MRTS(mrts_ubwc_enable);
+
+      const uint32_t a = subpass->depth_stencil_attachment.attachment;
+      if (a != VK_ATTACHMENT_UNUSED) {
+         const struct tu_image_view *iview = fb->attachments[a].attachment;
+         if (iview->image->layout.ubwc_layer_size != 0)
+            cntl |= A6XX_RB_RENDER_CNTL_FLAG_DEPTH;
+      }
+
+      /* In the !binning case, we need to set RB_RENDER_CNTL in the draw_cs
+       * in order to set it correctly for the different subpasses. However,
+       * that means the packets we're emitting also happen during binning. So
+       * we need to guard the write on !BINNING at CP execution time.
+       */
+      tu_cs_emit_pkt7(cs, CP_COND_REG_EXEC, 2);
+      tu_cs_emit(cs, CP_COND_REG_EXEC_0_MODE(RENDER_MODE) |
+                     CP_COND_REG_EXEC_0_GMEM | CP_COND_REG_EXEC_0_SYSMEM);
+      tu_cs_emit(cs, CP_COND_REG_EXEC_1_DWORDS(4));
+   }
 
    tu_cs_emit_pkt7(cs, CP_REG_WRITE, 3);
    tu_cs_emit(cs, CP_REG_WRITE_0_TRACKER(TRACK_RENDER_CNTL));
@@ -1311,7 +1344,7 @@ tu6_render_begin(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
    if (use_hw_binning(cmd)) {
       tu6_emit_bin_size(cmd, cs, A6XX_RB_BIN_CONTROL_BINNING_PASS | 0x6000000);
 
-      tu6_emit_render_cntl(cmd, cs, true);
+      tu6_emit_render_cntl(cmd, cmd->state.subpass, cs, true);
 
       tu6_emit_binning_pass(cmd, cs);
 
@@ -1329,8 +1362,6 @@ tu6_render_begin(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
    } else {
       tu6_emit_bin_size(cmd, cs, 0x6000000);
    }
-
-   tu6_emit_render_cntl(cmd, cs, false);
 
    tu_cs_sanity_check(cs);
 }
@@ -2328,6 +2359,7 @@ tu_CmdBeginRenderPass(VkCommandBuffer commandBuffer,
    tu6_emit_zs(cmd, cmd->state.subpass, &cmd->draw_cs);
    tu6_emit_mrt(cmd, cmd->state.subpass, &cmd->draw_cs);
    tu6_emit_msaa(cmd, cmd->state.subpass, &cmd->draw_cs);
+   tu6_emit_render_cntl(cmd, cmd->state.subpass, &cmd->draw_cs, false);
 
    /* note: use_hw_binning only checks tiling config */
    if (use_hw_binning(cmd))
@@ -2385,10 +2417,11 @@ tu_CmdNextSubpass(VkCommandBuffer commandBuffer, VkSubpassContents contents)
    if (cmd->state.subpass->input_count)
       tu6_emit_event_write(cmd, cs, CACHE_INVALIDATE, false);
 
-   /* emit mrt/zs/msaa state for the subpass that is starting */
+   /* emit mrt/zs/msaa/ubwc state for the subpass that is starting */
    tu6_emit_zs(cmd, cmd->state.subpass, cs);
    tu6_emit_mrt(cmd, cmd->state.subpass, cs);
    tu6_emit_msaa(cmd, cmd->state.subpass, cs);
+   tu6_emit_render_cntl(cmd, cmd->state.subpass, cs, false);
 
    /* TODO:
     * since we don't know how to do GMEM->GMEM resolve,
