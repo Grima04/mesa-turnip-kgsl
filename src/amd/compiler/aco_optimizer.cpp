@@ -1844,6 +1844,9 @@ bool combine_salu_n2(opt_ctx& ctx, aco_ptr<Instruction>& instr)
    if (instr->definitions[1].isTemp() && ctx.uses[instr->definitions[1].tempId()])
       return false;
 
+   if (instr->definitions[0].isTemp() && ctx.info[instr->definitions[0].tempId()].is_uniform_bool())
+      return false;
+
    for (unsigned i = 0; i < 2; i++) {
       Instruction *op2_instr = follow_operand(ctx, instr->operands[i]);
       if (!op2_instr || (op2_instr->opcode != aco_opcode::s_not_b32 && op2_instr->opcode != aco_opcode::s_not_b64))
