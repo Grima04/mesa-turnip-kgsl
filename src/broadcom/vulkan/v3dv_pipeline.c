@@ -1078,25 +1078,28 @@ pipeline_init_dynamic_state(struct v3dv_pipeline *pipeline,
                    pCreateInfo->pViewportState->scissorCount);
    }
 
-   if (!(dynamic_states & V3DV_DYNAMIC_STENCIL_COMPARE_MASK)) {
-      dynamic->stencil_compare_mask.front =
-         pCreateInfo->pDepthStencilState->front.compareMask;
-      dynamic->stencil_compare_mask.back =
-         pCreateInfo->pDepthStencilState->back.compareMask;
-   }
+   if (pCreateInfo->pDepthStencilState != NULL) {
 
-   if (!(dynamic_states & V3DV_DYNAMIC_STENCIL_WRITE_MASK)) {
-      dynamic->stencil_write_mask.front =
-         pCreateInfo->pDepthStencilState->front.writeMask;
-      dynamic->stencil_write_mask.back =
-         pCreateInfo->pDepthStencilState->back.writeMask;
-   }
+      if (!(dynamic_states & V3DV_DYNAMIC_STENCIL_COMPARE_MASK)) {
+         dynamic->stencil_compare_mask.front =
+            pCreateInfo->pDepthStencilState->front.compareMask;
+         dynamic->stencil_compare_mask.back =
+            pCreateInfo->pDepthStencilState->back.compareMask;
+      }
 
-   if (!(dynamic_states & V3DV_DYNAMIC_STENCIL_REFERENCE)) {
-      dynamic->stencil_reference.front =
-         pCreateInfo->pDepthStencilState->front.reference;
-      dynamic->stencil_reference.back =
-         pCreateInfo->pDepthStencilState->back.reference;
+      if (!(dynamic_states & V3DV_DYNAMIC_STENCIL_WRITE_MASK)) {
+         dynamic->stencil_write_mask.front =
+            pCreateInfo->pDepthStencilState->front.writeMask;
+         dynamic->stencil_write_mask.back =
+            pCreateInfo->pDepthStencilState->back.writeMask;
+      }
+
+      if (!(dynamic_states & V3DV_DYNAMIC_STENCIL_REFERENCE)) {
+         dynamic->stencil_reference.front =
+            pCreateInfo->pDepthStencilState->front.reference;
+         dynamic->stencil_reference.back =
+            pCreateInfo->pDepthStencilState->back.reference;
+      }
    }
 
    pipeline->dynamic_state.mask = dynamic_states;
