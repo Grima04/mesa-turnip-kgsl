@@ -177,7 +177,7 @@ iris_upload_ubo_ssbo_surf_state(struct iris_context *ice,
                                         : ISL_FORMAT_R32G32B32A32_FLOAT,
                          .swizzle = ISL_SWIZZLE_IDENTITY,
                          .stride_B = 1,
-                         .mocs = ice->vtbl.mocs(res->bo, &screen->isl_dev));
+                         .mocs = iris_mocs(res->bo, &screen->isl_dev));
 }
 
 static nir_ssa_def *
