@@ -59,6 +59,12 @@ struct util_hash_table *
 util_hash_table_create(unsigned (*hash)(void *key),
                        int (*compare)(void *key1, void *key2));
 
+/**
+ * Create a hash table where the keys are generic pointers.
+ */
+struct util_hash_table *
+util_hash_table_create_ptr_keys(void);
+
 
 enum pipe_error
 util_hash_table_set(struct util_hash_table *ht,

@@ -63,16 +63,6 @@
 #define SOS (8 + 4 * 2)
 #define MAX_MJPEG_SLICE_HEADER_SIZE (SOI + DQT + DHT + DRI + SOF + SOS)
 
-static inline unsigned handle_hash(void *key)
-{
-    return PTR_TO_UINT(key);
-}
-
-static inline int handle_compare(void *key1, void *key2)
-{
-    return PTR_TO_UINT(key1) != PTR_TO_UINT(key2);
-}
-
 static inline enum pipe_video_chroma_format
 ChromaToPipe(int format)
 {

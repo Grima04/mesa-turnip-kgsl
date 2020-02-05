@@ -612,18 +612,6 @@ v3d_screen_is_format_supported(struct pipe_screen *pscreen,
         return true;
 }
 
-#define PTR_TO_UINT(x) ((unsigned)((intptr_t)(x)))
-
-static unsigned handle_hash(void *key)
-{
-    return PTR_TO_UINT(key);
-}
-
-static int handle_compare(void *key1, void *key2)
-{
-    return PTR_TO_UINT(key1) != PTR_TO_UINT(key2);
-}
-
 static const void *
 v3d_screen_get_compiler_options(struct pipe_screen *pscreen,
                                 enum pipe_shader_ir ir, unsigned shader)
@@ -686,7 +674,7 @@ v3d_screen_create(int fd, const struct pipe_screen_config *config,
         }
         list_inithead(&screen->bo_cache.time_list);
         (void)mtx_init(&screen->bo_handles_mutex, mtx_plain);
-        screen->bo_handles = util_hash_table_create(handle_hash, handle_compare);
+        screen->bo_handles = util_hash_table_create_ptr_keys();
 
 #if defined(USE_V3D_SIMULATOR)
         v3d_simulator_init(screen);

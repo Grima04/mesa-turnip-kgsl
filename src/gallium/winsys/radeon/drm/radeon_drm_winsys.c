@@ -809,18 +809,6 @@ static bool radeon_winsys_unref(struct radeon_winsys *ws)
     return destroy;
 }
 
-#define PTR_TO_UINT(x) ((unsigned)((intptr_t)(x)))
-
-static unsigned handle_hash(void *key)
-{
-    return PTR_TO_UINT(key);
-}
-
-static int handle_compare(void *key1, void *key2)
-{
-    return PTR_TO_UINT(key1) != PTR_TO_UINT(key2);
-}
-
 static void radeon_pin_threads_to_L3_cache(struct radeon_winsys *ws,
                                            unsigned cache)
 {
@@ -911,9 +899,9 @@ radeon_drm_winsys_create(int fd, const struct pipe_screen_config *config,
     (void) mtx_init(&ws->hyperz_owner_mutex, mtx_plain);
     (void) mtx_init(&ws->cmask_owner_mutex, mtx_plain);
 
-    ws->bo_names = util_hash_table_create(handle_hash, handle_compare);
-    ws->bo_handles = util_hash_table_create(handle_hash, handle_compare);
-    ws->bo_vas = util_hash_table_create(handle_hash, handle_compare);
+    ws->bo_names = util_hash_table_create_ptr_keys();
+    ws->bo_handles = util_hash_table_create_ptr_keys();
+    ws->bo_vas = util_hash_table_create_ptr_keys();
     (void) mtx_init(&ws->bo_handles_mutex, mtx_plain);
     (void) mtx_init(&ws->vm32.mutex, mtx_plain);
     (void) mtx_init(&ws->vm64.mutex, mtx_plain);

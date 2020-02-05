@@ -40,25 +40,13 @@
 #include "lima_bo.h"
 #include "lima_util.h"
 
-#define PTR_TO_UINT(x) ((unsigned)((intptr_t)(x)))
-
-static unsigned handle_hash(void *key)
-{
-    return PTR_TO_UINT(key);
-}
-
-static int handle_compare(void *key1, void *key2)
-{
-    return PTR_TO_UINT(key1) != PTR_TO_UINT(key2);
-}
-
 bool lima_bo_table_init(struct lima_screen *screen)
 {
-   screen->bo_handles = util_hash_table_create(handle_hash, handle_compare);
+   screen->bo_handles = util_hash_table_create_ptr_keys();
    if (!screen->bo_handles)
       return false;
 
-   screen->bo_flink_names = util_hash_table_create(handle_hash, handle_compare);
+   screen->bo_flink_names = util_hash_table_create_ptr_keys();
    if (!screen->bo_flink_names)
       goto err_out0;
 

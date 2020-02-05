@@ -45,6 +45,7 @@
 
 #include "util/u_memory.h"
 #include "util/u_hash_table.h"
+#include "util/hash_table.h"
 
 
 struct util_hash_table
@@ -91,6 +92,27 @@ util_hash_table_create(unsigned (*hash)(void *key),
    ht->compare = compare;
    
    return ht;
+}
+
+
+static unsigned
+pointer_hash(void *key)
+{
+   return _mesa_hash_pointer(key);
+}
+
+
+static int
+pointer_compare(void *a, void *b)
+{
+   return a != b;
+}
+
+
+struct util_hash_table *
+util_hash_table_create_ptr_keys(void)
+{
+   return util_hash_table_create(pointer_hash, pointer_compare);
 }
 
 

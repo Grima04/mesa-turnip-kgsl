@@ -58,25 +58,6 @@ static struct util_hash_table *serials_hash;
 static unsigned serials_last;
 
 
-static unsigned
-hash_ptr(void *p)
-{
-   return (unsigned) (uintptr_t) p;
-}
-
-
-static int
-compare_ptr(void *a, void *b)
-{
-   if (a == b)
-      return 0;
-   else if (a < b)
-      return -1;
-   else
-      return 1;
-}
-
-
 /**
  * Return a small integer serial number for the given pointer.
  */
@@ -96,7 +77,7 @@ debug_serial(void *p, unsigned *pserial)
 
    mtx_lock(&serials_mutex);
    if (!serials_hash)
-      serials_hash = util_hash_table_create(hash_ptr, compare_ptr);
+      serials_hash = util_hash_table_create_ptr_keys();
 
    serial = (unsigned) (uintptr_t) util_hash_table_get(serials_hash, p);
    if (!serial) {

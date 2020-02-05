@@ -794,18 +794,6 @@ static int virgl_drm_get_caps(struct virgl_winsys *vws,
    return ret;
 }
 
-#define PTR_TO_UINT(x) ((unsigned)((intptr_t)(x)))
-
-static unsigned handle_hash(void *key)
-{
-    return PTR_TO_UINT(key);
-}
-
-static int handle_compare(void *key1, void *key2)
-{
-    return PTR_TO_UINT(key1) != PTR_TO_UINT(key2);
-}
-
 static struct pipe_fence_handle *
 virgl_cs_create_fence(struct virgl_winsys *vws, int fd)
 {
@@ -974,8 +962,8 @@ virgl_drm_winsys_create(int drmFD)
                              qdws);
    (void) mtx_init(&qdws->mutex, mtx_plain);
    (void) mtx_init(&qdws->bo_handles_mutex, mtx_plain);
-   qdws->bo_handles = util_hash_table_create(handle_hash, handle_compare);
-   qdws->bo_names = util_hash_table_create(handle_hash, handle_compare);
+   qdws->bo_handles = util_hash_table_create_ptr_keys();
+   qdws->bo_names = util_hash_table_create_ptr_keys();
    qdws->base.destroy = virgl_drm_winsys_destroy;
 
    qdws->base.transfer_put = virgl_bo_transfer_put;

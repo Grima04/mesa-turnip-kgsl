@@ -269,16 +269,6 @@ static bool amdgpu_read_registers(struct radeon_winsys *rws,
                                    0xffffffff, 0, out) == 0;
 }
 
-static unsigned hash_pointer(void *key)
-{
-   return _mesa_hash_pointer(key);
-}
-
-static int compare_pointers(void *key1, void *key2)
-{
-   return key1 != key2;
-}
-
 static bool amdgpu_winsys_unref(struct radeon_winsys *rws)
 {
    struct amdgpu_screen_winsys *sws = amdgpu_screen_winsys(rws);
@@ -359,7 +349,7 @@ amdgpu_winsys_create(int fd, const struct pipe_screen_config *config,
    /* Look up the winsys from the dev table. */
    simple_mtx_lock(&dev_tab_mutex);
    if (!dev_tab)
-      dev_tab = util_hash_table_create(hash_pointer, compare_pointers);
+      dev_tab = util_hash_table_create_ptr_keys();
 
    /* Initialize the amdgpu device. This should always return the same pointer
     * for the same fd. */
@@ -463,7 +453,7 @@ amdgpu_winsys_create(int fd, const struct pipe_screen_config *config,
       pipe_reference_init(&aws->reference, 1);
 
       list_inithead(&aws->global_bo_list);
-      aws->bo_export_table = util_hash_table_create(hash_pointer, compare_pointers);
+      aws->bo_export_table = util_hash_table_create_ptr_keys();
 
       (void) simple_mtx_init(&aws->sws_list_lock, mtx_plain);
       (void) simple_mtx_init(&aws->global_bo_list_lock, mtx_plain);

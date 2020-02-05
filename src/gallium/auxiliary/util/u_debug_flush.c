@@ -102,18 +102,6 @@ debug_flush_capture_frame(int start, int depth)
    return frames;
 }
 
-static int
-debug_flush_pointer_compare(void *key1, void *key2)
-{
-   return (key1 == key2) ? 0 : 1;
-}
-
-static unsigned
-debug_flush_pointer_hash(void *key)
-{
-   return (unsigned) (uintptr_t) key;
-}
-
 struct debug_flush_buf *
 debug_flush_buf_create(boolean supports_persistent, unsigned bt_depth)
 {
@@ -171,8 +159,7 @@ debug_flush_ctx_create(UNUSED boolean catch_reference_of_mapped,
    if (!fctx)
       goto out_no_ctx;
 
-   fctx->ref_hash = util_hash_table_create(debug_flush_pointer_hash,
-                                           debug_flush_pointer_compare);
+   fctx->ref_hash = util_hash_table_create_ptr_keys();
 
    if (!fctx->ref_hash)
       goto out_no_ref_hash;

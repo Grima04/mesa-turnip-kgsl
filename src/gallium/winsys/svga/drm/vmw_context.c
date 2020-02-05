@@ -691,17 +691,6 @@ vmw_swc_destroy(struct svga_winsys_context *swc)
    FREE(vswc);
 }
 
-static unsigned vmw_hash_ptr(void *p)
-{
-   return (unsigned)(unsigned long)p;
-}
-
-static int vmw_ptr_compare(void *key1, void *key2)
-{
-   return (key1 == key2) ? 0 : 1;
-}
-
-
 /**
  * vmw_svga_winsys_vgpu10_shader_screate - The winsys shader_crate callback
  *
@@ -844,7 +833,7 @@ vmw_svga_winsys_context_create(struct svga_winsys_screen *sws)
    if(!vswc->validate)
       goto out_no_validate;
 
-   vswc->hash = util_hash_table_create(vmw_hash_ptr, vmw_ptr_compare);
+   vswc->hash = util_hash_table_create_ptr_keys();
    if (!vswc->hash)
       goto out_no_hash;
 

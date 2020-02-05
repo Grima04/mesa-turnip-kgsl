@@ -46,18 +46,6 @@
 
 unsigned dec_frame_delta;
 
-#define PTR_TO_UINT(x) ((unsigned)((intptr_t)(x)))
-
-static unsigned handle_hash(void *key)
-{
-   return PTR_TO_UINT(key);
-}
-
-static int handle_compare(void *key1, void *key2)
-{
-   return PTR_TO_UINT(key1) != PTR_TO_UINT(key2);
-}
-
 static enum pipe_error hash_table_clear_item_callback(void *key, void *value, void *data)
 {
    struct pipe_video_buffer *video_buffer = (struct pipe_video_buffer *)value;
@@ -434,7 +422,7 @@ static OMX_ERRORTYPE h264d_prc_allocate_resources(void *ap_obj, OMX_U32 a_pid)
 
    list_inithead(&priv->codec_data.h264.dpb_list);
 
-   priv->video_buffer_map = util_hash_table_create(handle_hash, handle_compare);
+   priv->video_buffer_map = util_hash_table_create_ptr_keys();
 
    return OMX_ErrorNone;
 }
