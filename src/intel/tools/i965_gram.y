@@ -1658,6 +1658,7 @@ srcarcoperandex_ud_typed:
 srcarcoperandex_typed:
 	flagreg
 	| maskreg
+	| statereg
 	;
 
 indirectsrcoperand:
@@ -1863,8 +1864,9 @@ statereg:
 			error(&@2, "State sub register number %d"
 				   " out of range\n", $2);
 
-		$$ = brw_sr0_reg($2);
-		$$.nr = $1;
+		$$.file = BRW_ARCHITECTURE_REGISTER_FILE;
+		$$.nr = BRW_ARF_STATE;
+		$$.subnr = $2;
 	}
 	;
 
