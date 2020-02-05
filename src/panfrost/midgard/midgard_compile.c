@@ -1256,7 +1256,8 @@ emit_ubo_read(
         return emit_mir_instruction(ctx, ins);
 }
 
-/* SSBO reads are like UBO reads if you squint */
+/* Globals are like UBOs if you squint. And shared memory is like globals if
+ * you squint even harder */
 
 static void
 emit_global(
@@ -1264,7 +1265,9 @@ emit_global(
         nir_instr *instr,
         bool is_read,
         unsigned srcdest,
-        nir_src *indirect_offset)
+        unsigned offset,
+        nir_src *indirect_offset,
+        bool is_shared)
 {
         /* TODO: types */
 
@@ -1275,6 +1278,8 @@ emit_global(
         else
                 ins = m_st_int4(srcdest, 0);
 
+        ins.constants.u32[0] = offset;
+
         /* The source array:
          *
          *  src[0] = store ? value : unused
@@ -1282,12 +1287,22 @@ emit_global(
          *  src[2] = arg_2
          *
          * We would like arg_1 = the address and
-         * arg_2 = the offset.
+         * arg_2 = the offset. For shareds, there is no address and we use a
+         * magic number instead.
          */
 
         /* TODO: What is this? */
-        ins.load_store.arg_1 = 0x7E;
-        ins.src[2] = nir_src_index(ctx, indirect_offset);
+        ins.load_store.arg_1 = is_shared ?
+                indirect_offset ? 0xEE : 0x6E :
+                0x7E;
+
+        assert(indirect_offset || is_shared); /* is_global => indirect */
+
+        if (indirect_offset)
+                ins.src[2] = nir_src_index(ctx, indirect_offset);
+        else
+                ins.load_store.arg_2 = 0x1E;
+
         mir_set_intr_mask(instr, &ins, is_read);
 
         emit_mir_instruction(ctx, ins);
@@ -1529,18 +1544,20 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
         case nir_intrinsic_load_uniform:
         case nir_intrinsic_load_ubo:
         case nir_intrinsic_load_global:
+        case nir_intrinsic_load_shared:
         case nir_intrinsic_load_input:
         case nir_intrinsic_load_interpolated_input: {
                 bool is_uniform = instr->intrinsic == nir_intrinsic_load_uniform;
                 bool is_ubo = instr->intrinsic == nir_intrinsic_load_ubo;
                 bool is_global = instr->intrinsic == nir_intrinsic_load_global;
+                bool is_shared = instr->intrinsic == nir_intrinsic_load_shared;
                 bool is_flat = instr->intrinsic == nir_intrinsic_load_input;
                 bool is_interp = instr->intrinsic == nir_intrinsic_load_interpolated_input;
 
                 /* Get the base type of the intrinsic */
                 /* TODO: Infer type? Does it matter? */
                 nir_alu_type t =
-                        (is_ubo || is_global) ? nir_type_uint :
+                        (is_ubo || is_global || is_shared) ? nir_type_uint :
                         (is_interp) ? nir_type_float :
                         nir_intrinsic_type(instr);
 
@@ -1575,8 +1592,8 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
 
                         uint32_t uindex = nir_src_as_uint(index) + 1;
                         emit_ubo_read(ctx, &instr->instr, reg, offset, indirect_offset, 0, uindex);
-                } else if (is_global) {
-                        emit_global(ctx, &instr->instr, true, reg, indirect_offset);
+                } else if (is_global || is_shared) {
+                        emit_global(ctx, &instr->instr, true, reg, offset, indirect_offset, is_shared);
                 } else if (ctx->stage == MESA_SHADER_FRAGMENT && !ctx->is_blend) {
                         emit_varying_read(ctx, reg, offset, nr_comp, component, indirect_offset, t, is_flat);
                 } else if (ctx->is_blend) {
@@ -1769,9 +1786,19 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                 break;
 
         case nir_intrinsic_store_global:
+        case nir_intrinsic_store_shared:
                 reg = nir_src_index(ctx, &instr->src[0]);
                 emit_explicit_constant(ctx, reg, reg);
-                emit_global(ctx, &instr->instr, false, reg, &instr->src[1]);
+
+                nir_src *indirect_offset = &instr->src[1];
+                unsigned offset = 0;
+
+                if (nir_src_is_const(*indirect_offset)) {
+                        offset = nir_src_as_uint(*indirect_offset);
+                        indirect_offset = NULL;
+                }
+
+                emit_global(ctx, &instr->instr, false, reg, offset, indirect_offset, instr->intrinsic == nir_intrinsic_store_shared);
                 break;
 
         case nir_intrinsic_load_ssbo_address:
