@@ -4066,27 +4066,6 @@ fs_visitor::get_nir_ssbo_intrinsic_index(const brw::fs_builder &bld,
    return bld.emit_uniformize(surf_index);
 }
 
-static unsigned
-image_intrinsic_coord_components(nir_intrinsic_instr *instr)
-{
-   switch (nir_intrinsic_image_dim(instr)) {
-   case GLSL_SAMPLER_DIM_1D:
-      return 1 + nir_intrinsic_image_array(instr);
-   case GLSL_SAMPLER_DIM_2D:
-   case GLSL_SAMPLER_DIM_RECT:
-      return 2 + nir_intrinsic_image_array(instr);
-   case GLSL_SAMPLER_DIM_3D:
-   case GLSL_SAMPLER_DIM_CUBE:
-      return 3;
-   case GLSL_SAMPLER_DIM_BUF:
-      return 1;
-   case GLSL_SAMPLER_DIM_MS:
-      return 2 + nir_intrinsic_image_array(instr);
-   default:
-      unreachable("Invalid image dimension");
-   }
-}
-
 /**
  * The offsets we get from NIR act as if each SIMD channel has it's own blob
  * of contiguous space.  However, if we actually place each SIMD channel in
@@ -4209,7 +4188,7 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
 
       srcs[SURFACE_LOGICAL_SRC_ADDRESS] = get_nir_src(instr->src[1]);
       srcs[SURFACE_LOGICAL_SRC_IMM_DIMS] =
-         brw_imm_ud(image_intrinsic_coord_components(instr));
+         brw_imm_ud(nir_image_intrinsic_coord_components(instr));
 
       /* Emit an image load, store or atomic op. */
       if (instr->intrinsic == nir_intrinsic_image_load ||

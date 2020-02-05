@@ -1765,6 +1765,9 @@ nir_intrinsic_align(const nir_intrinsic_instr *intrin)
    return align_offset ? 1 << (ffs(align_offset) - 1) : align_mul;
 }
 
+unsigned
+nir_image_intrinsic_coord_components(const nir_intrinsic_instr *instr);
+
 /* Converts a image_deref_* intrinsic into a image_* one */
 void nir_rewrite_image_intrinsic(nir_intrinsic_instr *instr,
                                  nir_ssa_def *handle, bool bindless);

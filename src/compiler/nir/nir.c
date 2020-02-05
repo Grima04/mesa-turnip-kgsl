@@ -2254,3 +2254,14 @@ nir_rewrite_image_intrinsic(nir_intrinsic_instr *intrin, nir_ssa_def *src,
    nir_instr_rewrite_src(&intrin->instr, &intrin->src[0],
                          nir_src_for_ssa(src));
 }
+
+unsigned
+nir_image_intrinsic_coord_components(const nir_intrinsic_instr *instr)
+{
+   enum glsl_sampler_dim dim = nir_intrinsic_image_dim(instr);
+   int coords = glsl_get_sampler_dim_coordinate_components(dim);
+   if (dim == GLSL_SAMPLER_DIM_CUBE)
+      return coords;
+   else
+      return coords + nir_intrinsic_image_array(instr);
+}
