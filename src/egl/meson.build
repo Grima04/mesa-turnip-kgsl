@@ -152,18 +152,8 @@ else
   deps_for_egl += dep_glvnd
   files_egl += [g_egldispatchstubs_h, g_egldispatchstubs_c]
   files_egl += files('main/eglglvnd.c', 'main/egldispatchstubs.c')
-
-  egl_icd = custom_target(
-    'glvnd_icd',
-    input : 'glvnd_icd.py',
-    output : '50_mesa.json',
-    command : [
-      prog_python, '@INPUT@',
-      '--lib-path', join_paths(get_option('prefix'), get_option('libdir')),
-      '--out', '@OUTPUT@',
-    ],
-    build_by_default : true,
-    install : true,
+  install_data(
+    'main/50_mesa.json',
     install_dir : join_paths(get_option('datadir'), 'glvnd', 'egl_vendor.d')
   )
 endif
