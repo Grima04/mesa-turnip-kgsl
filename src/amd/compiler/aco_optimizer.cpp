@@ -3244,6 +3244,14 @@ void select_instruction(opt_ctx &ctx, aco_ptr<Instruction>& instr)
                instr->opcode == aco_opcode::s_cselect_b32) &&
               instr->operands[2].isTemp()) {
       ctx.info[instr->operands[2].tempId()].set_scc_needed();
+   } else if (instr->opcode == aco_opcode::p_wqm &&
+              instr->operands[0].isTemp() &&
+              ctx.info[instr->definitions[0].tempId()].is_scc_needed()) {
+      /* Propagate label so it is correctly detected by the uniform bool transform */
+      ctx.info[instr->operands[0].tempId()].set_scc_needed();
+
+      /* Fix definition to SCC, this will prevent RA from adding superfluous moves */
+      instr->definitions[0].setFixed(scc);
    }
 
    /* check for literals */
