@@ -40,6 +40,14 @@ struct lima_submit_key {
    struct pipe_surface *zsbuf;
 };
 
+struct lima_submit_clear {
+   unsigned buffers;
+   uint32_t color_8pc;
+   uint32_t depth;
+   uint32_t stencil;
+   uint64_t color_16pc;
+};
+
 struct lima_submit {
    int fd;
    struct lima_context *ctx;
@@ -58,6 +66,8 @@ struct lima_submit {
    int pp_max_stack_size;
 
    struct pipe_scissor_state damage_rect;
+
+   struct lima_submit_clear clear;
 };
 
 struct lima_submit *lima_submit_get(struct lima_context *ctx);

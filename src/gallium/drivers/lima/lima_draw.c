@@ -114,7 +114,7 @@ lima_clear(struct pipe_context *pctx, unsigned buffers,
    }
 
    struct lima_submit *submit = lima_submit_get(ctx);
-   struct lima_context_clear *clear = &ctx->clear;
+   struct lima_submit_clear *clear = &submit->clear;
    clear->buffers = buffers;
 
    if (buffers & PIPE_CLEAR_COLOR0) {

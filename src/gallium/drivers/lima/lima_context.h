@@ -38,14 +38,6 @@ struct lima_context_framebuffer {
    int shift_min;
 };
 
-struct lima_context_clear {
-   unsigned buffers;
-   uint32_t color_8pc;
-   uint32_t depth;
-   uint32_t stencil;
-   uint64_t color_16pc;
-};
-
 struct lima_depth_stencil_alpha_state {
    struct pipe_depth_stencil_alpha_state base;
 };
@@ -193,7 +185,6 @@ struct lima_context {
    struct lima_context_framebuffer framebuffer;
    struct lima_context_viewport_state viewport;
    struct pipe_scissor_state scissor;
-   struct lima_context_clear clear;
    struct lima_vs_shader_state *vs;
    struct lima_fs_shader_state *fs;
    struct lima_vertex_element_state *vertex_elements;

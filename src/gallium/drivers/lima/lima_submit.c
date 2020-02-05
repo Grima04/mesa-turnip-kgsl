@@ -740,12 +740,12 @@ lima_pack_pp_frame_reg(struct lima_submit *submit, uint32_t *frame_reg,
 
    frame->render_address = screen->pp_buffer->va + pp_frame_rsw_offset;
    frame->flags = 0x02;
-   frame->clear_value_depth = ctx->clear.depth;
-   frame->clear_value_stencil = ctx->clear.stencil;
-   frame->clear_value_color = ctx->clear.color_8pc;
-   frame->clear_value_color_1 = ctx->clear.color_8pc;
-   frame->clear_value_color_2 = ctx->clear.color_8pc;
-   frame->clear_value_color_3 = ctx->clear.color_8pc;
+   frame->clear_value_depth = submit->clear.depth;
+   frame->clear_value_stencil = submit->clear.stencil;
+   frame->clear_value_color = submit->clear.color_8pc;
+   frame->clear_value_color_1 = submit->clear.color_8pc;
+   frame->clear_value_color_2 = submit->clear.color_8pc;
+   frame->clear_value_color_3 = submit->clear.color_8pc;
    frame->one = 1;
 
    frame->width = fb->base.width - 1;
