@@ -91,6 +91,10 @@ loader_open_device(const char *device_name)
       if (fd != -1)
          fcntl(fd, F_SETFD, fcntl(fd, F_GETFD) | FD_CLOEXEC);
    }
+   if (fd == -1 && errno == EACCES) {
+      log_(_LOADER_WARNING, "failed to open %s: %s\n",
+           device_name, strerror(errno));
+   }
    return fd;
 }
 
