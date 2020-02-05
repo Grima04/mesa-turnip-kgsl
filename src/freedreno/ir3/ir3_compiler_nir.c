@@ -1893,33 +1893,15 @@ get_tex_dest_type(nir_tex_instr *tex)
 static void
 tex_info(nir_tex_instr *tex, unsigned *flagsp, unsigned *coordsp)
 {
-	unsigned coords, flags = 0;
+	unsigned coords = glsl_get_sampler_dim_coordinate_components(tex->sampler_dim);
+	unsigned flags = 0;
 
 	/* note: would use tex->coord_components.. except txs.. also,
 	 * since array index goes after shadow ref, we don't want to
 	 * count it:
 	 */
-	switch (tex->sampler_dim) {
-	case GLSL_SAMPLER_DIM_1D:
-	case GLSL_SAMPLER_DIM_BUF:
-		coords = 1;
-		break;
-	case GLSL_SAMPLER_DIM_2D:
-	case GLSL_SAMPLER_DIM_RECT:
-	case GLSL_SAMPLER_DIM_EXTERNAL:
-	case GLSL_SAMPLER_DIM_MS:
-	case GLSL_SAMPLER_DIM_SUBPASS:
-	case GLSL_SAMPLER_DIM_SUBPASS_MS:
-		coords = 2;
-		break;
-	case GLSL_SAMPLER_DIM_3D:
-	case GLSL_SAMPLER_DIM_CUBE:
-		coords = 3;
+	if (coords == 3)
 		flags |= IR3_INSTR_3D;
-		break;
-	default:
-		unreachable("bad sampler_dim");
-	}
 
 	if (tex->is_shadow && tex->op != nir_texop_lod)
 		flags |= IR3_INSTR_S;
