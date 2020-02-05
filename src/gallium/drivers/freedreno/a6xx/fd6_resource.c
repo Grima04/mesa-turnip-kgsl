@@ -25,6 +25,8 @@
  *    Rob Clark <robclark@freedesktop.org>
  */
 
+#include "drm-uapi/drm_fourcc.h"
+
 #include "fd6_resource.h"
 #include "fd6_format.h"
 
@@ -155,10 +157,66 @@ fd6_setup_slices(struct fd_resource *rsc)
 	return rsc->layout.size;
 }
 
+static int
+fill_ubwc_buffer_sizes(struct fd_resource *rsc)
+{
+	struct pipe_resource *prsc = &rsc->base;
+	struct fdl_slice slice = *fd_resource_slice(rsc, 0);
+
+	/* limit things to simple single level 2d for now: */
+	if ((prsc->depth0 != 1) || (prsc->array_size != 1) || (prsc->last_level != 0))
+		return -1;
+	if (prsc->target != PIPE_TEXTURE_2D)
+		return -1;
+	if (!ok_ubwc_format(rsc, prsc->format))
+		return -1;
+
+	rsc->layout.ubwc = true;
+	rsc->layout.tile_mode = TILE6_3;
+
+	fdl6_layout(&rsc->layout, prsc->format, fd_resource_nr_samples(prsc),
+			prsc->width0, prsc->height0, prsc->depth0,
+			prsc->last_level + 1, prsc->array_size, false);
+
+	if (fd_resource_slice(rsc, 0)->pitch != slice.pitch)
+		return -1;
+
+	/* The imported buffer may specify an offset, add that in here. */
+	rsc->layout.slices[0].offset += slice.offset;
+	rsc->layout.ubwc_slices[0].offset += slice.offset;
+	rsc->layout.size += slice.offset;
+
+	if (rsc->layout.size > fd_bo_size(rsc->bo))
+		return -1;
+
+	return 0;
+}
+
+static int
+fd6_layout_resource_for_modifier(struct fd_resource *rsc, uint64_t modifier)
+{
+	switch (modifier) {
+	case DRM_FORMAT_MOD_QCOM_COMPRESSED:
+		return fill_ubwc_buffer_sizes(rsc);
+	case DRM_FORMAT_MOD_LINEAR:
+		return 0;
+	default:
+		return -1;
+	}
+}
+
+static const uint64_t supported_modifiers[] = {
+	DRM_FORMAT_MOD_LINEAR,
+	DRM_FORMAT_MOD_QCOM_COMPRESSED,
+};
+
 void
 fd6_resource_screen_init(struct pipe_screen *pscreen)
 {
 	struct fd_screen *screen = fd_screen(pscreen);
 
 	screen->setup_slices = fd6_setup_slices;
+	screen->layout_resource_for_modifier = fd6_layout_resource_for_modifier;
+	screen->supported_modifiers = supported_modifiers;
+	screen->num_supported_modifiers = ARRAY_SIZE(supported_modifiers);
 }
