@@ -1118,13 +1118,21 @@ radv_emit_rbplus_state(struct radv_cmd_buffer *cmd_buffer)
 	 * breaks dual source blending in SkQP and does not seem to improve
 	 * performance. */
 
-	/* TODO: avoid redundantly setting context registers */
+	if (sx_ps_downconvert == cmd_buffer->state.last_sx_ps_downconvert &&
+	    sx_blend_opt_epsilon == cmd_buffer->state.last_sx_blend_opt_epsilon &&
+	    sx_blend_opt_control == cmd_buffer->state.last_sx_blend_opt_control)
+		return;
+
 	radeon_set_context_reg_seq(cmd_buffer->cs, R_028754_SX_PS_DOWNCONVERT, 3);
 	radeon_emit(cmd_buffer->cs, sx_ps_downconvert);
 	radeon_emit(cmd_buffer->cs, sx_blend_opt_epsilon);
 	radeon_emit(cmd_buffer->cs, sx_blend_opt_control);
 
 	cmd_buffer->state.context_roll_without_scissor_emitted = true;
+
+	cmd_buffer->state.last_sx_ps_downconvert = sx_ps_downconvert;
+	cmd_buffer->state.last_sx_blend_opt_epsilon = sx_blend_opt_epsilon;
+	cmd_buffer->state.last_sx_blend_opt_control = sx_blend_opt_control;
 }
 
 static void
@@ -3368,6 +3376,9 @@ VkResult radv_BeginCommandBuffer(
 	cmd_buffer->state.last_vertex_offset = -1;
 	cmd_buffer->state.last_first_instance = -1;
 	cmd_buffer->state.predication_type = -1;
+	cmd_buffer->state.last_sx_ps_downconvert = -1;
+	cmd_buffer->state.last_sx_blend_opt_epsilon = -1;
+	cmd_buffer->state.last_sx_blend_opt_control = -1;
 	cmd_buffer->usage_flags = pBeginInfo->flags;
 
 	if (cmd_buffer->level == VK_COMMAND_BUFFER_LEVEL_SECONDARY &&
@@ -4178,6 +4189,9 @@ void radv_CmdExecuteCommands(
 		primary->state.last_first_instance = secondary->state.last_first_instance;
 		primary->state.last_num_instances = secondary->state.last_num_instances;
 		primary->state.last_vertex_offset = secondary->state.last_vertex_offset;
+		primary->state.last_sx_ps_downconvert = secondary->state.last_sx_ps_downconvert;
+		primary->state.last_sx_blend_opt_epsilon = secondary->state.last_sx_blend_opt_epsilon;
+		primary->state.last_sx_blend_opt_control = secondary->state.last_sx_blend_opt_control;
 
 		if (secondary->state.last_index_type != -1) {
 			primary->state.last_index_type =
