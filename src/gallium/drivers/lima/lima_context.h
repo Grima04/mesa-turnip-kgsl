@@ -244,6 +244,9 @@ struct lima_context {
    /* map from lima_submit_key to lima_submit */
    struct hash_table *submits;
 
+   /* map from pipe_resource to lima_submit which write to it */
+   struct hash_table *write_submits;
+
    int in_sync_fd;
    uint32_t in_sync[2];
    uint32_t out_sync[2];
@@ -301,5 +304,7 @@ lima_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags);
 void lima_flush(struct lima_context *ctx);
 void lima_flush_submit_accessing_bo(
    struct lima_context *ctx, struct lima_bo *bo, bool write);
+void lima_flush_previous_submit_writing_resource(
+   struct lima_context *ctx, struct pipe_resource *prsc);
 
 #endif

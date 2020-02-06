@@ -33,6 +33,7 @@
 #include "util/u_upload_mgr.h"
 #include "util/u_prim.h"
 #include "util/u_vbuf.h"
+#include "util/hash_table.h"
 
 #include "lima_context.h"
 #include "lima_screen.h"
@@ -69,6 +70,7 @@ lima_update_submit_wb(struct lima_context *ctx, unsigned buffers)
        !(ctx->resolve & PIPE_CLEAR_COLOR0)) {
       struct lima_resource *res = lima_resource(fb->base.cbufs[0]->texture);
       lima_flush_submit_accessing_bo(ctx, res->bo, true);
+      _mesa_hash_table_insert(ctx->write_submits, &res->base, submit);
       lima_submit_add_bo(submit, LIMA_PIPE_PP, res->bo, LIMA_SUBMIT_BO_WRITE);
    }
 
@@ -77,6 +79,7 @@ lima_update_submit_wb(struct lima_context *ctx, unsigned buffers)
        !(ctx->resolve & (PIPE_CLEAR_DEPTH | PIPE_CLEAR_STENCIL))) {
       struct lima_resource *res = lima_resource(fb->base.zsbuf->texture);
       lima_flush_submit_accessing_bo(ctx, res->bo, true);
+      _mesa_hash_table_insert(ctx->write_submits, &res->base, submit);
       lima_submit_add_bo(submit, LIMA_PIPE_PP, res->bo, LIMA_SUBMIT_BO_WRITE);
    }
 

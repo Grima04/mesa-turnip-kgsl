@@ -78,6 +78,11 @@ lima_submit_free(struct lima_submit *submit)
 
    _mesa_hash_table_remove_key(ctx->submits, &submit->key);
 
+   if (submit->key.cbuf && (ctx->resolve & PIPE_CLEAR_COLOR0))
+      _mesa_hash_table_remove_key(ctx->write_submits, submit->key.cbuf->texture);
+   if (submit->key.zsbuf && (ctx->resolve & (PIPE_CLEAR_DEPTH | PIPE_CLEAR_STENCIL)))
+      _mesa_hash_table_remove_key(ctx->write_submits, submit->key.zsbuf->texture);
+
    pipe_surface_reference(&submit->key.cbuf, NULL);
    pipe_surface_reference(&submit->key.zsbuf, NULL);
 
@@ -921,14 +926,15 @@ lima_do_submit(struct lima_submit *submit)
    ctx->damage_rect.minx = ctx->damage_rect.miny = 0xffff;
    ctx->damage_rect.maxx = ctx->damage_rect.maxy = 0;
 
-   ctx->resolve = 0;
-
    lima_dump_file_next();
 
    if (ctx->submit == submit)
       ctx->submit = NULL;
 
    lima_submit_free(submit);
+
+   /* lima_submit_free still need this */
+   ctx->resolve = 0;
 }
 
 void
@@ -947,6 +953,25 @@ lima_flush_submit_accessing_bo(
    hash_table_foreach(ctx->submits, entry) {
       struct lima_submit *submit = entry->data;
       if (lima_submit_has_bo(submit, bo, write))
+         lima_do_submit(submit);
+   }
+}
+
+/*
+ * This is for current submit flush previous submit which write to the resource it wants
+ * to read. Tipical usage is flush the FBO which is used as current task's texture.
+ */
+void
+lima_flush_previous_submit_writing_resource(
+   struct lima_context *ctx, struct pipe_resource *prsc)
+{
+   struct hash_entry *entry = _mesa_hash_table_search(ctx->write_submits, prsc);
+
+   if (entry) {
+      struct lima_submit *submit = entry->data;
+
+      /* do not flush current submit */
+      if (submit != ctx->submit)
          lima_do_submit(submit);
    }
 }
@@ -986,6 +1011,11 @@ bool lima_submit_init(struct lima_context *ctx)
 
    ctx->submits = _mesa_hash_table_create(ctx, lima_submit_hash, lima_submit_compare);
    if (!ctx->submits)
+      return false;
+
+   ctx->write_submits = _mesa_hash_table_create(
+      ctx, _mesa_hash_pointer, _mesa_key_pointer_equal);
+   if (!ctx->write_submits)
       return false;
 
    ctx->in_sync_fd = -1;
