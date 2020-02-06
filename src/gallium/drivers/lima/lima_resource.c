@@ -508,7 +508,13 @@ lima_surface_create(struct pipe_context *pctx,
    surf->tiled_w = align(psurf->width, 16) >> 4;
    surf->tiled_h = align(psurf->height, 16) >> 4;
 
-   surf->reload = true;
+   surf->reload = 0;
+   if (util_format_has_stencil(util_format_description(psurf->format)))
+      surf->reload |= PIPE_CLEAR_STENCIL;
+   if (util_format_has_depth(util_format_description(psurf->format)))
+      surf->reload |= PIPE_CLEAR_DEPTH;
+   if (!util_format_is_depth_or_stencil(psurf->format))
+      surf->reload |= PIPE_CLEAR_COLOR0;
 
    return &surf->base;
 }

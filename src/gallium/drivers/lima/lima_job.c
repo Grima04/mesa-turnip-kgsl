@@ -31,6 +31,7 @@
 #include "util/ralloc.h"
 #include "util/os_time.h"
 #include "util/hash_table.h"
+#include "util/format/u_format.h"
 #include "util/u_upload_mgr.h"
 #include "util/u_inlines.h"
 
@@ -296,9 +297,8 @@ lima_job_get_damage(struct lima_job *job)
 }
 
 static bool
-lima_fb_need_reload(struct lima_job *job)
+lima_fb_cbuf_needs_reload(struct lima_job *job)
 {
-   /* Depth buffer is always discarded */
    if (!(job->key.cbuf && (job->resolve & PIPE_CLEAR_COLOR0)))
       return false;
 
@@ -312,14 +312,27 @@ lima_fb_need_reload(struct lima_job *job)
       //   return true;
       return true;
    }
-   else if (surf->reload)
+   else if (surf->reload & PIPE_CLEAR_COLOR0)
+         return true;
+
+   return false;
+}
+
+static bool
+lima_fb_zsbuf_needs_reload(struct lima_job *job)
+{
+   if (!(job->key.zsbuf && (job->resolve & (PIPE_CLEAR_DEPTH | PIPE_CLEAR_STENCIL))))
+      return false;
+
+   struct lima_surface *surf = lima_surface(job->key.zsbuf);
+   if (surf->reload & (PIPE_CLEAR_DEPTH | PIPE_CLEAR_STENCIL))
          return true;
 
    return false;
 }
 
 static void
-lima_pack_reload_plbu_cmd(struct lima_job *job)
+lima_pack_reload_plbu_cmd(struct lima_job *job, struct pipe_surface *psurf)
 {
    #define lima_reload_render_state_offset 0x0000
    #define lima_reload_gl_pos_offset       0x0040
@@ -329,6 +342,7 @@ lima_pack_reload_plbu_cmd(struct lima_job *job)
    #define lima_reload_buffer_size         0x0140
 
    struct lima_context *ctx = job->ctx;
+   struct lima_surface *surf = lima_surface(psurf);
 
    uint32_t va;
    void *cpu = lima_job_create_stream_bo(
@@ -353,12 +367,27 @@ lima_pack_reload_plbu_cmd(struct lima_job *job)
       .aux0 = 0x00004021,
       .varyings_address = va + lima_reload_varying_offset,
    };
+
+   if (util_format_is_depth_or_stencil(psurf->format)) {
+      reload_render_state.alpha_blend &= 0x0fffffff;
+      reload_render_state.depth_test |= 0x400;
+      if (surf->reload & PIPE_CLEAR_DEPTH)
+         reload_render_state.depth_test |= 0x801;
+      if (surf->reload & PIPE_CLEAR_STENCIL) {
+         reload_render_state.depth_test |= 0x1000;
+         reload_render_state.stencil_front = 0x0000024f;
+         reload_render_state.stencil_back = 0x0000024f;
+         reload_render_state.stencil_test = 0x0000ffff;
+      }
+   }
+
    memcpy(cpu + lima_reload_render_state_offset, &reload_render_state,
           sizeof(reload_render_state));
 
    lima_tex_desc *td = cpu + lima_reload_tex_desc_offset;
    memset(td, 0, lima_min_tex_desc_size);
-   lima_texture_desc_set_res(ctx, td, job->key.cbuf->texture, 0, 0);
+   lima_texture_desc_set_res(ctx, td, psurf->texture, 0, 0);
+   td->format = lima_format_get_texel_reload(psurf->format);
    td->unnorm_coords = 1;
    td->texture_type = LIMA_TEXTURE_TYPE_2D;
    td->min_img_filter_nearest = 1;
@@ -426,8 +455,11 @@ lima_pack_head_plbu_cmd(struct lima_job *job)
 
    PLBU_CMD_END();
 
-   if (lima_fb_need_reload(job))
-      lima_pack_reload_plbu_cmd(job);
+   if (lima_fb_cbuf_needs_reload(job))
+      lima_pack_reload_plbu_cmd(job, job->key.cbuf);
+
+   if (lima_fb_zsbuf_needs_reload(job))
+      lima_pack_reload_plbu_cmd(job, job->key.zsbuf);
 }
 
 static void
@@ -986,10 +1018,15 @@ lima_do_job(struct lima_job *job)
 
    ctx->plb_index = (ctx->plb_index + 1) % lima_ctx_num_plb;
 
+   /* Set reload flags for next draw. It'll be unset if buffer is cleared */
    if (job->key.cbuf && (job->resolve & PIPE_CLEAR_COLOR0)) {
-      /* Set reload flag for next draw. It'll be unset if buffer is cleared */
       struct lima_surface *surf = lima_surface(job->key.cbuf);
-      surf->reload = true;
+      surf->reload = PIPE_CLEAR_COLOR0;
+   }
+
+   if (job->key.zsbuf && (job->resolve & (PIPE_CLEAR_DEPTH | PIPE_CLEAR_STENCIL))) {
+      struct lima_surface *surf = lima_surface(job->key.zsbuf);
+      surf->reload = (job->resolve & (PIPE_CLEAR_DEPTH | PIPE_CLEAR_STENCIL));
    }
 
    if (ctx->job == job)

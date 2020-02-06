@@ -32,6 +32,7 @@ bool lima_format_texel_supported(enum pipe_format f);
 bool lima_format_pixel_supported(enum pipe_format f);
 int lima_format_get_texel(enum pipe_format f);
 int lima_format_get_pixel(enum pipe_format f);
+int lima_format_get_texel_reload(enum pipe_format f);
 bool lima_format_get_swap_rb(enum pipe_format f);
 uint32_t lima_format_get_channel_layout(enum pipe_format f);
 

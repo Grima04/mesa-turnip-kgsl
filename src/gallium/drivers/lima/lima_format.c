@@ -44,7 +44,9 @@
 #define LIMA_TEXEL_FORMAT_RGBA_8888    0x16
 #define LIMA_TEXEL_FORMAT_RGBX_8888    0x17
 #define LIMA_TEXEL_FORMAT_ETC1_RGB8    0x20
-#define LIMA_TEXEL_FORMAT_Z24S8        0x2c
+#define LIMA_TEXEL_FORMAT_Z24X8        0x2c
+/* This format is only used for depth/stencil reload */
+#define LIMA_TEXEL_FORMAT_Z24S8_RLD    0x32
 #define LIMA_TEXEL_FORMAT_NONE         -1
 
 #define LIMA_PIXEL_FORMAT_B5G6R5       0x00
@@ -81,8 +83,8 @@ static const struct lima_format lima_format_table[] = {
    /* BGRA_5551 seems to need channel layout 0x8565, it's not a typo */
    LIMA_FORMAT(B5G5R5A1_UNORM,     BGRA_5551, B5G5R5A1, false, 0x8565),
    LIMA_FORMAT(B4G4R4A4_UNORM,     BGRA_4444, B4G4R4A4, false, 0x8444),
-   LIMA_FORMAT(Z24_UNORM_S8_UINT,  Z24S8,     Z24S8,    false, 0x0000),
-   LIMA_FORMAT(Z24X8_UNORM,        Z24S8,     Z24S8,    false, 0x0000),
+   LIMA_FORMAT(Z24_UNORM_S8_UINT,  Z24X8,     Z24S8,    false, 0x0000),
+   LIMA_FORMAT(Z24X8_UNORM,        Z24X8,     Z24S8,    false, 0x0000),
    LIMA_FORMAT(L16_UNORM,          L16,       NONE,     false, 0x0000),
    LIMA_FORMAT(L8_UNORM,           L8,        NONE,     false, 0x0000),
    LIMA_FORMAT(A16_UNORM,          A16,       NONE,     false, 0x0000),
@@ -129,6 +131,18 @@ int
 lima_format_get_texel(enum pipe_format f)
 {
    return lima_format_table[f].texel;
+}
+
+int
+lima_format_get_texel_reload(enum pipe_format f)
+{
+   switch (f) {
+   case PIPE_FORMAT_Z24_UNORM_S8_UINT:
+   case PIPE_FORMAT_Z24X8_UNORM:
+      return LIMA_TEXEL_FORMAT_Z24S8_RLD;
+   default:
+      return lima_format_get_texel(f);
+   }
 }
 
 int

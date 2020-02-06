@@ -118,7 +118,7 @@ lima_clear(struct pipe_context *pctx, unsigned buffers,
    /* no need to reload if cleared */
    if (ctx->framebuffer.base.nr_cbufs && (buffers & PIPE_CLEAR_COLOR0)) {
       struct lima_surface *surf = lima_surface(ctx->framebuffer.base.cbufs[0]);
-      surf->reload = false;
+      surf->reload &= ~PIPE_CLEAR_COLOR0;
    }
 
    struct lima_job_clear *clear = &job->clear;
@@ -138,11 +138,20 @@ lima_clear(struct pipe_context *pctx, unsigned buffers,
          float_to_ushort(color->f[0]);
    }
 
-   if (buffers & PIPE_CLEAR_DEPTH)
-      clear->depth = util_pack_z(PIPE_FORMAT_Z24X8_UNORM, depth);
+   struct lima_surface *zsbuf = lima_surface(ctx->framebuffer.base.zsbuf);
 
-   if (buffers & PIPE_CLEAR_STENCIL)
+   if (buffers & PIPE_CLEAR_DEPTH) {
+      clear->depth = util_pack_z(PIPE_FORMAT_Z24X8_UNORM, depth);
+      if (zsbuf)
+         zsbuf->reload &= ~PIPE_CLEAR_DEPTH;
+   } else
+      clear->depth = 0x00ffffff;
+
+   if (buffers & PIPE_CLEAR_STENCIL) {
       clear->stencil = stencil;
+      if (zsbuf)
+         zsbuf->reload &= ~PIPE_CLEAR_STENCIL;
+   }
 
    ctx->dirty |= LIMA_CONTEXT_DIRTY_CLEAR;
 

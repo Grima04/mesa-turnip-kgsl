@@ -62,7 +62,7 @@ struct lima_resource {
 struct lima_surface {
    struct pipe_surface base;
    int tiled_w, tiled_h;
-   bool reload;
+   unsigned reload;
 };
 
 struct lima_transfer {
