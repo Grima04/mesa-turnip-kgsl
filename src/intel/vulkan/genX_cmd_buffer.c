@@ -2837,6 +2837,10 @@ cmd_buffer_emit_push_constant(struct anv_cmd_buffer *cmd_buffer,
          const struct anv_pipeline_bind_map *bind_map =
             &pipeline->shaders[stage]->bind_map;
 
+#if GEN_GEN >= 12
+         c.MOCS = cmd_buffer->device->isl_dev.mocs.internal;
+#endif
+
 #if GEN_GEN >= 8 || GEN_IS_HASWELL
          /* The Skylake PRM contains the following restriction:
           *
@@ -2897,6 +2901,7 @@ cmd_buffer_emit_push_constant_all(struct anv_cmd_buffer *cmd_buffer,
    if (count == 0) {
       anv_batch_emit(&cmd_buffer->batch, GENX(3DSTATE_CONSTANT_ALL), c) {
          c.ShaderUpdateEnable = shader_mask;
+         c.MOCS = cmd_buffer->device->isl_dev.mocs.internal;
       }
       return;
    }
@@ -2927,7 +2932,8 @@ cmd_buffer_emit_push_constant_all(struct anv_cmd_buffer *cmd_buffer,
    dw = anv_batch_emitn(&cmd_buffer->batch, num_dwords,
                         GENX(3DSTATE_CONSTANT_ALL),
                         .ShaderUpdateEnable = shader_mask,
-                        .PointerBufferMask = buffers);
+                        .PointerBufferMask = buffers,
+                        .MOCS = cmd_buffer->device->isl_dev.mocs.internal);
 
    for (int i = 0; i < count; i++) {
       const struct anv_push_range *range = &bind_map->push_ranges[i];
