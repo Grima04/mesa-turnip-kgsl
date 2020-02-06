@@ -282,16 +282,19 @@ iris_blorp_exec(struct blorp_batch *blorp_batch,
     * data.
     */
    if (params->src.enabled)
-      iris_cache_flush_for_read(batch, params->src.addr.buffer);
+      iris_emit_buffer_barrier_for(batch, params->src.addr.buffer,
+                                   IRIS_DOMAIN_OTHER_READ);
    if (params->dst.enabled) {
       iris_cache_flush_for_render(batch, params->dst.addr.buffer,
                                   params->dst.view.format,
                                   params->dst.aux_usage);
    }
    if (params->depth.enabled)
-      iris_cache_flush_for_depth(batch, params->depth.addr.buffer);
+      iris_emit_buffer_barrier_for(batch, params->depth.addr.buffer,
+                                   IRIS_DOMAIN_DEPTH_WRITE);
    if (params->stencil.enabled)
-      iris_cache_flush_for_depth(batch, params->stencil.addr.buffer);
+      iris_emit_buffer_barrier_for(batch, params->stencil.addr.buffer,
+                                   IRIS_DOMAIN_DEPTH_WRITE);
 
    iris_require_command_space(batch, 1400);
 

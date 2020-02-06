@@ -108,7 +108,7 @@ resolve_sampler_views(struct iris_context *ice,
                                        isv->view.array_len);
       }
 
-      iris_cache_flush_for_read(batch, res->bo);
+      iris_emit_buffer_barrier_for(batch, res->bo, IRIS_DOMAIN_OTHER_READ);
    }
 }
 
@@ -146,7 +146,7 @@ resolve_image_views(struct iris_context *ice,
                                       aux_usage, false);
       }
 
-      iris_cache_flush_for_read(batch, res->bo);
+      iris_emit_buffer_barrier_for(batch, res->bo, IRIS_DOMAIN_OTHER_READ);
    }
 }
 
@@ -204,11 +204,13 @@ iris_predraw_resolve_framebuffer(struct iris_context *ice,
                                         zs_surf->u.tex.level,
                                         zs_surf->u.tex.first_layer,
                                         num_layers);
-            iris_cache_flush_for_depth(batch, z_res->bo);
+            iris_emit_buffer_barrier_for(batch, z_res->bo,
+                                         IRIS_DOMAIN_DEPTH_WRITE);
          }
 
          if (s_res) {
-            iris_cache_flush_for_depth(batch, s_res->bo);
+            iris_emit_buffer_barrier_for(batch, s_res->bo,
+                                         IRIS_DOMAIN_DEPTH_WRITE);
          }
       }
    }
@@ -357,13 +359,6 @@ iris_flush_depth_and_render_caches(struct iris_batch *batch)
                                 PIPE_CONTROL_CONST_CACHE_INVALIDATE);
 }
 
-void
-iris_cache_flush_for_read(struct iris_batch *batch,
-                          struct iris_bo *bo)
-{
-   iris_emit_buffer_barrier_for(batch, bo, IRIS_DOMAIN_OTHER_READ);
-}
-
 static void *
 format_aux_tuple(enum isl_format format, enum isl_aux_usage aux_usage)
 {
@@ -410,13 +405,6 @@ iris_cache_flush_for_render(struct iris_batch *batch,
       iris_flush_depth_and_render_caches(batch);
       entry->data = format_aux_tuple(format, aux_usage);
    }
-}
-
-void
-iris_cache_flush_for_depth(struct iris_batch *batch,
-                           struct iris_bo *bo)
-{
-   iris_emit_buffer_barrier_for(batch, bo, IRIS_DOMAIN_DEPTH_WRITE);
 }
 
 static void
