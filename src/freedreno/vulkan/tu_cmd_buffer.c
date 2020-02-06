@@ -853,6 +853,81 @@ tu6_emit_clear_attachment(struct tu_cmd_buffer *cmd, struct tu_cs *cs,
 }
 
 static void
+tu6_emit_predicated_blit(struct tu_cmd_buffer *cmd,
+                         struct tu_cs *cs,
+                         uint32_t a,
+                         uint32_t gmem_a,
+                         bool resolve)
+{
+   const uint32_t space = 14 + 6;
+   struct tu_cond_exec_state state;
+
+   VkResult result = tu_cond_exec_start(cmd->device, cs, &state,
+                                        CP_COND_REG_EXEC_0_MODE(RENDER_MODE) |
+                                        CP_COND_REG_EXEC_0_GMEM,
+                                        space);
+   if (result != VK_SUCCESS) {
+      cmd->record_result = result;
+      return;
+   }
+
+   tu6_emit_blit_info(cmd, cs,
+                      cmd->state.framebuffer->attachments[a].attachment,
+                      cmd->state.pass->attachments[gmem_a].gmem_offset, resolve);
+   tu6_emit_blit(cmd, cs);
+
+   tu_cond_exec_end(cs, &state);
+}
+
+static void
+tu6_emit_sysmem_resolve(struct tu_cmd_buffer *cmd,
+                        struct tu_cs *cs,
+                        uint32_t a,
+                        uint32_t gmem_a)
+{
+   const struct tu_framebuffer *fb = cmd->state.framebuffer;
+   const struct tu_image_view *dst = fb->attachments[a].attachment;
+   const struct tu_image_view *src = fb->attachments[gmem_a].attachment;
+
+   tu_blit(cmd, cs, &(struct tu_blit) {
+      .dst = sysmem_attachment_surf(dst, dst->base_layer,
+                                    &cmd->state.tiling_config.render_area),
+      .src = sysmem_attachment_surf(src, src->base_layer,
+                                    &cmd->state.tiling_config.render_area),
+      .layers = fb->layers,
+   });
+}
+
+
+/* Emit a MSAA resolve operation, with both gmem and sysmem paths. */
+static void tu6_emit_resolve(struct tu_cmd_buffer *cmd,
+                             struct tu_cs *cs,
+                             uint32_t a,
+                             uint32_t gmem_a)
+{
+   if (cmd->state.pass->attachments[a].store_op == VK_ATTACHMENT_STORE_OP_DONT_CARE)
+      return;
+
+   tu6_emit_predicated_blit(cmd, cs, a, gmem_a, true);
+
+   const struct tu_framebuffer *fb = cmd->state.framebuffer;
+   const uint32_t space = 25 + 66 * fb->layers + 17;
+   struct tu_cond_exec_state state;
+
+   VkResult result = tu_cond_exec_start(cmd->device, cs, &state,
+                                        CP_COND_REG_EXEC_0_MODE(RENDER_MODE) |
+                                        CP_COND_REG_EXEC_0_SYSMEM,
+                                        space);
+   if (result != VK_SUCCESS) {
+      cmd->record_result = result;
+      return;
+   }
+
+   tu6_emit_sysmem_resolve(cmd, cs, a, gmem_a);
+   tu_cond_exec_end(cs, &state);
+}
+
+static void
 tu6_emit_store_attachment(struct tu_cmd_buffer *cmd,
                           struct tu_cs *cs,
                           uint32_t a,
@@ -1421,6 +1496,20 @@ tu6_sysmem_render_begin(struct tu_cmd_buffer *cmd, struct tu_cs *cs,
 static void
 tu6_sysmem_render_end(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 {
+   /* Do any resolves of the last subpass. These are handled in the
+    * tile_store_ib in the gmem path.
+    */
+
+   const struct tu_subpass *subpass = cmd->state.subpass;
+   if (subpass->resolve_attachments) {
+      for (unsigned i = 0; i < subpass->color_count; i++) {
+         uint32_t a = subpass->resolve_attachments[i].attachment;
+         if (a != VK_ATTACHMENT_UNUSED)
+            tu6_emit_sysmem_resolve(cmd, cs, a,
+                                    subpass->color_attachments[i].attachment);
+      }
+   }
+
    const uint32_t space = 14 + tu_cs_get_call_size(&cmd->draw_epilogue_cs);
    VkResult result = tu_cs_reserve_space(cmd->device, cs, space);
    if (result != VK_SUCCESS) {
@@ -2545,12 +2634,6 @@ tu_CmdNextSubpass(VkCommandBuffer commandBuffer, VkSubpassContents contents)
    const struct tu_render_pass *pass = cmd->state.pass;
    struct tu_cs *cs = &cmd->draw_cs;
 
-   VkResult result = tu_cs_reserve_space(cmd->device, cs, 1024);
-    if (result != VK_SUCCESS) {
-       cmd->record_result = result;
-       return;
-   }
-
    const struct tu_subpass *subpass = cmd->state.subpass++;
    /* TODO:
     * if msaa samples change between subpasses,
@@ -2561,10 +2644,16 @@ tu_CmdNextSubpass(VkCommandBuffer commandBuffer, VkSubpassContents contents)
       for (unsigned i = 0; i < subpass->color_count; i++) {
          uint32_t a = subpass->resolve_attachments[i].attachment;
          if (a != VK_ATTACHMENT_UNUSED) {
-               tu6_emit_store_attachment(cmd, cs, a,
-                                         subpass->color_attachments[i].attachment);
+            tu6_emit_resolve(cmd, cs, a,
+                             subpass->color_attachments[i].attachment);
          }
       }
+   }
+
+   VkResult result = tu_cs_reserve_space(cmd->device, &cmd->draw_cs, 1024);
+   if (result != VK_SUCCESS) {
+      cmd->record_result = result;
+      return;
    }
 
    /* invalidate because reading input attachments will cache GMEM and
@@ -2593,12 +2682,9 @@ tu_CmdNextSubpass(VkCommandBuffer commandBuffer, VkSubpassContents contents)
    if (subpass->resolve_attachments) {
       for (unsigned i = 0; i < subpass->color_count; i++) {
          uint32_t a = subpass->resolve_attachments[i].attachment;
-         const struct tu_image_view *iview =
-            cmd->state.framebuffer->attachments[a].attachment;
          if (a != VK_ATTACHMENT_UNUSED && pass->attachments[a].gmem_offset >= 0) {
                tu_finishme("missing GMEM->GMEM resolve, performance will suffer\n");
-               tu6_emit_blit_info(cmd, cs, iview, pass->attachments[a].gmem_offset, false);
-               tu6_emit_blit(cmd, cs);
+               tu6_emit_predicated_blit(cmd, cs, a, a, false);
          }
       }
    }
