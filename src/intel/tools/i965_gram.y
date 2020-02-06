@@ -1781,7 +1781,9 @@ addrreg:
 			error(&@2, "Address sub resgister number %d"
 				   "out of range\n", $2);
 
-		$$ = brw_address_reg($2);
+		$$.file = BRW_ARCHITECTURE_REGISTER_FILE;
+		$$.nr = BRW_ARF_ADDRESS;
+		$$.subnr = $2;
 	}
 	;
 
