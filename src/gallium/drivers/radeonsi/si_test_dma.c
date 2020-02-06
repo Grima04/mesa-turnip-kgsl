@@ -43,9 +43,10 @@ struct cpu_texture {
 };
 
 static void alloc_cpu_texture(struct cpu_texture *tex,
-			      struct pipe_resource *templ, int bpp)
+			      struct pipe_resource *templ)
 {
-	tex->stride = align(templ->width0 * bpp, RAND_NUM_SIZE);
+	tex->stride = align(util_format_get_stride(templ->format, templ->width0),
+			    RAND_NUM_SIZE);
 	tex->layer_stride = (uint64_t)tex->stride * templ->height0;
 	tex->size = tex->layer_stride * templ->array_size;
 	tex->ptr = malloc(tex->size);
@@ -88,12 +89,13 @@ static void set_random_pixels(struct pipe_context *ctx,
 
 static bool compare_textures(struct pipe_context *ctx,
 			     struct pipe_resource *tex,
-			     struct cpu_texture *cpu, int bpp)
+			     struct cpu_texture *cpu)
 {
 	struct pipe_transfer *t;
 	uint8_t *map;
 	int y,z;
 	bool pass = true;
+	unsigned stride = util_format_get_stride(tex->format, tex->width0);
 
 	map = pipe_transfer_map_3d(ctx, tex, 0, PIPE_TRANSFER_READ,
 				   0, 0, 0, tex->width0, tex->height0,
@@ -106,7 +108,7 @@ static bool compare_textures(struct pipe_context *ctx,
 			uint8_t *cpu_ptr = cpu->ptr +
 					   cpu->layer_stride*z + cpu->stride*y;
 
-			if (memcmp(ptr, cpu_ptr, tex->width0 * bpp)) {
+			if (memcmp(ptr, cpu_ptr, stride)) {
 				pass = false;
 				goto done;
 			}
@@ -117,23 +119,17 @@ done:
 	return pass;
 }
 
-static enum pipe_format get_format_from_bpp(int bpp)
+static enum pipe_format choose_format()
 {
-	switch (bpp) {
-	case 1:
-		return PIPE_FORMAT_R8_UINT;
-	case 2:
-		return PIPE_FORMAT_R16_UINT;
-	case 4:
-		return PIPE_FORMAT_R32_UINT;
-	case 8:
-		return PIPE_FORMAT_R32G32_UINT;
-	case 16:
-		return PIPE_FORMAT_R32G32B32A32_UINT;
-	default:
-		assert(0);
-		return PIPE_FORMAT_NONE;
-	}
+	enum pipe_format formats[] = {
+		PIPE_FORMAT_R8_UINT,
+		PIPE_FORMAT_R16_UINT,
+		PIPE_FORMAT_R32_UINT,
+		PIPE_FORMAT_R32G32_UINT,
+		PIPE_FORMAT_R32G32B32A32_UINT,
+		PIPE_FORMAT_G8R8_B8R8_UNORM,
+	};
+	return formats[rand() % ARRAY_SIZE(formats)];
 }
 
 static const char *array_mode_to_string(struct si_screen *sscreen,
@@ -222,7 +218,7 @@ void si_test_dma(struct si_screen *sscreen)
 		struct si_texture *sdst;
 		struct si_texture *ssrc;
 		struct cpu_texture src_cpu, dst_cpu;
-		unsigned bpp, max_width, max_height, max_depth, j, num;
+		unsigned max_width, max_height, max_depth, j, num;
 		unsigned gfx_blits = 0, dma_blits = 0, cs_blits = 0, max_tex_side_gen;
 		unsigned max_tex_layers;
 		bool pass;
@@ -232,8 +228,7 @@ void si_test_dma(struct si_screen *sscreen)
 		tsrc.target = tdst.target = PIPE_TEXTURE_2D_ARRAY;
 		tsrc.depth0 = tdst.depth0 = 1;
 
-		bpp = 1 << (rand() % 5);
-		tsrc.format = tdst.format = get_format_from_bpp(bpp);
+		tsrc.format = tdst.format = choose_format();
 
 		max_tex_side_gen = generate_max_tex_side(max_tex_side);
 		max_tex_layers = rand() % 4 ? 1 : 5;
@@ -241,6 +236,9 @@ void si_test_dma(struct si_screen *sscreen)
 		tsrc.width0 = (rand() % max_tex_side_gen) + 1;
 		tsrc.height0 = (rand() % max_tex_side_gen) + 1;
 		tsrc.array_size = (rand() % max_tex_layers) + 1;
+
+		if (tsrc.format == PIPE_FORMAT_G8R8_B8R8_UNORM)
+			tsrc.width0 = align(tsrc.width0, 2);
 
 		/* Have a 1/4 chance of getting power-of-two dimensions. */
 		if (rand() % 4 == 0) {
@@ -268,8 +266,10 @@ void si_test_dma(struct si_screen *sscreen)
 		}
 
 		/* check texture sizes */
-		if ((uint64_t)tsrc.width0 * tsrc.height0 * tsrc.array_size * bpp +
-		    (uint64_t)tdst.width0 * tdst.height0 * tdst.array_size * bpp >
+		if ((uint64_t) util_format_get_nblocks(tsrc.format, tsrc.width0, tsrc.height0)
+			* tsrc.array_size * util_format_get_blocksize(tsrc.format) +
+		    (uint64_t) util_format_get_nblocks(tdst.format, tdst.width0, tdst.height0)
+			* tdst.array_size * util_format_get_blocksize(tdst.format) >
 		    max_alloc_size) {
 			/* too large, try again */
 			i--;
@@ -291,15 +291,16 @@ void si_test_dma(struct si_screen *sscreen)
 		assert(dst);
 		sdst = (struct si_texture*)dst;
 		ssrc = (struct si_texture*)src;
-		alloc_cpu_texture(&src_cpu, &tsrc, bpp);
-		alloc_cpu_texture(&dst_cpu, &tdst, bpp);
+		alloc_cpu_texture(&src_cpu, &tsrc);
+		alloc_cpu_texture(&dst_cpu, &tdst);
 
 		printf("%4u: dst = (%5u x %5u x %u, %s), "
-		       " src = (%5u x %5u x %u, %s), bpp = %2u, ",
+		       " src = (%5u x %5u x %u, %s), format = %s, ",
 		       i, tdst.width0, tdst.height0, tdst.array_size,
 		       array_mode_to_string(sscreen, &sdst->surface),
 		       tsrc.width0, tsrc.height0, tsrc.array_size,
-		       array_mode_to_string(sscreen, &ssrc->surface), bpp);
+		       array_mode_to_string(sscreen, &ssrc->surface),
+		       util_format_description(tsrc.format)->name);
 		fflush(stdout);
 
 		/* set src pixels */
@@ -394,7 +395,7 @@ void si_test_dma(struct si_screen *sscreen)
 				      srcx, srcy, srcz);
 		}
 
-		pass = compare_textures(ctx, dst, &dst_cpu, bpp);
+		pass = compare_textures(ctx, dst, &dst_cpu);
 		if (pass)
 			num_pass++;
 		else
