@@ -528,6 +528,14 @@ struct v3dv_job {
 
    uint32_t first_subpass;
 
+   /* When the current subpass is split into multiple jobs, this flag is set
+    * to true for any jobs after the first in the same subpass.
+    */
+   bool is_subpass_continue;
+
+   /* If this job is the last job emitted for a subpass. */
+   bool is_subpass_finish;
+
    enum v3dv_ez_state ez_state;
    enum v3dv_ez_state first_ez_state;
 };
@@ -586,10 +594,17 @@ struct v3dv_cmd_buffer {
    struct list_head submit_jobs;
 };
 
-struct v3dv_job *v3dv_cmd_buffer_start_job(struct v3dv_cmd_buffer *cmd_buffer);
+struct v3dv_job *v3dv_cmd_buffer_start_job(struct v3dv_cmd_buffer *cmd_buffer,
+                                           bool is_subpass_finish);
 void v3dv_cmd_buffer_finish_job(struct v3dv_cmd_buffer *cmd_buffer);
 void v3dv_cmd_buffer_start_frame(struct v3dv_cmd_buffer *cmd_buffer,
                                  const struct v3dv_framebuffer *framebuffer);
+
+void v3dv_render_pass_setup_render_target(struct v3dv_cmd_buffer *cmd_buffer,
+                                          int rt,
+                                          uint32_t *rt_bpp,
+                                          uint32_t *rt_type,
+                                          uint32_t *rt_clamp);
 
 struct v3dv_semaphore {
    /* A syncobject handle associated with this semaphore */

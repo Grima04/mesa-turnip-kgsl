@@ -419,7 +419,7 @@ copy_image_to_buffer_tlb(struct v3dv_cmd_buffer *cmd_buffer,
    struct v3dv_framebuffer framebuffer;
    setup_framebuffer_params(&framebuffer, image, num_layers, internal_bpp);
 
-   struct v3dv_job *job = v3dv_cmd_buffer_start_job(cmd_buffer);
+   struct v3dv_job *job = v3dv_cmd_buffer_start_job(cmd_buffer, false);
    v3dv_cmd_buffer_start_frame(cmd_buffer, &framebuffer);
 
    v3dv_job_emit_binning_flush(job);

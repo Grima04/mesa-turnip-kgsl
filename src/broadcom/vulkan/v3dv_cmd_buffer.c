@@ -364,13 +364,18 @@ v3dv_cmd_buffer_finish_job(struct v3dv_cmd_buffer *cmd_buffer)
 }
 
 struct v3dv_job *
-v3dv_cmd_buffer_start_job(struct v3dv_cmd_buffer *cmd_buffer)
+v3dv_cmd_buffer_start_job(struct v3dv_cmd_buffer *cmd_buffer,
+                          bool is_subpass_start)
 {
    /* Don't create a new job if we can merge the current subpass into
     * the current job.
     */
-   if (cmd_buffer->state.pass && cmd_buffer_can_merge_subpass(cmd_buffer))
+   if (cmd_buffer->state.pass &&
+       is_subpass_start &&
+       cmd_buffer_can_merge_subpass(cmd_buffer)) {
+      cmd_buffer->state.job->is_subpass_finish = false;
       return cmd_buffer->state.job;
+   }
 
    /* Ensure we are not starting a new job without finishing a previous one */
    if (cmd_buffer->state.job != NULL)
@@ -713,9 +718,12 @@ v3dv_CmdNextSubpass(VkCommandBuffer commandBuffer, VkSubpassContents contents)
    subpass_start(cmd_buffer);
 }
 
-static void
-setup_render_target(struct v3dv_cmd_buffer *cmd_buffer, int rt,
-                    uint32_t *rt_bpp, uint32_t *rt_type, uint32_t *rt_clamp)
+void
+v3dv_render_pass_setup_render_target(struct v3dv_cmd_buffer *cmd_buffer,
+                                     int rt,
+                                     uint32_t *rt_bpp,
+                                     uint32_t *rt_type,
+                                     uint32_t *rt_clamp)
 {
    const struct v3dv_cmd_buffer_state *state = &cmd_buffer->state;
 
@@ -805,11 +813,14 @@ cmd_buffer_render_pass_emit_loads(struct v3dv_cmd_buffer *cmd_buffer,
        * If the load operation is CLEAR, we must only clear once on the first
        * subpass that uses the attachment (and in that case we don't LOAD).
        * After that, we always want to load so we don't lose any rendering done
-       * by a previous subpass to the same attachment.
+       * by a previous subpass to the same attachment. We also want to load
+       * if the current job is continuing subpass work started by a previous
+       * job, for the same reason.
        */
       assert(state->job->first_subpass >= attachment->first_subpass);
       bool needs_load =
          state->job->first_subpass > attachment->first_subpass ||
+         state->job->is_subpass_continue ||
          attachment->desc.loadOp == VK_ATTACHMENT_LOAD_OP_LOAD;
 
       if (needs_load) {
@@ -827,6 +838,7 @@ cmd_buffer_render_pass_emit_loads(struct v3dv_cmd_buffer *cmd_buffer,
       assert(state->job->first_subpass >= ds_attachment->first_subpass);
       bool needs_load =
          state->job->first_subpass > ds_attachment->first_subpass ||
+         state->job->is_subpass_continue ||
          ds_attachment->desc.loadOp == VK_ATTACHMENT_LOAD_OP_LOAD;
 
       if (needs_load) {
@@ -908,13 +920,15 @@ cmd_buffer_render_pass_emit_stores(struct v3dv_cmd_buffer *cmd_buffer,
       /* Only clear once on the first subpass that uses the attachment */
       bool needs_clear =
          state->job->first_subpass == attachment->first_subpass &&
-         attachment->desc.loadOp == VK_ATTACHMENT_LOAD_OP_CLEAR;
+         attachment->desc.loadOp == VK_ATTACHMENT_LOAD_OP_CLEAR &&
+         !state->job->is_subpass_continue;
 
       /* Skip the last store if it is not required  */
       bool needs_store =
          state->subpass_idx < attachment->last_subpass ||
          attachment->desc.storeOp == VK_ATTACHMENT_STORE_OP_STORE ||
-         needs_clear;
+         needs_clear ||
+         !state->job->is_subpass_finish;
 
       if (needs_store) {
          cmd_buffer_render_pass_emit_store(cmd_buffer, cl,
@@ -951,13 +965,15 @@ cmd_buffer_render_pass_emit_stores(struct v3dv_cmd_buffer *cmd_buffer,
       /* Only clear once on the first subpass that uses the attachment */
       needs_ds_clear =
          state->job->first_subpass == ds_attachment->first_subpass &&
-         ds_attachment->desc.loadOp == VK_ATTACHMENT_LOAD_OP_CLEAR;
+         ds_attachment->desc.loadOp == VK_ATTACHMENT_LOAD_OP_CLEAR &&
+         !state->job->is_subpass_continue;
 
       /* Skip the last store if it is not required  */
       bool needs_ds_store =
          state->subpass_idx < ds_attachment->last_subpass ||
          ds_attachment->desc.storeOp == VK_ATTACHMENT_STORE_OP_STORE ||
-         needs_ds_clear;
+         needs_ds_clear ||
+         !state->job->is_subpass_finish;
 
       if (needs_ds_store) {
          struct v3dv_image_view *iview =
@@ -1253,22 +1269,22 @@ cmd_buffer_emit_render_pass_rcl(struct v3dv_cmd_buffer *cmd_buffer)
    }
 
    cl_emit(rcl, TILE_RENDERING_MODE_CFG_COLOR, rt) {
-      setup_render_target(cmd_buffer, 0,
-                          &rt.render_target_0_internal_bpp,
-                          &rt.render_target_0_internal_type,
-                          &rt.render_target_0_clamp);
-      setup_render_target(cmd_buffer, 1,
-                          &rt.render_target_1_internal_bpp,
-                          &rt.render_target_1_internal_type,
-                          &rt.render_target_1_clamp);
-      setup_render_target(cmd_buffer, 2,
-                          &rt.render_target_2_internal_bpp,
-                          &rt.render_target_2_internal_type,
-                          &rt.render_target_2_clamp);
-      setup_render_target(cmd_buffer, 3,
-                          &rt.render_target_3_internal_bpp,
-                          &rt.render_target_3_internal_type,
-                          &rt.render_target_3_clamp);
+      v3dv_render_pass_setup_render_target(cmd_buffer, 0,
+                                           &rt.render_target_0_internal_bpp,
+                                           &rt.render_target_0_internal_type,
+                                           &rt.render_target_0_clamp);
+      v3dv_render_pass_setup_render_target(cmd_buffer, 1,
+                                           &rt.render_target_1_internal_bpp,
+                                           &rt.render_target_1_internal_type,
+                                           &rt.render_target_1_clamp);
+      v3dv_render_pass_setup_render_target(cmd_buffer, 2,
+                                           &rt.render_target_2_internal_bpp,
+                                           &rt.render_target_2_internal_type,
+                                           &rt.render_target_2_clamp);
+      v3dv_render_pass_setup_render_target(cmd_buffer, 3,
+                                           &rt.render_target_3_internal_bpp,
+                                           &rt.render_target_3_internal_type,
+                                           &rt.render_target_3_clamp);
    }
 
    /* Ends rendering mode config. */
@@ -1308,7 +1324,7 @@ subpass_start(struct v3dv_cmd_buffer *cmd_buffer)
 
    assert(state->subpass_idx < state->pass->subpass_count);
 
-   struct v3dv_job *job = v3dv_cmd_buffer_start_job(cmd_buffer);
+   struct v3dv_job *job = v3dv_cmd_buffer_start_job(cmd_buffer, true);
 
    /* If we are starting a new job we need to setup binning. */
    if (job->first_subpass == state->subpass_idx)
@@ -1347,6 +1363,7 @@ subpass_finish(struct v3dv_cmd_buffer *cmd_buffer)
 {
    struct v3dv_job *job = cmd_buffer->state.job;
    assert(job);
+   job->is_subpass_finish = true;
 }
 
 void
