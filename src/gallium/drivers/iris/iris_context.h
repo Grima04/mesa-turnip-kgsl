@@ -910,7 +910,6 @@ void iris_predraw_resolve_framebuffer(struct iris_context *ice,
                                       bool *draw_aux_buffer_disabled);
 void iris_postdraw_update_resolve_tracking(struct iris_context *ice,
                                            struct iris_batch *batch);
-void iris_flush_depth_and_render_caches(struct iris_batch *batch);
 void iris_cache_flush_for_render(struct iris_batch *batch,
                                  struct iris_bo *bo,
                                  enum isl_format format,

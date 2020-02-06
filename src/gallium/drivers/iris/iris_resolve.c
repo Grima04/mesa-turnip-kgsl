@@ -332,33 +332,6 @@ iris_postdraw_update_resolve_tracking(struct iris_context *ice,
    }
 }
 
-/**
- * Emits an appropriate flush for a BO if it has been rendered to within the
- * same batchbuffer as a read that's about to be emitted.
- *
- * The GPU has separate, incoherent caches for the render cache and the
- * sampler cache, along with other caches.  Usually data in the different
- * caches don't interact (e.g. we don't render to our driver-generated
- * immediate constant data), but for render-to-texture in FBOs we definitely
- * do.  When a batchbuffer is flushed, the kernel will ensure that everything
- * necessary is flushed before another use of that BO, but for reuse from
- * different caches within a batchbuffer, it's all our responsibility.
- */
-void
-iris_flush_depth_and_render_caches(struct iris_batch *batch)
-{
-   iris_emit_pipe_control_flush(batch,
-                                "cache tracker: render-to-texture",
-                                PIPE_CONTROL_DEPTH_CACHE_FLUSH |
-                                PIPE_CONTROL_RENDER_TARGET_FLUSH |
-                                PIPE_CONTROL_CS_STALL);
-
-   iris_emit_pipe_control_flush(batch,
-                                "cache tracker: render-to-texture",
-                                PIPE_CONTROL_TEXTURE_CACHE_INVALIDATE |
-                                PIPE_CONTROL_CONST_CACHE_INVALIDATE);
-}
-
 static void *
 format_aux_tuple(enum isl_format format, enum isl_aux_usage aux_usage)
 {
