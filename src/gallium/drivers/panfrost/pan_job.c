@@ -671,6 +671,24 @@ panfrost_batch_get_scratchpad(struct panfrost_batch *batch,
 }
 
 struct panfrost_bo *
+panfrost_batch_get_shared_memory(struct panfrost_batch *batch,
+                unsigned size,
+                unsigned workgroup_count)
+{
+        if (batch->shared_memory) {
+                assert(batch->shared_memory->size >= size);
+        } else {
+                batch->shared_memory = panfrost_batch_create_bo(batch, size,
+                                             PAN_BO_INVISIBLE,
+                                             PAN_BO_ACCESS_PRIVATE |
+                                             PAN_BO_ACCESS_RW |
+                                             PAN_BO_ACCESS_VERTEX_TILER);
+        }
+
+        return batch->shared_memory;
+}
+
+struct panfrost_bo *
 panfrost_batch_get_tiler_heap(struct panfrost_batch *batch)
 {
         if (batch->tiler_heap)

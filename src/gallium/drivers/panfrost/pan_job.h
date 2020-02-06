@@ -86,6 +86,9 @@ struct panfrost_batch {
         /* Amount of thread local storage required per thread */
         unsigned stack_size;
 
+        /* Amount of shared memory needed per workgroup (for compute) */
+        unsigned shared_size;
+
         /* Whether this job uses the corresponding requirement (PAN_REQ_*
          * bitmask) */
         unsigned requirements;
@@ -142,8 +145,11 @@ struct panfrost_batch {
         /* Polygon list bound to the batch, or NULL if none bound yet */
         struct panfrost_bo *polygon_list;
 
-        /* Scratchpath BO bound to the batch, or NULL if none bound yet */
+        /* Scratchpad BO bound to the batch, or NULL if none bound yet */
         struct panfrost_bo *scratchpad;
+
+        /* Shared memory BO bound to the batch, or NULL if none bound yet */
+        struct panfrost_bo *shared_memory;
 
         /* Tiler heap BO bound to the batch, or NULL if none bound yet */
         struct panfrost_bo *tiler_heap;
@@ -204,6 +210,9 @@ panfrost_batch_set_requirements(struct panfrost_batch *batch);
 
 struct panfrost_bo *
 panfrost_batch_get_scratchpad(struct panfrost_batch *batch, unsigned shift, unsigned thread_tls_alloc, unsigned core_count);
+
+struct panfrost_bo *
+panfrost_batch_get_shared_memory(struct panfrost_batch *batch, unsigned size, unsigned workgroup_count);
 
 mali_ptr
 panfrost_batch_get_polygon_list(struct panfrost_batch *batch, unsigned size);

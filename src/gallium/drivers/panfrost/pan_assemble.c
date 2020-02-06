@@ -124,6 +124,7 @@ panfrost_shader_compile(
                 /* TODO: images */
                 meta->attribute_count = 0;
                 meta->varying_count = 0;
+                state->shared_size = s->info.cs.shared_size;
                 break;
         default:
                 unreachable("Unknown shader state");
