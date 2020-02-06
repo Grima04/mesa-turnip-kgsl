@@ -741,23 +741,6 @@ setup_render_target(struct v3dv_cmd_buffer *cmd_buffer, int rt,
    *rt_clamp = V3D_RENDER_TARGET_CLAMP_NONE;
 }
 
-static uint32_t
-zs_buffer_from_aspect_bits(VkImageAspectFlags aspects)
-{
-   const VkImageAspectFlags zs_aspects =
-      VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
-   const VkImageAspectFlags filtered_aspects = aspects & zs_aspects;
-
-   if (filtered_aspects == zs_aspects)
-      return ZSTENCIL;
-   else if (filtered_aspects == VK_IMAGE_ASPECT_DEPTH_BIT)
-      return Z;
-   else if (filtered_aspects == VK_IMAGE_ASPECT_STENCIL_BIT)
-      return STENCIL;
-   else
-      return NONE;
-}
-
 static void
 cmd_buffer_render_pass_emit_load(struct v3dv_cmd_buffer *cmd_buffer,
                                  struct v3dv_cl *cl,
@@ -849,7 +832,8 @@ cmd_buffer_render_pass_emit_loads(struct v3dv_cmd_buffer *cmd_buffer,
       if (needs_load) {
          struct v3dv_image_view *iview =
             framebuffer->attachments[ds_attachment_idx];
-         const uint32_t zs_buffer = zs_buffer_from_aspect_bits(iview->aspects);
+         const uint32_t zs_buffer =
+            v3dv_zs_buffer_from_aspect_bits(iview->aspects);
          cmd_buffer_render_pass_emit_load(cmd_buffer, cl,
                                           iview, layer, zs_buffer);
       }
@@ -978,7 +962,8 @@ cmd_buffer_render_pass_emit_stores(struct v3dv_cmd_buffer *cmd_buffer,
       if (needs_ds_store) {
          struct v3dv_image_view *iview =
             state->framebuffer->attachments[ds_attachment_idx];
-         const uint32_t zs_buffer = zs_buffer_from_aspect_bits(iview->aspects);
+         const uint32_t zs_buffer =
+            v3dv_zs_buffer_from_aspect_bits(iview->aspects);
          cmd_buffer_render_pass_emit_store(cmd_buffer, cl,
                                            ds_attachment_idx, layer,
                                            zs_buffer, needs_ds_clear);

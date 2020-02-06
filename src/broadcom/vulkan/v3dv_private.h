@@ -830,6 +830,23 @@ struct v3dv_pipeline {
    uint8_t stencil_cfg[2][cl_packet_length(STENCIL_CFG)];
 };
 
+static inline uint32_t
+v3dv_zs_buffer_from_aspect_bits(VkImageAspectFlags aspects)
+{
+   const VkImageAspectFlags zs_aspects =
+      VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+   const VkImageAspectFlags filtered_aspects = aspects & zs_aspects;
+
+   if (filtered_aspects == zs_aspects)
+      return ZSTENCIL;
+   else if (filtered_aspects == VK_IMAGE_ASPECT_DEPTH_BIT)
+      return Z;
+   else if (filtered_aspects == VK_IMAGE_ASPECT_STENCIL_BIT)
+      return STENCIL;
+   else
+      return NONE;
+}
+
 uint32_t v3dv_physical_device_api_version(struct v3dv_physical_device *dev);
 
 int v3dv_get_instance_entrypoint_index(const char *name);
