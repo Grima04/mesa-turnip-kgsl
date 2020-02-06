@@ -535,7 +535,7 @@ parse_rsw(FILE *fp, uint32_t *value, int i, uint32_t *helper)
          fprintf(fp, ", UNKNOWN\n");
       break;
    case 9: /* SHADER ADDRESS */
-      fprintf(fp, ": fs shader @ 0x%08x, ((uint32_t *)ctx->fs->bo->map)[0] & 0x1f: 0x%08x */\n",
+      fprintf(fp, ": fs shader @ 0x%08x, first instr length %d */\n",
               *value & 0xffffffe0, *value & 0x0000001f);
       break;
    case 10: /* VARYING TYPES */
