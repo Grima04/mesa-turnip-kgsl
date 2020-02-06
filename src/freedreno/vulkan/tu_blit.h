@@ -102,6 +102,25 @@ tu_blit_surf_whole(struct tu_image *image, int level, int layer)
    });
 }
 
+static inline struct tu_blit_surf
+sysmem_attachment_surf(const struct tu_image_view *view, uint32_t base_layer,
+                       const VkRect2D *rect)
+{
+   return tu_blit_surf_ext(view->image, (VkImageSubresourceLayers) {
+      .mipLevel = view->base_mip,
+      .baseArrayLayer = base_layer,
+   }, (VkOffset3D) {
+      .x = rect->offset.x,
+      .y = rect->offset.y,
+      .z = 0,
+   }, (VkExtent3D) {
+      .width = rect->extent.width,
+      .height = rect->extent.height,
+      .depth = 1,
+   });
+}
+
+
 enum tu_blit_type {
    TU_BLIT_DEFAULT,
    TU_BLIT_COPY,

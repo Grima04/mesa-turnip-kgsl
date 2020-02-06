@@ -1636,6 +1636,21 @@ tu_gem_info_offset(const struct tu_device *dev, uint32_t gem_handle);
 uint64_t
 tu_gem_info_iova(const struct tu_device *dev, uint32_t gem_handle);
 
+
+void
+tu_clear_sysmem_attachment(struct tu_cmd_buffer *cmd,
+                           struct tu_cs *cs,
+                           uint32_t attachment,
+                           const VkClearValue *value,
+                           const VkClearRect *rect);
+
+void
+tu_clear_gmem_attachment(struct tu_cmd_buffer *cmd,
+                         struct tu_cs *cs,
+                         uint32_t attachment,
+                         uint8_t component_mask,
+                         const VkClearValue *value);
+
 #define TU_DEFINE_HANDLE_CASTS(__tu_type, __VkType)                          \
                                                                              \
    static inline struct __tu_type *__tu_type##_from_handle(__VkType _handle) \

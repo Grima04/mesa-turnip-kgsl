@@ -848,33 +848,8 @@ tu6_emit_clear_attachment(struct tu_cmd_buffer *cmd, struct tu_cs *cs,
    if (!clear_mask)
       return;
 
-   const struct tu_native_format *format =
-      tu6_get_native_format(iview->vk_format);
-   assert(format && format->rb >= 0);
-
-   tu_cs_emit_regs(cs,
-                   A6XX_RB_BLIT_DST_INFO(.color_format = format->rb));
-
-   tu_cs_emit_regs(cs,
-                   A6XX_RB_BLIT_INFO(.gmem = true,
-                                     .clear_mask = clear_mask));
-
-   tu_cs_emit_regs(cs,
-                   A6XX_RB_BLIT_BASE_GMEM(attachment->gmem_offset));
-
-   tu_cs_emit_regs(cs,
-                   A6XX_RB_UNKNOWN_88D0(0));
-
-   uint32_t clear_vals[4] = { 0 };
-   tu_pack_clear_value(&info->pClearValues[a], iview->vk_format, clear_vals);
-
-   tu_cs_emit_regs(cs,
-                   A6XX_RB_BLIT_CLEAR_COLOR_DW0(clear_vals[0]),
-                   A6XX_RB_BLIT_CLEAR_COLOR_DW1(clear_vals[1]),
-                   A6XX_RB_BLIT_CLEAR_COLOR_DW2(clear_vals[2]),
-                   A6XX_RB_BLIT_CLEAR_COLOR_DW3(clear_vals[3]));
-
-   tu6_emit_blit(cmd, cs);
+   tu_clear_gmem_attachment(cmd, cs, a, clear_mask,
+                            &info->pClearValues[a]);
 }
 
 static void
@@ -1320,27 +1295,10 @@ tu6_emit_binning_pass(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
    cmd->wait_for_idle = false;
 }
 
-static inline struct tu_blit_surf
-sysmem_clear_surf(const struct tu_image_view *view, const VkRect2D *render_area)
-{
-   return tu_blit_surf_ext(view->image, (VkImageSubresourceLayers) {
-      .mipLevel = view->base_mip,
-      .baseArrayLayer = view->base_layer,
-   }, (VkOffset3D) {
-      .x = render_area->offset.x,
-      .y = render_area->offset.y,
-      .z = 0,
-   }, (VkExtent3D) {
-      .width = render_area->extent.width,
-      .height = render_area->extent.height,
-      .depth = 1,
-   });
-}
-
 static void
-tu6_emit_sysmem_clear_attachment(struct tu_cmd_buffer *cmd, struct tu_cs *cs,
-                                 uint32_t a,
-                                 const VkRenderPassBeginInfo *info)
+tu_emit_sysmem_clear_attachment(struct tu_cmd_buffer *cmd, struct tu_cs *cs,
+                                uint32_t a,
+                                const VkRenderPassBeginInfo *info)
 {
    const struct tu_framebuffer *fb = cmd->state.framebuffer;
    const struct tu_image_view *iview = fb->attachments[a].attachment;
@@ -1351,8 +1309,6 @@ tu6_emit_sysmem_clear_attachment(struct tu_cmd_buffer *cmd, struct tu_cs *cs,
    /* note: this means it isn't used by any subpass and shouldn't be cleared anyway */
    if (attachment->gmem_offset < 0)
       return;
-
-   uint32_t clear_vals[4] = { 0 };
 
    if (attachment->load_op == VK_ATTACHMENT_LOAD_OP_CLEAR) {
       clear_mask = 0xf;
@@ -1369,20 +1325,11 @@ tu6_emit_sysmem_clear_attachment(struct tu_cmd_buffer *cmd, struct tu_cs *cs,
    if (!clear_mask)
       return;
 
-   if (iview->aspect_mask & (VK_IMAGE_ASPECT_DEPTH_BIT |
-                             VK_IMAGE_ASPECT_STENCIL_BIT)) {
-      tu_2d_clear_zs(&info->pClearValues[a].depthStencil, iview->vk_format,
-                     clear_vals);
-   } else {
-      tu_2d_clear_color(&info->pClearValues[a].color, iview->vk_format,
-                        clear_vals);
-   }
-
-   tu_blit(cmd, cs, &(struct tu_blit) {
-      .dst = sysmem_clear_surf(iview, &info->renderArea),
-      .layers = iview->layer_count,
-      .clear_value = { clear_vals[0], clear_vals[1], clear_vals[2], clear_vals[3] },
-      .type = TU_BLIT_CLEAR,
+   tu_clear_sysmem_attachment(cmd, cs, a,
+                              &info->pClearValues[a], &(struct VkClearRect) {
+      .rect = info->renderArea,
+      .baseArrayLayer = iview->base_layer,
+      .layerCount = iview->layer_count,
    });
 }
 
@@ -1405,7 +1352,7 @@ tu_cmd_prepare_sysmem_clear_ib(struct tu_cmd_buffer *cmd,
    }
 
    for (uint32_t i = 0; i < cmd->state.pass->attachment_count; ++i)
-      tu6_emit_sysmem_clear_attachment(cmd, &sub_cs, i, info);
+      tu_emit_sysmem_clear_attachment(cmd, &sub_cs, i, info);
 
    /* TODO: We shouldn't need this flush, but without it we'd have an empty IB
     * when nothing clears which we currently can't handle.
@@ -2599,9 +2546,9 @@ tu_CmdNextSubpass(VkCommandBuffer commandBuffer, VkSubpassContents contents)
    struct tu_cs *cs = &cmd->draw_cs;
 
    VkResult result = tu_cs_reserve_space(cmd->device, cs, 1024);
-   if (result != VK_SUCCESS) {
-      cmd->record_result = result;
-      return;
+    if (result != VK_SUCCESS) {
+       cmd->record_result = result;
+       return;
    }
 
    const struct tu_subpass *subpass = cmd->state.subpass++;
