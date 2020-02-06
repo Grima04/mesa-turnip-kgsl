@@ -680,6 +680,52 @@ hash_free_uniform_name(struct hash_entry *entry)
    free((void*)entry->key);
 }
 
+static void
+enter_record(struct nir_link_uniforms_state *state,
+             struct gl_context *ctx,
+             const struct glsl_type *type,
+             bool row_major)
+{
+   assert(glsl_type_is_struct(type));
+   if (!state->var_is_in_block)
+      return;
+
+   bool use_std430 = ctx->Const.UseSTD430AsDefaultPacking;
+   const enum glsl_interface_packing packing =
+      glsl_get_internal_ifc_packing(state->current_var->interface_type,
+                                    use_std430);
+
+   if (packing == GLSL_INTERFACE_PACKING_STD430)
+      state->offset = glsl_align(
+         state->offset, glsl_get_std430_base_alignment(type, row_major));
+   else
+      state->offset = glsl_align(
+         state->offset, glsl_get_std140_base_alignment(type, row_major));
+}
+
+static void
+leave_record(struct nir_link_uniforms_state *state,
+             struct gl_context *ctx,
+             const struct glsl_type *type,
+             bool row_major)
+{
+   assert(glsl_type_is_struct(type));
+   if (!state->var_is_in_block)
+      return;
+
+   bool use_std430 = ctx->Const.UseSTD430AsDefaultPacking;
+   const enum glsl_interface_packing packing =
+      glsl_get_internal_ifc_packing(state->current_var->interface_type,
+                                    use_std430);
+
+   if (packing == GLSL_INTERFACE_PACKING_STD430)
+      state->offset = glsl_align(
+         state->offset, glsl_get_std430_base_alignment(type, row_major));
+   else
+      state->offset = glsl_align(
+         state->offset, glsl_get_std140_base_alignment(type, row_major));
+}
+
 /**
  * Creates the neccessary entries in UniformStorage for the uniform. Returns
  * the number of locations used or -1 on failure.
@@ -693,7 +739,7 @@ nir_link_uniform(struct gl_context *ctx,
                  unsigned index_in_parent,
                  int location,
                  struct nir_link_uniforms_state *state,
-                 char **name, size_t name_length)
+                 char **name, size_t name_length, bool row_major)
 {
    struct gl_uniform_storage *uniform = NULL;
 
@@ -735,9 +781,13 @@ nir_link_uniform(struct gl_context *ctx,
       if (glsl_type_is_unsized_array(type))
          length = 1;
 
+      if (glsl_type_is_struct(type) && !prog->data->spirv)
+         enter_record(state, ctx, type, row_major);
+
       for (unsigned i = 0; i < length; i++) {
          const struct glsl_type *field_type;
          size_t new_length = name_length;
+         bool field_row_major = row_major;
 
          if (glsl_type_is_struct_or_ifc(type)) {
             field_type = glsl_get_struct_field(type, i);
@@ -763,6 +813,21 @@ nir_link_uniform(struct gl_context *ctx,
                ralloc_asprintf_rewrite_tail(name, &new_length, ".%s",
                                             glsl_get_struct_elem_name(type, i));
             }
+
+
+            /* The layout of structures at the top level of the block is set
+             * during parsing.  For matrices contained in multiple levels of
+             * structures in the block, the inner structures have no layout.
+             * These cases must potentially inherit the layout from the outer
+             * levels.
+             */
+            const enum glsl_matrix_layout matrix_layout =
+               glsl_get_struct_field_data(type, i)->matrix_layout;
+            if (matrix_layout == GLSL_MATRIX_LAYOUT_ROW_MAJOR) {
+               field_row_major = true;
+            } else if (matrix_layout == GLSL_MATRIX_LAYOUT_COLUMN_MAJOR) {
+               field_row_major = false;
+            }
          } else {
             field_type = glsl_get_array_element(type);
 
@@ -773,7 +838,9 @@ nir_link_uniform(struct gl_context *ctx,
 
          int entries = nir_link_uniform(ctx, prog, stage_program, stage,
                                         field_type, i, location,
-                                        state, name, new_length);
+                                        state, name, new_length,
+                                        field_row_major);
+
          if (entries == -1)
             return -1;
 
@@ -784,6 +851,9 @@ nir_link_uniform(struct gl_context *ctx,
          if (glsl_type_is_struct_or_ifc(type))
             state->current_type = state->current_type->next_sibling;
       }
+
+      if (glsl_type_is_struct(type) && !prog->data->spirv)
+         leave_record(state, ctx, type, row_major);
 
       state->current_type = old_type;
 
@@ -1289,11 +1359,14 @@ gl_nir_link_uniforms(struct gl_context *ctx,
          else
             location = -1;
 
+         bool row_major =
+            var->data.matrix_layout == GLSL_MATRIX_LAYOUT_ROW_MAJOR;
          int res = nir_link_uniform(ctx, prog, sh->Program, shader_type, type,
                                     0, location,
                                     &state,
                                     !prog->data->spirv ? &name : NULL,
-                                    !prog->data->spirv ? strlen(name) : 0);
+                                    !prog->data->spirv ? strlen(name) : 0,
+                                    row_major);
 
          free_type_tree(type_tree);
          ralloc_free(name);
