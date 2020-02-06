@@ -351,13 +351,8 @@ iris_launch_grid(struct pipe_context *ctx, const struct pipe_grid_info *grid)
       ice->state.stage_dirty |= IRIS_ALL_STAGE_DIRTY_FOR_COMPUTE;
    }
 
-   /* We can't do resolves on the compute engine, so awkwardly, we have to
-    * do them on the render batch...
-    */
-   if (ice->state.dirty & IRIS_DIRTY_COMPUTE_RESOLVES_AND_FLUSHES) {
-      iris_predraw_resolve_inputs(ice, &ice->batches[IRIS_BATCH_RENDER], NULL,
-                                  MESA_SHADER_COMPUTE, false);
-   }
+   if (ice->state.dirty & IRIS_DIRTY_COMPUTE_RESOLVES_AND_FLUSHES)
+      iris_predraw_resolve_inputs(ice, batch, NULL, MESA_SHADER_COMPUTE, false);
 
    iris_batch_maybe_flush(batch, 1500);
 
