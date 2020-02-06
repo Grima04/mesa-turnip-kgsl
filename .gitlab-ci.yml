@@ -322,8 +322,6 @@ meson-main:
     VULKAN_DRIVERS: freedreno
     GALLIUM_DRIVERS: "etnaviv,freedreno,kmsro,lima,nouveau,panfrost,swrast,tegra,v3d,vc4"
     BUILDTYPE: "debugoptimized"
-    EXTRA_OPTION: >
-      -D I-love-half-baked-turnips=true
   tags:
     - aarch64
 
