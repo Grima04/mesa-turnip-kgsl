@@ -388,6 +388,8 @@ iris_cache_flush_for_read(struct iris_batch *batch,
    if (_mesa_hash_table_search_pre_hashed(batch->cache.render, bo->hash, bo) ||
        _mesa_set_search_pre_hashed(batch->cache.depth, bo->hash, bo))
       iris_flush_depth_and_render_caches(batch);
+
+   iris_emit_buffer_barrier_for(batch, bo, IRIS_DOMAIN_OTHER_READ);
 }
 
 static void *
@@ -402,6 +404,8 @@ iris_cache_flush_for_render(struct iris_batch *batch,
                             enum isl_format format,
                             enum isl_aux_usage aux_usage)
 {
+   iris_emit_buffer_barrier_for(batch, bo, IRIS_DOMAIN_RENDER_WRITE);
+
    if (_mesa_set_search_pre_hashed(batch->cache.depth, bo->hash, bo))
       iris_flush_depth_and_render_caches(batch);
 
@@ -461,6 +465,8 @@ iris_cache_flush_for_depth(struct iris_batch *batch,
 {
    if (_mesa_hash_table_search_pre_hashed(batch->cache.render, bo->hash, bo))
       iris_flush_depth_and_render_caches(batch);
+
+   iris_emit_buffer_barrier_for(batch, bo, IRIS_DOMAIN_DEPTH_WRITE);
 }
 
 void
