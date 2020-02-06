@@ -207,6 +207,46 @@ tu_cs_emit_call(struct tu_cs *cs, const struct tu_cs *target)
       tu_cs_emit_ib(cs, target->entries + i);
 }
 
+/* Helpers for bracketing a large sequence of commands of unknown size inside
+ * a CP_COND_REG_EXEC packet.
+ */
+
+struct tu_cond_exec_state {
+   uint32_t *dword_ptr;
+   uint32_t max_dwords;
+};
+
+static inline VkResult
+tu_cond_exec_start(struct tu_device *dev, struct tu_cs *cs,
+                   struct tu_cond_exec_state *state,
+                   uint32_t condition, uint32_t max_dwords)
+{
+   /* Reserve enough space so that both the condition packet and the actual
+    * condition will fit in the same IB.
+    */
+   VkResult result = tu_cs_reserve_space(dev, cs, max_dwords + 3);
+   if (result != VK_SUCCESS)
+      return result;
+
+   state->max_dwords = max_dwords;
+   tu_cs_emit_pkt7(cs, CP_COND_REG_EXEC, 2);
+   tu_cs_emit(cs, condition);
+   state->dword_ptr = cs->cur;
+   /* Emit dummy DWORD field here */
+   tu_cs_emit(cs, CP_COND_REG_EXEC_1_DWORDS(0));
+
+   return VK_SUCCESS;
+}
+
+static inline void
+tu_cond_exec_end(struct tu_cs *cs, struct tu_cond_exec_state *state)
+{
+   /* Subtract one here to account for the DWORD field itself. */
+   uint32_t actual_dwords = cs->cur - state->dword_ptr - 1;
+   assert(actual_dwords <= state->max_dwords);
+   *state->dword_ptr = actual_dwords;
+}
+
 #define fd_reg_pair tu_reg_value
 #define __bo_type struct tu_bo *
 
