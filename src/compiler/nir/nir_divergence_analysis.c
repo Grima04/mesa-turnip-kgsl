@@ -410,6 +410,7 @@ visit_intrinsic(nir_intrinsic_instr *instr,
    case nir_intrinsic_ballot_bit_count_inclusive:
    case nir_intrinsic_write_invocation_amd:
    case nir_intrinsic_mbcnt_amd:
+   case nir_intrinsic_elect:
       is_divergent = true;
       break;
 
