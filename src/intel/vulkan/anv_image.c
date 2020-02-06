@@ -1244,26 +1244,29 @@ anv_layout_to_aux_state(const struct gen_device_info * const devinfo,
    case VK_IMAGE_LAYOUT_PRESENT_SRC_KHR: {
       assert(image->aspects == VK_IMAGE_ASPECT_COLOR_BIT);
 
-      /* When handing the image off to the presentation engine, we need to
-       * ensure that things are properly resolved.  For images with no
-       * modifier, we assume that they follow the old rules and always need
-       * a full resolve because the PE doesn't understand any form of
-       * compression.  For images with modifiers, we use the aux usage from
-       * the modifier.
-       */
-      const struct isl_drm_modifier_info *mod_info =
-         isl_drm_modifier_get_info(image->drm_format_mod);
-      if (mod_info && mod_info->aux_usage != ISL_AUX_USAGE_NONE) {
-         assert(mod_info->aux_usage == ISL_AUX_USAGE_CCS_E);
-         assert(image->planes[plane].aux_usage == ISL_AUX_USAGE_CCS_E);
-         /* We do not yet support any modifiers which support clear color so
-          * we just always return COMPRESSED_NO_CLEAR.  One day, this will
-          * change.
+      enum isl_aux_state aux_state =
+         isl_drm_modifier_get_default_aux_state(image->drm_format_mod);
+
+      switch (aux_state) {
+      default:
+         assert(!"unexpected isl_aux_state");
+      case ISL_AUX_STATE_AUX_INVALID:
+         /* The modifier does not support compression. But, if we arrived
+          * here, then we have enabled compression on it anyway, in which case
+          * we must resolve the aux surface before we release ownership to the
+          * presentation engine (because, having no modifier, the presentation
+          * engine will not be aware of the aux surface). The presentation
+          * engine will not access the aux surface (because it is unware of
+          * it), and so the aux surface will still be resolved when we
+          * re-acquire ownership.
+          *
+          * Therefore, at ownership transfers in either direction, there does
+          * exist an aux surface despite the lack of modifier and its state is
+          * pass-through.
           */
-         assert(!mod_info->supports_clear_color);
-         return ISL_AUX_STATE_COMPRESSED_NO_CLEAR;
-      } else {
          return ISL_AUX_STATE_PASS_THROUGH;
+      case ISL_AUX_STATE_COMPRESSED_NO_CLEAR:
+         return ISL_AUX_STATE_COMPRESSED_NO_CLEAR;
       }
    }
 
