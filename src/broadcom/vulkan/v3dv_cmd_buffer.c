@@ -533,29 +533,12 @@ emit_clip_window(struct v3dv_job *job, const VkRect2D *rect)
    }
 }
 
-static void
-cmd_buffer_state_set_attachment_clear_color(struct v3dv_cmd_buffer *cmd_buffer,
-                                            uint32_t attachment_idx,
-                                            const VkClearColorValue *color)
+void
+v3dv_get_hw_clear_color(const VkClearColorValue *color,
+                        uint32_t internal_type,
+                        uint32_t internal_size,
+                        uint32_t *hw_color)
 {
-   assert(attachment_idx < cmd_buffer->state.pass->attachment_count);
-
-   const struct v3dv_render_pass_attachment *attachment =
-      &cmd_buffer->state.pass->attachments[attachment_idx];
-
-   uint32_t internal_type, internal_bpp;
-   const struct v3dv_format *format = v3dv_get_format(attachment->desc.format);
-   v3dv_get_internal_type_bpp_for_output_format(format->rt_type,
-                                                &internal_type,
-                                                &internal_bpp);
-
-   uint32_t internal_size = 4 << internal_bpp;
-
-   struct v3dv_cmd_buffer_attachment_state *attachment_state =
-      &cmd_buffer->state.attachments[attachment_idx];
-
-   uint32_t *hw_color =  &attachment_state->clear_value.color[0];
-
    union util_color uc;
    switch (internal_type) {
    case V3D_INTERNAL_TYPE_8:
@@ -584,6 +567,31 @@ cmd_buffer_state_set_attachment_clear_color(struct v3dv_cmd_buffer *cmd_buffer,
       memcpy(hw_color, color->uint32, internal_size);
       break;
    }
+}
+
+static void
+cmd_buffer_state_set_attachment_clear_color(struct v3dv_cmd_buffer *cmd_buffer,
+                                            uint32_t attachment_idx,
+                                            const VkClearColorValue *color)
+{
+   assert(attachment_idx < cmd_buffer->state.pass->attachment_count);
+
+   const struct v3dv_render_pass_attachment *attachment =
+      &cmd_buffer->state.pass->attachments[attachment_idx];
+
+   uint32_t internal_type, internal_bpp;
+   const struct v3dv_format *format = v3dv_get_format(attachment->desc.format);
+   v3dv_get_internal_type_bpp_for_output_format(format->rt_type,
+                                                &internal_type,
+                                                &internal_bpp);
+
+   uint32_t internal_size = 4 << internal_bpp;
+
+   struct v3dv_cmd_buffer_attachment_state *attachment_state =
+      &cmd_buffer->state.attachments[attachment_idx];
+
+   v3dv_get_hw_clear_color(color, internal_type, internal_size,
+                           &attachment_state->clear_value.color[0]);
 }
 
 static void

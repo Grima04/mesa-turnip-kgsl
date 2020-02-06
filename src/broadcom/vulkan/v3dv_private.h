@@ -422,6 +422,11 @@ struct v3dv_cmd_buffer_attachment_state {
    union v3dv_clear_value clear_value;
 };
 
+void v3dv_get_hw_clear_color(const VkClearColorValue *color,
+                             uint32_t internal_type,
+                             uint32_t internal_size,
+                             uint32_t *hw_color);
+
 struct v3dv_viewport_state {
    uint32_t count;
    VkViewport viewports[MAX_VIEWPORTS];
