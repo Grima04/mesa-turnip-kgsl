@@ -815,7 +815,7 @@ lima_pack_pp_frame_reg(struct lima_submit *submit, uint32_t *frame_reg,
       lima_pack_wb_zsbuf_reg(submit, wb_reg, wb_idx++);
 }
 
-static void
+void
 lima_do_submit(struct lima_submit *submit)
 {
    #define pp_stack_pp_size 0x400

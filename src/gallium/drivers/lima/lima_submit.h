@@ -84,12 +84,20 @@ struct lima_submit {
    struct lima_dump *dump;
 };
 
+static inline bool
+lima_submit_has_draw_pending(struct lima_submit *submit)
+{
+   return !!submit->plbu_cmd_array.size;
+}
+
 struct lima_submit *lima_submit_get(struct lima_context *ctx);
 
 bool lima_submit_add_bo(struct lima_submit *submit, int pipe,
                         struct lima_bo *bo, uint32_t flags);
 void *lima_submit_create_stream_bo(struct lima_submit *submit, int pipe,
                                    unsigned size, uint32_t *va);
+
+void lima_do_submit(struct lima_submit *submit);
 
 bool lima_submit_init(struct lima_context *ctx);
 void lima_submit_fini(struct lima_context *ctx);

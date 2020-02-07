@@ -102,8 +102,14 @@ lima_clear(struct pipe_context *pctx, unsigned buffers,
            const union pipe_color_union *color, double depth, unsigned stencil)
 {
    struct lima_context *ctx = lima_context(pctx);
+   struct lima_submit *submit = lima_submit_get(ctx);
 
-   lima_flush(ctx);
+   /* flush if this submit already contains any draw, otherwise multi clear can be
+    * combined into a single submit */
+   if (lima_submit_has_draw_pending(submit)) {
+      lima_do_submit(submit);
+      submit = lima_submit_get(ctx);
+   }
 
    lima_update_submit_wb(ctx, buffers);
 
@@ -113,7 +119,6 @@ lima_clear(struct pipe_context *pctx, unsigned buffers,
       surf->reload = false;
    }
 
-   struct lima_submit *submit = lima_submit_get(ctx);
    struct lima_submit_clear *clear = &submit->clear;
    clear->buffers = buffers;
 
