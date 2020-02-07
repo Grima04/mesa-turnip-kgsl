@@ -1179,15 +1179,13 @@ cmd_buffer_emit_render_pass_rcl(struct v3dv_cmd_buffer *cmd_buffer)
    struct v3dv_job *job = cmd_buffer->state.job;
    assert(job);
 
-   /* FIXME */
-   const uint32_t fb_layers = 1;
+   const struct v3dv_cmd_buffer_state *state = &cmd_buffer->state;
+   const struct v3dv_framebuffer *framebuffer = state->framebuffer;
+   const uint32_t fb_layers = framebuffer->layers;
 
    v3dv_cl_ensure_space_with_branch(&job->rcl, 200 +
                                     MAX2(fb_layers, 1) * 256 *
                                     cl_packet_length(SUPERTILE_COORDINATES));
-
-   const struct v3dv_cmd_buffer_state *state = &cmd_buffer->state;
-   const struct v3dv_framebuffer *framebuffer = state->framebuffer;
 
    assert(state->subpass_idx < state->pass->subpass_count);
    const struct v3dv_subpass *subpass =
