@@ -260,6 +260,10 @@ tu_physical_device_init(struct tu_physical_device *device,
    case 640:
       device->tile_align_w = 64;
       device->tile_align_h = 16;
+      device->magic.RB_UNKNOWN_8E04_blit = 0x01000000;
+      device->magic.RB_CCU_CNTL_gmem     = 0x7c400004;
+      device->magic.PC_UNKNOWN_9805 = 0x1;
+      device->magic.SP_UNKNOWN_A0F8 = 0x1;
       break;
    default:
       result = vk_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,

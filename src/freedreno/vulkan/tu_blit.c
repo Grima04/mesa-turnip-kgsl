@@ -81,6 +81,7 @@ blit_image_info(const struct tu_blit_surf *img, bool src, bool stencil_read)
 static void
 emit_blit_step(struct tu_cmd_buffer *cmdbuf, const struct tu_blit *blt)
 {
+   struct tu_physical_device *phys_dev = cmdbuf->device->physical_device;
    struct tu_cs *cs = &cmdbuf->cs;
 
    tu_cs_reserve_space(cmdbuf->device, cs, 66);
@@ -201,7 +202,7 @@ emit_blit_step(struct tu_cmd_buffer *cmdbuf, const struct tu_blit *blt)
                   A6XX_SP_2D_SRC_FORMAT_MASK(0xf));
 
    tu_cs_emit_pkt4(cs, REG_A6XX_RB_UNKNOWN_8E04, 1);
-   tu_cs_emit(cs, 0x01000000);
+   tu_cs_emit(cs, phys_dev->magic.RB_UNKNOWN_8E04_blit);
 
    tu_cs_emit_pkt7(cs, CP_BLIT, 1);
    tu_cs_emit(cs, CP_BLIT_0_OP(BLIT_OP_SCALE));

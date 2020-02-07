@@ -316,6 +316,13 @@ struct tu_physical_device
    uint32_t tile_align_w;
    uint32_t tile_align_h;
 
+   struct {
+      uint32_t RB_UNKNOWN_8E04_blit;    /* for CP_BLIT's */
+      uint32_t RB_CCU_CNTL_gmem;        /* for GMEM */
+      uint32_t PC_UNKNOWN_9805;
+      uint32_t SP_UNKNOWN_A0F8;
+   } magic;
+
    /* This is the drivers on-disk cache used as a fallback as opposed to
     * the pipeline cache defined by apps.
     */
