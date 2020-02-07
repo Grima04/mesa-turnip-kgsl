@@ -51,10 +51,25 @@ struct ra_ctx {
    ra_ctx(Program* program) : program(program) {}
 };
 
+class RegisterFile {
+public:
+   RegisterFile() {regs.fill(0);}
+
+   std::array<uint32_t, 512> regs;
+
+   const uint32_t& operator [] (unsigned index) const {
+      return regs[index];
+   }
+
+   uint32_t& operator [] (unsigned index) {
+      return regs[index];
+   }
+};
+
 
 /* helper function for debugging */
 #if 0
-void print_regs(ra_ctx& ctx, bool vgprs, std::array<uint32_t, 512>& reg_file)
+void print_regs(ra_ctx& ctx, bool vgprs, RegisterFile& reg_file)
 {
    unsigned max = vgprs ? ctx.program->max_reg_demand.vgpr : ctx.program->max_reg_demand.sgpr;
    unsigned lb = vgprs ? 256 : 0;
@@ -135,7 +150,7 @@ void adjust_max_used_regs(ra_ctx& ctx, RegClass rc, unsigned reg)
 }
 
 
-void update_renames(ra_ctx& ctx, std::array<uint32_t, 512>& reg_file,
+void update_renames(ra_ctx& ctx, RegisterFile& reg_file,
                     std::vector<std::pair<Operand, Definition>>& parallelcopies,
                     aco_ptr<Instruction>& instr)
 {
@@ -181,7 +196,7 @@ void update_renames(ra_ctx& ctx, std::array<uint32_t, 512>& reg_file,
 }
 
 std::pair<PhysReg, bool> get_reg_simple(ra_ctx& ctx,
-                                        std::array<uint32_t, 512>& reg_file,
+                                        RegisterFile& reg_file,
                                         uint32_t lb, uint32_t ub,
                                         uint32_t size, uint32_t stride,
                                         RegClass rc)
@@ -256,7 +271,7 @@ std::pair<PhysReg, bool> get_reg_simple(ra_ctx& ctx,
 }
 
 bool get_regs_for_copies(ra_ctx& ctx,
-                         std::array<uint32_t, 512>& reg_file,
+                         RegisterFile& reg_file,
                          std::vector<std::pair<Operand, Definition>>& parallelcopies,
                          std::set<std::pair<unsigned, unsigned>> vars,
                          uint32_t lb, uint32_t ub,
@@ -422,7 +437,7 @@ bool get_regs_for_copies(ra_ctx& ctx,
 
 
 std::pair<PhysReg, bool> get_reg_impl(ra_ctx& ctx,
-                                      std::array<uint32_t, 512>& reg_file,
+                                      RegisterFile& reg_file,
                                       std::vector<std::pair<Operand, Definition>>& parallelcopies,
                                       uint32_t lb, uint32_t ub,
                                       uint32_t size, uint32_t stride,
@@ -541,7 +556,7 @@ std::pair<PhysReg, bool> get_reg_impl(ra_ctx& ctx,
       return {{}, false};
    }
 
-   std::array<uint32_t, 512> register_file = reg_file;
+   RegisterFile register_file = reg_file;
 
    /* now, we figured the placement for our definition */
    std::set<std::pair<unsigned, unsigned>> vars;
@@ -630,7 +645,7 @@ std::pair<PhysReg, bool> get_reg_impl(ra_ctx& ctx,
 }
 
 PhysReg get_reg(ra_ctx& ctx,
-                std::array<uint32_t, 512>& reg_file,
+                RegisterFile& reg_file,
                 RegClass rc,
                 std::vector<std::pair<Operand, Definition>>& parallelcopies,
                 aco_ptr<Instruction>& instr)
@@ -693,7 +708,7 @@ PhysReg get_reg(ra_ctx& ctx,
 
 
 std::pair<PhysReg, bool> get_reg_vec(ra_ctx& ctx,
-                                     std::array<uint32_t, 512>& reg_file,
+                                     RegisterFile& reg_file,
                                      RegClass rc)
 {
    uint32_t size = rc.size();
@@ -715,7 +730,7 @@ std::pair<PhysReg, bool> get_reg_vec(ra_ctx& ctx,
 
 
 PhysReg get_reg_create_vector(ra_ctx& ctx,
-                              std::array<uint32_t, 512>& reg_file,
+                              RegisterFile& reg_file,
                               RegClass rc,
                               std::vector<std::pair<Operand, Definition>>& parallelcopies,
                               aco_ptr<Instruction>& instr)
@@ -832,7 +847,7 @@ PhysReg get_reg_create_vector(ra_ctx& ctx,
 }
 
 bool get_reg_specified(ra_ctx& ctx,
-                       std::array<uint32_t, 512>& reg_file,
+                       RegisterFile& reg_file,
                        RegClass rc,
                        std::vector<std::pair<Operand, Definition>>& parallelcopies,
                        aco_ptr<Instruction>& instr,
@@ -871,7 +886,7 @@ bool get_reg_specified(ra_ctx& ctx,
 }
 
 void handle_pseudo(ra_ctx& ctx,
-                   const std::array<uint32_t, 512>& reg_file,
+                   const RegisterFile& reg_file,
                    Instruction* instr)
 {
    if (instr->format != Format::PSEUDO)
@@ -1191,7 +1206,7 @@ void register_allocation(Program *program, std::vector<std::set<Temp>> live_out_
       std::set<Temp>& live = live_out_per_block[block.index];
       /* initialize register file */
       assert(block.index != 0 || live.empty());
-      std::array<uint32_t, 512> register_file = {0};
+      RegisterFile register_file;
       ctx.war_hint.reset();
 
       for (Temp t : live) {
