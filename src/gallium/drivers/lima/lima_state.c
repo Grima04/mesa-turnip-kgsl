@@ -27,6 +27,7 @@
 #include "util/u_inlines.h"
 #include "util/u_helpers.h"
 #include "util/u_debug.h"
+#include "util/u_framebuffer.h"
 
 #include "pipe/p_state.h"
 
@@ -45,15 +46,7 @@ lima_set_framebuffer_state(struct pipe_context *pctx,
 
    struct lima_context_framebuffer *fb = &ctx->framebuffer;
 
-   fb->base.samples = framebuffer->samples;
-
-   fb->base.nr_cbufs = framebuffer->nr_cbufs;
-   pipe_surface_reference(&fb->base.cbufs[0], framebuffer->cbufs[0]);
-   pipe_surface_reference(&fb->base.zsbuf, framebuffer->zsbuf);
-
-   /* need align here? */
-   fb->base.width = framebuffer->width;
-   fb->base.height = framebuffer->height;
+   util_copy_framebuffer_state(&fb->base, framebuffer);
 
    int width = align(framebuffer->width, 16) >> 4;
    int height = align(framebuffer->height, 16) >> 4;
