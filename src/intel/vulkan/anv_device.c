@@ -2890,6 +2890,18 @@ VkResult anv_CreateDevice(
    if (result != VK_SUCCESS)
       goto fail_workaround_bo;
 
+   /* Allocate a null surface state at surface state offset 0.  This makes
+    * NULL descriptor handling trivial because we can just memset structures
+    * to zero and they have a valid descriptor.
+    */
+   device->null_surface_state =
+      anv_state_pool_alloc(&device->surface_state_pool,
+                           device->isl_dev.ss.size,
+                           device->isl_dev.ss.align);
+   isl_null_fill_state(&device->isl_dev, device->null_surface_state.map,
+                       isl_extent3d(1, 1, 1) /* This shouldn't matter */);
+   assert(device->null_surface_state.offset == 0);
+
    if (device->info.gen >= 10) {
       result = anv_device_init_hiz_clear_value_bo(device);
       if (result != VK_SUCCESS)

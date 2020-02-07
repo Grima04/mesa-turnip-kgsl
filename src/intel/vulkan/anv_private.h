@@ -1292,9 +1292,19 @@ struct anv_device {
     struct anv_state_pool                       binding_table_pool;
     struct anv_state_pool                       surface_state_pool;
 
+    /** BO used for various workarounds
+     *
+     * There are a number of workarounds on our hardware which require writing
+     * data somewhere and it doesn't really matter where.  For that, we use
+     * this BO and just write to the first dword or so.
+     *
+     * We also need to be able to handle NULL buffers bound as pushed UBOs.
+     * For that, we use the high bytes (>= 1024) of the workaround BO.
+     */
     struct anv_bo *                             workaround_bo;
     struct anv_bo *                             trivial_batch_bo;
     struct anv_bo *                             hiz_clear_bo;
+    struct anv_state                            null_surface_state;
 
     struct anv_pipeline_cache                   default_pipeline_cache;
     struct blorp_context                        blorp;

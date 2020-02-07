@@ -2575,18 +2575,23 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
 
          case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
          case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE: {
-            struct anv_surface_state sstate =
-               (desc->layout == VK_IMAGE_LAYOUT_GENERAL) ?
-               desc->image_view->planes[binding->plane].general_sampler_surface_state :
-               desc->image_view->planes[binding->plane].optimal_sampler_surface_state;
-            surface_state = sstate.state;
-            assert(surface_state.alloc_size);
-            if (need_client_mem_relocs)
-               add_surface_state_relocs(cmd_buffer, sstate);
+            if (desc->image_view) {
+               struct anv_surface_state sstate =
+                  (desc->layout == VK_IMAGE_LAYOUT_GENERAL) ?
+                  desc->image_view->planes[binding->plane].general_sampler_surface_state :
+                  desc->image_view->planes[binding->plane].optimal_sampler_surface_state;
+               surface_state = sstate.state;
+               assert(surface_state.alloc_size);
+               if (need_client_mem_relocs)
+                  add_surface_state_relocs(cmd_buffer, sstate);
+            } else {
+               surface_state = cmd_buffer->device->null_surface_state;
+            }
             break;
          }
          case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
             assert(shader->stage == MESA_SHADER_FRAGMENT);
+            assert(desc->image_view != NULL);
             if ((desc->image_view->aspect_mask & VK_IMAGE_ASPECT_ANY_COLOR_BIT_ANV) == 0) {
                /* For depth and stencil input attachments, we treat it like any
                 * old texture that a user may have bound.
@@ -2613,68 +2618,84 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
             break;
 
          case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE: {
-            struct anv_surface_state sstate = (binding->write_only)
-               ? desc->image_view->planes[binding->plane].writeonly_storage_surface_state
-               : desc->image_view->planes[binding->plane].storage_surface_state;
-            surface_state = sstate.state;
-            assert(surface_state.alloc_size);
-            if (need_client_mem_relocs)
-               add_surface_state_relocs(cmd_buffer, sstate);
+            if (desc->image_view) {
+               struct anv_surface_state sstate = (binding->write_only)
+                  ? desc->image_view->planes[binding->plane].writeonly_storage_surface_state
+                  : desc->image_view->planes[binding->plane].storage_surface_state;
+               surface_state = sstate.state;
+               assert(surface_state.alloc_size);
+               if (need_client_mem_relocs)
+                  add_surface_state_relocs(cmd_buffer, sstate);
+            } else {
+               surface_state = cmd_buffer->device->null_surface_state;
+            }
             break;
          }
 
          case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
          case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
          case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
-            surface_state = desc->buffer_view->surface_state;
-            assert(surface_state.alloc_size);
-            if (need_client_mem_relocs) {
-               add_surface_reloc(cmd_buffer, surface_state,
-                                 desc->buffer_view->address);
+            if (desc->buffer_view) {
+               surface_state = desc->buffer_view->surface_state;
+               assert(surface_state.alloc_size);
+               if (need_client_mem_relocs) {
+                  add_surface_reloc(cmd_buffer, surface_state,
+                                    desc->buffer_view->address);
+               }
+            } else {
+               surface_state = cmd_buffer->device->null_surface_state;
             }
             break;
 
          case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
          case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC: {
-            /* Compute the offset within the buffer */
-            struct anv_push_constants *push =
-               &cmd_buffer->state.push_constants[shader->stage];
+            if (desc->buffer) {
+               /* Compute the offset within the buffer */
+               struct anv_push_constants *push =
+                  &cmd_buffer->state.push_constants[shader->stage];
 
-            uint32_t dynamic_offset =
-               push->dynamic_offsets[binding->dynamic_offset_index];
-            uint64_t offset = desc->offset + dynamic_offset;
-            /* Clamp to the buffer size */
-            offset = MIN2(offset, desc->buffer->size);
-            /* Clamp the range to the buffer size */
-            uint32_t range = MIN2(desc->range, desc->buffer->size - offset);
+               uint32_t dynamic_offset =
+                  push->dynamic_offsets[binding->dynamic_offset_index];
+               uint64_t offset = desc->offset + dynamic_offset;
+               /* Clamp to the buffer size */
+               offset = MIN2(offset, desc->buffer->size);
+               /* Clamp the range to the buffer size */
+               uint32_t range = MIN2(desc->range, desc->buffer->size - offset);
 
-            /* Align the range for consistency */
-            if (desc->type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC)
-               range = align_u32(range, ANV_UBO_BOUNDS_CHECK_ALIGNMENT);
+               /* Align the range for consistency */
+               if (desc->type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC)
+                  range = align_u32(range, ANV_UBO_BOUNDS_CHECK_ALIGNMENT);
 
-            struct anv_address address =
-               anv_address_add(desc->buffer->address, offset);
+               struct anv_address address =
+                  anv_address_add(desc->buffer->address, offset);
 
-            surface_state =
-               anv_state_stream_alloc(&cmd_buffer->surface_state_stream, 64, 64);
-            enum isl_format format =
-               anv_isl_format_for_descriptor_type(desc->type);
+               surface_state =
+                  anv_state_stream_alloc(&cmd_buffer->surface_state_stream, 64, 64);
+               enum isl_format format =
+                  anv_isl_format_for_descriptor_type(desc->type);
 
-            anv_fill_buffer_surface_state(cmd_buffer->device, surface_state,
-                                          format, address, range, 1);
-            if (need_client_mem_relocs)
-               add_surface_reloc(cmd_buffer, surface_state, address);
+               anv_fill_buffer_surface_state(cmd_buffer->device, surface_state,
+                                             format, address, range, 1);
+               if (need_client_mem_relocs)
+                  add_surface_reloc(cmd_buffer, surface_state, address);
+            } else {
+               surface_state = cmd_buffer->device->null_surface_state;
+            }
             break;
          }
 
          case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
-            surface_state = (binding->write_only)
-               ? desc->buffer_view->writeonly_storage_surface_state
-               : desc->buffer_view->storage_surface_state;
-            assert(surface_state.alloc_size);
-            if (need_client_mem_relocs) {
-               add_surface_reloc(cmd_buffer, surface_state,
-                                 desc->buffer_view->address);
+            if (desc->buffer_view) {
+               surface_state = (binding->write_only)
+                  ? desc->buffer_view->writeonly_storage_surface_state
+                  : desc->buffer_view->storage_surface_state;
+               assert(surface_state.alloc_size);
+               if (need_client_mem_relocs) {
+                  add_surface_reloc(cmd_buffer, surface_state,
+                                    desc->buffer_view->address);
+               }
+            } else {
+               surface_state = cmd_buffer->device->null_surface_state;
             }
             break;
 
@@ -2886,16 +2907,29 @@ get_push_range_address(struct anv_cmd_buffer *cmd_buffer,
          &set->descriptors[range->index];
 
       if (desc->type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER) {
-         return desc->buffer_view->address;
+         if (desc->buffer_view)
+            return desc->buffer_view->address;
       } else {
          assert(desc->type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC);
-         struct anv_push_constants *push =
-            &cmd_buffer->state.push_constants[stage];
-         uint32_t dynamic_offset =
-            push->dynamic_offsets[range->dynamic_offset_index];
-         return anv_address_add(desc->buffer->address,
-                                desc->offset + dynamic_offset);
+         if (desc->buffer) {
+            struct anv_push_constants *push =
+               &cmd_buffer->state.push_constants[stage];
+            uint32_t dynamic_offset =
+               push->dynamic_offsets[range->dynamic_offset_index];
+            return anv_address_add(desc->buffer->address,
+                                   desc->offset + dynamic_offset);
+         }
       }
+
+      /* For NULL UBOs, we just return an address in the workaround BO.  We do
+       * writes to it for workarounds but always at the bottom.  The higher
+       * bytes should be all zeros.
+       */
+      assert(range->length * 32 <= 2048);
+      return (struct anv_address) {
+         .bo = cmd_buffer->device->workaround_bo,
+         .offset = 1024,
+      };
    }
    }
 }
@@ -2935,8 +2969,17 @@ get_push_range_bound_size(struct anv_cmd_buffer *cmd_buffer,
          &set->descriptors[range->index];
 
       if (desc->type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER) {
+         if (!desc->buffer_view)
+            return 0;
+
+         if (range->start * 32 > desc->buffer_view->range)
+            return 0;
+
          return desc->buffer_view->range;
       } else {
+         if (!desc->buffer)
+            return 0;
+
          assert(desc->type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC);
          /* Compute the offset within the buffer */
          struct anv_push_constants *push =
