@@ -1134,8 +1134,9 @@ pack_cfg_bits(struct v3dv_pipeline *pipeline,
       config.enable_reverse_facing_primitive =
          rs_info ? !(rs_info->cullMode & VK_CULL_MODE_BACK_BIT) : false;
 
+      /* Seems like the hardware is backwards regarding this setting... */
       config.clockwise_primitives =
-         rs_info ? rs_info->frontFace == VK_FRONT_FACE_CLOCKWISE : false;
+         rs_info ? rs_info->frontFace == VK_FRONT_FACE_COUNTER_CLOCKWISE : false;
 
       config.enable_depth_offset = rs_info ? rs_info->depthBiasEnable: false;
 
