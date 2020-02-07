@@ -268,7 +268,12 @@ void tu_blit(struct tu_cmd_buffer *cmdbuf, struct tu_cs *cs,
       /* unsupported format cleared as UINT32 */
       if (blt->dst.fmt == VK_FORMAT_E5B9G9R9_UFLOAT_PACK32)
          blt->dst.fmt = VK_FORMAT_R32_UINT;
-      assert(blt->dst.samples == 1); /* TODO */
+      /* TODO: multisample image clearing also seems not to work with certain
+       * formats. The blob uses a shader-based clear in these cases.
+       */
+      blt->dst.x *= blt->dst.samples;
+      blt->dst.width *= blt->dst.samples;
+      blt->dst.samples = 1;
       blt->src = blt->dst;
       break;
    default:
