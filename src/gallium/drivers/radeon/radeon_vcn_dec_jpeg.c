@@ -48,12 +48,9 @@ static struct pb_buffer *radeon_jpeg_get_decode_param(struct radeon_decoder *dec
 
 	dec->jpg.bsd_size = align(dec->bs_size, 128);
 	dec->jpg.dt_luma_top_offset = luma->surface.u.gfx9.surf_offset;
-	if (target->buffer_format == PIPE_FORMAT_NV12) {
+	if (target->buffer_format == PIPE_FORMAT_NV12)
 		dec->jpg.dt_chroma_top_offset = chroma->surface.u.gfx9.surf_offset;
-		dec->jpg.dt_pitch = luma->surface.u.gfx9.surf_pitch * luma->surface.blk_w;
-	}
-	else if (target->buffer_format == PIPE_FORMAT_YUYV)
-		dec->jpg.dt_pitch = luma->surface.u.gfx9.surf_pitch;
+	dec->jpg.dt_pitch = luma->surface.u.gfx9.surf_pitch * luma->surface.blk_w;
 	dec->jpg.dt_uv_pitch = dec->jpg.dt_pitch / 2;
 
 	return luma->buffer.buf;
