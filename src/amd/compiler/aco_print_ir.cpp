@@ -126,7 +126,7 @@ static void print_operand(const Operand *operand, FILE *output)
    if (operand->isLiteral()) {
       fprintf(output, "0x%x", operand->constantValue());
    } else if (operand->isConstant()) {
-      print_constant(operand->physReg().reg, output);
+      print_constant(operand->physReg().reg(), output);
    } else if (operand->isUndefined()) {
       print_reg_class(operand->regClass(), output);
       fprintf(output, "undef");

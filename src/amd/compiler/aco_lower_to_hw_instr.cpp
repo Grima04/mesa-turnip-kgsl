@@ -195,15 +195,15 @@ void emit_int64_op(lower_context *ctx, PhysReg dst_reg, PhysReg src0_reg, PhysRe
 {
    Builder bld(ctx->program, &ctx->instructions);
    Definition dst[] = {Definition(dst_reg, v1), Definition(PhysReg{dst_reg+1}, v1)};
-   RegClass src0_rc = src0_reg.reg >= 256 ? v1 : s1;
+   RegClass src0_rc = src0_reg.reg() >= 256 ? v1 : s1;
    Operand src0[] = {Operand(src0_reg, src0_rc), Operand(PhysReg{src0_reg+1}, src0_rc)};
    Operand src1[] = {Operand(src1_reg, v1), Operand(PhysReg{src1_reg+1}, v1)};
-   Operand src0_64 = Operand(src0_reg, src0_reg.reg >= 256 ? v2 : s2);
+   Operand src0_64 = Operand(src0_reg, src0_reg.reg() >= 256 ? v2 : s2);
    Operand src1_64 = Operand(src1_reg, v2);
 
    if (src0_rc == s1 &&
        (op == imul64 || op == umin64 || op == umax64 || op == imin64 || op == imax64)) {
-      assert(vtmp.reg != 0);
+      assert(vtmp.reg() != 0);
       bld.vop1(aco_opcode::v_mov_b32, Definition(vtmp, v1), src0[0]);
       bld.vop1(aco_opcode::v_mov_b32, Definition(PhysReg{vtmp+1}, v1), src0[1]);
       src0_reg = vtmp;
@@ -211,7 +211,7 @@ void emit_int64_op(lower_context *ctx, PhysReg dst_reg, PhysReg src0_reg, PhysRe
       src0[1] = Operand(PhysReg{vtmp+1}, v1);
       src0_64 = Operand(vtmp, v2);
    } else if (src0_rc == s1 && op == iadd64) {
-      assert(vtmp.reg != 0);
+      assert(vtmp.reg() != 0);
       bld.vop1(aco_opcode::v_mov_b32, Definition(PhysReg{vtmp+1}, v1), src0[1]);
       src0[1] = Operand(PhysReg{vtmp+1}, v1);
    }
@@ -330,7 +330,7 @@ void emit_op(lower_context *ctx, PhysReg dst_reg, PhysReg src0_reg, PhysReg src1
    Builder bld(ctx->program, &ctx->instructions);
    RegClass rc = RegClass(RegType::vgpr, size);
    Definition dst(dst_reg, rc);
-   Operand src0(src0_reg, RegClass(src0_reg.reg >= 256 ? RegType::vgpr : RegType::sgpr, size));
+   Operand src0(src0_reg, RegClass(src0_reg.reg() >= 256 ? RegType::vgpr : RegType::sgpr, size));
    Operand src1(src1_reg, rc);
 
    aco_opcode opcode = get_reduce_opcode(ctx->program->chip_class, op);

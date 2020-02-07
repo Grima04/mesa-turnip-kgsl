@@ -267,10 +267,12 @@ private:
  */
 struct PhysReg {
    constexpr PhysReg() = default;
-   explicit constexpr PhysReg(unsigned r) : reg(r) {}
-   constexpr operator unsigned() const { return reg; }
+   explicit constexpr PhysReg(unsigned r) : reg_b(r << 2) {}
+   constexpr unsigned reg() const { return reg_b >> 2; }
+   constexpr unsigned byte() const { return reg_b & 0x3; }
+   constexpr operator unsigned() const { return reg(); }
 
-   uint16_t reg = 0;
+   uint16_t reg_b = 0;
 };
 
 /* helper expressions for special registers */
@@ -475,12 +477,12 @@ public:
    constexpr uint64_t constantValue64(bool signext=false) const noexcept
    {
       if (is64BitConst_) {
-         if (reg_.reg <= 192)
-            return reg_.reg - 128;
-         else if (reg_.reg <= 208)
-            return 0xFFFFFFFFFFFFFFFF - (reg_.reg - 193);
+         if (reg_ <= 192)
+            return reg_ - 128;
+         else if (reg_ <= 208)
+            return 0xFFFFFFFFFFFFFFFF - (reg_ - 193);
 
-         switch (reg_.reg) {
+         switch (reg_) {
          case 240:
             return 0x3FE0000000000000;
          case 241:

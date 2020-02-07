@@ -685,7 +685,7 @@ void insert_wait_entry(wait_ctx& ctx, PhysReg reg, RegClass rc, wait_event event
    wait_entry new_entry(event, imm, !rc.is_linear(), wait_on_read);
 
    for (unsigned i = 0; i < rc.size(); i++) {
-      auto it = ctx.gpr_map.emplace(PhysReg{reg.reg+i}, new_entry);
+      auto it = ctx.gpr_map.emplace(PhysReg{reg.reg()+i}, new_entry);
       if (!it.second)
          it.first->second.join(new_entry);
    }
@@ -696,7 +696,7 @@ void insert_wait_entry(wait_ctx& ctx, PhysReg reg, RegClass rc, wait_event event
          unsigned i = u_bit_scan(&counters_todo);
          ctx.unwaited_instrs[i].insert(std::make_pair(ctx.gen_instr, 0u));
          for (unsigned j = 0; j < rc.size(); j++)
-            ctx.reg_instrs[i][PhysReg{reg.reg+j}].insert(ctx.gen_instr);
+            ctx.reg_instrs[i][PhysReg{reg.reg()+j}].insert(ctx.gen_instr);
       }
    }
 }
