@@ -2476,6 +2476,9 @@ struct anv_push_constants {
    /** Dynamic offsets for dynamic UBOs and SSBOs */
    uint32_t dynamic_offsets[MAX_DYNAMIC_BUFFERS];
 
+   /** Pad out to a multiple of 32 bytes */
+   uint32_t push_ubo_sizes[4];
+
    struct {
       /** Base workgroup ID
        *
@@ -2489,9 +2492,6 @@ struct anv_push_constants {
        * uploading the push constants for compute shaders.
        */
       uint32_t subgroup_id;
-
-      /** Pad out to a multiple of 32 bytes */
-      uint32_t pad[4];
    } cs;
 };
 

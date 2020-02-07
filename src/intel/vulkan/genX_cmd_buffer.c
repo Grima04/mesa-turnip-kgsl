@@ -2938,6 +2938,67 @@ get_push_range_address(struct anv_cmd_buffer *cmd_buffer,
    }
 }
 
+
+/** Returns the size in bytes of the bound buffer relative to range->start
+ *
+ * This may be smaller than range->length * 32.
+ */
+static uint32_t
+get_push_range_bound_size(struct anv_cmd_buffer *cmd_buffer,
+                          gl_shader_stage stage,
+                          const struct anv_push_range *range)
+{
+   assert(stage != MESA_SHADER_COMPUTE);
+   const struct anv_cmd_graphics_state *gfx_state = &cmd_buffer->state.gfx;
+   switch (range->set) {
+   case ANV_DESCRIPTOR_SET_DESCRIPTORS: {
+      struct anv_descriptor_set *set =
+         gfx_state->base.descriptors[range->index];
+      assert(range->start * 32 < set->desc_mem.alloc_size);
+      assert((range->start + range->length) * 32 < set->desc_mem.alloc_size);
+      return set->desc_mem.alloc_size - range->start * 32;
+   }
+
+   case ANV_DESCRIPTOR_SET_PUSH_CONSTANTS:
+      return range->length * 32;
+
+   default: {
+      assert(range->set < MAX_SETS);
+      struct anv_descriptor_set *set =
+         gfx_state->base.descriptors[range->set];
+      const struct anv_descriptor *desc =
+         &set->descriptors[range->index];
+
+      if (desc->type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER) {
+         if (range->start * 32 > desc->buffer_view->range)
+            return 0;
+
+         return desc->buffer_view->range - range->start * 32;
+      } else {
+         assert(desc->type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC);
+         /* Compute the offset within the buffer */
+         struct anv_push_constants *push =
+            &cmd_buffer->state.push_constants[stage];
+         uint32_t dynamic_offset =
+            push->dynamic_offsets[range->dynamic_offset_index];
+         uint64_t offset = desc->offset + dynamic_offset;
+         /* Clamp to the buffer size */
+         offset = MIN2(offset, desc->buffer->size);
+         /* Clamp the range to the buffer size */
+         uint32_t bound_range = MIN2(desc->range, desc->buffer->size - offset);
+
+         /* Align the range for consistency */
+         bound_range = align_u32(bound_range, ANV_UBO_BOUNDS_CHECK_ALIGNMENT);
+
+         if (range->start * 32 > bound_range)
+            return 0;
+
+         return bound_range - range->start * 32;
+      }
+   }
+   }
+}
+
 static void
 cmd_buffer_emit_push_constant(struct anv_cmd_buffer *cmd_buffer,
                               gl_shader_stage stage,
@@ -3099,7 +3160,30 @@ cmd_buffer_flush_push_constants(struct anv_cmd_buffer *cmd_buffer,
       if (anv_pipeline_has_stage(pipeline, stage)) {
          const struct anv_pipeline_bind_map *bind_map =
             &pipeline->shaders[stage]->bind_map;
+         struct anv_push_constants *push =
+            &cmd_buffer->state.push_constants[stage];
 
+         if (cmd_buffer->device->robust_buffer_access) {
+            for (unsigned i = 0; i < 4; i++) {
+               const struct anv_push_range *range = &bind_map->push_ranges[i];
+               if (range->length == 0) {
+                  push->push_ubo_sizes[i] = 0;
+               } else {
+                  push->push_ubo_sizes[i] =
+                     get_push_range_bound_size(cmd_buffer, stage, range);
+               }
+               cmd_buffer->state.push_constants_dirty |=
+                  mesa_to_vk_shader_stage(stage);
+            }
+         }
+
+         /* We have to gather buffer addresses as a second step because the
+          * loop above puts data into the push constant area and the call to
+          * get_push_range_address is what locks our push constants and copies
+          * them into the actual GPU buffer.  If we did the two loops at the
+          * same time, we'd risk only having some of the sizes in the push
+          * constant buffer when we did the copy.
+          */
          for (unsigned i = 0; i < 4; i++) {
             const struct anv_push_range *range = &bind_map->push_ranges[i];
             if (range->length == 0)
