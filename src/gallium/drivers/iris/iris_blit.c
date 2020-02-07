@@ -566,20 +566,25 @@ iris_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
 }
 
 static void
-get_copy_region_aux_settings(const struct gen_device_info *devinfo,
+get_copy_region_aux_settings(struct iris_context *ice,
                              struct iris_resource *res,
                              enum isl_aux_usage *out_aux_usage,
                              bool *out_clear_supported,
                              bool is_render_target)
 {
+   struct iris_screen *screen = (void *) ice->ctx.screen;
+   const struct gen_device_info *devinfo = &screen->devinfo;
+
    switch (res->aux.usage) {
    case ISL_AUX_USAGE_HIZ:
-      if (!is_render_target && iris_sample_with_depth_aux(devinfo, res)) {
-         *out_aux_usage = ISL_AUX_USAGE_HIZ;
-         *out_clear_supported = true;
-      } else {
+   case ISL_AUX_USAGE_HIZ_CCS:
+      if (is_render_target) {
          *out_aux_usage = ISL_AUX_USAGE_NONE;
          *out_clear_supported = false;
+      } else {
+         *out_aux_usage = iris_resource_texture_aux_usage(ice, res,
+                                                          res->surf.format);
+         *out_clear_supported = (*out_aux_usage != ISL_AUX_USAGE_NONE);
       }
       break;
    case ISL_AUX_USAGE_MCS:
@@ -630,15 +635,14 @@ iris_copy_region(struct blorp_context *blorp,
    struct blorp_batch blorp_batch;
    struct iris_context *ice = blorp->driver_ctx;
    struct iris_screen *screen = (void *) ice->ctx.screen;
-   const struct gen_device_info *devinfo = &screen->devinfo;
    struct iris_resource *src_res = (void *) src;
    struct iris_resource *dst_res = (void *) dst;
 
    enum isl_aux_usage src_aux_usage, dst_aux_usage;
    bool src_clear_supported, dst_clear_supported;
-   get_copy_region_aux_settings(devinfo, src_res, &src_aux_usage,
+   get_copy_region_aux_settings(ice, src_res, &src_aux_usage,
                                 &src_clear_supported, false);
-   get_copy_region_aux_settings(devinfo, dst_res, &dst_aux_usage,
+   get_copy_region_aux_settings(ice, dst_res, &dst_aux_usage,
                                 &dst_clear_supported, true);
 
    if (iris_batch_references(batch, src_res->bo))
