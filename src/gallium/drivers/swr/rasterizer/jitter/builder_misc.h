@@ -29,6 +29,12 @@
  ******************************************************************************/
 #pragma once
 
+#if LLVM_VERSION_MAJOR > 10
+    typedef llvm::Align AlignType;
+#else
+    typedef unsigned AlignType;
+#endif
+
 Constant* C(bool i);
 Constant* C(char i);
 Constant* C(uint8_t i);

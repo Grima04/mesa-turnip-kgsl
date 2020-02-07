@@ -48,6 +48,12 @@ namespace SwrJit
 {
     using namespace llvm;
 
+#if LLVM_VERSION_MAJOR > 10
+    typedef unsigned IntrinsicID;
+#else
+    typedef Intrinsic::ID IntrinsicID;
+#endif
+
     enum TargetArch
     {
         AVX    = 0,
@@ -68,13 +74,13 @@ namespace SwrJit
 
     struct X86Intrinsic
     {
-        Intrinsic::ID intrin[NUM_WIDTHS];
+        IntrinsicID intrin[NUM_WIDTHS];
         EmuFunc       emuFunc;
     };
 
     // Map of intrinsics that haven't been moved to the new mechanism yet. If used, these get the
     // previous behavior of mapping directly to avx/avx2 intrinsics.
-    static std::map<std::string, Intrinsic::ID> intrinsicMap = {
+    static std::map<std::string, IntrinsicID> intrinsicMap = {
         {"meta.intrinsic.BEXTR_32", Intrinsic::x86_bmi_bextr_32},
         {"meta.intrinsic.VPSHUFB", Intrinsic::x86_avx2_pshuf_b},
         {"meta.intrinsic.VCVTPS2PH", Intrinsic::x86_vcvtps2ph_256},
@@ -313,13 +319,13 @@ namespace SwrJit
             Function*   pFunc = pCallInst->getCalledFunction();
             assert(pFunc);
 
-            auto&       intrinsic = intrinsicMap2[mTarget][pFunc->getName()];
+            auto&       intrinsic = intrinsicMap2[mTarget][pFunc->getName().str()];
             TargetWidth vecWidth;
             Type*       pElemTy;
             GetRequestedWidthAndType(pCallInst, pFunc->getName(), &vecWidth, &pElemTy);
 
             // Check if there is a native intrinsic for this instruction
-            Intrinsic::ID id = intrinsic.intrin[vecWidth];
+            IntrinsicID id = intrinsic.intrin[vecWidth];
             if (id == DOUBLE)
             {
                 // Double pump the next smaller SIMD intrinsic
@@ -375,16 +381,16 @@ namespace SwrJit
             assert(pFunc);
 
             // Forward to the advanced support if found
-            if (intrinsicMap2[mTarget].find(pFunc->getName()) != intrinsicMap2[mTarget].end())
+            if (intrinsicMap2[mTarget].find(pFunc->getName().str()) != intrinsicMap2[mTarget].end())
             {
                 return ProcessIntrinsicAdvanced(pCallInst);
             }
 
-            SWR_ASSERT(intrinsicMap.find(pFunc->getName()) != intrinsicMap.end(),
+            SWR_ASSERT(intrinsicMap.find(pFunc->getName().str()) != intrinsicMap.end(),
                        "Unimplemented intrinsic %s.",
-                       pFunc->getName());
+                       pFunc->getName().str());
 
-            Intrinsic::ID x86Intrinsic = intrinsicMap[pFunc->getName()];
+            Intrinsic::ID x86Intrinsic = intrinsicMap[pFunc->getName().str()];
             Function*     pX86IntrinFunc =
                 Intrinsic::getDeclaration(B->JM()->mpCurrentModule, x86Intrinsic);
 

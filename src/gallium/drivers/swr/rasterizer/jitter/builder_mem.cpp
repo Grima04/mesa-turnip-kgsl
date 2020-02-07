@@ -234,12 +234,12 @@ namespace SwrJit
     /// @param pVecPassthru - SIMD wide vector of values to load when lane is inactive
     Value* Builder::GATHER_PTR(Value* pVecSrcPtr, Value* pVecMask, Value* pVecPassthru)
     {
-        return MASKED_GATHER(pVecSrcPtr, 4, pVecMask, pVecPassthru);
+        return MASKED_GATHER(pVecSrcPtr, AlignType(4), pVecMask, pVecPassthru);
     }
 
     void Builder::SCATTER_PTR(Value* pVecDstPtr, Value* pVecSrc, Value* pVecMask)
     {
-        MASKED_SCATTER(pVecSrc, pVecDstPtr, 4, pVecMask);
+        MASKED_SCATTER(pVecSrc, pVecDstPtr, AlignType(4), pVecMask);
     }
 
     void Builder::Gather4(const SWR_FORMAT format,
