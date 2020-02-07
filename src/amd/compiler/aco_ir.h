@@ -880,11 +880,13 @@ enum sdwa_sel : uint8_t {
     /* masks */
     sdwa_wordnum = 0x1,
     sdwa_bytenum = 0x3,
-    sdwa_asuint = 0x7,
+    sdwa_asuint = 0x7 | 0x10,
+    sdwa_rasize = 0x3,
 
     /* flags */
     sdwa_isword = 0x4,
     sdwa_sext = 0x8,
+    sdwa_isra = 0x10,
 
     /* specific values */
     sdwa_ubyte0 = 0,
@@ -902,6 +904,12 @@ enum sdwa_sel : uint8_t {
     sdwa_sword0 = sdwa_uword0 | sdwa_sext,
     sdwa_sword1 = sdwa_uword1 | sdwa_sext,
     sdwa_sdword = sdwa_udword | sdwa_sext,
+
+    /* register-allocated */
+    sdwa_ubyte = 1 | sdwa_isra,
+    sdwa_uword = 2 | sdwa_isra,
+    sdwa_sbyte = sdwa_ubyte | sdwa_sext,
+    sdwa_sword = sdwa_uword | sdwa_sext,
 };
 
 /**
@@ -915,7 +923,7 @@ enum sdwa_sel : uint8_t {
 struct SDWA_instruction : public Instruction {
    /* these destination modifiers aren't available with VOPC except for
     * clamp on GFX8 */
-   unsigned dst_sel:4;
+   unsigned dst_sel:8;
    bool dst_preserve:1;
    bool clamp:1;
    unsigned omod:2; /* GFX9+ */
