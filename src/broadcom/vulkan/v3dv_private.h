@@ -573,6 +573,8 @@ struct v3dv_cmd_buffer_state {
    struct v3dv_cmd_buffer_attachment_state *attachments;
 
    struct v3dv_vertex_binding vertex_bindings[MAX_VBS];
+
+   uint8_t index_size;
 };
 
 struct v3dv_cmd_buffer {

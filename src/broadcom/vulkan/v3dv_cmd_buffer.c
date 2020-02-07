@@ -1964,8 +1964,8 @@ struct v3dv_draw_info {
 };
 
 static void
-cmd_buffer_emit_draw_packets(struct v3dv_cmd_buffer *cmd_buffer,
-                             struct v3dv_draw_info *info)
+cmd_buffer_emit_draw(struct v3dv_cmd_buffer *cmd_buffer,
+                     struct v3dv_draw_info *info)
 {
    struct v3dv_job *job = cmd_buffer->state.job;
    assert(job);
@@ -1989,8 +1989,7 @@ cmd_buffer_emit_draw_packets(struct v3dv_cmd_buffer *cmd_buffer,
 }
 
 static void
-cmd_buffer_draw(struct v3dv_cmd_buffer *cmd_buffer,
-                struct v3dv_draw_info *info)
+cmd_buffer_emit_pre_draw(struct v3dv_cmd_buffer *cmd_buffer)
 {
    /* FIXME: likely to be filtered by really needed states */
    uint32_t *dirty = &cmd_buffer->state.dirty;
@@ -2018,10 +2017,15 @@ cmd_buffer_draw(struct v3dv_cmd_buffer *cmd_buffer,
    if (*dirty & dynamic_stencil_dirty_flags)
       emit_stencil(cmd_buffer);
 
-   /* FIXME: any dirty flag to filter ? */
-   cmd_buffer_emit_draw_packets(cmd_buffer, info);
-
    cmd_buffer->state.dirty &= ~(*dirty);
+}
+
+static void
+cmd_buffer_draw(struct v3dv_cmd_buffer *cmd_buffer,
+                struct v3dv_draw_info *info)
+{
+   cmd_buffer_emit_pre_draw(cmd_buffer);
+   cmd_buffer_emit_draw(cmd_buffer, info);
 }
 
 void
@@ -2040,6 +2044,53 @@ v3dv_CmdDraw(VkCommandBuffer commandBuffer,
    info.first_vertex = firstVertex;
 
    cmd_buffer_draw(cmd_buffer, &info);
+}
+
+void
+v3dv_CmdDrawIndexed(VkCommandBuffer commandBuffer,
+                    uint32_t indexCount,
+                    uint32_t instanceCount,
+                    uint32_t firstIndex,
+                    int32_t vertexOffset,
+                    uint32_t firstInstance)
+{
+   V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
+
+   struct v3dv_job *job = cmd_buffer->state.job;
+   assert(job);
+
+   cmd_buffer_emit_pre_draw(cmd_buffer);
+
+   const struct v3dv_pipeline *pipeline = cmd_buffer->state.pipeline;
+   uint32_t hw_prim_type = v3d_hw_prim_type(pipeline->vs->topology);
+   uint8_t index_type = ffs(cmd_buffer->state.index_size) - 1;
+   uint32_t index_offset = firstIndex * cmd_buffer->state.index_size;
+
+   if (vertexOffset != 0 || firstInstance != 0) {
+      cl_emit(&job->bcl, BASE_VERTEX_BASE_INSTANCE, base) {
+         base.base_instance = firstInstance;
+         base.base_vertex = vertexOffset;
+      }
+   }
+
+   if (instanceCount == 1) {
+      cl_emit(&job->bcl, INDEXED_PRIM_LIST, prim) {
+         prim.index_type = index_type;
+         prim.length = indexCount;
+         prim.index_offset = index_offset;
+         prim.mode = hw_prim_type;
+         prim.enable_primitive_restarts = false; /* FIXME */
+      }
+   } else if (instanceCount > 1) {
+      cl_emit(&job->bcl, INDEXED_INSTANCED_PRIM_LIST, prim) {
+         prim.index_type = index_type;
+         prim.index_offset = index_offset;
+         prim.mode = hw_prim_type;
+         prim.enable_primitive_restarts = false; /* FIXME */
+         prim.number_of_instances = instanceCount;
+         prim.instance_length = indexCount;
+      }
+   }
 }
 
 void
@@ -2084,6 +2135,35 @@ v3dv_CmdBindVertexBuffers(VkCommandBuffer commandBuffer,
    }
 
    cmd_buffer->state.dirty |= V3DV_CMD_DIRTY_VERTEX_BUFFER;
+}
+
+void
+v3dv_CmdBindIndexBuffer(VkCommandBuffer commandBuffer,
+                        VkBuffer buffer,
+                        VkDeviceSize offset,
+                        VkIndexType indexType)
+{
+   V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
+   V3DV_FROM_HANDLE(v3dv_buffer, ibuffer, buffer);
+
+   struct v3dv_job *job = cmd_buffer->state.job;
+   assert(job);
+
+   cl_emit(&job->bcl, INDEX_BUFFER_SETUP, ib) {
+      ib.address = v3dv_cl_address(ibuffer->mem->bo, offset);
+      ib.size = ibuffer->mem->bo->size;
+   }
+
+   switch (indexType) {
+   case VK_INDEX_TYPE_UINT16:
+      cmd_buffer->state.index_size = 2;
+      break;
+   case VK_INDEX_TYPE_UINT32:
+      cmd_buffer->state.index_size = 4;
+      break;
+   default:
+      unreachable("Unsupported index type");
+   }
 }
 
 void
