@@ -6362,9 +6362,9 @@ iris_upload_render_state(struct iris_context *ice,
    iris_use_pinned_bo(batch, ice->state.binder.bo, false,
                       IRIS_DOMAIN_NONE);
 
-   if (!batch->contains_draw) {
+   if (!batch->contains_draw_with_next_seqno) {
       iris_restore_render_saved_bos(ice, batch, draw);
-      batch->contains_draw = true;
+      batch->contains_draw_with_next_seqno = batch->contains_draw = true;
    }
 
    iris_upload_dirty_render_state(ice, batch, draw);
@@ -6744,9 +6744,9 @@ iris_upload_compute_state(struct iris_context *ice,
 
    iris_emit_cmd(batch, GENX(MEDIA_STATE_FLUSH), msf);
 
-   if (!batch->contains_draw) {
+   if (!batch->contains_draw_with_next_seqno) {
       iris_restore_compute_saved_bos(ice, batch, grid);
-      batch->contains_draw = true;
+      batch->contains_draw_with_next_seqno = batch->contains_draw = true;
    }
 
    iris_batch_sync_region_end(batch);

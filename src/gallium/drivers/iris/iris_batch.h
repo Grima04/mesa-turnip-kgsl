@@ -153,6 +153,9 @@ struct iris_batch {
    /** Have we emitted any draw calls to this batch? */
    bool contains_draw;
 
+   /** Have we emitted any draw calls with next_seqno? */
+   bool contains_draw_with_next_seqno;
+
    /**
     * Number of times iris_batch_sync_region_start() has been called without a
     * matching iris_batch_sync_region_end() on this batch.
@@ -304,6 +307,7 @@ static inline void
 iris_batch_sync_boundary(struct iris_batch *batch)
 {
    if (!batch->sync_region_depth) {
+      batch->contains_draw_with_next_seqno = false;
       batch->next_seqno = p_atomic_inc_return(&batch->screen->last_seqno);
       assert(batch->next_seqno > 0);
    }
