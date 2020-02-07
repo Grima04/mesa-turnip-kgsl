@@ -534,7 +534,7 @@ emit_uniform(struct ntv_context *ctx, struct nir_variable *var)
 }
 
 static SpvId
-get_src_uint_ssa(struct ntv_context *ctx, const nir_ssa_def *ssa)
+get_src_ssa(struct ntv_context *ctx, const nir_ssa_def *ssa)
 {
    assert(ssa->index < ctx->num_defs);
    assert(ctx->defs[ssa->index] != 0);
@@ -550,7 +550,7 @@ get_var_from_reg(struct ntv_context *ctx, nir_register *reg)
 }
 
 static SpvId
-get_src_uint_reg(struct ntv_context *ctx, const nir_reg_src *reg)
+get_src_reg(struct ntv_context *ctx, const nir_reg_src *reg)
 {
    assert(reg->reg);
    assert(!reg->indirect);
@@ -562,21 +562,21 @@ get_src_uint_reg(struct ntv_context *ctx, const nir_reg_src *reg)
 }
 
 static SpvId
-get_src_uint(struct ntv_context *ctx, nir_src *src)
+get_src(struct ntv_context *ctx, nir_src *src)
 {
    if (src->is_ssa)
-      return get_src_uint_ssa(ctx, src->ssa);
+      return get_src_ssa(ctx, src->ssa);
    else
-      return get_src_uint_reg(ctx, &src->reg);
+      return get_src_reg(ctx, &src->reg);
 }
 
 static SpvId
-get_alu_src_uint(struct ntv_context *ctx, nir_alu_instr *alu, unsigned src)
+get_alu_src_raw(struct ntv_context *ctx, nir_alu_instr *alu, unsigned src)
 {
    assert(!alu->src[src].negate);
    assert(!alu->src[src].abs);
 
-   SpvId def = get_src_uint(ctx, &alu->src[src].src);
+   SpvId def = get_src(ctx, &alu->src[src].src);
 
    unsigned used_channels = 0;
    bool need_swizzle = false;
@@ -637,7 +637,7 @@ get_alu_src_uint(struct ntv_context *ctx, nir_alu_instr *alu, unsigned src)
 }
 
 static void
-store_ssa_def_uint(struct ntv_context *ctx, nir_ssa_def *ssa, SpvId result)
+store_ssa_def(struct ntv_context *ctx, nir_ssa_def *ssa, SpvId result)
 {
    assert(result != 0);
    assert(ssa->index < ctx->num_defs);
@@ -707,10 +707,10 @@ store_reg_def(struct ntv_context *ctx, nir_reg_dest *reg, SpvId result)
 }
 
 static void
-store_dest_uint(struct ntv_context *ctx, nir_dest *dest, SpvId result)
+store_dest_raw(struct ntv_context *ctx, nir_dest *dest, SpvId result)
 {
    if (dest->is_ssa)
-      store_ssa_def_uint(ctx, &dest->ssa, result);
+      store_ssa_def(ctx, &dest->ssa, result);
    else
       store_reg_def(ctx, &dest->reg, result);
 }
@@ -739,7 +739,7 @@ store_dest(struct ntv_context *ctx, nir_dest *dest, SpvId result, nir_alu_type t
       unreachable("unsupported nir_alu_type");
    }
 
-   store_dest_uint(ctx, dest, result);
+   store_dest_raw(ctx, dest, result);
 }
 
 static SpvId
@@ -864,7 +864,7 @@ alu_instr_src_components(const nir_alu_instr *instr, unsigned src)
 static SpvId
 get_alu_src(struct ntv_context *ctx, nir_alu_instr *alu, unsigned src)
 {
-   SpvId uint_value = get_alu_src_uint(ctx, alu, src);
+   SpvId uint_value = get_alu_src_raw(ctx, alu, src);
 
    unsigned num_components = alu_instr_src_components(alu, src);
    unsigned bit_size = nir_src_bit_size(alu->src[src].src);
@@ -893,7 +893,8 @@ static void
 store_alu_result(struct ntv_context *ctx, nir_alu_instr *alu, SpvId result)
 {
    assert(!alu->dest.saturate);
-   return store_dest(ctx, &alu->dest.dest, result, nir_op_infos[alu->op].output_type);
+   return store_dest(ctx, &alu->dest.dest, result,
+                     nir_op_infos[alu->op].output_type);
 }
 
 static SpvId
@@ -1229,7 +1230,7 @@ emit_load_const(struct ntv_context *ctx, nir_load_const_instr *load_const)
    if (bit_size == 1)
       constant = bvec_to_uvec(ctx, constant, num_components);
 
-   store_ssa_def_uint(ctx, &load_const->def, constant);
+   store_ssa_def(ctx, &load_const->def, constant);
 }
 
 static void
@@ -1296,8 +1297,7 @@ emit_discard(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 static void
 emit_load_deref(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 {
-   /* uint is a bit of a lie here; it's really just a pointer */
-   SpvId ptr = get_src_uint(ctx, intr->src);
+   SpvId ptr = get_src(ctx, intr->src);
 
    nir_variable *var = nir_intrinsic_get_var(intr, 0);
    SpvId result = spirv_builder_emit_load(&ctx->builder,
@@ -1312,9 +1312,8 @@ emit_load_deref(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 static void
 emit_store_deref(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 {
-   /* uint is a bit of a lie here; it's really just a pointer */
-   SpvId ptr = get_src_uint(ctx, &intr->src[0]);
-   SpvId src = get_src_uint(ctx, &intr->src[1]);
+   SpvId ptr = get_src(ctx, &intr->src[0]);
+   SpvId src = get_src(ctx, &intr->src[1]);
 
    nir_variable *var = nir_intrinsic_get_var(intr, 0);
    SpvId type = get_glsl_type(ctx, glsl_without_array(var->type));
@@ -1433,14 +1432,14 @@ emit_undef(struct ntv_context *ctx, nir_ssa_undef_instr *undef)
    SpvId type = get_uvec_type(ctx, undef->def.bit_size,
                               undef->def.num_components);
 
-   store_ssa_def_uint(ctx, &undef->def,
-                      spirv_builder_emit_undef(&ctx->builder, type));
+   store_ssa_def(ctx, &undef->def,
+                 spirv_builder_emit_undef(&ctx->builder, type));
 }
 
 static SpvId
 get_src_float(struct ntv_context *ctx, nir_src *src)
 {
-   SpvId def = get_src_uint(ctx, src);
+   SpvId def = get_src(ctx, src);
    unsigned num_components = nir_src_num_components(*src);
    unsigned bit_size = nir_src_bit_size(*src);
    return bitcast_to_fvec(ctx, def, bit_size, num_components);
@@ -1449,7 +1448,7 @@ get_src_float(struct ntv_context *ctx, nir_src *src)
 static SpvId
 get_src_int(struct ntv_context *ctx, nir_src *src)
 {
-   SpvId def = get_src_uint(ctx, src);
+   SpvId def = get_src(ctx, src);
    unsigned num_components = nir_src_num_components(*src);
    unsigned bit_size = nir_src_bit_size(*src);
    return bitcast_to_ivec(ctx, def, bit_size, num_components);
@@ -1687,7 +1686,7 @@ emit_deref_array(struct ntv_context *ctx, nir_deref_instr *deref)
       unreachable("Unsupported nir_variable_mode\n");
    }
 
-   SpvId index = get_src_uint(ctx, &deref->arr.index);
+   SpvId index = get_src(ctx, &deref->arr.index);
 
    SpvId ptr_type = spirv_builder_type_pointer(&ctx->builder,
                                                storage_class,
@@ -1695,7 +1694,7 @@ emit_deref_array(struct ntv_context *ctx, nir_deref_instr *deref)
 
    SpvId result = spirv_builder_emit_access_chain(&ctx->builder,
                                                   ptr_type,
-                                                  get_src_uint(ctx, &deref->parent),
+                                                  get_src(ctx, &deref->parent),
                                                   &index, 1);
    /* uint is a bit of a lie here, it's really just an opaque type */
    store_dest(ctx, &deref->dest, result, nir_type_uint);
@@ -1764,7 +1763,7 @@ emit_cf_list(struct ntv_context *ctx, struct exec_list *list);
 static SpvId
 get_src_bool(struct ntv_context *ctx, nir_src *src)
 {
-   SpvId def = get_src_uint(ctx, src);
+   SpvId def = get_src(ctx, src);
    assert(nir_src_bit_size(*src) == 1);
    unsigned num_components = nir_src_num_components(*src);
    return uvec_to_bvec(ctx, def, num_components);
