@@ -864,6 +864,25 @@ v3dv_zs_buffer_from_aspect_bits(VkImageAspectFlags aspects)
       return NONE;
 }
 
+static inline uint32_t
+v3dv_zs_buffer_from_vk_format(VkFormat format)
+{
+   switch (format) {
+   case VK_FORMAT_D16_UNORM_S8_UINT:
+   case VK_FORMAT_D24_UNORM_S8_UINT:
+   case VK_FORMAT_D32_SFLOAT_S8_UINT:
+      return ZSTENCIL;
+   case VK_FORMAT_D16_UNORM:
+   case VK_FORMAT_D32_SFLOAT:
+   case VK_FORMAT_X8_D24_UNORM_PACK32:
+      return Z;
+   case VK_FORMAT_S8_UINT:
+      return STENCIL;
+   default:
+      return NONE;
+   }
+}
+
 uint32_t v3dv_physical_device_api_version(struct v3dv_physical_device *dev);
 
 int v3dv_get_instance_entrypoint_index(const char *name);

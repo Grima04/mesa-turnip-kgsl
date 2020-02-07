@@ -844,8 +844,14 @@ cmd_buffer_render_pass_emit_loads(struct v3dv_cmd_buffer *cmd_buffer,
       if (needs_load) {
          struct v3dv_image_view *iview =
             framebuffer->attachments[ds_attachment_idx];
+         /* From the Vulkan spec:
+          *
+          *   "When an image view of a depth/stencil image is used as a
+          *   depth/stencil framebuffer attachment, the aspectMask is ignored
+          *   and both depth and stencil image subresources are used."
+          */
          const uint32_t zs_buffer =
-            v3dv_zs_buffer_from_aspect_bits(iview->aspects);
+            v3dv_zs_buffer_from_vk_format(iview->image->vk_format);
          cmd_buffer_render_pass_emit_load(cmd_buffer, cl,
                                           iview, layer, zs_buffer);
       }
@@ -978,8 +984,14 @@ cmd_buffer_render_pass_emit_stores(struct v3dv_cmd_buffer *cmd_buffer,
       if (needs_ds_store) {
          struct v3dv_image_view *iview =
             state->framebuffer->attachments[ds_attachment_idx];
+         /* From the Vulkan spec:
+          *
+          *   "When an image view of a depth/stencil image is used as a
+          *   depth/stencil framebuffer attachment, the aspectMask is ignored
+          *   and both depth and stencil image subresources are used."
+          */
          const uint32_t zs_buffer =
-            v3dv_zs_buffer_from_aspect_bits(iview->aspects);
+            v3dv_zs_buffer_from_vk_format(iview->image->vk_format);
          cmd_buffer_render_pass_emit_store(cmd_buffer, cl,
                                            ds_attachment_idx, layer,
                                            zs_buffer, needs_ds_clear);
