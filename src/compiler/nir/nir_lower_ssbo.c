@@ -46,6 +46,36 @@ lower_ssbo_op(nir_intrinsic_op op)
    case nir_intrinsic_store_ssbo:
       return nir_intrinsic_store_global;
 
+   case nir_intrinsic_ssbo_atomic_add:
+      return nir_intrinsic_global_atomic_add;
+   case nir_intrinsic_ssbo_atomic_imin:
+      return nir_intrinsic_global_atomic_imin;
+   case nir_intrinsic_ssbo_atomic_umin:
+      return nir_intrinsic_global_atomic_umin;
+   case nir_intrinsic_ssbo_atomic_imax:
+      return nir_intrinsic_global_atomic_imax;
+   case nir_intrinsic_ssbo_atomic_umax:
+      return nir_intrinsic_global_atomic_umax;
+   case nir_intrinsic_ssbo_atomic_and:
+      return nir_intrinsic_global_atomic_and;
+   case nir_intrinsic_ssbo_atomic_or:
+      return nir_intrinsic_global_atomic_or;
+   case nir_intrinsic_ssbo_atomic_xor:
+      return nir_intrinsic_global_atomic_xor;
+   case nir_intrinsic_ssbo_atomic_exchange:
+      return nir_intrinsic_global_atomic_exchange;
+   case nir_intrinsic_ssbo_atomic_comp_swap:
+      return nir_intrinsic_global_atomic_comp_swap;
+
+   case nir_intrinsic_ssbo_atomic_fadd:
+      return nir_intrinsic_global_atomic_fadd;
+   case nir_intrinsic_ssbo_atomic_fmin:
+      return nir_intrinsic_global_atomic_fmin;
+   case nir_intrinsic_ssbo_atomic_fmax:
+      return nir_intrinsic_global_atomic_fmax;
+   case nir_intrinsic_ssbo_atomic_fcomp_swap:
+      return nir_intrinsic_global_atomic_fcomp_swap;
+
    default:
       unreachable("Invalid SSBO op");
    }
@@ -74,6 +104,7 @@ lower_ssbo_instr(nir_builder *b, nir_intrinsic_instr *intr)
 {
    nir_intrinsic_op op = lower_ssbo_op(intr->intrinsic);
    bool is_store = op == nir_intrinsic_store_global;
+   bool is_atomic = !is_store && op != nir_intrinsic_load_global;
 
    /* We have to calculate the address:
     *
@@ -104,6 +135,12 @@ lower_ssbo_instr(nir_builder *b, nir_intrinsic_instr *intr)
       nir_ssa_dest_init(&global->instr, &global->dest,
                         intr->dest.ssa.num_components,
                         intr->dest.ssa.bit_size, NULL);
+
+      if (is_atomic) {
+         nir_src_copy(&global->src[1], &intr->src[2], global);
+         if (nir_intrinsic_infos[op].num_srcs > 2)
+            nir_src_copy(&global->src[2], &intr->src[3], global);
+      }
    }
 
    nir_builder_instr_insert(b, &global->instr);
@@ -121,6 +158,20 @@ should_lower_ssbo_instr(const nir_instr *instr)
    switch (intr->intrinsic) {
    case nir_intrinsic_load_ssbo:
    case nir_intrinsic_store_ssbo:
+   case nir_intrinsic_ssbo_atomic_add:
+   case nir_intrinsic_ssbo_atomic_imin:
+   case nir_intrinsic_ssbo_atomic_umin:
+   case nir_intrinsic_ssbo_atomic_imax:
+   case nir_intrinsic_ssbo_atomic_umax:
+   case nir_intrinsic_ssbo_atomic_and:
+   case nir_intrinsic_ssbo_atomic_or:
+   case nir_intrinsic_ssbo_atomic_xor:
+   case nir_intrinsic_ssbo_atomic_exchange:
+   case nir_intrinsic_ssbo_atomic_comp_swap:
+   case nir_intrinsic_ssbo_atomic_fadd:
+   case nir_intrinsic_ssbo_atomic_fmin:
+   case nir_intrinsic_ssbo_atomic_fmax:
+   case nir_intrinsic_ssbo_atomic_fcomp_swap:
       return true;
    default:
       return false;
