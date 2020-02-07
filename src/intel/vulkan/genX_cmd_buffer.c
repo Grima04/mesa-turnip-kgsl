@@ -3282,25 +3282,34 @@ genX(cmd_buffer_flush_state)(struct anv_cmd_buffer *cmd_buffer)
          struct anv_buffer *buffer = cmd_buffer->state.vertex_bindings[vb].buffer;
          uint32_t offset = cmd_buffer->state.vertex_bindings[vb].offset;
 
-         struct GENX(VERTEX_BUFFER_STATE) state = {
-            .VertexBufferIndex = vb,
+         struct GENX(VERTEX_BUFFER_STATE) state;
+         if (buffer) {
+            state = (struct GENX(VERTEX_BUFFER_STATE)) {
+               .VertexBufferIndex = vb,
 
-            .MOCS = anv_mocs_for_bo(cmd_buffer->device, buffer->address.bo),
+               .MOCS = anv_mocs_for_bo(cmd_buffer->device, buffer->address.bo),
 #if GEN_GEN <= 7
-            .BufferAccessType = pipeline->vb[vb].instanced ? INSTANCEDATA : VERTEXDATA,
-            .InstanceDataStepRate = pipeline->vb[vb].instance_divisor,
+               .BufferAccessType = pipeline->vb[vb].instanced ? INSTANCEDATA : VERTEXDATA,
+               .InstanceDataStepRate = pipeline->vb[vb].instance_divisor,
 #endif
 
-            .AddressModifyEnable = true,
-            .BufferPitch = pipeline->vb[vb].stride,
-            .BufferStartingAddress = anv_address_add(buffer->address, offset),
+               .AddressModifyEnable = true,
+               .BufferPitch = pipeline->vb[vb].stride,
+               .BufferStartingAddress = anv_address_add(buffer->address, offset),
+               .NullVertexBuffer = offset >= buffer->size,
 
 #if GEN_GEN >= 8
-            .BufferSize = buffer->size - offset
+               .BufferSize = buffer->size - offset
 #else
-            .EndAddress = anv_address_add(buffer->address, buffer->size - 1),
+               .EndAddress = anv_address_add(buffer->address, buffer->size - 1),
 #endif
-         };
+            };
+         } else {
+            state = (struct GENX(VERTEX_BUFFER_STATE)) {
+               .VertexBufferIndex = vb,
+               .NullVertexBuffer = true,
+            };
+         }
 
 #if GEN_GEN >= 8 && GEN_GEN <= 9
          genX(cmd_buffer_set_binding_for_gen8_vb_flush)(cmd_buffer, vb,
