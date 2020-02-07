@@ -74,7 +74,7 @@ anv_nir_compute_push_layout(const struct anv_physical_device *pdevice,
     * push_end (no push constants is indicated by push_start = UINT_MAX).
     */
    push_start = MIN2(push_start, push_end);
-   push_start &= ~31u;
+   push_start = align_down_u32(push_start, 32);
 
    if (has_push_intrinsic) {
       nir_foreach_function(function, nir) {

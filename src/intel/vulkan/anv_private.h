@@ -232,10 +232,17 @@ align_down_npot_u32(uint32_t v, uint32_t a)
 }
 
 static inline uint32_t
+align_down_u32(uint32_t v, uint32_t a)
+{
+   assert(a != 0 && a == (a & -a));
+   return v & ~(a - 1);
+}
+
+static inline uint32_t
 align_u32(uint32_t v, uint32_t a)
 {
    assert(a != 0 && a == (a & -a));
-   return (v + a - 1) & ~(a - 1);
+   return align_down_u32(v + a - 1, a);
 }
 
 static inline uint64_t
