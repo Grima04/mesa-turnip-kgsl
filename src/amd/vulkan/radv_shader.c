@@ -402,7 +402,7 @@ radv_shader_compile_to_nir(struct radv_device *device,
 		 * inline functions.  That way they get properly initialized at the top
 		 * of the function and not at the top of its caller.
 		 */
-		NIR_PASS_V(nir, nir_lower_constant_initializers, nir_var_function_temp);
+		NIR_PASS_V(nir, nir_lower_variable_initializers, nir_var_function_temp);
 		NIR_PASS_V(nir, nir_lower_returns);
 		NIR_PASS_V(nir, nir_inline_functions);
 		NIR_PASS_V(nir, nir_opt_deref);
@@ -419,12 +419,12 @@ radv_shader_compile_to_nir(struct radv_device *device,
 		/* Make sure we lower constant initializers on output variables so that
 		 * nir_remove_dead_variables below sees the corresponding stores
 		 */
-		NIR_PASS_V(nir, nir_lower_constant_initializers, nir_var_shader_out);
+		NIR_PASS_V(nir, nir_lower_variable_initializers, nir_var_shader_out);
 
 		/* Now that we've deleted all but the main function, we can go ahead and
 		 * lower the rest of the constant initializers.
 		 */
-		NIR_PASS_V(nir, nir_lower_constant_initializers, ~0);
+		NIR_PASS_V(nir, nir_lower_variable_initializers, ~0);
 
 		/* Split member structs.  We do this before lower_io_to_temporaries so that
 		 * it doesn't lower system values to temporaries by accident.

@@ -5388,7 +5388,7 @@ spirv_to_nir(const uint32_t *words, size_t word_count,
     * right away.  In order to do so, we must lower any constant initializers
     * on outputs so nir_remove_dead_variables sees that they're written to.
     */
-   nir_lower_constant_initializers(b->shader, nir_var_shader_out);
+   nir_lower_variable_initializers(b->shader, nir_var_shader_out);
    nir_remove_dead_variables(b->shader,
                              nir_var_shader_in | nir_var_shader_out);
 

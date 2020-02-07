@@ -84,7 +84,7 @@ lower_const_initializer(struct nir_builder *b, struct exec_list *var_list)
 }
 
 bool
-nir_lower_constant_initializers(nir_shader *shader, nir_variable_mode modes)
+nir_lower_variable_initializers(nir_shader *shader, nir_variable_mode modes)
 {
    bool progress = false;
 

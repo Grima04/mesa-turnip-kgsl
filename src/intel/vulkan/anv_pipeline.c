@@ -250,7 +250,7 @@ anv_shader_compile_to_nir(struct anv_device *device,
     * inline functions.  That way they get properly initialized at the top
     * of the function and not at the top of its caller.
     */
-   NIR_PASS_V(nir, nir_lower_constant_initializers, nir_var_function_temp);
+   NIR_PASS_V(nir, nir_lower_variable_initializers, nir_var_function_temp);
    NIR_PASS_V(nir, nir_lower_returns);
    NIR_PASS_V(nir, nir_inline_functions);
    NIR_PASS_V(nir, nir_opt_deref);
@@ -267,7 +267,7 @@ anv_shader_compile_to_nir(struct anv_device *device,
     * nir_remove_dead_variables and split_per_member_structs below see the
     * corresponding stores.
     */
-   NIR_PASS_V(nir, nir_lower_constant_initializers, ~0);
+   NIR_PASS_V(nir, nir_lower_variable_initializers, ~0);
 
    /* Split member structs.  We do this before lower_io_to_temporaries so that
     * it doesn't lower system values to temporaries by accident.

@@ -414,7 +414,7 @@ tu_shader_create(struct tu_device *dev,
    }
 
    /* multi step inlining procedure */
-   NIR_PASS_V(nir, nir_lower_constant_initializers, nir_var_function_temp);
+   NIR_PASS_V(nir, nir_lower_variable_initializers, nir_var_function_temp);
    NIR_PASS_V(nir, nir_lower_returns);
    NIR_PASS_V(nir, nir_inline_functions);
    NIR_PASS_V(nir, nir_opt_deref);
@@ -423,7 +423,7 @@ tu_shader_create(struct tu_device *dev,
          exec_node_remove(&func->node);
    }
    assert(exec_list_length(&nir->functions) == 1);
-   NIR_PASS_V(nir, nir_lower_constant_initializers, ~nir_var_function_temp);
+   NIR_PASS_V(nir, nir_lower_variable_initializers, ~nir_var_function_temp);
 
    /* Split member structs.  We do this before lower_io_to_temporaries so that
     * it doesn't lower system values to temporaries by accident.
