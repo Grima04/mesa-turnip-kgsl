@@ -256,6 +256,14 @@ tu_physical_device_init(struct tu_physical_device *device,
    sprintf(device->name, "FD%d", device->gpu_id);
 
    switch (device->gpu_id) {
+   case 618:
+      device->tile_align_w = 64;
+      device->tile_align_h = 16;
+      device->magic.RB_UNKNOWN_8E04_blit = 0x00100000;
+      device->magic.RB_CCU_CNTL_gmem     = 0x3e400004;
+      device->magic.PC_UNKNOWN_9805 = 0x0;
+      device->magic.SP_UNKNOWN_A0F8 = 0x0;
+      break;
    case 630:
    case 640:
       device->tile_align_w = 64;
