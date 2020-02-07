@@ -1278,7 +1278,7 @@ emit_load_ubo(struct ntv_context *ctx, nir_intrinsic_instr *intr)
                                                          num_components);
       }
 
-      store_dest_uint(ctx, &intr->dest, result);
+      store_dest(ctx, &intr->dest, result, nir_type_uint);
    } else
       unreachable("uniform-addressing not yet supported");
 }
@@ -1306,7 +1306,7 @@ emit_load_deref(struct ntv_context *ctx, nir_intrinsic_instr *intr)
    unsigned num_components = nir_dest_num_components(intr->dest);
    unsigned bit_size = nir_dest_bit_size(intr->dest);
    result = bitcast_to_uvec(ctx, result, bit_size, num_components);
-   store_dest_uint(ctx, &intr->dest, result);
+   store_dest(ctx, &intr->dest, result, nir_type_uint);
 }
 
 static void
@@ -1369,7 +1369,7 @@ emit_load_instance_id(struct ntv_context *ctx, nir_intrinsic_instr *intr)
    SpvId result = spirv_builder_emit_load(&ctx->builder, var_type,
                                           ctx->instance_id_var);
    assert(1 == nir_dest_num_components(intr->dest));
-   store_dest_uint(ctx, &intr->dest, result);
+   store_dest(ctx, &intr->dest, result, nir_type_uint);
 }
 
 static void
@@ -1385,7 +1385,7 @@ emit_load_vertex_id(struct ntv_context *ctx, nir_intrinsic_instr *intr)
    SpvId result = spirv_builder_emit_load(&ctx->builder, var_type,
                                           ctx->vertex_id_var);
    assert(1 == nir_dest_num_components(intr->dest));
-   store_dest_uint(ctx, &intr->dest, result);
+   store_dest(ctx, &intr->dest, result, nir_type_uint);
 }
 
 static void
@@ -1664,7 +1664,7 @@ emit_deref_var(struct ntv_context *ctx, nir_deref_instr *deref)
    assert(he);
    SpvId result = (SpvId)(intptr_t)he->data;
    /* uint is a bit of a lie here, it's really just an opaque type */
-   store_dest_uint(ctx, &deref->dest, result);
+   store_dest(ctx, &deref->dest, result, nir_type_uint);
 }
 
 static void
@@ -1698,7 +1698,7 @@ emit_deref_array(struct ntv_context *ctx, nir_deref_instr *deref)
                                                   get_src_uint(ctx, &deref->parent),
                                                   &index, 1);
    /* uint is a bit of a lie here, it's really just an opaque type */
-   store_dest_uint(ctx, &deref->dest, result);
+   store_dest(ctx, &deref->dest, result, nir_type_uint);
 }
 
 static void
