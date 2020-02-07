@@ -1353,8 +1353,7 @@ emit_load_front_face(struct ntv_context *ctx, nir_intrinsic_instr *intr)
    SpvId result = spirv_builder_emit_load(&ctx->builder, var_type,
                                           ctx->front_face_var);
    assert(1 == nir_dest_num_components(intr->dest));
-   result = bvec_to_uvec(ctx, result, 1);
-   store_dest_uint(ctx, &intr->dest, result);
+   store_dest(ctx, &intr->dest, result, nir_type_bool);
 }
 
 static void
