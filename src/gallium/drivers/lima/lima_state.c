@@ -41,8 +41,9 @@ lima_set_framebuffer_state(struct pipe_context *pctx,
 {
    struct lima_context *ctx = lima_context(pctx);
 
-   /* submit need framebuffer info, flush before change it */
-   lima_flush(ctx);
+   /* make sure there are always single submit in this context */
+   if (lima_debug & LIMA_DEBUG_SINGLE_SUBMIT)
+      lima_flush(ctx);
 
    struct lima_context_framebuffer *fb = &ctx->framebuffer;
 

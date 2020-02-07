@@ -41,6 +41,7 @@
 #define LIMA_DEBUG_BO_CACHE       (1 << 5)
 #define LIMA_DEBUG_NO_TILING      (1 << 6)
 #define LIMA_DEBUG_NO_GROW_HEAP   (1 << 7)
+#define LIMA_DEBUG_SINGLE_SUBMIT  (1 << 8)
 
 extern uint32_t lima_debug;
 extern int lima_ctx_num_plb;

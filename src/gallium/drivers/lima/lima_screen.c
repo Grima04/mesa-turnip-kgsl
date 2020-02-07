@@ -466,6 +466,8 @@ static const struct debug_named_value debug_options[] = {
           "don't use tiled buffers" },
         { "nogrowheap",   LIMA_DEBUG_NO_GROW_HEAP,
           "disable growable heap buffer" },
+        { "singlesubmit", LIMA_DEBUG_SINGLE_SUBMIT,
+          "disable multi submit optimization" },
         { NULL }
 };
 
