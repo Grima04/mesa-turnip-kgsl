@@ -33,8 +33,6 @@ struct lima_bo;
 
 bool lima_submit_add_bo(struct lima_submit *submit, int pipe,
                         struct lima_bo *bo, uint32_t flags);
-bool lima_submit_start(struct lima_submit *submit, int pipe, void *frame, uint32_t size);
-bool lima_submit_wait(struct lima_submit *submit, int pipe, uint64_t timeout_ns);
 bool lima_submit_has_bo(struct lima_submit *submit, struct lima_bo *bo, bool all);
 
 bool lima_submit_init(struct lima_context *ctx);
