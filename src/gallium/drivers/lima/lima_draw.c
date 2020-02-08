@@ -212,7 +212,7 @@ struct lima_render_state {
 static inline bool
 lima_ctx_dirty(struct lima_context *ctx)
 {
-   return ctx->plbu_cmd_array.size;
+   return !!ctx->resolve;
 }
 
 static inline struct lima_damage_region *
@@ -323,7 +323,7 @@ lima_pack_reload_plbu_cmd(struct lima_context *ctx)
    lima_submit_add_bo(ctx->pp_submit, res->bo, LIMA_SUBMIT_BO_READ);
    pipe_resource_reference(&pres, NULL);
 
-   PLBU_CMD_BEGIN(&ctx->plbu_cmd_array, 20);
+   PLBU_CMD_BEGIN(&ctx->plbu_cmd_head, 20);
 
    PLBU_CMD_VIEWPORT_LEFT(0);
    PLBU_CMD_VIEWPORT_RIGHT(fui(fb->base.width));
@@ -347,13 +347,9 @@ lima_pack_reload_plbu_cmd(struct lima_context *ctx)
 static void
 lima_pack_head_plbu_cmd(struct lima_context *ctx)
 {
-   /* first draw need create a PLBU command header */
-   if (lima_ctx_dirty(ctx))
-      return;
-
    struct lima_context_framebuffer *fb = &ctx->framebuffer;
 
-   PLBU_CMD_BEGIN(&ctx->plbu_cmd_array, 10);
+   PLBU_CMD_BEGIN(&ctx->plbu_cmd_head, 10);
 
    PLBU_CMD_UNKNOWN2();
    PLBU_CMD_BLOCK_STEP(fb->shift_min, fb->shift_h, fb->shift_w);
@@ -689,6 +685,8 @@ lima_clear(struct pipe_context *pctx, unsigned buffers,
 
    lima_flush(ctx);
 
+   lima_update_submit_wb(ctx);
+
    ctx->resolve |= buffers;
 
    /* no need to reload if cleared */
@@ -719,10 +717,6 @@ lima_clear(struct pipe_context *pctx, unsigned buffers,
 
    if (buffers & PIPE_CLEAR_STENCIL)
       clear->stencil = stencil;
-
-   lima_update_submit_wb(ctx);
-
-   lima_pack_head_plbu_cmd(ctx);
 
    ctx->dirty |= LIMA_CONTEXT_DIRTY_CLEAR;
 
@@ -839,8 +833,6 @@ lima_pack_plbu_cmd(struct lima_context *ctx, const struct pipe_draw_info *info)
    struct lima_context_framebuffer *fb = &ctx->framebuffer;
    struct lima_vs_shader_state *vs = ctx->vs;
    unsigned minx, maxx, miny, maxy;
-
-   lima_pack_head_plbu_cmd(ctx);
 
    /* If it's zero scissor, we skip adding all other commands */
    if (lima_is_scissor_zero(ctx))
@@ -1775,14 +1767,13 @@ _lima_flush(struct lima_context *ctx, bool end_of_frame)
 {
    #define pp_stack_pp_size 0x400
 
+   lima_pack_head_plbu_cmd(ctx);
    lima_finish_plbu_cmd(ctx);
 
    lima_update_submit_bo(ctx);
 
    int vs_cmd_size = ctx->vs_cmd_array.size;
-   int plbu_cmd_size = ctx->plbu_cmd_array.size;
    uint32_t vs_cmd_va = 0;
-   uint32_t plbu_cmd_va;
 
    if (vs_cmd_size) {
       void *vs_cmd =
@@ -1796,11 +1787,18 @@ _lima_flush(struct lima_context *ctx, bool end_of_frame)
       lima_dump_vs_command_stream_print(vs_cmd, vs_cmd_size, vs_cmd_va);
    }
 
+   int plbu_cmd_size = ctx->plbu_cmd_array.size + ctx->plbu_cmd_head.size;
    void *plbu_cmd =
       lima_ctx_buff_alloc(ctx, lima_ctx_buff_gp_plbu_cmd, plbu_cmd_size);
-   memcpy(plbu_cmd, util_dynarray_begin(&ctx->plbu_cmd_array), plbu_cmd_size);
+   memcpy(plbu_cmd,
+          util_dynarray_begin(&ctx->plbu_cmd_head),
+          ctx->plbu_cmd_head.size);
+   memcpy(plbu_cmd + ctx->plbu_cmd_head.size,
+          util_dynarray_begin(&ctx->plbu_cmd_array),
+          ctx->plbu_cmd_array.size);
    util_dynarray_clear(&ctx->plbu_cmd_array);
-   plbu_cmd_va = lima_ctx_buff_va(ctx, lima_ctx_buff_gp_plbu_cmd);
+   util_dynarray_clear(&ctx->plbu_cmd_head);
+   uint32_t plbu_cmd_va = lima_ctx_buff_va(ctx, lima_ctx_buff_gp_plbu_cmd);
 
    lima_dump_command_stream_print(
       plbu_cmd, plbu_cmd_size, false, "flush plbu cmd at va %x\n", plbu_cmd_va);

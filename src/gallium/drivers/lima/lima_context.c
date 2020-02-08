@@ -231,6 +231,7 @@ lima_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
 
    util_dynarray_init(&ctx->vs_cmd_array, ctx);
    util_dynarray_init(&ctx->plbu_cmd_array, ctx);
+   util_dynarray_init(&ctx->plbu_cmd_head, ctx);
 
    ctx->plb_size = screen->plb_max_blk * LIMA_CTX_PLB_BLK_SIZE;
    ctx->plb_gp_size = screen->plb_max_blk * 4;

@@ -239,6 +239,7 @@ struct lima_context {
 
    struct util_dynarray vs_cmd_array;
    struct util_dynarray plbu_cmd_array;
+   struct util_dynarray plbu_cmd_head;
 
    struct lima_submit *gp_submit;
    struct lima_submit *pp_submit;
