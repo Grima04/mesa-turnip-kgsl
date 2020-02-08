@@ -1353,19 +1353,6 @@ subpass_start(struct v3dv_cmd_buffer *cmd_buffer)
        cmd_buffer->state.dynamic.viewport.count == 0) {
       emit_clip_window(job, &state->render_area);
    }
-
-   /* FIXME: is here the best moment to do that? or when drawing? */
-   if (cmd_buffer->state.pipeline) {
-      struct v3dv_pipeline *pipeline = cmd_buffer->state.pipeline;
-
-      if (pipeline->vs->assembly_bo)
-         v3dv_job_add_bo(cmd_buffer->state.job, pipeline->vs->assembly_bo);
-      if (pipeline->vs_bin->assembly_bo)
-         v3dv_job_add_bo(cmd_buffer->state.job, pipeline->vs_bin->assembly_bo);
-      if (pipeline->fs->assembly_bo)
-         v3dv_job_add_bo(cmd_buffer->state.job, pipeline->fs->assembly_bo);
-   }
-
 }
 
 static void
