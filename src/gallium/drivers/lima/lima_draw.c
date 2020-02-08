@@ -1136,6 +1136,8 @@ lima_pack_render_state(struct lima_context *ctx, const struct pipe_draw_info *in
    struct lima_render_state *render =
       lima_ctx_buff_alloc(ctx, lima_ctx_buff_pp_plb_rsw,
                           sizeof(*render));
+   bool early_z = true;
+   bool pixel_kill = true;
 
    /* do hw support RGBA independ blend?
     * PIPE_CAP_INDEP_BLEND_ENABLE
@@ -1239,15 +1241,27 @@ lima_pack_render_state(struct lima_context *ctx, const struct pipe_draw_info *in
 
    render->textures_address = 0x00000000;
 
-   /* more investigation */
-   render->aux0 = 0x00000100 | (ctx->vs->varying_stride >> 3);
+   render->aux0 = (ctx->vs->varying_stride >> 3);
    render->aux1 = 0x00001000;
    if (ctx->blend->base.dither)
       render->aux1 |= 0x00002000;
 
-   /* Enable Early-Z if shader doesn't have discard */
-   if (!fs->uses_discard)
-      render->aux0 |= 0x200;
+   if (fs->uses_discard) {
+      early_z = false;
+      pixel_kill = false;
+   }
+
+   if (rt->blend_enable)
+      pixel_kill = false;
+
+   if ((rt->colormask & PIPE_MASK_RGBA) != PIPE_MASK_RGBA)
+      pixel_kill = false;
+
+   if (early_z)
+      render->aux0 |= 0x300;
+
+   if (pixel_kill)
+      render->aux0 |= 0x1000;
 
    if (ctx->tex_stateobj.num_samplers) {
       render->textures_address =
