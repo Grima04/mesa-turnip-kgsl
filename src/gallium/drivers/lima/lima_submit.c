@@ -48,7 +48,8 @@ struct lima_submit {
 
 #define VOID2U64(x) ((uint64_t)(unsigned long)(x))
 
-struct lima_submit *lima_submit_create(struct lima_context *ctx)
+static struct lima_submit *
+lima_submit_create(struct lima_context *ctx)
 {
    struct lima_submit *s;
 
@@ -67,7 +68,8 @@ struct lima_submit *lima_submit_create(struct lima_context *ctx)
    return s;
 }
 
-void lima_submit_free(struct lima_submit *submit)
+static void
+lima_submit_free(struct lima_submit *submit)
 {
 
 }
@@ -161,6 +163,10 @@ bool lima_submit_init(struct lima_context *ctx)
 {
    int fd = lima_screen(ctx->base.screen)->fd;
 
+   ctx->submit = lima_submit_create(ctx);
+   if (!ctx->submit)
+      return false;
+
    ctx->in_sync_fd = -1;
 
    for (int i = 0; i < 2; i++) {
@@ -185,4 +191,7 @@ void lima_submit_fini(struct lima_context *ctx)
 
    if (ctx->in_sync_fd >= 0)
       close(ctx->in_sync_fd);
+
+   if (ctx->submit)
+      lima_submit_free(ctx->submit);
 }

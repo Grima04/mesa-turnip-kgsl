@@ -31,8 +31,6 @@ struct lima_context;
 struct lima_submit;
 struct lima_bo;
 
-struct lima_submit *lima_submit_create(struct lima_context *ctx);
-void lima_submit_free(struct lima_submit *submit);
 bool lima_submit_add_bo(struct lima_submit *submit, int pipe,
                         struct lima_bo *bo, uint32_t flags);
 bool lima_submit_start(struct lima_submit *submit, int pipe, void *frame, uint32_t size);

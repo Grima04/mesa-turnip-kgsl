@@ -74,6 +74,7 @@ files_lima = files(
   'lima_fence.h',
   'lima_format.h',
   'lima_format.c',
+  'lima_gpu.h',
 )
 
 lima_nir_algebraic_c = custom_target(

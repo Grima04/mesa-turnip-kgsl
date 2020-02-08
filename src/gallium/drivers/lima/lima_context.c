@@ -123,9 +123,6 @@ lima_context_destroy(struct pipe_context *pctx)
 
    lima_submit_fini(ctx);
 
-   if (ctx->submit)
-      lima_submit_free(ctx->submit);
-
    for (int i = 0; i < lima_ctx_buff_num; i++)
       pipe_resource_reference(&ctx->buffer_state[i].res, NULL);
 
@@ -278,10 +275,6 @@ lima_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
       if (!ctx->plb_pp_stream)
          goto err_out;
    }
-
-   ctx->submit = lima_submit_create(ctx);
-   if (!ctx->submit)
-      goto err_out;
 
    if (!lima_submit_init(ctx))
       goto err_out;

@@ -73,7 +73,8 @@ LOCAL_SRC_FILES := \
 	lima_util.c \
 	lima_util.h \
 	lima_format.c \
-	lima_format.h
+	lima_format.h \
+	lima_gpu.h
 
 LOCAL_MODULE := libmesa_pipe_lima
 
