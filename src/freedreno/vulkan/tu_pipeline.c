@@ -468,9 +468,15 @@ tu6_emit_fs_config(struct tu_cs *cs, struct tu_shader *shader,
    if (fs->need_fine_derivatives)
       sp_fs_ctrl |= A6XX_SP_FS_CTRL_REG0_DIFF_FINE;
 
-   uint32_t sp_fs_config = A6XX_SP_FS_CONFIG_NTEX(shader->texture_map.num_desc) |
-                           A6XX_SP_FS_CONFIG_NSAMP(shader->sampler_map.num_desc) |
-                           A6XX_SP_FS_CONFIG_NIBO(tu_shader_nibo(shader));
+   uint32_t sp_fs_config = 0;
+   unsigned shader_nibo = 0;
+   if (shader) {
+      shader_nibo = tu_shader_nibo(shader);
+      sp_fs_config = A6XX_SP_FS_CONFIG_NTEX(shader->texture_map.num_desc) |
+                     A6XX_SP_FS_CONFIG_NSAMP(shader->sampler_map.num_desc) |
+                     A6XX_SP_FS_CONFIG_NIBO(shader_nibo);
+   }
+
    if (fs->instrlen)
       sp_fs_config |= A6XX_SP_FS_CONFIG_ENABLED;
 
@@ -492,7 +498,7 @@ tu6_emit_fs_config(struct tu_cs *cs, struct tu_shader *shader,
                   A6XX_HLSQ_FS_CNTL_ENABLED);
 
    tu_cs_emit_pkt4(cs, REG_A6XX_SP_IBO_COUNT, 1);
-   tu_cs_emit(cs, tu_shader_nibo(shader));
+   tu_cs_emit(cs, shader_nibo);
 }
 
 static void
