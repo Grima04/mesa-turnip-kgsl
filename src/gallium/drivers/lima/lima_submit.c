@@ -461,7 +461,7 @@ lima_generate_pp_stream(struct lima_submit *submit, int off_x, int off_y,
    }
 
    for (i = 0; i < num_pp; i++)
-      stream[i] = ps->bo->map + ps->bo_offset + ps->offset[i];
+      stream[i] = ps->map + ps->offset[i];
 
    for (i = 0; i < count; i++) {
       int x, y;
@@ -495,7 +495,7 @@ lima_generate_pp_stream(struct lima_submit *submit, int off_x, int off_y,
 
       lima_dump_command_stream_print(
          stream[i], si[i] * 4, false, "pp plb stream %d at va %x\n",
-         i, ps->bo->va + ps->bo_offset + ps->offset[i]);
+         i, ps->va + ps->offset[i]);
    }
 }
 
@@ -533,19 +533,10 @@ lima_update_damage_pp_stream(struct lima_submit *submit)
    int size = lima_get_pp_stream_size(
       screen->num_pp, tiled_w, tiled_h, ctx->pp_stream.offset);
 
-   void *cpu;
-   unsigned offset;
-   struct pipe_resource *pres = NULL;
-   u_upload_alloc(ctx->uploader, 0, size, 0x40, &offset, &pres, &cpu);
-
-   struct lima_resource *res = lima_resource(pres);
-   ctx->pp_stream.bo = res->bo;
-   ctx->pp_stream.bo_offset = offset;
+   ctx->pp_stream.map = lima_submit_create_stream_bo(
+      submit, LIMA_PIPE_PP, size, &ctx->pp_stream.va);
 
    lima_generate_pp_stream(submit, bound.minx, bound.miny, tiled_w, tiled_h);
-
-   lima_submit_add_bo(submit, LIMA_PIPE_PP, res->bo, LIMA_SUBMIT_BO_READ);
-   pipe_resource_reference(&pres, NULL);
 }
 
 static void
@@ -564,8 +555,8 @@ lima_update_full_pp_stream(struct lima_submit *submit)
    struct lima_ctx_plb_pp_stream *s = entry->data;
 
    if (s->bo) {
-      ctx->pp_stream.bo = s->bo;
-      ctx->pp_stream.bo_offset = 0;
+      ctx->pp_stream.map = lima_bo_map(s->bo);
+      ctx->pp_stream.va = s->bo->va;
       memcpy(ctx->pp_stream.offset, s->offset, sizeof(s->offset));
    }
    else {
@@ -573,10 +564,9 @@ lima_update_full_pp_stream(struct lima_submit *submit)
       int size = lima_get_pp_stream_size(
          screen->num_pp, fb->tiled_w, fb->tiled_h, s->offset);
       s->bo = lima_bo_create(screen, size, 0);
-      lima_bo_map(s->bo);
 
-      ctx->pp_stream.bo = s->bo;
-      ctx->pp_stream.bo_offset = 0;
+      ctx->pp_stream.map = lima_bo_map(s->bo);
+      ctx->pp_stream.va = s->bo->va;
       memcpy(ctx->pp_stream.offset, s->offset, sizeof(s->offset));
 
       lima_generate_pp_stream(submit, 0, 0, fb->tiled_w, fb->tiled_h);
@@ -606,7 +596,7 @@ lima_update_pp_stream(struct lima_submit *submit)
    else if (ctx->plb_pp_stream)
       lima_update_full_pp_stream(submit);
    else
-      ctx->pp_stream.bo = NULL;
+      ctx->pp_stream.map = NULL;
 }
 
 static void
@@ -838,7 +828,7 @@ lima_do_submit(struct lima_submit *submit)
       pp_frame.num_pp = screen->num_pp;
 
       for (int i = 0; i < screen->num_pp; i++) {
-         pp_frame.plbu_array_address[i] = ps->bo->va + ps->bo_offset + ps->offset[i];
+         pp_frame.plbu_array_address[i] = ps->va + ps->offset[i];
          if (ctx->pp_max_stack_size)
             pp_frame.fragment_stack_address[i] = pp_stack_va +
                ctx->pp_max_stack_size * pp_stack_pp_size * i;
@@ -860,9 +850,9 @@ lima_do_submit(struct lima_submit *submit)
             pp_frame.fragment_stack_address[i] = pp_stack_va +
                ctx->pp_max_stack_size * pp_stack_pp_size * i;
 
-      if (ps->bo) {
+      if (ps->map) {
          for (int i = 0; i < screen->num_pp; i++)
-            pp_frame.plbu_array_address[i] = ps->bo->va + ps->bo_offset + ps->offset[i];
+            pp_frame.plbu_array_address[i] = ps->va + ps->offset[i];
       }
       else {
          pp_frame.use_dlbu = true;

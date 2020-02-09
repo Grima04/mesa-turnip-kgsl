@@ -163,8 +163,8 @@ struct lima_ctx_plb_pp_stream {
 };
 
 struct lima_pp_stream_state {
-   struct lima_bo *bo;
-   uint32_t bo_offset;
+   void *map;
+   uint32_t va;
    uint32_t offset[8];
 };
 
