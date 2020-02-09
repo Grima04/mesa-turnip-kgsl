@@ -125,13 +125,10 @@ enum lima_ctx_buff {
    lima_ctx_buff_gp_varying_info,
    lima_ctx_buff_gp_attribute_info,
    lima_ctx_buff_gp_uniform,
-   lima_ctx_buff_gp_vs_cmd,
-   lima_ctx_buff_gp_plbu_cmd,
    lima_ctx_buff_pp_plb_rsw,
    lima_ctx_buff_pp_uniform_array,
    lima_ctx_buff_pp_uniform,
    lima_ctx_buff_pp_tex_desc,
-   lima_ctx_buff_pp_stack,
    lima_ctx_buff_num,
    lima_ctx_buff_num_gp = lima_ctx_buff_pp_plb_rsw,
 };

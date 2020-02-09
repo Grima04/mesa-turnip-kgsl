@@ -748,20 +748,20 @@ lima_do_submit(struct lima_submit *submit)
    uint32_t vs_cmd_va = 0;
 
    if (vs_cmd_size) {
-      void *vs_cmd =
-         lima_ctx_buff_alloc(ctx, lima_ctx_buff_gp_vs_cmd, vs_cmd_size);
+      void *vs_cmd = lima_submit_create_stream_bo(
+         submit, LIMA_PIPE_GP, vs_cmd_size, &vs_cmd_va);
       memcpy(vs_cmd, util_dynarray_begin(&ctx->vs_cmd_array), vs_cmd_size);
       util_dynarray_clear(&ctx->vs_cmd_array);
-      vs_cmd_va = lima_ctx_buff_va(ctx, lima_ctx_buff_gp_vs_cmd);
 
       lima_dump_command_stream_print(
          vs_cmd, vs_cmd_size, false, "flush vs cmd at va %x\n", vs_cmd_va);
       lima_dump_vs_command_stream_print(vs_cmd, vs_cmd_size, vs_cmd_va);
    }
 
+   uint32_t plbu_cmd_va;
    int plbu_cmd_size = ctx->plbu_cmd_array.size + ctx->plbu_cmd_head.size;
-   void *plbu_cmd =
-      lima_ctx_buff_alloc(ctx, lima_ctx_buff_gp_plbu_cmd, plbu_cmd_size);
+   void *plbu_cmd = lima_submit_create_stream_bo(
+      submit, LIMA_PIPE_GP, plbu_cmd_size, &plbu_cmd_va);
    memcpy(plbu_cmd,
           util_dynarray_begin(&ctx->plbu_cmd_head),
           ctx->plbu_cmd_head.size);
@@ -770,7 +770,6 @@ lima_do_submit(struct lima_submit *submit)
           ctx->plbu_cmd_array.size);
    util_dynarray_clear(&ctx->plbu_cmd_array);
    util_dynarray_clear(&ctx->plbu_cmd_head);
-   uint32_t plbu_cmd_va = lima_ctx_buff_va(ctx, lima_ctx_buff_gp_plbu_cmd);
 
    lima_dump_command_stream_print(
       plbu_cmd, plbu_cmd_size, false, "flush plbu cmd at va %x\n", plbu_cmd_va);
@@ -814,9 +813,10 @@ lima_do_submit(struct lima_submit *submit)
 
    uint32_t pp_stack_va = 0;
    if (ctx->pp_max_stack_size) {
-      lima_ctx_buff_alloc(ctx, lima_ctx_buff_pp_stack, screen->num_pp *
-                          ctx->pp_max_stack_size * pp_stack_pp_size);
-      pp_stack_va = lima_ctx_buff_va(ctx, lima_ctx_buff_pp_stack);
+      lima_submit_create_stream_bo(
+         submit, LIMA_PIPE_PP,
+         screen->num_pp * ctx->pp_max_stack_size * pp_stack_pp_size,
+         &pp_stack_va);
    }
 
    lima_update_pp_stream(submit);
