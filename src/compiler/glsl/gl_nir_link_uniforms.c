@@ -245,9 +245,9 @@ struct nir_link_uniforms_state {
    unsigned num_values;
    unsigned max_uniform_location;
    unsigned next_sampler_index;
-   unsigned next_image_index;
 
    /* per-shader stage */
+   unsigned next_image_index;
    unsigned num_shader_samplers;
    unsigned num_shader_images;
    unsigned num_shader_uniform_components;
@@ -706,6 +706,7 @@ gl_nir_link_uniforms(struct gl_context *ctx,
       nir_shader *nir = sh->Program->nir;
       assert(nir);
 
+      state.next_image_index = 0;
       state.num_shader_samplers = 0;
       state.num_shader_images = 0;
       state.num_shader_uniform_components = 0;
