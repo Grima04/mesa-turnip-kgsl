@@ -48,38 +48,6 @@ lima_set_framebuffer_state(struct pipe_context *pctx,
 
    util_copy_framebuffer_state(&fb->base, framebuffer);
 
-   int width = align(framebuffer->width, 16) >> 4;
-   int height = align(framebuffer->height, 16) >> 4;
-   if (fb->tiled_w != width || fb->tiled_h != height) {
-      struct lima_screen *screen = lima_screen(ctx->base.screen);
-
-      fb->tiled_w = width;
-      fb->tiled_h = height;
-
-      fb->shift_h = 0;
-      fb->shift_w = 0;
-
-      int limit = screen->plb_max_blk;
-      while ((width * height) > limit) {
-         if (width >= height) {
-            width = (width + 1) >> 1;
-            fb->shift_w++;
-         } else {
-            height = (height + 1) >> 1;
-            fb->shift_h++;
-         }
-      }
-
-      fb->block_w = width;
-      fb->block_h = height;
-
-      fb->shift_min = MIN3(fb->shift_w, fb->shift_h, 2);
-
-      debug_printf("fb dim change tiled=%d/%d block=%d/%d shift=%d/%d/%d\n",
-                   fb->tiled_w, fb->tiled_h, fb->block_w, fb->block_h,
-                   fb->shift_w, fb->shift_h, fb->shift_min);
-   }
-
    ctx->submit = NULL;
    ctx->dirty |= LIMA_CONTEXT_DIRTY_FRAMEBUFFER;
 }

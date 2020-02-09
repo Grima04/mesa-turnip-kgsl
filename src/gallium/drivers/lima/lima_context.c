@@ -113,11 +113,10 @@ lima_invalidate_resource(struct pipe_context *pctx, struct pipe_resource *prsc)
       return;
 
    struct lima_submit *submit = entry->data;
-   if (ctx->framebuffer.base.zsbuf && (ctx->framebuffer.base.zsbuf->texture == prsc))
+   if (submit->key.zsbuf && (submit->key.zsbuf->texture == prsc))
       submit->resolve &= ~(PIPE_CLEAR_DEPTH | PIPE_CLEAR_STENCIL);
 
-   if (ctx->framebuffer.base.nr_cbufs &&
-       (ctx->framebuffer.base.cbufs[0]->texture == prsc))
+   if (submit->key.cbuf && (submit->key.cbuf->texture == prsc))
       submit->resolve &= ~PIPE_CLEAR_COLOR0;
 }
 

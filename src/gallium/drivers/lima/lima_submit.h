@@ -48,6 +48,14 @@ struct lima_submit_clear {
    uint64_t color_16pc;
 };
 
+struct lima_submit_fb_info {
+   int width, height;
+   int tiled_w, tiled_h;
+   int shift_w, shift_h;
+   int block_w, block_h;
+   int shift_min;
+};
+
 struct lima_submit {
    int fd;
    struct lima_context *ctx;
@@ -68,6 +76,8 @@ struct lima_submit {
    struct pipe_scissor_state damage_rect;
 
    struct lima_submit_clear clear;
+
+   struct lima_submit_fb_info fb;
 };
 
 struct lima_submit *lima_submit_get(struct lima_context *ctx);
