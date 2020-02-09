@@ -34,6 +34,8 @@ struct lima_bo;
 bool lima_submit_add_bo(struct lima_submit *submit, int pipe,
                         struct lima_bo *bo, uint32_t flags);
 bool lima_submit_has_bo(struct lima_submit *submit, struct lima_bo *bo, bool all);
+void *lima_submit_create_stream_bo(struct lima_submit *submit, int pipe,
+                                   unsigned size, uint32_t *va);
 
 bool lima_submit_init(struct lima_context *ctx);
 void lima_submit_fini(struct lima_context *ctx);

@@ -170,6 +170,27 @@ bool lima_submit_has_bo(struct lima_submit *submit, struct lima_bo *bo, bool all
    return false;
 }
 
+void *
+lima_submit_create_stream_bo(struct lima_submit *submit, int pipe,
+                             unsigned size, uint32_t *va)
+{
+   struct lima_context *ctx = submit->ctx;
+
+   void *cpu;
+   unsigned offset;
+   struct pipe_resource *pres = NULL;
+   u_upload_alloc(ctx->uploader, 0, size, 0x40, &offset, &pres, &cpu);
+
+   struct lima_resource *res = lima_resource(pres);
+   *va = res->bo->va + offset;
+
+   lima_submit_add_bo(submit, pipe, res->bo, LIMA_SUBMIT_BO_READ);
+
+   pipe_resource_reference(&pres, NULL);
+
+   return cpu;
+}
+
 static inline bool
 lima_submit_dirty(struct lima_submit *submit)
 {
@@ -228,14 +249,9 @@ lima_pack_reload_plbu_cmd(struct lima_submit *submit)
 
    struct lima_context *ctx = submit->ctx;
 
-   void *cpu;
-   unsigned offset;
-   struct pipe_resource *pres = NULL;
-   u_upload_alloc(ctx->uploader, 0, lima_reload_buffer_size,
-                  0x40, &offset, &pres, &cpu);
-
-   struct lima_resource *res = lima_resource(pres);
-   uint32_t va = res->bo->va + offset;
+   uint32_t va;
+   void *cpu = lima_submit_create_stream_bo(
+      submit, LIMA_PIPE_PP, lima_reload_buffer_size, &va);
 
    struct lima_screen *screen = lima_screen(ctx->base.screen);
 
@@ -288,9 +304,6 @@ lima_pack_reload_plbu_cmd(struct lima_submit *submit)
    };
    memcpy(cpu + lima_reload_varying_offset, reload_varying,
           sizeof(reload_varying));
-
-   lima_submit_add_bo(submit, LIMA_PIPE_PP, res->bo, LIMA_SUBMIT_BO_READ);
-   pipe_resource_reference(&pres, NULL);
 
    PLBU_CMD_BEGIN(&ctx->plbu_cmd_head, 20);
 
