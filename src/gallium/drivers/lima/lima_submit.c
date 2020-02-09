@@ -83,6 +83,16 @@ lima_submit_free(struct lima_submit *submit)
 
 }
 
+/*
+ * Note: this function can only be called in draw code path,
+ * must not exist in flush code path.
+ */
+struct lima_submit *
+lima_submit_get(struct lima_context *ctx)
+{
+   return ctx->submit;
+}
+
 bool lima_submit_add_bo(struct lima_submit *submit, int pipe,
                         struct lima_bo *bo, uint32_t flags)
 {

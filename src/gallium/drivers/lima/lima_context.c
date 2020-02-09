@@ -47,11 +47,12 @@ int lima_ctx_num_plb = LIMA_CTX_PLB_DEF_NUM;
 uint32_t
 lima_ctx_buff_va(struct lima_context *ctx, enum lima_ctx_buff buff)
 {
+   struct lima_submit *submit = lima_submit_get(ctx);
    struct lima_ctx_buff_state *cbs = ctx->buffer_state + buff;
    struct lima_resource *res = lima_resource(cbs->res);
    int pipe = buff < lima_ctx_buff_num_gp ? LIMA_PIPE_GP : LIMA_PIPE_PP;
 
-   lima_submit_add_bo(ctx->submit, pipe, res->bo, LIMA_SUBMIT_BO_READ);
+   lima_submit_add_bo(submit, pipe, res->bo, LIMA_SUBMIT_BO_READ);
 
    return res->bo->va + cbs->offset;
 }

@@ -63,6 +63,10 @@ lima_texture_desc_set_va(lima_tex_desc *desc,
    desc->va[va_idx + 1] |= va >> (32 - va_bit_idx);
 }
 
+/*
+ * Note: this function is used by both draw and flush code path,
+ * make sure no lima_submit_get() is called inside this.
+ */
 void
 lima_texture_desc_set_res(struct lima_context *ctx, lima_tex_desc *desc,
                           struct pipe_resource *prsc,
@@ -253,6 +257,7 @@ lima_calc_tex_desc_size(struct lima_sampler_view *texture)
 void
 lima_update_textures(struct lima_context *ctx)
 {
+   struct lima_submit *submit = lima_submit_get(ctx);
    struct lima_texture_stateobj *lima_tex = &ctx->tex_stateobj;
 
    assert (lima_tex->num_samplers <= 16);
@@ -265,7 +270,7 @@ lima_update_textures(struct lima_context *ctx)
    for (int i = 0; i < lima_tex->num_samplers; i++) {
       struct lima_sampler_view *texture = lima_sampler_view(lima_tex->textures[i]);
       struct lima_resource *rsc = lima_resource(texture->base.texture);
-      lima_submit_add_bo(ctx->submit, LIMA_PIPE_PP, rsc->bo, LIMA_SUBMIT_BO_READ);
+      lima_submit_add_bo(submit, LIMA_PIPE_PP, rsc->bo, LIMA_SUBMIT_BO_READ);
    }
 
    /* do not regenerate texture desc if no change */
