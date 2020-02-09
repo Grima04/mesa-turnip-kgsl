@@ -29,7 +29,6 @@
 
 #include "util/u_math.h"
 #include "util/ralloc.h"
-#include "util/u_dynarray.h"
 #include "util/os_time.h"
 #include "util/hash_table.h"
 #include "util/u_upload_mgr.h"
@@ -45,15 +44,6 @@
 #include "lima_texture.h"
 #include "lima_fence.h"
 #include "lima_gpu.h"
-
-struct lima_submit {
-   int fd;
-   struct lima_context *ctx;
-
-   struct util_dynarray gem_bos[2];
-   struct util_dynarray bos[2];
-};
-
 
 #define VOID2U64(x) ((uint64_t)(unsigned long)(x))
 
@@ -74,13 +64,47 @@ lima_submit_create(struct lima_context *ctx)
       util_dynarray_init(s->bos + i, s);
    }
 
+   struct lima_context_framebuffer *fb = &ctx->framebuffer;
+   pipe_surface_reference(&s->key.cbuf, fb->base.cbufs[0]);
+   pipe_surface_reference(&s->key.zsbuf, fb->base.zsbuf);
+
    return s;
 }
 
 static void
 lima_submit_free(struct lima_submit *submit)
 {
+   struct lima_context *ctx = submit->ctx;
 
+   _mesa_hash_table_remove_key(ctx->submits, &submit->key);
+
+   pipe_surface_reference(&submit->key.cbuf, NULL);
+   pipe_surface_reference(&submit->key.zsbuf, NULL);
+
+   /* TODO: do we need a cache for submit? */
+   ralloc_free(submit);
+}
+
+static struct lima_submit *
+_lima_submit_get(struct lima_context *ctx)
+{
+   struct lima_context_framebuffer *fb = &ctx->framebuffer;
+   struct lima_submit_key local_key = {
+      .cbuf = fb->base.cbufs[0],
+      .zsbuf = fb->base.zsbuf,
+   };
+
+   struct hash_entry *entry = _mesa_hash_table_search(ctx->submits, &local_key);
+   if (entry)
+      return entry->data;
+
+   struct lima_submit *submit = lima_submit_create(ctx);
+   if (!submit)
+      return NULL;
+
+   _mesa_hash_table_insert(ctx->submits, &submit->key, submit);
+
+   return submit;
 }
 
 /*
@@ -90,6 +114,10 @@ lima_submit_free(struct lima_submit *submit)
 struct lima_submit *
 lima_submit_get(struct lima_context *ctx)
 {
+   if (ctx->submit)
+      return ctx->submit;
+
+   ctx->submit = _lima_submit_get(ctx);
    return ctx->submit;
 }
 
@@ -148,8 +176,6 @@ lima_submit_start(struct lima_submit *submit, int pipe, void *frame, uint32_t si
       lima_bo_unreference(*bo);
    }
 
-   util_dynarray_clear(submit->gem_bos + pipe);
-   util_dynarray_clear(submit->bos + pipe);
    return ret;
 }
 
@@ -164,7 +190,8 @@ lima_submit_wait(struct lima_submit *submit, int pipe, uint64_t timeout_ns)
    return !drmSyncobjWait(submit->fd, ctx->out_sync + pipe, 1, abs_timeout, 0, NULL);
 }
 
-bool lima_submit_has_bo(struct lima_submit *submit, struct lima_bo *bo, bool all)
+static bool
+lima_submit_has_bo(struct lima_submit *submit, struct lima_bo *bo, bool all)
 {
    for (int i = 0; i < 2; i++) {
       util_dynarray_foreach(submit->gem_bos + i, struct drm_lima_gem_submit_bo, gem_bo) {
@@ -199,14 +226,6 @@ lima_submit_create_stream_bo(struct lima_submit *submit, int pipe,
    pipe_resource_reference(&pres, NULL);
 
    return cpu;
-}
-
-static inline bool
-lima_submit_dirty(struct lima_submit *submit)
-{
-   struct lima_context *ctx = submit->ctx;
-
-   return !!ctx->resolve;
 }
 
 static inline struct lima_damage_region *
@@ -905,15 +924,31 @@ lima_do_submit(struct lima_submit *submit)
    ctx->resolve = 0;
 
    lima_dump_file_next();
+
+   if (ctx->submit == submit)
+      ctx->submit = NULL;
+
+   lima_submit_free(submit);
 }
 
 void
 lima_flush(struct lima_context *ctx)
 {
-   if (!lima_submit_dirty(ctx->submit))
-      return;
+   hash_table_foreach(ctx->submits, entry) {
+      struct lima_submit *submit = entry->data;
+      lima_do_submit(submit);
+   }
+}
 
-   lima_do_submit(ctx->submit);
+void
+lima_flush_submit_accessing_bo(
+   struct lima_context *ctx, struct lima_bo *bo, bool write)
+{
+   hash_table_foreach(ctx->submits, entry) {
+      struct lima_submit *submit = entry->data;
+      if (lima_submit_has_bo(submit, bo, write))
+         lima_do_submit(submit);
+   }
 }
 
 static void
@@ -921,8 +956,8 @@ lima_pipe_flush(struct pipe_context *pctx, struct pipe_fence_handle **fence,
                 unsigned flags)
 {
    struct lima_context *ctx = lima_context(pctx);
-   if (lima_submit_dirty(ctx->submit))
-      lima_do_submit(ctx->submit);
+
+   lima_flush(ctx);
 
    if (fence) {
       int drm_fd = lima_screen(ctx->base.screen)->fd;
@@ -933,12 +968,24 @@ lima_pipe_flush(struct pipe_context *pctx, struct pipe_fence_handle **fence,
    }
 }
 
+static bool
+lima_submit_compare(const void *s1, const void *s2)
+{
+   return memcmp(s1, s2, sizeof(struct lima_submit_key)) == 0;
+}
+
+static uint32_t
+lima_submit_hash(const void *key)
+{
+   return _mesa_hash_data(key, sizeof(struct lima_submit_key));
+}
+
 bool lima_submit_init(struct lima_context *ctx)
 {
    int fd = lima_screen(ctx->base.screen)->fd;
 
-   ctx->submit = lima_submit_create(ctx);
-   if (!ctx->submit)
+   ctx->submits = _mesa_hash_table_create(ctx, lima_submit_hash, lima_submit_compare);
+   if (!ctx->submits)
       return false;
 
    ctx->in_sync_fd = -1;
@@ -958,6 +1005,8 @@ void lima_submit_fini(struct lima_context *ctx)
 {
    int fd = lima_screen(ctx->base.screen)->fd;
 
+   lima_flush(ctx);
+
    for (int i = 0; i < 2; i++) {
       if (ctx->in_sync[i])
          drmSyncobjDestroy(fd, ctx->in_sync[i]);
@@ -967,7 +1016,4 @@ void lima_submit_fini(struct lima_context *ctx)
 
    if (ctx->in_sync_fd >= 0)
       close(ctx->in_sync_fd);
-
-   if (ctx->submit)
-      lima_submit_free(ctx->submit);
 }

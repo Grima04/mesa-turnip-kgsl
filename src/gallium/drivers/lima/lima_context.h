@@ -238,7 +238,11 @@ struct lima_context {
    struct util_dynarray plbu_cmd_array;
    struct util_dynarray plbu_cmd_head;
 
+   /* current submit */
    struct lima_submit *submit;
+
+   /* map from lima_submit_key to lima_submit */
+   struct hash_table *submits;
 
    int in_sync_fd;
    uint32_t in_sync[2];
@@ -295,7 +299,7 @@ struct pipe_context *
 lima_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags);
 
 void lima_flush(struct lima_context *ctx);
-
-bool lima_need_flush(struct lima_context *ctx, struct lima_bo *bo, bool write);
+void lima_flush_submit_accessing_bo(
+   struct lima_context *ctx, struct lima_bo *bo, bool write);
 
 #endif

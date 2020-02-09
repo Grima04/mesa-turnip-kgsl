@@ -68,6 +68,7 @@ lima_update_submit_wb(struct lima_context *ctx, unsigned buffers)
    if (fb->base.nr_cbufs && (buffers & PIPE_CLEAR_COLOR0) &&
        !(ctx->resolve & PIPE_CLEAR_COLOR0)) {
       struct lima_resource *res = lima_resource(fb->base.cbufs[0]->texture);
+      lima_flush_submit_accessing_bo(ctx, res->bo, true);
       lima_submit_add_bo(submit, LIMA_PIPE_PP, res->bo, LIMA_SUBMIT_BO_WRITE);
    }
 
@@ -75,6 +76,7 @@ lima_update_submit_wb(struct lima_context *ctx, unsigned buffers)
    if (fb->base.zsbuf && (buffers & (PIPE_CLEAR_DEPTH | PIPE_CLEAR_STENCIL)) &&
        !(ctx->resolve & (PIPE_CLEAR_DEPTH | PIPE_CLEAR_STENCIL))) {
       struct lima_resource *res = lima_resource(fb->base.zsbuf->texture);
+      lima_flush_submit_accessing_bo(ctx, res->bo, true);
       lima_submit_add_bo(submit, LIMA_PIPE_PP, res->bo, LIMA_SUBMIT_BO_WRITE);
    }
 

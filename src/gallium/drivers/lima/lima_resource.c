@@ -594,8 +594,7 @@ lima_transfer_map(struct pipe_context *pctx,
     * range, so no need to sync */
    if (pres->usage != PIPE_USAGE_STREAM) {
       if (usage & PIPE_TRANSFER_READ_WRITE) {
-         if (lima_need_flush(ctx, bo, usage & PIPE_TRANSFER_WRITE))
-            lima_flush(ctx);
+         lima_flush_submit_accessing_bo(ctx, bo, usage & PIPE_TRANSFER_WRITE);
 
          unsigned op = usage & PIPE_TRANSFER_WRITE ?
             LIMA_GEM_WAIT_WRITE : LIMA_GEM_WAIT_READ;

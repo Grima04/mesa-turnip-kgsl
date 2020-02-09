@@ -80,6 +80,7 @@ lima_set_framebuffer_state(struct pipe_context *pctx,
                    fb->shift_w, fb->shift_h, fb->shift_min);
    }
 
+   ctx->submit = NULL;
    ctx->dirty |= LIMA_CONTEXT_DIRTY_FRAMEBUFFER;
 }
 

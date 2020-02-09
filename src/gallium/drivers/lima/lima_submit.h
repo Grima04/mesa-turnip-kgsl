@@ -27,15 +27,31 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include <util/u_dynarray.h>
+
 struct lima_context;
-struct lima_submit;
 struct lima_bo;
+struct pipe_surface;
+
+struct lima_submit_key {
+   struct pipe_surface *cbuf;
+   struct pipe_surface *zsbuf;
+};
+
+struct lima_submit {
+   int fd;
+   struct lima_context *ctx;
+
+   struct util_dynarray gem_bos[2];
+   struct util_dynarray bos[2];
+
+   struct lima_submit_key key;
+};
 
 struct lima_submit *lima_submit_get(struct lima_context *ctx);
 
 bool lima_submit_add_bo(struct lima_submit *submit, int pipe,
                         struct lima_bo *bo, uint32_t flags);
-bool lima_submit_has_bo(struct lima_submit *submit, struct lima_bo *bo, bool all);
 void *lima_submit_create_stream_bo(struct lima_submit *submit, int pipe,
                                    unsigned size, uint32_t *va);
 
