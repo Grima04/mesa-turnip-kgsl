@@ -45,7 +45,13 @@ void lima_dump_rsw_command_stream_print(struct lima_dump *dump, void *data,
                                         int size, uint32_t start);
 void lima_dump_texture_descriptor(struct lima_dump *dump, void *data,
                                   int size, uint32_t start, uint32_t offset);
-void lima_dump_command_stream_print(struct lima_dump *dump, void *data,
-                                    int size, bool is_float, const char *fmt, ...);
+
+void _lima_dump_command_stream_print(struct lima_dump *dump, void *data,
+                                     int size, bool is_float, const char *fmt, ...);
+#define lima_dump_command_stream_print(dump, ...) \
+   do { \
+      if (dump) \
+         _lima_dump_command_stream_print(dump, __VA_ARGS__); \
+   } while (0)
 
 #endif

@@ -165,12 +165,9 @@ lima_dump_free(struct lima_dump *dump)
 }
 
 void
-lima_dump_command_stream_print(struct lima_dump *dump, void *data,
-                               int size, bool is_float, const char *fmt, ...)
+_lima_dump_command_stream_print(struct lima_dump *dump, void *data,
+                                int size, bool is_float, const char *fmt, ...)
 {
-   if (!dump)
-      return;
-
    va_list ap;
    va_start(ap, fmt);
    vfprintf(dump->fp, fmt, ap);
