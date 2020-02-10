@@ -335,12 +335,13 @@ emit_copy_image_to_buffer_rcl(struct v3dv_job *job,
  */
 static void
 setup_framebuffer_params(struct v3dv_framebuffer *fb,
-                         struct v3dv_image *image,
+                         uint32_t width,
+                         uint32_t height,
                          uint32_t layer_count,
                          uint32_t internal_bpp)
 {
-   fb->width  = image->extent.width;
-   fb->height = image->extent.height;
+   fb->width  = width;
+   fb->height = height;
    fb->layers = layer_count;
    fb->internal_bpp = MAX2(RENDER_TARGET_MAXIMUM_32BPP, internal_bpp);
 
@@ -417,7 +418,9 @@ copy_image_to_buffer_tlb(struct v3dv_cmd_buffer *cmd_buffer,
    assert(num_layers > 0);
 
    struct v3dv_framebuffer framebuffer;
-   setup_framebuffer_params(&framebuffer, image, num_layers, internal_bpp);
+   setup_framebuffer_params(&framebuffer,
+                            image->extent.width, image->extent.height,
+                            num_layers, internal_bpp);
 
    struct v3dv_job *job = v3dv_cmd_buffer_start_job(cmd_buffer, false);
    v3dv_cmd_buffer_start_frame(cmd_buffer, &framebuffer);
@@ -447,3 +450,272 @@ v3dv_CmdCopyImageToBuffer(VkCommandBuffer commandBuffer,
    }
 }
 
+static void
+emit_copy_buffer_per_tile_list(struct v3dv_job *job,
+                               struct v3dv_buffer *dst,
+                               struct v3dv_buffer *src,
+                               uint32_t dst_offset,
+                               uint32_t src_offset,
+                               uint32_t stride,
+                               uint32_t format)
+{
+   struct v3dv_cl *cl = &job->indirect;
+   v3dv_cl_ensure_space(cl, 200, 1);
+   struct v3dv_cl_reloc tile_list_start = v3dv_cl_get_address(cl);
+
+   cl_emit(cl, TILE_COORDINATES_IMPLICIT, coords);
+
+   cl_emit(cl, LOAD_TILE_BUFFER_GENERAL, load) {
+      load.buffer_to_load = RENDER_TARGET_0;
+      load.address = v3dv_cl_address(src->mem->bo, src_offset);
+      load.input_image_format = format;
+      load.memory_format = VC5_TILING_RASTER;
+      load.height_in_ub_or_stride = stride;
+      load.decimate_mode = V3D_DECIMATE_MODE_SAMPLE_0;
+   }
+
+   cl_emit(cl, END_OF_LOADS, end);
+
+   cl_emit(cl, PRIM_LIST_FORMAT, fmt) {
+      fmt.primitive_type = LIST_TRIANGLES;
+   }
+
+   cl_emit(cl, BRANCH_TO_IMPLICIT_TILE_LIST, branch);
+
+   cl_emit(cl, STORE_TILE_BUFFER_GENERAL, store) {
+      store.buffer_to_store = RENDER_TARGET_0;
+      store.address = v3dv_cl_address(dst->mem->bo, dst_offset);
+      store.clear_buffer_being_stored = false;
+      store.output_image_format = format;
+      store.memory_format = VC5_TILING_RASTER;
+      store.height_in_ub_or_stride = stride;
+      store.decimate_mode = V3D_DECIMATE_MODE_SAMPLE_0;
+   }
+
+   cl_emit(cl, END_OF_TILE_MARKER, end);
+
+   cl_emit(cl, RETURN_FROM_SUB_LIST, ret);
+
+   cl_emit(&job->rcl, START_ADDRESS_OF_GENERIC_TILE_LIST, branch) {
+      branch.start = tile_list_start;
+      branch.end = v3dv_cl_get_address(cl);
+   }
+}
+
+static void
+emit_copy_buffer(struct v3dv_job *job,
+                 uint32_t min_x_supertile,
+                 uint32_t min_y_supertile,
+                 uint32_t max_x_supertile,
+                 uint32_t max_y_supertile,
+                 struct v3dv_buffer *dst,
+                 struct v3dv_buffer *src,
+                 uint32_t dst_offset,
+                 uint32_t src_offset,
+                 struct v3dv_framebuffer *framebuffer,
+                 uint32_t format)
+{
+   struct v3dv_cl *rcl = &job->rcl;
+
+   cl_emit(rcl, MULTICORE_RENDERING_TILE_LIST_SET_BASE, list) {
+      list.address = v3dv_cl_address(job->tile_alloc, 0);
+   }
+
+   cl_emit(rcl, MULTICORE_RENDERING_SUPERTILE_CFG, config) {
+      config.number_of_bin_tile_lists = 1;
+      config.total_frame_width_in_tiles = framebuffer->draw_tiles_x;
+      config.total_frame_height_in_tiles = framebuffer->draw_tiles_y;
+
+      config.supertile_width_in_tiles = framebuffer->supertile_width;
+      config.supertile_height_in_tiles = framebuffer->supertile_height;
+
+      config.total_frame_width_in_supertiles =
+         framebuffer->frame_width_in_supertiles;
+      config.total_frame_height_in_supertiles =
+         framebuffer->frame_height_in_supertiles;
+   }
+
+   /* GFXH-1742 workaround */
+   for (int i = 0; i < 2; i++) {
+      cl_emit(rcl, TILE_COORDINATES, coords);
+      cl_emit(rcl, END_OF_LOADS, end);
+      cl_emit(rcl, STORE_TILE_BUFFER_GENERAL, store) {
+         store.buffer_to_store = NONE;
+      }
+      cl_emit(rcl, END_OF_TILE_MARKER, end);
+   }
+
+   cl_emit(rcl, FLUSH_VCD_CACHE, flush);
+
+   const uint32_t stride = framebuffer->width * 4;
+   emit_copy_buffer_per_tile_list(job, dst, src,
+                                  dst_offset, src_offset,
+                                  stride, format);
+
+   for (int y = min_y_supertile; y <= max_y_supertile; y++) {
+      for (int x = min_x_supertile; x <= max_x_supertile; x++) {
+         cl_emit(rcl, SUPERTILE_COORDINATES, coords) {
+            coords.column_number_in_supertiles = x;
+            coords.row_number_in_supertiles = y;
+         }
+      }
+   }
+}
+
+static void
+emit_copy_buffer_rcl(struct v3dv_job *job,
+                     struct v3dv_buffer *dst,
+                     struct v3dv_buffer *src,
+                     uint32_t dst_offset,
+                     uint32_t src_offset,
+                     struct v3dv_framebuffer *framebuffer,
+                     uint32_t internal_type,
+                     uint32_t format)
+{
+   struct v3dv_cl *rcl = &job->rcl;
+   v3dv_cl_ensure_space_with_branch(rcl, 200 +
+                                    1 * 256 *
+                                    cl_packet_length(SUPERTILE_COORDINATES));
+
+   cl_emit(rcl, TILE_RENDERING_MODE_CFG_COMMON, config) {
+      config.early_z_disable = true;
+      config.image_width_pixels = framebuffer->width;
+      config.image_height_pixels = framebuffer->height;
+      config.number_of_render_targets = 1;
+      config.multisample_mode_4x = false;
+      config.maximum_bpp_of_all_render_targets = framebuffer->internal_bpp;
+   }
+
+   cl_emit(rcl, TILE_RENDERING_MODE_CFG_COLOR, rt) {
+      rt.render_target_0_internal_bpp = framebuffer->internal_bpp;
+      rt.render_target_0_internal_type = internal_type;
+      rt.render_target_0_clamp = V3D_RENDER_TARGET_CLAMP_NONE;
+   }
+
+   cl_emit(rcl, TILE_RENDERING_MODE_CFG_ZS_CLEAR_VALUES, clear) {
+      clear.z_clear_value = 0;
+      clear.stencil_clear_value = 0;
+   };
+
+   cl_emit(rcl, TILE_LIST_INITIAL_BLOCK_SIZE, init) {
+      init.use_auto_chained_tile_lists = true;
+      init.size_of_first_block_in_chained_tile_lists =
+         TILE_ALLOCATION_BLOCK_SIZE_64B;
+   }
+
+   uint32_t supertile_w_in_pixels =
+      framebuffer->tile_width * framebuffer->supertile_width;
+   uint32_t supertile_h_in_pixels =
+      framebuffer->tile_height * framebuffer->supertile_height;
+
+   const uint32_t min_x_supertile = 0;
+   const uint32_t min_y_supertile = 0;
+
+   const uint32_t max_x_supertile =
+      (framebuffer->width - 1) / supertile_w_in_pixels;
+   const uint32_t max_y_supertile =
+      (framebuffer->height - 1) / supertile_h_in_pixels;
+
+   emit_copy_buffer(job,
+                    min_x_supertile, min_y_supertile,
+                    max_x_supertile, max_y_supertile,
+                    dst, src, dst_offset, src_offset,
+                    framebuffer, format);
+
+   cl_emit(rcl, END_OF_RENDERING, end);
+}
+
+static void
+copy_buffer(struct v3dv_cmd_buffer *cmd_buffer,
+            struct v3dv_buffer *dst,
+            struct v3dv_buffer *src,
+            const VkBufferCopy *region)
+{
+   const uint32_t internal_bpp = V3D_INTERNAL_BPP_32;
+   const uint32_t internal_type = V3D_INTERNAL_TYPE_8UI;
+
+   /* Select appropriate pixel format for the copy operation based on the
+    * alignment of the size to copy.
+    */
+   uint32_t item_size;
+   uint32_t format;
+   switch (region->size % 4) {
+   case 0:
+      item_size = 4;
+      format = V3D_OUTPUT_IMAGE_FORMAT_RGBA8UI;
+      break;
+   case 2:
+      item_size = 2;
+      format = V3D_OUTPUT_IMAGE_FORMAT_RG8UI;
+      break;
+   case 1:
+   case 3:
+      item_size = 1;
+      format = V3D_OUTPUT_IMAGE_FORMAT_R8UI;
+      break;
+
+   }
+   assert(region->size % item_size == 0);
+   uint32_t num_items = region->size / item_size;
+
+   uint32_t src_offset = region->srcOffset;
+   uint32_t dst_offset = region->dstOffset;
+   while (num_items > 0) {
+      /* Figure out a TLB size configuration for the number of items to copy.
+       * We can't "render" more than 4096x4096 pixels in a single job, so make
+       * sure we don't exceed that by splitting the job into multiple jobs if
+       * needed.
+       */
+      const uint32_t max_dim_items = 4096;
+      const uint32_t max_items = max_dim_items * max_dim_items;
+      uint32_t width, height;
+      if (num_items > max_items) {
+         width = max_dim_items;
+         height = max_dim_items;
+      } else {
+         width = num_items;
+         height = 1;
+         while (width > max_dim_items ||
+                ((width % 2) == 0 && width > 2 * height)) {
+            width >>= 1;
+            height <<= 1;
+         }
+      }
+      assert(width <= max_dim_items && height <= max_dim_items);
+      assert(width * height <= num_items);
+
+      struct v3dv_framebuffer framebuffer;
+      setup_framebuffer_params(&framebuffer, width, height, 1, internal_bpp);
+
+      struct v3dv_job *job = v3dv_cmd_buffer_start_job(cmd_buffer, false);
+      v3dv_cmd_buffer_start_frame(cmd_buffer, &framebuffer);
+
+      v3dv_job_emit_binning_flush(job);
+
+      emit_copy_buffer_rcl(job, dst, src, dst_offset, src_offset,
+                           &framebuffer, internal_type, format);
+
+      v3dv_cmd_buffer_finish_job(cmd_buffer);
+
+      const uint32_t items_copied = width * height;
+      const uint32_t bytes_copied = items_copied * item_size;
+      num_items -= items_copied;
+      src_offset += bytes_copied;
+      dst_offset += bytes_copied;
+   }
+}
+
+void
+v3dv_CmdCopyBuffer(VkCommandBuffer commandBuffer,
+                   VkBuffer srcBuffer,
+                   VkBuffer dstBuffer,
+                   uint32_t regionCount,
+                   const VkBufferCopy *pRegions)
+{
+   V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
+   V3DV_FROM_HANDLE(v3dv_buffer, src_buffer, srcBuffer);
+   V3DV_FROM_HANDLE(v3dv_buffer, dst_buffer, dstBuffer);
+
+   for (uint32_t i = 0; i < regionCount; i++)
+     copy_buffer(cmd_buffer, dst_buffer, src_buffer, &pRegions[i]);
+}
