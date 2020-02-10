@@ -404,7 +404,7 @@ fd6_clear_lrz(struct fd_batch *batch, struct fd_resource *zsbuf, double depth)
 	OUT_RING(ring, A6XX_RB_2D_BLIT_CNTL_COLOR_FORMAT(FMT6_16_UNORM) |
 			0x4f00080);
 
-	fd6_event_write(batch, ring, UNK_1D, true);
+	fd6_event_write(batch, ring, PC_CCU_FLUSH_COLOR_TS, true);
 	fd6_event_write(batch, ring, PC_CCU_INVALIDATE_COLOR, false);
 
 	OUT_PKT4(ring, REG_A6XX_RB_2D_SRC_SOLID_C0, 4);
@@ -452,8 +452,8 @@ fd6_clear_lrz(struct fd_batch *batch, struct fd_resource *zsbuf, double depth)
 	OUT_PKT4(ring, REG_A6XX_RB_UNKNOWN_8E04, 1);
 	OUT_RING(ring, 0x0);               /* RB_UNKNOWN_8E04 */
 
-	fd6_event_write(batch, ring, UNK_1D, true);
-	fd6_event_write(batch, ring, FACENESS_FLUSH, true);
+	fd6_event_write(batch, ring, PC_CCU_FLUSH_COLOR_TS, true);
+	fd6_event_write(batch, ring, PC_CCU_FLUSH_DEPTH_TS, true);
 	fd6_event_write(batch, ring, CACHE_FLUSH_TS, true);
 
 	fd6_cache_inv(batch, ring);

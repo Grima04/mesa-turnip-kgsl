@@ -283,8 +283,8 @@ void tu_blit(struct tu_cmd_buffer *cmdbuf, struct tu_cs *cs,
    tu_cs_reserve_space(cmdbuf->device, cs, 18);
 
    tu6_emit_event_write(cmdbuf, cs, LRZ_FLUSH, false);
-   tu6_emit_event_write(cmdbuf, cs, 0x1d, true);
-   tu6_emit_event_write(cmdbuf, cs, FACENESS_FLUSH, true);
+   tu6_emit_event_write(cmdbuf, cs, PC_CCU_FLUSH_COLOR_TS, true);
+   tu6_emit_event_write(cmdbuf, cs, PC_CCU_FLUSH_DEPTH_TS, true);
    tu6_emit_event_write(cmdbuf, cs, PC_CCU_INVALIDATE_COLOR, false);
    tu6_emit_event_write(cmdbuf, cs, PC_CCU_INVALIDATE_DEPTH, false);
 
@@ -367,8 +367,8 @@ void tu_blit(struct tu_cmd_buffer *cmdbuf, struct tu_cs *cs,
 
    tu_cs_reserve_space(cmdbuf->device, cs, 17);
 
-   tu6_emit_event_write(cmdbuf, cs, 0x1d, true);
-   tu6_emit_event_write(cmdbuf, cs, FACENESS_FLUSH, true);
+   tu6_emit_event_write(cmdbuf, cs, PC_CCU_FLUSH_COLOR_TS, true);
+   tu6_emit_event_write(cmdbuf, cs, PC_CCU_FLUSH_DEPTH_TS, true);
    tu6_emit_event_write(cmdbuf, cs, CACHE_FLUSH_TS, true);
    tu6_emit_event_write(cmdbuf, cs, CACHE_INVALIDATE, false);
 }

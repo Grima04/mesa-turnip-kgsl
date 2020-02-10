@@ -37,8 +37,9 @@ xsi:schemaLocation="http://nouveau.freedesktop.org/ rules-ng.xsd">
 	<value name="FLUSH_SO_3" value="20" variants="A5XX,A6XX"/>
 	<value name="PC_CCU_INVALIDATE_DEPTH" value="24" variants="A5XX,A6XX"/>
 	<value name="PC_CCU_INVALIDATE_COLOR" value="25" variants="A5XX,A6XX"/>
-	<value name="UNK_1C" value="28" variants="A5XX,A6XX"/>
-	<value name="UNK_1D" value="29" variants="A5XX,A6XX"/>
+	<value name="PC_CCU_RESOLVE_TS" value="26" variants="A6XX"/>
+	<value name="PC_CCU_FLUSH_DEPTH_TS" value="28" variants="A5XX,A6XX"/>
+	<value name="PC_CCU_FLUSH_COLOR_TS" value="29" variants="A5XX,A6XX"/>
 	<value name="BLIT" value="30" variants="A5XX,A6XX"/>
 	<value name="UNK_25" value="37" variants="A5XX"/>
 	<value name="LRZ_FLUSH" value="38" variants="A5XX,A6XX"/>

@@ -152,8 +152,8 @@ emit_setup(struct fd_batch *batch)
 {
 	struct fd_ringbuffer *ring = batch->draw;
 
-	fd6_event_write(batch, ring, 0x1d, true);
-	fd6_event_write(batch, ring, FACENESS_FLUSH, true);
+	fd6_event_write(batch, ring, PC_CCU_FLUSH_COLOR_TS, true);
+	fd6_event_write(batch, ring, PC_CCU_FLUSH_DEPTH_TS, true);
 	fd6_event_write(batch, ring, PC_CCU_INVALIDATE_COLOR, false);
 	fd6_event_write(batch, ring, PC_CCU_INVALIDATE_DEPTH, false);
 }
@@ -660,8 +660,8 @@ handle_rgba_blit(struct fd_context *ctx, const struct pipe_blit_info *info)
 		emit_blit_or_clear_texture(ctx, batch->draw, info, NULL);
 	}
 
-	fd6_event_write(batch, batch->draw, 0x1d, true);
-	fd6_event_write(batch, batch->draw, FACENESS_FLUSH, true);
+	fd6_event_write(batch, batch->draw, PC_CCU_FLUSH_COLOR_TS, true);
+	fd6_event_write(batch, batch->draw, PC_CCU_FLUSH_DEPTH_TS, true);
 	fd6_event_write(batch, batch->draw, CACHE_FLUSH_TS, true);
 	fd6_cache_inv(batch, batch->draw);
 

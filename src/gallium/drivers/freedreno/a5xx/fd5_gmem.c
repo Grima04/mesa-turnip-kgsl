@@ -775,7 +775,7 @@ fd5_emit_sysmem_fini(struct fd_batch *batch)
 	fd5_emit_lrz_flush(ring);
 
 	OUT_PKT7(ring, CP_EVENT_WRITE, 4);
-	OUT_RING(ring, UNK_1D);
+	OUT_RING(ring, PC_CCU_FLUSH_COLOR_TS);
 	OUT_RELOCW(ring, fd5_ctx->blit_mem, 0, 0, 0);  /* ADDR_LO/HI */
 	OUT_RING(ring, 0x00000000);
 }

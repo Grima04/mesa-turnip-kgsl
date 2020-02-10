@@ -1493,7 +1493,7 @@ tu_cmd_prepare_sysmem_clear_ib(struct tu_cmd_buffer *cmd,
     * when nothing clears which we currently can't handle.
     */
    tu_cs_reserve_space(cmd->device, &sub_cs, 5);
-   tu6_emit_event_write(cmd, &sub_cs, UNK_1D, true);
+   tu6_emit_event_write(cmd, &sub_cs, PC_CCU_FLUSH_COLOR_TS, true);
 
    cmd->state.sysmem_clear_ib = tu_cs_end_sub_stream(&cmd->sub_cs, &sub_cs);
 }
@@ -1584,8 +1584,8 @@ tu6_sysmem_render_end(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 
    tu6_emit_lrz_flush(cmd, cs);
 
-   tu6_emit_event_write(cmd, cs, UNK_1C, true);
-   tu6_emit_event_write(cmd, cs, UNK_1D, true);
+   tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_COLOR_TS, true);
+   tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_DEPTH_TS, true);
 
    tu_cs_sanity_check(cs);
 }
@@ -2733,8 +2733,8 @@ tu_CmdNextSubpass(VkCommandBuffer commandBuffer, VkSubpassContents contents)
    /* Emit flushes so that input attachments will read the correct value. This
     * is for sysmem only, although it shouldn't do much harm on gmem.
     */
-   tu6_emit_event_write(cmd, cs, UNK_1C, true);
-   tu6_emit_event_write(cmd, cs, UNK_1D, true);
+   tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_COLOR_TS, true);
+   tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_DEPTH_TS, true);
 
    /* TODO:
     * since we don't know how to do GMEM->GMEM resolve,

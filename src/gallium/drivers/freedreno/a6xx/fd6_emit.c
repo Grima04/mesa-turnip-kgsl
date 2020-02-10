@@ -1404,8 +1404,8 @@ fd6_framebuffer_barrier(struct fd_context *ctx)
 	OUT_RING(ring, CP_WAIT_REG_MEM_4_MASK(~0));
 	OUT_RING(ring, CP_WAIT_REG_MEM_5_DELAY_LOOP_CYCLES(16));
 
-	fd6_event_write(batch, ring, UNK_1D, true);
-	fd6_event_write(batch, ring, UNK_1C, true);
+	fd6_event_write(batch, ring, PC_CCU_FLUSH_COLOR_TS, true);
+	fd6_event_write(batch, ring, PC_CCU_FLUSH_DEPTH_TS, true);
 
 	seqno = fd6_event_write(batch, ring, CACHE_FLUSH_TS, true);
 
