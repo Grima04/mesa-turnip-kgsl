@@ -2604,7 +2604,7 @@ void select_instruction(opt_ctx &ctx, aco_ptr<Instruction>& instr)
                continue;
             /* if one of the operands is sgpr, we cannot add a literal somewhere else on pre-GFX10 or operands other than the 1st */
             if (instr->operands[i].getTemp().type() == RegType::sgpr && (i > 0 || ctx.program->chip_class < GFX10)) {
-               if (ctx.info[instr->operands[i].tempId()].is_literal()) {
+               if (!sgpr_used && ctx.info[instr->operands[i].tempId()].is_literal()) {
                   literal_uses = ctx.uses[instr->operands[i].tempId()];
                   literal_idx = i;
                } else {
