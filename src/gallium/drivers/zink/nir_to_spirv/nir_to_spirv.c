@@ -601,26 +601,29 @@ get_alu_src_raw(struct ntv_context *ctx, nir_alu_instr *alu, unsigned src)
    int bit_size = nir_src_bit_size(alu->src[src].src);
    assert(bit_size == 1 || bit_size == 32);
 
-   SpvId uint_type = spirv_builder_type_uint(&ctx->builder, MAX2(bit_size, 32));
+   SpvId raw_type = spirv_builder_type_uint(&ctx->builder, MAX2(bit_size, 32));
    if (used_channels == 1) {
       uint32_t indices[] =  { alu->src[src].swizzle[0] };
-      return spirv_builder_emit_composite_extract(&ctx->builder, uint_type,
+      return spirv_builder_emit_composite_extract(&ctx->builder, raw_type,
                                                   def, indices,
                                                   ARRAY_SIZE(indices));
    } else if (live_channels == 1) {
-      SpvId uvec_type = spirv_builder_type_vector(&ctx->builder, uint_type,
-                                                  used_channels);
+      SpvId raw_vec_type = spirv_builder_type_vector(&ctx->builder,
+                                                     raw_type,
+                                                     used_channels);
 
       SpvId constituents[NIR_MAX_VEC_COMPONENTS];
       for (unsigned i = 0; i < used_channels; ++i)
         constituents[i] = def;
 
-      return spirv_builder_emit_composite_construct(&ctx->builder, uvec_type,
+      return spirv_builder_emit_composite_construct(&ctx->builder,
+                                                    raw_vec_type,
                                                     constituents,
                                                     used_channels);
    } else {
-      SpvId uvec_type = spirv_builder_type_vector(&ctx->builder, uint_type,
-                                                  used_channels);
+      SpvId raw_vec_type = spirv_builder_type_vector(&ctx->builder,
+                                                     raw_type,
+                                                     used_channels);
 
       uint32_t components[NIR_MAX_VEC_COMPONENTS];
       size_t num_components = 0;
@@ -631,8 +634,9 @@ get_alu_src_raw(struct ntv_context *ctx, nir_alu_instr *alu, unsigned src)
          components[num_components++] = alu->src[src].swizzle[i];
       }
 
-      return spirv_builder_emit_vector_shuffle(&ctx->builder, uvec_type,
-                                        def, def, components, num_components);
+      return spirv_builder_emit_vector_shuffle(&ctx->builder, raw_vec_type,
+                                               def, def, components,
+                                               num_components);
    }
 }
 
