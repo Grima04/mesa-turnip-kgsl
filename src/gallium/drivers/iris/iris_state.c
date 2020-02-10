@@ -6943,6 +6943,45 @@ iris_rebind_buffer(struct iris_context *ice,
 
 /* ------------------------------------------------------------------- */
 
+/**
+ * Introduce a batch synchronization boundary, and update its cache coherency
+ * status to reflect the execution of a PIPE_CONTROL command with the
+ * specified flags.
+ */
+static void
+batch_mark_sync_for_pipe_control(struct iris_batch *batch, uint32_t flags)
+{
+   iris_batch_sync_boundary(batch);
+
+   if ((flags & PIPE_CONTROL_CS_STALL)) {
+      if ((flags & PIPE_CONTROL_RENDER_TARGET_FLUSH))
+         iris_batch_mark_flush_sync(batch, IRIS_DOMAIN_RENDER_WRITE);
+
+      if ((flags & PIPE_CONTROL_DEPTH_CACHE_FLUSH))
+         iris_batch_mark_flush_sync(batch, IRIS_DOMAIN_DEPTH_WRITE);
+
+      if ((flags & PIPE_CONTROL_FLUSH_ENABLE))
+         iris_batch_mark_flush_sync(batch, IRIS_DOMAIN_OTHER_WRITE);
+
+      if ((flags & (PIPE_CONTROL_CACHE_FLUSH_BITS |
+                    PIPE_CONTROL_STALL_AT_SCOREBOARD)))
+         iris_batch_mark_flush_sync(batch, IRIS_DOMAIN_OTHER_READ);
+   }
+
+   if ((flags & PIPE_CONTROL_RENDER_TARGET_FLUSH))
+      iris_batch_mark_invalidate_sync(batch, IRIS_DOMAIN_RENDER_WRITE);
+
+   if ((flags & PIPE_CONTROL_DEPTH_CACHE_FLUSH))
+      iris_batch_mark_invalidate_sync(batch, IRIS_DOMAIN_DEPTH_WRITE);
+
+   if ((flags & PIPE_CONTROL_FLUSH_ENABLE))
+      iris_batch_mark_invalidate_sync(batch, IRIS_DOMAIN_OTHER_WRITE);
+
+   if ((flags & PIPE_CONTROL_TEXTURE_CACHE_INVALIDATE) &&
+       (flags & PIPE_CONTROL_CONST_CACHE_INVALIDATE))
+      iris_batch_mark_invalidate_sync(batch, IRIS_DOMAIN_OTHER_READ);
+}
+
 static unsigned
 flags_to_post_sync_op(uint32_t flags)
 {
@@ -7371,6 +7410,7 @@ iris_emit_raw_pipe_control(struct iris_batch *batch,
               imm, reason);
    }
 
+   batch_mark_sync_for_pipe_control(batch, flags);
    iris_batch_sync_region_start(batch);
 
    iris_emit_cmd(batch, GENX(PIPE_CONTROL), pc) {
