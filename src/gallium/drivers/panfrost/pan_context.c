@@ -141,6 +141,9 @@ panfrost_clear(
         panfrost_batch_clear(batch, buffers, color, depth, stencil);
 }
 
+/* TODO: Bifrost requires just a mali_shared_memory, without the rest of the
+ * framebuffer */
+
 static void
 panfrost_attach_vt_framebuffer(struct panfrost_context *ctx)
 {
@@ -162,7 +165,7 @@ panfrost_attach_vt_framebuffer(struct panfrost_context *ctx)
         }
 
         for (unsigned i = 0; i < PIPE_SHADER_TYPES; ++i)
-                ctx->payloads[i].postfix.framebuffer = batch->framebuffer.gpu;
+                ctx->payloads[i].postfix.shared_memory = batch->framebuffer.gpu;
 }
 
 /* Reset per-frame context, called on context initialisation as well as after
@@ -172,7 +175,7 @@ void
 panfrost_invalidate_frame(struct panfrost_context *ctx)
 {
         for (unsigned i = 0; i < PIPE_SHADER_TYPES; ++i)
-                ctx->payloads[i].postfix.framebuffer = 0;
+                ctx->payloads[i].postfix.shared_memory = 0;
 
         if (ctx->rasterizer)
                 ctx->dirty |= PAN_DIRTY_RASTERIZER;

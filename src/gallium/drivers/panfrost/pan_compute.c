@@ -131,7 +131,7 @@ panfrost_launch_grid(struct pipe_context *pipe,
                 .shared_workgroup_count = ~0
         };
 
-        payload->postfix.framebuffer =
+        payload->postfix.shared_memory =
                 panfrost_upload_transient(batch, &shared, sizeof(shared));
 
         /* Invoke according to the grid info */

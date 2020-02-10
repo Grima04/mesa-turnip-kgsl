@@ -1056,17 +1056,6 @@ struct bifrost_tiler_only {
         u64 zero8;
 } __attribute__((packed));
 
-struct bifrost_scratchpad {
-        u32 zero;
-        u32 flags; // = 0x1f
-        /* This is a pointer to a CPU-inaccessible buffer, 16 pages, allocated
-         * during startup. It seems to serve the same purpose as the
-         * gpu_scratchpad in the SFBD for Midgard, although it's slightly
-         * larger.
-         */
-        mali_ptr gpu_scratchpad;
-} __attribute__((packed));
-
 struct mali_vertex_tiler_postfix {
         /* Zero for vertex jobs. Pointer to the position (gl_Position) varying
          * output from the vertex shader for tiler jobs.
@@ -1100,11 +1089,10 @@ struct mali_vertex_tiler_postfix {
         u64 viewport;
         u64 occlusion_counter; /* A single bit as far as I can tell */
 
-        /* Note: on Bifrost, this isn't actually the FBD. It points to
-         * bifrost_scratchpad instead. However, it does point to the same thing
-         * in vertex and tiler jobs.
-         */
-        mali_ptr framebuffer;
+        /* On Bifrost, this points directly to a mali_shared_memory structure.
+         * On Midgard, this points to a framebuffer (either SFBD or MFBD as
+         * tagged), which embeds a mali_shared_memory structure */
+        mali_ptr shared_memory;
 } __attribute__((packed));
 
 struct midgard_payload_vertex_tiler {

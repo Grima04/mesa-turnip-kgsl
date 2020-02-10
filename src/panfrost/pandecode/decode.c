@@ -1809,29 +1809,6 @@ pandecode_uniforms(mali_ptr uniforms, unsigned uniform_count)
         free(ptr);
 }
 
-static void
-pandecode_scratchpad(uintptr_t pscratchpad, int job_no, char *suffix)
-{
-
-        struct pandecode_mapped_memory *mem = pandecode_find_mapped_gpu_mem_containing(pscratchpad);
-
-        struct bifrost_scratchpad *PANDECODE_PTR_VAR(scratchpad, mem, pscratchpad);
-
-        if (scratchpad->zero) {
-                pandecode_msg("XXX: scratchpad zero tripped");
-                pandecode_prop("zero = 0x%x\n", scratchpad->zero);
-        }
-
-        pandecode_log("struct bifrost_scratchpad scratchpad_%"PRIx64"_%d%s = {\n", pscratchpad, job_no, suffix);
-        pandecode_indent++;
-
-        pandecode_prop("flags = 0x%x", scratchpad->flags);
-        MEMORY_PROP(scratchpad, gpu_scratchpad);
-
-        pandecode_indent--;
-        pandecode_log("};\n");
-}
-
 static const char *
 shader_type_for_job(unsigned type)
 {
@@ -2137,14 +2114,15 @@ pandecode_vertex_tiler_postfix_pre(
                 .rt_count = 1
         };
 
-        if (is_bifrost)
-                pandecode_scratchpad(p->framebuffer & ~1, job_no, suffix);
-        else if (p->framebuffer & MALI_MFBD)
-                fbd_info = pandecode_mfbd_bfr((u64) ((uintptr_t) p->framebuffer) & FBD_MASK, job_no, false, job_type == JOB_TYPE_COMPUTE);
+        if (is_bifrost) {
+                pandecode_log_cont("\t/* %X %/\n", p->shared_memory & 1);
+                pandecode_compute_fbd(p->shared_memory & ~1, job_no);
+        } else if (p->shared_memory & MALI_MFBD)
+                fbd_info = pandecode_mfbd_bfr((u64) ((uintptr_t) p->shared_memory) & FBD_MASK, job_no, false, job_type == JOB_TYPE_COMPUTE);
         else if (job_type == JOB_TYPE_COMPUTE)
-                pandecode_compute_fbd((u64) (uintptr_t) p->framebuffer, job_no);
+                pandecode_compute_fbd((u64) (uintptr_t) p->shared_memory, job_no);
         else
-                fbd_info = pandecode_sfbd((u64) (uintptr_t) p->framebuffer, job_no, false, gpu_id);
+                fbd_info = pandecode_sfbd((u64) (uintptr_t) p->shared_memory, job_no, false, gpu_id);
 
         int varying_count = 0, attribute_count = 0, uniform_count = 0, uniform_buffer_count = 0;
         int texture_count = 0, sampler_count = 0;
@@ -2309,7 +2287,7 @@ pandecode_vertex_tiler_postfix_pre(
                 /* MRT blend fields are used whenever MFBD is used, with
                  * per-RT descriptors */
 
-                if (job_type == JOB_TYPE_TILER && p->framebuffer & MALI_MFBD) {
+                if (job_type == JOB_TYPE_TILER && p->shared_memory & MALI_MFBD) {
                         void* blend_base = (void *) (s + 1);
 
                         for (unsigned i = 0; i < fbd_info.rt_count; i++) {
@@ -2758,9 +2736,6 @@ pandecode_fragment_job(const struct pandecode_mapped_memory *mem,
         const struct mali_payload_fragment *PANDECODE_PTR_VAR(s, mem, payload);
 
         bool is_mfbd = s->framebuffer & MALI_MFBD;
-
-        /* Bifrost theoretically may retain support for SFBD on compute jobs,
-         * but for graphics workloads with a FRAGMENT payload, use MFBD */
 
         if (!is_mfbd && is_bifrost)
                 pandecode_msg("XXX: Bifrost fragment must use MFBD\n");
