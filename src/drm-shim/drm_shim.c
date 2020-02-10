@@ -452,8 +452,26 @@ readlink(const char *path, char *buf, size_t size)
 
    if (strcmp(path, subsystem_path) != 0)
       return real_readlink(path, buf, size);
-   strncpy(buf, "/platform", size);
-   buf[size - 1] = 0;
+
+   static const struct {
+      const char *name;
+      int bus_type;
+   } bus_types[] = {
+      { "/pci", DRM_BUS_PCI },
+      { "/usb", DRM_BUS_USB },
+      { "/platform", DRM_BUS_PLATFORM },
+      { "/spi", DRM_BUS_PLATFORM },
+      { "/host1x", DRM_BUS_HOST1X },
+   };
+
+   for (uint32_t i = 0; i < ARRAY_SIZE(bus_types); i++) {
+      if (bus_types[i].bus_type != shim_device.bus_type)
+         continue;
+
+      strncpy(buf, bus_types[i].name, size);
+      buf[size - 1] = 0;
+      break;
+   }
 
    return strlen(buf) + 1;
 }
