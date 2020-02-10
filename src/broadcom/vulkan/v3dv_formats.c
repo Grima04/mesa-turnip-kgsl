@@ -337,8 +337,10 @@ buffer_format_features(VkFormat vk_format, const struct v3dv_format *v3dv_format
 
    VkFormatFeatureFlags flags = 0;
 
-   flags |= VK_FORMAT_FEATURE_VERTEX_BUFFER_BIT |
-            VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT;
+   flags |= VK_FORMAT_FEATURE_VERTEX_BUFFER_BIT;
+
+   /* FIXME: add texel uniform/storage for formats that are "image compatible"
+    */
 
    return flags;
 }
