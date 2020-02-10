@@ -864,7 +864,7 @@ alu_instr_src_components(const nir_alu_instr *instr, unsigned src)
 static SpvId
 get_alu_src(struct ntv_context *ctx, nir_alu_instr *alu, unsigned src)
 {
-   SpvId uint_value = get_alu_src_raw(ctx, alu, src);
+   SpvId raw_value = get_alu_src_raw(ctx, alu, src);
 
    unsigned num_components = alu_instr_src_components(alu, src);
    unsigned bit_size = nir_src_bit_size(alu->src[src].src);
@@ -873,16 +873,16 @@ get_alu_src(struct ntv_context *ctx, nir_alu_instr *alu, unsigned src)
    switch (nir_alu_type_get_base_type(type)) {
    case nir_type_bool:
       assert(bit_size == 1);
-      return uvec_to_bvec(ctx, uint_value, num_components);
+      return uvec_to_bvec(ctx, raw_value, num_components);
 
    case nir_type_int:
-      return bitcast_to_ivec(ctx, uint_value, bit_size, num_components);
+      return bitcast_to_ivec(ctx, raw_value, bit_size, num_components);
 
    case nir_type_uint:
-      return uint_value;
+      return raw_value;
 
    case nir_type_float:
-      return bitcast_to_fvec(ctx, uint_value, bit_size, num_components);
+      return bitcast_to_fvec(ctx, raw_value, bit_size, num_components);
 
    default:
       unreachable("unknown nir_alu_type");
