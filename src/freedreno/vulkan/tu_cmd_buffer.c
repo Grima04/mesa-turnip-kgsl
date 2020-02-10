@@ -2760,7 +2760,8 @@ enum tu_draw_state_group_id
    TU_DRAW_STATE_VS_CONST,
    TU_DRAW_STATE_FS_CONST,
    TU_DRAW_STATE_VS_TEX,
-   TU_DRAW_STATE_FS_TEX,
+   TU_DRAW_STATE_FS_TEX_SYSMEM,
+   TU_DRAW_STATE_FS_TEX_GMEM,
    TU_DRAW_STATE_FS_IBO,
    TU_DRAW_STATE_VS_PARAMS,
 
@@ -2813,7 +2814,7 @@ write_tex_const(struct tu_cmd_buffer *cmd,
                 uint32_t *dst,
                 struct tu_descriptor_state *descriptors_state,
                 const struct tu_descriptor_map *map,
-                unsigned i, unsigned array_index)
+                unsigned i, unsigned array_index, bool is_sysmem)
 {
    assert(descriptors_state->valid & (1 << map->set[i]));
 
@@ -2844,7 +2845,7 @@ write_tex_const(struct tu_cmd_buffer *cmd,
       break;
    }
 
-   if (layout->type == VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT) {
+   if (layout->type == VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT && !is_sysmem) {
       const struct tu_tiling_config *tiling = &cmd->state.tiling_config;
       uint32_t a = cmd->state.subpass->input_attachments[map->value[i] +
                                                          array_index].attachment;
@@ -3123,7 +3124,8 @@ tu6_emit_textures(struct tu_cmd_buffer *cmd,
                   struct tu_descriptor_state *descriptors_state,
                   gl_shader_stage type,
                   struct tu_cs_entry *entry,
-                  bool *needs_border)
+                  bool *needs_border,
+                  bool is_sysmem)
 {
    struct tu_device *device = cmd->device;
    struct tu_cs *draw_state = &cmd->sub_cs;
@@ -3148,7 +3150,8 @@ tu6_emit_textures(struct tu_cmd_buffer *cmd,
       for (int j = 0; j < link->texture_map.array_size[i]; j++) {
          write_tex_const(cmd,
                          &tex_const.map[A6XX_TEX_CONST_DWORDS * tex_index++],
-                         descriptors_state, &link->texture_map, i, j);
+                         descriptors_state, &link->texture_map, i, j,
+                         is_sysmem);
       }
    }
 
@@ -3583,15 +3586,28 @@ tu6_bind_draw_states(struct tu_cmd_buffer *cmd,
    if (cmd->state.dirty &
          (TU_CMD_DIRTY_PIPELINE | TU_CMD_DIRTY_DESCRIPTOR_SETS)) {
       bool needs_border = false;
-      struct tu_cs_entry vs_tex, fs_tex, fs_ibo;
+      struct tu_cs_entry vs_tex, fs_tex_sysmem, fs_tex_gmem, fs_ibo;
 
       result = tu6_emit_textures(cmd, pipeline, descriptors_state,
-                                 MESA_SHADER_VERTEX, &vs_tex, &needs_border);
+                                 MESA_SHADER_VERTEX, &vs_tex, &needs_border,
+                                 false);
+      if (result != VK_SUCCESS)
+         return result;
+
+      /* TODO: we could emit just one texture descriptor draw state when there
+       * are no input attachments, which is the most common case. We could
+       * also split out the sampler state, which doesn't change even for input
+       * attachments.
+       */
+      result = tu6_emit_textures(cmd, pipeline, descriptors_state,
+                                 MESA_SHADER_FRAGMENT, &fs_tex_sysmem,
+                                 &needs_border, true);
       if (result != VK_SUCCESS)
          return result;
 
       result = tu6_emit_textures(cmd, pipeline, descriptors_state,
-                                 MESA_SHADER_FRAGMENT, &fs_tex, &needs_border);
+                                 MESA_SHADER_FRAGMENT, &fs_tex_gmem,
+                                 &needs_border, false);
       if (result != VK_SUCCESS)
          return result;
 
@@ -3608,9 +3624,15 @@ tu6_bind_draw_states(struct tu_cmd_buffer *cmd,
          };
       draw_state_groups[draw_state_group_count++] =
          (struct tu_draw_state_group) {
-            .id = TU_DRAW_STATE_FS_TEX,
-            .enable_mask = ENABLE_DRAW,
-            .ib = fs_tex,
+            .id = TU_DRAW_STATE_FS_TEX_GMEM,
+            .enable_mask = CP_SET_DRAW_STATE__0_GMEM,
+            .ib = fs_tex_gmem,
+         };
+      draw_state_groups[draw_state_group_count++] =
+         (struct tu_draw_state_group) {
+            .id = TU_DRAW_STATE_FS_TEX_SYSMEM,
+            .enable_mask = CP_SET_DRAW_STATE__0_SYSMEM,
+            .ib = fs_tex_sysmem,
          };
       draw_state_groups[draw_state_group_count++] =
          (struct tu_draw_state_group) {
@@ -3942,7 +3964,7 @@ tu_dispatch(struct tu_cmd_buffer *cmd,
 
    bool needs_border;
    result = tu6_emit_textures(cmd, pipeline, descriptors_state,
-                              MESA_SHADER_COMPUTE, &ib, &needs_border);
+                              MESA_SHADER_COMPUTE, &ib, &needs_border, false);
    if (result != VK_SUCCESS) {
       cmd->record_result = result;
       return;
