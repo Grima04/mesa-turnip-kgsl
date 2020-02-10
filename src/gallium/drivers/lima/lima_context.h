@@ -221,14 +221,14 @@ struct lima_context {
 
    struct lima_ctx_buff_state buffer_state[lima_ctx_buff_num];
 
-   /* current submit */
-   struct lima_submit *submit;
+   /* current job */
+   struct lima_job *job;
 
-   /* map from lima_submit_key to lima_submit */
-   struct hash_table *submits;
+   /* map from lima_job_key to lima_job */
+   struct hash_table *jobs;
 
-   /* map from pipe_resource to lima_submit which write to it */
-   struct hash_table *write_submits;
+   /* map from pipe_resource to lima_job which write to it */
+   struct hash_table *write_jobs;
 
    int in_sync_fd;
    uint32_t in_sync[2];
@@ -283,9 +283,9 @@ struct pipe_context *
 lima_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags);
 
 void lima_flush(struct lima_context *ctx);
-void lima_flush_submit_accessing_bo(
+void lima_flush_job_accessing_bo(
    struct lima_context *ctx, struct lima_bo *bo, bool write);
-void lima_flush_previous_submit_writing_resource(
+void lima_flush_previous_job_writing_resource(
    struct lima_context *ctx, struct pipe_resource *prsc);
 
 #endif

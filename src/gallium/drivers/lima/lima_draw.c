@@ -40,7 +40,7 @@
 #include "lima_resource.h"
 #include "lima_program.h"
 #include "lima_bo.h"
-#include "lima_submit.h"
+#include "lima_job.h"
 #include "lima_texture.h"
 #include "lima_util.h"
 #include "lima_gpu.h"
@@ -60,30 +60,30 @@ lima_is_scissor_zero(struct lima_context *ctx)
 }
 
 static void
-lima_update_submit_wb(struct lima_context *ctx, unsigned buffers)
+lima_update_job_wb(struct lima_context *ctx, unsigned buffers)
 {
-   struct lima_submit *submit = lima_submit_get(ctx);
+   struct lima_job *job = lima_job_get(ctx);
    struct lima_context_framebuffer *fb = &ctx->framebuffer;
 
-   /* add to submit when the buffer is dirty and resolve is clear (not added before) */
+   /* add to job when the buffer is dirty and resolve is clear (not added before) */
    if (fb->base.nr_cbufs && (buffers & PIPE_CLEAR_COLOR0) &&
-       !(submit->resolve & PIPE_CLEAR_COLOR0)) {
+       !(job->resolve & PIPE_CLEAR_COLOR0)) {
       struct lima_resource *res = lima_resource(fb->base.cbufs[0]->texture);
-      lima_flush_submit_accessing_bo(ctx, res->bo, true);
-      _mesa_hash_table_insert(ctx->write_submits, &res->base, submit);
-      lima_submit_add_bo(submit, LIMA_PIPE_PP, res->bo, LIMA_SUBMIT_BO_WRITE);
+      lima_flush_job_accessing_bo(ctx, res->bo, true);
+      _mesa_hash_table_insert(ctx->write_jobs, &res->base, job);
+      lima_job_add_bo(job, LIMA_PIPE_PP, res->bo, LIMA_SUBMIT_BO_WRITE);
    }
 
-   /* add to submit when the buffer is dirty and resolve is clear (not added before) */
+   /* add to job when the buffer is dirty and resolve is clear (not added before) */
    if (fb->base.zsbuf && (buffers & (PIPE_CLEAR_DEPTH | PIPE_CLEAR_STENCIL)) &&
-       !(submit->resolve & (PIPE_CLEAR_DEPTH | PIPE_CLEAR_STENCIL))) {
+       !(job->resolve & (PIPE_CLEAR_DEPTH | PIPE_CLEAR_STENCIL))) {
       struct lima_resource *res = lima_resource(fb->base.zsbuf->texture);
-      lima_flush_submit_accessing_bo(ctx, res->bo, true);
-      _mesa_hash_table_insert(ctx->write_submits, &res->base, submit);
-      lima_submit_add_bo(submit, LIMA_PIPE_PP, res->bo, LIMA_SUBMIT_BO_WRITE);
+      lima_flush_job_accessing_bo(ctx, res->bo, true);
+      _mesa_hash_table_insert(ctx->write_jobs, &res->base, job);
+      lima_job_add_bo(job, LIMA_PIPE_PP, res->bo, LIMA_SUBMIT_BO_WRITE);
    }
 
-   submit->resolve |= buffers;
+   job->resolve |= buffers;
 }
 
 static void
@@ -102,16 +102,16 @@ lima_clear(struct pipe_context *pctx, unsigned buffers,
            const union pipe_color_union *color, double depth, unsigned stencil)
 {
    struct lima_context *ctx = lima_context(pctx);
-   struct lima_submit *submit = lima_submit_get(ctx);
+   struct lima_job *job = lima_job_get(ctx);
 
-   /* flush if this submit already contains any draw, otherwise multi clear can be
-    * combined into a single submit */
-   if (lima_submit_has_draw_pending(submit)) {
-      lima_do_submit(submit);
-      submit = lima_submit_get(ctx);
+   /* flush if this job already contains any draw, otherwise multi clear can be
+    * combined into a single job */
+   if (lima_job_has_draw_pending(job)) {
+      lima_do_job(job);
+      job = lima_job_get(ctx);
    }
 
-   lima_update_submit_wb(ctx, buffers);
+   lima_update_job_wb(ctx, buffers);
 
    /* no need to reload if cleared */
    if (ctx->framebuffer.base.nr_cbufs && (buffers & PIPE_CLEAR_COLOR0)) {
@@ -119,7 +119,7 @@ lima_clear(struct pipe_context *pctx, unsigned buffers,
       surf->reload = false;
    }
 
-   struct lima_submit_clear *clear = &submit->clear;
+   struct lima_job_clear *clear = &job->clear;
    clear->buffers = buffers;
 
    if (buffers & PIPE_CLEAR_COLOR0) {
@@ -144,7 +144,7 @@ lima_clear(struct pipe_context *pctx, unsigned buffers,
 
    ctx->dirty |= LIMA_CONTEXT_DIRTY_CLEAR;
 
-   lima_damage_rect_union(&submit->damage_rect,
+   lima_damage_rect_union(&job->damage_rect,
                           0, ctx->framebuffer.base.width,
                           0, ctx->framebuffer.base.height);
 }
@@ -213,9 +213,9 @@ lima_pipe_format_to_attrib_type(enum pipe_format format)
 static void
 lima_pack_vs_cmd(struct lima_context *ctx, const struct pipe_draw_info *info)
 {
-   struct lima_submit *submit = lima_submit_get(ctx);
+   struct lima_job *job = lima_job_get(ctx);
 
-   VS_CMD_BEGIN(&submit->vs_cmd_array, 24);
+   VS_CMD_BEGIN(&job->vs_cmd_array, 24);
 
    if (!info->index_size) {
       VS_CMD_ARRAYS_SEMAPHORE_BEGIN_1();
@@ -265,8 +265,8 @@ lima_pack_plbu_cmd(struct lima_context *ctx, const struct pipe_draw_info *info)
    if (lima_is_scissor_zero(ctx))
       return;
 
-   struct lima_submit *submit = lima_submit_get(ctx);
-   PLBU_CMD_BEGIN(&submit->plbu_cmd_array, 32);
+   struct lima_job *job = lima_job_get(ctx);
+   PLBU_CMD_BEGIN(&job->plbu_cmd_array, 32);
 
    PLBU_CMD_VIEWPORT_LEFT(fui(ctx->viewport.left));
    PLBU_CMD_VIEWPORT_RIGHT(fui(ctx->viewport.right));
@@ -325,7 +325,7 @@ lima_pack_plbu_cmd(struct lima_context *ctx, const struct pipe_draw_info *info)
    maxy = MIN2(maxy, ctx->viewport.top);
 
    PLBU_CMD_SCISSORS(minx, maxx, miny, maxy);
-   lima_damage_rect_union(&submit->damage_rect, minx, maxx, miny, maxy);
+   lima_damage_rect_union(&job->damage_rect, minx, maxx, miny, maxy);
 
    PLBU_CMD_UNKNOWN1();
 
@@ -748,22 +748,22 @@ lima_pack_render_state(struct lima_context *ctx, const struct pipe_draw_info *in
       render->varyings_address = 0x00000000;
    }
 
-   struct lima_submit *submit = lima_submit_get(ctx);
+   struct lima_job *job = lima_job_get(ctx);
 
    lima_dump_command_stream_print(
-      submit->dump, render, sizeof(*render),
+      job->dump, render, sizeof(*render),
       false, "add render state at va %x\n",
       lima_ctx_buff_va(ctx, lima_ctx_buff_pp_plb_rsw));
 
    lima_dump_rsw_command_stream_print(
-      submit->dump, render, sizeof(*render),
+      job->dump, render, sizeof(*render),
       lima_ctx_buff_va(ctx, lima_ctx_buff_pp_plb_rsw));
 }
 
 static void
 lima_update_gp_attribute_info(struct lima_context *ctx, const struct pipe_draw_info *info)
 {
-   struct lima_submit *submit = lima_submit_get(ctx);
+   struct lima_job *job = lima_job_get(ctx);
    struct lima_vertex_element_state *ve = ctx->vertex_elements;
    struct lima_context_vertex_buffer *vb = &ctx->vertex_buffers;
 
@@ -781,7 +781,7 @@ lima_update_gp_attribute_info(struct lima_context *ctx, const struct pipe_draw_i
       struct pipe_vertex_buffer *pvb = vb->vb + pve->vertex_buffer_index;
       struct lima_resource *res = lima_resource(pvb->buffer.resource);
 
-      lima_submit_add_bo(submit, LIMA_PIPE_GP, res->bo, LIMA_SUBMIT_BO_READ);
+      lima_job_add_bo(job, LIMA_PIPE_GP, res->bo, LIMA_SUBMIT_BO_READ);
 
       unsigned start = info->index_size ? (ctx->min_index + info->index_bias) : info->start;
       attribute[n++] = res->bo->va + pvb->buffer_offset + pve->src_offset
@@ -792,7 +792,7 @@ lima_update_gp_attribute_info(struct lima_context *ctx, const struct pipe_draw_i
    }
 
    lima_dump_command_stream_print(
-      submit->dump, attribute, n * 4, false, "update attribute info at va %x\n",
+      job->dump, attribute, n * 4, false, "update attribute info at va %x\n",
       lima_ctx_buff_va(ctx, lima_ctx_buff_gp_attribute_info));
 }
 
@@ -821,10 +821,10 @@ lima_update_gp_uniform(struct lima_context *ctx)
       memcpy(vs_const_buff + vs->uniform_pending_offset + 32,
              vs->constant, vs->constant_size);
 
-   struct lima_submit *submit = lima_submit_get(ctx);
+   struct lima_job *job = lima_job_get(ctx);
 
    lima_dump_command_stream_print(
-      submit->dump, vs_const_buff, size, true,
+      job->dump, vs_const_buff, size, true,
       "update gp uniform at va %x\n",
       lima_ctx_buff_va(ctx, lima_ctx_buff_gp_uniform));
 }
@@ -850,21 +850,21 @@ lima_update_pp_uniform(struct lima_context *ctx)
 
    *array = lima_ctx_buff_va(ctx, lima_ctx_buff_pp_uniform);
 
-   struct lima_submit *submit = lima_submit_get(ctx);
+   struct lima_job *job = lima_job_get(ctx);
 
    lima_dump_command_stream_print(
-      submit->dump, fp16_const_buff, const_buff_size * 2,
+      job->dump, fp16_const_buff, const_buff_size * 2,
       false, "add pp uniform data at va %x\n",
       lima_ctx_buff_va(ctx, lima_ctx_buff_pp_uniform));
    lima_dump_command_stream_print(
-      submit->dump, array, 4, false, "add pp uniform info at va %x\n",
+      job->dump, array, 4, false, "add pp uniform info at va %x\n",
       lima_ctx_buff_va(ctx, lima_ctx_buff_pp_uniform_array));
 }
 
 static void
 lima_update_varying(struct lima_context *ctx, const struct pipe_draw_info *info)
 {
-   struct lima_submit *submit = lima_submit_get(ctx);
+   struct lima_job *job = lima_job_get(ctx);
    struct lima_screen *screen = lima_screen(ctx->base.screen);
    struct lima_vs_shader_state *vs = ctx->vs;
    uint32_t gp_output_size;
@@ -916,8 +916,8 @@ lima_update_varying(struct lima_context *ctx, const struct pipe_draw_info *info)
     */
    ctx->gp_output = lima_bo_create(screen, gp_output_size, 0);
    assert(ctx->gp_output);
-   lima_submit_add_bo(submit, LIMA_PIPE_GP, ctx->gp_output, LIMA_SUBMIT_BO_WRITE);
-   lima_submit_add_bo(submit, LIMA_PIPE_PP, ctx->gp_output, LIMA_SUBMIT_BO_READ);
+   lima_job_add_bo(job, LIMA_PIPE_GP, ctx->gp_output, LIMA_SUBMIT_BO_WRITE);
+   lima_job_add_bo(job, LIMA_PIPE_PP, ctx->gp_output, LIMA_SUBMIT_BO_READ);
 
    for (int i = 0; i < vs->num_outputs; i++) {
       struct lima_varying_info *v = vs->varying + i;
@@ -940,7 +940,7 @@ lima_update_varying(struct lima_context *ctx, const struct pipe_draw_info *info)
    }
 
    lima_dump_command_stream_print(
-      submit->dump, varying, n * 4, false, "update varying info at va %x\n",
+      job->dump, varying, n * 4, false, "update varying info at va %x\n",
       lima_ctx_buff_va(ctx, lima_ctx_buff_gp_varying_info));
 }
 
@@ -963,7 +963,7 @@ lima_draw_vbo_update(struct pipe_context *pctx,
    if (fb->base.nr_cbufs)
       buffers |= PIPE_CLEAR_COLOR0;
 
-   lima_update_submit_wb(ctx, buffers);
+   lima_update_job_wb(ctx, buffers);
 
    lima_update_gp_attribute_info(ctx, info);
 
@@ -993,7 +993,7 @@ lima_draw_vbo_update(struct pipe_context *pctx,
    lima_pack_plbu_cmd(ctx, info);
 
    if (ctx->gp_output) {
-      lima_bo_unreference(ctx->gp_output); /* held by submit */
+      lima_bo_unreference(ctx->gp_output); /* held by job */
       ctx->gp_output = NULL;
    }
 
@@ -1005,7 +1005,7 @@ lima_draw_vbo_indexed(struct pipe_context *pctx,
                       const struct pipe_draw_info *info)
 {
    struct lima_context *ctx = lima_context(pctx);
-   struct lima_submit *submit = lima_submit_get(ctx);
+   struct lima_job *job = lima_job_get(ctx);
    struct pipe_resource *indexbuf = NULL;
 
    /* Mali Utgard GPU always need min/max index info for index draw,
@@ -1026,8 +1026,8 @@ lima_draw_vbo_indexed(struct pipe_context *pctx,
       ctx->index_offset = 0;
    }
 
-   lima_submit_add_bo(submit, LIMA_PIPE_GP, ctx->index_res->bo, LIMA_SUBMIT_BO_READ);
-   lima_submit_add_bo(submit, LIMA_PIPE_PP, ctx->index_res->bo, LIMA_SUBMIT_BO_READ);
+   lima_job_add_bo(job, LIMA_PIPE_GP, ctx->index_res->bo, LIMA_SUBMIT_BO_READ);
+   lima_job_add_bo(job, LIMA_PIPE_PP, ctx->index_res->bo, LIMA_SUBMIT_BO_READ);
    lima_draw_vbo_update(pctx, info);
 
    if (indexbuf)
@@ -1081,18 +1081,18 @@ lima_draw_vbo(struct pipe_context *pctx,
    if (!lima_update_vs_state(ctx) || !lima_update_fs_state(ctx))
       return;
 
-   struct lima_submit *submit = lima_submit_get(ctx);
+   struct lima_job *job = lima_job_get(ctx);
 
    lima_dump_command_stream_print(
-      submit->dump, ctx->vs->bo->map, ctx->vs->shader_size, false,
+      job->dump, ctx->vs->bo->map, ctx->vs->shader_size, false,
       "add vs at va %x\n", ctx->vs->bo->va);
 
    lima_dump_command_stream_print(
-      submit->dump, ctx->fs->bo->map, ctx->fs->shader_size, false,
+      job->dump, ctx->fs->bo->map, ctx->fs->shader_size, false,
       "add fs at va %x\n", ctx->fs->bo->va);
 
-   lima_submit_add_bo(submit, LIMA_PIPE_GP, ctx->vs->bo, LIMA_SUBMIT_BO_READ);
-   lima_submit_add_bo(submit, LIMA_PIPE_PP, ctx->fs->bo, LIMA_SUBMIT_BO_READ);
+   lima_job_add_bo(job, LIMA_PIPE_GP, ctx->vs->bo, LIMA_SUBMIT_BO_READ);
+   lima_job_add_bo(job, LIMA_PIPE_PP, ctx->fs->bo, LIMA_SUBMIT_BO_READ);
 
    if (info->index_size)
       lima_draw_vbo_indexed(pctx, info);

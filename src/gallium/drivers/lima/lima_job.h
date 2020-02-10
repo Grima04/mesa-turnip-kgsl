@@ -21,8 +21,8 @@
  *
  */
 
-#ifndef H_LIMA_SUBMIT
-#define H_LIMA_SUBMIT
+#ifndef H_LIMA_JOB
+#define H_LIMA_JOB
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -36,12 +36,12 @@ struct lima_bo;
 struct lima_dump;
 struct pipe_surface;
 
-struct lima_submit_key {
+struct lima_job_key {
    struct pipe_surface *cbuf;
    struct pipe_surface *zsbuf;
 };
 
-struct lima_submit_clear {
+struct lima_job_clear {
    unsigned buffers;
    uint32_t color_8pc;
    uint32_t depth;
@@ -49,7 +49,7 @@ struct lima_submit_clear {
    uint64_t color_16pc;
 };
 
-struct lima_submit_fb_info {
+struct lima_job_fb_info {
    int width, height;
    int tiled_w, tiled_h;
    int shift_w, shift_h;
@@ -57,14 +57,14 @@ struct lima_submit_fb_info {
    int shift_min;
 };
 
-struct lima_submit {
+struct lima_job {
    int fd;
    struct lima_context *ctx;
 
    struct util_dynarray gem_bos[2];
    struct util_dynarray bos[2];
 
-   struct lima_submit_key key;
+   struct lima_job_key key;
 
    struct util_dynarray vs_cmd_array;
    struct util_dynarray plbu_cmd_array;
@@ -76,30 +76,30 @@ struct lima_submit {
 
    struct pipe_scissor_state damage_rect;
 
-   struct lima_submit_clear clear;
+   struct lima_job_clear clear;
 
-   struct lima_submit_fb_info fb;
+   struct lima_job_fb_info fb;
 
    /* for dump command stream */
    struct lima_dump *dump;
 };
 
 static inline bool
-lima_submit_has_draw_pending(struct lima_submit *submit)
+lima_job_has_draw_pending(struct lima_job *job)
 {
-   return !!submit->plbu_cmd_array.size;
+   return !!job->plbu_cmd_array.size;
 }
 
-struct lima_submit *lima_submit_get(struct lima_context *ctx);
+struct lima_job *lima_job_get(struct lima_context *ctx);
 
-bool lima_submit_add_bo(struct lima_submit *submit, int pipe,
-                        struct lima_bo *bo, uint32_t flags);
-void *lima_submit_create_stream_bo(struct lima_submit *submit, int pipe,
-                                   unsigned size, uint32_t *va);
+bool lima_job_add_bo(struct lima_job *job, int pipe,
+                     struct lima_bo *bo, uint32_t flags);
+void *lima_job_create_stream_bo(struct lima_job *job, int pipe,
+                                unsigned size, uint32_t *va);
 
-void lima_do_submit(struct lima_submit *submit);
+void lima_do_job(struct lima_job *job);
 
-bool lima_submit_init(struct lima_context *ctx);
-void lima_submit_fini(struct lima_context *ctx);
+bool lima_job_init(struct lima_context *ctx);
+void lima_job_fini(struct lima_context *ctx);
 
 #endif

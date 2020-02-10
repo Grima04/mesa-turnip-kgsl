@@ -36,7 +36,7 @@
 
 #include "lima_screen.h"
 #include "lima_context.h"
-#include "lima_submit.h"
+#include "lima_job.h"
 #include "lima_bo.h"
 #include "lima_util.h"
 #include "lima_format.h"
@@ -48,10 +48,10 @@
 #define VOID2U64(x) ((uint64_t)(unsigned long)(x))
 
 static void
-lima_get_fb_info(struct lima_submit *submit)
+lima_get_fb_info(struct lima_job *job)
 {
-   struct lima_context *ctx = submit->ctx;
-   struct lima_submit_fb_info *fb = &submit->fb;
+   struct lima_context *ctx = job->ctx;
+   struct lima_job_fb_info *fb = &job->fb;
 
    fb->width = ctx->framebuffer.base.width;
    fb->height = ctx->framebuffer.base.height;
@@ -84,12 +84,12 @@ lima_get_fb_info(struct lima_submit *submit)
    fb->shift_min = MIN3(fb->shift_w, fb->shift_h, 2);
 }
 
-static struct lima_submit *
-lima_submit_create(struct lima_context *ctx)
+static struct lima_job *
+lima_job_create(struct lima_context *ctx)
 {
-   struct lima_submit *s;
+   struct lima_job *s;
 
-   s = rzalloc(ctx, struct lima_submit);
+   s = rzalloc(ctx, struct lima_job);
    if (!s)
       return NULL;
 
@@ -120,103 +120,103 @@ lima_submit_create(struct lima_context *ctx)
 }
 
 static void
-lima_submit_free(struct lima_submit *submit)
+lima_job_free(struct lima_job *job)
 {
-   struct lima_context *ctx = submit->ctx;
+   struct lima_context *ctx = job->ctx;
 
-   _mesa_hash_table_remove_key(ctx->submits, &submit->key);
+   _mesa_hash_table_remove_key(ctx->jobs, &job->key);
 
-   if (submit->key.cbuf && (submit->resolve & PIPE_CLEAR_COLOR0))
-      _mesa_hash_table_remove_key(ctx->write_submits, submit->key.cbuf->texture);
-   if (submit->key.zsbuf && (submit->resolve & (PIPE_CLEAR_DEPTH | PIPE_CLEAR_STENCIL)))
-      _mesa_hash_table_remove_key(ctx->write_submits, submit->key.zsbuf->texture);
+   if (job->key.cbuf && (job->resolve & PIPE_CLEAR_COLOR0))
+      _mesa_hash_table_remove_key(ctx->write_jobs, job->key.cbuf->texture);
+   if (job->key.zsbuf && (job->resolve & (PIPE_CLEAR_DEPTH | PIPE_CLEAR_STENCIL)))
+      _mesa_hash_table_remove_key(ctx->write_jobs, job->key.zsbuf->texture);
 
-   pipe_surface_reference(&submit->key.cbuf, NULL);
-   pipe_surface_reference(&submit->key.zsbuf, NULL);
+   pipe_surface_reference(&job->key.cbuf, NULL);
+   pipe_surface_reference(&job->key.zsbuf, NULL);
 
-   lima_dump_free(submit->dump);
-   submit->dump = NULL;
+   lima_dump_free(job->dump);
+   job->dump = NULL;
 
-   /* TODO: do we need a cache for submit? */
-   ralloc_free(submit);
+   /* TODO: do we need a cache for job? */
+   ralloc_free(job);
 }
 
-static struct lima_submit *
-_lima_submit_get(struct lima_context *ctx)
+static struct lima_job *
+_lima_job_get(struct lima_context *ctx)
 {
    struct lima_context_framebuffer *fb = &ctx->framebuffer;
-   struct lima_submit_key local_key = {
+   struct lima_job_key local_key = {
       .cbuf = fb->base.cbufs[0],
       .zsbuf = fb->base.zsbuf,
    };
 
-   struct hash_entry *entry = _mesa_hash_table_search(ctx->submits, &local_key);
+   struct hash_entry *entry = _mesa_hash_table_search(ctx->jobs, &local_key);
    if (entry)
       return entry->data;
 
-   struct lima_submit *submit = lima_submit_create(ctx);
-   if (!submit)
+   struct lima_job *job = lima_job_create(ctx);
+   if (!job)
       return NULL;
 
-   _mesa_hash_table_insert(ctx->submits, &submit->key, submit);
+   _mesa_hash_table_insert(ctx->jobs, &job->key, job);
 
-   return submit;
+   return job;
 }
 
 /*
  * Note: this function can only be called in draw code path,
  * must not exist in flush code path.
  */
-struct lima_submit *
-lima_submit_get(struct lima_context *ctx)
+struct lima_job *
+lima_job_get(struct lima_context *ctx)
 {
-   if (ctx->submit)
-      return ctx->submit;
+   if (ctx->job)
+      return ctx->job;
 
-   ctx->submit = _lima_submit_get(ctx);
-   return ctx->submit;
+   ctx->job = _lima_job_get(ctx);
+   return ctx->job;
 }
 
-bool lima_submit_add_bo(struct lima_submit *submit, int pipe,
-                        struct lima_bo *bo, uint32_t flags)
+bool lima_job_add_bo(struct lima_job *job, int pipe,
+                     struct lima_bo *bo, uint32_t flags)
 {
-   util_dynarray_foreach(submit->gem_bos + pipe, struct drm_lima_gem_submit_bo, gem_bo) {
+   util_dynarray_foreach(job->gem_bos + pipe, struct drm_lima_gem_submit_bo, gem_bo) {
       if (bo->handle == gem_bo->handle) {
          gem_bo->flags |= flags;
          return true;
       }
    }
 
-   struct drm_lima_gem_submit_bo *submit_bo =
-      util_dynarray_grow(submit->gem_bos + pipe, struct drm_lima_gem_submit_bo, 1);
-   submit_bo->handle = bo->handle;
-   submit_bo->flags = flags;
+   struct drm_lima_gem_submit_bo *job_bo =
+      util_dynarray_grow(job->gem_bos + pipe, struct drm_lima_gem_submit_bo, 1);
+   job_bo->handle = bo->handle;
+   job_bo->flags = flags;
 
-   struct lima_bo **jbo = util_dynarray_grow(submit->bos + pipe, struct lima_bo *, 1);
+   struct lima_bo **jbo = util_dynarray_grow(job->bos + pipe, struct lima_bo *, 1);
    *jbo = bo;
 
-   /* prevent bo from being freed when submit start */
+   /* prevent bo from being freed when job start */
    lima_bo_reference(bo);
 
    return true;
 }
 
 static bool
-lima_submit_start(struct lima_submit *submit, int pipe, void *frame, uint32_t size)
+lima_job_start(struct lima_job *job, int pipe, void *frame, uint32_t size)
 {
-   struct lima_context *ctx = submit->ctx;
+   struct lima_context *ctx = job->ctx;
    struct drm_lima_gem_submit req = {
       .ctx = ctx->id,
       .pipe = pipe,
-      .nr_bos = submit->gem_bos[pipe].size / sizeof(struct drm_lima_gem_submit_bo),
-      .bos = VOID2U64(util_dynarray_begin(submit->gem_bos + pipe)),
+      .nr_bos = job->gem_bos[pipe].size / sizeof(struct drm_lima_gem_submit_bo),
+      .bos = VOID2U64(util_dynarray_begin(job->gem_bos + pipe)),
       .frame = VOID2U64(frame),
       .frame_size = size,
       .out_sync = ctx->out_sync[pipe],
    };
 
    if (ctx->in_sync_fd >= 0) {
-      int err = drmSyncobjImportSyncFile(submit->fd, ctx->in_sync[pipe],
+      int err = drmSyncobjImportSyncFile(job->fd, ctx->in_sync[pipe],
                                          ctx->in_sync_fd);
       if (err)
          return false;
@@ -226,9 +226,9 @@ lima_submit_start(struct lima_submit *submit, int pipe, void *frame, uint32_t si
       ctx->in_sync_fd = -1;
    }
 
-   bool ret = drmIoctl(submit->fd, DRM_IOCTL_LIMA_GEM_SUBMIT, &req) == 0;
+   bool ret = drmIoctl(job->fd, DRM_IOCTL_LIMA_GEM_SUBMIT, &req) == 0;
 
-   util_dynarray_foreach(submit->bos + pipe, struct lima_bo *, bo) {
+   util_dynarray_foreach(job->bos + pipe, struct lima_bo *, bo) {
       lima_bo_unreference(*bo);
    }
 
@@ -236,21 +236,21 @@ lima_submit_start(struct lima_submit *submit, int pipe, void *frame, uint32_t si
 }
 
 static bool
-lima_submit_wait(struct lima_submit *submit, int pipe, uint64_t timeout_ns)
+lima_job_wait(struct lima_job *job, int pipe, uint64_t timeout_ns)
 {
    int64_t abs_timeout = os_time_get_absolute_timeout(timeout_ns);
    if (abs_timeout == OS_TIMEOUT_INFINITE)
       abs_timeout = INT64_MAX;
 
-   struct lima_context *ctx = submit->ctx;
-   return !drmSyncobjWait(submit->fd, ctx->out_sync + pipe, 1, abs_timeout, 0, NULL);
+   struct lima_context *ctx = job->ctx;
+   return !drmSyncobjWait(job->fd, ctx->out_sync + pipe, 1, abs_timeout, 0, NULL);
 }
 
 static bool
-lima_submit_has_bo(struct lima_submit *submit, struct lima_bo *bo, bool all)
+lima_job_has_bo(struct lima_job *job, struct lima_bo *bo, bool all)
 {
    for (int i = 0; i < 2; i++) {
-      util_dynarray_foreach(submit->gem_bos + i, struct drm_lima_gem_submit_bo, gem_bo) {
+      util_dynarray_foreach(job->gem_bos + i, struct drm_lima_gem_submit_bo, gem_bo) {
          if (bo->handle == gem_bo->handle) {
             if (all || gem_bo->flags & LIMA_SUBMIT_BO_WRITE)
                return true;
@@ -264,10 +264,10 @@ lima_submit_has_bo(struct lima_submit *submit, struct lima_bo *bo, bool all)
 }
 
 void *
-lima_submit_create_stream_bo(struct lima_submit *submit, int pipe,
-                             unsigned size, uint32_t *va)
+lima_job_create_stream_bo(struct lima_job *job, int pipe,
+                          unsigned size, uint32_t *va)
 {
-   struct lima_context *ctx = submit->ctx;
+   struct lima_context *ctx = job->ctx;
 
    void *cpu;
    unsigned offset;
@@ -277,7 +277,7 @@ lima_submit_create_stream_bo(struct lima_submit *submit, int pipe,
    struct lima_resource *res = lima_resource(pres);
    *va = res->bo->va + offset;
 
-   lima_submit_add_bo(submit, pipe, res->bo, LIMA_SUBMIT_BO_READ);
+   lima_job_add_bo(job, pipe, res->bo, LIMA_SUBMIT_BO_READ);
 
    pipe_resource_reference(&pres, NULL);
 
@@ -285,24 +285,24 @@ lima_submit_create_stream_bo(struct lima_submit *submit, int pipe,
 }
 
 static inline struct lima_damage_region *
-lima_submit_get_damage(struct lima_submit *submit)
+lima_job_get_damage(struct lima_job *job)
 {
-   if (!(submit->key.cbuf && (submit->resolve & PIPE_CLEAR_COLOR0)))
+   if (!(job->key.cbuf && (job->resolve & PIPE_CLEAR_COLOR0)))
       return NULL;
 
-   struct lima_surface *surf = lima_surface(submit->key.cbuf);
+   struct lima_surface *surf = lima_surface(job->key.cbuf);
    struct lima_resource *res = lima_resource(surf->base.texture);
    return &res->damage;
 }
 
 static bool
-lima_fb_need_reload(struct lima_submit *submit)
+lima_fb_need_reload(struct lima_job *job)
 {
    /* Depth buffer is always discarded */
-   if (!(submit->key.cbuf && (submit->resolve & PIPE_CLEAR_COLOR0)))
+   if (!(job->key.cbuf && (job->resolve & PIPE_CLEAR_COLOR0)))
       return false;
 
-   struct lima_surface *surf = lima_surface(submit->key.cbuf);
+   struct lima_surface *surf = lima_surface(job->key.cbuf);
    struct lima_resource *res = lima_resource(surf->base.texture);
    if (res->damage.region) {
       /* for EGL_KHR_partial_update, when EGL_EXT_buffer_age is enabled,
@@ -319,7 +319,7 @@ lima_fb_need_reload(struct lima_submit *submit)
 }
 
 static void
-lima_pack_reload_plbu_cmd(struct lima_submit *submit)
+lima_pack_reload_plbu_cmd(struct lima_job *job)
 {
    #define lima_reload_render_state_offset 0x0000
    #define lima_reload_gl_pos_offset       0x0040
@@ -328,11 +328,11 @@ lima_pack_reload_plbu_cmd(struct lima_submit *submit)
    #define lima_reload_tex_array_offset    0x0100
    #define lima_reload_buffer_size         0x0140
 
-   struct lima_context *ctx = submit->ctx;
+   struct lima_context *ctx = job->ctx;
 
    uint32_t va;
-   void *cpu = lima_submit_create_stream_bo(
-      submit, LIMA_PIPE_PP, lima_reload_buffer_size, &va);
+   void *cpu = lima_job_create_stream_bo(
+      job, LIMA_PIPE_PP, lima_reload_buffer_size, &va);
 
    struct lima_screen *screen = lima_screen(ctx->base.screen);
 
@@ -358,7 +358,7 @@ lima_pack_reload_plbu_cmd(struct lima_submit *submit)
 
    lima_tex_desc *td = cpu + lima_reload_tex_desc_offset;
    memset(td, 0, lima_min_tex_desc_size);
-   lima_texture_desc_set_res(ctx, td, submit->key.cbuf->texture, 0, 0);
+   lima_texture_desc_set_res(ctx, td, job->key.cbuf->texture, 0, 0);
    td->unnorm_coords = 1;
    td->texture_type = LIMA_TEXTURE_TYPE_2D;
    td->min_img_filter_nearest = 1;
@@ -370,7 +370,7 @@ lima_pack_reload_plbu_cmd(struct lima_submit *submit)
    uint32_t *ta = cpu + lima_reload_tex_array_offset;
    ta[0] = va + lima_reload_tex_desc_offset;
 
-   struct lima_submit_fb_info *fb = &submit->fb;
+   struct lima_job_fb_info *fb = &job->fb;
    float reload_gl_pos[] = {
       fb->width, 0,          0, 1,
       0,         0,          0, 1,
@@ -386,7 +386,7 @@ lima_pack_reload_plbu_cmd(struct lima_submit *submit)
    memcpy(cpu + lima_reload_varying_offset, reload_varying,
           sizeof(reload_varying));
 
-   PLBU_CMD_BEGIN(&submit->plbu_cmd_head, 20);
+   PLBU_CMD_BEGIN(&job->plbu_cmd_head, 20);
 
    PLBU_CMD_VIEWPORT_LEFT(0);
    PLBU_CMD_VIEWPORT_RIGHT(fui(fb->width));
@@ -408,12 +408,12 @@ lima_pack_reload_plbu_cmd(struct lima_submit *submit)
 }
 
 static void
-lima_pack_head_plbu_cmd(struct lima_submit *submit)
+lima_pack_head_plbu_cmd(struct lima_job *job)
 {
-   struct lima_context *ctx = submit->ctx;
-   struct lima_submit_fb_info *fb = &submit->fb;
+   struct lima_context *ctx = job->ctx;
+   struct lima_job_fb_info *fb = &job->fb;
 
-   PLBU_CMD_BEGIN(&submit->plbu_cmd_head, 10);
+   PLBU_CMD_BEGIN(&job->plbu_cmd_head, 10);
 
    PLBU_CMD_UNKNOWN2();
    PLBU_CMD_BLOCK_STEP(fb->shift_min, fb->shift_h, fb->shift_w);
@@ -426,8 +426,8 @@ lima_pack_head_plbu_cmd(struct lima_submit *submit)
 
    PLBU_CMD_END();
 
-   if (lima_fb_need_reload(submit))
-      lima_pack_reload_plbu_cmd(submit);
+   if (lima_fb_need_reload(job))
+      lima_pack_reload_plbu_cmd(job);
 }
 
 static void
@@ -511,13 +511,13 @@ inside_damage_region(int x, int y, struct lima_damage_region *ds)
 }
 
 static void
-lima_generate_pp_stream(struct lima_submit *submit, int off_x, int off_y,
-                      int tiled_w, int tiled_h)
+lima_generate_pp_stream(struct lima_job *job, int off_x, int off_y,
+                        int tiled_w, int tiled_h)
 {
-   struct lima_context *ctx = submit->ctx;
+   struct lima_context *ctx = job->ctx;
    struct lima_pp_stream_state *ps = &ctx->pp_stream;
-   struct lima_submit_fb_info *fb = &submit->fb;
-   struct lima_damage_region *damage = lima_submit_get_damage(submit);
+   struct lima_job_fb_info *fb = &job->fb;
+   struct lima_damage_region *damage = lima_job_get_damage(job);
    struct lima_screen *screen = lima_screen(ctx->base.screen);
    int i, num_pp = screen->num_pp;
 
@@ -575,20 +575,20 @@ lima_generate_pp_stream(struct lima_submit *submit, int off_x, int off_y,
       stream[i][si[i]++] = 0;
 
       lima_dump_command_stream_print(
-         submit->dump, stream[i], si[i] * 4,
+         job->dump, stream[i], si[i] * 4,
          false, "pp plb stream %d at va %x\n",
          i, ps->va + ps->offset[i]);
    }
 }
 
 static void
-lima_update_damage_pp_stream(struct lima_submit *submit)
+lima_update_damage_pp_stream(struct lima_job *job)
 {
-   struct lima_context *ctx = submit->ctx;
-   struct lima_damage_region *ds = lima_submit_get_damage(submit);
-   struct lima_submit_fb_info *fb = &submit->fb;
+   struct lima_context *ctx = job->ctx;
+   struct lima_damage_region *ds = lima_job_get_damage(job);
+   struct lima_job_fb_info *fb = &job->fb;
    struct pipe_scissor_state bound;
-   struct pipe_scissor_state *dr = &submit->damage_rect;
+   struct pipe_scissor_state *dr = &job->damage_rect;
 
    if (ds && ds->region) {
       struct pipe_scissor_state *dbound = &ds->bound;
@@ -616,17 +616,17 @@ lima_update_damage_pp_stream(struct lima_submit *submit)
    int size = lima_get_pp_stream_size(
       screen->num_pp, tiled_w, tiled_h, ctx->pp_stream.offset);
 
-   ctx->pp_stream.map = lima_submit_create_stream_bo(
-      submit, LIMA_PIPE_PP, size, &ctx->pp_stream.va);
+   ctx->pp_stream.map = lima_job_create_stream_bo(
+      job, LIMA_PIPE_PP, size, &ctx->pp_stream.va);
 
-   lima_generate_pp_stream(submit, bound.minx, bound.miny, tiled_w, tiled_h);
+   lima_generate_pp_stream(job, bound.minx, bound.miny, tiled_w, tiled_h);
 }
 
 static void
-lima_update_full_pp_stream(struct lima_submit *submit)
+lima_update_full_pp_stream(struct lima_job *job)
 {
-   struct lima_context *ctx = submit->ctx;
-   struct lima_submit_fb_info *fb = &submit->fb;
+   struct lima_context *ctx = job->ctx;
+   struct lima_job_fb_info *fb = &job->fb;
    struct lima_ctx_plb_pp_stream_key key = {
       .plb_index = ctx->plb_index,
       .tiled_w = fb->tiled_w,
@@ -652,60 +652,60 @@ lima_update_full_pp_stream(struct lima_submit *submit)
       ctx->pp_stream.va = s->bo->va;
       memcpy(ctx->pp_stream.offset, s->offset, sizeof(s->offset));
 
-      lima_generate_pp_stream(submit, 0, 0, fb->tiled_w, fb->tiled_h);
+      lima_generate_pp_stream(job, 0, 0, fb->tiled_w, fb->tiled_h);
    }
 
-   lima_submit_add_bo(submit, LIMA_PIPE_PP, s->bo, LIMA_SUBMIT_BO_READ);
+   lima_job_add_bo(job, LIMA_PIPE_PP, s->bo, LIMA_SUBMIT_BO_READ);
 }
 
 static bool
-lima_damage_fullscreen(struct lima_submit *submit)
+lima_damage_fullscreen(struct lima_job *job)
 {
-   struct pipe_scissor_state *dr = &submit->damage_rect;
+   struct pipe_scissor_state *dr = &job->damage_rect;
 
    return dr->minx == 0 &&
           dr->miny == 0 &&
-          dr->maxx == submit->fb.width &&
-          dr->maxy == submit->fb.height;
+          dr->maxx == job->fb.width &&
+          dr->maxy == job->fb.height;
 }
 
 static void
-lima_update_pp_stream(struct lima_submit *submit)
+lima_update_pp_stream(struct lima_job *job)
 {
-   struct lima_context *ctx = submit->ctx;
-   struct lima_damage_region *damage = lima_submit_get_damage(submit);
-   if ((damage && damage->region) || !lima_damage_fullscreen(submit))
-      lima_update_damage_pp_stream(submit);
+   struct lima_context *ctx = job->ctx;
+   struct lima_damage_region *damage = lima_job_get_damage(job);
+   if ((damage && damage->region) || !lima_damage_fullscreen(job))
+      lima_update_damage_pp_stream(job);
    else if (ctx->plb_pp_stream)
-      lima_update_full_pp_stream(submit);
+      lima_update_full_pp_stream(job);
    else
       ctx->pp_stream.map = NULL;
 }
 
 static void
-lima_update_submit_bo(struct lima_submit *submit)
+lima_update_job_bo(struct lima_job *job)
 {
-   struct lima_context *ctx = submit->ctx;
+   struct lima_context *ctx = job->ctx;
 
-   lima_submit_add_bo(submit, LIMA_PIPE_GP, ctx->plb_gp_stream,
+   lima_job_add_bo(job, LIMA_PIPE_GP, ctx->plb_gp_stream,
                       LIMA_SUBMIT_BO_READ);
-   lima_submit_add_bo(submit, LIMA_PIPE_GP, ctx->plb[ctx->plb_index],
+   lima_job_add_bo(job, LIMA_PIPE_GP, ctx->plb[ctx->plb_index],
                       LIMA_SUBMIT_BO_WRITE);
-   lima_submit_add_bo(submit, LIMA_PIPE_GP, ctx->gp_tile_heap[ctx->plb_index],
+   lima_job_add_bo(job, LIMA_PIPE_GP, ctx->gp_tile_heap[ctx->plb_index],
                       LIMA_SUBMIT_BO_WRITE);
 
    lima_dump_command_stream_print(
-      submit->dump, ctx->plb_gp_stream->map + ctx->plb_index * ctx->plb_gp_size,
+      job->dump, ctx->plb_gp_stream->map + ctx->plb_index * ctx->plb_gp_size,
       ctx->plb_gp_size, false, "gp plb stream at va %x\n",
       ctx->plb_gp_stream->va + ctx->plb_index * ctx->plb_gp_size);
 
-   lima_submit_add_bo(submit, LIMA_PIPE_PP, ctx->plb[ctx->plb_index],
+   lima_job_add_bo(job, LIMA_PIPE_PP, ctx->plb[ctx->plb_index],
                       LIMA_SUBMIT_BO_READ);
-   lima_submit_add_bo(submit, LIMA_PIPE_PP, ctx->gp_tile_heap[ctx->plb_index],
+   lima_job_add_bo(job, LIMA_PIPE_PP, ctx->gp_tile_heap[ctx->plb_index],
                       LIMA_SUBMIT_BO_READ);
 
    struct lima_screen *screen = lima_screen(ctx->base.screen);
-   lima_submit_add_bo(submit, LIMA_PIPE_PP, screen->pp_buffer, LIMA_SUBMIT_BO_READ);
+   lima_job_add_bo(job, LIMA_PIPE_PP, screen->pp_buffer, LIMA_SUBMIT_BO_READ);
 }
 
 static void
@@ -721,10 +721,10 @@ lima_finish_plbu_cmd(struct util_dynarray *plbu_cmd_array)
 }
 
 static void
-lima_pack_wb_zsbuf_reg(struct lima_submit *submit, uint32_t *wb_reg, int wb_idx)
+lima_pack_wb_zsbuf_reg(struct lima_job *job, uint32_t *wb_reg, int wb_idx)
 {
-   struct lima_submit_fb_info *fb = &submit->fb;
-   struct pipe_surface *zsbuf = submit->key.zsbuf;
+   struct lima_job_fb_info *fb = &job->fb;
+   struct pipe_surface *zsbuf = job->key.zsbuf;
    struct lima_resource *res = lima_resource(zsbuf->texture);
    int level = zsbuf->u.tex.level;
    uint32_t format = lima_format_get_pixel(zsbuf->format);
@@ -744,10 +744,10 @@ lima_pack_wb_zsbuf_reg(struct lima_submit *submit, uint32_t *wb_reg, int wb_idx)
 }
 
 static void
-lima_pack_wb_cbuf_reg(struct lima_submit *submit, uint32_t *wb_reg, int wb_idx)
+lima_pack_wb_cbuf_reg(struct lima_job *job, uint32_t *wb_reg, int wb_idx)
 {
-   struct lima_submit_fb_info *fb = &submit->fb;
-   struct pipe_surface *cbuf = submit->key.cbuf;
+   struct lima_job_fb_info *fb = &job->fb;
+   struct pipe_surface *cbuf = job->key.cbuf;
    struct lima_resource *res = lima_resource(cbuf->texture);
    int level = cbuf->u.tex.level;
    unsigned layer = cbuf->u.tex.first_layer;
@@ -769,23 +769,23 @@ lima_pack_wb_cbuf_reg(struct lima_submit *submit, uint32_t *wb_reg, int wb_idx)
 }
 
 static void
-lima_pack_pp_frame_reg(struct lima_submit *submit, uint32_t *frame_reg,
+lima_pack_pp_frame_reg(struct lima_job *job, uint32_t *frame_reg,
                        uint32_t *wb_reg)
 {
-   struct lima_context *ctx = submit->ctx;
-   struct lima_submit_fb_info *fb = &submit->fb;
+   struct lima_context *ctx = job->ctx;
+   struct lima_job_fb_info *fb = &job->fb;
    struct lima_pp_frame_reg *frame = (void *)frame_reg;
    struct lima_screen *screen = lima_screen(ctx->base.screen);
    int wb_idx = 0;
 
    frame->render_address = screen->pp_buffer->va + pp_frame_rsw_offset;
    frame->flags = 0x02;
-   frame->clear_value_depth = submit->clear.depth;
-   frame->clear_value_stencil = submit->clear.stencil;
-   frame->clear_value_color = submit->clear.color_8pc;
-   frame->clear_value_color_1 = submit->clear.color_8pc;
-   frame->clear_value_color_2 = submit->clear.color_8pc;
-   frame->clear_value_color_3 = submit->clear.color_8pc;
+   frame->clear_value_depth = job->clear.depth;
+   frame->clear_value_stencil = job->clear.stencil;
+   frame->clear_value_color = job->clear.color_8pc;
+   frame->clear_value_color_1 = job->clear.color_8pc;
+   frame->clear_value_color_2 = job->clear.color_8pc;
+   frame->clear_value_color_3 = job->clear.color_8pc;
    frame->one = 1;
 
    frame->width = fb->width - 1;
@@ -796,7 +796,7 @@ lima_pack_pp_frame_reg(struct lima_submit *submit, uint32_t *frame_reg,
 
    /* These are "stack size" and "stack offset" shifted,
     * here they are assumed to be always the same. */
-   frame->fragment_stack_size = submit->pp_max_stack_size << 16 | submit->pp_max_stack_size;
+   frame->fragment_stack_size = job->pp_max_stack_size << 16 | job->pp_max_stack_size;
 
    /* related with MSAA and different value when r4p0/r7p0 */
    frame->supersampled_height = fb->height * 2 - 1;
@@ -807,53 +807,53 @@ lima_pack_pp_frame_reg(struct lima_submit *submit, uint32_t *frame_reg,
    frame->blocking = (fb->shift_min << 28) | (fb->shift_h << 16) | fb->shift_w;
    frame->foureight = 0x8888;
 
-   if (submit->key.cbuf && (submit->resolve & PIPE_CLEAR_COLOR0))
-      lima_pack_wb_cbuf_reg(submit, wb_reg, wb_idx++);
+   if (job->key.cbuf && (job->resolve & PIPE_CLEAR_COLOR0))
+      lima_pack_wb_cbuf_reg(job, wb_reg, wb_idx++);
 
-   if (submit->key.zsbuf &&
-       (submit->resolve & (PIPE_CLEAR_DEPTH | PIPE_CLEAR_STENCIL)))
-      lima_pack_wb_zsbuf_reg(submit, wb_reg, wb_idx++);
+   if (job->key.zsbuf &&
+       (job->resolve & (PIPE_CLEAR_DEPTH | PIPE_CLEAR_STENCIL)))
+      lima_pack_wb_zsbuf_reg(job, wb_reg, wb_idx++);
 }
 
 void
-lima_do_submit(struct lima_submit *submit)
+lima_do_job(struct lima_job *job)
 {
    #define pp_stack_pp_size 0x400
 
-   struct lima_context *ctx = submit->ctx;
+   struct lima_context *ctx = job->ctx;
 
-   lima_pack_head_plbu_cmd(submit);
-   lima_finish_plbu_cmd(&submit->plbu_cmd_array);
+   lima_pack_head_plbu_cmd(job);
+   lima_finish_plbu_cmd(&job->plbu_cmd_array);
 
-   lima_update_submit_bo(submit);
+   lima_update_job_bo(job);
 
-   int vs_cmd_size = submit->vs_cmd_array.size;
+   int vs_cmd_size = job->vs_cmd_array.size;
    uint32_t vs_cmd_va = 0;
 
    if (vs_cmd_size) {
-      void *vs_cmd = lima_submit_create_stream_bo(
-         submit, LIMA_PIPE_GP, vs_cmd_size, &vs_cmd_va);
-      memcpy(vs_cmd, util_dynarray_begin(&submit->vs_cmd_array), vs_cmd_size);
+      void *vs_cmd = lima_job_create_stream_bo(
+         job, LIMA_PIPE_GP, vs_cmd_size, &vs_cmd_va);
+      memcpy(vs_cmd, util_dynarray_begin(&job->vs_cmd_array), vs_cmd_size);
 
       lima_dump_command_stream_print(
-         submit->dump, vs_cmd, vs_cmd_size, false, "flush vs cmd at va %x\n", vs_cmd_va);
-      lima_dump_vs_command_stream_print(submit->dump, vs_cmd, vs_cmd_size, vs_cmd_va);
+         job->dump, vs_cmd, vs_cmd_size, false, "flush vs cmd at va %x\n", vs_cmd_va);
+      lima_dump_vs_command_stream_print(job->dump, vs_cmd, vs_cmd_size, vs_cmd_va);
    }
 
    uint32_t plbu_cmd_va;
-   int plbu_cmd_size = submit->plbu_cmd_array.size + submit->plbu_cmd_head.size;
-   void *plbu_cmd = lima_submit_create_stream_bo(
-      submit, LIMA_PIPE_GP, plbu_cmd_size, &plbu_cmd_va);
+   int plbu_cmd_size = job->plbu_cmd_array.size + job->plbu_cmd_head.size;
+   void *plbu_cmd = lima_job_create_stream_bo(
+      job, LIMA_PIPE_GP, plbu_cmd_size, &plbu_cmd_va);
    memcpy(plbu_cmd,
-          util_dynarray_begin(&submit->plbu_cmd_head),
-          submit->plbu_cmd_head.size);
-   memcpy(plbu_cmd + submit->plbu_cmd_head.size,
-          util_dynarray_begin(&submit->plbu_cmd_array),
-          submit->plbu_cmd_array.size);
+          util_dynarray_begin(&job->plbu_cmd_head),
+          job->plbu_cmd_head.size);
+   memcpy(plbu_cmd + job->plbu_cmd_head.size,
+          util_dynarray_begin(&job->plbu_cmd_array),
+          job->plbu_cmd_array.size);
 
    lima_dump_command_stream_print(
-      submit->dump, plbu_cmd, plbu_cmd_size, false, "flush plbu cmd at va %x\n", plbu_cmd_va);
-   lima_dump_plbu_command_stream_print(submit->dump, plbu_cmd, plbu_cmd_size, plbu_cmd_va);
+      job->dump, plbu_cmd, plbu_cmd_size, false, "flush plbu cmd at va %x\n", plbu_cmd_va);
+   lima_dump_plbu_command_stream_print(job->dump, plbu_cmd, plbu_cmd_size, plbu_cmd_va);
 
    struct lima_screen *screen = lima_screen(ctx->base.screen);
    struct drm_lima_gp_frame gp_frame;
@@ -866,69 +866,69 @@ lima_do_submit(struct lima_submit *submit)
    gp_frame_reg->tile_heap_end = ctx->gp_tile_heap[ctx->plb_index]->va + ctx->gp_tile_heap_size;
 
    lima_dump_command_stream_print(
-      submit->dump, &gp_frame, sizeof(gp_frame), false, "add gp frame\n");
+      job->dump, &gp_frame, sizeof(gp_frame), false, "add gp frame\n");
 
-   if (!lima_submit_start(submit, LIMA_PIPE_GP, &gp_frame, sizeof(gp_frame)))
-      fprintf(stderr, "gp submit error\n");
+   if (!lima_job_start(job, LIMA_PIPE_GP, &gp_frame, sizeof(gp_frame)))
+      fprintf(stderr, "gp job error\n");
 
-   if (submit->dump) {
-      if (lima_submit_wait(submit, LIMA_PIPE_GP, PIPE_TIMEOUT_INFINITE)) {
+   if (job->dump) {
+      if (lima_job_wait(job, LIMA_PIPE_GP, PIPE_TIMEOUT_INFINITE)) {
          if (ctx->gp_output) {
             float *pos = lima_bo_map(ctx->gp_output);
             lima_dump_command_stream_print(
-               submit->dump, pos, 4 * 4 * 16, true, "gl_pos dump at va %x\n",
+               job->dump, pos, 4 * 4 * 16, true, "gl_pos dump at va %x\n",
                ctx->gp_output->va);
          }
 
          uint32_t *plb = lima_bo_map(ctx->plb[ctx->plb_index]);
          lima_dump_command_stream_print(
-            submit->dump, plb, LIMA_CTX_PLB_BLK_SIZE, false, "plb dump at va %x\n",
+            job->dump, plb, LIMA_CTX_PLB_BLK_SIZE, false, "plb dump at va %x\n",
             ctx->plb[ctx->plb_index]->va);
       }
       else {
-         fprintf(stderr, "gp submit wait error\n");
+         fprintf(stderr, "gp job wait error\n");
          exit(1);
       }
    }
 
    uint32_t pp_stack_va = 0;
-   if (submit->pp_max_stack_size) {
-      lima_submit_create_stream_bo(
-         submit, LIMA_PIPE_PP,
-         screen->num_pp * submit->pp_max_stack_size * pp_stack_pp_size,
+   if (job->pp_max_stack_size) {
+      lima_job_create_stream_bo(
+         job, LIMA_PIPE_PP,
+         screen->num_pp * job->pp_max_stack_size * pp_stack_pp_size,
          &pp_stack_va);
    }
 
-   lima_update_pp_stream(submit);
+   lima_update_pp_stream(job);
 
    struct lima_pp_stream_state *ps = &ctx->pp_stream;
    if (screen->gpu_type == DRM_LIMA_PARAM_GPU_ID_MALI400) {
       struct drm_lima_m400_pp_frame pp_frame = {0};
-      lima_pack_pp_frame_reg(submit, pp_frame.frame, pp_frame.wb);
+      lima_pack_pp_frame_reg(job, pp_frame.frame, pp_frame.wb);
       pp_frame.num_pp = screen->num_pp;
 
       for (int i = 0; i < screen->num_pp; i++) {
          pp_frame.plbu_array_address[i] = ps->va + ps->offset[i];
-         if (submit->pp_max_stack_size)
+         if (job->pp_max_stack_size)
             pp_frame.fragment_stack_address[i] = pp_stack_va +
-               submit->pp_max_stack_size * pp_stack_pp_size * i;
+               job->pp_max_stack_size * pp_stack_pp_size * i;
       }
 
       lima_dump_command_stream_print(
-         submit->dump, &pp_frame, sizeof(pp_frame), false, "add pp frame\n");
+         job->dump, &pp_frame, sizeof(pp_frame), false, "add pp frame\n");
 
-      if (!lima_submit_start(submit, LIMA_PIPE_PP, &pp_frame, sizeof(pp_frame)))
-         fprintf(stderr, "pp submit error\n");
+      if (!lima_job_start(job, LIMA_PIPE_PP, &pp_frame, sizeof(pp_frame)))
+         fprintf(stderr, "pp job error\n");
    }
    else {
       struct drm_lima_m450_pp_frame pp_frame = {0};
-      lima_pack_pp_frame_reg(submit, pp_frame.frame, pp_frame.wb);
+      lima_pack_pp_frame_reg(job, pp_frame.frame, pp_frame.wb);
       pp_frame.num_pp = screen->num_pp;
 
-      if (submit->pp_max_stack_size)
+      if (job->pp_max_stack_size)
          for (int i = 0; i < screen->num_pp; i++)
             pp_frame.fragment_stack_address[i] = pp_stack_va +
-               submit->pp_max_stack_size * pp_stack_pp_size * i;
+               job->pp_max_stack_size * pp_stack_pp_size * i;
 
       if (ps->map) {
          for (int i = 0; i < screen->num_pp; i++)
@@ -937,7 +937,7 @@ lima_do_submit(struct lima_submit *submit)
       else {
          pp_frame.use_dlbu = true;
 
-         struct lima_submit_fb_info *fb = &submit->fb;
+         struct lima_job_fb_info *fb = &job->fb;
          pp_frame.dlbu_regs[0] = ctx->plb[ctx->plb_index]->va;
          pp_frame.dlbu_regs[1] = ((fb->tiled_h - 1) << 16) | (fb->tiled_w - 1);
          unsigned s = util_logbase2(LIMA_CTX_PLB_BLK_SIZE) - 7;
@@ -946,14 +946,14 @@ lima_do_submit(struct lima_submit *submit)
       }
 
       lima_dump_command_stream_print(
-         submit->dump, &pp_frame, sizeof(pp_frame), false, "add pp frame\n");
+         job->dump, &pp_frame, sizeof(pp_frame), false, "add pp frame\n");
 
-      if (!lima_submit_start(submit, LIMA_PIPE_PP, &pp_frame, sizeof(pp_frame)))
-         fprintf(stderr, "pp submit error\n");
+      if (!lima_job_start(job, LIMA_PIPE_PP, &pp_frame, sizeof(pp_frame)))
+         fprintf(stderr, "pp job error\n");
    }
 
-   if (submit->dump) {
-      if (!lima_submit_wait(submit, LIMA_PIPE_PP, PIPE_TIMEOUT_INFINITE)) {
+   if (job->dump) {
+      if (!lima_job_wait(job, LIMA_PIPE_PP, PIPE_TIMEOUT_INFINITE)) {
          fprintf(stderr, "pp wait error\n");
          exit(1);
       }
@@ -961,54 +961,54 @@ lima_do_submit(struct lima_submit *submit)
 
    ctx->plb_index = (ctx->plb_index + 1) % lima_ctx_num_plb;
 
-   if (submit->key.cbuf && (submit->resolve & PIPE_CLEAR_COLOR0)) {
+   if (job->key.cbuf && (job->resolve & PIPE_CLEAR_COLOR0)) {
       /* Set reload flag for next draw. It'll be unset if buffer is cleared */
-      struct lima_surface *surf = lima_surface(submit->key.cbuf);
+      struct lima_surface *surf = lima_surface(job->key.cbuf);
       surf->reload = true;
    }
 
-   if (ctx->submit == submit)
-      ctx->submit = NULL;
+   if (ctx->job == job)
+      ctx->job = NULL;
 
-   lima_submit_free(submit);
+   lima_job_free(job);
 }
 
 void
 lima_flush(struct lima_context *ctx)
 {
-   hash_table_foreach(ctx->submits, entry) {
-      struct lima_submit *submit = entry->data;
-      lima_do_submit(submit);
+   hash_table_foreach(ctx->jobs, entry) {
+      struct lima_job *job = entry->data;
+      lima_do_job(job);
    }
 }
 
 void
-lima_flush_submit_accessing_bo(
+lima_flush_job_accessing_bo(
    struct lima_context *ctx, struct lima_bo *bo, bool write)
 {
-   hash_table_foreach(ctx->submits, entry) {
-      struct lima_submit *submit = entry->data;
-      if (lima_submit_has_bo(submit, bo, write))
-         lima_do_submit(submit);
+   hash_table_foreach(ctx->jobs, entry) {
+      struct lima_job *job = entry->data;
+      if (lima_job_has_bo(job, bo, write))
+         lima_do_job(job);
    }
 }
 
 /*
- * This is for current submit flush previous submit which write to the resource it wants
+ * This is for current job flush previous job which write to the resource it wants
  * to read. Tipical usage is flush the FBO which is used as current task's texture.
  */
 void
-lima_flush_previous_submit_writing_resource(
+lima_flush_previous_job_writing_resource(
    struct lima_context *ctx, struct pipe_resource *prsc)
 {
-   struct hash_entry *entry = _mesa_hash_table_search(ctx->write_submits, prsc);
+   struct hash_entry *entry = _mesa_hash_table_search(ctx->write_jobs, prsc);
 
    if (entry) {
-      struct lima_submit *submit = entry->data;
+      struct lima_job *job = entry->data;
 
-      /* do not flush current submit */
-      if (submit != ctx->submit)
-         lima_do_submit(submit);
+      /* do not flush current job */
+      if (job != ctx->job)
+         lima_do_job(job);
    }
 }
 
@@ -1030,28 +1030,28 @@ lima_pipe_flush(struct pipe_context *pctx, struct pipe_fence_handle **fence,
 }
 
 static bool
-lima_submit_compare(const void *s1, const void *s2)
+lima_job_compare(const void *s1, const void *s2)
 {
-   return memcmp(s1, s2, sizeof(struct lima_submit_key)) == 0;
+   return memcmp(s1, s2, sizeof(struct lima_job_key)) == 0;
 }
 
 static uint32_t
-lima_submit_hash(const void *key)
+lima_job_hash(const void *key)
 {
-   return _mesa_hash_data(key, sizeof(struct lima_submit_key));
+   return _mesa_hash_data(key, sizeof(struct lima_job_key));
 }
 
-bool lima_submit_init(struct lima_context *ctx)
+bool lima_job_init(struct lima_context *ctx)
 {
    int fd = lima_screen(ctx->base.screen)->fd;
 
-   ctx->submits = _mesa_hash_table_create(ctx, lima_submit_hash, lima_submit_compare);
-   if (!ctx->submits)
+   ctx->jobs = _mesa_hash_table_create(ctx, lima_job_hash, lima_job_compare);
+   if (!ctx->jobs)
       return false;
 
-   ctx->write_submits = _mesa_hash_table_create(
+   ctx->write_jobs = _mesa_hash_table_create(
       ctx, _mesa_hash_pointer, _mesa_key_pointer_equal);
-   if (!ctx->write_submits)
+   if (!ctx->write_jobs)
       return false;
 
    ctx->in_sync_fd = -1;
@@ -1067,7 +1067,7 @@ bool lima_submit_init(struct lima_context *ctx)
    return true;
 }
 
-void lima_submit_fini(struct lima_context *ctx)
+void lima_job_fini(struct lima_context *ctx)
 {
    int fd = lima_screen(ctx->base.screen)->fd;
 

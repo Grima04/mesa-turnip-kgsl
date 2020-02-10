@@ -33,7 +33,7 @@
 #include "lima_screen.h"
 #include "lima_context.h"
 #include "lima_fence.h"
-#include "lima_submit.h"
+#include "lima_job.h"
 
 struct pipe_fence_handle {
    struct pipe_reference reference;

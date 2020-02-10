@@ -41,15 +41,15 @@ lima_set_framebuffer_state(struct pipe_context *pctx,
 {
    struct lima_context *ctx = lima_context(pctx);
 
-   /* make sure there are always single submit in this context */
-   if (lima_debug & LIMA_DEBUG_SINGLE_SUBMIT)
+   /* make sure there are always single job in this context */
+   if (lima_debug & LIMA_DEBUG_SINGLE_JOB)
       lima_flush(ctx);
 
    struct lima_context_framebuffer *fb = &ctx->framebuffer;
 
    util_copy_framebuffer_state(&fb->base, framebuffer);
 
-   ctx->submit = NULL;
+   ctx->job = NULL;
    ctx->dirty |= LIMA_CONTEXT_DIRTY_FRAMEBUFFER;
 }
 

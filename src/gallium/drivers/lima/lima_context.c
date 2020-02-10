@@ -35,7 +35,7 @@
 #include "lima_context.h"
 #include "lima_resource.h"
 #include "lima_bo.h"
-#include "lima_submit.h"
+#include "lima_job.h"
 #include "lima_util.h"
 #include "lima_fence.h"
 
@@ -47,12 +47,12 @@ int lima_ctx_num_plb = LIMA_CTX_PLB_DEF_NUM;
 uint32_t
 lima_ctx_buff_va(struct lima_context *ctx, enum lima_ctx_buff buff)
 {
-   struct lima_submit *submit = lima_submit_get(ctx);
+   struct lima_job *job = lima_job_get(ctx);
    struct lima_ctx_buff_state *cbs = ctx->buffer_state + buff;
    struct lima_resource *res = lima_resource(cbs->res);
    int pipe = buff < lima_ctx_buff_num_gp ? LIMA_PIPE_GP : LIMA_PIPE_PP;
 
-   lima_submit_add_bo(submit, pipe, res->bo, LIMA_SUBMIT_BO_READ);
+   lima_job_add_bo(job, pipe, res->bo, LIMA_SUBMIT_BO_READ);
 
    return res->bo->va + cbs->offset;
 }
@@ -108,16 +108,16 @@ lima_invalidate_resource(struct pipe_context *pctx, struct pipe_resource *prsc)
 {
    struct lima_context *ctx = lima_context(pctx);
 
-   struct hash_entry *entry = _mesa_hash_table_search(ctx->write_submits, prsc);
+   struct hash_entry *entry = _mesa_hash_table_search(ctx->write_jobs, prsc);
    if (!entry)
       return;
 
-   struct lima_submit *submit = entry->data;
-   if (submit->key.zsbuf && (submit->key.zsbuf->texture == prsc))
-      submit->resolve &= ~(PIPE_CLEAR_DEPTH | PIPE_CLEAR_STENCIL);
+   struct lima_job *job = entry->data;
+   if (job->key.zsbuf && (job->key.zsbuf->texture == prsc))
+      job->resolve &= ~(PIPE_CLEAR_DEPTH | PIPE_CLEAR_STENCIL);
 
-   if (submit->key.cbuf && (submit->key.cbuf->texture == prsc))
-      submit->resolve &= ~PIPE_CLEAR_COLOR0;
+   if (job->key.cbuf && (job->key.cbuf->texture == prsc))
+      job->resolve &= ~PIPE_CLEAR_COLOR0;
 }
 
 static void
@@ -126,7 +126,7 @@ lima_context_destroy(struct pipe_context *pctx)
    struct lima_context *ctx = lima_context(pctx);
    struct lima_screen *screen = lima_screen(pctx->screen);
 
-   lima_submit_fini(ctx);
+   lima_job_fini(ctx);
 
    for (int i = 0; i < lima_ctx_buff_num; i++)
       pipe_resource_reference(&ctx->buffer_state[i].res, NULL);
@@ -274,7 +274,7 @@ lima_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
          goto err_out;
    }
 
-   if (!lima_submit_init(ctx))
+   if (!lima_job_init(ctx))
       goto err_out;
 
    return &ctx->base;

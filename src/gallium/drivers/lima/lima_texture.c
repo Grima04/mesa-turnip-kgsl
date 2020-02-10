@@ -34,7 +34,7 @@
 #include "lima_screen.h"
 #include "lima_texture.h"
 #include "lima_resource.h"
-#include "lima_submit.h"
+#include "lima_job.h"
 #include "lima_util.h"
 #include "lima_format.h"
 
@@ -65,7 +65,7 @@ lima_texture_desc_set_va(lima_tex_desc *desc,
 
 /*
  * Note: this function is used by both draw and flush code path,
- * make sure no lima_submit_get() is called inside this.
+ * make sure no lima_job_get() is called inside this.
  */
 void
 lima_texture_desc_set_res(struct lima_context *ctx, lima_tex_desc *desc,
@@ -257,7 +257,7 @@ lima_calc_tex_desc_size(struct lima_sampler_view *texture)
 void
 lima_update_textures(struct lima_context *ctx)
 {
-   struct lima_submit *submit = lima_submit_get(ctx);
+   struct lima_job *job = lima_job_get(ctx);
    struct lima_texture_stateobj *lima_tex = &ctx->tex_stateobj;
 
    assert (lima_tex->num_samplers <= 16);
@@ -266,12 +266,12 @@ lima_update_textures(struct lima_context *ctx)
    if (!lima_tex->num_samplers || !lima_tex->num_textures)
       return;
 
-   /* we always need to add texture bo to submit */
+   /* we always need to add texture bo to job */
    for (int i = 0; i < lima_tex->num_samplers; i++) {
       struct lima_sampler_view *texture = lima_sampler_view(lima_tex->textures[i]);
       struct lima_resource *rsc = lima_resource(texture->base.texture);
-      lima_flush_previous_submit_writing_resource(ctx, texture->base.texture);
-      lima_submit_add_bo(submit, LIMA_PIPE_PP, rsc->bo, LIMA_SUBMIT_BO_READ);
+      lima_flush_previous_job_writing_resource(ctx, texture->base.texture);
+      lima_job_add_bo(job, LIMA_PIPE_PP, rsc->bo, LIMA_SUBMIT_BO_READ);
    }
 
    /* do not regenerate texture desc if no change */
@@ -299,11 +299,11 @@ lima_update_textures(struct lima_context *ctx)
    }
 
    lima_dump_command_stream_print(
-      submit->dump, descs, size, false, "add textures_desc at va %x\n",
+      job->dump, descs, size, false, "add textures_desc at va %x\n",
       lima_ctx_buff_va(ctx, lima_ctx_buff_pp_tex_desc));
 
    lima_dump_texture_descriptor(
-      submit->dump, descs, size,
+      job->dump, descs, size,
       lima_ctx_buff_va(ctx, lima_ctx_buff_pp_tex_desc) + lima_tex_list_size,
       lima_tex_list_size);
 }
