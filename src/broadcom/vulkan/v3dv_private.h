@@ -225,6 +225,7 @@ struct v3dv_device_memory {
 };
 
 #define V3D_OUTPUT_IMAGE_FORMAT_NO 255
+#define TEXTURE_DATA_FORMAT_NO     255
 
 struct v3dv_format {
    bool supported;

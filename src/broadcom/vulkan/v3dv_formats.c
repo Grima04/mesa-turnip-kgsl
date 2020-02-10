@@ -59,14 +59,66 @@
 #define SWIZ_XXXX	SWIZ(X, X, X, X)
 #define SWIZ_000X	SWIZ(0, 0, 0, X)
 
+/* FIXME: expand format table to describe whether the format is supported
+ * for buffer surfaces (texel buffers, vertex buffers, etc).
+ */
 static const struct v3dv_format format_table[] = {
-   /* Color */
-   FORMAT(R8G8B8A8_SRGB,           SRGB8_ALPHA8, RGBA8,         SWIZ_XYZW, 16),
+   /* Color, 4 channels */
    FORMAT(B8G8R8A8_SRGB,           SRGB8_ALPHA8, RGBA8,         SWIZ_ZYXW, 16),
-   FORMAT(R8G8B8A8_UNORM,          RGBA8,        RGBA8,         SWIZ_XYZW, 16),
    FORMAT(B8G8R8A8_UNORM,          RGBA8,        RGBA8,         SWIZ_ZYXW, 16),
+
+   FORMAT(R8G8B8A8_SRGB,           SRGB8_ALPHA8, RGBA8,         SWIZ_XYZW, 16),
+   FORMAT(R8G8B8A8_UNORM,          RGBA8,        RGBA8,         SWIZ_XYZW, 16),
+   FORMAT(R8G8B8A8_SNORM,          NO,           RGBA8_SNORM,   SWIZ_XYZW, 16),
+   FORMAT(R8G8B8A8_SINT,           RGBA8I,       RGBA8I,        SWIZ_XYZW, 16),
+   FORMAT(R8G8B8A8_UINT,           RGBA8UI,      RGBA8UI,       SWIZ_XYZW, 16),
+
+   FORMAT(R16G16B16A16_SFLOAT,     RGBA16F,      RGBA16F,       SWIZ_XYZW, 16),
+   FORMAT(R16G16B16A16_UNORM,      NO,           RGBA16,        SWIZ_XYZW, 32),
+   FORMAT(R16G16B16A16_SNORM,      NO,           RGBA16_SNORM,  SWIZ_XYZW, 32),
+   FORMAT(R16G16B16A16_SINT,       RGBA16I,      RGBA16I,       SWIZ_XYZW, 16),
+   FORMAT(R16G16B16A16_UINT,       RGBA16UI,     RGBA16UI,      SWIZ_XYZW, 16),
+
    FORMAT(R32G32B32A32_SFLOAT,     RGBA32F,      RGBA32F,       SWIZ_XYZW, 32),
-   FORMAT(R32G32B32A32_SFLOAT,     RGBA32F,      RGBA32F,       SWIZ_XYZW, 32),
+   FORMAT(R32G32B32A32_SINT,       RGBA32I,      RGBA32I,       SWIZ_XYZW, 32),
+   FORMAT(R32G32B32A32_UINT,       RGBA32UI,     RGBA32UI,      SWIZ_XYZW, 32),
+
+   /* Color, 3 channels */
+   FORMAT(R32G32B32_SFLOAT,        NO,           NO,            SWIZ_XYZ1,  0),
+   FORMAT(R32G32B32_UINT,          NO,           NO,            SWIZ_XYZ1,  0),
+   FORMAT(R32G32B32_SINT,          NO,           NO,            SWIZ_XYZ1,  0),
+
+   /* Color, 2 channels */
+   FORMAT(R8G8_UNORM,              RG8,          RG8,           SWIZ_XY01, 16),
+   FORMAT(R8G8_SNORM,              NO,           RG8_SNORM,     SWIZ_XY01, 16),
+   FORMAT(R8G8_SINT,               RG8I,         RG8I,          SWIZ_XY01, 16),
+   FORMAT(R8G8_UINT,               RG8UI,        RG8UI,         SWIZ_XY01, 16),
+
+   FORMAT(R16G16_UNORM,            NO,           RG16,          SWIZ_XY01, 32),
+   FORMAT(R16G16_SNORM,            NO,           RG16_SNORM,    SWIZ_XY01, 32),
+   FORMAT(R16G16_SFLOAT,           RG16F,        RG16F,         SWIZ_XY01, 16),
+   FORMAT(R16G16_SINT,             RG16I,        RG16I,         SWIZ_XY01, 16),
+   FORMAT(R16G16_UINT,             RG16UI,       RG16UI,        SWIZ_XY01, 16),
+
+   FORMAT(R32G32_SFLOAT,           RG32F,        RG32F,         SWIZ_XY01, 32),
+   FORMAT(R32G32_SINT,             RG32I,        RG32I,         SWIZ_XY01, 32),
+   FORMAT(R32G32_UINT,             RG32UI,       RG32UI,        SWIZ_XY01, 32),
+
+   /* Color, 1 channel */
+   FORMAT(R8_UNORM,                R8,           R8,            SWIZ_X001, 16),
+   FORMAT(R8_SNORM,                NO,           R8_SNORM,      SWIZ_X001, 16),
+   FORMAT(R8_SINT,                 R8I,          R8I,           SWIZ_X001, 16),
+   FORMAT(R8_UINT,                 R8UI,         R8UI,          SWIZ_X001, 16),
+
+   FORMAT(R16_UNORM,               NO,           R16,           SWIZ_X001, 32),
+   FORMAT(R16_SNORM,               NO,           R16_SNORM,     SWIZ_X001, 32),
+   FORMAT(R16_SFLOAT,              R16F,         R16F,          SWIZ_X001, 16),
+   FORMAT(R16_SINT,                R16I,         R16I,          SWIZ_X001, 16),
+   FORMAT(R16_UINT,                R16UI,        R16UI,         SWIZ_X001, 16),
+
+   FORMAT(R32_SFLOAT,              R32F,         R32F,          SWIZ_X001, 32),
+   FORMAT(R32_SINT,                R32I,         R32I,          SWIZ_X001, 32),
+   FORMAT(R32_UINT,                R32UI,        R32UI,         SWIZ_X001, 32),
 
    /* Depth */
    FORMAT(D16_UNORM,               D16,          DEPTH_COMP16,  SWIZ_XXXX, 32),
