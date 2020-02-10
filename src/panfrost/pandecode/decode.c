@@ -2270,8 +2270,10 @@ pandecode_vertex_tiler_postfix_pre(
                         pandecode_log("},\n");
                 }
 
-                if (s->unknown2_8)
-                        pandecode_prop("unknown2_8 = 0x%" PRIx32, s->unknown2_8);
+                if (s->padding) {
+                        pandecode_msg("XXX: shader padding tripped\n");
+                        pandecode_prop("padding = 0x%" PRIx32, s->padding);
+                }
 
                 if (!is_bifrost) {
                         /* TODO: Blend shaders routing/disasm */

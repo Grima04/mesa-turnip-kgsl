@@ -614,8 +614,7 @@ struct mali_shader_meta {
                 } midgard2;
         };
 
-        /* zero on bifrost */
-        u32 unknown2_8;
+        u32 padding;
 
         /* Blending information for the older non-MRT Midgard HW. Check for
          * MALI_HAS_BLEND_SHADER to decide how to interpret.
