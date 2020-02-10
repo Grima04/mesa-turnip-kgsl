@@ -988,7 +988,8 @@ PhysReg get_reg(ra_ctx& ctx,
 
    //FIXME: if nothing helps, shift-rotate the registers to make space
 
-   unreachable("did not find a register");
+   fprintf(stderr, "ACO: failed to allocate registers during shader compilation\n");
+   abort();
 }
 
 PhysReg get_reg_create_vector(ra_ctx& ctx,
