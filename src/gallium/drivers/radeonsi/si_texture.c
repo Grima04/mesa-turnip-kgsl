@@ -380,7 +380,8 @@ static bool si_can_disable_dcc(struct si_texture *tex)
    /* We can't disable DCC if it can be written by another process. */
    return tex->surface.dcc_offset &&
           (!tex->buffer.b.is_shared ||
-           !(tex->buffer.external_usage & PIPE_HANDLE_USAGE_FRAMEBUFFER_WRITE));
+           !(tex->buffer.external_usage & PIPE_HANDLE_USAGE_FRAMEBUFFER_WRITE)) &&
+          !ac_modifier_has_dcc(tex->surface.modifier);
 }
 
 static bool si_texture_discard_dcc(struct si_screen *sscreen, struct si_texture *tex)
