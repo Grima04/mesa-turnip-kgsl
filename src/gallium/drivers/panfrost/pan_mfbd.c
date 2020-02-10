@@ -157,9 +157,9 @@ panfrost_mfbd_format(struct pipe_surface *surf)
 static void
 panfrost_mfbd_clear(
         struct panfrost_batch *batch,
-        struct bifrost_framebuffer *fb,
-        struct bifrost_fb_extra *fbx,
-        struct bifrost_render_target *rts,
+        struct mali_framebuffer *fb,
+        struct mali_framebuffer_extra *fbx,
+        struct mali_render_target *rts,
         unsigned rt_count)
 {
         for (unsigned i = 0; i < rt_count; ++i) {
@@ -183,7 +183,7 @@ panfrost_mfbd_clear(
 
 static void
 panfrost_mfbd_set_cbuf(
-        struct bifrost_render_target *rt,
+        struct mali_render_target *rt,
         struct pipe_surface *surf)
 {
         struct panfrost_resource *rsrc = pan_resource(surf->texture);
@@ -228,8 +228,8 @@ panfrost_mfbd_set_cbuf(
 
 static void
 panfrost_mfbd_set_zsbuf(
-        struct bifrost_framebuffer *fb,
-        struct bifrost_fb_extra *fbx,
+        struct mali_framebuffer *fb,
+        struct mali_framebuffer_extra *fbx,
         struct pipe_surface *surf)
 {
         struct panfrost_resource *rsrc = pan_resource(surf->texture);
@@ -315,9 +315,9 @@ panfrost_mfbd_set_zsbuf(
 
 static mali_ptr
 panfrost_mfbd_upload(struct panfrost_batch *batch,
-        struct bifrost_framebuffer *fb,
-        struct bifrost_fb_extra *fbx,
-        struct bifrost_render_target *rts,
+        struct mali_framebuffer *fb,
+        struct mali_framebuffer_extra *fbx,
+        struct mali_render_target *rts,
         unsigned rt_count)
 {
         off_t offset = 0;
@@ -328,9 +328,9 @@ panfrost_mfbd_upload(struct panfrost_batch *batch,
         /* Compute total size for transfer */
 
         size_t total_sz =
-                sizeof(struct bifrost_framebuffer) +
-                (has_extra ? sizeof(struct bifrost_fb_extra) : 0) +
-                sizeof(struct bifrost_render_target) * 4;
+                sizeof(struct mali_framebuffer) +
+                (has_extra ? sizeof(struct mali_framebuffer_extra) : 0) +
+                sizeof(struct mali_render_target) * 4;
 
         struct panfrost_transfer m_f_trans =
                 panfrost_allocate_transient(batch, total_sz);
@@ -357,7 +357,7 @@ panfrost_mfbd_upload(struct panfrost_batch *batch,
 
 #undef UPLOAD
 
-static struct bifrost_framebuffer
+static struct mali_framebuffer
 panfrost_emit_mfbd(struct panfrost_batch *batch, unsigned vertex_count)
 {
         struct panfrost_context *ctx = batch->ctx;
@@ -369,7 +369,7 @@ panfrost_emit_mfbd(struct panfrost_batch *batch, unsigned vertex_count)
 
         unsigned shift = panfrost_get_stack_shift(batch->stack_size);
 
-        struct bifrost_framebuffer framebuffer = {
+        struct mali_framebuffer framebuffer = {
                 .width1 = MALI_POSITIVE(width),
                 .height1 = MALI_POSITIVE(height),
                 .width2 = MALI_POSITIVE(width),
@@ -396,7 +396,7 @@ panfrost_emit_mfbd(struct panfrost_batch *batch, unsigned vertex_count)
 void
 panfrost_attach_mfbd(struct panfrost_batch *batch, unsigned vertex_count)
 {
-        struct bifrost_framebuffer mfbd =
+        struct mali_framebuffer mfbd =
                 panfrost_emit_mfbd(batch, vertex_count);
 
         memcpy(batch->framebuffer.cpu, &mfbd, sizeof(mfbd));
@@ -407,9 +407,9 @@ panfrost_attach_mfbd(struct panfrost_batch *batch, unsigned vertex_count)
 mali_ptr
 panfrost_mfbd_fragment(struct panfrost_batch *batch, bool has_draws)
 {
-        struct bifrost_framebuffer fb = panfrost_emit_mfbd(batch, has_draws);
-        struct bifrost_fb_extra fbx = {0};
-        struct bifrost_render_target rts[4] = {0};
+        struct mali_framebuffer fb = panfrost_emit_mfbd(batch, has_draws);
+        struct mali_framebuffer_extra fbx = {0};
+        struct mali_render_target rts[4] = {0};
 
         /* We always upload at least one dummy GL_NONE render target */
 

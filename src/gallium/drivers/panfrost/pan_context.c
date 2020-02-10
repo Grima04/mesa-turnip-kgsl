@@ -155,7 +155,7 @@ panfrost_attach_vt_framebuffer(struct panfrost_context *ctx)
         if (!batch->framebuffer.gpu) {
                 unsigned size = (screen->quirks & MIDGARD_SFBD) ?
                         sizeof(struct mali_single_framebuffer) :
-                        sizeof(struct bifrost_framebuffer);
+                        sizeof(struct mali_framebuffer);
 
                 batch->framebuffer = panfrost_allocate_transient(batch, size);
 

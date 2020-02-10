@@ -993,16 +993,16 @@ pandecode_rt_format(struct mali_rt_format format)
 }
 
 static void
-pandecode_render_target(uint64_t gpu_va, unsigned job_no, const struct bifrost_framebuffer *fb)
+pandecode_render_target(uint64_t gpu_va, unsigned job_no, const struct mali_framebuffer *fb)
 {
-        pandecode_log("struct bifrost_render_target rts_list_%"PRIx64"_%d[] = {\n", gpu_va, job_no);
+        pandecode_log("struct mali_render_target rts_list_%"PRIx64"_%d[] = {\n", gpu_va, job_no);
         pandecode_indent++;
 
         for (int i = 0; i < (fb->rt_count_1 + 1); i++) {
-                mali_ptr rt_va = gpu_va + i * sizeof(struct bifrost_render_target);
+                mali_ptr rt_va = gpu_va + i * sizeof(struct mali_render_target);
                 struct pandecode_mapped_memory *mem =
                         pandecode_find_mapped_gpu_mem_containing(rt_va);
-                const struct bifrost_render_target *PANDECODE_PTR_VAR(rt, mem, (mali_ptr) rt_va);
+                const struct mali_render_target *PANDECODE_PTR_VAR(rt, mem, (mali_ptr) rt_va);
 
                 pandecode_log("{\n");
                 pandecode_indent++;
@@ -1058,11 +1058,11 @@ static struct pandecode_fbd
 pandecode_mfbd_bfr(uint64_t gpu_va, int job_no, bool is_fragment, bool is_compute)
 {
         struct pandecode_mapped_memory *mem = pandecode_find_mapped_gpu_mem_containing(gpu_va);
-        const struct bifrost_framebuffer *PANDECODE_PTR_VAR(fb, mem, (mali_ptr) gpu_va);
+        const struct mali_framebuffer *PANDECODE_PTR_VAR(fb, mem, (mali_ptr) gpu_va);
 
         struct pandecode_fbd info;
  
-        pandecode_log("struct bifrost_framebuffer framebuffer_%"PRIx64"_%d = {\n", gpu_va, job_no);
+        pandecode_log("struct mali_framebuffer framebuffer_%"PRIx64"_%d = {\n", gpu_va, job_no);
         pandecode_indent++;
 
         pandecode_log(".shared_memory = {\n");
@@ -1110,15 +1110,15 @@ pandecode_mfbd_bfr(uint64_t gpu_va, int job_no, bool is_fragment, bool is_comput
         pandecode_indent--;
         pandecode_log("};\n");
 
-        gpu_va += sizeof(struct bifrost_framebuffer);
+        gpu_va += sizeof(struct mali_framebuffer);
 
         info.has_extra = (fb->mfbd_flags & MALI_MFBD_EXTRA) && is_fragment;
 
         if (info.has_extra) {
                 mem = pandecode_find_mapped_gpu_mem_containing(gpu_va);
-                const struct bifrost_fb_extra *PANDECODE_PTR_VAR(fbx, mem, (mali_ptr) gpu_va);
+                const struct mali_framebuffer_extra *PANDECODE_PTR_VAR(fbx, mem, (mali_ptr) gpu_va);
 
-                pandecode_log("struct bifrost_fb_extra fb_extra_%"PRIx64"_%d = {\n", gpu_va, job_no);
+                pandecode_log("struct mali_framebuffer_extra fb_extra_%"PRIx64"_%d = {\n", gpu_va, job_no);
                 pandecode_indent++;
 
                 MEMORY_PROP(fbx, checksum);
@@ -1202,7 +1202,7 @@ pandecode_mfbd_bfr(uint64_t gpu_va, int job_no, bool is_fragment, bool is_comput
                 pandecode_indent--;
                 pandecode_log("};\n");
 
-                gpu_va += sizeof(struct bifrost_fb_extra);
+                gpu_va += sizeof(struct mali_framebuffer_extra);
         }
 
         if (is_fragment)

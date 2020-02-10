@@ -1584,7 +1584,7 @@ struct mali_rt_format {
         unsigned no_preload : 1;
 } __attribute__((packed));
 
-struct bifrost_render_target {
+struct mali_render_target {
         struct mali_rt_format format;
 
         u64 zero1;
@@ -1617,7 +1617,7 @@ struct bifrost_render_target {
         u32 clear_color_4; // always equal, but unclear function?
 } __attribute__((packed));
 
-/* An optional part of bifrost_framebuffer. It comes between the main structure
+/* An optional part of mali_framebuffer. It comes between the main structure
  * and the array of render targets. It must be included if any of these are
  * enabled:
  *
@@ -1632,7 +1632,7 @@ struct bifrost_render_target {
 /* flags_lo */
 #define MALI_EXTRA_ZS           (0x4)
 
-struct bifrost_fb_extra {
+struct mali_framebuffer_extra  {
         mali_ptr checksum;
         /* Each tile has an 8 byte checksum, so the stride is "width in tiles * 8" */
         u32 checksum_stride;
@@ -1678,11 +1678,11 @@ struct bifrost_fb_extra {
 
 #define MALI_MFBD_DEPTH_WRITE (1 << 10)
 
-/* The MFBD contains the extra bifrost_fb_extra section */
+/* The MFBD contains the extra mali_framebuffer_extra  section */
 
 #define MALI_MFBD_EXTRA (1 << 13)
 
-struct bifrost_framebuffer {
+struct mali_framebuffer {
         struct mali_shared_memory shared_memory;
 
         /* 0x20 */
@@ -1701,8 +1701,8 @@ struct bifrost_framebuffer {
 
         struct midgard_tiler_descriptor tiler;
 
-        /* optional: struct bifrost_fb_extra extra */
-        /* struct bifrost_render_target rts[] */
+        /* optional: struct mali_framebuffer_extra  extra */
+        /* struct mali_render_target rts[] */
 } __attribute__((packed));
 
 #endif /* __PANFROST_JOB_H__ */
