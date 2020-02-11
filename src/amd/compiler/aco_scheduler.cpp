@@ -453,6 +453,7 @@ barrier_interaction parse_barrier(Instruction *instr)
 struct hazard_query {
    bool contains_spill;
    int barriers;
+   int barrier_interaction;
    bool can_reorder_vmem;
    bool can_reorder_smem;
 };
@@ -460,13 +461,15 @@ struct hazard_query {
 void init_hazard_query(hazard_query *query) {
    query->contains_spill = false;
    query->barriers = 0;
+   query->barrier_interaction = 0;
    query->can_reorder_vmem = true;
    query->can_reorder_smem = true;
 }
 
 void add_to_hazard_query(hazard_query *query, Instruction *instr)
 {
-   query->barriers |= get_barrier_interaction(instr);
+   query->barriers |= parse_barrier(instr);
+   query->barrier_interaction |= get_barrier_interaction(instr);
    if (instr->opcode == aco_opcode::p_spill || instr->opcode == aco_opcode::p_reload)
       query->contains_spill = true;
 
@@ -481,10 +484,12 @@ enum HazardResult {
    hazard_fail_reorder_ds,
    hazard_fail_reorder_sendmsg,
    hazard_fail_spill,
+   hazard_fail_export,
+   hazard_fail_barrier,
    /* Must stop at these failures. The hazard query code doesn't consider them
     * when added. */
    hazard_fail_exec,
-   hazard_fail_barrier,
+   hazard_fail_memtime,
 };
 
 HazardResult perform_hazard_query(hazard_query *query, Instruction *instr)
@@ -500,22 +505,24 @@ HazardResult perform_hazard_query(hazard_query *query, Instruction *instr)
 
    /* don't move exports so that they stay closer together */
    if (instr->format == Format::EXP)
-      return hazard_fail_barrier;
+      return hazard_fail_export;
 
    /* don't move s_memtime/s_memrealtime */
    if (instr->opcode == aco_opcode::s_memtime || instr->opcode == aco_opcode::s_memrealtime)
-      return hazard_fail_barrier;
+      return hazard_fail_memtime;
 
-   if (query->barriers & parse_barrier(instr))
+   if (query->barrier_interaction && (query->barrier_interaction & parse_barrier(instr)))
+      return hazard_fail_barrier;
+   if (query->barriers && (query->barriers & get_barrier_interaction(instr)))
       return hazard_fail_barrier;
 
    if (!query->can_reorder_smem && instr->format == Format::SMEM && !can_reorder_candidate)
       return hazard_fail_reorder_vmem_smem;
    if (!query->can_reorder_vmem && (instr->isVMEM() || instr->isFlatOrGlobal()) && !can_reorder_candidate)
       return hazard_fail_reorder_vmem_smem;
-   if ((query->barriers & barrier_shared) && instr->format == Format::DS)
+   if ((query->barrier_interaction & barrier_shared) && instr->format == Format::DS)
       return hazard_fail_reorder_ds;
-   if (is_gs_or_done_sendmsg(instr) && (query->barriers & get_barrier_interaction(instr)))
+   if (is_gs_or_done_sendmsg(instr) && (query->barrier_interaction & get_barrier_interaction(instr)))
       return hazard_fail_reorder_sendmsg;
 
    if ((instr->opcode == aco_opcode::p_spill || instr->opcode == aco_opcode::p_reload) &&
@@ -564,10 +571,9 @@ void schedule_SMEM(sched_ctx& ctx, Block* block,
       bool can_move_down = true;
 
       HazardResult haz = perform_hazard_query(&hq, candidate.get());
-      if (haz == hazard_fail_reorder_ds || haz == hazard_fail_spill || haz == hazard_fail_reorder_sendmsg)
+      if (haz == hazard_fail_reorder_ds || haz == hazard_fail_spill || haz == hazard_fail_reorder_sendmsg || haz == hazard_fail_barrier)
          can_move_down = false;
-      else if (haz == hazard_fail_reorder_vmem_smem || haz == hazard_fail_barrier ||
-               haz == hazard_fail_exec)
+      else if (haz != hazard_success)
          break;
 
       /* don't use LDS/GDS instructions to hide latency since it can
@@ -613,10 +619,10 @@ void schedule_SMEM(sched_ctx& ctx, Block* block,
 
       if (found_dependency) {
          HazardResult haz = perform_hazard_query(&hq, candidate.get());
-         if (haz == hazard_fail_reorder_ds || haz == hazard_fail_spill || haz == hazard_fail_reorder_sendmsg)
+         if (haz == hazard_fail_reorder_ds || haz == hazard_fail_spill ||
+             haz == hazard_fail_reorder_sendmsg || haz == hazard_fail_barrier)
             is_dependency = true;
-         else if (haz == hazard_fail_reorder_vmem_smem || haz == hazard_fail_barrier ||
-                  haz == hazard_fail_exec)
+         else if (haz != hazard_success)
             break;
       }
 
@@ -704,7 +710,8 @@ void schedule_VMEM(sched_ctx& ctx, Block* block,
       bool can_move_down = !is_vmem || part_of_clause;
 
       HazardResult haz = perform_hazard_query(part_of_clause ? &clause_hq : &indep_hq, candidate.get());
-      if (haz == hazard_fail_reorder_ds || haz == hazard_fail_spill || haz == hazard_fail_reorder_sendmsg)
+      if (haz == hazard_fail_reorder_ds || haz == hazard_fail_spill ||
+          haz == hazard_fail_reorder_sendmsg || haz == hazard_fail_barrier)
          can_move_down = false;
       else if (haz != hazard_success)
          break;
@@ -749,9 +756,10 @@ void schedule_VMEM(sched_ctx& ctx, Block* block,
       if (found_dependency) {
          HazardResult haz = perform_hazard_query(&indep_hq, candidate.get());
          if (haz == hazard_fail_reorder_ds || haz == hazard_fail_spill ||
-             haz == hazard_fail_reorder_vmem_smem || haz == hazard_fail_reorder_sendmsg)
+             haz == hazard_fail_reorder_vmem_smem || haz == hazard_fail_reorder_sendmsg ||
+             haz == hazard_fail_barrier)
             is_dependency = true;
-         else if (haz == hazard_fail_barrier || haz == hazard_fail_exec)
+         else if (haz != hazard_success)
             break;
       }
 
@@ -814,7 +822,7 @@ void schedule_position_export(sched_ctx& ctx, Block* block,
          break;
 
       HazardResult haz = perform_hazard_query(&hq, candidate.get());
-      if (haz == hazard_fail_barrier || haz == hazard_fail_exec)
+      if (haz == hazard_fail_exec || haz == hazard_fail_export || haz == hazard_fail_memtime)
          break;
 
       if (haz != hazard_success) {
