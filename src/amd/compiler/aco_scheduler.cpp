@@ -571,7 +571,7 @@ void schedule_SMEM(sched_ctx& ctx, Block* block,
       bool can_move_down = true;
 
       HazardResult haz = perform_hazard_query(&hq, candidate.get());
-      if (haz == hazard_fail_reorder_ds || haz == hazard_fail_spill || haz == hazard_fail_reorder_sendmsg || haz == hazard_fail_barrier)
+      if (haz == hazard_fail_reorder_ds || haz == hazard_fail_spill || haz == hazard_fail_reorder_sendmsg || haz == hazard_fail_barrier || haz == hazard_fail_export)
          can_move_down = false;
       else if (haz != hazard_success)
          break;
@@ -620,7 +620,8 @@ void schedule_SMEM(sched_ctx& ctx, Block* block,
       if (found_dependency) {
          HazardResult haz = perform_hazard_query(&hq, candidate.get());
          if (haz == hazard_fail_reorder_ds || haz == hazard_fail_spill ||
-             haz == hazard_fail_reorder_sendmsg || haz == hazard_fail_barrier)
+             haz == hazard_fail_reorder_sendmsg || haz == hazard_fail_barrier ||
+             haz == hazard_fail_export)
             is_dependency = true;
          else if (haz != hazard_success)
             break;
@@ -711,7 +712,8 @@ void schedule_VMEM(sched_ctx& ctx, Block* block,
 
       HazardResult haz = perform_hazard_query(part_of_clause ? &clause_hq : &indep_hq, candidate.get());
       if (haz == hazard_fail_reorder_ds || haz == hazard_fail_spill ||
-          haz == hazard_fail_reorder_sendmsg || haz == hazard_fail_barrier)
+          haz == hazard_fail_reorder_sendmsg || haz == hazard_fail_barrier ||
+          haz == hazard_fail_export)
          can_move_down = false;
       else if (haz != hazard_success)
          break;
@@ -757,7 +759,7 @@ void schedule_VMEM(sched_ctx& ctx, Block* block,
          HazardResult haz = perform_hazard_query(&indep_hq, candidate.get());
          if (haz == hazard_fail_reorder_ds || haz == hazard_fail_spill ||
              haz == hazard_fail_reorder_vmem_smem || haz == hazard_fail_reorder_sendmsg ||
-             haz == hazard_fail_barrier)
+             haz == hazard_fail_barrier || haz == hazard_fail_export)
             is_dependency = true;
          else if (haz != hazard_success)
             break;
@@ -822,7 +824,7 @@ void schedule_position_export(sched_ctx& ctx, Block* block,
          break;
 
       HazardResult haz = perform_hazard_query(&hq, candidate.get());
-      if (haz == hazard_fail_exec || haz == hazard_fail_export || haz == hazard_fail_memtime)
+      if (haz == hazard_fail_exec || haz == hazard_fail_memtime)
          break;
 
       if (haz != hazard_success) {
