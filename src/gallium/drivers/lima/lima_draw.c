@@ -1535,8 +1535,7 @@ lima_draw_vbo_update(struct pipe_context *pctx,
       ctx->const_buffer[PIPE_SHADER_FRAGMENT].dirty = false;
    }
 
-   if (ctx->dirty & LIMA_CONTEXT_DIRTY_TEXTURES)
-      lima_update_textures(ctx);
+   lima_update_textures(ctx);
 
    lima_pack_render_state(ctx, info);
    lima_pack_plbu_cmd(ctx, info);

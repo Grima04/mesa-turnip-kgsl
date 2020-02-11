@@ -95,8 +95,6 @@ lima_texture_desc_set_res(struct lima_context *ctx, lima_tex_desc *desc,
       layout = 0;
    }
 
-   lima_submit_add_bo(ctx->pp_submit, lima_res->bo, LIMA_SUBMIT_BO_READ);
-
    uint32_t base_va = lima_res->bo->va;
 
    /* attach first level */
@@ -261,6 +259,17 @@ lima_update_textures(struct lima_context *ctx)
 
    /* Nothing to do - we have no samplers or textures */
    if (!lima_tex->num_samplers || !lima_tex->num_textures)
+      return;
+
+   /* we always need to add texture bo to submit */
+   for (int i = 0; i < lima_tex->num_samplers; i++) {
+      struct lima_sampler_view *texture = lima_sampler_view(lima_tex->textures[i]);
+      struct lima_resource *rsc = lima_resource(texture->base.texture);
+      lima_submit_add_bo(ctx->pp_submit, rsc->bo, LIMA_SUBMIT_BO_READ);
+   }
+
+   /* do not regenerate texture desc if no change */
+   if (!(ctx->dirty & LIMA_CONTEXT_DIRTY_TEXTURES))
       return;
 
    unsigned size = lima_tex_list_size;
