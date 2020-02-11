@@ -2901,7 +2901,6 @@ get_push_range_address(struct anv_cmd_buffer *cmd_buffer,
       struct anv_descriptor_set *set =
          gfx_state->base.descriptors[range->index];
       return anv_descriptor_set_address(cmd_buffer, set);
-      break;
    }
 
    case ANV_DESCRIPTOR_SET_PUSH_CONSTANTS: {
@@ -2911,7 +2910,6 @@ get_push_range_address(struct anv_cmd_buffer *cmd_buffer,
          .bo = cmd_buffer->device->dynamic_state_pool.block_pool.bo,
          .offset = state.offset,
       };
-      break;
    }
 
    default: {
