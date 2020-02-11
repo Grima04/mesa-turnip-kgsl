@@ -173,7 +173,9 @@ brw_handle_primitive_restart(struct gl_context *ctx,
       /* Clear this to make the draw direct. */
       brw->draw.draw_indirect_data = NULL;
 
-      vbo_sw_primitive_restart(ctx, prims, nr_prims, ib, indirect_data);
+      vbo_sw_primitive_restart(ctx, prims, nr_prims, ib,
+                               indirect_data,
+                               brw->draw.draw_indirect_offset);
    }
 
    brw->prim_restart.in_progress = false;

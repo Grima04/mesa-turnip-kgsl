@@ -911,6 +911,8 @@ struct brw_context
       /**
        * Draw indirect buffer.
        */
+      unsigned draw_indirect_stride;
+      GLsizeiptr draw_indirect_offset;
       struct gl_buffer_object *draw_indirect_data;
    } draw;
 

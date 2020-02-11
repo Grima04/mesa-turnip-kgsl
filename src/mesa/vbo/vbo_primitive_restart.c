@@ -164,7 +164,8 @@ vbo_sw_primitive_restart(struct gl_context *ctx,
                          const struct _mesa_prim *prims,
                          GLuint nr_prims,
                          const struct _mesa_index_buffer *ib,
-                         struct gl_buffer_object *indirect)
+                         struct gl_buffer_object *indirect,
+                         GLsizeiptr indirect_offset)
 {
    GLuint prim_num;
    struct _mesa_prim new_prim;
@@ -196,7 +197,7 @@ vbo_sw_primitive_restart(struct gl_context *ctx,
       new_prim = prims[0];
       indirect_params = (const uint32_t *)
                         ADD_POINTERS(indirect->Mappings[MAP_INTERNAL].Pointer,
-                                     new_prim.indirect_offset);
+                                     indirect_offset);
 
       new_prim.count = indirect_params[0];
       new_prim.num_instances = indirect_params[1];

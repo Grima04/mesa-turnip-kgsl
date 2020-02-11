@@ -65,8 +65,6 @@ struct _mesa_prim
    GLuint num_instances;
    GLuint base_instance;
    GLuint draw_id;
-
-   GLsizeiptr indirect_offset;
 };
 
 /* Would like to call this a "vbo_index_buffer", but this would be

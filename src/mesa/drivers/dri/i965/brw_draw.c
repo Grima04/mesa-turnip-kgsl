@@ -161,7 +161,8 @@ brw_emit_prim(struct brw_context *brw,
               uint32_t hw_prim,
               struct brw_transform_feedback_object *xfb_obj,
               unsigned stream,
-              bool is_indirect)
+              bool is_indirect,
+              GLsizeiptr indirect_offset)
 {
    const struct gen_device_info *devinfo = &brw->screen->devinfo;
    int verts_per_instance;
@@ -227,25 +228,25 @@ brw_emit_prim(struct brw_context *brw,
       struct gl_buffer_object *indirect_buffer = brw->ctx.DrawIndirectBuffer;
       struct brw_bo *bo = intel_bufferobj_buffer(brw,
             intel_buffer_object(indirect_buffer),
-            prim->indirect_offset, 5 * sizeof(GLuint), false);
+            indirect_offset, 5 * sizeof(GLuint), false);
 
       indirect_flag = GEN7_3DPRIM_INDIRECT_PARAMETER_ENABLE;
 
       brw_load_register_mem(brw, GEN7_3DPRIM_VERTEX_COUNT, bo,
-                            prim->indirect_offset + 0);
+                            indirect_offset + 0);
       brw_load_register_mem(brw, GEN7_3DPRIM_INSTANCE_COUNT, bo,
-                            prim->indirect_offset + 4);
+                            indirect_offset + 4);
 
       brw_load_register_mem(brw, GEN7_3DPRIM_START_VERTEX, bo,
-                            prim->indirect_offset + 8);
+                            indirect_offset + 8);
       if (prim->indexed) {
          brw_load_register_mem(brw, GEN7_3DPRIM_BASE_VERTEX, bo,
-                               prim->indirect_offset + 12);
+                               indirect_offset + 12);
          brw_load_register_mem(brw, GEN7_3DPRIM_START_INSTANCE, bo,
-                               prim->indirect_offset + 16);
+                               indirect_offset + 16);
       } else {
          brw_load_register_mem(brw, GEN7_3DPRIM_START_INSTANCE, bo,
-                               prim->indirect_offset + 12);
+                               indirect_offset + 12);
          brw_load_register_imm32(brw, GEN7_3DPRIM_BASE_VERTEX, 0);
       }
    } else {
@@ -956,7 +957,8 @@ brw_draw_single_prim(struct gl_context *ctx,
                      const struct _mesa_prim *prim,
                      unsigned prim_id,
                      struct brw_transform_feedback_object *xfb_obj,
-                     unsigned stream)
+                     unsigned stream,
+                     GLsizeiptr indirect_offset)
 {
    struct brw_context *brw = brw_context(ctx);
    const struct gen_device_info *devinfo = &brw->screen->devinfo;
@@ -1021,7 +1023,7 @@ brw_draw_single_prim(struct gl_context *ctx,
          intel_buffer_object(ctx->DrawIndirectBuffer)->buffer;
       brw_bo_reference(brw->draw.draw_params_bo);
       brw->draw.draw_params_offset =
-         prim->indirect_offset + (prim->indexed ? 12 : 8);
+         indirect_offset + (prim->indexed ? 12 : 8);
    } else {
       /* Set draw_params_bo to NULL so brw_prepare_vertices knows it
        * has to upload gl_BaseVertex and such if they're needed.
@@ -1066,7 +1068,8 @@ retry:
    if (devinfo->gen == 9)
       gen9_emit_preempt_wa(brw, prim);
 
-   brw_emit_prim(brw, prim, brw->primitive, xfb_obj, stream, is_indirect);
+   brw_emit_prim(brw, prim, brw->primitive, xfb_obj, stream, is_indirect,
+                 indirect_offset);
 
    brw->batch.no_wrap = false;
 
@@ -1182,7 +1185,9 @@ brw_draw_prims(struct gl_context *ctx,
          brw->predicate.state = BRW_PREDICATE_STATE_USE_BIT;
       }
 
-      brw_draw_single_prim(ctx, &prims[i], i, xfb_obj, stream);
+      brw_draw_single_prim(ctx, &prims[i], i, xfb_obj, stream,
+                           brw->draw.draw_indirect_offset +
+                           brw->draw.draw_indirect_stride * i);
    }
 
    brw_finish_drawing(ctx);
@@ -1213,12 +1218,14 @@ brw_draw_indirect_prims(struct gl_context *ctx,
       return;
    }
 
+   brw->draw.draw_indirect_stride = stride;
+   brw->draw.draw_indirect_offset = indirect_offset;
+
    prim[0].begin = 1;
    prim[draw_count - 1].end = 1;
-   for (i = 0; i < draw_count; ++i, indirect_offset += stride) {
+   for (i = 0; i < draw_count; ++i) {
       prim[i].mode = mode;
       prim[i].indexed = ib != NULL;
-      prim[i].indirect_offset = indirect_offset;
       prim[i].draw_id = i;
    }
 
