@@ -362,15 +362,14 @@ _mesa_draw_arrays(struct gl_context *ctx, GLenum mode, GLint start,
       .begin = 1,
       .end = 1,
       .mode = mode,
-      .num_instances = numInstances,
-      .base_instance = baseInstance,
       .draw_id = drawID,
       .start = start,
       .count = count,
    };
 
    ctx->Driver.Draw(ctx, &prim, 1, NULL,
-                    GL_TRUE, start, start + count - 1, NULL, 0);
+                    GL_TRUE, start, start + count - 1,
+                    numInstances, baseInstance, NULL, 0);
 
    if (MESA_DEBUG_FLAGS & DEBUG_ALWAYS_FLUSH) {
       _mesa_flush(ctx);
@@ -773,8 +772,6 @@ _mesa_validated_drawrangeelements(struct gl_context *ctx, GLenum mode,
    prim.start = 0;
    prim.count = count;
    prim.basevertex = basevertex;
-   prim.num_instances = numInstances;
-   prim.base_instance = baseInstance;
    prim.draw_id = 0;
 
    /* Need to give special consideration to rendering a range of
@@ -809,7 +806,8 @@ _mesa_validated_drawrangeelements(struct gl_context *ctx, GLenum mode,
     */
 
    ctx->Driver.Draw(ctx, &prim, 1, &ib,
-                    index_bounds_valid, start, end, NULL, 0);
+                    index_bounds_valid, start, end,
+                    numInstances, baseInstance, NULL, 0);
 
    if (MESA_DEBUG_FLAGS & DEBUG_ALWAYS_FLUSH) {
       _mesa_flush(ctx);
@@ -1229,8 +1227,6 @@ _mesa_validated_multidrawelements(struct gl_context *ctx, GLenum mode,
          prim[i].start =
             ((uintptr_t) indices[i] - min_index_ptr) / index_type_size;
          prim[i].count = count[i];
-         prim[i].num_instances = 1;
-         prim[i].base_instance = 0;
          prim[i].draw_id = i;
          if (basevertex != NULL)
             prim[i].basevertex = basevertex[i];
@@ -1239,7 +1235,7 @@ _mesa_validated_multidrawelements(struct gl_context *ctx, GLenum mode,
       }
 
       ctx->Driver.Draw(ctx, prim, primcount, &ib,
-                       false, 0, ~0, NULL, 0);
+                       false, 0, ~0, 1, 0, NULL, 0);
    }
    else {
       /* render one prim at a time */
@@ -1256,15 +1252,13 @@ _mesa_validated_multidrawelements(struct gl_context *ctx, GLenum mode,
          prim[0].mode = mode;
          prim[0].start = 0;
          prim[0].count = count[i];
-         prim[0].num_instances = 1;
-         prim[0].base_instance = 0;
          prim[0].draw_id = i;
          if (basevertex != NULL)
             prim[0].basevertex = basevertex[i];
          else
             prim[0].basevertex = 0;
 
-         ctx->Driver.Draw(ctx, prim, 1, &ib, false, 0, ~0, NULL, 0);
+         ctx->Driver.Draw(ctx, prim, 1, &ib, false, 0, ~0, 1, 0, NULL, 0);
       }
    }
 
@@ -1374,14 +1368,13 @@ _mesa_draw_transform_feedback(struct gl_context *ctx, GLenum mode,
    prim.begin = 1;
    prim.end = 1;
    prim.mode = mode;
-   prim.num_instances = numInstances;
-   prim.base_instance = 0;
 
    /* Maybe we should do some primitive splitting for primitive restart
     * (like in DrawArrays), but we have no way to know how many vertices
     * will be rendered. */
 
-   ctx->Driver.Draw(ctx, &prim, 1, NULL, GL_FALSE, 0, ~0, obj, stream);
+   ctx->Driver.Draw(ctx, &prim, 1, NULL, GL_FALSE, 0, ~0, numInstances, 0,
+                    obj, stream);
 
    if (MESA_DEBUG_FLAGS & DEBUG_ALWAYS_FLUSH) {
       _mesa_flush(ctx);

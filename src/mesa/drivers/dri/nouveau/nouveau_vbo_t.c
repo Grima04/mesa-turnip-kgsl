@@ -244,6 +244,7 @@ TAG(vbo_render_prims)(struct gl_context *ctx,
 		      const struct _mesa_index_buffer *ib,
 		      GLboolean index_bounds_valid,
 		      GLuint min_index, GLuint max_index,
+                      GLuint num_instances, GLuint base_instance,
 		      struct gl_transform_feedback_object *tfb_vertcount,
                       unsigned stream);
 
@@ -251,7 +252,8 @@ static GLboolean
 vbo_maybe_split(struct gl_context *ctx, const struct tnl_vertex_array *arrays,
 	    const struct _mesa_prim *prims, GLuint nr_prims,
 	    const struct _mesa_index_buffer *ib,
-	    GLuint min_index, GLuint max_index)
+	    GLuint min_index, GLuint max_index,
+            GLuint num_instances, GLuint base_instance)
 {
 	struct nouveau_context *nctx = to_nouveau_context(ctx);
 	struct nouveau_render_state *render = to_render_state(ctx);
@@ -277,7 +279,8 @@ vbo_maybe_split(struct gl_context *ctx, const struct tnl_vertex_array *arrays,
 		};
 
 		_tnl_split_prims(ctx, arrays, prims, nr_prims, ib, min_index,
-				 max_index, TAG(vbo_render_prims), &limits);
+				 max_index, num_instances, base_instance,
+                                 TAG(vbo_render_prims), &limits);
 		return GL_TRUE;
 	}
 
@@ -481,6 +484,7 @@ TAG(vbo_render_prims)(struct gl_context *ctx,
 		      const struct _mesa_index_buffer *ib,
 		      GLboolean index_bounds_valid,
 		      GLuint min_index, GLuint max_index,
+                      GLuint num_instances, GLuint base_instance,
 		      struct gl_transform_feedback_object *tfb_vertcount,
                       unsigned stream)
 {
@@ -494,7 +498,7 @@ TAG(vbo_render_prims)(struct gl_context *ctx,
 	vbo_choose_attrs(ctx, arrays);
 
 	if (vbo_maybe_split(ctx, arrays, prims, nr_prims, ib, min_index,
-			    max_index))
+			    max_index, num_instances, base_instance))
 		return;
 
 	vbo_init_arrays(ctx, ib, arrays);
@@ -518,6 +522,7 @@ TAG(vbo_check_render_prims)(struct gl_context *ctx,
 			    const struct _mesa_index_buffer *ib,
 			    GLboolean index_bounds_valid,
 			    GLuint min_index, GLuint max_index,
+                            GLuint num_instances, GLuint base_instance,
 			    struct gl_transform_feedback_object *tfb_vertcount,
                             unsigned stream)
 {
@@ -528,11 +533,13 @@ TAG(vbo_check_render_prims)(struct gl_context *ctx,
 	if (nctx->fallback == HWTNL)
 		TAG(vbo_render_prims)(ctx, arrays, prims, nr_prims, ib,
 				      index_bounds_valid, min_index, max_index,
-				      tfb_vertcount, stream);
+				      num_instances, base_instance,
+                                      tfb_vertcount, stream);
 
 	if (nctx->fallback == SWTNL)
 		_tnl_draw_prims(ctx, arrays, prims, nr_prims, ib,
 				index_bounds_valid, min_index, max_index,
+                                num_instances, base_instance,
 				tfb_vertcount, stream);
 }
 
@@ -542,6 +549,7 @@ TAG(vbo_draw)(struct gl_context *ctx,
 	      const struct _mesa_index_buffer *ib,
 	      GLboolean index_bounds_valid,
 	      GLuint min_index, GLuint max_index,
+              GLuint num_instances, GLuint base_instance,
 	      struct gl_transform_feedback_object *tfb_vertcount,
 	      unsigned stream)
 {
@@ -551,6 +559,7 @@ TAG(vbo_draw)(struct gl_context *ctx,
 	TAG(vbo_check_render_prims)(ctx, arrays,
 				    prims, nr_prims, ib,
 				    index_bounds_valid, min_index, max_index,
+                                    num_instances, base_instance,
 				    tfb_vertcount, stream);
 }
 

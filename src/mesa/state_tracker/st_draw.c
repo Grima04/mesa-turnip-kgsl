@@ -172,6 +172,8 @@ st_draw_vbo(struct gl_context *ctx,
 	    GLboolean index_bounds_valid,
             GLuint min_index,
             GLuint max_index,
+            GLuint num_instances,
+            GLuint base_instance,
             struct gl_transform_feedback_object *tfb_vertcount,
             unsigned stream)
 {
@@ -188,6 +190,8 @@ st_draw_vbo(struct gl_context *ctx,
    info.indirect = NULL;
    info.count_from_stream_output = NULL;
    info.restart_index = 0;
+   info.start_instance = base_instance;
+   info.instance_count = num_instances;
 
    if (ib) {
       struct gl_buffer_object *bufobj = ib->obj;
@@ -244,8 +248,6 @@ st_draw_vbo(struct gl_context *ctx,
 
       info.mode = translate_prim(ctx, prims[i].mode);
       info.start = start + prims[i].start;
-      info.start_instance = prims[i].base_instance;
-      info.instance_count = prims[i].num_instances;
       info.index_bias = prims[i].basevertex;
       info.drawid = prims[i].draw_id;
       if (!ib) {

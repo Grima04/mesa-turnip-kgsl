@@ -49,6 +49,8 @@ struct split_context {
    const struct _mesa_index_buffer *ib;
    GLuint min_index;
    GLuint max_index;
+   GLuint num_instances;
+   GLuint base_instance;
    tnl_draw_func draw;
 
    const struct split_limits *limits;
@@ -93,6 +95,8 @@ flush_vertex( struct split_context *split)
                !split->ib,
                split->min_index,
                split->max_index,
+               split->num_instances,
+               split->base_instance,
                NULL, 0);
 
    split->dstprim_nr = 0;
@@ -190,8 +194,6 @@ split_prims(struct split_context *split)
             outprim->end = (nr == remaining && prim->end);
             outprim->start = prim->start + j;
             outprim->count = nr;
-            outprim->num_instances = prim->num_instances;
-            outprim->base_instance = prim->base_instance;
 
             update_index_bounds(split, outprim);
 
@@ -232,8 +234,6 @@ split_prims(struct split_context *split)
          tmpprim = *prim;
          tmpprim.start = 0;
          tmpprim.count = count;
-         tmpprim.num_instances = 1;
-         tmpprim.base_instance = 0;
 
          flush_vertex(split);
 
@@ -270,6 +270,8 @@ _tnl_split_inplace(struct gl_context *ctx,
                    const struct _mesa_index_buffer *ib,
                    GLuint min_index,
                    GLuint max_index,
+                   GLuint num_instances,
+                   GLuint base_instance,
                    tnl_draw_func draw,
                    const struct split_limits *limits)
 {
@@ -286,6 +288,8 @@ _tnl_split_inplace(struct gl_context *ctx,
    /* Empty interval, makes calculations simpler. */
    split.min_index = ~0;
    split.max_index = 0;
+   split.num_instances = num_instances;
+   split.base_instance = base_instance;
 
    split.draw = draw;
    split.limits = limits;

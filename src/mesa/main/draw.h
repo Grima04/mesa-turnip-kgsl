@@ -61,8 +61,6 @@ struct _mesa_prim
    GLuint start;
    GLuint count;
    GLint basevertex;
-   GLuint num_instances;
-   GLuint base_instance;
    GLuint draw_id;
 };
 

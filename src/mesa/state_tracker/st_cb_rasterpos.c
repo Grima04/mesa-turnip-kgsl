@@ -209,8 +209,6 @@ new_draw_rastpos_stage(struct gl_context *ctx, struct draw_context *draw)
    rs->prim.end = 1;
    rs->prim.start = 0;
    rs->prim.count = 1;
-   rs->prim.num_instances = 1;
-   rs->prim.base_instance = 0;
 
    return rs;
 }
@@ -262,7 +260,7 @@ st_RasterPos(struct gl_context *ctx, const GLfloat v[4])
    _mesa_set_draw_vao(ctx, rs->VAO, VERT_BIT_POS);
 
    /* Draw the point. */
-   st_feedback_draw_vbo(ctx, &rs->prim, 1, NULL, GL_TRUE, 0, 1,
+   st_feedback_draw_vbo(ctx, &rs->prim, 1, NULL, GL_TRUE, 0, 1, 1, 0,
                         NULL, 0);
 
    /* restore draw's rasterization stage depending on rendermode */

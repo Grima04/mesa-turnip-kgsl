@@ -100,6 +100,8 @@ st_feedback_draw_vbo(struct gl_context *ctx,
 		     GLboolean index_bounds_valid,
                      GLuint min_index,
                      GLuint max_index,
+                     GLuint num_instances,
+                     GLuint base_instance,
                      struct gl_transform_feedback_object *tfb_vertcount,
                      unsigned stream)
 {
@@ -419,6 +421,9 @@ st_feedback_draw_vbo(struct gl_context *ctx,
    }
    draw_set_images(draw, PIPE_SHADER_VERTEX, images, prog->info.num_images);
 
+   info.start_instance = base_instance;
+   info.instance_count = num_instances;
+
    /* draw here */
    for (i = 0; i < nr_prims; i++) {
       info.count = prims[i].count;
@@ -428,8 +433,6 @@ st_feedback_draw_vbo(struct gl_context *ctx,
 
       info.mode = prims[i].mode;
       info.start = start + prims[i].start;
-      info.start_instance = prims[i].base_instance;
-      info.instance_count = prims[i].num_instances;
       info.index_bias = prims[i].basevertex;
       info.drawid = prims[i].draw_id;
       if (!ib) {

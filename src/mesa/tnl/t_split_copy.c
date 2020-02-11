@@ -211,6 +211,8 @@ flush(struct copy_context *copy)
               GL_TRUE,
               0,
               copy->dstbuf_nr - 1,
+              1,
+              0,
               NULL, 0);
 
    /* Reset all pointers:
@@ -237,7 +239,6 @@ begin(struct copy_context *copy, GLenum mode, GLboolean begin_flag)
 
    prim->mode = mode;
    prim->begin = begin_flag;
-   prim->num_instances = 1;
 }
 
 

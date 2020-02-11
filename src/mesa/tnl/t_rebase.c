@@ -110,6 +110,8 @@ void t_rebase_prims( struct gl_context *ctx,
                      const struct _mesa_index_buffer *ib,
                      GLuint min_index,
                      GLuint max_index,
+                     GLuint num_instances,
+                     GLuint base_instance,
                      tnl_draw_func draw )
 {
    struct gl_array_attributes tmp_attribs[VERT_ATTRIB_MAX];
@@ -242,6 +244,7 @@ void t_rebase_prims( struct gl_context *ctx,
 	 GL_TRUE,
 	 0, 
 	 max_index - min_index,
+         num_instances, base_instance,
 	 NULL, 0);
 
    free(tmp_indices);

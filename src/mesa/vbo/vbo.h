@@ -97,6 +97,7 @@ vbo_sw_primitive_restart(struct gl_context *ctx,
                          const struct _mesa_prim *prim,
                          GLuint nr_prims,
                          const struct _mesa_index_buffer *ib,
+                         GLuint num_instances, GLuint base_instance,
                          struct gl_buffer_object *indirect,
                          GLsizeiptr indirect_offset);
 

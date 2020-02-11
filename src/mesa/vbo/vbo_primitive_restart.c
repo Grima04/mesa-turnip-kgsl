@@ -164,6 +164,7 @@ vbo_sw_primitive_restart(struct gl_context *ctx,
                          const struct _mesa_prim *prims,
                          GLuint nr_prims,
                          const struct _mesa_index_buffer *ib,
+                         GLuint num_instances, GLuint base_instance,
                          struct gl_buffer_object *indirect,
                          GLsizeiptr indirect_offset)
 {
@@ -200,10 +201,11 @@ vbo_sw_primitive_restart(struct gl_context *ctx,
                                      indirect_offset);
 
       new_prim.count = indirect_params[0];
-      new_prim.num_instances = indirect_params[1];
       new_prim.start = indirect_params[2];
       new_prim.basevertex = indirect_params[3];
-      new_prim.base_instance = indirect_params[4];
+
+      num_instances = indirect_params[1];
+      base_instance = indirect_params[4];
 
       new_ib = *ib;
       new_ib.count = new_prim.count;
@@ -249,10 +251,12 @@ vbo_sw_primitive_restart(struct gl_context *ctx,
                 (temp_prim.count == sub_prim->count)) {
                ctx->Driver.Draw(ctx, &temp_prim, 1, ib, GL_TRUE,
                                 sub_prim->min_index, sub_prim->max_index,
+                                num_instances, base_instance,
                                 NULL, 0);
             } else {
                ctx->Driver.Draw(ctx, &temp_prim, 1, ib,
                                 GL_FALSE, -1, -1,
+                                num_instances, base_instance,
                                 NULL, 0);
             }
          }

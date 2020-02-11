@@ -434,6 +434,8 @@ void _tnl_draw_prims(struct gl_context *ctx,
 			 GLboolean index_bounds_valid,
 			 GLuint min_index,
 			 GLuint max_index,
+                         GLuint num_instances,
+                         GLuint base_instance,
 			 struct gl_transform_feedback_object *tfb_vertcount,
                          unsigned stream)
 {
@@ -469,7 +471,7 @@ void _tnl_draw_prims(struct gl_context *ctx,
       /* We always translate away calls with min_index != 0. 
        */
       t_rebase_prims( ctx, arrays, prim, nr_prims, ib,
-                      min_index, max_index,
+                      min_index, max_index, num_instances, base_instance,
                       _tnl_draw_prims );
       return;
    }
@@ -488,6 +490,7 @@ void _tnl_draw_prims(struct gl_context *ctx,
        */
       _tnl_split_prims( ctx, arrays, prim, nr_prims, ib,
                         0, max_index + prim->basevertex,
+                        num_instances, base_instance,
                         _tnl_draw_prims,
                         &limits );
    }
@@ -498,6 +501,8 @@ void _tnl_draw_prims(struct gl_context *ctx,
       struct gl_buffer_object *bo[VERT_ATTRIB_MAX + 1];
       GLuint nr_bo = 0;
       GLuint inst;
+
+      assert(num_instances > 0);
 
       for (i = 0; i < nr_prims;) {
 	 GLuint this_nr_prims;
@@ -512,12 +517,10 @@ void _tnl_draw_prims(struct gl_context *ctx,
 	       break;
 	 }
 
-         assert(prim[i].num_instances > 0);
-
 	 /* Binding inputs may imply mapping some vertex buffer objects.
 	  * They will need to be unmapped below.
 	  */
-         for (inst = 0; inst < prim[i].num_instances; inst++) {
+         for (inst = 0; inst < num_instances; inst++) {
 
             bind_prims(ctx, &prim[i], this_nr_prims);
             bind_inputs(ctx, arrays, max_index + prim[i].basevertex + 1,
@@ -637,6 +640,7 @@ _tnl_draw(struct gl_context *ctx,
           const struct _mesa_prim *prim, GLuint nr_prims,
           const struct _mesa_index_buffer *ib,
           GLboolean index_bounds_valid, GLuint min_index, GLuint max_index,
+          GLuint num_instances, GLuint base_instance,
           struct gl_transform_feedback_object *tfb_vertcount,
           unsigned stream)
 {
@@ -646,7 +650,7 @@ _tnl_draw(struct gl_context *ctx,
 
    _tnl_draw_prims(ctx, arrays, prim, nr_prims, ib,
                    index_bounds_valid, min_index, max_index,
-                   tfb_vertcount, stream);
+                   num_instances, base_instance, tfb_vertcount, stream);
 }
 
 

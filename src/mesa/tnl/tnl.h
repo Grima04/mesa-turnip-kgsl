@@ -107,6 +107,8 @@ _tnl_draw_prims(struct gl_context *ctx,
 		     GLboolean index_bounds_valid,
 		     GLuint min_index,
 		     GLuint max_index,
+                     GLuint num_instances,
+                     GLuint base_instance,
 		     struct gl_transform_feedback_object *tfb_vertcount,
                      unsigned stream);
 
@@ -115,6 +117,7 @@ _tnl_draw(struct gl_context *ctx,
           const struct _mesa_prim *prim, GLuint nr_prims,
           const struct _mesa_index_buffer *ib,
           GLboolean index_bounds_valid, GLuint min_index, GLuint max_index,
+          GLuint num_instances, GLuint base_instance,
           struct gl_transform_feedback_object *tfb_vertcount, unsigned stream);
 
 extern void
@@ -172,6 +175,8 @@ typedef void (*tnl_draw_func)(struct gl_context *ctx,
                               GLboolean index_bounds_valid,
                               GLuint min_index,
                               GLuint max_index,
+                              GLuint num_instances,
+                              GLuint base_instance,
                               struct gl_transform_feedback_object *tfb_vertcount,
                               unsigned tfb_stream);
 
@@ -198,6 +203,8 @@ _tnl_split_prims(struct gl_context *ctx,
                  const struct _mesa_index_buffer *ib,
                  GLuint min_index,
                  GLuint max_index,
+                 GLuint num_instances,
+                 GLuint base_instance,
                  tnl_draw_func draw,
                  const struct split_limits *limits);
 
