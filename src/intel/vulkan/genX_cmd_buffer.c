@@ -2701,6 +2701,10 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
             /* Clamp the range to the buffer size */
             uint32_t range = MIN2(desc->range, desc->buffer->size - offset);
 
+            /* Align the range for consistency */
+            if (desc->type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC)
+               range = align_u32(range, ANV_UBO_BOUNDS_CHECK_ALIGNMENT);
+
             struct anv_address address =
                anv_address_add(desc->buffer->address, offset);
 

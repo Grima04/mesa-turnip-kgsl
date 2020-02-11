@@ -1304,6 +1304,13 @@ anv_descriptor_set_write_buffer(struct anv_device *device,
    struct anv_address bind_addr = anv_address_add(buffer->address, offset);
    uint64_t bind_range = anv_buffer_get_range(buffer, offset, range);
 
+   /* We report a bounds checking alignment of 32B for the sake of block
+    * messages which read an entire register worth at a time.
+    */
+   if (type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER ||
+       type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC)
+      bind_range = align_u64(bind_range, ANV_UBO_BOUNDS_CHECK_ALIGNMENT);
+
    if (type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC ||
        type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC) {
       *desc = (struct anv_descriptor) {

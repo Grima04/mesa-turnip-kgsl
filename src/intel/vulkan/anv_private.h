@@ -172,6 +172,8 @@ struct gen_perf_config;
 #define MAX_PUSH_DESCRIPTORS 32 /* Minimum requirement */
 #define MAX_INLINE_UNIFORM_BLOCK_SIZE 4096
 #define MAX_INLINE_UNIFORM_BLOCK_DESCRIPTORS 32
+#define ANV_UBO_BOUNDS_CHECK_ALIGNMENT 32
+#define ANV_SSBO_BOUNDS_CHECK_ALIGNMENT 4
 
 /* From the Skylake PRM Vol. 7 "Binding Table Surface State Model":
  *
