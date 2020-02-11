@@ -560,6 +560,16 @@ optimizations.extend([
    (('umin', ('umax', ('umin', ('umax', a, b), c), b), c), ('umin', ('umax', a, b), c)),
    (('fmax', ('fsat', a), '#b@32(is_zero_to_one)'), ('fsat', ('fmax', a, b))),
    (('fmin', ('fsat', a), '#b@32(is_zero_to_one)'), ('fsat', ('fmin', a, b))),
+
+   # If a in [0,b] then b-a is also in [0,b].  Since b in [0,1], max(b-a, 0) =
+   # fsat(b-a).
+   #
+   # If a > b, then b-a < 0 and max(b-a, 0) = fsat(b-a) = 0
+   #
+   # This should be NaN safe since max(NaN, 0) = fsat(NaN) = 0.
+   (('fmax', ('fadd(is_used_once)', ('fneg', 'a(is_not_negative)'), '#b@32(is_zero_to_one)'), 0.0),
+    ('fsat', ('fadd', ('fneg',  a), b)), '!options->lower_fsat'),
+
    (('extract_u8', ('imin', ('imax', a, 0), 0xff), 0), ('imin', ('imax', a, 0), 0xff)),
    (('~ior', ('flt(is_used_once)', a, b), ('flt', a, c)), ('flt', a, ('fmax', b, c))),
    (('~ior', ('flt(is_used_once)', a, c), ('flt', b, c)), ('flt', ('fmin', a, b), c)),
