@@ -693,9 +693,14 @@ __attribute__((__packed__))
         midgard_outmod_float outmod  : 2;
 
         unsigned swizzle  : 8;
-        unsigned unknown4  : 8;
 
-        unsigned unknownA  : 4;
+        /* For barriers, control barriers are implied regardless, but these
+         * bits also enable memory barriers of various types. For regular
+         * textures, these bits are not yet understood. */
+        unsigned barrier_buffer : 1;
+        unsigned barrier_shared : 1;
+
+        unsigned unknown4  : 10;
 
         /* In immediate mode, each offset field is an immediate range [0, 7].
          *
@@ -765,8 +770,9 @@ __attribute__((__packed__))
         unsigned zero2 : 14;
 
         unsigned zero3 : 24;
-        unsigned unknown4 : 1;
-        unsigned zero4 : 7;
+        unsigned buffer : 1;
+        unsigned shared : 1;
+        unsigned zero4 : 6;
 
         uint64_t zero5;
 } midgard_texture_barrier_word;

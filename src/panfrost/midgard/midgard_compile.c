@@ -1513,7 +1513,10 @@ emit_control_barrier(compiler_context *ctx)
                 .src = { ~0, ~0, ~0, ~0 },
                 .texture = {
                         .op = TEXTURE_OP_BARRIER,
-                        .unknown4 = 3 /* (control |) buffers | shared */
+
+                        /* TODO: optimize */
+                        .barrier_buffer = 1,
+                        .barrier_shared = 1
                 }
         };
 

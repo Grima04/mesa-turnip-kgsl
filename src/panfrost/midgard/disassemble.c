@@ -1354,7 +1354,17 @@ print_texture_barrier(FILE *fp, uint32_t *word)
         if (barrier->zero5)
                 fprintf(fp, "/* zero4 = 0x%" PRIx64 " */ ", barrier->zero5);
 
-        fprintf(fp, " 0x%X\n", barrier->unknown4);
+
+        /* Control barriers are always implied, so include for obviousness */
+        fprintf(fp, " control");
+
+        if (barrier->buffer)
+                fprintf(fp, " | buffer");
+
+        if (barrier->shared)
+                fprintf(fp, " | shared");
+
+        fprintf(fp, "\n");
 }
 
 #undef DEFINE_CASE
@@ -1390,6 +1400,12 @@ print_texture_word(FILE *fp, uint32_t *word, unsigned tabs, unsigned in_reg_base
 
         if (texture->last)
                 fprintf(fp, ".last");
+
+        if (texture->barrier_buffer)
+                fprintf(fp, ".barrier_buffer /* XXX */");
+
+        if (texture->barrier_shared)
+                fprintf(fp, ".barrier_shared /* XXX */");
 
         /* Output modifiers are always interpreted floatly */
         print_outmod(fp, texture->outmod, false);
@@ -1524,10 +1540,8 @@ print_texture_word(FILE *fp, uint32_t *word, unsigned tabs, unsigned in_reg_base
          * following unknowns are zero, so we don't include them */
 
         if (texture->unknown4 ||
-            texture->unknownA ||
             texture->unknown8) {
                 fprintf(fp, "// unknown4 = 0x%x\n", texture->unknown4);
-                fprintf(fp, "// unknownA = 0x%x\n", texture->unknownA);
                 fprintf(fp, "// unknown8 = 0x%x\n", texture->unknown8);
         }
 
