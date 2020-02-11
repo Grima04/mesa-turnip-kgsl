@@ -62,18 +62,14 @@ struct cso_hash_iter {
    struct cso_node  *node;
 };
 
-struct cso_hash_data {
+struct cso_hash {
    struct cso_node *fakeNext;
    struct cso_node **buckets;
+   struct cso_node *end;
    int size;
    short userNumBits;
    short numBits;
    int numBuckets;
-};
-
-struct cso_hash {
-   struct cso_hash_data data;
-   struct cso_node      *end;
 };
 
 void cso_hash_init(struct cso_hash *hash);
@@ -149,8 +145,8 @@ cso_hash_find_node(struct cso_hash *hash, unsigned akey)
 {
    struct cso_node **node;
 
-   if (hash->data.numBuckets) {
-      node = &hash->data.buckets[akey % hash->data.numBuckets];
+   if (hash->numBuckets) {
+      node = &hash->buckets[akey % hash->numBuckets];
       assert(*node == hash->end || (*node)->next);
       while (*node != hash->end && (*node)->key != akey)
          node = &(*node)->next;

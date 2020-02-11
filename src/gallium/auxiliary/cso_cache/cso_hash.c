@@ -88,11 +88,11 @@ cso_hash_create_node(struct cso_hash *hash,
 
    node->next = *anextNode;
    *anextNode = node;
-   ++hash->data.size;
+   ++hash->size;
    return node;
 }
 
-static void cso_data_rehash(struct cso_hash_data *hash, int hint)
+static void cso_data_rehash(struct cso_hash *hash, int hint)
 {
    if (hint < 0) {
       hint = countBits(-hint);
@@ -141,13 +141,13 @@ static void cso_data_rehash(struct cso_hash_data *hash, int hint)
    }
 }
 
-static void cso_data_might_grow(struct cso_hash_data *hash)
+static void cso_data_might_grow(struct cso_hash *hash)
 {
    if (hash->size >= hash->numBuckets)
       cso_data_rehash(hash, hash->numBits + 1);
 }
 
-static void cso_data_has_shrunk(struct cso_hash_data *hash)
+static void cso_data_has_shrunk(struct cso_hash *hash)
 {
    if (hash->size <= (hash->numBuckets >> 3) &&
        hash->numBits > hash->userNumBits) {
@@ -156,7 +156,7 @@ static void cso_data_has_shrunk(struct cso_hash_data *hash)
    }
 }
 
-static struct cso_node *cso_data_first_node(struct cso_hash_data *hash)
+static struct cso_node *cso_data_first_node(struct cso_hash *hash)
 {
    struct cso_node *e = (struct cso_node *)hash;
    struct cso_node **bucket = hash->buckets;
@@ -173,7 +173,7 @@ static struct cso_node *cso_data_first_node(struct cso_hash_data *hash)
 struct cso_hash_iter cso_hash_insert(struct cso_hash *hash,
                                      unsigned key, void *data)
 {
-   cso_data_might_grow(&hash->data);
+   cso_data_might_grow(hash);
 
    struct cso_node **nextNode = cso_hash_find_node(hash, key);
    struct cso_node *node = cso_hash_create_node(hash, key, data, nextNode);
@@ -188,20 +188,20 @@ struct cso_hash_iter cso_hash_insert(struct cso_hash *hash,
 
 void cso_hash_init(struct cso_hash *hash)
 {
-   hash->data.fakeNext = 0;
-   hash->data.buckets = 0;
-   hash->data.size = 0;
-   hash->data.userNumBits = (short)MinNumBits;
-   hash->data.numBits = 0;
-   hash->data.numBuckets = 0;
-   hash->end = (struct cso_node*)&hash->data;
+   hash->fakeNext = 0;
+   hash->buckets = 0;
+   hash->size = 0;
+   hash->userNumBits = (short)MinNumBits;
+   hash->numBits = 0;
+   hash->numBuckets = 0;
+   hash->end = (struct cso_node*)hash;
 }
 
 void cso_hash_deinit(struct cso_hash *hash)
 {
    struct cso_node *e_for_x = hash->end;
-   struct cso_node **bucket = hash->data.buckets;
-   int n = hash->data.numBuckets;
+   struct cso_node **bucket = hash->buckets;
+   int n = hash->numBuckets;
 
    while (n--) {
       struct cso_node *cur = *bucket++;
@@ -211,7 +211,7 @@ void cso_hash_deinit(struct cso_hash *hash)
          cur = next;
       }
    }
-   FREE(hash->data.buckets);
+   FREE(hash->buckets);
 }
 
 unsigned cso_hash_iter_key(struct cso_hash_iter iter)
@@ -226,7 +226,7 @@ struct cso_node *cso_hash_data_next(struct cso_node *node)
    union {
       struct cso_node *next;
       struct cso_node *e;
-      struct cso_hash_data *d;
+      struct cso_hash *d;
    } a;
    int start;
    struct cso_node **bucket;
@@ -256,7 +256,7 @@ static struct cso_node *cso_hash_data_prev(struct cso_node *node)
 {
    union {
       struct cso_node *e;
-      struct cso_hash_data *d;
+      struct cso_hash *d;
    } a;
    int start;
    struct cso_node *sentinel;
@@ -298,8 +298,8 @@ void *cso_hash_take(struct cso_hash *hash, unsigned akey)
       struct cso_node *next = (*node)->next;
       FREE(*node);
       *node = next;
-      --hash->data.size;
-      cso_data_has_shrunk(&hash->data);
+      --hash->size;
+      cso_data_has_shrunk(hash);
       return t;
    }
    return NULL;
@@ -314,13 +314,13 @@ struct cso_hash_iter cso_hash_iter_prev(struct cso_hash_iter iter)
 
 struct cso_hash_iter cso_hash_first_node(struct cso_hash *hash)
 {
-   struct cso_hash_iter iter = {hash, cso_data_first_node(&hash->data)};
+   struct cso_hash_iter iter = {hash, cso_data_first_node(hash)};
    return iter;
 }
 
 int cso_hash_size(struct cso_hash *hash)
 {
-   return hash->data.size;
+   return hash->size;
 }
 
 struct cso_hash_iter cso_hash_erase(struct cso_hash *hash, struct cso_hash_iter iter)
@@ -333,12 +333,12 @@ struct cso_hash_iter cso_hash_erase(struct cso_hash *hash, struct cso_hash_iter 
       return iter;
 
    ret = cso_hash_iter_next(ret);
-   node_ptr = &hash->data.buckets[node->key % hash->data.numBuckets];
+   node_ptr = &hash->buckets[node->key % hash->numBuckets];
    while (*node_ptr != node)
       node_ptr = &(*node_ptr)->next;
    *node_ptr = node->next;
    FREE(node);
-   --hash->data.size;
+   --hash->size;
    return ret;
 }
 
