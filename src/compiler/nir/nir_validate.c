@@ -1134,6 +1134,9 @@ validate_var_decl(nir_variable *var, nir_variable_mode valid_modes,
       validate_assert(state, var->members != NULL);
    }
 
+   if (var->data.per_view)
+      validate_assert(state, glsl_type_is_array(var->type));
+
    /*
     * TODO validate some things ir_validate.cpp does (requires more GLSL type
     * support)

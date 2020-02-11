@@ -454,6 +454,12 @@ typedef struct nir_variable {
       unsigned how_declared:2;
 
       /**
+       * Is this variable per-view?  If so, we know it must be an array with
+       * size corresponding to the number of views.
+       */
+      unsigned per_view:1;
+
+      /**
        * \brief Layout qualifier for gl_FragDepth.
        *
        * This is not equal to \c ir_depth_layout_none if and only if this
