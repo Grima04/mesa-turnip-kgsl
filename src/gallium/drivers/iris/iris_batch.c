@@ -670,6 +670,10 @@ _iris_batch_flush(struct iris_batch *batch, const char *file, int line)
 
    if (unlikely(INTEL_DEBUG &
                 (DEBUG_BATCH | DEBUG_SUBMIT | DEBUG_PIPE_CONTROL))) {
+      const char *basefile = strstr(file, "iris/");
+      if (basefile)
+         file = basefile + 5;
+
       fprintf(stderr, "%19s:%-3d: %s batch [%u] flush with %5db (%0.1f%%) "
               "(cmds), %4d BOs (%0.1fMb aperture)\n",
               file, line, batch_name_to_string(batch->name), batch->hw_ctx_id,
