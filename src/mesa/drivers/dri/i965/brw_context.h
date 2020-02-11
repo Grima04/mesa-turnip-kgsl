@@ -907,6 +907,11 @@ struct brw_context
        */
       struct brw_bo *draw_params_count_bo;
       uint32_t draw_params_count_offset;
+
+      /**
+       * Draw indirect buffer.
+       */
+      struct gl_buffer_object *draw_indirect_data;
    } draw;
 
    struct {

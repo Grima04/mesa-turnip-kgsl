@@ -956,12 +956,12 @@ brw_draw_single_prim(struct gl_context *ctx,
                      const struct _mesa_prim *prim,
                      unsigned prim_id,
                      struct brw_transform_feedback_object *xfb_obj,
-                     unsigned stream,
-                     struct gl_buffer_object *indirect)
+                     unsigned stream)
 {
    struct brw_context *brw = brw_context(ctx);
    const struct gen_device_info *devinfo = &brw->screen->devinfo;
    bool fail_next;
+   bool is_indirect = brw->draw.draw_indirect_data != NULL;
 
    /* Flag BRW_NEW_DRAW_CALL on every draw.  This allows us to have
     * atoms that happen on every draw call.
@@ -1003,7 +1003,7 @@ brw_draw_single_prim(struct gl_context *ctx,
          vs_prog_data->uses_firstvertex ||
          vs_prog_data->uses_baseinstance;
 
-      if ((uses_draw_parameters && indirect) ||
+      if ((uses_draw_parameters && is_indirect) ||
           (vs_prog_data->uses_firstvertex &&
            brw->draw.params.firstvertex != new_firstvertex) ||
           (vs_prog_data->uses_baseinstance &&
@@ -1015,7 +1015,7 @@ brw_draw_single_prim(struct gl_context *ctx,
    brw->draw.params.gl_baseinstance = new_baseinstance;
    brw_bo_unreference(brw->draw.draw_params_bo);
 
-   if (indirect) {
+   if (is_indirect) {
       /* Point draw_params_bo at the indirect buffer. */
       brw->draw.draw_params_bo =
          intel_buffer_object(ctx->DrawIndirectBuffer)->buffer;
@@ -1066,7 +1066,7 @@ retry:
    if (devinfo->gen == 9)
       gen9_emit_preempt_wa(brw, prim);
 
-   brw_emit_prim(brw, prim, brw->primitive, xfb_obj, stream, !!indirect);
+   brw_emit_prim(brw, prim, brw->primitive, xfb_obj, stream, is_indirect);
 
    brw->batch.no_wrap = false;
 
@@ -1105,7 +1105,7 @@ brw_draw_prims(struct gl_context *ctx,
                GLuint max_index,
                struct gl_transform_feedback_object *gl_xfb_obj,
                unsigned stream,
-               struct gl_buffer_object *indirect)
+               UNUSED struct gl_buffer_object *unused_indirect)
 {
    unsigned i;
    struct brw_context *brw = brw_context(ctx);
@@ -1117,7 +1117,7 @@ brw_draw_prims(struct gl_context *ctx,
       return;
 
    /* Handle primitive restart if needed */
-   if (brw_handle_primitive_restart(ctx, prims, nr_prims, ib, indirect)) {
+   if (brw_handle_primitive_restart(ctx, prims, nr_prims, ib)) {
       /* The draw was handled, so we can exit now */
       return;
    }
@@ -1183,7 +1183,7 @@ brw_draw_prims(struct gl_context *ctx,
          brw->predicate.state = BRW_PREDICATE_STATE_USE_BIT;
       }
 
-      brw_draw_single_prim(ctx, &prims[i], i, xfb_obj, stream, indirect);
+      brw_draw_single_prim(ctx, &prims[i], i, xfb_obj, stream);
    }
 
    brw_finish_drawing(ctx);
@@ -1230,11 +1230,14 @@ brw_draw_indirect_prims(struct gl_context *ctx,
       brw->draw.draw_params_count_offset = indirect_params_offset;
    }
 
+   brw->draw.draw_indirect_data = indirect_data;
+
    brw_draw_prims(ctx, prim, draw_count,
                   ib, false, 0, ~0,
                   NULL, 0,
-                  indirect_data);
+                  NULL);
 
+   brw->draw.draw_indirect_data = NULL;
    free(prim);
 }
 

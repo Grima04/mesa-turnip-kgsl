@@ -130,8 +130,7 @@ GLboolean
 brw_handle_primitive_restart(struct gl_context *ctx,
                              const struct _mesa_prim *prims,
                              GLuint nr_prims,
-                             const struct _mesa_index_buffer *ib,
-                             struct gl_buffer_object *indirect)
+                             const struct _mesa_index_buffer *ib)
 {
    struct brw_context *brw = brw_context(ctx);
 
@@ -164,13 +163,18 @@ brw_handle_primitive_restart(struct gl_context *ctx,
        */
       brw->prim_restart.enable_cut_index = true;
       brw_draw_prims(ctx, prims, nr_prims, ib, GL_FALSE, -1, -1, NULL, 0,
-                     indirect);
+                     NULL);
       brw->prim_restart.enable_cut_index = false;
    } else {
       /* Not all the primitive draw modes are supported by the cut index,
        * so take the software path
        */
-      vbo_sw_primitive_restart(ctx, prims, nr_prims, ib, indirect);
+      struct gl_buffer_object *indirect_data = brw->draw.draw_indirect_data;
+
+      /* Clear this to make the draw direct. */
+      brw->draw.draw_indirect_data = NULL;
+
+      vbo_sw_primitive_restart(ctx, prims, nr_prims, ib, indirect_data);
    }
 
    brw->prim_restart.in_progress = false;
