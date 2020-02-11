@@ -63,6 +63,14 @@ v3dv_job_add_bo(struct v3dv_job *job, struct v3dv_bo *bo)
    job->bo_count++;
 }
 
+void
+v3dv_job_add_extra_bo(struct v3dv_job *job, struct v3dv_bo *bo)
+{
+   assert(bo);
+   assert(!_mesa_set_search(job->extra_bos, bo));
+   _mesa_set_add(job->extra_bos, bo);
+}
+
 static void
 subpass_start(struct v3dv_cmd_buffer *cmd_buffer);
 
@@ -152,6 +160,12 @@ job_destroy(struct v3dv_job *job)
    }
 #endif
    _mesa_set_destroy(job->bos, NULL);
+
+   set_foreach(job->extra_bos, entry) {
+      struct v3dv_bo *bo = (struct v3dv_bo *)entry->key;
+      v3dv_bo_free(job->cmd_buffer->device, bo);
+   }
+   _mesa_set_destroy(job->extra_bos, NULL);
 
    v3dv_bo_free(job->cmd_buffer->device, job->tile_alloc);
    v3dv_bo_free(job->cmd_buffer->device, job->tile_state);
@@ -392,6 +406,9 @@ v3dv_cmd_buffer_start_job(struct v3dv_cmd_buffer *cmd_buffer,
    job->bos =
       _mesa_set_create(NULL, _mesa_hash_pointer, _mesa_key_pointer_equal);
    job->bo_count = 0;
+
+   job->extra_bos =
+      _mesa_set_create(NULL, _mesa_hash_pointer, _mesa_key_pointer_equal);
 
    v3dv_cl_init(job, &job->bcl);
    v3dv_cl_begin(&job->bcl);

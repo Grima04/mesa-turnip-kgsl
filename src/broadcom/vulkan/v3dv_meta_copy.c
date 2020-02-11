@@ -452,8 +452,8 @@ v3dv_CmdCopyImageToBuffer(VkCommandBuffer commandBuffer,
 
 static void
 emit_copy_buffer_per_tile_list(struct v3dv_job *job,
-                               struct v3dv_buffer *dst,
-                               struct v3dv_buffer *src,
+                               struct v3dv_bo *dst,
+                               struct v3dv_bo *src,
                                uint32_t dst_offset,
                                uint32_t src_offset,
                                uint32_t stride,
@@ -467,7 +467,7 @@ emit_copy_buffer_per_tile_list(struct v3dv_job *job,
 
    cl_emit(cl, LOAD_TILE_BUFFER_GENERAL, load) {
       load.buffer_to_load = RENDER_TARGET_0;
-      load.address = v3dv_cl_address(src->mem->bo, src_offset);
+      load.address = v3dv_cl_address(src, src_offset);
       load.input_image_format = format;
       load.memory_format = VC5_TILING_RASTER;
       load.height_in_ub_or_stride = stride;
@@ -484,7 +484,7 @@ emit_copy_buffer_per_tile_list(struct v3dv_job *job,
 
    cl_emit(cl, STORE_TILE_BUFFER_GENERAL, store) {
       store.buffer_to_store = RENDER_TARGET_0;
-      store.address = v3dv_cl_address(dst->mem->bo, dst_offset);
+      store.address = v3dv_cl_address(dst, dst_offset);
       store.clear_buffer_being_stored = false;
       store.output_image_format = format;
       store.memory_format = VC5_TILING_RASTER;
@@ -508,8 +508,8 @@ emit_copy_buffer(struct v3dv_job *job,
                  uint32_t min_y_supertile,
                  uint32_t max_x_supertile,
                  uint32_t max_y_supertile,
-                 struct v3dv_buffer *dst,
-                 struct v3dv_buffer *src,
+                 struct v3dv_bo *dst,
+                 struct v3dv_bo *src,
                  uint32_t dst_offset,
                  uint32_t src_offset,
                  struct v3dv_framebuffer *framebuffer,
@@ -564,8 +564,8 @@ emit_copy_buffer(struct v3dv_job *job,
 
 static void
 emit_copy_buffer_rcl(struct v3dv_job *job,
-                     struct v3dv_buffer *dst,
-                     struct v3dv_buffer *src,
+                     struct v3dv_bo *dst,
+                     struct v3dv_bo *src,
                      uint32_t dst_offset,
                      uint32_t src_offset,
                      struct v3dv_framebuffer *framebuffer,
@@ -625,10 +625,10 @@ emit_copy_buffer_rcl(struct v3dv_job *job,
    cl_emit(rcl, END_OF_RENDERING, end);
 }
 
-static void
+static struct v3dv_job *
 copy_buffer(struct v3dv_cmd_buffer *cmd_buffer,
-            struct v3dv_buffer *dst,
-            struct v3dv_buffer *src,
+            struct v3dv_bo *dst,
+            struct v3dv_bo *src,
             const VkBufferCopy *region)
 {
    const uint32_t internal_bpp = V3D_INTERNAL_BPP_32;
@@ -657,7 +657,9 @@ copy_buffer(struct v3dv_cmd_buffer *cmd_buffer,
    }
    assert(region->size % item_size == 0);
    uint32_t num_items = region->size / item_size;
+   assert(num_items > 0);
 
+   struct v3dv_job *job;
    uint32_t src_offset = region->srcOffset;
    uint32_t dst_offset = region->dstOffset;
    while (num_items > 0) {
@@ -687,7 +689,7 @@ copy_buffer(struct v3dv_cmd_buffer *cmd_buffer,
       struct v3dv_framebuffer framebuffer;
       setup_framebuffer_params(&framebuffer, width, height, 1, internal_bpp);
 
-      struct v3dv_job *job = v3dv_cmd_buffer_start_job(cmd_buffer, false);
+      job = v3dv_cmd_buffer_start_job(cmd_buffer, false);
       v3dv_cmd_buffer_start_frame(cmd_buffer, &framebuffer);
 
       v3dv_job_emit_binning_flush(job);
@@ -703,6 +705,8 @@ copy_buffer(struct v3dv_cmd_buffer *cmd_buffer,
       src_offset += bytes_copied;
       dst_offset += bytes_copied;
    }
+
+   return job;
 }
 
 void
@@ -716,6 +720,50 @@ v3dv_CmdCopyBuffer(VkCommandBuffer commandBuffer,
    V3DV_FROM_HANDLE(v3dv_buffer, src_buffer, srcBuffer);
    V3DV_FROM_HANDLE(v3dv_buffer, dst_buffer, dstBuffer);
 
-   for (uint32_t i = 0; i < regionCount; i++)
-     copy_buffer(cmd_buffer, dst_buffer, src_buffer, &pRegions[i]);
+   for (uint32_t i = 0; i < regionCount; i++) {
+     copy_buffer(cmd_buffer, dst_buffer->mem->bo, src_buffer->mem->bo,
+                 &pRegions[i]);
+   }
+}
+
+void
+v3dv_CmdUpdateBuffer(VkCommandBuffer commandBuffer,
+                     VkBuffer dstBuffer,
+                     VkDeviceSize dstOffset,
+                     VkDeviceSize dataSize,
+                     const void *pData)
+{
+   V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
+   V3DV_FROM_HANDLE(v3dv_buffer, dst_buffer, dstBuffer);
+
+   struct v3dv_bo *src_bo =
+      v3dv_bo_alloc(cmd_buffer->device, dataSize, "vkCmdUpdateBuffer");
+   if (!src_bo) {
+      fprintf(stderr, "Failed to allocate BO for vkCmdUpdateBuffer.\n");
+      return;
+   }
+
+   bool ok = v3dv_bo_map(cmd_buffer->device, src_bo, src_bo->size);
+   if (!ok) {
+      fprintf(stderr, "Failed to map BO for vkCmdUpdateBuffer.\n");
+      return;
+   }
+
+   memcpy(src_bo->map, pData, dataSize);
+
+   v3dv_bo_unmap(cmd_buffer->device, src_bo);
+
+   VkBufferCopy region = {
+      .srcOffset = 0,
+      .dstOffset = dstOffset,
+      .size = dataSize,
+   };
+   struct v3dv_job *copy_job =
+      copy_buffer(cmd_buffer, dst_buffer->mem->bo, src_bo, &region);
+
+   /* Make sure we add the BO to the list of extra BOs so it is not leaked.
+    * If the copy job was split into multiple jobs, we just bind it to the last
+    * one.
+    */
+   v3dv_job_add_extra_bo(copy_job, src_bo);
 }
