@@ -3092,7 +3092,7 @@ cmd_buffer_flush_push_constants(struct anv_cmd_buffer *cmd_buffer,
    anv_foreach_stage(stage, dirty_stages) {
       unsigned buffer_count = 0;
       flushed |= mesa_to_vk_shader_stage(stage);
-      uint32_t max_push_range = 0;
+      UNUSED uint32_t max_push_range = 0;
 
       if (anv_pipeline_has_stage(pipeline, stage)) {
          const struct anv_pipeline_bind_map *bind_map =
@@ -3102,8 +3102,7 @@ cmd_buffer_flush_push_constants(struct anv_cmd_buffer *cmd_buffer,
             const struct anv_push_range *range = &bind_map->push_ranges[i];
             if (range->length > 0) {
                buffer_count++;
-               if (GEN_GEN >= 12 && range->length > max_push_range)
-                  max_push_range = range->length;
+               max_push_range = MAX2(max_push_range, range->length);
             }
          }
       }
