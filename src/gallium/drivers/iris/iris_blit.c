@@ -319,6 +319,21 @@ tex_cache_flush_hack(struct iris_batch *batch,
                                 PIPE_CONTROL_TEXTURE_CACHE_INVALIDATE);
 }
 
+static enum isl_aux_usage
+iris_resource_blorp_write_aux_usage(struct iris_context *ice,
+                                    struct iris_resource *res,
+                                    enum isl_format render_format)
+{
+   if (res->surf.usage & (ISL_SURF_USAGE_DEPTH_BIT |
+                          ISL_SURF_USAGE_STENCIL_BIT)) {
+      assert(render_format == res->surf.format);
+      return res->aux.usage;
+   } else {
+      return iris_resource_render_aux_usage(ice, res, render_format,
+                                            false, false);
+   }
+}
+
 /**
  * The pipe->blit() driver hook.
  *
@@ -368,7 +383,7 @@ iris_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
       iris_format_for_usage(devinfo, info->dst.format,
                             ISL_SURF_USAGE_RENDER_TARGET_BIT);
    enum isl_aux_usage dst_aux_usage =
-      iris_resource_render_aux_usage(ice, dst_res, dst_fmt.fmt, false, false);
+      iris_resource_blorp_write_aux_usage(ice, dst_res, dst_fmt.fmt);
    bool dst_clear_supported = isl_aux_usage_has_fast_clears(dst_aux_usage);
 
    struct blorp_surf src_surf, dst_surf;
@@ -500,23 +515,7 @@ iris_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
          iris_format_for_usage(devinfo, stc_dst->base.format,
                                ISL_SURF_USAGE_RENDER_TARGET_BIT);
       stc_dst_aux_usage =
-         iris_resource_render_aux_usage(ice, stc_dst, dst_fmt.fmt, false, false);
-
-      /* Resolve destination surface before blit because :
-       *    1. when we try to blit from the same surface, we can't read and
-       *    write to the same surfaces at the same time when we have
-       *    compression enabled so it's safe to resolve surface first and then
-       *    do blit.
-       *    2. While bliting from one surface to another surface, we might be
-       *    mixing compression formats, Our experiments shows that if after
-       *    blit if we set DepthStencilResource flag to 0, blit passes but
-       *    clear fails.
-       *
-       *    XXX: In second case by destructing the compression, we might lose
-       *    some performance.
-       */
-      if (devinfo->gen >= 12)
-         stc_dst_aux_usage = ISL_AUX_USAGE_NONE;
+         iris_resource_blorp_write_aux_usage(ice, stc_dst, dst_fmt.fmt);
 
       iris_resource_prepare_access(ice, batch, src_res, info->src.level, 1,
                                    info->src.box.z, info->src.box.depth,
@@ -579,33 +578,23 @@ get_copy_region_aux_settings(struct iris_context *ice,
    case ISL_AUX_USAGE_HIZ:
    case ISL_AUX_USAGE_HIZ_CCS:
       if (is_render_target) {
-         *out_aux_usage = ISL_AUX_USAGE_NONE;
-         *out_clear_supported = false;
+         *out_aux_usage = res->aux.usage;
       } else {
          *out_aux_usage = iris_resource_texture_aux_usage(ice, res,
                                                           res->surf.format);
-         *out_clear_supported = (*out_aux_usage != ISL_AUX_USAGE_NONE);
       }
+      *out_clear_supported = (*out_aux_usage != ISL_AUX_USAGE_NONE);
       break;
    case ISL_AUX_USAGE_MCS:
    case ISL_AUX_USAGE_MCS_CCS:
    case ISL_AUX_USAGE_CCS_E:
-      /* A stencil resolve operation must be performed prior to doing resource
-       * copies or used by CPU.
-       * (see HSD 1209978162)
+      *out_aux_usage = res->aux.usage;
+      /* Prior to Gen9, fast-clear only supported 0/1 clear colors.  Since
+       * we're going to re-interpret the format as an integer format possibly
+       * with a different number of components, we can't handle clear colors
+       * until Gen9.
        */
-      if (is_render_target && isl_surf_usage_is_stencil(res->surf.usage)) {
-         *out_aux_usage = ISL_AUX_USAGE_NONE;
-         *out_clear_supported = false;
-      } else {
-         *out_aux_usage = res->aux.usage;
-         /* Prior to Gen9, fast-clear only supported 0/1 clear colors.  Since
-          * we're going to re-interpret the format as an integer format possibly
-          * with a different number of components, we can't handle clear colors
-          * until Gen9.
-          */
-         *out_clear_supported = devinfo->gen >= 9;
-      }
+      *out_clear_supported = devinfo->gen >= 9;
       break;
    default:
       *out_aux_usage = ISL_AUX_USAGE_NONE;
