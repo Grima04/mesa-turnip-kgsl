@@ -44,7 +44,19 @@ struct _mesa_prim
 {
    GLubyte mode;    /**< GL_POINTS, GL_LINES, GL_QUAD_STRIP, etc */
    bool indexed;
+
+   /**
+    * tnl: If true, line stipple emulation will reset the pattern walker.
+    * vbo: If false and the primitive is a line loop, the first vertex is
+    *      the beginning of the line loop and it won't be drawn.
+    *      Instead, it will be moved to the end.
+    */
    bool begin;
+
+   /**
+    * tnl: If true and the primitive is a line loop, it will be closed.
+    * vbo: Same as tnl.
+    */
    bool end;
 
    GLuint start;
