@@ -156,6 +156,10 @@ iris_wait_syncpt(struct pipe_screen *p_screen,
    return gen_ioctl(screen->fd, DRM_IOCTL_SYNCOBJ_WAIT, &args);
 }
 
+#define CSI "\e["
+#define BLUE_HEADER  CSI "0;97;44m"
+#define NORMAL       CSI "0m"
+
 static void
 iris_fence_flush(struct pipe_context *ctx,
                  struct pipe_fence_handle **out_fence,
@@ -163,6 +167,17 @@ iris_fence_flush(struct pipe_context *ctx,
 {
    struct iris_screen *screen = (void *) ctx->screen;
    struct iris_context *ice = (struct iris_context *)ctx;
+
+   if (flags & PIPE_FLUSH_END_OF_FRAME) {
+      ice->frame++;
+
+      if (INTEL_DEBUG & DEBUG_SUBMIT) {
+         fprintf(stderr, "%s ::: FRAME %-10u (ctx %p)%-35c%s\n",
+                 (INTEL_DEBUG & DEBUG_COLOR) ? BLUE_HEADER : "",
+                 ice->frame, ctx, ' ',
+                 (INTEL_DEBUG & DEBUG_COLOR) ? NORMAL : "");
+      }
+   }
 
    /* XXX PIPE_FLUSH_DEFERRED */
    for (unsigned i = 0; i < IRIS_BATCH_COUNT; i++)

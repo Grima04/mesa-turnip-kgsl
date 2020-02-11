@@ -687,6 +687,9 @@ struct iris_context {
 
    struct gen_perf_context *perf_ctx;
 
+   /** Frame number for debug prints */
+   uint32_t frame;
+
    struct {
       uint64_t dirty;
       uint64_t dirty_for_nos[IRIS_NOS_COUNT];
