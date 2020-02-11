@@ -191,10 +191,9 @@ vbo_can_merge_prims(const struct _mesa_prim *p0, const struct _mesa_prim *p1)
    if (p0->start + p0->count != p1->start)
       return false;
 
-   if (p0->basevertex != p1->basevertex ||
-       p0->num_instances != p1->num_instances ||
-       p0->base_instance != p1->base_instance)
-      return false;
+   assert(p0->basevertex == p1->basevertex &&
+          p0->num_instances == p1->num_instances &&
+          p0->base_instance == p1->base_instance);
 
    /* can always merge subsequent GL_POINTS primitives */
    if (p0->mode == GL_POINTS)
