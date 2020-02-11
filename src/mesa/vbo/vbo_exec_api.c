@@ -427,13 +427,6 @@ vbo_exec_fixup_vertex(struct gl_context *ctx, GLuint attr,
 
    exec->vtx.attr[attr].active_size = newSize;
    exec->vtx.attr[attr].type = newType;
-
-   /* Does setting NeedFlush belong here?  Necessitates resetting
-    * vtxfmt on each flush (otherwise flags won't get reset
-    * afterwards).
-    */
-   if (attr == 0)
-      ctx->Driver.NeedFlush |= FLUSH_STORED_VERTICES;
 }
 
 
