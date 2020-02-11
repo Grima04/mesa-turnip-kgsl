@@ -205,7 +205,6 @@ new_draw_rastpos_stage(struct gl_context *ctx, struct draw_context *draw)
    _mesa_enable_vertex_array_attrib(ctx, rs->VAO, 0);
 
    rs->prim.mode = GL_POINTS;
-   rs->prim.indexed = 0;
    rs->prim.begin = 1;
    rs->prim.end = 1;
    rs->prim.start = 0;

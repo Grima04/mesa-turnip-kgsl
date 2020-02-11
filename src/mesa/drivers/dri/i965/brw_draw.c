@@ -159,6 +159,7 @@ static void
 brw_emit_prim(struct brw_context *brw,
               const struct _mesa_prim *prim,
               uint32_t hw_prim,
+              bool is_indexed,
               struct brw_transform_feedback_object *xfb_obj,
               unsigned stream,
               bool is_indirect,
@@ -175,7 +176,7 @@ brw_emit_prim(struct brw_context *brw,
    int start_vertex_location = prim->start;
    int base_vertex_location = prim->basevertex;
 
-   if (prim->indexed) {
+   if (is_indexed) {
       vertex_access_type = devinfo->gen >= 7 ?
          GEN7_3DPRIM_VERTEXBUFFER_ACCESS_RANDOM :
          GEN4_3DPRIM_VERTEXBUFFER_ACCESS_RANDOM;
@@ -239,7 +240,7 @@ brw_emit_prim(struct brw_context *brw,
 
       brw_load_register_mem(brw, GEN7_3DPRIM_START_VERTEX, bo,
                             indirect_offset + 8);
-      if (prim->indexed) {
+      if (is_indexed) {
          brw_load_register_mem(brw, GEN7_3DPRIM_BASE_VERTEX, bo,
                                indirect_offset + 12);
          brw_load_register_mem(brw, GEN7_3DPRIM_START_INSTANCE, bo,
@@ -956,6 +957,7 @@ static void
 brw_draw_single_prim(struct gl_context *ctx,
                      const struct _mesa_prim *prim,
                      unsigned prim_id,
+                     bool is_indexed,
                      struct brw_transform_feedback_object *xfb_obj,
                      unsigned stream,
                      GLsizeiptr indirect_offset)
@@ -996,7 +998,7 @@ brw_draw_single_prim(struct gl_context *ctx,
     * we only flag if the values change.
     */
    const int new_firstvertex =
-      prim->indexed ? prim->basevertex : prim->start;
+      is_indexed ? prim->basevertex : prim->start;
    const int new_baseinstance = prim->base_instance;
    const struct brw_vs_prog_data *vs_prog_data =
       brw_vs_prog_data(brw->vs.base.prog_data);
@@ -1023,7 +1025,7 @@ brw_draw_single_prim(struct gl_context *ctx,
          intel_buffer_object(ctx->DrawIndirectBuffer)->buffer;
       brw_bo_reference(brw->draw.draw_params_bo);
       brw->draw.draw_params_offset =
-         indirect_offset + (prim->indexed ? 12 : 8);
+         indirect_offset + (is_indexed ? 12 : 8);
    } else {
       /* Set draw_params_bo to NULL so brw_prepare_vertices knows it
        * has to upload gl_BaseVertex and such if they're needed.
@@ -1042,7 +1044,7 @@ brw_draw_single_prim(struct gl_context *ctx,
       brw->ctx.NewDriverState |= BRW_NEW_VERTICES;
 
    brw->draw.derived_params.gl_drawid = prim->draw_id;
-   brw->draw.derived_params.is_indexed_draw = prim->indexed ? ~0 : 0;
+   brw->draw.derived_params.is_indexed_draw = is_indexed ? ~0 : 0;
 
    brw_bo_unreference(brw->draw.derived_draw_params_bo);
    brw->draw.derived_draw_params_bo = NULL;
@@ -1068,8 +1070,8 @@ retry:
    if (devinfo->gen == 9)
       gen9_emit_preempt_wa(brw, prim);
 
-   brw_emit_prim(brw, prim, brw->primitive, xfb_obj, stream, is_indirect,
-                 indirect_offset);
+   brw_emit_prim(brw, prim, brw->primitive, is_indexed, xfb_obj, stream,
+                 is_indirect, indirect_offset);
 
    brw->batch.no_wrap = false;
 
@@ -1185,7 +1187,7 @@ brw_draw_prims(struct gl_context *ctx,
          brw->predicate.state = BRW_PREDICATE_STATE_USE_BIT;
       }
 
-      brw_draw_single_prim(ctx, &prims[i], i, xfb_obj, stream,
+      brw_draw_single_prim(ctx, &prims[i], i, ib != NULL, xfb_obj, stream,
                            brw->draw.draw_indirect_offset +
                            brw->draw.draw_indirect_stride * i);
    }
@@ -1225,7 +1227,6 @@ brw_draw_indirect_prims(struct gl_context *ctx,
    prim[draw_count - 1].end = 1;
    for (i = 0; i < draw_count; ++i) {
       prim[i].mode = mode;
-      prim[i].indexed = ib != NULL;
       prim[i].draw_id = i;
    }
 

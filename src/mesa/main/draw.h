@@ -43,7 +43,6 @@ struct gl_context;
 struct _mesa_prim
 {
    GLubyte mode;    /**< GL_POINTS, GL_LINES, GL_QUAD_STRIP, etc */
-   bool indexed;
 
    /**
     * tnl: If true, line stipple emulation will reset the pattern walker.

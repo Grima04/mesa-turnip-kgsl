@@ -810,7 +810,6 @@ vbo_exec_Begin(GLenum mode)
    exec->vtx.prim[i].mode = mode;
    exec->vtx.prim[i].begin = 1;
    exec->vtx.prim[i].end = 0;
-   exec->vtx.prim[i].indexed = 0;
    exec->vtx.prim[i].start = exec->vtx.vert_count;
    exec->vtx.prim[i].count = 0;
    exec->vtx.prim[i].num_instances = 1;

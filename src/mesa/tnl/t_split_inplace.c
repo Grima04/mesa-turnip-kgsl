@@ -230,7 +230,6 @@ split_prims(struct split_context *split)
          ib.ptr = elts;
 
          tmpprim = *prim;
-         tmpprim.indexed = 1;
          tmpprim.start = 0;
          tmpprim.count = count;
          tmpprim.num_instances = 1;
