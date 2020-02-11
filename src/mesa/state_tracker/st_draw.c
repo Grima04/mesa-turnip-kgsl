@@ -173,8 +173,7 @@ st_draw_vbo(struct gl_context *ctx,
             GLuint min_index,
             GLuint max_index,
             struct gl_transform_feedback_object *tfb_vertcount,
-            unsigned stream,
-            struct gl_buffer_object *indirect)
+            unsigned stream)
 {
    struct st_context *st = st_context(ctx);
    struct pipe_draw_info info;
@@ -234,8 +233,6 @@ st_draw_vbo(struct gl_context *ctx,
             return;
       }
    }
-
-   assert(!indirect);
 
    /* do actual drawing */
    for (i = 0; i < nr_prims; i++) {

@@ -93,7 +93,7 @@ flush_vertex( struct split_context *split)
                !split->ib,
                split->min_index,
                split->max_index,
-               NULL, 0, NULL);
+               NULL, 0);
 
    split->dstprim_nr = 0;
    split->min_index = ~0;

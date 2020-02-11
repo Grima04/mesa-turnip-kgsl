@@ -1104,8 +1104,7 @@ brw_draw_prims(struct gl_context *ctx,
                GLuint min_index,
                GLuint max_index,
                struct gl_transform_feedback_object *gl_xfb_obj,
-               unsigned stream,
-               UNUSED struct gl_buffer_object *unused_indirect)
+               unsigned stream)
 {
    unsigned i;
    struct brw_context *brw = brw_context(ctx);
@@ -1131,7 +1130,7 @@ brw_draw_prims(struct gl_context *ctx,
       _swsetup_Wakeup(ctx);
       _tnl_wakeup(ctx);
       _tnl_draw(ctx, prims, nr_prims, ib,
-                index_bounds_valid, min_index, max_index, NULL, 0, NULL);
+                index_bounds_valid, min_index, max_index, NULL, 0);
       return;
    }
 
@@ -1234,8 +1233,7 @@ brw_draw_indirect_prims(struct gl_context *ctx,
 
    brw_draw_prims(ctx, prim, draw_count,
                   ib, false, 0, ~0,
-                  NULL, 0,
-                  NULL);
+                  NULL, 0);
 
    brw->draw.draw_indirect_data = NULL;
    free(prim);

@@ -211,7 +211,7 @@ flush(struct copy_context *copy)
               GL_TRUE,
               0,
               copy->dstbuf_nr - 1,
-              NULL, 0, NULL);
+              NULL, 0);
 
    /* Reset all pointers:
     */

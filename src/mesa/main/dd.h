@@ -543,7 +543,7 @@ struct dd_function_table {
                 GLboolean index_bounds_valid,
                 GLuint min_index, GLuint max_index,
                 struct gl_transform_feedback_object *tfb_vertcount,
-                unsigned tfb_stream, struct gl_buffer_object *indirect);
+                unsigned tfb_stream);
 
 
    /**
