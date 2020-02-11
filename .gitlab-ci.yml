@@ -121,7 +121,7 @@ x86_build:
     - .fdo.container-build@debian
     - .container
   variables:
-    FDO_DISTRIBUTION_TAG: &x86_build "2020-03-13"
+    FDO_DISTRIBUTION_TAG: &x86_build "2020-03-18-jflags"
 
 .use-x86_build:
   variables:
@@ -134,19 +134,19 @@ x86_build:
 x86_test-gl:
   extends: x86_build
   variables:
-    FDO_DISTRIBUTION_TAG: &x86_test-gl "2020-03-13"
+    FDO_DISTRIBUTION_TAG: &x86_test-gl "2020-03-18-jflags"
 
 # Debian 10 based x86 test image for VK
 x86_test-vk:
   extends: x86_build
   variables:
-    FDO_DISTRIBUTION_TAG: &x86_test-vk "2020-03-27"
+    FDO_DISTRIBUTION_TAG: &x86_test-vk "2020-04-01-jflags"
 
 # Debian 9 based x86 build image (old LLVM)
 x86_build_old:
   extends: x86_build
   variables:
-    FDO_DISTRIBUTION_TAG: &x86_build_old "2019-09-18"
+    FDO_DISTRIBUTION_TAG: &x86_build_old "2019-03-18-jflags"
     FDO_DISTRIBUTION_VERSION: stretch-slim
 
 .use-x86_build_old:
@@ -162,7 +162,7 @@ arm_build:
     - .fdo.container-build@debian@arm64v8
     - .container
   variables:
-    FDO_DISTRIBUTION_TAG: &arm_build "2020-03-24"
+    FDO_DISTRIBUTION_TAG: &arm_build "2020-04-01-jflags"
 
 .use-arm_build:
   variables:
@@ -175,7 +175,7 @@ arm_build:
 arm_test:
   extends: arm_build
   variables:
-    FDO_DISTRIBUTION_TAG: &arm_test "2020-01-30"
+    FDO_DISTRIBUTION_TAG: &arm_test "2020-03-18-jflags"
 
 .use-arm_test:
   variables:

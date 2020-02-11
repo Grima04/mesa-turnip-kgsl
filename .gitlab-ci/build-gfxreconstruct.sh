@@ -11,7 +11,7 @@ git checkout "$GFXRECONSTRUCT_VERSION"
 git submodule update --init
 git submodule update
 cmake -G Ninja -B_build -H. -DCMAKE_BUILD_TYPE=Release
-ninja -C _build -j4 gfxrecon-replay
+ninja -C _build gfxrecon-replay
 mkdir -p build/bin
 install _build/tools/replay/gfxrecon-replay build/bin
 strip build/bin/*

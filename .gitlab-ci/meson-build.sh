@@ -57,7 +57,7 @@ meson _build --native-file=native.file \
       ${EXTRA_OPTION}
 cd _build
 meson configure
-ninja -j4
+ninja
 LC_ALL=C.UTF-8 ninja test
 ninja install
 cd ..

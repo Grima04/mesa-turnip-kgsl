@@ -59,7 +59,7 @@ export LIBDRM_VERSION=libdrm-2.4.100
 
 wget https://dri.freedesktop.org/libdrm/$LIBDRM_VERSION.tar.bz2
 tar -xvf $LIBDRM_VERSION.tar.bz2 && rm $LIBDRM_VERSION.tar.bz2
-cd $LIBDRM_VERSION; meson build -D vc4=true -D freedreno=true -D etnaviv=true; ninja -j4 -C build install; cd ..
+cd $LIBDRM_VERSION; meson build -D vc4=true -D freedreno=true -D etnaviv=true; ninja -C build install; cd ..
 rm -rf $LIBDRM_VERSION
 
 ############### Generate cross build file for Meson

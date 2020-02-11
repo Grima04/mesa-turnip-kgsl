@@ -170,36 +170,36 @@ export  WAYLAND_PROTOCOLS_VERSION=wayland-protocols-1.12
 
 wget $XORG_RELEASES/util/$XORGMACROS_VERSION.tar.bz2
 tar -xvf $XORGMACROS_VERSION.tar.bz2 && rm $XORGMACROS_VERSION.tar.bz2
-cd $XORGMACROS_VERSION; ./configure; make -j4 install; cd ..
+cd $XORGMACROS_VERSION; ./configure; make install; cd ..
 rm -rf $XORGMACROS_VERSION
 
 wget $XCB_RELEASES/$XCBPROTO_VERSION.tar.bz2
 tar -xvf $XCBPROTO_VERSION.tar.bz2 && rm $XCBPROTO_VERSION.tar.bz2
-cd $XCBPROTO_VERSION; ./configure; make -j4 install; cd ..
+cd $XCBPROTO_VERSION; ./configure; make install; cd ..
 rm -rf $XCBPROTO_VERSION
 
 wget $XCB_RELEASES/$LIBXCB_VERSION.tar.bz2
 tar -xvf $LIBXCB_VERSION.tar.bz2 && rm $LIBXCB_VERSION.tar.bz2
-cd $LIBXCB_VERSION; ./configure; make -j4 install; cd ..
+cd $LIBXCB_VERSION; ./configure; make install; cd ..
 rm -rf $LIBXCB_VERSION
 
 wget https://dri.freedesktop.org/libdrm/$LIBDRM_VERSION.tar.bz2
 tar -xvf $LIBDRM_VERSION.tar.bz2 && rm $LIBDRM_VERSION.tar.bz2
 cd $LIBDRM_VERSION
-meson build -D vc4=true -D freedreno=true -D etnaviv=true -D libdir=lib/x86_64-linux-gnu; ninja -j4 -C build install
-rm -rf build; meson --cross-file=/cross_file-ppc64el.txt build -D libdir=lib/powerpc64le-linux-gnu; ninja -j4 -C build install
-rm -rf build; meson --cross-file=/cross_file-i386.txt build -D libdir=lib/i386-linux-gnu; ninja -j4 -C build install
+meson build -D vc4=true -D freedreno=true -D etnaviv=true -D libdir=lib/x86_64-linux-gnu; ninja -C build install
+rm -rf build; meson --cross-file=/cross_file-ppc64el.txt build -D libdir=lib/powerpc64le-linux-gnu; ninja -C build install
+rm -rf build; meson --cross-file=/cross_file-i386.txt build -D libdir=lib/i386-linux-gnu; ninja -C build install
 cd ..
 rm -rf $LIBDRM_VERSION
 
 wget $WAYLAND_RELEASES/$LIBWAYLAND_VERSION.tar.xz
 tar -xvf $LIBWAYLAND_VERSION.tar.xz && rm $LIBWAYLAND_VERSION.tar.xz
-cd $LIBWAYLAND_VERSION; ./configure --enable-libraries --without-host-scanner --disable-documentation --disable-dtd-validation; make -j4 install; cd ..
+cd $LIBWAYLAND_VERSION; ./configure --enable-libraries --without-host-scanner --disable-documentation --disable-dtd-validation; make install; cd ..
 rm -rf $LIBWAYLAND_VERSION
 
 wget $WAYLAND_RELEASES/$WAYLAND_PROTOCOLS_VERSION.tar.xz
 tar -xvf $WAYLAND_PROTOCOLS_VERSION.tar.xz && rm $WAYLAND_PROTOCOLS_VERSION.tar.xz
-cd $WAYLAND_PROTOCOLS_VERSION; ./configure; make -j4 install; cd ..
+cd $WAYLAND_PROTOCOLS_VERSION; ./configure; make install; cd ..
 rm -rf $WAYLAND_PROTOCOLS_VERSION
 
 
@@ -209,7 +209,7 @@ rm -rf $WAYLAND_PROTOCOLS_VERSION
 GLVND_VERSION=1.2.0
 wget https://gitlab.freedesktop.org/glvnd/libglvnd/-/archive/v$GLVND_VERSION/libglvnd-v$GLVND_VERSION.tar.gz
 tar -xvf libglvnd-v$GLVND_VERSION.tar.gz && rm libglvnd-v$GLVND_VERSION.tar.gz
-pushd libglvnd-v$GLVND_VERSION; ./autogen.sh; ./configure; make -j4 install; popd
+pushd libglvnd-v$GLVND_VERSION; ./autogen.sh; ./configure; make install; popd
 rm -rf libglvnd-v$GLVND_VERSION
 
 
@@ -217,7 +217,7 @@ pushd /usr/local
 git clone https://gitlab.freedesktop.org/mesa/shader-db.git --depth 1
 rm -rf shader-db/.git
 cd shader-db
-make -j4
+make
 popd
 
 

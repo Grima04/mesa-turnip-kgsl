@@ -45,7 +45,7 @@ mkdir -p kernel
 wget -qO- ${KERNEL_URL} | tar -xz --strip-components=1 -C kernel
 pushd kernel
 ./scripts/kconfig/merge_config.sh ${DEFCONFIG} ../.gitlab-ci/${KERNEL_ARCH}.config
-make -j12 ${KERNEL_IMAGE_NAME} dtbs
+make ${KERNEL_IMAGE_NAME} dtbs
 cp arch/${KERNEL_ARCH}/boot/${KERNEL_IMAGE_NAME} /lava-files/.
 cp ${DEVICE_TREES} /lava-files/.
 popd

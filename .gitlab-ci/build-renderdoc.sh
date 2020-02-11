@@ -8,7 +8,7 @@ git clone https://github.com/baldurk/renderdoc.git --single-branch --no-checkout
 pushd /renderdoc
 git checkout "$RENDERDOC_VERSION"
 cmake -G Ninja -B_build -H. -DENABLE_QRENDERDOC=false -DCMAKE_BUILD_TYPE=Release
-ninja -C _build -j4
+ninja -C _build
 mkdir -p build/lib
 cp _build/lib/renderdoc.so build/lib
 cp _build/lib/librenderdoc.so build/lib

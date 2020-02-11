@@ -9,6 +9,6 @@ git submodule update --init
 mkdir build
 cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release -G Ninja
-ninja -C . -j4 install
+ninja -C . install
 cd ../..
 rm -rf Fossilize

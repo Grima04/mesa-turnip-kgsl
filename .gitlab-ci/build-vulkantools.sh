@@ -19,7 +19,7 @@ cmake -G Ninja -B_build -H. \
       -DBUILD_VIA=OFF \
       -DBUILD_VKTRACE_REPLAY=OFF \
       -C_build/helper.cmake
-ninja -C _build -j4 VkLayer_screenshot VkLayer_screenshot-staging-json
+ninja -C _build VkLayer_screenshot VkLayer_screenshot-staging-json
 mkdir -p build/etc/vulkan/explicit_layer.d
 mkdir build/lib
 install _build/layersvt/staging-json/VkLayer_screenshot.json build/etc/vulkan/explicit_layer.d

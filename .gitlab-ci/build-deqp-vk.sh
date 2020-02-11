@@ -23,7 +23,7 @@ cmake -G Ninja \
       -DDEQP_TARGET=x11_glx \
       -DCMAKE_BUILD_TYPE=Release \
       /VK-GL-CTS
-ninja -j4
+ninja
 
 # Copy out the mustpass list we want.
 mkdir /deqp/mustpass

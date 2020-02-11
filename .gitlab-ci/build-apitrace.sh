@@ -20,7 +20,7 @@ git clone https://github.com/apitrace/apitrace.git --single-branch --no-checkout
 pushd /apitrace
 git checkout "$APITRACE_VERSION"
 cmake -G Ninja -B_build -H. -DCMAKE_BUILD_TYPE=Release -DENABLE_GUI=False -DENABLE_WAFFLE=on -DWaffle_DIR=/usr/local/lib/cmake/Waffle/
-ninja -C _build -j4
+ninja -C _build
 mkdir build
 cp _build/apitrace build
 cp _build/glretrace build
