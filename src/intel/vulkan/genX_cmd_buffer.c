@@ -2886,7 +2886,6 @@ cmd_buffer_emit_descriptor_pointers(struct anv_cmd_buffer *cmd_buffer,
    }
 }
 
-#if GEN_GEN >= 8 || GEN_IS_HASWELL
 static struct anv_address
 get_push_range_address(struct anv_cmd_buffer *cmd_buffer,
                        gl_shader_stage stage,
@@ -2936,11 +2935,12 @@ get_push_range_address(struct anv_cmd_buffer *cmd_buffer,
    }
    }
 }
-#endif
 
 static void
 cmd_buffer_emit_push_constant(struct anv_cmd_buffer *cmd_buffer,
-                              gl_shader_stage stage, unsigned buffer_count)
+                              gl_shader_stage stage,
+                              struct anv_address *buffers,
+                              unsigned buffer_count)
 {
    const struct anv_cmd_graphics_state *gfx_state = &cmd_buffer->state.gfx;
    const struct anv_pipeline *pipeline = gfx_state->base.pipeline;
@@ -2993,24 +2993,23 @@ cmd_buffer_emit_push_constant(struct anv_cmd_buffer *cmd_buffer,
              */
             assert((GEN_GEN >= 8 || GEN_IS_HASWELL) || i == 0);
 
-            const struct anv_address addr =
-               get_push_range_address(cmd_buffer, stage, range);
             c.ConstantBody.ReadLength[i + shift] = range->length;
             c.ConstantBody.Buffer[i + shift] =
-               anv_address_add(addr, range->start * 32);
+               anv_address_add(buffers[i], range->start * 32);
          }
 #else
          /* For Ivy Bridge, push constants are relative to dynamic state
           * base address and we only ever push actual push constants.
           */
          if (bind_map->push_ranges[0].length > 0) {
+            assert(buffer_count == 1);
             assert(bind_map->push_ranges[0].set ==
                    ANV_DESCRIPTOR_SET_PUSH_CONSTANTS);
-            struct anv_state state =
-               anv_cmd_buffer_push_constants(cmd_buffer, stage);
+            assert(buffers[0].bo ==
+                   cmd_buffer->device->dynamic_state_pool.block_pool.bo);
             c.ConstantBody.ReadLength[0] = bind_map->push_ranges[0].length;
             c.ConstantBody.Buffer[0].bo = NULL;
-            c.ConstantBody.Buffer[0].offset = state.offset;
+            c.ConstantBody.Buffer[0].offset = buffers[0].offset;
          }
          assert(bind_map->push_ranges[1].length == 0);
          assert(bind_map->push_ranges[2].length == 0);
@@ -3023,9 +3022,11 @@ cmd_buffer_emit_push_constant(struct anv_cmd_buffer *cmd_buffer,
 #if GEN_GEN >= 12
 static void
 cmd_buffer_emit_push_constant_all(struct anv_cmd_buffer *cmd_buffer,
-                                  uint32_t shader_mask, uint32_t count)
+                                  uint32_t shader_mask,
+                                  struct anv_address *buffers,
+                                  uint32_t buffer_count)
 {
-   if (count == 0) {
+   if (buffer_count == 0) {
       anv_batch_emit(&cmd_buffer->batch, GENX(3DSTATE_CONSTANT_ALL), c) {
          c.ShaderUpdateEnable = shader_mask;
          c.MOCS = cmd_buffer->device->isl_dev.mocs.internal;
@@ -3053,24 +3054,22 @@ cmd_buffer_emit_push_constant_all(struct anv_cmd_buffer *cmd_buffer,
       &pipeline->shaders[stage]->bind_map;
 
    uint32_t *dw;
-   const uint32_t buffers = (1 << count) - 1;
-   const uint32_t num_dwords = 2 + 2 * count;
+   const uint32_t buffer_mask = (1 << buffer_count) - 1;
+   const uint32_t num_dwords = 2 + 2 * buffer_count;
 
    dw = anv_batch_emitn(&cmd_buffer->batch, num_dwords,
                         GENX(3DSTATE_CONSTANT_ALL),
                         .ShaderUpdateEnable = shader_mask,
-                        .PointerBufferMask = buffers,
+                        .PointerBufferMask = buffer_mask,
                         .MOCS = cmd_buffer->device->isl_dev.mocs.internal);
 
-   for (int i = 0; i < count; i++) {
+   for (int i = 0; i < buffer_count; i++) {
       const struct anv_push_range *range = &bind_map->push_ranges[i];
-      const struct anv_address addr =
-         get_push_range_address(cmd_buffer, stage, range);
-
       GENX(3DSTATE_CONSTANT_ALL_DATA_pack)(
          &cmd_buffer->batch, dw + 2 + i * 2,
          &(struct GENX(3DSTATE_CONSTANT_ALL_DATA)) {
-            .PointerToConstantBuffer = anv_address_add(addr, range->start * 32),
+            .PointerToConstantBuffer =
+               anv_address_add(buffers[i], range->start * 32),
             .ConstantBufferReadLength = range->length,
          });
    }
@@ -3094,17 +3093,24 @@ cmd_buffer_flush_push_constants(struct anv_cmd_buffer *cmd_buffer,
       flushed |= mesa_to_vk_shader_stage(stage);
       UNUSED uint32_t max_push_range = 0;
 
+      struct anv_address buffers[4] = {};
       if (anv_pipeline_has_stage(pipeline, stage)) {
          const struct anv_pipeline_bind_map *bind_map =
             &pipeline->shaders[stage]->bind_map;
 
          for (unsigned i = 0; i < 4; i++) {
             const struct anv_push_range *range = &bind_map->push_ranges[i];
-            if (range->length > 0) {
-               buffer_count++;
-               max_push_range = MAX2(max_push_range, range->length);
-            }
+            if (range->length == 0)
+               break;
+
+            buffers[i] = get_push_range_address(cmd_buffer, stage, range);
+            max_push_range = MAX2(max_push_range, range->length);
+            buffer_count++;
          }
+
+         /* We have at most 4 buffers but they should be tightly packed */
+         for (unsigned i = buffer_count; i < 4; i++)
+            assert(bind_map->push_ranges[i].length == 0);
       }
 
 #if GEN_GEN >= 12
@@ -3122,17 +3128,17 @@ cmd_buffer_flush_push_constants(struct anv_cmd_buffer *cmd_buffer,
        */
       if (max_push_range < 32) {
          cmd_buffer_emit_push_constant_all(cmd_buffer, 1 << stage,
-                                           buffer_count);
+                                           buffers, buffer_count);
          continue;
       }
 #endif
 
-      cmd_buffer_emit_push_constant(cmd_buffer, stage, buffer_count);
+      cmd_buffer_emit_push_constant(cmd_buffer, stage, buffers, buffer_count);
    }
 
 #if GEN_GEN >= 12
    if (nobuffer_stages)
-      cmd_buffer_emit_push_constant_all(cmd_buffer, nobuffer_stages, 0);
+      cmd_buffer_emit_push_constant_all(cmd_buffer, nobuffer_stages, NULL, 0);
 #endif
 
    cmd_buffer->state.push_constants_dirty &= ~flushed;
