@@ -606,15 +606,7 @@ radv_handle_per_app_options(struct radv_instance *instance,
 	if (!name)
 		return;
 
-	if (!strcmp(name, "Talos - Linux - 32bit") ||
-	    !strcmp(name, "Talos - Linux - 64bit")) {
-		if (!(instance->debug_flags & RADV_DEBUG_NO_SISCHED)) {
-			/* Force enable LLVM sisched for Talos because it looks
-			 * safe and it gives few more FPS.
-			 */
-			instance->perftest_flags |= RADV_PERFTEST_SISCHED;
-		}
-	} else if (!strcmp(name, "DOOM_VFR")) {
+	if (!strcmp(name, "DOOM_VFR")) {
 		/* Work around a Doom VFR game bug */
 		instance->debug_flags |= RADV_DEBUG_NO_DYNAMIC_BOUNDS;
 	} else if (!strcmp(name, "MonsterHunterWorld.exe")) {
