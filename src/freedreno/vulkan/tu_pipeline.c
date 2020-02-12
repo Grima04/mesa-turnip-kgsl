@@ -972,7 +972,11 @@ tu6_emit_shader_object(struct tu_cs *cs,
    assert(variant->type == stage);
 
    const uint64_t binary_iova = binary_bo->iova + binary_offset;
-   assert((binary_iova & 0x3) == 0);
+   assert((binary_iova & 0xf) == 0);
+   /* note: it looks like HW might try to read a few instructions beyond the instrlen size
+    * of the shader. this could be a potential source of problems at some point
+    * possibly this doesn't happen if shader iova is aligned enough (to 4k for example)
+    */
 
    tu_cs_emit_pkt4(cs, reg, 2);
    tu_cs_emit_qw(cs, binary_iova);
