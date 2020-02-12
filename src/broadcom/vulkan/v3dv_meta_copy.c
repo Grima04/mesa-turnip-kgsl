@@ -767,3 +767,250 @@ v3dv_CmdUpdateBuffer(VkCommandBuffer commandBuffer,
     */
    v3dv_job_add_extra_bo(copy_job, src_bo);
 }
+
+static void
+emit_fill_buffer_per_tile_list(struct v3dv_job *job,
+                               struct v3dv_bo *bo,
+                               uint32_t offset,
+                               uint32_t stride)
+{
+   struct v3dv_cl *cl = &job->indirect;
+   v3dv_cl_ensure_space(cl, 200, 1);
+   struct v3dv_cl_reloc tile_list_start = v3dv_cl_get_address(cl);
+
+   cl_emit(cl, TILE_COORDINATES_IMPLICIT, coords);
+
+   cl_emit(cl, END_OF_LOADS, end);
+
+   cl_emit(cl, PRIM_LIST_FORMAT, fmt) {
+      fmt.primitive_type = LIST_TRIANGLES;
+   }
+
+   cl_emit(cl, BRANCH_TO_IMPLICIT_TILE_LIST, branch);
+
+   cl_emit(cl, STORE_TILE_BUFFER_GENERAL, store) {
+      store.buffer_to_store = RENDER_TARGET_0;
+      store.address = v3dv_cl_address(bo, offset);
+      store.clear_buffer_being_stored = false;
+      store.output_image_format = V3D_OUTPUT_IMAGE_FORMAT_RGBA8UI;
+      store.memory_format = VC5_TILING_RASTER;
+      store.height_in_ub_or_stride = stride;
+      store.decimate_mode = V3D_DECIMATE_MODE_SAMPLE_0;
+   }
+
+   cl_emit(cl, END_OF_TILE_MARKER, end);
+
+   cl_emit(cl, RETURN_FROM_SUB_LIST, ret);
+
+   cl_emit(&job->rcl, START_ADDRESS_OF_GENERIC_TILE_LIST, branch) {
+      branch.start = tile_list_start;
+      branch.end = v3dv_cl_get_address(cl);
+   }
+}
+
+static void
+emit_fill_buffer(struct v3dv_job *job,
+                 uint32_t min_x_supertile,
+                 uint32_t min_y_supertile,
+                 uint32_t max_x_supertile,
+                 uint32_t max_y_supertile,
+                 struct v3dv_bo *bo,
+                 uint32_t offset,
+                 struct v3dv_framebuffer *framebuffer)
+{
+   struct v3dv_cl *rcl = &job->rcl;
+
+   cl_emit(rcl, MULTICORE_RENDERING_TILE_LIST_SET_BASE, list) {
+      list.address = v3dv_cl_address(job->tile_alloc, 0);
+   }
+
+   cl_emit(rcl, MULTICORE_RENDERING_SUPERTILE_CFG, config) {
+      config.number_of_bin_tile_lists = 1;
+      config.total_frame_width_in_tiles = framebuffer->draw_tiles_x;
+      config.total_frame_height_in_tiles = framebuffer->draw_tiles_y;
+
+      config.supertile_width_in_tiles = framebuffer->supertile_width;
+      config.supertile_height_in_tiles = framebuffer->supertile_height;
+
+      config.total_frame_width_in_supertiles =
+         framebuffer->frame_width_in_supertiles;
+      config.total_frame_height_in_supertiles =
+         framebuffer->frame_height_in_supertiles;
+   }
+
+   /* Implement GFXH-1742 workaround and emit a clear of the tile buffers.
+    * Since we fill by clearing, we need to do the clear here.
+    */
+   for (int i = 0; i < 2; i++) {
+      cl_emit(rcl, TILE_COORDINATES, coords);
+      cl_emit(rcl, END_OF_LOADS, end);
+      cl_emit(rcl, STORE_TILE_BUFFER_GENERAL, store) {
+         store.buffer_to_store = NONE;
+      }
+      if (i == 0) {
+         cl_emit(rcl, CLEAR_TILE_BUFFERS, clear) {
+            clear.clear_z_stencil_buffer = true;
+            clear.clear_all_render_targets = true;
+         }
+      }
+      cl_emit(rcl, END_OF_TILE_MARKER, end);
+   }
+
+   cl_emit(rcl, FLUSH_VCD_CACHE, flush);
+
+   const uint32_t stride = framebuffer->width * 4;
+   emit_fill_buffer_per_tile_list(job, bo, offset, stride);
+
+   for (int y = min_y_supertile; y <= max_y_supertile; y++) {
+      for (int x = min_x_supertile; x <= max_x_supertile; x++) {
+         cl_emit(rcl, SUPERTILE_COORDINATES, coords) {
+            coords.column_number_in_supertiles = x;
+            coords.row_number_in_supertiles = y;
+         }
+      }
+   }
+}
+
+static void
+emit_fill_buffer_rcl(struct v3dv_job *job,
+                     struct v3dv_bo *bo,
+                     uint32_t offset,
+                     struct v3dv_framebuffer *framebuffer,
+                     uint32_t internal_type,
+                     uint32_t data)
+{
+   struct v3dv_cl *rcl = &job->rcl;
+   v3dv_cl_ensure_space_with_branch(rcl, 200 +
+                                    1 * 256 *
+                                    cl_packet_length(SUPERTILE_COORDINATES));
+
+   cl_emit(rcl, TILE_RENDERING_MODE_CFG_COMMON, config) {
+      config.early_z_disable = true;
+      config.image_width_pixels = framebuffer->width;
+      config.image_height_pixels = framebuffer->height;
+      config.number_of_render_targets = 1;
+      config.multisample_mode_4x = false;
+      config.maximum_bpp_of_all_render_targets = framebuffer->internal_bpp;
+   }
+
+   cl_emit(rcl, TILE_RENDERING_MODE_CFG_CLEAR_COLORS_PART1, clear) {
+      clear.clear_color_low_32_bits = data;
+      clear.clear_color_next_24_bits = 0;
+      clear.render_target_number = 0;
+   };
+
+   cl_emit(rcl, TILE_RENDERING_MODE_CFG_COLOR, rt) {
+      rt.render_target_0_internal_bpp = framebuffer->internal_bpp;
+      rt.render_target_0_internal_type = internal_type;
+      rt.render_target_0_clamp = V3D_RENDER_TARGET_CLAMP_NONE;
+   }
+
+   cl_emit(rcl, TILE_RENDERING_MODE_CFG_ZS_CLEAR_VALUES, clear) {
+      clear.z_clear_value = 0;
+      clear.stencil_clear_value = 0;
+   };
+
+   cl_emit(rcl, TILE_LIST_INITIAL_BLOCK_SIZE, init) {
+      init.use_auto_chained_tile_lists = true;
+      init.size_of_first_block_in_chained_tile_lists =
+         TILE_ALLOCATION_BLOCK_SIZE_64B;
+   }
+
+   uint32_t supertile_w_in_pixels =
+      framebuffer->tile_width * framebuffer->supertile_width;
+   uint32_t supertile_h_in_pixels =
+      framebuffer->tile_height * framebuffer->supertile_height;
+
+   const uint32_t min_x_supertile = 0;
+   const uint32_t min_y_supertile = 0;
+
+   const uint32_t max_x_supertile =
+      (framebuffer->width - 1) / supertile_w_in_pixels;
+   const uint32_t max_y_supertile =
+      (framebuffer->height - 1) / supertile_h_in_pixels;
+
+   emit_fill_buffer(job,
+                    min_x_supertile, min_y_supertile,
+                    max_x_supertile, max_y_supertile,
+                    bo, offset, framebuffer);
+
+   cl_emit(rcl, END_OF_RENDERING, end);
+}
+
+static void
+fill_buffer(struct v3dv_cmd_buffer *cmd_buffer,
+            struct v3dv_bo *bo,
+            uint32_t offset,
+            uint32_t size,
+            uint32_t data)
+{
+   assert(size > 0 && size % 4 == 0);
+   assert(offset + size <= bo->size);
+
+   const uint32_t internal_bpp = V3D_INTERNAL_BPP_32;
+   const uint32_t internal_type = V3D_INTERNAL_TYPE_8UI;
+   uint32_t num_items = size / 4;
+
+   while (num_items > 0) {
+      const uint32_t max_dim_items = 4096;
+      const uint32_t max_items = max_dim_items * max_dim_items;
+      uint32_t width, height;
+      if (num_items > max_items) {
+         width = max_dim_items;
+         height = max_dim_items;
+      } else {
+         width = num_items;
+         height = 1;
+         while (width > max_dim_items ||
+                ((width % 2) == 0 && width > 2 * height)) {
+            width >>= 1;
+            height <<= 1;
+         }
+      }
+      assert(width <= max_dim_items && height <= max_dim_items);
+      assert(width * height <= num_items);
+
+      struct v3dv_framebuffer framebuffer;
+      setup_framebuffer_params(&framebuffer, width, height, 1, internal_bpp);
+
+      struct v3dv_job *job = v3dv_cmd_buffer_start_job(cmd_buffer, false);
+      v3dv_cmd_buffer_start_frame(cmd_buffer, &framebuffer);
+
+      v3dv_job_emit_binning_flush(job);
+
+      emit_fill_buffer_rcl(job, bo, offset,
+                           &framebuffer, internal_type, data);
+
+      v3dv_cmd_buffer_finish_job(cmd_buffer);
+
+      const uint32_t items_copied = width * height;
+      const uint32_t bytes_copied = items_copied * 4;
+      num_items -= items_copied;
+      offset += bytes_copied;
+   }
+}
+
+void
+v3dv_CmdFillBuffer(VkCommandBuffer commandBuffer,
+                   VkBuffer dstBuffer,
+                   VkDeviceSize dstOffset,
+                   VkDeviceSize size,
+                   uint32_t data)
+{
+   V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
+   V3DV_FROM_HANDLE(v3dv_buffer, dst_buffer, dstBuffer);
+
+   struct v3dv_bo *bo = dst_buffer->mem->bo;
+
+   /* From the Vulkan spec:
+    *
+    *   "If VK_WHOLE_SIZE is used and the remaining size of the buffer is not
+    *    a multiple of 4, then the nearest smaller multiple is used."
+    */
+   if (size == VK_WHOLE_SIZE) {
+      size = dst_buffer->mem->bo->size;
+      size -= size % 4;
+   }
+
+   fill_buffer(cmd_buffer, bo, dstOffset, size, data);
+}
