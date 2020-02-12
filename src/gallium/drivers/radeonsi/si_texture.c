@@ -1210,7 +1210,6 @@ static struct si_texture *si_texture_create_object(struct pipe_screen *screen,
 
    resource = &tex->buffer;
    resource->b.b = *base;
-   resource->b.b.next = NULL;
    resource->b.vtbl = &si_texture_vtbl;
    pipe_reference_init(&resource->b.b.reference, 1);
    resource->b.b.screen = screen;

@@ -943,7 +943,11 @@ replaced by ``nr_storage_samples``.
 
 **flags** bitmask of PIPE_RESOURCE_FLAG flags.
 
+**next**: Pointer to the next plane for resources that consist of multiple
+memory planes.
 
+As a corollary, this mean resources for an image with multiple planes have
+to be created starting from the highest plane.
 
 resource_changed
 ^^^^^^^^^^^^^^^^
