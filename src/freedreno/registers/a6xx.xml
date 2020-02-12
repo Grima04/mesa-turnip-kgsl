@@ -1767,7 +1767,15 @@ to upconvert to 32b float internally?
 	<!-- always 0x03200000 ? -->
 	<reg32 offset="0x0e12" name="UCHE_UNKNOWN_0E12"/>
 
-	<reg32 offset="0x8000" name="GRAS_UNKNOWN_8000"/>
+	<reg32 offset="0x8000" name="GRAS_DISABLE_CNTL">
+		 <!-- likely something clip-disable related -->
+		<bitfield name="UNK0" pos="0" type="boolean"/>
+		<!-- guess based on a3xx and meaning of bits 8 and 9
+		     if the guess is right then this is related to point sprite clipping -->
+		<bitfield name="VP_CLIP_CODE_IGNORE" pos="7" type="boolean"/>
+		<bitfield name="VP_XFORM_DISABLE" pos="8" type="boolean"/>
+		<bitfield name="PERSP_DIVISION_DISABLE" pos="9" type="boolean"/>
+	</reg32>
 	<reg32 offset="0x8001" name="GRAS_UNKNOWN_8001"/>
 	<reg32 offset="0x8002" name="GRAS_UNKNOWN_8002"/>
 	<reg32 offset="0x8003" name="GRAS_UNKNOWN_8003"/>
