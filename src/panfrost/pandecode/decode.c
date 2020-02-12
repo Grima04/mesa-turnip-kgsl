@@ -1134,7 +1134,7 @@ pandecode_mfbd_bfr(uint64_t gpu_va, int job_no, bool is_fragment, bool is_comput
                 pandecode_log_decoded_flags(mfbd_extra_flag_lo_info, fbx->flags_lo);
                 pandecode_log_cont(",\n");
 
-                pandecode_prop("zs_block = %s\n", pandecode_block_format(fbx->zs_block));
+                pandecode_prop("zs_block = %s", pandecode_block_format(fbx->zs_block));
 
                 if (fbx->zs_block == MALI_BLOCK_AFBC) {
                         pandecode_log(".ds_afbc = {\n");
