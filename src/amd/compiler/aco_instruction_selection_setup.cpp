@@ -1038,6 +1038,18 @@ setup_isel_context(Program* program,
       program->stage |= hw_vs;
    else if (program->stage == (sw_vs | sw_gs) && gfx9_plus && !ngg)
       program->stage |= hw_gs;
+   else if (program->stage == sw_vs && args->shader_info->vs.as_ls)
+      program->stage |= hw_ls; /* GFX6-8: VS is a Local Shader, when tessellation is used */
+   else if (program->stage == sw_tcs)
+      program->stage |= hw_hs; /* GFX6-8: TCS is a Hull Shader */
+   else if (program->stage == (sw_vs | sw_tcs))
+      program->stage |= hw_hs; /* GFX9-10: VS+TCS merged into a Hull Shader */
+   else if (program->stage == sw_tes && !args->shader_info->tes.as_es && !ngg)
+      program->stage |= hw_vs; /* GFX6-9: TES without GS uses the HW VS stage (and GFX10/legacy) */
+   else if (program->stage == sw_tes && args->shader_info->tes.as_es && !ngg)
+      program->stage |= hw_es; /* GFX6-8: TES is an Export Shader */
+   else if (program->stage == (sw_tes | sw_gs) && gfx9_plus && !ngg)
+      program->stage |= hw_gs; /* GFX9: TES+GS merged into a GS (and GFX10/legacy) */
    else
       unreachable("Shader stage not implemented");
 

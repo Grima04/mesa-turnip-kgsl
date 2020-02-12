@@ -1142,7 +1142,7 @@ static constexpr Stage tess_eval_geometry_gs = sw_tes | sw_gs | hw_gs;
 static constexpr Stage vertex_ls = sw_vs | hw_ls; /* vertex before tesselation control */
 static constexpr Stage vertex_es = sw_vs | hw_es; /* vertex before geometry */
 static constexpr Stage tess_control_hs = sw_tcs | hw_hs;
-static constexpr Stage tess_eval_es = sw_tes | hw_gs; /* tesselation evaluation before geometry */
+static constexpr Stage tess_eval_es = sw_tes | hw_es; /* tesselation evaluation before geometry */
 static constexpr Stage geometry_gs = sw_gs | hw_gs;
 
 class Program final {
