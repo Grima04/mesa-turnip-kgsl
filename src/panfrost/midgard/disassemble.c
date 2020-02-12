@@ -1542,7 +1542,7 @@ disassemble_midgard(FILE *fp, uint8_t *code, size_t size, unsigned gpu_id, gl_sh
         while (i < num_words) {
                 unsigned tag = words[i] & 0xF;
                 unsigned next_tag = (words[i] >> 4) & 0xF;
-                fprintf(fp, "\t%X -> %X\n", tag, next_tag);
+                fprintf(fp, "\t%X\n", tag);
                 unsigned num_quad_words = midgard_tag_props[tag].size;
 
                 if (midg_tags[i] && midg_tags[i] != tag) {
@@ -1553,7 +1553,27 @@ disassemble_midgard(FILE *fp, uint8_t *code, size_t size, unsigned gpu_id, gl_sh
 
                 midg_tags[i] = tag;
 
-                /* Check the tag */
+                /* Check the tag. The idea is to ensure that next_tag is
+                 * *always* recoverable from the disassembly, such that we may
+                 * safely omit printing next_tag. To show this, we first
+                 * consider that next tags are semantically off-byone -- we end
+                 * up parsing tag n during step n+1. So, we ensure after we're
+                 * done disassembling the next tag of the final bundle is BREAK
+                 * and warn otherwise. We also ensure that the next tag is
+                 * never INVALID. Beyond that, since the last tag is checked
+                 * outside the loop, we can check one tag prior. If equal to
+                 * the current tag (which is unique), we're done. Otherwise, we
+                 * print if that tag was > TAG_BREAK, which implies the tag was
+                 * not TAG_BREAK or TAG_INVALID. But we already checked for
+                 * TAG_INVALID, so it's just if the last tag was TAG_BREAK that
+                 * we're silent. So we throw in a print for break-next on at
+                 * the end of the bundle (if it's not the final bundle, which
+                 * we already check for above), disambiguating this case as
+                 * well.  Hence in all cases we are unambiguous, QED. */
+
+                if (next_tag == TAG_INVALID)
+                        fprintf(fp, "\t/* XXX: invalid next tag */\n");
+
                 if (last_next_tag > TAG_BREAK && last_next_tag != tag) {
                         fprintf(fp, "\t/* XXX: TAG ERROR sequence, got %s expexted %s */\n",
                                         midgard_tag_props[tag].name,
@@ -1594,23 +1614,34 @@ disassemble_midgard(FILE *fp, uint8_t *code, size_t size, unsigned gpu_id, gl_sh
                         break;
                 }
 
-                if (next_tag == 1)
-                        fprintf(fp, "\n");
-
                 /* We are parsing per bundle anyway. Add before we start
                  * breaking out so we don't miss the final bundle. */
 
                 midg_stats.bundle_count++;
                 midg_stats.quadword_count += num_quad_words;
 
+                /* Include a synthetic "break" instruction at the end of the
+                 * bundle to signify that if, absent a branch, the shader
+                 * execution will stop here. Stop disassembly at such a break
+                 * based on a heuristic */
+
+                if (next_tag == TAG_BREAK) {
+                        if (branch_forward) {
+                                fprintf(fp, "break\n");
+                        } else {
+                                fprintf(fp, "\n");
+                                break;
+                        }
+                }
+
                 fprintf(fp, "\n");
 
-                unsigned next = (words[i] & 0xF0) >> 4;
-
-                if (i < num_words && next == 1 && !branch_forward)
-                        break;
-
                 i += 4 * num_quad_words;
+        }
+
+        if (last_next_tag != TAG_BREAK) {
+                fprintf(fp, "/* XXX: shader ended with tag %s */\n",
+                                midgard_tag_props[last_next_tag].name);
         }
 
         free(midg_tags);
