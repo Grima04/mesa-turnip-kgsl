@@ -44,7 +44,50 @@
 struct fake_framebuffer {
    struct v3dv_framebuffer fb;
    uint32_t internal_type;
+   uint32_t min_x_supertile;
+   uint32_t min_y_supertile;
+   uint32_t max_x_supertile;
+   uint32_t max_y_supertile;
 };
+
+/* Sets framebuffer dimensions and computes tile size parameters based on the
+ * maximum internal bpp provided.
+ */
+static void
+setup_framebuffer_params(struct fake_framebuffer *fb,
+                         uint32_t width,
+                         uint32_t height,
+                         uint32_t layer_count,
+                         uint32_t internal_bpp,
+                         uint32_t internal_type)
+{
+   fb->fb.width  = width;
+   fb->fb.height = height;
+   fb->fb.layers = layer_count;
+   fb->fb.internal_bpp = MAX2(RENDER_TARGET_MAXIMUM_32BPP, internal_bpp);
+
+   /* We are only interested in the framebufer description required to compute
+    * the tiling setup parameters below, so we don't need real attachments,
+    * only the framebuffer size and the internal bpp.
+    */
+   fb->fb.attachment_count = 0;
+   fb->fb.color_attachment_count = 0;
+
+   /* For simplicity, we store the internal type of the single render target
+    * that functions in this file need in the fake framebuffer objects so
+    * we don't have to pass it around everywhere.
+    */
+   fb->internal_type = internal_type;
+
+   v3dv_framebuffer_compute_tiling_params(&fb->fb);
+
+   uint32_t supertile_w_in_pixels = fb->fb.tile_width * fb->fb.supertile_width;
+   uint32_t supertile_h_in_pixels = fb->fb.tile_height * fb->fb.supertile_height;
+   fb->min_x_supertile = 0;
+   fb->min_y_supertile = 0;
+   fb->max_x_supertile = (fb->fb.width - 1) / supertile_w_in_pixels;
+   fb->max_y_supertile = (fb->fb.height - 1) / supertile_h_in_pixels;
+}
 
 /* This chooses a tile buffer format that is appropriate for the copy operation.
  * Typically, this is the image render target type, however, for depth/stencil
@@ -83,12 +126,168 @@ choose_tlb_format(struct v3dv_image *image,
    }
 }
 
+static struct v3dv_cl *
+emit_meta_copy_rcl_prologue(struct v3dv_job *job,
+                            struct fake_framebuffer *framebuffer,
+                            uint32_t *clear_color)
+{
+   struct v3dv_cl *rcl = &job->rcl;
+   v3dv_cl_ensure_space_with_branch(rcl, 200 +
+                                    framebuffer->fb.layers * 256 *
+                                    cl_packet_length(SUPERTILE_COORDINATES));
+
+   cl_emit(rcl, TILE_RENDERING_MODE_CFG_COMMON, config) {
+      config.early_z_disable = true;
+      config.image_width_pixels = framebuffer->fb.width;
+      config.image_height_pixels = framebuffer->fb.height;
+      config.number_of_render_targets = 1;
+      config.multisample_mode_4x = false;
+      config.maximum_bpp_of_all_render_targets = framebuffer->fb.internal_bpp;
+   }
+
+   if (clear_color) {
+      cl_emit(rcl, TILE_RENDERING_MODE_CFG_CLEAR_COLORS_PART1, clear) {
+         clear.clear_color_low_32_bits = *clear_color;
+         clear.clear_color_next_24_bits = 0;
+         clear.render_target_number = 0;
+      };
+   }
+
+   cl_emit(rcl, TILE_RENDERING_MODE_CFG_COLOR, rt) {
+      rt.render_target_0_internal_bpp = framebuffer->fb.internal_bpp;
+      rt.render_target_0_internal_type = framebuffer->internal_type;
+      rt.render_target_0_clamp = V3D_RENDER_TARGET_CLAMP_NONE;
+   }
+
+   cl_emit(rcl, TILE_RENDERING_MODE_CFG_ZS_CLEAR_VALUES, clear) {
+      clear.z_clear_value = 0;
+      clear.stencil_clear_value = 0;
+   };
+
+   cl_emit(rcl, TILE_LIST_INITIAL_BLOCK_SIZE, init) {
+      init.use_auto_chained_tile_lists = true;
+      init.size_of_first_block_in_chained_tile_lists =
+         TILE_ALLOCATION_BLOCK_SIZE_64B;
+   }
+
+   return rcl;
+}
+
 static void
-emit_image_loads(struct v3dv_cl *cl,
-                 struct v3dv_image *image,
-                 VkImageAspectFlags aspect,
-                 uint32_t layer,
-                 uint32_t mip_level)
+emit_meta_copy_layer_rcl_prologue(struct v3dv_job *job,
+                                  struct fake_framebuffer *framebuffer,
+                                  uint32_t layer,
+                                  uint32_t *clear_color)
+{
+   struct v3dv_cl *rcl = &job->rcl;
+
+   const uint32_t tile_alloc_offset =
+      64 * layer * framebuffer->fb.draw_tiles_x * framebuffer->fb.draw_tiles_y;
+   cl_emit(rcl, MULTICORE_RENDERING_TILE_LIST_SET_BASE, list) {
+      list.address = v3dv_cl_address(job->tile_alloc, tile_alloc_offset);
+   }
+
+   cl_emit(rcl, MULTICORE_RENDERING_SUPERTILE_CFG, config) {
+      config.number_of_bin_tile_lists = 1;
+      config.total_frame_width_in_tiles = framebuffer->fb.draw_tiles_x;
+      config.total_frame_height_in_tiles = framebuffer->fb.draw_tiles_y;
+
+      config.supertile_width_in_tiles = framebuffer->fb.supertile_width;
+      config.supertile_height_in_tiles = framebuffer->fb.supertile_height;
+
+      config.total_frame_width_in_supertiles =
+         framebuffer->fb.frame_width_in_supertiles;
+      config.total_frame_height_in_supertiles =
+         framebuffer->fb.frame_height_in_supertiles;
+   }
+
+   /* Implement GFXH-1742 workaround. Also, if we are clearing we have to do
+    * it here.
+    */
+   for (int i = 0; i < 2; i++) {
+      cl_emit(rcl, TILE_COORDINATES, coords);
+      cl_emit(rcl, END_OF_LOADS, end);
+      cl_emit(rcl, STORE_TILE_BUFFER_GENERAL, store) {
+         store.buffer_to_store = NONE;
+      }
+      if (clear_color && i == 0) {
+         cl_emit(rcl, CLEAR_TILE_BUFFERS, clear) {
+            clear.clear_z_stencil_buffer = true;
+            clear.clear_all_render_targets = true;
+         }
+      }
+      cl_emit(rcl, END_OF_TILE_MARKER, end);
+   }
+
+   cl_emit(rcl, FLUSH_VCD_CACHE, flush);
+}
+
+static void
+emit_supertile_coordinates(struct v3dv_job *job,
+                           struct fake_framebuffer *framebuffer)
+{
+   struct v3dv_cl *rcl = &job->rcl;
+
+   const uint32_t min_y = framebuffer->min_y_supertile;
+   const uint32_t max_y = framebuffer->max_y_supertile;
+   const uint32_t min_x = framebuffer->min_x_supertile;
+   const uint32_t max_x = framebuffer->max_x_supertile;
+
+   for (int y = min_y; y <= max_y; y++) {
+      for (int x = min_x; x <= max_x; x++) {
+         cl_emit(rcl, SUPERTILE_COORDINATES, coords) {
+            coords.column_number_in_supertiles = x;
+            coords.row_number_in_supertiles = y;
+         }
+      }
+   }
+}
+
+static void
+emit_linear_load(struct v3dv_cl *cl,
+                 uint32_t buffer,
+                 struct v3dv_bo *bo,
+                 uint32_t offset,
+                 uint32_t stride,
+                 uint32_t format)
+{
+   cl_emit(cl, LOAD_TILE_BUFFER_GENERAL, load) {
+      load.buffer_to_load = buffer;
+      load.address = v3dv_cl_address(bo, offset);
+      load.input_image_format = format;
+      load.memory_format = VC5_TILING_RASTER;
+      load.height_in_ub_or_stride = stride;
+      load.decimate_mode = V3D_DECIMATE_MODE_SAMPLE_0;
+   }
+}
+
+static void
+emit_linear_store(struct v3dv_cl *cl,
+                  uint32_t buffer,
+                  struct v3dv_bo *bo,
+                  uint32_t offset,
+                  uint32_t stride,
+                  bool msaa,
+                  uint32_t format)
+{
+   cl_emit(cl, STORE_TILE_BUFFER_GENERAL, store) {
+      store.buffer_to_store = RENDER_TARGET_0;
+      store.address = v3dv_cl_address(bo, offset);
+      store.clear_buffer_being_stored = false;
+      store.output_image_format = format;
+      store.memory_format = VC5_TILING_RASTER;
+      store.height_in_ub_or_stride = stride;
+      store.decimate_mode = msaa ? V3D_DECIMATE_MODE_ALL_SAMPLES :
+                                   V3D_DECIMATE_MODE_SAMPLE_0;
+   }
+}
+
+static void
+emit_image_load(struct v3dv_cl *cl,
+                struct v3dv_image *image,
+                VkImageAspectFlags aspect,
+                uint32_t layer,
+                uint32_t mip_level)
 {
    uint32_t layer_offset = v3dv_layer_offset(image, mip_level, layer);
 
@@ -137,30 +336,6 @@ emit_image_loads(struct v3dv_cl *cl,
 }
 
 static void
-emit_buffer_stores(struct v3dv_cl *cl,
-                   struct v3dv_buffer *buffer,
-                   struct v3dv_image *image,
-                   VkImageAspectFlags aspect,
-                   uint32_t buffer_offset,
-                   uint32_t buffer_stride)
-{
-   cl_emit(cl, STORE_TILE_BUFFER_GENERAL, store) {
-      store.buffer_to_store = RENDER_TARGET_0;
-      store.address = v3dv_cl_address(buffer->mem->bo, buffer_offset);
-      store.clear_buffer_being_stored = false;
-
-      store.output_image_format = choose_tlb_format(image, aspect, true);
-      store.memory_format = VC5_TILING_RASTER;
-      store.height_in_ub_or_stride = buffer_stride;
-
-      if (image->samples > VK_SAMPLE_COUNT_1_BIT)
-         store.decimate_mode = V3D_DECIMATE_MODE_ALL_SAMPLES;
-      else
-         store.decimate_mode = V3D_DECIMATE_MODE_SAMPLE_0;
-   }
-}
-
-static void
 emit_copy_layer_to_buffer_per_tile_list(struct v3dv_job *job,
                                         struct v3dv_buffer *buffer,
                                         struct v3dv_image *image,
@@ -177,12 +352,8 @@ emit_copy_layer_to_buffer_per_tile_list(struct v3dv_job *job,
    assert(layer < imgrsc->layerCount);
 
    /* Load image to TLB */
-   emit_image_loads(cl, image, imgrsc->aspectMask,
-                    imgrsc->baseArrayLayer + layer, imgrsc->mipLevel);
-
-   cl_emit(cl, PRIM_LIST_FORMAT, fmt) {
-      fmt.primitive_type = LIST_TRIANGLES;
-   }
+   emit_image_load(cl, image, imgrsc->aspectMask,
+                   imgrsc->baseArrayLayer + layer, imgrsc->mipLevel);
 
    cl_emit(cl, BRANCH_TO_IMPLICIT_TILE_LIST, branch);
 
@@ -207,8 +378,12 @@ emit_copy_layer_to_buffer_per_tile_list(struct v3dv_job *job,
    uint32_t buffer_stride = width * cpp;
    uint32_t buffer_offset =
       region->bufferOffset + height * buffer_stride * layer;
-   emit_buffer_stores(cl, buffer, image, imgrsc->aspectMask,
-                      buffer_offset, buffer_stride);
+
+   uint32_t format = choose_tlb_format(image, imgrsc->aspectMask, true);
+   bool msaa = image->samples > VK_SAMPLE_COUNT_1_BIT;
+
+   emit_linear_store(cl, RENDER_TARGET_0, buffer->mem->bo,
+                     buffer_offset, buffer_stride, msaa, format);
 
    cl_emit(cl, END_OF_TILE_MARKER, end);
 
@@ -222,60 +397,15 @@ emit_copy_layer_to_buffer_per_tile_list(struct v3dv_job *job,
 
 static void
 emit_copy_layer_to_buffer(struct v3dv_job *job,
-                          uint32_t min_x_supertile,
-                          uint32_t min_y_supertile,
-                          uint32_t max_x_supertile,
-                          uint32_t max_y_supertile,
                           struct v3dv_buffer *buffer,
                           struct v3dv_image *image,
                           struct fake_framebuffer *framebuffer,
                           uint32_t layer,
                           const VkBufferImageCopy *region)
 {
-   struct v3dv_cl *rcl = &job->rcl;
-
-   const uint32_t tile_alloc_offset =
-      64 * layer * framebuffer->fb.draw_tiles_x * framebuffer->fb.draw_tiles_y;
-   cl_emit(rcl, MULTICORE_RENDERING_TILE_LIST_SET_BASE, list) {
-      list.address = v3dv_cl_address(job->tile_alloc, tile_alloc_offset);
-   }
-
-   cl_emit(rcl, MULTICORE_RENDERING_SUPERTILE_CFG, config) {
-      config.number_of_bin_tile_lists = 1;
-      config.total_frame_width_in_tiles = framebuffer->fb.draw_tiles_x;
-      config.total_frame_height_in_tiles = framebuffer->fb.draw_tiles_y;
-
-      config.supertile_width_in_tiles = framebuffer->fb.supertile_width;
-      config.supertile_height_in_tiles = framebuffer->fb.supertile_height;
-
-      config.total_frame_width_in_supertiles =
-         framebuffer->fb.frame_width_in_supertiles;
-      config.total_frame_height_in_supertiles =
-         framebuffer->fb.frame_height_in_supertiles;
-   }
-
-   /* GFXH-1742 workaround */
-   for (int i = 0; i < 2; i++) {
-      cl_emit(rcl, TILE_COORDINATES, coords);
-      cl_emit(rcl, END_OF_LOADS, end);
-      cl_emit(rcl, STORE_TILE_BUFFER_GENERAL, store) {
-         store.buffer_to_store = NONE;
-      }
-      cl_emit(rcl, END_OF_TILE_MARKER, end);
-   }
-
-   cl_emit(rcl, FLUSH_VCD_CACHE, flush);
-
+   emit_meta_copy_layer_rcl_prologue(job, framebuffer, layer, NULL);
    emit_copy_layer_to_buffer_per_tile_list(job, buffer, image, layer, region);
-
-   for (int y = min_y_supertile; y <= max_y_supertile; y++) {
-      for (int x = min_x_supertile; x <= max_x_supertile; x++) {
-         cl_emit(rcl, SUPERTILE_COORDINATES, coords) {
-            coords.column_number_in_supertiles = x;
-            coords.row_number_in_supertiles = y;
-         }
-      }
-   }
+   emit_supertile_coordinates(job, framebuffer);
 }
 
 static void
@@ -285,101 +415,10 @@ emit_copy_image_to_buffer_rcl(struct v3dv_job *job,
                               struct fake_framebuffer *framebuffer,
                               const VkBufferImageCopy *region)
 {
-   const VkImageSubresourceLayers *imgrsc = &region->imageSubresource;
-
-   struct v3dv_cl *rcl = &job->rcl;
-   v3dv_cl_ensure_space_with_branch(rcl, 200 +
-                                    imgrsc->layerCount * 256 *
-                                    cl_packet_length(SUPERTILE_COORDINATES));
-
-   uint32_t level_width = u_minify(image->extent.width, imgrsc->mipLevel);
-   uint32_t level_height = u_minify(image->extent.height, imgrsc->mipLevel);
-   cl_emit(rcl, TILE_RENDERING_MODE_CFG_COMMON, config) {
-      config.early_z_disable = true;
-      config.image_width_pixels = level_width;
-      config.image_height_pixels = level_height;
-      config.number_of_render_targets = 1;
-      config.multisample_mode_4x = false; /* FIXME */
-      config.maximum_bpp_of_all_render_targets = framebuffer->fb.internal_bpp;
-   }
-
-   cl_emit(rcl, TILE_RENDERING_MODE_CFG_COLOR, rt) {
-      rt.render_target_0_internal_bpp = framebuffer->fb.internal_bpp;
-      rt.render_target_0_internal_type = framebuffer->internal_type;
-      rt.render_target_0_clamp = V3D_RENDER_TARGET_CLAMP_NONE;
-   }
-
-   /* We always need to emit this, since it signals the end of the RCL config */
-   cl_emit(rcl, TILE_RENDERING_MODE_CFG_ZS_CLEAR_VALUES, clear) {
-      clear.z_clear_value = 0;
-      clear.stencil_clear_value = 0;
-   };
-
-   cl_emit(rcl, TILE_LIST_INITIAL_BLOCK_SIZE, init) {
-      init.use_auto_chained_tile_lists = true;
-      init.size_of_first_block_in_chained_tile_lists =
-         TILE_ALLOCATION_BLOCK_SIZE_64B;
-   }
-
-   uint32_t supertile_w_in_pixels =
-      framebuffer->fb.tile_width * framebuffer->fb.supertile_width;
-   uint32_t supertile_h_in_pixels =
-      framebuffer->fb.tile_height * framebuffer->fb.supertile_height;
-   const uint32_t min_x_supertile =
-      region->imageOffset.x / supertile_w_in_pixels;
-   const uint32_t min_y_supertile =
-      region->imageOffset.y / supertile_h_in_pixels;
-
-   const uint32_t max_render_x =
-      region->imageOffset.x + region->imageExtent.width - 1;
-   const uint32_t max_render_y =
-      region->imageOffset.y + region->imageExtent.height - 1;
-   const uint32_t max_x_supertile = max_render_x / supertile_w_in_pixels;
-   const uint32_t max_y_supertile = max_render_y / supertile_h_in_pixels;
-
-   for (int layer = 0; layer < imgrsc->layerCount; layer++) {
-      emit_copy_layer_to_buffer(job,
-                                min_x_supertile, min_y_supertile,
-                                max_x_supertile, max_y_supertile,
-                                buffer, image, framebuffer,
-                                layer,
-                                region);
-   }
-
+   struct v3dv_cl *rcl = emit_meta_copy_rcl_prologue(job, framebuffer, NULL);
+   for (int layer = 0; layer < framebuffer->fb.layers; layer++)
+      emit_copy_layer_to_buffer(job, buffer, image, framebuffer, layer, region);
    cl_emit(rcl, END_OF_RENDERING, end);
-}
-
-/* Sets framebuffer dimensions and computes tile size parameters based on the
- * maximum internal bpp provided.
- */
-static void
-setup_framebuffer_params(struct fake_framebuffer *fb,
-                         uint32_t width,
-                         uint32_t height,
-                         uint32_t layer_count,
-                         uint32_t internal_bpp,
-                         uint32_t internal_type)
-{
-   fb->fb.width  = width;
-   fb->fb.height = height;
-   fb->fb.layers = layer_count;
-   fb->fb.internal_bpp = MAX2(RENDER_TARGET_MAXIMUM_32BPP, internal_bpp);
-
-   /* We are only interested in the framebufer description required to compute
-    * the tiling setup parameters below, so we don't need real attachments,
-    * only the framebuffer size and the internal bpp.
-    */
-   fb->fb.attachment_count = 0;
-   fb->fb.color_attachment_count = 0;
-
-   /* For simplicity, we store the internal type of the single render target
-    * that functions in this file need in the fake framebuffer objects so
-    * we don't have to pass it around everywhere.
-    */
-   fb->internal_type = internal_type;
-
-   v3dv_framebuffer_compute_tiling_params(&fb->fb);
-
 }
 
 static inline bool
@@ -444,10 +483,30 @@ copy_image_to_buffer_tlb(struct v3dv_cmd_buffer *cmd_buffer,
    uint32_t num_layers = region->imageSubresource.layerCount;
    assert(num_layers > 0);
 
+   uint32_t width =
+      u_minify(image->extent.width, region->imageSubresource.mipLevel);
+   uint32_t height =
+      u_minify(image->extent.height, region->imageSubresource.mipLevel);
+
    struct fake_framebuffer framebuffer;
-   setup_framebuffer_params(&framebuffer,
-                            image->extent.width, image->extent.height,
-                            num_layers, internal_bpp, internal_type);
+   setup_framebuffer_params(&framebuffer, width, height, num_layers,
+                            internal_bpp, internal_type);
+
+   /* Limit supertile coverage to the requested region  */
+   uint32_t supertile_w_in_pixels =
+      framebuffer.fb.tile_width * framebuffer.fb.supertile_width;
+   uint32_t supertile_h_in_pixels =
+      framebuffer.fb.tile_height * framebuffer.fb.supertile_height;
+   const uint32_t max_render_x =
+      region->imageOffset.x + region->imageExtent.width - 1;
+   const uint32_t max_render_y =
+      region->imageOffset.y + region->imageExtent.height - 1;
+
+   assert(region->imageOffset.x == 0 && region->imageOffset.y == 0);
+   framebuffer.min_x_supertile = 0;
+   framebuffer.min_y_supertile = 0;
+   framebuffer.max_x_supertile = max_render_x / supertile_w_in_pixels;
+   framebuffer.max_y_supertile = max_render_y / supertile_h_in_pixels;
 
    struct v3dv_job *job = v3dv_cmd_buffer_start_job(cmd_buffer, false);
    v3dv_cmd_buffer_start_frame(cmd_buffer, &framebuffer.fb);
@@ -491,32 +550,14 @@ emit_copy_buffer_per_tile_list(struct v3dv_job *job,
 
    cl_emit(cl, TILE_COORDINATES_IMPLICIT, coords);
 
-   cl_emit(cl, LOAD_TILE_BUFFER_GENERAL, load) {
-      load.buffer_to_load = RENDER_TARGET_0;
-      load.address = v3dv_cl_address(src, src_offset);
-      load.input_image_format = format;
-      load.memory_format = VC5_TILING_RASTER;
-      load.height_in_ub_or_stride = stride;
-      load.decimate_mode = V3D_DECIMATE_MODE_SAMPLE_0;
-   }
+   emit_linear_load(cl, RENDER_TARGET_0, src, src_offset, stride, format);
 
    cl_emit(cl, END_OF_LOADS, end);
 
-   cl_emit(cl, PRIM_LIST_FORMAT, fmt) {
-      fmt.primitive_type = LIST_TRIANGLES;
-   }
-
    cl_emit(cl, BRANCH_TO_IMPLICIT_TILE_LIST, branch);
 
-   cl_emit(cl, STORE_TILE_BUFFER_GENERAL, store) {
-      store.buffer_to_store = RENDER_TARGET_0;
-      store.address = v3dv_cl_address(dst, dst_offset);
-      store.clear_buffer_being_stored = false;
-      store.output_image_format = format;
-      store.memory_format = VC5_TILING_RASTER;
-      store.height_in_ub_or_stride = stride;
-      store.decimate_mode = V3D_DECIMATE_MODE_SAMPLE_0;
-   }
+   emit_linear_store(cl, RENDER_TARGET_0,
+                     dst, dst_offset, stride, false, format);
 
    cl_emit(cl, END_OF_TILE_MARKER, end);
 
@@ -530,10 +571,6 @@ emit_copy_buffer_per_tile_list(struct v3dv_job *job,
 
 static void
 emit_copy_buffer(struct v3dv_job *job,
-                 uint32_t min_x_supertile,
-                 uint32_t min_y_supertile,
-                 uint32_t max_x_supertile,
-                 uint32_t max_y_supertile,
                  struct v3dv_bo *dst,
                  struct v3dv_bo *src,
                  uint32_t dst_offset,
@@ -541,51 +578,11 @@ emit_copy_buffer(struct v3dv_job *job,
                  struct fake_framebuffer *framebuffer,
                  uint32_t format)
 {
-   struct v3dv_cl *rcl = &job->rcl;
-
-   cl_emit(rcl, MULTICORE_RENDERING_TILE_LIST_SET_BASE, list) {
-      list.address = v3dv_cl_address(job->tile_alloc, 0);
-   }
-
-   cl_emit(rcl, MULTICORE_RENDERING_SUPERTILE_CFG, config) {
-      config.number_of_bin_tile_lists = 1;
-      config.total_frame_width_in_tiles = framebuffer->fb.draw_tiles_x;
-      config.total_frame_height_in_tiles = framebuffer->fb.draw_tiles_y;
-
-      config.supertile_width_in_tiles = framebuffer->fb.supertile_width;
-      config.supertile_height_in_tiles = framebuffer->fb.supertile_height;
-
-      config.total_frame_width_in_supertiles =
-         framebuffer->fb.frame_width_in_supertiles;
-      config.total_frame_height_in_supertiles =
-         framebuffer->fb.frame_height_in_supertiles;
-   }
-
-   /* GFXH-1742 workaround */
-   for (int i = 0; i < 2; i++) {
-      cl_emit(rcl, TILE_COORDINATES, coords);
-      cl_emit(rcl, END_OF_LOADS, end);
-      cl_emit(rcl, STORE_TILE_BUFFER_GENERAL, store) {
-         store.buffer_to_store = NONE;
-      }
-      cl_emit(rcl, END_OF_TILE_MARKER, end);
-   }
-
-   cl_emit(rcl, FLUSH_VCD_CACHE, flush);
-
    const uint32_t stride = framebuffer->fb.width * 4;
    emit_copy_buffer_per_tile_list(job, dst, src,
                                   dst_offset, src_offset,
                                   stride, format);
-
-   for (int y = min_y_supertile; y <= max_y_supertile; y++) {
-      for (int x = min_x_supertile; x <= max_x_supertile; x++) {
-         cl_emit(rcl, SUPERTILE_COORDINATES, coords) {
-            coords.column_number_in_supertiles = x;
-            coords.row_number_in_supertiles = y;
-         }
-      }
-   }
+   emit_supertile_coordinates(job, framebuffer);
 }
 
 static void
@@ -597,56 +594,9 @@ emit_copy_buffer_rcl(struct v3dv_job *job,
                      struct fake_framebuffer *framebuffer,
                      uint32_t format)
 {
-   struct v3dv_cl *rcl = &job->rcl;
-   v3dv_cl_ensure_space_with_branch(rcl, 200 +
-                                    1 * 256 *
-                                    cl_packet_length(SUPERTILE_COORDINATES));
-
-   cl_emit(rcl, TILE_RENDERING_MODE_CFG_COMMON, config) {
-      config.early_z_disable = true;
-      config.image_width_pixels = framebuffer->fb.width;
-      config.image_height_pixels = framebuffer->fb.height;
-      config.number_of_render_targets = 1;
-      config.multisample_mode_4x = false;
-      config.maximum_bpp_of_all_render_targets = framebuffer->fb.internal_bpp;
-   }
-
-   cl_emit(rcl, TILE_RENDERING_MODE_CFG_COLOR, rt) {
-      rt.render_target_0_internal_bpp = framebuffer->fb.internal_bpp;
-      rt.render_target_0_internal_type = framebuffer->internal_type;
-      rt.render_target_0_clamp = V3D_RENDER_TARGET_CLAMP_NONE;
-   }
-
-   cl_emit(rcl, TILE_RENDERING_MODE_CFG_ZS_CLEAR_VALUES, clear) {
-      clear.z_clear_value = 0;
-      clear.stencil_clear_value = 0;
-   };
-
-   cl_emit(rcl, TILE_LIST_INITIAL_BLOCK_SIZE, init) {
-      init.use_auto_chained_tile_lists = true;
-      init.size_of_first_block_in_chained_tile_lists =
-         TILE_ALLOCATION_BLOCK_SIZE_64B;
-   }
-
-   uint32_t supertile_w_in_pixels =
-      framebuffer->fb.tile_width * framebuffer->fb.supertile_width;
-   uint32_t supertile_h_in_pixels =
-      framebuffer->fb.tile_height * framebuffer->fb.supertile_height;
-
-   const uint32_t min_x_supertile = 0;
-   const uint32_t min_y_supertile = 0;
-
-   const uint32_t max_x_supertile =
-      (framebuffer->fb.width - 1) / supertile_w_in_pixels;
-   const uint32_t max_y_supertile =
-      (framebuffer->fb.height - 1) / supertile_h_in_pixels;
-
-   emit_copy_buffer(job,
-                    min_x_supertile, min_y_supertile,
-                    max_x_supertile, max_y_supertile,
-                    dst, src, dst_offset, src_offset,
-                    framebuffer, format);
-
+   struct v3dv_cl *rcl = emit_meta_copy_rcl_prologue(job, framebuffer, NULL);
+   emit_meta_copy_layer_rcl_prologue(job, framebuffer, 0, NULL);
+   emit_copy_buffer(job, dst, src, dst_offset, src_offset, framebuffer, format);
    cl_emit(rcl, END_OF_RENDERING, end);
 }
 
@@ -824,21 +774,10 @@ emit_fill_buffer_per_tile_list(struct v3dv_job *job,
 
    cl_emit(cl, END_OF_LOADS, end);
 
-   cl_emit(cl, PRIM_LIST_FORMAT, fmt) {
-      fmt.primitive_type = LIST_TRIANGLES;
-   }
-
    cl_emit(cl, BRANCH_TO_IMPLICIT_TILE_LIST, branch);
 
-   cl_emit(cl, STORE_TILE_BUFFER_GENERAL, store) {
-      store.buffer_to_store = RENDER_TARGET_0;
-      store.address = v3dv_cl_address(bo, offset);
-      store.clear_buffer_being_stored = false;
-      store.output_image_format = V3D_OUTPUT_IMAGE_FORMAT_RGBA8UI;
-      store.memory_format = VC5_TILING_RASTER;
-      store.height_in_ub_or_stride = stride;
-      store.decimate_mode = V3D_DECIMATE_MODE_SAMPLE_0;
-   }
+   emit_linear_store(cl, RENDER_TARGET_0, bo, offset, stride, false,
+                     V3D_OUTPUT_IMAGE_FORMAT_RGBA8UI);
 
    cl_emit(cl, END_OF_TILE_MARKER, end);
 
@@ -852,65 +791,13 @@ emit_fill_buffer_per_tile_list(struct v3dv_job *job,
 
 static void
 emit_fill_buffer(struct v3dv_job *job,
-                 uint32_t min_x_supertile,
-                 uint32_t min_y_supertile,
-                 uint32_t max_x_supertile,
-                 uint32_t max_y_supertile,
                  struct v3dv_bo *bo,
                  uint32_t offset,
                  struct fake_framebuffer *framebuffer)
 {
-   struct v3dv_cl *rcl = &job->rcl;
-
-   cl_emit(rcl, MULTICORE_RENDERING_TILE_LIST_SET_BASE, list) {
-      list.address = v3dv_cl_address(job->tile_alloc, 0);
-   }
-
-   cl_emit(rcl, MULTICORE_RENDERING_SUPERTILE_CFG, config) {
-      config.number_of_bin_tile_lists = 1;
-      config.total_frame_width_in_tiles = framebuffer->fb.draw_tiles_x;
-      config.total_frame_height_in_tiles = framebuffer->fb.draw_tiles_y;
-
-      config.supertile_width_in_tiles = framebuffer->fb.supertile_width;
-      config.supertile_height_in_tiles = framebuffer->fb.supertile_height;
-
-      config.total_frame_width_in_supertiles =
-         framebuffer->fb.frame_width_in_supertiles;
-      config.total_frame_height_in_supertiles =
-         framebuffer->fb.frame_height_in_supertiles;
-   }
-
-   /* Implement GFXH-1742 workaround and emit a clear of the tile buffers.
-    * Since we fill by clearing, we need to do the clear here.
-    */
-   for (int i = 0; i < 2; i++) {
-      cl_emit(rcl, TILE_COORDINATES, coords);
-      cl_emit(rcl, END_OF_LOADS, end);
-      cl_emit(rcl, STORE_TILE_BUFFER_GENERAL, store) {
-         store.buffer_to_store = NONE;
-      }
-      if (i == 0) {
-         cl_emit(rcl, CLEAR_TILE_BUFFERS, clear) {
-            clear.clear_z_stencil_buffer = true;
-            clear.clear_all_render_targets = true;
-         }
-      }
-      cl_emit(rcl, END_OF_TILE_MARKER, end);
-   }
-
-   cl_emit(rcl, FLUSH_VCD_CACHE, flush);
-
    const uint32_t stride = framebuffer->fb.width * 4;
    emit_fill_buffer_per_tile_list(job, bo, offset, stride);
-
-   for (int y = min_y_supertile; y <= max_y_supertile; y++) {
-      for (int x = min_x_supertile; x <= max_x_supertile; x++) {
-         cl_emit(rcl, SUPERTILE_COORDINATES, coords) {
-            coords.column_number_in_supertiles = x;
-            coords.row_number_in_supertiles = y;
-         }
-      }
-   }
+   emit_supertile_coordinates(job, framebuffer);
 }
 
 static void
@@ -920,61 +807,9 @@ emit_fill_buffer_rcl(struct v3dv_job *job,
                      struct fake_framebuffer *framebuffer,
                      uint32_t data)
 {
-   struct v3dv_cl *rcl = &job->rcl;
-   v3dv_cl_ensure_space_with_branch(rcl, 200 +
-                                    1 * 256 *
-                                    cl_packet_length(SUPERTILE_COORDINATES));
-
-   cl_emit(rcl, TILE_RENDERING_MODE_CFG_COMMON, config) {
-      config.early_z_disable = true;
-      config.image_width_pixels = framebuffer->fb.width;
-      config.image_height_pixels = framebuffer->fb.height;
-      config.number_of_render_targets = 1;
-      config.multisample_mode_4x = false;
-      config.maximum_bpp_of_all_render_targets = framebuffer->fb.internal_bpp;
-   }
-
-   cl_emit(rcl, TILE_RENDERING_MODE_CFG_CLEAR_COLORS_PART1, clear) {
-      clear.clear_color_low_32_bits = data;
-      clear.clear_color_next_24_bits = 0;
-      clear.render_target_number = 0;
-   };
-
-   cl_emit(rcl, TILE_RENDERING_MODE_CFG_COLOR, rt) {
-      rt.render_target_0_internal_bpp = framebuffer->fb.internal_bpp;
-      rt.render_target_0_internal_type = framebuffer->internal_type;
-      rt.render_target_0_clamp = V3D_RENDER_TARGET_CLAMP_NONE;
-   }
-
-   cl_emit(rcl, TILE_RENDERING_MODE_CFG_ZS_CLEAR_VALUES, clear) {
-      clear.z_clear_value = 0;
-      clear.stencil_clear_value = 0;
-   };
-
-   cl_emit(rcl, TILE_LIST_INITIAL_BLOCK_SIZE, init) {
-      init.use_auto_chained_tile_lists = true;
-      init.size_of_first_block_in_chained_tile_lists =
-         TILE_ALLOCATION_BLOCK_SIZE_64B;
-   }
-
-   uint32_t supertile_w_in_pixels =
-      framebuffer->fb.tile_width * framebuffer->fb.supertile_width;
-   uint32_t supertile_h_in_pixels =
-      framebuffer->fb.tile_height * framebuffer->fb.supertile_height;
-
-   const uint32_t min_x_supertile = 0;
-   const uint32_t min_y_supertile = 0;
-
-   const uint32_t max_x_supertile =
-      (framebuffer->fb.width - 1) / supertile_w_in_pixels;
-   const uint32_t max_y_supertile =
-      (framebuffer->fb.height - 1) / supertile_h_in_pixels;
-
-   emit_fill_buffer(job,
-                    min_x_supertile, min_y_supertile,
-                    max_x_supertile, max_y_supertile,
-                    bo, offset, framebuffer);
-
+   struct v3dv_cl *rcl = emit_meta_copy_rcl_prologue(job, framebuffer, &data);
+   emit_meta_copy_layer_rcl_prologue(job, framebuffer, 0, &data);
+   emit_fill_buffer(job, bo, offset, framebuffer);
    cl_emit(rcl, END_OF_RENDERING, end);
 }
 
