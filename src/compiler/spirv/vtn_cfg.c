@@ -409,6 +409,7 @@ vtn_add_case(struct vtn_builder *b, struct vtn_switch *swtch,
    if (case_block->switch_case == NULL) {
       struct vtn_case *c = ralloc(b, struct vtn_case);
 
+      c->node.type = vtn_cf_node_type_case;
       list_inithead(&c->body);
       c->start_block = case_block;
       c->fallthrough = NULL;
@@ -416,7 +417,7 @@ vtn_add_case(struct vtn_builder *b, struct vtn_switch *swtch,
       c->is_default = false;
       c->visited = false;
 
-      list_addtail(&c->link, &swtch->cases);
+      list_addtail(&c->node.link, &swtch->cases);
 
       case_block->switch_case = c;
    }
@@ -439,7 +440,7 @@ vtn_order_case(struct vtn_switch *swtch, struct vtn_case *cse)
 
    cse->visited = true;
 
-   list_del(&cse->link);
+   list_del(&cse->node.link);
 
    if (cse->fallthrough) {
       vtn_order_case(swtch, cse->fallthrough);
@@ -451,9 +452,9 @@ vtn_order_case(struct vtn_switch *swtch, struct vtn_case *cse)
        * can't break ordering because the DFS ensures that this case is
        * visited before anything that falls through to it.
        */
-      list_addtail(&cse->link, &cse->fallthrough->link);
+      list_addtail(&cse->node.link, &cse->fallthrough->node.link);
    } else {
-      list_add(&cse->link, &swtch->cases);
+      list_add(&cse->node.link, &swtch->cases);
    }
 }
 
@@ -695,7 +696,8 @@ vtn_cfg_walk_blocks(struct vtn_builder *b, struct list_head *cf_list,
           * the blocks, we also gather the much-needed fall-through
           * information.
           */
-         list_for_each_entry(struct vtn_case, cse, &swtch->cases, link) {
+         vtn_foreach_cf_node(case_node, &swtch->cases) {
+            struct vtn_case *cse = vtn_cf_node_as_case(case_node);
             vtn_assert(cse->start_block != break_block);
             vtn_cfg_walk_blocks(b, &cse->body, cse->start_block, cse,
                                 break_block, loop_break, loop_cont, NULL);
@@ -859,7 +861,8 @@ vtn_switch_case_condition(struct vtn_builder *b, struct vtn_switch *swtch,
 {
    if (cse->is_default) {
       nir_ssa_def *any = nir_imm_false(&b->nb);
-      list_for_each_entry(struct vtn_case, other, &swtch->cases, link) {
+      vtn_foreach_cf_node(other_node, &swtch->cases) {
+         struct vtn_case *other = vtn_cf_node_as_case(other_node);
          if (other->is_default)
             continue;
 
@@ -1048,7 +1051,9 @@ vtn_emit_cf_list(struct vtn_builder *b, struct list_head *cf_list,
          nir_ssa_def *sel = vtn_ssa_value(b, vtn_switch->selector)->def;
 
          /* Now we can walk the list of cases and actually emit code */
-         list_for_each_entry(struct vtn_case, cse, &vtn_switch->cases, link) {
+         vtn_foreach_cf_node(case_node, &vtn_switch->cases) {
+            struct vtn_case *cse = vtn_cf_node_as_case(case_node);
+
             /* Figure out the condition */
             nir_ssa_def *cond =
                vtn_switch_case_condition(b, vtn_switch, sel, cse);

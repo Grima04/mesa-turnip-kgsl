@@ -135,6 +135,7 @@ enum vtn_cf_node_type {
    vtn_cf_node_type_block,
    vtn_cf_node_type_if,
    vtn_cf_node_type_loop,
+   vtn_cf_node_type_case,
    vtn_cf_node_type_switch,
 };
 
@@ -172,7 +173,7 @@ struct vtn_if {
 };
 
 struct vtn_case {
-   struct list_head link;
+   struct vtn_cf_node node;
 
    struct list_head body;
 
@@ -253,6 +254,7 @@ vtn_cf_node_as_##_type(struct vtn_cf_node *node)   \
 VTN_DECL_CF_NODE_CAST(block)
 VTN_DECL_CF_NODE_CAST(loop)
 VTN_DECL_CF_NODE_CAST(if)
+VTN_DECL_CF_NODE_CAST(case)
 VTN_DECL_CF_NODE_CAST(switch)
 
 #define vtn_foreach_cf_node(node, cf_list) \
