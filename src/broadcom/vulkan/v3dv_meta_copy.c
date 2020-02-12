@@ -483,14 +483,11 @@ copy_image_to_buffer_tlb(struct v3dv_cmd_buffer *cmd_buffer,
    uint32_t num_layers = region->imageSubresource.layerCount;
    assert(num_layers > 0);
 
-   uint32_t width =
-      u_minify(image->extent.width, region->imageSubresource.mipLevel);
-   uint32_t height =
-      u_minify(image->extent.height, region->imageSubresource.mipLevel);
-
    struct fake_framebuffer framebuffer;
-   setup_framebuffer_params(&framebuffer, width, height, num_layers,
-                            internal_bpp, internal_type);
+   setup_framebuffer_params(&framebuffer,
+                            region->imageExtent.width,
+                            region->imageExtent.height,
+                            num_layers, internal_bpp, internal_type);
 
    /* Limit supertile coverage to the requested region  */
    uint32_t supertile_w_in_pixels =
