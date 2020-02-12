@@ -439,7 +439,9 @@ read_data_file(FILE *file)
             const char *name;
          } buffers[] = {
             { "ringbuffer", "ring buffer" },
+            { "ring", "ring buffer" },
             { "gtt_offset", "batch buffer" },
+            { "batch", "batch buffer" },
             { "hw context", "HW Context" },
             { "hw status", "HW status" },
             { "wa context", "WA context" },
