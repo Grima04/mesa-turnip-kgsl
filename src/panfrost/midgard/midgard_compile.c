@@ -1481,6 +1481,7 @@ emit_compute_builtin(compiler_context *ctx, nir_intrinsic_instr *instr)
         unsigned reg = nir_dest_index(ctx, &instr->dest);
         midgard_instruction ins = m_ld_compute_id(reg, 0);
         ins.mask = mask_of(3);
+        ins.swizzle[0][3] = COMPONENT_X; /* xyzx */
         ins.load_store.arg_1 = compute_builtin_arg(instr->intrinsic);
         emit_mir_instruction(ctx, ins);
 }
