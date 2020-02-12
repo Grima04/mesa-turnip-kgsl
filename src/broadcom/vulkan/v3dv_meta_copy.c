@@ -26,6 +26,26 @@
 #include "broadcom/cle/v3dx_pack.h"
 #include "vk_format_info.h"
 
+/* Most "copy" operations in this file are implemented using the tile buffer
+ * to fill and/or copy buffers and images. To do that, we need to have some
+ * representation of a framebuffer that describes the layout of the render
+ * target and the tiling information. That information is typically represented
+ * in a framebuffer object but for most operations in this file we don't have
+ * one provided by the user, so instead we need to create one that matches
+ * the semantics of the copy operation we want to implement. A "real"
+ * framebuffer description includes references to image views (v3dv_image_view)
+ * and their underlying images (v3dv_image) for each attachment though,
+ * but here, we usually work with buffers instead of images, or we have images
+ * but we don't have image views, so instead of trying to use a real
+ * framebuffer we use a "fake" one, where we don't include attachment info
+ * and we simply store the internal type of the single render target we are
+ * copying to or filling with data.
+ */
+struct fake_framebuffer {
+   struct v3dv_framebuffer fb;
+   uint32_t internal_type;
+};
+
 /* This chooses a tile buffer format that is appropriate for the copy operation.
  * Typically, this is the image render target type, however, for depth/stencil
  * formats that can't be stored to raster, we need to use a compatible color
@@ -208,30 +228,30 @@ emit_copy_layer_to_buffer(struct v3dv_job *job,
                           uint32_t max_y_supertile,
                           struct v3dv_buffer *buffer,
                           struct v3dv_image *image,
-                          struct v3dv_framebuffer *framebuffer,
+                          struct fake_framebuffer *framebuffer,
                           uint32_t layer,
                           const VkBufferImageCopy *region)
 {
    struct v3dv_cl *rcl = &job->rcl;
 
    const uint32_t tile_alloc_offset =
-      64 * layer * framebuffer->draw_tiles_x * framebuffer->draw_tiles_y;
+      64 * layer * framebuffer->fb.draw_tiles_x * framebuffer->fb.draw_tiles_y;
    cl_emit(rcl, MULTICORE_RENDERING_TILE_LIST_SET_BASE, list) {
       list.address = v3dv_cl_address(job->tile_alloc, tile_alloc_offset);
    }
 
    cl_emit(rcl, MULTICORE_RENDERING_SUPERTILE_CFG, config) {
       config.number_of_bin_tile_lists = 1;
-      config.total_frame_width_in_tiles = framebuffer->draw_tiles_x;
-      config.total_frame_height_in_tiles = framebuffer->draw_tiles_y;
+      config.total_frame_width_in_tiles = framebuffer->fb.draw_tiles_x;
+      config.total_frame_height_in_tiles = framebuffer->fb.draw_tiles_y;
 
-      config.supertile_width_in_tiles = framebuffer->supertile_width;
-      config.supertile_height_in_tiles = framebuffer->supertile_height;
+      config.supertile_width_in_tiles = framebuffer->fb.supertile_width;
+      config.supertile_height_in_tiles = framebuffer->fb.supertile_height;
 
       config.total_frame_width_in_supertiles =
-         framebuffer->frame_width_in_supertiles;
+         framebuffer->fb.frame_width_in_supertiles;
       config.total_frame_height_in_supertiles =
-         framebuffer->frame_height_in_supertiles;
+         framebuffer->fb.frame_height_in_supertiles;
    }
 
    /* GFXH-1742 workaround */
@@ -262,8 +282,7 @@ static void
 emit_copy_image_to_buffer_rcl(struct v3dv_job *job,
                               struct v3dv_buffer *buffer,
                               struct v3dv_image *image,
-                              struct v3dv_framebuffer *framebuffer,
-                              uint32_t internal_type,
+                              struct fake_framebuffer *framebuffer,
                               const VkBufferImageCopy *region)
 {
    const VkImageSubresourceLayers *imgrsc = &region->imageSubresource;
@@ -281,12 +300,12 @@ emit_copy_image_to_buffer_rcl(struct v3dv_job *job,
       config.image_height_pixels = level_height;
       config.number_of_render_targets = 1;
       config.multisample_mode_4x = false; /* FIXME */
-      config.maximum_bpp_of_all_render_targets = framebuffer->internal_bpp;
+      config.maximum_bpp_of_all_render_targets = framebuffer->fb.internal_bpp;
    }
 
    cl_emit(rcl, TILE_RENDERING_MODE_CFG_COLOR, rt) {
-      rt.render_target_0_internal_bpp = framebuffer->internal_bpp;
-      rt.render_target_0_internal_type = internal_type;
+      rt.render_target_0_internal_bpp = framebuffer->fb.internal_bpp;
+      rt.render_target_0_internal_type = framebuffer->internal_type;
       rt.render_target_0_clamp = V3D_RENDER_TARGET_CLAMP_NONE;
    }
 
@@ -303,9 +322,9 @@ emit_copy_image_to_buffer_rcl(struct v3dv_job *job,
    }
 
    uint32_t supertile_w_in_pixels =
-      framebuffer->tile_width * framebuffer->supertile_width;
+      framebuffer->fb.tile_width * framebuffer->fb.supertile_width;
    uint32_t supertile_h_in_pixels =
-      framebuffer->tile_height * framebuffer->supertile_height;
+      framebuffer->fb.tile_height * framebuffer->fb.supertile_height;
    const uint32_t min_x_supertile =
       region->imageOffset.x / supertile_w_in_pixels;
    const uint32_t min_y_supertile =
@@ -334,25 +353,33 @@ emit_copy_image_to_buffer_rcl(struct v3dv_job *job,
  * maximum internal bpp provided.
  */
 static void
-setup_framebuffer_params(struct v3dv_framebuffer *fb,
+setup_framebuffer_params(struct fake_framebuffer *fb,
                          uint32_t width,
                          uint32_t height,
                          uint32_t layer_count,
-                         uint32_t internal_bpp)
+                         uint32_t internal_bpp,
+                         uint32_t internal_type)
 {
-   fb->width  = width;
-   fb->height = height;
-   fb->layers = layer_count;
-   fb->internal_bpp = MAX2(RENDER_TARGET_MAXIMUM_32BPP, internal_bpp);
+   fb->fb.width  = width;
+   fb->fb.height = height;
+   fb->fb.layers = layer_count;
+   fb->fb.internal_bpp = MAX2(RENDER_TARGET_MAXIMUM_32BPP, internal_bpp);
 
    /* We are only interested in the framebufer description required to compute
     * the tiling setup parameters below, so we don't need real attachments,
     * only the framebuffer size and the internal bpp.
     */
-   fb->attachment_count = 0;
-   fb->color_attachment_count = 0;
+   fb->fb.attachment_count = 0;
+   fb->fb.color_attachment_count = 0;
 
-   v3dv_framebuffer_compute_tiling_params(fb);
+   /* For simplicity, we store the internal type of the single render target
+    * that functions in this file need in the fake framebuffer objects so
+    * we don't have to pass it around everywhere.
+    */
+   fb->internal_type = internal_type;
+
+   v3dv_framebuffer_compute_tiling_params(&fb->fb);
+
 }
 
 static inline bool
@@ -417,17 +444,16 @@ copy_image_to_buffer_tlb(struct v3dv_cmd_buffer *cmd_buffer,
    uint32_t num_layers = region->imageSubresource.layerCount;
    assert(num_layers > 0);
 
-   struct v3dv_framebuffer framebuffer;
+   struct fake_framebuffer framebuffer;
    setup_framebuffer_params(&framebuffer,
                             image->extent.width, image->extent.height,
-                            num_layers, internal_bpp);
+                            num_layers, internal_bpp, internal_type);
 
    struct v3dv_job *job = v3dv_cmd_buffer_start_job(cmd_buffer, false);
-   v3dv_cmd_buffer_start_frame(cmd_buffer, &framebuffer);
+   v3dv_cmd_buffer_start_frame(cmd_buffer, &framebuffer.fb);
 
    v3dv_job_emit_binning_flush(job);
-   emit_copy_image_to_buffer_rcl(job, buffer, image,
-                                 &framebuffer, internal_type, region);
+   emit_copy_image_to_buffer_rcl(job, buffer, image, &framebuffer, region);
 
    v3dv_cmd_buffer_finish_job(cmd_buffer);
 }
@@ -512,7 +538,7 @@ emit_copy_buffer(struct v3dv_job *job,
                  struct v3dv_bo *src,
                  uint32_t dst_offset,
                  uint32_t src_offset,
-                 struct v3dv_framebuffer *framebuffer,
+                 struct fake_framebuffer *framebuffer,
                  uint32_t format)
 {
    struct v3dv_cl *rcl = &job->rcl;
@@ -523,16 +549,16 @@ emit_copy_buffer(struct v3dv_job *job,
 
    cl_emit(rcl, MULTICORE_RENDERING_SUPERTILE_CFG, config) {
       config.number_of_bin_tile_lists = 1;
-      config.total_frame_width_in_tiles = framebuffer->draw_tiles_x;
-      config.total_frame_height_in_tiles = framebuffer->draw_tiles_y;
+      config.total_frame_width_in_tiles = framebuffer->fb.draw_tiles_x;
+      config.total_frame_height_in_tiles = framebuffer->fb.draw_tiles_y;
 
-      config.supertile_width_in_tiles = framebuffer->supertile_width;
-      config.supertile_height_in_tiles = framebuffer->supertile_height;
+      config.supertile_width_in_tiles = framebuffer->fb.supertile_width;
+      config.supertile_height_in_tiles = framebuffer->fb.supertile_height;
 
       config.total_frame_width_in_supertiles =
-         framebuffer->frame_width_in_supertiles;
+         framebuffer->fb.frame_width_in_supertiles;
       config.total_frame_height_in_supertiles =
-         framebuffer->frame_height_in_supertiles;
+         framebuffer->fb.frame_height_in_supertiles;
    }
 
    /* GFXH-1742 workaround */
@@ -547,7 +573,7 @@ emit_copy_buffer(struct v3dv_job *job,
 
    cl_emit(rcl, FLUSH_VCD_CACHE, flush);
 
-   const uint32_t stride = framebuffer->width * 4;
+   const uint32_t stride = framebuffer->fb.width * 4;
    emit_copy_buffer_per_tile_list(job, dst, src,
                                   dst_offset, src_offset,
                                   stride, format);
@@ -568,8 +594,7 @@ emit_copy_buffer_rcl(struct v3dv_job *job,
                      struct v3dv_bo *src,
                      uint32_t dst_offset,
                      uint32_t src_offset,
-                     struct v3dv_framebuffer *framebuffer,
-                     uint32_t internal_type,
+                     struct fake_framebuffer *framebuffer,
                      uint32_t format)
 {
    struct v3dv_cl *rcl = &job->rcl;
@@ -579,16 +604,16 @@ emit_copy_buffer_rcl(struct v3dv_job *job,
 
    cl_emit(rcl, TILE_RENDERING_MODE_CFG_COMMON, config) {
       config.early_z_disable = true;
-      config.image_width_pixels = framebuffer->width;
-      config.image_height_pixels = framebuffer->height;
+      config.image_width_pixels = framebuffer->fb.width;
+      config.image_height_pixels = framebuffer->fb.height;
       config.number_of_render_targets = 1;
       config.multisample_mode_4x = false;
-      config.maximum_bpp_of_all_render_targets = framebuffer->internal_bpp;
+      config.maximum_bpp_of_all_render_targets = framebuffer->fb.internal_bpp;
    }
 
    cl_emit(rcl, TILE_RENDERING_MODE_CFG_COLOR, rt) {
-      rt.render_target_0_internal_bpp = framebuffer->internal_bpp;
-      rt.render_target_0_internal_type = internal_type;
+      rt.render_target_0_internal_bpp = framebuffer->fb.internal_bpp;
+      rt.render_target_0_internal_type = framebuffer->internal_type;
       rt.render_target_0_clamp = V3D_RENDER_TARGET_CLAMP_NONE;
    }
 
@@ -604,17 +629,17 @@ emit_copy_buffer_rcl(struct v3dv_job *job,
    }
 
    uint32_t supertile_w_in_pixels =
-      framebuffer->tile_width * framebuffer->supertile_width;
+      framebuffer->fb.tile_width * framebuffer->fb.supertile_width;
    uint32_t supertile_h_in_pixels =
-      framebuffer->tile_height * framebuffer->supertile_height;
+      framebuffer->fb.tile_height * framebuffer->fb.supertile_height;
 
    const uint32_t min_x_supertile = 0;
    const uint32_t min_y_supertile = 0;
 
    const uint32_t max_x_supertile =
-      (framebuffer->width - 1) / supertile_w_in_pixels;
+      (framebuffer->fb.width - 1) / supertile_w_in_pixels;
    const uint32_t max_y_supertile =
-      (framebuffer->height - 1) / supertile_h_in_pixels;
+      (framebuffer->fb.height - 1) / supertile_h_in_pixels;
 
    emit_copy_buffer(job,
                     min_x_supertile, min_y_supertile,
@@ -631,9 +656,10 @@ emit_copy_buffer_rcl(struct v3dv_job *job,
  * the job and call this function multiple times.
  */
 static void
-setup_framebuffer_for_pixel_count(struct v3dv_framebuffer *framebuffer,
+setup_framebuffer_for_pixel_count(struct fake_framebuffer *framebuffer,
                                   uint32_t num_pixels,
-                                  uint32_t internal_bpp)
+                                  uint32_t internal_bpp,
+                                  uint32_t internal_type)
 {
    const uint32_t max_dim_pixels = 4096;
    const uint32_t max_pixels = max_dim_pixels * max_dim_pixels;
@@ -654,10 +680,12 @@ setup_framebuffer_for_pixel_count(struct v3dv_framebuffer *framebuffer,
    assert(w * h <= num_pixels);
 
    /* Skip tiling calculations if the framebuffer setup has not changed */
-   if (w != framebuffer->width ||
-       h != framebuffer->height ||
-       internal_bpp != framebuffer->internal_bpp) {
-      setup_framebuffer_params(framebuffer, w, h, 1, internal_bpp);
+   if (w != framebuffer->fb.width ||
+       h != framebuffer->fb.height ||
+       internal_bpp != framebuffer->fb.internal_bpp ||
+       internal_type != framebuffer->internal_type) {
+      setup_framebuffer_params(framebuffer, w, h, 1,
+                               internal_bpp, internal_type);
    }
 }
 
@@ -698,21 +726,22 @@ copy_buffer(struct v3dv_cmd_buffer *cmd_buffer,
    struct v3dv_job *job;
    uint32_t src_offset = region->srcOffset;
    uint32_t dst_offset = region->dstOffset;
-   struct v3dv_framebuffer framebuffer = { .width = 0 };
+   struct fake_framebuffer framebuffer = { .fb.width = 0 };
    while (num_items > 0) {
-      setup_framebuffer_for_pixel_count(&framebuffer, num_items, internal_bpp);
+      setup_framebuffer_for_pixel_count(&framebuffer, num_items,
+                                        internal_bpp, internal_type);
 
       job = v3dv_cmd_buffer_start_job(cmd_buffer, false);
-      v3dv_cmd_buffer_start_frame(cmd_buffer, &framebuffer);
+      v3dv_cmd_buffer_start_frame(cmd_buffer, &framebuffer.fb);
 
       v3dv_job_emit_binning_flush(job);
 
       emit_copy_buffer_rcl(job, dst, src, dst_offset, src_offset,
-                           &framebuffer, internal_type, format);
+                           &framebuffer, format);
 
       v3dv_cmd_buffer_finish_job(cmd_buffer);
 
-      const uint32_t items_copied = framebuffer.width * framebuffer.height;
+      const uint32_t items_copied = framebuffer.fb.width * framebuffer.fb.height;
       const uint32_t bytes_copied = items_copied * item_size;
       num_items -= items_copied;
       src_offset += bytes_copied;
@@ -829,7 +858,7 @@ emit_fill_buffer(struct v3dv_job *job,
                  uint32_t max_y_supertile,
                  struct v3dv_bo *bo,
                  uint32_t offset,
-                 struct v3dv_framebuffer *framebuffer)
+                 struct fake_framebuffer *framebuffer)
 {
    struct v3dv_cl *rcl = &job->rcl;
 
@@ -839,16 +868,16 @@ emit_fill_buffer(struct v3dv_job *job,
 
    cl_emit(rcl, MULTICORE_RENDERING_SUPERTILE_CFG, config) {
       config.number_of_bin_tile_lists = 1;
-      config.total_frame_width_in_tiles = framebuffer->draw_tiles_x;
-      config.total_frame_height_in_tiles = framebuffer->draw_tiles_y;
+      config.total_frame_width_in_tiles = framebuffer->fb.draw_tiles_x;
+      config.total_frame_height_in_tiles = framebuffer->fb.draw_tiles_y;
 
-      config.supertile_width_in_tiles = framebuffer->supertile_width;
-      config.supertile_height_in_tiles = framebuffer->supertile_height;
+      config.supertile_width_in_tiles = framebuffer->fb.supertile_width;
+      config.supertile_height_in_tiles = framebuffer->fb.supertile_height;
 
       config.total_frame_width_in_supertiles =
-         framebuffer->frame_width_in_supertiles;
+         framebuffer->fb.frame_width_in_supertiles;
       config.total_frame_height_in_supertiles =
-         framebuffer->frame_height_in_supertiles;
+         framebuffer->fb.frame_height_in_supertiles;
    }
 
    /* Implement GFXH-1742 workaround and emit a clear of the tile buffers.
@@ -871,7 +900,7 @@ emit_fill_buffer(struct v3dv_job *job,
 
    cl_emit(rcl, FLUSH_VCD_CACHE, flush);
 
-   const uint32_t stride = framebuffer->width * 4;
+   const uint32_t stride = framebuffer->fb.width * 4;
    emit_fill_buffer_per_tile_list(job, bo, offset, stride);
 
    for (int y = min_y_supertile; y <= max_y_supertile; y++) {
@@ -888,8 +917,7 @@ static void
 emit_fill_buffer_rcl(struct v3dv_job *job,
                      struct v3dv_bo *bo,
                      uint32_t offset,
-                     struct v3dv_framebuffer *framebuffer,
-                     uint32_t internal_type,
+                     struct fake_framebuffer *framebuffer,
                      uint32_t data)
 {
    struct v3dv_cl *rcl = &job->rcl;
@@ -899,11 +927,11 @@ emit_fill_buffer_rcl(struct v3dv_job *job,
 
    cl_emit(rcl, TILE_RENDERING_MODE_CFG_COMMON, config) {
       config.early_z_disable = true;
-      config.image_width_pixels = framebuffer->width;
-      config.image_height_pixels = framebuffer->height;
+      config.image_width_pixels = framebuffer->fb.width;
+      config.image_height_pixels = framebuffer->fb.height;
       config.number_of_render_targets = 1;
       config.multisample_mode_4x = false;
-      config.maximum_bpp_of_all_render_targets = framebuffer->internal_bpp;
+      config.maximum_bpp_of_all_render_targets = framebuffer->fb.internal_bpp;
    }
 
    cl_emit(rcl, TILE_RENDERING_MODE_CFG_CLEAR_COLORS_PART1, clear) {
@@ -913,8 +941,8 @@ emit_fill_buffer_rcl(struct v3dv_job *job,
    };
 
    cl_emit(rcl, TILE_RENDERING_MODE_CFG_COLOR, rt) {
-      rt.render_target_0_internal_bpp = framebuffer->internal_bpp;
-      rt.render_target_0_internal_type = internal_type;
+      rt.render_target_0_internal_bpp = framebuffer->fb.internal_bpp;
+      rt.render_target_0_internal_type = framebuffer->internal_type;
       rt.render_target_0_clamp = V3D_RENDER_TARGET_CLAMP_NONE;
    }
 
@@ -930,17 +958,17 @@ emit_fill_buffer_rcl(struct v3dv_job *job,
    }
 
    uint32_t supertile_w_in_pixels =
-      framebuffer->tile_width * framebuffer->supertile_width;
+      framebuffer->fb.tile_width * framebuffer->fb.supertile_width;
    uint32_t supertile_h_in_pixels =
-      framebuffer->tile_height * framebuffer->supertile_height;
+      framebuffer->fb.tile_height * framebuffer->fb.supertile_height;
 
    const uint32_t min_x_supertile = 0;
    const uint32_t min_y_supertile = 0;
 
    const uint32_t max_x_supertile =
-      (framebuffer->width - 1) / supertile_w_in_pixels;
+      (framebuffer->fb.width - 1) / supertile_w_in_pixels;
    const uint32_t max_y_supertile =
-      (framebuffer->height - 1) / supertile_h_in_pixels;
+      (framebuffer->fb.height - 1) / supertile_h_in_pixels;
 
    emit_fill_buffer(job,
                     min_x_supertile, min_y_supertile,
@@ -964,21 +992,21 @@ fill_buffer(struct v3dv_cmd_buffer *cmd_buffer,
    const uint32_t internal_type = V3D_INTERNAL_TYPE_8UI;
    uint32_t num_items = size / 4;
 
-   struct v3dv_framebuffer framebuffer = { .width = 0 };
+   struct fake_framebuffer framebuffer = { .fb.width = 0 };
    while (num_items > 0) {
-      setup_framebuffer_for_pixel_count(&framebuffer, num_items, internal_bpp);
+      setup_framebuffer_for_pixel_count(&framebuffer, num_items,
+                                        internal_bpp, internal_type);
 
       struct v3dv_job *job = v3dv_cmd_buffer_start_job(cmd_buffer, false);
-      v3dv_cmd_buffer_start_frame(cmd_buffer, &framebuffer);
+      v3dv_cmd_buffer_start_frame(cmd_buffer, &framebuffer.fb);
 
       v3dv_job_emit_binning_flush(job);
 
-      emit_fill_buffer_rcl(job, bo, offset,
-                           &framebuffer, internal_type, data);
+      emit_fill_buffer_rcl(job, bo, offset, &framebuffer, data);
 
       v3dv_cmd_buffer_finish_job(cmd_buffer);
 
-      const uint32_t items_copied = framebuffer.width * framebuffer.height;
+      const uint32_t items_copied = framebuffer.fb.width * framebuffer.fb.height;
       const uint32_t bytes_copied = items_copied * 4;
       num_items -= items_copied;
       offset += bytes_copied;
