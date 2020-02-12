@@ -572,7 +572,6 @@ radv_get_debug_option_name(int id)
 }
 
 static const struct debug_control radv_perftest_options[] = {
-	{"nobatchchain", RADV_PERFTEST_NO_BATCHCHAIN},
 	{"localbos", RADV_PERFTEST_LOCAL_BOS},
 	{"dccmsaa", RADV_PERFTEST_DCC_MSAA},
 	{"bolist", RADV_PERFTEST_BO_LIST},
