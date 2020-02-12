@@ -361,9 +361,10 @@ add_aux_surface_if_supported(struct anv_device *device,
    /* The aux surface must not be already added. */
    assert(image->planes[plane].aux_surface.isl.size_B == 0);
 
-   if ((isl_extra_usage_flags & ISL_SURF_USAGE_DISABLE_AUX_BIT)) {
-      /* Nevermind. No aux surface. */
-   } else if (aspect == VK_IMAGE_ASPECT_DEPTH_BIT) {
+   if ((isl_extra_usage_flags & ISL_SURF_USAGE_DISABLE_AUX_BIT))
+      return VK_SUCCESS;
+
+   if (aspect == VK_IMAGE_ASPECT_DEPTH_BIT) {
       /* We don't advertise that depth buffers could be used as storage
        * images.
        */
@@ -374,104 +375,119 @@ add_aux_surface_if_supported(struct anv_device *device,
        */
       if (!(image->usage & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)) {
          /* It will never be used as an attachment, HiZ is pointless. */
-      } else if (device->info.gen == 7) {
+         return VK_SUCCESS;
+      }
+
+      if (device->info.gen == 7) {
          anv_perf_warn(device, image, "Implement gen7 HiZ");
-      } else if (image->levels > 1) {
+         return VK_SUCCESS;
+      }
+
+      if (image->levels > 1) {
          anv_perf_warn(device, image, "Enable multi-LOD HiZ");
-      } else if (image->array_size > 1) {
+         return VK_SUCCESS;
+      }
+
+      if (image->array_size > 1) {
          anv_perf_warn(device, image,
                        "Implement multi-arrayLayer HiZ clears and resolves");
-      } else if (device->info.gen == 8 && image->samples > 1) {
+         return VK_SUCCESS;
+      }
+
+      if (device->info.gen == 8 && image->samples > 1) {
          anv_perf_warn(device, image, "Enable gen8 multisampled HiZ");
-      } else if (!unlikely(INTEL_DEBUG & DEBUG_NO_HIZ)) {
-         ok = isl_surf_get_hiz_surf(&device->isl_dev,
-                                    &image->planes[plane].surface.isl,
-                                    &image->planes[plane].aux_surface.isl);
-         assert(ok);
-         image->planes[plane].aux_usage = ISL_AUX_USAGE_HIZ;
-         add_surface(image, &image->planes[plane].aux_surface, plane);
+         return VK_SUCCESS;
       }
+
+      if (unlikely(INTEL_DEBUG & DEBUG_NO_HIZ))
+         return VK_SUCCESS;
+
+      ok = isl_surf_get_hiz_surf(&device->isl_dev,
+                                 &image->planes[plane].surface.isl,
+                                 &image->planes[plane].aux_surface.isl);
+      assert(ok);
+      image->planes[plane].aux_usage = ISL_AUX_USAGE_HIZ;
+      add_surface(image, &image->planes[plane].aux_surface, plane);
    } else if ((aspect & VK_IMAGE_ASPECT_ANY_COLOR_BIT_ANV) && image->samples == 1) {
-      /* TODO: Disallow compression with :
-       *
-       *     1) non multiplanar images (We appear to hit a sampler bug with
-       *        CCS & R16G16 format. Putting the clear state a page/4096bytes
-       *        further fixes the issue).
-       *
-       *     2) alias images, because they might be aliases of images
-       *        described in 1)
-       *
-       *     3) compression disabled by debug
-       */
-      const bool allow_compression =
-         image->n_planes == 1 &&
-         (image->create_flags & VK_IMAGE_CREATE_ALIAS_BIT) == 0 &&
-         likely((INTEL_DEBUG & DEBUG_NO_RBC) == 0);
-
-      if (allow_compression) {
-         ok = isl_surf_get_ccs_surf(&device->isl_dev,
-                                    &image->planes[plane].surface.isl,
-                                    &image->planes[plane].aux_surface.isl,
-                                    NULL, 0);
-         if (ok) {
-
-            /* Disable CCS when it is not useful (i.e., when you can't render
-             * to the image with CCS enabled).
-             */
-            if (!isl_format_supports_rendering(&device->info,
-                                               plane_format.isl_format)) {
-               /* While it may be technically possible to enable CCS for this
-                * image, we currently don't have things hooked up to get it
-                * working.
-                */
-               anv_perf_warn(device, image,
-                             "This image format doesn't support rendering. "
-                             "Not allocating an CCS buffer.");
-               image->planes[plane].aux_surface.isl.size_B = 0;
-               return VK_SUCCESS;
-            }
-
-            /* For images created without MUTABLE_FORMAT_BIT set, we know that
-             * they will always be used with the original format.  In
-             * particular, they will always be used with a format that
-             * supports color compression.  If it's never used as a storage
-             * image, then it will only be used through the sampler or the as
-             * a render target.  This means that it's safe to just leave
-             * compression on at all times for these formats.
-             */
-            if (!(image->usage & VK_IMAGE_USAGE_STORAGE_BIT) &&
-                anv_formats_ccs_e_compatible(&device->info,
-                                             image->create_flags,
-                                             image->vk_format,
-                                             image->tiling,
-                                             fmt_list)) {
-               image->planes[plane].aux_usage = ISL_AUX_USAGE_CCS_E;
-            } else if (device->info.gen >= 12) {
-               anv_perf_warn(device, image,
-                             "The CCS_D aux mode is not yet handled on "
-                             "Gen12+. Not allocating a CCS buffer.");
-               image->planes[plane].aux_surface.isl.size_B = 0;
-               return VK_SUCCESS;
-            } else {
-               image->planes[plane].aux_usage = ISL_AUX_USAGE_CCS_D;
-            }
-
-            if (!device->physical->has_implicit_ccs)
-               add_surface(image, &image->planes[plane].aux_surface, plane);
-
-            add_aux_state_tracking_buffer(image, plane, device);
-         }
+      if (image->n_planes != 1) {
+         /* Multiplanar images seem to hit a sampler bug with CCS and R16G16
+          * format. (Putting the clear state a page/4096bytes further fixes
+          * the issue).
+          */
+         return VK_SUCCESS;
       }
+
+      if ((image->create_flags & VK_IMAGE_CREATE_ALIAS_BIT)) {
+         /* The image may alias a plane of a multiplanar image. Above we ban
+          * CCS on multiplanar images.
+          */
+         return VK_SUCCESS;
+      }
+
+      if (!isl_format_supports_rendering(&device->info,
+                                         plane_format.isl_format)) {
+         /* Disable CCS because it is not useful (we can't render to the image
+          * with CCS enabled).  While it may be technically possible to enable
+          * CCS for this case, we currently don't have things hooked up to get
+          * it working.
+          */
+         anv_perf_warn(device, image,
+                       "This image format doesn't support rendering. "
+                       "Not allocating an CCS buffer.");
+         return VK_SUCCESS;
+      }
+
+      if (unlikely(INTEL_DEBUG & DEBUG_NO_RBC))
+         return VK_SUCCESS;
+
+      ok = isl_surf_get_ccs_surf(&device->isl_dev,
+                                 &image->planes[plane].surface.isl,
+                                 &image->planes[plane].aux_surface.isl,
+                                 NULL, 0);
+      if (!ok)
+         return VK_SUCCESS;
+
+      /* Choose aux usage */
+      if (!(image->usage & VK_IMAGE_USAGE_STORAGE_BIT) &&
+          anv_formats_ccs_e_compatible(&device->info,
+                                       image->create_flags,
+                                       image->vk_format,
+                                       image->tiling,
+                                       fmt_list)) {
+         /* For images created without MUTABLE_FORMAT_BIT set, we know that
+          * they will always be used with the original format.  In particular,
+          * they will always be used with a format that supports color
+          * compression.  If it's never used as a storage image, then it will
+          * only be used through the sampler or the as a render target.  This
+          * means that it's safe to just leave compression on at all times for
+          * these formats.
+          */
+         image->planes[plane].aux_usage = ISL_AUX_USAGE_CCS_E;
+      } else if (device->info.gen >= 12) {
+         anv_perf_warn(device, image,
+                       "The CCS_D aux mode is not yet handled on "
+                       "Gen12+. Not allocating a CCS buffer.");
+         image->planes[plane].aux_surface.isl.size_B = 0;
+         return VK_SUCCESS;
+      } else {
+         image->planes[plane].aux_usage = ISL_AUX_USAGE_CCS_D;
+      }
+
+      if (!device->physical->has_implicit_ccs)
+         add_surface(image, &image->planes[plane].aux_surface, plane);
+
+      add_aux_state_tracking_buffer(image, plane, device);
    } else if ((aspect & VK_IMAGE_ASPECT_ANY_COLOR_BIT_ANV) && image->samples > 1) {
       assert(!(image->usage & VK_IMAGE_USAGE_STORAGE_BIT));
       ok = isl_surf_get_mcs_surf(&device->isl_dev,
                                  &image->planes[plane].surface.isl,
                                  &image->planes[plane].aux_surface.isl);
-      if (ok) {
-         image->planes[plane].aux_usage = ISL_AUX_USAGE_MCS;
-         add_surface(image, &image->planes[plane].aux_surface, plane);
-         add_aux_state_tracking_buffer(image, plane, device);
-      }
+      if (!ok)
+         return VK_SUCCESS;
+
+      image->planes[plane].aux_usage = ISL_AUX_USAGE_MCS;
+      add_surface(image, &image->planes[plane].aux_surface, plane);
+      add_aux_state_tracking_buffer(image, plane, device);
    }
 
    return VK_SUCCESS;
