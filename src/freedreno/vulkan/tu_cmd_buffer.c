@@ -1051,7 +1051,11 @@ tu6_init_hw(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
    tu_cs_emit_write_reg(cs, REG_A6XX_UCHE_UNKNOWN_0E12, 0x3200000);
    tu_cs_emit_write_reg(cs, REG_A6XX_UCHE_CLIENT_PF, 4);
    tu_cs_emit_write_reg(cs, REG_A6XX_RB_UNKNOWN_8E01, 0x0);
+   tu_cs_emit_write_reg(cs, REG_A6XX_SP_UNKNOWN_A982, 0);
+   tu_cs_emit_write_reg(cs, REG_A6XX_SP_UNKNOWN_A9A8, 0);
    tu_cs_emit_write_reg(cs, REG_A6XX_SP_UNKNOWN_AB00, 0x5);
+   tu_cs_emit_write_reg(cs, REG_A6XX_VPC_GS_SIV_CNTL, 0x0000ffff);
+
    tu_cs_emit_write_reg(cs, REG_A6XX_VFD_ADD_OFFSET, A6XX_VFD_ADD_OFFSET_VERTEX);
    tu_cs_emit_write_reg(cs, REG_A6XX_RB_UNKNOWN_8811, 0x00000010);
    tu_cs_emit_write_reg(cs, REG_A6XX_PC_MODE_CNTL, 0x1f);
@@ -1084,6 +1088,7 @@ tu6_init_hw(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
    tu_cs_emit_write_reg(cs, REG_A6XX_PC_UNKNOWN_9801, 0);
    tu_cs_emit_write_reg(cs, REG_A6XX_PC_UNKNOWN_9806, 0);
    tu_cs_emit_write_reg(cs, REG_A6XX_PC_UNKNOWN_9980, 0);
+   tu_cs_emit_write_reg(cs, REG_A6XX_PC_UNKNOWN_9990, 0);
 
    tu_cs_emit_write_reg(cs, REG_A6XX_PC_PRIMITIVE_CNTL_6, 0);
    tu_cs_emit_write_reg(cs, REG_A6XX_PC_UNKNOWN_9B07, 0);
@@ -3362,10 +3367,6 @@ tu6_bind_draw_states(struct tu_cmd_buffer *cmd,
       &cmd->descriptors[VK_PIPELINE_BIND_POINT_GRAPHICS];
 
    /* TODO lrz */
-
-   tu_cs_emit_write_reg(cs, REG_A6XX_PC_UNKNOWN_9806, 0);
-   tu_cs_emit_write_reg(cs, REG_A6XX_PC_UNKNOWN_9990, 0);
-   tu_cs_emit_write_reg(cs, REG_A6XX_VFD_UNKNOWN_A008, 0);
 
    tu_cs_emit_regs(cs,
                    A6XX_PC_PRIMITIVE_CNTL_0(.primitive_restart =

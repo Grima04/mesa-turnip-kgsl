@@ -480,12 +480,6 @@ tu6_emit_fs_config(struct tu_cs *cs, struct tu_shader *shader,
    if (fs->instrlen)
       sp_fs_config |= A6XX_SP_FS_CONFIG_ENABLED;
 
-   tu_cs_emit_pkt4(cs, REG_A6XX_SP_UNKNOWN_A9A8, 1);
-   tu_cs_emit(cs, 0);
-
-   tu_cs_emit_pkt4(cs, REG_A6XX_SP_UNKNOWN_AB00, 1);
-   tu_cs_emit(cs, 0x5);
-
    tu_cs_emit_pkt4(cs, REG_A6XX_SP_FS_CTRL_REG0, 1);
    tu_cs_emit(cs, sp_fs_ctrl);
 
@@ -639,9 +633,6 @@ tu6_emit_vpc(struct tu_cs *cs,
    tu_cs_emit(cs, A6XX_VPC_PACK_POSITIONLOC(position_loc) |
                      A6XX_VPC_PACK_PSIZELOC(pointsize_loc) |
                      A6XX_VPC_PACK_STRIDE_IN_VPC(linkage.max_loc));
-
-   tu_cs_emit_pkt4(cs, REG_A6XX_VPC_GS_SIV_CNTL, 1);
-   tu_cs_emit(cs, 0x0000ffff); /* XXX */
 
    tu_cs_emit_pkt4(cs, REG_A6XX_SP_PRIMITIVE_CNTL, 1);
    tu_cs_emit(cs, A6XX_SP_PRIMITIVE_CNTL_VSOUT(linkage.cnt));
@@ -809,9 +800,6 @@ tu6_emit_fs_inputs(struct tu_cs *cs, const struct ir3_shader_variant *fs)
 
    tu_cs_emit_pkt4(cs, REG_A6XX_HLSQ_UNKNOWN_B980, 1);
    tu_cs_emit(cs, enable_varyings ? 3 : 1);
-
-   tu_cs_emit_pkt4(cs, REG_A6XX_SP_UNKNOWN_A982, 1);
-   tu_cs_emit(cs, 0); /* XXX */
 
    tu_cs_emit_pkt4(cs, REG_A6XX_HLSQ_UPDATE_CNTL, 1);
    tu_cs_emit(cs, 0xff); /* XXX */
