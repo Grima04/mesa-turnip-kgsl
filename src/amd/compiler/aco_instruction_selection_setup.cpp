@@ -753,6 +753,27 @@ setup_vs_variables(isel_context *ctx, nir_shader *nir)
    }
 }
 
+void setup_gs_variables(isel_context *ctx, nir_shader *nir)
+{
+   assert(ctx->stage == vertex_geometry_gs || ctx->stage == geometry_gs);
+   if (ctx->stage == vertex_geometry_gs) {
+      nir_foreach_variable(variable, &nir->inputs) {
+         variable->data.driver_location = util_bitcount64(ctx->input_masks[nir->info.stage] & ((1ull << variable->data.location) - 1ull)) * 4;
+      }
+   } else {
+      //TODO: make this more compact
+      nir_foreach_variable(variable, &nir->inputs) {
+         variable->data.driver_location = shader_io_get_unique_index((gl_varying_slot)variable->data.location) * 4;
+      }
+   }
+   nir_foreach_variable(variable, &nir->outputs) {
+      variable->data.driver_location = variable->data.location * 4;
+   }
+
+   if (ctx->stage == vertex_geometry_gs)
+      ctx->program->info->gs.es_type = MESA_SHADER_VERTEX; /* tesselation shaders are not yet supported */
+}
+
 void
 setup_variables(isel_context *ctx, nir_shader *nir)
 {
@@ -775,22 +796,7 @@ setup_variables(isel_context *ctx, nir_shader *nir)
       break;
    }
    case MESA_SHADER_GEOMETRY: {
-      assert(ctx->stage == vertex_geometry_gs || ctx->stage == geometry_gs);
-      if (ctx->stage == vertex_geometry_gs) {
-         nir_foreach_variable(variable, &nir->inputs) {
-            variable->data.driver_location = util_bitcount64(ctx->input_masks[nir->info.stage] & ((1ull << variable->data.location) - 1ull)) * 4;
-         }
-      } else {
-         //TODO: make this more compact
-         nir_foreach_variable(variable, &nir->inputs) {
-            variable->data.driver_location = shader_io_get_unique_index((gl_varying_slot)variable->data.location) * 4;
-         }
-      }
-      nir_foreach_variable(variable, &nir->outputs) {
-         variable->data.driver_location = variable->data.location * 4;
-      }
-      if (ctx->stage == vertex_geometry_gs)
-         ctx->program->info->gs.es_type = MESA_SHADER_VERTEX; /* tesselation shaders are not yet supported */
+      setup_gs_variables(ctx, nir);
       break;
    }
    default:
