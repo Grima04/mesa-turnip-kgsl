@@ -6848,12 +6848,20 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
       break;
    }
    case nir_intrinsic_load_invocation_id: {
-      assert(ctx->shader->info.stage == MESA_SHADER_GEOMETRY);
       Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
-      if (ctx->options->chip_class >= GFX10)
-         bld.vop2_e64(aco_opcode::v_and_b32, Definition(dst), Operand(127u), get_arg(ctx, ctx->args->ac.gs_invocation_id));
-      else
-         bld.copy(Definition(dst), get_arg(ctx, ctx->args->ac.gs_invocation_id));
+
+      if (ctx->shader->info.stage == MESA_SHADER_GEOMETRY) {
+         if (ctx->options->chip_class >= GFX10)
+            bld.vop2_e64(aco_opcode::v_and_b32, Definition(dst), Operand(127u), get_arg(ctx, ctx->args->ac.gs_invocation_id));
+         else
+            bld.copy(Definition(dst), get_arg(ctx, ctx->args->ac.gs_invocation_id));
+      } else if (ctx->shader->info.stage == MESA_SHADER_TESS_CTRL) {
+         bld.vop3(aco_opcode::v_bfe_u32, Definition(dst),
+                  get_arg(ctx, ctx->args->ac.tcs_rel_ids), Operand(8u), Operand(5u));
+      } else {
+         unreachable("Unsupported stage for load_invocation_id");
+      }
+
       break;
    }
    case nir_intrinsic_load_primitive_id: {
