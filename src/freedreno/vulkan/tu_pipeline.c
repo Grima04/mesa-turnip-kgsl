@@ -1464,12 +1464,6 @@ tu6_emit_rb_mrt_controls(struct tu_cs *cs,
       tu_cs_emit(cs, rb_mrt_control);
       tu_cs_emit(cs, rb_mrt_blend_control);
    }
-
-   for (uint32_t i = blend_info->attachmentCount; i < MAX_RTS; i++) {
-      tu_cs_emit_pkt4(cs, REG_A6XX_RB_MRT_CONTROL(i), 2);
-      tu_cs_emit(cs, 0);
-      tu_cs_emit(cs, 0);
-   }
 }
 
 static void
