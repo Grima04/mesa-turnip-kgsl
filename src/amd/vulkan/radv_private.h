@@ -1537,12 +1537,11 @@ struct radv_event {
 
 struct radv_shader_module;
 
-#define RADV_HASH_SHADER_IS_GEOM_COPY_SHADER (1 << 0)
-#define RADV_HASH_SHADER_NO_NGG              (1 << 1)
-#define RADV_HASH_SHADER_CS_WAVE32           (1 << 2)
-#define RADV_HASH_SHADER_PS_WAVE32           (1 << 3)
-#define RADV_HASH_SHADER_GE_WAVE32           (1 << 4)
-#define RADV_HASH_SHADER_ACO                 (1 << 5)
+#define RADV_HASH_SHADER_NO_NGG              (1 << 0)
+#define RADV_HASH_SHADER_CS_WAVE32           (1 << 1)
+#define RADV_HASH_SHADER_PS_WAVE32           (1 << 2)
+#define RADV_HASH_SHADER_GE_WAVE32           (1 << 3)
+#define RADV_HASH_SHADER_ACO                 (1 << 4)
 
 void
 radv_hash_shaders(unsigned char *hash,
