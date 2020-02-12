@@ -723,7 +723,7 @@ tu_physical_device_get_format_properties(
    VkFormat format,
    VkFormatProperties *out_properties)
 {
-   VkFormatFeatureFlags image = 0, buffer = 0;
+   VkFormatFeatureFlags linear = 0, optimal = 0, buffer = 0;
    const struct util_format_description *desc = vk_format_description(format);
    const struct tu_native_format *native_fmt = tu6_get_native_format(format);
    if (!desc || !native_fmt) {
@@ -736,22 +736,32 @@ tu_physical_device_get_format_properties(
    }
 
    if (native_fmt->tex >= 0 || native_fmt->rb >= 0)
-      image |= VK_FORMAT_FEATURE_TRANSFER_SRC_BIT | VK_FORMAT_FEATURE_TRANSFER_DST_BIT;
+      optimal |= VK_FORMAT_FEATURE_TRANSFER_SRC_BIT | VK_FORMAT_FEATURE_TRANSFER_DST_BIT;
 
    if (native_fmt->tex >= 0) {
-      image |= VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT | VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT;
+      optimal |= VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT | VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT;
       buffer |= VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT;
    }
 
    if (native_fmt->rb >= 0)
-      image |= VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT | VK_FORMAT_FEATURE_BLIT_SRC_BIT | VK_FORMAT_FEATURE_BLIT_DST_BIT;
+      optimal |= VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT | VK_FORMAT_FEATURE_BLIT_SRC_BIT | VK_FORMAT_FEATURE_BLIT_DST_BIT;
 
+   /* For the most part, we can do anything with a linear image that we could
+    * do with a tiled image. However, we can't support sysmem rendering with a
+    * linear depth texture, because we don't know if there's a bit to control
+    * the tiling of the depth buffer in BYPASS mode, and the blob also
+    * disables linear depth rendering, so there's no way to discover it. We
+    * also can't force GMEM mode, because there are other situations where we
+    * have to use sysmem rendering. So follow the blob here, and only enable
+    * DEPTH_STENCIL_ATTACHMENT_BIT for the optimal features.
+    */
+   linear = optimal;
    if (tu6_pipe2depth(format) != (enum a6xx_depth_format)~0)
-      image |= VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
+      optimal |= VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
 
 end:
-   out_properties->linearTilingFeatures = image;
-   out_properties->optimalTilingFeatures = image;
+   out_properties->linearTilingFeatures = linear;
+   out_properties->optimalTilingFeatures = optimal;
    out_properties->bufferFeatures = buffer;
 }
 
@@ -812,8 +822,32 @@ tu_get_image_format_properties(
 
    tu_physical_device_get_format_properties(physical_device, info->format,
                                             &format_props);
-   assert(format_props.optimalTilingFeatures == format_props.linearTilingFeatures);
-   format_feature_flags = format_props.optimalTilingFeatures;
+
+   switch (info->tiling) {
+   case VK_IMAGE_TILING_LINEAR:
+      format_feature_flags = format_props.linearTilingFeatures;
+      break;
+
+   case VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT:
+      /* The only difference between optimal and linear is currently whether
+       * depth/stencil attachments are allowed on depth/stencil formats.
+       * There's no reason to allow importing depth/stencil textures, so just
+       * disallow it and then this annoying edge case goes away.
+       *
+       * TODO: If anyone cares, we could enable this by looking at the
+       * modifier and checking if it's LINEAR or not.
+       */
+      if (vk_format_is_depth_or_stencil(info->format))
+         goto unsupported;
+
+      assert(format_props.optimalTilingFeatures == format_props.linearTilingFeatures);
+      /* fallthrough */
+   case VK_IMAGE_TILING_OPTIMAL:
+      format_feature_flags = format_props.optimalTilingFeatures;
+      break;
+   default:
+      unreachable("bad VkPhysicalDeviceImageFormatInfo2");
+   }
 
    if (format_feature_flags == 0)
       goto unsupported;
