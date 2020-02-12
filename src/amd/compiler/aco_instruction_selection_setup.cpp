@@ -94,6 +94,10 @@ struct isel_context {
    unsigned num_clip_distances;
    unsigned num_cull_distances;
 
+   /* tessellation information */
+   uint32_t tcs_num_inputs;
+   uint32_t tcs_num_patches;
+
    /* VS, FS or GS output information */
    output_state outputs;
 };
@@ -731,11 +735,15 @@ setup_vs_variables(isel_context *ctx, nir_shader *nir)
    {
       if (ctx->stage == vertex_geometry_gs)
          variable->data.driver_location = util_bitcount64(ctx->output_masks[nir->info.stage] & ((1ull << variable->data.location) - 1ull)) * 4;
-      else if (ctx->stage == vertex_es)
-         //TODO: make this more compact
-         variable->data.driver_location = shader_io_get_unique_index((gl_varying_slot)variable->data.location) * 4;
-      else
+      else if (ctx->stage == vertex_es ||
+               ctx->stage == vertex_ls ||
+               ctx->stage == vertex_tess_control_hs)
+         // TODO: make this more compact
+         variable->data.driver_location = shader_io_get_unique_index((gl_varying_slot) variable->data.location) * 4;
+      else if (ctx->stage == vertex_vs)
          variable->data.driver_location = variable->data.location * 4;
+      else
+         unreachable("Unsupported VS stage");
    }
 
    if (ctx->stage == vertex_vs) {
@@ -775,6 +783,51 @@ void setup_gs_variables(isel_context *ctx, nir_shader *nir)
 }
 
 void
+setup_tcs_variables(isel_context *ctx, nir_shader *nir)
+{
+   switch (ctx->stage) {
+   case tess_control_hs:
+      ctx->tcs_num_inputs = ctx->args->options->key.tcs.num_inputs;
+      break;
+   case vertex_tess_control_hs:
+      ctx->tcs_num_inputs = util_last_bit64(ctx->args->shader_info->vs.ls_outputs_written);
+      break;
+   default:
+      unreachable("Unsupported TCS shader stage");
+   }
+
+   ctx->tcs_num_patches = get_tcs_num_patches(
+                             ctx->args->options->key.tcs.input_vertices,
+                             nir->info.tess.tcs_vertices_out,
+                             ctx->tcs_num_inputs,
+                             ctx->args->shader_info->tcs.outputs_written,
+                             ctx->args->shader_info->tcs.patch_outputs_written,
+                             ctx->args->options->tess_offchip_block_dw_size,
+                             ctx->args->options->chip_class,
+                             ctx->args->options->family);
+   unsigned lds_size = calculate_tess_lds_size(
+                             ctx->args->options->key.tcs.input_vertices,
+                             nir->info.tess.tcs_vertices_out,
+                             ctx->tcs_num_inputs,
+                             ctx->tcs_num_patches,
+                             ctx->args->shader_info->tcs.outputs_written,
+                             ctx->args->shader_info->tcs.patch_outputs_written);
+
+   ctx->args->shader_info->tcs.num_patches = ctx->tcs_num_patches;
+   ctx->args->shader_info->tcs.lds_size = lds_size;
+   ctx->program->config->lds_size = (lds_size + ctx->program->lds_alloc_granule - 1) /
+                                    ctx->program->lds_alloc_granule;
+
+   nir_foreach_variable(variable, &nir->inputs) {
+      variable->data.driver_location = shader_io_get_unique_index((gl_varying_slot) variable->data.location) * 4;
+   }
+
+   nir_foreach_variable(variable, &nir->outputs) {
+      variable->data.driver_location = shader_io_get_unique_index((gl_varying_slot) variable->data.location) * 4;
+   }
+}
+
+void
 setup_variables(isel_context *ctx, nir_shader *nir)
 {
    switch (nir->info.stage) {
@@ -797,6 +850,10 @@ setup_variables(isel_context *ctx, nir_shader *nir)
    }
    case MESA_SHADER_GEOMETRY: {
       setup_gs_variables(ctx, nir);
+      break;
+   }
+   case MESA_SHADER_TESS_CTRL: {
+      setup_tcs_variables(ctx, nir);
       break;
    }
    default:
