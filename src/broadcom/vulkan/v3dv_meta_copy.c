@@ -625,6 +625,42 @@ emit_copy_buffer_rcl(struct v3dv_job *job,
    cl_emit(rcl, END_OF_RENDERING, end);
 }
 
+/* Figure out a TLB size configuration for a number of pixels to process.
+ * Beware that we can't "render" more than 4096x4096 pixels in a single job,
+ * if the pixel count is larger than this, the caller might need to split
+ * the job and call this function multiple times.
+ */
+static void
+setup_framebuffer_for_pixel_count(struct v3dv_framebuffer *framebuffer,
+                                  uint32_t num_pixels,
+                                  uint32_t internal_bpp)
+{
+   const uint32_t max_dim_pixels = 4096;
+   const uint32_t max_pixels = max_dim_pixels * max_dim_pixels;
+
+   uint32_t w, h;
+   if (num_pixels > max_pixels) {
+      w = max_dim_pixels;
+      h = max_dim_pixels;
+   } else {
+      w = num_pixels;
+      h = 1;
+      while (w > max_dim_pixels || ((w % 2) == 0 && w > 2 * h)) {
+         w >>= 1;
+         h <<= 1;
+      }
+   }
+   assert(w <= max_dim_pixels && h <= max_dim_pixels);
+   assert(w * h <= num_pixels);
+
+   /* Skip tiling calculations if the framebuffer setup has not changed */
+   if (w != framebuffer->width ||
+       h != framebuffer->height ||
+       internal_bpp != framebuffer->internal_bpp) {
+      setup_framebuffer_params(framebuffer, w, h, 1, internal_bpp);
+   }
+}
+
 static struct v3dv_job *
 copy_buffer(struct v3dv_cmd_buffer *cmd_buffer,
             struct v3dv_bo *dst,
@@ -662,32 +698,9 @@ copy_buffer(struct v3dv_cmd_buffer *cmd_buffer,
    struct v3dv_job *job;
    uint32_t src_offset = region->srcOffset;
    uint32_t dst_offset = region->dstOffset;
+   struct v3dv_framebuffer framebuffer = { .width = 0 };
    while (num_items > 0) {
-      /* Figure out a TLB size configuration for the number of items to copy.
-       * We can't "render" more than 4096x4096 pixels in a single job, so make
-       * sure we don't exceed that by splitting the job into multiple jobs if
-       * needed.
-       */
-      const uint32_t max_dim_items = 4096;
-      const uint32_t max_items = max_dim_items * max_dim_items;
-      uint32_t width, height;
-      if (num_items > max_items) {
-         width = max_dim_items;
-         height = max_dim_items;
-      } else {
-         width = num_items;
-         height = 1;
-         while (width > max_dim_items ||
-                ((width % 2) == 0 && width > 2 * height)) {
-            width >>= 1;
-            height <<= 1;
-         }
-      }
-      assert(width <= max_dim_items && height <= max_dim_items);
-      assert(width * height <= num_items);
-
-      struct v3dv_framebuffer framebuffer;
-      setup_framebuffer_params(&framebuffer, width, height, 1, internal_bpp);
+      setup_framebuffer_for_pixel_count(&framebuffer, num_items, internal_bpp);
 
       job = v3dv_cmd_buffer_start_job(cmd_buffer, false);
       v3dv_cmd_buffer_start_frame(cmd_buffer, &framebuffer);
@@ -699,7 +712,7 @@ copy_buffer(struct v3dv_cmd_buffer *cmd_buffer,
 
       v3dv_cmd_buffer_finish_job(cmd_buffer);
 
-      const uint32_t items_copied = width * height;
+      const uint32_t items_copied = framebuffer.width * framebuffer.height;
       const uint32_t bytes_copied = items_copied * item_size;
       num_items -= items_copied;
       src_offset += bytes_copied;
@@ -951,27 +964,9 @@ fill_buffer(struct v3dv_cmd_buffer *cmd_buffer,
    const uint32_t internal_type = V3D_INTERNAL_TYPE_8UI;
    uint32_t num_items = size / 4;
 
+   struct v3dv_framebuffer framebuffer = { .width = 0 };
    while (num_items > 0) {
-      const uint32_t max_dim_items = 4096;
-      const uint32_t max_items = max_dim_items * max_dim_items;
-      uint32_t width, height;
-      if (num_items > max_items) {
-         width = max_dim_items;
-         height = max_dim_items;
-      } else {
-         width = num_items;
-         height = 1;
-         while (width > max_dim_items ||
-                ((width % 2) == 0 && width > 2 * height)) {
-            width >>= 1;
-            height <<= 1;
-         }
-      }
-      assert(width <= max_dim_items && height <= max_dim_items);
-      assert(width * height <= num_items);
-
-      struct v3dv_framebuffer framebuffer;
-      setup_framebuffer_params(&framebuffer, width, height, 1, internal_bpp);
+      setup_framebuffer_for_pixel_count(&framebuffer, num_items, internal_bpp);
 
       struct v3dv_job *job = v3dv_cmd_buffer_start_job(cmd_buffer, false);
       v3dv_cmd_buffer_start_frame(cmd_buffer, &framebuffer);
@@ -983,7 +978,7 @@ fill_buffer(struct v3dv_cmd_buffer *cmd_buffer,
 
       v3dv_cmd_buffer_finish_job(cmd_buffer);
 
-      const uint32_t items_copied = width * height;
+      const uint32_t items_copied = framebuffer.width * framebuffer.height;
       const uint32_t bytes_copied = items_copied * 4;
       num_items -= items_copied;
       offset += bytes_copied;
