@@ -918,10 +918,10 @@ vtn_emit_cf_list(struct vtn_builder *b, struct list_head *cf_list,
                  nir_variable *switch_fall_var, bool *has_switch_break,
                  vtn_instruction_handler handler)
 {
-   list_for_each_entry(struct vtn_cf_node, node, cf_list, link) {
+   vtn_foreach_cf_node(node, cf_list) {
       switch (node->type) {
       case vtn_cf_node_type_block: {
-         struct vtn_block *block = (struct vtn_block *)node;
+         struct vtn_block *block = vtn_cf_node_as_block(node);
 
          const uint32_t *block_start = block->label;
          const uint32_t *block_end = block->merge ? block->merge :
@@ -959,7 +959,7 @@ vtn_emit_cf_list(struct vtn_builder *b, struct list_head *cf_list,
       }
 
       case vtn_cf_node_type_if: {
-         struct vtn_if *vtn_if = (struct vtn_if *)node;
+         struct vtn_if *vtn_if = vtn_cf_node_as_if(node);
          bool sw_break = false;
 
          nir_if *nif =
@@ -998,7 +998,7 @@ vtn_emit_cf_list(struct vtn_builder *b, struct list_head *cf_list,
       }
 
       case vtn_cf_node_type_loop: {
-         struct vtn_loop *vtn_loop = (struct vtn_loop *)node;
+         struct vtn_loop *vtn_loop = vtn_cf_node_as_loop(node);
 
          nir_loop *loop = nir_push_loop(&b->nb);
          loop->control = vtn_loop_control(b, vtn_loop);
@@ -1035,7 +1035,7 @@ vtn_emit_cf_list(struct vtn_builder *b, struct list_head *cf_list,
       }
 
       case vtn_cf_node_type_switch: {
-         struct vtn_switch *vtn_switch = (struct vtn_switch *)node;
+         struct vtn_switch *vtn_switch = vtn_cf_node_as_switch(node);
 
          /* First, we create a variable to keep track of whether or not the
           * switch is still going at any given point.  Any switch breaks

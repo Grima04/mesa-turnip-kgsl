@@ -242,6 +242,22 @@ struct vtn_function {
    SpvFunctionControlMask control;
 };
 
+#define VTN_DECL_CF_NODE_CAST(_type)               \
+static inline struct vtn_##_type *                 \
+vtn_cf_node_as_##_type(struct vtn_cf_node *node)   \
+{                                                  \
+   assert(node->type == vtn_cf_node_type_##_type); \
+   return (struct vtn_##_type *)node;              \
+}
+
+VTN_DECL_CF_NODE_CAST(block)
+VTN_DECL_CF_NODE_CAST(loop)
+VTN_DECL_CF_NODE_CAST(if)
+VTN_DECL_CF_NODE_CAST(switch)
+
+#define vtn_foreach_cf_node(node, cf_list) \
+   list_for_each_entry(struct vtn_cf_node, node, cf_list, link)
+
 typedef bool (*vtn_instruction_handler)(struct vtn_builder *, SpvOp,
                                         const uint32_t *, unsigned);
 
