@@ -657,24 +657,30 @@ _mesa_exec_MultiDrawArrays(GLenum mode, const GLint *first,
          return;
    }
 
+   if (skip_validated_draw(ctx))
+      return;
+
+   struct _mesa_prim *prim;
+
+   ALLOC_PRIMS(prim, primcount, "glMultiDrawElements");
+
    for (i = 0; i < primcount; i++) {
-      if (count[i] > 0) {
-         if (0)
-            check_draw_arrays_data(ctx, first[i], count[i]);
-
-         /* The GL_ARB_shader_draw_parameters spec adds the following after the
-          * pseudo-code describing glMultiDrawArrays:
-          *
-          *    "The index of the draw (<i> in the above pseudo-code) may be
-          *     read by a vertex shader as <gl_DrawIDARB>, as described in
-          *     Section 11.1.3.9."
-          */
-         _mesa_draw_arrays(ctx, mode, first[i], count[i], 1, 0, i);
-
-         if (0)
-            print_draw_arrays(ctx, mode, first[i], count[i]);
-      }
+      prim[i].begin = 1;
+      prim[i].end = 1;
+      prim[i].mode = mode;
+      prim[i].draw_id = i;
+      prim[i].start = first[i];
+      prim[i].count = count[i];
+      prim[i].basevertex = 0;
    }
+
+   ctx->Driver.Draw(ctx, prim, primcount, NULL, GL_FALSE, 0, 0, 1, 0,
+                    NULL, 0);
+
+   if (MESA_DEBUG_FLAGS & DEBUG_ALWAYS_FLUSH)
+      _mesa_flush(ctx);
+
+   FREE_PRIMS(prim, primcount);
 }
 
 
