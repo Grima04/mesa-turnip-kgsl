@@ -1302,8 +1302,8 @@ print_texture_barrier(FILE *fp, uint32_t *word)
 {
         midgard_texture_barrier_word *barrier = (midgard_texture_barrier_word *) word;
 
-        if (barrier->type != 0x4)
-                fprintf(fp, "/* barrier tag %X != 0x4 */ ", barrier->type);
+        if (barrier->type != TAG_TEXTURE_4_BARRIER)
+                fprintf(fp, "/* barrier tag %X != tex/bar */ ", barrier->type);
 
         if (!barrier->cont)
                 fprintf(fp, "/* cont missing? */");
@@ -1356,8 +1356,10 @@ print_texture_word(FILE *fp, uint32_t *word, unsigned tabs, unsigned in_reg_base
         if (texture->op == TEXTURE_OP_BARRIER) {
                 print_texture_barrier(fp, word);
                 return;
-        } else  if (texture->type == 0x4)
-                fprintf (fp, "/* nonbarrier had tag 0x4 */ ");
+        } else if (texture->type == TAG_TEXTURE_4_BARRIER)
+                fprintf (fp, "/* nonbarrier had tex/bar tag */ ");
+        else if (texture->type == TAG_TEXTURE_4_VTX)
+                fprintf (fp, ".vtx");
 
         /* Specific format in question */
         print_texture_format(fp, texture->format);
@@ -1542,7 +1544,6 @@ disassemble_midgard(FILE *fp, uint8_t *code, size_t size, unsigned gpu_id, gl_sh
         while (i < num_words) {
                 unsigned tag = words[i] & 0xF;
                 unsigned next_tag = (words[i] >> 4) & 0xF;
-                fprintf(fp, "\t%X\n", tag);
                 unsigned num_quad_words = midgard_tag_props[tag].size;
 
                 if (midg_tags[i] && midg_tags[i] != tag) {
@@ -1582,6 +1583,17 @@ disassemble_midgard(FILE *fp, uint8_t *code, size_t size, unsigned gpu_id, gl_sh
 
                 last_next_tag = next_tag;
 
+                /* Tags are unique in the following way:
+                 *
+                 * INVALID, BREAK, UNKNOWN_*: verbosely printed
+                 * TEXTURE_4_BARRIER: verified by barrier/!barrier op
+                 * TEXTURE_4_VTX: .vtx tag printed
+                 * TEXTURE_4: tetxure lack of barriers or .vtx
+                 * TAG_LOAD_STORE_4: only load/store
+                 * TAG_ALU_4/8/12/16: by number of instructions/constants
+                 * TAG_ALU_4_8/12/16_WRITEOUT: ^^ with .writeout tag
+                 */
+
                 switch (tag) {
                 case TAG_TEXTURE_4_VTX ... TAG_TEXTURE_4_BARRIER: {
                         bool interpipe_aliasing =
@@ -1603,6 +1615,10 @@ disassemble_midgard(FILE *fp, uint8_t *code, size_t size, unsigned gpu_id, gl_sh
                         /* Reset word static analysis state */
                         is_embedded_constant_half = false;
                         is_embedded_constant_int = false;
+
+                        /* TODO: infer/verify me */
+                        if (tag >= TAG_ALU_4_WRITEOUT)
+                                fprintf(fp, "writeout\n");
 
                         break;
 
