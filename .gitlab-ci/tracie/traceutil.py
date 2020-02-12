@@ -1,4 +1,5 @@
 # Copyright (c) 2019 Collabora Ltd
+# Copyright © 2019 Valve Corporation.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a
 # copy of this software and associated documentation files (the "Software"),
@@ -28,11 +29,13 @@ class TraceType(Enum):
     UNKNOWN = auto()
     APITRACE = auto()
     RENDERDOC = auto()
+    GFXRECONSTRUCT = auto()
     TESTTRACE = auto()
 
 _trace_type_info_map = {
     TraceType.APITRACE : ("apitrace", ".trace"),
     TraceType.RENDERDOC : ("renderdoc", ".rdc"),
+    TraceType.GFXRECONSTRUCT : ("gfxreconstruct", ".gfxr"),
     TraceType.TESTTRACE : ("testtrace", ".testtrace")
 }
 

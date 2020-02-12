@@ -31,6 +31,7 @@ apt-get install -y --no-remove \
       cmake \
       g++ \
       git \
+      git-lfs \
       gcc \
       libexpat1 \
       libgbm-dev \
@@ -60,6 +61,8 @@ apt-get install -y --no-remove \
       patch \
       pkg-config \
       python3-distutils \
+      python3-pil \
+      python3-yaml \
       python \
       xauth \
       xvfb
@@ -87,7 +90,6 @@ apt-get purge -y \
       cmake \
       g++ \
       gcc \
-      git \
       gnupg \
       libgbm-dev \
       libgles2-mesa-dev \
@@ -101,7 +103,6 @@ apt-get purge -y \
       libxrender-dev \
       meson \
       patch \
-      pkg-config \
-      python
+      pkg-config
 
 apt-get autoremove -y --purge
