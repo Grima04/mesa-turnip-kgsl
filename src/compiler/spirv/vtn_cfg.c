@@ -251,6 +251,7 @@ vtn_cfg_handle_prepass_instruction(struct vtn_builder *b, SpvOp opcode,
       vtn_assert(b->func == NULL);
       b->func = rzalloc(b, struct vtn_function);
 
+      b->func->node.type = vtn_cf_node_type_function;
       list_inithead(&b->func->body);
       b->func->control = w[3];
 
@@ -364,7 +365,7 @@ vtn_cfg_handle_prepass_instruction(struct vtn_builder *b, SpvOp opcode,
           * implemented functions that we'll walk later.
           */
          b->func->start_block = b->block;
-         exec_list_push_tail(&b->functions, &b->func->node);
+         list_addtail(&b->func->node.link, &b->functions);
       }
       break;
    }
@@ -756,7 +757,8 @@ vtn_build_cfg(struct vtn_builder *b, const uint32_t *words, const uint32_t *end)
    vtn_foreach_instruction(b, words, end,
                            vtn_cfg_handle_prepass_instruction);
 
-   foreach_list_typed(struct vtn_function, func, node, &b->functions) {
+   vtn_foreach_cf_node(node, &b->functions) {
+      struct vtn_function *func = vtn_cf_node_as_function(node);
       vtn_cfg_walk_blocks(b, &func->body, func->start_block,
                           NULL, NULL, NULL, NULL, NULL);
    }

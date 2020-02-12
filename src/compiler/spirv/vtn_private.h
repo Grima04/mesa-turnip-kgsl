@@ -137,6 +137,7 @@ enum vtn_cf_node_type {
    vtn_cf_node_type_loop,
    vtn_cf_node_type_case,
    vtn_cf_node_type_switch,
+   vtn_cf_node_type_function,
 };
 
 struct vtn_cf_node {
@@ -226,7 +227,7 @@ struct vtn_block {
 };
 
 struct vtn_function {
-   struct exec_node node;
+   struct vtn_cf_node node;
 
    struct vtn_type *type;
 
@@ -256,6 +257,7 @@ VTN_DECL_CF_NODE_CAST(loop)
 VTN_DECL_CF_NODE_CAST(if)
 VTN_DECL_CF_NODE_CAST(case)
 VTN_DECL_CF_NODE_CAST(switch)
+VTN_DECL_CF_NODE_CAST(function)
 
 #define vtn_foreach_cf_node(node, cf_list) \
    list_for_each_entry(struct vtn_cf_node, node, cf_list, link)
@@ -654,7 +656,7 @@ struct vtn_builder {
    bool variable_pointers;
 
    struct vtn_function *func;
-   struct exec_list functions;
+   struct list_head functions;
 
    /* Current function parameter index */
    unsigned func_param_idx;

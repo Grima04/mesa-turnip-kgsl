@@ -5148,7 +5148,7 @@ vtn_create_builder(const uint32_t *words, size_t word_count,
    b->file = NULL;
    b->line = -1;
    b->col = -1;
-   exec_list_make_empty(&b->functions);
+   list_inithead(&b->functions);
    b->entry_point_stage = stage;
    b->entry_point_name = entry_point_name;
    b->options = dup_options;
@@ -5346,7 +5346,8 @@ spirv_to_nir(const uint32_t *words, size_t word_count,
    bool progress;
    do {
       progress = false;
-      foreach_list_typed(struct vtn_function, func, node, &b->functions) {
+      vtn_foreach_cf_node(node, &b->functions) {
+         struct vtn_function *func = vtn_cf_node_as_function(node);
          if (func->referenced && !func->emitted) {
             b->const_table = _mesa_pointer_hash_table_create(b);
 
