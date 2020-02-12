@@ -218,7 +218,7 @@ lima_ctx_dirty(struct lima_context *ctx)
 static inline struct lima_damage_region *
 lima_ctx_get_damage(struct lima_context *ctx)
 {
-   if (!ctx->framebuffer.base.nr_cbufs)
+   if (!(ctx->framebuffer.base.nr_cbufs && (ctx->resolve & PIPE_CLEAR_COLOR0)))
       return NULL;
 
    struct lima_surface *surf = lima_surface(ctx->framebuffer.base.cbufs[0]);
@@ -230,7 +230,7 @@ static bool
 lima_fb_need_reload(struct lima_context *ctx)
 {
    /* Depth buffer is always discarded */
-   if (!ctx->framebuffer.base.nr_cbufs)
+   if (!(ctx->framebuffer.base.nr_cbufs && (ctx->resolve & PIPE_CLEAR_COLOR0)))
       return false;
 
    struct lima_surface *surf = lima_surface(ctx->framebuffer.base.cbufs[0]);
@@ -1914,7 +1914,7 @@ _lima_flush(struct lima_context *ctx, bool end_of_frame)
 
    ctx->plb_index = (ctx->plb_index + 1) % lima_ctx_num_plb;
 
-   if (ctx->framebuffer.base.nr_cbufs) {
+   if (ctx->framebuffer.base.nr_cbufs && (ctx->resolve & PIPE_CLEAR_COLOR0)) {
       /* Set reload flag for next draw. It'll be unset if buffer is cleared */
       struct lima_surface *surf = lima_surface(ctx->framebuffer.base.cbufs[0]);
       surf->reload = true;
