@@ -4172,6 +4172,9 @@ struct gl_constants
    /** Whether the vertex buffer offset is a signed 32-bit integer. */
    bool VertexBufferOffsetIsInt32;
 
+   /** Whether the driver can handle MultiDrawElements with non-VBO indices. */
+   bool MultiDrawWithUserIndices;
+
    /** GL_ARB_gl_spirv */
    struct spirv_supported_capabilities SpirVCapabilities;
 

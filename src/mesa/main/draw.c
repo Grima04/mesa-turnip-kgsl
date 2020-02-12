@@ -1216,12 +1216,18 @@ _mesa_validated_multidrawelements(struct gl_context *ctx, GLenum mode,
       }
    }
 
-   /* If the index buffer isn't in a VBO, then treating the application's
-    * subranges of the index buffer as one large index buffer may lead to
-    * us reading unmapped memory.
-    */
-   if (!_mesa_is_bufferobj(ctx->Array.VAO->IndexBufferObj))
-      fallback = GL_TRUE;
+   if (ctx->Const.MultiDrawWithUserIndices) {
+      /* Check whether prim[i].start would overflow. */
+      if (((max_index_ptr - min_index_ptr) >> ib.index_size_shift) > UINT_MAX)
+         fallback = GL_TRUE;
+   } else {
+      /* If the index buffer isn't in a VBO, then treating the application's
+       * subranges of the index buffer as one large index buffer may lead to
+       * us reading unmapped memory.
+       */
+      if (!_mesa_is_bufferobj(ctx->Array.VAO->IndexBufferObj))
+         fallback = GL_TRUE;
+   }
 
    if (!fallback) {
       struct _mesa_prim *prim;
