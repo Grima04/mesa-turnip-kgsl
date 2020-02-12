@@ -265,13 +265,14 @@ tu_image_view_init(struct tu_image_view *iview,
    iview->vk_format = pCreateInfo->format;
    iview->aspect_mask = pCreateInfo->subresourceRange.aspectMask;
 
-   // should we minify?
-   iview->extent = image->extent;
-
    iview->base_layer = range->baseArrayLayer;
    iview->layer_count = tu_get_layerCount(image, range);
    iview->base_mip = range->baseMipLevel;
    iview->level_count = tu_get_levelCount(image, range);
+
+   iview->extent.width = u_minify(image->extent.width, iview->base_mip);
+   iview->extent.height = u_minify(image->extent.height, iview->base_mip);
+   iview->extent.depth = u_minify(image->extent.depth, iview->base_mip);
 
    memset(iview->descriptor, 0, sizeof(iview->descriptor));
 
@@ -282,10 +283,10 @@ tu_image_view_init(struct tu_image_view *iview,
 
    uint32_t pitch = tu_image_stride(image, iview->base_mip) / vk_format_get_blockwidth(iview->vk_format);
    enum a6xx_tile_mode tile_mode = tu6_get_image_tile_mode(image, iview->base_mip);
-   uint32_t width = u_minify(image->extent.width, iview->base_mip);
-   uint32_t height = u_minify(image->extent.height, iview->base_mip);
+   uint32_t width = iview->extent.width;
+   uint32_t height = iview->extent.height;
    uint32_t depth = pCreateInfo->viewType == VK_IMAGE_VIEW_TYPE_3D ?
-      u_minify(image->extent.depth, iview->base_mip) : iview->layer_count;
+      iview->extent.depth : iview->layer_count;
 
    unsigned fmt_tex = fmt.fmt;
    if (iview->aspect_mask == VK_IMAGE_ASPECT_STENCIL_BIT &&
