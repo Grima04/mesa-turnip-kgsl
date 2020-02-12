@@ -1122,8 +1122,6 @@ shader_variant_compile(struct radv_device *device,
 		bool thread_compiler;
 
 		tm_options |= AC_TM_SUPPORTS_SPILL;
-		if (device->instance->perftest_flags & RADV_PERFTEST_SISCHED)
-			tm_options |= AC_TM_SISCHED;
 		if (options->check_ir)
 			tm_options |= AC_TM_CHECK_IR;
 		if (device->instance->debug_flags & RADV_DEBUG_NO_LOAD_STORE_OPT)
