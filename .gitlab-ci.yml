@@ -646,7 +646,7 @@ test-softpipe-gles31:
     DEQP_VER: gles31
   extends: test-softpipe-gles2
 
-.arm64_a630_gles2:
+arm64_a630_gles2:
   extends:
     - .deqp-test-gl
     - .use-arm_test
@@ -662,18 +662,18 @@ test-softpipe-gles31:
   dependencies:
     - meson-arm64
 
-.arm64_a630_gles31:
-  extends: .arm64_a630_gles2
+arm64_a630_gles31:
+  extends: arm64_a630_gles2
   variables:
     DEQP_VER: gles31
 
-.arm64_a630_gles3:
-  extends: .arm64_a630_gles2
+arm64_a630_gles3:
+  extends: arm64_a630_gles2
   variables:
     DEQP_VER: gles3
 
 arm64_a306_gles2:
-  extends: .arm64_a630_gles2
+  extends: arm64_a630_gles2
   variables:
     DEQP_EXPECTED_FAILS: deqp-freedreno-a307-fails.txt
     DEQP_SKIPS: deqp-default-skips.txt
