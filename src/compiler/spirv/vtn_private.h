@@ -142,6 +142,7 @@ enum vtn_cf_node_type {
 
 struct vtn_cf_node {
    struct list_head link;
+   struct vtn_cf_node *parent;
    enum vtn_cf_node_type type;
 };
 
