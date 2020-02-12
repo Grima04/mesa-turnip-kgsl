@@ -71,7 +71,8 @@ struct _mesa_prim
 struct _mesa_index_buffer
 {
    GLuint count;
-   unsigned index_size;
+   uint8_t index_size;
+   uint8_t index_size_shift; /* logbase2(index_size) */
    struct gl_buffer_object *obj;
    const void *ptr;
 };

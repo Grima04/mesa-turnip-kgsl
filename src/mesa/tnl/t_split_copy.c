@@ -551,6 +551,7 @@ replay_init(struct copy_context *copy)
     */
    copy->dstib.count = 0;        /* duplicates dstelt_nr */
    copy->dstib.index_size = 4;
+   copy->dstib.index_size_shift = 2;
    copy->dstib.obj = ctx->Shared->NullBufferObj;
    copy->dstib.ptr = copy->dstelt;
 }

@@ -104,20 +104,28 @@ check_array_data(struct gl_context *ctx, struct gl_vertex_array_object *vao,
 }
 
 
-static inline int
-sizeof_ib_type(GLenum type)
+static inline void
+get_index_size(GLenum type, struct _mesa_index_buffer *ib)
 {
    switch (type) {
    case GL_UNSIGNED_INT:
-      return sizeof(GLuint);
+      ib->index_size = 4;
+      ib->index_size_shift = 2;
+      break;
    case GL_UNSIGNED_SHORT:
-      return sizeof(GLushort);
+      ib->index_size = 2;
+      ib->index_size_shift = 1;
+      break;
    case GL_UNSIGNED_BYTE:
-      return sizeof(GLubyte);
+      ib->index_size = 1;
+      ib->index_size_shift = 0;
+      break;
    default:
       assert(!"unsupported index data type");
       /* In case assert is turned off */
-      return 0;
+      ib->index_size = 1;
+      ib->index_size_shift = 0;
+      break;
    }
 }
 
@@ -790,9 +798,9 @@ _mesa_validated_drawrangeelements(struct gl_context *ctx, GLenum mode,
       return;
 
    ib.count = count;
-   ib.index_size = sizeof_ib_type(type);
    ib.obj = ctx->Array.VAO->IndexBufferObj;
    ib.ptr = indices;
+   get_index_size(type, &ib);
 
    prim.begin = 1;
    prim.end = 1;
@@ -1186,7 +1194,6 @@ _mesa_validated_multidrawelements(struct gl_context *ctx, GLenum mode,
                                   GLsizei primcount, const GLint *basevertex)
 {
    struct _mesa_index_buffer ib;
-   unsigned int index_type_size = sizeof_ib_type(type);
    uintptr_t min_index_ptr, max_index_ptr;
    GLboolean fallback = GL_FALSE;
    int i;
@@ -1194,12 +1201,14 @@ _mesa_validated_multidrawelements(struct gl_context *ctx, GLenum mode,
    if (primcount == 0)
       return;
 
+   get_index_size(type, &ib);
+
    min_index_ptr = (uintptr_t) indices[0];
    max_index_ptr = 0;
    for (i = 0; i < primcount; i++) {
       min_index_ptr = MIN2(min_index_ptr, (uintptr_t) indices[i]);
       max_index_ptr = MAX2(max_index_ptr, (uintptr_t) indices[i] +
-                           index_type_size * count[i]);
+                           ib.index_size * count[i]);
    }
 
    /* Check if we can handle this thing as a bunch of index offsets from the
@@ -1208,9 +1217,9 @@ _mesa_validated_multidrawelements(struct gl_context *ctx, GLenum mode,
     * Check that the difference between each prim's indexes is a multiple of
     * the index/element size.
     */
-   if (index_type_size != 1) {
+   if (ib.index_size != 1) {
       for (i = 0; i < primcount; i++) {
-         if ((((uintptr_t) indices[i] - min_index_ptr) % index_type_size) !=
+         if ((((uintptr_t) indices[i] - min_index_ptr) % ib.index_size) !=
              0) {
             fallback = GL_TRUE;
             break;
@@ -1230,8 +1239,7 @@ _mesa_validated_multidrawelements(struct gl_context *ctx, GLenum mode,
 
       ALLOC_PRIMS(prim, primcount, "glMultiDrawElements");
 
-      ib.count = (max_index_ptr - min_index_ptr) / index_type_size;
-      ib.index_size = sizeof_ib_type(type);
+      ib.count = (max_index_ptr - min_index_ptr) / ib.index_size;
       ib.obj = ctx->Array.VAO->IndexBufferObj;
       ib.ptr = (void *) min_index_ptr;
 
@@ -1240,7 +1248,7 @@ _mesa_validated_multidrawelements(struct gl_context *ctx, GLenum mode,
          prim[i].end = 1;
          prim[i].mode = mode;
          prim[i].start =
-            ((uintptr_t) indices[i] - min_index_ptr) / index_type_size;
+            ((uintptr_t) indices[i] - min_index_ptr) / ib.index_size;
          prim[i].count = count[i];
          prim[i].draw_id = i;
          if (basevertex != NULL)
@@ -1260,7 +1268,6 @@ _mesa_validated_multidrawelements(struct gl_context *ctx, GLenum mode,
             continue;
 
          ib.count = count[i];
-         ib.index_size = sizeof_ib_type(type);
          ib.obj = ctx->Array.VAO->IndexBufferObj;
          ib.ptr = indices[i];
 
@@ -1511,9 +1518,9 @@ _mesa_validated_drawelementsindirect(struct gl_context *ctx,
    struct _mesa_index_buffer ib;
 
    ib.count = 0;                /* unknown */
-   ib.index_size = sizeof_ib_type(type);
    ib.obj = ctx->Array.VAO->IndexBufferObj;
    ib.ptr = NULL;
+   get_index_size(type, &ib);
 
    ctx->Driver.DrawIndirect(ctx, mode,
                             ctx->DrawIndirectBuffer, (GLsizeiptr) indirect,
@@ -1540,9 +1547,9 @@ _mesa_validated_multidrawelementsindirect(struct gl_context *ctx,
    /* NOTE: IndexBufferObj is guaranteed to be a VBO. */
 
    ib.count = 0;                /* unknown */
-   ib.index_size = sizeof_ib_type(type);
    ib.obj = ctx->Array.VAO->IndexBufferObj;
    ib.ptr = NULL;
+   get_index_size(type, &ib);
 
    ctx->Driver.DrawIndirect(ctx, mode,
                             ctx->DrawIndirectBuffer, offset,
@@ -1853,9 +1860,9 @@ _mesa_validated_multidrawelementsindirectcount(struct gl_context *ctx,
    /* NOTE: IndexBufferObj is guaranteed to be a VBO. */
 
    ib.count = 0;                /* unknown */
-   ib.index_size = sizeof_ib_type(type);
    ib.obj = ctx->Array.VAO->IndexBufferObj;
    ib.ptr = NULL;
+   get_index_size(type, &ib);
 
    ctx->Driver.DrawIndirect(ctx, mode,
                             ctx->DrawIndirectBuffer, offset,

@@ -188,6 +188,7 @@ void t_rebase_prims( struct gl_context *ctx,
       tmp_ib.ptr = tmp_indices;
       tmp_ib.count = ib->count;
       tmp_ib.index_size = ib->index_size;
+      tmp_ib.index_size_shift = ib->index_size_shift;
 
       ib = &tmp_ib;
    }
