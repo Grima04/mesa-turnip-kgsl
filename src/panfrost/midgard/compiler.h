@@ -479,7 +479,7 @@ mir_exit_block(struct compiler_context *ctx)
 static inline bool
 mir_is_alu_bundle(midgard_bundle *bundle)
 {
-        return midgard_word_types[bundle->tag] == midgard_word_type_alu;
+        return IS_ALU(bundle->tag);
 }
 
 /* Registers/SSA are distinguish in the backend by the bottom-most bit */

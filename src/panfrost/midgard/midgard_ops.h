@@ -28,8 +28,7 @@
 
 extern struct mir_op_props alu_opcode_props[256];
 extern struct mir_ldst_op_props load_store_opcode_props[256];
-extern midgard_word_type midgard_word_types[16];
-extern unsigned midgard_word_size[16];
+extern struct mir_tag_props midgard_tag_props[16];
 
 #define OP_IS_STORE(op) (load_store_opcode_props[op].props & LDST_STORE)
 

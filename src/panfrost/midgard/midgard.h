@@ -52,6 +52,25 @@ typedef enum {
         midgard_alu_lut
 } midgard_alu;
 
+enum {
+        TAG_INVALID = 0x0,
+        TAG_BREAK = 0x1,
+        TAG_TEXTURE_4_VTX = 0x2,
+        TAG_TEXTURE_4 = 0x3,
+        TAG_TEXTURE_4_BARRIER = 0x4,
+        TAG_LOAD_STORE_4 = 0x5,
+        TAG_UNKNOWN_1 = 0x6,
+        TAG_UNKNOWN_2 = 0x7,
+        TAG_ALU_4 = 0x8,
+        TAG_ALU_8 = 0x9,
+        TAG_ALU_12 = 0xA,
+        TAG_ALU_16 = 0xB,
+        TAG_ALU_4_WRITEOUT = 0xC,
+        TAG_ALU_8_WRITEOUT = 0xD,
+        TAG_ALU_12_WRITEOUT = 0xE,
+        TAG_ALU_16_WRITEOUT = 0xF
+};
+
 /*
  * ALU words
  */

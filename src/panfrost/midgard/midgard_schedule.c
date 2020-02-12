@@ -1128,7 +1128,7 @@ schedule_block(compiler_context *ctx, midgard_block *block)
                 if (bundle.has_blend_constant)
                         blend_offset = block->quadword_count;
 
-                block->quadword_count += midgard_word_size[bundle.tag];
+                block->quadword_count += midgard_tag_props[bundle.tag].size;
         }
 
         /* We emitted bundles backwards; copy into the block in reverse-order */

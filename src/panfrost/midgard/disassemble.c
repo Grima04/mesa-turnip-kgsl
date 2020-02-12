@@ -49,31 +49,6 @@ static bool is_instruction_int = false;
 
 static struct midgard_disasm_stats midg_stats;
 
-/* Prints a short form of the tag for branching, the minimum needed to be
- * legible and unambiguous */
-
-static void
-print_tag_short(FILE *fp, unsigned tag)
-{
-        switch (midgard_word_types[tag]) {
-        case midgard_word_type_texture:
-                fprintf(fp, "tex/%X", tag);
-                break;
-
-        case midgard_word_type_load_store:
-                fprintf(fp, "ldst");
-                break;
-
-        case midgard_word_type_alu:
-                fprintf(fp, "alu%u/%X", midgard_word_size[tag], tag);
-                break;
-
-        default:
-                fprintf(fp, "%s%X", (tag > 0) ? "" : "unk", tag);
-                break;
-        }
-}
-
 static void
 print_alu_opcode(FILE *fp, midgard_alu_op op)
 {
@@ -822,8 +797,8 @@ print_compact_branch_writeout_field(FILE *fp, uint16_t word)
                 if (br_uncond.offset >= 0)
                         fprintf(fp, "+");
 
-                fprintf(fp, "%d -> ", br_uncond.offset);
-                print_tag_short(fp, br_uncond.dest_tag);
+                fprintf(fp, "%d -> %s", br_uncond.offset,
+                                midgard_tag_props[br_uncond.dest_tag].name);
                 fprintf(fp, "\n");
 
                 return br_uncond.offset >= 0;
@@ -846,8 +821,8 @@ print_compact_branch_writeout_field(FILE *fp, uint16_t word)
                 if (br_cond.offset >= 0)
                         fprintf(fp, "+");
 
-                fprintf(fp, "%d -> ", br_cond.offset);
-                print_tag_short(fp, br_cond.dest_tag);
+                fprintf(fp, "%d -> %s", br_cond.offset,
+                                midgard_tag_props[br_cond.dest_tag].name);
                 fprintf(fp, "\n");
 
                 return br_cond.offset >= 0;
@@ -888,18 +863,15 @@ print_extended_branch_writeout_field(FILE *fp, uint8_t *words, unsigned next)
         if (br.offset >= 0)
                 fprintf(fp, "+");
 
-        fprintf(fp, "%d -> ", br.offset);
-        print_tag_short(fp, br.dest_tag);
-        fprintf(fp, "\n");
+        fprintf(fp, "%d -> %s\n", br.offset,
+                        midgard_tag_props[br.dest_tag].name);
 
         unsigned I = next + br.offset * 4;
 
         if (midg_tags[I] && midg_tags[I] != br.dest_tag) {
-                fprintf(fp, "\t/* XXX TAG ERROR: jumping to ");
-                print_tag_short(fp, br.dest_tag);
-                fprintf(fp, " but tagged ");
-                print_tag_short(fp, midg_tags[I]);
-                fprintf(fp, " */\n");
+                fprintf(fp, "\t/* XXX TAG ERROR: jumping to %s but tagged %s \n",
+                        midgard_tag_props[br.dest_tag].name,
+                        midgard_tag_props[midg_tags[I]].name);
         }
 
         midg_tags[I] = br.dest_tag;
@@ -1571,35 +1543,27 @@ disassemble_midgard(FILE *fp, uint8_t *code, size_t size, unsigned gpu_id, gl_sh
                 unsigned tag = words[i] & 0xF;
                 unsigned next_tag = (words[i] >> 4) & 0xF;
                 fprintf(fp, "\t%X -> %X\n", tag, next_tag);
-                unsigned num_quad_words = midgard_word_size[tag];
+                unsigned num_quad_words = midgard_tag_props[tag].size;
 
                 if (midg_tags[i] && midg_tags[i] != tag) {
-                        fprintf(fp, "\t/* XXX: TAG ERROR branch, got ");
-                        print_tag_short(fp, tag);
-                        fprintf(fp, " expected ");
-                        print_tag_short(fp, midg_tags[i]);
-                        fprintf(fp, " */\n");
+                        fprintf(fp, "\t/* XXX: TAG ERROR branch, got %s expected %s */\n",
+                                        midgard_tag_props[tag].name,
+                                        midgard_tag_props[midg_tags[i]].name);
                 }
 
                 midg_tags[i] = tag;
 
                 /* Check the tag */
-                if (last_next_tag > 1) {
-                        if (last_next_tag != tag) {
-                                fprintf(fp, "\t/* XXX: TAG ERROR sequence, got ");
-                                print_tag_short(fp, tag);
-                                fprintf(fp, " expected ");
-                                print_tag_short(fp, last_next_tag);
-                                fprintf(fp, " */\n");
-                        }
-                } else {
-                        /* TODO: Check ALU case */
+                if (last_next_tag > TAG_BREAK && last_next_tag != tag) {
+                        fprintf(fp, "\t/* XXX: TAG ERROR sequence, got %s expexted %s */\n",
+                                        midgard_tag_props[tag].name,
+                                        midgard_tag_props[last_next_tag].name);
                 }
 
                 last_next_tag = next_tag;
 
-                switch (midgard_word_types[tag]) {
-                case midgard_word_type_texture: {
+                switch (tag) {
+                case TAG_TEXTURE_4_VTX ... TAG_TEXTURE_4_BARRIER: {
                         bool interpipe_aliasing =
                                 midgard_get_quirks(gpu_id) & MIDGARD_INTERPIPE_REG_ALIASING;
 
@@ -1609,11 +1573,11 @@ disassemble_midgard(FILE *fp, uint8_t *code, size_t size, unsigned gpu_id, gl_sh
                         break;
                 }
 
-                case midgard_word_type_load_store:
+                case TAG_LOAD_STORE_4:
                         print_load_store_word(fp, &words[i], tabs);
                         break;
 
-                case midgard_word_type_alu:
+                case TAG_ALU_4 ... TAG_ALU_16_WRITEOUT:
                         branch_forward = print_alu_word(fp, &words[i], num_quad_words, tabs, i + 4*num_quad_words);
 
                         /* Reset word static analysis state */
@@ -1629,6 +1593,9 @@ disassemble_midgard(FILE *fp, uint8_t *code, size_t size, unsigned gpu_id, gl_sh
                         fprintf(fp, "\n");
                         break;
                 }
+
+                if (next_tag == 1)
+                        fprintf(fp, "\n");
 
                 /* We are parsing per bundle anyway. Add before we start
                  * breaking out so we don't miss the final bundle. */

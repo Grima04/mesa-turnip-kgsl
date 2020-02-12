@@ -127,17 +127,6 @@
 #define UNIT_ADD 1
 #define UNIT_LUT 2
 
-/* 4-bit type tags */
-
-#define TAG_TEXTURE_4_VTX 0x2
-#define TAG_TEXTURE_4 0x3
-#define TAG_TEXTURE_4_BARRIER 0x4
-#define TAG_LOAD_STORE_4 0x5
-#define TAG_ALU_4 0x8
-#define TAG_ALU_8 0x9
-#define TAG_ALU_12 0xA
-#define TAG_ALU_16 0xB
-
 #define IS_ALU(tag) (tag >= TAG_ALU_4)
 
 /* Special register aliases */
@@ -221,6 +210,11 @@ struct mir_op_props {
 struct mir_ldst_op_props {
         const char *name;
         unsigned props;
+};
+
+struct mir_tag_props {
+        const char *name;
+        unsigned size;
 };
 
 /* Lower 2-bits are a midgard_reg_mode */

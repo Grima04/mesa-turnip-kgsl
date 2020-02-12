@@ -588,7 +588,7 @@ mir_insert_instruction_before_scheduled(
         memcpy(bundles + before, &new, sizeof(new));
 
         list_addtail(&new.instructions[0]->link, &before_bundle->instructions[0]->link);
-        block->quadword_count += midgard_word_size[new.tag];
+        block->quadword_count += midgard_tag_props[new.tag].size;
 }
 
 void
@@ -613,7 +613,7 @@ mir_insert_instruction_after_scheduled(
         midgard_bundle new = mir_bundle_for_op(ctx, ins);
         memcpy(bundles + after + 1, &new, sizeof(new));
         list_add(&new.instructions[0]->link, &after_bundle->instructions[after_bundle->instruction_count - 1]->link);
-        block->quadword_count += midgard_word_size[new.tag];
+        block->quadword_count += midgard_tag_props[new.tag].size;
 }
 
 /* Flip the first-two arguments of a (binary) op. Currently ALU
