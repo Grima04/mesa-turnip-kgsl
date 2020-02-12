@@ -58,7 +58,7 @@ ok_dims(const struct pipe_resource *r, const struct pipe_box *b, int lvl)
 static bool
 ok_format(enum pipe_format pfmt)
 {
-	enum a6xx_color_fmt fmt = fd6_pipe2color(pfmt);
+	enum a6xx_format fmt = fd6_pipe2color(pfmt);
 
 	switch (pfmt) {
 	case PIPE_FORMAT_Z24_UNORM_S8_UINT:
@@ -159,7 +159,7 @@ emit_setup(struct fd_batch *batch)
 }
 
 static uint32_t
-blit_control(enum a6xx_color_fmt fmt, bool is_srgb)
+blit_control(enum a6xx_format fmt, bool is_srgb)
 {
 	enum a6xx_2d_ifmt ifmt = fd6_ifmt(fmt);
 
@@ -233,7 +233,7 @@ emit_blit_buffer(struct fd_context *ctx, struct fd_ringbuffer *ring,
 	OUT_PKT7(ring, CP_SET_MARKER, 1);
 	OUT_RING(ring, A6XX_CP_SET_MARKER_0_MODE(RM6_BLIT2DSCALE));
 
-	uint32_t blit_cntl = blit_control(RB6_R8_UNORM, false) | 0x20000000;
+	uint32_t blit_cntl = blit_control(FMT6_8_UNORM, false) | 0x20000000;
 	OUT_PKT4(ring, REG_A6XX_RB_2D_BLIT_CNTL, 1);
 	OUT_RING(ring, blit_cntl);
 
@@ -256,7 +256,7 @@ emit_blit_buffer(struct fd_context *ctx, struct fd_ringbuffer *ring,
 		 * Emit source:
 		 */
 		OUT_PKT4(ring, REG_A6XX_SP_PS_2D_SRC_INFO, 10);
-		OUT_RING(ring, A6XX_SP_PS_2D_SRC_INFO_COLOR_FORMAT(RB6_R8_UNORM) |
+		OUT_RING(ring, A6XX_SP_PS_2D_SRC_INFO_COLOR_FORMAT(FMT6_8_UNORM) |
 				A6XX_SP_PS_2D_SRC_INFO_TILE_MODE(TILE6_LINEAR) |
 				 A6XX_SP_PS_2D_SRC_INFO_COLOR_SWAP(WZYX) |
 				 0x500000);
@@ -275,7 +275,7 @@ emit_blit_buffer(struct fd_context *ctx, struct fd_ringbuffer *ring,
 		 * Emit destination:
 		 */
 		OUT_PKT4(ring, REG_A6XX_RB_2D_DST_INFO, 9);
-		OUT_RING(ring, A6XX_RB_2D_DST_INFO_COLOR_FORMAT(RB6_R8_UNORM) |
+		OUT_RING(ring, A6XX_RB_2D_DST_INFO_COLOR_FORMAT(FMT6_8_UNORM) |
 				 A6XX_RB_2D_DST_INFO_TILE_MODE(TILE6_LINEAR) |
 				 A6XX_RB_2D_DST_INFO_COLOR_SWAP(WZYX));
 		OUT_RELOCW(ring, dst->bo, doff, 0, 0);    /* RB_2D_DST_LO/HI */
@@ -330,7 +330,7 @@ emit_blit_or_clear_texture(struct fd_context *ctx, struct fd_ringbuffer *ring,
 	const struct pipe_box *dbox = &info->dst.box;
 	struct fd_resource *src, *dst;
 	struct fdl_slice *sslice, *dslice;
-	enum a6xx_color_fmt sfmt, dfmt;
+	enum a6xx_format sfmt, dfmt;
 	enum a6xx_tile_mode stile, dtile;
 	enum a3xx_color_swap sswap, dswap;
 	unsigned spitch, dpitch;
@@ -404,7 +404,7 @@ emit_blit_or_clear_texture(struct fd_context *ctx, struct fd_ringbuffer *ring,
 			color->ui[2] = (depth_unorm24 >> 16) & 0xff;
 			color->ui[3] = stencil;
 
-			dfmt = RB6_Z24_UNORM_S8_UINT_AS_R8G8B8A8;
+			dfmt = FMT6_Z24_UNORM_S8_UINT_AS_R8G8B8A8;
 			break;
 		}
 		case PIPE_FORMAT_B5G6R5_UNORM:
@@ -435,7 +435,7 @@ emit_blit_or_clear_texture(struct fd_context *ctx, struct fd_ringbuffer *ring,
 			OUT_RING(ring, _mesa_float_to_half(color->f[1]));
 			OUT_RING(ring, _mesa_float_to_half(color->f[2]));
 			OUT_RING(ring, _mesa_float_to_half(color->f[3]));
-			sfmt = RB6_R16G16B16A16_FLOAT;
+			sfmt = FMT6_16_16_16_16_FLOAT;
 			break;
 
 		case R2D_FLOAT32:
@@ -485,8 +485,8 @@ emit_blit_or_clear_texture(struct fd_context *ctx, struct fd_ringbuffer *ring,
 
 		enum a3xx_msaa_samples samples = fd_msaa_samples(src->base.nr_samples);
 
-		if (sfmt == RB6_R10G10B10A2_UNORM)
-			sfmt = RB6_R10G10B10A2_FLOAT16;
+		if (sfmt == FMT6_10_10_10_2_UNORM_DEST)
+			sfmt = FMT6_10_10_10_2_UNORM;
 
 		OUT_PKT4(ring, REG_A6XX_SP_PS_2D_SRC_INFO, 10);
 		OUT_RING(ring, A6XX_SP_PS_2D_SRC_INFO_COLOR_FORMAT(sfmt) |
@@ -562,8 +562,8 @@ emit_blit_or_clear_texture(struct fd_context *ctx, struct fd_ringbuffer *ring,
 		OUT_PKT4(ring, REG_A6XX_RB_UNKNOWN_8C01, 1);
 		OUT_RING(ring, 0);
 
-		if (dfmt == RB6_R10G10B10A2_UNORM)
-			sfmt = RB6_R16G16B16A16_FLOAT;
+		if (dfmt == FMT6_10_10_10_2_UNORM_DEST)
+			sfmt = FMT6_16_16_16_16_FLOAT;
 
 		/* This register is probably badly named... it seems that it's
 		 * controlling the internal/accumulator format or something like

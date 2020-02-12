@@ -80,7 +80,7 @@ emit_mrt(struct fd_ringbuffer *ring, struct pipe_framebuffer_state *pfb,
 	unsigned type = 0;
 
 	for (i = 0; i < pfb->nr_cbufs; i++) {
-		enum a6xx_color_fmt format = 0;
+		enum a6xx_format format = 0;
 		enum a3xx_color_swap swap = WZYX;
 		bool sint = false, uint = false;
 		struct fd_resource *rsc = NULL;
@@ -957,7 +957,7 @@ emit_blit(struct fd_batch *batch,
 
 	debug_assert(psurf->u.tex.first_layer == psurf->u.tex.last_layer);
 
-	enum a6xx_color_fmt format = fd6_pipe2color(pfmt);
+	enum a6xx_format format = fd6_pipe2color(pfmt);
 	uint32_t stride = slice->pitch * rsc->layout.cpp;
 	uint32_t size = slice->size0;
 	enum a3xx_color_swap swap = fd6_resource_swap(rsc, pfmt);
@@ -1134,7 +1134,7 @@ emit_clears(struct fd_batch *batch, struct fd_ringbuffer *ring)
 		OUT_PKT4(ring, REG_A6XX_RB_BLIT_DST_INFO, 1);
 		OUT_RING(ring, A6XX_RB_BLIT_DST_INFO_TILE_MODE(TILE6_LINEAR) |
 				 A6XX_RB_BLIT_DST_INFO_SAMPLES(samples) |
-				 A6XX_RB_BLIT_DST_INFO_COLOR_FORMAT(RB6_R8_UINT));
+				 A6XX_RB_BLIT_DST_INFO_COLOR_FORMAT(FMT6_8_UINT));
 
 		OUT_PKT4(ring, REG_A6XX_RB_BLIT_INFO, 1);
 		OUT_RING(ring, A6XX_RB_BLIT_INFO_GMEM |

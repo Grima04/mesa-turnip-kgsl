@@ -59,32 +59,32 @@ ok_ubwc_format(struct fd_resource *rsc, enum pipe_format pfmt)
 		return false;
 
 	switch (fd6_pipe2color(pfmt)) {
-	case RB6_R10G10B10A2_UINT:
-	case RB6_R10G10B10A2_UNORM:
-	case RB6_R11G11B10_FLOAT:
-	case RB6_R16_FLOAT:
-	case RB6_R16G16B16A16_FLOAT:
-	case RB6_R16G16B16A16_SINT:
-	case RB6_R16G16B16A16_UINT:
-	case RB6_R16G16_FLOAT:
-	case RB6_R16G16_SINT:
-	case RB6_R16G16_UINT:
-	case RB6_R16_SINT:
-	case RB6_R16_UINT:
-	case RB6_R32G32B32A32_SINT:
-	case RB6_R32G32B32A32_UINT:
-	case RB6_R32G32_SINT:
-	case RB6_R32G32_UINT:
-	case RB6_R5G6B5_UNORM:
-	case RB6_R8G8B8A8_SINT:
-	case RB6_R8G8B8A8_UINT:
-	case RB6_R8G8B8A8_UNORM:
-	case RB6_R8G8B8X8_UNORM:
-	case RB6_R8G8_SINT:
-	case RB6_R8G8_UINT:
-	case RB6_R8G8_UNORM:
-	case RB6_Z24_UNORM_S8_UINT:
-	case RB6_Z24_UNORM_S8_UINT_AS_R8G8B8A8:
+	case FMT6_10_10_10_2_UINT:
+	case FMT6_10_10_10_2_UNORM_DEST:
+	case FMT6_11_11_10_FLOAT:
+	case FMT6_16_FLOAT:
+	case FMT6_16_16_16_16_FLOAT:
+	case FMT6_16_16_16_16_SINT:
+	case FMT6_16_16_16_16_UINT:
+	case FMT6_16_16_FLOAT:
+	case FMT6_16_16_SINT:
+	case FMT6_16_16_UINT:
+	case FMT6_16_SINT:
+	case FMT6_16_UINT:
+	case FMT6_32_32_32_32_SINT:
+	case FMT6_32_32_32_32_UINT:
+	case FMT6_32_32_SINT:
+	case FMT6_32_32_UINT:
+	case FMT6_5_6_5_UNORM:
+	case FMT6_8_8_8_8_SINT:
+	case FMT6_8_8_8_8_UINT:
+	case FMT6_8_8_8_8_UNORM:
+	case FMT6_8_8_8_X8_UNORM:
+	case FMT6_8_8_SINT:
+	case FMT6_8_8_UINT:
+	case FMT6_8_8_UNORM:
+	case FMT6_Z24_UNORM_S8_UINT:
+	case FMT6_Z24_UNORM_S8_UINT_AS_R8G8B8A8:
 		return true;
 	default:
 		return false;

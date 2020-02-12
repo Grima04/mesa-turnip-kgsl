@@ -289,7 +289,7 @@ tu_image_view_init(struct tu_image_view *iview,
    unsigned fmt_tex = fmt->tex;
    if (iview->aspect_mask == VK_IMAGE_ASPECT_STENCIL_BIT &&
        iview->vk_format == VK_FORMAT_D24_UNORM_S8_UINT)
-      fmt_tex = TFMT6_S8Z24_UINT;
+      fmt_tex = FMT6_S8Z24_UINT;
 
    iview->descriptor[0] =
       A6XX_TEX_CONST_0_TILE_MODE(tile_mode) |

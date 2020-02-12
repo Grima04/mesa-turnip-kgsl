@@ -652,7 +652,7 @@ build_vbo_state(struct fd6_emit *emit, const struct ir3_shader_variant *vp)
 					&vtx->vertexbuf.vb[elem->vertex_buffer_index];
 			struct fd_resource *rsc = fd_resource(vb->buffer.resource);
 			enum pipe_format pfmt = elem->src_format;
-			enum a6xx_vtx_fmt fmt = fd6_pipe2vtx(pfmt);
+			enum a6xx_format fmt = fd6_pipe2vtx(pfmt);
 			bool isint = util_format_is_pure_integer(pfmt);
 			uint32_t off = vb->buffer_offset + elem->src_offset;
 			uint32_t size = fd_bo_size(rsc->bo) - off;

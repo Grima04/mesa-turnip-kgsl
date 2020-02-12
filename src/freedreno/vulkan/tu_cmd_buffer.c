@@ -2978,7 +2978,7 @@ tu6_emit_ibo(struct tu_cmd_buffer *cmd,
          /* We don't expose robustBufferAccess, so leave the size unlimited. */
          uint32_t sz = MAX_STORAGE_BUFFER_RANGE / 4;
 
-         dst[0] = A6XX_IBO_0_FMT(TFMT6_32_UINT);
+         dst[0] = A6XX_IBO_0_FMT(FMT6_32_UINT);
          dst[1] = A6XX_IBO_1_WIDTH(sz & MASK(15)) |
                   A6XX_IBO_1_HEIGHT(sz >> 15);
          dst[2] = A6XX_IBO_2_UNK4 |

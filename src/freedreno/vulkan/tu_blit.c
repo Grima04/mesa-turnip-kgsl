@@ -61,12 +61,12 @@ static uint32_t
 blit_image_info(const struct tu_blit_surf *img, bool src, bool stencil_read)
 {
    const struct tu_native_format *fmt = tu6_get_native_format(img->fmt);
-   enum a6xx_color_fmt rb = fmt->rb;
+   enum a6xx_format rb = fmt->rb;
    enum a3xx_color_swap swap = img->tiled ? WZYX : fmt->swap;
-   if (rb == RB6_R10G10B10A2_UNORM && src)
-      rb = RB6_R10G10B10A2_FLOAT16;
-   if (rb == RB6_Z24_UNORM_S8_UINT)
-      rb = RB6_Z24_UNORM_S8_UINT_AS_R8G8B8A8;
+   if (rb == FMT6_10_10_10_2_UNORM_DEST && src)
+      rb = FMT6_10_10_10_2_UNORM;
+   if (rb == FMT6_Z24_UNORM_S8_UINT)
+      rb = FMT6_Z24_UNORM_S8_UINT_AS_R8G8B8A8;
 
    if (stencil_read)
       swap = XYZW;
@@ -85,11 +85,11 @@ emit_blit_step(struct tu_cmd_buffer *cmdbuf, const struct tu_blit *blt)
 
    tu_cs_reserve_space(cmdbuf->device, cs, 66);
 
-   enum a6xx_color_fmt fmt = tu6_get_native_format(blt->dst.fmt)->rb;
-   if (fmt == RB6_Z24_UNORM_S8_UINT)
-      fmt = RB6_Z24_UNORM_S8_UINT_AS_R8G8B8A8;
+   enum a6xx_format fmt = tu6_get_native_format(blt->dst.fmt)->rb;
+   if (fmt == FMT6_Z24_UNORM_S8_UINT)
+      fmt = FMT6_Z24_UNORM_S8_UINT_AS_R8G8B8A8;
 
-   enum a6xx_2d_ifmt ifmt = tu6_rb_fmt_to_ifmt(fmt);
+   enum a6xx_2d_ifmt ifmt = tu6_fmt_to_ifmt(fmt);
 
    if (vk_format_is_srgb(blt->dst.fmt)) {
       assert(ifmt == R2D_UNORM8);
@@ -99,7 +99,7 @@ emit_blit_step(struct tu_cmd_buffer *cmdbuf, const struct tu_blit *blt)
    uint32_t blit_cntl = A6XX_RB_2D_BLIT_CNTL_ROTATE(blt->rotation) |
                         COND(blt->type == TU_BLIT_CLEAR, A6XX_RB_2D_BLIT_CNTL_SOLID_COLOR) |
                         A6XX_RB_2D_BLIT_CNTL_COLOR_FORMAT(fmt) | /* not required? */
-                        COND(fmt == RB6_Z24_UNORM_S8_UINT_AS_R8G8B8A8, A6XX_RB_2D_BLIT_CNTL_D24S8) |
+                        COND(fmt == FMT6_Z24_UNORM_S8_UINT_AS_R8G8B8A8, A6XX_RB_2D_BLIT_CNTL_D24S8) |
                         A6XX_RB_2D_BLIT_CNTL_MASK(0xf) |
                         A6XX_RB_2D_BLIT_CNTL_IFMT(ifmt);
 
@@ -190,8 +190,8 @@ emit_blit_step(struct tu_cmd_buffer *cmdbuf, const struct tu_blit *blt)
    tu_cs_emit_pkt4(cs, REG_A6XX_RB_UNKNOWN_8C01, 1);
    tu_cs_emit(cs, 0);
 
-   if (fmt == RB6_R10G10B10A2_UNORM)
-      fmt = RB6_R16G16B16A16_FLOAT;
+   if (fmt == FMT6_10_10_10_2_UNORM_DEST)
+      fmt = FMT6_16_16_16_16_FLOAT;
 
    tu_cs_emit_pkt4(cs, REG_A6XX_SP_2D_SRC_FORMAT, 1);
    tu_cs_emit(cs, COND(vk_format_is_sint(blt->src.fmt), A6XX_SP_2D_SRC_FORMAT_SINT) |

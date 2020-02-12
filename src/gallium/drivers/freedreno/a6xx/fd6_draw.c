@@ -397,11 +397,11 @@ fd6_clear_lrz(struct fd_batch *batch, struct fd_resource *zsbuf, double depth)
 	OUT_RING(ring, 0x0000f410);
 
 	OUT_PKT4(ring, REG_A6XX_GRAS_2D_BLIT_CNTL, 1);
-	OUT_RING(ring, A6XX_GRAS_2D_BLIT_CNTL_COLOR_FORMAT(RB6_R16_UNORM) |
+	OUT_RING(ring, A6XX_GRAS_2D_BLIT_CNTL_COLOR_FORMAT(FMT6_16_UNORM) |
 			0x4f00080);
 
 	OUT_PKT4(ring, REG_A6XX_RB_2D_BLIT_CNTL, 1);
-	OUT_RING(ring, A6XX_RB_2D_BLIT_CNTL_COLOR_FORMAT(RB6_R16_UNORM) |
+	OUT_RING(ring, A6XX_RB_2D_BLIT_CNTL_COLOR_FORMAT(FMT6_16_UNORM) |
 			0x4f00080);
 
 	fd6_event_write(batch, ring, UNK_1D, true);
@@ -414,7 +414,7 @@ fd6_clear_lrz(struct fd_batch *batch, struct fd_resource *zsbuf, double depth)
 	OUT_RING(ring, 0x00000000);
 
 	OUT_PKT4(ring, REG_A6XX_RB_2D_DST_INFO, 9);
-	OUT_RING(ring, A6XX_RB_2D_DST_INFO_COLOR_FORMAT(RB6_R16_UNORM) |
+	OUT_RING(ring, A6XX_RB_2D_DST_INFO_COLOR_FORMAT(FMT6_16_UNORM) |
 			A6XX_RB_2D_DST_INFO_TILE_MODE(TILE6_LINEAR) |
 			A6XX_RB_2D_DST_INFO_COLOR_SWAP(WZYX));
 	OUT_RELOCW(ring, zsbuf->lrz, 0, 0, 0);

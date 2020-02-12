@@ -38,7 +38,7 @@
 struct fd6_image {
 	struct pipe_resource *prsc;
 	enum pipe_format pfmt;
-	enum a6xx_tex_fmt fmt;
+	enum a6xx_format fmt;
 	enum a6xx_tex_fetchsize fetchsize;
 	enum a6xx_tex_type type;
 	bool srgb;
