@@ -360,7 +360,6 @@ _mesa_draw_arrays(struct gl_context *ctx, GLenum mode, GLint start,
    /* OpenGL 4.5 says that primitive restart is ignored with non-indexed
     * draws.
     */
-   memset(&prim, 0, sizeof(prim));
    prim.begin = 1;
    prim.end = 1;
    prim.mode = mode;
@@ -369,6 +368,7 @@ _mesa_draw_arrays(struct gl_context *ctx, GLenum mode, GLint start,
    prim.draw_id = drawID;
    prim.start = start;
    prim.count = count;
+   prim.basevertex = 0;
 
    ctx->Driver.Draw(ctx, &prim, 1, NULL,
                     GL_TRUE, start, start + count - 1, NULL, 0, NULL);
