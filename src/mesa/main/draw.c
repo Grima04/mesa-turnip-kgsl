@@ -608,6 +608,28 @@ _mesa_exec_DrawArraysInstancedBaseInstance(GLenum mode, GLint first,
 }
 
 
+#define MAX_ALLOCA_PRIMS (50000 / sizeof(*prim))
+
+/* Use calloc for large allocations and alloca for small allocations. */
+/* We have to use a macro because alloca is local within the function. */
+#define ALLOC_PRIMS(prim, primcount, func) do { \
+   if (unlikely(primcount > MAX_ALLOCA_PRIMS)) { \
+      prim = calloc(primcount, sizeof(*prim)); \
+      if (!prim) { \
+         _mesa_error(ctx, GL_OUT_OF_MEMORY, func); \
+         return; \
+      } \
+   } else { \
+      prim = alloca(primcount * sizeof(*prim)); \
+   } \
+} while (0)
+
+#define FREE_PRIMS(prim, primcount) do { \
+   if (primcount > MAX_ALLOCA_PRIMS) \
+      free(prim); \
+} while (0)
+
+
 /**
  * Called from glMultiDrawArrays when in immediate mode.
  */
@@ -1158,7 +1180,6 @@ _mesa_validated_multidrawelements(struct gl_context *ctx, GLenum mode,
                                   GLsizei primcount, const GLint *basevertex)
 {
    struct _mesa_index_buffer ib;
-   struct _mesa_prim *prim;
    unsigned int index_type_size = sizeof_ib_type(type);
    uintptr_t min_index_ptr, max_index_ptr;
    GLboolean fallback = GL_FALSE;
@@ -1166,12 +1187,6 @@ _mesa_validated_multidrawelements(struct gl_context *ctx, GLenum mode,
 
    if (primcount == 0)
       return;
-
-   prim = calloc(primcount, sizeof(*prim));
-   if (prim == NULL) {
-      _mesa_error(ctx, GL_OUT_OF_MEMORY, "glMultiDrawElements");
-      return;
-   }
 
    min_index_ptr = (uintptr_t) indices[0];
    max_index_ptr = 0;
@@ -1215,6 +1230,10 @@ _mesa_validated_multidrawelements(struct gl_context *ctx, GLenum mode,
       fallback = GL_TRUE;
 
    if (!fallback) {
+      struct _mesa_prim *prim;
+
+      ALLOC_PRIMS(prim, primcount, "glMultiDrawElements");
+
       ib.count = (max_index_ptr - min_index_ptr) / index_type_size;
       ib.index_size = sizeof_ib_type(type);
       ib.obj = ctx->Array.VAO->IndexBufferObj;
@@ -1236,33 +1255,34 @@ _mesa_validated_multidrawelements(struct gl_context *ctx, GLenum mode,
 
       ctx->Driver.Draw(ctx, prim, primcount, &ib,
                        false, 0, ~0, 1, 0, NULL, 0);
+      FREE_PRIMS(prim, primcount);
    }
    else {
       /* render one prim at a time */
       for (i = 0; i < primcount; i++) {
          if (count[i] == 0)
             continue;
+
          ib.count = count[i];
          ib.index_size = sizeof_ib_type(type);
          ib.obj = ctx->Array.VAO->IndexBufferObj;
          ib.ptr = indices[i];
 
-         prim[0].begin = 1;
-         prim[0].end = 1;
-         prim[0].mode = mode;
-         prim[0].start = 0;
-         prim[0].count = count[i];
-         prim[0].draw_id = i;
+         struct _mesa_prim prim;
+         prim.begin = 1;
+         prim.end = 1;
+         prim.mode = mode;
+         prim.start = 0;
+         prim.count = count[i];
+         prim.draw_id = i;
          if (basevertex != NULL)
-            prim[0].basevertex = basevertex[i];
+            prim.basevertex = basevertex[i];
          else
-            prim[0].basevertex = 0;
+            prim.basevertex = 0;
 
-         ctx->Driver.Draw(ctx, prim, 1, &ib, false, 0, ~0, 1, 0, NULL, 0);
+         ctx->Driver.Draw(ctx, &prim, 1, &ib, false, 0, ~0, 1, 0, NULL, 0);
       }
    }
-
-   free(prim);
 
    if (MESA_DEBUG_FLAGS & DEBUG_ALWAYS_FLUSH) {
       _mesa_flush(ctx);
