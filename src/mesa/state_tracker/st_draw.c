@@ -217,7 +217,7 @@ st_draw_vbo(struct gl_context *ctx,
          if (!info.index.resource)
             return;
 
-         start = pointer_to_offset(ib->ptr) / info.index_size;
+         start = pointer_to_offset(ib->ptr) >> ib->index_size_shift;
       } else {
          /* indices are in user space memory */
          info.has_user_indices = true;
@@ -299,7 +299,7 @@ st_indirect_draw_vbo(struct gl_context *ctx,
 
       info.index_size = ib->index_size;
       info.index.resource = st_buffer_object(bufobj)->buffer;
-      info.start = pointer_to_offset(ib->ptr) / info.index_size;
+      info.start = pointer_to_offset(ib->ptr) >> ib->index_size_shift;
 
       /* Primitive restart is not handled by the VBO module in this case. */
       setup_primitive_restart(ctx, &info);

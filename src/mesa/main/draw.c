@@ -1208,7 +1208,7 @@ _mesa_validated_multidrawelements(struct gl_context *ctx, GLenum mode,
    for (i = 0; i < primcount; i++) {
       min_index_ptr = MIN2(min_index_ptr, (uintptr_t) indices[i]);
       max_index_ptr = MAX2(max_index_ptr, (uintptr_t) indices[i] +
-                           ib.index_size * count[i]);
+                           (count[i] << ib.index_size_shift));
    }
 
    /* Check if we can handle this thing as a bunch of index offsets from the
@@ -1217,10 +1217,10 @@ _mesa_validated_multidrawelements(struct gl_context *ctx, GLenum mode,
     * Check that the difference between each prim's indexes is a multiple of
     * the index/element size.
     */
-   if (ib.index_size != 1) {
+   if (ib.index_size_shift) {
       for (i = 0; i < primcount; i++) {
-         if ((((uintptr_t) indices[i] - min_index_ptr) % ib.index_size) !=
-             0) {
+         if ((((uintptr_t) indices[i] - min_index_ptr) &
+              ((1 << ib.index_size_shift) - 1)) != 0) {
             fallback = GL_TRUE;
             break;
          }
@@ -1239,7 +1239,7 @@ _mesa_validated_multidrawelements(struct gl_context *ctx, GLenum mode,
 
       ALLOC_PRIMS(prim, primcount, "glMultiDrawElements");
 
-      ib.count = (max_index_ptr - min_index_ptr) / ib.index_size;
+      ib.count = (max_index_ptr - min_index_ptr) >> ib.index_size_shift;
       ib.obj = ctx->Array.VAO->IndexBufferObj;
       ib.ptr = (void *) min_index_ptr;
 
@@ -1248,7 +1248,7 @@ _mesa_validated_multidrawelements(struct gl_context *ctx, GLenum mode,
          prim[i].end = 1;
          prim[i].mode = mode;
          prim[i].start =
-            ((uintptr_t) indices[i] - min_index_ptr) / ib.index_size;
+            ((uintptr_t) indices[i] - min_index_ptr) >> ib.index_size_shift;
          prim[i].count = count[i];
          prim[i].draw_id = i;
          if (basevertex != NULL)

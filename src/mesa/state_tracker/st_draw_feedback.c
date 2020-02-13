@@ -196,7 +196,7 @@ st_feedback_draw_vbo(struct gl_context *ctx,
       if (bufobj && bufobj->Name) {
          struct st_buffer_object *stobj = st_buffer_object(bufobj);
 
-         start = pointer_to_offset(ib->ptr) / index_size;
+         start = pointer_to_offset(ib->ptr) >> ib->index_size_shift;
          mapped_indices = pipe_buffer_map(pipe, stobj->buffer,
                                           PIPE_TRANSFER_READ, &ib_transfer);
       }
@@ -204,7 +204,7 @@ st_feedback_draw_vbo(struct gl_context *ctx,
          mapped_indices = ib->ptr;
       }
 
-      info.index_size = ib->index_size;
+      info.index_size = index_size;
       info.min_index = min_index;
       info.max_index = max_index;
       info.has_user_indices = true;

@@ -247,9 +247,9 @@ vbo_get_minmax_index(struct gl_context *ctx,
    GLuint i;
    GLintptr offset = 0;
 
-   indices = (char *) ib->ptr + prim->start * ib->index_size;
+   indices = (char *) ib->ptr + (prim->start << ib->index_size_shift);
    if (_mesa_is_bufferobj(ib->obj)) {
-      GLsizeiptr size = MIN2(count * ib->index_size, ib->obj->Size);
+      GLsizeiptr size = MIN2(count << ib->index_size_shift, ib->obj->Size);
 
       if (vbo_get_minmax_cached(ib->obj, ib->index_size, (GLintptr) indices,
                                 count, min_index, max_index))
