@@ -123,10 +123,12 @@ enum vtn_value_type {
 
 enum vtn_branch_type {
    vtn_branch_type_none,
+   vtn_branch_type_if_merge,
    vtn_branch_type_switch_break,
    vtn_branch_type_switch_fallthrough,
    vtn_branch_type_loop_break,
    vtn_branch_type_loop_continue,
+   vtn_branch_type_loop_back_edge,
    vtn_branch_type_discard,
    vtn_branch_type_return,
 };
@@ -157,6 +159,10 @@ struct vtn_loop {
     */
    struct list_head cont_body;
 
+   struct vtn_block *header_block;
+   struct vtn_block *cont_block;
+   struct vtn_block *break_block;
+
    SpvLoopControlMask control;
 };
 
@@ -171,16 +177,16 @@ struct vtn_if {
    enum vtn_branch_type else_type;
    struct list_head else_body;
 
+   struct vtn_block *merge_block;
+
    SpvSelectionControlMask control;
 };
 
 struct vtn_case {
    struct vtn_cf_node node;
 
+   enum vtn_branch_type type;
    struct list_head body;
-
-   /* The block that starts this case */
-   struct vtn_block *start_block;
 
    /* The fallthrough case, if any */
    struct vtn_case *fallthrough;
@@ -201,6 +207,8 @@ struct vtn_switch {
    uint32_t selector;
 
    struct list_head cases;
+
+   struct vtn_block *break_block;
 };
 
 struct vtn_block {
@@ -216,6 +224,14 @@ struct vtn_block {
    const uint32_t *branch;
 
    enum vtn_branch_type branch_type;
+
+   /* The CF node for which this is a merge target
+    *
+    * The SPIR-V spec requires that any given block can be the merge target
+    * for at most one merge instruction.  If this block is a merge target,
+    * this points back to the block containing that merge instruction.
+    */
+   struct vtn_cf_node *merge_cf_node;
 
    /** Points to the loop that this block starts (if it starts a loop) */
    struct vtn_loop *loop;
