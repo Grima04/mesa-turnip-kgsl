@@ -179,8 +179,9 @@ get_internal_type_bpp_for_image_aspects(struct v3dv_image *image,
 static struct v3dv_cl *
 emit_rcl_prologue(struct v3dv_job *job,
                   struct fake_framebuffer *framebuffer,
-                  const uint32_t *clear_color,
+                  const union v3dv_clear_value *clear_value,
                   struct v3dv_image *image,
+                  VkImageAspectFlags aspects,
                   uint32_t layer,
                   uint32_t level)
 {
@@ -198,7 +199,7 @@ emit_rcl_prologue(struct v3dv_job *job,
       config.maximum_bpp_of_all_render_targets = framebuffer->fb.internal_bpp;
    }
 
-   if (clear_color) {
+   if (clear_value && (aspects & VK_IMAGE_ASPECT_COLOR_BIT)) {
       uint32_t clear_pad = 0;
       if (image) {
          if (image->slices[layer].tiling == VC5_TILING_UIF_NO_XOR ||
@@ -217,18 +218,19 @@ emit_rcl_prologue(struct v3dv_job *job,
          }
       }
 
+      const uint32_t *color = &clear_value->color[0];
       cl_emit(rcl, TILE_RENDERING_MODE_CFG_CLEAR_COLORS_PART1, clear) {
-         clear.clear_color_low_32_bits = clear_color[0];
-         clear.clear_color_next_24_bits = clear_color[1] & 0x00ffffff;
+         clear.clear_color_low_32_bits = color[0];
+         clear.clear_color_next_24_bits = color[1] & 0x00ffffff;
          clear.render_target_number = 0;
       };
 
       if (framebuffer->fb.internal_bpp >= V3D_INTERNAL_BPP_64) {
          cl_emit(rcl, TILE_RENDERING_MODE_CFG_CLEAR_COLORS_PART2, clear) {
             clear.clear_color_mid_low_32_bits =
-              ((clear_color[1] >> 24) | (clear_color[2] << 8));
+              ((color[1] >> 24) | (color[2] << 8));
             clear.clear_color_mid_high_24_bits =
-              ((clear_color[2] >> 24) | ((clear_color[3] & 0xffff) << 8));
+              ((color[2] >> 24) | ((color[3] & 0xffff) << 8));
             clear.render_target_number = 0;
          };
       }
@@ -236,7 +238,7 @@ emit_rcl_prologue(struct v3dv_job *job,
       if (framebuffer->fb.internal_bpp >= V3D_INTERNAL_BPP_128 || clear_pad) {
          cl_emit(rcl, TILE_RENDERING_MODE_CFG_CLEAR_COLORS_PART3, clear) {
             clear.uif_padded_height_in_uif_blocks = clear_pad;
-            clear.clear_color_high_16_bits = clear_color[3] >> 16;
+            clear.clear_color_high_16_bits = color[3] >> 16;
             clear.render_target_number = 0;
          };
       }
@@ -249,8 +251,8 @@ emit_rcl_prologue(struct v3dv_job *job,
    }
 
    cl_emit(rcl, TILE_RENDERING_MODE_CFG_ZS_CLEAR_VALUES, clear) {
-      clear.z_clear_value = 0;
-      clear.stencil_clear_value = 0;
+      clear.z_clear_value = clear_value ? clear_value->z : 1.0f;
+      clear.stencil_clear_value = clear_value ? clear_value->s : 0;
    };
 
    cl_emit(rcl, TILE_LIST_INITIAL_BLOCK_SIZE, init) {
@@ -266,7 +268,7 @@ static void
 emit_frame_setup(struct v3dv_job *job,
                  struct fake_framebuffer *framebuffer,
                  uint32_t layer,
-                 const uint32_t *clear_color)
+                 const union v3dv_clear_value *clear_value)
 {
    struct v3dv_cl *rcl = &job->rcl;
 
@@ -299,7 +301,7 @@ emit_frame_setup(struct v3dv_job *job,
       cl_emit(rcl, STORE_TILE_BUFFER_GENERAL, store) {
          store.buffer_to_store = NONE;
       }
-      if (clear_color && i == 0) {
+      if (clear_value && i == 0) {
          cl_emit(rcl, CLEAR_TILE_BUFFERS, clear) {
             clear.clear_z_stencil_buffer = true;
             clear.clear_all_render_targets = true;
@@ -563,7 +565,9 @@ emit_copy_image_to_buffer_rcl(struct v3dv_job *job,
                               struct fake_framebuffer *framebuffer,
                               const VkBufferImageCopy *region)
 {
-   struct v3dv_cl *rcl = emit_rcl_prologue(job, framebuffer, NULL,  NULL, 0, 0);
+   struct v3dv_cl *rcl = emit_rcl_prologue(job, framebuffer, NULL, NULL,
+                                           region->imageSubresource.aspectMask,
+                                           0, 0);
    for (int layer = 0; layer < framebuffer->fb.layers; layer++)
       emit_copy_layer_to_buffer(job, buffer, image, framebuffer, layer, region);
    cl_emit(rcl, END_OF_RENDERING, end);
@@ -704,7 +708,9 @@ emit_copy_image_rcl(struct v3dv_job *job,
                     struct fake_framebuffer *framebuffer,
                     const VkImageCopy *region)
 {
-   struct v3dv_cl *rcl = emit_rcl_prologue(job, framebuffer, NULL, NULL, 0, 0);
+   struct v3dv_cl *rcl = emit_rcl_prologue(job, framebuffer, NULL, NULL,
+                                           region->dstSubresource.aspectMask,
+                                           0, 0);
    for (int layer = 0; layer < framebuffer->fb.layers; layer++)
       emit_copy_image_layer(job, dst, src, framebuffer, layer, region);
    cl_emit(rcl, END_OF_RENDERING, end);
@@ -836,14 +842,14 @@ static void
 emit_clear_image_rcl(struct v3dv_job *job,
                      struct v3dv_image *image,
                      struct fake_framebuffer *framebuffer,
-                     uint32_t *color,
+                     const union v3dv_clear_value *clear_value,
                      VkImageAspectFlags aspects,
                      uint32_t layer,
                      uint32_t level)
 {
-   struct v3dv_cl *rcl =
-      emit_rcl_prologue(job, framebuffer, color, image, layer, level);
-   emit_frame_setup(job, framebuffer, 0, color);
+   struct v3dv_cl *rcl = emit_rcl_prologue(job, framebuffer, clear_value,
+                                           image, aspects, layer, level);
+   emit_frame_setup(job, framebuffer, 0, clear_value);
    emit_clear_image(job, image, framebuffer, aspects, layer, level);
    cl_emit(rcl, END_OF_RENDERING, end);
 }
@@ -851,16 +857,24 @@ emit_clear_image_rcl(struct v3dv_job *job,
 static void
 clear_image_tlb(struct v3dv_cmd_buffer *cmd_buffer,
                 struct v3dv_image *image,
-                const VkClearColorValue *color_value,
+                const VkClearValue *clear_value,
                 const VkImageSubresourceRange *range)
 {
    uint32_t internal_type, internal_bpp;
    get_internal_type_bpp_for_image_aspects(image, range->aspectMask,
                                            &internal_type, &internal_bpp);
 
-   uint32_t color[4];
-   uint32_t internal_size = 4 << internal_bpp;
-   v3dv_get_hw_clear_color(color_value, internal_type, internal_size, color);
+   union v3dv_clear_value hw_clear_value = { 0 };
+   if (range->aspectMask & VK_IMAGE_ASPECT_COLOR_BIT) {
+      uint32_t internal_size = 4 << internal_bpp;
+      v3dv_get_hw_clear_color(&clear_value->color, internal_type, internal_size,
+                              hw_clear_value.color);
+   } else {
+      assert((range->aspectMask & VK_IMAGE_ASPECT_DEPTH_BIT) ||
+             (range->aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT));
+      hw_clear_value.z = clear_value->depthStencil.depth;
+      hw_clear_value.s = clear_value->depthStencil.stencil;
+   }
 
    uint32_t layer_count = range->layerCount == VK_REMAINING_ARRAY_LAYERS ?
                           image->array_size : range->layerCount;
@@ -885,7 +899,7 @@ clear_image_tlb(struct v3dv_cmd_buffer *cmd_buffer,
          v3dv_cmd_buffer_start_frame(cmd_buffer, &framebuffer.fb);
          v3dv_job_emit_binning_flush(job);
 
-         emit_clear_image_rcl(job, image, &framebuffer, color,
+         emit_clear_image_rcl(job, image, &framebuffer, &hw_clear_value,
                              range->aspectMask, layer, level);
 
          v3dv_cmd_buffer_finish_job(cmd_buffer);
@@ -904,8 +918,31 @@ v3dv_CmdClearColorImage(VkCommandBuffer commandBuffer,
    V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
    V3DV_FROM_HANDLE(v3dv_image, image, _image);
 
+   const VkClearValue clear_value = {
+      .color = *pColor,
+   };
+
    for (uint32_t i = 0; i < rangeCount; i++)
-      clear_image_tlb(cmd_buffer, image, pColor, &pRanges[i]);
+      clear_image_tlb(cmd_buffer, image, &clear_value, &pRanges[i]);
+}
+
+void
+v3dv_CmdClearDepthStencilImage(VkCommandBuffer commandBuffer,
+                               VkImage _image,
+                               VkImageLayout imageLayout,
+                               const VkClearDepthStencilValue *pDepthStencil,
+                               uint32_t rangeCount,
+                               const VkImageSubresourceRange *pRanges)
+{
+   V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
+   V3DV_FROM_HANDLE(v3dv_image, image, _image);
+
+   const VkClearValue clear_value = {
+      .depthStencil = *pDepthStencil,
+   };
+
+   for (uint32_t i = 0; i < rangeCount; i++)
+      clear_image_tlb(cmd_buffer, image, &clear_value, &pRanges[i]);
 }
 
 static void
@@ -967,7 +1004,8 @@ emit_copy_buffer_rcl(struct v3dv_job *job,
                      struct fake_framebuffer *framebuffer,
                      uint32_t format)
 {
-   struct v3dv_cl *rcl = emit_rcl_prologue(job, framebuffer, NULL, NULL, 0, 0);
+   struct v3dv_cl *rcl = emit_rcl_prologue(job, framebuffer, NULL, NULL,
+                                           VK_IMAGE_ASPECT_COLOR_BIT, 0, 0);
    emit_frame_setup(job, framebuffer, 0, NULL);
    emit_copy_buffer(job, dst, src, dst_offset, src_offset, framebuffer, format);
    cl_emit(rcl, END_OF_RENDERING, end);
@@ -1180,9 +1218,13 @@ emit_fill_buffer_rcl(struct v3dv_job *job,
                      struct fake_framebuffer *framebuffer,
                      uint32_t data)
 {
-   uint32_t clear[4] = { data, 0, 0, 0 };
-   struct v3dv_cl *rcl = emit_rcl_prologue(job, framebuffer, clear, NULL, 0, 0);
-   emit_frame_setup(job, framebuffer, 0, &data);
+   const union v3dv_clear_value clear_value = {
+       .color = { data, 0, 0, 0 },
+   };
+
+   struct v3dv_cl *rcl = emit_rcl_prologue(job, framebuffer, &clear_value, NULL,
+                                           VK_IMAGE_ASPECT_COLOR_BIT, 0, 0);
+   emit_frame_setup(job, framebuffer, 0, &clear_value);
    emit_fill_buffer(job, bo, offset, framebuffer);
    cl_emit(rcl, END_OF_RENDERING, end);
 }
