@@ -281,15 +281,14 @@ dri2_add_config(_EGLDisplay *disp, const __DRIconfig *dri_config, int id,
       switch (attrib) {
       case __DRI_ATTRIB_RENDER_TYPE:
          if (value & __DRI_ATTRIB_FLOAT_BIT)
-            _eglSetConfigKey(&base, EGL_COLOR_COMPONENT_TYPE_EXT,
-                             EGL_COLOR_COMPONENT_TYPE_FLOAT_EXT);
+            base.ComponentType = EGL_COLOR_COMPONENT_TYPE_FLOAT_EXT;
          if (value & __DRI_ATTRIB_RGBA_BIT)
             value = EGL_RGB_BUFFER;
          else if (value & __DRI_ATTRIB_LUMINANCE_BIT)
             value = EGL_LUMINANCE_BUFFER;
          else
             return NULL;
-         _eglSetConfigKey(&base, EGL_COLOR_BUFFER_TYPE, value);
+         base.ColorBufferType = value;
          break;
 
       case __DRI_ATTRIB_CONFIG_CAVEAT:
@@ -299,7 +298,7 @@ dri2_add_config(_EGLDisplay *disp, const __DRIconfig *dri_config, int id,
             value = EGL_SLOW_CONFIG;
          else
             value = EGL_NONE;
-         _eglSetConfigKey(&base, EGL_CONFIG_CAVEAT, value);
+         base.ConfigCaveat = value;
          break;
 
       case __DRI_ATTRIB_BIND_TO_TEXTURE_RGB:
@@ -316,7 +315,7 @@ dri2_add_config(_EGLDisplay *disp, const __DRIconfig *dri_config, int id,
 
       case __DRI_ATTRIB_RED_SIZE:
          dri_sizes[0] = value;
-         _eglSetConfigKey(&base, EGL_RED_SIZE, value);
+         base.RedSize = value;
          break;
 
       case __DRI_ATTRIB_RED_MASK:
@@ -329,7 +328,7 @@ dri2_add_config(_EGLDisplay *disp, const __DRIconfig *dri_config, int id,
 
       case __DRI_ATTRIB_GREEN_SIZE:
          dri_sizes[1] = value;
-         _eglSetConfigKey(&base, EGL_GREEN_SIZE, value);
+         base.GreenSize = value;
          break;
 
       case __DRI_ATTRIB_GREEN_MASK:
@@ -342,7 +341,7 @@ dri2_add_config(_EGLDisplay *disp, const __DRIconfig *dri_config, int id,
 
       case __DRI_ATTRIB_BLUE_SIZE:
          dri_sizes[2] = value;
-         _eglSetConfigKey(&base, EGL_BLUE_SIZE, value);
+         base.BlueSize = value;
          break;
 
       case __DRI_ATTRIB_BLUE_MASK:
@@ -355,7 +354,7 @@ dri2_add_config(_EGLDisplay *disp, const __DRIconfig *dri_config, int id,
 
      case __DRI_ATTRIB_ALPHA_SIZE:
          dri_sizes[3] = value;
-         _eglSetConfigKey(&base, EGL_ALPHA_SIZE, value);
+         base.AlphaSize = value;
          break;
 
       case __DRI_ATTRIB_ALPHA_MASK:
@@ -382,12 +381,10 @@ dri2_add_config(_EGLDisplay *disp, const __DRIconfig *dri_config, int id,
          break;
 
       case __DRI_ATTRIB_MAX_PBUFFER_WIDTH:
-         _eglSetConfigKey(&base, EGL_MAX_PBUFFER_WIDTH,
-                          _EGL_MAX_PBUFFER_WIDTH);
+         base.MaxPbufferWidth = _EGL_MAX_PBUFFER_WIDTH;
          break;
       case __DRI_ATTRIB_MAX_PBUFFER_HEIGHT:
-         _eglSetConfigKey(&base, EGL_MAX_PBUFFER_HEIGHT,
-                          _EGL_MAX_PBUFFER_HEIGHT);
+         base.MaxPbufferHeight = _EGL_MAX_PBUFFER_HEIGHT;
          break;
       case __DRI_ATTRIB_MUTABLE_RENDER_BUFFER:
          if (disp->Extensions.KHR_mutable_render_buffer)
