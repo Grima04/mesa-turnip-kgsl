@@ -2140,7 +2140,7 @@ v3dv_CmdBindDescriptorSets(VkCommandBuffer commandBuffer,
       V3DV_FROM_HANDLE(v3dv_descriptor_set, set, pDescriptorSets[i]);
       uint32_t index = firstSet + i;
 
-      cmd_buffer->state.descriptor_state.descriptors[index] = set;
+      cmd_buffer->state.descriptor_state.descriptor_sets[index] = set;
       cmd_buffer->state.descriptor_state.valid |= (1u << index);
    }
 

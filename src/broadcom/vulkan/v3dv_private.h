@@ -536,7 +536,7 @@ struct v3dv_vertex_binding {
 };
 
 struct v3dv_descriptor_state {
-   struct v3dv_descriptor_set *descriptors[MAX_SETS];
+   struct v3dv_descriptor_set *descriptor_sets[MAX_SETS];
    uint32_t valid;
 };
 
@@ -749,11 +749,10 @@ struct v3dv_pipeline_layout {
 
 struct v3dv_descriptor_map {
    /* TODO: avoid fixed size array/justify the size */
-   unsigned num; /* number of array entries */
-   unsigned num_desc; /* Number of descriptors (sum of array_size[]) */
+   unsigned num_desc; /* Number of descriptors  */
    int set[64];
    int binding[64];
-   int value[64];
+   int array_index[64];
    int array_size[64];
 };
 

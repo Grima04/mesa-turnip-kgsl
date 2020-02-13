@@ -32,13 +32,13 @@ get_descriptor(struct v3dv_descriptor_state *descriptor_state,
                struct v3dv_descriptor_map *map,
                uint32_t index)
 {
-   assert(index >= 0 && index < map->num );
+   assert(index >= 0 && index < map->num_desc);
 
    uint32_t set_number = map->set[index];
    assert(descriptor_state->valid & 1 << set_number);
 
    struct v3dv_descriptor_set *set =
-      descriptor_state->descriptors[set_number];
+      descriptor_state->descriptor_sets[set_number];
    assert(set);
 
    uint32_t binding_number = map->binding[index];
@@ -47,7 +47,10 @@ get_descriptor(struct v3dv_descriptor_state *descriptor_state,
    const struct v3dv_descriptor_set_binding_layout *binding_layout =
       &set->layout->binding[binding_number];
 
-   return &set->descriptors[binding_layout->descriptor_index];
+   uint32_t array_index = map->array_index[index];
+   assert(array_index < binding_layout->array_size);
+
+   return &set->descriptors[binding_layout->descriptor_index + array_index];
 }
 
 struct v3dv_cl_reloc

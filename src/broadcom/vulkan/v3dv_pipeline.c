@@ -267,27 +267,29 @@ static unsigned
 descriptor_map_add(struct v3dv_descriptor_map *map,
                    int set,
                    int binding,
-                   int value,
+                   int array_index,
                    int array_size)
 {
+   assert(array_index < array_size);
+
    unsigned index = 0;
-   for (unsigned i = 0; i < map->num; i++) {
-      if (set == map->set[i] && binding == map->binding[i]) {
-         assert(value == map->value[i]);
+   for (unsigned i = 0; i < map->num_desc; i++) {
+      if (set == map->set[i] &&
+          binding == map->binding[i] &&
+          array_index == map->array_index[i]) {
          assert(array_size == map->array_size[i]);
          return index;
       }
-      index += map->array_size[i];
+      index++;
    }
 
    assert(index == map->num_desc);
 
-   map->set[map->num] = set;
-   map->binding[map->num] = binding;
-   map->value[map->num] = value;
-   map->array_size[map->num] = array_size;
-   map->num++;
-   map->num_desc += array_size;
+   map->set[map->num_desc] = set;
+   map->binding[map->num_desc] = binding;
+   map->array_index[map->num_desc] = array_index;
+   map->array_size[map->num_desc] = array_size;
+   map->num_desc++;
 
    return index;
 }
@@ -326,9 +328,9 @@ lower_vulkan_resource_index(nir_builder *b,
        * constants, that is already took into account when loading the ubo at
        * nir_to_vir, so we don't need to do it here again.
        */
-      index = descriptor_map_add(descriptor_map, set, binding, 0,
+      index = descriptor_map_add(descriptor_map, set, binding,
+                                 const_val->u32,
                                  binding_layout->array_size);
-      index += const_val->u32;
       break;
    }
 
