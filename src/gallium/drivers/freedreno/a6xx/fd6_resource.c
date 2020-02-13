@@ -199,6 +199,7 @@ fd6_layout_resource_for_modifier(struct fd_resource *rsc, uint64_t modifier)
 	case DRM_FORMAT_MOD_QCOM_COMPRESSED:
 		return fill_ubwc_buffer_sizes(rsc);
 	case DRM_FORMAT_MOD_LINEAR:
+	case DRM_FORMAT_MOD_INVALID:
 		return 0;
 	default:
 		return -1;
