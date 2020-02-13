@@ -73,9 +73,10 @@ lower_non_uniform_tex_access(nir_builder *b, nir_tex_instr *tex)
       assert(handle_count < 2);
       assert(tex->src[i].src.is_ssa);
       nir_ssa_def *handle = tex->src[i].src.ssa;
+      nir_deref_instr *parent = NULL;
       if (handle->parent_instr->type == nir_instr_type_deref) {
          nir_deref_instr *deref = nir_instr_as_deref(handle->parent_instr);
-         nir_deref_instr *parent = nir_deref_instr_parent(deref);
+         parent = nir_deref_instr_parent(deref);
          if (deref->deref_type == nir_deref_type_var)
             continue;
 
@@ -87,16 +88,19 @@ lower_non_uniform_tex_access(nir_builder *b, nir_tex_instr *tex)
             continue;
 
          handle = deref->arr.index.ssa;
-
-         parent_derefs[handle_count] = parent;
+      }
+      unsigned handle_index = (!handle_count || handle != handles[0]) ? handle_count : 0;
+      if (parent) {
+         parent_derefs[handle_index] = parent;
          if (tex->src[i].src_type == nir_tex_src_texture_deref)
-            texture_deref_handle = handle_count;
+            texture_deref_handle = handle_index;
          else
-            sampler_deref_handle = handle_count;
+            sampler_deref_handle = handle_index;
       }
       assert(handle->num_components == 1);
 
-      handles[handle_count++] = handle;
+      if (handle_index == handle_count)
+         handles[handle_count++] = handle;
    }
 
    if (handle_count == 0)
