@@ -110,6 +110,10 @@ mir_print_constant_component(FILE *fp, const midgard_constants *consts, unsigned
         bool is_sint = false, is_uint = false, is_hex = false;
         const char *opname = alu_opcode_props[op].name;
 
+        /* Add a sentinel name to prevent crashing */
+        if (!opname)
+                opname = "unknown";
+
         if (opname[0] == 'u') {
                 /* If the opcode starts with a 'u' we are sure we deal with an
                  * unsigned int operation
