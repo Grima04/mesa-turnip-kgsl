@@ -508,12 +508,12 @@ emit_copy_layer_to_buffer_per_tile_list(struct v3dv_job *job,
    /* Store TLB to buffer */
    uint32_t width, height;
    if (region->bufferRowLength == 0)
-      width = image->extent.width;
+      width = region->imageExtent.width;
    else
       width = region->bufferRowLength;
 
    if (region->bufferImageHeight == 0)
-      height = image->extent.height;
+      height = region->imageExtent.height;
    else
       height = region->bufferImageHeight;
 
