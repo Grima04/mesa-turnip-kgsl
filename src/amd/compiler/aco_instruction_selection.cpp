@@ -4675,12 +4675,11 @@ void visit_load_push_constant(isel_context *ctx, nir_intrinsic_instr *instr)
 {
    Builder bld(ctx->program, ctx->block);
    Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
-
    unsigned offset = nir_intrinsic_base(instr);
+   unsigned count = instr->dest.ssa.num_components;
    nir_const_value *index_cv = nir_src_as_const_value(instr->src[0]);
-   if (index_cv && instr->dest.ssa.bit_size == 32) {
 
-      unsigned count = instr->dest.ssa.num_components;
+   if (index_cv && instr->dest.ssa.bit_size == 32) {
       unsigned start = (offset + index_cv->u32) / 4u;
       start -= ctx->args->ac.base_inline_push_consts;
       if (start + count <= ctx->args->ac.num_inline_push_consts) {
@@ -4703,9 +4702,22 @@ void visit_load_push_constant(isel_context *ctx, nir_intrinsic_instr *instr)
    Temp ptr = convert_pointer_to_64_bit(ctx, get_arg(ctx, ctx->args->ac.push_constants));
    Temp vec = dst;
    bool trim = false;
+   bool aligned = true;
+
+   if (instr->dest.ssa.bit_size == 8) {
+      aligned = index_cv && (offset + index_cv->u32) % 4 == 0;
+      bool fits_in_dword = count == 1 || (index_cv && ((offset + index_cv->u32) % 4 + count) <= 4);
+      if (!aligned)
+         vec = fits_in_dword ? bld.tmp(s1) : bld.tmp(s2);
+   } else if (instr->dest.ssa.bit_size == 16) {
+      aligned = index_cv && (offset + index_cv->u32) % 4 == 0;
+      if (!aligned)
+         vec = count == 4 ? bld.tmp(s4) : count > 1 ? bld.tmp(s2) : bld.tmp(s1);
+   }
+
    aco_opcode op;
 
-   switch (dst.size()) {
+   switch (vec.size()) {
    case 1:
       op = aco_opcode::s_load_dword;
       break;
@@ -4729,6 +4741,12 @@ void visit_load_push_constant(isel_context *ctx, nir_intrinsic_instr *instr)
    }
 
    bld.smem(op, Definition(vec), ptr, index);
+
+   if (!aligned) {
+      Operand byte_offset = index_cv ? Operand((offset + index_cv->u32) % 4) : Operand(index);
+      byte_align_scalar(ctx, vec, byte_offset, dst);
+      return;
+   }
 
    if (trim) {
       emit_split_vector(ctx, vec, 4);
