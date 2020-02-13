@@ -49,7 +49,7 @@
 #define VL_VA_DRIVER(ctx) ((vlVaDriver *)ctx->pDriverData)
 #define VL_VA_PSCREEN(ctx) (VL_VA_DRIVER(ctx)->vscreen->pscreen)
 
-#define VL_VA_MAX_IMAGE_FORMATS 11
+#define VL_VA_MAX_IMAGE_FORMATS 12
 #define VL_VA_ENC_GOP_COEFF 16
 
 #define UINT_TO_PTR(x) ((void*)(uintptr_t)(x))
@@ -94,6 +94,7 @@ VaFourccToPipeFormat(unsigned format)
    case VA_FOURCC('Y','V','1','2'):
       return PIPE_FORMAT_YV12;
    case VA_FOURCC('Y','U','Y','V'):
+   case VA_FOURCC('Y','U','Y','2'):
       return PIPE_FORMAT_YUYV;
    case VA_FOURCC('U','Y','V','Y'):
       return PIPE_FORMAT_UYVY;
