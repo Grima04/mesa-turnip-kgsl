@@ -718,8 +718,9 @@ __attribute__((__packed__))
          * textures, these bits are not yet understood. */
         unsigned barrier_buffer : 1;
         unsigned barrier_shared : 1;
+        unsigned barrier_stack  : 1;
 
-        unsigned unknown4  : 10;
+        unsigned unknown4  : 9;
 
         /* In immediate mode, each offset field is an immediate range [0, 7].
          *
@@ -791,7 +792,8 @@ __attribute__((__packed__))
         unsigned zero3 : 24;
         unsigned buffer : 1;
         unsigned shared : 1;
-        unsigned zero4 : 6;
+        unsigned stack  : 1;
+        unsigned zero4 : 5;
 
         uint64_t zero5;
 } midgard_texture_barrier_word;

@@ -1336,6 +1336,9 @@ print_texture_barrier(FILE *fp, uint32_t *word)
         if (barrier->shared)
                 fprintf(fp, " | shared");
 
+        if (barrier->stack)
+                fprintf(fp, " | stack");
+
         fprintf(fp, "\n");
 }
 
