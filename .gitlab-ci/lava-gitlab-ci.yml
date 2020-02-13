@@ -150,3 +150,9 @@ freedreno-a307-gles2:
     BOOT_METHOD: fastboot
   tags:
     - lava-mesa-db410c
+
+.freedreno-a307-gles3:
+  parallel: 6
+  extends: freedreno-a307-gles2
+  variables:
+    DEQP_VERSION: gles3
