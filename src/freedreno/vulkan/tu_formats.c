@@ -36,47 +36,22 @@
 #include "vk_util.h"
 #include "drm-uapi/drm_fourcc.h"
 
-/**
- * Declare a format table.  A format table is an array of tu_native_format.
- * It can map a consecutive range of VkFormat to the corresponding
- * tu_native_format.
- *
- * TU_FORMAT_TABLE_FIRST and TU_FORMAT_TABLE_LAST must already be defined and
- * have the values of the first and last VkFormat of the array respectively.
- */
-#define TU_FORMAT_TABLE(var)                                                 \
-   static const VkFormat var##_first = TU_FORMAT_TABLE_FIRST;                \
-   static const VkFormat var##_last = TU_FORMAT_TABLE_LAST;                  \
-   static const struct tu_native_format var[TU_FORMAT_TABLE_LAST - TU_FORMAT_TABLE_FIRST + 1]
-#undef TU_FORMAT_TABLE_FIRST
-#undef TU_FORMAT_TABLE_LAST
-
 #define FMT6_x -1
 
-#define TU6_FMT(vkfmt, vtxfmt, texfmt, rbfmt, swapfmt, valid)                \
-   [VK_FORMAT_##vkfmt - TU_FORMAT_TABLE_FIRST] = {                           \
-      .vtx = FMT6_##vtxfmt,                                                  \
-      .tex = FMT6_##texfmt,                                                  \
-      .rb = (FMT6_##rbfmt == FMT6_10_10_10_2_UNORM) ? FMT6_10_10_10_2_UNORM_DEST : FMT6_##rbfmt, \
-      .swap = swapfmt,                                                       \
-      .present = valid,                                                      \
+#define TU6_FMT(vkfmt, hwfmt, swapfmt, valid) \
+   [VK_FORMAT_##vkfmt] = {                   \
+      .fmt = FMT6_##hwfmt,                     \
+      .swap = swapfmt,                       \
+      .supported = valid,                    \
    }
 
-/**
- * fmt/alias/swap are derived from VkFormat mechanically (and might not even
- * exist).  It is the macro of choice that decides whether a VkFormat is
- * supported and how.
- */
-#define TU6_VTC(vk, fmt, swap) TU6_FMT(vk, fmt, fmt, fmt, swap, true)
-#define TU6_xTC(vk, fmt, swap) TU6_FMT(vk, x, fmt, fmt, swap, true)
-#define TU6_VTx(vk, fmt, swap) TU6_FMT(vk, fmt, fmt, x, swap, true)
-#define TU6_Vxx(vk, fmt, swap) TU6_FMT(vk, fmt, x, x, swap, true)
-#define TU6_xTx(vk, fmt, swap) TU6_FMT(vk, x, fmt, x, swap, true)
-#define TU6_xxx(vk, fmt, swap) TU6_FMT(vk, x, x, x, WZYX, false)
+#define TU6_VTC(vk, fmt, swap) TU6_FMT(vk, fmt, swap, FMT_VERTEX | FMT_TEXTURE | FMT_COLOR)
+#define TU6_xTC(vk, fmt, swap) TU6_FMT(vk, fmt, swap, FMT_TEXTURE | FMT_COLOR)
+#define TU6_Vxx(vk, fmt, swap) TU6_FMT(vk, fmt, swap, FMT_VERTEX)
+#define TU6_xTx(vk, fmt, swap) TU6_FMT(vk, fmt, swap, FMT_TEXTURE)
+#define TU6_xxx(vk, fmt, swap) TU6_FMT(vk, x, WZYX, false)
 
-#define TU_FORMAT_TABLE_FIRST VK_FORMAT_UNDEFINED
-#define TU_FORMAT_TABLE_LAST VK_FORMAT_ASTC_12x12_SRGB_BLOCK
-TU_FORMAT_TABLE(tu6_format_table0) = {
+static const struct tu_native_format tu6_format_table[] = {
    TU6_xxx(UNDEFINED,                  x,                 x),    /* 0 */
 
    /* 8-bit packed */
@@ -311,26 +286,71 @@ TU_FORMAT_TABLE(tu6_format_table0) = {
    TU6_xTx(ASTC_12x12_UNORM_BLOCK,     ASTC_12x12,        WZYX), /* 183 */
    TU6_xTx(ASTC_12x12_SRGB_BLOCK,      ASTC_12x12,        WZYX), /* 184 */
 };
-#undef TU_FORMAT_TABLE_FIRST
-#undef TU_FORMAT_TABLE_LAST
 
-const struct tu_native_format *
+struct tu_native_format
 tu6_get_native_format(VkFormat format)
 {
-   const struct tu_native_format *fmt = NULL;
+   struct tu_native_format fmt = {};
 
-   if (format >= tu6_format_table0_first && format <= tu6_format_table0_last)
-      fmt = &tu6_format_table0[format - tu6_format_table0_first];
+   if (format >= ARRAY_SIZE(tu6_format_table))
+      return fmt;
 
-   if (!fmt || !fmt->present)
-      return NULL;
+   if (!tu6_format_table[format].supported)
+      return fmt;
 
    if (vk_format_to_pipe_format(format) == PIPE_FORMAT_NONE) {
       tu_finishme("vk_format %d missing matching pipe format.\n", format);
-      return NULL;
+      return fmt;
    }
 
-   return (fmt && fmt->present) ? fmt : NULL;
+   return tu6_format_table[format];
+}
+
+struct tu_native_format
+tu6_format_vtx(VkFormat format)
+{
+   struct tu_native_format fmt = tu6_get_native_format(format);
+   assert(fmt.supported & FMT_VERTEX);
+   return fmt;
+}
+
+enum a6xx_format
+tu6_format_gmem(VkFormat format)
+{
+   struct tu_native_format fmt = tu6_get_native_format(format);
+   assert(fmt.supported & FMT_COLOR);
+
+   if (fmt.fmt == FMT6_10_10_10_2_UNORM)
+      return FMT6_10_10_10_2_UNORM_DEST;
+
+   return fmt.fmt;
+}
+
+struct tu_native_format
+tu6_format_color(VkFormat format, bool tiled)
+{
+   struct tu_native_format fmt = tu6_get_native_format(format);
+   assert(fmt.supported & FMT_COLOR);
+
+   if (fmt.fmt == FMT6_10_10_10_2_UNORM)
+      fmt.fmt = FMT6_10_10_10_2_UNORM_DEST;
+
+   if (tiled)
+      fmt.swap = WZYX;
+
+   return fmt;
+}
+
+struct tu_native_format
+tu6_format_texture(VkFormat format, bool tiled)
+{
+   struct tu_native_format fmt = tu6_get_native_format(format);
+   assert(fmt.supported & FMT_TEXTURE);
+
+   if (tiled)
+      fmt.swap = WZYX;
+
+   return fmt;
 }
 
 enum a6xx_2d_ifmt
@@ -392,6 +412,7 @@ tu6_fmt_to_ifmt(enum a6xx_format fmt)
    case FMT6_16_16_FLOAT:
    case FMT6_16_16_16_16_FLOAT:
    case FMT6_11_11_10_FLOAT:
+   case FMT6_10_10_10_2_UNORM:
    case FMT6_10_10_10_2_UNORM_DEST:
       return R2D_FLOAT16;
 
@@ -658,7 +679,7 @@ tu_2d_clear_color(const VkClearColorValue *val, VkFormat format, uint32_t buf[4]
       return;
    }
 
-   enum a6xx_2d_ifmt ifmt = tu6_fmt_to_ifmt(tu6_get_native_format(format)->rb);
+   enum a6xx_2d_ifmt ifmt = tu6_fmt_to_ifmt(tu6_get_native_format(format).fmt);
 
    assert(desc && (desc->layout == UTIL_FORMAT_LAYOUT_PLAIN ||
                    format == VK_FORMAT_B10G11R11_UFLOAT_PACK32));
@@ -725,26 +746,29 @@ tu_physical_device_get_format_properties(
 {
    VkFormatFeatureFlags linear = 0, optimal = 0, buffer = 0;
    const struct util_format_description *desc = vk_format_description(format);
-   const struct tu_native_format *native_fmt = tu6_get_native_format(format);
-   if (!desc || !native_fmt) {
+   const struct tu_native_format native_fmt = tu6_get_native_format(format);
+   if (!desc || !native_fmt.supported) {
       goto end;
    }
 
    buffer |= VK_FORMAT_FEATURE_TRANSFER_SRC_BIT | VK_FORMAT_FEATURE_TRANSFER_DST_BIT;
-   if (native_fmt->vtx >= 0) {
+   if (native_fmt.supported & FMT_VERTEX)
       buffer |= VK_FORMAT_FEATURE_VERTEX_BUFFER_BIT;
-   }
 
-   if (native_fmt->tex >= 0 || native_fmt->rb >= 0)
-      optimal |= VK_FORMAT_FEATURE_TRANSFER_SRC_BIT | VK_FORMAT_FEATURE_TRANSFER_DST_BIT;
-
-   if (native_fmt->tex >= 0) {
-      optimal |= VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT | VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT;
+   if (native_fmt.supported & FMT_TEXTURE) {
+      optimal |= VK_FORMAT_FEATURE_TRANSFER_SRC_BIT |
+                 VK_FORMAT_FEATURE_TRANSFER_DST_BIT |
+                 VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT |
+                 VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT;
       buffer |= VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT;
    }
 
-   if (native_fmt->rb >= 0)
-      optimal |= VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT | VK_FORMAT_FEATURE_BLIT_SRC_BIT | VK_FORMAT_FEATURE_BLIT_DST_BIT;
+   if (native_fmt.supported & FMT_COLOR) {
+      assert(native_fmt.supported & FMT_TEXTURE);
+      optimal |= VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT |
+                 VK_FORMAT_FEATURE_BLIT_SRC_BIT |
+                 VK_FORMAT_FEATURE_BLIT_DST_BIT;
+   }
 
    /* For the most part, we can do anything with a linear image that we could
     * do with a tiled image. However, we can't support sysmem rendering with a

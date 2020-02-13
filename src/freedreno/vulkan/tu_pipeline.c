@@ -1116,13 +1116,11 @@ tu6_emit_vertex_input(struct tu_cs *cs,
          tu_find_vertex_input_binding(vi_info, vi_attr);
       assert(vi_attr && vi_binding);
 
-      const struct tu_native_format *format =
-         tu6_get_native_format(vi_attr->format);
-      assert(format && format->vtx >= 0);
+      const struct tu_native_format format = tu6_format_vtx(vi_attr->format);
 
       uint32_t vfd_decode = A6XX_VFD_DECODE_INSTR_IDX(vfd_decode_idx) |
-                            A6XX_VFD_DECODE_INSTR_FORMAT(format->vtx) |
-                            A6XX_VFD_DECODE_INSTR_SWAP(format->swap) |
+                            A6XX_VFD_DECODE_INSTR_FORMAT(format.fmt) |
+                            A6XX_VFD_DECODE_INSTR_SWAP(format.swap) |
                             A6XX_VFD_DECODE_INSTR_UNK30;
       if (vi_binding->inputRate == VK_VERTEX_INPUT_RATE_INSTANCE)
          vfd_decode |= A6XX_VFD_DECODE_INSTR_INSTANCED;

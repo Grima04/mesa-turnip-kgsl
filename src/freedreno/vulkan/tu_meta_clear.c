@@ -133,11 +133,9 @@ tu_clear_gmem_attachment(struct tu_cmd_buffer *cmd,
                          const VkClearValue *value)
 {
    VkFormat fmt = cmd->state.pass->attachments[attachment].format;
-   const struct tu_native_format *format = tu6_get_native_format(fmt);
-   assert(format && format->rb >= 0);
 
    tu_cs_emit_pkt4(cs, REG_A6XX_RB_BLIT_DST_INFO, 1);
-   tu_cs_emit(cs, A6XX_RB_BLIT_DST_INFO_COLOR_FORMAT(format->rb));
+   tu_cs_emit(cs, A6XX_RB_BLIT_DST_INFO_COLOR_FORMAT(tu6_format_gmem(fmt)));
 
    tu_cs_emit_pkt4(cs, REG_A6XX_RB_BLIT_INFO, 1);
    tu_cs_emit(cs, A6XX_RB_BLIT_INFO_GMEM | A6XX_RB_BLIT_INFO_CLEAR_MASK(component_mask));

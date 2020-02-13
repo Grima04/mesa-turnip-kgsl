@@ -495,15 +495,14 @@ tu6_emit_mrt(struct tu_cmd_buffer *cmd,
       if (vk_format_is_srgb(iview->vk_format))
          srgb_cntl |= (1 << i);
 
-      const struct tu_native_format *format =
-         tu6_get_native_format(iview->vk_format);
-      assert(format && format->rb >= 0);
+      const struct tu_native_format format =
+         tu6_format_color(iview->vk_format, iview->image->layout.tile_mode);
 
       tu_cs_emit_regs(cs,
                       A6XX_RB_MRT_BUF_INFO(i,
                                            .color_tile_mode = tile_mode,
-                                           .color_format = format->rb,
-                                           .color_swap = format->swap),
+                                           .color_format = format.fmt,
+                                           .color_swap = format.swap),
                       A6XX_RB_MRT_PITCH(i, tu_image_stride(iview->image, iview->base_mip)),
                       A6XX_RB_MRT_ARRAY_PITCH(i, iview->image->layout.layer_size),
                       A6XX_RB_MRT_BASE(i, tu_image_view_base_ref(iview)),
@@ -511,7 +510,7 @@ tu6_emit_mrt(struct tu_cmd_buffer *cmd,
 
       tu_cs_emit_regs(cs,
                       A6XX_SP_FS_MRT_REG(i,
-                                         .color_format = format->rb,
+                                         .color_format = format.fmt,
                                          .color_sint = vk_format_is_sint(iview->vk_format),
                                          .color_uint = vk_format_is_uint(iview->vk_format)));
 
@@ -678,9 +677,8 @@ tu6_emit_blit_info(struct tu_cmd_buffer *cmd,
    tu_cs_emit_regs(cs,
                    A6XX_RB_BLIT_INFO(.unk0 = !resolve, .gmem = !resolve));
 
-   const struct tu_native_format *format =
-      tu6_get_native_format(iview->vk_format);
-   assert(format && format->rb >= 0);
+   const struct tu_native_format format =
+      tu6_format_color(iview->vk_format, iview->image->layout.tile_mode);
 
    enum a6xx_tile_mode tile_mode =
       tu6_get_image_tile_mode(iview->image, iview->base_mip);
@@ -688,8 +686,8 @@ tu6_emit_blit_info(struct tu_cmd_buffer *cmd,
                    A6XX_RB_BLIT_DST_INFO(
                       .tile_mode = tile_mode,
                       .samples = tu_msaa_samples(iview->image->samples),
-                      .color_format = format->rb,
-                      .color_swap = format->swap,
+                      .color_format = format.fmt,
+                      .color_swap = format.swap,
                       .flags = iview->image->layout.ubwc_layer_size != 0),
                    A6XX_RB_BLIT_DST(tu_image_view_base_ref(iview)),
                    A6XX_RB_BLIT_DST_PITCH(tu_image_stride(iview->image, iview->base_mip)),

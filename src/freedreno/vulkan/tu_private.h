@@ -1261,17 +1261,24 @@ struct tu_graphics_pipeline_create_info
    uint32_t custom_blend_mode;
 };
 
-struct tu_native_format
-{
-   int vtx;      /* VFMTn_xxx or -1 */
-   int tex;      /* TFMTn_xxx or -1 */
-   int rb;       /* RBn_xxx or -1 */
-   int swap;     /* enum a3xx_color_swap */
-   bool present; /* internal only; always true to external users */
+enum tu_supported_formats {
+   FMT_VERTEX = 1,
+   FMT_TEXTURE = 2,
+   FMT_COLOR = 4,
 };
 
-const struct tu_native_format *
-tu6_get_native_format(VkFormat format);
+struct tu_native_format
+{
+   enum a6xx_format fmt : 8;
+   enum a3xx_color_swap swap : 8;
+   enum tu_supported_formats supported : 8;
+};
+
+struct tu_native_format tu6_get_native_format(VkFormat format);
+struct tu_native_format tu6_format_vtx(VkFormat format);
+enum a6xx_format tu6_format_gmem(VkFormat format);
+struct tu_native_format tu6_format_color(VkFormat format, bool tiled);
+struct tu_native_format tu6_format_texture(VkFormat format, bool tiled);
 
 void
 tu_pack_clear_value(const VkClearValue *val,

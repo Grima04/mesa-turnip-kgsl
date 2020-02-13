@@ -58,22 +58,17 @@ blit_copy_format(VkFormat format)
 }
 
 static uint32_t
-blit_image_info(const struct tu_blit_surf *img, bool src, bool stencil_read)
+blit_image_info(const struct tu_blit_surf *img, struct tu_native_format fmt, bool stencil_read)
 {
-   const struct tu_native_format *fmt = tu6_get_native_format(img->fmt);
-   enum a6xx_format rb = fmt->rb;
-   enum a3xx_color_swap swap = img->tiled ? WZYX : fmt->swap;
-   if (rb == FMT6_10_10_10_2_UNORM_DEST && src)
-      rb = FMT6_10_10_10_2_UNORM;
-   if (rb == FMT6_Z24_UNORM_S8_UINT)
-      rb = FMT6_Z24_UNORM_S8_UINT_AS_R8G8B8A8;
+   if (fmt.fmt == FMT6_Z24_UNORM_S8_UINT)
+      fmt.fmt = FMT6_Z24_UNORM_S8_UINT_AS_R8G8B8A8;
 
    if (stencil_read)
-      swap = XYZW;
+      fmt.swap = XYZW;
 
-   return A6XX_SP_PS_2D_SRC_INFO_COLOR_FORMAT(rb) |
+   return A6XX_SP_PS_2D_SRC_INFO_COLOR_FORMAT(fmt.fmt) |
           A6XX_SP_PS_2D_SRC_INFO_TILE_MODE(img->tile_mode) |
-          A6XX_SP_PS_2D_SRC_INFO_COLOR_SWAP(swap) |
+          A6XX_SP_PS_2D_SRC_INFO_COLOR_SWAP(fmt.swap) |
           COND(vk_format_is_srgb(img->fmt), A6XX_SP_PS_2D_SRC_INFO_SRGB) |
           COND(img->ubwc_size, A6XX_SP_PS_2D_SRC_INFO_FLAGS);
 }
@@ -84,11 +79,13 @@ emit_blit_step(struct tu_cmd_buffer *cmdbuf, struct tu_cs *cs,
 {
    struct tu_physical_device *phys_dev = cmdbuf->device->physical_device;
 
-   enum a6xx_format fmt = tu6_get_native_format(blt->dst.fmt)->rb;
-   if (fmt == FMT6_Z24_UNORM_S8_UINT)
-      fmt = FMT6_Z24_UNORM_S8_UINT_AS_R8G8B8A8;
+   struct tu_native_format dfmt = tu6_format_color(blt->dst.fmt, blt->dst.tiled);
+   struct tu_native_format sfmt = tu6_format_texture(blt->src.fmt, blt->src.tiled);
 
-   enum a6xx_2d_ifmt ifmt = tu6_fmt_to_ifmt(fmt);
+   if (dfmt.fmt == FMT6_Z24_UNORM_S8_UINT)
+      dfmt.fmt = FMT6_Z24_UNORM_S8_UINT_AS_R8G8B8A8;
+
+   enum a6xx_2d_ifmt ifmt = tu6_fmt_to_ifmt(dfmt.fmt);
 
    if (vk_format_is_srgb(blt->dst.fmt)) {
       assert(ifmt == R2D_UNORM8);
@@ -97,8 +94,9 @@ emit_blit_step(struct tu_cmd_buffer *cmdbuf, struct tu_cs *cs,
 
    uint32_t blit_cntl = A6XX_RB_2D_BLIT_CNTL_ROTATE(blt->rotation) |
                         COND(blt->type == TU_BLIT_CLEAR, A6XX_RB_2D_BLIT_CNTL_SOLID_COLOR) |
-                        A6XX_RB_2D_BLIT_CNTL_COLOR_FORMAT(fmt) | /* not required? */
-                        COND(fmt == FMT6_Z24_UNORM_S8_UINT_AS_R8G8B8A8, A6XX_RB_2D_BLIT_CNTL_D24S8) |
+                        A6XX_RB_2D_BLIT_CNTL_COLOR_FORMAT(dfmt.fmt) | /* not required? */
+                        COND(dfmt.fmt == FMT6_Z24_UNORM_S8_UINT_AS_R8G8B8A8,
+                             A6XX_RB_2D_BLIT_CNTL_D24S8) |
                         A6XX_RB_2D_BLIT_CNTL_MASK(0xf) |
                         A6XX_RB_2D_BLIT_CNTL_IFMT(ifmt);
 
@@ -119,7 +117,7 @@ emit_blit_step(struct tu_cmd_buffer *cmdbuf, struct tu_cs *cs,
       tu_cs_emit(cs, blt->clear_value[3]);
    } else {
       tu_cs_emit_pkt4(cs, REG_A6XX_SP_PS_2D_SRC_INFO, 10);
-      tu_cs_emit(cs, blit_image_info(&blt->src, true, blt->stencil_read) |
+      tu_cs_emit(cs, blit_image_info(&blt->src, sfmt, blt->stencil_read) |
                      A6XX_SP_PS_2D_SRC_INFO_SAMPLES(tu_msaa_samples(blt->src.samples)) |
                      /* TODO: should disable this bit for integer formats ? */
                      COND(blt->src.samples > 1, A6XX_SP_PS_2D_SRC_INFO_SAMPLES_AVERAGE) |
@@ -151,7 +149,7 @@ emit_blit_step(struct tu_cmd_buffer *cmdbuf, struct tu_cs *cs,
     * Emit destination:
     */
    tu_cs_emit_pkt4(cs, REG_A6XX_RB_2D_DST_INFO, 9);
-   tu_cs_emit(cs, blit_image_info(&blt->dst, false, false));
+   tu_cs_emit(cs, blit_image_info(&blt->dst, dfmt, false));
    tu_cs_emit_qw(cs, blt->dst.va);
    tu_cs_emit(cs, A6XX_RB_2D_DST_SIZE_PITCH(blt->dst.pitch));
    tu_cs_emit(cs, 0x00000000);
@@ -189,13 +187,13 @@ emit_blit_step(struct tu_cmd_buffer *cmdbuf, struct tu_cs *cs,
    tu_cs_emit_pkt4(cs, REG_A6XX_RB_UNKNOWN_8C01, 1);
    tu_cs_emit(cs, 0);
 
-   if (fmt == FMT6_10_10_10_2_UNORM_DEST)
-      fmt = FMT6_16_16_16_16_FLOAT;
+   if (dfmt.fmt == FMT6_10_10_10_2_UNORM_DEST)
+      dfmt.fmt = FMT6_16_16_16_16_FLOAT;
 
    tu_cs_emit_pkt4(cs, REG_A6XX_SP_2D_SRC_FORMAT, 1);
    tu_cs_emit(cs, COND(vk_format_is_sint(blt->src.fmt), A6XX_SP_2D_SRC_FORMAT_SINT) |
                   COND(vk_format_is_uint(blt->src.fmt), A6XX_SP_2D_SRC_FORMAT_UINT) |
-                  A6XX_SP_2D_SRC_FORMAT_COLOR_FORMAT(fmt) |
+                  A6XX_SP_2D_SRC_FORMAT_COLOR_FORMAT(dfmt.fmt) |
                   COND(ifmt == R2D_UNORM8_SRGB, A6XX_SP_2D_SRC_FORMAT_SRGB) |
                   A6XX_SP_2D_SRC_FORMAT_MASK(0xf));
 
