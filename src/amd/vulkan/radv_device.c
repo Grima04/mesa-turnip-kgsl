@@ -1238,7 +1238,7 @@ void radv_GetPhysicalDeviceFeatures2(
 			features->descriptorBindingPartiallyBound = true;
 			features->descriptorBindingVariableDescriptorCount = true;
 			features->runtimeDescriptorArray = true;
-			features->samplerFilterMinmax = pdevice->rad_info.chip_class >= GFX7;
+			features->samplerFilterMinmax = true;
 			features->scalarBlockLayout = pdevice->rad_info.chip_class >= GFX7;
 			features->imagelessFramebuffer = true;
 			features->uniformBufferStandardLayout = true;

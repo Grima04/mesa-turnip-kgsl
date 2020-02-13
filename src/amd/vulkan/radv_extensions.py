@@ -138,7 +138,7 @@ EXTENSIONS = [
     Extension('VK_EXT_queue_family_foreign',              1, True),
     # Disable sample locations on GFX10 until the CTS failures have been resolved.
     Extension('VK_EXT_sample_locations',                  1, 'device->rad_info.chip_class < GFX10'),
-    Extension('VK_EXT_sampler_filter_minmax',             1, 'device->rad_info.chip_class >= GFX7'),
+    Extension('VK_EXT_sampler_filter_minmax',             1, True),
     Extension('VK_EXT_scalar_block_layout',               1, 'device->rad_info.chip_class >= GFX7'),
     Extension('VK_EXT_shader_demote_to_helper_invocation',1, 'device->use_aco'),
     Extension('VK_EXT_shader_viewport_index_layer',       1, True),
