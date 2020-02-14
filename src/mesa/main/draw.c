@@ -1236,8 +1236,8 @@ _mesa_validated_multidrawelements(struct gl_context *ctx, GLenum mode,
       ib.ptr = (void *) min_index_ptr;
 
       for (i = 0; i < primcount; i++) {
-         prim[i].begin = (i == 0);
-         prim[i].end = (i == primcount - 1);
+         prim[i].begin = 1;
+         prim[i].end = 1;
          prim[i].mode = mode;
          prim[i].start =
             ((uintptr_t) indices[i] - min_index_ptr) / index_type_size;
