@@ -384,6 +384,31 @@ type_to_dim(enum glsl_sampler_dim gdim, bool *is_ms)
    return SpvDim2D;
 }
 
+uint32_t
+zink_binding(gl_shader_stage stage, VkDescriptorType type, int index)
+{
+   if (stage == MESA_SHADER_NONE ||
+       stage >= MESA_SHADER_COMPUTE) {
+      unreachable("not supported");
+   } else {
+      uint32_t stage_offset = (uint32_t)stage * (PIPE_MAX_CONSTANT_BUFFERS +
+                                                 PIPE_MAX_SHADER_SAMPLER_VIEWS);
+
+      switch (type) {
+      case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+         assert(index < PIPE_MAX_CONSTANT_BUFFERS);
+         return stage_offset + index;
+
+      case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
+         assert(index < PIPE_MAX_SHADER_SAMPLER_VIEWS);
+         return stage_offset + PIPE_MAX_CONSTANT_BUFFERS + index;
+
+      default:
+         unreachable("unexpected type");
+      }
+   }
+}
+
 static void
 emit_sampler(struct ntv_context *ctx, struct nir_variable *var)
 {
@@ -416,7 +441,7 @@ emit_sampler(struct ntv_context *ctx, struct nir_variable *var)
             spirv_builder_emit_name(&ctx->builder, var_id, var->name);
          }
 
-         int index = var->data.driver_location + i;
+         int index = var->data.binding + i;
          assert(!(ctx->samplers_used & (1 << index)));
          assert(!ctx->image_types[index]);
          ctx->image_types[index] = image_type;
@@ -425,7 +450,10 @@ emit_sampler(struct ntv_context *ctx, struct nir_variable *var)
 
          spirv_builder_emit_descriptor_set(&ctx->builder, var_id,
                                            var->data.descriptor_set);
-         spirv_builder_emit_binding(&ctx->builder, var_id, var->data.binding);
+         int binding = zink_binding(ctx->stage,
+                                    VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                    var->data.binding + i);
+         spirv_builder_emit_binding(&ctx->builder, var_id, binding);
       }
    } else {
       SpvId var_id = spirv_builder_emit_var(&ctx->builder, pointer_type,
@@ -434,7 +462,7 @@ emit_sampler(struct ntv_context *ctx, struct nir_variable *var)
       if (var->name)
          spirv_builder_emit_name(&ctx->builder, var_id, var->name);
 
-      int index = var->data.driver_location;
+      int index = var->data.binding;
       assert(!(ctx->samplers_used & (1 << index)));
       assert(!ctx->image_types[index]);
       ctx->image_types[index] = image_type;
@@ -443,7 +471,10 @@ emit_sampler(struct ntv_context *ctx, struct nir_variable *var)
 
       spirv_builder_emit_descriptor_set(&ctx->builder, var_id,
                                         var->data.descriptor_set);
-      spirv_builder_emit_binding(&ctx->builder, var_id, var->data.binding);
+      int binding = zink_binding(ctx->stage,
+                                 VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                 var->data.binding);
+      spirv_builder_emit_binding(&ctx->builder, var_id, binding);
    }
 }
 
@@ -484,7 +515,10 @@ emit_ubo(struct ntv_context *ctx, struct nir_variable *var)
 
    spirv_builder_emit_descriptor_set(&ctx->builder, var_id,
                                      var->data.descriptor_set);
-   spirv_builder_emit_binding(&ctx->builder, var_id, var->data.binding);
+   int binding = zink_binding(ctx->stage,
+                              VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                              var->data.binding);
+   spirv_builder_emit_binding(&ctx->builder, var_id, binding);
 }
 
 static void
