@@ -198,15 +198,15 @@ vbo_can_merge_prims(const struct _mesa_prim *p0, const struct _mesa_prim *p1)
       return true;
 
    /* independent lines with no extra vertices */
-   if (p0->mode == GL_LINES && p0->count % 2 == 0 && p1->count % 2 == 0)
+   if (p0->mode == GL_LINES && p0->count % 2 == 0)
       return true;
 
    /* independent tris */
-   if (p0->mode == GL_TRIANGLES && p0->count % 3 == 0 && p1->count % 3 == 0)
+   if (p0->mode == GL_TRIANGLES && p0->count % 3 == 0)
       return true;
 
    /* independent quads */
-   if (p0->mode == GL_QUADS && p0->count % 4 == 0 && p1->count % 4 == 0)
+   if (p0->mode == GL_QUADS && p0->count % 4 == 0)
       return true;
 
    return false;
