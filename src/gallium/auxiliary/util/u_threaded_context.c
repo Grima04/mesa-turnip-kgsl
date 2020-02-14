@@ -2097,7 +2097,8 @@ tc_draw_vbo(struct pipe_context *_pipe, const struct pipe_draw_info *info)
        * e.g. transfer_unmap and flush partially-uninitialized draw_vbo
        * to the driver if it was done afterwards.
        */
-      u_upload_data(tc->base.stream_uploader, 0, size, 4, info->index.user,
+      u_upload_data(tc->base.stream_uploader, 0, size, 4,
+                    (uint8_t*)info->index.user + info->start * index_size,
                     &offset, &buffer);
       if (unlikely(!buffer))
          return;
