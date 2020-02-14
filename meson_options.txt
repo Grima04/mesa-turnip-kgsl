@@ -292,7 +292,7 @@ option(
   'build-aco-tests',
   type : 'boolean',
   value : false,
-  description : 'Build ACO tests. These do not require an AMD GPU.'
+  description : 'Build ACO tests. These require RADV and glslang but not an AMD GPU.'
 )
 option(
   'install-intel-gpu-tests',

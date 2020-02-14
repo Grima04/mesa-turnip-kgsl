@@ -18,8 +18,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-glslang = find_program('glslangValidator')
-
 overlay_shaders = [
   'overlay.frag',
   'overlay.vert',
@@ -28,7 +26,7 @@ overlay_spv = []
 foreach s : ['overlay.frag', 'overlay.vert']
   overlay_spv += custom_target(
     s + '.spv.h', input : s, output : s + '.spv.h',
-    command : [glslang, '-V', '-x', '-o', '@OUTPUT@', '@INPUT@'])
+    command : [prog_glslang, '-V', '-x', '-o', '@OUTPUT@', '@INPUT@'])
 endforeach
 
 vklayer_files = files(

@@ -543,6 +543,10 @@ if with_gallium_zink
   dep_vulkan = dependency('vulkan')
 endif
 
+if with_vulkan_overlay_layer or with_aco_tests
+  prog_glslang = find_program('glslangValidator')
+endif
+
 _xvmc = get_option('gallium-xvmc')
 if _xvmc == 'true'
   _xvmc = 'enabled'
