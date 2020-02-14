@@ -571,6 +571,7 @@ The integer capabilities:
 * ``PIPE_CAP_PACKED_STREAM_OUTPUT``: Driver supports packing optimization for stream output (e.g. GL transform feedback captured variables). Defaults to true.
 * ``PIPE_CAP_VIEWPORT_TRANSFORM_LOWERED``: Driver needs the nir_lower_viewport_transform pass to be enabled. This also means that the gl_Position value is modified and should be lowered for transform feedback, if needed. Defaults to false.
 * ``PIPE_CAP_PSIZ_CLAMPED``: Driver needs for the point size to be clamped. Additionally, the gl_PointSize has been modified and its value should be lowered for transform feedback, if needed. Defaults to false.
+* ``PIPE_CAP_DRAW_INFO_START_WITH_USER_INDICES``: pipe_draw_info::start can be non-zero with user indices.
 
 .. _pipe_capf:
 
