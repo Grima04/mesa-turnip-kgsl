@@ -175,12 +175,6 @@ bool
 vbo_merge_draws(struct gl_context *ctx, bool in_dlist,
                 struct _mesa_prim *p0, const struct _mesa_prim *p1)
 {
-   if (!p0->begin ||
-       !p1->begin ||
-       !p0->end ||
-       !p1->end)
-      return false;
-
    /* The prim mode must match (ex: both GL_TRIANGLES) */
    if (p0->mode != p1->mode)
       return false;
@@ -188,6 +182,31 @@ vbo_merge_draws(struct gl_context *ctx, bool in_dlist,
    /* p1's vertices must come right after p0 */
    if (p0->start + p0->count != p1->start)
       return false;
+
+   /* This checks whether mode is equal to any line primitive type, taking
+    * advantage of the fact that primitives types go from 0 to 14.
+    */
+   if ((1 << p0->mode) &
+       ((1 << GL_LINES) |
+        (1 << GL_LINE_LOOP) |
+        (1 << GL_LINE_STRIP) |
+        (1 << GL_LINES_ADJACENCY) |
+        (1 << GL_LINE_STRIP_ADJACENCY))) {
+      /* "begin" resets the line stipple pattern during line stipple emulation
+       * in tnl.
+       *
+       * StippleFlag can be unknown when compiling a display list.
+       *
+       * Other uses of "begin" are internal to the vbo module, and in those
+       * cases, "begin" is not used after merging draws.
+       */
+      if (p1->begin == 1 && (in_dlist || ctx->Line.StippleFlag))
+         return false;
+
+      /* _mesa_prim::end is irrelevant at this point and is only used
+       * before this function is called.
+       */
+   }
 
    assert(p0->basevertex == p1->basevertex);
 
