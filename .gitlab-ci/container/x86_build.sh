@@ -76,6 +76,7 @@ apt-get install -y --no-remove \
       libxvmc-dev \
       libxxf86vm-dev \
       llvm-6.0-dev \
+      llvm-7-dev \
       llvm-9-dev \
       meson \
       pkg-config \
@@ -97,29 +98,22 @@ for arch in $CROSS_ARCHITECTURES; do
             libelf-dev:${arch} \
             libexpat1-dev:${arch}
 
-    if [ "$arch" = "s390x" ]; then
-        LLVM_VERSION=7
-    else
-        LLVM_VERSION=8
-    fi
-
     if [ "$arch" != "i386" ]; then
         mkdir /var/cache/apt/archives/${arch}
         apt-get install -y --no-remove \
                 libffi-dev:${arch} \
-                libllvm${LLVM_VERSION}:${arch} \
+                libllvm8:${arch} \
                 libstdc++6:${arch} \
                 libtinfo-dev:${arch} \
 
         # Download llvm-* packages, but don't install them yet, since they can
         # only be installed for one architecture at a time
         apt-get install -o Dir::Cache::archives=/var/cache/apt/archives/$arch --download-only -y --no-remove \
-            llvm-${LLVM_VERSION}-dev:${arch}
+            llvm-8-dev:${arch}
     fi
 done
 
 apt-get install -y --no-remove \
-      llvm-7-dev \
       llvm-8-dev \
 
 # for 64bit windows cross-builds

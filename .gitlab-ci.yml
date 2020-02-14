@@ -112,7 +112,7 @@ x86_build:
     - .debian@container-ifnot-exists
     - .container
   variables:
-    DEBIAN_TAG: &x86_build "2020-02-05"
+    DEBIAN_TAG: &x86_build "2020-02-15"
 
 .use-x86_build:
   variables:
@@ -473,7 +473,6 @@ meson-s390x:
   variables:
     CROSS: s390x
     GALLIUM_DRIVERS: "swrast"
-    LLVM_VERSION: "7"
   script:
     - dpkg -i /var/cache/apt/archives/$CROSS/*.deb
     - .gitlab-ci/meson-build.sh
@@ -484,7 +483,6 @@ meson-ppc64el:
   variables:
     CROSS: ppc64el
     GALLIUM_DRIVERS: "nouveau,radeonsi,swrast,virgl"
-    LLVM_VERSION: "8"
     VULKAN_DRIVERS: "amd"
 
 meson-mingw32-x86_64:
