@@ -315,8 +315,6 @@ files_libgallium = files(
   'util/u_suballoc.h',
   'util/u_surface.c',
   'util/u_surface.h',
-  'util/u_surfaces.c',
-  'util/u_surfaces.h',
   'util/u_tests.c',
   'util/u_tests.h',
   'util/u_texture.c',
