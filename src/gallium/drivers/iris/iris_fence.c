@@ -133,7 +133,8 @@ iris_fence_reference(struct pipe_screen *p_screen,
                      struct pipe_fence_handle **dst,
                      struct pipe_fence_handle *src)
 {
-   if (pipe_reference(&(*dst)->ref, &src->ref))
+   if (pipe_reference(*dst ? &(*dst)->ref : NULL,
+                      src ? &src->ref : NULL))
       iris_fence_destroy(p_screen, *dst);
 
    *dst = src;
