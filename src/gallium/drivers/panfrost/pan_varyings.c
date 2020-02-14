@@ -25,6 +25,7 @@
 
 #include "pan_bo.h"
 #include "pan_context.h"
+#include "pan_format.h"
 #include "util/u_prim.h"
 
 static mali_ptr

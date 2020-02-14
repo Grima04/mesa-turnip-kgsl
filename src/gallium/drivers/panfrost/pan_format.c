@@ -72,20 +72,6 @@ panfrost_translate_swizzle_4(const unsigned char swizzle[4])
         return out;
 }
 
-unsigned
-panfrost_get_default_swizzle(unsigned components)
-{
-        unsigned char default_swizzles[4][4] = {
-                {PIPE_SWIZZLE_X, PIPE_SWIZZLE_0, PIPE_SWIZZLE_0, PIPE_SWIZZLE_1},
-                {PIPE_SWIZZLE_X, PIPE_SWIZZLE_Y, PIPE_SWIZZLE_0, PIPE_SWIZZLE_1},
-                {PIPE_SWIZZLE_X, PIPE_SWIZZLE_Y, PIPE_SWIZZLE_Z, PIPE_SWIZZLE_1},
-                {PIPE_SWIZZLE_X, PIPE_SWIZZLE_Y, PIPE_SWIZZLE_Z, PIPE_SWIZZLE_W},
-        };
-
-        assert(components >= 1 && components <= 4);
-        return panfrost_translate_swizzle_4(default_swizzles[components - 1]);
-}
-
 static unsigned
 panfrost_translate_channel_width(unsigned size)
 {

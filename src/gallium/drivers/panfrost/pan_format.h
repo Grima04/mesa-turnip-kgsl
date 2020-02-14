@@ -31,9 +31,6 @@
 unsigned
 panfrost_translate_swizzle_4(const unsigned char swizzle[4]);
 
-unsigned
-panfrost_get_default_swizzle(unsigned components);
-
 enum mali_format
 panfrost_find_format(const struct util_format_description *desc);
 
@@ -42,6 +39,27 @@ panfrost_invert_swizzle(const unsigned char *in, unsigned char *out);
 
 bool
 panfrost_is_z24s8_variant(enum pipe_format fmt);
+
+static inline unsigned
+panfrost_get_default_swizzle(unsigned components)
+{
+        switch (components) {
+        case 1:
+                return (MALI_CHANNEL_RED << 0) | (MALI_CHANNEL_ZERO << 3) |
+                        (MALI_CHANNEL_ZERO << 6) | (MALI_CHANNEL_ONE << 9);
+        case 2:
+                return (MALI_CHANNEL_RED << 0) | (MALI_CHANNEL_GREEN << 3) |
+                        (MALI_CHANNEL_ZERO << 6) | (MALI_CHANNEL_ONE << 9);
+        case 3:
+                return (MALI_CHANNEL_RED << 0) | (MALI_CHANNEL_GREEN << 3) |
+                        (MALI_CHANNEL_BLUE << 6) | (MALI_CHANNEL_ONE << 9);
+        case 4:
+                return (MALI_CHANNEL_RED << 0) | (MALI_CHANNEL_GREEN << 3) |
+                        (MALI_CHANNEL_BLUE << 6) | (MALI_CHANNEL_ALPHA << 9);
+        default:
+                unreachable("Invalid number of components");
+        }
+}
 
 #endif
 
