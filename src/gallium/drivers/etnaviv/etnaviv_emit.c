@@ -145,9 +145,11 @@ emit_halti5_only_state(struct etna_context *ctx, int vs_output_count)
       }
    }
    if (unlikely(dirty & (ETNA_DIRTY_SHADER))) {
-      /*00A90*/ EMIT_STATE(PA_VARYING_NUM_COMPONENTS(0), ctx->shader_state.GL_VARYING_NUM_COMPONENTS);
+      /*00A90*/ EMIT_STATE(PA_VARYING_NUM_COMPONENTS(0), ctx->shader_state.GL_VARYING_NUM_COMPONENTS[0]);
+      /*00A94*/ EMIT_STATE(PA_VARYING_NUM_COMPONENTS(1), ctx->shader_state.GL_VARYING_NUM_COMPONENTS[1]);
       /*00AA8*/ EMIT_STATE(PA_VS_OUTPUT_COUNT, vs_output_count);
-      /*01080*/ EMIT_STATE(PS_VARYING_NUM_COMPONENTS(0), ctx->shader_state.GL_VARYING_NUM_COMPONENTS);
+      /*01080*/ EMIT_STATE(PS_VARYING_NUM_COMPONENTS(0), ctx->shader_state.GL_VARYING_NUM_COMPONENTS[0]);
+      /*01084*/ EMIT_STATE(PS_VARYING_NUM_COMPONENTS(1), ctx->shader_state.GL_VARYING_NUM_COMPONENTS[1]);
       /*03888*/ EMIT_STATE(GL_HALTI5_SH_SPECIALS, ctx->shader_state.GL_HALTI5_SH_SPECIALS);
    }
    etna_coalesce_end(stream, &coalesce);
@@ -199,10 +201,11 @@ emit_pre_halti5_state(struct etna_context *ctx)
       /*01018*/ EMIT_STATE(PS_START_PC, ctx->shader_state.PS_START_PC);
    }
    if (unlikely(dirty & (ETNA_DIRTY_SHADER))) {
-      /*03820*/ EMIT_STATE(GL_VARYING_NUM_COMPONENTS, ctx->shader_state.GL_VARYING_NUM_COMPONENTS);
+      /*03820*/ EMIT_STATE(GL_VARYING_NUM_COMPONENTS, ctx->shader_state.GL_VARYING_NUM_COMPONENTS[0]);
       for (int x = 0; x < 2; ++x) {
          /*03828*/ EMIT_STATE(GL_VARYING_COMPONENT_USE(x), ctx->shader_state.GL_VARYING_COMPONENT_USE[x]);
       }
+      /*03834*/ EMIT_STATE(GL_VARYING_NUM_COMPONENTS2, ctx->shader_state.GL_VARYING_NUM_COMPONENTS[1]);
    }
    etna_coalesce_end(stream, &coalesce);
 }

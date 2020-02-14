@@ -190,7 +190,8 @@ etna_link_shaders(struct etna_context *ctx, struct compiled_shader_state *cs,
 
    cs->GL_VARYING_TOTAL_COMPONENTS =
       VIVS_GL_VARYING_TOTAL_COMPONENTS_NUM(align(total_components, 2));
-   cs->GL_VARYING_NUM_COMPONENTS = num_components[0];
+   cs->GL_VARYING_NUM_COMPONENTS[0] = num_components[0];
+   cs->GL_VARYING_NUM_COMPONENTS[1] = num_components[1];
    cs->GL_VARYING_COMPONENT_USE[0] = component_use[0];
    cs->GL_VARYING_COMPONENT_USE[1] = component_use[1];
 

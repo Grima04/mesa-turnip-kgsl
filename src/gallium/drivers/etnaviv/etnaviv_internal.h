@@ -34,7 +34,7 @@
 #include "drm/etnaviv_drmif.h"
 
 #define ETNA_NUM_INPUTS (16)
-#define ETNA_NUM_VARYINGS 8
+#define ETNA_NUM_VARYINGS 16
 #define ETNA_NUM_LOD (14)
 #define ETNA_NUM_LAYERS (6)
 #define ETNA_MAX_UNIFORMS (256)
@@ -263,7 +263,7 @@ struct compiled_shader_state {
    uint32_t PS_START_PC;
    uint32_t PE_DEPTH_CONFIG;
    uint32_t GL_VARYING_TOTAL_COMPONENTS;
-   uint32_t GL_VARYING_NUM_COMPONENTS;
+   uint32_t GL_VARYING_NUM_COMPONENTS[2];
    uint32_t GL_VARYING_COMPONENT_USE[2];
    uint32_t GL_HALTI5_SH_SPECIALS;
    uint32_t FE_HALTI5_ID_CONFIG;

@@ -399,7 +399,6 @@ etna_reset_gpu_state(struct etna_context *ctx)
       etna_set_state(stream, VIVS_VS_SAMPLER_BASE, 0x00000020);
       etna_set_state(stream, VIVS_SH_CONFIG, VIVS_SH_CONFIG_RTNE_ROUNDING);
    } else { /* Only on pre-HALTI5 */
-      etna_set_state(stream, VIVS_GL_UNK03834, 0x00000000);
       etna_set_state(stream, VIVS_GL_UNK03838, 0x00000000);
       etna_set_state(stream, VIVS_GL_UNK03854, 0x00000000);
    }
