@@ -4472,19 +4472,27 @@ void visit_load_resource(isel_context *ctx, nir_intrinsic_instr *instr)
    bld.copy(Definition(get_ssa_temp(ctx, &instr->dest.ssa)), index);
 }
 
-void load_buffer(isel_context *ctx, unsigned num_components, Temp dst,
-                 Temp rsrc, Temp offset, bool glc=false, bool readonly=true)
+void load_buffer(isel_context *ctx, unsigned num_components, unsigned component_size,
+                 Temp dst, Temp rsrc, Temp offset, int byte_align,
+                 bool glc=false, bool readonly=true)
 {
    Builder bld(ctx->program, ctx->block);
-
-   unsigned num_bytes = dst.size() * 4;
    bool dlc = glc && ctx->options->chip_class >= GFX10;
+   unsigned num_bytes = num_components * component_size;
 
    aco_opcode op;
    if (dst.type() == RegType::vgpr || (ctx->options->chip_class < GFX8 && !readonly)) {
       Operand vaddr = offset.type() == RegType::vgpr ? Operand(offset) : Operand(v1);
       Operand soffset = offset.type() == RegType::sgpr ? Operand(offset) : Operand((uint32_t) 0);
       unsigned const_offset = 0;
+
+      /* for small bit sizes add buffer for unaligned loads */
+      if (byte_align) {
+         if (num_bytes > 2)
+            num_bytes += byte_align == -1 ? 4 - component_size : byte_align;
+         else
+            byte_align = 0;
+      }
 
       Temp lower = Temp();
       if (num_bytes > 16) {
@@ -4511,12 +4519,23 @@ void load_buffer(isel_context *ctx, unsigned num_components, Temp dst,
       }
 
       switch (num_bytes) {
+         case 1:
+            op = aco_opcode::buffer_load_ubyte;
+            break;
+         case 2:
+            op = aco_opcode::buffer_load_ushort;
+            break;
+         case 3:
          case 4:
             op = aco_opcode::buffer_load_dword;
             break;
+         case 5:
+         case 6:
+         case 7:
          case 8:
             op = aco_opcode::buffer_load_dwordx2;
             break;
+         case 10:
          case 12:
             assert(ctx->options->chip_class > GFX6);
             op = aco_opcode::buffer_load_dwordx3;
@@ -4539,7 +4558,41 @@ void load_buffer(isel_context *ctx, unsigned num_components, Temp dst,
       mubuf->offset = const_offset;
       aco_ptr<Instruction> instr = std::move(mubuf);
 
-      if (dst.size() > 4) {
+      if (dst.regClass().is_subdword()) {
+         Temp vec = num_bytes <= 4 ? bld.tmp(v1) : num_bytes <= 8 ? bld.tmp(v2) : bld.tmp(v3);
+         instr->definitions[0] = Definition(vec);
+         bld.insert(std::move(instr));
+
+         if (byte_align == -1 || (byte_align && dst.type() == RegType::sgpr)) {
+            Operand align = byte_align == -1 ? Operand(offset) : Operand((uint32_t)byte_align);
+            Temp tmp[3] = {vec, vec, vec};
+
+            if (vec.size() == 3) {
+               tmp[0] = bld.tmp(v1), tmp[1] = bld.tmp(v1), tmp[2] = bld.tmp(v1);
+               bld.pseudo(aco_opcode::p_split_vector, Definition(tmp[0]), Definition(tmp[1]), Definition(tmp[2]), vec);
+            } else if (vec.size() == 2) {
+               tmp[0] = bld.tmp(v1), tmp[1] = bld.tmp(v1), tmp[2] = tmp[1];
+               bld.pseudo(aco_opcode::p_split_vector, Definition(tmp[0]), Definition(tmp[1]), vec);
+            }
+            for (unsigned i = 0; i < dst.size(); i++)
+               tmp[i] = bld.vop3(aco_opcode::v_alignbyte_b32, bld.def(v1), tmp[i + 1], tmp[i], align);
+
+            vec = tmp[0];
+            if (dst.size() == 2)
+               vec = bld.pseudo(aco_opcode::p_create_vector, bld.def(v2), tmp[0], tmp[1]);
+
+            byte_align = 0;
+         }
+
+         if (dst.type() == RegType::vgpr && num_components == 1) {
+            bld.pseudo(aco_opcode::p_extract_vector, Definition(dst), vec, Operand(byte_align / component_size));
+         } else {
+            trim_subdword_vector(ctx, vec, dst, 4 * vec.size() / component_size, ((1 << num_components) - 1) << byte_align / component_size);
+         }
+
+         return;
+
+      } else if (dst.size() > 4) {
          assert(lower != Temp());
          Temp upper = bld.tmp(RegType::vgpr, dst.size() - lower.size());
          instr->definitions[0] = Definition(upper);
@@ -4575,13 +4628,24 @@ void load_buffer(isel_context *ctx, unsigned num_components, Temp dst,
          emit_split_vector(ctx, dst, num_components);
       }
    } else {
+      /* for small bit sizes add buffer for unaligned loads */
+      if (byte_align)
+         num_bytes += byte_align == -1 ? 4 - component_size : byte_align;
+
       switch (num_bytes) {
+         case 1:
+         case 2:
+         case 3:
          case 4:
             op = aco_opcode::s_buffer_load_dword;
             break;
+         case 5:
+         case 6:
+         case 7:
          case 8:
             op = aco_opcode::s_buffer_load_dwordx2;
             break;
+         case 10:
          case 12:
          case 16:
             op = aco_opcode::s_buffer_load_dwordx4;
@@ -4593,9 +4657,10 @@ void load_buffer(isel_context *ctx, unsigned num_components, Temp dst,
          default:
             unreachable("Load SSBO not implemented for this size.");
       }
+      offset = bld.as_uniform(offset);
       aco_ptr<SMEM_instruction> load{create_instruction<SMEM_instruction>(op, Format::SMEM, 2, 1)};
       load->operands[0] = Operand(rsrc);
-      load->operands[1] = Operand(bld.as_uniform(offset));
+      load->operands[1] = Operand(offset);
       assert(load->operands[1].getTemp().type() == RegType::sgpr);
       load->definitions[0] = Definition(dst);
       load->glc = glc;
@@ -4604,8 +4669,16 @@ void load_buffer(isel_context *ctx, unsigned num_components, Temp dst,
       load->can_reorder = false; // FIXME: currently, it doesn't seem beneficial due to how our scheduler works
       assert(ctx->options->chip_class >= GFX8 || !glc);
 
+      /* adjust misaligned small bit size loads */
+      if (byte_align) {
+         Temp vec = num_bytes <= 4 ? bld.tmp(s1) : num_bytes <= 8 ? bld.tmp(s2) : bld.tmp(s4);
+         load->definitions[0] = Definition(vec);
+         bld.insert(std::move(load));
+         Operand byte_offset = byte_align > 0 ? Operand(uint32_t(byte_align)) : Operand(offset);
+         byte_align_scalar(ctx, vec, byte_offset, dst);
+
       /* trim vector */
-      if (dst.size() == 3) {
+      } else if (dst.size() == 3) {
          Temp vec = bld.tmp(s4);
          load->definitions[0] = Definition(vec);
          bld.insert(std::move(load));
@@ -4667,8 +4740,14 @@ void visit_load_ubo(isel_context *ctx, nir_intrinsic_instr *instr)
       rsrc = convert_pointer_to_64_bit(ctx, rsrc);
       rsrc = bld.smem(aco_opcode::s_load_dwordx4, bld.def(s4), rsrc, Operand(0u));
    }
-
-   load_buffer(ctx, instr->num_components, dst, rsrc, get_ssa_temp(ctx, instr->src[1].ssa));
+   unsigned size = instr->dest.ssa.bit_size / 8;
+   int byte_align = 0;
+   if (size < 4) {
+      unsigned align_mul = nir_intrinsic_align_mul(instr);
+      unsigned align_offset = nir_intrinsic_align_offset(instr);
+      byte_align = align_mul % 4 == 0 ? align_offset : -1;
+   }
+   load_buffer(ctx, instr->num_components, size, dst, rsrc, get_ssa_temp(ctx, instr->src[1].ssa), byte_align);
 }
 
 void visit_load_push_constant(isel_context *ctx, nir_intrinsic_instr *instr)
@@ -4792,8 +4871,10 @@ void visit_load_constant(isel_context *ctx, nir_intrinsic_instr *instr)
                           bld.sop1(aco_opcode::p_constaddr, bld.def(s2), bld.def(s1, scc), Operand(ctx->constant_data_offset)),
                           Operand(MIN2(base + range, ctx->shader->constant_data_size)),
                           Operand(desc_type));
-
-   load_buffer(ctx, instr->num_components, dst, rsrc, offset);
+   unsigned size = instr->dest.ssa.bit_size / 8;
+   // TODO: get alignment information for subdword constants
+   unsigned byte_align = size < 4 ? -1 : 0;
+   load_buffer(ctx, instr->num_components, size, dst, rsrc, offset, byte_align);
 }
 
 void visit_discard_if(isel_context *ctx, nir_intrinsic_instr *instr)
@@ -5606,7 +5687,14 @@ void visit_load_ssbo(isel_context *ctx, nir_intrinsic_instr *instr)
    rsrc = bld.smem(aco_opcode::s_load_dwordx4, bld.def(s4), rsrc, Operand(0u));
 
    bool glc = nir_intrinsic_access(instr) & (ACCESS_VOLATILE | ACCESS_COHERENT);
-   load_buffer(ctx, num_components, dst, rsrc, get_ssa_temp(ctx, instr->src[1].ssa), glc, false);
+   unsigned size = instr->dest.ssa.bit_size / 8;
+   int byte_align = 0;
+   if (size < 4) {
+      unsigned align_mul = nir_intrinsic_align_mul(instr);
+      unsigned align_offset = nir_intrinsic_align_offset(instr);
+      byte_align = align_mul % 4 == 0 ? align_offset : -1;
+   }
+   load_buffer(ctx, num_components, size, dst, rsrc, get_ssa_temp(ctx, instr->src[1].ssa), byte_align, glc, false);
 }
 
 void visit_store_ssbo(isel_context *ctx, nir_intrinsic_instr *instr)
