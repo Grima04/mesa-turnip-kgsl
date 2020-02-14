@@ -288,10 +288,11 @@ etna_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info)
    }
 
    /* Mark constant buffers as being read */
-   for (unsigned i = 0; i < ETNA_MAX_CONST_BUF; i++) {
-      resource_read(ctx, ctx->constant_buffer[PIPE_SHADER_VERTEX][i].buffer);
-      resource_read(ctx, ctx->constant_buffer[PIPE_SHADER_FRAGMENT][i].buffer);
-   }
+   foreach_bit(i, ctx->constant_buffer[PIPE_SHADER_VERTEX].enabled_mask)
+      resource_read(ctx, ctx->constant_buffer[PIPE_SHADER_VERTEX].cb[i].buffer);
+
+   foreach_bit(i, ctx->constant_buffer[PIPE_SHADER_FRAGMENT].enabled_mask)
+      resource_read(ctx, ctx->constant_buffer[PIPE_SHADER_FRAGMENT].cb[i].buffer);
 
    /* Mark VBOs as being read */
    foreach_bit(i, ctx->vertex_buffer.enabled_mask) {

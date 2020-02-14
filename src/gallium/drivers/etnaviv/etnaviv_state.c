@@ -82,23 +82,27 @@ etna_set_constant_buffer(struct pipe_context *pctx,
       const struct pipe_constant_buffer *cb)
 {
    struct etna_context *ctx = etna_context(pctx);
+   struct etna_constbuf_state *so = &ctx->constant_buffer[shader];
 
    assert(index < ETNA_MAX_CONST_BUF);
 
-   util_copy_constant_buffer(&ctx->constant_buffer[shader][index], cb);
+   util_copy_constant_buffer(&so->cb[index], cb);
 
    /* Note that the state tracker can unbind constant buffers by
     * passing NULL here. */
-   if (unlikely(!cb || (!cb->buffer && !cb->user_buffer)))
+   if (unlikely(!cb || (!cb->buffer && !cb->user_buffer))) {
+      so->enabled_mask &= ~(1 << index);
       return;
+   }
 
    assert(index != 0 || cb->user_buffer != NULL);
 
    if (!cb->buffer) {
-      struct pipe_constant_buffer *cb = &ctx->constant_buffer[shader][index];
+      struct pipe_constant_buffer *cb = &so->cb[index];
       u_upload_data(pctx->const_uploader, 0, cb->buffer_size, 16, cb->user_buffer, &cb->buffer_offset, &cb->buffer);
    }
 
+   so->enabled_mask |= 1 << index;
    ctx->dirty |= ETNA_DIRTY_CONSTBUF;
 }
 
