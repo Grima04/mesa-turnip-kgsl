@@ -700,6 +700,12 @@ etna_get_specs(struct etna_screen *screen)
    }
    screen->specs.num_constants = val;
 
+   if (etna_gpu_get_param(screen->gpu, ETNA_GPU_NUM_VARYINGS, &val)) {
+      DBG("could not get ETNA_GPU_NUM_VARYINGS");
+      goto fail;
+   }
+   screen->specs.max_varyings = MAX2(val, ETNA_NUM_VARYINGS);
+
    /* Figure out gross GPU architecture. See rnndb/common.xml for a specific
     * description of the differences. */
    if (VIV_FEATURE(screen, chipMinorFeatures5, HALTI5))
@@ -791,21 +797,13 @@ etna_get_specs(struct etna_screen *screen)
    }
 
    if (VIV_FEATURE(screen, chipMinorFeatures1, HALTI0)) {
-      screen->specs.max_varyings = 12;
       screen->specs.vertex_max_elements = 16;
    } else {
-      screen->specs.max_varyings = 8;
       /* Etna_viv documentation seems confused over the correct value
        * here so choose the lower to be safe: HALTI0 says 16 i.s.o.
        * 10, but VERTEX_ELEMENT_CONFIG register says 16 i.s.o. 12. */
       screen->specs.vertex_max_elements = 10;
    }
-
-   /* Etna_viv documentation does not indicate where varyings above 8 are
-    * stored. Moreover, if we are passed more than 8 varyings, we will
-    * walk off the end of some arrays. Limit the maximum number of varyings. */
-   if (screen->specs.max_varyings > ETNA_NUM_VARYINGS)
-      screen->specs.max_varyings = ETNA_NUM_VARYINGS;
 
    etna_determine_uniform_limits(screen);
 
