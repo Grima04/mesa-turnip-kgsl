@@ -846,14 +846,8 @@ try_vbo_merge(struct vbo_exec_context *exec)
       struct _mesa_prim *prev = &exec->vtx.prim[exec->vtx.prim_count - 2];
       assert(prev == cur - 1);
 
-      if (vbo_can_merge_prims(prev, cur)) {
-         assert(cur->begin);
-         assert(cur->end);
-         assert(prev->begin);
-         assert(prev->end);
-         vbo_merge_prims(prev, cur);
+      if (vbo_merge_draws(exec->ctx, false, prev, cur))
          exec->vtx.prim_count--;  /* drop the last primitive */
-      }
    }
 }
 

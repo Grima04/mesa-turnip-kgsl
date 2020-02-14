@@ -179,11 +179,8 @@ void
 vbo_try_prim_conversion(struct _mesa_prim *p);
 
 bool
-vbo_can_merge_prims(const struct _mesa_prim *p0, const struct _mesa_prim *p1);
-
-void
-vbo_merge_prims(struct _mesa_prim *p0, const struct _mesa_prim *p1);
-
+vbo_merge_draws(struct gl_context *ctx, bool in_dlist,
+                struct _mesa_prim *p0, const struct _mesa_prim *p1);
 
 unsigned
 vbo_copy_vertices(struct gl_context *ctx,

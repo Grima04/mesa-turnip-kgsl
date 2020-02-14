@@ -168,14 +168,12 @@ vbo_try_prim_conversion(struct _mesa_prim *p)
 
 
 /**
- * Helper function for determining if two subsequent glBegin/glEnd
- * primitives can be combined.  This is only possible for GL_POINTS,
- * GL_LINES, GL_TRIANGLES and GL_QUADS.
- * If we return true, it means that we can concatenate p1 onto p0 (and
- * discard p1).
+ * Function for merging two subsequent glBegin/glEnd draws.
+ * Return true if p1 was concatenated onto p0 (to discard p1 in the caller).
  */
 bool
-vbo_can_merge_prims(const struct _mesa_prim *p0, const struct _mesa_prim *p1)
+vbo_merge_draws(struct gl_context *ctx, bool in_dlist,
+                struct _mesa_prim *p0, const struct _mesa_prim *p1)
 {
    if (!p0->begin ||
        !p1->begin ||
@@ -193,37 +191,42 @@ vbo_can_merge_prims(const struct _mesa_prim *p0, const struct _mesa_prim *p1)
 
    assert(p0->basevertex == p1->basevertex);
 
-   /* can always merge subsequent GL_POINTS primitives */
-   if (p0->mode == GL_POINTS)
-      return true;
+   switch (p0->mode) {
+   case GL_POINTS:
+      /* can always merge subsequent GL_POINTS primitives */
+      break;
+   /* check independent primitives with no extra vertices */
+   case GL_LINES:
+      if (p0->count % 2)
+         return false;
+      break;
+   case GL_TRIANGLES:
+      if (p0->count % 3)
+         return false;
+      break;
+   case GL_QUADS:
+   case GL_LINES_ADJACENCY:
+      if (p0->count % 4)
+         return false;
+      break;
+   case GL_TRIANGLES_ADJACENCY:
+      if (p0->count % 6)
+         return false;
+      break;
+   case GL_PATCHES:
+      /* "patch_vertices" can be unknown when compiling a display list. */
+      if (in_dlist ||
+          p0->count % ctx->TessCtrlProgram.patch_vertices)
+         return false;
+      break;
+   default:
+      return false;
+   }
 
-   /* independent lines with no extra vertices */
-   if (p0->mode == GL_LINES && p0->count % 2 == 0)
-      return true;
-
-   /* independent tris */
-   if (p0->mode == GL_TRIANGLES && p0->count % 3 == 0)
-      return true;
-
-   /* independent quads */
-   if (p0->mode == GL_QUADS && p0->count % 4 == 0)
-      return true;
-
-   return false;
-}
-
-
-/**
- * If we've determined that p0 and p1 can be merged, this function
- * concatenates p1 onto p0.
- */
-void
-vbo_merge_prims(struct _mesa_prim *p0, const struct _mesa_prim *p1)
-{
-   assert(vbo_can_merge_prims(p0, p1));
-
+   /* Merge draws. */
    p0->count += p1->count;
    p0->end = p1->end;
+   return true;
 }
 
 /**

@@ -273,7 +273,7 @@ reset_counters(struct gl_context *ctx)
  * previous prim.
  */
 static void
-merge_prims(struct _mesa_prim *prim_list,
+merge_prims(struct gl_context *ctx, struct _mesa_prim *prim_list,
             GLuint *prim_count)
 {
    GLuint i;
@@ -284,11 +284,10 @@ merge_prims(struct _mesa_prim *prim_list,
 
       vbo_try_prim_conversion(this_prim);
 
-      if (vbo_can_merge_prims(prev_prim, this_prim)) {
+      if (vbo_merge_draws(ctx, true, prev_prim, this_prim)) {
          /* We've found a prim that just extend the previous one.  Tack it
           * onto the previous one, and let this primitive struct get dropped.
           */
-         vbo_merge_prims(prev_prim, this_prim);
          continue;
       }
 
@@ -578,7 +577,7 @@ compile_vertex_list(struct gl_context *ctx)
       convert_line_loop_to_strip(save, node);
    }
 
-   merge_prims(node->prims, &node->prim_count);
+   merge_prims(ctx, node->prims, &node->prim_count);
 
    /* Correct the primitive starts, we can only do this here as copy_vertices
     * and convert_line_loop_to_strip above consume the uncorrected starts.
