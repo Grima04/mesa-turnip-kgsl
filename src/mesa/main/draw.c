@@ -1467,54 +1467,19 @@ _mesa_exec_DrawTransformFeedbackStreamInstanced(GLenum mode, GLuint name,
 
 
 static void
-_mesa_validated_drawarraysindirect(struct gl_context *ctx,
-                                   GLenum mode, const GLvoid *indirect)
+_mesa_validated_multidrawarraysindirect(struct gl_context *ctx, GLenum mode,
+                                        GLintptr indirect,
+                                        GLintptr drawcount_offset,
+                                        GLsizei drawcount, GLsizei stride,
+                                        struct gl_buffer_object *drawcount_buffer)
 {
-   ctx->Driver.DrawIndirect(ctx, mode,
-                            ctx->DrawIndirectBuffer, (GLsizeiptr) indirect,
-                            1 /* draw_count */ , 16 /* stride */ ,
-                            NULL, 0, NULL);
-
-   if (MESA_DEBUG_FLAGS & DEBUG_ALWAYS_FLUSH)
-      _mesa_flush(ctx);
-}
-
-
-static void
-_mesa_validated_multidrawarraysindirect(struct gl_context *ctx,
-                                        GLenum mode,
-                                        const GLvoid *indirect,
-                                        GLsizei primcount, GLsizei stride)
-{
-   GLsizeiptr offset = (GLsizeiptr) indirect;
-
-   if (primcount == 0)
+   /* If drawcount_buffer is set, drawcount is the maximum draw count.*/
+   if (drawcount == 0)
       return;
 
-   ctx->Driver.DrawIndirect(ctx, mode, ctx->DrawIndirectBuffer, offset,
-                            primcount, stride, NULL, 0, NULL);
-
-   if (MESA_DEBUG_FLAGS & DEBUG_ALWAYS_FLUSH)
-      _mesa_flush(ctx);
-}
-
-
-static void
-_mesa_validated_drawelementsindirect(struct gl_context *ctx,
-                                     GLenum mode, GLenum type,
-                                     const GLvoid *indirect)
-{
-   struct _mesa_index_buffer ib;
-
-   ib.count = 0;                /* unknown */
-   ib.obj = ctx->Array.VAO->IndexBufferObj;
-   ib.ptr = NULL;
-   get_index_size(type, &ib);
-
-   ctx->Driver.DrawIndirect(ctx, mode,
-                            ctx->DrawIndirectBuffer, (GLsizeiptr) indirect,
-                            1 /* draw_count */ , 20 /* stride */ ,
-                            NULL, 0, &ib);
+   ctx->Driver.DrawIndirect(ctx, mode, ctx->DrawIndirectBuffer, indirect,
+                            drawcount, stride, drawcount_buffer,
+                            drawcount_offset, NULL);
 
    if (MESA_DEBUG_FLAGS & DEBUG_ALWAYS_FLUSH)
       _mesa_flush(ctx);
@@ -1524,25 +1489,25 @@ _mesa_validated_drawelementsindirect(struct gl_context *ctx,
 static void
 _mesa_validated_multidrawelementsindirect(struct gl_context *ctx,
                                           GLenum mode, GLenum type,
-                                          const GLvoid *indirect,
-                                          GLsizei primcount, GLsizei stride)
+                                          GLintptr indirect,
+                                          GLintptr drawcount_offset,
+                                          GLsizei drawcount, GLsizei stride,
+                                          struct gl_buffer_object *drawcount_buffer)
 {
-   struct _mesa_index_buffer ib;
-   GLsizeiptr offset = (GLsizeiptr) indirect;
-
-   if (primcount == 0)
+   /* If drawcount_buffer is set, drawcount is the maximum draw count.*/
+   if (drawcount == 0)
       return;
 
    /* NOTE: IndexBufferObj is guaranteed to be a VBO. */
-
+   struct _mesa_index_buffer ib;
    ib.count = 0;                /* unknown */
    ib.obj = ctx->Array.VAO->IndexBufferObj;
    ib.ptr = NULL;
    get_index_size(type, &ib);
 
-   ctx->Driver.DrawIndirect(ctx, mode,
-                            ctx->DrawIndirectBuffer, offset,
-                            primcount, stride, NULL, 0, &ib);
+   ctx->Driver.DrawIndirect(ctx, mode, ctx->DrawIndirectBuffer, indirect,
+                            drawcount, stride, drawcount_buffer,
+                            drawcount_offset, &ib);
 
    if (MESA_DEBUG_FLAGS & DEBUG_ALWAYS_FLUSH)
       _mesa_flush(ctx);
@@ -1594,7 +1559,8 @@ _mesa_exec_DrawArraysIndirect(GLenum mode, const GLvoid *indirect)
    if (skip_validated_draw(ctx))
       return;
 
-   _mesa_validated_drawarraysindirect(ctx, mode, indirect);
+   _mesa_validated_multidrawarraysindirect(ctx, mode, (GLintptr)indirect,
+                                           0, 1, 16, NULL);
 }
 
 
@@ -1660,7 +1626,9 @@ _mesa_exec_DrawElementsIndirect(GLenum mode, GLenum type, const GLvoid *indirect
    if (skip_validated_draw(ctx))
       return;
 
-   _mesa_validated_drawelementsindirect(ctx, mode, type, indirect);
+   _mesa_validated_multidrawelementsindirect(ctx, mode, type,
+                                             (GLintptr)indirect, 0,
+                                             1, 20, NULL);
 }
 
 
@@ -1725,8 +1693,8 @@ _mesa_exec_MultiDrawArraysIndirect(GLenum mode, const GLvoid *indirect,
    if (skip_validated_draw(ctx))
       return;
 
-   _mesa_validated_multidrawarraysindirect(ctx, mode, indirect,
-                                           primcount, stride);
+   _mesa_validated_multidrawarraysindirect(ctx, mode, (GLintptr)indirect, 0,
+                                           primcount, stride, NULL);
 }
 
 
@@ -1804,62 +1772,9 @@ _mesa_exec_MultiDrawElementsIndirect(GLenum mode, GLenum type,
    if (skip_validated_draw(ctx))
       return;
 
-   _mesa_validated_multidrawelementsindirect(ctx, mode, type, indirect,
-                                             primcount, stride);
-}
-
-
-static void
-_mesa_validated_multidrawarraysindirectcount(struct gl_context *ctx,
-                                             GLenum mode,
-                                             GLintptr indirect,
-                                             GLintptr drawcount_offset,
-                                             GLsizei maxdrawcount,
-                                             GLsizei stride)
-{
-   GLsizeiptr offset = indirect;
-
-   if (maxdrawcount == 0)
-      return;
-
-   ctx->Driver.DrawIndirect(ctx, mode,
-                            ctx->DrawIndirectBuffer, offset,
-                            maxdrawcount, stride,
-                            ctx->ParameterBuffer, drawcount_offset, NULL);
-
-   if (MESA_DEBUG_FLAGS & DEBUG_ALWAYS_FLUSH)
-      _mesa_flush(ctx);
-}
-
-
-static void
-_mesa_validated_multidrawelementsindirectcount(struct gl_context *ctx,
-                                               GLenum mode, GLenum type,
-                                               GLintptr indirect,
-                                               GLintptr drawcount_offset,
-                                               GLsizei maxdrawcount,
-                                               GLsizei stride)
-{
-   struct _mesa_index_buffer ib;
-   GLsizeiptr offset = (GLsizeiptr) indirect;
-
-   if (maxdrawcount == 0)
-      return;
-
-   /* NOTE: IndexBufferObj is guaranteed to be a VBO. */
-
-   ib.count = 0;                /* unknown */
-   ib.obj = ctx->Array.VAO->IndexBufferObj;
-   ib.ptr = NULL;
-   get_index_size(type, &ib);
-
-   ctx->Driver.DrawIndirect(ctx, mode,
-                            ctx->DrawIndirectBuffer, offset,
-                            maxdrawcount, stride,
-                            ctx->ParameterBuffer, drawcount_offset, &ib);
-
-   if (MESA_DEBUG_FLAGS & DEBUG_ALWAYS_FLUSH)
-      _mesa_flush(ctx);
+   _mesa_validated_multidrawelementsindirect(ctx, mode, type,
+                                             (GLintptr)indirect, 0, primcount,
+                                             stride, NULL);
 }
 
 
@@ -1899,9 +1814,9 @@ _mesa_exec_MultiDrawArraysIndirectCount(GLenum mode, GLintptr indirect,
    if (skip_validated_draw(ctx))
       return;
 
-   _mesa_validated_multidrawarraysindirectcount(ctx, mode, indirect,
-                                                drawcount_offset,
-                                                maxdrawcount, stride);
+   _mesa_validated_multidrawarraysindirect(ctx, mode, indirect,
+                                           drawcount_offset, maxdrawcount,
+                                           stride, ctx->ParameterBuffer);
 }
 
 
@@ -1942,9 +1857,9 @@ _mesa_exec_MultiDrawElementsIndirectCount(GLenum mode, GLenum type,
    if (skip_validated_draw(ctx))
       return;
 
-   _mesa_validated_multidrawelementsindirectcount(ctx, mode, type, indirect,
-                                                  drawcount_offset, maxdrawcount,
-                                                  stride);
+   _mesa_validated_multidrawelementsindirect(ctx, mode, type, indirect,
+                                             drawcount_offset, maxdrawcount,
+                                             stride, ctx->ParameterBuffer);
 }
 
 
