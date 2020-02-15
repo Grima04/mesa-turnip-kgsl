@@ -213,6 +213,9 @@ iris_fence_await(struct pipe_context *ctx,
 {
    struct iris_context *ice = (struct iris_context *)ctx;
 
+   /* Flush any current work in our context as it doesn't need to wait
+    * for this fence.  Any future work in our context must wait.
+    */
    for (unsigned b = 0; b < IRIS_BATCH_COUNT; b++) {
       struct iris_batch *batch = &ice->batches[b];
 
@@ -222,6 +225,7 @@ iris_fence_await(struct pipe_context *ctx,
          if (iris_seqno_signaled(seqno))
             continue;
 
+         iris_batch_flush(batch);
          iris_batch_add_syncobj(batch, seqno->syncobj, I915_EXEC_FENCE_WAIT);
       }
    }
