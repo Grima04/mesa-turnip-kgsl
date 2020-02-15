@@ -141,3 +141,13 @@ enum fd_version fd_device_version(struct fd_device *dev)
 {
 	return dev->version;
 }
+
+bool fd_dbg(void)
+{
+	static int dbg;
+
+	if (!dbg)
+		dbg = getenv("LIBGL_DEBUG") ? 1 : -1;
+
+	return dbg == 1;
+}
