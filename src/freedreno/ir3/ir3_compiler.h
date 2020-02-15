@@ -93,6 +93,7 @@ enum ir3_shader_debug {
 	IR3_DBG_FORCES2EN  = 0x100,
 	IR3_DBG_NOUBOOPT   = 0x200,
 	IR3_DBG_SCHEDMSGS  = 0x400,
+	IR3_DBG_NOFP16     = 0x800,
 };
 
 extern enum ir3_shader_debug ir3_shader_debug;

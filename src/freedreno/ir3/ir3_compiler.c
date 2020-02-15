@@ -42,6 +42,7 @@ static const struct debug_named_value shader_debug_options[] = {
 #ifdef DEBUG
 	{"schedmsgs",  IR3_DBG_SCHEDMSGS,  "Enable scheduler debug messages"},
 #endif
+	{"nofp16",     IR3_DBG_NOFP16,     "Don't lower mediump to fp16"},
 	DEBUG_NAMED_VALUE_END
 };
 
