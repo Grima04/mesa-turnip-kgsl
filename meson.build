@@ -34,6 +34,10 @@ cpp = meson.get_compiler('cpp')
 
 null_dep = dependency('', required : false)
 
+if get_option('layout') != 'mirror'
+  error('`mirror` is the only build directory layout supported')
+endif
+
 # Arguments for the preprocessor, put these in a separate array from the C and
 # C++ (cpp in meson terminology) arguments since they need to be added to the
 # default arguments for both C and C++.
