@@ -921,14 +921,47 @@ to upconvert to 32b float internally?
 	<reg32 offset="0x0806" name="CP_RB_RPTR"/>
 	<reg32 offset="0x0807" name="CP_RB_WPTR"/>
 	<reg32 offset="0x0808" name="CP_SQE_CNTL"/>
+	<reg32 offset="0x0812" name="CP_CP2GMU_STATUS">
+		<bitfield name="IFPC" pos="0" type="boolean"/>
+	</reg32>
 	<reg32 offset="0x0821" name="CP_HW_FAULT"/>
 	<reg32 offset="0x0823" name="CP_INTERRUPT_STATUS"/>
 	<reg32 offset="0x0824" name="CP_PROTECT_STATUS"/>
 	<reg32 offset="0x0830" name="CP_SQE_INSTR_BASE_LO"/>
 	<reg32 offset="0x0831" name="CP_SQE_INSTR_BASE_HI"/>
 	<reg32 offset="0x0840" name="CP_MISC_CNTL"/>
-	<reg32 offset="0x08C1" name="CP_ROQ_THRESHOLDS_1"/>
-	<reg32 offset="0x08C2" name="CP_ROQ_THRESHOLDS_2"/>
+	<!-- all the threshold values seem to be in units of quad-dwords: -->
+	<reg32 offset="0x08C1" name="CP_ROQ_THRESHOLDS_1">
+		<doc>
+			b0..7 seems to contain the size of buffered by not yet processed
+			RB level cmdstream.. it's possible that it is a low threshold
+			and b8..15 is a high threshold?
+
+			b16..23 identifies where IB1 data starts (and RB data ends?)
+
+			b24..31 identifies where IB2 data starts (and IB1 data ends)
+		</doc>
+		<bitfield name="RB_LO" low="0" high="7" shr="2"/>
+		<bitfield name="RB_HI" low="8" high="15" shr="2"/>
+		<bitfield name="IB1_START" low="16" high="23" shr="2"/>
+		<bitfield name="IB2_START" low="24" high="31" shr="2"/>
+	</reg32>
+	<reg32 offset="0x08C2" name="CP_ROQ_THRESHOLDS_2">
+		<doc>
+			low bits identify where CP_SET_DRAW_STATE stateobj
+			processing starts (and IB2 data ends). I'm guessing
+			b8 is part of this since (from downstream kgsl):
+
+				/* ROQ sizes are twice as big on a640/a680 than on a630 */
+				if (adreno_is_a640(adreno_dev) || adreno_is_a680(adreno_dev)) {
+					kgsl_regwrite(device, A6XX_CP_ROQ_THRESHOLDS_2, 0x02000140);
+					kgsl_regwrite(device, A6XX_CP_ROQ_THRESHOLDS_1, 0x8040362C);
+				} ...
+		</doc>
+		<bitfield name="SDS_START" low="0" high="8" shr="2"/>
+		<!-- total ROQ size: -->
+		<bitfield name="ROQ_SIZE" low="16" high="31" shr="2"/>
+	</reg32>
 	<reg32 offset="0x08C3" name="CP_MEM_POOL_SIZE"/>
 	<reg32 offset="0x0841" name="CP_CHICKEN_DBG"/>
 	<reg32 offset="0x0842" name="CP_ADDR_MODE_CNTL"/>
@@ -985,6 +1018,26 @@ to upconvert to 32b float internally?
 	<reg32 offset="0x092B" name="CP_IB2_BASE"/>
 	<reg32 offset="0x092C" name="CP_IB2_BASE_HI"/>
 	<reg32 offset="0x092D" name="CP_IB2_REM_SIZE"/>
+	<!-- SDS == CP_SET_DRAW_STATE: -->
+	<reg32 offset="0x092e" name="CP_SDS_BASE"/>
+	<reg32 offset="0x092f" name="CP_SDS_BASE_HI"/>
+	<reg32 offset="0x092e" name="CP_SDS_REM_SIZE"/>
+	<reg32 offset="0x0931" name="CP_BIN_SIZE_ADDRESS"/>
+	<reg32 offset="0x0932" name="CP_BIN_SIZE_ADDRESS_HI"/>
+	<reg32 offset="0x0934" name="CP_BIN_DATA_ADDR"/>
+	<reg32 offset="0x0935" name="CP_BIN_DATA_ADDR_HI"/>
+	<!--
+	There are probably similar registers for RB and SDS, teasing out SDS will
+	take a slightly better test case..
+	 -->
+	<reg32 offset="0x0949" name="CP_CSQ_IB1_STAT">
+		<doc>number of remaining dwords incl current dword being consumed?</doc>
+		<bitfield name="REM" low="16" high="31"/>
+	</reg32>
+	<reg32 offset="0x094a" name="CP_CSQ_IB2_STAT">
+		<doc>number of remaining dwords incl current dword being consumed?</doc>
+		<bitfield name="REM" low="16" high="31"/>
+	</reg32>
 	<reg32 offset="0x0980" name="CP_ALWAYS_ON_COUNTER_LO"/>
 	<reg32 offset="0x0981" name="CP_ALWAYS_ON_COUNTER_HI"/>
 	<reg32 offset="0x098D" name="CP_AHB_CNTL"/>
@@ -2590,6 +2643,16 @@ to upconvert to 32b float internally?
 
 	<reg32 offset="0x9e08" name="PC_TESSFACTOR_ADDR_LO"/>
 	<reg32 offset="0x9e09" name="PC_TESSFACTOR_ADDR_HI"/>
+
+	<!-- These match the contents of CP_SET_BIN_DATA (not written directly) -->
+	<reg32 offset="0x9e11" name="PC_VSTREAM_CONTROL">
+		<bitfield name="VSC_SIZE" low="16" high="21" type="uint"/>
+		<bitfield name="VSC_N" low="22" high="26" type="uint"/>
+	</reg32>
+	<reg32 offset="0x9e12" name="PC_BIN_DATA_ADDR2_LO"/>
+	<reg32 offset="0x9e13" name="PC_BIN_DATA_ADDR2_HI"/>
+	<reg32 offset="0x9e14" name="PC_BIN_DATA_ADDR_LO"/>
+	<reg32 offset="0x9e15" name="PC_BIN_DATA_ADDR_HI"/>
 
 	<!-- always 0x0 -->
 	<reg32 offset="0x9e72" name="PC_UNKNOWN_9E72"/>
