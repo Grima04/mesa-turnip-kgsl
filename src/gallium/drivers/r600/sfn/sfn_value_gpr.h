@@ -93,6 +93,7 @@ public:
    PValue operator [] (int i) const {return m_elms[i];}
    PValue& operator [] (int i) {return m_elms[i];}
 
+   void pin_to_channel(int i);
 
    PValue x() const {return m_elms[0];}
    PValue y() const {return m_elms[1];}

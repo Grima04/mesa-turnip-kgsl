@@ -623,6 +623,8 @@ bool FragmentShaderFromNir::load_interpolated_one_comp(GPRVector &dest,
       auto ir = new AluInstruction(op, dest[chan], i & 1 ? ip.j : ip.i,
                                    PValue(new InlineConstValue(ALU_SRC_PARAM_BASE + io.lds_pos(), 0)),
                                    i == 0  ? EmitInstruction::write : EmitInstruction::last);
+      dest.pin_to_channel(chan);
+
       ir->set_bank_swizzle(alu_vec_210);
       emit_instruction(ir);
    }
@@ -636,6 +638,7 @@ bool FragmentShaderFromNir::load_interpolated_two_comp(GPRVector &dest, ShaderIn
    for (unsigned i = 0; i < 4 ; ++i) {
       ir = new AluInstruction(op, dest[i], i & 1 ? ip.j : ip.i, PValue(new InlineConstValue(ALU_SRC_PARAM_BASE + io.lds_pos(), 0)),
                               (writemask & (1 << i)) ? EmitInstruction::write : EmitInstruction::empty);
+      dest.pin_to_channel(i);
       ir->set_bank_swizzle(alu_vec_210);
       emit_instruction(ir);
    }
@@ -653,6 +656,7 @@ bool FragmentShaderFromNir::load_interpolated_two_comp_for_one(GPRVector &dest,
                                    PValue(new InlineConstValue(ALU_SRC_PARAM_BASE + io.lds_pos(), 0)),
                                    i == comp ? EmitInstruction::write : EmitInstruction::empty);
       ir->set_bank_swizzle(alu_vec_210);
+      dest.pin_to_channel(i);
       emit_instruction(ir);
    }
    ir->set_flag(alu_last_instr);
