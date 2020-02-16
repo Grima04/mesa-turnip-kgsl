@@ -85,41 +85,49 @@
 #define NUM_ATTRIBS 12
 
 static const struct dri2_pbuffer_visual {
+   const char *format_name;
    unsigned int dri_image_format;
    int rgba_shifts[4];
    unsigned int rgba_sizes[4];
 } dri2_pbuffer_visuals[] = {
    {
+      "ABGR16F",
       __DRI_IMAGE_FORMAT_ABGR16161616F,
       { 0, 16, 32, 48 },
       { 16, 16, 16, 16 }
    },
    {
+      "XBGR16F",
       __DRI_IMAGE_FORMAT_XBGR16161616F,
       { 0, 16, 32, -1 },
       { 16, 16, 16, 0 }
    },
    {
+      "A2RGB10",
       __DRI_IMAGE_FORMAT_ARGB2101010,
       { 20, 10, 0, 30 },
       { 10, 10, 10, 2 }
    },
    {
+      "X2RGB10",
       __DRI_IMAGE_FORMAT_XRGB2101010,
       { 20, 10, 0, -1 },
       { 10, 10, 10, 0 }
    },
    {
+      "ARGB8888",
       __DRI_IMAGE_FORMAT_ARGB8888,
       { 16, 8, 0, 24 },
       { 8, 8, 8, 8 }
    },
    {
+      "RGB888",
       __DRI_IMAGE_FORMAT_XRGB8888,
       { 16, 8, 0, -1 },
       { 8, 8, 8, 0 }
    },
    {
+      "RGB565",
       __DRI_IMAGE_FORMAT_RGB565,
       { 11, 5, 0, -1 },
       { 5, 6, 5, 0 }
@@ -632,6 +640,39 @@ dri2_add_config(_EGLDisplay *disp, const __DRIconfig *dri_config, int id,
    conf->base.SurfaceType |= surface_type;
 
    return conf;
+}
+
+EGLBoolean
+dri2_add_pbuffer_configs_for_visuals(_EGLDriver *drv, _EGLDisplay *disp)
+{
+   struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
+   unsigned int format_count[ARRAY_SIZE(dri2_pbuffer_visuals)] = { 0 };
+   unsigned int config_count = 0;
+
+   for (unsigned i = 0; dri2_dpy->driver_configs[i] != NULL; i++) {
+      for (unsigned j = 0; j < ARRAY_SIZE(dri2_pbuffer_visuals); j++) {
+         struct dri2_egl_config *dri2_conf;
+
+         dri2_conf = dri2_add_config(disp, dri2_dpy->driver_configs[i],
+               config_count + 1, EGL_PBUFFER_BIT, NULL,
+               dri2_pbuffer_visuals[j].rgba_shifts, dri2_pbuffer_visuals[j].rgba_sizes);
+
+         if (dri2_conf) {
+            if (dri2_conf->base.ConfigID == config_count + 1)
+               config_count++;
+            format_count[j]++;
+         }
+      }
+   }
+
+   for (unsigned i = 0; i < ARRAY_SIZE(format_count); i++) {
+      if (!format_count[i]) {
+         _eglLog(_EGL_DEBUG, "No DRI config supports native format %s",
+               dri2_pbuffer_visuals[i].format_name);
+      }
+   }
+
+   return (config_count != 0);
 }
 
 __DRIimage *
