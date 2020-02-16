@@ -359,15 +359,6 @@ panfrost_default_shader_backend(struct panfrost_context *ctx)
         memcpy(&ctx->fragment_shader_core, &shader, sizeof(shader));
 }
 
-mali_ptr
-panfrost_vertex_buffer_address(struct panfrost_context *ctx, unsigned i)
-{
-        struct pipe_vertex_buffer *buf = &ctx->vertex_buffers[i];
-        struct panfrost_resource *rsrc = (struct panfrost_resource *) (buf->buffer.resource);
-
-        return rsrc->bo->gpu + buf->buffer_offset;
-}
-
 static bool
 panfrost_writes_point_size(struct panfrost_context *ctx)
 {
@@ -419,25 +410,35 @@ panfrost_stage_attributes(struct panfrost_context *ctx)
         for (unsigned i = 0; i < so->num_elements; ++i) {
                 unsigned vbi = so->pipe[i].vertex_buffer_index;
                 struct pipe_vertex_buffer *buf = &ctx->vertex_buffers[vbi];
-                mali_ptr addr = panfrost_vertex_buffer_address(ctx, vbi);
+                struct panfrost_resource *rsrc = (struct panfrost_resource *) (buf->buffer.resource);
+                mali_ptr addr = rsrc->bo->gpu + buf->buffer_offset;
 
-                /* Adjust by the masked off bits of the offset */
-                target[i].src_offset += (addr & 63);
+                /* Adjust by the masked off bits of the offset. Make sure we
+                 * read src_offset from so->hw (which is not GPU visible)
+                 * rather than target (which is) due to caching effects */
+
+                unsigned src_offset = so->hw[i].src_offset;
+                src_offset += (addr & 63);
 
                 /* Also, somewhat obscurely per-instance data needs to be
                  * offset in response to a delayed start in an indexed draw */
 
                 if (so->pipe[i].instance_divisor && ctx->instance_count > 1 && start)
-                        target[i].src_offset -= buf->stride * start;
+                        src_offset -= buf->stride * start;
+
+                target[i].src_offset = src_offset;
         }
 
         /* Let's also include vertex builtins */
 
-        target[PAN_VERTEX_ID].format = MALI_R32UI;
-        target[PAN_VERTEX_ID].swizzle = panfrost_get_default_swizzle(1);
+        struct mali_attr_meta builtin = {
+                .format = MALI_R32UI,
+                .swizzle = panfrost_get_default_swizzle(1)
+        };
 
-        target[PAN_INSTANCE_ID].format = MALI_R32UI;
-        target[PAN_INSTANCE_ID].swizzle = panfrost_get_default_swizzle(1);
+        /* See mali_attr_meta specification for the magic number */
+        memcpy(&target[PAN_VERTEX_ID], &builtin, 4);
+        memcpy(&target[PAN_INSTANCE_ID], &builtin, 4);
 
         ctx->payloads[PIPE_SHADER_VERTEX].postfix.attribute_meta = transfer.gpu;
 }
