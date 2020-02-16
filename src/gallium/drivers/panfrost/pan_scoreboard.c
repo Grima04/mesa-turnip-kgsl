@@ -49,7 +49,8 @@
  *
  * More specifically, here are a set of rules:
  *
- * - A set value job must appear if and only if there is at least one tiler job.
+ * - A write value job must appear if and only if there is at least one tiler
+ *   job, and tiler jobs must depend on it.
  *
  * - Vertex jobs and tiler jobs are independent.
  *
@@ -57,8 +58,7 @@
  *   data from a vertex job, it depends on the vertex job. If it's getting data
  *   from software, this is null.
  *
- * - The first vertex job used as the input to tiling must depend on the set
- *   value job, if it is present.
+ * - Tiler jobs must depend on the write value job (chained or otherwise).
  *
  * - Tiler jobs must be strictly ordered. So each tiler job must depend on the
  *   previous job in the chain.
@@ -70,9 +70,9 @@
  *
  * Justification for each rule:
  *
- * - Set value jobs set up tiling, essentially. If tiling occurs, they are
- *   needed; if it does not, we cannot emit them since then tiling partially
- *   occurs and it's bad.
+ * - Write value jobs are used to write a zero into a magic tiling field, which
+ *   enables tiling to work. If tiling occurs, they are needed; if it does not,
+ *   we cannot emit them since then tiling partially occurs and it's bad.
  *
  * - The hardware has no notion of a "vertex/tiler job" (at least not our
  *   hardware -- other revs have fused jobs, but --- crap, this just got even
@@ -82,10 +82,6 @@
  * - Any job must depend on its data source, in fact, or risk a
  *   read-before-write hazard. Tiler jobs get their data from vertex jobs, ergo
  *   tiler jobs depend on the corresponding vertex job (if it's there).
- *
- * - In fact, tiling depends on the set value job, but tiler jobs depend on the
- *   corresponding vertex jobs and each other, so this rule ensures each tiler
- *   job automatically depends on the set value job.
  *
  * - The tiler is not thread-safe; this dependency prevents race conditions
  *   between two different jobs trying to write to the tiler outputs at the
