@@ -876,20 +876,23 @@ struct mali_attr_meta {
 /* ORed into an MFBD address to specify the fbx section is included */
 #define MALI_MFBD_TAG_EXTRA (0x2)
 
-struct mali_uniform_buffer_meta {
-        /* This is actually the size minus 1 (MALI_POSITIVE), in units of 16
-         * bytes. This gives a maximum of 2^14 bytes, which just so happens to
-         * be the GL minimum-maximum for GL_MAX_UNIFORM_BLOCK_SIZE.
-         */
-        u64 size : 10;
+/* Uniform buffer objects are 64-bit fields divided as:
+ *
+ *      u64 size : 10;
+ *      mali_ptr ptr : 64 - 10;
+ *
+ * The size is actually the size minus 1 (MALI_POSITIVE), in units of 16 bytes.
+ * This gives a maximum of 2^14 bytes, which just so happens to be the GL
+ * minimum-maximum for GL_MAX_UNIFORM_BLOCK_SIZE.
+ *
+ * The pointer is missing the bottom 2 bits and top 8 bits. The top 8 bits
+ * should be 0 for userspace pointers, according to
+ * https://lwn.net/Articles/718895/. By reusing these bits, we can make each
+ * entry in the table only 64 bits.
+ */
 
-        /* This is missing the bottom 2 bits and top 8 bits. The top 8 bits
-         * should be 0 for userspace pointers, according to
-         * https://lwn.net/Articles/718895/. By reusing these bits, we can make
-         * each entry in the table only 64 bits.
-         */
-        mali_ptr ptr : 64 - 10;
-};
+#define MALI_MAKE_UBO(elements, ptr) \
+        (MALI_POSITIVE((elements)) | (((ptr) >> 2) << 10))
 
 /* On Bifrost, these fields are the same between the vertex and tiler payloads.
  * They also seem to be the same between Bifrost and Midgard. They're shared in
