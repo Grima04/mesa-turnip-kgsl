@@ -99,39 +99,21 @@ struct panfrost_batch {
         unsigned minx, miny;
         unsigned maxx, maxy;
 
-        /* CPU pointers to the job descriptor headers. next_job is only
-         * set at submit time (since only then are all the dependencies
-         * known). The upshot is that this is append-only.
-         *
-         * These arrays contain the headers for the "primary batch", our jargon
-         * referring to the part of the panfrost_job that actually contains
-         * meaningful work. In an OpenGL ES setting, that means the
-         * WRITE_VALUE/VERTEX/TILER jobs. Excluded is specifically the FRAGMENT
-         * job, which is sent on as a secondary batch containing only a single
-         * hardware job. Since there's one and only one FRAGMENT job issued per
-         * panfrost_job, there is no need to do any scoreboarding / management;
-         * it's easy enough to open-code it and it's not like we can get any
-         * better anyway. */
-        struct util_dynarray headers;
-
-        /* (And the GPU versions; TODO maybe combine) */
-        struct util_dynarray gpu_headers;
-
-        /* The last job in the primary batch */
-        struct panfrost_transfer last_job;
-
-        /* The first/last tiler job */
-        struct panfrost_transfer first_tiler;
-        struct panfrost_transfer last_tiler;
-
-        /* The first vertex job used as the input to a tiler job */
-        struct panfrost_transfer first_vertex_for_tiler;
-
-        /* The first job. Notice we've created a linked list */
-        struct panfrost_transfer first_job;
+        /* The first job in the batch */
+        mali_ptr first_job;
 
         /* The number of jobs in the primary batch, essentially */
         unsigned job_index;
+
+        /* A CPU-side pointer to the previous job for next_job linking */
+        struct mali_job_descriptor_header *prev_job;
+
+        /* The dependency for tiler jobs (i.e. the index of the last emitted
+         * tiler job, or zero if none have been emitted) */
+        unsigned tiler_dep;
+
+        /* The job index of the WRITE_VALUE job (before it has been created) */
+        unsigned write_value_index;
 
         /* BOs referenced -- will be used for flushing logic */
         struct hash_table *bos;
@@ -241,35 +223,16 @@ panfrost_batch_intersection_scissor(struct panfrost_batch *batch,
 
 /* Scoreboarding */
 
-void
-panfrost_scoreboard_queue_compute_job(
-        struct panfrost_batch *batch,
-        struct panfrost_transfer job);
+unsigned
+panfrost_new_job(
+                struct panfrost_batch *batch,
+                enum mali_job_type type,
+                bool barrier,
+                unsigned local_dep,
+                void *payload, size_t payload_size,
+                bool inject);
 
-void
-panfrost_scoreboard_queue_vertex_job(
-        struct panfrost_batch *batch,
-        struct panfrost_transfer vertex,
-        bool requires_tiling);
-
-void
-panfrost_scoreboard_queue_tiler_job(
-        struct panfrost_batch *batch,
-        struct panfrost_transfer tiler);
-
-void
-panfrost_scoreboard_queue_fused_job(
-        struct panfrost_batch *batch,
-        struct panfrost_transfer vertex,
-        struct panfrost_transfer tiler);
-void
-panfrost_scoreboard_queue_fused_job_prepend(
-        struct panfrost_batch *batch,
-        struct panfrost_transfer vertex,
-        struct panfrost_transfer tiler);
-
-void
-panfrost_scoreboard_link_batch(struct panfrost_batch *batch);
+void panfrost_scoreboard_initialize_tiler(struct panfrost_batch *batch);
 
 bool
 panfrost_batch_is_scanout(struct panfrost_batch *batch);

@@ -359,29 +359,6 @@ panfrost_default_shader_backend(struct panfrost_context *ctx)
         memcpy(&ctx->fragment_shader_core, &shader, sizeof(shader));
 }
 
-/* Generates a vertex/tiler job. This is, in some sense, the heart of the
- * graphics command stream. It should be called once per draw, accordding to
- * presentations. Set is_tiler for "tiler" jobs (fragment shader jobs, but in
- * Mali parlance, "fragment" refers to framebuffer writeout). Clear it for
- * vertex jobs. */
-
-struct panfrost_transfer
-panfrost_vertex_tiler_job(struct panfrost_context *ctx, bool is_tiler)
-{
-        struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
-        struct mali_job_descriptor_header job = {
-                .job_type = is_tiler ? JOB_TYPE_TILER : JOB_TYPE_VERTEX,
-                .job_descriptor_size = 1,
-        };
-
-        struct midgard_payload_vertex_tiler *payload = is_tiler ? &ctx->payloads[PIPE_SHADER_FRAGMENT] : &ctx->payloads[PIPE_SHADER_VERTEX];
-
-        struct panfrost_transfer transfer = panfrost_allocate_transient(batch, sizeof(job) + sizeof(*payload));
-        memcpy(transfer.cpu, &job, sizeof(job));
-        memcpy(transfer.cpu + sizeof(job), payload, sizeof(*payload));
-        return transfer;
-}
-
 mali_ptr
 panfrost_vertex_buffer_address(struct panfrost_context *ctx, unsigned i)
 {
@@ -1272,20 +1249,23 @@ panfrost_queue_draw(struct panfrost_context *ctx)
         bool rasterizer_discard = ctx->rasterizer
                                   && ctx->rasterizer->base.rasterizer_discard;
 
-        struct panfrost_transfer vertex = panfrost_vertex_tiler_job(ctx, false);
-        struct panfrost_transfer tiler;
 
-        if (!rasterizer_discard)
-                tiler = panfrost_vertex_tiler_job(ctx, true);
+        struct midgard_payload_vertex_tiler *vertex_payload = &ctx->payloads[PIPE_SHADER_VERTEX];
+        struct midgard_payload_vertex_tiler *tiler_payload = &ctx->payloads[PIPE_SHADER_FRAGMENT];
 
         struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
+        bool wallpapering = ctx->wallpaper_batch && batch->tiler_dep;
 
-        if (rasterizer_discard)
-                panfrost_scoreboard_queue_vertex_job(batch, vertex, FALSE);
-        else if (ctx->wallpaper_batch && batch->first_tiler.gpu)
-                panfrost_scoreboard_queue_fused_job_prepend(batch, vertex, tiler);
-        else
-                panfrost_scoreboard_queue_fused_job(batch, vertex, tiler);
+        if (wallpapering) {
+                /* Inject in reverse order, with "predicted" job indices. THIS IS A HACK XXX */
+                panfrost_new_job(batch, JOB_TYPE_TILER, false, batch->job_index + 2, tiler_payload, sizeof(*tiler_payload), true);
+                panfrost_new_job(batch, JOB_TYPE_VERTEX, false, 0, vertex_payload, sizeof(*vertex_payload), true);
+        } else  {
+                unsigned vertex = panfrost_new_job(batch, JOB_TYPE_VERTEX, false, 0, vertex_payload, sizeof(*vertex_payload), false);
+
+                if (!rasterizer_discard)
+                        panfrost_new_job(batch, JOB_TYPE_TILER, false, vertex, tiler_payload, sizeof(*tiler_payload), false);
+        }
 
         for (unsigned i = 0; i < PIPE_SHADER_TYPES; ++i) {
                 struct panfrost_shader_variants *all = ctx->shader[i];

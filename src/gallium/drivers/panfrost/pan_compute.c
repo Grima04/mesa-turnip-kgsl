@@ -104,12 +104,6 @@ panfrost_launch_grid(struct pipe_context *pipe,
 
         ctx->compute_grid = info;
 
-        struct mali_job_descriptor_header job = {
-                .job_type = JOB_TYPE_COMPUTE,
-                .job_descriptor_size = 1,
-                .job_barrier = 1
-        };
-
         /* TODO: Stub */
         struct midgard_payload_vertex_tiler *payload = &ctx->payloads[PIPE_SHADER_COMPUTE];
         struct panfrost_shader_variants *all = ctx->shader[PIPE_SHADER_COMPUTE];
@@ -152,15 +146,7 @@ panfrost_launch_grid(struct pipe_context *pipe,
                         info->grid[0], info->grid[1], info->grid[2],
                         info->block[0], info->block[1], info->block[2], false);
 
-        /* Upload the payload */
-
-        struct panfrost_transfer transfer = panfrost_allocate_transient(batch, sizeof(job) + sizeof(*payload));
-        memcpy(transfer.cpu, &job, sizeof(job));
-        memcpy(transfer.cpu + sizeof(job), payload, sizeof(*payload));
-
-        /* Queue the job */
-        panfrost_scoreboard_queue_compute_job(batch, transfer);
-
+        panfrost_new_job(batch, JOB_TYPE_COMPUTE, true, 0, payload, sizeof(*payload), false);
         panfrost_flush_all_batches(ctx, true);
 }
 
