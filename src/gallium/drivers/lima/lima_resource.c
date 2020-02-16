@@ -507,35 +507,6 @@ lima_surface_create(struct pipe_context *pctx,
 
    surf->reload = true;
 
-   struct lima_context *ctx = lima_context(pctx);
-   if (ctx->plb_pp_stream) {
-      struct lima_ctx_plb_pp_stream_key key = {
-         .tiled_w = surf->tiled_w,
-         .tiled_h = surf->tiled_h,
-      };
-
-      for (int i = 0; i < lima_ctx_num_plb; i++) {
-         key.plb_index = i;
-
-         struct hash_entry *entry =
-            _mesa_hash_table_search(ctx->plb_pp_stream, &key);
-         if (entry) {
-            struct lima_ctx_plb_pp_stream *s = entry->data;
-            s->refcnt++;
-         }
-         else {
-            struct lima_ctx_plb_pp_stream *s =
-               ralloc(ctx->plb_pp_stream, struct lima_ctx_plb_pp_stream);
-            s->key.plb_index = i;
-            s->key.tiled_w = surf->tiled_w;
-            s->key.tiled_h = surf->tiled_h;
-            s->refcnt = 1;
-            s->bo = NULL;
-            _mesa_hash_table_insert(ctx->plb_pp_stream, &s->key, s);
-         }
-      }
-   }
-
    return &surf->base;
 }
 
@@ -543,29 +514,6 @@ static void
 lima_surface_destroy(struct pipe_context *pctx, struct pipe_surface *psurf)
 {
    struct lima_surface *surf = lima_surface(psurf);
-   /* psurf->context may be not equal with pctx (i.e. glxinfo) */
-   struct lima_context *ctx = lima_context(psurf->context);
-
-   if (ctx->plb_pp_stream) {
-      struct lima_ctx_plb_pp_stream_key key = {
-         .tiled_w = surf->tiled_w,
-         .tiled_h = surf->tiled_h,
-      };
-
-      for (int i = 0; i < lima_ctx_num_plb; i++) {
-         key.plb_index = i;
-
-         struct hash_entry *entry =
-            _mesa_hash_table_search(ctx->plb_pp_stream, &key);
-         struct lima_ctx_plb_pp_stream *s = entry->data;
-         if (--s->refcnt == 0) {
-            if (s->bo)
-               lima_bo_unreference(s->bo);
-            _mesa_hash_table_remove(ctx->plb_pp_stream, entry);
-            ralloc_free(s);
-         }
-      }
-   }
 
    pipe_resource_reference(&psurf->texture, NULL);
    FREE(surf);

@@ -44,6 +44,7 @@
 #include "xf86drm.h"
 
 int lima_plb_max_blk = 0;
+int lima_plb_pp_stream_cache_size = 0;
 
 static void
 lima_screen_destroy(struct pipe_screen *pscreen)
@@ -501,11 +502,19 @@ lima_screen_parse_env(void)
               "reset to default 0\n", lima_ppir_force_spilling);
       lima_ppir_force_spilling = 0;
    }
+
+   lima_plb_pp_stream_cache_size = debug_get_num_option("LIMA_PLB_PP_STREAM_CACHE_SIZE", 0);
+   if (lima_plb_pp_stream_cache_size < 0) {
+      fprintf(stderr, "lima: LIMA_PLB_PP_STREAM_CACHE_SIZE %d less than 0, "
+              "reset to default 0\n", lima_plb_pp_stream_cache_size);
+      lima_plb_pp_stream_cache_size = 0;
+   }
 }
 
 struct pipe_screen *
 lima_screen_create(int fd, struct renderonly *ro)
 {
+   uint64_t system_memory;
    struct lima_screen *screen;
 
    screen = rzalloc(NULL, struct lima_screen);
@@ -515,6 +524,15 @@ lima_screen_create(int fd, struct renderonly *ro)
    screen->fd = fd;
 
    lima_screen_parse_env();
+
+   /* Limit PP PLB stream cache size to 0.1% of system memory */
+   if (!lima_plb_pp_stream_cache_size &&
+       os_get_total_physical_memory(&system_memory))
+      lima_plb_pp_stream_cache_size = system_memory >> 10;
+
+   /* Set lower limit on PP PLB cache size */
+   lima_plb_pp_stream_cache_size = MAX2(128 * 1024 * lima_ctx_num_plb,
+                                        lima_plb_pp_stream_cache_size);
 
    if (!lima_screen_query_info(screen))
       goto err_out0;

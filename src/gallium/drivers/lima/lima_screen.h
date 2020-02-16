@@ -47,6 +47,7 @@ extern uint32_t lima_debug;
 extern int lima_ctx_num_plb;
 extern int lima_plb_max_blk;
 extern int lima_ppir_force_spilling;
+extern int lima_plb_pp_stream_cache_size;
 
 struct ra_regs;
 

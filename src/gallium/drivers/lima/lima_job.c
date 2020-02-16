@@ -494,22 +494,6 @@ lima_get_pp_stream_size(int num_pp, int tiled_w, int tiled_h, uint32_t *off)
    return offset;
 }
 
-static bool
-inside_damage_region(int x, int y, struct lima_damage_region *ds)
-{
-   if (!ds || !ds->region)
-      return true;
-
-   for (int i = 0; i < ds->num_region; i++) {
-      struct pipe_scissor_state *ss = ds->region + i;
-      if (x >= ss->minx && x < ss->maxx &&
-          y >= ss->miny && y < ss->maxy)
-         return true;
-   }
-
-   return false;
-}
-
 static void
 lima_generate_pp_stream(struct lima_job *job, int off_x, int off_y,
                         int tiled_w, int tiled_h)
@@ -517,7 +501,6 @@ lima_generate_pp_stream(struct lima_job *job, int off_x, int off_y,
    struct lima_context *ctx = job->ctx;
    struct lima_pp_stream_state *ps = &ctx->pp_stream;
    struct lima_job_fb_info *fb = &job->fb;
-   struct lima_damage_region *damage = lima_job_get_damage(job);
    struct lima_screen *screen = lima_screen(ctx->base.screen);
    int i, num_pp = screen->num_pp;
 
@@ -551,9 +534,6 @@ lima_generate_pp_stream(struct lima_job *job, int off_x, int off_y,
          x += off_x;
          y += off_y;
 
-         if (!inside_damage_region(x, y, damage))
-            continue;
-
          int pp = index % num_pp;
          int offset = ((y >> fb->shift_h) * fb->block_w +
                        (x >> fb->shift_w)) * LIMA_CTX_PLB_BLK_SIZE;
@@ -578,6 +558,27 @@ lima_generate_pp_stream(struct lima_job *job, int off_x, int off_y,
          job->dump, stream[i], si[i] * 4,
          false, "pp plb stream %d at va %x\n",
          i, ps->va + ps->offset[i]);
+   }
+}
+
+static void
+lima_free_stale_pp_stream_bo(struct lima_context *ctx)
+{
+   list_for_each_entry_safe(struct lima_ctx_plb_pp_stream, entry,
+                            &ctx->plb_pp_stream_lru_list, lru_list) {
+      if (ctx->plb_stream_cache_size <= lima_plb_pp_stream_cache_size)
+         break;
+
+      struct hash_entry *hash_entry =
+         _mesa_hash_table_search(ctx->plb_pp_stream, &entry->key);
+      if (hash_entry)
+         _mesa_hash_table_remove(ctx->plb_pp_stream, hash_entry);
+      list_del(&entry->lru_list);
+
+      ctx->plb_stream_cache_size -= entry->bo->size;
+      lima_bo_unreference(entry->bo);
+
+      ralloc_free(entry);
    }
 }
 
@@ -609,51 +610,68 @@ lima_update_damage_pp_stream(struct lima_job *job)
    bound.maxx = MIN2(bound.maxx, fb->tiled_w);
    bound.maxy = MIN2(bound.maxy, fb->tiled_h);
 
-   int tiled_w = bound.maxx - bound.minx;
-   int tiled_h = bound.maxy - bound.miny;
-
-   struct lima_screen *screen = lima_screen(ctx->base.screen);
-   int size = lima_get_pp_stream_size(
-      screen->num_pp, tiled_w, tiled_h, ctx->pp_stream.offset);
-
-   ctx->pp_stream.map = lima_job_create_stream_bo(
-      job, LIMA_PIPE_PP, size, &ctx->pp_stream.va);
-
-   lima_generate_pp_stream(job, bound.minx, bound.miny, tiled_w, tiled_h);
-}
-
-static void
-lima_update_full_pp_stream(struct lima_job *job)
-{
-   struct lima_context *ctx = job->ctx;
-   struct lima_job_fb_info *fb = &job->fb;
    struct lima_ctx_plb_pp_stream_key key = {
       .plb_index = ctx->plb_index,
-      .tiled_w = fb->tiled_w,
-      .tiled_h = fb->tiled_h,
+      .minx = bound.minx,
+      .miny = bound.miny,
+      .maxx = bound.maxx,
+      .maxy = bound.maxy,
+      .shift_w = fb->shift_w,
+      .shift_h = fb->shift_h,
+      .block_w = fb->block_w,
+      .block_h = fb->block_h,
    };
 
    struct hash_entry *entry =
       _mesa_hash_table_search(ctx->plb_pp_stream, &key);
-   struct lima_ctx_plb_pp_stream *s = entry->data;
+   if (entry) {
+      struct lima_ctx_plb_pp_stream *s = entry->data;
 
-   if (s->bo) {
-      ctx->pp_stream.map = lima_bo_map(s->bo);
-      ctx->pp_stream.va = s->bo->va;
-      memcpy(ctx->pp_stream.offset, s->offset, sizeof(s->offset));
-   }
-   else {
-      struct lima_screen *screen = lima_screen(ctx->base.screen);
-      int size = lima_get_pp_stream_size(
-         screen->num_pp, fb->tiled_w, fb->tiled_h, s->offset);
-      s->bo = lima_bo_create(screen, size, 0);
+      list_del(&s->lru_list);
+      list_addtail(&s->lru_list, &ctx->plb_pp_stream_lru_list);
 
       ctx->pp_stream.map = lima_bo_map(s->bo);
       ctx->pp_stream.va = s->bo->va;
       memcpy(ctx->pp_stream.offset, s->offset, sizeof(s->offset));
 
-      lima_generate_pp_stream(job, 0, 0, fb->tiled_w, fb->tiled_h);
+      lima_job_add_bo(job, LIMA_PIPE_PP, s->bo, LIMA_SUBMIT_BO_READ);
+
+      return;
    }
+
+   lima_free_stale_pp_stream_bo(ctx);
+
+   struct lima_screen *screen = lima_screen(ctx->base.screen);
+   struct lima_ctx_plb_pp_stream *s =
+      rzalloc(ctx->plb_pp_stream, struct lima_ctx_plb_pp_stream);
+
+   list_inithead(&s->lru_list);
+   s->key.plb_index = ctx->plb_index;
+   s->key.minx = bound.minx;
+   s->key.maxx = bound.maxx;
+   s->key.miny = bound.miny;
+   s->key.maxy = bound.maxy;
+   s->key.shift_w = fb->shift_w;
+   s->key.shift_h = fb->shift_h;
+   s->key.block_w = fb->block_w;
+   s->key.block_h = fb->block_h;
+
+   int tiled_w = bound.maxx - bound.minx;
+   int tiled_h = bound.maxy - bound.miny;
+   int size = lima_get_pp_stream_size(
+      screen->num_pp, tiled_w, tiled_h, s->offset);
+
+   s->bo = lima_bo_create(screen, size, 0);
+
+   ctx->pp_stream.map = lima_bo_map(s->bo);
+   ctx->pp_stream.va = s->bo->va;
+   memcpy(ctx->pp_stream.offset, s->offset, sizeof(s->offset));
+
+   lima_generate_pp_stream(job, bound.minx, bound.miny, tiled_w, tiled_h);
+
+   ctx->plb_stream_cache_size += size;
+   list_addtail(&s->lru_list, &ctx->plb_pp_stream_lru_list);
+   _mesa_hash_table_insert(ctx->plb_pp_stream, &s->key, s);
 
    lima_job_add_bo(job, LIMA_PIPE_PP, s->bo, LIMA_SUBMIT_BO_READ);
 }
@@ -673,12 +691,13 @@ static void
 lima_update_pp_stream(struct lima_job *job)
 {
    struct lima_context *ctx = job->ctx;
+   struct lima_screen *screen = lima_screen(ctx->base.screen);
    struct lima_damage_region *damage = lima_job_get_damage(job);
-   if ((damage && damage->region) || !lima_damage_fullscreen(job))
+   if ((screen->gpu_type == DRM_LIMA_PARAM_GPU_ID_MALI400) ||
+       (damage && damage->region) || !lima_damage_fullscreen(job))
       lima_update_damage_pp_stream(job);
-   else if (ctx->plb_pp_stream)
-      lima_update_full_pp_stream(job);
    else
+      /* Mali450 doesn't need full PP stream */
       ctx->pp_stream.map = NULL;
 }
 

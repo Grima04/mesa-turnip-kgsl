@@ -25,6 +25,7 @@
 #ifndef H_LIMA_CONTEXT
 #define H_LIMA_CONTEXT
 
+#include "util/list.h"
 #include "util/slab.h"
 
 #include "pipe/p_context.h"
@@ -138,16 +139,19 @@ struct lima_texture_stateobj {
 };
 
 struct lima_ctx_plb_pp_stream_key {
-   uint32_t plb_index;
-   uint32_t tiled_w;
-   uint32_t tiled_h;
+   uint16_t plb_index;
+   /* Coordinates are in tiles */
+   uint16_t minx, miny, maxx, maxy;
+   /* FB params */
+   uint16_t shift_w, shift_h;
+   uint16_t block_w, block_h;
 };
 
 struct lima_ctx_plb_pp_stream {
+   struct list_head lru_list;
    struct lima_ctx_plb_pp_stream_key key;
-   uint32_t refcnt;
    struct lima_bo *bo;
-   uint32_t offset[4];
+   uint32_t offset[8];
 };
 
 struct lima_pp_stream_state {
@@ -217,7 +221,9 @@ struct lima_context {
    uint32_t gp_output_point_size_offt;
 
    struct hash_table *plb_pp_stream;
+   struct list_head plb_pp_stream_lru_list;
    uint32_t plb_index;
+   size_t plb_stream_cache_size;
 
    struct lima_ctx_buff_state buffer_state[lima_ctx_buff_num];
 

@@ -121,6 +121,16 @@ lima_invalidate_resource(struct pipe_context *pctx, struct pipe_resource *prsc)
 }
 
 static void
+plb_pp_stream_delete_fn(struct hash_entry *entry)
+{
+   struct lima_ctx_plb_pp_stream *s = entry->data;
+
+   lima_bo_unreference(s->bo);
+   list_del(&s->lru_list);
+   ralloc_free(s);
+}
+
+static void
 lima_context_destroy(struct pipe_context *pctx)
 {
    struct lima_context *ctx = lima_context(pctx);
@@ -154,8 +164,8 @@ lima_context_destroy(struct pipe_context *pctx)
    if (ctx->gp_output)
       lima_bo_unreference(ctx->gp_output);
 
-   if (ctx->plb_pp_stream)
-      assert(!_mesa_hash_table_num_entries(ctx->plb_pp_stream));
+   _mesa_hash_table_destroy(ctx->plb_pp_stream,
+                            plb_pp_stream_delete_fn);
 
    lima_context_free_drm_ctx(screen, ctx->id);
 
@@ -267,12 +277,11 @@ lima_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
          plb_gp_stream[j] = ctx->plb[i]->va + LIMA_CTX_PLB_BLK_SIZE * j;
    }
 
-   if (screen->gpu_type == DRM_LIMA_PARAM_GPU_ID_MALI400) {
-      ctx->plb_pp_stream = _mesa_hash_table_create(
-         ctx, plb_pp_stream_hash, plb_pp_stream_compare);
-      if (!ctx->plb_pp_stream)
-         goto err_out;
-   }
+   list_inithead(&ctx->plb_pp_stream_lru_list);
+   ctx->plb_pp_stream = _mesa_hash_table_create(
+      ctx, plb_pp_stream_hash, plb_pp_stream_compare);
+   if (!ctx->plb_pp_stream)
+      goto err_out;
 
    if (!lima_job_init(ctx))
       goto err_out;
