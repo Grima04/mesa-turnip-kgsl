@@ -419,6 +419,10 @@ if with_llvm
     'draw/draw_llvm_sample.c',
     'draw/draw_pt_fetch_shade_pipeline_llvm.c',
     'draw/draw_vs_llvm.c',
+    'tessellator/tessellator.cpp',
+    'tessellator/tessellator.hpp',
+    'tessellator/p_tessellator.cpp',
+    'tessellator/p_tessellator.h',
     'nir/nir_to_tgsi_info.c',
     'nir/nir_to_tgsi_info.h',
   )
