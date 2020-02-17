@@ -3527,6 +3527,27 @@ void visit_load_per_vertex_input(isel_context *ctx, nir_intrinsic_instr *instr)
    }
 }
 
+void visit_load_tess_coord(isel_context *ctx, nir_intrinsic_instr *instr)
+{
+   assert(ctx->shader->info.stage == MESA_SHADER_TESS_EVAL);
+
+   Builder bld(ctx->program, ctx->block);
+   Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
+
+   Operand tes_u(get_arg(ctx, ctx->args->tes_u));
+   Operand tes_v(get_arg(ctx, ctx->args->tes_v));
+   Operand tes_w(0u);
+
+   if (ctx->shader->info.tess.primitive_mode == GL_TRIANGLES) {
+      Temp tmp = bld.vop2(aco_opcode::v_add_f32, bld.def(v1), tes_u, tes_v);
+      tmp = bld.vop2(aco_opcode::v_sub_f32, bld.def(v1), Operand(0x3f800000u /* 1.0f */), tmp);
+      tes_w = Operand(tmp);
+   }
+
+   Temp tess_coord = bld.pseudo(aco_opcode::p_create_vector, Definition(dst), tes_u, tes_v, tes_w);
+   emit_split_vector(ctx, tess_coord, 3);
+}
+
 Temp load_desc_ptr(isel_context *ctx, unsigned desc_set)
 {
    if (ctx->program->info->need_indirect_descriptor_sets) {
@@ -6175,6 +6196,9 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
                  posy.id() ? bld.vop1(aco_opcode::v_fract_f32, bld.def(v1), posy) : Operand(0u));
       break;
    }
+   case nir_intrinsic_load_tess_coord:
+      visit_load_tess_coord(ctx, instr);
+      break;
    case nir_intrinsic_load_interpolated_input:
       visit_load_interpolated_input(ctx, instr);
       break;

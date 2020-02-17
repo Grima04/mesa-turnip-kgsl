@@ -328,6 +328,7 @@ void init_context(isel_context *ctx, nir_shader *shader)
                   case nir_intrinsic_load_local_invocation_id:
                   case nir_intrinsic_load_local_invocation_index:
                   case nir_intrinsic_load_subgroup_invocation:
+                  case nir_intrinsic_load_tess_coord:
                   case nir_intrinsic_write_invocation_amd:
                   case nir_intrinsic_mbcnt_amd:
                   case nir_intrinsic_load_instance_id:
