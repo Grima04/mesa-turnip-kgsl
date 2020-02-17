@@ -78,17 +78,13 @@ emit_fetch_64bit(
 }
 
 static void
-emit_store_64bit_chan(struct lp_build_nir_context *bld_base,
-                      LLVMValueRef chan_ptr,
-                      LLVMValueRef chan_ptr2,
-                      LLVMValueRef value)
+emit_store_64bit_split(struct lp_build_nir_context *bld_base,
+                       LLVMValueRef value,
+                       LLVMValueRef split_values[2])
 {
-   struct lp_build_nir_soa_context *bld = (struct lp_build_nir_soa_context *)bld_base;
    struct gallivm_state *gallivm = bld_base->base.gallivm;
    LLVMBuilderRef builder = gallivm->builder;
-   struct lp_build_context *float_bld = &bld_base->base;
    unsigned i;
-   LLVMValueRef temp, temp2;
    LLVMValueRef shuffles[LP_MAX_VECTOR_WIDTH/32];
    LLVMValueRef shuffles2[LP_MAX_VECTOR_WIDTH/32];
    int len = bld_base->base.type.length * 2;
@@ -99,19 +95,32 @@ emit_store_64bit_chan(struct lp_build_nir_context *bld_base,
       shuffles2[i] = lp_build_const_int32(gallivm, (i * 2) + 1);
    }
 
-   temp = LLVMBuildShuffleVector(builder, value,
+   split_values[0] = LLVMBuildShuffleVector(builder, value,
                                  LLVMGetUndef(LLVMTypeOf(value)),
                                  LLVMConstVector(shuffles,
                                                  bld_base->base.type.length),
                                  "");
-   temp2 = LLVMBuildShuffleVector(builder, value,
+   split_values[1] = LLVMBuildShuffleVector(builder, value,
                                   LLVMGetUndef(LLVMTypeOf(value)),
                                   LLVMConstVector(shuffles2,
                                                   bld_base->base.type.length),
                                   "");
+}
 
-   lp_exec_mask_store(&bld->exec_mask, float_bld, temp, chan_ptr);
-   lp_exec_mask_store(&bld->exec_mask, float_bld, temp2, chan_ptr2);
+static void
+emit_store_64bit_chan(struct lp_build_nir_context *bld_base,
+                      LLVMValueRef chan_ptr,
+                      LLVMValueRef chan_ptr2,
+                      LLVMValueRef value)
+{
+   struct lp_build_nir_soa_context *bld = (struct lp_build_nir_soa_context *)bld_base;
+   struct lp_build_context *float_bld = &bld_base->base;
+   LLVMValueRef split_vals[2];
+
+   emit_store_64bit_split(bld_base, value, split_vals);
+
+   lp_exec_mask_store(&bld->exec_mask, float_bld, split_vals[0], chan_ptr);
+   lp_exec_mask_store(&bld->exec_mask, float_bld, split_vals[1], chan_ptr2);
 }
 
 static LLVMValueRef
