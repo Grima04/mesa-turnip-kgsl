@@ -91,16 +91,18 @@ setup_framebuffer_params(struct fake_framebuffer *fb,
 
 /* This chooses a tile buffer format that is appropriate for the copy operation.
  * Typically, this is the image render target type, however, if we are copying
- * depth/stencil to a buffer the hardware can't do raster stores, so we need to
- * load and store to/from a tile color buffer using a compatible color format.
+ * depth/stencil to/from a buffer the hardware can't do raster loads/stores, so
+ * we need to load and store to/from a tile color buffer using a compatible
+ * color format.
  */
 static uint32_t
 choose_tlb_format(struct v3dv_image *image,
                   VkImageAspectFlags aspect,
                   bool for_store,
-                  bool is_copy_to_buffer)
+                  bool is_copy_to_buffer,
+                  bool is_copy_from_buffer)
 {
-   if (is_copy_to_buffer) {
+   if (is_copy_to_buffer || is_copy_from_buffer) {
       switch (image->vk_format) {
       case VK_FORMAT_D16_UNORM:
          return V3D_OUTPUT_IMAGE_FORMAT_R16UI;
@@ -115,13 +117,30 @@ choose_tlb_format(struct v3dv_image *image,
           * store outputs. For the load input we still want RGBA8UI since the
           * source image contains 4 channels (including the 3 channels
           * containing the 24-bit depth value).
+          *
+          * When loading the stencil aspect of a combined depth/stencil image
+          * from a buffer, we read packed 8-bit stencil values from the buffer
+          * that we need to put into the LSB of the 32-bit format (the R
+          * channel), so we use R8UI. For the store, if we used R8UI then we
+          * would write 8-bit stencil values consecutively over depth channels,
+          * so we need to use RGBA8UI. This will write each stencil value in
+          * its correct position, but will overwrite depth values (channels G
+          * B,A) with undefined values. To fix this,  we will have to restore
+          * the depth aspect from the Z tile buffer, which we should pre-load
+          * from the image before the store).
           */
          if (aspect & VK_IMAGE_ASPECT_DEPTH_BIT) {
             return V3D_OUTPUT_IMAGE_FORMAT_RGBA8UI;
          } else {
             assert(aspect & VK_IMAGE_ASPECT_STENCIL_BIT);
-            return for_store ? V3D_OUTPUT_IMAGE_FORMAT_R8UI :
-                               V3D_OUTPUT_IMAGE_FORMAT_RGBA8UI;
+            if (is_copy_to_buffer) {
+               return for_store ? V3D_OUTPUT_IMAGE_FORMAT_R8UI :
+                                  V3D_OUTPUT_IMAGE_FORMAT_RGBA8UI;
+            } else {
+               assert(is_copy_from_buffer);
+               return for_store ? V3D_OUTPUT_IMAGE_FORMAT_RGBA8UI :
+                                  V3D_OUTPUT_IMAGE_FORMAT_R8UI;
+            }
          }
       default: /* Color formats */
          return image->format->rt_type;
@@ -379,15 +398,16 @@ emit_image_load(struct v3dv_cl *cl,
                 VkImageAspectFlags aspect,
                 uint32_t layer,
                 uint32_t mip_level,
-                bool is_copy_to_buffer)
+                bool is_copy_to_buffer,
+                bool is_copy_from_buffer)
 {
    uint32_t layer_offset = v3dv_layer_offset(image, mip_level, layer);
 
-   /* For image to buffer copies we always load to and store from RT0, even
-    * for depth/stencil aspects, because the hardware can't do raster stores
-    * from the depth/stencil tile buffers.
+   /* For image to/from buffer copies we always load to and store from RT0,
+    * even for depth/stencil aspects, because the hardware can't do raster
+    * stores or loads from/to the depth/stencil tile buffers.
     */
-   bool load_to_color_tlb = is_copy_to_buffer ||
+   bool load_to_color_tlb = is_copy_to_buffer || is_copy_from_buffer ||
                             aspect == VK_IMAGE_ASPECT_COLOR_BIT;
 
    const struct v3d_resource_slice *slice = &image->slices[mip_level];
@@ -397,8 +417,9 @@ emit_image_load(struct v3dv_cl *cl,
 
       load.address = v3dv_cl_address(image->mem->bo, layer_offset);
 
-      load.input_image_format =
-         choose_tlb_format(image, aspect, false, is_copy_to_buffer);
+      load.input_image_format = choose_tlb_format(image, aspect, false,
+                                                  is_copy_to_buffer,
+                                                  is_copy_from_buffer);
       load.memory_format = slice->tiling;
 
       /* When copying depth/stencil images to a buffer, for D24 formats Vulkan
@@ -440,8 +461,6 @@ emit_image_load(struct v3dv_cl *cl,
       else
          load.decimate_mode = V3D_DECIMATE_MODE_SAMPLE_0;
    }
-
-   cl_emit(cl, END_OF_LOADS, end);
 }
 
 static void
@@ -450,11 +469,12 @@ emit_image_store(struct v3dv_cl *cl,
                  VkImageAspectFlags aspect,
                  uint32_t layer,
                  uint32_t mip_level,
-                 bool is_copy_to_buffer)
+                 bool is_copy_to_buffer,
+                 bool is_copy_from_buffer)
 {
    uint32_t layer_offset = v3dv_layer_offset(image, mip_level, layer);
 
-   bool store_from_color_tlb = is_copy_to_buffer ||
+   bool store_from_color_tlb = is_copy_to_buffer || is_copy_from_buffer ||
                                aspect == VK_IMAGE_ASPECT_COLOR_BIT;
 
    const struct v3d_resource_slice *slice = &image->slices[mip_level];
@@ -465,8 +485,19 @@ emit_image_store(struct v3dv_cl *cl,
       store.address = v3dv_cl_address(image->mem->bo, layer_offset);
       store.clear_buffer_being_stored = false;
 
-      store.output_image_format =
-         choose_tlb_format(image, aspect, true, is_copy_to_buffer);
+      /* See rationale in emit_image_load() */
+      if (is_copy_from_buffer) {
+         if (image->vk_format == VK_FORMAT_X8_D24_UNORM_PACK32 ||
+             (image->vk_format == VK_FORMAT_D24_UNORM_S8_UINT &&
+              (aspect & VK_IMAGE_ASPECT_DEPTH_BIT))) {
+            store.r_b_swap = true;
+            store.channel_reverse = true;
+         }
+      }
+
+      store.output_image_format = choose_tlb_format(image, aspect, true,
+                                                    is_copy_to_buffer,
+                                                    is_copy_from_buffer);
       store.memory_format = slice->tiling;
       if (slice->tiling == VC5_TILING_UIF_NO_XOR ||
           slice->tiling == VC5_TILING_UIF_XOR) {
@@ -502,7 +533,9 @@ emit_copy_layer_to_buffer_per_tile_list(struct v3dv_job *job,
    /* Load image to TLB */
    emit_image_load(cl, image, imgrsc->aspectMask,
                    imgrsc->baseArrayLayer + layer, imgrsc->mipLevel,
-                   true);
+                   true, false);
+
+   cl_emit(cl, END_OF_LOADS, end);
 
    cl_emit(cl, BRANCH_TO_IMPLICIT_TILE_LIST, branch);
 
@@ -528,7 +561,8 @@ emit_copy_layer_to_buffer_per_tile_list(struct v3dv_job *job,
    uint32_t buffer_offset =
       region->bufferOffset + height * buffer_stride * layer;
 
-   uint32_t format = choose_tlb_format(image, imgrsc->aspectMask, true, true);
+   uint32_t format = choose_tlb_format(image, imgrsc->aspectMask,
+                                       true, true, false);
    bool msaa = image->samples > VK_SAMPLE_COUNT_1_BIT;
 
    emit_linear_store(cl, RENDER_TARGET_0, buffer->mem->bo,
@@ -667,7 +701,9 @@ emit_copy_image_layer_per_tile_list(struct v3dv_job *job,
 
    emit_image_load(cl, src, srcrsc->aspectMask,
                    srcrsc->baseArrayLayer + layer, srcrsc->mipLevel,
-                   false);
+                   false, false);
+
+   cl_emit(cl, END_OF_LOADS, end);
 
    cl_emit(cl, BRANCH_TO_IMPLICIT_TILE_LIST, branch);
 
@@ -675,7 +711,8 @@ emit_copy_image_layer_per_tile_list(struct v3dv_job *job,
    assert(layer < dstrsc->layerCount);
 
    emit_image_store(cl, dst, dstrsc->aspectMask,
-                    dstrsc->baseArrayLayer + layer, dstrsc->mipLevel, false);
+                    dstrsc->baseArrayLayer + layer, dstrsc->mipLevel,
+                    false, false);
 
    cl_emit(cl, END_OF_TILE_MARKER, end);
 
@@ -813,7 +850,7 @@ emit_clear_image_per_tile_list(struct v3dv_job *job,
 
    cl_emit(cl, BRANCH_TO_IMPLICIT_TILE_LIST, branch);
 
-   emit_image_store(cl, image, aspects, layer, level, false);
+   emit_image_store(cl, image, aspects, layer, level, false, false);
 
    cl_emit(cl, END_OF_TILE_MARKER, end);
 
@@ -1316,22 +1353,64 @@ emit_copy_buffer_to_layer_per_tile_list(struct v3dv_job *job,
    else
       height = region->bufferImageHeight;
 
-   uint32_t buffer_stride = width * image->cpp;
+   uint32_t cpp = imgrsc->aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT ?
+                  1 : image->cpp;
+   uint32_t buffer_stride = width * cpp;
    uint32_t buffer_offset =
       region->bufferOffset + height * buffer_stride * layer;
 
-   uint32_t format = choose_tlb_format(image, imgrsc->aspectMask, true, false);
+   uint32_t format = choose_tlb_format(image, imgrsc->aspectMask,
+                                       false, false, true);
 
    emit_linear_load(cl, RENDER_TARGET_0, buffer->mem->bo,
                     buffer_offset, buffer_stride, format);
+
+   /* Because we can't do raster loads/stores of Z/S formats we need to
+    * use a color tile buffer with a compatible RGBA color format instead.
+    * However, when we are uploading a single aspect to a combined
+    * depth/stencil image we have the problem that our tile buffer stores don't
+    * allow us to mask out the other aspect, so we always write all four RGBA
+    * channels to the image and we end up overwriting that other aspect with
+    * undefined values. To work around that, we first load the aspect we are
+    * not copying from the image memory into a proper Z/S tile buffer. Then we
+    * do our store from the color buffer for the aspect we are copying, and
+    * after that, we do another store from the Z/S tile buffer to restore the
+    * other aspect to its original value.
+    */
+   if (image->vk_format == VK_FORMAT_D24_UNORM_S8_UINT) {
+      if (imgrsc->aspectMask & VK_IMAGE_ASPECT_DEPTH_BIT) {
+         emit_image_load(cl, image, VK_IMAGE_ASPECT_STENCIL_BIT,
+                         imgrsc->baseArrayLayer + layer, imgrsc->mipLevel,
+                         false, false);
+      } else {
+         assert(imgrsc->aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT);
+         emit_image_load(cl, image, VK_IMAGE_ASPECT_DEPTH_BIT,
+                         imgrsc->baseArrayLayer + layer, imgrsc->mipLevel,
+                         false, false);
+      }
+   }
 
    cl_emit(cl, END_OF_LOADS, end);
 
    cl_emit(cl, BRANCH_TO_IMPLICIT_TILE_LIST, branch);
 
-   /* Store TLB to image  */
+   /* Store TLB to image */
    emit_image_store(cl, image, imgrsc->aspectMask,
-                    imgrsc->baseArrayLayer + layer, imgrsc->mipLevel, false);
+                    imgrsc->baseArrayLayer + layer, imgrsc->mipLevel,
+                    false, true);
+
+   if (image->vk_format == VK_FORMAT_D24_UNORM_S8_UINT) {
+      if (imgrsc->aspectMask & VK_IMAGE_ASPECT_DEPTH_BIT) {
+         emit_image_store(cl, image, VK_IMAGE_ASPECT_STENCIL_BIT,
+                          imgrsc->baseArrayLayer + layer, imgrsc->mipLevel,
+                          false, false);
+      } else {
+         assert(imgrsc->aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT);
+         emit_image_store(cl, image, VK_IMAGE_ASPECT_DEPTH_BIT,
+                          imgrsc->baseArrayLayer + layer, imgrsc->mipLevel,
+                          false, false);
+      }
+   }
 
    cl_emit(cl, END_OF_TILE_MARKER, end);
 
