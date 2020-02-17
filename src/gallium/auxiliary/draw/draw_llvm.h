@@ -32,6 +32,7 @@
 
 #include "draw/draw_vs.h"
 #include "draw/draw_gs.h"
+#include "draw/draw_tess.h"
 
 #include "gallivm/lp_bld_sample.h"
 #include "gallivm/lp_bld_limits.h"
@@ -317,6 +318,103 @@ enum {
 #define draw_gs_jit_context_num_ssbos(_gallivm, _ptr) \
    lp_build_struct_get_ptr(_gallivm, _ptr, DRAW_GS_JIT_CTX_NUM_SSBOS, "num_ssbos")
 
+
+struct draw_tcs_jit_context {
+   const float *constants[LP_MAX_TGSI_CONST_BUFFERS];
+   int num_constants[LP_MAX_TGSI_CONST_BUFFERS];
+
+   int dummy1;
+   int dummy2;
+   /* There two need to be exactly at DRAW_JIT_CTX_TEXTURES and
+    * DRAW_JIT_CTX_SAMPLERS positions in the struct */
+   struct draw_jit_texture textures[PIPE_MAX_SHADER_SAMPLER_VIEWS];
+   struct draw_jit_sampler samplers[PIPE_MAX_SAMPLERS];
+   struct draw_jit_image images[PIPE_MAX_SHADER_IMAGES];
+
+   const uint32_t *ssbos[LP_MAX_TGSI_SHADER_BUFFERS];
+   int num_ssbos[LP_MAX_TGSI_SHADER_BUFFERS];
+};
+
+enum {
+   DRAW_TCS_JIT_CTX_CONSTANTS = 0,
+   DRAW_TCS_JIT_CTX_NUM_CONSTANTS = 1,
+   DRAW_TCS_JIT_CTX_TEXTURES = DRAW_JIT_CTX_TEXTURES,
+   DRAW_TCS_JIT_CTX_SAMPLERS = DRAW_JIT_CTX_SAMPLERS,
+   DRAW_TCS_JIT_CTX_IMAGES = DRAW_JIT_CTX_IMAGES,
+   DRAW_TCS_JIT_CTX_SSBOS = 7,
+   DRAW_TCS_JIT_CTX_NUM_SSBOS = 8,
+   DRAW_TCS_JIT_CTX_NUM_FIELDS = 9,
+};
+
+#define draw_tcs_jit_context_constants(_gallivm, _ptr) \
+   lp_build_struct_get_ptr(_gallivm, _ptr, DRAW_TCS_JIT_CTX_CONSTANTS, "constants")
+
+#define draw_tcs_jit_context_num_constants(_gallivm, _ptr) \
+   lp_build_struct_get_ptr(_gallivm, _ptr, DRAW_TCS_JIT_CTX_NUM_CONSTANTS, "num_constants")
+
+#define draw_tcs_jit_context_textures(_gallivm, _ptr) \
+   lp_build_struct_get_ptr(_gallivm, _ptr, DRAW_TCS_JIT_CTX_TEXTURES, "textures")
+
+#define draw_tcs_jit_context_samplers(_gallivm, _ptr) \
+   lp_build_struct_get_ptr(_gallivm, _ptr, DRAW_TCS_JIT_CTX_SAMPLERS, "samplers")
+
+#define draw_tcs_jit_context_images(_gallivm, _ptr)                      \
+   lp_build_struct_get_ptr(_gallivm, _ptr, DRAW_TCS_JIT_CTX_IMAGES, "images")
+
+#define draw_tcs_jit_context_ssbos(_gallivm, _ptr) \
+   lp_build_struct_get_ptr(_gallivm, _ptr, DRAW_TCS_JIT_CTX_SSBOS, "ssbos")
+
+#define draw_tcs_jit_context_num_ssbos(_gallivm, _ptr) \
+   lp_build_struct_get_ptr(_gallivm, _ptr, DRAW_TCS_JIT_CTX_NUM_SSBOS, "num_ssbos")
+
+struct draw_tes_jit_context {
+   const float *constants[LP_MAX_TGSI_CONST_BUFFERS];
+   int num_constants[LP_MAX_TGSI_CONST_BUFFERS];
+
+   int dummy1;
+   int dummy2;
+   /* There two need to be exactly at DRAW_JIT_CTX_TEXTURES and
+    * DRAW_JIT_CTX_SAMPLERS positions in the struct */
+   struct draw_jit_texture textures[PIPE_MAX_SHADER_SAMPLER_VIEWS];
+   struct draw_jit_sampler samplers[PIPE_MAX_SAMPLERS];
+   struct draw_jit_image images[PIPE_MAX_SHADER_IMAGES];
+
+   const uint32_t *ssbos[LP_MAX_TGSI_SHADER_BUFFERS];
+   int num_ssbos[LP_MAX_TGSI_SHADER_BUFFERS];
+};
+
+enum {
+   DRAW_TES_JIT_CTX_CONSTANTS = 0,
+   DRAW_TES_JIT_CTX_NUM_CONSTANTS = 1,
+   DRAW_TES_JIT_CTX_TEXTURES = DRAW_JIT_CTX_TEXTURES,
+   DRAW_TES_JIT_CTX_SAMPLERS = DRAW_JIT_CTX_SAMPLERS,
+   DRAW_TES_JIT_CTX_IMAGES = DRAW_JIT_CTX_IMAGES,
+   DRAW_TES_JIT_CTX_SSBOS = 7,
+   DRAW_TES_JIT_CTX_NUM_SSBOS = 8,
+   DRAW_TES_JIT_CTX_NUM_FIELDS = 9,
+};
+
+#define draw_tes_jit_context_constants(_gallivm, _ptr) \
+   lp_build_struct_get_ptr(_gallivm, _ptr, DRAW_TES_JIT_CTX_CONSTANTS, "constants")
+
+#define draw_tes_jit_context_num_constants(_gallivm, _ptr) \
+   lp_build_struct_get_ptr(_gallivm, _ptr, DRAW_TES_JIT_CTX_NUM_CONSTANTS, "num_constants")
+
+#define draw_tes_jit_context_textures(_gallivm, _ptr) \
+   lp_build_struct_get_ptr(_gallivm, _ptr, DRAW_TES_JIT_CTX_TEXTURES, "textures")
+
+#define draw_tes_jit_context_samplers(_gallivm, _ptr) \
+   lp_build_struct_get_ptr(_gallivm, _ptr, DRAW_TES_JIT_CTX_SAMPLERS, "samplers")
+
+#define draw_tes_jit_context_images(_gallivm, _ptr)                      \
+   lp_build_struct_get_ptr(_gallivm, _ptr, DRAW_TES_JIT_CTX_IMAGES, "images")
+
+#define draw_tes_jit_context_ssbos(_gallivm, _ptr) \
+   lp_build_struct_get_ptr(_gallivm, _ptr, DRAW_TES_JIT_CTX_SSBOS, "ssbos")
+
+#define draw_tes_jit_context_num_ssbos(_gallivm, _ptr) \
+   lp_build_struct_get_ptr(_gallivm, _ptr, DRAW_TES_JIT_CTX_NUM_SSBOS, "num_ssbos")
+
 typedef boolean
 (*draw_jit_vert_func)(struct draw_jit_context *context,
                       struct vertex_header *io,
@@ -340,6 +438,21 @@ typedef int
                     unsigned instance_id,
                     int *prim_ids,
                     unsigned invocation_id);
+
+typedef int
+(*draw_tcs_jit_func)(struct draw_tcs_jit_context *context,
+                     float inputs[32][NUM_TCS_INPUTS][TGSI_NUM_CHANNELS],
+                     float outputs[32][PIPE_MAX_SHADER_INPUTS][TGSI_NUM_CHANNELS],
+                     uint32_t prim_id, uint32_t patch_vertices_in);
+
+typedef int
+(*draw_tes_jit_func)(struct draw_tes_jit_context *context,
+                     float inputs[32][PIPE_MAX_SHADER_INPUTS][TGSI_NUM_CHANNELS],
+                     struct vertex_header *io,
+                     uint32_t prim_id, uint32_t num_tess_coord,
+                     float *tess_coord_x, float *tess_coord_y, float *tess_outer,
+                     float *tess_inner);
+
 
 struct draw_llvm_variant_key
 {

@@ -497,6 +497,166 @@ create_jit_vertex_header(struct gallivm_state *gallivm, int data_elems)
    return vertex_header;
 }
 
+/**
+ * Create LLVM type for struct draw_tcs_jit_context
+ */
+static LLVMTypeRef
+create_tcs_jit_context_type(struct gallivm_state *gallivm,
+                            unsigned vector_length,
+                            LLVMTypeRef texture_type, LLVMTypeRef sampler_type,
+                            LLVMTypeRef image_type,
+                            const char *struct_name)
+{
+   LLVMTargetDataRef target = gallivm->target;
+   LLVMTypeRef float_type = LLVMFloatTypeInContext(gallivm->context);
+   LLVMTypeRef int_type = LLVMInt32TypeInContext(gallivm->context);
+   LLVMTypeRef elem_types[DRAW_TCS_JIT_CTX_NUM_FIELDS];
+   LLVMTypeRef context_type;
+
+   elem_types[0] = LLVMArrayType(LLVMPointerType(float_type, 0), /* constants */
+                                 LP_MAX_TGSI_CONST_BUFFERS);
+   elem_types[1] = LLVMArrayType(int_type, /* num_constants */
+                                 LP_MAX_TGSI_CONST_BUFFERS);
+   elem_types[2] = LLVMInt32TypeInContext(gallivm->context);
+   elem_types[3] = LLVMInt32TypeInContext(gallivm->context);
+
+   elem_types[4] = LLVMArrayType(texture_type,
+                                 PIPE_MAX_SHADER_SAMPLER_VIEWS); /* textures */
+   elem_types[5] = LLVMArrayType(sampler_type,
+                                 PIPE_MAX_SAMPLERS); /* samplers */
+   elem_types[6] = LLVMArrayType(image_type,
+                                 PIPE_MAX_SHADER_IMAGES); /* images */
+
+   elem_types[7] = LLVMArrayType(LLVMPointerType(int_type, 0), /* ssbos */
+                                 LP_MAX_TGSI_SHADER_BUFFERS);
+   elem_types[8] = LLVMArrayType(int_type, /* num_ssbos */
+                                 LP_MAX_TGSI_SHADER_BUFFERS);
+
+   context_type = LLVMStructTypeInContext(gallivm->context, elem_types,
+                                          ARRAY_SIZE(elem_types), 0);
+
+   (void) target; /* silence unused var warning for non-debug build */
+   LP_CHECK_MEMBER_OFFSET(struct draw_tcs_jit_context, constants,
+                          target, context_type, DRAW_TCS_JIT_CTX_CONSTANTS);
+   LP_CHECK_MEMBER_OFFSET(struct draw_tcs_jit_context, num_constants,
+                          target, context_type, DRAW_TCS_JIT_CTX_NUM_CONSTANTS);
+   LP_CHECK_MEMBER_OFFSET(struct draw_tcs_jit_context, textures,
+                          target, context_type,
+                          DRAW_TCS_JIT_CTX_TEXTURES);
+   LP_CHECK_MEMBER_OFFSET(struct draw_tcs_jit_context, samplers,
+                          target, context_type,
+                          DRAW_TCS_JIT_CTX_SAMPLERS);
+   LP_CHECK_MEMBER_OFFSET(struct draw_tcs_jit_context, ssbos,
+                          target, context_type, DRAW_TCS_JIT_CTX_SSBOS);
+   LP_CHECK_MEMBER_OFFSET(struct draw_tcs_jit_context, num_ssbos,
+                          target, context_type, DRAW_TCS_JIT_CTX_NUM_SSBOS);
+   LP_CHECK_MEMBER_OFFSET(struct draw_tcs_jit_context, images,
+                          target, context_type, DRAW_TCS_JIT_CTX_IMAGES);
+   LP_CHECK_STRUCT_SIZE(struct draw_tcs_jit_context,
+                        target, context_type);
+
+   return context_type;
+}
+
+static LLVMTypeRef
+create_tcs_jit_input_type(struct gallivm_state *gallivm)
+{
+   LLVMTypeRef float_type = LLVMFloatTypeInContext(gallivm->context);
+   LLVMTypeRef input_array;
+
+   input_array = LLVMArrayType(float_type, TGSI_NUM_CHANNELS); /* num channels */
+   input_array = LLVMArrayType(input_array, NUM_TCS_INPUTS); /* num attrs per vertex */
+   input_array = LLVMPointerType(input_array, 0); /* num vertices per prim */
+
+   return input_array;
+}
+
+static LLVMTypeRef
+create_tcs_jit_output_type(struct gallivm_state *gallivm)
+{
+   LLVMTypeRef float_type = LLVMFloatTypeInContext(gallivm->context);
+   LLVMTypeRef output_array;
+
+   output_array = LLVMArrayType(float_type, TGSI_NUM_CHANNELS); /* num channels */
+   output_array = LLVMArrayType(output_array, PIPE_MAX_SHADER_INPUTS); /* num attrs per vertex */
+   output_array = LLVMPointerType(output_array, 0); /* num vertices per prim */
+
+   return output_array;
+}
+
+static LLVMTypeRef
+create_tes_jit_input_type(struct gallivm_state *gallivm)
+{
+   LLVMTypeRef float_type = LLVMFloatTypeInContext(gallivm->context);
+   LLVMTypeRef input_array;
+
+   input_array = LLVMArrayType(float_type, TGSI_NUM_CHANNELS); /* num channels */
+   input_array = LLVMArrayType(input_array, PIPE_MAX_SHADER_INPUTS); /* num attrs per vertex */
+   input_array = LLVMPointerType(input_array, 0); /* num vertices per prim */
+
+   return input_array;
+}
+
+/**
+ * Create LLVM type for struct draw_tes_jit_context
+ */
+static LLVMTypeRef
+create_tes_jit_context_type(struct gallivm_state *gallivm,
+                            unsigned vector_length,
+                            LLVMTypeRef texture_type, LLVMTypeRef sampler_type,
+                            LLVMTypeRef image_type,
+                            const char *struct_name)
+{
+   LLVMTargetDataRef target = gallivm->target;
+   LLVMTypeRef float_type = LLVMFloatTypeInContext(gallivm->context);
+   LLVMTypeRef int_type = LLVMInt32TypeInContext(gallivm->context);
+   LLVMTypeRef elem_types[DRAW_TCS_JIT_CTX_NUM_FIELDS];
+   LLVMTypeRef context_type;
+
+   elem_types[0] = LLVMArrayType(LLVMPointerType(float_type, 0), /* constants */
+                                 LP_MAX_TGSI_CONST_BUFFERS);
+   elem_types[1] = LLVMArrayType(int_type, /* num_constants */
+                                 LP_MAX_TGSI_CONST_BUFFERS);
+   elem_types[2] = LLVMInt32TypeInContext(gallivm->context);
+   elem_types[3] = LLVMInt32TypeInContext(gallivm->context);
+
+   elem_types[4] = LLVMArrayType(texture_type,
+                                 PIPE_MAX_SHADER_SAMPLER_VIEWS); /* textures */
+   elem_types[5] = LLVMArrayType(sampler_type,
+                                 PIPE_MAX_SAMPLERS); /* samplers */
+   elem_types[6] = LLVMArrayType(image_type,
+                                 PIPE_MAX_SHADER_IMAGES); /* images */
+
+   elem_types[7] = LLVMArrayType(LLVMPointerType(int_type, 0), /* ssbos */
+                                 LP_MAX_TGSI_SHADER_BUFFERS);
+   elem_types[8] = LLVMArrayType(int_type, /* num_ssbos */
+                                 LP_MAX_TGSI_SHADER_BUFFERS);
+
+   context_type = LLVMStructTypeInContext(gallivm->context, elem_types,
+                                          ARRAY_SIZE(elem_types), 0);
+
+   (void) target; /* silence unused var warning for non-debug build */
+   LP_CHECK_MEMBER_OFFSET(struct draw_tes_jit_context, constants,
+                          target, context_type, DRAW_TCS_JIT_CTX_CONSTANTS);
+   LP_CHECK_MEMBER_OFFSET(struct draw_tes_jit_context, num_constants,
+                          target, context_type, DRAW_TCS_JIT_CTX_NUM_CONSTANTS);
+   LP_CHECK_MEMBER_OFFSET(struct draw_tes_jit_context, textures,
+                          target, context_type,
+                          DRAW_TCS_JIT_CTX_TEXTURES);
+   LP_CHECK_MEMBER_OFFSET(struct draw_tes_jit_context, samplers,
+                          target, context_type,
+                          DRAW_TCS_JIT_CTX_SAMPLERS);
+   LP_CHECK_MEMBER_OFFSET(struct draw_tes_jit_context, ssbos,
+                          target, context_type, DRAW_TCS_JIT_CTX_SSBOS);
+   LP_CHECK_MEMBER_OFFSET(struct draw_tes_jit_context, num_ssbos,
+                          target, context_type, DRAW_TCS_JIT_CTX_NUM_SSBOS);
+   LP_CHECK_MEMBER_OFFSET(struct draw_tes_jit_context, images,
+                          target, context_type, DRAW_TCS_JIT_CTX_IMAGES);
+   LP_CHECK_STRUCT_SIZE(struct draw_tes_jit_context,
+                        target, context_type);
+
+   return context_type;
+}
 
 /**
  * Create LLVM types for various structures.
