@@ -828,7 +828,7 @@ fd6_emit_tile_prep(struct fd_batch *batch, const struct fd_tile *tile)
 
 	emit_marker6(ring, 7);
 	OUT_PKT7(ring, CP_SET_MARKER, 1);
-	OUT_RING(ring, A6XX_CP_SET_MARKER_0_MODE(RM6_GMEM) | 0x10);
+	OUT_RING(ring, A6XX_CP_SET_MARKER_0_MODE(RM6_GMEM));
 	emit_marker6(ring, 7);
 
 	uint32_t x1 = tile->xoff;
@@ -1331,7 +1331,7 @@ fd6_emit_tile_gmem2mem(struct fd_batch *batch, const struct fd_tile *tile)
 
 		/* if (no overflow) */ {
 			OUT_PKT7(ring, CP_SET_MARKER, 1);
-			OUT_RING(ring, A6XX_CP_SET_MARKER_0_MODE(0x5) | 0x10);
+			OUT_RING(ring, A6XX_CP_SET_MARKER_0_MODE(RM6_ENDVIS));
 		}
 	}
 
@@ -1347,7 +1347,7 @@ fd6_emit_tile_gmem2mem(struct fd_batch *batch, const struct fd_tile *tile)
 
 	emit_marker6(ring, 7);
 	OUT_PKT7(ring, CP_SET_MARKER, 1);
-	OUT_RING(ring, A6XX_CP_SET_MARKER_0_MODE(RM6_RESOLVE) | 0x10);
+	OUT_RING(ring, A6XX_CP_SET_MARKER_0_MODE(RM6_RESOLVE));
 	emit_marker6(ring, 7);
 
 	if (batch->fast_cleared || !use_hw_binning(batch)) {
@@ -1357,7 +1357,7 @@ fd6_emit_tile_gmem2mem(struct fd_batch *batch, const struct fd_tile *tile)
 	}
 
 	OUT_PKT7(ring, CP_SET_MARKER, 1);
-	OUT_RING(ring, A6XX_CP_SET_MARKER_0_MODE(0x7));
+	OUT_RING(ring, A6XX_CP_SET_MARKER_0_MODE(RM6_YIELD));
 }
 
 static void
@@ -1473,7 +1473,7 @@ fd6_emit_sysmem_prep(struct fd_batch *batch)
 
 	emit_marker6(ring, 7);
 	OUT_PKT7(ring, CP_SET_MARKER, 1);
-	OUT_RING(ring, A6XX_CP_SET_MARKER_0_MODE(RM6_BYPASS) | 0x10); /* | 0x10 ? */
+	OUT_RING(ring, A6XX_CP_SET_MARKER_0_MODE(RM6_BYPASS));
 	emit_marker6(ring, 7);
 
 	if (batch->tessellation)

@@ -1385,10 +1385,11 @@ opcode: CP_LOAD_STATE4 (30) (4 dwords)
 		<value value="1" name="RM6_BYPASS"/>
 		<value value="2" name="RM6_BINNING"/>
 		<value value="4" name="RM6_GMEM"/>
-		<value value="5" name="RM6_BLIT2D"/>
+		<value value="5" name="RM6_ENDVIS"/>
 		<value value="6" name="RM6_RESOLVE"/>
 		<value value="7" name="RM6_YIELD"/>
-		<value value="0xc" name="RM6_BLIT2DSCALE"/>
+		<value value="8" name="RM6_COMPUTE"/>
+		<value value="0xc" name="RM6_BLIT2DSCALE"/>  <!-- no-op (at least on current sqe fw) -->
 
 		<!--
 			These values come from a6xx_set_marker() in the
@@ -1401,8 +1402,18 @@ opcode: CP_LOAD_STATE4 (30) (4 dwords)
 		<value value="0x101" name="RM6_IFPC_DISABLE"/>
 	</enum>
 	<reg32 offset="0" name="0">
-		<bitfield name="MARKER" low="0" high="3"/>
+		<!--
+			NOTE: blob driver and some versions of freedreno/turnip set
+			b4, which is unused (at least by current sqe fw), but interferes
+			with parsing if we extend the size of the bitfield to include
+			b8 (only sent by kernel mode driver).  Really, the way the
+			parsing works in the firmware, only b0-b3 are considered, but
+			if b8 is set, the low bits are interpreted differently.  To
+			model this, without getting confused by spurious b4, this is
+			described as two overlapping bitfields:
+		 -->
 		<bitfield name="MODE" low="0" high="8" type="a6xx_render_mode"/>
+		<bitfield name="MARKER" low="0" high="3" type="a6xx_render_mode"/>
 	</reg32>
 </domain>
 
