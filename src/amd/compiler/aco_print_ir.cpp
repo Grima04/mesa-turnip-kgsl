@@ -54,6 +54,12 @@ static void print_reg_class(const RegClass rc, FILE *output)
       case RegClass::v6: fprintf(output, " v6: "); return;
       case RegClass::v7: fprintf(output, " v7: "); return;
       case RegClass::v8: fprintf(output, " v8: "); return;
+      case RegClass::v1b: fprintf(output, " v1b: "); return;
+      case RegClass::v2b: fprintf(output, " v2b: "); return;
+      case RegClass::v3b: fprintf(output, " v3b: "); return;
+      case RegClass::v4b: fprintf(output, " v4b: "); return;
+      case RegClass::v6b: fprintf(output, " v6b: "); return;
+      case RegClass::v8b: fprintf(output, " v8b: "); return;
       case RegClass::v1_linear: fprintf(output, " v1: "); return;
       case RegClass::v2_linear: fprintf(output, " v2: "); return;
    }

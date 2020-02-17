@@ -199,6 +199,13 @@ struct RegClass {
       v6 = 6  | (1 << 5),
       v7 = 7  | (1 << 5),
       v8 = 8  | (1 << 5),
+      /* byte-sized register class */
+      v1b = v1 | (1 << 7),
+      v2b = v2 | (1 << 7),
+      v3b = v3 | (1 << 7),
+      v4b = v4 | (1 << 7),
+      v6b = v6 | (1 << 7),
+      v8b = v8 | (1 << 7),
       /* these are used for WWM and spills to vgpr */
       v1_linear = v1 | (1 << 6),
       v2_linear = v2 | (1 << 6),
@@ -214,7 +221,10 @@ struct RegClass {
    explicit operator bool() = delete;
 
    constexpr RegType type() const { return rc <= RC::s16 ? RegType::sgpr : RegType::vgpr; }
-   constexpr unsigned size() const { return (unsigned) rc & 0x1F; }
+   constexpr bool is_subdword() const { return rc & (1 << 7); }
+   constexpr unsigned bytes() const { return ((unsigned) rc & 0x1F) * (is_subdword() ? 1 : 4); }
+   //TODO: use size() less in favor of bytes()
+   constexpr unsigned size() const { return (bytes() + 3) >> 2; }
    constexpr bool is_linear() const { return rc <= RC::s16 || rc & (1 << 6); }
    constexpr RegClass as_linear() const { return RegClass((RC) (rc | (1 << 6))); }
 
@@ -237,6 +247,12 @@ static constexpr RegClass v5{RegClass::v5};
 static constexpr RegClass v6{RegClass::v6};
 static constexpr RegClass v7{RegClass::v7};
 static constexpr RegClass v8{RegClass::v8};
+static constexpr RegClass v1b{RegClass::v1b};
+static constexpr RegClass v2b{RegClass::v2b};
+static constexpr RegClass v3b{RegClass::v3b};
+static constexpr RegClass v4b{RegClass::v4b};
+static constexpr RegClass v6b{RegClass::v6b};
+static constexpr RegClass v8b{RegClass::v8b};
 
 /**
  * Temp Class
@@ -252,6 +268,7 @@ struct Temp {
    constexpr uint32_t id() const noexcept { return id_; }
    constexpr RegClass regClass() const noexcept { return reg_class; }
 
+   constexpr unsigned bytes() const noexcept { return reg_class.bytes(); }
    constexpr unsigned size() const noexcept { return reg_class.size(); }
    constexpr RegType type() const noexcept { return reg_class.type(); }
    constexpr bool is_linear() const noexcept { return reg_class.is_linear(); }
@@ -431,6 +448,14 @@ public:
    constexpr RegClass regClass() const noexcept
    {
       return data_.temp.regClass();
+   }
+
+   constexpr unsigned bytes() const noexcept
+   {
+      if (isConstant())
+         return is64BitConst_ ? 8 : 4; //TODO: sub-dword constants
+      else
+         return data_.temp.bytes();
    }
 
    constexpr unsigned size() const noexcept
@@ -648,6 +673,11 @@ public:
    constexpr RegClass regClass() const noexcept
    {
       return temp.regClass();
+   }
+
+   constexpr unsigned bytes() const noexcept
+   {
+      return temp.bytes();
    }
 
    constexpr unsigned size() const noexcept
