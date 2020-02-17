@@ -483,7 +483,6 @@ emit_image_store(struct v3dv_cl *cl,
    }
 }
 
-
 static void
 emit_copy_layer_to_buffer_per_tile_list(struct v3dv_job *job,
                                         struct v3dv_buffer *buffer,
@@ -1287,4 +1286,152 @@ v3dv_CmdFillBuffer(VkCommandBuffer commandBuffer,
    }
 
    fill_buffer(cmd_buffer, bo, dstOffset, size, data);
+}
+
+static void
+emit_copy_buffer_to_layer_per_tile_list(struct v3dv_job *job,
+                                        struct v3dv_image *image,
+                                        struct v3dv_buffer *buffer,
+                                        uint32_t layer,
+                                        const VkBufferImageCopy *region)
+{
+   struct v3dv_cl *cl = &job->indirect;
+   v3dv_cl_ensure_space(cl, 200, 1);
+   struct v3dv_cl_reloc tile_list_start = v3dv_cl_get_address(cl);
+
+   cl_emit(cl, TILE_COORDINATES_IMPLICIT, coords);
+
+   const VkImageSubresourceLayers *imgrsc = &region->imageSubresource;
+   assert(layer < imgrsc->layerCount);
+
+   /* Load TLB from buffer */
+   uint32_t width, height;
+   if (region->bufferRowLength == 0)
+      width = region->imageExtent.width;
+   else
+      width = region->bufferRowLength;
+
+   if (region->bufferImageHeight == 0)
+      height = region->imageExtent.height;
+   else
+      height = region->bufferImageHeight;
+
+   uint32_t buffer_stride = width * image->cpp;
+   uint32_t buffer_offset =
+      region->bufferOffset + height * buffer_stride * layer;
+
+   uint32_t format = choose_tlb_format(image, imgrsc->aspectMask, true, false);
+
+   emit_linear_load(cl, RENDER_TARGET_0, buffer->mem->bo,
+                    buffer_offset, buffer_stride, format);
+
+   cl_emit(cl, END_OF_LOADS, end);
+
+   cl_emit(cl, BRANCH_TO_IMPLICIT_TILE_LIST, branch);
+
+   /* Store TLB to image  */
+   emit_image_store(cl, image, imgrsc->aspectMask,
+                    imgrsc->baseArrayLayer + layer, imgrsc->mipLevel, false);
+
+   cl_emit(cl, END_OF_TILE_MARKER, end);
+
+   cl_emit(cl, RETURN_FROM_SUB_LIST, ret);
+
+   cl_emit(&job->rcl, START_ADDRESS_OF_GENERIC_TILE_LIST, branch) {
+      branch.start = tile_list_start;
+      branch.end = v3dv_cl_get_address(cl);
+   }
+}
+
+static void
+emit_copy_buffer_to_layer(struct v3dv_job *job,
+                          struct v3dv_image *image,
+                          struct v3dv_buffer *buffer,
+                          struct fake_framebuffer *framebuffer,
+                          uint32_t layer,
+                          const VkBufferImageCopy *region)
+{
+   emit_frame_setup(job, framebuffer, layer, NULL);
+   emit_copy_buffer_to_layer_per_tile_list(job, image, buffer, layer, region);
+   emit_supertile_coordinates(job, framebuffer);
+}
+
+static void
+emit_copy_buffer_to_image_rcl(struct v3dv_job *job,
+                              struct v3dv_image *image,
+                              struct v3dv_buffer *buffer,
+                              struct fake_framebuffer *framebuffer,
+                              const VkBufferImageCopy *region)
+{
+   struct v3dv_cl *rcl = emit_rcl_prologue(job, framebuffer, NULL, NULL,
+                                           region->imageSubresource.aspectMask,
+                                           0, 0);
+   for (int layer = 0; layer < framebuffer->fb.layers; layer++)
+      emit_copy_buffer_to_layer(job, image, buffer, framebuffer, layer, region);
+   cl_emit(rcl, END_OF_RENDERING, end);
+}
+
+static void
+copy_buffer_to_image_tlb(struct v3dv_cmd_buffer *cmd_buffer,
+                         struct v3dv_image *image,
+                         struct v3dv_buffer *buffer,
+                         const VkBufferImageCopy *region)
+{
+   assert(can_use_tlb_copy_for_image_offset(&region->imageOffset));
+
+   uint32_t internal_type, internal_bpp;
+   get_internal_type_bpp_for_image_aspects(image,
+                                           region->imageSubresource.aspectMask,
+                                           &internal_type, &internal_bpp);
+
+   uint32_t num_layers = region->imageSubresource.layerCount;
+   assert(num_layers > 0);
+
+   struct fake_framebuffer framebuffer;
+   setup_framebuffer_params(&framebuffer,
+                            region->imageExtent.width,
+                            region->imageExtent.height,
+                            num_layers, internal_bpp, internal_type);
+
+   /* Limit supertile coverage to the requested region  */
+   uint32_t supertile_w_in_pixels =
+      framebuffer.fb.tile_width * framebuffer.fb.supertile_width;
+   uint32_t supertile_h_in_pixels =
+      framebuffer.fb.tile_height * framebuffer.fb.supertile_height;
+   const uint32_t max_render_x =
+      region->imageOffset.x + region->imageExtent.width - 1;
+   const uint32_t max_render_y =
+      region->imageOffset.y + region->imageExtent.height - 1;
+
+   assert(region->imageOffset.x == 0 && region->imageOffset.y == 0);
+   framebuffer.min_x_supertile = 0;
+   framebuffer.min_y_supertile = 0;
+   framebuffer.max_x_supertile = max_render_x / supertile_w_in_pixels;
+   framebuffer.max_y_supertile = max_render_y / supertile_h_in_pixels;
+
+   struct v3dv_job *job = v3dv_cmd_buffer_start_job(cmd_buffer, false);
+   v3dv_cmd_buffer_start_frame(cmd_buffer, &framebuffer.fb);
+
+   v3dv_job_emit_binning_flush(job);
+   emit_copy_buffer_to_image_rcl(job, image, buffer, &framebuffer, region);
+
+   v3dv_cmd_buffer_finish_job(cmd_buffer);
+}
+
+void
+v3dv_CmdCopyBufferToImage(VkCommandBuffer commandBuffer,
+                          VkBuffer srcBuffer,
+                          VkImage dstImage,
+                          VkImageLayout dstImageLayout,
+                          uint32_t regionCount,
+                          const VkBufferImageCopy *pRegions)
+{
+   V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
+   V3DV_FROM_HANDLE(v3dv_buffer, buffer, srcBuffer);
+   V3DV_FROM_HANDLE(v3dv_image, image, dstImage);
+
+   for (uint32_t i = 0; i < regionCount; i++) {
+      if (can_use_tlb_copy_for_image_offset(&pRegions[i].imageOffset))
+         copy_buffer_to_image_tlb(cmd_buffer, image, buffer, &pRegions[i]);
+   }
 }
