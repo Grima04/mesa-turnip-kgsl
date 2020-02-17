@@ -802,6 +802,22 @@ gl_nir_link_uniforms(struct gl_context *ctx,
             return false;
       }
 
+      if (state.num_shader_samplers >
+          ctx->Const.Program[shader_type].MaxTextureImageUnits) {
+         linker_error(prog, "Too many %s shader texture samplers\n",
+                      _mesa_shader_stage_to_string(shader_type));
+         continue;
+      }
+
+      if (state.num_shader_images >
+          ctx->Const.Program[shader_type].MaxImageUniforms) {
+         linker_error(prog, "Too many %s shader image uniforms (%u > %u)\n",
+                      _mesa_shader_stage_to_string(shader_type),
+                      state.num_shader_images,
+                      ctx->Const.Program[shader_type].MaxImageUniforms);
+         continue;
+      }
+
       sh->Program->SamplersUsed = state.shader_samplers_used;
       sh->shadow_samplers = state.shader_shadow_samplers;
       sh->Program->info.num_textures = state.num_shader_samplers;
