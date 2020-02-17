@@ -50,6 +50,8 @@ C_SOURCES := \
 	draw/draw_pt_vsplit_tmp.h \
 	draw/draw_so_emit_tmp.h \
 	draw/draw_split_tmp.h \
+	draw/draw_tess.c \
+	draw/draw_tess.h \
 	draw/draw_vbuf.h \
 	draw/draw_vertex.c \
 	draw/draw_vertex.h \

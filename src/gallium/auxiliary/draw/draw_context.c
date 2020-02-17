@@ -746,6 +746,37 @@ draw_total_gs_outputs(const struct draw_context *draw)
    return info->num_outputs + draw->extra_shader_outputs.num;
 }
 
+/**
+ * Return total number of the tess ctrl shader outputs.
+ */
+uint
+draw_total_tcs_outputs(const struct draw_context *draw)
+{
+   const struct tgsi_shader_info *info;
+
+   if (!draw->tcs.tess_ctrl_shader)
+      return 0;
+
+   info = &draw->tcs.tess_ctrl_shader->info;
+
+   return info->num_outputs;
+}
+
+/**
+ * Return total number of the tess eval shader outputs.
+ */
+uint
+draw_total_tes_outputs(const struct draw_context *draw)
+{
+   const struct tgsi_shader_info *info;
+
+   if (!draw->tes.tess_eval_shader)
+      return 0;
+
+   info = &draw->tes.tess_eval_shader->info;
+
+   return info->num_outputs + draw->extra_shader_outputs.num;
+}
 
 /**
  * Provide TGSI sampler objects for vertex/geometry shaders that use
