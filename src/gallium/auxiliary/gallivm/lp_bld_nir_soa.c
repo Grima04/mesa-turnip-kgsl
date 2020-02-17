@@ -1193,7 +1193,10 @@ static void emit_sysval_intrin(struct lp_build_nir_context *bld_base,
          result[i] = lp_build_broadcast_scalar(&bld_base->uint_bld, LLVMBuildExtractElement(gallivm->builder, bld->system_values.grid_size, lp_build_const_int32(gallivm, i), ""));
       break;
    case nir_intrinsic_load_invocation_id:
-      result[0] = lp_build_broadcast_scalar(&bld_base->uint_bld, bld->system_values.invocation_id);
+      if (bld_base->shader->info.stage == MESA_SHADER_TESS_CTRL)
+         result[0] = bld->system_values.invocation_id;
+      else
+         result[0] = lp_build_broadcast_scalar(&bld_base->uint_bld, bld->system_values.invocation_id);
       break;
    case nir_intrinsic_load_front_face:
       result[0] = lp_build_broadcast_scalar(&bld_base->uint_bld, bld->system_values.front_facing);
@@ -1209,6 +1212,22 @@ static void emit_sysval_intrin(struct lp_build_nir_context *bld_base,
      break;
    case nir_intrinsic_load_work_dim:
       result[0] = lp_build_broadcast_scalar(&bld_base->uint_bld, bld->system_values.work_dim);
+      break;
+   case nir_intrinsic_load_tess_coord:
+      for (unsigned i = 0; i < 3; i++) {
+	 result[i] = LLVMBuildExtractValue(gallivm->builder, bld->system_values.tess_coord, i, "");
+      }
+      break;
+   case nir_intrinsic_load_tess_level_outer:
+      for (unsigned i = 0; i < 4; i++)
+         result[i] = lp_build_broadcast_scalar(&bld_base->base, LLVMBuildExtractValue(gallivm->builder, bld->system_values.tess_outer, i, ""));
+      break;
+   case nir_intrinsic_load_tess_level_inner:
+      for (unsigned i = 0; i < 2; i++)
+         result[i] = lp_build_broadcast_scalar(&bld_base->base, LLVMBuildExtractValue(gallivm->builder, bld->system_values.tess_inner, i, ""));
+      break;
+   case nir_intrinsic_load_patch_vertices_in:
+      result[0] = bld->system_values.vertices_in;
       break;
    }
 }
