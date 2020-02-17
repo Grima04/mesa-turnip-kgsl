@@ -394,11 +394,12 @@ static void emit_store_chan(struct lp_build_nir_context *bld_base,
 
 static void emit_store_var(struct lp_build_nir_context *bld_base,
                            nir_variable_mode deref_mode,
-                           unsigned bit_size,
                            unsigned num_components,
+                           unsigned bit_size,
+                           nir_variable *var,
                            unsigned writemask,
                            unsigned const_index,
-                           nir_variable *var, LLVMValueRef dst)
+                           LLVMValueRef dst)
 {
    struct lp_build_nir_soa_context *bld = (struct lp_build_nir_soa_context *)bld_base;
    LLVMBuilderRef builder = bld->bld_base.base.gallivm->builder;

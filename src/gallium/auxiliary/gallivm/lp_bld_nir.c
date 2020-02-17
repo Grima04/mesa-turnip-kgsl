@@ -977,7 +977,7 @@ visit_store_var(struct lp_build_nir_context *bld_base,
    if (var)
       get_deref_offset(bld_base, deref, false, NULL, NULL,
                        &const_index, &indir_index);
-   bld_base->store_var(bld_base, mode, bit_size, instr->num_components, writemask, const_index, var, src);
+   bld_base->store_var(bld_base, mode, instr->num_components, bit_size, var, writemask, const_index, src);
 }
 
 static void visit_load_ubo(struct lp_build_nir_context *bld_base,

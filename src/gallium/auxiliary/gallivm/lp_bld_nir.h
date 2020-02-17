@@ -124,11 +124,12 @@ struct lp_build_nir_context
                     LLVMValueRef result[NIR_MAX_VEC_COMPONENTS]);
    void (*store_var)(struct lp_build_nir_context *bld_base,
                      nir_variable_mode deref_mode,
-                     unsigned bit_size,
                      unsigned num_components,
+                     unsigned bit_size,
+                     nir_variable *var,
                      unsigned writemask,
                      unsigned const_index,
-                     nir_variable *var, LLVMValueRef dst);
+                     LLVMValueRef dst);
 
    LLVMValueRef (*load_reg)(struct lp_build_nir_context *bld_base,
                             struct lp_build_context *reg_bld,
