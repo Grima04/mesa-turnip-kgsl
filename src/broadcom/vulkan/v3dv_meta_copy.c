@@ -935,6 +935,11 @@ clear_image_tlb(struct v3dv_cmd_buffer *cmd_buffer,
          v3dv_cmd_buffer_start_frame(cmd_buffer, &framebuffer.fb);
          v3dv_job_emit_binning_flush(job);
 
+         /* If this triggers it is an application bug: the spec requires
+          * that any aspects to clear are present in the image.
+          */
+         assert(range->aspectMask & image->aspects);
+
          emit_clear_image_rcl(job, image, &framebuffer, &hw_clear_value,
                              range->aspectMask, layer, level);
 
