@@ -3167,7 +3167,9 @@ llvmpipe_set_constant_buffer(struct pipe_context *pipe,
    }
 
    if (shader == PIPE_SHADER_VERTEX ||
-       shader == PIPE_SHADER_GEOMETRY) {
+       shader == PIPE_SHADER_GEOMETRY ||
+       shader == PIPE_SHADER_TESS_CTRL ||
+       shader == PIPE_SHADER_TESS_EVAL) {
       /* Pass the constants to the 'draw' module */
       const unsigned size = cb ? cb->buffer_size : 0;
       const ubyte *data;
@@ -3212,7 +3214,9 @@ llvmpipe_set_shader_buffers(struct pipe_context *pipe,
       util_copy_shader_buffer(&llvmpipe->ssbos[shader][i], buffer);
 
       if (shader == PIPE_SHADER_VERTEX ||
-          shader == PIPE_SHADER_GEOMETRY) {
+          shader == PIPE_SHADER_GEOMETRY ||
+          shader == PIPE_SHADER_TESS_CTRL ||
+          shader == PIPE_SHADER_TESS_EVAL) {
          const unsigned size = buffer ? buffer->buffer_size : 0;
          const ubyte *data = NULL;
          if (buffer && buffer->buffer)
@@ -3246,7 +3250,9 @@ llvmpipe_set_shader_images(struct pipe_context *pipe,
 
    llvmpipe->num_images[shader] = start_slot + count;
    if (shader == PIPE_SHADER_VERTEX ||
-       shader == PIPE_SHADER_GEOMETRY) {
+       shader == PIPE_SHADER_GEOMETRY ||
+       shader == PIPE_SHADER_TESS_CTRL ||
+       shader == PIPE_SHADER_TESS_EVAL) {
       draw_set_images(llvmpipe->draw,
                       shader,
                       llvmpipe->images[shader],

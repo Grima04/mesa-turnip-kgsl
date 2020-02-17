@@ -85,6 +85,7 @@ files_llvmpipe = files(
   'lp_state_setup.h',
   'lp_state_so.c',
   'lp_state_surface.c',
+  'lp_state_tess.c',
   'lp_state_vertex.c',
   'lp_state_vs.c',
   'lp_surface.c',

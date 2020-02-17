@@ -67,6 +67,8 @@ struct llvmpipe_context {
    struct lp_fragment_shader *fs;
    struct draw_vertex_shader *vs;
    const struct lp_geometry_shader *gs;
+   const struct lp_tess_ctrl_shader *tcs;
+   const struct lp_tess_eval_shader *tes;
    struct lp_compute_shader *cs;
    const struct lp_velems_state *velems;
    const struct lp_so_state *so;

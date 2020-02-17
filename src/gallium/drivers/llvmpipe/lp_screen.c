@@ -332,10 +332,11 @@ llvmpipe_get_param(struct pipe_screen *screen, enum pipe_cap param)
    case PIPE_CAP_MULTI_DRAW_INDIRECT:
    case PIPE_CAP_MULTI_DRAW_INDIRECT_PARAMS:
       return 1;
+   case PIPE_CAP_MAX_SHADER_PATCH_VARYINGS:
+      return 32;
    case PIPE_CAP_MULTISAMPLE_Z_RESOLVE:
    case PIPE_CAP_RESOURCE_FROM_USER_MEMORY:
    case PIPE_CAP_DEVICE_RESET_STATUS_QUERY:
-   case PIPE_CAP_MAX_SHADER_PATCH_VARYINGS:
    case PIPE_CAP_DEPTH_BOUNDS_TEST:
    case PIPE_CAP_TGSI_TXQS:
    case PIPE_CAP_FORCE_PERSAMPLE_INTERP:
@@ -413,6 +414,7 @@ llvmpipe_get_shader_param(struct pipe_screen *screen,
                           enum pipe_shader_type shader,
                           enum pipe_shader_cap param)
 {
+   struct llvmpipe_screen *lscreen = llvmpipe_screen(screen);
    switch(shader)
    {
    case PIPE_SHADER_COMPUTE:
@@ -420,7 +422,6 @@ llvmpipe_get_shader_param(struct pipe_screen *screen,
          return (1 << PIPE_SHADER_IR_TGSI) | (1 << PIPE_SHADER_IR_NIR) | (1 << PIPE_SHADER_IR_NIR_SERIALIZED);
    case PIPE_SHADER_FRAGMENT:
       if (param == PIPE_SHADER_CAP_PREFERRED_IR) {
-         struct llvmpipe_screen *lscreen = llvmpipe_screen(screen);
          if (lscreen->use_tgsi)
             return PIPE_SHADER_IR_TGSI;
          else
@@ -430,10 +431,13 @@ llvmpipe_get_shader_param(struct pipe_screen *screen,
       default:
          return gallivm_get_shader_param(param);
       }
+   case PIPE_SHADER_TESS_CTRL:
+   case PIPE_SHADER_TESS_EVAL:
+      if (lscreen->use_tgsi)
+         return 0;
    case PIPE_SHADER_VERTEX:
    case PIPE_SHADER_GEOMETRY:
       if (param == PIPE_SHADER_CAP_PREFERRED_IR) {
-         struct llvmpipe_screen *lscreen = llvmpipe_screen(screen);
          if (lscreen->use_tgsi)
             return PIPE_SHADER_IR_TGSI;
          else
