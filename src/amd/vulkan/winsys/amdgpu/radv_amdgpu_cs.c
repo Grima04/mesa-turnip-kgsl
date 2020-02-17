@@ -1235,9 +1235,6 @@ static int radv_amdgpu_winsys_cs_submit(struct radeon_winsys_ctx *_ctx,
 	struct radv_amdgpu_ctx *ctx = radv_amdgpu_ctx(_ctx);
 	int ret;
 
-	if (cs->ws->noop)
-		abort();
-
 	assert(sem_info);
 	if (!cs->ws->use_ib_bos) {
 		ret = radv_amdgpu_winsys_cs_submit_sysmem(_ctx, queue_idx, sem_info, bo_list, cs_array,

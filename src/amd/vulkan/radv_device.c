@@ -53,6 +53,7 @@
 #include <amdgpu.h>
 #include <amdgpu_drm.h>
 #include "winsys/amdgpu/radv_amdgpu_winsys_public.h"
+#include "winsys/null/radv_null_winsys_public.h"
 #include "ac_llvm_util.h"
 #include "vk_format.h"
 #include "sid.h"
@@ -287,91 +288,63 @@ radv_physical_device_init_mem_types(struct radv_physical_device *device)
 	}
 }
 
-static void
-radv_handle_env_var_force_family(struct radv_physical_device *device)
-{
-	const char *family = getenv("RADV_FORCE_FAMILY");
-	unsigned i;
-
-	if (!family)
-		return;
-
-	for (i = CHIP_TAHITI; i < CHIP_LAST; i++) {
-		if (!strcmp(family, ac_get_llvm_processor_name(i))) {
-			/* Override family and chip_class. */
-			device->rad_info.family = i;
-			device->rad_info.name = "OVERRIDDEN";
-
-			if (i >= CHIP_NAVI10)
-				device->rad_info.chip_class = GFX10;
-			else if (i >= CHIP_VEGA10)
-				device->rad_info.chip_class = GFX9;
-			else if (i >= CHIP_TONGA)
-				device->rad_info.chip_class = GFX8;
-			else if (i >= CHIP_BONAIRE)
-				device->rad_info.chip_class = GFX7;
-			else
-				device->rad_info.chip_class = GFX6;
-
-			/* Don't submit any IBs. */
-			device->instance->debug_flags |= RADV_DEBUG_NOOP;
-			return;
-		}
-	}
-
-	fprintf(stderr, "radv: Unknown family: %s\n", family);
-	exit(1);
-}
-
 static VkResult
 radv_physical_device_init(struct radv_physical_device *device,
 			  struct radv_instance *instance,
 			  drmDevicePtr drm_device)
 {
-	const char *path = drm_device->nodes[DRM_NODE_RENDER];
 	VkResult result;
-	drmVersionPtr version;
-	int fd;
+	int fd = -1;
 	int master_fd = -1;
 
-	fd = open(path, O_RDWR | O_CLOEXEC);
-	if (fd < 0) {
-		if (instance->debug_flags & RADV_DEBUG_STARTUP)
-			radv_logi("Could not open device '%s'", path);
+	if (drm_device) {
+		const char *path = drm_device->nodes[DRM_NODE_RENDER];
+		drmVersionPtr version;
 
-		return vk_error(instance, VK_ERROR_INCOMPATIBLE_DRIVER);
-	}
+		fd = open(path, O_RDWR | O_CLOEXEC);
+		if (fd < 0) {
+			if (instance->debug_flags & RADV_DEBUG_STARTUP)
+				radv_logi("Could not open device '%s'", path);
 
-	version = drmGetVersion(fd);
-	if (!version) {
-		close(fd);
+			return vk_error(instance, VK_ERROR_INCOMPATIBLE_DRIVER);
+		}
 
-		if (instance->debug_flags & RADV_DEBUG_STARTUP)
-			radv_logi("Could not get the kernel driver version for device '%s'", path);
+		version = drmGetVersion(fd);
+		if (!version) {
+			close(fd);
 
-		return vk_errorf(instance, VK_ERROR_INCOMPATIBLE_DRIVER,
-				 "failed to get version %s: %m", path);
-	}
+			if (instance->debug_flags & RADV_DEBUG_STARTUP)
+				radv_logi("Could not get the kernel driver version for device '%s'", path);
 
-	if (strcmp(version->name, "amdgpu")) {
+			return vk_errorf(instance, VK_ERROR_INCOMPATIBLE_DRIVER,
+					 "failed to get version %s: %m", path);
+		}
+
+		if (strcmp(version->name, "amdgpu")) {
+			drmFreeVersion(version);
+			close(fd);
+
+			if (instance->debug_flags & RADV_DEBUG_STARTUP)
+				radv_logi("Device '%s' is not using the amdgpu kernel driver.", path);
+
+			return VK_ERROR_INCOMPATIBLE_DRIVER;
+		}
 		drmFreeVersion(version);
-		close(fd);
 
 		if (instance->debug_flags & RADV_DEBUG_STARTUP)
-			radv_logi("Device '%s' is not using the amdgpu kernel driver.", path);
-
-		return VK_ERROR_INCOMPATIBLE_DRIVER;
+				radv_logi("Found compatible device '%s'.", path);
 	}
-	drmFreeVersion(version);
-
-	if (instance->debug_flags & RADV_DEBUG_STARTUP)
-			radv_logi("Found compatible device '%s'.", path);
 
 	device->_loader_data.loaderMagic = ICD_LOADER_MAGIC;
 	device->instance = instance;
 
-	device->ws = radv_amdgpu_winsys_create(fd, instance->debug_flags,
-					       instance->perftest_flags);
+	if (drm_device) {
+		device->ws = radv_amdgpu_winsys_create(fd, instance->debug_flags,
+						       instance->perftest_flags);
+	} else {
+		device->ws = radv_null_winsys_create();
+	}
+
 	if (!device->ws) {
 		result = vk_error(instance, VK_ERROR_INCOMPATIBLE_DRIVER);
 		goto fail;
@@ -397,8 +370,6 @@ radv_physical_device_init(struct radv_physical_device *device,
 	device->master_fd = master_fd;
 	device->local_fd = fd;
 	device->ws->query_info(device->ws, &device->rad_info);
-
-	radv_handle_env_var_force_family(device);
 
 	device->use_aco = instance->perftest_flags & RADV_PERFTEST_ACO;
 
@@ -468,7 +439,8 @@ radv_physical_device_init(struct radv_physical_device *device,
 	radv_physical_device_init_mem_types(device);
 	radv_fill_device_extension_table(device, &device->supported_extensions);
 
-	device->bus_info = *drm_device->businfo.pci;
+	if (drm_device)
+		device->bus_info = *drm_device->businfo.pci;
 
 	if ((device->instance->debug_flags & RADV_DEBUG_INFO))
 		ac_print_gpu_info(&device->rad_info);
@@ -560,7 +532,6 @@ static const struct debug_control radv_debug_options[] = {
 	{"allentrypoints", RADV_DEBUG_ALL_ENTRYPOINTS},
 	{"metashaders", RADV_DEBUG_DUMP_META_SHADERS},
 	{"nomemorycache", RADV_DEBUG_NO_MEMORY_CACHE},
-	{"noop", RADV_DEBUG_NOOP},
 	{NULL, 0}
 };
 
@@ -795,6 +766,19 @@ radv_enumerate_devices(struct radv_instance *instance)
 	int max_devices;
 
 	instance->physicalDeviceCount = 0;
+
+	if (getenv("RADV_FORCE_FAMILY")) {
+		/* When RADV_FORCE_FAMILY is set, the driver creates a nul
+		 * device that allows to test the compiler without having an
+		 * AMDGPU instance.
+		 */
+		result = radv_physical_device_init(instance->physicalDevices +
+			                           instance->physicalDeviceCount,
+			                           instance, NULL);
+
+		++instance->physicalDeviceCount;
+		return VK_SUCCESS;
+	}
 
 	max_devices = drmGetDevices2(0, devices, ARRAY_SIZE(devices));
 

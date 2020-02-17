@@ -1,9 +1,9 @@
 /*
+ * Copyright © 2020 Valve Corporation
+ *
+ * based on amdgpu winsys.
  * Copyright © 2016 Red Hat.
  * Copyright © 2016 Bas Nieuwenhuizen
- * based on amdgpu winsys.
- * Copyright © 2011 Marek Olšák <maraeo@gmail.com>
- * Copyright © 2015 Advanced Micro Devices, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -25,42 +25,22 @@
  * IN THE SOFTWARE.
  */
 
-#ifndef RADV_AMDGPU_WINSYS_H
-#define RADV_AMDGPU_WINSYS_H
+#ifndef RADV_NULL_CS_H
+#define RADV_NULL_CS_H
 
 #include "radv_radeon_winsys.h"
-#include "ac_gpu_info.h"
-#include "addrlib/inc/addrinterface.h"
-#include <amdgpu.h>
-#include "util/list.h"
-#include <pthread.h>
+#include "radv_null_winsys.h"
 
-struct radv_amdgpu_winsys {
-	struct radeon_winsys base;
-	amdgpu_device_handle dev;
-
-	struct radeon_info info;
-	struct amdgpu_gpu_info amdinfo;
-	ADDR_HANDLE addrlib;
-
-	bool debug_all_bos;
-	bool use_ib_bos;
-	bool zero_all_vram_allocs;
-	bool use_local_bos;
-	unsigned num_buffers;
-
-	pthread_mutex_t global_bo_list_lock;
-	struct list_head global_bo_list;
-
-	uint64_t allocated_vram;
-	uint64_t allocated_vram_vis;
-	uint64_t allocated_gtt;
+struct radv_null_ctx {
+	struct radv_null_winsys *ws;
 };
 
-static inline struct radv_amdgpu_winsys *
-radv_amdgpu_winsys(struct radeon_winsys *base)
+static inline struct radv_null_ctx *
+radv_null_ctx(struct radeon_winsys_ctx *base)
 {
-	return (struct radv_amdgpu_winsys*)base;
+	return (struct radv_null_ctx *)base;
 }
 
-#endif /* RADV_AMDGPU_WINSYS_H */
+void radv_null_cs_init_functions(struct radv_null_winsys *ws);
+
+#endif /* RADV_NULL_CS_H */

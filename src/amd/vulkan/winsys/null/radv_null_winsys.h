@@ -25,42 +25,23 @@
  * IN THE SOFTWARE.
  */
 
-#ifndef RADV_AMDGPU_WINSYS_H
-#define RADV_AMDGPU_WINSYS_H
+#ifndef RADV_NULL_WINSYS_H
+#define RADV_NULL_WINSYS_H
 
 #include "radv_radeon_winsys.h"
 #include "ac_gpu_info.h"
 #include "addrlib/inc/addrinterface.h"
-#include <amdgpu.h>
 #include "util/list.h"
 #include <pthread.h>
 
-struct radv_amdgpu_winsys {
+struct radv_null_winsys {
 	struct radeon_winsys base;
-	amdgpu_device_handle dev;
-
-	struct radeon_info info;
-	struct amdgpu_gpu_info amdinfo;
-	ADDR_HANDLE addrlib;
-
-	bool debug_all_bos;
-	bool use_ib_bos;
-	bool zero_all_vram_allocs;
-	bool use_local_bos;
-	unsigned num_buffers;
-
-	pthread_mutex_t global_bo_list_lock;
-	struct list_head global_bo_list;
-
-	uint64_t allocated_vram;
-	uint64_t allocated_vram_vis;
-	uint64_t allocated_gtt;
 };
 
-static inline struct radv_amdgpu_winsys *
-radv_amdgpu_winsys(struct radeon_winsys *base)
+static inline struct radv_null_winsys *
+radv_null_winsys(struct radeon_winsys *base)
 {
-	return (struct radv_amdgpu_winsys*)base;
+	return (struct radv_null_winsys*)base;
 }
 
-#endif /* RADV_AMDGPU_WINSYS_H */
+#endif /* RADV_NULL_WINSYS_H */
