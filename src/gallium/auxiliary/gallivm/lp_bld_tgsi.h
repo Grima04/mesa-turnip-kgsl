@@ -441,7 +441,8 @@ struct lp_build_tcs_iface
                              boolean is_aindex_indirect,
                              LLVMValueRef attrib_index,
                              LLVMValueRef swizzle_index,
-                             LLVMValueRef value);
+                             LLVMValueRef value,
+                             LLVMValueRef mask_vec);
 
    LLVMValueRef (*emit_fetch_input)(const struct lp_build_tcs_iface *tcs_iface,
                                     struct lp_build_context * bld,

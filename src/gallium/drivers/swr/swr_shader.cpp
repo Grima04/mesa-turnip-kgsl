@@ -601,7 +601,8 @@ void swr_tcs_llvm_store_output(const struct lp_build_tcs_iface *tcs_iface,
                          boolean is_aindex_indirect,
                          LLVMValueRef attrib_index,
                          LLVMValueRef swizzle_index,
-                         LLVMValueRef value)
+                         LLVMValueRef value,
+                         LLVMValueRef mask_vec)
 {
     swr_tcs_llvm_iface *iface = (swr_tcs_llvm_iface*)tcs_iface;
     struct lp_build_tgsi_context *bld_base = (struct lp_build_tgsi_context*)bld;
