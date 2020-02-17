@@ -45,6 +45,8 @@ struct draw_context;
 struct draw_stage;
 struct draw_vertex_shader;
 struct draw_geometry_shader;
+struct draw_tess_ctrl_shader;
+struct draw_tess_eval_shader;
 struct draw_fragment_shader;
 struct tgsi_sampler;
 struct tgsi_image;
@@ -265,6 +267,9 @@ void draw_bind_tess_eval_shader(struct draw_context *draw,
                                 struct draw_tess_eval_shader *dvs);
 void draw_delete_tess_eval_shader(struct draw_context *draw,
                                   struct draw_tess_eval_shader *dvs);
+void draw_set_tess_state(struct draw_context *draw,
+                         const float default_outer_level[4],
+                         const float default_inner_level[2]);
 
 /*
  * Vertex data functions

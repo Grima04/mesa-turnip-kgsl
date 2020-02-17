@@ -2412,18 +2412,24 @@ draw_llvm_set_mapped_texture(struct draw_context *draw,
    unsigned j;
    struct draw_jit_texture *jit_tex;
 
-   assert(shader_stage == PIPE_SHADER_VERTEX ||
-          shader_stage == PIPE_SHADER_GEOMETRY);
-
-   if (shader_stage == PIPE_SHADER_VERTEX) {
+   switch (shader_stage) {
+   case PIPE_SHADER_VERTEX:
       assert(sview_idx < ARRAY_SIZE(draw->llvm->jit_context.textures));
-
       jit_tex = &draw->llvm->jit_context.textures[sview_idx];
-   } else if (shader_stage == PIPE_SHADER_GEOMETRY) {
+      break;
+   case PIPE_SHADER_GEOMETRY:
       assert(sview_idx < ARRAY_SIZE(draw->llvm->gs_jit_context.textures));
-
       jit_tex = &draw->llvm->gs_jit_context.textures[sview_idx];
-   } else {
+      break;
+   case PIPE_SHADER_TESS_CTRL:
+      assert(sview_idx < ARRAY_SIZE(draw->llvm->tcs_jit_context.textures));
+      jit_tex = &draw->llvm->tcs_jit_context.textures[sview_idx];
+      break;
+   case PIPE_SHADER_TESS_EVAL:
+      assert(sview_idx < ARRAY_SIZE(draw->llvm->tes_jit_context.textures));
+      jit_tex = &draw->llvm->tes_jit_context.textures[sview_idx];
+      break;
+   default:
       assert(0);
       return;
    }
@@ -2453,18 +2459,24 @@ draw_llvm_set_mapped_image(struct draw_context *draw,
 {
    struct draw_jit_image *jit_image;
 
-   assert(shader_stage == PIPE_SHADER_VERTEX ||
-          shader_stage == PIPE_SHADER_GEOMETRY);
-
-   if (shader_stage == PIPE_SHADER_VERTEX) {
+   switch (shader_stage) {
+   case PIPE_SHADER_VERTEX:
       assert(idx < ARRAY_SIZE(draw->llvm->jit_context.images));
-
       jit_image = &draw->llvm->jit_context.images[idx];
-   } else if (shader_stage == PIPE_SHADER_GEOMETRY) {
+      break;
+   case PIPE_SHADER_GEOMETRY:
       assert(idx < ARRAY_SIZE(draw->llvm->gs_jit_context.images));
-
       jit_image = &draw->llvm->gs_jit_context.images[idx];
-   } else {
+      break;
+   case PIPE_SHADER_TESS_CTRL:
+      assert(idx < ARRAY_SIZE(draw->llvm->tcs_jit_context.images));
+      jit_image = &draw->llvm->tcs_jit_context.images[idx];
+      break;
+   case PIPE_SHADER_TESS_EVAL:
+      assert(idx < ARRAY_SIZE(draw->llvm->tes_jit_context.images));
+      jit_image = &draw->llvm->tes_jit_context.images[idx];
+      break;
+   default:
       assert(0);
       return;
    }
@@ -2485,7 +2497,8 @@ draw_llvm_set_sampler_state(struct draw_context *draw,
 {
    unsigned i;
 
-   if (shader_type == PIPE_SHADER_VERTEX) {
+   switch (shader_type) {
+   case PIPE_SHADER_VERTEX:
       for (i = 0; i < draw->num_samplers[PIPE_SHADER_VERTEX]; i++) {
          struct draw_jit_sampler *jit_sam = &draw->llvm->jit_context.samplers[i];
 
@@ -2498,7 +2511,8 @@ draw_llvm_set_sampler_state(struct draw_context *draw,
             COPY_4V(jit_sam->border_color, s->border_color.f);
          }
       }
-   } else if (shader_type == PIPE_SHADER_GEOMETRY) {
+      break;
+   case PIPE_SHADER_GEOMETRY:
       for (i = 0; i < draw->num_samplers[PIPE_SHADER_GEOMETRY]; i++) {
          struct draw_jit_sampler *jit_sam = &draw->llvm->gs_jit_context.samplers[i];
 
@@ -2511,6 +2525,38 @@ draw_llvm_set_sampler_state(struct draw_context *draw,
             COPY_4V(jit_sam->border_color, s->border_color.f);
          }
       }
+      break;
+   case PIPE_SHADER_TESS_CTRL:
+      for (i = 0; i < draw->num_samplers[PIPE_SHADER_TESS_CTRL]; i++) {
+         struct draw_jit_sampler *jit_sam = &draw->llvm->tcs_jit_context.samplers[i];
+
+         if (draw->samplers[PIPE_SHADER_TESS_CTRL][i]) {
+            const struct pipe_sampler_state *s
+               = draw->samplers[PIPE_SHADER_TESS_CTRL][i];
+            jit_sam->min_lod = s->min_lod;
+            jit_sam->max_lod = s->max_lod;
+            jit_sam->lod_bias = s->lod_bias;
+            COPY_4V(jit_sam->border_color, s->border_color.f);
+         }
+      }
+      break;
+   case PIPE_SHADER_TESS_EVAL:
+      for (i = 0; i < draw->num_samplers[PIPE_SHADER_TESS_EVAL]; i++) {
+         struct draw_jit_sampler *jit_sam = &draw->llvm->tes_jit_context.samplers[i];
+
+         if (draw->samplers[PIPE_SHADER_TESS_EVAL][i]) {
+            const struct pipe_sampler_state *s
+               = draw->samplers[PIPE_SHADER_TESS_EVAL][i];
+            jit_sam->min_lod = s->min_lod;
+            jit_sam->max_lod = s->max_lod;
+            jit_sam->lod_bias = s->lod_bias;
+            COPY_4V(jit_sam->border_color, s->border_color.f);
+         }
+      }
+      break;
+   default:
+      assert(0);
+      break;
    }
 }
 
