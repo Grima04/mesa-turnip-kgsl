@@ -63,4 +63,39 @@ panfrost_format_supports_afbc(enum pipe_format format);
 unsigned
 panfrost_afbc_header_size(unsigned width, unsigned height);
 
+/* Formats */
+
+enum mali_format
+panfrost_find_format(const struct util_format_description *desc);
+
+bool
+panfrost_is_z24s8_variant(enum pipe_format fmt);
+
+unsigned
+panfrost_translate_swizzle_4(const unsigned char swizzle[4]);
+
+void
+panfrost_invert_swizzle(const unsigned char *in, unsigned char *out);
+
+static inline unsigned
+panfrost_get_default_swizzle(unsigned components)
+{
+        switch (components) {
+        case 1:
+                return (MALI_CHANNEL_RED << 0) | (MALI_CHANNEL_ZERO << 3) |
+                        (MALI_CHANNEL_ZERO << 6) | (MALI_CHANNEL_ONE << 9);
+        case 2:
+                return (MALI_CHANNEL_RED << 0) | (MALI_CHANNEL_GREEN << 3) |
+                        (MALI_CHANNEL_ZERO << 6) | (MALI_CHANNEL_ONE << 9);
+        case 3:
+                return (MALI_CHANNEL_RED << 0) | (MALI_CHANNEL_GREEN << 3) |
+                        (MALI_CHANNEL_BLUE << 6) | (MALI_CHANNEL_ONE << 9);
+        case 4:
+                return (MALI_CHANNEL_RED << 0) | (MALI_CHANNEL_GREEN << 3) |
+                        (MALI_CHANNEL_BLUE << 6) | (MALI_CHANNEL_ALPHA << 9);
+        default:
+                unreachable("Invalid number of components");
+        }
+}
+
 #endif

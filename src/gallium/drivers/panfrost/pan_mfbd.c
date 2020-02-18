@@ -25,9 +25,6 @@
 #include "pan_bo.h"
 #include "pan_context.h"
 #include "pan_util.h"
-#include "pan_format.h"
-
-#include "util/format/u_format.h"
 
 static struct mali_rt_format
 panfrost_mfbd_format(struct pipe_surface *surf)

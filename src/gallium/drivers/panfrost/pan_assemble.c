@@ -27,7 +27,6 @@
 #include <string.h>
 #include "pan_bo.h"
 #include "pan_context.h"
-#include "pan_format.h"
 #include "pan_util.h"
 
 #include "compiler/nir/nir.h"

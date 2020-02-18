@@ -29,7 +29,6 @@
 
 #include "pan_bo.h"
 #include "pan_context.h"
-#include "pan_format.h"
 #include "panfrost-quirks.h"
 
 #include "util/macros.h"

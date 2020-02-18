@@ -33,6 +33,7 @@
 #include "pan_job.h"
 #include "pan_blend.h"
 #include "pan_encoder.h"
+#include "pan_texture.h"
 
 #include "pipe/p_compiler.h"
 #include "pipe/p_config.h"

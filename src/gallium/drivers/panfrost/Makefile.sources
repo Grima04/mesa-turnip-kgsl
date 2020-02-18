@@ -19,8 +19,6 @@ C_SOURCES := \
 	pan_compute.c \
 	pan_context.c \
 	pan_context.h \
-	pan_format.c \
-	pan_format.h \
 	pan_fragment.c \
 	pan_attributes.c \
 	pan_job.c \

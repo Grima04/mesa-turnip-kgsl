@@ -1,5 +1,5 @@
 /*
- * © Copyright 2018 Alyssa Rosenzweig
+ * Copyright (C) 2019 Collabora, Ltd.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -20,30 +20,13 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  *
+ * Authors:
+ *   Alyssa Rosenzweig <alyssa.rosenzweig@collabora.com>
  */
 
-#include "pan_format.h"
-
-/* From panwrap/panwrap-decoder, but we don't want to bring in all those headers */
-char *panwrap_format_name(enum mali_format format);
-
-/* Translate a Gallium swizzle quad to a 12-bit Mali swizzle code. Gallium
- * swizzles line up with Mali swizzles for the XYZW01, but Gallium has an
- * additional "NONE" field that we have to mask out to zero. Additionally,
- * Gallium swizzles are sparse but Mali swizzles are packed */
-
-unsigned
-panfrost_translate_swizzle_4(const unsigned char swizzle[4])
-{
-        unsigned out = 0;
-
-        for (unsigned i = 0; i < 4; ++i) {
-                unsigned translated = (swizzle[i] > PIPE_SWIZZLE_1) ? PIPE_SWIZZLE_0 : swizzle[i];
-                out |= (translated << (3*i));
-        }
-
-        return out;
-}
+#include <stdio.h>
+#include "panfrost-job.h"
+#include "pan_texture.h"
 
 static unsigned
 panfrost_translate_channel_width(unsigned size)
@@ -57,11 +40,8 @@ panfrost_translate_channel_width(unsigned size)
                 return MALI_CHANNEL_16;
         case 32:
                 return MALI_CHANNEL_32;
-        default: {
-                fprintf(stderr, "Invalid width: %d\n", size);
-                assert(0);
-                return 0;
-        }
+        default:
+                unreachable("Invalid format width\n");
         }
 }
 
@@ -76,16 +56,14 @@ panfrost_translate_channel_type(unsigned type, unsigned size, bool norm)
                 return norm ? MALI_FORMAT_SNORM : MALI_FORMAT_SINT;
 
         case UTIL_FORMAT_TYPE_FLOAT:
-                if (size == 16) {
-                        /* With FLOAT, fp16 */
+                /* fp16 -- SINT, fp32 -- UNORM ... gotta use those bits */
+
+                if (size == 16)
                         return MALI_FORMAT_SINT;
-                } else if (size == 32) {
-                        /* With FLOAT< fp32 */
+                else if (size == 32)
                         return MALI_FORMAT_UNORM;
-                } else {
-                        assert(0);
-                        return 0;
-                }
+                else
+                        unreachable("Invalid float size");
 
         default:
                 unreachable("Invalid type");
@@ -96,7 +74,8 @@ panfrost_translate_channel_type(unsigned type, unsigned size, bool norm)
  * description */
 
 enum mali_format
-panfrost_find_format(const struct util_format_description *desc) {
+panfrost_find_format(const struct util_format_description *desc)
+{
         /* Find first non-VOID channel */
         struct util_format_channel_description chan = desc->channel[0];
 
@@ -112,14 +91,6 @@ panfrost_find_format(const struct util_format_description *desc) {
         /* Check for special formats */
         switch (desc->format)
         {
-        case PIPE_FORMAT_YV12:
-        case PIPE_FORMAT_YV16:
-        case PIPE_FORMAT_IYUV:
-        case PIPE_FORMAT_NV21:
-                fprintf(stderr, "YUV format type %s (%d) is not yet supported, but it's probably close to NV12!\n", desc->name, desc->format);
-                assert(0);
-                break;
-
         case PIPE_FORMAT_NV12:
                 return MALI_NV12;
 
@@ -254,6 +225,38 @@ panfrost_find_format(const struct util_format_description *desc) {
         return (enum mali_format) format;
 }
 
+/* Is a format encoded like Z24S8 and therefore compatible for render? */
+
+bool
+panfrost_is_z24s8_variant(enum pipe_format fmt)
+{
+        switch (fmt) {
+                case PIPE_FORMAT_Z24_UNORM_S8_UINT:
+                case PIPE_FORMAT_Z24X8_UNORM:
+                        return true;
+                default:
+                        return false;
+        }
+}
+
+/* Translate a PIPE swizzle quad to a 12-bit Mali swizzle code. PIPE
+ * swizzles line up with Mali swizzles for the XYZW01, but PIPE swizzles have
+ * an additional "NONE" field that we have to mask out to zero. Additionally,
+ * PIPE swizzles are sparse but Mali swizzles are packed */
+
+unsigned
+panfrost_translate_swizzle_4(const unsigned char swizzle[4])
+{
+        unsigned out = 0;
+
+        for (unsigned i = 0; i < 4; ++i) {
+                unsigned translated = (swizzle[i] > PIPE_SWIZZLE_1) ? PIPE_SWIZZLE_0 : swizzle[i];
+                out |= (translated << (3*i));
+        }
+
+        return out;
+}
+
 void
 panfrost_invert_swizzle(const unsigned char *in, unsigned char *out)
 {
@@ -275,18 +278,5 @@ panfrost_invert_swizzle(const unsigned char *in, unsigned char *out)
                 /* Invert */
                 unsigned idx = i - PIPE_SWIZZLE_X;
                 out[idx] = PIPE_SWIZZLE_X + c;
-        }
-}
-
-/* Is a format encoded like Z24S8 and therefore compatible for render? */
-bool
-panfrost_is_z24s8_variant(enum pipe_format fmt)
-{
-        switch (fmt) {
-                case PIPE_FORMAT_Z24_UNORM_S8_UINT:
-                case PIPE_FORMAT_Z24X8_UNORM:
-                        return true;
-                default:
-                        return false;
         }
 }
