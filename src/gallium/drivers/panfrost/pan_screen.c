@@ -775,7 +775,7 @@ panfrost_create_screen(int fd, struct renderonly *ro)
                 list_inithead(&screen->bo_cache.buckets[i]);
 
         if (pan_debug & (PAN_DBG_TRACE | PAN_DBG_SYNC))
-                pandecode_initialize();
+                pandecode_initialize(!(pan_debug & PAN_DBG_TRACE));
 
         screen->base.destroy = panfrost_destroy_screen;
 

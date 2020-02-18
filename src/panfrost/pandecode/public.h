@@ -42,7 +42,7 @@
  * included in-tree.
  */
 
-void pandecode_initialize(void);
+void pandecode_initialize(bool to_stderr);
 
 void pandecode_next_frame(void);
 
