@@ -21,6 +21,7 @@ encoder_FILES := \
         encoder/pan_props.c \
         encoder/pan_sampler.c \
         encoder/pan_tiler.c \
+        encoder/pan_texture.c \
         encoder/pan_scratch.c
 
 midgard_FILES := \

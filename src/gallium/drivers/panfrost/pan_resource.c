@@ -235,29 +235,6 @@ panfrost_create_scanout_res(struct pipe_screen *screen,
         return res;
 }
 
-/* Computes sizes for checksumming, which is 8 bytes per 16x16 tile */
-
-#define CHECKSUM_TILE_WIDTH 16
-#define CHECKSUM_TILE_HEIGHT 16
-#define CHECKSUM_BYTES_PER_TILE 8
-
-static unsigned
-panfrost_compute_checksum_sizes(
-        struct panfrost_slice *slice,
-        unsigned width,
-        unsigned height)
-{
-        unsigned aligned_width = ALIGN_POT(width, CHECKSUM_TILE_WIDTH);
-        unsigned aligned_height = ALIGN_POT(height, CHECKSUM_TILE_HEIGHT);
-
-        unsigned tile_count_x = aligned_width / CHECKSUM_TILE_WIDTH;
-        unsigned tile_count_y = aligned_height / CHECKSUM_TILE_HEIGHT;
-
-        slice->checksum_stride = tile_count_x * CHECKSUM_BYTES_PER_TILE;
-
-        return slice->checksum_stride * tile_count_y;
-}
-
 /* Setup the mip tree given a particular layout, possibly with checksumming */
 
 static void
@@ -349,7 +326,7 @@ panfrost_setup_slices(struct panfrost_resource *pres, size_t *bo_size)
                 if (pres->checksummed) {
                         slice->checksum_offset = offset;
 
-                        unsigned size = panfrost_compute_checksum_sizes(
+                        unsigned size = panfrost_compute_checksum_size(
                                                 slice, width, height);
 
                         offset += size;
