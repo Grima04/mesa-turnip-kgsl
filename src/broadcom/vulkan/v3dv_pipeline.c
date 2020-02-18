@@ -1633,6 +1633,9 @@ pipeline_init(struct v3dv_pipeline *pipeline,
    pack_stencil_cfg(pipeline, ds_info);
    pipeline_set_ez_state(pipeline, ds_info);
 
+   pipeline->primitive_restart =
+      pCreateInfo->pInputAssemblyState->primitiveRestartEnable;
+
    result = pipeline_compile_graphics(pipeline, pCreateInfo, alloc);
 
    if (result != VK_SUCCESS) {

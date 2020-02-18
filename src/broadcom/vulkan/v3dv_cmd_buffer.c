@@ -2100,14 +2100,14 @@ v3dv_CmdDrawIndexed(VkCommandBuffer commandBuffer,
          prim.length = indexCount;
          prim.index_offset = index_offset;
          prim.mode = hw_prim_type;
-         prim.enable_primitive_restarts = false; /* FIXME */
+         prim.enable_primitive_restarts = pipeline->primitive_restart;
       }
    } else if (instanceCount > 1) {
       cl_emit(&job->bcl, INDEXED_INSTANCED_PRIM_LIST, prim) {
          prim.index_type = index_type;
          prim.index_offset = index_offset;
          prim.mode = hw_prim_type;
-         prim.enable_primitive_restarts = false; /* FIXME */
+         prim.enable_primitive_restarts = pipeline->primitive_restart;
          prim.number_of_instances = instanceCount;
          prim.instance_length = indexCount;
       }
@@ -2170,7 +2170,7 @@ v3dv_CmdDrawIndexedIndirect(VkCommandBuffer commandBuffer,
    cl_emit(&job->bcl, INDIRECT_INDEXED_INSTANCED_PRIM_LIST, prim) {
       prim.index_type = index_type;
       prim.mode = hw_prim_type;
-      prim.enable_primitive_restarts = false; /* FIXME */
+      prim.enable_primitive_restarts = pipeline->primitive_restart;
       prim.number_of_draw_indirect_indexed_records = drawCount;
       prim.stride_in_multiples_of_4_bytes = stride >> 2;
       prim.address = v3dv_cl_address(buffer->mem->bo, offset);

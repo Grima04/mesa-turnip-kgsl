@@ -809,6 +809,8 @@ struct v3dv_pipeline {
 
    enum v3dv_ez_state ez_state;
 
+   bool primitive_restart;
+
    /* Accessed by binding. So vb[binding]->stride is the stride of the vertex
     * array with such binding
     */
