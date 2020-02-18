@@ -347,7 +347,7 @@ panfrost_bo_mmap(struct panfrost_bo *bo)
         }
 
         /* Record the mmap if we're tracing */
-        if (pan_debug & PAN_DBG_TRACE)
+        if (pan_debug & (PAN_DBG_TRACE | PAN_DBG_SYNC))
                 pandecode_inject_mmap(bo->gpu, bo->cpu, bo->size, NULL);
 }
 
@@ -406,7 +406,7 @@ panfrost_bo_create(struct panfrost_screen *screen, size_t size,
         if (!(flags & (PAN_BO_INVISIBLE | PAN_BO_DELAY_MMAP)))
                 panfrost_bo_mmap(bo);
         else if (flags & PAN_BO_INVISIBLE) {
-                if (pan_debug & PAN_DBG_TRACE)
+                if (pan_debug & (PAN_DBG_TRACE | PAN_DBG_SYNC))
                         pandecode_inject_mmap(bo->gpu, NULL, bo->size, NULL);
         }
 

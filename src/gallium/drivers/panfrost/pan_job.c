@@ -917,32 +917,15 @@ panfrost_batch_submit_ioctl(struct panfrost_batch *batch,
                 return errno;
         }
 
-        if (pan_debug & PAN_DBG_SYNC) {
-                u32 status;
-
-                /* Wait so we can get errors reported back */
-                drmSyncobjWait(screen->fd, &batch->out_sync->syncobj, 1,
-                               INT64_MAX, 0, NULL);
-
-                status = header->exception_status;
-
-                if (status && status != 0x1) {
-                        DBG("Job %" PRIx64 " failed: source ID: 0x%x access: %s exception: 0x%x (exception_status 0x%x) fault_pointer 0x%" PRIx64 " \n",
-                               first_job_desc,
-                               (status >> 16) & 0xFFFF,
-                               pandecode_exception_access((status >> 8) & 0x3),
-                               status  & 0xFF,
-                               status,
-                               header->fault_pointer);
-                }
-        }
-
         /* Trace the job if we're doing that */
-        if (pan_debug & PAN_DBG_TRACE) {
+        if (pan_debug & (PAN_DBG_TRACE | PAN_DBG_SYNC)) {
                 /* Wait so we can get errors reported back */
                 drmSyncobjWait(screen->fd, &batch->out_sync->syncobj, 1,
                                INT64_MAX, 0, NULL);
-                pandecode_jc(submit.jc, FALSE, screen->gpu_id, false);
+
+                /* Trace gets priority over sync */
+                bool minimal = !(pan_debug & PAN_DBG_TRACE);
+                pandecode_jc(submit.jc, FALSE, screen->gpu_id, minimal);
         }
 
         return 0;

@@ -774,7 +774,7 @@ panfrost_create_screen(int fd, struct renderonly *ro)
         for (unsigned i = 0; i < ARRAY_SIZE(screen->bo_cache.buckets); ++i)
                 list_inithead(&screen->bo_cache.buckets[i]);
 
-        if (pan_debug & PAN_DBG_TRACE)
+        if (pan_debug & (PAN_DBG_TRACE | PAN_DBG_SYNC))
                 pandecode_initialize();
 
         screen->base.destroy = panfrost_destroy_screen;
