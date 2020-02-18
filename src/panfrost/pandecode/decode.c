@@ -2819,8 +2819,6 @@ pandecode_fragment_job(const struct pandecode_mapped_memory *mem,
         return sizeof(*s);
 }
 
-static int job_descriptor_number = 0;
-
 /* Entrypoint to start tracing. jc_gpu_va is the GPU address for the first job
  * in the chain; later jobs are found by walking the chain. Bifrost is, well,
  * if it's bifrost or not. GPU ID is the more finegrained ID (at some point, we
@@ -2830,14 +2828,11 @@ static int job_descriptor_number = 0;
  * no faults, and only descends into the payload if there are faults. This is
  * useful for looking for faults without the overhead of invasive traces. */
 
-int
+void
 pandecode_jc(mali_ptr jc_gpu_va, bool bifrost, unsigned gpu_id, bool minimal)
 {
         struct mali_job_descriptor_header *h;
-
-        int start_number = 0;
-
-        bool first = true;
+        unsigned job_descriptor_number = 0;
 
         do {
                 struct pandecode_mapped_memory *mem =
@@ -2858,9 +2853,6 @@ pandecode_jc(mali_ptr jc_gpu_va, bool bifrost, unsigned gpu_id, bool minimal)
                 payload = pandecode_fetch_gpu_mem(mem, payload_ptr, 256);
 
                 int job_no = job_descriptor_number++;
-
-                if (first)
-                        start_number = job_no;
 
                 /* If the job is good to go, skip it in minimal mode */
                 if (minimal && (h->exception_status == 0x0 || h->exception_status == 0x1))
@@ -2948,17 +2940,5 @@ pandecode_jc(mali_ptr jc_gpu_va, bool bifrost, unsigned gpu_id, bool minimal)
                 default:
                         break;
                 }
-
-                /* Handle linkage */
-
-                if (!first) {
-                        pandecode_log("((struct mali_job_descriptor_header *) (uintptr_t) job_%d_p)->", job_no - 1);
-                        pandecode_log_cont("next_job = job_%d_p;\n\n", job_no);
-                }
-
-                first = false;
-
         } while ((jc_gpu_va = h->next_job));
-
-        return start_number;
 }
