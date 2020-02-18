@@ -1588,11 +1588,10 @@ panfrost_bind_rasterizer_state(
 {
         struct panfrost_context *ctx = pan_context(pctx);
 
-        /* TODO: Why can't rasterizer be NULL ever? Other drivers are fine.. */
+        ctx->rasterizer = hwcso;
+
         if (!hwcso)
                 return;
-
-        ctx->rasterizer = hwcso;
 
         ctx->fragment_shader_core.depth_units = ctx->rasterizer->base.offset_units * 2.0f;
         ctx->fragment_shader_core.depth_factor = ctx->rasterizer->base.offset_scale;
