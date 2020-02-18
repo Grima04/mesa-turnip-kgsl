@@ -572,6 +572,7 @@ panfrost_transfer_map(struct pipe_context *pctx,
                       const struct pipe_box *box,
                       struct pipe_transfer **out_transfer)
 {
+        struct panfrost_context *ctx = pan_context(pctx);
         int bytes_per_pixel = util_format_get_blocksize(resource->format);
         struct panfrost_resource *rsrc = pan_resource(resource);
         struct panfrost_bo *bo = rsrc->bo;
@@ -587,26 +588,6 @@ panfrost_transfer_map(struct pipe_context *pctx,
 
         /* If we haven't already mmaped, now's the time */
         panfrost_bo_mmap(bo);
-
-        /* Check if we're bound for rendering and this is a read pixels. If so,
-         * we need to flush */
-
-        struct panfrost_context *ctx = pan_context(pctx);
-        struct pipe_framebuffer_state *fb = &ctx->pipe_framebuffer;
-
-        bool is_bound = false;
-
-        for (unsigned c = 0; c < fb->nr_cbufs; ++c) {
-                /* If cbufs is NULL, we're definitely not bound here */
-
-                if (fb->cbufs[c])
-                        is_bound |= fb->cbufs[c]->texture == resource;
-        }
-
-        if (is_bound && (usage & PIPE_TRANSFER_READ))
-                 assert(level == 0);
-
-        /* TODO: Respect usage flags */
 
         if (usage & PIPE_TRANSFER_DISCARD_WHOLE_RESOURCE) {
                 /* If the BO is used by one of the pending batches or if it's
@@ -655,8 +636,6 @@ panfrost_transfer_map(struct pipe_context *pctx,
                 } else if (usage & PIPE_TRANSFER_READ) {
                         panfrost_flush_batches_accessing_bo(ctx, bo, PAN_BO_ACCESS_WRITE);
                         panfrost_bo_wait(bo, INT64_MAX, PAN_BO_ACCESS_WRITE);
-                } else {
-                        /* Why are you even mapping?! */
                 }
         }
 
