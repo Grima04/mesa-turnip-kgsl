@@ -3160,7 +3160,7 @@ void visit_load_input(isel_context *ctx, nir_intrinsic_instr *instr)
 {
    Builder bld(ctx->program, ctx->block);
    Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
-   if (ctx->stage & sw_vs) {
+   if (ctx->shader->info.stage == MESA_SHADER_VERTEX) {
 
       nir_instr *off_instr = instr->src[0].ssa->parent_instr;
       if (off_instr->type != nir_instr_type_load_const) {
@@ -3353,7 +3353,7 @@ void visit_load_input(isel_context *ctx, nir_intrinsic_instr *instr)
          if (num_temp == dst.size())
             ctx->allocated_vec.emplace(dst.id(), elems);
       }
-   } else if (ctx->stage == fragment_fs) {
+   } else if (ctx->shader->info.stage == MESA_SHADER_FRAGMENT) {
       unsigned offset_idx = instr->intrinsic == nir_intrinsic_load_input ? 0 : 1;
       nir_instr *off_instr = instr->src[offset_idx].ssa->parent_instr;
       if (off_instr->type != nir_instr_type_load_const ||
