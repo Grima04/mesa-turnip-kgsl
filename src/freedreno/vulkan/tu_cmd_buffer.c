@@ -202,11 +202,19 @@ tu_tiling_config_update_tile_layout(struct tu_tiling_config *tiling,
       .height = align(ra_height, tile_align_h),
    };
 
+   if (unlikely(dev->physical_device->instance->debug_flags & TU_DEBUG_FORCEBIN)) {
+      /* start with 2x2 tiles */
+      tiling->tile_count.width = 2;
+      tiling->tile_count.height = 2;
+      tiling->tile0.extent.width = align(DIV_ROUND_UP(ra_width, 2), tile_align_w);
+      tiling->tile0.extent.height = align(DIV_ROUND_UP(ra_height, 2), tile_align_h);
+   }
+
    /* do not exceed max tile width */
    while (tiling->tile0.extent.width > max_tile_width) {
       tiling->tile_count.width++;
       tiling->tile0.extent.width =
-         align(ra_width / tiling->tile_count.width, tile_align_w);
+         align(DIV_ROUND_UP(ra_width, tiling->tile_count.width), tile_align_w);
    }
 
    /* do not exceed gmem size */
@@ -753,6 +761,9 @@ use_hw_binning(struct tu_cmd_buffer *cmd)
 
    if (unlikely(cmd->device->physical_device->instance->debug_flags & TU_DEBUG_NOBIN))
       return false;
+
+   if (unlikely(cmd->device->physical_device->instance->debug_flags & TU_DEBUG_FORCEBIN))
+      return true;
 
    return (tiling->tile_count.width * tiling->tile_count.height) > 2;
 }
