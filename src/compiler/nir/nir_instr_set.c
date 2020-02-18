@@ -39,7 +39,7 @@ dest_is_ssa(nir_dest *dest, void *data)
    return dest->is_ssa;
 }
 
-static inline bool
+ASSERTED static inline bool
 instr_each_src_and_dest_is_ssa(const nir_instr *instr)
 {
    if (!nir_foreach_dest((nir_instr *)instr, dest_is_ssa, NULL) ||

@@ -101,7 +101,7 @@ static const struct {
    ENTRY(2147483648ul, 2362232233ul, 2362232231ul )
 };
 
-static inline bool
+ASSERTED static inline bool
 key_pointer_is_reserved(const struct hash_table *ht, const void *key)
 {
    return key == NULL || key == ht->deleted_key;
