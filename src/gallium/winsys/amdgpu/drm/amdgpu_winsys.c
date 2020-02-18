@@ -31,6 +31,7 @@
 #include "amdgpu_public.h"
 
 #include "util/os_file.h"
+#include "util/os_misc.h"
 #include "util/u_cpu_detect.h"
 #include "util/u_hash_table.h"
 #include "util/hash_table.h"
@@ -381,13 +382,25 @@ amdgpu_winsys_create(int fd, const struct pipe_screen_config *config,
 
       simple_mtx_lock(&aws->sws_list_lock);
       for (sws_iter = aws->sws_list; sws_iter; sws_iter = sws_iter->next) {
-         if (os_same_file_description(sws_iter->fd, ws->fd)) {
+         r = os_same_file_description(sws_iter->fd, ws->fd);
+
+         if (r == 0) {
             close(ws->fd);
             FREE(ws);
             ws = sws_iter;
             pipe_reference(NULL, &ws->reference);
             simple_mtx_unlock(&aws->sws_list_lock);
             goto unlock;
+         } else if (r < 0) {
+            static bool logged;
+
+            if (!logged) {
+               os_log_message("amdgpu: os_same_file_description couldn't "
+                              "determine if two DRM fds reference the same "
+                              "file description.\n"
+                              "If they do, bad things may happen!\n");
+               logged = true;
+            }
          }
       }
       simple_mtx_unlock(&aws->sws_list_lock);

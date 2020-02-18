@@ -133,12 +133,16 @@ os_read_file(const char *filename)
    return buf;
 }
 
-bool
+int
 os_same_file_description(int fd1, int fd2)
 {
    pid_t pid = getpid();
 
-   return syscall(SYS_kcmp, pid, pid, KCMP_FILE, fd1, fd2) == 0;
+   /* Same file descriptor trivially implies same file description */
+   if (fd1 == fd2)
+      return 0;
+
+   return syscall(SYS_kcmp, pid, pid, KCMP_FILE, fd1, fd2);
 }
 
 #else
@@ -152,15 +156,15 @@ os_read_file(const char *filename)
    return NULL;
 }
 
-bool
+int
 os_same_file_description(int fd1, int fd2)
 {
+   /* Same file descriptor trivially implies same file description */
    if (fd1 == fd2)
-      return true;
+      return 0;
 
-   debug_warn_once("Can't tell if different file descriptors reference the same"
-                   " file description, false negatives might cause trouble!\n");
-   return false;
+   /* Otherwise we can't tell */
+   return -1;
 }
 
 #endif
