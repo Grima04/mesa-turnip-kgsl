@@ -29,6 +29,7 @@
 #define __PAN_TEXTURE_H
 
 #include <stdbool.h>
+#include "util/format/u_format.h"
 
 struct panfrost_slice {
         unsigned offset;
@@ -53,5 +54,13 @@ panfrost_compute_checksum_size(
         struct panfrost_slice *slice,
         unsigned width,
         unsigned height);
+
+/* AFBC */
+
+bool
+panfrost_format_supports_afbc(enum pipe_format format);
+
+unsigned
+panfrost_afbc_header_size(unsigned width, unsigned height);
 
 #endif

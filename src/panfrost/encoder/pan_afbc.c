@@ -24,8 +24,7 @@
  *   Alyssa Rosenzweig <alyssa.rosenzweig@collabora.com>
  */
 
-#include "pan_resource.h"
-#include "util/format/u_format.h"
+#include "pan_texture.h"
 
 /* Arm FrameBuffer Compression (AFBC) is a lossless compression scheme natively
  * implemented in Mali GPUs (as well as many display controllers paired with

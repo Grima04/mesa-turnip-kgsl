@@ -95,14 +95,6 @@ panfrost_resource_hint_layout(
                 enum mali_texture_layout layout,
                 signed weight);
 
-/* AFBC */
-
-bool
-panfrost_format_supports_afbc(enum pipe_format format);
-
-unsigned
-panfrost_afbc_header_size(unsigned width, unsigned height);
-
 /* Blitting */
 
 void

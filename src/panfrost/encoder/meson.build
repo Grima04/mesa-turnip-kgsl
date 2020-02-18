@@ -22,6 +22,7 @@
 libpanfrost_encoder_files = files(
   'pan_encoder.h',
 
+  'pan_afbc.c',
   'pan_attributes.c',
   'pan_invocation.c',
   'pan_sampler.c',
