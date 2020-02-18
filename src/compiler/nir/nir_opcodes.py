@@ -208,11 +208,11 @@ unop("inot", tint, "~src0") # invert every bit of the integer
 # number, and the result is not +0.0, the result should definitely **not** be
 # NaN.
 #
-# fsign(NaN) = (False ? 0.0 : (False ? 1.0 : -1.0) = -1.0.  This is allowed by
-# the spec, but it is not the preferred value.
+# The values returned for constant folding match the behavior required by
+# OpenCL.
 unop("fsign", tfloat, ("bit_size == 64 ? " +
-                       "((src0 == 0.0) ? 0.0 : ((src0 > 0.0) ? 1.0 : -1.0)) : " +
-                       "((src0 == 0.0f) ? 0.0f : ((src0 > 0.0f) ? 1.0f : -1.0f))"))
+                       "(isnan(src0) ? 0.0  : ((src0 == 0.0 ) ? src0 : (src0 > 0.0 ) ? 1.0  : -1.0 )) : " +
+                       "(isnan(src0) ? 0.0f : ((src0 == 0.0f) ? src0 : (src0 > 0.0f) ? 1.0f : -1.0f))"))
 unop("isign", tint, "(src0 == 0) ? 0 : ((src0 > 0) ? 1 : -1)")
 unop("iabs", tint, "(src0 < 0) ? -src0 : src0")
 unop("fabs", tfloat, "fabs(src0)")
