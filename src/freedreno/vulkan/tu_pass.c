@@ -360,8 +360,6 @@ tu_GetRenderAreaGranularity(VkDevice _device,
                             VkRenderPass renderPass,
                             VkExtent2D *pGranularity)
 {
-   TU_FROM_HANDLE(tu_device, device, _device);
-
-   pGranularity->width = device->physical_device->tile_align_w;
-   pGranularity->height = device->physical_device->tile_align_h;
+   pGranularity->width = GMEM_ALIGN_W;
+   pGranularity->height = GMEM_ALIGN_H;
 }

@@ -265,8 +265,6 @@ tu_physical_device_init(struct tu_physical_device *device,
 
    switch (device->gpu_id) {
    case 618:
-      device->tile_align_w = 64;
-      device->tile_align_h = 16;
       device->magic.RB_UNKNOWN_8E04_blit = 0x00100000;
       device->ccu_offset_gmem = 0x7c000; /* 0x7e000 in some cases? */
       device->ccu_offset_bypass = 0x10000;
@@ -275,8 +273,6 @@ tu_physical_device_init(struct tu_physical_device *device,
       break;
    case 630:
    case 640:
-      device->tile_align_w = 64;
-      device->tile_align_h = 16;
       device->magic.RB_UNKNOWN_8E04_blit = 0x01000000;
       device->ccu_offset_gmem = 0xf8000;
       device->ccu_offset_bypass = 0x20000;

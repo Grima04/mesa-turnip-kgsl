@@ -123,7 +123,6 @@ force_sysmem(const struct tu_cmd_buffer *cmd,
              const struct VkRect2D *render_area)
 {
    const struct tu_framebuffer *fb = cmd->state.framebuffer;
-   const struct tu_physical_device *device = cmd->device->physical_device;
    bool has_linear_mipmapped_store = false;
    const struct tu_render_pass *pass = cmd->state.pass;
 
@@ -170,7 +169,7 @@ force_sysmem(const struct tu_cmd_buffer *cmd,
     * work around this, we force-enable sysmem rendering.
     */
    const uint32_t y2 = render_area->offset.y + render_area->extent.height;
-   const uint32_t aligned_y2 = ALIGN_POT(y2, device->tile_align_h);
+   const uint32_t aligned_y2 = ALIGN_POT(y2, GMEM_ALIGN_H);
 
    return has_linear_mipmapped_store && aligned_y2 > fb->height;
 }
@@ -180,9 +179,9 @@ tu_tiling_config_update_tile_layout(struct tu_tiling_config *tiling,
                                     const struct tu_device *dev,
                                     uint32_t pixels)
 {
-   const uint32_t tile_align_w = dev->physical_device->tile_align_w;
-   const uint32_t tile_align_h = dev->physical_device->tile_align_h;
-   const uint32_t max_tile_width = 1024; /* A6xx */
+   const uint32_t tile_align_w = 64; /* note: 32 when no input attachments */
+   const uint32_t tile_align_h = 16;
+   const uint32_t max_tile_width = 1024;
 
    /* note: don't offset the tiling config by render_area.offset,
     * because binning pass can't deal with it
@@ -670,12 +669,11 @@ tu6_emit_blit_scissor(struct tu_cmd_buffer *cmd, struct tu_cs *cs, bool align)
    uint32_t x2 = x1 + render_area->extent.width - 1;
    uint32_t y2 = y1 + render_area->extent.height - 1;
 
-   /* TODO: alignment requirement seems to be less than tile_align_w/h */
    if (align) {
-      x1 = x1 & ~cmd->device->physical_device->tile_align_w;
-      y1 = y1 & ~cmd->device->physical_device->tile_align_h;
-      x2 = ALIGN_POT(x2 + 1, cmd->device->physical_device->tile_align_w) - 1;
-      y2 = ALIGN_POT(y2 + 1, cmd->device->physical_device->tile_align_h) - 1;
+      x1 = x1 & ~(GMEM_ALIGN_W - 1);
+      y1 = y1 & ~(GMEM_ALIGN_H - 1);
+      x2 = ALIGN_POT(x2 + 1, GMEM_ALIGN_W) - 1;
+      y2 = ALIGN_POT(y2 + 1, GMEM_ALIGN_H) - 1;
    }
 
    tu_cs_emit_regs(cs,

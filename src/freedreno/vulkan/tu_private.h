@@ -314,10 +314,10 @@ struct tu_physical_device
    unsigned gpu_id;
    uint32_t gmem_size;
    uint64_t gmem_base;
-   uint32_t tile_align_w;
-   uint32_t tile_align_h;
    uint32_t ccu_offset_gmem;
    uint32_t ccu_offset_bypass;
+#define GMEM_ALIGN_W 16
+#define GMEM_ALIGN_H 4
 
    struct {
       uint32_t RB_UNKNOWN_8E04_blit;    /* for CP_BLIT's */
