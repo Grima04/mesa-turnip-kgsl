@@ -2886,9 +2886,7 @@ void store_lds(isel_context *ctx, unsigned elem_size_bytes, Temp data, uint32_t 
 
 unsigned calculate_lds_alignment(isel_context *ctx, unsigned const_offset)
 {
-   unsigned itemsize = ctx->program->info->vs.es_info.esgs_itemsize;
    unsigned align = 16;
-   align = std::min(align, 1u << (ffs(itemsize) - 1));
    if (const_offset)
       align = std::min(align, 1u << (ffs(const_offset) - 1));
 
