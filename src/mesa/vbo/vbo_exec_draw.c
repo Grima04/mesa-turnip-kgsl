@@ -65,104 +65,16 @@ vbo_exec_debug_verts(struct vbo_exec_context *exec)
 }
 
 
-/**
- * Copy zero, one or two vertices from the current vertex buffer into
- * the temporary "copy" buffer.
- * This is used when a single primitive overflows a vertex buffer and
- * we need to continue the primitive in a new vertex buffer.
- * The temporary "copy" buffer holds the vertices which need to get
- * copied from the old buffer to the new one.
- */
 static GLuint
-vbo_copy_vertices(struct vbo_exec_context *exec)
+vbo_exec_copy_vertices(struct vbo_exec_context *exec)
 {
    struct _mesa_prim *last_prim = &exec->vtx.prim[exec->vtx.prim_count - 1];
-   const GLuint nr = last_prim->count;
-   GLuint ovf, i;
    const GLuint sz = exec->vtx.vertex_size;
    fi_type *dst = exec->vtx.copied.buffer;
    const fi_type *src = exec->vtx.buffer_map + last_prim->start * sz;
 
-   switch (exec->ctx->Driver.CurrentExecPrimitive) {
-   case GL_POINTS:
-      return 0;
-   case GL_LINES:
-      ovf = nr&1;
-      for (i = 0 ; i < ovf ; i++)
-         memcpy(dst+i*sz, src+(nr-ovf+i)*sz, sz * sizeof(GLfloat));
-      return i;
-   case GL_TRIANGLES:
-      ovf = nr%3;
-      for (i = 0 ; i < ovf ; i++)
-         memcpy(dst+i*sz, src+(nr-ovf+i)*sz, sz * sizeof(GLfloat));
-      return i;
-   case GL_QUADS:
-      ovf = nr&3;
-      for (i = 0 ; i < ovf ; i++)
-         memcpy(dst+i*sz, src+(nr-ovf+i)*sz, sz * sizeof(GLfloat));
-      return i;
-   case GL_LINE_STRIP:
-      if (nr == 0) {
-         return 0;
-      }
-      else {
-         memcpy(dst, src+(nr-1)*sz, sz * sizeof(GLfloat));
-         return 1;
-      }
-   case GL_LINE_LOOP:
-      if (last_prim->begin == 0) {
-         /* We're dealing with the second or later section of a split/wrapped
-          * GL_LINE_LOOP.  Since we're converting line loops to line strips,
-          * we've already increment the last_prim->start counter by one to
-          * skip the 0th vertex in the loop.  We need to undo that (effectively
-          * subtract one from last_prim->start) so that we copy the 0th vertex
-          * to the next vertex buffer.
-          */
-         assert(last_prim->start > 0);
-         src -= sz;
-      }
-      /* fall-through */
-   case GL_TRIANGLE_FAN:
-   case GL_POLYGON:
-      if (nr == 0) {
-         return 0;
-      }
-      else if (nr == 1) {
-         memcpy(dst, src+0, sz * sizeof(GLfloat));
-         return 1;
-      }
-      else {
-         memcpy(dst, src+0, sz * sizeof(GLfloat));
-         memcpy(dst+sz, src+(nr-1)*sz, sz * sizeof(GLfloat));
-         return 2;
-      }
-   case GL_TRIANGLE_STRIP:
-      /* no parity issue, but need to make sure the tri is not drawn twice */
-      if (nr & 1) {
-         last_prim->count--;
-      }
-      /* fallthrough */
-   case GL_QUAD_STRIP:
-      switch (nr) {
-      case 0:
-         ovf = 0;
-         break;
-      case 1:
-         ovf = 1;
-         break;
-      default:
-         ovf = 2 + (nr & 1);
-         break;
-      }
-      for (i = 0 ; i < ovf ; i++)
-         memcpy(dst+i*sz, src+(nr-ovf+i)*sz, sz * sizeof(GLfloat));
-      return i;
-   case PRIM_OUTSIDE_BEGIN_END:
-      return 0;
-   default:
-      unreachable("Unexpected primitive type");
-      return 0;
-   }
+   return vbo_copy_vertices(exec->ctx, exec->ctx->Driver.CurrentExecPrimitive,
+                            last_prim, sz, false, dst, src);
 }
 
 
@@ -392,7 +304,7 @@ vbo_exec_vtx_flush(struct vbo_exec_context *exec)
    if (exec->vtx.prim_count &&
        exec->vtx.vert_count) {
 
-      exec->vtx.copied.nr = vbo_copy_vertices(exec);
+      exec->vtx.copied.nr = vbo_exec_copy_vertices(exec);
 
       if (exec->vtx.copied.nr != exec->vtx.vert_count) {
          struct gl_context *ctx = exec->ctx;

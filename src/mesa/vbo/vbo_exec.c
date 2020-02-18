@@ -225,3 +225,105 @@ vbo_merge_prims(struct _mesa_prim *p0, const struct _mesa_prim *p1)
    p0->count += p1->count;
    p0->end = p1->end;
 }
+
+/**
+ * Copy zero, one or two vertices from the current vertex buffer into
+ * the temporary "copy" buffer.
+ * This is used when a single primitive overflows a vertex buffer and
+ * we need to continue the primitive in a new vertex buffer.
+ * The temporary "copy" buffer holds the vertices which need to get
+ * copied from the old buffer to the new one.
+ */
+unsigned
+vbo_copy_vertices(struct gl_context *ctx,
+                  GLenum mode,
+                  struct _mesa_prim *last_prim,
+                  unsigned vertex_size,
+                  bool in_dlist,
+                  fi_type *dst,
+                  const fi_type *src)
+{
+   const unsigned count = last_prim->count;
+   unsigned copy = 0;
+
+   switch (mode) {
+   case GL_POINTS:
+      return 0;
+   case GL_LINES:
+   case GL_TRIANGLES:
+   case GL_QUADS:
+      if (mode == GL_LINES)
+         copy = count % 2;
+      else if (mode == GL_TRIANGLES)
+         copy = count % 3;
+      else if (mode == GL_QUADS)
+         copy = count % 4;
+
+      for (unsigned i = 0; i < copy; i++) {
+         memcpy(dst + i * vertex_size, src + (count - copy + i) * vertex_size,
+                vertex_size * sizeof(GLfloat));
+      }
+      return copy;
+   case GL_LINE_STRIP:
+      if (count == 0)
+         return 0;
+
+      memcpy(dst, src + (count - 1) * vertex_size,
+             vertex_size * sizeof(GLfloat));
+      return 1;
+   case GL_LINE_LOOP:
+      if (!in_dlist && last_prim->begin == 0) {
+         /* We're dealing with the second or later section of a split/wrapped
+          * GL_LINE_LOOP.  Since we're converting line loops to line strips,
+          * we've already incremented the last_prim->start counter by one to
+          * skip the 0th vertex in the loop.  We need to undo that (effectively
+          * subtract one from last_prim->start) so that we copy the 0th vertex
+          * to the next vertex buffer.
+          */
+         assert(last_prim->start > 0);
+         src -= vertex_size;
+      }
+      /* fall-through */
+   case GL_TRIANGLE_FAN:
+   case GL_POLYGON:
+      if (count == 0) {
+         return 0;
+      } else if (count == 1) {
+         memcpy(dst, src + 0, vertex_size * sizeof(GLfloat));
+         return 1;
+      } else {
+         memcpy(dst, src + 0, vertex_size * sizeof(GLfloat));
+         memcpy(dst + vertex_size, src + (count - 1) * vertex_size,
+                vertex_size * sizeof(GLfloat));
+         return 2;
+      }
+   case GL_TRIANGLE_STRIP:
+      /* no parity issue, but need to make sure the tri is not drawn twice */
+      if (count & 1) {
+         last_prim->count--;
+      }
+      /* fallthrough */
+   case GL_QUAD_STRIP:
+      switch (count) {
+      case 0:
+         copy = 0;
+         break;
+      case 1:
+         copy = 1;
+         break;
+      default:
+         copy = 2 + (count & 1);
+         break;
+      }
+      for (unsigned i = 0; i < copy; i++) {
+         memcpy(dst + i * vertex_size, src + (count - copy + i) * vertex_size,
+                vertex_size * sizeof(GLfloat));
+      }
+      return copy;
+   case PRIM_OUTSIDE_BEGIN_END:
+      return 0;
+   default:
+      unreachable("Unexpected primitive type");
+      return 0;
+   }
+}

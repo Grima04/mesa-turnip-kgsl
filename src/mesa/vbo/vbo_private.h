@@ -185,6 +185,15 @@ void
 vbo_merge_prims(struct _mesa_prim *p0, const struct _mesa_prim *p1);
 
 
+unsigned
+vbo_copy_vertices(struct gl_context *ctx,
+                  GLenum mode,
+                  struct _mesa_prim *last_prim,
+                  unsigned vertex_size,
+                  bool in_dlist,
+                  fi_type *dst,
+                  const fi_type *src);
+
 /**
  * Get the filter mask for vbo draws depending on the vertex_processing_mode.
  */

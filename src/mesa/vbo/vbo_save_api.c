@@ -111,79 +111,15 @@ copy_vertices(struct gl_context *ctx,
               const fi_type * src_buffer)
 {
    struct vbo_save_context *save = &vbo_context(ctx)->save;
-   const struct _mesa_prim *prim = &node->prims[node->prim_count - 1];
-   GLuint nr = prim->count;
+   struct _mesa_prim *prim = &node->prims[node->prim_count - 1];
    GLuint sz = save->vertex_size;
    const fi_type *src = src_buffer + prim->start * sz;
    fi_type *dst = save->copied.buffer;
-   GLuint ovf, i;
 
    if (prim->end)
       return 0;
 
-   switch (prim->mode) {
-   case GL_POINTS:
-      return 0;
-   case GL_LINES:
-      ovf = nr & 1;
-      for (i = 0; i < ovf; i++)
-         memcpy(dst + i * sz, src + (nr - ovf + i) * sz,
-                sz * sizeof(GLfloat));
-      return i;
-   case GL_TRIANGLES:
-      ovf = nr % 3;
-      for (i = 0; i < ovf; i++)
-         memcpy(dst + i * sz, src + (nr - ovf + i) * sz,
-                sz * sizeof(GLfloat));
-      return i;
-   case GL_QUADS:
-      ovf = nr & 3;
-      for (i = 0; i < ovf; i++)
-         memcpy(dst + i * sz, src + (nr - ovf + i) * sz,
-                sz * sizeof(GLfloat));
-      return i;
-   case GL_LINE_STRIP:
-      if (nr == 0)
-         return 0;
-      else {
-         memcpy(dst, src + (nr - 1) * sz, sz * sizeof(GLfloat));
-         return 1;
-      }
-   case GL_LINE_LOOP:
-   case GL_TRIANGLE_FAN:
-   case GL_POLYGON:
-      if (nr == 0)
-         return 0;
-      else if (nr == 1) {
-         memcpy(dst, src + 0, sz * sizeof(GLfloat));
-         return 1;
-      }
-      else {
-         memcpy(dst, src + 0, sz * sizeof(GLfloat));
-         memcpy(dst + sz, src + (nr - 1) * sz, sz * sizeof(GLfloat));
-         return 2;
-      }
-   case GL_TRIANGLE_STRIP:
-   case GL_QUAD_STRIP:
-      switch (nr) {
-      case 0:
-         ovf = 0;
-         break;
-      case 1:
-         ovf = 1;
-         break;
-      default:
-         ovf = 2 + (nr & 1);
-         break;
-      }
-      for (i = 0; i < ovf; i++)
-         memcpy(dst + i * sz, src + (nr - ovf + i) * sz,
-                sz * sizeof(GLfloat));
-      return i;
-   default:
-      unreachable("Unexpected primitive type");
-      return 0;
-   }
+   return vbo_copy_vertices(ctx, prim->mode, prim, sz, true, dst, src);
 }
 
 
