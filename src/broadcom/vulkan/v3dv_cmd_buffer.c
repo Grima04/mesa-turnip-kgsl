@@ -2115,6 +2115,69 @@ v3dv_CmdDrawIndexed(VkCommandBuffer commandBuffer,
 }
 
 void
+v3dv_CmdDrawIndirect(VkCommandBuffer commandBuffer,
+                     VkBuffer _buffer,
+                     VkDeviceSize offset,
+                     uint32_t drawCount,
+                     uint32_t stride)
+{
+   V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
+   V3DV_FROM_HANDLE(v3dv_buffer, buffer, _buffer);
+
+   /* drawCount is the number of draws to execute, and can be zero. */
+   if (drawCount == 0)
+      return;
+
+   struct v3dv_job *job = cmd_buffer->state.job;
+   assert(job);
+
+   cmd_buffer_emit_pre_draw(cmd_buffer);
+
+   const struct v3dv_pipeline *pipeline = cmd_buffer->state.pipeline;
+   uint32_t hw_prim_type = v3d_hw_prim_type(pipeline->vs->topology);
+
+   cl_emit(&job->bcl, INDIRECT_VERTEX_ARRAY_INSTANCED_PRIMS, prim) {
+      prim.mode = hw_prim_type;
+      prim.number_of_draw_indirect_array_records = drawCount;
+      prim.stride_in_multiples_of_4_bytes = stride >> 2;
+      prim.address = v3dv_cl_address(buffer->mem->bo, offset);
+   }
+}
+
+void
+v3dv_CmdDrawIndexedIndirect(VkCommandBuffer commandBuffer,
+                            VkBuffer _buffer,
+                            VkDeviceSize offset,
+                            uint32_t drawCount,
+                            uint32_t stride)
+{
+   V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
+   V3DV_FROM_HANDLE(v3dv_buffer, buffer, _buffer);
+
+   /* drawCount is the number of draws to execute, and can be zero. */
+   if (drawCount == 0)
+      return;
+
+   struct v3dv_job *job = cmd_buffer->state.job;
+   assert(job);
+
+   cmd_buffer_emit_pre_draw(cmd_buffer);
+
+   const struct v3dv_pipeline *pipeline = cmd_buffer->state.pipeline;
+   uint32_t hw_prim_type = v3d_hw_prim_type(pipeline->vs->topology);
+   uint8_t index_type = ffs(cmd_buffer->state.index_size) - 1;
+
+   cl_emit(&job->bcl, INDIRECT_INDEXED_INSTANCED_PRIM_LIST, prim) {
+      prim.index_type = index_type;
+      prim.mode = hw_prim_type;
+      prim.enable_primitive_restarts = false; /* FIXME */
+      prim.number_of_draw_indirect_indexed_records = drawCount;
+      prim.stride_in_multiples_of_4_bytes = stride >> 2;
+      prim.address = v3dv_cl_address(buffer->mem->bo, offset);
+   }
+}
+
+void
 v3dv_CmdPipelineBarrier(VkCommandBuffer commandBuffer,
                         VkPipelineStageFlags srcStageMask,
                         VkPipelineStageFlags dstStageMask,
