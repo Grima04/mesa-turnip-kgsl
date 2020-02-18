@@ -3297,6 +3297,13 @@ void visit_store_ls_or_es_output(isel_context *ctx, nir_intrinsic_instr *instr)
          Temp vertex_idx = bld.vop2(aco_opcode::v_or_b32, bld.def(v1), thread_id,
                                bld.v_mul24_imm(bld.def(v1), as_vgpr(ctx, wave_idx), ctx->program->wave_size));
          lds_base = bld.v_mul24_imm(bld.def(v1), vertex_idx, itemsize);
+      } else if (ctx->stage == vertex_ls || ctx->stage == vertex_tess_control_hs) {
+         /* GFX6-8: VS runs on LS stage when tessellation is used, but LS shares LDS space with HS.
+          * GFX9+: LS is merged into HS, but still uses the same LDS layout.
+          */
+         unsigned num_tcs_inputs = util_last_bit64(ctx->args->shader_info->vs.ls_outputs_written);
+         Temp vertex_idx = get_arg(ctx, ctx->args->rel_auto_id);
+         lds_base = bld.v_mul_imm(bld.def(v1), vertex_idx, num_tcs_inputs * 16u);
       } else {
          unreachable("Invalid LS or ES stage");
       }
@@ -3304,7 +3311,6 @@ void visit_store_ls_or_es_output(isel_context *ctx, nir_intrinsic_instr *instr)
       offs = offset_add(ctx, offs, std::make_pair(lds_base, 0u));
       unsigned lds_align = calculate_lds_alignment(ctx, offs.second);
       store_lds(ctx, elem_size_bytes, src, write_mask, offs.first, offs.second, lds_align);
-
    }
 }
 
@@ -3385,6 +3391,8 @@ void visit_store_output(isel_context *ctx, nir_intrinsic_instr *instr)
          idx++;
       }
    } else if (ctx->stage == vertex_es ||
+              ctx->stage == vertex_ls ||
+              (ctx->stage == vertex_tess_control_hs && ctx->shader->info.stage == MESA_SHADER_VERTEX) ||
               (ctx->stage == vertex_geometry_gs && ctx->shader->info.stage == MESA_SHADER_VERTEX)) {
       visit_store_ls_or_es_output(ctx, instr);
    } else if (ctx->shader->info.stage == MESA_SHADER_TESS_CTRL) {
