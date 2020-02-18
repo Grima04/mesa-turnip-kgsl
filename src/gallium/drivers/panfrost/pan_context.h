@@ -52,17 +52,6 @@ struct prim_convert_context;
 
 #define MAX_VARYINGS   4096
 
-//#define PAN_DIRTY_CLEAR	     (1 << 0)
-#define PAN_DIRTY_RASTERIZER (1 << 2)
-#define PAN_DIRTY_FS	     (1 << 3)
-#define PAN_DIRTY_FRAG_CORE  (PAN_DIRTY_FS) /* Dirty writes are tied */
-#define PAN_DIRTY_VS	     (1 << 4)
-#define PAN_DIRTY_VERTEX     (1 << 5)
-#define PAN_DIRTY_VERT_BUF   (1 << 6)
-//#define PAN_DIRTY_VIEWPORT   (1 << 7)
-#define PAN_DIRTY_SAMPLERS   (1 << 8)
-#define PAN_DIRTY_TEXTURES   (1 << 9)
-
 #define SET_BIT(lval, bit, cond) \
 	if (cond) \
 		lval |= (bit); \
@@ -134,9 +123,6 @@ struct panfrost_context {
          * stencil/depth tests, etc. Refer to the presentations. */
 
         struct mali_shader_meta fragment_shader_core;
-
-        /* Per-draw Dirty flags are setup like any other driver */
-        int dirty;
 
         unsigned vertex_count;
         unsigned instance_count;

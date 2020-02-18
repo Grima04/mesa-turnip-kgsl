@@ -177,12 +177,6 @@ panfrost_invalidate_frame(struct panfrost_context *ctx)
         for (unsigned i = 0; i < PIPE_SHADER_TYPES; ++i)
                 ctx->payloads[i].postfix.shared_memory = 0;
 
-        if (ctx->rasterizer)
-                ctx->dirty |= PAN_DIRTY_RASTERIZER;
-
-        /* XXX */
-        ctx->dirty |= PAN_DIRTY_SAMPLERS | PAN_DIRTY_TEXTURES;
-
         /* TODO: When does this need to be handled? */
         ctx->active_queries = true;
 }
@@ -846,9 +840,9 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                 panfrost_emit_varying_descriptor(ctx, total_count);
         }
 
-        bool msaa = ctx->rasterizer->base.multisample;
 
-        if (ctx->dirty & PAN_DIRTY_RASTERIZER) {
+        if (ctx->rasterizer) {
+                bool msaa = ctx->rasterizer->base.multisample;
                 ctx->payloads[PIPE_SHADER_FRAGMENT].gl_enables = ctx->rasterizer->tiler_gl_enables;
 
                 /* TODO: Sample size */
@@ -866,7 +860,7 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
         panfrost_patch_shader_state(ctx, PIPE_SHADER_VERTEX);
         panfrost_patch_shader_state(ctx, PIPE_SHADER_COMPUTE);
 
-        if (ctx->dirty & (PAN_DIRTY_RASTERIZER | PAN_DIRTY_VS)) {
+        if (ctx->shader[PIPE_SHADER_VERTEX] && ctx->shader[PIPE_SHADER_FRAGMENT]) {
                 /* Check if we need to link the gl_PointSize varying */
                 if (!panfrost_writes_point_size(ctx)) {
                         /* If the size is constant, write it out. Otherwise,
@@ -881,12 +875,7 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                 }
         }
 
-        /* TODO: Maybe dirty track FS, maybe not. For now, it's transient. */
-        if (ctx->shader[PIPE_SHADER_FRAGMENT])
-                ctx->dirty |= PAN_DIRTY_FS;
-
-        if (ctx->dirty & PAN_DIRTY_FS) {
-                assert(ctx->shader[PIPE_SHADER_FRAGMENT]);
+        if (ctx->shader[PIPE_SHADER_FRAGMENT]) {
                 struct panfrost_shader_state *variant = &ctx->shader[PIPE_SHADER_FRAGMENT]->variants[ctx->shader[PIPE_SHADER_FRAGMENT]->active_variant];
 
                 panfrost_patch_shader_state(ctx, PIPE_SHADER_FRAGMENT);
@@ -1034,11 +1023,8 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
         if (ctx->vertex)
                 panfrost_stage_attributes(ctx);
 
-        if (ctx->dirty & PAN_DIRTY_SAMPLERS)
-                panfrost_upload_sampler_descriptors(ctx);
-
-        if (ctx->dirty & PAN_DIRTY_TEXTURES)
-                panfrost_upload_texture_descriptors(ctx);
+        panfrost_upload_sampler_descriptors(ctx);
+        panfrost_upload_texture_descriptors(ctx);
 
         const struct pipe_viewport_state *vp = &ctx->pipe_viewport;
 
@@ -1212,8 +1198,6 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                 panfrost_upload_transient(batch,
                                           &view,
                                           sizeof(struct mali_viewport));
-
-        ctx->dirty = 0;
 }
 
 /* Corresponds to exactly one draw, but does not submit anything */
@@ -1611,7 +1595,6 @@ panfrost_bind_rasterizer_state(
                 return;
 
         ctx->rasterizer = hwcso;
-        ctx->dirty |= PAN_DIRTY_RASTERIZER;
 
         ctx->fragment_shader_core.depth_units = ctx->rasterizer->base.offset_units * 2.0f;
         ctx->fragment_shader_core.depth_factor = ctx->rasterizer->base.offset_scale;
@@ -1667,9 +1650,7 @@ panfrost_bind_vertex_elements_state(
         void *hwcso)
 {
         struct panfrost_context *ctx = pan_context(pctx);
-
         ctx->vertex = hwcso;
-        ctx->dirty |= PAN_DIRTY_VERTEX;
 }
 
 static void *
@@ -1801,8 +1782,6 @@ panfrost_bind_sampler_states(
         /* XXX: Should upload, not just copy? */
         ctx->sampler_count[shader] = num_sampler;
         memcpy(ctx->samplers[shader], sampler, num_sampler * sizeof (void *));
-
-        ctx->dirty |= PAN_DIRTY_SAMPLERS;
 }
 
 static bool
@@ -1896,13 +1875,7 @@ panfrost_bind_shader_state(
         enum pipe_shader_type type)
 {
         struct panfrost_context *ctx = pan_context(pctx);
-
         ctx->shader[type] = hwcso;
-
-        if (type == PIPE_SHADER_FRAGMENT)
-                ctx->dirty |= PAN_DIRTY_FS;
-        else
-                ctx->dirty |= PAN_DIRTY_VS;
 
         if (!hwcso) return;
 
@@ -2055,9 +2028,6 @@ panfrost_set_stencil_ref(
 {
         struct panfrost_context *ctx = pan_context(pctx);
         ctx->stencil_ref = *ref;
-
-        /* Shader core dirty */
-        ctx->dirty |= PAN_DIRTY_FS;
 }
 
 static enum mali_texture_type
@@ -2219,8 +2189,6 @@ panfrost_set_sampler_views(
 		                            NULL);
         }
         ctx->sampler_view_count[shader] = new_nr;
-
-        ctx->dirty |= PAN_DIRTY_TEXTURES;
 }
 
 static void
@@ -2334,8 +2302,6 @@ panfrost_bind_depth_stencil_state(struct pipe_context *pipe,
 
         /* Bounds test not implemented */
         assert(!depth_stencil->depth.bounds_test);
-
-        ctx->dirty |= PAN_DIRTY_FS;
 }
 
 static void

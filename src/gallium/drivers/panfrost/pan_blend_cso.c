@@ -154,9 +154,6 @@ panfrost_bind_blend_state(struct pipe_context *pipe,
         if (screen->quirks & MIDGARD_SFBD) {
                 SET_BIT(ctx->fragment_shader_core.unknown2_4, MALI_NO_DITHER, !blend->dither);
         }
-
-        /* Shader itself is not dirty, but the shader core is */
-        ctx->dirty |= PAN_DIRTY_FS;
 }
 
 static void
