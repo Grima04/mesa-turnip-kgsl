@@ -345,7 +345,8 @@ amdgpu_winsys_create(int fd, const struct pipe_screen_config *config,
    struct amdgpu_screen_winsys *ws;
    struct amdgpu_winsys *aws;
    amdgpu_device_handle dev;
-   uint32_t drm_major, drm_minor, r;
+   uint32_t drm_major, drm_minor;
+   int r;
 
    ws = CALLOC_STRUCT(amdgpu_screen_winsys);
    if (!ws)
