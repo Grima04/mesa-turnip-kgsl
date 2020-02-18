@@ -2821,8 +2821,17 @@ pandecode_fragment_job(const struct pandecode_mapped_memory *mem,
 
 static int job_descriptor_number = 0;
 
+/* Entrypoint to start tracing. jc_gpu_va is the GPU address for the first job
+ * in the chain; later jobs are found by walking the chain. Bifrost is, well,
+ * if it's bifrost or not. GPU ID is the more finegrained ID (at some point, we
+ * might wish to combine this with the bifrost parameter) because some details
+ * are model-specific even within a particular architecture. Minimal traces
+ * *only* examine the job descriptors, skipping printing entirely if there is
+ * no faults, and only descends into the payload if there are faults. This is
+ * useful for looking for faults without the overhead of invasive traces. */
+
 int
-pandecode_jc(mali_ptr jc_gpu_va, bool bifrost, unsigned gpu_id)
+pandecode_jc(mali_ptr jc_gpu_va, bool bifrost, unsigned gpu_id, bool minimal)
 {
         struct mali_job_descriptor_header *h;
 
@@ -2852,6 +2861,10 @@ pandecode_jc(mali_ptr jc_gpu_va, bool bifrost, unsigned gpu_id)
 
                 if (first)
                         start_number = job_no;
+
+                /* If the job is good to go, skip it in minimal mode */
+                if (minimal && (h->exception_status == 0x0 || h->exception_status == 0x1))
+                        continue;
 
                 pandecode_log("struct mali_job_descriptor_header job_%"PRIx64"_%d = {\n", jc_gpu_va, job_no);
                 pandecode_indent++;
@@ -2890,12 +2903,6 @@ pandecode_jc(mali_ptr jc_gpu_va, bool bifrost, unsigned gpu_id)
 
                 pandecode_indent--;
                 pandecode_log("};\n");
-
-                /* Do not touch the field yet -- decode the payload first, and
-                 * don't touch that either. This is essential for the uploads
-                 * to occur in sequence and therefore be dynamically allocated
-                 * correctly. Do note the size, however, for that related
-                 * reason. */
 
                 switch (h->job_type) {
                 case JOB_TYPE_WRITE_VALUE: {

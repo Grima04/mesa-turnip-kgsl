@@ -942,7 +942,7 @@ panfrost_batch_submit_ioctl(struct panfrost_batch *batch,
                 /* Wait so we can get errors reported back */
                 drmSyncobjWait(screen->fd, &batch->out_sync->syncobj, 1,
                                INT64_MAX, 0, NULL);
-                pandecode_jc(submit.jc, FALSE, screen->gpu_id);
+                pandecode_jc(submit.jc, FALSE, screen->gpu_id, false);
         }
 
         return 0;
