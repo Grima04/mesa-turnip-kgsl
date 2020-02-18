@@ -475,95 +475,19 @@ panfrost_upload_tex(
 
         struct pipe_sampler_view *pview = &view->base;
         struct panfrost_resource *rsrc = pan_resource(pview->texture);
-        mali_ptr descriptor_gpu;
-        void *descriptor;
-
-        /* Do we interleave an explicit stride with every element? */
-
-        bool has_manual_stride = view->manual_stride;
-
-        /* For easy access */
-
-        bool is_buffer = pview->target == PIPE_BUFFER;
-        unsigned first_level = is_buffer ? 0 : pview->u.tex.first_level;
-        unsigned last_level  = is_buffer ? 0 : pview->u.tex.last_level;
-        unsigned first_layer = is_buffer ? 0 : pview->u.tex.first_layer;
-        unsigned last_layer  = is_buffer ? 0 : pview->u.tex.last_layer;
-        unsigned first_face  = 0;
-        unsigned last_face   = 0;
-        unsigned face_mult   = 1;
-
-        /* Cubemaps have 6 faces as layers in between each actual layer.
-         * There's a bit of an impedence mismatch between Gallium and the
-         * hardware, let's fixup for it */
-
-        if (pview->target == PIPE_TEXTURE_CUBE || pview->target == PIPE_TEXTURE_CUBE_ARRAY) {
-                /* TODO: logic wrong in the asserted out cases ... can they happen? */
-
-                first_face = first_layer % 6;
-                last_face = last_layer % 6;
-                first_layer /= 6;
-                last_layer /= 6;
-
-                assert((first_layer == last_layer) || (first_face == 0 && last_face == 5));
-                face_mult = 6;
-        }
-
-        /* Lower-bit is set when sampling from colour AFBC */
-        bool is_afbc = rsrc->layout == MALI_TEXTURE_AFBC;
-        bool is_zs = rsrc->base.bind & PIPE_BIND_DEPTH_STENCIL;
-        unsigned afbc_bit = (is_afbc && !is_zs) ? 1 : 0;
 
         /* Add the BO to the job so it's retained until the job is done. */
         struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
+
         panfrost_batch_add_bo(batch, rsrc->bo,
                               PAN_BO_ACCESS_SHARED | PAN_BO_ACCESS_READ |
                               panfrost_bo_access_for_stage(st));
 
-        /* Add the usage flags in, since they can change across the CSO
-         * lifetime due to layout switches */
+        panfrost_batch_add_bo(batch, view->bo,
+                              PAN_BO_ACCESS_SHARED | PAN_BO_ACCESS_READ |
+                              panfrost_bo_access_for_stage(st));
 
-        view->hw.format.layout = rsrc->layout;
-        view->hw.format.manual_stride = has_manual_stride;
-
-        /* Inject the addresses in, interleaving array indices, mip levels,
-         * cube faces, and strides in that order */
-
-        unsigned idx = 0;
-        unsigned levels = 1 + last_level - first_level;
-        unsigned layers = 1 + last_layer - first_layer;
-        unsigned faces  = 1 + last_face  - first_face;
-        unsigned num_elements = levels * layers * faces;
-        if (has_manual_stride)
-                num_elements *= 2;
-
-        descriptor = malloc(sizeof(struct mali_texture_descriptor) +
-                            sizeof(mali_ptr) * num_elements);
-        memcpy(descriptor, &view->hw, sizeof(struct mali_texture_descriptor));
-
-        mali_ptr *pointers_and_strides = descriptor +
-                                         sizeof(struct mali_texture_descriptor);
-
-        for (unsigned w = first_layer; w <= last_layer; ++w) {
-                for (unsigned l = first_level; l <= last_level; ++l) {
-                        for (unsigned f = first_face; f <= last_face; ++f) {
-                                pointers_and_strides[idx++] =
-                                        panfrost_get_texture_address(rsrc, l, w * face_mult + f)
-                                                + afbc_bit + view->astc_stretch;
-                                if (has_manual_stride) {
-                                        pointers_and_strides[idx++] =
-                                                rsrc->slices[l].stride;
-                                }
-                        }
-                }
-        }
-
-        descriptor_gpu = panfrost_upload_transient(batch, descriptor,
-                                  sizeof(struct mali_texture_descriptor) +
-                                          num_elements * sizeof(*pointers_and_strides));
-        free(descriptor);
-
-        return descriptor_gpu;
+        return view->bo->gpu;
 }
 
 static void
@@ -2052,29 +1976,14 @@ panfrost_translate_texture_type(enum pipe_texture_target t) {
         }
 }
 
-static uint8_t
-panfrost_compute_astc_stretch(
-        const struct util_format_description *desc)
-{
-        unsigned width = desc->block.width;
-        unsigned height = desc->block.height;
-        assert(width >= 4 && width <= 12);
-        assert(height >= 4 && height <= 12);
-        if (width == 12)
-                width = 11;
-        if (height == 12)
-                height = 11;
-        return ((height - 4) * 8) + (width - 4);
-}
-
 static struct pipe_sampler_view *
 panfrost_create_sampler_view(
         struct pipe_context *pctx,
         struct pipe_resource *texture,
         const struct pipe_sampler_view *template)
 {
+        struct panfrost_screen *screen = pan_screen(pctx->screen);
         struct panfrost_sampler_view *so = rzalloc(pctx, struct panfrost_sampler_view);
-        int bytes_per_pixel = util_format_get_blocksize(texture->format);
 
         pipe_reference(NULL, &texture->reference);
 
@@ -2086,44 +1995,12 @@ panfrost_create_sampler_view(
         so->base.reference.count = 1;
         so->base.context = pctx;
 
-        /* sampler_views correspond to texture descriptors, minus the texture
-         * (data) itself. So, we serialise the descriptor here and cache it for
-         * later. */
-
-        const struct util_format_description *desc = util_format_description(prsrc->base.format);
-
         unsigned char user_swizzle[4] = {
                 template->swizzle_r,
                 template->swizzle_g,
                 template->swizzle_b,
                 template->swizzle_a
         };
-
-        enum mali_format format = panfrost_find_format(desc);
-
-        if (format == MALI_ASTC_HDR_SUPP || format == MALI_ASTC_SRGB_SUPP)
-                so->astc_stretch = panfrost_compute_astc_stretch(desc);
-
-        /* Check if we need to set a custom stride by computing the "expected"
-         * stride and comparing it to what the BO actually wants. Only applies
-         * to linear textures, since tiled/compressed textures have strict
-         * alignment requirements for their strides as it is */
-
-        unsigned first_level = template->u.tex.first_level;
-        unsigned last_level = template->u.tex.last_level;
-
-        if (prsrc->layout == MALI_TEXTURE_LINEAR) {
-                for (unsigned l = first_level; l <= last_level; ++l) {
-                        unsigned actual_stride = prsrc->slices[l].stride;
-                        unsigned width = u_minify(texture->width0, l);
-                        unsigned comp_stride = width * bytes_per_pixel;
-
-                        if (comp_stride != actual_stride) {
-                                so->manual_stride = true;
-                                break;
-                        }
-                }
-        }
 
         /* In the hardware, array_size refers specifically to array textures,
          * whereas in Gallium, it also covers cubemaps */
@@ -2136,26 +2013,32 @@ panfrost_create_sampler_view(
                 array_size /= 6;
         }
 
-        struct mali_texture_descriptor texture_descriptor = {
-                .width = MALI_POSITIVE(u_minify(texture->width0, first_level)),
-                .height = MALI_POSITIVE(u_minify(texture->height0, first_level)),
-                .depth = MALI_POSITIVE(u_minify(texture->depth0, first_level)),
-                .array_size = MALI_POSITIVE(array_size),
+        enum mali_texture_type type =
+                panfrost_translate_texture_type(template->target);
 
-                .format = {
-                        .swizzle = panfrost_translate_swizzle_4(desc->swizzle),
-                        .format = format,
-                        .srgb = desc->colorspace == UTIL_FORMAT_COLORSPACE_SRGB,
-                        .type = panfrost_translate_texture_type(template->target),
-                        .unknown2 = 0x1,
-                },
+        unsigned size = panfrost_estimate_texture_size(
+                        template->u.tex.first_level,
+                        template->u.tex.last_level,
+                        template->u.tex.first_layer,
+                        template->u.tex.last_layer,
+                        type, prsrc->layout);
 
-                .swizzle = panfrost_translate_swizzle_4(user_swizzle)
-        };
+        so->bo = panfrost_bo_create(screen, size, 0);
 
-        texture_descriptor.levels = last_level - first_level;
-
-        so->hw = texture_descriptor;
+        panfrost_new_texture(
+                        so->bo->cpu,
+                        texture->width0, texture->height0,
+                        texture->depth0, array_size,
+                        texture->format,
+                        type, prsrc->layout,
+                        template->u.tex.first_level,
+                        template->u.tex.last_level,
+                        template->u.tex.first_layer,
+                        template->u.tex.last_layer,
+                        prsrc->cubemap_stride,
+                        panfrost_translate_swizzle_4(user_swizzle),
+                        prsrc->bo->gpu,
+                        prsrc->slices);
 
         return (struct pipe_sampler_view *) so;
 }
@@ -2190,9 +2073,12 @@ panfrost_set_sampler_views(
 static void
 panfrost_sampler_view_destroy(
         struct pipe_context *pctx,
-        struct pipe_sampler_view *view)
+        struct pipe_sampler_view *pview)
 {
-        pipe_resource_reference(&view->texture, NULL);
+        struct panfrost_sampler_view *view = (struct panfrost_sampler_view *) pview;
+
+        pipe_resource_reference(&pview->texture, NULL);
+        panfrost_bo_unreference(view->bo);
         ralloc_free(view);
 }
 

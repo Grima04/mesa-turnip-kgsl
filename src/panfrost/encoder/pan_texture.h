@@ -30,6 +30,7 @@
 
 #include <stdbool.h>
 #include "util/format/u_format.h"
+#include "panfrost-job.h"
 
 struct panfrost_slice {
         unsigned offset;
@@ -62,6 +63,36 @@ panfrost_format_supports_afbc(enum pipe_format format);
 
 unsigned
 panfrost_afbc_header_size(unsigned width, unsigned height);
+
+/* mali_texture_descriptor */
+
+unsigned
+panfrost_estimate_texture_size(
+                unsigned first_level, unsigned last_level,
+                unsigned first_layer, unsigned last_layer,
+                enum mali_texture_type type, enum mali_texture_layout layout);
+
+void
+panfrost_new_texture(
+        void *out,
+        uint16_t width, uint16_t height,
+        uint16_t depth, uint16_t array_size,
+        enum pipe_format format,
+        enum mali_texture_type type,
+        enum mali_texture_layout layout,
+        unsigned first_level, unsigned last_level,
+        unsigned first_layer, unsigned last_layer,
+        unsigned cube_stride,
+        unsigned swizzle,
+        mali_ptr base,
+        struct panfrost_slice *slices);
+
+
+unsigned
+panfrost_get_layer_stride(struct panfrost_slice *slices, bool is_3d, unsigned cube_stride, unsigned level);
+
+unsigned
+panfrost_texture_offset(struct panfrost_slice *slices, bool is_3d, unsigned cube_stride, unsigned level, unsigned face);
 
 /* Formats */
 
