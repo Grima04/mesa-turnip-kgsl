@@ -148,6 +148,7 @@ optimizations = [
    # If a < 0: fsign(a)*a*a => -1*a*a => -a*a => abs(a)*a
    # If a > 0: fsign(a)*a*a => 1*a*a => a*a => abs(a)*a
    # If a == 0: fsign(a)*a*a => 0*0*0 => abs(0)*0
+   # If a != a: fsign(a)*a*a => 0*NaN*NaN => abs(NaN)*NaN
    (('fmul', ('fsign', a), ('fmul', a, a)), ('fmul', ('fabs', a), a)),
    (('fmul', ('fmul', ('fsign', a), a), a), ('fmul', ('fabs', a), a)),
    (('~ffma', 0.0, a, b), b),
@@ -583,6 +584,7 @@ optimizations.extend([
    # SignedZeroInfNanPreserve is set, but we don't currently have any way of
    # representing this in the optimizations other than the usual ~.
    (('~fmax', ('fmin', a,  0.0), -1.0), ('fneg', ('fsat', ('fneg', a))), '!options->lower_fsat'),
+   # fsat(fsign(NaN)) = fsat(0) = 0, and b2f(0 < NaN) = b2f(False) = 0.
    (('fsat', ('fsign', a)), ('b2f', ('flt', 0.0, a))),
    (('fsat', ('b2f', a)), ('b2f', a)),
    (('fsat', a), ('fmin', ('fmax', a, 0.0), 1.0), 'options->lower_fsat'),
@@ -666,6 +668,11 @@ for s in [16, 32, 64]:
        # The (i2f32, ...) part is an open-coded fsign.  When that is combined with
        # the bcsel, it's basically copysign(1.0, a).  There is no copysign in NIR,
        # so emit an open-coded version of that.
+       #
+       # If 'a' is NaN, bcsel(False, 1.0, i2f(b2i(False) - b2i(False))) = 0, but
+       # the replacement will produce ±1.
+       #
+       # The replacement will also produce a different value for -0: -1 vs +1.
        (('bcsel@{}'.format(s), ('feq', a, 0.0), 1.0, ('i2f{}'.format(s), ('iadd', ('b2i{}'.format(s), ('flt', 0.0, 'a@{}'.format(s))), ('ineg', ('b2i{}'.format(s), ('flt', 'a@{}'.format(s), 0.0)))))),
         ('ior', fp_one, ('iand', a, 1 << (s - 1)))),
 
@@ -1564,6 +1571,7 @@ optimizations.extend([
    (('isign', a), ('imin', ('imax', a, -1), 1), 'options->lower_isign'),
    (('imin', ('imax', a, -1), 1), ('isign', a), '!options->lower_isign'),
    (('imax', ('imin', a, 1), -1), ('isign', a), '!options->lower_isign'),
+   # float(0 < NaN) - float(NaN < 0) = float(False) - float(False) = 0 - 0 = 0
    (('fsign', a), ('fsub', ('b2f', ('flt', 0.0, a)), ('b2f', ('flt', a, 0.0))), 'options->lower_fsign'),
 
    # Address/offset calculations:
