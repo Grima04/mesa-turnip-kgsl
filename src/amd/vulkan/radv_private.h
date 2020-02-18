@@ -852,6 +852,13 @@ struct radv_device {
 	/* Condition variable for legacy timelines, to notify waiters when a
 	 * new point gets submitted. */
 	pthread_cond_t timeline_cond;
+
+	/* Thread trace. */
+	struct radeon_cmdbuf *thread_trace_start_cs[2];
+	struct radeon_cmdbuf *thread_trace_stop_cs[2];
+	struct radeon_winsys_bo *thread_trace_bo;
+	void *thread_trace_ptr;
+	uint32_t thread_trace_buffer_size;
 };
 
 struct radv_device_memory {
@@ -2362,6 +2369,32 @@ void radv_nir_shader_info_pass(const struct nir_shader *nir,
 			       struct radv_shader_info *info);
 
 void radv_nir_shader_info_init(struct radv_shader_info *info);
+
+/* radv_sqtt.c */
+struct radv_thread_trace_info {
+	uint32_t cur_offset;
+	uint32_t trace_status;
+	uint32_t write_counter;
+};
+
+struct radv_thread_trace_se {
+	struct radv_thread_trace_info info;
+	void *data_ptr;
+	uint32_t shader_engine;
+	uint32_t compute_unit;
+};
+
+struct radv_thread_trace {
+	uint32_t num_traces;
+	struct radv_thread_trace_se traces[4];
+};
+
+bool radv_thread_trace_init(struct radv_device *device);
+void radv_thread_trace_finish(struct radv_device *device);
+bool radv_begin_thread_trace(struct radv_queue *queue);
+bool radv_end_thread_trace(struct radv_queue *queue);
+bool radv_get_thread_trace(struct radv_queue *queue,
+			   struct radv_thread_trace *thread_trace);
 
 struct radeon_winsys_sem;
 

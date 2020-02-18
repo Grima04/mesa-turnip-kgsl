@@ -77,6 +77,7 @@ VULKAN_FILES := \
 	radv_shader_info.c \
 	radv_shader.h \
 	radv_shader_helper.h \
+	radv_sqtt.c \
 	radv_query.c \
 	radv_util.c \
 	radv_util.h \

@@ -111,6 +111,7 @@ libradv_files = files(
   'radv_shader_args.h',
   'radv_shader_helper.h',
   'radv_shader_info.c',
+  'radv_sqtt.c',
   'radv_query.c',
   'radv_util.c',
   'radv_util.h',
