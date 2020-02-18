@@ -196,11 +196,13 @@ iris_fence_flush(struct pipe_context *ctx,
    pipe_reference_init(&fence->ref, 1);
 
    for (unsigned b = 0; b < IRIS_BATCH_COUNT; b++) {
-      if (!iris_wait_syncobj(ctx->screen, ice->batches[b].last_syncobj, 0))
+      struct iris_batch *batch = &ice->batches[b];
+
+      if (!iris_wait_syncobj(ctx->screen, batch->last_seqno->syncobj, 0))
          continue;
 
       iris_syncobj_reference(screen, &fence->syncobj[fence->count++],
-                             ice->batches[b].last_syncobj);
+                             batch->last_seqno->syncobj);
    }
 
    iris_fence_reference(ctx->screen, out_fence, NULL);

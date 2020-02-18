@@ -48,6 +48,7 @@
 #include "intel/common/gen_gem.h"
 #include "util/hash_table.h"
 #include "util/set.h"
+#include "util/u_upload_mgr.h"
 #include "main/macros.h"
 
 #include <errno.h>
@@ -179,6 +180,11 @@ iris_init_batch(struct iris_context *ice,
    batch->reset = &ice->reset;
    batch->state_sizes = ice->state.sizes;
    batch->name = name;
+
+   batch->seqno.uploader =
+      u_upload_create(&ice->ctx, 4096, PIPE_BIND_CUSTOM,
+                      PIPE_USAGE_STAGING, 0);
+   iris_seqno_init(batch);
 
    batch->hw_ctx_id = iris_create_hw_context(screen->bufmgr);
    assert(batch->hw_ctx_id);
@@ -313,7 +319,8 @@ iris_use_pinned_bo(struct iris_batch *batch,
          if (other_entry &&
              ((other_entry->flags & EXEC_OBJECT_WRITE) || writable)) {
             iris_batch_flush(batch->other_batches[b]);
-            iris_batch_add_syncobj(batch, batch->other_batches[b]->last_syncobj,
+            iris_batch_add_syncobj(batch,
+                                   batch->other_batches[b]->last_seqno->syncobj,
                                    I915_EXEC_FENCE_WAIT);
          }
       }
@@ -408,11 +415,14 @@ iris_batch_free(struct iris_batch *batch)
 
    ralloc_free(batch->exec_fences.mem_ctx);
 
+   pipe_resource_reference(&batch->seqno.ref.res, NULL);
+
    util_dynarray_foreach(&batch->syncobjs, struct iris_syncobj *, s)
       iris_syncobj_reference(screen, s, NULL);
    ralloc_free(batch->syncobjs.mem_ctx);
 
-   iris_syncobj_reference(screen, &batch->last_syncobj, NULL);
+   iris_seqno_reference(batch->screen, &batch->last_seqno, NULL);
+   u_upload_destroy(batch->seqno.uploader);
 
    iris_bo_unreference(batch->bo);
    batch->bo = NULL;
@@ -497,6 +507,17 @@ add_aux_map_bos_to_batch(struct iris_batch *batch)
    }
 }
 
+static void
+finish_seqno(struct iris_batch *batch)
+{
+   struct iris_seqno *sq = iris_seqno_new(batch, IRIS_SEQNO_END);
+   if (!sq)
+      return;
+
+   iris_seqno_reference(batch->screen, &batch->last_seqno, sq);
+   iris_seqno_reference(batch->screen, &sq, NULL);
+}
+
 /**
  * Terminate a batch with MI_BATCH_BUFFER_END.
  */
@@ -504,6 +525,8 @@ static void
 iris_finish_batch(struct iris_batch *batch)
 {
    add_aux_map_bos_to_batch(batch);
+
+   finish_seqno(batch);
 
    /* Emit MI_BATCH_BUFFER_END to finish our batch. */
    uint32_t *map = batch->map_next;
@@ -686,10 +709,6 @@ _iris_batch_flush(struct iris_batch *batch, const char *file, int line)
 
    batch->exec_count = 0;
    batch->aperture_space = 0;
-
-   struct iris_syncobj *syncobj =
-      ((struct iris_syncobj **) util_dynarray_begin(&batch->syncobjs))[0];
-   iris_syncobj_reference(screen, &batch->last_syncobj, syncobj);
 
    util_dynarray_foreach(&batch->syncobjs, struct iris_syncobj *, s)
       iris_syncobj_reference(screen, s, NULL);

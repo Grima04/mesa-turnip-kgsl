@@ -34,6 +34,7 @@
 #include "common/gen_decoder.h"
 
 #include "iris_fence.h"
+#include "iris_seqno.h"
 
 struct iris_context;
 
@@ -41,10 +42,10 @@ struct iris_context;
 #define MAX_BATCH_SIZE (256 * 1024)
 
 /* Terminating the batch takes either 4 bytes for MI_BATCH_BUFFER_END
- * or 12 bytes for MI_BATCH_BUFFER_START (when chaining).  Plus, we may
- * need an extra 4 bytes to pad out to the nearest QWord.  So reserve 16.
+ * or 12 bytes for MI_BATCH_BUFFER_START (when chaining).  Plus another
+ * 24 bytes for the seqno write (using PIPE_CONTROL).
  */
-#define BATCH_RESERVED 16
+#define BATCH_RESERVED 36
 
 /* Our target batch size - flush approximately at this point. */
 #define BATCH_SZ (64 * 1024 - BATCH_RESERVED)
@@ -112,8 +113,20 @@ struct iris_batch {
    /** The amount of aperture space (in bytes) used by all exec_bos */
    int aperture_space;
 
-   /** A drm_syncobj for the last batch that was submitted. */
-   struct iris_syncobj *last_syncobj;
+   struct {
+      /** Uploader to use for sequence numbers */
+      struct u_upload_mgr *uploader;
+
+      /** GPU buffer and CPU map where our seqno's will be written. */
+      struct iris_state_ref ref;
+      uint32_t *map;
+
+      /** The sequence number to write the next time we add a fence. */
+      uint32_t next;
+   } seqno;
+
+   /** A seqno (and syncobj) for the last batch that was submitted. */
+   struct iris_seqno *last_seqno;
 
    /** List of other batches which we might need to flush to use a BO */
    struct iris_batch *other_batches[IRIS_BATCH_COUNT - 1];

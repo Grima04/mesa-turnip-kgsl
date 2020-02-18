@@ -50,6 +50,8 @@ files_libiris = files(
   'iris_resource.h',
   'iris_screen.c',
   'iris_screen.h',
+  'iris_seqno.c',
+  'iris_seqno.h',
   'iris_disk_cache.c',
 )
 
