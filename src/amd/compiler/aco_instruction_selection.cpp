@@ -2884,6 +2884,17 @@ void store_lds(isel_context *ctx, unsigned elem_size_bytes, Temp data, uint32_t 
    return;
 }
 
+unsigned calculate_lds_alignment(isel_context *ctx, unsigned const_offset)
+{
+   unsigned itemsize = ctx->program->info->vs.es_info.esgs_itemsize;
+   unsigned align = 16;
+   align = std::min(align, 1u << (ffs(itemsize) - 1));
+   if (const_offset)
+      align = std::min(align, 1u << (ffs(const_offset) - 1));
+
+   return align;
+}
+
 void visit_store_vsgs_output(isel_context *ctx, nir_intrinsic_instr *instr)
 {
    unsigned write_mask = nir_intrinsic_write_mask(instr);
@@ -2957,10 +2968,7 @@ void visit_store_vsgs_output(isel_context *ctx, nir_intrinsic_instr *instr)
       if (!offset.isUndefined())
          lds_base = bld.vadd32(bld.def(v1), offset, lds_base);
 
-      unsigned align = 1 << (ffs(itemsize) - 1);
-      if (idx)
-         align = std::min(align, 1u << (ffs(idx) - 1));
-
+      unsigned align = calculate_lds_alignment(ctx, idx);
       store_lds(ctx, elem_size_bytes, src, write_mask, lds_base, idx, align);
    }
 }
@@ -3473,8 +3481,6 @@ void visit_load_per_vertex_input(isel_context *ctx, nir_intrinsic_instr *instr)
 
    offset = bld.vop2(aco_opcode::v_lshlrev_b32, bld.def(v1), Operand(2u), offset);
 
-   unsigned itemsize = ctx->program->info->vs.es_info.esgs_itemsize;
-
    unsigned elem_size_bytes = instr->dest.ssa.bit_size / 8;
    if (ctx->stage == geometry_gs) {
       Temp esgs_ring = bld.smem(aco_opcode::s_load_dwordx4, bld.def(s4), ctx->program->private_segment_buffer, Operand(RING_ESGS_GS * 16u));
@@ -3518,11 +3524,7 @@ void visit_load_per_vertex_input(isel_context *ctx, nir_intrinsic_instr *instr)
       ctx->block->instructions.emplace_back(std::move(vec));
       ctx->allocated_vec.emplace(dst.id(), elems);
    } else {
-      unsigned align = 16; /* alignment of indirect offset */
-      align = std::min(align, 1u << (ffs(itemsize) - 1));
-      if (const_offset)
-         align = std::min(align, 1u << (ffs(const_offset) - 1));
-
+      unsigned align = calculate_lds_alignment(ctx, const_offset);
       load_lds(ctx, elem_size_bytes, dst, offset, const_offset, align);
    }
 }
