@@ -514,7 +514,9 @@ static const char *compute_shader_yuv_bob_y =
 
          /* Scale */
          "DIV TEMP[2], TEMP[2], CONST[3].zwzw\n"
+         "DIV TEMP[2], TEMP[2], IMM[1].xyxy\n"
          "DIV TEMP[3], TEMP[3], CONST[3].zwzw\n"
+         "DIV TEMP[3], TEMP[3], IMM[1].xyxy\n"
 
          /* Fetch texels */
          "TEX_LZ TEMP[4].x, TEMP[2], SAMP[0], RECT\n"
@@ -564,7 +566,9 @@ static const char *compute_shader_yuv_bob_uv =
 
          /* Scale */
          "DIV TEMP[2], TEMP[2], CONST[3].zwzw\n"
+         "DIV TEMP[2], TEMP[2], IMM[1].xyxy\n"
          "DIV TEMP[3], TEMP[3], CONST[3].zwzw\n"
+         "DIV TEMP[3], TEMP[3], IMM[1].xyxy\n"
 
          /* Fetch texels */
          "TEX_LZ TEMP[4].x, TEMP[2], SAMP[0], RECT\n"
