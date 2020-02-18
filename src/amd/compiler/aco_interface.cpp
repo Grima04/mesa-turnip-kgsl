@@ -95,10 +95,6 @@ void aco_compile_shader(unsigned shader_count,
    /* spilling and scheduling */
    aco::live live_vars = aco::live_var_analysis(program.get(), args->options);
    aco::spill(program.get(), live_vars, args->options);
-   if (program->collect_statistics)
-      aco::collect_presched_stats(program.get());
-   aco::schedule_program(program.get(), live_vars);
-   validate(program.get());
 
    std::string llvm_ir;
    if (args->options->record_ir) {
@@ -114,6 +110,11 @@ void aco_compile_shader(unsigned shader_count,
       llvm_ir = std::string(data, data + size);
       free(data);
    }
+
+   if (program->collect_statistics)
+      aco::collect_presched_stats(program.get());
+   aco::schedule_program(program.get(), live_vars);
+   validate(program.get());
 
    /* Register Allocation */
    aco::register_allocation(program.get(), live_vars.live_out);
