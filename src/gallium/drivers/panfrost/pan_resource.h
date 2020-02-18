@@ -32,14 +32,6 @@
 #include "drm-uapi/drm.h"
 #include "util/u_range.h"
 
-/* Describes the memory layout of a BO */
-
-enum panfrost_memory_layout {
-        PAN_LINEAR,
-        PAN_TILED,
-        PAN_AFBC
-};
-
 struct panfrost_slice {
         unsigned offset;
         unsigned stride;
@@ -79,7 +71,7 @@ struct panfrost_resource {
         unsigned cubemap_stride;
 
         /* Internal layout (tiled?) */
-        enum panfrost_memory_layout layout;
+        enum mali_texture_layout layout;
 
         /* Is transaciton elimination enabled? */
         bool checksummed;
@@ -117,7 +109,7 @@ void
 panfrost_resource_hint_layout(
                 struct panfrost_screen *screen,
                 struct panfrost_resource *rsrc,
-                enum panfrost_memory_layout layout,
+                enum mali_texture_layout layout,
                 signed weight);
 
 /* AFBC */

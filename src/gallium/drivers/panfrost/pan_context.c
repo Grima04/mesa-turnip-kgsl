@@ -471,21 +471,6 @@ panfrost_upload_sampler_descriptors(struct panfrost_context *ctx)
         }
 }
 
-static enum mali_texture_layout
-panfrost_layout_for_texture(struct panfrost_resource *rsrc)
-{
-        switch (rsrc->layout) {
-        case PAN_AFBC:
-                return MALI_TEXTURE_AFBC;
-        case PAN_TILED:
-                return MALI_TEXTURE_TILED;
-        case PAN_LINEAR:
-                return MALI_TEXTURE_LINEAR;
-        default:
-                unreachable("Invalid texture layout");
-        }
-}
-
 static mali_ptr
 panfrost_upload_tex(
         struct panfrost_context *ctx,
@@ -532,7 +517,7 @@ panfrost_upload_tex(
         }
 
         /* Lower-bit is set when sampling from colour AFBC */
-        bool is_afbc = rsrc->layout == PAN_AFBC;
+        bool is_afbc = rsrc->layout == MALI_TEXTURE_AFBC;
         bool is_zs = rsrc->base.bind & PIPE_BIND_DEPTH_STENCIL;
         unsigned afbc_bit = (is_afbc && !is_zs) ? 1 : 0;
 
@@ -545,7 +530,7 @@ panfrost_upload_tex(
         /* Add the usage flags in, since they can change across the CSO
          * lifetime due to layout switches */
 
-        view->hw.format.layout = panfrost_layout_for_texture(rsrc);
+        view->hw.format.layout = rsrc->layout;
         view->hw.format.manual_stride = has_manual_stride;
 
         /* Inject the addresses in, interleaving array indices, mip levels,
@@ -2161,7 +2146,7 @@ panfrost_create_sampler_view(
         unsigned first_level = template->u.tex.first_level;
         unsigned last_level = template->u.tex.last_level;
 
-        if (prsrc->layout == PAN_LINEAR) {
+        if (prsrc->layout == MALI_TEXTURE_LINEAR) {
                 for (unsigned l = first_level; l <= last_level; ++l) {
                         unsigned actual_stride = prsrc->slices[l].stride;
                         unsigned width = u_minify(texture->width0, l);
@@ -2276,14 +2261,14 @@ panfrost_hint_afbc(
         for (unsigned i = 0; i < fb->nr_cbufs; ++i) {
                 struct pipe_surface *surf = fb->cbufs[i];
                 struct panfrost_resource *rsrc = pan_resource(surf->texture);
-                panfrost_resource_hint_layout(screen, rsrc, PAN_AFBC, 1);
+                panfrost_resource_hint_layout(screen, rsrc, MALI_TEXTURE_AFBC, 1);
         }
 
         /* Also hint it to the depth buffer */
 
         if (fb->zsbuf) {
                 struct panfrost_resource *rsrc = pan_resource(fb->zsbuf->texture);
-                panfrost_resource_hint_layout(screen, rsrc, PAN_AFBC, 1);
+                panfrost_resource_hint_layout(screen, rsrc, MALI_TEXTURE_AFBC, 1);
         }
 }
 

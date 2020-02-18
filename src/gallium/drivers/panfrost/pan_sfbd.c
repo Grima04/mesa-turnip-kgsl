@@ -141,9 +141,9 @@ panfrost_sfbd_set_cbuf(
         fb->framebuffer = base;
         fb->stride = stride;
 
-        if (rsrc->layout == PAN_LINEAR)
+        if (rsrc->layout == MALI_TEXTURE_LINEAR)
                 fb->format.block = MALI_BLOCK_LINEAR;
-        else if (rsrc->layout == PAN_TILED) {
+        else if (rsrc->layout == MALI_TEXTURE_TILED) {
                 fb->format.block = MALI_BLOCK_TILED;
                 fb->stride *= 16;
         } else {
@@ -163,7 +163,7 @@ panfrost_sfbd_set_zsbuf(
         unsigned level = surf->u.tex.level;
         assert(surf->u.tex.first_layer == 0);
 
-        if (rsrc->layout != PAN_TILED)
+        if (rsrc->layout != MALI_TEXTURE_TILED)
                 unreachable("Invalid render layout.");
 
         fb->depth_buffer = rsrc->bo->gpu + rsrc->slices[level].offset;

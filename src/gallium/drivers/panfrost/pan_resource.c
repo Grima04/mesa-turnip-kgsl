@@ -85,6 +85,7 @@ panfrost_resource_from_handle(struct pipe_screen *pscreen,
 
         rsc->bo = panfrost_bo_import(screen, whandle->handle);
         rsc->internal_format = templat->format;
+        rsc->layout = MALI_TEXTURE_LINEAR;
         rsc->slices[0].stride = whandle->stride;
         rsc->slices[0].offset = whandle->offset;
         rsc->slices[0].initialized = true;
@@ -277,8 +278,8 @@ panfrost_setup_slices(struct panfrost_resource *pres, size_t *bo_size)
 
         bool renderable = res->bind &
                           (PIPE_BIND_RENDER_TARGET | PIPE_BIND_DEPTH_STENCIL);
-        bool afbc = pres->layout == PAN_AFBC;
-        bool tiled = pres->layout == PAN_TILED;
+        bool afbc = pres->layout == MALI_TEXTURE_AFBC;
+        bool tiled = pres->layout == MALI_TEXTURE_TILED;
         bool should_align = renderable || tiled;
 
         /* We don't know how to specify a 2D stride for 3D textures */
@@ -319,7 +320,7 @@ panfrost_setup_slices(struct panfrost_resource *pres, size_t *bo_size)
                         stride /= 4;
 
                 /* ..but cache-line align it for performance */
-                if (can_align_stride && pres->layout == PAN_LINEAR)
+                if (can_align_stride && pres->layout == MALI_TEXTURE_LINEAR)
                         stride = ALIGN_POT(stride, 64);
 
                 slice->stride = stride;
@@ -420,7 +421,7 @@ panfrost_resource_create_bo(struct panfrost_screen *screen, struct panfrost_reso
 
         /* Set the layout appropriately */
         assert(!(must_tile && !can_tile)); /* must_tile => can_tile */
-        pres->layout = ((can_tile && should_tile) || must_tile) ? PAN_TILED : PAN_LINEAR;
+        pres->layout = ((can_tile && should_tile) || must_tile) ? MALI_TEXTURE_TILED : MALI_TEXTURE_LINEAR;
 
         size_t bo_size;
 
@@ -639,7 +640,7 @@ panfrost_transfer_map(struct pipe_context *pctx,
                 }
         }
 
-        if (rsrc->layout != PAN_LINEAR) {
+        if (rsrc->layout != MALI_TEXTURE_LINEAR) {
                 /* Non-linear resources need to be indirectly mapped */
 
                 if (usage & PIPE_TRANSFER_MAP_DIRECTLY)
@@ -651,9 +652,9 @@ panfrost_transfer_map(struct pipe_context *pctx,
                 assert(box->depth == 1);
 
                 if ((usage & PIPE_TRANSFER_READ) && rsrc->slices[level].initialized) {
-                        if (rsrc->layout == PAN_AFBC) {
+                        if (rsrc->layout == MALI_TEXTURE_AFBC) {
                                 DBG("Unimplemented: reads from AFBC");
-                        } else if (rsrc->layout == PAN_TILED) {
+                        } else if (rsrc->layout == MALI_TEXTURE_TILED) {
                                 panfrost_load_tiled_image(
                                         transfer->map,
                                         bo->cpu + rsrc->slices[level].offset,
@@ -700,9 +701,9 @@ panfrost_transfer_unmap(struct pipe_context *pctx,
                 struct panfrost_bo *bo = prsrc->bo;
 
                 if (transfer->usage & PIPE_TRANSFER_WRITE) {
-                        if (prsrc->layout == PAN_AFBC) {
+                        if (prsrc->layout == MALI_TEXTURE_AFBC) {
                                 DBG("Unimplemented: writes to AFBC\n");
-                        } else if (prsrc->layout == PAN_TILED) {
+                        } else if (prsrc->layout == MALI_TEXTURE_TILED) {
                                 assert(transfer->box.depth == 1);
 
                                 panfrost_store_tiled_image(
@@ -828,7 +829,7 @@ void
 panfrost_resource_hint_layout(
                 struct panfrost_screen *screen,
                 struct panfrost_resource *rsrc,
-                enum panfrost_memory_layout layout,
+                enum mali_texture_layout layout,
                 signed weight)
 {
         /* Nothing to do, although a sophisticated implementation might store
@@ -845,7 +846,7 @@ panfrost_resource_hint_layout(
 
         /* Check if the preferred layout is legal for this buffer */
 
-        if (layout == PAN_AFBC) {
+        if (layout == MALI_TEXTURE_AFBC) {
                 bool can_afbc = panfrost_format_supports_afbc(rsrc->base.format);
                 bool is_scanout = rsrc->base.bind &
                         (PIPE_BIND_DISPLAY_TARGET | PIPE_BIND_SCANOUT | PIPE_BIND_SHARED);

@@ -199,15 +199,15 @@ panfrost_mfbd_set_cbuf(
 
         /* Now, we set the layout specific pieces */
 
-        if (rsrc->layout == PAN_LINEAR) {
+        if (rsrc->layout == MALI_TEXTURE_LINEAR) {
                 rt->format.block = MALI_BLOCK_LINEAR;
                 rt->framebuffer = base;
                 rt->framebuffer_stride = stride / 16;
-        } else if (rsrc->layout == PAN_TILED) {
+        } else if (rsrc->layout == MALI_TEXTURE_TILED) {
                 rt->format.block = MALI_BLOCK_TILED;
                 rt->framebuffer = base;
                 rt->framebuffer_stride = stride;
-        } else if (rsrc->layout == PAN_AFBC) {
+        } else if (rsrc->layout == MALI_TEXTURE_AFBC) {
                 rt->format.block = MALI_BLOCK_AFBC;
 
                 unsigned header_size = rsrc->slices[level].header_size;
@@ -240,7 +240,7 @@ panfrost_mfbd_set_zsbuf(
 
         mali_ptr base = panfrost_get_texture_address(rsrc, level, first_layer);
 
-        if (rsrc->layout == PAN_AFBC) {
+        if (rsrc->layout == MALI_TEXTURE_AFBC) {
                 /* The only Z/S format we can compress is Z24S8 or variants
                  * thereof (handled by the state tracker) */
                 assert(panfrost_is_z24s8_variant(surf->format));
@@ -259,7 +259,7 @@ panfrost_mfbd_set_zsbuf(
 
                 fbx->ds_afbc.zero1 = 0x10009;
                 fbx->ds_afbc.padding = 0x1000;
-        } else if (rsrc->layout == PAN_LINEAR || rsrc->layout == PAN_TILED) {
+        } else if (rsrc->layout == MALI_TEXTURE_LINEAR || rsrc->layout == MALI_TEXTURE_TILED) {
                 /* TODO: Z32F(S8) support, which is always linear */
 
                 int stride = rsrc->slices[level].stride;
@@ -270,7 +270,7 @@ panfrost_mfbd_set_zsbuf(
 
                 fbx->ds_linear.depth = base;
 
-                if (rsrc->layout == PAN_LINEAR) {
+                if (rsrc->layout == MALI_TEXTURE_LINEAR) {
                         fbx->zs_block = MALI_BLOCK_LINEAR;
                         fbx->ds_linear.depth_stride = stride / 16;
                 } else {
