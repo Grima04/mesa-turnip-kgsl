@@ -890,55 +890,26 @@ lp_build_lerpdxta(struct gallivm_state *gallivm,
    return ainterp;
 }
 
-/**
- * Convert from <n x i128> s3tc dxt5 to <4n x i8> RGBA AoS
- * @param colors  is a <n x i32> vector with n x 2x16bit colors
- * @param codewords  is a <n x i32> vector containing the codewords
- * @param alphas  is a <n x i64> vector containing the alpha values
- * @param i  is a <n x i32> vector with the x pixel coordinate (0 to 3)
- * @param j  is a <n x i32> vector with the y pixel coordinate (0 to 3)
- */
 static LLVMValueRef
-s3tc_dxt5_full_to_rgba_aos(struct gallivm_state *gallivm,
-                           unsigned n,
-                           enum pipe_format format,
-                           LLVMValueRef colors,
-                           LLVMValueRef codewords,
-                           LLVMValueRef alpha_lo,
-                           LLVMValueRef alpha_hi,
-                           LLVMValueRef i,
-                           LLVMValueRef j)
+s3tc_dxt5_alpha_channel(struct gallivm_state *gallivm,
+                        unsigned n,
+                        LLVMValueRef alpha_hi, LLVMValueRef alpha_lo,
+                        LLVMValueRef i, LLVMValueRef j)
 {
    LLVMBuilderRef builder = gallivm->builder;
-   LLVMValueRef rgba, tmp, alpha0, alpha1, alphac, alphac0, bit_pos, shift;
+   struct lp_type type;
+   LLVMValueRef tmp, alpha0, alpha1, alphac, alphac0, bit_pos, shift;
    LLVMValueRef sel_mask, tmp_mask, alpha, alpha64, code_s;
    LLVMValueRef mask6, mask7, ainterp;
    LLVMTypeRef i64t = LLVMInt64TypeInContext(gallivm->context);
    LLVMTypeRef i32t = LLVMInt32TypeInContext(gallivm->context);
-   struct lp_type type, type8;
    struct lp_build_context bld32;
 
    memset(&type, 0, sizeof type);
    type.width = 32;
    type.length = n;
 
-   memset(&type8, 0, sizeof type8);
-   type8.width = 8;
-   type8.length = n*4;
-
-   assert(lp_check_value(type, i));
-   assert(lp_check_value(type, j));
-
    lp_build_context_init(&bld32, gallivm, type);
-
-   assert(lp_check_value(type, i));
-   assert(lp_check_value(type, j));
-
-   rgba = s3tc_dxt1_to_rgba_aos(gallivm, n, format,
-                                colors, codewords, i, j);
-
-   rgba = LLVMBuildBitCast(builder, rgba, bld32.vec_type, "");
-
    /* this looks pretty complex for vectorization:
     * extract a0/a1 values
     * extract code
@@ -1037,6 +1008,55 @@ s3tc_dxt5_full_to_rgba_aos(struct gallivm_state *gallivm,
    alpha = LLVMBuildAnd(builder, alpha, LLVMBuildNot(builder, mask6, ""), "");
    alpha = LLVMBuildOr(builder, alpha, mask7, "");
 
+   return alpha;
+}
+
+/**
+ * Convert from <n x i128> s3tc dxt5 to <4n x i8> RGBA AoS
+ * @param colors  is a <n x i32> vector with n x 2x16bit colors
+ * @param codewords  is a <n x i32> vector containing the codewords
+ * @param alphas  is a <n x i64> vector containing the alpha values
+ * @param i  is a <n x i32> vector with the x pixel coordinate (0 to 3)
+ * @param j  is a <n x i32> vector with the y pixel coordinate (0 to 3)
+ */
+static LLVMValueRef
+s3tc_dxt5_full_to_rgba_aos(struct gallivm_state *gallivm,
+                           unsigned n,
+                           enum pipe_format format,
+                           LLVMValueRef colors,
+                           LLVMValueRef codewords,
+                           LLVMValueRef alpha_lo,
+                           LLVMValueRef alpha_hi,
+                           LLVMValueRef i,
+                           LLVMValueRef j)
+{
+   LLVMBuilderRef builder = gallivm->builder;
+   LLVMValueRef rgba, alpha;
+   struct lp_type type, type8;
+   struct lp_build_context bld32;
+
+   memset(&type, 0, sizeof type);
+   type.width = 32;
+   type.length = n;
+
+   memset(&type8, 0, sizeof type8);
+   type8.width = 8;
+   type8.length = n*4;
+
+   assert(lp_check_value(type, i));
+   assert(lp_check_value(type, j));
+
+   lp_build_context_init(&bld32, gallivm, type);
+
+   assert(lp_check_value(type, i));
+   assert(lp_check_value(type, j));
+
+   rgba = s3tc_dxt1_to_rgba_aos(gallivm, n, format,
+                                colors, codewords, i, j);
+
+   rgba = LLVMBuildBitCast(builder, rgba, bld32.vec_type, "");
+
+   alpha = s3tc_dxt5_alpha_channel(gallivm, n, alpha_hi, alpha_lo, i, j);
    alpha = LLVMBuildShl(builder, alpha, lp_build_const_int_vec(gallivm, type, 24), "");
    rgba = LLVMBuildOr(builder, alpha, rgba, "");
 
