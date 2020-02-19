@@ -352,23 +352,22 @@ _mesa_draw_arrays(struct gl_context *ctx, GLenum mode, GLint start,
                   GLsizei count, GLuint numInstances, GLuint baseInstance,
                   GLuint drawID)
 {
-   struct _mesa_prim prim;
-
    if (skip_validated_draw(ctx))
       return;
 
    /* OpenGL 4.5 says that primitive restart is ignored with non-indexed
     * draws.
     */
-   prim.begin = 1;
-   prim.end = 1;
-   prim.mode = mode;
-   prim.num_instances = numInstances;
-   prim.base_instance = baseInstance;
-   prim.draw_id = drawID;
-   prim.start = start;
-   prim.count = count;
-   prim.basevertex = 0;
+   struct _mesa_prim prim = {
+      .begin = 1,
+      .end = 1,
+      .mode = mode,
+      .num_instances = numInstances,
+      .base_instance = baseInstance,
+      .draw_id = drawID,
+      .start = start,
+      .count = count,
+   };
 
    ctx->Driver.Draw(ctx, &prim, 1, NULL,
                     GL_TRUE, start, start + count - 1, NULL, 0, NULL);
