@@ -1252,15 +1252,27 @@ panfrost_translate_index_size(unsigned size)
 }
 
 /* Gets a GPU address for the associated index buffer. Only gauranteed to be
- * good for the duration of the draw (transient), could last longer */
+ * good for the duration of the draw (transient), could last longer. Also get
+ * the bounds on the index buffer for the range accessed by the draw. We do
+ * these operations together because there are natural optimizations which
+ * require them to be together. */
 
 static mali_ptr
-panfrost_get_index_buffer_mapped(struct panfrost_context *ctx, const struct pipe_draw_info *info)
+panfrost_get_index_buffer_bounded(struct panfrost_context *ctx, const struct pipe_draw_info *info, unsigned *min_index, unsigned *max_index)
 {
         struct panfrost_resource *rsrc = (struct panfrost_resource *) (info->index.resource);
 
         off_t offset = info->start * info->index_size;
         struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
+        mali_ptr out = 0;
+
+        bool needs_indices = true;
+
+        if (info->max_index != ~0u) {
+                *min_index = info->min_index;
+                *max_index = info->max_index;
+                needs_indices = false;
+        }
 
         if (!info->has_user_indices) {
                 /* Only resources can be directly mapped */
@@ -1268,12 +1280,19 @@ panfrost_get_index_buffer_mapped(struct panfrost_context *ctx, const struct pipe
                                       PAN_BO_ACCESS_SHARED |
                                       PAN_BO_ACCESS_READ |
                                       PAN_BO_ACCESS_VERTEX_TILER);
-                return rsrc->bo->gpu + offset;
+                out = rsrc->bo->gpu + offset;
         } else {
                 /* Otherwise, we need to upload to transient memory */
                 const uint8_t *ibuf8 = (const uint8_t *) info->index.user;
-                return panfrost_upload_transient(batch, ibuf8 + offset, info->count * info->index_size);
+                out = panfrost_upload_transient(batch, ibuf8 + offset, info->count * info->index_size);
         }
+
+        if (needs_indices) {
+                /* Fallback */
+                u_vbuf_get_minmax_index(&ctx->base, info, min_index, max_index);
+        }
+
+        return out;
 }
 
 static bool
@@ -1391,18 +1410,9 @@ panfrost_draw_vbo(
         panfrost_statistics_record(ctx, info);
 
         if (info->index_size) {
-                /* Calculate the min/max index used so we can figure out how
-                 * many times to invoke the vertex shader */
-
-                /* Fetch / calculate index bounds */
                 unsigned min_index = 0, max_index = 0;
-
-                if (info->max_index == ~0u) {
-                        u_vbuf_get_minmax_index(pipe, info, &min_index, &max_index);
-                } else {
-                        min_index = info->min_index;
-                        max_index = info->max_index;
-                }
+                ctx->payloads[PIPE_SHADER_FRAGMENT].prefix.indices =
+                        panfrost_get_index_buffer_bounded(ctx, info, &min_index, &max_index);
 
                 /* Use the corresponding values */
                 vertex_count = max_index - min_index + 1;
@@ -1413,7 +1423,6 @@ panfrost_draw_vbo(
                 ctx->payloads[PIPE_SHADER_FRAGMENT].prefix.index_count = MALI_POSITIVE(info->count);
 
                 draw_flags |= panfrost_translate_index_size(info->index_size);
-                ctx->payloads[PIPE_SHADER_FRAGMENT].prefix.indices = panfrost_get_index_buffer_mapped(ctx, info);
         } else {
                 /* Index count == vertex count, if no indexing is applied, as
                  * if it is internally indexed in the expected order */
