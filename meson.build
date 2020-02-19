@@ -1508,6 +1508,12 @@ if host_machine.system() == 'windows'
   endif
 else
   prog_bison = find_program('bison', required : with_any_opengl)
+
+  # Disable deprecated keyword warnings, since we have to use them for
+  # old-bison compat.  See discussion in
+  # https://gitlab.freedesktop.org/mesa/mesa/merge_requests/2161
+  prog_bison = [prog_bison, '-Wno-deprecated']
+
   prog_flex = find_program('flex', required : with_any_opengl)
 endif
 
