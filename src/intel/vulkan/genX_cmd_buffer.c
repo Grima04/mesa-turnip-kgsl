@@ -2351,25 +2351,37 @@ anv_descriptor_set_address(struct anv_cmd_buffer *cmd_buffer,
    }
 }
 
+static struct anv_cmd_pipeline_state *
+pipe_state_for_stage(struct anv_cmd_buffer *cmd_buffer,
+                     gl_shader_stage stage)
+{
+   switch (stage) {
+   case MESA_SHADER_COMPUTE:
+      return &cmd_buffer->state.compute.base;
+
+   case MESA_SHADER_VERTEX:
+   case MESA_SHADER_TESS_CTRL:
+   case MESA_SHADER_TESS_EVAL:
+   case MESA_SHADER_GEOMETRY:
+   case MESA_SHADER_FRAGMENT:
+      return &cmd_buffer->state.gfx.base;
+
+   default:
+      unreachable("invalid stage");
+   }
+}
+
 static VkResult
 emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
                    gl_shader_stage stage,
                    struct anv_state *bt_state)
 {
    struct anv_subpass *subpass = cmd_buffer->state.subpass;
-   struct anv_cmd_pipeline_state *pipe_state;
-   struct anv_pipeline *pipeline;
    uint32_t state_offset;
 
-   switch (stage) {
-   case  MESA_SHADER_COMPUTE:
-      pipe_state = &cmd_buffer->state.compute.base;
-      break;
-   default:
-      pipe_state = &cmd_buffer->state.gfx.base;
-      break;
-   }
-   pipeline = pipe_state->pipeline;
+   struct anv_cmd_pipeline_state *pipe_state =
+      pipe_state_for_stage(cmd_buffer, stage);
+   struct anv_pipeline *pipeline = pipe_state->pipeline;
 
    if (!anv_pipeline_has_stage(pipeline, stage)) {
       *bt_state = (struct anv_state) { 0, };
@@ -2618,8 +2630,7 @@ emit_samplers(struct anv_cmd_buffer *cmd_buffer,
               struct anv_state *state)
 {
    struct anv_cmd_pipeline_state *pipe_state =
-      stage == MESA_SHADER_COMPUTE ? &cmd_buffer->state.compute.base :
-                                     &cmd_buffer->state.gfx.base;
+      pipe_state_for_stage(cmd_buffer, stage);
    struct anv_pipeline *pipeline = pipe_state->pipeline;
 
    if (!anv_pipeline_has_stage(pipeline, stage)) {
