@@ -145,6 +145,18 @@ struct iris_batch {
    struct hash_table_u64 *state_sizes;
 
    /**
+    * Matrix representation of the cache coherency status of the GPU at the
+    * current end point of the batch.  For every i and j,
+    * coherent_seqnos[i][j] denotes the seqno of the most recent flush of
+    * cache domain j visible to cache domain i (which obviously implies that
+    * coherent_seqnos[i][i] is the most recent flush of cache domain i).  This
+    * can be used to efficiently determine whether synchronization is
+    * necessary before accessing data from cache domain i if it was previously
+    * accessed from another cache domain j.
+    */
+   uint64_t coherent_seqnos[NUM_IRIS_DOMAINS][NUM_IRIS_DOMAINS];
+
+   /**
     * Sequence number used to track the completion of any subsequent memory
     * operations in the batch until the next sync boundary.
     */
@@ -311,6 +323,43 @@ iris_batch_sync_boundary(struct iris_batch *batch)
       batch->next_seqno = p_atomic_inc_return(&batch->screen->last_seqno);
       assert(batch->next_seqno > 0);
    }
+}
+
+/**
+ * Update the cache coherency status of the batch to reflect a flush of the
+ * specified caching domain.
+ */
+static inline void
+iris_batch_mark_flush_sync(struct iris_batch *batch,
+                           enum iris_domain access)
+{
+   batch->coherent_seqnos[access][access] = batch->next_seqno - 1;
+}
+
+/**
+ * Update the cache coherency status of the batch to reflect an invalidation
+ * of the specified caching domain.  All prior flushes of other caches will be
+ * considered visible to the specified caching domain.
+ */
+static inline void
+iris_batch_mark_invalidate_sync(struct iris_batch *batch,
+                                enum iris_domain access)
+{
+   for (unsigned i = 0; i < NUM_IRIS_DOMAINS; i++)
+      batch->coherent_seqnos[access][i] = batch->coherent_seqnos[i][i];
+}
+
+/**
+ * Update the cache coherency status of the batch to reflect a reset.  All
+ * previously accessed data can be considered visible to every caching domain
+ * thanks to the kernel's heavyweight flushing at batch buffer boundaries.
+ */
+static inline void
+iris_batch_mark_reset_sync(struct iris_batch *batch)
+{
+   for (unsigned i = 0; i < NUM_IRIS_DOMAINS; i++)
+      for (unsigned j = 0; j < NUM_IRIS_DOMAINS; j++)
+         batch->coherent_seqnos[i][j] = batch->next_seqno - 1;
 }
 
 #endif

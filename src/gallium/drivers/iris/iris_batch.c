@@ -405,6 +405,7 @@ iris_batch_reset(struct iris_batch *batch)
 
    assert(!batch->sync_region_depth);
    iris_batch_sync_boundary(batch);
+   iris_batch_mark_reset_sync(batch);
 
    /* Always add the workaround BO, it contains a driver identifier at the
     * beginning quite helpful to debug error states.
