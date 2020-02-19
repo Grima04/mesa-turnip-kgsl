@@ -620,6 +620,12 @@ glsl_channel_type(const glsl_type *t)
    }
 }
 
+const glsl_type *
+glsl_float16_type(const struct glsl_type *type)
+{
+   return type->get_float16_type();
+}
+
 void
 glsl_get_natural_size_align_bytes(const struct glsl_type *type,
                                   unsigned *size, unsigned *align)

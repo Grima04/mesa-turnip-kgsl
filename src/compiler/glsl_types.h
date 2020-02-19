@@ -395,6 +395,11 @@ public:
    const glsl_type *get_bare_type() const;
 
    /**
+    * Gets the float16 version of this type.
+    */
+   const glsl_type *get_float16_type() const;
+
+   /**
     * Get the instance of a built-in scalar, vector, or matrix type
     */
    static const glsl_type *get_instance(unsigned base_type, unsigned rows,
