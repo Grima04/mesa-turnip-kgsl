@@ -1049,10 +1049,12 @@ static void emit_barrier(struct lp_build_nir_context *bld_base)
 static LLVMValueRef emit_get_buffer_size(struct lp_build_nir_context *bld_base,
                                          LLVMValueRef index)
 {
+   struct gallivm_state *gallivm = bld_base->base.gallivm;
    struct lp_build_nir_soa_context *bld = (struct lp_build_nir_soa_context *)bld_base;
    LLVMBuilderRef builder = bld->bld_base.base.gallivm->builder;
    struct lp_build_context *bld_broad = &bld_base->uint_bld;
-   LLVMValueRef size_ptr = lp_build_array_get(bld_base->base.gallivm, bld->ssbo_sizes_ptr, LLVMBuildExtractElement(builder, index, bld_broad->zero, ""));
+   LLVMValueRef size_ptr = lp_build_array_get(bld_base->base.gallivm, bld->ssbo_sizes_ptr,
+                                              LLVMBuildExtractElement(builder, index, lp_build_const_int32(gallivm, 0), ""));
    return lp_build_broadcast_scalar(bld_broad, size_ptr);
 }
 
