@@ -399,8 +399,6 @@ iris_batch_reset(struct iris_batch *batch)
    iris_batch_add_syncobj(batch, syncobj, I915_EXEC_FENCE_SIGNAL);
    iris_syncobj_reference(screen, &syncobj, NULL);
 
-   iris_cache_sets_clear(batch);
-
    assert(!batch->sync_region_depth);
    iris_batch_sync_boundary(batch);
    iris_batch_mark_reset_sync(batch);

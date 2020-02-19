@@ -319,9 +319,6 @@ iris_postdraw_update_resolve_tracking(struct iris_context *ice,
       struct iris_resource *res = (void *) surf->base.texture;
       enum isl_aux_usage aux_usage = ice->state.draw_aux_usage[i];
 
-      iris_render_cache_add_bo(batch, res->bo, surf->view.format,
-                               aux_usage);
-
       if (may_have_resolved_color) {
          union pipe_surface_desc *desc = &surf->base.u;
          unsigned num_layers =
@@ -331,16 +328,6 @@ iris_postdraw_update_resolve_tracking(struct iris_context *ice,
                                      aux_usage);
       }
    }
-}
-
-/**
- * Clear the cache-tracking sets.
- */
-void
-iris_cache_sets_clear(struct iris_batch *batch)
-{
-   hash_table_foreach(batch->cache.render, render_entry)
-      _mesa_hash_table_remove(batch->cache.render, render_entry);
 }
 
 /**
@@ -368,17 +355,12 @@ iris_flush_depth_and_render_caches(struct iris_batch *batch)
                                 "cache tracker: render-to-texture",
                                 PIPE_CONTROL_TEXTURE_CACHE_INVALIDATE |
                                 PIPE_CONTROL_CONST_CACHE_INVALIDATE);
-
-   iris_cache_sets_clear(batch);
 }
 
 void
 iris_cache_flush_for_read(struct iris_batch *batch,
                           struct iris_bo *bo)
 {
-   if (_mesa_hash_table_search_pre_hashed(batch->cache.render, bo->hash, bo))
-      iris_flush_depth_and_render_caches(batch);
-
    iris_emit_buffer_barrier_for(batch, bo, IRIS_DOMAIN_OTHER_READ);
 }
 
@@ -421,38 +403,19 @@ iris_cache_flush_for_render(struct iris_batch *batch,
     */
    struct hash_entry *entry =
       _mesa_hash_table_search_pre_hashed(batch->cache.render, bo->hash, bo);
-   if (entry && entry->data != format_aux_tuple(format, aux_usage))
+   if (!entry) {
+      _mesa_hash_table_insert_pre_hashed(batch->cache.render, bo->hash, bo,
+                                         format_aux_tuple(format, aux_usage));
+   } else if (entry->data != format_aux_tuple(format, aux_usage)) {
       iris_flush_depth_and_render_caches(batch);
-}
-
-void
-iris_render_cache_add_bo(struct iris_batch *batch,
-                         struct iris_bo *bo,
-                         enum isl_format format,
-                         enum isl_aux_usage aux_usage)
-{
-#ifndef NDEBUG
-   struct hash_entry *entry =
-      _mesa_hash_table_search_pre_hashed(batch->cache.render, bo->hash, bo);
-   if (entry) {
-      /* Otherwise, someone didn't do a flush_for_render and that would be
-       * very bad indeed.
-       */
-      assert(entry->data == format_aux_tuple(format, aux_usage));
+      entry->data = format_aux_tuple(format, aux_usage);
    }
-#endif
-
-   _mesa_hash_table_insert_pre_hashed(batch->cache.render, bo->hash, bo,
-                                      format_aux_tuple(format, aux_usage));
 }
 
 void
 iris_cache_flush_for_depth(struct iris_batch *batch,
                            struct iris_bo *bo)
 {
-   if (_mesa_hash_table_search_pre_hashed(batch->cache.render, bo->hash, bo))
-      iris_flush_depth_and_render_caches(batch);
-
    iris_emit_buffer_barrier_for(batch, bo, IRIS_DOMAIN_DEPTH_WRITE);
 }
 

@@ -306,8 +306,7 @@ iris_texture_barrier(struct pipe_context *ctx, unsigned flags)
    struct iris_batch *render_batch = &ice->batches[IRIS_BATCH_RENDER];
    struct iris_batch *compute_batch = &ice->batches[IRIS_BATCH_COMPUTE];
 
-   if (render_batch->contains_draw ||
-       render_batch->cache.render->entries) {
+   if (render_batch->contains_draw) {
       iris_batch_maybe_flush(render_batch, 48);
       iris_emit_pipe_control_flush(render_batch,
                                    "API: texture barrier (1/2)",
@@ -353,8 +352,7 @@ iris_memory_barrier(struct pipe_context *ctx, unsigned flags)
    }
 
    for (int i = 0; i < IRIS_BATCH_COUNT; i++) {
-      if (ice->batches[i].contains_draw ||
-          ice->batches[i].cache.render->entries) {
+      if (ice->batches[i].contains_draw) {
          iris_batch_maybe_flush(&ice->batches[i], 24);
          iris_emit_pipe_control_flush(&ice->batches[i], "API: memory barrier",
                                       bits);

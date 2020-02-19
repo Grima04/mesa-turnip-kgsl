@@ -367,12 +367,6 @@ iris_blorp_exec(struct blorp_batch *blorp_batch,
    ice->state.dirty |= ~skip_bits;
    ice->state.stage_dirty |= ~skip_stage_bits;
 
-   if (params->dst.enabled) {
-      iris_render_cache_add_bo(batch, params->dst.addr.buffer,
-                               params->dst.view.format,
-                               params->dst.aux_usage);
-   }
-
    if (params->src.enabled)
       iris_bo_bump_seqno(params->src.addr.buffer, batch->next_seqno,
                          IRIS_DOMAIN_OTHER_READ);
