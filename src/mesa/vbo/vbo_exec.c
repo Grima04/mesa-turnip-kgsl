@@ -256,10 +256,35 @@ vbo_copy_vertices(struct gl_context *ctx,
       copy = count % 3;
       break;
    case GL_QUADS:
+   case GL_LINES_ADJACENCY:
       copy = count % 4;
+      break;
+   case GL_TRIANGLES_ADJACENCY:
+      copy = count % 6;
       break;
    case GL_LINE_STRIP:
       copy = MIN2(1, count);
+      break;
+   case GL_LINE_STRIP_ADJACENCY:
+      /* We need to copy 3 vertices, because:
+       *    Last strip:  ---o---o---x     (last line)
+       *    Next strip:     x---o---o---  (next line)
+       */
+      copy = MIN2(3, count);
+      break;
+   case GL_PATCHES:
+      if (in_dlist) {
+         /* We don't know the value of GL_PATCH_VERTICES when compiling
+          * a display list.
+          *
+          * Fail an assertion in debug builds and use the value of 3
+          * in release builds, which is more likely than any other value.
+          */
+         assert(!"patch_vertices is unknown");
+         copy = count % 3;
+      } else {
+         copy = count % ctx->TessCtrlProgram.patch_vertices;
+      }
       break;
    case GL_LINE_LOOP:
       if (!in_dlist && last_prim->begin == 0) {
@@ -299,6 +324,8 @@ vbo_copy_vertices(struct gl_context *ctx,
       break;
    case PRIM_OUTSIDE_BEGIN_END:
       return 0;
+   case GL_TRIANGLE_STRIP_ADJACENCY:
+      /* TODO: Splitting tri strips with adjacency is too complicated. */
    default:
       unreachable("Unexpected primitive type");
       return 0;
