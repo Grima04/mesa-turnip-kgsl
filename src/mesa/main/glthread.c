@@ -149,6 +149,13 @@ _mesa_glthread_restore_dispatch(struct gl_context *ctx, const char *func)
 }
 
 void
+_mesa_glthread_disable(struct gl_context *ctx, const char *func)
+{
+   _mesa_glthread_finish_before(ctx, func);
+   _mesa_glthread_restore_dispatch(ctx, func);
+}
+
+void
 _mesa_glthread_flush_batch(struct gl_context *ctx)
 {
    struct glthread_state *glthread = ctx->GLThread;
@@ -226,4 +233,11 @@ _mesa_glthread_finish(struct gl_context *ctx)
 
    if (synced)
       p_atomic_inc(&glthread->stats.num_syncs);
+}
+
+void
+_mesa_glthread_finish_before(struct gl_context *ctx, const char *func)
+{
+   _mesa_glthread_finish(ctx);
+   debug_print_sync_fallback(func);
 }
