@@ -75,6 +75,15 @@ fd6_emit_shader(struct fd_ringbuffer *ring, const struct ir3_shader_variant *so)
 		obj_start = REG_A6XX_SP_CS_OBJ_START_LO;
 		instrlen = REG_A6XX_SP_CS_INSTRLEN;
 		break;
+	case MESA_SHADER_TASK:
+	case MESA_SHADER_MESH:
+	case MESA_SHADER_RAYGEN:
+	case MESA_SHADER_ANY_HIT:
+	case MESA_SHADER_CLOSEST_HIT:
+	case MESA_SHADER_MISS:
+	case MESA_SHADER_INTERSECTION:
+	case MESA_SHADER_CALLABLE:
+		unreachable("Unsupported shader stage");
 	case MESA_SHADER_NONE:
 		unreachable("");
 	}

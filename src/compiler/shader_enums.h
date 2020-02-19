@@ -51,8 +51,19 @@ typedef enum
    MESA_SHADER_GEOMETRY = 3,
    MESA_SHADER_FRAGMENT = 4,
    MESA_SHADER_COMPUTE = 5,
+
+   /* Vulkan-only stages. */
+   MESA_SHADER_TASK         = 6,
+   MESA_SHADER_MESH         = 7,
+   MESA_SHADER_RAYGEN       = 8,
+   MESA_SHADER_ANY_HIT      = 9,
+   MESA_SHADER_CLOSEST_HIT  = 10,
+   MESA_SHADER_MISS         = 11,
+   MESA_SHADER_INTERSECTION = 12,
+   MESA_SHADER_CALLABLE     = 13,
+
    /* must be last so it doesn't affect the GL pipeline */
-   MESA_SHADER_KERNEL = 6,
+   MESA_SHADER_KERNEL = 14,
 } gl_shader_stage;
 
 static inline bool
@@ -87,6 +98,11 @@ const char *_mesa_shader_stage_to_abbrev(unsigned stage);
  * GL related stages (not including CL)
  */
 #define MESA_SHADER_STAGES (MESA_SHADER_COMPUTE + 1)
+
+/**
+ * Vulkan stages (not including CL)
+ */
+#define MESA_VULKAN_SHADER_STAGES (MESA_SHADER_CALLABLE + 1)
 
 /**
  * All stages
