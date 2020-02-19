@@ -4036,6 +4036,18 @@ stage_for_execution_model(struct vtn_builder *b, SpvExecutionModel model)
       return MESA_SHADER_COMPUTE;
    case SpvExecutionModelKernel:
       return MESA_SHADER_KERNEL;
+   case SpvExecutionModelRayGenerationKHR:
+      return MESA_SHADER_RAYGEN;
+   case SpvExecutionModelAnyHitKHR:
+      return MESA_SHADER_ANY_HIT;
+   case SpvExecutionModelClosestHitKHR:
+      return MESA_SHADER_CLOSEST_HIT;
+   case SpvExecutionModelMissKHR:
+      return MESA_SHADER_MISS;
+   case SpvExecutionModelIntersectionKHR:
+      return MESA_SHADER_INTERSECTION;
+   case SpvExecutionModelCallableKHR:
+       return MESA_SHADER_CALLABLE;
    default:
       vtn_fail("Unsupported execution model: %s (%u)",
                spirv_executionmodel_to_string(model), model);
