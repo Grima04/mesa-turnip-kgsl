@@ -31,11 +31,11 @@
     <function name="MultiDrawElementsBaseVertex" exec="dynamic" marshal="draw"
               marshal_fail="_mesa_glthread_is_non_vbo_draw_elements(ctx)">
         <param name="mode" type="GLenum"/>
-        <param name="count" type="const GLsizei *"/>
+        <param name="count" type="const GLsizei *" count="primcount"/>
         <param name="type" type="GLenum"/>
-        <param name="indices" type="const GLvoid * const *"/>
+        <param name="indices" type="const GLvoid * const *" count="(sizeof(GLvoid *) * primcount)"/>
         <param name="primcount" type="GLsizei"/>
-        <param name="basevertex" type="const GLint *"/>
+        <param name="basevertex" type="const GLint *" count="primcount"/>
     </function>
 
     <function name="DrawElementsInstancedBaseVertex" es2="3.2" exec="dynamic" marshal="draw"

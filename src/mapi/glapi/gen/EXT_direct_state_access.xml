@@ -20,19 +20,19 @@
 
    <function name="MatrixLoadfEXT" offset="assign">
       <param name="matrixMode" type="GLenum" />
-      <param name="m" type="const GLfloat *" />
+      <param name="m" type="const GLfloat *" count="16"/>
    </function>
    <function name="MatrixLoaddEXT" offset="assign">
       <param name="matrixMode" type="GLenum" />
-      <param name="m" type="const GLdouble *" />
+      <param name="m" type="const GLdouble *" count="16"/>
    </function>
    <function name="MatrixMultfEXT" offset="assign">
       <param name="matrixMode" type="GLenum" />
-      <param name="m" type="const GLfloat *" />
+      <param name="m" type="const GLfloat *" count="16"/>
    </function>
    <function name="MatrixMultdEXT" offset="assign">
       <param name="matrixMode" type="GLenum" />
-      <param name="m" type="const GLdouble *" />
+      <param name="m" type="const GLdouble *" count="16"/>
    </function>
    <function name="MatrixLoadIdentityEXT" offset="assign">
       <param name="matrixMode" type="GLenum" />
@@ -657,7 +657,8 @@
       <param name="param" type="GLint *" />
    </function>
 
-   <function name="MultiTexCoordPointerEXT">
+   <function name="MultiTexCoordPointerEXT" marshal="async"
+             marshal_fail="_mesa_glthread_is_non_vbo_vertex_attrib_pointer(ctx)">
       <param name="texunit" type="GLenum" />
       <param name="size" type="GLint" />
       <param name="type" type="GLenum" />
@@ -669,22 +670,22 @@
 
    <function name="MatrixLoadTransposefEXT" offset="assign">
       <param name="matrixMode" type="GLenum" />
-      <param name="m" type="const GLfloat *" />
+      <param name="m" type="const GLfloat *" count="16"/>
    </function>
 
    <function name="MatrixLoadTransposedEXT" offset="assign">
       <param name="matrixMode" type="GLenum" />
-      <param name="m" type="const GLdouble *" />
+      <param name="m" type="const GLdouble *" count="16"/>
    </function>
 
    <function name="MatrixMultTransposefEXT" offset="assign">
       <param name="matrixMode" type="GLenum" />
-      <param name="m" type="const GLfloat *" />
+      <param name="m" type="const GLfloat *" count="16"/>
    </function>
 
    <function name="MatrixMultTransposedEXT" offset="assign">
       <param name="matrixMode" type="GLenum" />
-      <param name="m" type="const GLdouble *" />
+      <param name="m" type="const GLdouble *" count="16"/>
     </function>
 
    <function name="CompressedTextureImage1DEXT">
@@ -926,7 +927,7 @@
    <function name="FramebufferDrawBuffersEXT">
       <param name="framebuffer" type="GLuint" />
       <param name="n" type="GLsizei" />
-      <param name="bufs" type="const GLenum *" />
+      <param name="bufs" type="const GLenum *" count="n"/>
    </function>
 
    <function name="FramebufferReadBufferEXT">
@@ -1202,7 +1203,7 @@
       <param name="target" type="GLenum" />
       <param name="format" type="GLenum" />
       <param name="len" type="GLsizei" />
-      <param name="string" type="const GLvoid*" />
+      <param name="string" type="const GLvoid*" count="len"/>
     </function>
 
    <function name="GetNamedProgramStringEXT">
@@ -1226,7 +1227,7 @@
       <param name="program" type="GLuint" />
       <param name="target" type="GLenum" />
       <param name="index" type="GLuint" />
-      <param name="params" type="const GLfloat*" />
+      <param name="params" type="const GLfloat*" count="4"/>
     </function>
 
    <function name="GetNamedProgramLocalParameterfvEXT">
@@ -1250,7 +1251,7 @@
       <param name="program" type="GLuint" />
       <param name="target" type="GLenum" />
       <param name="index" type="GLuint" />
-      <param name="params" type="const GLdouble*" />
+      <param name="params" type="const GLdouble*" count="4"/>
     </function>
 
    <function name="GetNamedProgramLocalParameterdvEXT">
@@ -1351,7 +1352,7 @@
       <param name="target" type="GLenum" />
       <param name="index" type="GLuint" />
       <param name="count" type="GLsizei" />
-      <param name="params" type="const GLfloat*" />
+      <param name="params" type="const GLfloat*" count="4"/>
    </function>
 
 </category>

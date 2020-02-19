@@ -332,7 +332,7 @@
 
   <function name="VertexAttribI1iv">
     <param name="index" type="GLuint"/>
-    <param name="v" type="const GLint *"/>
+    <param name="v" type="const GLint *" count="1"/>
   </function>
 
   <function name="VertexAttribI2iv" alias="VertexAttribI2ivEXT">
@@ -352,7 +352,7 @@
 
   <function name="VertexAttribI1uiv">
     <param name="index" type="GLuint"/>
-    <param name="v" type="const GLuint *"/>
+    <param name="v" type="const GLuint *" count="1"/>
   </function>
 
   <function name="VertexAttribI2uiv" alias="VertexAttribI2uivEXT">
@@ -372,22 +372,22 @@
 
   <function name="VertexAttribI4bv">
     <param name="index" type="GLuint"/>
-    <param name="v" type="const GLbyte *"/>
+    <param name="v" type="const GLbyte *" count="4"/>
   </function>
 
   <function name="VertexAttribI4sv">
     <param name="index" type="GLuint"/>
-    <param name="v" type="const GLshort *"/>
+    <param name="v" type="const GLshort *" count="4"/>
   </function>
 
   <function name="VertexAttribI4ubv">
     <param name="index" type="GLuint"/>
-    <param name="v" type="const GLubyte *"/>
+    <param name="v" type="const GLubyte *" count="4"/>
   </function>
 
   <function name="VertexAttribI4usv">
     <param name="index" type="GLuint"/>
-    <param name="v" type="const GLushort *"/>
+    <param name="v" type="const GLushort *" count="4"/>
   </function>
 
   <function name="GetUniformuiv" es2="3.0">

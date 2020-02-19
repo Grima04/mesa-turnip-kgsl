@@ -14,7 +14,7 @@
 
     <function name="DeleteSamplers" es2="3.0" no_error="true">
       <param name="count" type="GLsizei"/>
-      <param name="samplers" type="const GLuint *"/>
+      <param name="samplers" type="const GLuint *" count="count"/>
     </function>
 
     <function name="IsSampler" es2="3.0">

@@ -33,25 +33,26 @@
 
     <function name="VertexAttribL1dv">
         <param name="index" type="GLuint"/>
-        <param name="v" type="const GLdouble *"/>
+        <param name="v" type="const GLdouble *" count="1"/>
     </function>
 
     <function name="VertexAttribL2dv">
         <param name="index" type="GLuint"/>
-        <param name="v" type="const GLdouble *"/>
+        <param name="v" type="const GLdouble *" count="2"/>
     </function>
 
     <function name="VertexAttribL3dv">
         <param name="index" type="GLuint"/>
-        <param name="v" type="const GLdouble *"/>
+        <param name="v" type="const GLdouble *" count="3"/>
     </function>
 
     <function name="VertexAttribL4dv">
         <param name="index" type="GLuint"/>
-        <param name="v" type="const GLdouble *"/>
+        <param name="v" type="const GLdouble *" count="4"/>
     </function>
 
-    <function name="VertexAttribLPointer" no_error="true">
+    <function name="VertexAttribLPointer" no_error="true" marshal="async"
+              marshal_fail="_mesa_glthread_is_non_vbo_vertex_attrib_pointer(ctx)">
         <param name="index" type="GLuint"/>
         <param name="size" type="GLint"/>
         <param name="type" type="GLenum"/>

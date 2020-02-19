@@ -4482,22 +4482,22 @@
     </function>
 
     <function name="LoadTransposeMatrixf" deprecated="3.1">
-        <param name="m" type="const GLfloat *"/>
+        <param name="m" type="const GLfloat *" count="16"/>
         <glx handcode="true"/>
     </function>
 
     <function name="LoadTransposeMatrixd" deprecated="3.1">
-        <param name="m" type="const GLdouble *"/>
+        <param name="m" type="const GLdouble *" count="16"/>
         <glx handcode="true"/>
     </function>
 
     <function name="MultTransposeMatrixf" deprecated="3.1">
-        <param name="m" type="const GLfloat *"/>
+        <param name="m" type="const GLfloat *" count="16"/>
         <glx handcode="true"/>
     </function>
 
     <function name="MultTransposeMatrixd" deprecated="3.1">
-        <param name="m" type="const GLdouble *"/>
+        <param name="m" type="const GLdouble *" count="16"/>
         <glx handcode="true"/>
     </function>
 
@@ -4745,8 +4745,8 @@
 
     <function name="MultiDrawArrays" marshal="draw">
         <param name="mode" type="GLenum"/>
-        <param name="first" type="const GLint *"/>
-        <param name="count" type="const GLsizei *"/>
+        <param name="first" type="const GLint *" count="primcount"/>
+        <param name="count" type="const GLsizei *" count="primcount"/>
         <param name="primcount" type="GLsizei"/>
         <glx handcode="true"/>
     </function>
@@ -4889,7 +4889,7 @@
     </function>
 
     <function name="WindowPos2dv" deprecated="3.1">
-        <param name="v" type="const GLdouble *"/>
+        <param name="v" type="const GLdouble *" count="2"/>
         <glx handcode="true"/>
     </function>
 
@@ -4900,7 +4900,7 @@
     </function>
 
     <function name="WindowPos2fv" deprecated="3.1">
-        <param name="v" type="const GLfloat *"/>
+        <param name="v" type="const GLfloat *" count="2"/>
         <glx handcode="true"/>
     </function>
 
@@ -4911,7 +4911,7 @@
     </function>
 
     <function name="WindowPos2iv" deprecated="3.1">
-        <param name="v" type="const GLint *"/>
+        <param name="v" type="const GLint *" count="2"/>
         <glx handcode="true"/>
     </function>
 
@@ -4922,7 +4922,7 @@
     </function>
 
     <function name="WindowPos2sv" deprecated="3.1">
-        <param name="v" type="const GLshort *"/>
+        <param name="v" type="const GLshort *" count="2"/>
         <glx handcode="true"/>
     </function>
 
@@ -4934,7 +4934,7 @@
     </function>
 
     <function name="WindowPos3dv" deprecated="3.1">
-        <param name="v" type="const GLdouble *"/>
+        <param name="v" type="const GLdouble *" count="3"/>
         <glx handcode="true"/>
     </function>
 
@@ -4957,7 +4957,7 @@
     </function>
 
     <function name="WindowPos3iv" deprecated="3.1">
-        <param name="v" type="const GLint *"/>
+        <param name="v" type="const GLint *" count="3"/>
         <glx handcode="true"/>
     </function>
 
@@ -4969,7 +4969,7 @@
     </function>
 
     <function name="WindowPos3sv" deprecated="3.1">
-        <param name="v" type="const GLshort *"/>
+        <param name="v" type="const GLshort *" count="3"/>
         <glx handcode="true"/>
     </function>
 </category>
@@ -10264,9 +10264,9 @@
     <function name="MultiDrawElementsEXT" es1="1.0" es2="2.0" exec="dynamic" marshal="draw"
               marshal_fail="_mesa_glthread_is_non_vbo_draw_elements(ctx)">
         <param name="mode" type="GLenum"/>
-        <param name="count" type="const GLsizei *"/>
+        <param name="count" type="const GLsizei *" count="primcount"/>
         <param name="type" type="GLenum"/>
-        <param name="indices" type="const GLvoid * const *"/>
+        <param name="indices" type="const GLvoid * const *" count="(sizeof(GLvoid *) * primcount)"/>
         <param name="primcount" type="GLsizei"/>
         <glx handcode="true"/>
     </function>
@@ -10945,14 +10945,14 @@
         <param name="target" type="GLenum"/>
         <param name="start"  type="GLuint"/>
         <param name="count"  type="GLsizei"/>
-        <param name="v"      type="const GLfloat *"/>
+        <param name="v"      type="const GLfloat *" count="(2 * count)"/>
     </function>
 
     <function name="NamedFramebufferSampleLocationsfvARB" no_error="true">
         <param name="framebuffer" type="GLuint"/>
         <param name="start"       type="GLuint"/>
         <param name="count"       type="GLsizei"/>
-        <param name="v"           type="const GLfloat *"/>
+        <param name="v"           type="const GLfloat *" count="(2 * count)"/>
     </function>
 
     <function name="EvaluateDepthValuesARB"/>
@@ -11324,7 +11324,7 @@
     </function>
 
     <function name="WindowPos4dvMESA" deprecated="3.1">
-        <param name="v" type="const GLdouble *"/>
+        <param name="v" type="const GLdouble *" count="4"/>
         <glx ignore="true"/>
     </function>
 
@@ -11337,7 +11337,7 @@
     </function>
 
     <function name="WindowPos4fvMESA" deprecated="3.1">
-        <param name="v" type="const GLfloat *"/>
+        <param name="v" type="const GLfloat *" count="4"/>
         <glx ignore="true"/>
     </function>
 
@@ -11350,7 +11350,7 @@
     </function>
 
     <function name="WindowPos4ivMESA" deprecated="3.1">
-        <param name="v" type="const GLint *"/>
+        <param name="v" type="const GLint *" count="4"/>
         <glx ignore="true"/>
     </function>
 
@@ -11363,7 +11363,7 @@
     </function>
 
     <function name="WindowPos4svMESA" deprecated="3.1">
-        <param name="v" type="const GLshort *"/>
+        <param name="v" type="const GLshort *" count="4"/>
         <glx ignore="true"/>
     </function>
 </category>
@@ -11376,10 +11376,11 @@
 </category>
 
 <category name="GL_IBM_multimode_draw_arrays" number="200">
-    <function name="MultiModeDrawArraysIBM" marshal="draw">
-        <param name="mode" type="const GLenum *"/>
-        <param name="first" type="const GLint *"/>
-        <param name="count" type="const GLsizei *"/>
+    <function name="MultiModeDrawArraysIBM" marshal="draw"
+              marshal_fail="_mesa_glthread_is_non_vbo_draw_elements(ctx)">
+        <param name="mode" type="const GLenum *" count="primcount"/>
+        <param name="first" type="const GLint *" count="primcount"/>
+        <param name="count" type="const GLsizei *" count="primcount"/>
         <param name="primcount" type="GLsizei"/>
         <param name="modestride" type="GLint"/>
         <glx handcode="true" ignore="true"/>
@@ -11387,10 +11388,10 @@
 
     <function name="MultiModeDrawElementsIBM" marshal="draw"
               marshal_fail="_mesa_glthread_is_non_vbo_draw_elements(ctx)">
-        <param name="mode" type="const GLenum *"/>
-        <param name="count" type="const GLsizei *"/>
+        <param name="mode" type="const GLenum *" count="primcount"/>
+        <param name="count" type="const GLsizei *" count="primcount"/>
         <param name="type" type="GLenum"/>
-        <param name="indices" type="const GLvoid * const *"/>
+        <param name="indices" type="const GLvoid * const *" count="(sizeof(GLvoid *) * primcount)"/>
         <param name="primcount" type="GLsizei"/>
         <param name="modestride" type="GLint"/>
         <glx handcode="true" ignore="true"/>
@@ -12553,7 +12554,7 @@
 
     <function name="SetFragmentShaderConstantATI" deprecated="3.1">
       <param name="dst" type="GLuint"/>
-      <param name="value" type="const GLfloat *"/>
+      <param name="value" type="const GLfloat *" count="4"/>
       <glx ignore="true"/>
     </function>
 </category>
@@ -13143,14 +13144,14 @@
         <param name="target" type="GLenum"/>
         <param name="index" type="GLuint"/>
         <param name="count" type="GLsizei"/>
-        <param name="params" type="const GLfloat *"/>
+        <param name="params" type="const GLfloat *" count="4"/>
     </function>
 
     <function name="ProgramLocalParameters4fvEXT" deprecated="3.1">
         <param name="target" type="GLenum"/>
         <param name="index" type="GLuint"/>
         <param name="count" type="GLsizei"/>
-        <param name="params" type="const GLfloat *"/>
+        <param name="params" type="const GLfloat *" count="4"/>
     </function>
 </category>
 

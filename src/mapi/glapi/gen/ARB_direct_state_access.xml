@@ -194,7 +194,7 @@
    <function name="NamedFramebufferDrawBuffers" no_error="true">
       <param name="framebuffer" type="GLuint" />
       <param name="n" type="GLsizei" />
-      <param name="bufs" type="const GLenum *" />
+      <param name="bufs" type="const GLenum *" count="n"/>
    </function>
 
    <function name="NamedFramebufferReadBuffer" no_error="true">
@@ -205,13 +205,13 @@
    <function name="InvalidateNamedFramebufferData">
       <param name="framebuffer" type="GLuint" />
       <param name="numAttachments" type="GLsizei" />
-      <param name="attachments" type="const GLenum *" />
+      <param name="attachments" type="const GLenum *" count="numAttachments"/>
    </function>
 
    <function name="InvalidateNamedFramebufferSubData">
       <param name="framebuffer" type="GLuint" />
       <param name="numAttachments" type="GLsizei" />
-      <param name="attachments" type="const GLenum *" />
+      <param name="attachments" type="const GLenum *" count="numAttachments"/>
       <param name="x" type="GLint" />
       <param name="y" type="GLint" />
       <param name="width" type="GLsizei" />
@@ -611,9 +611,9 @@
       <param name="vaobj" type="GLuint" />
       <param name="first" type="GLuint" />
       <param name="count" type="GLsizei" />
-      <param name="buffers" type="const GLuint *" />
-      <param name="offsets" type="const GLintptr *" />
-      <param name="strides" type="const GLsizei *" />
+      <param name="buffers" type="const GLuint *" count="count"/>
+      <param name="offsets" type="const GLintptr *" count="count"/>
+      <param name="strides" type="const GLsizei *" count="count"/>
    </function>
 
    <function name="VertexArrayAttribFormat">
