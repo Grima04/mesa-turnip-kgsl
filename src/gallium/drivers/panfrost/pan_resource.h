@@ -33,6 +33,29 @@
 #include "drm-uapi/drm.h"
 #include "util/u_range.h"
 
+/* Index buffer min/max cache. We need to caclculate the min/max for arbitrary
+ * slices (start, start + count) of the index buffer at drawtime. As this can
+ * be quite expensive, we cache. Conceptually, we just use a hash table mapping
+ * the key (start, count) to the value (min, max). In practice, mesa's hash
+ * table implementation is higher overhead than we would like and makes
+ * handling memory usage a little complicated. So we use this data structure
+ * instead. Searching is O(n) to the size, but the size is capped at the
+ * PANFROST_MINMAX_SIZE constant (so this is a tradeoff between cache hit/miss
+ * ratio and cache search speed). Note that keys are adjacent so we get cache
+ * line alignment benefits. Insertion is O(1) and in-order until the cache
+ * fills up, after that it evicts the oldest cached value in a ring facilitated
+ * by index.
+ */
+
+#define PANFROST_MINMAX_SIZE 64
+
+struct panfrost_minmax_cache {
+        uint64_t keys[PANFROST_MINMAX_SIZE];
+        uint64_t values[PANFROST_MINMAX_SIZE];
+        unsigned size;
+        unsigned index;
+};
+
 struct panfrost_resource {
         struct pipe_resource base;
         struct {
@@ -60,6 +83,9 @@ struct panfrost_resource {
         bool checksummed;
 
         enum pipe_format internal_format;
+
+        /* Cached min/max values for index buffers */
+        struct panfrost_minmax_cache *index_cache;
 };
 
 static inline struct panfrost_resource *

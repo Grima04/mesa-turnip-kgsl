@@ -513,6 +513,9 @@ panfrost_resource_create(struct pipe_screen *screen,
         panfrost_resource_create_bo(pscreen, so);
         panfrost_resource_reset_damage(so);
 
+        if (template->bind & PIPE_BIND_INDEX_BUFFER)
+                so->index_cache = rzalloc(so, struct panfrost_minmax_cache);
+
         return (struct pipe_resource *)so;
 }
 
@@ -531,6 +534,40 @@ panfrost_resource_destroy(struct pipe_screen *screen,
 
         util_range_destroy(&rsrc->valid_buffer_range);
         ralloc_free(rsrc);
+}
+
+/* If we've been caching min/max indices and we update the index
+ * buffer, that may invalidate the min/max. Check what's been cached vs
+ * what we've written, and throw out invalid entries. */
+
+static void
+panfrost_invalidate_index_cache(struct panfrost_resource *rsrc, struct pipe_transfer *transfer)
+{
+        struct panfrost_minmax_cache *cache = rsrc->index_cache;
+
+        /* Ensure there is a cache to invalidate and a write */
+        if (!rsrc->index_cache) return;
+        if (!(transfer->usage & PIPE_TRANSFER_WRITE)) return;
+
+        unsigned valid_count = 0;
+
+        for (unsigned i = 0; i < cache->size; ++i) {
+                uint64_t key = cache->keys[i];
+
+                uint32_t start = key & 0xffffffff;
+                uint32_t count = key >> 32;
+
+                /* 1D range intersection */
+                bool invalid = MAX2(transfer->box.x, start) < MIN2(transfer->box.x + transfer->box.width, start + count);
+                if (!invalid) {
+                        cache->keys[valid_count] = key;
+                        cache->values[valid_count] = cache->values[i];
+                        valid_count++;
+                }
+        }
+
+        cache->size = valid_count;
+        cache->index = 0;
 }
 
 static void *
@@ -635,6 +672,15 @@ panfrost_transfer_map(struct pipe_context *pctx,
 
                 return transfer->map;
         } else {
+                /* Direct, persistent writes create holes in time for
+                 * caching... I don't know if this is actually possible but we
+                 * should still get it right */
+
+                unsigned dpw = PIPE_TRANSFER_MAP_DIRECTLY | PIPE_TRANSFER_WRITE | PIPE_TRANSFER_PERSISTENT;
+
+                if ((usage & dpw) == dpw && rsrc->index_cache)
+                        return NULL;
+
                 transfer->base.stride = rsrc->slices[level].stride;
                 transfer->base.layer_stride = panfrost_get_layer_stride(
                                 rsrc->slices, rsrc->base.target == PIPE_TEXTURE_3D,
@@ -643,8 +689,10 @@ panfrost_transfer_map(struct pipe_context *pctx,
                 /* By mapping direct-write, we're implicitly already
                  * initialized (maybe), so be conservative */
 
-                if ((usage & PIPE_TRANSFER_WRITE) && (usage & PIPE_TRANSFER_MAP_DIRECTLY))
+                if ((usage & PIPE_TRANSFER_WRITE) && (usage & PIPE_TRANSFER_MAP_DIRECTLY)) {
                         rsrc->slices[level].initialized = true;
+                        panfrost_invalidate_index_cache(rsrc, &transfer->base);
+                }
 
                 return bo->cpu
                        + rsrc->slices[level].offset
@@ -692,6 +740,8 @@ panfrost_transfer_unmap(struct pipe_context *pctx,
         util_range_add(&prsrc->base, &prsrc->valid_buffer_range,
                        transfer->box.x,
                        transfer->box.x + transfer->box.width);
+
+        panfrost_invalidate_index_cache(prsrc, transfer);
 
         /* Derefence the resource */
         pipe_resource_reference(&transfer->resource, NULL);
