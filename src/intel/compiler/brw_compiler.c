@@ -240,19 +240,13 @@ brw_get_compiler_config_value(const struct brw_compiler *compiler)
 unsigned
 brw_prog_data_size(gl_shader_stage stage)
 {
-   STATIC_ASSERT(MESA_SHADER_VERTEX == 0);
-   STATIC_ASSERT(MESA_SHADER_TESS_CTRL == 1);
-   STATIC_ASSERT(MESA_SHADER_TESS_EVAL == 2);
-   STATIC_ASSERT(MESA_SHADER_GEOMETRY == 3);
-   STATIC_ASSERT(MESA_SHADER_FRAGMENT == 4);
-   STATIC_ASSERT(MESA_SHADER_COMPUTE == 5);
    static const size_t stage_sizes[] = {
-      sizeof(struct brw_vs_prog_data),
-      sizeof(struct brw_tcs_prog_data),
-      sizeof(struct brw_tes_prog_data),
-      sizeof(struct brw_gs_prog_data),
-      sizeof(struct brw_wm_prog_data),
-      sizeof(struct brw_cs_prog_data),
+      [MESA_SHADER_VERTEX]    = sizeof(struct brw_vs_prog_data),
+      [MESA_SHADER_TESS_CTRL] = sizeof(struct brw_tcs_prog_data),
+      [MESA_SHADER_TESS_EVAL] = sizeof(struct brw_tes_prog_data),
+      [MESA_SHADER_GEOMETRY]  = sizeof(struct brw_gs_prog_data),
+      [MESA_SHADER_FRAGMENT]  = sizeof(struct brw_wm_prog_data),
+      [MESA_SHADER_COMPUTE]   = sizeof(struct brw_cs_prog_data),
    };
    assert((int)stage >= 0 && stage < ARRAY_SIZE(stage_sizes));
    return stage_sizes[stage];
@@ -262,12 +256,12 @@ unsigned
 brw_prog_key_size(gl_shader_stage stage)
 {
    static const size_t stage_sizes[] = {
-      sizeof(struct brw_vs_prog_key),
-      sizeof(struct brw_tcs_prog_key),
-      sizeof(struct brw_tes_prog_key),
-      sizeof(struct brw_gs_prog_key),
-      sizeof(struct brw_wm_prog_key),
-      sizeof(struct brw_cs_prog_key),
+      [MESA_SHADER_VERTEX]    = sizeof(struct brw_vs_prog_key),
+      [MESA_SHADER_TESS_CTRL] = sizeof(struct brw_tcs_prog_key),
+      [MESA_SHADER_TESS_EVAL] = sizeof(struct brw_tes_prog_key),
+      [MESA_SHADER_GEOMETRY]  = sizeof(struct brw_gs_prog_key),
+      [MESA_SHADER_FRAGMENT]  = sizeof(struct brw_wm_prog_key),
+      [MESA_SHADER_COMPUTE]   = sizeof(struct brw_cs_prog_key),
    };
    assert((int)stage >= 0 && stage < ARRAY_SIZE(stage_sizes));
    return stage_sizes[stage];
