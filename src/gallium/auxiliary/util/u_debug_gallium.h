@@ -35,12 +35,6 @@
 extern "C" {
 #endif
 
-unsigned long
-debug_memory_begin(void);
-
-void 
-debug_memory_end(unsigned long beginning);
-
 #ifdef DEBUG
 void debug_print_format(const char *msg, unsigned fmt);
 #else
