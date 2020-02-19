@@ -889,6 +889,7 @@ st_nir_lower_samplers(struct pipe_screen *screen, nir_shader *nir,
    if (prog) {
       prog->info.textures_used = nir->info.textures_used;
       prog->info.textures_used_by_txf = nir->info.textures_used_by_txf;
+      prog->info.images_used = nir->info.images_used;
    }
 }
 

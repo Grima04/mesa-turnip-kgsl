@@ -140,6 +140,9 @@ typedef struct shader_info {
    /** Bitfield of which textures are used by texelFetch() */
    uint32_t textures_used_by_txf;
 
+   /** Bitfield of which images are used */
+   uint32_t images_used;
+
    /* SPV_KHR_float_controls: execution mode for floating point ops */
    uint16_t float_controls_execution_mode;
 
