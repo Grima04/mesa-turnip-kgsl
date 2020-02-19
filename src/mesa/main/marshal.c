@@ -32,6 +32,17 @@
 #include "marshal.h"
 #include "dispatch.h"
 
+static inline void
+_mesa_post_marshal_hook(struct gl_context *ctx)
+{
+   /* This can be enabled for debugging whether a failure is a synchronization
+    * problem between the main thread and the worker thread, or a failure in
+    * how we actually marshal.
+    */
+   if (false)
+      _mesa_glthread_finish(ctx);
+}
+
 struct marshal_cmd_Flush
 {
    struct marshal_cmd_base cmd_base;

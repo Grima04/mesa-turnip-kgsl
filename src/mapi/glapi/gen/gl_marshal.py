@@ -131,7 +131,9 @@ class PrintCode(gl_XML.gl_print_base):
 
         if not func.fixed_params and not func.variable_params:
             out('(void) cmd;\n')
-        out('_mesa_post_marshal_hook(ctx);')
+
+        # Uncomment this if you want to call _mesa_glthread_finish for debugging
+        #out('_mesa_glthread_finish(ctx);')
 
     def print_async_struct(self, func):
         out('struct marshal_cmd_{0}'.format(func.name))
