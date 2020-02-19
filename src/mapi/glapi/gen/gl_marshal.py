@@ -113,6 +113,7 @@ class PrintCode(gl_XML.gl_print_base):
                 out('cmd->{0} = {0};'.format(p.name))
         if func.variable_params:
             out('char *variable_data = (char *) (cmd + 1);')
+            i = 1
             for p in func.variable_params:
                 if p.img_null_flag:
                     out('cmd->{0}_null = !{0};'.format(p.name))
@@ -120,14 +121,17 @@ class PrintCode(gl_XML.gl_print_base):
                     with indent():
                         out(('memcpy(variable_data, {0}, {1});').format(
                             p.name, p.size_string(False)))
-                        out('variable_data += {0};'.format(
-                            p.size_string(False)))
+                        if i < len(func.variable_params):
+                            out('variable_data += {0};'.format(
+                                p.size_string(False)))
                     out('}')
                 else:
                     out(('memcpy(variable_data, {0}, {1});').format(
                         p.name, p.size_string(False)))
-                    out('variable_data += {0};'.format(
-                        p.size_string(False)))
+                    if i < len(func.variable_params):
+                        out('variable_data += {0};'.format(
+                            p.size_string(False)))
+                i += 1
 
         if not func.fixed_params and not func.variable_params:
             out('(void) cmd;\n')
@@ -191,6 +195,7 @@ class PrintCode(gl_XML.gl_print_base):
                     out('{0} * {1};'.format(
                             p.get_base_type_string(), p.name))
                 out('const char *variable_data = (const char *) (cmd + 1);')
+                i = 1
                 for p in func.variable_params:
                     out('{0} = ({1} *) variable_data;'.format(
                             p.name, p.get_base_type_string()))
@@ -199,11 +204,13 @@ class PrintCode(gl_XML.gl_print_base):
                         out('if (cmd->{0}_null)'.format(p.name))
                         with indent():
                             out('{0} = NULL;'.format(p.name))
-                        out('else')
-                        with indent():
-                            out('variable_data += {0};'.format(p.size_string(False)))
-                    else:
+                        if i < len(func.variable_params):
+                            out('else')
+                            with indent():
+                                out('variable_data += {0};'.format(p.size_string(False)))
+                    elif i < len(func.variable_params):
                         out('variable_data += {0};'.format(p.size_string(False)))
+                    i += 1
 
             self.print_sync_call(func)
         out('}')
