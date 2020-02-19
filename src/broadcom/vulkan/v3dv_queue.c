@@ -149,6 +149,7 @@ queue_submit_job(struct v3dv_job *job, bool do_wait)
     * we would have to extend our kernel interface to support the case where
     * we have more than one semaphore to wait on.
     */
+   submit.in_sync_bcl = 0;
    submit.in_sync_rcl = do_wait ? job->cmd_buffer->device->last_job_sync : 0;
 
    /* Update the sync object for the last rendering by this device. */
