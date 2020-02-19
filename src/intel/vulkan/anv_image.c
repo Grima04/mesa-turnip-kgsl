@@ -125,13 +125,6 @@ choose_isl_tiling_flags(const struct anv_image_create_info *anv_info,
    return flags;
 }
 
-static struct anv_surface *
-get_surface(struct anv_image *image, VkImageAspectFlagBits aspect)
-{
-   uint32_t plane = anv_image_aspect_to_plane(image->aspects, aspect);
-   return &image->planes[plane].surface;
-}
-
 static void
 add_surface(struct anv_image *image, struct anv_surface *surf, uint32_t plane)
 {
@@ -1025,10 +1018,13 @@ void anv_GetImageSubresourceLayout(
    const struct anv_surface *surface;
    if (subresource->aspectMask == VK_IMAGE_ASPECT_PLANE_1_BIT &&
        image->drm_format_mod != DRM_FORMAT_MOD_INVALID &&
-       isl_drm_modifier_has_aux(image->drm_format_mod))
+       isl_drm_modifier_has_aux(image->drm_format_mod)) {
       surface = &image->planes[0].aux_surface;
-   else
-      surface = get_surface(image, subresource->aspectMask);
+   } else {
+      uint32_t plane = anv_image_aspect_to_plane(image->aspects,
+                                                 subresource->aspectMask);
+      surface = &image->planes[plane].surface;
+   }
 
    assert(__builtin_popcount(subresource->aspectMask) == 1);
 
