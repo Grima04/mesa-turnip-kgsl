@@ -1969,7 +1969,8 @@ _mesa_IsEnabled( GLenum cap )
          return ctx->TileRasterOrderIncreasingY;
 
       case GL_BLACKHOLE_RENDER_INTEL:
-         CHECK_EXTENSION(INTEL_blackhole_render);
+         if (!_mesa_has_INTEL_blackhole_render(ctx))
+            goto invalid_enum_error;
          return ctx->IntelBlackholeRender;
 
       default:
