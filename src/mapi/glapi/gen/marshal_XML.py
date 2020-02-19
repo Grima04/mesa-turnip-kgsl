@@ -77,7 +77,9 @@ class marshal_function(gl_XML.gl_function):
         for p in self.parameters:
             if p.is_output:
                 return 'sync'
-            if p.is_pointer() and not (p.count or p.counter) and not (self.marshal == 'draw' and p.name == 'indices'):
+            if (p.is_pointer() and not (p.count or p.counter)
+                and not (self.marshal == 'draw'
+                         and (p.name == 'indices' or p.name == 'indirect'))):
                 return 'sync'
             if p.count_parameter_list:
                 # Parameter size is determined by enums; haven't

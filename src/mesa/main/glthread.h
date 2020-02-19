@@ -94,6 +94,7 @@ struct glthread_state
     * buffer) binding is in a VBO.
     */
    bool element_array_is_vbo;
+   bool draw_indirect_buffer_is_vbo;
 };
 
 void _mesa_glthread_init(struct gl_context *ctx);

@@ -98,6 +98,25 @@ _mesa_glthread_is_non_vbo_draw_elements(const struct gl_context *ctx)
    return ctx->API != API_OPENGL_CORE && !glthread->element_array_is_vbo;
 }
 
+static inline bool
+_mesa_glthread_is_non_vbo_draw_arrays_indirect(const struct gl_context *ctx)
+{
+   struct glthread_state *glthread = ctx->GLThread;
+
+   return ctx->API != API_OPENGL_CORE &&
+          !glthread->draw_indirect_buffer_is_vbo;
+}
+
+static inline bool
+_mesa_glthread_is_non_vbo_draw_elements_indirect(const struct gl_context *ctx)
+{
+   struct glthread_state *glthread = ctx->GLThread;
+
+   return ctx->API != API_OPENGL_CORE &&
+          (!glthread->draw_indirect_buffer_is_vbo ||
+           !glthread->element_array_is_vbo);
+}
+
 #define DEBUG_MARSHAL_PRINT_CALLS 0
 
 /**
