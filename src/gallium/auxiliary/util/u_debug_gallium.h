@@ -36,12 +36,6 @@ extern "C" {
 #endif
 
 #ifdef DEBUG
-void debug_print_format(const char *msg, unsigned fmt);
-#else
-#define debug_print_format(_msg, _fmt) ((void)0)
-#endif
-
-#ifdef DEBUG
 
 void
 debug_print_transfer_flags(const char *msg, unsigned usage);

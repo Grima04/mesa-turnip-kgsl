@@ -37,7 +37,6 @@
 
 #include "pipe/p_compiler.h"
 #include "pipe/p_format.h"
-#include "util/u_debug_gallium.h"
 #include "util/format/u_format.h"
 #include "util/u_math.h"
 
@@ -463,7 +462,8 @@ util_pack_mask_z(enum pipe_format format, uint32_t z)
    case PIPE_FORMAT_S8_UINT:
       return 0;
    default:
-      debug_print_format("gallium: unhandled format in util_pack_mask_z()", format);
+      debug_printf("gallium: unhandled format in util_pack_mask_z(): %s\n",
+                   util_format_name(format));
       assert(0);
       return 0;
    }
@@ -559,7 +559,8 @@ util_pack_z(enum pipe_format format, double z)
       /* this case can get it via util_pack_z_stencil() */
       return 0;
    default:
-      debug_print_format("gallium: unhandled format in util_pack_z()", format);
+      debug_printf("gallium: unhandled format in util_pack_z(): %s\n",
+                   util_format_name(format));
       assert(0);
       return 0;
    }

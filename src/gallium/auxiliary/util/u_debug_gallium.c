@@ -34,13 +34,6 @@
 
 #ifdef DEBUG
 
-void
-debug_print_format(const char *msg, unsigned fmt)
-{
-   debug_printf("%s: %s\n", msg, util_format_name(fmt));
-}
-
-
 /**
  * Print PIPE_TRANSFER_x flags with a message.
  */
