@@ -114,7 +114,7 @@ iris_batch_add_syncobj(struct iris_batch *batch,
 
 struct pipe_fence_handle {
    struct pipe_reference ref;
-   struct iris_syncobj *syncobj[IRIS_BATCH_COUNT];
+   struct iris_seqno *seqno[IRIS_BATCH_COUNT];
    unsigned count;
 };
 
@@ -125,7 +125,7 @@ iris_fence_destroy(struct pipe_screen *p_screen,
    struct iris_screen *screen = (struct iris_screen *)p_screen;
 
    for (unsigned i = 0; i < fence->count; i++)
-      iris_syncobj_reference(screen, &fence->syncobj[i], NULL);
+      iris_seqno_reference(screen, &fence->seqno[i], NULL);
 
    free(fence);
 }
@@ -198,11 +198,12 @@ iris_fence_flush(struct pipe_context *ctx,
    for (unsigned b = 0; b < IRIS_BATCH_COUNT; b++) {
       struct iris_batch *batch = &ice->batches[b];
 
-      if (!iris_wait_syncobj(ctx->screen, batch->last_seqno->syncobj, 0))
+      if (iris_seqno_signaled(batch->last_seqno))
          continue;
 
-      iris_syncobj_reference(screen, &fence->syncobj[fence->count++],
-                             batch->last_seqno->syncobj);
+      iris_seqno_reference(screen,
+                           &fence->seqno[fence->count++],
+                           batch->last_seqno);
    }
 
    iris_fence_reference(ctx->screen, out_fence, NULL);
@@ -216,9 +217,15 @@ iris_fence_await(struct pipe_context *ctx,
    struct iris_context *ice = (struct iris_context *)ctx;
 
    for (unsigned b = 0; b < IRIS_BATCH_COUNT; b++) {
+      struct iris_batch *batch = &ice->batches[b];
+
       for (unsigned i = 0; i < fence->count; i++) {
-         iris_batch_add_syncobj(&ice->batches[b], fence->syncobj[i],
-                               I915_EXEC_FENCE_WAIT);
+         struct iris_seqno *seqno = fence->seqno[i];
+
+         if (iris_seqno_signaled(seqno))
+            continue;
+
+         iris_batch_add_syncobj(batch, seqno->syncobj, I915_EXEC_FENCE_WAIT);
       }
    }
 }
@@ -260,13 +267,23 @@ iris_fence_finish(struct pipe_screen *p_screen,
    if (!fence->count)
       return true;
 
-   uint32_t handles[ARRAY_SIZE(fence->syncobj)];
-   for (unsigned i = 0; i < fence->count; i++)
-      handles[i] = fence->syncobj[i]->handle;
+   unsigned int handle_count = 0;
+   uint32_t handles[ARRAY_SIZE(fence->seqno)];
+   for (unsigned i = 0; i < fence->count; i++) {
+      struct iris_seqno *seqno = fence->seqno[i];
+
+      if (iris_seqno_signaled(seqno))
+         continue;
+
+      handles[handle_count++] = seqno->syncobj->handle;
+   }
+
+   if (handle_count == 0)
+      return true;
 
    struct drm_syncobj_wait args = {
       .handles = (uintptr_t)handles,
-      .count_handles = fence->count,
+      .count_handles = handle_count,
       .timeout_nsec = rel2abs(timeout),
       .flags = DRM_SYNCOBJ_WAIT_FLAGS_WAIT_ALL
    };
@@ -319,8 +336,13 @@ iris_fence_get_fd(struct pipe_screen *p_screen,
    }
 
    for (unsigned i = 0; i < fence->count; i++) {
+      struct iris_seqno *seqno = fence->seqno[i];
+
+      if (iris_seqno_signaled(seqno))
+         continue;
+
       struct drm_syncobj_handle args = {
-         .handle = fence->syncobj[i]->handle,
+         .handle = seqno->syncobj->handle,
          .flags = DRM_SYNCOBJ_HANDLE_TO_FD_FLAGS_EXPORT_SYNC_FILE,
          .fd = -1,
       };
@@ -355,12 +377,41 @@ iris_fence_create_fd(struct pipe_context *ctx,
    }
 
    struct iris_syncobj *syncobj = malloc(sizeof(*syncobj));
+   if (!syncobj) {
+      *out = NULL;
+      return;
+   }
    syncobj->handle = args.handle;
    pipe_reference_init(&syncobj->ref, 1);
 
+   struct iris_seqno *seqno = malloc(sizeof(*seqno));
+   if (!seqno) {
+      free(syncobj);
+      *out = NULL;
+      return;
+   }
+
+   static const uint32_t zero = 0;
+
+   /* Fences work in terms of iris_seqno, but we don't actually have a
+    * seqno for an imported fence.  So, create a fake one which always
+    * returns as 'not signaled' so we fall back to using the sync object.
+    */
+   seqno->seqno = UINT32_MAX;
+   seqno->map = &zero;
+   seqno->syncobj = syncobj;
+   seqno->flags = IRIS_SEQNO_END;
+   pipe_reference_init(&seqno->reference, 1);
+
    struct pipe_fence_handle *fence = malloc(sizeof(*fence));
+   if (!fence) {
+      free(seqno);
+      free(syncobj);
+      *out = NULL;
+      return;
+   }
    pipe_reference_init(&fence->ref, 1);
-   fence->syncobj[0] = syncobj;
+   fence->seqno[0] = seqno;
    fence->count = 1;
 
    *out = fence;
