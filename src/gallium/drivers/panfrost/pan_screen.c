@@ -579,16 +579,6 @@ panfrost_destroy_screen(struct pipe_screen *pscreen)
         ralloc_free(screen);
 }
 
-static void
-panfrost_flush_frontbuffer(struct pipe_screen *_screen,
-                           struct pipe_resource *resource,
-                           unsigned level, unsigned layer,
-                           void *context_private,
-                           struct pipe_box *sub_box)
-{
-        /* TODO: Display target integration */
-}
-
 static uint64_t
 panfrost_get_timestamp(struct pipe_screen *_screen)
 {
@@ -789,7 +779,6 @@ panfrost_create_screen(int fd, struct renderonly *ro)
         screen->base.get_timestamp = panfrost_get_timestamp;
         screen->base.is_format_supported = panfrost_is_format_supported;
         screen->base.context_create = panfrost_create_context;
-        screen->base.flush_frontbuffer = panfrost_flush_frontbuffer;
         screen->base.get_compiler_options = panfrost_screen_get_compiler_options;
         screen->base.fence_reference = panfrost_fence_reference;
         screen->base.fence_finish = panfrost_fence_finish;
