@@ -254,19 +254,23 @@ class PrintCode(gl_XML.gl_print_base):
                     out('return;')
                 out('}')
 
-            out('if (cmd_size <= MARSHAL_MAX_CMD_SIZE) {')
+        if len(func.variable_params) > 0:
+            with indent():
+                out('if (cmd_size <= MARSHAL_MAX_CMD_SIZE) {')
+                with indent():
+                    self.print_async_dispatch(func)
+                    out('return;')
+                out('}')
+            out('')
+            if need_fallback_sync:
+                out('fallback_to_sync:')
+            with indent():
+                out('_mesa_glthread_finish(ctx);')
+                self.print_sync_dispatch(func)
+        else:
             with indent():
                 self.print_async_dispatch(func)
-                out('return;')
-            out('}')
-
-        out('')
-        if need_fallback_sync:
-            out('fallback_to_sync:')
-        with indent():
-            out('_mesa_glthread_finish(ctx);')
-            self.print_sync_dispatch(func)
-
+                assert not need_fallback_sync
         out('}')
 
     def print_async_body(self, func):
