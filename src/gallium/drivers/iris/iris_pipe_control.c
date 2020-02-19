@@ -307,8 +307,7 @@ iris_texture_barrier(struct pipe_context *ctx, unsigned flags)
    struct iris_batch *compute_batch = &ice->batches[IRIS_BATCH_COMPUTE];
 
    if (render_batch->contains_draw ||
-       render_batch->cache.render->entries ||
-       render_batch->cache.depth->entries) {
+       render_batch->cache.render->entries) {
       iris_batch_maybe_flush(render_batch, 48);
       iris_emit_pipe_control_flush(render_batch,
                                    "API: texture barrier (1/2)",

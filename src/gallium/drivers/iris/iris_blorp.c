@@ -372,10 +372,6 @@ iris_blorp_exec(struct blorp_batch *blorp_batch,
                                params->dst.view.format,
                                params->dst.aux_usage);
    }
-   if (params->depth.enabled)
-      iris_depth_cache_add_bo(batch, params->depth.addr.buffer);
-   if (params->stencil.enabled)
-      iris_depth_cache_add_bo(batch, params->stencil.addr.buffer);
 
    if (params->src.enabled)
       iris_bo_bump_seqno(params->src.addr.buffer, batch->next_seqno,

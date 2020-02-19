@@ -296,9 +296,6 @@ iris_postdraw_update_resolve_tracking(struct iris_context *ice,
                                        zs_surf->u.tex.first_layer, num_layers,
                                        ice->state.depth_writes_enabled);
          }
-
-         if (ice->state.depth_writes_enabled)
-            iris_depth_cache_add_bo(batch, z_res->bo);
       }
 
       if (s_res) {
@@ -307,9 +304,6 @@ iris_postdraw_update_resolve_tracking(struct iris_context *ice,
                                        zs_surf->u.tex.first_layer, num_layers,
                                        s_res->aux.usage);
          }
-
-         if (ice->state.stencil_writes_enabled)
-            iris_depth_cache_add_bo(batch, s_res->bo);
       }
    }
 
@@ -347,9 +341,6 @@ iris_cache_sets_clear(struct iris_batch *batch)
 {
    hash_table_foreach(batch->cache.render, render_entry)
       _mesa_hash_table_remove(batch->cache.render, render_entry);
-
-   set_foreach(batch->cache.depth, depth_entry)
-      _mesa_set_remove(batch->cache.depth, depth_entry);
 }
 
 /**
@@ -385,8 +376,7 @@ void
 iris_cache_flush_for_read(struct iris_batch *batch,
                           struct iris_bo *bo)
 {
-   if (_mesa_hash_table_search_pre_hashed(batch->cache.render, bo->hash, bo) ||
-       _mesa_set_search_pre_hashed(batch->cache.depth, bo->hash, bo))
+   if (_mesa_hash_table_search_pre_hashed(batch->cache.render, bo->hash, bo))
       iris_flush_depth_and_render_caches(batch);
 
    iris_emit_buffer_barrier_for(batch, bo, IRIS_DOMAIN_OTHER_READ);
@@ -405,9 +395,6 @@ iris_cache_flush_for_render(struct iris_batch *batch,
                             enum isl_aux_usage aux_usage)
 {
    iris_emit_buffer_barrier_for(batch, bo, IRIS_DOMAIN_RENDER_WRITE);
-
-   if (_mesa_set_search_pre_hashed(batch->cache.depth, bo->hash, bo))
-      iris_flush_depth_and_render_caches(batch);
 
    /* Check to see if this bo has been used by a previous rendering operation
     * but with a different format or aux usage.  If it has, flush the render
@@ -467,12 +454,6 @@ iris_cache_flush_for_depth(struct iris_batch *batch,
       iris_flush_depth_and_render_caches(batch);
 
    iris_emit_buffer_barrier_for(batch, bo, IRIS_DOMAIN_DEPTH_WRITE);
-}
-
-void
-iris_depth_cache_add_bo(struct iris_batch *batch, struct iris_bo *bo)
-{
-   _mesa_set_add_pre_hashed(batch->cache.depth, bo->hash, bo);
 }
 
 static void

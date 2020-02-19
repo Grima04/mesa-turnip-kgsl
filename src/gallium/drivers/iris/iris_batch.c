@@ -203,8 +203,6 @@ iris_init_batch(struct iris_context *ice,
 
    batch->cache.render = _mesa_hash_table_create(NULL, _mesa_hash_pointer,
                                                  _mesa_key_pointer_equal);
-   batch->cache.depth = _mesa_set_create(NULL, _mesa_hash_pointer,
-                                         _mesa_key_pointer_equal);
 
    memset(batch->other_batches, 0, sizeof(batch->other_batches));
 
@@ -446,7 +444,6 @@ iris_batch_free(struct iris_batch *batch)
    iris_destroy_hw_context(bufmgr, batch->hw_ctx_id);
 
    _mesa_hash_table_destroy(batch->cache.render, NULL);
-   _mesa_set_destroy(batch->cache.depth, NULL);
 
    if (unlikely(INTEL_DEBUG))
       gen_batch_decode_ctx_finish(&batch->decoder);
