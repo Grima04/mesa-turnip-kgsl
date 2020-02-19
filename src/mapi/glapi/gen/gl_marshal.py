@@ -237,7 +237,7 @@ class PrintCode(gl_XML.gl_print_base):
                 if p.img_null_flag:
                     size = '({0} ? {1} : 0)'.format(p.name, size)
                 size_terms.append(size)
-            out('size_t cmd_size = {0};'.format(' + '.join(size_terms)))
+            out('int cmd_size = {0};'.format(' + '.join(size_terms)))
             out('{0} *cmd;'.format(struct))
 
             out('debug_print_marshal("{0}");'.format(func.name))

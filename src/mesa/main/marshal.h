@@ -54,12 +54,12 @@ extern const _mesa_unmarshal_func _mesa_unmarshal_dispatch[NUM_DISPATCH_CMD];
 static inline void *
 _mesa_glthread_allocate_command(struct gl_context *ctx,
                                 uint16_t cmd_id,
-                                size_t size)
+                                int size)
 {
    struct glthread_state *glthread = ctx->GLThread;
    struct glthread_batch *next = &glthread->batches[glthread->next];
    struct marshal_cmd_base *cmd_base;
-   const size_t aligned_size = ALIGN(size, 8);
+   const int aligned_size = ALIGN(size, 8);
 
    if (unlikely(next->used + size > MARSHAL_MAX_CMD_SIZE)) {
       _mesa_glthread_flush_batch(ctx);

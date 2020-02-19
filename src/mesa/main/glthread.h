@@ -60,7 +60,7 @@ struct glthread_batch
    struct gl_context *ctx;
 
    /** Amount of data used by batch commands, in bytes. */
-   size_t used;
+   int used;
 
    /** Data contained in the command buffer. */
    uint8_t buffer[MARSHAL_MAX_CMD_SIZE];
