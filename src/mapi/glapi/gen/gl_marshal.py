@@ -189,11 +189,11 @@ class PrintCode(gl_XML.gl_print_base):
 
             if func.variable_params:
                 for p in func.variable_params:
-                    out('const {0} * {1};'.format(
+                    out('{0} * {1};'.format(
                             p.get_base_type_string(), p.name))
                 out('const char *variable_data = (const char *) (cmd + 1);')
                 for p in func.variable_params:
-                    out('{0} = (const {1} *) variable_data;'.format(
+                    out('{0} = ({1} *) variable_data;'.format(
                             p.name, p.get_base_type_string()))
 
                     if p.img_null_flag:
