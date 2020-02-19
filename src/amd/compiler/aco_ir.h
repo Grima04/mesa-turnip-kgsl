@@ -227,6 +227,7 @@ struct RegClass {
    constexpr unsigned size() const { return (bytes() + 3) >> 2; }
    constexpr bool is_linear() const { return rc <= RC::s16 || rc & (1 << 6); }
    constexpr RegClass as_linear() const { return RegClass((RC) (rc | (1 << 6))); }
+   constexpr RegClass as_subdword() const { return RegClass((RC) (rc | 1 << 7)); }
 
 private:
    RC rc;
