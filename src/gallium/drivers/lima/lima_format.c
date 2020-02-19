@@ -40,6 +40,7 @@
 #define LIMA_TEXEL_FORMAT_RGB_888      0x15
 #define LIMA_TEXEL_FORMAT_RGBA_8888    0x16
 #define LIMA_TEXEL_FORMAT_RGBX_8888    0x17
+#define LIMA_TEXEL_FORMAT_ETC1_RGB8    0x20
 #define LIMA_TEXEL_FORMAT_Z24S8        0x2c
 #define LIMA_TEXEL_FORMAT_NONE         -1
 
@@ -81,6 +82,7 @@ static const struct lima_format lima_format_table[] = {
    LIMA_FORMAT(I16_UNORM,          I16,       NONE,     false),
    LIMA_FORMAT(I8_UNORM,           I8,        NONE,     false),
    LIMA_FORMAT(L8A8_UNORM,         L8A8,      NONE,     false),
+   LIMA_FORMAT(ETC1_RGB8,          ETC1_RGB8, NONE,     false),
 };
 
 static const struct lima_format *

@@ -178,13 +178,9 @@ dEQP-GLES2.functional.shaders.random.trigonometric.fragment.65
 dEQP-GLES2.functional.shaders.texture_functions.fragment.texture2d_bias
 dEQP-GLES2.functional.shaders.texture_functions.fragment.texture2dproj_vec4_bias
 dEQP-GLES2.functional.shaders.texture_functions.fragment.texturecube_bias
-dEQP-GLES2.functional.texture.filtering.2d.linear_mipmap_linear_linear_clamp_etc1
 dEQP-GLES2.functional.texture.filtering.2d.linear_mipmap_linear_linear_clamp_rgba8888
-dEQP-GLES2.functional.texture.filtering.2d.linear_mipmap_linear_linear_mirror_etc1
 dEQP-GLES2.functional.texture.filtering.2d.linear_mipmap_linear_linear_mirror_rgba8888
-dEQP-GLES2.functional.texture.filtering.2d.linear_mipmap_linear_nearest_clamp_etc1
 dEQP-GLES2.functional.texture.filtering.2d.linear_mipmap_linear_nearest_clamp_rgba8888
-dEQP-GLES2.functional.texture.filtering.2d.linear_mipmap_linear_nearest_mirror_etc1
 dEQP-GLES2.functional.texture.filtering.2d.linear_mipmap_linear_nearest_mirror_rgba8888
 dEQP-GLES2.functional.texture.mipmap.cube.basic.linear_linear
 dEQP-GLES2.functional.texture.mipmap.cube.basic.linear_nearest

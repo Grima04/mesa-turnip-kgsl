@@ -119,16 +119,14 @@ setup_miptree(struct lima_resource *res,
       res->levels[level].offset = size;
       res->levels[level].layer_stride = util_format_get_stride(pres->format, align(width, 16)) * align(height, 16);
 
-      /* The start address of each level <= 10 must be 64-aligned
-       * in order to be able to pass the addresses
-       * to the hardware.
-       * The start addresses of level 11 and level 12 are passed
-       * implicitely: they start at an offset of respectively
-       * 0x0400 and 0x0800 from the start address of level 10 */
-      if (level < 10)
+      if (util_format_is_compressed(pres->format))
+         res->levels[level].layer_stride /= 4;
+
+      /* The start address of each level except the last level
+       * must be 64-aligned in order to be able to pass the
+       * addresses to the hardware. */
+      if (level != pres->last_level)
          size += align(actual_level_size, 64);
-      else if (level != pres->last_level)
-         size += 0x0400;
       else
          size += actual_level_size;  /* Save some memory */
 
