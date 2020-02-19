@@ -116,11 +116,11 @@ static void
 resolve_image_views(struct iris_context *ice,
                     struct iris_batch *batch,
                     struct iris_shader_state *shs,
+                    const struct shader_info *info,
                     bool *draw_aux_buffer_disabled,
                     bool consider_framebuffer)
 {
-   /* TODO: Consider images used by program */
-   uint32_t views = shs->bound_image_views;
+   uint32_t views = info ? (shs->bound_image_views & info->images_used) : 0;
 
    while (views) {
       const int i = u_bit_scan(&views);
@@ -171,7 +171,7 @@ iris_predraw_resolve_inputs(struct iris_context *ice,
    if (ice->state.dirty & dirty) {
       resolve_sampler_views(ice, batch, shs, info, draw_aux_buffer_disabled,
                             consider_framebuffer);
-      resolve_image_views(ice, batch, shs, draw_aux_buffer_disabled,
+      resolve_image_views(ice, batch, shs, info, draw_aux_buffer_disabled,
                           consider_framebuffer);
    }
 }
