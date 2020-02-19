@@ -975,8 +975,6 @@ spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 42 8 8 8: sk
 spec/arb_texture_buffer_object/indexed: skip
 spec/arb_texture_buffer_object/negative-unsupported: skip
 spec/arb_texture_compression_bptc/bptc-float-modes: fail
-spec/arb_texture_compression_bptc/texwrap formats bordercolor: crash
-spec/arb_texture_compression_bptc/texwrap formats bordercolor-swizzled: crash
 spec/arb_texture_cube_map/copyteximage cube samples=16: skip
 spec/arb_texture_cube_map/copyteximage cube samples=2: skip
 spec/arb_texture_cube_map/copyteximage cube samples=32: skip
@@ -2205,9 +2203,9 @@ wgl/wgl-sanity: skip
 summary:
        name:  results
        ----  --------
-       pass:    19320
+       pass:    19328
        fail:      234
-      crash:        2
+      crash:        0
        skip:     1948
     timeout:        0
        warn:        2
@@ -2217,4 +2215,4 @@ summary:
     changes:        0
       fixes:        0
 regressions:        0
-      total:    21524
+      total:    21530
