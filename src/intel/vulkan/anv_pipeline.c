@@ -87,15 +87,6 @@ void anv_DestroyShaderModule(
 
 #define SPIR_V_MAGIC_NUMBER 0x07230203
 
-static const uint64_t stage_to_debug[] = {
-   [MESA_SHADER_VERTEX] = DEBUG_VS,
-   [MESA_SHADER_TESS_CTRL] = DEBUG_TCS,
-   [MESA_SHADER_TESS_EVAL] = DEBUG_TES,
-   [MESA_SHADER_GEOMETRY] = DEBUG_GS,
-   [MESA_SHADER_FRAGMENT] = DEBUG_WM,
-   [MESA_SHADER_COMPUTE] = DEBUG_CS,
-};
-
 struct anv_spirv_debug_data {
    struct anv_device *device;
    const struct anv_shader_module *module;
@@ -240,7 +231,7 @@ anv_shader_compile_to_nir(struct anv_device *device,
 
    free(spec_entries);
 
-   if (unlikely(INTEL_DEBUG & stage_to_debug[stage])) {
+   if (unlikely(INTEL_DEBUG & intel_debug_flag_for_shader_stage(stage))) {
       fprintf(stderr, "NIR (from SPIR-V) for %s shader:\n",
               gl_shader_stage_name(stage));
       nir_print_shader(nir, stderr);
