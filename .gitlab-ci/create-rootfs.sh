@@ -20,7 +20,13 @@ apt-get -y install --no-install-recommends \
     $LLVM
 passwd root -d
 chsh -s /bin/sh
-ln -s /bin/sh /init
+
+cat > /init <<EOF
+#!/bin/sh
+export PS1=lava-shell:
+exec sh
+EOF
+chmod +x  /init
 
 #######################################################################
 # Strip the image to a small minimal system without removing the debian
