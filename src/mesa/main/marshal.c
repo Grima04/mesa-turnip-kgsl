@@ -31,7 +31,6 @@
 #include "main/macros.h"
 #include "marshal.h"
 #include "dispatch.h"
-#include "marshal_generated.h"
 
 struct marshal_cmd_Flush
 {

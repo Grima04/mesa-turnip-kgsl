@@ -33,6 +33,7 @@
 #include "main/glthread.h"
 #include "main/context.h"
 #include "main/macros.h"
+#include "marshal_generated.h"
 
 struct marshal_cmd_base
 {
@@ -46,6 +47,9 @@ struct marshal_cmd_base
     */
    uint16_t cmd_size;
 };
+
+typedef void (*_mesa_unmarshal_func)(struct gl_context *ctx, const void *cmd);
+extern const _mesa_unmarshal_func _mesa_unmarshal_dispatch[NUM_DISPATCH_CMD];
 
 static inline void *
 _mesa_glthread_allocate_command(struct gl_context *ctx,
@@ -125,19 +129,8 @@ debug_print_marshal(const char *func)
 #endif
 }
 
-static inline void
-debug_print_unmarshal(const char *func)
-{
-#if DEBUG_MARSHAL_PRINT_CALLS
-   printf("unmarshal: %s\n", func);
-#endif
-}
-
 struct _glapi_table *
 _mesa_create_marshal_table(const struct gl_context *ctx);
-
-size_t
-_mesa_unmarshal_dispatch_cmd(struct gl_context *ctx, const void *cmd);
 
 static inline void
 _mesa_post_marshal_hook(struct gl_context *ctx)

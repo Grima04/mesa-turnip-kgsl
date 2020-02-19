@@ -35,7 +35,6 @@ header = """
 #include "dispatch.h"
 #include "glthread.h"
 #include "marshal.h"
-#include "marshal_generated.h"
 """
 
 
@@ -282,31 +281,14 @@ class PrintCode(gl_XML.gl_print_base):
         out('')
 
     def print_unmarshal_dispatch_cmd(self, api):
-        out('size_t')
-        out('_mesa_unmarshal_dispatch_cmd(struct gl_context *ctx, '
-            'const void *cmd)')
-        out('{')
+        out('const _mesa_unmarshal_func _mesa_unmarshal_dispatch[NUM_DISPATCH_CMD] = {')
         with indent():
-            out('const struct marshal_cmd_base *cmd_base = cmd;')
-            out('switch (cmd_base->cmd_id) {')
             for func in api.functionIterateAll():
                 flavor = func.marshal_flavor()
                 if flavor in ('skip', 'sync'):
                     continue
-                out('case DISPATCH_CMD_{0}:'.format(func.name))
-                with indent():
-                    out('debug_print_unmarshal("{0}");'.format(func.name))
-                    out(('_mesa_unmarshal_{0}(ctx, (const struct marshal_cmd_{0} *)'
-                         ' cmd);').format(func.name))
-                    out('break;')
-            out('default:')
-            with indent():
-                out('assert(!"Unrecognized command ID");')
-                out('break;')
-            out('}')
-            out('')
-            out('return cmd_base->cmd_size;')
-        out('}')
+                out('[DISPATCH_CMD_{0}] = (_mesa_unmarshal_func)_mesa_unmarshal_{0},'.format(func.name))
+        out('};')
         out('')
         out('')
 

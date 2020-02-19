@@ -35,7 +35,6 @@
 #include "main/mtypes.h"
 #include "main/glthread.h"
 #include "main/marshal.h"
-#include "main/marshal_generated.h"
 #include "util/u_atomic.h"
 #include "util/u_thread.h"
 
@@ -49,8 +48,13 @@ glthread_unmarshal_batch(void *job, int thread_index)
 
    _glapi_set_dispatch(ctx->CurrentServerDispatch);
 
-   while (pos < batch->used)
-      pos += _mesa_unmarshal_dispatch_cmd(ctx, &batch->buffer[pos]);
+   while (pos < batch->used) {
+      const struct marshal_cmd_base *cmd =
+         (const struct marshal_cmd_base *)&batch->buffer[pos];
+
+      _mesa_unmarshal_dispatch[cmd->cmd_id](ctx, cmd);
+      pos += cmd->cmd_size;
+   }
 
    assert(pos == batch->used);
    batch->used = 0;

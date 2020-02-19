@@ -61,6 +61,7 @@ class PrintCode(gl_XML.gl_print_base):
             if flavor in ('skip', 'sync'):
                 continue
             print('   DISPATCH_CMD_{0},'.format(func.name))
+        print('   NUM_DISPATCH_CMD,')
         print('};')
 
 
