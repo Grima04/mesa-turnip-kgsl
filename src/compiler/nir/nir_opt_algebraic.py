@@ -572,8 +572,9 @@ optimizations.extend([
    # SignedZeroInfNanPreserve is set, but we don't currently have any way of
    # representing this in the optimizations other than the usual ~.
    (('~fmax', ('fmin', a,  0.0), -1.0), ('fneg', ('fsat', ('fneg', a))), '!options->lower_fsat'),
-   # fsat(fsign(NaN)) = fsat(0) = 0, and b2f(0 < NaN) = b2f(False) = 0.
-   (('fsat', ('fsign', a)), ('b2f', ('flt', 0.0, a))),
+   # fsat(fsign(NaN)) = fsat(0) = 0, and b2f(0 < NaN) = b2f(False) = 0. Mark
+   # the new comparison precise to prevent it being changed to 'a != 0'.
+   (('fsat', ('fsign', a)), ('b2f', ('!flt', 0.0, a))),
    (('fsat', ('b2f', a)), ('b2f', a)),
    (('fsat', a), ('fmin', ('fmax', a, 0.0), 1.0), 'options->lower_fsat'),
    (('fsat', ('fsat', a)), ('fsat', a)),
@@ -1576,7 +1577,9 @@ optimizations.extend([
    (('imin', ('imax', a, -1), 1), ('isign', a), '!options->lower_isign'),
    (('imax', ('imin', a, 1), -1), ('isign', a), '!options->lower_isign'),
    # float(0 < NaN) - float(NaN < 0) = float(False) - float(False) = 0 - 0 = 0
-   (('fsign', a), ('fsub', ('b2f', ('flt', 0.0, a)), ('b2f', ('flt', a, 0.0))), 'options->lower_fsign'),
+   # Mark the new comparisons precise to prevent them being changed to 'a !=
+   # 0' or 'a == 0'.
+   (('fsign', a), ('fsub', ('b2f', ('!flt', 0.0, a)), ('b2f', ('!flt', a, 0.0))), 'options->lower_fsign'),
 
    # Address/offset calculations:
    # Drivers supporting imul24 should use the nir_lower_amul() pass, this
