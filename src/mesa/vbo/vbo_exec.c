@@ -250,27 +250,17 @@ vbo_copy_vertices(struct gl_context *ctx,
    case GL_POINTS:
       return 0;
    case GL_LINES:
+      copy = count % 2;
+      break;
    case GL_TRIANGLES:
+      copy = count % 3;
+      break;
    case GL_QUADS:
-      if (mode == GL_LINES)
-         copy = count % 2;
-      else if (mode == GL_TRIANGLES)
-         copy = count % 3;
-      else if (mode == GL_QUADS)
-         copy = count % 4;
-
-      for (unsigned i = 0; i < copy; i++) {
-         memcpy(dst + i * vertex_size, src + (count - copy + i) * vertex_size,
-                vertex_size * sizeof(GLfloat));
-      }
-      return copy;
+      copy = count % 4;
+      break;
    case GL_LINE_STRIP:
-      if (count == 0)
-         return 0;
-
-      memcpy(dst, src + (count - 1) * vertex_size,
-             vertex_size * sizeof(GLfloat));
-      return 1;
+      copy = MIN2(1, count);
+      break;
    case GL_LINE_LOOP:
       if (!in_dlist && last_prim->begin == 0) {
          /* We're dealing with the second or later section of a split/wrapped
@@ -298,32 +288,23 @@ vbo_copy_vertices(struct gl_context *ctx,
          return 2;
       }
    case GL_TRIANGLE_STRIP:
-      /* no parity issue, but need to make sure the tri is not drawn twice */
-      if (count & 1) {
-         last_prim->count--;
-      }
+      /* Draw an even number of triangles to keep front/back facing the same. */
+      last_prim->count -= count % 2;
       /* fallthrough */
    case GL_QUAD_STRIP:
-      switch (count) {
-      case 0:
-         copy = 0;
-         break;
-      case 1:
-         copy = 1;
-         break;
-      default:
-         copy = 2 + (count & 1);
-         break;
-      }
-      for (unsigned i = 0; i < copy; i++) {
-         memcpy(dst + i * vertex_size, src + (count - copy + i) * vertex_size,
-                vertex_size * sizeof(GLfloat));
-      }
-      return copy;
+      if (count <= 1)
+         copy = count;
+      else
+         copy = 2 + (count % 2);
+      break;
    case PRIM_OUTSIDE_BEGIN_END:
       return 0;
    default:
       unreachable("Unexpected primitive type");
       return 0;
    }
+
+   memcpy(dst, src + (count - copy) * vertex_size,
+          copy * vertex_size * sizeof(GLfloat));
+   return copy;
 }
