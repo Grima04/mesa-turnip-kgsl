@@ -4183,7 +4183,7 @@ vtn_handle_preamble_instruction(struct vtn_builder *b, SpvOp opcode,
          b->options->temp_addr_format = nir_address_format_64bit_global;
          break;
       case SpvAddressingModelLogical:
-         vtn_fail_if(b->shader->info.stage >= MESA_SHADER_STAGES,
+         vtn_fail_if(b->shader->info.stage == MESA_SHADER_KERNEL,
                      "AddressingModelLogical only supported for shaders");
          b->physical_ptrs = false;
          break;
