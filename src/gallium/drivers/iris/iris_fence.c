@@ -115,7 +115,6 @@ iris_batch_add_syncobj(struct iris_batch *batch,
 struct pipe_fence_handle {
    struct pipe_reference ref;
    struct iris_seqno *seqno[IRIS_BATCH_COUNT];
-   unsigned count;
 };
 
 static void
@@ -124,7 +123,7 @@ iris_fence_destroy(struct pipe_screen *p_screen,
 {
    struct iris_screen *screen = (struct iris_screen *)p_screen;
 
-   for (unsigned i = 0; i < fence->count; i++)
+   for (unsigned i = 0; i < ARRAY_SIZE(fence->seqno); i++)
       iris_seqno_reference(screen, &fence->seqno[i], NULL);
 
    free(fence);
@@ -201,9 +200,7 @@ iris_fence_flush(struct pipe_context *ctx,
       if (iris_seqno_signaled(batch->last_seqno))
          continue;
 
-      iris_seqno_reference(screen,
-                           &fence->seqno[fence->count++],
-                           batch->last_seqno);
+      iris_seqno_reference(screen, &fence->seqno[b], batch->last_seqno);
    }
 
    iris_fence_reference(ctx->screen, out_fence, NULL);
@@ -219,7 +216,7 @@ iris_fence_await(struct pipe_context *ctx,
    for (unsigned b = 0; b < IRIS_BATCH_COUNT; b++) {
       struct iris_batch *batch = &ice->batches[b];
 
-      for (unsigned i = 0; i < fence->count; i++) {
+      for (unsigned i = 0; i < ARRAY_SIZE(fence->seqno); i++) {
          struct iris_seqno *seqno = fence->seqno[i];
 
          if (iris_seqno_signaled(seqno))
@@ -264,12 +261,9 @@ iris_fence_finish(struct pipe_screen *p_screen,
 {
    struct iris_screen *screen = (struct iris_screen *)p_screen;
 
-   if (!fence->count)
-      return true;
-
    unsigned int handle_count = 0;
    uint32_t handles[ARRAY_SIZE(fence->seqno)];
-   for (unsigned i = 0; i < fence->count; i++) {
+   for (unsigned i = 0; i < ARRAY_SIZE(fence->seqno); i++) {
       struct iris_seqno *seqno = fence->seqno[i];
 
       if (iris_seqno_signaled(seqno))
@@ -319,23 +313,7 @@ iris_fence_get_fd(struct pipe_screen *p_screen,
    struct iris_screen *screen = (struct iris_screen *)p_screen;
    int fd = -1;
 
-   if (fence->count == 0) {
-      /* Our fence has no syncobj's recorded.  This means that all of the
-       * batches had already completed, their syncobj's had been signalled,
-       * and so we didn't bother to record them.  But we're being asked to
-       * export such a fence.  So export a dummy already-signalled syncobj.
-       */
-      struct drm_syncobj_handle args = {
-         .flags = DRM_SYNCOBJ_HANDLE_TO_FD_FLAGS_EXPORT_SYNC_FILE, .fd = -1,
-      };
-
-      args.handle = gem_syncobj_create(screen->fd, DRM_SYNCOBJ_CREATE_SIGNALED);
-      gen_ioctl(screen->fd, DRM_IOCTL_SYNCOBJ_HANDLE_TO_FD, &args);
-      gem_syncobj_destroy(screen->fd, args.handle);
-      return args.fd;
-   }
-
-   for (unsigned i = 0; i < fence->count; i++) {
+   for (unsigned i = 0; i < ARRAY_SIZE(fence->seqno); i++) {
       struct iris_seqno *seqno = fence->seqno[i];
 
       if (iris_seqno_signaled(seqno))
@@ -349,6 +327,22 @@ iris_fence_get_fd(struct pipe_screen *p_screen,
 
       gen_ioctl(screen->fd, DRM_IOCTL_SYNCOBJ_HANDLE_TO_FD, &args);
       fd = sync_merge_fd(fd, args.fd);
+   }
+
+   if (fd == -1) {
+      /* Our fence has no syncobj's recorded.  This means that all of the
+       * batches had already completed, their syncobj's had been signalled,
+       * and so we didn't bother to record them.  But we're being asked to
+       * export such a fence.  So export a dummy already-signalled syncobj.
+       */
+      struct drm_syncobj_handle args = {
+         .flags = DRM_SYNCOBJ_HANDLE_TO_FD_FLAGS_EXPORT_SYNC_FILE, .fd = -1,
+      };
+
+      args.handle = gem_syncobj_create(screen->fd, DRM_SYNCOBJ_CREATE_SIGNALED);
+      gen_ioctl(screen->fd, DRM_IOCTL_SYNCOBJ_HANDLE_TO_FD, &args);
+      gem_syncobj_destroy(screen->fd, args.handle);
+      return args.fd;
    }
 
    return fd;
@@ -403,7 +397,7 @@ iris_fence_create_fd(struct pipe_context *ctx,
    seqno->flags = IRIS_SEQNO_END;
    pipe_reference_init(&seqno->reference, 1);
 
-   struct pipe_fence_handle *fence = malloc(sizeof(*fence));
+   struct pipe_fence_handle *fence = calloc(1, sizeof(*fence));
    if (!fence) {
       free(seqno);
       free(syncobj);
@@ -412,7 +406,6 @@ iris_fence_create_fd(struct pipe_context *ctx,
    }
    pipe_reference_init(&fence->ref, 1);
    fence->seqno[0] = seqno;
-   fence->count = 1;
 
    *out = fence;
 }
