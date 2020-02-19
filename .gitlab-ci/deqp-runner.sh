@@ -188,7 +188,8 @@ quiet() {
 run_cts $DEQP /tmp/case-list.txt $RESULTS/cts-runner-results.txt
 DEQP_EXITCODE=$?
 
-quiet generate_junit $RESULTS/cts-runner-results.txt > $RESULTS/results.xml
+# junit is disabled, because it overloads gitlab.freedesktop.org to parse it.
+#quiet generate_junit $RESULTS/cts-runner-results.txt > $RESULTS/results.xml
 
 if [ $DEQP_EXITCODE -ne 0 ]; then
     # preserve caselist files in case of failures:
