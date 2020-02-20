@@ -680,6 +680,8 @@ v3dv_CmdCopyImageToBuffer(VkCommandBuffer commandBuffer,
    for (uint32_t i = 0; i < regionCount; i++) {
       if (can_use_tlb_copy_for_image_offset(&pRegions[i].imageOffset))
          copy_image_to_buffer_tlb(cmd_buffer, buffer, image, &pRegions[i]);
+      else
+         assert(!"Fallback path for vkCopyImageToBuffer not implemented");
    }
 }
 
@@ -829,6 +831,8 @@ v3dv_CmdCopyImage(VkCommandBuffer commandBuffer,
       if (can_use_tlb_copy_for_image_offset(&pRegions[i].dstOffset) &&
           can_use_tlb_copy_for_image_offset(&pRegions[i].srcOffset)) {
          copy_image_tlb(cmd_buffer, dst, src, &pRegions[i]);
+      } else {
+         assert(!"Fallback path for vkCopyImageToImage not implemented");
       }
    }
 }
@@ -1517,5 +1521,7 @@ v3dv_CmdCopyBufferToImage(VkCommandBuffer commandBuffer,
    for (uint32_t i = 0; i < regionCount; i++) {
       if (can_use_tlb_copy_for_image_offset(&pRegions[i].imageOffset))
          copy_buffer_to_image_tlb(cmd_buffer, image, buffer, &pRegions[i]);
+      else
+         assert(!"Fallback path for vkCmdCopyBufferToImage not implemented");
    }
 }
