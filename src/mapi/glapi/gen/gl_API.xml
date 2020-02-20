@@ -2080,7 +2080,8 @@
     <function name="Materialfv" es1="1.0" deprecated="3.1" exec="dynamic">
         <param name="face" type="GLenum"/>
         <param name="pname" type="GLenum"/>
-        <param name="params" type="const GLfloat *" variable_param="pname"/>
+        <param name="params" type="const GLfloat *" variable_param="pname"
+               marshal_count="_mesa_material_enum_to_count(pname)"/>
         <glx rop="97"/>
     </function>
 
@@ -2094,7 +2095,8 @@
     <function name="Materialiv" deprecated="3.1">
         <param name="face" type="GLenum"/>
         <param name="pname" type="GLenum"/>
-        <param name="params" type="const GLint *" variable_param="pname"/>
+        <param name="params" type="const GLint *" variable_param="pname"
+               marshal_count="_mesa_material_enum_to_count(pname)"/>
         <glx rop="99"/>
     </function>
 
@@ -4780,7 +4782,8 @@
 
     <function name="PointParameterfv" es1="1.1">
         <param name="pname" type="GLenum"/>
-        <param name="params" type="const GLfloat *" variable_param="pname"/>
+        <param name="params" type="const GLfloat *" variable_param="pname"
+               marshal_count="_mesa_point_param_enum_to_count(pname)"/>
         <glx rop="2066"/>
     </function>
 
@@ -4792,7 +4795,8 @@
 
     <function name="PointParameteriv">
         <param name="pname" type="GLenum"/>
-        <param name="params" type="const GLint *" variable_param="pname"/>
+        <param name="params" type="const GLint *" variable_param="pname"
+               marshal_count="_mesa_point_param_enum_to_count(pname)"/>
         <glx rop="4222"/>
     </function>
 

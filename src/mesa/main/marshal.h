@@ -404,4 +404,40 @@ _mesa_texgen_enum_to_count(GLenum pname)
    }
 }
 
+static inline unsigned
+_mesa_material_enum_to_count(GLenum pname)
+{
+   switch (pname) {
+   case GL_EMISSION:
+   case GL_AMBIENT:
+   case GL_DIFFUSE:
+   case GL_SPECULAR:
+   case GL_AMBIENT_AND_DIFFUSE:
+      return 4;
+   case GL_COLOR_INDEXES:
+      return 3;
+   case GL_SHININESS:
+      return 1;
+   default:
+      return 0;
+   }
+}
+
+static inline unsigned
+_mesa_point_param_enum_to_count(GLenum pname)
+{
+   switch (pname) {
+   case GL_DISTANCE_ATTENUATION_EXT:
+      return 3;
+   case GL_POINT_SIZE_MIN_EXT:
+   case GL_POINT_SIZE_MAX_EXT:
+   case GL_POINT_FADE_THRESHOLD_SIZE_EXT:
+   case GL_POINT_SPRITE_R_MODE_NV:
+   case GL_POINT_SPRITE_COORD_ORIGIN:
+      return 1;
+   default:
+      return 0;
+   }
+}
+
 #endif /* MARSHAL_H */
