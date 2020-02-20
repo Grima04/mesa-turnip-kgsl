@@ -27,7 +27,7 @@
     - echo $lava_job_id
     - rm -rf artifacts/*
     - cp lava-deqp.yml artifacts/.
-    - lavacli jobs logs $lava_job_id | grep -a -v "{'case':" | tee artifacts/lava-deqp-$lava_job_id.log
+    - lavacli jobs logs $lava_job_id | tee artifacts/lava-deqp-$lava_job_id.log
     - lavacli jobs show $lava_job_id
     - result=`lavacli results $lava_job_id 0_deqp deqp | head -1`
     - echo $result
