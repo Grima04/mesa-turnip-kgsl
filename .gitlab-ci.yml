@@ -341,10 +341,19 @@ meson-arm64:
     - .meson-arm
     - .ci-deqp-artifacts
   variables:
-    VULKAN_DRIVERS: "freedreno,amd"
+    VULKAN_DRIVERS: "freedreno"
   script:
     - .gitlab-ci/meson-build.sh
     - .gitlab-ci/prepare-artifacts.sh
+
+meson-arm64-build-test:
+  extends:
+    - .meson-arm
+    - .ci-deqp-artifacts
+  variables:
+    VULKAN_DRIVERS: "amd"
+  script:
+    - .gitlab-ci/meson-build.sh
 
 meson-clang:
   extends: .meson-build
