@@ -5047,12 +5047,8 @@ iris_update_surface_base_address(struct iris_batch *batch,
     *  Workaround the non pipelined state not applying in MEDIA/GPGPU pipeline
     *  mode by putting the pipeline temporarily in 3D mode..
     */
-   if (batch->name == IRIS_BATCH_COMPUTE) {
-      iris_emit_cmd(batch, GENX(PIPELINE_SELECT), sel) {
-         sel.MaskBits = 3;
-         sel.PipelineSelection = _3D;
-      }
-   }
+   if (batch->name == IRIS_BATCH_COMPUTE)
+      emit_pipeline_select(batch, _3D);
 #endif
 
    iris_emit_cmd(batch, GENX(STATE_BASE_ADDRESS), sba) {
@@ -5078,12 +5074,8 @@ iris_update_surface_base_address(struct iris_batch *batch,
     *
     *  Put the pipeline back into compute mode.
     */
-   if (batch->name == IRIS_BATCH_COMPUTE) {
-      iris_emit_cmd(batch, GENX(PIPELINE_SELECT), sel) {
-         sel.MaskBits = 3;
-         sel.PipelineSelection = GPGPU;
-      }
-   }
+   if (batch->name == IRIS_BATCH_COMPUTE)
+      emit_pipeline_select(batch, GPGPU);
 #endif
 
    flush_after_state_base_change(batch);
