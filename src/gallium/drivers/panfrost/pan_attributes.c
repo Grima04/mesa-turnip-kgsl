@@ -118,10 +118,8 @@ panfrost_emit_vertex_data(struct panfrost_batch *batch)
         /* Add special gl_VertexID/gl_InstanceID buffers */
 
         panfrost_vertex_id(ctx->padded_count, &attrs[k]);
-        so->hw[PAN_VERTEX_ID].index = k++;
-
-        panfrost_instance_id(ctx->padded_count, &attrs[k]);
-        so->hw[PAN_INSTANCE_ID].index = k++;
+        so->vertexid_index = k++;
+        panfrost_instance_id(ctx->padded_count, &attrs[k++]);
 
         /* Upload whatever we emitted and go */
 

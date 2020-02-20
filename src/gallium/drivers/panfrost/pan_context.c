@@ -430,7 +430,11 @@ panfrost_stage_attributes(struct panfrost_context *ctx)
         };
 
         /* See mali_attr_meta specification for the magic number */
+
+        builtin.index = so->vertexid_index;
         memcpy(&target[PAN_VERTEX_ID], &builtin, 4);
+
+        builtin.index = so->vertexid_index + 1;
         memcpy(&target[PAN_INSTANCE_ID], &builtin, 4);
 
         ctx->payloads[PIPE_SHADER_VERTEX].postfix.attribute_meta = transfer.gpu;

@@ -248,6 +248,7 @@ struct panfrost_shader_variants {
 
 struct panfrost_vertex_state {
         unsigned num_elements;
+        unsigned vertexid_index;
 
         struct pipe_vertex_element pipe[PIPE_MAX_ATTRIBS];
         struct mali_attr_meta hw[PIPE_MAX_ATTRIBS];
