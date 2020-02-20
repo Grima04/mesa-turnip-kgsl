@@ -61,6 +61,7 @@ static const struct debug_named_value debug_options[] = {
         {"afbc",      PAN_DBG_AFBC,     "Enable non-conformant AFBC impl"},
         {"sync",      PAN_DBG_SYNC,     "Wait for each job's completion and check for any GPU fault"},
         {"precompile", PAN_DBG_PRECOMPILE, "Precompile shaders for shader-db"},
+        {"gles3",     PAN_DBG_GLES3,    "Enable experimental GLES3 implementation"},
         DEBUG_NAMED_VALUE_END
 };
 
@@ -92,6 +93,10 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
         /* We expose in-dev stuff for dEQP that we don't want apps to use yet */
         bool is_deqp = pan_debug & PAN_DBG_DEQP;
 
+        /* Our GLES3 implementation is WIP */
+        bool is_gles3 = pan_debug & PAN_DBG_GLES3;
+        is_gles3 |= is_deqp;
+
         switch (param) {
         case PIPE_CAP_NPOT_TEXTURES:
         case PIPE_CAP_MIXED_FRAMEBUFFER_SIZES:
@@ -102,7 +107,7 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
                 return 1;
 
         case PIPE_CAP_MAX_RENDER_TARGETS:
-                return is_deqp ? 4 : 1;
+                return is_gles3 ? 4 : 1;
 
         /* Throttling frames breaks pipelining */
         case PIPE_CAP_THROTTLE:
@@ -129,10 +134,10 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
                 return 1;
 
         case PIPE_CAP_MAX_STREAM_OUTPUT_BUFFERS:
-                return is_deqp ? 4 : 0;
+                return is_gles3 ? 4 : 0;
         case PIPE_CAP_MAX_STREAM_OUTPUT_SEPARATE_COMPONENTS:
         case PIPE_CAP_MAX_STREAM_OUTPUT_INTERLEAVED_COMPONENTS:
-                return is_deqp ? 64 : 0;
+                return is_gles3 ? 64 : 0;
         case PIPE_CAP_STREAM_OUTPUT_INTERLEAVE_BUFFERS:
                 return 1;
 
@@ -141,21 +146,23 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
 
         case PIPE_CAP_GLSL_FEATURE_LEVEL:
         case PIPE_CAP_GLSL_FEATURE_LEVEL_COMPATIBILITY:
-                return is_deqp ? 140 : 120;
+                return is_gles3 ? 140 : 120;
         case PIPE_CAP_ESSL_FEATURE_LEVEL:
-                return is_deqp ? 300 : 120;
+                return is_gles3 ? 300 : 120;
 
         case PIPE_CAP_CONSTANT_BUFFER_OFFSET_ALIGNMENT:
                 return 16;
 
-        case PIPE_CAP_CUBE_MAP_ARRAY:
                 return is_deqp;
 
-        /* For faking GLES 3.1 for dEQP-GLES31 */
         case PIPE_CAP_TEXTURE_MULTISAMPLE:
+                return is_gles3;
+
+        /* For faking GLES 3.1 for dEQP-GLES31 */
         case PIPE_CAP_MAX_COMBINED_HW_ATOMIC_COUNTERS:
         case PIPE_CAP_MAX_COMBINED_HW_ATOMIC_COUNTER_BUFFERS:
         case PIPE_CAP_IMAGE_LOAD_FORMATTED:
+        case PIPE_CAP_CUBE_MAP_ARRAY:
                 return is_deqp;
 
         /* For faking compute shaders */

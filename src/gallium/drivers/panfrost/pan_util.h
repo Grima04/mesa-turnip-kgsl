@@ -34,6 +34,7 @@
 #define PAN_DBG_AFBC            0x0008
 #define PAN_DBG_SYNC            0x0010
 #define PAN_DBG_PRECOMPILE      0x0020
+#define PAN_DBG_GLES3           0x0040
 
 extern int pan_debug;
 
