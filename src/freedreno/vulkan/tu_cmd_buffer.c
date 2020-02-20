@@ -2706,6 +2706,12 @@ struct tu_draw_info
     */
    struct tu_buffer *count_buffer;
    uint64_t count_buffer_offset;
+
+   /**
+    * Stream output parameters resource.
+    */
+   struct tu_buffer *streamout_buffer;
+   uint64_t streamout_buffer_offset;
 };
 
 #define ENABLE_ALL (CP_SET_DRAW_STATE__0_BINNING | CP_SET_DRAW_STATE__0_GMEM | CP_SET_DRAW_STATE__0_SYSMEM)
@@ -3934,6 +3940,28 @@ tu_CmdDrawIndexedIndirect(VkCommandBuffer commandBuffer,
    info.indirect = buffer;
    info.indirect_offset = offset;
    info.stride = stride;
+
+   tu_draw(cmd_buffer, &info);
+}
+
+void tu_CmdDrawIndirectByteCountEXT(VkCommandBuffer commandBuffer,
+                                    uint32_t instanceCount,
+                                    uint32_t firstInstance,
+                                    VkBuffer _counterBuffer,
+                                    VkDeviceSize counterBufferOffset,
+                                    uint32_t counterOffset,
+                                    uint32_t vertexStride)
+{
+   TU_FROM_HANDLE(tu_cmd_buffer, cmd_buffer, commandBuffer);
+   TU_FROM_HANDLE(tu_buffer, buffer, _counterBuffer);
+
+   struct tu_draw_info info = {};
+
+   info.instance_count = instanceCount;
+   info.first_instance = firstInstance;
+   info.streamout_buffer = buffer;
+   info.streamout_buffer_offset = counterBufferOffset;
+   info.stride = vertexStride;
 
    tu_draw(cmd_buffer, &info);
 }
