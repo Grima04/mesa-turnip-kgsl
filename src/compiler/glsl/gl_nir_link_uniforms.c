@@ -607,7 +607,10 @@ nir_link_uniform(struct gl_context *ctx,
          int sampler_index =
             get_next_index(state, uniform, &state->next_sampler_index);
 
-         state->num_shader_samplers++;
+         /* Samplers (bound or bindless) are counted as two components as
+          * specified by ARB_bindless_texture.
+          */
+         state->num_shader_samplers += values / 2;
 
          uniform->opaque[stage].active = true;
          uniform->opaque[stage].index = sampler_index;
