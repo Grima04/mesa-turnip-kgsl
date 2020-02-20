@@ -1127,7 +1127,8 @@
     <function name="CallLists" deprecated="3.1">
         <param name="n" type="GLsizei" counter="true"/>
         <param name="type" type="GLenum"/>
-        <param name="lists" type="const GLvoid *" variable_param="type" count="n"/>
+        <param name="lists" type="const GLvoid *" variable_param="type" count="n"
+               marshal_count="(n * _mesa_calllists_enum_to_count(type))"/>
         <glx rop="2" large="true"/>
     </function>
 

@@ -440,4 +440,40 @@ _mesa_point_param_enum_to_count(GLenum pname)
    }
 }
 
+static inline unsigned
+_mesa_calllists_enum_to_count(GLenum type)
+{
+   switch (type) {
+   case GL_BYTE:
+   case GL_UNSIGNED_BYTE:
+      return 1;
+   case GL_SHORT:
+   case GL_UNSIGNED_SHORT:
+   case GL_2_BYTES:
+      return 2;
+   case GL_3_BYTES:
+      return 3;
+   case GL_INT:
+   case GL_UNSIGNED_INT:
+   case GL_FLOAT:
+   case GL_4_BYTES:
+      return 4;
+   default:
+      return 0;
+   }
+}
+
+static inline unsigned
+_mesa_patch_param_enum_to_count(GLenum pname)
+{
+   switch (pname) {
+   case GL_PATCH_DEFAULT_OUTER_LEVEL:
+      return 4;
+   case GL_PATCH_DEFAULT_INNER_LEVEL:
+      return 2;
+   default:
+      return 0;
+   }
+}
+
 #endif /* MARSHAL_H */
