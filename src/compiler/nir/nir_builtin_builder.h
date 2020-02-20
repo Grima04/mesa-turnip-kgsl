@@ -25,7 +25,7 @@
 #define NIR_BUILTIN_BUILDER_H
 
 #include "util/u_math.h"
-#include "nir/nir_builder.h"
+#include "nir_builder.h"
 
 #ifdef __cplusplus
 extern "C" {
