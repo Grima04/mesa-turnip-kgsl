@@ -2396,6 +2396,10 @@ bool radv_end_thread_trace(struct radv_queue *queue);
 bool radv_get_thread_trace(struct radv_queue *queue,
 			   struct radv_thread_trace *thread_trace);
 
+/* radv_rgp.c */
+int radv_dump_thread_trace(struct radv_device *device,
+			   const struct radv_thread_trace *trace);
+
 struct radeon_winsys_sem;
 
 uint64_t radv_get_current_time(void);
