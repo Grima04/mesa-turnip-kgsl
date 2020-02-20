@@ -130,7 +130,7 @@ class PrintCode(gl_XML.gl_print_base):
                 i += 1
 
         if not func.fixed_params and not func.variable_params:
-            out('(void) cmd;\n')
+            out('(void) cmd;')
 
         # Uncomment this if you want to call _mesa_glthread_finish for debugging
         #out('_mesa_glthread_finish(ctx);')
