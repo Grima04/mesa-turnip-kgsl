@@ -112,7 +112,7 @@ panfrost-t860-test:arm64:
   tags:
     - lava-sun8i-h3-libretech-all-h3-cc
 
-lima-mali450-test:arm64:
+.lima-mali450-test:arm64:
   extends: .lava-test:arm64
   variables:
     DEVICE_TYPE: meson-gxl-s905x-libretech-cc
