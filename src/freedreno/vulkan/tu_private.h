@@ -841,11 +841,20 @@ enum tu_cmd_dirty_bits
    TU_CMD_DIRTY_VERTEX_BUFFERS = 1 << 2,
    TU_CMD_DIRTY_DESCRIPTOR_SETS = 1 << 3,
    TU_CMD_DIRTY_PUSH_CONSTANTS = 1 << 4,
+   TU_CMD_DIRTY_STREAMOUT_BUFFERS = 1 << 5,
 
    TU_CMD_DIRTY_DYNAMIC_LINE_WIDTH = 1 << 16,
    TU_CMD_DIRTY_DYNAMIC_STENCIL_COMPARE_MASK = 1 << 17,
    TU_CMD_DIRTY_DYNAMIC_STENCIL_WRITE_MASK = 1 << 18,
    TU_CMD_DIRTY_DYNAMIC_STENCIL_REFERENCE = 1 << 19,
+};
+
+struct tu_streamout_state {
+   uint16_t stride[IR3_MAX_SO_BUFFERS];
+   uint32_t ncomp[IR3_MAX_SO_BUFFERS];
+   uint32_t prog[IR3_MAX_SO_OUTPUTS * 2];
+   uint32_t prog_count;
+   uint32_t vpc_so_buf_cntl;
 };
 
 struct tu_cmd_state
@@ -863,6 +872,17 @@ struct tu_cmd_state
    } vb;
 
    struct tu_dynamic_state dynamic;
+
+   /* Stream output buffers */
+   struct
+   {
+      struct tu_buffer *buffers[IR3_MAX_SO_BUFFERS];
+      VkDeviceSize offsets[IR3_MAX_SO_BUFFERS];
+      VkDeviceSize sizes[IR3_MAX_SO_BUFFERS];
+   } streamout_buf;
+
+   uint8_t streamout_reset;
+   uint8_t streamout_enabled;
 
    /* Index buffer */
    struct tu_buffer *index_buffer;
@@ -1151,6 +1171,8 @@ struct tu_pipeline
 
    bool need_indirect_descriptor_sets;
    VkShaderStageFlags active_stages;
+
+   struct tu_streamout_state streamout;
 
    struct
    {
