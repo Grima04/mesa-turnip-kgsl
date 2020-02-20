@@ -43,10 +43,16 @@ apt-get install -y --no-remove \
       libvulkan-dev \
       libwayland-client0 \
       libwayland-server0 \
+      libxcb-ewmh2 \
+      libxcb-ewmh-dev \
+      libxcb-keysyms1 \
+      libxcb-keysyms1-dev \
       libxcb-randr0 \
       libxcb-xfixes0 \
       libxkbcommon0 \
       libxkbcommon-dev \
+      libxrandr2 \
+      libxrandr-dev \
       libxrender1 \
       libxrender-dev \
       libllvm9 \
@@ -71,6 +77,10 @@ apt-get install -y --no-remove \
 
 . .gitlab-ci/build-gfxreconstruct.sh
 
+############### Build VulkanTools
+
+. .gitlab-ci/build-vulkantools.sh
+
 ############### Uninstall the build software
 
 apt-get purge -y \
@@ -84,7 +94,10 @@ apt-get purge -y \
       liblz4-dev \
       libpng-dev \
       libvulkan-dev \
+      libxcb-ewmh-dev \
+      libxcb-keysyms1-dev \
       libxkbcommon-dev \
+      libxrandr-dev \
       libxrender-dev \
       meson \
       patch \
