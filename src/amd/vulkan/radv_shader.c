@@ -1336,11 +1336,9 @@ radv_get_max_waves(struct radv_device *device,
 			     RADV_NUM_PHYSICAL_VGPRS / vgprs);
 	}
 
-	/* LDS is 64KB per CU (4 SIMDs), divided into 16KB blocks per SIMD
-	 * that PS can use.
-	 */
+	unsigned max_lds_per_simd = device->physical_device->rad_info.lds_size_per_cu / device->physical_device->rad_info.num_simd_per_compute_unit;
 	if (lds_per_wave)
-		max_simd_waves = MIN2(max_simd_waves, 16384 / lds_per_wave);
+		max_simd_waves = MIN2(max_simd_waves, max_lds_per_simd / lds_per_wave);
 
 	return max_simd_waves;
 }
