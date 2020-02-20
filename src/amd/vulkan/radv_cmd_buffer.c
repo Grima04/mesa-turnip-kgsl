@@ -3433,14 +3433,8 @@ VkResult radv_BeginCommandBuffer(
 		radv_cmd_buffer_set_subpass(cmd_buffer, subpass);
 	}
 
-	if (unlikely(cmd_buffer->device->trace_bo)) {
-		struct radv_device *device = cmd_buffer->device;
-
-		radv_cs_add_buffer(device->ws, cmd_buffer->cs,
-				   device->trace_bo);
-
+	if (unlikely(cmd_buffer->device->trace_bo))
 		radv_cmd_buffer_trace_emit(cmd_buffer);
-	}
 
 	cmd_buffer->status = RADV_CMD_BUFFER_STATUS_RECORDING;
 
