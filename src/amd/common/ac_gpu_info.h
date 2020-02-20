@@ -49,6 +49,7 @@ struct radeon_info {
 	const char                  *marketing_name;
 	bool                        is_pro_graphics;
 	uint32_t                    pci_id;
+	uint32_t                    pci_rev_id;
 	enum radeon_family          family;
 	enum chip_class             chip_class;
 	uint32_t                    family_id;
@@ -84,6 +85,8 @@ struct radeon_info {
 	uint64_t                    gart_size;
 	uint64_t                    vram_size;
 	uint64_t                    vram_vis_size;
+	uint32_t                    vram_bit_width;
+	uint32_t                    vram_type;
 	unsigned                    gds_size;
 	unsigned                    gds_gfx_partition_size;
 	uint64_t                    max_alloc_size;
@@ -98,6 +101,11 @@ struct radeon_info {
 	bool			    tcc_harvested;
 	unsigned                    pc_lines;
 	uint32_t                    lds_size_per_cu;
+	uint32_t                    lds_granularity;
+	uint32_t                    max_memory_clock;
+	uint32_t                    ce_ram_size;
+	uint32_t                    l1_cache_size;
+	uint32_t                    l2_cache_size;
 
 	/* CP info. */
 	bool                        gfx_ib_pad_with_type2;
