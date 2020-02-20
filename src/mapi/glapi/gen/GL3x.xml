@@ -117,25 +117,25 @@
 
   <!-- These functions are unique to GL3 -->
 
-  <function name="ClearBufferiv" es2="3.0" marshal="custom" no_error="true">
+  <function name="ClearBufferiv" es2="3.0" no_error="true">
     <param name="buffer" type="GLenum"/>
     <param name="drawbuffer" type="GLint"/>
-    <param name="value" type="const GLint *"/>
+    <param name="value" type="const GLint *" count="_mesa_buffer_enum_to_count(buffer)"/>
   </function>
 
-  <function name="ClearBufferuiv" es2="3.0" marshal="custom" no_error="true">
+  <function name="ClearBufferuiv" es2="3.0" no_error="true">
     <param name="buffer" type="GLenum"/>
     <param name="drawbuffer" type="GLint"/>
-    <param name="value" type="const GLuint *"/>
+    <param name="value" type="const GLuint *" count="_mesa_buffer_enum_to_count(buffer)"/>
   </function>
 
-  <function name="ClearBufferfv" es2="3.0" marshal="custom" no_error="true">
+  <function name="ClearBufferfv" es2="3.0" no_error="true">
     <param name="buffer" type="GLenum"/>
     <param name="drawbuffer" type="GLint"/>
-    <param name="value" type="const GLfloat *"/>
+    <param name="value" type="const GLfloat *" count="_mesa_buffer_enum_to_count(buffer)"/>
   </function>
 
-  <function name="ClearBufferfi" es2="3.0" marshal="custom" no_error="true">
+  <function name="ClearBufferfi" es2="3.0" no_error="true">
     <param name="buffer" type="GLenum"/>
     <param name="drawbuffer" type="GLint"/>
     <param name="depth" type="GLfloat"/>

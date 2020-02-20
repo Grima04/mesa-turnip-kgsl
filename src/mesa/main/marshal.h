@@ -183,11 +183,6 @@ struct marshal_cmd_BufferData;
 struct marshal_cmd_BufferSubData;
 struct marshal_cmd_NamedBufferData;
 struct marshal_cmd_NamedBufferSubData;
-struct marshal_cmd_ClearBuffer;
-#define marshal_cmd_ClearBufferfv   marshal_cmd_ClearBuffer
-#define marshal_cmd_ClearBufferiv   marshal_cmd_ClearBuffer
-#define marshal_cmd_ClearBufferuiv  marshal_cmd_ClearBuffer
-#define marshal_cmd_ClearBufferfi   marshal_cmd_ClearBuffer
 
 void
 _mesa_unmarshal_Enable(struct gl_context *ctx,
@@ -250,36 +245,20 @@ void GLAPIENTRY
 _mesa_marshal_NamedBufferSubData(GLuint buffer, GLintptr offset, GLsizeiptr size,
                                  const GLvoid * data);
 
-void
-_mesa_unmarshal_ClearBufferfv(struct gl_context *ctx,
-                              const struct marshal_cmd_ClearBuffer *cmd);
-
-void GLAPIENTRY
-_mesa_marshal_ClearBufferfv(GLenum buffer, GLint drawbuffer,
-                            const GLfloat *value);
-
-void
-_mesa_unmarshal_ClearBufferiv(struct gl_context *ctx,
-                              const struct marshal_cmd_ClearBuffer *cmd);
-
-void GLAPIENTRY
-_mesa_marshal_ClearBufferiv(GLenum buffer, GLint drawbuffer,
-                            const GLint *value);
-
-void
-_mesa_unmarshal_ClearBufferuiv(struct gl_context *ctx,
-                               const struct marshal_cmd_ClearBuffer *cmd);
-
-void GLAPIENTRY
-_mesa_marshal_ClearBufferuiv(GLenum buffer, GLint drawbuffer,
-                             const GLuint *value);
-
-void
-_mesa_unmarshal_ClearBufferfi(struct gl_context *ctx,
-                              const struct marshal_cmd_ClearBuffer *cmd);
-
-void GLAPIENTRY
-_mesa_marshal_ClearBufferfi(GLenum buffer, GLint drawbuffer,
-                            const GLfloat depth, const GLint stencil);
+static inline unsigned
+_mesa_buffer_enum_to_count(GLenum buffer)
+{
+   switch (buffer) {
+   case GL_COLOR:
+      return 4;
+   case GL_DEPTH_STENCIL:
+      return 2;
+   case GL_STENCIL:
+   case GL_DEPTH:
+      return 1;
+   default:
+      return 0;
+   }
+}
 
 #endif /* MARSHAL_H */
