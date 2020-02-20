@@ -246,7 +246,7 @@ bool lower_txl_txf_array_or_cube(nir_builder *b, nir_tex_instr *tex)
    int min_lod_idx = nir_tex_instr_src_index(tex, nir_tex_src_min_lod);
    assert (lod_idx >= 0 || bias_idx >= 0);
 
-   nir_ssa_def *size = nir_get_texture_size(b, tex);
+   nir_ssa_def *size = nir_i2f32(b, nir_get_texture_size(b, tex));
    nir_ssa_def *lod = (lod_idx >= 0) ?
                          nir_ssa_for_src(b, tex->src[lod_idx].src, 1) :
                          nir_get_texture_lod(b, tex);
