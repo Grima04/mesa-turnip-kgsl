@@ -439,14 +439,27 @@ emit_image_load(struct v3dv_cl *cl,
        * depth and stencil aspects are copied as separate regions and
        * the spec expects them to be tightly packed.
        */
-      if (is_copy_to_buffer) {
-         if (image->vk_format == VK_FORMAT_X8_D24_UNORM_PACK32 ||
-             (image->vk_format == VK_FORMAT_D24_UNORM_S8_UINT &&
-              (aspect & VK_IMAGE_ASPECT_DEPTH_BIT))) {
-            load.r_b_swap = true;
-            load.channel_reverse = true;
-         }
+      bool needs_rb_swap = false;
+      bool needs_chan_reverse = false;
+      if (is_copy_to_buffer &&
+         (image->vk_format == VK_FORMAT_X8_D24_UNORM_PACK32 ||
+          (image->vk_format == VK_FORMAT_D24_UNORM_S8_UINT &&
+           (aspect & VK_IMAGE_ASPECT_DEPTH_BIT)))) {
+         needs_rb_swap = true;
+         needs_chan_reverse = true;
+      } else if (!is_copy_from_buffer && !is_copy_to_buffer &&
+                 (aspect & VK_IMAGE_ASPECT_COLOR_BIT)) {
+         /* This is not a raw data copy (i.e. we are clearing the image),
+          * so we need to make sure we respect the format swizzle.
+          */
+         const struct util_format_description *desc =
+            vk_format_description(image->vk_format);
+         needs_rb_swap = desc->swizzle[0] == PIPE_SWIZZLE_Z &&
+                         image->vk_format != VK_FORMAT_B5G6R5_UNORM_PACK16;
       }
+
+      load.r_b_swap = needs_rb_swap;
+      load.channel_reverse = needs_chan_reverse;
 
       if (slice->tiling == VC5_TILING_UIF_NO_XOR ||
           slice->tiling == VC5_TILING_UIF_XOR) {
@@ -486,14 +499,24 @@ emit_image_store(struct v3dv_cl *cl,
       store.clear_buffer_being_stored = false;
 
       /* See rationale in emit_image_load() */
-      if (is_copy_from_buffer) {
-         if (image->vk_format == VK_FORMAT_X8_D24_UNORM_PACK32 ||
-             (image->vk_format == VK_FORMAT_D24_UNORM_S8_UINT &&
-              (aspect & VK_IMAGE_ASPECT_DEPTH_BIT))) {
-            store.r_b_swap = true;
-            store.channel_reverse = true;
-         }
+      bool needs_rb_swap = false;
+      bool needs_chan_reverse = false;
+      if (is_copy_from_buffer &&
+         (image->vk_format == VK_FORMAT_X8_D24_UNORM_PACK32 ||
+          (image->vk_format == VK_FORMAT_D24_UNORM_S8_UINT &&
+           (aspect & VK_IMAGE_ASPECT_DEPTH_BIT)))) {
+         needs_rb_swap = true;
+         needs_chan_reverse = true;
+      } else if (!is_copy_from_buffer && !is_copy_to_buffer &&
+                 (aspect & VK_IMAGE_ASPECT_COLOR_BIT)) {
+         const struct util_format_description *desc =
+            vk_format_description(image->vk_format);
+         needs_rb_swap = desc->swizzle[0] == PIPE_SWIZZLE_Z &&
+                         image->vk_format != VK_FORMAT_B5G6R5_UNORM_PACK16;
       }
+
+      store.r_b_swap = needs_rb_swap;
+      store.channel_reverse = needs_chan_reverse;
 
       store.output_image_format = choose_tlb_format(image, aspect, true,
                                                     is_copy_to_buffer,
