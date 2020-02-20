@@ -17,13 +17,13 @@ traces-db:
 traces:
   - path: glmark2/jellyfish.rdc
     expectations:
-      - device: intel-0x3185
+      - device: gl-intel-0x3185
         checksum: 58359ea4caf6ad44c6b65526881bbd17
-      - device: vmware-llvmpipe
+      - device: gl-vmware-llvmpipe
         checksum: d82267c25a0decdad7b563c56bb81106
   - path: supertuxkart/supertuxkart-antediluvian-abyss.rdc
     expectations:
-      - device: intel-0x3185
+      - device: gl-intel-0x3185
         checksum: ff827f7eb069afd87cc305a422cba939
 ```
 
@@ -56,9 +56,9 @@ To enable trace testing on a new device:
 
    ```yaml
    my-hardware-traces:
+     extends: .traces-test-gl
      variables:
        DEVICE_NAME: "myhardware"
-     extends: .traces-test
    ```
 
 2. Update the .gitlab-ci/traces.yml file with expectations for the new device.
@@ -110,8 +110,8 @@ appended.
 
 Examples:
 
-    python3 dump_traces_images.py --device-name=vmware-llvmpipe mytrace.trace
-    python3 dump_traces_images.py --device-name=vmware-llvmpipe --calls=2075,3300 mytrace.trace
+    python3 dump_traces_images.py --device-name=gl-vmware-llvmpipe mytrace.trace
+    python3 dump_traces_images.py --device-name=gl-vmware-llvmpipe --calls=2075,3300 mytrace.trace
 
 ### Running the replay scripts locally
 

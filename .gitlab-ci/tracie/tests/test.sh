@@ -31,8 +31,10 @@ assert() {
 }
 
 run_tracie() {
-    # Run tests for the .testtrace types, using the "test-device" device name.
-    DEVICE_NAME=test-device CI_PROJECT_DIR="$TEST_DIR" \
+    # Run tests for the .testtrace types, using the "gl-test-device" and "vk-test-device" device names.
+    DEVICE_NAME=gl-test-device CI_PROJECT_DIR="$TEST_DIR" \
+        "$TEST_DIR/tracie.sh" "$TEST_DIR/tests/traces.yml" testtrace && \
+    DEVICE_NAME=vk-test-device CI_PROJECT_DIR="$TEST_DIR" \
         "$TEST_DIR/tracie.sh" "$TEST_DIR/tests/traces.yml" testtrace
 }
 
@@ -102,7 +104,7 @@ tracie_ignores_unspecified_trace_types() {
 
     echo "  - path: trace1/empty.trace" >> "$TEST_DIR/tests/traces.yml"
     echo "    expectations:" >> "$TEST_DIR/tests/traces.yml"
-    echo "    - device: test-device" >> "$TEST_DIR/tests/traces.yml"
+    echo "    - device: gl-test-device" >> "$TEST_DIR/tests/traces.yml"
     echo "      checksum: 000000000000000" >> "$TEST_DIR/tests/traces.yml"
     # For the tests we only scan for the .testtrace type,
     # so the .trace file added below should be ignored.
@@ -160,11 +162,11 @@ tracie_stores_only_logs_on_checksum_match() {
     run_tracie
     assert "[ $? = 0 ]"
 
-    assert "[ -f "$TEST_DIR/results/trace1/test/test-device/magenta.testtrace.log" ]"
-    assert "[ -f "$TEST_DIR/results/trace2/test/test-device/olive.testtrace.log" ]"
+    assert "[ -f "$TEST_DIR/results/trace1/test/gl-test-device/magenta.testtrace.log" ]"
+    assert "[ -f "$TEST_DIR/results/trace2/test/vk-test-device/olive.testtrace.log" ]"
 
-    assert "[ ! -f "$TEST_DIR/results/trace1/test/test-device/magenta.testtrace-0.png" ]"
-    assert "[ ! -f "$TEST_DIR/results/trace2/test/test-device/olive.testtrace-0.png" ]"
+    assert "[ ! -f "$TEST_DIR/results/trace1/test/gl-test-device/magenta.testtrace-0.png" ]"
+    assert "[ ! -f "$TEST_DIR/results/trace2/test/vk-test-device/olive.testtrace-0.png" ]"
 
     ls -lR "$TEST_DIR"
 
@@ -181,8 +183,8 @@ tracie_stores_images_on_checksum_mismatch() {
     run_tracie
     assert "[ $? != 0 ]"
 
-    assert "[ ! -f "$TEST_DIR/results/trace1/test/test-device/magenta.testtrace-0.png" ]"
-    assert "[ -f "$TEST_DIR/results/trace2/test/test-device/olive.testtrace-0.png" ]"
+    assert "[ ! -f "$TEST_DIR/results/trace1/test/gl-test-device/magenta.testtrace-0.png" ]"
+    assert "[ -f "$TEST_DIR/results/trace2/test/vk-test-device/olive.testtrace-0.png" ]"
 
     destroy_repo "$repo"
 }
@@ -194,8 +196,8 @@ tracie_stores_images_on_request() {
     (export TRACIE_STORE_IMAGES=1; run_tracie)
     assert "[ $? = 0 ]"
 
-    assert "[ -f "$TEST_DIR/results/trace1/test/test-device/magenta.testtrace-0.png" ]"
-    assert "[ -f "$TEST_DIR/results/trace2/test/test-device/olive.testtrace-0.png" ]"
+    assert "[ -f "$TEST_DIR/results/trace1/test/gl-test-device/magenta.testtrace-0.png" ]"
+    assert "[ -f "$TEST_DIR/results/trace2/test/vk-test-device/olive.testtrace-0.png" ]"
 
     ls -lR "$TEST_DIR"
 

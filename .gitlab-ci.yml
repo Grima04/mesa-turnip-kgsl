@@ -736,5 +736,5 @@ llvmpipe-traces:
   variables:
     LIBGL_ALWAYS_SOFTWARE: "true"
     GALLIUM_DRIVER: "llvmpipe"
-    DEVICE_NAME: "vmware-llvmpipe"
+    DEVICE_NAME: "gl-vmware-llvmpipe"
   extends: .traces-test
