@@ -1671,18 +1671,21 @@ void radv_GetPhysicalDeviceProperties2(
 			properties->sgprsPerSimd =
 				pdevice->rad_info.num_physical_sgprs_per_simd;
 			properties->minSgprAllocation =
-				pdevice->rad_info.chip_class >= GFX8 ? 16 : 8;
+				pdevice->rad_info.min_sgpr_alloc;
 			properties->maxSgprAllocation =
-				pdevice->rad_info.family == CHIP_TONGA ||
-				pdevice->rad_info.family == CHIP_ICELAND ? 96 : 104;
+				pdevice->rad_info.max_sgpr_alloc;
 			properties->sgprAllocationGranularity =
-				pdevice->rad_info.chip_class >= GFX8 ? 16 : 8;
+				pdevice->rad_info.sgpr_alloc_granularity;
 
 			/* VGPR. */
-			properties->vgprsPerSimd = RADV_NUM_PHYSICAL_VGPRS;
-			properties->minVgprAllocation = 4;
-			properties->maxVgprAllocation = 256;
-			properties->vgprAllocationGranularity = 4;
+			properties->vgprsPerSimd =
+				pdevice->rad_info.num_physical_wave64_vgprs_per_simd;
+			properties->minVgprAllocation =
+				pdevice->rad_info.min_vgpr_alloc;
+			properties->maxVgprAllocation =
+				pdevice->rad_info.max_vgpr_alloc;
+			properties->vgprAllocationGranularity =
+				pdevice->rad_info.vgpr_alloc_granularity;
 			break;
 		}
 		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_CORE_PROPERTIES_2_AMD: {
