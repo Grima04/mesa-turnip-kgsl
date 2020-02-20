@@ -476,4 +476,25 @@ _mesa_patch_param_enum_to_count(GLenum pname)
    }
 }
 
+static inline unsigned
+_mesa_memobj_enum_to_count(GLenum pname)
+{
+   switch (pname) {
+   case GL_DEDICATED_MEMORY_OBJECT_EXT:
+      return 1;
+   default:
+      return 0;
+   }
+}
+
+static inline unsigned
+_mesa_semaphore_enum_to_count(GLenum pname)
+{
+   switch (pname) {
+   /* EXT_semaphore and EXT_semaphore_fd define no parameters */
+   default:
+      return 0;
+   }
+}
+
 #endif /* MARSHAL_H */
