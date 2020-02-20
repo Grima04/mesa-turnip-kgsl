@@ -44,19 +44,21 @@ glthread_unmarshal_batch(void *job, int thread_index)
 {
    struct glthread_batch *batch = (struct glthread_batch*)job;
    struct gl_context *ctx = batch->ctx;
-   size_t pos = 0;
+   int pos = 0;
+   int used = batch->used;
+   uint8_t *buffer = batch->buffer;
 
    _glapi_set_dispatch(ctx->CurrentServerDispatch);
 
-   while (pos < batch->used) {
+   while (pos < used) {
       const struct marshal_cmd_base *cmd =
-         (const struct marshal_cmd_base *)&batch->buffer[pos];
+         (const struct marshal_cmd_base *)&buffer[pos];
 
       _mesa_unmarshal_dispatch[cmd->cmd_id](ctx, cmd);
       pos += cmd->cmd_size;
    }
 
-   assert(pos == batch->used);
+   assert(pos == used);
    batch->used = 0;
 }
 
