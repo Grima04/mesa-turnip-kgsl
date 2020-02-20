@@ -712,6 +712,13 @@ tu_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          features->inheritedConditionalRendering = false;
          break;
       }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_FEATURES_EXT: {
+         VkPhysicalDeviceTransformFeedbackFeaturesEXT *features =
+            (VkPhysicalDeviceTransformFeedbackFeaturesEXT *) ext;
+         features->transformFeedback = true;
+         features->geometryStreams = false;
+         break;
+      }
       default:
          break;
       }
@@ -909,6 +916,23 @@ tu_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          properties->maxPerSetDescriptors = (1ull << 31) / 96;
          /* Our buffer size fields allow only this much */
          properties->maxMemoryAllocationSize = 0xFFFFFFFFull;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_PROPERTIES_EXT: {
+         VkPhysicalDeviceTransformFeedbackPropertiesEXT *properties =
+            (VkPhysicalDeviceTransformFeedbackPropertiesEXT *)ext;
+
+         properties->maxTransformFeedbackStreams = IR3_MAX_SO_STREAMS;
+         properties->maxTransformFeedbackBuffers = IR3_MAX_SO_BUFFERS;
+         properties->maxTransformFeedbackBufferSize = UINT32_MAX;
+         properties->maxTransformFeedbackStreamDataSize = 512;
+         properties->maxTransformFeedbackBufferDataSize = 512;
+         properties->maxTransformFeedbackBufferDataStride = 512;
+         /* TODO: enable xfb query */
+         properties->transformFeedbackQueries = false;
+         properties->transformFeedbackStreamsLinesTriangles = false;
+         properties->transformFeedbackRasterizationStreamSelect = false;
+         properties->transformFeedbackDraw = true;
          break;
       }
       default:
