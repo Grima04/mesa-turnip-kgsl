@@ -207,9 +207,9 @@ typedef enum {
 
 typedef enum {
         midgard_outmod_none = 0,
-        midgard_outmod_pos  = 1,
-        /* 0x2 unknown */
-        midgard_outmod_sat  = 3
+        midgard_outmod_pos  = 1, /* max(x, 0.0) */
+        midgard_outmod_one  = 2, /* clamp(x, -1.0, 1.0) */
+        midgard_outmod_sat  = 3 /* clamp(x, 0.0, 1.0) */
 } midgard_outmod_float;
 
 typedef enum {
