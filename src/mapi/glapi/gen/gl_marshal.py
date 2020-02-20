@@ -119,18 +119,14 @@ class PrintCode(gl_XML.gl_print_base):
                     out('cmd->{0}_null = !{0};'.format(p.name))
                     out('if (!cmd->{0}_null) {{'.format(p.name))
                     with indent():
-                        out(('memcpy(variable_data, {0}, {1});').format(
-                            p.name, p.size_string(False)))
+                        out(('memcpy(variable_data, {0}, {0}_size);').format(p.name))
                         if i < len(func.variable_params):
-                            out('variable_data += {0};'.format(
-                                p.size_string(False)))
+                            out('variable_data += {0}_size;'.format(p.name))
                     out('}')
                 else:
-                    out(('memcpy(variable_data, {0}, {1});').format(
-                        p.name, p.size_string(False)))
+                    out(('memcpy(variable_data, {0}, {0}_size);').format(p.name))
                     if i < len(func.variable_params):
-                        out('variable_data += {0};'.format(
-                            p.size_string(False)))
+                        out('variable_data += {0}_size;'.format(p.name))
                 i += 1
 
         if not func.fixed_params and not func.variable_params:
@@ -221,7 +217,7 @@ class PrintCode(gl_XML.gl_print_base):
         # get to the validation in Mesa core.
         for p in func.parameters:
             if p.is_variable_length():
-                out('if (unlikely({0} < 0)) {{'.format(p.size_string()))
+                out('if (unlikely({0}_size < 0)) {{'.format(p.name))
                 with indent():
                     out('goto fallback_to_sync;')
                 out('}')
@@ -237,13 +233,16 @@ class PrintCode(gl_XML.gl_print_base):
         out('{')
         with indent():
             out('GET_CURRENT_CONTEXT(ctx);')
+            for p in func.variable_params:
+                out('int {0}_size = {1};'.format(p.name, p.size_string()))
+
             struct = 'struct marshal_cmd_{0}'.format(func.name)
             size_terms = ['sizeof({0})'.format(struct)]
             for p in func.variable_params:
-                size = p.size_string()
                 if p.img_null_flag:
-                    size = '({0} ? {1} : 0)'.format(p.name, size)
-                size_terms.append(size)
+                    size_terms.append('({0} ? {0}_size : 0)'.format(p.name))
+                else:
+                    size_terms.append('{0}_size'.format(p.name))
             out('int cmd_size = {0};'.format(' + '.join(size_terms)))
             out('{0} *cmd;'.format(struct))
 

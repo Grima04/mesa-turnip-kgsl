@@ -5304,7 +5304,7 @@
     <function name="BindAttribLocation" es2="2.0" no_error="true">
         <param name="program" type="GLuint"/>
         <param name="index" type="GLuint"/>
-        <param name="name" type="const GLchar *"/>
+        <param name="name" type="const GLchar *" count="(strlen(name) + 1)"/>
         <glx ignore="true"/>
     </function>
 
