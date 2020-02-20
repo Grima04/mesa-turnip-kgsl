@@ -107,7 +107,6 @@ panfrost_create_blend_state(struct pipe_context *pipe,
         so->base = *blend;
 
         /* TODO: The following features are not yet implemented */
-        assert(!blend->logicop_enable);
         assert(!blend->alpha_to_coverage);
         assert(!blend->alpha_to_one);
 
@@ -119,15 +118,17 @@ panfrost_create_blend_state(struct pipe_context *pipe,
 
                 /* Without indep blending, the first RT settings replicate */
 
-                unsigned g =
-                        blend->independent_blend_enable ? c : 0;
+                if (!blend->logicop_enable) {
+                        unsigned g =
+                                blend->independent_blend_enable ? c : 0;
 
-                rt->has_fixed_function =
-                        panfrost_make_fixed_blend_mode(
-                                &blend->rt[g],
-                                &rt->equation,
-                                &rt->constant_mask,
-                                blend->rt[g].colormask);
+                        rt->has_fixed_function =
+                                panfrost_make_fixed_blend_mode(
+                                        &blend->rt[g],
+                                        &rt->equation,
+                                        &rt->constant_mask,
+                                        blend->rt[g].colormask);
+                }
 
                 /* Regardless if that works, we also need to initialize
                  * the blend shaders */

@@ -89,6 +89,14 @@ nir_make_options(const struct pipe_blend_state *blend, unsigned i)
 {
         nir_lower_blend_options options;
 
+        if (blend->logicop_enable) {
+            options.logicop_enable = true;
+            options.logicop_func = blend->logicop_func;
+            return options;
+        }
+
+        options.logicop_enable = false;
+
         /* If blend is disabled, we just use replace mode */
 
         nir_lower_blend_channel rgb = {

@@ -156,6 +156,70 @@ nir_color_mask(
    return nir_vec(b, masked, 4);
 }
 
+static nir_ssa_def *
+nir_logicop_func(
+   nir_builder *b,
+   unsigned func,
+   nir_ssa_def *src, nir_ssa_def *dst)
+{
+   switch (func) {
+   case PIPE_LOGICOP_CLEAR:
+      return nir_imm_ivec4(b, 0, 0, 0, 0);
+   case PIPE_LOGICOP_NOR:
+      return nir_inot(b, nir_ior(b, src, dst));
+   case PIPE_LOGICOP_AND_INVERTED:
+      return nir_iand(b, nir_inot(b, src), dst);
+   case PIPE_LOGICOP_COPY_INVERTED:
+      return nir_inot(b, src);
+   case PIPE_LOGICOP_AND_REVERSE:
+      return nir_iand(b, src, nir_inot(b, dst));
+   case PIPE_LOGICOP_INVERT:
+      return nir_inot(b, dst);
+   case PIPE_LOGICOP_XOR:
+      return nir_ixor(b, src, dst);
+   case PIPE_LOGICOP_NAND:
+      return nir_inot(b, nir_iand(b, src, dst));
+   case PIPE_LOGICOP_AND:
+      return nir_iand(b, src, dst);
+   case PIPE_LOGICOP_EQUIV:
+      return nir_inot(b, nir_ixor(b, src, dst));
+   case PIPE_LOGICOP_NOOP:
+      return dst;
+   case PIPE_LOGICOP_OR_INVERTED:
+      return nir_ior(b, nir_inot(b, src), dst);
+   case PIPE_LOGICOP_COPY:
+      return src;
+   case PIPE_LOGICOP_OR_REVERSE:
+      return nir_ior(b, src, nir_inot(b, dst));
+   case PIPE_LOGICOP_OR:
+      return nir_ior(b, src, dst);
+   case PIPE_LOGICOP_SET:
+      return nir_imm_ivec4(b, ~0, ~0, ~0, ~0);
+   }
+
+   unreachable("Invalid logciop function");
+}
+
+static nir_ssa_def *
+nir_blend_logicop(
+   nir_builder *b,
+   nir_lower_blend_options options,
+   nir_ssa_def *src, nir_ssa_def *dst)
+{
+   /* TODO: Support other sizes */
+   nir_ssa_def *factor = nir_imm_float(b, 255);
+
+   src = nir_fmin(b, nir_fmax(b, src, nir_imm_float(b, -1)), nir_imm_float(b, 1));
+   src = nir_f2u32(b, nir_fround_even(b, nir_fmul(b, src, factor)));
+
+   dst = nir_fmin(b, nir_fmax(b, dst, nir_imm_float(b, -1)), nir_imm_float(b, 1));
+   dst = nir_f2u32(b, nir_fround_even(b, nir_fmul(b, dst, factor)));
+
+   nir_ssa_def *out = nir_logicop_func(b, options.logicop_func, src, dst);
+
+   return nir_fdiv(b, nir_u2f32(b, out), factor);
+}
+
 /* Given a blend state, the source color, and the destination color,
  * return the blended color
  */
@@ -166,6 +230,9 @@ nir_blend(
    nir_lower_blend_options options,
    nir_ssa_def *src, nir_ssa_def *dst)
 {
+   if (options.logicop_enable)
+      return nir_blend_logicop(b, options, src, dst);
+
    /* Grab the blend constant ahead of time */
    nir_ssa_def *bconst = nir_load_blend_const_color_rgba(b);
 
