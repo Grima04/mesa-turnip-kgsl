@@ -7218,7 +7218,7 @@ void visit_tex(isel_context *ctx, nir_tex_instr *instr)
    /* pack derivatives */
    if (has_ddx || has_ddy) {
       if (instr->sampler_dim == GLSL_SAMPLER_DIM_1D && ctx->options->chip_class == GFX9) {
-         assert(has_ddx && has_ddy && ddy.size() == 1 && ddy.size() == 1);
+         assert(has_ddx && has_ddy && ddx.size() == 1 && ddy.size() == 1);
          Temp zero = bld.copy(bld.def(v1), Operand(0u));
          derivs = {ddy, zero, ddy, zero};
       } else {
