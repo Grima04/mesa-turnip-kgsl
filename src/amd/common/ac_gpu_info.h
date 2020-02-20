@@ -153,6 +153,13 @@ struct radeon_info {
 	uint32_t                    max_wave64_per_simd;
 	uint32_t                    num_physical_sgprs_per_simd;
 	uint32_t                    num_physical_wave64_vgprs_per_simd;
+	uint32_t                    num_simd_per_compute_unit;
+	uint32_t                    min_sgpr_alloc;
+	uint32_t                    max_sgpr_alloc;
+	uint32_t                    sgpr_alloc_granularity;
+	uint32_t                    min_vgpr_alloc;
+	uint32_t                    max_vgpr_alloc;
+	uint32_t                    vgpr_alloc_granularity;
 
 	/* Render backends (color + depth blocks). */
 	uint32_t                    r300_num_gb_pipes;
