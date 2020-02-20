@@ -496,6 +496,13 @@ bool ac_query_gpu_info(int fd, void *dev_p,
 	}
 	info->r600_has_virtual_memory = true;
 
+	/* LDS is 64KB per CU (4 SIMDs), which is 16KB per SIMD (usage above
+	 * 16KB makes some SIMDs unoccupied).
+	 *
+	 * LDS is 128KB in WGP mode and 64KB in CU mode. Assume the WGP mode is used.
+	 */
+	info->lds_size_per_cu = info->chip_class >= GFX10 ? 128 * 1024 : 64 * 1024;
+
 	assert(util_is_power_of_two_or_zero(dma.available_rings + 1));
 	assert(util_is_power_of_two_or_zero(compute.available_rings + 1));
 
@@ -761,6 +768,7 @@ void ac_print_gpu_info(struct radeon_info *info)
 	printf("    tcc_cache_line_size = %u\n", info->tcc_cache_line_size);
 	printf("    tcc_harvested = %u\n", info->tcc_harvested);
 	printf("    pc_lines = %u\n", info->pc_lines);
+	printf("    lds_size_per_cu = %u\n", info->lds_size_per_cu);
 
 	printf("CP info:\n");
 	printf("    gfx_ib_pad_with_type2 = %i\n", info->gfx_ib_pad_with_type2);
