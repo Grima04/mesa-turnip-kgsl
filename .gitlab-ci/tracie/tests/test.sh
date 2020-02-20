@@ -42,7 +42,7 @@ cleanup() {
 
 prepare_for_run() {
     TEST_DIR="$(mktemp -d -t tracie.test.XXXXXXXXXX)"
-    # Copy all the tracie scripts to the the test dir and later make that the
+    # Copy all the tracie scripts to the test dir and later make that the
     # CI_PROJECT_DIR for the run-tests.sh script. This avoids polluting the
     # normal working dir with test result artifacts.
     cp -R "$TRACIE_DIR"/. "$TEST_DIR"
