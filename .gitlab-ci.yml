@@ -722,19 +722,39 @@ radv_polaris10_vkcts:
   tags:
     - polaris10
 
+# Traces CI
 .traces-test:
-  extends:
-    - .test-gl
   cache:
     key: ${CI_JOB_NAME}
     paths:
       - .git-lfs-storage/
+
+.traces-test-gl:
+  extends:
+    - .test-gl
+    - .traces-test
   script:
-    - ./artifacts/tracie-runner.sh
+    - ./artifacts/tracie-runner-gl.sh
+
+.traces-test-vk:
+  extends:
+    - .test-vk
+    - .traces-test
+  script:
+    - ./artifacts/tracie-runner-vk.sh
 
 llvmpipe-traces:
+  extends: .traces-test-gl
   variables:
     LIBGL_ALWAYS_SOFTWARE: "true"
     GALLIUM_DRIVER: "llvmpipe"
     DEVICE_NAME: "gl-vmware-llvmpipe"
-  extends: .traces-test
+
+radv-polaris10-traces:
+  extends:
+    - .traces-test-vk
+    - .test-radv
+  variables:
+    DEVICE_NAME: "vk-amd-polaris10"
+  tags:
+    - polaris10
