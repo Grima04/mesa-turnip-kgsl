@@ -121,7 +121,9 @@ vlVaGetConfigAttributes(VADriverContextP ctx, VAProfile profile, VAEntrypoint en
 
    for (i = 0; i < num_attribs; ++i) {
       unsigned int value;
-      if (entrypoint == VAEntrypointVLD) {
+      if ((entrypoint == VAEntrypointVLD) &&
+          (pscreen->get_video_param(pscreen, ProfileToPipe(profile),
+           PIPE_VIDEO_ENTRYPOINT_BITSTREAM, PIPE_VIDEO_CAP_SUPPORTED))) {
          switch (attrib_list[i].type) {
          case VAConfigAttribRTFormat:
             value = VA_RT_FORMAT_YUV420 | VA_RT_FORMAT_YUV422;
@@ -134,7 +136,9 @@ vlVaGetConfigAttributes(VADriverContextP ctx, VAProfile profile, VAEntrypoint en
             value = VA_ATTRIB_NOT_SUPPORTED;
             break;
          }
-      } else if (entrypoint == VAEntrypointEncSlice) {
+      } else if ((entrypoint == VAEntrypointEncSlice) &&
+                 (pscreen->get_video_param(pscreen, ProfileToPipe(profile),
+                  PIPE_VIDEO_ENTRYPOINT_ENCODE, PIPE_VIDEO_CAP_SUPPORTED))) {
          switch (attrib_list[i].type) {
          case VAConfigAttribRTFormat:
             value = VA_RT_FORMAT_YUV420;
