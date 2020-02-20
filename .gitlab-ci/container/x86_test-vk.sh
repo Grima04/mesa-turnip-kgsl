@@ -35,10 +35,13 @@ apt-get install -y --no-remove \
       libexpat1 \
       libgbm-dev \
       libgles2-mesa-dev \
+      liblz4-1 \
+      liblz4-dev \
       libpng16-16 \
       libpng-dev \
       libvulkan1 \
       libvulkan-dev \
+      libwayland-client0 \
       libwayland-server0 \
       libxcb-randr0 \
       libxcb-xfixes0 \
@@ -64,6 +67,9 @@ apt-get install -y --no-remove \
 
 . .gitlab-ci/build-deqp-vk.sh
 
+############### Build gfxreconstruct
+
+. .gitlab-ci/build-gfxreconstruct.sh
 
 ############### Uninstall the build software
 
@@ -75,6 +81,7 @@ apt-get purge -y \
       gnupg \
       libgbm-dev \
       libgles2-mesa-dev \
+      liblz4-dev \
       libpng-dev \
       libvulkan-dev \
       libxkbcommon-dev \
