@@ -109,6 +109,27 @@ v3dv_CreateCommandPool(VkDevice _device,
    return VK_SUCCESS;
 }
 
+static void
+cmd_buffer_init(struct v3dv_cmd_buffer *cmd_buffer,
+                struct v3dv_device *device,
+                struct v3dv_cmd_pool *pool,
+                VkCommandBufferLevel level)
+{
+   memset(cmd_buffer, 0, sizeof(*cmd_buffer));
+
+   cmd_buffer->_loader_data.loaderMagic = ICD_LOADER_MAGIC;
+   cmd_buffer->device = device;
+   cmd_buffer->pool = pool;
+   cmd_buffer->level = level;
+
+   list_inithead(&cmd_buffer->submit_jobs);
+
+   assert(pool);
+   list_addtail(&cmd_buffer->pool_link, &pool->cmd_buffers);
+
+   cmd_buffer->status = V3DV_CMD_BUFFER_STATUS_INITIALIZED;
+}
+
 static VkResult
 cmd_buffer_create(struct v3dv_device *device,
                   struct v3dv_cmd_pool *pool,
@@ -121,21 +142,7 @@ cmd_buffer_create(struct v3dv_device *device,
    if (cmd_buffer == NULL)
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   cmd_buffer->_loader_data.loaderMagic = ICD_LOADER_MAGIC;
-   cmd_buffer->device = device;
-   cmd_buffer->pool = pool;
-   cmd_buffer->level = level;
-   cmd_buffer->usage_flags = 0;
-
-   cmd_buffer->push_constants_descriptor.offset = 0;
-   cmd_buffer->push_constants_descriptor.bo = NULL;
-
-   list_inithead(&cmd_buffer->submit_jobs);
-
-   cmd_buffer->status = V3DV_CMD_BUFFER_STATUS_NEW;
-
-   assert(pool);
-   list_addtail(&cmd_buffer->pool_link, &pool->cmd_buffers);
+   cmd_buffer_init(cmd_buffer, device, pool, level);
 
    *pCommandBuffer = v3dv_cmd_buffer_to_handle(cmd_buffer);
 
@@ -175,7 +182,7 @@ job_destroy(struct v3dv_job *job)
 }
 
 static void
-cmd_buffer_destroy(struct v3dv_cmd_buffer *cmd_buffer)
+cmd_buffer_free_resources(struct v3dv_cmd_buffer *cmd_buffer)
 {
    list_del(&cmd_buffer->pool_link);
 
@@ -194,7 +201,12 @@ cmd_buffer_destroy(struct v3dv_cmd_buffer *cmd_buffer)
 
    if (cmd_buffer->push_constants_descriptor.bo)
       v3dv_bo_free(cmd_buffer->device, cmd_buffer->push_constants_descriptor.bo);
+}
 
+static void
+cmd_buffer_destroy(struct v3dv_cmd_buffer *cmd_buffer)
+{
+   cmd_buffer_free_resources(cmd_buffer);
    vk_free(&cmd_buffer->pool->alloc, cmd_buffer);
 }
 
@@ -437,23 +449,24 @@ v3dv_cmd_buffer_start_job(struct v3dv_cmd_buffer *cmd_buffer,
 }
 
 static VkResult
-cmd_buffer_reset(struct v3dv_cmd_buffer *cmd_buffer)
+cmd_buffer_reset(struct v3dv_cmd_buffer *cmd_buffer,
+                 VkCommandBufferResetFlags flags)
 {
    if (cmd_buffer->status != V3DV_CMD_BUFFER_STATUS_INITIALIZED) {
-      /* FIXME */
-      assert(cmd_buffer->status == V3DV_CMD_BUFFER_STATUS_NEW);
+      struct v3dv_device *device = cmd_buffer->device;
+      struct v3dv_cmd_pool *pool = cmd_buffer->pool;
+      VkCommandBufferLevel level = cmd_buffer->level;
 
-      cmd_buffer->usage_flags = 0;
+      /* FIXME: For now we always free all resources as if
+       * VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT was set.
+       */
+      if (cmd_buffer->status != V3DV_CMD_BUFFER_STATUS_NEW)
+         cmd_buffer_free_resources(cmd_buffer);
 
-      struct v3dv_cmd_buffer_state *state = &cmd_buffer->state;
-      state->pass = NULL;
-      state->framebuffer = NULL;
-      state->subpass_idx = 0;
-      state->job = NULL;
-      state->descriptor_state.valid = 0;
-
-      cmd_buffer->status = V3DV_CMD_BUFFER_STATUS_INITIALIZED;
+      cmd_buffer_init(cmd_buffer, device, pool, level);
    }
+
+   assert(cmd_buffer->status == V3DV_CMD_BUFFER_STATUS_INITIALIZED);
    return VK_SUCCESS;
 }
 
@@ -536,7 +549,7 @@ v3dv_BeginCommandBuffer(VkCommandBuffer commandBuffer,
     * command buffer's state. Otherwise, we must reset its state. In both
     * cases we reset it.
     */
-   VkResult result = cmd_buffer_reset(cmd_buffer);
+   VkResult result = cmd_buffer_reset(cmd_buffer, 0);
    if (result != VK_SUCCESS)
       return result;
 
@@ -547,6 +560,14 @@ v3dv_BeginCommandBuffer(VkCommandBuffer commandBuffer,
    cmd_buffer->status = V3DV_CMD_BUFFER_STATUS_RECORDING;
 
    return VK_SUCCESS;
+}
+
+VkResult
+v3dv_ResetCommandBuffer(VkCommandBuffer commandBuffer,
+                        VkCommandBufferResetFlags flags)
+{
+   V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
+   return cmd_buffer_reset(cmd_buffer, flags);
 }
 
 static void
