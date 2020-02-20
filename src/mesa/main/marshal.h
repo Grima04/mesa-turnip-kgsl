@@ -261,4 +261,42 @@ _mesa_buffer_enum_to_count(GLenum buffer)
    }
 }
 
+static inline unsigned
+_mesa_tex_param_enum_to_count(GLenum pname)
+{
+   switch (pname) {
+   case GL_TEXTURE_MIN_FILTER:
+   case GL_TEXTURE_MAG_FILTER:
+   case GL_TEXTURE_WRAP_S:
+   case GL_TEXTURE_WRAP_T:
+   case GL_TEXTURE_WRAP_R:
+   case GL_TEXTURE_BASE_LEVEL:
+   case GL_TEXTURE_MAX_LEVEL:
+   case GL_GENERATE_MIPMAP_SGIS:
+   case GL_TEXTURE_COMPARE_MODE_ARB:
+   case GL_TEXTURE_COMPARE_FUNC_ARB:
+   case GL_DEPTH_TEXTURE_MODE_ARB:
+   case GL_DEPTH_STENCIL_TEXTURE_MODE:
+   case GL_TEXTURE_SRGB_DECODE_EXT:
+   case GL_TEXTURE_CUBE_MAP_SEAMLESS:
+   case GL_TEXTURE_SWIZZLE_R:
+   case GL_TEXTURE_SWIZZLE_G:
+   case GL_TEXTURE_SWIZZLE_B:
+   case GL_TEXTURE_SWIZZLE_A:
+   case GL_TEXTURE_MIN_LOD:
+   case GL_TEXTURE_MAX_LOD:
+   case GL_TEXTURE_PRIORITY:
+   case GL_TEXTURE_MAX_ANISOTROPY_EXT:
+   case GL_TEXTURE_LOD_BIAS:
+   case GL_TEXTURE_TILING_EXT:
+      return 1;
+   case GL_TEXTURE_CROP_RECT_OES:
+   case GL_TEXTURE_SWIZZLE_RGBA:
+   case GL_TEXTURE_BORDER_COLOR:
+      return 4;
+   default:
+      return 0;
+   }
+}
+
 #endif /* MARSHAL_H */

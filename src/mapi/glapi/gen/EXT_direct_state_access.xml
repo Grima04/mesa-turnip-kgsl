@@ -151,7 +151,7 @@
        <param name="texture" type="GLuint" />
        <param name="target" type="GLenum" />
        <param name="pname" type="GLenum" />
-       <param name="params" type="const GLint *" />
+       <param name="params" type="const GLint *" count="_mesa_tex_param_enum_to_count(pname)"/>
     </function>
 
     <function name="TextureParameterfEXT">
@@ -165,7 +165,7 @@
        <param name="texture" type="GLuint" />
        <param name="target" type="GLenum" />
        <param name="pname" type="GLenum" />
-       <param name="params" type="const float *" />
+       <param name="params" type="const float *" count="_mesa_tex_param_enum_to_count(pname)"/>
     </function>
 
    <function name="TextureImage1DEXT">
@@ -402,7 +402,7 @@
       <param name="texunit" type="GLenum" />
       <param name="target" type="GLenum" />
       <param name="pname" type="GLenum" />
-      <param name="param" type="const GLint*" />
+      <param name="param" type="const GLint*" count="_mesa_tex_param_enum_to_count(pname)"/>
    </function>
 
    <function name="MultiTexParameterfEXT">
@@ -416,7 +416,7 @@
       <param name="texunit" type="GLenum" />
       <param name="target" type="GLenum" />
       <param name="pname" type="GLenum" />
-      <param name="param" type="const GLfloat*" />
+      <param name="param" type="const GLfloat*" count="_mesa_tex_param_enum_to_count(pname)"/>
    </function>
 
    <function name="GetMultiTexParameterivEXT">
@@ -1288,14 +1288,14 @@
       <param name="texture" type="GLuint" />
       <param name="target" type="GLenum" />
       <param name="pname" type="GLenum" />
-      <param name="params" type="const GLint*" />
+      <param name="params" type="const GLint*" count="_mesa_tex_param_enum_to_count(pname)"/>
    </function>
 
    <function name="TextureParameterIuivEXT">
       <param name="texture" type="GLuint" />
       <param name="target" type="GLenum" />
       <param name="pname" type="GLenum" />
-      <param name="params" type="const GLuint*" />
+      <param name="params" type="const GLuint*" count="_mesa_tex_param_enum_to_count(pname)"/>
    </function>
 
    <function name="GetTextureParameterIivEXT">
@@ -1316,14 +1316,14 @@
       <param name="texunit" type="GLenum" />
       <param name="target" type="GLenum" />
       <param name="pname" type="GLenum" />
-      <param name="params" type="const GLint*" />
+      <param name="params" type="const GLint*" count="_mesa_tex_param_enum_to_count(pname)"/>
    </function>
 
    <function name="MultiTexParameterIuivEXT">
       <param name="texunit" type="GLenum" />
       <param name="target" type="GLenum" />
       <param name="pname" type="GLenum" />
-      <param name="params" type="const GLuint*" />
+      <param name="params" type="const GLuint*" count="_mesa_tex_param_enum_to_count(pname)"/>
    </function>
 
    <function name="GetMultiTexParameterIivEXT">

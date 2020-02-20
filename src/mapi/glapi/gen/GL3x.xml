@@ -451,13 +451,13 @@
   <function name="TexParameterIiv" es2="3.2">
     <param name="target" type="GLenum"/>
     <param name="pname" type="GLenum"/>
-    <param name="params" type="const GLint *"/>
+    <param name="params" type="const GLint *" count="_mesa_tex_param_enum_to_count(pname)"/>
   </function>
 
   <function name="TexParameterIuiv" es2="3.2">
     <param name="target" type="GLenum"/>
     <param name="pname" type="GLenum"/>
-    <param name="params" type="const GLuint *"/>
+    <param name="params" type="const GLuint *" count="_mesa_tex_param_enum_to_count(pname)"/>
   </function>
 
   <function name="GetTexParameterIiv" es2="3.2">

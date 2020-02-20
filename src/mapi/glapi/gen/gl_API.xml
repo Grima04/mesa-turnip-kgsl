@@ -2131,7 +2131,8 @@
     <function name="TexParameterfv" es1="1.1" es2="2.0">
         <param name="target" type="GLenum"/>
         <param name="pname" type="GLenum"/>
-        <param name="params" type="const GLfloat *" variable_param="pname"/>
+        <param name="params" type="const GLfloat *" variable_param="pname"
+               marshal_count="_mesa_tex_param_enum_to_count(pname)"/>
         <glx rop="106"/>
     </function>
 
@@ -2145,7 +2146,8 @@
     <function name="TexParameteriv" es1="1.1" es2="2.0">
         <param name="target" type="GLenum"/>
         <param name="pname" type="GLenum"/>
-        <param name="params" type="const GLint *" variable_param="pname"/>
+        <param name="params" type="const GLint *" variable_param="pname"
+               marshal_count="_mesa_tex_param_enum_to_count(pname)"/>
         <glx rop="108"/>
     </function>
 

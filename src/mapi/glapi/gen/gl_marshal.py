@@ -156,12 +156,12 @@ class PrintCode(gl_XML.gl_print_base):
                 if p.count_scale != 1:
                     out(('/* Next {0} bytes are '
                          '{1} {2}[{3}][{4}] */').format(
-                            p.size_string(), p.get_base_type_string(),
+                            p.size_string(marshal = 1), p.get_base_type_string(),
                             p.name, p.counter, p.count_scale))
                 else:
                     out(('/* Next {0} bytes are '
                          '{1} {2}[{3}] */').format(
-                            p.size_string(), p.get_base_type_string(),
+                            p.size_string(marshal = 1), p.get_base_type_string(),
                             p.name, p.counter))
         out('};')
 
@@ -203,9 +203,9 @@ class PrintCode(gl_XML.gl_print_base):
                         if i < len(func.variable_params):
                             out('else')
                             with indent():
-                                out('variable_data += {0};'.format(p.size_string(False)))
+                                out('variable_data += {0};'.format(p.size_string(False, marshal = 1)))
                     elif i < len(func.variable_params):
-                        out('variable_data += {0};'.format(p.size_string(False)))
+                        out('variable_data += {0};'.format(p.size_string(False, marshal = 1)))
                     i += 1
 
             self.print_sync_call(func)
@@ -240,7 +240,7 @@ class PrintCode(gl_XML.gl_print_base):
         with indent():
             out('GET_CURRENT_CONTEXT(ctx);')
             for p in func.variable_params:
-                out('int {0}_size = {1};'.format(p.name, p.size_string()))
+                out('int {0}_size = {1};'.format(p.name, p.size_string(marshal = 1)))
 
             struct = 'struct marshal_cmd_{0}'.format(func.name)
             size_terms = ['sizeof({0})'.format(struct)]

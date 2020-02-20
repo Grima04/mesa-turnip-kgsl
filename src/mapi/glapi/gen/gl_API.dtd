@@ -41,6 +41,7 @@
                    desktop             (true | false) "true"
                    marshal             NMTOKEN #IMPLIED
                    marshal_fail        CDATA #IMPLIED>
+                   marshal_count       CDATA #IMPLIED>
 <!ATTLIST size     name                NMTOKEN #REQUIRED
                    count               NMTOKEN #IMPLIED
                    mode                (get | set) "set">
@@ -134,6 +135,8 @@ param:
         to switch back to the Mesa implementation and call it directly.  Used
         to disable glthread for GL compatibility interactions that we don't
         want to track state for.
+     marshal_count - same as count, but variable_param is ignored. Used by
+        glthread.
 
 glx:
      rop - Opcode value for "render" commands
