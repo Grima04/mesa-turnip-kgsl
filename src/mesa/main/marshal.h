@@ -299,4 +299,109 @@ _mesa_tex_param_enum_to_count(GLenum pname)
    }
 }
 
+static inline unsigned
+_mesa_fog_enum_to_count(GLenum pname)
+{
+   switch (pname) {
+   case GL_FOG_MODE:
+   case GL_FOG_DENSITY:
+   case GL_FOG_START:
+   case GL_FOG_END:
+   case GL_FOG_INDEX:
+   case GL_FOG_COORDINATE_SOURCE_EXT:
+   case GL_FOG_DISTANCE_MODE_NV:
+      return 1;
+   case GL_FOG_COLOR:
+      return 4;
+   default:
+      return 0;
+   }
+}
+
+static inline unsigned
+_mesa_light_enum_to_count(GLenum pname)
+{
+   switch (pname) {
+   case GL_AMBIENT:
+   case GL_DIFFUSE:
+   case GL_SPECULAR:
+   case GL_POSITION:
+      return 4;
+   case GL_SPOT_DIRECTION:
+      return 3;
+   case GL_SPOT_EXPONENT:
+   case GL_SPOT_CUTOFF:
+   case GL_CONSTANT_ATTENUATION:
+   case GL_LINEAR_ATTENUATION:
+   case GL_QUADRATIC_ATTENUATION:
+      return 1;
+   default:
+      return 0;
+   }
+}
+
+static inline unsigned
+_mesa_light_model_enum_to_count(GLenum pname)
+{
+   switch (pname) {
+   case GL_LIGHT_MODEL_AMBIENT:
+      return 4;
+   case GL_LIGHT_MODEL_LOCAL_VIEWER:
+   case GL_LIGHT_MODEL_TWO_SIDE:
+   case GL_LIGHT_MODEL_COLOR_CONTROL:
+      return 1;
+   default:
+      return 0;
+   }
+}
+
+static inline unsigned
+_mesa_texenv_enum_to_count(GLenum pname)
+{
+   switch (pname) {
+   case GL_TEXTURE_ENV_MODE:
+   case GL_COMBINE_RGB:
+   case GL_COMBINE_ALPHA:
+   case GL_SOURCE0_RGB:
+   case GL_SOURCE1_RGB:
+   case GL_SOURCE2_RGB:
+   case GL_SOURCE3_RGB_NV:
+   case GL_SOURCE0_ALPHA:
+   case GL_SOURCE1_ALPHA:
+   case GL_SOURCE2_ALPHA:
+   case GL_SOURCE3_ALPHA_NV:
+   case GL_OPERAND0_RGB:
+   case GL_OPERAND1_RGB:
+   case GL_OPERAND2_RGB:
+   case GL_OPERAND3_RGB_NV:
+   case GL_OPERAND0_ALPHA:
+   case GL_OPERAND1_ALPHA:
+   case GL_OPERAND2_ALPHA:
+   case GL_OPERAND3_ALPHA_NV:
+   case GL_RGB_SCALE:
+   case GL_ALPHA_SCALE:
+   case GL_TEXTURE_LOD_BIAS_EXT:
+   case GL_COORD_REPLACE_NV:
+      return 1;
+   case GL_TEXTURE_ENV_COLOR:
+      return 4;
+   default:
+      return 0;
+   }
+}
+
+static inline unsigned
+_mesa_texgen_enum_to_count(GLenum pname)
+{
+   switch (pname) {
+   case GL_TEXTURE_GEN_MODE:
+      return 1;
+   case GL_OBJECT_PLANE:
+   case GL_EYE_PLANE:
+      return 4;
+   default:
+      return 0;
+   }
+}
+
 #endif /* MARSHAL_H */

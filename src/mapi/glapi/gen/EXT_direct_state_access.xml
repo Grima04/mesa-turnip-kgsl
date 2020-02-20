@@ -360,7 +360,7 @@
       <param name="texunit" type="GLenum" />
       <param name="target" type="GLenum" />
       <param name="pname" type="GLenum" />
-      <param name="param" type="const GLint *" />
+      <param name="param" type="const GLint *" count="_mesa_texenv_enum_to_count(pname)"/>
    </function>
 
    <function name="MultiTexEnvfEXT">
@@ -374,7 +374,7 @@
       <param name="texunit" type="GLenum" />
       <param name="target" type="GLenum" />
       <param name="pname" type="GLenum" />
-      <param name="param" type="const GLfloat *" />
+      <param name="param" type="const GLfloat *" count="_mesa_texenv_enum_to_count(pname)"/>
    </function>
 
    <function name="GetMultiTexEnvivEXT">
@@ -605,7 +605,7 @@
       <param name="texunit" type="GLenum" />
       <param name="coord" type="GLenum" />
       <param name="pname" type="GLenum" />
-      <param name="param" type="const GLdouble*" />
+      <param name="param" type="const GLdouble*" count="_mesa_texgen_enum_to_count(pname)"/>
    </function>
 
    <function name="MultiTexGenfEXT">
@@ -619,7 +619,7 @@
       <param name="texunit" type="GLenum" />
       <param name="coord" type="GLenum" />
       <param name="pname" type="GLenum" />
-      <param name="param" type="const GLfloat *" />
+      <param name="param" type="const GLfloat *" count="_mesa_texgen_enum_to_count(pname)"/>
    </function>
 
    <function name="MultiTexGeniEXT">
@@ -633,7 +633,7 @@
       <param name="texunit" type="GLenum" />
       <param name="coord" type="GLenum" />
       <param name="pname" type="GLenum" />
-      <param name="param" type="const GLint *" />
+      <param name="param" type="const GLint *" count="_mesa_texgen_enum_to_count(pname)"/>
    </function>
 
    <function name="GetMultiTexGendvEXT">
