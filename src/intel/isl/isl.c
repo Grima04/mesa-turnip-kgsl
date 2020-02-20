@@ -1375,7 +1375,8 @@ isl_calc_row_pitch_alignment(const struct isl_device *dev,
        */
       if (ISL_DEV_GEN(dev) >= 12 &&
           isl_format_supports_ccs_e(dev->info, surf_info->format) &&
-          tile_info->tiling != ISL_TILING_X) {
+          tile_info->tiling != ISL_TILING_X &&
+          !(surf_info->usage & ISL_SURF_USAGE_DISABLE_AUX_BIT)) {
          return isl_align(tile_info->phys_extent_B.width, 512);
       }
 
