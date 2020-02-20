@@ -2377,7 +2377,8 @@
         <glx rop="138" handcode="client"/>
     </function>
 
-    <function name="Enable" es1="1.0" es2="2.0" marshal="custom">
+    <function name="Enable" es1="1.0" es2="2.0"
+              marshal_call_after='if (cap == GL_DEBUG_OUTPUT_SYNCHRONOUS_ARB) _mesa_glthread_disable(ctx, "Enable(DEBUG_OUTPUT_SYNCHRONOUS)");'>
         <param name="cap" type="GLenum"/>
         <glx rop="139" handcode="client"/>
     </function>
@@ -2386,14 +2387,8 @@
         <glx sop="108" handcode="true"/>
     </function>
 
-    <!-- TODO: Flush is marshalled synchronously as a temporary hack
-    since we don't yet have a hook into SwapBuffers.
-
-    NOTE: when we remove this hack, we'll still have to handle Flush
-    specially to ensure that it causes all previous commands to get
-    delivered to the server thread.
-    -->
-    <function name="Flush" es1="1.0" es2="2.0" marshal="custom">
+    <function name="Flush" es1="1.0" es2="2.0"
+              marshal_call_after="_mesa_glthread_flush_batch(ctx);">
         <glx sop="142" handcode="true"/>
     </function>
 

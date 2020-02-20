@@ -78,13 +78,16 @@ class PrintCode(gl_XML.gl_print_base):
     def printRealFooter(self):
         pass
 
-    def print_sync_call(self, func):
+    def print_sync_call(self, func, unmarshal = 0):
         call = 'CALL_{0}(ctx->CurrentServerDispatch, ({1}))'.format(
             func.name, func.get_called_parameter_string())
         if func.return_type == 'void':
             out('{0};'.format(call))
+            if func.marshal_call_after and not unmarshal:
+                out(func.marshal_call_after);
         else:
             out('return {0};'.format(call))
+            assert not func.marshal_call_after
 
     def print_sync_dispatch(self, func):
         self.print_sync_call(func)
@@ -131,6 +134,9 @@ class PrintCode(gl_XML.gl_print_base):
 
         if not func.fixed_params and not func.variable_params:
             out('(void) cmd;')
+
+        if func.marshal_call_after:
+            out(func.marshal_call_after);
 
         # Uncomment this if you want to call _mesa_glthread_finish for debugging
         #out('_mesa_glthread_finish(ctx);')
@@ -208,7 +214,7 @@ class PrintCode(gl_XML.gl_print_base):
                         out('variable_data += {0};'.format(p.size_string(False, marshal = 1)))
                     i += 1
 
-            self.print_sync_call(func)
+            self.print_sync_call(func, unmarshal = 1)
         out('}')
 
     def validate_count_or_fallback(self, func):

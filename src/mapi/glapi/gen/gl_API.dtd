@@ -42,6 +42,7 @@
                    marshal             NMTOKEN #IMPLIED
                    marshal_fail        CDATA #IMPLIED>
                    marshal_count       CDATA #IMPLIED>
+                   marshal_call_after  CDATA #IMPLIED>
 <!ATTLIST size     name                NMTOKEN #REQUIRED
                    count               NMTOKEN #IMPLIED
                    mode                (get | set) "set">
@@ -137,6 +138,7 @@ param:
         want to track state for.
      marshal_count - same as count, but variable_param is ignored. Used by
         glthread.
+     marshal_call_after - insert the string at the end of the marshal function
 
 glx:
      rop - Opcode value for "render" commands
