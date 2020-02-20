@@ -1451,8 +1451,8 @@ typedef enum {
    NIR_MEMORY_ACQ_REL        = NIR_MEMORY_ACQUIRE | NIR_MEMORY_RELEASE,
 
    /* Memory visibility operations. */
-   NIR_MEMORY_MAKE_AVAILABLE = 1 << 3,
-   NIR_MEMORY_MAKE_VISIBLE   = 1 << 4,
+   NIR_MEMORY_MAKE_AVAILABLE = 1 << 2,
+   NIR_MEMORY_MAKE_VISIBLE   = 1 << 3,
 } nir_memory_semantics;
 
 typedef enum {
