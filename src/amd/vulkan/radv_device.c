@@ -1656,7 +1656,8 @@ void radv_GetPhysicalDeviceProperties2(
 				pdevice->rad_info.max_sh_per_se;
 			properties->computeUnitsPerShaderArray =
 				pdevice->rad_info.num_good_cu_per_sh;
-			properties->simdPerComputeUnit = 4;
+			properties->simdPerComputeUnit =
+				pdevice->rad_info.num_simd_per_compute_unit;
 			properties->wavefrontsPerSimd =
 				pdevice->rad_info.family == CHIP_TONGA ||
 				pdevice->rad_info.family == CHIP_ICELAND ||
