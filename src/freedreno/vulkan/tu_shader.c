@@ -25,6 +25,7 @@
 
 #include "spirv/nir_spirv.h"
 #include "util/mesa-sha1.h"
+#include "nir/nir_xfb_info.h"
 
 #include "ir3/ir3_nir.h"
 
@@ -40,7 +41,9 @@ tu_spirv_to_nir(struct ir3_compiler *compiler,
    const struct spirv_to_nir_options spirv_options = {
       .frag_coord_is_sysval = true,
       .lower_ubo_ssbo_access_to_offsets = true,
-      .caps = { false },
+      .caps = {
+         .transform_feedback = compiler->gpu_id >= 600,
+      },
    };
    const nir_shader_compiler_options *nir_options =
       ir3_get_compiler_options(compiler);
@@ -384,6 +387,48 @@ tu_lower_io(nir_shader *shader, struct tu_shader *tu_shader,
    return progress;
 }
 
+static void
+tu_gather_xfb_info(nir_shader *nir, struct tu_shader *shader)
+{
+   struct ir3_stream_output_info *info = &shader->ir3_shader.stream_output;
+   nir_xfb_info *xfb = nir_gather_xfb_info(nir, NULL);
+
+   if (!xfb)
+      return;
+
+   /* creating a map from VARYING_SLOT_* enums to consecutive index */
+   uint8_t num_outputs = 0;
+   uint64_t outputs_written = 0;
+   for (int i = 0; i < xfb->output_count; i++)
+      outputs_written |= BITFIELD64_BIT(xfb->outputs[i].location);
+
+   uint8_t output_map[VARYING_SLOT_TESS_MAX];
+   memset(output_map, 0, sizeof(output_map));
+
+   for (unsigned attr = 0; attr < VARYING_SLOT_MAX; attr++) {
+      if (outputs_written & BITFIELD64_BIT(attr))
+         output_map[attr] = num_outputs++;
+   }
+
+   assert(xfb->output_count < IR3_MAX_SO_OUTPUTS);
+   info->num_outputs = xfb->output_count;
+
+   for (int i = 0; i < IR3_MAX_SO_BUFFERS; i++)
+      info->stride[i] = xfb->buffers[i].stride / 4;
+
+   for (int i = 0; i < xfb->output_count; i++) {
+      info->output[i].register_index = output_map[xfb->outputs[i].location];
+      info->output[i].start_component = xfb->outputs[i].component_offset;
+      info->output[i].num_components =
+                           util_bitcount(xfb->outputs[i].component_mask);
+      info->output[i].output_buffer  = xfb->outputs[i].buffer;
+      info->output[i].dst_offset = xfb->outputs[i].offset;
+      info->output[i].stream = xfb->buffer_to_stream[xfb->outputs[i].buffer];
+   }
+
+   ralloc_free(xfb);
+}
+
 struct tu_shader *
 tu_shader_create(struct tu_device *dev,
                  gl_shader_stage stage,
@@ -435,6 +480,14 @@ tu_shader_create(struct tu_device *dev,
     */
    NIR_PASS_V(nir, nir_split_var_copies);
    NIR_PASS_V(nir, nir_split_per_member_structs);
+
+   /* Gather information for transform feedback.
+    * This should be called after nir_split_per_member_structs.
+    */
+   if (nir->info.stage == MESA_SHADER_VERTEX ||
+         nir->info.stage == MESA_SHADER_TESS_EVAL ||
+         nir->info.stage == MESA_SHADER_GEOMETRY)
+      tu_gather_xfb_info(nir, shader);
 
    NIR_PASS_V(nir, nir_remove_dead_variables,
               nir_var_shader_in | nir_var_shader_out | nir_var_system_value | nir_var_mem_shared);
