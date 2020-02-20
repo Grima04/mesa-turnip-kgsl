@@ -859,6 +859,7 @@ struct radv_device {
 	struct radeon_winsys_bo *thread_trace_bo;
 	void *thread_trace_ptr;
 	uint32_t thread_trace_buffer_size;
+	int thread_trace_start_frame;
 };
 
 struct radv_device_memory {

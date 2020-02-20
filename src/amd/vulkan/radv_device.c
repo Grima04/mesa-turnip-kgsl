@@ -2969,6 +2969,24 @@ VkResult radv_CreateDevice(
 		radv_dump_enabled_options(device, stderr);
 	}
 
+	int radv_thread_trace = radv_get_int_debug_option("RADV_THREAD_TRACE", -1);
+	if (radv_thread_trace >= 0) {
+		fprintf(stderr, "*****************************************************************************\n");
+		fprintf(stderr, "* WARNING: Thread trace support is experimental and only supported on GFX9! *\n");
+		fprintf(stderr, "*****************************************************************************\n");
+
+		/* TODO: add support for more ASICs. */
+		assert(device->physical_device->rad_info.chip_class == GFX9);
+
+		/* Default buffer size set to 1MB per SE. */
+		device->thread_trace_buffer_size =
+			radv_get_int_debug_option("RADV_THREAD_TRACE_BUFFER_SIZE", 1024 * 1024);
+		device->thread_trace_start_frame = radv_thread_trace;
+
+		if (!radv_thread_trace_init(device))
+			goto fail;
+	}
+
 	/* Temporarily disable secure compile while we create meta shaders, etc */
 	uint8_t sc_threads = device->instance->num_sc_threads;
 	if (sc_threads)
@@ -3044,6 +3062,8 @@ fail_meta:
 fail:
 	radv_bo_list_finish(&device->bo_list);
 
+	radv_thread_trace_finish(device);
+
 	if (device->trace_bo)
 		device->ws->buffer_destroy(device->trace_bo);
 
@@ -3093,6 +3113,9 @@ void radv_DestroyDevice(
 
 	pthread_cond_destroy(&device->timeline_cond);
 	radv_bo_list_finish(&device->bo_list);
+
+	radv_thread_trace_finish(device);
+
 	if (radv_device_use_secure_compile(device->instance)) {
 		for (unsigned i = 0; i < device->instance->num_sc_threads; i++ ) {
 			destroy_secure_compile_device(device, i);
