@@ -2607,7 +2607,10 @@ anv_pipe_invalidate_bits_for_access_flags(struct anv_device *device,
           * port) to avoid stale data.
           */
          pipe_bits |= ANV_PIPE_CONSTANT_CACHE_INVALIDATE_BIT;
-         pipe_bits |= ANV_PIPE_TEXTURE_CACHE_INVALIDATE_BIT;
+         if (device->physical->compiler->indirect_ubos_use_sampler)
+            pipe_bits |= ANV_PIPE_TEXTURE_CACHE_INVALIDATE_BIT;
+         else
+            pipe_bits |= ANV_PIPE_DATA_CACHE_FLUSH_BIT;
          break;
       case VK_ACCESS_SHADER_READ_BIT:
       case VK_ACCESS_INPUT_ATTACHMENT_READ_BIT:
