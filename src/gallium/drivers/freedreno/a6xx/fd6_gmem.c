@@ -740,6 +740,10 @@ fd6_emit_tile_init(struct fd_batch *batch)
 	OUT_PKT7(ring, CP_SKIP_IB2_ENABLE_GLOBAL, 1);
 	OUT_RING(ring, 0x0);
 
+	/* blob controls "local" in IB2, but I think that is not required */
+	OUT_PKT7(ring, CP_SKIP_IB2_ENABLE_LOCAL, 1);
+	OUT_RING(ring, 0x1);
+
 	fd_wfi(batch, ring);
 	OUT_PKT4(ring, REG_A6XX_RB_CCU_CNTL, 1);
 	OUT_RING(ring, fd6_context(ctx)->magic.RB_CCU_CNTL_gmem);
@@ -1481,6 +1485,10 @@ fd6_emit_sysmem_prep(struct fd_batch *batch)
 
 	OUT_PKT7(ring, CP_SKIP_IB2_ENABLE_GLOBAL, 1);
 	OUT_RING(ring, 0x0);
+
+	/* blob controls "local" in IB2, but I think that is not required */
+	OUT_PKT7(ring, CP_SKIP_IB2_ENABLE_LOCAL, 1);
+	OUT_RING(ring, 0x1);
 
 	fd6_event_write(batch, ring, PC_CCU_INVALIDATE_COLOR, false);
 	fd6_cache_inv(batch, ring);
