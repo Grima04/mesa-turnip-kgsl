@@ -1266,13 +1266,16 @@ anv_cmd_buffer_push_descriptor_set(struct anv_cmd_buffer *cmd_buffer,
          .offset = set->desc_mem.offset,
       };
 
+      enum isl_format format =
+         anv_isl_format_for_descriptor_type(cmd_buffer->device,
+                                            VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+
       const struct isl_device *isl_dev = &cmd_buffer->device->isl_dev;
       set->desc_surface_state =
          anv_state_stream_alloc(&cmd_buffer->surface_state_stream,
                                 isl_dev->ss.size, isl_dev->ss.align);
       anv_fill_buffer_surface_state(cmd_buffer->device,
-                                    set->desc_surface_state,
-                                    ISL_FORMAT_R32G32B32A32_FLOAT,
+                                    set->desc_surface_state, format,
                                     addr, layout->descriptor_buffer_size, 1);
    }
 

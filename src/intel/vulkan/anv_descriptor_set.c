@@ -956,9 +956,12 @@ anv_descriptor_set_create(struct anv_device *device,
       set->desc_mem.alloc_size = set_buffer_size;
       set->desc_mem.map = pool->bo->map + set->desc_mem.offset;
 
+      enum isl_format format =
+         anv_isl_format_for_descriptor_type(device,
+                                            VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+
       set->desc_surface_state = anv_descriptor_pool_alloc_state(pool);
-      anv_fill_buffer_surface_state(device, set->desc_surface_state,
-                                    ISL_FORMAT_R32G32B32A32_FLOAT,
+      anv_fill_buffer_surface_state(device, set->desc_surface_state, format,
                                     (struct anv_address) {
                                        .bo = pool->bo,
                                        .offset = set->desc_mem.offset,
