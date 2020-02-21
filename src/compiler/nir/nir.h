@@ -1456,11 +1456,11 @@ typedef enum {
 } nir_memory_semantics;
 
 typedef enum {
-   NIR_SCOPE_DEVICE,
-   NIR_SCOPE_QUEUE_FAMILY,
-   NIR_SCOPE_WORKGROUP,
-   NIR_SCOPE_SUBGROUP,
    NIR_SCOPE_INVOCATION,
+   NIR_SCOPE_SUBGROUP,
+   NIR_SCOPE_WORKGROUP,
+   NIR_SCOPE_QUEUE_FAMILY,
+   NIR_SCOPE_DEVICE,
 } nir_scope;
 
 /**
