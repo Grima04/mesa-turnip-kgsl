@@ -2259,8 +2259,6 @@ compute_pipeline_create(
    memset(pipeline->shaders, 0, sizeof(pipeline->shaders));
    pipeline->num_executables = 0;
 
-   pipeline->needs_data_cache = false;
-
    assert(pCreateInfo->stage.stage == VK_SHADER_STAGE_COMPUTE_BIT);
    pipeline->active_stages |= VK_SHADER_STAGE_COMPUTE_BIT;
    ANV_FROM_HANDLE(anv_shader_module, module,  pCreateInfo->stage.module);
