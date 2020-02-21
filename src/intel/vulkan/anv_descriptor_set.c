@@ -1355,7 +1355,7 @@ anv_descriptor_set_write_buffer(struct anv_device *device,
       struct anv_buffer_view *bview =
          &set->buffer_views[bind_layout->buffer_view_index + element];
 
-      bview->format = anv_isl_format_for_descriptor_type(type);
+      bview->format = anv_isl_format_for_descriptor_type(device, type);
       bview->range = bind_range;
       bview->address = bind_addr;
 

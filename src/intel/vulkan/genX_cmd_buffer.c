@@ -2539,7 +2539,8 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
          unsigned constant_data_size = shader->prog_data->const_data_size;
 
          const enum isl_format format =
-            anv_isl_format_for_descriptor_type(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+            anv_isl_format_for_descriptor_type(cmd_buffer->device,
+                                               VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
          anv_fill_buffer_surface_state(cmd_buffer->device,
                                        surface_state, format,
                                        constant_data, constant_data_size, 1);
@@ -2558,7 +2559,8 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
             anv_cmd_buffer_alloc_surface_state(cmd_buffer);
 
          const enum isl_format format =
-            anv_isl_format_for_descriptor_type(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+            anv_isl_format_for_descriptor_type(cmd_buffer->device,
+                                               VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
          anv_fill_buffer_surface_state(cmd_buffer->device, surface_state,
                                        format,
                                        cmd_buffer->state.compute.num_workgroups,
@@ -2693,7 +2695,8 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
                surface_state =
                   anv_state_stream_alloc(&cmd_buffer->surface_state_stream, 64, 64);
                enum isl_format format =
-                  anv_isl_format_for_descriptor_type(desc->type);
+                  anv_isl_format_for_descriptor_type(cmd_buffer->device,
+                                                     desc->type);
 
                anv_fill_buffer_surface_state(cmd_buffer->device, surface_state,
                                              format, address, range, 1);

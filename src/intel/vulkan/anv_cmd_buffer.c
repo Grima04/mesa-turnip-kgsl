@@ -975,7 +975,8 @@ void anv_CmdBindTransformFeedbackBuffersEXT(
 }
 
 enum isl_format
-anv_isl_format_for_descriptor_type(VkDescriptorType type)
+anv_isl_format_for_descriptor_type(const struct anv_device *device,
+                                   VkDescriptorType type)
 {
    switch (type) {
    case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:

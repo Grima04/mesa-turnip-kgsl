@@ -4208,7 +4208,8 @@ VkResult anv_image_create(VkDevice _device,
                           VkImage *pImage);
 
 enum isl_format
-anv_isl_format_for_descriptor_type(VkDescriptorType type);
+anv_isl_format_for_descriptor_type(const struct anv_device *device,
+                                   VkDescriptorType type);
 
 static inline VkExtent3D
 anv_sanitize_image_extent(const VkImageType imageType,
