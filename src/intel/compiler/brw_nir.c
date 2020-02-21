@@ -824,6 +824,26 @@ brw_nir_link_shaders(const struct brw_compiler *compiler,
    }
 }
 
+static
+bool combine_all_barriers(nir_intrinsic_instr *a,
+                          nir_intrinsic_instr *b,
+                          void *data)
+{
+   /* Translation to backend IR will get rid of modes we don't care about, so
+    * no harm in always combining them.
+    *
+    * TODO: While HW has only ACQUIRE|RELEASE fences, we could improve the
+    * scheduling so that it can take advantage of the different semantics.
+    */
+   nir_intrinsic_set_memory_modes(a, nir_intrinsic_memory_modes(a) |
+                                     nir_intrinsic_memory_modes(b));
+   nir_intrinsic_set_memory_semantics(a, nir_intrinsic_memory_semantics(a) |
+                                         nir_intrinsic_memory_semantics(b));
+   nir_intrinsic_set_memory_scope(a, MAX2(nir_intrinsic_memory_scope(a),
+                                          nir_intrinsic_memory_scope(b)));
+   return true;
+}
+
 /* Prepare the given shader for codegen
  *
  * This function is intended to be called right before going into the actual
@@ -842,6 +862,8 @@ brw_postprocess_nir(nir_shader *nir, const struct brw_compiler *compiler,
    UNUSED bool progress; /* Written by OPT */
 
    OPT(brw_nir_lower_mem_access_bit_sizes, devinfo);
+
+   OPT(nir_opt_combine_memory_barriers, combine_all_barriers, NULL);
 
    do {
       progress = false;
