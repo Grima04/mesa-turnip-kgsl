@@ -110,6 +110,9 @@ brw_compiler_create(void *mem_ctx, const struct gen_device_info *devinfo)
       devinfo->gen >= 12 ||
       (devinfo->gen >= 9 && (INTEL_DEBUG & DEBUG_TCS_EIGHT_PATCH));
 
+   /* Default to the sampler since that's what we've done since forever */
+   compiler->indirect_ubos_use_sampler = true;
+
    /* There is no vec4 mode on Gen10+, and we don't use it at all on Gen8+. */
    for (int i = MESA_SHADER_VERTEX; i < MESA_ALL_SHADER_STAGES; i++) {
       compiler->scalar_stage[i] = devinfo->gen >= 8 ||

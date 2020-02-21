@@ -133,6 +133,14 @@ struct brw_compiler {
     * back-end compiler.
     */
    bool lower_variable_group_size;
+
+   /**
+    * Whether indirect UBO loads should use the sampler or go through the
+    * data/constant cache.  For the sampler, UBO surface states have to be set
+    * up with VK_FORMAT_R32G32B32A32_FLOAT whereas if it's going through the
+    * constant or data cache, UBOs must use VK_FORMAT_RAW.
+    */
+   bool indirect_ubos_use_sampler;
 };
 
 /**

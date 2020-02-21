@@ -5777,6 +5777,7 @@ static void
 lower_varying_pull_constant_logical_send(const fs_builder &bld, fs_inst *inst)
 {
    const gen_device_info *devinfo = bld.shader->devinfo;
+   const brw_compiler *compiler = bld.shader->compiler;
 
    if (devinfo->gen >= 7) {
       fs_reg index = inst->src[0];
@@ -5784,32 +5785,72 @@ lower_varying_pull_constant_logical_send(const fs_builder &bld, fs_inst *inst)
        * send-from-grf instruction.  Since sends can't handle strides or
        * source modifiers, we have to make a copy of the offset source.
        */
-      fs_reg offset = bld.vgrf(BRW_REGISTER_TYPE_UD);
-      bld.MOV(offset, inst->src[1]);
+      fs_reg ubo_offset = bld.vgrf(BRW_REGISTER_TYPE_UD);
+      bld.MOV(ubo_offset, inst->src[1]);
 
-      const unsigned simd_mode =
-         inst->exec_size <= 8 ? BRW_SAMPLER_SIMD_MODE_SIMD8 :
-                                BRW_SAMPLER_SIMD_MODE_SIMD16;
+      assert(inst->src[2].file == BRW_IMMEDIATE_VALUE);
+      unsigned alignment = inst->src[2].ud;
 
       inst->opcode = SHADER_OPCODE_SEND;
       inst->mlen = inst->exec_size / 8;
       inst->resize_sources(3);
 
-      inst->sfid = BRW_SFID_SAMPLER;
-      inst->desc = brw_sampler_desc(devinfo, 0, 0,
-                                    GEN5_SAMPLER_MESSAGE_SAMPLE_LD,
-                                    simd_mode, 0);
       if (index.file == IMM) {
-         inst->desc |= index.ud & 0xff;
+         inst->desc = index.ud & 0xff;
          inst->src[0] = brw_imm_ud(0);
       } else {
+         inst->desc = 0;
          const fs_builder ubld = bld.exec_all().group(1, 0);
          fs_reg tmp = ubld.vgrf(BRW_REGISTER_TYPE_UD);
          ubld.AND(tmp, index, brw_imm_ud(0xff));
          inst->src[0] = component(tmp, 0);
       }
       inst->src[1] = brw_imm_ud(0); /* ex_desc */
-      inst->src[2] = offset; /* payload */
+      inst->src[2] = ubo_offset; /* payload */
+
+      if (compiler->indirect_ubos_use_sampler) {
+         const unsigned simd_mode =
+            inst->exec_size <= 8 ? BRW_SAMPLER_SIMD_MODE_SIMD8 :
+                                   BRW_SAMPLER_SIMD_MODE_SIMD16;
+
+         inst->sfid = BRW_SFID_SAMPLER;
+         inst->desc |= brw_sampler_desc(devinfo, 0, 0,
+                                        GEN5_SAMPLER_MESSAGE_SAMPLE_LD,
+                                        simd_mode, 0);
+      } else if (alignment >= 4) {
+         inst->sfid = (devinfo->gen >= 8 || devinfo->is_haswell ?
+                       HSW_SFID_DATAPORT_DATA_CACHE_1 :
+                       GEN7_SFID_DATAPORT_DATA_CACHE);
+         inst->desc |= brw_dp_untyped_surface_rw_desc(devinfo, inst->exec_size,
+                                                      4, /* num_channels */
+                                                      false   /* write */);
+      } else {
+         inst->sfid = GEN7_SFID_DATAPORT_DATA_CACHE;
+         inst->desc |= brw_dp_byte_scattered_rw_desc(devinfo, inst->exec_size,
+                                                     32,     /* bit_size */
+                                                     false   /* write */);
+         /* The byte scattered messages can only read one dword at a time so
+          * we have to duplicate the message 4 times to read the full vec4.
+          * Hopefully, dead code will clean up the mess if some of them aren't
+          * needed.
+          */
+         assert(inst->size_written == 16 * inst->exec_size);
+         inst->size_written /= 4;
+         for (unsigned c = 1; c < 4; c++) {
+            /* Emit a copy of the instruction because we're about to modify
+             * it.  Because this loop starts at 1, we will emit copies for the
+             * first 3 and the final one will be the modified instruction.
+             */
+            bld.emit(*inst);
+
+            /* Offset the source */
+            inst->src[2] = bld.vgrf(BRW_REGISTER_TYPE_UD);
+            bld.ADD(inst->src[2], ubo_offset, brw_imm_ud(c * 4));
+
+            /* Offset the destination */
+            inst->dst = offset(inst->dst, bld, 1);
+         }
+      }
    } else {
       const fs_reg payload(MRF, FIRST_PULL_LOAD_MRF(devinfo->gen),
                            BRW_REGISTER_TYPE_UD);
