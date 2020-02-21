@@ -698,8 +698,12 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
       /* SALU / PSEUDO: propagate inline constants */
       if (instr->isSALU() || instr->format == Format::PSEUDO) {
          if (info.is_temp() && info.temp.type() == RegType::sgpr) {
-            instr->operands[i].setTemp(info.temp);
-            info = ctx.info[info.temp.id()];
+            const bool is_subdword = std::any_of(instr->definitions.begin(), instr->definitions.end(),
+                                                 [] (const Definition& def) { return def.regClass().is_subdword();});
+            if (instr->isSALU() || !is_subdword) {
+               instr->operands[i].setTemp(info.temp);
+               info = ctx.info[info.temp.id()];
+            }
          } else if (info.is_temp() && info.temp.type() == RegType::vgpr) {
             /* propagate vgpr if it can take it */
             switch (instr->opcode) {
