@@ -536,7 +536,7 @@ v3dv_GetPhysicalDeviceFeatures(VkPhysicalDevice physicalDevice,
    memset(pFeatures, 0, sizeof(*pFeatures));
 
    *pFeatures = (VkPhysicalDeviceFeatures) {
-      .robustBufferAccess = false,
+      .robustBufferAccess = true, /* This feature is mandatory */
       .fullDrawIndexUint32 = false,
       .imageCubeArray = false,
       .independentBlend = false,
