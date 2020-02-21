@@ -228,7 +228,10 @@ blorp_get_workaround_address(struct blorp_batch *blorp_batch)
 {
    struct iris_batch *batch = blorp_batch->driver_batch;
 
-   return (struct blorp_address) { .buffer = batch->screen->workaround_bo };
+   return (struct blorp_address) {
+      .buffer = batch->screen->workaround_address.bo,
+      .offset = batch->screen->workaround_address.offset,
+   };
 }
 
 static void

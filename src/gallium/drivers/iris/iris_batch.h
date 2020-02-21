@@ -57,12 +57,6 @@ enum iris_batch_name {
 
 #define IRIS_BATCH_COUNT 2
 
-struct iris_address {
-   struct iris_bo *bo;
-   uint64_t offset;
-   bool write;
-};
-
 struct iris_batch {
    struct iris_screen *screen;
    struct pipe_debug_callback *dbg;

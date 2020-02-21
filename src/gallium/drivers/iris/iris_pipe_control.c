@@ -148,7 +148,8 @@ iris_emit_end_of_pipe_sync(struct iris_batch *batch,
    iris_emit_pipe_control_write(batch, reason,
                                 flags | PIPE_CONTROL_CS_STALL |
                                 PIPE_CONTROL_WRITE_IMMEDIATE,
-                                batch->screen->workaround_bo, 0, 0);
+                                batch->screen->workaround_address.bo,
+                                batch->screen->workaround_address.offset, 0);
 }
 
 /**

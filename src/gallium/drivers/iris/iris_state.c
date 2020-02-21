@@ -5224,7 +5224,7 @@ setup_constant_buffers(struct iris_context *ice,
       push_bos->buffers[n].length = range->length;
       push_bos->buffers[n].addr =
          res ? ro_bo(res->bo, range->start * 32 + cbuf->buffer_offset)
-         : ro_bo(batch->screen->workaround_bo, 0);
+         : batch->screen->workaround_address;
       n++;
    }
 
@@ -5971,7 +5971,8 @@ iris_upload_dirty_render_state(struct iris_context *ice,
           */
          iris_emit_pipe_control_write(batch, "WA for stencil state",
                                       PIPE_CONTROL_WRITE_IMMEDIATE,
-                                      batch->screen->workaround_bo, 0, 0);
+                                      batch->screen->workaround_address.bo,
+                                      batch->screen->workaround_address.offset, 0);
       }
 
       union isl_color_value clear_value = { .f32 = { 0, } };
@@ -6989,7 +6990,8 @@ iris_emit_raw_pipe_control(struct iris_batch *batch,
          flags |= PIPE_CONTROL_WRITE_IMMEDIATE;
          post_sync_flags |= PIPE_CONTROL_WRITE_IMMEDIATE;
          non_lri_post_sync_flags |= PIPE_CONTROL_WRITE_IMMEDIATE;
-         bo = batch->screen->workaround_bo;
+         bo = batch->screen->workaround_address.bo;
+         offset = batch->screen->workaround_address.offset;
       }
    }
 

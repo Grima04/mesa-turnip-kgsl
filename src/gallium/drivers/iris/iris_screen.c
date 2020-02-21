@@ -718,6 +718,11 @@ iris_screen_create(int fd, const struct pipe_screen_config *config)
    if (!screen->workaround_bo)
       return NULL;
 
+   screen->workaround_address = (struct iris_address) {
+      .bo = screen->workaround_bo,
+      .offset = 0,
+   };
+
    brw_process_intel_debug_variable();
 
    screen->driconf.dual_color_blend_by_location =

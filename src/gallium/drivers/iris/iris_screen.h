@@ -136,6 +136,12 @@ struct iris_vtable {
    void (*lost_genx_state)(struct iris_context *ice, struct iris_batch *batch);
 };
 
+struct iris_address {
+   struct iris_bo *bo;
+   uint64_t offset;
+   bool write;
+};
+
 struct iris_screen {
    struct pipe_screen base;
 
@@ -190,6 +196,7 @@ struct iris_screen {
     * require scratch writes or reads from some unimportant memory.
     */
    struct iris_bo *workaround_bo;
+   struct iris_address workaround_address;
 
    struct disk_cache *disk_cache;
 };
