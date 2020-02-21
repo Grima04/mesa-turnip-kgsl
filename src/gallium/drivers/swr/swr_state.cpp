@@ -51,6 +51,7 @@
 #include "util/u_framebuffer.h"
 #include "util/u_viewport.h"
 #include "util/u_prim.h"
+#include "util/u_vbuf.h"
 
 #include "swr_state.h"
 #include "swr_context.h"
@@ -1399,8 +1400,12 @@ swr_update_derived(struct pipe_context *pipe,
 
    /* Set vertex & index buffers */
    if (ctx->dirty & SWR_NEW_VERTEX) {
-      const struct pipe_draw_info &info = *p_draw_info;
-
+      struct pipe_draw_info info = *p_draw_info;
+      /* SWR always need min/max index info for index draw,
+      *  compute it if upper layer does not do for us */
+      if (info.index_size > 0 && info.max_index == ~0u) {
+         u_vbuf_get_minmax_index(pipe, &info, &(info.min_index), &(info.max_index));
+      }
       /* vertex buffers */
       SWR_VERTEX_BUFFER_STATE swrVertexBuffers[PIPE_MAX_ATTRIBS];
       for (UINT i = 0; i < ctx->num_vertex_buffers; i++) {

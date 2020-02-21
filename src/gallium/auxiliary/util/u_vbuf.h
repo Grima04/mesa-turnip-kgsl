@@ -28,6 +28,10 @@
 #ifndef U_VBUF_H
 #define U_VBUF_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* This module takes care of user buffer uploads and vertex format fallbacks.
  * It's designed for the drivers which don't want to use the Draw module.
  * There is a more detailed description at the beginning of the .c file.
@@ -85,5 +89,10 @@ void u_vbuf_save_vertex_elements(struct u_vbuf *mgr);
 void u_vbuf_restore_vertex_elements(struct u_vbuf *mgr);
 void u_vbuf_save_vertex_buffer0(struct u_vbuf *mgr);
 void u_vbuf_restore_vertex_buffer0(struct u_vbuf *mgr);
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
