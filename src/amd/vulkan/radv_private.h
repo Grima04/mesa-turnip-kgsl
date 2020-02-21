@@ -2287,6 +2287,9 @@ struct radv_semaphore {
 	struct radv_semaphore_part temporary;
 };
 
+bool radv_queue_internal_submit(struct radv_queue *queue,
+				struct radeon_cmdbuf *cs);
+
 void radv_set_descriptor_set(struct radv_cmd_buffer *cmd_buffer,
 			     VkPipelineBindPoint bind_point,
 			     struct radv_descriptor_set *set,

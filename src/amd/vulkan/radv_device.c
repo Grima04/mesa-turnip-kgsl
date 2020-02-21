@@ -4652,6 +4652,25 @@ static VkResult radv_queue_submit(struct radv_queue *queue,
 	return radv_process_submissions(&processing_list);
 }
 
+bool
+radv_queue_internal_submit(struct radv_queue *queue, struct radeon_cmdbuf *cs)
+{
+	struct radeon_winsys_ctx *ctx = queue->hw_ctx;
+	struct radv_winsys_sem_info sem_info;
+	VkResult result;
+	int ret;
+
+	result = radv_alloc_sem_info(queue->device, &sem_info, 0, NULL, 0, 0,
+				     0, NULL, NULL);
+	if (result != VK_SUCCESS)
+		return false;
+
+	ret = queue->device->ws->cs_submit(ctx, queue->queue_idx, &cs, 1, NULL,
+					   NULL, &sem_info, NULL, false, NULL);
+	radv_free_sem_info(&sem_info);
+	return !ret;
+}
+
 /* Signals fence as soon as all the work currently put on queue is done. */
 static VkResult radv_signal_fence(struct radv_queue *queue,
                               VkFence fence)
