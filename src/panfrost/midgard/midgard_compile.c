@@ -1837,7 +1837,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                 break;
 
         default:
-                printf ("Unhandled intrinsic %s\n", nir_intrinsic_infos[instr->intrinsic].name);
+                fprintf(stderr, "Unhandled intrinsic %s\n", nir_intrinsic_infos[instr->intrinsic].name);
                 assert(0);
                 break;
         }
@@ -2091,7 +2091,7 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
                 }
 
                 default: {
-                        printf ("Unknown texture source type: %d\n", instr->src[i].src_type);
+                        fprintf(stderr, "Unknown texture source type: %d\n", instr->src[i].src_type);
                         assert(0);
                 }
                 }
@@ -2121,7 +2121,7 @@ emit_tex(compiler_context *ctx, nir_tex_instr *instr)
                 emit_sysval_read(ctx, &instr->instr, ~0, 4, 0);
                 break;
         default: {
-                printf ("Unhandled texture op: %d\n", instr->op);
+                fprintf(stderr, "Unhandled texture op: %d\n", instr->op);
                 assert(0);
         }
         }
