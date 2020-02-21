@@ -311,8 +311,10 @@ void init_context(isel_context *ctx, nir_shader *shader)
                   case nir_intrinsic_load_sample_id:
                   case nir_intrinsic_load_sample_mask_in:
                   case nir_intrinsic_load_input:
+                  case nir_intrinsic_load_output:
                   case nir_intrinsic_load_input_vertex:
                   case nir_intrinsic_load_per_vertex_input:
+                  case nir_intrinsic_load_per_vertex_output:
                   case nir_intrinsic_load_vertex_id:
                   case nir_intrinsic_load_vertex_id_zero_base:
                   case nir_intrinsic_load_barycentric_sample:
