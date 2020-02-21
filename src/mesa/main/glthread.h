@@ -46,9 +46,17 @@
 #include <inttypes.h>
 #include <stdbool.h>
 #include "util/u_queue.h"
+#include "GL/gl.h"
 
 enum marshal_dispatch_cmd_id;
 struct gl_context;
+struct _mesa_HashTable;
+
+struct glthread_vao {
+   GLuint Name;
+   bool HasUserPointer;
+   bool IndexBufferIsUserPointer;
+};
 
 /** A single batch of commands queued up for execution. */
 struct glthread_batch
@@ -83,6 +91,12 @@ struct glthread_state
    /** Index of the batch being filled and about to be submitted. */
    unsigned next;
 
+   /** Vertex Array objects tracked by glthread independently of Mesa. */
+   struct _mesa_HashTable *VAOs;
+   struct glthread_vao *CurrentVAO;
+   struct glthread_vao *LastLookedUpVAO;
+   struct glthread_vao DefaultVAO;
+
    /**
     * Tracks on the main thread side whether the current vertex array binding
     * is in a VBO.
@@ -93,7 +107,6 @@ struct glthread_state
     * Tracks on the main thread side whether the current element array (index
     * buffer) binding is in a VBO.
     */
-   bool element_array_is_vbo;
    bool draw_indirect_buffer_is_vbo;
 };
 
@@ -105,5 +118,12 @@ void _mesa_glthread_disable(struct gl_context *ctx, const char *func);
 void _mesa_glthread_flush_batch(struct gl_context *ctx);
 void _mesa_glthread_finish(struct gl_context *ctx);
 void _mesa_glthread_finish_before(struct gl_context *ctx, const char *func);
+
+void _mesa_glthread_BindVertexArray(struct gl_context *ctx, GLuint id);
+void _mesa_glthread_DeleteVertexArrays(struct gl_context *ctx,
+                                       GLsizei n, const GLuint *ids);
+void _mesa_glthread_GenVertexArrays(struct gl_context *ctx,
+                                    GLsizei n, GLuint *arrays);
+void _mesa_glthread_AttribPointer(struct gl_context *ctx);
 
 #endif /* _GLTHREAD_H*/

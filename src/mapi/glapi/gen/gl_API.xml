@@ -3166,7 +3166,7 @@
 
     <function name="ColorPointer" es1="1.0" deprecated="3.1" marshal="async"
               no_error="true"
-              marshal_fail="_mesa_glthread_is_non_vbo_vertex_attrib_pointer(ctx)">
+              marshal_call_after="_mesa_glthread_AttribPointer(ctx);">
         <param name="size" type="GLint"/>
         <param name="type" type="GLenum"/>
         <param name="stride" type="GLsizei"/>
@@ -3179,7 +3179,8 @@
         <glx handcode="true"/>
     </function>
 
-    <function name="DrawArrays" es1="1.0" es2="2.0" exec="dynamic" marshal="draw">
+    <function name="DrawArrays" es1="1.0" es2="2.0" exec="dynamic" marshal="draw"
+              marshal_fail="_mesa_glthread_is_non_vbo_draw_arrays(ctx)">
         <param name="mode" type="GLenum"/>
         <param name="first" type="GLint"/>
         <param name="count" type="GLsizei"/>
@@ -3197,7 +3198,7 @@
 
     <function name="EdgeFlagPointer" deprecated="3.1" marshal="async"
               no_error="true"
-              marshal_fail="_mesa_glthread_is_non_vbo_vertex_attrib_pointer(ctx)">
+              marshal_call_after="_mesa_glthread_AttribPointer(ctx);">
         <param name="stride" type="GLsizei"/>
         <param name="pointer" type="const GLvoid *"/>
         <glx handcode="true"/>
@@ -3216,7 +3217,7 @@
 
     <function name="IndexPointer" deprecated="3.1" marshal="async"
               no_error="true"
-              marshal_fail="_mesa_glthread_is_non_vbo_vertex_attrib_pointer(ctx)">
+              marshal_call_after="_mesa_glthread_AttribPointer(ctx);">
         <param name="type" type="GLenum"/>
         <param name="stride" type="GLsizei"/>
         <param name="pointer" type="const GLvoid *"/>
@@ -3232,7 +3233,7 @@
 
     <function name="NormalPointer" es1="1.0" deprecated="3.1" marshal="async"
               no_error="true"
-              marshal_fail="_mesa_glthread_is_non_vbo_vertex_attrib_pointer(ctx)">
+              marshal_call_after="_mesa_glthread_AttribPointer(ctx);">
         <param name="type" type="GLenum"/>
         <param name="stride" type="GLsizei"/>
         <param name="pointer" type="const GLvoid *"/>
@@ -3241,7 +3242,7 @@
 
     <function name="TexCoordPointer" es1="1.0" deprecated="3.1" marshal="async"
               no_error="true"
-              marshal_fail="_mesa_glthread_is_non_vbo_vertex_attrib_pointer(ctx)">
+              marshal_call_after="_mesa_glthread_AttribPointer(ctx);">
         <param name="size" type="GLint"/>
         <param name="type" type="GLenum"/>
         <param name="stride" type="GLsizei"/>
@@ -3251,7 +3252,7 @@
 
     <function name="VertexPointer" es1="1.0" deprecated="3.1" marshal="async"
               no_error="true"
-              marshal_fail="_mesa_glthread_is_non_vbo_vertex_attrib_pointer(ctx)">
+              marshal_call_after="_mesa_glthread_AttribPointer(ctx);">
         <param name="size" type="GLint"/>
         <param name="type" type="GLenum"/>
         <param name="stride" type="GLsizei"/>
@@ -4747,14 +4748,15 @@
 
     <function name="FogCoordPointer" deprecated="3.1" marshal="async"
               no_error="true"
-              marshal_fail="_mesa_glthread_is_non_vbo_vertex_attrib_pointer(ctx)">
+              marshal_call_after="_mesa_glthread_AttribPointer(ctx);">
         <param name="type" type="GLenum"/>
         <param name="stride" type="GLsizei"/>
         <param name="pointer" type="const GLvoid *"/>
         <glx handcode="true"/>
     </function>
 
-    <function name="MultiDrawArrays" marshal="draw">
+    <function name="MultiDrawArrays" marshal="draw"
+              marshal_fail="_mesa_glthread_is_non_vbo_draw_arrays(ctx)">
         <param name="mode" type="GLenum"/>
         <param name="first" type="const GLint *" count="primcount"/>
         <param name="count" type="const GLsizei *" count="primcount"/>
@@ -4887,7 +4889,7 @@
 
     <function name="SecondaryColorPointer" deprecated="3.1" marshal="async"
               no_error="true"
-              marshal_fail="_mesa_glthread_is_non_vbo_vertex_attrib_pointer(ctx)">
+              marshal_call_after="_mesa_glthread_AttribPointer(ctx);">
         <param name="size" type="GLint"/>
         <param name="type" type="GLenum"/>
         <param name="stride" type="GLsizei"/>
@@ -5844,7 +5846,7 @@
 
     <function name="VertexAttribPointer" es2="2.0" marshal="async"
               no_error="true"
-              marshal_fail="_mesa_glthread_is_non_vbo_vertex_attrib_pointer(ctx)">
+              marshal_call_after="_mesa_glthread_AttribPointer(ctx);">
         <param name="index" type="GLuint"/>
         <param name="size" type="GLint"/>
         <param name="type" type="GLenum"/>
@@ -9242,7 +9244,7 @@
     </function>
 
     <function name="ColorPointerEXT" deprecated="3.1" marshal="async"
-              marshal_fail="_mesa_glthread_is_non_vbo_vertex_attrib_pointer(ctx)">
+              marshal_call_after="_mesa_glthread_AttribPointer(ctx);">
         <param name="size" type="GLint"/>
         <param name="type" type="GLenum"/>
         <param name="stride" type="GLsizei"/>
@@ -9258,7 +9260,7 @@
     </function>
 
     <function name="EdgeFlagPointerEXT" deprecated="3.1" marshal="async"
-              marshal_fail="_mesa_glthread_is_non_vbo_vertex_attrib_pointer(ctx)">
+              marshal_call_after="_mesa_glthread_AttribPointer(ctx);">
         <param name="stride" type="GLsizei"/>
         <param name="count" type="GLsizei"/>
         <param name="pointer" type="const GLboolean *"/>
@@ -9271,7 +9273,7 @@
     </function>
 
     <function name="IndexPointerEXT" deprecated="3.1" marshal="async"
-              marshal_fail="_mesa_glthread_is_non_vbo_vertex_attrib_pointer(ctx)">
+              marshal_call_after="_mesa_glthread_AttribPointer(ctx);">
         <param name="type" type="GLenum"/>
         <param name="stride" type="GLsizei"/>
         <param name="count" type="GLsizei"/>
@@ -9280,7 +9282,7 @@
     </function>
 
     <function name="NormalPointerEXT" deprecated="3.1" marshal="async"
-              marshal_fail="_mesa_glthread_is_non_vbo_vertex_attrib_pointer(ctx)">
+              marshal_call_after="_mesa_glthread_AttribPointer(ctx);">
         <param name="type" type="GLenum"/>
         <param name="stride" type="GLsizei"/>
         <param name="count" type="GLsizei"/>
@@ -9289,7 +9291,7 @@
     </function>
 
     <function name="TexCoordPointerEXT" deprecated="3.1" marshal="async"
-              marshal_fail="_mesa_glthread_is_non_vbo_vertex_attrib_pointer(ctx)">
+              marshal_call_after="_mesa_glthread_AttribPointer(ctx);">
         <param name="size" type="GLint"/>
         <param name="type" type="GLenum"/>
         <param name="stride" type="GLsizei"/>
@@ -9299,7 +9301,7 @@
     </function>
 
     <function name="VertexPointerEXT" deprecated="3.1" marshal="async"
-              marshal_fail="_mesa_glthread_is_non_vbo_vertex_attrib_pointer(ctx)">
+              marshal_call_after="_mesa_glthread_AttribPointer(ctx);">
         <param name="size" type="GLint"/>
         <param name="type" type="GLenum"/>
         <param name="stride" type="GLsizei"/>
@@ -11390,7 +11392,7 @@
 
 <category name="GL_IBM_multimode_draw_arrays" number="200">
     <function name="MultiModeDrawArraysIBM" marshal="draw"
-              marshal_fail="_mesa_glthread_is_non_vbo_draw_elements(ctx)">
+              marshal_fail="_mesa_glthread_is_non_vbo_draw_arrays(ctx)">
         <param name="mode" type="const GLenum *" count="primcount"/>
         <param name="first" type="const GLint *" count="primcount"/>
         <param name="count" type="const GLsizei *" count="primcount"/>

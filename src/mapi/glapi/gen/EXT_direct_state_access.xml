@@ -658,7 +658,7 @@
    </function>
 
    <function name="MultiTexCoordPointerEXT" marshal="async"
-             marshal_fail="_mesa_glthread_is_non_vbo_vertex_attrib_pointer(ctx)">
+             marshal_call_after="_mesa_glthread_AttribPointer(ctx);">
       <param name="texunit" type="GLenum" />
       <param name="size" type="GLint" />
       <param name="type" type="GLenum" />

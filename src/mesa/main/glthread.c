@@ -35,6 +35,7 @@
 #include "main/mtypes.h"
 #include "main/glthread.h"
 #include "main/marshal.h"
+#include "main/hash.h"
 #include "util/u_atomic.h"
 #include "util/u_thread.h"
 
@@ -85,8 +86,17 @@ _mesa_glthread_init(struct gl_context *ctx)
       return;
    }
 
+   glthread->VAOs = _mesa_NewHashTable();
+   if (!glthread->VAOs) {
+      util_queue_destroy(&glthread->queue);
+      free(glthread);
+      return;
+   }
+   glthread->CurrentVAO = &glthread->DefaultVAO;
+
    ctx->MarshalExec = _mesa_create_marshal_table(ctx);
    if (!ctx->MarshalExec) {
+      _mesa_DeleteHashTable(glthread->VAOs);
       util_queue_destroy(&glthread->queue);
       free(glthread);
       return;
@@ -110,6 +120,12 @@ _mesa_glthread_init(struct gl_context *ctx)
    util_queue_fence_destroy(&fence);
 }
 
+static void
+free_vao(GLuint key, void *data, void *userData)
+{
+   free(data);
+}
+
 void
 _mesa_glthread_destroy(struct gl_context *ctx)
 {
@@ -123,6 +139,9 @@ _mesa_glthread_destroy(struct gl_context *ctx)
 
    for (unsigned i = 0; i < MARSHAL_MAX_BATCHES; i++)
       util_queue_fence_destroy(&glthread->batches[i].fence);
+
+   _mesa_HashDeleteAll(glthread->VAOs, free_vao, NULL);
+   _mesa_DeleteHashTable(glthread->VAOs);
 
    free(glthread);
    ctx->GLThread = NULL;

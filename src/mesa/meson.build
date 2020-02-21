@@ -167,6 +167,7 @@ files_libmesa_common = files(
   'main/glspirv.h',
   'main/glthread.c',
   'main/glthread.h',
+  'main/glthread_varray.c',
   'main/glheader.h',
   'main/hash.c',
   'main/hash.h',

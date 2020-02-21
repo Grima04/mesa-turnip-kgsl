@@ -182,7 +182,7 @@ track_vbo_binding(struct gl_context *ctx, GLenum target, GLuint buffer)
        * vertex array object instead of the context, so this would need to
        * change on vertex array object updates.
        */
-      glthread->element_array_is_vbo = (buffer != 0);
+      glthread->CurrentVAO->IndexBufferIsUserPointer = buffer != 0;
       break;
    case GL_DRAW_INDIRECT_BUFFER:
       glthread->draw_indirect_buffer_is_vbo = buffer != 0;

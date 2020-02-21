@@ -8,7 +8,8 @@
 
 <category name="GL_ARB_draw_instanced" number="44">
 
-  <function name="DrawArraysInstancedARB" exec="dynamic" marshal="draw">
+  <function name="DrawArraysInstancedARB" exec="dynamic" marshal="draw"
+            marshal_fail="_mesa_glthread_is_non_vbo_draw_arrays(ctx)">
     <param name="mode" type="GLenum"/>
     <param name="first" type="GLint"/>
     <param name="count" type="GLsizei"/>

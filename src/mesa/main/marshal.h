@@ -74,19 +74,6 @@ _mesa_glthread_allocate_command(struct gl_context *ctx,
 }
 
 /**
- * Instead of conditionally handling marshaling previously-bound user vertex
- * array data in draw calls (deprecated and removed in GL core), we just
- * disable threading at the point where the user sets a user vertex array.
- */
-static inline bool
-_mesa_glthread_is_non_vbo_vertex_attrib_pointer(const struct gl_context *ctx)
-{
-   struct glthread_state *glthread = ctx->GLThread;
-
-   return ctx->API != API_OPENGL_CORE && !glthread->vertex_array_is_vbo;
-}
-
-/**
  * Instead of conditionally handling marshaling immediate index data in draw
  * calls (deprecated and removed in GL core), we just disable threading.
  */
@@ -95,7 +82,17 @@ _mesa_glthread_is_non_vbo_draw_elements(const struct gl_context *ctx)
 {
    struct glthread_state *glthread = ctx->GLThread;
 
-   return ctx->API != API_OPENGL_CORE && !glthread->element_array_is_vbo;
+   return ctx->API != API_OPENGL_CORE &&
+          (glthread->CurrentVAO->IndexBufferIsUserPointer ||
+           glthread->CurrentVAO->HasUserPointer);
+}
+
+static inline bool
+_mesa_glthread_is_non_vbo_draw_arrays(const struct gl_context *ctx)
+{
+   struct glthread_state *glthread = ctx->GLThread;
+
+   return ctx->API != API_OPENGL_CORE && glthread->CurrentVAO->HasUserPointer;
 }
 
 static inline bool
@@ -104,7 +101,8 @@ _mesa_glthread_is_non_vbo_draw_arrays_indirect(const struct gl_context *ctx)
    struct glthread_state *glthread = ctx->GLThread;
 
    return ctx->API != API_OPENGL_CORE &&
-          !glthread->draw_indirect_buffer_is_vbo;
+          (!glthread->draw_indirect_buffer_is_vbo ||
+           glthread->CurrentVAO->HasUserPointer );
 }
 
 static inline bool
@@ -114,7 +112,8 @@ _mesa_glthread_is_non_vbo_draw_elements_indirect(const struct gl_context *ctx)
 
    return ctx->API != API_OPENGL_CORE &&
           (!glthread->draw_indirect_buffer_is_vbo ||
-           !glthread->element_array_is_vbo);
+           glthread->CurrentVAO->IndexBufferIsUserPointer ||
+           glthread->CurrentVAO->HasUserPointer);
 }
 
 #define DEBUG_MARSHAL_PRINT_CALLS 0
@@ -150,30 +149,6 @@ debug_print_marshal(const char *func)
 
 struct _glapi_table *
 _mesa_create_marshal_table(const struct gl_context *ctx);
-
-
-/**
- * Checks whether we're on a compat context for code-generated
- * glBindVertexArray().
- *
- * In order to decide whether a draw call uses only VBOs for vertex and index
- * buffers, we track the current vertex and index buffer bindings by
- * glBindBuffer().  However, the index buffer binding is stored in the vertex
- * array as opposed to the context.  If we were to accurately track whether
- * the index buffer was a user pointer ot not, we'd have to track it per
- * vertex array, which would mean synchronizing with the client thread and
- * looking into the hash table to find the actual vertex array object.  That's
- * more tracking than we'd like to do in the main thread, if possible.
- *
- * Instead, just punt for now and disable threading on apps using vertex
- * arrays and compat contexts.  Apps using vertex arrays can probably use a
- * core context.
- */
-static inline bool
-_mesa_glthread_is_compat_bind_vertex_array(const struct gl_context *ctx)
-{
-   return ctx->API != API_OPENGL_CORE;
-}
 
 struct marshal_cmd_ShaderSource;
 struct marshal_cmd_BindBuffer;
