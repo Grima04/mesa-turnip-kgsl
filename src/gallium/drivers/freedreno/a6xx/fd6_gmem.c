@@ -1355,9 +1355,6 @@ fd6_emit_tile_gmem2mem(struct fd_batch *batch, const struct fd_tile *tile)
 	} else {
 		emit_conditional_ib(batch, tile, batch->tile_fini);
 	}
-
-	OUT_PKT7(ring, CP_SET_MARKER, 1);
-	OUT_RING(ring, A6XX_CP_SET_MARKER_0_MODE(RM6_YIELD));
 }
 
 static void
