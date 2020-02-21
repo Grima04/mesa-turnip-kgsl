@@ -219,7 +219,7 @@ void update_renames(ra_ctx& ctx, RegisterFile& reg_file,
          if (!op.isTemp())
             continue;
          if (op.tempId() == copy.first.tempId()) {
-            bool omit_renaming = instr->opcode == aco_opcode::p_create_vector && !op.isKill();
+            bool omit_renaming = instr->opcode == aco_opcode::p_create_vector && !op.isKillBeforeDef();
             for (std::pair<Operand, Definition>& pc : parallelcopies) {
                PhysReg def_reg = pc.second.physReg();
                omit_renaming &= def_reg > copy.first.physReg() ?
@@ -336,8 +336,8 @@ bool get_regs_for_copies(ra_ctx& ctx,
 
       /* check if this is a dead operand, then we can re-use the space from the definition */
       bool is_dead_operand = false;
-      for (unsigned i = 0; !is_phi(instr) && !is_dead_operand && i < instr->operands.size(); i++) {
-         if (instr->operands[i].isTemp() && instr->operands[i].isKill() && instr->operands[i].tempId() == id)
+      for (unsigned i = 0; !is_phi(instr) && !is_dead_operand && (i < instr->operands.size()); i++) {
+         if (instr->operands[i].isTemp() && instr->operands[i].isKillBeforeDef() && instr->operands[i].tempId() == id)
             is_dead_operand = true;
       }
 
@@ -409,7 +409,7 @@ bool get_regs_for_copies(ra_ctx& ctx,
             }
             bool is_kill = false;
             for (const Operand& op : instr->operands) {
-               if (op.isTemp() && op.isKill() && op.tempId() == reg_file[j]) {
+               if (op.isTemp() && op.isKillBeforeDef() && op.tempId() == reg_file[j]) {
                   is_kill = true;
                   break;
                }
@@ -488,7 +488,7 @@ std::pair<PhysReg, bool> get_reg_impl(ra_ctx& ctx,
    unsigned killed_ops = 0;
    for (unsigned j = 0; !is_phi(instr) && j < instr->operands.size(); j++) {
       if (instr->operands[j].isTemp() &&
-          instr->operands[j].isFirstKill() &&
+          instr->operands[j].isFirstKillBeforeDef() &&
           instr->operands[j].physReg() >= lb &&
           instr->operands[j].physReg() < ub) {
          assert(instr->operands[j].isFixed());
@@ -573,7 +573,7 @@ std::pair<PhysReg, bool> get_reg_impl(ra_ctx& ctx,
    if (num_moves == 0xFF) {
       /* remove killed operands from reg_file once again */
       for (unsigned i = 0; !is_phi(instr) && i < instr->operands.size(); i++) {
-         if (instr->operands[i].isTemp() && instr->operands[i].isFirstKill())
+         if (instr->operands[i].isTemp() && instr->operands[i].isFirstKillBeforeDef())
             reg_file.clear(instr->operands[i]);
       }
       for (unsigned i = 0; i < instr->definitions.size(); i++) {
@@ -597,7 +597,7 @@ std::pair<PhysReg, bool> get_reg_impl(ra_ctx& ctx,
    if (instr->opcode == aco_opcode::p_create_vector) {
       /* move killed operands which aren't yet at the correct position */
       for (unsigned i = 0, offset = 0; i < instr->operands.size(); offset += instr->operands[i].size(), i++) {
-         if (instr->operands[i].isTemp() && instr->operands[i].isFirstKill() &&
+         if (instr->operands[i].isTemp() && instr->operands[i].isFirstKillBeforeDef() &&
              instr->operands[i].getTemp().type() == rc.type()) {
 
             if (instr->operands[i].physReg() != best_pos + offset) {
@@ -622,7 +622,7 @@ std::pair<PhysReg, bool> get_reg_impl(ra_ctx& ctx,
       /* remove killed operands from reg_file once again */
       if (!is_phi(instr)) {
          for (const Operand& op : instr->operands) {
-            if (op.isTemp() && op.isFirstKill())
+            if (op.isTemp() && op.isFirstKillBeforeDef())
                reg_file.clear(op);
          }
       }
@@ -646,7 +646,7 @@ std::pair<PhysReg, bool> get_reg_impl(ra_ctx& ctx,
       if (!instr->operands[i].isTemp() || !instr->operands[i].isFixed())
          continue;
       assert(!instr->operands[i].isUndefined());
-      if (instr->operands[i].isFirstKill())
+      if (instr->operands[i].isFirstKillBeforeDef())
          reg_file.clear(instr->operands[i]);
    }
    for (unsigned i = 0; i < instr->definitions.size(); i++) {
@@ -695,11 +695,12 @@ PhysReg get_reg(ra_ctx& ctx,
    if (res.second)
       return res.first;
 
+   /* try using more registers */
+
    /* We should only fail here because keeping under the limit would require
     * too many moves. */
    assert(reg_file.count_zero(PhysReg{lb}, ub-lb) >= size);
 
-   /* try using more registers */
    uint16_t max_addressible_sgpr = ctx.program->sgpr_limit;
    uint16_t max_addressible_vgpr = ctx.program->vgpr_limit;
    if (rc.type() == RegType::vgpr && ctx.program->max_reg_demand.vgpr < max_addressible_vgpr) {
@@ -767,7 +768,7 @@ PhysReg get_reg_create_vector(ra_ctx& ctx,
    /* test for each operand which definition placement causes the least shuffle instructions */
    for (unsigned i = 0, offset = 0; i < instr->operands.size(); offset += instr->operands[i].size(), i++) {
       // TODO: think about, if we can alias live operands on the same register
-      if (!instr->operands[i].isTemp() || !instr->operands[i].isKill() || instr->operands[i].getTemp().type() != rc.type())
+      if (!instr->operands[i].isTemp() || !instr->operands[i].isKillBeforeDef() || instr->operands[i].getTemp().type() != rc.type())
          continue;
 
       if (offset > instr->operands[i].physReg())
@@ -836,7 +837,7 @@ PhysReg get_reg_create_vector(ra_ctx& ctx,
 
    /* move killed operands which aren't yet at the correct position */
    for (unsigned i = 0, offset = 0; i < instr->operands.size(); offset += instr->operands[i].size(), i++) {
-      if (instr->operands[i].isTemp() && instr->operands[i].isFirstKill() && instr->operands[i].getTemp().type() == rc.type()) {
+      if (instr->operands[i].isTemp() && instr->operands[i].isFirstKillBeforeDef() && instr->operands[i].getTemp().type() == rc.type()) {
          if (instr->operands[i].physReg() != best_pos + offset)
             vars.emplace(instr->operands[i].size(), instr->operands[i].tempId());
          else
@@ -1187,7 +1188,7 @@ void register_allocation(Program *program, std::vector<std::set<Temp>> live_out_
                /* try to coalesce phi affinities with parallelcopies */
                if (!def.isFixed() && instr->opcode == aco_opcode::p_parallelcopy) {
                   Operand op = instr->operands[i];
-                  if (op.isTemp() && op.isFirstKill() && def.regClass() == op.regClass()) {
+                  if (op.isTemp() && op.isFirstKillBeforeDef() && def.regClass() == op.regClass()) {
                      phi_ressources[it->second].emplace_back(op.getTemp());
                      temp_to_phi_ressources[op.tempId()] = it->second;
                   }
@@ -1409,7 +1410,7 @@ void register_allocation(Program *program, std::vector<std::set<Temp>> live_out_
                if (phi->opcode == aco_opcode::p_phi) {
                   if (phi->operands[idx].isTemp() &&
                       phi->operands[idx].getTemp().type() == RegType::sgpr &&
-                      phi->operands[idx].isFirstKill()) {
+                      phi->operands[idx].isFirstKillBeforeDef()) {
                      Temp phi_op = read_variable(phi->operands[idx].getTemp(), block.index);
                      PhysReg reg = ctx.assignments[phi_op.id()].first;
                      assert(register_file[reg] == phi_op.id());
@@ -1512,14 +1513,14 @@ void register_allocation(Program *program, std::vector<std::set<Temp>> live_out_
          }
          /* remove dead vars from register file */
          for (const Operand& op : instr->operands) {
-            if (op.isTemp() && op.isFirstKill())
+            if (op.isTemp() && op.isFirstKillBeforeDef())
                register_file.clear(op);
          }
 
          /* try to optimize v_mad_f32 -> v_mac_f32 */
          if (instr->opcode == aco_opcode::v_mad_f32 &&
              instr->operands[2].isTemp() &&
-             instr->operands[2].isKill() &&
+             instr->operands[2].isKillBeforeDef() &&
              instr->operands[2].getTemp().type() == RegType::vgpr &&
              instr->operands[1].isTemp() &&
              instr->operands[1].getTemp().type() == RegType::vgpr) { /* TODO: swap src0 and src1 in this case */
@@ -1573,7 +1574,7 @@ void register_allocation(Program *program, std::vector<std::set<Temp>> live_out_
 
                /* re-enable the killed operands, so that we don't move the blocking var there */
                for (const Operand& op : instr->operands) {
-                  if (op.isTemp() && op.isFirstKill())
+                  if (op.isTemp() && op.isFirstKillBeforeDef())
                      register_file.fill(op.physReg(), op.size(), 0xFFFF);
                }
 
@@ -1581,7 +1582,7 @@ void register_allocation(Program *program, std::vector<std::set<Temp>> live_out_
                PhysReg reg = get_reg(ctx, register_file, rc, parallelcopy, instr);
                /* once again, disable killed operands */
                for (const Operand& op : instr->operands) {
-                  if (op.isTemp() && op.isFirstKill())
+                  if (op.isTemp() && op.isFirstKillBeforeDef())
                      register_file.clear(op);
                }
                for (unsigned k = 0; k < i; k++) {
@@ -1629,7 +1630,7 @@ void register_allocation(Program *program, std::vector<std::set<Temp>> live_out_
                definition.setFixed(reg);
             } else if (instr->opcode == aco_opcode::p_wqm) {
                PhysReg reg;
-               if (instr->operands[0].isKill() && instr->operands[0].getTemp().type() == definition.getTemp().type()) {
+               if (instr->operands[0].isKillBeforeDef() && instr->operands[0].getTemp().type() == definition.getTemp().type()) {
                   reg = instr->operands[0].physReg();
                   assert(register_file[reg.reg] == 0);
                } else {
@@ -1638,7 +1639,7 @@ void register_allocation(Program *program, std::vector<std::set<Temp>> live_out_
                definition.setFixed(reg);
             } else if (instr->opcode == aco_opcode::p_extract_vector) {
                PhysReg reg;
-               if (instr->operands[0].isKill() &&
+               if (instr->operands[0].isKillBeforeDef() &&
                    instr->operands[0].getTemp().type() == definition.getTemp().type()) {
                   reg = instr->operands[0].physReg();
                   reg.reg += definition.size() * instr->operands[1].constantValue();
@@ -1711,10 +1712,14 @@ void register_allocation(Program *program, std::vector<std::set<Temp>> live_out_
 
          handle_pseudo(ctx, register_file, instr.get());
 
-         /* kill definitions */
+         /* kill definitions and late-kill operands */
          for (const Definition& def : instr->definitions) {
              if (def.isTemp() && def.isKill())
                 register_file.clear(def);
+         }
+         for (const Operand& op : instr->operands) {
+            if (op.isTemp() && op.isFirstKill() && op.isLateKill())
+               register_file.clear(op);
          }
 
          /* emit parallelcopy */

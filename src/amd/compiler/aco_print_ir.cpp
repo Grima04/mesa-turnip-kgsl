@@ -131,6 +131,9 @@ static void print_operand(const Operand *operand, FILE *output)
       print_reg_class(operand->regClass(), output);
       fprintf(output, "undef");
    } else {
+      if (operand->isLateKill())
+         fprintf(output, "(latekill)");
+
       fprintf(output, "%%%d", operand->tempId());
 
       if (operand->isFixed())

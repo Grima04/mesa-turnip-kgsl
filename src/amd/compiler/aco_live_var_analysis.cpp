@@ -57,12 +57,19 @@ RegisterDemand get_live_changes(aco_ptr<Instruction>& instr)
 RegisterDemand get_temp_registers(aco_ptr<Instruction>& instr)
 {
    RegisterDemand temp_registers;
+
    for (Definition def : instr->definitions) {
       if (!def.isTemp())
          continue;
       if (def.isKill())
          temp_registers += def.getTemp();
    }
+
+   for (Operand op : instr->operands) {
+      if (op.isTemp() && op.isLateKill() && op.isFirstKill())
+         temp_registers += op.getTemp();
+   }
+
    return temp_registers;
 }
 
@@ -139,6 +146,7 @@ void process_live_temps_per_block(Program *program, live& lives, Block* block,
             new_demand -= temp;
             definition.setKill(false);
          } else {
+            register_demand[idx] += temp;
             definition.setKill(true);
          }
 
@@ -175,6 +183,8 @@ void process_live_temps_per_block(Program *program, live& lives, Block* block,
                      insn->operands[j].setKill(true);
                   }
                }
+               if (operand.isLateKill())
+                  register_demand[idx] += temp;
                new_demand += temp;
             }
 
@@ -182,8 +192,6 @@ void process_live_temps_per_block(Program *program, live& lives, Block* block,
                exec_live = true;
          }
       }
-
-      register_demand[idx] += get_temp_registers(block->instructions[idx]);
 
       block->register_demand.update(register_demand[idx]);
    }

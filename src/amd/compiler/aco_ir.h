@@ -298,7 +298,8 @@ class Operand final
 public:
    constexpr Operand()
       : reg_(PhysReg{128}), isTemp_(false), isFixed_(true), isConstant_(false),
-        isKill_(false), isUndef_(true), isFirstKill_(false), is64BitConst_(false) {}
+        isKill_(false), isUndef_(true), isFirstKill_(false), is64BitConst_(false),
+        isLateKill_(false) {}
 
    explicit Operand(Temp r) noexcept
    {
@@ -471,6 +472,19 @@ public:
       return isConstant() && constantValue() == cmp;
    }
 
+   /* Indicates that the killed operand's live range intersects with the
+    * instruction's definitions. Unlike isKill() and isFirstKill(), this is
+    * not set by liveness analysis. */
+   constexpr void setLateKill(bool flag) noexcept
+   {
+      isLateKill_ = flag;
+   }
+
+   constexpr bool isLateKill() const noexcept
+   {
+      return isLateKill_;
+   }
+
    constexpr void setKill(bool flag) noexcept
    {
       isKill_ = flag;
@@ -497,6 +511,16 @@ public:
       return isFirstKill_;
    }
 
+   constexpr bool isKillBeforeDef() const noexcept
+   {
+      return isKill() && !isLateKill();
+   }
+
+   constexpr bool isFirstKillBeforeDef() const noexcept
+   {
+      return isFirstKill() && !isLateKill();
+   }
+
 private:
    union {
       uint32_t i;
@@ -513,6 +537,7 @@ private:
          uint8_t isUndef_:1;
          uint8_t isFirstKill_:1;
          uint8_t is64BitConst_:1;
+         uint8_t isLateKill_:1;
       };
       /* can't initialize bit-fields in c++11, so work around using a union */
       uint8_t control_ = 0;

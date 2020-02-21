@@ -497,7 +497,7 @@ bool validate_ra(Program *program, const struct radv_nir_compiler_options *optio
             for (const Operand& op : instr->operands) {
                if (!op.isTemp())
                   continue;
-               if (op.isFirstKill()) {
+               if (op.isFirstKillBeforeDef()) {
                   for (unsigned j = 0; j < op.getTemp().size(); j++)
                      regs[op.physReg() + j] = 0;
                }
@@ -523,6 +523,17 @@ bool validate_ra(Program *program, const struct radv_nir_compiler_options *optio
             if (def.isKill()) {
                for (unsigned j = 0; j < def.getTemp().size(); j++)
                   regs[def.physReg() + j] = 0;
+            }
+         }
+
+         if (instr->opcode != aco_opcode::p_phi && instr->opcode != aco_opcode::p_linear_phi) {
+            for (const Operand& op : instr->operands) {
+               if (!op.isTemp())
+                  continue;
+               if (op.isLateKill() && op.isFirstKill()) {
+                  for (unsigned j = 0; j < op.getTemp().size(); j++)
+                     regs[op.physReg() + j] = 0;
+               }
             }
          }
       }
