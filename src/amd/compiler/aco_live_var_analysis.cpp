@@ -87,6 +87,8 @@ void process_live_temps_per_block(Program *program, live& lives, Block* block,
          if (!definition.isTemp()) {
             continue;
          }
+         if ((definition.isFixed() || definition.hasHint()) && definition.physReg() == vcc)
+            program->needs_vcc = true;
 
          const Temp temp = definition.getTemp();
          size_t n = 0;
@@ -120,9 +122,10 @@ void process_live_temps_per_block(Program *program, live& lives, Block* block,
          for (unsigned i = 0; i < insn->operands.size(); ++i)
          {
             Operand& operand = insn->operands[i];
-            if (!operand.isTemp()) {
+            if (!operand.isTemp())
                continue;
-            }
+            if (operand.isFixed() && operand.physReg() == vcc)
+               program->needs_vcc = true;
             const Temp temp = operand.getTemp();
             const bool inserted = temp.is_linear()
                                 ? live_sgprs.insert(temp).second
@@ -161,6 +164,8 @@ void process_live_temps_per_block(Program *program, live& lives, Block* block,
       assert(is_phi(insn));
       assert(insn->definitions.size() == 1 && insn->definitions[0].isTemp());
       Definition& definition = insn->definitions[0];
+      if ((definition.isFixed() || definition.hasHint()) && definition.physReg() == vcc)
+         program->needs_vcc = true;
       const Temp temp = definition.getTemp();
       size_t n = 0;
 
@@ -205,9 +210,10 @@ void process_live_temps_per_block(Program *program, live& lives, Block* block,
                                    : block->linear_preds;
       for (unsigned i = 0; i < preds.size(); ++i) {
          Operand &operand = insn->operands[i];
-         if (!operand.isTemp()) {
+         if (!operand.isTemp())
             continue;
-         }
+         if (operand.isFixed() && operand.physReg() == vcc)
+            program->needs_vcc = true;
          /* check if we changed an already processed block */
          const bool inserted = live_temps[preds[i]].insert(operand.getTemp()).second;
          if (inserted) {
@@ -363,6 +369,8 @@ live live_var_analysis(Program* program,
    std::set<unsigned> worklist;
    std::vector<uint16_t> phi_sgpr_ops(program->blocks.size());
    RegisterDemand new_demand;
+
+   program->needs_vcc = false;
 
    /* this implementation assumes that the block idx corresponds to the block's position in program->blocks vector */
    for (Block& block : program->blocks)

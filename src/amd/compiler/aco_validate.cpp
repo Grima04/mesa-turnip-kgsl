@@ -390,6 +390,8 @@ bool validate_ra(Program *program, const struct radv_nir_compiler_options *optio
             if ((op.getTemp().type() == RegType::vgpr && op.physReg() + op.size() > 256 + program->config->num_vgprs) ||
                 (op.getTemp().type() == RegType::sgpr && op.physReg() + op.size() > program->config->num_sgprs && op.physReg() < program->sgpr_limit))
                err |= ra_fail(output, loc, assignments.at(op.tempId()).firstloc, "Operand %d has an out-of-bounds register assignment", i);
+            if (op.physReg() == vcc && !program->needs_vcc)
+               err |= ra_fail(output, loc, Location(), "Operand %d fixed to vcc but needs_vcc=false", i);
             if (!assignments[op.tempId()].firstloc.block)
                assignments[op.tempId()].firstloc = loc;
             if (!assignments[op.tempId()].defloc.block)
@@ -407,6 +409,8 @@ bool validate_ra(Program *program, const struct radv_nir_compiler_options *optio
             if ((def.getTemp().type() == RegType::vgpr && def.physReg() + def.size() > 256 + program->config->num_vgprs) ||
                 (def.getTemp().type() == RegType::sgpr && def.physReg() + def.size() > program->config->num_sgprs && def.physReg() < program->sgpr_limit))
                err |= ra_fail(output, loc, assignments.at(def.tempId()).firstloc, "Definition %d has an out-of-bounds register assignment", i);
+            if (def.physReg() == vcc && !program->needs_vcc)
+               err |= ra_fail(output, loc, Location(), "Definition %d fixed to vcc but needs_vcc=false", i);
             if (!assignments[def.tempId()].firstloc.block)
                assignments[def.tempId()].firstloc = loc;
             assignments[def.tempId()].defloc = loc;
