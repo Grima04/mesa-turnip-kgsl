@@ -1202,6 +1202,13 @@ v3dv_DeviceWaitIdle(VkDevice _device)
 }
 
 VkResult
+v3dv_QueueWaitIdle(VkQueue _queue)
+{
+   V3DV_FROM_HANDLE(v3dv_queue, queue, _queue);
+   return v3dv_DeviceWaitIdle(v3dv_device_to_handle(queue->device));
+}
+
+VkResult
 v3dv_CreateDebugReportCallbackEXT(VkInstance _instance,
                                  const VkDebugReportCallbackCreateInfoEXT* pCreateInfo,
                                  const VkAllocationCallbacks* pAllocator,
