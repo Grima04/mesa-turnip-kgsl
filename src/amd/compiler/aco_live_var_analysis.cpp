@@ -36,8 +36,46 @@
 #include "vulkan/radv_shader.h"
 
 namespace aco {
-namespace {
+RegisterDemand get_live_changes(aco_ptr<Instruction>& instr)
+{
+   RegisterDemand changes;
+   for (const Definition& def : instr->definitions) {
+      if (!def.isTemp() || def.isKill())
+         continue;
+      changes += def.getTemp();
+   }
 
+   for (const Operand& op : instr->operands) {
+      if (!op.isTemp() || !op.isFirstKill())
+         continue;
+      changes -= op.getTemp();
+   }
+
+   return changes;
+}
+
+RegisterDemand get_temp_registers(aco_ptr<Instruction>& instr)
+{
+   RegisterDemand temp_registers;
+   for (Definition def : instr->definitions) {
+      if (!def.isTemp())
+         continue;
+      if (def.isKill())
+         temp_registers += def.getTemp();
+   }
+   return temp_registers;
+}
+
+RegisterDemand get_demand_before(RegisterDemand demand, aco_ptr<Instruction>& instr, aco_ptr<Instruction>& instr_before)
+{
+   demand -= get_live_changes(instr);
+   demand -= get_temp_registers(instr);
+   if (instr_before)
+      demand += get_temp_registers(instr_before);
+   return demand;
+}
+
+namespace {
 void process_live_temps_per_block(Program *program, live& lives, Block* block,
                                   std::set<unsigned>& worklist, std::vector<uint16_t>& phi_sgpr_ops)
 {
@@ -101,7 +139,6 @@ void process_live_temps_per_block(Program *program, live& lives, Block* block,
             new_demand -= temp;
             definition.setKill(false);
          } else {
-            register_demand[idx] += temp;
             definition.setKill(true);
          }
 
@@ -145,6 +182,8 @@ void process_live_temps_per_block(Program *program, live& lives, Block* block,
                exec_live = true;
          }
       }
+
+      register_demand[idx] += get_temp_registers(block->instructions[idx]);
 
       block->register_demand.update(register_demand[idx]);
    }

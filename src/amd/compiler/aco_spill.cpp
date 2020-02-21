@@ -660,15 +660,10 @@ RegisterDemand init_live_in_vars(spill_ctx& ctx, Block* block, unsigned block_id
 RegisterDemand get_demand_before(spill_ctx& ctx, unsigned block_idx, unsigned idx)
 {
    if (idx == 0) {
-      RegisterDemand demand_before = ctx.register_demand[block_idx][idx];
+      RegisterDemand demand = ctx.register_demand[block_idx][idx];
       aco_ptr<Instruction>& instr = ctx.program->blocks[block_idx].instructions[idx];
-      for (const Definition& def : instr->definitions)
-         demand_before -= def.getTemp();
-      for (const Operand& op : instr->operands) {
-         if (op.isFirstKill())
-            demand_before += op.getTemp();
-      }
-      return demand_before;
+      aco_ptr<Instruction> instr_before(nullptr);
+      return get_demand_before(demand, instr, instr_before);
    } else {
       return ctx.register_demand[block_idx][idx - 1];
    }

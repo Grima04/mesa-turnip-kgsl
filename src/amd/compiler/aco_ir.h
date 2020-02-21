@@ -1265,6 +1265,11 @@ void perfwarn(bool cond, const char *msg, Instruction *instr=NULL);
 void aco_print_instr(Instruction *instr, FILE *output);
 void aco_print_program(Program *program, FILE *output);
 
+/* utilities for dealing with register demand */
+RegisterDemand get_live_changes(aco_ptr<Instruction>& instr);
+RegisterDemand get_temp_registers(aco_ptr<Instruction>& instr);
+RegisterDemand get_demand_before(RegisterDemand demand, aco_ptr<Instruction>& instr, aco_ptr<Instruction>& instr_before);
+
 /* number of sgprs that need to be allocated but might notbe addressable as s0-s105 */
 uint16_t get_extra_sgprs(Program *program);
 

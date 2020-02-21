@@ -113,35 +113,6 @@ void move_element(T begin_it, size_t idx, size_t before) {
     }
 }
 
-static RegisterDemand getLiveChanges(aco_ptr<Instruction>& instr)
-{
-   RegisterDemand changes;
-   for (const Definition& def : instr->definitions) {
-      if (!def.isTemp() || def.isKill())
-         continue;
-      changes += def.getTemp();
-   }
-
-   for (const Operand& op : instr->operands) {
-      if (!op.isTemp() || !op.isFirstKill())
-         continue;
-      changes -= op.getTemp();
-   }
-
-   return changes;
-}
-
-static RegisterDemand getTempRegisters(aco_ptr<Instruction>& instr)
-{
-   RegisterDemand temp_registers;
-   for (const Definition& def : instr->definitions) {
-      if (!def.isTemp() || !def.isKill())
-         continue;
-      temp_registers += def.getTemp();
-   }
-   return temp_registers;
-}
-
 void MoveState::downwards_advance_helper()
 {
    source_idx--;
@@ -207,11 +178,11 @@ MoveResult MoveState::downwards_move(bool clause)
    int dest_insert_idx = clause ? insert_idx_clause : insert_idx;
    RegisterDemand register_pressure = clause ? total_demand_clause : total_demand;
 
-   const RegisterDemand candidate_diff = getLiveChanges(instr);
-   const RegisterDemand temp = getTempRegisters(instr);
+   const RegisterDemand candidate_diff = get_live_changes(instr);
+   const RegisterDemand temp = get_temp_registers(instr);
    if (RegisterDemand(register_pressure - candidate_diff).exceeds(max_registers))
       return move_fail_pressure;
-   const RegisterDemand temp2 = getTempRegisters(block->instructions[dest_insert_idx - 1]);
+   const RegisterDemand temp2 = get_temp_registers(block->instructions[dest_insert_idx - 1]);
    const RegisterDemand new_demand = register_demand[dest_insert_idx - 1] - temp2 + temp;
    if (new_demand.exceeds(max_registers))
       return move_fail_pressure;
@@ -302,11 +273,11 @@ MoveResult MoveState::upwards_move()
    }
 
    /* check if register pressure is low enough: the diff is negative if register pressure is decreased */
-   const RegisterDemand candidate_diff = getLiveChanges(instr);
-   const RegisterDemand temp = getTempRegisters(instr);
+   const RegisterDemand candidate_diff = get_live_changes(instr);
+   const RegisterDemand temp = get_temp_registers(instr);
    if (RegisterDemand(total_demand + candidate_diff).exceeds(max_registers))
       return move_fail_pressure;
-   const RegisterDemand temp2 = getTempRegisters(block->instructions[insert_idx - 1]);
+   const RegisterDemand temp2 = get_temp_registers(block->instructions[insert_idx - 1]);
    const RegisterDemand new_demand = register_demand[insert_idx - 1] - temp2 + candidate_diff + temp;
    if (new_demand.exceeds(max_registers))
       return move_fail_pressure;
