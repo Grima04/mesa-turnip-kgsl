@@ -218,6 +218,9 @@ endif
 if with_platform_windows
   subdir('frontends/wgl')
   subdir('targets/libgl-gdi')
+  if with_gallium_d3d12
+    subdir('targets/libgl-d3d12')
+  endif
 endif
 if with_tests
   subdir('targets/graw-null')
