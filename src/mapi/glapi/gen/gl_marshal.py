@@ -215,18 +215,24 @@ class PrintCode(gl_XML.gl_print_base):
         # Check that any counts for variable-length arguments might be < 0, in
         # which case the command alloc or the memcpy would blow up before we
         # get to the validation in Mesa core.
+        list = []
         for p in func.parameters:
             if p.is_variable_length():
-                out('if (unlikely({0}_size < 0)) {{'.format(p.name))
-                with indent():
-                    out('goto fallback_to_sync;')
-                out('}')
-                return True
-        return False
+                list.append('{0}_size < 0'.format(p.name))
 
+        if len(list) == 0:
+            return
+
+        list.append('(unsigned)cmd_size > MARSHAL_MAX_CMD_SIZE')
+
+        out('if (unlikely({0})) {{'.format(' || '.join(list)))
+        with indent():
+            out('_mesa_glthread_finish_before(ctx, "{0}");'.format(func.name))
+            self.print_sync_dispatch(func)
+            out('return;')
+        out('}')
 
     def print_async_marshal(self, func):
-        need_fallback_sync = False
         out('static void GLAPIENTRY')
         out('_mesa_marshal_{0}({1})'.format(
                 func.name, func.get_parameter_string()))
@@ -248,7 +254,7 @@ class PrintCode(gl_XML.gl_print_base):
 
             out('debug_print_marshal("{0}");'.format(func.name))
 
-            need_fallback_sync = self.validate_count_or_fallback(func)
+            self.validate_count_or_fallback(func)
 
             if func.marshal_fail:
                 out('if ({0}) {{'.format(func.marshal_fail))
@@ -258,23 +264,8 @@ class PrintCode(gl_XML.gl_print_base):
                     out('return;')
                 out('}')
 
-        if len(func.variable_params) > 0:
-            with indent():
-                out('if (cmd_size <= MARSHAL_MAX_CMD_SIZE) {')
-                with indent():
-                    self.print_async_dispatch(func)
-                    out('return;')
-                out('}')
-            out('')
-            if need_fallback_sync:
-                out('fallback_to_sync:')
-            with indent():
-                out('_mesa_glthread_finish_before(ctx, "{0}");'.format(func.name))
-                self.print_sync_dispatch(func)
-        else:
-            with indent():
-                self.print_async_dispatch(func)
-                assert not need_fallback_sync
+        with indent():
+            self.print_async_dispatch(func)
         out('}')
 
     def print_async_body(self, func):
