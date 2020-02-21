@@ -629,12 +629,11 @@ v3dv_GetPhysicalDeviceProperties(VkPhysicalDevice physicalDevice,
    const uint32_t max_render_targets = 4;
 
    const uint32_t v3d_coord_shift = 6;
-   const uint32_t v3d_coord_scale = (1 << v3d_coord_shift);
-   const float point_size_granularity = 2.0f / v3d_coord_scale;
 
    const uint32_t max_fb_size = 4096;
 
-   const VkSampleCountFlags supported_sample_counts = VK_SAMPLE_COUNT_1_BIT;
+   const VkSampleCountFlags supported_sample_counts =
+      VK_SAMPLE_COUNT_1_BIT | VK_SAMPLE_COUNT_4_BIT;
 
    /* FIXME: this will probably require an in-depth review */
    VkPhysicalDeviceLimits limits = {
@@ -644,8 +643,8 @@ v3dv_GetPhysicalDeviceProperties(VkPhysicalDevice physicalDevice,
       .maxImageDimensionCube                    = 4096,
       .maxImageArrayLayers                      = 2048,
       .maxTexelBufferElements                   = (1ul << 28),
-      .maxUniformBufferRange                    = (1ul << 27) - 1,
-      .maxStorageBufferRange                    = (1ul << 27) - 1,
+      .maxUniformBufferRange                    = (1ul << 27),
+      .maxStorageBufferRange                    = (1ul << 27),
       .maxPushConstantsSize                     = MAX_PUSH_CONSTANTS_SIZE,
       .maxMemoryAllocationCount                 = mem_size / page_size,
       .maxSamplerAllocationCount                = 64 * 1024,
@@ -751,10 +750,9 @@ v3dv_GetPhysicalDeviceProperties(VkPhysicalDevice physicalDevice,
       .maxCullDistances                         = 0,
       .maxCombinedClipAndCullDistances          = 0,
       .discreteQueuePriorities                  = 2,
-      .pointSizeRange                           = { point_size_granularity,
-                                                    512.0f },
+      .pointSizeRange                           = { 1.0f, 1.0f },
       .lineWidthRange                           = { 1.0f, 1.0f },
-      .pointSizeGranularity                     = point_size_granularity,
+      .pointSizeGranularity                     = 0.0f,
       .lineWidthGranularity                     = 0.0f,
       .strictLines                              = true,
       .standardSampleLocations                  = false,
