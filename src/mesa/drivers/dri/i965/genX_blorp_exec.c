@@ -239,6 +239,7 @@ blorp_get_workaround_address(struct blorp_batch *batch)
 
    return (struct blorp_address) {
       .buffer = brw->workaround_bo,
+      .offset = brw->workaround_bo_offset,
    };
 }
 

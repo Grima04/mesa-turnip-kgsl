@@ -725,6 +725,7 @@ struct brw_context
 
    /** BO for post-sync nonzero writes for gen6 workaround. */
    struct brw_bo *workaround_bo;
+   uint32_t workaround_bo_offset;
    uint8_t pipe_controls_since_last_cs_stall;
 
    /**
