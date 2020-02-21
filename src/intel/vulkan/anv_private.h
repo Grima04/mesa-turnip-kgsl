@@ -1297,6 +1297,11 @@ anv_device_upload_nir(struct anv_device *device,
                       const struct nir_shader *nir,
                       unsigned char sha1_key[20]);
 
+struct anv_address {
+   struct anv_bo *bo;
+   uint32_t offset;
+};
+
 struct anv_device {
     struct vk_device                            vk;
 
@@ -1340,6 +1345,8 @@ struct anv_device {
      * For that, we use the high bytes (>= 1024) of the workaround BO.
      */
     struct anv_bo *                             workaround_bo;
+    struct anv_address                          workaround_address;
+
     struct anv_bo *                             trivial_batch_bo;
     struct anv_bo *                             hiz_clear_bo;
     struct anv_state                            null_surface_state;
@@ -1600,11 +1607,6 @@ struct anv_batch_bo {
    uint32_t                                     length;
 
    struct anv_reloc_list                        relocs;
-};
-
-struct anv_address {
-   struct anv_bo *bo;
-   uint32_t offset;
 };
 
 struct anv_batch {

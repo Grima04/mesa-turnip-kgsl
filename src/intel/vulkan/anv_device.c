@@ -2932,6 +2932,10 @@ VkResult anv_CreateDevice(
    if (result != VK_SUCCESS)
       goto fail_surface_aux_map_pool;
 
+   device->workaround_address = (struct anv_address) {
+      .bo = device->workaround_bo,
+   };
+
    result = anv_device_init_trivial_batch(device);
    if (result != VK_SUCCESS)
       goto fail_workaround_bo;

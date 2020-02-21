@@ -2251,8 +2251,7 @@ genX(cmd_buffer_apply_pipe_flushes)(struct anv_cmd_buffer *cmd_buffer)
           */
          if (GEN_GEN == 9 && pipe.VFCacheInvalidationEnable) {
             pipe.PostSyncOperation = WriteImmediateData;
-            pipe.Address =
-               (struct anv_address) { cmd_buffer->device->workaround_bo, 0 };
+            pipe.Address = cmd_buffer->device->workaround_address;
          }
       }
 
@@ -3404,8 +3403,7 @@ genX(cmd_buffer_flush_state)(struct anv_cmd_buffer *cmd_buffer)
       anv_batch_emit(&cmd_buffer->batch, GENX(PIPE_CONTROL), pc) {
          pc.DepthStallEnable  = true;
          pc.PostSyncOperation = WriteImmediateData;
-         pc.Address           =
-            (struct anv_address) { cmd_buffer->device->workaround_bo, 0 };
+         pc.Address           = cmd_buffer->device->workaround_address;
       }
    }
 #endif
@@ -4950,8 +4948,7 @@ cmd_buffer_emit_depth_stencil(struct anv_cmd_buffer *cmd_buffer)
        */
       anv_batch_emit(&cmd_buffer->batch, GENX(PIPE_CONTROL), pc) {
          pc.PostSyncOperation = WriteImmediateData;
-         pc.Address =
-            (struct anv_address) { cmd_buffer->device->workaround_bo, 0 };
+         pc.Address = cmd_buffer->device->workaround_address;
       }
    }
    cmd_buffer->state.hiz_enabled = isl_aux_usage_has_hiz(info.hiz_usage);
