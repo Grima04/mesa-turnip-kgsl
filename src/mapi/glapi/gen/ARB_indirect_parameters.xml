@@ -9,7 +9,7 @@
     <enum name="PARAMETER_BUFFER_BINDING_ARB"           value="0x80EF"/>
 
     <function name="MultiDrawArraysIndirectCountARB" exec="dynamic" marshal="draw"
-              marshal_fail="_mesa_glthread_is_non_vbo_draw_arrays(ctx)">
+              marshal_sync="_mesa_glthread_is_non_vbo_draw_arrays(ctx)">
         <param name="mode" type="GLenum"/>
         <param name="indirect" type="GLintptr"/>
         <param name="drawcount" type="GLintptr"/>
@@ -19,7 +19,7 @@
 
     <!-- Use "...vbo_draw_arrays", because indices always come from a buffer object. -->
     <function name="MultiDrawElementsIndirectCountARB" exec="dynamic" marshal="draw"
-              marshal_fail="_mesa_glthread_is_non_vbo_draw_arrays(ctx)">
+              marshal_sync="_mesa_glthread_is_non_vbo_draw_arrays(ctx)">
         <param name="mode" type="GLenum"/>
         <param name="type" type="GLenum"/>
         <param name="indirect" type="GLintptr"/>

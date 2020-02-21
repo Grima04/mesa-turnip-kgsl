@@ -3180,7 +3180,7 @@
     </function>
 
     <function name="DrawArrays" es1="1.0" es2="2.0" exec="dynamic" marshal="draw"
-              marshal_fail="_mesa_glthread_is_non_vbo_draw_arrays(ctx)">
+              marshal_sync="_mesa_glthread_is_non_vbo_draw_arrays(ctx)">
         <param name="mode" type="GLenum"/>
         <param name="first" type="GLint"/>
         <param name="count" type="GLsizei"/>
@@ -3188,7 +3188,7 @@
     </function>
 
     <function name="DrawElements" es1="1.0" es2="2.0" exec="dynamic" marshal="draw"
-              marshal_fail="_mesa_glthread_is_non_vbo_draw_elements(ctx)">
+              marshal_sync="_mesa_glthread_is_non_vbo_draw_elements(ctx)">
         <param name="mode" type="GLenum"/>
         <param name="count" type="GLsizei"/>
         <param name="type" type="GLenum"/>
@@ -3756,7 +3756,7 @@
     </function>
 
     <function name="DrawRangeElements" es2="3.0" exec="dynamic" marshal="draw"
-              marshal_fail="_mesa_glthread_is_non_vbo_draw_elements(ctx)">
+              marshal_sync="_mesa_glthread_is_non_vbo_draw_elements(ctx)">
         <param name="mode" type="GLenum"/>
         <param name="start" type="GLuint"/>
         <param name="end" type="GLuint"/>
@@ -4756,7 +4756,7 @@
     </function>
 
     <function name="MultiDrawArrays" marshal="draw"
-              marshal_fail="_mesa_glthread_is_non_vbo_draw_arrays(ctx)">
+              marshal_sync="_mesa_glthread_is_non_vbo_draw_arrays(ctx)">
         <param name="mode" type="GLenum"/>
         <param name="first" type="const GLint *" count="primcount"/>
         <param name="count" type="const GLsizei *" count="primcount"/>
@@ -10277,7 +10277,7 @@
     </function>
 
     <function name="MultiDrawElementsEXT" es1="1.0" es2="2.0" exec="dynamic" marshal="draw"
-              marshal_fail="_mesa_glthread_is_non_vbo_draw_elements(ctx)">
+              marshal_sync="_mesa_glthread_is_non_vbo_draw_elements(ctx)">
         <param name="mode" type="GLenum"/>
         <param name="count" type="const GLsizei *" count="primcount"/>
         <param name="type" type="GLenum"/>
@@ -11392,7 +11392,7 @@
 
 <category name="GL_IBM_multimode_draw_arrays" number="200">
     <function name="MultiModeDrawArraysIBM" marshal="draw"
-              marshal_fail="_mesa_glthread_is_non_vbo_draw_arrays(ctx)">
+              marshal_sync="_mesa_glthread_is_non_vbo_draw_arrays(ctx)">
         <param name="mode" type="const GLenum *" count="primcount"/>
         <param name="first" type="const GLint *" count="primcount"/>
         <param name="count" type="const GLsizei *" count="primcount"/>
@@ -11402,7 +11402,7 @@
     </function>
 
     <function name="MultiModeDrawElementsIBM" marshal="draw"
-              marshal_fail="_mesa_glthread_is_non_vbo_draw_elements(ctx)">
+              marshal_sync="_mesa_glthread_is_non_vbo_draw_elements(ctx)">
         <param name="mode" type="const GLenum *" count="primcount"/>
         <param name="count" type="const GLsizei *" count="primcount"/>
         <param name="type" type="GLenum"/>

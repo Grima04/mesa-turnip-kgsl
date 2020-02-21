@@ -270,6 +270,14 @@ class PrintCode(gl_XML.gl_print_base):
                     out('return;')
                 out('}')
 
+            if func.marshal_sync:
+                out('if ({0}) {{'.format(func.marshal_sync))
+                with indent():
+                    out('_mesa_glthread_finish_before(ctx, "{0}");'.format(func.name))
+                    self.print_sync_dispatch(func)
+                    out('return;')
+                out('}')
+
         with indent():
             self.print_async_dispatch(func)
         out('}')
