@@ -1099,6 +1099,9 @@ setup_isel_context(Program* program,
 
    program->lds_alloc_granule = args->options->chip_class >= GFX7 ? 512 : 256;
    program->lds_limit = args->options->chip_class >= GFX7 ? 65536 : 32768;
+   /* apparently gfx702 also has 16-bank LDS but I can't find a family for that */
+   program->has_16bank_lds = args->options->family == CHIP_KABINI || args->options->family == CHIP_STONEY;
+
    program->vgpr_limit = 256;
    program->vgpr_alloc_granule = 3;
 
