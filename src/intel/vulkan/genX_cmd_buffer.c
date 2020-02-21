@@ -5160,8 +5160,6 @@ cmd_buffer_begin_subpass(struct anv_cmd_buffer *cmd_buffer,
       att_state->pending_load_aspects = 0;
    }
 
-   cmd_buffer_emit_depth_stencil(cmd_buffer);
-
 #if GEN_GEN >= 11
    /* The PIPE_CONTROL command description says:
     *
@@ -5175,6 +5173,23 @@ cmd_buffer_begin_subpass(struct anv_cmd_buffer *cmd_buffer,
       ANV_PIPE_RENDER_TARGET_CACHE_FLUSH_BIT |
       ANV_PIPE_STALL_AT_SCOREBOARD_BIT;
 #endif
+
+#if GEN_GEN == 12
+   /* GEN:BUG:14010455700
+    *
+    * ISL will change some CHICKEN registers depending on the depth surface
+    * format, along with emitting the depth and stencil packets. In that case,
+    * we want to do a depth flush and stall, so the pipeline is not using these
+    * settings while we change the registers.
+    */
+   cmd_buffer->state.pending_pipe_bits |=
+      ANV_PIPE_DEPTH_CACHE_FLUSH_BIT |
+      ANV_PIPE_DEPTH_STALL_BIT |
+      ANV_PIPE_END_OF_PIPE_SYNC_BIT;
+   genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
+#endif
+
+   cmd_buffer_emit_depth_stencil(cmd_buffer);
 }
 
 static enum blorp_filter

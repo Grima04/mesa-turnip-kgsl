@@ -7032,6 +7032,16 @@
     <field name="CL Primitives Count Report" start="0" end="63" type="uint"/>
   </register>
 
+  <register name="COMMON_SLICE_CHICKEN1" length="1" num="0x7010">
+    <field name="HIZ Plane Optimization disable bit" start="9" end="9" type="bool"/>
+    <field name="HIZ Plane Optimization disable bit Mask" start="25" end="25" type="bool"/>
+  </register>
+
+  <register name="HIZ_CHICKEN" length="1" num="0x7018">
+    <field name="HZ Depth Test LE/GE Optimization Disable" start="13" end="13" type="bool"/>
+    <field name="HZ Depth Test LE/GE Optimization Disable Mask" start="29" end="29" type="bool"/>
+  </register>
+
   <register name="COMMON_SLICE_CHICKEN3" length="1" num="0x7304">
     <field name="PS Thread Panic Dispatch" start="6" end="7" type="uint"/>
     <field name="PS Thread Panic Dispatch Mask" start="22" end="23" type="uint"/>

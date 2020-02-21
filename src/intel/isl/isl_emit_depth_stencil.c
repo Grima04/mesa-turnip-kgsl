@@ -255,6 +255,50 @@ isl_genX(emit_depth_stencil_hiz_s)(const struct isl_device *dev, void *batch,
    GENX(3DSTATE_HIER_DEPTH_BUFFER_pack)(NULL, dw, &hiz);
    dw += GENX(3DSTATE_HIER_DEPTH_BUFFER_length);
 
+#if GEN_GEN == 12
+   /* GEN:BUG:14010455700
+    *
+    * To avoid sporadic corruptions “Set 0x7010[9] when Depth Buffer Surface
+    * Format is D16_UNORM , surface type is not NULL & 1X_MSAA”.
+    */
+   bool enable_14010455700 =
+      info->depth_surf && info->depth_surf->samples == 1 &&
+      db.SurfaceType != SURFTYPE_NULL && db.SurfaceFormat == D16_UNORM;
+   struct GENX(COMMON_SLICE_CHICKEN1) chicken1 = {
+      .HIZPlaneOptimizationdisablebit = enable_14010455700,
+      .HIZPlaneOptimizationdisablebitMask = true,
+   };
+   uint32_t chicken1_dw;
+   GENX(COMMON_SLICE_CHICKEN1_pack)(NULL, &chicken1_dw, &chicken1);
+
+   struct GENX(MI_LOAD_REGISTER_IMM) lri = {
+      GENX(MI_LOAD_REGISTER_IMM_header),
+      .RegisterOffset = GENX(COMMON_SLICE_CHICKEN1_num),
+      .DataDWord = chicken1_dw,
+   };
+   GENX(MI_LOAD_REGISTER_IMM_pack)(NULL, dw, &lri);
+   dw += GENX(MI_LOAD_REGISTER_IMM_length);
+
+   /* GEN:BUG:1806527549
+    *
+    * Set HIZ_CHICKEN (7018h) bit 13 = 1 when depth buffer is D16_UNORM.
+    */
+   struct GENX(HIZ_CHICKEN) hiz_chicken = {
+      .HZDepthTestLEGEOptimizationDisable = db.SurfaceFormat == D16_UNORM,
+      .HZDepthTestLEGEOptimizationDisableMask = true,
+   };
+   uint32_t hiz_chicken_dw;
+   GENX(HIZ_CHICKEN_pack)(NULL, &hiz_chicken_dw, &hiz_chicken);
+
+   struct GENX(MI_LOAD_REGISTER_IMM) lri2 = {
+      GENX(MI_LOAD_REGISTER_IMM_header),
+      .RegisterOffset = GENX(HIZ_CHICKEN_num),
+      .DataDWord = hiz_chicken_dw,
+   };
+   GENX(MI_LOAD_REGISTER_IMM_pack)(NULL, dw, &lri2);
+   dw += GENX(MI_LOAD_REGISTER_IMM_length);
+#endif
+
    GENX(3DSTATE_CLEAR_PARAMS_pack)(NULL, dw, &clear);
    dw += GENX(3DSTATE_CLEAR_PARAMS_length);
 #endif

@@ -223,6 +223,10 @@ isl_device_init(struct isl_device *dev,
       dev->ds.hiz_offset = 0;
    }
 
+   if (ISL_DEV_GEN(dev) >= 12) {
+      dev->ds.size += GEN12_MI_LOAD_REGISTER_IMM_length * 4 * 2;
+   }
+
    isl_device_setup_mocs(dev);
 }
 

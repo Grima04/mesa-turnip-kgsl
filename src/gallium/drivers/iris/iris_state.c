@@ -1056,7 +1056,8 @@ struct iris_depth_buffer_state {
    uint32_t packets[GENX(3DSTATE_DEPTH_BUFFER_length) +
                     GENX(3DSTATE_STENCIL_BUFFER_length) +
                     GENX(3DSTATE_HIER_DEPTH_BUFFER_length) +
-                    GENX(3DSTATE_CLEAR_PARAMS_length)];
+                    GENX(3DSTATE_CLEAR_PARAMS_length) +
+                    GENX(MI_LOAD_REGISTER_IMM_length) * 2];
 };
 
 /**
@@ -5900,7 +5901,22 @@ iris_upload_dirty_render_state(struct iris_context *ice,
        * first.
        */
       uint32_t clear_length = GENX(3DSTATE_CLEAR_PARAMS_length) * 4;
-      uint32_t cso_z_size = sizeof(cso_z->packets) - clear_length;
+      uint32_t cso_z_size = batch->screen->isl_dev.ds.size - clear_length;;
+
+#if GEN_GEN == 12
+      /* GEN:BUG:14010455700
+       *
+       * ISL will change some CHICKEN registers depending on the depth surface
+       * format, along with emitting the depth and stencil packets. In that
+       * case, we want to do a depth flush and stall, so the pipeline is not
+       * using these settings while we change the registers.
+       */
+      iris_emit_end_of_pipe_sync(batch,
+                                 "Workaround: Stop pipeline for 14010455700",
+                                 PIPE_CONTROL_DEPTH_STALL |
+                                 PIPE_CONTROL_DEPTH_CACHE_FLUSH);
+#endif
+
       iris_batch_emit(batch, cso_z->packets, cso_z_size);
       if (GEN_GEN >= 12) {
          /* GEN:BUG:1408224581
