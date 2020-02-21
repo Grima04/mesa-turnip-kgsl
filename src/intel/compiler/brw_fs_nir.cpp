@@ -4501,7 +4501,8 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
 
          for (int i = 0; i < instr->num_components; i++)
             VARYING_PULL_CONSTANT_LOAD(bld, offset(dest, bld, i), surf_index,
-                                       base_offset, i * type_sz(dest.type));
+                                       base_offset, i * type_sz(dest.type),
+                                       nir_dest_bit_size(instr->dest) / 8);
 
          prog_data->has_ubo_pull = true;
       } else {

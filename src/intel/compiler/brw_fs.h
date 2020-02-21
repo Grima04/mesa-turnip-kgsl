@@ -117,7 +117,8 @@ public:
                                    const fs_reg &dst,
                                    const fs_reg &surf_index,
                                    const fs_reg &varying_offset,
-                                   uint32_t const_offset);
+                                   uint32_t const_offset,
+                                   uint8_t alignment);
    void DEP_RESOLVE_MOV(const brw::fs_builder &bld, int grf);
 
    bool run_fs(bool allow_spilling, bool do_rep_send);

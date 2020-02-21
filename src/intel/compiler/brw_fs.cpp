@@ -166,7 +166,8 @@ fs_visitor::VARYING_PULL_CONSTANT_LOAD(const fs_builder &bld,
                                        const fs_reg &dst,
                                        const fs_reg &surf_index,
                                        const fs_reg &varying_offset,
-                                       uint32_t const_offset)
+                                       uint32_t const_offset,
+                                       uint8_t alignment)
 {
    /* We have our constant surface use a pitch of 4 bytes, so our index can
     * be any component of a vector, and then we load 4 contiguous
@@ -190,7 +191,8 @@ fs_visitor::VARYING_PULL_CONSTANT_LOAD(const fs_builder &bld,
     */
    fs_reg vec4_result = bld.vgrf(BRW_REGISTER_TYPE_F, 4);
    fs_inst *inst = bld.emit(FS_OPCODE_VARYING_PULL_CONSTANT_LOAD_LOGICAL,
-                            vec4_result, surf_index, vec4_offset);
+                            vec4_result, surf_index, vec4_offset,
+                            brw_imm_ud(alignment));
    inst->size_written = 4 * vec4_result.component_size(inst->exec_size);
 
    shuffle_from_32bit_read(bld, dst, vec4_result,
@@ -2602,7 +2604,7 @@ fs_visitor::lower_constant_loads()
          VARYING_PULL_CONSTANT_LOAD(ibld, inst->dst,
                                     brw_imm_ud(index),
                                     inst->src[1],
-                                    pull_index * 4);
+                                    pull_index * 4, 4);
          inst->remove(block);
       }
    }
