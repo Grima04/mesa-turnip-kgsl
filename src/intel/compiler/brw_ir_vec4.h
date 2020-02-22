@@ -303,7 +303,7 @@ public:
              opcode == VEC4_OPCODE_SET_HIGH_32BIT;
    }
 
-   bool reads_flag()
+   bool reads_flag() const
    {
       return predicate || opcode == VS_OPCODE_UNPACK_FLAGS_SIMD4X2;
    }
@@ -329,7 +329,7 @@ public:
       }
    }
 
-   bool writes_flag()
+   bool writes_flag() const
    {
       return (conditional_mod && (opcode != BRW_OPCODE_SEL &&
                                   opcode != BRW_OPCODE_CSEL &&
