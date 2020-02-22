@@ -118,6 +118,8 @@ lima_invalidate_resource(struct pipe_context *pctx, struct pipe_resource *prsc)
 
    if (job->key.cbuf && (job->key.cbuf->texture == prsc))
       job->resolve &= ~PIPE_CLEAR_COLOR0;
+
+   _mesa_hash_table_remove_key(ctx->write_jobs, prsc);
 }
 
 static void
