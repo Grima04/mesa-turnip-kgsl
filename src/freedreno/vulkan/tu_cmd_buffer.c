@@ -4113,7 +4113,7 @@ tu_CmdWaitEvents(VkCommandBuffer commandBuffer,
    /* TODO: any flush required before/after? (CP_WAIT_FOR_ME?) */
 
    for (uint32_t i = 0; i < eventCount; i++) {
-      const struct tu_event *event = (const struct tu_event*) pEvents[i];
+      TU_FROM_HANDLE(tu_event, event, pEvents[i]);
 
       tu_bo_list_add(&cmd->bo_list, &event->bo, MSM_SUBMIT_BO_READ);
 
