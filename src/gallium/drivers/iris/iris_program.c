@@ -174,8 +174,7 @@ iris_upload_ubo_ssbo_surf_state(struct iris_context *ice,
                          .address = res->bo->gtt_offset + res->offset +
                                     buf->buffer_offset,
                          .size_B = buf->buffer_size - res->offset,
-                         .format = ssbo ? ISL_FORMAT_RAW
-                                        : ISL_FORMAT_R32G32B32A32_FLOAT,
+                         .format = ISL_FORMAT_RAW,
                          .swizzle = ISL_SWIZZLE_IDENTITY,
                          .stride_B = 1,
                          .mocs = iris_mocs(res->bo, &screen->isl_dev));
