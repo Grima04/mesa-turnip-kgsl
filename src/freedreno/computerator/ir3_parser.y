@@ -66,14 +66,14 @@ static struct {
 	unsigned wrmask;
 } rflags;
 
-int asm_yyget_lineno(void);
+int ir3_yyget_lineno(void);
 
 static struct ir3_instruction * new_instr(opc_t opc)
 {
 	instr = ir3_instr_create(block, opc);
 	instr->flags = iflags.flags;
 	instr->repeat = iflags.repeat;
-	instr->line = asm_yyget_lineno();
+	instr->line = ir3_yyget_lineno();
 	iflags.flags = iflags.repeat = 0;
 	return instr;
 }
@@ -165,29 +165,28 @@ int yydebug;
 #endif
 
 extern int yylex(void);
-typedef void *YY_BUFFER_STATE;
-extern YY_BUFFER_STATE asm_yy_scan_string(const char *);
-extern void asm_yy_delete_buffer(YY_BUFFER_STATE);
+extern FILE *ir3_yyin;
 
 int yyparse(void);
 
-void yyerror(const char *error)
+static void yyerror(const char *error)
 {
-	fprintf(stderr, "error at line %d: %s\n", asm_yyget_lineno(), error);
+	fprintf(stderr, "error at line %d: %s\n", ir3_yyget_lineno(), error);
 }
 
-struct ir3_shader * fd_asm_parse(const char *src)
+struct ir3 * ir3_parse(struct ir3_kernel *k, FILE *f)
 {
-	YY_BUFFER_STATE buffer = asm_yy_scan_string(src);
+	ir3_yyin = f;
 #ifdef YYDEBUG
 	yydebug = 1;
 #endif
+	kernel = k;
+	variant = k->v;
 	if (yyparse()) {
-		ir3_shader_destroy(shader);
-		shader = NULL;
+		ir3_destroy(variant->ir);
+		variant->ir = NULL;
 	}
-	asm_yy_delete_buffer(buffer);
-	return shader;
+	return variant->ir;
 }
 %}
 

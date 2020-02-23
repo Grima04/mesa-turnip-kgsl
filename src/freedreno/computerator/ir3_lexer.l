@@ -23,12 +23,11 @@
 
 %{
 #include <stdlib.h>
-#include "instr-a3xx.h"
-#include "parser.h"
-#include "util.h"
+#include "ir3/ir3.h"
+#include "ir3_parser.h"
 
-#define TOKEN(t) (asm_yylval.tok = t)
-extern YYSTYPE asm_yylval;
+#define TOKEN(t) (ir3_yylval.tok = t)
+extern YYSTYPE ir3_yylval;
 
 static int parse_wrmask(const char *src)
 {
@@ -63,15 +62,15 @@ static int parse_reg(const char *str)
 %}
 
 %option noyywrap
-%option prefix="asm_yy"
+%option prefix="ir3_yy"
 
 %%
 "\n"                              yylineno++;
 [ \t]                             ; /* ignore whitespace */
 ";"[^\n]*"\n"                     yylineno++; /* ignore comments */
-[0-9]+"."[0-9]+                   asm_yylval.flt = strtod(yytext, NULL);       return T_FLOAT;
-[0-9]*                            asm_yylval.num = strtoul(yytext, NULL, 0);    return T_INT;
-"0x"[0-9a-fA-F]*                  asm_yylval.num = strtoul(yytext, NULL, 0);    return T_HEX;
+[0-9]+"."[0-9]+                   ir3_yylval.flt = strtod(yytext, NULL);       return T_FLOAT;
+[0-9]*                            ir3_yylval.num = strtoul(yytext, NULL, 0);    return T_INT;
+"0x"[0-9a-fA-F]*                  ir3_yylval.num = strtoul(yytext, NULL, 0);    return T_HEX;
 "@localsize"                      return TOKEN(T_A_LOCALSIZE);
 "@const"                          return TOKEN(T_A_CONST);
 "@buf"                            return TOKEN(T_A_BUF);
@@ -86,15 +85,15 @@ static int parse_reg(const char *str)
 "(pos_infinity)"                  return TOKEN(T_POS_INFINITY);
 "(ei)"                            return TOKEN(T_EI);
 "(jp)"                            return TOKEN(T_JP);
-"(rpt"[0-7]")"                    asm_yylval.num = strtol(yytext+4, NULL, 10); return T_RPT;
-"("[x]?[y]?[z]?[w]?")"            asm_yylval.num = parse_wrmask(yytext); return T_WRMASK;
+"(rpt"[0-7]")"                    ir3_yylval.num = strtol(yytext+4, NULL, 10); return T_RPT;
+"("[x]?[y]?[z]?[w]?")"            ir3_yylval.num = parse_wrmask(yytext); return T_WRMASK;
 
-[h]?"r"[0-9]+"."[xyzw]            asm_yylval.num = parse_reg(yytext); return T_REGISTER;
-[h]?"c"[0-9]+"."[xyzw]            asm_yylval.num = parse_reg(yytext); return T_CONSTANT;
-"a0."[xyzw]                       asm_yylval.num = parse_reg(yytext); return T_A0;
-"p0."[xyzw]                       asm_yylval.num = parse_reg(yytext); return T_P0;
-"s#"[0-9]+                        asm_yylval.num = strtol(yytext+2, NULL, 10); return T_SAMP;
-"t#"[0-9]+                        asm_yylval.num = strtol(yytext+2, NULL, 10); return T_TEX;
+[h]?"r"[0-9]+"."[xyzw]            ir3_yylval.num = parse_reg(yytext); return T_REGISTER;
+[h]?"c"[0-9]+"."[xyzw]            ir3_yylval.num = parse_reg(yytext); return T_CONSTANT;
+"a0."[xyzw]                       ir3_yylval.num = parse_reg(yytext); return T_A0;
+"p0."[xyzw]                       ir3_yylval.num = parse_reg(yytext); return T_P0;
+"s#"[0-9]+                        ir3_yylval.num = strtol(yytext+2, NULL, 10); return T_SAMP;
+"t#"[0-9]+                        ir3_yylval.num = strtol(yytext+2, NULL, 10); return T_TEX;
 
                                   /* category 0: */
 "nop"                             return TOKEN(T_OP_NOP);
@@ -115,7 +114,7 @@ static int parse_reg(const char *str)
 "mov"                             return TOKEN(T_OP_MOV);
 "cov"                             return TOKEN(T_OP_COV);
 
-("f16"|"f32"|"u16"|"u32"|"s16"|"s32"|"u8"|"s8"){2} asm_yylval.str = yytext; return T_CAT1_TYPE_TYPE;
+("f16"|"f32"|"u16"|"u32"|"s16"|"s32"|"u8"|"s8"){2} ir3_yylval.str = yytext; return T_CAT1_TYPE_TYPE;
 
                                   /* category 2: */
 "add.f"                           return TOKEN(T_OP_ADD_F);
@@ -306,6 +305,6 @@ static int parse_reg(const char *str)
 "nan"                             return TOKEN(T_NAN);
 "inf"                             return TOKEN(T_INF);
 
-[a-zA-Z_][a-zA-Z_0-9]*            asm_yylval.str = yytext;     return T_IDENTIFIER;
-.                                 fprintf(stderr, "error at line %d: Unknown token: %s\n", asm_yyget_lineno(), yytext); yyterminate();
+[a-zA-Z_][a-zA-Z_0-9]*            ir3_yylval.str = yytext;     return T_IDENTIFIER;
+.                                 fprintf(stderr, "error at line %d: Unknown token: %s\n", ir3_yyget_lineno(), yytext); yyterminate();
 %%
