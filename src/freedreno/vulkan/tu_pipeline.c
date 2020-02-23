@@ -851,6 +851,15 @@ tu6_emit_fs_inputs(struct tu_cs *cs, const struct ir3_shader_variant *fs)
          CONDREG(samp_id_regid, A6XX_RB_RENDER_CONTROL1_SAMPLEID) |
          CONDREG(ij_size_regid, A6XX_RB_RENDER_CONTROL1_SIZE) |
          COND(fs->frag_face, A6XX_RB_RENDER_CONTROL1_FACENESS));
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_RB_SAMPLE_CNTL, 1);
+   tu_cs_emit(cs, COND(sample_shading, A6XX_RB_SAMPLE_CNTL_PER_SAMP_MODE));
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_GRAS_UNKNOWN_8101, 1);
+   tu_cs_emit(cs, COND(sample_shading, 0x6));  // XXX
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_GRAS_SAMPLE_CNTL, 1);
+   tu_cs_emit(cs, COND(sample_shading, A6XX_GRAS_SAMPLE_CNTL_PER_SAMP_MODE));
 }
 
 static void
@@ -1478,7 +1487,6 @@ tu6_emit_blend_control(struct tu_cs *cs,
                        uint32_t blend_enable_mask,
                        const VkPipelineMultisampleStateCreateInfo *msaa_info)
 {
-   assert(!msaa_info->sampleShadingEnable);
    assert(!msaa_info->alphaToOneEnable);
 
    uint32_t sp_blend_cntl = A6XX_SP_BLEND_CNTL_UNK8;
