@@ -399,6 +399,9 @@ struct ir3_instruction {
 #ifdef DEBUG
 	uint32_t serialno;
 #endif
+
+	// TODO only computerator/assembler:
+	int line;
 };
 
 static inline struct ir3_instruction *

@@ -50,7 +50,7 @@ static int parse_reg(const char *str)
 		num++;
 	}
 	str++;
-	num += strtol(str, &str, 10) << 3;
+	num += strtol(str, (char **)&str, 10) << 3;
 	switch (str[1]) {
 	case 'x': num += 0; break;
 	case 'y': num += 2; break;
@@ -72,13 +72,9 @@ static int parse_reg(const char *str)
 [0-9]+"."[0-9]+                   asm_yylval.flt = strtod(yytext, NULL);       return T_FLOAT;
 [0-9]*                            asm_yylval.num = strtoul(yytext, NULL, 0);    return T_INT;
 "0x"[0-9a-fA-F]*                  asm_yylval.num = strtoul(yytext, NULL, 0);    return T_HEX;
-"@attribute"                      return TOKEN(T_A_ATTRIBUTE);
+"@localsize"                      return TOKEN(T_A_LOCALSIZE);
 "@const"                          return TOKEN(T_A_CONST);
-"@sampler"                        return TOKEN(T_A_SAMPLER);
-"@uniform"                        return TOKEN(T_A_UNIFORM);
-"@varying"                        return TOKEN(T_A_VARYING);
 "@buf"                            return TOKEN(T_A_BUF);
-"@out"                            return TOKEN(T_A_OUT);
 "(sy)"                            return TOKEN(T_SY);
 "(ss)"                            return TOKEN(T_SS);
 "(absneg)"                        return TOKEN(T_ABSNEG);
@@ -152,8 +148,8 @@ static int parse_reg(const char *str)
 "xor.b"                           return TOKEN(T_OP_XOR_B);
 "cmpv.u"                          return TOKEN(T_OP_CMPV_U);
 "cmpv.s"                          return TOKEN(T_OP_CMPV_S);
-"mul.u"                           return TOKEN(T_OP_MUL_U);
-"mul.s"                           return TOKEN(T_OP_MUL_S);
+"mul.u24"                         return TOKEN(T_OP_MUL_U24);
+"mul.s24"                         return TOKEN(T_OP_MUL_S24);
 "mull.u"                          return TOKEN(T_OP_MULL_U);
 "bfrev.b"                         return TOKEN(T_OP_BFREV_B);
 "clz.s"                           return TOKEN(T_OP_CLZ_S);
@@ -233,7 +229,7 @@ static int parse_reg(const char *str)
 "stg"                             return TOKEN(T_OP_STG);
 "stl"                             return TOKEN(T_OP_STL);
 "stp"                             return TOKEN(T_OP_STP);
-"sti"                             return TOKEN(T_OP_STI);
+"ldib"                            return TOKEN(T_OP_LDIB);
 "g2l"                             return TOKEN(T_OP_G2L);
 "l2g"                             return TOKEN(T_OP_L2G);
 "prefetch"                        return TOKEN(T_OP_PREFETCH);
@@ -252,10 +248,10 @@ static int parse_reg(const char *str)
 "atomic.and"                      return TOKEN(T_OP_ATOMIC_AND);
 "atomic.or"                       return TOKEN(T_OP_ATOMIC_OR);
 "atomic.xor"                      return TOKEN(T_OP_ATOMIC_XOR);
-"ldgb.typed.4d"                   return TOKEN(T_OP_LDGB_TYPED_4D);
-"stgb.4d.4"                       return TOKEN(T_OP_STGB_4D_4);
+"ldgb"                            return TOKEN(T_OP_LDGB);
+"stgb"                            return TOKEN(T_OP_STGB);
 "stib"                            return TOKEN(T_OP_STIB);
-"ldc.4"                           return TOKEN(T_OP_LDC_4);
+"ldc"                             return TOKEN(T_OP_LDC);
 "ldlv"                            return TOKEN(T_OP_LDLV);
 
 "f16"                             return TOKEN(T_TYPE_F16);
@@ -267,6 +263,14 @@ static int parse_reg(const char *str)
 "u8"                              return TOKEN(T_TYPE_U8);
 "s8"                              return TOKEN(T_TYPE_S8);
 
+"untyped"                         return TOKEN(T_UNTYPED);
+"typed"                           return TOKEN(T_TYPED);
+
+"1d"                              return TOKEN(T_1D);
+"2d"                              return TOKEN(T_2D);
+"3d"                              return TOKEN(T_3D);
+"4d"                              return TOKEN(T_4D);
+
 "lt"                              return TOKEN(T_LT);
 "le"                              return TOKEN(T_LE);
 "gt"                              return TOKEN(T_GT);
@@ -274,7 +278,6 @@ static int parse_reg(const char *str)
 "eq"                              return TOKEN(T_EQ);
 "ne"                              return TOKEN(T_NE);
 
-"3d"                              return TOKEN(T_3D);
 "a"                               return 'a';
 "o"                               return 'o';
 "p"                               return 'p';
