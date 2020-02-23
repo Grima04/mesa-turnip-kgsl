@@ -21,6 +21,11 @@
  * SOFTWARE.
  */
 
+%code requires {
+struct ir3_kernel;
+struct ir3 * ir3_parse(struct ir3_kernel *k, FILE *f);
+}
+
 %{
 #define YYDEBUG 0
 
@@ -46,6 +51,7 @@
 #define IR3_REG_ABS     IR3_REG_FABS
 #define IR3_REG_NEGATE  IR3_REG_FNEG
 
+static struct ir3_kernel         *kernel;
 static struct ir3_shader_variant *variant;
 /* NOTE the assembler doesn't really use the ir3_block construction
  * like the compiler does.  Everything is treated as one large block.
@@ -142,7 +148,7 @@ static struct ir3_register * dummy_dst(void)
 	return new_reg(0, 0);
 }
 
-static void const_create(unsigned reg, unsigned c0, unsigned c1, unsigned c2, unsigned c3)
+static void add_const(unsigned reg, unsigned c0, unsigned c1, unsigned c2, unsigned c3)
 {
 	struct ir3_const_state *const_state = &variant->shader->const_state;
 	assert((reg & 0x7) == 0);
@@ -158,6 +164,17 @@ static void const_create(unsigned reg, unsigned c0, unsigned c1, unsigned c2, un
 	const_state->immediates[idx].val[3] = c3;
 	const_state->immediates_count = idx + 1;
 	const_state->immediate_idx++;
+}
+
+static void add_sysval(unsigned reg, unsigned compmask, gl_system_value sysval)
+{
+	unsigned n = variant->inputs_count++;
+	variant->inputs[n].regid = reg;
+	variant->inputs[n].sysval = true;
+	variant->inputs[n].slot = sysval;
+	variant->inputs[n].compmask = compmask;
+	variant->inputs[n].interpolate = INTERP_MODE_FLAT;
+	variant->total_in++;
 }
 
 #ifdef YYDEBUG
@@ -224,6 +241,9 @@ static void print_token(FILE *file, int type, YYSTYPE value)
 %token <tok> T_A_LOCALSIZE
 %token <tok> T_A_CONST
 %token <tok> T_A_BUF
+%token <tok> T_A_INVOCATIONID
+%token <tok> T_A_WGID
+%token <tok> T_A_NUMWG
 /* todo, re-add @sampler/@uniform/@varying if needed someday */
 
 /* src register flags */
@@ -462,6 +482,9 @@ headers:
 header:            localsize_header
 |                  const_header
 |                  buf_header
+|                  invocationid_header
+|                  wgid_header
+|                  numwg_header
 
 const_val:         T_FLOAT   { $$ = fui($1); }
 |                  T_INT     { $$ = $1;      }
@@ -476,7 +499,7 @@ localsize_header:  T_A_LOCALSIZE const_val ',' const_val ',' const_val {
 }
 
 const_header:      T_A_CONST '(' T_CONSTANT ')' const_val ',' const_val ',' const_val ',' const_val {
-                       const_create($3, $5, $7, $9, $11);
+                       add_const($3, $5, $7, $9, $11);
 }
 
 buf_header:        T_A_BUF const_val {
@@ -484,6 +507,27 @@ buf_header:        T_A_BUF const_val {
                        int idx = k->num_bufs++;
                        assert(idx < MAX_BUFS);
                        k->buf_sizes[idx] = $2;
+}
+
+invocationid_header: T_A_INVOCATIONID '(' T_REGISTER ')' {
+                       assert(($3 & 0x1) == 0);  /* half-reg not allowed */
+                       unsigned reg = $3 >> 1;
+                       add_sysval(reg, 0x7, SYSTEM_VALUE_LOCAL_INVOCATION_ID);
+}
+
+wgid_header:       T_A_WGID '(' T_REGISTER ')' {
+                       assert(($3 & 0x1) == 0);  /* half-reg not allowed */
+                       unsigned reg = $3 >> 1;
+                       assert(reg >= regid(48, 0)); /* must be a high reg */
+                       add_sysval(reg, 0x7, SYSTEM_VALUE_WORK_GROUP_ID);
+}
+
+numwg_header:      T_A_NUMWG '(' T_CONSTANT ')' {
+                       assert(($3 & 0x1) == 0);  /* half-reg not allowed */
+                       unsigned reg = $3 >> 1;
+                       kernel->numwg = reg;
+                       /* reserve space in immediates for the actual value to be plugged in later: */
+                       add_const($3, 0, 0, 0, 0);
 }
 
 iflag:             T_SY   { iflags.flags |= IR3_INSTR_SY; }

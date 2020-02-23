@@ -74,6 +74,9 @@ static int parse_reg(const char *str)
 "@localsize"                      return TOKEN(T_A_LOCALSIZE);
 "@const"                          return TOKEN(T_A_CONST);
 "@buf"                            return TOKEN(T_A_BUF);
+"@invocationid"                   return TOKEN(T_A_INVOCATIONID);
+"@wgid"                           return TOKEN(T_A_WGID);
+"@numwg"                          return TOKEN(T_A_NUMWG);
 "(sy)"                            return TOKEN(T_SY);
 "(ss)"                            return TOKEN(T_SS);
 "(absneg)"                        return TOKEN(T_ABSNEG);
