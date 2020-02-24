@@ -467,9 +467,9 @@ for i in range(1, 5):
 # AMD_gcn_shader extended instructions
 unop_horiz("cube_face_coord", 2, tfloat32, 3, tfloat32, """
 dst.x = dst.y = 0.0;
-float absX = fabs(src0.x);
-float absY = fabs(src0.y);
-float absZ = fabs(src0.z);
+float absX = fabsf(src0.x);
+float absY = fabsf(src0.y);
+float absZ = fabsf(src0.z);
 
 float ma = 0.0;
 if (absX >= absY && absX >= absZ) { ma = 2 * src0.x; }
