@@ -38,6 +38,7 @@ dEQP-GLES3.functional.fbo.blit.conversion.r16f_to_r8
 dEQP-GLES3.functional.fbo.blit.conversion.r16f_to_rgb5_a1
 dEQP-GLES3.functional.fbo.blit.conversion.r16i_to_rg16i
 dEQP-GLES3.functional.fbo.blit.conversion.r16ui_to_r8ui
+dEQP-GLES3.functional.fbo.blit.conversion.r32f_to_r16f
 dEQP-GLES3.functional.fbo.blit.conversion.r8_to_r16f
 dEQP-GLES3.functional.fbo.blit.conversion.rgb5_a1_to_r16f
 dEQP-GLES3.functional.fbo.blit.conversion.rgba32f_to_r16f
