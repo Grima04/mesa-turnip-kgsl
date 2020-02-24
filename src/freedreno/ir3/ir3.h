@@ -1623,27 +1623,6 @@ static inline void regmask_or(regmask_t *dst, regmask_t *a, regmask_t *b)
 		(*dst)[i] = (*a)[i] | (*b)[i];
 }
 
-/* set bits in a if not set in b, conceptually:
- *   a |= (reg & ~b)
- */
-static inline void regmask_set_if_not(regmask_t *a,
-		struct ir3_register *reg, regmask_t *b)
-{
-	unsigned idx = regmask_idx(reg);
-	if (reg->flags & IR3_REG_RELATIV) {
-		unsigned i;
-		for (i = 0; i < reg->size; i++, idx++)
-			if (!((*b)[idx / 8] & (1 << (idx % 8))))
-				(*a)[idx / 8] |= 1 << (idx % 8);
-	} else {
-		unsigned mask;
-		for (mask = reg->wrmask; mask; mask >>= 1, idx++)
-			if (mask & 1)
-				if (!((*b)[idx / 8] & (1 << (idx % 8))))
-					(*a)[idx / 8] |= 1 << (idx % 8);
-	}
-}
-
 static inline bool regmask_get(regmask_t *regmask,
 		struct ir3_register *reg)
 {
