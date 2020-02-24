@@ -27,10 +27,31 @@
 
 #include "v3dv_private.h"
 
+static bool
+descriptor_type_is_dynamic(VkDescriptorType type)
+{
+   switch (type) {
+   case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+   case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+      return false;
+      break;
+   case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+   case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+      return true;
+      break;
+   default:
+      assert(!"descriptor type not supported.\n");
+      break;
+   }
+   return false;
+}
+
 static struct v3dv_descriptor *
 get_descriptor(struct v3dv_descriptor_state *descriptor_state,
                struct v3dv_descriptor_map *map,
-               uint32_t index)
+               struct v3dv_pipeline_layout *pipeline_layout,
+               uint32_t index,
+               uint32_t *dynamic_offset)
 {
    assert(index >= 0 && index < map->num_desc);
 
@@ -49,6 +70,14 @@ get_descriptor(struct v3dv_descriptor_state *descriptor_state,
 
    uint32_t array_index = map->array_index[index];
    assert(array_index < binding_layout->array_size);
+
+   if (descriptor_type_is_dynamic(binding_layout->type)) {
+      uint32_t dynamic_offset_index =
+         pipeline_layout->set[set_number].dynamic_offset_start +
+         binding_layout->dynamic_offset_index + array_index;
+
+      *dynamic_offset = descriptor_state->dynamic_offsets[dynamic_offset_index];
+   }
 
    return &set->descriptors[binding_layout->descriptor_index + array_index];
 }
@@ -172,6 +201,8 @@ v3dv_write_uniforms(struct v3dv_cmd_buffer *cmd_buffer,
             v3d_unit_data_get_offset(data) :
             0; /* FIXME */
 
+         uint32_t dynamic_offset = 0;
+
          /* For ubos, index is shifted, as 0 is reserved for push constants.
           */
          struct v3dv_descriptor *descriptor = NULL;
@@ -191,13 +222,15 @@ v3dv_write_uniforms(struct v3dv_cmd_buffer *cmd_buffer,
                data;
 
             descriptor =
-               get_descriptor(descriptor_state, map, index);
+               get_descriptor(descriptor_state, map,
+                              pipeline->layout,
+                              index, &dynamic_offset);
             assert(descriptor);
          }
 
          cl_aligned_reloc(&job->indirect, &uniforms,
                           descriptor->bo,
-                          descriptor->offset + offset);
+                          descriptor->offset + offset + dynamic_offset);
          break;
       }
 

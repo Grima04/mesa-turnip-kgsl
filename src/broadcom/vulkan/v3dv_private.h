@@ -123,6 +123,11 @@ pack_emit_reloc(void *cl, const void *reloc) {}
 
 #define MAX_PUSH_CONSTANTS_SIZE 128
 
+#define MAX_DYNAMIC_UNIFORM_BUFFERS 16
+#define MAX_DYNAMIC_STORAGE_BUFFERS 8
+#define MAX_DYNAMIC_BUFFERS                                                  \
+   (MAX_DYNAMIC_UNIFORM_BUFFERS + MAX_DYNAMIC_STORAGE_BUFFERS)
+
 struct v3dv_instance;
 
 #ifdef USE_V3D_SIMULATOR
@@ -574,6 +579,7 @@ struct v3dv_vertex_binding {
 struct v3dv_descriptor_state {
    struct v3dv_descriptor_set *descriptor_sets[MAX_SETS];
    uint32_t valid;
+   uint32_t dynamic_offsets[MAX_DYNAMIC_BUFFERS];
 };
 
 struct v3dv_cmd_buffer_state {
@@ -772,6 +778,9 @@ struct v3dv_descriptor_set_binding_layout {
    uint32_t array_size;
 
    uint32_t descriptor_index;
+
+   uint32_t dynamic_offset_count;
+   uint32_t dynamic_offset_index;
 };
 
 struct v3dv_descriptor_set_layout {
@@ -786,6 +795,9 @@ struct v3dv_descriptor_set_layout {
    /* Number of descriptors in this descriptor set */
    uint32_t descriptor_count;
 
+   /* Number of dynamic offsets used by this descriptor set */
+   uint16_t dynamic_offset_count;
+
    /* Bindings in this descriptor set */
    struct v3dv_descriptor_set_binding_layout binding[0];
 };
@@ -797,6 +809,7 @@ struct v3dv_pipeline_layout {
    } set[MAX_SETS];
 
    uint32_t num_sets;
+   uint32_t dynamic_offset_count;
 };
 
 struct v3dv_descriptor_map {
@@ -823,6 +836,8 @@ struct v3dv_pipeline {
    struct v3dv_pipeline_stage *fs;
 
    struct v3dv_dynamic_state dynamic_state;
+
+   struct v3dv_pipeline_layout *layout;
 
    enum v3dv_ez_state ez_state;
 

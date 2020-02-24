@@ -2346,16 +2346,28 @@ v3dv_CmdBindDescriptorSets(VkCommandBuffer commandBuffer,
                            const uint32_t *pDynamicOffsets)
 {
    V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
+   V3DV_FROM_HANDLE(v3dv_pipeline_layout, layout, _layout);
+
+   uint32_t dyn_index = 0;
 
    assert(pipelineBindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS);
    assert(firstSet + descriptorSetCount <= MAX_SETS);
+
+   struct v3dv_descriptor_state *descriptor_state =
+      &cmd_buffer->state.descriptor_state;
 
    for (uint32_t i = 0; i < descriptorSetCount; i++) {
       V3DV_FROM_HANDLE(v3dv_descriptor_set, set, pDescriptorSets[i]);
       uint32_t index = firstSet + i;
 
-      cmd_buffer->state.descriptor_state.descriptor_sets[index] = set;
-      cmd_buffer->state.descriptor_state.valid |= (1u << index);
+      descriptor_state->descriptor_sets[index] = set;
+      descriptor_state->valid |= (1u << index);
+
+      for (uint32_t j = 0; j < set->layout->dynamic_offset_count; j++, dyn_index++) {
+         uint32_t idx = j + layout->set[i + firstSet].dynamic_offset_start;
+
+         descriptor_state->dynamic_offsets[idx] = pDynamicOffsets[dyn_index];
+      }
    }
 
    cmd_buffer->state.dirty |= V3DV_CMD_DIRTY_DESCRIPTOR_SETS;

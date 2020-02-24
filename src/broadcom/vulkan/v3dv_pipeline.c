@@ -975,8 +975,6 @@ pipeline_compile_graphics(struct v3dv_pipeline *pipeline,
       next_stage = stages[stage];
    }
 
-   V3DV_FROM_HANDLE(v3dv_pipeline_layout, layout, pCreateInfo->layout);
-
    /* Compiling to vir */
    for (int stage = MESA_SHADER_STAGES - 1; stage >= 0; stage--) {
       if (stages[stage] == NULL || stages[stage]->entrypoint == NULL)
@@ -984,7 +982,7 @@ pipeline_compile_graphics(struct v3dv_pipeline *pipeline,
 
       struct v3dv_pipeline_stage *p_stage = stages[stage];
 
-      pipeline_lower_nir(pipeline, p_stage, layout);
+      pipeline_lower_nir(pipeline, p_stage, pipeline->layout);
 
       switch(stage) {
       case MESA_SHADER_VERTEX:
@@ -1607,6 +1605,9 @@ pipeline_init(struct v3dv_pipeline *pipeline,
    VkResult result = VK_SUCCESS;
 
    pipeline->device = device;
+
+   V3DV_FROM_HANDLE(v3dv_pipeline_layout, layout, pCreateInfo->layout);
+   pipeline->layout = layout;
 
    V3DV_FROM_HANDLE(v3dv_render_pass, render_pass, pCreateInfo->renderPass);
    assert(pCreateInfo->subpass < render_pass->subpass_count);

@@ -51,11 +51,20 @@ v3dv_CreatePipelineLayout(VkDevice _device,
 
    layout->num_sets = pCreateInfo->setLayoutCount;
 
+   uint32_t dynamic_offset_count = 0;
    for (uint32_t set = 0; set < pCreateInfo->setLayoutCount; set++) {
       V3DV_FROM_HANDLE(v3dv_descriptor_set_layout, set_layout,
                      pCreateInfo->pSetLayouts[set]);
       layout->set[set].layout = set_layout;
+
+      layout->set[set].dynamic_offset_start = dynamic_offset_count;
+      for (uint32_t b = 0; b < set_layout->binding_count; b++) {
+         dynamic_offset_count += set_layout->binding[b].array_size *
+            set_layout->binding[b].dynamic_offset_count;
+      }
    }
+
+   layout->dynamic_offset_count = dynamic_offset_count;
 
    *pPipelineLayout = v3dv_pipeline_layout_to_handle(layout);
 
@@ -93,6 +102,9 @@ v3dv_CreateDescriptorPool(VkDevice _device,
       switch(pCreateInfo->pPoolSizes[i].type) {
       case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
       case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+         break;
+      case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+      case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
          break;
       default:
          unreachable("Unimplemented descriptor type");
@@ -264,6 +276,7 @@ v3dv_CreateDescriptorSetLayout(VkDevice _device,
    set_layout->shader_stages = 0;
 
    uint32_t descriptor_count = 0;
+   uint32_t dynamic_offset_count = 0;
 
    for (uint32_t i = 0; i < pCreateInfo->bindingCount; i++) {
       const VkDescriptorSetLayoutBinding *binding = bindings + i;
@@ -273,6 +286,10 @@ v3dv_CreateDescriptorSetLayout(VkDevice _device,
       case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
       case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
          break;
+      case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+      case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+         set_layout->binding[binding_number].dynamic_offset_count = 1;
+         break;
       default:
          unreachable("Unknown descriptor type\n");
          break;
@@ -281,8 +298,11 @@ v3dv_CreateDescriptorSetLayout(VkDevice _device,
       set_layout->binding[binding_number].type = binding->descriptorType;
       set_layout->binding[binding_number].array_size = binding->descriptorCount;
       set_layout->binding[binding_number].descriptor_index = descriptor_count;
+      set_layout->binding[binding_number].dynamic_offset_index = dynamic_offset_count;
 
       descriptor_count += binding->descriptorCount;
+      dynamic_offset_count += binding->descriptorCount *
+         set_layout->binding[binding_number].dynamic_offset_count;
 
       /* FIXME: right now we don't use shader_stages. We could explore if we
        * could use it to add another filter to upload or allocate the
@@ -294,6 +314,7 @@ v3dv_CreateDescriptorSetLayout(VkDevice _device,
    vk_free2(&device->alloc, pAllocator, bindings);
 
    set_layout->descriptor_count = descriptor_count;
+   set_layout->dynamic_offset_count = dynamic_offset_count;
 
    *pSetLayout = v3dv_descriptor_set_layout_to_handle(set_layout);
 
@@ -435,6 +456,8 @@ v3dv_UpdateDescriptorSets(VkDevice  _device,
 
          switch(writeset->descriptorType) {
 
+         case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+         case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
          case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
          case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER: {
             const VkDescriptorBufferInfo *buffer_info = writeset->pBufferInfo + j;
