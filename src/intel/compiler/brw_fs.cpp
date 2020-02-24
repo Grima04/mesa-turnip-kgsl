@@ -7803,6 +7803,17 @@ fs_visitor::allocate_registers(unsigned min_dispatch_width, bool allow_spilling)
          break;
       }
 
+      /* Scheduling may create additional opportunities for CMOD propagation,
+       * so let's do it again.  If CMOD propagation made any progress,
+       * elminate dead code one more time.
+       */
+      bool progress = false;
+      const int iteration = 99;
+      int pass_num = 0;
+
+      if (OPT(opt_cmod_propagation))
+         OPT(dead_code_eliminate);
+
       /* We only allow spilling for the last schedule mode and only if the
        * allow_spilling parameter and dispatch width work out ok.
        */
