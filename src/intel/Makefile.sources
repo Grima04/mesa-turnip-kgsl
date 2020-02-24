@@ -173,6 +173,7 @@ GENXML_GENERATED_FILES = \
 ISL_FILES = \
 	isl/isl.c \
 	isl/isl.h \
+	isl/isl_aux_info.c \
 	isl/isl_drm.c \
 	isl/isl_format.c \
 	isl/isl_genX_priv.h \
