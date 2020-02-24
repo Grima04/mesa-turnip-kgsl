@@ -2506,7 +2506,8 @@ enum anv_pipe_bits {
    ANV_PIPE_AUX_TABLE_INVALIDATE_BIT)
 
 static inline enum anv_pipe_bits
-anv_pipe_flush_bits_for_access_flags(VkAccessFlags flags)
+anv_pipe_flush_bits_for_access_flags(struct anv_device *device,
+                                     VkAccessFlags flags)
 {
    enum anv_pipe_bits pipe_bits = 0;
 
@@ -2566,7 +2567,8 @@ anv_pipe_flush_bits_for_access_flags(VkAccessFlags flags)
 }
 
 static inline enum anv_pipe_bits
-anv_pipe_invalidate_bits_for_access_flags(VkAccessFlags flags)
+anv_pipe_invalidate_bits_for_access_flags(struct anv_device *device,
+                                          VkAccessFlags flags)
 {
    enum anv_pipe_bits pipe_bits = 0;
 

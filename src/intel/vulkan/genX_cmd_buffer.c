@@ -2365,8 +2365,8 @@ void genX(CmdPipelineBarrier)(
    }
 
    cmd_buffer->state.pending_pipe_bits |=
-      anv_pipe_flush_bits_for_access_flags(src_flags) |
-      anv_pipe_invalidate_bits_for_access_flags(dst_flags);
+      anv_pipe_flush_bits_for_access_flags(cmd_buffer->device, src_flags) |
+      anv_pipe_invalidate_bits_for_access_flags(cmd_buffer->device, dst_flags);
 }
 
 static void
