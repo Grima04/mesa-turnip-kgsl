@@ -9598,8 +9598,16 @@ void select_program(Program *program,
          split_arguments(&ctx, startpgm);
       }
 
+      /* In a merged VS+TCS HS, the VS implementation can be completely empty. */
+      nir_function_impl *func = nir_shader_get_entrypoint(nir);
+      bool empty_shader = nir_cf_list_is_empty_block(&func->body) &&
+                          ((nir->info.stage == MESA_SHADER_VERTEX &&
+                            (ctx.stage == vertex_tess_control_hs || ctx.stage == vertex_geometry_gs)) ||
+                           (nir->info.stage == MESA_SHADER_TESS_EVAL &&
+                            ctx.stage == tess_eval_geometry_gs));
+
       if_context ic;
-      if (shader_count >= 2) {
+      if (shader_count >= 2 && !empty_shader) {
          Builder bld(ctx.program, ctx.block);
          Temp count = bld.sop2(aco_opcode::s_bfe_u32, bld.def(s1), bld.def(s1, scc), get_arg(&ctx, args->merged_wave_info), Operand((8u << 16) | (i * 8u)));
          Temp thread_id = emit_mbcnt(&ctx, bld.def(v1));
@@ -9623,7 +9631,6 @@ void select_program(Program *program,
       if (ctx.stage == fragment_fs)
          handle_bc_optimize(&ctx);
 
-      nir_function_impl *func = nir_shader_get_entrypoint(nir);
       visit_cf_list(&ctx, &func->body);
 
       if (ctx.program->info->so.num_outputs && (ctx.stage == vertex_vs || ctx.stage == tess_eval_vs))
@@ -9642,7 +9649,7 @@ void select_program(Program *program,
       if (ctx.stage == fragment_fs)
          create_fs_exports(&ctx);
 
-      if (shader_count >= 2) {
+      if (shader_count >= 2 && !empty_shader) {
          begin_divergent_if_else(&ctx, &ic);
          end_divergent_if(&ctx, &ic);
       }
