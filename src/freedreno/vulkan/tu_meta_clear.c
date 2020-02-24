@@ -171,19 +171,7 @@ tu_CmdClearAttachments(VkCommandBuffer commandBuffer,
    const struct tu_subpass *subpass = cmd->state.subpass;
    struct tu_cs *cs = &cmd->draw_cs;
 
-   /* Note: reserving space here should never fail because we allocated
-    * enough above.
-    */
-   struct tu_cond_exec_state state;
-   VkResult result =
-      tu_cond_exec_start(cmd->device, cs, &state,
-                        CP_COND_REG_EXEC_0_MODE(RENDER_MODE) |
-                        CP_COND_REG_EXEC_0_GMEM,
-                        rectCount * (3 + attachmentCount * 15));
-   if (result != VK_SUCCESS) {
-      cmd->record_result = result;
-      return;
-   }
+   tu_cond_exec_start(cs, CP_COND_EXEC_0_RENDER_MODE_GMEM);
 
    for (unsigned i = 0; i < rectCount; i++) {
       unsigned x1 = pRects[i].rect.offset.x;
@@ -218,22 +206,9 @@ tu_CmdClearAttachments(VkCommandBuffer commandBuffer,
       }
    }
 
-   tu_cond_exec_end(cs, &state);
+   tu_cond_exec_end(cs);
 
-   uint32_t clear_count = 3;
-   for (unsigned j = 0; j < rectCount; j++)
-      clear_count += 18 + 66 * pRects[j].layerCount + 17;
-
-   result =
-      tu_cond_exec_start(cmd->device, cs, &state,
-                         CP_COND_REG_EXEC_0_MODE(RENDER_MODE) |
-                         CP_COND_REG_EXEC_0_SYSMEM,
-                         attachmentCount * clear_count);
-
-   if (result != VK_SUCCESS) {
-      cmd->record_result = result;
-      return;
-   }
+   tu_cond_exec_start(cs, CP_COND_EXEC_0_RENDER_MODE_SYSMEM);
 
    for (unsigned i = 0; i < rectCount; i++) {
       for (unsigned j = 0; j < attachmentCount; j++) {
@@ -261,5 +236,5 @@ tu_CmdClearAttachments(VkCommandBuffer commandBuffer,
       }
    }
 
-   tu_cond_exec_end(cs, &state);
+   tu_cond_exec_end(cs);
 }

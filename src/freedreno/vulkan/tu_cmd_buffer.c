@@ -922,24 +922,14 @@ tu6_emit_predicated_blit(struct tu_cmd_buffer *cmd,
                          uint32_t gmem_a,
                          bool resolve)
 {
-   const uint32_t space = 14 + 6;
-   struct tu_cond_exec_state state;
-
-   VkResult result = tu_cond_exec_start(cmd->device, cs, &state,
-                                        CP_COND_REG_EXEC_0_MODE(RENDER_MODE) |
-                                        CP_COND_REG_EXEC_0_GMEM,
-                                        space);
-   if (result != VK_SUCCESS) {
-      cmd->record_result = result;
-      return;
-   }
+   tu_cond_exec_start(cs, CP_COND_EXEC_0_RENDER_MODE_GMEM);
 
    tu6_emit_blit_info(cmd, cs,
                       cmd->state.framebuffer->attachments[a].attachment,
                       cmd->state.pass->attachments[gmem_a].gmem_offset, resolve);
    tu6_emit_blit(cmd, cs);
 
-   tu_cond_exec_end(cs, &state);
+   tu_cond_exec_end(cs);
 }
 
 static void
@@ -973,21 +963,9 @@ static void tu6_emit_resolve(struct tu_cmd_buffer *cmd,
 
    tu6_emit_predicated_blit(cmd, cs, a, gmem_a, true);
 
-   const struct tu_framebuffer *fb = cmd->state.framebuffer;
-   const uint32_t space = 25 + 66 * fb->layers + 17;
-   struct tu_cond_exec_state state;
-
-   VkResult result = tu_cond_exec_start(cmd->device, cs, &state,
-                                        CP_COND_REG_EXEC_0_MODE(RENDER_MODE) |
-                                        CP_COND_REG_EXEC_0_SYSMEM,
-                                        space);
-   if (result != VK_SUCCESS) {
-      cmd->record_result = result;
-      return;
-   }
-
+   tu_cond_exec_start(cs, CP_COND_EXEC_0_RENDER_MODE_SYSMEM);
    tu6_emit_sysmem_resolve(cmd, cs, a, gmem_a);
-   tu_cond_exec_end(cs, &state);
+   tu_cond_exec_end(cs);
 }
 
 static void

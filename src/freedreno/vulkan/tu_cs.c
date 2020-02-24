@@ -364,11 +364,32 @@ tu_cs_reserve_space(struct tu_cs *cs, uint32_t reserved_size)
          tu_cs_add_entry(cs);
       }
 
+      if (cs->cond_flags) {
+         /* Subtract one here to account for the DWORD field itself. */
+         *cs->cond_dwords = cs->cur - cs->cond_dwords - 1;
+
+         /* space for CP_COND_REG_EXEC in next bo */
+         reserved_size += 3;
+      }
+
       /* switch to a new BO */
       uint32_t new_size = MAX2(cs->next_bo_size, reserved_size);
       VkResult result = tu_cs_add_bo(cs, new_size);
       if (result != VK_SUCCESS)
          return result;
+
+      /* if inside a condition, emit a new CP_COND_REG_EXEC */
+      if (cs->cond_flags) {
+         cs->reserved_end = cs->cur + reserved_size;
+
+         tu_cs_emit_pkt7(cs, CP_COND_REG_EXEC, 2);
+         tu_cs_emit(cs, cs->cond_flags);
+
+         cs->cond_dwords = cs->cur;
+
+         /* Emit dummy DWORD field here */
+         tu_cs_emit(cs, CP_COND_REG_EXEC_1_DWORDS(0));
+      }
 
       /* double the size for the next bo */
       new_size <<= 1;

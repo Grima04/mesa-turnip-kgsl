@@ -580,6 +580,10 @@ struct tu_cs
    struct tu_bo **bos;
    uint32_t bo_count;
    uint32_t bo_capacity;
+
+   /* state for cond_exec_start/cond_exec_end */
+   uint32_t cond_flags;
+   uint32_t *cond_dwords;
 };
 
 struct tu_device_memory
