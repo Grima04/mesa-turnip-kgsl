@@ -6857,9 +6857,22 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
       break;
    }
    case nir_intrinsic_load_primitive_id: {
-      assert(ctx->shader->info.stage == MESA_SHADER_GEOMETRY);
       Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
-      bld.copy(Definition(dst), get_arg(ctx, ctx->args->ac.gs_prim_id));
+
+      switch (ctx->shader->info.stage) {
+      case MESA_SHADER_GEOMETRY:
+         bld.copy(Definition(dst), get_arg(ctx, ctx->args->ac.gs_prim_id));
+         break;
+      case MESA_SHADER_TESS_CTRL:
+         bld.copy(Definition(dst), get_arg(ctx, ctx->args->ac.tcs_patch_id));
+         break;
+      case MESA_SHADER_TESS_EVAL:
+         bld.copy(Definition(dst), get_arg(ctx, ctx->args->ac.tes_patch_id));
+         break;
+      default:
+         unreachable("Unimplemented shader stage for nir_intrinsic_load_primitive_id");
+      }
+
       break;
    }
    case nir_intrinsic_emit_vertex_with_counter: {
