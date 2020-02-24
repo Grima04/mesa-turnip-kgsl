@@ -303,6 +303,9 @@ swrastGetImageShm2(__DRIdrawable * read,
       if (!XCreateDrawable(prp, shmid, dpy))
          return GL_FALSE;
    }
+
+   if (prp->shminfo.shmid == -1)
+      return GL_FALSE;
    readable = pread->xDrawable;
 
    ximage = prp->ximage;
