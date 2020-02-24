@@ -354,18 +354,6 @@ intersects(unsigned a_start, unsigned a_end, unsigned b_start, unsigned b_end)
 	return !((a_start >= b_end) || (b_start >= a_end));
 }
 
-static bool
-is_half(struct ir3_instruction *instr)
-{
-	return !!(instr->regs[0]->flags & IR3_REG_HALF);
-}
-
-static bool
-is_high(struct ir3_instruction *instr)
-{
-	return !!(instr->regs[0]->flags & IR3_REG_HIGH);
-}
-
 static unsigned
 reg_size_for_array(struct ir3_array *arr)
 {

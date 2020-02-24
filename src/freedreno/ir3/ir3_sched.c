@@ -71,6 +71,7 @@ struct ir3_sched_ctx {
 	struct ir3_instruction *addr;      /* current a0.x user, if any */
 	struct ir3_instruction *pred;      /* current p0.x user, if any */
 	int live_values;                   /* estimate of current live values */
+	int half_live_values;              /* estimate of current half precision live values */
 	bool error;
 
 	unsigned live_threshold_hi;
@@ -105,8 +106,13 @@ unuse_each_src(struct ir3_sched_ctx *ctx, struct ir3_instruction *instr)
 			debug_assert(src->use_count > 0);
 
 			if (--src->use_count == 0) {
-				ctx->live_values -= dest_regs(src);
-				debug_assert(ctx->live_values >= 0);
+				if (is_half(src)) {
+					ctx->half_live_values -= dest_regs(src);
+					debug_assert(ctx->half_live_values >= 0);
+				} else {
+					ctx->live_values -= dest_regs(src);
+					debug_assert(ctx->live_values >= 0);
+				}
 			}
 		}
 	}
@@ -131,7 +137,11 @@ transfer_use(struct ir3_sched_ctx *ctx, struct ir3_instruction *orig_instr,
 	foreach_ssa_src_n(src, n, new_instr) {
 		if (__is_false_dep(new_instr, n))
 			continue;
-		ctx->live_values += dest_regs(src);
+		if (is_half(new_instr)) {
+			ctx->half_live_values += dest_regs(src);
+		} else {
+			ctx->live_values += dest_regs(src);
+		}
 		use_instr(src);
 	}
 
@@ -161,13 +171,18 @@ use_instr(struct ir3_instruction *instr)
 }
 
 static void
-update_live_values(struct ir3_sched_ctx *ctx, struct ir3_instruction *instr)
+update_live_values(struct ir3_sched_ctx *ctx, struct ir3_instruction *scheduled)
 {
-	if ((instr->opc == OPC_META_COLLECT) || (instr->opc == OPC_META_SPLIT))
+	if ((scheduled->opc == OPC_META_COLLECT) || (scheduled->opc == OPC_META_SPLIT))
 		return;
 
-	ctx->live_values += dest_regs(instr);
-	unuse_each_src(ctx, instr);
+	if ((scheduled->regs_count > 0) && is_half(scheduled)) {
+		ctx->half_live_values += dest_regs(scheduled);
+	} else {
+		ctx->live_values += dest_regs(scheduled);
+	}
+
+	unuse_each_src(ctx, scheduled);
 }
 
 static void
@@ -522,6 +537,7 @@ find_eligible_instr(struct ir3_sched_ctx *ctx, struct ir3_sched_notes *notes,
 
 		/* determine net change to # of live values: */
 		int le = live_effect(candidate);
+		unsigned live_values = (2 * ctx->live_values) + ctx->half_live_values;
 
 		/* if there is a net increase in # of live values, then apply some
 		 * threshold to avoid instructions getting scheduled *too* early
@@ -530,7 +546,7 @@ find_eligible_instr(struct ir3_sched_ctx *ctx, struct ir3_sched_notes *notes,
 		if (le >= 1) {
 			unsigned threshold;
 
-			if (ctx->live_values > ctx->live_threshold_lo) {
+			if (live_values > ctx->live_threshold_lo) {
 				threshold = ctx->depth_threshold_lo;
 			} else {
 				threshold = ctx->depth_threshold_hi;
@@ -557,9 +573,9 @@ find_eligible_instr(struct ir3_sched_ctx *ctx, struct ir3_sched_notes *notes,
 		/* if too many live values, prioritize instructions that reduce the
 		 * number of live values:
 		 */
-		if (ctx->live_values > ctx->live_threshold_hi) {
+		if (live_values > ctx->live_threshold_hi) {
 			rank = le;
-		} else if (ctx->live_values > ctx->live_threshold_lo) {
+		} else if (live_values > ctx->live_threshold_lo) {
 			rank += le;
 		}
 
@@ -796,13 +812,13 @@ static void
 setup_thresholds(struct ir3_sched_ctx *ctx, struct ir3 *ir)
 {
 	if (has_latency_to_hide(ir)) {
-		ctx->live_threshold_hi = 16 * 4;
-		ctx->live_threshold_lo = 4 * 4;
+		ctx->live_threshold_hi = 2 * 16 * 4;
+		ctx->live_threshold_lo = 2 * 4 * 4;
 		ctx->depth_threshold_hi = 6;
 		ctx->depth_threshold_lo = 4;
 	} else {
-		ctx->live_threshold_hi = 16 * 4;
-		ctx->live_threshold_lo = 12 * 4;
+		ctx->live_threshold_hi = 2 * 16 * 4;
+		ctx->live_threshold_lo = 2 * 12 * 4;
 		ctx->depth_threshold_hi = 16;
 		ctx->depth_threshold_lo = 16;
 	}
@@ -819,6 +835,7 @@ int ir3_sched(struct ir3 *ir)
 
 	foreach_block (block, &ir->block_list) {
 		ctx.live_values = 0;
+		ctx.half_live_values = 0;
 		sched_block(&ctx, block);
 	}
 

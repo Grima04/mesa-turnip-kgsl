@@ -751,6 +751,18 @@ static inline bool is_barrier(struct ir3_instruction *instr)
 }
 
 static inline bool
+is_half(struct ir3_instruction *instr)
+{
+	return !!(instr->regs[0]->flags & IR3_REG_HALF);
+}
+
+static inline bool
+is_high(struct ir3_instruction *instr)
+{
+	return !!(instr->regs[0]->flags & IR3_REG_HIGH);
+}
+
+static inline bool
 is_store(struct ir3_instruction *instr)
 {
 	/* these instructions, the "destination" register is
