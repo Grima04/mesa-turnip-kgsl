@@ -1577,23 +1577,59 @@ INSTR0(META_TEX_PREFETCH);
 /* split this out or find some helper to use.. like main/bitset.h.. */
 
 #include <string.h>
+#include "util/bitset.h"
 
 #define MAX_REG 256
 
-typedef uint8_t regmask_t[2 * MAX_REG / 8];
+typedef BITSET_DECLARE(regmask_t, 2 * MAX_REG);
 
-static inline unsigned regmask_idx(struct ir3_register *reg)
+static inline bool
+__regmask_get(regmask_t *regmask, struct ir3_register *reg, unsigned n)
 {
-	unsigned num = (reg->flags & IR3_REG_RELATIV) ? reg->array.offset : reg->num;
-	debug_assert(num < MAX_REG);
-	if (reg->flags & IR3_REG_HALF) {
-		if (reg->merged) {
-			num /= 2;
+	if (reg->merged) {
+		/* a6xx+ case, with merged register file, we track things in terms
+		 * of half-precision registers, with a full precisions register
+		 * using two half-precision slots:
+		 */
+		if (reg->flags & IR3_REG_HALF) {
+			return BITSET_TEST(*regmask, n);
 		} else {
-			num += MAX_REG;
+			n *= 2;
+			return BITSET_TEST(*regmask, n) || BITSET_TEST(*regmask, n+1);
 		}
+	} else {
+		/* pre a6xx case, with separate register file for half and full
+		 * precision:
+		 */
+		if (reg->flags & IR3_REG_HALF)
+			n += MAX_REG;
+		return BITSET_TEST(*regmask, n);
 	}
-	return num;
+}
+
+static inline void
+__regmask_set(regmask_t *regmask, struct ir3_register *reg, unsigned n)
+{
+	if (reg->merged) {
+		/* a6xx+ case, with merged register file, we track things in terms
+		 * of half-precision registers, with a full precisions register
+		 * using two half-precision slots:
+		 */
+		if (reg->flags & IR3_REG_HALF) {
+			BITSET_SET(*regmask, n);
+		} else {
+			n *= 2;
+			BITSET_SET(*regmask, n);
+			BITSET_SET(*regmask, n+1);
+		}
+	} else {
+		/* pre a6xx case, with separate register file for half and full
+		 * precision:
+		 */
+		if (reg->flags & IR3_REG_HALF)
+			n += MAX_REG;
+		BITSET_SET(*regmask, n);
+	}
 }
 
 static inline void regmask_init(regmask_t *regmask)
@@ -1603,16 +1639,13 @@ static inline void regmask_init(regmask_t *regmask)
 
 static inline void regmask_set(regmask_t *regmask, struct ir3_register *reg)
 {
-	unsigned idx = regmask_idx(reg);
 	if (reg->flags & IR3_REG_RELATIV) {
-		unsigned i;
-		for (i = 0; i < reg->size; i++, idx++)
-			(*regmask)[idx / 8] |= 1 << (idx % 8);
+		for (unsigned i = 0; i < reg->size; i++)
+			__regmask_set(regmask, reg, reg->array.offset + i);
 	} else {
-		unsigned mask;
-		for (mask = reg->wrmask; mask; mask >>= 1, idx++)
+		for (unsigned mask = reg->wrmask, n = reg->num; mask; mask >>= 1, n++)
 			if (mask & 1)
-				(*regmask)[idx / 8] |= 1 << (idx % 8);
+				__regmask_set(regmask, reg, n);
 	}
 }
 
@@ -1626,17 +1659,14 @@ static inline void regmask_or(regmask_t *dst, regmask_t *a, regmask_t *b)
 static inline bool regmask_get(regmask_t *regmask,
 		struct ir3_register *reg)
 {
-	unsigned idx = regmask_idx(reg);
 	if (reg->flags & IR3_REG_RELATIV) {
-		unsigned i;
-		for (i = 0; i < reg->size; i++, idx++)
-			if ((*regmask)[idx / 8] & (1 << (idx % 8)))
+		for (unsigned i = 0; i < reg->size; i++)
+			if (__regmask_get(regmask, reg, reg->array.offset + i))
 				return true;
 	} else {
-		unsigned mask;
-		for (mask = reg->wrmask; mask; mask >>= 1, idx++)
+		for (unsigned mask = reg->wrmask, n = reg->num; mask; mask >>= 1, n++)
 			if (mask & 1)
-				if ((*regmask)[idx / 8] & (1 << (idx % 8)))
+				if (__regmask_get(regmask, reg, n))
 					return true;
 	}
 	return false;
