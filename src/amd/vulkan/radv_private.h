@@ -285,14 +285,23 @@ void radv_logi_v(const char *format, va_list va);
 		return;					\
 	} while (0)
 
-void *radv_lookup_entrypoint_unchecked(const char *name);
-void *radv_lookup_entrypoint_checked(const char *name,
-                                    uint32_t core_version,
-                                    const struct radv_instance_extension_table *instance,
-                                    const struct radv_device_extension_table *device);
-void *radv_lookup_physical_device_entrypoint_checked(const char *name,
-                                                     uint32_t core_version,
-                                                     const struct radv_instance_extension_table *instance);
+int radv_get_instance_entrypoint_index(const char *name);
+int radv_get_device_entrypoint_index(const char *name);
+int radv_get_physical_device_entrypoint_index(const char *name);
+
+const char *radv_get_instance_entry_name(int index);
+const char *radv_get_physical_device_entry_name(int index);
+const char *radv_get_device_entry_name(int index);
+
+bool radv_instance_entrypoint_is_enabled(int index, uint32_t core_version,
+					 const struct radv_instance_extension_table *instance);
+bool radv_physical_device_entrypoint_is_enabled(int index, uint32_t core_version,
+						const struct radv_instance_extension_table *instance);
+bool radv_device_entrypoint_is_enabled(int index, uint32_t core_version,
+				       const struct radv_instance_extension_table *instance,
+				       const struct radv_device_extension_table *device);
+
+void *radv_lookup_entrypoint(const char *name);
 
 struct radv_physical_device {
 	VK_LOADER_DATA                              _loader_data;
@@ -364,6 +373,9 @@ struct radv_instance {
 	struct vk_debug_report_instance             debug_report_callbacks;
 
 	struct radv_instance_extension_table enabled_extensions;
+	struct radv_instance_dispatch_table          dispatch;
+	struct radv_physical_device_dispatch_table   physical_device_dispatch;
+	struct radv_device_dispatch_table            device_dispatch;
 
 	struct driOptionCache dri_options;
 	struct driOptionCache available_dri_options;
@@ -835,6 +847,7 @@ struct radv_device {
 	uint64_t dmesg_timestamp;
 
 	struct radv_device_extension_table enabled_extensions;
+	struct radv_device_dispatch_table dispatch;
 
 	/* Whether the app has enabled the robustBufferAccess feature. */
 	bool robust_buffer_access;
