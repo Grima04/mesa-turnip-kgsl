@@ -2,13 +2,6 @@
 
 set -ex
 
-LLVM=libllvm8
-
-# LLVMPipe on armhf is broken with LLVM 8
-if [ `dpkg --print-architecture` = "armhf" ]; then
-        LLVM=libllvm7
-fi
-
 apt-get -y install --no-install-recommends \
     initramfs-tools \
     libpng16-16 \
@@ -17,7 +10,6 @@ apt-get -y install --no-install-recommends \
     libexpat1 \
     libdrm2 \
     libdrm-nouveau2 \
-    $LLVM
 passwd root -d
 chsh -s /bin/sh
 
