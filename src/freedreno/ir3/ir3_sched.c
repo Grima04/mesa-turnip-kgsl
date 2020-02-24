@@ -72,6 +72,11 @@ struct ir3_sched_ctx {
 	struct ir3_instruction *pred;      /* current p0.x user, if any */
 	int live_values;                   /* estimate of current live values */
 	bool error;
+
+	unsigned live_threshold_hi;
+	unsigned live_threshold_lo;
+	unsigned depth_threshold_hi;
+	unsigned depth_threshold_lo;
 };
 
 static bool is_scheduled(struct ir3_instruction *instr)
@@ -525,10 +530,10 @@ find_eligible_instr(struct ir3_sched_ctx *ctx, struct ir3_sched_notes *notes,
 		if (le >= 1) {
 			unsigned threshold;
 
-			if (ctx->live_values > 4*4) {
-				threshold = 4;
+			if (ctx->live_values > ctx->live_threshold_lo) {
+				threshold = ctx->depth_threshold_lo;
 			} else {
-				threshold = 6;
+				threshold = ctx->depth_threshold_hi;
 			}
 
 			/* Filter out any "shallow" instructions which would otherwise
@@ -552,9 +557,9 @@ find_eligible_instr(struct ir3_sched_ctx *ctx, struct ir3_sched_notes *notes,
 		/* if too many live values, prioritize instructions that reduce the
 		 * number of live values:
 		 */
-		if (ctx->live_values > 16*4) {
+		if (ctx->live_values > ctx->live_threshold_hi) {
 			rank = le;
-		} else if (ctx->live_values > 4*4) {
+		} else if (ctx->live_values > ctx->live_threshold_lo) {
 			rank += le;
 		}
 
@@ -763,9 +768,51 @@ sched_block(struct ir3_sched_ctx *ctx, struct ir3_block *block)
 	}
 }
 
+static bool
+has_latency_to_hide(struct ir3 *ir)
+{
+	foreach_block (block, &ir->block_list) {
+		foreach_instr (instr, &block->instr_list) {
+			if (is_tex(instr))
+				return true;
+
+			if (is_load(instr)) {
+				switch (instr->opc) {
+				case OPC_LDLV:
+				case OPC_LDL:
+				case OPC_LDLW:
+					break;
+				default:
+					return true;
+				}
+			}
+		}
+	}
+
+	return false;
+}
+
+static void
+setup_thresholds(struct ir3_sched_ctx *ctx, struct ir3 *ir)
+{
+	if (has_latency_to_hide(ir)) {
+		ctx->live_threshold_hi = 16 * 4;
+		ctx->live_threshold_lo = 4 * 4;
+		ctx->depth_threshold_hi = 6;
+		ctx->depth_threshold_lo = 4;
+	} else {
+		ctx->live_threshold_hi = 16 * 4;
+		ctx->live_threshold_lo = 12 * 4;
+		ctx->depth_threshold_hi = 16;
+		ctx->depth_threshold_lo = 16;
+	}
+}
+
 int ir3_sched(struct ir3 *ir)
 {
 	struct ir3_sched_ctx ctx = {0};
+
+	setup_thresholds(&ctx, ir);
 
 	ir3_clear_mark(ir);
 	update_use_count(ir);
