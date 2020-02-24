@@ -371,12 +371,6 @@ tu6_index_size(VkIndexType type)
    }
 }
 
-static void
-tu6_emit_marker(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
-{
-   tu_cs_emit_write_reg(cs, cmd->marker_reg, ++cmd->marker_seqno);
-}
-
 unsigned
 tu6_emit_event_write(struct tu_cmd_buffer *cmd,
                      struct tu_cs *cs,
@@ -714,9 +708,7 @@ tu6_emit_blit_info(struct tu_cmd_buffer *cmd,
 static void
 tu6_emit_blit(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 {
-   tu6_emit_marker(cmd, cs);
    tu6_emit_event_write(cmd, cs, BLIT, false);
-   tu6_emit_marker(cmd, cs);
 }
 
 static void
@@ -786,10 +778,8 @@ tu6_emit_tile_select(struct tu_cmd_buffer *cmd,
    tu_cs_emit_pkt7(cs, CP_SET_MARKER, 1);
    tu_cs_emit(cs, A6XX_CP_SET_MARKER_0_MODE(RM6_YIELD));
 
-   tu6_emit_marker(cmd, cs);
    tu_cs_emit_pkt7(cs, CP_SET_MARKER, 1);
    tu_cs_emit(cs, A6XX_CP_SET_MARKER_0_MODE(RM6_GMEM));
-   tu6_emit_marker(cmd, cs);
 
    const uint32_t x1 = tile->begin.x;
    const uint32_t y1 = tile->begin.y;
@@ -1031,10 +1021,8 @@ tu6_emit_tile_store(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
    tu_cs_emit_pkt7(cs, CP_SKIP_IB2_ENABLE_GLOBAL, 1);
    tu_cs_emit(cs, 0x0);
 
-   tu6_emit_marker(cmd, cs);
    tu_cs_emit_pkt7(cs, CP_SET_MARKER, 1);
    tu_cs_emit(cs, A6XX_CP_SET_MARKER_0_MODE(RM6_RESOLVE));
-   tu6_emit_marker(cmd, cs);
 
    tu6_emit_blit_scissor(cmd, cs, true);
 
@@ -1152,8 +1140,6 @@ tu6_init_hw(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
    tu_cs_emit_write_reg(cs, REG_A6XX_RB_UNKNOWN_8878, 0);
    tu_cs_emit_write_reg(cs, REG_A6XX_RB_UNKNOWN_8879, 0);
    tu_cs_emit_write_reg(cs, REG_A6XX_HLSQ_CONTROL_5_REG, 0xfc);
-
-   tu6_emit_marker(cmd, cs);
 
    tu_cs_emit_write_reg(cs, REG_A6XX_VFD_MODE_CNTL, 0x00000000);
 
@@ -1369,10 +1355,8 @@ tu6_emit_binning_pass(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 
    tu6_emit_window_scissor(cmd, cs, x1, y1, x2, y2);
 
-   tu6_emit_marker(cmd, cs);
    tu_cs_emit_pkt7(cs, CP_SET_MARKER, 1);
    tu_cs_emit(cs, A6XX_CP_SET_MARKER_0_MODE(RM6_BINNING));
-   tu6_emit_marker(cmd, cs);
 
    tu_cs_emit_pkt7(cs, CP_SET_VISIBILITY_OVERRIDE, 1);
    tu_cs_emit(cs, 0x1);
@@ -1525,10 +1509,8 @@ tu6_sysmem_render_begin(struct tu_cmd_buffer *cmd, struct tu_cs *cs,
 
    tu6_emit_lrz_flush(cmd, cs);
 
-   tu6_emit_marker(cmd, cs);
    tu_cs_emit_pkt7(cs, CP_SET_MARKER, 1);
    tu_cs_emit(cs, A6XX_CP_SET_MARKER_0_MODE(RM6_BYPASS));
-   tu6_emit_marker(cmd, cs);
 
    tu_cs_emit_pkt7(cs, CP_SKIP_IB2_ENABLE_GLOBAL, 1);
    tu_cs_emit(cs, 0x0);
@@ -1970,9 +1952,6 @@ tu_create_cmd_buffer(struct tu_device *device,
 
    list_inithead(&cmd_buffer->upload.list);
 
-   cmd_buffer->marker_reg = REG_A6XX_CP_SCRATCH_REG(
-      cmd_buffer->level == VK_COMMAND_BUFFER_LEVEL_PRIMARY ? 7 : 6);
-
    VkResult result = tu_bo_init_new(device, &cmd_buffer->scratch_bo, 0x1000);
    if (result != VK_SUCCESS)
       goto fail_scratch_bo;
@@ -2136,7 +2115,6 @@ tu_BeginCommandBuffer(VkCommandBuffer commandBuffer,
    tu_cs_begin(&cmd_buffer->draw_cs);
    tu_cs_begin(&cmd_buffer->draw_epilogue_cs);
 
-   cmd_buffer->marker_seqno = 0;
    cmd_buffer->scratch_seqno = 0;
 
    /* setup initial configuration into command buffer */
@@ -3758,11 +3736,7 @@ tu_draw(struct tu_cmd_buffer *cmd, const struct tu_draw_info *draw)
       return;
    }
 
-   /* TODO tu6_emit_marker should pick different regs depending on cs */
-
-   tu6_emit_marker(cmd, cs);
    tu6_emit_draw_direct(cmd, cs, draw);
-   tu6_emit_marker(cmd, cs);
 
    cmd->wait_for_idle = true;
 

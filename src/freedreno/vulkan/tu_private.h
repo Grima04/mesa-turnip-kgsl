@@ -957,9 +957,6 @@ struct tu_cmd_buffer
    struct tu_cs draw_epilogue_cs;
    struct tu_cs sub_cs;
 
-   uint16_t marker_reg;
-   uint32_t marker_seqno;
-
    struct tu_bo scratch_bo;
    uint32_t scratch_seqno;
 #define VSC_OVERFLOW 0x8
