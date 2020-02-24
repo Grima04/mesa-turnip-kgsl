@@ -117,87 +117,6 @@ static LLVMValueRef get_rel_patch_id(struct radv_shader_context *ctx)
 	}
 }
 
-static unsigned
-get_tcs_num_patches(struct radv_shader_context *ctx)
-{
-	unsigned num_tcs_input_cp = ctx->args->options->key.tcs.input_vertices;
-	unsigned num_tcs_output_cp = ctx->shader->info.tess.tcs_vertices_out;
-	uint32_t input_vertex_size = ctx->tcs_num_inputs * 16;
-	uint32_t input_patch_size = ctx->args->options->key.tcs.input_vertices * input_vertex_size;
-	uint32_t num_tcs_outputs = util_last_bit64(ctx->args->shader_info->tcs.outputs_written);
-	uint32_t num_tcs_patch_outputs = util_last_bit64(ctx->args->shader_info->tcs.patch_outputs_written);
-	uint32_t output_vertex_size = num_tcs_outputs * 16;
-	uint32_t pervertex_output_patch_size = ctx->shader->info.tess.tcs_vertices_out * output_vertex_size;
-	uint32_t output_patch_size = pervertex_output_patch_size + num_tcs_patch_outputs * 16;
-	unsigned num_patches;
-	unsigned hardware_lds_size;
-
-	/* Ensure that we only need one wave per SIMD so we don't need to check
-	 * resource usage. Also ensures that the number of tcs in and out
-	 * vertices per threadgroup are at most 256.
-	 */
-	num_patches = 64 / MAX2(num_tcs_input_cp, num_tcs_output_cp) * 4;
-	/* Make sure that the data fits in LDS. This assumes the shaders only
-	 * use LDS for the inputs and outputs.
-	 */
-	hardware_lds_size = 32768;
-
-	/* Looks like STONEY hangs if we use more than 32 KiB LDS in a single
-	 * threadgroup, even though there is more than 32 KiB LDS.
-	 *
-	 * Test: dEQP-VK.tessellation.shader_input_output.barrier
-	 */
-	if (ctx->args->options->chip_class >= GFX7 && ctx->args->options->family != CHIP_STONEY)
-		hardware_lds_size = 65536;
-
-	num_patches = MIN2(num_patches, hardware_lds_size / (input_patch_size + output_patch_size));
-	/* Make sure the output data fits in the offchip buffer */
-	num_patches = MIN2(num_patches, (ctx->args->options->tess_offchip_block_dw_size * 4) / output_patch_size);
-	/* Not necessary for correctness, but improves performance. The
-	 * specific value is taken from the proprietary driver.
-	 */
-	num_patches = MIN2(num_patches, 40);
-
-	/* GFX6 bug workaround - limit LS-HS threadgroups to only one wave. */
-	if (ctx->args->options->chip_class == GFX6) {
-		unsigned one_wave = 64 / MAX2(num_tcs_input_cp, num_tcs_output_cp);
-		num_patches = MIN2(num_patches, one_wave);
-	}
-	return num_patches;
-}
-
-static unsigned
-calculate_tess_lds_size(struct radv_shader_context *ctx)
-{
-	unsigned num_tcs_input_cp = ctx->args->options->key.tcs.input_vertices;
-	unsigned num_tcs_output_cp;
-	unsigned num_tcs_outputs, num_tcs_patch_outputs;
-	unsigned input_vertex_size, output_vertex_size;
-	unsigned input_patch_size, output_patch_size;
-	unsigned pervertex_output_patch_size;
-	unsigned output_patch0_offset;
-	unsigned num_patches;
-	unsigned lds_size;
-
-	num_tcs_output_cp = ctx->shader->info.tess.tcs_vertices_out;
-	num_tcs_outputs = util_last_bit64(ctx->args->shader_info->tcs.outputs_written);
-	num_tcs_patch_outputs = util_last_bit64(ctx->args->shader_info->tcs.patch_outputs_written);
-
-	input_vertex_size = ctx->tcs_num_inputs * 16;
-	output_vertex_size = num_tcs_outputs * 16;
-
-	input_patch_size = num_tcs_input_cp * input_vertex_size;
-
-	pervertex_output_patch_size = num_tcs_output_cp * output_vertex_size;
-	output_patch_size = pervertex_output_patch_size + num_tcs_patch_outputs * 16;
-
-	num_patches = ctx->tcs_num_patches;
-	output_patch0_offset = input_patch_size * num_patches;
-
-	lds_size = output_patch0_offset + output_patch_size * num_patches;
-	return lds_size;
-}
-
 /* Tessellation shaders pass outputs to the next shader using LDS.
  *
  * LS outputs = TCS inputs
@@ -4123,7 +4042,16 @@ LLVMModuleRef ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm,
 				ctx.tcs_num_inputs = args->options->key.tcs.num_inputs;
 			else
 				ctx.tcs_num_inputs = util_last_bit64(args->shader_info->vs.ls_outputs_written);
-			ctx.tcs_num_patches = get_tcs_num_patches(&ctx);
+			ctx.tcs_num_patches =
+				get_tcs_num_patches(
+					ctx.args->options->key.tcs.input_vertices,
+					ctx.shader->info.tess.tcs_vertices_out,
+					ctx.tcs_num_inputs,
+					ctx.args->shader_info->tcs.outputs_written,
+					ctx.args->shader_info->tcs.patch_outputs_written,
+					ctx.args->options->tess_offchip_block_dw_size,
+					ctx.args->options->chip_class,
+					ctx.args->options->family);
 		} else if (shaders[i]->info.stage == MESA_SHADER_TESS_EVAL) {
 			ctx.abi.load_tess_varyings = load_tes_input;
 			ctx.abi.load_tess_coord = load_tess_coord;
@@ -4225,7 +4153,14 @@ LLVMModuleRef ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm,
 
 		if (shaders[i]->info.stage == MESA_SHADER_TESS_CTRL) {
 			args->shader_info->tcs.num_patches = ctx.tcs_num_patches;
-			args->shader_info->tcs.lds_size = calculate_tess_lds_size(&ctx);
+			args->shader_info->tcs.lds_size =
+				calculate_tess_lds_size(
+					ctx.args->options->key.tcs.input_vertices,
+					ctx.shader->info.tess.tcs_vertices_out,
+					ctx.tcs_num_inputs,
+					ctx.tcs_num_patches,
+					ctx.args->shader_info->tcs.outputs_written,
+					ctx.args->shader_info->tcs.patch_outputs_written);
 		}
 	}
 

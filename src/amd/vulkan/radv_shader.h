@@ -505,6 +505,82 @@ shader_io_get_unique_index(gl_varying_slot slot)
 	unreachable("illegal slot in get unique index\n");
 }
 
+static inline unsigned
+calculate_tess_lds_size(unsigned tcs_num_input_vertices,
+			unsigned tcs_num_output_vertices,
+			unsigned tcs_num_inputs,
+			unsigned tcs_num_patches,
+			unsigned tcs_outputs_written,
+			unsigned tcs_per_patch_outputs_written)
+{
+	unsigned num_tcs_outputs = util_last_bit64(tcs_outputs_written);
+	unsigned num_tcs_patch_outputs = util_last_bit64(tcs_per_patch_outputs_written);
+
+	unsigned input_vertex_size = tcs_num_inputs * 16;
+	unsigned output_vertex_size = num_tcs_outputs * 16;
+
+	unsigned input_patch_size = tcs_num_input_vertices * input_vertex_size;
+
+	unsigned pervertex_output_patch_size = tcs_num_output_vertices * output_vertex_size;
+	unsigned output_patch_size = pervertex_output_patch_size + num_tcs_patch_outputs * 16;
+
+	unsigned output_patch0_offset = input_patch_size * tcs_num_patches;
+
+	return output_patch0_offset + output_patch_size * tcs_num_patches;
+}
+
+static inline unsigned
+get_tcs_num_patches(unsigned tcs_num_input_vertices,
+			unsigned tcs_num_output_vertices,
+			unsigned tcs_num_inputs,
+			unsigned tcs_outputs_written,
+			unsigned tcs_per_patch_outputs_written,
+			unsigned tess_offchip_block_dw_size,
+			enum chip_class chip_class,
+			enum radeon_family family)
+{
+	uint32_t input_vertex_size = tcs_num_inputs * 16;
+	uint32_t input_patch_size = tcs_num_input_vertices * input_vertex_size;
+	uint32_t num_tcs_outputs = util_last_bit64(tcs_outputs_written);
+	uint32_t num_tcs_patch_outputs = util_last_bit64(tcs_per_patch_outputs_written);
+	uint32_t output_vertex_size = num_tcs_outputs * 16;
+	uint32_t pervertex_output_patch_size = tcs_num_output_vertices * output_vertex_size;
+	uint32_t output_patch_size = pervertex_output_patch_size + num_tcs_patch_outputs * 16;
+
+	/* Ensure that we only need one wave per SIMD so we don't need to check
+	 * resource usage. Also ensures that the number of tcs in and out
+	 * vertices per threadgroup are at most 256.
+	 */
+	unsigned num_patches = 64 / MAX2(tcs_num_input_vertices, tcs_num_output_vertices) * 4;
+	/* Make sure that the data fits in LDS. This assumes the shaders only
+	 * use LDS for the inputs and outputs.
+	 */
+	unsigned hardware_lds_size = 32768;
+
+	/* Looks like STONEY hangs if we use more than 32 KiB LDS in a single
+	 * threadgroup, even though there is more than 32 KiB LDS.
+	 *
+	 * Test: dEQP-VK.tessellation.shader_input_output.barrier
+	 */
+	if (chip_class >= GFX7 && family != CHIP_STONEY)
+		hardware_lds_size = 65536;
+
+	num_patches = MIN2(num_patches, hardware_lds_size / (input_patch_size + output_patch_size));
+	/* Make sure the output data fits in the offchip buffer */
+	num_patches = MIN2(num_patches, (tess_offchip_block_dw_size * 4) / output_patch_size);
+	/* Not necessary for correctness, but improves performance. The
+	 * specific value is taken from the proprietary driver.
+	 */
+	num_patches = MIN2(num_patches, 40);
+
+	/* GFX6 bug workaround - limit LS-HS threadgroups to only one wave. */
+	if (chip_class == GFX6) {
+		unsigned one_wave = 64 / MAX2(tcs_num_input_vertices, tcs_num_output_vertices);
+		num_patches = MIN2(num_patches, one_wave);
+	}
+	return num_patches;
+}
+
 void
 radv_lower_fs_io(nir_shader *nir);
 
