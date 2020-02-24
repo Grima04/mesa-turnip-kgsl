@@ -1054,6 +1054,14 @@ mir_schedule_alu(
                         bundle.control |= stages[i]->unit;
                         bytes_emitted += bytes_for_instruction(stages[i]);
                         bundle.instructions[bundle.instruction_count++] = stages[i];
+
+                        /* If we branch, we can't spill to TLS since the store
+                         * instruction will never get executed. We could try to
+                         * break the bundle but this is probably easier for
+                         * now. */
+
+                        if (branch)
+                                stages[i]->no_spill |= (1 << REG_CLASS_WORK);
                 }
         }
 
