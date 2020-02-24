@@ -313,7 +313,7 @@ std::pair<PhysReg, bool> get_reg_simple(ra_ctx& ctx,
 bool get_regs_for_copies(ra_ctx& ctx,
                          RegisterFile& reg_file,
                          std::vector<std::pair<Operand, Definition>>& parallelcopies,
-                         std::set<std::pair<unsigned, unsigned>> vars,
+                         const std::set<std::pair<unsigned, unsigned>> &vars,
                          uint32_t lb, uint32_t ub,
                          aco_ptr<Instruction>& instr,
                          uint32_t def_reg_lo,
@@ -322,7 +322,7 @@ bool get_regs_for_copies(ra_ctx& ctx,
 
    /* variables are sorted from small sized to large */
    /* NOTE: variables are also sorted by ID. this only affects a very small number of shaders slightly though. */
-   for (std::set<std::pair<unsigned, unsigned>>::reverse_iterator it = vars.rbegin(); it != vars.rend(); ++it) {
+   for (std::set<std::pair<unsigned, unsigned>>::const_reverse_iterator it = vars.rbegin(); it != vars.rend(); ++it) {
       unsigned id = it->second;
       std::pair<PhysReg, RegClass> var = ctx.assignments[id];
       uint32_t size = it->first;
