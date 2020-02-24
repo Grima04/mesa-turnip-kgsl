@@ -1524,10 +1524,10 @@ tu_pipeline_create(struct tu_device *dev,
    if (!pipeline)
       return VK_ERROR_OUT_OF_HOST_MEMORY;
 
-   tu_cs_init(&pipeline->cs, TU_CS_MODE_SUB_STREAM, 2048);
+   tu_cs_init(&pipeline->cs, dev, TU_CS_MODE_SUB_STREAM, 2048);
 
    /* reserve the space now such that tu_cs_begin_sub_stream never fails */
-   VkResult result = tu_cs_reserve_space(dev, &pipeline->cs, 2048);
+   VkResult result = tu_cs_reserve_space(&pipeline->cs, 2048);
    if (result != VK_SUCCESS) {
       vk_free2(&dev->alloc, pAllocator, pipeline);
       return result;
@@ -1660,11 +1660,11 @@ tu_pipeline_builder_parse_shader_stages(struct tu_pipeline_builder *builder,
                                         struct tu_pipeline *pipeline)
 {
    struct tu_cs prog_cs;
-   tu_cs_begin_sub_stream(builder->device, &pipeline->cs, 512, &prog_cs);
+   tu_cs_begin_sub_stream(&pipeline->cs, 512, &prog_cs);
    tu6_emit_program(&prog_cs, builder, &pipeline->program.binary_bo, false);
    pipeline->program.state_ib = tu_cs_end_sub_stream(&pipeline->cs, &prog_cs);
 
-   tu_cs_begin_sub_stream(builder->device, &pipeline->cs, 512, &prog_cs);
+   tu_cs_begin_sub_stream(&pipeline->cs, 512, &prog_cs);
    tu6_emit_program(&prog_cs, builder, &pipeline->program.binary_bo, true);
    pipeline->program.binning_state_ib =
       tu_cs_end_sub_stream(&pipeline->cs, &prog_cs);
@@ -1688,7 +1688,7 @@ tu_pipeline_builder_parse_vertex_input(struct tu_pipeline_builder *builder,
    const struct tu_shader *vs = builder->shaders[MESA_SHADER_VERTEX];
 
    struct tu_cs vi_cs;
-   tu_cs_begin_sub_stream(builder->device, &pipeline->cs,
+   tu_cs_begin_sub_stream(&pipeline->cs,
                           MAX_VERTEX_ATTRIBS * 5 + 2, &vi_cs);
    tu6_emit_vertex_input(&vi_cs, &vs->variants[0], vi_info,
                          pipeline->vi.bindings, pipeline->vi.strides,
@@ -1696,7 +1696,7 @@ tu_pipeline_builder_parse_vertex_input(struct tu_pipeline_builder *builder,
    pipeline->vi.state_ib = tu_cs_end_sub_stream(&pipeline->cs, &vi_cs);
 
    if (vs->has_binning_pass) {
-      tu_cs_begin_sub_stream(builder->device, &pipeline->cs,
+      tu_cs_begin_sub_stream(&pipeline->cs,
                              MAX_VERTEX_ATTRIBS * 5 + 2, &vi_cs);
       tu6_emit_vertex_input(
          &vi_cs, &vs->variants[1], vi_info, pipeline->vi.binning_bindings,
@@ -1737,7 +1737,7 @@ tu_pipeline_builder_parse_viewport(struct tu_pipeline_builder *builder,
       builder->create_info->pViewportState;
 
    struct tu_cs vp_cs;
-   tu_cs_begin_sub_stream(builder->device, &pipeline->cs, 15, &vp_cs);
+   tu_cs_begin_sub_stream(&pipeline->cs, 15, &vp_cs);
 
    if (!(pipeline->dynamic_state.mask & TU_DYNAMIC_VIEWPORT)) {
       assert(vp_info->viewportCount == 1);
@@ -1763,7 +1763,7 @@ tu_pipeline_builder_parse_rasterization(struct tu_pipeline_builder *builder,
    assert(rast_info->polygonMode == VK_POLYGON_MODE_FILL);
 
    struct tu_cs rast_cs;
-   tu_cs_begin_sub_stream(builder->device, &pipeline->cs, 20, &rast_cs);
+   tu_cs_begin_sub_stream(&pipeline->cs, 20, &rast_cs);
 
    /* move to hw ctx init? */
    tu6_emit_gras_unknowns(&rast_cs);
@@ -1807,7 +1807,7 @@ tu_pipeline_builder_parse_depth_stencil(struct tu_pipeline_builder *builder,
          : &dummy_ds_info;
 
    struct tu_cs ds_cs;
-   tu_cs_begin_sub_stream(builder->device, &pipeline->cs, 12, &ds_cs);
+   tu_cs_begin_sub_stream(&pipeline->cs, 12, &ds_cs);
 
    /* move to hw ctx init? */
    tu6_emit_alpha_control_disable(&ds_cs);
@@ -1862,8 +1862,7 @@ tu_pipeline_builder_parse_multisample_and_color_blend(
                                      : &dummy_blend_info;
 
    struct tu_cs blend_cs;
-   tu_cs_begin_sub_stream(builder->device, &pipeline->cs, MAX_RTS * 3 + 9,
-                          &blend_cs);
+   tu_cs_begin_sub_stream(&pipeline->cs, MAX_RTS * 3 + 9, &blend_cs);
 
    uint32_t blend_enable_mask;
    tu6_emit_rb_mrt_controls(&blend_cs, blend_info,
@@ -1883,7 +1882,7 @@ tu_pipeline_finish(struct tu_pipeline *pipeline,
                    struct tu_device *dev,
                    const VkAllocationCallbacks *alloc)
 {
-   tu_cs_finish(dev, &pipeline->cs);
+   tu_cs_finish(&pipeline->cs);
 
    if (pipeline->program.binary_bo.gem_handle)
       tu_bo_finish(dev, &pipeline->program.binary_bo);
@@ -2123,7 +2122,7 @@ tu_compute_pipeline_create(VkDevice device,
       pipeline->compute.local_size[i] = v->shader->nir->info.cs.local_size[i];
 
    struct tu_cs prog_cs;
-   tu_cs_begin_sub_stream(dev, &pipeline->cs, 512, &prog_cs);
+   tu_cs_begin_sub_stream(&pipeline->cs, 512, &prog_cs);
    tu6_emit_compute_program(&prog_cs, shader, &pipeline->program.binary_bo);
    pipeline->program.state_ib = tu_cs_end_sub_stream(&pipeline->cs, &prog_cs);
 

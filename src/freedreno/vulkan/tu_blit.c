@@ -84,7 +84,7 @@ emit_blit_step(struct tu_cmd_buffer *cmdbuf, struct tu_cs *cs,
 {
    struct tu_physical_device *phys_dev = cmdbuf->device->physical_device;
 
-   tu_cs_reserve_space(cmdbuf->device, cs, 66);
+   tu_cs_reserve_space(cs, 66);
 
    enum a6xx_format fmt = tu6_get_native_format(blt->dst.fmt)->rb;
    if (fmt == FMT6_Z24_UNORM_S8_UINT)
@@ -280,7 +280,7 @@ void tu_blit(struct tu_cmd_buffer *cmdbuf, struct tu_cs *cs,
       assert(blt->dst.samples == 1);
    }
 
-   tu_cs_reserve_space(cmdbuf->device, cs, 18);
+   tu_cs_reserve_space(cs, 18);
 
    tu6_emit_event_write(cmdbuf, cs, LRZ_FLUSH, false);
    tu6_emit_event_write(cmdbuf, cs, PC_CCU_FLUSH_COLOR_TS, true);
@@ -365,7 +365,7 @@ void tu_blit(struct tu_cmd_buffer *cmdbuf, struct tu_cs *cs,
       blt->src.ubwc_va += blt->src.ubwc_size;
    }
 
-   tu_cs_reserve_space(cmdbuf->device, cs, 17);
+   tu_cs_reserve_space(cs, 17);
 
    tu6_emit_event_write(cmdbuf, cs, PC_CCU_FLUSH_COLOR_TS, true);
    tu6_emit_event_write(cmdbuf, cs, PC_CCU_FLUSH_DEPTH_TS, true);

@@ -569,6 +569,7 @@ struct tu_cs
    uint32_t *reserved_end;
    uint32_t *end;
 
+   struct tu_device *device;
    enum tu_cs_mode mode;
    uint32_t next_bo_size;
 

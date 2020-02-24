@@ -45,7 +45,7 @@ tu_CmdUpdateBuffer(VkCommandBuffer commandBuffer,
    tu_bo_list_add(&cmd->bo_list, buffer->bo, MSM_SUBMIT_BO_WRITE);
 
    struct ts_cs_memory tmp;
-   VkResult result = tu_cs_alloc(cmd->device, &cmd->sub_cs, DIV_ROUND_UP(dataSize, 64), 64, &tmp);
+   VkResult result = tu_cs_alloc(&cmd->sub_cs, DIV_ROUND_UP(dataSize, 64), 64, &tmp);
    if (result != VK_SUCCESS) {
       cmd->record_result = result;
       return;

@@ -28,13 +28,16 @@
 #include "registers/adreno_pm4.xml.h"
 
 void
-tu_cs_init(struct tu_cs *cs, enum tu_cs_mode mode, uint32_t initial_size);
+tu_cs_init(struct tu_cs *cs,
+           struct tu_device *device,
+           enum tu_cs_mode mode,
+           uint32_t initial_size);
 
 void
 tu_cs_init_external(struct tu_cs *cs, uint32_t *start, uint32_t *end);
 
 void
-tu_cs_finish(struct tu_device *dev, struct tu_cs *cs);
+tu_cs_finish(struct tu_cs *cs);
 
 void
 tu_cs_begin(struct tu_cs *cs);
@@ -43,14 +46,10 @@ void
 tu_cs_end(struct tu_cs *cs);
 
 VkResult
-tu_cs_begin_sub_stream(struct tu_device *dev,
-                       struct tu_cs *cs,
-                       uint32_t size,
-                       struct tu_cs *sub_cs);
+tu_cs_begin_sub_stream(struct tu_cs *cs, uint32_t size, struct tu_cs *sub_cs);
 
 VkResult
-tu_cs_alloc(struct tu_device *dev,
-            struct tu_cs *cs,
+tu_cs_alloc(struct tu_cs *cs,
             uint32_t count,
             uint32_t size,
             struct ts_cs_memory *memory);
@@ -59,12 +58,10 @@ struct tu_cs_entry
 tu_cs_end_sub_stream(struct tu_cs *cs, struct tu_cs *sub_cs);
 
 VkResult
-tu_cs_reserve_space(struct tu_device *dev,
-                    struct tu_cs *cs,
-                    uint32_t reserved_size);
+tu_cs_reserve_space(struct tu_cs *cs, uint32_t reserved_size);
 
 void
-tu_cs_reset(struct tu_device *dev, struct tu_cs *cs);
+tu_cs_reset(struct tu_cs *cs);
 
 VkResult
 tu_cs_add_entries(struct tu_cs *cs, struct tu_cs *target);
@@ -224,7 +221,7 @@ tu_cond_exec_start(struct tu_device *dev, struct tu_cs *cs,
    /* Reserve enough space so that both the condition packet and the actual
     * condition will fit in the same IB.
     */
-   VkResult result = tu_cs_reserve_space(dev, cs, max_dwords + 3);
+   VkResult result = tu_cs_reserve_space(cs, max_dwords + 3);
    if (result != VK_SUCCESS)
       return result;
 

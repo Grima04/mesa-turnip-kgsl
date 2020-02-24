@@ -290,7 +290,7 @@ copy_query_value_gpu(struct tu_cmd_buffer *cmdbuf,
          sizeof(uint64_t) : sizeof(uint32_t);
    uint64_t write_iova = base_write_iova + (offset * element_size);
 
-   tu_cs_reserve_space(cmdbuf->device, cs, 6);
+   tu_cs_reserve_space(cs, 6);
    tu_cs_emit_pkt7(cs, CP_MEM_TO_MEM, 5);
    uint32_t mem_to_mem_flags = flags & VK_QUERY_RESULT_64_BIT ?
          CP_MEM_TO_MEM_0_DOUBLE : 0;
@@ -319,7 +319,7 @@ emit_copy_occlusion_query_pool_results(struct tu_cmd_buffer *cmdbuf,
     * To ensure that previous writes to the available bit are coherent, first
     * wait for all writes to complete.
     */
-   tu_cs_reserve_space(cmdbuf->device, cs, 1);
+   tu_cs_reserve_space(cs, 1);
    tu_cs_emit_pkt7(cs, CP_WAIT_MEM_WRITES, 0);
 
    for (uint32_t i = 0; i < queryCount; i++) {
@@ -330,7 +330,7 @@ emit_copy_occlusion_query_pool_results(struct tu_cmd_buffer *cmdbuf,
       /* Wait for the available bit to be set if executed with the
        * VK_QUERY_RESULT_WAIT_BIT flag. */
       if (flags & VK_QUERY_RESULT_WAIT_BIT) {
-         tu_cs_reserve_space(cmdbuf->device, cs, 7);
+         tu_cs_reserve_space(cs, 7);
          tu_cs_emit_pkt7(cs, CP_WAIT_REG_MEM, 6);
          tu_cs_emit(cs, CP_WAIT_REG_MEM_0_FUNCTION(WRITE_EQ) |
                         CP_WAIT_REG_MEM_0_POLL_MEMORY);
@@ -356,7 +356,7 @@ emit_copy_occlusion_query_pool_results(struct tu_cmd_buffer *cmdbuf,
           * tests that ADDR0 != 0 and ADDR1 < REF. The packet here simply tests
           * that 0 < available < 2, aka available == 1.
           */
-         tu_cs_reserve_space(cmdbuf->device, cs, 7 + 6);
+         tu_cs_reserve_space(cs, 7 + 6);
          tu_cs_emit_pkt7(cs, CP_COND_EXEC, 6);
          tu_cs_emit_qw(cs, available_iova);
          tu_cs_emit_qw(cs, available_iova);
@@ -419,7 +419,7 @@ emit_reset_occlusion_query_pool(struct tu_cmd_buffer *cmdbuf,
       uint32_t query = firstQuery + i;
       uint64_t available_iova = occlusion_query_iova(pool, query, available);
       uint64_t result_iova = occlusion_query_iova(pool, query, result);
-      tu_cs_reserve_space(cmdbuf->device, cs, 11);
+      tu_cs_reserve_space(cs, 11);
       tu_cs_emit_pkt7(cs, CP_MEM_WRITE, 4);
       tu_cs_emit_qw(cs, available_iova);
       tu_cs_emit_qw(cs, 0x0);
@@ -475,7 +475,7 @@ emit_begin_occlusion_query(struct tu_cmd_buffer *cmdbuf,
 
    uint64_t begin_iova = occlusion_query_iova(pool, query, begin);
 
-   tu_cs_reserve_space(cmdbuf->device, cs, 7);
+   tu_cs_reserve_space(cs, 7);
    tu_cs_emit_regs(cs,
                    A6XX_RB_SAMPLE_COUNT_CONTROL(.copy = true));
 
@@ -540,7 +540,7 @@ emit_end_occlusion_query(struct tu_cmd_buffer *cmdbuf,
    uint64_t begin_iova = occlusion_query_iova(pool, query, begin);
    uint64_t end_iova = occlusion_query_iova(pool, query, end);
    uint64_t result_iova = occlusion_query_iova(pool, query, result);
-   tu_cs_reserve_space(cmdbuf->device, cs, 31);
+   tu_cs_reserve_space(cs, 31);
    tu_cs_emit_pkt7(cs, CP_MEM_WRITE, 4);
    tu_cs_emit_qw(cs, end_iova);
    tu_cs_emit_qw(cs, 0xffffffffffffffffull);
@@ -583,7 +583,7 @@ emit_end_occlusion_query(struct tu_cmd_buffer *cmdbuf,
        */
       cs = &cmdbuf->draw_epilogue_cs;
 
-   tu_cs_reserve_space(cmdbuf->device, cs, 5);
+   tu_cs_reserve_space(cs, 5);
    tu_cs_emit_pkt7(cs, CP_MEM_WRITE, 4);
    tu_cs_emit_qw(cs, available_iova);
    tu_cs_emit_qw(cs, 0x1);

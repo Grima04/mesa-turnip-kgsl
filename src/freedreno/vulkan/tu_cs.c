@@ -27,12 +27,16 @@
  * Initialize a command stream.
  */
 void
-tu_cs_init(struct tu_cs *cs, enum tu_cs_mode mode, uint32_t initial_size)
+tu_cs_init(struct tu_cs *cs,
+           struct tu_device *device,
+           enum tu_cs_mode mode,
+           uint32_t initial_size)
 {
    assert(mode != TU_CS_MODE_EXTERNAL);
 
    memset(cs, 0, sizeof(*cs));
 
+   cs->device = device;
    cs->mode = mode;
    cs->next_bo_size = initial_size;
 }
@@ -54,10 +58,10 @@ tu_cs_init_external(struct tu_cs *cs, uint32_t *start, uint32_t *end)
  * Finish and release all resources owned by a command stream.
  */
 void
-tu_cs_finish(struct tu_device *dev, struct tu_cs *cs)
+tu_cs_finish(struct tu_cs *cs)
 {
    for (uint32_t i = 0; i < cs->bo_count; ++i) {
-      tu_bo_finish(dev, cs->bos[i]);
+      tu_bo_finish(cs->device, cs->bos[i]);
       free(cs->bos[i]);
    }
 
@@ -110,7 +114,7 @@ tu_cs_is_empty(const struct tu_cs *cs)
  * be emitted to the new BO.
  */
 static VkResult
-tu_cs_add_bo(struct tu_device *dev, struct tu_cs *cs, uint32_t size)
+tu_cs_add_bo(struct tu_cs *cs, uint32_t size)
 {
    /* no BO for TU_CS_MODE_EXTERNAL */
    assert(cs->mode != TU_CS_MODE_EXTERNAL);
@@ -134,15 +138,16 @@ tu_cs_add_bo(struct tu_device *dev, struct tu_cs *cs, uint32_t size)
    if (!new_bo)
       return VK_ERROR_OUT_OF_HOST_MEMORY;
 
-   VkResult result = tu_bo_init_new(dev, new_bo, size * sizeof(uint32_t));
+   VkResult result =
+      tu_bo_init_new(cs->device, new_bo, size * sizeof(uint32_t));
    if (result != VK_SUCCESS) {
       free(new_bo);
       return result;
    }
 
-   result = tu_bo_map(dev, new_bo);
+   result = tu_bo_map(cs->device, new_bo);
    if (result != VK_SUCCESS) {
-      tu_bo_finish(dev, new_bo);
+      tu_bo_finish(cs->device, new_bo);
       free(new_bo);
       return result;
    }
@@ -266,21 +271,18 @@ tu_cs_end(struct tu_cs *cs)
  * emission.
  */
 VkResult
-tu_cs_begin_sub_stream(struct tu_device *dev,
-                       struct tu_cs *cs,
-                       uint32_t size,
-                       struct tu_cs *sub_cs)
+tu_cs_begin_sub_stream(struct tu_cs *cs, uint32_t size, struct tu_cs *sub_cs)
 {
    assert(cs->mode == TU_CS_MODE_SUB_STREAM);
    assert(size);
 
-   VkResult result = tu_cs_reserve_space(dev, cs, size);
+   VkResult result = tu_cs_reserve_space(cs, size);
    if (result != VK_SUCCESS)
       return result;
 
    tu_cs_init_external(sub_cs, cs->cur, cs->reserved_end);
    tu_cs_begin(sub_cs);
-   result = tu_cs_reserve_space(dev, sub_cs, size);
+   result = tu_cs_reserve_space(sub_cs, size);
    assert(result == VK_SUCCESS);
 
    return VK_SUCCESS;
@@ -292,8 +294,7 @@ tu_cs_begin_sub_stream(struct tu_device *dev,
  *
  */
 VkResult
-tu_cs_alloc(struct tu_device *dev,
-            struct tu_cs *cs,
+tu_cs_alloc(struct tu_cs *cs,
             uint32_t count,
             uint32_t size,
             struct ts_cs_memory *memory)
@@ -306,7 +307,7 @@ tu_cs_alloc(struct tu_device *dev,
 
    /* TODO: smarter way to deal with alignment? */
 
-   VkResult result = tu_cs_reserve_space(dev, cs, count * size + (size-1));
+   VkResult result = tu_cs_reserve_space(cs, count * size + (size-1));
    if (result != VK_SUCCESS)
       return result;
 
@@ -356,9 +357,7 @@ tu_cs_end_sub_stream(struct tu_cs *cs, struct tu_cs *sub_cs)
  * This never fails when \a cs has mode TU_CS_MODE_EXTERNAL.
  */
 VkResult
-tu_cs_reserve_space(struct tu_device *dev,
-                    struct tu_cs *cs,
-                    uint32_t reserved_size)
+tu_cs_reserve_space(struct tu_cs *cs, uint32_t reserved_size)
 {
    if (tu_cs_get_space(cs) < reserved_size) {
       if (cs->mode == TU_CS_MODE_EXTERNAL) {
@@ -376,7 +375,7 @@ tu_cs_reserve_space(struct tu_device *dev,
 
       /* switch to a new BO */
       uint32_t new_size = MAX2(cs->next_bo_size, reserved_size);
-      VkResult result = tu_cs_add_bo(dev, cs, new_size);
+      VkResult result = tu_cs_add_bo(cs, new_size);
       if (result != VK_SUCCESS)
          return result;
 
@@ -402,7 +401,7 @@ tu_cs_reserve_space(struct tu_device *dev,
  * packets in \a cs, but does not necessarily release all resources.
  */
 void
-tu_cs_reset(struct tu_device *dev, struct tu_cs *cs)
+tu_cs_reset(struct tu_cs *cs)
 {
    if (cs->mode == TU_CS_MODE_EXTERNAL) {
       assert(!cs->bo_count && !cs->entry_count);
@@ -411,7 +410,7 @@ tu_cs_reset(struct tu_device *dev, struct tu_cs *cs)
    }
 
    for (uint32_t i = 0; i + 1 < cs->bo_count; ++i) {
-      tu_bo_finish(dev, cs->bos[i]);
+      tu_bo_finish(cs->device, cs->bos[i]);
       free(cs->bos[i]);
    }
 

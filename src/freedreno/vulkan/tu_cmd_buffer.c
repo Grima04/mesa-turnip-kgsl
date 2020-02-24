@@ -1061,7 +1061,7 @@ tu6_emit_restart_index(struct tu_cs *cs, uint32_t restart_index)
 static void
 tu6_init_hw(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 {
-   VkResult result = tu_cs_reserve_space(cmd->device, cs, 256);
+   VkResult result = tu_cs_reserve_space(cs, 256);
    if (result != VK_SUCCESS) {
       cmd->record_result = result;
       return;
@@ -1486,12 +1486,12 @@ tu_cmd_prepare_sysmem_clear_ib(struct tu_cmd_buffer *cmd,
    const struct tu_framebuffer *fb = cmd->state.framebuffer;
    const uint32_t blit_cmd_space = 25 + 66 * fb->layers + 17;
    const uint32_t clear_space =
-       blit_cmd_space * cmd->state.pass->attachment_count + 5;
+      blit_cmd_space * cmd->state.pass->attachment_count + 5;
 
    struct tu_cs sub_cs;
 
-   VkResult result = tu_cs_begin_sub_stream(cmd->device, &cmd->sub_cs,
-                                            clear_space, &sub_cs);
+   VkResult result =
+      tu_cs_begin_sub_stream(&cmd->sub_cs, clear_space, &sub_cs);
    if (result != VK_SUCCESS) {
       cmd->record_result = result;
       return;
@@ -1503,7 +1503,7 @@ tu_cmd_prepare_sysmem_clear_ib(struct tu_cmd_buffer *cmd,
    /* TODO: We shouldn't need this flush, but without it we'd have an empty IB
     * when nothing clears which we currently can't handle.
     */
-   tu_cs_reserve_space(cmd->device, &sub_cs, 5);
+   tu_cs_reserve_space(&sub_cs, 5);
    tu6_emit_event_write(cmd, &sub_cs, PC_CCU_FLUSH_COLOR_TS, true);
 
    cmd->state.sysmem_clear_ib = tu_cs_end_sub_stream(&cmd->sub_cs, &sub_cs);
@@ -1513,7 +1513,7 @@ static void
 tu6_sysmem_render_begin(struct tu_cmd_buffer *cmd, struct tu_cs *cs,
                         const struct VkRect2D *renderArea)
 {
-   VkResult result = tu_cs_reserve_space(cmd->device, cs, 1024);
+   VkResult result = tu_cs_reserve_space(cs, 1024);
    if (result != VK_SUCCESS) {
       cmd->record_result = result;
       return;
@@ -1582,7 +1582,7 @@ tu6_sysmem_render_end(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
    }
 
    const uint32_t space = 14 + tu_cs_get_call_size(&cmd->draw_epilogue_cs);
-   VkResult result = tu_cs_reserve_space(cmd->device, cs, space);
+   VkResult result = tu_cs_reserve_space(cs, space);
    if (result != VK_SUCCESS) {
       cmd->record_result = result;
       return;
@@ -1607,7 +1607,7 @@ tu6_tile_render_begin(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 {
    struct tu_physical_device *phys_dev = cmd->device->physical_device;
 
-   VkResult result = tu_cs_reserve_space(cmd->device, cs, 1024);
+   VkResult result = tu_cs_reserve_space(cs, 1024);
    if (result != VK_SUCCESS) {
       cmd->record_result = result;
       return;
@@ -1668,7 +1668,7 @@ tu6_render_tile(struct tu_cmd_buffer *cmd,
                 const struct tu_tile *tile)
 {
    const uint32_t render_tile_space = 256 + tu_cs_get_call_size(&cmd->draw_cs);
-   VkResult result = tu_cs_reserve_space(cmd->device, cs, render_tile_space);
+   VkResult result = tu_cs_reserve_space(cs, render_tile_space);
    if (result != VK_SUCCESS) {
       cmd->record_result = result;
       return;
@@ -1705,7 +1705,7 @@ static void
 tu6_tile_render_end(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 {
    const uint32_t space = 16 + tu_cs_get_call_size(&cmd->draw_epilogue_cs);
-   VkResult result = tu_cs_reserve_space(cmd->device, cs, space);
+   VkResult result = tu_cs_reserve_space(cs, space);
    if (result != VK_SUCCESS) {
       cmd->record_result = result;
       return;
@@ -1749,7 +1749,7 @@ tu_cmd_render_sysmem(struct tu_cmd_buffer *cmd)
    tu6_sysmem_render_begin(cmd, &cmd->cs, &tiling->render_area);
 
    const uint32_t space = tu_cs_get_call_size(&cmd->draw_cs);
-   VkResult result = tu_cs_reserve_space(cmd->device, &cmd->cs, space);
+   VkResult result = tu_cs_reserve_space(&cmd->cs, space);
    if (result != VK_SUCCESS) {
       cmd->record_result = result;
       return;
@@ -1772,8 +1772,8 @@ tu_cmd_prepare_tile_load_ib(struct tu_cmd_buffer *cmd,
 
    struct tu_cs sub_cs;
 
-   VkResult result = tu_cs_begin_sub_stream(cmd->device, &cmd->sub_cs,
-                                            tile_load_space, &sub_cs);
+   VkResult result =
+      tu_cs_begin_sub_stream(&cmd->sub_cs, tile_load_space, &sub_cs);
    if (result != VK_SUCCESS) {
       cmd->record_result = result;
       return;
@@ -1805,8 +1805,8 @@ tu_cmd_prepare_tile_store_ib(struct tu_cmd_buffer *cmd)
    const uint32_t tile_store_space = 32 + 23 * cmd->state.pass->attachment_count;
    struct tu_cs sub_cs;
 
-   VkResult result = tu_cs_begin_sub_stream(cmd->device, &cmd->sub_cs,
-                                            tile_store_space, &sub_cs);
+   VkResult result =
+      tu_cs_begin_sub_stream(&cmd->sub_cs, tile_store_space, &sub_cs);
    if (result != VK_SUCCESS) {
       cmd->record_result = result;
       return;
@@ -2004,10 +2004,10 @@ tu_create_cmd_buffer(struct tu_device *device,
    }
 
    tu_bo_list_init(&cmd_buffer->bo_list);
-   tu_cs_init(&cmd_buffer->cs, TU_CS_MODE_GROW, 4096);
-   tu_cs_init(&cmd_buffer->draw_cs, TU_CS_MODE_GROW, 4096);
-   tu_cs_init(&cmd_buffer->draw_epilogue_cs, TU_CS_MODE_GROW, 4096);
-   tu_cs_init(&cmd_buffer->sub_cs, TU_CS_MODE_SUB_STREAM, 2048);
+   tu_cs_init(&cmd_buffer->cs, device, TU_CS_MODE_GROW, 4096);
+   tu_cs_init(&cmd_buffer->draw_cs, device, TU_CS_MODE_GROW, 4096);
+   tu_cs_init(&cmd_buffer->draw_epilogue_cs, device, TU_CS_MODE_GROW, 4096);
+   tu_cs_init(&cmd_buffer->sub_cs, device, TU_CS_MODE_SUB_STREAM, 2048);
 
    *pCommandBuffer = tu_cmd_buffer_to_handle(cmd_buffer);
 
@@ -2043,10 +2043,10 @@ tu_cmd_buffer_destroy(struct tu_cmd_buffer *cmd_buffer)
    for (unsigned i = 0; i < VK_PIPELINE_BIND_POINT_RANGE_SIZE; i++)
       free(cmd_buffer->descriptors[i].push_set.set.mapped_ptr);
 
-   tu_cs_finish(cmd_buffer->device, &cmd_buffer->cs);
-   tu_cs_finish(cmd_buffer->device, &cmd_buffer->draw_cs);
-   tu_cs_finish(cmd_buffer->device, &cmd_buffer->draw_epilogue_cs);
-   tu_cs_finish(cmd_buffer->device, &cmd_buffer->sub_cs);
+   tu_cs_finish(&cmd_buffer->cs);
+   tu_cs_finish(&cmd_buffer->draw_cs);
+   tu_cs_finish(&cmd_buffer->draw_epilogue_cs);
+   tu_cs_finish(&cmd_buffer->sub_cs);
 
    tu_bo_list_destroy(&cmd_buffer->bo_list);
    vk_free(&cmd_buffer->pool->alloc, cmd_buffer);
@@ -2060,10 +2060,10 @@ tu_reset_cmd_buffer(struct tu_cmd_buffer *cmd_buffer)
    cmd_buffer->record_result = VK_SUCCESS;
 
    tu_bo_list_reset(&cmd_buffer->bo_list);
-   tu_cs_reset(cmd_buffer->device, &cmd_buffer->cs);
-   tu_cs_reset(cmd_buffer->device, &cmd_buffer->draw_cs);
-   tu_cs_reset(cmd_buffer->device, &cmd_buffer->draw_epilogue_cs);
-   tu_cs_reset(cmd_buffer->device, &cmd_buffer->sub_cs);
+   tu_cs_reset(&cmd_buffer->cs);
+   tu_cs_reset(&cmd_buffer->draw_cs);
+   tu_cs_reset(&cmd_buffer->draw_epilogue_cs);
+   tu_cs_reset(&cmd_buffer->sub_cs);
 
    for (unsigned i = 0; i < VK_PIPELINE_BIND_POINT_RANGE_SIZE; i++) {
       cmd_buffer->descriptors[i].valid = 0;
@@ -2236,7 +2236,7 @@ tu_CmdBindIndexBuffer(VkCommandBuffer commandBuffer,
    /* initialize/update the restart index */
    if (!cmd->state.index_buffer || cmd->state.index_type != indexType) {
       struct tu_cs *draw_cs = &cmd->draw_cs;
-      VkResult result = tu_cs_reserve_space(cmd->device, draw_cs, 2);
+      VkResult result = tu_cs_reserve_space(draw_cs, 2);
       if (result != VK_SUCCESS) {
          cmd->record_result = result;
          return;
@@ -2386,7 +2386,7 @@ tu_CmdSetViewport(VkCommandBuffer commandBuffer,
    TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
    struct tu_cs *draw_cs = &cmd->draw_cs;
 
-   VkResult result = tu_cs_reserve_space(cmd->device, draw_cs, 12);
+   VkResult result = tu_cs_reserve_space(draw_cs, 12);
    if (result != VK_SUCCESS) {
       cmd->record_result = result;
       return;
@@ -2407,7 +2407,7 @@ tu_CmdSetScissor(VkCommandBuffer commandBuffer,
    TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
    struct tu_cs *draw_cs = &cmd->draw_cs;
 
-   VkResult result = tu_cs_reserve_space(cmd->device, draw_cs, 3);
+   VkResult result = tu_cs_reserve_space(draw_cs, 3);
    if (result != VK_SUCCESS) {
       cmd->record_result = result;
       return;
@@ -2439,7 +2439,7 @@ tu_CmdSetDepthBias(VkCommandBuffer commandBuffer,
    TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
    struct tu_cs *draw_cs = &cmd->draw_cs;
 
-   VkResult result = tu_cs_reserve_space(cmd->device, draw_cs, 4);
+   VkResult result = tu_cs_reserve_space(draw_cs, 4);
    if (result != VK_SUCCESS) {
       cmd->record_result = result;
       return;
@@ -2458,7 +2458,7 @@ tu_CmdSetBlendConstants(VkCommandBuffer commandBuffer,
    TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
    struct tu_cs *draw_cs = &cmd->draw_cs;
 
-   VkResult result = tu_cs_reserve_space(cmd->device, draw_cs, 5);
+   VkResult result = tu_cs_reserve_space(draw_cs, 5);
    if (result != VK_SUCCESS) {
       cmd->record_result = result;
       return;
@@ -2668,7 +2668,7 @@ tu_CmdBeginRenderPass(VkCommandBuffer commandBuffer,
    tu_cmd_prepare_tile_load_ib(cmd, pRenderPassBegin);
    tu_cmd_prepare_tile_store_ib(cmd);
 
-   VkResult result = tu_cs_reserve_space(cmd->device, &cmd->draw_cs, 1024);
+   VkResult result = tu_cs_reserve_space(&cmd->draw_cs, 1024);
    if (result != VK_SUCCESS) {
       cmd->record_result = result;
       return;
@@ -2722,7 +2722,7 @@ tu_CmdNextSubpass(VkCommandBuffer commandBuffer, VkSubpassContents contents)
       }
    }
 
-   VkResult result = tu_cs_reserve_space(cmd->device, &cmd->draw_cs, 1024);
+   VkResult result = tu_cs_reserve_space(&cmd->draw_cs, 1024);
    if (result != VK_SUCCESS) {
       cmd->record_result = result;
       return;
@@ -3142,7 +3142,7 @@ tu6_emit_consts(struct tu_cmd_buffer *cmd,
                 gl_shader_stage type)
 {
    struct tu_cs cs;
-   tu_cs_begin_sub_stream(cmd->device, &cmd->sub_cs, 512, &cs); /* TODO: maximum size? */
+   tu_cs_begin_sub_stream(&cmd->sub_cs, 512, &cs); /* TODO: maximum size? */
 
    tu6_emit_user_consts(&cs, pipeline, descriptors_state, type, cmd->push_constants);
    tu6_emit_ubos(&cs, pipeline, descriptors_state, type);
@@ -3166,7 +3166,7 @@ tu6_emit_vs_params(struct tu_cmd_buffer *cmd,
       return VK_SUCCESS;
    }
 
-   VkResult result = tu_cs_begin_sub_stream(cmd->device, &cmd->sub_cs, 8, &cs);
+   VkResult result = tu_cs_begin_sub_stream(&cmd->sub_cs, 8, &cs);
    if (result != VK_SUCCESS)
       return result;
 
@@ -3199,7 +3199,6 @@ tu6_emit_textures(struct tu_cmd_buffer *cmd,
                   bool *needs_border,
                   bool is_sysmem)
 {
-   struct tu_device *device = cmd->device;
    struct tu_cs *draw_state = &cmd->sub_cs;
    const struct tu_program_descriptor_linkage *link =
       &pipeline->program.link[type];
@@ -3212,7 +3211,7 @@ tu6_emit_textures(struct tu_cmd_buffer *cmd,
 
    /* allocate and fill texture state */
    struct ts_cs_memory tex_const;
-   result = tu_cs_alloc(device, draw_state, link->texture_map.num_desc,
+   result = tu_cs_alloc(draw_state, link->texture_map.num_desc,
                         A6XX_TEX_CONST_DWORDS, &tex_const);
    if (result != VK_SUCCESS)
       return result;
@@ -3230,7 +3229,7 @@ tu6_emit_textures(struct tu_cmd_buffer *cmd,
    /* allocate and fill sampler state */
    struct ts_cs_memory tex_samp = { 0 };
    if (link->sampler_map.num_desc) {
-      result = tu_cs_alloc(device, draw_state, link->sampler_map.num_desc,
+      result = tu_cs_alloc(draw_state, link->sampler_map.num_desc,
                            A6XX_TEX_SAMP_DWORDS, &tex_samp);
       if (result != VK_SUCCESS)
          return result;
@@ -3275,7 +3274,7 @@ tu6_emit_textures(struct tu_cmd_buffer *cmd,
    }
 
    struct tu_cs cs;
-   result = tu_cs_begin_sub_stream(device, draw_state, 16, &cs);
+   result = tu_cs_begin_sub_stream(draw_state, 16, &cs);
    if (result != VK_SUCCESS)
       return result;
 
@@ -3319,7 +3318,6 @@ tu6_emit_ibo(struct tu_cmd_buffer *cmd,
              gl_shader_stage type,
              struct tu_cs_entry *entry)
 {
-   struct tu_device *device = cmd->device;
    struct tu_cs *draw_state = &cmd->sub_cs;
    const struct tu_program_descriptor_linkage *link =
       &pipeline->program.link[type];
@@ -3333,7 +3331,7 @@ tu6_emit_ibo(struct tu_cmd_buffer *cmd,
    }
 
    struct ts_cs_memory ibo_const;
-   result = tu_cs_alloc(device, draw_state, num_desc,
+   result = tu_cs_alloc(draw_state, num_desc,
                         A6XX_TEX_CONST_DWORDS, &ibo_const);
    if (result != VK_SUCCESS)
       return result;
@@ -3377,7 +3375,7 @@ tu6_emit_ibo(struct tu_cmd_buffer *cmd,
    assert(ssbo_index == num_desc);
 
    struct tu_cs cs;
-   result = tu_cs_begin_sub_stream(device, draw_state, 7, &cs);
+   result = tu_cs_begin_sub_stream(draw_state, 7, &cs);
    if (result != VK_SUCCESS)
       return result;
 
@@ -3487,7 +3485,7 @@ tu6_emit_border_color(struct tu_cmd_buffer *cmd,
       &pipeline->program.link[MESA_SHADER_FRAGMENT].sampler_map;
    struct ts_cs_memory ptr;
 
-   VkResult result = tu_cs_alloc(cmd->device, &cmd->sub_cs,
+   VkResult result = tu_cs_alloc(&cmd->sub_cs,
                                  vs_sampler->num_desc + fs_sampler->num_desc,
                                  128 / 4,
                                  &ptr);
@@ -3530,7 +3528,7 @@ tu6_bind_draw_states(struct tu_cmd_buffer *cmd,
    struct tu_descriptor_state *descriptors_state =
       &cmd->descriptors[VK_PIPELINE_BIND_POINT_GRAPHICS];
 
-   VkResult result = tu_cs_reserve_space(cmd->device, cs, 256);
+   VkResult result = tu_cs_reserve_space(cs, 256);
    if (result != VK_SUCCESS)
       return result;
 
@@ -3842,7 +3840,7 @@ tu_draw(struct tu_cmd_buffer *cmd, const struct tu_draw_info *draw)
       return;
    }
 
-   result = tu_cs_reserve_space(cmd->device, cs, 32);
+   result = tu_cs_reserve_space(cs, 32);
    if (result != VK_SUCCESS) {
       cmd->record_result = result;
       return;
@@ -4017,7 +4015,7 @@ tu_dispatch(struct tu_cmd_buffer *cmd,
    struct tu_descriptor_state *descriptors_state =
       &cmd->descriptors[VK_PIPELINE_BIND_POINT_COMPUTE];
 
-   VkResult result = tu_cs_reserve_space(cmd->device, cs, 256);
+   VkResult result = tu_cs_reserve_space(cs, 256);
    if (result != VK_SUCCESS) {
       cmd->record_result = result;
       return;
@@ -4249,7 +4247,7 @@ write_event(struct tu_cmd_buffer *cmd, struct tu_event *event, unsigned value)
 {
    struct tu_cs *cs = &cmd->cs;
 
-   VkResult result = tu_cs_reserve_space(cmd->device, cs, 4);
+   VkResult result = tu_cs_reserve_space(cs, 4);
    if (result != VK_SUCCESS) {
       cmd->record_result = result;
       return;
@@ -4302,7 +4300,7 @@ tu_CmdWaitEvents(VkCommandBuffer commandBuffer,
    TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
    struct tu_cs *cs = &cmd->cs;
 
-   VkResult result = tu_cs_reserve_space(cmd->device, cs, eventCount * 7);
+   VkResult result = tu_cs_reserve_space(cs, eventCount * 7);
    if (result != VK_SUCCESS) {
       cmd->record_result = result;
       return;
