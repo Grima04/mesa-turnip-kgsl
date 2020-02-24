@@ -135,11 +135,41 @@ tu_odd_parity_bit(unsigned val)
 }
 
 /**
+ * Get the size of the remaining space in the current BO.
+ */
+static inline uint32_t
+tu_cs_get_space(const struct tu_cs *cs)
+{
+   return cs->end - cs->cur;
+}
+
+static inline void
+tu_cs_reserve(struct tu_cs *cs, uint32_t reserved_size)
+{
+   if (cs->mode != TU_CS_MODE_GROW) {
+      assert(tu_cs_get_space(cs) >= reserved_size);
+      assert(cs->reserved_end == cs->end);
+      return;
+   }
+
+   if (tu_cs_get_space(cs) >= reserved_size &&
+       cs->entry_count < cs->entry_capacity) {
+      cs->reserved_end = cs->cur + reserved_size;
+      return;
+   }
+
+   VkResult result = tu_cs_reserve_space(cs, reserved_size);
+   /* TODO: set this error in tu_cs and use it */
+   assert(result == VK_SUCCESS);
+}
+
+/**
  * Emit a type-4 command packet header into a command stream.
  */
 static inline void
 tu_cs_emit_pkt4(struct tu_cs *cs, uint16_t regindx, uint16_t cnt)
 {
+   tu_cs_reserve(cs, cnt + 1);
    tu_cs_emit(cs, CP_TYPE4_PKT | cnt | (tu_odd_parity_bit(cnt) << 7) |
                      ((regindx & 0x3ffff) << 8) |
                      ((tu_odd_parity_bit(regindx) << 27)));
@@ -151,6 +181,7 @@ tu_cs_emit_pkt4(struct tu_cs *cs, uint16_t regindx, uint16_t cnt)
 static inline void
 tu_cs_emit_pkt7(struct tu_cs *cs, uint8_t opcode, uint16_t cnt)
 {
+   tu_cs_reserve(cs, cnt + 1);
    tu_cs_emit(cs, CP_TYPE7_PKT | cnt | (tu_odd_parity_bit(cnt) << 15) |
                      ((opcode & 0x7f) << 16) |
                      ((tu_odd_parity_bit(opcode) << 23)));
@@ -297,12 +328,8 @@ tu_cond_exec_end(struct tu_cs *cs, struct tu_cond_exec_state *state)
    STATIC_ASSERT(count > 0);                            \
    STATIC_ASSERT(count <= 16);                          \
                                                         \
+   tu_cs_emit_pkt4(cs, regs[0].reg, count);             \
    uint32_t *p = cs->cur;                               \
-   *p++ = CP_TYPE4_PKT | count |                        \
-      (tu_odd_parity_bit(count) << 7) |                 \
-      ((regs[0].reg & 0x3ffff) << 8) |                  \
-      ((tu_odd_parity_bit(regs[0].reg) << 27));         \
-                                                        \
    __ONE_REG( 0, regs);                                 \
    __ONE_REG( 1, regs);                                 \
    __ONE_REG( 2, regs);                                 \

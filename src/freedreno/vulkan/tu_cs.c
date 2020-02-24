@@ -91,15 +91,6 @@ tu_cs_get_size(const struct tu_cs *cs)
 }
 
 /**
- * Get the size of the remaining space in the current BO.
- */
-static uint32_t
-tu_cs_get_space(const struct tu_cs *cs)
-{
-   return cs->end - cs->cur;
-}
-
-/**
  * Return true if there is no command packet emitted since the last call to
  * tu_cs_add_entry.
  */
