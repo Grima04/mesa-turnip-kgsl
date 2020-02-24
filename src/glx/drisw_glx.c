@@ -193,14 +193,13 @@ swrastXPutImage(__DRIdrawable * draw, int op,
    ximage->bytes_per_line = stride ? stride : bytes_per_line(w * ximage->bits_per_pixel, 32);
    ximage->data = data;
 
+   ximage->width = ximage->bytes_per_line / ((ximage->bits_per_pixel + 7)/ 8);
+   ximage->height = h;
+
    if (pdp->shminfo.shmid >= 0) {
-      ximage->width = ximage->bytes_per_line / ((ximage->bits_per_pixel + 7)/ 8);
-      ximage->height = h;
       XShmPutImage(dpy, drawable, gc, ximage, srcx, srcy, x, y, w, h, False);
       XSync(dpy, False);
    } else {
-      ximage->width = w;
-      ximage->height = h;
       XPutImage(dpy, drawable, gc, ximage, srcx, srcy, x, y, w, h);
    }
    ximage->data = NULL;
