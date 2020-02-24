@@ -876,9 +876,7 @@ struct tu_cmd_state
 
    struct tu_tiling_config tiling_config;
 
-   struct tu_cs_entry tile_load_ib;
    struct tu_cs_entry tile_store_ib;
-   struct tu_cs_entry sysmem_clear_ib;
 };
 
 struct tu_cmd_pool

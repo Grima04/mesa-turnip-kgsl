@@ -1439,32 +1439,38 @@ tu_emit_sysmem_clear_attachment(struct tu_cmd_buffer *cmd, struct tu_cs *cs,
 }
 
 static void
-tu_cmd_prepare_sysmem_clear_ib(struct tu_cmd_buffer *cmd,
-                               const VkRenderPassBeginInfo *info)
+tu_emit_load_clear(struct tu_cmd_buffer *cmd,
+                   const VkRenderPassBeginInfo *info)
 {
-   const struct tu_framebuffer *fb = cmd->state.framebuffer;
-   const uint32_t blit_cmd_space = 25 + 66 * fb->layers + 17;
-   const uint32_t clear_space =
-      blit_cmd_space * cmd->state.pass->attachment_count + 5;
+   struct tu_cs *cs = &cmd->draw_cs;
 
-   struct tu_cs sub_cs;
+   tu_cond_exec_start(cs, CP_COND_EXEC_0_RENDER_MODE_GMEM);
 
-   VkResult result =
-      tu_cs_begin_sub_stream(&cmd->sub_cs, clear_space, &sub_cs);
-   if (result != VK_SUCCESS) {
-      cmd->record_result = result;
-      return;
-   }
+   tu6_emit_blit_scissor(cmd, cs, true);
 
    for (uint32_t i = 0; i < cmd->state.pass->attachment_count; ++i)
-      tu_emit_sysmem_clear_attachment(cmd, &sub_cs, i, info);
+      tu6_emit_load_attachment(cmd, cs, i);
 
-   /* TODO: We shouldn't need this flush, but without it we'd have an empty IB
-    * when nothing clears which we currently can't handle.
+   tu6_emit_blit_scissor(cmd, cs, false);
+
+   for (uint32_t i = 0; i < cmd->state.pass->attachment_count; ++i)
+      tu6_emit_clear_attachment(cmd, cs, i, info);
+
+   tu_cond_exec_end(cs);
+
+   /* invalidate because reading input attachments will cache GMEM and
+    * the cache isn''t updated when GMEM is written
+    * TODO: is there a no-cache bit for textures?
     */
-   tu6_emit_event_write(cmd, &sub_cs, PC_CCU_FLUSH_COLOR_TS, true);
+   if (cmd->state.subpass->input_count)
+      tu6_emit_event_write(cmd, cs, CACHE_INVALIDATE, false);
 
-   cmd->state.sysmem_clear_ib = tu_cs_end_sub_stream(&cmd->sub_cs, &sub_cs);
+   tu_cond_exec_start(cs, CP_COND_EXEC_0_RENDER_MODE_SYSMEM);
+
+   for (uint32_t i = 0; i < cmd->state.pass->attachment_count; ++i)
+      tu_emit_sysmem_clear_attachment(cmd, cs, i, info);
+
+   tu_cond_exec_end(cs);
 }
 
 static void
@@ -1482,8 +1488,6 @@ tu6_sysmem_render_begin(struct tu_cmd_buffer *cmd, struct tu_cs *cs,
    tu6_emit_window_offset(cmd, cs, 0, 0);
 
    tu6_emit_bin_size(cs, 0, 0, 0xc00000); /* 0xc00000 = BYPASS? */
-
-   tu_cs_emit_ib(cs, &cmd->state.sysmem_clear_ib);
 
    tu6_emit_lrz_flush(cmd, cs);
 
@@ -1605,7 +1609,6 @@ tu6_render_tile(struct tu_cmd_buffer *cmd,
                 const struct tu_tile *tile)
 {
    tu6_emit_tile_select(cmd, cs, tile);
-   tu_cs_emit_ib(cs, &cmd->state.tile_load_ib);
 
    tu_cs_emit_call(cs, &cmd->draw_cs);
    cmd->wait_for_idle = true;
@@ -1676,44 +1679,6 @@ tu_cmd_render_sysmem(struct tu_cmd_buffer *cmd)
    cmd->wait_for_idle = true;
 
    tu6_sysmem_render_end(cmd, &cmd->cs);
-}
-
-static void
-tu_cmd_prepare_tile_load_ib(struct tu_cmd_buffer *cmd,
-                            const VkRenderPassBeginInfo *info)
-{
-   const uint32_t tile_load_space =
-      2 * 3 /* blit_scissor */ +
-      (20 /* load */ + 19 /* clear */) * cmd->state.pass->attachment_count +
-      2 /* cache invalidate */;
-
-   struct tu_cs sub_cs;
-
-   VkResult result =
-      tu_cs_begin_sub_stream(&cmd->sub_cs, tile_load_space, &sub_cs);
-   if (result != VK_SUCCESS) {
-      cmd->record_result = result;
-      return;
-   }
-
-   tu6_emit_blit_scissor(cmd, &sub_cs, true);
-
-   for (uint32_t i = 0; i < cmd->state.pass->attachment_count; ++i)
-      tu6_emit_load_attachment(cmd, &sub_cs, i);
-
-   tu6_emit_blit_scissor(cmd, &sub_cs, false);
-
-   for (uint32_t i = 0; i < cmd->state.pass->attachment_count; ++i)
-      tu6_emit_clear_attachment(cmd, &sub_cs, i, info);
-
-   /* invalidate because reading input attachments will cache GMEM and
-    * the cache isn''t updated when GMEM is written
-    * TODO: is there a no-cache bit for textures?
-    */
-   if (cmd->state.subpass->input_count)
-      tu6_emit_event_write(cmd, &sub_cs, CACHE_INVALIDATE, false);
-
-   cmd->state.tile_load_ib = tu_cs_end_sub_stream(&cmd->sub_cs, &sub_cs);
 }
 
 static void
@@ -2548,9 +2513,9 @@ tu_CmdBeginRenderPass(VkCommandBuffer commandBuffer,
    cmd->state.framebuffer = fb;
 
    tu_cmd_update_tiling_config(cmd, &pRenderPassBegin->renderArea);
-   tu_cmd_prepare_sysmem_clear_ib(cmd, pRenderPassBegin);
-   tu_cmd_prepare_tile_load_ib(cmd, pRenderPassBegin);
    tu_cmd_prepare_tile_store_ib(cmd);
+
+   tu_emit_load_clear(cmd, pRenderPassBegin);
 
    tu6_emit_zs(cmd, cmd->state.subpass, &cmd->draw_cs);
    tu6_emit_mrt(cmd, cmd->state.subpass, &cmd->draw_cs);
