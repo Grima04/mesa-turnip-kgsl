@@ -356,7 +356,7 @@ emit_copy_occlusion_query_pool_results(struct tu_cmd_buffer *cmdbuf,
           * tests that ADDR0 != 0 and ADDR1 < REF. The packet here simply tests
           * that 0 < available < 2, aka available == 1.
           */
-         tu_cs_reserve_space(cmdbuf->device, cs, 7);
+         tu_cs_reserve_space(cmdbuf->device, cs, 7 + 6);
          tu_cs_emit_pkt7(cs, CP_COND_EXEC, 6);
          tu_cs_emit_qw(cs, available_iova);
          tu_cs_emit_qw(cs, available_iova);
