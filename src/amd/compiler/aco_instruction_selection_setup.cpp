@@ -706,9 +706,14 @@ mem_vectorize_callback(unsigned align, unsigned bit_size,
       return false;
 
    switch (low->intrinsic) {
-   case nir_intrinsic_load_ubo:
-   case nir_intrinsic_load_ssbo:
    case nir_intrinsic_store_ssbo:
+      if (low->src[0].ssa->bit_size < 32 || high->src[0].ssa->bit_size < 32)
+         return false;
+      return align % 4 == 0;
+   case nir_intrinsic_load_ssbo:
+      if (low->dest.ssa.bit_size < 32 || high->dest.ssa.bit_size < 32)
+         return false;
+   case nir_intrinsic_load_ubo:
    case nir_intrinsic_load_push_constant:
       return align % 4 == 0;
    case nir_intrinsic_load_deref:
