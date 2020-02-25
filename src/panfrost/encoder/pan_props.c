@@ -75,11 +75,17 @@ panfrost_query_core_count(int fd)
 unsigned
 panfrost_query_thread_tls_alloc(int fd)
 {
-        /* On older kernels, we worst-case to 1024 threads, the architectural
-         * maximum for Midgard */
+        /* On older kernels, we worst-case to 256 threads, the architectural
+         * maximum for Midgard. On my current kernel/hardware, I'm seeing this
+         * readback as 0, so we'll worst-case there too */
 
-        return panfrost_query_raw(fd,
-                        DRM_PANFROST_PARAM_THREAD_TLS_ALLOC, false, 1024);
+        unsigned tls = panfrost_query_raw(fd,
+                        DRM_PANFROST_PARAM_THREAD_TLS_ALLOC, false, 256);
+
+        if (tls)
+                return tls;
+        else
+                return 256;
 }
 
 /* Given a GPU ID like 0x860, return a prettified model name */

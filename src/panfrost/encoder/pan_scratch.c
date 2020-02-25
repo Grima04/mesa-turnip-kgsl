@@ -41,7 +41,7 @@
  * must allocate for, and DRM_PANFROST_PARAM_SHADER_PRESENT for a bitmask of
  * shader cores (so take a popcount of that mask for the number of shader
  * cores). On older kernels that do not support querying these values,
- * following kbase, we may use the worst-case value of 1024 threads for
+ * following kbase, we may use the worst-case value of 256 threads for
  * THREAD_TLS_ALLOC, and the worst-case value of 16 cores for Midgard per the
  * "shader core count" column of the implementations table in
  * https://en.wikipedia.org/wiki/Mali_%28GPU% [citation needed]
