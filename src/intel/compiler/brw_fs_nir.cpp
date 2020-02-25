@@ -3512,7 +3512,6 @@ fs_visitor::nir_emit_fs_intrinsic(const fs_builder &bld,
 
          if (alu != NULL &&
              alu->op != nir_op_bcsel &&
-             alu->op != nir_op_inot &&
              (devinfo->gen > 5 ||
               (alu->instr.pass_flags & BRW_NIR_BOOLEAN_MASK) != BRW_NIR_BOOLEAN_NEEDS_RESOLVE ||
               alu->op == nir_op_fne32 || alu->op == nir_op_feq32 ||
