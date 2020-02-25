@@ -274,10 +274,13 @@ struct PhysReg {
 /* helper expressions for special registers */
 static constexpr PhysReg m0{124};
 static constexpr PhysReg vcc{106};
+static constexpr PhysReg vcc_hi{107};
 static constexpr PhysReg sgpr_null{125}; /* GFX10+ */
 static constexpr PhysReg exec{126};
 static constexpr PhysReg exec_lo{126};
 static constexpr PhysReg exec_hi{127};
+static constexpr PhysReg vccz{251};
+static constexpr PhysReg execz{252};
 static constexpr PhysReg scc{253};
 
 /**
