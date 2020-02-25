@@ -380,7 +380,6 @@ panfrost_emit_mfbd(struct panfrost_batch *batch, unsigned vertex_count)
                 .tiler = panfrost_emit_midg_tiler(batch, vertex_count),
 
                 .shared_memory = {
-                        .unk0 = 0x1e,
                         .stack_shift = shift,
                         .scratchpad = panfrost_batch_get_scratchpad(batch, shift, screen->thread_tls_alloc, screen->core_count)->gpu,
                         .shared_workgroup_count = ~0,
