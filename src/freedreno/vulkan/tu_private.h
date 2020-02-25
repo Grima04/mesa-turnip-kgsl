@@ -984,6 +984,7 @@ struct tu_cmd_buffer
    uint32_t scratch_seqno;
 #define VSC_OVERFLOW 0x8
 #define VSC_SCRATCH 0x10
+#define VSC_FLUSH   0x20
 
    struct tu_bo vsc_data;
    struct tu_bo vsc_data2;
