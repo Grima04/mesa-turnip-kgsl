@@ -111,7 +111,7 @@ _mesa_marshal_ShaderSource(GLuint shader, GLsizei count,
       measure_ShaderSource_strings(count, string, length, length_tmp);
    size_t total_cmd_size = fixed_cmd_size + length_size + total_string_length;
 
-   if (total_cmd_size <= MARSHAL_MAX_CMD_SIZE) {
+   if (total_cmd_size <= MARSHAL_MAX_CMD_SIZE && count > 0) {
       struct marshal_cmd_ShaderSource *cmd =
          _mesa_glthread_allocate_command(ctx, DISPATCH_CMD_ShaderSource,
                                          total_cmd_size);
