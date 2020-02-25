@@ -192,6 +192,7 @@ struct marshal_cmd_BufferData
    const GLvoid *data_external_mem;
    bool data_null; /* If set, no data follows for "data" */
    bool named;
+   bool ext_dsa;
    /* Next size bytes are GLubyte data[size] */
 };
 
@@ -211,7 +212,10 @@ _mesa_unmarshal_BufferData(struct gl_context *ctx,
    else
       data = (const void *) (cmd + 1);
 
-   if (cmd->named) {
+   if (cmd->ext_dsa) {
+      CALL_NamedBufferDataEXT(ctx->CurrentServerDispatch,
+                              (target_or_name, size, data, usage));
+   } else if (cmd->named) {
       CALL_NamedBufferData(ctx->CurrentServerDispatch,
                            (target_or_name, size, data, usage));
    } else {
@@ -227,10 +231,17 @@ _mesa_unmarshal_NamedBufferData(struct gl_context *ctx,
    unreachable("never used - all BufferData variants use DISPATCH_CMD_BufferData");
 }
 
+void
+_mesa_unmarshal_NamedBufferDataEXT(struct gl_context *ctx,
+                                   const struct marshal_cmd_BufferData *cmd)
+{
+   unreachable("never used - all BufferData variants use DISPATCH_CMD_BufferData");
+}
+
 static void
 _mesa_marshal_BufferData_merged(GLuint target_or_name, GLsizeiptr size,
                                 const GLvoid *data, GLenum usage, bool named,
-                                const char *func)
+                                bool ext_dsa, const char *func)
 {
    GET_CURRENT_CONTEXT(ctx);
    bool external_mem = !named &&
@@ -262,6 +273,7 @@ _mesa_marshal_BufferData_merged(GLuint target_or_name, GLsizeiptr size,
    cmd->usage = usage;
    cmd->data_null = !data;
    cmd->named = named;
+   cmd->ext_dsa = ext_dsa;
    cmd->data_external_mem = data;
 
    if (copy_data) {
@@ -275,7 +287,7 @@ void GLAPIENTRY
 _mesa_marshal_BufferData(GLenum target, GLsizeiptr size, const GLvoid * data,
                          GLenum usage)
 {
-   _mesa_marshal_BufferData_merged(target, size, data, usage, false,
+   _mesa_marshal_BufferData_merged(target, size, data, usage, false, false,
                                    "BufferData");
 }
 
@@ -283,8 +295,16 @@ void GLAPIENTRY
 _mesa_marshal_NamedBufferData(GLuint buffer, GLsizeiptr size,
                               const GLvoid * data, GLenum usage)
 {
-   _mesa_marshal_BufferData_merged(buffer, size, data, usage, true,
+   _mesa_marshal_BufferData_merged(buffer, size, data, usage, true, false,
                                    "NamedBufferData");
+}
+
+void GLAPIENTRY
+_mesa_marshal_NamedBufferDataEXT(GLuint buffer, GLsizeiptr size,
+                                 const GLvoid *data, GLenum usage)
+{
+   _mesa_marshal_BufferData_merged(buffer, size, data, usage, true, true,
+                                   "NamedBufferDataEXT");
 }
 
 
@@ -296,6 +316,7 @@ struct marshal_cmd_BufferSubData
    GLintptr offset;
    GLsizeiptr size;
    bool named;
+   bool ext_dsa;
    /* Next size bytes are GLubyte data[size] */
 };
 
@@ -308,7 +329,10 @@ _mesa_unmarshal_BufferSubData(struct gl_context *ctx,
    const GLsizeiptr size = cmd->size;
    const void *data = (const void *) (cmd + 1);
 
-   if (cmd->named) {
+   if (cmd->ext_dsa) {
+      CALL_NamedBufferSubDataEXT(ctx->CurrentServerDispatch,
+                                 (target_or_name, offset, size, data));
+   } else if (cmd->named) {
       CALL_NamedBufferSubData(ctx->CurrentServerDispatch,
                               (target_or_name, offset, size, data));
    } else {
@@ -324,10 +348,17 @@ _mesa_unmarshal_NamedBufferSubData(struct gl_context *ctx,
    unreachable("never used - all BufferSubData variants use DISPATCH_CMD_BufferSubData");
 }
 
+void
+_mesa_unmarshal_NamedBufferSubDataEXT(struct gl_context *ctx,
+                                      const struct marshal_cmd_BufferSubData *cmd)
+{
+   unreachable("never used - all BufferSubData variants use DISPATCH_CMD_BufferSubData");
+}
+
 static void
 _mesa_marshal_BufferSubData_merged(GLuint target_or_name, GLintptr offset,
                                    GLsizeiptr size, const GLvoid *data,
-                                   bool named, const char *func)
+                                   bool named, bool ext_dsa, const char *func)
 {
    GET_CURRENT_CONTEXT(ctx);
    size_t cmd_size = sizeof(struct marshal_cmd_BufferSubData) + size;
@@ -354,6 +385,7 @@ _mesa_marshal_BufferSubData_merged(GLuint target_or_name, GLintptr offset,
    cmd->offset = offset;
    cmd->size = size;
    cmd->named = named;
+   cmd->ext_dsa = ext_dsa;
 
    char *variable_data = (char *) (cmd + 1);
    memcpy(variable_data, data, size);
@@ -365,7 +397,7 @@ _mesa_marshal_BufferSubData(GLenum target, GLintptr offset, GLsizeiptr size,
                             const GLvoid * data)
 {
    _mesa_marshal_BufferSubData_merged(target, offset, size, data, false,
-                                      "BufferSubData");
+                                      false, "BufferSubData");
 }
 
 void GLAPIENTRY
@@ -373,5 +405,13 @@ _mesa_marshal_NamedBufferSubData(GLuint buffer, GLintptr offset,
                                  GLsizeiptr size, const GLvoid * data)
 {
    _mesa_marshal_BufferSubData_merged(buffer, offset, size, data, true,
-                                      "NamedBufferSubData");
+                                      false, "NamedBufferSubData");
+}
+
+void GLAPIENTRY
+_mesa_marshal_NamedBufferSubDataEXT(GLuint buffer, GLintptr offset,
+                                    GLsizeiptr size, const GLvoid * data)
+{
+   _mesa_marshal_BufferSubData_merged(buffer, offset, size, data, true,
+                                      true, "NamedBufferSubDataEXT");
 }

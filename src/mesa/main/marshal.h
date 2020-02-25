@@ -173,6 +173,10 @@ void
 _mesa_unmarshal_NamedBufferData(struct gl_context *ctx,
                                 const struct marshal_cmd_BufferData *cmd);
 
+void
+_mesa_unmarshal_NamedBufferDataEXT(struct gl_context *ctx,
+                                   const struct marshal_cmd_BufferData *cmd);
+
 void GLAPIENTRY
 _mesa_marshal_BufferData(GLenum target, GLsizeiptr size, const GLvoid * data,
                          GLenum usage);
@@ -180,6 +184,10 @@ _mesa_marshal_BufferData(GLenum target, GLsizeiptr size, const GLvoid * data,
 void GLAPIENTRY
 _mesa_marshal_NamedBufferData(GLuint buffer, GLsizeiptr size,
                               const GLvoid * data, GLenum usage);
+
+void GLAPIENTRY
+_mesa_marshal_NamedBufferDataEXT(GLuint buffer, GLsizeiptr size,
+                                 const GLvoid *data, GLenum usage);
 
 void
 _mesa_unmarshal_BufferSubData(struct gl_context *ctx,
@@ -189,6 +197,10 @@ void
 _mesa_unmarshal_NamedBufferSubData(struct gl_context *ctx,
                                    const struct marshal_cmd_BufferSubData *cmd);
 
+void
+_mesa_unmarshal_NamedBufferSubDataEXT(struct gl_context *ctx,
+                                      const struct marshal_cmd_BufferSubData *cmd);
+
 void GLAPIENTRY
 _mesa_marshal_BufferSubData(GLenum target, GLintptr offset, GLsizeiptr size,
                             const GLvoid * data);
@@ -196,6 +208,10 @@ _mesa_marshal_BufferSubData(GLenum target, GLintptr offset, GLsizeiptr size,
 void GLAPIENTRY
 _mesa_marshal_NamedBufferSubData(GLuint buffer, GLintptr offset, GLsizeiptr size,
                                  const GLvoid * data);
+
+void GLAPIENTRY
+_mesa_marshal_NamedBufferSubDataEXT(GLuint buffer, GLintptr offset,
+                                    GLsizeiptr size, const GLvoid * data);
 
 static inline unsigned
 _mesa_buffer_enum_to_count(GLenum buffer)
