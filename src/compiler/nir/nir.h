@@ -1884,9 +1884,6 @@ typedef struct {
     */
    unsigned texture_index;
 
-   /** The size of the texture array or 0 if it's not an array */
-   unsigned texture_array_size;
-
    /** The sampler index
     *
     * The following operations do not require a sampler and, as such, this

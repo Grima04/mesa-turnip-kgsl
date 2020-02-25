@@ -159,8 +159,6 @@ lower_tex_src_to_offset(nir_builder *b, nir_tex_instr *instr, unsigned src_idx,
       src->src_type = is_sampler ?
          nir_tex_src_sampler_offset :
          nir_tex_src_texture_offset;
-
-      instr->texture_array_size = array_elements;
    } else {
       nir_tex_instr_remove_src(instr, src_idx);
    }

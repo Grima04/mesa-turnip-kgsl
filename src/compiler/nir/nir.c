@@ -548,7 +548,6 @@ nir_tex_instr_create(nir_shader *shader, unsigned num_srcs)
       src_init(&instr->src[i].src);
 
    instr->texture_index = 0;
-   instr->texture_array_size = 0;
    instr->sampler_index = 0;
    memcpy(instr->tg4_offsets, default_tg4_offsets, sizeof(instr->tg4_offsets));
 

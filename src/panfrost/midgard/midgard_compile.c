@@ -1923,7 +1923,6 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
 {
         /* TODO */
         //assert (!instr->sampler);
-        //assert (!instr->texture_array_size);
 
         int texture_index = instr->texture_index;
         int sampler_index = texture_index;

@@ -672,8 +672,8 @@ union packed_instr {
       unsigned instr_type:4;
       unsigned num_srcs:4;
       unsigned op:4;
-      unsigned texture_array_size:12;
       unsigned dest:8;
+      unsigned _pad:12;
    } tex;
    struct {
       unsigned instr_type:4;
@@ -1460,7 +1460,6 @@ write_tex(write_ctx *ctx, const nir_tex_instr *tex)
 {
    assert(tex->num_srcs < 16);
    assert(tex->op < 16);
-   assert(tex->texture_array_size < 1024);
 
    union packed_instr header;
    header.u32 = 0;
@@ -1468,7 +1467,6 @@ write_tex(write_ctx *ctx, const nir_tex_instr *tex)
    header.tex.instr_type = tex->instr.type;
    header.tex.num_srcs = tex->num_srcs;
    header.tex.op = tex->op;
-   header.tex.texture_array_size = tex->texture_array_size;
 
    write_dest(ctx, &tex->dest, header, tex->instr.type);
 
@@ -1508,7 +1506,6 @@ read_tex(read_ctx *ctx, union packed_instr header)
 
    tex->op = header.tex.op;
    tex->texture_index = blob_read_uint32(ctx->blob);
-   tex->texture_array_size = header.tex.texture_array_size;
    tex->sampler_index = blob_read_uint32(ctx->blob);
    if (tex->op == nir_texop_tg4)
       blob_copy_bytes(ctx->blob, tex->tg4_offsets, sizeof(tex->tg4_offsets));
