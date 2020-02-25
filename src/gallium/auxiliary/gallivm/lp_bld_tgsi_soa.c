@@ -3944,11 +3944,14 @@ emit_vertex(
    LLVMBuilderRef builder = bld->bld_base.base.gallivm->builder;
 
    if (bld->gs_iface->emit_vertex) {
-      uint32_t imms_idx = emit_data->inst->Src[0].Register.SwizzleX;
-      LLVMValueRef stream_id = bld->immediates[0][imms_idx];
+      uint32_t stream_reg_idx = emit_data->inst->Src[0].Register.Index;
+      uint32_t stream_reg_swiz = emit_data->inst->Src[0].Register.SwizzleX;
+      LLVMValueRef stream_id = bld->immediates[stream_reg_idx][stream_reg_swiz];
       LLVMValueRef mask = mask_vec(bld_base);
       LLVMValueRef total_emitted_vertices_vec =
          LLVMBuildLoad(builder, bld->total_emitted_vertices_vec_ptr, "");
+
+      stream_id = LLVMBuildBitCast(builder, stream_id, bld_base->uint_bld.vec_type, "");
       mask = clamp_mask_to_max_output_vertices(bld, mask,
                                                total_emitted_vertices_vec);
       gather_outputs(bld);
