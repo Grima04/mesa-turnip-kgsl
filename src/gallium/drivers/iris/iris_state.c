@@ -5119,6 +5119,18 @@ genX(invalidate_aux_map_state)(struct iris_batch *batch)
       return;
    uint32_t aux_map_state_num = gen_aux_map_get_state_num(aux_map_ctx);
    if (batch->last_aux_map_state != aux_map_state_num) {
+      /* HSD 1209978178: docs say that before programming the aux table:
+       *
+       *    "Driver must ensure that the engine is IDLE but ensure it doesn't
+       *    add extra flushes in the case it knows that the engine is already
+       *    IDLE."
+       *
+       * An end of pipe sync is needed here, otherwise we see GPU hangs in
+       * dEQP-GLES31.functional.copy_image.* tests.
+       */
+      iris_emit_end_of_pipe_sync(batch, "Invalidate aux map table",
+                                 PIPE_CONTROL_CS_STALL);
+
       /* If the aux-map state number increased, then we need to rewrite the
        * register. Rewriting the register is used to both set the aux-map
        * translation table address, and also to invalidate any previously
