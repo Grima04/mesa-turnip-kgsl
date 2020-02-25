@@ -225,6 +225,7 @@ class PrintCode(gl_XML.gl_print_base):
         for p in func.parameters:
             if p.is_variable_length():
                 list.append('{0}_size < 0'.format(p.name))
+                list.append('({0}_size > 0 && !{0})'.format(p.name))
 
         if len(list) == 0:
             return
