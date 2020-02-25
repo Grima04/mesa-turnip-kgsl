@@ -81,6 +81,7 @@ fdl6_layout(struct fdl_layout *layout,
 	layout->cpp *= nr_samples;
 	layout->format = format;
 	layout->nr_samples = nr_samples;
+	layout->layer_first = !is_3d;
 
 	if (depth0 > 1)
 		layout->ubwc = false;
@@ -95,14 +96,6 @@ fdl6_layout(struct fdl_layout *layout,
 	if ((layout->cpp == 2) && (util_format_get_nr_components(format) == 2))
 		ta = 0;
 
-	uint32_t alignment;
-	if (is_3d) {
-		layout->layer_first = false;
-		alignment = 4096;
-	} else {
-		layout->layer_first = true;
-		alignment = 1;
-	}
 	/* in layer_first layout, the level (slice) contains just one
 	 * layer (since in fact the layer contains the slices)
 	 */
@@ -169,12 +162,12 @@ fdl6_layout(struct fdl_layout *layout,
 		 */
 		if (is_3d) {
 			if (level < 1 || layout->slices[level - 1].size0 > 0xf000) {
-				slice->size0 = align(blocks * layout->cpp, alignment);
+				slice->size0 = align(blocks * layout->cpp, 4096);
 			} else {
 				slice->size0 = layout->slices[level - 1].size0;
 			}
 		} else {
-			slice->size0 = align(blocks * layout->cpp, alignment);
+			slice->size0 = blocks * layout->cpp;
 		}
 
 		layout->size += slice->size0 * depth * layers_in_level;
