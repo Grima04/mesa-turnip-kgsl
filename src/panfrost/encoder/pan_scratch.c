@@ -48,7 +48,7 @@
  *
  * Within a particular thread, there is stack allocated. If it is present, its
  * size is a power-of-two, and it is at least 256 bytes. Stack is allocated
- * with the framebuffer descriptor used for all shaders within a frame (note
+ * with the shared memory descriptor used for all shaders within a frame (note
  * that they don't execute concurrently so it's fine). So, consider the maximum
  * stack size used by any shader within a job, and then compute (where npot
  * denotes the next power of two):
