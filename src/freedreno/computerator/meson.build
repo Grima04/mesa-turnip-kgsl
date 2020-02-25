@@ -40,6 +40,7 @@ computerator_files = [
   'a6xx.c',
   'ir3_asm.c',
   'main.c',
+  freedreno_xml_header_files,
   ir3_parser[0],
   ir3_parser[1],
   ir3_lexer
