@@ -86,7 +86,8 @@ panfrost_get_stack_shift(unsigned stack_size)
         return util_logbase2_ceil(MAX2(stack_size, 256)) - 4;
 }
 
-/* Computes the aligned stack size given the shift and thread count */
+/* Computes the aligned stack size given the shift and thread count. The blob
+ * reserves an extra page, and since this is hardware-internal, we do too. */
 
 unsigned
 panfrost_get_total_stack_size(
@@ -94,6 +95,8 @@ panfrost_get_total_stack_size(
                 unsigned threads_per_core,
                 unsigned core_count)
 {
-        unsigned stack_size = 1 << (stack_shift + 4);
-        return stack_size * threads_per_core * core_count;
+        unsigned size_per_thread = MAX2(1 << (stack_shift + 4), 32);
+        unsigned size = size_per_thread * threads_per_core * core_count;
+
+        return size + 4096;
 }
