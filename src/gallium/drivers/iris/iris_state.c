@@ -880,6 +880,11 @@ iris_alloc_push_constants(struct iris_batch *batch)
    }
 }
 
+#if GEN_GEN >= 12
+static void
+init_aux_map_state(struct iris_batch *batch);
+#endif
+
 /**
  * Upload the initial GPU state for a render context.
  *
@@ -996,6 +1001,10 @@ iris_init_render_context(struct iris_batch *batch)
    iris_emit_cmd(batch, GENX(3DSTATE_POLY_STIPPLE_OFFSET), foo);
 
    iris_alloc_push_constants(batch);
+
+#if GEN_GEN >= 12
+   init_aux_map_state(batch);
+#endif
 }
 
 static void
@@ -1025,6 +1034,11 @@ iris_init_compute_context(struct iris_batch *batch)
    if (devinfo->is_geminilake)
       init_glk_barrier_mode(batch, GLK_BARRIER_MODE_GPGPU);
 #endif
+
+#if GEN_GEN >= 12
+   init_aux_map_state(batch);
+#endif
+
 }
 
 struct iris_vertex_buffer_state {
@@ -5097,7 +5111,7 @@ iris_viewport_zmin_zmax(const struct pipe_viewport_state *vp, bool halfz,
 
 #if GEN_GEN >= 12
 void
-genX(emit_aux_map_state)(struct iris_batch *batch)
+genX(invalidate_aux_map_state)(struct iris_batch *batch)
 {
    struct iris_screen *screen = batch->screen;
    void *aux_map_ctx = iris_bufmgr_get_aux_map_context(screen->bufmgr);
@@ -5110,12 +5124,23 @@ genX(emit_aux_map_state)(struct iris_batch *batch)
        * translation table address, and also to invalidate any previously
        * cached translations.
        */
-      uint64_t base_addr = gen_aux_map_get_base(aux_map_ctx);
-      assert(base_addr != 0 && align64(base_addr, 32 * 1024) == base_addr);
-      iris_load_register_imm64(batch, GENX(GFX_AUX_TABLE_BASE_ADDR_num),
-                               base_addr);
+      iris_load_register_imm32(batch, GENX(GFX_CCS_AUX_INV_num), 1);
       batch->last_aux_map_state = aux_map_state_num;
    }
+}
+
+static void
+init_aux_map_state(struct iris_batch *batch)
+{
+   struct iris_screen *screen = batch->screen;
+   void *aux_map_ctx = iris_bufmgr_get_aux_map_context(screen->bufmgr);
+   if (!aux_map_ctx)
+      return;
+
+   uint64_t base_addr = gen_aux_map_get_base(aux_map_ctx);
+   assert(base_addr != 0 && align64(base_addr, 32 * 1024) == base_addr);
+   iris_load_register_imm64(batch, GENX(GFX_AUX_TABLE_BASE_ADDR_num),
+                            base_addr);
 }
 #endif
 
@@ -6174,7 +6199,7 @@ iris_upload_dirty_render_state(struct iris_context *ice,
       genX(emit_hashing_mode)(ice, batch, UINT_MAX, UINT_MAX, 1);
 
 #if GEN_GEN >= 12
-   genX(emit_aux_map_state)(batch);
+   genX(invalidate_aux_map_state)(batch);
 #endif
 }
 
@@ -6431,7 +6456,7 @@ iris_upload_compute_state(struct iris_context *ice,
       iris_use_pinned_bo(batch, ice->state.border_color_pool.bo, false);
 
 #if GEN_GEN >= 12
-   genX(emit_aux_map_state)(batch);
+   genX(invalidate_aux_map_state)(batch);
 #endif
 
    if (dirty & IRIS_DIRTY_CS) {
