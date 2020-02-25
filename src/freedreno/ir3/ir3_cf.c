@@ -81,6 +81,7 @@ try_conversion_folding(struct ir3 *ir, struct ir3_instruction *conv)
 	case OPC_SEL_B32:
 	case OPC_MAX_F:
 	case OPC_MIN_F:
+	case OPC_SIGN_F:
 	case OPC_ABSNEG_F:
 		return;
 	default:
