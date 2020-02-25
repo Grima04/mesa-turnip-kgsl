@@ -2057,8 +2057,8 @@ pandecode_shader_prop(const char *name, unsigned claim, signed truth, bool fuzzy
         if (claim == truth)
                 return;
 
-        if (fuzzy)
-                assert(truth >= 0);
+        if (fuzzy && (truth < 0))
+                pandecode_msg("XXX: fuzzy %s, claimed %d, expected %d\n", name, claim, truth);
 
         if ((truth >= 0) && !fuzzy) {
                 pandecode_msg("%s: expected %s = %d, claimed %u\n",
