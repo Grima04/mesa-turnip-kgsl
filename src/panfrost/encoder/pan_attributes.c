@@ -64,7 +64,7 @@ panfrost_large_padded_vertex_count(uint32_t vertex_count)
 
         switch (middle_two) {
         case 0b00:
-                if (nibble & 1)
+                if (!(nibble & 1))
                         return (1 << n) * 9;
                 else
                         return (1 << (n + 1)) * 5;
