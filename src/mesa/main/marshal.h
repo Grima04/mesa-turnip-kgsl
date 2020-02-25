@@ -151,7 +151,6 @@ struct _glapi_table *
 _mesa_create_marshal_table(const struct gl_context *ctx);
 
 struct marshal_cmd_ShaderSource;
-struct marshal_cmd_BindBuffer;
 struct marshal_cmd_BufferData;
 struct marshal_cmd_BufferSubData;
 struct marshal_cmd_NamedBufferData;
@@ -165,12 +164,8 @@ void
 _mesa_unmarshal_ShaderSource(struct gl_context *ctx,
                              const struct marshal_cmd_ShaderSource *cmd);
 
-void GLAPIENTRY
-_mesa_marshal_BindBuffer(GLenum target, GLuint buffer);
-
 void
-_mesa_unmarshal_BindBuffer(struct gl_context *ctx,
-                           const struct marshal_cmd_BindBuffer *cmd);
+_mesa_glthread_BindBuffer(struct gl_context *ctx, GLenum target, GLuint buffer);
 
 void
 _mesa_unmarshal_BufferData(struct gl_context *ctx,

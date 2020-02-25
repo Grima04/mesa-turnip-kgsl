@@ -5054,7 +5054,8 @@
     <type name="intptr"   size="4"                  glx_name="CARD32"/>
     <type name="sizeiptr" size="4"  unsigned="true" glx_name="CARD32"/>
 
-    <function name="BindBuffer" es1="1.1" es2="2.0" marshal="custom" no_error="true">
+    <function name="BindBuffer" es1="1.1" es2="2.0" no_error="true"
+              marshal_call_after="_mesa_glthread_BindBuffer(ctx, target, buffer);">
         <param name="target" type="GLenum"/>
         <param name="buffer" type="GLuint"/>
         <glx ignore="true"/>

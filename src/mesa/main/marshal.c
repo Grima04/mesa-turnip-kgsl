@@ -136,15 +136,6 @@ _mesa_marshal_ShaderSource(GLuint shader, GLsizei count,
 }
 
 
-/* BindBufferBase: marshalled asynchronously */
-struct marshal_cmd_BindBufferBase
-{
-   struct marshal_cmd_base cmd_base;
-   GLenum target;
-   GLuint index;
-   GLuint buffer;
-};
-
 /** Tracks the current bindings for the vertex array and index array buffers.
  *
  * This is part of what we need to enable glthread on compat-GL contexts that
@@ -168,8 +159,8 @@ struct marshal_cmd_BindBufferBase
  * feature that if you pass a bad name, it just gens a buffer object for you,
  * so we escape without having to know if things are valid or not.
  */
-static void
-track_vbo_binding(struct gl_context *ctx, GLenum target, GLuint buffer)
+void
+_mesa_glthread_BindBuffer(struct gl_context *ctx, GLenum target, GLuint buffer)
 {
    struct glthread_state *glthread = ctx->GLThread;
 
@@ -190,47 +181,6 @@ track_vbo_binding(struct gl_context *ctx, GLenum target, GLuint buffer)
    }
 }
 
-
-struct marshal_cmd_BindBuffer
-{
-   struct marshal_cmd_base cmd_base;
-   GLenum target;
-   GLuint buffer;
-};
-
-/**
- * This is just like the code-generated glBindBuffer() support, except that we
- * call track_vbo_binding().
- */
-void
-_mesa_unmarshal_BindBuffer(struct gl_context *ctx,
-                           const struct marshal_cmd_BindBuffer *cmd)
-{
-   const GLenum target = cmd->target;
-   const GLuint buffer = cmd->buffer;
-   CALL_BindBuffer(ctx->CurrentServerDispatch, (target, buffer));
-}
-void GLAPIENTRY
-_mesa_marshal_BindBuffer(GLenum target, GLuint buffer)
-{
-   GET_CURRENT_CONTEXT(ctx);
-   size_t cmd_size = sizeof(struct marshal_cmd_BindBuffer);
-   struct marshal_cmd_BindBuffer *cmd;
-   debug_print_marshal("BindBuffer");
-
-   track_vbo_binding(ctx, target, buffer);
-
-   if (cmd_size <= MARSHAL_MAX_CMD_SIZE) {
-      cmd = _mesa_glthread_allocate_command(ctx, DISPATCH_CMD_BindBuffer,
-                                            cmd_size);
-      cmd->target = target;
-      cmd->buffer = buffer;
-      _mesa_post_marshal_hook(ctx);
-   } else {
-      _mesa_glthread_finish(ctx);
-      CALL_BindBuffer(ctx->CurrentServerDispatch, (target, buffer));
-   }
-}
 
 /* BufferData: marshalled asynchronously */
 struct marshal_cmd_BufferData
