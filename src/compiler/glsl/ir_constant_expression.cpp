@@ -692,6 +692,23 @@ ir_expression::constant_expression_value(void *mem_ctx,
          return NULL;
    }
 
+   for (unsigned operand = 0; operand < this->num_operands; operand++) {
+      if (op[operand]->type->base_type == GLSL_TYPE_FLOAT16) {
+         const struct glsl_type *float_type =
+            glsl_type::get_instance(GLSL_TYPE_FLOAT,
+                                    op[operand]->type->vector_elements,
+                                    op[operand]->type->matrix_columns,
+                                    op[operand]->type->explicit_stride,
+                                    op[operand]->type->interface_row_major);
+
+         ir_constant_data f;
+         for (unsigned i = 0; i < ARRAY_SIZE(f.f); i++)
+            f.f[i] = _mesa_half_to_float(op[operand]->value.f16[i]);
+
+         op[operand] = new(mem_ctx) ir_constant(float_type, &f);
+      }
+   }
+
    if (op[1] != NULL)
       switch (this->operation) {
       case ir_binop_lshift:
@@ -739,6 +756,15 @@ ir_expression::constant_expression_value(void *mem_ctx,
    }
 
 #include "ir_expression_operation_constant.h"
+
+   if (this->type->base_type == GLSL_TYPE_FLOAT16) {
+      ir_constant_data f;
+      for (unsigned i = 0; i < ARRAY_SIZE(f.f16); i++)
+         f.f16[i] = _mesa_float_to_half(data.f[i]);
+
+      return new(mem_ctx) ir_constant(this->type, &f);
+   }
+
 
    return new(mem_ctx) ir_constant(this->type, &data);
 }
