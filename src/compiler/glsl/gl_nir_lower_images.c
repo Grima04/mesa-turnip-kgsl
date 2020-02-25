@@ -78,22 +78,21 @@ lower_impl(nir_builder *b, nir_instr *instr, bool bindless_only)
       return false;
    }
 
-   if (bindless_only) {
-      if (deref->mode == nir_var_uniform && !var->data.bindless)
-         return false;
-   }
+   bool bindless = deref->mode != nir_var_uniform || var->data.bindless;
+   if (bindless_only && !bindless)
+      return false;
 
    b->cursor = nir_before_instr(instr);
 
    nir_ssa_def *src;
-   if (var->data.bindless) {
+   if (bindless) {
       src = nir_load_deref(b, deref);
    } else {
       src = nir_iadd_imm(b,
                          nir_build_deref_offset(b, deref, type_size_align_1),
                          var->data.driver_location);
    }
-   nir_rewrite_image_intrinsic(intrinsic, src, var->data.bindless);
+   nir_rewrite_image_intrinsic(intrinsic, src, bindless);
 
    return true;
 }
