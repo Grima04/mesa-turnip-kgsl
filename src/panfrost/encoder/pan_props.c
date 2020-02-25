@@ -44,7 +44,7 @@ panfrost_query_raw(
         struct drm_panfrost_get_param get_param = {0,};
         ASSERTED int ret;
 
-        get_param.param = DRM_PANFROST_PARAM_GPU_PROD_ID;
+        get_param.param = param;
         ret = drmIoctl(fd, DRM_IOCTL_PANFROST_GET_PARAM, &get_param);
 
         if (ret) {
