@@ -69,7 +69,7 @@ ignore_dep(struct ir3_instruction *assigner,
  */
 int
 ir3_delayslots(struct ir3_instruction *assigner,
-		struct ir3_instruction *consumer, unsigned n)
+		struct ir3_instruction *consumer, unsigned n, bool soft)
 {
 	if (ignore_dep(assigner, consumer, n))
 		return 0;
@@ -84,6 +84,20 @@ ir3_delayslots(struct ir3_instruction *assigner,
 
 	if (writes_addr(assigner))
 		return 6;
+
+	/* On a6xx, it takes the number of delay slots to get a SFU result
+	 * back (ie. using nop's instead of (ss) is:
+	 *
+	 *     8 - single warp
+	 *     9 - two warps
+	 *    10 - four warps
+	 *
+	 * and so on.  Not quite sure where it tapers out (ie. how many
+	 * warps share an SFU unit).  But 10 seems like a reasonable #
+	 * to choose:
+	 */
+	if (soft && is_sfu(assigner))
+		return 10;
 
 	/* handled via sync flags: */
 	if (is_sfu(assigner) || is_tex(assigner) || is_mem(assigner))
@@ -195,15 +209,7 @@ delay_calc_srcn(struct ir3_block *block,
 			delay = MAX2(delay, d);
 		}
 	} else {
-		if (soft) {
-			if (is_sfu(assigner)) {
-				delay = 4;
-			} else {
-				delay = ir3_delayslots(assigner, consumer, srcn);
-			}
-		} else {
-			delay = ir3_delayslots(assigner, consumer, srcn);
-		}
+		delay = ir3_delayslots(assigner, consumer, srcn, soft);
 		delay -= distance(block, assigner, delay, pred);
 	}
 

@@ -380,7 +380,7 @@ calculate_deps(struct ir3_postsched_deps_state *state,
 
 				struct ir3_postsched_node *dep = dep_reg(state, reg->num + b);
 				if (dep && (state->direction == F)) {
-					unsigned d = ir3_delayslots(dep->instr, node->instr, i);
+					unsigned d = ir3_delayslots(dep->instr, node->instr, i, true);
 					node->delay = MAX2(node->delay, d);
 				}
 			}

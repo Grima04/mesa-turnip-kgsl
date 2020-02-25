@@ -89,7 +89,7 @@ ir3_instr_depth(struct ir3_instruction *instr, unsigned boost, bool falsedep)
 		if (i == 0)
 			continue;
 
-		sd = ir3_delayslots(src, instr, i) + src->depth;
+		sd = ir3_delayslots(src, instr, i, true) + src->depth;
 		sd += boost;
 
 		instr->depth = MAX2(instr->depth, sd);
