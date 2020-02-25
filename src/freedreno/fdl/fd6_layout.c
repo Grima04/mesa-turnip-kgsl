@@ -132,13 +132,11 @@ fdl6_layout(struct fdl_layout *layout,
 			width = u_minify(width0, level);
 			height = u_minify(height0, level);
 		}
-		uint32_t aligned_height = height;
 		uint32_t pitchalign;
 
 		if (tile_mode) {
 			pitchalign = tile_alignment[ta].pitchalign;
-			aligned_height = align(aligned_height,
-					tile_alignment[ta].heightalign);
+			height = align(height, tile_alignment[ta].heightalign);
 		} else {
 			pitchalign = 64;
 		}
@@ -151,7 +149,7 @@ fdl6_layout(struct fdl_layout *layout,
 		 * may not be:
 		 */
 		if (level == mip_levels - 1)
-			aligned_height = align(aligned_height, 32);
+			height = align(height, 32);
 
 		if (format_desc->layout == UTIL_FORMAT_LAYOUT_ASTC)
 			slice->pitch =
@@ -161,7 +159,7 @@ fdl6_layout(struct fdl_layout *layout,
 
 		slice->offset = layout->size;
 		uint32_t blocks = util_format_get_nblocks(format,
-				slice->pitch, aligned_height);
+				slice->pitch, height);
 
 		/* 1d array and 2d array textures must all have the same layer size
 		 * for each miplevel on a6xx. 3d textures can have different layer
