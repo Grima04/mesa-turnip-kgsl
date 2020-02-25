@@ -118,6 +118,261 @@ static const struct testcase testcases[] = {
 		},
 	},
 #endif
+
+	/* A layout that we failed on (129 wide has a surprise level 1 pitch
+	 * increase), and the sizes bracketing it.
+	 */
+	{
+		.format = PIPE_FORMAT_R8G8B8A8_UNORM,
+		.layout = {
+			.width0 = 128, .height0 = 1,
+			.slices = {
+				{ .offset = 0, .pitch = 512 },
+				{ .offset = 512, .pitch = 256 },
+				{ .offset = 768, .pitch = 256 },
+				{ .offset = 1024, .pitch = 256 },
+				{ .offset = 1280, .pitch = 256 },
+				{ .offset = 1536, .pitch = 256 },
+				{ .offset = 1792, .pitch = 256 },
+				{ .offset = 2048, .pitch = 256 },
+			},
+		},
+	},
+	{
+		.format = PIPE_FORMAT_R8G8B8A8_UNORM,
+		.layout = {
+			.width0 = 129, .height0 = 1,
+			.slices = {
+				{ .offset = 0, .pitch = 768 },
+				{ .offset = 768, .pitch = 512 },
+				{ .offset = 1280, .pitch = 256 },
+				{ .offset = 1536, .pitch = 256 },
+				{ .offset = 1792, .pitch = 256 },
+				{ .offset = 2048, .pitch = 256 },
+				{ .offset = 2304, .pitch = 256 },
+				{ .offset = 2560, .pitch = 256 },
+			},
+		},
+	},
+	{
+		.format = PIPE_FORMAT_R8G8B8A8_UNORM,
+		.layout = {
+			.width0 = 130, .height0 = 1,
+			.slices = {
+				{ .offset = 0, .pitch = 768 },
+				{ .offset = 768, .pitch = 512 },
+				{ .offset = 1280, .pitch = 256 },
+				{ .offset = 1536, .pitch = 256 },
+				{ .offset = 1792, .pitch = 256 },
+				{ .offset = 2048, .pitch = 256 },
+				{ .offset = 2304, .pitch = 256 },
+				{ .offset = 2560, .pitch = 256 },
+			},
+		},
+	},
+
+	/* The 129 failure seems to be across formats, let's test some cpps */
+	{
+		.format = PIPE_FORMAT_R8_UNORM,
+		.layout = {
+			.width0 = 129, .height0 = 1,
+			.slices = {
+				{ .offset = 0, .pitch = 192 },
+				{ .offset = 192, .pitch = 128 },
+				{ .offset = 320, .pitch = 64 },
+				{ .offset = 384, .pitch = 64 },
+				{ .offset = 448, .pitch = 64 },
+				{ .offset = 512, .pitch = 64 },
+				{ .offset = 576, .pitch = 64 },
+				{ .offset = 640, .pitch = 64 },
+			},
+		},
+	},
+	{
+		.format = PIPE_FORMAT_R16_UINT,
+		.layout = {
+			.width0 = 129, .height0 = 1,
+			.slices = {
+				{ .offset = 0, .pitch = 384 },
+				{ .offset = 384, .pitch = 256 },
+				{ .offset = 640, .pitch = 128 },
+				{ .offset = 768, .pitch = 128 },
+				{ .offset = 896, .pitch = 128 },
+				{ .offset = 1024, .pitch = 128 },
+				{ .offset = 1152, .pitch = 128 },
+				{ .offset = 1280, .pitch = 128 },
+			},
+		},
+	},
+	{
+		.format = PIPE_FORMAT_R32G32B32A32_FLOAT,
+		.layout = {
+			.width0 = 129, .height0 = 1,
+			.slices = {
+				{ .offset = 0, .pitch = 3072 },
+				{ .offset = 3072, .pitch = 2048 },
+				{ .offset = 5120, .pitch = 1024 },
+				{ .offset = 6144, .pitch = 1024 },
+				{ .offset = 7168, .pitch = 1024 },
+				{ .offset = 8192, .pitch = 1024 },
+				{ .offset = 9216, .pitch = 1024 },
+				{ .offset = 10240, .pitch = 1024 },
+			},
+		},
+	},
+
+	/* The 129 failure replicated at every +256 pixels wide.  Pick one of
+	 * them, and this time increase the height as a new variable as well.
+	 */
+	{
+		.format = PIPE_FORMAT_R8G8B8A8_UNORM,
+		.layout = {
+			.width0 = 385, .height0 = 128,
+			.slices = {
+				{ .offset = 0, .pitch = 1792 },
+				{ .offset = 229376, .pitch = 1024 },
+				{ .offset = 294912, .pitch = 512 },
+				{ .offset = 311296, .pitch = 256 },
+				{ .offset = 315392, .pitch = 256 },
+				{ .offset = 317440, .pitch = 256 },
+				{ .offset = 318464, .pitch = 256 },
+				{ .offset = 318976, .pitch = 256 },
+				{ .offset = 319232, .pitch = 256 },
+			},
+		},
+	},
+
+	/* At 257-259 (and replicated every +256 pixels) we had another failure. */
+	{
+		.format = PIPE_FORMAT_R8G8B8A8_UNORM,
+		.layout = {
+			.width0 = 257, .height0 = 1,
+			.slices = {
+				{ .offset = 0, .pitch = 1280 },
+				{ .offset = 1280, .pitch = 768 },
+				{ .offset = 2048, .pitch = 512 },
+				{ .offset = 2560, .pitch = 256 },
+				{ .offset = 2816, .pitch = 256 },
+				{ .offset = 3072, .pitch = 256 },
+				{ .offset = 3328, .pitch = 256 },
+				{ .offset = 3584, .pitch = 256 },
+				{ .offset = 3840, .pitch = 256 },
+			},
+		},
+	},
+	{
+		.format = PIPE_FORMAT_R8G8B8A8_UNORM,
+		.layout = {
+			.width0 = 258, .height0 = 1,
+			.slices = {
+				{ .offset = 0, .pitch = 1280 },
+				{ .offset = 1280, .pitch = 768 },
+				{ .offset = 2048, .pitch = 512 },
+				{ .offset = 2560, .pitch = 256 },
+				{ .offset = 2816, .pitch = 256 },
+				{ .offset = 3072, .pitch = 256 },
+				{ .offset = 3328, .pitch = 256 },
+				{ .offset = 3584, .pitch = 256 },
+				{ .offset = 3840, .pitch = 256 },
+			},
+		},
+	},
+	{
+		.format = PIPE_FORMAT_R8G8B8A8_UNORM,
+		.layout = {
+			.width0 = 259, .height0 = 1,
+			.slices = {
+				{ .offset = 0, .pitch = 1280 },
+				{ .offset = 1280, .pitch = 768 },
+				{ .offset = 2048, .pitch = 512 },
+				{ .offset = 2560, .pitch = 256 },
+				{ .offset = 2816, .pitch = 256 },
+				{ .offset = 3072, .pitch = 256 },
+				{ .offset = 3328, .pitch = 256 },
+				{ .offset = 3584, .pitch = 256 },
+				{ .offset = 3840, .pitch = 256 },
+			},
+		},
+	},
+	{
+		.format = PIPE_FORMAT_R8G8B8A8_UNORM,
+		.layout = {
+			.width0 = 260, .height0 = 1,
+			.slices = {
+				{ .offset = 0, .pitch = 1280 },
+				{ .offset = 1280, .pitch = 768 },
+				{ .offset = 2048, .pitch = 512 },
+				{ .offset = 2560, .pitch = 256 },
+				{ .offset = 2816, .pitch = 256 },
+				{ .offset = 3072, .pitch = 256 },
+				{ .offset = 3328, .pitch = 256 },
+				{ .offset = 3584, .pitch = 256 },
+				{ .offset = 3840, .pitch = 256 },
+			},
+		},
+	},
+
+	/* And, again for the 257-9 failure, test a replica with a larger size*/
+	{
+		.format = PIPE_FORMAT_R8G8B8A8_UNORM,
+		.layout = {
+			.width0 = 513, .height0 = 32,
+			.slices = {
+				{ .offset = 0, .pitch = 2304 },
+				{ .offset = 73728, .pitch = 1280 },
+				{ .offset = 94208, .pitch = 768 },
+				{ .offset = 100352, .pitch = 512 },
+				{ .offset = 102400, .pitch = 256 },
+				{ .offset = 102912, .pitch = 256 },
+				{ .offset = 103168, .pitch = 256 },
+				{ .offset = 103424, .pitch = 256 },
+				{ .offset = 103680, .pitch = 256 },
+				{ .offset = 103936, .pitch = 256 },
+			},
+		},
+	},
+
+	/* Oh, look.  The 513-517 failure extends up to 518 at the next texture
+	 * level!
+	 */
+	{
+		.format = PIPE_FORMAT_R8G8B8A8_UNORM,
+		.layout = {
+			.width0 = 518, .height0 = 1,
+			.slices = {
+				{ .offset = 0, .pitch = 2304 },
+				{ .offset = 2304, .pitch = 1280 },
+				{ .offset = 3584, .pitch = 768 },
+				{ .offset = 4352, .pitch = 512 },
+				{ .offset = 4864, .pitch = 256 },
+				{ .offset = 5120, .pitch = 256 },
+				{ .offset = 5376, .pitch = 256 },
+				{ .offset = 5632, .pitch = 256 },
+				{ .offset = 5888, .pitch = 256 },
+				{ .offset = 6144, .pitch = 256 },
+			},
+		},
+	},
+
+	/* Tiled mode testing of the unusual 1/2-bytes-per-pixel pitch alignment */
+	{
+		.format = PIPE_FORMAT_R8_UNORM,
+		.layout = {
+			.tile_mode = TILE6_3,
+			.width0 = 129, .height0 = 1,
+			.slices = {
+				{ .offset = 0, .pitch = 256 },
+				{ .offset = 8192, .pitch = 128 },
+				{ .offset = 12288, .pitch = 128 },
+				{ .offset = 16384, .pitch = 128 },
+				{ .offset = 20480, .pitch = 64 },
+				{ .offset = 20544, .pitch = 64 },
+				{ .offset = 20608, .pitch = 64 },
+				{ .offset = 20672, .pitch = 64 },
+			},
+		},
+	},
+
 };
 
 static bool test_layout(const struct testcase *testcase)

@@ -63,6 +63,20 @@ static const struct {
 #define RGB_TILE_HEIGHT_ALIGNMENT 16
 #define UBWC_PLANE_SIZE_ALIGNMENT 4096
 
+static int
+fdl6_pitchalign(struct fdl_layout *layout, int ta, int level)
+{
+	const struct util_format_description *format_desc =
+		util_format_description(layout->format);
+
+	uint32_t pitchalign = 64;
+	if (fdl_tile_mode(layout, level))
+		pitchalign = tile_alignment[ta].pitchalign;
+	if (format_desc->layout == UTIL_FORMAT_LAYOUT_ASTC)
+		pitchalign *= util_format_get_blockwidth(layout->format);
+	return pitchalign;
+}
+
 /* NOTE: good way to test this is:  (for example)
  *  piglit/bin/texelFetch fs sampler3D 100x100x8
  */
@@ -88,8 +102,6 @@ fdl6_layout(struct fdl_layout *layout,
 	if (tile_alignment[layout->cpp].ubwc_blockwidth == 0)
 		layout->ubwc = false;
 
-	const struct util_format_description *format_desc =
-		util_format_description(format);
 	int ta = layout->cpp;
 
 	/* The z16/r16 formats seem to not play by the normal tiling rules: */
@@ -110,6 +122,8 @@ fdl6_layout(struct fdl_layout *layout,
 		layout->base_align = 64;
 	}
 
+	uint32_t pitch0 = util_align_npot(width0, fdl6_pitchalign(layout, ta, 0));
+
 	for (uint32_t level = 0; level < mip_levels; level++) {
 		uint32_t depth = u_minify(depth0, level);
 		struct fdl_slice *slice = &layout->slices[level];
@@ -125,14 +139,9 @@ fdl6_layout(struct fdl_layout *layout,
 			width = u_minify(width0, level);
 			height = u_minify(height0, level);
 		}
-		uint32_t pitchalign;
 
-		if (tile_mode) {
-			pitchalign = tile_alignment[ta].pitchalign;
+		if (tile_mode)
 			height = align(height, tile_alignment[ta].heightalign);
-		} else {
-			pitchalign = 64;
-		}
 
 		/* The blits used for mem<->gmem work at a granularity of
 		 * 32x32, which can cause faults due to over-fetch on the
@@ -144,11 +153,8 @@ fdl6_layout(struct fdl_layout *layout,
 		if (level == mip_levels - 1)
 			height = align(height, 32);
 
-		if (format_desc->layout == UTIL_FORMAT_LAYOUT_ASTC)
-			slice->pitch =
-				util_align_npot(width, pitchalign * util_format_get_blockwidth(format));
-		else
-			slice->pitch = align(width, pitchalign);
+		slice->pitch = util_align_npot(u_minify(pitch0, level),
+				fdl6_pitchalign(layout, ta, level));
 
 		slice->offset = layout->size;
 		uint32_t blocks = util_format_get_nblocks(format,
