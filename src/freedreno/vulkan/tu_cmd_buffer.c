@@ -3633,6 +3633,51 @@ tu6_bind_draw_states(struct tu_cmd_buffer *cmd,
 }
 
 static void
+tu6_emit_draw_indirect(struct tu_cmd_buffer *cmd,
+                     struct tu_cs *cs,
+                     const struct tu_draw_info *draw)
+{
+   const enum pc_di_primtype primtype = cmd->state.pipeline->ia.primtype;
+
+   tu_cs_emit_regs(cs,
+                   A6XX_VFD_INDEX_OFFSET(draw->vertex_offset),
+                   A6XX_VFD_INSTANCE_START_OFFSET(draw->first_instance));
+
+   if (draw->indexed) {
+      const enum a4xx_index_size index_size =
+         tu6_index_size(cmd->state.index_type);
+      const uint32_t index_bytes =
+         (cmd->state.index_type == VK_INDEX_TYPE_UINT32) ? 4 : 2;
+      const struct tu_buffer *index_buf = cmd->state.index_buffer;
+      unsigned max_indicies =
+         (index_buf->size - cmd->state.index_offset) / index_bytes;
+
+      const uint32_t cp_draw_indx =
+         CP_DRAW_INDX_OFFSET_0_PRIM_TYPE(primtype) |
+         CP_DRAW_INDX_OFFSET_0_SOURCE_SELECT(DI_SRC_SEL_DMA) |
+         CP_DRAW_INDX_OFFSET_0_INDEX_SIZE(index_size) |
+         CP_DRAW_INDX_OFFSET_0_VIS_CULL(USE_VISIBILITY) | 0x2000;
+
+      tu_cs_emit_pkt7(cs, CP_DRAW_INDX_INDIRECT, 6);
+      tu_cs_emit(cs, cp_draw_indx);
+      tu_cs_emit_qw(cs, index_buf->bo->iova + cmd->state.index_offset);
+      tu_cs_emit(cs, A5XX_CP_DRAW_INDX_INDIRECT_3_MAX_INDICES(max_indicies));
+      tu_cs_emit_qw(cs, draw->indirect->bo->iova + draw->indirect_offset);
+   } else {
+      const uint32_t cp_draw_indx =
+         CP_DRAW_INDX_OFFSET_0_PRIM_TYPE(primtype) |
+         CP_DRAW_INDX_OFFSET_0_SOURCE_SELECT(DI_SRC_SEL_AUTO_INDEX) |
+         CP_DRAW_INDX_OFFSET_0_VIS_CULL(USE_VISIBILITY) | 0x2000;
+
+      tu_cs_emit_pkt7(cs, CP_DRAW_INDIRECT, 3);
+      tu_cs_emit(cs, cp_draw_indx);
+      tu_cs_emit_qw(cs, draw->indirect->bo->iova + draw->indirect_offset);
+   }
+
+   tu_bo_list_add(&cmd->bo_list, draw->indirect->bo, MSM_SUBMIT_BO_READ);
+}
+
+static void
 tu6_emit_draw_direct(struct tu_cmd_buffer *cmd,
                      struct tu_cs *cs,
                      const struct tu_draw_info *draw)
@@ -3693,12 +3738,10 @@ tu_draw(struct tu_cmd_buffer *cmd, const struct tu_draw_info *draw)
       return;
    }
 
-   if (draw->indirect) {
-      tu_finishme("indirect draw");
-      return;
-   }
-
-   tu6_emit_draw_direct(cmd, cs, draw);
+   if (draw->indirect)
+      tu6_emit_draw_indirect(cmd, cs, draw);
+   else
+      tu6_emit_draw_direct(cmd, cs, draw);
 
    cmd->wait_for_idle = true;
 
