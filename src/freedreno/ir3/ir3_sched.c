@@ -85,11 +85,6 @@ static bool is_scheduled(struct ir3_instruction *instr)
 	return !!(instr->flags & IR3_INSTR_MARK);
 }
 
-static bool is_sfu_or_mem(struct ir3_instruction *instr)
-{
-	return is_sfu(instr) || is_mem(instr);
-}
-
 static void
 unuse_each_src(struct ir3_sched_ctx *ctx, struct ir3_instruction *instr)
 {
@@ -225,13 +220,6 @@ static void
 schedule(struct ir3_sched_ctx *ctx, struct ir3_instruction *instr)
 {
 	debug_assert(ctx->block == instr->block);
-
-	/* maybe there is a better way to handle this than just stuffing
-	 * a nop.. ideally we'd know about this constraint in the
-	 * scheduling and depth calculation..
-	 */
-	if (ctx->scheduled && is_sfu_or_mem(ctx->scheduled) && is_sfu_or_mem(instr))
-		ir3_NOP(ctx->block);
 
 	/* remove from depth list:
 	 */

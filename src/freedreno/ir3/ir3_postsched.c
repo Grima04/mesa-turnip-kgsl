@@ -79,23 +79,10 @@ struct ir3_postsched_node {
 #define foreach_bit(b, mask) \
 	for (uint32_t _m = ({debug_assert((mask) >= 1); (mask);}); _m && ({(b) = u_bit_scan(&_m); 1;});)
 
-// TODO deduplicate
-static bool is_sfu_or_mem(struct ir3_instruction *instr)
-{
-	return is_sfu(instr) || is_mem(instr);
-}
-
 static void
 schedule(struct ir3_postsched_ctx *ctx, struct ir3_instruction *instr)
 {
 	debug_assert(ctx->block == instr->block);
-
-	/* maybe there is a better way to handle this than just stuffing
-	 * a nop.. ideally we'd know about this constraint in the
-	 * scheduling and depth calculation..
-	 */
-	if (ctx->scheduled && is_sfu_or_mem(ctx->scheduled) && is_sfu_or_mem(instr))
-		ir3_NOP(ctx->block);
 
 	/* remove from unscheduled_list:
 	 */
