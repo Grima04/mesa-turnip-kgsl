@@ -7054,6 +7054,7 @@ radv_init_sampler(struct radv_device *device,
 			   device->physical_device->rad_info.chip_class == GFX9;
 	unsigned filter_mode = V_008F30_SQ_IMG_FILTER_MODE_BLEND;
 	unsigned depth_compare_func = V_008F30_SQ_TEX_DEPTH_COMPARE_NEVER;
+	bool trunc_coord = pCreateInfo->minFilter == VK_FILTER_NEAREST && pCreateInfo->magFilter == VK_FILTER_NEAREST;
 
 	const struct VkSamplerReductionModeCreateInfo *sampler_reduction =
 		vk_find_struct_const(pCreateInfo->pNext,
@@ -7074,7 +7075,8 @@ radv_init_sampler(struct radv_device *device,
 			     S_008F30_ANISO_BIAS(max_aniso_ratio) |
 			     S_008F30_DISABLE_CUBE_WRAP(0) |
 			     S_008F30_COMPAT_MODE(compat_mode) |
-			     S_008F30_FILTER_MODE(filter_mode));
+			     S_008F30_FILTER_MODE(filter_mode) |
+			     S_008F30_TRUNC_COORD(trunc_coord));
 	sampler->state[1] = (S_008F34_MIN_LOD(S_FIXED(CLAMP(pCreateInfo->minLod, 0, 15), 8)) |
 			     S_008F34_MAX_LOD(S_FIXED(CLAMP(pCreateInfo->maxLod, 0, 15), 8)) |
 			     S_008F34_PERF_MIP(max_aniso_ratio ? max_aniso_ratio + 6 : 0));
