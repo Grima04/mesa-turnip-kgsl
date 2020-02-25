@@ -186,10 +186,12 @@ _mesa_glthread_BindBuffer(struct gl_context *ctx, GLenum target, GLuint buffer)
 struct marshal_cmd_BufferData
 {
    struct marshal_cmd_base cmd_base;
-   GLenum target;
+   GLuint target_or_name;
    GLsizeiptr size;
    GLenum usage;
+   const GLvoid *data_external_mem;
    bool data_null; /* If set, no data follows for "data" */
+   bool named;
    /* Next size bytes are GLubyte data[size] */
 };
 
@@ -197,55 +199,94 @@ void
 _mesa_unmarshal_BufferData(struct gl_context *ctx,
                            const struct marshal_cmd_BufferData *cmd)
 {
-   const GLenum target = cmd->target;
-   const GLsizeiptr size = cmd->size;
+   const GLuint target_or_name = cmd->target_or_name;
+   const GLsizei size = cmd->size;
    const GLenum usage = cmd->usage;
    const void *data;
 
    if (cmd->data_null)
       data = NULL;
+   else if (!cmd->named && target_or_name == GL_EXTERNAL_VIRTUAL_MEMORY_BUFFER_AMD)
+      data = cmd->data_external_mem;
    else
       data = (const void *) (cmd + 1);
 
-   CALL_BufferData(ctx->CurrentServerDispatch, (target, size, data, usage));
+   if (cmd->named) {
+      CALL_NamedBufferData(ctx->CurrentServerDispatch,
+                           (target_or_name, size, data, usage));
+   } else {
+      CALL_BufferData(ctx->CurrentServerDispatch,
+                      (target_or_name, size, data, usage));
+   }
+}
+
+void
+_mesa_unmarshal_NamedBufferData(struct gl_context *ctx,
+                                const struct marshal_cmd_BufferData *cmd)
+{
+   unreachable("never used - all BufferData variants use DISPATCH_CMD_BufferData");
+}
+
+static void
+_mesa_marshal_BufferData_merged(GLuint target_or_name, GLsizeiptr size,
+                                const GLvoid *data, GLenum usage, bool named,
+                                const char *func)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   bool external_mem = !named &&
+                       target_or_name == GL_EXTERNAL_VIRTUAL_MEMORY_BUFFER_AMD;
+   bool copy_data = data && !external_mem;
+   int cmd_size = sizeof(struct marshal_cmd_BufferData) + (copy_data ? size : 0);
+   debug_print_marshal("BufferData");
+
+   if (unlikely(size < 0 || size > INT_MAX || cmd_size < 0 ||
+                cmd_size > MARSHAL_MAX_CMD_SIZE ||
+                (named && target_or_name == 0))) {
+      _mesa_glthread_finish_before(ctx, func);
+      if (named) {
+         CALL_NamedBufferData(ctx->CurrentServerDispatch,
+                              (target_or_name, size, data, usage));
+      } else {
+         CALL_BufferData(ctx->CurrentServerDispatch,
+                         (target_or_name, size, data, usage));
+      }
+      return;
+   }
+
+   struct marshal_cmd_BufferData *cmd =
+      _mesa_glthread_allocate_command(ctx, DISPATCH_CMD_BufferData,
+                                      cmd_size);
+
+   cmd->target_or_name = target_or_name;
+   cmd->size = size;
+   cmd->usage = usage;
+   cmd->data_null = !data;
+   cmd->named = named;
+   cmd->data_external_mem = data;
+
+   if (copy_data) {
+      char *variable_data = (char *) (cmd + 1);
+      memcpy(variable_data, data, size);
+   }
+   _mesa_post_marshal_hook(ctx);
 }
 
 void GLAPIENTRY
 _mesa_marshal_BufferData(GLenum target, GLsizeiptr size, const GLvoid * data,
                          GLenum usage)
 {
-   GET_CURRENT_CONTEXT(ctx);
-   size_t cmd_size =
-      sizeof(struct marshal_cmd_BufferData) + (data ? size : 0);
-   debug_print_marshal("BufferData");
-
-   if (unlikely(size < 0)) {
-      _mesa_glthread_finish(ctx);
-      _mesa_error(ctx, GL_INVALID_VALUE, "BufferData(size < 0)");
-      return;
-   }
-
-   if (target != GL_EXTERNAL_VIRTUAL_MEMORY_BUFFER_AMD &&
-       cmd_size <= MARSHAL_MAX_CMD_SIZE) {
-      struct marshal_cmd_BufferData *cmd =
-         _mesa_glthread_allocate_command(ctx, DISPATCH_CMD_BufferData,
-                                         cmd_size);
-
-      cmd->target = target;
-      cmd->size = size;
-      cmd->usage = usage;
-      cmd->data_null = !data;
-      if (data) {
-         char *variable_data = (char *) (cmd + 1);
-         memcpy(variable_data, data, size);
-      }
-      _mesa_post_marshal_hook(ctx);
-   } else {
-      _mesa_glthread_finish(ctx);
-      CALL_BufferData(ctx->CurrentServerDispatch,
-                      (target, size, data, usage));
-   }
+   _mesa_marshal_BufferData_merged(target, size, data, usage, false,
+                                   "BufferData");
 }
+
+void GLAPIENTRY
+_mesa_marshal_NamedBufferData(GLuint buffer, GLsizeiptr size,
+                              const GLvoid * data, GLenum usage)
+{
+   _mesa_marshal_BufferData_merged(buffer, size, data, usage, true,
+                                   "NamedBufferData");
+}
+
 
 /* BufferSubData: marshalled asynchronously */
 struct marshal_cmd_BufferSubData
@@ -302,68 +343,6 @@ _mesa_marshal_BufferSubData(GLenum target, GLintptr offset, GLsizeiptr size,
    }
 }
 
-/* NamedBufferData: marshalled asynchronously */
-struct marshal_cmd_NamedBufferData
-{
-   struct marshal_cmd_base cmd_base;
-   GLuint name;
-   GLsizei size;
-   GLenum usage;
-   bool data_null; /* If set, no data follows for "data" */
-   /* Next size bytes are GLubyte data[size] */
-};
-
-void
-_mesa_unmarshal_NamedBufferData(struct gl_context *ctx,
-                                const struct marshal_cmd_NamedBufferData *cmd)
-{
-   const GLuint name = cmd->name;
-   const GLsizei size = cmd->size;
-   const GLenum usage = cmd->usage;
-   const void *data;
-
-   if (cmd->data_null)
-      data = NULL;
-   else
-      data = (const void *) (cmd + 1);
-
-   CALL_NamedBufferData(ctx->CurrentServerDispatch,
-                        (name, size, data, usage));
-}
-
-void GLAPIENTRY
-_mesa_marshal_NamedBufferData(GLuint buffer, GLsizeiptr size,
-                              const GLvoid * data, GLenum usage)
-{
-   GET_CURRENT_CONTEXT(ctx);
-   size_t cmd_size = sizeof(struct marshal_cmd_NamedBufferData) + (data ? size : 0);
-
-   debug_print_marshal("NamedBufferData");
-   if (unlikely(size < 0)) {
-      _mesa_glthread_finish(ctx);
-      _mesa_error(ctx, GL_INVALID_VALUE, "NamedBufferData(size < 0)");
-      return;
-   }
-
-   if (buffer > 0 && cmd_size <= MARSHAL_MAX_CMD_SIZE) {
-      struct marshal_cmd_NamedBufferData *cmd =
-         _mesa_glthread_allocate_command(ctx, DISPATCH_CMD_NamedBufferData,
-                                         cmd_size);
-      cmd->name = buffer;
-      cmd->size = size;
-      cmd->usage = usage;
-      cmd->data_null = !data;
-      if (data) {
-         char *variable_data = (char *) (cmd + 1);
-         memcpy(variable_data, data, size);
-      }
-      _mesa_post_marshal_hook(ctx);
-   } else {
-      _mesa_glthread_finish(ctx);
-      CALL_NamedBufferData(ctx->CurrentServerDispatch,
-                           (buffer, size, data, usage));
-   }
-}
 
 /* NamedBufferSubData: marshalled asynchronously */
 struct marshal_cmd_NamedBufferSubData

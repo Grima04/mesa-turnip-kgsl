@@ -153,7 +153,6 @@ _mesa_create_marshal_table(const struct gl_context *ctx);
 struct marshal_cmd_ShaderSource;
 struct marshal_cmd_BufferData;
 struct marshal_cmd_BufferSubData;
-struct marshal_cmd_NamedBufferData;
 struct marshal_cmd_NamedBufferSubData;
 
 void GLAPIENTRY
@@ -171,9 +170,17 @@ void
 _mesa_unmarshal_BufferData(struct gl_context *ctx,
                            const struct marshal_cmd_BufferData *cmd);
 
+void
+_mesa_unmarshal_NamedBufferData(struct gl_context *ctx,
+                                const struct marshal_cmd_BufferData *cmd);
+
 void GLAPIENTRY
 _mesa_marshal_BufferData(GLenum target, GLsizeiptr size, const GLvoid * data,
                          GLenum usage);
+
+void GLAPIENTRY
+_mesa_marshal_NamedBufferData(GLuint buffer, GLsizeiptr size,
+                              const GLvoid * data, GLenum usage);
 
 void
 _mesa_unmarshal_BufferSubData(struct gl_context *ctx,
@@ -182,14 +189,6 @@ _mesa_unmarshal_BufferSubData(struct gl_context *ctx,
 void GLAPIENTRY
 _mesa_marshal_BufferSubData(GLenum target, GLintptr offset, GLsizeiptr size,
                             const GLvoid * data);
-
-void
-_mesa_unmarshal_NamedBufferData(struct gl_context *ctx,
-                                const struct marshal_cmd_NamedBufferData *cmd);
-
-void GLAPIENTRY
-_mesa_marshal_NamedBufferData(GLuint buffer, GLsizeiptr size,
-                              const GLvoid * data, GLenum usage);
 
 void
 _mesa_unmarshal_NamedBufferSubData(struct gl_context *ctx,
