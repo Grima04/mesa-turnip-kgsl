@@ -6875,6 +6875,14 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
 
       break;
    }
+   case nir_intrinsic_load_patch_vertices_in: {
+      assert(ctx->shader->info.stage == MESA_SHADER_TESS_CTRL ||
+             ctx->shader->info.stage == MESA_SHADER_TESS_EVAL);
+
+      Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
+      bld.copy(Definition(dst), Operand(ctx->args->options->key.tcs.input_vertices));
+      break;
+   }
    case nir_intrinsic_emit_vertex_with_counter: {
       visit_emit_vertex_with_counter(ctx, instr);
       break;
