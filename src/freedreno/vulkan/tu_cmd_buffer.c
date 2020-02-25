@@ -180,10 +180,12 @@ tu_tiling_config_update_tile_layout(struct tu_tiling_config *tiling,
    const uint32_t tile_align_h = dev->physical_device->tile_align_h;
    const uint32_t max_tile_width = 1024; /* A6xx */
 
-   tiling->tile0.offset = (VkOffset2D) {
-      .x = tiling->render_area.offset.x & ~(tile_align_w - 1),
-      .y = tiling->render_area.offset.y & ~(tile_align_h - 1),
-   };
+   /* note: don't offset the tiling config by render_area.offset,
+    * because binning pass can't deal with it
+    * this means we might end up with more tiles than necessary,
+    * but load/store/etc are still scissored to the render_area
+    */
+   tiling->tile0.offset = (VkOffset2D) {};
 
    const uint32_t ra_width =
       tiling->render_area.extent.width +
