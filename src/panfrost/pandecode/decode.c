@@ -699,6 +699,14 @@ pandecode_shared_memory(const struct mali_shared_memory *desc, bool is_compute)
         MEMORY_PROP(desc, scratchpad);
         MEMORY_PROP(desc, shared_memory);
         MEMORY_PROP(desc, unknown1);
+
+        if (desc->scratchpad) {
+                struct pandecode_mapped_memory *smem =
+                        pandecode_find_mapped_gpu_mem_containing(desc->scratchpad);
+
+                pandecode_msg("scratchpad size %u\n", smem->length);
+        }
+
 }
 
 static struct pandecode_fbd
