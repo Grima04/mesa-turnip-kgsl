@@ -291,6 +291,33 @@ std::pair<PhysReg, bool> get_reg_simple(ra_ctx& ctx,
                                         uint32_t size, uint32_t stride,
                                         RegClass rc)
 {
+   if (rc.is_subdword()) {
+      for (std::pair<uint32_t, std::array<uint32_t, 4>> entry : reg_file.subdword_regs) {
+         assert(reg_file[entry.first] == 0xF0000000);
+         if (lb > entry.first || entry.first >= ub)
+            continue;
+
+         for (unsigned i = 0; i < 4; i+= stride) {
+            if (entry.second[i] != 0)
+               continue;
+
+            bool reg_found = true;
+            for (unsigned j = 1; reg_found && i + j < 4 && j < rc.bytes(); j++)
+               reg_found &= entry.second[i + j] == 0;
+
+            /* check neighboring reg if needed */
+            reg_found &= (i <= 4 - rc.bytes() || reg_file[entry.first + 1] == 0);
+            if (reg_found) {
+               PhysReg res{entry.first};
+               res.reg_b += i;
+               return {res, true};
+            }
+         }
+      }
+
+      stride = 1; /* stride in full registers */
+   }
+
    /* best fit algorithm: find the smallest gap to fit in the variable */
    if (stride == 1) {
       unsigned best_pos = 0xFFFF;
@@ -481,6 +508,11 @@ bool get_regs_for_copies(ra_ctx& ctx,
                found = false;
                break;
             }
+            if (reg_file[j] == 0xF0000000) {
+               k += 1;
+               n++;
+               continue;
+            }
             /* we cannot split live ranges of linear vgprs */
             if (ctx.assignments[reg_file[j]].second & (1 << 6)) {
                found = false;
@@ -607,6 +639,12 @@ std::pair<PhysReg, bool> get_reg_impl(ra_ctx& ctx,
          if (remaining_op_moves && reg_file.is_blocked(PhysReg{j})) {
             k--;
             remaining_op_moves--;
+            continue;
+         }
+
+         if (reg_file[j] == 0xF0000000) {
+            k += 1;
+            n++;
             continue;
          }
 
@@ -1686,7 +1724,8 @@ void register_allocation(Program *program, std::vector<std::set<Temp>> live_out_
             if (definition.hasHint() && register_file[definition.physReg().reg()] == 0)
                definition.setFixed(definition.physReg());
             else if (instr->opcode == aco_opcode::p_split_vector) {
-               PhysReg reg = PhysReg{instr->operands[0].physReg() + i * definition.size()};
+               PhysReg reg = instr->operands[0].physReg();
+               reg.reg_b += i * definition.bytes();
                if (!get_reg_specified(ctx, register_file, definition.regClass(), parallelcopy, instr, reg))
                   reg = get_reg(ctx, register_file, definition.regClass(), parallelcopy, instr);
                definition.setFixed(reg);
@@ -1704,8 +1743,8 @@ void register_allocation(Program *program, std::vector<std::set<Temp>> live_out_
                if (instr->operands[0].isKillBeforeDef() &&
                    instr->operands[0].getTemp().type() == definition.getTemp().type()) {
                   reg = instr->operands[0].physReg();
-                  reg = PhysReg(reg.reg() + definition.size() * instr->operands[1].constantValue());
-                  assert(register_file[reg.reg()] == 0);
+                  reg.reg_b += definition.bytes() * instr->operands[1].constantValue();
+                  assert(!register_file.test(reg, definition.bytes()));
                } else {
                   reg = get_reg(ctx, register_file, definition.regClass(), parallelcopy, instr);
                }
@@ -1724,12 +1763,12 @@ void register_allocation(Program *program, std::vector<std::set<Temp>> live_out_
 
             } else if (vectors.find(definition.tempId()) != vectors.end()) {
                Instruction* vec = vectors[definition.tempId()];
-               unsigned offset = 0;
+               unsigned byte_offset = 0;
                for (const Operand& op : vec->operands) {
                   if (op.isTemp() && op.tempId() == definition.tempId())
                      break;
                   else
-                     offset += op.size();
+                     byte_offset += op.bytes();
                }
                unsigned k = 0;
                for (const Operand& op : vec->operands) {
@@ -1738,19 +1777,19 @@ void register_allocation(Program *program, std::vector<std::set<Temp>> live_out_
                       op.getTemp().type() == definition.getTemp().type() &&
                       ctx.assignments.find(op.tempId()) != ctx.assignments.end()) {
                      PhysReg reg = ctx.assignments[op.tempId()].first;
-                     reg = PhysReg(reg.reg() - k + offset);
+                     reg.reg_b += (byte_offset - k);
                      if (get_reg_specified(ctx, register_file, definition.regClass(), parallelcopy, instr, reg)) {
                         definition.setFixed(reg);
                         break;
                      }
                   }
-                  k += op.size();
+                  k += op.bytes();
                }
                if (!definition.isFixed()) {
                   std::pair<PhysReg, bool> res = get_reg_vec(ctx, register_file, vec->definitions[0].regClass());
                   PhysReg reg = res.first;
                   if (res.second) {
-                     reg = PhysReg(reg.reg() + offset);
+                     reg.reg_b += byte_offset;
                   } else {
                      reg = get_reg(ctx, register_file, definition.regClass(), parallelcopy, instr);
                   }
