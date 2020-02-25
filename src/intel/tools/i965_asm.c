@@ -239,7 +239,7 @@ int main(int argc, char **argv)
    }
 
    if (output_type == OPT_OUTPUT_C_LITERAL)
-      fprintf(output, "static const char gen_eu_bytes[] = {\n");
+      fprintf(output, "{\n");
 
    brw_validate_instructions(p->devinfo, p->store, 0,
                              p->next_insn_offset, disasm_info);
