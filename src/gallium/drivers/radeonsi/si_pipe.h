@@ -1336,9 +1336,10 @@ void si_init_compute_blit_functions(struct si_context *sctx);
 #define SI_CPDMA_SKIP_SYNC_BEFORE    (1 << 2) /* don't wait for DMA before the copy (RAW hazards) */
 #define SI_CPDMA_SKIP_GFX_SYNC       (1 << 3) /* don't flush caches and don't wait for PS/CS */
 #define SI_CPDMA_SKIP_BO_LIST_UPDATE (1 << 4) /* don't update the BO list */
+#define SI_CPDMA_SKIP_TMZ            (1 << 5) /* don't update tmz state */
 #define SI_CPDMA_SKIP_ALL                                                                          \
    (SI_CPDMA_SKIP_CHECK_CS_SPACE | SI_CPDMA_SKIP_SYNC_AFTER | SI_CPDMA_SKIP_SYNC_BEFORE |          \
-    SI_CPDMA_SKIP_GFX_SYNC | SI_CPDMA_SKIP_BO_LIST_UPDATE)
+    SI_CPDMA_SKIP_GFX_SYNC | SI_CPDMA_SKIP_BO_LIST_UPDATE | SI_CPDMA_SKIP_TMZ)
 
 void si_cp_dma_wait_for_idle(struct si_context *sctx);
 void si_cp_dma_clear_buffer(struct si_context *sctx, struct radeon_cmdbuf *cs,

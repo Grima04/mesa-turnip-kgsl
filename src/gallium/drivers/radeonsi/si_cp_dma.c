@@ -336,6 +336,17 @@ void si_cp_dma_copy_buffer(struct si_context *sctx, struct pipe_resource *dst,
       }
    }
 
+   /* TMZ handling */
+   if (unlikely(sctx->ws->ws_is_secure(sctx->ws) &&
+                !(user_flags & SI_CPDMA_SKIP_TMZ))) {
+      bool secure = src && (si_resource(src)->flags & RADEON_FLAG_ENCRYPTED);
+      assert(!secure || (!dst || (si_resource(dst)->flags & RADEON_FLAG_ENCRYPTED)));
+      if (secure != sctx->ws->cs_is_secure(sctx->gfx_cs)) {
+         si_flush_gfx_cs(sctx, RADEON_FLUSH_ASYNC_START_NEXT_GFX_IB_NOW, NULL);
+         sctx->ws->cs_set_secure(sctx->gfx_cs, secure);
+      }
+   }
+
    /* Flush the caches. */
    if ((dst || src) && !(user_flags & SI_CPDMA_SKIP_GFX_SYNC)) {
       sctx->flags |= SI_CONTEXT_PS_PARTIAL_FLUSH | SI_CONTEXT_CS_PARTIAL_FLUSH |

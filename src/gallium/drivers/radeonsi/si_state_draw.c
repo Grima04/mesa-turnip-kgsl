@@ -1919,6 +1919,15 @@ static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *i
 
    si_need_gfx_cs_space(sctx);
 
+   /* If we're using a secure context, determine if cs must be secure or not */
+   if (unlikely(sctx->ws->ws_is_secure(sctx->ws))) {
+      bool secure = si_gfx_resources_check_encrypted(sctx);
+      if (secure != sctx->ws->cs_is_secure(sctx->gfx_cs)) {
+         si_flush_gfx_cs(sctx, RADEON_FLUSH_ASYNC_START_NEXT_GFX_IB_NOW, NULL);
+         sctx->ws->cs_set_secure(sctx->gfx_cs, secure);
+      }
+   }
+
    if (sctx->bo_list_add_all_gfx_resources)
       si_gfx_resources_add_all_to_bo_list(sctx);
 
