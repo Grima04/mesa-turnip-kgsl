@@ -220,17 +220,23 @@ analyze_constant(const struct nir_alu_instr *instr, unsigned src,
 
 
 #if defined(__clang__)
-/* clang wants _Pragma("unroll X") */
-#define pragma_unroll_5 _Pragma("unroll 5")
-#define pragma_unroll_7 _Pragma("unroll 7")
+   /* clang wants _Pragma("unroll X") */
+   #define pragma_unroll_5 _Pragma("unroll 5")
+   #define pragma_unroll_7 _Pragma("unroll 7")
 /* gcc wants _Pragma("GCC unroll X") */
 #elif defined(__GNUC__)
-#define pragma_unroll_5 _Pragma("GCC unroll 5")
-#define pragma_unroll_7 _Pragma("GCC unroll 7")
+   #if __GNUC__ >= 8
+      #define pragma_unroll_5 _Pragma("GCC unroll 5")
+      #define pragma_unroll_7 _Pragma("GCC unroll 7")
+   #else
+      #pragma GCC optimize ("unroll-loops")
+      #define pragma_unroll_5
+      #define pragma_unroll_7
+   #endif
 #else
-/* MSVC doesn't have C99's _Pragma() */
-#define pragma_unroll_5
-#define pragma_unroll_7
+   /* MSVC doesn't have C99's _Pragma() */
+   #define pragma_unroll_5
+   #define pragma_unroll_7
 #endif
 
 
