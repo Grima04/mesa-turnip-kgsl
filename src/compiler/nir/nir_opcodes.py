@@ -488,9 +488,9 @@ dst.y = dst.y / ma + 0.5;
 """)
 
 unop_horiz("cube_face_index", 1, tfloat32, 3, tfloat32, """
-float absX = fabs(src0.x);
-float absY = fabs(src0.y);
-float absZ = fabs(src0.z);
+float absX = fabsf(src0.x);
+float absY = fabsf(src0.y);
+float absZ = fabsf(src0.z);
 if (src0.x >= 0 && absX >= absY && absX >= absZ) dst.x = 0;
 if (src0.x < 0 && absX >= absY && absX >= absZ) dst.x = 1;
 if (src0.y >= 0 && absY >= absX && absY >= absZ) dst.x = 2;
