@@ -3180,8 +3180,6 @@ struct anv_pipeline {
       uint32_t                                  instance_divisor;
    } vb[MAX_VBS];
 
-   uint8_t                                      xfb_used;
-
    bool                                         primitive_restart;
    uint32_t                                     topology;
 
