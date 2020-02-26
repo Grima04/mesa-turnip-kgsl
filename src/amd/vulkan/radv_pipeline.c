@@ -2732,7 +2732,8 @@ void radv_stop_feedback(VkPipelineCreationFeedbackEXT *feedback, bool cache_hit)
 static
 bool radv_aco_supported_stage(gl_shader_stage stage, bool has_ts)
 {
-	return (stage == MESA_SHADER_VERTEX && !has_ts) ||
+	return stage == MESA_SHADER_VERTEX ||
+	       stage == MESA_SHADER_TESS_CTRL ||
 	       (stage == MESA_SHADER_GEOMETRY && !has_ts) ||
 	       stage == MESA_SHADER_FRAGMENT ||
 	       stage == MESA_SHADER_COMPUTE;
@@ -2941,10 +2942,11 @@ void radv_create_shaders(struct radv_pipeline *pipeline,
 
 			radv_start_feedback(stage_feedbacks[MESA_SHADER_TESS_CTRL]);
 
+			bool aco = use_aco && radv_aco_supported_stage(MESA_SHADER_TESS_CTRL, has_ts);
 			pipeline->shaders[MESA_SHADER_TESS_CTRL] = radv_shader_variant_compile(device, modules[MESA_SHADER_TESS_CTRL], combined_nir, 2,
 			                                                                      pipeline->layout,
 			                                                                      &key, &infos[MESA_SHADER_TESS_CTRL], keep_executable_info,
-			                                                                      false, &binaries[MESA_SHADER_TESS_CTRL]);
+			                                                                      aco, &binaries[MESA_SHADER_TESS_CTRL]);
 
 			radv_stop_feedback(stage_feedbacks[MESA_SHADER_TESS_CTRL], false);
 		}
