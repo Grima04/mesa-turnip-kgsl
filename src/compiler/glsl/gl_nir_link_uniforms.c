@@ -55,7 +55,7 @@ nir_setup_uniform_remap_tables(struct gl_context *ctx,
    prog->data->UniformDataSlots = data;
 
    prog->data->UniformDataDefaults =
-         rzalloc_array(prog->data->UniformStorage,
+         rzalloc_array(prog->data->UniformDataSlots,
                        union gl_constant_value, prog->data->NumUniformDataSlots);
 
    unsigned data_pos = 0;
