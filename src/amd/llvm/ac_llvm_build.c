@@ -2759,6 +2759,11 @@ LLVMValueRef ac_build_fmed3(struct ac_llvm_context *ctx, LLVMValueRef src0,
 					    AC_FUNC_ATTR_READNONE);
 	}
 
+	if (ctx->chip_class < GFX9 && bitsize == 32) {
+		/* Only pre-GFX9 chips do not flush denorms. */
+		result = ac_build_canonicalize(ctx, result, bitsize);
+	}
+
 	return result;
 }
 
