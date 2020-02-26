@@ -215,13 +215,14 @@ legalize_block(struct ir3_legalize_ctx *ctx, struct ir3_block *block)
 			ctx->type == MESA_SHADER_VERTEX && n->opc == OPC_SAMGQ) {
 			struct ir3_instruction *samgp;
 
+			list_delinit(&n->node);
+
 			for (i = 0; i < 4; i++) {
 				samgp = ir3_instr_clone(n);
 				samgp->opc = OPC_SAMGP0 + i;
 				if (i > 1)
 					samgp->flags |= IR3_INSTR_SY;
 			}
-			list_delinit(&n->node);
 		} else {
 			list_addtail(&n->node, &block->instr_list);
 		}
