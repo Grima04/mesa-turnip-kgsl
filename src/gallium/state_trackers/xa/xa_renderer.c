@@ -34,7 +34,7 @@
 #include "util/u_sampler.h"
 #include "util/u_draw_quad.h"
 
-#define floatsEqual(x, y) (fabs(x - y) <= 0.00001f * MIN2(fabs(x), fabs(y)))
+#define floatsEqual(x, y) (fabsf(x - y) <= 0.00001f * MIN2(fabsf(x), fabsf(y)))
 #define floatIsZero(x) (floatsEqual((x) + 1, 1))
 
 #define NUM_COMPONENTS 4

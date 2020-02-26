@@ -1628,7 +1628,7 @@ create_filter_table(void)
       for (i = 0; i < WEIGHT_LUT_SIZE; ++i) {
          GLfloat alpha = 2;
          GLfloat r2 = (GLfloat) i / (GLfloat) (WEIGHT_LUT_SIZE - 1);
-         GLfloat weight = (GLfloat) exp(-alpha * r2);
+         GLfloat weight = expf(-alpha * r2);
          weightLut[i] = weight;
       }
    }

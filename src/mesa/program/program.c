@@ -539,7 +539,7 @@ _mesa_get_min_invocations_per_fragment(struct gl_context *ctx,
                                             SYSTEM_BIT_SAMPLE_POS)))
          return MAX2(_mesa_geometric_samples(ctx->DrawBuffer), 1);
       else if (ctx->Multisample.SampleShading)
-         return MAX2(ceil(ctx->Multisample.MinSampleShadingValue *
+         return MAX2(ceilf(ctx->Multisample.MinSampleShadingValue *
                           _mesa_geometric_samples(ctx->DrawBuffer)), 1);
       else
          return 1;

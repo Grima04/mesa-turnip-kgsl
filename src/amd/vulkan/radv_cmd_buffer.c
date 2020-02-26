@@ -700,8 +700,8 @@ radv_convert_user_sample_locs(struct radv_sample_locations_state *state,
 		float shifted_pos_x = user_locs[i].x - 0.5;
 		float shifted_pos_y = user_locs[i].y - 0.5;
 
-		int32_t scaled_pos_x = floor(shifted_pos_x * 16);
-		int32_t scaled_pos_y = floor(shifted_pos_y * 16);
+		int32_t scaled_pos_x = floorf(shifted_pos_x * 16);
+		int32_t scaled_pos_y = floorf(shifted_pos_y * 16);
 
 		sample_locs[i].x = CLAMP(scaled_pos_x, -8, 7);
 		sample_locs[i].y = CLAMP(scaled_pos_y, -8, 7);

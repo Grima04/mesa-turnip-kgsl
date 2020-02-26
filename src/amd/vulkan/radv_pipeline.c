@@ -988,7 +988,7 @@ static uint8_t radv_pipeline_get_ps_iter_samples(const VkGraphicsPipelineCreateI
 	}
 
 	if (vkms->sampleShadingEnable) {
-		ps_iter_samples = ceil(vkms->minSampleShading * num_samples);
+		ps_iter_samples = ceilf(vkms->minSampleShading * num_samples);
 		ps_iter_samples = util_next_power_of_two(ps_iter_samples);
 	}
 	return ps_iter_samples;
