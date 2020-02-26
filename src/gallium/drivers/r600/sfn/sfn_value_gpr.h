@@ -29,6 +29,7 @@
 
 #include "sfn_value.h"
 #include <vector>
+#include <array>
 
 namespace r600 {
 
