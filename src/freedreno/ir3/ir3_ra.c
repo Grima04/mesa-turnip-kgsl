@@ -1273,6 +1273,9 @@ ra_precolor(struct ir3_ra_ctx *ctx, struct ir3_instruction **precolor, unsigned 
 		if (precolor[i] && !(precolor[i]->flags & IR3_INSTR_UNUSED)) {
 			struct ir3_instruction *instr = precolor[i];
 
+			if (instr->regs[0]->num == INVALID_REG)
+				continue;
+
 			struct ir3_ra_instr_data *id = &ctx->instrd[instr->ip];
 
 			debug_assert(!(instr->regs[0]->flags & (IR3_REG_HALF | IR3_REG_HIGH)));
