@@ -58,6 +58,7 @@ radv_gfx10_format_table_h = custom_target(
 )
 
 libradv_files = files(
+  'layers/radv_sqtt_layer.c',
   'winsys/amdgpu/radv_amdgpu_bo.c',
   'winsys/amdgpu/radv_amdgpu_bo.h',
   'winsys/amdgpu/radv_amdgpu_cs.c',

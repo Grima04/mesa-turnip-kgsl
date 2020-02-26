@@ -39,6 +39,9 @@ RADV_WS_NULL_FILES := \
 	winsys/null/radv_null_winsys.h \
 	winsys/null/radv_null_winsys_public.h
 
+RADV_LAYER_SQTT_FILES := \
+	layers/radv_sqtt_layer.c
+
 VULKAN_FILES := \
 	radv_cmd_buffer.c \
 	radv_cs.h \
@@ -85,6 +88,7 @@ VULKAN_FILES := \
 	radv_wsi.c \
 	si_cmd_buffer.c \
 	vk_format.h \
+	$(RADV_LAYER_SQTT_FILES) \
 	$(RADV_WS_AMDGPU_FILES) \
 	$(RADV_WS_NULL_FILES)
 
