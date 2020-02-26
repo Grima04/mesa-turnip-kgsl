@@ -38,10 +38,9 @@ from radv_extensions import *
 # function and a power-of-two size table. The prime numbers are determined
 # experimentally.
 
-# We currently don't use layers in radv, but keeping the ability for anv
-# anyways, so we can use it for device groups.
 LAYERS = [
-    'radv'
+    'radv',
+    'sqtt'
 ]
 
 TEMPLATE_H = Template("""\
