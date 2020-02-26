@@ -639,6 +639,11 @@ piglit-quick_shader:
   variables:
     DEQP_VER: vk
 
+.fossilize-test:
+  extends: .test-vk
+  script:
+    - ./artifacts/fossilize-runner.sh
+
 llvmpipe-gles2:
   variables:
     DEQP_VER: gles2
