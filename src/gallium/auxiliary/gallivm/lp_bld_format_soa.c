@@ -873,7 +873,7 @@ lp_build_insert_soa_chan(struct lp_build_context *bld,
     struct lp_type type = bld->type;
     const unsigned width = chan_desc.size;
     const unsigned start = chan_desc.shift;
-    const unsigned stop = start + width;
+    ASSERTED const unsigned stop = start + width;
     LLVMValueRef chan = NULL;
     switch(chan_desc.type) {
     case UTIL_FORMAT_TYPE_UNSIGNED:
@@ -985,7 +985,7 @@ lp_build_store_rgba_soa(struct gallivm_state *gallivm,
 {
    enum pipe_format format = format_desc->format;
    LLVMValueRef packed[4];
-   unsigned num_stores;
+   unsigned num_stores = 0;
 
    memset(packed, 0, sizeof(LLVMValueRef) * 4);
    if (format_desc->layout == UTIL_FORMAT_LAYOUT_PLAIN &&

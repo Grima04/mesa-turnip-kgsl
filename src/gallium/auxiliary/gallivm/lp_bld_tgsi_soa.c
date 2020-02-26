@@ -3377,6 +3377,7 @@ static void target_to_dims_layer(unsigned target,
       break;
    default:
       assert(0);
+      *dims = 0;
       return;
    }
 }
@@ -3743,7 +3744,7 @@ atomic_emit(
    unsigned buf = bufreg->Register.Index;
    bool is_shared = bufreg->Register.File == TGSI_FILE_MEMORY;
 
-   LLVMAtomicRMWBinOp op;
+   LLVMAtomicRMWBinOp op = -1;
    switch (emit_data->inst->Instruction.Opcode) {
    case TGSI_OPCODE_ATOMUADD:
       op = LLVMAtomicRMWBinOpAdd;

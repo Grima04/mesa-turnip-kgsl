@@ -1368,7 +1368,7 @@ end_primitive_masked(struct lp_build_nir_context * bld_base,
 
 static void end_primitive(struct lp_build_nir_context *bld_base, uint32_t stream_id)
 {
-   struct lp_build_nir_soa_context *bld = (struct lp_build_nir_soa_context *)bld_base;
+   ASSERTED struct lp_build_nir_soa_context *bld = (struct lp_build_nir_soa_context *)bld_base;
 
    assert(bld->gs_iface->end_primitive);
 
