@@ -72,6 +72,10 @@ apt-get install -y --no-remove \
 
 . .gitlab-ci/build-cts-runner.sh
 
+############### Build Fossilize
+
+. .gitlab-ci/build-fossilize.sh
+
 ############### Build dEQP VK
 
 . .gitlab-ci/build-deqp-vk.sh

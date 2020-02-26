@@ -137,7 +137,7 @@ x86_test-gl:
 x86_test-vk:
   extends: x86_build
   variables:
-    DEBIAN_TAG: &x86_test-vk "2020-03-04"
+    DEBIAN_TAG: &x86_test-vk "2020-03-05"
   # Can only be triggered manually on personal branches because RADV is the only
   # driver that does Vulkan testing at the moment.
   rules:
