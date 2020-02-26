@@ -1058,8 +1058,6 @@ nir_link_uniform(struct gl_context *ctx,
                state->shader_shadow_samplers |= shadow << i;
             }
          }
-
-         state->num_values += values;
       } else if (glsl_type_is_image(type_no_array)) {
          /* @FIXME: image_index should match that of the same image
           * uniform in other shaders. This means we need to match image
@@ -1092,10 +1090,8 @@ nir_link_uniform(struct gl_context *ctx,
             stage_program->sh.ImageAccess[i] = access;
          }
 
-         if (!uniform->is_shader_storage) {
+         if (!uniform->is_shader_storage)
             state->num_shader_uniform_components += values;
-            state->num_values += values;
-         }
       } else {
          if (glsl_get_base_type(type_no_array) == GLSL_TYPE_SUBROUTINE) {
             uniform->opaque[stage].index = state->next_subroutine;
@@ -1109,10 +1105,8 @@ nir_link_uniform(struct gl_context *ctx,
             state->next_subroutine += MAX2(1, uniform->array_elements);
          }
 
-         if (!state->var_is_in_block && !is_gl_identifier(uniform->name)) {
+         if (!state->var_is_in_block)
             state->num_shader_uniform_components += values;
-            state->num_values += values;
-         }
       }
 
       if (uniform->remap_location != UNMAPPED_UNIFORM_LOC &&
@@ -1127,6 +1121,10 @@ nir_link_uniform(struct gl_context *ctx,
                                  (void *) (intptr_t)
                                     (prog->data->NumUniformStorage - 1));
       }
+
+      if (!is_gl_identifier(uniform->name) && !uniform->is_shader_storage &&
+          !state->var_is_in_block)
+         state->num_values += values;
 
       return MAX2(uniform->array_elements, 1);
    }
