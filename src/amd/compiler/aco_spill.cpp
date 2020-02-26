@@ -65,7 +65,7 @@ struct spill_ctx {
    spill_ctx(const RegisterDemand target_pressure, Program* program,
              std::vector<std::vector<RegisterDemand>> register_demand)
       : target_pressure(target_pressure), program(program),
-        register_demand(register_demand), renames(program->blocks.size()),
+        register_demand(std::move(register_demand)), renames(program->blocks.size()),
         spills_entry(program->blocks.size()), spills_exit(program->blocks.size()),
         processed(program->blocks.size(), false), wave_size(program->wave_size) {}
 
