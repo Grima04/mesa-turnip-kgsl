@@ -411,6 +411,23 @@ do_int_divide(struct lp_build_nir_context *bld_base,
       return LLVMBuildOr(builder, div_mask, result, "");
 }
 
+static LLVMValueRef
+do_int_mod(struct lp_build_nir_context *bld_base,
+           bool is_unsigned, unsigned src_bit_size,
+           LLVMValueRef src, LLVMValueRef src2)
+{
+   struct gallivm_state *gallivm = bld_base->base.gallivm;
+   LLVMBuilderRef builder = gallivm->builder;
+   struct lp_build_context *int_bld = get_int_bld(bld_base, is_unsigned, src_bit_size);
+   LLVMValueRef div_mask = lp_build_cmp(int_bld, PIPE_FUNC_EQUAL, src2,
+                                        int_bld->zero);
+   LLVMValueRef divisor = LLVMBuildOr(builder,
+                                      div_mask,
+                                      src2, "");
+   LLVMValueRef result = lp_build_mod(int_bld, src, divisor);
+   return LLVMBuildOr(builder, div_mask, result, "");
+}
+
 static LLVMValueRef do_alu_action(struct lp_build_nir_context *bld_base,
                                   nir_op op, unsigned src_bit_size[NIR_MAX_VEC_COMPONENTS], LLVMValueRef src[NIR_MAX_VEC_COMPONENTS])
 {
@@ -660,8 +677,7 @@ static LLVMValueRef do_alu_action(struct lp_build_nir_context *bld_base,
                            src[0], src[1]);
       break;
    case nir_op_irem:
-      result = lp_build_mod(get_int_bld(bld_base, false, src_bit_size[0]),
-                            src[0], src[1]);
+      result = do_int_mod(bld_base, false, src_bit_size[0], src[0], src[1]);
       break;
    case nir_op_ishl: {
       struct lp_build_context *uint_bld = get_int_bld(bld_base, true, src_bit_size[0]);
@@ -757,7 +773,7 @@ static LLVMValueRef do_alu_action(struct lp_build_nir_context *bld_base,
       result = lp_build_min(get_int_bld(bld_base, true, src_bit_size[0]), src[0], src[1]);
       break;
    case nir_op_umod:
-      result = lp_build_mod(get_int_bld(bld_base, true, src_bit_size[0]), src[0], src[1]);
+      result = do_int_mod(bld_base, true, src_bit_size[0], src[0], src[1]);
       break;
    case nir_op_umul_high: {
       LLVMValueRef hi_bits;
