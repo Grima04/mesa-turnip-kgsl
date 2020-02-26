@@ -341,6 +341,23 @@ radv_emit_thread_trace_stop(struct radv_device *device,
 			       S_030800_INSTANCE_BROADCAST_WRITES(1));
 }
 
+void
+radv_emit_thread_trace_userdata(struct radeon_cmdbuf *cs,
+				const void *data, uint32_t num_dwords)
+{
+	const uint32_t *dwords = (uint32_t *)data;
+
+	while (num_dwords > 0) {
+		uint32_t count = MIN2(num_dwords, 2);
+
+		radeon_set_uconfig_reg_seq(cs, R_030D08_SQ_THREAD_TRACE_USERDATA_2, count);
+		radeon_emit_array(cs, dwords, count);
+
+		dwords += count;
+		num_dwords -= count;
+	}
+}
+
 static void
 radv_emit_spi_config_cntl(struct radv_device *device,
 			  struct radeon_cmdbuf *cs, bool enable)
