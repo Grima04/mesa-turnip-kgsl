@@ -349,6 +349,19 @@ struct v3dv_buffer {
    VkDeviceSize mem_offset;
 };
 
+struct v3dv_buffer_view {
+   const struct v3dv_buffer *buffer;
+
+   VkFormat vk_format;
+   const struct v3dv_format *format;
+   uint32_t internal_bpp;
+   uint32_t internal_type;
+
+   uint32_t offset;
+   uint32_t size;
+   uint32_t num_elements;
+};
+
 struct v3dv_subpass_attachment {
    uint32_t attachment;
    VkImageLayout layout;
@@ -1001,6 +1014,7 @@ V3DV_DEFINE_HANDLE_CASTS(v3dv_queue, VkQueue)
 
 V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_cmd_pool, VkCommandPool)
 V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_buffer, VkBuffer)
+V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_buffer_view, VkBufferView)
 V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_device_memory, VkDeviceMemory)
 V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_descriptor_pool, VkDescriptorPool)
 V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_descriptor_set, VkDescriptorSet)

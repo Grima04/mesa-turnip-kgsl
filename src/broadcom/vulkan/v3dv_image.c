@@ -494,3 +494,56 @@ v3dv_DestroyImageView(VkDevice _device,
 
    vk_free2(&device->alloc, pAllocator, image_view);
 }
+
+VkResult
+v3dv_CreateBufferView(VkDevice _device,
+                      const VkBufferViewCreateInfo *pCreateInfo,
+                      const VkAllocationCallbacks *pAllocator,
+                      VkBufferView *pView)
+{
+   V3DV_FROM_HANDLE(v3dv_device, device, _device);
+
+   const struct v3dv_buffer *buffer =
+      v3dv_buffer_from_handle(pCreateInfo->buffer);
+
+   struct v3dv_buffer_view *view =
+      vk_alloc2(&device->alloc, pAllocator, sizeof(*view), 8,
+                VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   if (!view)
+      return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+
+   uint32_t range;
+   if (pCreateInfo->range == VK_WHOLE_SIZE)
+      range = buffer->size - pCreateInfo->offset;
+   else
+      range = pCreateInfo->range;
+
+   enum pipe_format pipe_format = vk_format_to_pipe_format(pCreateInfo->format);
+   uint32_t num_elements = range / util_format_get_blocksize(pipe_format);
+
+   view->buffer = buffer;
+   view->offset = pCreateInfo->offset;
+   view->size = view->offset + range;
+   view->num_elements = num_elements;
+   view->vk_format = pCreateInfo->format;
+   view->format = v3dv_get_format(view->vk_format);
+
+   v3dv_get_internal_type_bpp_for_output_format(view->format->rt_type,
+                                                &view->internal_type,
+                                                &view->internal_bpp);
+
+   *pView = v3dv_buffer_view_to_handle(view);
+
+   return VK_SUCCESS;
+}
+
+void
+v3dv_DestroyBufferView(VkDevice _device,
+                       VkBufferView bufferView,
+                       const VkAllocationCallbacks *pAllocator)
+{
+   V3DV_FROM_HANDLE(v3dv_device, device, _device);
+   V3DV_FROM_HANDLE(v3dv_buffer_view, buffer_view, bufferView);
+
+   vk_free2(&device->alloc, pAllocator, buffer_view);
+}
