@@ -694,7 +694,10 @@ vmw_ioctl_region_map(struct vmw_region *region)
 	 return NULL;
       }
 
+// MADV_HUGEPAGE only exists on Linux
+#ifdef MADV_HUGEPAGE
       (void) madvise(map, region->size, MADV_HUGEPAGE);
+#endif
       region->data = map;
    }
 
