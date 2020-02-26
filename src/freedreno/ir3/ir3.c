@@ -462,7 +462,8 @@ static int emit_cat5(struct ir3_instruction *instr, void *ptr,
 	struct ir3_register *src2;
 	instr_cat5_t *cat5 = ptr;
 
-	iassert((instr->regs_count == 2) ||
+	iassert((instr->regs_count == 1) ||
+			(instr->regs_count == 2) ||
 			(instr->regs_count == 3) ||
 			(instr->regs_count == 4));
 
@@ -470,7 +471,7 @@ static int emit_cat5(struct ir3_instruction *instr, void *ptr,
 		src1 = instr->regs[2];
 		src2 = instr->regs_count > 3 ? instr->regs[3] : NULL;
 	} else {
-		src1 = instr->regs[1];
+		src1 = instr->regs_count > 1 ? instr->regs[1] : NULL;
 		src2 = instr->regs_count > 2 ? instr->regs[2] : NULL;
 	}
 
