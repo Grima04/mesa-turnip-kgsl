@@ -1821,3 +1821,75 @@ v3dv_GetMemoryFdKHR(VkDevice _device,
 
    return VK_SUCCESS;
 }
+
+VkResult
+v3dv_CreateEvent(VkDevice _device,
+                 const VkEventCreateInfo *pCreateInfo,
+                 const VkAllocationCallbacks *pAllocator,
+                 VkEvent *pEvent)
+{
+   V3DV_FROM_HANDLE(v3dv_device, device, _device);
+   struct v3dv_event *event =
+      vk_alloc2(&device->alloc, pAllocator, sizeof(*event), 8,
+                VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   if (!event)
+      return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+
+   event->bo = v3dv_bo_alloc(device, 4096, "Event BO");
+   if (!event->bo)
+      goto fail_alloc;
+
+   bool ok = v3dv_bo_map(device, event->bo, 4096);
+   if (!ok)
+      goto fail_map;
+
+   /* Events are created in the unsignaled state */
+   *((uint32_t *) event->bo->map) = 0;
+   *pEvent = v3dv_event_to_handle(event);
+
+   return VK_SUCCESS;
+
+fail_map:
+   v3dv_bo_free(device, event->bo);
+fail_alloc:
+   vk_free2(&device->alloc, pAllocator, event);
+   return vk_error(device->instance, VK_ERROR_OUT_OF_DEVICE_MEMORY);
+}
+
+void
+v3dv_DestroyEvent(VkDevice _device,
+                  VkEvent _event,
+                  const VkAllocationCallbacks *pAllocator)
+{
+   V3DV_FROM_HANDLE(v3dv_device, device, _device);
+   V3DV_FROM_HANDLE(v3dv_event, event, _event);
+
+   if (!event)
+      return;
+
+   v3dv_bo_free(device, event->bo);
+   vk_free2(&device->alloc, pAllocator, event);
+}
+
+VkResult
+v3dv_GetEventStatus(VkDevice _device, VkEvent _event)
+{
+   V3DV_FROM_HANDLE(v3dv_event, event, _event);
+   return *((uint32_t *) event->bo->map) == 1 ? VK_EVENT_SET : VK_EVENT_RESET;
+}
+
+VkResult
+v3dv_SetEvent(VkDevice _device, VkEvent _event)
+{
+   V3DV_FROM_HANDLE(v3dv_event, event, _event);
+   *((uint32_t *) event->bo->map) = 1;
+   return VK_SUCCESS;
+}
+
+VkResult
+v3dv_ResetEvent(VkDevice _device, VkEvent _event)
+{
+   V3DV_FROM_HANDLE(v3dv_event, event, _event);
+   *((uint32_t *) event->bo->map) = 0;
+   return VK_SUCCESS;
+}

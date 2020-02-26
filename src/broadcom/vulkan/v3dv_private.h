@@ -655,6 +655,10 @@ struct v3dv_fence {
    int32_t fd;
 };
 
+struct v3dv_event {
+   struct v3dv_bo *bo;
+};
+
 struct v3dv_shader_module {
    unsigned char sha1[20];
    uint32_t size;
@@ -1019,6 +1023,7 @@ V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_device_memory, VkDeviceMemory)
 V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_descriptor_pool, VkDescriptorPool)
 V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_descriptor_set, VkDescriptorSet)
 V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_descriptor_set_layout, VkDescriptorSetLayout)
+V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_event, VkEvent)
 V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_fence, VkFence)
 V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_framebuffer, VkFramebuffer)
 V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_image, VkImage)
