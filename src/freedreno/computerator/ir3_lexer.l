@@ -26,6 +26,8 @@
 #include "ir3/ir3.h"
 #include "ir3_parser.h"
 
+#define YY_NO_INPUT
+#define YY_NO_UNPUT
 #define TOKEN(t) (ir3_yylval.tok = t)
 extern YYSTYPE ir3_yylval;
 

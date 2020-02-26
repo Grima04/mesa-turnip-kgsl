@@ -222,12 +222,14 @@ struct ir3 * ir3_parse(struct ir3_kernel *k, FILE *f)
 }
 
 %{
+#if YYDEBUG
 static void print_token(FILE *file, int type, YYSTYPE value)
 {
 	fprintf(file, "\ntype: %d\n", type);
 }
 
 #define YYPRINT(file, type, value) print_token(file, type, value)
+#endif
 %}
 
 %token <num> T_INT
