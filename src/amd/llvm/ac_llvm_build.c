@@ -2725,8 +2725,10 @@ LLVMValueRef ac_build_fmed3(struct ac_llvm_context *ctx, LLVMValueRef src0,
 {
 	LLVMValueRef result;
 
-	if (bitsize == 64) {
-		/* Lower 64-bit fmed because LLVM doesn't expose an intrinsic. */
+	if (bitsize == 64 || (bitsize == 16 && ctx->chip_class <= GFX8)) {
+		/* Lower 64-bit fmed because LLVM doesn't expose an intrinsic,
+		 * or lower 16-bit fmed because it's only supported on GFX9+.
+		 */
 		LLVMValueRef min1, min2, max1;
 
 		min1 = ac_build_fmin(ctx, src0, src1);
