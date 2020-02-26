@@ -763,7 +763,8 @@ lima_pack_wb_zsbuf_reg(struct lima_job *job, uint32_t *wb_reg, int wb_idx)
 }
 
 static void
-lima_pack_wb_cbuf_reg(struct lima_job *job, uint32_t *wb_reg, int wb_idx)
+lima_pack_wb_cbuf_reg(struct lima_job *job, uint32_t *frame_reg,
+                      uint32_t *wb_reg, int wb_idx)
 {
    struct lima_job_fb_info *fb = &job->fb;
    struct pipe_surface *cbuf = job->key.cbuf;
@@ -772,6 +773,9 @@ lima_pack_wb_cbuf_reg(struct lima_job *job, uint32_t *wb_reg, int wb_idx)
    unsigned layer = cbuf->u.tex.first_layer;
    uint32_t format = lima_format_get_pixel(cbuf->format);
    bool swap_channels = lima_format_get_swap_rb(cbuf->format);
+
+   struct lima_pp_frame_reg *frame = (void *)frame_reg;
+   frame->channel_layout = lima_format_get_channel_layout(cbuf->format);
 
    struct lima_pp_wb_reg *wb = (void *)wb_reg;
    wb[wb_idx].type = 0x02; /* 2 for color buffer */
@@ -824,10 +828,12 @@ lima_pack_pp_frame_reg(struct lima_job *job, uint32_t *frame_reg,
    frame->dubya = 0x77;
    frame->onscreen = 1;
    frame->blocking = (fb->shift_min << 28) | (fb->shift_h << 16) | fb->shift_w;
-   frame->foureight = 0x8888;
+
+   /* Set default layout to 8888 */
+   frame->channel_layout = 0x8888;
 
    if (job->key.cbuf && (job->resolve & PIPE_CLEAR_COLOR0))
-      lima_pack_wb_cbuf_reg(job, wb_reg, wb_idx++);
+      lima_pack_wb_cbuf_reg(job, frame_reg, wb_reg, wb_idx++);
 
    if (job->key.zsbuf &&
        (job->resolve & (PIPE_CLEAR_DEPTH | PIPE_CLEAR_STENCIL)))

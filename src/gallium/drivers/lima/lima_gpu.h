@@ -63,7 +63,7 @@ struct lima_pp_frame_reg {
    uint32_t onscreen;
    uint32_t blocking;
    uint32_t scale;
-   uint32_t foureight;
+   uint32_t channel_layout;
 };
 
 struct lima_pp_wb_reg {
