@@ -2846,7 +2846,14 @@ static void
 radv_device_init_dispatch(struct radv_device *device)
 {
 	const struct radv_instance *instance = device->physical_device->instance;
+	const struct radv_device_dispatch_table *dispatch_table_layer = NULL;
 	bool unchecked = instance->debug_flags & RADV_DEBUG_ALL_ENTRYPOINTS;
+	int radv_thread_trace = radv_get_int_debug_option("RADV_THREAD_TRACE", -1);
+
+	if (radv_thread_trace >= 0) {
+		/* Use device entrypoints from the SQTT layer if enabled. */
+		dispatch_table_layer = &sqtt_device_dispatch_table;
+	}
 
 	for (unsigned i = 0; i < ARRAY_SIZE(device->dispatch.entrypoints); i++) {
 		/* Vulkan requires that entrypoints for extensions which have not been
@@ -2857,6 +2864,10 @@ radv_device_init_dispatch(struct radv_device *device)
 						       &instance->enabled_extensions,
 						       &device->enabled_extensions)) {
 			device->dispatch.entrypoints[i] = NULL;
+		} else if (dispatch_table_layer &&
+			   dispatch_table_layer->entrypoints[i]) {
+			device->dispatch.entrypoints[i] =
+				dispatch_table_layer->entrypoints[i];
 		} else {
 			device->dispatch.entrypoints[i] =
 				radv_device_dispatch_table.entrypoints[i];
