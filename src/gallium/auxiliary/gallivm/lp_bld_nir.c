@@ -389,15 +389,26 @@ do_int_divide(struct lp_build_nir_context *bld_base,
    struct gallivm_state *gallivm = bld_base->base.gallivm;
    LLVMBuilderRef builder = gallivm->builder;
    struct lp_build_context *int_bld = get_int_bld(bld_base, is_unsigned, src_bit_size);
-   LLVMValueRef div_mask = lp_build_cmp(int_bld, PIPE_FUNC_EQUAL, src2,
-                                        int_bld->zero);
+   struct lp_build_context *mask_bld = get_int_bld(bld_base, true, src_bit_size);
+   LLVMValueRef div_mask = lp_build_cmp(mask_bld, PIPE_FUNC_EQUAL, src2,
+                                        mask_bld->zero);
+
+   if (!is_unsigned) {
+      /* INT_MIN (0x80000000) / -1 (0xffffffff) causes sigfpe, seen with blender. */
+      div_mask = LLVMBuildAnd(builder, div_mask, lp_build_const_int_vec(gallivm, int_bld->type, 0x7fffffff), "");
+   }
    LLVMValueRef divisor = LLVMBuildOr(builder,
                                       div_mask,
                                       src2, "");
    LLVMValueRef result = lp_build_div(int_bld, src, divisor);
-   /* udiv by zero is guaranteed to return 0xffffffff at least with d3d10
-    * may as well do same for idiv */
-   return LLVMBuildOr(builder, div_mask, result, "");
+
+   if (!is_unsigned) {
+      LLVMValueRef not_div_mask = LLVMBuildNot(builder, div_mask, "");
+      return LLVMBuildAnd(builder, not_div_mask, result, "");
+   } else
+      /* udiv by zero is guaranteed to return 0xffffffff at least with d3d10
+       * may as well do same for idiv */
+      return LLVMBuildOr(builder, div_mask, result, "");
 }
 
 static LLVMValueRef do_alu_action(struct lp_build_nir_context *bld_base,
