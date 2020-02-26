@@ -1548,6 +1548,8 @@ find_value(const char *func, GLenum pname, void **p, union value *v)
    const struct value_desc *d;
    int api;
 
+   *p = NULL;
+
    api = ctx->API;
    /* We index into the table_set[] list of per-API hash tables using the API's
     * value in the gl_api enum. Since GLES 3 doesn't have an API_OPENGL* enum

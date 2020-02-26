@@ -2410,7 +2410,7 @@ glsl_to_tgsi_visitor::visit(ir_swizzle *ir)
 {
    st_src_reg src;
    int i;
-   int swizzle[4];
+   int swizzle[4] = {0};
 
    /* Note that this is only swizzles in expressions, not those on the left
     * hand side of an assignment, which do write masking.  See ir_assignment

@@ -1367,7 +1367,7 @@ ir_to_mesa_visitor::visit(ir_swizzle *ir)
 {
    src_reg src;
    int i;
-   int swizzle[4];
+   int swizzle[4] = {0};
 
    /* Note that this is only swizzles in expressions, not those on the left
     * hand side of an assignment, which do write masking.  See ir_assignment
@@ -2420,8 +2420,8 @@ add_uniform_to_shader::visit_field(const glsl_type *type, const char *name,
     * This avoids relying on names to match parameters and uniform
     * storages later when associating uniform storage.
     */
-   unsigned location;
-   const bool found =
+   unsigned location = -1;
+   ASSERTED const bool found =
       shader_program->UniformHash->get(location, params->Parameters[index].Name);
    assert(found);
 
