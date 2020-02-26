@@ -242,7 +242,6 @@ midgard_opt_fuse_src_invert(compiler_context *ctx, midgard_block *block)
                 /* Search for inverted bitwise */
                 if (ins->type != TAG_ALU_4) continue;
                 if (!mir_is_bitwise(ins)) continue;
-                if (ins->invert) continue;
 
                 if (!is_ssa_or_constant(ins->src[0])) continue;
                 if (!is_ssa_or_constant(ins->src[1])) continue;
