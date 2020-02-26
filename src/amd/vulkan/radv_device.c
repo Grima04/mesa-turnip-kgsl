@@ -350,7 +350,7 @@ radv_physical_device_init(struct radv_physical_device *device,
 		goto fail;
 	}
 
-	if (instance->enabled_extensions.KHR_display) {
+	if (drm_device && instance->enabled_extensions.KHR_display) {
 		master_fd = open(drm_device->nodes[DRM_NODE_PRIMARY], O_RDWR | O_CLOEXEC);
 		if (master_fd >= 0) {
 			uint32_t accel_working = 0;
