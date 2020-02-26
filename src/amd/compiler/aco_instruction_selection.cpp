@@ -2642,7 +2642,7 @@ Operand load_lds_size_m0(isel_context *ctx)
    return bld.m0((Temp)bld.sopk(aco_opcode::s_movk_i32, bld.def(s1, m0), 0xffff));
 }
 
-void load_lds(isel_context *ctx, unsigned elem_size_bytes, Temp dst,
+Temp load_lds(isel_context *ctx, unsigned elem_size_bytes, Temp dst,
               Temp address, unsigned base_offset, unsigned align)
 {
    assert(util_is_power_of_two_nonzero(align) && align >= 4);
@@ -2708,7 +2708,7 @@ void load_lds(isel_context *ctx, unsigned elem_size_bytes, Temp dst,
          res = bld.tmp(RegClass(RegType::vgpr, todo / 4));
 
       if (read2)
-         res = bld.ds(op, Definition(res), address_offset, m, offset >> 2, (offset >> 2) + 1);
+         res = bld.ds(op, Definition(res), address_offset, m, offset / (todo / 2), (offset / (todo / 2)) + 1);
       else
          res = bld.ds(op, Definition(res), address_offset, m, offset);
 
@@ -2716,7 +2716,7 @@ void load_lds(isel_context *ctx, unsigned elem_size_bytes, Temp dst,
          assert(todo == total_bytes);
          if (dst.type() == RegType::sgpr)
             bld.pseudo(aco_opcode::p_as_uniform, Definition(dst), res);
-         return;
+         return dst;
       }
 
       if (dst.type() == RegType::sgpr) {
@@ -2746,6 +2746,8 @@ void load_lds(isel_context *ctx, unsigned elem_size_bytes, Temp dst,
    vec->definitions[0] = Definition(dst);
    ctx->block->instructions.emplace_back(std::move(vec));
    ctx->allocated_vec.emplace(dst.id(), result);
+
+   return dst;
 }
 
 Temp extract_subvector(isel_context *ctx, Temp data, unsigned start, unsigned size, RegType type)
@@ -2830,7 +2832,7 @@ void ds_write_helper(isel_context *ctx, Operand m, Temp address, Temp data, unsi
       if (write2) {
          Temp val0 = extract_subvector(ctx, data, data_start + (bytes_written >> 2), size / 2, RegType::vgpr);
          Temp val1 = extract_subvector(ctx, data, data_start + (bytes_written >> 2) + 1, size / 2, RegType::vgpr);
-         bld.ds(op, address_offset, val0, val1, m, offset >> 2, (offset >> 2) + 1);
+         bld.ds(op, address_offset, val0, val1, m, offset / size / 2, (offset / size / 2) + 1);
       } else {
          Temp val = extract_subvector(ctx, data, data_start + (bytes_written >> 2), size, RegType::vgpr);
          bld.ds(op, address_offset, val, m, offset);
@@ -2844,28 +2846,32 @@ void store_lds(isel_context *ctx, unsigned elem_size_bytes, Temp data, uint32_t 
                Temp address, unsigned base_offset, unsigned align)
 {
    assert(util_is_power_of_two_nonzero(align) && align >= 4);
+   assert(elem_size_bytes == 4 || elem_size_bytes == 8);
 
    Operand m = load_lds_size_m0(ctx);
 
-   /* we need at most two stores for 32bit variables */
+   /* we need at most two stores, assuming that the writemask is at most 4 bits wide */
+   assert(wrmask <= 0x0f);
    int start[2], count[2];
    u_bit_scan_consecutive_range(&wrmask, &start[0], &count[0]);
    u_bit_scan_consecutive_range(&wrmask, &start[1], &count[1]);
    assert(wrmask == 0);
 
    /* one combined store is sufficient */
-   if (count[0] == count[1]) {
+   if (count[0] == count[1] && (align % elem_size_bytes) == 0 && (base_offset % elem_size_bytes) == 0) {
       Builder bld(ctx->program, ctx->block);
 
       Temp address_offset = address;
-      if ((base_offset >> 2) + start[1] > 255) {
+      if ((base_offset / elem_size_bytes) + start[1] > 255) {
          address_offset = bld.vadd32(bld.def(v1), Operand(base_offset), address_offset);
          base_offset = 0;
       }
 
       assert(count[0] == 1);
-      Temp val0 = emit_extract_vector(ctx, data, start[0], v1);
-      Temp val1 = emit_extract_vector(ctx, data, start[1], v1);
+      RegClass xtract_rc(RegType::vgpr, elem_size_bytes / 4);
+
+      Temp val0 = emit_extract_vector(ctx, data, start[0], xtract_rc);
+      Temp val1 = emit_extract_vector(ctx, data, start[1], xtract_rc);
       aco_opcode op = elem_size_bytes == 4 ? aco_opcode::ds_write2_b32 : aco_opcode::ds_write2_b64;
       base_offset = base_offset / elem_size_bytes;
       bld.ds(op, address_offset, val0, val1, m,
