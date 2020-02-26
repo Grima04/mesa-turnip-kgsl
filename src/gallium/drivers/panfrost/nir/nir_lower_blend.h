@@ -51,6 +51,7 @@ typedef struct {
 
    bool logicop_enable;
    unsigned logicop_func;
+   enum pipe_format format;
 } nir_lower_blend_options;
 
 void nir_lower_blend(nir_shader *shader, nir_lower_blend_options options);

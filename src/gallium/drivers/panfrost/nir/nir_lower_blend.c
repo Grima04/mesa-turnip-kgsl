@@ -32,6 +32,7 @@
 
 #include "compiler/nir/nir.h"
 #include "compiler/nir/nir_builder.h"
+#include "compiler/nir/nir_format_convert.h"
 #include "nir_lower_blend.h"
 
 /* Given processed factors, combine them per a blend function */
@@ -206,18 +207,30 @@ nir_blend_logicop(
    nir_lower_blend_options options,
    nir_ssa_def *src, nir_ssa_def *dst)
 {
-   /* TODO: Support other sizes */
-   nir_ssa_def *factor = nir_imm_float(b, 255);
+   const struct util_format_description *format_desc =
+      util_format_description(options.format);
 
-   src = nir_fmin(b, nir_fmax(b, src, nir_imm_float(b, -1)), nir_imm_float(b, 1));
-   src = nir_f2u32(b, nir_fround_even(b, nir_fmul(b, src, factor)));
+   assert(src->num_components <= 4);
+   assert(dst->num_components <= 4);
 
-   dst = nir_fmin(b, nir_fmax(b, dst, nir_imm_float(b, -1)), nir_imm_float(b, 1));
-   dst = nir_f2u32(b, nir_fround_even(b, nir_fmul(b, dst, factor)));
+   unsigned bits[4];
+   for (int i = 0; i < 4; ++i)
+       bits[i] = format_desc->channel[i].size;
+
+   src = nir_format_float_to_unorm(b, src, bits);
+   dst = nir_format_float_to_unorm(b, dst, bits);
 
    nir_ssa_def *out = nir_logicop_func(b, options.logicop_func, src, dst);
 
-   return nir_fdiv(b, nir_u2f32(b, out), factor);
+   if (bits[0] < 32) {
+       nir_const_value mask[4];
+       for (int i = 0; i < 4; ++i)
+           mask[i] = nir_const_value_for_int((1u << bits[i]) - 1, 32);
+
+       out = nir_iand(b, out, nir_build_imm(b, 4, 32, mask));
+   }
+
+   return nir_format_unorm_to_float(b, out, bits);
 }
 
 /* Given a blend state, the source color, and the destination color,
