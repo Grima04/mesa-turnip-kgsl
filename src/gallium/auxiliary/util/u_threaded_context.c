@@ -2110,7 +2110,7 @@ tc_draw_vbo(struct pipe_context *_pipe, const struct pipe_draw_info *info)
       memcpy(&p->draw, info, sizeof(*info));
       p->draw.has_user_indices = false;
       p->draw.index.resource = buffer;
-      p->draw.start = offset / index_size;
+      p->draw.start = offset >> util_logbase2(index_size);
    } else {
       /* Non-indexed call or indexed with a real index buffer. */
       struct tc_full_draw_info *p = tc_add_draw_vbo(_pipe, indirect != NULL);
