@@ -657,7 +657,7 @@ glsl_get_natural_size_align_bytes(const struct glsl_type *type,
    }
 
    case GLSL_TYPE_ARRAY: {
-      unsigned elem_size, elem_align;
+      unsigned elem_size = 0, elem_align = 0;
       glsl_get_natural_size_align_bytes(type->fields.array,
                                         &elem_size, &elem_align);
       *align = elem_align;

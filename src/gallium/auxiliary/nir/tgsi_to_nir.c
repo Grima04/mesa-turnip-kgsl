@@ -2302,7 +2302,7 @@ static void
 ttn_parse_tgsi(struct ttn_compile *c, const void *tgsi_tokens)
 {
    struct tgsi_parse_context parser;
-   int ret;
+   ASSERTED int ret;
 
    ret = tgsi_parse_init(&parser, tgsi_tokens);
    assert(ret == TGSI_PARSE_OK);

@@ -121,7 +121,7 @@ build_mat_subdet(struct nir_builder *b, struct vtn_ssa_value *src,
       return nir_channel(b, src->elems[1 - col]->def, 1 - row);
    } else {
       /* Swizzle to get all but the specified row */
-      unsigned swiz[3];
+      unsigned swiz[NIR_MAX_VEC_COMPONENTS] = {0};
       for (unsigned j = 0; j < 3; j++)
          swiz[j] = j + (j >= row);
 
