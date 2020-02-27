@@ -8816,7 +8816,13 @@ static void visit_cf_list(isel_context *ctx,
 
 static void export_vs_varying(isel_context *ctx, int slot, bool is_pos, int *next_pos)
 {
-   int offset = ctx->program->info->vs.outinfo.vs_output_param_offset[slot];
+   assert(ctx->stage == vertex_vs ||
+          ctx->stage == tess_eval_vs ||
+          ctx->stage == gs_copy_vs);
+
+   int offset = ctx->stage == tess_eval_vs
+                ? ctx->program->info->tes.outinfo.vs_output_param_offset[slot]
+                : ctx->program->info->vs.outinfo.vs_output_param_offset[slot];
    uint64_t mask = ctx->outputs.mask[slot];
    if (!is_pos && !mask)
       return;
@@ -8882,7 +8888,13 @@ static void export_vs_psiz_layer_viewport(isel_context *ctx, int *next_pos)
 
 static void create_vs_exports(isel_context *ctx)
 {
-   radv_vs_output_info *outinfo = &ctx->program->info->vs.outinfo;
+   assert(ctx->stage == vertex_vs ||
+          ctx->stage == tess_eval_vs ||
+          ctx->stage == gs_copy_vs);
+
+   radv_vs_output_info *outinfo = ctx->stage == tess_eval_vs
+                                  ? &ctx->program->info->tes.outinfo
+                                  : &ctx->program->info->vs.outinfo;
 
    if (outinfo->export_prim_id) {
       ctx->outputs.mask[VARYING_SLOT_PRIMITIVE_ID] |= 0x1;
@@ -9586,7 +9598,7 @@ void select_program(Program *program,
       if (ctx.program->info->so.num_outputs && ctx.stage == vertex_vs)
          emit_streamout(&ctx, 0);
 
-      if (ctx.stage == vertex_vs) {
+      if (ctx.stage == vertex_vs || ctx.stage == tess_eval_vs) {
          create_vs_exports(&ctx);
       } else if (nir->info.stage == MESA_SHADER_GEOMETRY) {
          Builder bld(ctx.program, ctx.block);
