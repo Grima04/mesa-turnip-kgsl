@@ -929,7 +929,8 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
       if (!ctx.info[instr->operands[0].tempId()].is_vec())
          break;
       Instruction* vec = ctx.info[instr->operands[0].tempId()].instr;
-      assert(instr->definitions.size() == vec->operands.size());
+      if (instr->definitions.size() != vec->operands.size())
+         break;
       for (unsigned i = 0; i < instr->definitions.size(); i++) {
          Operand vec_op = vec->operands[i];
          if (vec_op.isConstant()) {
