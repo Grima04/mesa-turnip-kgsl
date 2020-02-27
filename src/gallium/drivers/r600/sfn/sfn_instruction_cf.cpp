@@ -56,7 +56,7 @@ void IfInstruction::do_evalue_liveness(LiverangeEvaluator& eval) const
 bool IfInstruction::is_equal_to(const Instruction& lhs) const
 {
    assert(lhs.type() == cond_if);
-   const IfInstruction& l = dynamic_cast<const IfInstruction&>(lhs);
+   const IfInstruction& l = static_cast<const IfInstruction&>(lhs);
    return *l.m_pred == *m_pred;
 }
 

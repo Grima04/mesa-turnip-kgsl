@@ -284,7 +284,7 @@ void GPRArray::do_print(std::ostream& os) const
 
 bool GPRArray::is_equal_to(const Value& other) const
 {
-   const GPRArray& o = dynamic_cast<const GPRArray&>(other);
+   const GPRArray& o = static_cast<const GPRArray&>(other);
    return o.sel() == sel() &&
          o.m_values.size() == m_values.size() &&
          o.m_component_mask == m_component_mask;

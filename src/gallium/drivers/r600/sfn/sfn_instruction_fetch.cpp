@@ -215,7 +215,7 @@ FetchInstruction::FetchInstruction(GPRVector dst, PValue src, int scratch_size):
    m_dest_swizzle({0,1,2,3})
 {
    if (src->type() == Value::literal) {
-      const auto& lv = dynamic_cast<const LiteralValue&>(*src);
+      const auto& lv = static_cast<const LiteralValue&>(*src);
       m_array_base = lv.value();
       m_indexed = false;
       m_src.reset(new GPRValue(0,0));

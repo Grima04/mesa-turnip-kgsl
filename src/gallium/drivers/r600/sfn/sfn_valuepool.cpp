@@ -68,7 +68,7 @@ PValue ValuePool::from_nir(const nir_src& v, unsigned component, unsigned swizzl
          auto reg = lookup_register(idx, swizzled, false);
          if (reg) {
             if (reg->type() == Value::gpr_vector) {
-               auto& array = dynamic_cast<GPRArray&>(*reg);
+               auto& array = static_cast<GPRArray&>(*reg);
                reg = array.get_indirect(v.reg.base_offset,
                                         v.reg.indirect ?
                                            from_nir(*v.reg.indirect, 0, 0) : nullptr,
@@ -216,7 +216,7 @@ PValue ValuePool::from_nir(const nir_dest& v, unsigned component)
 
    if (retval->type() == Value::gpr_vector) {
       assert(!v.is_ssa);
-      auto& array = dynamic_cast<GPRArray&>(*retval);
+      auto& array = static_cast<GPRArray&>(*retval);
       retval = array.get_indirect(v.reg.base_offset,
                                   v.reg.indirect ?
                                   from_nir(*v.reg.indirect, 0, 0) : nullptr,
@@ -234,7 +234,7 @@ ValueMap ValuePool::get_temp_registers() const
       if (v.second->type() == Value::gpr)
          result.insert(v.second);
       else if (v.second->type() == Value::gpr_vector) {
-         auto& array = dynamic_cast<GPRArray&>(*v.second);
+         auto& array = static_cast<GPRArray&>(*v.second);
          array.collect_registers(result);
       }
    }

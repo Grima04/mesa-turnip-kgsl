@@ -697,7 +697,7 @@ bool AssemblyFromShaderLegacyImpl::emit_vtx(const FetchInstruction& fetch_instr)
 
    if (addr) {
       if (addr->type() == Value::literal) {
-         const auto& boffs = dynamic_cast<const LiteralValue&>(*addr);
+         const auto& boffs = static_cast<const LiteralValue&>(*addr);
          buffer_offset = boffs.value();
       } else {
          index_mode = bim_zero;
@@ -895,7 +895,7 @@ bool AssemblyFromShaderLegacyImpl::emit_gds(const GDSInstr& instr)
          m_bc->index_loaded[1] = true;
       }
    } else {
-      const LiteralValue& addr_reg = dynamic_cast<const LiteralValue&>(*addr);
+      const LiteralValue& addr_reg = static_cast<const LiteralValue&>(*addr);
       uav_idx = addr_reg.value() >> 2;
    }
 
@@ -972,7 +972,7 @@ bool AssemblyFromShaderLegacyImpl::emit_rat(const RatInstruction& instr)
 
          }
       } else {
-         const LiteralValue& addr_reg = dynamic_cast<const LiteralValue&>(*addr);
+         const LiteralValue& addr_reg = static_cast<const LiteralValue&>(*addr);
          rat_idx = addr_reg.value();
       }
    }

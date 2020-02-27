@@ -517,7 +517,7 @@ bool ShaderFromNirProcessor::emit_store_scratch(nir_intrinsic_instr* instr)
 
    WriteScratchInstruction *ir = nullptr;
    if (address->type() == Value::literal) {
-      const auto& lv = dynamic_cast<const LiteralValue&>(*address);
+      const auto& lv = static_cast<const LiteralValue&>(*address);
       ir = new WriteScratchInstruction(lv.value(), value, align, align_offset, writemask);
    } else {
       address = from_nir_with_fetch_constant(instr->src[1], 0);

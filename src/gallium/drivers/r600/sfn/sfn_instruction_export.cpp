@@ -128,7 +128,7 @@ bool WriteScratchInstruction::is_equal_to(const Instruction& lhs) const
 {
    if (lhs.type() != Instruction::mem_wr_scratch)
       return false;
-   const auto& other = dynamic_cast<const WriteScratchInstruction&>(lhs);
+   const auto& other = static_cast<const WriteScratchInstruction&>(lhs);
 
    if (m_address) {
       if (!other.m_address)

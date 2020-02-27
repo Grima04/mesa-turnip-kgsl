@@ -56,7 +56,7 @@ WaitAck::WaitAck(int nack):
 
 bool WaitAck::is_equal_to(const Instruction& lhs) const
 {
-   const auto& l = dynamic_cast<const WaitAck&>(lhs);
+   const auto& l = static_cast<const WaitAck&>(lhs);
    return m_nack == l.m_nack;
 }
 
