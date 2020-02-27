@@ -150,6 +150,7 @@ void validate(Program* program, FILE * output)
                bool flat = instr->format == Format::FLAT || instr->format == Format::SCRATCH || instr->format == Format::GLOBAL;
                bool can_be_undef = is_phi(instr) || instr->format == Format::EXP ||
                                    instr->format == Format::PSEUDO_REDUCTION ||
+                                   instr->opcode == aco_opcode::p_create_vector ||
                                    (flat && i == 1) || (instr->format == Format::MIMG && i == 1) ||
                                    ((instr->format == Format::MUBUF || instr->format == Format::MTBUF) && i == 1);
                check(can_be_undef, "Undefs can only be used in certain operands", instr.get());
@@ -241,9 +242,9 @@ void validate(Program* program, FILE * output)
             if (instr->opcode == aco_opcode::p_create_vector) {
                unsigned size = 0;
                for (const Operand& op : instr->operands) {
-                  size += op.size();
+                  size += op.bytes();
                }
-               check(size == instr->definitions[0].size(), "Definition size does not match operand sizes", instr.get());
+               check(size == instr->definitions[0].bytes(), "Definition size does not match operand sizes", instr.get());
                if (instr->definitions[0].getTemp().type() == RegType::sgpr) {
                   for (const Operand& op : instr->operands) {
                      check(op.isConstant() || op.regClass().type() == RegType::sgpr,
