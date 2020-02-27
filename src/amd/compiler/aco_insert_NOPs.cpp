@@ -225,7 +225,16 @@ int handle_raw_hazard_internal(Program *program, Block *block,
          return 0;
    }
 
-   return 0;
+   int res = 0;
+
+   /* Loops require branch instructions, which count towards the wait
+    * states. So even with loops this should finish unless nops_needed is some
+    * huge value. */
+   for (unsigned lin_pred : block->linear_preds) {
+      res = std::max(res, handle_raw_hazard_internal<Valu, Vintrp, Salu>(
+         program, &program->blocks[lin_pred], nops_needed, reg, mask));
+   }
+   return res;
 }
 
 template <bool Valu, bool Vintrp, bool Salu>
@@ -763,14 +772,10 @@ void mitigate_hazards(Program *program)
 
 void insert_NOPs(Program* program)
 {
-   if (program->chip_class >= GFX10) {
+   if (program->chip_class >= GFX10)
       mitigate_hazards<NOP_ctx_gfx10, handle_instruction_gfx10>(program);
-   } else {
-      for (Block& block : program->blocks) {
-         NOP_ctx_gfx6 ctx;
-         handle_block<NOP_ctx_gfx6, handle_instruction_gfx6>(program, ctx, block);
-      }
-   }
+   else
+      mitigate_hazards<NOP_ctx_gfx6, handle_instruction_gfx6>(program);
 }
 
 }
