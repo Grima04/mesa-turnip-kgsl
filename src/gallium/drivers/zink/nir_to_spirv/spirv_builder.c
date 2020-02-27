@@ -27,6 +27,8 @@
 #include "util/u_bitcast.h"
 #include "util/u_memory.h"
 #include "util/hash_table.h"
+#define XXH_INLINE_ALL
+#include "util/xxhash.h"
 
 #include <stdbool.h>
 #include <inttypes.h>
@@ -677,10 +679,9 @@ non_aggregate_type_hash(const void *arg)
 {
    const struct spirv_type *type = arg;
 
-   uint32_t hash = _mesa_fnv32_1a_offset_bias;
-   hash = _mesa_fnv32_1a_accumulate(hash, type->op);
-   hash = _mesa_fnv32_1a_accumulate_block(hash, type->args, sizeof(uint32_t) *
-                                          type->num_args);
+   uint32_t hash = 0;
+   hash = XXH32(&type->op, sizeof(type->op), hash);
+   hash = XXH32(type->args, sizeof(uint32_t) * type->num_args, hash);
    return hash;
 }
 
@@ -883,11 +884,10 @@ const_hash(const void *arg)
 {
    const struct spirv_const *key = arg;
 
-   uint32_t hash = _mesa_fnv32_1a_offset_bias;
-   hash = _mesa_fnv32_1a_accumulate(hash, key->op);
-   hash = _mesa_fnv32_1a_accumulate(hash, key->type);
-   hash = _mesa_fnv32_1a_accumulate_block(hash, key->args, sizeof(uint32_t) *
-                                          key->num_args);
+   uint32_t hash = 0;
+   hash = XXH32(&key->op, sizeof(key->op), hash);
+   hash = XXH32(&key->type, sizeof(key->type), hash);
+   hash = XXH32(key->args, sizeof(uint32_t) * key->num_args, hash);
    return hash;
 }
 
