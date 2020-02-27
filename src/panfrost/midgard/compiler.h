@@ -499,10 +499,16 @@ make_compiler_temp_reg(compiler_context *ctx)
 }
 
 static inline unsigned
+nir_ssa_index(nir_ssa_def *ssa)
+{
+        return (ssa->index << 1) | 0;
+}
+
+static inline unsigned
 nir_src_index(compiler_context *ctx, nir_src *src)
 {
         if (src->is_ssa)
-                return (src->ssa->index << 1) | 0;
+                return nir_ssa_index(src->ssa);
         else {
                 assert(!src->reg.indirect);
                 return (src->reg.reg->index << 1) | IS_REG;
