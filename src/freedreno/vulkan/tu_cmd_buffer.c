@@ -2771,7 +2771,7 @@ write_tex_const(struct tu_cmd_buffer *cmd,
          A6XX_TEX_CONST_2_TYPE(A6XX_TEX_2D) |
          A6XX_TEX_CONST_2_PITCH(tiling->tile0.extent.width * att->cpp);
       dst[3] = 0;
-      dst[4] = 0x100000 + att->gmem_offset;
+      dst[4] = cmd->device->physical_device->gmem_base + att->gmem_offset;
       dst[5] = A6XX_TEX_CONST_5_DEPTH(1);
       for (unsigned i = 6; i < A6XX_TEX_CONST_DWORDS; i++)
          dst[i] = 0;

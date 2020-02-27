@@ -252,6 +252,14 @@ tu_physical_device_init(struct tu_physical_device *device,
       goto fail;
    }
 
+   if (tu_drm_get_gmem_base(device, &device->gmem_base)) {
+      if (instance->debug_flags & TU_DEBUG_STARTUP)
+         tu_logi("Could not query the GMEM size");
+      result = vk_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,
+                         "could not get GMEM size");
+      goto fail;
+   }
+
    memset(device->name, 0, sizeof(device->name));
    sprintf(device->name, "FD%d", device->gpu_id);
 

@@ -313,6 +313,7 @@ struct tu_physical_device
 
    unsigned gpu_id;
    uint32_t gmem_size;
+   uint64_t gmem_base;
    uint32_t tile_align_w;
    uint32_t tile_align_h;
 
@@ -1623,6 +1624,9 @@ tu_drm_get_gpu_id(const struct tu_physical_device *dev, uint32_t *id);
 
 int
 tu_drm_get_gmem_size(const struct tu_physical_device *dev, uint32_t *size);
+
+int
+tu_drm_get_gmem_base(const struct tu_physical_device *dev, uint64_t *base);
 
 int
 tu_drm_submitqueue_new(const struct tu_device *dev,
