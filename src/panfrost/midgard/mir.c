@@ -255,6 +255,17 @@ mir_typesize(midgard_instruction *ins)
 midgard_reg_mode
 mir_srcsize(midgard_instruction *ins, unsigned i)
 {
+        if (ins->type == TAG_LOAD_STORE_4) {
+                if (OP_HAS_ADDRESS(ins->load_store.op)) {
+                        if (i == 1)
+                                return midgard_reg_mode_64;
+                        else if (i == 2) {
+                                bool zext = ins->load_store.arg_1 & 0x80;
+                                return zext ? midgard_reg_mode_32 : midgard_reg_mode_64;
+                        }
+                }
+        }
+
         /* TODO: 16-bit textures/ldst */
         if (ins->type == TAG_TEXTURE_4 || ins->type == TAG_LOAD_STORE_4)
                 return midgard_reg_mode_32;

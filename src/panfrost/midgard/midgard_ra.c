@@ -682,16 +682,17 @@ install_registers_instr(
 
                 unsigned src2 = ins->src[1];
                 unsigned src3 = ins->src[2];
+                midgard_reg_mode m32 = midgard_reg_mode_32;
 
                 if (src2 != ~0) {
-                        struct phys_reg src = index_to_reg(ctx, l, src2, mir_srcsize(ins, 1));
+                        struct phys_reg src = index_to_reg(ctx, l, src2, m32);
                         unsigned component = src.offset / src.size;
                         assert(component * src.size == src.offset);
                         ins->load_store.arg_1 |= midgard_ldst_reg(src.reg, component);
                 }
 
                 if (src3 != ~0) {
-                        struct phys_reg src = index_to_reg(ctx, l, src3, mir_srcsize(ins, 2));
+                        struct phys_reg src = index_to_reg(ctx, l, src3, m32);
                         unsigned component = src.offset / src.size;
                         assert(component * src.size == src.offset);
                         ins->load_store.arg_2 |= midgard_ldst_reg(src.reg, component);
