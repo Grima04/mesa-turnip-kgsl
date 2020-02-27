@@ -487,9 +487,10 @@ do {                                                                    \
       if (N>2) dest[2] = V2;                                            \
       if (N>3) dest[3] = V3;                                            \
       assert(exec->vtx.attr[A].type == T);                              \
-   }                                                                    \
                                                                         \
-   if ((A) == 0) {                                                      \
+      /* we now have accumulated a per-vertex attribute */              \
+      ctx->Driver.NeedFlush |= FLUSH_UPDATE_CURRENT;                    \
+   } else {                                                             \
       /* This is a glVertex call */                                     \
       uint32_t *dst = (uint32_t *)exec->vtx.buffer_ptr;                 \
       uint32_t *src = (uint32_t *)exec->vtx.vertex;                     \
@@ -523,9 +524,6 @@ do {                                                                    \
                                                                         \
       if (unlikely(++exec->vtx.vert_count >= exec->vtx.max_vert))       \
          vbo_exec_vtx_wrap(exec);                                       \
-   } else {                                                             \
-      /* we now have accumulated per-vertex attributes */               \
-      ctx->Driver.NeedFlush |= FLUSH_UPDATE_CURRENT;                    \
    }                                                                    \
 } while (0)
 
