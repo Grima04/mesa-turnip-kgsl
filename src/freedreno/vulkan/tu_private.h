@@ -1076,10 +1076,10 @@ struct tu_descriptor_map
    /* TODO: avoid fixed size array/justify the size */
    unsigned num; /* number of array entries */
    unsigned num_desc; /* Number of descriptors (sum of array_size[]) */
-   int set[64];
-   int binding[64];
-   int value[64];
-   int array_size[64];
+   int set[128];
+   int binding[128];
+   int value[128];
+   int array_size[128];
 };
 
 struct tu_shader
