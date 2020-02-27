@@ -636,7 +636,10 @@ nir_link_uniform(struct gl_context *ctx,
          int image_index = state->next_image_index;
          state->next_image_index += entries;
 
-         state->num_shader_images++;
+         /* Images (bound or bindless) are counted as two components as
+          * specified by ARB_bindless_texture.
+          */
+         state->num_shader_images += values / 2;
 
          uniform->opaque[stage].active = true;
          uniform->opaque[stage].index = image_index;
