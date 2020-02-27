@@ -2400,17 +2400,32 @@ tu_CmdExecuteCommands(VkCommandBuffer commandBuffer,
          break;
       }
 
-      result = tu_cs_add_entries(&cmd->draw_cs, &secondary->draw_cs);
-      if (result != VK_SUCCESS) {
-         cmd->record_result = result;
-         break;
-      }
+      if (secondary->usage_flags &
+          VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT) {
+         assert(tu_cs_is_empty(&secondary->cs));
 
-      result = tu_cs_add_entries(&cmd->draw_epilogue_cs,
-            &secondary->draw_epilogue_cs);
-      if (result != VK_SUCCESS) {
-         cmd->record_result = result;
-         break;
+         result = tu_cs_add_entries(&cmd->draw_cs, &secondary->draw_cs);
+         if (result != VK_SUCCESS) {
+            cmd->record_result = result;
+            break;
+         }
+
+         result = tu_cs_add_entries(&cmd->draw_epilogue_cs,
+               &secondary->draw_epilogue_cs);
+         if (result != VK_SUCCESS) {
+            cmd->record_result = result;
+            break;
+         }
+      } else {
+         assert(tu_cs_is_empty(&secondary->draw_cs));
+         assert(tu_cs_is_empty(&secondary->draw_epilogue_cs));
+
+         for (uint32_t j = 0; j < secondary->cs.bo_count; j++) {
+            tu_bo_list_add(&cmd->bo_list, secondary->cs.bos[j],
+                           MSM_SUBMIT_BO_READ | MSM_SUBMIT_BO_DUMP);
+         }
+
+         tu_cs_emit_call(&cmd->cs, &secondary->cs);
       }
    }
    cmd->state.dirty = ~0u; /* TODO: set dirty only what needs to be */
