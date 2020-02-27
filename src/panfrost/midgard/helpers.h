@@ -230,6 +230,9 @@ struct mir_tag_props {
  * its mask is 0 */
 #define LDST_SIDE_FX (1 << 4)
 
+/* Computes an address according to indirects/zext/shift/etc */
+#define LDST_ADDRESS (1 << 5)
+
 /* This file is common, so don't define the tables themselves. #include
  * midgard_op.h if you need that, or edit midgard_ops.c directly */
 
