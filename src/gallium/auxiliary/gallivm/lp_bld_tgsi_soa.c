@@ -1764,7 +1764,8 @@ emit_store_tcs_output(struct lp_build_tgsi_context *bld_base,
                                           reg->Register.Indirect,
                                           attrib_index,
                                           channel_index,
-                                          value, NULL);
+                                          value,
+                                          mask_vec(bld_base));
 }
 
 static void
