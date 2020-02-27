@@ -570,6 +570,23 @@ v3dv_ResetCommandBuffer(VkCommandBuffer commandBuffer,
    return cmd_buffer_reset(cmd_buffer, flags);
 }
 
+VkResult
+v3dv_ResetCommandPool(VkDevice device,
+                      VkCommandPool commandPool,
+                      VkCommandPoolResetFlags flags)
+{
+   V3DV_FROM_HANDLE(v3dv_cmd_pool, pool, commandPool);
+
+   VkCommandBufferResetFlags reset_flags = 0;
+   if (flags & VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT)
+      reset_flags = VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT;
+   list_for_each_entry(struct v3dv_cmd_buffer, cmd_buffer,
+                       &pool->cmd_buffers, pool_link) {
+      cmd_buffer_reset(cmd_buffer, reset_flags);
+   }
+
+   return VK_SUCCESS;
+}
 static void
 emit_clip_window(struct v3dv_job *job, const VkRect2D *rect)
 {
