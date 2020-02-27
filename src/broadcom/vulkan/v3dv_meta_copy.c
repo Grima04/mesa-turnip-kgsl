@@ -689,6 +689,13 @@ copy_image_to_buffer_tlb(struct v3dv_cmd_buffer *cmd_buffer,
    v3dv_cmd_buffer_finish_job(cmd_buffer);
 }
 
+static inline bool
+can_use_tlb(struct v3dv_image *image, const VkOffset3D *offset)
+{
+   return image->format->rt_type != V3D_OUTPUT_IMAGE_FORMAT_NO &&
+          offset->x == 0 && offset->y == 0;
+}
+
 void
 v3dv_CmdCopyImageToBuffer(VkCommandBuffer commandBuffer,
                           VkImage srcImage,
@@ -702,7 +709,7 @@ v3dv_CmdCopyImageToBuffer(VkCommandBuffer commandBuffer,
    V3DV_FROM_HANDLE(v3dv_buffer, buffer, destBuffer);
 
    for (uint32_t i = 0; i < regionCount; i++) {
-      if (can_use_tlb_copy_for_image_offset(&pRegions[i].imageOffset))
+      if (can_use_tlb(image, &pRegions[i].imageOffset))
          copy_image_to_buffer_tlb(cmd_buffer, buffer, image, &pRegions[i]);
       else
          assert(!"Fallback path for vkCopyImageToBuffer not implemented");
@@ -784,8 +791,6 @@ copy_image_tlb(struct v3dv_cmd_buffer *cmd_buffer,
                struct v3dv_image *src,
                const VkImageCopy *region)
 {
-   assert(can_use_tlb_copy_for_image_offset(&region->dstOffset));
-
    /* From the Vulkan spec, VkImageCopy valid usage:
     *
     *    "If neither the calling command’s srcImage nor the calling command’s
@@ -852,8 +857,8 @@ v3dv_CmdCopyImage(VkCommandBuffer commandBuffer,
    V3DV_FROM_HANDLE(v3dv_image, dst, dstImage);
 
    for (uint32_t i = 0; i < regionCount; i++) {
-      if (can_use_tlb_copy_for_image_offset(&pRegions[i].dstOffset) &&
-          can_use_tlb_copy_for_image_offset(&pRegions[i].srcOffset)) {
+      if (can_use_tlb(src, &pRegions[i].srcOffset) &&
+          can_use_tlb(dst, &pRegions[i].dstOffset)) {
          copy_image_tlb(cmd_buffer, dst, src, &pRegions[i]);
       } else {
          assert(!"Fallback path for vkCopyImageToImage not implemented");
@@ -991,8 +996,11 @@ v3dv_CmdClearColorImage(VkCommandBuffer commandBuffer,
       .color = *pColor,
    };
 
-   for (uint32_t i = 0; i < rangeCount; i++)
-      clear_image_tlb(cmd_buffer, image, &clear_value, &pRanges[i]);
+   const VkOffset3D origin = { 0, 0, 0 };
+   for (uint32_t i = 0; i < rangeCount; i++) {
+      if (can_use_tlb(image, &origin))
+         clear_image_tlb(cmd_buffer, image, &clear_value, &pRanges[i]);
+   }
 }
 
 void
