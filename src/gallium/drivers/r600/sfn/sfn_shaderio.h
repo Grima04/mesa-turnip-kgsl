@@ -55,6 +55,8 @@ public:
    virtual int lds_pos() const;
    void set_uses_interpolate_at_centroid();
 
+   virtual bool is_varying() const;
+
 private:
    virtual void set_specific_ioinfo(r600_shader_io& io) const;
 
@@ -92,6 +94,8 @@ public:
 
    size_t location() const {return m_driver_location;}
    int location_frac() const {return m_location_frac;}
+
+   bool is_varying() const override;
 
 private:
    void evaluate_spi_sid();

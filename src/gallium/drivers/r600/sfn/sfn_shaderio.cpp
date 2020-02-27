@@ -72,6 +72,11 @@ int ShaderInput::lds_pos() const
    return 0;
 }
 
+bool ShaderInput::is_varying() const
+{
+   return false;
+}
+
 void ShaderInput::set_uses_interpolate_at_centroid()
 {
    m_uses_interpolate_at_centroid = true;
@@ -168,6 +173,11 @@ ShaderInputVarying::ShaderInputVarying(tgsi_semantic _name, int sid, nir_variabl
            << " -> IP:" << m_interpolate
            << " IJ:" << m_ij_index
            << "\n";
+}
+
+bool ShaderInputVarying::is_varying() const
+{
+   return true;
 }
 
 void ShaderInputVarying::update_mask(int additional_comps)
@@ -273,9 +283,9 @@ PShaderInput ShaderIO::find_varying(tgsi_semantic name, int sid, int frac)
 {
    for (auto& a : m_inputs) {
       if (a->name() == name) {
-         ShaderInputVarying *v = dynamic_cast<ShaderInputVarying *>(a.get());
-         assert(v);
-         if (v->sid() == sid && (v->location_frac() == frac))
+         assert(a->is_varying());
+         auto& v = static_cast<ShaderInputVarying&>(*a);
+         if (v.sid() == sid && (v.location_frac() == frac))
             return a;
       }
    }
@@ -298,8 +308,7 @@ void ShaderIO::sort_varying_inputs()
    vector<int> idx;
 
    for (auto i = 0u; i < m_inputs.size(); ++i) {
-      ShaderInputVarying *vi = dynamic_cast<ShaderInputVarying *>(m_inputs[i].get());
-      if (vi) {
+      if (m_inputs[i]->is_varying()) {
          q.push(m_inputs[i]);
          idx.push_back(i);
       }
@@ -318,25 +327,26 @@ void ShaderIO::update_lds_pos()
    m_lds_pos = -1;
    m_ldspos.resize(m_inputs.size());
    for (auto& i : m_inputs) {
-      ShaderInputVarying *v = dynamic_cast<ShaderInputVarying *>(i.get());
-      if (!v)
+      if (!i->is_varying())
          continue;
+
+      auto& v = static_cast<ShaderInputVarying&>(*i);
       /* There are shaders that miss an input ...*/
-      if (m_ldspos.size() <= static_cast<unsigned>(v->location()))
-          m_ldspos.resize(v->location() + 1);
+      if (m_ldspos.size() <= static_cast<unsigned>(v.location()))
+          m_ldspos.resize(v.location() + 1);
    }
 
    std::fill(m_ldspos.begin(), m_ldspos.end(), -1);
    for (auto& i : m_inputs) {
-      ShaderInputVarying *v = dynamic_cast<ShaderInputVarying *>(i.get());
-      if (!v)
+      if (!i->is_varying())
          continue;
 
-      if (m_ldspos[v->location()] < 0) {
+      auto& v = static_cast<ShaderInputVarying&>(*i);
+      if (m_ldspos[v.location()] < 0) {
          ++m_lds_pos;
-         m_ldspos[v->location()] = m_lds_pos;
+         m_ldspos[v.location()] = m_lds_pos;
       }
-      v->set_lds_pos(m_lds_pos);
+      v.set_lds_pos(m_lds_pos);
    }
    ++m_lds_pos;
 }
@@ -355,9 +365,12 @@ ShaderInput& ShaderIO::input(size_t k)
 ShaderInput& ShaderIO::input(size_t driver_loc, int frac)
 {
    for (auto& i: m_inputs) {
-      auto v = dynamic_cast<ShaderInputVarying*>(i.get());
-      if (v && v->location() == driver_loc && v->location_frac() == frac)
-         return *v;
+      if (!i->is_varying())
+         continue;
+
+      auto& v = static_cast<ShaderInputVarying&>(*i);
+      if (v.location() == driver_loc && v.location_frac() == frac)
+         return v;
    }
    return input(driver_loc);
 }
