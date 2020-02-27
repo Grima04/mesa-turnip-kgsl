@@ -4481,7 +4481,7 @@ void load_buffer(isel_context *ctx, unsigned num_components, unsigned component_
    unsigned num_bytes = num_components * component_size;
 
    aco_opcode op;
-   if (dst.type() == RegType::vgpr || (ctx->options->chip_class < GFX8 && !readonly)) {
+   if (dst.type() == RegType::vgpr || ((ctx->options->chip_class < GFX8 || component_size < 4) && !readonly)) {
       Operand vaddr = offset.type() == RegType::vgpr ? Operand(offset) : Operand(v1);
       Operand soffset = offset.type() == RegType::sgpr ? Operand(offset) : Operand((uint32_t) 0);
       unsigned const_offset = 0;
@@ -4558,7 +4558,7 @@ void load_buffer(isel_context *ctx, unsigned num_components, unsigned component_
       mubuf->offset = const_offset;
       aco_ptr<Instruction> instr = std::move(mubuf);
 
-      if (dst.regClass().is_subdword()) {
+      if (component_size < 4) {
          Temp vec = num_bytes <= 4 ? bld.tmp(v1) : num_bytes <= 8 ? bld.tmp(v2) : bld.tmp(v3);
          instr->definitions[0] = Definition(vec);
          bld.insert(std::move(instr));
