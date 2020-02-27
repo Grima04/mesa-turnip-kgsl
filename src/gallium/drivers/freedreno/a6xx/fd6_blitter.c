@@ -801,15 +801,26 @@ handle_compressed_blit(struct fd_context *ctx, const struct pipe_blit_info *info
 	int bw = util_format_get_blockwidth(info->src.format);
 	int bh = util_format_get_blockheight(info->src.format);
 
+	/* NOTE: x/y *must* be aligned to block boundary (ie. in
+	 * glCompressedTexSubImage2D()) but width/height may not
+	 * be:
+	 */
+
+	debug_assert((blit.src.box.x % bw) == 0);
+	debug_assert((blit.src.box.y % bh) == 0);
+
 	blit.src.box.x /= bw;
 	blit.src.box.y /= bh;
-	blit.src.box.width /= bw;
-	blit.src.box.height /= bh;
+	blit.src.box.width  = DIV_ROUND_UP(blit.src.box.width, bw);
+	blit.src.box.height = DIV_ROUND_UP(blit.src.box.height, bh);
+
+	debug_assert((blit.dst.box.x % bw) == 0);
+	debug_assert((blit.dst.box.y % bh) == 0);
 
 	blit.dst.box.x /= bw;
 	blit.dst.box.y /= bh;
-	blit.dst.box.width /= bw;
-	blit.dst.box.height /= bh;
+	blit.dst.box.width  = DIV_ROUND_UP(blit.dst.box.width, bw);
+	blit.dst.box.height = DIV_ROUND_UP(blit.dst.box.height, bh);
 
 	return do_rewritten_blit(ctx, &blit);
 }
