@@ -22,6 +22,7 @@
 libpanfrost_midgard_files = files(
   'midgard_compile.c',
   'mir.c',
+  'midgard_address.c',
   'midgard_print.c',
   'midgard_schedule.c',
   'midgard_derivatives.c',

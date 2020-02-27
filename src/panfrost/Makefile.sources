@@ -29,6 +29,7 @@ midgard_FILES := \
         midgard/disassemble.c \
         midgard/disassemble.h \
         midgard/helpers.h \
+        midgard/midgard_address.c \
         midgard/midgard_compile.c \
         midgard/midgard_compile.h \
         midgard/midgard_derivatives.c \
