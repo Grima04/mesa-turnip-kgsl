@@ -352,6 +352,7 @@ public:
 
    Result copy(Definition dst, Op op_) {
       Operand op = op_.op;
+      assert(op.bytes() == dst.bytes());
       if (dst.regClass() == s1 && op.size() == 1 && op.isLiteral()) {
          uint32_t imm = op.constantValue();
          if (imm == 0x3e22f983) {
@@ -372,15 +373,24 @@ public:
          }
       }
 
-      if (dst.regClass() == s2) {
+      if (dst.regClass() == s1) {
+        return sop1(aco_opcode::s_mov_b32, dst, op);
+      } else if (dst.regClass() == s2) {
         return sop1(aco_opcode::s_mov_b64, dst, op);
-      } else if (op.size() > 1) {
-         return pseudo(aco_opcode::p_create_vector, dst, op);
       } else if (dst.regClass() == v1 || dst.regClass() == v1.as_linear()) {
         return vop1(aco_opcode::v_mov_b32, dst, op);
+      } else if (op.bytes() > 2) {
+         return pseudo(aco_opcode::p_create_vector, dst, op);
+      } else if (dst.regClass().is_subdword()) {
+        aco_ptr<SDWA_instruction> sdwa{create_instruction<SDWA_instruction>(aco_opcode::v_mov_b32, asSDWA(Format::VOP1), 1, 1)};
+        sdwa->operands[0] = op;
+        sdwa->definitions[0] = dst;
+        sdwa->sel[0] = op.bytes() == 1 ? sdwa_ubyte : sdwa_uword;
+        sdwa->dst_sel = dst.bytes() == 1 ? sdwa_ubyte : sdwa_uword;
+        sdwa->dst_preserve = true;
+        return insert(std::move(sdwa));
       } else {
-        assert(dst.regClass() == s1);
-        return sop1(aco_opcode::s_mov_b32, dst, op);
+        unreachable("Unhandled case in bld.copy()");
       }
    }
 
