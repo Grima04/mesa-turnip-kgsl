@@ -1361,7 +1361,7 @@ v3dv_CmdFillBuffer(VkCommandBuffer commandBuffer,
     *    a multiple of 4, then the nearest smaller multiple is used."
     */
    if (size == VK_WHOLE_SIZE) {
-      size = dst_buffer->mem->bo->size;
+      size = dst_buffer->size - dstOffset;
       size -= size % 4;
    }
 
