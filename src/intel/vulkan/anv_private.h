@@ -3165,10 +3165,7 @@ struct anv_pipeline {
    uint32_t                                     num_executables;
    struct anv_pipeline_executable               executables[MAX_PIPELINE_EXECUTABLES];
 
-   struct {
-      const struct gen_l3_config *              l3_config;
-      uint32_t                                  total_size;
-   } urb;
+   const struct gen_l3_config *                 l3_config;
 
    VkShaderStageFlags                           active_stages;
    struct anv_state                             blend_state;

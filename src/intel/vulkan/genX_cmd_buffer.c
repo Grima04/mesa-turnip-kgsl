@@ -3035,7 +3035,7 @@ genX(cmd_buffer_flush_state)(struct anv_cmd_buffer *cmd_buffer)
 
    assert((pipeline->active_stages & VK_SHADER_STAGE_COMPUTE_BIT) == 0);
 
-   genX(cmd_buffer_config_l3)(cmd_buffer, pipeline->urb.l3_config);
+   genX(cmd_buffer_config_l3)(cmd_buffer, pipeline->l3_config);
 
    genX(cmd_buffer_emit_hashing_mode)(cmd_buffer, UINT_MAX, UINT_MAX, 1);
 
@@ -3926,7 +3926,7 @@ genX(cmd_buffer_flush_compute_state)(struct anv_cmd_buffer *cmd_buffer)
 
    assert(pipeline->active_stages == VK_SHADER_STAGE_COMPUTE_BIT);
 
-   genX(cmd_buffer_config_l3)(cmd_buffer, pipeline->urb.l3_config);
+   genX(cmd_buffer_config_l3)(cmd_buffer, pipeline->l3_config);
 
    genX(flush_pipeline_select_gpgpu)(cmd_buffer);
 

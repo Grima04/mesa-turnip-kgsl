@@ -312,7 +312,7 @@ emit_urb_setup(struct anv_pipeline *pipeline,
    }
 
    genX(emit_urb_setup)(pipeline->device, &pipeline->batch,
-                        pipeline->urb.l3_config,
+                        pipeline->l3_config,
                         pipeline->active_stages, entry_size,
                         deref_block_size);
 }

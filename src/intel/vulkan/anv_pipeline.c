@@ -1812,9 +1812,7 @@ anv_pipeline_setup_l3_config(struct anv_pipeline *pipeline, bool needs_slm)
    const struct gen_l3_weights w =
       gen_get_default_l3_weights(devinfo, true, needs_slm);
 
-   pipeline->urb.l3_config = gen_get_l3_config(devinfo, w);
-   pipeline->urb.total_size =
-      gen_get_l3_config_urb_size(devinfo, pipeline->urb.l3_config);
+   pipeline->l3_config = gen_get_l3_config(devinfo, w);
 }
 
 VkResult
