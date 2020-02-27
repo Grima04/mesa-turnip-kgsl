@@ -766,23 +766,27 @@ setup_vs_variables(isel_context *ctx, nir_shader *nir)
 
 void setup_gs_variables(isel_context *ctx, nir_shader *nir)
 {
-   assert(ctx->stage == vertex_geometry_gs || ctx->stage == geometry_gs);
-   if (ctx->stage == vertex_geometry_gs) {
+   if (ctx->stage == vertex_geometry_gs || ctx->stage == tess_eval_geometry_gs) {
       nir_foreach_variable(variable, &nir->inputs) {
          variable->data.driver_location = util_bitcount64(ctx->input_masks[nir->info.stage] & ((1ull << variable->data.location) - 1ull)) * 4;
       }
-   } else {
+   } else if (ctx->stage == geometry_gs) {
       //TODO: make this more compact
       nir_foreach_variable(variable, &nir->inputs) {
          variable->data.driver_location = shader_io_get_unique_index((gl_varying_slot)variable->data.location) * 4;
       }
+   } else {
+      unreachable("Unsupported GS stage.");
    }
+
    nir_foreach_variable(variable, &nir->outputs) {
       variable->data.driver_location = variable->data.location * 4;
    }
 
    if (ctx->stage == vertex_geometry_gs)
-      ctx->program->info->gs.es_type = MESA_SHADER_VERTEX; /* tesselation shaders are not yet supported */
+      ctx->program->info->gs.es_type = MESA_SHADER_VERTEX;
+   else if (ctx->stage == tess_eval_geometry_gs)
+      ctx->program->info->gs.es_type = MESA_SHADER_TESS_EVAL;
 }
 
 void
@@ -831,6 +835,33 @@ setup_tcs_variables(isel_context *ctx, nir_shader *nir)
 }
 
 void
+setup_tes_variables(isel_context *ctx, nir_shader *nir)
+{
+   ctx->tcs_num_patches = ctx->args->options->key.tes.num_patches;
+
+   nir_foreach_variable(variable, &nir->inputs) {
+      variable->data.driver_location = shader_io_get_unique_index((gl_varying_slot) variable->data.location) * 4;
+   }
+
+   nir_foreach_variable(variable, &nir->outputs) {
+      if (ctx->stage == tess_eval_vs)
+         variable->data.driver_location = variable->data.location * 4;
+      else if (ctx->stage == tess_eval_es)
+         variable->data.driver_location = shader_io_get_unique_index((gl_varying_slot) variable->data.location) * 4;
+      else if (ctx->stage == tess_eval_geometry_gs)
+         variable->data.driver_location = util_bitcount64(ctx->output_masks[nir->info.stage] & ((1ull << variable->data.location) - 1ull)) * 4;
+      else
+         unreachable("Unsupported TES shader stage");
+   }
+
+   if (ctx->stage == tess_eval_vs) {
+      radv_vs_output_info *outinfo = &ctx->program->info->tes.outinfo;
+      setup_vs_output_info(ctx, nir, outinfo->export_prim_id,
+                           ctx->options->key.vs_common_out.export_clip_dists, outinfo);
+   }
+}
+
+void
 setup_variables(isel_context *ctx, nir_shader *nir)
 {
    switch (nir->info.stage) {
@@ -857,6 +888,10 @@ setup_variables(isel_context *ctx, nir_shader *nir)
    }
    case MESA_SHADER_TESS_CTRL: {
       setup_tcs_variables(ctx, nir);
+      break;
+   }
+   case MESA_SHADER_TESS_EVAL: {
+      setup_tes_variables(ctx, nir);
       break;
    }
    default:
