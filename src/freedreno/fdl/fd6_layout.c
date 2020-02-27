@@ -89,13 +89,6 @@ fdl6_layout(struct fdl_layout *layout,
 
 	const struct util_format_description *format_desc =
 		util_format_description(format);
-	uint32_t depth = depth0;
-	/* linear dimensions: */
-	uint32_t lwidth = width0;
-	uint32_t lheight = height0;
-	/* tile_mode dimensions: */
-	uint32_t twidth = util_next_power_of_two(lwidth);
-	uint32_t theight = util_next_power_of_two(lheight);
 	int ta = layout->cpp;
 
 	/* The z16/r16 formats seem to not play by the normal tiling rules: */
@@ -125,6 +118,7 @@ fdl6_layout(struct fdl_layout *layout,
 	}
 
 	for (uint32_t level = 0; level < mip_levels; level++) {
+		uint32_t depth = u_minify(depth0, level);
 		struct fdl_slice *slice = &layout->slices[level];
 		struct fdl_slice *ubwc_slice = &layout->ubwc_slices[level];
 		uint32_t tile_mode = fdl_tile_mode(layout, level);
@@ -132,11 +126,11 @@ fdl6_layout(struct fdl_layout *layout,
 
 		/* tiled levels of 3D textures are rounded up to PoT dimensions: */
 		if (is_3d && tile_mode) {
-			width = twidth;
-			height = theight;
+			width = u_minify(util_next_power_of_two(width0), level);
+			height = u_minify(util_next_power_of_two(height0), level);
 		} else {
-			width = lwidth;
-			height = lheight;
+			width = u_minify(width0, level);
+			height = u_minify(height0, level);
 		}
 		uint32_t aligned_height = height;
 		uint32_t pitchalign;
@@ -212,12 +206,6 @@ fdl6_layout(struct fdl_layout *layout,
 			ubwc_slice->offset = layout->ubwc_layer_size;
 			layout->ubwc_layer_size += ubwc_slice->size0;
 		}
-
-		depth = u_minify(depth, 1);
-		lwidth = u_minify(lwidth, 1);
-		lheight = u_minify(lheight, 1);
-		twidth = u_minify(twidth, 1);
-		theight = u_minify(theight, 1);
 	}
 
 	if (layout->layer_first) {
