@@ -449,11 +449,7 @@ v3dv_CreateImageView(VkDevice _device,
    iview->vk_format = pCreateInfo->format;
    iview->format = v3dv_get_format(pCreateInfo->format);
    assert(iview->format && iview->format->supported);
-
-   const struct util_format_description *desc =
-      vk_format_description(iview->vk_format);
-   iview->swap_rb = desc->swizzle[0] == PIPE_SWIZZLE_Z &&
-                    iview->vk_format != VK_FORMAT_B5G6R5_UNORM_PACK16;
+   iview->swap_rb = iview->format->swizzle[0] == PIPE_SWIZZLE_Z;
 
    /* FIXME: should we just move this to
     * v3dv_get_internal_type_bpp_for_output_format instead?

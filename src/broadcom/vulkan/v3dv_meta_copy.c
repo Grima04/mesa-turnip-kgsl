@@ -151,6 +151,13 @@ choose_tlb_format(struct v3dv_image *image,
    }
 }
 
+static inline bool
+format_needs_rb_swap(VkFormat format)
+{
+   const uint8_t *swizzle = v3dv_get_format_swizzle(format);
+   return swizzle[0] == PIPE_SWIZZLE_Z;
+}
+
 static void
 get_internal_type_bpp_for_image_aspects(struct v3dv_image *image,
                                         VkImageAspectFlags aspect_mask,
@@ -452,10 +459,7 @@ emit_image_load(struct v3dv_cl *cl,
          /* This is not a raw data copy (i.e. we are clearing the image),
           * so we need to make sure we respect the format swizzle.
           */
-         const struct util_format_description *desc =
-            vk_format_description(image->vk_format);
-         needs_rb_swap = desc->swizzle[0] == PIPE_SWIZZLE_Z &&
-                         image->vk_format != VK_FORMAT_B5G6R5_UNORM_PACK16;
+         needs_rb_swap = format_needs_rb_swap(image->vk_format);
       }
 
       load.r_b_swap = needs_rb_swap;
@@ -509,10 +513,7 @@ emit_image_store(struct v3dv_cl *cl,
          needs_chan_reverse = true;
       } else if (!is_copy_from_buffer && !is_copy_to_buffer &&
                  (aspect & VK_IMAGE_ASPECT_COLOR_BIT)) {
-         const struct util_format_description *desc =
-            vk_format_description(image->vk_format);
-         needs_rb_swap = desc->swizzle[0] == PIPE_SWIZZLE_Z &&
-                         image->vk_format != VK_FORMAT_B5G6R5_UNORM_PACK16;
+         needs_rb_swap = format_needs_rb_swap(image->vk_format);
       }
 
       store.r_b_swap = needs_rb_swap;
