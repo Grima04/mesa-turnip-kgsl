@@ -271,6 +271,9 @@ struct PhysReg {
    constexpr unsigned reg() const { return reg_b >> 2; }
    constexpr unsigned byte() const { return reg_b & 0x3; }
    constexpr operator unsigned() const { return reg(); }
+   constexpr bool operator==(PhysReg other) const { return reg_b == other.reg_b; }
+   constexpr bool operator!=(PhysReg other) const { return reg_b != other.reg_b; }
+   constexpr bool operator <(PhysReg other) const { return reg_b < other.reg_b; }
 
    uint16_t reg_b = 0;
 };
