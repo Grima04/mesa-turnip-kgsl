@@ -328,12 +328,19 @@ image_format_features(VkFormat vk_format,
    if ((aspects & zs_aspects) == VK_IMAGE_ASPECT_STENCIL_BIT)
       return 0;
 
-   VkFormatFeatureFlags flags =
-      VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT |
-      VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT |
-      VK_FORMAT_FEATURE_BLIT_SRC_BIT |
-      VK_FORMAT_FEATURE_TRANSFER_SRC_BIT |
-      VK_FORMAT_FEATURE_TRANSFER_DST_BIT;
+   if (v3dv_format->tex_type == TEXTURE_DATA_FORMAT_NO &&
+       v3dv_format->rt_type == V3D_OUTPUT_IMAGE_FORMAT_NO) {
+      return 0;
+   }
+
+   VkFormatFeatureFlags flags = VK_FORMAT_FEATURE_TRANSFER_SRC_BIT |
+                                VK_FORMAT_FEATURE_TRANSFER_DST_BIT;
+
+   if (v3dv_format->tex_type != TEXTURE_DATA_FORMAT_NO) {
+      flags |= VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT |
+               VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT |
+               VK_FORMAT_FEATURE_BLIT_SRC_BIT;
+   }
 
    if (v3dv_format->rt_type != V3D_OUTPUT_IMAGE_FORMAT_NO) {
       flags |= VK_FORMAT_FEATURE_BLIT_DST_BIT;
