@@ -522,10 +522,10 @@ tu6_emit_mrt(struct tu_cmd_buffer *cmd,
    }
 
    tu_cs_emit_regs(cs,
-                   A6XX_RB_SRGB_CNTL(srgb_cntl));
+                   A6XX_RB_SRGB_CNTL(.dword = srgb_cntl));
 
    tu_cs_emit_regs(cs,
-                   A6XX_SP_SRGB_CNTL(srgb_cntl));
+                   A6XX_SP_SRGB_CNTL(.dword = srgb_cntl));
 
    tu_cs_emit_regs(cs,
                    A6XX_RB_RENDER_COMPONENTS(
