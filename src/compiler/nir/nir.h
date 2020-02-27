@@ -41,6 +41,8 @@
 #include "compiler/nir_types.h"
 #include "compiler/shader_enums.h"
 #include "compiler/shader_info.h"
+#define XXH_INLINE_ALL
+#include "util/xxhash.h"
 #include <stdio.h>
 
 #ifndef NDEBUG

@@ -27,7 +27,7 @@
 #include "nir_builder.h"
 #include "util/u_dynarray.h"
 
-#define HASH(hash, data) _mesa_fnv32_1a_accumulate((hash), (data))
+#define HASH(hash, data) XXH32(&data, sizeof(data), hash)
 
 static uint32_t
 hash_src(uint32_t hash, const nir_src *src)
@@ -64,7 +64,7 @@ hash_alu(uint32_t hash, const nir_alu_instr *instr)
 static uint32_t
 hash_instr(const nir_instr *instr)
 {
-   uint32_t hash = _mesa_fnv32_1a_offset_bias;
+   uint32_t hash = 0;
 
    switch (instr->type) {
    case nir_instr_type_alu:
