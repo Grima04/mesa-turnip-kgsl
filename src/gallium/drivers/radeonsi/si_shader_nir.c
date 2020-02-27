@@ -34,12 +34,12 @@
 #include "compiler/nir/nir_builder.h"
 #include "compiler/nir/nir_deref.h"
 
-static nir_variable* tex_get_texture_var(nir_tex_instr *instr)
+static const nir_deref_instr *tex_get_texture_deref(nir_tex_instr *instr)
 {
 	for (unsigned i = 0; i < instr->num_srcs; i++) {
 		switch (instr->src[i].src_type) {
 		case nir_tex_src_texture_deref:
-			return nir_deref_instr_get_variable(nir_src_as_deref(instr->src[i].src));
+			return nir_src_as_deref(instr->src[i].src);
 		default:
 			break;
 		}
@@ -201,13 +201,14 @@ static void scan_instruction(const struct nir_shader *nir,
 		}
 	} else if (instr->type == nir_instr_type_tex) {
 		nir_tex_instr *tex = nir_instr_as_tex(instr);
-		nir_variable *texture = tex_get_texture_var(tex);
+		const nir_deref_instr *deref = tex_get_texture_deref(tex);
+		nir_variable *var = deref ? nir_deref_instr_get_variable(deref) : NULL;
 
-		if (!texture) {
+		if (!var) {
 			info->samplers_declared |=
 				u_bit_consecutive(tex->sampler_index, 1);
 		} else {
-			if (texture->data.bindless)
+			if (deref->mode != nir_var_uniform || var->data.bindless)
 				info->uses_bindless_samplers = true;
 		}
 
