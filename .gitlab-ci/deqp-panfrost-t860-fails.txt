@@ -617,7 +617,6 @@ dEQP-GLES3.functional.rasterization.fbo.rbo_multisample_4.primitives.points
 dEQP-GLES3.functional.rasterization.fbo.rbo_multisample_4.primitives.triangles
 dEQP-GLES3.functional.rasterization.fbo.rbo_multisample_max.fill_rules.basic_quad
 dEQP-GLES3.functional.rasterization.fbo.rbo_multisample_max.fill_rules.basic_quad_reverse
-dEQP-GLES3.functional.rasterization.fbo.rbo_multisample_max.fill_rules.clipped_full
 dEQP-GLES3.functional.rasterization.fbo.rbo_multisample_max.fill_rules.clipped_partly
 dEQP-GLES3.functional.rasterization.fbo.rbo_multisample_max.fill_rules.projected
 dEQP-GLES3.functional.rasterization.fbo.rbo_multisample_max.interpolation.lines
