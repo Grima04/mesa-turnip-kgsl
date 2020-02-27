@@ -1,7 +1,6 @@
 .lava-test:
   extends:
     - .ci-run-policy
-  stage: test
   variables:
     GIT_STRATEGY: none # testing doesn't build anything from source
     ENV_VARS: "DEQP_PARALLEL=6"
@@ -68,6 +67,7 @@
 
 panfrost-t720-gles2:arm64:
   extends: .lava-test:arm64
+  stage: panfrost
   variables:
     DEVICE_TYPE: sun50i-h6-pine-h64
     GPU_VERSION: panfrost-t720
@@ -77,6 +77,7 @@ panfrost-t720-gles2:arm64:
 
 panfrost-t760-gles2:armhf:
   extends: .lava-test:armhf
+  stage: panfrost
   variables:
     DEVICE_TYPE: rk3288-veyron-jaq
     GPU_VERSION: panfrost-t760
@@ -88,6 +89,7 @@ panfrost-t760-gles2:armhf:
 
 panfrost-t860-gles2:arm64:
   extends: .lava-test:arm64
+  stage: panfrost
   variables:
     DEVICE_TYPE: rk3399-gru-kevin
     GPU_VERSION: panfrost-t860
@@ -99,6 +101,7 @@ panfrost-t860-gles2:arm64:
 
 panfrost-t860-gles3:arm64:
   extends: .lava-test:arm64
+  stage: panfrost
   variables:
     DEVICE_TYPE: rk3399-gru-kevin
     GPU_VERSION: panfrost-t860
@@ -113,6 +116,7 @@ panfrost-t860-gles3:arm64:
 
 .panfrost-t820-gles2:arm64:
   extends: .lava-test:arm64
+  stage: panfrost
   variables:
     DEVICE_TYPE: meson-gxm-khadas-vim2
     GPU_VERSION: panfrost-t820
@@ -124,6 +128,7 @@ panfrost-t860-gles3:arm64:
 .lima-mali400-test:armhf:
   parallel: 2
   extends: .lava-test:armhf
+  stage: misc-tests
   variables:
     DEVICE_TYPE: sun8i-h3-libretech-all-h3-cc
     GPU_VERSION: lima
@@ -133,6 +138,7 @@ panfrost-t860-gles3:arm64:
 
 lima-mali450-test:arm64:
   extends: .lava-test:arm64
+  stage: misc-tests
   variables:
     DEVICE_TYPE: meson-gxl-s905x-libretech-cc
     GPU_VERSION: lima
@@ -142,6 +148,7 @@ lima-mali450-test:arm64:
 
 .freedreno-a307-gles2:
   extends: .lava-test:arm64
+  stage: freedreno
   variables:
     DEVICE_TYPE: apq8016-sbc
     GPU_VERSION: freedreno-a307

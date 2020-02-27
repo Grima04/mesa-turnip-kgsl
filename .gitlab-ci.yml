@@ -9,8 +9,14 @@ include:
 
 stages:
   - container
-  - build
-  - test
+  - meson-x86_64
+  - scons
+  - meson-misc
+  - llvmpipe
+  - softpipe
+  - freedreno
+  - panfrost
+  - misc-tests
   - success
 
 
@@ -194,7 +200,6 @@ arm_test:
 # Shared between windows and Linux
 .build-common:
   extends: .ci-run-policy
-  stage: build
   artifacts:
     when: always
     paths:
@@ -231,6 +236,7 @@ arm_test:
   extends:
     - .build-linux
     - .use-x86_build
+  stage: meson-x86_64
   variables:
     LLVM_VERSION: 9
   script:
@@ -240,6 +246,7 @@ arm_test:
   extends:
     - .build-linux
     - .use-x86_build
+  stage: scons
   variables:
     SCONSFLAGS: "-j4"
   script:
@@ -298,6 +305,7 @@ meson-main:
 .meson-cross:
   extends:
     - .meson-build
+  stage: meson-misc
   variables:
     UNWIND: "false"
     DRI_LOADERS: >
@@ -376,6 +384,7 @@ meson-clang:
 .meson-windows:
   extends:
     - .build-windows
+  stage: meson-misc
   before_script:
     - $ENV:ARCH = "x86"
     - $ENV:VERSION = "2019\Community"
@@ -503,6 +512,7 @@ meson-ppc64el:
 
 meson-mingw32-x86_64:
   extends: .meson-build
+  stage: meson-misc
   variables:
     UNWIND: "false"
     DRI_DRIVERS: ""
@@ -531,7 +541,6 @@ scons-old-llvm:
 .test:
   extends:
     - .ci-run-policy
-  stage: test
   variables:
     GIT_STRATEGY: none # testing doesn't build anything from source
   before_script:
@@ -569,6 +578,7 @@ scons-old-llvm:
 
 .piglit-test:
   extends: .test-gl
+  stage: llvmpipe
   artifacts:
     when: on_failure
     name: "$CI_JOB_NAME-$CI_COMMIT_REF_NAME"
@@ -640,9 +650,11 @@ llvmpipe-gles2:
     DEQP_EXPECTED_FAILS: deqp-llvmpipe-fails.txt
     LIBGL_ALWAYS_SOFTWARE: "true"
   extends: .deqp-test-gl
+  stage: llvmpipe
 
 softpipe-gles2:
   extends: llvmpipe-gles2
+  stage: softpipe
   variables:
     DEQP_EXPECTED_FAILS: deqp-softpipe-fails.txt
     DEQP_SKIPS: deqp-softpipe-skips.txt
@@ -664,6 +676,7 @@ arm64_a630_gles2:
   extends:
     - .deqp-test-gl
     - .use-arm_test
+  stage: freedreno
   variables:
     DEQP_VER: gles2
     DEQP_EXPECTED_FAILS: deqp-freedreno-a630-fails.txt
@@ -696,6 +709,7 @@ arm64_a306_gles2:
 
 # RADV CI
 .test-radv:
+  stage: misc-tests
   variables:
     VK_DRIVER: radeon
     RADV_DEBUG: checkir
@@ -724,6 +738,7 @@ radv_polaris10_vkcts:
 
 # Traces CI
 .traces-test:
+  stage: misc-tests
   cache:
     key: ${CI_JOB_NAME}
     paths:
