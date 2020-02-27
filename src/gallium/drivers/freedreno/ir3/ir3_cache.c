@@ -26,6 +26,8 @@
 
 #include "util/ralloc.h"
 #include "util/hash_table.h"
+#define XXH_INLINE_ALL
+#include "util/xxhash.h"
 
 #include "ir3_cache.h"
 #include "ir3_gallium.h"
@@ -35,9 +37,7 @@ static uint32_t
 key_hash(const void *_key)
 {
 	const struct ir3_cache_key *key = _key;
-	uint32_t hash = _mesa_fnv32_1a_offset_bias;
-	hash = _mesa_fnv32_1a_accumulate_block(hash, key, sizeof(*key));
-	return hash;
+	return  XXH32(key, sizeof(*key), 0);
 }
 
 static bool

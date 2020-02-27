@@ -28,6 +28,8 @@
 #include "util/set.h"
 #include "util/list.h"
 #include "util/u_string.h"
+#define XXH_INLINE_ALL
+#include "util/xxhash.h"
 
 #include "freedreno_batch.h"
 #include "freedreno_batch_cache.h"
@@ -98,9 +100,9 @@ static uint32_t
 key_hash(const void *_key)
 {
 	const struct key *key = _key;
-	uint32_t hash = _mesa_fnv32_1a_offset_bias;
-	hash = _mesa_fnv32_1a_accumulate_block(hash, key, offsetof(struct key, surf[0]));
-	hash = _mesa_fnv32_1a_accumulate_block(hash, key->surf, sizeof(key->surf[0]) * key->num_surfs);
+	uint32_t hash = 0;
+	hash = XXH32(key, offsetof(struct key, surf[0]), hash);
+	hash = XXH32(key->surf, sizeof(key->surf[0]) * key->num_surfs , hash);
 	return hash;
 }
 
