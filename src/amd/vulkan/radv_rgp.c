@@ -376,7 +376,7 @@ radv_fill_sqtt_asic_info(struct radv_device *device,
 	chunk->vram_size = rad_info->vram_size;
 	chunk->l2_cache_size = rad_info->l2_cache_size;
 	chunk->l1_cache_size = rad_info->l1_cache_size;
-	chunk->lds_size = rad_info->lds_size_per_cu;
+	chunk->lds_size = rad_info->lds_size_per_workgroup;
 
 	strncpy(chunk->gpu_name, device->physical_device->name, SQTT_GPU_NAME_MAX_SIZE);
 

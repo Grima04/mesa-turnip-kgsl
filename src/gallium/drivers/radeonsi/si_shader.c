@@ -1063,7 +1063,7 @@ static void si_calculate_max_simd_waves(struct si_shader *shader)
 		max_simd_waves = MIN2(max_simd_waves, max_vgprs / conf->num_vgprs);
 	}
 
-	unsigned max_lds_per_simd = sscreen->info.lds_size_per_cu / 4;
+	unsigned max_lds_per_simd = sscreen->info.lds_size_per_workgroup / 4;
 	if (lds_per_wave)
 		max_simd_waves = MIN2(max_simd_waves, max_lds_per_simd / lds_per_wave);
 

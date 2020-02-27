@@ -544,7 +544,7 @@ bool ac_query_gpu_info(int fd, void *dev_p,
 	 *
 	 * LDS is 128KB in WGP mode and 64KB in CU mode. Assume the WGP mode is used.
 	 */
-	info->lds_size_per_cu = info->chip_class >= GFX10 ? 128 * 1024 : 64 * 1024;
+	info->lds_size_per_workgroup = info->chip_class >= GFX10 ? 128 * 1024 : 64 * 1024;
 	info->lds_granularity = info->chip_class >= GFX7 ? 128 * 4 : 64 * 4;
 
 	assert(util_is_power_of_two_or_zero(dma.available_rings + 1));
@@ -831,7 +831,7 @@ void ac_print_gpu_info(struct radeon_info *info)
 	printf("    tcc_cache_line_size = %u\n", info->tcc_cache_line_size);
 	printf("    tcc_harvested = %u\n", info->tcc_harvested);
 	printf("    pc_lines = %u\n", info->pc_lines);
-	printf("    lds_size_per_cu = %u\n", info->lds_size_per_cu);
+	printf("    lds_size_per_workgroup = %u\n", info->lds_size_per_workgroup);
 	printf("    lds_granularity = %i\n", info->lds_granularity);
 	printf("    max_memory_clock = %i\n", info->max_memory_clock);
 	printf("    ce_ram_size = %i\n", info->ce_ram_size);

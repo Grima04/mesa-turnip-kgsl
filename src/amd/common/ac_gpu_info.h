@@ -100,7 +100,7 @@ struct radeon_info {
 	uint32_t                    tcc_cache_line_size;
 	bool			    tcc_harvested;
 	unsigned                    pc_lines;
-	uint32_t                    lds_size_per_cu;
+	uint32_t                    lds_size_per_workgroup;
 	uint32_t                    lds_granularity;
 	uint32_t                    max_memory_clock;
 	uint32_t                    ce_ram_size;
