@@ -492,6 +492,16 @@ allocate_registers(compiler_context *ctx, bool *spilled)
                         }
                 }
 
+                if (ins->type == TAG_LOAD_STORE_4 && OP_HAS_ADDRESS(ins->load_store.op)) {
+                        mir_foreach_src(ins, v) {
+                                unsigned s = ins->src[v];
+                                unsigned size = mir_srcsize(ins, v);
+
+                                if (s < ctx->temp_count)
+                                        min_alignment[s] = (size == midgard_reg_mode_64) ? 3 : 2;
+                        }
+                }
+
                 if (ins->dest >= SSA_FIXED_MINIMUM) continue;
 
                 /* 0 for x, 1 for xy, 2 for xyz, 3 for xyzw */
