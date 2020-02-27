@@ -1724,7 +1724,7 @@ void radv_GetPhysicalDeviceProperties2(
 			properties->maxVgprAllocation =
 				pdevice->rad_info.max_vgpr_alloc;
 			properties->vgprAllocationGranularity =
-				pdevice->rad_info.vgpr_alloc_granularity;
+				pdevice->rad_info.wave64_vgpr_alloc_granularity;
 			break;
 		}
 		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_CORE_PROPERTIES_2_AMD: {

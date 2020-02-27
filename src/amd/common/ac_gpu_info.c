@@ -729,7 +729,7 @@ bool ac_query_gpu_info(int fd, void *dev_p,
 
 	info->min_vgpr_alloc = 4;
 	info->max_vgpr_alloc = 256;
-	info->vgpr_alloc_granularity = info->chip_class >= GFX10 ? 8 : 4;
+	info->wave64_vgpr_alloc_granularity = 4;
 
 	info->num_physical_wave64_vgprs_per_simd = info->chip_class >= GFX10 ? 512 : 256;
 	info->num_simd_per_compute_unit = info->chip_class >= GFX10 ? 2 : 4;
@@ -895,7 +895,7 @@ void ac_print_gpu_info(struct radeon_info *info)
 	printf("    sgpr_alloc_granularity = %i\n", info->sgpr_alloc_granularity);
 	printf("    min_vgpr_alloc = %i\n", info->min_vgpr_alloc);
 	printf("    max_vgpr_alloc = %i\n", info->max_vgpr_alloc);
-	printf("    vgpr_alloc_granularity = %i\n", info->vgpr_alloc_granularity);
+	printf("    wave64_vgpr_alloc_granularity = %i\n", info->wave64_vgpr_alloc_granularity);
 
 	printf("Render backend info:\n");
 	printf("    pa_sc_tile_steering_override = 0x%x\n", info->pa_sc_tile_steering_override);

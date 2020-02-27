@@ -358,7 +358,7 @@ radv_fill_sqtt_asic_info(struct radv_device *device,
 	chunk->wavefronts_per_simd = rad_info->max_wave64_per_simd;
 
 	chunk->minimum_vgpr_alloc = rad_info->min_vgpr_alloc;
-	chunk->vgpr_alloc_granularity = rad_info->vgpr_alloc_granularity;
+	chunk->vgpr_alloc_granularity = rad_info->wave64_vgpr_alloc_granularity;
 	chunk->minimum_sgpr_alloc = rad_info->min_sgpr_alloc;
 	chunk->sgpr_alloc_granularity = rad_info->sgpr_alloc_granularity;
 
