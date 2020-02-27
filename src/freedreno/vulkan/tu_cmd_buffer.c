@@ -219,6 +219,12 @@ tu_tiling_config_update_tile_layout(struct tu_tiling_config *tiling,
          align(DIV_ROUND_UP(ra_width, tiling->tile_count.width), tile_align_w);
    }
 
+   /* will force to sysmem, don't bother trying to have a valid tile config
+    * TODO: just skip all GMEM stuff when sysmem is forced?
+    */
+   if (!pixels)
+      return;
+
    /* do not exceed gmem size */
    while (tiling->tile0.extent.width * tiling->tile0.extent.height > pixels) {
       if (tiling->tile0.extent.width > MAX2(tile_align_w, tiling->tile0.extent.height)) {
@@ -765,6 +771,10 @@ static bool
 use_sysmem_rendering(struct tu_cmd_buffer *cmd)
 {
    if (unlikely(cmd->device->physical_device->instance->debug_flags & TU_DEBUG_SYSMEM))
+      return true;
+
+   /* can't fit attachments into gmem */
+   if (!cmd->state.pass->gmem_pixels)
       return true;
 
    return cmd->state.tiling_config.force_sysmem;
