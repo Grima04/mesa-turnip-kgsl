@@ -973,13 +973,6 @@ void st_init_extensions(struct pipe_screen *screen,
         { PIPE_FORMAT_ATC_RGB,
           PIPE_FORMAT_ATC_RGBA_EXPLICIT,
           PIPE_FORMAT_ATC_RGBA_INTERPOLATED } },
-
-      { { o(EXT_texture_norm16) },
-        { PIPE_FORMAT_R16G16B16_UNORM,
-          PIPE_FORMAT_R16_SNORM,
-          PIPE_FORMAT_R16G16_SNORM,
-          PIPE_FORMAT_R16G16B16_SNORM,
-          PIPE_FORMAT_R16G16B16A16_SNORM } },
    };
 
    /* Required: vertex fetch support. */
