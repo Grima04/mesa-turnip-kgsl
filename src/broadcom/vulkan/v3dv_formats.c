@@ -46,18 +46,19 @@
       return_size,                                 \
    }
 
-#define SWIZ_X001	SWIZ(X, 0, 0, 1)
-#define SWIZ_XY01	SWIZ(X, Y, 0, 1)
-#define SWIZ_XYZ1	SWIZ(X, Y, Z, 1)
-#define SWIZ_XYZW	SWIZ(X, Y, Z, W)
-#define SWIZ_YZWX	SWIZ(Y, Z, W, X)
-#define SWIZ_YZW1	SWIZ(Y, Z, W, 1)
-#define SWIZ_ZYXW	SWIZ(Z, Y, X, W)
-#define SWIZ_ZYX1	SWIZ(Z, Y, X, 1)
-#define SWIZ_XXXY	SWIZ(X, X, X, Y)
-#define SWIZ_XXX1	SWIZ(X, X, X, 1)
-#define SWIZ_XXXX	SWIZ(X, X, X, X)
-#define SWIZ_000X	SWIZ(0, 0, 0, X)
+#define SWIZ_X001 SWIZ(X, 0, 0, 1)
+#define SWIZ_XY01 SWIZ(X, Y, 0, 1)
+#define SWIZ_XYZ1 SWIZ(X, Y, Z, 1)
+#define SWIZ_XYZW SWIZ(X, Y, Z, W)
+#define SWIZ_YZWX SWIZ(Y, Z, W, X)
+#define SWIZ_YZW1 SWIZ(Y, Z, W, 1)
+#define SWIZ_ZYXW SWIZ(Z, Y, X, W)
+#define SWIZ_ZYX1 SWIZ(Z, Y, X, 1)
+#define SWIZ_XXXY SWIZ(X, X, X, Y)
+#define SWIZ_XXX1 SWIZ(X, X, X, 1)
+#define SWIZ_XXXX SWIZ(X, X, X, X)
+#define SWIZ_000X SWIZ(0, 0, 0, X)
+#define SWIZ_WXYZ SWIZ(W, X, Y, Z)
 
 /* FIXME: expand format table to describe whether the format is supported
  * for buffer surfaces (texel buffers, vertex buffers, etc).
@@ -120,6 +121,20 @@ static const struct v3dv_format format_table[] = {
    FORMAT(R32_SINT,                R32I,         R32I,          SWIZ_X001, 32),
    FORMAT(R32_UINT,                R32UI,        R32UI,         SWIZ_X001, 32),
 
+   /* Color, packed */
+   FORMAT(B4G4R4A4_UNORM_PACK16,   ABGR4444,     RGBA4,         SWIZ_ZYXW, 16), /* Swap RB */
+   FORMAT(R5G6B5_UNORM_PACK16,     BGR565,       RGB565,        SWIZ_XYZ1, 16),
+   FORMAT(A1R5G5B5_UNORM_PACK16,   ABGR1555,     RGB5_A1,       SWIZ_WXYZ, 16), /* Swap RB + Reverse */
+   FORMAT(A8B8G8R8_UNORM_PACK32,   RGBA8,        RGBA8,         SWIZ_XYZW, 16), /* RGBA8 UNORM */
+   FORMAT(A8B8G8R8_SNORM_PACK32,   NO,           RGBA8_SNORM,   SWIZ_XYZW, 16), /* RGBA8 SNORM */
+   FORMAT(A8B8G8R8_UINT_PACK32,    RGBA8UI,      RGBA8UI,       SWIZ_XYZW, 16), /* RGBA8 UINT */
+   FORMAT(A8B8G8R8_SINT_PACK32,    RGBA8I,       RGBA8I,        SWIZ_XYZW, 16), /* RGBA8 SINT */
+   FORMAT(A8B8G8R8_SRGB_PACK32,    SRGB8_ALPHA8, RGBA8,         SWIZ_XYZW, 16), /* RGBA8 sRGB */
+   FORMAT(A2B10G10R10_UNORM_PACK32,RGB10_A2,     RGB10_A2,      SWIZ_XYZW, 16),
+   FORMAT(A2B10G10R10_UINT_PACK32, RGB10_A2UI,   RGB10_A2UI,    SWIZ_XYZW, 16),
+   FORMAT(E5B9G9R9_UFLOAT_PACK32,  NO,           RGB9_E5,       SWIZ_XYZW, 16),
+   FORMAT(B10G11R11_UFLOAT_PACK32, R11F_G11F_B10F,R11F_G11F_B10F, SWIZ_XYZW, 16),
+
    /* Depth */
    FORMAT(D16_UNORM,               D16,          DEPTH_COMP16,  SWIZ_XXXX, 32),
    FORMAT(D32_SFLOAT,              D32F,         DEPTH_COMP32F, SWIZ_XXXX, 32),
@@ -127,6 +142,18 @@ static const struct v3dv_format format_table[] = {
 
    /* Depth + Stencil */
    FORMAT(D24_UNORM_S8_UINT,       D24S8,        DEPTH24_X8,    SWIZ_XXXX, 32),
+
+   /* Compressed: ETC2 / EAC */
+   FORMAT(ETC2_R8G8B8_UNORM_BLOCK,    NO,  RGB8_ETC2,                SWIZ_XYZ1, 16),
+   FORMAT(ETC2_R8G8B8_SRGB_BLOCK,     NO,  RGB8_ETC2,                SWIZ_XYZ1, 16),
+   FORMAT(ETC2_R8G8B8A1_UNORM_BLOCK,  NO,  RGB8_PUNCHTHROUGH_ALPHA1, SWIZ_XYZW, 16),
+   FORMAT(ETC2_R8G8B8A1_SRGB_BLOCK,   NO,  RGB8_PUNCHTHROUGH_ALPHA1, SWIZ_XYZW, 16),
+   FORMAT(ETC2_R8G8B8A8_UNORM_BLOCK,  NO,  RGBA8_ETC2_EAC,           SWIZ_XYZW, 16),
+   FORMAT(ETC2_R8G8B8A8_SRGB_BLOCK,   NO,  RGBA8_ETC2_EAC,           SWIZ_XYZW, 16),
+   FORMAT(EAC_R11_UNORM_BLOCK,        NO,  R11_EAC,                  SWIZ_X001, 16),
+   FORMAT(EAC_R11_SNORM_BLOCK,        NO,  SIGNED_R11_EAC,           SWIZ_X001, 16),
+   FORMAT(EAC_R11G11_UNORM_BLOCK,     NO,  RG11_EAC,                 SWIZ_XY01, 16),
+   FORMAT(EAC_R11G11_SNORM_BLOCK,     NO,  SIGNED_RG11_EAC,          SWIZ_XY01, 16),
 };
 
 const struct v3dv_format *
@@ -318,6 +345,16 @@ image_format_features(VkFormat vk_format,
       }
    }
 
+   const struct util_format_description *desc =
+      vk_format_description(vk_format);
+   assert(desc);
+
+   if (desc->layout == UTIL_FORMAT_LAYOUT_PLAIN && desc->is_array) {
+      flags |= VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT;
+      if (desc->nr_channels == 1 && vk_format_is_int(vk_format))
+         flags |= VK_FORMAT_FEATURE_STORAGE_IMAGE_ATOMIC_BIT;
+   }
+
    return flags;
 }
 
@@ -330,17 +367,35 @@ buffer_format_features(VkFormat vk_format, const struct v3dv_format *v3dv_format
    if (!v3dv_format->supported)
       return 0;
 
-   /* FIXME */
-   const VkImageAspectFlags aspects = vk_format_aspects(vk_format);
-   if (aspects != VK_IMAGE_ASPECT_COLOR_BIT)
+   /* We probably only want to support buffer formats that have a
+    * color format specification.
+    */
+   if (!vk_format_is_color(vk_format))
       return 0;
 
+   const struct util_format_description *desc =
+      vk_format_description(vk_format);
+   assert(desc);
+
    VkFormatFeatureFlags flags = 0;
+   if (desc->layout == UTIL_FORMAT_LAYOUT_PLAIN && desc->is_array) {
+      flags |=  VK_FORMAT_FEATURE_VERTEX_BUFFER_BIT |
+                VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT |
+                VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_BIT;
+   } else if (vk_format == VK_FORMAT_A2B10G10R10_UNORM_PACK32) {
+      flags |= VK_FORMAT_FEATURE_VERTEX_BUFFER_BIT |
+               VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT;
+   } else if (vk_format == VK_FORMAT_A2B10G10R10_UINT_PACK32 ||
+              vk_format == VK_FORMAT_B10G11R11_UFLOAT_PACK32) {
+      flags |= VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT;
+   }
 
-   flags |= VK_FORMAT_FEATURE_VERTEX_BUFFER_BIT;
-
-   /* FIXME: add texel uniform/storage for formats that are "image compatible"
-    */
+   if (desc->layout == UTIL_FORMAT_LAYOUT_PLAIN &&
+       desc->is_array &&
+       desc->nr_channels == 1 &&
+       vk_format_is_int(vk_format)) {
+      flags |= VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_ATOMIC_BIT;
+   }
 
    return flags;
 }
@@ -468,7 +523,27 @@ get_image_format_properties(
       unreachable("bad VkImageType");
    }
 
+   /* From the Vulkan 1.0 spec, section 34.1.1. Supported Sample Counts:
+    *
+    * sampleCounts will be set to VK_SAMPLE_COUNT_1_BIT if at least one of the
+    * following conditions is true:
+    *
+    *   - tiling is VK_IMAGE_TILING_LINEAR
+    *   - type is not VK_IMAGE_TYPE_2D
+    *   - flags contains VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT
+    *   - neither the VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT flag nor the
+    *     VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT flag in
+    *     VkFormatProperties::optimalTilingFeatures returned by
+    *     vkGetPhysicalDeviceFormatProperties is set.
+    */
    pImageFormatProperties->sampleCounts = VK_SAMPLE_COUNT_1_BIT;
+   if (info->tiling != VK_IMAGE_TILING_LINEAR &&
+       info->type == VK_IMAGE_TYPE_2D &&
+       !(info->flags & VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT) &&
+       (format_feature_flags & VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT ||
+        format_feature_flags & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)) {
+      pImageFormatProperties->sampleCounts |= VK_SAMPLE_COUNT_4_BIT;
+   }
 
    if (info->tiling == VK_IMAGE_TILING_LINEAR)
       pImageFormatProperties->maxMipLevels = 1;
