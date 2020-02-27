@@ -946,10 +946,12 @@ clear_image_tlb(struct v3dv_cmd_buffer *cmd_buffer,
    }
 
    uint32_t layer_count = range->layerCount == VK_REMAINING_ARRAY_LAYERS ?
-                          image->array_size : range->layerCount;
+                          image->array_size - range->baseArrayLayer :
+                          range->layerCount;
 
    uint32_t level_count = range->levelCount == VK_REMAINING_MIP_LEVELS ?
-                          image->levels : range->levelCount;
+                          image->levels - range->baseMipLevel :
+                          range->levelCount;
    uint32_t min_layer = range->baseArrayLayer;
    uint32_t max_layer = range->baseArrayLayer + layer_count;
    uint32_t min_level = range->baseMipLevel;
