@@ -1480,13 +1480,9 @@ tu6_sysmem_render_begin(struct tu_cmd_buffer *cmd, struct tu_cs *cs,
                         const struct VkRect2D *renderArea)
 {
    const struct tu_framebuffer *fb = cmd->state.framebuffer;
-   if (fb->width > 0 && fb->height > 0) {
-      tu6_emit_window_scissor(cmd, cs,
-                              0, 0, fb->width - 1, fb->height - 1);
-   } else {
-      tu6_emit_window_scissor(cmd, cs, 0, 0, 0, 0);
-   }
 
+   assert(fb->width > 0 && fb->height > 0);
+   tu6_emit_window_scissor(cmd, cs, 0, 0, fb->width - 1, fb->height - 1);
    tu6_emit_window_offset(cmd, cs, 0, 0);
 
    tu6_emit_bin_size(cs, 0, 0, 0xc00000); /* 0xc00000 = BYPASS? */
