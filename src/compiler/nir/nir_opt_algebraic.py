@@ -1420,7 +1420,16 @@ for t in ['int', 'uint', 'float']:
             ]
 
 def fexp2i(exp, bits):
-   # We assume that exp is already in the right range.
+   # Generate an expression which constructs value 2.0^exp or 0.0.
+   #
+   # We assume that exp is already in a valid range:
+   #
+   #   * [-15, 15] for 16-bit float
+   #   * [-127, 127] for 32-bit float
+   #   * [-1023, 1023] for 16-bit float
+   #
+   # If exp is the lowest value in the valid range, a value of 0.0 is
+   # constructed.  Otherwise, the value 2.0^exp is constructed.
    if bits == 16:
       return ('i2i16', ('ishl', ('iadd', exp, 15), 10))
    elif bits == 32:
@@ -1431,22 +1440,40 @@ def fexp2i(exp, bits):
       assert False
 
 def ldexp(f, exp, bits):
-   # First, we clamp exp to a reasonable range.  The maximum possible range
-   # for a normal exponent is [-126, 127] and, throwing in denormals, you get
-   # a maximum range of [-149, 127].  This means that we can potentially have
-   # a swing of +-276.  If you start with FLT_MAX, you actually have to do
-   # ldexp(FLT_MAX, -278) to get it to flush all the way to zero.  The GLSL
-   # spec, on the other hand, only requires that we handle an exponent value
-   # in the range [-126, 128].  This implementation is *mostly* correct; it
-   # handles a range on exp of [-252, 254] which allows you to create any
-   # value (including denorms if the hardware supports it) and to adjust the
-   # exponent of any normal value to anything you want.
+   # The maximum possible range for a normal exponent is [-126, 127] and,
+   # throwing in denormals, you get a maximum range of [-149, 127].  This
+   # means that we can potentially have a swing of +-276.  If you start with
+   # FLT_MAX, you actually have to do ldexp(FLT_MAX, -278) to get it to flush
+   # all the way to zero.  The GLSL spec only requires that we handle a subset
+   # of this range.  From version 4.60 of the spec:
+   #
+   #    "If exp is greater than +128 (single-precision) or +1024
+   #    (double-precision), the value returned is undefined. If exp is less
+   #    than -126 (single-precision) or -1022 (double-precision), the value
+   #    returned may be flushed to zero. Additionally, splitting the value
+   #    into a significand and exponent using frexp() and then reconstructing
+   #    a floating-point value using ldexp() should yield the original input
+   #    for zero and all finite non-denormalized values."
+   #
+   # The SPIR-V spec has similar language.
+   #
+   # In order to handle the maximum value +128 using the fexp2i() helper
+   # above, we have to split the exponent in half and do two multiply
+   # operations.
+   #
+   # First, we clamp exp to a reasonable range.  Specifically, we clamp to
+   # twice the full range that is valid for the fexp2i() function above.  If
+   # exp/2 is the bottom value of that range, the fexp2i() expression will
+   # yield 0.0f which, when multiplied by f, will flush it to zero which is
+   # allowed by the GLSL and SPIR-V specs for low exponent values.  If the
+   # value is clamped from above, then it must have been above the supported
+   # range of the GLSL built-in and therefore any return value is acceptable.
    if bits == 16:
-      exp = ('imin', ('imax', exp, -28), 30)
+      exp = ('imin', ('imax', exp, -30), 30)
    elif bits == 32:
-      exp = ('imin', ('imax', exp, -252), 254)
+      exp = ('imin', ('imax', exp, -254), 254)
    elif bits == 64:
-      exp = ('imin', ('imax', exp, -2044), 2046)
+      exp = ('imin', ('imax', exp, -2046), 2046)
    else:
       assert False
 
