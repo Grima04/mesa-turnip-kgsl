@@ -1063,9 +1063,10 @@ _mesa_ClampColor(GLenum target, GLenum clamp)
    case GL_CLAMP_FRAGMENT_COLOR_ARB:
       if (ctx->API == API_OPENGL_CORE)
          goto invalid_enum;
-      FLUSH_VERTICES(ctx, _NEW_FRAG_CLAMP);
-      ctx->Color.ClampFragmentColor = clamp;
-      _mesa_update_clamp_fragment_color(ctx, ctx->DrawBuffer);
+      if (ctx->Color.ClampFragmentColor != clamp) {
+         ctx->Color.ClampFragmentColor = clamp;
+         _mesa_update_clamp_fragment_color(ctx, ctx->DrawBuffer);
+      }
       break;
    case GL_CLAMP_READ_COLOR_ARB:
       ctx->Color.ClampReadColor = clamp;
@@ -1137,6 +1138,7 @@ _mesa_update_clamp_fragment_color(struct gl_context *ctx,
    if (ctx->Color._ClampFragmentColor == clamp)
       return;
 
+   ctx->NewState |= _NEW_FRAG_CLAMP; /* for state constants */
    ctx->NewDriverState |= ctx->DriverFlags.NewFragClamp;
    ctx->Color._ClampFragmentColor = clamp;
 }
