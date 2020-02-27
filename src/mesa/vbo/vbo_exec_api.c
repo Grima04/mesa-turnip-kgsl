@@ -474,14 +474,14 @@ do {                                                                    \
                                                                         \
    assert(sz == 1 || sz == 2);                                          \
                                                                         \
-   /* check if attribute size or type is changing */                    \
-   if (unlikely(exec->vtx.attr[A].active_size != N * sz ||              \
-                exec->vtx.attr[A].type != T)) {                         \
-      vbo_exec_fixup_vertex(ctx, A, N * sz, T);                         \
-   }                                                                    \
-                                                                        \
    /* store a copy of the attribute in exec except for glVertex */      \
    if ((A) != 0) {                                                      \
+      /* Check if attribute size or type is changing. */                \
+      if (unlikely(exec->vtx.attr[A].active_size != N * sz ||           \
+                   exec->vtx.attr[A].type != T)) {                      \
+         vbo_exec_fixup_vertex(ctx, A, N * sz, T);                      \
+      }                                                                 \
+                                                                        \
       C *dest = (C *)exec->vtx.attrptr[A];                              \
       if (N>0) dest[0] = V0;                                            \
       if (N>1) dest[1] = V1;                                            \
@@ -493,6 +493,12 @@ do {                                                                    \
       ctx->Driver.NeedFlush |= FLUSH_UPDATE_CURRENT;                    \
    } else {                                                             \
       /* This is a glVertex call */                                     \
+      /* Check if attribute size or type is changing. */                \
+      if (unlikely(exec->vtx.attr[0].size < N * sz ||                   \
+                   exec->vtx.attr[0].type != T)) {                      \
+         vbo_exec_wrap_upgrade_vertex(exec, 0, N * sz, T);              \
+      }                                                                 \
+                                                                        \
       uint32_t *dst = (uint32_t *)exec->vtx.buffer_ptr;                 \
       uint32_t *src = (uint32_t *)exec->vtx.vertex;                     \
       unsigned vertex_size_no_pos = exec->vtx.vertex_size_no_pos;       \
