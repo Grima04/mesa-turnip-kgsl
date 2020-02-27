@@ -1714,7 +1714,7 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
     * effect is already counted in spill/fill counts.
     */
    int spill_count = 0, fill_count = 0;
-   int loop_count = 0, send_count = 0;
+   int loop_count = 0, send_count = 0, nop_count = 0;
    bool is_accum_used = false;
 
    struct disasm_info *disasm_info = disasm_initialize(devinfo, cfg);
@@ -1744,6 +1744,12 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
           inst->dst.component_size(inst->exec_size) > REG_SIZE) {
          brw_NOP(p);
          last_insn_offset = p->next_insn_offset;
+
+         /* In order to avoid spurious instruction count differences when the
+          * instruction schedule changes, keep track of the number of inserted
+          * NOPs.
+          */
+         nop_count++;
       }
 
       /* GEN:BUG:14010017096:
@@ -2459,7 +2465,7 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
                               "Promoted %u constants, "
                               "compacted %d to %d bytes.",
                               _mesa_shader_stage_to_abbrev(stage),
-                              dispatch_width, before_size / 16,
+                              dispatch_width, before_size / 16 - nop_count,
                               loop_count, cfg->cycle_count,
                               spill_count, fill_count, send_count,
                               shader_stats.scheduler_mode,
@@ -2467,7 +2473,7 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
                               before_size, after_size);
    if (stats) {
       stats->dispatch_width = dispatch_width;
-      stats->instructions = before_size / 16;
+      stats->instructions = before_size / 16 - nop_count;
       stats->loops = loop_count;
       stats->cycles = cfg->cycle_count;
       stats->spills = spill_count;
