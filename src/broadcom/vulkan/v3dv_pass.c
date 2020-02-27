@@ -195,3 +195,39 @@ v3dv_DestroyRenderPass(VkDevice _device,
    vk_free2(&device->alloc, pAllocator, pass->subpass_attachments);
    vk_free2(&device->alloc, pAllocator, pass);
 }
+
+void
+v3dv_GetRenderAreaGranularity(VkDevice device,
+                              VkRenderPass renderPass,
+                              VkExtent2D *pGranularity)
+{
+   V3DV_FROM_HANDLE(v3dv_render_pass, pass, renderPass);
+
+   /* Our tile size depends on the max number of color attachments we can
+    * have in any subpass and their bpp. Here we only know the number of
+    * attachments, so we only use that. This means we might report a
+    * granularity that is slightly larger, but that should be fine.
+    */
+   static const uint8_t tile_sizes[] = {
+      64, 64,
+      64, 32,
+      32, 32,
+      32, 16,
+      16, 16,
+   };
+
+   uint32_t max_color_attachment_count = 0;
+   for (unsigned i = 0; i < pass->subpass_count; i++) {
+      max_color_attachment_count = MAX2(max_color_attachment_count,
+                                        pass->subpasses[i].color_count);
+   }
+
+   uint32_t idx = 0;
+   if (max_color_attachment_count > 2)
+      idx += 2;
+   else if (max_color_attachment_count > 1)
+      idx += 1;
+
+   *pGranularity = (VkExtent2D) { .width = tile_sizes[idx * 2],
+                                  .height = tile_sizes[idx * 2 + 1] };
+}
