@@ -240,7 +240,7 @@ vbo_exec_copy_to_current(struct vbo_exec_context *exec)
  */
 static void
 vbo_exec_wrap_upgrade_vertex(struct vbo_exec_context *exec,
-                             GLuint attr, GLuint newSize)
+                             GLuint attr, GLuint newSize, GLenum newType)
 {
    struct gl_context *ctx = exec->ctx;
    struct vbo_context *vbo = vbo_context(ctx);
@@ -278,6 +278,8 @@ vbo_exec_wrap_upgrade_vertex(struct vbo_exec_context *exec,
    /* Fix up sizes:
     */
    exec->vtx.attr[attr].size = newSize;
+   exec->vtx.attr[attr].active_size = newSize;
+   exec->vtx.attr[attr].type = newType;
    exec->vtx.vertex_size += newSize - oldSize;
    exec->vtx.vertex_size_no_pos = exec->vtx.vertex_size - exec->vtx.attr[0].size;
    exec->vtx.max_vert = vbo_compute_max_verts(exec);
@@ -411,7 +413,7 @@ vbo_exec_fixup_vertex(struct gl_context *ctx, GLuint attr,
       /* New size is larger.  Need to flush existing vertices and get
        * an enlarged vertex format.
        */
-      vbo_exec_wrap_upgrade_vertex(exec, attr, newSize);
+      vbo_exec_wrap_upgrade_vertex(exec, attr, newSize, newType);
    }
    else if (newSize < exec->vtx.attr[attr].active_size) {
       GLuint i;
@@ -423,10 +425,9 @@ vbo_exec_fixup_vertex(struct gl_context *ctx, GLuint attr,
        */
       for (i = newSize; i <= exec->vtx.attr[attr].size; i++)
          exec->vtx.attrptr[attr][i-1] = id[i-1];
-   }
 
-   exec->vtx.attr[attr].active_size = newSize;
-   exec->vtx.attr[attr].type = newType;
+      exec->vtx.attr[attr].active_size = newSize;
+   }
 }
 
 
