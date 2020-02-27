@@ -26,6 +26,8 @@
 #include "nir_deref.h"
 #include "util/u_dynarray.h"
 #include "util/u_math.h"
+#define XXH_INLINE_ALL
+#include "util/xxhash.h"
 
 /** @file nir_opt_vectorize_io.c
  *
@@ -221,7 +223,7 @@ r600_cmp_func(const void *data1, const void *data2)
    return r600_io_access_same_var(instr1, instr2);
 }
 
-#define HASH(hash, data) _mesa_fnv32_1a_accumulate((hash), (data))
+#define HASH(hash, data) XXH32(&(data), sizeof(data), (hash))
 
 static uint32_t
 r600_hash_instr(const nir_instr *instr)
@@ -232,7 +234,7 @@ r600_hash_instr(const nir_instr *instr)
    nir_variable *var =
       nir_deref_instr_get_variable(nir_src_as_deref(intr->src[0]));
 
-   uint32_t hash = _mesa_fnv32_1a_offset_bias;
+   uint32_t hash = 0;
 
    hash = HASH(hash, var->type);
    return HASH(hash, var->data.location);
