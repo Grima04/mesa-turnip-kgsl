@@ -61,6 +61,9 @@ ok_format(enum pipe_format pfmt)
 {
 	enum a6xx_format fmt = fd6_pipe2color(pfmt);
 
+	if (util_format_is_compressed(pfmt))
+		return true;
+
 	switch (pfmt) {
 	case PIPE_FORMAT_Z24_UNORM_S8_UINT:
 	case PIPE_FORMAT_Z24X8_UNORM:
