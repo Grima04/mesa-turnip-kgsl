@@ -196,11 +196,17 @@ mir_pack_swizzle_alu(midgard_instruction *ins)
                         if (mode == midgard_reg_mode_32) {
                                 bool lo = ins->swizzle[i][0] >= COMPONENT_Z;
                                 bool hi = ins->swizzle[i][1] >= COMPONENT_Z;
+                                unsigned mask = mir_bytemask(ins);
 
-                                /* TODO: can we mix halves? */
-                                assert(lo == hi);
+                                if (mask & 0xFF) {
+                                        /* We can't mix halves... */
+                                        if (mask & 0xFF00)
+                                                assert(lo == hi);
 
-                                src[i].rep_low |= lo;
+                                        src[i].rep_low |= lo;
+                                } else {
+                                        src[i].rep_low |= hi;
+                                }
                         } else if (mode < midgard_reg_mode_32) {
                                 unreachable("Cannot encode 8/16 swizzle in 64-bit");
                         }

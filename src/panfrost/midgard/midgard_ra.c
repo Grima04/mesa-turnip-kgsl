@@ -477,6 +477,21 @@ allocate_registers(compiler_context *ctx, bool *spilled)
         unsigned *min_alignment = calloc(sizeof(unsigned), ctx->temp_count);
 
         mir_foreach_instr_global(ctx, ins) {
+                /* Swizzles of 32-bit sources on 64-bit instructions need to be
+                 * aligned to either bottom (xy) or top (zw). More general
+                 * swizzle lowering should happen prior to scheduling (TODO),
+                 * but once we get RA we shouldn't disrupt this further. Align
+                 * sources of 64-bit instructions. */
+
+                if (ins->type == TAG_ALU_4 && ins->alu.reg_mode == midgard_reg_mode_64) {
+                        mir_foreach_src(ins, v) {
+                                unsigned s = ins->src[v];
+
+                                if (s < ctx->temp_count)
+                                        min_alignment[s] = 3;
+                        }
+                }
+
                 if (ins->dest >= SSA_FIXED_MINIMUM) continue;
 
                 /* 0 for x, 1 for xy, 2 for xyz, 3 for xyzw */
