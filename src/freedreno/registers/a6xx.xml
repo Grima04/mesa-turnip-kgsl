@@ -22,6 +22,7 @@ xsi:schemaLocation="http://nouveau.freedesktop.org/ rules-ng.xsd">
 
 	<value value="0x08" name="FMT6_4_4_4_4_UNORM"/>
 	<value value="0x0a" name="FMT6_5_5_5_1_UNORM"/>
+	<value value="0x0c" name="FMT6_1_5_5_5_UNORM"/> <!-- read only -->
 	<value value="0x0e" name="FMT6_5_6_5_UNORM"/>
 
 	<value value="0x0f" name="FMT6_8_8_UNORM"/>

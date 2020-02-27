@@ -62,8 +62,8 @@ static const struct tu_native_format tu6_format_table[] = {
    TU6_xTC(B4G4R4A4_UNORM_PACK16,      4_4_4_4_UNORM,     ZYXW), /* 3 */
    TU6_xTC(R5G6B5_UNORM_PACK16,        5_6_5_UNORM,       WXYZ), /* 4 */
    TU6_xTC(B5G6R5_UNORM_PACK16,        5_6_5_UNORM,       WZYX), /* 5 */
-   TU6_xxx(R5G5B5A1_UNORM_PACK16,      1_5_5_5_UNORM,     XYZW), /* 6 */
-   TU6_xxx(B5G5R5A1_UNORM_PACK16,      1_5_5_5_UNORM,     XYZW), /* 7 */
+   TU6_xTC(R5G5B5A1_UNORM_PACK16,      5_5_5_1_UNORM,     XYZW), /* 6 */
+   TU6_xTC(B5G5R5A1_UNORM_PACK16,      5_5_5_1_UNORM,     ZYXW), /* 7 */
    TU6_xTC(A1R5G5B5_UNORM_PACK16,      5_5_5_1_UNORM,     WXYZ), /* 8 */
 
    /* 8-bit R */
@@ -347,8 +347,15 @@ tu6_format_texture(VkFormat format, bool tiled)
    struct tu_native_format fmt = tu6_get_native_format(format);
    assert(fmt.supported & FMT_TEXTURE);
 
-   if (tiled)
+   if (!tiled) {
+      /* different from format table when used as linear src */
+      if (format == VK_FORMAT_R5G5B5A1_UNORM_PACK16)
+         fmt.fmt = FMT6_1_5_5_5_UNORM, fmt.swap = WXYZ;
+      if (format == VK_FORMAT_B5G5R5A1_UNORM_PACK16)
+         fmt.fmt = FMT6_1_5_5_5_UNORM, fmt.swap = WZYX;
+   } else {
       fmt.swap = WZYX;
+   }
 
    return fmt;
 }
