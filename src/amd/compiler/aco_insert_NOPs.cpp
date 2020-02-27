@@ -218,9 +218,10 @@ int handle_raw_hazard_internal(Program *program, Block *block,
       if (is_hazard)
          return nops_needed;
 
+      mask &= ~writemask;
       nops_needed -= get_wait_states(pred);
 
-      if (nops_needed <= 0)
+      if (nops_needed <= 0 || mask == 0)
          return 0;
    }
 
