@@ -493,8 +493,10 @@ do {                                                                    \
       ctx->Driver.NeedFlush |= FLUSH_UPDATE_CURRENT;                    \
    } else {                                                             \
       /* This is a glVertex call */                                     \
+      int size = exec->vtx.attr[0].size;                                \
+                                                                        \
       /* Check if attribute size or type is changing. */                \
-      if (unlikely(exec->vtx.attr[0].size < N * sz ||                   \
+      if (unlikely(size < N * sz ||                                     \
                    exec->vtx.attr[0].type != T)) {                      \
          vbo_exec_wrap_upgrade_vertex(exec, 0, N * sz, T);              \
       }                                                                 \
@@ -514,6 +516,12 @@ do {                                                                    \
          if (N > 1) *dst++ = V1;                                        \
          if (N > 2) *dst++ = V2;                                        \
          if (N > 3) *dst++ = V3;                                        \
+                                                                        \
+         if (unlikely(N < size)) {                                      \
+            if (N < 2 && size >= 2) *dst++ = V1;                        \
+            if (N < 3 && size >= 3) *dst++ = V2;                        \
+            if (N < 4 && size >= 4) *dst++ = V3;                        \
+         }                                                              \
       } else {                                                          \
          /* 64 bits: dst can be unaligned, so copy each 4-byte word */  \
          /* separately */                                               \
@@ -521,6 +529,12 @@ do {                                                                    \
          if (N > 1) SET_64BIT(dst, V1);                                 \
          if (N > 2) SET_64BIT(dst, V2);                                 \
          if (N > 3) SET_64BIT(dst, V3);                                 \
+                                                                        \
+         if (unlikely(N * 2 < size)) {                                  \
+            if (N < 2 && size >= 4) SET_64BIT(dst, V1);                 \
+            if (N < 3 && size >= 6) SET_64BIT(dst, V2);                 \
+            if (N < 4 && size >= 8) SET_64BIT(dst, V3);                 \
+         }                                                              \
       }                                                                 \
                                                                         \
       /* dst now points at the beginning of the next vertex */          \
