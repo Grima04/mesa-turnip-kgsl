@@ -1318,6 +1318,13 @@ static const struct add_op_info add_op_infos[] = {
         { 0x18100, "LD_VAR_ADDR.f32", ADD_VARYING_ADDRESS, true },
         { 0x18200, "LD_VAR_ADDR.i32", ADD_VARYING_ADDRESS, true },
         { 0x18300, "LD_VAR_ADDR.u32", ADD_VARYING_ADDRESS, true },
+        // Conditional discards (discard_if) in NIR. Compares the first two
+        // sources and discards if the result is true
+        { 0x19181, "DISCARD.FEQ.f32", ADD_TWO_SRC, true },
+        { 0x19189, "DISCARD.FNE.f32", ADD_TWO_SRC, true },
+        { 0x1918C, "DISCARD.GL.f32", ADD_TWO_SRC, true }, /* Consumes ICMP.GL/etc with fixed 0 argument */
+        { 0x19190, "DISCARD.FLE.f32", ADD_TWO_SRC, true },
+        { 0x19198, "DISCARD.FLT.f32", ADD_TWO_SRC, true },
         // Implements alpha-to-coverage, as well as possibly the late depth and
         // stencil tests. The first source is the existing sample mask in R60
         // (possibly modified by gl_SampleMask), and the second source is the alpha
