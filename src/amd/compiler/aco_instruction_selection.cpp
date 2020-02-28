@@ -3818,6 +3818,13 @@ void visit_load_input(isel_context *ctx, nir_intrinsic_instr *instr)
          bld.insert(std::move(vec));
       }
 
+   } else if (ctx->shader->info.stage == MESA_SHADER_TESS_EVAL) {
+      Temp ring = bld.smem(aco_opcode::s_load_dwordx4, bld.def(s4), ctx->program->private_segment_buffer, Operand(RING_HS_TESS_OFFCHIP * 16u));
+      Temp soffset = get_arg(ctx, ctx->args->oc_lds);
+      std::pair<Temp, unsigned> offs = get_tcs_per_patch_output_vmem_offset(ctx, instr);
+      unsigned elem_size_bytes = instr->dest.ssa.bit_size / 8u;
+
+      load_vmem_mubuf(ctx, dst, ring, offs.first, soffset, offs.second, elem_size_bytes, instr->dest.ssa.num_components);
    } else {
       unreachable("Shader stage not implemented");
    }
@@ -3906,6 +3913,22 @@ void visit_load_tcs_per_vertex_input(isel_context *ctx, nir_intrinsic_instr *ins
    load_lds(ctx, elem_size_bytes, dst, offs.first, offs.second, lds_align);
 }
 
+void visit_load_tes_per_vertex_input(isel_context *ctx, nir_intrinsic_instr *instr)
+{
+   assert(ctx->shader->info.stage == MESA_SHADER_TESS_EVAL);
+
+   Builder bld(ctx->program, ctx->block);
+
+   Temp ring = bld.smem(aco_opcode::s_load_dwordx4, bld.def(s4), ctx->program->private_segment_buffer, Operand(RING_HS_TESS_OFFCHIP * 16u));
+   Temp oc_lds = get_arg(ctx, ctx->args->oc_lds);
+   Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
+
+   unsigned elem_size_bytes = instr->dest.ssa.bit_size / 8;
+   std::pair<Temp, unsigned> offs = get_tcs_per_vertex_output_vmem_offset(ctx, instr);
+
+   load_vmem_mubuf(ctx, dst, ring, offs.first, oc_lds, offs.second, elem_size_bytes, instr->dest.ssa.num_components, 0u, true, true);
+}
+
 void visit_load_per_vertex_input(isel_context *ctx, nir_intrinsic_instr *instr)
 {
    switch (ctx->shader->info.stage) {
@@ -3914,6 +3937,9 @@ void visit_load_per_vertex_input(isel_context *ctx, nir_intrinsic_instr *instr)
       break;
    case MESA_SHADER_TESS_CTRL:
       visit_load_tcs_per_vertex_input(ctx, instr);
+      break;
+   case MESA_SHADER_TESS_EVAL:
+      visit_load_tes_per_vertex_input(ctx, instr);
       break;
    default:
       unreachable("Unimplemented shader stage");
