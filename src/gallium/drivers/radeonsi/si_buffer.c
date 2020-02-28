@@ -166,6 +166,10 @@ void si_init_resource_fields(struct si_screen *sscreen, struct si_resource *res,
    else
       res->flags |= RADEON_FLAG_NO_INTERPROCESS_SHARING;
 
+   if (sscreen->ws->ws_is_secure(sscreen->ws) &&
+       (res->b.b.bind & PIPE_BIND_SCANOUT))
+      res->flags |= RADEON_FLAG_ENCRYPTED;
+
    if (sscreen->debug_flags & DBG(NO_WC))
       res->flags &= ~RADEON_FLAG_GTT_WC;
 
