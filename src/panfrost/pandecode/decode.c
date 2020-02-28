@@ -626,6 +626,36 @@ pandecode_midgard_tiler_descriptor(
         pandecode_log("}\n");
 }
 
+/* TODO: The Bifrost tiler is not understood at all yet */
+
+static void
+pandecode_bifrost_tiler_descriptor(const struct midgard_tiler_descriptor *t)
+{
+        pandecode_log(".tiler = {\n");
+        pandecode_indent++;
+
+        pandecode_prop("polygon_list_size = 0x%" PRIx32, t->polygon_list_size);
+        pandecode_prop("hierarchy_mask = 0x%" PRIx16, t->hierarchy_mask);
+        pandecode_prop("flags = 0x%" PRIx16, t->flags);
+
+        MEMORY_PROP(t, polygon_list);
+        MEMORY_PROP(t, polygon_list_body);
+        MEMORY_PROP(t, heap_start);
+        MEMORY_PROP(t, heap_end);
+
+        pandecode_log(".weights = { ");
+
+        for (unsigned w = 0; w < ARRAY_SIZE(t->weights); ++w) {
+                pandecode_log_cont("%d, ", t->weights[w]);
+        }
+
+        pandecode_log("},\n");
+
+        pandecode_indent--;
+        pandecode_log("}\n");
+
+}
+
 /* Information about the framebuffer passed back for
  * additional analysis */
 
@@ -1152,7 +1182,10 @@ pandecode_mfbd_bfr(uint64_t gpu_va, int job_no, bool is_fragment, bool is_comput
 
         const struct midgard_tiler_descriptor t = fb->tiler;
         if (!is_compute)
-                pandecode_midgard_tiler_descriptor(&t, fb->width1 + 1, fb->height1 + 1, is_fragment, true);
+                if (is_bifrost)
+                        pandecode_bifrost_tiler_descriptor(&t);
+                else
+                        pandecode_midgard_tiler_descriptor(&t, fb->width1 + 1, fb->height1 + 1, is_fragment, true);
         else
                 pandecode_msg("XXX: skipping compute MFBD, fixme\n");
 
