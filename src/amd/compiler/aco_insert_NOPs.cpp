@@ -179,7 +179,12 @@ struct NOP_ctx_gfx10 {
 
 int get_wait_states(aco_ptr<Instruction>& instr)
 {
-   return 1;
+   if (instr->opcode == aco_opcode::s_nop)
+      return static_cast<SOPP_instruction*>(instr.get())->imm + 1;
+   else if (instr->opcode == aco_opcode::p_constaddr)
+      return 3; /* lowered to 3 instructions in the assembler */
+   else
+      return 1;
 }
 
 bool regs_intersect(PhysReg a_reg, unsigned a_size, PhysReg b_reg, unsigned b_size)
