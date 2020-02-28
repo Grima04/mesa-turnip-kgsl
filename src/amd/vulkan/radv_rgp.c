@@ -270,6 +270,7 @@ struct sqtt_file_chunk_asic_info {
 	uint32_t lds_granularity;
 	uint16_t cu_mask[SQTT_MAX_NUM_SE][SQTT_SA_PER_SE];
 	char reserved1[128];
+	char padding[4];
 };
 
 static_assert(sizeof(struct sqtt_file_chunk_asic_info) == 720,
