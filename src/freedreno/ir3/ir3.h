@@ -1201,9 +1201,16 @@ void ir3_legalize(struct ir3 *ir, struct ir3_shader_variant *so, int *max_bary);
 static inline bool
 ir3_has_latency_to_hide(struct ir3 *ir)
 {
+	/* VS/GS/TCS/TESS  co-exist with frag shader invocations, but we don't
+	 * know the nature of the fragment shader.  Just assume it will have
+	 * latency to hide:
+	 */
+	if (ir->type != MESA_SHADER_FRAGMENT)
+		return true;
+
 	foreach_block (block, &ir->block_list) {
 		foreach_instr (instr, &block->instr_list) {
-			if (is_tex(instr))
+			if (is_tex_or_prefetch(instr))
 				return true;
 
 			if (is_load(instr)) {
