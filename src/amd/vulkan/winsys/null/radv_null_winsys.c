@@ -121,6 +121,8 @@ static void radv_null_winsys_query_info(struct radeon_winsys *rws,
 		info->num_physical_sgprs_per_simd = 512;
 
 	info->num_physical_wave64_vgprs_per_simd = info->chip_class >= GFX10 ? 512 : 256;
+	info->num_simd_per_compute_unit = info->chip_class >= GFX10 ? 2 : 4;
+	info->lds_size_per_workgroup = info->chip_class >= GFX10 ? 128 * 1024 : 64 * 1024;
 }
 
 static void radv_null_winsys_destroy(struct radeon_winsys *rws)
