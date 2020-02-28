@@ -59,8 +59,8 @@ kernel::launch(command_queue &q,
 
    // The handles are created during exec_context::bind(), so we need make
    // sure to call exec_context::bind() before retrieving them.
-   std::vector<uint32_t *> g_handles = map([&](size_t h) {
-         return (uint32_t *)&exec.input[h];
+   std::vector<uint64_t *> g_handles = map([&](size_t h) {
+         return (uint64_t *)&exec.input[h];
       }, exec.g_handles);
 
    q.pipe->bind_compute_state(q.pipe, st);

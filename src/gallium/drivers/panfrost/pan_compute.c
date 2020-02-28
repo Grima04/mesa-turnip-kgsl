@@ -149,7 +149,7 @@ static void
 panfrost_set_global_binding(struct pipe_context *pctx,
                       unsigned first, unsigned count,
                       struct pipe_resource **resources,
-                      uint32_t **handles)
+                      uint64_t **handles)
 {
         /* TODO */
 }

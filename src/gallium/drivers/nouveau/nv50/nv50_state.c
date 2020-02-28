@@ -1237,18 +1237,11 @@ nv50_set_compute_resources(struct pipe_context *pipe,
 }
 
 static inline void
-nv50_set_global_handle(uint32_t *phandle, struct pipe_resource *res)
+nv50_set_global_handle(uint64_t *phandle, struct pipe_resource *res)
 {
    struct nv04_resource *buf = nv04_resource(res);
    if (buf) {
-      uint64_t limit = (buf->address + buf->base.width0) - 1;
-      if (limit < (1ULL << 32)) {
-         *phandle = (uint32_t)buf->address;
-      } else {
-         NOUVEAU_ERR("Cannot map into TGSI_RESOURCE_GLOBAL: "
-                     "resource not contained within 32-bit address space !\n");
-         *phandle = 0;
-      }
+      *phandle = buf->address;
    } else {
       *phandle = 0;
    }
@@ -1258,7 +1251,7 @@ static void
 nv50_set_global_bindings(struct pipe_context *pipe,
                          unsigned start, unsigned nr,
                          struct pipe_resource **resources,
-                         uint32_t **handles)
+                         uint64_t **handles)
 {
    struct nv50_context *nv50 = nv50_context(pipe);
    struct pipe_resource **ptr;

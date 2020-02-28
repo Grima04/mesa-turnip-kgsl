@@ -688,7 +688,7 @@ static void
 dd_context_set_global_binding(struct pipe_context *_pipe,
 			      unsigned first, unsigned count,
 			      struct pipe_resource **resources,
-			      uint32_t **handles)
+			      uint64_t **handles)
 {
    struct pipe_context *pipe = dd_context(_pipe)->pipe;
    pipe->set_global_binding(pipe, first, count, resources, handles);

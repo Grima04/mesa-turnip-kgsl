@@ -294,7 +294,7 @@ static void si_bind_compute_state(struct pipe_context *ctx, void *state)
 static void si_set_global_binding(
 	struct pipe_context *ctx, unsigned first, unsigned n,
 	struct pipe_resource **resources,
-	uint32_t **handles)
+	uint64_t **handles)
 {
 	unsigned i;
 	struct si_context *sctx = (struct si_context*)ctx;
@@ -326,10 +326,10 @@ static void si_set_global_binding(
 
 	for (i = 0; i < n; i++) {
 		uint64_t va;
-		uint32_t offset;
+		uint64_t offset;
 		pipe_resource_reference(&program->global_buffers[first + i], resources[i]);
 		va = si_resource(resources[i])->gpu_address;
-		offset = util_le32_to_cpu(*handles[i]);
+		offset = util_le64_to_cpu(*handles[i]);
 		va += offset;
 		va = util_cpu_to_le64(va);
 		memcpy(handles[i], &va, sizeof(va));

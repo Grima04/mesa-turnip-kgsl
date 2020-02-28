@@ -541,7 +541,7 @@ fd_set_compute_resources(struct pipe_context *pctx,
 static void
 fd_set_global_binding(struct pipe_context *pctx,
 		unsigned first, unsigned count, struct pipe_resource **prscs,
-		uint32_t **handles)
+		uint64_t **handles)
 {
 	struct fd_context *ctx = fd_context(pctx);
 	struct fd_global_bindings_stateobj *so = &ctx->global_bindings;
@@ -558,7 +558,6 @@ fd_set_global_binding(struct pipe_context *pctx,
 			if (so->buf[n]) {
 				struct fd_resource *rsc = fd_resource(so->buf[n]);
 				uint64_t iova = fd_bo_get_iova(rsc->bo);
-				// TODO need to scream if iova > 32b or fix gallium API..
 				*handles[i] += iova;
 			}
 
