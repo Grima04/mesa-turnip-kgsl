@@ -4684,7 +4684,7 @@ radv_queue_internal_submit(struct radv_queue *queue, struct radeon_cmdbuf *cs)
 	int ret;
 
 	result = radv_alloc_sem_info(queue->device, &sem_info, 0, NULL, 0, 0,
-				     0, NULL, NULL);
+				     0, NULL, VK_NULL_HANDLE);
 	if (result != VK_SUCCESS)
 		return false;
 
