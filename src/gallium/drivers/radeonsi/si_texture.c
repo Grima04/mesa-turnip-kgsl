@@ -1660,7 +1660,7 @@ static void *si_texture_transfer_map(struct pipe_context *ctx, struct pipe_resou
        * Use the staging texture for uploads if the underlying BO
        * is busy.
        */
-      if (!tex->surface.is_linear)
+      if (!tex->surface.is_linear || (tex->buffer.flags & RADEON_FLAG_ENCRYPTED))
          use_staging_texture = true;
       else if (usage & PIPE_TRANSFER_READ)
          use_staging_texture =
