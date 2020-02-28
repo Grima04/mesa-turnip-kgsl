@@ -1540,6 +1540,7 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 					 * nir_variable to figure out what it is.
 					 */
 					dst[i] = ctx->inputs[inloc];
+					compile_assert(ctx, dst[i]);
 				}
 			}
 		} else {
