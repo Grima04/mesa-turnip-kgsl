@@ -2893,6 +2893,175 @@ unsigned calculate_lds_alignment(isel_context *ctx, unsigned const_offset)
    return align;
 }
 
+
+Temp create_vec_from_array(isel_context *ctx, Temp arr[], unsigned cnt, RegType reg_type, unsigned split_cnt = 0u, Temp dst = Temp())
+{
+   Builder bld(ctx->program, ctx->block);
+
+   if (!dst.id())
+      dst = bld.tmp(RegClass(reg_type, cnt * arr[0].size()));
+
+   std::array<Temp, NIR_MAX_VEC_COMPONENTS> allocated_vec;
+   aco_ptr<Pseudo_instruction> instr {create_instruction<Pseudo_instruction>(aco_opcode::p_create_vector, Format::PSEUDO, cnt, 1)};
+   instr->definitions[0] = Definition(dst);
+
+   for (unsigned i = 0; i < cnt; ++i) {
+      assert(arr[i].size() == arr[0].size());
+      allocated_vec[i] = arr[i];
+      instr->operands[i] = Operand(arr[i]);
+   }
+
+   bld.insert(std::move(instr));
+
+   if (split_cnt)
+      emit_split_vector(ctx, dst, split_cnt);
+   else
+      ctx->allocated_vec.emplace(dst.id(), allocated_vec); /* emit_split_vector already does this */
+
+   return dst;
+}
+
+inline unsigned resolve_excess_vmem_const_offset(Builder &bld, Temp &voffset, unsigned const_offset)
+{
+   if (const_offset >= 4096) {
+      unsigned excess_const_offset = const_offset / 4096u * 4096u;
+      const_offset %= 4096u;
+
+      if (!voffset.id())
+         voffset = bld.copy(bld.def(v1), Operand(excess_const_offset));
+      else if (unlikely(voffset.regClass() == s1))
+         voffset = bld.sop2(aco_opcode::s_add_u32, bld.def(s1), bld.def(s1, scc), Operand(excess_const_offset), Operand(voffset));
+      else if (likely(voffset.regClass() == v1))
+         voffset = bld.vadd32(bld.def(v1), Operand(voffset), Operand(excess_const_offset));
+      else
+         unreachable("Unsupported register class of voffset");
+   }
+
+   return const_offset;
+}
+
+void emit_single_mubuf_store(isel_context *ctx, Temp descriptor, Temp voffset, Temp soffset, Temp vdata,
+                             unsigned const_offset = 0u, bool allow_reorder = true, bool slc = false)
+{
+   assert(vdata.id());
+   assert(vdata.size() != 3 || ctx->program->chip_class != GFX6);
+   assert(vdata.size() >= 1 && vdata.size() <= 4);
+
+   Builder bld(ctx->program, ctx->block);
+   aco_opcode op = (aco_opcode) ((unsigned) aco_opcode::buffer_store_dword + vdata.size() - 1);
+   const_offset = resolve_excess_vmem_const_offset(bld, voffset, const_offset);
+
+   Operand voffset_op = voffset.id() ? Operand(as_vgpr(ctx, voffset)) : Operand(v1);
+   Operand soffset_op = soffset.id() ? Operand(soffset) : Operand(0u);
+   Builder::Result r = bld.mubuf(op, Operand(descriptor), voffset_op, soffset_op, Operand(vdata), const_offset,
+                                 /* offen */ !voffset_op.isUndefined(), /* idxen*/ false, /* addr64 */ false,
+                                 /* disable_wqm */ false, /* glc */ true, /* dlc*/ false, /* slc */ slc);
+
+   static_cast<MUBUF_instruction *>(r.instr)->can_reorder = allow_reorder;
+}
+
+void store_vmem_mubuf(isel_context *ctx, Temp src, Temp descriptor, Temp voffset, Temp soffset,
+                                   unsigned base_const_offset, unsigned elem_size_bytes, unsigned write_mask,
+                                   bool allow_combining = true, bool reorder = true, bool slc = false)
+{
+   Builder bld(ctx->program, ctx->block);
+   assert(elem_size_bytes == 4 || elem_size_bytes == 8);
+   assert(write_mask);
+
+   if (elem_size_bytes == 8) {
+      elem_size_bytes = 4;
+      write_mask = widen_mask(write_mask, 2);
+   }
+
+   while (write_mask) {
+      int start = 0;
+      int count = 0;
+      u_bit_scan_consecutive_range(&write_mask, &start, &count);
+      assert(count > 0);
+      assert(start >= 0);
+
+      while (count > 0) {
+         unsigned sub_count = allow_combining ? MIN2(count, 4) : 1;
+         unsigned const_offset = (unsigned) start * elem_size_bytes + base_const_offset;
+
+         /* GFX6 doesn't have buffer_store_dwordx3, so make sure not to emit that here either. */
+         if (unlikely(ctx->program->chip_class == GFX6 && sub_count == 3))
+            sub_count = 2;
+
+         Temp elem = extract_subvector(ctx, src, start, sub_count, RegType::vgpr);
+         emit_single_mubuf_store(ctx, descriptor, voffset, soffset, elem, const_offset, reorder, slc);
+
+         count -= sub_count;
+         start += sub_count;
+      }
+
+      assert(count == 0);
+   }
+}
+
+Temp emit_single_mubuf_load(isel_context *ctx, Temp descriptor, Temp voffset, Temp soffset,
+                            unsigned const_offset, unsigned size_dwords, bool allow_reorder = true)
+{
+   assert(size_dwords != 3 || ctx->program->chip_class != GFX6);
+   assert(size_dwords >= 1 && size_dwords <= 4);
+
+   Builder bld(ctx->program, ctx->block);
+   Temp vdata = bld.tmp(RegClass(RegType::vgpr, size_dwords));
+   aco_opcode op = (aco_opcode) ((unsigned) aco_opcode::buffer_load_dword + size_dwords - 1);
+   const_offset = resolve_excess_vmem_const_offset(bld, voffset, const_offset);
+
+   Operand voffset_op = voffset.id() ? Operand(as_vgpr(ctx, voffset)) : Operand(v1);
+   Operand soffset_op = soffset.id() ? Operand(soffset) : Operand(0u);
+   Builder::Result r = bld.mubuf(op, Definition(vdata), Operand(descriptor), voffset_op, soffset_op, const_offset,
+                                 /* offen */ !voffset_op.isUndefined(), /* idxen*/ false, /* addr64 */ false,
+                                 /* disable_wqm */ false, /* glc */ true,
+                                 /* dlc*/ ctx->program->chip_class >= GFX10, /* slc */ false);
+
+   static_cast<MUBUF_instruction *>(r.instr)->can_reorder = allow_reorder;
+
+   return vdata;
+}
+
+void load_vmem_mubuf(isel_context *ctx, Temp dst, Temp descriptor, Temp voffset, Temp soffset,
+                     unsigned base_const_offset, unsigned elem_size_bytes, unsigned num_components,
+                     unsigned stride = 0u, bool allow_combining = true, bool allow_reorder = true)
+{
+   assert(elem_size_bytes == 4 || elem_size_bytes == 8);
+   assert((num_components * elem_size_bytes / 4) == dst.size());
+   assert(!!stride != allow_combining);
+
+   Builder bld(ctx->program, ctx->block);
+   unsigned split_cnt = num_components;
+
+   if (elem_size_bytes == 8) {
+      elem_size_bytes = 4;
+      num_components *= 2;
+   }
+
+   if (!stride)
+      stride = elem_size_bytes;
+
+   unsigned load_size = 1;
+   if (allow_combining) {
+      if ((num_components % 4) == 0)
+         load_size = 4;
+      else if ((num_components % 3) == 0 && ctx->program->chip_class != GFX6)
+         load_size = 3;
+      else if ((num_components % 2) == 0)
+         load_size = 2;
+   }
+
+   unsigned num_loads = num_components / load_size;
+   std::array<Temp, NIR_MAX_VEC_COMPONENTS> elems;
+
+   for (unsigned i = 0; i < num_loads; ++i) {
+      unsigned const_offset = i * stride * load_size + base_const_offset;
+      elems[i] = emit_single_mubuf_load(ctx, descriptor, voffset, soffset, const_offset, load_size, allow_reorder);
+   }
+
+   create_vec_from_array(ctx, elems.data(), num_loads, RegType::vgpr, split_cnt, dst);
+}
+
 void visit_store_vsgs_output(isel_context *ctx, nir_intrinsic_instr *instr)
 {
    unsigned write_mask = nir_intrinsic_write_mask(instr);
