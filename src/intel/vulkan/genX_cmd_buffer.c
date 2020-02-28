@@ -2029,6 +2029,16 @@ genX(cmd_buffer_apply_pipe_flushes)(struct anv_cmd_buffer *cmd_buffer)
    if (bits & ANV_PIPE_FLUSH_BITS)
       bits |= ANV_PIPE_NEEDS_END_OF_PIPE_SYNC_BIT;
 
+
+   /* HSD 1209978178: docs say that before programming the aux table:
+    *
+    *    "Driver must ensure that the engine is IDLE but ensure it doesn't
+    *    add extra flushes in the case it knows that the engine is already
+    *    IDLE."
+    */
+   if (GEN_GEN == 12 && ANV_PIPE_AUX_TABLE_INVALIDATE_BIT)
+      bits |= ANV_PIPE_NEEDS_END_OF_PIPE_SYNC_BIT;
+
    /* If we're going to do an invalidate and we have a pending end-of-pipe
     * sync that has yet to be resolved, we do the end-of-pipe sync now.
     */
