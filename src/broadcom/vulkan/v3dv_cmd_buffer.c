@@ -1196,10 +1196,12 @@ cmd_buffer_emit_render_pass_layer_rcl(struct v3dv_cmd_buffer *cmd_buffer,
    const uint32_t min_y_supertile =
       state->render_area.offset.y / supertile_h_in_pixels;
 
-   const uint32_t max_render_x =
-      state->render_area.offset.x + state->render_area.extent.width - 1;
-   const uint32_t max_render_y =
-      state->render_area.offset.y + state->render_area.extent.height - 1;
+   uint32_t max_render_x = state->render_area.offset.x;
+   if (state->render_area.extent.width > 0)
+      max_render_x += state->render_area.extent.width - 1;
+   uint32_t max_render_y = state->render_area.offset.y;
+   if (state->render_area.extent.height > 0)
+      max_render_y += state->render_area.extent.height - 1;
    const uint32_t max_x_supertile = max_render_x / supertile_w_in_pixels;
    const uint32_t max_y_supertile = max_render_y / supertile_h_in_pixels;
 
