@@ -2054,11 +2054,13 @@ iris_get_scratch_space(struct iris_context *ice,
     *
     * This hack is no longer necessary on Gen11+.
     *
-    * For, ICL, scratch space allocation is based on the number of threads
+    * For, Gen11+, scratch space allocation is based on the number of threads
     * in the base configuration.
     */
    unsigned subslice_total = screen->subslice_total;
-   if (devinfo->gen == 11)
+   if (devinfo->gen >= 12)
+      subslice_total = devinfo->num_subslices[0];
+   else if (devinfo->gen == 11)
       subslice_total = 8;
    else if (devinfo->gen < 11)
       subslice_total = 4 * devinfo->num_slices;
@@ -2067,7 +2069,10 @@ iris_get_scratch_space(struct iris_context *ice,
    if (!*bop) {
       unsigned scratch_ids_per_subslice = devinfo->max_cs_threads;
 
-      if (devinfo->gen >= 11) {
+      if (devinfo->gen >= 12) {
+         /* Same as ICL below, but with 16 EUs. */
+         scratch_ids_per_subslice = 16 * 8;
+      } else if (devinfo->gen == 11) {
          /* The MEDIA_VFE_STATE docs say:
           *
           *    "Starting with this configuration, the Maximum Number of
