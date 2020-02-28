@@ -1293,6 +1293,7 @@ static const struct add_op_info add_op_infos[] = {
         { 0x0f650, "UCMP.GL.GT", ADD_TWO_SRC },
         { 0x0f658, "UCMP.GL.GE", ADD_TWO_SRC },
         { 0x0f660, "ICMP.GL.EQ", ADD_TWO_SRC },
+        { 0x0f669, "ICMP.GL.NEQ", ADD_TWO_SRC },
         { 0x0f6c0, "ICMP.D3D.GT", ADD_TWO_SRC }, // src0 > src1 ? ~0 : 0
         { 0x0f6c8, "ICMP.D3D.GE", ADD_TWO_SRC },
         { 0x0f6d0, "UCMP.D3D.GT", ADD_TWO_SRC },
