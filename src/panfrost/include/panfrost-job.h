@@ -1491,7 +1491,14 @@ struct mali_shared_memory {
         mali_ptr unknown1;
 } __attribute__((packed));
 
+/* Configures multisampling on Bifrost fragment jobs */
 
+struct bifrost_multisampling {
+        u64 zero1;
+        u64 zero2;
+        mali_ptr sample_locations;
+        u64 zero4;
+} __attribute__((packed));
 
 struct mali_single_framebuffer {
         struct mali_shared_memory shared_memory;
@@ -1685,7 +1692,10 @@ struct mali_framebuffer_extra  {
 #define MALI_MFBD_EXTRA (1 << 13)
 
 struct mali_framebuffer {
-        struct mali_shared_memory shared_memory;
+        union {
+                struct mali_shared_memory shared_memory;
+                struct bifrost_multisampling msaa;
+        };
 
         /* 0x20 */
         u16 width1, height1;
