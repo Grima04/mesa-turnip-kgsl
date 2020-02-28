@@ -130,9 +130,6 @@ static VAStatus vlVaPostProcBlit(vlVaDriver *drv, vlVaContext *context,
        !src->interlaced)
       grab = true;
 
-   if (src->interlaced != dst->interlaced && dst->interlaced && !grab)
-      return VA_STATUS_ERROR_INVALID_SURFACE;
-
    if ((src->width != dst->width || src->height != dst->height) &&
        (src->interlaced && dst->interlaced))
       scale = true;
@@ -141,7 +138,7 @@ static VAStatus vlVaPostProcBlit(vlVaDriver *drv, vlVaContext *context,
    if (!src_surfaces || !src_surfaces[0])
       return VA_STATUS_ERROR_INVALID_SURFACE;
 
-   if (scale || (grab && dst->interlaced)) {
+   if (scale || (src->interlaced != dst->interlaced && dst->interlaced)) {
       vlVaSurface *surf;
 
       surf = handle_table_get(drv->htab, context->target_id);
