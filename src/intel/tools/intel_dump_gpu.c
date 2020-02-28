@@ -469,7 +469,14 @@ ioctl(int fd, unsigned long request, ...)
 
       case DRM_IOCTL_I915_GETPARAM: {
          struct drm_i915_getparam *getparam = argp;
-         return get_pci_id(fd, getparam->value);
+
+         if (getparam->param == I915_PARAM_CHIPSET_ID)
+            return get_pci_id(fd, getparam->value);
+
+         if (device_override)
+            return -1;
+
+         return libc_ioctl(fd, request, argp);
       }
 
       case DRM_IOCTL_I915_GEM_EXECBUFFER: {
