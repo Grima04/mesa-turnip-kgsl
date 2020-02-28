@@ -2375,7 +2375,10 @@ void radv_nir_shader_info_init(struct radv_shader_info *info);
 struct radv_thread_trace_info {
 	uint32_t cur_offset;
 	uint32_t trace_status;
-	uint32_t write_counter;
+	union {
+		uint32_t gfx9_write_counter;
+		uint32_t gfx10_dropped_cntr;
+	};
 };
 
 struct radv_thread_trace_se {

@@ -2971,12 +2971,12 @@ VkResult radv_CreateDevice(
 
 	int radv_thread_trace = radv_get_int_debug_option("RADV_THREAD_TRACE", -1);
 	if (radv_thread_trace >= 0) {
-		fprintf(stderr, "*****************************************************************************\n");
-		fprintf(stderr, "* WARNING: Thread trace support is experimental and only supported on GFX9! *\n");
-		fprintf(stderr, "*****************************************************************************\n");
+		fprintf(stderr, "******************************************************************************\n");
+		fprintf(stderr, "* WARNING: Thread trace support is experimental and only supported on GFX9+! *\n");
+		fprintf(stderr, "******************************************************************************\n");
 
 		/* TODO: add support for more ASICs. */
-		assert(device->physical_device->rad_info.chip_class == GFX9);
+		assert(device->physical_device->rad_info.chip_class >= GFX9);
 
 		/* Default buffer size set to 1MB per SE. */
 		device->thread_trace_buffer_size =
