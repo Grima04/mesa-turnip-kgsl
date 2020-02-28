@@ -346,6 +346,9 @@ struct ir3_ra_ctx {
 	unsigned *def, *use;     /* def/use table */
 	struct ir3_ra_instr_data *instrd;
 
+	/* Mapping vreg name back to instruction, used select reg callback: */
+	struct hash_table *name_to_instr;
+
 	/* Tracking for max half/full register assigned.  We don't need to
 	 * track high registers.
 	 *
@@ -354,7 +357,13 @@ struct ir3_ra_ctx {
 	 */
 	unsigned max_assigned;
 	unsigned max_half_assigned;
+
+	/* Tracking for select_reg callback */
+	unsigned start_search_reg;
+	unsigned max_target;
 };
+
+static int scalar_name(struct ir3_ra_ctx *ctx, struct ir3_instruction *instr, unsigned n);
 
 /* does it conflict? */
 static inline bool
@@ -640,6 +649,101 @@ ra_block_name_instructions(struct ir3_ra_ctx *ctx, struct ir3_block *block)
 	}
 }
 
+static int
+pick_in_range(BITSET_WORD *regs, unsigned min, unsigned max)
+{
+	for (unsigned i = min; i < max; i++) {
+		if (BITSET_TEST(regs, i)) {
+			return i;
+		}
+	}
+	return -1;
+}
+
+/* register selector for the a6xx+ merged register file: */
+static unsigned int
+ra_select_reg_merged(unsigned int n, BITSET_WORD *regs, void *data)
+{
+	struct ir3_ra_ctx *ctx = data;
+	unsigned int class = ra_get_node_class(ctx->g, n);
+
+	/* dimensions within the register class: */
+	unsigned max_target, start;
+
+	/* the regs bitset will include *all* of the virtual regs, but we lay
+	 * out the different classes consecutively in the virtual register
+	 * space.  So we just need to think about the base offset of a given
+	 * class within the virtual register space, and offset the register
+	 * space we search within by that base offset.
+	 */
+	unsigned base;
+
+	/* NOTE: this is only used in scalar pass, so the register
+	 * class will be one of the scalar classes (ie. idx==0):
+	 */
+	if (class == ctx->set->high_classes[0]) {
+		max_target = HIGH_CLASS_REGS(0);
+		start = 0;
+		base = ctx->set->gpr_to_ra_reg[HIGH_OFFSET][0];
+	} else if (class == ctx->set->half_classes[0]) {
+		max_target = ctx->max_target;
+		start = ctx->start_search_reg;
+		base = ctx->set->gpr_to_ra_reg[HALF_OFFSET][0];
+	} else if (class == ctx->set->classes[0]) {
+		max_target = ctx->max_target / 2;
+		start = ctx->start_search_reg;
+		base = ctx->set->gpr_to_ra_reg[0][0];
+	} else {
+		unreachable("unexpected register class!");
+	}
+
+	/* For cat4 instructions, if the src reg is already assigned, and
+	 * avail to pick, use it.  Because this doesn't introduce unnecessary
+	 * dependencies, and it potentially avoids needing (ss) syncs to
+	 * for write after read hazards:
+	 */
+	struct hash_entry *entry = _mesa_hash_table_search(ctx->name_to_instr, &n);
+	if (entry) {
+		struct ir3_instruction *instr = entry->data;
+
+		if (is_sfu(instr) && instr->regs[1]->instr) {
+			struct ir3_instruction *src = instr->regs[1]->instr;
+			unsigned src_n = scalar_name(ctx, src, 0);
+
+			unsigned reg = ra_get_node_reg(ctx->g, src_n);
+
+			/* Check if the src register has been assigned yet: */
+			if (reg != NO_REG) {
+				if (BITSET_TEST(regs, reg)) {
+					return reg;
+				}
+			}
+		}
+	}
+
+	int r = pick_in_range(regs, base + start, base + max_target);
+	if (r < 0) {
+		/* wrap-around: */
+		r = pick_in_range(regs, base, base + start);
+	}
+
+	if (r < 0) {
+		/* overflow, we need to increase max_target: */
+		ctx->max_target++;
+		return ra_select_reg_merged(n, regs, data);
+	}
+
+	if (class == ctx->set->half_classes[0]) {
+		int n = r - base;
+		ctx->start_search_reg = (n + 1) % ctx->max_target;
+	} else if (class == ctx->set->classes[0]) {
+		int n = (r - base) * 2;
+		ctx->start_search_reg = (n + 1) % ctx->max_target;
+	}
+
+	return r;
+}
+
 static void
 ra_init(struct ir3_ra_ctx *ctx)
 {
@@ -680,6 +784,14 @@ ra_init(struct ir3_ra_ctx *ctx)
 	ralloc_steal(ctx->g, ctx->instrd);
 	ctx->def = rzalloc_array(ctx->g, unsigned, ctx->alloc_count);
 	ctx->use = rzalloc_array(ctx->g, unsigned, ctx->alloc_count);
+
+	/* TODO add selector callback for split (pre-a6xx) register file: */
+	if (ctx->scalar_pass && (ctx->ir->compiler->gpu_id >= 600)) {
+		ra_set_select_reg_callback(ctx->g, ra_select_reg_merged, ctx);
+
+		ctx->name_to_instr = _mesa_hash_table_create(ctx->g,
+				_mesa_hash_int, _mesa_key_int_equal);
+	}
 }
 
 static unsigned
@@ -836,6 +948,16 @@ ra_block_compute_live_ranges(struct ir3_ra_ctx *ctx, struct ir3_block *block)
 						continue;
 
 					def(name, instr);
+
+					if (ctx->name_to_instr && is_sfu(instr)) {
+						/* this is slightly annoying, we can't just use an
+						 * integer on the stack
+						 */
+						unsigned *key = ralloc(ctx->name_to_instr, unsigned);
+						*key = name;
+						debug_assert(!_mesa_hash_table_search(ctx->name_to_instr, key));
+						_mesa_hash_table_insert(ctx->name_to_instr, key, instr);
+					}
 
 					if ((instr->opc == OPC_META_INPUT) && first_non_input)
 						use(name, first_non_input);
@@ -1536,9 +1658,32 @@ ra_sanity_check(struct ir3 *ir)
 	}
 }
 
+/* Target is calculated in terms of half-regs (with a full reg
+ * consisting of two half-regs).
+ */
+static void
+ra_calc_merged_register_target(struct ir3_ra_ctx *ctx)
+{
+	const unsigned vec4 = 2 * 4;  // 8 half-regs
+	unsigned t = MAX2(2 * ctx->max_assigned, ctx->max_half_assigned);
+
+	/* second RA pass may have saved some regs, let's try to reclaim
+	 * the benefit by adjusting the target downwards slightly:
+	 */
+	if (ir3_has_latency_to_hide(ctx->ir)) {
+		if (t > 8 * vec4) {
+			t -= 2 * vec4;
+		} else if (t > 6 * vec4) {
+			t -= vec4;
+		}
+	}
+
+	ctx->max_target = t;
+}
+
 static int
 ir3_ra_pass(struct ir3_shader_variant *v, struct ir3_instruction **precolor,
-		unsigned nprecolor, bool scalar_pass)
+		unsigned nprecolor, bool scalar_pass, unsigned *target)
 {
 	struct ir3_ra_ctx ctx = {
 			.v = v,
@@ -1548,6 +1693,10 @@ ir3_ra_pass(struct ir3_shader_variant *v, struct ir3_instruction **precolor,
 	};
 	int ret;
 
+	if (scalar_pass) {
+		ctx.max_target = *target;
+	}
+
 	ra_init(&ctx);
 	ra_add_interference(&ctx);
 	ra_precolor(&ctx, precolor, nprecolor);
@@ -1556,7 +1705,16 @@ ir3_ra_pass(struct ir3_shader_variant *v, struct ir3_instruction **precolor,
 	ret = ra_alloc(&ctx);
 	ra_destroy(&ctx);
 
-	printf("#### max_assigned=%u, max_half_assigned=%u\n", ctx.max_assigned, ctx.max_half_assigned);
+	/* In the first pass, calculate the target register usage used in the
+	 * second (scalar) pass:
+	 */
+	if (!scalar_pass) {
+		/* TODO: round-robin support for pre-a6xx: */
+		if (ctx.ir->compiler->gpu_id >= 600) {
+			ra_calc_merged_register_target(&ctx);
+		}
+		*target = ctx.max_target;
+	}
 
 	return ret;
 }
@@ -1565,10 +1723,11 @@ int
 ir3_ra(struct ir3_shader_variant *v, struct ir3_instruction **precolor,
 		unsigned nprecolor)
 {
+	unsigned target = 0;
 	int ret;
 
 	/* First pass, assign the vecN (non-scalar) registers: */
-	ret = ir3_ra_pass(v, precolor, nprecolor, false);
+	ret = ir3_ra_pass(v, precolor, nprecolor, false, &target);
 	if (ret)
 		return ret;
 
@@ -1578,7 +1737,7 @@ ir3_ra(struct ir3_shader_variant *v, struct ir3_instruction **precolor,
 	}
 
 	/* Second pass, assign the scalar registers: */
-	ret = ir3_ra_pass(v, precolor, nprecolor, true);
+	ret = ir3_ra_pass(v, precolor, nprecolor, true, &target);
 	if (ret)
 		return ret;
 
