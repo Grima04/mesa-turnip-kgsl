@@ -3062,6 +3062,94 @@ void load_vmem_mubuf(isel_context *ctx, Temp dst, Temp descriptor, Temp voffset,
    create_vec_from_array(ctx, elems.data(), num_loads, RegType::vgpr, split_cnt, dst);
 }
 
+std::pair<Temp, unsigned> offset_add_from_nir(isel_context *ctx, const std::pair<Temp, unsigned> &base_offset, nir_src *off_src, unsigned stride = 1u)
+{
+   Builder bld(ctx->program, ctx->block);
+   Temp offset = base_offset.first;
+   unsigned const_offset = base_offset.second;
+
+   if (!nir_src_is_const(*off_src)) {
+      Temp indirect_offset_arg = get_ssa_temp(ctx, off_src->ssa);
+      Temp with_stride;
+
+      /* Calculate indirect offset with stride */
+      if (likely(indirect_offset_arg.regClass() == v1))
+         with_stride = bld.v_mul_imm(bld.def(v1), indirect_offset_arg, stride);
+      else if (indirect_offset_arg.regClass() == s1)
+         with_stride = bld.sop2(aco_opcode::s_mul_i32, bld.def(s1), Operand(stride), indirect_offset_arg);
+      else
+         unreachable("Unsupported register class of indirect offset");
+
+      /* Add to the supplied base offset */
+      if (offset.id() == 0)
+         offset = with_stride;
+      else if (unlikely(offset.regClass() == s1 && with_stride.regClass() == s1))
+         offset = bld.sop2(aco_opcode::s_add_u32, bld.def(s1), bld.def(s1, scc), with_stride, offset);
+      else if (offset.size() == 1 && with_stride.size() == 1)
+         offset = bld.vadd32(bld.def(v1), with_stride, offset);
+      else
+         unreachable("Unsupported register class of indirect offset");
+   } else {
+      unsigned const_offset_arg = nir_src_as_uint(*off_src);
+      const_offset += const_offset_arg * stride;
+   }
+
+   return std::make_pair(offset, const_offset);
+}
+
+std::pair<Temp, unsigned> offset_add(isel_context *ctx, const std::pair<Temp, unsigned> &off1, const std::pair<Temp, unsigned> &off2)
+{
+   Builder bld(ctx->program, ctx->block);
+   Temp offset;
+
+   if (off1.first.id() && off2.first.id()) {
+      if (unlikely(off1.first.regClass() == s1 && off2.first.regClass() == s1))
+         offset = bld.sop2(aco_opcode::s_add_u32, bld.def(s1), bld.def(s1, scc), off1.first, off2.first);
+      else if (off1.first.size() == 1 && off2.first.size() == 1)
+         offset = bld.vadd32(bld.def(v1), off1.first, off2.first);
+      else
+         unreachable("Unsupported register class of indirect offset");
+   } else {
+      offset = off1.first.id() ? off1.first : off2.first;
+   }
+
+   return std::make_pair(offset, off1.second + off2.second);
+}
+
+std::pair<Temp, unsigned> offset_mul(isel_context *ctx, const std::pair<Temp, unsigned> &offs, unsigned multiplier)
+{
+   Builder bld(ctx->program, ctx->block);
+   unsigned const_offset = offs.second * multiplier;
+
+   if (!offs.first.id())
+      return std::make_pair(offs.first, const_offset);
+
+   Temp offset = unlikely(offs.first.regClass() == s1)
+                 ? bld.sop2(aco_opcode::s_mul_i32, bld.def(s1), Operand(multiplier), offs.first)
+                 : bld.v_mul_imm(bld.def(v1), offs.first, multiplier);
+
+   return std::make_pair(offset, const_offset);
+}
+
+std::pair<Temp, unsigned> get_intrinsic_io_basic_offset(isel_context *ctx, nir_intrinsic_instr *instr, unsigned base_stride, unsigned component_stride)
+{
+   Builder bld(ctx->program, ctx->block);
+
+   /* base is the driver_location, which is already multiplied by 4, so is in dwords */
+   unsigned const_offset = nir_intrinsic_base(instr) * base_stride;
+   /* component is in bytes */
+   const_offset += nir_intrinsic_component(instr) * component_stride;
+
+   /* offset should be interpreted in relation to the base, so the instruction effectively reads/writes another input/output when it has an offset */
+   nir_src *off_src = nir_get_io_offset_src(instr);
+   return offset_add_from_nir(ctx, std::make_pair(Temp(), const_offset), off_src, 4u * base_stride);
+}
+
+std::pair<Temp, unsigned> get_intrinsic_io_basic_offset(isel_context *ctx, nir_intrinsic_instr *instr, unsigned stride = 1u)
+{
+   return get_intrinsic_io_basic_offset(ctx, instr, stride, stride);
+}
+
 void visit_store_vsgs_output(isel_context *ctx, nir_intrinsic_instr *instr)
 {
    unsigned write_mask = nir_intrinsic_write_mask(instr);
