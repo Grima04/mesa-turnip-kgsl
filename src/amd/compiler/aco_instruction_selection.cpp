@@ -3679,21 +3679,21 @@ void visit_load_input(isel_context *ctx, nir_intrinsic_instr *instr)
    }
 }
 
-void visit_load_per_vertex_input(isel_context *ctx, nir_intrinsic_instr *instr)
+std::pair<Temp, unsigned> get_gs_per_vertex_input_offset(isel_context *ctx, nir_intrinsic_instr *instr, unsigned base_stride = 1u)
 {
-   assert(ctx->stage == vertex_geometry_gs || ctx->stage == geometry_gs);
    assert(ctx->shader->info.stage == MESA_SHADER_GEOMETRY);
 
    Builder bld(ctx->program, ctx->block);
-   Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
+   nir_src *vertex_src = nir_get_io_vertex_index_src(instr);
+   Temp vertex_offset;
 
-   Temp offset = Temp();
-   if (instr->src[0].ssa->parent_instr->type != nir_instr_type_load_const) {
+   if (!nir_src_is_const(*vertex_src)) {
       /* better code could be created, but this case probably doesn't happen
        * much in practice */
-      Temp indirect_vertex = as_vgpr(ctx, get_ssa_temp(ctx, instr->src[0].ssa));
+      Temp indirect_vertex = as_vgpr(ctx, get_ssa_temp(ctx, vertex_src->ssa));
       for (unsigned i = 0; i < ctx->shader->info.gs.vertices_in; i++) {
          Temp elem;
+
          if (ctx->stage == vertex_geometry_gs) {
             elem = get_arg(ctx, ctx->args->gs_vtx_offset[i / 2u * 2u]);
             if (i % 2u)
@@ -3701,86 +3701,62 @@ void visit_load_per_vertex_input(isel_context *ctx, nir_intrinsic_instr *instr)
          } else {
             elem = get_arg(ctx, ctx->args->gs_vtx_offset[i]);
          }
-         if (offset.id()) {
-            Temp cond = bld.vopc(aco_opcode::v_cmp_eq_u32, bld.hint_vcc(bld.def(s2)),
+
+         if (vertex_offset.id()) {
+            Temp cond = bld.vopc(aco_opcode::v_cmp_eq_u32, bld.hint_vcc(bld.def(bld.lm)),
                                  Operand(i), indirect_vertex);
-            offset = bld.vop2(aco_opcode::v_cndmask_b32, bld.def(v1), offset, elem, cond);
+            vertex_offset = bld.vop2(aco_opcode::v_cndmask_b32, bld.def(v1), vertex_offset, elem, cond);
          } else {
-            offset = elem;
+            vertex_offset = elem;
          }
       }
+
       if (ctx->stage == vertex_geometry_gs)
-         offset = bld.vop2(aco_opcode::v_and_b32, bld.def(v1), Operand(0xffffu), offset);
+         vertex_offset = bld.vop2(aco_opcode::v_and_b32, bld.def(v1), Operand(0xffffu), vertex_offset);
    } else {
-      unsigned vertex = nir_src_as_uint(instr->src[0]);
+      unsigned vertex = nir_src_as_uint(*vertex_src);
       if (ctx->stage == vertex_geometry_gs)
-         offset = bld.vop3(
-         aco_opcode::v_bfe_u32, bld.def(v1), get_arg(ctx, ctx->args->gs_vtx_offset[vertex / 2u * 2u]),
-            Operand((vertex % 2u) * 16u), Operand(16u));
+         vertex_offset = bld.vop3(aco_opcode::v_bfe_u32, bld.def(v1),
+                                  get_arg(ctx, ctx->args->gs_vtx_offset[vertex / 2u * 2u]),
+                                  Operand((vertex % 2u) * 16u), Operand(16u));
       else
-         offset = get_arg(ctx, ctx->args->gs_vtx_offset[vertex]);
+         vertex_offset = get_arg(ctx, ctx->args->gs_vtx_offset[vertex]);
    }
 
-   unsigned const_offset = nir_intrinsic_base(instr);
-   const_offset += nir_intrinsic_component(instr);
+   std::pair<Temp, unsigned> offs = get_intrinsic_io_basic_offset(ctx, instr, base_stride);
+   offs = offset_add(ctx, offs, std::make_pair(vertex_offset, 0u));
+   return offset_mul(ctx, offs, 4u);
+}
 
-   nir_instr *off_instr = instr->src[1].ssa->parent_instr;
-   if (off_instr->type != nir_instr_type_load_const) {
-      Temp indirect_offset = get_ssa_temp(ctx, instr->src[1].ssa);
-      offset = bld.vop2(aco_opcode::v_lshlrev_b32, bld.def(v1), Operand(2u),
-                        bld.vadd32(bld.def(v1), indirect_offset, offset));
-   } else {
-      const_offset += nir_instr_as_load_const(off_instr)->value[0].u32 * 4u;
-   }
-   const_offset *= 4u;
+void visit_load_gs_per_vertex_input(isel_context *ctx, nir_intrinsic_instr *instr)
+{
+   assert(ctx->shader->info.stage == MESA_SHADER_GEOMETRY);
 
-   offset = bld.vop2(aco_opcode::v_lshlrev_b32, bld.def(v1), Operand(2u), offset);
-
+   Builder bld(ctx->program, ctx->block);
+   Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
    unsigned elem_size_bytes = instr->dest.ssa.bit_size / 8;
+
    if (ctx->stage == geometry_gs) {
-      Temp esgs_ring = bld.smem(aco_opcode::s_load_dwordx4, bld.def(s4), ctx->program->private_segment_buffer, Operand(RING_ESGS_GS * 16u));
-
-      const_offset *= ctx->program->wave_size;
-
-      std::array<Temp,NIR_MAX_VEC_COMPONENTS> elems;
-      aco_ptr<Pseudo_instruction> vec{create_instruction<Pseudo_instruction>(
-         aco_opcode::p_create_vector, Format::PSEUDO, instr->dest.ssa.num_components, 1)};
-      for (unsigned i = 0; i < instr->dest.ssa.num_components; i++) {
-         Temp subelems[2];
-         for (unsigned j = 0; j < elem_size_bytes / 4; j++) {
-            Operand soffset(0u);
-            if (const_offset >= 4096u)
-               soffset = bld.copy(bld.def(s1), Operand(const_offset / 4096u * 4096u));
-
-            aco_ptr<MUBUF_instruction> mubuf{create_instruction<MUBUF_instruction>(aco_opcode::buffer_load_dword, Format::MUBUF, 3, 1)};
-            mubuf->definitions[0] = bld.def(v1);
-            subelems[j] = mubuf->definitions[0].getTemp();
-            mubuf->operands[0] = Operand(esgs_ring);
-            mubuf->operands[1] = Operand(offset);
-            mubuf->operands[2] = Operand(soffset);
-            mubuf->offen = true;
-            mubuf->offset = const_offset % 4096u;
-            mubuf->glc = true;
-            mubuf->dlc = ctx->options->chip_class >= GFX10;
-            mubuf->barrier = barrier_none;
-            mubuf->can_reorder = true;
-            bld.insert(std::move(mubuf));
-
-            const_offset += ctx->program->wave_size * 4u;
-         }
-
-         if (elem_size_bytes == 4)
-            elems[i] = subelems[0];
-         else
-            elems[i] = bld.pseudo(aco_opcode::p_create_vector, bld.def(v2), subelems[0], subelems[1]);
-         vec->operands[i] = Operand(elems[i]);
-      }
-      vec->definitions[0] = Definition(dst);
-      ctx->block->instructions.emplace_back(std::move(vec));
-      ctx->allocated_vec.emplace(dst.id(), elems);
+      std::pair<Temp, unsigned> offs = get_gs_per_vertex_input_offset(ctx, instr, ctx->program->wave_size);
+      Temp ring = bld.smem(aco_opcode::s_load_dwordx4, bld.def(s4), ctx->program->private_segment_buffer, Operand(RING_ESGS_GS * 16u));
+      load_vmem_mubuf(ctx, dst, ring, offs.first, Temp(), offs.second, elem_size_bytes, instr->dest.ssa.num_components, 4u * ctx->program->wave_size, false, true);
+   } else if (ctx->stage == vertex_geometry_gs) {
+      std::pair<Temp, unsigned> offs = get_gs_per_vertex_input_offset(ctx, instr);
+      unsigned lds_align = calculate_lds_alignment(ctx, offs.second);
+      load_lds(ctx, elem_size_bytes, dst, offs.first, offs.second, lds_align);
    } else {
-      unsigned align = calculate_lds_alignment(ctx, const_offset);
-      load_lds(ctx, elem_size_bytes, dst, offset, const_offset, align);
+      unreachable("Unsupported GS stage.");
+   }
+}
+
+void visit_load_per_vertex_input(isel_context *ctx, nir_intrinsic_instr *instr)
+{
+   switch (ctx->shader->info.stage) {
+   case MESA_SHADER_GEOMETRY:
+      visit_load_gs_per_vertex_input(ctx, instr);
+      break;
+   default:
+      unreachable("Unimplemented shader stage");
    }
 }
 
