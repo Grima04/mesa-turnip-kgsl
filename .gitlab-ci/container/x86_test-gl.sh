@@ -34,7 +34,6 @@ apt-get install -y --no-remove \
       g++ \
       gcc \
       git \
-      git-lfs \
       libexpat1 \
       libgbm-dev \
       libgles2-mesa-dev \
@@ -64,6 +63,7 @@ apt-get install -y --no-remove \
       python3-mako \
       python3-numpy \
       python3-pil \
+      python3-requests \
       python3-six \
       python3-yaml \
       python3.7 \

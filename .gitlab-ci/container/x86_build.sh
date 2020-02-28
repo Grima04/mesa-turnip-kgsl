@@ -82,6 +82,8 @@ apt-get install -y --no-remove \
       pkg-config \
       python-mako \
       python3-mako \
+      python3-pil \
+      python3-requests \
       qemu-user \
       scons \
       x11proto-dri2-dev \

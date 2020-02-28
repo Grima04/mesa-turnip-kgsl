@@ -5,7 +5,7 @@ set -ex
 ARTIFACTS="$(pwd)/artifacts"
 
 # Set up the driver environment.
-export LD_LIBRARY_PATH="$(pwd)/install/lib/"
+export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$(pwd)/install/lib/"
 
 # Set environment for renderdoc libraries.
 export PYTHONPATH="$PYTHONPATH:/renderdoc/build/lib"
@@ -25,10 +25,4 @@ export WAFFLE_PLATFORM=surfaceless_egl
 # Perform a self-test to ensure tracie is working properly.
 "$ARTIFACTS/tracie/tests/test.sh"
 
-ret=0
-
-"$ARTIFACTS/tracie/tracie.sh" "$ARTIFACTS/traces.yml" renderdoc || ret=1
-
-"$ARTIFACTS/tracie/tracie.sh" "$ARTIFACTS/traces.yml" apitrace || ret=1
-
-exit $ret
+python3 $ARTIFACTS/tracie/tracie.py --file $ARTIFACTS/traces.yml --device-name $DEVICE_NAME

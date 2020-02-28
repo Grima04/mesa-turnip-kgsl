@@ -22,7 +22,6 @@ ret=0
 # file:
 # https://docs.gitlab.com/runner/configuration/advanced-configuration.html#the-runners-section
 PATH="/gfxreconstruct/build/bin:$PATH" \
-    "$ARTIFACTS/tracie/tracie.sh"  "$ARTIFACTS/traces.yml" gfxreconstruct \
-    || ret=1
+    python3 $ARTIFACTS/tracie/tracie.py --file $ARTIFACTS/traces.yml --device-name $DEVICE_NAME
 
 exit $ret

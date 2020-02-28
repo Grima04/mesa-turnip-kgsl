@@ -782,7 +782,7 @@ radv-polaris10-fossils:
   cache:
     key: ${CI_JOB_NAME}
     paths:
-      - .git-lfs-storage/
+      - traces-db/
 
 .traces-test-gl:
   extends:
