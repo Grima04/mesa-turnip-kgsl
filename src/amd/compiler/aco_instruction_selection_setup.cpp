@@ -305,6 +305,9 @@ void init_context(isel_context *ctx, nir_shader *shader)
                   case nir_op_fround_even:
                   case nir_op_fsin:
                   case nir_op_fcos:
+                  case nir_op_f2f16:
+                  case nir_op_f2f16_rtz:
+                  case nir_op_f2f16_rtne:
                   case nir_op_f2f32:
                   case nir_op_f2f64:
                   case nir_op_u2f32:
@@ -328,13 +331,15 @@ void init_context(isel_context *ctx, nir_shader *shader)
                   case nir_op_cube_face_coord:
                      type = RegType::vgpr;
                      break;
+                  case nir_op_f2i16:
+                  case nir_op_f2u16:
+                  case nir_op_f2i32:
+                  case nir_op_f2u32:
                   case nir_op_f2i64:
                   case nir_op_f2u64:
                   case nir_op_b2i32:
                   case nir_op_b2b32:
                   case nir_op_b2f32:
-                  case nir_op_f2i32:
-                  case nir_op_f2u32:
                   case nir_op_mov:
                      type = ctx->divergent_vals[alu_instr->dest.dest.ssa.index] ? RegType::vgpr : RegType::sgpr;
                      break;
