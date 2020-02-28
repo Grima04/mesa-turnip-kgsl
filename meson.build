@@ -1512,7 +1512,9 @@ else
   # Disable deprecated keyword warnings, since we have to use them for
   # old-bison compat.  See discussion in
   # https://gitlab.freedesktop.org/mesa/mesa/merge_requests/2161
-  prog_bison = [prog_bison, '-Wno-deprecated']
+  if meson.version().version_compare('>= 0.52.0') and find_program('bison', required : false, version : '> 2.3').found()
+    prog_bison = [prog_bison, '-Wno-deprecated']
+  endif
 
   prog_flex = find_program('flex', required : with_any_opengl)
 endif
