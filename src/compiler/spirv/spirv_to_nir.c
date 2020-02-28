@@ -3585,7 +3585,8 @@ vtn_emit_memory_barrier(struct vtn_builder *b, SpvScope scope,
       SpvMemorySemanticsUniformMemoryMask |
       SpvMemorySemanticsWorkgroupMemoryMask |
       SpvMemorySemanticsAtomicCounterMemoryMask |
-      SpvMemorySemanticsImageMemoryMask;
+      SpvMemorySemanticsImageMemoryMask |
+      SpvMemorySemanticsOutputMemoryMask;
 
    /* If we're not actually doing a memory barrier, bail */
    if (!(semantics & all_memory_semantics))
