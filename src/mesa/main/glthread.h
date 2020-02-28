@@ -64,6 +64,12 @@ struct glthread_vao {
    GLuint CurrentElementBufferName;
    GLbitfield Enabled;
    GLbitfield UserPointerMask;
+
+   struct {
+      GLuint ElementSize;
+      GLsizei Stride;
+      const void *Pointer;
+   } Attrib[VERT_ATTRIB_MAX];
 };
 
 /** A single batch of commands queued up for execution. */
@@ -156,7 +162,12 @@ void _mesa_glthread_GenVertexArrays(struct gl_context *ctx,
                                     GLsizei n, GLuint *arrays);
 void _mesa_glthread_ClientState(struct gl_context *ctx, GLuint *vaobj,
                                 gl_vert_attrib attrib, bool enable);
-void _mesa_glthread_AttribPointer(struct gl_context *ctx,
-                                  gl_vert_attrib attrib);
+void _mesa_glthread_AttribPointer(struct gl_context *ctx, gl_vert_attrib attrib,
+                                  GLint size, GLenum type, GLsizei stride,
+                                  const void *pointer);
+void _mesa_glthread_DSAAttribPointer(struct gl_context *ctx, GLuint vao,
+                                     GLuint buffer, gl_vert_attrib attrib,
+                                     GLint size, GLenum type, GLsizei stride,
+                                     GLintptr offset);
 
 #endif /* _GLTHREAD_H*/

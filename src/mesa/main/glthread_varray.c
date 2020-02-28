@@ -27,16 +27,14 @@
  */
 
 #include "main/glthread.h"
+#include "main/glformats.h"
 #include "main/mtypes.h"
 #include "main/hash.h"
 #include "main/dispatch.h"
 
 /* TODO:
- *   - Implement better tracking of user pointers
- *   - These can unbind user pointers:
- *       ARB_vertex_attrib_binding
- *       ARB_direct_state_access
- *       EXT_direct_state_access
+ *   - Handle GL_ARB_instanced_arrays (incl. EXT_dsa)
+ *   - Handle ARB_vertex_attrib_binding (incl. EXT_dsa and ARB_dsa)
  */
 
 static struct glthread_vao *
@@ -157,14 +155,52 @@ _mesa_glthread_ClientState(struct gl_context *ctx, GLuint *vaobj,
       vao->Enabled &= ~(1u << attrib);
 }
 
-void
-_mesa_glthread_AttribPointer(struct gl_context *ctx, gl_vert_attrib attrib)
+static void
+attrib_pointer(struct glthread_state *glthread, struct glthread_vao *vao,
+               GLuint buffer, gl_vert_attrib attrib,
+               GLint size, GLenum type, GLsizei stride,
+               const void *pointer)
 {
-   struct glthread_state *glthread = &ctx->GLThread;
-   struct glthread_vao *vao = glthread->CurrentVAO;
+   if (attrib >= VERT_ATTRIB_MAX)
+      return;
 
-   if (glthread->CurrentArrayBufferName != 0)
+   unsigned elem_size = _mesa_bytes_per_vertex_attrib(size, type);
+
+   vao->Attrib[attrib].ElementSize = elem_size;
+   vao->Attrib[attrib].Stride = stride ? stride : elem_size;
+   vao->Attrib[attrib].Pointer = pointer;
+
+   if (buffer != 0)
       vao->UserPointerMask &= ~(1u << attrib);
    else
       vao->UserPointerMask |= 1u << attrib;
+}
+
+void
+_mesa_glthread_AttribPointer(struct gl_context *ctx, gl_vert_attrib attrib,
+                             GLint size, GLenum type, GLsizei stride,
+                             const void *pointer)
+{
+   struct glthread_state *glthread = &ctx->GLThread;
+
+   attrib_pointer(glthread, glthread->CurrentVAO,
+                  glthread->CurrentArrayBufferName,
+                  attrib, size, type, stride, pointer);
+}
+
+void
+_mesa_glthread_DSAAttribPointer(struct gl_context *ctx, GLuint vaobj,
+                                GLuint buffer, gl_vert_attrib attrib,
+                                GLint size, GLenum type, GLsizei stride,
+                                GLintptr offset)
+{
+   struct glthread_state *glthread = &ctx->GLThread;
+   struct glthread_vao *vao;
+
+   vao = lookup_vao(ctx, vaobj);
+   if (!vao)
+      return;
+
+   attrib_pointer(glthread, vao, buffer, attrib, size, type, stride,
+                  (const void*)offset);
 }
