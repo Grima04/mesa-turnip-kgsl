@@ -3150,81 +3150,39 @@ std::pair<Temp, unsigned> get_intrinsic_io_basic_offset(isel_context *ctx, nir_i
    return get_intrinsic_io_basic_offset(ctx, instr, stride, stride);
 }
 
-void visit_store_vsgs_output(isel_context *ctx, nir_intrinsic_instr *instr)
+void visit_store_ls_or_es_output(isel_context *ctx, nir_intrinsic_instr *instr)
 {
-   unsigned write_mask = nir_intrinsic_write_mask(instr);
-   unsigned component = nir_intrinsic_component(instr);
-   Temp src = get_ssa_temp(ctx, instr->src[0].ssa);
-   unsigned idx = (nir_intrinsic_base(instr) + component) * 4u;
-   Operand offset(s1);
    Builder bld(ctx->program, ctx->block);
 
-   nir_instr *off_instr = instr->src[1].ssa->parent_instr;
-   if (off_instr->type != nir_instr_type_load_const)
-      offset = bld.v_mul24_imm(bld.def(v1), get_ssa_temp(ctx, instr->src[1].ssa), 16u);
-   else
-      idx += nir_instr_as_load_const(off_instr)->value[0].u32 * 16u;
-
+   std::pair<Temp, unsigned> offs = get_intrinsic_io_basic_offset(ctx, instr, 4u);
+   Temp src = get_ssa_temp(ctx, instr->src[0].ssa);
+   unsigned write_mask = nir_intrinsic_write_mask(instr);
    unsigned elem_size_bytes = instr->src[0].ssa->bit_size / 8u;
+
    if (ctx->stage == vertex_es) {
+      /* GFX6-8: ES stage is not merged into GS, data is passed from ES to GS in VMEM. */
       Temp esgs_ring = bld.smem(aco_opcode::s_load_dwordx4, bld.def(s4), ctx->program->private_segment_buffer, Operand(RING_ESGS_VS * 16u));
-
-      Temp elems[NIR_MAX_VEC_COMPONENTS * 2];
-      if (elem_size_bytes == 8) {
-         for (unsigned i = 0; i < src.size() / 2; i++) {
-            Temp elem = emit_extract_vector(ctx, src, i, v2);
-            elems[i*2] = bld.tmp(v1);
-            elems[i*2+1] = bld.tmp(v1);
-            bld.pseudo(aco_opcode::p_split_vector, Definition(elems[i*2]), Definition(elems[i*2+1]), elem);
-         }
-         write_mask = widen_mask(write_mask, 2);
-         elem_size_bytes /= 2u;
-      } else {
-         for (unsigned i = 0; i < src.size(); i++)
-            elems[i] = emit_extract_vector(ctx, src, i, v1);
-      }
-
-      while (write_mask) {
-         unsigned index = u_bit_scan(&write_mask);
-         unsigned offset = index * elem_size_bytes;
-         Temp elem = emit_extract_vector(ctx, src, index, RegClass(RegType::vgpr, elem_size_bytes / 4));
-
-         Operand vaddr_offset(v1);
-         unsigned const_offset = idx + offset;
-         if (const_offset >= 4096u) {
-            vaddr_offset = bld.copy(bld.def(v1), Operand(const_offset / 4096u * 4096u));
-            const_offset %= 4096u;
-         }
-
-         aco_ptr<MTBUF_instruction> mtbuf{create_instruction<MTBUF_instruction>(aco_opcode::tbuffer_store_format_x, Format::MTBUF, 4, 0)};
-         mtbuf->operands[0] = Operand(esgs_ring);
-         mtbuf->operands[1] = vaddr_offset;
-         mtbuf->operands[2] = Operand(get_arg(ctx, ctx->args->es2gs_offset));
-         mtbuf->operands[3] = Operand(elem);
-         mtbuf->offen = !vaddr_offset.isUndefined();
-         mtbuf->dfmt = V_008F0C_BUF_DATA_FORMAT_32;
-         mtbuf->nfmt = V_008F0C_BUF_NUM_FORMAT_UINT;
-         mtbuf->offset = const_offset;
-         mtbuf->glc = true;
-         mtbuf->slc = true;
-         mtbuf->barrier = barrier_none;
-         mtbuf->can_reorder = true;
-         bld.insert(std::move(mtbuf));
-      }
+      Temp es2gs_offset = get_arg(ctx, ctx->args->es2gs_offset);
+      store_vmem_mubuf(ctx, src, esgs_ring, offs.first, es2gs_offset, offs.second, elem_size_bytes, write_mask, false, true, true);
    } else {
-      unsigned itemsize = ctx->program->info->vs.es_info.esgs_itemsize;
+      Temp lds_base;
 
-      Temp vertex_idx = emit_mbcnt(ctx, bld.def(v1));
-      Temp wave_idx = bld.sop2(aco_opcode::s_bfe_u32, bld.def(s1), bld.def(s1, scc), get_arg(ctx, ctx->args->merged_wave_info), Operand(4u << 16 | 24));
-      vertex_idx = bld.vop2(aco_opcode::v_or_b32, bld.def(v1), vertex_idx,
-                            bld.v_mul24_imm(bld.def(v1), as_vgpr(ctx, wave_idx), ctx->program->wave_size));
+      if (ctx->stage == vertex_geometry_gs) {
+         /* GFX9+: ES stage is merged into GS, data is passed between them using LDS. */
+         unsigned itemsize = ctx->program->info->vs.es_info.esgs_itemsize;
+         Temp thread_id = emit_mbcnt(ctx, bld.def(v1));
+         Temp wave_idx = bld.sop2(aco_opcode::s_bfe_u32, bld.def(s1), bld.def(s1, scc), get_arg(ctx, ctx->args->merged_wave_info), Operand(4u << 16 | 24));
+         Temp vertex_idx = bld.vop2(aco_opcode::v_or_b32, bld.def(v1), thread_id,
+                               bld.v_mul24_imm(bld.def(v1), as_vgpr(ctx, wave_idx), ctx->program->wave_size));
+         lds_base = bld.v_mul24_imm(bld.def(v1), vertex_idx, itemsize);
+      } else {
+         unreachable("Invalid LS or ES stage");
+      }
 
-      Temp lds_base = bld.v_mul24_imm(bld.def(v1), vertex_idx, itemsize);
-      if (!offset.isUndefined())
-         lds_base = bld.vadd32(bld.def(v1), offset, lds_base);
+      offs = offset_add(ctx, offs, std::make_pair(lds_base, 0u));
+      unsigned lds_align = calculate_lds_alignment(ctx, offs.second);
+      store_lds(ctx, elem_size_bytes, src, write_mask, offs.first, offs.second, lds_align);
 
-      unsigned align = calculate_lds_alignment(ctx, idx);
-      store_lds(ctx, elem_size_bytes, src, write_mask, lds_base, idx, align);
    }
 }
 
@@ -3258,7 +3216,7 @@ void visit_store_output(isel_context *ctx, nir_intrinsic_instr *instr)
       }
    } else if (ctx->stage == vertex_es ||
               (ctx->stage == vertex_geometry_gs && ctx->shader->info.stage == MESA_SHADER_VERTEX)) {
-      visit_store_vsgs_output(ctx, instr);
+      visit_store_ls_or_es_output(ctx, instr);
    } else {
       unreachable("Shader stage not implemented");
    }
