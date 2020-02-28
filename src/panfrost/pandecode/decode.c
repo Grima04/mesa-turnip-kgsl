@@ -613,10 +613,10 @@ pandecode_midgard_tiler_descriptor(
         }
 
         if (nonzero_weights) {
-                pandecode_log(".weights = {");
+                pandecode_log(".weights = { ");
 
                 for (unsigned w = 0; w < ARRAY_SIZE(t->weights); ++w) {
-                        pandecode_log("%d, ", t->weights[w]);
+                        pandecode_log_cont("%d, ", t->weights[w]);
                 }
 
                 pandecode_log("},");
