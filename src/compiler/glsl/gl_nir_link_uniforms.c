@@ -244,10 +244,10 @@ struct nir_link_uniforms_state {
    unsigned num_hidden_uniforms;
    unsigned num_values;
    unsigned max_uniform_location;
-   unsigned next_sampler_index;
 
    /* per-shader stage */
    unsigned next_image_index;
+   unsigned next_sampler_index;
    unsigned num_shader_samplers;
    unsigned num_shader_images;
    unsigned num_shader_uniform_components;
@@ -318,7 +318,7 @@ free_type_tree(struct type_tree_entry *entry)
 static unsigned
 get_next_index(struct nir_link_uniforms_state *state,
                const struct gl_uniform_storage *uniform,
-               unsigned *next_index)
+               unsigned *next_index, bool *initialised)
 {
    /* If we’ve already calculated an index for this member then we can just
     * offset from there.
@@ -338,7 +338,9 @@ get_next_index(struct nir_link_uniforms_state *state,
 
       state->current_type->next_index = *next_index;
       *next_index += array_size;
-   }
+      *initialised = true;
+   } else
+      *initialised = false;
 
    unsigned index = state->current_type->next_index;
 
@@ -608,8 +610,10 @@ nir_link_uniform(struct gl_context *ctx,
       unsigned values = glsl_get_component_slots(type);
 
       if (glsl_type_is_sampler(type_no_array)) {
+         bool init_idx;
          int sampler_index =
-            get_next_index(state, uniform, &state->next_sampler_index);
+            get_next_index(state, uniform, &state->next_sampler_index,
+                           &init_idx);
 
          /* Samplers (bound or bindless) are counted as two components as
           * specified by ARB_bindless_texture.
@@ -619,15 +623,16 @@ nir_link_uniform(struct gl_context *ctx,
          uniform->opaque[stage].active = true;
          uniform->opaque[stage].index = sampler_index;
 
-         const unsigned shadow = glsl_sampler_type_is_shadow(type_no_array);
-
-         for (unsigned i = sampler_index;
-              i < MIN2(state->next_sampler_index, MAX_SAMPLERS);
-              i++) {
-            stage_program->sh.SamplerTargets[i] =
-               glsl_get_sampler_target(type_no_array);
-            state->shader_samplers_used |= 1U << i;
-            state->shader_shadow_samplers |= shadow << i;
+         if (init_idx) {
+            const unsigned shadow = glsl_sampler_type_is_shadow(type_no_array);
+            for (unsigned i = sampler_index;
+                 i < MIN2(state->next_sampler_index, MAX_SAMPLERS);
+                 i++) {
+               stage_program->sh.SamplerTargets[i] =
+                  glsl_get_sampler_target(type_no_array);
+               state->shader_samplers_used |= 1U << i;
+               state->shader_shadow_samplers |= shadow << i;
+            }
          }
 
          state->num_values += values;
@@ -707,6 +712,7 @@ gl_nir_link_uniforms(struct gl_context *ctx,
       assert(nir);
 
       state.next_image_index = 0;
+      state.next_sampler_index = 0;
       state.num_shader_samplers = 0;
       state.num_shader_images = 0;
       state.num_shader_uniform_components = 0;
