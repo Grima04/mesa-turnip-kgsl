@@ -67,10 +67,11 @@ radv_emit_thread_trace_start(struct radv_device *device,
 			     uint32_t queue_family_index)
 {
 	uint32_t shifted_size = device->thread_trace_buffer_size >> SQTT_BUFFER_ALIGN_SHIFT;
+	unsigned max_se = device->physical_device->rad_info.max_se;
 
 	assert(device->physical_device->rad_info.chip_class == GFX9);
 
-	for (unsigned se = 0; se < 4; se++) {
+	for (unsigned se = 0; se < max_se; se++) {
 		uint64_t data_va = radv_thread_trace_get_data_va(device, se);
 		uint64_t shifted_va = data_va >> SQTT_BUFFER_ALIGN_SHIFT;
 
@@ -166,6 +167,8 @@ radv_emit_thread_trace_stop(struct radv_device *device,
 			    struct radeon_cmdbuf *cs,
 			    uint32_t queue_family_index)
 {
+	unsigned max_se = device->physical_device->rad_info.max_se;
+
 	assert(device->physical_device->rad_info.chip_class == GFX9);
 
 	/* Stop the thread trace with a different event based on the queue. */
@@ -181,7 +184,7 @@ radv_emit_thread_trace_stop(struct radv_device *device,
 	radeon_emit(cs, PKT3(PKT3_EVENT_WRITE, 0, 0));
 	radeon_emit(cs, EVENT_TYPE(V_028A90_THREAD_TRACE_FINISH) | EVENT_INDEX(0));
 
-	for (unsigned se = 0; se < 4; se++) {
+	for (unsigned se = 0; se < max_se; se++) {
 		/* Target SEi and SH0. */
 		radeon_set_uconfig_reg(cs, R_030800_GRBM_GFX_INDEX,
 				       S_030800_SE_INDEX(se) |
@@ -397,12 +400,13 @@ radv_get_thread_trace(struct radv_queue *queue,
 		      struct radv_thread_trace *thread_trace)
 {
 	struct radv_device *device = queue->device;
+	unsigned max_se = device->physical_device->rad_info.max_se;
 	void *thread_trace_ptr = device->thread_trace_ptr;
 
 	memset(thread_trace, 0, sizeof(*thread_trace));
-	thread_trace->num_traces = 4;
+	thread_trace->num_traces = max_se;
 
-	for (unsigned se = 0; se < 4; se++) {
+	for (unsigned se = 0; se < max_se; se++) {
 		uint64_t info_offset = radv_thread_trace_get_info_offset(se);
 		uint64_t data_offset = radv_thread_trace_get_data_offset(device, se);
 		void *info_ptr = thread_trace_ptr + info_offset;
