@@ -533,11 +533,11 @@ schedule_node::set_latency_gen7(bool is_haswell)
 
 class instruction_scheduler {
 public:
-   instruction_scheduler(backend_shader *s, int grf_count,
+   instruction_scheduler(const backend_shader *s, int grf_count,
                          unsigned hw_reg_count, int block_count,
-                         instruction_scheduler_mode mode)
+                         instruction_scheduler_mode mode):
+      bs(s)
    {
-      this->bs = s;
       this->mem_ctx = ralloc_context(NULL);
       this->grf_count = grf_count;
       this->hw_reg_count = hw_reg_count;
@@ -617,7 +617,7 @@ public:
    int reg_pressure;
    int block_idx;
    exec_list instructions;
-   backend_shader *bs;
+   const backend_shader *bs;
 
    instruction_scheduler_mode mode;
 
@@ -667,14 +667,14 @@ public:
 class fs_instruction_scheduler : public instruction_scheduler
 {
 public:
-   fs_instruction_scheduler(fs_visitor *v, int grf_count, int hw_reg_count,
+   fs_instruction_scheduler(const fs_visitor *v, int grf_count, int hw_reg_count,
                             int block_count,
                             instruction_scheduler_mode mode);
    void calculate_deps();
    bool is_compressed(fs_inst *inst);
    schedule_node *choose_instruction_to_schedule();
    int issue_time(backend_instruction *inst);
-   fs_visitor *v;
+   const fs_visitor *v;
 
    void count_reads_remaining(backend_instruction *inst);
    void setup_liveness(cfg_t *cfg);
@@ -682,7 +682,7 @@ public:
    int get_register_pressure_benefit(backend_instruction *inst);
 };
 
-fs_instruction_scheduler::fs_instruction_scheduler(fs_visitor *v,
+fs_instruction_scheduler::fs_instruction_scheduler(const fs_visitor *v,
                                                    int grf_count, int hw_reg_count,
                                                    int block_count,
                                                    instruction_scheduler_mode mode)
@@ -848,11 +848,11 @@ fs_instruction_scheduler::get_register_pressure_benefit(backend_instruction *be)
 class vec4_instruction_scheduler : public instruction_scheduler
 {
 public:
-   vec4_instruction_scheduler(vec4_visitor *v, int grf_count);
+   vec4_instruction_scheduler(const vec4_visitor *v, int grf_count);
    void calculate_deps();
    schedule_node *choose_instruction_to_schedule();
    int issue_time(backend_instruction *inst);
-   vec4_visitor *v;
+   const vec4_visitor *v;
 
    void count_reads_remaining(backend_instruction *inst);
    void setup_liveness(cfg_t *cfg);
@@ -860,7 +860,7 @@ public:
    int get_register_pressure_benefit(backend_instruction *inst);
 };
 
-vec4_instruction_scheduler::vec4_instruction_scheduler(vec4_visitor *v,
+vec4_instruction_scheduler::vec4_instruction_scheduler(const vec4_visitor *v,
                                                        int grf_count)
    : instruction_scheduler(v, grf_count, 0, 0, SCHEDULE_POST),
      v(v)
