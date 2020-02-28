@@ -345,6 +345,15 @@ struct ir3_ra_ctx {
 	unsigned instr_cnt;
 	unsigned *def, *use;     /* def/use table */
 	struct ir3_ra_instr_data *instrd;
+
+	/* Tracking for max half/full register assigned.  We don't need to
+	 * track high registers.
+	 *
+	 * The feedback about registers used in first pass is used to choose
+	 * a target register usage to round-robin between in the 2nd pass.
+	 */
+	unsigned max_assigned;
+	unsigned max_half_assigned;
 };
 
 /* does it conflict? */
@@ -1203,6 +1212,35 @@ reg_assign(struct ir3_ra_ctx *ctx, struct ir3_register *reg,
 	}
 }
 
+static void
+account_assignment(struct ir3_ra_ctx *ctx, struct ir3_instruction *instr)
+{
+	struct ir3_ra_instr_data *id;
+	struct ir3_register *dst = instr->regs[0];
+	unsigned max;
+
+	if (is_high(instr))
+		return;
+
+	if (dst->flags & IR3_REG_ARRAY) {
+		struct ir3_array *arr =
+			ir3_lookup_array(ctx->ir, dst->array.id);
+		max = arr->reg + arr->length;
+	} else if ((id = &ctx->instrd[instr->ip]) && id->defn) {
+		unsigned name = scalar_name(ctx, id->defn, 0);
+		unsigned r = ra_get_node_reg(ctx->g, name);
+		max = ctx->set->ra_reg_to_gpr[r] + id->off;
+	} else {
+		return;
+	}
+
+	if (is_half(instr)) {
+		ctx->max_half_assigned = MAX2(ctx->max_half_assigned, max);
+	} else {
+		ctx->max_assigned = MAX2(ctx->max_assigned, max);
+	}
+}
+
 /* helper to determine which regs to assign in which pass: */
 static bool
 should_assign(struct ir3_ra_ctx *ctx, struct ir3_instruction *instr)
@@ -1220,6 +1258,7 @@ ra_block_alloc(struct ir3_ra_ctx *ctx, struct ir3_block *block)
 		struct ir3_register *reg;
 
 		if (writes_gpr(instr)) {
+			account_assignment(ctx, instr);
 			if (should_assign(ctx, instr)) {
 				reg_assign(ctx, instr->regs[0], instr);
 				if (instr->regs[0]->flags & IR3_REG_HALF)
@@ -1516,6 +1555,8 @@ ir3_ra_pass(struct ir3_shader_variant *v, struct ir3_instruction **precolor,
 		ra_precolor_assigned(&ctx);
 	ret = ra_alloc(&ctx);
 	ra_destroy(&ctx);
+
+	printf("#### max_assigned=%u, max_half_assigned=%u\n", ctx.max_assigned, ctx.max_half_assigned);
 
 	return ret;
 }
