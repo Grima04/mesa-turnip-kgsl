@@ -67,6 +67,26 @@ VkResult
 tu_cs_add_entries(struct tu_cs *cs, struct tu_cs *target);
 
 /**
+ * Get the size of the command packets emitted since the last call to
+ * tu_cs_add_entry.
+ */
+static inline uint32_t
+tu_cs_get_size(const struct tu_cs *cs)
+{
+   return cs->cur - cs->start;
+}
+
+/**
+ * Return true if there is no command packet emitted since the last call to
+ * tu_cs_add_entry.
+ */
+static inline uint32_t
+tu_cs_is_empty(const struct tu_cs *cs)
+{
+   return tu_cs_get_size(cs) == 0;
+}
+
+/**
  * Discard all entries.  This allows \a cs to be reused while keeping the
  * existing BOs and command packets intact.
  */
