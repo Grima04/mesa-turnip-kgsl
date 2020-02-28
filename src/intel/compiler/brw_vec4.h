@@ -224,8 +224,6 @@ public:
 #undef EMIT2
 #undef EMIT3
 
-   int implied_mrf_writes(vec4_instruction *inst);
-
    vec4_instruction *emit_minmax(enum brw_conditional_mod conditionalmod, dst_reg dst,
                                  src_reg src0, src_reg src1);
 

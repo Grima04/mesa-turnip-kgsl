@@ -295,6 +295,7 @@ public:
    bool can_do_writemask(const struct gen_device_info *devinfo);
    bool can_change_types() const;
    bool has_source_and_destination_hazard() const;
+   unsigned implied_mrf_writes() const;
 
    bool is_align1_partial_write()
    {

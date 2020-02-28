@@ -326,13 +326,13 @@ vec4_instruction::can_change_types() const
  * instruction -- the generate_* functions generate additional MOVs
  * for setup.
  */
-int
-vec4_visitor::implied_mrf_writes(vec4_instruction *inst)
+unsigned
+vec4_instruction::implied_mrf_writes() const
 {
-   if (inst->mlen == 0 || inst->is_send_from_grf())
+   if (mlen == 0 || is_send_from_grf())
       return 0;
 
-   switch (inst->opcode) {
+   switch (opcode) {
    case SHADER_OPCODE_RCP:
    case SHADER_OPCODE_RSQ:
    case SHADER_OPCODE_SQRT:
@@ -376,7 +376,7 @@ vec4_visitor::implied_mrf_writes(vec4_instruction *inst)
    case SHADER_OPCODE_TG4_OFFSET:
    case SHADER_OPCODE_SAMPLEINFO:
    case SHADER_OPCODE_GET_BUFFER_SIZE:
-      return inst->header_size;
+      return header_size;
    default:
       unreachable("not reached");
    }

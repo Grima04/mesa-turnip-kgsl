@@ -1418,7 +1418,7 @@ vec4_instruction_scheduler::calculate_deps()
       }
 
       if (inst->mlen > 0 && !inst->is_send_from_grf()) {
-         for (int i = 0; i < v->implied_mrf_writes(inst); i++) {
+         for (unsigned i = 0; i < inst->implied_mrf_writes(); i++) {
             add_dep(last_mrf_write[inst->base_mrf + i], n);
             last_mrf_write[inst->base_mrf + i] = n;
          }
@@ -1495,7 +1495,7 @@ vec4_instruction_scheduler::calculate_deps()
       }
 
       if (inst->mlen > 0 && !inst->is_send_from_grf()) {
-         for (int i = 0; i < v->implied_mrf_writes(inst); i++) {
+         for (unsigned i = 0; i < inst->implied_mrf_writes(); i++) {
             last_mrf_write[inst->base_mrf + i] = n;
          }
       }
