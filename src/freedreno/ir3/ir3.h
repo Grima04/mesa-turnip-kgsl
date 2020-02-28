@@ -1198,6 +1198,30 @@ int ir3_ra(struct ir3_shader_variant *v, struct ir3_instruction **precolor, unsi
 /* legalize: */
 void ir3_legalize(struct ir3 *ir, struct ir3_shader_variant *so, int *max_bary);
 
+static inline bool
+ir3_has_latency_to_hide(struct ir3 *ir)
+{
+	foreach_block (block, &ir->block_list) {
+		foreach_instr (instr, &block->instr_list) {
+			if (is_tex(instr))
+				return true;
+
+			if (is_load(instr)) {
+				switch (instr->opc) {
+				case OPC_LDLV:
+				case OPC_LDL:
+				case OPC_LDLW:
+					break;
+				default:
+					return true;
+				}
+			}
+		}
+	}
+
+	return false;
+}
+
 /* ************************************************************************* */
 /* instruction helpers */
 

@@ -772,34 +772,10 @@ sched_block(struct ir3_sched_ctx *ctx, struct ir3_block *block)
 	}
 }
 
-static bool
-has_latency_to_hide(struct ir3 *ir)
-{
-	foreach_block (block, &ir->block_list) {
-		foreach_instr (instr, &block->instr_list) {
-			if (is_tex(instr))
-				return true;
-
-			if (is_load(instr)) {
-				switch (instr->opc) {
-				case OPC_LDLV:
-				case OPC_LDL:
-				case OPC_LDLW:
-					break;
-				default:
-					return true;
-				}
-			}
-		}
-	}
-
-	return false;
-}
-
 static void
 setup_thresholds(struct ir3_sched_ctx *ctx, struct ir3 *ir)
 {
-	if (has_latency_to_hide(ir)) {
+	if (ir3_has_latency_to_hide(ir)) {
 		ctx->live_threshold_hi = 2 * 16 * 4;
 		ctx->live_threshold_lo = 2 * 4 * 4;
 		ctx->depth_threshold_hi = 6;
