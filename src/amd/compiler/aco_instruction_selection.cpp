@@ -3281,7 +3281,7 @@ void visit_store_ls_or_es_output(isel_context *ctx, nir_intrinsic_instr *instr)
    unsigned write_mask = nir_intrinsic_write_mask(instr);
    unsigned elem_size_bytes = instr->src[0].ssa->bit_size / 8u;
 
-   if (ctx->stage == vertex_es) {
+   if (ctx->stage == vertex_es || ctx->stage == tess_eval_es) {
       /* GFX6-8: ES stage is not merged into GS, data is passed from ES to GS in VMEM. */
       Temp esgs_ring = bld.smem(aco_opcode::s_load_dwordx4, bld.def(s4), ctx->program->private_segment_buffer, Operand(RING_ESGS_VS * 16u));
       Temp es2gs_offset = get_arg(ctx, ctx->args->es2gs_offset);
@@ -3289,9 +3289,11 @@ void visit_store_ls_or_es_output(isel_context *ctx, nir_intrinsic_instr *instr)
    } else {
       Temp lds_base;
 
-      if (ctx->stage == vertex_geometry_gs) {
+      if (ctx->stage == vertex_geometry_gs || ctx->stage == tess_eval_geometry_gs) {
          /* GFX9+: ES stage is merged into GS, data is passed between them using LDS. */
-         unsigned itemsize = ctx->program->info->vs.es_info.esgs_itemsize;
+         unsigned itemsize = ctx->stage == vertex_geometry_gs
+                             ? ctx->program->info->vs.es_info.esgs_itemsize
+                             : ctx->program->info->tes.es_info.esgs_itemsize;
          Temp thread_id = emit_mbcnt(ctx, bld.def(v1));
          Temp wave_idx = bld.sop2(aco_opcode::s_bfe_u32, bld.def(s1), bld.def(s1, scc), get_arg(ctx, ctx->args->merged_wave_info), Operand(4u << 16 | 24));
          Temp vertex_idx = bld.vop2(aco_opcode::v_or_b32, bld.def(v1), thread_id,
@@ -3393,8 +3395,10 @@ void visit_store_output(isel_context *ctx, nir_intrinsic_instr *instr)
       }
    } else if (ctx->stage == vertex_es ||
               ctx->stage == vertex_ls ||
+              ctx->stage == tess_eval_es ||
               (ctx->stage == vertex_tess_control_hs && ctx->shader->info.stage == MESA_SHADER_VERTEX) ||
-              (ctx->stage == vertex_geometry_gs && ctx->shader->info.stage == MESA_SHADER_VERTEX)) {
+              (ctx->stage == vertex_geometry_gs && ctx->shader->info.stage == MESA_SHADER_VERTEX) ||
+              (ctx->stage == tess_eval_geometry_gs && ctx->shader->info.stage == MESA_SHADER_TESS_EVAL)) {
       visit_store_ls_or_es_output(ctx, instr);
    } else if (ctx->shader->info.stage == MESA_SHADER_TESS_CTRL) {
       visit_store_tcs_output(ctx, instr, false);
@@ -3845,7 +3849,7 @@ std::pair<Temp, unsigned> get_gs_per_vertex_input_offset(isel_context *ctx, nir_
       for (unsigned i = 0; i < ctx->shader->info.gs.vertices_in; i++) {
          Temp elem;
 
-         if (ctx->stage == vertex_geometry_gs) {
+         if (ctx->stage == vertex_geometry_gs || ctx->stage == tess_eval_geometry_gs) {
             elem = get_arg(ctx, ctx->args->gs_vtx_offset[i / 2u * 2u]);
             if (i % 2u)
                elem = bld.vop2(aco_opcode::v_lshrrev_b32, bld.def(v1), Operand(16u), elem);
@@ -3862,11 +3866,11 @@ std::pair<Temp, unsigned> get_gs_per_vertex_input_offset(isel_context *ctx, nir_
          }
       }
 
-      if (ctx->stage == vertex_geometry_gs)
+      if (ctx->stage == vertex_geometry_gs || ctx->stage == tess_eval_geometry_gs)
          vertex_offset = bld.vop2(aco_opcode::v_and_b32, bld.def(v1), Operand(0xffffu), vertex_offset);
    } else {
       unsigned vertex = nir_src_as_uint(*vertex_src);
-      if (ctx->stage == vertex_geometry_gs)
+      if (ctx->stage == vertex_geometry_gs || ctx->stage == tess_eval_geometry_gs)
          vertex_offset = bld.vop3(aco_opcode::v_bfe_u32, bld.def(v1),
                                   get_arg(ctx, ctx->args->gs_vtx_offset[vertex / 2u * 2u]),
                                   Operand((vertex % 2u) * 16u), Operand(16u));
@@ -3891,7 +3895,7 @@ void visit_load_gs_per_vertex_input(isel_context *ctx, nir_intrinsic_instr *inst
       std::pair<Temp, unsigned> offs = get_gs_per_vertex_input_offset(ctx, instr, ctx->program->wave_size);
       Temp ring = bld.smem(aco_opcode::s_load_dwordx4, bld.def(s4), ctx->program->private_segment_buffer, Operand(RING_ESGS_GS * 16u));
       load_vmem_mubuf(ctx, dst, ring, offs.first, Temp(), offs.second, elem_size_bytes, instr->dest.ssa.num_components, 4u * ctx->program->wave_size, false, true);
-   } else if (ctx->stage == vertex_geometry_gs) {
+   } else if (ctx->stage == vertex_geometry_gs || ctx->stage == tess_eval_geometry_gs) {
       std::pair<Temp, unsigned> offs = get_gs_per_vertex_input_offset(ctx, instr);
       unsigned lds_align = calculate_lds_alignment(ctx, offs.second);
       load_lds(ctx, elem_size_bytes, dst, offs.first, offs.second, lds_align);
@@ -9610,7 +9614,7 @@ void select_program(Program *program,
          bld.barrier(aco_opcode::p_memory_barrier_shared);
          bld.sopp(aco_opcode::s_barrier);
 
-         if (ctx.stage == vertex_geometry_gs) {
+         if (ctx.stage == vertex_geometry_gs || ctx.stage == tess_eval_geometry_gs) {
             ctx.gs_wave_id = bld.sop2(aco_opcode::s_bfe_u32, bld.def(s1, m0), bld.def(s1, scc), get_arg(&ctx, args->merged_wave_info), Operand((8u << 16) | 16u));
          }
       } else if (ctx.stage == geometry_gs)
