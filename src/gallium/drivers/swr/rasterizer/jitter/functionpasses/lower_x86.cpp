@@ -388,7 +388,7 @@ namespace SwrJit
 
             SWR_ASSERT(intrinsicMap.find(pFunc->getName().str()) != intrinsicMap.end(),
                        "Unimplemented intrinsic %s.",
-                       pFunc->getName().str());
+                       pFunc->getName().str().c_str());
 
             Intrinsic::ID x86Intrinsic = intrinsicMap[pFunc->getName().str()];
             Function*     pX86IntrinFunc =
