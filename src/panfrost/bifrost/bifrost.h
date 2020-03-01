@@ -82,4 +82,25 @@ struct bifrost_add_inst {
         unsigned op   : 17;
 };
 
+enum bifrost_csel_cond {
+        BIFROST_FEQ_F = 0x0,
+        BIFROST_FGT_F = 0x1,
+        BIFROST_FGE_F = 0x2,
+        BIFROST_IEQ_F = 0x3,
+        BIFROST_IGT_I = 0x4,
+        BIFROST_IGE_I = 0x5,
+        BIFROST_UGT_I = 0x6,
+        BIFROST_UGE_I = 0x7
+};
+
+struct bifrost_csel4 {
+        unsigned src0 : 3;
+        unsigned src1 : 3;
+        unsigned src2 : 3;
+        unsigned src3 : 3;
+        enum bifrost_csel_cond cond : 3;
+        unsigned op   : 8;
+};
+
+
 #endif

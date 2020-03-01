@@ -102,7 +102,7 @@ enum fma_src_type {
         FMA_THREE_SRC,
         FMA_FMA,
         FMA_FMA16,
-        FMA_FOUR_SRC,
+        FMA_CSEL4,
         FMA_FMA_MSCALE,
         FMA_SHIFT_ADD64,
 };
@@ -557,6 +557,22 @@ static void dump_round_mode(FILE *fp, unsigned mod)
         }
 }
 
+static const char *
+csel_cond_name(enum bifrost_csel_cond cond)
+{
+        switch (cond) {
+        case BIFROST_FEQ_F: return "feq.f";
+        case BIFROST_FGT_F: return "fgt.f";
+        case BIFROST_FGE_F: return "fge.f";
+        case BIFROST_IEQ_F: return "ieq.f";
+        case BIFROST_IGT_I: return "igt.i";
+        case BIFROST_IGE_I: return "uge.i";
+        case BIFROST_UGT_I: return "ugt.i";
+        case BIFROST_UGE_I: return "uge.i";
+        default: return "invalid";
+        }
+}
+
 static const struct fma_op_info FMAOpInfos[] = {
         { 0x00000, "FMA.f32",  FMA_FMA },
         { 0x40000, "MAX.f32", FMA_FMINMAX },
@@ -568,14 +584,7 @@ static const struct fma_op_info FMAOpInfos[] = {
         { 0x4fff0, "SUBB.i32", FMA_TWO_SRC },
         { 0x50000, "FMA_MSCALE", FMA_FMA_MSCALE },
         { 0x58000, "ADD.f32", FMA_FADD },
-        { 0x5c000, "CSEL.FEQ.f32", FMA_FOUR_SRC },
-        { 0x5c200, "CSEL.FGT.f32", FMA_FOUR_SRC },
-        { 0x5c400, "CSEL.FGE.f32", FMA_FOUR_SRC },
-        { 0x5c600, "CSEL.IEQ.f32", FMA_FOUR_SRC },
-        { 0x5c800, "CSEL.IGT.i32", FMA_FOUR_SRC },
-        { 0x5ca00, "CSEL.IGE.i32", FMA_FOUR_SRC },
-        { 0x5cc00, "CSEL.UGT.i32", FMA_FOUR_SRC },
-        { 0x5ce00, "CSEL.UGE.i32", FMA_FOUR_SRC },
+        { 0x5c000, "CSEL4", FMA_CSEL4 },
         { 0x5d8d0, "ICMP.D3D.GT.v2i16", FMA_TWO_SRC },
         { 0x5d9d0, "UCMP.D3D.GT.v2i16", FMA_TWO_SRC },
         { 0x5dad0, "ICMP.D3D.GE.v2i16", FMA_TWO_SRC },
@@ -636,14 +645,7 @@ static const struct fma_op_info FMAOpInfos[] = {
         { 0xcfdc0, "ADD.i32.i16.Y", FMA_TWO_SRC },
         { 0xcfdd0, "ADD.i32.u16.Y", FMA_TWO_SRC },
         { 0xd8000, "ADD.v2f16", FMA_FADD16 },
-        { 0xdc000, "CSEL.FEQ.v2f16", FMA_FOUR_SRC },
-        { 0xdc200, "CSEL.FGT.v2f16", FMA_FOUR_SRC },
-        { 0xdc400, "CSEL.FGE.v2f16", FMA_FOUR_SRC },
-        { 0xdc600, "CSEL.IEQ.v2f16", FMA_FOUR_SRC },
-        { 0xdc800, "CSEL.IGT.v2i16", FMA_FOUR_SRC },
-        { 0xdca00, "CSEL.IGE.v2i16", FMA_FOUR_SRC },
-        { 0xdcc00, "CSEL.UGT.v2i16", FMA_FOUR_SRC },
-        { 0xdce00, "CSEL.UGE.v2i16", FMA_FOUR_SRC },
+        { 0xdc000, "CSEL4.v16", FMA_CSEL4 },
         { 0xdd000, "F32_TO_F16", FMA_TWO_SRC },
         { 0xe0046, "F16_TO_I16.XX", FMA_ONE_SRC },
         { 0xe0047, "F16_TO_U16.XX", FMA_ONE_SRC },
@@ -739,8 +741,8 @@ static struct fma_op_info find_fma_op_info(unsigned op)
                 case FMA_FMA16:
                         opCmp = op & ~0x3ffff;
                         break;
-                case FMA_FOUR_SRC:
-                        opCmp = op & ~0x1ff;
+                case FMA_CSEL4:
+                        opCmp = op & ~0xfff;
                         break;
                 case FMA_FMA_MSCALE:
                         opCmp = op & ~0x7fff;
@@ -1043,15 +1045,20 @@ static void dump_fma(FILE *fp, uint64_t word, struct bifrost_regs regs, struct b
                 dump_src(fp, (FMA.op >> 3) & 0x7, regs, consts, true);
                 dump_16swizzle(fp, (FMA.op >> 16) & 0x3);
                 break;
-        case FMA_FOUR_SRC:
-                dump_src(fp, FMA.src0, regs, consts, true);
+        case FMA_CSEL4: {
+                struct bifrost_csel4 csel;
+                memcpy(&csel, &FMA, sizeof(csel));
+                fprintf(fp, ".%s ", csel_cond_name(csel.cond));
+
+                dump_src(fp, csel.src0, regs, consts, true);
                 fprintf(fp, ", ");
-                dump_src(fp, FMA.op & 0x7, regs, consts, true);
+                dump_src(fp, csel.src1, regs, consts, true);
                 fprintf(fp, ", ");
-                dump_src(fp, (FMA.op >> 3) & 0x7, regs, consts, true);
+                dump_src(fp, csel.src2, regs, consts, true);
                 fprintf(fp, ", ");
-                dump_src(fp, (FMA.op >> 6) & 0x7, regs, consts, true);
+                dump_src(fp, csel.src3, regs, consts, true);
                 break;
+        }
         case FMA_FMA_MSCALE:
                 if (FMA.op & (1 << 12))
                         fprintf(fp, "abs(");
