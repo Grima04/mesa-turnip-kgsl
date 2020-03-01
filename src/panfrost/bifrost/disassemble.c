@@ -1108,30 +1108,18 @@ static const struct add_op_info add_op_infos[] = {
         { 0x0799d, "U16_TO_F32.X", ADD_ONE_SRC },
         { 0x0799e, "I16_TO_F32.Y", ADD_ONE_SRC },
         { 0x0799f, "U16_TO_F32.Y", ADD_ONE_SRC },
-        // take the low 16 bits, and expand it to a 32-bit float
         { 0x079a2, "F16_TO_F32.X", ADD_ONE_SRC },
-        // take the high 16 bits, ...
         { 0x079a3, "F16_TO_F32.Y", ADD_ONE_SRC },
         { 0x07b2b, "SWZ.YX.v2i16",  ADD_ONE_SRC },
         { 0x07b2c, "NOP",  ADD_ONE_SRC },
         { 0x07b29, "SWZ.XX.v2i16",  ADD_ONE_SRC },
-        // Logically, this should be SWZ.XY, but that's equivalent to a move, and
-        // this seems to be the canonical way the blob generates a MOV.
         { 0x07b2d, "MOV",  ADD_ONE_SRC },
         { 0x07b2f, "SWZ.YY.v2i16",  ADD_ONE_SRC },
-        // Given a floating point number m * 2^e, returns m ^ 2^{-1}.
         { 0x07b65, "FRCP_FREXPM", ADD_ONE_SRC },
         { 0x07b75, "FSQRT_FREXPM", ADD_ONE_SRC },
         { 0x07b8d, "FRCP_FREXPE", ADD_ONE_SRC },
         { 0x07ba5, "FSQRT_FREXPE", ADD_ONE_SRC },
         { 0x07bad, "FRSQ_FREXPE", ADD_ONE_SRC },
-        // From the ARM patent US20160364209A1:
-        // "Decompose v (the input) into numbers x1 and s such that v = x1 * 2^s,
-        // and x1 is a floating point value in a predetermined range where the
-        // value 1 is within the range and not at one extremity of the range (e.g.
-        // choose a range where 1 is towards middle of range)."
-        //
-        // This computes s.
         { 0x07bc5, "FLOG_FREXPE", ADD_ONE_SRC },
         { 0x07d45, "CEIL", ADD_ONE_SRC },
         { 0x07d85, "FLOOR", ADD_ONE_SRC },
@@ -1162,7 +1150,6 @@ static const struct add_op_info add_op_infos[] = {
         { 0x0c1e0, "LD_UBO.v2i32", ADD_TWO_SRC, true },
         { 0x0c1f8, "LD_SCRATCH.v2i32", ADD_TWO_SRC, true },
         { 0x0c208, "LOAD.v4i32", ADD_TWO_SRC, true },
-        // src0 = offset, src1 = binding
         { 0x0c220, "LD_UBO.v4i32", ADD_TWO_SRC, true },
         { 0x0c238, "LD_SCRATCH.v4i32", ADD_TWO_SRC, true },
         { 0x0c248, "STORE.v4i32", ADD_TWO_SRC, true },
@@ -1177,25 +1164,13 @@ static const struct add_op_info add_op_infos[] = {
         { 0x0cab8, "LD_SCRATCH.v3i32", ADD_TWO_SRC, true },
         { 0x0cb88, "STORE.v3i32", ADD_TWO_SRC, true },
         { 0x0cbb8, "ST_SCRATCH.v3i32", ADD_TWO_SRC, true },
-        // *_FAST does not exist on G71 (added to G51, G72, and everything after)
         { 0x0cc00, "FRCP_FAST.f32", ADD_ONE_SRC },
         { 0x0cc20, "FRSQ_FAST.f32", ADD_ONE_SRC },
-        // Given a floating point number m * 2^e, produces a table-based
-        // approximation of 2/m using the top 17 bits. Includes special cases for
-        // infinity, NaN, and zero, and copies the sign bit.
         { 0x0ce00, "FRCP_TABLE", ADD_ONE_SRC },
-        // Exists on G71
         { 0x0ce10, "FRCP_FAST.f16.X", ADD_ONE_SRC },
-        // A similar table for inverse square root, using the high 17 bits of the
-        // mantissa as well as the low bit of the exponent.
         { 0x0ce20, "FRSQ_TABLE", ADD_ONE_SRC },
         { 0x0ce30, "FRCP_FAST.f16.Y", ADD_ONE_SRC },
         { 0x0ce50, "FRSQ_FAST.f16.X", ADD_ONE_SRC },
-        // Used in the argument reduction for log. Given a floating-point number
-        // m * 2^e, uses the top 4 bits of m to produce an approximation to 1/m
-        // with the exponent forced to 0 and only the top 5 bits are nonzero. 0,
-        // infinity, and NaN all return 1.0.
-        // See the ARM patent for more information.
         { 0x0ce60, "FRCP_APPROX", ADD_ONE_SRC },
         { 0x0ce70, "FRSQ_FAST.f16.Y", ADD_ONE_SRC },
         { 0x0cf40, "ATAN_ASSIST", ADD_TWO_SRC },
@@ -1206,8 +1181,6 @@ static const struct add_op_info add_op_infos[] = {
         { 0x0cf60, "FLOG2_TABLE", ADD_ONE_SRC },
         { 0x0cf64, "FLOGE_TABLE", ADD_ONE_SRC },
         { 0x0d000, "BRANCH", ADD_BRANCH },
-        // For each bit i, return src2[i] ? src0[i] : src1[i]. In other words, this
-        // is the same as (src2 & src0) | (~src2 & src1).
         { 0x0e8c0, "MUX", ADD_THREE_SRC },
         { 0x0e9b0, "ATAN_LDEXP.Y.f32", ADD_TWO_SRC },
         { 0x0e9b8, "ATAN_LDEXP.X.f32", ADD_TWO_SRC },
@@ -1240,38 +1213,22 @@ static const struct add_op_info add_op_infos[] = {
         { 0x17d90, "ADD.i32.u16.X", ADD_TWO_SRC },
         { 0x17dc0, "ADD.i32.i16.Y", ADD_TWO_SRC },
         { 0x17dd0, "ADD.i32.u16.Y", ADD_TWO_SRC },
-        // Compute varying address and datatype (for storing in the vertex shader),
-        // and store the vec3 result in the data register. The result is passed as
-        // the 3 normal arguments to ST_VAR.
         { 0x18000, "LD_VAR_ADDR.f16", ADD_VARYING_ADDRESS, true },
         { 0x18100, "LD_VAR_ADDR.f32", ADD_VARYING_ADDRESS, true },
         { 0x18200, "LD_VAR_ADDR.i32", ADD_VARYING_ADDRESS, true },
         { 0x18300, "LD_VAR_ADDR.u32", ADD_VARYING_ADDRESS, true },
-        // Conditional discards (discard_if) in NIR. Compares the first two
-        // sources and discards if the result is true
         { 0x19181, "DISCARD.FEQ.f32", ADD_TWO_SRC, true },
         { 0x19189, "DISCARD.FNE.f32", ADD_TWO_SRC, true },
         { 0x1918C, "DISCARD.GL.f32", ADD_TWO_SRC, true }, /* Consumes ICMP.GL/etc with fixed 0 argument */
         { 0x19190, "DISCARD.FLE.f32", ADD_TWO_SRC, true },
         { 0x19198, "DISCARD.FLT.f32", ADD_TWO_SRC, true },
-        // Implements alpha-to-coverage, as well as possibly the late depth and
-        // stencil tests. The first source is the existing sample mask in R60
-        // (possibly modified by gl_SampleMask), and the second source is the alpha
-        // value.  The sample mask is written right away based on the
-        // alpha-to-coverage result using the normal register write mechanism,
-        // since that doesn't need to read from any memory, and then written again
-        // later based on the result of the stencil and depth tests using the
-        // special register.
         { 0x191e8, "ATEST.f32", ADD_TWO_SRC, true },
         { 0x191f0, "ATEST.X.f16", ADD_TWO_SRC, true },
         { 0x191f8, "ATEST.Y.f16", ADD_TWO_SRC, true },
-        // store a varying given the address and datatype from LD_VAR_ADDR
         { 0x19300, "ST_VAR.v1", ADD_THREE_SRC, true },
         { 0x19340, "ST_VAR.v2", ADD_THREE_SRC, true },
         { 0x19380, "ST_VAR.v3", ADD_THREE_SRC, true },
         { 0x193c0, "ST_VAR.v4", ADD_THREE_SRC, true },
-        // This takes the sample coverage mask (computed by ATEST above) as a
-        // regular argument, in addition to the vec4 color in the special register.
         { 0x1952c, "BLEND", ADD_BLENDING, true },
         { 0x1a000, "LD_VAR.16", ADD_VARYING_INTERP, true },
         { 0x1ae60, "TEX", ADD_TEX, true },
