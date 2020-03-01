@@ -719,9 +719,6 @@ fs_reg_alloc::setup_inst_interference(fs_inst *inst)
 void
 fs_reg_alloc::build_interference_graph(bool allow_spilling)
 {
-   const gen_device_info *devinfo = fs->devinfo;
-   const brw_compiler *compiler = fs->compiler;
-
    /* Compute the RA node layout */
    node_count = 0;
    first_payload_node = node_count;
