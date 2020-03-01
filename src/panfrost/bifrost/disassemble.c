@@ -678,29 +678,11 @@ static const struct fma_op_info FMAOpInfos[] = {
         { 0xe032c, "NOP",  FMA_ONE_SRC },
         { 0xe032d, "MOV",  FMA_ONE_SRC },
         { 0xe032f, "SWZ.YY.v2i16",  FMA_ONE_SRC },
-        // From the ARM patent US20160364209A1:
-        // "Decompose v (the input) into numbers x1 and s such that v = x1 * 2^s,
-        // and x1 is a floating point value in a predetermined range where the
-        // value 1 is within the range and not at one extremity of the range (e.g.
-        // choose a range where 1 is towards middle of range)."
-        //
-        // This computes x1.
         { 0xe0345, "LOG_FREXPM", FMA_ONE_SRC },
-        // Given a floating point number m * 2^e, returns m * 2^{-1}. This is
-        // exactly the same as the mantissa part of frexp().
         { 0xe0365, "FRCP_FREXPM", FMA_ONE_SRC },
-        // Given a floating point number m * 2^e, returns m * 2^{-2} if e is even,
-        // and m * 2^{-1} if e is odd. In other words, scales by powers of 4 until
-        // within the range [0.25, 1). Used for square-root and reciprocal
-        // square-root.
         { 0xe0375, "FSQRT_FREXPM", FMA_ONE_SRC },
-        // Given a floating point number m * 2^e, computes -e - 1 as an integer.
-        // Zero and infinity/NaN return 0.
         { 0xe038d, "FRCP_FREXPE", FMA_ONE_SRC },
-        // Computes floor(e/2) + 1.
         { 0xe03a5, "FSQRT_FREXPE", FMA_ONE_SRC },
-        // Given a floating point number m * 2^e, computes -floor(e/2) - 1 as an
-        // integer.
         { 0xe03ad, "FRSQ_FREXPE", FMA_ONE_SRC },
         { 0xe03c5, "LOG_FREXPE", FMA_ONE_SRC },
         { 0xe03fa, "CLZ", FMA_ONE_SRC },
@@ -717,67 +699,6 @@ static const struct fma_op_info FMAOpInfos[] = {
         { 0xe18c5, "TRUNC", FMA_ONE_SRC },
         { 0xe19b0, "ATAN_LDEXP.Y.f32", FMA_TWO_SRC },
         { 0xe19b8, "ATAN_LDEXP.X.f32", FMA_TWO_SRC },
-        // These instructions in the FMA slot, together with LSHIFT_ADD_HIGH32.i32
-        // in the ADD slot, allow one to do a 64-bit addition with an extra small
-        // shift on one of the sources. There are three possible scenarios:
-        //
-        // 1) Full 64-bit addition. Do:
-        // out.x = LSHIFT_ADD_LOW32.i64 src1.x, src2.x, shift
-        // out.y = LSHIFT_ADD_HIGH32.i32 src1.y, src2.y
-        //
-        // The shift amount is applied to src2 before adding. The shift amount, and
-        // any extra bits from src2 plus the overflow bit, are sent directly from
-        // FMA to ADD instead of being passed explicitly. Hence, these two must be
-        // bundled together into the same instruction.
-        //
-        // 2) Add a 64-bit value src1 to a zero-extended 32-bit value src2. Do:
-        // out.x = LSHIFT_ADD_LOW32.u32 src1.x, src2, shift
-        // out.y = LSHIFT_ADD_HIGH32.i32 src1.x, 0
-        //
-        // Note that in this case, the second argument to LSHIFT_ADD_HIGH32 is
-        // ignored, so it can actually be anything. As before, the shift is applied
-        // to src2 before adding.
-        //
-        // 3) Add a 64-bit value to a sign-extended 32-bit value src2. Do:
-        // out.x = LSHIFT_ADD_LOW32.i32 src1.x, src2, shift
-        // out.y = LSHIFT_ADD_HIGH32.i32 src1.x, 0
-        //
-        // The only difference is the .i32 instead of .u32. Otherwise, this is
-        // exactly the same as before.
-        //
-        // In all these instructions, the shift amount is stored where the third
-        // source would be, so the shift has to be a small immediate from 0 to 7.
-        // This is fine for the expected use-case of these instructions, which is
-        // manipulating 64-bit pointers.
-        //
-        // These instructions can also be combined with various load/store
-        // instructions which normally take a 64-bit pointer in order to add a
-        // 32-bit or 64-bit offset to the pointer before doing the operation,
-        // optionally shifting the offset. The load/store op implicity does
-        // LSHIFT_ADD_HIGH32.i32 internally. Letting ptr be the pointer, and offset
-        // the desired offset, the cases go as follows:
-        //
-        // 1) Add a 64-bit offset:
-        // LSHIFT_ADD_LOW32.i64 ptr.x, offset.x, shift
-        // ld_st_op ptr.y, offset.y, ...
-        //
-        // Note that the output of LSHIFT_ADD_LOW32.i64 is not used, instead being
-        // implicitly sent to the load/store op to serve as the low 32 bits of the
-        // pointer.
-        //
-        // 2) Add a 32-bit unsigned offset:
-        // temp = LSHIFT_ADD_LOW32.u32 ptr.x, offset, shift
-        // ld_st_op temp, ptr.y, ...
-        //
-        // Now, the low 32 bits of offset << shift + ptr are passed explicitly to
-        // the ld_st_op, to match the case where there is no offset and ld_st_op is
-        // called directly.
-        //
-        // 3) Add a 32-bit signed offset:
-        // temp = LSHIFT_ADD_LOW32.i32 ptr.x, offset, shift
-        // ld_st_op temp, ptr.y, ...
-        //
-        // Again, the same as the unsigned case except for the offset.
         { 0xe1c80, "LSHIFT_ADD_LOW32.u32", FMA_SHIFT_ADD64 },
         { 0xe1cc0, "LSHIFT_ADD_LOW32.i64", FMA_SHIFT_ADD64 },
         { 0xe1d80, "LSHIFT_ADD_LOW32.i32", FMA_SHIFT_ADD64 },
