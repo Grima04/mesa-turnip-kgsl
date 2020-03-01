@@ -360,6 +360,9 @@ static void print_token(FILE *file, int type, YYSTYPE value)
 %token <tok> T_OP_SIN
 %token <tok> T_OP_COS
 %token <tok> T_OP_SQRT
+%token <tok> T_OP_HRSQ
+%token <tok> T_OP_HLOG2
+%token <tok> T_OP_HEXP2
 
 /* category 5: */
 %token <tok> T_OP_ISAM
@@ -670,6 +673,9 @@ cat4_opc:          T_OP_RCP       { new_instr(OPC_RCP); }
 |                  T_OP_SIN       { new_instr(OPC_SIN); }
 |                  T_OP_COS       { new_instr(OPC_COS); }
 |                  T_OP_SQRT      { new_instr(OPC_SQRT); }
+|                  T_OP_HRSQ      { new_instr(OPC_HRSQ); }
+|                  T_OP_HLOG2     { new_instr(OPC_HLOG2); }
+|                  T_OP_HEXP2     { new_instr(OPC_HEXP2); }
 
 cat4_instr:        cat4_opc dst_reg ',' src_reg_or_const_or_rel_or_imm
 

@@ -195,6 +195,9 @@ static int parse_reg(const char *str)
 "sin"                             return TOKEN(T_OP_SIN);
 "cos"                             return TOKEN(T_OP_COS);
 "sqrt"                            return TOKEN(T_OP_SQRT);
+"hrsq"                            return TOKEN(T_OP_HRSQ);
+"hlog2"                           return TOKEN(T_OP_HLOG2);
+"hexp2"                           return TOKEN(T_OP_HEXP2);
 
                                   /* category 5: */
 "isam"                            return TOKEN(T_OP_ISAM);
