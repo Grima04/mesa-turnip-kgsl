@@ -221,7 +221,7 @@ _mesa_draw_nonzero_divisor_bits(const struct gl_context *ctx)
 {
    const struct gl_vertex_array_object *const vao = ctx->Array._DrawVAO;
    assert(vao->NewArrays == 0);
-   return ~vao->_EffEnabledNonZeroDivisor & ctx->Array._DrawVAOEnabledAttribs;
+   return vao->_EffEnabledNonZeroDivisor & ctx->Array._DrawVAOEnabledAttribs;
 }
 
 
