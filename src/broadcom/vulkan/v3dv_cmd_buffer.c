@@ -295,10 +295,15 @@ cmd_buffer_can_merge_subpass(struct v3dv_cmd_buffer *cmd_buffer)
 
 void
 v3dv_cmd_buffer_start_frame(struct v3dv_cmd_buffer *cmd_buffer,
-                            const struct v3dv_framebuffer *framebuffer)
+                            const struct v3dv_framebuffer *framebuffer,
+                            const struct v3dv_frame_tiling *tiling,
+                            int32_t num_render_targets)
 {
    struct v3dv_job *job = cmd_buffer->state.job;
    assert(job);
+
+   /* Copy the frame tiling spec into the job */
+   memcpy(&job->frame_tiling, tiling, sizeof(struct v3dv_frame_tiling));
 
    v3dv_cl_ensure_space_with_branch(&job->bcl, 256);
 
@@ -306,8 +311,8 @@ v3dv_cmd_buffer_start_frame(struct v3dv_cmd_buffer *cmd_buffer,
     * of tile binning.
     */
    uint32_t tile_alloc_size = 64 * framebuffer->layers *
-                              framebuffer->draw_tiles_x *
-                              framebuffer->draw_tiles_y;
+                              tiling->draw_tiles_x *
+                              tiling->draw_tiles_y;
 
    /* The PTB allocates in aligned 4k chunks after the initial setup. */
    tile_alloc_size = align(tile_alloc_size, 4096);
@@ -330,8 +335,8 @@ v3dv_cmd_buffer_start_frame(struct v3dv_cmd_buffer *cmd_buffer,
 
    const uint32_t tsda_per_tile_size = 256;
    const uint32_t tile_state_size = framebuffer->layers *
-                                    framebuffer->draw_tiles_x *
-                                    framebuffer->draw_tiles_y *
+                                    tiling->draw_tiles_x *
+                                    tiling->draw_tiles_y *
                                     tsda_per_tile_size;
    job->tile_state = v3dv_bo_alloc(cmd_buffer->device, tile_state_size, "TSDA");
    v3dv_job_add_bo(job, job->tile_state);
@@ -343,13 +348,15 @@ v3dv_cmd_buffer_start_frame(struct v3dv_cmd_buffer *cmd_buffer,
       config.number_of_layers = framebuffer->layers;
    }
 
+   if (num_render_targets == -1)
+      num_render_targets = framebuffer->color_attachment_count;
+
    cl_emit(&job->bcl, TILE_BINNING_MODE_CFG, config) {
       config.width_in_pixels = framebuffer->width;
       config.height_in_pixels = framebuffer->height;
-      config.number_of_render_targets =
-         MAX2(framebuffer->color_attachment_count, 1);
+      config.number_of_render_targets = MAX2(num_render_targets, 1);
       config.multisample_mode_4x = false; /* FIXME */
-      config.maximum_bpp_of_all_render_targets = framebuffer->internal_bpp;
+      config.maximum_bpp_of_all_render_targets = tiling->internal_bpp;
    }
 
    /* There's definitely nothing in the VCD cache we want. */
@@ -1119,7 +1126,6 @@ cmd_buffer_emit_render_pass_layer_rcl(struct v3dv_cmd_buffer *cmd_buffer,
                                       uint32_t layer)
 {
    const struct v3dv_cmd_buffer_state *state = &cmd_buffer->state;
-   const struct v3dv_framebuffer *framebuffer = state->framebuffer;
 
    struct v3dv_job *job = cmd_buffer->state.job;
    struct v3dv_cl *rcl = &job->rcl;
@@ -1127,24 +1133,25 @@ cmd_buffer_emit_render_pass_layer_rcl(struct v3dv_cmd_buffer *cmd_buffer,
    /* If doing multicore binning, we would need to initialize each
     * core's tile list here.
     */
+   const struct v3dv_frame_tiling *tiling = &job->frame_tiling;
    const uint32_t tile_alloc_offset =
-      64 * layer * framebuffer->draw_tiles_x * framebuffer->draw_tiles_y;
+      64 * layer * tiling->draw_tiles_x * tiling->draw_tiles_y;
    cl_emit(rcl, MULTICORE_RENDERING_TILE_LIST_SET_BASE, list) {
       list.address = v3dv_cl_address(job->tile_alloc, tile_alloc_offset);
    }
 
    cl_emit(rcl, MULTICORE_RENDERING_SUPERTILE_CFG, config) {
       config.number_of_bin_tile_lists = 1;
-      config.total_frame_width_in_tiles = framebuffer->draw_tiles_x;
-      config.total_frame_height_in_tiles = framebuffer->draw_tiles_y;
+      config.total_frame_width_in_tiles = tiling->draw_tiles_x;
+      config.total_frame_height_in_tiles = tiling->draw_tiles_y;
 
-      config.supertile_width_in_tiles = framebuffer->supertile_width;
-      config.supertile_height_in_tiles = framebuffer->supertile_height;
+      config.supertile_width_in_tiles = tiling->supertile_width;
+      config.supertile_height_in_tiles = tiling->supertile_height;
 
       config.total_frame_width_in_supertiles =
-         framebuffer->frame_width_in_supertiles;
+         tiling->frame_width_in_supertiles;
       config.total_frame_height_in_supertiles =
-         framebuffer->frame_height_in_supertiles;
+         tiling->frame_height_in_supertiles;
    }
 
    /* Start by clearing the tile buffer. */
@@ -1187,9 +1194,9 @@ cmd_buffer_emit_render_pass_layer_rcl(struct v3dv_cmd_buffer *cmd_buffer,
    cmd_buffer_render_pass_emit_per_tile_rcl(cmd_buffer, layer);
 
    uint32_t supertile_w_in_pixels =
-      framebuffer->tile_width * framebuffer->supertile_width;
+      tiling->tile_width * tiling->supertile_width;
    uint32_t supertile_h_in_pixels =
-      framebuffer->tile_height * framebuffer->supertile_height;
+      tiling->tile_height * tiling->supertile_height;
    const uint32_t min_x_supertile =
       state->render_area.offset.x / supertile_w_in_pixels;
    const uint32_t min_y_supertile =
@@ -1241,6 +1248,8 @@ cmd_buffer_emit_render_pass_rcl(struct v3dv_cmd_buffer *cmd_buffer)
    struct v3dv_job *job = cmd_buffer->state.job;
    assert(job);
 
+   const struct v3dv_frame_tiling *tiling = &job->frame_tiling;
+
    const struct v3dv_cmd_buffer_state *state = &cmd_buffer->state;
    const struct v3dv_framebuffer *framebuffer = state->framebuffer;
    const uint32_t fb_layers = framebuffer->layers;
@@ -1266,7 +1275,7 @@ cmd_buffer_emit_render_pass_rcl(struct v3dv_cmd_buffer *cmd_buffer)
       config.image_height_pixels = framebuffer->height;
       config.number_of_render_targets = MAX2(subpass->color_count, 1);
       config.multisample_mode_4x = false; /* FIXME */
-      config.maximum_bpp_of_all_render_targets = framebuffer->internal_bpp;
+      config.maximum_bpp_of_all_render_targets = tiling->internal_bpp;
 
       if (ds_attachment_idx != VK_ATTACHMENT_UNUSED) {
          const struct v3dv_image_view *iview =
@@ -1398,14 +1407,27 @@ subpass_start(struct v3dv_cmd_buffer *cmd_buffer, uint32_t subpass_idx)
     * change the command buffer state for the new job until we are done creating
     * the new job.
     */
-   struct v3dv_job *job =
-   v3dv_cmd_buffer_start_job(cmd_buffer, subpass_idx);
+   struct v3dv_job *job = v3dv_cmd_buffer_start_job(cmd_buffer, subpass_idx);
 
    state->subpass_idx = subpass_idx;
 
    /* If we are starting a new job we need to setup binning. */
-   if (job->first_subpass == state->subpass_idx)
-      v3dv_cmd_buffer_start_frame(cmd_buffer, cmd_buffer->state.framebuffer);
+   if (job->first_subpass == state->subpass_idx) {
+      const struct v3dv_subpass *subpass =
+         &state->pass->subpasses[state->subpass_idx];
+
+      const struct v3dv_framebuffer *framebuffer = state->framebuffer;
+
+      const uint8_t internal_bpp =
+         v3dv_framebuffer_compute_internal_bpp(framebuffer, subpass);
+
+      struct v3dv_frame_tiling frame_tiling;
+      v3dv_framebuffer_compute_tiling_params(framebuffer, subpass, internal_bpp,
+                                             &frame_tiling);
+
+      v3dv_cmd_buffer_start_frame(cmd_buffer, framebuffer, &frame_tiling,
+                                  subpass->color_count);
+   }
 
    /* If we don't have a scissor or viewport defined let's just use the render
     * area as clip_window, as that would be required for a clear in any

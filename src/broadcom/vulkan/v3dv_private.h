@@ -403,6 +403,12 @@ struct v3dv_framebuffer {
    uint32_t height;
    uint32_t layers;
 
+   uint32_t attachment_count;
+   uint32_t color_attachment_count;
+   struct v3dv_image_view *attachments[0];
+};
+
+struct v3dv_frame_tiling {
    uint32_t internal_bpp;
    uint32_t tile_width;
    uint32_t tile_height;
@@ -412,13 +418,15 @@ struct v3dv_framebuffer {
    uint32_t supertile_height;
    uint32_t frame_width_in_supertiles;
    uint32_t frame_height_in_supertiles;
-
-   uint32_t attachment_count;
-   uint32_t color_attachment_count;
-   struct v3dv_image_view *attachments[0];
 };
 
-void v3dv_framebuffer_compute_tiling_params(struct v3dv_framebuffer *framebuffer);
+uint8_t v3dv_framebuffer_compute_internal_bpp(const struct v3dv_framebuffer *framebuffer,
+                                              const struct v3dv_subpass *subpass);
+void v3dv_framebuffer_compute_tiling_params(const struct v3dv_framebuffer *framebuffer,
+                                            const struct v3dv_subpass *subpass,
+                                            uint8_t internal_bpp,
+                                            struct v3dv_frame_tiling *tiling);
+
 
 struct v3dv_cmd_pool {
    VkAllocationCallbacks alloc;
@@ -562,6 +570,8 @@ struct v3dv_job {
    /* If this job is the last job emitted for a subpass. */
    bool is_subpass_finish;
 
+   struct v3dv_frame_tiling frame_tiling;
+
    enum v3dv_ez_state ez_state;
    enum v3dv_ez_state first_ez_state;
 };
@@ -636,7 +646,9 @@ struct v3dv_job *v3dv_cmd_buffer_start_job(struct v3dv_cmd_buffer *cmd_buffer,
                                            int32_t subpass_idx);
 void v3dv_cmd_buffer_finish_job(struct v3dv_cmd_buffer *cmd_buffer);
 void v3dv_cmd_buffer_start_frame(struct v3dv_cmd_buffer *cmd_buffer,
-                                 const struct v3dv_framebuffer *framebuffer);
+                                 const struct v3dv_framebuffer *framebuffer,
+                                 const struct v3dv_frame_tiling *tiling,
+                                 int32_t num_render_targets);
 
 void v3dv_render_pass_setup_render_target(struct v3dv_cmd_buffer *cmd_buffer,
                                           int rt,

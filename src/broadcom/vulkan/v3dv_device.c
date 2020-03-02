@@ -1659,11 +1659,33 @@ v3dv_DestroyBuffer(VkDevice _device,
    vk_free2(&device->alloc, pAllocator, buffer);
 }
 
-static void
-compute_internal_bpp_from_attachments(struct v3dv_framebuffer *framebuffer)
+uint8_t
+v3dv_framebuffer_compute_internal_bpp(const struct v3dv_framebuffer *framebuffer,
+                                      const struct v3dv_subpass *subpass)
 {
    STATIC_ASSERT(RENDER_TARGET_MAXIMUM_32BPP == 0);
    uint8_t max_bpp = RENDER_TARGET_MAXIMUM_32BPP;
+
+   if (subpass) {
+      for (uint32_t i = 0; i < subpass->color_count; i++) {
+         uint32_t att_idx = subpass->color_attachments[i].attachment;
+         if (att_idx == VK_ATTACHMENT_UNUSED)
+            continue;
+
+         const struct v3dv_image_view *att = framebuffer->attachments[i];
+         assert(att);
+
+         if (att->aspects & VK_IMAGE_ASPECT_COLOR_BIT)
+            max_bpp = MAX2(max_bpp, att->internal_bpp);
+      }
+
+      return max_bpp;
+   }
+
+   /* If we are not in a render pass then we assume that all framebuffer
+    * attachments are used.
+    */
+   assert(framebuffer->attachment_count <= 4);
    for (uint32_t i = 0; i < framebuffer->attachment_count; i++) {
       const struct v3dv_image_view *att = framebuffer->attachments[i];
       assert(att);
@@ -1671,11 +1693,15 @@ compute_internal_bpp_from_attachments(struct v3dv_framebuffer *framebuffer)
       if (att->aspects & VK_IMAGE_ASPECT_COLOR_BIT)
          max_bpp = MAX2(max_bpp, att->internal_bpp);
    }
-   framebuffer->internal_bpp = max_bpp;
+
+   return max_bpp;
 }
 
 void
-v3dv_framebuffer_compute_tiling_params(struct v3dv_framebuffer *framebuffer)
+v3dv_framebuffer_compute_tiling_params(const struct v3dv_framebuffer *framebuffer,
+                                       const struct v3dv_subpass *subpass,
+                                       uint8_t internal_bpp,
+                                       struct v3dv_frame_tiling *tiling)
 {
    static const uint8_t tile_sizes[] = {
       64, 64,
@@ -1689,40 +1715,44 @@ v3dv_framebuffer_compute_tiling_params(struct v3dv_framebuffer *framebuffer)
 
    /* FIXME: MSAA */
 
-   if (framebuffer->color_attachment_count > 2)
+   const uint32_t color_attachment_count =
+      subpass ? subpass->color_count : framebuffer->color_attachment_count;
+
+   if (color_attachment_count > 2)
       tile_size_index += 2;
-   else if (framebuffer->color_attachment_count > 1)
+   else if (color_attachment_count > 1)
       tile_size_index += 1;
 
-   tile_size_index += framebuffer->internal_bpp;
+   tiling->internal_bpp = internal_bpp;
+   tile_size_index += tiling->internal_bpp;
    assert(tile_size_index < ARRAY_SIZE(tile_sizes));
 
-   framebuffer->tile_width = tile_sizes[tile_size_index * 2];
-   framebuffer->tile_height = tile_sizes[tile_size_index * 2 + 1];
+   tiling->tile_width = tile_sizes[tile_size_index * 2];
+   tiling->tile_height = tile_sizes[tile_size_index * 2 + 1];
 
-   framebuffer->draw_tiles_x =
-      DIV_ROUND_UP(framebuffer->width, framebuffer->tile_width);
-   framebuffer->draw_tiles_y =
-      DIV_ROUND_UP(framebuffer->height, framebuffer->tile_height);
+   tiling->draw_tiles_x =
+      DIV_ROUND_UP(framebuffer->width, tiling->tile_width);
+   tiling->draw_tiles_y =
+      DIV_ROUND_UP(framebuffer->height, tiling->tile_height);
 
    /* Size up our supertiles until we get under the limit */
    const uint32_t max_supertiles = 256;
-   framebuffer->supertile_width = 1;
-   framebuffer->supertile_height = 1;
+   tiling->supertile_width = 1;
+   tiling->supertile_height = 1;
    for (;;) {
-      framebuffer->frame_width_in_supertiles =
-         DIV_ROUND_UP(framebuffer->draw_tiles_x, framebuffer->supertile_width);
-      framebuffer->frame_height_in_supertiles =
-         DIV_ROUND_UP(framebuffer->draw_tiles_y, framebuffer->supertile_height);
-      const uint32_t num_supertiles = framebuffer->frame_width_in_supertiles *
-                                      framebuffer->frame_height_in_supertiles;
+      tiling->frame_width_in_supertiles =
+         DIV_ROUND_UP(tiling->draw_tiles_x, tiling->supertile_width);
+      tiling->frame_height_in_supertiles =
+         DIV_ROUND_UP(tiling->draw_tiles_y, tiling->supertile_height);
+      const uint32_t num_supertiles = tiling->frame_width_in_supertiles *
+                                      tiling->frame_height_in_supertiles;
       if (num_supertiles < max_supertiles)
          break;
 
-      if (framebuffer->supertile_width < framebuffer->supertile_height)
-         framebuffer->supertile_width++;
+      if (tiling->supertile_width < tiling->supertile_height)
+         tiling->supertile_width++;
       else
-         framebuffer->supertile_height++;
+         tiling->supertile_height++;
    }
 }
 
@@ -1755,9 +1785,6 @@ v3dv_CreateFramebuffer(VkDevice _device,
       if (framebuffer->attachments[i]->aspects & VK_IMAGE_ASPECT_COLOR_BIT)
          framebuffer->color_attachment_count++;
    }
-
-   compute_internal_bpp_from_attachments(framebuffer);
-   v3dv_framebuffer_compute_tiling_params(framebuffer);
 
    *pFramebuffer = v3dv_framebuffer_to_handle(framebuffer);
 

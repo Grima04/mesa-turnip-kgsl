@@ -168,24 +168,26 @@ emit_tlb_clear_layer_rcl(struct v3dv_cmd_buffer *cmd_buffer,
    struct v3dv_job *job = cmd_buffer->state.job;
    struct v3dv_cl *rcl = &job->rcl;
 
+   const struct v3dv_frame_tiling *tiling = &job->frame_tiling;
+
    const uint32_t tile_alloc_offset =
-      64 * layer * framebuffer->draw_tiles_x * framebuffer->draw_tiles_y;
+      64 * layer * tiling->draw_tiles_x * tiling->draw_tiles_y;
    cl_emit(rcl, MULTICORE_RENDERING_TILE_LIST_SET_BASE, list) {
       list.address = v3dv_cl_address(job->tile_alloc, tile_alloc_offset);
    }
 
    cl_emit(rcl, MULTICORE_RENDERING_SUPERTILE_CFG, config) {
       config.number_of_bin_tile_lists = 1;
-      config.total_frame_width_in_tiles = framebuffer->draw_tiles_x;
-      config.total_frame_height_in_tiles = framebuffer->draw_tiles_y;
+      config.total_frame_width_in_tiles = tiling->draw_tiles_x;
+      config.total_frame_height_in_tiles = tiling->draw_tiles_y;
 
-      config.supertile_width_in_tiles = framebuffer->supertile_width;
-      config.supertile_height_in_tiles = framebuffer->supertile_height;
+      config.supertile_width_in_tiles = tiling->supertile_width;
+      config.supertile_height_in_tiles = tiling->supertile_height;
 
       config.total_frame_width_in_supertiles =
-         framebuffer->frame_width_in_supertiles;
+         tiling->frame_width_in_supertiles;
       config.total_frame_height_in_supertiles =
-         framebuffer->frame_height_in_supertiles;
+         tiling->frame_height_in_supertiles;
    }
 
    /* Emit the clear and also the workaround for GFXH-1742 */
@@ -209,9 +211,9 @@ emit_tlb_clear_layer_rcl(struct v3dv_cmd_buffer *cmd_buffer,
    emit_tlb_clear_per_tile_rcl(cmd_buffer, attachment_count, attachments, layer);
 
    uint32_t supertile_w_in_pixels =
-      framebuffer->tile_width * framebuffer->supertile_width;
+      tiling->tile_width * tiling->supertile_width;
    uint32_t supertile_h_in_pixels =
-      framebuffer->tile_height * framebuffer->supertile_height;
+      tiling->tile_height * tiling->supertile_height;
 
    const uint32_t max_render_x = framebuffer->width - 1;
    const uint32_t max_render_y = framebuffer->height - 1;
@@ -229,7 +231,7 @@ emit_tlb_clear_layer_rcl(struct v3dv_cmd_buffer *cmd_buffer,
 }
 
 static void
-emit_tlb_clear_rcl(struct v3dv_cmd_buffer *cmd_buffer,
+emit_tlb_clear_job(struct v3dv_cmd_buffer *cmd_buffer,
                    uint32_t attachment_count,
                    const VkClearAttachment *attachments,
                    uint32_t base_layer,
@@ -241,11 +243,6 @@ emit_tlb_clear_rcl(struct v3dv_cmd_buffer *cmd_buffer,
       &state->pass->subpasses[state->subpass_idx];
    struct v3dv_job *job = cmd_buffer->state.job;
    assert(job);
-
-   struct v3dv_cl *rcl = &job->rcl;
-   v3dv_cl_ensure_space_with_branch(rcl, 200 +
-                                    layer_count * 256 *
-                                    cl_packet_length(SUPERTILE_COORDINATES));
 
    /* Check how many color attachments we have and also if we have a
     * depth/stencil attachment.
@@ -262,13 +259,29 @@ emit_tlb_clear_rcl(struct v3dv_cmd_buffer *cmd_buffer,
       }
    }
 
+   const uint8_t internal_bpp =
+      v3dv_framebuffer_compute_internal_bpp(framebuffer, subpass);
+
+   struct v3dv_frame_tiling frame_tiling;
+   v3dv_framebuffer_compute_tiling_params(framebuffer, subpass, internal_bpp,
+                                          &frame_tiling);
+
+   v3dv_cmd_buffer_start_frame(cmd_buffer, framebuffer, &frame_tiling,
+                               color_attachment_count);
+
+   struct v3dv_cl *rcl = &job->rcl;
+   v3dv_cl_ensure_space_with_branch(rcl, 200 +
+                                    layer_count * 256 *
+                                    cl_packet_length(SUPERTILE_COORDINATES));
+
+   const struct v3dv_frame_tiling *tiling = &job->frame_tiling;
    cl_emit(rcl, TILE_RENDERING_MODE_CFG_COMMON, config) {
       config.early_z_disable = true;
       config.image_width_pixels = framebuffer->width;
       config.image_height_pixels = framebuffer->height;
       config.number_of_render_targets = MAX2(color_attachment_count, 1);
       config.multisample_mode_4x = false; /* FIXME */
-      config.maximum_bpp_of_all_render_targets = framebuffer->internal_bpp;
+      config.maximum_bpp_of_all_render_targets = tiling->internal_bpp;
    }
 
    for (uint32_t i = 0; i < color_attachment_count; i++) {
@@ -386,16 +399,22 @@ emit_tlb_clear(struct v3dv_cmd_buffer *cmd_buffer,
                uint32_t base_layer,
                uint32_t layer_count)
 {
-   const struct v3dv_framebuffer *framebuffer = cmd_buffer->state.framebuffer;
+   const struct v3dv_cmd_buffer_state *state = &cmd_buffer->state;
+   const struct v3dv_framebuffer *framebuffer = state->framebuffer;
 
-   struct v3dv_job *job = v3dv_cmd_buffer_start_job(cmd_buffer, false);
+   struct v3dv_job *job = cmd_buffer->state.job;
+   assert(job);
+
+   /* Save a copy of the current subpass tiling spec */
+   struct v3dv_frame_tiling subpass_tiling;
+   memcpy(&subpass_tiling, &job->frame_tiling, sizeof(subpass_tiling));
+
+   job = v3dv_cmd_buffer_start_job(cmd_buffer, false);
 
    /* vkCmdClearAttachments runs inside a render pass */
    job->is_subpass_continue = true;
 
-   v3dv_cmd_buffer_start_frame(cmd_buffer, framebuffer);
-
-   emit_tlb_clear_rcl(cmd_buffer,
+   emit_tlb_clear_job(cmd_buffer,
                       attachment_count,
                       attachments,
                       base_layer, layer_count);
@@ -409,7 +428,10 @@ emit_tlb_clear(struct v3dv_cmd_buffer *cmd_buffer,
     * after the clear.
     */
    job = v3dv_cmd_buffer_start_job(cmd_buffer, false);
-   v3dv_cmd_buffer_start_frame(cmd_buffer, framebuffer);
+   uint32_t subpass_color_count =
+      state->pass->subpasses[state->subpass_idx].color_count;
+   v3dv_cmd_buffer_start_frame(cmd_buffer, framebuffer, &subpass_tiling,
+                               subpass_color_count);
    job->is_subpass_continue = true;
 }
 
