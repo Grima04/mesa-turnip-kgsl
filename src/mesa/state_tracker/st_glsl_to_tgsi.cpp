@@ -4300,14 +4300,13 @@ glsl_to_tgsi_visitor::visit(ir_texture *ir)
    enum tgsi_opcode opcode = TGSI_OPCODE_NOP;
    const glsl_type *sampler_type = ir->sampler->type;
    unsigned sampler_array_size = 1, sampler_base = 0;
-   bool is_cube_array = false, is_cube_shadow = false;
+   bool is_cube_array = false;
    ir_variable *var = ir->sampler->variable_referenced();
    unsigned i;
 
    /* if we are a cube array sampler or a cube shadow */
    if (sampler_type->sampler_dimensionality == GLSL_SAMPLER_DIM_CUBE) {
       is_cube_array = sampler_type->sampler_array;
-      is_cube_shadow = sampler_type->sampler_shadow;
    }
 
    if (ir->coordinate) {
@@ -4345,7 +4344,8 @@ glsl_to_tgsi_visitor::visit(ir_texture *ir)
       }
       break;
    case ir_txb:
-      if (is_cube_array || is_cube_shadow) {
+      if (is_cube_array ||
+         (sampler_type->sampler_shadow && sampler_type->coordinate_components() >= 3)) {
          opcode = TGSI_OPCODE_TXB2;
       }
       else {
@@ -4362,7 +4362,7 @@ glsl_to_tgsi_visitor::visit(ir_texture *ir)
       if (this->has_tex_txf_lz && ir->lod_info.lod->is_zero()) {
          opcode = TGSI_OPCODE_TEX_LZ;
       } else {
-         opcode = is_cube_array ? TGSI_OPCODE_TXL2 : TGSI_OPCODE_TXL;
+         opcode = (is_cube_array || (sampler_type->sampler_shadow && sampler_type->coordinate_components() >= 3)) ? TGSI_OPCODE_TXL2 : TGSI_OPCODE_TXL;
          ir->lod_info.lod->accept(this);
          lod_info = this->result;
       }
@@ -4500,11 +4500,21 @@ glsl_to_tgsi_visitor::visit(ir_texture *ir)
       ir->shadow_comparator->accept(this);
 
       if (is_cube_array) {
-         cube_sc = get_temp(glsl_type::float_type);
-         cube_sc_dst = st_dst_reg(cube_sc);
-         cube_sc_dst.writemask = WRITEMASK_X;
+         if (lod_info.file != PROGRAM_UNDEFINED) {
+            // If we have both a cube array *and* a bias/lod, stick the
+            // comparator into the .Y of the second argument.
+            st_src_reg tmp = get_temp(glsl_type::vec2_type);
+            cube_sc_dst = st_dst_reg(tmp);
+            cube_sc_dst.writemask = WRITEMASK_X;
+            emit_asm(ir, TGSI_OPCODE_MOV, cube_sc_dst, lod_info);
+            lod_info = tmp;
+            cube_sc_dst.writemask = WRITEMASK_Y;
+         } else {
+            cube_sc = get_temp(glsl_type::float_type);
+            cube_sc_dst = st_dst_reg(cube_sc);
+            cube_sc_dst.writemask = WRITEMASK_X;
+         }
          emit_asm(ir, TGSI_OPCODE_MOV, cube_sc_dst, this->result);
-         cube_sc_dst.writemask = WRITEMASK_X;
       }
       else {
          if ((sampler_type->sampler_dimensionality == GLSL_SAMPLER_DIM_2D &&

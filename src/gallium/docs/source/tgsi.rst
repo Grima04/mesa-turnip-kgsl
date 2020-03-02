@@ -735,7 +735,8 @@ This instruction replicates its result.
   Presumably shadow 2d arrays and shadow 3d targets could use
   this encoding too, but this is not legal.
 
-  shadow cube map arrays are neither possible nor required.
+  if the target is a shadow cube map array, the reference value is in
+  src1.y.
 
 .. math::
 
@@ -826,7 +827,8 @@ This instruction replicates its result.
   Presumably shadow 3d / 2d array / cube targets could use
   this encoding too, but this is not legal.
 
-  shadow cube map arrays are neither possible nor required.
+  if the target is a shadow cube map array, the reference value is in
+  src1.y.
 
 .. math::
 
