@@ -680,7 +680,7 @@ copy_image_to_buffer_tlb(struct v3dv_cmd_buffer *cmd_buffer,
    framebuffer.max_x_supertile = max_render_x / supertile_w_in_pixels;
    framebuffer.max_y_supertile = max_render_y / supertile_h_in_pixels;
 
-   struct v3dv_job *job = v3dv_cmd_buffer_start_job(cmd_buffer, false);
+   struct v3dv_job *job = v3dv_cmd_buffer_start_job(cmd_buffer, -1);
    v3dv_cmd_buffer_start_frame(cmd_buffer, &framebuffer.fb);
 
    v3dv_job_emit_binning_flush(job);
@@ -834,7 +834,7 @@ copy_image_tlb(struct v3dv_cmd_buffer *cmd_buffer,
    framebuffer.max_x_supertile = max_render_x / supertile_w_in_pixels;
    framebuffer.max_y_supertile = max_render_y / supertile_h_in_pixels;
 
-   struct v3dv_job *job = v3dv_cmd_buffer_start_job(cmd_buffer, false);
+   struct v3dv_job *job = v3dv_cmd_buffer_start_job(cmd_buffer, -1);
    v3dv_cmd_buffer_start_frame(cmd_buffer, &framebuffer.fb);
 
    v3dv_job_emit_binning_flush(job);
@@ -966,7 +966,7 @@ clear_image_tlb(struct v3dv_cmd_buffer *cmd_buffer,
          setup_framebuffer_params(&framebuffer, width, height, 1,
                                   internal_bpp, internal_type);
 
-         struct v3dv_job *job = v3dv_cmd_buffer_start_job(cmd_buffer, false);
+         struct v3dv_job *job = v3dv_cmd_buffer_start_job(cmd_buffer, -1);
          v3dv_cmd_buffer_start_frame(cmd_buffer, &framebuffer.fb);
          v3dv_job_emit_binning_flush(job);
 
@@ -1171,7 +1171,7 @@ copy_buffer(struct v3dv_cmd_buffer *cmd_buffer,
       setup_framebuffer_for_pixel_count(&framebuffer, num_items,
                                         internal_bpp, internal_type);
 
-      job = v3dv_cmd_buffer_start_job(cmd_buffer, false);
+      job = v3dv_cmd_buffer_start_job(cmd_buffer, -1);
       v3dv_cmd_buffer_start_frame(cmd_buffer, &framebuffer.fb);
 
       v3dv_job_emit_binning_flush(job);
@@ -1327,7 +1327,7 @@ fill_buffer(struct v3dv_cmd_buffer *cmd_buffer,
       setup_framebuffer_for_pixel_count(&framebuffer, num_items,
                                         internal_bpp, internal_type);
 
-      struct v3dv_job *job = v3dv_cmd_buffer_start_job(cmd_buffer, false);
+      struct v3dv_job *job = v3dv_cmd_buffer_start_job(cmd_buffer, -1);
       v3dv_cmd_buffer_start_frame(cmd_buffer, &framebuffer.fb);
 
       v3dv_job_emit_binning_flush(job);
@@ -1531,7 +1531,7 @@ copy_buffer_to_image_tlb(struct v3dv_cmd_buffer *cmd_buffer,
    framebuffer.max_x_supertile = max_render_x / supertile_w_in_pixels;
    framebuffer.max_y_supertile = max_render_y / supertile_h_in_pixels;
 
-   struct v3dv_job *job = v3dv_cmd_buffer_start_job(cmd_buffer, false);
+   struct v3dv_job *job = v3dv_cmd_buffer_start_job(cmd_buffer, -1);
    v3dv_cmd_buffer_start_frame(cmd_buffer, &framebuffer.fb);
 
    v3dv_job_emit_binning_flush(job);

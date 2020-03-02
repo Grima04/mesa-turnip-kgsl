@@ -72,7 +72,7 @@ v3dv_job_add_extra_bo(struct v3dv_job *job, struct v3dv_bo *bo)
 }
 
 static void
-subpass_start(struct v3dv_cmd_buffer *cmd_buffer);
+subpass_start(struct v3dv_cmd_buffer *cmd_buffer, uint32_t subpass_idx);
 
 static void
 subpass_finish(struct v3dv_cmd_buffer *cmd_buffer);
@@ -397,13 +397,13 @@ v3dv_cmd_buffer_finish_job(struct v3dv_cmd_buffer *cmd_buffer)
 
 struct v3dv_job *
 v3dv_cmd_buffer_start_job(struct v3dv_cmd_buffer *cmd_buffer,
-                          bool is_subpass_start)
+                          int32_t subpass_idx)
 {
    /* Don't create a new job if we can merge the current subpass into
     * the current job.
     */
    if (cmd_buffer->state.pass &&
-       is_subpass_start &&
+       subpass_idx != -1 &&
        cmd_buffer_can_merge_subpass(cmd_buffer)) {
       cmd_buffer->state.job->is_subpass_finish = false;
       return cmd_buffer->state.job;
@@ -442,9 +442,10 @@ v3dv_cmd_buffer_start_job(struct v3dv_cmd_buffer *cmd_buffer,
     * and stores.
     */
    if (cmd_buffer->state.pass)
-      job->first_subpass = cmd_buffer->state.subpass_idx;
+      job->first_subpass = subpass_idx;
 
    cmd_buffer->state.job = job;
+
    return job;
 }
 
@@ -759,8 +760,7 @@ v3dv_CmdBeginRenderPass(VkCommandBuffer commandBuffer,
    state->render_area = pRenderPassBegin->renderArea;
 
    /* Setup for first subpass */
-   state->subpass_idx = 0;
-   subpass_start(cmd_buffer);
+   subpass_start(cmd_buffer, 0);
 }
 
 void
@@ -775,8 +775,7 @@ v3dv_CmdNextSubpass(VkCommandBuffer commandBuffer, VkSubpassContents contents)
    subpass_finish(cmd_buffer);
 
    /* Start the next subpass */
-   state->subpass_idx++;
-   subpass_start(cmd_buffer);
+   subpass_start(cmd_buffer, state->subpass_idx + 1);
 }
 
 void
@@ -1390,13 +1389,19 @@ cmd_buffer_emit_render_pass_rcl(struct v3dv_cmd_buffer *cmd_buffer)
 }
 
 static void
-subpass_start(struct v3dv_cmd_buffer *cmd_buffer)
+subpass_start(struct v3dv_cmd_buffer *cmd_buffer, uint32_t subpass_idx)
 {
-   const struct v3dv_cmd_buffer_state *state = &cmd_buffer->state;
+   struct v3dv_cmd_buffer_state *state = &cmd_buffer->state;
+   assert(subpass_idx < state->pass->subpass_count);
 
-   assert(state->subpass_idx < state->pass->subpass_count);
+   /* Starting a new job can trigger a finish of the current one, so don't
+    * change the command buffer state for the new job until we are done creating
+    * the new job.
+    */
+   struct v3dv_job *job =
+   v3dv_cmd_buffer_start_job(cmd_buffer, subpass_idx);
 
-   struct v3dv_job *job = v3dv_cmd_buffer_start_job(cmd_buffer, true);
+   state->subpass_idx = subpass_idx;
 
    /* If we are starting a new job we need to setup binning. */
    if (job->first_subpass == state->subpass_idx)

@@ -633,7 +633,7 @@ struct v3dv_cmd_buffer {
 };
 
 struct v3dv_job *v3dv_cmd_buffer_start_job(struct v3dv_cmd_buffer *cmd_buffer,
-                                           bool is_subpass_finish);
+                                           int32_t subpass_idx);
 void v3dv_cmd_buffer_finish_job(struct v3dv_cmd_buffer *cmd_buffer);
 void v3dv_cmd_buffer_start_frame(struct v3dv_cmd_buffer *cmd_buffer,
                                  const struct v3dv_framebuffer *framebuffer);
