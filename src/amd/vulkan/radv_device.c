@@ -1720,7 +1720,7 @@ void radv_GetPhysicalDeviceProperties2(
 			properties->vgprsPerSimd =
 				pdevice->rad_info.num_physical_wave64_vgprs_per_simd;
 			properties->minVgprAllocation =
-				pdevice->rad_info.min_vgpr_alloc;
+				pdevice->rad_info.min_wave64_vgpr_alloc;
 			properties->maxVgprAllocation =
 				pdevice->rad_info.max_vgpr_alloc;
 			properties->vgprAllocationGranularity =

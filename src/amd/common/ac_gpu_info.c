@@ -727,7 +727,7 @@ bool ac_query_gpu_info(int fd, void *dev_p,
 	info->max_sgpr_alloc = info->family == CHIP_TONGA ||
 			       info->family == CHIP_ICELAND ? 96 : 104;
 
-	info->min_vgpr_alloc = 4;
+	info->min_wave64_vgpr_alloc = 4;
 	info->max_vgpr_alloc = 256;
 	info->wave64_vgpr_alloc_granularity = 4;
 
@@ -893,7 +893,7 @@ void ac_print_gpu_info(struct radeon_info *info)
 	printf("    min_sgpr_alloc = %i\n", info->min_sgpr_alloc);
 	printf("    max_sgpr_alloc = %i\n", info->max_sgpr_alloc);
 	printf("    sgpr_alloc_granularity = %i\n", info->sgpr_alloc_granularity);
-	printf("    min_vgpr_alloc = %i\n", info->min_vgpr_alloc);
+	printf("    min_wave64_vgpr_alloc = %i\n", info->min_wave64_vgpr_alloc);
 	printf("    max_vgpr_alloc = %i\n", info->max_vgpr_alloc);
 	printf("    wave64_vgpr_alloc_granularity = %i\n", info->wave64_vgpr_alloc_granularity);
 
