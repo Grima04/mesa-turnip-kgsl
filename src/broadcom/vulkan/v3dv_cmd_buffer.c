@@ -818,6 +818,7 @@ cmd_buffer_render_pass_emit_load(struct v3dv_cmd_buffer *cmd_buffer,
                                  uint32_t buffer)
 {
    const struct v3dv_image *image = iview->image;
+   const struct v3d_resource_slice *slice = &image->slices[iview->base_level];
    uint32_t layer_offset = v3dv_layer_offset(image,
                                              iview->base_level,
                                              iview->first_layer + layer);
@@ -828,9 +829,8 @@ cmd_buffer_render_pass_emit_load(struct v3dv_cmd_buffer *cmd_buffer,
 
       load.input_image_format = iview->format->rt_type;
       load.r_b_swap = iview->swap_rb;
-      load.memory_format = iview->tiling;
+      load.memory_format = slice->tiling;
 
-      const struct v3d_resource_slice *slice = &image->slices[iview->base_level];
       if (slice->tiling == VC5_TILING_UIF_NO_XOR ||
           slice->tiling == VC5_TILING_UIF_XOR) {
          load.height_in_ub_or_stride =
@@ -932,6 +932,7 @@ cmd_buffer_render_pass_emit_store(struct v3dv_cmd_buffer *cmd_buffer,
    const struct v3dv_image_view *iview =
       cmd_buffer->state.framebuffer->attachments[attachment_idx];
    const struct v3dv_image *image = iview->image;
+   const struct v3d_resource_slice *slice = &image->slices[iview->base_level];
    uint32_t layer_offset = v3dv_layer_offset(image,
                                              iview->base_level,
                                              iview->first_layer + layer);
@@ -943,9 +944,8 @@ cmd_buffer_render_pass_emit_store(struct v3dv_cmd_buffer *cmd_buffer,
 
       store.output_image_format = iview->format->rt_type;
       store.r_b_swap = iview->swap_rb;
-      store.memory_format = iview->tiling;
+      store.memory_format = slice->tiling;
 
-      const struct v3d_resource_slice *slice = &image->slices[iview->base_level];
       if (slice->tiling == VC5_TILING_UIF_NO_XOR ||
           slice->tiling == VC5_TILING_UIF_XOR) {
          store.height_in_ub_or_stride =
@@ -1289,16 +1289,15 @@ cmd_buffer_emit_render_pass_rcl(struct v3dv_cmd_buffer *cmd_buffer)
       struct v3dv_image_view *iview =
          state->framebuffer->attachments[attachment_idx];
 
+      const struct v3dv_image *image = iview->image;
+      const struct v3d_resource_slice *slice = &image->slices[iview->base_level];
+
       const uint32_t *clear_color =
          &state->attachments[attachment_idx].clear_value.color[0];
 
       uint32_t clear_pad = 0;
-      if (iview->tiling == VC5_TILING_UIF_NO_XOR ||
-          iview->tiling == VC5_TILING_UIF_XOR) {
-         const struct v3dv_image *image = iview->image;
-         const struct v3d_resource_slice *slice =
-            &image->slices[iview->base_level];
-
+      if (slice->tiling == VC5_TILING_UIF_NO_XOR ||
+          slice->tiling == VC5_TILING_UIF_XOR) {
          int uif_block_height = v3d_utile_height(image->cpp) * 2;
 
          uint32_t implicit_padded_height =

@@ -333,7 +333,6 @@ struct v3dv_image_view {
    VkFormat vk_format;
    const struct v3dv_format *format;
    bool swap_rb;
-   enum v3d_tiling_mode tiling;
    uint32_t internal_bpp;
    uint32_t internal_type;
 

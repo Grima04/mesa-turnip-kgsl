@@ -444,8 +444,6 @@ v3dv_CreateImageView(VkDevice _device,
    iview->offset =
       v3dv_layer_offset(image, iview->base_level, iview->first_layer);
 
-   iview->tiling = image->slices[0].tiling;
-
    iview->vk_format = pCreateInfo->format;
    iview->format = v3dv_get_format(pCreateInfo->format);
    assert(iview->format && iview->format->supported);
