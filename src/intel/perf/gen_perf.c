@@ -54,11 +54,6 @@
 
 #define OA_REPORT_INVALID_CTX_ID (0xffffffff)
 
-static inline uint64_t to_user_pointer(void *ptr)
-{
-   return (uintptr_t) ptr;
-}
-
 static bool
 is_dir_or_link(const struct dirent *entry, const char *parent_dir)
 {

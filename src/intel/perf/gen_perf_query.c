@@ -30,6 +30,7 @@
 
 #include "perf/gen_perf.h"
 #include "perf/gen_perf_mdapi.h"
+#include "perf/gen_perf_private.h"
 #include "perf/gen_perf_query.h"
 #include "perf/gen_perf_regs.h"
 
@@ -347,6 +348,8 @@ gen_perf_close(struct gen_perf_context *perfquery,
    }
 }
 
+#define NUM_PERF_PROPERTIES(array) (ARRAY_SIZE(array) / 2)
+
 static bool
 gen_perf_open(struct gen_perf_context *perf_ctx,
               int metrics_set_id,
@@ -366,12 +369,17 @@ gen_perf_open(struct gen_perf_context *perf_ctx,
       DRM_I915_PERF_PROP_OA_METRICS_SET, metrics_set_id,
       DRM_I915_PERF_PROP_OA_FORMAT, report_format,
       DRM_I915_PERF_PROP_OA_EXPONENT, period_exponent,
+
+      /* SSEU configuration */
+      DRM_I915_PERF_PROP_GLOBAL_SSEU, to_user_pointer(&perf_ctx->perf->sseu),
    };
    struct drm_i915_perf_open_param param = {
       .flags = I915_PERF_FLAG_FD_CLOEXEC |
                I915_PERF_FLAG_FD_NONBLOCK |
                I915_PERF_FLAG_DISABLED,
-      .num_properties = ARRAY_SIZE(properties) / 2,
+      .num_properties = perf_ctx->perf->i915_perf_version >= 4 ?
+                        NUM_PERF_PROPERTIES(properties) :
+                        NUM_PERF_PROPERTIES(properties) - 1,
       .properties_ptr = (uintptr_t) properties,
    };
    int fd = gen_ioctl(drm_fd, DRM_IOCTL_I915_PERF_OPEN, &param);
