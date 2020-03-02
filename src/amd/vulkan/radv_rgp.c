@@ -392,9 +392,9 @@ radv_fill_sqtt_asic_info(struct radv_device *device,
 	chunk->memory_chip_type = radv_vram_type_to_sqtt_memory_type(rad_info->vram_type);
 	chunk->lds_granularity = rad_info->lds_granularity;
 
-	for (unsigned se = 0; se < 32; se++) {
+	for (unsigned se = 0; se < 4; se++) {
 		for (unsigned sa = 0; sa < 2; sa++) {
-			chunk->cu_mask[se][sa] = 0; /* TODO */
+			chunk->cu_mask[se][sa] = rad_info->cu_mask[se][sa];
 		}
 	}
 }
