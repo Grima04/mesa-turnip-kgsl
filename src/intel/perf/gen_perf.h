@@ -189,6 +189,7 @@ struct gen_perf_query_info {
 };
 
 struct gen_perf_config {
+   /* Whether i915 has DRM_I915_QUERY_PERF_CONFIG support. */
    bool i915_query_supported;
 
    struct gen_perf_query_info *queries;
