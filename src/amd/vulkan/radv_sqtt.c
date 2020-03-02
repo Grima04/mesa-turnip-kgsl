@@ -81,7 +81,43 @@ radv_emit_thread_trace_start(struct radv_device *device,
 				       S_030800_SH_INDEX(0) |
 				       S_030800_INSTANCE_BROADCAST_WRITES(1));
 
-		if (device->physical_device->rad_info.chip_class == GFX9) {
+		if (device->physical_device->rad_info.chip_class == GFX10) {
+			/* Order seems important for the following 2 registers. */
+			radeon_set_privileged_config_reg(cs, R_008D04_SQ_THREAD_TRACE_BUF0_SIZE,
+							 S_008D04_SIZE(shifted_size) |
+							 S_008D04_BASE_HI(shifted_va >> 32));
+
+			radeon_set_privileged_config_reg(cs, R_008D00_SQ_THREAD_TRACE_BUF0_BASE,
+							 S_008D00_BASE_LO(shifted_va));
+
+			radeon_set_privileged_config_reg(cs, R_008D14_SQ_THREAD_TRACE_MASK,
+							 S_008D14_WTYPE_INCLUDE(0x7f) | /* all shader stages */
+							 S_008D14_SA_SEL(0) |
+							 S_008D14_WGP_SEL(0) |
+							 S_008D14_SIMD_SEL(0));
+
+			radeon_set_privileged_config_reg(cs, R_008D18_SQ_THREAD_TRACE_TOKEN_MASK,
+							 S_008D18_REG_INCLUDE(V_008D18_REG_INCLUDE_SQDEC |
+									      V_008D18_REG_INCLUDE_SHDEC |
+									      V_008D18_REG_INCLUDE_GFXUDEC |
+									      V_008D18_REG_INCLUDE_CONTEXT |
+									      V_008D18_REG_INCLUDE_COMP |
+									      V_008D18_REG_INCLUDE_CONTEXT |
+									      V_008D18_REG_INCLUDE_CONFIG) |
+							 S_008D18_TOKEN_EXCLUDE(V_008D18_TOKEN_EXCLUDE_PERF));
+
+			/* Should be emitted last (it enables thread traces). */
+			radeon_set_privileged_config_reg(cs, R_008D1C_SQ_THREAD_TRACE_CTRL,
+							 S_008D1C_MODE(1) |
+							 S_008D1C_HIWATER(5) |
+							 S_008D1C_UTIL_TIMER(1) |
+							 S_008D1C_RT_FREQ(2) | /* 4096 clk */
+							 S_008D1C_DRAW_EVENT_EN(1) |
+							 S_008D1C_REG_STALL_EN(1) |
+							 S_008D1C_SPI_STALL_EN(1) |
+							 S_008D1C_SQ_STALL_EN(1) |
+							 S_008D1C_REG_DROP_ON_STALL(0));
+		} else {
 			/* Order seems important for the following 4 registers. */
 			radeon_set_uconfig_reg(cs, R_030CDC_SQ_THREAD_TRACE_BASE2,
 					       S_030CDC_ADDR_HI(shifted_va >> 32));
@@ -137,42 +173,6 @@ radv_emit_thread_trace_start(struct radv_device *device,
 					       S_030CD8_AUTOFLUSH_EN(1) | /* periodically flush SQTT data to memory */
 					       S_030CD8_TC_PERF_EN(1) | /* count SQTT traffic in TCC perf counters */
 					       S_030CD8_MODE(1));
-		} else {
-			/* Order seems important for the following 2 registers. */
-			radeon_set_privileged_config_reg(cs, R_008D04_SQ_THREAD_TRACE_BUF0_SIZE,
-							 S_008D04_SIZE(shifted_size) |
-							 S_008D04_BASE_HI(shifted_va >> 32));
-
-			radeon_set_privileged_config_reg(cs, R_008D00_SQ_THREAD_TRACE_BUF0_BASE,
-							 S_008D00_BASE_LO(shifted_va));
-
-			radeon_set_privileged_config_reg(cs, R_008D14_SQ_THREAD_TRACE_MASK,
-							 S_008D14_WTYPE_INCLUDE(0x7f) | /* all shader stages */
-							 S_008D14_SA_SEL(0) |
-							 S_008D14_WGP_SEL(0) |
-							 S_008D14_SIMD_SEL(0));
-
-			radeon_set_privileged_config_reg(cs, R_008D18_SQ_THREAD_TRACE_TOKEN_MASK,
-							 S_008D18_REG_INCLUDE(V_008D18_REG_INCLUDE_SQDEC |
-									      V_008D18_REG_INCLUDE_SHDEC |
-									      V_008D18_REG_INCLUDE_GFXUDEC |
-									      V_008D18_REG_INCLUDE_CONTEXT |
-									      V_008D18_REG_INCLUDE_COMP |
-									      V_008D18_REG_INCLUDE_CONTEXT |
-									      V_008D18_REG_INCLUDE_CONFIG) |
-							 S_008D18_TOKEN_EXCLUDE(V_008D18_TOKEN_EXCLUDE_PERF));
-
-			/* Should be emitted last (it enables thread traces). */
-			radeon_set_privileged_config_reg(cs, R_008D1C_SQ_THREAD_TRACE_CTRL,
-							 S_008D1C_MODE(1) |
-							 S_008D1C_HIWATER(5) |
-							 S_008D1C_UTIL_TIMER(1) |
-							 S_008D1C_RT_FREQ(2) | /* 4096 clk */
-							 S_008D1C_DRAW_EVENT_EN(1) |
-							 S_008D1C_REG_STALL_EN(1) |
-							 S_008D1C_SPI_STALL_EN(1) |
-							 S_008D1C_SQ_STALL_EN(1) |
-							 S_008D1C_REG_DROP_ON_STALL(0));
 		}
 	}
 
@@ -236,37 +236,7 @@ radv_emit_thread_trace_stop(struct radv_device *device,
 				       S_030800_SH_INDEX(0) |
 				       S_030800_INSTANCE_BROADCAST_WRITES(1));
 
-		if (device->physical_device->rad_info.chip_class == GFX9) {
-			/* Disable the thread trace mode. */
-			radeon_set_uconfig_reg(cs, R_030CD8_SQ_THREAD_TRACE_MODE,
-					       S_030CD8_MODE(0));
-
-			/* Wait for thread trace completion. */
-			radeon_emit(cs, PKT3(PKT3_WAIT_REG_MEM, 5, 0));
-			radeon_emit(cs, WAIT_REG_MEM_EQUAL); /* wait until the register is equal to the reference value */
-			radeon_emit(cs, R_030CE8_SQ_THREAD_TRACE_STATUS >> 2);  /* register */
-			radeon_emit(cs, 0);
-			radeon_emit(cs, 0); /* reference value */
-			radeon_emit(cs, S_030CE8_BUSY(1)); /* mask */
-			radeon_emit(cs, 4); /* poll interval */
-
-			/* Get the VA where the info struct is stored for this SE. */
-			uint64_t info_va = radv_thread_trace_get_info_va(device, se);
-
-			/* Copy back the info struct one DWORD at a time. */
-			for (unsigned i = 0; i < ARRAY_SIZE(gfx9_thread_trace_info_regs); i++) {
-				radeon_emit(cs, PKT3(PKT3_COPY_DATA, 4, 0));
-				radeon_emit(cs, COPY_DATA_SRC_SEL(COPY_DATA_PERF) |
-						COPY_DATA_DST_SEL(COPY_DATA_TC_L2) |
-						COPY_DATA_WR_CONFIRM);
-				radeon_emit(cs, gfx9_thread_trace_info_regs[i] >> 2);
-				radeon_emit(cs, 0); /* unused */
-				radeon_emit(cs, (info_va + i * 4));
-				radeon_emit(cs, (info_va + i * 4) >> 32);
-			}
-		} else {
-			assert(device->physical_device->rad_info.chip_class == GFX10);
-
+		if (device->physical_device->rad_info.chip_class == GFX10) {
 			/* Make sure to wait for the trace buffer. */
 			radeon_emit(cs, PKT3(PKT3_WAIT_REG_MEM, 5, 0));
 			radeon_emit(cs, WAIT_REG_MEM_NOT_EQUAL); /* wait until the register is equal to the reference value */
@@ -299,6 +269,34 @@ radv_emit_thread_trace_stop(struct radv_device *device,
 						COPY_DATA_DST_SEL(COPY_DATA_TC_L2) |
 						COPY_DATA_WR_CONFIRM);
 				radeon_emit(cs, gfx10_thread_trace_info_regs[i] >> 2);
+				radeon_emit(cs, 0); /* unused */
+				radeon_emit(cs, (info_va + i * 4));
+				radeon_emit(cs, (info_va + i * 4) >> 32);
+			}
+		} else {
+			/* Disable the thread trace mode. */
+			radeon_set_uconfig_reg(cs, R_030CD8_SQ_THREAD_TRACE_MODE,
+					       S_030CD8_MODE(0));
+
+			/* Wait for thread trace completion. */
+			radeon_emit(cs, PKT3(PKT3_WAIT_REG_MEM, 5, 0));
+			radeon_emit(cs, WAIT_REG_MEM_EQUAL); /* wait until the register is equal to the reference value */
+			radeon_emit(cs, R_030CE8_SQ_THREAD_TRACE_STATUS >> 2);  /* register */
+			radeon_emit(cs, 0);
+			radeon_emit(cs, 0); /* reference value */
+			radeon_emit(cs, S_030CE8_BUSY(1)); /* mask */
+			radeon_emit(cs, 4); /* poll interval */
+
+			/* Get the VA where the info struct is stored for this SE. */
+			uint64_t info_va = radv_thread_trace_get_info_va(device, se);
+
+			/* Copy back the info struct one DWORD at a time. */
+			for (unsigned i = 0; i < ARRAY_SIZE(gfx9_thread_trace_info_regs); i++) {
+				radeon_emit(cs, PKT3(PKT3_COPY_DATA, 4, 0));
+				radeon_emit(cs, COPY_DATA_SRC_SEL(COPY_DATA_PERF) |
+						COPY_DATA_DST_SEL(COPY_DATA_TC_L2) |
+						COPY_DATA_WR_CONFIRM);
+				radeon_emit(cs, gfx9_thread_trace_info_regs[i] >> 2);
 				radeon_emit(cs, 0); /* unused */
 				radeon_emit(cs, (info_va + i * 4));
 				radeon_emit(cs, (info_va + i * 4) >> 32);
