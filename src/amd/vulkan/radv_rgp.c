@@ -345,8 +345,8 @@ radv_fill_sqtt_asic_info(struct radv_device *device,
 	if (rad_info->family == CHIP_FIJI || rad_info->chip_class >= GFX9)
 		chunk->flags |= SQTT_FILE_CHUNK_ASIC_INFO_FLAG_PS1_EVENT_TOKENS_ENABLED;
 
-	chunk->trace_shader_core_clock = rad_info->max_shader_clock;
-	chunk->trace_memory_clock = rad_info->max_memory_clock;
+	chunk->trace_shader_core_clock = rad_info->max_shader_clock * 1000000;
+	chunk->trace_memory_clock = rad_info->max_memory_clock * 1000000;
 
 	chunk->device_id = rad_info->pci_id;
 	chunk->device_revision_id = rad_info->pci_rev_id;
