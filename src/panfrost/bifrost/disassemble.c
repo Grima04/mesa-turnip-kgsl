@@ -100,6 +100,7 @@ enum fma_src_type {
         FMA_FCMP,
         FMA_FCMP16,
         FMA_THREE_SRC,
+        FMA_SHIFT,
         FMA_FMA,
         FMA_FMA16,
         FMA_CSEL4,
@@ -600,30 +601,11 @@ static const struct fma_op_info FMAOpInfos[] = {
         { 0x5ded0, "UCMP.D3D.GT.i32", FMA_TWO_SRC },
         { 0x5ded8, "UCMP.D3D.GE.i32", FMA_TWO_SRC },
         { 0x5dee0, "ICMP.D3D.EQ.i32", FMA_TWO_SRC },
-        { 0x60200, "RSHIFT_NAND.i32", FMA_THREE_SRC },
-        { 0x603c0, "RSHIFT_NAND.v2i16", FMA_THREE_SRC },
-        { 0x60e00, "RSHIFT_OR.i32", FMA_THREE_SRC },
-        { 0x60fc0, "RSHIFT_OR.v2i16", FMA_THREE_SRC },
-        { 0x61200, "RSHIFT_AND.i32", FMA_THREE_SRC },
-        { 0x613c0, "RSHIFT_AND.v2i16", FMA_THREE_SRC },
-        { 0x61e00, "RSHIFT_NOR.i32", FMA_THREE_SRC }, // ~((src0 << src2) | src1)
-        { 0x61fc0, "RSHIFT_NOR.v2i16", FMA_THREE_SRC }, // ~((src0 << src2) | src1)
-        { 0x62200, "LSHIFT_NAND.i32", FMA_THREE_SRC },
-        { 0x623c0, "LSHIFT_NAND.v2i16", FMA_THREE_SRC },
-        { 0x62e00, "LSHIFT_OR.i32",  FMA_THREE_SRC }, // (src0 << src2) | src1
-        { 0x62fc0, "LSHIFT_OR.v2i16",  FMA_THREE_SRC }, // (src0 << src2) | src1
-        { 0x63200, "LSHIFT_AND.i32", FMA_THREE_SRC }, // (src0 << src2) & src1
-        { 0x633c0, "LSHIFT_AND.v2i16", FMA_THREE_SRC },
-        { 0x63e00, "LSHIFT_NOR.i32", FMA_THREE_SRC },
-        { 0x63fc0, "LSHIFT_NOR.v2i16", FMA_THREE_SRC },
-        { 0x64200, "RSHIFT_XOR.i32", FMA_THREE_SRC },
-        { 0x643c0, "RSHIFT_XOR.v2i16", FMA_THREE_SRC },
-        { 0x64600, "RSHIFT_XNOR.i32", FMA_THREE_SRC }, // ~((src0 >> src2) ^ src1)
-        { 0x647c0, "RSHIFT_XNOR.v2i16", FMA_THREE_SRC }, // ~((src0 >> src2) ^ src1)
-        { 0x64a00, "LSHIFT_XOR.i32", FMA_THREE_SRC },
-        { 0x64bc0, "LSHIFT_XOR.v2i16", FMA_THREE_SRC },
-        { 0x64e00, "LSHIFT_XNOR.i32", FMA_THREE_SRC }, // ~((src0 >> src2) ^ src1)
-        { 0x64fc0, "LSHIFT_XNOR.v2i16", FMA_THREE_SRC }, // ~((src0 >> src2) ^ src1)
+        { 0x60000, "RSHIFT_NAND", FMA_SHIFT },
+        { 0x61000, "RSHIFT_AND", FMA_SHIFT },
+        { 0x62000, "LSHIFT_NAND", FMA_SHIFT },
+        { 0x63000, "LSHIFT_AND", FMA_SHIFT }, // (src0 << src2) & src1
+        { 0x64000, "RSHIFT_XOR", FMA_SHIFT },
         { 0x65200, "LSHIFT_ADD.i32", FMA_THREE_SRC },
         { 0x65600, "LSHIFT_SUB.i32", FMA_THREE_SRC }, // (src0 << src2) - src1
         { 0x65a00, "LSHIFT_RSUB.i32", FMA_THREE_SRC }, // src1 - (src0 << src2)
@@ -742,6 +724,7 @@ static struct fma_op_info find_fma_op_info(unsigned op)
                         opCmp = op & ~0x3ffff;
                         break;
                 case FMA_CSEL4:
+                case FMA_SHIFT:
                         opCmp = op & ~0xfff;
                         break;
                 case FMA_FMA_MSCALE:
@@ -903,6 +886,25 @@ static void dump_fma(FILE *fp, uint64_t word, struct bifrost_regs regs, struct b
                 } else {
                         dump_output_mod(fp, bits(FMA.op, 9, 11));
                 }
+        } else if (info.src_type == FMA_SHIFT) {
+                struct bifrost_shift_fma shift;
+                memcpy(&shift, &FMA, sizeof(shift));
+
+                if (shift.half == 0x7)
+                        fprintf(fp, ".v2i16");
+                else if (shift.half == 0)
+                        fprintf(fp, ".i32");
+                else
+                        fprintf(fp, ".unk%u", shift.half);
+
+                if (!shift.unk)
+                        fprintf(fp, ".no_unk");
+
+                if (shift.invert_1)
+                        fprintf(fp, ".invert_1");
+
+                if (shift.invert_2)
+                        fprintf(fp, ".invert_2");
         }
 
         fprintf(fp, " ");
@@ -1006,6 +1008,17 @@ static void dump_fma(FILE *fp, uint64_t word, struct bifrost_regs regs, struct b
                 fprintf(fp, ", ");
                 dump_src(fp, (FMA.op >> 3) & 0x7, regs, consts, true);
                 break;
+        case FMA_SHIFT: {
+                struct bifrost_shift_fma shift;
+                memcpy(&shift, &FMA, sizeof(shift));
+
+                dump_src(fp, shift.src0, regs, consts, true);
+                fprintf(fp, ", ");
+                dump_src(fp, shift.src1, regs, consts, true);
+                fprintf(fp, ", ");
+                dump_src(fp, shift.src2, regs, consts, true);
+                break;
+        }
         case FMA_FMA:
                 if (FMA.op & (1 << 14))
                         fprintf(fp, "-");
