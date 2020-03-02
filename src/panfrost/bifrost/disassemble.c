@@ -52,15 +52,6 @@ struct bifrost_alu_inst {
         uint64_t reg_bits;
 };
 
-struct bifrost_regs {
-        unsigned uniform_const : 8;
-        unsigned reg2 : 6;
-        unsigned reg3 : 6;
-        unsigned reg0 : 5;
-        unsigned reg1 : 6;
-        unsigned ctrl : 4;
-};
-
 static unsigned get_reg0(struct bifrost_regs regs)
 {
         if (regs.ctrl == 0)
@@ -73,12 +64,6 @@ static unsigned get_reg1(struct bifrost_regs regs)
 {
         return regs.reg0 <= regs.reg1 ? regs.reg1 : 63 - regs.reg1;
 }
-
-enum bifrost_reg_write_unit {
-        REG_WRITE_NONE = 0, // don't write
-        REG_WRITE_TWO, // write using reg2
-        REG_WRITE_THREE, // write using reg3
-};
 
 // this represents the decoded version of the ctrl register field.
 struct bifrost_reg_ctrl {
@@ -141,53 +126,6 @@ struct add_op_info {
         char name[30];
         enum add_src_type src_type;
         bool has_data_reg;
-};
-
-struct bifrost_tex_ctrl {
-        unsigned sampler_index : 4; // also used to signal indirects
-        unsigned tex_index : 7;
-        bool no_merge_index : 1; // whether to merge (direct) sampler & texture indices
-        bool filter : 1; // use the usual filtering pipeline (0 for texelFetch & textureGather)
-        unsigned unk0 : 2;
-        bool texel_offset : 1; // *Offset()
-        bool is_shadow : 1;
-        bool is_array : 1;
-        unsigned tex_type : 2; // 2D, 3D, Cube, Buffer
-        bool compute_lod : 1; // 0 for *Lod()
-        bool not_supply_lod : 1; // 0 for *Lod() or when a bias is applied
-        bool calc_gradients : 1; // 0 for *Grad()
-        unsigned unk1 : 1;
-        unsigned result_type : 4; // integer, unsigned, float TODO: why is this 4 bits?
-        unsigned unk2 : 4;
-};
-
-struct bifrost_dual_tex_ctrl {
-        unsigned sampler_index0 : 2;
-        unsigned unk0 : 2;
-        unsigned tex_index0 : 2;
-        unsigned sampler_index1 : 2;
-        unsigned tex_index1 : 2;
-        unsigned unk1 : 22;
-};
-
-enum branch_bit_size {
-        BR_SIZE_32 = 0,
-        BR_SIZE_16XX = 1,
-        BR_SIZE_16YY = 2,
-        // For the above combinations of bitsize and location, an extra bit is
-        // encoded via comparing the sources. The only possible source of ambiguity
-        // would be if the sources were the same, but then the branch condition
-        // would be always true or always false anyways, so we can ignore it. But
-        // this no longer works when comparing the y component to the x component,
-        // since it's valid to compare the y component of a source against its own
-        // x component. Instead, the extra bit is encoded via an extra bitsize.
-        BR_SIZE_16YX0 = 3,
-        BR_SIZE_16YX1 = 4,
-        BR_SIZE_32_AND_16X = 5,
-        BR_SIZE_32_AND_16Y = 6,
-        // Used for comparisons with zero and always-true, see below. I think this
-        // only works for integer comparisons.
-        BR_SIZE_ZERO = 7,
 };
 
 void dump_header(FILE *fp, struct bifrost_header header, bool verbose);
