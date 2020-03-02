@@ -355,7 +355,7 @@ iris_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
       iris_resource_texture_aux_usage(ice, src_res, src_fmt.fmt);
 
    if (iris_resource_level_has_hiz(src_res, info->src.level))
-      src_aux_usage = ISL_AUX_USAGE_NONE;
+      assert(src_res->surf.format == src_fmt.fmt);
 
    bool src_clear_supported = isl_aux_usage_has_fast_clears(src_aux_usage) &&
                               src_res->surf.format == src_fmt.fmt;
