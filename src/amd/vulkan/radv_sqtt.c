@@ -208,6 +208,40 @@ static const uint32_t gfx10_thread_trace_info_regs[] =
 };
 
 static void
+radv_copy_thread_trace_info_regs(struct radv_device *device,
+				 struct radeon_cmdbuf *cs,
+				 unsigned se_index)
+{
+	const uint32_t *thread_trace_info_regs = NULL;
+
+	switch (device->physical_device->rad_info.chip_class) {
+	case GFX10:
+		thread_trace_info_regs = gfx10_thread_trace_info_regs;
+		break;
+	case GFX9:
+		thread_trace_info_regs = gfx9_thread_trace_info_regs;
+		break;
+	default:
+		unreachable("Unsupported chip_class");
+	}
+
+	/* Get the VA where the info struct is stored for this SE. */
+	uint64_t info_va = radv_thread_trace_get_info_va(device, se_index);
+
+	/* Copy back the info struct one DWORD at a time. */
+	for (unsigned i = 0; i < 3; i++) {
+		radeon_emit(cs, PKT3(PKT3_COPY_DATA, 4, 0));
+		radeon_emit(cs, COPY_DATA_SRC_SEL(COPY_DATA_PERF) |
+				COPY_DATA_DST_SEL(COPY_DATA_TC_L2) |
+				COPY_DATA_WR_CONFIRM);
+		radeon_emit(cs, thread_trace_info_regs[i] >> 2);
+		radeon_emit(cs, 0); /* unused */
+		radeon_emit(cs, (info_va + i * 4));
+		radeon_emit(cs, (info_va + i * 4) >> 32);
+	}
+}
+
+static void
 radv_emit_thread_trace_stop(struct radv_device *device,
 			    struct radeon_cmdbuf *cs,
 			    uint32_t queue_family_index)
@@ -258,21 +292,6 @@ radv_emit_thread_trace_stop(struct radv_device *device,
 			radeon_emit(cs, 0); /* reference value */
 			radeon_emit(cs, S_008D20_BUSY(1)); /* mask */
 			radeon_emit(cs, 4); /* poll interval */
-
-			/* Get the VA where the info struct is stored for this SE. */
-			uint64_t info_va = radv_thread_trace_get_info_va(device, se);
-
-			/* Copy back the info struct one DWORD at a time. */
-			for (unsigned i = 0; i < ARRAY_SIZE(gfx10_thread_trace_info_regs); i++) {
-				radeon_emit(cs, PKT3(PKT3_COPY_DATA, 4, 0));
-				radeon_emit(cs, COPY_DATA_SRC_SEL(COPY_DATA_PERF) |
-						COPY_DATA_DST_SEL(COPY_DATA_TC_L2) |
-						COPY_DATA_WR_CONFIRM);
-				radeon_emit(cs, gfx10_thread_trace_info_regs[i] >> 2);
-				radeon_emit(cs, 0); /* unused */
-				radeon_emit(cs, (info_va + i * 4));
-				radeon_emit(cs, (info_va + i * 4) >> 32);
-			}
 		} else {
 			/* Disable the thread trace mode. */
 			radeon_set_uconfig_reg(cs, R_030CD8_SQ_THREAD_TRACE_MODE,
@@ -286,22 +305,9 @@ radv_emit_thread_trace_stop(struct radv_device *device,
 			radeon_emit(cs, 0); /* reference value */
 			radeon_emit(cs, S_030CE8_BUSY(1)); /* mask */
 			radeon_emit(cs, 4); /* poll interval */
-
-			/* Get the VA where the info struct is stored for this SE. */
-			uint64_t info_va = radv_thread_trace_get_info_va(device, se);
-
-			/* Copy back the info struct one DWORD at a time. */
-			for (unsigned i = 0; i < ARRAY_SIZE(gfx9_thread_trace_info_regs); i++) {
-				radeon_emit(cs, PKT3(PKT3_COPY_DATA, 4, 0));
-				radeon_emit(cs, COPY_DATA_SRC_SEL(COPY_DATA_PERF) |
-						COPY_DATA_DST_SEL(COPY_DATA_TC_L2) |
-						COPY_DATA_WR_CONFIRM);
-				radeon_emit(cs, gfx9_thread_trace_info_regs[i] >> 2);
-				radeon_emit(cs, 0); /* unused */
-				radeon_emit(cs, (info_va + i * 4));
-				radeon_emit(cs, (info_va + i * 4) >> 32);
-			}
 		}
+
+		radv_copy_thread_trace_info_regs(device, cs, se);
 	}
 
 	/* Restore global broadcasting. */
