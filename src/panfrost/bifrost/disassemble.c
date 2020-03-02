@@ -123,6 +123,7 @@ enum add_src_type {
         ADD_FADD16,
         ADD_FMINMAX16,
         ADD_THREE_SRC,
+        ADD_SHIFT,
         ADD_FADDMscale,
         ADD_FCMP,
         ADD_FCMP16,
@@ -1255,27 +1256,13 @@ static const struct add_op_info add_op_infos[] = {
         { 0x1952c, "BLEND", ADD_BLENDING, true },
         { 0x1a000, "LD_VAR.16", ADD_VARYING_INTERP, true },
         { 0x1ae60, "TEX", ADD_TEX, true },
-        { 0x1c000, "RSHIFT_NAND.i32", ADD_THREE_SRC },
-        { 0x1c300, "RSHIFT_OR.i32", ADD_THREE_SRC },
-        { 0x1c400, "RSHIFT_AND.i32", ADD_THREE_SRC },
-        { 0x1c700, "RSHIFT_NOR.i32", ADD_THREE_SRC },
-        { 0x1c800, "LSHIFT_NAND.i32", ADD_THREE_SRC },
-        { 0x1cb00, "LSHIFT_OR.i32", ADD_THREE_SRC },
-        { 0x1cc00, "LSHIFT_AND.i32", ADD_THREE_SRC },
-        { 0x1cf00, "LSHIFT_NOR.i32", ADD_THREE_SRC },
-        { 0x1d000, "RSHIFT_XOR.i32", ADD_THREE_SRC },
-        { 0x1d100, "RSHIFT_XNOR.i32", ADD_THREE_SRC },
-        { 0x1d200, "LSHIFT_XOR.i32", ADD_THREE_SRC },
-        { 0x1d300, "LSHIFT_XNOR.i32", ADD_THREE_SRC },
-        { 0x1d400, "LSHIFT_ADD.i32", ADD_THREE_SRC },
-        { 0x1d500, "LSHIFT_SUB.i32", ADD_THREE_SRC },
-        { 0x1d500, "LSHIFT_RSUB.i32", ADD_THREE_SRC },
-        { 0x1d700, "RSHIFT_ADD.i32", ADD_THREE_SRC },
-        { 0x1d800, "RSHIFT_SUB.i32", ADD_THREE_SRC },
-        { 0x1d900, "RSHIFT_RSUB.i32", ADD_THREE_SRC },
-        { 0x1da00, "ARSHIFT_ADD.i32", ADD_THREE_SRC },
-        { 0x1db00, "ARSHIFT_SUB.i32", ADD_THREE_SRC },
-        { 0x1dc00, "ARSHIFT_RSUB.i32", ADD_THREE_SRC },
+        { 0x1c000, "RSHIFT_NAND.i32", ADD_SHIFT },
+        { 0x1c400, "RSHIFT_AND.i32", ADD_SHIFT },
+        { 0x1c800, "LSHIFT_NAND.i32", ADD_SHIFT },
+        { 0x1cc00, "LSHIFT_AND.i32", ADD_SHIFT },
+        { 0x1d000, "RSHIFT_XOR.i32", ADD_SHIFT },
+        { 0x1d400, "LSHIFT_ADD.i32", ADD_SHIFT },
+        { 0x1d800, "RSHIFT_SUB.i32", ADD_SHIFT },
         { 0x1dd18, "OR.i32",  ADD_TWO_SRC },
         { 0x1dd20, "AND.i32",  ADD_TWO_SRC },
         { 0x1dd60, "LSHIFT.i32", ADD_TWO_SRC },
@@ -1298,6 +1285,9 @@ static struct add_op_info find_add_op_info(unsigned op)
                         break;
                 case ADD_THREE_SRC:
                         opCmp = op & ~0x3f;
+                        break;
+                case ADD_SHIFT:
+                        opCmp = op & ~0x3ff;
                         break;
                 case ADD_TEX:
                         opCmp = op & ~0xf;
@@ -1517,7 +1507,20 @@ static void dump_add(FILE *fp, uint64_t word, struct bifrost_regs regs,
                         }
                         }
                 }
+        } else if (info.src_type == ADD_SHIFT) {
+                struct bifrost_shift_add shift;
+                memcpy(&shift, &ADD, sizeof(ADD));
+
+                if (shift.invert_1)
+                        fprintf(fp, ".invert_1");
+
+                if (shift.invert_2)
+                        fprintf(fp, ".invert_2");
+
+                if (shift.zero)
+                        fprintf(fp, ".unk%u", shift.zero);
         }
+
         fprintf(fp, " ");
 
         struct bifrost_reg_ctrl next_ctrl = DecodeRegCtrl(fp, next_regs);
@@ -1710,6 +1713,16 @@ static void dump_add(FILE *fp, uint64_t word, struct bifrost_regs regs,
                 fprintf(fp, ", ");
                 dump_src(fp, (ADD.op >> 3) & 0x7, regs, consts, false);
                 break;
+        case ADD_SHIFT: {
+                struct bifrost_shift_add shift;
+                memcpy(&shift, &ADD, sizeof(ADD));
+                dump_src(fp, shift.src0, regs, consts, false);
+                fprintf(fp, ", ");
+                dump_src(fp, shift.src1, regs, consts, false);
+                fprintf(fp, ", ");
+                dump_src(fp, shift.src2, regs, consts, false);
+                break;
+        }
         case ADD_FADD:
         case ADD_FMINMAX:
                 if (ADD.op & 0x10)

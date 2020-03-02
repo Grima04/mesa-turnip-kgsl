@@ -114,4 +114,16 @@ struct bifrost_shift_fma {
         unsigned op : 8;
 };
 
+struct bifrost_shift_add {
+        unsigned src0 : 3;
+        unsigned src1 : 3;
+        unsigned src2 : 3;
+        unsigned zero : 2;
+
+        unsigned invert_1 : 1;
+        unsigned invert_2 : 1;
+
+        unsigned op : 7;
+};
+
 #endif
