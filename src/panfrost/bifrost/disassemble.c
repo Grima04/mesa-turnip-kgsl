@@ -483,15 +483,15 @@ static void dump_src(FILE *fp, unsigned src, struct bifrost_regs srcs, uint64_t 
 static void dump_output_mod(FILE *fp, unsigned mod)
 {
         switch (mod) {
-        case 0:
+        case BIFROST_NONE:
                 break;
-        case 1:
+        case BIFROST_POS:
                 fprintf(fp, ".clamp_0_inf");
                 break; // max(out, 0)
-        case 2:
+        case BIFROST_SAT_SIGNED:
                 fprintf(fp, ".clamp_m1_1");
                 break; // clamp(out, -1, 1)
-        case 3:
+        case BIFROST_SAT:
                 fprintf(fp, ".clamp_0_1");
                 break; // clamp(out, 0, 1)
         default:
@@ -540,18 +540,18 @@ static void dump_minmax_mode(FILE *fp, unsigned mod)
 static void dump_round_mode(FILE *fp, unsigned mod)
 {
         switch (mod) {
-        case 0:
+        case BIFROST_RTE:
                 /* roundTiesToEven, the IEEE default. */
                 break;
-        case 1:
+        case BIFROST_RTP:
                 /* roundTowardPositive in the IEEE spec. */
                 fprintf(fp, ".round_pos");
                 break;
-        case 2:
+        case BIFROST_RTN:
                 /* roundTowardNegative in the IEEE spec. */
                 fprintf(fp, ".round_neg");
                 break;
-        case 3:
+        case BIFROST_RTZ:
                 /* roundTowardZero in the IEEE spec. */
                 fprintf(fp, ".round_zero");
                 break;

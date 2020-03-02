@@ -82,6 +82,33 @@ struct bifrost_add_inst {
         unsigned op   : 17;
 };
 
+enum bifrost_outmod {
+        BIFROST_NONE = 0x0,
+        BIFROST_POS = 0x1,
+        BIFROST_SAT_SIGNED = 0x2,
+        BIFROST_SAT = 0x3,
+};
+
+enum bifrost_roundmode {
+        BIFROST_RTE = 0x0,
+        BIFROST_RTP = 0x1,
+        BIFROST_RTN = 0x2,
+        BIFROST_RTZ = 0x3
+};
+
+struct bifrost_fma_add {
+        unsigned src0 : 3;
+        unsigned src1 : 3;
+        unsigned src1_abs : 1;
+        unsigned src0_neg : 1;
+        unsigned src1_neg : 1;
+        unsigned unk : 3;
+        unsigned src0_abs : 1;
+        enum bifrost_outmod outmod : 2;
+        enum bifrost_roundmode roundmode : 2;
+        unsigned op : 6;
+};
+
 enum bifrost_csel_cond {
         BIFROST_FEQ_F = 0x0,
         BIFROST_FGT_F = 0x1,
