@@ -505,7 +505,7 @@ radv_is_thread_trace_complete(struct radv_device *device,
 	/* Otherwise, compare the current thread trace offset with the number
 	 * of written bytes.
 	 */
-	return info->cur_offset < info->gfx9_write_counter;
+	return info->cur_offset == info->gfx9_write_counter;
 }
 
 static uint32_t
