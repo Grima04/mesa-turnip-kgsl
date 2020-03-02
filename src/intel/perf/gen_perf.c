@@ -542,6 +542,23 @@ load_pipeline_statistic_metrics(struct gen_perf_config *perf_cfg,
    query->data_size = sizeof(uint64_t) * query->n_counters;
 }
 
+static int
+i915_perf_version(int drm_fd)
+{
+   int tmp;
+   drm_i915_getparam_t gp = {
+      .param = I915_PARAM_PERF_REVISION,
+      .value = &tmp,
+   };
+
+   int ret = gen_ioctl(drm_fd, DRM_IOCTL_I915_GETPARAM, &gp);
+
+   /* Return 0 if this getparam is not supported, the first version supported
+    * is 1.
+    */
+   return ret < 0 ? 0 : tmp;
+}
+
 static bool
 load_oa_metrics(struct gen_perf_config *perf, int fd,
                          const struct gen_device_info *devinfo)
@@ -551,6 +568,7 @@ load_oa_metrics(struct gen_perf_config *perf, int fd,
    struct stat sb;
 
    perf->i915_query_supported = i915_query_perf_config_supported(perf, fd);
+   perf->i915_perf_version = i915_perf_version(fd);
 
    /* The existence of this sysctl parameter implies the kernel supports
     * the i915 perf interface.

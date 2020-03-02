@@ -192,6 +192,9 @@ struct gen_perf_config {
    /* Whether i915 has DRM_I915_QUERY_PERF_CONFIG support. */
    bool i915_query_supported;
 
+   /* Version of the i915-perf subsystem, refer to i915_drm.h. */
+   int i915_perf_version;
+
    struct gen_perf_query_info *queries;
    int n_queries;
 
