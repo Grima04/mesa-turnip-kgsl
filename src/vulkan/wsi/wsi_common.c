@@ -588,8 +588,10 @@ wsi_create_native_image(const struct wsi_swapchain *chain,
       result = wsi->GetImageDrmFormatModifierPropertiesEXT(chain->device,
                                                            image->image,
                                                            &image_mod_props);
-      if (result != VK_SUCCESS)
+      if (result != VK_SUCCESS) {
+         close(fd);
          goto fail;
+      }
       image->drm_modifier = image_mod_props.drmFormatModifier;
       assert(image->drm_modifier != DRM_FORMAT_MOD_INVALID);
 
