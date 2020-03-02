@@ -6330,7 +6330,13 @@
    "type_ref": "SQ_THREAD_TRACE_HIWATER"
   },
   {
-   "chips": ["gfx7", "fiji", "gfx9", "stoney", "gfx8"],
+   "chips": ["gfx7", "fiji", "stoney", "gfx8"],
+   "map": {"at": 36416, "to": "mm"},
+   "name": "SQ_THREAD_TRACE_CNTR",
+   "type_ref": "SQ_THREAD_TRACE_CNTR"
+  },
+  {
+   "chips": ["gfx9"],
    "map": {"at": 199920, "to": "mm"},
    "name": "SQ_THREAD_TRACE_CNTR",
    "type_ref": "SQ_THREAD_TRACE_CNTR"
@@ -15203,7 +15209,8 @@
     {"bits": [8, 11], "name": "SIMD_EN"},
     {"bits": [12, 13], "name": "VM_ID_MASK"},
     {"bits": [14, 14], "name": "SPI_STALL_EN"},
-    {"bits": [15, 15], "name": "SQ_STALL_EN"}
+    {"bits": [15, 15], "name": "SQ_STALL_EN"},
+    {"bits": [16, 31], "comment": "not on GFX9", "name": "RANDOM_SEED"}
    ]
   },
   "SQ_THREAD_TRACE_TOKEN_MASK": {
@@ -15257,7 +15264,7 @@
    "fields": [
     {"bits": [0, 9], "name": "FINISH_PENDING"},
     {"bits": [16, 25], "name": "FINISH_DONE"},
-    {"bits": [28, 28], "name": "UTC_ERROR"},
+    {"bits": [28, 28], "comment": "only on GFX9", "name": "UTC_ERROR"},
     {"bits": [29, 29], "name": "NEW_BUF"},
     {"bits": [30, 30], "name": "BUSY"},
     {"bits": [31, 31], "name": "FULL"}
