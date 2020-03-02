@@ -894,6 +894,8 @@ static void dump_fma(FILE *fp, uint64_t word, struct bifrost_regs regs, struct b
                         fprintf(fp, ".v2i16");
                 else if (shift.half == 0)
                         fprintf(fp, ".i32");
+                else if (shift.half == 0x4)
+                        fprintf(fp, ".v4i8");
                 else
                         fprintf(fp, ".unk%u", shift.half);
 

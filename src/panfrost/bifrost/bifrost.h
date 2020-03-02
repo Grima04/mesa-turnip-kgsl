@@ -106,7 +106,7 @@ struct bifrost_shift_fma {
         unsigned src0 : 3;
         unsigned src1 : 3;
         unsigned src2 : 3;
-        unsigned half : 3; /* 000 for i32, 111 for v2i16 */
+        unsigned half : 3; /* 000 for i32, 100 for i8, 111 for v2i16 */
         unsigned unk  : 1; /* always set? */
         unsigned invert_1 : 1; /* Inverts sources to combining op */
         /* For XOR, switches RSHIFT to LSHIFT since only one invert needed */
