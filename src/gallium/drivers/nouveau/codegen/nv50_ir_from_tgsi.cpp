@@ -2315,9 +2315,15 @@ Converter::handleTEX(Value *dst[4], int R, int S, int L, int C, int Dx, int Dy)
    if (C == 0x0f)
       C = 0x00 | MAX2(tgt.getArgCount(), 2); // guess DC src
 
-   if (tgsi.getOpcode() == TGSI_OPCODE_TG4 &&
-       tgt == TEX_TARGET_CUBE_ARRAY_SHADOW)
-      shd = fetchSrc(1, 0);
+   if (tgt == TEX_TARGET_CUBE_ARRAY_SHADOW) {
+      switch (tgsi.getOpcode()) {
+      case TGSI_OPCODE_TG4: shd = fetchSrc(1, 0); break;
+      case TGSI_OPCODE_TEX2: shd = fetchSrc(1, 0); break;
+      case TGSI_OPCODE_TXB2: shd = fetchSrc(1, 1); break;
+      case TGSI_OPCODE_TXL2: shd = fetchSrc(1, 1); break;
+      default: assert(!"unexpected opcode with cube array shadow"); break;
+      }
+   }
    else if (tgt.isShadow())
       shd = fetchSrc(C >> 4, C & 3);
 
