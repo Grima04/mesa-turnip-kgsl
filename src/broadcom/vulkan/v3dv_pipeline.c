@@ -585,17 +585,17 @@ pipeline_populate_v3d_fs_key(struct v3d_fs_key *key,
     */
    key->swap_color_rb = false;
 
+   const struct v3dv_render_pass *pass =
+      v3dv_render_pass_from_handle(pCreateInfo->renderPass);
    const struct v3dv_subpass *subpass = p_stage->pipeline->subpass;
    for (uint32_t i = 0; i < subpass->color_count; i++) {
-      if (subpass->color_attachments[i].attachment == VK_ATTACHMENT_UNUSED)
+      const uint32_t att_idx = subpass->color_attachments[i].attachment;
+      if (att_idx == VK_ATTACHMENT_UNUSED)
          continue;
 
       key->cbufs |= 1 << i;
 
-      /* FIXME: in order to know this we need to access to the color
-       * framebuffer. Still not in place. Using default hardcode value.
-       */
-      VkFormat fb_format = VK_FORMAT_R8G8B8A8_UNORM;
+      VkFormat fb_format = pass->attachments[att_idx].desc.format;
       enum pipe_format fb_pipe_format = vk_format_to_pipe_format(fb_format);
 
       /* If logic operations are enabled then we might emit color reads and we
