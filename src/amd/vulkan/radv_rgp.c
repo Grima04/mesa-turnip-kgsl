@@ -166,6 +166,8 @@ static_assert(sizeof(struct sqtt_file_chunk_cpu_info) == 112,
 static void
 radv_sqtt_fill_cpu_info(struct sqtt_file_chunk_cpu_info *chunk)
 {
+	uint64_t system_ram_size = 0;
+
 	chunk->header.chunk_id.type = SQTT_FILE_CHUNK_TYPE_CPU_INFO;
 	chunk->header.chunk_id.index = 0;
 	chunk->header.major_version = 0;
@@ -181,7 +183,10 @@ radv_sqtt_fill_cpu_info(struct sqtt_file_chunk_cpu_info *chunk)
 	chunk->clock_speed = 0;
 	chunk->num_logical_cores = 0;
 	chunk->num_physical_cores = 0;
+
 	chunk->system_ram_size = 0;
+	if (os_get_total_physical_memory(&system_ram_size))
+		chunk->system_ram_size = system_ram_size / (1024 * 1024);
 }
 
 /**
