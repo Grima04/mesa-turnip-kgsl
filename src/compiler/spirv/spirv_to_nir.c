@@ -3605,9 +3605,14 @@ vtn_emit_memory_barrier(struct vtn_builder *b, SpvScope scope,
    /* There's only two scopes thing left */
    vtn_assert(scope == SpvScopeInvocation || scope == SpvScopeDevice);
 
-   if ((semantics & all_memory_semantics) == all_memory_semantics) {
-      vtn_emit_barrier(b, nir_intrinsic_memory_barrier);
-      return;
+   /* Map the GLSL memoryBarrier() construct to the corresponding NIR one. */
+   static const SpvMemorySemanticsMask glsl_memory_barrier =
+      SpvMemorySemanticsUniformMemoryMask |
+      SpvMemorySemanticsWorkgroupMemoryMask |
+      SpvMemorySemanticsImageMemoryMask;
+   if ((semantics & glsl_memory_barrier) == glsl_memory_barrier) {
+       vtn_emit_barrier(b, nir_intrinsic_memory_barrier);
+       semantics &= ~(glsl_memory_barrier | SpvMemorySemanticsAtomicCounterMemoryMask);
    }
 
    /* Issue a bunch of more specific barriers */
