@@ -1237,10 +1237,7 @@ static const struct add_op_info add_op_infos[] = {
         { 0x17d90, "ADD.i32.u16.X", ADD_TWO_SRC },
         { 0x17dc0, "ADD.i32.i16.Y", ADD_TWO_SRC },
         { 0x17dd0, "ADD.i32.u16.Y", ADD_TWO_SRC },
-        { 0x18000, "LD_VAR_ADDR.f16", ADD_VARYING_ADDRESS, true },
-        { 0x18100, "LD_VAR_ADDR.f32", ADD_VARYING_ADDRESS, true },
-        { 0x18200, "LD_VAR_ADDR.i32", ADD_VARYING_ADDRESS, true },
-        { 0x18300, "LD_VAR_ADDR.u32", ADD_VARYING_ADDRESS, true },
+        { 0x18000, "LD_VAR_ADDR", ADD_VARYING_ADDRESS, true },
         { 0x19181, "DISCARD.FEQ.f32", ADD_TWO_SRC, true },
         { 0x19189, "DISCARD.FNE.f32", ADD_TWO_SRC, true },
         { 0x1918C, "DISCARD.GL.f32", ADD_TWO_SRC, true }, /* Consumes ICMP.GL/etc with fixed 0 argument */
@@ -1312,7 +1309,7 @@ static struct add_op_info find_add_op_info(unsigned op)
                         opCmp = op & ~0x7ff;
                         break;
                 case ADD_VARYING_ADDRESS:
-                        opCmp = op & ~0xff;
+                        opCmp = op & ~0xfff;
                         break;
                 case ADD_LOAD_ATTR:
                         opCmp = op & ~0x7f;
@@ -1519,6 +1516,18 @@ static void dump_add(FILE *fp, uint64_t word, struct bifrost_regs regs,
 
                 if (shift.zero)
                         fprintf(fp, ".unk%u", shift.zero);
+        } else if (info.src_type == ADD_VARYING_ADDRESS) {
+                struct bifrost_ld_var_addr ld;
+                memcpy(&ld, &ADD, sizeof(ADD));
+
+                if (ld.type == BIFROST_LD_VAR_F16)
+                        fprintf(fp, ".f16");
+                else if (ld.type == BIFROST_LD_VAR_F32)
+                        fprintf(fp, ".f32");
+                else if (ld.type == BIFROST_LD_VAR_I32)
+                        fprintf(fp, ".i32");
+                else if (ld.type == BIFROST_LD_VAR_U32)
+                        fprintf(fp, ".u32");
         }
 
         fprintf(fp, " ");

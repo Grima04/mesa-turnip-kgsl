@@ -126,4 +126,19 @@ struct bifrost_shift_add {
         unsigned op : 7;
 };
 
+enum bifrost_ld_var_type {
+        BIFROST_LD_VAR_F16 = 0,
+        BIFROST_LD_VAR_F32 = 1,
+        BIFROST_LD_VAR_I32 = 2,
+        BIFROST_LD_VAR_U32 = 3
+};
+
+struct bifrost_ld_var_addr {
+        unsigned src0 : 3;
+        unsigned src1 : 3;
+        unsigned location : 5;
+        enum bifrost_ld_var_type type : 2;
+        unsigned op : 7;
+};
+
 #endif
