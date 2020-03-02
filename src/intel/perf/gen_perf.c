@@ -559,6 +559,18 @@ i915_perf_version(int drm_fd)
    return ret < 0 ? 0 : tmp;
 }
 
+static void
+i915_get_sseu(int drm_fd, struct drm_i915_gem_context_param_sseu *sseu)
+{
+   struct drm_i915_gem_context_param arg = {
+      .param = I915_CONTEXT_PARAM_SSEU,
+      .size = sizeof(*sseu),
+      .value = to_user_pointer(sseu)
+   };
+
+   gen_ioctl(drm_fd, DRM_IOCTL_I915_GEM_CONTEXT_GETPARAM, &arg);
+}
+
 static bool
 load_oa_metrics(struct gen_perf_config *perf, int fd,
                          const struct gen_device_info *devinfo)
@@ -569,6 +581,9 @@ load_oa_metrics(struct gen_perf_config *perf, int fd,
 
    perf->i915_query_supported = i915_query_perf_config_supported(perf, fd);
    perf->i915_perf_version = i915_perf_version(fd);
+
+   /* Record the default SSEU configuration. */
+   i915_get_sseu(fd, &perf->sseu);
 
    /* The existence of this sysctl parameter implies the kernel supports
     * the i915 perf interface.
