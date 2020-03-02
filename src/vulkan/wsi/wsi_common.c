@@ -622,6 +622,7 @@ wsi_create_native_image(const struct wsi_swapchain *chain,
                for (uint32_t i = 0; i < p; i++)
                   close(image->fds[p]);
 
+               result = VK_ERROR_OUT_OF_HOST_MEMORY;
                goto fail;
             }
          }
