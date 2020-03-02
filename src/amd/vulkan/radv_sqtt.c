@@ -69,7 +69,7 @@ radv_emit_thread_trace_start(struct radv_device *device,
 	uint32_t shifted_size = device->thread_trace_buffer_size >> SQTT_BUFFER_ALIGN_SHIFT;
 	unsigned max_se = device->physical_device->rad_info.max_se;
 
-	assert(device->physical_device->rad_info.chip_class >= GFX9);
+	assert(device->physical_device->rad_info.chip_class >= GFX8);
 
 	for (unsigned se = 0; se < max_se; se++) {
 		uint64_t data_va = radv_thread_trace_get_data_va(device, se);
@@ -131,14 +131,20 @@ radv_emit_thread_trace_start(struct radv_device *device,
 			radeon_set_uconfig_reg(cs, R_030CD4_SQ_THREAD_TRACE_CTRL,
 					       S_030CD4_RESET_BUFFER(1));
 
+			uint32_t thread_trace_mask = S_030CC8_CU_SEL(2) |
+						     S_030CC8_SH_SEL(0) |
+						     S_030CC8_SIMD_EN(0xf) |
+						     S_030CC8_VM_ID_MASK(0) |
+						     S_030CC8_REG_STALL_EN(1) |
+						     S_030CC8_SPI_STALL_EN(1) |
+						     S_030CC8_SQ_STALL_EN(1);
+
+			if (device->physical_device->rad_info.chip_class < GFX9) {
+				thread_trace_mask |= S_030CC8_RANDOM_SEED(0xffff);
+			}
+
 			radeon_set_uconfig_reg(cs, R_030CC8_SQ_THREAD_TRACE_MASK,
-					       S_030CC8_CU_SEL(2) |
-					       S_030CC8_SH_SEL(0) |
-					       S_030CC8_SIMD_EN(0xf) |
-					       S_030CC8_VM_ID_MASK(0) |
-					       S_030CC8_REG_STALL_EN(1) |
-					       S_030CC8_SPI_STALL_EN(1) |
-					       S_030CC8_SQ_STALL_EN(1));
+					       thread_trace_mask);
 
 			/* Trace all tokens and registers. */
 			radeon_set_uconfig_reg(cs, R_030CCC_SQ_THREAD_TRACE_TOKEN_MASK,
@@ -157,22 +163,30 @@ radv_emit_thread_trace_start(struct radv_device *device,
 			radeon_set_uconfig_reg(cs, R_030CEC_SQ_THREAD_TRACE_HIWATER,
 					       S_030CEC_HIWATER(4));
 
-			/* Reset thread trace status errors. */
-			radeon_set_uconfig_reg(cs, R_030CE8_SQ_THREAD_TRACE_STATUS,
-					       S_030CE8_UTC_ERROR(0));
+			if (device->physical_device->rad_info.chip_class == GFX9) {
+				/* Reset thread trace status errors. */
+				radeon_set_uconfig_reg(cs, R_030CE8_SQ_THREAD_TRACE_STATUS,
+						       S_030CE8_UTC_ERROR(0));
+			}
 
 			/* Enable the thread trace mode. */
+			uint32_t thread_trace_mode = S_030CD8_MASK_PS(1) |
+						     S_030CD8_MASK_VS(1) |
+						     S_030CD8_MASK_GS(1) |
+						     S_030CD8_MASK_ES(1) |
+						     S_030CD8_MASK_HS(1) |
+						     S_030CD8_MASK_LS(1) |
+						     S_030CD8_MASK_CS(1) |
+						     S_030CD8_AUTOFLUSH_EN(1) | /* periodically flush SQTT data to memory */
+						     S_030CD8_MODE(1);
+
+			if (device->physical_device->rad_info.chip_class == GFX9) {
+				/* Count SQTT traffic in TCC perf counters. */
+				thread_trace_mode |= S_030CD8_TC_PERF_EN(1);
+			}
+
 			radeon_set_uconfig_reg(cs, R_030CD8_SQ_THREAD_TRACE_MODE,
-					       S_030CD8_MASK_PS(1) |
-					       S_030CD8_MASK_VS(1) |
-					       S_030CD8_MASK_GS(1) |
-					       S_030CD8_MASK_ES(1) |
-					       S_030CD8_MASK_HS(1) |
-					       S_030CD8_MASK_LS(1) |
-					       S_030CD8_MASK_CS(1) |
-					       S_030CD8_AUTOFLUSH_EN(1) | /* periodically flush SQTT data to memory */
-					       S_030CD8_TC_PERF_EN(1) | /* count SQTT traffic in TCC perf counters */
-					       S_030CD8_MODE(1));
+					       thread_trace_mode);
 		}
 	}
 
@@ -192,6 +206,13 @@ radv_emit_thread_trace_start(struct radv_device *device,
 		radeon_emit(cs, EVENT_TYPE(V_028A90_THREAD_TRACE_START) | EVENT_INDEX(0));
 	}
 }
+
+static const uint32_t gfx8_thread_trace_info_regs[] =
+{
+	R_030CE4_SQ_THREAD_TRACE_WPTR,
+	R_030CE8_SQ_THREAD_TRACE_STATUS,
+	R_008E40_SQ_THREAD_TRACE_CNTR,
+};
 
 static const uint32_t gfx9_thread_trace_info_regs[] =
 {
@@ -221,6 +242,9 @@ radv_copy_thread_trace_info_regs(struct radv_device *device,
 	case GFX9:
 		thread_trace_info_regs = gfx9_thread_trace_info_regs;
 		break;
+	case GFX8:
+		thread_trace_info_regs = gfx8_thread_trace_info_regs;
+		break;
 	default:
 		unreachable("Unsupported chip_class");
 	}
@@ -248,7 +272,7 @@ radv_emit_thread_trace_stop(struct radv_device *device,
 {
 	unsigned max_se = device->physical_device->rad_info.max_se;
 
-	assert(device->physical_device->rad_info.chip_class >= GFX9);
+	assert(device->physical_device->rad_info.chip_class >= GFX8);
 
 	/* Stop the thread trace with a different event based on the queue. */
 	if (queue_family_index == RADV_QUEUE_COMPUTE &&
@@ -321,15 +345,22 @@ static void
 radv_emit_spi_config_cntl(struct radv_device *device,
 			  struct radeon_cmdbuf *cs, bool enable)
 {
-	uint32_t spi_config_cntl = S_031100_GPR_WRITE_PRIORITY(0x2c688) |
-				   S_031100_EXP_PRIORITY_ORDER(3) |
-				   S_031100_ENABLE_SQG_TOP_EVENTS(enable) |
-				   S_031100_ENABLE_SQG_BOP_EVENTS(enable);
+	if (device->physical_device->rad_info.chip_class >= GFX9) {
+		uint32_t spi_config_cntl = S_031100_GPR_WRITE_PRIORITY(0x2c688) |
+					   S_031100_EXP_PRIORITY_ORDER(3) |
+					   S_031100_ENABLE_SQG_TOP_EVENTS(enable) |
+					   S_031100_ENABLE_SQG_BOP_EVENTS(enable);
 
-	if (device->physical_device->rad_info.chip_class == GFX10)
-		spi_config_cntl |= S_031100_PS_PKR_PRIORITY_CNTL(3);
+		if (device->physical_device->rad_info.chip_class == GFX10)
+			spi_config_cntl |= S_031100_PS_PKR_PRIORITY_CNTL(3);
 
-	radeon_set_uconfig_reg(cs, R_031100_SPI_CONFIG_CNTL, spi_config_cntl);
+		radeon_set_uconfig_reg(cs, R_031100_SPI_CONFIG_CNTL, spi_config_cntl);
+	} else {
+		/* SPI_CONFIG_CNTL is a protected register on GFX6-GFX8. */
+		radeon_set_privileged_config_reg(cs, R_009100_SPI_CONFIG_CNTL,
+						 S_009100_ENABLE_SQG_TOP_EVENTS(enable) |
+						 S_009100_ENABLE_SQG_BOP_EVENTS(enable));
+	}
 }
 
 static void
