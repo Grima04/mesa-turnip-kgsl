@@ -832,6 +832,18 @@ static void dump_fma_expand_src1(FILE *fp, unsigned ctrl)
         }
 }
 
+static const char *
+bi_ldst_type_name(enum bifrost_ldst_type type)
+{
+        switch (type) {
+        case BIFROST_LDST_F16: return "f16";
+        case BIFROST_LDST_F32: return "f32";
+        case BIFROST_LDST_I32: return "i32";
+        case BIFROST_LDST_U32: return "u32";
+        default: return "invalid";
+        }
+}
+
 static void dump_fma(FILE *fp, uint64_t word, struct bifrost_regs regs, struct bifrost_regs next_regs, uint64_t *consts, bool verbose)
 {
         if (verbose) {
@@ -1149,22 +1161,7 @@ static const struct add_op_info add_op_infos[] = {
         { 0x07d85, "FLOOR", ADD_ONE_SRC },
         { 0x07dc5, "TRUNC", ADD_ONE_SRC },
         { 0x07f18, "LSHIFT_ADD_HIGH32.i32", ADD_TWO_SRC },
-        { 0x08000, "LD_ATTR.f16", ADD_LOAD_ATTR, true },
-        { 0x08100, "LD_ATTR.v2f16", ADD_LOAD_ATTR, true },
-        { 0x08200, "LD_ATTR.v3f16", ADD_LOAD_ATTR, true },
-        { 0x08300, "LD_ATTR.v4f16", ADD_LOAD_ATTR, true },
-        { 0x08400, "LD_ATTR.f32", ADD_LOAD_ATTR, true },
-        { 0x08500, "LD_ATTR.v3f32", ADD_LOAD_ATTR, true },
-        { 0x08600, "LD_ATTR.v3f32", ADD_LOAD_ATTR, true },
-        { 0x08700, "LD_ATTR.v4f32", ADD_LOAD_ATTR, true },
-        { 0x08800, "LD_ATTR.i32", ADD_LOAD_ATTR, true },
-        { 0x08900, "LD_ATTR.v3i32", ADD_LOAD_ATTR, true },
-        { 0x08a00, "LD_ATTR.v3i32", ADD_LOAD_ATTR, true },
-        { 0x08b00, "LD_ATTR.v4i32", ADD_LOAD_ATTR, true },
-        { 0x08c00, "LD_ATTR.u32", ADD_LOAD_ATTR, true },
-        { 0x08d00, "LD_ATTR.v3u32", ADD_LOAD_ATTR, true },
-        { 0x08e00, "LD_ATTR.v3u32", ADD_LOAD_ATTR, true },
-        { 0x08f00, "LD_ATTR.v4u32", ADD_LOAD_ATTR, true },
+        { 0x08000, "LD_ATTR", ADD_LOAD_ATTR, true },
         { 0x0a000, "LD_VAR.32", ADD_VARYING_INTERP, true },
         { 0x0b000, "TEX", ADD_TEX_COMPACT, true },
         { 0x0c188, "LOAD.i32", ADD_TWO_SRC, true },
@@ -1312,8 +1309,6 @@ static struct add_op_info find_add_op_info(unsigned op)
                         opCmp = op & ~0xfff;
                         break;
                 case ADD_LOAD_ATTR:
-                        opCmp = op & ~0x7f;
-                        break;
                 case ADD_BRANCH:
                         opCmp = op & ~0xfff;
                         break;
@@ -1519,15 +1514,15 @@ static void dump_add(FILE *fp, uint64_t word, struct bifrost_regs regs,
         } else if (info.src_type == ADD_VARYING_ADDRESS) {
                 struct bifrost_ld_var_addr ld;
                 memcpy(&ld, &ADD, sizeof(ADD));
+                fprintf(fp, ".%s", bi_ldst_type_name(ld.type));
+        } else if (info.src_type == ADD_LOAD_ATTR) {
+                struct bifrost_ld_attr ld;
+                memcpy(&ld, &ADD, sizeof(ADD));
 
-                if (ld.type == BIFROST_LD_VAR_F16)
-                        fprintf(fp, ".f16");
-                else if (ld.type == BIFROST_LD_VAR_F32)
-                        fprintf(fp, ".f32");
-                else if (ld.type == BIFROST_LD_VAR_I32)
-                        fprintf(fp, ".i32");
-                else if (ld.type == BIFROST_LD_VAR_U32)
-                        fprintf(fp, ".u32");
+                if (ld.channels)
+                        fprintf(fp, ".v%d%s", ld.channels + 1, bi_ldst_type_name(ld.type));
+                else
+                        fprintf(fp, ".%s", bi_ldst_type_name(ld.type));
         }
 
         fprintf(fp, " ");
@@ -1709,7 +1704,7 @@ static void dump_add(FILE *fp, uint64_t word, struct bifrost_regs regs,
                 break;
         }
         case ADD_LOAD_ATTR:
-                fprintf(fp, "location:%d, ", (ADD.op >> 3) & 0xf);
+                fprintf(fp, "location:%d, ", (ADD.op >> 3) & 0x1f);
         case ADD_TWO_SRC:
                 dump_src(fp, ADD.src0, regs, consts, false);
                 fprintf(fp, ", ");
