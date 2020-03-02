@@ -232,7 +232,7 @@ radv_emit_spi_config_cntl(struct radeon_cmdbuf *cs, bool enable)
 {
 	radeon_set_uconfig_reg(cs, R_031100_SPI_CONFIG_CNTL,
 			       S_031100_GPR_WRITE_PRIORITY(0x2c688) |
-			       S_031100_EXP_PRIORITY_ORDER(6) |
+			       S_031100_EXP_PRIORITY_ORDER(3) |
 			       S_031100_ENABLE_SQG_TOP_EVENTS(enable) |
 			       S_031100_ENABLE_SQG_BOP_EVENTS(enable));
 }
