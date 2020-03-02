@@ -613,10 +613,13 @@ bool ac_query_gpu_info(int fd, void *dev_p,
 
 	/* Get the number of good compute units. */
 	info->num_good_compute_units = 0;
-	for (i = 0; i < info->max_se; i++)
-		for (j = 0; j < info->max_sh_per_se; j++)
+	for (i = 0; i < info->max_se; i++) {
+		for (j = 0; j < info->max_sh_per_se; j++) {
+			info->cu_mask[i][j] = amdinfo->cu_bitmap[i][j];
 			info->num_good_compute_units +=
-				util_bitcount(amdinfo->cu_bitmap[i][j]);
+				util_bitcount(info->cu_mask[i][j]);
+		}
+	}
 	info->num_good_cu_per_sh = info->num_good_compute_units /
 				   (info->max_se * info->max_sh_per_se);
 
