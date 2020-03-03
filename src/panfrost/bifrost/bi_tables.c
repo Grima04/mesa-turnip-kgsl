@@ -33,7 +33,7 @@ unsigned bi_class_props[BI_NUM_CLASSES] = {
         [BI_CMP] 		= BI_GENERIC | BI_MODS | BI_SCHED_ALL,
         [BI_BLEND] 		= BI_ADD,
         [BI_BITWISE] 		= BI_GENERIC | BI_SCHED_ALL,
-        [BI_CONVERT] 		= BI_SCHED_ALL,
+        [BI_CONVERT] 		= BI_SCHED_ALL | BI_SWIZZLABLE,
         [BI_CSEL] 		= BI_SCHED_FMA,
         [BI_DISCARD] 		= BI_SCHED_ADD,
         [BI_FMA] 		= BI_ROUNDMODE | BI_SCHED_FMA,
@@ -48,6 +48,7 @@ unsigned bi_class_props[BI_NUM_CLASSES] = {
         [BI_STORE] 		= BI_SCHED_ADD,
         [BI_STORE_VAR] 		= BI_SCHED_ADD,
         [BI_SPECIAL] 		= BI_SCHED_ADD | BI_SCHED_SLOW,
+        [BI_SWIZZLE]            = BI_SCHED_ALL | BI_SWIZZLABLE,
         [BI_TEX] 		= BI_SCHED_ADD,
         [BI_ROUND] 		= BI_GENERIC | BI_ROUNDMODE | BI_SCHED_ALL,
 };

@@ -67,6 +67,7 @@ enum bi_class {
         BI_STORE,
         BI_STORE_VAR,
         BI_SPECIAL, /* _FAST, _TABLE on supported GPUs */
+        BI_SWIZZLE,
         BI_TEX,
         BI_ROUND,
         BI_NUM_CLASSES
@@ -98,6 +99,9 @@ extern unsigned bi_class_props[BI_NUM_CLASSES];
 /* Along with setting BI_SCHED_ADD, eats up the entire cycle, so FMA must be
  * nopped out. Used for _FAST operations. */
 #define BI_SCHED_SLOW (1 << 5)
+
+/* Swizzling allowed for the 8/16-bit source */
+#define BI_SWIZZLABLE (1 << 6)
 
 /* It can't get any worse than csel4... can it? */
 #define BIR_SRC_COUNT 4
@@ -170,6 +174,13 @@ typedef struct {
          * types, the type of the destination wins (so f2i would be
          * int). Zero if there is no destination. Bitsize included */
         nir_alu_type dest_type;
+
+        /* If the source type is 8-bit or 16-bit such that SIMD is possible, and
+         * the class has BI_SWIZZLABLE, this is a swizzle for the input. Swizzles
+         * in practice only occur with one-source arguments (conversions,
+         * dedicated swizzle ops) and as component selection on two-sources
+         * where it is unambiguous which is which. Bounds are 32/type_size. */
+        unsigned swizzle[4];
 
         /* A class-specific op from which the actual opcode can be derived
          * (along with the above information) */
