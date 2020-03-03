@@ -730,30 +730,6 @@ __fadd64(uint64_t a, uint64_t b)
    }
 }
 
-/* Multiplies `a' by `b' to obtain a 64-bit product.  The product is broken
- * into two 32-bit pieces which are stored at the locations pointed to by
- * `z0Ptr' and `z1Ptr'.
- */
-void
-__mul32To64(uint a, uint b, out uint z0Ptr, out uint z1Ptr)
-{
-   uint aLow = a & 0x0000FFFFu;
-   uint aHigh = a>>16;
-   uint bLow = b & 0x0000FFFFu;
-   uint bHigh = b>>16;
-   uint z1 = aLow * bLow;
-   uint zMiddleA = aLow * bHigh;
-   uint zMiddleB = aHigh * bLow;
-   uint z0 = aHigh * bHigh;
-   zMiddleA += zMiddleB;
-   z0 += ((uint(zMiddleA < zMiddleB)) << 16) + (zMiddleA >> 16);
-   zMiddleA <<= 16;
-   z1 += zMiddleA;
-   z0 += uint(z1 < zMiddleA);
-   z1Ptr = z1;
-   z0Ptr = z0;
-}
-
 /* Multiplies the 64-bit value formed by concatenating `a0' and `a1' to the
  * 64-bit value formed by concatenating `b0' and `b1' to obtain a 128-bit
  * product.  The product is broken into four 32-bit pieces which are stored at
@@ -773,12 +749,12 @@ __mul64To128(uint a0, uint a1, uint b0, uint b1,
    uint more1 = 0u;
    uint more2 = 0u;
 
-   __mul32To64(a1, b1, z2, z3);
-   __mul32To64(a1, b0, z1, more2);
+   umulExtended(a1, b1, z2, z3);
+   umulExtended(a1, b0, z1, more2);
    __add64(z1, more2, 0u, z2, z1, z2);
-   __mul32To64(a0, b0, z0, more1);
+   umulExtended(a0, b0, z0, more1);
    __add64(z0, more1, 0u, z1, z0, z1);
-   __mul32To64(a0, b1, more1, more2);
+   umulExtended(a0, b1, more1, more2);
    __add64(more1, more2, 0u, z2, more1, z2);
    __add64(z0, z1, 0u, more1, z0, z1);
    z3Ptr = z3;
@@ -1442,7 +1418,7 @@ __estimateDiv64To32(uint a0, uint a1, uint b)
       return 0xFFFFFFFFu;
    b0 = b>>16;
    z = (b0<<16 <= a0) ? 0xFFFF0000u : (a0 / b0)<<16;
-   __mul32To64(b, z, term0, term1);
+   umulExtended(b, z, term0, term1);
    __sub64(a0, a1, term0, term1, rem0, rem1);
    while (int(rem0) < 0) {
       z -= 0x10000u;
@@ -1612,7 +1588,7 @@ __fsqrt64(uint64_t a)
       zFrac0 = 0x7FFFFFFFu;
    doubleZFrac0 = zFrac0 + zFrac0;
    __shortShift64Left(aFracHi, aFracLo, 9 - (aExp & 1), aFracHi, aFracLo);
-   __mul32To64(zFrac0, zFrac0, term0, term1);
+   umulExtended(zFrac0, zFrac0, term0, term1);
    __sub64(aFracHi, aFracLo, term0, term1, rem0, rem1);
    while (int(rem0) < 0) {
       --zFrac0;
@@ -1623,9 +1599,9 @@ __fsqrt64(uint64_t a)
    if ((zFrac1 & 0x1FFu) <= 5u) {
       if (zFrac1 == 0u)
          zFrac1 = 1u;
-      __mul32To64(doubleZFrac0, zFrac1, term1, term2);
+      umulExtended(doubleZFrac0, zFrac1, term1, term2);
       __sub64(rem1, 0u, term1, term2, rem1, rem2);
-      __mul32To64(zFrac1, zFrac1, term2, term3);
+      umulExtended(zFrac1, zFrac1, term2, term3);
       __sub96(rem1, rem2, 0u, 0u, term2, term3, rem1, rem2, rem3);
       while (int(rem1) < 0) {
          --zFrac1;
