@@ -68,9 +68,17 @@ enum bi_class {
         BI_ROUND,
 };
 
+/* It can't get any worse than csel4... can it? */
+#define BIR_SRC_COUNT 4
+
 typedef struct {
         struct list_head link; /* Must be first */
         enum bi_class type;
+
+        /* Indices, see bir_ssa_index etc. Note zero is special cased
+         * to "no argument" */
+        unsigned dest;
+        unsigned src[BIR_SRC_COUNT];
 } bi_instruction;
 
 typedef struct {
@@ -82,5 +90,38 @@ typedef struct {
        nir_shader *nir;
        struct list_head blocks; /* list of bi_block */
 } bi_context; 
+
+/* So we can distinguish between SSA/reg/sentinel quickly */
+#define BIR_NO_ARG (0)
+#define BIR_IS_REG (1)
+
+static inline unsigned
+bir_ssa_index(nir_ssa_def *ssa)
+{
+        /* Off-by-one ensures BIR_NO_ARG is skipped */
+        return ((ssa->index + 1) << 1) | 0;
+}
+
+static inline unsigned
+bir_src_index(nir_src *src)
+{
+        if (src->is_ssa)
+                return bir_ssa_index(src->ssa);
+        else {
+                assert(!src->reg.indirect);
+                return (src->reg.reg->index << 1) | BIR_IS_REG;
+        }
+}
+
+static inline unsigned
+bir_dest_index(nir_dest *dst)
+{
+        if (dst->is_ssa)
+                return bir_ssa_index(&dst->ssa);
+        else {
+                assert(!dst->reg.indirect);
+                return (dst->reg.reg->index << 1) | BIR_IS_REG;
+        }
+}
 
 #endif
