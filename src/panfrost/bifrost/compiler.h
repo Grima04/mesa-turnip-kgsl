@@ -318,6 +318,7 @@ typedef struct bi_block {
 typedef struct {
        nir_shader *nir;
        struct list_head blocks; /* list of bi_block */
+       uint32_t quirks;
 } bi_context; 
 
 /* So we can distinguish between SSA/reg/sentinel quickly */

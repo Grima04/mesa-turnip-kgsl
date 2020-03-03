@@ -33,12 +33,14 @@
 #include "disassemble.h"
 #include "bifrost_compile.h"
 #include "compiler.h"
+#include "bi_quirks.h"
 
 void
-bifrost_compile_shader_nir(nir_shader *nir, bifrost_program *program)
+bifrost_compile_shader_nir(nir_shader *nir, bifrost_program *program, unsigned product_id)
 {
         bi_context *ctx = rzalloc(NULL, bi_context);
         ctx->nir = nir;
+        ctx->quirks = bifrost_get_quirks(product_id);
 
         nir_print_shader(nir, stdout);
 

@@ -31,7 +31,7 @@ typedef struct {
         struct util_dynarray compiled;
 } bifrost_program;
 
-void bifrost_compile_shader_nir(nir_shader *nir, bifrost_program *program);
+void bifrost_compile_shader_nir(nir_shader *nir, bifrost_program *program, unsigned product_id);
 
 static const nir_shader_compiler_options bifrost_nir_options = {
         .lower_ffma = true,

@@ -3,6 +3,7 @@ bifrost_FILES := \
         bifrost/bifrost_compile.c \
         bifrost/bifrost_compile.h \
         bifrost/bifrost_tables.c \
+        bifrost/bi_quirks.c \
         bifrost/compiler.h \
         bifrost/cmdline.c \
         bifrost/disassemble.c \
