@@ -629,7 +629,7 @@ piglit-quick_shader:
   variables:
     DEQP_VER: vk
 
-test-llvmpipe-gles2:
+llvmpipe-gles2:
   variables:
     DEQP_VER: gles2
     DEQP_PARALLEL: 4
@@ -641,24 +641,24 @@ test-llvmpipe-gles2:
     LIBGL_ALWAYS_SOFTWARE: "true"
   extends: .deqp-test-gl
 
-test-softpipe-gles2:
-  extends: test-llvmpipe-gles2
+softpipe-gles2:
+  extends: llvmpipe-gles2
   variables:
     DEQP_EXPECTED_FAILS: deqp-softpipe-fails.txt
     DEQP_SKIPS: deqp-softpipe-skips.txt
     GALLIUM_DRIVER: "softpipe"
 
-test-softpipe-gles3:
+softpipe-gles3:
   parallel: 2
   variables:
     DEQP_VER: gles3
-  extends: test-softpipe-gles2
+  extends: softpipe-gles2
 
-test-softpipe-gles31:
+softpipe-gles31:
   parallel: 4
   variables:
     DEQP_VER: gles31
-  extends: test-softpipe-gles2
+  extends: softpipe-gles2
 
 arm64_a630_gles2:
   extends:
