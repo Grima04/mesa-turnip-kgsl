@@ -21,6 +21,7 @@
 
 libpanfrost_bifrost_files = files(
   'disassemble.c',
+  'bifrost_compile.c',
 )
 
 libpanfrost_bifrost = static_library(

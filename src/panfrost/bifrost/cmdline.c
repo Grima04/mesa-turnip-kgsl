@@ -65,7 +65,7 @@ compile_shader(char **argv)
 
                 NIR_PASS_V(nir[i], gl_nir_lower_buffers, prog);
                 NIR_PASS_V(nir[i], nir_opt_constant_folding);
-                //bifrost_compile_shader_nir(nir[i], &compiled);
+                bifrost_compile_shader_nir(nir[i], &compiled);
         }
 }
 

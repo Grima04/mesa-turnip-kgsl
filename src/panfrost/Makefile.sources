@@ -1,6 +1,8 @@
 bifrost_FILES := \
         bifrost/bifrost.h \
+        bifrost/bifrost_compile.c \
         bifrost/bifrost_compile.h \
+        bifrost/compiler.h \
         bifrost/cmdline.c \
         bifrost/disassemble.c \
         bifrost/disassemble.h
