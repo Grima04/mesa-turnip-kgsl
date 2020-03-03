@@ -86,6 +86,15 @@ extern unsigned bi_class_props[BI_NUM_CLASSES];
 /* Accepts a bifrost_roundmode */
 #define BI_ROUNDMODE (1 << 2)
 
+/* Can be scheduled to FMA */
+#define BI_SCHED_FMA (1 << 3)
+
+/* Can be scheduled to ADD */
+#define BI_SCHED_ADD (1 << 4)
+
+/* Most ALU ops can do either, actually */
+#define BI_SCHED_ALL (BI_SCHED_FMA | BI_SCHED_ADD)
+
 /* It can't get any worse than csel4... can it? */
 #define BIR_SRC_COUNT 4
 
