@@ -27,12 +27,12 @@
 #include "compiler.h"
 
 unsigned bi_class_props[BI_NUM_CLASSES] = {
-        [BI_ADD] 		= BI_MODS,
+        [BI_ADD] 		= BI_GENERIC | BI_MODS,
         [BI_ATEST] 		= 0,
         [BI_BRANCH] 		= 0,
-        [BI_CMP] 		= BI_MODS,
+        [BI_CMP] 		= BI_GENERIC | BI_MODS,
         [BI_BLEND] 		= 0,
-        [BI_BITWISE] 		= 0,
+        [BI_BITWISE] 		= BI_GENERIC,
         [BI_CONVERT] 		= 0,
         [BI_CSEL] 		= 0,
         [BI_DISCARD] 		= 0,
@@ -42,12 +42,12 @@ unsigned bi_class_props[BI_NUM_CLASSES] = {
         [BI_LOAD_ATTR] 		= 0,
         [BI_LOAD_VAR] 		= 0,
         [BI_LOAD_VAR_ADDRESS] 	= 0,
-        [BI_MINMAX] 		= 0,
+        [BI_MINMAX] 		= BI_GENERIC,
         [BI_MOV] 		= BI_MODS,
         [BI_SHIFT] 		= 0,
         [BI_STORE] 		= 0,
         [BI_STORE_VAR] 		= 0,
         [BI_SPECIAL] 		= 0,
         [BI_TEX] 		= 0,
-        [BI_ROUND] 		= 0,
+        [BI_ROUND] 		= BI_GENERIC,
 };

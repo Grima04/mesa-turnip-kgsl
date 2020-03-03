@@ -78,6 +78,11 @@ extern unsigned bi_class_props[BI_NUM_CLASSES];
 /* abs/neg/outmod valid for a float op */
 #define BI_MODS (1 << 0)
 
+/* Generic enough that little class-specific information is required. In other
+ * words, it acts as a "normal" ALU op, even if the encoding ends up being
+ * irregular enough to warrant a separate class */
+#define BI_GENERIC (1 << 1)
+
 /* It can't get any worse than csel4... can it? */
 #define BIR_SRC_COUNT 4
 
