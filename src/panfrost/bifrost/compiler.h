@@ -212,6 +212,25 @@ typedef struct {
                 bi_instruction *instructions[16];
                 bi_bundle bundles[8];
         };
+
+        /* For scoreboarding -- the clause ID (this is not globally unique!)
+         * and its dependencies in terms of other clauses, computed during
+         * scheduling and used when emitting code. Dependencies expressed as a
+         * bitfield matching the hardware, except shifted by a clause (the
+         * shift back to the ISA's off-by-one encoding is worked out when
+         * emitting clauses) */
+        unsigned scoreboard_id;
+        uint8_t dependencies;
+
+        /* Back-to-back corresponds directly to the back-to-back bit. Branch
+         * conditional corresponds to the branch conditional bit except that in
+         * the emitted code it's always set if back-to-bit is, whereas we use
+         * the actual value (without back-to-back so to speak) internally */
+        bool back_to_back;
+        bool branch_conditional;
+
+        /* Corresponds to the usual bit but shifted by a clause */
+        bool data_register_write_barrier;
 } bi_clause;
 
 typedef struct bi_block {
