@@ -202,6 +202,25 @@ typedef struct {
 #define BIR_NO_ARG (0)
 #define BIR_IS_REG (1)
 
+/* If high bits are set, instead of SSA/registers, we have specials indexed by
+ * the low bits if necessary.
+ *
+ *  Fixed register: do not allocate register, do not collect $200.
+ *  Uniform: access a uniform register given by low bits.
+ *  Constant: access the specified constant 
+ *  Zero: special cased to avoid wasting a constant
+ */
+
+#define BIR_INDEX_REGISTER (1 << 31)
+#define BIR_INDEX_UNIFORM  (1 << 30)
+#define BIR_INDEX_CONSTANT (1 << 29)
+#define BIR_INDEX_ZERO     (1 << 28)
+
+/* Keep me synced please so we can check src & BIR_SPECIAL */
+
+#define BIR_SPECIAL        ((BIR_INDEX_REGISTER | BIR_INDEX_UNIFORM) | \
+        (BIR_INDEX_CONSTANT | BIR_INDEX_ZERO)
+
 static inline unsigned
 bir_ssa_index(nir_ssa_def *ssa)
 {
