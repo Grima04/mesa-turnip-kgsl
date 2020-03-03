@@ -78,7 +78,7 @@ flush_vertex( struct split_context *split)
 
       ib.count = split->max_index - split->min_index + 1;
       ib.ptr = (const void *)((const char *)ib.ptr +
-                              split->min_index * ib.index_size);
+                              (split->min_index << ib.index_size_shift));
 
       /* Rebase the primitives to save index buffer entries. */
       for (i = 0; i < split->dstprim_nr; i++)
@@ -227,7 +227,6 @@ split_prims(struct split_context *split)
             elts[j] = prim->start + j;
 
          ib.count = count;
-         ib.index_size = 4;
          ib.index_size_shift = 2;
          ib.obj = split->ctx->Shared->NullBufferObj;
          ib.ptr = elts;

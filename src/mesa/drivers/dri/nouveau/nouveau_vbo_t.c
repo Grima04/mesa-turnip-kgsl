@@ -66,9 +66,9 @@ vbo_init_arrays(struct gl_context *ctx, const struct _mesa_index_buffer *ib,
 	if (ib) {
 		GLenum ib_type;
 
-		if (ib->index_size == 4)
+		if (ib->index_size_shift == 2)
 			ib_type = GL_UNSIGNED_INT;
-		else if (ib->index_size == 2)
+		else if (ib->index_size_shift == 1)
 			ib_type = GL_UNSIGNED_SHORT;
 		else
 			ib_type = GL_UNSIGNED_BYTE;

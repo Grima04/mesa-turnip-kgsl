@@ -165,14 +165,14 @@ void t_rebase_prims( struct gl_context *ctx,
       /* Some users might prefer it if we translated elements to
        * GLuints here.  Others wouldn't...
        */
-      switch (ib->index_size) {
-      case 4:
+      switch (ib->index_size_shift) {
+      case 2:
 	 tmp_indices = rebase_GLuint( ptr, ib->count, min_index );
 	 break;
-      case 2:
+      case 1:
 	 tmp_indices = rebase_GLushort( ptr, ib->count, min_index );
 	 break;
-      case 1:
+      case 0:
 	 tmp_indices = rebase_GLubyte( ptr, ib->count, min_index );
 	 break;
       }      
@@ -187,7 +187,6 @@ void t_rebase_prims( struct gl_context *ctx,
       tmp_ib.obj = ctx->Shared->NullBufferObj;
       tmp_ib.ptr = tmp_indices;
       tmp_ib.count = ib->count;
-      tmp_ib.index_size = ib->index_size;
       tmp_ib.index_size_shift = ib->index_size_shift;
 
       ib = &tmp_ib;

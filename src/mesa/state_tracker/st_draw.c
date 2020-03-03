@@ -202,7 +202,7 @@ st_draw_vbo(struct gl_context *ctx,
                                 nr_prims);
       }
 
-      info.index_size = ib->index_size;
+      info.index_size = 1 << ib->index_size_shift;
       info.min_index = min_index;
       info.max_index = max_index;
 
@@ -297,7 +297,7 @@ st_indirect_draw_vbo(struct gl_context *ctx,
       /* indices are always in a real VBO */
       assert(_mesa_is_bufferobj(bufobj));
 
-      info.index_size = ib->index_size;
+      info.index_size = 1 << ib->index_size_shift;
       info.index.resource = st_buffer_object(bufobj)->buffer;
       info.start = pointer_to_offset(ib->ptr) >> ib->index_size_shift;
 

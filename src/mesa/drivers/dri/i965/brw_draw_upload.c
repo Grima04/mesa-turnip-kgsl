@@ -736,7 +736,7 @@ brw_upload_indices(struct brw_context *brw)
    if (index_buffer == NULL)
       return;
 
-   ib_type_size = index_buffer->index_size;
+   ib_type_size = 1 << index_buffer->index_size_shift;
    ib_size = index_buffer->count ? ib_type_size * index_buffer->count :
                                    index_buffer->obj->Size;
    bufferobj = index_buffer->obj;
@@ -772,8 +772,9 @@ brw_upload_indices(struct brw_context *brw)
    if (brw->ib.bo != old_bo)
       brw->ctx.NewDriverState |= BRW_NEW_INDEX_BUFFER;
 
-   if (index_buffer->index_size != brw->ib.index_size) {
-      brw->ib.index_size = index_buffer->index_size;
+   unsigned index_size = 1 << index_buffer->index_size_shift;
+   if (index_size != brw->ib.index_size) {
+      brw->ib.index_size = index_size;
       brw->ctx.NewDriverState |= BRW_NEW_INDEX_BUFFER;
    }
 

@@ -868,7 +868,7 @@ genX(emit_index_buffer)(struct brw_context *brw)
       assert(brw->ib.enable_cut_index == brw->prim_restart.enable_cut_index);
       ib.CutIndexEnable = brw->ib.enable_cut_index;
 #endif
-      ib.IndexFormat = brw_get_index_type(index_buffer->index_size);
+      ib.IndexFormat = brw_get_index_type(1 << index_buffer->index_size_shift);
 
       /* The VF cache designers apparently cut corners, and made the cache
        * only consider the bottom 32 bits of memory addresses.  If you happen

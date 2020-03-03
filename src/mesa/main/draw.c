@@ -109,21 +109,17 @@ get_index_size(GLenum type, struct _mesa_index_buffer *ib)
 {
    switch (type) {
    case GL_UNSIGNED_INT:
-      ib->index_size = 4;
       ib->index_size_shift = 2;
       break;
    case GL_UNSIGNED_SHORT:
-      ib->index_size = 2;
       ib->index_size_shift = 1;
       break;
    case GL_UNSIGNED_BYTE:
-      ib->index_size = 1;
       ib->index_size_shift = 0;
       break;
    default:
       assert(!"unsupported index data type");
       /* In case assert is turned off */
-      ib->index_size = 1;
       ib->index_size_shift = 0;
       break;
    }

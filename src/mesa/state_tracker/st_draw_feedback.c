@@ -188,7 +188,7 @@ st_feedback_draw_vbo(struct gl_context *ctx,
 
    if (ib) {
       struct gl_buffer_object *bufobj = ib->obj;
-      unsigned index_size = ib->index_size;
+      unsigned index_size = 1 << ib->index_size_shift;
 
       if (index_size == 0)
          goto out_unref_vertex;
