@@ -546,7 +546,7 @@ radv_sqtt_fill_sqtt_desc(struct radv_device *device,
 
 	chunk->sqtt_version = radv_chip_class_to_sqtt_version(device->physical_device->rad_info.chip_class);
 	chunk->shader_engine_index = shader_engine_index;
-	chunk->v1.instrumentation_spec_version = 0;
+	chunk->v1.instrumentation_spec_version = 1;
 	chunk->v1.instrumentation_api_version = 0;
 	chunk->v1.compute_unit_index = compute_unit_index;
 }
