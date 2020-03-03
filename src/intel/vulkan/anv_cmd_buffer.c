@@ -421,35 +421,40 @@ void anv_CmdBindPipeline(
 
    switch (pipelineBindPoint) {
    case VK_PIPELINE_BIND_POINT_COMPUTE: {
-      if (cmd_buffer->state.compute.base.pipeline == pipeline)
+      struct anv_compute_pipeline *compute_pipeline =
+         anv_pipeline_to_compute(pipeline);
+      if (cmd_buffer->state.compute.pipeline == compute_pipeline)
          return;
 
-      cmd_buffer->state.compute.base.pipeline = pipeline;
+      cmd_buffer->state.compute.pipeline = compute_pipeline;
       cmd_buffer->state.compute.pipeline_dirty = true;
       set_dirty_for_bind_map(cmd_buffer, MESA_SHADER_COMPUTE,
-                             &pipeline->cs->bind_map);
+                             &compute_pipeline->cs->bind_map);
       break;
    }
 
-   case VK_PIPELINE_BIND_POINT_GRAPHICS:
-      if (cmd_buffer->state.gfx.base.pipeline == pipeline)
+   case VK_PIPELINE_BIND_POINT_GRAPHICS: {
+      struct anv_graphics_pipeline *gfx_pipeline =
+         anv_pipeline_to_graphics(pipeline);
+      if (cmd_buffer->state.gfx.pipeline == gfx_pipeline)
          return;
 
-      cmd_buffer->state.gfx.base.pipeline = pipeline;
-      cmd_buffer->state.gfx.vb_dirty |= pipeline->vb_used;
+      cmd_buffer->state.gfx.pipeline = gfx_pipeline;
+      cmd_buffer->state.gfx.vb_dirty |= gfx_pipeline->vb_used;
       cmd_buffer->state.gfx.dirty |= ANV_CMD_DIRTY_PIPELINE;
 
-      anv_foreach_stage(stage, pipeline->active_stages) {
+      anv_foreach_stage(stage, gfx_pipeline->active_stages) {
          set_dirty_for_bind_map(cmd_buffer, stage,
-                                &pipeline->shaders[stage]->bind_map);
+                                &gfx_pipeline->shaders[stage]->bind_map);
       }
 
       /* Apply the dynamic state from the pipeline */
       cmd_buffer->state.gfx.dirty |=
          anv_dynamic_state_copy(&cmd_buffer->state.gfx.dynamic,
-                                &pipeline->dynamic_state,
-                                pipeline->dynamic_state_mask);
+                                &gfx_pipeline->dynamic_state,
+                                gfx_pipeline->dynamic_state_mask);
       break;
+   }
 
    default:
       assert(!"invalid bind point");
@@ -819,7 +824,7 @@ anv_cmd_buffer_cs_push_constants(struct anv_cmd_buffer *cmd_buffer)
 {
    struct anv_push_constants *data =
       &cmd_buffer->state.push_constants[MESA_SHADER_COMPUTE];
-   struct anv_pipeline *pipeline = cmd_buffer->state.compute.base.pipeline;
+   struct anv_compute_pipeline *pipeline = cmd_buffer->state.compute.pipeline;
    const struct brw_cs_prog_data *cs_prog_data = get_cs_prog_data(pipeline);
    const struct anv_push_range *range = &pipeline->cs->bind_map.push_ranges[0];
 

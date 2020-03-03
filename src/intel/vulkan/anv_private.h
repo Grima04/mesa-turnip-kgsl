@@ -2632,8 +2632,6 @@ struct anv_vb_cache_range {
  * per-stage array in anv_cmd_state.
  */
 struct anv_cmd_pipeline_state {
-   struct anv_pipeline *pipeline;
-
    struct anv_descriptor_set *descriptors[MAX_SETS];
    struct anv_push_descriptor_set *push_descriptors[MAX_SETS];
 };
@@ -2647,6 +2645,8 @@ struct anv_cmd_pipeline_state {
  */
 struct anv_cmd_graphics_state {
    struct anv_cmd_pipeline_state base;
+
+   struct anv_graphics_pipeline *pipeline;
 
    anv_cmd_dirty_mask_t dirty;
    uint32_t vb_dirty;
@@ -2674,6 +2674,8 @@ struct anv_cmd_graphics_state {
  */
 struct anv_cmd_compute_state {
    struct anv_cmd_pipeline_state base;
+
+   struct anv_compute_pipeline *pipeline;
 
    bool pipeline_dirty;
 
@@ -3166,40 +3168,36 @@ enum anv_pipeline_type {
 
 struct anv_pipeline {
    struct anv_device *                          device;
+
    struct anv_batch                             batch;
-   uint32_t                                     batch_data[512];
    struct anv_reloc_list                        batch_relocs;
-   anv_cmd_dirty_mask_t                         dynamic_state_mask;
-   struct anv_dynamic_state                     dynamic_state;
+   uint32_t                                     batch_data[512];
 
    void *                                       mem_ctx;
 
    enum anv_pipeline_type                       type;
    VkPipelineCreateFlags                        flags;
-   struct anv_subpass *                         subpass;
-
-   struct anv_shader_bin *                      shaders[MESA_SHADER_STAGES];
-   struct anv_shader_bin *                      cs;
 
    struct util_dynarray                         executables;
 
    const struct gen_l3_config *                 l3_config;
+};
 
-   VkShaderStageFlags                           active_stages;
-   struct anv_state                             blend_state;
+struct anv_graphics_pipeline {
+   struct anv_pipeline                          base;
 
-   uint32_t                                     vb_used;
-   struct anv_pipeline_vertex_binding {
-      uint32_t                                  stride;
-      bool                                      instanced;
-      uint32_t                                  instance_divisor;
-   } vb[MAX_VBS];
+   anv_cmd_dirty_mask_t                         dynamic_state_mask;
+   struct anv_dynamic_state                     dynamic_state;
 
-   bool                                         primitive_restart;
    uint32_t                                     topology;
 
-   uint32_t                                     cs_right_mask;
+   struct anv_subpass *                         subpass;
 
+   struct anv_shader_bin *                      shaders[MESA_SHADER_STAGES];
+
+   VkShaderStageFlags                           active_stages;
+
+   bool                                         primitive_restart;
    bool                                         writes_depth;
    bool                                         depth_test_enable;
    bool                                         writes_stencil;
@@ -3209,6 +3207,15 @@ struct anv_pipeline {
    bool                                         sample_shading_enable;
    bool                                         kill_pixel;
    bool                                         depth_bounds_test_enable;
+
+   struct anv_state                             blend_state;
+
+   uint32_t                                     vb_used;
+   struct anv_pipeline_vertex_binding {
+      uint32_t                                  stride;
+      bool                                      instanced;
+      uint32_t                                  instance_divisor;
+   } vb[MAX_VBS];
 
    struct {
       uint32_t                                  sf[7];
@@ -3224,44 +3231,61 @@ struct anv_pipeline {
    struct {
       uint32_t                                  wm_depth_stencil[4];
    } gen9;
+};
 
+struct anv_compute_pipeline {
+   struct anv_pipeline                          base;
+
+   struct anv_shader_bin *                      cs;
+   uint32_t                                     cs_right_mask;
    uint32_t                                     interface_descriptor_data[8];
 };
 
+#define ANV_DECL_PIPELINE_DOWNCAST(pipe_type, pipe_enum)             \
+   static inline struct anv_##pipe_type##_pipeline *                 \
+   anv_pipeline_to_##pipe_type(struct anv_pipeline *pipeline)      \
+   {                                                                 \
+      assert(pipeline->type == pipe_enum);                           \
+      return (struct anv_##pipe_type##_pipeline *) pipeline;         \
+   }
+
+ANV_DECL_PIPELINE_DOWNCAST(graphics, ANV_PIPELINE_GRAPHICS)
+ANV_DECL_PIPELINE_DOWNCAST(compute, ANV_PIPELINE_COMPUTE)
+
 static inline bool
-anv_pipeline_has_stage(const struct anv_pipeline *pipeline,
+anv_pipeline_has_stage(const struct anv_graphics_pipeline *pipeline,
                        gl_shader_stage stage)
 {
    return (pipeline->active_stages & mesa_to_vk_shader_stage(stage)) != 0;
 }
 
-#define ANV_DECL_GET_PROG_DATA_FUNC(prefix, stage)                   \
-static inline const struct brw_##prefix##_prog_data *                \
-get_##prefix##_prog_data(const struct anv_pipeline *pipeline)        \
-{                                                                    \
-   if (anv_pipeline_has_stage(pipeline, stage)) {                    \
-      return (const struct brw_##prefix##_prog_data *)               \
-             pipeline->shaders[stage]->prog_data;                    \
-   } else {                                                          \
-      return NULL;                                                   \
-   }                                                                 \
+#define ANV_DECL_GET_GRAPHICS_PROG_DATA_FUNC(prefix, stage)             \
+static inline const struct brw_##prefix##_prog_data *                   \
+get_##prefix##_prog_data(const struct anv_graphics_pipeline *pipeline)  \
+{                                                                       \
+   if (anv_pipeline_has_stage(pipeline, stage)) {                       \
+      return (const struct brw_##prefix##_prog_data *)                  \
+             pipeline->shaders[stage]->prog_data;                       \
+   } else {                                                             \
+      return NULL;                                                      \
+   }                                                                    \
 }
 
-ANV_DECL_GET_PROG_DATA_FUNC(vs, MESA_SHADER_VERTEX)
-ANV_DECL_GET_PROG_DATA_FUNC(tcs, MESA_SHADER_TESS_CTRL)
-ANV_DECL_GET_PROG_DATA_FUNC(tes, MESA_SHADER_TESS_EVAL)
-ANV_DECL_GET_PROG_DATA_FUNC(gs, MESA_SHADER_GEOMETRY)
-ANV_DECL_GET_PROG_DATA_FUNC(wm, MESA_SHADER_FRAGMENT)
+ANV_DECL_GET_GRAPHICS_PROG_DATA_FUNC(vs, MESA_SHADER_VERTEX)
+ANV_DECL_GET_GRAPHICS_PROG_DATA_FUNC(tcs, MESA_SHADER_TESS_CTRL)
+ANV_DECL_GET_GRAPHICS_PROG_DATA_FUNC(tes, MESA_SHADER_TESS_EVAL)
+ANV_DECL_GET_GRAPHICS_PROG_DATA_FUNC(gs, MESA_SHADER_GEOMETRY)
+ANV_DECL_GET_GRAPHICS_PROG_DATA_FUNC(wm, MESA_SHADER_FRAGMENT)
 
 static inline const struct brw_cs_prog_data *
-get_cs_prog_data(const struct anv_pipeline *pipeline)
+get_cs_prog_data(const struct anv_compute_pipeline *pipeline)
 {
-   assert(pipeline->type == ANV_PIPELINE_COMPUTE);
+   assert(pipeline->cs);
    return (const struct brw_cs_prog_data *) pipeline->cs->prog_data;
 }
 
 static inline const struct brw_vue_prog_data *
-anv_pipeline_get_last_vue_prog_data(const struct anv_pipeline *pipeline)
+anv_pipeline_get_last_vue_prog_data(const struct anv_graphics_pipeline *pipeline)
 {
    if (anv_pipeline_has_stage(pipeline, MESA_SHADER_GEOMETRY))
       return &get_gs_prog_data(pipeline)->base;
@@ -3272,13 +3296,13 @@ anv_pipeline_get_last_vue_prog_data(const struct anv_pipeline *pipeline)
 }
 
 VkResult
-anv_pipeline_init(struct anv_pipeline *pipeline, struct anv_device *device,
+anv_pipeline_init(struct anv_graphics_pipeline *pipeline, struct anv_device *device,
                   struct anv_pipeline_cache *cache,
                   const VkGraphicsPipelineCreateInfo *pCreateInfo,
                   const VkAllocationCallbacks *alloc);
 
 VkResult
-anv_pipeline_compile_cs(struct anv_pipeline *pipeline,
+anv_pipeline_compile_cs(struct anv_compute_pipeline *pipeline,
                         struct anv_pipeline_cache *cache,
                         const VkComputePipelineCreateInfo *info,
                         const struct anv_shader_module *module,
