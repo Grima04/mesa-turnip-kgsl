@@ -88,10 +88,7 @@ uint64_t
 __fneg64(uint64_t __a)
 {
    uvec2 a = unpackUint2x32(__a);
-   uint t = a.y;
-
-   t ^= (1u << 31);
-   a.y = mix(t, a.y, __is_nan(__a));
+   a.y ^= (1u << 31);
    return packUint2x32(a);
 }
 
