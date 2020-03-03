@@ -89,6 +89,15 @@ extern unsigned bi_class_props[BI_NUM_CLASSES];
 /* It can't get any worse than csel4... can it? */
 #define BIR_SRC_COUNT 4
 
+/* Class-specific data for BI_LD_ATTR, BI_LD_VAR_ADDR */
+struct bi_load {
+        /* Note: no indirects here */
+        unsigned location;
+
+        /* Only for BI_LD_ATTR. But number of vector channels */
+        unsigned channels;
+};
+
 typedef struct {
         struct list_head link; /* Must be first */
         enum bi_class type;
@@ -110,6 +119,7 @@ typedef struct {
         /* Union for class-specific information */
         union {
                 enum bifrost_minmax_mode minmax;
+                struct bi_load load;
         };
 } bi_instruction;
 
