@@ -5335,9 +5335,13 @@ static void radv_initialize_htile(struct radv_cmd_buffer *cmd_buffer,
 	struct radv_cmd_state *state = &cmd_buffer->state;
 	uint32_t htile_value = vk_format_is_stencil(image->vk_format) ? 0xfffff30f : 0xfffc000f;
 	VkClearDepthStencilValue value = {};
+	struct radv_barrier_data barrier = {};
 
 	state->flush_bits |= RADV_CMD_FLAG_FLUSH_AND_INV_DB |
 			     RADV_CMD_FLAG_FLUSH_AND_INV_DB_META;
+
+	barrier.layout_transitions.init_mask_ram = 1;
+	radv_describe_layout_transition(cmd_buffer, &barrier);
 
 	state->flush_bits |= radv_clear_htile(cmd_buffer, image, range, htile_value);
 
@@ -5396,9 +5400,13 @@ static void radv_initialise_cmask(struct radv_cmd_buffer *cmd_buffer,
 				  uint32_t value)
 {
 	struct radv_cmd_state *state = &cmd_buffer->state;
+	struct radv_barrier_data barrier = {};
 
 	state->flush_bits |= RADV_CMD_FLAG_FLUSH_AND_INV_CB |
 			    RADV_CMD_FLAG_FLUSH_AND_INV_CB_META;
+
+	barrier.layout_transitions.init_mask_ram = 1;
+	radv_describe_layout_transition(cmd_buffer, &barrier);
 
 	state->flush_bits |= radv_clear_cmask(cmd_buffer, image, range, value);
 
@@ -5418,9 +5426,13 @@ void radv_initialize_fmask(struct radv_cmd_buffer *cmd_buffer,
 	};
 	uint32_t log2_samples = util_logbase2(image->info.samples);
 	uint32_t value = fmask_clear_values[log2_samples];
+	struct radv_barrier_data barrier = {};
 
 	state->flush_bits |= RADV_CMD_FLAG_FLUSH_AND_INV_CB |
 			     RADV_CMD_FLAG_FLUSH_AND_INV_CB_META;
+
+	barrier.layout_transitions.init_mask_ram = 1;
+	radv_describe_layout_transition(cmd_buffer, &barrier);
 
 	state->flush_bits |= radv_clear_fmask(cmd_buffer, image, range, value);
 
@@ -5432,10 +5444,14 @@ void radv_initialize_dcc(struct radv_cmd_buffer *cmd_buffer,
 			 const VkImageSubresourceRange *range, uint32_t value)
 {
 	struct radv_cmd_state *state = &cmd_buffer->state;
+	struct radv_barrier_data barrier = {};
 	unsigned size = 0;
 
 	state->flush_bits |= RADV_CMD_FLAG_FLUSH_AND_INV_CB |
 			     RADV_CMD_FLAG_FLUSH_AND_INV_CB_META;
+
+	barrier.layout_transitions.init_mask_ram = 1;
+	radv_describe_layout_transition(cmd_buffer, &barrier);
 
 	state->flush_bits |= radv_clear_dcc(cmd_buffer, image, range, value);
 
@@ -5577,8 +5593,13 @@ static void radv_handle_color_image_transition(struct radv_cmd_buffer *cmd_buffe
 		if (fce_eliminate || fmask_expand)
 			radv_fast_clear_flush_image_inplace(cmd_buffer, image, range);
 
-		if (fmask_expand)
+		if (fmask_expand) {
+			struct radv_barrier_data barrier = {};
+			barrier.layout_transitions.fmask_color_expand = 1;
+			radv_describe_layout_transition(cmd_buffer, &barrier);
+
 			radv_expand_fmask_image_inplace(cmd_buffer, image, range);
+		}
 	}
 }
 

@@ -320,6 +320,37 @@ struct rgp_sqtt_marker_barrier_end {
 static_assert(sizeof(struct rgp_sqtt_marker_barrier_end) == 8,
 	      "rgp_sqtt_marker_barrier_end doesn't match RGP spec");
 
+/**
+ * "Layout Transition" RGP SQTT instrumentation marker (Table 7)
+ */
+struct rgp_sqtt_marker_layout_transition {
+	union {
+		struct {
+			uint32_t identifier : 4;
+			uint32_t ext_dwords : 3;
+			uint32_t depth_stencil_expand : 1;
+			uint32_t htile_hiz_range_expand : 1;
+			uint32_t depth_stencil_resummarize : 1;
+			uint32_t dcc_decompress : 1;
+			uint32_t fmask_decompress : 1;
+			uint32_t fast_clear_eliminate : 1;
+			uint32_t fmask_color_expand : 1;
+			uint32_t init_mask_ram : 1;
+			uint32_t reserved1 : 17;
+		};
+		uint32_t dword01;
+	};
+	union {
+		struct {
+			uint32_t reserved2 : 32;
+		};
+		uint32_t dword02;
+	};
+};
+
+static_assert(sizeof(struct rgp_sqtt_marker_layout_transition) == 8,
+	      "rgp_sqtt_marker_layout_transition doesn't match RGP spec");
+
 static void
 radv_write_begin_general_api_marker(struct radv_cmd_buffer *cmd_buffer,
 				    enum rgp_sqtt_marker_general_api_type api_type)
@@ -506,9 +537,38 @@ radv_describe_barrier_end(struct radv_cmd_buffer *cmd_buffer)
 	marker.identifier = RGP_SQTT_MARKER_IDENTIFIER_BARRIER_END;
 	marker.cb_id = 0;
 
+	marker.num_layout_transitions = cmd_buffer->state.num_layout_transitions;
+
 	/* TODO: fill pipeline stalls, cache flushes, etc */
 
 	radv_emit_thread_trace_userdata(cs, &marker, sizeof(marker) / 4);
+
+	cmd_buffer->state.num_layout_transitions = 0;
+}
+
+void
+radv_describe_layout_transition(struct radv_cmd_buffer *cmd_buffer,
+				const struct radv_barrier_data *barrier)
+{
+	struct rgp_sqtt_marker_layout_transition marker = {};
+	struct radeon_cmdbuf *cs = cmd_buffer->cs;
+
+	if (likely(!cmd_buffer->device->thread_trace_bo))
+		return;
+
+	marker.identifier = RGP_SQTT_MARKER_IDENTIFIER_LAYOUT_TRANSITION;
+	marker.depth_stencil_expand = barrier->layout_transitions.depth_stencil_expand;
+	marker.htile_hiz_range_expand = barrier->layout_transitions.htile_hiz_range_expand;
+	marker.depth_stencil_resummarize = barrier->layout_transitions.depth_stencil_resummarize;
+	marker.dcc_decompress = barrier->layout_transitions.dcc_decompress;
+	marker.fmask_decompress = barrier->layout_transitions.fmask_decompress;
+	marker.fast_clear_eliminate = barrier->layout_transitions.fast_clear_eliminate;
+	marker.fmask_color_expand = barrier->layout_transitions.fmask_color_expand;
+	marker.init_mask_ram = barrier->layout_transitions.init_mask_ram;
+
+	radv_emit_thread_trace_userdata(cs, &marker, sizeof(marker) / 4);
+
+	cmd_buffer->state.num_layout_transitions++;
 }
 
 #define EVENT_MARKER(cmd_name, args...) \

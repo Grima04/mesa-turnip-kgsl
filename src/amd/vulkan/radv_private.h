@@ -1316,6 +1316,7 @@ struct radv_cmd_state {
 	/* SQTT related state. */
 	uint32_t current_event_type;
 	uint32_t num_events;
+	uint32_t num_layout_transitions;
 };
 
 struct radv_cmd_pool {
@@ -2424,6 +2425,23 @@ int radv_dump_thread_trace(struct radv_device *device,
 			   const struct radv_thread_trace *trace);
 
 /* radv_sqtt_layer_.c */
+struct radv_barrier_data {
+	union {
+		struct {
+			uint16_t depth_stencil_expand : 1;
+			uint16_t htile_hiz_range_expand : 1;
+			uint16_t depth_stencil_resummarize : 1;
+			uint16_t dcc_decompress : 1;
+			uint16_t fmask_decompress : 1;
+			uint16_t fast_clear_eliminate : 1;
+			uint16_t fmask_color_expand : 1;
+			uint16_t init_mask_ram : 1;
+			uint16_t reserved : 8;
+		};
+		uint16_t all;
+	} layout_transitions;
+};
+
 /**
  * Value for the reason field of an RGP barrier start marker originating from
  * the Vulkan client (does not include PAL-defined values). (Table 15)
@@ -2458,6 +2476,8 @@ void radv_describe_end_render_pass_clear(struct radv_cmd_buffer *cmd_buffer);
 void radv_describe_barrier_start(struct radv_cmd_buffer *cmd_buffer,
 				 enum rgp_barrier_reason reason);
 void radv_describe_barrier_end(struct radv_cmd_buffer *cmd_buffer);
+void radv_describe_layout_transition(struct radv_cmd_buffer *cmd_buffer,
+				     const struct radv_barrier_data *barrier);
 
 struct radeon_winsys_sem;
 
