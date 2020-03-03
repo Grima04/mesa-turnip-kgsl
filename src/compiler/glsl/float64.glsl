@@ -258,10 +258,11 @@ __fge64(uint64_t a, uint64_t b)
 uint64_t
 __fsat64(uint64_t __a)
 {
-   if (__flt64(__a, 0ul))
+   /* fsat(NaN) should be zero. */
+   if (__is_nan(__a) || __flt64_nonnan(__a, 0ul))
       return 0ul;
 
-   if (__fge64(__a, 0x3FF0000000000000ul /* 1.0 */))
+   if (!__flt64_nonnan(__a, 0x3FF0000000000000ul /* 1.0 */))
       return 0x3FF0000000000000ul;
 
    return __a;
