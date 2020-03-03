@@ -4781,6 +4781,8 @@ radv_draw(struct radv_cmd_buffer *cmd_buffer,
 			return;
 	}
 
+	radv_describe_draw(cmd_buffer);
+
 	/* Use optimal packet order based on whether we need to sync the
 	 * pipeline.
 	 */
@@ -5155,6 +5157,8 @@ radv_dispatch(struct radv_cmd_buffer *cmd_buffer,
 		cmd_buffer->device->physical_device->rad_info.chip_class >= GFX7;
 	bool pipeline_is_dirty = pipeline &&
 				 pipeline != cmd_buffer->state.emitted_compute_pipeline;
+
+	radv_describe_dispatch(cmd_buffer, 8, 8, 8);
 
 	if (cmd_buffer->state.flush_bits & (RADV_CMD_FLAG_FLUSH_AND_INV_CB |
 					    RADV_CMD_FLAG_FLUSH_AND_INV_DB |

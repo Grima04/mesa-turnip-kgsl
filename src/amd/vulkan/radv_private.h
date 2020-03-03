@@ -1312,6 +1312,10 @@ struct radv_cmd_state {
 	VkQueryPipelineStatisticFlags inherited_pipeline_statistics;
 
 	bool context_roll_without_scissor_emitted;
+
+	/* SQTT related state. */
+	uint32_t current_event_type;
+	uint32_t num_events;
 };
 
 struct radv_cmd_pool {
@@ -2422,6 +2426,8 @@ int radv_dump_thread_trace(struct radv_device *device,
 /* radv_sqtt_layer_.c */
 void radv_describe_begin_cmd_buffer(struct radv_cmd_buffer *cmd_buffer);
 void radv_describe_end_cmd_buffer(struct radv_cmd_buffer *cmd_buffer);
+void radv_describe_draw(struct radv_cmd_buffer *cmd_buffer);
+void radv_describe_dispatch(struct radv_cmd_buffer *cmd_buffer, int x, int y, int z);
 
 struct radeon_winsys_sem;
 

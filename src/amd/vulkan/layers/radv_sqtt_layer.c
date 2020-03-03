@@ -151,8 +151,8 @@ enum rgp_sqtt_marker_general_api_type {
 	ApiCmdSetStencilCompareMask            = 41,
 	ApiCmdSetStencilWriteMask              = 42,
 	ApiCmdSetStencilReference              = 43,
-	ApiCmdDrawIndirectCountKHR             = 44,
-	ApiCmdDrawIndexedIndirectCountKHR      = 45,
+	ApiCmdDrawIndirectCount                = 44,
+	ApiCmdDrawIndexedIndirectCount         = 45,
 	ApiInvalid                             = 0xffffffff
 };
 
@@ -174,6 +174,86 @@ struct rgp_sqtt_marker_general_api {
 
 static_assert(sizeof(struct rgp_sqtt_marker_general_api) == 4,
 	      "rgp_sqtt_marker_general_api doesn't match RGP spec");
+
+/**
+ * API types used in RGP SQ thread-tracing markers (Table 16).
+ */
+enum rgp_sqtt_marker_event_type {
+	EventCmdDraw                             = 0,
+	EventCmdDrawIndexed                      = 1,
+	EventCmdDrawIndirect                     = 2,
+	EventCmdDrawIndexedIndirect              = 3,
+	EventCmdDrawIndirectCountAMD             = 4,
+	EventCmdDrawIndexedIndirectCountAMD      = 5,
+	EventCmdDispatch                         = 6,
+	EventCmdDispatchIndirect                 = 7,
+	EventCmdCopyBuffer                       = 8,
+	EventCmdCopyImage                        = 9,
+	EventCmdBlitImage                        = 10,
+	EventCmdCopyBufferToImage                = 11,
+	EventCmdCopyImageToBuffer                = 12,
+	EventCmdUpdateBuffer                     = 13,
+	EventCmdFillBuffer                       = 14,
+	EventCmdClearColorImage                  = 15,
+	EventCmdClearDepthStencilImage           = 16,
+	EventCmdClearAttachments                 = 17,
+	EventCmdResolveImage                     = 18,
+	EventCmdWaitEvents                       = 19,
+	EventCmdPipelineBarrier                  = 20,
+	EventCmdResetQueryPool                   = 21,
+	EventCmdCopyQueryPoolResults             = 22,
+	EventRenderPassColorClear                = 23,
+	EventRenderPassDepthStencilClear         = 24,
+	EventRenderPassResolve                   = 25,
+	EventInternalUnknown                     = 26,
+	EventCmdDrawIndirectCount                = 27,
+	EventCmdDrawIndexedIndirectCount         = 28,
+	EventInvalid                             = 0xffffffff
+};
+
+/**
+ * "Event (Per-draw/dispatch)" RGP SQ thread-tracing marker. (Table 4)
+ */
+struct rgp_sqtt_marker_event {
+	union {
+		struct {
+			uint32_t identifier : 4;
+			uint32_t ext_dwords : 3;
+			uint32_t api_type : 24;
+			uint32_t has_thread_dims : 1;
+		};
+		uint32_t dword01;
+	};
+	union {
+		struct {
+			uint32_t cb_id : 20;
+			uint32_t vertex_offset_reg_idx : 4;
+			uint32_t instance_offset_reg_idx : 4;
+			uint32_t draw_index_reg_idx : 4;
+		};
+		uint32_t dword02;
+	};
+	union {
+		uint32_t cmd_id;
+		uint32_t dword03;
+	};
+};
+
+static_assert(sizeof(struct rgp_sqtt_marker_event) == 12,
+	      "rgp_sqtt_marker_event doesn't match RGP spec");
+
+/**
+ * Per-dispatch specific marker where workgroup dims are included.
+ */
+struct rgp_sqtt_marker_event_with_dims {
+	struct rgp_sqtt_marker_event event;
+	uint32_t thread_x;
+	uint32_t thread_y;
+	uint32_t thread_z;
+};
+
+static_assert(sizeof(struct rgp_sqtt_marker_event_with_dims) == 24,
+	      "rgp_sqtt_marker_event_with_dims doesn't match RGP spec");
 
 static void
 radv_write_begin_general_api_marker(struct radv_cmd_buffer *cmd_buffer,
@@ -198,6 +278,58 @@ radv_write_end_general_api_marker(struct radv_cmd_buffer *cmd_buffer,
 	marker.identifier = RGP_SQTT_MARKER_IDENTIFIER_GENERAL_API;
 	marker.api_type = api_type;
 	marker.is_end = 1;
+
+	radv_emit_thread_trace_userdata(cs, &marker, sizeof(marker) / 4);
+}
+
+static void
+radv_write_event_marker(struct radv_cmd_buffer *cmd_buffer,
+			enum rgp_sqtt_marker_event_type api_type,
+			uint32_t vertex_offset_user_data,
+			uint32_t instance_offset_user_data,
+			uint32_t draw_index_user_data)
+{
+	struct rgp_sqtt_marker_event marker = {};
+	struct radeon_cmdbuf *cs = cmd_buffer->cs;
+
+	marker.identifier = RGP_SQTT_MARKER_IDENTIFIER_EVENT;
+	marker.api_type = api_type;
+	marker.cmd_id = cmd_buffer->state.num_events++;
+	marker.cb_id = 0;
+
+	if (vertex_offset_user_data == UINT_MAX ||
+	    instance_offset_user_data == UINT_MAX) {
+		vertex_offset_user_data = 0;
+		instance_offset_user_data = 0;
+	}
+
+	if (draw_index_user_data == UINT_MAX)
+		draw_index_user_data = vertex_offset_user_data;
+
+	marker.vertex_offset_reg_idx = vertex_offset_user_data;
+	marker.instance_offset_reg_idx = instance_offset_user_data;
+	marker.draw_index_reg_idx = draw_index_user_data;
+
+	radv_emit_thread_trace_userdata(cs, &marker, sizeof(marker) / 4);
+}
+
+static void
+radv_write_event_with_dims_marker(struct radv_cmd_buffer *cmd_buffer,
+				  enum rgp_sqtt_marker_event_type api_type,
+				  uint32_t x, uint32_t y, uint32_t z)
+{
+	struct rgp_sqtt_marker_event_with_dims marker = {};
+	struct radeon_cmdbuf *cs = cmd_buffer->cs;
+
+	marker.event.identifier = RGP_SQTT_MARKER_IDENTIFIER_EVENT;
+	marker.event.api_type = api_type;
+	marker.event.cmd_id = cmd_buffer->state.num_events++;
+	marker.event.cb_id = 0;
+	marker.event.has_thread_dims = 1;
+
+	marker.thread_x = x;
+	marker.thread_y = y;
+	marker.thread_z = z;
 
 	radv_emit_thread_trace_userdata(cs, &marker, sizeof(marker) / 4);
 }
@@ -245,6 +377,319 @@ radv_describe_end_cmd_buffer(struct radv_cmd_buffer *cmd_buffer)
 	radv_emit_thread_trace_userdata(cs, &marker, sizeof(marker) / 4);
 }
 
+void
+radv_describe_draw(struct radv_cmd_buffer *cmd_buffer)
+{
+	if (likely(!cmd_buffer->device->thread_trace_bo))
+		return;
+
+	radv_write_event_marker(cmd_buffer, cmd_buffer->state.current_event_type,
+				UINT_MAX, UINT_MAX, UINT_MAX);
+}
+
+void
+radv_describe_dispatch(struct radv_cmd_buffer *cmd_buffer, int x, int y, int z)
+{
+	if (likely(!cmd_buffer->device->thread_trace_bo))
+		return;
+
+	radv_write_event_with_dims_marker(cmd_buffer,
+					  cmd_buffer->state.current_event_type,
+					  x, y, z);
+}
+
+#define EVENT_MARKER(cmd_name, args...) \
+	RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer); \
+	radv_write_begin_general_api_marker(cmd_buffer, ApiCmd##cmd_name); \
+	cmd_buffer->state.current_event_type = EventCmd##cmd_name; \
+	radv_Cmd##cmd_name(args); \
+	cmd_buffer->state.current_event_type = EventInternalUnknown; \
+	radv_write_end_general_api_marker(cmd_buffer, ApiCmd##cmd_name);
+
+void sqtt_CmdDraw(
+	VkCommandBuffer                             commandBuffer,
+	uint32_t                                    vertexCount,
+	uint32_t                                    instanceCount,
+	uint32_t                                    firstVertex,
+	uint32_t                                    firstInstance)
+{
+	EVENT_MARKER(Draw, commandBuffer, vertexCount, instanceCount,
+		     firstVertex, firstInstance);
+}
+
+void sqtt_CmdDrawIndexed(
+	VkCommandBuffer                             commandBuffer,
+	uint32_t                                    indexCount,
+	uint32_t                                    instanceCount,
+	uint32_t                                    firstIndex,
+	int32_t                                     vertexOffset,
+	uint32_t                                    firstInstance)
+{
+	EVENT_MARKER(DrawIndexed, commandBuffer, indexCount, instanceCount,
+		     firstIndex, vertexOffset, firstInstance);
+}
+
+void sqtt_CmdDrawIndirect(
+	VkCommandBuffer                             commandBuffer,
+	VkBuffer                                    buffer,
+	VkDeviceSize                                offset,
+	uint32_t                                    drawCount,
+	uint32_t                                    stride)
+{
+	EVENT_MARKER(DrawIndirect, commandBuffer, buffer, offset, drawCount,
+		     stride);
+}
+
+void sqtt_CmdDrawIndexedIndirect(
+	VkCommandBuffer                             commandBuffer,
+	VkBuffer                                    buffer,
+	VkDeviceSize                                offset,
+	uint32_t                                    drawCount,
+	uint32_t                                    stride)
+{
+	EVENT_MARKER(DrawIndexedIndirect, commandBuffer, buffer, offset,
+		     drawCount, stride);
+}
+
+void sqtt_CmdDrawIndirectCount(
+	VkCommandBuffer                             commandBuffer,
+	VkBuffer                                    buffer,
+	VkDeviceSize                                offset,
+	VkBuffer                                    countBuffer,
+	VkDeviceSize                                countBufferOffset,
+	uint32_t                                    maxDrawCount,
+	uint32_t                                    stride)
+{
+	EVENT_MARKER(DrawIndirectCount,commandBuffer, buffer, offset,
+		     countBuffer, countBufferOffset, maxDrawCount, stride);
+}
+
+void sqtt_CmdDrawIndexedIndirectCount(
+	VkCommandBuffer                             commandBuffer,
+	VkBuffer                                    buffer,
+	VkDeviceSize                                offset,
+	VkBuffer                                    countBuffer,
+	VkDeviceSize                                countBufferOffset,
+	uint32_t                                    maxDrawCount,
+	uint32_t                                    stride)
+{
+	EVENT_MARKER(DrawIndexedIndirectCount, commandBuffer, buffer, offset,
+		     countBuffer, countBufferOffset, maxDrawCount, stride);
+}
+
+void sqtt_CmdDispatch(
+	VkCommandBuffer                             commandBuffer,
+	uint32_t                                    x,
+	uint32_t                                    y,
+	uint32_t                                    z)
+{
+	EVENT_MARKER(Dispatch, commandBuffer, x, y, z);
+}
+
+void sqtt_CmdDispatchIndirect(
+	VkCommandBuffer                             commandBuffer,
+	VkBuffer                                    buffer,
+	VkDeviceSize                                offset)
+{
+	EVENT_MARKER(DispatchIndirect, commandBuffer, buffer, offset);
+}
+
+void sqtt_CmdCopyBuffer(
+	VkCommandBuffer                             commandBuffer,
+	VkBuffer                                    srcBuffer,
+	VkBuffer                                    destBuffer,
+	uint32_t                                    regionCount,
+	const VkBufferCopy*                         pRegions)
+{
+	EVENT_MARKER(CopyBuffer, commandBuffer, srcBuffer, destBuffer,
+		     regionCount, pRegions);
+}
+
+void sqtt_CmdFillBuffer(
+	VkCommandBuffer                             commandBuffer,
+	VkBuffer                                    dstBuffer,
+	VkDeviceSize                                dstOffset,
+	VkDeviceSize                                fillSize,
+	uint32_t                                    data)
+{
+	EVENT_MARKER(FillBuffer, commandBuffer, dstBuffer, dstOffset, fillSize,
+		     data);
+}
+
+void sqtt_CmdUpdateBuffer(
+	VkCommandBuffer                             commandBuffer,
+	VkBuffer                                    dstBuffer,
+	VkDeviceSize                                dstOffset,
+	VkDeviceSize                                dataSize,
+	const void*                                 pData)
+{
+	EVENT_MARKER(UpdateBuffer, commandBuffer, dstBuffer, dstOffset,
+		     dataSize, pData);
+}
+
+void sqtt_CmdCopyImage(
+	VkCommandBuffer                             commandBuffer,
+	VkImage                                     srcImage,
+	VkImageLayout                               srcImageLayout,
+	VkImage                                     destImage,
+	VkImageLayout                               destImageLayout,
+	uint32_t                                    regionCount,
+	const VkImageCopy*                          pRegions)
+{
+	EVENT_MARKER(CopyImage, commandBuffer, srcImage, srcImageLayout,
+		     destImage, destImageLayout, regionCount, pRegions);
+}
+
+void sqtt_CmdCopyBufferToImage(
+	VkCommandBuffer                             commandBuffer,
+	VkBuffer                                    srcBuffer,
+	VkImage                                     destImage,
+	VkImageLayout                               destImageLayout,
+	uint32_t                                    regionCount,
+	const VkBufferImageCopy*                    pRegions)
+{
+	EVENT_MARKER(CopyBufferToImage, commandBuffer, srcBuffer, destImage,
+		     destImageLayout, regionCount, pRegions);
+}
+
+void sqtt_CmdCopyImageToBuffer(
+	VkCommandBuffer                             commandBuffer,
+	VkImage                                     srcImage,
+	VkImageLayout                               srcImageLayout,
+	VkBuffer                                    destBuffer,
+	uint32_t                                    regionCount,
+	const VkBufferImageCopy*                    pRegions)
+{
+	EVENT_MARKER(CopyImageToBuffer, commandBuffer, srcImage, srcImageLayout,
+		     destBuffer, regionCount, pRegions);
+}
+
+void sqtt_CmdBlitImage(
+	VkCommandBuffer                             commandBuffer,
+	VkImage                                     srcImage,
+	VkImageLayout                               srcImageLayout,
+	VkImage                                     destImage,
+	VkImageLayout                               destImageLayout,
+	uint32_t                                    regionCount,
+	const VkImageBlit*                          pRegions,
+	VkFilter                                    filter)
+{
+	EVENT_MARKER(BlitImage, commandBuffer, srcImage, srcImageLayout,
+		     destImage, destImageLayout, regionCount, pRegions, filter);
+}
+
+void sqtt_CmdClearColorImage(
+	VkCommandBuffer                             commandBuffer,
+	VkImage                                     image_h,
+	VkImageLayout                               imageLayout,
+	const VkClearColorValue*                    pColor,
+	uint32_t                                    rangeCount,
+	const VkImageSubresourceRange*              pRanges)
+{
+	EVENT_MARKER(ClearColorImage, commandBuffer, image_h, imageLayout,
+		     pColor, rangeCount, pRanges);
+}
+
+void sqtt_CmdClearDepthStencilImage(
+	VkCommandBuffer                             commandBuffer,
+	VkImage                                     image_h,
+	VkImageLayout                               imageLayout,
+	const VkClearDepthStencilValue*             pDepthStencil,
+	uint32_t                                    rangeCount,
+	const VkImageSubresourceRange*              pRanges)
+{
+	EVENT_MARKER(ClearDepthStencilImage, commandBuffer, image_h,
+		     imageLayout, pDepthStencil, rangeCount, pRanges);
+}
+
+void sqtt_CmdClearAttachments(
+	VkCommandBuffer                             commandBuffer,
+	uint32_t                                    attachmentCount,
+	const VkClearAttachment*                    pAttachments,
+	uint32_t                                    rectCount,
+	const VkClearRect*                          pRects)
+{
+	EVENT_MARKER(ClearAttachments, commandBuffer, attachmentCount,
+		     pAttachments, rectCount, pRects);
+}
+
+void sqtt_CmdResolveImage(
+	VkCommandBuffer                             commandBuffer,
+	VkImage                                     src_image_h,
+	VkImageLayout                               src_image_layout,
+	VkImage                                     dest_image_h,
+	VkImageLayout                               dest_image_layout,
+	uint32_t                                    region_count,
+	const VkImageResolve*                       regions)
+{
+	EVENT_MARKER(ResolveImage, commandBuffer, src_image_h, src_image_layout,
+		     dest_image_h, dest_image_layout, region_count, regions);
+}
+
+void sqtt_CmdWaitEvents(VkCommandBuffer commandBuffer,
+			uint32_t eventCount,
+			const VkEvent* pEvents,
+			VkPipelineStageFlags srcStageMask,
+			VkPipelineStageFlags dstStageMask,
+			uint32_t memoryBarrierCount,
+			const VkMemoryBarrier* pMemoryBarriers,
+			uint32_t bufferMemoryBarrierCount,
+			const VkBufferMemoryBarrier* pBufferMemoryBarriers,
+			uint32_t imageMemoryBarrierCount,
+			const VkImageMemoryBarrier* pImageMemoryBarriers)
+{
+	EVENT_MARKER(WaitEvents, commandBuffer, eventCount, pEvents,
+		     srcStageMask, dstStageMask, memoryBarrierCount,
+		     pMemoryBarriers, bufferMemoryBarrierCount,
+		     pBufferMemoryBarriers, imageMemoryBarrierCount,
+		     pImageMemoryBarriers);
+}
+
+void sqtt_CmdPipelineBarrier(
+	VkCommandBuffer                             commandBuffer,
+	VkPipelineStageFlags                        srcStageMask,
+	VkPipelineStageFlags                        destStageMask,
+	VkBool32                                    byRegion,
+	uint32_t                                    memoryBarrierCount,
+	const VkMemoryBarrier*                      pMemoryBarriers,
+	uint32_t                                    bufferMemoryBarrierCount,
+	const VkBufferMemoryBarrier*                pBufferMemoryBarriers,
+	uint32_t                                    imageMemoryBarrierCount,
+	const VkImageMemoryBarrier*                 pImageMemoryBarriers)
+{
+	EVENT_MARKER(PipelineBarrier, commandBuffer, srcStageMask,
+		     destStageMask, byRegion, memoryBarrierCount,
+		     pMemoryBarriers, bufferMemoryBarrierCount,
+		     pBufferMemoryBarriers, imageMemoryBarrierCount,
+		     pImageMemoryBarriers);
+}
+
+void sqtt_CmdResetQueryPool(
+	VkCommandBuffer                             commandBuffer,
+	VkQueryPool                                 queryPool,
+	uint32_t                                    firstQuery,
+	uint32_t                                    queryCount)
+{
+	EVENT_MARKER(ResetQueryPool, commandBuffer, queryPool, firstQuery,
+		     queryCount);
+}
+
+void sqtt_CmdCopyQueryPoolResults(
+	VkCommandBuffer                             commandBuffer,
+	VkQueryPool                                 queryPool,
+	uint32_t                                    firstQuery,
+	uint32_t                                    queryCount,
+	VkBuffer                                    dstBuffer,
+	VkDeviceSize                                dstOffset,
+	VkDeviceSize                                stride,
+	VkQueryResultFlags                          flags)
+{
+	EVENT_MARKER(CopyQueryPoolResults, commandBuffer, queryPool, firstQuery,
+				     queryCount, dstBuffer, dstOffset, stride,
+				     flags);
+}
+
+#undef EVENT_MARKER
 #define API_MARKER(cmd_name, args...) \
 	RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer); \
 	radv_write_begin_general_api_marker(cmd_buffer, ApiCmd##cmd_name); \
