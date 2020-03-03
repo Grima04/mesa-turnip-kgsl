@@ -255,6 +255,71 @@ struct rgp_sqtt_marker_event_with_dims {
 static_assert(sizeof(struct rgp_sqtt_marker_event_with_dims) == 24,
 	      "rgp_sqtt_marker_event_with_dims doesn't match RGP spec");
 
+/**
+ * "Barrier Start" RGP SQTT instrumentation marker (Table 5)
+ */
+struct rgp_sqtt_marker_barrier_start {
+	union {
+		struct {
+			uint32_t identifier : 4;
+			uint32_t ext_dwords : 3;
+			uint32_t cb_id : 20;
+			uint32_t reserved : 5;
+		};
+		uint32_t dword01;
+	};
+	union {
+		struct {
+			uint32_t driver_reason : 31;
+			uint32_t internal : 1;
+		};
+		uint32_t dword02;
+	};
+};
+
+static_assert(sizeof(struct rgp_sqtt_marker_barrier_start) == 8,
+	      "rgp_sqtt_marker_barrier_start doesn't match RGP spec");
+
+/**
+ * "Barrier End" RGP SQTT instrumentation marker (Table 6)
+ */
+struct rgp_sqtt_marker_barrier_end {
+	union {
+		struct {
+			uint32_t identifier : 4;
+			uint32_t ext_dwords : 3;
+			uint32_t cb_id : 20;
+			uint32_t wait_on_eop_ts : 1;
+			uint32_t vs_partial_flush : 1;
+			uint32_t ps_partial_flush : 1;
+			uint32_t cs_partial_flush : 1;
+			uint32_t pfp_sync_me : 1;
+		};
+		uint32_t dword01;
+	};
+	union {
+		struct {
+			uint32_t sync_cp_dma : 1;
+			uint32_t inval_ccp : 1;
+			uint32_t inval_sqI : 1;
+			uint32_t inval_sqK : 1;
+			uint32_t flush_tcc : 1;
+			uint32_t inval_tcc : 1;
+			uint32_t flush_cb : 1;
+			uint32_t inval_cb : 1;
+			uint32_t flush_db : 1;
+			uint32_t inval_db : 1;
+			uint32_t num_layout_transitions : 16;
+			uint32_t inval_gl1 : 1;
+			uint32_t reserved : 5;
+		};
+		uint32_t dword02;
+	};
+};
+
+static_assert(sizeof(struct rgp_sqtt_marker_barrier_end) == 8,
+	      "rgp_sqtt_marker_barrier_end doesn't match RGP spec");
+
 static void
 radv_write_begin_general_api_marker(struct radv_cmd_buffer *cmd_buffer,
 				    enum rgp_sqtt_marker_general_api_type api_type)
@@ -410,6 +475,40 @@ void
 radv_describe_end_render_pass_clear(struct radv_cmd_buffer *cmd_buffer)
 {
 	cmd_buffer->state.current_event_type = EventInternalUnknown;
+}
+
+void
+radv_describe_barrier_start(struct radv_cmd_buffer *cmd_buffer,
+			   enum rgp_barrier_reason reason)
+{
+	struct rgp_sqtt_marker_barrier_start marker = {};
+	struct radeon_cmdbuf *cs = cmd_buffer->cs;
+
+	if (likely(!cmd_buffer->device->thread_trace_bo))
+		return;
+
+	marker.identifier = RGP_SQTT_MARKER_IDENTIFIER_BARRIER_START;
+	marker.cb_id = 0;
+	marker.dword02 = reason;
+
+	radv_emit_thread_trace_userdata(cs, &marker, sizeof(marker) / 4);
+}
+
+void
+radv_describe_barrier_end(struct radv_cmd_buffer *cmd_buffer)
+{
+	struct rgp_sqtt_marker_barrier_end marker = {};
+	struct radeon_cmdbuf *cs = cmd_buffer->cs;
+
+	if (likely(!cmd_buffer->device->thread_trace_bo))
+		return;
+
+	marker.identifier = RGP_SQTT_MARKER_IDENTIFIER_BARRIER_END;
+	marker.cb_id = 0;
+
+	/* TODO: fill pipeline stalls, cache flushes, etc */
+
+	radv_emit_thread_trace_userdata(cs, &marker, sizeof(marker) / 4);
 }
 
 #define EVENT_MARKER(cmd_name, args...) \

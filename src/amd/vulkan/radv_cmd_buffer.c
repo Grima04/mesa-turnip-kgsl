@@ -5618,6 +5618,7 @@ static void radv_handle_image_transition(struct radv_cmd_buffer *cmd_buffer,
 }
 
 struct radv_barrier_info {
+	enum rgp_barrier_reason reason;
 	uint32_t eventCount;
 	const VkEvent *pEvents;
 	VkPipelineStageFlags srcStageMask;
@@ -5637,6 +5638,8 @@ radv_barrier(struct radv_cmd_buffer *cmd_buffer,
 	struct radeon_cmdbuf *cs = cmd_buffer->cs;
 	enum radv_cmd_flush_bits src_flush_bits = 0;
 	enum radv_cmd_flush_bits dst_flush_bits = 0;
+
+	radv_describe_barrier_start(cmd_buffer, info->reason);
 
 	for (unsigned i = 0; i < info->eventCount; ++i) {
 		RADV_FROM_HANDLE(radv_event, event, info->pEvents[i]);
@@ -5725,6 +5728,8 @@ radv_barrier(struct radv_cmd_buffer *cmd_buffer,
 		si_cp_dma_wait_for_idle(cmd_buffer);
 
 	cmd_buffer->state.flush_bits |= dst_flush_bits;
+
+	radv_describe_barrier_end(cmd_buffer);
 }
 
 void radv_CmdPipelineBarrier(
@@ -5742,6 +5747,7 @@ void radv_CmdPipelineBarrier(
 	RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
 	struct radv_barrier_info info;
 
+	info.reason = RGP_BARRIER_EXTERNAL_CMD_PIPELINE_BARRIER;
 	info.eventCount = 0;
 	info.pEvents = NULL;
 	info.srcStageMask = srcStageMask;
@@ -5853,6 +5859,7 @@ void radv_CmdWaitEvents(VkCommandBuffer commandBuffer,
 	RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
 	struct radv_barrier_info info;
 
+	info.reason = RGP_BARRIER_EXTERNAL_CMD_WAIT_EVENTS;
 	info.eventCount = eventCount;
 	info.pEvents = pEvents;
 	info.srcStageMask = 0;

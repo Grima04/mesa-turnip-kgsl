@@ -2424,6 +2424,30 @@ int radv_dump_thread_trace(struct radv_device *device,
 			   const struct radv_thread_trace *trace);
 
 /* radv_sqtt_layer_.c */
+/**
+ * Value for the reason field of an RGP barrier start marker originating from
+ * the Vulkan client (does not include PAL-defined values). (Table 15)
+ */
+enum rgp_barrier_reason {
+	RGP_BARRIER_UNKNOWN_REASON = 0xFFFFFFFF,
+
+	/* External app-generated barrier reasons, i.e. API synchronization
+	 * commands Range of valid values: [0x00000001 ... 0x7FFFFFFF].
+	 */
+	RGP_BARRIER_EXTERNAL_CMD_PIPELINE_BARRIER = 0x00000001,
+	RGP_BARRIER_EXTERNAL_RENDER_PASS_SYNC	  = 0x00000002,
+	RGP_BARRIER_EXTERNAL_CMD_WAIT_EVENTS	  = 0x00000003,
+
+	/* Internal barrier reasons, i.e. implicit synchronization inserted by
+	 * the Vulkan driver Range of valid values: [0xC0000000 ... 0xFFFFFFFE].
+	 */
+	RGP_BARRIER_INTERNAL_BASE                             = 0xC0000000,
+	RGP_BARRIER_INTERNAL_PRE_RESET_QUERY_POOL_SYNC        = RGP_BARRIER_INTERNAL_BASE + 0,
+	RGP_BARRIER_INTERNAL_POST_RESET_QUERY_POOL_SYNC       = RGP_BARRIER_INTERNAL_BASE + 1,
+	RGP_BARRIER_INTERNAL_GPU_EVENT_RECYCLE_STALL	      = RGP_BARRIER_INTERNAL_BASE + 2,
+	RGP_BARRIER_INTERNAL_PRE_COPY_QUERY_POOL_RESULTS_SYNC = RGP_BARRIER_INTERNAL_BASE + 3
+};
+
 void radv_describe_begin_cmd_buffer(struct radv_cmd_buffer *cmd_buffer);
 void radv_describe_end_cmd_buffer(struct radv_cmd_buffer *cmd_buffer);
 void radv_describe_draw(struct radv_cmd_buffer *cmd_buffer);
@@ -2431,6 +2455,9 @@ void radv_describe_dispatch(struct radv_cmd_buffer *cmd_buffer, int x, int y, in
 void radv_describe_begin_render_pass_clear(struct radv_cmd_buffer *cmd_buffer,
 					   VkImageAspectFlagBits aspects);
 void radv_describe_end_render_pass_clear(struct radv_cmd_buffer *cmd_buffer);
+void radv_describe_barrier_start(struct radv_cmd_buffer *cmd_buffer,
+				 enum rgp_barrier_reason reason);
+void radv_describe_barrier_end(struct radv_cmd_buffer *cmd_buffer);
 
 struct radeon_winsys_sem;
 
