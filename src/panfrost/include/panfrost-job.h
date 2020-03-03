@@ -601,6 +601,11 @@ struct mali_shader_meta {
                          * - R61 : gl_SampleMaskIn and gl_SampleID, used by
                          *   varying interpolation.
                          * - R62 : unknown (bit always unset).
+                         *
+                         * Later GPUs (starting with Mali-G52?) support
+                         * preloading float varyings into r0-r7. This is
+                         * indicated by setting 0x40. There is no distinction
+                         * here between 1 varying and 2.
                          */
                         u32 preload_regs : 8;
                         /* In units of 8 bytes or 64 bits, since the
