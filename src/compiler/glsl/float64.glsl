@@ -165,7 +165,7 @@ __fne64(uint64_t a, uint64_t b)
 uint
 __extractFloat64Sign(uint64_t a)
 {
-   return unpackUint2x32(a).y >> 31;
+   return unpackUint2x32(a).y & 0x80000000u;
 }
 
 /* Returns true if the 64-bit value formed by concatenating `a0' and `a1' is less
@@ -376,7 +376,7 @@ __packFloat64(uint zSign, int zExp, uint zFrac0, uint zFrac1)
 {
    uvec2 z;
 
-   z.y = (zSign << 31) + (uint(zExp) << 20) + zFrac0;
+   z.y = zSign + (uint(zExp) << 20) + zFrac0;
    z.x = zFrac1;
    return packUint2x32(z);
 }
@@ -682,7 +682,7 @@ __fadd64(uint64_t a, uint64_t b)
       if (expDiff < 0) {
          if (bExp == 0x7FF) {
             bool propagate = (bFracHi | bFracLo) != 0u;
-            return mix(__packFloat64(aSign ^ 1u, 0x7ff, 0u, 0u), __propagateFloat64NaN(a, b), propagate);
+            return mix(__packFloat64(aSign ^ 0x80000000u, 0x7ff, 0u, 0u), __propagateFloat64NaN(a, b), propagate);
          }
          expDiff = mix(expDiff, expDiff + 1, aExp == 0);
          aFracHi = mix(aFracHi | 0x40000000u, aFracHi, aExp == 0);
@@ -690,7 +690,7 @@ __fadd64(uint64_t a, uint64_t b)
          bFracHi |= 0x40000000u;
          __sub64(bFracHi, bFracLo, aFracHi, aFracLo, zFrac0, zFrac1);
          zExp = bExp;
-         aSign ^= 1u;
+         aSign ^= 0x80000000u;
          --zExp;
          return __normalizeRoundAndPackFloat64(aSign, zExp - 10, zFrac0, zFrac1);
       }
@@ -721,8 +721,8 @@ __fadd64(uint64_t a, uint64_t b)
           zexp_normal = true;
       }
       zExp = mix(bExp, aExp, blta);
-      aSign = mix(aSign ^ 1u, aSign, blta);
-      uint64_t retval_0 = __packFloat64(uint(FLOAT_ROUNDING_MODE == FLOAT_ROUND_DOWN), 0, 0u, 0u);
+      aSign = mix(aSign ^ 0x80000000u, aSign, blta);
+      uint64_t retval_0 = __packFloat64(uint(FLOAT_ROUNDING_MODE == FLOAT_ROUND_DOWN) << 31, 0, 0u, 0u);
       uint64_t retval_1 = __normalizeRoundAndPackFloat64(aSign, zExp - 11, zFrac0, zFrac1);
       return mix(retval_0, retval_1, zexp_normal);
    }
@@ -1021,7 +1021,7 @@ __fp32_to_uint64(float f)
    uint a = floatBitsToUint(f);
    uint aFrac = a & 0x007FFFFFu;
    int aExp = int((a>>23) & 0xFFu);
-   uint aSign = a>>31;
+   uint aSign = a & 0x80000000u;
    uint zFrac0 = 0u;
    uint zFrac1 = 0u;
    uint zFrac2 = 0u;
@@ -1050,7 +1050,7 @@ __fp32_to_int64(float f)
    uint a = floatBitsToUint(f);
    uint aFrac = a & 0x007FFFFFu;
    int aExp = int((a>>23) & 0xFFu);
-   uint aSign = a>>31;
+   uint aSign = a & 0x80000000u;
    uint zFrac0 = 0u;
    uint zFrac1 = 0u;
    uint zFrac2 = 0u;
@@ -1084,10 +1084,10 @@ __int64_to_fp64(int64_t a)
    uint64_t absA = mix(uint64_t(a), uint64_t(-a), a < 0);
    uint aFracHi = __extractFloat64FracHi(absA);
    uvec2 aFrac = unpackUint2x32(absA);
-   uint zSign = uint(a < 0);
+   uint zSign = uint(unpackInt2x32(a).y) & 0x80000000u;
 
    if ((aFracHi & 0x80000000u) != 0u) {
-      return mix(0ul, __packFloat64(1, 0x434, 0u, 0u), a < 0);
+      return mix(0ul, __packFloat64(0x80000000u, 0x434, 0u, 0u), a < 0);
    }
 
    return __normalizeRoundAndPackFloat64(zSign, 0x432, aFrac.y, aFrac.x);
@@ -1145,7 +1145,7 @@ __int_to_fp64(int a)
    uint zFrac1 = 0u;
    if (a==0)
       return __packFloat64(0u, 0, 0u, 0u);
-   uint zSign = uint(a < 0);
+   uint zSign = uint(a) & 0x80000000u;
    uint absA = mix(uint(a), uint(-a), a < 0);
    int shiftCount = __countLeadingZeros32(absA) - 11;
    if (0 <= shiftCount) {
@@ -1181,7 +1181,7 @@ __bool_to_fp64(bool a)
 float
 __packFloat32(uint zSign, int zExp, uint zFrac)
 {
-   return uintBitsToFloat((zSign<<31) + (uint(zExp)<<23) + zFrac);
+   return uintBitsToFloat(zSign + (uint(zExp)<<23) + zFrac);
 }
 
 /* Takes an abstract floating-point value having sign `zSign', exponent `zExp',
@@ -1261,7 +1261,7 @@ __fp64_to_fp32(uint64_t __a)
    uint aSign = __extractFloat64Sign(__a);
    if (aExp == 0x7FF) {
       __shortShift64Left(a.y, a.x, 12, a.y, a.x);
-      float rval = uintBitsToFloat((aSign<<31) | 0x7FC00000u | (a.y>>9));
+      float rval = uintBitsToFloat(aSign | 0x7FC00000u | (a.y>>9));
       rval = mix(__packFloat32(aSign, 0xFF, 0u), rval, (aFracHi | aFracLo) != 0u);
       return rval;
    }
@@ -1289,7 +1289,7 @@ __uint64_to_fp32(uint64_t __a)
 float
 __int64_to_fp32(int64_t __a)
 {
-   uint aSign = uint(__a < 0);
+   uint aSign = uint(unpackInt2x32(__a).y) & 0x80000000u;
    uint64_t absA = mix(uint64_t(__a), uint64_t(-__a), __a < 0);
    uvec2 aFrac = unpackUint2x32(absA);
    int shiftCount = mix(__countLeadingZeros32(aFrac.y) - 33,
@@ -1313,7 +1313,7 @@ __fp32_to_fp64(float f)
    uint a = floatBitsToUint(f);
    uint aFrac = a & 0x007FFFFFu;
    int aExp = int((a>>23) & 0xFFu);
-   uint aSign = a>>31;
+   uint aSign = a & 0x80000000u;
    uint zFrac0 = 0u;
    uint zFrac1 = 0u;
 
@@ -1322,7 +1322,7 @@ __fp32_to_fp64(float f)
          uint nanLo = 0u;
          uint nanHi = a<<9;
          __shift64Right(nanHi, nanLo, 12, nanHi, nanLo);
-         nanHi |= ((aSign<<31) | 0x7FF80000u);
+         nanHi |= aSign | 0x7FF80000u;
          return packUint2x32(uvec2(nanLo, nanHi));
       }
       return __packFloat64(aSign, 0x7FF, 0u, 0u);
