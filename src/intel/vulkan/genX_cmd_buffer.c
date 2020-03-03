@@ -2467,36 +2467,15 @@ anv_descriptor_set_address(struct anv_cmd_buffer *cmd_buffer,
    }
 }
 
-static struct anv_cmd_pipeline_state *
-pipe_state_for_stage(struct anv_cmd_buffer *cmd_buffer,
-                     gl_shader_stage stage)
-{
-   switch (stage) {
-   case MESA_SHADER_COMPUTE:
-      return &cmd_buffer->state.compute.base;
-
-   case MESA_SHADER_VERTEX:
-   case MESA_SHADER_TESS_CTRL:
-   case MESA_SHADER_TESS_EVAL:
-   case MESA_SHADER_GEOMETRY:
-   case MESA_SHADER_FRAGMENT:
-      return &cmd_buffer->state.gfx.base;
-
-   default:
-      unreachable("invalid stage");
-   }
-}
-
 static VkResult
 emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
+                   struct anv_cmd_pipeline_state *pipe_state,
                    gl_shader_stage stage,
                    struct anv_state *bt_state)
 {
    struct anv_subpass *subpass = cmd_buffer->state.subpass;
    uint32_t state_offset;
 
-   struct anv_cmd_pipeline_state *pipe_state =
-      pipe_state_for_stage(cmd_buffer, stage);
    struct anv_pipeline *pipeline = pipe_state->pipeline;
 
    if (!anv_pipeline_has_stage(pipeline, stage)) {
@@ -2746,11 +2725,10 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
 
 static VkResult
 emit_samplers(struct anv_cmd_buffer *cmd_buffer,
+              struct anv_cmd_pipeline_state *pipe_state,
               gl_shader_stage stage,
               struct anv_state *state)
 {
-   struct anv_cmd_pipeline_state *pipe_state =
-      pipe_state_for_stage(cmd_buffer, stage);
    struct anv_pipeline *pipeline = pipe_state->pipeline;
 
    if (!anv_pipeline_has_stage(pipeline, stage)) {
@@ -2796,17 +2774,18 @@ emit_samplers(struct anv_cmd_buffer *cmd_buffer,
 
 static uint32_t
 flush_descriptor_sets(struct anv_cmd_buffer *cmd_buffer,
-                      struct anv_pipeline *pipeline)
+                      struct anv_cmd_pipeline_state *pipe_state)
 {
    VkShaderStageFlags dirty = cmd_buffer->state.descriptors_dirty &
-                              pipeline->active_stages;
+                              pipe_state->pipeline->active_stages;
 
    VkResult result = VK_SUCCESS;
    anv_foreach_stage(s, dirty) {
-      result = emit_samplers(cmd_buffer, s, &cmd_buffer->state.samplers[s]);
+      result = emit_samplers(cmd_buffer, pipe_state, s,
+                             &cmd_buffer->state.samplers[s]);
       if (result != VK_SUCCESS)
          break;
-      result = emit_binding_table(cmd_buffer, s,
+      result = emit_binding_table(cmd_buffer, pipe_state, s,
                                   &cmd_buffer->state.binding_tables[s]);
       if (result != VK_SUCCESS)
          break;
@@ -2825,14 +2804,15 @@ flush_descriptor_sets(struct anv_cmd_buffer *cmd_buffer,
       genX(cmd_buffer_emit_state_base_address)(cmd_buffer);
 
       /* Re-emit all active binding tables */
-      dirty |= pipeline->active_stages;
+      dirty |= pipe_state->pipeline->active_stages;
       anv_foreach_stage(s, dirty) {
-         result = emit_samplers(cmd_buffer, s, &cmd_buffer->state.samplers[s]);
+         result = emit_samplers(cmd_buffer, pipe_state, s,
+                                &cmd_buffer->state.samplers[s]);
          if (result != VK_SUCCESS) {
             anv_batch_set_error(&cmd_buffer->batch, result);
             return 0;
          }
-         result = emit_binding_table(cmd_buffer, s,
+         result = emit_binding_table(cmd_buffer, pipe_state, s,
                                      &cmd_buffer->state.binding_tables[s]);
          if (result != VK_SUCCESS) {
             anv_batch_set_error(&cmd_buffer->batch, result);
@@ -3369,7 +3349,7 @@ genX(cmd_buffer_flush_state)(struct anv_cmd_buffer *cmd_buffer)
     */
    uint32_t dirty = 0;
    if (cmd_buffer->state.descriptors_dirty)
-      dirty = flush_descriptor_sets(cmd_buffer, pipeline);
+      dirty = flush_descriptor_sets(cmd_buffer, &cmd_buffer->state.gfx.base);
 
    if (dirty || cmd_buffer->state.push_constants_dirty) {
       /* Because we're pushing UBOs, we have to push whenever either
@@ -4159,7 +4139,7 @@ genX(cmd_buffer_flush_compute_state)(struct anv_cmd_buffer *cmd_buffer)
 
    if ((cmd_buffer->state.descriptors_dirty & VK_SHADER_STAGE_COMPUTE_BIT) ||
        cmd_buffer->state.compute.pipeline_dirty) {
-      flush_descriptor_sets(cmd_buffer, pipeline);
+      flush_descriptor_sets(cmd_buffer, &cmd_buffer->state.compute.base);
 
       uint32_t iface_desc_data_dw[GENX(INTERFACE_DESCRIPTOR_DATA_length)];
       struct GENX(INTERFACE_DESCRIPTOR_DATA) desc = {
