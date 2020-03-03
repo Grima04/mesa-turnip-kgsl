@@ -537,9 +537,7 @@ __roundAndPackInt64(uint zSign, uint zFrac0, uint zFrac1, uint zFrac2)
 int
 __countLeadingZeros32(uint a)
 {
-   int shiftCount;
-   shiftCount = mix(31 - findMSB(a), 32, a == 0u);
-   return shiftCount;
+   return 31 - findMSB(a);
 }
 
 /* Takes an abstract floating-point value having sign `zSign', exponent `zExp',
