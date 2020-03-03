@@ -1830,6 +1830,7 @@ anv_pipeline_init(struct anv_pipeline *pipeline,
       alloc = &device->alloc;
 
    pipeline->device = device;
+   pipeline->type = ANV_PIPELINE_GRAPHICS;
 
    ANV_FROM_HANDLE(anv_render_pass, render_pass, pCreateInfo->renderPass);
    assert(pCreateInfo->subpass < render_pass->subpass_count);

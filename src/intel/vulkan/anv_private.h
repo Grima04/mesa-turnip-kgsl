@@ -3157,6 +3157,11 @@ struct anv_pipeline_executable {
    char *disasm;
 };
 
+enum anv_pipeline_type {
+   ANV_PIPELINE_GRAPHICS,
+   ANV_PIPELINE_COMPUTE,
+};
+
 struct anv_pipeline {
    struct anv_device *                          device;
    struct anv_batch                             batch;
@@ -3167,6 +3172,7 @@ struct anv_pipeline {
 
    void *                                       mem_ctx;
 
+   enum anv_pipeline_type                       type;
    VkPipelineCreateFlags                        flags;
    struct anv_subpass *                         subpass;
 

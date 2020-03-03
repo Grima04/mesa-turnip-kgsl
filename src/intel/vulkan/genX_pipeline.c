@@ -2231,6 +2231,7 @@ compute_pipeline_create(
       return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
 
    pipeline->device = device;
+   pipeline->type = ANV_PIPELINE_COMPUTE;
 
    pipeline->blend_state.map = NULL;
 
