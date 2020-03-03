@@ -686,6 +686,14 @@ arm64_a630_gles3:
   variables:
     DEQP_VER: gles3
 
+arm64_a306_gles2:
+  extends: arm64_a630_gles2
+  variables:
+    DEQP_EXPECTED_FAILS: deqp-freedreno-a307-fails.txt
+    DEQP_SKIPS: deqp-default-skips.txt
+  tags:
+    - db410c
+
 # RADV CI
 .test-radv:
   variables:

@@ -140,7 +140,7 @@ lima-mali450-test:arm64:
   tags:
     - lava-meson-gxl-s905x-libretech-cc
 
-freedreno-a307-gles2:
+.freedreno-a307-gles2:
   extends: .lava-test:arm64
   variables:
     DEVICE_TYPE: apq8016-sbc
@@ -153,6 +153,6 @@ freedreno-a307-gles2:
 
 .freedreno-a307-gles3:
   parallel: 6
-  extends: freedreno-a307-gles2
+  extends: .freedreno-a307-gles2
   variables:
     DEQP_VERSION: gles3
