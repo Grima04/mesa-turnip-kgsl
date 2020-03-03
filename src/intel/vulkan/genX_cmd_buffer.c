@@ -2759,23 +2759,33 @@ emit_samplers(struct anv_cmd_buffer *cmd_buffer,
 
 static uint32_t
 flush_descriptor_sets(struct anv_cmd_buffer *cmd_buffer,
-                      struct anv_cmd_pipeline_state *pipe_state)
+                      struct anv_cmd_pipeline_state *pipe_state,
+                      struct anv_shader_bin **shaders,
+                      uint32_t num_shaders)
 {
-   VkShaderStageFlags dirty = cmd_buffer->state.descriptors_dirty &
-                              pipe_state->pipeline->active_stages;
+   const VkShaderStageFlags dirty = cmd_buffer->state.descriptors_dirty;
+   VkShaderStageFlags flushed = 0;
 
    VkResult result = VK_SUCCESS;
-   anv_foreach_stage(s, dirty) {
-      result = emit_samplers(cmd_buffer, pipe_state,
-                             pipe_state->pipeline->shaders[s],
-                             &cmd_buffer->state.samplers[s]);
+   for (uint32_t i = 0; i < num_shaders; i++) {
+      if (!shaders[i])
+         continue;
+
+      gl_shader_stage stage = shaders[i]->stage;
+      VkShaderStageFlags vk_stage = mesa_to_vk_shader_stage(stage);
+      if ((vk_stage & dirty) == 0)
+         continue;
+
+      result = emit_samplers(cmd_buffer, pipe_state, shaders[i],
+                             &cmd_buffer->state.samplers[stage]);
       if (result != VK_SUCCESS)
          break;
-      result = emit_binding_table(cmd_buffer, pipe_state,
-                                  pipe_state->pipeline->shaders[s],
-                                  &cmd_buffer->state.binding_tables[s]);
+      result = emit_binding_table(cmd_buffer, pipe_state, shaders[i],
+                                  &cmd_buffer->state.binding_tables[stage]);
       if (result != VK_SUCCESS)
          break;
+
+      flushed |= vk_stage;
    }
 
    if (result != VK_SUCCESS) {
@@ -2791,28 +2801,34 @@ flush_descriptor_sets(struct anv_cmd_buffer *cmd_buffer,
       genX(cmd_buffer_emit_state_base_address)(cmd_buffer);
 
       /* Re-emit all active binding tables */
-      dirty |= pipe_state->pipeline->active_stages;
-      anv_foreach_stage(s, dirty) {
-         result = emit_samplers(cmd_buffer, pipe_state,
-                                pipe_state->pipeline->shaders[s],
-                                &cmd_buffer->state.samplers[s]);
+      flushed = 0;
+
+      for (uint32_t i = 0; i < num_shaders; i++) {
+         if (!shaders[i])
+            continue;
+
+         gl_shader_stage stage = shaders[i]->stage;
+
+         result = emit_samplers(cmd_buffer, pipe_state, shaders[i],
+                                &cmd_buffer->state.samplers[stage]);
          if (result != VK_SUCCESS) {
             anv_batch_set_error(&cmd_buffer->batch, result);
             return 0;
          }
-         result = emit_binding_table(cmd_buffer, pipe_state,
-                                     pipe_state->pipeline->shaders[s],
-                                     &cmd_buffer->state.binding_tables[s]);
+         result = emit_binding_table(cmd_buffer, pipe_state, shaders[i],
+                                     &cmd_buffer->state.binding_tables[stage]);
          if (result != VK_SUCCESS) {
             anv_batch_set_error(&cmd_buffer->batch, result);
             return 0;
          }
+
+         flushed |= mesa_to_vk_shader_stage(stage);
       }
    }
 
-   cmd_buffer->state.descriptors_dirty &= ~dirty;
+   cmd_buffer->state.descriptors_dirty &= ~flushed;
 
-   return dirty;
+   return flushed;
 }
 
 static void
@@ -3337,8 +3353,12 @@ genX(cmd_buffer_flush_state)(struct anv_cmd_buffer *cmd_buffer)
     * 3DSTATE_BINDING_TABLE_POINTER_* for the push constants to take effect.
     */
    uint32_t dirty = 0;
-   if (cmd_buffer->state.descriptors_dirty)
-      dirty = flush_descriptor_sets(cmd_buffer, &cmd_buffer->state.gfx.base);
+   if (cmd_buffer->state.descriptors_dirty) {
+      dirty = flush_descriptor_sets(cmd_buffer,
+                                    &cmd_buffer->state.gfx.base,
+                                    pipeline->shaders,
+                                    ARRAY_SIZE(pipeline->shaders));
+   }
 
    if (dirty || cmd_buffer->state.push_constants_dirty) {
       /* Because we're pushing UBOs, we have to push whenever either
@@ -4128,7 +4148,9 @@ genX(cmd_buffer_flush_compute_state)(struct anv_cmd_buffer *cmd_buffer)
 
    if ((cmd_buffer->state.descriptors_dirty & VK_SHADER_STAGE_COMPUTE_BIT) ||
        cmd_buffer->state.compute.pipeline_dirty) {
-      flush_descriptor_sets(cmd_buffer, &cmd_buffer->state.compute.base);
+      flush_descriptor_sets(cmd_buffer,
+                            &cmd_buffer->state.compute.base,
+                            &pipeline->shaders[MESA_SHADER_COMPUTE], 1);
 
       uint32_t iface_desc_data_dw[GENX(INTERFACE_DESCRIPTOR_DATA_length)];
       struct GENX(INTERFACE_DESCRIPTOR_DATA) desc = {
