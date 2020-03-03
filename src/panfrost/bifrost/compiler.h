@@ -128,6 +128,37 @@ struct bi_load_vary {
         bool flat;
 };
 
+/* BI_BRANCH encoding the details of the branch itself as well as a pointer to
+ * the target. We forward declare bi_block since this is mildly circular (not
+ * strictly, but this order of the file makes more sense I think)
+ *
+ * We define our own enum of conditions since the conditions in the hardware
+ * packed in crazy ways that would make manipulation unweildly (meaning changes
+ * based on port swapping, etc), so we defer dealing with that until emit time.
+ * Likewise, we expose NIR types instead of the crazy branch types, although
+ * the restrictions do eventually apply of course. */
+
+struct bi_block;
+
+enum bi_cond {
+        BI_COND_ALWAYS,
+        BI_COND_LT,
+        BI_COND_LE,
+        BI_COND_GE,
+        BI_COND_GT,
+        BI_COND_EQ,
+        BI_COND_NE,
+};
+
+struct bi_branch {
+        /* Types are specified in src_types and must be compatible (either both
+         * int, or both float, 16/32, and same size or 32/16 if float. Types
+         * ignored if BI_COND_ALWAYS is set for an unconditional branch. */
+
+        enum bi_cond cond;
+        struct bi_block *target;
+};
+
 /* Opcodes within a class */
 enum bi_minmax_op {
         BI_MINMAX_MIN,
@@ -202,6 +233,7 @@ typedef struct {
                 enum bifrost_minmax_mode minmax;
                 struct bi_load load;
                 struct bi_load_vary load_vary;
+                struct bi_branch branch;
         };
 } bi_instruction;
 
