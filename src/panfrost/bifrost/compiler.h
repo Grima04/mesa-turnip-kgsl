@@ -373,4 +373,63 @@ bir_dest_index(nir_dest *dst)
         }
 }
 
+/* Iterators for Bifrost IR */
+
+#define bi_foreach_block(ctx, v) \
+        list_for_each_entry(bi_block, v, &ctx->blocks, link)
+
+#define bi_foreach_block_from(ctx, from, v) \
+        list_for_each_entry_from(bi_block, v, from, &ctx->blocks, link)
+
+#define bi_foreach_instr_in_block(block, v) \
+        list_for_each_entry(bi_instruction, v, &block->instructions, link)
+
+#define bi_foreach_instr_in_block_rev(block, v) \
+        list_for_each_entry_rev(bi_instruction, v, &block->instructions, link)
+
+#define bi_foreach_instr_in_block_safe(block, v) \
+        list_for_each_entry_safe(bi_instruction, v, &block->instructions, link)
+
+#define bi_foreach_instr_in_block_safe_rev(block, v) \
+        list_for_each_entry_safe_rev(bi_instruction, v, &block->instructions, link)
+
+#define bi_foreach_instr_in_block_from(block, v, from) \
+        list_for_each_entry_from(bi_instruction, v, from, &block->instructions, link)
+
+#define bi_foreach_instr_in_block_from_rev(block, v, from) \
+        list_for_each_entry_from_rev(bi_instruction, v, from, &block->instructions, link)
+
+#define bi_foreach_clause_in_block(block, v) \
+        list_for_each_entry(bi_clause, v, &block->clauses, link)
+
+#define bi_foreach_instr_global(ctx, v) \
+        bi_foreach_block(ctx, v_block) \
+                bi_foreach_instr_in_block(v_block, v)
+
+#define bi_foreach_instr_global_safe(ctx, v) \
+        bi_foreach_block(ctx, v_block) \
+                bi_foreach_instr_in_block_safe(v_block, v)
+
+#define bi_foreach_successor(blk, v) \
+        bi_block *v; \
+        bi_block **_v; \
+        for (_v = &blk->successors[0], \
+                v = *_v; \
+                v != NULL && _v < &blk->successors[2]; \
+                _v++, v = *_v) \
+
+/* Based on set_foreach, expanded with automatic type casts */
+
+#define bi_foreach_predecessor(blk, v) \
+        struct set_entry *_entry_##v; \
+        bi_block *v; \
+        for (_entry_##v = _mesa_set_next_entry(blk->predecessors, NULL), \
+                v = (bi_block *) (_entry_##v ? _entry_##v->key : NULL);  \
+                _entry_##v != NULL; \
+                _entry_##v = _mesa_set_next_entry(blk->predecessors, _entry_##v), \
+                v = (bi_block *) (_entry_##v ? _entry_##v->key : NULL))
+
+#define bi_foreach_src(ins, v) \
+        for (unsigned v = 0; v < ARRAY_SIZE(ins->src); ++v)
+
 #endif
