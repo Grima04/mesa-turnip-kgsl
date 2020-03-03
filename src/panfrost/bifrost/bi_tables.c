@@ -36,7 +36,7 @@ unsigned bi_class_props[BI_NUM_CLASSES] = {
         [BI_CONVERT] 		= 0,
         [BI_CSEL] 		= 0,
         [BI_DISCARD] 		= 0,
-        [BI_FMA] 		= 0,
+        [BI_FMA] 		= BI_ROUNDMODE,
         [BI_FREXP] 		= 0,
         [BI_LOAD] 		= 0,
         [BI_LOAD_ATTR] 		= 0,
@@ -49,5 +49,5 @@ unsigned bi_class_props[BI_NUM_CLASSES] = {
         [BI_STORE_VAR] 		= 0,
         [BI_SPECIAL] 		= 0,
         [BI_TEX] 		= 0,
-        [BI_ROUND] 		= BI_GENERIC,
+        [BI_ROUND] 		= BI_GENERIC | BI_ROUNDMODE,
 };

@@ -83,6 +83,9 @@ extern unsigned bi_class_props[BI_NUM_CLASSES];
  * irregular enough to warrant a separate class */
 #define BI_GENERIC (1 << 1)
 
+/* Accepts a bifrost_roundmode */
+#define BI_ROUNDMODE (1 << 2)
+
 /* It can't get any worse than csel4... can it? */
 #define BIR_SRC_COUNT 4
 
@@ -100,6 +103,9 @@ typedef struct {
         enum bifrost_outmod outmod;
         bool src_abs[BIR_SRC_COUNT];
         bool src_neg[BIR_SRC_COUNT];
+
+        /* Round mode (requires BI_ROUNDMODE) */
+        enum bifrost_roundmode roundmode;
 } bi_instruction;
 
 typedef struct {
