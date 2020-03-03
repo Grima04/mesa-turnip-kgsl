@@ -560,12 +560,14 @@ static int si_get_video_param(struct pipe_screen *screen,
 	if (entrypoint == PIPE_VIDEO_ENTRYPOINT_ENCODE) {
 		switch (param) {
 		case PIPE_VIDEO_CAP_SUPPORTED:
-			return (codec == PIPE_VIDEO_FORMAT_MPEG4_AVC &&
-				(si_vce_is_fw_version_supported(sscreen) ||
-				sscreen->info.family >= CHIP_RAVEN)) ||
+			return ((codec == PIPE_VIDEO_FORMAT_MPEG4_AVC &&
+				(sscreen->info.family >= CHIP_RAVEN ||
+				 si_vce_is_fw_version_supported(sscreen))) ||
 				(profile == PIPE_VIDEO_PROFILE_HEVC_MAIN &&
 				(sscreen->info.family >= CHIP_RAVEN ||
-				si_radeon_uvd_enc_supported(sscreen)));
+				 si_radeon_uvd_enc_supported(sscreen))) ||
+				(profile == PIPE_VIDEO_PROFILE_HEVC_MAIN_10 &&
+				 sscreen->info.family >= CHIP_RENOIR));
 		case PIPE_VIDEO_CAP_NPOT_TEXTURES:
 			return 1;
 		case PIPE_VIDEO_CAP_MAX_WIDTH:
@@ -710,10 +712,11 @@ static bool si_vid_is_format_supported(struct pipe_screen *screen,
 				       enum pipe_video_profile profile,
 				       enum pipe_video_entrypoint entrypoint)
 {
-	/* HEVC 10 bit decoding should use P016 instead of NV12 if possible */
+	/* HEVC 10 bit decoding should use P010 instead of NV12 if possible */
 	if (profile == PIPE_VIDEO_PROFILE_HEVC_MAIN_10)
 		return (format == PIPE_FORMAT_NV12) ||
-			(format == PIPE_FORMAT_P016);
+		       (format == PIPE_FORMAT_P010) ||
+		       (format == PIPE_FORMAT_P016);
 
 	/* Vp9 profile 2 supports 10 bit decoding using P016 */
 	if (profile == PIPE_VIDEO_PROFILE_VP9_PROFILE2)
