@@ -31,8 +31,12 @@ wget https://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git
 # Strip the image to a small minimal system without removing the debian
 # toolchain.
 
-# xz compress firmware so it doesn't waste RAM at runtime.
-find /lib/firmware -type f -print0 | xargs -0r -P4 -n4 xz -T1 -C crc32
+# xz compress firmware so it doesn't waste RAM at runtime.  Except db820c's
+# GPU firmware, due to using a precompiled kernel without compression support.
+find /lib/firmware -type f -print0 | \
+    grep -vz a530 | \
+    xargs -0r -P4 -n4 xz -T1 -C crc32
+ln -s /lib/firmware/qcom/a530* /lib/firmware/
 
 # Copy timezone file and remove tzdata package
 rm -rf /etc/localtime

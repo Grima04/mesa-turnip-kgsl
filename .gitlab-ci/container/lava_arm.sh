@@ -68,3 +68,31 @@ set -e
 cp .gitlab-ci/create-rootfs.sh /lava-files/rootfs-${DEBIAN_ARCH}/.
 chroot /lava-files/rootfs-${DEBIAN_ARCH} sh /create-rootfs.sh
 rm /lava-files/rootfs-${DEBIAN_ARCH}/create-rootfs.sh
+
+if [ ${DEBIAN_ARCH} = arm64 ]; then
+    # Pull down a specific build of qcomlt/release/qcomlt-5.4 8c79b3d12355
+    # ("Merge tag 'v5.4.23' into release/qcomlt-5.4"), where I used the
+    # .config from
+    # http://snapshots.linaro.org/96boards/dragonboard820c/linaro/debian/457/config-5.4.0-qcomlt-arm64
+    # with the following merged in:
+    #
+    # CONFIG_DRM=y
+    # CONFIG_DRM_MSM=y
+    # CONFIG_ATL1C=y
+    #
+    # Reason: 5.5 has a big stack of oopses and warns on db820c.  4.14-5.4
+    # linaro kernel binaries (see above .config link) have these as modules
+    # and distributed the modules only in the debian system, not the initrd,
+    # so they're very hard to extract (involving simg2img and loopback
+    # mounting).  4.11 is missing d72fea538fe6 ("drm/msm: Fix the check for
+    # the command size") so it can't actually run fredreno.  qcomlt-4.14 is
+    # unstable at boot (~10% instaboot rate).  The 5.4 qcomlt kernel with msm
+    # built in seems like the easiest way to go.
+    wget https://people.freedesktop.org/~anholt/qcomlt-5.4-msm-build/Image.gz -O Image.gz \
+         -O /lava-files/db820c-kernel
+    wget https://people.freedesktop.org/~anholt/qcomlt-5.4-msm-build/apq8096-db820c.dtb \
+         -O /lava-files/db820c.dtb
+
+    # Make a gzipped copy of the Image for db410c.
+    gzip -k /lava-files/Image
+fi

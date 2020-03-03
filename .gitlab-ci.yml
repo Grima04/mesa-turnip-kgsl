@@ -161,7 +161,7 @@ arm_build:
     - .fdo.container-ifnot-exists@debian@arm64v8
     - .container
   variables:
-    FDO_DISTRIBUTION_TAG: &arm_build "2020-03-13"
+    FDO_DISTRIBUTION_TAG: &arm_build "2020-03-17-db820c"
 
 .use-arm_build:
   variables:
@@ -713,7 +713,7 @@ arm64_a306_gles2:
     - .use-arm_build
   stage: freedreno
   variables:
-    BM_KERNEL: /lava-files/Image
+    BM_KERNEL: /lava-files/Image.gz
     BM_DTB: /lava-files/apq8016-sbc.dtb
     BM_ROOTFS: /lava-files/rootfs-arm64
     BM_CMDLINE: "ip=dhcp console=ttyMSM0,115200n8"
@@ -733,6 +733,26 @@ arm64_a306_gles2:
   extends:
     - arm64_a306_gles2
   parallel: 8
+  variables:
+    DEQP_VER: gles3
+
+arm64_a530_gles2:
+  extends:
+    - arm64_a306_gles2
+  stage: freedreno
+  variables:
+    BM_KERNEL: /lava-files/db820c-kernel
+    BM_DTB: /lava-files/db820c.dtb
+    BM_CMDLINE: "ip=dhcp console=ttyMSM0,115200n8"
+    DEQP_EXPECTED_FAILS: deqp-freedreno-a530-fails.txt
+    DEQP_SKIPS: deqp-freedreno-a530-skips.txt
+  tags:
+    - google-freedreno-db820c
+
+arm64_a530_gles3:
+  extends:
+    - arm64_a530_gles2
+  parallel: 6
   variables:
     DEQP_VER: gles3
 

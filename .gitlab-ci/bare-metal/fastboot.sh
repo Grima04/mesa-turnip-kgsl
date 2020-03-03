@@ -22,7 +22,7 @@ if [ -z "$BM_FASTBOOT_SERIAL" ]; then
 fi
 
 if [ -z "$BM_KERNEL" ]; then
-  echo "Must set BM_KERNEL to your board's kernel Image in the job's variables:"
+  echo "Must set BM_KERNEL to your board's kernel vmlinuz or Image.gz in the job's variables:"
   exit 1
 fi
 
@@ -67,14 +67,14 @@ pushd rootfs
   find -H | cpio -H newc -o | xz --check=crc32 -T4 - > $CI_PROJECT_DIR/rootfs.cpio.gz
 popd
 
-gzip -c $BM_KERNEL > Image.gz
-cat Image.gz $BM_DTB > Image.gz-dtb
+cat $BM_KERNEL $BM_DTB > Image.gz-dtb
+
 abootimg \
   --create artifacts/fastboot.img \
   -k Image.gz-dtb \
   -r rootfs.cpio.gz \
   -c cmdline="$BM_CMDLINE"
-rm Image.gz Image.gz-dtb
+rm Image.gz-dtb
 
 # Start watching serial, and power up the device.
 $BM/serial-buffer.py $BM_SERIAL | tee artifacts/serial-output.txt &
