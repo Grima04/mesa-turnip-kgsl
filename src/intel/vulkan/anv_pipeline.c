@@ -1051,13 +1051,14 @@ anv_pipeline_add_executable(struct anv_pipeline *pipeline,
       free(stream_data);
    }
 
-   pipeline->executables[pipeline->num_executables++] =
-      (struct anv_pipeline_executable) {
-         .stage = stage->stage,
-         .stats = *stats,
-         .nir = nir,
-         .disasm = disasm,
-      };
+   const struct anv_pipeline_executable exe = {
+      .stage = stage->stage,
+      .stats = *stats,
+      .nir = nir,
+      .disasm = disasm,
+   };
+   util_dynarray_append(&pipeline->executables,
+                        struct anv_pipeline_executable, exe);
 }
 
 static void
@@ -1873,7 +1874,8 @@ anv_pipeline_init(struct anv_pipeline *pipeline,
     * of various prog_data pointers.  Make them NULL by default.
     */
    memset(pipeline->shaders, 0, sizeof(pipeline->shaders));
-   pipeline->num_executables = 0;
+
+   util_dynarray_init(&pipeline->executables, pipeline->mem_ctx);
 
    result = anv_pipeline_compile_graphics(pipeline, cache, pCreateInfo);
    if (result != VK_SUCCESS) {
@@ -1976,12 +1978,12 @@ VkResult anv_GetPipelineExecutablePropertiesKHR(
    ANV_FROM_HANDLE(anv_pipeline, pipeline, pPipelineInfo->pipeline);
    VK_OUTARRAY_MAKE(out, pProperties, pExecutableCount);
 
-   for (uint32_t i = 0; i < pipeline->num_executables; i++) {
+   util_dynarray_foreach (&pipeline->executables, struct anv_pipeline_executable, exe) {
       vk_outarray_append(&out, props) {
-         gl_shader_stage stage = pipeline->executables[i].stage;
+         gl_shader_stage stage = exe->stage;
          props->stages = mesa_to_vk_shader_stage(stage);
 
-         unsigned simd_width = pipeline->executables[i].stats.dispatch_width;
+         unsigned simd_width = exe->stats.dispatch_width;
          if (stage == MESA_SHADER_FRAGMENT) {
             WRITE_STR(props->name, "%s%d %s",
                       simd_width ? "SIMD" : "vec",
@@ -2005,6 +2007,15 @@ VkResult anv_GetPipelineExecutablePropertiesKHR(
    return vk_outarray_status(&out);
 }
 
+static const struct anv_pipeline_executable *
+anv_pipeline_get_executable(struct anv_pipeline *pipeline, uint32_t index)
+{
+   assert(index < util_dynarray_num_elements(&pipeline->executables,
+                                             struct anv_pipeline_executable));
+   return util_dynarray_element(
+      &pipeline->executables, struct anv_pipeline_executable, index);
+}
+
 VkResult anv_GetPipelineExecutableStatisticsKHR(
     VkDevice                                    device,
     const VkPipelineExecutableInfoKHR*          pExecutableInfo,
@@ -2014,9 +2025,8 @@ VkResult anv_GetPipelineExecutableStatisticsKHR(
    ANV_FROM_HANDLE(anv_pipeline, pipeline, pExecutableInfo->pipeline);
    VK_OUTARRAY_MAKE(out, pStatistics, pStatisticCount);
 
-   assert(pExecutableInfo->executableIndex < pipeline->num_executables);
    const struct anv_pipeline_executable *exe =
-      &pipeline->executables[pExecutableInfo->executableIndex];
+      anv_pipeline_get_executable(pipeline, pExecutableInfo->executableIndex);
    const struct brw_stage_prog_data *prog_data =
       pipeline->shaders[exe->stage]->prog_data;
 
@@ -2127,9 +2137,8 @@ VkResult anv_GetPipelineExecutableInternalRepresentationsKHR(
                     pInternalRepresentationCount);
    bool incomplete_text = false;
 
-   assert(pExecutableInfo->executableIndex < pipeline->num_executables);
    const struct anv_pipeline_executable *exe =
-      &pipeline->executables[pExecutableInfo->executableIndex];
+      anv_pipeline_get_executable(pipeline, pExecutableInfo->executableIndex);
 
    if (exe->nir) {
       vk_outarray_append(&out, ir) {

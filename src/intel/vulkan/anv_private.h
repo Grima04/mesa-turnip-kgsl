@@ -3145,9 +3145,6 @@ anv_shader_bin_unref(struct anv_device *device, struct anv_shader_bin *shader)
       anv_shader_bin_destroy(device, shader);
 }
 
-/* 5 possible simultaneous shader stages and FS may have up to 3 binaries */
-#define MAX_PIPELINE_EXECUTABLES 7
-
 struct anv_pipeline_executable {
    gl_shader_stage stage;
 
@@ -3178,8 +3175,7 @@ struct anv_pipeline {
 
    struct anv_shader_bin *                      shaders[MESA_SHADER_STAGES];
 
-   uint32_t                                     num_executables;
-   struct anv_pipeline_executable               executables[MAX_PIPELINE_EXECUTABLES];
+   struct util_dynarray                         executables;
 
    const struct gen_l3_config *                 l3_config;
 

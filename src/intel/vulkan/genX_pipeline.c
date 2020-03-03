@@ -2256,7 +2256,8 @@ compute_pipeline_create(
     * of various prog_data pointers.  Make them NULL by default.
     */
    memset(pipeline->shaders, 0, sizeof(pipeline->shaders));
-   pipeline->num_executables = 0;
+
+   util_dynarray_init(&pipeline->executables, pipeline->mem_ctx);
 
    assert(pCreateInfo->stage.stage == VK_SHADER_STAGE_COMPUTE_BIT);
    pipeline->active_stages |= VK_SHADER_STAGE_COMPUTE_BIT;
