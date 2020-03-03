@@ -3441,6 +3441,8 @@ VkResult radv_BeginCommandBuffer(
 	if (unlikely(cmd_buffer->device->trace_bo))
 		radv_cmd_buffer_trace_emit(cmd_buffer);
 
+	radv_describe_begin_cmd_buffer(cmd_buffer);
+
 	cmd_buffer->status = RADV_CMD_BUFFER_STATUS_RECORDING;
 
 	return result;
@@ -3793,6 +3795,8 @@ VkResult radv_EndCommandBuffer(
 	 * doesn't wait for it.
 	 */
 	si_cp_dma_wait_for_idle(cmd_buffer);
+
+	radv_describe_end_cmd_buffer(cmd_buffer);
 
 	vk_free(&cmd_buffer->pool->alloc, cmd_buffer->state.attachments);
 	vk_free(&cmd_buffer->pool->alloc, cmd_buffer->state.subpass_sample_locs);

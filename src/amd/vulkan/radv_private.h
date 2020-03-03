@@ -2419,6 +2419,10 @@ void radv_emit_thread_trace_userdata(struct radeon_cmdbuf *cs,
 int radv_dump_thread_trace(struct radv_device *device,
 			   const struct radv_thread_trace *trace);
 
+/* radv_sqtt_layer_.c */
+void radv_describe_begin_cmd_buffer(struct radv_cmd_buffer *cmd_buffer);
+void radv_describe_end_cmd_buffer(struct radv_cmd_buffer *cmd_buffer);
+
 struct radeon_winsys_sem;
 
 uint64_t radv_get_current_time(void);

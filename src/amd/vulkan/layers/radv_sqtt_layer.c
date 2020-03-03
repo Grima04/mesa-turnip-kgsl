@@ -46,6 +46,63 @@ enum rgp_sqtt_marker_identifier {
 };
 
 /**
+ * RGP SQ thread-tracing marker for the start of a command buffer. (Table 2)
+ */
+struct rgp_sqtt_marker_cb_start {
+	union {
+		struct {
+			uint32_t identifier : 4;
+			uint32_t ext_dwords : 3;
+			uint32_t cb_id : 20;
+			uint32_t queue : 5;
+		};
+		uint32_t dword01;
+	};
+	union {
+		uint32_t device_id_low;
+		uint32_t dword02;
+	};
+	union {
+		uint32_t device_id_high;
+		uint32_t dword03;
+	};
+	union {
+		uint32_t queue_flags;
+		uint32_t dword04;
+	};
+};
+
+static_assert(sizeof(struct rgp_sqtt_marker_cb_start) == 16,
+	      "rgp_sqtt_marker_cb_start doesn't match RGP spec");
+
+/**
+ *
+ * RGP SQ thread-tracing marker for the end of a command buffer. (Table 3)
+ */
+struct rgp_sqtt_marker_cb_end {
+	union {
+		struct {
+			uint32_t identifier : 4;
+			uint32_t ext_dwords : 3;
+			uint32_t cb_id : 20;
+			uint32_t reserved : 5;
+		};
+		uint32_t dword01;
+	};
+	union {
+		uint32_t device_id_low;
+		uint32_t dword02;
+	};
+	union {
+		uint32_t device_id_high;
+		uint32_t dword03;
+	};
+};
+
+static_assert(sizeof(struct rgp_sqtt_marker_cb_end) == 12,
+	      "rgp_sqtt_marker_cb_end doesn't match RGP spec");
+
+/**
  * API types used in RGP SQ thread-tracing markers for the "General API"
  * packet.
  */
@@ -141,6 +198,49 @@ radv_write_end_general_api_marker(struct radv_cmd_buffer *cmd_buffer,
 	marker.identifier = RGP_SQTT_MARKER_IDENTIFIER_GENERAL_API;
 	marker.api_type = api_type;
 	marker.is_end = 1;
+
+	radv_emit_thread_trace_userdata(cs, &marker, sizeof(marker) / 4);
+}
+
+void
+radv_describe_begin_cmd_buffer(struct radv_cmd_buffer *cmd_buffer)
+{
+	uint64_t device_id = (uint64_t)cmd_buffer->device;
+	struct rgp_sqtt_marker_cb_start marker = {};
+	struct radeon_cmdbuf *cs = cmd_buffer->cs;
+
+	if (likely(!cmd_buffer->device->thread_trace_bo))
+		return;
+
+	marker.identifier = RGP_SQTT_MARKER_IDENTIFIER_CB_START;
+	marker.cb_id = 0;
+	marker.device_id_low = device_id;
+	marker.device_id_high = device_id >> 32;
+	marker.queue = cmd_buffer->queue_family_index;
+	marker.queue_flags = VK_QUEUE_COMPUTE_BIT |
+			     VK_QUEUE_TRANSFER_BIT |
+			     VK_QUEUE_SPARSE_BINDING_BIT;
+
+	if (cmd_buffer->queue_family_index == RADV_QUEUE_GENERAL)
+		marker.queue_flags |= VK_QUEUE_GRAPHICS_BIT;
+
+	radv_emit_thread_trace_userdata(cs, &marker, sizeof(marker) / 4);
+}
+
+void
+radv_describe_end_cmd_buffer(struct radv_cmd_buffer *cmd_buffer)
+{
+	uint64_t device_id = (uint64_t)cmd_buffer->device;
+	struct rgp_sqtt_marker_cb_end marker = {};
+	struct radeon_cmdbuf *cs = cmd_buffer->cs;
+
+	if (likely(!cmd_buffer->device->thread_trace_bo))
+		return;
+
+	marker.identifier = RGP_SQTT_MARKER_IDENTIFIER_CB_END;
+	marker.cb_id = 0;
+	marker.device_id_low = device_id;
+	marker.device_id_high = device_id >> 32;
 
 	radv_emit_thread_trace_userdata(cs, &marker, sizeof(marker) / 4);
 }
