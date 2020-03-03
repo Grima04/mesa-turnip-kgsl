@@ -32,6 +32,7 @@
 
 #include "bifrost.h"
 #include "disassemble.h"
+#include "bi_print.h"
 #include "util/macros.h"
 
 // return bits (high, lo]
@@ -417,102 +418,6 @@ static void dump_src(FILE *fp, unsigned src, struct bifrost_regs srcs, uint64_t 
         }
 }
 
-static void dump_output_mod(FILE *fp, unsigned mod)
-{
-        switch (mod) {
-        case BIFROST_NONE:
-                break;
-        case BIFROST_POS:
-                fprintf(fp, ".clamp_0_inf");
-                break; // max(out, 0)
-        case BIFROST_SAT_SIGNED:
-                fprintf(fp, ".clamp_m1_1");
-                break; // clamp(out, -1, 1)
-        case BIFROST_SAT:
-                fprintf(fp, ".clamp_0_1");
-                break; // clamp(out, 0, 1)
-        default:
-                break;
-        }
-}
-
-static void dump_minmax_mode(FILE *fp, unsigned mod)
-{
-        switch (mod) {
-        case BIFROST_MINMAX_NONE:
-                /* Same as fmax() and fmin() -- return the other number if any
-                 * number is NaN.  Also always return +0 if one argument is +0 and
-                 * the other is -0.
-                 */
-                break;
-        case BIFROST_NAN_WINS:
-                /* Instead of never returning a NaN, always return one. The
-                 * "greater"/"lesser" NaN is always returned, first by checking the
-                 * sign and then the mantissa bits.
-                 */
-                fprintf(fp, ".nan_wins");
-                break;
-        case BIFROST_SRC1_WINS:
-                /* For max, implement src0 > src1 ? src0 : src1
-                 * For min, implement src0 < src1 ? src0 : src1
-                 *
-                 * This includes handling NaN's and signedness of 0 differently
-                 * from above, since +0 and -0 compare equal and comparisons always
-                 * return false for NaN's. As a result, this mode is *not*
-                 * commutative.
-                 */
-                fprintf(fp, ".src1_wins");
-                break;
-        case BIFROST_SRC0_WINS:
-                /* For max, implement src0 < src1 ? src1 : src0
-                 * For min, implement src0 > src1 ? src1 : src0
-                 */
-                fprintf(fp, ".src0_wins");
-                break;
-        default:
-                break;
-        }
-}
-
-static void dump_round_mode(FILE *fp, unsigned mod)
-{
-        switch (mod) {
-        case BIFROST_RTE:
-                /* roundTiesToEven, the IEEE default. */
-                break;
-        case BIFROST_RTP:
-                /* roundTowardPositive in the IEEE spec. */
-                fprintf(fp, ".round_pos");
-                break;
-        case BIFROST_RTN:
-                /* roundTowardNegative in the IEEE spec. */
-                fprintf(fp, ".round_neg");
-                break;
-        case BIFROST_RTZ:
-                /* roundTowardZero in the IEEE spec. */
-                fprintf(fp, ".round_zero");
-                break;
-        default:
-                break;
-        }
-}
-
-static const char *
-csel_cond_name(enum bifrost_csel_cond cond)
-{
-        switch (cond) {
-        case BIFROST_FEQ_F: return "feq.f";
-        case BIFROST_FGT_F: return "fgt.f";
-        case BIFROST_FGE_F: return "fge.f";
-        case BIFROST_IEQ_F: return "ieq.f";
-        case BIFROST_IGT_I: return "igt.i";
-        case BIFROST_IGE_I: return "uge.i";
-        case BIFROST_UGT_I: return "ugt.i";
-        case BIFROST_UGE_I: return "uge.i";
-        default: return "invalid";
-        }
-}
-
 static const struct fma_op_info FMAOpInfos[] = {
         { false, 0x00000, "FMA.f32",  FMA_FMA },
         { false, 0x40000, "MAX.f32", FMA_FMINMAX },
@@ -769,18 +674,6 @@ static void dump_fma_expand_src1(FILE *fp, unsigned ctrl)
         }
 }
 
-static const char *
-bi_ldst_type_name(enum bifrost_ldst_type type)
-{
-        switch (type) {
-        case BIFROST_LDST_F16: return "f16";
-        case BIFROST_LDST_F32: return "f32";
-        case BIFROST_LDST_I32: return "i32";
-        case BIFROST_LDST_U32: return "u32";
-        default: return "invalid";
-        }
-}
-
 static void dump_fma(FILE *fp, uint64_t word, struct bifrost_regs regs, struct bifrost_regs next_regs, uint64_t *consts, bool verbose)
 {
         if (verbose) {
@@ -797,17 +690,17 @@ static void dump_fma(FILE *fp, uint64_t word, struct bifrost_regs regs, struct b
             info.src_type == FMA_FADD16 ||
             info.src_type == FMA_FMINMAX16 ||
             info.src_type == FMA_FMA16) {
-                dump_output_mod(fp, bits(FMA.op, 12, 14));
+                fprintf(fp, "%s", bi_output_mod_name(bits(FMA.op, 12, 14)));
                 switch (info.src_type) {
                 case FMA_FADD:
                 case FMA_FMA:
                 case FMA_FADD16:
                 case FMA_FMA16:
-                        dump_round_mode(fp, bits(FMA.op, 10, 12));
+                        fprintf(fp, "%s", bi_round_mode_name(bits(FMA.op, 10, 12)));
                         break;
                 case FMA_FMINMAX:
                 case FMA_FMINMAX16:
-                        dump_minmax_mode(fp, bits(FMA.op, 10, 12));
+                        fprintf(fp, "%s", bi_minmax_mode_name(bits(FMA.op, 10, 12)));
                         break;
                 default:
                         assert(0);
@@ -842,7 +735,7 @@ static void dump_fma(FILE *fp, uint64_t word, struct bifrost_regs regs, struct b
                                 fprintf(fp, ".unk%d_mode", (int) (FMA.op >> 9) & 0x3);
                         }
                 } else {
-                        dump_output_mod(fp, bits(FMA.op, 9, 11));
+                        fprintf(fp, "%s", bi_output_mod_name(bits(FMA.op, 9, 11)));
                 }
         } else if (info.src_type == FMA_SHIFT) {
                 struct bifrost_shift_fma shift;
@@ -1021,7 +914,7 @@ static void dump_fma(FILE *fp, uint64_t word, struct bifrost_regs regs, struct b
         case FMA_CSEL4: {
                 struct bifrost_csel4 csel;
                 memcpy(&csel, &FMA, sizeof(csel));
-                fprintf(fp, ".%s ", csel_cond_name(csel.cond));
+                fprintf(fp, ".%s ", bi_csel_cond_name(csel.cond));
 
                 dump_src(fp, csel.src0, regs, consts, true);
                 fprintf(fp, ", ");
@@ -1281,11 +1174,11 @@ static void dump_add(FILE *fp, uint64_t word, struct bifrost_regs regs,
         // float16 seems like it doesn't support output modifiers
         if (info.src_type == ADD_FADD || info.src_type == ADD_FMINMAX) {
                 // output modifiers
-                dump_output_mod(fp, bits(ADD.op, 8, 10));
+                fprintf(fp, "%s", bi_output_mod_name(bits(ADD.op, 8, 10)));
                 if (info.src_type == ADD_FADD)
-                        dump_round_mode(fp, bits(ADD.op, 10, 12));
+                        fprintf(fp, "%s", bi_round_mode_name(bits(ADD.op, 10, 12)));
                 else
-                        dump_minmax_mode(fp, bits(ADD.op, 10, 12));
+                        fprintf(fp, "%s", bi_minmax_mode_name(bits(ADD.op, 10, 12)));
         } else if (info.src_type == ADD_FCMP || info.src_type == ADD_FCMP16) {
                 dump_fcmp(fp, bits(ADD.op, 3, 6));
                 if (info.src_type == ADD_FCMP)

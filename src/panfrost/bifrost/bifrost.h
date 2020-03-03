@@ -90,11 +90,31 @@ enum bifrost_outmod {
 };
 
 enum bifrost_roundmode {
-        BIFROST_RTE = 0x0,
-        BIFROST_RTP = 0x1,
-        BIFROST_RTN = 0x2,
-        BIFROST_RTZ = 0x3
+        BIFROST_RTE = 0x0, /* round to even */
+        BIFROST_RTP = 0x1, /* round to positive */
+        BIFROST_RTN = 0x2, /* round to negative */
+        BIFROST_RTZ = 0x3 /* round to zero */
 };
+
+/* NONE: Same as fmax() and fmin() -- return the other
+ * number if any number is NaN.  Also always return +0 if
+ * one argument is +0 and the other is -0.
+ *
+ * NAN_WINS: Instead of never returning a NaN, always return
+ * one. The "greater"/"lesser" NaN is always returned, first
+ * by checking the sign and then the mantissa bits.
+ *
+ * SRC1_WINS: For max, implement src0 > src1 ? src0 : src1.
+ * For min, implement src0 < src1 ? src0 : src1.  This
+ * includes handling NaN's and signedness of 0 differently
+ * from above, since +0 and -0 compare equal and comparisons
+ * always return false for NaN's. As a result, this mode is
+ * *not* commutative.
+ *
+ * SRC0_WINS: For max, implement src0 < src1 ? src1 : src0
+ * For min, implement src0 > src1 ? src1 : src0
+ */
+
 
 enum bifrost_minmax_mode {
         BIFROST_MINMAX_NONE = 0x0,
