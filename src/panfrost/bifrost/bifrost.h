@@ -285,4 +285,20 @@ enum bifrost_branch_code {
         BR_ALWAYS = 63,
 };
 
+struct bifrost_branch {
+        unsigned src0 : 3;
+
+        /* For BR_SIZE_ZERO, upper two bits become ctrl */
+        unsigned src1 : 3;
+
+        /* Offset source -- always uniform/const but
+         * theoretically could support indirect jumps? */
+        unsigned src2 : 3;
+
+        enum bifrost_branch_cond cond : 3;
+        enum branch_bit_size size : 3;
+
+        unsigned op : 5;
+};
+
 #endif
