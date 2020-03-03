@@ -262,12 +262,12 @@ emit_tlb_clear_job(struct v3dv_cmd_buffer *cmd_buffer,
    const uint8_t internal_bpp =
       v3dv_framebuffer_compute_internal_bpp(framebuffer, subpass);
 
-   struct v3dv_frame_tiling frame_tiling;
-   v3dv_framebuffer_compute_tiling_params(framebuffer, subpass, internal_bpp,
-                                          &frame_tiling);
-
-   v3dv_cmd_buffer_start_frame(cmd_buffer, framebuffer, &frame_tiling,
-                               color_attachment_count);
+   v3dv_cmd_buffer_start_frame(cmd_buffer,
+                               framebuffer->width,
+                               framebuffer->height,
+                               framebuffer->layers,
+                               color_attachment_count,
+                               internal_bpp);
 
    struct v3dv_cl *rcl = &job->rcl;
    v3dv_cl_ensure_space_with_branch(rcl, 200 +
@@ -399,13 +399,13 @@ emit_tlb_clear(struct v3dv_cmd_buffer *cmd_buffer,
                uint32_t base_layer,
                uint32_t layer_count)
 {
-   const struct v3dv_cmd_buffer_state *state = &cmd_buffer->state;
-   const struct v3dv_framebuffer *framebuffer = state->framebuffer;
-
    struct v3dv_job *job = cmd_buffer->state.job;
    assert(job);
 
-   /* Save a copy of the current subpass tiling spec */
+   /* Save a copy of the current subpass tiling spec, since we are about to
+    * split the job for the clear and we will need to then resume it with the
+    * same specs.
+    */
    struct v3dv_frame_tiling subpass_tiling;
    memcpy(&subpass_tiling, &job->frame_tiling, sizeof(subpass_tiling));
 
@@ -428,10 +428,14 @@ emit_tlb_clear(struct v3dv_cmd_buffer *cmd_buffer,
     * after the clear.
     */
    job = v3dv_cmd_buffer_start_job(cmd_buffer, false);
-   uint32_t subpass_color_count =
-      state->pass->subpasses[state->subpass_idx].color_count;
-   v3dv_cmd_buffer_start_frame(cmd_buffer, framebuffer, &subpass_tiling,
-                               subpass_color_count);
+
+   v3dv_cmd_buffer_start_frame(cmd_buffer,
+                               subpass_tiling.width,
+                               subpass_tiling.height,
+                               subpass_tiling.layers,
+                               subpass_tiling.render_target_count,
+                               subpass_tiling.internal_bpp);
+
    job->is_subpass_continue = true;
 }
 

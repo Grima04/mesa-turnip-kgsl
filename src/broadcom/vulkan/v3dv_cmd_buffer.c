@@ -293,24 +293,99 @@ cmd_buffer_can_merge_subpass(struct v3dv_cmd_buffer *cmd_buffer)
    return true;
 }
 
+/**
+ * Computes and sets the job frame tiling information required to setup frame
+ * binning and rendering.
+ */
+static struct v3dv_frame_tiling *
+job_compute_frame_tiling(struct v3dv_job *job,
+                         uint32_t width,
+                         uint32_t height,
+                         uint32_t layers,
+                         uint32_t render_target_count,
+                         uint8_t max_internal_bpp)
+{
+   static const uint8_t tile_sizes[] = {
+      64, 64,
+      64, 32,
+      32, 32,
+      32, 16,
+      16, 16,
+   };
+
+   assert(job);
+   struct v3dv_frame_tiling *tiling = &job->frame_tiling;
+
+   tiling->width = width;
+   tiling->height = height;
+   tiling->layers = layers;
+   tiling->render_target_count = render_target_count;
+
+   uint32_t tile_size_index = 0;
+
+   /* FIXME: MSAA */
+
+   if (render_target_count > 2)
+      tile_size_index += 2;
+   else if (render_target_count > 1)
+      tile_size_index += 1;
+
+   tiling->internal_bpp = max_internal_bpp;
+   tile_size_index += tiling->internal_bpp;
+   assert(tile_size_index < ARRAY_SIZE(tile_sizes));
+
+   tiling->tile_width = tile_sizes[tile_size_index * 2];
+   tiling->tile_height = tile_sizes[tile_size_index * 2 + 1];
+
+   tiling->draw_tiles_x = DIV_ROUND_UP(width, tiling->tile_width);
+   tiling->draw_tiles_y = DIV_ROUND_UP(height, tiling->tile_height);
+
+   /* Size up our supertiles until we get under the limit */
+   const uint32_t max_supertiles = 256;
+   tiling->supertile_width = 1;
+   tiling->supertile_height = 1;
+   for (;;) {
+      tiling->frame_width_in_supertiles =
+         DIV_ROUND_UP(tiling->draw_tiles_x, tiling->supertile_width);
+      tiling->frame_height_in_supertiles =
+         DIV_ROUND_UP(tiling->draw_tiles_y, tiling->supertile_height);
+      const uint32_t num_supertiles = tiling->frame_width_in_supertiles *
+                                      tiling->frame_height_in_supertiles;
+      if (num_supertiles < max_supertiles)
+         break;
+
+      if (tiling->supertile_width < tiling->supertile_height)
+         tiling->supertile_width++;
+      else
+         tiling->supertile_height++;
+   }
+
+   return tiling;
+}
+
 void
 v3dv_cmd_buffer_start_frame(struct v3dv_cmd_buffer *cmd_buffer,
-                            const struct v3dv_framebuffer *framebuffer,
-                            const struct v3dv_frame_tiling *tiling,
-                            int32_t num_render_targets)
+                            uint32_t width,
+                            uint32_t height,
+                            uint32_t layers,
+                            uint32_t render_target_count,
+                            uint8_t max_internal_bpp)
 {
    struct v3dv_job *job = cmd_buffer->state.job;
    assert(job);
 
-   /* Copy the frame tiling spec into the job */
-   memcpy(&job->frame_tiling, tiling, sizeof(struct v3dv_frame_tiling));
+   /* Start by computing frame tiling spec for this job */
+   const struct v3dv_frame_tiling *tiling =
+      job_compute_frame_tiling(job,
+                               width, height, layers,
+                               render_target_count, max_internal_bpp);
 
    v3dv_cl_ensure_space_with_branch(&job->bcl, 256);
 
    /* The PTB will request the tile alloc initial size per tile at start
     * of tile binning.
     */
-   uint32_t tile_alloc_size = 64 * framebuffer->layers *
+   uint32_t tile_alloc_size = 64 * tiling->layers *
                               tiling->draw_tiles_x *
                               tiling->draw_tiles_y;
 
@@ -334,7 +409,7 @@ v3dv_cmd_buffer_start_frame(struct v3dv_cmd_buffer *cmd_buffer,
    v3dv_job_add_bo(job, job->tile_alloc);
 
    const uint32_t tsda_per_tile_size = 256;
-   const uint32_t tile_state_size = framebuffer->layers *
+   const uint32_t tile_state_size = tiling->layers *
                                     tiling->draw_tiles_x *
                                     tiling->draw_tiles_y *
                                     tsda_per_tile_size;
@@ -345,16 +420,13 @@ v3dv_cmd_buffer_start_frame(struct v3dv_cmd_buffer *cmd_buffer,
     * required for layered framebuffers to work.
     */
    cl_emit(&job->bcl, NUMBER_OF_LAYERS, config) {
-      config.number_of_layers = framebuffer->layers;
+      config.number_of_layers = layers;
    }
 
-   if (num_render_targets == -1)
-      num_render_targets = framebuffer->color_attachment_count;
-
    cl_emit(&job->bcl, TILE_BINNING_MODE_CFG, config) {
-      config.width_in_pixels = framebuffer->width;
-      config.height_in_pixels = framebuffer->height;
-      config.number_of_render_targets = MAX2(num_render_targets, 1);
+      config.width_in_pixels = tiling->width;
+      config.height_in_pixels = tiling->height;
+      config.number_of_render_targets = MAX2(tiling->render_target_count, 1);
       config.multisample_mode_4x = false; /* FIXME */
       config.maximum_bpp_of_all_render_targets = tiling->internal_bpp;
    }
@@ -1421,12 +1493,12 @@ subpass_start(struct v3dv_cmd_buffer *cmd_buffer, uint32_t subpass_idx)
       const uint8_t internal_bpp =
          v3dv_framebuffer_compute_internal_bpp(framebuffer, subpass);
 
-      struct v3dv_frame_tiling frame_tiling;
-      v3dv_framebuffer_compute_tiling_params(framebuffer, subpass, internal_bpp,
-                                             &frame_tiling);
-
-      v3dv_cmd_buffer_start_frame(cmd_buffer, framebuffer, &frame_tiling,
-                                  subpass->color_count);
+      v3dv_cmd_buffer_start_frame(cmd_buffer,
+                                  framebuffer->width,
+                                  framebuffer->height,
+                                  framebuffer->layers,
+                                  subpass->color_count,
+                                  internal_bpp);
    }
 
    /* If we don't have a scissor or viewport defined let's just use the render
