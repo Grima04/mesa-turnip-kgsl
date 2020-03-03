@@ -629,6 +629,17 @@ optimizations.extend([
    (('iand', ('ieq', 'a@32', 0), ('ieq', 'b@32', 0)), ('ieq', ('ior', a, b), 0), '!options->lower_bitops'),
    (('ior',  ('ine', 'a@32', 0), ('ine', 'b@32', 0)), ('ine', ('ior', a, b), 0), '!options->lower_bitops'),
 
+   # This pattern occurs coutresy of __flt64_nonnan in the soft-fp64 code.
+   # The first part of the iand comes from the !__feq64_nonnan.
+   #
+   # The second pattern is a reformulation of the first based on the relation
+   # (a == 0 || y == 0) <=> umin(a, y) == 0, where b in the first equation
+   # happens to be y == 0.
+   (('iand', ('inot', ('iand', ('ior', ('ieq', a, 0),  b), c)), ('ilt', a, 0)),
+    ('iand', ('inot', ('iand',                         b , c)), ('ilt', a, 0))),
+   (('iand', ('inot', ('iand', ('ieq', ('umin', a, b), 0), c)), ('ilt', a, 0)),
+    ('iand', ('inot', ('iand', ('ieq',             b , 0), c)), ('ilt', a, 0))),
+
    # These patterns can result when (a < b || a < c) => (a < min(b, c))
    # transformations occur before constant propagation and loop-unrolling.
    (('~flt', a, ('fmax', b, a)), ('flt', a, b)),

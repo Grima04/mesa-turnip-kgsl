@@ -165,14 +165,14 @@ __extractFloat64Sign(uint64_t a)
    return unpackUint2x32(a).y & 0x80000000u;
 }
 
-/* Returns true if the 64-bit value formed by concatenating `a0' and `a1' is less
- * than the 64-bit value formed by concatenating `b0' and `b1'.  Otherwise,
- * returns false.
+/* Returns true if the signed 64-bit value formed by concatenating `a0' and
+ * `a1' is less than the signed 64-bit value formed by concatenating `b0' and
+ * `b1'.  Otherwise, returns false.
  */
 bool
-lt64(uint a0, uint a1, uint b0, uint b1)
+ilt64(uint a0, uint a1, uint b0, uint b1)
 {
-   return (a0 < b0) || ((a0 == b0) && (a1 < b1));
+   return (int(a0) < int(b0)) || ((a0 == b0) && (a1 < b1));
 }
 
 bool
@@ -180,12 +180,42 @@ __flt64_nonnan(uint64_t __a, uint64_t __b)
 {
    uvec2 a = unpackUint2x32(__a);
    uvec2 b = unpackUint2x32(__b);
-   uint aSign = __extractFloat64Sign(__a);
-   uint bSign = __extractFloat64Sign(__b);
-   if (aSign != bSign)
-      return (aSign != 0u) && ((((a.y | b.y)<<1) | a.x | b.x) != 0u);
 
-   return mix(lt64(a.y, a.x, b.y, b.x), lt64(b.y, b.x, a.y, a.x), aSign != 0u);
+   /* IEEE 754 floating point numbers are specifically designed so that, with
+    * two exceptions, values can be compared by bit-casting to signed integers
+    * with the same number of bits.
+    *
+    * From https://en.wikipedia.org/wiki/IEEE_754-1985#Comparing_floating-point_numbers:
+    *
+    *    When comparing as 2's-complement integers: If the sign bits differ,
+    *    the negative number precedes the positive number, so 2's complement
+    *    gives the correct result (except that negative zero and positive zero
+    *    should be considered equal). If both values are positive, the 2's
+    *    complement comparison again gives the correct result. Otherwise (two
+    *    negative numbers), the correct FP ordering is the opposite of the 2's
+    *    complement ordering.
+    *
+    * The logic implied by the above quotation is:
+    *
+    *    !both_are_zero(a, b) && (both_negative(a, b) ? a > b : a < b)
+    *
+    * This is equivalent to
+    *
+    *    fne(a, b) && (both_negative(a, b) ? a >= b : a < b)
+    *
+    *    fne(a, b) && (both_negative(a, b) ? !(a < b) : a < b)
+    *
+    *    fne(a, b) && ((both_negative(a, b) && !(a < b)) ||
+    *                  (!both_negative(a, b) && (a < b)))
+    *
+    * (A!|B)&(A|!B) is (A xor B) which is implemented here using !=.
+    *
+    *    fne(a, b) && (both_negative(a, b) != (a < b))
+    */
+   bool lt = ilt64(a.y, a.x, b.y, b.x);
+   bool both_negative = (a.y & b.y & 0x80000000u) != 0;
+
+   return !__feq64_nonnan(__a, __b) && (lt != both_negative);
 }
 
 /* Returns true if the double-precision floating-point value `a' is less than
@@ -195,10 +225,15 @@ __flt64_nonnan(uint64_t __a, uint64_t __b)
 bool
 __flt64(uint64_t a, uint64_t b)
 {
-   if (__is_nan(a) || __is_nan(b))
-      return false;
+   /* This weird layout matters.  Doing the "obvious" thing results in extra
+    * flow control being inserted to implement the short-circuit evaluation
+    * rules.  Flow control is bad!
+    */
+   bool x = !__is_nan(a);
+   bool y = !__is_nan(b);
+   bool z = __flt64_nonnan(a, b);
 
-   return __flt64_nonnan(a, b);
+   return (x && y && z);
 }
 
 /* Returns true if the double-precision floating-point value `a' is greater
@@ -209,10 +244,15 @@ __flt64(uint64_t a, uint64_t b)
 bool
 __fge64(uint64_t a, uint64_t b)
 {
-   if (__is_nan(a) || __is_nan(b))
-      return false;
+   /* This weird layout matters.  Doing the "obvious" thing results in extra
+    * flow control being inserted to implement the short-circuit evaluation
+    * rules.  Flow control is bad!
+    */
+   bool x = !__is_nan(a);
+   bool y = !__is_nan(b);
+   bool z = !__flt64_nonnan(a, b);
 
-   return !__flt64_nonnan(a, b);
+   return (x && y && z);
 }
 
 uint64_t
