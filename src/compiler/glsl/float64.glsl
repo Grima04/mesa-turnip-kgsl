@@ -258,8 +258,10 @@ __fge64(uint64_t a, uint64_t b)
 uint64_t
 __fsat64(uint64_t __a)
 {
+   uvec2 a = unpackUint2x32(__a);
+
    /* fsat(NaN) should be zero. */
-   if (__is_nan(__a) || __flt64_nonnan(__a, 0ul))
+   if (__is_nan(__a) || int(a.y) < 0)
       return 0ul;
 
    if (!__flt64_nonnan(__a, 0x3FF0000000000000ul /* 1.0 */))
