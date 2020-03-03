@@ -27,6 +27,7 @@
 #ifndef __BIFROST_COMPILER_H
 #define __BIFROST_COMPILER_H
 
+#include "bifrost.h"
 #include "compiler/nir/nir.h"
 
 /* Bifrost opcodes are tricky -- the same op may exist on both FMA and
@@ -88,6 +89,12 @@ typedef struct {
          * to "no argument" */
         unsigned dest;
         unsigned src[BIR_SRC_COUNT];
+
+        /* Floating-point modifiers, type/class permitting. If not
+         * allowed for the type/class, these are ignored. */
+        enum bifrost_outmod outmod;
+        bool src_abs[BIR_SRC_COUNT];
+        bool src_neg[BIR_SRC_COUNT];
 } bi_instruction;
 
 typedef struct {
