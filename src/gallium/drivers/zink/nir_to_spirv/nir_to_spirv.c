@@ -961,8 +961,14 @@ emit_alu(struct ntv_context *ctx, nir_alu_instr *alu)
    UNOP(nir_op_f2u32, SpvOpConvertFToU)
    UNOP(nir_op_i2f32, SpvOpConvertSToF)
    UNOP(nir_op_u2f32, SpvOpConvertUToF)
-   UNOP(nir_op_inot, SpvOpNot)
 #undef UNOP
+
+   case nir_op_inot:
+      if (bit_size == 1)
+         result = emit_unop(ctx, SpvOpLogicalNot, dest_type, src[0]);
+      else
+         result = emit_unop(ctx, SpvOpNot, dest_type, src[0]);
+      break;
 
    case nir_op_b2i32:
       assert(nir_op_infos[alu->op].num_inputs == 1);
@@ -1035,8 +1041,6 @@ emit_alu(struct ntv_context *ctx, nir_alu_instr *alu)
    BINOP(nir_op_fmod, SpvOpFMod)
    BINOP(nir_op_ilt, SpvOpSLessThan)
    BINOP(nir_op_ige, SpvOpSGreaterThanEqual)
-   BINOP(nir_op_ieq, SpvOpIEqual)
-   BINOP(nir_op_ine, SpvOpINotEqual)
    BINOP(nir_op_uge, SpvOpUGreaterThanEqual)
    BINOP(nir_op_flt, SpvOpFOrdLessThan)
    BINOP(nir_op_fge, SpvOpFOrdGreaterThanEqual)
@@ -1045,9 +1049,22 @@ emit_alu(struct ntv_context *ctx, nir_alu_instr *alu)
    BINOP(nir_op_ishl, SpvOpShiftLeftLogical)
    BINOP(nir_op_ishr, SpvOpShiftRightArithmetic)
    BINOP(nir_op_ushr, SpvOpShiftRightLogical)
-   BINOP(nir_op_iand, SpvOpBitwiseAnd)
-   BINOP(nir_op_ior, SpvOpBitwiseOr)
 #undef BINOP
+
+#define BINOP_LOG(nir_op, spv_op, spv_log_op) \
+   case nir_op: \
+      assert(nir_op_infos[alu->op].num_inputs == 2); \
+      if (nir_src_bit_size(alu->src[0].src) == 1) \
+         result = emit_binop(ctx, spv_log_op, dest_type, src[0], src[1]); \
+      else \
+         result = emit_binop(ctx, spv_op, dest_type, src[0], src[1]); \
+      break;
+
+   BINOP_LOG(nir_op_iand, SpvOpBitwiseAnd, SpvOpLogicalAnd)
+   BINOP_LOG(nir_op_ior, SpvOpBitwiseOr, SpvOpLogicalOr)
+   BINOP_LOG(nir_op_ieq, SpvOpIEqual, SpvOpLogicalEqual)
+   BINOP_LOG(nir_op_ine, SpvOpINotEqual, SpvOpLogicalNotEqual)
+#undef BINOP_LOG
 
 #define BUILTIN_BINOP(nir_op, spirv_op) \
    case nir_op: \
