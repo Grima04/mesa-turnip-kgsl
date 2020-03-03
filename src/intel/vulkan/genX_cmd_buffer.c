@@ -2470,15 +2470,13 @@ anv_descriptor_set_address(struct anv_cmd_buffer *cmd_buffer,
 static VkResult
 emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
                    struct anv_cmd_pipeline_state *pipe_state,
-                   gl_shader_stage stage,
+                   struct anv_shader_bin *shader,
                    struct anv_state *bt_state)
 {
    struct anv_subpass *subpass = cmd_buffer->state.subpass;
    uint32_t state_offset;
 
-   struct anv_pipeline *pipeline = pipe_state->pipeline;
-
-   struct anv_pipeline_bind_map *map = &pipeline->shaders[stage]->bind_map;
+   struct anv_pipeline_bind_map *map = &shader->bind_map;
    if (map->surface_count == 0) {
       *bt_state = (struct anv_state) { 0, };
       return VK_SUCCESS;
@@ -2510,7 +2508,7 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
 
       case ANV_DESCRIPTOR_SET_COLOR_ATTACHMENTS:
          /* Color attachment binding */
-         assert(stage == MESA_SHADER_FRAGMENT);
+         assert(shader->stage == MESA_SHADER_FRAGMENT);
          if (binding->index < subpass->color_count) {
             const unsigned att =
                subpass->color_attachments[binding->index].attachment;
@@ -2538,11 +2536,10 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
             anv_cmd_buffer_alloc_surface_state(cmd_buffer);
 
          struct anv_address constant_data = {
-            .bo = pipeline->device->dynamic_state_pool.block_pool.bo,
-            .offset = pipeline->shaders[stage]->constant_data.offset,
+            .bo = cmd_buffer->device->dynamic_state_pool.block_pool.bo,
+            .offset = shader->constant_data.offset,
          };
-         unsigned constant_data_size =
-            pipeline->shaders[stage]->constant_data_size;
+         unsigned constant_data_size = shader->constant_data_size;
 
          const enum isl_format format =
             anv_isl_format_for_descriptor_type(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
@@ -2557,7 +2554,7 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
 
       case ANV_DESCRIPTOR_SET_NUM_WORK_GROUPS: {
          /* This is always the first binding for compute shaders */
-         assert(stage == MESA_SHADER_COMPUTE && s == 0);
+         assert(shader->stage == MESA_SHADER_COMPUTE && s == 0);
 
          struct anv_state surface_state =
             anv_cmd_buffer_alloc_surface_state(cmd_buffer);
@@ -2613,7 +2610,7 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
             break;
          }
          case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
-            assert(stage == MESA_SHADER_FRAGMENT);
+            assert(shader->stage == MESA_SHADER_FRAGMENT);
             if ((desc->image_view->aspect_mask & VK_IMAGE_ASPECT_ANY_COLOR_BIT_ANV) == 0) {
                /* For depth and stencil input attachments, we treat it like any
                 * old texture that a user may have bound.
@@ -2665,7 +2662,7 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
          case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC: {
             /* Compute the offset within the buffer */
             struct anv_push_constants *push =
-               &cmd_buffer->state.push_constants[stage];
+               &cmd_buffer->state.push_constants[shader->stage];
 
             uint32_t dynamic_offset =
                push->dynamic_offsets[binding->dynamic_offset_index];
@@ -2721,12 +2718,10 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
 static VkResult
 emit_samplers(struct anv_cmd_buffer *cmd_buffer,
               struct anv_cmd_pipeline_state *pipe_state,
-              gl_shader_stage stage,
+              struct anv_shader_bin *shader,
               struct anv_state *state)
 {
-   struct anv_pipeline *pipeline = pipe_state->pipeline;
-
-   struct anv_pipeline_bind_map *map = &pipeline->shaders[stage]->bind_map;
+   struct anv_pipeline_bind_map *map = &shader->bind_map;
    if (map->sampler_count == 0) {
       *state = (struct anv_state) { 0, };
       return VK_SUCCESS;
@@ -2771,11 +2766,13 @@ flush_descriptor_sets(struct anv_cmd_buffer *cmd_buffer,
 
    VkResult result = VK_SUCCESS;
    anv_foreach_stage(s, dirty) {
-      result = emit_samplers(cmd_buffer, pipe_state, s,
+      result = emit_samplers(cmd_buffer, pipe_state,
+                             pipe_state->pipeline->shaders[s],
                              &cmd_buffer->state.samplers[s]);
       if (result != VK_SUCCESS)
          break;
-      result = emit_binding_table(cmd_buffer, pipe_state, s,
+      result = emit_binding_table(cmd_buffer, pipe_state,
+                                  pipe_state->pipeline->shaders[s],
                                   &cmd_buffer->state.binding_tables[s]);
       if (result != VK_SUCCESS)
          break;
@@ -2796,13 +2793,15 @@ flush_descriptor_sets(struct anv_cmd_buffer *cmd_buffer,
       /* Re-emit all active binding tables */
       dirty |= pipe_state->pipeline->active_stages;
       anv_foreach_stage(s, dirty) {
-         result = emit_samplers(cmd_buffer, pipe_state, s,
+         result = emit_samplers(cmd_buffer, pipe_state,
+                                pipe_state->pipeline->shaders[s],
                                 &cmd_buffer->state.samplers[s]);
          if (result != VK_SUCCESS) {
             anv_batch_set_error(&cmd_buffer->batch, result);
             return 0;
          }
-         result = emit_binding_table(cmd_buffer, pipe_state, s,
+         result = emit_binding_table(cmd_buffer, pipe_state,
+                                     pipe_state->pipeline->shaders[s],
                                      &cmd_buffer->state.binding_tables[s]);
          if (result != VK_SUCCESS) {
             anv_batch_set_error(&cmd_buffer->batch, result);
