@@ -69,8 +69,14 @@ upload_blorp_shader(struct blorp_batch *batch,
       .sampler_count = 0,
    };
 
+   /* The stage in anv_shader_bin is only useful for pipeline shaders, so just pass
+    * a dummy value here so we don't need to change BLORP API.
+    *
+    * TODO: Plumb the stage information to BLORP.
+    */
+   gl_shader_stage stage = MESA_SHADER_NONE;
    struct anv_shader_bin *bin =
-      anv_pipeline_cache_upload_kernel(&device->default_pipeline_cache,
+      anv_pipeline_cache_upload_kernel(&device->default_pipeline_cache, stage,
                                        key, key_size, kernel, kernel_size,
                                        NULL, 0,
                                        prog_data, prog_data_size,

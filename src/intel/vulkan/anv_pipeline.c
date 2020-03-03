@@ -1360,7 +1360,7 @@ anv_pipeline_compile_graphics(struct anv_pipeline *pipeline,
                                    &stages[s].bind_map);
 
       struct anv_shader_bin *bin =
-         anv_device_upload_kernel(pipeline->device, cache,
+         anv_device_upload_kernel(pipeline->device, cache, s,
                                   &stages[s].cache_key,
                                   sizeof(stages[s].cache_key),
                                   stages[s].code,
@@ -1547,6 +1547,7 @@ anv_pipeline_compile_cs(struct anv_pipeline *pipeline,
 
       const unsigned code_size = stage.prog_data.base.program_size;
       bin = anv_device_upload_kernel(pipeline->device, cache,
+                                     MESA_SHADER_COMPUTE,
                                      &stage.cache_key, sizeof(stage.cache_key),
                                      stage.code, code_size,
                                      stage.nir->constant_data,
