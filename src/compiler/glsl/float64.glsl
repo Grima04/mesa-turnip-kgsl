@@ -59,6 +59,11 @@
 #define FLOAT_ROUND_UP              3
 #define FLOAT_ROUNDING_MODE         FLOAT_ROUND_NEAREST_EVEN
 
+/* Relax propagation of NaN.  Binary operations with a NaN source will still
+ * produce a NaN result, but it won't follow strict IEEE rules.
+ */
+#define RELAXED_NAN_PROPAGATION
+
 /* Absolute value of a Float64 :
  * Clear the sign bit
  */
@@ -639,6 +644,12 @@ __normalizeRoundAndPackFloat64(uint zSign,
 uint64_t
 __propagateFloat64NaN(uint64_t __a, uint64_t __b)
 {
+#if defined RELAXED_NAN_PROPAGATION
+   uvec2 a = unpackUint2x32(__a);
+   uvec2 b = unpackUint2x32(__b);
+
+   return packUint2x32(uvec2(a.x | b.x, a.y | b.y));
+#else
    bool aIsNaN = __is_nan(__a);
    bool bIsNaN = __is_nan(__b);
    uvec2 a = unpackUint2x32(__a);
@@ -647,6 +658,7 @@ __propagateFloat64NaN(uint64_t __a, uint64_t __b)
    b.y |= 0x00080000u;
 
    return packUint2x32(mix(b, mix(a, b, bvec2(bIsNaN, bIsNaN)), bvec2(aIsNaN, aIsNaN)));
+#endif
 }
 
 /* Returns the result of adding the double-precision floating-point values
@@ -674,7 +686,7 @@ __fadd64(uint64_t a, uint64_t b)
 
       if (orig_exp_diff_is_zero) {
          if (aExp == 0x7FF) {
-            bool propagate = (aFracHi | aFracLo | bFracHi | bFracLo) != 0u;
+            bool propagate = ((aFracHi | bFracHi) | (aFracLo| bFracLo)) != 0u;
             return mix(a, __propagateFloat64NaN(a, b), propagate);
          }
          __add64(aFracHi, aFracLo, bFracHi, bFracLo, zFrac0, zFrac1);
@@ -753,7 +765,7 @@ __fadd64(uint64_t a, uint64_t b)
          return __normalizeRoundAndPackFloat64(aSign, zExp - 10, zFrac0, zFrac1);
       }
       if (aExp == 0x7FF) {
-          bool propagate = (aFracHi | aFracLo | bFracHi | bFracLo) != 0u;
+         bool propagate = ((aFracHi | bFracHi) | (aFracLo | bFracLo)) != 0u;
          return mix(0xFFFFFFFFFFFFFFFFUL, __propagateFloat64NaN(a, b), propagate);
       }
       bExp = mix(bExp, 1, aExp == 0);
@@ -879,8 +891,13 @@ __fmul64(uint64_t a, uint64_t b)
       return __packFloat64(zSign, 0x7FF, 0u, 0u);
    }
    if (bExp == 0x7FF) {
+      /* a cannot be NaN, but is b NaN? */
       if ((bFracHi | bFracLo) != 0u)
+#if defined RELAXED_NAN_PROPAGATION
+         return b;
+#else
          return __propagateFloat64NaN(a, b);
+#endif
       if ((uint(aExp) | aFracHi | aFracLo) == 0u)
          return 0xFFFFFFFFFFFFFFFFUL;
       return __packFloat64(zSign, 0x7FF, 0u, 0u);
