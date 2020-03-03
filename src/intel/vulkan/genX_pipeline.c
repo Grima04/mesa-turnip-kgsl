@@ -2251,11 +2251,7 @@ compute_pipeline_create(
 
    pipeline->mem_ctx = ralloc_context(NULL);
    pipeline->flags = pCreateInfo->flags;
-
-   /* When we free the pipeline, we detect stages based on the NULL status
-    * of various prog_data pointers.  Make them NULL by default.
-    */
-   memset(pipeline->shaders, 0, sizeof(pipeline->shaders));
+   pipeline->cs = NULL;
 
    util_dynarray_init(&pipeline->executables, pipeline->mem_ctx);
 
@@ -2290,8 +2286,7 @@ compute_pipeline_create(
 
    const uint32_t subslices = MAX2(device->physical->subslice_total, 1);
 
-   const struct anv_shader_bin *cs_bin =
-      pipeline->shaders[MESA_SHADER_COMPUTE];
+   const struct anv_shader_bin *cs_bin = pipeline->cs;
 
    anv_batch_emit(&pipeline->batch, GENX(MEDIA_VFE_STATE), vfe) {
 #if GEN_GEN > 7

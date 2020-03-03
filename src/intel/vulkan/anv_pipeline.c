@@ -301,9 +301,21 @@ void anv_DestroyPipeline(
    if (pipeline->blend_state.map)
       anv_state_pool_free(&device->dynamic_state_pool, pipeline->blend_state);
 
-   for (unsigned s = 0; s < MESA_SHADER_STAGES; s++) {
-      if (pipeline->shaders[s])
-         anv_shader_bin_unref(device, pipeline->shaders[s]);
+   switch (pipeline->type) {
+   case ANV_PIPELINE_GRAPHICS:
+      for (unsigned s = 0; s < MESA_SHADER_STAGES; s++) {
+         if (pipeline->shaders[s])
+            anv_shader_bin_unref(device, pipeline->shaders[s]);
+      }
+      break;
+
+   case ANV_PIPELINE_COMPUTE:
+      if (pipeline->cs)
+         anv_shader_bin_unref(device, pipeline->cs);
+      break;
+
+   default:
+      unreachable("invalid pipeline type");
    }
 
    vk_free2(&device->alloc, pAllocator, pipeline);
@@ -1586,7 +1598,7 @@ anv_pipeline_compile_cs(struct anv_pipeline *pipeline,
    }
 
    pipeline->active_stages = VK_SHADER_STAGE_COMPUTE_BIT;
-   pipeline->shaders[MESA_SHADER_COMPUTE] = bin;
+   pipeline->cs = bin;
 
    return VK_SUCCESS;
 }
@@ -2028,8 +2040,18 @@ VkResult anv_GetPipelineExecutableStatisticsKHR(
 
    const struct anv_pipeline_executable *exe =
       anv_pipeline_get_executable(pipeline, pExecutableInfo->executableIndex);
-   const struct brw_stage_prog_data *prog_data =
-      pipeline->shaders[exe->stage]->prog_data;
+
+   const struct brw_stage_prog_data *prog_data;
+   switch (pipeline->type) {
+   case ANV_PIPELINE_GRAPHICS:
+      prog_data = pipeline->shaders[exe->stage]->prog_data;
+      break;
+   case ANV_PIPELINE_COMPUTE:
+      prog_data = pipeline->cs->prog_data;
+      break;
+   default:
+      unreachable("invalid pipeline type");
+   }
 
    vk_outarray_append(&out, stat) {
       WRITE_STR(stat->name, "Instruction Count");

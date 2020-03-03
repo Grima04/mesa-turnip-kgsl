@@ -3179,6 +3179,7 @@ struct anv_pipeline {
    struct anv_subpass *                         subpass;
 
    struct anv_shader_bin *                      shaders[MESA_SHADER_STAGES];
+   struct anv_shader_bin *                      cs;
 
    struct util_dynarray                         executables;
 
@@ -3251,7 +3252,13 @@ ANV_DECL_GET_PROG_DATA_FUNC(tcs, MESA_SHADER_TESS_CTRL)
 ANV_DECL_GET_PROG_DATA_FUNC(tes, MESA_SHADER_TESS_EVAL)
 ANV_DECL_GET_PROG_DATA_FUNC(gs, MESA_SHADER_GEOMETRY)
 ANV_DECL_GET_PROG_DATA_FUNC(wm, MESA_SHADER_FRAGMENT)
-ANV_DECL_GET_PROG_DATA_FUNC(cs, MESA_SHADER_COMPUTE)
+
+static inline const struct brw_cs_prog_data *
+get_cs_prog_data(const struct anv_pipeline *pipeline)
+{
+   assert(pipeline->type == ANV_PIPELINE_COMPUTE);
+   return (const struct brw_cs_prog_data *) pipeline->cs->prog_data;
+}
 
 static inline const struct brw_vue_prog_data *
 anv_pipeline_get_last_vue_prog_data(const struct anv_pipeline *pipeline)

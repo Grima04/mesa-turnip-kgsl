@@ -426,9 +426,8 @@ void anv_CmdBindPipeline(
 
       cmd_buffer->state.compute.base.pipeline = pipeline;
       cmd_buffer->state.compute.pipeline_dirty = true;
-      const struct anv_pipeline_bind_map *bind_map =
-         &pipeline->shaders[MESA_SHADER_COMPUTE]->bind_map;
-      set_dirty_for_bind_map(cmd_buffer, MESA_SHADER_COMPUTE, bind_map);
+      set_dirty_for_bind_map(cmd_buffer, MESA_SHADER_COMPUTE,
+                             &pipeline->cs->bind_map);
       break;
    }
 
@@ -822,8 +821,7 @@ anv_cmd_buffer_cs_push_constants(struct anv_cmd_buffer *cmd_buffer)
       &cmd_buffer->state.push_constants[MESA_SHADER_COMPUTE];
    struct anv_pipeline *pipeline = cmd_buffer->state.compute.base.pipeline;
    const struct brw_cs_prog_data *cs_prog_data = get_cs_prog_data(pipeline);
-   const struct anv_push_range *range =
-      &pipeline->shaders[MESA_SHADER_COMPUTE]->bind_map.push_ranges[0];
+   const struct anv_push_range *range = &pipeline->cs->bind_map.push_ranges[0];
 
    if (cs_prog_data->push.total.size == 0)
       return (struct anv_state) { .offset = 0 };

@@ -4150,7 +4150,7 @@ genX(cmd_buffer_flush_compute_state)(struct anv_cmd_buffer *cmd_buffer)
        cmd_buffer->state.compute.pipeline_dirty) {
       flush_descriptor_sets(cmd_buffer,
                             &cmd_buffer->state.compute.base,
-                            &pipeline->shaders[MESA_SHADER_COMPUTE], 1);
+                            &pipeline->cs, 1);
 
       uint32_t iface_desc_data_dw[GENX(INTERFACE_DESCRIPTOR_DATA_length)];
       struct GENX(INTERFACE_DESCRIPTOR_DATA) desc = {
