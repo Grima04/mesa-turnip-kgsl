@@ -2242,8 +2242,8 @@ compute_pipeline_create(
       return result;
    }
    pipeline->base.batch.alloc = alloc;
-   pipeline->base.batch.next = pipeline->base.batch.start = pipeline->base.batch_data;
-   pipeline->base.batch.end = pipeline->base.batch.start + sizeof(pipeline->base.batch_data);
+   pipeline->base.batch.next = pipeline->base.batch.start = pipeline->batch_data;
+   pipeline->base.batch.end = pipeline->base.batch.start + sizeof(pipeline->batch_data);
    pipeline->base.batch.relocs = &pipeline->base.batch_relocs;
    pipeline->base.batch.status = VK_SUCCESS;
 

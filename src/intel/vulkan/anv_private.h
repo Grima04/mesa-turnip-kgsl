@@ -3171,7 +3171,6 @@ struct anv_pipeline {
 
    struct anv_batch                             batch;
    struct anv_reloc_list                        batch_relocs;
-   uint32_t                                     batch_data[512];
 
    void *                                       mem_ctx;
 
@@ -3185,6 +3184,8 @@ struct anv_pipeline {
 
 struct anv_graphics_pipeline {
    struct anv_pipeline                          base;
+
+   uint32_t                                     batch_data[512];
 
    anv_cmd_dirty_mask_t                         dynamic_state_mask;
    struct anv_dynamic_state                     dynamic_state;
@@ -3238,6 +3239,7 @@ struct anv_compute_pipeline {
 
    struct anv_shader_bin *                      cs;
    uint32_t                                     cs_right_mask;
+   uint32_t                                     batch_data[9];
    uint32_t                                     interface_descriptor_data[8];
 };
 
