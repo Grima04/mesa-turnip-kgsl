@@ -5,11 +5,12 @@ testing of Mesa drivers on various platforms, so that we can ensure no
 regressions are merged, as long as developers are merging code using
 marge-bot.
 
-There are currently 3 main automated testing systems deployed for
-Mesa.  LAVA and gitlab-runner on the DUTs are used in pre-merge
-testing and are described in this document, while Intel has a
-jenkins-based CI system with restricted access that isn't connected to
-gitlab.
+There are currently 4 automated testing systems deployed for Mesa.
+LAVA and gitlab-runner on the DUTs are used in pre-merge testing and
+are described in this document.  Managing bare metal using
+gitlab-runner is described under [bare-metal/README.md].  Intel also
+has a jenkins-based CI system with restricted access that isn't
+connected to gitlab.
 
 ## Mesa testing using LAVA
 

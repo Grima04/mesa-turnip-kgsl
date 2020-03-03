@@ -57,17 +57,6 @@ if [ -d /lava-files ]; then
     find -H  |  cpio -H newc -o | gzip -c - > $CI_PROJECT_DIR/artifacts/lava-rootfs-${CROSS:-arm64}.cpio.gz
     popd
 
-    if [ -z "$CROSS" ]; then
-        gzip -c artifacts/Image > Image.gz
-        cat Image.gz artifacts/apq8016-sbc.dtb > Image.gz-dtb
-        abootimg \
-            --create artifacts/db410c.img \
-            -k Image.gz-dtb \
-            -r artifacts/lava-rootfs-${CROSS:-arm64}.cpio.gz \
-            -c cmdline="ip=dhcp console=ttyMSM0,115200n8"
-        rm Image.gz Image.gz-dtb
-    fi
-
     # Store job ID so the test stage can build URLs to the artifacts
     echo $CI_JOB_ID > artifacts/build_job_id.txt
 

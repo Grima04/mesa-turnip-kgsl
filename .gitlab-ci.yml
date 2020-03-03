@@ -161,7 +161,7 @@ arm_build:
     - .debian@container-ifnot-exists@arm64v8
     - .container
   variables:
-    DEBIAN_TAG: &arm_build "2020-02-26"
+    DEBIAN_TAG: &arm_build "2020-03-09"
 
 .use-arm_build:
   variables:
@@ -701,13 +701,39 @@ arm64_a630_gles3:
   variables:
     DEQP_VER: gles3
 
+.baremetal-test:
+  extends:
+    - .ci-run-policy
+  stage: test
+
 arm64_a306_gles2:
-  extends: arm64_a630_gles2
+  extends:
+    - .baremetal-test
+    - .use-arm_build
+  stage: freedreno
   variables:
+    BM_KERNEL: /lava-files/Image
+    BM_DTB: /lava-files/apq8016-sbc.dtb
+    BM_ROOTFS: /lava-files/rootfs-arm64
+    BM_CMDLINE: "ip=dhcp console=ttyMSM0,115200n8"
     DEQP_EXPECTED_FAILS: deqp-freedreno-a307-fails.txt
-    DEQP_SKIPS: deqp-default-skips.txt
+    DEQP_SKIPS: deqp-freedreno-a307-skips.txt
+    DEQP_VER: gles2
+    DEQP_PARALLEL: 4
+  script:
+    - .gitlab-ci/bare-metal/fastboot.sh
+  needs:
+    - meson-arm64
   tags:
-    - db410c
+    - google-freedreno-db410c
+
+# Disabled due to flaky results
+.arm64_a306_gles3:
+  extends:
+    - arm64_a306_gles2
+  parallel: 8
+  variables:
+    DEQP_VER: gles3
 
 # RADV CI
 .test-radv:

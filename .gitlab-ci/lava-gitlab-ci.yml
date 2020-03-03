@@ -153,22 +153,3 @@ lima-mali450-test:arm64:
     ENV_VARS: "DEQP_PARALLEL=6"
   tags:
     - lava-meson-gxl-s905x-libretech-cc
-
-.freedreno-a307-gles2:
-  extends:
-    - .lava-test:arm64
-    - .freedreno-rules
-  variables:
-    DEVICE_TYPE: apq8016-sbc
-    GPU_VERSION: freedreno-a307
-    ENV_VARS: "DEQP_PARALLEL=4"
-    KERNEL_IMAGE_NAME: db410c.img
-    BOOT_METHOD: fastboot
-  tags:
-    - lava-mesa-db410c
-
-.freedreno-a307-gles3:
-  parallel: 6
-  extends: .freedreno-a307-gles2
-  variables:
-    DEQP_VERSION: gles3

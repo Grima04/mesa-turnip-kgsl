@@ -19,6 +19,7 @@ apt-get -y install \
 	cpio \
 	crossbuild-essential-armhf \
 	debootstrap \
+	fastboot \
 	flex \
 	g++ \
 	gettext \
@@ -45,8 +46,10 @@ apt-get -y install \
 	python \
 	python3-distutils \
 	python3-mako \
+	python3-serial \
 	unzip \
 	wget \
+	xz-utils \
 	zlib1g-dev
 
 # dependencies where we want a specific version
