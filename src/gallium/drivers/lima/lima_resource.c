@@ -196,9 +196,6 @@ _lima_resource_create_with_modifiers(struct pipe_screen *pscreen,
    if (!has_user_modifiers && (templat->bind & PIPE_BIND_SHARED))
       should_tile = false;
 
-   if (drm_find_modifier(DRM_FORMAT_MOD_LINEAR, modifiers, count))
-      should_tile = false;
-
    if (has_user_modifiers &&
       !drm_find_modifier(DRM_FORMAT_MOD_ARM_16X16_BLOCK_U_INTERLEAVED,
                          modifiers, count))
