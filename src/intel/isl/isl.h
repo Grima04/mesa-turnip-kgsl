@@ -617,7 +617,30 @@ enum isl_aux_usage {
     */
    ISL_AUX_USAGE_MC,
 
-   /** The auxiliary surface is a HiZ surface and CCS is also enabled */
+   /** The auxiliary surface is a HiZ surface operating in write-through mode
+    *  and CCS is also enabled
+    *
+    * In this mode, the HiZ and CCS surfaces act as a single fused compression
+    * surface where resolves and ambiguates operate on both surfaces at the
+    * same time.  In this mode, the HiZ surface operates in write-through
+    * mode where it is only used for accelerating depth testing and not for
+    * actual compression.  The CCS-compressed surface contains valid data at
+    * all times.
+    *
+    * @invariant isl_surf::samples == 1
+    */
+   ISL_AUX_USAGE_HIZ_CCS_WT,
+
+   /** The auxiliary surface is a HiZ surface with and CCS is also enabled
+    *
+    * In this mode, the HiZ and CCS surfaces act as a single fused compression
+    * surface where resolves and ambiguates operate on both surfaces at the
+    * same time.  In this mode, full HiZ compression is enabled and the
+    * CCS-compressed main surface may not contain valid data.  The only way to
+    * read the surface outside of the depth hardware is to do a full resolve
+    * which resolves both HiZ and CCS so the surface is in the pass-through
+    * state.
+    */
    ISL_AUX_USAGE_HIZ_CCS,
 
    /** The auxiliary surface is an MCS and CCS is also enabled
@@ -1737,6 +1760,7 @@ static inline bool
 isl_aux_usage_has_hiz(enum isl_aux_usage usage)
 {
    return usage == ISL_AUX_USAGE_HIZ ||
+          usage == ISL_AUX_USAGE_HIZ_CCS_WT ||
           usage == ISL_AUX_USAGE_HIZ_CCS;
 }
 
@@ -1753,6 +1777,7 @@ isl_aux_usage_has_ccs(enum isl_aux_usage usage)
    return usage == ISL_AUX_USAGE_CCS_D ||
           usage == ISL_AUX_USAGE_CCS_E ||
           usage == ISL_AUX_USAGE_MC ||
+          usage == ISL_AUX_USAGE_HIZ_CCS_WT ||
           usage == ISL_AUX_USAGE_HIZ_CCS ||
           usage == ISL_AUX_USAGE_MCS_CCS;
 }

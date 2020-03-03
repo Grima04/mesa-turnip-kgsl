@@ -130,7 +130,7 @@ isl_genX(emit_depth_stencil_hiz_s)(const struct isl_device *dev, void *batch,
 
 #if GEN_GEN >= 12
       db.ControlSurfaceEnable = db.DepthBufferCompressionEnable =
-         info->hiz_usage == ISL_AUX_USAGE_HIZ_CCS;
+         isl_aux_usage_has_ccs(info->hiz_usage);
 #endif
    }
 
@@ -203,10 +203,8 @@ isl_genX(emit_depth_stencil_hiz_s)(const struct isl_device *dev, void *batch,
    };
 
    assert(info->hiz_usage == ISL_AUX_USAGE_NONE ||
-          info->hiz_usage == ISL_AUX_USAGE_HIZ ||
-          info->hiz_usage == ISL_AUX_USAGE_HIZ_CCS);
-   if (info->hiz_usage == ISL_AUX_USAGE_HIZ ||
-       info->hiz_usage == ISL_AUX_USAGE_HIZ_CCS) {
+          isl_aux_usage_has_hiz(info->hiz_usage));
+   if (isl_aux_usage_has_hiz(info->hiz_usage)) {
       assert(GEN_GEN >= 12 || info->hiz_usage == ISL_AUX_USAGE_HIZ);
       db.HierarchicalDepthBufferEnable = true;
 
@@ -216,7 +214,40 @@ isl_genX(emit_depth_stencil_hiz_s)(const struct isl_device *dev, void *batch,
 #if GEN_GEN >= 12
       hiz.HierarchicalDepthBufferWriteThruEnable =
          isl_surf_supports_hiz_ccs_wt(dev->info, info->depth_surf,
-                                      info->hiz_usage);
+                                      info->hiz_usage) ||
+         info->hiz_usage == ISL_AUX_USAGE_HIZ_CCS_WT;
+
+      /* The bspec docs for this bit are fairly unclear about exactly what is
+       * and isn't supported with HiZ write-through.  It's fairly clear that
+       * you can't sample from a multisampled depth buffer with CCS.  This
+       * limitation isn't called out explicitly but the docs for the CCS_E
+       * value of RENDER_SURFACE_STATE::AuxiliarySurfaceMode say:
+       *
+       *    "If Number of multisamples > 1, programming this value means MSAA
+       *    compression is enabled for that surface. Auxillary surface is MSC
+       *    with tile y."
+       *
+       * Since this interpretation ignores whether the surface is
+       * depth/stencil or not and since multisampled depth buffers use
+       * ISL_MSAA_LAYOUT_INTERLEAVED which is incompatible with MCS
+       * compression, this means that we can't even specify MSAA depth CCS in
+       * RENDER_SURFACE_STATE::AuxiliarySurfaceMode.  The BSpec also says, for
+       * 3DSTATE_HIER_DEPTH_BUFFER::HierarchicalDepthBufferWriteThruEnable,
+       *
+       *    "This bit must NOT be set for >1x MSAA modes, since sampler
+       *    doesn't support sampling from >1x MSAA depth buffer."
+       *
+       * Again, this is all focused around what the sampler can do and not
+       * what the depth hardware can do.
+       *
+       * Reading even more internal docs which can't be quoted here makes it
+       * pretty clear that, even if it's not currently called out in the
+       * BSpec, HiZ+CCS write-through isn't intended to work with MSAA and we
+       * shouldn't try to use it.  Treat it as if it's disallowed even if the
+       * BSpec doesn't explicitly document that.
+       */
+      if (hiz.HierarchicalDepthBufferWriteThruEnable)
+         assert(info->depth_surf->samples == 1);
 #endif
 
 #if GEN_GEN >= 8

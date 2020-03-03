@@ -91,6 +91,7 @@ static const uint32_t isl_to_gen_aux_mode[] = {
    [ISL_AUX_USAGE_NONE] = AUX_NONE,
    [ISL_AUX_USAGE_MCS] = AUX_CCS_E,
    [ISL_AUX_USAGE_CCS_E] = AUX_CCS_E,
+   [ISL_AUX_USAGE_HIZ_CCS_WT] = AUX_CCS_E,
    [ISL_AUX_USAGE_MCS_CCS] = AUX_MCS_LCE,
 };
 #elif GEN_GEN >= 9
@@ -559,6 +560,7 @@ isl_genX(surf_fill_state_s)(const struct isl_device *dev, void *state,
       if (GEN_GEN >= 12) {
          assert(info->aux_usage == ISL_AUX_USAGE_MCS ||
                 info->aux_usage == ISL_AUX_USAGE_CCS_E ||
+                info->aux_usage == ISL_AUX_USAGE_HIZ_CCS_WT ||
                 info->aux_usage == ISL_AUX_USAGE_MCS_CCS);
       } else if (GEN_GEN >= 9) {
          assert(info->aux_usage == ISL_AUX_USAGE_HIZ ||
@@ -580,8 +582,29 @@ isl_genX(surf_fill_state_s)(const struct isl_device *dev, void *state,
        */
       assert(!(info->view->usage & ISL_SURF_USAGE_STORAGE_BIT));
 
-      if (info->aux_usage == ISL_AUX_USAGE_HIZ) {
-         /* The number of samples must be 1 */
+      if (isl_aux_usage_has_hiz(info->aux_usage)) {
+         /* For Gen8-10, there are some restrictions around sampling from HiZ.
+          * The Skylake PRM docs for RENDER_SURFACE_STATE::AuxiliarySurfaceMode
+          * say:
+          *
+          *    "If this field is set to AUX_HIZ, Number of Multisamples must
+          *    be MULTISAMPLECOUNT_1, and Surface Type cannot be SURFTYPE_3D."
+          *
+          * On Gen12, the docs are a bit less obvious but the restriction is
+          * the same.  The limitation isn't called out explicitly but the docs
+          * for the CCS_E value of RENDER_SURFACE_STATE::AuxiliarySurfaceMode
+          * say:
+          *
+          *    "If Number of multisamples > 1, programming this value means
+          *    MSAA compression is enabled for that surface. Auxillary surface
+          *    is MSC with tile y."
+          *
+          * Since this interpretation ignores whether the surface is
+          * depth/stencil or not and since multisampled depth buffers use
+          * ISL_MSAA_LAYOUT_INTERLEAVED which is incompatible with MCS
+          * compression, this means that we can't even specify MSAA depth CCS
+          * in RENDER_SURFACE_STATE::AuxiliarySurfaceMode.
+          */
          assert(info->surf->samples == 1);
 
          /* The dimension must not be 3D */

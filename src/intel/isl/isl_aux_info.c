@@ -65,6 +65,7 @@ static const struct aux_usage_info info[] = {
 /*         write_behavior c fc pr fra */
    AUX(         COMPRESS, Y, Y, x, x, HIZ)
    AUX(         COMPRESS, Y, Y, x, x, HIZ_CCS)
+   AUX(         COMPRESS, Y, Y, x, x, HIZ_CCS_WT)
    AUX(         COMPRESS, Y, Y, Y, x, MCS)
    AUX(         COMPRESS, Y, Y, Y, x, MCS_CCS)
    AUX(         COMPRESS, Y, Y, Y, Y, CCS_E)
