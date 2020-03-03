@@ -4378,6 +4378,18 @@ iris_store_cs_state(struct iris_context *ice,
       desc.BarrierEnable = cs_prog_data->uses_barrier;
       desc.CrossThreadConstantDataReadLength =
          cs_prog_data->push.cross_thread.regs;
+#if GEN_GEN >= 12
+      /* TODO: Check if we are missing workarounds and enable mid-thread
+       * preemption.
+       *
+       * We still have issues with mid-thread preemption (it was already
+       * disabled by the kernel on gen11, due to missing workarounds). It's
+       * possible that we are just missing some workarounds, and could enable
+       * it later, but for now let's disable it to fix a GPU in compute in Car
+       * Chase (and possibly more).
+       */
+      desc.ThreadPreemptionDisable = true;
+#endif
    }
 }
 
