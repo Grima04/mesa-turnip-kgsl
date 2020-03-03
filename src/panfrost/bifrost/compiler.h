@@ -105,6 +105,10 @@ extern unsigned bi_class_props[BI_NUM_CLASSES];
 /* Swizzling allowed for the 8/16-bit source */
 #define BI_SWIZZLABLE (1 << 6)
 
+/* For scheduling purposes this is a high latency instruction and must be at
+ * the end of a clause. Implies ADD */
+#define BI_SCHED_HI_LATENCY ((1 << 7) | BI_SCHED_ADD)
+
 /* It can't get any worse than csel4... can it? */
 #define BIR_SRC_COUNT 4
 
