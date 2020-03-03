@@ -264,7 +264,25 @@ __fsat64(uint64_t __a)
    if (__is_nan(__a) || int(a.y) < 0)
       return 0ul;
 
-   if (!__flt64_nonnan(__a, 0x3FF0000000000000ul /* 1.0 */))
+   /* IEEE 754 floating point numbers are specifically designed so that, with
+    * two exceptions, values can be compared by bit-casting to signed integers
+    * with the same number of bits.
+    *
+    * From https://en.wikipedia.org/wiki/IEEE_754-1985#Comparing_floating-point_numbers:
+    *
+    *    When comparing as 2's-complement integers: If the sign bits differ,
+    *    the negative number precedes the positive number, so 2's complement
+    *    gives the correct result (except that negative zero and positive zero
+    *    should be considered equal). If both values are positive, the 2's
+    *    complement comparison again gives the correct result. Otherwise (two
+    *    negative numbers), the correct FP ordering is the opposite of the 2's
+    *    complement ordering.
+    *
+    * We know that both values are not negative, and we know that at least one
+    * value is not zero.  Therefore, we can just use the 2's complement
+    * comparison ordering.
+    */
+   if (ilt64(0x3FF00000, 0x00000000, a.y, a.x))
       return 0x3FF0000000000000ul;
 
    return __a;
