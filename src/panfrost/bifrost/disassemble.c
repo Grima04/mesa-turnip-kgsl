@@ -1324,15 +1324,15 @@ static void dump_add(FILE *fp, uint64_t word, struct bifrost_regs regs,
                 if (ADD.op & 0x400)
                         fprintf(fp, ".flat");
                 switch ((ADD.op >> 7) & 0x3) {
-                case 0:
+                case BIFROST_INTERP_PER_FRAG:
                         fprintf(fp, ".per_frag");
                         break;
-                case 1:
+                case BIFROST_INTERP_CENTROID:
                         fprintf(fp, ".centroid");
                         break;
-                case 2:
+                case BIFROST_INTERP_DEFAULT:
                         break;
-                case 3:
+                case BIFROST_INTERP_EXPLICIT:
                         fprintf(fp, ".explicit");
                         break;
                 }

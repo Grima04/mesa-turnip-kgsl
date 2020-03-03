@@ -184,6 +184,26 @@ struct bifrost_ld_attr {
         unsigned op : 5;
 };
 
+enum bifrost_interp_mode {
+        BIFROST_INTERP_PER_FRAG = 0x0,
+        BIFROST_INTERP_CENTROID = 0x1,
+        BIFROST_INTERP_DEFAULT  = 0x2,
+        BIFROST_INTERP_EXPLICIT = 0x3
+};
+
+struct bifrost_ld_var {
+        unsigned src0 : 3;
+
+        /* If top two bits set, indirect with src in bottom three */
+        unsigned addr : 5;
+
+        unsigned channels : 2; /* MALI_POSITIVE */
+        enum bifrost_interp_mode interp_mode : 2;
+        unsigned reuse : 1;
+        unsigned flat : 1;
+        unsigned op : 6;
+};
+
 struct bifrost_tex_ctrl {
         unsigned sampler_index : 4; // also used to signal indirects
         unsigned tex_index : 7;
