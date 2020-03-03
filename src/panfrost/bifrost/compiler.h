@@ -98,6 +98,17 @@ struct bi_load {
         unsigned channels;
 };
 
+/* BI_LD_VARY */
+struct bi_load_vary {
+        /* All parameters used here. Indirect location specified in
+         * src1 and ignoring location, if present. */
+        struct bi_load load;
+
+        enum bifrost_interp_mode interp_mode;
+        bool reuse;
+        bool flat;
+};
+
 typedef struct {
         struct list_head link; /* Must be first */
         enum bi_class type;
@@ -120,6 +131,7 @@ typedef struct {
         union {
                 enum bifrost_minmax_mode minmax;
                 struct bi_load load;
+                struct bi_load_vary load_vary;
         };
 } bi_instruction;
 
