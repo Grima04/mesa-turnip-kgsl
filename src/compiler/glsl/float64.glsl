@@ -1784,21 +1784,29 @@ __fround64(uint64_t __a)
 uint64_t
 __fmin64(uint64_t a, uint64_t b)
 {
-   if (__is_nan(a)) return b;
-   if (__is_nan(b)) return a;
+   /* This weird layout matters.  Doing the "obvious" thing results in extra
+    * flow control being inserted to implement the short-circuit evaluation
+    * rules.  Flow control is bad!
+    */
+   bool b_nan = __is_nan(b);
+   bool a_lt_b = __flt64_nonnan(a, b);
+   bool a_nan = __is_nan(a);
 
-   if (__flt64_nonnan(a, b)) return a;
-   return b;
+   return (b_nan || a_lt_b) && !a_nan ? a : b;
 }
 
 uint64_t
 __fmax64(uint64_t a, uint64_t b)
 {
-   if (__is_nan(a)) return b;
-   if (__is_nan(b)) return a;
+   /* This weird layout matters.  Doing the "obvious" thing results in extra
+    * flow control being inserted to implement the short-circuit evaluation
+    * rules.  Flow control is bad!
+    */
+   bool b_nan = __is_nan(b);
+   bool a_lt_b = __flt64_nonnan(a, b);
+   bool a_nan = __is_nan(a);
 
-   if (__flt64_nonnan(a, b)) return b;
-   return a;
+   return (b_nan || a_lt_b) && !a_nan ? b : a;
 }
 
 uint64_t
