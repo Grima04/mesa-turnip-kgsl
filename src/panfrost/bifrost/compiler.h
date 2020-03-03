@@ -55,12 +55,14 @@ enum bi_class {
         BI_CONVERT,
         BI_CSEL,
         BI_DISCARD,
+        BI_EXTRACT,
         BI_FMA,
         BI_FREXP,
         BI_LOAD,
         BI_LOAD_ATTR,
         BI_LOAD_VAR,
         BI_LOAD_VAR_ADDRESS,
+        BI_MAKE_VEC,
         BI_MINMAX,
         BI_MOV,
         BI_SHIFT,
@@ -152,7 +154,8 @@ typedef struct {
         unsigned dest;
         unsigned src[BIR_SRC_COUNT];
 
-        /* If one of the sources has BIR_INDEX_CONSTANT... */
+        /* If one of the sources has BIR_INDEX_CONSTANT... Also, for
+         * BI_EXTRACT, the component index is stored here. */
         union {
                 uint64_t u64;
                 uint32_t u32;
