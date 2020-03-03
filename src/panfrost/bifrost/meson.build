@@ -21,6 +21,7 @@
 
 libpanfrost_bifrost_files = files(
   'disassemble.c',
+  'bi_tables.c',
   'bifrost_compile.c',
 )
 

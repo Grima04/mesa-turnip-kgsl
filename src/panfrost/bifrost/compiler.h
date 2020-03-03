@@ -27,6 +27,8 @@
 #ifndef __BIFROST_COMPILER_H
 #define __BIFROST_COMPILER_H
 
+#include "compiler/nir/nir.h"
+
 /* Bifrost opcodes are tricky -- the same op may exist on both FMA and
  * ADD with two completely different opcodes, and opcodes can be varying
  * length in some cases. Then we have different opcodes for int vs float
@@ -66,7 +68,14 @@ enum bi_class {
         BI_SPECIAL, /* _FAST, _TABLE on supported GPUs */
         BI_TEX,
         BI_ROUND,
+        BI_NUM_CLASSES
 };
+
+/* Properties of a class... */
+extern unsigned bi_class_props[BI_NUM_CLASSES];
+
+/* abs/neg/outmod valid for a float op */
+#define BI_MODS (1 << 0)
 
 /* It can't get any worse than csel4... can it? */
 #define BIR_SRC_COUNT 4
