@@ -144,9 +144,47 @@ typedef struct {
         };
 } bi_instruction;
 
+/* Scheduling takes place in two steps. Step 1 groups instructions within a
+ * block into distinct clauses (bi_clause). Step 2 schedules instructions
+ * within a clause into FMA/ADD pairs (bi_bundle).
+ *
+ * A bi_bundle contains two paired instruction pointers. If a slot is unfilled,
+ * leave it NULL; the emitter will fill in a nop.
+ */
+
 typedef struct {
+        bi_instruction *fma;
+        bi_instruction *add;
+} bi_bundle;
+
+typedef struct {
+        struct list_head link;
+
+        /* A clause can have 8 instructions in bundled FMA/ADD sense, so there
+         * can be 8 bundles. But each bundle can have both an FMA and an ADD,
+         * so a clause can have up to 16 bi_instructions. Whether bundles or
+         * instructions are used depends on where in scheduling we are. */
+
+        unsigned instruction_count;
+        unsigned bundle_count;
+
+        union {
+                bi_instruction *instructions[16];
+                bi_bundle bundles[8];
+        };
+} bi_clause;
+
+typedef struct bi_block {
         struct list_head link; /* must be first */
-        struct list_head instructions; /* list of bi_instructions */
+        unsigned name; /* Just for pretty-printing */
+
+        /* If true, uses clauses; if false, uses instructions */
+        bool scheduled;
+
+        union {
+                struct list_head instructions; /* pre-schedule, list of bi_instructions */
+                struct list_head clauses; /* list of bi_clause */
+        };
 } bi_block;
 
 typedef struct {
