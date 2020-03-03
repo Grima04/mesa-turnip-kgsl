@@ -4359,6 +4359,8 @@ radv_cmd_buffer_begin_subpass(struct radv_cmd_buffer *cmd_buffer,
 
 	radv_cmd_buffer_set_subpass(cmd_buffer, subpass);
 
+	radv_describe_barrier_start(cmd_buffer, RGP_BARRIER_EXTERNAL_RENDER_PASS_SYNC);
+
 	for (uint32_t i = 0; i < subpass->attachment_count; ++i) {
 		const uint32_t a = subpass->attachments[i].attachment;
 		if (a == VK_ATTACHMENT_UNUSED)
@@ -4368,6 +4370,8 @@ radv_cmd_buffer_begin_subpass(struct radv_cmd_buffer *cmd_buffer,
 						     subpass->attachments[i],
 						     true);
 	}
+
+	radv_describe_barrier_end(cmd_buffer);
 
 	radv_cmd_buffer_clear_subpass(cmd_buffer);
 
@@ -4383,6 +4387,8 @@ radv_cmd_buffer_end_subpass(struct radv_cmd_buffer *cmd_buffer)
 
 	radv_cmd_buffer_resolve_subpass(cmd_buffer);
 
+	radv_describe_barrier_start(cmd_buffer, RGP_BARRIER_EXTERNAL_RENDER_PASS_SYNC);
+
 	for (uint32_t i = 0; i < subpass->attachment_count; ++i) {
 		const uint32_t a = subpass->attachments[i].attachment;
 		if (a == VK_ATTACHMENT_UNUSED)
@@ -4396,6 +4402,8 @@ radv_cmd_buffer_end_subpass(struct radv_cmd_buffer *cmd_buffer)
 		struct radv_subpass_attachment att = { a, layout, stencil_layout };
 		radv_handle_subpass_image_transition(cmd_buffer, att, false);
 	}
+
+	radv_describe_barrier_end(cmd_buffer);
 }
 
 void
