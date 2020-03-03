@@ -107,22 +107,15 @@ check_array_data(struct gl_context *ctx, struct gl_vertex_array_object *vao,
 static inline void
 get_index_size(GLenum type, struct _mesa_index_buffer *ib)
 {
-   switch (type) {
-   case GL_UNSIGNED_INT:
-      ib->index_size_shift = 2;
-      break;
-   case GL_UNSIGNED_SHORT:
-      ib->index_size_shift = 1;
-      break;
-   case GL_UNSIGNED_BYTE:
-      ib->index_size_shift = 0;
-      break;
-   default:
-      assert(!"unsupported index data type");
-      /* In case assert is turned off */
-      ib->index_size_shift = 0;
-      break;
-   }
+   /* The type is already validated, so use a fast conversion.
+    *
+    * GL_UNSIGNED_BYTE  - GL_UNSIGNED_BYTE = 0
+    * GL_UNSIGNED_SHORT - GL_UNSIGNED_BYTE = 2
+    * GL_UNSIGNED_INT   - GL_UNSIGNED_BYTE = 4
+    *
+    * Divide by 2 to get 0,1,2.
+    */
+   ib->index_size_shift = (type - GL_UNSIGNED_BYTE) >> 1;
 }
 
 /**
