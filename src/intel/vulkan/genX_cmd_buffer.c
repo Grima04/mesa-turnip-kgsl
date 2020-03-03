@@ -2478,11 +2478,6 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
 
    struct anv_pipeline *pipeline = pipe_state->pipeline;
 
-   if (!anv_pipeline_has_stage(pipeline, stage)) {
-      *bt_state = (struct anv_state) { 0, };
-      return VK_SUCCESS;
-   }
-
    struct anv_pipeline_bind_map *map = &pipeline->shaders[stage]->bind_map;
    if (map->surface_count == 0) {
       *bt_state = (struct anv_state) { 0, };
@@ -2730,11 +2725,6 @@ emit_samplers(struct anv_cmd_buffer *cmd_buffer,
               struct anv_state *state)
 {
    struct anv_pipeline *pipeline = pipe_state->pipeline;
-
-   if (!anv_pipeline_has_stage(pipeline, stage)) {
-      *state = (struct anv_state) { 0, };
-      return VK_SUCCESS;
-   }
 
    struct anv_pipeline_bind_map *map = &pipeline->shaders[stage]->bind_map;
    if (map->sampler_count == 0) {
