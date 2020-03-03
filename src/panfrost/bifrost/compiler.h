@@ -175,6 +175,9 @@ typedef struct {
          * int). Zero if there is no destination. Bitsize included */
         nir_alu_type dest_type;
 
+        /* Source types if required by the class */
+        nir_alu_type src_types[BIR_SRC_COUNT];
+
         /* If the source type is 8-bit or 16-bit such that SIMD is possible, and
          * the class has BI_SWIZZLABLE, this is a swizzle for the input. Swizzles
          * in practice only occur with one-source arguments (conversions,
