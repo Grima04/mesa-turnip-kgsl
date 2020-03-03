@@ -439,20 +439,20 @@ static void dump_output_mod(FILE *fp, unsigned mod)
 static void dump_minmax_mode(FILE *fp, unsigned mod)
 {
         switch (mod) {
-        case 0:
+        case BIFROST_MINMAX_NONE:
                 /* Same as fmax() and fmin() -- return the other number if any
                  * number is NaN.  Also always return +0 if one argument is +0 and
                  * the other is -0.
                  */
                 break;
-        case 1:
+        case BIFROST_NAN_WINS:
                 /* Instead of never returning a NaN, always return one. The
                  * "greater"/"lesser" NaN is always returned, first by checking the
                  * sign and then the mantissa bits.
                  */
                 fprintf(fp, ".nan_wins");
                 break;
-        case 2:
+        case BIFROST_SRC1_WINS:
                 /* For max, implement src0 > src1 ? src0 : src1
                  * For min, implement src0 < src1 ? src0 : src1
                  *
@@ -463,7 +463,7 @@ static void dump_minmax_mode(FILE *fp, unsigned mod)
                  */
                 fprintf(fp, ".src1_wins");
                 break;
-        case 3:
+        case BIFROST_SRC0_WINS:
                 /* For max, implement src0 < src1 ? src1 : src0
                  * For min, implement src0 > src1 ? src1 : src0
                  */

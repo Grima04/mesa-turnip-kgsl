@@ -96,6 +96,13 @@ enum bifrost_roundmode {
         BIFROST_RTZ = 0x3
 };
 
+enum bifrost_minmax_mode {
+        BIFROST_MINMAX_NONE = 0x0,
+        BIFROST_NAN_WINS    = 0x1,
+        BIFROST_SRC1_WINS   = 0x2,
+        BIFROST_SRC0_WINS   = 0x3,
+};
+
 struct bifrost_fma_add {
         unsigned src0 : 3;
         unsigned src1 : 3;
