@@ -127,6 +127,14 @@ typedef struct {
         unsigned dest;
         unsigned src[BIR_SRC_COUNT];
 
+        /* If one of the sources has BIR_INDEX_CONSTANT... */
+        union {
+                uint64_t u64;
+                uint32_t u32;
+                uint16_t u16[2];
+                uint8_t u8[4];
+        } constant;
+
         /* Floating-point modifiers, type/class permitting. If not
          * allowed for the type/class, these are ignored. */
         enum bifrost_outmod outmod;
