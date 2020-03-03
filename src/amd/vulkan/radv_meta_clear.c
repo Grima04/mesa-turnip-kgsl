@@ -1957,12 +1957,16 @@ radv_subpass_clear_attachment(struct radv_cmd_buffer *cmd_buffer,
 		.layerCount = cmd_state->framebuffer->layers,
 	};
 
+	radv_describe_begin_render_pass_clear(cmd_buffer, clear_att->aspectMask);
+
 	emit_clear(cmd_buffer, clear_att, &clear_rect, pre_flush, post_flush,
 		   view_mask & ~attachment->cleared_views, ds_resolve_clear);
 	if (view_mask)
 		attachment->cleared_views |= view_mask;
 	else
 		attachment->pending_clear_aspects = 0;
+
+	radv_describe_end_render_pass_clear(cmd_buffer);
 }
 
 /**

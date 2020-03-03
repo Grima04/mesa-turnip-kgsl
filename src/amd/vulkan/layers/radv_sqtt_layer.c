@@ -398,6 +398,20 @@ radv_describe_dispatch(struct radv_cmd_buffer *cmd_buffer, int x, int y, int z)
 					  x, y, z);
 }
 
+void
+radv_describe_begin_render_pass_clear(struct radv_cmd_buffer *cmd_buffer,
+				      VkImageAspectFlagBits aspects)
+{
+	cmd_buffer->state.current_event_type = (aspects & VK_IMAGE_ASPECT_COLOR_BIT) ?
+		EventRenderPassColorClear : EventRenderPassDepthStencilClear;
+}
+
+void
+radv_describe_end_render_pass_clear(struct radv_cmd_buffer *cmd_buffer)
+{
+	cmd_buffer->state.current_event_type = EventInternalUnknown;
+}
+
 #define EVENT_MARKER(cmd_name, args...) \
 	RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer); \
 	radv_write_begin_general_api_marker(cmd_buffer, ApiCmd##cmd_name); \
