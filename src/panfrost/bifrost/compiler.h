@@ -106,6 +106,11 @@ typedef struct {
 
         /* Round mode (requires BI_ROUNDMODE) */
         enum bifrost_roundmode roundmode;
+
+        /* Union for class-specific information */
+        union {
+                enum bifrost_minmax_mode minmax;
+        };
 } bi_instruction;
 
 typedef struct {
