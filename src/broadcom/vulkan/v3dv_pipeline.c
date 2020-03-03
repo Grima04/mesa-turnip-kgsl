@@ -163,6 +163,145 @@ const nir_shader_compiler_options v3dv_nir_options = {
                                    * needs to be supported */
 };
 
+#define OPT(pass, ...) ({                                  \
+   bool this_progress = false;                             \
+   NIR_PASS(this_progress, nir, pass, ##__VA_ARGS__);      \
+   if (this_progress)                                      \
+      progress = true;                                     \
+   this_progress;                                          \
+})
+
+static void
+nir_optimize(nir_shader *nir,
+             struct v3dv_pipeline_stage *stage,
+             bool allow_copies)
+{
+   bool progress;
+
+   do {
+      progress = false;
+      OPT(nir_split_array_vars, nir_var_function_temp);
+      OPT(nir_shrink_vec_array_vars, nir_var_function_temp);
+      OPT(nir_opt_deref);
+      OPT(nir_lower_vars_to_ssa);
+      if (allow_copies) {
+         /* Only run this pass in the first call to nir_optimize.  Later calls
+          * assume that we've lowered away any copy_deref instructions and we
+          * don't want to introduce any more.
+          */
+         OPT(nir_opt_find_array_copies);
+      }
+      OPT(nir_opt_copy_prop_vars);
+      OPT(nir_opt_dead_write_vars);
+      OPT(nir_opt_combine_stores, nir_var_all);
+
+      OPT(nir_lower_alu_to_scalar, NULL, NULL);
+
+      OPT(nir_copy_prop);
+      OPT(nir_lower_phis_to_scalar);
+
+      OPT(nir_copy_prop);
+      OPT(nir_opt_dce);
+      OPT(nir_opt_cse);
+      OPT(nir_opt_combine_stores, nir_var_all);
+
+      /* Passing 0 to the peephole select pass causes it to convert
+       * if-statements that contain only move instructions in the branches
+       * regardless of the count.
+       *
+       * Passing 1 to the peephole select pass causes it to convert
+       * if-statements that contain at most a single ALU instruction (total)
+       * in both branches.
+       */
+      OPT(nir_opt_peephole_select, 0, false, false);
+      OPT(nir_opt_peephole_select, 8, false, true);
+
+      OPT(nir_opt_intrinsics);
+      OPT(nir_opt_idiv_const, 32);
+      OPT(nir_opt_algebraic);
+      OPT(nir_opt_constant_folding);
+
+      OPT(nir_opt_dead_cf);
+
+      OPT(nir_opt_if, false);
+      OPT(nir_opt_conditional_discard);
+
+      OPT(nir_opt_remove_phis);
+      OPT(nir_opt_undef);
+      OPT(nir_lower_pack);
+   } while (progress);
+
+   OPT(nir_remove_dead_variables, nir_var_function_temp, NULL);
+}
+
+static void
+preprocess_nir(nir_shader *nir,
+               struct v3dv_pipeline_stage *stage)
+{
+   /* Make sure we lower variable initializers on output variables so that
+    * nir_remove_dead_variables below sees the corresponding stores
+    */
+   NIR_PASS_V(nir, nir_lower_variable_initializers, nir_var_shader_out);
+
+   /* Now that we've deleted all but the main function, we can go ahead and
+    * lower the rest of the variable initializers.
+    */
+   NIR_PASS_V(nir, nir_lower_variable_initializers, ~0);
+
+   /* Split member structs.  We do this before lower_io_to_temporaries so that
+    * it doesn't lower system values to temporaries by accident.
+    */
+   NIR_PASS_V(nir, nir_split_var_copies);
+   NIR_PASS_V(nir, nir_split_per_member_structs);
+
+   if (nir->info.stage == MESA_SHADER_FRAGMENT)
+      NIR_PASS_V(nir, nir_lower_io_to_vector, nir_var_shader_out);
+   if (nir->info.stage == MESA_SHADER_FRAGMENT) {
+      NIR_PASS_V(nir, nir_lower_input_attachments,
+                 &(nir_input_attachment_options) {
+                    .use_fragcoord_sysval = false,
+                       });
+   }
+
+   NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_shader_in |
+              nir_var_shader_out | nir_var_system_value | nir_var_mem_shared,
+              NULL);
+
+   NIR_PASS_V(nir, nir_propagate_invariant);
+   NIR_PASS_V(nir, nir_lower_io_to_temporaries,
+              nir_shader_get_entrypoint(nir), true, false);
+
+   NIR_PASS_V(nir, nir_lower_system_values);
+   NIR_PASS_V(nir, nir_lower_clip_cull_distance_arrays);
+
+   NIR_PASS_V(nir, nir_lower_alu_to_scalar, NULL, NULL);
+
+   NIR_PASS_V(nir, nir_normalize_cubemap_coords);
+
+   NIR_PASS_V(nir, nir_lower_global_vars_to_local);
+
+   NIR_PASS_V(nir, nir_split_var_copies);
+   NIR_PASS_V(nir, nir_split_struct_vars, nir_var_function_temp);
+
+   nir_optimize(nir, stage, true);
+
+   NIR_PASS_V(nir, nir_lower_load_const_to_scalar);
+
+   /* Lower a bunch of stuff */
+   NIR_PASS_V(nir, nir_lower_var_copies);
+
+   NIR_PASS_V(nir, nir_lower_indirect_derefs, nir_var_shader_in |
+              nir_var_shader_out |
+              nir_var_function_temp, UINT32_MAX);
+
+   NIR_PASS_V(nir, nir_lower_array_deref_of_vec,
+              nir_var_mem_ubo | nir_var_mem_ssbo,
+              nir_lower_direct_array_deref_of_vec_load);
+
+   /* Get rid of split copies */
+   nir_optimize(nir, stage, false);
+}
+
 static nir_shader *
 shader_module_compile_to_nir(struct v3dv_device *device,
                              struct v3dv_pipeline_stage *stage)
@@ -216,43 +355,10 @@ shader_module_compile_to_nir(struct v3dv_device *device,
    }
    assert(exec_list_length(&nir->functions) == 1);
 
-   /* Make sure we lower variable initializers on output variables so that
-    * nir_remove_dead_variables below sees the corresponding stores
-    */
-   NIR_PASS_V(nir, nir_lower_variable_initializers, nir_var_shader_out);
-
-   /* Now that we've deleted all but the main function, we can go ahead and
-    * lower the rest of the variable initializers.
-    */
-   NIR_PASS_V(nir, nir_lower_variable_initializers, ~0);
-
-   /* Split member structs.  We do this before lower_io_to_temporaries so that
-    * it doesn't lower system values to temporaries by accident.
-    */
-   NIR_PASS_V(nir, nir_split_var_copies);
-   NIR_PASS_V(nir, nir_split_per_member_structs);
-
-   /* FIXME: needed? */
-   if (nir->info.stage == MESA_SHADER_FRAGMENT)
-      NIR_PASS_V(nir, nir_lower_io_to_vector, nir_var_shader_out);
-   if (nir->info.stage == MESA_SHADER_FRAGMENT) {
-      NIR_PASS_V(nir, nir_lower_input_attachments,
-                 &(nir_input_attachment_options) {
-                    .use_fragcoord_sysval = false,
-                       });                                                                                                                                                                                            }
-
-   NIR_PASS_V(nir, nir_remove_dead_variables,
-              nir_var_shader_in | nir_var_shader_out |
-              nir_var_system_value | nir_var_mem_shared,
-              NULL);
-
-   NIR_PASS_V(nir, nir_propagate_invariant);
-
-   NIR_PASS_V(nir, nir_lower_system_values);
-   NIR_PASS_V(nir, nir_lower_clip_cull_distance_arrays);
-
    /* Vulkan uses the separate-shader linking model */
    nir->info.separate_shader = true;
+
+   preprocess_nir(nir, stage);
 
    return nir;
 }
@@ -864,9 +970,6 @@ st_nir_opts(nir_shader *nir)
 
       NIR_PASS(progress, nir, nir_opt_undef);
       NIR_PASS(progress, nir, nir_opt_conditional_discard);
-      if (nir->options->max_unroll_iterations) {
-         NIR_PASS(progress, nir, nir_opt_loop_unroll, (nir_variable_mode)0);
-      }
    } while (progress);
 }
 
