@@ -239,4 +239,23 @@ struct bifrost_regs {
         unsigned ctrl : 4;
 };
 
+enum bifrost_branch_cond {
+        BR_COND_LT = 0,
+        BR_COND_LE = 1,
+        BR_COND_GE = 2,
+        BR_COND_GT = 3,
+        // Equal vs. not-equal determined by src0/src1 comparison
+        BR_COND_EQ = 4,
+        // floating-point comparisons
+        // Becomes UNE when you flip the arguments
+        BR_COND_OEQ = 5,
+        // TODO what happens when you flip the arguments?
+        BR_COND_OGT = 6,
+        BR_COND_OLT = 7,
+};
+
+enum bifrost_branch_code {
+        BR_ALWAYS = 63,
+};
+
 #endif

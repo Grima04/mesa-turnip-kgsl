@@ -29,7 +29,6 @@
 #include "compiler/glsl/gl_nir.h"
 #include "compiler/nir_types.h"
 #include "util/u_dynarray.h"
-
 #include "bifrost_compile.h"
 
 static void
@@ -52,7 +51,7 @@ compile_shader(char **argv)
         prog = standalone_compile_shader(&options, 2, argv, &local_ctx);
         prog->_LinkedShaders[MESA_SHADER_FRAGMENT]->Program->info.stage = MESA_SHADER_FRAGMENT;
 
-        struct bifrost_program compiled;
+        bifrost_program compiled;
         for (unsigned i = 0; i < 2; ++i) {
                 nir[i] = glsl_to_nir(&local_ctx, prog, shader_types[i], &bifrost_nir_options);
                 NIR_PASS_V(nir[i], nir_lower_global_vars_to_local);
@@ -66,7 +65,7 @@ compile_shader(char **argv)
 
                 NIR_PASS_V(nir[i], gl_nir_lower_buffers, prog);
                 NIR_PASS_V(nir[i], nir_opt_constant_folding);
-                bifrost_compile_shader_nir(nir[i], &compiled);
+                //bifrost_compile_shader_nir(nir[i], &compiled);
         }
 }
 

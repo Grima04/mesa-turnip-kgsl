@@ -20,10 +20,6 @@
 # SOFTWARE.
 
 libpanfrost_bifrost_files = files(
-  'bifrost_compile.c',
-  'bifrost_opts.c',
-  'bifrost_sched.c',
-  'bifrost_print.c',
   'disassemble.c',
 )
 

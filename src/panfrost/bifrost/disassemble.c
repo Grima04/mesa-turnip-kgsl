@@ -31,7 +31,6 @@
 #include <string.h>
 
 #include "bifrost.h"
-#include "bifrost_ops.h"
 #include "disassemble.h"
 #include "util/macros.h"
 
@@ -1339,11 +1338,11 @@ static void dump_add(FILE *fp, uint64_t word, struct bifrost_regs regs,
                 }
                 fprintf(fp, ".v%d", ((ADD.op >> 5) & 0x3) + 1);
         } else if (info.src_type == ADD_BRANCH) {
-                enum branch_code branchCode = (enum branch_code) ((ADD.op >> 6) & 0x3f);
+                enum bifrost_branch_code branchCode = (enum bifrost_branch_code) ((ADD.op >> 6) & 0x3f);
                 if (branchCode == BR_ALWAYS) {
                         // unconditional branch
                 } else {
-                        enum branch_cond cond = (enum branch_cond) ((ADD.op >> 6) & 0x7);
+                        enum bifrost_branch_cond cond = (enum bifrost_branch_cond) ((ADD.op >> 6) & 0x7);
                         enum branch_bit_size size = (enum branch_bit_size) ((ADD.op >> 9) & 0x7);
                         bool portSwapped = (ADD.op & 0x7) < ADD.src0;
                         // See the comment in branch_bit_size
@@ -1814,7 +1813,7 @@ static void dump_add(FILE *fp, uint64_t word, struct bifrost_regs regs,
                 dump_16swizzle(fp, (ADD.op >> 8) & 0x3);
                 break;
         case ADD_BRANCH: {
-                enum branch_code code = (enum branch_code) ((ADD.op >> 6) & 0x3f);
+                enum bifrost_branch_code code = (enum bifrost_branch_code) ((ADD.op >> 6) & 0x3f);
                 enum branch_bit_size size = (enum branch_bit_size) ((ADD.op >> 9) & 0x7);
                 if (code != BR_ALWAYS) {
                         dump_src(fp, ADD.src0, regs, consts, false);
