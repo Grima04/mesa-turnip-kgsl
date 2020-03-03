@@ -136,6 +136,12 @@ typedef struct {
         /* Round mode (requires BI_ROUNDMODE) */
         enum bifrost_roundmode roundmode;
 
+        /* Destination type. Usually the type of the instruction
+         * itself, but if sources and destination have different
+         * types, the type of the destination wins (so f2i would be
+         * int). Zero if there is no destination. Bitsize included */
+        nir_alu_type dest_type;
+
         /* Union for class-specific information */
         union {
                 enum bifrost_minmax_mode minmax;
