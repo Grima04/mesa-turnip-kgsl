@@ -492,7 +492,7 @@ __roundAndPackUInt64(uint zSign, uint zFrac0, uint zFrac1, uint zFrac2)
          zFrac1 &= ~(1u) + uint(zFrac2 == 0u) & uint(roundNearestEven);
    }
    return mix(packUint2x32(uvec2(zFrac1, zFrac0)), default_nan,
-              (zSign !=0u && (zFrac0 | zFrac1) != 0u));
+              (zSign != 0u && (zFrac0 | zFrac1) != 0u));
 }
 
 int64_t
@@ -526,9 +526,9 @@ __roundAndPackInt64(uint zSign, uint zFrac0, uint zFrac1, uint zFrac2)
 
    int64_t absZ = mix(int64_t(packUint2x32(uvec2(zFrac1, zFrac0))),
                       -int64_t(packUint2x32(uvec2(zFrac1, zFrac0))),
-                      (zSign != 0u));
-   int64_t nan = mix(default_PosNaN, default_NegNaN, bool(zSign));
-   return mix(absZ, nan, bool(zSign ^ uint(absZ < 0)) && bool(absZ));
+                      zSign != 0u);
+   int64_t nan = mix(default_PosNaN, default_NegNaN, zSign != 0u);
+   return mix(absZ, nan, ((zSign != 0u) != (absZ < 0)) && bool(absZ));
 }
 
 /* Returns the number of leading 0 bits before the most-significant 1 bit of
@@ -908,13 +908,13 @@ __fp64_to_uint(uint64_t a)
       __shift64RightJamming(aFracHi, aFracLo, shiftDist, aFracHi, aFracLo);
 
    if ((aFracHi & 0xFFFFF000u) != 0u)
-      return mix(~0u, 0u, (aSign != 0u));
+      return mix(~0u, 0u, aSign != 0u);
 
    uint z = 0u;
    uint zero = 0u;
    __shift64Right(aFracHi, aFracLo, 12, zero, z);
 
-   uint expt = mix(~0u, 0u, (aSign != 0u));
+   uint expt = mix(~0u, 0u, aSign != 0u);
 
    return mix(z, expt, (aSign != 0u) && (z != 0u));
 }
@@ -1117,7 +1117,7 @@ __fp64_to_int(uint64_t a)
       if (0x41E < aExp) {
          if ((aExp == 0x7FF) && bool(aFracHi | aFracLo))
             aSign = 0u;
-         return mix(0x7FFFFFFF, 0x80000000, bool(aSign));
+         return mix(0x7FFFFFFF, 0x80000000, aSign != 0u);
       }
       __shortShift64Left(aFracHi | 0x00100000u, aFracLo, shiftCount, absZ, aFracExtra);
    } else {
@@ -1129,9 +1129,9 @@ __fp64_to_int(uint64_t a)
       absZ = aFracHi >> (- shiftCount);
    }
 
-   int z = mix(int(absZ), -int(absZ), (aSign != 0u));
-   int nan = mix(0x7FFFFFFF, 0x80000000, bool(aSign));
-   return mix(z, nan, bool(aSign ^ uint(z < 0)) && bool(z));
+   int z = mix(int(absZ), -int(absZ), aSign != 0u);
+   int nan = mix(0x7FFFFFFF, 0x80000000, aSign != 0u);
+   return mix(z, nan, ((aSign != 0u) != (z < 0)) && bool(z));
 }
 
 /* Returns the result of converting the 32-bit two's complement integer `a'
