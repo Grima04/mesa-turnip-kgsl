@@ -269,6 +269,10 @@ typedef struct bi_block {
                 struct list_head instructions; /* pre-schedule, list of bi_instructions */
                 struct list_head clauses; /* list of bi_clause */
         };
+
+        /* Control flow graph */
+        struct set *predecessors;
+        struct bi_block *successors[2];
 } bi_block;
 
 typedef struct {
