@@ -247,7 +247,6 @@ resource_create(struct pipe_screen *pscreen,
    };
 
    if (whandle && whandle->type == WINSYS_HANDLE_TYPE_FD) {
-      imfi.sType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT;
       imfi.pNext = NULL;
       imfi.handleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT;
       imfi.fd = whandle->handle;
