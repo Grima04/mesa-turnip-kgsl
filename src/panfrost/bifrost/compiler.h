@@ -118,6 +118,23 @@ struct bi_load_vary {
         bool flat;
 };
 
+/* Opcodes within a class */
+enum bi_minmax_op {
+        BI_MINMAX_MIN,
+        BI_MINMAX_MAX
+};
+
+enum bi_bitwise_op {
+        BI_BITWISE_AND,
+        BI_BITWISE_OR,
+        BI_BITWISE_XOR
+};
+
+enum bi_round_op {
+        BI_ROUND_MODE, /* use round mode */
+        BI_ROUND_ROUND /* i.e.: fround() */
+};
+
 typedef struct {
         struct list_head link; /* Must be first */
         enum bi_class type;
@@ -149,6 +166,15 @@ typedef struct {
          * types, the type of the destination wins (so f2i would be
          * int). Zero if there is no destination. Bitsize included */
         nir_alu_type dest_type;
+
+        /* A class-specific op from which the actual opcode can be derived
+         * (along with the above information) */
+
+        union {
+                enum bi_minmax_op minmax;
+                enum bi_bitwise_op bitwise;
+                enum bi_round_op round;
+        } op;
 
         /* Union for class-specific information */
         union {
