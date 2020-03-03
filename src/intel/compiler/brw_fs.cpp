@@ -9054,7 +9054,7 @@ brw_compile_cs(const struct brw_compiler *compiler, void *log_data,
     *
     * TODO: Use performance_analysis and drop this boolean.
     */
-   const bool needs_32 = min_dispatch_width > 16 ||
+   const bool needs_32 = v == NULL ||
                          (INTEL_DEBUG & DEBUG_DO32) ||
                          generate_all;
 
