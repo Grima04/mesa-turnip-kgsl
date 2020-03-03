@@ -95,6 +95,10 @@ extern unsigned bi_class_props[BI_NUM_CLASSES];
 /* Most ALU ops can do either, actually */
 #define BI_SCHED_ALL (BI_SCHED_FMA | BI_SCHED_ADD)
 
+/* Along with setting BI_SCHED_ADD, eats up the entire cycle, so FMA must be
+ * nopped out. Used for _FAST operations. */
+#define BI_SCHED_SLOW (1 << 5)
+
 /* It can't get any worse than csel4... can it? */
 #define BIR_SRC_COUNT 4
 

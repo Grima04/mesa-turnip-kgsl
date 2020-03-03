@@ -47,7 +47,7 @@ unsigned bi_class_props[BI_NUM_CLASSES] = {
         [BI_SHIFT] 		= BI_SCHED_ALL,
         [BI_STORE] 		= BI_SCHED_ADD,
         [BI_STORE_VAR] 		= BI_SCHED_ADD,
-        [BI_SPECIAL] 		= BI_SCHED_ALL,
+        [BI_SPECIAL] 		= BI_SCHED_ADD | BI_SCHED_SLOW,
         [BI_TEX] 		= BI_SCHED_ADD,
         [BI_ROUND] 		= BI_GENERIC | BI_ROUNDMODE | BI_SCHED_ALL,
 };
