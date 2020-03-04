@@ -82,7 +82,7 @@ while true; do
             shift
             ;;
         --platform=*)
-            platform=${1##-p}
+            platform=${1##--platform=}
             add_arg "platform=${platform}"
             shift
             ;;
