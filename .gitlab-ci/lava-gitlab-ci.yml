@@ -119,7 +119,7 @@ panfrost-t860-gles3:arm64:
   tags:
     - lava-rk3399-gru-kevin
 
-.panfrost-t820-gles2:arm64:
+panfrost-t820-gles2:arm64:
   extends:
     - .lava-test:arm64
     - .panfrost-rules
