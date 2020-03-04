@@ -708,33 +708,22 @@ __fadd64(uint64_t a, uint64_t b)
          __shift64ExtraRightJamming(
             zFrac0, zFrac1, zFrac2, 1, zFrac0, zFrac1, zFrac2);
       } else {
-         if (0 < expDiff) {
-            if (aExp == 0x7FF) {
-               bool propagate = (aFracHi | aFracLo) != 0u;
-               return mix(a, __propagateFloat64NaN(a, b), propagate);
-            }
-
-            expDiff = mix(abs(expDiff), abs(expDiff) - 1, bExp == 0);
-            bFracHi = mix(bFracHi | 0x00100000u, bFracHi, bExp == 0);
-            __shift64ExtraRightJamming(
-               bFracHi, bFracLo, 0u, expDiff, bFracHi, bFracLo, zFrac2);
-            zExp = aExp;
-         } else {
+         if (expDiff < 0) {
             EXCHANGE(aFracHi, bFracHi);
             EXCHANGE(aFracLo, bFracLo);
             EXCHANGE(aExp, bExp);
-
-            if (aExp == 0x7FF) {
-               bool propagate = (aFracHi | aFracLo) != 0u;
-               return mix(__packFloat64(aSign, 0x7ff, 0u, 0u), __propagateFloat64NaN(a, b), propagate);
-            }
-
-            expDiff = mix(abs(expDiff), abs(expDiff) - 1, bExp == 0);
-            bFracHi = mix(bFracHi | 0x00100000u, bFracHi, bExp == 0);
-            __shift64ExtraRightJamming(
-               bFracHi, bFracLo, 0u, expDiff, bFracHi, bFracLo, zFrac2);
-            zExp = aExp;
          }
+
+         if (aExp == 0x7FF) {
+            bool propagate = (aFracHi | aFracLo) != 0u;
+            return mix(__packFloat64(aSign, 0x7ff, 0u, 0u), __propagateFloat64NaN(a, b), propagate);
+         }
+
+         expDiff = mix(abs(expDiff), abs(expDiff) - 1, bExp == 0);
+         bFracHi = mix(bFracHi | 0x00100000u, bFracHi, bExp == 0);
+         __shift64ExtraRightJamming(
+            bFracHi, bFracLo, 0u, expDiff, bFracHi, bFracLo, zFrac2);
+         zExp = aExp;
 
          aFracHi |= 0x00100000u;
          __add64(aFracHi, aFracLo, bFracHi, bFracLo, zFrac0, zFrac1);
