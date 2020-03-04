@@ -661,6 +661,17 @@ __propagateFloat64NaN(uint64_t __a, uint64_t __b)
 #endif
 }
 
+/* If a shader is in the soft-fp64 path, it almost certainly has register
+ * pressure problems.  Choose a method to exchange two values that does not
+ * require a temporary.
+ */
+#define EXCHANGE(a, b) \
+   do {                \
+       a ^= b;         \
+       b ^= a;         \
+       a ^= b;         \
+   } while (false)
+
 /* Returns the result of adding the double-precision floating-point values
  * `a' and `b'.  The operation is performed according to the IEEE Standard for
  * Floating-Point Arithmetic.
@@ -709,15 +720,19 @@ __fadd64(uint64_t a, uint64_t b)
                bFracHi, bFracLo, 0u, expDiff, bFracHi, bFracLo, zFrac2);
             zExp = aExp;
          } else {
-            if (bExp == 0x7FF) {
-               bool propagate = (bFracHi | bFracLo) != 0u;
+            EXCHANGE(aFracHi, bFracHi);
+            EXCHANGE(aFracLo, bFracLo);
+            EXCHANGE(aExp, bExp);
+
+            if (aExp == 0x7FF) {
+               bool propagate = (aFracHi | aFracLo) != 0u;
                return mix(__packFloat64(aSign, 0x7ff, 0u, 0u), __propagateFloat64NaN(a, b), propagate);
             }
-            expDiff = mix(expDiff, expDiff + 1, aExp == 0);
-            aFracHi = mix(aFracHi | 0x00100000u, aFracHi, aExp == 0);
+            expDiff = mix(expDiff, expDiff + 1, bExp == 0);
+            bFracHi = mix(bFracHi | 0x00100000u, bFracHi, bExp == 0);
             __shift64ExtraRightJamming(
-               aFracHi, aFracLo, 0u, - expDiff, aFracHi, aFracLo, zFrac2);
-            zExp = bExp;
+               bFracHi, bFracLo, 0u, - expDiff, bFracHi, bFracLo, zFrac2);
+            zExp = aExp;
          }
 
          aFracHi |= 0x00100000u;
