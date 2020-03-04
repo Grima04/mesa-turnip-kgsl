@@ -217,6 +217,7 @@ typedef struct shader_info {
 
       struct {
          bool uses_discard:1;
+         bool uses_demote:1;
 
          /**
           * True if this fragment shader requires helper invocations.  This

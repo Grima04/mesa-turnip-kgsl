@@ -200,6 +200,8 @@ gather_intrinsic_info(nir_intrinsic_instr *instr, nir_shader *shader,
    switch (instr->intrinsic) {
    case nir_intrinsic_demote:
    case nir_intrinsic_demote_if:
+      shader->info.fs.uses_demote = true;
+   /* fallthrough: quads with helper lanes only might be discarded entirely */
    case nir_intrinsic_discard:
    case nir_intrinsic_discard_if:
       assert(shader->info.stage == MESA_SHADER_FRAGMENT);
@@ -389,6 +391,7 @@ nir_shader_gather_info(nir_shader *shader, nir_function_impl *entrypoint)
    if (shader->info.stage == MESA_SHADER_FRAGMENT) {
       shader->info.fs.uses_sample_qualifier = false;
       shader->info.fs.uses_discard = false;
+      shader->info.fs.uses_demote = false;
       shader->info.fs.needs_helper_invocations = false;
    }
 
