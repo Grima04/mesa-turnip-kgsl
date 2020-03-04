@@ -27,7 +27,9 @@
 #ifndef __BI_PRINT_H
 #define __BI_PRINT_H
 
+#include <stdio.h>
 #include "bifrost.h"
+#include "compiler.h"
 
 const char * bi_output_mod_name(enum bifrost_outmod mod);
 const char * bi_minmax_mode_name(enum bifrost_minmax_mode mod);
@@ -35,5 +37,7 @@ const char * bi_round_mode_name(enum bifrost_roundmode mod);
 const char * bi_csel_cond_name(enum bifrost_csel_cond cond);
 const char * bi_interp_mode_name(enum bifrost_interp_mode mode);
 const char * bi_ldst_type_name(enum bifrost_ldst_type type);
+
+void bi_print_instruction(bi_instruction *ins, FILE *fp);
 
 #endif
