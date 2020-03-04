@@ -6,6 +6,7 @@ bifrost_FILES := \
         bifrost/bi_print.c \
         bifrost/bi_print.h \
         bifrost/bi_quirks.c \
+        bifrost/bir.c \
         bifrost/compiler.h \
         bifrost/cmdline.c \
         bifrost/disassemble.c \
