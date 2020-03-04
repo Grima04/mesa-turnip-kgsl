@@ -20,7 +20,10 @@
 # SOFTWARE.
 
 libpanfrost_shared_files = files(
+  'pan_minmax_cache.c',
   'pan_tiling.c',
+
+  'pan_minmax_cache.h',
   'pan_tiling.h',
 )
 

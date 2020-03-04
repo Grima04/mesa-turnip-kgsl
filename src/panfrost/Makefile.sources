@@ -56,8 +56,10 @@ midgard_FILES := \
         midgard/lcra.c
 
 shared_FILES := \
+        shared/pan_minmax_cache.c \
         shared/pan_tiling.c \
-        shared/pan_tiling.h
+        shared/pan_minmax_cache.h \
+        shared/pan_tiling.h \
 
 pandecode_FILES := \
         pandecode/common.c \

@@ -536,39 +536,6 @@ panfrost_resource_destroy(struct pipe_screen *screen,
         ralloc_free(rsrc);
 }
 
-/* If we've been caching min/max indices and we update the index
- * buffer, that may invalidate the min/max. Check what's been cached vs
- * what we've written, and throw out invalid entries. */
-
-static void
-panfrost_invalidate_index_cache(struct panfrost_resource *rsrc, struct pipe_transfer *transfer)
-{
-        struct panfrost_minmax_cache *cache = rsrc->index_cache;
-
-        /* Ensure there is a cache to invalidate and a write */
-        if (!rsrc->index_cache) return;
-        if (!(transfer->usage & PIPE_TRANSFER_WRITE)) return;
-
-        unsigned valid_count = 0;
-
-        for (unsigned i = 0; i < cache->size; ++i) {
-                uint64_t key = cache->keys[i];
-
-                uint32_t start = key & 0xffffffff;
-                uint32_t count = key >> 32;
-
-                /* 1D range intersection */
-                bool invalid = MAX2(transfer->box.x, start) < MIN2(transfer->box.x + transfer->box.width, start + count);
-                if (!invalid) {
-                        cache->keys[valid_count] = key;
-                        cache->values[valid_count] = cache->values[i];
-                        valid_count++;
-                }
-        }
-
-        cache->size = valid_count;
-        cache->index = 0;
-}
 
 static void *
 panfrost_transfer_map(struct pipe_context *pctx,
@@ -691,7 +658,7 @@ panfrost_transfer_map(struct pipe_context *pctx,
 
                 if ((usage & PIPE_TRANSFER_WRITE) && (usage & PIPE_TRANSFER_MAP_DIRECTLY)) {
                         rsrc->slices[level].initialized = true;
-                        panfrost_invalidate_index_cache(rsrc, &transfer->base);
+                        panfrost_minmax_cache_invalidate(rsrc->index_cache, &transfer->base);
                 }
 
                 return bo->cpu
@@ -741,7 +708,7 @@ panfrost_transfer_unmap(struct pipe_context *pctx,
                        transfer->box.x,
                        transfer->box.x + transfer->box.width);
 
-        panfrost_invalidate_index_cache(prsrc, transfer);
+        panfrost_minmax_cache_invalidate(prsrc->index_cache, transfer);
 
         /* Derefence the resource */
         pipe_resource_reference(&transfer->resource, NULL);

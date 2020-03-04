@@ -29,6 +29,7 @@
 
 #include "pan_bo.h"
 #include "pan_context.h"
+#include "pan_minmax_cache.h"
 #include "panfrost-quirks.h"
 
 #include "util/macros.h"
@@ -1278,8 +1279,6 @@ panfrost_get_index_buffer_bounded(struct panfrost_context *ctx, const struct pip
                 needs_indices = false;
         }
 
-        uint64_t ht_key = 0;
-
         if (!info->has_user_indices) {
                 /* Only resources can be directly mapped */
                 panfrost_batch_add_bo(batch, rsrc->bo,
@@ -1289,22 +1288,8 @@ panfrost_get_index_buffer_bounded(struct panfrost_context *ctx, const struct pip
                 out = rsrc->bo->gpu + offset;
 
                 /* Check the cache */
-                if (rsrc->index_cache) {
-                        ht_key = (((uint64_t) info->count) << 32) | info->start;
-
-                        struct panfrost_minmax_cache *cache = rsrc->index_cache;
-
-                        for (unsigned i = 0; i < cache->size; ++i) {
-                                if (cache->keys[i] == ht_key) {
-                                        uint64_t hit = cache->values[i];
-
-                                        *min_index = hit & 0xffffffff;
-                                        *max_index = hit >> 32;
-                                        needs_indices = false;
-                                        break;
-                                }
-                        }
-                }
+                needs_indices = !panfrost_minmax_cache_get(rsrc->index_cache, info->start, info->count,
+                                                           min_index, max_index);
         } else {
                 /* Otherwise, we need to upload to transient memory */
                 const uint8_t *ibuf8 = (const uint8_t *) info->index.user;
@@ -1315,20 +1300,9 @@ panfrost_get_index_buffer_bounded(struct panfrost_context *ctx, const struct pip
                 /* Fallback */
                 u_vbuf_get_minmax_index(&ctx->base, info, min_index, max_index);
 
-                if (!info->has_user_indices && rsrc->index_cache) {
-                        struct panfrost_minmax_cache *cache = rsrc->index_cache;
-                        uint64_t value = (*min_index) | (((uint64_t) *max_index) << 32);
-                        unsigned index = 0;
-
-                        if (cache->size == PANFROST_MINMAX_SIZE) {
-                                index = cache->index++;
-                                cache->index = cache->index % PANFROST_MINMAX_SIZE;
-                        } else {
-                                index = cache->size++;
-                        }
-
-                        cache->keys[index] =  ht_key;
-                        cache->values[index] = value;
+                if (!info->has_user_indices) {
+                        panfrost_minmax_cache_add(rsrc->index_cache, info->start, info->count,
+                                                  *min_index, *max_index);
                 }
         }
 
