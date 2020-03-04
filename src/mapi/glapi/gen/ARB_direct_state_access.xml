@@ -579,7 +579,8 @@
 
    <!-- Vertex Array object functions -->
 
-   <function name="CreateVertexArrays" no_error="true">
+   <function name="CreateVertexArrays" no_error="true"
+             marshal_call_after="_mesa_glthread_GenVertexArrays(ctx, n, arrays);">
       <param name="n" type="GLsizei" />
       <param name="arrays" type="GLuint *" />
    </function>
