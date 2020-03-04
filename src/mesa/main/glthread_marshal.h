@@ -81,10 +81,10 @@ static inline bool
 _mesa_glthread_is_non_vbo_draw_elements(const struct gl_context *ctx)
 {
    const struct glthread_state *glthread = &ctx->GLThread;
+   struct glthread_vao *vao = glthread->CurrentVAO;
 
    return ctx->API != API_OPENGL_CORE &&
-          (glthread->CurrentVAO->IndexBufferIsUserPointer ||
-           glthread->CurrentVAO->HasUserPointer);
+          (vao->CurrentElementBufferName == 0 || vao->HasUserPointer);
 }
 
 static inline bool
@@ -101,27 +101,24 @@ _mesa_glthread_is_non_vbo_draw_arrays_indirect(const struct gl_context *ctx)
    const struct glthread_state *glthread = &ctx->GLThread;
 
    return ctx->API != API_OPENGL_CORE &&
-          (!glthread->draw_indirect_buffer_is_vbo ||
-           glthread->CurrentVAO->HasUserPointer );
+          (glthread->CurrentDrawIndirectBufferName == 0 ||
+           glthread->CurrentVAO->HasUserPointer);
 }
 
 static inline bool
 _mesa_glthread_is_non_vbo_draw_elements_indirect(const struct gl_context *ctx)
 {
    const struct glthread_state *glthread = &ctx->GLThread;
+   struct glthread_vao *vao = glthread->CurrentVAO;
 
    return ctx->API != API_OPENGL_CORE &&
-          (!glthread->draw_indirect_buffer_is_vbo ||
-           glthread->CurrentVAO->IndexBufferIsUserPointer ||
-           glthread->CurrentVAO->HasUserPointer);
+          (glthread->CurrentDrawIndirectBufferName == 0 ||
+           vao->CurrentElementBufferName == 0 || vao->HasUserPointer);
 }
 
 
 struct _glapi_table *
 _mesa_create_marshal_table(const struct gl_context *ctx);
-
-void
-_mesa_glthread_BindBuffer(struct gl_context *ctx, GLenum target, GLuint buffer);
 
 static inline unsigned
 _mesa_buffer_enum_to_count(GLenum buffer)

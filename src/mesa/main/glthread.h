@@ -54,7 +54,7 @@ struct _mesa_HashTable;
 struct glthread_vao {
    GLuint Name;
    bool HasUserPointer;
-   bool IndexBufferIsUserPointer;
+   GLuint CurrentElementBufferName;
 };
 
 /** A single batch of commands queued up for execution. */
@@ -104,17 +104,9 @@ struct glthread_state
    struct glthread_vao *LastLookedUpVAO;
    struct glthread_vao DefaultVAO;
 
-   /**
-    * Tracks on the main thread side whether the current vertex array binding
-    * is in a VBO.
-    */
-   bool vertex_array_is_vbo;
-
-   /**
-    * Tracks on the main thread side whether the current element array (index
-    * buffer) binding is in a VBO.
-    */
-   bool draw_indirect_buffer_is_vbo;
+   /** Currently-bound buffer object IDs. */
+   GLuint CurrentArrayBufferName;
+   GLuint CurrentDrawIndirectBufferName;
 };
 
 void _mesa_glthread_init(struct gl_context *ctx);
@@ -125,6 +117,11 @@ void _mesa_glthread_disable(struct gl_context *ctx, const char *func);
 void _mesa_glthread_flush_batch(struct gl_context *ctx);
 void _mesa_glthread_finish(struct gl_context *ctx);
 void _mesa_glthread_finish_before(struct gl_context *ctx, const char *func);
+
+void _mesa_glthread_BindBuffer(struct gl_context *ctx, GLenum target,
+                               GLuint buffer);
+void _mesa_glthread_DeleteBuffers(struct gl_context *ctx, GLsizei n,
+                                  const GLuint *buffers);
 
 void _mesa_glthread_BindVertexArray(struct gl_context *ctx, GLuint id);
 void _mesa_glthread_DeleteVertexArrays(struct gl_context *ctx,

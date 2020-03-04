@@ -54,21 +54,41 @@ _mesa_glthread_BindBuffer(struct gl_context *ctx, GLenum target, GLuint buffer)
 
    switch (target) {
    case GL_ARRAY_BUFFER:
-      glthread->vertex_array_is_vbo = (buffer != 0);
+      glthread->CurrentArrayBufferName = buffer;
       break;
    case GL_ELEMENT_ARRAY_BUFFER:
       /* The current element array buffer binding is actually tracked in the
        * vertex array object instead of the context, so this would need to
        * change on vertex array object updates.
        */
-      glthread->CurrentVAO->IndexBufferIsUserPointer = buffer != 0;
+      glthread->CurrentVAO->CurrentElementBufferName = buffer;
       break;
    case GL_DRAW_INDIRECT_BUFFER:
-      glthread->draw_indirect_buffer_is_vbo = buffer != 0;
+      glthread->CurrentDrawIndirectBufferName = buffer;
       break;
    }
 }
 
+void
+_mesa_glthread_DeleteBuffers(struct gl_context *ctx, GLsizei n,
+                             const GLuint *buffers)
+{
+   struct glthread_state *glthread = &ctx->GLThread;
+
+   if (!buffers)
+      return;
+
+   for (unsigned i = 0; i < n; i++) {
+      GLuint id = buffers[i];
+
+      if (id == glthread->CurrentArrayBufferName)
+         _mesa_glthread_BindBuffer(ctx, GL_ARRAY_BUFFER, 0);
+      if (id == glthread->CurrentVAO->CurrentElementBufferName)
+         _mesa_glthread_BindBuffer(ctx, GL_ELEMENT_ARRAY_BUFFER, 0);
+      if (id == glthread->CurrentDrawIndirectBufferName)
+         _mesa_glthread_BindBuffer(ctx, GL_DRAW_INDIRECT_BUFFER, 0);
+   }
+}
 
 /* BufferData: marshalled asynchronously */
 struct marshal_cmd_BufferData

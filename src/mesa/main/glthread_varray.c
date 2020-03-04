@@ -124,12 +124,11 @@ _mesa_glthread_GenVertexArrays(struct gl_context *ctx,
       GLuint id = arrays[i];
       struct glthread_vao *vao;
 
-      vao = malloc(sizeof(*vao));
+      vao = calloc(1, sizeof(*vao));
       if (!vao)
          continue; /* Is that all we can do? */
 
       vao->Name = id;
-      vao->HasUserPointer = false;
       _mesa_HashInsertLocked(glthread->VAOs, id, vao);
    }
 }
@@ -139,6 +138,6 @@ _mesa_glthread_AttribPointer(struct gl_context *ctx)
 {
    struct glthread_state *glthread = &ctx->GLThread;
 
-   if (!glthread->vertex_array_is_vbo)
+   if (glthread->CurrentArrayBufferName == 0)
       glthread->CurrentVAO->HasUserPointer = true;
 }
