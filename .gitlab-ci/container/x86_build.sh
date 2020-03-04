@@ -96,21 +96,23 @@ for arch in $CROSS_ARCHITECTURES; do
             crossbuild-essential-${arch} \
             libdrm-dev:${arch} \
             libelf-dev:${arch} \
-            libexpat1-dev:${arch}
+            libexpat1-dev:${arch} \
+            libffi-dev:${arch} \
+            libllvm8:${arch} \
+            libstdc++6:${arch} \
+            libtinfo-dev:${arch}
 
-    if [ "$arch" != "i386" ]; then
-        mkdir /var/cache/apt/archives/${arch}
+    if [ "$arch" == "i386" ]; then
+        # libpciaccess-dev is only needed for Intel.
         apt-get install -y --no-remove \
-                libffi-dev:${arch} \
-                libllvm8:${arch} \
-                libstdc++6:${arch} \
-                libtinfo-dev:${arch} \
-
-        # Download llvm-* packages, but don't install them yet, since they can
-        # only be installed for one architecture at a time
-        apt-get install -o Dir::Cache::archives=/var/cache/apt/archives/$arch --download-only -y --no-remove \
-            llvm-8-dev:${arch}
+            libpciaccess-dev:${arch}
     fi
+
+    mkdir /var/cache/apt/archives/${arch}
+    # Download llvm-* packages, but don't install them yet, since they can
+    # only be installed for one architecture at a time
+    apt-get install -o Dir::Cache::archives=/var/cache/apt/archives/$arch --download-only -y --no-remove \
+       llvm-8-dev:${arch}
 done
 
 apt-get install -y --no-remove \
@@ -190,6 +192,7 @@ tar -xvf $LIBDRM_VERSION.tar.bz2 && rm $LIBDRM_VERSION.tar.bz2
 cd $LIBDRM_VERSION
 meson build -D vc4=true -D freedreno=true -D etnaviv=true -D libdir=lib/x86_64-linux-gnu; ninja -j4 -C build install
 rm -rf build; meson --cross-file=/cross_file-ppc64el.txt build -D libdir=lib/powerpc64le-linux-gnu; ninja -j4 -C build install
+rm -rf build; meson --cross-file=/cross_file-i386.txt build -D libdir=lib/i386-linux-gnu; ninja -j4 -C build install
 cd ..
 rm -rf $LIBDRM_VERSION
 

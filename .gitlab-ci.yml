@@ -120,7 +120,7 @@ x86_build:
     - .debian@container-ifnot-exists
     - .container
   variables:
-    DEBIAN_TAG: &x86_build "2020-02-15"
+    DEBIAN_TAG: &x86_build "2020-03-11"
 
 .use-x86_build:
   variables:
@@ -472,14 +472,16 @@ meson-i386:
   extends: .meson-cross
   variables:
     CROSS: i386
-    VULKAN_DRIVERS: intel
+    VULKAN_DRIVERS: intel,amd
     DRI_DRIVERS: "swrast"
     GALLIUM_DRIVERS: "iris"
     EXTRA_OPTION: >
       -D vulkan-overlay-layer=true
-      -D llvm=false
       -D osmesa=classic
       -D werror=true
+  script:
+    - dpkg -i /var/cache/apt/archives/$CROSS/*.deb
+    - .gitlab-ci/meson-build.sh
 
 meson-s390x:
   extends:
@@ -488,6 +490,9 @@ meson-s390x:
     CROSS: s390x
     GALLIUM_DRIVERS: "swrast"
   script:
+    # For unknown reasons "too many" installed i386 libraries cause qemu to
+    # crash while executing llvm-config for s390x.
+    - apt-get remove -y libglib2.0-0:i386
     - dpkg -i /var/cache/apt/archives/$CROSS/*.deb
     - .gitlab-ci/meson-build.sh
 
