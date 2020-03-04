@@ -62,6 +62,8 @@ struct ir3_postsched_ctx {
 	struct ir3_instruction *pred;      /* current p0.x user, if any */
 
 	bool error;
+
+	int sfu_delay;
 };
 
 struct ir3_postsched_node {
@@ -97,6 +99,12 @@ schedule(struct ir3_postsched_ctx *ctx, struct ir3_instruction *instr)
 	list_addtail(&instr->node, &instr->block->instr_list);
 	ctx->scheduled = instr;
 
+	if (is_sfu(instr)) {
+		ctx->sfu_delay = 8;
+	} else if (ctx->sfu_delay > 0) {
+		ctx->sfu_delay--;
+	}
+
 	struct ir3_postsched_node *n = instr->data;
 	dag_prune_head(ctx->dag, &n->dag);
 }
@@ -117,6 +125,24 @@ dump_state(struct ir3_postsched_ctx *ctx)
 			di(child->instr, " -> (%d parents) ", child->dag.parent_count);
 		}
 	}
+}
+
+/* Determine if this is an instruction that we'd prefer not to schedule
+ * yet, in order to avoid an (ss) sync.  This is limited by the sfu_delay
+ * counter, ie. the more cycles it has been since the last SFU, the less
+ * costly a sync would be.
+ */
+static bool
+would_sync(struct ir3_postsched_ctx *ctx, struct ir3_instruction *instr)
+{
+	if (ctx->sfu_delay) {
+		struct ir3_register *reg;
+		foreach_src (reg, instr)
+			if (reg->instr && is_sfu(reg->instr))
+				return true;
+	}
+
+	return false;
 }
 
 /* find instruction to schedule: */
@@ -195,7 +221,35 @@ choose_instr(struct ir3_postsched_ctx *ctx)
 		return chosen->instr;
 	}
 
-	/* First try to find a ready leader w/ soft delay (ie. including extra
+	/*
+	 * Sometimes be better to take a nop, rather than scheduling an
+	 * instruction that would require an (ss) shortly after another
+	 * SFU..  ie. if last SFU was just one or two instr ago, and we
+	 * could choose between taking a nop and then scheduling
+	 * something else, vs scheduling the immed avail instruction that
+	 * would require (ss), we are better with the nop.
+	 */
+	for (unsigned delay = 0; delay < 4; delay++) {
+		foreach_sched_node (n, &ctx->dag->heads) {
+			if (would_sync(ctx, n->instr))
+				continue;
+
+			unsigned d = ir3_delay_calc(ctx->block, n->instr, true, false);
+
+			if (d > delay)
+				continue;
+
+			if (!chosen || (chosen->max_delay < n->max_delay))
+				chosen = n;
+		}
+
+		if (chosen) {
+			di(chosen->instr, "csp: chose (soft ready, delay=%u)", delay);
+			return chosen->instr;
+		}
+	}
+
+	/* Next try to find a ready leader w/ soft delay (ie. including extra
 	 * delay for things like tex fetch which can be synchronized w/ sync
 	 * bit (but we probably do want to schedule some other instructions
 	 * while we wait)
