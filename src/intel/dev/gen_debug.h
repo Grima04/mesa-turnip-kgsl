@@ -134,6 +134,9 @@ enum gen_debug_block_type {
    /* Driver identifier (struct gen_debug_block_driver) */
    GEN_DEBUG_BLOCK_TYPE_DRIVER,
 
+   /* Frame identifier (struct gen_debug_block_frame) */
+   GEN_DEBUG_BLOCK_TYPE_FRAME,
+
    /* Internal, never to be written out */
    GEN_DEBUG_BLOCK_TYPE_MAX,
 };
@@ -146,6 +149,11 @@ struct gen_debug_block_base {
 struct gen_debug_block_driver {
    struct gen_debug_block_base base;
    uint8_t description[];
+};
+
+struct gen_debug_block_frame {
+   struct gen_debug_block_base base;
+   uint64_t frame_id;
 };
 
 extern void *intel_debug_identifier(void);

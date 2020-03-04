@@ -1391,6 +1391,8 @@ struct anv_device {
     uint64_t                                    perf_metric; /* 0 if unset */
 
     struct gen_aux_map_context                  *aux_map_ctx;
+
+    struct gen_debug_block_frame                *debug_frame_desc;
 };
 
 static inline struct anv_instance *

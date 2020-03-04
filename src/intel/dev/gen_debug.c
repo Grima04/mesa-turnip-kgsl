@@ -176,6 +176,18 @@ intel_debug_write_identifiers(void *_output,
          break;
       }
 
+      case GEN_DEBUG_BLOCK_TYPE_FRAME: {
+         struct gen_debug_block_frame frame_desc = {
+            .base = {
+               .type = GEN_DEBUG_BLOCK_TYPE_FRAME,
+               .length = sizeof(frame_desc),
+            },
+         };
+         memcpy(output, &frame_desc, sizeof(frame_desc));
+         output += sizeof(frame_desc);
+         break;
+      }
+
       default:
          unreachable("Missing identifier write");
       }

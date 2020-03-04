@@ -288,6 +288,15 @@ VkResult anv_QueuePresentKHR(
     const VkPresentInfoKHR*                  pPresentInfo)
 {
    ANV_FROM_HANDLE(anv_queue, queue, _queue);
+   struct anv_device *device = queue->device;
+
+   if (device->debug_frame_desc) {
+      device->debug_frame_desc->frame_id++;
+      if (!device->info.has_llc) {
+         gen_clflush_range(device->debug_frame_desc,
+                           sizeof(*device->debug_frame_desc));
+      }
+   }
 
    return wsi_common_queue_present(&queue->device->physical->wsi_device,
                                    anv_device_to_handle(queue->device),

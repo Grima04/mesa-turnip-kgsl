@@ -2970,10 +2970,10 @@ VkResult anv_CreateDevice(
                                        "Anv") + 8, 8),
    };
 
-   if (!device->info.has_llc) {
-      gen_clflush_range(device->workaround_bo->map,
-                        device->workaround_address.offset);
-   }
+   device->debug_frame_desc =
+      intel_debug_get_identifier_block(device->workaround_bo->map,
+                                       device->workaround_bo->size,
+                                       GEN_DEBUG_BLOCK_TYPE_FRAME);
 
    result = anv_device_init_trivial_batch(device);
    if (result != VK_SUCCESS)
