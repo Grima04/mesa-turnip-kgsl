@@ -47,6 +47,7 @@
 #include <stdbool.h>
 #include "util/u_queue.h"
 #include "GL/gl.h"
+#include "compiler/shader_enums.h"
 
 struct gl_context;
 struct _mesa_HashTable;
@@ -55,6 +56,7 @@ struct glthread_vao {
    GLuint Name;
    bool HasUserPointer;
    GLuint CurrentElementBufferName;
+   GLbitfield Enabled;
 };
 
 /** A single batch of commands queued up for execution. */
@@ -103,6 +105,7 @@ struct glthread_state
    struct glthread_vao *CurrentVAO;
    struct glthread_vao *LastLookedUpVAO;
    struct glthread_vao DefaultVAO;
+   int ClientActiveTexture;
 
    /** Currently-bound buffer object IDs. */
    GLuint CurrentArrayBufferName;
@@ -128,6 +131,8 @@ void _mesa_glthread_DeleteVertexArrays(struct gl_context *ctx,
                                        GLsizei n, const GLuint *ids);
 void _mesa_glthread_GenVertexArrays(struct gl_context *ctx,
                                     GLsizei n, GLuint *arrays);
+void _mesa_glthread_ClientState(struct gl_context *ctx, GLuint *vaobj,
+                                gl_vert_attrib attrib, bool enable);
 void _mesa_glthread_AttribPointer(struct gl_context *ctx);
 
 #endif /* _GLTHREAD_H*/

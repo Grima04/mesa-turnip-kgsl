@@ -986,12 +986,14 @@
       <param name="params" type="GLint *" />
    </function>
 
-   <function name="EnableClientStateiEXT">
+   <function name="EnableClientStateiEXT"
+             marshal_call_after="if (COMPAT) _mesa_glthread_ClientState(ctx, NULL, VERT_ATTRIB_TEX(index), true);">
       <param name="array" type="GLenum" />
       <param name="index" type="GLuint" />
    </function>
 
-   <function name="DisableClientStateiEXT">
+   <function name="DisableClientStateiEXT"
+             marshal_call_after="if (COMPAT) _mesa_glthread_ClientState(ctx, NULL, VERT_ATTRIB_TEX(index), false);">
       <param name="array" type="GLenum" />
       <param name="index" type="GLuint" />
    </function>
@@ -1151,22 +1153,26 @@
       <param name="offset" type="GLintptr" />
    </function>
 
-   <function name="EnableVertexArrayEXT">
+   <function name="EnableVertexArrayEXT"
+             marshal_call_after="if (COMPAT) _mesa_glthread_ClientState(ctx, &amp;vaobj, _mesa_array_to_attrib(ctx, array), true);">
       <param name="vaobj" type="GLuint" />
       <param name="array" type="GLenum" />
    </function>
 
-   <function name="DisableVertexArrayEXT">
+   <function name="DisableVertexArrayEXT"
+             marshal_call_after="if (COMPAT) _mesa_glthread_ClientState(ctx, &amp;vaobj, _mesa_array_to_attrib(ctx, array), false);">
       <param name="vaobj" type="GLuint" />
       <param name="array" type="GLenum" />
    </function>
 
-   <function name="EnableVertexArrayAttribEXT">
+   <function name="EnableVertexArrayAttribEXT"
+             marshal_call_after="if (COMPAT) _mesa_glthread_ClientState(ctx, &amp;vaobj, VERT_ATTRIB_GENERIC(index), true);">
       <param name="vaobj" type="GLuint" />
       <param name="index" type="GLuint" />
    </function>
 
-   <function name="DisableVertexArrayAttribEXT">
+   <function name="DisableVertexArrayAttribEXT"
+             marshal_call_after="if (COMPAT) _mesa_glthread_ClientState(ctx, &amp;vaobj, VERT_ATTRIB_GENERIC(index), false);">
       <param name="vaobj" type="GLuint" />
       <param name="index" type="GLuint" />
    </function>

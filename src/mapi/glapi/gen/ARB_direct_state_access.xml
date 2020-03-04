@@ -585,12 +585,14 @@
       <param name="arrays" type="GLuint *" />
    </function>
 
-   <function name="DisableVertexArrayAttrib" no_error="true">
+   <function name="DisableVertexArrayAttrib" no_error="true"
+             marshal_call_after="if (COMPAT) _mesa_glthread_ClientState(ctx, &amp;vaobj, VERT_ATTRIB_GENERIC(index), false);">
       <param name="vaobj" type="GLuint" />
       <param name="index" type="GLuint" />
    </function>
 
-   <function name="EnableVertexArrayAttrib" no_error="true">
+   <function name="EnableVertexArrayAttrib" no_error="true"
+             marshal_call_after="if (COMPAT) _mesa_glthread_ClientState(ctx, &amp;vaobj, VERT_ATTRIB_GENERIC(index), true);">
       <param name="vaobj" type="GLuint" />
       <param name="index" type="GLuint" />
    </function>

@@ -3174,7 +3174,8 @@
         <glx handcode="true"/>
     </function>
 
-    <function name="DisableClientState" es1="1.0" deprecated="3.1">
+    <function name="DisableClientState" es1="1.0" deprecated="3.1"
+              marshal_call_after="if (COMPAT) _mesa_glthread_ClientState(ctx, NULL, _mesa_array_to_attrib(ctx, array), false);">
         <param name="array" type="GLenum"/>
         <glx handcode="true"/>
     </function>
@@ -3204,7 +3205,8 @@
         <glx handcode="true"/>
     </function>
 
-    <function name="EnableClientState" es1="1.0" deprecated="3.1">
+    <function name="EnableClientState" es1="1.0" deprecated="3.1"
+              marshal_call_after="if (COMPAT) _mesa_glthread_ClientState(ctx, NULL, _mesa_array_to_attrib(ctx, array), true);">
         <param name="array" type="GLenum"/>
         <glx handcode="true"/>
     </function>
@@ -4285,7 +4287,8 @@
         <glx rop="197"/>
     </function>
 
-    <function name="ClientActiveTexture" es1="1.0" deprecated="3.1">
+    <function name="ClientActiveTexture" es1="1.0" deprecated="3.1"
+              marshal_call_after="ctx->GLThread.ClientActiveTexture = texture - GL_TEXTURE0;">
         <param name="texture" type="GLenum"/>
         <glx handcode="true"/>
     </function>
@@ -5357,13 +5360,15 @@
         <glx ignore="true"/>
     </function>
 
-    <function name="DisableVertexAttribArray" es2="2.0" no_error="true">
+    <function name="DisableVertexAttribArray" es2="2.0" no_error="true"
+              marshal_call_after="if (COMPAT) _mesa_glthread_ClientState(ctx, NULL, VERT_ATTRIB_GENERIC(index), false);">
         <param name="index" type="GLuint"/>
         <glx ignore="true"/>
         <glx handcode="true"/>
     </function>
 
-    <function name="EnableVertexAttribArray" es2="2.0" no_error="true">
+    <function name="EnableVertexAttribArray" es2="2.0" no_error="true"
+              marshal_call_after="if (COMPAT) _mesa_glthread_ClientState(ctx, NULL, VERT_ATTRIB_GENERIC(index), true);">
         <param name="index" type="GLuint"/>
         <glx ignore="true"/>
         <glx handcode="true"/>

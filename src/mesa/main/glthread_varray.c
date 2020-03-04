@@ -134,6 +134,30 @@ _mesa_glthread_GenVertexArrays(struct gl_context *ctx,
 }
 
 void
+_mesa_glthread_ClientState(struct gl_context *ctx, GLuint *vaobj,
+                           gl_vert_attrib attrib, bool enable)
+{
+   struct glthread_state *glthread = &ctx->GLThread;
+   struct glthread_vao *vao;
+
+   if (attrib >= VERT_ATTRIB_MAX)
+      return;
+
+   if (vaobj) {
+      vao = lookup_vao(ctx, *vaobj);
+      if (!vao)
+         return;
+   } else {
+      vao = glthread->CurrentVAO;
+   }
+
+   if (enable)
+      vao->Enabled |= 1u << attrib;
+   else
+      vao->Enabled &= ~(1u << attrib);
+}
+
+void
 _mesa_glthread_AttribPointer(struct gl_context *ctx)
 {
    struct glthread_state *glthread = &ctx->GLThread;

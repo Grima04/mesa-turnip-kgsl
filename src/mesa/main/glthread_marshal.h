@@ -372,4 +372,33 @@ _mesa_semaphore_enum_to_count(GLenum pname)
    }
 }
 
+static inline gl_vert_attrib
+_mesa_array_to_attrib(struct gl_context *ctx, GLenum array)
+{
+   switch (array) {
+   case GL_VERTEX_ARRAY:
+      return VERT_ATTRIB_POS;
+   case GL_NORMAL_ARRAY:
+      return VERT_ATTRIB_NORMAL;
+   case GL_COLOR_ARRAY:
+      return VERT_ATTRIB_COLOR0;
+   case GL_INDEX_ARRAY:
+      return VERT_ATTRIB_COLOR_INDEX;
+   case GL_TEXTURE_COORD_ARRAY:
+      return VERT_ATTRIB_TEX(ctx->GLThread.ClientActiveTexture);
+   case GL_EDGE_FLAG_ARRAY:
+      return VERT_ATTRIB_EDGEFLAG;
+   case GL_FOG_COORDINATE_ARRAY:
+      return VERT_ATTRIB_FOG;
+   case GL_SECONDARY_COLOR_ARRAY:
+      return VERT_ATTRIB_COLOR1;
+   case GL_POINT_SIZE_ARRAY_OES:
+      return VERT_ATTRIB_POINT_SIZE;
+   default:
+      if (array >= GL_TEXTURE0 && array <= GL_TEXTURE7)
+         return VERT_ATTRIB_TEX(array - GL_TEXTURE0);
+      return VERT_ATTRIB_MAX;
+   }
+}
+
 #endif /* MARSHAL_H */
