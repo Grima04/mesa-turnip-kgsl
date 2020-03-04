@@ -63,7 +63,8 @@
  * reciprocal.  By breaking the operation down, constant reciprocals
  * can get constant folded.
  *
- * FDIV_TO_MUL_RCP only lowers single-precision floating point division;
+ * FDIV_TO_MUL_RCP lowers single-precision and half-precision
+ * floating point division;
  * DDIV_TO_MUL_RCP only lowers double-precision floating point division.
  * DIV_TO_MUL_RCP is a convenience macro that sets both flags.
  * INT_DIV_TO_MUL_RCP handles the integer case, converting to and from floating
@@ -209,7 +210,7 @@ lower_instructions_visitor::sub_to_add_neg(ir_expression *ir)
 void
 lower_instructions_visitor::div_to_mul_rcp(ir_expression *ir)
 {
-   assert(ir->operands[1]->type->is_float() || ir->operands[1]->type->is_double());
+   assert(ir->operands[1]->type->is_float_16_32_64());
 
    /* New expression for the 1.0 / op1 */
    ir_rvalue *expr;
@@ -342,7 +343,7 @@ lower_instructions_visitor::mod_to_floor(ir_expression *ir)
    /* Don't generate new IR that would need to be lowered in an additional
     * pass.
     */
-   if ((lowering(FDIV_TO_MUL_RCP) && ir->type->is_float()) ||
+   if ((lowering(FDIV_TO_MUL_RCP) && ir->type->is_float_16_32()) ||
        (lowering(DDIV_TO_MUL_RCP) && ir->type->is_double()))
       div_to_mul_rcp(div_expr);
 
@@ -1773,7 +1774,7 @@ lower_instructions_visitor::visit_leave(ir_expression *ir)
    case ir_binop_div:
       if (ir->operands[1]->type->is_integer_32() && lowering(INT_DIV_TO_MUL_RCP))
 	 int_div_to_mul_rcp(ir);
-      else if ((ir->operands[1]->type->is_float() && lowering(FDIV_TO_MUL_RCP)) ||
+      else if ((ir->operands[1]->type->is_float_16_32() && lowering(FDIV_TO_MUL_RCP)) ||
                (ir->operands[1]->type->is_double() && lowering(DDIV_TO_MUL_RCP)))
 	 div_to_mul_rcp(ir);
       break;
