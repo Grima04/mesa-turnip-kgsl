@@ -1651,10 +1651,19 @@ isl_surf_init_s(const struct isl_device *dev,
        */
       if (tiling == ISL_TILING_GEN12_CCS)
          base_alignment_B = MAX(base_alignment_B, 4096);
-   }
 
-   if (ISL_DEV_GEN(dev) >= 12) {
-      base_alignment_B = MAX(base_alignment_B, 64 * 1024);
+      /* Gen12+ requires that images be 64K-aligned if they're going to used
+       * with CCS.  This is because the Aux translation table maps main
+       * surface addresses to aux addresses at a 64K (in the main surface)
+       * granularity.  Because we don't know for sure in ISL if a surface will
+       * use CCS, we have to guess based on the DISABLE_AUX usage bit.  The
+       * one thing we do know is that we haven't enable CCS on linear images
+       * yet so we can avoid the extra alignment there.
+       */
+      if (ISL_DEV_GEN(dev) >= 12 &&
+          !(info->usage & ISL_SURF_USAGE_DISABLE_AUX_BIT)) {
+         base_alignment_B = MAX(base_alignment_B, 64 * 1024);
+      }
    }
 
    if (ISL_DEV_GEN(dev) < 9) {
