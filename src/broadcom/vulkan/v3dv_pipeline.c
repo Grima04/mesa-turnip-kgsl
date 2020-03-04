@@ -1043,6 +1043,26 @@ pipeline_compile_graphics(struct v3dv_pipeline *pipeline,
       stages[stage] = p_stage;
    }
 
+   /* Add a no-op fragment shader if needed */
+   if (!stages[MESA_SHADER_FRAGMENT]) {
+      nir_builder b;
+      nir_builder_init_simple_shader(&b, NULL, MESA_SHADER_FRAGMENT,
+                                     &v3dv_nir_options);
+      b.shader->info.name = ralloc_strdup(b.shader, "noop_fs");
+
+      struct v3dv_pipeline_stage *p_stage =
+         vk_zalloc2(&device->alloc, alloc, sizeof(*p_stage), 8,
+                    VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+
+      p_stage->pipeline = pipeline;
+      p_stage->stage = MESA_SHADER_FRAGMENT;
+      p_stage->entrypoint = "main";
+      p_stage->module = 0;
+      p_stage->nir = b.shader;
+
+      stages[MESA_SHADER_FRAGMENT] = p_stage;
+      pipeline->active_stages |= MESA_SHADER_FRAGMENT;
+   }
 
    /* Linking */
    struct v3dv_pipeline_stage *next_stage = NULL;
