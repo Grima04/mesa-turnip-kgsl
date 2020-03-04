@@ -985,6 +985,9 @@ static void si_lower_nir(struct si_screen *sscreen, struct nir_shader *nir)
 
 	NIR_PASS_V(nir, nir_lower_bool_to_int32);
 	NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_function_temp);
+
+	if (sscreen->debug_flags & DBG(FS_CORRECT_DERIVS_AFTER_KILL))
+		NIR_PASS_V(nir, nir_lower_discard_to_demote);
 }
 
 void si_finalize_nir(struct pipe_screen *screen, void *nirptr, bool optimize)

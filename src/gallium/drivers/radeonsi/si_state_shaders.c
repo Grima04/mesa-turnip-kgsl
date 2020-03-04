@@ -73,7 +73,10 @@ void si_get_ir_cache_key(struct si_shader_selector *sel, bool ngg, bool es,
 		shader_variant_flags |= 1 << 1;
 	if (si_get_wave_size(sel->screen, sel->type, ngg, es) == 32)
 		shader_variant_flags |= 1 << 2;
-	if (sel->force_correct_derivs_after_kill)
+	if (sel->type == PIPE_SHADER_FRAGMENT &&
+	    sel->info.uses_derivatives &&
+	    sel->info.uses_kill &&
+	    sel->screen->debug_flags & DBG(FS_CORRECT_DERIVS_AFTER_KILL))
 		shader_variant_flags |= 1 << 3;
 
 	struct mesa_sha1 ctx;
@@ -2821,12 +2824,6 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
 	sel->vs_needs_prolog = sel->type == PIPE_SHADER_VERTEX &&
 			       sel->info.num_inputs &&
 			       !sel->info.properties[TGSI_PROPERTY_VS_BLIT_SGPRS_AMD];
-
-	sel->force_correct_derivs_after_kill =
-		sel->type == PIPE_SHADER_FRAGMENT &&
-		sel->info.uses_derivatives &&
-		sel->info.uses_kill &&
-		sctx->screen->debug_flags & DBG(FS_CORRECT_DERIVS_AFTER_KILL);
 
 	sel->prim_discard_cs_allowed =
 		sel->type == PIPE_SHADER_VERTEX &&

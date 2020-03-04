@@ -1599,13 +1599,6 @@ static bool si_build_main_function(struct si_shader_context *ctx,
 		}
 	}
 
-	if (sel->force_correct_derivs_after_kill) {
-		ctx->postponed_kill = ac_build_alloca_undef(&ctx->ac, ctx->ac.i1, "");
-		/* true = don't kill. */
-		LLVMBuildStore(ctx->ac.builder, ctx->ac.i1true,
-			       ctx->postponed_kill);
-	}
-
 	bool success = si_nir_build_llvm(ctx, nir);
 	if (free_nir)
 		ralloc_free(nir);

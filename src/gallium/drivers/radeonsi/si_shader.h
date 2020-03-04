@@ -435,7 +435,6 @@ struct si_shader_selector {
 	/* PIPE_SHADER_[VERTEX|FRAGMENT|...] */
 	enum pipe_shader_type type;
 	bool		vs_needs_prolog;
-	bool		force_correct_derivs_after_kill;
 	bool		prim_discard_cs_allowed;
 	bool		ngg_culling_allowed;
 	unsigned	num_vs_inputs;
