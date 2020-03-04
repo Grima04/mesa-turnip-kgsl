@@ -43,6 +43,7 @@
 #include "intel_aub.h"
 #include "aub_write.h"
 
+#include "dev/gen_debug.h"
 #include "dev/gen_device_info.h"
 #include "util/macros.h"
 
@@ -60,6 +61,8 @@ static FILE *output_file = NULL;
 static int verbose = 0;
 static bool device_override = false;
 static bool capture_only = false;
+static int64_t frame_id = -1;
+static bool capture_finished = false;
 
 #define MAX_FD_COUNT 64
 #define MAX_BO_COUNT 64 * 1024
@@ -229,6 +232,9 @@ dump_execbuffer2(int fd, struct drm_i915_gem_execbuffer2 *execbuffer2)
 
    ensure_device_info(fd);
 
+   if (capture_finished)
+      return;
+
    if (!aub_file.file) {
       aub_file_init(&aub_file, output_file,
                     verbose == 2 ? stdout : NULL,
@@ -245,9 +251,6 @@ dump_execbuffer2(int fd, struct drm_i915_gem_execbuffer2 *execbuffer2)
    else
       offset = aub_gtt_size(&aub_file);
 
-   if (verbose)
-      printf("Dumping execbuffer2:\n");
-
    for (uint32_t i = 0; i < execbuffer2->buffer_count; i++) {
       obj = &exec_objects[i];
       bo = get_bo(fd, obj->handle);
@@ -263,22 +266,63 @@ dump_execbuffer2(int fd, struct drm_i915_gem_execbuffer2 *execbuffer2)
 
       if (obj->flags & EXEC_OBJECT_PINNED) {
          bo->offset = obj->offset;
-         if (verbose)
-            printf("BO #%d (%dB) pinned @ 0x%" PRIx64 "\n",
-                   obj->handle, bo->size, bo->offset);
       } else {
          if (obj->alignment != 0)
             offset = align_u32(offset, obj->alignment);
          bo->offset = offset;
-         if (verbose)
-            printf("BO #%d (%dB) @ 0x%" PRIx64 "\n", obj->handle,
-                   bo->size, bo->offset);
          offset = align_u32(offset + bo->size + 4095, 4096);
       }
 
       if (bo->map == NULL && bo->size > 0)
          bo->map = gem_mmap(fd, obj->handle, 0, bo->size);
       fail_if(bo->map == MAP_FAILED, "bo mmap failed\n");
+   }
+
+   uint64_t current_frame_id = 0;
+   if (frame_id >= 0) {
+      for (uint32_t i = 0; i < execbuffer2->buffer_count; i++) {
+         obj = &exec_objects[i];
+         bo = get_bo(fd, obj->handle);
+
+         /* Check against frame_id requirements. */
+         if (memcmp(bo->map, intel_debug_identifier(),
+                    intel_debug_identifier_size()) == 0) {
+            const struct gen_debug_block_frame *frame_desc =
+               intel_debug_get_identifier_block(bo->map, bo->size,
+                                                GEN_DEBUG_BLOCK_TYPE_FRAME);
+
+            current_frame_id = frame_desc ? frame_desc->frame_id : 0;
+            break;
+         }
+      }
+   }
+
+   if (verbose)
+      printf("Dumping execbuffer2 (frame_id=%"PRIu64", buffers=%u):\n",
+             current_frame_id, execbuffer2->buffer_count);
+
+   /* Check whether we can stop right now. */
+   if (frame_id >= 0) {
+      if (current_frame_id < frame_id)
+         return;
+
+      if (current_frame_id > frame_id) {
+         aub_file_finish(&aub_file);
+         capture_finished = true;
+         return;
+      }
+   }
+
+
+   /* Map buffers into the PPGTT. */
+   for (uint32_t i = 0; i < execbuffer2->buffer_count; i++) {
+      obj = &exec_objects[i];
+      bo = get_bo(fd, obj->handle);
+
+      if (verbose) {
+         printf("BO #%d (%dB) @ 0x%" PRIx64 "\n",
+                obj->handle, bo->size, bo->offset);
+      }
 
       if (aub_use_execlists(&aub_file) && !bo->gtt_mapped) {
          aub_map_ppgtt(&aub_file, bo->offset, bo->size);
@@ -286,6 +330,7 @@ dump_execbuffer2(int fd, struct drm_i915_gem_execbuffer2 *execbuffer2)
       }
    }
 
+   /* Write the buffer content into the Aub. */
    batch_index = (execbuffer2->flags & I915_EXEC_BATCH_FIRST) ? 0 :
       execbuffer2->buffer_count - 1;
    batch_bo = get_bo(fd, exec_objects[batch_index].handle);
@@ -428,6 +473,8 @@ maybe_init(int fd)
                  output_filename);
       } else if (!strcmp(key, "capture_only")) {
          capture_only = atoi(value);
+      } else if (!strcmp(key, "frame")) {
+         frame_id = atol(value);
       } else {
          fprintf(stderr, "unknown option '%s'\n", key);
       }
@@ -728,7 +775,8 @@ fini(void)
 {
    if (devinfo.gen != 0) {
       free(output_filename);
-      aub_file_finish(&aub_file);
+      if (!capture_finished)
+         aub_file_finish(&aub_file);
       free(bos);
    }
 }

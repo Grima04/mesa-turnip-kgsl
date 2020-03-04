@@ -116,7 +116,7 @@ libintel_dump_gpu = shared_library(
     'gen_context.h', 'gen8_context.h', 'gen10_context.h', 'intel_aub.h',
     'aub_write.h', 'aub_write.c', 'intel_dump_gpu.c',
   ),
-  dependencies : dep_dl,
+  dependencies : [dep_dl, idep_mesautil],
   include_directories : [inc_include, inc_src, inc_intel],
   link_with : libintel_dev,
   c_args : [no_override_init_args],
