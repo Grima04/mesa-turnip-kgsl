@@ -762,6 +762,22 @@ public:
    }
 
    /**
+    * Query whether or not a type is a half-float or float type
+    */
+   bool is_float_16_32() const
+   {
+      return base_type == GLSL_TYPE_FLOAT16 || is_float();
+   }
+
+   /**
+    * Query whether or not a type is a half-float, float or double
+    */
+   bool is_float_16_32_64() const
+   {
+      return base_type == GLSL_TYPE_FLOAT16 || is_float() || is_double();
+   }
+
+   /**
     * Query whether or not a type is a double type
     */
    bool is_double() const
