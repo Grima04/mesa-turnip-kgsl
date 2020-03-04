@@ -59,6 +59,9 @@ struct ir3_info {
 	/* number of sync bits: */
 	uint16_t ss, sy;
 
+	/* estimate of number of cycles stalled on (ss) */
+	uint16_t sstall;
+
 	uint16_t last_baryf;     /* instruction # of last varying fetch */
 };
 
