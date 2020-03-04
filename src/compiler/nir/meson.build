@@ -125,6 +125,7 @@ files_libnir = files(
   'nir_lower_clip_cull_distance_arrays.c',
   'nir_lower_clip_halfz.c',
   'nir_lower_variable_initializers.c',
+  'nir_lower_discard_to_demote.c',
   'nir_lower_double_ops.c',
   'nir_lower_drawpixels.c',
   'nir_lower_fb_read.c',

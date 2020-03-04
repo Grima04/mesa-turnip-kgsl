@@ -245,6 +245,7 @@ NIR_FILES = \
 	nir/nir_lower_clip_cull_distance_arrays.c \
 	nir/nir_lower_clip_halfz.c \
 	nir/nir_lower_variable_initializers.c \
+	nir/nir_lower_discard_to_demote.c \
 	nir/nir_lower_double_ops.c \
 	nir/nir_lower_drawpixels.c \
 	nir/nir_lower_fb_read.c \
