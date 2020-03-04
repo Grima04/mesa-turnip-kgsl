@@ -64,6 +64,15 @@ v3dv_CreatePipelineLayout(VkDevice _device,
       }
    }
 
+   layout->push_constant_size = 0;
+   for (unsigned i = 0; i < pCreateInfo->pushConstantRangeCount; ++i) {
+      const VkPushConstantRange *range = pCreateInfo->pPushConstantRanges + i;
+      layout->push_constant_size =
+         MAX2(layout->push_constant_size, range->offset + range->size);
+   }
+
+   layout->push_constant_size = align(layout->push_constant_size, 4096);
+
    layout->dynamic_offset_count = dynamic_offset_count;
 
    *pPipelineLayout = v3dv_pipeline_layout_to_handle(layout);

@@ -96,7 +96,8 @@ get_descriptor(struct v3dv_descriptor_state *descriptor_state,
 static void
 check_push_constants_ubo(struct v3dv_cmd_buffer *cmd_buffer)
 {
-   if (!(cmd_buffer->state.dirty & V3DV_CMD_DIRTY_PUSH_CONSTANTS))
+   if (!(cmd_buffer->state.dirty & V3DV_CMD_DIRTY_PUSH_CONSTANTS) ||
+       cmd_buffer->state.pipeline->layout->push_constant_size == 0)
       return;
 
    if (cmd_buffer->push_constants_descriptor.bo == NULL) {
