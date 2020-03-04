@@ -740,38 +740,28 @@ __fadd64(uint64_t a, uint64_t b)
 
       __shortShift64Left(aFracHi, aFracLo, 10, aFracHi, aFracLo);
       __shortShift64Left(bFracHi, bFracLo, 10, bFracHi, bFracLo);
-      if (0 < expDiff) {
+      if (expDiff != 0) {
          uint zFrac0;
          uint zFrac1;
 
+         if (expDiff < 0) {
+            EXCHANGE(aFracHi, bFracHi);
+            EXCHANGE(aFracLo, bFracLo);
+            EXCHANGE(aExp, bExp);
+            aSign ^= 0x80000000u;
+         }
+
          if (aExp == 0x7FF) {
             bool propagate = (aFracHi | aFracLo) != 0u;
-            return mix(a, __propagateFloat64NaN(a, b), propagate);
+            return mix(__packFloat64(aSign, 0x7ff, 0u, 0u), __propagateFloat64NaN(a, b), propagate);
          }
-         expDiff = mix(expDiff, expDiff - 1, bExp == 0);
+
+         expDiff = mix(abs(expDiff), abs(expDiff) - 1, bExp == 0);
          bFracHi = mix(bFracHi | 0x40000000u, bFracHi, bExp == 0);
          __shift64RightJamming(bFracHi, bFracLo, expDiff, bFracHi, bFracLo);
          aFracHi |= 0x40000000u;
          __sub64(aFracHi, aFracLo, bFracHi, bFracLo, zFrac0, zFrac1);
          zExp = aExp;
-         --zExp;
-         return __normalizeRoundAndPackFloat64(aSign, zExp - 10, zFrac0, zFrac1);
-      }
-      if (expDiff < 0) {
-         uint zFrac0;
-         uint zFrac1;
-
-         if (bExp == 0x7FF) {
-            bool propagate = (bFracHi | bFracLo) != 0u;
-            return mix(__packFloat64(aSign ^ 0x80000000u, 0x7ff, 0u, 0u), __propagateFloat64NaN(a, b), propagate);
-         }
-         expDiff = mix(expDiff, expDiff + 1, aExp == 0);
-         aFracHi = mix(aFracHi | 0x40000000u, aFracHi, aExp == 0);
-         __shift64RightJamming(aFracHi, aFracLo, - expDiff, aFracHi, aFracLo);
-         bFracHi |= 0x40000000u;
-         __sub64(bFracHi, bFracLo, aFracHi, aFracLo, zFrac0, zFrac1);
-         zExp = bExp;
-         aSign ^= 0x80000000u;
          --zExp;
          return __normalizeRoundAndPackFloat64(aSign, zExp - 10, zFrac0, zFrac1);
       }
