@@ -30,6 +30,12 @@ files_libglx = files(
   'clientinfo.c',
   'compsize.c',
   'create_context.c',
+  'dri_common.c',
+  'dri_common.h',
+  'dri_common_query_renderer.c',
+  'dri_common_interop.c',
+  'drisw_glx.c',
+  'drisw_priv.h',
   'eval.c',
   'glxclient.h',
   'glxcmds.c',
@@ -64,26 +70,15 @@ files_libglx = files(
   'single2.c',
   'singlepix.c',
   'vertarr.c',
+  'xfont.c',
 )
 
 extra_libs_libglx = []
 extra_deps_libgl = []
 extra_ld_args_libgl = []
 
-if with_glx == 'dri'
-  files_libglx += files(
-    'dri_common.c',
-    'dri_common.h',
-    'dri_common_query_renderer.c',
-    'dri_common_interop.c',
-    'xfont.c',
-    'drisw_glx.c',
-    'drisw_priv.h',
-  )
-endif
-
 # dri2
-if with_glx == 'dri' and with_dri_platform == 'drm' and dep_libdrm.found()
+if with_dri_platform == 'drm' and dep_libdrm.found()
   files_libglx += files(
     'dri2.c',
     'dri2_glx.c',
