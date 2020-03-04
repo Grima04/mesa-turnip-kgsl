@@ -115,9 +115,14 @@ cmd_buffer_init(struct v3dv_cmd_buffer *cmd_buffer,
                 struct v3dv_cmd_pool *pool,
                 VkCommandBufferLevel level)
 {
-   memset(cmd_buffer, 0, sizeof(*cmd_buffer));
+   /* Do not reset the loader data header! If we are calling this from
+    * a command buffer reset that would reset the loader's dispatch table for
+    * the command buffer.
+    */
+   const uint32_t ld_size = sizeof(VK_LOADER_DATA);
+   uint8_t *cmd_buffer_driver_start = ((uint8_t *) cmd_buffer) + ld_size;
+   memset(cmd_buffer_driver_start, 0, sizeof(*cmd_buffer) - ld_size);
 
-   cmd_buffer->_loader_data.loaderMagic = ICD_LOADER_MAGIC;
    cmd_buffer->device = device;
    cmd_buffer->pool = pool;
    cmd_buffer->level = level;
@@ -137,12 +142,14 @@ cmd_buffer_create(struct v3dv_device *device,
                   VkCommandBuffer *pCommandBuffer)
 {
    struct v3dv_cmd_buffer *cmd_buffer;
-   cmd_buffer = vk_zalloc(&pool->alloc, sizeof(*cmd_buffer), 8,
-                          VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   cmd_buffer = vk_alloc(&pool->alloc, sizeof(*cmd_buffer), 8,
+                         VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (cmd_buffer == NULL)
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    cmd_buffer_init(cmd_buffer, device, pool, level);
+
+   cmd_buffer->_loader_data.loaderMagic = ICD_LOADER_MAGIC;
 
    *pCommandBuffer = v3dv_cmd_buffer_to_handle(cmd_buffer);
 
