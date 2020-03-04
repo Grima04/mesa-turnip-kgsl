@@ -446,6 +446,9 @@ lower_vs_inputs(struct nir_shader *nir)
 static void
 lower_fs_outputs(nir_shader *nir)
 {
+   nir_assign_io_var_locations(nir, nir_var_shader_out, &nir->num_outputs,
+                               MESA_SHADER_FRAGMENT);
+
    NIR_PASS_V(nir, nir_lower_io, nir_var_shader_out, type_size_vec4, 0);
 }
 
