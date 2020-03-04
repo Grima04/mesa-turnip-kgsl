@@ -645,6 +645,10 @@ enum isl_aux_usage {
 
    /** The auxiliary surface is an MCS and CCS is also enabled
     *
+    * In this mode, we have fused MCS+CCS compression where the MCS is used
+    * for fast-clears and "identical samples" compression just like on Gen7-11
+    * but each plane is then CCS compressed.
+    *
     * @invariant isl_surf::samples > 1
     */
    ISL_AUX_USAGE_MCS_CCS,
