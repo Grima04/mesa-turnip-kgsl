@@ -629,9 +629,6 @@ v3dv_BeginCommandBuffer(VkCommandBuffer commandBuffer,
 {
    V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
 
-   assert(cmd_buffer->level == VK_COMMAND_BUFFER_LEVEL_SECONDARY ||
-          !(cmd_buffer->usage_flags & VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT));
-
    /* If this is the first vkBeginCommandBuffer, we must initialize the
     * command buffer's state. Otherwise, we must reset its state. In both
     * cases we reset it.
