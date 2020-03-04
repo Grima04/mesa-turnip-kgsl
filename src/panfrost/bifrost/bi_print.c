@@ -79,6 +79,18 @@ bi_csel_cond_name(enum bifrost_csel_cond cond)
 }
 
 const char *
+bi_interp_mode_name(enum bifrost_interp_mode mode)
+{
+        switch (mode) {
+        case BIFROST_INTERP_PER_FRAG: return ".per_frag";
+        case BIFROST_INTERP_CENTROID: return ".centroid";
+        case BIFROST_INTERP_DEFAULT: return "";
+        case BIFROST_INTERP_EXPLICIT: return ".explicit";
+        default: return ".unknown";
+        }
+}
+
+const char *
 bi_ldst_type_name(enum bifrost_ldst_type type)
 {
         switch (type) {

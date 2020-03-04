@@ -1216,19 +1216,7 @@ static void dump_add(FILE *fp, uint64_t word, struct bifrost_regs regs,
                         fprintf(fp, ".reuse");
                 if (ADD.op & 0x400)
                         fprintf(fp, ".flat");
-                switch ((ADD.op >> 7) & 0x3) {
-                case BIFROST_INTERP_PER_FRAG:
-                        fprintf(fp, ".per_frag");
-                        break;
-                case BIFROST_INTERP_CENTROID:
-                        fprintf(fp, ".centroid");
-                        break;
-                case BIFROST_INTERP_DEFAULT:
-                        break;
-                case BIFROST_INTERP_EXPLICIT:
-                        fprintf(fp, ".explicit");
-                        break;
-                }
+                fprintf(fp, "%s", bi_interp_mode_name((ADD.op >> 7) & 0x3));
                 fprintf(fp, ".v%d", ((ADD.op >> 5) & 0x3) + 1);
         } else if (info.src_type == ADD_BRANCH) {
                 enum bifrost_branch_code branchCode = (enum bifrost_branch_code) ((ADD.op >> 6) & 0x3f);
