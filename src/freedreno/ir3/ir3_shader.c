@@ -289,7 +289,8 @@ lower_output_var(nir_shader *nir, int location)
 {
 	nir_foreach_variable(var, &nir->outputs) {
 		if (var->data.driver_location == location &&
-				var->data.precision == GLSL_PRECISION_MEDIUM) {
+				((var->data.precision == GLSL_PRECISION_MEDIUM) ||
+					(var->data.precision == GLSL_PRECISION_LOW))) {
 			if (glsl_get_base_type(var->type) == GLSL_TYPE_FLOAT)
 				var->type = glsl_float16_type(var->type);
 
