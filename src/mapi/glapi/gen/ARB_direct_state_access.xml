@@ -580,7 +580,7 @@
    <!-- Vertex Array object functions -->
 
    <function name="CreateVertexArrays" no_error="true"
-             marshal_call_after="_mesa_glthread_GenVertexArrays(ctx, n, arrays);">
+             marshal_call_after="if (COMPAT) _mesa_glthread_GenVertexArrays(ctx, n, arrays);">
       <param name="n" type="GLsizei" />
       <param name="arrays" type="GLuint *" />
    </function>

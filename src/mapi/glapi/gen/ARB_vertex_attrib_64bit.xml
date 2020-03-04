@@ -52,7 +52,7 @@
     </function>
 
     <function name="VertexAttribLPointer" no_error="true" marshal="async"
-              marshal_call_after="_mesa_glthread_AttribPointer(ctx);">
+              marshal_call_after="if (COMPAT) _mesa_glthread_AttribPointer(ctx);">
         <param name="index" type="GLuint"/>
         <param name="size" type="GLint"/>
         <param name="type" type="GLenum"/>

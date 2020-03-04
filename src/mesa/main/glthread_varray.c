@@ -139,6 +139,6 @@ _mesa_glthread_AttribPointer(struct gl_context *ctx)
 {
    struct glthread_state *glthread = ctx->GLThread;
 
-   if (ctx->API != API_OPENGL_CORE && !glthread->vertex_array_is_vbo)
+   if (!glthread->vertex_array_is_vbo)
       glthread->CurrentVAO->HasUserPointer = true;
 }

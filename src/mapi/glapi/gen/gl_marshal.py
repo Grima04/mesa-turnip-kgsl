@@ -35,6 +35,8 @@ header = """
 #include "dispatch.h"
 #include "glthread.h"
 #include "marshal.h"
+
+#define COMPAT (ctx->API != API_OPENGL_CORE)
 """
 
 
