@@ -45,6 +45,8 @@
 #include "lima_resource.h"
 #include "lima_bo.h"
 #include "lima_util.h"
+
+#include "pan_minmax_cache.h"
 #include "pan_tiling.h"
 
 static struct pipe_resource *
@@ -224,6 +226,9 @@ _lima_resource_create_with_modifiers(struct pipe_screen *pscreen,
       struct lima_resource *res = lima_resource(pres);
       res->tiled = should_tile;
 
+      if (templat->bind & PIPE_BIND_INDEX_BUFFER)
+         res->index_cache = CALLOC_STRUCT(panfrost_minmax_cache);
+
       debug_printf("%s: pres=%p width=%u height=%u depth=%u target=%d "
                    "bind=%x usage=%d tile=%d last_level=%d\n", __func__,
                    pres, pres->width0, pres->height0, pres->depth0,
@@ -274,6 +279,9 @@ lima_resource_destroy(struct pipe_screen *pscreen, struct pipe_resource *pres)
 
    if (res->damage.region)
       FREE(res->damage.region);
+
+   if (res->index_cache)
+      FREE(res->index_cache);
 
    FREE(res);
 }
@@ -584,8 +592,16 @@ lima_transfer_map(struct pipe_context *pctx,
 
       return trans->staging;
    } else {
+      unsigned dpw = PIPE_TRANSFER_MAP_DIRECTLY | PIPE_TRANSFER_WRITE |
+                     PIPE_TRANSFER_PERSISTENT;
+      if ((usage & dpw) == dpw && res->index_cache)
+         return NULL;
+
       ptrans->stride = res->levels[level].stride;
       ptrans->layer_stride = res->levels[level].layer_stride;
+
+      if ((usage & PIPE_TRANSFER_WRITE) && (usage & PIPE_TRANSFER_MAP_DIRECTLY))
+         panfrost_minmax_cache_invalidate(res->index_cache, ptrans);
 
       return bo->map + res->levels[level].offset +
          box->z * res->levels[level].layer_stride +
@@ -629,6 +645,8 @@ lima_transfer_unmap(struct pipe_context *pctx,
       }
       free(trans->staging);
    }
+
+   panfrost_minmax_cache_invalidate(res->index_cache, ptrans);
 
    pipe_resource_reference(&ptrans->resource, NULL);
    slab_free(&ctx->transfer_pool, trans);

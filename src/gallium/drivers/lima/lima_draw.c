@@ -45,6 +45,8 @@
 #include "lima_util.h"
 #include "lima_gpu.h"
 
+#include "pan_minmax_cache.h"
+
 #include <drm-uapi/lima_drm.h>
 
 static bool
@@ -1007,14 +1009,14 @@ lima_draw_vbo_indexed(struct pipe_context *pctx,
    struct lima_context *ctx = lima_context(pctx);
    struct lima_job *job = lima_job_get(ctx);
    struct pipe_resource *indexbuf = NULL;
+   bool needs_indices = true;
 
    /* Mali Utgard GPU always need min/max index info for index draw,
     * compute it if upper layer does not do for us */
-   if (info->max_index == ~0u)
-      u_vbuf_get_minmax_index(pctx, info, &ctx->min_index, &ctx->max_index);
-   else {
+   if (info->max_index != ~0u) {
       ctx->min_index = info->min_index;
       ctx->max_index = info->max_index;
+      needs_indices = false;
    }
 
    if (info->has_user_indices) {
@@ -1024,6 +1026,15 @@ lima_draw_vbo_indexed(struct pipe_context *pctx,
    else {
       ctx->index_res = lima_resource(info->index.resource);
       ctx->index_offset = 0;
+      needs_indices = !panfrost_minmax_cache_get(ctx->index_res->index_cache, info->start,
+                                                 info->count, &ctx->min_index, &ctx->max_index);
+   }
+
+   if (needs_indices) {
+      u_vbuf_get_minmax_index(pctx, info, &ctx->min_index, &ctx->max_index);
+      if (!info->has_user_indices)
+         panfrost_minmax_cache_add(ctx->index_res->index_cache, info->start, info->count,
+                                   ctx->min_index, ctx->max_index);
    }
 
    lima_job_add_bo(job, LIMA_PIPE_GP, ctx->index_res->bo, LIMA_SUBMIT_BO_READ);
