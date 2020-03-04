@@ -2674,11 +2674,12 @@ blorp_copy(struct blorp_batch *batch,
 
    assert(params.src.aux_usage == ISL_AUX_USAGE_NONE ||
           params.src.aux_usage == ISL_AUX_USAGE_HIZ ||
+          params.src.aux_usage == ISL_AUX_USAGE_HIZ_CCS_WT ||
           params.src.aux_usage == ISL_AUX_USAGE_MCS ||
           params.src.aux_usage == ISL_AUX_USAGE_MCS_CCS ||
           params.src.aux_usage == ISL_AUX_USAGE_CCS_E);
 
-   if (params.src.aux_usage == ISL_AUX_USAGE_HIZ) {
+   if (isl_aux_usage_has_hiz(params.src.aux_usage)) {
       /* In order to use HiZ, we have to use the real format for the source.
        * Depth <-> Color copies are not allowed.
        */
