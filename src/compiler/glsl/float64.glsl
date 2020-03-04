@@ -708,7 +708,7 @@ __fadd64(uint64_t a, uint64_t b)
          __shift64ExtraRightJamming(
             bFracHi, bFracLo, 0u, expDiff, bFracHi, bFracLo, zFrac2);
          zExp = aExp;
-      } else if (expDiff < 0) {
+      } else {
          if (bExp == 0x7FF) {
             bool propagate = (bFracHi | bFracLo) != 0u;
             return mix(__packFloat64(aSign, 0x7ff, 0u, 0u), __propagateFloat64NaN(a, b), propagate);
