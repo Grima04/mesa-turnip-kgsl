@@ -779,31 +779,26 @@ __fadd64(uint64_t a, uint64_t b)
 
       uint zFrac0 = 0;
       uint zFrac1 = 0;
-      bool zexp_normal = false;
       uint sign_of_difference = 0;
       if (bFracHi < aFracHi) {
          __sub64(aFracHi, aFracLo, bFracHi, bFracLo, zFrac0, zFrac1);
-         zexp_normal = true;
       }
       else if (aFracHi < bFracHi) {
          __sub64(bFracHi, bFracLo, aFracHi, aFracLo, zFrac0, zFrac1);
          sign_of_difference = 0x80000000;
-         zexp_normal = true;
       }
       else if (bFracLo < aFracLo) {
          __sub64(aFracHi, aFracLo, bFracHi, bFracLo, zFrac0, zFrac1);
-         zexp_normal = true;
       }
       else if (aFracLo < bFracLo) {
          __sub64(bFracHi, bFracLo, aFracHi, aFracLo, zFrac0, zFrac1);
          sign_of_difference = 0x80000000;
-          zexp_normal = true;
       }
       zExp = mix(bExp, aExp, sign_of_difference == 0u);
       aSign ^= sign_of_difference;
       uint64_t retval_0 = __packFloat64(uint(FLOAT_ROUNDING_MODE == FLOAT_ROUND_DOWN) << 31, 0, 0u, 0u);
       uint64_t retval_1 = __normalizeRoundAndPackFloat64(aSign, zExp - 11, zFrac0, zFrac1);
-      return mix(retval_0, retval_1, zexp_normal);
+      return mix(retval_0, retval_1, zFrac0 != 0u || zFrac1 != 0u);
    }
 }
 
