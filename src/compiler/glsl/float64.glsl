@@ -1714,7 +1714,19 @@ __ftrunc64(uint64_t __a)
 uint64_t
 __ffloor64(uint64_t a)
 {
-   bool is_positive = __fge64(a, 0ul);
+   /* The big assumtion is that when 'a' is NaN, __ftrunc(a) returns a.  Based
+    * on that assumption, NaN values that don't have the sign bit will safely
+    * return NaN (identity).  This is guarded by RELAXED_NAN_PROPAGATION
+    * because otherwise the NaN should have the "signal" bit set.  The
+    * __fadd64 will ensure that occurs.
+    */
+   bool is_positive =
+#if defined RELAXED_NAN_PROPAGATION
+      int(unpackUint2x32(a).y) >= 0
+#else
+      __fge64(a, 0ul)
+#endif
+      ;
    uint64_t tr = __ftrunc64(a);
 
    if (is_positive || __feq64(tr, a)) {
