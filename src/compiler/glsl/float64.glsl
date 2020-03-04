@@ -777,8 +777,8 @@ __fadd64(uint64_t a, uint64_t b)
       bExp = mix(bExp, 1, aExp == 0);
       aExp = mix(aExp, 1, aExp == 0);
 
-      uint zFrac0 = 0;
-      uint zFrac1 = 0;
+      uint zFrac0;
+      uint zFrac1;
       uint sign_of_difference = 0;
       if (bFracHi < aFracHi) {
          __sub64(aFracHi, aFracLo, bFracHi, bFracLo, zFrac0, zFrac1);
@@ -787,10 +787,11 @@ __fadd64(uint64_t a, uint64_t b)
          __sub64(bFracHi, bFracLo, aFracHi, aFracLo, zFrac0, zFrac1);
          sign_of_difference = 0x80000000;
       }
-      else if (bFracLo < aFracLo) {
+      else if (bFracLo <= aFracLo) {
+         /* It is possible that zFrac0 and zFrac1 may be zero after this. */
          __sub64(aFracHi, aFracLo, bFracHi, bFracLo, zFrac0, zFrac1);
       }
-      else if (aFracLo < bFracLo) {
+      else {
          __sub64(bFracHi, bFracLo, aFracHi, aFracLo, zFrac0, zFrac1);
          sign_of_difference = 0x80000000;
       }
