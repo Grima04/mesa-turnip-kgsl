@@ -682,9 +682,8 @@ __fadd64(uint64_t a, uint64_t b)
       uint zFrac1;
       uint zFrac2;
       int zExp;
-      bool orig_exp_diff_is_zero = (expDiff == 0);
 
-      if (orig_exp_diff_is_zero) {
+      if (expDiff == 0) {
          if (aExp == 0x7FF) {
             bool propagate = ((aFracHi | bFracHi) | (aFracLo| bFracLo)) != 0u;
             return mix(a, __propagateFloat64NaN(a, b), propagate);
@@ -720,8 +719,7 @@ __fadd64(uint64_t a, uint64_t b)
                aFracHi, aFracLo, 0u, - expDiff, aFracHi, aFracLo, zFrac2);
             zExp = bExp;
          }
-      }
-      if (!orig_exp_diff_is_zero) {
+
          aFracHi |= 0x00100000u;
          __add64(aFracHi, aFracLo, bFracHi, bFracLo, zFrac0, zFrac1);
          --zExp;
