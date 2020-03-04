@@ -805,7 +805,7 @@ blorp_can_hiz_clear_depth(const struct gen_device_info *devinfo,
       if (x0 % align_px_w || y0 % align_px_h ||
           x1 % align_px_w || y1 % align_px_h)
          return false;
-   } else if (isl_surf_supports_hiz_ccs_wt(devinfo, surf, aux_usage)) {
+   } else if (aux_usage == ISL_AUX_USAGE_HIZ_CCS_WT) {
       /* We have to set the WM_HZ_OP::FullSurfaceDepthandStencilClear bit
        * whenever we clear an uninitialized HIZ buffer (as some drivers
        * currently do). However, this bit seems liable to clear 16x8 pixels in

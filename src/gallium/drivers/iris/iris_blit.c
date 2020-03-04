@@ -577,6 +577,7 @@ get_copy_region_aux_settings(struct iris_context *ice,
    switch (res->aux.usage) {
    case ISL_AUX_USAGE_HIZ:
    case ISL_AUX_USAGE_HIZ_CCS:
+   case ISL_AUX_USAGE_HIZ_CCS_WT:
       if (is_render_target) {
          *out_aux_usage = res->aux.usage;
       } else {

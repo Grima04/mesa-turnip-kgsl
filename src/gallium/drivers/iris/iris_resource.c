@@ -480,8 +480,18 @@ iris_resource_configure_aux(struct iris_screen *screen,
       res->aux.possible_usages |=
          1 << (has_ccs ? ISL_AUX_USAGE_MCS_CCS : ISL_AUX_USAGE_MCS);
    } else if (has_hiz) {
-      res->aux.possible_usages |=
-         1 << (has_ccs ? ISL_AUX_USAGE_HIZ_CCS : ISL_AUX_USAGE_HIZ);
+      if (!has_ccs) {
+         res->aux.possible_usages |= 1 << ISL_AUX_USAGE_HIZ;
+      } else if (res->surf.samples == 1 &&
+                 (res->surf.usage & ISL_SURF_USAGE_TEXTURE_BIT)) {
+         /* If this resource is single-sampled and will be used as a texture,
+          * put the HiZ surface in write-through mode so that we can sample
+          * from it.
+          */
+         res->aux.possible_usages |= 1 << ISL_AUX_USAGE_HIZ_CCS_WT;
+      } else {
+         res->aux.possible_usages |= 1 << ISL_AUX_USAGE_HIZ_CCS;
+      }
    } else if (has_ccs) {
       if (want_ccs_e_for_format(devinfo, res->surf.format))
          res->aux.possible_usages |= 1 << ISL_AUX_USAGE_CCS_E;
@@ -500,11 +510,8 @@ iris_resource_configure_aux(struct iris_screen *screen,
    if (!devinfo->has_sample_with_hiz || res->surf.samples > 1)
       res->aux.sampler_usages &= ~(1 << ISL_AUX_USAGE_HIZ);
 
-   /* We don't always support sampling with HIZ_CCS. But when we do, treat it
-    * as CCS_E.*/
+   /* ISL_AUX_USAGE_HIZ_CCS doesn't support sampling at all */
    res->aux.sampler_usages &= ~(1 << ISL_AUX_USAGE_HIZ_CCS);
-   if (isl_surf_supports_hiz_ccs_wt(devinfo, &res->surf, res->aux.usage))
-      res->aux.sampler_usages |= 1 << ISL_AUX_USAGE_CCS_E;
 
    enum isl_aux_state initial_state;
    *aux_size_B = 0;
@@ -517,6 +524,7 @@ iris_resource_configure_aux(struct iris_screen *screen,
       return !res->mod_info || res->mod_info->aux_usage == ISL_AUX_USAGE_NONE;
    case ISL_AUX_USAGE_HIZ:
    case ISL_AUX_USAGE_HIZ_CCS:
+   case ISL_AUX_USAGE_HIZ_CCS_WT:
       initial_state = ISL_AUX_STATE_AUX_INVALID;
       break;
    case ISL_AUX_USAGE_MCS:

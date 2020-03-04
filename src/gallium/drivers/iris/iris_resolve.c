@@ -569,10 +569,9 @@ iris_sample_with_depth_aux(const struct gen_device_info *devinfo,
          break;
       return false;
    case ISL_AUX_USAGE_HIZ_CCS:
-      /* Write through mode must have been enabled for prior writes. */
-      if (isl_surf_supports_hiz_ccs_wt(devinfo, &res->surf, res->aux.usage))
-         break;
       return false;
+   case ISL_AUX_USAGE_HIZ_CCS_WT:
+      break;
    default:
       return false;
    }
@@ -953,8 +952,12 @@ iris_resource_texture_aux_usage(struct iris_context *ice,
       break;
 
    case ISL_AUX_USAGE_HIZ_CCS:
+      assert(!iris_sample_with_depth_aux(devinfo, res));
+      return ISL_AUX_USAGE_NONE;
+
+   case ISL_AUX_USAGE_HIZ_CCS_WT:
       if (iris_sample_with_depth_aux(devinfo, res))
-         return ISL_AUX_USAGE_CCS_E;
+         return ISL_AUX_USAGE_HIZ_CCS_WT;
       break;
 
    case ISL_AUX_USAGE_MCS:
