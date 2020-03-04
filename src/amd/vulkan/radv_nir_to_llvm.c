@@ -880,13 +880,6 @@ load_gs_input(struct ac_shader_abi *abi,
 	return result;
 }
 
-
-static void radv_emit_kill(struct ac_shader_abi *abi, LLVMValueRef visible)
-{
-	struct radv_shader_context *ctx = radv_shader_context_from_abi(abi);
-	ac_build_kill_if_false(&ctx->ac, visible);
-}
-
 static uint32_t
 radv_get_sample_pos_offset(uint32_t num_samples)
 {
@@ -4141,7 +4134,6 @@ LLVMModuleRef ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm,
 		} else if (shaders[i]->info.stage == MESA_SHADER_FRAGMENT) {
 			ctx.abi.load_sample_position = load_sample_position;
 			ctx.abi.load_sample_mask_in = load_sample_mask_in;
-			ctx.abi.emit_kill = radv_emit_kill;
 		}
 
 		if (shaders[i]->info.stage == MESA_SHADER_VERTEX &&

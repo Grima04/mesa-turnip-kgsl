@@ -2970,7 +2970,7 @@ static void emit_discard(struct ac_nir_context *ctx,
 		cond = ctx->ac.i1false;
 	}
 
-	ctx->abi->emit_kill(ctx->abi, cond);
+	ac_build_kill_if_false(&ctx->ac, cond);
 }
 
 static void emit_demote(struct ac_nir_context *ctx,

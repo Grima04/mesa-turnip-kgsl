@@ -616,14 +616,6 @@ static void si_llvm_emit_polygon_stipple(struct si_shader_context *ctx,
 	ac_build_kill_if_false(&ctx->ac, bit);
 }
 
-static void si_llvm_emit_kill(struct ac_shader_abi *abi, LLVMValueRef visible)
-{
-	struct si_shader_context *ctx = si_shader_context_from_abi(abi);
-	LLVMBuilderRef builder = ctx->ac.builder;
-
-	ac_build_kill_if_false(&ctx->ac, visible);
-}
-
 /**
  * Build the pixel shader prolog function. This handles:
  * - two-side color selection and interpolation
@@ -1046,5 +1038,4 @@ void si_llvm_init_ps_callbacks(struct si_shader_context *ctx)
 	ctx->abi.load_sample_position = load_sample_position;
 	ctx->abi.load_sample_mask_in = load_sample_mask_in;
 	ctx->abi.emit_fbfetch = si_nir_emit_fbfetch;
-	ctx->abi.emit_kill = si_llvm_emit_kill;
 }
