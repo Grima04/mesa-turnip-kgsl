@@ -676,11 +676,11 @@ __fadd64(uint64_t a, uint64_t b)
    uint bFracHi = __extractFloat64FracHi(b);
    int aExp = __extractFloat64Exp(a);
    int bExp = __extractFloat64Exp(b);
-   uint zFrac0 = 0u;
-   uint zFrac1 = 0u;
    int expDiff = aExp - bExp;
    if (aSign == bSign) {
-      uint zFrac2 = 0u;
+      uint zFrac0;
+      uint zFrac1;
+      uint zFrac2;
       int zExp;
       bool orig_exp_diff_is_zero = (expDiff == 0);
 
@@ -736,6 +736,9 @@ __fadd64(uint64_t a, uint64_t b)
       __shortShift64Left(aFracHi, aFracLo, 10, aFracHi, aFracLo);
       __shortShift64Left(bFracHi, bFracLo, 10, bFracHi, bFracLo);
       if (0 < expDiff) {
+         uint zFrac0;
+         uint zFrac1;
+
          if (aExp == 0x7FF) {
             bool propagate = (aFracHi | aFracLo) != 0u;
             return mix(a, __propagateFloat64NaN(a, b), propagate);
@@ -750,6 +753,9 @@ __fadd64(uint64_t a, uint64_t b)
          return __normalizeRoundAndPackFloat64(aSign, zExp - 10, zFrac0, zFrac1);
       }
       if (expDiff < 0) {
+         uint zFrac0;
+         uint zFrac1;
+
          if (bExp == 0x7FF) {
             bool propagate = (bFracHi | bFracLo) != 0u;
             return mix(__packFloat64(aSign ^ 0x80000000u, 0x7ff, 0u, 0u), __propagateFloat64NaN(a, b), propagate);
@@ -770,6 +776,9 @@ __fadd64(uint64_t a, uint64_t b)
       }
       bExp = mix(bExp, 1, aExp == 0);
       aExp = mix(aExp, 1, aExp == 0);
+
+      uint zFrac0 = 0;
+      uint zFrac1 = 0;
       bool zexp_normal = false;
       uint sign_of_difference = 0;
       if (bFracHi < aFracHi) {
