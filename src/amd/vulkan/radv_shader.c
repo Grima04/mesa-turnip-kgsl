@@ -445,6 +445,8 @@ radv_shader_compile_to_nir(struct radv_device *device,
 		NIR_PASS_V(nir, nir_lower_system_values);
 		NIR_PASS_V(nir, nir_lower_clip_cull_distance_arrays);
 		NIR_PASS_V(nir, radv_nir_lower_ycbcr_textures, layout);
+		if (device->instance->debug_flags & RADV_DEBUG_DISCARD_TO_DEMOTE)
+			NIR_PASS_V(nir, nir_lower_discard_to_demote);
 	}
 
 	/* Vulkan uses the separate-shader linking model */
