@@ -4697,6 +4697,21 @@ ac_build_load_helper_invocation(struct ac_llvm_context *ctx)
 	return LLVMBuildSExt(ctx->builder, result, ctx->i32, "");
 }
 
+LLVMValueRef
+ac_build_is_helper_invocation(struct ac_llvm_context *ctx)
+{
+	/* !(exact && postponed) */
+	LLVMValueRef exact = ac_build_intrinsic(ctx, "llvm.amdgcn.ps.live",
+						ctx->i1, NULL, 0,
+						AC_FUNC_ATTR_READNONE);
+
+	LLVMValueRef postponed = LLVMBuildLoad(ctx->builder, ctx->postponed_kill, "");
+	LLVMValueRef result = LLVMBuildAnd(ctx->builder, exact, postponed, "");
+
+	return LLVMBuildSelect(ctx->builder, result, ctx->i32_0,
+	                       LLVMConstInt(ctx->i32, 0xFFFFFFFF, false), "");
+}
+
 LLVMValueRef ac_build_call(struct ac_llvm_context *ctx, LLVMValueRef func,
 			   LLVMValueRef *args, unsigned num_args)
 {

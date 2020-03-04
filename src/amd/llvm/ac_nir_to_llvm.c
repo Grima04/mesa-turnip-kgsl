@@ -1588,6 +1588,12 @@ static unsigned get_cache_policy(struct ac_nir_context *ctx,
 static void visit_store_ssbo(struct ac_nir_context *ctx,
                              nir_intrinsic_instr *instr)
 {
+	if (ctx->ac.postponed_kill) {
+		LLVMValueRef cond = LLVMBuildLoad(ctx->ac.builder,
+                                                  ctx->ac.postponed_kill, "");
+		ac_build_ifcc(&ctx->ac, cond, 7000);
+        }
+
 	LLVMValueRef src_data = get_src(ctx, instr->src[0]);
 	int elem_size_bytes = ac_get_elem_bits(&ctx->ac, LLVMTypeOf(src_data)) / 8;
 	unsigned writemask = nir_intrinsic_write_mask(instr);
@@ -1671,6 +1677,9 @@ static void visit_store_ssbo(struct ac_nir_context *ctx,
 						    cache_policy);
 		}
 	}
+
+	if (ctx->ac.postponed_kill)
+		ac_build_endif(&ctx->ac, 7000);
 }
 
 static LLVMValueRef emit_ssbo_comp_swap_64(struct ac_nir_context *ctx,
@@ -1734,10 +1743,17 @@ static LLVMValueRef emit_ssbo_comp_swap_64(struct ac_nir_context *ctx,
 static LLVMValueRef visit_atomic_ssbo(struct ac_nir_context *ctx,
                                       const nir_intrinsic_instr *instr)
 {
+	if (ctx->ac.postponed_kill) {
+		LLVMValueRef cond = LLVMBuildLoad(ctx->ac.builder,
+                                                  ctx->ac.postponed_kill, "");
+		ac_build_ifcc(&ctx->ac, cond, 7001);
+        }
+
 	LLVMTypeRef return_type = LLVMTypeOf(get_src(ctx, instr->src[2]));
 	const char *op;
 	char name[64], type[8];
 	LLVMValueRef params[6], descriptor;
+	LLVMValueRef result;
 	int arg_count = 0;
 
 	switch (instr->intrinsic) {
@@ -1781,10 +1797,13 @@ static LLVMValueRef visit_atomic_ssbo(struct ac_nir_context *ctx,
 
 	if (instr->intrinsic == nir_intrinsic_ssbo_atomic_comp_swap &&
 	    return_type == ctx->ac.i64) {
-		return emit_ssbo_comp_swap_64(ctx, descriptor,
-					      get_src(ctx, instr->src[1]),
-					      get_src(ctx, instr->src[2]),
-					      get_src(ctx, instr->src[3]));
+		result = emit_ssbo_comp_swap_64(ctx, descriptor,
+						get_src(ctx, instr->src[1]),
+						get_src(ctx, instr->src[2]),
+						get_src(ctx, instr->src[3]));
+		if (ctx->ac.postponed_kill)
+			ac_build_endif(&ctx->ac, 7001);
+		return result;
 	}
 	if (instr->intrinsic == nir_intrinsic_ssbo_atomic_comp_swap) {
 		params[arg_count++] = ac_llvm_extract_elem(&ctx->ac, get_src(ctx, instr->src[3]), 0);
@@ -1813,8 +1832,11 @@ static LLVMValueRef visit_atomic_ssbo(struct ac_nir_context *ctx,
 			 "llvm.amdgcn.buffer.atomic.%s", op);
 	}
 
-	return ac_build_intrinsic(&ctx->ac, name, return_type, params,
-				  arg_count, 0);
+	result = ac_build_intrinsic(&ctx->ac, name, return_type, params,
+				    arg_count, 0);
+	if (ctx->ac.postponed_kill)
+		ac_build_endif(&ctx->ac, 7001);
+	return result;
 }
 
 static LLVMValueRef visit_load_buffer(struct ac_nir_context *ctx,
@@ -2217,6 +2239,12 @@ static void
 visit_store_var(struct ac_nir_context *ctx,
 		nir_intrinsic_instr *instr)
 {
+	if (ctx->ac.postponed_kill) {
+		LLVMValueRef cond = LLVMBuildLoad(ctx->ac.builder,
+                                                  ctx->ac.postponed_kill, "");
+		ac_build_ifcc(&ctx->ac, cond, 7002);
+        }
+
 	nir_deref_instr *deref = nir_instr_as_deref(instr->src[0].ssa->parent_instr);
 	nir_variable *var = nir_deref_instr_get_variable(deref);
 
@@ -2271,7 +2299,7 @@ visit_store_var(struct ac_nir_context *ctx,
 			ctx->abi->store_tcs_outputs(ctx->abi, var,
 						    vertex_index, indir_index,
 						    const_index, src, writemask);
-			return;
+			break;
 		}
 
 		for (unsigned chan = 0; chan < 8; chan++) {
@@ -2375,6 +2403,9 @@ visit_store_var(struct ac_nir_context *ctx,
 		abort();
 		break;
 	}
+
+	if (ctx->ac.postponed_kill)
+		ac_build_endif(&ctx->ac, 7002);
 }
 
 static int image_type_to_components_count(enum glsl_sampler_dim dim, bool array)
@@ -2608,7 +2639,11 @@ static void visit_image_store(struct ac_nir_context *ctx,
 			      nir_intrinsic_instr *instr,
 			      bool bindless)
 {
-
+	if (ctx->ac.postponed_kill) {
+		LLVMValueRef cond = LLVMBuildLoad(ctx->ac.builder,
+                                                  ctx->ac.postponed_kill, "");
+		ac_build_ifcc(&ctx->ac, cond, 7003);
+        }
 
 	enum glsl_sampler_dim dim;
 	enum gl_access_qualifier access;
@@ -2662,12 +2697,20 @@ static void visit_image_store(struct ac_nir_context *ctx,
 		ac_build_image_opcode(&ctx->ac, &args);
 	}
 
+	if (ctx->ac.postponed_kill)
+		ac_build_endif(&ctx->ac, 7003);
 }
 
 static LLVMValueRef visit_image_atomic(struct ac_nir_context *ctx,
                                        const nir_intrinsic_instr *instr,
                                        bool bindless)
 {
+	if (ctx->ac.postponed_kill) {
+		LLVMValueRef cond = LLVMBuildLoad(ctx->ac.builder,
+                                                  ctx->ac.postponed_kill, "");
+		ac_build_ifcc(&ctx->ac, cond, 7004);
+        }
+
 	LLVMValueRef params[7];
 	int param_count = 0;
 
@@ -2776,6 +2819,7 @@ static LLVMValueRef visit_image_atomic(struct ac_nir_context *ctx,
 		params[param_count++] = get_src(ctx, instr->src[4]);
 	params[param_count++] = get_src(ctx, instr->src[3]);
 
+	LLVMValueRef result;
 	if (dim == GLSL_SAMPLER_DIM_BUF) {
 		params[param_count++] = get_image_buffer_descriptor(ctx, instr, true, true);
 		params[param_count++] = LLVMBuildExtractElement(ctx->ac.builder, get_src(ctx, instr->src[1]),
@@ -2798,8 +2842,8 @@ static LLVMValueRef visit_image_atomic(struct ac_nir_context *ctx,
 		}
 
 		assert(length < sizeof(intrinsic_name));
-		return ac_build_intrinsic(&ctx->ac, intrinsic_name, ctx->ac.i32,
-					  params, param_count, 0);
+		result = ac_build_intrinsic(&ctx->ac, intrinsic_name, ctx->ac.i32,
+					    params, param_count, 0);
 	} else {
 		struct ac_image_args args = {};
 		args.opcode = cmpswap ? ac_image_atomic_cmpswap : ac_image_atomic;
@@ -2811,8 +2855,12 @@ static LLVMValueRef visit_image_atomic(struct ac_nir_context *ctx,
 		get_image_coords(ctx, instr, &args, dim, is_array);
 		args.dim = ac_get_image_dim(ctx->ac.chip_class, dim, is_array);
 
-		return ac_build_image_opcode(&ctx->ac, &args);
+		result = ac_build_image_opcode(&ctx->ac, &args);
 	}
+
+	if (ctx->ac.postponed_kill)
+		ac_build_endif(&ctx->ac, 7004);
+	return result;
 }
 
 static LLVMValueRef visit_image_samples(struct ac_nir_context *ctx,
@@ -2925,6 +2973,29 @@ static void emit_discard(struct ac_nir_context *ctx,
 	ctx->abi->emit_kill(ctx->abi, cond);
 }
 
+static void emit_demote(struct ac_nir_context *ctx,
+			const nir_intrinsic_instr *instr)
+{
+	LLVMValueRef cond;
+
+	if (instr->intrinsic == nir_intrinsic_demote_if) {
+		cond = LLVMBuildICmp(ctx->ac.builder, LLVMIntEQ,
+				     get_src(ctx, instr->src[0]),
+				     ctx->ac.i32_0, "");
+	} else {
+		assert(instr->intrinsic == nir_intrinsic_demote);
+		cond = ctx->ac.i1false;
+	}
+
+	/* Kill immediately while maintaining WQM. */
+	ac_build_kill_if_false(&ctx->ac, ac_build_wqm_vote(&ctx->ac, cond));
+
+	LLVMValueRef mask = LLVMBuildLoad(ctx->ac.builder, ctx->ac.postponed_kill, "");
+	mask = LLVMBuildAnd(ctx->ac.builder, mask, cond, "");
+	LLVMBuildStore(ctx->ac.builder, mask, ctx->ac.postponed_kill);
+	return;
+}
+
 static LLVMValueRef
 visit_load_local_invocation_index(struct ac_nir_context *ctx)
 {
@@ -3029,6 +3100,12 @@ static LLVMValueRef visit_var_atomic(struct ac_nir_context *ctx,
 				     const nir_intrinsic_instr *instr,
 				     LLVMValueRef ptr, int src_idx)
 {
+	if (ctx->ac.postponed_kill) {
+		LLVMValueRef cond = LLVMBuildLoad(ctx->ac.builder,
+                                                  ctx->ac.postponed_kill, "");
+		ac_build_ifcc(&ctx->ac, cond, 7005);
+        }
+
 	LLVMValueRef result;
 	LLVMValueRef src = get_src(ctx, instr->src[src_idx]);
 
@@ -3095,6 +3172,9 @@ static LLVMValueRef visit_var_atomic(struct ac_nir_context *ctx,
 
 		result = ac_build_atomic_rmw(&ctx->ac, op, ptr, ac_to_integer(&ctx->ac, src), sync_scope);
 	}
+
+	if (ctx->ac.postponed_kill)
+		ac_build_endif(&ctx->ac, 7005);
 	return result;
 }
 
@@ -3448,6 +3528,9 @@ static void visit_intrinsic(struct ac_nir_context *ctx,
 	case nir_intrinsic_load_helper_invocation:
 		result = ac_build_load_helper_invocation(&ctx->ac);
 		break;
+	case nir_intrinsic_is_helper_invocation:
+		result = ac_build_is_helper_invocation(&ctx->ac);
+		break;
 	case nir_intrinsic_load_color0:
 		result = ctx->abi->color0;
 		break;
@@ -3583,6 +3666,10 @@ static void visit_intrinsic(struct ac_nir_context *ctx,
 	case nir_intrinsic_discard:
 	case nir_intrinsic_discard_if:
 		emit_discard(ctx, instr);
+		break;
+        case nir_intrinsic_demote:
+        case nir_intrinsic_demote_if:
+		emit_demote(ctx, instr);
 		break;
 	case nir_intrinsic_memory_barrier:
 	case nir_intrinsic_group_memory_barrier:
@@ -4878,8 +4965,18 @@ void ac_nir_translate(struct ac_llvm_context *ac, struct ac_shader_abi *abi,
 	if (gl_shader_stage_is_compute(nir->info.stage))
 		setup_shared(&ctx, nir);
 
+	if (nir->info.stage == MESA_SHADER_FRAGMENT && nir->info.fs.uses_demote) {
+		ctx.ac.postponed_kill = ac_build_alloca_undef(&ctx.ac, ac->i1, "");
+		/* true = don't kill. */
+		LLVMBuildStore(ctx.ac.builder, ctx.ac.i1true, ctx.ac.postponed_kill);
+	}
+
 	visit_cf_list(&ctx, &func->impl->body);
 	phi_post_pass(&ctx);
+
+	if (ctx.ac.postponed_kill)
+		ac_build_kill_if_false(&ctx.ac, LLVMBuildLoad(ctx.ac.builder,
+							      ctx.ac.postponed_kill, ""));
 
 	if (!gl_shader_stage_is_compute(nir->info.stage))
 		ctx.abi->emit_outputs(ctx.abi, AC_LLVM_MAX_OUTPUTS,
