@@ -2288,14 +2288,6 @@ isl_surf_get_depth_format(const struct isl_device *dev,
                           const struct isl_surf *surf);
 
 /**
- * @brief determines if a surface supports writing through HIZ to the CCS.
- */
-bool
-isl_surf_supports_hiz_ccs_wt(const struct gen_device_info *dev,
-                             const struct isl_surf *surf,
-                             enum isl_aux_usage aux_usage);
-
-/**
  * @brief performs a copy from linear to tiled surface
  *
  */

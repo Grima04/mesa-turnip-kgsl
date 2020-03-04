@@ -2718,16 +2718,6 @@ isl_surf_get_depth_format(const struct isl_device *dev,
 }
 
 bool
-isl_surf_supports_hiz_ccs_wt(const struct gen_device_info *dev,
-                             const struct isl_surf *surf,
-                             enum isl_aux_usage aux_usage)
-{
-   return aux_usage == ISL_AUX_USAGE_HIZ_CCS &&
-          surf->samples == 1 &&
-          surf->usage & ISL_SURF_USAGE_TEXTURE_BIT;
-}
-
-bool
 isl_swizzle_supports_rendering(const struct gen_device_info *devinfo,
                                struct isl_swizzle swizzle)
 {

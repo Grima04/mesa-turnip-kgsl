@@ -582,6 +582,9 @@ isl_genX(surf_fill_state_s)(const struct isl_device *dev, void *state,
        */
       assert(!(info->view->usage & ISL_SURF_USAGE_STORAGE_BIT));
 
+      if (isl_surf_usage_is_depth(info->surf->usage))
+         assert(isl_aux_usage_has_hiz(info->aux_usage));
+
       if (isl_aux_usage_has_hiz(info->aux_usage)) {
          /* For Gen8-10, there are some restrictions around sampling from HiZ.
           * The Skylake PRM docs for RENDER_SURFACE_STATE::AuxiliarySurfaceMode

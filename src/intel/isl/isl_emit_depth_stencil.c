@@ -213,8 +213,6 @@ isl_genX(emit_depth_stencil_hiz_s)(const struct isl_device *dev, void *batch,
       hiz.SurfacePitch = info->hiz_surf->row_pitch_B - 1;
 #if GEN_GEN >= 12
       hiz.HierarchicalDepthBufferWriteThruEnable =
-         isl_surf_supports_hiz_ccs_wt(dev->info, info->depth_surf,
-                                      info->hiz_usage) ||
          info->hiz_usage == ISL_AUX_USAGE_HIZ_CCS_WT;
 
       /* The bspec docs for this bit are fairly unclear about exactly what is
