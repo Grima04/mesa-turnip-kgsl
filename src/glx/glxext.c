@@ -50,6 +50,7 @@
 #include "glxextensions.h"
 
 #include "util/debug.h"
+#include "dri_common.h"
 
 #include <X11/Xlib-xcb.h>
 #include <xcb/xcb.h>
@@ -906,6 +907,9 @@ __glXInitialize(Display * dpy)
    glx_accel = !env_var_as_boolean("LIBGL_ALWAYS_SOFTWARE", false);
 
    dpyPriv->drawHash = __glxHashCreate();
+
+   /* Set the logger before the *CreateDisplay functions. */
+   loader_set_logger(dri_message);
 
    /*
     ** Initialize the direct rendering per display data and functions.

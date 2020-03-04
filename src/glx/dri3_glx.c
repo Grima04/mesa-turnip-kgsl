@@ -1105,8 +1105,6 @@ dri3_create_display(Display * dpy)
    pdp->base.destroyDisplay = dri3_destroy_display;
    pdp->base.createScreen = dri3_create_screen;
 
-   loader_set_logger(dri_message);
-
    pdp->loader_extensions = loader_extensions;
 
    return &pdp->base;
